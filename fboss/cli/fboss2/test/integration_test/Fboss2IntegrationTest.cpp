@@ -2,6 +2,8 @@
 
 #include "fboss/cli/fboss2/test/integration_test/Fboss2IntegrationTest.h"
 
+#include "fboss/cli/fboss2/test/TestableConfigSession.h"
+
 #include <CLI/App.hpp>
 #include <CLI/Error.hpp>
 #include <fmt/format.h>
@@ -18,11 +20,14 @@
 #include <cctype>
 #include <chrono>
 #include <cstddef>
+#include <cstdint>
 #include <cstdlib>
 #include <exception>
 #include <filesystem>
+#include <functional>
 #include <iostream>
 #include <map>
+#include <memory>
 #include <optional>
 #include <random>
 #include <set>
