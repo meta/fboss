@@ -6,6 +6,7 @@
 #include <folly/IPAddressV4.h>
 
 #include "fboss/agent/AddressUtil.h"
+#include "fboss/agent/if/gen-cpp2/ctrl_constants.h"
 #include "fboss/cli/fboss2/commands/show/interface/CmdShowInterface.h"
 #include "fboss/cli/fboss2/commands/show/interface/gen-cpp2/model_types.h"
 #include "fboss/cli/fboss2/test/CmdHandlerTestBase.h"
@@ -55,9 +56,19 @@ class CmdShowInterfaceTestFixture : public CmdHandlerTestBase {
     portEntry3.vlans() = {4001};
     portEntry3.speedMbps() = 400000;
 
+    facebook::fboss::PortInfoThrift portEntry4;
+    portEntry4.portId() = 4;
+    portEntry4.name() = "eth4/1/1";
+    portEntry4.description() = "routed port";
+    portEntry4.operState() = facebook::fboss::PortOperState::UP;
+    portEntry4.vlans() = {};
+    portEntry4.ingressVlan() = 4094;
+    portEntry4.speedMbps() = 100000;
+
     portMap[*portEntry1.portId()] = portEntry1;
     portMap[*portEntry2.portId()] = portEntry2;
     portMap[*portEntry3.portId()] = portEntry3;
+    portMap[*portEntry4.portId()] = portEntry4;
 
     return portMap;
   }
@@ -83,9 +94,17 @@ class CmdShowInterfaceTestFixture : public CmdHandlerTestBase {
     intfDetail3.mtu() = 9000;
     intfDetail3.address() = createIpPrefixesForIntf3();
 
+    facebook::fboss::InterfaceDetail intfDetail4;
+    intfDetail4.interfaceName() = "router_4";
+    intfDetail4.vlanId() = ctrl_constants::NO_VLAN();
+    intfDetail4.portId() = 4;
+    intfDetail4.mtu() = 9000;
+    intfDetail4.address() = createIpPrefixesForIntf4();
+
     interfaceDetailsMap[*intfDetail1.vlanId()] = intfDetail1;
     interfaceDetailsMap[*intfDetail2.vlanId()] = intfDetail2;
     interfaceDetailsMap[*intfDetail3.vlanId()] = intfDetail3;
+    interfaceDetailsMap[*intfDetail4.portId()] = intfDetail4;
 
     return interfaceDetailsMap;
   }
@@ -141,6 +160,14 @@ class CmdShowInterfaceTestFixture : public CmdHandlerTestBase {
 
     return {prefix1, prefix2};
   }
+
+  std::vector<facebook::fboss::IpPrefix> createIpPrefixesForIntf4() {
+    facebook::fboss::IpPrefix prefix1;
+    prefix1.ip() = facebook::network::toBinaryAddress(
+        folly::IPAddressV6("2401:db00::0004:abcd"));
+    prefix1.prefixLength() = 127;
+    return {prefix1};
+  }
 };
 
 TEST_F(CmdShowInterfaceTestFixture, createModel) {
@@ -149,7 +176,7 @@ TEST_F(CmdShowInterfaceTestFixture, createModel) {
       hostInfo, portEntries, intfDetails, dsfNodes, queriedEntries);
   auto intfAddressModel = *model.interfaces();
 
-  EXPECT_EQ(intfAddressModel.size(), 3);
+  EXPECT_EQ(intfAddressModel.size(), 4);
 
   EXPECT_EQ(*intfAddressModel[0].name(), "eth1/1/1");
   EXPECT_EQ(*intfAddressModel[0].speed(), "100G");
@@ -184,6 +211,14 @@ TEST_F(CmdShowInterfaceTestFixture, createModel) {
   EXPECT_EQ(*intfAddressModel[2].prefixes()[0].prefixLength(), 127);
   EXPECT_EQ(*intfAddressModel[2].prefixes()[1].ip(), "fe80::be:face:b00c");
   EXPECT_EQ(*intfAddressModel[2].prefixes()[1].prefixLength(), 64);
+
+  EXPECT_EQ(*intfAddressModel[3].name(), "eth4/1/1");
+  EXPECT_EQ(*intfAddressModel[3].speed(), "100G");
+  ASSERT_TRUE(intfAddressModel[3].vlan());
+  EXPECT_EQ(*intfAddressModel[3].vlan(), 4094);
+  EXPECT_EQ(*intfAddressModel[3].mtu(), 9000);
+  EXPECT_EQ(*intfAddressModel[3].prefixes()[0].ip(), "2401:db00::4:abcd");
+  EXPECT_EQ(*intfAddressModel[3].prefixes()[0].prefixLength(), 127);
 }
 
 TEST_F(CmdShowInterfaceTestFixture, printOutput) {
@@ -209,6 +244,8 @@ TEST_F(CmdShowInterfaceTestFixture, printOutput) {
       "+-----------+--------+-------+------+------+-----------------------+-------------------------------------+\n"
       "| eth3/1/1  | down   | 400G  | 4001 | 9000 | 2401:db00::3:abcd/127 | ctsw001.c081.f00.lol1:Ethernet5/4/1 |\n"
       "|           |        |       |      |      | fe80::be:face:b00c/64 |                                     |\n"
+      "+-----------+--------+-------+------+------+-----------------------+-------------------------------------+\n"
+      "| eth4/1/1  | up     | 100G  | 4094 | 9000 | 2401:db00::4:abcd/127 | routed port                         |\n"
       "+-----------+--------+-------+------+------+-----------------------+-------------------------------------+\n";
 
   EXPECT_EQ(output, expectedOutput);
