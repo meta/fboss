@@ -16,6 +16,9 @@ add_fbthrift_cpp_library(
   fboss/platform/fan_service/if/fan_service.thrift
   SERVICES
     FanService
+  OPTIONS
+    json
+    reflection
   DEPENDS
     fboss_cpp2
 )
