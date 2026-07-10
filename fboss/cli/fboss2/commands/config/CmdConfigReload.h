@@ -10,16 +10,46 @@
 
 #pragma once
 
-#include <folly/Conv.h>
-#include <iostream>
 #include "fboss/cli/fboss2/CmdHandler.h"
-#include "fboss/cli/fboss2/utils/CmdClientUtils.h"
-#include "fboss/cli/fboss2/utils/CmdUtils.h"
+#include "fboss/cli/fboss2/gen-cpp2/cli_metadata_types.h"
+#include "fboss/cli/fboss2/utils/CmdUtilsCommon.h"
 
 namespace facebook::fboss {
 
+// Optional positional argument controlling how the reload is applied:
+//   (omitted) or "hitless" -> sync_reloadConfig() over thrift (default)
+//   "warmboot"             -> systemctl restart agent services
+//   "coldboot"             -> create coldboot marker + systemctl restart
+class BootTypeArg : public utils::BaseObjectArgType<std::string> {
+ public:
+  /* implicit */ BootTypeArg();
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  /* implicit */ BootTypeArg(std::vector<std::string> v);
+
+  cli::ConfigActionLevel level() const {
+    return level_;
+  }
+
+ private:
+  cli::ConfigActionLevel level_ = cli::ConfigActionLevel::HITLESS;
+};
+
 struct CmdConfigReloadTraits : public WriteCommandTraits {
-  using ObjectArgType = std::monostate;
+  static void addCliArg(CLI::App& cmd, std::vector<std::string>& args) {
+    cmd.add_option(
+        "boot_type",
+        args,
+        "Optional boot type controlling how the reload is applied:\n"
+        "  hitless   (default) Apply config diff in-place via the running "
+        "agent.\n"
+        "  warmboot  Restart the FBOSS agent service(s); on startup the "
+        "agent reads agent.conf and the warmboot state cache from the "
+        "previous run. Local-only.\n"
+        "  coldboot  Restart the FBOSS agent service(s) and reprogram the "
+        "ASIC from scratch from agent.conf. Local-only.");
+  }
+  using ObjectArgType = BootTypeArg;
   using RetType = std::string;
 };
 
@@ -29,7 +59,7 @@ class CmdConfigReload
   using ObjectArgType = CmdConfigReloadTraits::ObjectArgType;
   using RetType = CmdConfigReloadTraits::RetType;
 
-  RetType queryClient(const HostInfo& hostInfo);
+  RetType queryClient(const HostInfo& hostInfo, const BootTypeArg& bootType);
 
   void printOutput(const RetType& logMsg);
 };

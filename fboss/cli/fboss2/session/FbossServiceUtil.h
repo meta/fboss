@@ -20,6 +20,10 @@
 
 namespace facebook::fboss {
 
+namespace cfg {
+class AgentConfig;
+} // namespace cfg
+
 /**
  * FbossServiceUtil handles systemd service orchestration for FBOSS agents.
  *
@@ -31,6 +35,9 @@ namespace facebook::fboss {
  */
 class FbossServiceUtil {
  public:
+  // Construct from an AgentConfig: infers multi_switch mode and switch indices.
+  explicit FbossServiceUtil(const cfg::AgentConfig& agentConfig);
+
   // Production constructor: creates its own SystemdInterface.
   FbossServiceUtil(std::vector<int> switchIndexes, bool multiSwitch);
 
