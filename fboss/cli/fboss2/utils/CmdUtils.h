@@ -15,19 +15,21 @@
 #include <folly/String.h>
 #include <folly/gen/Base.h>
 #include <re2/re2.h>
+#include <optional>
 #include <stdexcept>
 #include <string>
-#include <variant>
+#include <tuple>
+#include <variant> // NOLINT(misc-include-cleaner)
 
 #include "fboss/agent/if/gen-cpp2/FbossCtrlAsyncClient.h"
-#include "fboss/cli/fboss2/CmdGlobalOptions.h"
-#include "fboss/cli/fboss2/gen-cpp2/cli_types.h"
-#include "fboss/cli/fboss2/utils/CmdClientUtils.h"
+#include "fboss/cli/fboss2/CmdGlobalOptions.h" // NOLINT(misc-include-cleaner)
+#include "fboss/cli/fboss2/gen-cpp2/cli_types.h" // NOLINT(misc-include-cleaner)
+#include "fboss/cli/fboss2/utils/CmdClientUtils.h" // NOLINT(misc-include-cleaner)
 #include "fboss/cli/fboss2/utils/CmdUtilsCommon.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
 #include "fboss/cli/fboss2/utils/PrbsUtils.h"
 #include "fboss/cli/fboss2/utils/Table.h"
-#include "fboss/fsdb/if/gen-cpp2/FsdbService.h"
+#include "fboss/fsdb/if/gen-cpp2/FsdbService.h" // NOLINT(misc-include-cleaner)
 #include "fboss/lib/phy/gen-cpp2/phy_types.h"
 #include "fboss/lib/phy/gen-cpp2/prbs_types.h"
 
@@ -502,6 +504,40 @@ std::string getAclLookupClassPortStr(
 bool comparePortName(
     const std::basic_string<char>& nameA,
     const std::basic_string<char>& nameB);
+
+struct PortNameParts {
+  std::string moduleName;
+  int moduleNum{0};
+  int portNum{0};
+  int subportNum{0};
+
+  auto tie() const {
+    return std::tie(moduleName, moduleNum, portNum, subportNum);
+  }
+  bool operator<(const PortNameParts& other) const {
+    return tie() < other.tie();
+  }
+};
+
+/*
+ * Parses a "moduleNum/port/subport" interface name (e.g. eth1/5/3). Returns
+ * std::nullopt for names that don't follow the pattern, rather than throwing
+ * the way comparePortName does.
+ */
+std::optional<PortNameParts> parsePortName(const std::string& name);
+
+/*
+ * Orders interfaces for display. Interface names are free-form -- SVIs are
+ * named arbitrary things like "downlinks" and may be unset -- so names that
+ * parse are ordered by their numeric module/port/subport components (front
+ * panel order) and anything else falls back to the numeric port/interface ID.
+ * Never throws.
+ */
+bool comparePortNameOrId(
+    const std::string& nameA,
+    int32_t idA,
+    const std::string& nameB,
+    int32_t idB);
 
 bool compareSystemPortName(
     const std::basic_string<char>& nameA,
