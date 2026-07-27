@@ -58,7 +58,28 @@ void CmdShowTransceiver::printOutput(const RetType& model, std::ostream& out) {
        "Rx Power (dBm)",
        "Rx SNR"});
 
+  std::vector<const cli::TransceiverDetail*> sortedDetails;
+  sortedDetails.reserve(model.transceivers()->size());
   for (const auto& [portId, details] : model.transceivers().value()) {
+    sortedDetails.push_back(&details);
+  }
+  std::sort(
+      sortedDetails.begin(),
+      sortedDetails.end(),
+      [](const cli::TransceiverDetail* a, const cli::TransceiverDetail* b) {
+        // Bypass modules have no agent port, so fall back to the transceiver
+        // ID (the module index) for their numeric ordering.
+        auto id = [](const cli::TransceiverDetail* d) {
+          return d->portID().has_value()
+              ? folly::copy(d->portID().value())
+              : folly::copy(d->transceiverID().value());
+        };
+        return utils::comparePortNameOrId(
+            a->name().value(), id(a), b->name().value(), id(b));
+      });
+
+  for (const auto* detailsPtr : sortedDetails) {
+    const auto& details = *detailsPtr;
     const bool isZr =
         details.mediaInterface().value() == MediaInterfaceCode::ZR_800G;
     outTable.addRow({
@@ -267,6 +288,11 @@ CmdShowTransceiver::RetType CmdShowTransceiver::createModel(
 
       cli::TransceiverDetail details;
       details.name() = intf;
+      details.transceiverID() = tcvrEntry.first;
+      if (auto portIdIter = interfaceToPortId.find(intf);
+          portIdIter != interfaceToPortId.end()) {
+        details.portID() = portIdIter->second;
+      }
 
       const auto& tcvrState = *transceiver.tcvrState();
       const auto& tcvrStats = *transceiver.tcvrStats();
