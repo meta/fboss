@@ -118,7 +118,6 @@
         <package name="bash-completion"/>
         <package name="curl"/>
         <package name="vim"/>
-        <package name="flashrom"/>
         <package name="libgpiod-utils"/>
         <package name="vi"/>
         <package name="btrfs-progs"/>
