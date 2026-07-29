@@ -10,8 +10,6 @@
 
 #include <signal.h>
 
-DECLARE_int32(stat_publish_interval_ms);
-
 namespace facebook::fboss::fsdb {
 
 class SignalHandler : public folly::AsyncSignalHandler {
