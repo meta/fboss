@@ -66,7 +66,9 @@ int main(int argc, char** argv) {
       XLOG(INFO) << "Config changed since last run, reloading kmods";
     }
     bool reloadKmods = FLAGS_reload_kmods || configChanged;
-    PkgManager pkgManager(config);
+    auto systemInterface = std::make_shared<package_manager::SystemInterface>();
+    resolveBspKmodsRpmVersion(config, *systemInterface);
+    PkgManager pkgManager(config, systemInterface);
     pkgManager.processAll(FLAGS_enable_pkg_mgmnt, reloadKmods);
     PlatformExplorer platformExplorer(config, dataStore.value());
     platformExplorer.explore();

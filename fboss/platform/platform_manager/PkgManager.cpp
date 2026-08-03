@@ -59,6 +59,33 @@ const std::unordered_set<std::string_view> kTolerableKmodLoadFailures = {
     "aadm1266"};
 } // namespace
 
+void resolveBspKmodsRpmVersion(
+    PlatformConfig& config,
+    const package_manager::SystemInterface& systemInterface) {
+  if (*config.bspKmodsRpmVersion() != kBspKmodsRpmVersionWildcard) {
+    return;
+  }
+  const auto& rpmBaseName = *config.bspKmodsRpmName();
+  auto availableVersions =
+      systemInterface.getLocalRepoBspRpmVersions(rpmBaseName);
+  if (availableVersions.empty()) {
+    throw std::runtime_error(
+        fmt::format(
+            "bspKmodsRpmVersion is \"{}\", but no {} rpm for kernel {} was "
+            "found in {}",
+            kBspKmodsRpmVersionWildcard,
+            rpmBaseName,
+            systemInterface.getHostKernelVersion(),
+            FLAGS_local_rpm_repo_path));
+  }
+  XLOG(INFO) << fmt::format(
+      "Resolved bspKmodsRpmVersion \"{}\" to {} (available: {})",
+      kBspKmodsRpmVersionWildcard,
+      availableVersions.front(),
+      folly::join(", ", availableVersions));
+  config.bspKmodsRpmVersion() = availableVersions.front();
+}
+
 PkgManager::PkgManager(
     const PlatformConfig& config,
     const std::shared_ptr<package_manager::SystemInterface>& systemInterface,
@@ -158,22 +185,43 @@ void PkgManager::processRpms() const {
 
   removeInstalledRpms();
 
-  int exitStatus{0};
+  package_manager::RpmInstallResult result;
   auto bspKmodsRpmName = getKmodsRpmName();
-  for (auto [success, attempt] = std::pair{false, 0}; attempt < 3 && !success;
-       attempt++) {
+  for (int attempt = 0; attempt < 3; attempt++) {
     XLOG(INFO) << fmt::format(
         "Installing BSP {}, Attempt #{}", bspKmodsRpmName, attempt);
-    exitStatus = systemInterface_->installRpm(bspKmodsRpmName, "kernel");
-    success = exitStatus == 0;
+    result = systemInterface_->installRpm(bspKmodsRpmName, "kernel");
+    if (result.exitStatus == 0) {
+      break;
+    }
+    // No repo has this package: retrying cannot make it appear.
+    if (result.notFound) {
+      auto availableVersions = systemInterface_->getLocalRepoBspRpmVersions(
+          *platformConfig_.bspKmodsRpmName());
+      throw std::runtime_error(
+          fmt::format(
+              "BSP rpm ({}) was not found in any enabled dnf repo. The "
+              "bspKmodsRpmVersion ({}) in the platform_manager config most "
+              "likely does not match any BSP built for kernel {}. Versions "
+              "available in {}: {}. Set bspKmodsRpmVersion to \"*\" to always "
+              "use the newest BSP present on the system.",
+              bspKmodsRpmName,
+              *platformConfig_.bspKmodsRpmVersion(),
+              systemInterface_->getHostKernelVersion(),
+              FLAGS_local_rpm_repo_path,
+              availableVersions.empty()
+                  ? std::string("none")
+                  : folly::join(", ", availableVersions)));
+    }
   }
-  if (exitStatus != 0) {
+  if (result.exitStatus != 0) {
     throw std::runtime_error(
         fmt::format(
             "Failed to install rpm ({}) with exit code {}",
             bspKmodsRpmName,
-            exitStatus));
+            result.exitStatus));
   }
+  int exitStatus{0};
   XLOG(INFO) << "Caching kernel modules dependencies";
   if (exitStatus = systemInterface_->depmod(); exitStatus != 0) {
     XLOG(ERR) << fmt::format("Failed to depmod with exit code {}", exitStatus);

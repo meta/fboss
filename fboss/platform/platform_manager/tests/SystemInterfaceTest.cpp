@@ -1,6 +1,7 @@
 // (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
 
 #include <filesystem>
+#include <fstream>
 
 #include <fmt/args.h>
 #include <folly/FileUtil.h>
@@ -110,6 +111,49 @@ TEST(BspVersionTest, Ordering) {
   EXPECT_LT((BspVersion{0, 6, 99}), (BspVersion{0, 7, 0}));
   EXPECT_GE((BspVersion{1, 0, 0}), (BspVersion{0, 7, 23}));
   EXPECT_EQ((BspVersion{0, 7, 23}), (BspVersion{0, 7, 23}));
+}
+
+// Fake overriding only the running-kernel read, so getLocalRepoBspRpmVersions
+// (the logic under test) runs for real against a temp repo directory.
+class FakeBspSystemInterface : public package_manager::SystemInterface {
+ public:
+  std::string kernelVersion;
+
+  std::string getHostKernelVersion() const override {
+    return kernelVersion;
+  }
+};
+
+TEST(SystemInterfaceTest, GetLocalRepoBspRpmVersions) {
+  namespace fs = std::filesystem;
+  auto repoDir = fs::temp_directory_path() / "pm_local_rpm_repo_test";
+  fs::remove_all(repoDir);
+  fs::create_directories(repoDir);
+  FLAGS_local_rpm_repo_path = repoDir.string();
+  for (const auto& filename : std::vector<std::string>{
+           // Two BSPs for the running kernel; newest must come first.
+           "fboss_bsp_kmods-6.11.1-mock-4.3.0-1-4.3.0-1.x86_64.rpm",
+           "fboss_bsp_kmods-6.11.1-mock-4.4.2-1-4.4.2-1.x86_64.rpm",
+           // Different kernel, different rpm, and a non-rpm file: all ignored.
+           "fboss_bsp_kmods-6.9.9-other-9.9.9-1-9.9.9-1.x86_64.rpm",
+           "arista_bsp_kmods-6.11.1-mock-1.0.0-1-1.0.0-1.x86_64.rpm",
+           "README"}) {
+    std::ofstream{repoDir / filename} << "";
+  }
+  FakeBspSystemInterface fake;
+  fake.kernelVersion = "6.11.1-mock";
+  EXPECT_EQ(
+      fake.getLocalRepoBspRpmVersions("fboss_bsp_kmods"),
+      (std::vector<std::string>{"4.4.2-1", "4.3.0-1"}));
+  EXPECT_TRUE(fake.getLocalRepoBspRpmVersions("nexthop_bsp_kmods").empty());
+  fs::remove_all(repoDir);
+}
+
+TEST(SystemInterfaceTest, GetLocalRepoBspRpmVersionsMissingRepo) {
+  FLAGS_local_rpm_repo_path = "/does/not/exist";
+  FakeBspSystemInterface fake;
+  fake.kernelVersion = "6.11.1-mock";
+  EXPECT_TRUE(fake.getLocalRepoBspRpmVersions("fboss_bsp_kmods").empty());
 }
 
 }; // namespace facebook::fboss::platform::platform_manager

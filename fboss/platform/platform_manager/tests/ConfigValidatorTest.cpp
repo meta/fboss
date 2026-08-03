@@ -884,6 +884,9 @@ TEST(ConfigValidatorTest, BspRpm) {
   EXPECT_FALSE(ConfigValidator().isValidBspKmodsRpmVersion("5.4.6"));
   EXPECT_TRUE(ConfigValidator().isValidBspKmodsRpmVersion("5.4.6-1"));
   EXPECT_TRUE(ConfigValidator().isValidBspKmodsRpmVersion("11.44.63-14"));
+  // Wildcard: resolved at runtime to the newest BSP rpm in the image.
+  EXPECT_TRUE(ConfigValidator().isValidBspKmodsRpmVersion("*"));
+  EXPECT_FALSE(ConfigValidator().isValidBspKmodsRpmVersion("4.*"));
   EXPECT_FALSE(ConfigValidator().isValidBspKmodsRpmName(""));
   EXPECT_FALSE(ConfigValidator().isValidBspKmodsRpmName("fboss_bsp_kmod"));
   EXPECT_FALSE(ConfigValidator().isValidBspKmodsRpmName("invalid"));

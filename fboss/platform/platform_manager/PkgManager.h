@@ -12,10 +12,24 @@
 DECLARE_bool(enable_pkg_mgmnt);
 DECLARE_bool(reload_kmods);
 DECLARE_string(local_rpm_path);
+DECLARE_string(local_rpm_repo_path);
 DECLARE_int32(kmod_unload_retries);
 DECLARE_int32(kmod_unload_retry_backoff_s);
 
 namespace facebook::fboss::platform::platform_manager {
+
+// bspKmodsRpmVersion value asking PM to use whichever BSP rpm the image happens
+// to ship, instead of a version pinned in the config.
+constexpr auto kBspKmodsRpmVersionWildcard = "*";
+
+// If config.bspKmodsRpmVersion() is the wildcard, rewrites it in-place with the
+// newest BSP version available in the local rpm repo for the running kernel, so
+// that everything downstream (rpm name, ODS counters, thrift getBspVersion)
+// sees a concrete version. Throws if the wildcard cannot be resolved. No-op for
+// a pinned version.
+void resolveBspKmodsRpmVersion(
+    PlatformConfig& config,
+    const package_manager::SystemInterface& systemInterface);
 
 class PkgManager {
  public:
