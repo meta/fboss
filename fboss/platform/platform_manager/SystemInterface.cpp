@@ -4,6 +4,10 @@
 
 #include <sys/utsname.h>
 
+#include <algorithm>
+#include <array>
+#include <filesystem>
+
 #include <fmt/format.h>
 #include <folly/Conv.h>
 #include <folly/FileUtil.h>
@@ -21,8 +25,22 @@ DEFINE_string(
     "",
     "Path to the local rpm file that needs to be installed on the system.");
 
-namespace facebook::fboss::platform::platform_manager {
-namespace package_manager {
+DEFINE_string(
+    local_rpm_repo_path,
+    "/usr/local/share/local_rpm_repo",
+    "Directory holding the rpms shipped with the image. Used to resolve "
+    "bspKmodsRpmVersion when it is set to '*', and to report which BSP "
+    "versions are available when an install fails.");
+
+namespace fs = std::filesystem;
+
+namespace facebook::fboss::platform::platform_manager::package_manager {
+namespace {
+// dnf's wording when the requested package exists in no enabled repo.
+constexpr std::array<std::string_view, 2> kRpmNotFoundMarkers = {
+    "Unable to find a match",
+    "No match for argument"};
+} // namespace
 
 std::optional<BspVersion> BspVersion::fromString(std::string_view version) {
   std::vector<std::string_view> parts;
@@ -61,18 +79,28 @@ bool SystemInterface::unloadKmod(const std::string& moduleName) const {
   return exitStatus == 0;
 }
 
-int SystemInterface::installRpm(
+RpmInstallResult SystemInterface::installRpm(
     const std::string& rpmFullName,
     const std::string& repoName) const {
-  int exitStatus{0};
-  std::string standardOut{};
+  // Redirect stderr into stdout: dnf reports "Unable to find a match" there,
+  // and execCommand only hands back stdout.
   auto cmd = fmt::format(
-      "dnf install {} --assumeyes --setopt=*.skip_if_unavailable=True {}",
+      "dnf install {} --assumeyes --setopt=*.skip_if_unavailable=True {} 2>&1",
       rpmFullName,
       repoName.empty() ? "" : "--disablerepo='*' --enablerepo=" + repoName);
   VLOG(1) << fmt::format("Running command ({})", cmd);
-  std::tie(exitStatus, standardOut) = platformUtils_->execCommand(cmd);
-  return exitStatus;
+  auto [exitStatus, standardOut] = platformUtils_->execCommand(cmd);
+  if (exitStatus == 0) {
+    return RpmInstallResult{};
+  }
+  XLOG(ERR) << standardOut;
+  bool notFound = std::any_of(
+      kRpmNotFoundMarkers.begin(),
+      kRpmNotFoundMarkers.end(),
+      [&standardOut](const auto& marker) {
+        return standardOut.find(marker) != std::string::npos;
+      });
+  return RpmInstallResult{exitStatus, notFound};
 }
 
 int SystemInterface::installLocalRpm() const {
@@ -170,5 +198,65 @@ std::optional<std::string> SystemInterface::getBoundDriverVersion(
   return std::string(trimmed);
 }
 
-} // namespace package_manager
-} // namespace facebook::fboss::platform::platform_manager
+std::vector<std::string> SystemInterface::getLocalRepoBspRpmVersions(
+    const std::string& rpmBaseName) const {
+  const auto kernelVersion = getHostKernelVersion();
+  if (kernelVersion.empty()) {
+    return {};
+  }
+  std::error_code errorCode;
+  if (!fs::is_directory(FLAGS_local_rpm_repo_path, errorCode)) {
+    XLOG(ERR) << fmt::format(
+        "Local rpm repo {} is not a directory", FLAGS_local_rpm_repo_path);
+    return {};
+  }
+  // A BSP kmods rpm file is named
+  //   {rpmBaseName}-{kernelVersion}-{version}-{release}-{version}-{release}.{arch}.rpm
+  // where {rpmBaseName}-{kernelVersion}-{version}-{release} is the package name
+  // (what dnf install takes) and the trailing {version}-{release}.{arch} is
+  // rpm's usual file suffix. Pinning the prefix on the running kernel skips
+  // rpms built for other kernels.
+  const auto prefix = fmt::format("{}-{}-", rpmBaseName, kernelVersion);
+  // {version, release, "{version}-{release}"}
+  std::vector<std::tuple<BspVersion, int, std::string>> candidates;
+  for (const auto& entry : fs::directory_iterator(
+           FLAGS_local_rpm_repo_path,
+           fs::directory_options::skip_permission_denied,
+           errorCode)) {
+    const auto filename = entry.path().filename().string();
+    if (!filename.ends_with(".rpm") || !filename.starts_with(prefix)) {
+      continue;
+    }
+    std::vector<std::string> tokens;
+    folly::split('-', filename.substr(prefix.size()), tokens);
+    if (tokens.size() < 2) {
+      continue;
+    }
+    auto bspVersion = BspVersion::fromString(tokens[0]);
+    if (!bspVersion) {
+      XLOG(WARNING) << fmt::format(
+          "Ignoring {}: unparseable BSP version '{}'", filename, tokens[0]);
+      continue;
+    }
+    auto release = folly::tryTo<int>(tokens[1]);
+    candidates.emplace_back(
+        *bspVersion,
+        release.hasValue() ? *release : 0,
+        fmt::format("{}-{}", tokens[0], tokens[1]));
+  }
+  // Newest version first, then newest release.
+  std::sort(
+      candidates.begin(),
+      candidates.end(),
+      [](const auto& lhs, const auto& rhs) { return lhs > rhs; });
+  std::vector<std::string> versions;
+  for (const auto& candidate : candidates) {
+    const auto& version = std::get<2>(candidate);
+    if (versions.empty() || versions.back() != version) {
+      versions.push_back(version);
+    }
+  }
+  return versions;
+}
+
+} // namespace facebook::fboss::platform::platform_manager::package_manager

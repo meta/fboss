@@ -1278,6 +1278,11 @@ bool ConfigValidator::isValidBspKmodsRpmVersion(
     XLOG(ERR) << "BspKmodsRpmVersion cannot be empty";
     return false;
   }
+  // Wildcard: PkgManager resolves it to the newest BSP rpm shipped in the
+  // image. See kBspKmodsRpmVersionWildcard in PkgManager.h.
+  if (bspKmodsRpmVersion == "*") {
+    return true;
+  }
   if (!re2::RE2::FullMatch(bspKmodsRpmVersion, kRpmVersionRegex)) {
     XLOG(ERR) << fmt::format(
         "Invalid BspKmodsRpmVersion : {}", bspKmodsRpmVersion);
