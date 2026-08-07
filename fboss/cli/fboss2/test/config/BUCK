@@ -19,6 +19,7 @@ cpp_unittest(
         "CmdConfigBgpPolicyCommunityListTest.cpp",
         "CmdConfigBgpPolicyPrefixListEntryTest.cpp",
         "CmdConfigBgpPolicyPrefixListTest.cpp",
+        "CmdConfigBgpPolicyRoutingPolicyTermActionTest.cpp",
         "CmdConfigBgpPolicyRoutingPolicyTermTest.cpp",
         "CmdConfigBgpPolicyRoutingPolicyTest.cpp",
         "CmdConfigCoppTest.cpp",
