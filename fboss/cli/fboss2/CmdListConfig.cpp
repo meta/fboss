@@ -50,6 +50,7 @@
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/routing-policy/CmdConfigProtocolBgpPolicyRoutingPolicy.h"
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/routing-policy/term/CmdConfigProtocolBgpPolicyRoutingPolicyTerm.h"
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/routing-policy/term/action/CmdConfigProtocolBgpPolicyRoutingPolicyTermAction.h"
+#include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/routing-policy/term/match/CmdConfigProtocolBgpPolicyRoutingPolicyTermMatch.h"
 #include "fboss/cli/fboss2/commands/config/protocol/static/CmdConfigProtocolStatic.h"
 #include "fboss/cli/fboss2/commands/config/protocol/static/route/add/CmdConfigProtocolStaticRouteAdd.h"
 #include "fboss/cli/fboss2/commands/config/ptp/CmdConfigPtp.h"
@@ -495,29 +496,39 @@ const CommandTree& kConfigCommandTree() {
                                    argRegistrar<
                                        CmdConfigProtocolBgpPolicyRoutingPolicyTermTraits>,
                                    {{
-                                       "action",
-                                       "Configure a term action",
-                                       {{
-                                            "result",
-                                            "Set the term result: "
-                                            "<ACCEPT|REJECT|CONTINUE>",
-                                            commandHandler<
-                                                CmdConfigProtocolBgpPolicyRoutingPolicyTermActionResult>,
-                                            argRegistrar<
-                                                CmdConfigProtocolBgpPolicyRoutingPolicyTermActionResultTraits>,
-                                        },
-                                        {
-                                            "set",
-                                            "Set a route attribute: "
-                                            "as-path prepend|community|"
-                                            "local-pref|med|next-hop|"
-                                            "origin|weight <value> ...",
-                                            commandHandler<
-                                                CmdConfigProtocolBgpPolicyRoutingPolicyTermActionSet>,
-                                            argRegistrar<
-                                                CmdConfigProtocolBgpPolicyRoutingPolicyTermActionSetTraits>,
-                                        }},
-                                   }},
+                                        "action",
+                                        "Configure a term action",
+                                        {{
+                                             "result",
+                                             "Set the term result: "
+                                             "<ACCEPT|REJECT|CONTINUE>",
+                                             commandHandler<
+                                                 CmdConfigProtocolBgpPolicyRoutingPolicyTermActionResult>,
+                                             argRegistrar<
+                                                 CmdConfigProtocolBgpPolicyRoutingPolicyTermActionResultTraits>,
+                                         },
+                                         {
+                                             "set",
+                                             "Set a route attribute: "
+                                             "as-path prepend|community|"
+                                             "local-pref|med|next-hop|"
+                                             "origin|weight <value> ...",
+                                             commandHandler<
+                                                 CmdConfigProtocolBgpPolicyRoutingPolicyTermActionSet>,
+                                             argRegistrar<
+                                                 CmdConfigProtocolBgpPolicyRoutingPolicyTermActionSetTraits>,
+                                         }},
+                                    },
+                                    {
+                                        "match",
+                                        "Configure a term match: "
+                                        "from as-path-list|origin|"
+                                        "prefix-list <value>",
+                                        commandHandler<
+                                            CmdConfigProtocolBgpPolicyRoutingPolicyTermMatch>,
+                                        argRegistrar<
+                                            CmdConfigProtocolBgpPolicyRoutingPolicyTermMatchTraits>,
+                                    }},
                                }},
                            }},
                       },
