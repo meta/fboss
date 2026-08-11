@@ -10,11 +10,14 @@
 
 #include "fboss/agent/test/utils/AclTestUtils.h"
 
+#include <chrono>
 #include <memory>
+#include <optional>
 
 #include "fboss/agent/AsicUtils.h"
 #include "fboss/agent/FbossError.h"
 #include "fboss/agent/SwSwitch.h"
+#include "fboss/lib/CommonUtils.h"
 
 DECLARE_bool(enable_acl_table_group);
 
@@ -504,11 +507,46 @@ std::map<std::string, uint64_t> getAclInOutPacketsMap(
   return statValues;
 }
 
+std::optional<uint64_t> getAclInOutPacketsIf(
+    const SwSwitch* sw,
+    const std::string& statName,
+    bool bytes) {
+  auto statStr = bytes ? statName + ".bytes" : statName + ".packets";
+  auto hwSwitchStatsMap = sw->getHwSwitchStatsExpensive();
+  std::optional<uint64_t> statValue;
+  for (const auto& [switchIndex, hwswitchStats] : hwSwitchStatsMap) {
+    auto aclStats = hwswitchStats.aclStats();
+    auto entry = aclStats->statNameToCounterMap()->find(statStr);
+    if (entry != aclStats->statNameToCounterMap()->end()) {
+      statValue = statValue.value_or(0) + entry->second;
+    }
+  }
+  return statValue;
+}
+
 uint64_t getAclInOutPackets(
     const SwSwitch* sw,
     const std::string& statName,
     bool bytes) {
-  return getAclInOutPacketsMap(sw, {statName}, bytes).at(statName);
+  return getAclInOutPacketsIf(sw, statName, bytes).value_or(0);
+}
+
+uint64_t waitForAndGetAclInOutPackets(
+    const SwSwitch* sw,
+    const std::string& statName,
+    bool bytes,
+    int numRetries,
+    std::chrono::milliseconds retryInterval) {
+  std::optional<uint64_t> statValue;
+  checkWithRetry(
+      [&]() {
+        statValue = getAclInOutPacketsIf(sw, statName, bytes);
+        return statValue.has_value();
+      },
+      numRetries,
+      retryInterval,
+      folly::to<std::string>("fetch acl stat ", statName));
+  return *statValue;
 }
 
 uint64_t getAclInOutPackets(
