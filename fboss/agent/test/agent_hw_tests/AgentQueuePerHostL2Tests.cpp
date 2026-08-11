@@ -52,7 +52,8 @@ class AgentQueuePerHostL2Test : public AgentHwTest {
     auto ttlAclName = utility::getQueuePerHostTtlAclName();
     auto ttlCounterName = utility::getQueuePerHostTtlCounterName();
 
-    auto statBefore = utility::getAclInOutPackets(getSw(), ttlCounterName);
+    auto statBefore =
+        utility::waitForAndGetAclInOutPackets(getSw(), ttlCounterName);
 
     std::map<int, int64_t> beforeQueueOutPkts;
     for (const auto& queueId : utility::kQueuePerhostQueueIds()) {

@@ -22,6 +22,7 @@ target_link_libraries(acl_test_utils
   switch_config_cpp2
   switch_state_cpp2
   asic_test_utils
+  common_utils
 )
 
 add_library(copp_test_utils
