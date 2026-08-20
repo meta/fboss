@@ -1,2 +1,2 @@
 System_Vendor,Platform_Type,Product_Name_Prefixes,Mode_Names,Asic_Type,Variant_Attributes
-celestica,PLATFORM_LADAKH800BCLS,LADAKH800BCLS-LADAKH800BCLSM,ladakh800bcls-ladakh800bclsm,ASIC_TYPE_TOMAHAWK6,osfp_tray=true
+celestica,PLATFORM_LADAKH800BCLS,LADAKH800BCLS;LADAKH800BCLSM,ladakh800bcls;ladakh800bclsm,ASIC_TYPE_TOMAHAWK6,osfp_tray=true
