@@ -180,7 +180,8 @@ def column_int_enum_generator(string_list: str):
 
 
 def split_csv_list(value: str) -> List[str]:
-    return [item for item in value.split("-") if item]
+    # ";" rather than "-" so entries may contain hyphens (e.g. "NH-4010-F").
+    return [item for item in value.split(";") if item]
 
 
 def parse_bool_map(value: str) -> Dict[str, bool]:
