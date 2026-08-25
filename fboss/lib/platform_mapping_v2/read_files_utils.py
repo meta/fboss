@@ -5,7 +5,7 @@ import os
 import sys
 from dataclasses import dataclass
 from enum import IntEnum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Optional
 
 from fboss.lib.platform_mapping_v2.asic_vendor_config import AsicVendorConfig
 from fboss.lib.platform_mapping_v2.integrated_transceiver_mapping import (
@@ -56,13 +56,13 @@ class PlatformMappingInput:
     base_platform: str
     input_dir: str
     vendor: str
-    data: Dict[str, str]
+    data: dict[str, str]
 
 
-PlatformMappingInputs = Dict[str, PlatformMappingInput]
+PlatformMappingInputs = dict[str, PlatformMappingInput]
 
 
-def read_vendor_data(input_file_path: str) -> Dict[str, str]:
+def read_vendor_data(input_file_path: str) -> dict[str, str]:
     vendor_data = {}
     if not os.path.exists(input_file_path):
         raise FileNotFoundError(f"The folder '{input_file_path}' does not exist.")
@@ -72,7 +72,7 @@ def read_vendor_data(input_file_path: str) -> Dict[str, str]:
         if (
             filepath.endswith(".csv") or filepath.endswith(".json")
         ) and not os.path.isdir(filepath):
-            with open(filepath, "r") as file:
+            with open(filepath) as file:
                 content = file.read()
             vendor_data[filename] = content
 
@@ -80,9 +80,7 @@ def read_vendor_data(input_file_path: str) -> Dict[str, str]:
 
 
 def _add_platform_mapping_input(
-    inputs: PlatformMappingInputs,
-    name: str,
-    platform_input: PlatformMappingInput,
+    inputs: PlatformMappingInputs, name: str, platform_input: PlatformMappingInput
 ) -> None:
     # Platform names are globally unique
     if name in inputs:
@@ -95,9 +93,8 @@ def _add_platform_mapping_input(
 
 
 def _find_variant_inputs(
-    variants_dir: str,
-    mapping_subdir: str,
-) -> List[Tuple[str, str]]:
+    variants_dir: str, mapping_subdir: str
+) -> list[tuple[str, str]]:
     if not os.path.isdir(variants_dir):
         return []
 
@@ -110,8 +107,7 @@ def _find_variant_inputs(
 
 
 def discover_platform_mapping_inputs(
-    platforms_dir: str,
-    mapping_subdir: str = "platform_mapping",
+    platforms_dir: str, mapping_subdir: str = "platform_mapping"
 ) -> PlatformMappingInputs:
     inputs: PlatformMappingInputs = {}
 
@@ -165,7 +161,7 @@ def discover_platform_mapping_inputs(
     return inputs
 
 
-def get_content(directory: Dict[str, str], filename: str) -> str:
+def get_content(directory: dict[str, str], filename: str) -> str:
     if filename not in directory:
         raise FileNotFoundError(
             f"File {filename} not found in directory with keys {directory.keys()}"
@@ -179,12 +175,12 @@ def column_int_enum_generator(string_list: str):
     )
 
 
-def split_csv_list(value: str) -> List[str]:
+def split_csv_list(value: str) -> list[str]:
     # ";" rather than "-" so entries may contain hyphens (e.g. "NH-4010-F").
     return [item for item in value.split(";") if item]
 
 
-def parse_bool_map(value: str) -> Dict[str, bool]:
+def parse_bool_map(value: str) -> dict[str, bool]:
     bool_map = {}
     for item in value.split(";"):
         if not item:
@@ -202,17 +198,17 @@ def parse_bool_map(value: str) -> Dict[str, bool]:
     return bool_map
 
 
-def read_static_mapping(directory: Dict[str, str], prefix: str) -> StaticMapping:
-    STATIC_MAPPING_SUFFIX = "_static_mapping.csv"
-    Column = column_int_enum_generator(
+def read_static_mapping(directory: dict[str, str], prefix: str) -> StaticMapping:
+    static_mapping_suffix = "_static_mapping.csv"
+    Column = column_int_enum_generator(  # noqa: N806
         "A_SLOT_ID A_CHIP_ID A_CHIP_TYPE A_CORE_ID A_CORE_TYPE A_CORE_LANE A_PHYSICAL_TX_LANE "
         + "A_PHYSICAL_RX_LANE A_TX_POLARITY_SWAP A_RX_POLARITY_SWAP Z_SLOT_ID "
         + "Z_CHIP_ID Z_CHIP_TYPE Z_CORE_ID Z_CORE_TYPE Z_CORE_LANE Z_PHYSICAL_TX_LANE "
-        + "Z_PHYSICAL_RX_LANE Z_TX_POLARITY_SWAP Z_RX_POLARITY_SWAP",
+        + "Z_PHYSICAL_RX_LANE Z_TX_POLARITY_SWAP Z_RX_POLARITY_SWAP"
     )
     connections = []
     for index, line in enumerate(
-        get_content(directory, prefix + STATIC_MAPPING_SUFFIX).splitlines()
+        get_content(directory, prefix + static_mapping_suffix).splitlines()
     ):
         if index < 1:
             # Skip the header
@@ -255,10 +251,7 @@ def read_static_mapping(directory: Dict[str, str], prefix: str) -> StaticMapping
             # pyrefly: ignore [missing-attribute]
             core_type=CoreType[row[Column.A_CORE_TYPE]],
         )
-        a_connection_end = ConnectionEnd(
-            chip=a_chip,
-            lane=a_lane,
-        )
+        a_connection_end = ConnectionEnd(chip=a_chip, lane=a_lane)
         # Z end is optional for ports like recycle ports
         # pyrefly: ignore [missing-attribute]
         if row[Column.Z_SLOT_ID]:
@@ -286,10 +279,7 @@ def read_static_mapping(directory: Dict[str, str], prefix: str) -> StaticMapping
                 # pyrefly: ignore [missing-attribute]
                 rx_polarity_swap=bool(row[Column.Z_RX_POLARITY_SWAP] == "Y"),
             )
-            z_connection_end = ConnectionEnd(
-                chip=z_chip,
-                lane=z_lane,
-            )
+            z_connection_end = ConnectionEnd(chip=z_chip, lane=z_lane)
         else:
             z_connection_end = None
 
@@ -298,16 +288,16 @@ def read_static_mapping(directory: Dict[str, str], prefix: str) -> StaticMapping
     return StaticMapping(az_connections=connections)
 
 
-def read_port_profile_mapping(
-    directory: Dict[str, str], prefix: str, multi_npu: bool
+def read_port_profile_mapping(  # noqa: PLR0912
+    directory: dict[str, str], prefix: str, multi_npu: bool
 ) -> PortProfileMapping:
-    PORT_PROFILE_MAPPING_SUFFIX = "_port_profile_mapping.csv"
-    Column = column_int_enum_generator(
-        "GLOBAL_PORT_ID LOGICAL_PORT_ID PORT_NAME SUPPORTED_PROFILES ATTACHED_COREID ATTACHED_CORE_PORTID VIRTUAL_DEVICE_ID PORT_TYPE SCOPE PARENT_PORT CONTROLLING_PORT",
+    port_profile_mapping_suffix = "_port_profile_mapping.csv"
+    Column = column_int_enum_generator(  # noqa: N806
+        "GLOBAL_PORT_ID LOGICAL_PORT_ID PORT_NAME SUPPORTED_PROFILES ATTACHED_COREID ATTACHED_CORE_PORTID VIRTUAL_DEVICE_ID PORT_TYPE SCOPE PARENT_PORT CONTROLLING_PORT"
     )
     ports = {}
     for index, line in enumerate(
-        get_content(directory, prefix + PORT_PROFILE_MAPPING_SUFFIX).splitlines()
+        get_content(directory, prefix + port_profile_mapping_suffix).splitlines()
     ):
         if index < 1:
             # Skip the header
@@ -352,13 +342,13 @@ def read_port_profile_mapping(
         # pyrefly: ignore [missing-attribute]
         scope = Scope(int(row[Column.SCOPE]))
         # pyrefly: ignore [missing-attribute]
-        if Column.PARENT_PORT < len(row) and row[Column.PARENT_PORT]:
+        if len(row) > Column.PARENT_PORT and row[Column.PARENT_PORT]:
             # pyrefly: ignore [missing-attribute]
             parent_port_id = int(row[Column.PARENT_PORT])
         else:
             parent_port_id = None
         # pyrefly: ignore [missing-attribute]
-        if Column.CONTROLLING_PORT < len(row) and row[Column.CONTROLLING_PORT]:
+        if len(row) > Column.CONTROLLING_PORT and row[Column.CONTROLLING_PORT]:
             # pyrefly: ignore [missing-attribute]
             controlling_port = int(row[Column.CONTROLLING_PORT])
         else:
@@ -380,14 +370,14 @@ def read_port_profile_mapping(
     return PortProfileMapping(ports=ports)
 
 
-def read_platform_descriptor(directory: Dict[str, str], prefix: str) -> Dict[str, Any]:
-    PLATFORM_DESCRIPTOR_SUFFIX = "_platform_descriptor.csv"
-    VARIANT_ATTRIBUTES_COLUMN = 5
-    Column = column_int_enum_generator(
+def read_platform_descriptor(directory: dict[str, str], prefix: str) -> dict[str, Any]:
+    platform_descriptor_suffix = "_platform_descriptor.csv"
+    variant_attributes_column = 5
+    Column = column_int_enum_generator(  # noqa: N806
         "SYSTEM_VENDOR PLATFORM_TYPE PRODUCT_NAME_PREFIXES MODE_NAMES ASIC_TYPE VARIANT_ATTRIBUTES"
     )
     for index, line in enumerate(
-        get_content(directory, prefix + PLATFORM_DESCRIPTOR_SUFFIX).splitlines()
+        get_content(directory, prefix + platform_descriptor_suffix).splitlines()
     ):
         if index < 1:
             continue
@@ -409,22 +399,22 @@ def read_platform_descriptor(directory: Dict[str, str], prefix: str) -> Dict[str
             "modeNames": mode_names,
             "asicType": int(asic_type),
         }
-        if VARIANT_ATTRIBUTES_COLUMN < len(row) and row[VARIANT_ATTRIBUTES_COLUMN]:
+        if len(row) > variant_attributes_column and row[variant_attributes_column]:
             descriptor["variantAttributes"] = parse_bool_map(
-                row[VARIANT_ATTRIBUTES_COLUMN]
+                row[variant_attributes_column]
             )
         return descriptor
     raise ValueError(f"No platform descriptor row found for {prefix}")
 
 
-def read_profile_settings(directory: Dict[str, str], prefix: str) -> ProfileSettings:
-    PROFILE_SETTINGS_SUFFIX = "_profile_settings.csv"
-    Column = column_int_enum_generator(
+def read_profile_settings(directory: dict[str, str], prefix: str) -> ProfileSettings:
+    profile_settings_suffix = "_profile_settings.csv"
+    Column = column_int_enum_generator(  # noqa: N806
         "PORT_SPEED_MBPS A_CHIP_TYPE Z_CHIP_TYPE NUM_LANES MODULATION A_FEC Z_FEC MEDIA_TYPE A_INTERFACE_TYPE Z_INTERFACE_TYPE"
     )
     profiles = []
     for index, line in enumerate(
-        get_content(directory, prefix + PROFILE_SETTINGS_SUFFIX).splitlines()
+        get_content(directory, prefix + profile_settings_suffix).splitlines()
     ):
         if index < 1:
             # Skip the header
@@ -491,26 +481,26 @@ def read_profile_settings(directory: Dict[str, str], prefix: str) -> ProfileSett
     return ProfileSettings(speed_settings=profiles)
 
 
-def read_si_settings(  # noqa: C901
-    directory: Dict[str, str], prefix: str, version: Optional[str] = None
+def read_si_settings(  # noqa: PLR0912, PLR0915
+    directory: dict[str, str], prefix: str, version: Optional[str] = None
 ) -> SiSettings:
     si_suffix = f"_{version}" if version is not None else ""
-    SI_SETTINGS_SUFFIX = f"_si_settings{si_suffix}.csv"
-    CUSTOM_TX_PREFIX = "CUSTOM_TX_"
-    CUSTOM_RX_PREFIX = "CUSTOM_RX_"
+    si_settings_suffix = f"_si_settings{si_suffix}.csv"
+    custom_tx_prefix = "CUSTOM_TX_"
+    custom_rx_prefix = "CUSTOM_RX_"
 
     si_settings = []
-    Column = None
+    Column = None  # noqa: N806
     column_names = ""
     for index, line in enumerate(
-        get_content(directory, prefix + SI_SETTINGS_SUFFIX).splitlines()
+        get_content(directory, prefix + si_settings_suffix).splitlines()
     ):
         row = line.split(",")
         if index < 1:
             column_names = " ".join(f"{name}" for name in row)
             column_names = column_names.replace("(mbps)", "")
             column_names = column_names.replace("(m)", "")
-            Column = column_int_enum_generator(column_names)
+            Column = column_int_enum_generator(column_names)  # noqa: N806
             continue
         chip = Chip(
             # pyrefly: ignore [missing-attribute]
@@ -595,7 +585,7 @@ def read_si_settings(  # noqa: C901
             tcvr_override_setting=tcvr_setting,
         )
 
-        tx_kwargs: Dict[str, Any] = {}
+        tx_kwargs: dict[str, Any] = {}
         if chip.core_type in (CoreType.G200, CoreType.P200):
             # pyrefly: ignore [missing-attribute]
             if "TX_PRE3" in column_names and row[Column.TX_PRE3]:
@@ -713,7 +703,7 @@ def read_si_settings(  # noqa: C901
             tx_kwargs["ffeCoeff5"] = int(row[Column.TX_FFE_COEFF_5])
         tx_setting = TxSettings(**tx_kwargs)
 
-        rx_kwargs: Dict[str, Any] = {}
+        rx_kwargs: dict[str, Any] = {}
         # pyrefly: ignore [missing-attribute]
         if "RX_REACH" in column_names and row[Column.RX_REACH]:
             rx_kwargs["rxReach"] = (
@@ -917,9 +907,9 @@ def read_si_settings(  # noqa: C901
             value = row[idx]
             if not value:
                 continue
-            if column_name.startswith(CUSTOM_TX_PREFIX):
+            if column_name.startswith(custom_tx_prefix):
                 tx_custom_collection[column_name] = int(value)
-            elif column_name.startswith(CUSTOM_RX_PREFIX):
+            elif column_name.startswith(custom_rx_prefix):
                 rx_custom_collection[column_name] = int(value)
 
         si_settings.append(
@@ -937,13 +927,13 @@ def read_si_settings(  # noqa: C901
     return SiSettings(si_settings=si_settings)
 
 
-def read_asic_vendor_config(directory: Dict[str, str], prefix: str) -> AsicVendorConfig:
-    VENDOR_CONFIG_SUFFIX = "_vendor_config.json"
-    asic_vendor_config_json_str = get_content(directory, prefix + VENDOR_CONFIG_SUFFIX)
+def read_asic_vendor_config(directory: dict[str, str], prefix: str) -> AsicVendorConfig:
+    vendor_config_suffix = "_vendor_config.json"
+    asic_vendor_config_json_str = get_content(directory, prefix + vendor_config_suffix)
     asic_vendor_config_json = json.loads(asic_vendor_config_json_str)
 
-    def stringify_map_values(map: Dict[str, Any]) -> Dict[str, str]:
-        return {key: json.dumps(value) for key, value in map.items()}
+    def stringify_map_values(values: dict[str, Any]) -> dict[str, str]:
+        return {key: json.dumps(value) for key, value in values.items()}
 
     common_config = copy.deepcopy(asic_vendor_config_json["config"]["common_config"])
     prod_config = copy.deepcopy(asic_vendor_config_json["config"]["prod_config_only"])
@@ -979,16 +969,16 @@ def read_asic_vendor_config(directory: Dict[str, str], prefix: str) -> AsicVendo
 
 
 def read_integrated_transceiver_mapping(
-    directory: Dict[str, str], prefix: str
+    directory: dict[str, str], prefix: str
 ) -> IntegratedTransceiverMapping:
-    SUFFIX = "_integrated_transceiver_mapping.csv"
-    Column = column_int_enum_generator(
+    suffix = "_integrated_transceiver_mapping.csv"
+    Column = column_int_enum_generator(  # noqa: N806
         "TCVR_CHIP_ID TCVR_CORE_ID TCVR_LANE "
         + "OE_CHIP_ID OE_CORE_ID OE_LANE "
-        + "LASER_SOURCE_CHIP_ID LASER_SOURCE_CORE_ID LASER_SOURCE_LANE",
+        + "LASER_SOURCE_CHIP_ID LASER_SOURCE_CORE_ID LASER_SOURCE_LANE"
     )
     connections = []
-    for index, line in enumerate(get_content(directory, prefix + SUFFIX).splitlines()):
+    for index, line in enumerate(get_content(directory, prefix + suffix).splitlines()):
         if index < 1:
             continue
         row = line.split(",")
