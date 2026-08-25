@@ -25,6 +25,10 @@ FBOSS_WARMBOOT_DIR = f"{FBOSS_AGENT_VOLATILE_STATE_DIR}/warm_boot"
 
 _HW_AGENT_SERVICE_OSS = "fboss_hw_agent_oss@"
 
+# Match the production units (fboss_hw_agent@.service and
+# fboss_sw_agent.service both set MemoryMax=8G).
+_AGENT_MEMORY_MAX = "8G"
+
 
 def agent_can_warm_boot_file_path(switch_index: int | None = None) -> str:
     if switch_index is None:
@@ -208,6 +212,7 @@ def _setup_hw_agent_service(
                 description="FBOSS HW Agent Service",
                 exec_start_cmd=hw_agent_service_cmd,
                 syslog_identifier=f"{hw_agent_service_name}{switch_index}",
+                memory_max=_AGENT_MEMORY_MAX,
             ),
         )
         service_utils.write_rsyslog_conf(service_full_name)
@@ -362,6 +367,7 @@ def _setup_sw_agent_service(
             description="FBOSS SW Agent Service",
             exec_start_cmd=sw_agent_service_cmd,
             syslog_identifier=sw_agent_service_name,
+            memory_max=_AGENT_MEMORY_MAX,
         ),
     )
     subprocess.run(f"systemctl enable {unit_file_path}", shell=True)

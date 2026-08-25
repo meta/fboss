@@ -14,7 +14,7 @@ StartLimitIntervalSec=0
 Type=simple
 LimitNOFILE=10000000
 LimitCORE=32G
-MemoryMax=3.75G
+MemoryMax=8G
 MemorySwapMax=0
 
 Environment="PATH=/opt/fboss/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"
