@@ -39,6 +39,7 @@ cpp_binary(
         "ConfigIcmpV4UnavailableSrcAddrTest.cpp",
         "ConfigInterfaceDescriptionTest.cpp",
         "ConfigInterfaceFlowControlTest.cpp",
+        "ConfigInterfaceDhcpRelayTest.cpp",
         "ConfigInterfaceIpv6NdpTest.cpp",
         "ConfigInterfaceLldpExpectedValueTest.cpp",
         "ConfigInterfaceLookupClassTest.cpp",

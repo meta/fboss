@@ -30,6 +30,7 @@ add_executable(fboss2_integration_test
   fboss/cli/fboss2/test/integration_test/ConfigCoppTest.cpp
   fboss/cli/fboss2/test/integration_test/ConfigDhcpSourceOverrideTest.cpp
   fboss/cli/fboss2/test/integration_test/ConfigInterfaceDescriptionTest.cpp
+  fboss/cli/fboss2/test/integration_test/ConfigInterfaceDhcpRelayTest.cpp
   fboss/cli/fboss2/test/integration_test/ConfigInterfaceIpv6NdpTest.cpp
   fboss/cli/fboss2/test/integration_test/DeleteCoppTest.cpp
   fboss/cli/fboss2/test/integration_test/DeleteInterfaceTest.cpp

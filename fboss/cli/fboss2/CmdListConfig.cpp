@@ -25,6 +25,8 @@
 #include "fboss/cli/fboss2/commands/config/dhcp/reply_source_override/CmdConfigDhcpReplySourceOverride.h"
 #include "fboss/cli/fboss2/commands/config/history/CmdConfigHistory.h"
 #include "fboss/cli/fboss2/commands/config/interface/CmdConfigInterface.h"
+#include "fboss/cli/fboss2/commands/config/interface/dhcp/CmdConfigInterfaceDhcp.h"
+#include "fboss/cli/fboss2/commands/config/interface/dhcp/relay/CmdConfigInterfaceDhcpRelay.h"
 #include "fboss/cli/fboss2/commands/config/interface/ipv6/CmdConfigInterfaceIpv6.h"
 #include "fboss/cli/fboss2/commands/config/interface/ipv6/ndp/CmdConfigInterfaceIpv6Ndp.h"
 #include "fboss/cli/fboss2/commands/config/interface/pfc_config/CmdConfigInterfacePfcConfig.h"
@@ -104,6 +106,8 @@
 #include "fboss/cli/fboss2/commands/delete/dhcp/relay_source_override/CmdDeleteDhcpRelaySourceOverride.h"
 #include "fboss/cli/fboss2/commands/delete/dhcp/reply_source_override/CmdDeleteDhcpReplySourceOverride.h"
 #include "fboss/cli/fboss2/commands/delete/interface/CmdDeleteInterface.h"
+#include "fboss/cli/fboss2/commands/delete/interface/dhcp/CmdDeleteInterfaceDhcp.h"
+#include "fboss/cli/fboss2/commands/delete/interface/dhcp/relay/CmdDeleteInterfaceDhcpRelay.h"
 #include "fboss/cli/fboss2/commands/delete/interface/ipv6/CmdDeleteInterfaceIpv6.h"
 #include "fboss/cli/fboss2/commands/delete/interface/ipv6/ndp/CmdDeleteInterfaceIpv6Ndp.h"
 #include "fboss/cli/fboss2/commands/delete/interface/sflow/CmdDeleteInterfaceSflow.h"
@@ -283,6 +287,19 @@ const CommandTree& kConfigCommandTree() {
                "Configure PFC settings for interface",
                commandHandler<CmdConfigInterfacePfcConfig>,
                argRegistrar<CmdConfigInterfacePfcConfigTraits>,
+           },
+           {
+               "dhcp",
+               "Configure DHCP settings for interface",
+               commandHandler<CmdConfigInterfaceDhcp>,
+               argTypeHandler<CmdConfigInterfaceDhcpTraits>,
+               {{
+                   "relay",
+                   "Set the DHCP relay (helper) destination: "
+                   "<ip-address|ipv6-address> <address>",
+                   commandHandler<CmdConfigInterfaceDhcpRelay>,
+                   argRegistrar<CmdConfigInterfaceDhcpRelayTraits>,
+               }},
            },
            {
                "ipv6",
@@ -745,6 +762,19 @@ const CommandTree& kConfigCommandTree() {
           commandHandler<CmdDeleteInterface>,
           argRegistrar<CmdDeleteInterfaceTraits>,
           {{
+               "dhcp",
+               "Delete (reset to default) DHCP settings for interface",
+               commandHandler<CmdDeleteInterfaceDhcp>,
+               argTypeHandler<CmdDeleteInterfaceDhcpTraits>,
+               {{
+                   "relay",
+                   "Clear the DHCP relay (helper) destination: "
+                   "<ip-address|ipv6-address> [<address>]",
+                   commandHandler<CmdDeleteInterfaceDhcpRelay>,
+                   argRegistrar<CmdDeleteInterfaceDhcpRelayTraits>,
+               }},
+           },
+           {
                "ipv6",
                "Delete (reset to default) IPv6 settings for interface",
                commandHandler<CmdDeleteInterfaceIpv6>,
