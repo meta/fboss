@@ -220,6 +220,19 @@ class AgentLoadBalancerTestSpray
     return features;
   }
 
+  /*
+   * PER_PACKET_QUALITY splits evenly only when the members are in the same
+   * ASIC core, which no fixed ecmp width guarantees across platforms, so check
+   * each member's share of the total instead. PER_PACKET_RANDOM is uniform by
+   * construction and keeps the equal-share check. See MemberShareBounds.
+   */
+  std::optional<utility::MemberShareBounds> sprayShareBounds() const override {
+    if constexpr (loadAware) {
+      return utility::MemberShareBounds{};
+    }
+    return std::nullopt;
+  }
+
   std::unique_ptr<EcmpDataPlateUtils> getECMPHelper() override {
     if (!this->getEnsemble()) {
       // run during listing produciton features
