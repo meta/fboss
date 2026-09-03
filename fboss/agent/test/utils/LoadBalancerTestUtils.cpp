@@ -378,13 +378,74 @@ std::set<uint64_t> getSortedPortBytesIncrement(
   return portBytesIncrement;
 }
 
+template <typename PortStatsT>
+uint64_t getPortOutBytes(const PortStatsT& stats) {
+  if constexpr (std::is_same_v<PortStatsT, HwPortStats>) {
+    return *stats.outBytes_();
+  } else if constexpr (std::is_same_v<PortStatsT, HwSysPortStats>) {
+    return stats.queueOutBytes_()->at(getDefaultQueue()) +
+        stats.queueOutDiscardBytes_()->at(getDefaultQueue());
+  }
+  throw FbossError("Unsupported port stats type in getPortOutBytes");
+}
+
+/*
+ * Every member must carry between floorPct and ceilPct of the fair share
+ * (total / numMembers). See MemberShareBounds for why this is the right
+ * assertion for per-packet quality spray. Kept in integer arithmetic:
+ *   floorPct * total <= 100 * numMembers * memberBytes <= ceilPct * total
+ */
+template <typename PortIdT, typename PortStatsT>
+bool isTrafficSprayedImpl(
+    const std::map<PortIdT, PortStatsT>& portIdToStats,
+    const MemberShareBounds& bounds) {
+  const uint64_t numMembers = portIdToStats.size();
+  uint64_t total = 0;
+  for (const auto& [portId, stats] : portIdToStats) {
+    total += getPortOutBytes(stats);
+  }
+  if (!numMembers || !total) {
+    // No members, or no traffic at all, is a failure and not a vacuous pass.
+    XLOG(INFO) << "Traffic not sprayed, members: " << numMembers
+               << " total bytes: " << total;
+    return false;
+  }
+  bool sprayed = true;
+  for (const auto& [portId, stats] : portIdToStats) {
+    auto memberBytes = getPortOutBytes(stats);
+    auto scaled = 100 * numMembers * memberBytes;
+    if (scaled < uint64_t(bounds.floorPct) * total ||
+        scaled > uint64_t(bounds.ceilPct) * total) {
+      XLOG(INFO) << "Member " << fmt::format("{}", portId)
+                 << " outBytes: " << memberBytes << " is outside "
+                 << bounds.floorPct << "%-" << bounds.ceilPct
+                 << "% of the fair share " << (total / numMembers);
+      sprayed = false;
+    }
+  }
+  return sprayed;
+}
+
 template <typename PortIdT, typename PortStatsT>
 std::pair<uint64_t, uint64_t> getHighestAndLowestBytes(
     const std::map<PortIdT, PortStatsT>& portIdToStats) {
   auto portBytes = getSortedPortBytes(portIdToStats);
   auto lowest = portBytes.empty() ? 0 : *portBytes.begin();
   auto highest = portBytes.empty() ? 0 : *portBytes.rbegin();
-  XLOG(DBG0) << " Highest bytes: " << highest << " lowest bytes: " << lowest;
+  // Highest/lowest alone cannot tell "one member took all the traffic" from
+  // "one member took none", so log every member.
+  for (const auto& [portId, stats] : portIdToStats) {
+    XLOG(INFO) << "Member " << fmt::format("{}", portId)
+               << " outBytes: " << getPortOutBytes(stats);
+  }
+  XLOG(INFO) << "Members: " << portIdToStats.size()
+             << " highest bytes: " << highest << " lowest bytes: " << lowest
+             << " deviation: "
+             << (lowest ? fmt::format(
+                              "{:.2f}%",
+                              (static_cast<double>(highest - lowest) / lowest) *
+                                  100.0)
+                        : std::string("n/a, lowest is 0"));
   return std::make_pair(highest, lowest);
 }
 
@@ -1101,6 +1162,18 @@ template std::set<uint64_t> getSortedPortBytesIncrement(
 template std::set<uint64_t> getSortedPortBytesIncrement(
     const std::map<PortID, HwPortStats>& beforePortIdToStats,
     const std::map<PortID, HwPortStats>& afterPortIdToStats);
+
+template uint64_t getPortOutBytes(const HwPortStats& stats);
+
+template uint64_t getPortOutBytes(const HwSysPortStats& stats);
+
+template bool isTrafficSprayedImpl<PortID, HwPortStats>(
+    const std::map<PortID, HwPortStats>& portIdToStats,
+    const MemberShareBounds& bounds);
+
+template bool isTrafficSprayedImpl<SystemPortID, HwSysPortStats>(
+    const std::map<SystemPortID, HwSysPortStats>& portIdToStats,
+    const MemberShareBounds& bounds);
 
 template std::pair<uint64_t, uint64_t> getHighestAndLowestBytes(
     const std::map<SystemPortID, HwSysPortStats>& portIdToStats);
