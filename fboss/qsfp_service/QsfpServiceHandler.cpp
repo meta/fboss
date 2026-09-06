@@ -2,8 +2,8 @@
 
 #include "fboss/qsfp_service/QsfpServiceHandler.h"
 #include "fboss/agent/FbossError.h"
-#include "fboss/fsdb/client/FsdbPubSubManager.h"
 #include "fboss/fsdb/common/Flags.h"
+#include "fboss/lib/CommonFileUtils.h"
 #include "fboss/lib/phy/gen-cpp2/phy_types.h"
 #include "fboss/lib/phy/gen-cpp2/prbs_types.h"
 #include "fboss/qsfp_service/SdkDumpPath.h"
@@ -528,6 +528,9 @@ bool QsfpServiceHandler::getSdkState(std::unique_ptr<std::string> fileName) {
   // empty/absolute/parent-traversing inputs and reduces the request to a
   // basename so a caller cannot overwrite arbitrary root-owned files.
   auto safePath = sanitizeSdkDumpPath(*fileName);
+  // Ensure the service-owned dump directory exists before the SDK tries to
+  // write into it; sanitizeSdkDumpPath confines safePath to kSdkDumpDir.
+  createDir(kSdkDumpDir);
   if (FLAGS_port_manager_mode) {
     return portManager_->getSdkState(safePath);
   } else {

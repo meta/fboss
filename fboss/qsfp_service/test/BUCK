@@ -85,7 +85,7 @@ cpp_unittest(
 cpp_unittest(
     name = "sdk_dump_path_test",
     srcs = [
-        "facebook/SdkDumpPathTest.cpp",
+        "SdkDumpPathTest.cpp",
     ],
     # Pure in-process string sanitizer test; no network access needed.
     network_access = network_access_utils.none(),
