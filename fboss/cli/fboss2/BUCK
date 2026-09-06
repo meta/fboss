@@ -1047,6 +1047,7 @@ cpp_library(
         "//fboss/platform/rackmon/if:rackmonsvc-cpp2-services",
         "//fboss/platform/reboot_cause_finder:reboot_history_lib",
         "//fboss/platform/sensor_service/if:sensor_service-cpp2-services",
+        "//fboss/qsfp_service:sdk_dump_path",
         "//fboss/qsfp_service/if:qsfp-cpp2-services",
         "//fboss/qsfp_service/if:transceiver-cpp2-types",
         "//neteng/fboss/bgp/cpp/lib:bgp_structs",

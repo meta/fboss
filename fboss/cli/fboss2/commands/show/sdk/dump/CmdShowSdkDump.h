@@ -10,7 +10,6 @@
 
 #pragma once
 
-#include <folly/testing/TestUtil.h>
 #include "fboss/cli/fboss2/CmdHandler.h"
 
 namespace facebook::fboss {
@@ -27,10 +26,12 @@ class CmdShowQsfpSdkDump
     : public CmdHandler<CmdShowQsfpSdkDump, CmdShowQsfpSdkDumpTraits> {
  public:
   using RetType = CmdShowQsfpSdkDumpTraits::RetType;
-  std::unique_ptr<folly::test::TemporaryFile> tempSdkFile;
+  // Path under the service-owned dump directory (kSdkDumpDir) that
+  // qsfp_service writes the SDK state to and that printOutput reads back.
+  std::string sdkDumpPath;
 
   RetType queryClient(const HostInfo& hostInfo);
-  void printOutput(const RetType& rc, std::ostream& out = std::cout);
+  void printOutput(const RetType& rc, std::ostream& out = std::cout) const;
 };
 
 struct CmdShowAgentSdkDumpTraits : public ReadCommandTraits,
@@ -45,10 +46,9 @@ class CmdShowAgentSdkDump
     : public CmdHandler<CmdShowAgentSdkDump, CmdShowAgentSdkDumpTraits> {
  public:
   using RetType = CmdShowAgentSdkDumpTraits::RetType;
-  std::unique_ptr<folly::test::TemporaryFile> tempSdkFile;
 
   RetType queryClient(const HostInfo& hostInfo);
-  void printOutput(const RetType& rc, std::ostream& out = std::cout);
+  void printOutput(const RetType& rc, std::ostream& out = std::cout) const;
 };
 
 } // namespace facebook::fboss

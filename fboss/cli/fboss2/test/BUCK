@@ -219,6 +219,7 @@ cpp_unittest(
         "CmdShowRouteDetailsTest.cpp",
         "CmdShowRouteSummaryTest.cpp",
         "CmdShowRouteTest.cpp",
+        "CmdShowSdkDumpTest.cpp",
         "CmdShowSystemPortTest.cpp",
         "CmdShowTeFlowTest.cpp",
         "CmdShowTechSupportTest.cpp",
