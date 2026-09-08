@@ -9,7 +9,8 @@
  */
 
 #include "fboss/agent/ApplyThriftConfig.h"
-#include "fboss/agent/hw/mock/MockPlatform.h"
+#include "fboss/agent/FbossError.h"
+#include "fboss/agent/hw/mock/MockPlatform.h" // NOLINT(misc-include-cleaner)
 #include "fboss/agent/state/AggregatePort.h"
 #include "fboss/agent/state/AggregatePortMap.h"
 #include "fboss/agent/state/DeltaFunctions.h"
@@ -1252,4 +1253,26 @@ TEST(AggregatePort, configTimeCapacityWithForwardingPorts) {
   EXPECT_EQ(finalAggPort->getConfiguredCapacityMbps(), 20000);
   EXPECT_EQ(finalAggPort->getActiveCapacityMbps(), 20000);
   EXPECT_EQ(finalAggPort->getStatus(), state::AggregatePortStatus::UP);
+}
+
+TEST(AggregatePort, invalidMinimumCapacityLinkPercentageThrows) {
+  auto platform = createMockPlatform();
+  auto [startState, config] = makeTwoPortAggPortConfig();
+  // linkPercentage is a fraction in (0, 1]; 50 is out of range.
+  config.aggregatePorts()[0].minimumCapacity()->set_linkPercentage(50);
+
+  // NOLINTNEXTLINE(modernize-type-traits): gtest EXPECT_THROW internals
+  EXPECT_THROW(
+      publishAndApplyConfig(startState, &config, platform.get()), FbossError);
+}
+
+TEST(AggregatePort, invalidMinimumCapacityLinkCountThrows) {
+  auto platform = createMockPlatform();
+  auto [startState, config] = makeTwoPortAggPortConfig();
+  // linkCount must be >= 1.
+  config.aggregatePorts()[0].minimumCapacity()->set_linkCount(0);
+
+  // NOLINTNEXTLINE(modernize-type-traits): gtest EXPECT_THROW internals
+  EXPECT_THROW(
+      publishAndApplyConfig(startState, &config, platform.get()), FbossError);
 }
