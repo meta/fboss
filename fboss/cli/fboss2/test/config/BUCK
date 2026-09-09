@@ -51,6 +51,7 @@ cpp_unittest(
         "CmdConfigTestBase.cpp",
         "CmdConfigTrafficCounterTest.cpp",
         "CmdConfigTunnelIpInIpTest.cpp",
+        "CmdConfigTunnelSrv6Test.cpp",
         "CmdConfigVlanDefaultTest.cpp",
         "CmdConfigVlanManagerTest.cpp",
         "CmdConfigVlanPortTaggingModeTest.cpp",
