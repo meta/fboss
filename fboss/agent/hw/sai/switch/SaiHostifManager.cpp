@@ -74,7 +74,7 @@ SaiHostifManager::~SaiHostifManager() {
   store.release();
 }
 
-std::pair<sai_int32_t, sai_packet_action_t>
+std::optional<std::pair<sai_int32_t, sai_packet_action_t>>
 SaiHostifManager::packetReasonToHostifTrap(
     cfg::PacketRxReason reason,
     const SaiPlatform* platform) {
@@ -175,19 +175,23 @@ SaiHostifManager::packetReasonToHostifTrap(
     case cfg::PacketRxReason::UNMATCHED:
       break;
   }
-  throw FbossError("invalid packet reason: ", reason);
+  XLOG(WARN) << "Unsupported packet rx reason for this platform: "
+             << apache::thrift::util::enumName(reason);
+  return std::nullopt;
 }
 
-SaiHostifTrapTraits::CreateAttributes
+std::optional<SaiHostifTrapTraits::CreateAttributes>
 SaiHostifManager::makeHostifTrapAttributes(
     cfg::PacketRxReason trapId,
     HostifTrapGroupSaiId trapGroupId,
     uint16_t priority,
     const SaiPlatform* platform) {
-  sai_int32_t hostifTrapId;
-  sai_packet_action_t hostifPacketAction;
-  std::tie(hostifTrapId, hostifPacketAction) =
+  std::optional<std::pair<sai_int32_t, sai_packet_action_t>> hostifTrap =
       packetReasonToHostifTrap(trapId, platform);
+  if (!hostifTrap.has_value()) {
+    return std::nullopt;
+  }
+  auto [hostifTrapId, hostifPacketAction] = *hostifTrap;
   SaiHostifTrapTraits::Attributes::PacketAction packetAction{
       hostifPacketAction};
   SaiHostifTrapTraits::Attributes::TrapType trapType{hostifTrapId};
@@ -271,7 +275,7 @@ std::shared_ptr<SaiHostifTrapCounter> SaiHostifManager::createHostifTrapCounter(
 #endif
 }
 
-HostifTrapSaiId SaiHostifManager::addHostifTrap(
+std::optional<HostifTrapSaiId> SaiHostifManager::addHostifTrap(
     cfg::PacketRxReason trapId,
     uint32_t queueId,
     uint16_t priority) {
@@ -287,12 +291,18 @@ HostifTrapSaiId SaiHostifManager::addHostifTrap(
         apache::thrift::util::enumName(trapId));
   }
   auto hostifTrapGroup = ensureHostifTrapGroup(queueId);
-  auto attributes = makeHostifTrapAttributes(
-      trapId, hostifTrapGroup->adapterKey(), priority, platform_);
+  std::optional<SaiHostifTrapTraits::CreateAttributes> attributes =
+      makeHostifTrapAttributes(
+          trapId, hostifTrapGroup->adapterKey(), priority, platform_);
+  if (!attributes.has_value()) {
+    XLOG(ERR) << "Skipping programming of unsupported packet rx reason: "
+              << apache::thrift::util::enumName(trapId);
+    return std::nullopt;
+  }
   SaiHostifTrapTraits::AdapterHostKey k =
-      GET_ATTR(HostifTrap, TrapType, attributes);
+      GET_ATTR(HostifTrap, TrapType, *attributes);
   auto& store = saiStore_->get<SaiHostifTrapTraits>();
-  auto hostifTrap = store.setObject(k, attributes);
+  auto hostifTrap = store.setObject(k, *attributes);
   auto handle = std::make_unique<SaiHostifTrapHandle>();
   handle->trap = hostifTrap;
   handle->trapGroup = hostifTrapGroup;
@@ -308,9 +318,11 @@ HostifTrapSaiId SaiHostifManager::addHostifTrap(
 void SaiHostifManager::removeHostifTrap(cfg::PacketRxReason trapId) {
   auto handleItr = handles_.find(trapId);
   if (handleItr == handles_.end()) {
-    throw FbossError(
-        "Attempted to remove non-existent trap for rx reason: ",
-        apache::thrift::util::enumName(trapId));
+    // The trap may never have been programmed if the rx reason is unsupported
+    // on this platform, in which case there is nothing to remove.
+    XLOG(WARN) << "Attempted to remove non-existent trap for rx reason: "
+               << apache::thrift::util::enumName(trapId);
+    return;
   }
   concurrentIndices_->hostifTrapIds.erase(
       handleItr->second->trap->adapterKey());
@@ -321,19 +333,28 @@ void SaiHostifManager::changeHostifTrap(
     cfg::PacketRxReason trapId,
     uint32_t queueId,
     uint16_t priority) {
+  // An unsupported reason was never programmed by addHostifTrap(), so it has
+  // no entry in handles_. Bail out on it before the lookup below, which treats
+  // a missing handle as a programming error.
+  auto hostifTrapGroup = ensureHostifTrapGroup(queueId);
+  std::optional<SaiHostifTrapTraits::CreateAttributes> attributes =
+      makeHostifTrapAttributes(
+          trapId, hostifTrapGroup->adapterKey(), priority, platform_);
+  if (!attributes.has_value()) {
+    XLOG(ERR) << "Skipping change of unsupported packet rx reason: "
+              << apache::thrift::util::enumName(trapId);
+    return;
+  }
   auto handleItr = handles_.find(trapId);
   if (handleItr == handles_.end()) {
     throw FbossError(
         "Attempted to change non-existent trap for rx reason: ",
         apache::thrift::util::enumName(trapId));
   }
-  auto hostifTrapGroup = ensureHostifTrapGroup(queueId);
-  auto attributes = makeHostifTrapAttributes(
-      trapId, hostifTrapGroup->adapterKey(), priority, platform_);
   SaiHostifTrapTraits::AdapterHostKey k =
-      GET_ATTR(HostifTrap, TrapType, attributes);
+      GET_ATTR(HostifTrap, TrapType, *attributes);
   auto& store = saiStore_->get<SaiHostifTrapTraits>();
-  auto hostifTrap = store.setObject(k, attributes);
+  auto hostifTrap = store.setObject(k, *attributes);
 
   handleItr->second->trap = hostifTrap;
   handleItr->second->trapGroup = hostifTrapGroup;
