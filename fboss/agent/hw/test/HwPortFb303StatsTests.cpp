@@ -755,10 +755,14 @@ TEST(HwPortFb303StatsTest, ReInit) {
       true /* inCongestionDiscardSeenSupported */);
   stats.portNameChanged(kNewPortName);
   for (const auto& sName : stats.kPortMonotonicCounterStatKeys()) {
-    EXPECT_TRUE(fbData->getStatMap()->contains(
-        HwPortFb303Stats::statName(sName, kNewPortName)));
-    EXPECT_FALSE(fbData->getStatMap()->contains(
-        HwPortFb303Stats::statName(sName, kPortName)));
+    const auto newStatName = HwPortFb303Stats::statName(sName, kNewPortName);
+    const auto oldStatName = HwPortFb303Stats::statName(sName, kPortName);
+    EXPECT_TRUE(fbData->getStatMap()->contains(newStatName));
+    EXPECT_FALSE(fbData->getStatMap()->contains(oldStatName));
+    EXPECT_TRUE(
+        fbData->getCounterIfExists(newStatName + ".rate.60").has_value());
+    EXPECT_FALSE(
+        fbData->getCounterIfExists(oldStatName + ".rate.60").has_value());
   }
   for (auto statKey : stats.kPortFb303CounterStatKeys()) {
     EXPECT_FALSE(
@@ -830,6 +834,21 @@ TEST(HwPortFb303StatsTest, ReInit) {
   // kPriorityGroupCounterStatKeys() are not initialized on construction or
   // reinit. They will be initialized only on the first set (via setPgCounter).
   // Hence, we don't check for their existence in this test.
+}
+
+TEST(HwPortFb303StatsTest, MonotonicCountersExportRate) {
+  const std::string portName = "eth1/1/7";
+  const auto statName = HwPortFb303Stats::statName(kInBytes(), portName);
+  const auto rateName = statName + ".rate.60";
+
+  {
+    HwPortFb303Stats stats(portName);
+    facebook::tcData().publishStats();
+    EXPECT_TRUE(fbData->getCounterIfExists(rateName).has_value());
+  }
+
+  facebook::tcData().publishStats();
+  EXPECT_FALSE(fbData->getCounterIfExists(rateName).has_value());
 }
 
 TEST(HwPortFb303Stats, UpdateStats) {
