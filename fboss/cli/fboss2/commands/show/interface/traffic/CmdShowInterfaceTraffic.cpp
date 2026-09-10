@@ -25,11 +25,8 @@ CmdShowInterfaceTraffic::RetType CmdShowInterfaceTraffic::queryClient(
   auto client =
       utils::createClient<apache::thrift::Client<FbossCtrl>>(hostInfo);
 
-  folly::IOThreadPoolExecutor executor(2);
-
-  // Gather port stats asynchrounously
-  auto portInfos =
-      client->semifuture_getAllPortInfo().via(executor.getEventBase());
+  std::map<int32_t, facebook::fboss::PortInfoThrift> portInfos;
+  client->sync_getAllPortInfo(portInfos);
 
   std::map<std::string, int64_t> counters;
   if (utils::isMultiSwitchEnabled(hostInfo)) {
@@ -54,15 +51,10 @@ CmdShowInterfaceTraffic::RetType CmdShowInterfaceTraffic::queryClient(
         };
     utils::runOnAllHwAgents(hostInfo, hwAgentQueryFn);
   } else {
-    auto entries =
-        client->semifuture_getCounters().via(executor.getEventBase());
-    entries.wait();
-    counters = entries.value();
+    client->sync_getCounters(counters);
   }
 
-  portInfos.wait();
-
-  return createModel(portInfos.value(), counters, queriedIfs);
+  return createModel(portInfos, counters, queriedIfs);
 }
 
 CmdShowInterfaceTraffic::RetType CmdShowInterfaceTraffic::createModel(

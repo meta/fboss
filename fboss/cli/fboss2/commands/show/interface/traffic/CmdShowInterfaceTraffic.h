@@ -21,7 +21,6 @@
 #include "fboss/cli/fboss2/commands/show/interface/traffic/gen-cpp2/model_types.h"
 #include "fboss/cli/fboss2/utils/CmdUtils.h"
 #include "fboss/cli/fboss2/utils/Table.h"
-#include "folly/executors/IOThreadPoolExecutor.h"
 
 namespace facebook::fboss {
 
