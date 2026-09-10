@@ -250,6 +250,9 @@ int hwAgentMain(
       handlers,
       {FLAGS_hwagent_port_base + FLAGS_switchIndex},
       true /*setupSSL*/);
+  // Rocket does not count an open diag shell stream as activity.
+  server->setStreamExpireTime(std::chrono::milliseconds(0));
+  server->setIdleTimeout(std::chrono::milliseconds(0));
 #ifndef IS_OSS
   auto monitor = std::make_shared<facebook::fb303::DefaultMonitor>();
   auto status = std::make_shared<facebook::fb303::DefaultStatus>();
