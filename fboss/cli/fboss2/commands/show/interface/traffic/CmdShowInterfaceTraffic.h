@@ -52,7 +52,7 @@ class CmdShowInterfaceTraffic : public CmdHandler<
       const std::vector<std::string>& queriedIfs);
   RetType createModel(
       const std::map<int32_t, facebook::fboss::PortInfoThrift>& portCounters,
-      std::map<std::string, int64_t> intCounters,
+      const std::map<std::string, int64_t>& intCounters,
       const std::vector<std::string>& queriedIfs);
   double calculateUtilizationPercent(double speedMbps, int bandwidth);
   std::string extractExpectedPort(const std::string& portDescription);

@@ -4,7 +4,9 @@
 #include <cstdint>
 #include <map>
 #include <sstream>
+#include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "fboss/agent/if/gen-cpp2/ctrl_types.h"
@@ -162,6 +164,69 @@ TEST_F(CmdShowInterfaceTrafficTestFixture, createModel) {
   EXPECT_NEAR(trafficCounters[2].outPct().value(), 19.7531, 0.0001);
 }
 
+TEST_F(CmdShowInterfaceTrafficTestFixture, queryClient) {
+  setupMockedAgentServer();
+
+  EXPECT_CALL(getMockAgent(), getAllPortInfo(_))
+      .WillOnce(Invoke([&](auto& entries) { entries = portInfo; }));
+
+  MultiSwitchRunState runState;
+  runState.multiSwitchEnabled() = false;
+  EXPECT_CALL(getMockAgent(), getMultiSwitchRunState(_))
+      .WillOnce(Invoke([&](auto& response) { response = runState; }));
+
+  auto response = intCounters;
+  EXPECT_CALL(getMockAgent(), async_eb_getRegexCounters(_, _))
+      .WillOnce(Invoke([&response](auto callback, auto regex) {
+        EXPECT_THAT(*regex, HasSuffix("\\.rate\\.60$"));
+        callback->result(std::move(response));
+      }));
+
+  auto model = CmdShowInterfaceTraffic().queryClient(localhost(), queriedIfs);
+  EXPECT_EQ(model.traffic_counters()->size(), 3);
+}
+
+TEST_F(CmdShowInterfaceTrafficTestFixture, missingRateCounterFails) {
+  intCounters.erase("eth1/1/1.in_bytes.rate.60");
+
+  auto cmd = CmdShowInterfaceTraffic();
+  EXPECT_THAT(
+      [&]() { cmd.createModel(portInfo, intCounters, queriedIfs); },
+      ThrowsMessage<std::runtime_error>(HasSubstr(
+          "Required HW-agent traffic counter is unavailable: "
+          "eth1/1/1.in_bytes.rate.60")));
+}
+
+TEST_F(CmdShowInterfaceTrafficTestFixture, downPortDoesNotRequireRateCounters) {
+  portInfo.at(1).operState() = facebook::fboss::PortOperState::DOWN;
+  for (auto counter = intCounters.begin(); counter != intCounters.end();) {
+    if (counter->first.rfind("eth1/1/1.", 0) == 0) {
+      counter = intCounters.erase(counter);
+    } else {
+      ++counter;
+    }
+  }
+
+  auto cmd = CmdShowInterfaceTraffic();
+  EXPECT_NO_THROW(cmd.createModel(portInfo, intCounters, queriedIfs));
+}
+
+TEST_F(CmdShowInterfaceTrafficTestFixture, preservesFractionalKpps) {
+  intCounters["eth1/1/1.in_unicast_pkts.rate.60"] = 100;
+  intCounters["eth1/1/1.in_multicast_pkts.rate.60"] = 200;
+  intCounters["eth1/1/1.in_broadcast_pkts.rate.60"] = 300;
+
+  auto cmd = CmdShowInterfaceTraffic();
+  auto model = cmd.createModel(portInfo, intCounters, queriedIfs);
+
+  EXPECT_DOUBLE_EQ(model.traffic_counters()->at(0).inKpps().value(), 0.6);
+}
+
+TEST_F(CmdShowInterfaceTrafficTestFixture, zeroBandwidthHasZeroUtilization) {
+  auto cmd = CmdShowInterfaceTraffic();
+  EXPECT_DOUBLE_EQ(cmd.calculateUtilizationPercent(100.0, 0), 0.0);
+}
+
 TEST_F(CmdShowInterfaceTrafficTestFixture, printOutput) {
   auto cmd = CmdShowInterfaceTraffic();
   auto model = cmd.createModel(portInfo, intCounters, queriedIfs);
@@ -234,6 +299,10 @@ TEST_F(CmdShowInterfaceTrafficTestFixture, createModelFreeFormDescription) {
 // every rate counter, so isInterestingTraffic() filters out every row and the
 // Total is computed over an empty set. Totals must read 0.00%.
 TEST_F(CmdShowInterfaceTrafficTestFixture, printOutputNoInterestingTraffic) {
+  for (auto& [_, port] : portInfo) {
+    port.operState() = facebook::fboss::PortOperState::DOWN;
+  }
+
   auto cmd = CmdShowInterfaceTraffic();
   auto model = cmd.createModel(portInfo, {} /* intCounters */, queriedIfs);
 
