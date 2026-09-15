@@ -27,6 +27,7 @@
  */
 
 #include <gtest/gtest.h>
+#include <filesystem>
 #include <string>
 #include <vector>
 
@@ -118,6 +119,29 @@ class ConfigBgpPolicyRoutingPolicyTermMatchTest : public ConfigBgpTestBase {
     return nullptr;
   }
 };
+
+TEST_F(
+    ConfigBgpPolicyRoutingPolicyTermMatchTest,
+    FromUnknownAsPathListRejected) {
+  clearBgpSession();
+  auto result = runCli(
+      {"config",
+       "protocol",
+       "bgp",
+       "policy",
+       "routing-policy",
+       "FBOSS2-TEST-RM-UNKNOWN",
+       "term",
+       "10",
+       "match",
+       "from",
+       "as-path-list",
+       "FBOSS2-NO-SUCH-LIST"});
+  // Refused at staging: bgpd would fail the load on the dangling name.
+  EXPECT_THAT(result.stdout, HasSubstr("not found"));
+  EXPECT_FALSE(std::filesystem::exists(bgpSessionPath()))
+      << "session file should not exist after rejected input";
+}
 
 TEST_F(ConfigBgpPolicyRoutingPolicyTermMatchTest, SetMatchesAndCommit) {
   discardSession();
