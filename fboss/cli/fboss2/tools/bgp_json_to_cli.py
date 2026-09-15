@@ -854,6 +854,7 @@ def generate_routing_policy_term_commands(
         commands.append(f"{prefix} description {escape_shell_arg(term['description'])}")
     # Nested term generators (action, match) hook in here.
     commands.extend(generate_routing_policy_term_action_commands(prefix, term))
+    commands.extend(generate_routing_policy_term_match_commands(prefix, term))
     if not commands:
         commands.append(prefix)
     return commands
@@ -1006,6 +1007,101 @@ def generate_routing_policy_term_action_commands(
             )
             continue
         commands.extend(_generate_action_set_command(term_prefix, label, action))
+    return commands
+
+
+_ATOMIC_MATCH_TYPE_NAMES = {
+    1: "AS_PATH_LEN",
+    2: "AS_PATH",
+    3: "COMMUNITY_LIST",
+    4: "ORIGIN",
+    5: "PREFIX_LIST",
+    6: "NEXT_HOP",
+    7: "NEIGHBOR_LIST",
+    8: "ROUTE_TYPE",
+    9: "COMMUNITY_COUNT",
+    10: "INTERFACE",
+    11: "LOCAL_PREFERENCE",
+    12: "METRIC",
+    13: "TAG_LIST",
+    14: "MED",
+    15: "FAMILY",
+    16: "LEVEL",
+    17: "ROUTE_FILTER",
+    18: "PROTOCOL",
+    19: "AS_PATH_LEN_WITH_CONFED",
+    20: "ALWAYS",
+    21: "WEIGHT",
+}
+
+
+def _generate_list_reference_match(
+    term_prefix: str, label: str, keyword: str, names: list[str]
+) -> list[str]:
+    """`match from <keyword> <name>` for the single by-name reference the CLI
+    stores; extra names surface as a warning."""
+    if not names:
+        return [_warning(f"{label}: {keyword} match names no list; not emitted")]
+    commands = [f"{term_prefix} match from {keyword} {escape_shell_arg(names[0])}"]
+    if len(names) > 1:
+        commands.append(
+            _warning(
+                f"{label}: {keyword} match names {len(names)} lists but the CLI "
+                "stores one; only the first is emitted"
+            )
+        )
+    return commands
+
+
+def generate_routing_policy_term_match_commands(
+    term_prefix: str, term: dict[str, Any]
+) -> list[str]:
+    """Generate the `match from ...` commands of one term from
+    policy_match_entries (the field bgpd reads; policy_matches is not)."""
+    label = term_prefix.removeprefix("config protocol bgp policy ")
+    commands = []
+    if term.get("policy_matches"):
+        commands.append(
+            _warning(f"{label}: policy_matches is not read by bgpd; not emitted")
+        )
+    match = term.get("policy_match_entries")
+    if not match:
+        return commands
+    if "match_logic_type" in match:
+        logic = _boolean_operator_name(match["match_logic_type"])
+        if logic != "AND":
+            commands.append(
+                _warning(
+                    f"{label}: match_logic_type {logic} has no CLI equivalent "
+                    "(matches compose under AND); not emitted"
+                )
+            )
+    for entry in match.get("match_entries") or []:
+        kind = _enum_name(entry.get("type", 0), _ATOMIC_MATCH_TYPE_NAMES)
+        if kind == "AS_PATH":
+            names = (entry.get("as_path_filters") or {}).get("as_path_list_names") or []
+            commands.extend(
+                _generate_list_reference_match(
+                    term_prefix, label, "as-path-list", names
+                )
+            )
+        elif kind == "ORIGIN":
+            if "origin" in entry:
+                origin = _enum_name(entry["origin"], _ORIGIN_NAMES)
+                commands.append(
+                    f"{term_prefix} match from origin {escape_shell_arg(origin)}"
+                )
+        elif kind == "PREFIX_LIST":
+            names = (entry.get("prefix_filters") or {}).get("prefix_list_names") or []
+            commands.extend(
+                _generate_list_reference_match(term_prefix, label, "prefix-list", names)
+            )
+        else:
+            commands.append(
+                _warning(
+                    f"{label}: match type {kind} is not expressible by the CLI; not emitted"
+                )
+            )
     return commands
 
 
