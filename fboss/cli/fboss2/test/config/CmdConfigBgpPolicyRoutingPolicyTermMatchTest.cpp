@@ -11,6 +11,8 @@
 #include <vector>
 
 #include "configerator/structs/neteng/bgp_policy/thrift/gen-cpp2/bgp_policy_types.h"
+#include "configerator/structs/neteng/bgp_policy/thrift/gen-cpp2/routing_policy_types.h"
+#include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/as-path-list/BgpAsPathListCliUtils.h"
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/routing-policy/term/CmdConfigProtocolBgpPolicyRoutingPolicyTerm.h"
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/routing-policy/term/match/CmdConfigProtocolBgpPolicyRoutingPolicyTermMatch.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
@@ -69,6 +71,20 @@ class CmdConfigBgpPolicyRoutingPolicyTermMatchTestFixture
     return *term().policy_match_entries()->match_entries();
   }
 
+  // `from as-path-list` refuses a name that does not exist (the as-path-list
+  // CLI lives below this level); seed the list the way that command stores
+  // it.
+  bgp::bgp_policy::AsPathList& addAsPathList(
+      const std::string& name,
+      bgp::routing_policy::BooleanOperator op =
+          bgp::routing_policy::BooleanOperator::OR) {
+    auto& list = bgpcli::findOrCreateAsPathList(
+        ConfigSession::getInstance().getBgpConfig(), name);
+    list.boolean_operator() = op;
+    ConfigSession::getInstance().saveBgpConfig();
+    return list;
+  }
+
   bool sessionFileExists() {
     return std::filesystem::exists(
         ConfigSession::getInstance().getBgpSessionConfigPath());
@@ -118,6 +134,7 @@ TEST_F(
 // ==============================================================================
 
 TEST_F(CmdConfigBgpPolicyRoutingPolicyTermMatchTestFixture, fromAsPathList) {
+  addAsPathList("ASPL1");
   auto result = runMatch({"from", "as-path-list", "ASPL1"});
   EXPECT_THAT(result, HasSubstr("Successfully set as-path-list to: ASPL1"));
   EXPECT_THAT(result, HasSubstr("for routing-policy RM100 term 10 match"));
@@ -161,6 +178,7 @@ TEST_F(
   // Each match kind gets one atomic entry; re-issuing a kind updates it. The
   // entries compose under the match object's default AND, which is the only
   // operator bgpd accepts for more than one entry.
+  addAsPathList("ASPL1");
   runMatch({"from", "prefix-list", "PL1"});
   runMatch({"from", "as-path-list", "ASPL1"});
   runMatch({"from", "origin", "IGP"});
@@ -216,6 +234,36 @@ TEST_F(
   EXPECT_TRUE(policies().empty());
   EXPECT_FALSE(sessionFileExists())
       << "session file should not exist after rejected input";
+}
+
+// ==============================================================================
+// from as-path-list — the reference must resolve, and carries the list's
+// operator
+// ==============================================================================
+
+TEST_F(
+    CmdConfigBgpPolicyRoutingPolicyTermMatchTestFixture,
+    fromUnknownAsPathListRejected) {
+  auto result = runMatch({"from", "as-path-list", "NO-SUCH-LIST"});
+  EXPECT_THAT(
+      result, HasSubstr("Error: BGP as-path-list NO-SUCH-LIST not found"));
+  // Refused before anything is created: no phantom policy, nothing on disk.
+  EXPECT_TRUE(policies().empty());
+  EXPECT_FALSE(sessionFileExists())
+      << "session file should not exist after rejected input";
+}
+
+TEST_F(
+    CmdConfigBgpPolicyRoutingPolicyTermMatchTestFixture,
+    fromAsPathListCopiesListOperator) {
+  addAsPathList("ASPL1", bgp::routing_policy::BooleanOperator::AND);
+  runMatch({"from", "as-path-list", "ASPL1"});
+  ASSERT_EQ(atomics().size(), 1);
+  // bgpd rejects a term whose inline copy disagrees with the list
+  // ("Conflicting boolean_operator"), so the match carries the list's value.
+  EXPECT_EQ(
+      *atomics()[0].as_path_filters()->boolean_operator(),
+      bgp::routing_policy::BooleanOperator::AND);
 }
 
 } // namespace facebook::fboss

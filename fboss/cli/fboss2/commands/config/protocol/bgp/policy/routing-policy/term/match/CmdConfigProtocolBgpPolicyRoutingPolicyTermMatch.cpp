@@ -27,6 +27,7 @@
 #include "configerator/structs/neteng/bgp_policy/thrift/gen-cpp2/routing_policy_types.h"
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/BgpCliAttrHandlers.h"
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/BgpCliValueParsers.h"
+#include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/as-path-list/BgpAsPathListCliUtils.h"
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/routing-policy/BgpRoutingPolicyCliUtils.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/utils/CmdUtilsCommon.h"
@@ -226,6 +227,19 @@ CmdConfigProtocolBgpPolicyRoutingPolicyTermMatch::queryClient(
 
   auto& session = ConfigSession::getInstance();
   auto& cfg = session.getBgpConfig();
+  // bgpd resolves as_path_list_names at config load and fails the load on a
+  // dangling one (the mirror of the as-path-list delete guard), so a
+  // misspelled or forward reference is refused before anything is created.
+  const bgp::bgp_policy::AsPathList* referencedAsPathList = nullptr;
+  if (args.attr() == kFromAsPathList && args.values().size() == 1) {
+    referencedAsPathList = bgpcli::findAsPathList(cfg, args.values()[0]);
+    if (referencedAsPathList == nullptr) {
+      return fmt::format(
+          "Error: BGP as-path-list {} not found; create it before referencing "
+          "it",
+          args.values()[0]);
+    }
+  }
   const bool policyCreated =
       !bgpcli::routingPolicyExists(cfg, policyArgs.policyName());
   auto& policy =
@@ -240,6 +254,13 @@ CmdConfigProtocolBgpPolicyRoutingPolicyTermMatch::queryClient(
       matchAttrHandlers().find(args.attr())->second(term, args.values());
 
   if (result.ok) {
+    if (referencedAsPathList != nullptr) {
+      // bgpd requires the term's inline copy of the list to carry the same
+      // boolean_operator as the list ("Conflicting boolean_operator").
+      findOrCreateAtomicMatch(term, BgpPolicyAtomicMatchType::AS_PATH)
+          .as_path_filters()
+          ->boolean_operator() = *referencedAsPathList->boolean_operator();
+    }
     result.message += fmt::format(
         " for routing-policy {} term {} match",
         policyArgs.policyName(),
