@@ -34,6 +34,7 @@ from fboss.cli.fboss2.tools.bgp_json_to_cli import (
     generate_routing_policy_commands,
     generate_routing_policy_term_action_commands,
     generate_routing_policy_term_commands,
+    generate_routing_policy_term_match_commands,
     json_to_cli,
 )
 
@@ -1633,6 +1634,72 @@ class GenerateRoutingPolicyTermActionCommandsTest(unittest.TestCase):
             [
                 f"{self.TERM} action result ACCEPT",
                 f"{self.TERM} action set local-pref 5",
+            ],
+        )
+
+
+class GenerateRoutingPolicyTermMatchCommandsTest(unittest.TestCase):
+    """Tests for generate_routing_policy_term_match_commands."""
+
+    TERM = "config protocol bgp policy routing-policy RM term 10"
+
+    def test_supported_matches(self) -> None:
+        term = {
+            "policy_match_entries": {
+                "match_entries": [
+                    {"type": 2, "as_path_filters": {"as_path_list_names": ["ASPL"]}},
+                    {"type": "ORIGIN", "origin": 1},
+                    {"type": 5, "prefix_filters": {"prefix_list_names": ["PL"]}},
+                ]
+            }
+        }
+        commands = generate_routing_policy_term_match_commands(self.TERM, term)
+        self.assertEqual(
+            commands,
+            [
+                f"{self.TERM} match from as-path-list ASPL",
+                f"{self.TERM} match from origin IGP",
+                f"{self.TERM} match from prefix-list PL",
+            ],
+        )
+
+    def test_no_match_entries(self) -> None:
+        self.assertEqual(generate_routing_policy_term_match_commands(self.TERM, {}), [])
+
+    def test_unexpressible_matches_warn(self) -> None:
+        term = {
+            "policy_matches": [{}],
+            "policy_match_entries": {
+                "match_logic_type": 2,
+                "match_entries": [
+                    {"type": 3},
+                    {"type": 2, "as_path_filters": {"as_path_list_names": ["A", "B"]}},
+                ],
+            },
+        }
+        commands = generate_routing_policy_term_match_commands(self.TERM, term)
+        self.assertEqual(commands[3], f"{self.TERM} match from as-path-list A")
+        warnings = [c for c in commands if c.startswith("# WARNING:")]
+        self.assertEqual(len(warnings), 4)
+
+    def test_matches_emitted_inside_term(self) -> None:
+        commands = generate_routing_policy_term_commands(
+            "RM",
+            {
+                "sequence_number": 10,
+                "policy_match_entries": {
+                    "match_entries": [
+                        {"type": 5, "prefix_filters": {"prefix_list_names": ["PL"]}}
+                    ]
+                },
+                "term_miss_action": 1,
+            },
+        )
+        self.assertEqual(
+            commands,
+            [
+                f"{self.TERM} action result ACCEPT",
+                f"{self.TERM} match from prefix-list PL",
             ],
         )
 
