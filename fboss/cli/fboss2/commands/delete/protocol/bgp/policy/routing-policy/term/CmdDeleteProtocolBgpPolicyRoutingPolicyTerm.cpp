@@ -63,12 +63,14 @@ CmdDeleteProtocolBgpPolicyRoutingPolicyTerm::queryClient(
     const ObjectArgType& args) {
   auto& session = ConfigSession::getInstance();
   auto& cfg = session.getBgpConfig();
-  // Nothing is persisted for an unknown policy/term, so a typo'd delete
-  // can't stage an unrelated session change.
+  // Delete mirrors add: an absent policy or term is already the requested end
+  // state, so this is a success with a warning. Nothing is saved, so a typo'd
+  // delete can't stage an unrelated session change.
   auto* policy = bgpcli::findRoutingPolicy(cfg, policyArgs.policyName());
   if (policy == nullptr) {
     return fmt::format(
-        "Error: BGP routing-policy {} not found", policyArgs.policyName());
+        "Warning: BGP routing-policy {} does not exist; nothing to delete",
+        policyArgs.policyName());
   }
   auto& terms = *policy->policy_entries();
   auto it = std::find_if(terms.begin(), terms.end(), [&](const auto& term) {
@@ -77,7 +79,7 @@ CmdDeleteProtocolBgpPolicyRoutingPolicyTerm::queryClient(
   });
   if (it == terms.end()) {
     return fmt::format(
-        "Error: BGP routing-policy {} term {} not found",
+        "Warning: BGP routing-policy {} has no term {}; nothing to delete",
         policyArgs.policyName(),
         args.seqNum());
   }

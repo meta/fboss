@@ -128,14 +128,25 @@ TEST_F(
   EXPECT_TRUE(terms(0).empty());
 }
 
-TEST_F(
-    CmdDeleteBgpPolicyRoutingPolicyTermTestFixture,
-    deleteUnknownTermRejected) {
+// Delete mirrors add: an absent target is a success with a warning, never an
+// error, so a replayed script stays idempotent.
+TEST_F(CmdDeleteBgpPolicyRoutingPolicyTermTestFixture, deleteUnknownTermWarns) {
   configureTerm("RM100", {"10"});
+  // Remove the session file created by configureTerm so its absence afterwards
+  // proves the no-op delete did not persist anything new.
+  ASSERT_TRUE(sessionFileExists());
+  std::filesystem::remove(
+      ConfigSession::getInstance().getBgpSessionConfigPath());
 
   auto result = delTerm("RM100", {"20"});
   EXPECT_THAT(
-      result, HasSubstr("Error: BGP routing-policy RM100 term 20 not found"));
+      result,
+      HasSubstr(
+          "Warning: BGP routing-policy RM100 has no term 20; nothing to "
+          "delete"));
+  EXPECT_THAT(result, Not(HasSubstr("Error:")));
+  EXPECT_FALSE(sessionFileExists())
+      << "no-op delete must not persist a session file";
   // The existing term is untouched.
   ASSERT_EQ(terms(0).size(), 1);
   EXPECT_EQ(*terms(0)[0].sequence_number(), 10);
@@ -143,13 +154,35 @@ TEST_F(
 
 TEST_F(
     CmdDeleteBgpPolicyRoutingPolicyTermTestFixture,
-    deleteTermFromUnknownPolicyRejected) {
+    deleteTermTwiceIsIdempotent) {
+  configureTerm("RM100", {"10"});
+  EXPECT_THAT(delTerm("RM100", {"10"}), HasSubstr("Successfully deleted"));
+  EXPECT_TRUE(terms(0).empty());
+
+  auto again = delTerm("RM100", {"10"});
+  EXPECT_THAT(
+      again,
+      HasSubstr(
+          "Warning: BGP routing-policy RM100 has no term 10; nothing to "
+          "delete"));
+  EXPECT_THAT(again, Not(HasSubstr("Error:")));
+  ASSERT_EQ(policies().size(), 1);
+  EXPECT_TRUE(terms(0).empty());
+}
+
+TEST_F(
+    CmdDeleteBgpPolicyRoutingPolicyTermTestFixture,
+    deleteTermFromUnknownPolicyWarns) {
   auto result = delTerm("NO-SUCH-POLICY", {"10"});
   EXPECT_THAT(
-      result, HasSubstr("Error: BGP routing-policy NO-SUCH-POLICY not found"));
-  // Nothing was persisted for the failed delete.
+      result,
+      HasSubstr(
+          "Warning: BGP routing-policy NO-SUCH-POLICY does not exist; nothing "
+          "to delete"));
+  EXPECT_THAT(result, Not(HasSubstr("Error:")));
+  // Nothing changed, so nothing is staged.
   EXPECT_FALSE(sessionFileExists())
-      << "session file should not exist after rejected delete";
+      << "session file should not exist after a no-op delete";
 }
 
 } // namespace facebook::fboss
