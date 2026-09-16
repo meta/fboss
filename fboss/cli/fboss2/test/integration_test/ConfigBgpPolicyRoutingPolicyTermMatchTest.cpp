@@ -157,9 +157,7 @@ TEST_F(ConfigBgpPolicyRoutingPolicyTermMatchTest, SetMatchesAndCommit) {
        "policy",
        "as-path-list",
        "FBOSS2-TEST-ASPL",
-       "entry",
-       "10",
-       "asn-regexp",
+       "regex",
        "^65000$"});
   // Deliberately entry-less. bgpd's
   // PrefixTreeMatch::validateAndCreatePrefixTree throws "Unsupported Prefix
