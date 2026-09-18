@@ -39,6 +39,7 @@ add_executable(fboss2_integration_test
   fboss/cli/fboss2/test/integration_test/ConfigLoadBalancingTest.cpp
   fboss/cli/fboss2/test/integration_test/ConfigMacTest.cpp
   fboss/cli/fboss2/test/integration_test/ConfigPfcTest.cpp
+  fboss/cli/fboss2/test/integration_test/ConfigPortChannelTest.cpp
   fboss/cli/fboss2/test/integration_test/ConfigPortQueueConfigTest.cpp
   fboss/cli/fboss2/test/integration_test/ConfigPtpTest.cpp
   fboss/cli/fboss2/test/integration_test/ConfigInterfaceFlowControlTest.cpp
