@@ -989,6 +989,12 @@ add_library(fboss2_config_lib
   fboss/cli/fboss2/commands/config/mac/CmdConfigMac.h
   fboss/cli/fboss2/commands/config/mac/aging_time/CmdConfigMacAgingTime.cpp
   fboss/cli/fboss2/commands/config/mac/aging_time/CmdConfigMacAgingTime.h
+  fboss/cli/fboss2/commands/config/port_channel/CmdConfigPortChannel.cpp
+  fboss/cli/fboss2/commands/config/port_channel/CmdConfigPortChannel.h
+  fboss/cli/fboss2/commands/config/port_channel/PortChannelUtils.cpp
+  fboss/cli/fboss2/commands/config/port_channel/PortChannelUtils.h
+  fboss/cli/fboss2/commands/config/port_channel/member/CmdConfigPortChannelMember.cpp
+  fboss/cli/fboss2/commands/config/port_channel/member/CmdConfigPortChannelMember.h
   fboss/cli/fboss2/commands/config/protocol/CmdConfigProtocol.cpp
   fboss/cli/fboss2/commands/config/protocol/CmdConfigProtocol.h
   fboss/cli/fboss2/commands/config/protocol/bgp/BgpCliAttrHandlers.h
@@ -1148,6 +1154,10 @@ add_library(fboss2_config_lib
   fboss/cli/fboss2/commands/delete/interface/sflow/CmdDeleteInterfaceSflow.h
   fboss/cli/fboss2/commands/delete/load_balancing/CmdDeleteLoadBalancing.cpp
   fboss/cli/fboss2/commands/delete/load_balancing/CmdDeleteLoadBalancing.h
+  fboss/cli/fboss2/commands/delete/port_channel/CmdDeletePortChannel.cpp
+  fboss/cli/fboss2/commands/delete/port_channel/CmdDeletePortChannel.h
+  fboss/cli/fboss2/commands/delete/port_channel/member/CmdDeletePortChannelMember.cpp
+  fboss/cli/fboss2/commands/delete/port_channel/member/CmdDeletePortChannelMember.h
   fboss/cli/fboss2/commands/delete/protocol/CmdDeleteProtocol.cpp
   fboss/cli/fboss2/commands/delete/protocol/bgp/CmdDeleteProtocolBgp.cpp
   fboss/cli/fboss2/commands/delete/protocol/bgp/CmdDeleteProtocolBgp.h
