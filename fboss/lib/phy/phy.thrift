@@ -584,6 +584,29 @@ struct SerdesParameters {
   19: optional i32 rxPfHfq;
   20: optional RxReach rxReach;
   21: optional i32 rxPrecoding;
+  // Cisco SiliconOne (Tajo/G202X) native RX serdes parameters, read back from
+  // the SAI_PORT_SERDES_ATTR_EXT_RX_* attributes. These have no Broadcom
+  // equivalent and are left unset on non-Tajo platforms.
+  22: optional i32 rxCtleCode;
+  23: optional i32 rxDspMode;
+  24: optional i32 rxAfeTrim;
+  25: optional i32 rxDiffEncoderEn;
+  26: optional i32 rxInstgBoost1Start;
+  27: optional i32 rxInstgBoost1Step;
+  28: optional i32 rxInstgBoost1Stop;
+  29: optional i32 rxInstgBoost2OrHrStart;
+  30: optional i32 rxInstgBoost2OrHrStep;
+  31: optional i32 rxInstgBoost2OrHrStop;
+  32: optional i32 rxInstgC1Start1p7;
+  33: optional i32 rxInstgC1Step1p7;
+  34: optional i32 rxInstgC1Stop1p7;
+  35: optional i32 rxInstgDfeStart1p7;
+  36: optional i32 rxInstgDfeStep1p7;
+  37: optional i32 rxInstgDfeStop1p7;
+  38: optional i32 rxInstgEnableScan;
+  39: optional i32 rxInstgScanUseSrSettings;
+  40: optional i32 rxFfeLengthBitmap;
+  41: optional i32 rxFfeLmsDynamicGatingEn;
 }
 
 struct LaneState {

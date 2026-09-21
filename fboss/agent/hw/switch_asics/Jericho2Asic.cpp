@@ -264,6 +264,7 @@ bool Jericho2Asic::isSupported(Feature feature) const {
     case HwAsic::Feature::HW_PROTECTION_SWITCHOVER_COUNTERS:
     case HwAsic::Feature::PBR_ACL_BYTE_COUNTER:
     case HwAsic::Feature::NEXT_HOP_GROUP_MEMBER_MONITORED_OBJECT:
+    case HwAsic::Feature::TAJO_RX_SERDES_PARAMETERS:
     case HwAsic::Feature::RX_PACKET_TYPE:
     case HwAsic::Feature::MY_MAC:
     case HwAsic::Feature::ISOLATION_GROUP:

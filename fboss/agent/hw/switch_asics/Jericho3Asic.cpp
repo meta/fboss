@@ -308,6 +308,7 @@ bool Jericho3Asic::isSupported(Feature feature) const {
     case HwAsic::Feature::XPHY_SERDES_TX_FIR_POST3:
     case HwAsic::Feature::LAG_TTL_DECREMENT_DISABLE:
     case HwAsic::Feature::PORT_LATCH_STATUS:
+    case HwAsic::Feature::TAJO_RX_SERDES_PARAMETERS:
       return false;
   }
   return false;

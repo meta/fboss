@@ -258,6 +258,7 @@ bool Tomahawk5Asic::isSupported(Feature feature) const {
     case HwAsic::Feature::ACL_DST_IPV6_WORD_QUALIFIERS:
     case HwAsic::Feature::SLL_HLL_DISCARD_COUNTERS:
     case HwAsic::Feature::NEXT_HOP_GROUP_MEMBER_MONITORED_OBJECT:
+    case HwAsic::Feature::TAJO_RX_SERDES_PARAMETERS:
     case HwAsic::Feature::RX_PACKET_TYPE:
     case HwAsic::Feature::ISOLATION_GROUP:
     case HwAsic::Feature::XPHY_SERDES_TX_FIR_POST3:

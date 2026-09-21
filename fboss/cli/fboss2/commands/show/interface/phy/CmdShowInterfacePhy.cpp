@@ -3,12 +3,109 @@
 #include "fboss/cli/fboss2/commands/show/interface/phy/CmdShowInterfacePhy.h"
 #include "fboss/cli/fboss2/CmdHandler.cpp"
 
-#include <fboss/agent/if/gen-cpp2/ctrl_types.h>
 #include <folly/String.h>
+#include <glog/logging.h>
+#include <algorithm>
+#include <variant>
 #include "fboss/cli/fboss2/utils/Table.h"
 #include "thrift/lib/cpp/util/EnumUtils.h"
 
 namespace facebook::fboss {
+
+namespace {
+
+constexpr auto kNotApplicable = "N/A";
+
+// One column of a per-lane table: its header plus one cell per lane.
+struct LaneColumn {
+  std::string header;
+  std::vector<Table::RowData> cells;
+};
+
+std::vector<LaneColumn> makeLaneColumns(
+    const std::vector<std::string>& headers) {
+  std::vector<LaneColumn> columns;
+  columns.reserve(headers.size());
+  for (const auto& header : headers) {
+    columns.push_back(LaneColumn{header, {}});
+  }
+  return columns;
+}
+
+void addLaneCells(
+    std::vector<LaneColumn>& columns,
+    const std::vector<Table::RowData>& cells) {
+  CHECK_EQ(columns.size(), cells.size());
+  for (size_t i = 0; i < cells.size(); ++i) {
+    columns[i].cells.push_back(cells[i]);
+  }
+}
+
+template <typename OptionalField>
+std::string optionalStr(const OptionalField& field) {
+  return field.has_value() ? std::to_string(*field) : kNotApplicable;
+}
+
+// A FIR tap, from the i32 fir* field on platforms that populate it and the
+// legacy i16 everywhere else. Only the Cisco SiliconOne path fills fir*, where
+// the i16 would wrap above 32767; every other platform takes the fallback.
+template <typename OptionalField>
+std::string txTapStr(const OptionalField& wide, std::string narrow) {
+  return wide.has_value() ? std::to_string(*wide) : std::move(narrow);
+}
+
+// Renders a per-lane list, e.g. eye heights, as N/A when nothing was reported
+// so that an empty column can be dropped like any other inapplicable one.
+std::string joinedStr(const std::vector<float>& values) {
+  return values.empty() ? kNotApplicable : folly::join(",", values);
+}
+
+bool isNotApplicable(const Table::RowData& cell) {
+  return std::visit(
+      [](const auto& data) {
+        using T = std::decay_t<decltype(data)>;
+        if constexpr (std::is_same_v<T, std::string>) {
+          return data == kNotApplicable;
+        } else {
+          return data.getData() == kNotApplicable;
+        }
+      },
+      cell);
+}
+
+// Prints one row per lane, dropping every column that is N/A on all lanes.
+// Those parameters are not applicable to the ASIC being queried, and listing
+// them only pushes the columns that do have values off the screen.
+void printLaneTable(
+    std::ostream& out,
+    const std::string& title,
+    const std::vector<int>& lanes,
+    const std::vector<LaneColumn>& columns) {
+  std::vector<const LaneColumn*> applicable;
+  std::vector<Table::RowData> header{title, "Lane"};
+  for (const auto& column : columns) {
+    if (std::any_of(
+            column.cells.begin(), column.cells.end(), [](const auto& cell) {
+              return !isNotApplicable(cell);
+            })) {
+      applicable.push_back(&column);
+      header.emplace_back(column.header);
+    }
+  }
+
+  Table table;
+  table.setHeader(header);
+  for (size_t row = 0; row < lanes.size(); ++row) {
+    std::vector<Table::RowData> cells{"", std::to_string(lanes[row])};
+    for (const auto* column : applicable) {
+      cells.emplace_back(column->cells[row]);
+    }
+    table.addRow(cells);
+  }
+  out << table;
+}
+
+} // namespace
 
 CmdShowInterfacePhy::RetType CmdShowInterfacePhy::queryClient(
     const HostInfo& hostInfo,
@@ -63,9 +160,13 @@ void CmdShowInterfacePhy::printPhyInfo(
       {phyType + " Data Collected",
        utils::getPrettyElapsedTime(*timeCollected) + " ago"});
   out << table;
+  // phyState/phyStats.system() are thrift field accessors; clang-tidy's
+  // bugprone-unsafe-functions matches the name against ::system().
+  // NOLINTNEXTLINE(bugprone-unsafe-functions)
   if (auto systemState = phyState.system()) {
-    printSideStateAndStat(
-        out, *systemState, phyStats.system().ensure(), prefix + "System ");
+    // NOLINTNEXTLINE(bugprone-unsafe-functions)
+    auto& systemStats = phyStats.system().ensure();
+    printSideStateAndStat(out, *systemState, systemStats, prefix + "System ");
   }
   printSideStateAndStat(
       out, *phyState.line(), *phyStats.line(), prefix + "Line ");
@@ -237,11 +338,8 @@ void CmdShowInterfacePhy::printPmdLaneRxInfo(
     phy::PhySideStats& sideStats,
     const std::set<int>& pmdLanes,
     const std::string& prefix) {
-  Table pmdRxTable;
-  pmdRxTable.setHeader(
-      {prefix + "RX PMD",
-       "Lane",
-       "RX Signal Detect Live",
+  auto columns = makeLaneColumns(
+      {"RX Signal Detect Live",
        "RX Signal Detect Changed",
        "RX CDR Lock Live",
        "RX CDR Lock Changed",
@@ -249,35 +347,14 @@ void CmdShowInterfacePhy::printPmdLaneRxInfo(
        "Eye Widths",
        "Rx PPM",
        "RX SNR"});
+
+  std::vector<int> lanes;
   for (auto pmdLane : pmdLanes) {
+    lanes.push_back(pmdLane);
     auto laneState = (*sideState.pmd()->lanes())[pmdLane];
     auto laneStat = (*sideStats.pmd()->lanes())[pmdLane];
-    std::string sigDetLive = "N/A";
-    std::string cdrLockLive = "N/A";
-    std::string sigDetChanged = "N/A";
-    std::string cdrLockChanged = "N/A";
-    std::string rxPPM = "N/A";
-    std::string rxSNR = "N/A";
     std::vector<float> eyeHeights = {};
     std::vector<float> eyeWidths = {};
-    if (auto rxSigDetLive = laneState.signalDetectLive()) {
-      sigDetLive = std::to_string(*rxSigDetLive);
-    }
-    if (auto rxSigDetChanged = laneStat.signalDetectChangedCount()) {
-      sigDetChanged = std::to_string(*rxSigDetChanged);
-    }
-    if (auto rxCdrLockLive = laneState.cdrLockLive()) {
-      cdrLockLive = std::to_string(*rxCdrLockLive);
-    }
-    if (auto rxCdrLockChanged = laneStat.cdrLockChangedCount()) {
-      cdrLockChanged = std::to_string(*rxCdrLockChanged);
-    }
-    if (auto rxFreqPPM = laneState.rxFrequencyPPM()) {
-      rxPPM = std::to_string(*rxFreqPPM);
-    }
-    if (auto rxLaneSNR = laneStat.snr()) {
-      rxSNR = std::to_string(*rxLaneSNR);
-    }
     if (auto eyes = laneStat.eyes()) {
       for (const auto& eye : *eyes) {
         if (auto eyeW = eye.width()) {
@@ -288,19 +365,20 @@ void CmdShowInterfacePhy::printPmdLaneRxInfo(
         }
       }
     }
-    pmdRxTable.addRow(
-        {"",
-         std::to_string(pmdLane),
-         makeColorCellForLiveFlag(sigDetLive),
-         sigDetChanged,
-         makeColorCellForLiveFlag(cdrLockLive),
-         cdrLockChanged,
-         folly::join(",", eyeHeights),
-         folly::join(",", eyeWidths),
-         rxPPM,
-         rxSNR});
+
+    addLaneCells(
+        columns,
+        {makeColorCellForLiveFlag(optionalStr(laneState.signalDetectLive())),
+         optionalStr(laneStat.signalDetectChangedCount()),
+         makeColorCellForLiveFlag(optionalStr(laneState.cdrLockLive())),
+         optionalStr(laneStat.cdrLockChangedCount()),
+         joinedStr(eyeHeights),
+         joinedStr(eyeWidths),
+         optionalStr(laneState.rxFrequencyPPM()),
+         optionalStr(laneStat.snr())});
   }
-  out << pmdRxTable;
+
+  printLaneTable(out, prefix + "RX PMD", lanes, columns);
 }
 
 void CmdShowInterfacePhy::printPmdLaneTxInfo(
@@ -308,60 +386,50 @@ void CmdShowInterfacePhy::printPmdLaneTxInfo(
     phy::PhySideState& sideState,
     const std::set<int>& pmdLanes,
     const std::string& prefix) {
-  Table pmdTxTable;
-  pmdTxTable.setHeader(
-      {prefix + "TX PMD",
-       "Lane",
-       "Pre3",
+  auto columns = makeLaneColumns(
+      {"Pre3",
        "Pre2",
        "Pre1",
        "Main",
        "Post1",
        "Post2",
        "Post3",
-       "Precoding"});
+       "Precoding",
+       "DriverSwing",
+       "DigGain",
+       "DiffEncoderEn",
+       "LdoBypass"});
+
+  std::vector<int> lanes;
   for (auto pmdLane : pmdLanes) {
+    lanes.push_back(pmdLane);
     auto laneState = (*sideState.pmd()->lanes())[pmdLane];
     auto txSettings = *laneState.txSettings();
-    std::string pre3 = "N/A";
-    auto txPre3 = txSettings.pre3();
-    if (txPre3.has_value()) {
-      pre3 = std::to_string(*txPre3);
-    }
-    std::string pre2 = std::to_string(*txSettings.pre2());
-    std::string pre = std::to_string(*txSettings.pre());
-    std::string main = std::to_string(*txSettings.main());
-    std::string post = std::to_string(*txSettings.post());
-    std::string post2 = std::to_string(*txSettings.post2());
-    std::string post3 = std::to_string(*txSettings.post3());
-    std::string precoding = "N/A";
-    if (auto txPrecoding = txSettings.precoding()) {
-      precoding = std::to_string(*txPrecoding);
-    }
-    pmdTxTable.addRow(
-        {"",
-         std::to_string(pmdLane),
-         pre3,
-         pre2,
-         pre,
-         main,
-         post,
-         post2,
-         post3,
-         precoding});
+    addLaneCells(
+        columns,
+        {txTapStr(txSettings.firPre3(), optionalStr(txSettings.pre3())),
+         txTapStr(txSettings.firPre2(), std::to_string(*txSettings.pre2())),
+         txTapStr(txSettings.firPre1(), std::to_string(*txSettings.pre())),
+         txTapStr(txSettings.firMain(), std::to_string(*txSettings.main())),
+         txTapStr(txSettings.firPost1(), std::to_string(*txSettings.post())),
+         txTapStr(txSettings.firPost2(), std::to_string(*txSettings.post2())),
+         txTapStr(txSettings.firPost3(), std::to_string(*txSettings.post3())),
+         optionalStr(txSettings.precoding()),
+         optionalStr(txSettings.driverSwing()),
+         optionalStr(txSettings.digGain()),
+         optionalStr(txSettings.diffEncoderEn()),
+         optionalStr(txSettings.ldoBypass())});
   }
-  out << pmdTxTable;
+
+  printLaneTable(out, prefix + "TX PMD", lanes, columns);
 }
 
 void CmdShowInterfacePhy::printSerdesParametersInfo(
     std::ostream& out,
     phy::PmdState& pmdState,
     const std::string& prefix) {
-  Table serdesTable;
-  serdesTable.setHeader(
-      {prefix + "Serdes Parameters",
-       "Lane",
-       "RVga",
+  auto columns = makeLaneColumns(
+      {"RVga",
        "Dco",
        "TpChn0",
        "TpChn1",
@@ -380,107 +448,83 @@ void CmdShowInterfacePhy::printSerdesParametersInfo(
        "RxEqP1",
        "RxEqP2",
        "RxReach",
-       "RxPrecoding"});
+       "RxPrecoding",
+       "RxCtleCode",
+       "RxDspMode",
+       "RxAfeTrim",
+       "RxDiffEncoderEn",
+       "RxInstgBoost1Start",
+       "RxInstgBoost1Step",
+       "RxInstgBoost1Stop",
+       "RxInstgBoost2OrHrStart",
+       "RxInstgBoost2OrHrStep",
+       "RxInstgBoost2OrHrStop",
+       "RxInstgC1Start1p7",
+       "RxInstgC1Step1p7",
+       "RxInstgC1Stop1p7",
+       "RxInstgDfeStart1p7",
+       "RxInstgDfeStep1p7",
+       "RxInstgDfeStop1p7",
+       "RxInstgEnableScan",
+       "RxInstgScanUseSrSettings",
+       "RxFfeLengthBitmap",
+       "RxFfeLmsDynamicGatingEn"});
 
+  std::vector<int> lanes;
   for (const auto& [laneId, laneState] : *pmdState.lanes()) {
+    lanes.push_back(laneId);
     auto serdesParams = laneState.serdesParameters();
 
-    std::string rvga = "N/A";
-    std::string dco = "N/A";
-    std::string tpChn0 = "N/A";
-    std::string tpChn1 = "N/A";
-    std::string tpChn2 = "N/A";
-    std::string rxPf = "N/A";
-    std::string rxPfLfq = "N/A";
-    std::string rxPfHfq = "N/A";
-    std::string rxFltM = "N/A";
-    std::string rxFltS = "N/A";
-    std::string rxTap1 = "N/A";
-    std::string rxTap2 = "N/A";
-    std::string rxEq3 = "N/A";
-    std::string rxEq2 = "N/A";
-    std::string rxEq1 = "N/A";
-    std::string rxEqM = "N/A";
-    std::string rxEqP1 = "N/A";
-    std::string rxEqP2 = "N/A";
-    std::string rxReach = "N/A";
-    std::string rxPrecoding = "N/A";
-
-    if (auto rvgaVal = serdesParams->rvga()) {
-      rvga = std::to_string(*rvgaVal);
-    }
-    if (auto dcoVal = serdesParams->dco()) {
-      dco = std::to_string(*dcoVal);
-    }
-    if (auto tpChn0Val = serdesParams->tpChn0()) {
-      tpChn0 = std::to_string(*tpChn0Val);
-    }
-    if (auto tpChn1Val = serdesParams->tpChn1()) {
-      tpChn1 = std::to_string(*tpChn1Val);
-    }
-    if (auto tpChn2Val = serdesParams->tpChn2()) {
-      tpChn2 = std::to_string(*tpChn2Val);
-    }
-    if (auto rxPfVal = serdesParams->rxPf()) {
-      rxPf = std::to_string(*rxPfVal);
-    }
-    if (auto rxPfLfqVal = serdesParams->rxPfLfq()) {
-      rxPfLfq = std::to_string(*rxPfLfqVal);
-    }
-    if (auto rxPfHfqVal = serdesParams->rxPfHfq()) {
-      rxPfHfq = std::to_string(*rxPfHfqVal);
-    }
-    if (auto rxFltMVal = serdesParams->rxFltM()) {
-      rxFltM = std::to_string(*rxFltMVal);
-    }
-    if (auto rxFltSVal = serdesParams->rxFltS()) {
-      rxFltS = std::to_string(*rxFltSVal);
-    }
-    if (auto rxTap1Val = serdesParams->rxTap1()) {
-      rxTap1 = std::to_string(*rxTap1Val);
-    }
-    if (auto rxTap2Val = serdesParams->rxTap2()) {
-      rxTap2 = std::to_string(*rxTap2Val);
-    }
-    if (auto rxEq3Val = serdesParams->rxEq3()) {
-      rxEq3 = std::to_string(*rxEq3Val);
-    }
-    if (auto rxEq2Val = serdesParams->rxEq2()) {
-      rxEq2 = std::to_string(*rxEq2Val);
-    }
-    if (auto rxEq1Val = serdesParams->rxEq1()) {
-      rxEq1 = std::to_string(*rxEq1Val);
-    }
-    if (auto rxEqMVal = serdesParams->rxEqM()) {
-      rxEqM = std::to_string(*rxEqMVal);
-    }
-    if (auto rxEqP1Val = serdesParams->rxEqP1()) {
-      rxEqP1 = std::to_string(*rxEqP1Val);
-    }
-    if (auto rxEqP2Val = serdesParams->rxEqP2()) {
-      rxEqP2 = std::to_string(*rxEqP2Val);
-    }
+    std::string rxReach = kNotApplicable;
     if (auto rxReachVal = serdesParams->rxReach()) {
       rxReach = apache::thrift::util::enumNameSafe(*rxReachVal);
     }
-    if (auto rxPrecodingVal = serdesParams->rxPrecoding()) {
-      rxPrecoding = std::to_string(*rxPrecodingVal);
-    }
 
-    serdesTable.addRow({"",      std::to_string(laneId),
-                        rvga,    dco,
-                        tpChn0,  tpChn1,
-                        tpChn2,  rxPf,
-                        rxPfLfq, rxPfHfq,
-                        rxFltM,  rxFltS,
-                        rxTap1,  rxTap2,
-                        rxEq3,   rxEq2,
-                        rxEq1,   rxEqM,
-                        rxEqP1,  rxEqP2,
-                        rxReach, rxPrecoding});
+    addLaneCells(
+        columns,
+        {optionalStr(serdesParams->rvga()),
+         optionalStr(serdesParams->dco()),
+         optionalStr(serdesParams->tpChn0()),
+         optionalStr(serdesParams->tpChn1()),
+         optionalStr(serdesParams->tpChn2()),
+         optionalStr(serdesParams->rxPf()),
+         optionalStr(serdesParams->rxPfLfq()),
+         optionalStr(serdesParams->rxPfHfq()),
+         optionalStr(serdesParams->rxFltM()),
+         optionalStr(serdesParams->rxFltS()),
+         optionalStr(serdesParams->rxTap1()),
+         optionalStr(serdesParams->rxTap2()),
+         optionalStr(serdesParams->rxEq3()),
+         optionalStr(serdesParams->rxEq2()),
+         optionalStr(serdesParams->rxEq1()),
+         optionalStr(serdesParams->rxEqM()),
+         optionalStr(serdesParams->rxEqP1()),
+         optionalStr(serdesParams->rxEqP2()),
+         rxReach,
+         optionalStr(serdesParams->rxPrecoding()),
+         optionalStr(serdesParams->rxCtleCode()),
+         optionalStr(serdesParams->rxDspMode()),
+         optionalStr(serdesParams->rxAfeTrim()),
+         optionalStr(serdesParams->rxDiffEncoderEn()),
+         optionalStr(serdesParams->rxInstgBoost1Start()),
+         optionalStr(serdesParams->rxInstgBoost1Step()),
+         optionalStr(serdesParams->rxInstgBoost1Stop()),
+         optionalStr(serdesParams->rxInstgBoost2OrHrStart()),
+         optionalStr(serdesParams->rxInstgBoost2OrHrStep()),
+         optionalStr(serdesParams->rxInstgBoost2OrHrStop()),
+         optionalStr(serdesParams->rxInstgC1Start1p7()),
+         optionalStr(serdesParams->rxInstgC1Step1p7()),
+         optionalStr(serdesParams->rxInstgC1Stop1p7()),
+         optionalStr(serdesParams->rxInstgDfeStart1p7()),
+         optionalStr(serdesParams->rxInstgDfeStep1p7()),
+         optionalStr(serdesParams->rxInstgDfeStop1p7()),
+         optionalStr(serdesParams->rxInstgEnableScan()),
+         optionalStr(serdesParams->rxInstgScanUseSrSettings()),
+         optionalStr(serdesParams->rxFfeLengthBitmap()),
+         optionalStr(serdesParams->rxFfeLmsDynamicGatingEn())});
   }
 
-  out << serdesTable;
+  printLaneTable(out, prefix + "Serdes Parameters", lanes, columns);
 }
 
 Table::StyledCell CmdShowInterfacePhy::makeColorCellForLiveFlag(
