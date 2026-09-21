@@ -30,4 +30,7 @@ struct TrafficCounters {
   7: double outPct;
   8: double outKpps;
   9: i64 portSpeed;
+  // False when no rate counter was published for this interface, i.e. the
+  // rates above are "not collected" rather than "idle".
+  10: bool countersAvailable;
 }
