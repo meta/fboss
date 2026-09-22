@@ -291,3 +291,80 @@ TEST_F(ConfigPfcTest, BufferPoolPriorityGroupAndPortPfc) {
 
   XLOG(INFO) << "TEST PASSED";
 }
+
+TEST_F(ConfigPfcTest, BufferPoolSharedBytes) {
+  // Focused coverage for BufferPoolConfig.sharedBytes:
+  //   fboss2-dev config qos buffer-pool <name> shared-bytes <bytes>
+  //
+  // BufferPoolPriorityGroupAndPortPfc already proves a single-attribute
+  // command reaches the running config, so this test covers what that one
+  // does not: that a later command overwrites an earlier value rather than
+  // being ignored, and that the multi-attribute form of the command sets
+  // sharedBytes just as the single-attribute form does.
+  //
+  // The pool name is deliberately the shared, stable kBufferPoolName -- the
+  // agent rejects a second pool ("Only one bufferPool supported!"), so a
+  // unique-per-run name is not an option here. The values below are distinct
+  // from the ones BufferPoolPriorityGroupAndPortPfc writes, so a pool left
+  // behind by that test cannot satisfy these assertions by accident.
+  constexpr int kFirstSharedBytes = 12582912; // 12 MiB
+  constexpr int kFinalSharedBytes = 67108864; // 64 MiB
+  constexpr int kHeadroomBytes = 2097152; // 2 MiB
+
+  XLOG(INFO) << "[Step 1] Setting shared-bytes with the single-attribute form";
+  ASSERT_EQ(
+      runCli({"config",
+              "qos",
+              "buffer-pool",
+              bufferPoolName_,
+              "shared-bytes",
+              std::to_string(kFirstSharedBytes)})
+          .exitCode,
+      0);
+
+  XLOG(INFO) << "[Step 2] Overwriting via the multi-attribute form";
+  // Two things at once: the multi-attribute form is accepted, and the
+  // sharedBytes it carries replaces the value set in step 1.
+  ASSERT_EQ(
+      runCli({"config",
+              "qos",
+              "buffer-pool",
+              bufferPoolName_,
+              "shared-bytes",
+              std::to_string(kFinalSharedBytes),
+              "headroom-bytes",
+              std::to_string(kHeadroomBytes)})
+          .exitCode,
+      0);
+
+  XLOG(INFO) << "[Step 3] Committing (buffer-pool changes restart the agent)";
+  commitConfig();
+  waitForAgentReady();
+
+  XLOG(INFO) << "[Step 4] Verifying running config...";
+  auto config = getRunningConfig();
+  const auto& sw = config["sw"];
+  ASSERT_TRUE(sw.count("bufferPoolConfigs"))
+      << "bufferPoolConfigs missing from running config -- was the config "
+         "committed?";
+  const auto& pools = sw["bufferPoolConfigs"];
+  ASSERT_TRUE(pools.count(bufferPoolName_))
+      << "buffer pool '" << bufferPoolName_ << "' not in running config";
+  const auto& pool = pools[bufferPoolName_];
+
+  ASSERT_TRUE(pool.count("sharedBytes"))
+      << "sharedBytes missing -- it is a non-optional field and must always "
+         "be present";
+  EXPECT_EQ(pool["sharedBytes"].asInt(), kFinalSharedBytes)
+      << "the later command must overwrite the earlier shared-bytes value";
+  EXPECT_NE(pool["sharedBytes"].asInt(), kFirstSharedBytes)
+      << "running config still holds the value from step 1";
+
+  // The headroom set alongside it in the same command must have landed too,
+  // confirming the multi-attribute form applied every pair and not just the
+  // first.
+  ASSERT_TRUE(pool.count("headroomBytes"));
+  EXPECT_EQ(pool["headroomBytes"].asInt(), kHeadroomBytes);
+
+  XLOG(INFO) << "TEST PASSED";
+}
