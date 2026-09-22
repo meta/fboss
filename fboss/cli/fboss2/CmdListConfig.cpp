@@ -71,6 +71,7 @@
 #include "fboss/cli/fboss2/commands/config/session/CmdConfigSessionCommit.h"
 #include "fboss/cli/fboss2/commands/config/session/CmdConfigSessionDiff.h"
 #include "fboss/cli/fboss2/commands/config/session/CmdConfigSessionRebase.h"
+#include "fboss/cli/fboss2/commands/config/sflow_collector/CmdConfigSflowCollector.h"
 #include "fboss/cli/fboss2/commands/config/srv6/CmdConfigSrv6.h"
 #include "fboss/cli/fboss2/commands/config/srv6/my_sid/CmdConfigSrv6MySid.h"
 #include "fboss/cli/fboss2/commands/config/srv6/my_sid/entry/CmdConfigSrv6MySidEntry.h"
@@ -137,6 +138,7 @@
 #include "fboss/cli/fboss2/commands/delete/qos/priority_group_policy/CmdDeleteQosPriorityGroupPolicy.h"
 #include "fboss/cli/fboss2/commands/delete/qos/queue_config/CmdDeleteQosQueueConfig.h"
 #include "fboss/cli/fboss2/commands/delete/qos/queue_config/CmdDeleteQosQueueConfigQueueId.h"
+#include "fboss/cli/fboss2/commands/delete/sflow_collector/CmdDeleteSflowCollector.h"
 #include "fboss/cli/fboss2/commands/delete/srv6/CmdDeleteSrv6.h"
 #include "fboss/cli/fboss2/commands/delete/srv6/my_sid/CmdDeleteSrv6MySid.h"
 #include "fboss/cli/fboss2/commands/delete/srv6/my_sid/entry/CmdDeleteSrv6MySidEntry.h"
@@ -692,6 +694,12 @@ const CommandTree& kConfigCommandTree() {
        commandHandler<CmdConfigMirror>,
        argRegistrar<CmdConfigMirrorTraits>},
 
+      {"config",
+       "sflow-collector",
+       "Add an sFlow collector: <ip> <port>",
+       commandHandler<CmdConfigSflowCollector>,
+       argRegistrar<CmdConfigSflowCollectorTraits>},
+
       {
           "config",
           "srv6",
@@ -1130,6 +1138,12 @@ const CommandTree& kConfigCommandTree() {
                argRegistrar<CmdDeleteLoadBalancingLagTraits>,
            }},
       },
+
+      {"delete",
+       "sflow-collector",
+       "Delete an sFlow collector: <ip> <port>",
+       commandHandler<CmdDeleteSflowCollector>,
+       argRegistrar<CmdDeleteSflowCollectorTraits>},
 
       {
           "delete",

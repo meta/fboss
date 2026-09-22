@@ -1374,6 +1374,8 @@ add_library(fboss2_config_lib
   fboss/cli/fboss2/commands/config/session/CmdConfigSessionRebase.cpp
   fboss/cli/fboss2/commands/config/mirror/CmdConfigMirror.cpp
   fboss/cli/fboss2/commands/config/mirror/CmdConfigMirror.h
+  fboss/cli/fboss2/commands/config/sflow_collector/CmdConfigSflowCollector.cpp
+  fboss/cli/fboss2/commands/config/sflow_collector/CmdConfigSflowCollector.h
   fboss/cli/fboss2/commands/config/traffic_counter/CmdConfigTrafficCounter.cpp
   fboss/cli/fboss2/commands/config/traffic_counter/CmdConfigTrafficCounter.h
   fboss/cli/fboss2/commands/config/tunnel/CmdConfigTunnel.cpp
@@ -1490,6 +1492,8 @@ add_library(fboss2_config_lib
   fboss/cli/fboss2/commands/delete/switch/admin_distance/CmdDeleteAdminDistance.h
   fboss/cli/fboss2/commands/delete/switch/icmpv4_unavailable_src_addr/CmdDeleteIcmpV4UnavailableSrcAddr.cpp
   fboss/cli/fboss2/commands/delete/switch/icmpv4_unavailable_src_addr/CmdDeleteIcmpV4UnavailableSrcAddr.h
+  fboss/cli/fboss2/commands/delete/sflow_collector/CmdDeleteSflowCollector.cpp
+  fboss/cli/fboss2/commands/delete/sflow_collector/CmdDeleteSflowCollector.h
   fboss/cli/fboss2/commands/delete/traffic_counter/CmdDeleteTrafficCounter.cpp
   fboss/cli/fboss2/commands/delete/traffic_counter/CmdDeleteTrafficCounter.h
   fboss/cli/fboss2/commands/delete/tunnel/CmdDeleteTunnel.cpp

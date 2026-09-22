@@ -39,6 +39,7 @@ cpp_unittest(
         "CmdConfigLoadBalancingTest.cpp",
         "CmdConfigMacAgingTimeTest.cpp",
         "CmdConfigMirrorTest.cpp",
+        "CmdConfigSflowCollectorTest.cpp",
         "CmdConfigPtpTransparentClockTest.cpp",
         "CmdConfigQosBufferPoolTest.cpp",
         "CmdConfigQosDefaultPolicyTest.cpp",
