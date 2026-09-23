@@ -2,7 +2,8 @@
 
 /**
  * End-to-end test for PFC-related CLI commands:
- *   fboss2-dev config qos buffer-pool <name> shared-bytes/headroom-bytes
+ *   fboss2-dev config qos buffer-pool <name> <attr> <bytes>
+ *       (<attr>: shared-bytes | headroom-bytes | reserved-bytes)
  *   fboss2-dev config qos priority-group-policy <name> group-id <id> <attrs>
  *   fboss2-dev config interface <port> pfc-config <attrs>
  *
@@ -184,6 +185,138 @@ class ConfigPfcTest : public Fboss2IntegrationTest {
     EXPECT_EQ(actual["name"].asString(), fmt::format("pg{}", expected.id));
   }
 };
+
+TEST_F(ConfigPfcTest, BufferPoolReservedBytes) {
+  // Focused coverage for BufferPoolConfig.reservedBytes:
+  //   fboss2-dev config qos buffer-pool <name> reserved-bytes <bytes>
+  //
+  // reservedBytes is an `optional i32` in cfg::BufferPoolConfig, and that is
+  // what separates this test from the sharedBytes / headroomBytes coverage
+  // in BufferPoolPriorityGroupAndPortPfc:
+  //   * a pool the CLI creates without a reserved-bytes attribute must not
+  //     acquire one -- the handler default-initializes sharedBytes only,
+  //   * the field is a scalar, so a second reserved-bytes command overwrites
+  //     the first rather than accumulating,
+  //   * a reserved-bytes command must leave sharedBytes and headroomBytes
+  //     exactly as they were; it writes that one field and nothing else.
+  //
+  // The pool name is deliberately the shared, stable kBufferPoolName -- the
+  // agent rejects a second pool ("Only one bufferPool supported!"), so a
+  // unique-per-run name is not an option here. The values below are distinct
+  // from the ones the other buffer-pool tests write, so a pool left behind by
+  // one of them cannot satisfy these assertions by accident.
+  constexpr int kSharedBytes = 33554432; // 32 MiB
+  constexpr int kHeadroomBytes = 1048576; // 1 MiB
+  constexpr int kFirstReservedBytes = 524288; // 512 KiB
+  constexpr int kFinalReservedBytes = 3145728; // 3 MiB
+
+  // The absence check in step 2 is only meaningful if the pool does not
+  // already carry a reservedBytes: there is no CLI to unset the field, so a
+  // run that died before TearDown can leave one behind.
+  bool reservedAbsentAtStart = true;
+  {
+    auto before = getRunningConfig();
+    const auto& sw = before["sw"];
+    if (sw.count("bufferPoolConfigs") &&
+        sw["bufferPoolConfigs"].count(bufferPoolName_)) {
+      reservedAbsentAtStart =
+          sw["bufferPoolConfigs"][bufferPoolName_].count("reservedBytes") == 0;
+    }
+  }
+
+  XLOG(INFO) << "[Step 1] Configuring the pool without any reserved-bytes";
+  ASSERT_EQ(
+      runCli({"config",
+              "qos",
+              "buffer-pool",
+              bufferPoolName_,
+              "shared-bytes",
+              std::to_string(kSharedBytes)})
+          .exitCode,
+      0);
+  ASSERT_EQ(
+      runCli({"config",
+              "qos",
+              "buffer-pool",
+              bufferPoolName_,
+              "headroom-bytes",
+              std::to_string(kHeadroomBytes)})
+          .exitCode,
+      0);
+  commitConfig();
+  waitForAgentReady();
+
+  XLOG(INFO) << "[Step 2] reservedBytes must still be absent";
+  {
+    auto config = getRunningConfig();
+    const auto& sw = config["sw"];
+    ASSERT_TRUE(sw.count("bufferPoolConfigs"))
+        << "bufferPoolConfigs missing from running config -- was the config "
+           "committed?";
+    const auto& pools = sw["bufferPoolConfigs"];
+    ASSERT_TRUE(pools.count(bufferPoolName_))
+        << "buffer pool '" << bufferPoolName_ << "' not in running config";
+    const auto& pool = pools[bufferPoolName_];
+    EXPECT_EQ(pool["sharedBytes"].asInt(), kSharedBytes);
+    EXPECT_EQ(pool["headroomBytes"].asInt(), kHeadroomBytes);
+    if (reservedAbsentAtStart) {
+      EXPECT_EQ(pool.count("reservedBytes"), 0)
+          << "reservedBytes is optional and no command asked for it, so the "
+             "pool must not carry one";
+    } else {
+      XLOG(WARN) << "pool already had a reservedBytes before the test ran; "
+                    "skipping the absence check";
+    }
+  }
+
+  XLOG(INFO) << "[Step 3] Setting reserved-bytes twice in one session";
+  // The pool now exists in the committed config, so these commands take the
+  // handler's update-in-place path rather than the create path. The second
+  // command must overwrite the first: reservedBytes is a scalar, not a list.
+  ASSERT_EQ(
+      runCli({"config",
+              "qos",
+              "buffer-pool",
+              bufferPoolName_,
+              "reserved-bytes",
+              std::to_string(kFirstReservedBytes)})
+          .exitCode,
+      0);
+  ASSERT_EQ(
+      runCli({"config",
+              "qos",
+              "buffer-pool",
+              bufferPoolName_,
+              "reserved-bytes",
+              std::to_string(kFinalReservedBytes)})
+          .exitCode,
+      0);
+  commitConfig();
+  waitForAgentReady();
+
+  XLOG(INFO) << "[Step 4] Verifying running config...";
+  auto config = getRunningConfig();
+  const auto& sw = config["sw"];
+  ASSERT_TRUE(sw.count("bufferPoolConfigs"));
+  const auto& pools = sw["bufferPoolConfigs"];
+  ASSERT_TRUE(pools.count(bufferPoolName_))
+      << "buffer pool '" << bufferPoolName_ << "' not in running config";
+  const auto& pool = pools[bufferPoolName_];
+
+  ASSERT_TRUE(pool.count("reservedBytes"))
+      << "reserved-bytes did not reach the running config";
+  EXPECT_EQ(pool["reservedBytes"].asInt(), kFinalReservedBytes)
+      << "the second reserved-bytes command must overwrite the first";
+
+  // reserved-bytes must not have disturbed its neighbours in the struct --
+  // this is what catches an attribute dispatched to the wrong field.
+  EXPECT_EQ(pool["sharedBytes"].asInt(), kSharedBytes)
+      << "reserved-bytes must leave sharedBytes untouched";
+  EXPECT_EQ(pool["headroomBytes"].asInt(), kHeadroomBytes)
+      << "reserved-bytes must leave headroomBytes untouched";
+
+  XLOG(INFO) << "TEST PASSED";
+}
 
 TEST_F(ConfigPfcTest, BufferPoolPriorityGroupAndPortPfc) {
   std::string ifName = getRandomInterfacePortName();
