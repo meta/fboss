@@ -91,6 +91,10 @@ class LookupClassUpdaterTest : public ::testing::Test {
     return PortID(2);
   }
 
+  AggregatePortID kAggregatePortID() const {
+    return AggregatePortID(10);
+  }
+
   IPAddressV4 kIp4Addr() const {
     return IPAddressV4("10.0.0.2");
   }
@@ -651,6 +655,90 @@ TYPED_TEST(LookupClassUpdaterTest, MacMove) {
       this->kMacAddress(),
       cfg::AclLookupClass::CLASS_QUEUE_PER_HOST_QUEUE_0,
       MacEntryType::DYNAMIC_ENTRY);
+}
+
+/*
+ * A MAC entry can sit on an aggregate port: learned there, or mirrored from a
+ * neighbor resolved on a LAG by updateOrAddStaticEntryIfNbrExists(). Moving
+ * such an entry to a physical port must not crash. Queue-per-host is supported
+ * on physical ports only, so the move is skipped, but LookupClassUpdater must
+ * not assume the old port was physical - phyPortID() CHECKs on that.
+ */
+TYPED_TEST(LookupClassUpdaterTest, MacMoveFromAggregatePort) {
+  this->updateState(
+      "Add MAC on aggregate port",
+      [=, this](const std::shared_ptr<SwitchState>& state) {
+        std::shared_ptr<SwitchState> newState{state};
+
+        auto vlan = state->getVlans()->getNodeIf(this->kVlan()).get();
+        auto* macTable = vlan->getMacTable().get();
+
+        EXPECT_EQ(macTable->getMacIf(this->kMacAddress()), nullptr);
+
+        macTable = macTable->modify(&vlan, &newState);
+        macTable->addEntry(
+            std::make_shared<MacEntry>(
+                this->kMacAddress(), PortDescriptor(this->kAggregatePortID())));
+
+        return newState;
+      });
+
+  waitForStateUpdates(this->sw_);
+  this->sw_->getNeighborUpdater()->waitForPendingUpdates();
+  waitForBackgroundThread(this->sw_);
+  waitForStateUpdates(this->sw_);
+
+  // Entries on non-physical ports are not eligible for queue-per-host
+  this->verifyMacClassIDHelper(
+      this->kMacAddress(), std::nullopt, MacEntryType::DYNAMIC_ENTRY);
+
+  this->updateState(
+      "Trigger MAC Move off aggregate port",
+      [=, this](const std::shared_ptr<SwitchState>& state) {
+        std::shared_ptr<SwitchState> newState{state};
+
+        auto vlan = state->getVlans()->getNodeIf(this->kVlan()).get();
+        auto* macTable = vlan->getMacTable().get();
+        auto node = macTable->getMacIf(this->kMacAddress());
+
+        EXPECT_NE(node, nullptr);
+        EXPECT_EQ(node->getPort(), PortDescriptor(this->kAggregatePortID()));
+
+        macTable = macTable->modify(&vlan, &newState);
+
+        macTable->removeEntry(this->kMacAddress());
+        auto macEntry = std::make_shared<MacEntry>(
+            this->kMacAddress(), PortDescriptor(this->kPortID2()));
+        macTable->addEntry(macEntry);
+
+        return newState;
+      });
+
+  waitForStateUpdates(this->sw_);
+  this->sw_->getNeighborUpdater()->waitForPendingUpdates();
+  waitForBackgroundThread(this->sw_);
+  waitForStateUpdates(this->sw_);
+
+  auto node = this->getMacEntry(this->kMacAddress());
+  EXPECT_NE(node, nullptr);
+  EXPECT_EQ(node->getPort(), PortDescriptor(this->kPortID2()));
+  /*
+   * No classID: processChanged() bails out for a non-physical old port (see
+   * the TODO there), so the entry on the physical port is left alone. Update
+   * this expectation if LAG to physical port moves ever get handled.
+   */
+  this->verifyMacClassIDHelper(
+      this->kMacAddress(), std::nullopt, MacEntryType::DYNAMIC_ENTRY);
+
+  this->verifyStateUpdate([=, this]() {
+    EXPECT_EQ(
+        this->sw_->getLookupClassUpdater()->getRefCnt(
+            this->kPortID2(),
+            this->kMacAddress(),
+            this->kVlan(),
+            cfg::AclLookupClass::CLASS_QUEUE_PER_HOST_QUEUE_0),
+        0);
+  });
 }
 
 /*
