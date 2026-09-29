@@ -13,7 +13,6 @@
 
 #include "fboss/cli/fboss2/commands/show/bgp/CmdShowVersionBgp.h"
 #include "fboss/cli/fboss2/test/CmdHandlerTestBase.h"
-#include "thrift/lib/cpp/TApplicationException.h"
 
 using namespace ::testing;
 
@@ -36,12 +35,14 @@ TEST_F(CmdShowBgpVersionTestFixture, QueryClientReturnsRunningBuildInfo) {
 }
 
 TEST_F(CmdShowBgpVersionTestFixture, QueryClientRejectsOldDaemon) {
-  setupMockedBgpServer();
-  EXPECT_CALL(getMockBgp(), getBuildInfo(_))
-      .WillOnce(Throw(
-          apache::thrift::TApplicationException(
-              apache::thrift::TApplicationException::UNKNOWN_METHOD,
-              "Unknown function getBuildInfo")));
+  // Use a generated processor without getBuildInfo so Thrift emits the same
+  // UNKNOWN_METHOD response as a pre-API BGP daemon.
+  auto legacyBgpService = std::make_shared<MockFbossCtrlAgent>();
+  auto legacyBgpServer =
+      std::make_unique<apache::thrift::ScopedServerInterfaceThread>(
+          legacyBgpService, "::1", 0, createFastMockServerConfig());
+  CmdGlobalOptions::getInstance()->setBgpThriftPort(
+      legacyBgpServer->getAddress().getPort());
 
   EXPECT_THROW(
       CmdShowVersionBgp().queryClient(localhost()), std::runtime_error);
