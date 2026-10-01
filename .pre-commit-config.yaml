@@ -27,7 +27,9 @@ repos:
       - id: check-yaml
         # asic_config generated outputs are multi-document YAML with complex
         # mapping keys that PyYAML cannot load; they are generated artifacts.
-        exclude: ^fboss/configs/platforms/[^/]+/[^/]+/asic_config/generated/
+        # The asic_config.yaml copies next to platform descriptors are the same
+        # files.
+        exclude: ^fboss/configs/platforms/[^/]+/[^/]+/(asic_config/generated/|(variants/[^/]+/)?platform_mapping/generated/asic_config\.yaml$)
       - id: check-json
       - id: check-merge-conflict
   - repo: https://github.com/astral-sh/ruff-pre-commit

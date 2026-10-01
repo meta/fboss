@@ -1,0 +1,66 @@
+{
+  "platform_name": "m4062nhp",
+  "vendor": "broadcom",
+  "asic": "tomahawk6",
+  "num_ports_per_core": 1,
+  "defaults": {
+    "asic_config_params": {
+      "config_type": "YAML_CONFIG",
+      "exact_match": false,
+      "mmu_lossless": false,
+      "config_gen_type": "DEFAULT"
+    },
+    "port_config": {
+      "default_speed": 800000,
+      "speed_to_fec": {
+        "100000": "PC_FEC_RS544",
+        "200000": "PC_FEC_RS544_2XN",
+        "400000": "PC_FEC_RS544_2XN",
+        "800000": "PC_FEC_RS544_2XN_ETC"
+      }
+    },
+    "cpu_port": {
+      "speed": 10000,
+      "num_lanes": 1
+    },
+    "mgmt_port": {
+      "enabled": true,
+      "speed_variants": {
+        "100000": {
+          "num_lanes": 4,
+          "fec": "PC_FEC_RS528"
+        }
+      }
+    },
+    "mgmt_port_overrides": {
+      "logical_id": 268,
+      "physical_id": 1026
+    },
+    "port_mapping_overrides": {
+      "core_range": "0-127",
+      "num_logical_ports_per_datapath": 8,
+      "num_lp_ports_on_even_core": 1
+    },
+    "tm_thd_config_defaults": {
+      "MIRROR_ON_DROP_RESERVATION": 0,
+      "SKIP_BUFFER_RESERVATION": 1,
+      "THRESHOLD_MODE": "LOSSY"
+    },
+    "platform_sai_overrides": {
+      "sai_tunnel_support": "0x12",
+      "sai_uncached_port_stats": "0x1",
+      "sai_port_phy_time_sync_en": 1
+    },
+    "features": {
+      "generate_dlb_config": true,
+      "generate_low_clock_freq_settings": false,
+      "generate_autoload_board_settings": true
+    }
+  },
+  "variants": {
+    "default": {},
+    "p1": {
+      "platform_mapping_name": "m4062nhp_p1"
+    }
+  }
+}
