@@ -30,6 +30,7 @@ cpp_library(
         "PlatformDescriptor.h",
     ],
     deps = [
+        "fbsource//xplat/folly:conv",
         "fbsource//xplat/folly:file_util",
         "fbsource//xplat/folly/logging:logging",
         ":platform_mapping_utils",
