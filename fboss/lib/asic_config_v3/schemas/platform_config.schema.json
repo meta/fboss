@@ -199,10 +199,6 @@
                             "type": "boolean",
                             "description": "When true, computes the per-port logical-port offset as i * lanes_per_port on all cores rather than using the default even / odd conditional."
                         },
-                        "core_offset_apply_all": {
-                            "type": "boolean",
-                            "description": "When true, applies the +1 core offset to every core rather than only cores 0 and 1. Required for platforms with a linear-stride port layout."
-                        },
                         "exclude_logical_ports": {
                             "type": "array",
                             "items": {
