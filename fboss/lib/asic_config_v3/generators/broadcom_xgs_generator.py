@@ -55,10 +55,14 @@ class BroadcomXgsGenerator(BaseAsicConfigGenerator):
         self.num_ports_per_core: int = self.platform_config.get("num_ports_per_core", 2)
         self.mmu_size: int = self.asic_config.get("mmu_size", 9416)
 
-        # Compute lanes_per_port from ASIC port_architecture and platform num_ports_per_core
+        # lanes_per_port is derived from the ASIC port architecture unless the
+        # platform wires only a subset of chip lanes per port and overrides it
+        # explicitly via num_lanes_per_port.
         port_arch = self.asic_config.get("port_architecture", {})
         num_lanes_per_core = port_arch.get("num_lanes_per_core", 8)
-        self.lanes_per_port: int = num_lanes_per_core // self.num_ports_per_core
+        self.lanes_per_port: int = self.platform_config.get(
+            "num_lanes_per_port", num_lanes_per_core // self.num_ports_per_core
+        )
 
     @property
     def output_extension(self) -> str:
