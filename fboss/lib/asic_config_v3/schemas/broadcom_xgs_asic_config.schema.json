@@ -81,44 +81,11 @@
             "minItems": 1
         },
         "mgmt_port_defaults": {
-            "type": "object",
-            "description": "Default settings for the management (out-of-band) port.",
-            "required": ["logical_id", "physical_id", "speed", "num_lanes", "fec"],
-            "additionalProperties": false,
-            "properties": {
-                "logical_id": {
-                    "type": "integer",
-                    "description": "Logical port identifier for the management port."
-                },
-                "physical_id": {
-                    "type": "integer",
-                    "description": "Physical port identifier for the management port."
-                },
-                "speed": {
-                    "type": "integer",
-                    "description": "Default port speed in Mbps (e.g. 100000 for 100 GbE)."
-                },
-                "num_lanes": {
-                    "type": "integer",
-                    "description": "Number of physical lanes used by the management port."
-                },
-                "fec": {
-                    "type": "string",
-                    "description": "Forward Error Correction (FEC) mode (e.g. \"PC_FEC_RS528\")."
-                },
-                "breakout_ports": {
-                    "type": "array",
-                    "description": "Optional. Ordered logical/physical port pairs of the management port lanes, used when a platform variant breaks the management port out into several ports (mgmt_port_overrides.num_ports > 1).",
-                    "items": {
-                        "type": "object",
-                        "required": ["logical_id", "physical_id"],
-                        "additionalProperties": false,
-                        "properties": {
-                            "logical_id": {"type": "integer"},
-                            "physical_id": {"type": "integer"}
-                        }
-                    }
-                }
+            "type": "array",
+            "description": "Default settings for the management (out-of-band) ports, one entry per port.",
+            "minItems": 1,
+            "items": {
+                "$ref": "#/$defs/mgmt_port_settings"
             }
         },
         "preamble_support": {
@@ -219,6 +186,49 @@
             "description": "Declarative conditional settings. Each entry is evaluated against the variant config; matching entries are applied to the named output tables.",
             "items": {
                 "$ref": "https://github.com/meta/fboss/blob/main/fboss/lib/asic_config_v3/schemas/conditional_setting.schema.json#/$defs/conditional_setting"
+            }
+        }
+    },
+    "$defs": {
+        "mgmt_port_settings": {
+            "type": "object",
+            "description": "Default settings for one management port.",
+            "required": ["logical_id", "physical_id", "speed", "num_lanes", "fec"],
+            "additionalProperties": false,
+            "properties": {
+                "logical_id": {
+                    "type": "integer",
+                    "description": "Logical port identifier for the management port."
+                },
+                "physical_id": {
+                    "type": "integer",
+                    "description": "Physical port identifier for the management port."
+                },
+                "speed": {
+                    "type": "integer",
+                    "description": "Default port speed in Mbps (e.g. 100000 for 100 GbE)."
+                },
+                "num_lanes": {
+                    "type": "integer",
+                    "description": "Number of physical lanes used by the management port."
+                },
+                "fec": {
+                    "type": "string",
+                    "description": "Forward Error Correction (FEC) mode (e.g. \"PC_FEC_RS528\")."
+                },
+                "breakout_ports": {
+                    "type": "array",
+                    "description": "Optional. Ordered logical/physical port pairs of this management port's lanes, used when a platform variant breaks the port out into several ports (num_ports > 1 in the mgmt_port_overrides entry at the same index).",
+                    "items": {
+                        "type": "object",
+                        "required": ["logical_id", "physical_id"],
+                        "additionalProperties": false,
+                        "properties": {
+                            "logical_id": {"type": "integer"},
+                            "physical_id": {"type": "integer"}
+                        }
+                    }
+                }
             }
         }
     }

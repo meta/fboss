@@ -26,19 +26,21 @@
     "PC_PMD_FIRMWARE",
     "DLB_ECMP_CONFIG"
   ],
-  "mgmt_port_defaults": {
-    "logical_id": 76,
-    "physical_id": 513,
-    "speed": 100000,
-    "num_lanes": 4,
-    "fec": "PC_FEC_RS528",
-    "breakout_ports": [
-      {"logical_id": 76, "physical_id": 513},
-      {"logical_id": 164, "physical_id": 514},
-      {"logical_id": 186, "physical_id": 515},
-      {"logical_id": 274, "physical_id": 516}
-    ]
-  },
+  "mgmt_port_defaults": [
+    {
+      "logical_id": 76,
+      "physical_id": 513,
+      "speed": 100000,
+      "num_lanes": 4,
+      "fec": "PC_FEC_RS528",
+      "breakout_ports": [
+        {"logical_id": 76, "physical_id": 513},
+        {"logical_id": 164, "physical_id": 514},
+        {"logical_id": 186, "physical_id": 515},
+        {"logical_id": 274, "physical_id": 516}
+      ]
+    }
+  ],
   "preamble_support": true,
 
   "global_defaults": {

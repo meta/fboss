@@ -55,9 +55,11 @@
   },
   "variants": {
     "default": {
-      "mgmt_port_overrides": {
-        "speed": 10000
-      }
+      "mgmt_port_overrides": [
+        {
+          "speed": 10000
+        }
+      ]
     },
     "benchmark": {
       "asic_config_params": {

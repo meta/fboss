@@ -87,10 +87,12 @@
       }
     },
     "mgmt_4x25g": {
-      "mgmt_port_overrides": {
-        "num_ports": 4,
-        "speed": 25000
-      }
+      "mgmt_port_overrides": [
+        {
+          "num_ports": 4,
+          "speed": 25000
+        }
+      ]
     }
   }
 }
