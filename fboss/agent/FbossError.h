@@ -35,4 +35,26 @@ class FbossError : public thrift::FbossBaseError {
   ~FbossError() noexcept override {}
 };
 
+/**
+ * A config change that is valid but cannot be made with the way the config
+ * is being applied: it needs at least requiredApplyMethod(), e.g. a coldboot
+ * for a change that cannot be made on a running agent.
+ */
+class RestartRequiredError : public FbossError {
+ public:
+  template <typename... Args>
+  explicit RestartRequiredError(
+      thrift::ConfigApplyMethod requiredApplyMethod,
+      Args&&... args)
+      : FbossError(std::forward<Args>(args)...),
+        requiredApplyMethod_(requiredApplyMethod) {}
+
+  thrift::ConfigApplyMethod requiredApplyMethod() const {
+    return requiredApplyMethod_;
+  }
+
+ private:
+  thrift::ConfigApplyMethod requiredApplyMethod_;
+};
+
 } // namespace facebook::fboss
