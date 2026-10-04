@@ -50,6 +50,7 @@ add_executable(fboss2_integration_test
   fboss/cli/fboss2/test/integration_test/ConfigQosDefaultQueueConfigTest.cpp
   fboss/cli/fboss2/test/integration_test/ConfigQosPolicyMapTest.cpp
   fboss/cli/fboss2/test/integration_test/ConfigSessionClearTest.cpp
+  fboss/cli/fboss2/test/integration_test/ConfigSessionCommitValidationTest.cpp
   fboss/cli/fboss2/test/integration_test/ConfigTrafficCounterTest.cpp
   fboss/cli/fboss2/test/integration_test/ConfigVlanCreateTest.cpp
   fboss/cli/fboss2/test/integration_test/ConfigVlanDefaultTest.cpp
