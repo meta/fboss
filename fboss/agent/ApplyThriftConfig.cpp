@@ -1416,7 +1416,9 @@ void ThriftConfigApplier::processUpdatedDsfNodes() {
     if (origDsfNode &&
         origDsfNode->getType() !=
             new_->getDsfNodes()->getNodeIf(localSwitchId)->getType()) {
-      throw FbossError("Change in DSF node type is not supported");
+      throw RestartRequiredError(
+          thrift::ConfigApplyMethod::DISRUPTIVE_RESTART,
+          "Change in DSF node type is not supported");
     }
 
     if (switchSettings->l3SwitchType()) {
@@ -6347,7 +6349,9 @@ ThriftConfigApplier::updateMultiSwitchSettings() {
     // throw error
     if (origMultiSwitchSettings->size() != 0) {
       if (!origSwitchSettings) {
-        throw FbossError("SwitchId cannot be changed on the fly");
+        throw RestartRequiredError(
+            thrift::ConfigApplyMethod::DISRUPTIVE_RESTART,
+            "SwitchId cannot be changed on the fly");
       }
     }
 
@@ -6496,7 +6500,8 @@ shared_ptr<SwitchSettings> ThriftConfigApplier::updateSwitchSettings(
         !validateSwitchIdToSwitchInfoChange(
             origSwitchSettings->getSwitchIdToSwitchInfo(),
             switchIdToSwitchInfo)) {
-      throw FbossError(
+      throw RestartRequiredError(
+          thrift::ConfigApplyMethod::DISRUPTIVE_RESTART,
           "SwitchId and SwitchInfo type cannot be changed on the fly");
     }
     newSwitchSettings->setSwitchIdToSwitchInfo(switchIdToSwitchInfo);
