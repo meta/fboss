@@ -1018,6 +1018,37 @@ TEST_F(SwSwitchValidateConfigTest, ValidateConfigHwSwitchNeedsColdBoot) {
       validChange(), thrift::ConfigApplyMethod::DISRUPTIVE_RESTART));
 }
 
+TEST_F(SwSwitchValidateConfigTest, ValidateConfigSwitchIdNeedsColdBoot) {
+  // applyThriftConfig() refuses to change switch IDs on a running agent.
+  auto config = config_;
+  auto& switchInfos = *config.switchSettings()->switchIdToSwitchInfo();
+  ASSERT_EQ(switchInfos.size(), 1);
+  auto switchInfo = switchInfos.begin()->second;
+  switchInfos.clear();
+  switchInfos[1] = switchInfo;
+
+  EXPECT_THAT(
+      [&] { sw_->validateConfig(config, thrift::ConfigApplyMethod::RELOAD); },
+      testing::ThrowsMessage<RestartRequiredError>(
+          testing::HasSubstr("No ASIC for switch ID 1")));
+  EXPECT_NO_THROW(sw_->validateConfig(
+      config, thrift::ConfigApplyMethod::DISRUPTIVE_RESTART));
+}
+
+TEST_F(SwSwitchValidateConfigTest, ValidateConfigSwitchTypeNeedsColdBoot) {
+  // Turning the running NPU switch into a fabric one leaves no L3 switch,
+  // which used to abort the agent in updateControlPlane().
+  auto config = config_;
+  for (auto& [_, switchInfo] :
+       *config.switchSettings()->switchIdToSwitchInfo()) {
+    switchInfo.switchType() = cfg::SwitchType::FABRIC;
+  }
+  EXPECT_THAT(
+      [&] { sw_->validateConfig(config, thrift::ConfigApplyMethod::RELOAD); },
+      testing::ThrowsMessage<RestartRequiredError>(
+          testing::HasSubstr("switch types cannot be changed on the fly")));
+}
+
 TEST_F(SwSwitchValidateConfigTest, ValidateConfigColdBootStillRejectsInvalid) {
   // A coldboot only lets through changes that need a coldboot.
   EXPECT_THAT(
@@ -1027,4 +1058,71 @@ TEST_F(SwSwitchValidateConfigTest, ValidateConfigColdBootStillRejectsInvalid) {
       },
       testing::ThrowsMessage<FbossError>(
           testing::HasSubstr("VLAN 1 has no interface")));
+}
+
+TEST_F(SwSwitchValidateConfigTest, ValidateConfigRejectsBadAggPortCapacity) {
+  // Used to abort the agent in applyThriftConfig(); now it is a verdict.
+  auto config = config_;
+  config.aggregatePorts()->resize(1);
+  auto& aggPort = config.aggregatePorts()[0];
+  aggPort.key() = 1;
+  aggPort.name() = "port-channel";
+  aggPort.memberPorts()->resize(2);
+  aggPort.memberPorts()[0].memberPortID() = *config.ports()[0].logicalID();
+  aggPort.memberPorts()[1].memberPortID() = *config.ports()[1].logicalID();
+  aggPort.minimumCapacity()->linkCount_ref() = 2;
+  cfg::MinimumCapacity toUp;
+  toUp.linkCount_ref() = 1;
+  aggPort.minimumCapacityToUp() = toUp;
+  EXPECT_THAT(
+      [&] { sw_->validateConfig(config, thrift::ConfigApplyMethod::RELOAD); },
+      testing::ThrowsMessage<FbossError>(
+          testing::HasSubstr("minimumCapacityToUp")));
+}
+
+TEST_F(SwSwitchValidateConfigTest, ValidateConfigRejectsEmptyAggPortCapacity) {
+  // An unset minimumCapacity union used to reach assume_unreachable().
+  auto config = config_;
+  config.aggregatePorts()->resize(1);
+  auto& aggPort = config.aggregatePorts()[0];
+  aggPort.key() = 1;
+  aggPort.name() = "port-channel";
+  aggPort.memberPorts()->resize(1);
+  aggPort.memberPorts()[0].memberPortID() = *config.ports()[0].logicalID();
+  aggPort.minimumCapacity() = cfg::MinimumCapacity();
+  EXPECT_THAT(
+      [&] { sw_->validateConfig(config, thrift::ConfigApplyMethod::RELOAD); },
+      testing::ThrowsMessage<FbossError>(testing::HasSubstr(
+          "Minimum capacity must set either linkCount or linkPercentage")));
+}
+
+TEST_F(SwSwitchValidateConfigTest, ValidateConfigRejectsShelOnNpu) {
+  auto config = config_;
+  cfg::SelfHealingEcmpLagConfig shelConfig;
+  shelConfig.shelSrcIp() = "2222::1";
+  shelConfig.shelDstIp() = "2222::2";
+  shelConfig.shelPeriodicIntervalMS() = 5000;
+  config.switchSettings()->selfHealingEcmpLagConfig() = shelConfig;
+  EXPECT_THAT(
+      [&] { sw_->validateConfig(config, thrift::ConfigApplyMethod::RELOAD); },
+      testing::ThrowsMessage<FbossError>(
+          testing::HasSubstr("only supported on VOQ switches")));
+}
+
+TEST(SwSwitchValidateVoqConfigTest, ValidateConfigRejectsIncompleteSwitchInfo) {
+  auto config = testConfigA(cfg::SwitchType::VOQ);
+  auto handle = createTestHandle(&config);
+  auto sw = handle->getSw();
+  sw->initialConfigApplied(std::chrono::steady_clock::now());
+  waitForStateUpdates(sw);
+
+  auto newConfig = config;
+  for (auto& [_, switchInfo] :
+       *newConfig.switchSettings()->switchIdToSwitchInfo()) {
+    switchInfo.inbandPortId().reset();
+  }
+  EXPECT_THAT(
+      [&] { sw->validateConfig(newConfig, thrift::ConfigApplyMethod::RELOAD); },
+      testing::ThrowsMessage<FbossError>(
+          testing::HasSubstr("switchIdToSwitchInfo for VOQ switch ID")));
 }
