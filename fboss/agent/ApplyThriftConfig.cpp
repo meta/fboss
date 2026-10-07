@@ -261,10 +261,19 @@ bool checkParallelLinksToInterfaceNodes(
             getRemoteSwitchID(cfg, port, switchNameToSwitchIds);
         const auto& neighborDsfNodeIter =
             cfg->dsfNodes()->find(neighborRemoteSwitchId);
-        CHECK(neighborDsfNodeIter != cfg->dsfNodes()->end());
+        if (neighborDsfNodeIter == cfg->dsfNodes()->end()) {
+          throw FbossError(
+              "No DSF node for switch ID ",
+              neighborRemoteSwitchId,
+              " expected as neighbor of port ",
+              *port.logicalID());
+        }
         if (*neighborDsfNodeIter->second.type() ==
             cfg::DsfNodeType::INTERFACE_NODE) {
-          CHECK(port.name().has_value());
+          if (!port.name().has_value()) {
+            throw FbossError(
+                "Port ", *port.logicalID(), " with VOQ neighbors has no name");
+          }
           auto localVirtualDeviceId =
               platformMapping->getVirtualDeviceID(*port.name());
           if (!localVirtualDeviceId.has_value()) {
@@ -1387,7 +1396,9 @@ void ThriftConfigApplier::processUpdatedDsfNodes() {
       computeSwitchIdToSwitchIndex(new_->getDsfNodes());
 
   auto getInbandSysPortId = [this](const std::shared_ptr<DsfNode>& node) {
-    CHECK(node->getInbandPortId().has_value());
+    if (!node->getInbandPortId().has_value()) {
+      throw FbossError("DSF node ", node->getName(), " has no inbandPortId");
+    }
     auto switchId = node->getSwitchId();
     const auto& switchIdToSwitchInfo =
         *cfg_->switchSettings()->switchIdToSwitchInfo();
@@ -1505,10 +1516,15 @@ void ThriftConfigApplier::processUpdatedDsfNodes() {
                             const std::shared_ptr<DsfNode>& node) {
     CHECK(isInterfaceNode(node))
         << " Only expect to be called for Interface nodes";
-    CHECK(node->getLocalSystemPortOffset().has_value());
-    CHECK(node->getGlobalSystemPortOffset().has_value());
-    CHECK(node->getInbandPortId().has_value());
-    CHECK(node->getMac().has_value());
+    if (!node->getLocalSystemPortOffset().has_value() ||
+        !node->getGlobalSystemPortOffset().has_value() ||
+        !node->getInbandPortId().has_value() || !node->getMac().has_value()) {
+      throw FbossError(
+          "Interface DSF node ",
+          node->getName(),
+          " must have localSystemPortOffset, globalSystemPortOffset,"
+          " inbandPortId and mac");
+    }
     cfg::SwitchInfo switchInfo;
     switchInfo.asicType() = node->getAsicType();
     switchInfo.switchType() = cfg::SwitchType::VOQ;
@@ -1543,7 +1559,9 @@ void ThriftConfigApplier::processUpdatedDsfNodes() {
       addresses.insert(network);
       state::NeighborEntryFields neighbor;
       neighbor.ipaddress() = network.first.str();
-      CHECK(node->getMac().has_value());
+      if (!node->getMac().has_value()) {
+        throw FbossError("DSF node ", node->getName(), " has no mac");
+      }
       neighbor.mac() = node->getMac()->toString();
       neighbor.portId()->portType() = cfg::PortDescriptorType::SystemPort;
       neighbor.portId()->portId() = recyclePortId;
@@ -1597,7 +1615,15 @@ void ThriftConfigApplier::processUpdatedDsfNodes() {
         ? HwAsic::InterfaceNodeRole::DUAL_STAGE_EDGE_NODE
         : HwAsic::InterfaceNodeRole::IN_CLUSTER_NODE;
     const auto& recyclePortInfo = dsfNodeAsic->getRecyclePortInfo(intfRole);
-    CHECK_EQ(recyclePortInfo.inbandPortId, *node->getInbandPortId());
+    if (recyclePortInfo.inbandPortId != *node->getInbandPortId()) {
+      throw FbossError(
+          "DSF node ",
+          node->getName(),
+          " inbandPortId ",
+          *node->getInbandPortId(),
+          " does not match the ASIC recycle port ",
+          recyclePortInfo.inbandPortId);
+    }
     sysPort->setCoreIndex(recyclePortInfo.coreId);
     sysPort->setCorePortIndex(recyclePortInfo.corePortIndex);
     sysPort->setSpeedMbps(recyclePortInfo.speedMbps);
@@ -1620,7 +1646,9 @@ void ThriftConfigApplier::processUpdatedDsfNodes() {
     }
     auto sysPorts = new_->getRemoteSystemPorts()->modify(&new_);
     sysPorts->addNode(sysPort, scopeResolver_.scope(sysPort));
-    CHECK(node->getMac().has_value());
+    if (!node->getMac().has_value()) {
+      throw FbossError("DSF node ", node->getName(), " has no mac");
+    }
     auto intf = std::make_shared<Interface>(
         InterfaceID(recyclePortId),
         RouterID(0),
@@ -1971,18 +1999,29 @@ void ThriftConfigApplier::processInterfaceForPortForVoqSwitches(
     int64_t switchId) {
   // TODO - only look at ports corresponding to the passed in switchId
   auto dsfNodeItr = cfg_->dsfNodes()->find(switchId);
-  CHECK(dsfNodeItr != cfg_->dsfNodes()->end());
+  if (dsfNodeItr == cfg_->dsfNodes()->end()) {
+    throw FbossError("No DSF node for VOQ switch ID ", switchId);
+  }
   auto switchInfoItr =
       cfg_->switchSettings()->switchIdToSwitchInfo()->find(switchId);
-  CHECK(switchInfoItr != cfg_->switchSettings()->switchIdToSwitchInfo()->end());
+  if (switchInfoItr == cfg_->switchSettings()->switchIdToSwitchInfo()->end()) {
+    throw FbossError("No switchIdToSwitchInfo entry for switch ID ", switchId);
+  }
   const auto& switchInfo = switchInfoItr->second;
-  CHECK(
-      apache::thrift::is_non_optional_field_set_manually_or_by_serializer(
-          switchInfo.portIdRange()));
-  CHECK(!switchInfo.systemPortRanges()->systemPortRanges()->empty());
-  CHECK(switchInfo.localSystemPortOffset().has_value());
-  CHECK(switchInfo.globalSystemPortOffset().has_value());
-  CHECK(switchInfo.inbandPortId().has_value());
+  if (!apache::thrift::is_non_optional_field_set_manually_or_by_serializer(
+          switchInfo.portIdRange()) ||
+      *switchInfo.portIdRange()->minimum() >
+          *switchInfo.portIdRange()->maximum() ||
+      switchInfo.systemPortRanges()->systemPortRanges()->empty() ||
+      !switchInfo.localSystemPortOffset().has_value() ||
+      !switchInfo.globalSystemPortOffset().has_value() ||
+      !switchInfo.inbandPortId().has_value()) {
+    throw FbossError(
+        "switchIdToSwitchInfo for VOQ switch ID ",
+        switchId,
+        " must have a valid portIdRange, systemPortRanges,"
+        " localSystemPortOffset, globalSystemPortOffset and inbandPortId");
+  }
   for (const auto& portCfg : *cfg_->ports()) {
     auto portType = *portCfg.portType();
     auto portID = PortID(*portCfg.logicalID());
@@ -2356,11 +2395,16 @@ shared_ptr<SystemPortMap> ThriftConfigApplier::updateSystemPorts(
           port.second->getPortType(), port.second->getScope()));
       sysPort->setQosPolicy(port.second->getQosPolicy());
       sysPort->resetPortQueues(getVoqConfig(port.second->getID()));
-      // TODO(daiweix): remove this CHECK_EQ after verifying scope config is
-      // always correct
-      CHECK_EQ(
-          static_cast<int>(platformPort.mapping()->scope().value()),
-          static_cast<int>(port.second->getScope()));
+      if (platformPort.mapping()->scope().value() != port.second->getScope()) {
+        throw FbossError(
+            "Port ",
+            port.second->getName(),
+            " scope ",
+            apache::thrift::util::enumNameSafe(port.second->getScope()),
+            " does not match the platform mapping scope ",
+            apache::thrift::util::enumNameSafe(
+                platformPort.mapping()->scope().value()));
+      }
       sysPort->setScope(port.second->getScope());
       if (port.second->getPortType() != cfg::PortType::HYPER_PORT_MEMBER) {
         sysPort->setShelDestinationEnabled(
@@ -3822,7 +3866,12 @@ shared_ptr<AggregatePort> ThriftConfigApplier::updateAggPort(
   if (cfg.minimumCapacityToUp()) {
     cfgMinLinkCountToUp = computeMinimumLinkCount(
         *cfg.minimumCapacityToUp(), (*cfg.memberPorts()).size());
-    CHECK_GE(cfgMinLinkCountToUp.value(), cfgMinLinkCount);
+    if (cfgMinLinkCountToUp.value() < cfgMinLinkCount) {
+      throw FbossError(
+          "Aggregate port ",
+          *cfg.name(),
+          " minimumCapacityToUp must not be lower than minimumCapacity");
+    }
   }
 
   if (origAggPort->getName() == *cfg.name() &&
@@ -3871,7 +3920,12 @@ shared_ptr<AggregatePort> ThriftConfigApplier::createAggPort(
   if (cfg.minimumCapacityToUp()) {
     cfgMinLinkCountToUp = computeMinimumLinkCount(
         *cfg.minimumCapacityToUp(), (*cfg.memberPorts()).size());
-    CHECK_GE(cfgMinLinkCountToUp.value(), cfgMinLinkCount);
+    if (cfgMinLinkCountToUp.value() < cfgMinLinkCount) {
+      throw FbossError(
+          "Aggregate port ",
+          *cfg.name(),
+          " minimumCapacityToUp must not be lower than minimumCapacity");
+    }
   }
 
   return AggregatePort::fromSubportRange(
@@ -3967,13 +4021,21 @@ uint8_t ThriftConfigApplier::computeMinimumLinkCount(
   switch (minCapacity.getType()) {
     case cfg::MinimumCapacity::Type::linkCount:
       // Thrift's byte type is an int8_t
-      CHECK_GE(minCapacity.linkCount().value(), 1);
+      if (minCapacity.linkCount().value() < 1) {
+        throw FbossError(
+            "Minimum capacity linkCount must be >= 1, got ",
+            minCapacity.linkCount().value());
+      }
 
       minLinkCount = minCapacity.linkCount().value();
       break;
     case cfg::MinimumCapacity::Type::linkPercentage:
-      CHECK_GT(minCapacity.linkPercentage().value(), 0);
-      CHECK_LE(minCapacity.linkPercentage().value(), 1);
+      if (minCapacity.linkPercentage().value() <= 0 ||
+          minCapacity.linkPercentage().value() > 1) {
+        throw FbossError(
+            "Minimum capacity linkPercentage must be in (0, 1], got ",
+            minCapacity.linkPercentage().value());
+      }
 
       minLinkCount =
           std::ceil(minCapacity.linkPercentage().value() * memberPortsSize);
@@ -3983,6 +4045,8 @@ uint8_t ThriftConfigApplier::computeMinimumLinkCount(
 
       break;
     case cfg::MinimumCapacity::Type::__EMPTY__:
+      throw FbossError(
+          "Minimum capacity must set either linkCount or linkPercentage");
     // needed to handle error from -Werror=switch
     default:
       folly::assume_unreachable();
@@ -5315,9 +5379,15 @@ std::shared_ptr<InterfaceMap> ThriftConfigApplier::updateInterfaces() {
             "is out of range for corresponding VOQ switch.",
             "sys port range");
       }
-      CHECK_EQ(
-          static_cast<int>(sysPort->getScope()),
-          static_cast<int>(*interfaceCfg.scope()));
+      if (sysPort->getScope() != *interfaceCfg.scope()) {
+        throw FbossError(
+            "Interface ",
+            *interfaceCfg.intfID(),
+            " scope ",
+            apache::thrift::util::enumNameSafe(*interfaceCfg.scope()),
+            " does not match its system port scope ",
+            apache::thrift::util::enumNameSafe(sysPort->getScope()));
+      }
     }
     if (interfaceCfg.type() == cfg::InterfaceType::PORT) {
       if (auto port = interfaceCfg.portID()) {
@@ -6928,10 +6998,26 @@ shared_ptr<MultiControlPlane> ThriftConfigApplier::updateControlPlane() {
   QueueConfig newQueues;
   QueueConfig newVoqs;
   auto switchIds = scopeResolver_.scope(origCPU).switchIds();
-  CHECK(scopeResolver_.hasL3());
+  if (!scopeResolver_.hasL3()) {
+    // This ASIC has a CPU port with queues, so the running switch is an L3
+    // one: the config changes its switch type, which only a coldboot can do.
+    throw RestartRequiredError(
+        thrift::ConfigApplyMethod::DISRUPTIVE_RESTART,
+        "Config has no NPU or VOQ switch: switch types cannot be changed on "
+        "the fly");
+  }
   CHECK_GT(switchIds.size(), 0);
   // all switches on a given box will have same ASIC, so just pick the first
   auto asic = hwAsicTable_->getHwAsicIf(*switchIds.begin());
+  if (!asic) {
+    // The ASIC table is built from the config at startup, so a switch ID
+    // that was not there then has no ASIC until the agent coldboots.
+    throw RestartRequiredError(
+        thrift::ConfigApplyMethod::DISRUPTIVE_RESTART,
+        "No ASIC for switch ID ",
+        *switchIds.begin(),
+        ": switch IDs cannot be changed on the fly");
+  }
   for (auto streamType : hwAsicTable_->getCpuPortQueueStreamTypes()) {
     auto tmpPortQueues = updatePortQueues(
         origCPU->getQueuesConfig(),
@@ -8218,8 +8304,13 @@ SwitchID ThriftConfigApplier::getSwitchId(
     const cfg::Interface& intfConfig) const {
   auto scope = scopeResolver_.scope(
       *intfConfig.type(), InterfaceID(*intfConfig.intfID()), *cfg_);
-  CHECK_EQ(scope.switchIds().size(), 1)
-      << "Interface can belong to only one switch";
+  if (scope.switchIds().size() != 1) {
+    throw FbossError(
+        "Interface ",
+        *intfConfig.intfID(),
+        " must belong to exactly one switch, found ",
+        scope.switchIds().size());
+  }
   return scope.switchId();
 }
 
@@ -8237,13 +8328,21 @@ folly::MacAddress ThriftConfigApplier::getLocalMac(SwitchID switchId) const {
 
 void ThriftConfigApplier::updateSystemPortSelfHealingEcmpLagDestinationEnable(
     bool enable) {
-  CHECK(getAnySwitchId(cfg::SwitchType::VOQ).has_value());
+  if (!getAnySwitchId(cfg::SwitchType::VOQ).has_value()) {
+    throw FbossError(
+        "selfHealingEcmpLagConfig is only supported on VOQ switches");
+  }
   for (const auto& [id, dsfNode] : *cfg_->dsfNodes()) {
     if (dsfNode.type().value() != cfg::DsfNodeType::INTERFACE_NODE) {
       continue;
     }
-    CHECK(dsfNode.inbandPortId().has_value());
-    CHECK(dsfNode.globalSystemPortOffset().has_value());
+    if (!dsfNode.inbandPortId().has_value() ||
+        !dsfNode.globalSystemPortOffset().has_value()) {
+      throw FbossError(
+          "Interface DSF node ",
+          *dsfNode.name(),
+          " must have inbandPortId and globalSystemPortOffset");
+    }
     // TODO factor in multi npu nodes where portId range maybe
     // different
     const auto inbandSystemPortId = dsfNode.inbandPortId().value() +
