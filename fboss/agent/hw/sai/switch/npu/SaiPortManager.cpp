@@ -5,6 +5,7 @@
 #include "fboss/agent/AgentFeatures.h"
 #include "fboss/agent/FbossError.h"
 #include "fboss/agent/hw/HwPortFb303Stats.h"
+#include "fboss/agent/hw/gen-cpp2/hardware_stats_constants.h"
 #include "fboss/agent/hw/sai/store/SaiStore.h"
 #include "fboss/agent/hw/sai/switch/ConcurrentIndices.h"
 #include "fboss/agent/hw/sai/switch/SaiAclTableManager.h"
@@ -571,6 +572,15 @@ void SaiPortManager::changePortImpl(
                   HwAsic::Feature::SLL_HLL_DISCARD_COUNTERS),
               platform_->getAsic()->isSupported(
                   HwAsic::Feature::PORT_LATCH_STATUS)));
+      auto savedItr = disabledPortStats_.find(newPort->getID());
+      if (savedItr != disabledPortStats_.end()) {
+        auto& savedStats = savedItr->second;
+        savedStats.portName_() = newPort->getName();
+        portStats_.find(newPort->getID())
+            ->second->updateStats(
+                savedStats, std::chrono::seconds(*savedStats.timestamp_()));
+        disabledPortStats_.erase(savedItr);
+      }
     } else if (oldPort->getName() != newPort->getName()) {
       // Port was already enabled, but Port name changed - update stats
       portStats_.find(newPort->getID())
@@ -583,7 +593,15 @@ void SaiPortManager::changePortImpl(
     }
   } else if (oldPort->isEnabled()) {
     // Port transitioned from enabled to disabled, remove stats
-    portStats_.erase(newPort->getID());
+    auto statsItr = portStats_.find(newPort->getID());
+    if (statsItr != portStats_.end()) {
+      const auto& lastStats = statsItr->second->portStats();
+      if (*lastStats.timestamp_() !=
+          hardware_stats_constants::STAT_UNINITIALIZED()) {
+        disabledPortStats_[newPort->getID()] = lastStats;
+      }
+      portStats_.erase(statsItr);
+    }
   }
   // Before the qos policy: on TU1, VC create on a second port of an input
   // buffer fails with INVALID PARAMETER once QUEUE_TO_VC is bound to it.
