@@ -6,7 +6,10 @@
 #include "fboss/agent/HwAsicTable.h"
 #include "fboss/agent/SetupThrift.h"
 #include "fboss/agent/ThriftHandler.h"
-#include "fboss/lib/CommonFileUtils.h"
+
+#include <folly/logging/LoggerDB.h>
+
+#include <cstdlib>
 
 #ifndef IS_OSS
 #if __has_feature(address_sanitizer)
@@ -112,6 +115,12 @@ void SwSwitchInitializer::initThread(
     const HwWriteBehavior& hwWriteBehavior) {
   try {
     init(callback, hwWriteBehavior);
+  } catch (const SwSwitchColdBootRequiredError& ex) {
+    XLOG(ERR) << "switch initialization stopped: " << folly::exceptionStr(ex);
+    folly::LoggerDB::get().flushAllHandlers();
+    // No teardown: the agent is mid-init with nothing to save, and _Exit skips
+    // the atexit handlers that would re-drive live event bases.
+    std::_Exit(EXIT_SUCCESS);
   } catch (const std::exception& ex) {
     XLOG(FATAL) << "switch initialization failed: " << folly::exceptionStr(ex);
   }
@@ -267,6 +276,11 @@ int SwAgentInitializer::initAgent(
   server_->setIdleTimeout(std::chrono::milliseconds(0));
 
   swHandler->setSSLPolicy(server_->getSSLPolicy());
+
+  // Register before start() so the shutdown requested when the last HwSwitch
+  // exits gracefully can be scheduled on the event base, like a SIGTERM.
+  sw_->registerGracefulShutdownHandler(
+      eventBase_, [this]() { handleExitSignal(true /* gracefulExit */); });
 
   // At this point, we are guaranteed no other agent process will initialize
   // the ASIC because such a process would have crashed attempting to bind to

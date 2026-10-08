@@ -79,6 +79,34 @@ bool HwSwitchConnectionStatusTable::disconnected(SwitchID switchId) {
   return true;
 }
 
+bool HwSwitchConnectionStatusTable::gracefullyExited(SwitchID switchId) {
+  std::unique_lock<std::mutex> lk(hwSwitchConnectedMutex_);
+  if (!connectedSwitches_.erase(switchId)) {
+    return false;
+  }
+  auto lastConnection = connectedSwitches_.empty();
+  // As in disconnected(), the flag only guards against SwSwitch running on
+  // with some HwSwitches gone; losing the last one exits SwSwitch anyway.
+  if (!lastConnection && FLAGS_exit_for_any_hw_disconnect) {
+    XLOG(FATAL)
+        << "exit_for_any_hw_disconnect is enabled. Received graceful exit from "
+        << switchId << ".";
+  }
+  lk.unlock();
+  if (lastConnection) {
+    // No cold boot markers: the HwSwitch will warm boot, so SwSwitch saves its
+    // own warm boot state and exits the same way.
+    XLOG(WARNING) << "HwSwitch " << switchId
+                  << " exited gracefully and no HwSwitch is connected. "
+                  << "Exiting SwSwitch with warm boot state";
+    sw_->requestGracefulShutdown();
+  }
+  auto switchIndex =
+      sw_->getSwitchInfoTable().getSwitchIndexFromSwitchId(switchId);
+  sw_->stats()->hwAgentConnectionStatus(switchIndex, false /*connected*/);
+  return true;
+}
+
 bool HwSwitchConnectionStatusTable::waitUntilHwSwitchConnected(
     size_t numSwitches) {
   std::unique_lock<std::mutex> lk(hwSwitchConnectedMutex_);

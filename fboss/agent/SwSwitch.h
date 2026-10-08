@@ -9,6 +9,7 @@
  */
 #pragma once
 
+#include "fboss/agent/FbossError.h"
 #include "fboss/agent/FbossEventBase.h"
 #include "fboss/agent/HwSwitchHandler.h"
 #include "fboss/agent/L2LearnEventObserver.h"
@@ -154,6 +155,13 @@ inline bool operator&(SwitchFlags lhs, SwitchFlags rhs) {
   return (static_cast<BackingType>(lhs) & static_cast<BackingType>(rhs)) != 0;
 }
 
+// Thrown from split init when SwSwitch must restart to cold boot. Nothing has
+// been programmed yet and the cold boot marker is written.
+class SwSwitchColdBootRequiredError : public FbossError {
+ public:
+  using FbossError::FbossError;
+};
+
 /*
  * A software representation of a switch.
  *
@@ -229,6 +237,18 @@ class SwSwitch : public HwSwitchCallback {
   HwSwitchThriftClientTable* getHwSwitchThriftClientTable() const {
     return hwSwitchThriftClientTable_.get();
   }
+  void setHwSwitchThriftClientTableForTesting(
+      std::unique_ptr<HwSwitchThriftClientTable> table);
+
+  /*
+   * Split agent only, for a warm booting SwSwitch: HwSwitches pick their own
+   * boot type, and SwSwitch must not program a freshly cold booted HwSwitch
+   * from its warm boot state. Writes the SwSwitch cold boot marker and throws
+   * SwSwitchColdBootRequiredError if a connected HwSwitch needs a cold sync.
+   * Only HwSwitches connected when it runs are checked: on a multi-NPU box, one
+   * that connects later after a cold boot still gets the warm state.
+   */
+  void exitIfConnectedHwSwitchColdBooted();
 
   /*
    * Initialize the switch.
@@ -915,6 +935,28 @@ class SwSwitch : public HwSwitchCallback {
       const std::vector<std::string>& added,
       const std::vector<std::string>& deleted);
 
+  /*
+   * Register a graceful shutdown handler, run on the given event base when
+   * requestGracefulShutdown() is called.
+   */
+  void registerGracefulShutdownHandler(
+      FbossEventBase* evb,
+      std::function<void()> handler);
+
+  /*
+   * Schedule the registered graceful shutdown handler. Safe to call from any
+   * thread; the handler runs at most once.
+   */
+  void requestGracefulShutdown();
+
+  /*
+   * True once requestGracefulShutdown() has scheduled the handler, which is
+   * before the run state becomes EXITING.
+   */
+  bool isGracefulShutdownRequested() const {
+    return gracefulShutdownRequested_.load();
+  }
+
   std::string getConfigStr() const;
   cfg::SwitchConfig getConfig() const;
   cfg::AgentConfig getAgentConfig() const;
@@ -1326,6 +1368,12 @@ class SwSwitch : public HwSwitchCallback {
   bool supportsAddRemovePort_;
   const std::unique_ptr<PlatformProductInfo> platformProductInfo_;
   std::atomic<SwitchRunState> runState_{SwitchRunState::UNINITIALIZED};
+
+  std::function<void()> gracefulShutdownHandler_{nullptr};
+  FbossEventBase* gracefulShutdownEvb_{nullptr};
+  std::once_flag gracefulShutdownOnceFlag_;
+  std::atomic<bool> gracefulShutdownRequested_{false};
+
   folly::ThreadLocalPtr<SwitchStats, SwSwitch> stats_;
   /**
    * The object to sync the interfaces to the system. This pointer could

@@ -11,6 +11,7 @@
 #include <gtest/gtest.h>
 
 #include "fboss/agent/ArpHandler.h"
+#include "fboss/agent/FbossEventBase.h"
 #include "fboss/agent/FbossHwUpdateError.h"
 #include "fboss/agent/HwAsicTable.h"
 #include "fboss/agent/MultiSwitchFb303Stats.h"
@@ -39,7 +40,9 @@
 #include <folly/portability/GFlags.h>
 #include <folly/synchronization/Baton.h>
 
+#include <atomic>
 #include <thread>
+#include <vector>
 
 using namespace facebook::fboss;
 using folly::IPAddressV4;
@@ -877,4 +880,41 @@ TEST_F(SwSwitchTest, FillFsdbStatsNullShelManager) {
   // Should not crash - shelManager_ is null on NPU switches
   // and the code must guard against that.
   EXPECT_NO_THROW(sw->fillFsdbStats());
+}
+
+TEST_F(SwSwitchTest, RequestGracefulShutdownUnregisteredIsNoOp) {
+  // No handler registered: must not crash, and no shutdown is pending.
+  EXPECT_NO_THROW(sw->requestGracefulShutdown());
+  EXPECT_FALSE(sw->isGracefulShutdownRequested());
+}
+
+TEST_F(SwSwitchTest, RequestGracefulShutdownRunsHandlerExactlyOnce) {
+  FbossEventBase evb("RequestGracefulShutdownTestEvb");
+  std::thread evbThread([&evb]() { evb.loopForever(); });
+  evb.waitUntilRunning();
+
+  std::atomic<int> callCount{0};
+  sw->registerGracefulShutdownHandler(
+      &evb, [&callCount]() { callCount.fetch_add(1); });
+
+  EXPECT_FALSE(sw->isGracefulShutdownRequested());
+
+  // Concurrent fires must collapse to a single handler invocation.
+  constexpr int kThreads = 8;
+  std::vector<std::thread> threads;
+  threads.reserve(kThreads);
+  for (int i = 0; i < kThreads; ++i) {
+    threads.emplace_back([this]() { sw->requestGracefulShutdown(); });
+  }
+  for (auto& t : threads) {
+    t.join();
+  }
+
+  // Flush the event base so the enqueued handler has run.
+  evb.runInFbossEventBaseThreadAndWait([]() {});
+  evb.terminateLoopSoon();
+  evbThread.join();
+
+  EXPECT_EQ(callCount.load(), 1);
+  EXPECT_TRUE(sw->isGracefulShutdownRequested());
 }

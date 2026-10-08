@@ -8,24 +8,28 @@
  *
  */
 
+#include <fb303/ServiceData.h>
+#include <folly/ScopeGuard.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "fboss/agent/AgentFeatures.h"
+#include "fboss/agent/FbossEventBase.h"
 #include "fboss/agent/MultiHwSwitchHandler.h"
 #include "fboss/agent/MultiSwitchThriftHandler.h"
 #include "fboss/agent/SwSwitch.h"
 #include "fboss/agent/SwitchStats.h"
 #include "fboss/agent/mnpu/MultiSwitchHwSwitchHandler.h"
 #include "fboss/agent/test/CounterCache.h"
-#include "fboss/agent/test/HwTestHandle.h"
 #include "fboss/agent/test/TestUtils.h"
+#include "fboss/lib/CommonFileUtils.h"
 #include "fboss/lib/CommonUtils.h"
 
 #include <gflags/gflags.h>
 
-#include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <cstdlib>
 
 using facebook::fboss::HwSwitchMatcher;
 using facebook::fboss::SwitchID;
@@ -62,6 +66,12 @@ class SwSwitchHandlerTest : public ::testing::Test {
   void TearDown() override {
     sw_->getHwSwitchHandler()->stop();
     sw_.reset();
+    // sw_ holds pointers to the shutdown evb and to a handler capturing this
+    // fixture, so stop the evb only after sw_ is gone.
+    if (shutdownEvbThread_.joinable()) {
+      shutdownEvb_.terminateLoopSoon();
+      shutdownEvbThread_.join();
+    }
   }
 
  protected:
@@ -113,9 +123,58 @@ class SwSwitchHandlerTest : public ::testing::Test {
     return sw_->getHwSwitchHandler();
   }
 
+  // Register a graceful shutdown handler that only counts invocations, on a
+  // fixture-owned event base (sw_ keeps pointers to both, so they must
+  // outlive it - see TearDown()).
+  void registerShutdownCounterHandler() {
+    shutdownEvbThread_ = std::thread([this]() { shutdownEvb_.loopForever(); });
+    shutdownEvb_.waitUntilRunning();
+    sw_->registerGracefulShutdownHandler(
+        &shutdownEvb_, [this]() { shutdownCount_.fetch_add(1); });
+  }
+
+  // Flush the shutdown evb and return how many times the handler ran.
+  int shutdownHandlerRunCount() {
+    shutdownEvb_.runInFbossEventBaseThreadAndWait([]() {});
+    return shutdownCount_.load();
+  }
+
+  bool coldBootMarkerExists() {
+    auto dirUtil = sw_->getDirUtil();
+    if (checkFileExists(dirUtil->getSwColdBootOnceFile())) {
+      return true;
+    }
+    for (const auto& [switchId, switchInfo] :
+         sw_->getSwitchInfoTable().getSwitchIdToSwitchInfo()) {
+      if (checkFileExists(
+              dirUtil->getHwColdBootOnceFile(*switchInfo.switchIndex()))) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // Swap in a thrift client table whose boot type and run state replies are
+  // scripted; sw_ owns it, the returned pointer is for configuring it.
+  HwSwitchThriftClientTableForTesting* installFakeThriftClientTable() {
+    std::map<int64_t, cfg::SwitchInfo> switchIdToSwitchInfo;
+    for (const auto& [switchId, switchInfo] :
+         sw_->getSwitchInfoTable().getSwitchIdToSwitchInfo()) {
+      switchIdToSwitchInfo[static_cast<int64_t>(switchId)] = switchInfo;
+    }
+    auto table = std::make_unique<HwSwitchThriftClientTableForTesting>(
+        0, switchIdToSwitchInfo);
+    auto tablePtr = table.get();
+    sw_->setHwSwitchThriftClientTableForTesting(std::move(table));
+    return tablePtr;
+  }
+
   std::unique_ptr<SwSwitch> sw_;
   folly::test::TemporaryDirectory tmpDir_;
   std::unique_ptr<AgentDirectoryUtil> agentDirUtil_;
+  FbossEventBase shutdownEvb_{"GracefulShutdownTestEvb"};
+  std::thread shutdownEvbThread_;
+  std::atomic<int> shutdownCount_{0};
 };
 
 // These tests deliberately stop the handler while clients still have calls in
@@ -1087,6 +1146,25 @@ TEST_F(SwSwitchHandlerTest, verifyRollback) {
 }
 
 /*
+ * Losing the last connection without a graceful exit is the crash path: cold
+ * boot markers and an inline exit, not the scheduled warm shutdown.
+ */
+TEST_F(SwSwitchHandlerTest, lossOfLastHwSwitchConnectionExits) {
+  auto deathTestStyle = ::testing::FLAGS_gtest_death_test_style;
+  SCOPE_EXIT {
+    ::testing::FLAGS_gtest_death_test_style = deathTestStyle;
+  };
+  // SwSwitch has threads running; re-exec the child instead of forking them.
+  ::testing::FLAGS_gtest_death_test_style = "threadsafe";
+  getHwSwitchHandler()->connected(SwitchID(1));
+
+  EXPECT_EXIT(
+      getHwSwitchHandler()->disconnected(SwitchID(1)),
+      ::testing::ExitedWithCode(EXIT_SUCCESS),
+      "No active HwSwitch connections");
+}
+
+/*
  * waitUntilHwSwitchConnected() is satisfied by the first switch to register.
  * A caller that fans a state update out to every switch needs all of them:
  * with only some connected the rest return HWSWITCH_STATE_UPDATE_CANCELLED
@@ -1134,4 +1212,193 @@ TEST_F(SwSwitchHandlerTest, everyWaiterWakesWhenTheLastSwitchConnects) {
     waiter.join();
   }
   EXPECT_EQ(woken.load(), kWaiters);
+}
+
+TEST_F(SwSwitchHandlerTest, gracefulExitOfLastHwSwitchExitsWithWarmBootState) {
+  registerShutdownCounterHandler();
+  getHwSwitchHandler()->connected(SwitchID(1));
+  getHwSwitchHandler()->connected(SwitchID(2));
+
+  getHwSwitchHandler()->notifyHwSwitchGracefulExit(1);
+  EXPECT_EQ(shutdownHandlerRunCount(), 0);
+
+  getHwSwitchHandler()->notifyHwSwitchGracefulExit(2);
+  EXPECT_EQ(shutdownHandlerRunCount(), 1);
+  EXPECT_FALSE(coldBootMarkerExists());
+}
+
+TEST_F(SwSwitchHandlerTest, crashOfLastHwSwitchAfterGracefulExitColdBoots) {
+  auto deathTestStyle = ::testing::FLAGS_gtest_death_test_style;
+  SCOPE_EXIT {
+    ::testing::FLAGS_gtest_death_test_style = deathTestStyle;
+  };
+  // SwSwitch has threads running; re-exec the child instead of forking them.
+  ::testing::FLAGS_gtest_death_test_style = "threadsafe";
+  registerShutdownCounterHandler();
+  getHwSwitchHandler()->connected(SwitchID(1));
+  getHwSwitchHandler()->connected(SwitchID(2));
+
+  getHwSwitchHandler()->notifyHwSwitchGracefulExit(1);
+  EXPECT_EQ(shutdownHandlerRunCount(), 0);
+
+  // The crash path, not a warm shutdown: markers are written and the process
+  // exits inline.
+  EXPECT_EXIT(
+      getHwSwitchHandler()->disconnected(SwitchID(2)),
+      ::testing::ExitedWithCode(EXIT_SUCCESS),
+      "No active HwSwitch connections");
+}
+
+namespace {
+std::shared_ptr<SwitchState> addAcl1(
+    const std::shared_ptr<SwitchState>& state) {
+  auto newState = state->clone();
+  auto aclEntry = make_shared<AclEntry>(1, std::string("acl1"));
+  // StateUpdateValidator rejects an ACL entry with no qualifier
+  aclEntry->setDscp(0x24);
+  auto acls = newState->getAcls()->modify(&newState);
+  acls->addNode(aclEntry, scope());
+  return newState;
+}
+} // namespace
+
+/*
+ * After the last HwSwitch exits gracefully, the warm shutdown is only
+ * scheduled, so an update cancelled by that exit fails while isExiting() is
+ * still false. It must be dropped, not crash the agent.
+ */
+TEST_F(SwSwitchHandlerTest, updateFailureAfterLastGracefulExitIsDropped) {
+  getHwSwitchHandler()->connected(SwitchID(1));
+  getHwSwitchHandler()->connected(SwitchID(2));
+  sw_->init(HwWriteBehavior::WRITE, SwitchFlags::DEFAULT);
+  sw_->initialConfigApplied(std::chrono::steady_clock::now());
+  // The handler only counts, so isExiting() stays false.
+  registerShutdownCounterHandler();
+
+  // read fb303 directly: CounterCache::checkDelta is a no-op in OSS builds
+  constexpr auto kDropCounter = "hw_update_dropped_during_shutdown";
+  auto dropsBefore = facebook::fb303::fbData->getCounters()[kDropCounter];
+
+  getHwSwitchHandler()->notifyHwSwitchGracefulExit(1);
+  getHwSwitchHandler()->notifyHwSwitchGracefulExit(2);
+  ASSERT_TRUE(sw_->isGracefulShutdownRequested());
+  ASSERT_FALSE(sw_->isExiting());
+
+  // No oper delta client ever attached, so the update is cancelled and the
+  // applied state differs from the desired one.
+  sw_->updateStateBlocking("update during graceful shutdown", addAcl1);
+  waitForStateUpdates(sw_.get());
+
+  EXPECT_EQ(sw_->getState()->getAcls()->getNodeIf("acl1"), nullptr);
+  EXPECT_EQ(
+      facebook::fb303::fbData->getCounters()[kDropCounter], dropsBefore + 1);
+  EXPECT_EQ(shutdownHandlerRunCount(), 1);
+}
+
+/*
+ * Without a requested shutdown, an update that fails to apply and is not HW
+ * failure protected is still fatal.
+ */
+TEST_F(SwSwitchHandlerTest, updateFailureWithoutShutdownRequestIsFatal) {
+  auto deathTestStyle = ::testing::FLAGS_gtest_death_test_style;
+  SCOPE_EXIT {
+    ::testing::FLAGS_gtest_death_test_style = deathTestStyle;
+  };
+  // SwSwitch has threads running; re-exec the child instead of forking them.
+  ::testing::FLAGS_gtest_death_test_style = "threadsafe";
+  getHwSwitchHandler()->connected(SwitchID(1));
+  getHwSwitchHandler()->connected(SwitchID(2));
+  sw_->init(HwWriteBehavior::WRITE, SwitchFlags::DEFAULT);
+  sw_->initialConfigApplied(std::chrono::steady_clock::now());
+  ASSERT_FALSE(sw_->isGracefulShutdownRequested());
+
+  EXPECT_DEATH(
+      sw_->updateStateBlocking("update with no shutdown requested", addAcl1),
+      "Failed to apply update to HW and the update is not marked");
+}
+
+TEST_F(SwSwitchHandlerTest, gracefulExitHonorsExitForAnyHwDisconnect) {
+  gflags::FlagSaver flagSaver;
+  auto deathTestStyle = ::testing::FLAGS_gtest_death_test_style;
+  SCOPE_EXIT {
+    ::testing::FLAGS_gtest_death_test_style = deathTestStyle;
+  };
+  // SwSwitch has threads running; re-exec the child instead of forking them.
+  ::testing::FLAGS_gtest_death_test_style = "threadsafe";
+  FLAGS_exit_for_any_hw_disconnect = true;
+  getHwSwitchHandler()->connected(SwitchID(1));
+  getHwSwitchHandler()->connected(SwitchID(2));
+
+  // Switch 2 is still connected, so SwSwitch would run on without switch 1.
+  EXPECT_DEATH(
+      getHwSwitchHandler()->notifyHwSwitchGracefulExit(1),
+      "exit_for_any_hw_disconnect is enabled");
+}
+
+TEST_F(
+    SwSwitchHandlerTest,
+    gracefulExitOfLastHwSwitchIgnoresExitForAnyHwDisconnect) {
+  gflags::FlagSaver flagSaver;
+  FLAGS_exit_for_any_hw_disconnect = true;
+  registerShutdownCounterHandler();
+  getHwSwitchHandler()->connected(SwitchID(1));
+
+  // Like disconnected(), losing the last connection exits SwSwitch the normal
+  // way instead of tripping the flag: here the warm shutdown, no markers.
+  getHwSwitchHandler()->notifyHwSwitchGracefulExit(1);
+  EXPECT_EQ(shutdownHandlerRunCount(), 1);
+  EXPECT_FALSE(coldBootMarkerExists());
+}
+
+TEST_F(SwSwitchHandlerTest, coldBootedHwSwitchAwaitingSyncForcesSwColdBoot) {
+  auto thriftTable = installFakeThriftClientTable();
+  thriftTable->setBootType(BootType::COLD_BOOT);
+  thriftTable->setRunState(SwitchRunState::INITIALIZED);
+  getHwSwitchHandler()->connected(SwitchID(1));
+
+  EXPECT_THROW(
+      sw_->exitIfConnectedHwSwitchColdBooted(), SwSwitchColdBootRequiredError);
+  EXPECT_TRUE(checkFileExists(sw_->getDirUtil()->getSwColdBootOnceFile()));
+}
+
+TEST_F(SwSwitchHandlerTest, coldBootedHwSwitchAlreadyConfiguredStaysWarm) {
+  auto thriftTable = installFakeThriftClientTable();
+  thriftTable->setBootType(BootType::COLD_BOOT);
+  thriftTable->setRunState(SwitchRunState::CONFIGURED);
+  getHwSwitchHandler()->connected(SwitchID(1));
+
+  EXPECT_NO_THROW(sw_->exitIfConnectedHwSwitchColdBooted());
+  EXPECT_FALSE(checkFileExists(sw_->getDirUtil()->getSwColdBootOnceFile()));
+}
+
+TEST_F(SwSwitchHandlerTest, warmBootedHwSwitchAwaitingSyncStaysWarm) {
+  auto thriftTable = installFakeThriftClientTable();
+  thriftTable->setBootType(BootType::WARM_BOOT);
+  thriftTable->setRunState(SwitchRunState::INITIALIZED);
+  getHwSwitchHandler()->connected(SwitchID(1));
+
+  EXPECT_NO_THROW(sw_->exitIfConnectedHwSwitchColdBooted());
+  EXPECT_FALSE(checkFileExists(sw_->getDirUtil()->getSwColdBootOnceFile()));
+}
+
+TEST_F(SwSwitchHandlerTest, disconnectedHwSwitchIsNotQueriedForBootType) {
+  auto thriftTable = installFakeThriftClientTable();
+  thriftTable->setBootType(BootType::COLD_BOOT);
+  thriftTable->setRunState(SwitchRunState::INITIALIZED);
+
+  EXPECT_NO_THROW(sw_->exitIfConnectedHwSwitchColdBooted());
+  EXPECT_EQ(thriftTable->getBootTypeQueryCount(), 0);
+  EXPECT_FALSE(checkFileExists(sw_->getDirUtil()->getSwColdBootOnceFile()));
+}
+
+TEST_F(SwSwitchHandlerTest, unreachableHwSwitchBootTypeContinuesWarm) {
+  auto thriftTable = installFakeThriftClientTable();
+  thriftTable->setBootType(BootType::COLD_BOOT);
+  thriftTable->setRunState(SwitchRunState::INITIALIZED);
+  thriftTable->setShouldThrowOnGetBootType(true);
+  getHwSwitchHandler()->connected(SwitchID(1));
+
+  EXPECT_NO_THROW(sw_->exitIfConnectedHwSwitchColdBooted());
+  EXPECT_EQ(thriftTable->getBootTypeQueryCount(), 5);
+  EXPECT_FALSE(checkFileExists(sw_->getDirUtil()->getSwColdBootOnceFile()));
 }

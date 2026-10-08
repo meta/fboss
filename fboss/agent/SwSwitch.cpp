@@ -46,6 +46,7 @@
 #include "fboss/agent/rib/FibUpdateHelpers.h"
 #include "fboss/agent/rib/RoutingInformationBase.h"
 #include "fboss/agent/state/StateUtils.h"
+#include "fboss/lib/CommonFileUtils.h"
 #include "fboss/lib/phy/gen-cpp2/prbs_types.h"
 #if FOLLY_HAS_COROUTINES
 #include "fboss/agent/MKAServiceManager.h"
@@ -345,6 +346,8 @@ facebook::fboss::PortStatus fillInPortStatus(
 }
 
 auto constexpr kHwUpdateFailures = "hw_update_failures";
+auto constexpr kHwUpdateDroppedDuringShutdown =
+    "hw_update_dropped_during_shutdown";
 
 std::string getDrainStateChangedStr(
     const std::shared_ptr<facebook::fboss::SwitchState>& oldState,
@@ -1554,6 +1557,28 @@ void SwSwitch::invokeNeighborListener(
   }
 }
 
+void SwSwitch::registerGracefulShutdownHandler(
+    FbossEventBase* evb,
+    std::function<void()> handler) {
+  gracefulShutdownEvb_ = evb;
+  gracefulShutdownHandler_ = std::move(handler);
+}
+
+void SwSwitch::requestGracefulShutdown() {
+  if (!gracefulShutdownHandler_ || !gracefulShutdownEvb_) {
+    XLOG(ERR)
+        << "requestGracefulShutdown called but no graceful shutdown handler registered";
+    return;
+  }
+  // Run teardown on the registered event base, not the caller's thread;
+  // once_flag collapses concurrent requests into a single shutdown.
+  std::call_once(gracefulShutdownOnceFlag_, [this]() {
+    gracefulShutdownRequested_ = true;
+    gracefulShutdownEvb_->runInEventBaseThread(
+        [handler = gracefulShutdownHandler_]() { handler(); });
+  });
+}
+
 void SwSwitch::exitFatal() const noexcept {
   folly::dynamic switchState = folly::dynamic::object;
   // No hwswitch dump for multi swagent exit
@@ -1764,6 +1789,9 @@ void SwSwitch::init(const HwWriteBehavior& hwWriteBehavior, SwitchFlags flags) {
   emptyState->publish();
   if (!getHwSwitchHandler()->waitUntilHwSwitchConnected()) {
     throw FbossError("Waiting for HwSwitch to be connected cancelled");
+  }
+  if (bootType_ == BootType::WARM_BOOT) {
+    exitIfConnectedHwSwitchColdBooted();
   }
   initialState = syncNextHopIDsToFIB(initialState);
   auto origInitialState = initialState;
@@ -2240,6 +2268,17 @@ void SwSwitch::handlePendingUpdates() {
           update->onError(ex);
         }
         return;
+      } else if (isGracefulShutdownRequested()) {
+        /*
+         * The last HwSwitch exited gracefully and its disconnect cancelled
+         * this update, but the requested shutdown only runs later on the
+         * thrift event base, after initialization if that is still going.
+         * Drop the update instead of crashing: nothing was applied and
+         * SwSwitch is about to exit.
+         */
+        fb303::fbData->incrementCounter(kHwUpdateDroppedDuringShutdown);
+        XLOG(ERR) << "Failed to apply update to HW; dropping it since "
+                     "graceful shutdown is in progress";
       } else {
         XLOG(FATAL)
             << " Failed to apply update to HW and the update is not marked for "
@@ -3361,6 +3400,56 @@ void SwSwitch::initializeTunManager(bool useBlocking) {
       tunMgr_->startObservingUpdates();
       // Perform initial sync of interfaces
       tunMgr_->forceInitialSync();
+    }
+  }
+}
+
+void SwSwitch::setHwSwitchThriftClientTableForTesting(
+    std::unique_ptr<HwSwitchThriftClientTable> table) {
+  hwSwitchThriftClientTable_ = std::move(table);
+}
+
+void SwSwitch::exitIfConnectedHwSwitchColdBooted() {
+  // A HwSwitch connects before its thrift server is up, so retry briefly.
+  constexpr int kBootTypeQueryAttempts = 5;
+  for (auto switchId : getSwitchInfoTable().getSwitchIDs()) {
+    if (!getHwSwitchHandler()->isHwSwitchConnected(switchId)) {
+      continue;
+    }
+    std::optional<BootType> hwBootType;
+    std::optional<SwitchRunState> hwRunState;
+    std::string lastError;
+    for (int attempt = 0; attempt < kBootTypeQueryAttempts && !hwRunState;
+         ++attempt) {
+      try {
+        hwBootType =
+            getHwSwitchThriftClientTable()->getHwSwitchBootType(switchId);
+        hwRunState =
+            getHwSwitchThriftClientTable()->getHwSwitchRunState(switchId);
+      } catch (const std::exception& ex) {
+        lastError = ex.what();
+        if (attempt + 1 < kBootTypeQueryAttempts) {
+          std::this_thread::sleep_for(std::chrono::seconds(1));
+        }
+      }
+    }
+    if (!hwRunState) {
+      XLOG(ERR) << "Could not get boot type of HwSwitch " << switchId
+                << " after " << kBootTypeQueryAttempts
+                << " attempts, continuing with SwSwitch warm boot: "
+                << lastError;
+      continue;
+    }
+    // A HwSwitch that cold booted earlier and has been programmed since is
+    // CONFIGURED; only one still waiting for its first sync is empty.
+    if (*hwBootType == BootType::COLD_BOOT &&
+        *hwRunState == SwitchRunState::INITIALIZED) {
+      touchFile(agentDirUtil_->getSwColdBootOnceFile());
+      throw SwSwitchColdBootRequiredError(
+          "HwSwitch ",
+          switchId,
+          " cold booted while SwSwitch warm booted. Exiting to cold boot "
+          "SwSwitch");
     }
   }
 }
