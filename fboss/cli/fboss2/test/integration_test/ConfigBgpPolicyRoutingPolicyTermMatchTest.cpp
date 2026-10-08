@@ -159,13 +159,10 @@ TEST_F(ConfigBgpPolicyRoutingPolicyTermMatchTest, SetMatchesAndCommit) {
        "FBOSS2-TEST-ASPL",
        "regex",
        "^65000$"});
-  // Deliberately entry-less. bgpd's
-  // PrefixTreeMatch::validateAndCreatePrefixTree throws "Unsupported Prefix
-  // configuration: seq_num" for any prefix entry carrying a seq_num — which is
-  // exactly how `prefix-list <name> entry <seq-num>` keys its entries — so a
-  // referenced prefix-list with entries crash-loops the daemon today. An empty
-  // prefixes[] skips that validation loop, which still proves this term's
-  // reference resolves and is encoded correctly.
+  // Deliberately entry-less: this test proves the term's reference resolves
+  // and is encoded correctly, independent of the entry-level validation in
+  // PrefixTreeMatch::validateAndCreatePrefixTree (entries are keyed by prefix
+  // and covered by ConfigBgpPolicyPrefixListEntryTest).
   stageCli(
       {"config", "protocol", "bgp", "policy", "prefix-list", "FBOSS2-TEST-PL"});
   stageMatch({"from", "as-path-list", "FBOSS2-TEST-ASPL"});
