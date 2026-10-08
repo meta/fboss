@@ -28,6 +28,7 @@
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/BgpCliAttrHandlers.h"
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/BgpCliValueParsers.h"
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/as-path-list/BgpAsPathListCliUtils.h"
+#include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/prefix-list/BgpPrefixListCliUtils.h"
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/routing-policy/BgpRoutingPolicyCliUtils.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/utils/CmdUtilsCommon.h"
@@ -239,6 +240,15 @@ CmdConfigProtocolBgpPolicyRoutingPolicyTermMatch::queryClient(
           "it",
           args.values()[0]);
     }
+  }
+  // Same for prefix_list_names: PrefixTreeMatch::PopulateReferences throws
+  // "Could not find PrefixList reference" at load. No operator sync is
+  // needed here; bgpd compares none for prefix-lists.
+  if (args.attr() == kFromPrefixList && args.values().size() == 1 &&
+      !bgpcli::prefixListExists(cfg, args.values()[0])) {
+    return fmt::format(
+        "Error: BGP prefix-list {} not found; create it before referencing it",
+        args.values()[0]);
   }
   const bool policyCreated =
       !bgpcli::routingPolicyExists(cfg, policyArgs.policyName());

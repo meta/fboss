@@ -13,6 +13,7 @@
 #include "configerator/structs/neteng/bgp_policy/thrift/gen-cpp2/bgp_policy_types.h"
 #include "configerator/structs/neteng/bgp_policy/thrift/gen-cpp2/routing_policy_types.h"
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/as-path-list/BgpAsPathListCliUtils.h"
+#include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/prefix-list/BgpPrefixListCliUtils.h"
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/routing-policy/term/CmdConfigProtocolBgpPolicyRoutingPolicyTerm.h"
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/routing-policy/term/match/CmdConfigProtocolBgpPolicyRoutingPolicyTermMatch.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
@@ -83,6 +84,13 @@ class CmdConfigBgpPolicyRoutingPolicyTermMatchTestFixture
     list.boolean_operator() = op;
     ConfigSession::getInstance().saveBgpConfig();
     return list;
+  }
+
+  // `from prefix-list` likewise refuses a name that does not exist.
+  void addPrefixList(const std::string& name) {
+    bgpcli::findOrCreatePrefixList(
+        ConfigSession::getInstance().getBgpConfig(), name);
+    ConfigSession::getInstance().saveBgpConfig();
   }
 
   bool sessionFileExists() {
@@ -164,6 +172,7 @@ TEST_F(CmdConfigBgpPolicyRoutingPolicyTermMatchTestFixture, fromOrigin) {
 }
 
 TEST_F(CmdConfigBgpPolicyRoutingPolicyTermMatchTestFixture, fromPrefixList) {
+  addPrefixList("PL1");
   runMatch({"from", "prefix-list", "PL1"});
   ASSERT_EQ(atomics().size(), 1);
   EXPECT_EQ(*atomics()[0].type(), BgpPolicyAtomicMatchType::PREFIX_LIST);
@@ -179,6 +188,8 @@ TEST_F(
   // entries compose under the match object's default AND, which is the only
   // operator bgpd accepts for more than one entry.
   addAsPathList("ASPL1");
+  addPrefixList("PL1");
+  addPrefixList("PL2");
   runMatch({"from", "prefix-list", "PL1"});
   runMatch({"from", "as-path-list", "ASPL1"});
   runMatch({"from", "origin", "IGP"});
@@ -204,6 +215,18 @@ TEST_F(
 // ==============================================================================
 // Reject paths — the error is surfaced and nothing is persisted
 // ==============================================================================
+
+TEST_F(
+    CmdConfigBgpPolicyRoutingPolicyTermMatchTestFixture,
+    fromUnknownPrefixListRejected) {
+  // bgpd: "Could not find PrefixList reference" at config load.
+  auto result = runMatch({"from", "prefix-list", "NO-SUCH-LIST"});
+  EXPECT_THAT(
+      result, HasSubstr("Error: BGP prefix-list NO-SUCH-LIST not found"));
+  EXPECT_TRUE(policies().empty());
+  EXPECT_FALSE(sessionFileExists())
+      << "session file should not exist after rejected input";
+}
 
 TEST_F(
     CmdConfigBgpPolicyRoutingPolicyTermMatchTestFixture,
