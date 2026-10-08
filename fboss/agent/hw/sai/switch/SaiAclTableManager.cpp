@@ -93,8 +93,7 @@ void normalizeAclTableUdfAttributes(
           attributes));
 }
 #else
-void normalizeAclTableUdfAttributes(
-    SaiAclTableTraits::CreateAttributes&) {}
+void normalizeAclTableUdfAttributes(SaiAclTableTraits::CreateAttributes&) {}
 #endif
 
 folly::IPAddressV6 ipV6WordToAddress(uint32_t word, int wordIndex) {
@@ -2786,8 +2785,7 @@ void SaiAclTableManager::recreateAclTable(
       continue;
     }
     auto key = aclEntry->adapterHostKey();
-    if (std::get<SaiAclEntryTraits::Attributes::TableId>(key) !=
-        aclTableId) {
+    if (std::get<SaiAclEntryTraits::Attributes::TableId>(key) != aclTableId) {
       continue;
     }
     auto value = aclEntry->attributes();
