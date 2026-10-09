@@ -26,12 +26,16 @@
  *     supports the CPU port, which is every fboss DUT we ship).
  */
 
+#include <fmt/format.h>
+#include <folly/ScopeGuard.h>
 #include <folly/json/dynamic.h>
 #include <folly/json/json.h>
 #include <folly/logging/xlog.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <optional>
+#include <set>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 
@@ -106,6 +110,140 @@ class ConfigCoppTest : public Fboss2IntegrationTest {
       }
     }
     return std::nullopt;
+  }
+
+  // The SAI schedulers currently programmed, one 'show hw-object SCHEDULER'
+  // line each. The JSON output maps each host to that hw agent's text dump.
+  std::set<std::string> saiSchedulers() {
+    std::set<std::string> lines;
+    auto dump = runCliJson({"show", "hw-object", "SCHEDULER"});
+    for (const auto& [host, text] : dump.items()) {
+      std::istringstream out(text.asString());
+      std::string line;
+      while (std::getline(out, line)) {
+        if (line.find("SchedulerSaiId(") != std::string::npos) {
+          lines.insert(line);
+        }
+      }
+    }
+    return lines;
+  }
+
+  // Shared body of the rate-limit minimum tests. On a CPU queue that already
+  // has a rate, sets 'rate-limit <unit> <min> <max>' with a non-zero minimum
+  // (the CLI defaults it to 0), then checks the minimum in the running config
+  // and in the queue's SAI scheduler, and restores the queue's original rate.
+  //
+  // SaiSchedulerManager programs the minimum as the scheduler's
+  // MinBandwidthRate: as-is with a packet meter (MeterType 0) for pps, and
+  // converted from kbps to bytes per second (x1000/8) with a byte meter
+  // (MeterType 1) for kbps.
+  void checkCpuQueueRateMinimum(const std::string& unit) {
+    const bool pps = unit == "pps";
+    const std::string field = pps ? "pktsPerSec" : "kbitsPerSec";
+    const std::string otherField = pps ? "kbitsPerSec" : "pktsPerSec";
+
+    // A queue that already carries a rate, so it can be put back exactly.
+    int queueId = -1;
+    folly::dynamic originalRate = nullptr;
+    auto config = getRunningConfig();
+    for (const auto& q : config["sw"]["cpuQueues"]) {
+      if (q.count("portQueueRate")) {
+        queueId = static_cast<int>(q["id"].asInt());
+        originalRate = q["portQueueRate"];
+        break;
+      }
+    }
+    if (queueId < 0) {
+      GTEST_SKIP() << "No CPU queue has a rate-limit to restore afterwards";
+    }
+    const std::string originalUnit =
+        originalRate.count("pktsPerSec") ? "pps" : "kbps";
+    const auto& original =
+        originalRate[originalUnit == "pps" ? "pktsPerSec" : "kbitsPerSec"];
+    // Distinctive values, so the scheduler they produce is not one that
+    // already exists.
+    const int minimum = pps ? 123 : 456;
+    const int maximum = pps ? 1123 : 1456;
+    const int saiMin = pps ? minimum : minimum * 1000 / 8;
+    const int saiMax = pps ? maximum : maximum * 1000 / 8;
+    const std::string saiAttrs = fmt::format(
+        "MeterType: {}, MinBandwidthRate: {}, MaxBandwidthRate: {})",
+        pps ? 0 : 1,
+        saiMin,
+        saiMax);
+
+    auto setRate = [&](const std::string& u, int64_t mn, int64_t mx) {
+      return runCli(
+          {"config",
+           "copp",
+           "queue",
+           std::to_string(queueId),
+           "rate-limit",
+           u,
+           std::to_string(mn),
+           std::to_string(mx)});
+    };
+    // Puts the queue's original rate back. Armed as a guard so a failed
+    // check still leaves the DUT as found; runs explicitly in Step 3.
+    auto restore = [&]() {
+      auto r = setRate(
+          originalUnit,
+          original["minimum"].asInt(),
+          original["maximum"].asInt());
+      if (r.exitCode != 0) {
+        ADD_FAILURE() << "restore failed: " << r.stderr;
+        return;
+      }
+      commitConfig();
+    };
+    auto restoreGuard = folly::makeGuard(restore);
+
+    const auto schedulersBefore = saiSchedulers();
+    for (const auto& line : schedulersBefore) {
+      ASSERT_EQ(line.find(saiAttrs), std::string::npos)
+          << "a scheduler with the test's rates already exists: " << line;
+    }
+
+    XLOG(INFO) << "[Step 1] queue " << queueId << " rate-limit " << unit << " "
+               << minimum << " " << maximum;
+    auto result = setRate(unit, minimum, maximum);
+    ASSERT_EQ(result.exitCode, 0)
+        << "stdout=" << result.stdout << " stderr=" << result.stderr;
+    commitConfig();
+
+    XLOG(INFO) << "[Step 2] Verifying the minimum in config and SAI...";
+    auto queue = findQueue(queueId);
+    ASSERT_FALSE(queue.isNull());
+    ASSERT_TRUE(queue.count("portQueueRate"));
+    const auto& rate = queue["portQueueRate"];
+    ASSERT_TRUE(rate.count(field)) << field << " missing from portQueueRate";
+    EXPECT_EQ(rate[field]["minimum"].asInt(), minimum);
+    EXPECT_EQ(rate[field]["maximum"].asInt(), maximum);
+    EXPECT_FALSE(rate.count(otherField))
+        << otherField << " left set next to " << field;
+
+    std::vector<std::string> matching;
+    for (const auto& line : saiSchedulers()) {
+      if (line.find(saiAttrs) != std::string::npos) {
+        matching.push_back(line);
+      }
+    }
+    ASSERT_EQ(matching.size(), 1)
+        << "expected one SAI scheduler with '" << saiAttrs << "'";
+    XLOG(INFO) << "SAI scheduler: " << matching[0];
+
+    XLOG(INFO) << "[Step 3] Restoring rate-limit " << originalUnit << " "
+               << original["minimum"].asInt() << " "
+               << original["maximum"].asInt();
+    restoreGuard.dismiss();
+    restore();
+    EXPECT_EQ(findQueue(queueId)["portQueueRate"], originalRate)
+        << "queue rate not restored";
+    for (const auto& line : saiSchedulers()) {
+      EXPECT_EQ(line.find(saiAttrs), std::string::npos)
+          << "test scheduler left after restore: " << line;
+    }
   }
 };
 
@@ -225,6 +363,18 @@ TEST_F(ConfigCoppTest, CpuQueueSetRateLimitPps) {
         findQueue(targetId)["portQueueRate"]["pktsPerSec"]["maximum"].asInt(),
         *originalPpsMax);
   }
+}
+
+// rate-limit <unit> <min> <max>: the minimum (Range.minimum) reaches the
+// queue's SAI scheduler as MinBandwidthRate. pps and kbps take different
+// paths in the agent (packet meter as-is vs byte meter in bytes per second),
+// so each unit has its own test.
+TEST_F(ConfigCoppTest, CpuQueueRateLimitMinimumPps) {
+  checkCpuQueueRateMinimum("pps");
+}
+
+TEST_F(ConfigCoppTest, CpuQueueRateLimitMinimumKbps) {
+  checkCpuQueueRateMinimum("kbps");
 }
 
 // Reason -> queue mapping: update an existing entry. We pick ARP because
