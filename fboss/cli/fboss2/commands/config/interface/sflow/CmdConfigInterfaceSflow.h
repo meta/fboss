@@ -44,6 +44,9 @@ struct CmdConfigInterfaceSflowTraits : public WriteCommandTraits {
       const std::vector<std::string>& typed);
   using ParentCmd = CmdConfigInterface;
   static void addCliArg(CLI::App& cmd, std::vector<std::string>& args) {
+    // Leaf: without this, `sample-dest mirror` resolves `mirror` to the
+    // sibling `config interface mirror` command instead of the value.
+    cmd.positionals_at_end();
     cmd.add_option(
         "sflow_attrs",
         args,

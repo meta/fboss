@@ -33,6 +33,9 @@ class MirrorAttrArgs : public utils::BaseObjectArgType<std::string> {
 struct CmdConfigInterfaceMirrorTraits : public WriteCommandTraits {
   using ParentCmd = CmdConfigInterface;
   static void addCliArg(CLI::App& cmd, std::vector<std::string>& args) {
+    // Leaf: keep a mirror name that matches a sibling command (e.g. `sflow`)
+    // from being taken as that subcommand.
+    cmd.positionals_at_end();
     cmd.add_option(
         "mirror_attrs",
         args,
