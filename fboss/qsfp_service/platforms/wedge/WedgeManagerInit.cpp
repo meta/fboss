@@ -142,10 +142,10 @@ std::unique_ptr<WedgeManager> createWedgeManager(
       return createBspWedgeManager<
           M5120cscBspPlatformMapping,
           PlatformType::PLATFORM_M5120CSC>(platformMapping, qsfpServiceThreads);
-    case PlatformType::PLATFORM_M4061CLSC:
+    case PlatformType::PLATFORM_M4061CLSCL:
       return createBspWedgeManager<
           M4061clscBspPlatformMapping,
-          PlatformType::PLATFORM_M4061CLSC>(
+          PlatformType::PLATFORM_M4061CLSCL>(
           platformMapping, qsfpServiceThreads);
     case PlatformType::PLATFORM_ICETEA800BC:
       return createBspWedgeManager<

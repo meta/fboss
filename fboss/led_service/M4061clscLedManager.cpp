@@ -12,7 +12,7 @@ namespace facebook::fboss {
  * M4061clsc platform
  */
 M4061clscLedManager::M4061clscLedManager() : BspLedManager() {
-  init<M4061clscBspPlatformMapping>(PlatformType::PLATFORM_M4061CLSC);
+  init<M4061clscBspPlatformMapping>(PlatformType::PLATFORM_M4061CLSCL);
   XLOG(INFO) << "Created M4061clsc BSP LED Manager";
 }
 
