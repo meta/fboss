@@ -48,9 +48,9 @@ struct CmdShowConfigRunningBgpTraits : public ReadCommandTraits {
         "The command is reached as 'show bgp config' in the internal build, "
         "where 'show bgp config raw' gives the config-file rendering instead "
         "and 'show config running bgp' is an equivalent alias; in the "
-        "open-source build it is spelled 'show bgp config running' and "
-        "neither the raw variant nor the 'show config running bgp' alias is "
-        "registered. "
+        "open-source build it is spelled 'show config running bgp', with "
+        "'show bgp config running' kept as an equivalent alias, and the raw "
+        "variant is not registered. "
         // The two builds also differ in the SHAPE of what they return.
         "The two builds also differ in what they render: the internal build "
         "returns the structured BgpConfig document illustrated below, while "

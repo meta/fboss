@@ -67,6 +67,8 @@ add_executable(fboss2_integration_test
   fboss/cli/fboss2/utils/oss/CmdInitUtils.cpp
   fboss/cli/fboss2/test/integration_test/ConfigIpRouteTest.cpp
   fboss/cli/fboss2/test/integration_test/ConfigCoppTrafficPolicyTest.cpp
+  fboss/cli/fboss2/test/integration_test/ShowConfigRunningAgentTest.cpp
+  fboss/cli/fboss2/test/integration_test/ShowConfigRunningBgpTest.cpp
   fboss/cli/fboss2/test/integration_test/ShowRouteFilterTest.cpp
 )
 
