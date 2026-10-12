@@ -100,4 +100,7 @@ struct PortHwStatsEntry {
   29: i64 inIpv4HeaderErrorPkts;
   30: i64 inIpv6HeaderErrorPkts;
   31: map<i16, i64> queueOutDiscardPackets;
+  32: map<i16, i64> queueOutPackets;
+  33: i64 ingressPkts;
+  34: i64 egressPkts;
 }
