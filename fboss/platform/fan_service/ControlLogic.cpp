@@ -114,8 +114,7 @@ bool ControlLogic::getAllTemperatureData() {
     pBsp_->getAsicTempData(pSensorData_);
     asicTempReadOK = true;
   } catch (std::exception& e) {
-    XLOG(ERR) << "Failed to get ASIC temperature data with error: "
-              << e.what();
+    XLOG(ERR) << "Failed to get ASIC temperature data with error: " << e.what();
   }
 
   if (sensorReadOK && opticsReadOK && asicTempReadOK) {

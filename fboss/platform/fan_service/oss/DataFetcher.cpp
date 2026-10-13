@@ -55,8 +55,7 @@ asic_temp::AsicTempResponse getAsicTempThroughSensorService(
   res.timeStamp() = *sensorReadResponse.timeStamp();
   for (const auto& sensorData : *sensorReadResponse.sensorData()) {
     if (!sensorData.value() || !sensorData.timeStamp() ||
-        *sensorData.sensorType() !=
-            sensor_config::SensorType::TEMPERATURE) {
+        *sensorData.sensorType() != sensor_config::SensorType::TEMPERATURE) {
       continue;
     }
     asic_temp::AsicTempData asicTempData;
