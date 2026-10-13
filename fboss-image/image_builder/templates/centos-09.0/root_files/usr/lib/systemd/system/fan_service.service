@@ -2,7 +2,9 @@
 [Unit]
 Description=FBOSS Fan Service
 After=platform_manager.service
+After=sensor_service.service
 After=rc-local.service
+Wants=sensor_service.service
 # Unlimited restarts (no start limit hit within a given time period)
 StartLimitIntervalSec=0
 
