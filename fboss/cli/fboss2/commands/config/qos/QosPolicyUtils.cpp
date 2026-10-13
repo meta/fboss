@@ -36,4 +36,28 @@ std::vector<cfg::QosPolicy>::iterator findQosPolicyOrThrow(
   return it;
 }
 
+bool eraseDscp(std::vector<cfg::DscpQosMap>& dscpMaps, int16_t dscp) {
+  return eraseQosMapCodepoint(
+      dscpMaps,
+      dscp,
+      [](cfg::DscpQosMap& e) -> auto& { return *e.fromDscpToTrafficClass(); },
+      [](const cfg::DscpQosMap& e) { return e.fromTrafficClassToDscp(); });
+}
+
+bool eraseExp(std::vector<cfg::ExpQosMap>& expMaps, int16_t exp) {
+  return eraseQosMapCodepoint(
+      expMaps,
+      exp,
+      [](cfg::ExpQosMap& e) -> auto& { return *e.fromExpToTrafficClass(); },
+      [](const cfg::ExpQosMap& e) { return e.fromTrafficClassToExp(); });
+}
+
+bool erasePcp(std::vector<cfg::PcpQosMap>& pcpMaps, int16_t pcp) {
+  return eraseQosMapCodepoint(
+      pcpMaps,
+      pcp,
+      [](cfg::PcpQosMap& e) -> auto& { return *e.fromPcpToTrafficClass(); },
+      [](const cfg::PcpQosMap& e) { return e.fromTrafficClassToPcp(); });
+}
+
 } // namespace facebook::fboss::utils
