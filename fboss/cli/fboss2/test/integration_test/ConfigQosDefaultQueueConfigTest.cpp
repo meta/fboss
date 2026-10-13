@@ -193,6 +193,73 @@ class ConfigQosDefaultQueueConfigTest : public Fboss2IntegrationTest {
   folly::dynamic runningConfig_;
 };
 
+// The linear detection profile is written one command at a time: the CLI seeds
+// the linear struct from the entry already on the queue, applies only the
+// attributes named, and writes it back. This case pins minimumLength -- that a
+// later command moves it, and that moving it leaves the rest of the profile
+// alone.
+TEST_F(ConfigQosDefaultQueueConfigTest, AqmDetectionMinimumLength) {
+  constexpr int kFirstMinLength = 20000;
+  constexpr int kFinalMinLength = 35000;
+  constexpr int kMaxLength = 60000;
+  // ASICs without ECN_PROBABILISTIC_MARKING reject any ECN probability other
+  // than 100, so use 100 to keep this test runnable on every platform.
+  constexpr int kProbability = kAqmProbability;
+
+  int queueId = pickUnusedQueueId();
+  const auto* q = configureAndCommit(
+      queueId,
+      {"active-queue-management",
+       "congestion-behavior",
+       "ECN",
+       "detection",
+       "linear",
+       "minimum-length",
+       std::to_string(kFirstMinLength),
+       "maximum-length",
+       std::to_string(kMaxLength),
+       "probability",
+       std::to_string(kProbability)});
+  ASSERT_NE(q, nullptr) << "queue-id " << queueId << " not in running config";
+  ASSERT_TRUE(q->count("aqms"));
+  ASSERT_FALSE((*q)["aqms"].empty());
+  // maximum-length goes through the same setter and merge path, so checking
+  // it reached the running config here covers it without a test of its own.
+  EXPECT_EQ(
+      (*q)["aqms"][0]["detection"]["linear"]["minimumLength"].asInt(),
+      kFirstMinLength);
+  EXPECT_EQ(
+      (*q)["aqms"][0]["detection"]["linear"]["maximumLength"].asInt(),
+      kMaxLength);
+
+  // Move minimum-length on its own. congestion-behavior still has to be named
+  // -- it is the key that picks which AQM entry the edit lands on.
+  discardSession();
+  q = configureAndCommit(
+      queueId,
+      {"active-queue-management",
+       "congestion-behavior",
+       "ECN",
+       "detection",
+       "linear",
+       "minimum-length",
+       std::to_string(kFinalMinLength)});
+  ASSERT_NE(q, nullptr) << "queue-id " << queueId << " not in running config";
+  ASSERT_TRUE(q->count("aqms"));
+  ASSERT_FALSE((*q)["aqms"].empty());
+  const auto& linear = (*q)["aqms"][0]["detection"]["linear"];
+
+  EXPECT_EQ(linear["minimumLength"].asInt(), kFinalMinLength)
+      << "the second command must move minimumLength";
+  EXPECT_EQ(linear["maximumLength"].asInt(), kMaxLength)
+      << "a minimum-length edit must not disturb maximumLength";
+  EXPECT_EQ(
+      linear.getDefault("probability", kAqmProbability).asInt(), kProbability)
+      << "a minimum-length edit must not reset probability to its default";
+
+  deleteQueueAndCommit(queueId);
+}
+
 // Bulk traffic queue: shares bandwidth with its peers via weighted round robin.
 // `WRR` also exercises the short-name scheduling alias.
 TEST_F(ConfigQosDefaultQueueConfigTest, BulkTrafficQueueUsesWrrWeight) {
