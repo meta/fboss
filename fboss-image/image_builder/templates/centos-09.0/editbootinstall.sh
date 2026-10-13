@@ -82,6 +82,17 @@ fi
 
 echo "EFI partition mounted successfully"
 
+# $prefix is left on the ESP so save_env can write grubenv there; GRUB cannot
+# write files on the btrfs /boot. config.sh puts grubenv and all modules there.
+if [ ! -s "$MOUNT_POINT/EFI/centos/grubenv" ]; then
+  echo "ERROR: EFI/centos/grubenv missing from the ESP"
+  ls -la "$MOUNT_POINT/EFI/centos" || true
+  exit 1
+fi
+
+# --root-dev-only limits the search to $root's disk (the ESP's), as RHEL's own
+# stub does. grub2-common's %posttrans leaves a stub containing it alone;
+# otherwise an update regenerates EFI/centos/grub.cfg and moves grubenv back.
 # Rewrite EFI/BOOT/grub.cfg
 BOOT_GRUB_CFG="$MOUNT_POINT/EFI/BOOT/grub.cfg"
 echo "Rewriting $BOOT_GRUB_CFG..."
@@ -90,8 +101,8 @@ set efipart=\$root
 set prefix=(\$efipart)/efi/boot
 insmod btrfs
 set btrfs_relative_path="yes"
-search --fs-uuid --set=root $ROOT_UUID
-set prefix=(\$root)/boot/grub2
+search --root-dev-only --fs-uuid --set=root $ROOT_UUID
+set prefix=(\$efipart)/efi/centos
 configfile (\$root)/boot/grub2/grub.cfg
 EOF
 
@@ -109,8 +120,7 @@ set efipart=\$root
 set prefix=(\$efipart)/efi/centos
 insmod btrfs
 set btrfs_relative_path="yes"
-search --fs-uuid --set=root $ROOT_UUID
-set prefix=(\$root)/boot/grub2
+search --root-dev-only --fs-uuid --set=root $ROOT_UUID
 configfile (\$root)/boot/grub2/grub.cfg
 EOF
 
