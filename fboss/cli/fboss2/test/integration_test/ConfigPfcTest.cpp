@@ -184,6 +184,89 @@ class ConfigPfcTest : public Fboss2IntegrationTest {
     EXPECT_EQ(actual["bufferPoolName"].asString(), bufferPoolName_);
     EXPECT_EQ(actual["name"].asString(), fmt::format("pg{}", expected.id));
   }
+
+  // Shared body of the rx-duration and tx-duration tests. `attr` is the CLI
+  // attribute, `flag` the PortPfc field it sets, and `otherFlag` the field of
+  // the other direction. The flag is independent of PFC itself, so setting it
+  // must not touch rx/tx or the other direction's flag. "disabled" stores an
+  // explicit false.
+  void checkPfcDurationFlag(
+      const std::string& attr,
+      const char* flag,
+      const char* otherFlag) {
+    std::string ifName = getRandomInterfacePortName();
+    XLOG(INFO) << "Using test interface " << ifName;
+
+    auto portPfc = [&ifName](const folly::dynamic& config) -> folly::dynamic {
+      for (const auto& port : config["sw"]["ports"]) {
+        if (port.count("name") && port["name"].asString() == ifName) {
+          return port.getDefault("pfc", nullptr);
+        }
+      }
+      return nullptr;
+    };
+    auto field = [](const folly::dynamic& pfc, const char* key) {
+      return pfc.isObject() && pfc.count(key) ? pfc[key]
+                                              : folly::dynamic(nullptr);
+    };
+    auto boolOrFalse = [&field](const folly::dynamic& pfc, const char* key) {
+      auto v = field(pfc, key);
+      return !v.isNull() && v.asBool();
+    };
+
+    const auto initialConfig = getRunningConfig();
+    const auto before = portPfc(initialConfig);
+
+    // The hardware monitors one direction per port (SaiPortManager programs a
+    // single PfcMonitorDirection), so with the other flag already on, this
+    // flag would be accepted in config but not programmed.
+    if (boolOrFalse(before, otherFlag)) {
+      GTEST_SKIP() << ifName << " already has " << otherFlag
+                   << " enabled; only one PFC duration direction can be "
+                   << "monitored at a time";
+    }
+
+    // The duration counters need no buffer setup. But when the DUT already
+    // has priority-group policies, the agent rejects a pfc block that names
+    // none, so bind the port to one of the existing policies in that case.
+    const auto& sw = initialConfig["sw"];
+    const auto pgName = field(before, "portPgConfigName");
+    if (sw.count("portPgConfigs") && !sw["portPgConfigs"].empty() &&
+        (pgName.isNull() || pgName.asString().empty())) {
+      const auto policy = sw["portPgConfigs"].keys().begin()->asString();
+      XLOG(INFO) << "[Step 1] Binding " << ifName << " to PG policy " << policy;
+      ASSERT_EQ(
+          runCli({"config",
+                  "interface",
+                  ifName,
+                  "pfc-config",
+                  "priority-group-policy",
+                  policy})
+              .exitCode,
+          0);
+    }
+
+    for (const bool enabled : {true, false}) {
+      const std::string value = enabled ? "enabled" : "disabled";
+      XLOG(INFO) << "[Step " << (enabled ? 2 : 3) << "] " << attr << " "
+                 << value;
+      auto r =
+          runCli({"config", "interface", ifName, "pfc-config", attr, value});
+      ASSERT_EQ(r.exitCode, 0) << r.stderr;
+      commitConfig();
+      waitForAgentReady();
+
+      auto pfc = portPfc(getRunningConfig());
+      ASSERT_TRUE(pfc.isObject()) << "pfc missing on " << ifName;
+      ASSERT_FALSE(field(pfc, flag).isNull())
+          << flag << " not set to " << enabled << ": " << folly::toJson(pfc);
+      EXPECT_EQ(pfc[flag].asBool(), enabled);
+      EXPECT_EQ(field(pfc, otherFlag), field(before, otherFlag))
+          << otherFlag << " changed by a " << attr << " command";
+      EXPECT_EQ(boolOrFalse(pfc, "rx"), boolOrFalse(before, "rx"));
+      EXPECT_EQ(boolOrFalse(pfc, "tx"), boolOrFalse(before, "tx"));
+    }
+  }
 };
 
 TEST_F(ConfigPfcTest, BufferPoolReservedBytes) {
@@ -316,6 +399,16 @@ TEST_F(ConfigPfcTest, BufferPoolReservedBytes) {
       << "reserved-bytes must leave headroomBytes untouched";
 
   XLOG(INFO) << "TEST PASSED";
+}
+
+// rx-duration turns on the per-port counter of how long the port was paused by
+// PFC frames it received.
+TEST_F(ConfigPfcTest, RxPfcDurationEnable) {
+  checkPfcDurationFlag(
+      "rx-duration", "rxPfcDurationEnable", "txPfcDurationEnable");
+  if (!IsSkipped() && !HasFailure()) {
+    XLOG(INFO) << "TEST PASSED";
+  }
 }
 
 TEST_F(ConfigPfcTest, BufferPoolPriorityGroupAndPortPfc) {
@@ -500,4 +593,14 @@ TEST_F(ConfigPfcTest, BufferPoolSharedBytes) {
   EXPECT_EQ(pool["headroomBytes"].asInt(), kHeadroomBytes);
 
   XLOG(INFO) << "TEST PASSED";
+}
+
+// tx-duration turns on the per-port counter of how long the port spent
+// sending PFC pause frames to its neighbor.
+TEST_F(ConfigPfcTest, TxPfcDurationEnable) {
+  checkPfcDurationFlag(
+      "tx-duration", "txPfcDurationEnable", "rxPfcDurationEnable");
+  if (!IsSkipped() && !HasFailure()) {
+    XLOG(INFO) << "TEST PASSED";
+  }
 }
