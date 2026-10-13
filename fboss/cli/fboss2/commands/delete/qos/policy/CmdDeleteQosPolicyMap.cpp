@@ -14,7 +14,6 @@
 
 #include <fmt/format.h>
 #include <folly/Conv.h>
-#include <algorithm>
 #include <iostream>
 #include <stdexcept>
 #include <string>
@@ -100,68 +99,6 @@ DeleteQosMapEntry::DeleteQosMapEntry(std::vector<std::string> v) {
 
 namespace {
 
-// Removes `codepoint` from whichever map entry's ingress list carries it. An
-// entry that ends up with no ingress codepoints and no egress rewrite carries
-// no information, so it is dropped rather than left behind as an empty shell.
-// Shared by the three structurally identical list maps (DscpQosMap, ExpQosMap,
-// PcpQosMap); the projections select the ingress list and the egress rewrite.
-template <typename MapEntry, typename GetIngressList, typename GetEgressValue>
-bool eraseCodepoint(
-    std::vector<MapEntry>& maps,
-    int16_t codepoint,
-    GetIngressList getIngressList,
-    GetEgressValue getEgressValue) {
-  auto byteVal = static_cast<int8_t>(codepoint);
-  bool erased = false;
-
-  for (auto& entry : maps) {
-    auto& fromList = getIngressList(entry);
-    auto it = std::find(fromList.begin(), fromList.end(), byteVal);
-    if (it != fromList.end()) {
-      fromList.erase(it);
-      erased = true;
-    }
-  }
-
-  if (erased) {
-    maps.erase(
-        std::remove_if(
-            maps.begin(),
-            maps.end(),
-            [&](const MapEntry& entry) {
-              return getIngressList(const_cast<MapEntry&>(entry)).empty() &&
-                  !getEgressValue(entry).has_value();
-            }),
-        maps.end());
-  }
-
-  return erased;
-}
-
-bool eraseDscp(std::vector<cfg::DscpQosMap>& dscpMaps, int16_t dscp) {
-  return eraseCodepoint(
-      dscpMaps,
-      dscp,
-      [](cfg::DscpQosMap& e) -> auto& { return *e.fromDscpToTrafficClass(); },
-      [](const cfg::DscpQosMap& e) { return e.fromTrafficClassToDscp(); });
-}
-
-bool eraseExp(std::vector<cfg::ExpQosMap>& expMaps, int16_t exp) {
-  return eraseCodepoint(
-      expMaps,
-      exp,
-      [](cfg::ExpQosMap& e) -> auto& { return *e.fromExpToTrafficClass(); },
-      [](const cfg::ExpQosMap& e) { return e.fromTrafficClassToExp(); });
-}
-
-bool erasePcp(std::vector<cfg::PcpQosMap>& pcpMaps, int16_t pcp) {
-  return eraseCodepoint(
-      pcpMaps,
-      pcp,
-      [](cfg::PcpQosMap& e) -> auto& { return *e.fromPcpToTrafficClass(); },
-      [](const cfg::PcpQosMap& e) { return e.fromTrafficClassToPcp(); });
-}
-
 // Erases `key` from an optional map<i16, i16> field. Returns false when the
 // field is unset or the key is absent. A map left empty by the erase is
 // reset, so the field returns to its unset default.
@@ -188,7 +125,7 @@ std::string deleteQosPolicyMapEntry(
   changed = true;
   switch (entry.getMapType()) {
     case DeleteQosMapType::DSCP: {
-      if (!eraseDscp(*qosMap.dscpMaps(), entry.getKey())) {
+      if (!utils::eraseDscp(*qosMap.dscpMaps(), entry.getKey())) {
         changed = false;
         return fmt::format(
             "Warning: QoS policy '{}' has no dscp mapping for value {}, "
@@ -202,7 +139,7 @@ std::string deleteQosPolicyMapEntry(
           entry.getKey());
     }
     case DeleteQosMapType::MPLS_EXP: {
-      if (!eraseExp(*qosMap.expMaps(), entry.getKey())) {
+      if (!utils::eraseExp(*qosMap.expMaps(), entry.getKey())) {
         changed = false;
         return fmt::format(
             "Warning: QoS policy '{}' has no mpls-exp mapping for value {}, "
@@ -217,7 +154,7 @@ std::string deleteQosPolicyMapEntry(
     }
     case DeleteQosMapType::DOT1P: {
       auto pcpMaps = qosMap.pcpMaps();
-      if (!pcpMaps.has_value() || !erasePcp(*pcpMaps, entry.getKey())) {
+      if (!pcpMaps.has_value() || !utils::erasePcp(*pcpMaps, entry.getKey())) {
         changed = false;
         return fmt::format(
             "Warning: QoS policy '{}' has no dot1p mapping for value {}, "

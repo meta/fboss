@@ -379,3 +379,63 @@ TEST_F(ConfigQosPolicyMapTest, IdentityMappingsAcrossAllMapTypes) {
 
   XLOG(INFO) << "TEST PASSED";
 }
+
+TEST_F(ConfigQosPolicyMapTest, DscpMoveBetweenTrafficClasses) {
+  XLOG(INFO) << "========================================";
+  XLOG(INFO) << "ConfigQosPolicyMapTest::DscpMoveBetweenTrafficClasses";
+  XLOG(INFO) << "========================================";
+
+  // A DSCP classifies to exactly one traffic class. Re-mapping a
+  // codepoint that another class already carries must move it, not leave a
+  // copy behind in the old class. Mirrors the field repro: 9 lives in TC 0,
+  // is moved to TC 2, then on to TC 4.
+  auto ownersOf = [this](int dscp) {
+    std::vector<int> owners;
+    auto config = getRunningConfig();
+    const auto* policy = findQosPolicy(config, testPolicyName_);
+    if (policy == nullptr || !policy->count("qosMap") ||
+        !(*policy)["qosMap"].count("dscpMaps")) {
+      return owners;
+    }
+    for (const auto& e : (*policy)["qosMap"]["dscpMaps"]) {
+      if (!e.count("fromDscpToTrafficClass")) {
+        continue;
+      }
+      for (const auto& v : e["fromDscpToTrafficClass"]) {
+        if (v.asInt() == dscp) {
+          owners.push_back(e["internalTrafficClass"].asInt());
+        }
+      }
+    }
+    return owners;
+  };
+
+  XLOG(INFO) << "[Step 1] Seeding DSCP 8, 9 under TC 0 and committing";
+  configureMap("dscp", 8, "traffic-class", 0);
+  configureMap("dscp", 9, "traffic-class", 0);
+  commitConfig();
+  ASSERT_EQ(ownersOf(9), std::vector<int>{0});
+
+  XLOG(INFO) << "[Step 2] Moving DSCP 9 to TC 2";
+  configureMap("dscp", 9, "traffic-class", 2);
+  commitConfig();
+  EXPECT_EQ(ownersOf(9), std::vector<int>{2})
+      << "DSCP 9 must be owned by TC 2 only";
+  EXPECT_EQ(ownersOf(8), std::vector<int>{0}) << "DSCP 8 must stay in TC 0";
+
+  XLOG(INFO) << "[Step 3] Moving DSCP 9 again, to TC 4";
+  configureMap("dscp", 9, "traffic-class", 4);
+  commitConfig();
+  EXPECT_EQ(ownersOf(9), std::vector<int>{4})
+      << "DSCP 9 must be owned by TC 4 only";
+
+  auto config = getRunningConfig();
+  const auto* policy = findQosPolicy(config, testPolicyName_);
+  ASSERT_NE(policy, nullptr);
+  for (const auto& e : (*policy)["qosMap"]["dscpMaps"]) {
+    EXPECT_NE(e["internalTrafficClass"].asInt(), 2)
+        << "TC 2 held only the moved codepoint and must have been dropped";
+  }
+
+  XLOG(INFO) << "TEST PASSED";
+}
