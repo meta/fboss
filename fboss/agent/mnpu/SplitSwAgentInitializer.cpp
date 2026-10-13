@@ -142,7 +142,20 @@ void SplitSwAgentInitializer::stopAgent(bool setupWarmboot, bool gracefulExit) {
 
 void SplitSwAgentInitializer::exitForColdBoot() {
   initializer_->stopFunctionScheduler();
-  multiSwitchThriftHandler_->cancelEventSyncers();
+#if FOLLY_HAS_COROUTINES
+  // hw_agent event sinks call into SwSwitch members that stop() frees (e.g.
+  // macTableManager_), so stop and drain them first, as handleExitSignal does.
+  if (multiSwitchThriftHandler_) {
+    multiSwitchThriftHandler_->cancelEventSyncers();
+    auto eventSinkStopBegin = steady_clock::now();
+    multiSwitchThriftHandler_->waitForEventSyncers();
+    auto eventSinksStopped = steady_clock::now();
+    XLOG(DBG2) << "[Exit] Event sink stop time "
+               << duration_cast<duration<float>>(
+                      eventSinksStopped - eventSinkStopBegin)
+                      .count();
+  }
+#endif
   sw_->stop(false /* gracefulStop */, true /* revertToMinAlpmState */);
   sw_->getHwSwitchHandler()->stop();
   stopServer();
