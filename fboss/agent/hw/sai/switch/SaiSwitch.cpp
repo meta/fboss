@@ -1614,16 +1614,20 @@ std::shared_ptr<SwitchState> SaiSwitch::stateChangedImplLocked(
         lockPolicy,
         &SaiNeighborManager::addNeighbor<NdpEntry>);
 
+    const auto macVlanId = vlanDelta.getNew() ? vlanDelta.getNew()->getID()
+                                              : vlanDelta.getOld()->getID();
     processChangedDelta(
         vlanDelta.getMacDelta(),
         managerTable_->fdbManager(),
         lockPolicy,
-        &SaiFdbManager::changeMac);
+        &SaiFdbManager::changeMac,
+        macVlanId);
     processAddedDelta(
         vlanDelta.getMacDelta(),
         managerTable_->fdbManager(),
         lockPolicy,
-        &SaiFdbManager::addMac);
+        &SaiFdbManager::addMac,
+        macVlanId);
   }
 
   processDelta(
