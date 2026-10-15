@@ -68,6 +68,8 @@ namespace {
 // our platforms in production. Hence setting the queue timeout to 30s to give
 // small headroom.
 constexpr auto kThriftServerQueueTimeout = std::chrono::seconds(30);
+// Drop clients that stop reading, so that they do not stall the shutdown drain.
+constexpr auto kThriftServerSocketWriteTimeout = std::chrono::seconds(10);
 } // namespace
 
 namespace facebook::fboss {
@@ -120,6 +122,7 @@ std::unique_ptr<apache::thrift::ThriftServer> setupThriftServer(
 
   server->setQueueTimeout(kThriftServerQueueTimeout);
   server->setSocketQueueTimeout(kThriftServerQueueTimeout);
+  server->setSocketWriteTimeout(kThriftServerSocketWriteTimeout);
 
   // Furthermore, if a request is already being processed, thrift expects
   // that to complete within JOIN_TIMEOUT as well or else Thrift server
