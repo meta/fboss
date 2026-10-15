@@ -1038,8 +1038,8 @@ TEST(ConfigValidatorTest, LedCtrlBlockConfig) {
   EXPECT_FALSE(validator.isValidLedCtrlBlockConfig(config));
   config.ledPerPort() = 2;
 
-  // Test case: ledPerPort > 4
-  config.ledPerPort() = 5;
+  // Test case: ledPerPort > 8
+  config.ledPerPort() = 9;
   EXPECT_FALSE(validator.isValidLedCtrlBlockConfig(config));
   config.ledPerPort() = 2;
 
