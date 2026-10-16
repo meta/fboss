@@ -80,6 +80,7 @@ cpp_binary(
     ],
     headers = [
         "ConfigBgpTestBase.h",
+        "CoppTestUtils.h",
         "Fboss2IntegrationTest.h",
         "LoadBalancingTestUtils.h",
     ],

@@ -42,6 +42,7 @@
 #include <thrift/lib/cpp/util/EnumUtils.h>
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
 #include "fboss/agent/if/gen-cpp2/FbossCtrlAsyncClient.h"
+#include "fboss/cli/fboss2/test/integration_test/CoppTestUtils.h"
 #include "fboss/cli/fboss2/test/integration_test/Fboss2IntegrationTest.h"
 #include "fboss/cli/fboss2/utils/CmdClientUtilsCommon.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
@@ -307,36 +308,44 @@ TEST_F(ConfigCoppTest, CpuQueueSetName) {
   }
 }
 
-// Only the two-token <unit> <max> form is exercised here: the CLI has no
-// unset, so a test writing a minimum could not restore it.
-TEST_F(ConfigCoppTest, CpuQueueSetRateLimitPps) {
-  // Low-priority queues (id 0 and 1) are typically pps-rate-limited in
-  // production configs — find one that has an existing pps cap to minimize
-  // disruption. Fall back to id 0 if none is found.
-  int targetId = 0;
-  std::optional<int> originalPpsMax;
+// Sets the two-token <unit> <max> form in the unit the queue's rate already
+// uses, so the test follows the platform's config (pps on ASICs with
+// SCHEDULER_PPS, kbps elsewhere) instead of forcing pps everywhere.
+TEST_F(ConfigCoppTest, CpuQueueSetRateLimit) {
+  // The CLI has no unset, so only a queue that already has a rate can be put
+  // back exactly.
+  int targetId = -1;
+  folly::dynamic originalRate = nullptr;
   auto config = getRunningConfig();
   for (const auto& q : config["sw"]["cpuQueues"]) {
-    if (q.count("portQueueRate") && q["portQueueRate"].count("pktsPerSec") &&
-        q["portQueueRate"]["pktsPerSec"].count("maximum")) {
-      targetId = q["id"].asInt();
-      originalPpsMax = q["portQueueRate"]["pktsPerSec"]["maximum"].asInt();
+    if (q.count("portQueueRate")) {
+      targetId = static_cast<int>(q["id"].asInt());
+      originalRate = q["portQueueRate"];
       break;
     }
   }
-  XLOG(INFO) << "Using queue id=" << targetId
-             << ", originalPpsMax=" << originalPpsMax.value_or(-1);
+  if (targetId < 0) {
+    GTEST_SKIP() << "No CPU queue has a rate-limit to restore afterwards";
+  }
+  const bool pps = originalRate.count("pktsPerSec") > 0;
+  const std::string unit = pps ? "pps" : "kbps";
+  const std::string field = pps ? "pktsPerSec" : "kbitsPerSec";
+  const std::string otherField = pps ? "kbitsPerSec" : "pktsPerSec";
+  const int originalMin = originalRate[field].getDefault("minimum", 0).asInt();
+  const int originalMax = originalRate[field]["maximum"].asInt();
+  XLOG(INFO) << "Using queue id=" << targetId << ", original rate-limit "
+             << unit << " " << originalMin << " " << originalMax;
 
-  const int newPps = 1234;
-  XLOG(INFO) << "queue " << targetId << " rate-limit pps " << newPps;
+  const int newMax = originalMax == 1234 ? 1235 : 1234;
+  XLOG(INFO) << "queue " << targetId << " rate-limit " << unit << " " << newMax;
   auto result = runCli(
       {"config",
        "copp",
        "queue",
        std::to_string(targetId),
        "rate-limit",
-       "pps",
-       std::to_string(newPps)});
+       unit,
+       std::to_string(newMax)});
   ASSERT_EQ(result.exitCode, 0)
       << "stdout=" << result.stdout << " stderr=" << result.stderr;
   commitConfig();
@@ -344,25 +353,25 @@ TEST_F(ConfigCoppTest, CpuQueueSetRateLimitPps) {
   auto after = findQueue(targetId);
   ASSERT_FALSE(after.isNull());
   ASSERT_TRUE(after.count("portQueueRate"));
-  ASSERT_TRUE(after["portQueueRate"].count("pktsPerSec"));
-  EXPECT_EQ(after["portQueueRate"]["pktsPerSec"]["maximum"].asInt(), newPps);
+  ASSERT_TRUE(after["portQueueRate"].count(field));
+  EXPECT_FALSE(after["portQueueRate"].count(otherField));
+  EXPECT_EQ(after["portQueueRate"][field]["maximum"].asInt(), newMax);
 
-  if (originalPpsMax.has_value()) {
-    XLOG(INFO) << "Restoring pps max to " << *originalPpsMax;
-    result = runCli(
-        {"config",
-         "copp",
-         "queue",
-         std::to_string(targetId),
-         "rate-limit",
-         "pps",
-         std::to_string(*originalPpsMax)});
-    ASSERT_EQ(result.exitCode, 0) << result.stderr;
-    commitConfig();
-    EXPECT_EQ(
-        findQueue(targetId)["portQueueRate"]["pktsPerSec"]["maximum"].asInt(),
-        *originalPpsMax);
-  }
+  XLOG(INFO) << "Restoring rate-limit " << unit << " " << originalMin << " "
+             << originalMax;
+  result = runCli(
+      {"config",
+       "copp",
+       "queue",
+       std::to_string(targetId),
+       "rate-limit",
+       unit,
+       std::to_string(originalMin),
+       std::to_string(originalMax)});
+  ASSERT_EQ(result.exitCode, 0) << result.stderr;
+  commitConfig();
+  EXPECT_EQ(findQueue(targetId)["portQueueRate"], originalRate)
+      << "queue rate not restored";
 }
 
 // rate-limit <unit> <min> <max>: the minimum (Range.minimum) reaches the
@@ -418,45 +427,39 @@ TEST_F(ConfigCoppTest, ReasonToQueueUpdate) {
   EXPECT_EQ(findReasonQueueId(kArpReason), originalQueueId);
 }
 
-// Shipped configs may run every CPU queue as strict-priority with no weight
-// field at all, so the test cannot assume a starting discipline: it forces WRR
-// and sets a weight, then forces SP, then restores whatever was there. A
-// weight left behind on a strict-priority queue is ignored by the agent (see
-// the PortQueue.weight comment in switch_config.thrift), and the CLI has no
-// way to unset it.
+// The CLI has no way to unset a weight, so the test works on a scratch queue
+// it creates and then deletes instead of a live CPU queue: it creates the
+// queue as WRR with a weight, switches it to SP, then deletes it, which leaves
+// cpuQueues exactly as it found them.
 TEST_F(ConfigCoppTest, CpuQueueSetSchedulingAndWeight) {
   constexpr auto kWrr = cfg::QueueScheduling::WEIGHTED_ROUND_ROBIN;
   constexpr auto kSp = cfg::QueueScheduling::STRICT_PRIORITY;
+  constexpr int kWeight = 7;
 
-  int id = getFirstExistingQueueId();
-  auto before = findQueue(id);
-  ASSERT_FALSE(before.isNull());
-  ASSERT_TRUE(before.count("scheduling"));
-  const auto originalScheduling = schedulingOf(before);
-  const std::optional<int> originalWeight = before.count("weight")
-      ? std::make_optional<int>(before["weight"].asInt())
-      : std::nullopt;
+  const auto config = getRunningConfig();
+  const auto originalQueues = config["sw"]["cpuQueues"];
+  const auto unusedId = findUnusedCpuQueueId(config);
+  ASSERT_TRUE(unusedId.has_value())
+      << "No unused cpu queue id in [0, 9] for a scratch queue";
+  const int id = *unusedId;
+  const auto streamType = scratchCpuQueueStreamType(config);
 
-  const int newWeight = originalWeight.value_or(0) == 7 ? 8 : 7;
-  XLOG(INFO) << "queue " << id << " scheduling "
-             << apache::thrift::util::enumNameSafe(kWrr) << " weight "
-             << newWeight << " (was scheduling "
-             << apache::thrift::util::enumNameSafe(originalScheduling)
-             << ", weight "
-             << (originalWeight.has_value() ? std::to_string(*originalWeight)
-                                            : "unset")
-             << ")";
-  // Both edits ride in one invocation -- the command applies attribute pairs
+  XLOG(INFO) << "Creating scratch queue " << id << " stream-type " << streamType
+             << " scheduling " << apache::thrift::util::enumNameSafe(kWrr)
+             << " weight " << kWeight;
+  // All edits ride in one invocation -- the command applies attribute pairs
   // left to right.
   auto result = runCli(
       {"config",
        "copp",
        "queue",
        std::to_string(id),
+       "stream-type",
+       streamType,
        "scheduling",
        apache::thrift::util::enumNameSafe(kWrr),
        "weight",
-       std::to_string(newWeight)});
+       std::to_string(kWeight)});
   ASSERT_EQ(result.exitCode, 0)
       << "stdout=" << result.stdout << " stderr=" << result.stderr;
   commitConfig();
@@ -465,7 +468,7 @@ TEST_F(ConfigCoppTest, CpuQueueSetSchedulingAndWeight) {
   ASSERT_FALSE(after.isNull());
   EXPECT_EQ(schedulingOf(after), kWrr);
   ASSERT_TRUE(after.count("weight"));
-  EXPECT_EQ(after["weight"].asInt(), newWeight);
+  EXPECT_EQ(after["weight"].asInt(), kWeight);
 
   XLOG(INFO) << "queue " << id << " scheduling "
              << apache::thrift::util::enumNameSafe(kSp);
@@ -483,29 +486,13 @@ TEST_F(ConfigCoppTest, CpuQueueSetSchedulingAndWeight) {
   ASSERT_FALSE(after.isNull());
   EXPECT_EQ(schedulingOf(after), kSp);
 
-  XLOG(INFO) << "Restoring scheduling "
-             << apache::thrift::util::enumNameSafe(originalScheduling)
-             << " and weight";
-  if (originalWeight.has_value()) {
-    result = runCli(
-        {"config",
-         "copp",
-         "queue",
-         std::to_string(id),
-         "weight",
-         std::to_string(*originalWeight)});
-    ASSERT_EQ(result.exitCode, 0) << result.stderr;
-  }
-  result = runCli(
-      {"config",
-       "copp",
-       "queue",
-       std::to_string(id),
-       "scheduling",
-       apache::thrift::util::enumNameSafe(originalScheduling)});
+  XLOG(INFO) << "Deleting scratch queue " << id;
+  result = runCli({"delete", "copp", "queue", std::to_string(id)});
   ASSERT_EQ(result.exitCode, 0) << result.stderr;
   commitConfig();
-  EXPECT_EQ(schedulingOf(findQueue(id)), originalScheduling);
+  EXPECT_TRUE(findQueue(id).isNull());
+  EXPECT_EQ(getRunningConfig()["sw"]["cpuQueues"], originalQueues)
+      << "cpuQueues not restored";
 }
 
 // reason ... order <n>: move an existing reason to the front of
