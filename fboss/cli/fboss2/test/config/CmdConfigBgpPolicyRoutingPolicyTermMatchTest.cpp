@@ -1,4 +1,4 @@
-// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
+// Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include <configerator/structs/neteng/fboss/bgp/gen-cpp2/bgp_config_types.h>
 #include <gmock/gmock.h>
