@@ -1,4 +1,4 @@
-// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
+// Copyright (c) Meta Platforms, Inc. and affiliates.
 
 /**
  * End-to-end tests for `fboss2-dev config protocol bgp policy routing-policy
