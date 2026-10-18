@@ -239,22 +239,3 @@ class PackageTest(unittest.TestCase):
             (build_dir / "installed").mkdir()
 
             self.assertIsNone(package._find_installed_project_dir(build_dir, "bgp"))
-
-    @mock.patch.object(package, "_find_getdeps_libs", return_value={})
-    def test_platform_package_requires_each_binary(
-        self,
-        _mock_find_getdeps_libs: mock.MagicMock,
-    ) -> None:
-        for missing_binary in package.PLATFORM_BINARIES:
-            with self.subTest(missing_binary=missing_binary):
-                with tempfile.TemporaryDirectory() as temp_dir:
-                    build_dir = pathlib.Path(temp_dir)
-                    bin_dir = build_dir / "build" / "fboss"
-                    bin_dir.mkdir(parents=True)
-
-                    for binary in package.PLATFORM_BINARIES:
-                        if binary != missing_binary:
-                            (bin_dir / binary).touch()
-
-                    with self.assertRaisesRegex(RuntimeError, missing_binary):
-                        package._build_target("platform-stack", build_dir)

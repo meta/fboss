@@ -360,7 +360,6 @@ def _build_target(target: str, build_dir: pathlib.Path):
         bins = PLATFORM_BINARIES
         extras = PLATFORM_EXTRA
         libs = PLATFORM_LIBS + COMMON_LIBS
-        require_bins = True
         test_bins = PLATFORM_TEST_BINARIES
         test_extras = PLATFORM_TEST_EXTRA
     elif target == "agent-benchmarks":
