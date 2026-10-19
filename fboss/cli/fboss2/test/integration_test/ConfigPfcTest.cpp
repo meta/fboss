@@ -185,6 +185,106 @@ class ConfigPfcTest : public Fboss2IntegrationTest {
     EXPECT_EQ(actual["name"].asString(), fmt::format("pg{}", expected.id));
   }
 
+  // What bindPortToPgPolicy() found already configured, so that
+  // removePortPfc() deletes only what the test itself created.
+  struct PfcChainState {
+    bool hadPool{false};
+    bool hadPolicy{false};
+  };
+
+  static bool hasNamedEntry(
+      const folly::dynamic& config,
+      const char* section,
+      const std::string& name) {
+    const auto& sw = config["sw"];
+    return sw.count(section) && sw[section].isObject() &&
+        sw[section].count(name);
+  }
+
+  // The pfc block of port `ifName` in `config`, or null when it has none.
+  static folly::dynamic portPfc(
+      const folly::dynamic& config,
+      const std::string& ifName) {
+    for (const auto& port : config["sw"]["ports"]) {
+      if (port.count("name") && port["name"].asString() == ifName) {
+        return port.getDefault("pfc", nullptr);
+      }
+    }
+    return nullptr;
+  }
+
+  // Puts `ifName` into a known PFC state: bound to this test's PG policy, on
+  // this test's buffer pool, with PFC rx/tx enabled. A watchdog is only
+  // accepted on a port bound to an existing priority-group policy, and some
+  // ASICs (e.g. G202X) reject deadlock detection while PFC is off. The changes
+  // are staged, not committed. `state` records what already existed.
+  void bindPortToPgPolicy(const std::string& ifName, PfcChainState& state) {
+    const auto config = getRunningConfig();
+    state.hadPool = hasNamedEntry(config, "bufferPoolConfigs", bufferPoolName_);
+    state.hadPolicy = hasNamedEntry(config, "portPgConfigs", policyName_);
+
+    XLOG(INFO) << "Binding " << ifName << " to PG policy " << policyName_;
+    // Default buffer sizes of the agent's PFC hardware tests (PfcTestUtils).
+    // Larger per-PG headroom fails to allocate on some ASICs (e.g. TH5) and
+    // the hw agent aborts.
+    configureBufferPool(/*sharedBytes=*/1500000, /*headroomBytes=*/5000);
+    const std::vector<PgSpec> pgs = {
+        {0, "ONE_HALF", kOneHalf, 2200, 2200, 1800},
+        {7, "ONE_HALF", kOneHalf, 2200, 2200, 1800},
+    };
+    for (const auto& pg : pgs) {
+      configurePgMultiAttr(pg);
+    }
+    auto r = runCli(
+        {"config",
+         "interface",
+         ifName,
+         "pfc-config",
+         "priority-group-policy",
+         policyName_,
+         "rx",
+         "enabled",
+         "tx",
+         "enabled"});
+    ASSERT_EQ(r.exitCode, 0) << r.stderr;
+  }
+
+  // Leaves the DUT as bindPortToPgPolicy() found it: removes the port's PFC
+  // config, then the PG policy and buffer pool if the test created them, and
+  // checks they are gone. Leaf first: each delete refuses while something
+  // still references what it removes.
+  void removePortPfc(const std::string& ifName, const PfcChainState& state) {
+    XLOG(INFO) << "Removing the PFC config of " << ifName
+               << ", the PG policy and the buffer pool";
+    ASSERT_EQ(
+        runCli({"delete", "interface", ifName, "pfc-config"}).exitCode, 0);
+    if (!state.hadPolicy) {
+      ASSERT_EQ(
+          runCli({"delete", "qos", "priority-group-policy", policyName_})
+              .exitCode,
+          0);
+    }
+    if (!state.hadPool) {
+      ASSERT_EQ(
+          runCli({"delete", "qos", "buffer-pool", bufferPoolName_}).exitCode,
+          0);
+    }
+    commitConfig();
+    waitForAgentReady();
+
+    const auto config = getRunningConfig();
+    EXPECT_FALSE(portPfc(config, ifName).isObject())
+        << "pfc still configured on " << ifName;
+    EXPECT_EQ(
+        hasNamedEntry(config, "portPgConfigs", policyName_), state.hadPolicy)
+        << "PG policy " << policyName_ << " not restored to its original state";
+    EXPECT_EQ(
+        hasNamedEntry(config, "bufferPoolConfigs", bufferPoolName_),
+        state.hadPool)
+        << "buffer pool " << bufferPoolName_
+        << " not restored to its original state";
+  }
+
   // Shared body of the rx-duration and tx-duration tests. `attr` is the CLI
   // attribute, `flag` the PortPfc field it sets, and `otherFlag` the field of
   // the other direction. The flag is independent of PFC itself, so setting it
@@ -196,76 +296,47 @@ class ConfigPfcTest : public Fboss2IntegrationTest {
       const char* otherFlag) {
     std::string ifName = getRandomInterfacePortName();
     XLOG(INFO) << "Using test interface " << ifName;
+    const std::string otherAttr =
+        attr == "rx-duration" ? "tx-duration" : "rx-duration";
 
-    auto portPfc = [&ifName](const folly::dynamic& config) -> folly::dynamic {
-      for (const auto& port : config["sw"]["ports"]) {
-        if (port.count("name") && port["name"].asString() == ifName) {
-          return port.getDefault("pfc", nullptr);
-        }
-      }
-      return nullptr;
-    };
-    auto field = [](const folly::dynamic& pfc, const char* key) {
-      return pfc.isObject() && pfc.count(key) ? pfc[key]
-                                              : folly::dynamic(nullptr);
-    };
-    auto boolOrFalse = [&field](const folly::dynamic& pfc, const char* key) {
-      auto v = field(pfc, key);
-      return !v.isNull() && v.asBool();
-    };
-
-    const auto initialConfig = getRunningConfig();
-    const auto before = portPfc(initialConfig);
-
-    // The hardware monitors one direction per port (SaiPortManager programs a
-    // single PfcMonitorDirection), so with the other flag already on, this
-    // flag would be accepted in config but not programmed.
-    if (boolOrFalse(before, otherFlag)) {
-      GTEST_SKIP() << ifName << " already has " << otherFlag
-                   << " enabled; only one PFC duration direction can be "
-                   << "monitored at a time";
-    }
-
-    // The duration counters need no buffer setup. But when the DUT already
-    // has priority-group policies, the agent rejects a pfc block that names
-    // none, so bind the port to one of the existing policies in that case.
-    const auto& sw = initialConfig["sw"];
-    const auto pgName = field(before, "portPgConfigName");
-    if (sw.count("portPgConfigs") && !sw["portPgConfigs"].empty() &&
-        (pgName.isNull() || pgName.asString().empty())) {
-      const auto policy = sw["portPgConfigs"].keys().begin()->asString();
-      XLOG(INFO) << "[Step 1] Binding " << ifName << " to PG policy " << policy;
-      ASSERT_EQ(
-          runCli({"config",
-                  "interface",
-                  ifName,
-                  "pfc-config",
-                  "priority-group-policy",
-                  policy})
-              .exitCode,
-          0);
-    }
+    // Known starting state: PFC on, bound to this test's PG policy, and the
+    // other direction explicitly off. The hardware monitors one direction per
+    // port (SaiPortManager programs a single PfcMonitorDirection), so with the
+    // other flag on, this one would be accepted in config but not programmed.
+    XLOG(INFO) << "[Step 1] Binding " << ifName << ", " << otherAttr
+               << " disabled";
+    PfcChainState chain;
+    ASSERT_NO_FATAL_FAILURE(bindPortToPgPolicy(ifName, chain));
+    auto r = runCli(
+        {"config", "interface", ifName, "pfc-config", otherAttr, "disabled"});
+    ASSERT_EQ(r.exitCode, 0) << r.stderr;
+    commitConfig();
+    waitForAgentReady();
 
     for (const bool enabled : {true, false}) {
       const std::string value = enabled ? "enabled" : "disabled";
       XLOG(INFO) << "[Step " << (enabled ? 2 : 3) << "] " << attr << " "
                  << value;
-      auto r =
-          runCli({"config", "interface", ifName, "pfc-config", attr, value});
+      r = runCli({"config", "interface", ifName, "pfc-config", attr, value});
       ASSERT_EQ(r.exitCode, 0) << r.stderr;
       commitConfig();
       waitForAgentReady();
 
-      auto pfc = portPfc(getRunningConfig());
+      auto pfc = portPfc(getRunningConfig(), ifName);
       ASSERT_TRUE(pfc.isObject()) << "pfc missing on " << ifName;
-      ASSERT_FALSE(field(pfc, flag).isNull())
+      ASSERT_TRUE(pfc.count(flag))
           << flag << " not set to " << enabled << ": " << folly::toJson(pfc);
       EXPECT_EQ(pfc[flag].asBool(), enabled);
-      EXPECT_EQ(field(pfc, otherFlag), field(before, otherFlag))
+      EXPECT_FALSE(pfc.getDefault(otherFlag, false).asBool())
           << otherFlag << " changed by a " << attr << " command";
-      EXPECT_EQ(boolOrFalse(pfc, "rx"), boolOrFalse(before, "rx"));
-      EXPECT_EQ(boolOrFalse(pfc, "tx"), boolOrFalse(before, "tx"));
+      EXPECT_TRUE(pfc.getDefault("rx", false).asBool())
+          << "rx changed by a " << attr << " command";
+      EXPECT_TRUE(pfc.getDefault("tx", false).asBool())
+          << "tx changed by a " << attr << " command";
     }
+
+    XLOG(INFO) << "[Step 4] Leaving the DUT as found";
+    ASSERT_NO_FATAL_FAILURE(removePortPfc(ifName, chain));
   }
 };
 
@@ -406,7 +477,7 @@ TEST_F(ConfigPfcTest, BufferPoolReservedBytes) {
 TEST_F(ConfigPfcTest, RxPfcDurationEnable) {
   checkPfcDurationFlag(
       "rx-duration", "rxPfcDurationEnable", "txPfcDurationEnable");
-  if (!IsSkipped() && !HasFailure()) {
+  if (!HasFailure()) {
     XLOG(INFO) << "TEST PASSED";
   }
 }
@@ -600,7 +671,7 @@ TEST_F(ConfigPfcTest, BufferPoolSharedBytes) {
 TEST_F(ConfigPfcTest, TxPfcDurationEnable) {
   checkPfcDurationFlag(
       "tx-duration", "txPfcDurationEnable", "rxPfcDurationEnable");
-  if (!IsSkipped() && !HasFailure()) {
+  if (!HasFailure()) {
     XLOG(INFO) << "TEST PASSED";
   }
 }
