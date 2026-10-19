@@ -82,23 +82,6 @@ class TunnelIpInIpTest : public Fboss2IntegrationTest {
       saiSet = "DecapEcnMode: 1";
     }
 
-    // The SAI tunnel objects currently programmed, one line each.
-    // The JSON output maps each host to that hw agent's text dump.
-    auto saiTunnels = [this]() {
-      std::set<std::string> lines;
-      auto dump = runCliJson({"show", "hw-object", "IPTUNNEL"});
-      for (const auto& [host, text] : dump.items()) {
-        std::istringstream out(text.asString());
-        std::string line;
-        while (std::getline(out, line)) {
-          if (line.find("TunnelSaiId(") != std::string::npos) {
-            lines.insert(line);
-          }
-        }
-      }
-      return lines;
-    };
-
     int intfId = ensureUnderlayIntfId();
     const std::string dstIp = findIpv6OnIntf(intfId);
     const std::string tunnelId =
@@ -121,29 +104,14 @@ class TunnelIpInIpTest : public Fboss2IntegrationTest {
     }
     cmd.insert(cmd.end(), {"underlay-intf-id", std::to_string(intfId)});
 
-    // Deletes the tunnel and the underlay VLAN. Armed as a guard so a failed
-    // check still leaves the DUT as found; runs explicitly in Step 3.
+    // Armed as a guard so a failed check still leaves the DUT as found; runs
+    // explicitly in Step 3.
     auto cleanup = [&]() {
-      try {
-        if (runCli({"delete", "tunnel", "ip-in-ip", direction, tunnelId})
-                .exitCode == 0) {
-          commitConfig();
-        }
-        auto config = getRunningConfig();
-        for (const auto& intf : config["sw"]["interfaces"]) {
-          const auto* id = intf.get_ptr("intfID");
-          const auto* vlan = intf.get_ptr("vlanID");
-          if (id != nullptr && vlan != nullptr && id->asInt() == intfId) {
-            deleteVlanIfPresent(static_cast<int>(vlan->asInt()));
-          }
-        }
-      } catch (const std::exception& e) {
-        ADD_FAILURE() << "cleanup failed: " << e.what();
-      }
+      deleteTunnelAndUnderlay(direction, tunnelId, intfId);
     };
     auto cleanupGuard = folly::makeGuard(cleanup);
 
-    const auto saiBefore = saiTunnels();
+    const auto saiBefore = saiTunnelObjects("TunnelSaiId(");
     XLOG(INFO) << "[Step 1] Creating " << direction << " tunnel " << tunnelId
                << " with " << attr << " pipe...";
     auto result = runCli(cmd);
@@ -176,7 +144,7 @@ class TunnelIpInIpTest : public Fboss2IntegrationTest {
     EXPECT_GT(found, 0) << "tunnel '" << tunnelId << "' not in switch state";
 
     std::vector<std::string> added;
-    for (const auto& line : saiTunnels()) {
+    for (const auto& line : saiTunnelObjects("TunnelSaiId(")) {
       if (!saiBefore.count(line)) {
         added.push_back(line);
       }
@@ -195,14 +163,59 @@ class TunnelIpInIpTest : public Fboss2IntegrationTest {
     XLOG(INFO) << "[Step 3] Deleting tunnel and underlay VLAN...";
     cleanupGuard.dismiss();
     cleanup();
-    EXPECT_FALSE(findTunnelInRunningConfig(tunnelId).has_value())
-        << "Tunnel '" << tunnelId << "' still present after delete";
-    EXPECT_EQ(saiTunnels(), saiBefore) << "SAI tunnel left after delete";
-    auto after = getRunningConfig();
-    for (const auto& intf : after["sw"]["interfaces"]) {
-      const auto* id = intf.get_ptr("intfID");
-      EXPECT_TRUE(id == nullptr || id->asInt() != intfId)
-          << "underlay interface " << intfId << " left behind";
+    EXPECT_EQ(saiTunnelObjects("TunnelSaiId("), saiBefore)
+        << "SAI tunnel left after delete";
+  }
+
+  // The SAI tunnel objects whose 'show hw-object IPTUNNEL' line contains
+  // `prefix` ("TunnelSaiId(" for tunnels, "TunnelTermSaiId(" for tunnel
+  // terminations), one line per object. The JSON output maps each host to
+  // that hw agent's text dump.
+  std::set<std::string> saiTunnelObjects(const std::string& prefix) {
+    std::set<std::string> lines;
+    auto dump = runCliJson({"show", "hw-object", "IPTUNNEL"});
+    for (const auto& [host, text] : dump.items()) {
+      std::istringstream out(text.asString());
+      std::string line;
+      while (std::getline(out, line)) {
+        if (line.find(prefix) != std::string::npos) {
+          lines.insert(line);
+        }
+      }
+    }
+    return lines;
+  }
+
+  // Deletes the tunnel, then the underlay VLAN and its interface that
+  // ensureUnderlayIntfId created for `intfId`, and checks both are gone. Safe
+  // to call when either is already absent, so tests also arm it as a guard.
+  void deleteTunnelAndUnderlay(
+      const std::string& direction,
+      const std::string& tunnelId,
+      int intfId) {
+    try {
+      if (runCli({"delete", "tunnel", "ip-in-ip", direction, tunnelId})
+              .exitCode == 0) {
+        commitConfig();
+      }
+      auto config = getRunningConfig();
+      for (const auto& intf : config["sw"]["interfaces"]) {
+        const auto* id = intf.get_ptr("intfID");
+        const auto* vlan = intf.get_ptr("vlanID");
+        if (id != nullptr && vlan != nullptr && id->asInt() == intfId) {
+          deleteVlanIfPresent(static_cast<int>(vlan->asInt()));
+        }
+      }
+      EXPECT_FALSE(findTunnelInRunningConfig(tunnelId).has_value())
+          << "Tunnel '" << tunnelId << "' still present after delete";
+      auto after = getRunningConfig();
+      for (const auto& intf : after["sw"]["interfaces"]) {
+        const auto* id = intf.get_ptr("intfID");
+        EXPECT_TRUE(id == nullptr || id->asInt() != intfId)
+            << "underlay interface " << intfId << " left behind";
+      }
+    } catch (const std::exception& e) {
+      ADD_FAILURE() << "cleanup failed: " << e.what();
     }
   }
 
@@ -402,6 +415,108 @@ TEST_F(TunnelIpInIpTest, DecapDscpMode) {
 
 TEST_F(TunnelIpInIpTest, DecapEcnMode) {
   checkTunnelMode("decap", "ecn-mode");
+}
+
+// ---------------------------------------------------------------------------
+// Positive: 'termination-type p2p' on a DECAP tunnel (the agent defaults to
+// p2mp) is programmed as a P2P SAI tunnel term, which also matches on the
+// outer source address; a P2MP term has no source.
+// ---------------------------------------------------------------------------
+
+TEST_F(TunnelIpInIpTest, DecapTerminationType) {
+  // Fake SAI only implements P2MP tunnel terms and rejects a P2P one with
+  // ATTR_NOT_SUPPORTED, which aborts the hw agent (fboss-sim runs fake SAI).
+  const auto config = getRunningConfig();
+  for (const auto& info :
+       config["sw"]["switchSettings"]["switchIdToSwitchInfo"].values()) {
+    switch (static_cast<cfg::AsicType>(info["asicType"].asInt())) {
+      case cfg::AsicType::ASIC_TYPE_FAKE:
+      case cfg::AsicType::ASIC_TYPE_FAKE_NO_WARMBOOT:
+        GTEST_SKIP() << "fake SAI does not support P2P tunnel terms";
+      default:
+        break;
+    }
+  }
+
+  int intfId = ensureUnderlayIntfId();
+  const std::string dstIp = findIpv6OnIntf(intfId);
+  const std::string srcIp = "2001:db8:cafe::7";
+  const std::string tunnelId = "integration-test-decap-p2p";
+  const int p2p = static_cast<int>(cfg::TunnelTerminationType::P2P);
+
+  // Armed as a guard so a failed check still leaves the DUT as found; runs
+  // explicitly in Step 3.
+  auto cleanup = [&]() { deleteTunnelAndUnderlay("decap", tunnelId, intfId); };
+  auto cleanupGuard = folly::makeGuard(cleanup);
+  const auto termsBefore = saiTunnelObjects("TunnelTermSaiId(");
+
+  // ttl-mode pipe: see DeleteDecapTunnel.
+  XLOG(INFO) << "[Step 1] Creating decap tunnel " << tunnelId
+             << " with termination-type p2p...";
+  auto result = runCli(
+      {"config",
+       "tunnel",
+       "ip-in-ip",
+       "decap",
+       tunnelId,
+       "destination",
+       dstIp,
+       "source",
+       srcIp,
+       "termination-type",
+       "p2p",
+       "ttl-mode",
+       "pipe",
+       "underlay-intf-id",
+       std::to_string(intfId)});
+  ASSERT_EQ(result.exitCode, 0) << "Create failed: " << result.stderr;
+  commitConfig();
+  trackTunnel(tunnelId, "decap");
+
+  XLOG(INFO) << "[Step 2] Verifying termination-type in config, state, SAI...";
+  auto tunnel = waitForTunnelInRunningConfig(tunnelId, /*shouldExist=*/true);
+  ASSERT_TRUE(tunnel.has_value())
+      << "Tunnel '" << tunnelId << "' not found in running config";
+  ASSERT_TRUE(tunnel->count("tunnelTermType"))
+      << "tunnelTermType missing from running config";
+  EXPECT_EQ((*tunnel)["tunnelTermType"].asInt(), p2p);
+
+  // ipTunnelMaps: SwitchIdList -> tunnel id -> IpTunnelFields.
+  auto tunnelMaps = getSwitchState("ipTunnelMaps");
+  int found = 0;
+  for (const auto& [switchIds, tunnels] : tunnelMaps.items()) {
+    const auto* state = tunnels.get_ptr(tunnelId);
+    if (state == nullptr) {
+      continue;
+    }
+    ++found;
+    const auto* termType = state->get_ptr("tunnelTermType");
+    ASSERT_NE(termType, nullptr) << "tunnelTermType missing from switch state";
+    EXPECT_EQ(termType->asInt(), p2p);
+  }
+  EXPECT_GT(found, 0) << "tunnel '" << tunnelId << "' not in switch state";
+
+  // SAI_TUNNEL_TERM_TABLE_ENTRY_TYPE_P2P = 0 (P2MP = 1, and has no SrcIp).
+  std::vector<std::string> added;
+  for (const auto& line : saiTunnelObjects("TunnelTermSaiId(")) {
+    if (!termsBefore.count(line)) {
+      added.push_back(line);
+    }
+  }
+  ASSERT_EQ(added.size(), 1) << "expected one new SAI tunnel term";
+  XLOG(INFO) << "New SAI tunnel term: " << added[0];
+  EXPECT_NE(added[0].find("(Type: 0,"), std::string::npos)
+      << "SAI tunnel term is not P2P";
+  EXPECT_NE(added[0].find(fmt::format("DstIp: {},", dstIp)), std::string::npos)
+      << "SAI tunnel term does not match the destination";
+  EXPECT_NE(added[0].find(fmt::format("SrcIp: {},", srcIp)), std::string::npos)
+      << "SAI tunnel term does not match the outer source";
+
+  XLOG(INFO) << "[Step 3] Deleting tunnel and underlay VLAN...";
+  cleanupGuard.dismiss();
+  cleanup();
+  EXPECT_EQ(saiTunnelObjects("TunnelTermSaiId("), termsBefore)
+      << "SAI tunnel term left after delete";
 }
 
 // ---------------------------------------------------------------------------
