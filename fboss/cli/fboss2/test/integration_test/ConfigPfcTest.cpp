@@ -39,6 +39,12 @@ constexpr int kOneHalf = 8;
 constexpr int kTwo = 9;
 // PfcWatchdogRecoveryAction enum: NO_DROP=0, DROP=1
 constexpr int kRecoveryNoDrop = 0;
+constexpr int kRecoveryDrop = 1;
+
+// PFC watchdog timer values every supported ASIC accepts (see
+// AgentPfcConfigTest).
+constexpr int kWatchdogDetectionMsecs = 100;
+constexpr int kWatchdogRecoveryMsecs = 1000;
 
 struct PgSpec {
   int id;
@@ -213,6 +219,48 @@ class ConfigPfcTest : public Fboss2IntegrationTest {
     return nullptr;
   }
 
+  // The PFC watchdog of port `ifName` in `config`, or null when it has none.
+  static folly::dynamic portWatchdog(
+      const folly::dynamic& config,
+      const std::string& ifName) {
+    auto pfc = portPfc(config, ifName);
+    return pfc.isObject() ? pfc.getDefault("watchdog", nullptr)
+                          : folly::dynamic(nullptr);
+  }
+
+  // Ports other than `ifName` that already have a PFC watchdog.
+  static std::vector<std::string> otherWatchdogPorts(
+      const folly::dynamic& config,
+      const std::string& ifName) {
+    std::vector<std::string> ports;
+    for (const auto& port : config["sw"]["ports"]) {
+      if (port.count("name") && port["name"].asString() != ifName &&
+          port.count("pfc") && port["pfc"].count("watchdog")) {
+        ports.push_back(port["name"].asString());
+      }
+    }
+    return ports;
+  }
+
+  // The agent requires every port with a watchdog to use the same recovery
+  // action, so a test watchdog must match whatever the rest of the DUT
+  // already uses. NO_DROP (the thrift default) when no other port has one.
+  static int otherPortsRecoveryAction(
+      const folly::dynamic& config,
+      const std::string& ifName) {
+    const auto others = otherWatchdogPorts(config, ifName);
+    if (others.empty()) {
+      return kRecoveryNoDrop;
+    }
+    return portWatchdog(config, others.front())
+        .getDefault("recoveryAction", kRecoveryNoDrop)
+        .asInt();
+  }
+
+  static std::string recoveryActionArg(int action) {
+    return action == kRecoveryDrop ? "drop" : "no-drop";
+  }
+
   // Puts `ifName` into a known PFC state: bound to this test's PG policy, on
   // this test's buffer pool, with PFC rx/tx enabled. A watchdog is only
   // accepted on a port bound to an existing priority-group policy, and some
@@ -247,6 +295,30 @@ class ConfigPfcTest : public Fboss2IntegrationTest {
          "tx",
          "enabled"});
     ASSERT_EQ(r.exitCode, 0) << r.stderr;
+  }
+
+  // Stages and commits a complete watchdog on `ifName`.
+  void configureWatchdog(
+      const std::string& ifName,
+      int detectionMsecs,
+      int recoveryMsecs,
+      const std::string& actionArg) {
+    XLOG(INFO) << "Watchdog on " << ifName << ": detection " << detectionMsecs
+               << "ms, recovery " << recoveryMsecs << "ms, " << actionArg;
+    auto r = runCli(
+        {"config",
+         "interface",
+         ifName,
+         "pfc-config",
+         "watchdog-detection-time",
+         std::to_string(detectionMsecs),
+         "watchdog-recovery-time",
+         std::to_string(recoveryMsecs),
+         "watchdog-recovery-action",
+         actionArg});
+    ASSERT_EQ(r.exitCode, 0) << r.stderr;
+    commitConfig();
+    waitForAgentReady();
   }
 
   // Leaves the DUT as bindPortToPgPolicy() found it: removes the port's PFC
@@ -339,6 +411,107 @@ class ConfigPfcTest : public Fboss2IntegrationTest {
     ASSERT_NO_FATAL_FAILURE(removePortPfc(ifName, chain));
   }
 };
+
+// watchdog-detection-time is how long a PFC queue may stay paused before the
+// watchdog declares a deadlock. Changing it alone must edit the existing
+// watchdog in place: recovery time and recovery action stay as they were.
+TEST_F(ConfigPfcTest, WatchdogDetectionTimeMsecs) {
+  std::string ifName = getRandomInterfacePortName();
+  XLOG(INFO) << "Using test interface " << ifName;
+  constexpr int kNewDetectionMsecs = 150;
+
+  const int action = otherPortsRecoveryAction(getRunningConfig(), ifName);
+
+  XLOG(INFO) << "[Step 1] Full watchdog on a port bound to a PG policy";
+  PfcChainState chain;
+  ASSERT_NO_FATAL_FAILURE(bindPortToPgPolicy(ifName, chain));
+  ASSERT_NO_FATAL_FAILURE(configureWatchdog(
+      ifName,
+      kWatchdogDetectionMsecs,
+      kWatchdogRecoveryMsecs,
+      recoveryActionArg(action)));
+
+  auto wd = portWatchdog(getRunningConfig(), ifName);
+  ASSERT_TRUE(wd.isObject()) << "watchdog missing on " << ifName;
+  EXPECT_EQ(wd["detectionTimeMsecs"].asInt(), kWatchdogDetectionMsecs);
+
+  XLOG(INFO) << "[Step 2] Only watchdog-detection-time " << kNewDetectionMsecs;
+  ASSERT_EQ(
+      runCli({"config",
+              "interface",
+              ifName,
+              "pfc-config",
+              "watchdog-detection-time",
+              std::to_string(kNewDetectionMsecs)})
+          .exitCode,
+      0);
+  commitConfig();
+  waitForAgentReady();
+
+  wd = portWatchdog(getRunningConfig(), ifName);
+  ASSERT_TRUE(wd.isObject()) << "watchdog missing on " << ifName;
+  EXPECT_EQ(wd["detectionTimeMsecs"].asInt(), kNewDetectionMsecs);
+  EXPECT_EQ(wd["recoveryTimeMsecs"].asInt(), kWatchdogRecoveryMsecs)
+      << "recovery time reset by a detection-time command";
+  EXPECT_EQ(wd["recoveryAction"].asInt(), action)
+      << "recovery action reset by a detection-time command";
+
+  XLOG(INFO) << "[Step 3] Leaving the DUT as found";
+  ASSERT_NO_FATAL_FAILURE(removePortPfc(ifName, chain));
+
+  XLOG(INFO) << "TEST PASSED";
+}
+
+// watchdog-recovery-time is how long the watchdog keeps a deadlocked queue in
+// recovery before it goes back to honouring PFC. Changing it alone must edit
+// the existing watchdog in place: detection time and recovery action stay as
+// they were.
+TEST_F(ConfigPfcTest, WatchdogRecoveryTimeMsecs) {
+  std::string ifName = getRandomInterfacePortName();
+  XLOG(INFO) << "Using test interface " << ifName;
+  constexpr int kNewRecoveryMsecs = 500;
+
+  const int action = otherPortsRecoveryAction(getRunningConfig(), ifName);
+
+  XLOG(INFO) << "[Step 1] Full watchdog on a port bound to a PG policy";
+  PfcChainState chain;
+  ASSERT_NO_FATAL_FAILURE(bindPortToPgPolicy(ifName, chain));
+  ASSERT_NO_FATAL_FAILURE(configureWatchdog(
+      ifName,
+      kWatchdogDetectionMsecs,
+      kWatchdogRecoveryMsecs,
+      recoveryActionArg(action)));
+
+  auto wd = portWatchdog(getRunningConfig(), ifName);
+  ASSERT_TRUE(wd.isObject()) << "watchdog missing on " << ifName;
+  EXPECT_EQ(wd["recoveryTimeMsecs"].asInt(), kWatchdogRecoveryMsecs);
+
+  XLOG(INFO) << "[Step 2] Only watchdog-recovery-time " << kNewRecoveryMsecs;
+  ASSERT_EQ(
+      runCli({"config",
+              "interface",
+              ifName,
+              "pfc-config",
+              "watchdog-recovery-time",
+              std::to_string(kNewRecoveryMsecs)})
+          .exitCode,
+      0);
+  commitConfig();
+  waitForAgentReady();
+
+  wd = portWatchdog(getRunningConfig(), ifName);
+  ASSERT_TRUE(wd.isObject()) << "watchdog missing on " << ifName;
+  EXPECT_EQ(wd["recoveryTimeMsecs"].asInt(), kNewRecoveryMsecs);
+  EXPECT_EQ(wd["detectionTimeMsecs"].asInt(), kWatchdogDetectionMsecs)
+      << "detection time reset by a recovery-time command";
+  EXPECT_EQ(wd["recoveryAction"].asInt(), action)
+      << "recovery action reset by a recovery-time command";
+
+  XLOG(INFO) << "[Step 3] Leaving the DUT as found";
+  ASSERT_NO_FATAL_FAILURE(removePortPfc(ifName, chain));
+
+  XLOG(INFO) << "TEST PASSED";
+}
 
 TEST_F(ConfigPfcTest, BufferPoolReservedBytes) {
   // Focused coverage for BufferPoolConfig.reservedBytes:
@@ -674,4 +847,82 @@ TEST_F(ConfigPfcTest, TxPfcDurationEnable) {
   if (!HasFailure()) {
     XLOG(INFO) << "TEST PASSED";
   }
+}
+
+// watchdog-recovery-action is what the switch does while it breaks a PFC
+// deadlock: "drop" discards the stuck queue's packets, "no-drop" ignores pause
+// frames and keeps sending. NO_DROP is the thrift default, so the test writes
+// DROP first and then NO_DROP to prove both values land. Changing only the
+// action must leave the two watchdog timers alone.
+TEST_F(ConfigPfcTest, WatchdogRecoveryAction) {
+  std::string ifName = getRandomInterfacePortName();
+  XLOG(INFO) << "Using test interface " << ifName;
+
+  // The agent requires every port with a watchdog to use the same recovery
+  // action, so ports that already have one are switched along with the test
+  // port and put back at the end.
+  const auto startConfig = getRunningConfig();
+  const auto otherPorts = otherWatchdogPorts(startConfig, ifName);
+  const int startAction = otherPortsRecoveryAction(startConfig, ifName);
+  auto setOtherPortsAction = [&](const std::string& actionArg) {
+    for (const auto& port : otherPorts) {
+      auto r = runCli(
+          {"config",
+           "interface",
+           port,
+           "pfc-config",
+           "watchdog-recovery-action",
+           actionArg});
+      ASSERT_EQ(r.exitCode, 0) << r.stderr;
+    }
+  };
+
+  XLOG(INFO) << "[Step 1] Full watchdog with drop, on a port bound to a PG "
+             << "policy (" << otherPorts.size() << " other watchdog ports)";
+  PfcChainState chain;
+  ASSERT_NO_FATAL_FAILURE(bindPortToPgPolicy(ifName, chain));
+  ASSERT_NO_FATAL_FAILURE(setOtherPortsAction("drop"));
+  ASSERT_NO_FATAL_FAILURE(configureWatchdog(
+      ifName, kWatchdogDetectionMsecs, kWatchdogRecoveryMsecs, "drop"));
+
+  auto wd = portWatchdog(getRunningConfig(), ifName);
+  ASSERT_TRUE(wd.isObject()) << "watchdog missing on " << ifName;
+  EXPECT_EQ(wd["recoveryAction"].asInt(), kRecoveryDrop);
+
+  XLOG(INFO) << "[Step 2] Only watchdog-recovery-action no-drop";
+  ASSERT_NO_FATAL_FAILURE(setOtherPortsAction("no-drop"));
+  ASSERT_EQ(
+      runCli({"config",
+              "interface",
+              ifName,
+              "pfc-config",
+              "watchdog-recovery-action",
+              "no-drop"})
+          .exitCode,
+      0);
+  commitConfig();
+  waitForAgentReady();
+
+  wd = portWatchdog(getRunningConfig(), ifName);
+  ASSERT_TRUE(wd.isObject()) << "watchdog missing on " << ifName;
+  EXPECT_EQ(wd["recoveryAction"].asInt(), kRecoveryNoDrop);
+  EXPECT_EQ(wd["detectionTimeMsecs"].asInt(), kWatchdogDetectionMsecs)
+      << "detection time reset by a recovery-action command";
+  EXPECT_EQ(wd["recoveryTimeMsecs"].asInt(), kWatchdogRecoveryMsecs)
+      << "recovery time reset by a recovery-action command";
+
+  XLOG(INFO) << "[Step 3] Leaving the DUT as found";
+  ASSERT_NO_FATAL_FAILURE(setOtherPortsAction(recoveryActionArg(startAction)));
+  ASSERT_NO_FATAL_FAILURE(removePortPfc(ifName, chain));
+  const auto endConfig = getRunningConfig();
+  for (const auto& port : otherPorts) {
+    EXPECT_EQ(
+        portWatchdog(endConfig, port)
+            .getDefault("recoveryAction", kRecoveryNoDrop)
+            .asInt(),
+        startAction)
+        << "recovery action of " << port << " not restored";
+  }
+
+  XLOG(INFO) << "TEST PASSED";
 }
