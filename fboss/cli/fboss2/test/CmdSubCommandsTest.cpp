@@ -1,4 +1,4 @@
-// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
+// Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -35,7 +35,12 @@ utils::ObjectArgTypeId noArgType() {
 class CmdSubCommandsTest : public ::testing::Test {
  protected:
   void SetUp() override {
+    CmdArgsLists::getInstance()->clear();
     app_ = std::make_unique<CLI::App>("Test CLI");
+  }
+
+  void TearDown() override {
+    CmdArgsLists::getInstance()->clear();
   }
 
   std::unique_ptr<CLI::App> app_;
@@ -530,6 +535,45 @@ TEST_F(CmdSubCommandsTest, RegistersBgpConfigFromRealCommandTree) {
   EXPECT_NO_THROW(app_->parse("show bgp config"));
   EXPECT_TRUE(called);
   EXPECT_THROW(app_->parse("show bgp config running"), CLI::ExtrasError);
+}
+
+TEST_F(CmdSubCommandsTest, ValidatesFsdbPathDuringParsing) {
+  CommandTree cmdTree = {RootCommand(
+      "show",
+      "fsdb",
+      "Show FSDB information",
+      {Command(
+          "state",
+          "Show FSDB operational state",
+          []() {},
+          []() {
+            return utils::ObjectArgTypeId::OBJECT_ARG_TYPE_FSDB_PATH;
+          })})};
+  CommandTree emptyTree;
+  std::vector<Command> emptySpecialCmds;
+
+  auto parse = [&](std::vector<std::string> args) {
+    CmdArgsLists::getInstance()->clear();
+    app_ = std::make_unique<CLI::App>("Test CLI");
+    CmdSubcommands::getInstance()->init(
+        *app_, cmdTree, emptyTree, emptySpecialCmds);
+
+    std::vector<char*> argv;
+    for (auto& arg : args) {
+      argv.push_back(arg.data());
+    }
+    app_->parse(static_cast<int>(argv.size()), argv.data());
+  };
+
+  EXPECT_THROW(parse({"fboss2", "show", "fsdb", "state"}), CLI::RequiredError);
+  EXPECT_THROW(
+      parse({"fboss2", "show", "fsdb", "state", "/"}), CLI::ValidationError);
+  EXPECT_THROW(
+      parse({"fboss2", "show", "fsdb", "state", "///"}), CLI::ValidationError);
+  EXPECT_THROW(
+      parse({"fboss2", "show", "fsdb", "state", "agent"}),
+      CLI::ValidationError);
+  EXPECT_NO_THROW(parse({"fboss2", "show", "fsdb", "state", "/agent"}));
 }
 
 TEST_F(CmdSubCommandsTest, RegistersLocalOptionsFromRealCommandTree) {
