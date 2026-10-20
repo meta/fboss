@@ -119,24 +119,34 @@ TEST_F(CmdConfigBgpPolicyRoutingPolicyTermActionTestFixture, argValidation) {
 // ==============================================================================
 
 TEST_F(CmdConfigBgpPolicyRoutingPolicyTermActionTestFixture, setResult) {
-  // Each CLI value maps onto its FlowControlAction arm; the policy and term
-  // are implicitly created.
+  // Each CLI value maps onto the term's single flow-control action entry
+  // (the action bgpd takes on a match); the policy and term are implicitly
+  // created, and term_miss_action (the non-match action) is untouched.
   runResult({"ACCEPT"});
-  EXPECT_EQ(*term().term_miss_action(), FlowControlAction::ACCEPT);
+  ASSERT_EQ(actions().size(), 1);
+  EXPECT_EQ(*actions()[0].type(), BgpPolicyActionType::PERMIT);
 
+  // Re-issuing replaces the entry: bgpd rejects more than one per term.
   runResult({"REJECT"});
-  EXPECT_EQ(*term().term_miss_action(), FlowControlAction::DENY);
+  ASSERT_EQ(actions().size(), 1);
+  EXPECT_EQ(*actions()[0].type(), BgpPolicyActionType::DENY);
 
+  // Attribute actions are kept alongside the flow-control entry.
+  runSet({"local-pref", "200"});
   auto result = runResult({"CONTINUE"});
   EXPECT_THAT(result, HasSubstr("Successfully set result to: CONTINUE"));
   EXPECT_THAT(result, HasSubstr("for routing-policy RM100 term 10"));
+  ASSERT_EQ(actions().size(), 2);
+  EXPECT_EQ(*actions()[0].type(), BgpPolicyActionType::SET_LOCAL_PREF);
+  EXPECT_EQ(*actions()[1].type(), BgpPolicyActionType::CONTINUE);
   EXPECT_EQ(*term().term_miss_action(), FlowControlAction::NEXT_TERM);
   EXPECT_TRUE(sessionFileExists());
 }
 
 TEST_F(CmdConfigBgpPolicyRoutingPolicyTermActionTestFixture, gotoTermRejected) {
-  // GOTO-TERM is documented but deferred (no FlowControlAction arm; the
-  // thrift models it per-action-entry). It must be rejected, not mismapped.
+  // GOTO-TERM is documented but deferred (bgpd's GOTO entry needs a
+  // next_term_id the grammar does not carry). It must be rejected, not
+  // mismapped.
   auto result = runResult({"GOTO-TERM"});
   EXPECT_THAT(
       result,
@@ -198,6 +208,20 @@ TEST_F(CmdConfigBgpPolicyRoutingPolicyTermActionTestFixture, setCommunity) {
   EXPECT_EQ(
       *actions()[0].community_action()->communities(),
       std::vector<std::string>({"65000:200"}));
+}
+
+TEST_F(
+    CmdConfigBgpPolicyRoutingPolicyTermActionTestFixture,
+    invalidCommunityRejected) {
+  // bgpd treats a non-<uint16>:<uint16> value as a regex, which it rejects
+  // for SET/ADD at config load, so the CLI must refuse it up front.
+  for (const auto& bad :
+       {"65000:1OO", "65000", "65536:1", "1:2:3", "65000:", ":100"}) {
+    auto result = runSet({"community", bad});
+    EXPECT_THAT(result, HasSubstr("Invalid community")) << bad;
+  }
+  EXPECT_TRUE(policies().empty());
+  EXPECT_FALSE(sessionFileExists());
 }
 
 TEST_F(CmdConfigBgpPolicyRoutingPolicyTermActionTestFixture, setLocalPref) {

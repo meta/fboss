@@ -13,8 +13,11 @@
 #include "fboss/cli/fboss2/CmdHandler.cpp"
 
 #include <fmt/core.h>
+#include <folly/Conv.h>
 #include <folly/IPAddress.h>
+#include <folly/String.h>
 #include <neteng/fboss/bgp/public_tld/configerator/structs/neteng/fboss/bgp/gen-cpp2/bgp_config_types.h>
+#include <algorithm>
 #include <cstdint>
 #include <functional>
 #include <iostream>
@@ -49,10 +52,10 @@ constexpr std::string_view kNextHop = "next-hop";
 constexpr std::string_view kOrigin = "origin";
 constexpr std::string_view kWeight = "weight";
 
-// result values, mapped onto bgp_policy.FlowControlAction. GOTO-TERM (the
-// sheet's fourth value) is deferred: FlowControlAction has no GOTO arm, and
-// the thrift models "go to term X" as a per-action-entry next_term_id whose
-// target the documented grammar does not carry.
+// result values, mapped onto the flow-control BgpPolicyActionType of the
+// term's match action (PERMIT/DENY/CONTINUE). GOTO-TERM (the sheet's fourth
+// value) is deferred: bgpd's GOTO entry needs a next_term_id target that the
+// documented grammar does not carry.
 constexpr std::string_view kResultAccept = "ACCEPT";
 constexpr std::string_view kResultReject = "REJECT";
 constexpr std::string_view kResultContinue = "CONTINUE";
@@ -76,7 +79,6 @@ using BgpPolicyAction = bgp::bgp_policy::BgpPolicyAction;
 using BgpPolicyActionType = bgp::bgp_policy::BgpPolicyActionType;
 using CommunityActionType = bgp::bgp_policy::CommunityActionType;
 using BgpPolicyTerm = bgp::bgp_policy::BgpPolicyTerm;
-using FlowControlAction = bgp::bgp_policy::FlowControlAction;
 using MedActionType = bgp::bgp_policy::MedActionType;
 using Origin = bgp::bgp_policy::Origin;
 using WeightActionType = bgp::bgp_policy::WeightActionType;
@@ -163,28 +165,49 @@ std::string runTermActionCommand(
 
 // ---- result handler --------------------------------------------------------
 
-std::optional<FlowControlAction> parseResult(const std::string& value) {
+std::optional<BgpPolicyActionType> parseResult(const std::string& value) {
   if (value == kResultAccept) {
-    return FlowControlAction::ACCEPT;
+    return BgpPolicyActionType::PERMIT;
   }
   if (value == kResultReject) {
-    return FlowControlAction::DENY;
+    return BgpPolicyActionType::DENY;
   }
   if (value == kResultContinue) {
-    return FlowControlAction::NEXT_TERM;
+    return BgpPolicyActionType::CONTINUE;
   }
   return std::nullopt;
 }
 
-void setResult(BgpPolicyTerm& term, FlowControlAction result) {
-  term.term_miss_action() = result;
+// The action bgpd's PolicyTerm takes when the term MATCHES is the single
+// flow-control entry (PERMIT/DENY/CONTINUE/GOTO) in policy_action_entries; it
+// defaults to permit when absent. term_miss_action is the action on a
+// non-match and is left alone. bgpd rejects a term carrying more than one
+// flow-control entry, so the result replaces any existing one.
+bool isFlowControlEntry(const BgpPolicyAction& action) {
+  switch (*action.type()) {
+    case BgpPolicyActionType::PERMIT:
+    case BgpPolicyActionType::DENY:
+    case BgpPolicyActionType::CONTINUE:
+    case BgpPolicyActionType::GOTO:
+      return true;
+    default:
+      return false;
+  }
+}
+
+void setResult(BgpPolicyTerm& term, BgpPolicyActionType result) {
+  auto& actions = *term.policy_action_entries();
+  actions.erase(
+      std::remove_if(actions.begin(), actions.end(), isFlowControlEntry),
+      actions.end());
+  actions.emplace_back().type() = result;
 }
 
 const AttrHandler<BgpPolicyTerm>& resultHandler() {
   static const std::string kResultValues =
       fmt::format("{}|{}|{}", kResultAccept, kResultReject, kResultContinue);
   static const AttrHandler<BgpPolicyTerm> kHandler =
-      enumAttr<BgpPolicyTerm, FlowControlAction>(
+      enumAttr<BgpPolicyTerm, BgpPolicyActionType>(
           "result", kResultValues, parseResult, setResult);
   return kHandler;
 }
@@ -274,6 +297,18 @@ Result actionAsPathPrepend(BgpPolicyTerm& term, const Tokens& values) {
           values.size()));
 }
 
+// Mirrors bgpd's parseCommunityStr: exactly two uint16 parts separated by a
+// single ':'. bgpd treats anything else as a regex, which it only allows for
+// REMOVE, so an invalid value here would fail the daemon's config load.
+bool isValidCommunity(const std::string& value) {
+  std::vector<std::string_view> parts;
+  folly::split(':', value, parts);
+  return parts.size() == 2 &&
+      std::all_of(parts.begin(), parts.end(), [](std::string_view part) {
+           return folly::tryTo<uint16_t>(part).hasValue();
+         });
+}
+
 // <community-string> [additive]: additive appends (ADD), the default
 // overwrites (SET). bgpd's CommunityAction reads the thrift-deprecated but
 // still load-bearing community_action.communities string list — the sheet's
@@ -282,6 +317,12 @@ Result actionCommunity(BgpPolicyTerm& term, const Tokens& values) {
   if (values.empty() || values.size() > 2 ||
       (values.size() == 2 && values[1] != kCommunityAdditive)) {
     return err("Error: community requires <community-string> [additive]");
+  }
+  if (!isValidCommunity(values[0])) {
+    return err(
+        fmt::format(
+            "Error: Invalid community '{}'; expected <0-65535>:<0-65535>",
+            values[0]));
   }
   const bool additive = values.size() == 2;
   auto& communityAction =
