@@ -1530,13 +1530,19 @@ class GenerateRoutingPolicyTermActionCommandsTest(unittest.TestCase):
     TERM = "config protocol bgp policy routing-policy RM term 10"
 
     def test_result(self) -> None:
-        for raw, keyword in ((1, "ACCEPT"), (2, "REJECT"), ("DENY", "REJECT")):
+        # The result is the flow-control action entry (the action on a match).
+        for raw, keyword in (
+            (5, "ACCEPT"),
+            (6, "REJECT"),
+            (7, "CONTINUE"),
+            ("DENY", "REJECT"),
+        ):
             commands = generate_routing_policy_term_action_commands(
-                self.TERM, {"term_miss_action": raw}
+                self.TERM, {"policy_action_entries": [{"type": raw}]}
             )
             self.assertEqual(commands, [f"{self.TERM} action result {keyword}"], raw)
 
-    def test_result_next_term_default_omitted(self) -> None:
+    def test_term_miss_action_default_omitted(self) -> None:
         self.assertEqual(
             generate_routing_policy_term_action_commands(
                 self.TERM, {"term_miss_action": 3}
@@ -1544,12 +1550,15 @@ class GenerateRoutingPolicyTermActionCommandsTest(unittest.TestCase):
             [],
         )
 
-    def test_result_unexpressible_warns(self) -> None:
-        commands = generate_routing_policy_term_action_commands(
-            self.TERM, {"term_miss_action": 6}
-        )
-        self.assertEqual(len(commands), 1)
-        self.assertTrue(commands[0].startswith("# WARNING:"))
+    def test_term_miss_action_non_default_warns(self) -> None:
+        # term_miss_action is the action on a non-match; the CLI has no
+        # spelling for it.
+        for raw in (1, 2, 6):
+            commands = generate_routing_policy_term_action_commands(
+                self.TERM, {"term_miss_action": raw}
+            )
+            self.assertEqual(len(commands), 1, raw)
+            self.assertTrue(commands[0].startswith("# WARNING:"), raw)
 
     def test_set_actions(self) -> None:
         term = {
@@ -1613,9 +1622,9 @@ class GenerateRoutingPolicyTermActionCommandsTest(unittest.TestCase):
             "RM",
             {
                 "sequence_number": 10,
-                "term_miss_action": 1,
                 "policy_action_entries": [
-                    {"type": 3, "set_local_pref": {"local_pref": 5}}
+                    {"type": 5},
+                    {"type": 3, "set_local_pref": {"local_pref": 5}},
                 ],
             },
         )

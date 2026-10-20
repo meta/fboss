@@ -880,9 +880,9 @@ _POLICY_ACTION_TYPE_NAMES = {
 _ORIGIN_NAMES = {1: "IGP", 2: "EGP", 3: "INCOMPLETE"}
 _COMMUNITY_ACTION_TYPE_NAMES = {1: "ADD", 2: "SET", 3: "REMOVE"}
 _MED_ACTION_TYPE_NAMES = {1: "SET", 2: "UPDATE", 3: "IGP"}
-# term_miss_action -> `action result` keyword; other flow-control values have
-# no CLI spelling.
-_TERM_RESULT_KEYWORDS = {"ACCEPT": "ACCEPT", "DENY": "REJECT", "NEXT_TERM": "CONTINUE"}
+# Flow-control BgpPolicyActionType (the action bgpd takes when the term
+# matches) -> `action result` keyword; GOTO has no CLI spelling.
+_TERM_RESULT_KEYWORDS = {"PERMIT": "ACCEPT", "DENY": "REJECT", "CONTINUE": "CONTINUE"}
 
 
 def _enum_name(raw: Any, names: dict[int, str]) -> str:
@@ -990,19 +990,21 @@ def generate_routing_policy_term_action_commands(
     label = term_prefix.removeprefix("config protocol bgp policy ")
     commands = []
     if "term_miss_action" in term:
-        result = _flow_control_action_name(term["term_miss_action"])
-        if result in _TERM_RESULT_KEYWORDS:
-            if result != "NEXT_TERM":  # the thrift and CLI default
-                commands.append(
-                    f"{term_prefix} action result {_TERM_RESULT_KEYWORDS[result]}"
-                )
-        else:
+        miss_action = _flow_control_action_name(term["term_miss_action"])
+        if miss_action != "NEXT_TERM":  # the thrift default
             commands.append(
                 _warning(
-                    f"{label}: term_miss_action {result} has no CLI equivalent; not emitted"
+                    f"{label}: term_miss_action {miss_action} has no CLI "
+                    "equivalent; not emitted"
                 )
             )
     for action in term.get("policy_action_entries") or []:
+        kind = _enum_name(action.get("type", 0), _POLICY_ACTION_TYPE_NAMES)
+        if kind in _TERM_RESULT_KEYWORDS:
+            commands.append(
+                f"{term_prefix} action result {_TERM_RESULT_KEYWORDS[kind]}"
+            )
+            continue
         commands.extend(_generate_action_set_command(term_prefix, label, action))
     return commands
 

@@ -4,12 +4,11 @@
  * End-to-end tests for `fboss2-dev config protocol bgp policy routing-policy
  * <name> term <seq-num> action result|set ...`.
  *
- * Scope: the action level of a routing-policy term (term_miss_action and
- * bgp_policy.BgpPolicyAction entries in .policy_entries[]
- * .policy_action_entries[]). Like `term`, `action` is a real CLI11
- * subcommand, so these tests exercise the two-deep subcommand dispatch
- * through the full CLI parse. Every test stages the change AND commits it,
- * then asserts the values landed at the correct thrift field paths inside
+ * Scope: the action level of a routing-policy term (bgp_policy.BgpPolicyAction
+ * entries in .policy_entries[].policy_action_entries[]). Like `term`, `action`
+ * is a real CLI11 subcommand, so these tests exercise the two-deep subcommand
+ * dispatch through the full CLI parse. Every test stages the change AND commits
+ * it, then asserts the values landed at the correct thrift field paths inside
  * bgpd's running config (via getRunningConfig RPC).
  *
  * Requirements:
@@ -100,7 +99,7 @@ class ConfigBgpPolicyRoutingPolicyTermActionTest : public ConfigBgpTestBase {
 TEST_F(ConfigBgpPolicyRoutingPolicyTermActionTest, SetActionsAndCommit) {
   discardSession();
   clearBgpSession();
-  stageAction({"result", "CONTINUE"});
+  stageAction({"result", "REJECT"});
   stageAction({"set", "as-path", "prepend", "65000", "65000"});
   stageAction({"set", "community", "65000:100", "additive"});
   stageAction({"set", "local-pref", "200"});
@@ -119,8 +118,16 @@ TEST_F(ConfigBgpPolicyRoutingPolicyTermActionTest, SetActionsAndCommit) {
   ASSERT_NE(term, nullptr) << "bgpd's running config has no routing-policy "
                            << kPolicy << " term 10";
 
-  // result CONTINUE → FlowControlAction.NEXT_TERM = 3 (integer on the
-  // SimpleJSON wire).
+  // result REJECT → a flow-control entry of BgpPolicyActionType.DENY = 6
+  // (integer on the SimpleJSON wire), the action bgpd takes on a match;
+  // term_miss_action keeps its NEXT_TERM = 3 default.
+  int denyEntries = 0;
+  for (const auto& action : (*term)["policy_action_entries"]) {
+    if (action["type"].asInt() == 6) {
+      ++denyEntries;
+    }
+  }
+  EXPECT_EQ(denyEntries, 1);
   EXPECT_EQ((*term)["term_miss_action"].asInt(), 3);
 
   const auto* prepend = findAction(*term, "set_as_path_prepend");
