@@ -16,6 +16,8 @@
 #include <folly/String.h>
 #include <algorithm>
 #include <iostream>
+#include "fboss/agent/hw/switch_asics/HwAsic.h"
+#include "fboss/cli/fboss2/commands/config/gen/agent/AgentConfigGenUtils.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 
 namespace facebook::fboss {
@@ -35,6 +37,37 @@ std::string typesToString(const std::vector<cfg::CounterType>& types) {
                                         : std::string("PACKETS"));
   }
   return folly::join(",", names);
+}
+
+// Returns a warning line (with a leading newline) if BYTES is requested but the
+// ASIC in the config does not support ACL byte counters, or an empty string.
+std::string byteCounterWarning(
+    const cfg::SwitchConfig& swConfig,
+    const std::string& name,
+    const std::vector<cfg::CounterType>& types) {
+  if (std::find(types.begin(), types.end(), cfg::CounterType::BYTES) ==
+      types.end()) {
+    return "";
+  }
+  std::unique_ptr<HwAsic> asic;
+  try {
+    asic = configgen::generateHwAsic(*swConfig.switchSettings());
+  } catch (const std::exception&) {
+    // ASIC unknown from the config; nothing to check against.
+    return "";
+  }
+  if (asic->isSupported(HwAsic::Feature::ACL_BYTE_COUNTER)) {
+    return "";
+  }
+  auto asicName = asic->getAsicTypeStr();
+  constexpr std::string_view kPrefix = "ASIC_TYPE_";
+  if (asicName.starts_with(kPrefix)) {
+    asicName.erase(0, kPrefix.size());
+  }
+  return fmt::format(
+      "\nWarning: ASIC {} does not support ACL byte counters; '{}.bytes' will always report 0",
+      asicName,
+      name);
 }
 } // namespace
 
@@ -108,9 +141,10 @@ CmdConfigTrafficCounterTraits::RetType CmdConfigTrafficCounter::queryClient(
     session.saveConfig(
         cli::ServiceType::AGENT, cli::ConfigActionLevel::HITLESS);
     return fmt::format(
-        "Successfully updated traffic counter '{}' to type '{}'",
+        "Successfully updated traffic counter '{}' to type '{}'{}",
         name,
-        typesToString(newTypes));
+        typesToString(newTypes),
+        byteCounterWarning(swConfig, name, newTypes));
   }
 
   cfg::TrafficCounter newCounter;
@@ -121,9 +155,10 @@ CmdConfigTrafficCounterTraits::RetType CmdConfigTrafficCounter::queryClient(
   session.saveConfig(cli::ServiceType::AGENT, cli::ConfigActionLevel::HITLESS);
 
   return fmt::format(
-      "Successfully created traffic counter '{}' with type '{}'",
+      "Successfully created traffic counter '{}' with type '{}'{}",
       name,
-      typesToString(newTypes));
+      typesToString(newTypes),
+      byteCounterWarning(swConfig, name, newTypes));
 }
 
 void CmdConfigTrafficCounter::printOutput(const RetType& output) {
