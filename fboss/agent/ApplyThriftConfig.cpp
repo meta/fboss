@@ -4805,6 +4805,37 @@ std::shared_ptr<AclMap> ThriftConfigApplier::updateAclsImpl(
       }) |
       folly::gen::appendTo(counterByName);
 
+  std::set<std::string> asicsWithoutByteCounters;
+  for (const auto& [switchId, asic] : hwAsicTable_->getHwAsics()) {
+    if (!asic->isSupported(HwAsic::Feature::ACL_BYTE_COUNTER)) {
+      auto asicName = asic->getAsicTypeStr();
+      constexpr std::string_view kPrefix = "ASIC_TYPE_";
+      if (asicName.starts_with(kPrefix)) {
+        asicName.erase(0, kPrefix.size());
+      }
+      asicsWithoutByteCounters.insert(std::move(asicName));
+    }
+  }
+  // Many ACL entries can share one counter; warn once per counter.
+  std::unordered_set<std::string> byteCounterWarned;
+  auto warnIfByteCounterUnsupported = [&](const cfg::TrafficCounter& counter) {
+    if (asicsWithoutByteCounters.empty() ||
+        byteCounterWarned.contains(*counter.name())) {
+      return;
+    }
+    const auto& types = *counter.types();
+    if (std::find(types.begin(), types.end(), cfg::CounterType::BYTES) ==
+        types.end()) {
+      return;
+    }
+    byteCounterWarned.insert(*counter.name());
+    XLOG(WARN) << fmt::format(
+        "Traffic counter '{}': BYTES requested but ASIC {} does not support ACL byte counters; '{}.bytes' will always report 0",
+        *counter.name(),
+        folly::join(",", asicsWithoutByteCounters),
+        *counter.name());
+  };
+
   // Let's get a map of traffic policies to name
   flat_map<std::string, const cfg::MatchToAction*> cpuPolicyByName;
   if (cfg_->cpuTrafficPolicy() && cfg_->cpuTrafficPolicy()->trafficPolicy()) {
@@ -4881,6 +4912,7 @@ std::shared_ptr<AclMap> ThriftConfigApplier::updateAclsImpl(
                 " found.");
           }
           matchAction.setTrafficCounter(*(counter->second));
+          warnIfByteCounterUnsupported(*(counter->second));
         }
         if (auto setDscp = mta.action()->setDscp()) {
           matchAction.setSetDscp(*setDscp);

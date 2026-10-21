@@ -19,6 +19,7 @@
 #include <utility>
 
 #include "fboss/agent/gen-cpp2/agent_config_types.h"
+#include "fboss/agent/hw/switch_asics/HwAsic.h"
 #include "fboss/agent/platforms/common/PlatformMapping.h"
 #include "fboss/cli/fboss2/commands/config/gen/ConfigGenerationUtils.h"
 #include "fboss/configs/platforms/generic/forwarding_stack/utils/LinkTopologyUtils.h"
@@ -96,6 +97,12 @@ ResolvedAgentConfigInputs resolveAgentConfigInputs(
     const std::optional<cfg::AsicConfigType>& asicConfigType = std::nullopt,
     std::optional<std::string_view> asicConfigVariant = std::nullopt,
     std::optional<std::string_view> linkTopologyVariant = std::nullopt);
+
+// Constructs an HwAsic from the first switch in switchSettings, for querying
+// HwAsic::isSupported() and ASIC type/vendor. Throws if switchSettings has no
+// switch information.
+std::unique_ptr<HwAsic> generateHwAsic(
+    const cfg::SwitchSettings& switchSettings);
 
 // Generates SwitchSettings for a single NPU platform. Multi-ASIC platforms are
 // rejected until their switch IDs and indexes can be supplied explicitly.
