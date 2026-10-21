@@ -343,6 +343,32 @@ TEST(ControlPlane, applySameConfig) {
   EXPECT_EQ(nullptr, stateV2);
 }
 
+TEST(ControlPlane, rejectUnsupportedCpuQueueStreamType) {
+  auto platform = createMockPlatform();
+  auto stateV0 = genCPUSwitchState();
+
+  // MockAsic CPU port only supports MULTICAST queues
+  auto cfgCpuQueues = getConfigCPUQueues();
+  *cfgCpuQueues.front().streamType() = cfg::StreamType::UNICAST;
+  cfg::SwitchConfig config;
+  *config.cpuQueues() = cfgCpuQueues;
+  EXPECT_THROW(
+      publishAndApplyConfig(stateV0, &config, platform.get()), FbossError);
+}
+
+TEST(ControlPlane, rejectUnsupportedCpuVoqStreamType) {
+  auto platform = createMockPlatform();
+  auto stateV0 = genCPUSwitchState();
+
+  auto cfgCpuVoqs = get2Stage3q2qCPUVoqs();
+  *cfgCpuVoqs.front().streamType() = cfg::StreamType::UNICAST;
+  cfg::SwitchConfig config;
+  *config.cpuQueues() = getConfigCPUQueues();
+  config.cpuVoqs() = cfgCpuVoqs;
+  EXPECT_THROW(
+      publishAndApplyConfig(stateV0, &config, platform.get()), FbossError);
+}
+
 TEST(ControlPlane, resetLowPrioQueue) {
   auto platform = createMockPlatform();
   auto stateV0 = genCPUSwitchState();
