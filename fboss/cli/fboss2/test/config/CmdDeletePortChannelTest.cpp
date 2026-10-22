@@ -201,6 +201,34 @@ TEST_F(CmdDeletePortChannelTestFixture, queryClientResetsMinimumLinks) {
   EXPECT_EQ(pc->minimumCapacity()->get_linkPercentage(), 1.0);
 }
 
+TEST_F(
+    CmdDeletePortChannelTestFixture,
+    queryClientResetMinimumLinksBelowToUpThrows) {
+  // Reset restores ALL_LINKS (2 links here), which must not exceed a
+  // configured minimumCapacityToUp of 1.
+  auto* pc = portChannel("port-channel100");
+  ASSERT_NE(pc, nullptr);
+  pc->minimumCapacity()->set_linkCount(1);
+  cfg::MinimumCapacity toUp;
+  toUp.set_linkCount(1);
+  pc->minimumCapacityToUp() = toUp;
+
+  auto cmd = CmdDeletePortChannel();
+  try {
+    cmd.queryClient(
+        localhost(),
+        PortChannelDeleteArgs({"port-channel100", "minimum-links"}));
+    FAIL() << "Expected std::invalid_argument";
+  } catch (const std::invalid_argument& e) {
+    EXPECT_THAT(std::string(e.what()), HasSubstr("minimumCapacityToUp"));
+  }
+  pc = portChannel("port-channel100");
+  ASSERT_NE(pc, nullptr);
+  ASSERT_EQ(
+      pc->minimumCapacity()->getType(), cfg::MinimumCapacity::Type::linkCount);
+  EXPECT_EQ(pc->minimumCapacity()->get_linkCount(), 1);
+}
+
 // ---- CmdDeletePortChannelMember::queryClient ----
 
 TEST_F(CmdDeletePortChannelTestFixture, queryClientRemovesMember) {
@@ -215,6 +243,32 @@ TEST_F(CmdDeletePortChannelTestFixture, queryClientRemovesMember) {
   ASSERT_NE(pc, nullptr);
   ASSERT_EQ(pc->memberPorts()->size(), 1);
   EXPECT_EQ(*(*pc->memberPorts())[0].memberPortID(), 1);
+}
+
+TEST_F(
+    CmdDeletePortChannelTestFixture,
+    queryClientRemoveMemberBelowToUpThrows) {
+  // minimum-links stays 2 while a 100% "to up" threshold drops to 1 with
+  // the member count.
+  auto* pc = portChannel("port-channel100");
+  ASSERT_NE(pc, nullptr);
+  cfg::MinimumCapacity toUp;
+  toUp.set_linkPercentage(1.0);
+  pc->minimumCapacityToUp() = toUp;
+
+  auto cmd = CmdDeletePortChannelMember();
+  try {
+    cmd.queryClient(
+        localhost(),
+        PortChannelDeleteArgs({"port-channel100"}),
+        PortChannelMemberDeleteArgs({"eth1/2/1"}));
+    FAIL() << "Expected std::invalid_argument";
+  } catch (const std::invalid_argument& e) {
+    EXPECT_THAT(std::string(e.what()), HasSubstr("minimumCapacityToUp"));
+  }
+  pc = portChannel("port-channel100");
+  ASSERT_NE(pc, nullptr);
+  EXPECT_EQ(pc->memberPorts()->size(), 2);
 }
 
 TEST_F(CmdDeletePortChannelTestFixture, queryClientRemoveAllMembersThrows) {

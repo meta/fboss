@@ -238,11 +238,35 @@ std::optional<std::string> portChannelForMember(
     int32_t portId);
 
 /*
+ * Resolves a MinimumCapacity to an absolute link count for the given member
+ * count, as ThriftConfigApplier::computeMinimumLinkCount does (linkCount as
+ * is, linkPercentage as ceil(pct * memberCount)).
+ */
+int32_t resolveMinimumLinkCount(
+    const cfg::MinimumCapacity& capacity,
+    size_t memberCount);
+
+/*
+ * The agent CHECK-aborts on apply when an aggregate port's optional
+ * minimumCapacityToUp resolves below its minimumCapacity
+ * (ThriftConfigApplier::createAggPort/updateAggPort). Throws
+ * std::invalid_argument when the port-channel, with `minimumCapacity` and
+ * `memberCount` members, would trip that check; a no-op when
+ * minimumCapacityToUp is unset.
+ */
+void checkMinimumCapacityToUp(
+    const cfg::AggregatePort& portChannel,
+    const cfg::MinimumCapacity& minimumCapacity,
+    size_t memberCount);
+
+/*
  * Removes the given member interfaces from a port-channel. Duplicate names
  * are removed once. Throws std::invalid_argument when a name is not a
- * member, or when the removal would leave the port-channel with no members
+ * member, when the removal would leave the port-channel with no members
  * (an aggregate port without members crashes the agent when applied; delete
- * the port-channel instead). Returns the list of removed interface names.
+ * the port-channel instead), or when it would drop minimumCapacityToUp below
+ * minimumCapacity (see checkMinimumCapacityToUp). Returns the list of removed
+ * interface names.
  */
 std::vector<std::string> removePortChannelMembers(
     cfg::AggregatePort& portChannel,
