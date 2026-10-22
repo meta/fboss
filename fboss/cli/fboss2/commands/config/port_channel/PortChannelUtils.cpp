@@ -205,7 +205,7 @@ PortChannelAttrOps<cfg::AggregatePort> minimumLinksAttr() {
     if (changed) {
       cfg::MinimumCapacity requested;
       requested.set_linkCount(static_cast<int8_t>(count));
-      checkMinimumCapacityToUp(
+      checkMinimumCapacity(
           portChannel, requested, portChannel.memberPorts()->size());
       minimumCapacity = requested;
     }
@@ -219,7 +219,7 @@ PortChannelAttrOps<cfg::AggregatePort> minimumLinksAttr() {
     if (changed) {
       cfg::MinimumCapacity allLinks;
       allLinks.set_linkPercentage(kDefaultMinimumLinkPercentage);
-      checkMinimumCapacityToUp(
+      checkMinimumCapacity(
           portChannel, allLinks, portChannel.memberPorts()->size());
       minimumCapacity = allLinks;
     }
@@ -541,15 +541,25 @@ int32_t resolveMinimumLinkCount(
       std::ceil(capacity.get_linkPercentage() * memberCount));
 }
 
-void checkMinimumCapacityToUp(
+void checkMinimumCapacity(
     const cfg::AggregatePort& portChannel,
     const cfg::MinimumCapacity& minimumCapacity,
     size_t memberCount) {
+  int32_t minLinks = resolveMinimumLinkCount(minimumCapacity, memberCount);
+  if (minLinks > static_cast<int32_t>(memberCount)) {
+    throw std::invalid_argument(
+        fmt::format(
+            "{} {} exceeds the {} member(s) of port-channel '{}'; the "
+            "port-channel could never come up",
+            kPortChannelAttrMinimumLinks,
+            minLinks,
+            memberCount,
+            *portChannel.name()));
+  }
   const auto& toUp = portChannel.minimumCapacityToUp();
   if (!toUp.has_value()) {
     return;
   }
-  int32_t minLinks = resolveMinimumLinkCount(minimumCapacity, memberCount);
   int32_t toUpLinks = resolveMinimumLinkCount(*toUp, memberCount);
   if (toUpLinks < minLinks) {
     throw std::invalid_argument(
@@ -599,7 +609,7 @@ std::vector<std::string> removePortChannelMembers(
             *portChannel.name()));
   }
 
-  checkMinimumCapacityToUp(
+  checkMinimumCapacity(
       portChannel,
       *portChannel.minimumCapacity(),
       members.size() - portIds.size());

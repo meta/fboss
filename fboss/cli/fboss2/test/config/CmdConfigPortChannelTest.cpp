@@ -290,6 +290,10 @@ TEST_F(CmdConfigPortChannelTestFixture, queryClientSetsMinimumLinks) {
   // Fixture already has linkCount 1, so this is a no-op.
   EXPECT_THAT(result, HasSubstr("No changes"));
 
+  CmdConfigPortChannelMember().queryClient(
+      localhost(),
+      PortChannelConfigArgs({"port-channel100"}),
+      PortChannelMemberArgs({"add", "eth1/2/1"}));
   result = cmd.queryClient(
       localhost(),
       PortChannelConfigArgs({"port-channel100", "minimum-links", "2"}));
@@ -333,9 +337,34 @@ TEST_F(CmdConfigPortChannelTestFixture, queryClientMinimumLinksOutOfRange) {
 
 TEST_F(
     CmdConfigPortChannelTestFixture,
+    queryClientMinimumLinksAboveMemberCountThrows) {
+  // The agent accepts a minimum above the member count, but the LAG can
+  // then never forward, so the CLI refuses it.
+  auto cmd = CmdConfigPortChannel();
+  try {
+    cmd.queryClient(
+        localhost(),
+        PortChannelConfigArgs({"port-channel100", "minimum-links", "2"}));
+    FAIL() << "Expected std::invalid_argument";
+  } catch (const std::invalid_argument& e) {
+    EXPECT_THAT(std::string(e.what()), HasSubstr("exceeds the 1 member"));
+  }
+  auto* pc = portChannel("port-channel100");
+  ASSERT_NE(pc, nullptr);
+  ASSERT_EQ(
+      pc->minimumCapacity()->getType(), cfg::MinimumCapacity::Type::linkCount);
+  EXPECT_EQ(pc->minimumCapacity()->get_linkCount(), 1);
+}
+
+TEST_F(
+    CmdConfigPortChannelTestFixture,
     queryClientMinimumLinksAboveToUpThrows) {
   // The agent CHECK-aborts when minimumCapacityToUp resolves below
   // minimumCapacity, so the CLI must refuse to stage such a config.
+  CmdConfigPortChannelMember().queryClient(
+      localhost(),
+      PortChannelConfigArgs({"port-channel100"}),
+      PortChannelMemberArgs({"add", "eth1/2/1"}));
   auto* pc = portChannel("port-channel100");
   ASSERT_NE(pc, nullptr);
   cfg::MinimumCapacity toUp;
@@ -357,13 +386,7 @@ TEST_F(
       pc->minimumCapacity()->getType(), cfg::MinimumCapacity::Type::linkCount);
   EXPECT_EQ(pc->minimumCapacity()->get_linkCount(), 1);
 
-  // Equal is allowed: raise the "to up" count alongside the member count.
-  CmdConfigPortChannelMember().queryClient(
-      localhost(),
-      PortChannelConfigArgs({"port-channel100"}),
-      PortChannelMemberArgs({"add", "eth1/2/1"}));
-  pc = portChannel("port-channel100");
-  ASSERT_NE(pc, nullptr);
+  // Equal is allowed.
   toUp.set_linkCount(2);
   pc->minimumCapacityToUp() = toUp;
   auto result = cmd.queryClient(
@@ -673,17 +696,36 @@ TEST_F(
   auto* pc = portChannel("port-channel100");
   ASSERT_NE(pc, nullptr);
   cfg::MinimumCapacity toUp;
-  toUp.set_linkPercentage(0.75);
+  toUp.set_linkPercentage(0.5);
   pc->minimumCapacityToUp() = toUp;
 
-  // 3 -> 2 members: ceil(0.75 * 2) = 2 >= minimum-links 2, allowed.
-  auto result = cmd.queryClient(
+  // 3 -> 2 members: ceil(0.5 * 2) = 1 < minimum-links 2, refused.
+  try {
+    cmd.queryClient(
+        localhost(),
+        PortChannelConfigArgs({"port-channel100"}),
+        PortChannelMemberArgs({"remove", "eth1/3/1"}));
+    FAIL() << "Expected std::invalid_argument";
+  } catch (const std::invalid_argument& e) {
+    EXPECT_THAT(std::string(e.what()), HasSubstr("minimumCapacityToUp"));
+  }
+  pc = portChannel("port-channel100");
+  ASSERT_NE(pc, nullptr);
+  EXPECT_EQ(pc->memberPorts()->size(), 3);
+}
+
+TEST_F(
+    CmdConfigPortChannelTestFixture,
+    queryClientMemberRemoveBelowMinimumLinksThrows) {
+  auto cmd = CmdConfigPortChannelMember();
+  cmd.queryClient(
       localhost(),
       PortChannelConfigArgs({"port-channel100"}),
-      PortChannelMemberArgs({"remove", "eth1/3/1"}));
-  EXPECT_THAT(result, HasSubstr("Successfully removed"));
+      PortChannelMemberArgs({"add", "eth1/2/1"}));
+  CmdConfigPortChannel().queryClient(
+      localhost(),
+      PortChannelConfigArgs({"port-channel100", "minimum-links", "2"}));
 
-  // 2 -> 1 member: ceil(0.75 * 1) = 1 < minimum-links 2, refused.
   try {
     cmd.queryClient(
         localhost(),
@@ -691,9 +733,9 @@ TEST_F(
         PortChannelMemberArgs({"remove", "eth1/2/1"}));
     FAIL() << "Expected std::invalid_argument";
   } catch (const std::invalid_argument& e) {
-    EXPECT_THAT(std::string(e.what()), HasSubstr("minimumCapacityToUp"));
+    EXPECT_THAT(std::string(e.what()), HasSubstr("exceeds the 1 member"));
   }
-  pc = portChannel("port-channel100");
+  auto* pc = portChannel("port-channel100");
   ASSERT_NE(pc, nullptr);
   EXPECT_EQ(pc->memberPorts()->size(), 2);
 }

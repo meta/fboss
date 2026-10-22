@@ -79,7 +79,7 @@ class CmdDeletePortChannelTestFixture : public CmdConfigTestBase {
             "holdTimerMultiplier": 3
           }
         ],
-        "minimumCapacity": {"linkCount": 2}
+        "minimumCapacity": {"linkCount": 1}
       }
     ]
   }
@@ -247,14 +247,12 @@ TEST_F(CmdDeletePortChannelTestFixture, queryClientRemovesMember) {
 
 TEST_F(
     CmdDeletePortChannelTestFixture,
-    queryClientRemoveMemberBelowToUpThrows) {
-  // minimum-links stays 2 while a 100% "to up" threshold drops to 1 with
-  // the member count.
+    queryClientRemoveMemberBelowMinimumLinksThrows) {
+  // A linkCount 2 would leave the remaining single member below the
+  // minimum, so the LAG could never come up.
   auto* pc = portChannel("port-channel100");
   ASSERT_NE(pc, nullptr);
-  cfg::MinimumCapacity toUp;
-  toUp.set_linkPercentage(1.0);
-  pc->minimumCapacityToUp() = toUp;
+  pc->minimumCapacity()->set_linkCount(2);
 
   auto cmd = CmdDeletePortChannelMember();
   try {
@@ -264,7 +262,7 @@ TEST_F(
         PortChannelMemberDeleteArgs({"eth1/2/1"}));
     FAIL() << "Expected std::invalid_argument";
   } catch (const std::invalid_argument& e) {
-    EXPECT_THAT(std::string(e.what()), HasSubstr("minimumCapacityToUp"));
+    EXPECT_THAT(std::string(e.what()), HasSubstr("exceeds the 1 member"));
   }
   pc = portChannel("port-channel100");
   ASSERT_NE(pc, nullptr);
