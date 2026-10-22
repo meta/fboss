@@ -498,6 +498,33 @@ TEST_F(
   }
 }
 
+TEST_F(
+    CmdConfigPortChannelTestFixture,
+    queryClientMemberAddPortWithRouterInterfaceThrows) {
+  // eth1/4/1 is routed; give it a port router interface. The agent binds a
+  // LAG to its first member's interface and rejects a port bound to more
+  // than one router interface, so the member must be refused.
+  auto& swConfig = *ConfigSession::getInstance().getAgentConfig().sw();
+  cfg::Interface portIntf;
+  portIntf.intfID() = 4004;
+  portIntf.routerID() = 0;
+  portIntf.type() = cfg::InterfaceType::PORT;
+  portIntf.portID() = 4;
+  swConfig.interfaces()->push_back(portIntf);
+
+  auto cmd = CmdConfigPortChannelMember();
+  try {
+    cmd.queryClient(
+        localhost(),
+        PortChannelConfigArgs({"port-channel200"}),
+        PortChannelMemberArgs({"add", "eth1/4/1"}));
+    FAIL() << "Expected std::invalid_argument";
+  } catch (const std::invalid_argument& e) {
+    EXPECT_THAT(std::string(e.what()), HasSubstr("router interface 4004"));
+  }
+  EXPECT_EQ(portChannel("port-channel200"), nullptr);
+}
+
 TEST_F(CmdConfigPortChannelTestFixture, queryClientMemberAddUnknownPortThrows) {
   auto cmd = CmdConfigPortChannelMember();
   EXPECT_THROW(

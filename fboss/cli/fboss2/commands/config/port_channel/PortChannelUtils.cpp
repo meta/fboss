@@ -518,6 +518,17 @@ std::vector<int32_t> interfacesBoundToPortChannel(
   return intfIds;
 }
 
+std::optional<int32_t> interfaceBoundToPort(
+    const cfg::SwitchConfig& swConfig,
+    int32_t portId) {
+  for (const auto& intf : *swConfig.interfaces()) {
+    if (intf.portID().has_value() && *intf.portID() == portId) {
+      return *intf.intfID();
+    }
+  }
+  return std::nullopt;
+}
+
 std::optional<std::string> portChannelForMember(
     const cfg::SwitchConfig& swConfig,
     int32_t portId) {

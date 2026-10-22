@@ -176,6 +176,16 @@ CmdConfigPortChannelMember::queryClient(
                 memberName,
                 *other));
       }
+      if (auto intfId = interfaceBoundToPort(swConfig, portId)) {
+        throw std::invalid_argument(
+            fmt::format(
+                "Interface '{}' has its own port router interface {}; a "
+                "port-channel member cannot carry a standalone router "
+                "interface, remove interface {} first",
+                memberName,
+                *intfId,
+                *intfId));
+      }
       int32_t vlan = *port->ingressVlan();
       if (memberVlan && vlan != *memberVlan) {
         throw std::invalid_argument(

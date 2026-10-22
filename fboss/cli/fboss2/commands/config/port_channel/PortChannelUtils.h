@@ -230,6 +230,17 @@ std::vector<int32_t> interfacesBoundToPortChannel(
     int16_t key);
 
 /*
+ * ID of the port router interface (cfg::Interface.portID) bound to the given
+ * logical port, if any. A port-channel member cannot carry a standalone
+ * router interface: the agent binds the LAG to its first member's interface
+ * and rejects a port bound to more than one router interface
+ * (ThriftConfigApplier bindPortToInterface).
+ */
+std::optional<int32_t> interfaceBoundToPort(
+    const cfg::SwitchConfig& swConfig,
+    int32_t portId);
+
+/*
  * Name of the port-channel (if any) that the given logical port is already a
  * member of.
  */
