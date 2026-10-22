@@ -61,64 +61,12 @@ bool hasAddress(const folly::dynamic& intf, const std::string& addr) {
 
 class ConfigLoopbackInterfaceTest : public Fboss2IntegrationTest {};
 
-// Add v4 + v6 host addresses to the bootstrap loopback0, verify they land on
-// the virtual interface, then remove them again — restoring the DUT exactly.
-TEST_F(ConfigLoopbackInterfaceTest, AddressRoundTripOnLoopback0) {
-  XLOG(INFO) << "[Step 1] Adding addresses to loopback0...";
-  auto add = runCli(
-      {"config",
-       "interface",
-       "loopback0",
-       "ip-address",
-       kV4Addr,
-       "ipv6-address",
-       kV6Addr});
-  ASSERT_EQ(add.exitCode, 0) << add.stderr;
-  commitConfig();
-  waitForAgentReady();
-
-  XLOG(INFO) << "[Step 2] Verifying addresses in running config...";
-  {
-    auto config = getRunningConfig();
-    const auto& sw = config["sw"];
-    // The bootstrap loopback0 lives at the conventional intfID 10.
-    const auto* intf = findInterfaceById(sw, 10);
-    ASSERT_NE(intf, nullptr) << "no loopback0 interface (intfID 10)";
-    EXPECT_TRUE((*intf)["isVirtual"].asBool());
-    EXPECT_TRUE(hasAddress(*intf, kV4Addr)) << kV4Addr << " missing";
-    EXPECT_TRUE(hasAddress(*intf, kV6Addr)) << kV6Addr << " missing";
-  }
-
-  XLOG(INFO) << "[Step 3] Removing the addresses again...";
-  discardSession();
-  ASSERT_EQ(
-      runCli({"delete", "interface", "loopback0", "ip-address", kV4Addr})
-          .exitCode,
-      0);
-  ASSERT_EQ(
-      runCli({"delete", "interface", "loopback0", "ipv6-address", kV6Addr})
-          .exitCode,
-      0);
-  commitConfig();
-  waitForAgentReady();
-
-  XLOG(INFO) << "[Step 4] Verifying restore...";
-  {
-    auto config = getRunningConfig();
-    const auto* intf = findInterfaceById(config["sw"], 10);
-    ASSERT_NE(intf, nullptr);
-    EXPECT_FALSE(hasAddress(*intf, kV4Addr)) << kV4Addr << " not removed";
-    EXPECT_FALSE(hasAddress(*intf, kV6Addr)) << kV6Addr << " not removed";
-  }
-  XLOG(INFO) << "TEST PASSED";
-}
-
 // Create a loopback that no bootstrap config ships, address it, verify the
-// interface + backing VLAN shape, then delete the whole loopback and verify
-// both are gone — restoring the DUT exactly. A stable index is used so a
-// re-run after a crash converges (creation tolerates the interface already
-// existing from an aborted prior run).
-TEST_F(ConfigLoopbackInterfaceTest, CreateLoopbackWithAddresses) {
+// interface + backing VLAN shape, strip one address, then delete the whole
+// loopback and verify interface and VLAN are both gone — restoring the DUT
+// exactly. A stable index is used so a re-run after a crash converges
+// (creation tolerates the interface already existing from an aborted run).
+TEST_F(ConfigLoopbackInterfaceTest, CreateAddressAndDeleteLoopback) {
   XLOG(INFO) << "[Step 1] Creating " << kCreatedLoopback << " with addresses";
   auto create = runCli(
       {"config",
@@ -155,14 +103,29 @@ TEST_F(ConfigLoopbackInterfaceTest, CreateLoopbackWithAddresses) {
     EXPECT_TRUE(sawVlan) << "backing VLAN " << kCreatedIntfId << " missing";
   }
 
-  XLOG(INFO) << "[Step 3] Deleting " << kCreatedLoopback << "...";
+  XLOG(INFO) << "[Step 3] Removing the IPv4 address...";
+  discardSession();
+  auto delAddr =
+      runCli({"delete", "interface", kCreatedLoopback, "ip-address", kV4Addr});
+  ASSERT_EQ(delAddr.exitCode, 0) << delAddr.stderr;
+  commitConfig();
+  waitForAgentReady();
+  {
+    auto config = getRunningConfig();
+    const auto* intf = findInterfaceById(config["sw"], kCreatedIntfId);
+    ASSERT_NE(intf, nullptr);
+    EXPECT_FALSE(hasAddress(*intf, kV4Addr)) << kV4Addr << " not removed";
+    EXPECT_TRUE(hasAddress(*intf, kV6Addr)) << kV6Addr << " lost";
+  }
+
+  XLOG(INFO) << "[Step 4] Deleting " << kCreatedLoopback << "...";
   discardSession();
   auto del = runCli({"delete", "interface", kCreatedLoopback});
   ASSERT_EQ(del.exitCode, 0) << del.stderr;
   commitConfig();
   waitForAgentReady();
 
-  XLOG(INFO) << "[Step 4] Verifying interface and VLAN are gone...";
+  XLOG(INFO) << "[Step 5] Verifying interface and VLAN are gone...";
   {
     auto config = getRunningConfig();
     const auto& sw = config["sw"];

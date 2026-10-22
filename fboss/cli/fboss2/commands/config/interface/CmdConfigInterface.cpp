@@ -672,22 +672,14 @@ CmdConfigInterfaceTraits::RetType CmdConfigInterface::queryClient(
             folly::join(", ", createdLoopbacks)));
   }
 
-  if (!interfaceConfig.hasAttributes()) {
-    // A bare `config interface loopback<N>` is a complete command: it creates
-    // the interface. For everything else attributes are required.
-    if (createdLoopbacks.empty()) {
-      throw std::runtime_error(
-          fmt::format(
-              "Incomplete command. Either provide attributes ({}) "
-              "or use a subcommand (switchport)",
-              kValidConfigAttrs));
-    }
-    ConfigSession::getInstance().saveConfig(
-        cli::ServiceType::AGENT, cli::ConfigActionLevel::HITLESS);
-    return fmt::format(
-        "Successfully configured interface(s) {}: {}",
-        folly::join(", ", interfaces.getNames()),
-        folly::join(", ", results));
+  // A bare `config interface loopback<N>` is a complete command: it creates
+  // the interface. For everything else attributes are required.
+  if (!interfaceConfig.hasAttributes() && createdLoopbacks.empty()) {
+    throw std::runtime_error(
+        fmt::format(
+            "Incomplete command. Either provide attributes ({}) "
+            "or use a subcommand (switchport)",
+            kValidConfigAttrs));
   }
 
   // The `profile` attribute mutates the port set (adjusts/removes existing

@@ -22,6 +22,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include "fboss/agent/FbossError.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
 #include "fboss/agent/types.h"
 #include "fboss/cli/fboss2/commands/config/interface/InterfaceIpUtils.h"
@@ -60,17 +61,12 @@ const std::string kValidDeleteAttrs = fmt::format(
 
 // A whole-interface delete of a loopback token (`delete interface
 // loopback<N>`) removes the virtual interface together with its backing VLAN
-// (the same-numbered VLAN `config interface loopback<N>` creates). The agent
-// requires every VLAN-type interface to reference an existing VLAN, and
-// rejects a VLAN left without an interface while it still has enabled member
-// ports, so the pair goes as a unit — through VlanManager::deleteVlan, which
-// cascades the interface and refuses when a port still names the VLAN as its
-// ingress VLAN. A VLAN with member ports is a data VLAN, not a loopback's,
-// and is refused rather than cascaded.
+// through VlanManager::deleteVlan, which cascades the interface. A VLAN with
+// member ports is a data VLAN, not a loopback's, and is refused rather than
+// cascaded.
 //
-// Validates without mutating; returns the backing VLAN id to delete, or
-// nullopt when the interface has no backing VLAN in the config.
-std::optional<VlanID> checkLoopbackDeletable(
+// Validates without mutating; returns the backing VLAN id to delete.
+VlanID checkLoopbackDeletable(
     const cfg::SwitchConfig& swConfig,
     const utils::Intf& intf) {
   const cfg::Interface* iface = intf.getInterface();
@@ -80,28 +76,11 @@ std::optional<VlanID> checkLoopbackDeletable(
         fmt::format("{} is not a loopback interface", intf.name()));
   }
   const auto vlanId = VlanID(*iface->vlanID());
-  if (VlanManager::findVlan(swConfig, vlanId) == nullptr) {
-    return std::nullopt;
-  }
-  // Mirror deleteVlan's refusals up front so a mixed port + loopback delete
-  // cannot fail after the ports are already gone.
-  if (*swConfig.defaultVlan() == *iface->vlanID()) {
+  try {
+    VlanManager::checkDeletable(swConfig, vlanId);
+  } catch (const FbossError& e) {
     throw std::invalid_argument(
-        fmt::format(
-            "Cannot delete {}: its VLAN {} is the global default VLAN",
-            intf.name(),
-            *iface->vlanID()));
-  }
-  for (const auto& port : *swConfig.ports()) {
-    if (*port.ingressVlan() == *iface->vlanID()) {
-      throw std::invalid_argument(
-          fmt::format(
-              "Cannot delete {}: its VLAN {} is the ingress VLAN for port {}",
-              intf.name(),
-              *iface->vlanID(),
-              port.name().has_value() ? *port.name()
-                                      : std::to_string(*port.logicalID())));
-    }
+        fmt::format("Cannot delete {}: {}", intf.name(), e.what()));
   }
   for (const auto& vlanPort : *swConfig.vlanPorts()) {
     if (*vlanPort.vlanID() == *iface->vlanID()) {
@@ -169,7 +148,6 @@ CmdDeleteInterfaceTraits::RetType CmdDeleteInterface::queryClient(
   if (attributes.empty()) {
     auto& swConfig = *ConfigSession::getInstance().getAgentConfig().sw();
     std::set<PortID> portsToDelete;
-    std::vector<int32_t> loopbackIntfIdsToDelete;
     std::set<VlanID> loopbackVlansToDelete;
     std::vector<std::string> deletedNames;
     for (const utils::Intf& intf : interfaces) {
@@ -179,14 +157,11 @@ CmdDeleteInterfaceTraits::RetType CmdDeleteInterface::queryClient(
       } else if (utils::parseLoopbackIndex(intf.name()).has_value()) {
         // Every loopback is checked before anything is removed, so a refused
         // delete leaves the config untouched.
-        if (auto vlanId = checkLoopbackDeletable(swConfig, intf)) {
-          loopbackVlansToDelete.insert(*vlanId);
-        }
-        loopbackIntfIdsToDelete.push_back(*intf.getInterface()->intfID());
+        loopbackVlansToDelete.insert(checkLoopbackDeletable(swConfig, intf));
         deletedNames.push_back(intf.name());
       }
     }
-    if (portsToDelete.empty() && loopbackIntfIdsToDelete.empty()) {
+    if (portsToDelete.empty() && loopbackVlansToDelete.empty()) {
       throw std::invalid_argument(
           "No port or loopback interface found for the specified "
           "interface(s)");
@@ -198,23 +173,10 @@ CmdDeleteInterfaceTraits::RetType CmdDeleteInterface::queryClient(
           utility::PortRemovalMode::Erase,
           /*pruneEmptyVlansAndInterfaces=*/true);
     }
-    // deleteVlan cascades the interface bound to the VLAN; the erase below
-    // covers a loopback whose backing VLAN is absent from the config.
+    // deleteVlan cascades the interface bound to the VLAN.
     for (const auto& vlanId : loopbackVlansToDelete) {
       VlanManager::deleteVlan(swConfig, vlanId);
     }
-    auto& intfs = *swConfig.interfaces();
-    intfs.erase(
-        std::remove_if(
-            intfs.begin(),
-            intfs.end(),
-            [&](const cfg::Interface& iface) {
-              return std::find(
-                         loopbackIntfIdsToDelete.begin(),
-                         loopbackIntfIdsToDelete.end(),
-                         *iface.intfID()) != loopbackIntfIdsToDelete.end();
-            }),
-        intfs.end());
     // Removing a port is a HITLESS change: the agent's reloadConfig() applies
     // the port-set delta live, matching how 'config interface <port> profile'
     // adds/removes ports. Removing a loopback interface and its VLAN is the
