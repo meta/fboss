@@ -256,6 +256,32 @@ TEST_F(CmdDeletePortChannelTestFixture, queryClientResetsMinimumLinksToUp) {
   EXPECT_THAT(result, HasSubstr("No changes"));
 }
 
+TEST_F(
+    CmdDeletePortChannelTestFixture,
+    queryClientResetsBothThresholdsTogether) {
+  // Resetting minimum-links alone would restore ALL_LINKS (2 here) above a
+  // to-up of 1; resetting both in one command is valid as an end state and
+  // must go through whatever the token order.
+  auto* pc = portChannel("port-channel100");
+  ASSERT_NE(pc, nullptr);
+  cfg::MinimumCapacity toUp;
+  toUp.set_linkCount(1);
+  pc->minimumCapacityToUp() = toUp;
+
+  auto cmd = CmdDeletePortChannel();
+  auto result = cmd.queryClient(
+      localhost(),
+      PortChannelDeleteArgs(
+          {"port-channel100", "minimum-links", "minimum-links-to-up"}));
+  EXPECT_THAT(result, HasSubstr("Reset"));
+  pc = portChannel("port-channel100");
+  ASSERT_NE(pc, nullptr);
+  EXPECT_EQ(
+      pc->minimumCapacity()->getType(),
+      cfg::MinimumCapacity::Type::linkPercentage);
+  EXPECT_FALSE(pc->minimumCapacityToUp().has_value());
+}
+
 // ---- CmdDeletePortChannelMember::queryClient ----
 
 TEST_F(CmdDeletePortChannelTestFixture, queryClientRemovesMember) {
@@ -274,26 +300,24 @@ TEST_F(CmdDeletePortChannelTestFixture, queryClientRemovesMember) {
 
 TEST_F(
     CmdDeletePortChannelTestFixture,
-    queryClientRemoveMemberBelowMinimumLinksThrows) {
-  // A linkCount 2 would leave the remaining single member below the
-  // minimum, so the LAG could never come up.
+    queryClientRemoveMemberBelowMinimumLinksAllowed) {
+  // Leaving fewer members than minimum-links is a transit state the agent
+  // accepts (the LAG stays down until members return), so the removal goes
+  // through.
   auto* pc = portChannel("port-channel100");
   ASSERT_NE(pc, nullptr);
   pc->minimumCapacity()->set_linkCount(2);
 
   auto cmd = CmdDeletePortChannelMember();
-  try {
-    cmd.queryClient(
-        localhost(),
-        PortChannelDeleteArgs({"port-channel100"}),
-        PortChannelMemberDeleteArgs({"eth1/2/1"}));
-    FAIL() << "Expected std::invalid_argument";
-  } catch (const std::invalid_argument& e) {
-    EXPECT_THAT(std::string(e.what()), HasSubstr("exceeds the 1 member"));
-  }
+  auto result = cmd.queryClient(
+      localhost(),
+      PortChannelDeleteArgs({"port-channel100"}),
+      PortChannelMemberDeleteArgs({"eth1/2/1"}));
+  EXPECT_THAT(result, HasSubstr("Removed member"));
   pc = portChannel("port-channel100");
   ASSERT_NE(pc, nullptr);
-  EXPECT_EQ(pc->memberPorts()->size(), 2);
+  EXPECT_EQ(pc->memberPorts()->size(), 1);
+  EXPECT_EQ(pc->minimumCapacity()->get_linkCount(), 2);
 }
 
 TEST_F(CmdDeletePortChannelTestFixture, queryClientRemoveAllMembersThrows) {
