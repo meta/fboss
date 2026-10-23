@@ -824,9 +824,8 @@ TEST_F(HwStateMachineTest, CheckAgentConfigChanged) {
               false /* isRemediated */,
               isAgentColdboot)));
 
-      // Verify datapath reset happened on a config change that involved agent
-      // cold boot and didn't happen for warmboot
-      for (auto id : getPresentTransceivers()) {
+      bool expectDatapathReset = isAgentColdboot && FLAGS_port_manager_mode;
+      for (const auto& id : getPresentTransceivers()) {
         auto tcvrInfo = wedgeMgr->getTransceiverInfo(id);
         auto& tcvrState = tcvrInfo.tcvrState().value();
         auto& tcvrStats = tcvrInfo.tcvrStats().value();
@@ -838,7 +837,7 @@ TEST_F(HwStateMachineTest, CheckAgentConfigChanged) {
               tcvrState,
               tcvrStats,
               testStartTime,
-              isAgentColdboot);
+              expectDatapathReset);
         }
 
         // Verify remediation was NOT triggered during config change.
