@@ -1692,7 +1692,7 @@ class GenerateRoutingPolicyTermMatchCommandsTest(unittest.TestCase):
                         {"type": 5, "prefix_filters": {"prefix_list_names": ["PL"]}}
                     ]
                 },
-                "term_miss_action": 1,
+                "policy_action_entries": [{"type": 5}],
             },
         )
         self.assertEqual(
