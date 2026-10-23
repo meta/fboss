@@ -28,8 +28,9 @@ namespace facebook::fboss {
  * Usage: config port-channel <name> [<attr> <value> ...]
  *
  * where <attr> is a row of portChannelAttrTable() (description,
- * minimum-links). Attribute names and values are validated at construction;
- * applying them is a table dispatch in queryClient.
+ * minimum-links, minimum-links-to-up). Attribute names and values are
+ * validated at construction; applying them is a table dispatch in
+ * queryClient.
  *
  * A port-channel is created by adding its first member (see the `member`
  * subcommand); an aggregate port without members cannot be applied by the

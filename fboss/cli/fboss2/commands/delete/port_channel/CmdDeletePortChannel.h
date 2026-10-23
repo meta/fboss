@@ -31,6 +31,8 @@ namespace facebook::fboss {
  * (reset to default):
  *   description     - clear the description
  *   minimum-links   - reset minimumCapacity to the default (all links)
+ *   minimum-links-to-up - clear minimumCapacityToUp (same threshold as
+ *                     minimum-links)
  */
 class PortChannelDeleteArgs : public utils::MultiArgsConfigType {
  public:

@@ -21,11 +21,12 @@ namespace facebook::fboss {
 
 /*
  * Integration tests for:
- *   config port-channel <name> [description <string>|minimum-links <count>]
+ *   config port-channel <name> [description <string>|minimum-links <count>|
+ *                              minimum-links-to-up <count>]
  *   config port-channel <name> member add|remove <interface> [...]
  *   config port-channel <name> member <interface> priority <n>
  *   config port-channel <name> member <interface> lacp rate|mode|hold-timer
- *   delete port-channel <name> [description|minimum-links]
+ *   delete port-channel <name> [description|minimum-links|minimum-links-to-up]
  *   delete port-channel <name> member ...
  *
  * All port-channel changes are HITLESS: the agent applies the aggregate-port
@@ -229,7 +230,8 @@ TEST_F(ConfigPortChannelTest, CreateModifyAndDeletePortChannel) {
   ASSERT_TRUE(findMember(*aggPort, port1Id).has_value());
   ASSERT_TRUE(findMember(*aggPort, port2Id).has_value());
 
-  XLOG(INFO) << "[Step 3] Set description and minimum-links";
+  XLOG(INFO) << "[Step 3] Set description, minimum-links and "
+                "minimum-links-to-up";
   runCliExpectSuccess(
       {"config",
        "port-channel",
@@ -237,13 +239,36 @@ TEST_F(ConfigPortChannelTest, CreateModifyAndDeletePortChannel) {
        "description",
        "fboss2-integration-test",
        "minimum-links",
-       "1"});
+       "2",
+       "minimum-links-to-up",
+       "2"});
   commitAndWait();
 
   aggPort = findAggregatePort(kPortChannelName);
   ASSERT_TRUE(aggPort.has_value());
   EXPECT_EQ((*aggPort)["description"].asString(), "fboss2-integration-test");
-  EXPECT_EQ((*aggPort)["minimumCapacity"]["linkCount"].asInt(), 1);
+  EXPECT_EQ((*aggPort)["minimumCapacity"]["linkCount"].asInt(), 2);
+  EXPECT_EQ((*aggPort)["minimumCapacityToUp"]["linkCount"].asInt(), 2);
+
+  XLOG(INFO) << "[Step 3b] Threshold changes the LAG could never satisfy "
+                "must be refused before they are staged";
+  // minimum-links-to-up below minimum-links would CHECK-abort the agent.
+  auto result = runCli(
+      {"config", "port-channel", kPortChannelName, "minimum-links-to-up", "1"});
+  EXPECT_NE(result.exitCode, 0);
+  // Above the member count the LAG could never come up.
+  result = runCli(
+      {"config", "port-channel", kPortChannelName, "minimum-links-to-up", "3"});
+  EXPECT_NE(result.exitCode, 0);
+  // Removing a member would leave both thresholds above the member count.
+  result = runCli(
+      {"config", "port-channel", kPortChannelName, "member", "remove", port2});
+  EXPECT_NE(result.exitCode, 0);
+  aggPort = findAggregatePort(kPortChannelName);
+  ASSERT_TRUE(aggPort.has_value());
+  EXPECT_EQ((*aggPort)["memberPorts"].size(), 2);
+  EXPECT_EQ((*aggPort)["minimumCapacity"]["linkCount"].asInt(), 2);
+  EXPECT_EQ((*aggPort)["minimumCapacityToUp"]["linkCount"].asInt(), 2);
 
   XLOG(INFO) << "[Step 4] Set per-member LACP attributes on " << port1;
   runCliExpectSuccess(
@@ -335,19 +360,22 @@ TEST_F(ConfigPortChannelTest, CreateModifyAndDeletePortChannel) {
   EXPECT_EQ((*member1)["activity"].asInt(), 1); // ACTIVE
   EXPECT_EQ((*member1)["holdTimerMultiplier"].asInt(), 3);
 
-  XLOG(INFO) << "[Step 6] Reset description and minimum-links via delete";
+  XLOG(INFO) << "[Step 6] Reset description, minimum-links and "
+                "minimum-links-to-up via delete";
   runCliExpectSuccess(
       {"delete",
        "port-channel",
        kPortChannelName,
        "description",
-       "minimum-links"});
+       "minimum-links",
+       "minimum-links-to-up"});
   commitAndWait();
 
   aggPort = findAggregatePort(kPortChannelName);
   ASSERT_TRUE(aggPort.has_value());
   EXPECT_EQ((*aggPort)["description"].asString(), "");
   EXPECT_EQ((*aggPort)["minimumCapacity"]["linkPercentage"].asDouble(), 1.0);
+  EXPECT_EQ(aggPort->count("minimumCapacityToUp"), 0);
 
   XLOG(INFO) << "[Step 7] Remove one member";
   runCliExpectSuccess(
@@ -360,7 +388,7 @@ TEST_F(ConfigPortChannelTest, CreateModifyAndDeletePortChannel) {
   EXPECT_TRUE(findMember(*aggPort, port1Id).has_value());
 
   XLOG(INFO) << "[Step 8] Removing the last member must fail with guidance";
-  auto result = runCli(
+  result = runCli(
       {"config", "port-channel", kPortChannelName, "member", "remove", port1});
   EXPECT_NE(result.exitCode, 0);
 
