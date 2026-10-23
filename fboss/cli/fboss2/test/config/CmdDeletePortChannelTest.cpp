@@ -106,10 +106,14 @@ TEST_F(CmdDeletePortChannelTestFixture, argsValidBare) {
 
 TEST_F(CmdDeletePortChannelTestFixture, argsValidAttrs) {
   PortChannelDeleteArgs args(
-      {"port-channel100", "description", "minimum-links"});
-  ASSERT_EQ(args.getAttributes().size(), 2);
+      {"port-channel100",
+       "description",
+       "minimum-links",
+       "minimum-links-to-up"});
+  ASSERT_EQ(args.getAttributes().size(), 3);
   EXPECT_EQ(args.getAttributes()[0].first, "description");
   EXPECT_EQ(args.getAttributes()[1].first, "minimum-links");
+  EXPECT_EQ(args.getAttributes()[2].first, "minimum-links-to-up");
 }
 
 TEST_F(CmdDeletePortChannelTestFixture, argsUnknownAttrInvalid) {
@@ -220,13 +224,36 @@ TEST_F(
         PortChannelDeleteArgs({"port-channel100", "minimum-links"}));
     FAIL() << "Expected std::invalid_argument";
   } catch (const std::invalid_argument& e) {
-    EXPECT_THAT(std::string(e.what()), HasSubstr("minimumCapacityToUp"));
+    EXPECT_THAT(std::string(e.what()), HasSubstr("minimum-links-to-up"));
   }
   pc = portChannel("port-channel100");
   ASSERT_NE(pc, nullptr);
   ASSERT_EQ(
       pc->minimumCapacity()->getType(), cfg::MinimumCapacity::Type::linkCount);
   EXPECT_EQ(pc->minimumCapacity()->get_linkCount(), 1);
+}
+
+TEST_F(CmdDeletePortChannelTestFixture, queryClientResetsMinimumLinksToUp) {
+  auto* pc = portChannel("port-channel100");
+  ASSERT_NE(pc, nullptr);
+  cfg::MinimumCapacity toUp;
+  toUp.set_linkCount(2);
+  pc->minimumCapacityToUp() = toUp;
+
+  auto cmd = CmdDeletePortChannel();
+  auto result = cmd.queryClient(
+      localhost(),
+      PortChannelDeleteArgs({"port-channel100", "minimum-links-to-up"}));
+  EXPECT_THAT(result, HasSubstr("Reset"));
+  pc = portChannel("port-channel100");
+  ASSERT_NE(pc, nullptr);
+  EXPECT_FALSE(pc->minimumCapacityToUp().has_value());
+
+  // Already absent: no-op.
+  result = cmd.queryClient(
+      localhost(),
+      PortChannelDeleteArgs({"port-channel100", "minimum-links-to-up"}));
+  EXPECT_THAT(result, HasSubstr("No changes"));
 }
 
 // ---- CmdDeletePortChannelMember::queryClient ----

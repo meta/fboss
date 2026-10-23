@@ -206,7 +206,10 @@ PortChannelAttrOps<cfg::AggregatePort> minimumLinksAttr() {
       cfg::MinimumCapacity requested;
       requested.set_linkCount(static_cast<int8_t>(count));
       checkMinimumCapacity(
-          portChannel, requested, portChannel.memberPorts()->size());
+          portChannel,
+          requested,
+          portChannel.minimumCapacityToUp().to_optional(),
+          portChannel.memberPorts()->size());
       minimumCapacity = requested;
     }
     return {changed, fmt::format("{}={}", kPortChannelAttrMinimumLinks, count)};
@@ -220,10 +223,65 @@ PortChannelAttrOps<cfg::AggregatePort> minimumLinksAttr() {
       cfg::MinimumCapacity allLinks;
       allLinks.set_linkPercentage(kDefaultMinimumLinkPercentage);
       checkMinimumCapacity(
-          portChannel, allLinks, portChannel.memberPorts()->size());
+          portChannel,
+          allLinks,
+          portChannel.minimumCapacityToUp().to_optional(),
+          portChannel.memberPorts()->size());
       minimumCapacity = allLinks;
     }
     return {changed, std::string(kPortChannelAttrMinimumLinks)};
+  };
+  return ops;
+}
+
+// minimum-links-to-up writes the optional MinimumCapacity union
+// minimumCapacityToUp (the LACP "bring up" threshold, see
+// cfg::AggregatePort); its default is the field being absent, so reset
+// clears it rather than assigning a value.
+PortChannelAttrOps<cfg::AggregatePort> minimumLinksToUpAttr() {
+  PortChannelAttrOps<cfg::AggregatePort> ops;
+  ops.usage = fmt::format(
+      "{} <{}-{}>",
+      kPortChannelAttrMinimumLinksToUp,
+      kPortChannelMinLinkCount,
+      kPortChannelMaxLinkCount);
+  ops.validate = [](const std::string& value) {
+    parseIntInRange(
+        value,
+        kPortChannelAttrMinimumLinksToUp,
+        kPortChannelMinLinkCount,
+        kPortChannelMaxLinkCount);
+  };
+  ops.set = [](cfg::AggregatePort& portChannel,
+               const std::string& value) -> PortChannelAttrResult {
+    int32_t count = parseIntInRange(
+        value,
+        kPortChannelAttrMinimumLinksToUp,
+        kPortChannelMinLinkCount,
+        kPortChannelMaxLinkCount);
+    const auto& toUp = portChannel.minimumCapacityToUp();
+    bool changed = !toUp.has_value() ||
+        toUp->getType() != cfg::MinimumCapacity::Type::linkCount ||
+        toUp->get_linkCount() != count;
+    if (changed) {
+      cfg::MinimumCapacity requested;
+      requested.set_linkCount(static_cast<int8_t>(count));
+      checkMinimumCapacity(
+          portChannel,
+          *portChannel.minimumCapacity(),
+          requested,
+          portChannel.memberPorts()->size());
+      portChannel.minimumCapacityToUp() = requested;
+    }
+    return {
+        changed, fmt::format("{}={}", kPortChannelAttrMinimumLinksToUp, count)};
+  };
+  ops.reset = [](cfg::AggregatePort& portChannel) -> PortChannelAttrResult {
+    bool changed = portChannel.minimumCapacityToUp().has_value();
+    if (changed) {
+      portChannel.minimumCapacityToUp().reset();
+    }
+    return {changed, std::string(kPortChannelAttrMinimumLinksToUp)};
   };
   return ops;
 }
@@ -246,6 +304,7 @@ const PortChannelAttrTable& portChannelAttrTable() {
            },
            "")},
       {std::string(kPortChannelAttrMinimumLinks), minimumLinksAttr()},
+      {std::string(kPortChannelAttrMinimumLinksToUp), minimumLinksToUpAttr()},
   };
   return kTable;
 }
@@ -555,6 +614,7 @@ int32_t resolveMinimumLinkCount(
 void checkMinimumCapacity(
     const cfg::AggregatePort& portChannel,
     const cfg::MinimumCapacity& minimumCapacity,
+    const std::optional<cfg::MinimumCapacity>& minimumCapacityToUp,
     size_t memberCount) {
   int32_t minLinks = resolveMinimumLinkCount(minimumCapacity, memberCount);
   if (minLinks > static_cast<int32_t>(memberCount)) {
@@ -567,22 +627,32 @@ void checkMinimumCapacity(
             memberCount,
             *portChannel.name()));
   }
-  const auto& toUp = portChannel.minimumCapacityToUp();
-  if (!toUp.has_value()) {
+  if (!minimumCapacityToUp.has_value()) {
     return;
   }
-  int32_t toUpLinks = resolveMinimumLinkCount(*toUp, memberCount);
+  int32_t toUpLinks =
+      resolveMinimumLinkCount(*minimumCapacityToUp, memberCount);
+  if (toUpLinks > static_cast<int32_t>(memberCount)) {
+    throw std::invalid_argument(
+        fmt::format(
+            "{} {} exceeds the {} member(s) of port-channel '{}'; the "
+            "port-channel could never come up",
+            kPortChannelAttrMinimumLinksToUp,
+            toUpLinks,
+            memberCount,
+            *portChannel.name()));
+  }
   if (toUpLinks < minLinks) {
     throw std::invalid_argument(
         fmt::format(
-            "Port-channel '{}' has minimumCapacityToUp configured, which "
-            "resolves to {} link(s) with {} member(s); {} ({} link(s)) must "
-            "not exceed it",
-            *portChannel.name(),
-            toUpLinks,
-            memberCount,
+            "{} ({} link(s)) must not exceed {} ({} link(s)) on port-channel "
+            "'{}' with {} member(s)",
             kPortChannelAttrMinimumLinks,
-            minLinks));
+            minLinks,
+            kPortChannelAttrMinimumLinksToUp,
+            toUpLinks,
+            *portChannel.name(),
+            memberCount));
   }
 }
 
@@ -623,6 +693,7 @@ std::vector<std::string> removePortChannelMembers(
   checkMinimumCapacity(
       portChannel,
       *portChannel.minimumCapacity(),
+      portChannel.minimumCapacityToUp().to_optional(),
       members.size() - portIds.size());
 
   members.erase(

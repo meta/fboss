@@ -216,6 +216,16 @@ CmdConfigPortChannelMember::queryClient(
           name);
     }
 
+    // The thresholds resolve against the member count, so adding members can
+    // push them apart (e.g. ALL_LINKS grows past a fixed minimum-links-to-up).
+    if (portChannel) {
+      checkMinimumCapacity(
+          *portChannel,
+          *portChannel->minimumCapacity(),
+          portChannel->minimumCapacityToUp().to_optional(),
+          portChannel->memberPorts()->size() + toAdd.size());
+    }
+
     bool created = false;
     if (!portChannel) {
       std::tie(portChannel, created) = findOrCreatePortChannel(swConfig, name);
