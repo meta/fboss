@@ -382,6 +382,10 @@ class CmdGlobalOptions {
     return tag2name_;
   }
 
+  bool isForce() const {
+    return force_;
+  }
+
   std::string getLogUsage() const {
     return logUsage_;
   }
@@ -554,6 +558,7 @@ class CmdGlobalOptions {
   OutputFormat fmt_;
   bool detail_{false};
   bool tag2name_{false};
+  bool force_{false};
   std::string logUsage_{"scuba"};
   int fsdbThriftPort_{5908};
   int agentThriftPort_{5909};
