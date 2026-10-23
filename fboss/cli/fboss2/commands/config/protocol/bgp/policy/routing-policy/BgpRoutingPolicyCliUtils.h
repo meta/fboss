@@ -10,11 +10,16 @@
 
 #pragma once
 
-#include <neteng/fboss/bgp/public_tld/configerator/structs/neteng/fboss/bgp/gen-cpp2/bgp_config_types.h>
 #include <algorithm>
 #include <cstdint>
 #include <string>
-#include "configerator/structs/neteng/bgp_policy/thrift/gen-cpp2/bgp_policy_types.h"
+
+#ifndef IS_OSS
+#include <configerator/structs/neteng/bgp_policy/thrift/gen-cpp2/bgp_policy_types.h>
+#include <configerator/structs/neteng/fboss/bgp/gen-cpp2/bgp_config_types.h>
+#else
+#include <neteng/fboss/bgp/public_tld/configerator/structs/neteng/fboss/bgp/gen-cpp2/bgp_config_types.h>
+#endif
 
 /**
  * Lookup/create helpers for the routing-policy CLI family, shared between the

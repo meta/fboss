@@ -13,7 +13,6 @@
 #include "fboss/cli/fboss2/CmdHandler.cpp"
 
 #include <fmt/core.h>
-#include <neteng/fboss/bgp/public_tld/configerator/structs/neteng/fboss/bgp/gen-cpp2/bgp_config_types.h>
 #include <functional>
 #include <iostream>
 #include <map>
@@ -23,7 +22,6 @@
 #include <string>
 #include <string_view>
 #include <vector>
-#include "configerator/structs/neteng/bgp_policy/thrift/gen-cpp2/bgp_policy_types.h"
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/BgpCliAttrHandlers.h"
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/BgpCliValueParsers.h"
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/routing-policy/BgpRoutingPolicyCliUtils.h"
@@ -31,6 +29,13 @@
 #include "fboss/cli/fboss2/utils/CmdUtilsCommon.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
 #include "fmt/format.h"
+
+#ifndef IS_OSS
+#include <configerator/structs/neteng/bgp_policy/thrift/gen-cpp2/bgp_policy_types.h>
+#include <configerator/structs/neteng/fboss/bgp/gen-cpp2/bgp_config_types.h>
+#else
+#include <neteng/fboss/bgp/public_tld/configerator/structs/neteng/fboss/bgp/gen-cpp2/bgp_config_types.h>
+#endif
 
 namespace facebook::fboss {
 
@@ -175,7 +180,7 @@ CmdConfigProtocolBgpPolicyRoutingPolicyTerm::queryClient(
       policy.policy_entries()->pop_back();
     }
     if (policyCreated) {
-      cfg.policies()->bgp_policy_statements()->pop_back();
+      cfg.policies().ensure().bgp_policy_statements()->pop_back();
     }
   }
   return result.message;
