@@ -33,6 +33,12 @@ using folly::IPAddressV6;
 
 namespace facebook::fboss::utils {
 
+std::string toLowerCopy(const std::string& s) {
+  std::string lower = s;
+  folly::toLowerAscii(lower);
+  return lower;
+}
+
 std::pair<std::string, folly::IPAddress> getCanonicalNameAndIPFromHost(
     const std::string& hostname) {
   std::string canonicalHostname = hostname;

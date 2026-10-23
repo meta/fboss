@@ -32,11 +32,53 @@
 
 #include "fboss/agent/gen-cpp2/switch_config_constants.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
+#include "fboss/cli/fboss2/utils/CmdUtilsCommon.h"
 #include "fboss/cli/fboss2/utils/InterfaceList.h"
 
 namespace facebook::fboss {
 
 namespace {
+
+// Parses an integer CLI value and validates it against [min, max]; throws
+// std::invalid_argument naming `what`.
+int32_t parseIntInRange(
+    const std::string& value,
+    std::string_view what,
+    int32_t min,
+    int32_t max) {
+  int32_t parsed = 0;
+  try {
+    parsed = folly::to<int32_t>(value);
+  } catch (const folly::ConversionError&) {
+    throw std::invalid_argument(
+        fmt::format(
+            "Invalid {} value '{}': expected an integer between {} and {}",
+            what,
+            value,
+            min,
+            max));
+  }
+  if (parsed < min || parsed > max) {
+    throw std::invalid_argument(
+        fmt::format(
+            "{} value {} is out of range [{}, {}]", what, parsed, min, max));
+  }
+  return parsed;
+}
+
+// Resolves a MinimumCapacity to a link count for the given member count, as
+// ThriftConfigApplier::computeMinimumLinkCount does (linkCount as is,
+// linkPercentage as ceil(pct * memberCount)). Kept in step with the agent by
+// hand: it is a private member there, so there is no symbol to share.
+int32_t resolveMinimumLinkCount(
+    const cfg::MinimumCapacity& capacity,
+    size_t memberCount) {
+  if (capacity.getType() == cfg::MinimumCapacity::Type::linkCount) {
+    return capacity.get_linkCount();
+  }
+  return static_cast<int32_t>(
+      std::ceil(capacity.get_linkPercentage() * memberCount));
+}
 
 // Value bounds for the member attributes (table rows below).
 constexpr int32_t kMinMemberPriority = 0;
@@ -141,7 +183,7 @@ PortChannelAttrOps<T> enumTokenAttr(
     tokenNames.emplace_back(token);
   }
   auto parse = [name, tokenMap, tokenNames](const std::string& value) -> Enum {
-    const std::string lower = toLowerCopy(value);
+    const std::string lower = utils::toLowerCopy(value);
     for (const auto& [token, mapped] : tokenMap) {
       if (lower == token) {
         return mapped;
@@ -162,7 +204,7 @@ PortChannelAttrOps<T> enumTokenAttr(
     Enum parsed = parse(value);
     bool changed = get(target) != parsed;
     set(target, parsed);
-    return {changed, fmt::format("{}={}", name, toLowerCopy(value))};
+    return {changed, fmt::format("{}={}", name, utils::toLowerCopy(value))};
   };
   ops.reset =
       [name, get, set, defaultValue](T& target) -> PortChannelAttrResult {
@@ -365,13 +407,15 @@ std::optional<std::pair<std::string, size_t>> matchPortChannelMemberAttr(
   // Attributes may span two tokens; match the longest prefix first.
   if (start + 1 < tokens.size()) {
     std::string twoToken = fmt::format(
-        "{} {}", toLowerCopy(tokens[start]), toLowerCopy(tokens[start + 1]));
+        "{} {}",
+        utils::toLowerCopy(tokens[start]),
+        utils::toLowerCopy(tokens[start + 1]));
     if (table.find(twoToken) != table.end()) {
       return std::make_pair(std::move(twoToken), size_t{2});
     }
   }
   if (start < tokens.size()) {
-    std::string oneToken = toLowerCopy(tokens[start]);
+    std::string oneToken = utils::toLowerCopy(tokens[start]);
     if (table.find(oneToken) != table.end()) {
       return std::make_pair(std::move(oneToken), size_t{1});
     }
@@ -380,7 +424,7 @@ std::optional<std::pair<std::string, size_t>> matchPortChannelMemberAttr(
 }
 
 bool isPortChannelMemberAttrStart(const std::string& token) {
-  const std::string lower = toLowerCopy(token);
+  const std::string lower = utils::toLowerCopy(token);
   for (const auto& [name, ops] : portChannelMemberAttrTable()) {
     if (name.substr(0, name.find(' ')) == lower) {
       return true;
@@ -430,37 +474,6 @@ std::string portChannelMemberSetUsage() {
 
 std::string portChannelMemberDeleteUsage() {
   return fmt::format("Expected: {}", portChannelMemberDeleteGrammar());
-}
-
-std::string toLowerCopy(const std::string& s) {
-  std::string lower = s;
-  folly::toLowerAscii(lower);
-  return lower;
-}
-
-int32_t parseIntInRange(
-    const std::string& value,
-    std::string_view what,
-    int32_t min,
-    int32_t max) {
-  int32_t parsed = 0;
-  try {
-    parsed = folly::to<int32_t>(value);
-  } catch (const folly::ConversionError&) {
-    throw std::invalid_argument(
-        fmt::format(
-            "Invalid {} value '{}': expected an integer between {} and {}",
-            what,
-            value,
-            min,
-            max));
-  }
-  if (parsed < min || parsed > max) {
-    throw std::invalid_argument(
-        fmt::format(
-            "{} value {} is out of range [{}, {}]", what, parsed, min, max));
-  }
-  return parsed;
 }
 
 int16_t parsePortChannelKey(const std::string& name) {
@@ -586,16 +599,6 @@ std::optional<std::string> portChannelForMember(
     }
   }
   return std::nullopt;
-}
-
-int32_t resolveMinimumLinkCount(
-    const cfg::MinimumCapacity& capacity,
-    size_t memberCount) {
-  if (capacity.getType() == cfg::MinimumCapacity::Type::linkCount) {
-    return capacity.get_linkCount();
-  }
-  return static_cast<int32_t>(
-      std::ceil(capacity.get_linkPercentage() * memberCount));
 }
 
 void checkMinimumCapacity(const cfg::AggregatePort& portChannel) {

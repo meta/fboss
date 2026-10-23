@@ -165,23 +165,6 @@ std::string portChannelMemberSetUsage();
 std::string portChannelMemberDeleteUsage();
 
 /*
- * Returns an ASCII-lowercased copy of the string, for case-insensitive
- * keyword matching.
- */
-std::string toLowerCopy(const std::string& s);
-
-/*
- * Parses an integer CLI value and validates it against [min, max]. Throws
- * std::invalid_argument (naming `what`) when the value is not an integer or
- * is out of range.
- */
-int32_t parseIntInRange(
-    const std::string& value,
-    std::string_view what,
-    int32_t min,
-    int32_t max);
-
-/*
  * Validates a port-channel name and derives the AggregatePort key from its
  * trailing digits (e.g. "port-channel100" -> 100). Throws
  * std::invalid_argument when the name has no numeric suffix, the suffix is
@@ -249,15 +232,6 @@ std::optional<int32_t> interfaceBoundToPort(
 std::optional<std::string> portChannelForMember(
     const cfg::SwitchConfig& swConfig,
     int32_t portId);
-
-/*
- * Resolves a MinimumCapacity to an absolute link count for the given member
- * count, as ThriftConfigApplier::computeMinimumLinkCount does (linkCount as
- * is, linkPercentage as ceil(pct * memberCount)).
- */
-int32_t resolveMinimumLinkCount(
-    const cfg::MinimumCapacity& capacity,
-    size_t memberCount);
 
 /*
  * Guards the one aggregate-port invariant the agent enforces with a hard

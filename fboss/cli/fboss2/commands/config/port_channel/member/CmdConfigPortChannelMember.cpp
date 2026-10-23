@@ -42,7 +42,7 @@ PortChannelMemberArgs::PortChannelMemberArgs(std::vector<std::string> v)
             "No member arguments provided. {}", portChannelMemberSetUsage()));
   }
 
-  const std::string first = toLowerCopy(v[0]);
+  const std::string first = utils::toLowerCopy(v[0]);
   if (first == kPortChannelMemberOpAdd || first == kPortChannelMemberOpRemove) {
     op_ = (first == kPortChannelMemberOpAdd) ? Op::ADD : Op::REMOVE;
     memberNames_.assign(v.begin() + 1, v.end());
