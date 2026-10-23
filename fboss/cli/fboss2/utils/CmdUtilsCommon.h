@@ -343,6 +343,9 @@ long getEpochFromDuration(const int64_t& duration);
 const std::string getDurationStr(folly::stop_watch<>& watch);
 const std::string getPrettyElapsedTime(const int64_t& start_time);
 
+// ASCII-lowercased copy of a string, for case-insensitive keyword matching.
+std::string toLowerCopy(const std::string& s);
+
 std::string getUserInfo();
 std::string getUnixname();
 
