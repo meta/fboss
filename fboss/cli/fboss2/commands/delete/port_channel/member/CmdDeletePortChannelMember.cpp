@@ -70,7 +70,8 @@ PortChannelMemberDeleteArgs::PortChannelMemberDeleteArgs(
   if (!match) {
     // v[1] opens an attribute group (checked above); include the group's
     // second token when present (e.g. "lacp timeout").
-    std::string unknown = v.size() > 2 ? v[1] + " " + v[2] : v[1];
+    std::string unknown =
+        v.size() > 2 ? fmt::format("{} {}", v[1], v[2]) : v[1];
     throw std::invalid_argument(
         fmt::format(
             "Unknown member attribute '{}'. {}",

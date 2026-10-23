@@ -260,16 +260,18 @@ int32_t resolveMinimumLinkCount(
     size_t memberCount);
 
 /*
- * Validates the [minimumCapacity, minimumCapacityToUp] pair against a
- * port-channel with `memberCount` members. Throws std::invalid_argument when
- * either resolves above the member count (the agent accepts that, but the
- * LAG can then never forward: AggregatePort needs forwardingSubportCount()
- * >= minimum, and the LACP selector needs that many links to bring it up),
- * or when minimumCapacityToUp resolves below minimumCapacity (the agent
- * CHECK-aborts on apply: ThriftConfigApplier::createAggPort/updateAggPort).
- * Every path that changes one of the three inputs (the two thresholds,
- * member add, member remove) goes through this.
+ * Guards the one aggregate-port invariant the agent enforces with a hard
+ * CHECK rather than an FbossError: minimumCapacityToUp, when set, must not
+ * resolve below minimumCapacity (ThriftConfigApplier::createAggPort/
+ * updateAggPort). Both unions are resolved against `memberCount`, so every
+ * path that changes one of the three inputs (the two thresholds, member add,
+ * member remove) calls this with the post-change state: the attribute
+ * handlers apply all rows to a copy and check the copy once, member add and
+ * remove pass the post-change count. Thresholds above the member count are
+ * deliberately NOT refused: the agent accepts them and they are a normal
+ * transit state while a port-channel is being built up.
  */
+void checkMinimumCapacity(const cfg::AggregatePort& portChannel);
 void checkMinimumCapacity(
     const cfg::AggregatePort& portChannel,
     const cfg::MinimumCapacity& minimumCapacity,
@@ -281,10 +283,9 @@ void checkMinimumCapacity(
  * are removed once. Throws std::invalid_argument when a name is not a
  * member, when the removal would leave the port-channel with no members
  * (an aggregate port without members crashes the agent when applied; delete
- * the port-channel instead), or when it would leave fewer members than the
- * resolved minimum-links / minimum-links-to-up or drop minimum-links-to-up
- * below minimum-links (see checkMinimumCapacity). Returns the list of
- * removed interface names.
+ * the port-channel instead), or when the remaining member count would drop
+ * minimum-links-to-up below minimum-links (see checkMinimumCapacity).
+ * Returns the list of removed interface names.
  */
 std::vector<std::string> removePortChannelMembers(
     cfg::AggregatePort& portChannel,

@@ -12,6 +12,8 @@
 #include <utility>
 #include <vector>
 
+#include <fmt/format.h>
+
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
 #include "fboss/cli/fboss2/test/integration_test/Fboss2IntegrationTest.h"
 #include "folly/String.h"
@@ -73,7 +75,8 @@ class ConfigPortChannelTest : public Fboss2IntegrationTest {
         return port["ingressVlan"].asInt();
       }
     }
-    throw std::runtime_error("Port not found in running config: " + portName);
+    throw std::runtime_error(
+        fmt::format("Port not found in running config: {}", portName));
   }
 
   /*
@@ -122,7 +125,8 @@ class ConfigPortChannelTest : public Fboss2IntegrationTest {
         return port["logicalID"].asInt();
       }
     }
-    throw std::runtime_error("Port not found in running config: " + portName);
+    throw std::runtime_error(
+        fmt::format("Port not found in running config: {}", portName));
   }
 
   /* The memberPorts entry for the given port, if present. */
@@ -137,7 +141,12 @@ class ConfigPortChannelTest : public Fboss2IntegrationTest {
     return std::nullopt;
   }
 
-  /* Interface ports that are not a member of any existing aggregate port. */
+  /*
+   * Interface ports usable as members: in a VLAN (the test re-homes the
+   * second one into the first one's VLAN), not already an aggregate port
+   * member, and without a port router interface of their own (the CLI
+   * refuses those).
+   */
   std::vector<std::string> pickFreeMemberPorts(size_t count) {
     auto config = getRunningConfig();
     std::vector<int64_t> takenPortIds;
@@ -146,6 +155,13 @@ class ConfigPortChannelTest : public Fboss2IntegrationTest {
       for (const auto& aggPort : *aggregatePorts) {
         for (const auto& member : aggPort["memberPorts"]) {
           takenPortIds.push_back(member["memberPortID"].asInt());
+        }
+      }
+    }
+    if (auto* interfaces = sw ? sw->get_ptr("interfaces") : nullptr) {
+      for (const auto& intf : *interfaces) {
+        if (auto* portId = intf.get_ptr("portID")) {
+          takenPortIds.push_back(portId->asInt());
         }
       }
     }
@@ -163,8 +179,10 @@ class ConfigPortChannelTest : public Fboss2IntegrationTest {
         continue;
       }
       int64_t portId = port["logicalID"].asInt();
-      if (std::find(takenPortIds.begin(), takenPortIds.end(), portId) ==
-          takenPortIds.end()) {
+      bool taken =
+          std::find(takenPortIds.begin(), takenPortIds.end(), portId) !=
+          takenPortIds.end();
+      if (!taken && port["ingressVlan"].asInt() != 0) {
         picked.push_back(port["name"].asString());
       }
     }
@@ -250,23 +268,13 @@ TEST_F(ConfigPortChannelTest, CreateModifyAndDeletePortChannel) {
   EXPECT_EQ((*aggPort)["minimumCapacity"]["linkCount"].asInt(), 2);
   EXPECT_EQ((*aggPort)["minimumCapacityToUp"]["linkCount"].asInt(), 2);
 
-  XLOG(INFO) << "[Step 3b] Threshold changes the LAG could never satisfy "
-                "must be refused before they are staged";
-  // minimum-links-to-up below minimum-links would CHECK-abort the agent.
+  XLOG(INFO) << "[Step 3b] minimum-links-to-up below minimum-links would "
+                "CHECK-abort the agent, so it must be refused before staging";
   auto result = runCli(
       {"config", "port-channel", kPortChannelName, "minimum-links-to-up", "1"});
   EXPECT_NE(result.exitCode, 0);
-  // Above the member count the LAG could never come up.
-  result = runCli(
-      {"config", "port-channel", kPortChannelName, "minimum-links-to-up", "3"});
-  EXPECT_NE(result.exitCode, 0);
-  // Removing a member would leave both thresholds above the member count.
-  result = runCli(
-      {"config", "port-channel", kPortChannelName, "member", "remove", port2});
-  EXPECT_NE(result.exitCode, 0);
   aggPort = findAggregatePort(kPortChannelName);
   ASSERT_TRUE(aggPort.has_value());
-  EXPECT_EQ((*aggPort)["memberPorts"].size(), 2);
   EXPECT_EQ((*aggPort)["minimumCapacity"]["linkCount"].asInt(), 2);
   EXPECT_EQ((*aggPort)["minimumCapacityToUp"]["linkCount"].asInt(), 2);
 

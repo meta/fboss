@@ -81,12 +81,15 @@ CmdConfigPortChannelTraits::RetType CmdConfigPortChannel::queryClient(
     return fmt::format("Port-channel '{}' already exists", name);
   }
 
-  // Attributes and values were validated by PortChannelConfigArgs.
+  // Attributes and values were validated by PortChannelConfigArgs. Apply
+  // them to a copy and validate the end state once, so a combined command is
+  // accepted or refused as a whole regardless of attribute order.
   const auto& attrTable = portChannelAttrTable();
+  cfg::AggregatePort updated = *portChannel;
   bool changed = false;
   std::vector<std::string> applied;
   for (const auto& [attr, value] : portChannelConfig.getAttributes()) {
-    auto result = attrTable.find(attr)->second.set(*portChannel, value);
+    auto result = attrTable.find(attr)->second.set(updated, value);
     changed |= result.changed;
     applied.push_back(std::move(result.applied));
   }
@@ -97,6 +100,8 @@ CmdConfigPortChannelTraits::RetType CmdConfigPortChannel::queryClient(
         name,
         folly::join(", ", applied));
   }
+  checkMinimumCapacity(updated);
+  *portChannel = std::move(updated);
 
   // Aggregate port changes are applied live through the agent's normal
   // state-delta pipeline (SaiLagManager::changeLag), so HITLESS is correct.

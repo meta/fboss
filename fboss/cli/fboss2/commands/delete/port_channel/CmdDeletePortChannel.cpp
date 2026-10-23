@@ -93,11 +93,14 @@ CmdDeletePortChannelTraits::RetType CmdDeletePortChannel::queryClient(
 
   // MultiArgsConfigType already rejected unknown attributes, so every
   // attribute has a table row.
+  // Resets are applied to a copy and the end state validated once, so e.g.
+  // resetting both thresholds together is judged on the pair, not per row.
   const auto& attrTable = portChannelAttrTable();
+  cfg::AggregatePort updated = *portChannel;
   bool changed = false;
   std::vector<std::string> applied;
   for (const auto& [attr, value] : deleteConfig.getAttributes()) {
-    auto result = attrTable.find(attr)->second.reset(*portChannel);
+    auto result = attrTable.find(attr)->second.reset(updated);
     changed |= result.changed;
     applied.push_back(std::move(result.applied));
   }
@@ -108,6 +111,8 @@ CmdDeletePortChannelTraits::RetType CmdDeletePortChannel::queryClient(
         name,
         folly::join(", ", applied));
   }
+  checkMinimumCapacity(updated);
+  *portChannel = std::move(updated);
 
   session.saveConfig();
 

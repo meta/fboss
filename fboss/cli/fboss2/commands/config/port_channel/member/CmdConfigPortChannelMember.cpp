@@ -72,7 +72,7 @@ PortChannelMemberArgs::PortChannelMemberArgs(std::vector<std::string> v)
     // first opens a two-token attribute group (e.g. "lacp timeout").
     std::string unknown = v[1];
     if (v.size() > 2 && isPortChannelMemberAttrStart(v[1])) {
-      unknown += " " + v[2];
+      unknown = fmt::format("{} {}", unknown, v[2]);
     }
     throw std::invalid_argument(
         fmt::format(
