@@ -172,7 +172,9 @@ class TestRestore(unittest.TestCase):
             '{\n  "sw": 1\n}'
         )
         self.assertTrue(self.h.baseline.restore(self.sha))
-        self.assertEqual(self.h.cli_calls, [[FAKE_CLI, "config", "rollback", self.sha]])
+        self.assertEqual(
+            self.h.cli_calls, [[FAKE_CLI, "--force", "config", "rollback", self.sha]]
+        )
         self.h.cold_boot.assert_not_called()
 
     def test_uncommitted_edit_counts_as_drift(self):
