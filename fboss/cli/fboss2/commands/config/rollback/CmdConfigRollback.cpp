@@ -14,6 +14,7 @@
 #include <stdexcept>
 #include <string>
 
+#include "fboss/cli/fboss2/CmdGlobalOptions.h"
 #include "fboss/cli/fboss2/CmdHandler.cpp"
 
 #include "fboss/cli/fboss2/session/ConfigSession.h"
@@ -40,14 +41,11 @@ CmdConfigRollbackTraits::RetType CmdConfigRollback::queryClient(
   }
 
   try {
-    std::string newCommitSha;
-    if (revisions.empty()) {
-      // No revision specified - rollback to previous revision
-      newCommitSha = session.rollback(hostInfo);
-    } else {
-      // Specific commit SHA specified
-      newCommitSha = session.rollback(hostInfo, revisions[0]);
-    }
+    // An empty revision rolls back to the previous commit.
+    std::string newCommitSha = session.rollback(
+        hostInfo,
+        revisions.empty() ? "" : revisions[0],
+        CmdGlobalOptions::getInstance()->isForce());
     if (!newCommitSha.empty()) {
       return "Successfully rolled back. New commit: " +
           Git::shortSha1(newCommitSha) + ". Config reloaded.";
