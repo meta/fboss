@@ -1,3 +1,3 @@
 TcvrId,TcvrLaneIdList,PimId,AccessControllerId,AccessControlType,ResetPath,ResetMask,ResetHoldHi,PresentPath,PresentMask,PresentHoldHi,IoControllerId,IoControlType,IoPath,LedId,LedBluePath,LedYellowPath
-1,1 2 3 4,1,1,CPLD,/run/devmap/xcvrs/xcvr_ctrl_1/xcvr_reset_1,1,1,/run/devmap/xcvrs/xcvr_ctrl_1/xcvr_present_1,1,0,1,I2C,/run/devmap/xcvrs/xcvr_io_1,1,/sys/class/leds/port1_led1:blue:status,/sys/class/leds/port1_led1:amber:status
-2,1 2 3 4,1,2,CPLD,/run/devmap/xcvrs/xcvr_ctrl_2/xcvr_reset_2,1,1,/run/devmap/xcvrs/xcvr_ctrl_2/xcvr_present_2,1,0,2,I2C,/run/devmap/xcvrs/xcvr_io_2,2,/sys/class/leds/port2_led1:blue:status,/sys/class/leds/port2_led1:amber:status
+1,1 2 3 4,1,1,CPLD,/run/devmap/xcvrs/xcvr_ctrl_1/xcvr_reset_1,1,1,/run/devmap/xcvrs/xcvr_ctrl_1/xcvr_present_1,1,0,1,I2C,/run/devmap/xcvrs/xcvr_io_1,1,/sys/class/leds/port2_led1:blue:status,/sys/class/leds/port2_led1:amber:status
+2,1 2 3 4,1,2,CPLD,/run/devmap/xcvrs/xcvr_ctrl_2/xcvr_reset_2,1,1,/run/devmap/xcvrs/xcvr_ctrl_2/xcvr_present_2,1,0,2,I2C,/run/devmap/xcvrs/xcvr_io_2,2,/sys/class/leds/port1_led1:blue:status,/sys/class/leds/port1_led1:amber:status
