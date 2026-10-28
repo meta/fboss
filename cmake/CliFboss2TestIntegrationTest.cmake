@@ -10,6 +10,7 @@ add_executable(fboss2_integration_test
   fboss/cli/fboss2/test/integration_test/AgentMemoryReclamationTest.cpp
   fboss/cli/fboss2/test/integration_test/Fboss2IntegrationTest.cpp
   fboss/cli/fboss2/test/integration_test/ConfigAdminDistanceTest.cpp
+  fboss/cli/fboss2/test/integration_test/ConfigAggregatePortTest.cpp
   fboss/cli/fboss2/test/integration_test/ConfigAclRuleTest.cpp
   fboss/cli/fboss2/test/integration_test/ConfigAclTest.cpp
   fboss/cli/fboss2/test/integration_test/ConfigArpTest.cpp

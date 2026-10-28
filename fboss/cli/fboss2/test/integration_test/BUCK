@@ -21,6 +21,7 @@ cpp_binary(
         "ConfigAclRuleTest.cpp",
         "ConfigAclTest.cpp",
         "ConfigAdminDistanceTest.cpp",
+        "ConfigAggregatePortTest.cpp",
         "ConfigArpTest.cpp",
         "ConfigBgpGlobalTest.cpp",
         "ConfigBgpNeighborTest.cpp",

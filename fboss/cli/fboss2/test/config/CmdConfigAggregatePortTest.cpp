@@ -292,6 +292,33 @@ TEST_F(CmdConfigAggregatePortTestFixture, deletesAggregatePort) {
           *ConfigSession::getInstance().getAgentConfig().sw()->aggregatePorts(),
           "Port-Channel5000"),
       nullptr);
+
+  EXPECT_THAT(
+      cmd.queryClient(localhost(), aggregatePort), HasSubstr("does not exist"));
+}
+
+TEST_F(
+    CmdConfigAggregatePortTestFixture,
+    deleteSubcommandsAreIdempotentForMissingAggregatePort) {
+  setupTestableConfigSession();
+  AggregatePortNameArg aggregatePort({"Port-Channel9999"});
+  const auto before =
+      *ConfigSession::getInstance().getAgentConfig().sw()->aggregatePorts();
+
+  CmdDeleteAggregatePortMember memberCmd;
+  AggregatePortMemberDeleteArg members({"eth1/1/1"});
+  EXPECT_THAT(
+      memberCmd.queryClient(localhost(), aggregatePort, members),
+      HasSubstr("does not exist"));
+
+  CmdDeleteAggregatePortMinimumCapacityToUp minimumCapacityToUpCmd;
+  EXPECT_THAT(
+      minimumCapacityToUpCmd.queryClient(localhost(), aggregatePort),
+      HasSubstr("does not exist"));
+
+  EXPECT_EQ(
+      *ConfigSession::getInstance().getAgentConfig().sw()->aggregatePorts(),
+      before);
 }
 
 TEST_F(

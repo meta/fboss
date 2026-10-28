@@ -44,9 +44,8 @@ CmdDeleteAggregatePortTraits::RetType CmdDeleteAggregatePort::queryClient(
     return *aggregatePort.name() == aggregatePortArg.getName();
   });
   if (aggregatePorts.size() == originalSize) {
-    throw std::invalid_argument(
-        fmt::format(
-            "Aggregate-port '{}' does not exist", aggregatePortArg.getName()));
+    return fmt::format(
+        "Aggregate-port '{}' does not exist", aggregatePortArg.getName());
   }
 
   aggregate_port_utils::validateAggregatePorts(swConfig, aggregatePorts);
@@ -71,9 +70,8 @@ CmdDeleteAggregatePortMember::queryClient(
   auto* aggregatePort = aggregate_port_utils::findAggregatePort(
       aggregatePorts, aggregatePortArg.getName());
   if (!aggregatePort) {
-    throw std::invalid_argument(
-        fmt::format(
-            "Aggregate-port '{}' does not exist", aggregatePortArg.getName()));
+    return fmt::format(
+        "Aggregate-port '{}' does not exist", aggregatePortArg.getName());
   }
 
   std::set<int32_t> portIds;
@@ -119,9 +117,8 @@ CmdDeleteAggregatePortMinimumCapacityToUp::queryClient(
   auto* aggregatePort = aggregate_port_utils::findAggregatePort(
       aggregatePorts, aggregatePortArg.getName());
   if (!aggregatePort) {
-    throw std::invalid_argument(
-        fmt::format(
-            "Aggregate-port '{}' does not exist", aggregatePortArg.getName()));
+    return fmt::format(
+        "Aggregate-port '{}' does not exist", aggregatePortArg.getName());
   }
   if (!aggregatePort->minimumCapacityToUp().has_value()) {
     return fmt::format(
