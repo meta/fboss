@@ -404,6 +404,12 @@ TEST_F(TunnelIpInIpTest, CreateDecapTunnelAndVerifyRunningConfig) {
   const std::string dstIp = findIpv6OnIntf(intfId);
   const std::string srcIp = "2001:db8:cafe::1";
   const std::string tunnelId = "integration-test-decap";
+  // Drop the tunnel, then the underlay VLAN and its interface that
+  // ensureUnderlayIntfId created. Runs even when an assertion below fails, so
+  // the VLAN never outlives the test.
+  SCOPE_EXIT {
+    deleteTunnelAndUnderlay("decap", tunnelId, intfId);
+  };
 
   XLOG(INFO) << "[Step 1] Creating decap tunnel " << tunnelId
              << " (underlayIntf=" << intfId << " dst=" << dstIp << ")...";
@@ -478,6 +484,12 @@ TEST_F(TunnelIpInIpTest, CreateEncapTunnelAndVerifyRunningConfig) {
   const std::string dstIp = findIpv6OnIntf(intfId);
   const std::string srcIp = "2001:db8:cafe::2";
   const std::string tunnelId = "integration-test-encap";
+  // Drop the tunnel, then the underlay VLAN and its interface that
+  // ensureUnderlayIntfId created. Runs even when an assertion below fails, so
+  // the VLAN never outlives the test.
+  SCOPE_EXIT {
+    deleteTunnelAndUnderlay("encap", tunnelId, intfId);
+  };
 
   XLOG(INFO) << "[Step 1] Creating encap tunnel " << tunnelId << "...";
   auto result = runCli(
@@ -537,6 +549,12 @@ TEST_F(TunnelIpInIpTest, DeleteDecapTunnel) {
   int intfId = ensureUnderlayIntfId();
   const std::string dstIp = findIpv6OnIntf(intfId);
   const std::string tunnelId = "integration-test-decap-delete";
+  // The test deletes the tunnel; this drops the underlay VLAN and its
+  // interface that ensureUnderlayIntfId created, and the tunnel too if the
+  // test fails before deleting it.
+  SCOPE_EXIT {
+    deleteTunnelAndUnderlay("decap", tunnelId, intfId);
+  };
 
   auto result = runCli(
       {"config",
@@ -692,6 +710,12 @@ TEST_F(TunnelIpInIpTest, ResetOptionalAttrOnDecapTunnel) {
   int intfId = ensureUnderlayIntfId();
   const std::string dstIp = findIpv6OnIntf(intfId);
   const std::string tunnelId = "integration-test-decap-reset";
+  // Drop the tunnel, then the underlay VLAN and its interface that
+  // ensureUnderlayIntfId created. Runs even when an assertion below fails, so
+  // the VLAN never outlives the test.
+  SCOPE_EXIT {
+    deleteTunnelAndUnderlay("decap", tunnelId, intfId);
+  };
 
   auto result = runCli(
       {"config",
@@ -821,6 +845,12 @@ TEST_F(TunnelIpInIpTest, DeleteWrongDirectionRejected) {
   int intfId = ensureUnderlayIntfId();
   const std::string dstIp = findIpv6OnIntf(intfId);
   const std::string tunnelId = "integration-test-encap-wrongdir";
+  // Drop the tunnel, then the underlay VLAN and its interface that
+  // ensureUnderlayIntfId created. Runs even when an assertion below fails, so
+  // the VLAN never outlives the test, and after the discardSession() below.
+  SCOPE_EXIT {
+    deleteTunnelAndUnderlay("encap", tunnelId, intfId);
+  };
 
   auto result = runCli(
       {"config",
