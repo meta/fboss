@@ -12,6 +12,8 @@ FRUID_FILE="/var/facebook/fboss/fruid.json"
 NPU_SDK_UTILS_TOOL="/opt/fboss/bin/npu_sdk_utils.py"
 NPU_SDK_METADATA="${FBOSS_SHARE}/npu_sdk_metadata.json"
 NPU_HW_AGENT_BINARY="fboss_hw_agent-sai_impl"
+# Set by setup_agent_config when it creates agent.conf on this boot.
+AGENT_CONF_CREATED=0
 
 log() {
   echo "[fboss_init] $1" >&2
@@ -77,6 +79,7 @@ setup_agent_config() {
   if [[ ! -f $NPU_SDK_METADATA ]]; then
     log "No NPU SDK metadata found; keeping the configured SDK version"
     copy_config "$src" "$dst" "agent.conf"
+    AGENT_CONF_CREATED=1
     return
   fi
 
@@ -85,6 +88,7 @@ setup_agent_config() {
     --metadata-path "$NPU_SDK_METADATA" \
     --binary-name "$NPU_HW_AGENT_BINARY" \
     --output-directory "$COOP_DIR"
+  AGENT_CONF_CREATED=1
   log "Created agent.conf with SDK versions for $NPU_HW_AGENT_BINARY"
 }
 
@@ -121,6 +125,40 @@ setup_coop_configs() {
   setup_agent_config "${platform_dir}/agent.conf"
   copy_config "${platform_dir}/qsfp.conf" "${COOP_DIR}/qsfp.conf" "qsfp.conf"
   copy_config "${platform_dir}/led.conf" "${COOP_DIR}/led.conf" "led.conf"
+}
+
+# Start fboss2's config history (ConfigSession::initializeGit's layout) from the
+# agent.conf this boot created, so its first commit is the bootstrap rather than
+# whatever agent.conf holds at the first `fboss2-dev config` session.
+commit_bootstrap_config() {
+  if [[ $AGENT_CONF_CREATED -ne 1 ]]; then
+    return
+  fi
+  # /etc/coop belongs to coop, so git refuses it to root without safe.directory,
+  # which fboss2 passes on every call too.
+  local git=(git -c "safe.directory=$COOP_DIR" -C "$COOP_DIR")
+  if "${git[@]}" rev-parse --verify HEAD >/dev/null 2>&1; then
+    log "fboss2 config history already has commits (skipping)"
+    return
+  fi
+  # fboss2 skips its own git init once the repository exists, so this sets up
+  # what that init would: group-writable files and the fboss-cli identity.
+  if (
+    umask 0002
+    mkdir -p "${COOP_DIR}/cli" &&
+      cp "${COOP_DIR}/agent.conf" "${COOP_DIR}/cli/agent.conf" &&
+      printf '{}' >"${COOP_DIR}/cli/cli_metadata.json" &&
+      "${git[@]}" init --quiet --initial-branch=main --shared=group &&
+      "${git[@]}" config user.name fboss-cli &&
+      "${git[@]}" config user.email fboss-cli@localhost &&
+      "${git[@]}" add -- cli/agent.conf cli/cli_metadata.json &&
+      "${git[@]}" commit --quiet -m "Initial commit: bootstrap agent.conf"
+  ); then
+    log "Committed the bootstrap agent.conf to the fboss2 config history"
+  else
+    # Not fatal: fboss2 starts the history itself at its first session.
+    error "Failed to commit the bootstrap agent.conf to ${COOP_DIR}"
+  fi
 }
 
 enable_hw_agents() {
@@ -172,6 +210,7 @@ main() {
 
   create_distro_base_snapshot
   setup_coop_configs "$platform_dir"
+  commit_bootstrap_config
   if ! generate_fruid; then
     exit 1
   fi
