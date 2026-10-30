@@ -416,6 +416,19 @@ class AgentHwAclQualifierTest : public AgentHwTest {
   }
 };
 
+// With ACL table groups, Q4D/J4 split the default ACL into IPv4 and
+// IPv6 tables and ICMPv6 entries land in the IPv6 one; with a single table
+// every entry is in the default table.
+std::string icmpv6AclTable(const AgentEnsemble* ensemble) {
+  auto asicType = ensemble->getL3Asics().front()->getAsicType();
+  if (FLAGS_enable_acl_table_group &&
+      (asicType == cfg::AsicType::ASIC_TYPE_QUMRAN4D ||
+       asicType == cfg::AsicType::ASIC_TYPE_JERICHO4)) {
+    return utility::kIpv6AclTable();
+  }
+  return utility::kDefaultAclTable();
+}
+
 TEST_F(AgentHwAclQualifierTest, AclIp4TcpQualifiers) {
   auto setup = [=, this]() {
     auto& ensemble = *getAgentEnsemble();
@@ -676,7 +689,7 @@ TEST_F(AgentHwAclQualifierTest, AclEmptyCodeIcmp) {
     auto l3Asics = ensemble.getL3Asics();
     auto asic = checkSameAndGetAsicForTesting(l3Asics);
     if (asic->isSupported(HwAsic::Feature::ACL_ENTRY_ETHER_TYPE)) {
-      acl.etherType() = cfg::EtherType::IPv4;
+      acl.etherType() = cfg::EtherType::IPv6;
     }
     acl.proto() = 58;
     acl.icmpType() = 3;
@@ -705,8 +718,8 @@ TEST_F(AgentHwAclQualifierTest, AclEmptyCodeIcmp) {
     if (this->getAsicVendor() == HwAsic::AsicVendor::ASIC_VENDOR_CHENAB) {
       EXPECT_TRUE(client->sync_isAclEntrySame(aclThrift, "icmp_acl_table"));
     } else {
-      EXPECT_TRUE(
-          client->sync_isAclEntrySame(aclThrift, utility::kDefaultAclTable()));
+      EXPECT_TRUE(client->sync_isAclEntrySame(
+          aclThrift, icmpv6AclTable(getAgentEnsemble())));
     }
   };
 
