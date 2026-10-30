@@ -52,6 +52,7 @@ TEST(ConfigLibTest, Basic) {
   EXPECT_NO_THROW(ConfigLib().getFanServiceConfig(kBlackwolf800banw));
   EXPECT_NO_THROW(ConfigLib().getFanServiceConfig(kSample));
   EXPECT_NO_THROW(ConfigLib().getFanServiceConfig(kM4061nhp));
+  EXPECT_NO_THROW(ConfigLib().getFanServiceConfig(kM4340nhp));
   EXPECT_THROW(
       ConfigLib().getFanServiceConfig(kNonExistentPlatform),
       std::runtime_error);
