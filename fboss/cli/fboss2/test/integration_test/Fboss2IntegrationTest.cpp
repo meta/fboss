@@ -38,6 +38,7 @@
 
 #include <folly/IPAddressV6.h>
 #include <thrift/lib/cpp/util/EnumUtils.h>
+#include <thrift/lib/cpp2/protocol/Serializer.h>
 #include "fboss/agent/gen-cpp2/platform_config_types.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
 #include "fboss/agent/if/gen-cpp2/FbossCtrl.h"
@@ -102,6 +103,32 @@ void Fboss2IntegrationTest::discardSession() const {
   // Reset the in-memory singleton so the next CLI command starts a fresh
   // session from the current system config, not stale in-process state.
   ConfigSession::resetInstance();
+}
+
+std::string Fboss2IntegrationTest::snapshotConfig() const {
+  discardSession();
+  auto snapshot = apache::thrift::SimpleJSONSerializer::serialize<std::string>(
+      ConfigSession::getInstance().getAgentConfig());
+  discardSession();
+  return snapshot;
+}
+
+void Fboss2IntegrationTest::restoreConfig(
+    const std::string& configJson,
+    cli::ConfigActionLevel actionLevel) const {
+  if (configJson.empty()) {
+    return;
+  }
+  discardSession();
+
+  XLOG(INFO) << "Restoring config snapshot...";
+  auto& session = ConfigSession::getInstance();
+  auto& config = session.getAgentConfig();
+  apache::thrift::SimpleJSONSerializer::deserialize(configJson, config);
+  session.saveConfig(cli::ServiceType::AGENT, actionLevel);
+  commitConfig();
+  waitForAgentReady();
+  XLOG(INFO) << "Config snapshot restored";
 }
 
 Fboss2IntegrationTest::Result Fboss2IntegrationTest::executeCliCommand(
@@ -186,6 +213,16 @@ folly::dynamic Fboss2IntegrationTest::getRunningConfig() const {
   std::string configStr;
   client->sync_getRunningConfig(configStr);
   return folly::parseJson(configStr);
+}
+
+std::string Fboss2IntegrationTest::getAgentOption(
+    const std::string& name) const {
+  HostInfo hostInfo("localhost");
+  auto client =
+      utils::createClient<apache::thrift::Client<FbossCtrl>>(hostInfo);
+  std::string value;
+  client->sync_getOption(value, name);
+  return value;
 }
 
 folly::dynamic Fboss2IntegrationTest::getSwitchState(
