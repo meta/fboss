@@ -243,16 +243,19 @@ class AgentPortProfileTest : public AgentHwTest {
         // would recreate the ports, which Chenab does not support.
         return;
       }
-      auto lbMode =
-          getAgentEnsemble()->getL3Asics().front()->desiredLoopbackModes();
-      auto config = utility::oneL3IntfTwoPortConfig(
-          getAgentEnsemble()->getPlatformMapping(),
-          getAgentEnsemble()->getL3Asics().front(),
-          availablePorts[0],
-          availablePorts[1],
-          getAgentEnsemble()->supportsAddRemovePort(),
-          lbMode);
-      for (auto port : {availablePorts[0], availablePorts[1]}) {
+      const auto* asic = getAgentEnsemble()->getL3Asics().front();
+      // oneL3IntfTwoPortConfig() builds a VLAN interface, and VOQ switches
+      // have no VLANs; start from the per-port interface config instead.
+      auto config = asic->getSwitchType() == cfg::SwitchType::VOQ
+          ? initialConfig(*getAgentEnsemble())
+          : utility::oneL3IntfTwoPortConfig(
+                getAgentEnsemble()->getPlatformMapping(),
+                asic,
+                availablePorts[0],
+                availablePorts[1],
+                getAgentEnsemble()->supportsAddRemovePort(),
+                asic->desiredLoopbackModes());
+      for (const auto& port : {availablePorts[0], availablePorts[1]}) {
         utility::configurePortProfile(
             getAgentEnsemble()->getPlatformMapping(),
             getAgentEnsemble()->supportsAddRemovePort(),
