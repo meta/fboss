@@ -129,6 +129,18 @@ TEST_F(CrossConfigValidatorTest, ValidFanConfig) {
   config.sensors() = {fanSensor};
   EXPECT_TRUE(
       crossConfigValidator_->isValidFanServiceConfig(config, sensorConfig));
+
+  // Test agent ASIC temperature sensor names
+  fan_service::Sensor asicSensor;
+  asicSensor.sensorName() = "asic_temp_0_15";
+  config.sensors() = {fanSensor, asicSensor};
+  fan_service::OvertempEntry overtempEntry;
+  overtempEntry.sensorName() = "asic_temp_0_0";
+  fan_service::ShutdownCondition shutdownCondition;
+  shutdownCondition.conditions() = {overtempEntry};
+  config.shutdownCondition() = shutdownCondition;
+  EXPECT_TRUE(
+      crossConfigValidator_->isValidFanServiceConfig(config, sensorConfig));
 }
 
 TEST_F(CrossConfigValidatorTest, InvalidFanConfig) {
@@ -184,6 +196,13 @@ TEST_F(CrossConfigValidatorTest, InvalidFanConfig) {
   sensor_config::PmUnitSensors pmUnitSensors;
   pmUnitSensors.sensors() = {};
   sensorConfig.pmUnitSensorsList() = {pmUnitSensors};
+  EXPECT_FALSE(
+      crossConfigValidator_->isValidFanServiceConfig(config, sensorConfig));
+
+  // Malformed agent ASIC temperature sensor name
+  config.fans() = {validFan};
+  fanSensor.sensorName() = "asic_temp_0";
+  config.sensors() = {fanSensor};
   EXPECT_FALSE(
       crossConfigValidator_->isValidFanServiceConfig(config, sensorConfig));
 }
