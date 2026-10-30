@@ -51,14 +51,18 @@ class AgentPortProfileTest : public AgentHwTest {
   // InterfaceType::PORT), and SaiPortManager::changePortByRecreate does not
   // chain delete them. Reprogramming a port to a profile with a different lane
   // count therefore removes the port while its RIF is still attached, which the
-  // SDK rejects with OBJECT IN USE. Program the profile as part of the initial
-  // config instead, so the ports come up on it at cold boot and are never
-  // recreated.
+  // SDK rejects with OBJECT IN USE. Qumran4D is the same: its port RIF (an
+  // in-LIF and a my-MAC entry on the port) keeps the SDK from removing the
+  // port. Program the profile as part of the initial config instead, so the
+  // ports come up on it at cold boot and are never recreated.
   static bool programProfileInInitialConfig(const AgentEnsemble& ensemble) {
     auto l3Asics = ensemble.getHwAsicTable()->getL3Asics();
-    return !l3Asics.empty() &&
-        l3Asics.front()->getAsicVendor() ==
-        HwAsic::AsicVendor::ASIC_VENDOR_CHENAB;
+    if (l3Asics.empty()) {
+      return false;
+    }
+    const auto* asic = l3Asics.front();
+    return asic->getAsicVendor() == HwAsic::AsicVendor::ASIC_VENDOR_CHENAB ||
+        asic->getAsicType() == cfg::AsicType::ASIC_TYPE_QUMRAN4D;
   }
 
   cfg::SwitchConfig initialConfig(
@@ -240,7 +244,7 @@ class AgentPortProfileTest : public AgentHwTest {
     auto setup = [=, this]() {
       if (programProfileInInitialConfig(*getAgentEnsemble())) {
         // Profile is already programmed by initialConfig(). Reapplying it here
-        // would recreate the ports, which Chenab does not support.
+        // would recreate the ports, which Chenab and Qumran4D do not support.
         return;
       }
       const auto* asic = getAgentEnsemble()->getL3Asics().front();
@@ -273,8 +277,8 @@ class AgentPortProfileTest : public AgentHwTest {
         // verifyPort() checks the hardware against whatever profile the port
         // currently carries, so a port left on its default profile would still
         // pass and the test would silently cover the wrong profile. On Chenab
-        // setup() is a no-op and nothing else asserts the profile was applied,
-        // so assert it here.
+        // and Qumran4D setup() is a no-op and nothing else asserts the profile
+        // was applied, so assert it here.
         auto port = getProgrammedState()->getPorts()->getNodeIf(portID);
         ASSERT_NE(port, nullptr);
         EXPECT_EQ(port->getProfileID(), Profile);
