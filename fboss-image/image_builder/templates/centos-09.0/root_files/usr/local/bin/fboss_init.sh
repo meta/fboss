@@ -16,6 +16,9 @@ CHASSIS_EEPROM_PARSED="/run/devmap/eeproms/CHASSIS_EEPROM_PARSED"
 # Passed as --flagfile by the fboss_sw_agent, fboss_hw_agent@ and qsfp_service
 # units; on tmpfs so it cannot go stale across boots.
 VARIANT_FLAGFILE="/run/fboss/variant_flags"
+SET_DSF_NODE_MAC_TOOL="/usr/local/bin/set_dsf_node_mac.py"
+# Set by setup_agent_config when it creates agent.conf on this boot.
+AGENT_CONF_CREATED=0
 
 log() {
   echo "[fboss_init] $1" >&2
@@ -81,6 +84,7 @@ setup_agent_config() {
   if [[ ! -f $NPU_SDK_METADATA ]]; then
     log "No NPU SDK metadata found; keeping the configured SDK version"
     copy_config "$src" "$dst" "agent.conf"
+    AGENT_CONF_CREATED=1
     return
   fi
 
@@ -89,6 +93,7 @@ setup_agent_config() {
     --metadata-path "$NPU_SDK_METADATA" \
     --binary-name "$NPU_HW_AGENT_BINARY" \
     --output-directory "$COOP_DIR"
+  AGENT_CONF_CREATED=1
   log "Created agent.conf with SDK versions for $NPU_HW_AGENT_BINARY"
 }
 
@@ -153,6 +158,18 @@ set_variant_flags() {
   log "Wrote $VARIANT_FLAGFILE"
 }
 
+# Fill in the per-unit DSF node MAC (VOQ platforms) from the chassis EEPROM.
+# Only on an agent.conf created this boot: an existing one belongs to the
+# operator or to the fboss2 config history and is left as is.
+set_dsf_node_mac() {
+  if [[ $AGENT_CONF_CREATED -ne 1 ]]; then
+    return
+  fi
+  # The tool logs its own error; the agent then fails at config load.
+  python3 "$SET_DSF_NODE_MAC_TOOL" --config "${COOP_DIR}/agent.conf" \
+    --eeprom "$CHASSIS_EEPROM_PARSED" || true
+}
+
 enable_hw_agents() {
   local platform_dir="$1"
   local num_hw_agents
@@ -203,6 +220,7 @@ main() {
   create_distro_base_snapshot
   setup_coop_configs "$platform_dir"
   set_variant_flags
+  set_dsf_node_mac
   if ! generate_fruid; then
     exit 1
   fi
