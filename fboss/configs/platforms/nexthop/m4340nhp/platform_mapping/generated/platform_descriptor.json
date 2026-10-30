@@ -1,0 +1,11 @@
+{
+  "platformType": 59,
+  "productNamePrefixes": [
+    "M4340NHP"
+  ],
+  "modeNames": [
+    "m4340nhp"
+  ],
+  "asicType": 23,
+  "numSwitchAsics": 1
+}
