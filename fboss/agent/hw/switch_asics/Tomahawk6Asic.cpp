@@ -285,6 +285,7 @@ bool Tomahawk6Asic::isSupported(Feature feature) const {
     case HwAsic::Feature::ACL_DST_IPV6_WORD_WITH_MASK:
     case HwAsic::Feature::HW_PROTECTION_SWITCHOVER_COUNTERS:
     case HwAsic::Feature::PORT_SERDES_CREATED_WITH_PORT:
+    case HwAsic::Feature::SYSTEM_PORT_CORE_INDEX_FROM_PORT:
       return false;
   }
   return false;

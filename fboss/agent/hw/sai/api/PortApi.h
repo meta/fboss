@@ -288,6 +288,16 @@ struct SaiPortTraits {
     };
     using SystemPortId =
         SaiExtensionAttribute<sai_uint16_t, AttributeSystemPortId>;
+    struct AttributeAttachedCoreIndex {
+      std::optional<sai_attr_id_t> operator()();
+    };
+    using AttachedCoreIndex =
+        SaiExtensionAttribute<sai_uint32_t, AttributeAttachedCoreIndex>;
+    struct AttributeAttachedCorePortIndex {
+      std::optional<sai_attr_id_t> operator()();
+    };
+    using AttachedCorePortIndex =
+        SaiExtensionAttribute<sai_uint32_t, AttributeAttachedCorePortIndex>;
     using PtpMode = SaiAttribute<
         EnumType,
         SAI_PORT_ATTR_PTP_MODE,
@@ -1126,6 +1136,8 @@ SAI_ATTRIBUTE_NAME(Port, IsolationGroup)
 SAI_ATTRIBUTE_NAME(Port, IngressMacSecAcl)
 SAI_ATTRIBUTE_NAME(Port, EgressMacSecAcl)
 SAI_ATTRIBUTE_NAME(Port, SystemPortId)
+SAI_ATTRIBUTE_NAME(Port, AttachedCoreIndex)
+SAI_ATTRIBUTE_NAME(Port, AttachedCorePortIndex)
 SAI_ATTRIBUTE_NAME(Port, PtpMode)
 SAI_ATTRIBUTE_NAME(Port, PortEyeValues)
 SAI_ATTRIBUTE_NAME(Port, PriorityFlowControlMode)
