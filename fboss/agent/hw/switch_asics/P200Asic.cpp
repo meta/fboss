@@ -293,6 +293,7 @@ bool P200Asic::isSupportedNonFabric(Feature feature) const {
     case HwAsic::Feature::PORT_LATCH_STATUS:
     case HwAsic::Feature::STATIC_FDB_EVICT_DYNAMIC:
     case HwAsic::Feature::MIRROR_SESSION_POLICER:
+    case HwAsic::Feature::PORT_SERDES_CREATED_WITH_PORT:
       return false;
     case HwAsic::Feature::SAI_ACL_MPLS_LABEL0_TTL:
       // Leaba does not implement the MPLS label0 TTL ACL qualifier yet.
