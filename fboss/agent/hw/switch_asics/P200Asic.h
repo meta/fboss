@@ -88,7 +88,8 @@ class P200Asic : public TajoAsic {
     return 50;
   }
   uint32_t getPacketBufferUnitSize() const override {
-    return 384;
+    // P200 buffer unit size is 512 bytes, different than other ASIC families
+    return 512;
   }
   uint32_t getPacketBufferDescriptorSize() const override {
     return 40;
