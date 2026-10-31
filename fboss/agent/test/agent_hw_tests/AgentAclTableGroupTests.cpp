@@ -290,7 +290,10 @@ class AgentAclTableGroupTest : public AgentHwTest {
   void addTwoAclTables(cfg::SwitchConfig* newCfg) {
     utility::addAclTableGroup(newCfg, kAclStage(), kAclTableGroup());
     addAclTable3WithEntry(newCfg);
-    utility::addTtlAclTable(newCfg, 2 /* priority */);
+    utility::addTtlAclTable(
+        newCfg,
+        2 /* priority */,
+        isSupportedOnAllAsics(HwAsic::Feature::ACL_BYTE_COUNTER));
     applyNewConfig(*newCfg);
   }
 
@@ -325,7 +328,10 @@ class AgentAclTableGroupTest : public AgentHwTest {
         break;
       case tableAddType::table2:
         utility::addAclTableGroup(&newCfg, kAclStage(), kAclTableGroup());
-        utility::addTtlAclTable(&newCfg, 2 /* priority */);
+        utility::addTtlAclTable(
+            &newCfg,
+            2 /* priority */,
+            isSupportedOnAllAsics(HwAsic::Feature::ACL_BYTE_COUNTER));
         break;
       case tableAddType::tableBoth:
         addTwoAclTables(&newCfg);
@@ -419,7 +425,11 @@ class AgentAclTableGroupTest : public AgentHwTest {
     auto newCfg = initialConfig(ensemble);
     utility::addAclTableGroup(&newCfg, kAclStage(), kAclTableGroup());
     addAclTable3WithEntry(&newCfg, addExtraQualifier, false);
-    utility::addTtlAclTable(&newCfg, 2 /* priority */, addExtraQualifier);
+    utility::addTtlAclTable(
+        &newCfg,
+        2 /* priority */,
+        isSupportedOnAllAsics(HwAsic::Feature::ACL_BYTE_COUNTER),
+        addExtraQualifier);
     return newCfg;
   }
 
@@ -675,7 +685,10 @@ TEST_F(AgentAclTableGroupTest, AddTwoTablesDeleteAddSecond) {
     auto newCfg = initialConfig(ensemble);
     addTwoAclTables(&newCfg);
     deleteTtlAclTable(&newCfg);
-    utility::addTtlAclTable(&newCfg, 2 /* priority */);
+    utility::addTtlAclTable(
+        &newCfg,
+        2 /* priority */,
+        isSupportedOnAllAsics(HwAsic::Feature::ACL_BYTE_COUNTER));
     applyNewConfig(newCfg);
   };
 

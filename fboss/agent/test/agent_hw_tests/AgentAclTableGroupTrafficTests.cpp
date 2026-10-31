@@ -299,7 +299,10 @@ class AgentAclTableGroupTrafficTest : public AgentHwTest {
           1 /*priority*/,
           addAllQualifiers,
           getAgentEnsemble()->isSai());
-      utility::addTtlAclTable(&newCfg, 2 /*priority*/);
+      utility::addTtlAclTable(
+          &newCfg,
+          2 /*priority*/,
+          isSupportedOnAllAsics(HwAsic::Feature::ACL_BYTE_COUNTER));
       applyNewConfig(newCfg);
 
       utility::EcmpSetupAnyNPorts6 ecmpHelper(
@@ -409,7 +412,8 @@ class AgentAclTableGroupTrafficTest : public AgentHwTest {
           1 /*priority*/,
           addAllQualifiers,
           getAgentEnsemble()->isSai());
-      utility::addTtlAclTable(&newCfg, 2);
+      utility::addTtlAclTable(
+          &newCfg, 2, isSupportedOnAllAsics(HwAsic::Feature::ACL_BYTE_COUNTER));
       applyNewConfig(newCfg);
 
       utility::EcmpSetupAnyNPorts6 ecmpHelper(

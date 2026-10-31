@@ -505,6 +505,10 @@ class AgentAclCounterTest : public AgentHwTest {
     auto* acl = &aclEntry;
     auto l3Asics = getAgentEnsemble()->getL3Asics();
     auto asic = checkSameAndGetAsicForTesting(l3Asics);
+    std::vector<cfg::CounterType> counterTypes{cfg::CounterType::PACKETS};
+    if (asic->isSupported(HwAsic::Feature::ACL_BYTE_COUNTER)) {
+      counterTypes.push_back(cfg::CounterType::BYTES);
+    }
     bool isSai = getAgentEnsemble()->isSai();
     switch (aclType) {
       case AclType::TCP_TTLD:
@@ -538,8 +542,6 @@ class AgentAclCounterTest : public AgentHwTest {
             // and v6 traffic. The test sends IPv6 traffic, so the IPv6 copy
             // keeps the canonical name/counter (the one verifyAclType checks);
             // the IPv4 copy gets a "-v4" suffix.
-            std::vector<cfg::CounterType> counterTypes{
-                cfg::CounterType::PACKETS, cfg::CounterType::BYTES};
             auto addSrcPortEntry = [&](const std::string& name,
                                        const std::string& counter,
                                        cfg::EtherType etherType,
@@ -610,9 +612,7 @@ class AgentAclCounterTest : public AgentHwTest {
     }
     utility::addAcl(config, aclEntry, cfg::AclStage::INGRESS);
 
-    std::vector<cfg::CounterType> setCounterTypes{
-        cfg::CounterType::PACKETS, cfg::CounterType::BYTES};
-    utility::addAclStat(config, aclName, counterName, setCounterTypes);
+    utility::addAclStat(config, aclName, counterName, counterTypes);
   }
 
   std::unique_ptr<utility::EcmpSetupAnyNPorts6> helper_;

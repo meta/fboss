@@ -356,7 +356,10 @@ class SaiAclTableGroupTest : public HwTest {
 
     // Table 2: Create TTL acl Table follwed by entry.
     // This utlity call adds the TTL Acl entry as well.
-    utility::addTtlAclTable(newCfg, 2 /* priority */);
+    utility::addTtlAclTable(
+        newCfg,
+        2 /* priority */,
+        isSupported(HwAsic::Feature::ACL_BYTE_COUNTER));
     applyNewConfig(*newCfg);
   }
 
@@ -403,7 +406,10 @@ class SaiAclTableGroupTest : public HwTest {
       case tableAddType::table2:
         utility::addAclTableGroup(&newCfg, kAclStage(), kAclTableGroup());
         // Add Table 2: TtlTable
-        utility::addTtlAclTable(&newCfg, 2 /* priority */);
+        utility::addTtlAclTable(
+            &newCfg,
+            2 /* priority */,
+            isSupported(HwAsic::Feature::ACL_BYTE_COUNTER));
         break;
       case tableAddType::tableBoth:
         addTwoAclTables(&newCfg);
@@ -495,7 +501,11 @@ class SaiAclTableGroupTest : public HwTest {
 
     utility::addAclTableGroup(&newCfg, kAclStage(), kAclTableGroup());
     addAclTable3WithEntry(&newCfg, addExtraQualifier, false);
-    utility::addTtlAclTable(&newCfg, 2 /* priority */, addExtraQualifier);
+    utility::addTtlAclTable(
+        &newCfg,
+        2 /* priority */,
+        isSupported(HwAsic::Feature::ACL_BYTE_COUNTER),
+        addExtraQualifier);
 
     return newCfg;
   }
