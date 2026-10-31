@@ -89,7 +89,6 @@ bool Tomahawk3Asic::isSupported(Feature feature) const {
     case HwAsic::Feature::SAI_PORT_SERDES_PROGRAMMING:
     case HwAsic::Feature::PORT_WRED_COUNTER:
     case HwAsic::Feature::ACL_METADATA_QUALIFER:
-    case HwAsic::Feature::PORT_SERDES_ZERO_PREEMPHASIS:
     case HwAsic::Feature::SAI_PRBS:
     case HwAsic::Feature::SAI_ECMP_HASH_ALGORITHM:
     case HwAsic::Feature::ACL_BYTE_COUNTER:
@@ -112,6 +111,7 @@ bool Tomahawk3Asic::isSupported(Feature feature) const {
     case HwAsic::Feature::ISOLATION_GROUP:
     case HwAsic::Feature::CSIG:
     case HwAsic::Feature::QCM:
+    case HwAsic::Feature::PORT_SERDES_ZERO_PREEMPHASIS:
     case HwAsic::Feature::SMAC_EQUALS_DMAC_CHECK_ENABLED:
     case HwAsic::Feature::PORT_TTL_DECREMENT_DISABLE:
     case HwAsic::Feature::PORT_INTERFACE_TYPE:

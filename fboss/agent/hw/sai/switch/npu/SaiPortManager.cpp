@@ -1743,7 +1743,7 @@ void SaiPortManager::programSerdes(
   }
   if (platform_->getAsic()->getAsicType() ==
           cfg::AsicType::ASIC_TYPE_TOMAHAWK3 &&
-      swPort->getZeroPreemphasis()) {
+      swPort->getZeroPreemphasis() && supportsZeroPreemphasis) {
     createSerdesWithZeroPreemphasis(portHandle, swPort->getPinConfigs());
   }
   if (platform_->getAsic()->getAsicType() ==
