@@ -197,9 +197,7 @@ const std::string getPrettyElapsedTime(const int64_t& start_time) {
 timeval splitFractionalSecondsFromTimer(const long& timer) {
   struct timeval tv;
   tv.tv_sec = timer / 1000; // get total amount of seconds
-  tv.tv_usec = (timer % 1000); // get fractional seconds
-
-  tv.tv_usec = lrint(tv.tv_usec); // round fs to nearest decimal
+  tv.tv_usec = (timer % 1000); // get fractional milliseconds
   return tv;
 }
 
