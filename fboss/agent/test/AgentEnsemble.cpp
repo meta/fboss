@@ -616,12 +616,24 @@ uint64_t AgentEnsemble::getTrafficRate(
   // interpacket gap. Account for that in linerate.
   auto packetPaddingBytes = (curPortPackets - prevPortPackets) * 20;
   auto curPortBytes = *curPortStats.outBytes_() + packetPaddingBytes;
-  auto rate = static_cast<uint64_t>((curPortBytes - prevPortBytes) * 8) /
-      secondsBetweenStatsCollection;
-  XLOG(DBG2) << "Current rate " << rate << " bps" << ", curPortBytes "
-             << curPortBytes << " prevPortBytes " << prevPortBytes
-             << " curPortPackets " << curPortPackets << " prevPortPackets "
-             << prevPortPackets;
+  // Stats are sampled asynchronously by the stats thread, so the interval
+  // between the two samples can differ from how long the caller waited.
+  const bool timestampsValid = *prevPortStats.timestamp_() !=
+          hardware_stats_constants::STAT_UNINITIALIZED() &&
+      *curPortStats.timestamp_() !=
+          hardware_stats_constants::STAT_UNINITIALIZED();
+  const int64_t elapsedSec = timestampsValid
+      ? *curPortStats.timestamp_() - *prevPortStats.timestamp_()
+      : 0;
+  const int64_t durationSec =
+      elapsedSec > 0 ? elapsedSec : std::max(1, secondsBetweenStatsCollection);
+  auto rate =
+      static_cast<uint64_t>((curPortBytes - prevPortBytes) * 8) / durationSec;
+  XLOG(DBG2) << "Current rate " << rate << " bps over " << durationSec
+             << " seconds (caller expected " << secondsBetweenStatsCollection
+             << "), curPortBytes " << curPortBytes << " prevPortBytes "
+             << prevPortBytes << " curPortPackets " << curPortPackets
+             << " prevPortPackets " << prevPortPackets;
   return rate;
 }
 
