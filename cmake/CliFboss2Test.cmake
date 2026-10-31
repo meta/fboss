@@ -14,6 +14,7 @@ add_executable(fboss2_framework_test
   fboss/cli/fboss2/test/CmdArgsTest.cpp
   # fboss/cli/fboss2/test/CmdHelpTest.cpp - excluded (requires bundled schema)
   fboss/cli/fboss2/test/CmdSubCommandsTest.cpp
+  fboss/cli/fboss2/test/CmdUtilsCommonTest.cpp
   # fboss/cli/fboss2/test/FilterTest.cpp - excluded (requires bundled schema)
   # fboss/cli/fboss2/test/FilterValidationTest.cpp - excluded (requires bundled schema)
 )

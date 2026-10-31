@@ -97,6 +97,7 @@ cpp_unittest(
         "CmdArgsTest.cpp",
         "CmdHelpTest.cpp",
         "CmdSubCommandsTest.cpp",
+        "CmdUtilsCommonTest.cpp",
         "FilterTest.cpp",
         "FilterValidationTest.cpp",
         "//fboss/cli/fboss2:cmd-list-config-impl",
