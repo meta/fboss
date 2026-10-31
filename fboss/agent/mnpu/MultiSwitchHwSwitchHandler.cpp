@@ -1,6 +1,9 @@
 // (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
 
 #include "fboss/agent/mnpu/MultiSwitchHwSwitchHandler.h"
+
+#include <algorithm>
+
 #include "fboss/agent/AgentFeatures.h"
 #include "fboss/agent/MultiSwitchPacketStreamMap.h"
 #include "fboss/agent/SwSwitch.h"
@@ -250,7 +253,12 @@ multiswitch::StateOperDelta MultiSwitchHwSwitchHandler::getNextStateOperDelta(
     }
     serveOperSyncRequest = true;
     operRequestInProgress_ = true;
+    // Deltas are numbered from 1, so a client seqnum of 0 is never an ack: the
+    // HwSwitch restarted and has nothing programmed. lastAckedOperDeltaSeqNum_
+    // can itself be 0, set below by a HwSwitch that connected before SwSwitch
+    // had any state to send.
     if (!checkOperSyncStateLocked(HwSwitchOperDeltaSyncState::CANCELLED, lk) &&
+        lastUpdateSeqNum > 0 &&
         (lastUpdateSeqNum == lastAckedOperDeltaSeqNum_)) {
       // HwSwitch has resent an ack for the previous delta. This indicates
       // that hwswitch timedout waiting for a new oper delta to be available.
@@ -263,6 +271,12 @@ multiswitch::StateOperDelta MultiSwitchHwSwitchHandler::getNextStateOperDelta(
       XLOG(DBG2) << "Need resync for hwswitch:" << getSwitchId()
                  << " last seen seqnum=" << lastUpdateSeqNum
                  << " curr seqnum=" << currOperDeltaSeqNum_;
+      if (lastUpdateSeqNum <= 0 && currOperDeltaSeqNum_ > 0) {
+        XLOG(WARNING) << "hwswitch:" << getSwitchId()
+                      << " reconnected with nothing programmed; deltas up to "
+                      << currOperDeltaSeqNum_
+                      << " never reached hardware, resyncing from scratch";
+      }
       sw_->getHwSwitchHandler()->connected(getSwitchId());
       // If HwSwitchHandler has a valid state, send full sync delta
       if (prevUpdateSwitchState_) {
@@ -318,7 +332,13 @@ multiswitch::StateOperDelta MultiSwitchHwSwitchHandler::getNextStateOperDelta(
       // cancellation occurs when the client disconnects or when server
       // undergoes a graceful shutdown.
       multiswitch::StateOperDelta cancelledResponse;
-      cancelledResponse.seqNum() = currOperDeltaSeqNum_;
+      // currOperDeltaSeqNum_ may be ahead of what this HwSwitch applied;
+      // echoing it would let it return claiming to be caught up.
+      // lastAckedOperDeltaSeqNum_ can itself be negative (e.g. reset to -1 to
+      // force a resync), so floor at 0 to avoid handing back a seqnum the
+      // client would misread as a prior ack.
+      cancelledResponse.seqNum() =
+          std::max<int64_t>(lastAckedOperDeltaSeqNum_, 0);
       return cancelledResponse;
     }
   }
