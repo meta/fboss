@@ -201,3 +201,38 @@ TEST(ExplorationErrorsTest, IsExpectedErrorRtmOutletTsensor) {
       ExplorationErrorType::RUN_DEVMAP_SYMLINK,
       "/RTM_R_SLOT@0/[RTM_R_TSENSOR_2]"));
 }
+
+TEST(ExplorationErrorsTest, IsExpectedErrorM4062nhpIdprom) {
+  PlatformConfig m4062nhpConfig;
+  m4062nhpConfig.platformName() = "M4062NHP";
+
+  // Both mezzanine EEPROMs may fail to parse
+  EXPECT_TRUE(isExpectedError(
+      m4062nhpConfig,
+      ExplorationErrorType::IDPROM_READ,
+      "/SMB_SLOT@0/[MEZZ_BOTTOM_EEPROM]"));
+  EXPECT_TRUE(isExpectedError(
+      m4062nhpConfig,
+      ExplorationErrorType::IDPROM_READ,
+      "/SMB_SLOT@0/[MEZZ_TOP_EEPROM]"));
+
+  // Other platforms do not get the mezzanine exemption
+  PlatformConfig otherConfig;
+  otherConfig.platformName() = "OTHER_PLATFORM";
+  EXPECT_FALSE(isExpectedError(
+      otherConfig,
+      ExplorationErrorType::IDPROM_READ,
+      "/SMB_SLOT@0/[MEZZ_BOTTOM_EEPROM]"));
+
+  // Only IDPROM_READ is tolerated on the mezzanine paths
+  EXPECT_FALSE(isExpectedError(
+      m4062nhpConfig,
+      ExplorationErrorType::I2C_DEVICE_CREATE,
+      "/SMB_SLOT@0/[MEZZ_TOP_EEPROM]"));
+
+  // Other devices on the same slot still count as real errors
+  EXPECT_FALSE(isExpectedError(
+      m4062nhpConfig,
+      ExplorationErrorType::IDPROM_READ,
+      "/SMB_SLOT@0/[DCDC1]"));
+}

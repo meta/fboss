@@ -54,6 +54,15 @@ bool isExpectedError(
     return true;
   }
 
+  // The mezzanine EEPROMs were left unprogrammed on early production units,
+  // so a read failure there is tolerated; programmed ones still parse.
+  if (*platformConfig.platformName() == "M4062NHP" &&
+      errorType == ExplorationErrorType::IDPROM_READ &&
+      (devicePath == "/SMB_SLOT@0/[MEZZ_BOTTOM_EEPROM]" ||
+       devicePath == "/SMB_SLOT@0/[MEZZ_TOP_EEPROM]")) {
+    return true;
+  }
+
   return false;
 }
 
