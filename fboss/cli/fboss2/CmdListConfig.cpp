@@ -27,6 +27,7 @@
 #include "fboss/cli/fboss2/commands/config/interface/CmdConfigInterface.h"
 #include "fboss/cli/fboss2/commands/config/interface/ipv6/CmdConfigInterfaceIpv6.h"
 #include "fboss/cli/fboss2/commands/config/interface/ipv6/ndp/CmdConfigInterfaceIpv6Ndp.h"
+#include "fboss/cli/fboss2/commands/config/interface/mirror/CmdConfigInterfaceMirror.h"
 #include "fboss/cli/fboss2/commands/config/interface/pfc_config/CmdConfigInterfacePfcConfig.h"
 #include "fboss/cli/fboss2/commands/config/interface/sflow/CmdConfigInterfaceSflow.h"
 #include "fboss/cli/fboss2/commands/config/interface/switchport/CmdConfigInterfaceSwitchport.h"
@@ -37,6 +38,7 @@
 #include "fboss/cli/fboss2/commands/config/load_balancing/CmdConfigLoadBalancing.h"
 #include "fboss/cli/fboss2/commands/config/mac/CmdConfigMac.h"
 #include "fboss/cli/fboss2/commands/config/mac/aging_time/CmdConfigMacAgingTime.h"
+#include "fboss/cli/fboss2/commands/config/mirror/CmdConfigMirror.h"
 #include "fboss/cli/fboss2/commands/config/protocol/CmdConfigProtocol.h"
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/CmdConfigProtocolBgp.h"
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/global/CmdConfigProtocolBgpGlobal.h"
@@ -106,8 +108,10 @@
 #include "fboss/cli/fboss2/commands/delete/interface/CmdDeleteInterface.h"
 #include "fboss/cli/fboss2/commands/delete/interface/ipv6/CmdDeleteInterfaceIpv6.h"
 #include "fboss/cli/fboss2/commands/delete/interface/ipv6/ndp/CmdDeleteInterfaceIpv6Ndp.h"
+#include "fboss/cli/fboss2/commands/delete/interface/mirror/CmdDeleteInterfaceMirror.h"
 #include "fboss/cli/fboss2/commands/delete/interface/sflow/CmdDeleteInterfaceSflow.h"
 #include "fboss/cli/fboss2/commands/delete/load_balancing/CmdDeleteLoadBalancing.h"
+#include "fboss/cli/fboss2/commands/delete/mirror/CmdDeleteMirror.h"
 #include "fboss/cli/fboss2/commands/delete/protocol/CmdDeleteProtocol.h"
 #include "fboss/cli/fboss2/commands/delete/protocol/bgp/CmdDeleteProtocolBgp.h"
 #include "fboss/cli/fboss2/commands/delete/protocol/bgp/neighbor/CmdDeleteProtocolBgpNeighbor.h"
@@ -295,6 +299,13 @@ const CommandTree& kConfigCommandTree() {
                    commandHandler<CmdConfigInterfaceIpv6Ndp>,
                    argRegistrar<CmdConfigInterfaceIpv6NdpTraits>,
                }},
+           },
+           {
+               "mirror",
+               "Bind the interface to a mirror: ingress <mirror-name>, "
+               "egress <mirror-name>",
+               commandHandler<CmdConfigInterfaceMirror>,
+               argRegistrar<CmdConfigInterfaceMirrorTraits>,
            },
            {
                "sflow",
@@ -627,6 +638,12 @@ const CommandTree& kConfigCommandTree() {
        commandHandler<CmdConfigRollback>,
        argRegistrar<CmdConfigRollbackTraits>},
 
+      {"config",
+       "mirror",
+       "Create or update a SPAN or sFlow mirror",
+       commandHandler<CmdConfigMirror>,
+       argRegistrar<CmdConfigMirrorTraits>},
+
       {
           "config",
           "srv6",
@@ -755,6 +772,12 @@ const CommandTree& kConfigCommandTree() {
                    commandHandler<CmdDeleteInterfaceIpv6Ndp>,
                    argRegistrar<CmdDeleteInterfaceIpv6NdpTraits>,
                }},
+           },
+           {
+               "mirror",
+               "Remove the interface's mirror binding: ingress, egress",
+               commandHandler<CmdDeleteInterfaceMirror>,
+               argRegistrar<CmdDeleteInterfaceMirrorTraits>,
            },
            {
                "sflow",
@@ -1024,6 +1047,14 @@ const CommandTree& kConfigCommandTree() {
                commandHandler<CmdDeleteLoadBalancingLag>,
                argRegistrar<CmdDeleteLoadBalancingLagTraits>,
            }},
+      },
+
+      {
+          "delete",
+          "mirror",
+          "Delete an unreferenced mirror: <name>",
+          commandHandler<CmdDeleteMirror>,
+          argRegistrar<CmdDeleteMirrorTraits>,
       },
 
       {
