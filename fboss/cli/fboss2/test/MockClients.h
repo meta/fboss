@@ -114,6 +114,10 @@ class MockFbossCtrlAgent : public apache::thrift::ServiceHandler<FbossCtrl> {
       (std::vector<facebook::fboss::AggregatePortThrift>&));
   MOCK_METHOD(
       void,
+      getAllLacpPartnerPairs,
+      (std::vector<facebook::fboss::LacpPartnerPair>&));
+  MOCK_METHOD(
+      void,
       getSwitchIndicesForInterfaces,
       (SwitchIndicesForInterfaces, PortNames));
   MOCK_METHOD(

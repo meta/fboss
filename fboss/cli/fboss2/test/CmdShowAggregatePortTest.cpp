@@ -27,27 +27,35 @@ std::vector<AggregatePortThrift> createAggregatePortEntries() {
   aggregatePortEntry1.description() = "Port Channel 1";
   aggregatePortEntry1.minimumLinkCount() = 2;
   aggregatePortEntry1.minimumLinkCountToUp() = 2;
+  aggregatePortEntry1.systemPriority() = 65535;
+  aggregatePortEntry1.systemID() = "02:00:00:00:00:01";
   AggregatePortMemberThrift member1, member2;
   member1.memberPortID() = 1;
   member1.isForwarding() = false;
   member1.rate() = LacpPortRateThrift::FAST;
+  member1.activity() = LacpPortActivityThrift::PASSIVE;
   aggregatePortEntry1.memberPorts()->emplace_back(member1);
   member2.memberPortID() = 2;
   member2.isForwarding() = false;
   member2.rate() = LacpPortRateThrift::FAST;
+  member2.activity() = LacpPortActivityThrift::PASSIVE;
   aggregatePortEntry1.memberPorts()->emplace_back(member2);
 
   aggregatePortEntry2.name() = "Port-Channel2";
   aggregatePortEntry2.description() = "Port Channel 2";
   aggregatePortEntry2.minimumLinkCount() = 2;
+  aggregatePortEntry2.systemPriority() = 65535;
+  aggregatePortEntry2.systemID() = "02:00:00:00:00:01";
   AggregatePortMemberThrift member3, member4;
   member3.memberPortID() = 3;
   member3.isForwarding() = true;
   member3.rate() = LacpPortRateThrift::FAST;
+  member3.activity() = LacpPortActivityThrift::ACTIVE;
   aggregatePortEntry2.memberPorts()->emplace_back(member3);
   member4.memberPortID() = 4;
   member4.isForwarding() = true;
   member4.rate() = LacpPortRateThrift::FAST;
+  member4.activity() = LacpPortActivityThrift::ACTIVE;
   aggregatePortEntry2.memberPorts()->emplace_back(member4);
 
   aggregatePorts.emplace_back(aggregatePortEntry1);
@@ -109,6 +117,55 @@ std::map<int32_t, PortInfoThrift> createTestPortEntries() {
   return portMap;
 }
 
+LacpEndpoint createLacpEndpoint(
+    const std::string& systemID,
+    int32_t key,
+    int32_t port,
+    bool active) {
+  LacpEndpoint endpoint;
+  endpoint.systemPriority() = 65535;
+  endpoint.systemID() = systemID;
+  endpoint.key() = key;
+  endpoint.portPriority() = 32768;
+  endpoint.port() = port;
+  endpoint.state()->active() = active;
+  endpoint.state()->shortTimeout() = true;
+  endpoint.state()->aggregatable() = true;
+  endpoint.state()->inSync() = true;
+  endpoint.state()->collecting() = true;
+  endpoint.state()->distributing() = true;
+  return endpoint;
+}
+
+// Only port 3 has a partner pair, so port 4 exercises the no-controller path.
+std::vector<LacpPartnerPair> createLacpPartnerPairs() {
+  LacpPartnerPair pair;
+  pair.localEndpoint() = createLacpEndpoint("02:00:00:00:00:01", 2, 3, true);
+  pair.remoteEndpoint() =
+      createLacpEndpoint("02:00:00:00:00:02", 20, 30, false);
+  return {pair};
+}
+
+cli::LacpEndpointEntry createLacpEndpointEntry(
+    const std::string& systemID,
+    int32_t key,
+    int32_t port,
+    const std::string& activity) {
+  cli::LacpEndpointEntry entry;
+  entry.systemPriority() = 65535;
+  entry.systemID() = systemID;
+  entry.key() = key;
+  entry.portPriority() = 32768;
+  entry.port() = port;
+  entry.activity() = activity;
+  entry.timeout() = "Short";
+  entry.aggregatable() = true;
+  entry.inSync() = true;
+  entry.collecting() = true;
+  entry.distributing() = true;
+  return entry;
+}
+
 cli::ShowAggregatePortModel createAggregatePortModel() {
   cli::ShowAggregatePortModel model;
 
@@ -119,18 +176,23 @@ cli::ShowAggregatePortModel createAggregatePortModel() {
   entry1.configuredMembers() = 2;
   entry1.minMembers() = 2;
   entry1.minMembersToUp() = 2;
+  entry1.lacpEnabled() = true;
+  entry1.systemPriority() = 65535;
+  entry1.systemID() = "02:00:00:00:00:01";
   cli::AggregateMemberPortEntry member1, member2;
   member1.name() = "eth1/5/1";
   member1.id() = 1;
   member1.isUp() = false;
   member1.isLinkUp() = false;
   member1.lacpRate() = "Fast";
+  member1.lacpActivity() = "Passive";
   entry1.members()->emplace_back(member1);
   member2.name() = "eth1/5/2";
   member2.id() = 2;
   member2.isUp() = false;
   member2.isLinkUp() = false;
   member2.lacpRate() = "Fast";
+  member2.lacpActivity() = "Passive";
   entry1.members()->emplace_back(member2);
 
   entry2.name() = "Port-Channel2";
@@ -138,18 +200,27 @@ cli::ShowAggregatePortModel createAggregatePortModel() {
   entry2.activeMembers() = 2;
   entry2.configuredMembers() = 2;
   entry2.minMembers() = 2;
+  entry2.lacpEnabled() = true;
+  entry2.systemPriority() = 65535;
+  entry2.systemID() = "02:00:00:00:00:01";
   cli::AggregateMemberPortEntry member3, member4;
   member3.name() = "eth1/5/3";
   member3.id() = 3;
   member3.isUp() = true;
   member3.isLinkUp() = true;
   member3.lacpRate() = "Fast";
+  member3.lacpActivity() = "Active";
+  member3.actor() =
+      createLacpEndpointEntry("02:00:00:00:00:01", 2, 3, "Active");
+  member3.partner() =
+      createLacpEndpointEntry("02:00:00:00:00:02", 20, 30, "Passive");
   entry2.members()->emplace_back(member3);
   member4.name() = "eth1/5/4";
   member4.id() = 4;
   member4.isUp() = true;
   member4.isLinkUp() = true;
   member4.lacpRate() = "Fast";
+  member4.lacpActivity() = "Active";
   entry2.members()->emplace_back(member4);
   model.aggregatePortEntries() = {entry1, entry2};
   return model;
@@ -159,12 +230,14 @@ class CmdShowAggregatePortTestFixture : public CmdHandlerTestBase {
  public:
   std::vector<facebook::fboss::AggregatePortThrift> aggregatePortEntries;
   std::map<int32_t, facebook::fboss::PortInfoThrift> portEntries;
+  std::vector<facebook::fboss::LacpPartnerPair> lacpPartnerPairs;
   cli::ShowAggregatePortModel normalizedModel;
 
   void SetUp() override {
     CmdHandlerTestBase::SetUp();
     aggregatePortEntries = createAggregatePortEntries();
     portEntries = createTestPortEntries();
+    lacpPartnerPairs = createLacpPartnerPairs();
     normalizedModel = createAggregatePortModel();
   }
 };
@@ -179,11 +252,40 @@ TEST_F(CmdShowAggregatePortTestFixture, queryClient) {
       .WillOnce(Invoke([&](auto& entries) {
         entries = std::map<int32_t, facebook::fboss::InterfaceDetail>();
       }));
+  EXPECT_CALL(getMockAgent(), getAllLacpPartnerPairs(_))
+      .WillOnce(Invoke([&](auto& pairs) { pairs = lacpPartnerPairs; }));
 
   auto cmd = CmdShowAggregatePort();
   CmdShowAggregatePortTraits::ObjectArgType queriedEntries;
   auto model = cmd.queryClient(localhost(), queriedEntries);
 
+  EXPECT_THRIFT_EQ(normalizedModel, model);
+}
+
+TEST_F(CmdShowAggregatePortTestFixture, queryClientLacpDisabled) {
+  setupMockedAgentServer();
+  EXPECT_CALL(getMockAgent(), getAggregatePortTable(_))
+      .WillOnce(Invoke([&](auto& entries) { entries = aggregatePortEntries; }));
+  EXPECT_CALL(getMockAgent(), getAllPortInfo(_))
+      .WillOnce(Invoke([&](auto& entries) { entries = portEntries; }));
+  EXPECT_CALL(getMockAgent(), getAllInterfaces(_))
+      .WillOnce(Invoke([&](auto& entries) {
+        entries = std::map<int32_t, facebook::fboss::InterfaceDetail>();
+      }));
+  EXPECT_CALL(getMockAgent(), getAllLacpPartnerPairs(_))
+      .WillOnce(Throw(thrift::FbossBaseError("LACP not enabled")));
+
+  auto cmd = CmdShowAggregatePort();
+  CmdShowAggregatePortTraits::ObjectArgType queriedEntries;
+  auto model = cmd.queryClient(localhost(), queriedEntries);
+
+  for (auto& entry : *normalizedModel.aggregatePortEntries()) {
+    entry.lacpEnabled() = false;
+    for (auto& member : *entry.members()) {
+      member.actor().reset();
+      member.partner().reset();
+    }
+  }
   EXPECT_THRIFT_EQ(normalizedModel, model);
 }
 
@@ -196,15 +298,37 @@ TEST_F(CmdShowAggregatePortTestFixture, printOutput) {
       "\nPort name: Port-Channel1"
       "\nDescription: Port Channel 1"
       "\nActive members/Configured members/Min members: 0/2/[2, 2]"
-      "\n\t Member:   eth1/5/1, id:   1, Link:  Down, Fwding: False, Rate: Fast"
-      "\n\t Member:   eth1/5/2, id:   2, Link:  Down, Fwding: False, Rate: Fast"
+      "\nLACP: Enabled, System: 65535/02:00:00:00:00:01"
+      "\n\t Member:   eth1/5/1, id:   1, Link:  Down, Fwding: False, Rate: Fast, Mode: Passive"
+      "\n\t Member:   eth1/5/2, id:   2, Link:  Down, Fwding: False, Rate: Fast, Mode: Passive"
       "\n"
       "\nPort name: Port-Channel2"
       "\nDescription: Port Channel 2"
       "\nActive members/Configured members/Min members: 2/2/2"
-      "\n\t Member:   eth1/5/3, id:   3, Link:    Up, Fwding:  True, Rate: Fast"
-      "\n\t Member:   eth1/5/4, id:   4, Link:    Up, Fwding:  True, Rate: Fast\n";
+      "\nLACP: Enabled, System: 65535/02:00:00:00:00:01"
+      "\n\t Member:   eth1/5/3, id:   3, Link:    Up, Fwding:  True, Rate: Fast, Mode: Active"
+      "\n\t\t Actor:   State: [Active, Short Timeout, Aggregatable, InSync, Collecting, Distributing], System: 65535/02:00:00:00:00:01, Key: 2, Port: 32768/3"
+      "\n\t\t Partner: State: [Passive, Short Timeout, Aggregatable, InSync, Collecting, Distributing], System: 65535/02:00:00:00:00:02, Key: 20, Port: 32768/30"
+      "\n\t Member:   eth1/5/4, id:   4, Link:    Up, Fwding:  True, Rate: Fast, Mode: Active\n";
   EXPECT_EQ(output, expectOutput);
+}
+
+TEST_F(CmdShowAggregatePortTestFixture, printOutputLacpDisabled) {
+  auto& entry = normalizedModel.aggregatePortEntries()->front();
+  entry.lacpEnabled() = false;
+  normalizedModel.aggregatePortEntries()->resize(1);
+
+  std::stringstream ss;
+  CmdShowAggregatePort().printOutput(normalizedModel, ss);
+
+  std::string expectOutput =
+      "\nPort name: Port-Channel1"
+      "\nDescription: Port Channel 1"
+      "\nActive members/Configured members/Min members: 0/2/[2, 2]"
+      "\nLACP: Disabled (static LAG)"
+      "\n\t Member:   eth1/5/1, id:   1, Link:  Down, Fwding: False, Rate: Fast"
+      "\n\t Member:   eth1/5/2, id:   2, Link:  Down, Fwding: False, Rate: Fast\n";
+  EXPECT_EQ(ss.str(), expectOutput);
 }
 
 // CLI reference wiki hooks: a human description and a non-empty sample model.

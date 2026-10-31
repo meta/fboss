@@ -11,6 +11,7 @@
 #pragma once
 
 #include <map>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -47,7 +48,9 @@ class CmdShowAggregatePort
           aggregatePortEntries,
       std::map<int32_t, facebook::fboss::PortInfoThrift> portInfo,
       const std::map<int32_t, facebook::fboss::InterfaceDetail>& interfaces,
-      const ObjectArgType& queriedPorts);
+      const ObjectArgType& queriedPorts,
+      const std::optional<std::vector<facebook::fboss::LacpPartnerPair>>&
+          lacpPartnerPairs = std::nullopt);
 
   // Canned, synthetic model (no real switch data) used to render a
   // deterministic example for the CLI reference wiki. No live switch.
