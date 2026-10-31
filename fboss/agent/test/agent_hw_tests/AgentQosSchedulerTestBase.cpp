@@ -142,20 +142,17 @@ bool AgentQosSchedulerTestBase::verifyWRRHelper(
       sendUdpPktsForAllQueues(queueIds, queueToDscp);
       getAgentEnsemble()->waitForLineRateOnPort(portId);
     };
-    auto stopTrafficFun = [this]() {
-      utility::EcmpSetupAnyNPorts6 ecmpHelper6(
-          getProgrammedState(), getSw()->needL2EntryForNeighbor(), dstMac());
-      unprogramRoutes(ecmpHelper6);
-    };
     WITH_RETRIES_N(
         10, ({
-          auto [portStatsBefore, portStatsAfter] = sendTrafficAndCollectStats(
-                                                       {portId},
-                                                       kRateSamplingInterval,
-                                                       startTrafficFun,
-                                                       stopTrafficFun)
-                                                       .cbegin()
-                                                       ->second;
+          auto [portStatsBefore, portStatsAfter] =
+              sendTrafficAndCollectStats(
+                  {portId},
+                  kRateSamplingInterval,
+                  startTrafficFun,
+                  []() {},
+                  true /*keepTrafficRunning*/)
+                  .cbegin()
+                  ->second;
           auto queueStatsBefore = portStatsBefore.queueOutPackets_();
           auto queueStatsAfter = portStatsAfter.queueOutPackets_();
           auto maxWeightQueueBytes =
