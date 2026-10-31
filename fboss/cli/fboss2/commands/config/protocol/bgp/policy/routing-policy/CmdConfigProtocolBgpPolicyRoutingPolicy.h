@@ -58,9 +58,12 @@ struct CmdConfigProtocolBgpPolicyRoutingPolicyTraits
     : public WriteCommandTraits {
   using ParentCmd = CmdConfigProtocolBgpPolicy;
   static void addCliArg(CLI::App& cmd, std::vector<std::string>& args) {
-    // Stops CLI11 from classifying attribute tokens as subcommands once the
-    // policy name is consumed. See CmdConfigProtocolBgpNeighborTraits.
-    cmd.positionals_at_end();
+    // Unlike the sibling policy families, no positionals_at_end() here: the
+    // seq-num-keyed term level is a real CLI11 subcommand (`routing-policy
+    // <name> term <seq-num> ...`), and positionals_at_end() would stop CLI11
+    // from classifying `term` after the policy name. The trade-off is that a
+    // free-text attribute value equal to `term` is stolen by subcommand
+    // matching (same exposure as the `config interface` subcommand chain).
     cmd.add_option("args", args, "<name> [<attribute> <value> ...]");
   }
   using ObjectArgType = BgpRoutingPolicyConfig;
