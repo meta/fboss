@@ -3,6 +3,7 @@
 #include <fmt/format.h>
 #include <folly/MapUtil.h>
 
+#include "fboss/agent/AgentConfig.h"
 #include "fboss/agent/AgentFeatures.h"
 #include "fboss/agent/AsicUtils.h"
 #include "fboss/agent/packet/PktFactory.h"
@@ -35,6 +36,14 @@ using facebook::fboss::utility::PfcBufferParams;
 
 static constexpr auto kGlobalIngressEgressBufferPoolSize{
     5064760}; // Keep a high pool size for DNX
+// P200's egress create also sets a 20MB reserve. 50MB holds that reserve.
+static constexpr uint64_t kP200EgressBufferPoolBytes = 50 * 1024 * 1024;
+
+bool isP200Asic() {
+  auto agentConfig = facebook::fboss::AgentConfig::fromFile(FLAGS_config);
+  return facebook::fboss::checkSameAndGetAsicType(*agentConfig->thrift.sw()) ==
+      facebook::fboss::cfg::AsicType::ASIC_TYPE_P200;
+}
 static constexpr auto kLosslessTrafficClass{2};
 static constexpr auto kLosslessPriority{2};
 static const std::vector<int> kLosslessPgIds{2, 3};
@@ -316,9 +325,14 @@ class AgentTrafficPfcTest : public AgentHwTest {
      * asics like Jericho2.
      */
     FLAGS_ingress_egress_buffer_pool_size = kGlobalIngressEgressBufferPoolSize;
-    // Some platforms (TH4, TH5) requires same egress/ingress buffer pool sizes.
-    FLAGS_egress_buffer_pool_size = PfcBufferParams::kGlobalSharedBytes +
-        PfcBufferParams::kGlobalHeadroomBytes;
+    // TH4 and TH5 need the egress pool to match the 1.5MB ingress pool.
+    // P200 uses 50MB so the 20MB reserve fits in the same create.
+    if (isP200Asic()) {
+      FLAGS_egress_buffer_pool_size = kP200EgressBufferPoolBytes;
+    } else {
+      FLAGS_egress_buffer_pool_size = PfcBufferParams::kGlobalSharedBytes +
+          PfcBufferParams::kGlobalHeadroomBytes;
+    }
     FLAGS_skip_buffer_reservation = true;
     FLAGS_qgroup_guarantee_enable = true;
   }
@@ -1026,9 +1040,11 @@ TEST_F(AgentTrafficPfcZeroPgHeadroomTest, verifyWithScaleCfgInCongestionDrops) {
 class AgentTrafficPfcZeroGlobalHeadroomTest : public AgentTrafficPfcTest {
   void setCmdLineFlagOverrides() const override {
     AgentTrafficPfcTest::setCmdLineFlagOverrides();
-    // Some platforms (TH4, TH5) requires same egress/ingress buffer pool sizes.
-    // Global headroom will be 0 in this test.
-    FLAGS_egress_buffer_pool_size = PfcBufferParams::kGlobalSharedBytes;
+    // Zero global headroom still uses the small egress pool on TH4 and TH5.
+    // P200 keeps the 50MB pool from the base override.
+    if (!isP200Asic()) {
+      FLAGS_egress_buffer_pool_size = PfcBufferParams::kGlobalSharedBytes;
+    }
   }
 };
 
