@@ -106,19 +106,20 @@ class AgentAdjFrrRouteTest : public AgentHwTest {
   static constexpr int kMultiFlowPacketCount = kFlowCount * kPacketsPerFlow;
   static constexpr int kSingleFlowPacketCount = 10000;
 
-  static constexpr int kMaxLoadBalanceDeviationPct = 25;
-  // Pruning hands a member's whole share to a single survivor rather than
-  // spreading it, so that survivor carries roughly twice what the others do.
-  // Measured at every width, including widths needing no padding.
-  static constexpr int kPrunedLoadBalanceDeviationPct = 125;
-
-  // Widths that are not a multiple of four map flows onto members unevenly
-  // enough that the sampling noise at kFlowCount shows up. Not a padding
-  // effect: with pruning off, five and six backup groups measure even.
-  static int hashSpreadBoundPct(size_t numBackups) {
-    return numBackups % 4 == 0 ? kMaxLoadBalanceDeviationPct
-                               : kPrunedLoadBalanceDeviationPct;
-  }
+  // Balance is asserted as each member's share of the fair share rather than
+  // as a min/max ratio: the ratio compares the two extremes and so compounds
+  // their noise, which tightens the bound as the group narrows. The mean lies
+  // between the extremes, so the 25% min/max deviation this replaces implies
+  // every member is within [80%, 125%] of the fair share.
+  static constexpr utility::MemberShareBounds kEvenShareBounds{80, 125};
+  // Pruning concentrates the pruned member's share rather than spreading it.
+  // For hashed traffic that concentration is on one survivor, which puts the
+  // absorber at 2N/(N+1) of the fair share with one of N+1 members pruned:
+  // measured 163.9% at width five and 170.9% at width six. Sprayed traffic
+  // does not follow that model and moves in both directions, measured 50.8%
+  // to 175.2% across widths four to six and reproducible across boot modes,
+  // so the band is set from the measurements rather than from the model.
+  static constexpr utility::MemberShareBounds kPrunedShareBounds{25, 200};
   static constexpr size_t kNumRouteNextHops = 5;
   static constexpr size_t kNumDefaultBackupNhops = kNumRouteNextHops - 1;
   static constexpr size_t kNumRequiredPhyLoopbackPorts = kNumRouteNextHops + 1;
@@ -331,7 +332,7 @@ class AgentAdjFrrRouteTest : public AgentHwTest {
       const std::vector<PortID>& groupPorts,
       TrafficType traffic,
       std::optional<size_t> expectedForwardingMembers,
-      std::optional<int> maxDeviationPct,
+      std::optional<utility::MemberShareBounds> shareBounds,
       const char* description,
       std::optional<bool> expectIngressForwards = std::nullopt) {
     const auto state = getProgrammedState();
@@ -355,6 +356,7 @@ class AgentAdjFrrRouteTest : public AgentHwTest {
       int64_t lowest{std::numeric_limits<int64_t>::max()};
       int64_t highest{0};
       size_t forwardingMembers{0};
+      std::map<std::string, uint64_t> forwardedByMember;
       for (const auto& port : groupPorts) {
         int64_t pkts = *afterStats.at(port).outUnicastPkts__ref() -
             *beforeStats.at(port).outUnicastPkts__ref();
@@ -362,13 +364,14 @@ class AgentAdjFrrRouteTest : public AgentHwTest {
           pkts -= std::min<int64_t>(pkts, packetCount);
           ingressForwarded = pkts;
         }
-        XLOG(INFO) << description << " port "
-                   << state->getPorts()->getNode(port)->getName() << " ("
-                   << port << ")" << (port == injectionPort ? " [INJECT]" : "")
+        const auto& portName = state->getPorts()->getNode(port)->getName();
+        XLOG(INFO) << description << " port " << portName << " (" << port << ")"
+                   << (port == injectionPort ? " [INJECT]" : "")
                    << " forwarded " << pkts;
         forwarded += pkts;
         if (pkts > 0) {
           ++forwardingMembers;
+          forwardedByMember.emplace(portName, pkts);
           lowest = std::min(lowest, pkts);
           highest = std::max(highest, pkts);
         }
@@ -406,10 +409,10 @@ class AgentAdjFrrRouteTest : public AgentHwTest {
           EXPECT_EVENTUALLY_EQ(ingressForwarded, 0);
         }
       }
-      if (maxDeviationPct.has_value() && forwardingMembers > 0) {
+      if (shareBounds.has_value() && forwardingMembers > 0) {
         EXPECT_EVENTUALLY_TRUE(
-            utility::isDeviationWithinThreshold(
-                lowest, highest, *maxDeviationPct));
+            utility::isWithinMemberShareBounds(
+                forwardedByMember, *shareBounds));
       }
     });
   }
@@ -428,13 +431,14 @@ class AgentAdjFrrRouteTest : public AgentHwTest {
   //
   // Expectations by traffic type:
   //   RoceSpray            spreads over the group; spray is per packet, so it
-  //                        spreads even with no entropy, but it is not slot
-  //                        quantised and is not asserted to be even.
+  //                        spreads even with no entropy. Even to within 4%
+  //                        with nothing pruned, but pruning skews it well
+  //                        past what the absorber model predicts, so it is
+  //                        not asserted to be even.
   //   HashCancelSingleFlow no entropy -> exactly one member. Pruning must move
   //                        that member off the ingress.
-  //   HashCancelMultiFlow  real entropy -> the static hash spreads. Tightest at
-  //                        widths that are a multiple of four; elsewhere the
-  //                        flow sampling noise widens the bound.
+  //   HashCancelMultiFlow  real entropy -> the static hash spreads evenly
+  //                        across the group at every width.
   // A non member ingress can never be a pruning candidate, so those phases are
   // the controls: any difference against the member ingress phase of the same
   // traffic type is split horizon and nothing else.
@@ -456,15 +460,14 @@ class AgentAdjFrrRouteTest : public AgentHwTest {
     const bool pruneApplies = prunes && memberIngress;
 
     std::optional<size_t> expectedMembers;
-    std::optional<int> maxDeviationPct;
+    std::optional<utility::MemberShareBounds> shareBounds;
     switch (traffic) {
       case TrafficType::HashCancelSingleFlow:
         expectedMembers = 1;
         break;
       case TrafficType::HashCancelMultiFlow:
         expectedMembers = pruneApplies ? numBackups - 1 : numBackups;
-        maxDeviationPct = pruneApplies ? kPrunedLoadBalanceDeviationPct
-                                       : hashSpreadBoundPct(numBackups);
+        shareBounds = pruneApplies ? kPrunedShareBounds : kEvenShareBounds;
         break;
       case TrafficType::RoceSpray:
         expectedMembers = pruneApplies ? numBackups - 1 : numBackups;
@@ -477,7 +480,7 @@ class AgentAdjFrrRouteTest : public AgentHwTest {
         backupPorts,
         traffic,
         expectedMembers,
-        maxDeviationPct,
+        shareBounds,
         description,
         pruneApplies ? std::optional<bool>(false) : std::nullopt);
     restoreNextHop(primaryPort);
@@ -488,7 +491,7 @@ class AgentAdjFrrRouteTest : public AgentHwTest {
       const std::vector<PortID>& egressPorts,
       int packetCount,
       const char* egressPortDescription,
-      int maxDeviationPct = kMaxLoadBalanceDeviationPct) {
+      utility::MemberShareBounds shareBounds = kEvenShareBounds) {
     CHECK(!egressPorts.empty());
     const auto state = getProgrammedState();
     const auto injectionPortState = state->getPorts()->getNode(injectionPort);
@@ -522,10 +525,14 @@ class AgentAdjFrrRouteTest : public AgentHwTest {
           *afterPortStats.at(lowestOutBytesPort).outBytes_() -
           *beforePortStats.at(lowestOutBytesPort).outBytes_();
       auto highestOutBytesIncrement = lowestOutBytesIncrement;
+      std::map<std::string, uint64_t> outBytesByEgressPort;
       for (const auto& egressPort : egressPorts) {
         const auto outBytesIncrement =
             *afterPortStats.at(egressPort).outBytes_() -
             *beforePortStats.at(egressPort).outBytes_();
+        outBytesByEgressPort.emplace(
+            state->getPorts()->getNode(egressPort)->getName(),
+            outBytesIncrement);
         if (outBytesIncrement < lowestOutBytesIncrement) {
           lowestOutBytesIncrement = outBytesIncrement;
           lowestOutBytesPort = egressPort;
@@ -556,10 +563,8 @@ class AgentAdjFrrRouteTest : public AgentHwTest {
                  << ", deviation: " << deviationPct << "%";
       EXPECT_EVENTUALLY_EQ(afterOutPkts, beforeOutPkts + packetCount);
       EXPECT_EVENTUALLY_TRUE(
-          utility::isDeviationWithinThreshold(
-              lowestOutBytesIncrement,
-              highestOutBytesIncrement,
-              maxDeviationPct));
+          utility::isWithinMemberShareBounds(
+              outBytesByEgressPort, shareBounds));
     });
   }
 
@@ -766,7 +771,7 @@ TEST_F(AgentAdjFrrRoutePruneEnabledTest, sourcePortGetsPruned) {
         remainingBackupPorts,
         kPacketCount,
         "Backup with backup next-hop ingress",
-        kPrunedLoadBalanceDeviationPct);
+        kPrunedShareBounds);
 
     restoreNextHop(primaryPort);
     sendTrafficAndVerifyOutPackets(
@@ -801,7 +806,7 @@ TEST_F(AgentAdjFrrRoutePruneEnabledTest, sourcePortPruneWithEmptyPrimary) {
         remainingBackupPorts,
         kPacketCount,
         "Empty primary, backup next-hop ingress",
-        kPrunedLoadBalanceDeviationPct);
+        kPrunedShareBounds);
   };
 
   verifyAcrossWarmBoots(setup, verify);
@@ -1263,6 +1268,7 @@ class AgentAdjFrrRouteSprayTest : public AgentAdjFrrRouteTest {
     row.totalPorts = nextHopPorts.size();
 
     WITH_RETRIES({
+      const auto state = getProgrammedState();
       const auto sprayAclAfter = sprayAclPackets();
       const auto cancelAclAfter = cancelAclPackets();
       const auto afterPortStats = getLatestPortStats(nextHopPorts);
@@ -1272,9 +1278,19 @@ class AgentAdjFrrRouteSprayTest : public AgentAdjFrrRouteTest {
       const auto [activePorts, onlyActivePort] =
           activeEgressPorts(beforePortStats, afterPortStats);
       uint64_t outPktsDelta{0};
+      std::map<std::string, uint64_t> outBytesByMember;
       for (const auto& [portId, afterStats] : afterPortStats) {
         outPktsDelta += *afterStats.outUnicastPkts__ref() -
             *beforePortStats.at(portId).outUnicastPkts__ref();
+        const auto outBytesIncrement =
+            *afterStats.outBytes_() - *beforePortStats.at(portId).outBytes_();
+        // A member carrying nothing is left out: it would fail the floor and
+        // also pull the fair share down for the members that do forward. The
+        // active port count is what catches a member dropping out.
+        if (outBytesIncrement > 0) {
+          outBytesByMember.emplace(
+              state->getPorts()->getNode(portId)->getName(), outBytesIncrement);
+        }
       }
       row.sprayAclDelta = sprayAclAfter - sprayAclBefore;
       row.cancelAclDelta = cancelAclAfter - cancelAclBefore;
@@ -1309,8 +1325,8 @@ class AgentAdjFrrRouteSprayTest : public AgentAdjFrrRouteTest {
       if (sprayExpected) {
         EXPECT_EVENTUALLY_EQ(activePorts, nextHopPorts.size());
         EXPECT_EVENTUALLY_TRUE(
-            utility::isDeviationWithinThreshold(
-                lowestOutBytes, highestOutBytes, kMaxLoadBalanceDeviationPct));
+            utility::isWithinMemberShareBounds(
+                outBytesByMember, kEvenShareBounds));
       } else {
         EXPECT_EVENTUALLY_EQ(activePorts, 1);
         if (expectedSingleEgressPort.has_value() &&
