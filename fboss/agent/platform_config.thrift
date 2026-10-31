@@ -134,6 +134,23 @@ struct PlatformPortConfigOverrideFactor {
   9: optional list<transceiver.TransceiverVendorOverride> vendorOverrides;
 }
 
+// Resolves the placeholder vendor carried by a PlatformPortConfigOverrideFactor
+// to the optics it stands for. Patterns are RE2 and must match the module
+// EEPROM vendor name and part number in full.
+struct TransceiverVendorPattern {
+  1: string vendorName;
+  2: string partNumber;
+}
+
+struct TransceiverVendorOverrideEntry {
+  1: transceiver.Vendor placeholder;
+  2: list<TransceiverVendorPattern> patterns;
+}
+
+struct TransceiverVendorOverrideMap {
+  1: list<TransceiverVendorOverrideEntry> entries;
+}
+
 struct PlatformPortConfigOverride {
   1: PlatformPortConfigOverrideFactor factor;
   2: optional phy.PortPinConfig pins;
