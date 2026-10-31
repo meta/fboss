@@ -76,6 +76,46 @@ class FwUtilUpgradeTest : public ::testing::Test {
     file.close();
   }
 
+  void createConfigWithPreAndPostUpgrade(
+      const std::string& configFile,
+      const std::string& portFile) {
+    std::ofstream file(configFile);
+    file << R"({
+      "fwConfigs": {
+        "test_device": {
+          "version": {
+            "versionType": "sysfs",
+            "path": "/run/devmap/sensors/test_device/version"
+          },
+          "priority": 1,
+          "preUpgrade": [
+            {
+              "commandType": "writeToPort",
+              "writeToPortArgs": {
+                "hexByteValue": "0x1",
+                "portFile": ")"
+         << portFile << R"(",
+                "hexOffset": "0x0"
+              }
+            }
+          ],
+          "postUpgrade": [
+            {
+              "commandType": "writeToPort",
+              "writeToPortArgs": {
+                "hexByteValue": "0x2",
+                "portFile": ")"
+         << portFile << R"(",
+                "hexOffset": "0x0"
+              }
+            }
+          ]
+        }
+      }
+    })";
+    file.close();
+  }
+
   void createConfigWithoutUpgrade(const std::string& configFile) {
     std::ofstream file(configFile);
     file << R"({
@@ -111,6 +151,22 @@ TEST_F(FwUtilUpgradeTest, DoUpgradeDryRunMode) {
 
   // Should return early without throwing
   EXPECT_NO_THROW(fwUtil.doUpgrade("test_device"));
+}
+
+TEST_F(FwUtilUpgradeTest, DoFirmwareActionDryRunSkipsPreAndPostUpgrade) {
+  std::string configFile = (tempDir_ / "test_config.json").string();
+  std::string portFile = (tempDir_ / "upgrade_port").string();
+  createConfigWithPreAndPostUpgrade(configFile, portFile);
+
+  FwUtilImpl fwUtil(
+      binaryFile_,
+      configFile,
+      false, // verifySha1sum
+      true // dryRun - ENABLED
+  );
+
+  EXPECT_NO_THROW(fwUtil.doFirmwareAction("test_device", "program"));
+  EXPECT_FALSE(std::filesystem::exists(portFile));
 }
 
 // Test doUpgrade with valid upgrade configuration
