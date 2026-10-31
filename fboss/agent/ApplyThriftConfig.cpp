@@ -6838,7 +6838,28 @@ shared_ptr<MultiControlPlane> ThriftConfigApplier::updateControlPlane() {
   CHECK_GT(switchIds.size(), 0);
   // all switches on a given box will have same ASIC, so just pick the first
   auto asic = hwAsicTable_->getHwAsicIf(*switchIds.begin());
-  for (auto streamType : hwAsicTable_->getCpuPortQueueStreamTypes()) {
+  const auto cpuStreamTypes = hwAsicTable_->getCpuPortQueueStreamTypes();
+  auto validateStreamType = [&cpuStreamTypes](
+                                const std::vector<cfg::PortQueue>& queues,
+                                const std::string& field) {
+    for (const auto& queue : queues) {
+      if (!cpuStreamTypes.contains(*queue.streamType())) {
+        throw FbossError(
+            fmt::format(
+                "{} entry id {} name {}: streamType {} is not supported "
+                "on the CPU port of this ASIC",
+                field,
+                *queue.id(),
+                queue.name().value_or(""),
+                apache::thrift::util::enumNameSafe(*queue.streamType())));
+      }
+    }
+  };
+  validateStreamType(*cfg_->cpuQueues(), "cpuQueues");
+  if (cfg_->cpuVoqs()) {
+    validateStreamType(*cfg_->cpuVoqs(), "cpuVoqs");
+  }
+  for (auto streamType : cpuStreamTypes) {
     auto tmpPortQueues = updatePortQueues(
         origCPU->getQueuesConfig(),
         *cfg_->cpuQueues(),
