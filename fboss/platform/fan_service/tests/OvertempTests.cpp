@@ -68,3 +68,15 @@ TEST(OvertempConditionTest, SlidingWindow) {
   overtempCondition.processSensorData("Zinclake_Hotswap_Temp", 120.1);
   EXPECT_TRUE(overtempCondition.checkIfOvertemp());
 }
+
+TEST(OvertempConditionTest, SensorWithoutData) {
+  OvertempCondition overtempCondition;
+  overtempCondition.setNumOvertempSensorForShutdown(1);
+  overtempCondition.addSensorForTracking("Asic_Core_Temp", 112.0, 1);
+  overtempCondition.addSensorForTracking("Board_Diode_Temp", 122.0, 1);
+  EXPECT_FALSE(overtempCondition.checkIfOvertemp());
+
+  // A sensor that never reported must not disable the check for the others.
+  overtempCondition.processSensorData("Board_Diode_Temp", 125.3);
+  EXPECT_TRUE(overtempCondition.checkIfOvertemp());
+}

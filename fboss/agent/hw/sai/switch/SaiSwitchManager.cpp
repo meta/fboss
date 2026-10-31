@@ -1302,7 +1302,7 @@ const HwSwitchTemperatureStats SaiSwitchManager::getHwSwitchTemperatureStats()
       std::chrono::system_clock::now().time_since_epoch().count();
 
   if (currReadTimestamp - lastReadTimestamp < kReadInterval) {
-    return switchTemperatureStats;
+    return switchTemperatureStats_;
   }
   lastReadTimestamp = currReadTimestamp;
 

@@ -20,6 +20,7 @@ const std::string kBlackwolf800banw = "blackwolf800banw";
 const std::string kIcecube = "icecube";
 const std::string kM4061nhp = "m4061nhp";
 const std::string kM4062nhp = "m4062nhp";
+const std::string kM4340nhp = "m4340nhp";
 const std::string kSample = "sample";
 const std::string kWedge800cact = "wedge800cact";
 const std::string kWedge800cnhp = "wedge800cnhp";
@@ -36,6 +37,7 @@ TEST(ConfigLibTest, Basic) {
   EXPECT_NO_THROW(ConfigLib().getSensorServiceConfig(kTahan800bc));
   EXPECT_NO_THROW(ConfigLib().getSensorServiceConfig(kBlackwolf800banw));
   EXPECT_NO_THROW(ConfigLib().getSensorServiceConfig(kM4061nhp));
+  EXPECT_NO_THROW(ConfigLib().getSensorServiceConfig(kM4340nhp));
   EXPECT_THROW(
       ConfigLib().getSensorServiceConfig(kNonExistentPlatform),
       std::runtime_error);
@@ -50,6 +52,7 @@ TEST(ConfigLibTest, Basic) {
   EXPECT_NO_THROW(ConfigLib().getFanServiceConfig(kBlackwolf800banw));
   EXPECT_NO_THROW(ConfigLib().getFanServiceConfig(kSample));
   EXPECT_NO_THROW(ConfigLib().getFanServiceConfig(kM4061nhp));
+  EXPECT_NO_THROW(ConfigLib().getFanServiceConfig(kM4340nhp));
   EXPECT_THROW(
       ConfigLib().getFanServiceConfig(kNonExistentPlatform),
       std::runtime_error);
@@ -60,6 +63,7 @@ TEST(ConfigLibTest, Basic) {
   EXPECT_NO_THROW(ConfigLib().getPlatformManagerConfig(kMontblanc));
   EXPECT_NO_THROW(ConfigLib().getPlatformManagerConfig(kM4061nhp));
   EXPECT_NO_THROW(ConfigLib().getPlatformManagerConfig(kM4062nhp));
+  EXPECT_NO_THROW(ConfigLib().getPlatformManagerConfig(kM4340nhp));
   EXPECT_NO_THROW(ConfigLib().getPlatformManagerConfig(kMorgan800cc));
   EXPECT_NO_THROW(ConfigLib().getPlatformManagerConfig(kJanga800bic));
   EXPECT_NO_THROW(ConfigLib().getPlatformManagerConfig(kTahan800bc));
@@ -84,6 +88,7 @@ TEST(ConfigLibTest, Basic) {
   EXPECT_NO_THROW(ConfigLib().getLedManagerConfig(kDarwin));
   EXPECT_NO_THROW(ConfigLib().getLedManagerConfig(kMorgan800cc));
   EXPECT_NO_THROW(ConfigLib().getLedManagerConfig(kM4061nhp));
+  EXPECT_NO_THROW(ConfigLib().getLedManagerConfig(kM4340nhp));
   EXPECT_THROW(
       ConfigLib().getLedManagerConfig(kNonExistentPlatform),
       std::runtime_error);
