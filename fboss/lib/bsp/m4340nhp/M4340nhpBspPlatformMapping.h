@@ -1,7 +1,4 @@
-/*
- *  Copyright (c) 2026 Nexthop Systems Inc.
- *  SPDX-License-Identifier: BSD-3-Clause
- */
+// Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #pragma once
 
