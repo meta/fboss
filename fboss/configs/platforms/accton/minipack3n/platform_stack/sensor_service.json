@@ -2019,10 +2019,10 @@
           "sysfsPath": "/run/devmap/sensors/SMB_VRM1/in2_input",
           "type": 1,
           "thresholds": {
-            "upperCriticalVal": 0.88875,
+            "upperCriticalVal": 0.905375,
             "maxAlarmVal": 0.80625,
-            "minAlarmVal": 0.64125,
-            "lowerCriticalVal": 0.55875
+            "minAlarmVal": 0.608,
+            "lowerCriticalVal": 0.508875
           },
           "compute": "@/1000"
         },
@@ -2175,10 +2175,10 @@
           "sysfsPath": "/run/devmap/sensors/SMB_VRM3/in3_input",
           "type": 1,
           "thresholds": {
-            "upperCriticalVal": 0.9935,
+            "upperCriticalVal": 1.01725,
             "maxAlarmVal": 0.903,
-            "minAlarmVal": 0.722,
-            "lowerCriticalVal": 0.6315
+            "minAlarmVal": 0.6745,
+            "lowerCriticalVal": 0.56025
           },
           "compute": "@/1000"
         },
@@ -2347,7 +2347,7 @@
           "compute": "@/1000"
         },
         {
-          "name": "SMB_VDD_T2_3_VRM_VOUT",
+          "name": "SMB_VDD_T2_VRM_VOUT",
           "sysfsPath": "/run/devmap/sensors/SMB_VRM5/in2_input",
           "type": 1,
           "thresholds": {
@@ -2651,10 +2651,10 @@
           "sysfsPath": "/run/devmap/sensors/SMB_VRM8/in2_input",
           "type": 1,
           "thresholds": {
-            "upperCriticalVal": 0.9935,
+            "upperCriticalVal": 1.01725,
             "maxAlarmVal": 0.903,
-            "minAlarmVal": 0.722,
-            "lowerCriticalVal": 0.6315
+            "minAlarmVal": 0.6745,
+            "lowerCriticalVal": 0.56025
           },
           "compute": "@/1000"
         },
@@ -2663,10 +2663,10 @@
           "sysfsPath": "/run/devmap/sensors/SMB_VRM8/in3_input",
           "type": 1,
           "thresholds": {
-            "upperCriticalVal": 0.9935,
+            "upperCriticalVal": 1.01725,
             "maxAlarmVal": 0.903,
-            "minAlarmVal": 0.722,
-            "lowerCriticalVal": 0.6315
+            "minAlarmVal": 0.6745,
+            "lowerCriticalVal": 0.56025
           },
           "compute": "@/1000"
         },
@@ -2739,10 +2739,10 @@
           "sysfsPath": "/run/devmap/sensors/SMB_VRM9/in2_input",
           "type": 1,
           "thresholds": {
-            "upperCriticalVal": 0.9935,
+            "upperCriticalVal": 1.01725,
             "maxAlarmVal": 0.903,
-            "minAlarmVal": 0.722,
-            "lowerCriticalVal": 0.6315
+            "minAlarmVal": 0.6745,
+            "lowerCriticalVal": 0.56025
           },
           "compute": "@/1000"
         },
@@ -2751,10 +2751,10 @@
           "sysfsPath": "/run/devmap/sensors/SMB_VRM9/in3_input",
           "type": 1,
           "thresholds": {
-            "upperCriticalVal": 0.9935,
+            "upperCriticalVal": 1.01725,
             "maxAlarmVal": 0.903,
-            "minAlarmVal": 0.722,
-            "lowerCriticalVal": 0.6315
+            "minAlarmVal": 0.6745,
+            "lowerCriticalVal": 0.56025
           },
           "compute": "@/1000"
         },
@@ -2827,10 +2827,10 @@
           "sysfsPath": "/run/devmap/sensors/SMB_VRM10/in2_input",
           "type": 1,
           "thresholds": {
-            "upperCriticalVal": 0.9935,
+            "upperCriticalVal": 1.01725,
             "maxAlarmVal": 0.903,
-            "minAlarmVal": 0.722,
-            "lowerCriticalVal": 0.6315
+            "minAlarmVal": 0.6745,
+            "lowerCriticalVal": 0.56025
           },
           "compute": "@/1000"
         },
@@ -2839,10 +2839,10 @@
           "sysfsPath": "/run/devmap/sensors/SMB_VRM10/in3_input",
           "type": 1,
           "thresholds": {
-            "upperCriticalVal": 0.9935,
+            "upperCriticalVal": 1.01725,
             "maxAlarmVal": 0.903,
-            "minAlarmVal": 0.722,
-            "lowerCriticalVal": 0.6315
+            "minAlarmVal": 0.6745,
+            "lowerCriticalVal": 0.56025
           },
           "compute": "@/1000"
         },
@@ -2915,10 +2915,10 @@
           "sysfsPath": "/run/devmap/sensors/SMB_VRM11/in2_input",
           "type": 1,
           "thresholds": {
-            "upperCriticalVal": 0.9935,
+            "upperCriticalVal": 1.01725,
             "maxAlarmVal": 0.903,
-            "minAlarmVal": 0.722,
-            "lowerCriticalVal": 0.6315
+            "minAlarmVal": 0.6745,
+            "lowerCriticalVal": 0.56025
           },
           "compute": "@/1000"
         },
@@ -2927,10 +2927,10 @@
           "sysfsPath": "/run/devmap/sensors/SMB_VRM11/in3_input",
           "type": 1,
           "thresholds": {
-            "upperCriticalVal": 0.9935,
+            "upperCriticalVal": 1.01725,
             "maxAlarmVal": 0.903,
-            "minAlarmVal": 0.722,
-            "lowerCriticalVal": 0.6315
+            "minAlarmVal": 0.6745,
+            "lowerCriticalVal": 0.56025
           },
           "compute": "@/1000"
         },
