@@ -712,7 +712,16 @@ void startTxMeasure(AgentEnsemble* ensemble, int& pps, int& bytesPerSec) {
       timeAfter - timeBefore;
   auto pktsAfter = pktsBefore;
   auto bytesAfter = bytesBefore;
-  auto kMaxIterations = 30;
+  constexpr auto kMaxIterations = 30;
+  // Number of back to back unchanged readings that count as "drained".
+  // Port stats are served from a counter cache refreshed on the same ~1s
+  // cadence as this poll loop, so a single repeated reading only means we hit
+  // the cache, not that the drain finished. Breaking on it truncates the
+  // packet count while the denominator stays pinned to the TX window, which
+  // reports a fraction of the real pps.
+  constexpr auto kRequiredStableReads = 3;
+  auto stableReads = 0;
+  bool drained = false;
   // Wait for stats increment to stop. On some platforms it
   // takes longer for port stats to reflect the sent bytes.
   for (auto i = 0; i < kMaxIterations; ++i) {
@@ -721,14 +730,19 @@ void startTxMeasure(AgentEnsemble* ensemble, int& pps, int& bytesPerSec) {
     std::tie(pktsAfter, bytesAfter) =
         getOutPktsAndBytes(ensemble, PortID(portUsed));
     if (pktsPrior == pktsAfter && bytesPrior == bytesAfter) {
-      break;
+      if (++stableReads >= kRequiredStableReads) {
+        drained = true;
+        break;
+      }
+    } else {
+      stableReads = 0;
+      XLOG(INFO) << " Stats still incrementing after iteration: " << i + 1;
     }
-    XLOG(INFO) << " Stats still incrementing after iteration: " << i + 1;
     std::this_thread::sleep_for(std::chrono::seconds(1));
-    if (i == kMaxIterations - 1) {
-      XLOG(INFO) << " Stats still incrementing after iteration: " << i + 1
-                 << " Reported TX pps maybe lower than actual pps";
-    }
+  }
+  if (!drained) {
+    XLOG(WARN) << " Stats still incrementing after " << kMaxIterations
+               << " iterations. Reported TX pps maybe lower than actual pps";
   }
   pps = (static_cast<double>(pktsAfter - pktsBefore) /
          durationMillseconds.count()) *
