@@ -32,6 +32,9 @@ from fboss.cli.fboss2.tools.bgp_json_to_cli import (
     generate_prefix_list_commands,
     generate_prefix_list_entry_commands,
     generate_routing_policy_commands,
+    generate_routing_policy_term_action_commands,
+    generate_routing_policy_term_commands,
+    generate_routing_policy_term_match_commands,
     json_to_cli,
 )
 
@@ -1479,6 +1482,224 @@ class GenerateRoutingPolicyCommandsTest(unittest.TestCase):
                 "config protocol bgp policy as-path-list A",
                 "config protocol bgp policy prefix-list PL",
                 self.PREFIX,
+            ],
+        )
+
+
+class GenerateRoutingPolicyTermCommandsTest(unittest.TestCase):
+    """Tests for generate_routing_policy_term_commands (term grammar)."""
+
+    PREFIX = "config protocol bgp policy routing-policy RM term 10"
+
+    def test_bare_term_is_recreated(self) -> None:
+        commands = generate_routing_policy_term_commands("RM", {"sequence_number": 10})
+        self.assertEqual(commands, [self.PREFIX])
+
+    def test_description(self) -> None:
+        commands = generate_routing_policy_term_commands(
+            "RM", {"sequence_number": 10, "description": "deny bogons"}
+        )
+        self.assertEqual(commands, [f"{self.PREFIX} description 'deny bogons'"])
+
+    def test_missing_sequence_number_warns(self) -> None:
+        commands = generate_routing_policy_term_commands("RM", {"name": "t1"})
+        self.assertEqual(len(commands), 1)
+        self.assertTrue(commands[0].startswith("# WARNING:"))
+        self.assertIn("t1", commands[0])
+
+    def test_terms_emitted_inside_policy(self) -> None:
+        commands = generate_routing_policy_commands(
+            {
+                "name": "RM",
+                "description": "d",
+                "policy_entries": [{"sequence_number": 10}, {"sequence_number": 20}],
+            }
+        )
+        self.assertEqual(
+            commands,
+            [
+                "config protocol bgp policy routing-policy RM description d",
+                self.PREFIX,
+                "config protocol bgp policy routing-policy RM term 20",
+            ],
+        )
+
+
+class GenerateRoutingPolicyTermActionCommandsTest(unittest.TestCase):
+    """Tests for generate_routing_policy_term_action_commands."""
+
+    TERM = "config protocol bgp policy routing-policy RM term 10"
+
+    def test_result(self) -> None:
+        # The result is the flow-control action entry (the action on a match).
+        for raw, keyword in (
+            (5, "ACCEPT"),
+            (6, "REJECT"),
+            (7, "CONTINUE"),
+            ("DENY", "REJECT"),
+        ):
+            commands = generate_routing_policy_term_action_commands(
+                self.TERM, {"policy_action_entries": [{"type": raw}]}
+            )
+            self.assertEqual(commands, [f"{self.TERM} action result {keyword}"], raw)
+
+    def test_term_miss_action_default_omitted(self) -> None:
+        self.assertEqual(
+            generate_routing_policy_term_action_commands(
+                self.TERM, {"term_miss_action": 3}
+            ),
+            [],
+        )
+
+    def test_term_miss_action_non_default_warns(self) -> None:
+        # term_miss_action is the action on a non-match; the CLI has no
+        # spelling for it.
+        for raw in (1, 2, 6):
+            commands = generate_routing_policy_term_action_commands(
+                self.TERM, {"term_miss_action": raw}
+            )
+            self.assertEqual(len(commands), 1, raw)
+            self.assertTrue(commands[0].startswith("# WARNING:"), raw)
+
+    def test_set_actions(self) -> None:
+        term = {
+            "policy_action_entries": [
+                {"type": 1, "set_as_path_prepend": {"asn": 65000, "repeat_times": 2}},
+                {
+                    "type": 2,
+                    "community_action": {"communities": ["65000:1"], "action_type": 1},
+                },
+                {
+                    "type": "COMMUNITY_LIST",
+                    "community_action": {"communities": ["65000:2"], "action_type": 2},
+                },
+                {"type": 3, "set_local_pref": {"local_pref": 200}},
+                {"type": 4, "set_origin": 3},
+                {
+                    "type": 8,
+                    "set_nexthop": {"next_hop": {"next_hop_prefix": "10.0.0.1"}},
+                },
+                {"type": 10, "med_action": {"med_value": 50, "med_action_type": 1}},
+                {
+                    "type": 15,
+                    "weight_action": {"weight_value": 7, "weight_action_type": 1},
+                },
+            ]
+        }
+        commands = generate_routing_policy_term_action_commands(self.TERM, term)
+        self.assertEqual(
+            commands,
+            [
+                f"{self.TERM} action set as-path prepend 65000 65000",
+                f"{self.TERM} action set community 65000:1 additive",
+                f"{self.TERM} action set community 65000:2",
+                f"{self.TERM} action set local-pref 200",
+                f"{self.TERM} action set origin INCOMPLETE",
+                f"{self.TERM} action set next-hop 10.0.0.1",
+                f"{self.TERM} action set med 50",
+                f"{self.TERM} action set weight 7",
+            ],
+        )
+
+    def test_unexpressible_actions_warn(self) -> None:
+        term = {
+            "policy_action_entries": [
+                {"type": 8, "set_nexthop": {"set_self": True}},
+                {"type": 10, "med_action": {"med_value": 1, "med_action_type": 2}},
+                {"type": 11},
+                {
+                    "type": 2,
+                    "community_action": {"communities": ["a", "b"], "action_type": 2},
+                },
+            ]
+        }
+        commands = generate_routing_policy_term_action_commands(self.TERM, term)
+        self.assertEqual(len(commands), 4)
+        for c in commands:
+            self.assertTrue(c.startswith("# WARNING:"), c)
+
+    def test_actions_emitted_inside_term(self) -> None:
+        commands = generate_routing_policy_term_commands(
+            "RM",
+            {
+                "sequence_number": 10,
+                "policy_action_entries": [
+                    {"type": 5},
+                    {"type": 3, "set_local_pref": {"local_pref": 5}},
+                ],
+            },
+        )
+        self.assertEqual(
+            commands,
+            [
+                f"{self.TERM} action result ACCEPT",
+                f"{self.TERM} action set local-pref 5",
+            ],
+        )
+
+
+class GenerateRoutingPolicyTermMatchCommandsTest(unittest.TestCase):
+    """Tests for generate_routing_policy_term_match_commands."""
+
+    TERM = "config protocol bgp policy routing-policy RM term 10"
+
+    def test_supported_matches(self) -> None:
+        term = {
+            "policy_match_entries": {
+                "match_entries": [
+                    {"type": 2, "as_path_filters": {"as_path_list_names": ["ASPL"]}},
+                    {"type": "ORIGIN", "origin": 1},
+                    {"type": 5, "prefix_filters": {"prefix_list_names": ["PL"]}},
+                ]
+            }
+        }
+        commands = generate_routing_policy_term_match_commands(self.TERM, term)
+        self.assertEqual(
+            commands,
+            [
+                f"{self.TERM} match from as-path-list ASPL",
+                f"{self.TERM} match from origin IGP",
+                f"{self.TERM} match from prefix-list PL",
+            ],
+        )
+
+    def test_no_match_entries(self) -> None:
+        self.assertEqual(generate_routing_policy_term_match_commands(self.TERM, {}), [])
+
+    def test_unexpressible_matches_warn(self) -> None:
+        term = {
+            "policy_matches": [{}],
+            "policy_match_entries": {
+                "match_logic_type": 2,
+                "match_entries": [
+                    {"type": 3},
+                    {"type": 2, "as_path_filters": {"as_path_list_names": ["A", "B"]}},
+                ],
+            },
+        }
+        commands = generate_routing_policy_term_match_commands(self.TERM, term)
+        self.assertEqual(commands[3], f"{self.TERM} match from as-path-list A")
+        warnings = [c for c in commands if c.startswith("# WARNING:")]
+        self.assertEqual(len(warnings), 4)
+
+    def test_matches_emitted_inside_term(self) -> None:
+        commands = generate_routing_policy_term_commands(
+            "RM",
+            {
+                "sequence_number": 10,
+                "policy_match_entries": {
+                    "match_entries": [
+                        {"type": 5, "prefix_filters": {"prefix_list_names": ["PL"]}}
+                    ]
+                },
+                "policy_action_entries": [{"type": 5}],
+            },
+        )
+        self.assertEqual(
+            commands,
+            [
+                f"{self.TERM} action result ACCEPT",
+                f"{self.TERM} match from prefix-list PL",
             ],
         )
 

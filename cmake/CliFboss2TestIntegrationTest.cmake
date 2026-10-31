@@ -23,6 +23,9 @@ add_executable(fboss2_integration_test
   fboss/cli/fboss2/test/integration_test/ConfigBgpPolicyPrefixListTest.cpp
   fboss/cli/fboss2/test/integration_test/ConfigBgpPolicyPrefixListEntryTest.cpp
   fboss/cli/fboss2/test/integration_test/ConfigBgpPolicyRoutingPolicyTest.cpp
+  fboss/cli/fboss2/test/integration_test/ConfigBgpPolicyRoutingPolicyTermTest.cpp
+  fboss/cli/fboss2/test/integration_test/ConfigBgpPolicyRoutingPolicyTermActionTest.cpp
+  fboss/cli/fboss2/test/integration_test/ConfigBgpPolicyRoutingPolicyTermMatchTest.cpp
   fboss/cli/fboss2/test/integration_test/ConfigBgpSessionTest.cpp
   fboss/cli/fboss2/test/integration_test/ConfigConcurrentSessionsTest.cpp
   fboss/cli/fboss2/test/integration_test/ConfigHostnameTest.cpp

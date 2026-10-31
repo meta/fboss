@@ -1,0 +1,297 @@
+// Copyright (c) Meta Platforms, Inc. and affiliates.
+
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
+
+#include <cstddef>
+#include <filesystem>
+#include <stdexcept>
+#include <string>
+#include <vector>
+
+#include "configerator/structs/neteng/bgp_policy/thrift/gen-cpp2/routing_policy_types.h"
+#include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/as-path-list/BgpAsPathListCliUtils.h"
+#include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/prefix-list/BgpPrefixListCliUtils.h"
+#include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/routing-policy/term/CmdConfigProtocolBgpPolicyRoutingPolicyTerm.h"
+#include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/routing-policy/term/match/CmdConfigProtocolBgpPolicyRoutingPolicyTermMatch.h"
+#include "fboss/cli/fboss2/session/ConfigSession.h"
+#include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
+#include "fboss/cli/fboss2/utils/HostInfo.h"
+
+#ifndef IS_OSS
+#include <configerator/structs/neteng/bgp_policy/thrift/gen-cpp2/bgp_policy_types.h>
+#include <configerator/structs/neteng/fboss/bgp/gen-cpp2/bgp_config_types.h>
+#else
+#include <neteng/fboss/bgp/public_tld/configerator/structs/neteng/fboss/bgp/gen-cpp2/bgp_config_types.h>
+#endif
+
+using namespace ::testing;
+
+namespace facebook::fboss {
+
+// The match dispatcher only touches the BGP side of ConfigSession, which
+// seeds from thrift schema defaults when neither a staged session nor a
+// system bgpcpp.conf exists — so no seed agent config is needed (mirrors
+// CmdConfigBgpPolicyRoutingPolicyTermActionTest).
+class CmdConfigBgpPolicyRoutingPolicyTermMatchTestFixture
+    : public CmdConfigTestBase {
+ public:
+  CmdConfigBgpPolicyRoutingPolicyTermMatchTestFixture()
+      : CmdConfigTestBase(
+            "bgp_routing_policy_term_match_test_%%%%-%%%%-%%%%",
+            "") {}
+
+  void SetUp() override {
+    CmdConfigTestBase::SetUp();
+    setupTestableConfigSession();
+  }
+
+  // Invoke the match handler the way the framework does: the ancestors'
+  // parsed args plus the match's own tokens.
+  std::string runMatch(const std::vector<std::string>& matchTokens) {
+    CmdConfigProtocolBgpPolicyRoutingPolicyTermMatch cmd;
+    HostInfo hostInfo("testhost");
+    return cmd.queryClient(
+        hostInfo,
+        BgpRoutingPolicyConfig({"RM100"}),
+        BgpRoutingPolicyTermConfig({"10"}),
+        BgpRoutingPolicyTermMatchConfig(matchTokens));
+  }
+
+  const std::vector<bgp::bgp_policy::BgpPolicyStatement>& policies() {
+    return *ConfigSession::getInstance()
+                .getBgpConfig()
+                .policies()
+                .ensure()
+                .bgp_policy_statements();
+  }
+
+  const bgp::bgp_policy::BgpPolicyTerm& term() {
+    return (*policies()[0].policy_entries())[0];
+  }
+
+  // The atomic match entries of the term's match object. bgpd only reads the
+  // (thrift-deprecated) policy_match_entries container, so that is where the
+  // CLI must write and what these tests assert on.
+  const std::vector<bgp::bgp_policy::BgpPolicyAtomicMatch>& atomics() {
+    return *term().policy_match_entries()->match_entries();
+  }
+
+  // `from as-path-list` refuses a name that does not exist (the as-path-list
+  // CLI lives below this level); seed the list the way that command stores
+  // it.
+  bgp::bgp_policy::AsPathList& addAsPathList(
+      const std::string& name,
+      bgp::routing_policy::BooleanOperator op =
+          bgp::routing_policy::BooleanOperator::OR) {
+    auto& list = bgpcli::findOrCreateAsPathList(
+        ConfigSession::getInstance().getBgpConfig(), name);
+    list.boolean_operator() = op;
+    ConfigSession::getInstance().saveBgpConfig();
+    return list;
+  }
+
+  // `from prefix-list` likewise refuses a name that does not exist.
+  void addPrefixList(const std::string& name) {
+    bgpcli::findOrCreatePrefixList(
+        ConfigSession::getInstance().getBgpConfig(), name);
+    ConfigSession::getInstance().saveBgpConfig();
+  }
+
+  bool sessionFileExists() {
+    return std::filesystem::exists(
+        ConfigSession::getInstance().getBgpSessionConfigPath());
+  }
+};
+
+// ==============================================================================
+// BgpRoutingPolicyTermMatchConfig (arg) validation
+// ==============================================================================
+
+TEST_F(CmdConfigBgpPolicyRoutingPolicyTermMatchTestFixture, argValidation) {
+  auto prefixList =
+      BgpRoutingPolicyTermMatchConfig({"from", "prefix-list", "PL1"});
+  EXPECT_EQ(prefixList.attr(), "from prefix-list");
+  EXPECT_EQ(prefixList.values(), std::vector<std::string>({"PL1"}));
+
+  // Invalid: empty, missing `from`, bare `from`, unknown attribute.
+  EXPECT_THROW(BgpRoutingPolicyTermMatchConfig({}), std::invalid_argument);
+  EXPECT_THROW(
+      BgpRoutingPolicyTermMatchConfig({"prefix-list", "PL1"}),
+      std::invalid_argument);
+  EXPECT_THROW(
+      BgpRoutingPolicyTermMatchConfig({"from"}), std::invalid_argument);
+  EXPECT_THROW(
+      BgpRoutingPolicyTermMatchConfig({"from", "no-such-attr", "1"}),
+      std::invalid_argument);
+}
+
+TEST_F(
+    CmdConfigBgpPolicyRoutingPolicyTermMatchTestFixture,
+    unsupportedMatchesRejected) {
+  // These four are documented in the sheet but bgpd cannot apply them:
+  // local-pref/med/next-hop have no match case at all, and community-list's
+  // match validates its inline communities before anything resolves the
+  // by-name reference. A term carrying any of them aborts the daemon, so they
+  // must be rejected at parse time rather than staged.
+  for (const auto& attr : {"community-list", "local-pref", "med", "next-hop"}) {
+    EXPECT_THROW(
+        BgpRoutingPolicyTermMatchConfig({"from", attr, "1"}),
+        std::invalid_argument)
+        << "expected `from " << attr << "` to be rejected";
+  }
+}
+
+// ==============================================================================
+// from <attribute> — atomic matches keyed by type
+// ==============================================================================
+
+TEST_F(CmdConfigBgpPolicyRoutingPolicyTermMatchTestFixture, fromAsPathList) {
+  addAsPathList("ASPL1");
+  auto result = runMatch({"from", "as-path-list", "ASPL1"});
+  EXPECT_THAT(result, HasSubstr("Successfully set as-path-list to: ASPL1"));
+  EXPECT_THAT(result, HasSubstr("for routing-policy RM100 term 10 match"));
+  ASSERT_EQ(atomics().size(), 1);
+  EXPECT_EQ(*atomics()[0].type(), BgpPolicyAtomicMatchType::AS_PATH);
+  // The reference lives in as_path_list_names, NOT in `name` (a label bgpd
+  // never resolves): AsPathMatch keeps these names and
+  // PolicyManager::PopulateReferences merges in asPathListMap_'s entry.
+  EXPECT_EQ(
+      *atomics()[0].as_path_filters()->as_path_list_names(),
+      std::vector<std::string>({"ASPL1"}));
+  EXPECT_TRUE(sessionFileExists());
+}
+
+TEST_F(CmdConfigBgpPolicyRoutingPolicyTermMatchTestFixture, fromOrigin) {
+  auto result = runMatch({"from", "origin", "EGP"});
+  EXPECT_THAT(result, HasSubstr("Successfully set origin to: EGP"));
+  ASSERT_EQ(atomics().size(), 1);
+  EXPECT_EQ(*atomics()[0].type(), BgpPolicyAtomicMatchType::ORIGIN);
+  EXPECT_EQ(*atomics()[0].origin(), Origin::EGP);
+
+  auto invalid = runMatch({"from", "origin", "BGP"});
+  EXPECT_THAT(
+      invalid,
+      HasSubstr("Invalid origin value 'BGP'; expected IGP|EGP|INCOMPLETE"));
+  EXPECT_EQ(*atomics()[0].origin(), Origin::EGP);
+}
+
+TEST_F(CmdConfigBgpPolicyRoutingPolicyTermMatchTestFixture, fromPrefixList) {
+  addPrefixList("PL1");
+  runMatch({"from", "prefix-list", "PL1"});
+  ASSERT_EQ(atomics().size(), 1);
+  EXPECT_EQ(*atomics()[0].type(), BgpPolicyAtomicMatchType::PREFIX_LIST);
+  EXPECT_EQ(
+      *atomics()[0].prefix_filters()->prefix_list_names(),
+      std::vector<std::string>({"PL1"}));
+}
+
+TEST_F(
+    CmdConfigBgpPolicyRoutingPolicyTermMatchTestFixture,
+    matchKindsAreKeyedByType) {
+  // Each match kind gets one atomic entry; re-issuing a kind updates it. The
+  // entries compose under the match object's default AND, which is the only
+  // operator bgpd accepts for more than one entry.
+  addAsPathList("ASPL1");
+  addPrefixList("PL1");
+  addPrefixList("PL2");
+  runMatch({"from", "prefix-list", "PL1"});
+  runMatch({"from", "as-path-list", "ASPL1"});
+  runMatch({"from", "origin", "IGP"});
+  ASSERT_EQ(atomics().size(), 3);
+  EXPECT_EQ(
+      *term().policy_match_entries()->match_logic_type(),
+      bgp::routing_policy::BooleanOperator::AND);
+
+  runMatch({"from", "prefix-list", "PL2"});
+  ASSERT_EQ(atomics().size(), 3);
+  size_t prefixListEntries = 0;
+  for (const auto& atomic : atomics()) {
+    if (*atomic.type() == BgpPolicyAtomicMatchType::PREFIX_LIST) {
+      ++prefixListEntries;
+      EXPECT_EQ(
+          *atomic.prefix_filters()->prefix_list_names(),
+          std::vector<std::string>({"PL2"}));
+    }
+  }
+  EXPECT_EQ(prefixListEntries, 1);
+}
+
+// ==============================================================================
+// Reject paths — the error is surfaced and nothing is persisted
+// ==============================================================================
+
+TEST_F(
+    CmdConfigBgpPolicyRoutingPolicyTermMatchTestFixture,
+    fromUnknownPrefixListRejected) {
+  // bgpd: "Could not find PrefixList reference" at config load.
+  auto result = runMatch({"from", "prefix-list", "NO-SUCH-LIST"});
+  EXPECT_THAT(
+      result, HasSubstr("Error: BGP prefix-list NO-SUCH-LIST not found"));
+  EXPECT_TRUE(policies().empty());
+  EXPECT_FALSE(sessionFileExists())
+      << "session file should not exist after rejected input";
+}
+
+TEST_F(
+    CmdConfigBgpPolicyRoutingPolicyTermMatchTestFixture,
+    rejectedValueRollsBackPhantoms) {
+  auto result = runMatch({"from", "prefix-list"});
+  EXPECT_THAT(result, HasSubstr("Error: prefix-list requires <name>"));
+  // The rejected value must not leave a phantom term or policy behind.
+  EXPECT_TRUE(policies().empty());
+  EXPECT_FALSE(sessionFileExists())
+      << "session file should not exist after rejected input";
+}
+
+TEST_F(
+    CmdConfigBgpPolicyRoutingPolicyTermMatchTestFixture,
+    ancestorAttributeAlongsideMatchRejected) {
+  // The CLI parse accepts `... term 10 description x match from origin IGP`,
+  // but only the leaf runs — the term attribute must be rejected, not
+  // silently dropped.
+  CmdConfigProtocolBgpPolicyRoutingPolicyTermMatch cmd;
+  HostInfo hostInfo("testhost");
+  auto result = cmd.queryClient(
+      hostInfo,
+      BgpRoutingPolicyConfig({"RM100"}),
+      BgpRoutingPolicyTermConfig({"10", "description", "x"}),
+      BgpRoutingPolicyTermMatchConfig({"from", "origin", "IGP"}));
+  EXPECT_THAT(
+      result, HasSubstr("Error: configure routing-policy/term attributes"));
+  EXPECT_TRUE(policies().empty());
+  EXPECT_FALSE(sessionFileExists())
+      << "session file should not exist after rejected input";
+}
+
+// ==============================================================================
+// from as-path-list — the reference must resolve, and carries the list's
+// operator
+// ==============================================================================
+
+TEST_F(
+    CmdConfigBgpPolicyRoutingPolicyTermMatchTestFixture,
+    fromUnknownAsPathListRejected) {
+  auto result = runMatch({"from", "as-path-list", "NO-SUCH-LIST"});
+  EXPECT_THAT(
+      result, HasSubstr("Error: BGP as-path-list NO-SUCH-LIST not found"));
+  // Refused before anything is created: no phantom policy, nothing on disk.
+  EXPECT_TRUE(policies().empty());
+  EXPECT_FALSE(sessionFileExists())
+      << "session file should not exist after rejected input";
+}
+
+TEST_F(
+    CmdConfigBgpPolicyRoutingPolicyTermMatchTestFixture,
+    fromAsPathListCopiesListOperator) {
+  addAsPathList("ASPL1", bgp::routing_policy::BooleanOperator::AND);
+  runMatch({"from", "as-path-list", "ASPL1"});
+  ASSERT_EQ(atomics().size(), 1);
+  // bgpd rejects a term whose inline copy disagrees with the list
+  // ("Conflicting boolean_operator"), so the match carries the list's value.
+  EXPECT_EQ(
+      *atomics()[0].as_path_filters()->boolean_operator(),
+      bgp::routing_policy::BooleanOperator::AND);
+}
+
+} // namespace facebook::fboss
