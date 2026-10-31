@@ -271,9 +271,10 @@ void getPortInfoHelper(
   *portInfo.name() = port->getName();
   *portInfo.description() = port->getDescription();
   *portInfo.speedMbps() = static_cast<int>(port->getSpeed());
-  for (auto entry : port->getVlans()) {
+  for (const auto& entry : port->getVlans()) {
     portInfo.vlans()->push_back(entry.first);
   }
+  portInfo.ingressVlan() = static_cast<int32_t>(port->getIngressVlan());
   if (auto id = sw.getHwLogicalPortId(port->getID())) {
     portInfo.hwLogicalPortId() = *id;
   }

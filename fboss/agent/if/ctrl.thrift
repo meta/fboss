@@ -528,6 +528,8 @@ struct PortInfoThrift {
 
   // Unset when the port has no cbfcConfigName.
   39: optional CbfcInfo cbfc;
+
+  40: optional i32 ingressVlan;
 }
 
 // Port queueing configuration
