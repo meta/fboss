@@ -372,8 +372,15 @@ bool HwTestThriftHandler::isAclEntrySame(
   auto tableName = aclTableName ? getActualAclTableName(*aclTableName)
                                 : getActualAclTableName(std::nullopt);
   auto aclTableHandle = aclTableManager.getAclTableHandle(tableName);
+  if (!aclTableHandle) {
+    throw FbossError("ACL table ", tableName, " not found");
+  }
   auto aclEntryHandle = aclTableManager.getAclEntryHandle(
       aclTableHandle, swAcl->getPriority(), swAcl->getID());
+  if (!aclEntryHandle) {
+    throw FbossError(
+        "ACL entry ", swAcl->getID(), " not found in table ", tableName);
+  }
   auto aclEntryId = aclEntryHandle->aclEntry->adapterKey();
 
   auto aclFieldPriorityExpected =

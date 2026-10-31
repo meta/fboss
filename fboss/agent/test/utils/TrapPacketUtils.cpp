@@ -5,6 +5,15 @@
 
 namespace facebook::fboss::utility {
 
+namespace {
+// These DNX ASICs split the default ingress ACL into an IPv4 table and an IPv6
+// table, so IPv6 entries go in the IPv6 table.
+bool hasSeparateIpv6AclTable(const HwAsic* asic) {
+  return asic->getAsicType() == cfg::AsicType::ASIC_TYPE_QUMRAN4D ||
+      asic->getAsicType() == cfg::AsicType::ASIC_TYPE_JERICHO4;
+}
+} // namespace
+
 void addTrapPacketAcl(
     const HwAsic* asic,
     cfg::SwitchConfig* config,
@@ -53,8 +62,7 @@ void addTrapPacketAcl(
     trafficPolicy.matchToAction()->push_back(match2Action);
   };
 
-  if (asic->getAsicType() == cfg::AsicType::ASIC_TYPE_QUMRAN4D ||
-      asic->getAsicType() == cfg::AsicType::ASIC_TYPE_JERICHO4) {
+  if (hasSeparateIpv6AclTable(asic)) {
     // Q4D/J4 (DNX) reject FIELD_SRC_PORT + FIELD_ACL_IP_TYPE=NON_IP. Per
     // Broadcom, install the source-port entry in both ACL tables: an
     // etherType=IPv4 copy in the default table and an etherType=IPv6 copy in
@@ -124,7 +132,12 @@ void addTrapPacketAcl(
         prefix.first.isV6() ? cfg::EtherType::IPv6 : cfg::EtherType::IPv4;
   }
   entry.actionType() = cfg::AclActionType::PERMIT;
-  utility::addAclEntry(config, entry, utility::kDefaultAclTable());
+  utility::addAclEntry(
+      config,
+      entry,
+      prefix.first.isV6() && hasSeparateIpv6AclTable(asic)
+          ? utility::kIpv6AclTable()
+          : utility::kDefaultAclTable());
 
   cfg::MatchAction action;
   action.toCpuAction() = toCpuAction;
@@ -179,7 +192,11 @@ void addTrapPacketAcl(
     entry.etherType() = cfg::EtherType::IPv6;
   }
   entry.actionType() = cfg::AclActionType::PERMIT;
-  utility::addAclEntry(config, entry, utility::kDefaultAclTable());
+  utility::addAclEntry(
+      config,
+      entry,
+      hasSeparateIpv6AclTable(asic) ? utility::kIpv6AclTable()
+                                    : utility::kDefaultAclTable());
 
   cfg::MatchAction action;
   action.sendToQueue() = cfg::QueueMatchAction();
