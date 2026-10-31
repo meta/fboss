@@ -3,6 +3,7 @@
 #include "fboss/platform/helpers/ExpectSession.h"
 
 #include <csignal>
+#include <thread>
 
 #include <gtest/gtest.h>
 
@@ -10,6 +11,18 @@ using namespace facebook::fboss::platform;
 
 namespace {
 constexpr std::chrono::seconds kTimeout{10};
+
+// EOF can arrive before the exiting child is reapable, so poll isAlive().
+bool exitsWithin(ExpectSession& session, std::chrono::milliseconds timeout) {
+  auto deadline = std::chrono::steady_clock::now() + timeout;
+  while (session.isAlive()) {
+    if (std::chrono::steady_clock::now() > deadline) {
+      return false;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  }
+  return true;
+}
 } // namespace
 
 TEST(ExpectSessionTest, ExpectAndSend) {
@@ -41,7 +54,7 @@ TEST(ExpectSessionTest, NoticesWhenChildExits) {
 
   EXPECT_FALSE(session.expect("more", kTimeout));
   EXPECT_TRUE(session.isEof());
-  EXPECT_FALSE(session.isAlive());
+  EXPECT_TRUE(exitsWithin(session, kTimeout));
 }
 
 TEST(ExpectSessionTest, ChildReapedElsewhereIsNotAlive) {
@@ -52,7 +65,7 @@ TEST(ExpectSessionTest, ChildReapedElsewhereIsNotAlive) {
     ExpectSession session("true");
     ASSERT_FALSE(session.expect("never printed", kTimeout));
 
-    EXPECT_FALSE(session.isAlive());
+    EXPECT_TRUE(exitsWithin(session, kTimeout));
   }
   std::signal(SIGCHLD, previous);
 }
