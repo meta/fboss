@@ -6,10 +6,14 @@
 #include <folly/IPAddressV4.h>
 #include <folly/synchronization/Baton.h>
 
+#include <algorithm>
 #include <thread>
+
+#include <fmt/core.h>
 
 #include "fboss/agent/AddressUtil.h"
 #include "fboss/agent/if/gen-cpp2/ctrl_types.h"
+#include "fboss/cli/fboss2/CmdGlobalOptions.h"
 #include "fboss/cli/fboss2/utils/CmdClientUtils.h"
 
 #include <thrift/lib/cpp2/reflection/testing.h>
@@ -610,6 +614,193 @@ TEST_F(CmdShowPortTestFixture, wikiDocHooks) {
 TEST_F(CmdShowPortTestFixture, wikiDocHooksQueue) {
   EXPECT_FALSE(CmdShowPortQueueTraits::description().empty());
   EXPECT_FALSE(CmdShowPortQueue::sampleModel().empty());
+}
+
+namespace {
+// Sets the global --detail option by parsing it through CLI11, the same path
+// the fboss2 binary uses.
+void setDetailFlag(bool detail) {
+  CLI::App app;
+  CmdGlobalOptions::getInstance()->init(app);
+  app.parse(std::vector<std::string>{detail ? "--detail" : "--detail=false"});
+}
+
+ActiveQueueManagement makeLinearAqm(
+    QueueCongestionBehavior behavior,
+    int32_t minLength,
+    int32_t maxLength,
+    int32_t probability) {
+  ActiveQueueManagement aqm;
+  aqm.behavior() = behavior;
+  LinearQueueCongestionDetection linear;
+  linear.minimumLength() = minLength;
+  linear.maximumLength() = maxLength;
+  linear.probability() = probability;
+  aqm.detection()->linear() = linear;
+  return aqm;
+}
+
+PortQueueThrift makeWrrQueue(int32_t id, int32_t weight) {
+  PortQueueThrift queue;
+  queue.id() = id;
+  queue.name() = fmt::format("q{}", id);
+  queue.mode() = "WEIGHTED_ROUND_ROBIN";
+  queue.weight() = weight;
+  queue.reservedBytes() = 0;
+  queue.scalingFactor() = "TWO";
+  return queue;
+}
+
+// Two ports sharing a queue profile where only q3 carries AQM, and one
+// port with a queue that has both ECN and WRED entries.
+std::map<int32_t, PortInfoThrift> createPortQueueEntries() {
+  std::vector<PortQueueThrift> queues = {
+      makeWrrQueue(0, 1),
+      makeWrrQueue(1, 2),
+      makeWrrQueue(2, 4),
+      makeWrrQueue(3, 8),
+  };
+  queues[3].aqms() = {
+      makeLinearAqm(QueueCongestionBehavior::ECN, 1000000, 5000000, 100)};
+
+  std::map<int32_t, PortInfoThrift> entries;
+  for (const auto& [portId, name] :
+       std::vector<std::pair<int32_t, std::string>>{
+           {1, "eth1/1/1"}, {5, "eth1/2/1"}}) {
+    PortInfoThrift port;
+    port.portId() = portId;
+    port.name() = name;
+    port.portQueues() = queues;
+    entries[portId] = port;
+  }
+
+  PortInfoThrift mixed;
+  mixed.portId() = 9;
+  mixed.name() = "eth1/3/1";
+  auto both = makeWrrQueue(0, 1);
+  both.aqms() = {
+      makeLinearAqm(QueueCongestionBehavior::ECN, 100000, 200000, 100),
+      makeLinearAqm(QueueCongestionBehavior::EARLY_DROP, 300000, 400000, 50)};
+  mixed.portQueues() = {both};
+  entries[9] = mixed;
+  return entries;
+}
+} // namespace
+
+TEST_F(CmdShowPortTestFixture, queueQueryClientFiltersPorts) {
+  setupMockedAgentServer();
+  auto entries = createPortQueueEntries();
+  EXPECT_CALL(getMockAgent(), getAllPortInfo(_))
+      .WillOnce(Invoke([&](auto& out) { out = entries; }));
+
+  utils::PortList queried(std::vector<std::string>{"eth1/2/1"});
+  auto result = CmdShowPortQueue().queryClient(localhost(), queried);
+
+  ASSERT_EQ(result.size(), 1);
+  ASSERT_EQ(result.count(5), 1);
+  const auto& queues = *result.at(5).portQueues();
+  ASSERT_EQ(queues.size(), 4);
+  EXPECT_FALSE(queues[0].aqms().has_value());
+  ASSERT_TRUE(queues[3].aqms().has_value());
+  EXPECT_EQ(*queues[3].aqms(), *entries.at(5).portQueues()[3].aqms());
+}
+
+TEST_F(CmdShowPortTestFixture, queueQueryClientReturnsAllPortsWhenUnfiltered) {
+  setupMockedAgentServer();
+  auto entries = createPortQueueEntries();
+  EXPECT_CALL(getMockAgent(), getAllPortInfo(_))
+      .WillOnce(Invoke([&](auto& out) { out = entries; }));
+
+  utils::PortList queried(std::vector<std::string>{});
+  auto result = CmdShowPortQueue().queryClient(localhost(), queried);
+
+  EXPECT_EQ(result, entries);
+}
+
+TEST_F(CmdShowPortTestFixture, queueOutputOmitsAqmWithoutDetail) {
+  setDetailFlag(false);
+  std::stringstream ss;
+  CmdShowPortQueue().printOutput(createPortQueueEntries(), ss);
+
+  std::string output = ss.str();
+  EXPECT_THAT(output, HasSubstr("eth1/1/1\n"));
+  EXPECT_THAT(
+      output,
+      HasSubstr(
+          "3      q3                  WEIGHTED_ROUND_ROBIN     "
+          "8         0              TWO            \n"));
+  EXPECT_THAT(output, Not(HasSubstr("AQM")));
+  EXPECT_THAT(output, Not(HasSubstr("ECN")));
+}
+
+TEST_F(CmdShowPortTestFixture, queueDetailShowsAqmPerQueue) {
+  setDetailFlag(true);
+  std::stringstream ss;
+  CmdShowPortQueue().printOutput(createPortQueueEntries(), ss);
+  setDetailFlag(false);
+
+  std::string output = ss.str();
+  // Queues without AQM say so explicitly, so an operator can tell a
+  // missing ECN config apart from one that applied.
+  EXPECT_THAT(
+      output,
+      HasSubstr(
+          "0      q0                  WEIGHTED_ROUND_ROBIN     "
+          "1         0              TWO            \n"
+          "       AQM: none\n"
+          "1      q1                  WEIGHTED_ROUND_ROBIN     "
+          "2         0              TWO            \n"
+          "       AQM: none\n"));
+  EXPECT_THAT(
+      output,
+      HasSubstr(
+          "3      q3                  WEIGHTED_ROUND_ROBIN     "
+          "8         0              TWO            \n"
+          "       AQM: ECN  minLength=1000000  maxLength=5000000  "
+          "probability=100%\n"));
+  // A queue carrying both ECN and WRED lists one line per entry.
+  EXPECT_THAT(
+      output,
+      HasSubstr(
+          "eth1/3/1\n"
+          "==========\n"));
+  EXPECT_THAT(
+      output,
+      HasSubstr(
+          "       AQM: ECN  minLength=100000  maxLength=200000  "
+          "probability=100%\n"
+          "       AQM: EARLY_DROP  minLength=300000  maxLength=400000  "
+          "probability=50%\n"));
+  // The same profile is printed under both ports that use it.
+  EXPECT_EQ(
+      std::count(output.begin(), output.end(), '%'),
+      4 /* 2 ports x q3 ECN + eth1/3/1 ECN + EARLY_DROP */);
+}
+
+TEST_F(CmdShowPortTestFixture, queueDetailHandlesUnknownDetection) {
+  auto entries = createPortQueueEntries();
+  ActiveQueueManagement noDetection;
+  noDetection.behavior() = QueueCongestionBehavior::EARLY_DROP;
+  entries.at(9).portQueues()[0].aqms() = {noDetection};
+
+  setDetailFlag(true);
+  std::stringstream ss;
+  CmdShowPortQueue().printOutput(entries, ss);
+  setDetailFlag(false);
+
+  EXPECT_THAT(
+      ss.str(), HasSubstr("       AQM: EARLY_DROP  detection=unknown\n"));
+}
+
+TEST_F(CmdShowPortTestFixture, queueSampleModelCarriesAqm) {
+  auto model = CmdShowPortQueue::sampleModel();
+  bool sawAqm = false;
+  for (const auto& [portId, port] : model) {
+    for (const auto& queue : *port.portQueues()) {
+      sawAqm |= queue.aqms().has_value() && !queue.aqms()->empty();
+    }
+  }
+  EXPECT_TRUE(sawAqm);
 }
 
 } // namespace facebook::fboss
