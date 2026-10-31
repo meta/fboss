@@ -264,6 +264,39 @@ TEST_F(NextHopGroupStoreTest, nextHopGroupCreateCtor) {
   auto obj = createObj<SaiNextHopGroupTraits>(k, c, 0);
 }
 
+#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
+// HierarchicalNextHop is create-only and brcm-sai has no getter for it, so a
+// warm-boot reload stores nullopt. FakeSai does implement the getter, so the
+// nullopt state is set up directly here rather than via SaiStore::reload().
+// Applying a value on top of nullopt must not issue a set (FakeSai rejects
+// one), but the store must adopt the value.
+TEST_F(NextHopGroupStoreTest, createOnlyAttrNotReadBackSkipsHwWrite) {
+  auto& store = saiStore->get<SaiNextHopGroupTraits>();
+  SaiNextHopGroupTraits::AdapterHostKey k;
+  SaiNextHopGroupTraits::CreateAttributes created{
+      SAI_NEXT_HOP_GROUP_TYPE_ECMP, std::nullopt, std::nullopt, std::nullopt};
+  auto obj = store.setObject(k, created);
+  auto id = obj->adapterKey();
+  auto& nextHopGroupApi = saiApiTable->nextHopGroupApi();
+  auto hwBefore = nextHopGroupApi.getAttribute(
+      id, SaiNextHopGroupTraits::Attributes::HierarchicalNextHop{});
+
+  SaiNextHopGroupTraits::CreateAttributes desired{
+      SAI_NEXT_HOP_GROUP_TYPE_ECMP,
+      std::nullopt,
+      std::nullopt,
+      SaiNextHopGroupTraits::Attributes::HierarchicalNextHop{!hwBefore}};
+  EXPECT_NO_THROW(store.setObject(k, desired));
+  EXPECT_EQ(
+      GET_OPT_ATTR(NextHopGroup, HierarchicalNextHop, obj->attributes()),
+      !hwBefore);
+  EXPECT_EQ(
+      nextHopGroupApi.getAttribute(
+          id, SaiNextHopGroupTraits::Attributes::HierarchicalNextHop{}),
+      hwBefore);
+}
+#endif
+
 TEST_F(NextHopGroupStoreTest, nextHopGroupMemberCreateCtor) {
   auto nhgId = createNextHopGroup();
   SaiNextHopGroupMemberTraits::AdapterHostKey k{nhgId, 42};

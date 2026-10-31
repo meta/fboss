@@ -451,8 +451,17 @@ class SaiObject {
         oldAttr,
         newAttr);
     if (oldAttr != newAttr) {
-      if (!skipHwWrite) {
-        setAttributeInHardware(newAttr);
+      // CREATE_ONLY attributes cannot be set after create, so only update the
+      // store. This matters on warm boot when the adapter has no getter (e.g.
+      // brcm-sai for SAI_NEXT_HOP_GROUP_ATTR_HIERARCHICAL_NEXTHOP): reload
+      // stores nullopt and the first apply looks like a change. Every input
+      // that decides a create-only value must be part of the adapter host key,
+      // so a real value change yields a new object rather than a set on this
+      // one. Marking an attribute IsCreateOnlyAttribute asserts that property.
+      if constexpr (!IsCreateOnlyAttribute<std::decay_t<AttrT>>::value) {
+        if (!skipHwWrite) {
+          setAttributeInHardware(newAttr);
+        }
       }
       oldAttr = std::forward<AttrT>(newAttr);
     }
