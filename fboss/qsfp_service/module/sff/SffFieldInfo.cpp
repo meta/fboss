@@ -21,7 +21,7 @@ namespace fboss {
 double SffFieldInfo::getTemp(const uint16_t temp) {
   double data;
   data = temp / 256.0;
-  if (data > 128) {
+  if (data >= 128) {
     data = data - 256;
   }
   return data;

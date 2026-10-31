@@ -3,6 +3,7 @@
 #include "fboss/platform/sensor_service/Utils.h"
 
 #include <chrono>
+#include <stdexcept>
 
 #include <exprtk.hpp>
 #include <folly/logging/xlog.h>
@@ -71,7 +72,11 @@ float Utils::computeExpression(
   expr.register_symbol_table(symbolTable);
 
   exprtk::parser<float> parser;
-  parser.compile(temp_equation, expr);
+  if (!parser.compile(temp_equation, expr)) {
+    XLOG(ERR) << "Failed to compile PM sensor equation: " << temp_equation;
+    throw std::runtime_error(
+        "Failed to compile PM sensor equation: " + temp_equation);
+  }
 
   return expr.value();
 }
