@@ -68,6 +68,10 @@ class MockFbossCtrlAgent : public apache::thrift::ServiceHandler<FbossCtrl> {
       void,
       getArpTable,
       (std::vector<facebook::fboss::ArpEntryThrift>&));
+  MOCK_METHOD(
+      int32_t,
+      flushNeighborEntries,
+      (std::unique_ptr<std::vector<IfAndIP>>));
 
   using PortInfoMap = std::map<int32_t, facebook::fboss::PortInfoThrift>&;
   using PortStatusMap = std::map<int32_t, facebook::fboss::PortStatus>&;
