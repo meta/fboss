@@ -28,10 +28,12 @@
       "enabled": true,
       "enable": 1
     },
-    "mgmt_port_overrides": {
-      "logical_id": 268,
-      "physical_id": 514
-    },
+    "mgmt_port_overrides": [
+      {
+        "logical_id": 268,
+        "physical_id": 514
+      }
+    ],
     "port_mapping_overrides": {
       "num_logical_ports_per_datapath": 16,
       "lp_start_step_offset": 2,
