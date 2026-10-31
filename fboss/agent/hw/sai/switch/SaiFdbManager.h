@@ -119,12 +119,14 @@ class SaiFdbManager {
       sai_fdb_entry_type_t type,
       std::optional<sai_uint32_t> metadata);
   void removeFdbEntry(InterfaceID, folly::MacAddress);
-  // Process mac Table changes
-  void addMac(const std::shared_ptr<MacEntry>& addedEntry);
-  void removeMac(const std::shared_ptr<MacEntry>& removedEntry);
+  // Process mac Table changes. vlanId is the vlan of the MacTable holding the
+  // entry, which can differ from the port's current vlan.
+  void addMac(const std::shared_ptr<MacEntry>& addedEntry, VlanID vlanId);
+  void removeMac(const std::shared_ptr<MacEntry>& removedEntry, VlanID vlanId);
   void changeMac(
       const std::shared_ptr<MacEntry>& oldEntry,
-      const std::shared_ptr<MacEntry>& newEntry);
+      const std::shared_ptr<MacEntry>& newEntry,
+      VlanID vlanId);
   std::vector<L2EntryThrift> getL2Entries(bool sdk = false) const;
   void handleLinkDown(SaiPortDescriptor portId);
   std::shared_ptr<SaiFdbEntry> createSaiObject(
@@ -137,10 +139,7 @@ class SaiFdbManager {
   std::string listManagedObjects() const;
 
  private:
-  PortDescriptorSaiId getPortDescriptorSaiId(
-      const PortDescriptor& portDesc) const;
   L2EntryThrift fdbToL2Entry(const SaiFdbTraits::FdbEntry& fdbEntry) const;
-  InterfaceID getInterfaceId(const std::shared_ptr<MacEntry>& macEntry) const;
 
   SaiStore* saiStore_;
   SaiManagerTable* managerTable_;

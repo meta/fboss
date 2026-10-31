@@ -229,7 +229,9 @@ void SaiFdbManager::removeFdbEntry(
   managedFdbEntries_.erase(fdbEntryItr);
 }
 
-void SaiFdbManager::addMac(const std::shared_ptr<MacEntry>& macEntry) {
+void SaiFdbManager::addMac(
+    const std::shared_ptr<MacEntry>& macEntry,
+    VlanID vlanId) {
   std::optional<sai_uint32_t> metadata{std::nullopt};
   if (macEntry->getClassID()) {
     metadata = static_cast<sai_uint32_t>(macEntry->getClassID().value());
@@ -244,34 +246,37 @@ void SaiFdbManager::addMac(const std::shared_ptr<MacEntry>& macEntry) {
       break;
   };
 
+  // FBOSS assumes a 1:1 correspondence b/w Vlan and interface IDs
   addFdbEntry(
       macEntry->getPort(),
-      getInterfaceId(macEntry),
+      InterfaceID(vlanId),
       macEntry->getMac(),
       type,
       metadata);
 }
 
-void SaiFdbManager::removeMac(const std::shared_ptr<MacEntry>& macEntry) {
-  removeFdbEntry(getInterfaceId(macEntry), macEntry->getMac());
+void SaiFdbManager::removeMac(
+    const std::shared_ptr<MacEntry>& macEntry,
+    VlanID vlanId) {
+  removeFdbEntry(InterfaceID(vlanId), macEntry->getMac());
 }
 
 void SaiFdbManager::changeMac(
     const std::shared_ptr<MacEntry>& oldEntry,
-    const std::shared_ptr<MacEntry>& newEntry) {
+    const std::shared_ptr<MacEntry>& newEntry,
+    VlanID vlanId) {
   if (*oldEntry != *newEntry) {
     CHECK_EQ(oldEntry->getMac(), newEntry->getMac());
-    auto newIntfId = getInterfaceId(newEntry);
-    auto key =
-        PublisherKey<SaiFdbTraits>::custom_type{newIntfId, newEntry->getMac()};
+    auto key = PublisherKey<SaiFdbTraits>::custom_type{
+        InterfaceID(vlanId), newEntry->getMac()};
     auto iter = managedFdbEntries_.find(key);
     CHECK(iter != managedFdbEntries_.end())
         << "updating non-existing mac entry";
 
     if (oldEntry->getPort() != newEntry->getPort() ||
         !iter->second->isAlive()) {
-      removeMac(oldEntry);
-      addMac(newEntry);
+      removeMac(oldEntry, vlanId);
+      addMac(newEntry, vlanId);
     } else {
       XLOGF(INFO, "Change fdb entry {}, {}", oldEntry->str(), newEntry->str());
       try {
@@ -281,44 +286,14 @@ void SaiFdbManager::changeMac(
         // previous entry was dynamic and got aged out
         if (oldEntry->getType() == MacEntryType::DYNAMIC_ENTRY &&
             e.getSaiStatus() == SAI_STATUS_ITEM_NOT_FOUND) {
-          removeMac(oldEntry);
-          addMac(newEntry);
+          removeMac(oldEntry, vlanId);
+          addMac(newEntry, vlanId);
         } else {
           throw;
         }
       }
     }
   }
-}
-
-PortDescriptorSaiId SaiFdbManager::getPortDescriptorSaiId(
-    const PortDescriptor& portDesc) const {
-  switch (portDesc.type()) {
-    case PortDescriptor::PortType::PHYSICAL: {
-      auto const portHandle =
-          managerTable_->portManager().getPortHandle(portDesc.phyPortID());
-      return PortDescriptorSaiId(portHandle->port->adapterKey());
-    }
-    case PortDescriptor::PortType::AGGREGATE: {
-      auto lagHandle =
-          managerTable_->lagManager().getLagHandle(portDesc.aggPortID());
-      return PortDescriptorSaiId(lagHandle->lag->adapterKey());
-    }
-    case PortDescriptor::PortType::SYSTEM_PORT: {
-      auto sysPortHandle =
-          managerTable_->systemPortManager().getSystemPortHandle(
-              portDesc.sysPortID());
-      return PortDescriptorSaiId(sysPortHandle->systemPort->adapterKey());
-    }
-  }
-  XLOG(FATAL) << " Unknown port type";
-}
-
-InterfaceID SaiFdbManager::getInterfaceId(
-    const std::shared_ptr<MacEntry>& macEntry) const {
-  // FBOSS assumes a 1:1 correpondance b/w Vlan and interfae IDs
-  auto portDescSaiId = getPortDescriptorSaiId(macEntry->getPort());
-  return InterfaceID(concurrentIndices_->vlanIds.find(portDescSaiId)->second);
 }
 
 void SaiFdbManager::handleLinkDown(SaiPortDescriptor portId) {

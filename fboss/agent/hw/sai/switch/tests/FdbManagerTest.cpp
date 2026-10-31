@@ -7,9 +7,11 @@
  *  of patent rights can be found in the PATENTS file in the same directory.
  *
  */
+#include "fboss/agent/hw/sai/switch/ConcurrentIndices.h"
 #include "fboss/agent/hw/sai/switch/SaiBridgeManager.h"
 #include "fboss/agent/hw/sai/switch/SaiFdbManager.h"
 #include "fboss/agent/hw/sai/switch/SaiPortManager.h"
+#include "fboss/agent/hw/sai/switch/SaiSwitch.h"
 #include "fboss/agent/hw/sai/switch/SaiVlanManager.h"
 #include "fboss/agent/hw/sai/switch/tests/ManagerTestBase.h"
 #include "fboss/agent/state/MacEntry.h"
@@ -30,7 +32,8 @@ class FdbManagerTest : public ManagerTestBase {
   }
 
   void checkFdbEntry(sai_uint32_t metadata = 0) {
-    auto vlanHandle = saiManagerTable->vlanManager().getVlanHandle(VlanID(0));
+    auto vlanHandle =
+        saiManagerTable->vlanManager().getVlanHandle(VlanID(intf0.id));
     auto vlanId = vlanHandle->vlan->adapterKey();
     SaiFdbTraits::FdbEntry entry{1, vlanId, kMac()};
     auto portHandle = saiManagerTable->portManager().getPortHandle(
@@ -119,6 +122,23 @@ TEST_F(FdbManagerTest, addRemoveMetadata) {
   checkFdbEntry(42);
   updateMacEntry(std::nullopt);
   checkFdbEntry();
+}
+
+// Fdb entries are keyed by the MacTable's vlan, not the port's current vlan.
+TEST_F(FdbManagerTest, changeMacAfterPortVlanChange) {
+  addMacEntry();
+  checkFdbEntry();
+  auto portSaiId = saiManagerTable->portManager()
+                       .getPortHandle(PortID(intf0.remoteHosts[0].id))
+                       ->port->adapterKey();
+  // SaiSwitch owns the indices read by SaiFdbManager.
+  auto* saiSwitch = static_cast<SaiSwitch*>(saiPlatform->getHwSwitch());
+  const_cast<ConcurrentIndices&>(saiSwitch->concurrentIndices())
+      .vlanIds.insert_or_assign(
+          PortDescriptorSaiId(portSaiId), VlanID(intf0.id + 1000));
+  updateMacEntry(42);
+  checkFdbEntry(42);
+  removeMacEntry();
 }
 
 TEST_F(FdbManagerTest, doubleAddFdbEntry) {
