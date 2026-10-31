@@ -20,7 +20,9 @@ namespace facebook::fboss {
 class CmdConfigInterfaceSflowSampleDestTestFixture : public CmdConfigTestBase {
  public:
   // Production ports carry no sampleDest (unset optional); eth1/2/1 has a
-  // non-zero sFlowEgressRate to exercise the mirror-destination restriction.
+  // non-zero sFlowEgressRate and eth1/3/1 has an egressMirror, to exercise
+  // the mirror-destination restrictions. eth1/4/1 is already in the invalid
+  // sampleDest MIRROR + egressMirror state (e.g. a hand-edited config).
   CmdConfigInterfaceSflowSampleDestTestFixture()
       : CmdConfigTestBase(
             "fboss_sflow_sample_dest_test_%%%%-%%%%-%%%%-%%%%",
@@ -44,7 +46,32 @@ class CmdConfigInterfaceSflowSampleDestTestFixture : public CmdConfigTestBase {
         "ingressVlan": 1,
         "sFlowIngressRate": 512,
         "sFlowEgressRate": 512
+      },
+      {
+        "logicalID": 3,
+        "name": "eth1/3/1",
+        "state": 2,
+        "speed": 100000,
+        "ingressVlan": 1,
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "egressMirror": "span1"
+      },
+      {
+        "logicalID": 4,
+        "name": "eth1/4/1",
+        "state": 2,
+        "speed": 100000,
+        "ingressVlan": 1,
+        "sFlowIngressRate": 512,
+        "sFlowEgressRate": 0,
+        "sampleDest": 1,
+        "ingressMirror": "span1",
+        "egressMirror": "span1"
       }
+    ],
+    "mirrors": [
+      {"name": "span1", "destination": {"egressPort": {"name": "eth1/1/1"}}}
     ],
     "vlans": [
       {"id": 1, "name": "vlan1", "routable": true, "intfID": 1}
@@ -249,6 +276,55 @@ TEST_F(
   cmd.queryClient(
       localhost(), interfaces, SflowAttrArgs({"sample-dest", "cpu"}));
   EXPECT_EQ(sampleDestOf("eth1/2/1"), cfg::SampleDestination::CPU);
+}
+
+TEST_F(
+    CmdConfigInterfaceSflowSampleDestTestFixture,
+    mirrorRefusedWithEgressMirror) {
+  // eth1/3/1 has an egressMirror; the agent rejects sampleDest MIRROR on it
+  // because the egress binding would need egress sampling to a mirror.
+  auto cmd = CmdConfigInterfaceSflow();
+  utils::InterfaceList interfaces({"eth1/3/1"});
+  try {
+    cmd.queryClient(
+        localhost(), interfaces, SflowAttrArgs({"sample-dest", "mirror"}));
+    FAIL() << "expected sample-dest mirror to be refused";
+  } catch (const std::invalid_argument& e) {
+    EXPECT_THAT(e.what(), HasSubstr("egress mirror 'span1'"));
+    EXPECT_THAT(
+        e.what(), HasSubstr("delete interface eth1/3/1 sflow sample-dest"));
+  }
+  EXPECT_EQ(sampleDestOf("eth1/3/1"), std::nullopt);
+
+  // CPU is fine on the same port.
+  cmd.queryClient(
+      localhost(), interfaces, SflowAttrArgs({"sample-dest", "cpu"}));
+  EXPECT_EQ(sampleDestOf("eth1/3/1"), cfg::SampleDestination::CPU);
+}
+
+TEST_F(
+    CmdConfigInterfaceSflowSampleDestTestFixture,
+    rateChangeRefusedOnMirrorPortWithEgressMirror) {
+  // eth1/4/1 already has sampleDest MIRROR and an egressMirror, which the
+  // agent rejects. Changing only a rate keeps that state, so it is refused
+  // too, and the message names the way out.
+  auto cmd = CmdConfigInterfaceSflow();
+  utils::InterfaceList interfaces({"eth1/4/1"});
+  try {
+    cmd.queryClient(
+        localhost(), interfaces, SflowAttrArgs({"ingress-rate", "100"}));
+    FAIL() << "expected the rate change to be refused";
+  } catch (const std::invalid_argument& e) {
+    EXPECT_THAT(e.what(), HasSubstr("cannot both be set"));
+    EXPECT_THAT(
+        e.what(), HasSubstr("delete interface eth1/4/1 sflow sample-dest"));
+  }
+  EXPECT_EQ(ingressRateOf("eth1/4/1"), 512);
+
+  // Moving the port to sample-dest cpu fixes it.
+  cmd.queryClient(
+      localhost(), interfaces, SflowAttrArgs({"sample-dest", "cpu"}));
+  EXPECT_EQ(sampleDestOf("eth1/4/1"), cfg::SampleDestination::CPU);
 }
 
 // config queryClient: multiple attributes in one call

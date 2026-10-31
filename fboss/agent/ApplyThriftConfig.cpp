@@ -3088,6 +3088,18 @@ shared_ptr<Port> ThriftConfigApplier::updatePort(
           orig->getID(),
           ": Egress sampling to mirror destination is unsupported");
     }
+    // sampleDest applies to both directions, so an egressMirror on a
+    // MIRROR-destination port would be programmed as an egress sampled
+    // mirror, which is unsupported (and has no egress sampler behind it,
+    // since sFlowEgressRate must be 0 above).
+    if (newSampleDest.value() == cfg::SampleDestination::MIRROR &&
+        portConf->egressMirror().has_value()) {
+      throw FbossError(
+          "Port ",
+          orig->getID(),
+          ": egressMirror cannot be combined with sampleDest MIRROR, "
+          "egress sampling to mirror destination is unsupported");
+    }
   }
 
   auto newPfc = std::optional<cfg::PortPfc>();
