@@ -1,0 +1,9 @@
+{
+  "testData": {
+    "MCB.MCB_FAN_CPLD": {
+      "watchdogTestData": {
+        "numWatchdogs": 1
+      }
+    }
+  }
+}
