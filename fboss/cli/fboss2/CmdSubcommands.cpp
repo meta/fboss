@@ -205,13 +205,25 @@ CLI::App* CmdSubcommands::addCommand(
           break;
         }
         case utils::ObjectArgTypeId::OBJECT_ARG_TYPE_FSDB_PATH: {
-          subCmd->add_option(
-              "fsdb_path",
-              args,
-              "Path in fsdb model, delimited and prefixed by slashes (/). Slashes inside keys like port name \n"
-              "need to be escaped (eth2/1/1 -> eth2\\/1\\/1). Ex:\n"
-              "\tstats path - \"/agent/hwPortStats/eth2\\/1\\/1\" -- Note the quotes, otherwise the shell will drop the escape (can double escape without quotes)\n"
-              "\tstate path - /agent/switchState\n");
+          subCmd
+              ->add_option(
+                  "fsdb_path",
+                  args,
+                  "Path in fsdb model, delimited and prefixed by slashes (/). Slashes inside keys like port name \n"
+                  "need to be escaped (eth2/1/1 -> eth2\\/1\\/1). Ex:\n"
+                  "\tstats path - \"/agent/hwPortStats/eth2\\/1\\/1\" -- Note the quotes, otherwise the shell will drop the escape (can double escape without quotes)\n"
+                  "\tstate path - /agent/switchState\n")
+              ->required()
+              ->expected(1)
+              ->check(
+                  CLI::Validator(
+                      [](std::string& path) {
+                        return path.empty() || path.front() != '/' ||
+                                path.find_first_not_of('/') == std::string::npos
+                            ? "FSDB path must start with / and include a publisher root, such as /agent"
+                            : "";
+                      },
+                      "FSDB path"));
           break;
         }
         case utils::ObjectArgTypeId::OBJECT_ARG_TYPE_ID_VIP_INJECTOR_ID: {
