@@ -271,6 +271,7 @@ bool Jericho2Asic::isSupported(Feature feature) const {
     case HwAsic::Feature::XPHY_SERDES_TX_FIR_POST3:
     case HwAsic::Feature::LAG_TTL_DECREMENT_DISABLE:
     case HwAsic::Feature::PORT_LATCH_STATUS:
+    case HwAsic::Feature::PORT_SERDES_CREATED_WITH_PORT:
       return false;
   }
   return false;

@@ -15,11 +15,12 @@
 #include "fboss/agent/hw/sai/api/SaiVersion.h"
 #include "fboss/agent/hw/sai/api/Types.h"
 
-#include <folly/logging/xlog.h>
-
+#include <algorithm>
+#include <iterator>
 #include <limits>
 #include <optional>
 #include <tuple>
+#include <vector>
 
 extern "C" {
 #include <sai.h>
@@ -790,15 +791,14 @@ struct SaiPortTraits {
    *   - Enhancing AdapterHostKey as well as CreateAttribute means that the
    *     AdatperHostKey remains computable from AdaterKey, CreateAttributes: a
    *     requirement for our design.
-   *   - However, this also means that attempt to create port will pass Type (a
-   *     Read Only attribute today) and that call will fail.
-   *   - This is not a problem at the moment since passing Type is a
-   *     requirement only on DNX and ports are always pre-created on this
-   *     platform and loaded by SaiStore during init and never created.
-   *   - In future, if we support breakout ports on DNX, we would need to call
-   *     create port which would fail: but as mentioned above, we plan to
-   *     enhance the SAI spec and work with SAI vendors to support passing port
-   *     type during creation.
+   *   - It also means create_port would receive Type, a read-only attribute,
+   *     and some adapters reject it only after creating the port, leaving a
+   *     half-created port behind. Ports created at runtime (breakout) hit
+   *     this, so PortApi::_create leaves a LOGICAL Type out of the attribute
+   *     list it passes to create_port; the other types (fabric, recycle,
+   *     eventor, management, hyper) are still passed, and Type still keys the
+   *     SaiStore.
+   *   - Long term the fix is a SAI spec change allowing Type on create.
    */
 
   using AdapterHostKey = std::tuple<
@@ -1910,7 +1910,24 @@ class PortApi : public SaiApi<PortApi> {
       sai_object_id_t switch_id,
       size_t count,
       sai_attribute_t* attr_list) const {
-    return api_->create_port(rawSaiId(id), switch_id, count, attr_list);
+    // SAI_PORT_ATTR_TYPE is read-only in the SAI spec. It is part of the DNX
+    // CreateAttributes so that SaiStore can key port types apart; the logical
+    // (front-panel) type is not sent to the adapter. An adapter that rejects it
+    // only after creating the port (the Broadcom DNX SAI) would otherwise leave
+    // a half-created port behind that no retry can replace. Other types
+    // (fabric, recycle, eventor, management, hyper port) are still passed.
+    std::vector<sai_attribute_t> attrs;
+    attrs.reserve(count);
+    std::copy_if(
+        attr_list,
+        attr_list + count,
+        std::back_inserter(attrs),
+        [](const sai_attribute_t& attr) {
+          return attr.id != SAI_PORT_ATTR_TYPE ||
+              attr.value.s32 != SAI_PORT_TYPE_LOGICAL;
+        });
+    return api_->create_port(
+        rawSaiId(id), switch_id, attrs.size(), attrs.data());
   }
   sai_status_t _remove(PortSaiId key) const {
     return api_->remove_port(key);
