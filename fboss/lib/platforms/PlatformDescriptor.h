@@ -20,6 +20,7 @@
 #include "fboss/lib/platforms/gen-cpp2/platform_descriptor_types.h"
 
 DECLARE_string(platform_descriptor_config_path);
+DECLARE_bool(hwrev_state1_substate1_respin0);
 
 namespace facebook::fboss {
 

@@ -4,6 +4,8 @@ Description=FBOSS SW Agent
 After=platform_manager.service
 After=qsfp_service.service
 After=rc-local.service
+Wants=fboss_init.service
+After=fboss_init.service
 # Unlimited restarts (no start limit hit within a given time period)
 StartLimitIntervalSec=0
 
@@ -17,7 +19,7 @@ MemorySwapMax=0
 Environment="PATH=/opt/fboss/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"
 Environment="LD_LIBRARY_PATH=/opt/fboss/lib"
 WorkingDirectory=/opt/fboss
-ExecStart=/bin/bash -c 'source /opt/fboss/bin/setup_fboss_env && exec /opt/fboss/bin/fboss_sw_agent --fsdb_client_ssl_preferred=false --thrift_ssl_policy=disabled'
+ExecStart=/bin/bash -c 'source /opt/fboss/bin/setup_fboss_env && exec /opt/fboss/bin/fboss_sw_agent $$([ -f /run/fboss/variant_flags ] && echo --flagfile=/run/fboss/variant_flags) --fsdb_client_ssl_preferred=false --thrift_ssl_policy=disabled'
 
 Restart=always
 
