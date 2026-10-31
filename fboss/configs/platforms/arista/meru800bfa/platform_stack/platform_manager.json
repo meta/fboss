@@ -201,7 +201,7 @@
         {
           "busName": "INCOMING@2",
           "address": "0x11",
-          "kernelDeviceName": "ucd90320",
+          "kernelDeviceName": "meru_aucd90320",
           "pmUnitScopedName": "SMB_UCD90320"
         },
         {
