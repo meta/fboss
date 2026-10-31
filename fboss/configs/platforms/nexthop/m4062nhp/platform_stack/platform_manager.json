@@ -20,6 +20,10 @@
         "kernelDeviceName": "24c64"
       },
       "pmUnitName": "SMB"
+    },
+    "PSU_SLOT": {
+      "numOutgoingI2cBuses": 1,
+      "pmUnitName": "PSU"
     }
   },
   "pmUnitConfigs": {
@@ -444,56 +448,81 @@
           "kernelDeviceName": "fpga-mux",
           "pmUnitScopedName": "SMB0_PSU_MUX",
           "numOutgoingChannels": 4
-        },
-        {
-          "busName": "SMB0_PSU_MUX@0",
-          "address": "0x50",
-          "kernelDeviceName": "24c64",
-          "pmUnitScopedName": "PSU1_EEPROM"
-        },
-        {
-          "busName": "SMB0_PSU_MUX@1",
-          "address": "0x50",
-          "kernelDeviceName": "24c64",
-          "pmUnitScopedName": "PSU2_EEPROM"
-        },
-        {
-          "busName": "SMB0_PSU_MUX@2",
-          "address": "0x50",
-          "kernelDeviceName": "24c64",
-          "pmUnitScopedName": "PSU3_EEPROM"
-        },
-        {
-          "busName": "SMB0_PSU_MUX@3",
-          "address": "0x50",
-          "kernelDeviceName": "24c64",
-          "pmUnitScopedName": "PSU4_EEPROM"
-        },
-        {
-          "busName": "SMB0_PSU_MUX@0",
-          "address": "0x58",
-          "kernelDeviceName": "pmbus",
-          "pmUnitScopedName": "PSU1"
-        },
-        {
-          "busName": "SMB0_PSU_MUX@1",
-          "address": "0x58",
-          "kernelDeviceName": "pmbus",
-          "pmUnitScopedName": "PSU2"
-        },
-        {
-          "busName": "SMB0_PSU_MUX@2",
-          "address": "0x58",
-          "kernelDeviceName": "pmbus",
-          "pmUnitScopedName": "PSU3"
-        },
-        {
-          "busName": "SMB0_PSU_MUX@3",
-          "address": "0x58",
-          "kernelDeviceName": "pmbus",
-          "pmUnitScopedName": "PSU4"
         }
-      ]
+      ],
+      "outgoingSlotConfigs": {
+        "PSU_SLOT@0": {
+          "slotType": "PSU_SLOT",
+          "presenceDetection": {
+            "sysfsFileHandle": {
+              "devicePath": "/SMB_SLOT@0/[SMB_IOB_PSU_PRESENT]",
+              "presenceFileName": "psu1_present",
+              "desiredValue": 1
+            }
+          },
+          "outgoingI2cBusNames": [
+            "SMB0_PSU_MUX@0"
+          ]
+        },
+        "PSU_SLOT@1": {
+          "slotType": "PSU_SLOT",
+          "presenceDetection": {
+            "sysfsFileHandle": {
+              "devicePath": "/SMB_SLOT@0/[SMB_IOB_PSU_PRESENT]",
+              "presenceFileName": "psu2_present",
+              "desiredValue": 1
+            }
+          },
+          "outgoingI2cBusNames": [
+            "SMB0_PSU_MUX@1"
+          ]
+        },
+        "PSU_SLOT@2": {
+          "slotType": "PSU_SLOT",
+          "presenceDetection": {
+            "sysfsFileHandle": {
+              "devicePath": "/SMB_SLOT@0/[SMB_IOB_PSU_PRESENT]",
+              "presenceFileName": "psu3_present",
+              "desiredValue": 1
+            }
+          },
+          "outgoingI2cBusNames": [
+            "SMB0_PSU_MUX@2"
+          ]
+        },
+        "PSU_SLOT@3": {
+          "slotType": "PSU_SLOT",
+          "presenceDetection": {
+            "sysfsFileHandle": {
+              "devicePath": "/SMB_SLOT@0/[SMB_IOB_PSU_PRESENT]",
+              "presenceFileName": "psu4_present",
+              "desiredValue": 1
+            }
+          },
+          "outgoingI2cBusNames": [
+            "SMB0_PSU_MUX@3"
+          ]
+        }
+      }
+    },
+    "PSU": {
+      "pluggedInSlotType": "PSU_SLOT",
+      "i2cDeviceConfigs": [
+        {
+          "busName": "INCOMING@0",
+          "address": "0x50",
+          "kernelDeviceName": "24c02",
+          "pmUnitScopedName": "PSU_EEPROM"
+        },
+        {
+          "busName": "INCOMING@0",
+          "address": "0x58",
+          "kernelDeviceName": "pmbus",
+          "pmUnitScopedName": "PSU_PMBUS"
+        }
+      ],
+      "outgoingSlotConfigs": {},
+      "pciDeviceConfigs": []
     }
   },
   "i2cAdaptersFromCpu": [
@@ -502,10 +531,10 @@
   "symbolicLinkToDevicePath": {
     "/run/devmap/eeproms/CHASSIS_EEPROM": "/SMB_SLOT@0/[IDPROM]",
     "/run/devmap/eeproms/SCM_EEPROM": "/[IDPROM]",
-    "/run/devmap/eeproms/PSU1_EEPROM": "/SMB_SLOT@0/[PSU1_EEPROM]",
-    "/run/devmap/eeproms/PSU2_EEPROM": "/SMB_SLOT@0/[PSU2_EEPROM]",
-    "/run/devmap/eeproms/PSU3_EEPROM": "/SMB_SLOT@0/[PSU3_EEPROM]",
-    "/run/devmap/eeproms/PSU4_EEPROM": "/SMB_SLOT@0/[PSU4_EEPROM]",
+    "/run/devmap/eeproms/PSU1_EEPROM": "/SMB_SLOT@0/PSU_SLOT@0/[PSU_EEPROM]",
+    "/run/devmap/eeproms/PSU2_EEPROM": "/SMB_SLOT@0/PSU_SLOT@1/[PSU_EEPROM]",
+    "/run/devmap/eeproms/PSU3_EEPROM": "/SMB_SLOT@0/PSU_SLOT@2/[PSU_EEPROM]",
+    "/run/devmap/eeproms/PSU4_EEPROM": "/SMB_SLOT@0/PSU_SLOT@3/[PSU_EEPROM]",
     "/run/devmap/sensors/DPM": "/[DPM]",
     "/run/devmap/sensors/DPM_1": "/[DPM_1]",
     "/run/devmap/sensors/DPM_2": "/[DPM_2]",
@@ -542,10 +571,10 @@
     "/run/devmap/i2c-busses/SMB1_IOB_I2C_2": "/SMB_SLOT@0/[SMB1_IOB_I2C_2]",
     "/run/devmap/i2c-busses/SMB1_IOB_I2C_3": "/SMB_SLOT@0/[SMB1_IOB_I2C_3]",
     "/run/devmap/sensors/FAN_CTRL": "/SMB_SLOT@0/[FAN_CTRL]",
-    "/run/devmap/sensors/PSU1": "/SMB_SLOT@0/[PSU1]",
-    "/run/devmap/sensors/PSU2": "/SMB_SLOT@0/[PSU2]",
-    "/run/devmap/sensors/PSU3": "/SMB_SLOT@0/[PSU3]",
-    "/run/devmap/sensors/PSU4": "/SMB_SLOT@0/[PSU4]",
+    "/run/devmap/sensors/PSU1": "/SMB_SLOT@0/PSU_SLOT@0/[PSU_PMBUS]",
+    "/run/devmap/sensors/PSU2": "/SMB_SLOT@0/PSU_SLOT@1/[PSU_PMBUS]",
+    "/run/devmap/sensors/PSU3": "/SMB_SLOT@0/PSU_SLOT@2/[PSU_PMBUS]",
+    "/run/devmap/sensors/PSU4": "/SMB_SLOT@0/PSU_SLOT@3/[PSU_PMBUS]",
     "/run/devmap/xcvrs/xcvr_io_1": "/SMB_SLOT@0/[SMB1_OSFP_I2C_9]",
     "/run/devmap/xcvrs/xcvr_ctrl_1": "/SMB_SLOT@0/[OSFP_XCVR_CTRL_PORT_1]",
     "/run/devmap/xcvrs/xcvr_io_2": "/SMB_SLOT@0/[SMB1_OSFP_I2C_10]",
@@ -1125,56 +1154,62 @@
               "kernelDeviceName": "fpga-mux",
               "pmUnitScopedName": "SMB0_PSU_MUX",
               "numOutgoingChannels": 4
-            },
-            {
-              "busName": "SMB0_PSU_MUX@0",
-              "address": "0x50",
-              "kernelDeviceName": "24c02",
-              "pmUnitScopedName": "PSU1_EEPROM"
-            },
-            {
-              "busName": "SMB0_PSU_MUX@1",
-              "address": "0x50",
-              "kernelDeviceName": "24c02",
-              "pmUnitScopedName": "PSU2_EEPROM"
-            },
-            {
-              "busName": "SMB0_PSU_MUX@2",
-              "address": "0x50",
-              "kernelDeviceName": "24c02",
-              "pmUnitScopedName": "PSU3_EEPROM"
-            },
-            {
-              "busName": "SMB0_PSU_MUX@3",
-              "address": "0x50",
-              "kernelDeviceName": "24c02",
-              "pmUnitScopedName": "PSU4_EEPROM"
-            },
-            {
-              "busName": "SMB0_PSU_MUX@0",
-              "address": "0x58",
-              "kernelDeviceName": "pmbus",
-              "pmUnitScopedName": "PSU1"
-            },
-            {
-              "busName": "SMB0_PSU_MUX@1",
-              "address": "0x58",
-              "kernelDeviceName": "pmbus",
-              "pmUnitScopedName": "PSU2"
-            },
-            {
-              "busName": "SMB0_PSU_MUX@2",
-              "address": "0x58",
-              "kernelDeviceName": "pmbus",
-              "pmUnitScopedName": "PSU3"
-            },
-            {
-              "busName": "SMB0_PSU_MUX@3",
-              "address": "0x58",
-              "kernelDeviceName": "pmbus",
-              "pmUnitScopedName": "PSU4"
             }
-          ]
+          ],
+          "outgoingSlotConfigs": {
+            "PSU_SLOT@0": {
+              "slotType": "PSU_SLOT",
+              "presenceDetection": {
+                "sysfsFileHandle": {
+                  "devicePath": "/SMB_SLOT@0/[SMB_IOB_PSU_PRESENT]",
+                  "presenceFileName": "psu1_present",
+                  "desiredValue": 1
+                }
+              },
+              "outgoingI2cBusNames": [
+                "SMB0_PSU_MUX@0"
+              ]
+            },
+            "PSU_SLOT@1": {
+              "slotType": "PSU_SLOT",
+              "presenceDetection": {
+                "sysfsFileHandle": {
+                  "devicePath": "/SMB_SLOT@0/[SMB_IOB_PSU_PRESENT]",
+                  "presenceFileName": "psu2_present",
+                  "desiredValue": 1
+                }
+              },
+              "outgoingI2cBusNames": [
+                "SMB0_PSU_MUX@1"
+              ]
+            },
+            "PSU_SLOT@2": {
+              "slotType": "PSU_SLOT",
+              "presenceDetection": {
+                "sysfsFileHandle": {
+                  "devicePath": "/SMB_SLOT@0/[SMB_IOB_PSU_PRESENT]",
+                  "presenceFileName": "psu3_present",
+                  "desiredValue": 1
+                }
+              },
+              "outgoingI2cBusNames": [
+                "SMB0_PSU_MUX@2"
+              ]
+            },
+            "PSU_SLOT@3": {
+              "slotType": "PSU_SLOT",
+              "presenceDetection": {
+                "sysfsFileHandle": {
+                  "devicePath": "/SMB_SLOT@0/[SMB_IOB_PSU_PRESENT]",
+                  "presenceFileName": "psu4_present",
+                  "desiredValue": 1
+                }
+              },
+              "outgoingI2cBusNames": [
+                "SMB0_PSU_MUX@3"
+              ]
+            }
+          }
         },
         "pmUnitVersions": [
           {
