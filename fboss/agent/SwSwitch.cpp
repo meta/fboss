@@ -3922,6 +3922,71 @@ void SwSwitch::applyConfigImpl(
   });
 }
 
+void SwSwitch::validateConfig(
+    const cfg::SwitchConfig& newConfig,
+    thrift::ConfigApplyMethod applyMethod) {
+  try {
+    // Routes are only staged in the wrapper. program() is intentionally never
+    // called, so nothing reaches the RIB.
+    auto routeUpdater = getRouteUpdater();
+    auto state = getState();
+    auto newState = applyThriftConfig(
+        state,
+        &newConfig,
+        supportsAddRemovePort_,
+        platformMapping_.get(),
+        hwAsicTable_.get(),
+        &routeUpdater,
+        aclNexthopHandler_.get());
+    if (!newState) {
+      // Identical to the running config.
+      return;
+    }
+    // isValidUpdate() updates the resource accounting as a side effect, so
+    // validate with a throwaway validator seeded from the current state rather
+    // than with stateUpdateValidator_.
+    StateUpdateValidator validator(
+        AgentConfig::getRunMode(),
+        getMonolithicHwSwitchHandlerIf(
+            AgentConfig::getRunMode(), multiHwSwitchHandler_.get()),
+        hwAsicTable_.get(),
+        scopeResolver_.get());
+    validator.reset(state);
+    // isValidUpdate() also counts rejections. Count into a private ServiceData
+    // so that a dry run never moves the exported counters.
+    fb303::ServiceData scratchServiceData;
+    SwitchStats::ThreadLocalStatsMap scratchStatsMap(&scratchServiceData);
+    SwitchStats scratchStats(
+        &scratchStatsMap, switchInfoTable_.getSwitchIdToSwitchInfo().size());
+    if (!validator.isValidUpdate(StateDelta(state, newState), &scratchStats)) {
+      if (auto required = validator.lastRejectionRequiredApplyMethod()) {
+        throw RestartRequiredError(
+            *required,
+            "Config change cannot be made on a running agent, see agent log "
+            "for details");
+      }
+      throw FbossError(
+          "Config rejected by state update validation, see agent log for "
+          "details");
+    }
+  } catch (const RestartRequiredError& ex) {
+    const auto required = ex.requiredApplyMethod();
+    if (applyMethod < required) {
+      throw RestartRequiredError(
+          required,
+          ex.what(),
+          "; requires ",
+          apache::thrift::util::enumNameSafe(required));
+    }
+    // The apply method can make this change, e.g. a coldboot applies the
+    // config from scratch. The checks that would have run after this one did
+    // not run.
+    XLOG(WARNING) << "Config validation stopped early, the config change "
+                  << "needs " << apache::thrift::util::enumNameSafe(required)
+                  << ": " << ex.what();
+  }
+}
+
 void SwSwitch::updateConfigAppliedInfo() {
   auto lockedConfigAppliedInfo = configAppliedInfo_.wlock();
   auto currentInMs = std::chrono::duration_cast<std::chrono::milliseconds>(

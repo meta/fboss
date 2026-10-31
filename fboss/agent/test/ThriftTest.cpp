@@ -41,6 +41,7 @@
 
 #include <folly/IPAddress.h>
 #include <gtest/gtest.h>
+#include <thrift/lib/cpp2/protocol/Serializer.h>
 #include <map>
 
 DECLARE_bool(enable_nexthop_id_manager);
@@ -5825,4 +5826,105 @@ TEST_F(NamedNextHopGroupThriftTest, addPoliciesPassesValidationWhenWellFormed) {
           "defaultNhg",
           {{ForwardingClass::CLASS_1, namedNhgRef("classNhg")}}))),
       FbossHwUpdateError);
+}
+
+TEST_F(ThriftTest, validateConfigAccepted) {
+  ThriftHandler handler(sw_);
+  auto agentConfig = sw_->getAgentConfig();
+  agentConfig.sw()->ports()[0].description() = "changed by validateConfig";
+  auto json =
+      apache::thrift::SimpleJSONSerializer::serialize<std::string>(agentConfig);
+
+  auto stateBefore = sw_->getState();
+  auto configBefore = sw_->getConfig();
+  thrift::ConfigValidationResult result;
+  handler.validateConfig(
+      result,
+      std::make_unique<std::string>(json),
+      thrift::ConfigApplyMethod::RELOAD);
+  EXPECT_TRUE(result.errors()->empty());
+  // Nothing was applied.
+  EXPECT_EQ(stateBefore, sw_->getState());
+  EXPECT_EQ(configBefore, sw_->getConfig());
+}
+
+TEST_F(ThriftTest, validateConfigRejectsInvalidConfig) {
+  ThriftHandler handler(sw_);
+  auto agentConfig = sw_->getAgentConfig();
+  // Moving the interface off VLAN 1 leaves that VLAN without an interface.
+  agentConfig.sw()->interfaces()[0].vlanID() = 4000;
+  auto json =
+      apache::thrift::SimpleJSONSerializer::serialize<std::string>(agentConfig);
+
+  auto stateBefore = sw_->getState();
+  thrift::ConfigValidationResult result;
+  // A rejected config is a verdict, not an error of the RPC.
+  handler.validateConfig(
+      result,
+      std::make_unique<std::string>(json),
+      thrift::ConfigApplyMethod::RELOAD);
+  ASSERT_EQ(result.errors()->size(), 1);
+  EXPECT_THAT(
+      *result.errors()->at(0).message(),
+      ::testing::HasSubstr("VLAN 1 has no interface"));
+  EXPECT_EQ(stateBefore, sw_->getState());
+}
+
+TEST_F(ThriftTest, validateConfigRejectsMalformedJson) {
+  ThriftHandler handler(sw_);
+  thrift::ConfigValidationResult result;
+  handler.validateConfig(
+      result,
+      std::make_unique<std::string>("{not json"),
+      thrift::ConfigApplyMethod::RELOAD);
+  ASSERT_EQ(result.errors()->size(), 1);
+  EXPECT_THAT(
+      *result.errors()->at(0).message(),
+      ::testing::HasSubstr("Failed to parse config"));
+}
+
+TEST_F(ThriftTest, validateConfigReportsRequiredApplyMethod) {
+  ThriftHandler handler(sw_);
+  auto agentConfig = sw_->getAgentConfig();
+  auto settings = utility::getFirstNodeIf(sw_->getState()->getSwitchSettings());
+  ASSERT_TRUE(settings->getEcmpWidth().has_value());
+  // ECMP width can only change with a coldboot.
+  agentConfig.sw()->switchSettings()->ecmpWidth() =
+      *settings->getEcmpWidth() / 2;
+  auto json =
+      apache::thrift::SimpleJSONSerializer::serialize<std::string>(agentConfig);
+
+  thrift::ConfigValidationResult result;
+  handler.validateConfig(
+      result,
+      std::make_unique<std::string>(json),
+      thrift::ConfigApplyMethod::RESTART);
+  ASSERT_EQ(result.errors()->size(), 1);
+  EXPECT_EQ(
+      result.errors()->at(0).requiredApplyMethod(),
+      thrift::ConfigApplyMethod::DISRUPTIVE_RESTART);
+
+  thrift::ConfigValidationResult coldBootResult;
+  handler.validateConfig(
+      coldBootResult,
+      std::make_unique<std::string>(json),
+      thrift::ConfigApplyMethod::DISRUPTIVE_RESTART);
+  EXPECT_TRUE(coldBootResult.errors()->empty());
+}
+
+TEST(ThriftValidateConfigTest, throwsWhenAgentNotConfigured) {
+  // Without initialConfigApplied() the switch is not fully configured, so the
+  // agent cannot validate anything yet: that is an error, not a verdict.
+  auto config = testConfigA();
+  auto handle = createTestHandle(&config);
+  ThriftHandler handler(handle->getSw());
+  thrift::ConfigValidationResult result;
+  EXPECT_THROW(
+      handler.validateConfig(
+          result,
+          std::make_unique<std::string>(
+              apache::thrift::SimpleJSONSerializer::serialize<std::string>(
+                  handle->getSw()->getAgentConfig())),
+          thrift::ConfigApplyMethod::RELOAD),
+      FbossError);
 }

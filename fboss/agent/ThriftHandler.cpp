@@ -9,8 +9,8 @@
  */
 #include "fboss/agent/ThriftHandler.h"
 
-#include "common/logging/logging.h"
 #include "fboss/agent/AddressUtil.h"
+#include "fboss/agent/AgentConfig.h"
 #include "fboss/agent/AgentFeatures.h"
 #include "fboss/agent/ArpHandler.h"
 #include "fboss/agent/DsfStateUpdaterUtil.h"
@@ -76,6 +76,7 @@
 
 #include <fb303/ServiceData.h>
 #include <fmt/format.h>
+#include <folly/ExceptionString.h>
 #include <folly/IPAddressV4.h>
 #include <folly/IPAddressV6.h>
 #include <folly/Range.h>
@@ -3522,6 +3523,43 @@ void ThriftHandler::reloadConfig() {
   auto log = LOG_THRIFT_CALL_WITH_STATS(DBG1, sw_->stats());
   ensureConfigured(__func__);
   return sw_->applyConfig("reload config initiated by thrift call", true);
+}
+
+void ThriftHandler::validateConfig(
+    thrift::ConfigValidationResult& result,
+    std::unique_ptr<std::string> config,
+    thrift::ConfigApplyMethod applyMethod) {
+  auto log = LOG_THRIFT_CALL_WITH_STATS(DBG1, sw_->stats());
+  // Not being able to validate yet is an error, not a verdict on the config.
+  ensureConfigured(__func__);
+  auto reject = [&result](
+                    std::string message,
+                    std::optional<thrift::ConfigApplyMethod> required =
+                        std::nullopt) {
+    thrift::ConfigValidationError error;
+    error.message() = std::move(message);
+    if (required) {
+      error.requiredApplyMethod() = *required;
+    }
+    result.errors()->push_back(std::move(error));
+  };
+  std::unique_ptr<AgentConfig> agentConfig;
+  try {
+    agentConfig = AgentConfig::fromRawConfig(*config);
+  } catch (const std::exception& ex) {
+    reject(fmt::format("Failed to parse config: {}", folly::exceptionStr(ex)));
+    return;
+  }
+  // Anything the dry run throws is caused by the candidate config.
+  try {
+    sw_->validateConfig(*agentConfig->thrift.sw(), applyMethod);
+  } catch (const RestartRequiredError& ex) {
+    reject(ex.what(), ex.requiredApplyMethod());
+  } catch (const FbossError& ex) {
+    reject(ex.what());
+  } catch (const std::exception& ex) {
+    reject(folly::exceptionStr(ex).toStdString());
+  }
 }
 
 int64_t ThriftHandler::getLastConfigAppliedInMs() {

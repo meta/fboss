@@ -1465,6 +1465,33 @@ service FbossCtrl extends phy.FbossCommonPhyCtrl {
   void reloadConfig();
 
   /*
+   * Validate a candidate agent config without applying it. The argument is
+   * the config file contents (the same JSON as the agent config file, parsed
+   * with the same code path). Runs checks similar to those reloadConfig()
+   * would run (config to switch state translation, platform/ASIC capability
+   * and resource checks) against the running state. No state is changed and
+   * no config is persisted.
+   *
+   * Returns the verdict: errors is empty if the config would be accepted, and
+   * otherwise describes why it would be rejected (including a config that
+   * does not parse). Throws only if the agent could not run the validation,
+   * e.g. because it is not configured yet.
+   *
+   * applyMethod is how the config will be applied. Some changes cannot be
+   * made on a running agent and need a coldboot (e.g. ECMP width, L2
+   * learning mode, switch IDs). If applyMethod is not disruptive enough for
+   * such a change, the error for it carries the requiredApplyMethod.
+   * Otherwise it is accepted, but validation stops there, so less of the
+   * config is checked than when every change can be made with applyMethod.
+   */
+  fboss.ConfigValidationResult validateConfig(
+    1: string config,
+    2: fboss.ConfigApplyMethod applyMethod,
+  ) throws (
+    1: fboss.FbossBaseError error,
+  );
+
+  /*
    * Get last time(ms since epoch) of the config is applied.
    * NOTE: If no config has ever been applied, the default timestamp is 0.
    * TODO(joseph5wu) Will deprecate such api and use getConfigAppliedInfo()

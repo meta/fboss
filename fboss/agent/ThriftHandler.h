@@ -424,6 +424,17 @@ class ThriftHandler : virtual public FbossCtrlSvIf,
   void reloadConfig() override;
 
   /*
+   * Thrift call to validate a candidate config (config file contents) against
+   * the running agent without applying it. Fills result.errors with the reasons
+   * reloadConfig() would reject it. Throws FbossError only if the validation
+   * could not be run.
+   */
+  void validateConfig(
+      thrift::ConfigValidationResult& result,
+      std::unique_ptr<std::string> config,
+      thrift::ConfigApplyMethod applyMethod) override;
+
+  /*
    * Get last time(ms since epoch) of the config is applied.
    * NOTE: If no config has ever been applied, the default timestamp is 0.
    * TODO(joseph5wu) Will deprecate such api and use getConfigAppliedInfo()

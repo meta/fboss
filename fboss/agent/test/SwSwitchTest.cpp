@@ -8,6 +8,7 @@
  *
  */
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "fboss/agent/ArpHandler.h"
@@ -38,6 +39,7 @@
 #include <folly/ScopeGuard.h>
 #include <folly/portability/GFlags.h>
 #include <folly/synchronization/Baton.h>
+#include <thrift/lib/cpp/util/EnumUtils.h>
 
 #include <algorithm>
 #include <thread>
@@ -866,4 +868,152 @@ TEST_F(SwSwitchTest, FillFsdbStatsNullShelManager) {
   // Should not crash - shelManager_ is null on NPU switches
   // and the code must guard against that.
   EXPECT_NO_THROW(sw->fillFsdbStats());
+}
+
+class SwSwitchValidateConfigTest : public ::testing::Test {
+ public:
+  void SetUp() override {
+    config_ = testConfigA();
+    handle_ = createTestHandle(&config_);
+    sw_ = handle_->getSw();
+    sw_->initialConfigApplied(std::chrono::steady_clock::now());
+    waitForStateUpdates(sw_);
+  }
+
+  void TearDown() override {
+    sw_ = nullptr;
+    handle_.reset();
+  }
+
+  // A config that differs from the running one but is valid.
+  cfg::SwitchConfig validChange() const {
+    auto config = config_;
+    config.ports()[0].description() = "changed by validateConfig test";
+    return config;
+  }
+
+  // A config that applyThriftConfig() rejects: moving the interface off
+  // VLAN 1 leaves that VLAN, which has enabled ports, without an interface.
+  cfg::SwitchConfig invalidChange() const {
+    auto config = config_;
+    config.interfaces()[0].vlanID() = 4000;
+    return config;
+  }
+
+  cfg::SwitchConfig config_;
+  SwSwitch* sw_{nullptr};
+  std::unique_ptr<HwTestHandle> handle_{nullptr};
+};
+
+TEST_F(SwSwitchValidateConfigTest, ValidateConfigAccepted) {
+  auto stateBefore = sw_->getState();
+  auto appliedBefore = *sw_->getConfigAppliedInfo().lastAppliedInMs();
+
+  EXPECT_NO_THROW(
+      sw_->validateConfig(validChange(), thrift::ConfigApplyMethod::RELOAD));
+
+  // Nothing was applied or recorded.
+  EXPECT_EQ(stateBefore, sw_->getState());
+  EXPECT_EQ(sw_->getConfig(), config_);
+  EXPECT_EQ(appliedBefore, *sw_->getConfigAppliedInfo().lastAppliedInMs());
+}
+
+TEST_F(SwSwitchValidateConfigTest, ValidateConfigNoChange) {
+  auto stateBefore = sw_->getState();
+  EXPECT_NO_THROW(
+      sw_->validateConfig(config_, thrift::ConfigApplyMethod::RELOAD));
+  EXPECT_EQ(stateBefore, sw_->getState());
+}
+
+TEST_F(SwSwitchValidateConfigTest, ValidateConfigRejectedByApplyThriftConfig) {
+  auto stateBefore = sw_->getState();
+  EXPECT_THAT(
+      [&] {
+        sw_->validateConfig(invalidChange(), thrift::ConfigApplyMethod::RELOAD);
+      },
+      testing::ThrowsMessage<FbossError>(
+          testing::HasSubstr("VLAN 1 has no interface")));
+  EXPECT_EQ(stateBefore, sw_->getState());
+  EXPECT_EQ(sw_->getConfig(), config_);
+}
+
+TEST_F(SwSwitchValidateConfigTest, ValidateConfigRejectedByStateValidator) {
+  // The HwSwitch validity hook is part of the state update validation and
+  // must be consulted by the dry run too.
+  EXPECT_CALL(*getMockHw(sw_), isValidStateUpdate(_))
+      .WillOnce(testing::Return(false));
+  auto stateBefore = sw_->getState();
+  EXPECT_THROW(
+      sw_->validateConfig(validChange(), thrift::ConfigApplyMethod::RELOAD),
+      FbossError);
+  EXPECT_EQ(stateBefore, sw_->getState());
+}
+
+TEST_F(SwSwitchValidateConfigTest, ValidateConfigDoesNotAffectLaterApply) {
+  // Dry runs, whether rejected or accepted, must not leave anything behind
+  // (e.g. resource accounting) that would make a real apply fail.
+  EXPECT_THROW(
+      sw_->validateConfig(invalidChange(), thrift::ConfigApplyMethod::RELOAD),
+      FbossError);
+  EXPECT_NO_THROW(
+      sw_->validateConfig(validChange(), thrift::ConfigApplyMethod::RELOAD));
+
+  auto config = validChange();
+  EXPECT_NO_THROW(sw_->applyConfig("apply after validate", config));
+  waitForStateUpdates(sw_);
+  EXPECT_EQ(sw_->getConfig(), config);
+}
+
+TEST_F(SwSwitchValidateConfigTest, ValidateConfigEcmpWidthNeedsColdBoot) {
+  // The state update validator refuses an ECMP width change on a running
+  // agent; a coldboot is how it gets changed.
+  auto settings = utility::getFirstNodeIf(sw_->getState()->getSwitchSettings());
+  ASSERT_TRUE(settings->getEcmpWidth().has_value());
+  auto config = config_;
+  config.switchSettings()->ecmpWidth() = *settings->getEcmpWidth() / 2;
+
+  // Neither a reload nor a warmboot can make the change.
+  for (auto applyMethod :
+       {thrift::ConfigApplyMethod::RELOAD,
+        thrift::ConfigApplyMethod::RESTART}) {
+    try {
+      sw_->validateConfig(config, applyMethod);
+      ADD_FAILURE() << "ECMP width change accepted for "
+                    << apache::thrift::util::enumNameSafe(applyMethod);
+    } catch (const RestartRequiredError& ex) {
+      EXPECT_EQ(
+          ex.requiredApplyMethod(),
+          thrift::ConfigApplyMethod::DISRUPTIVE_RESTART);
+      EXPECT_THAT(ex.what(), testing::HasSubstr("requires DISRUPTIVE_RESTART"));
+    }
+  }
+  EXPECT_NO_THROW(sw_->validateConfig(
+      config, thrift::ConfigApplyMethod::DISRUPTIVE_RESTART));
+}
+
+TEST_F(SwSwitchValidateConfigTest, ValidateConfigHwSwitchNeedsColdBoot) {
+  // The HwSwitch refuses some changes after the initial config application
+  // (e.g. L2 learning mode on SAI) by throwing RestartRequiredError.
+  EXPECT_CALL(*getMockHw(sw_), isValidStateUpdate(_))
+      .WillRepeatedly([](const StateDelta& /* delta */) -> bool {
+        throw RestartRequiredError(
+            thrift::ConfigApplyMethod::DISRUPTIVE_RESTART,
+            "not on a running agent");
+      });
+  EXPECT_THROW(
+      sw_->validateConfig(validChange(), thrift::ConfigApplyMethod::RELOAD),
+      RestartRequiredError);
+  EXPECT_NO_THROW(sw_->validateConfig(
+      validChange(), thrift::ConfigApplyMethod::DISRUPTIVE_RESTART));
+}
+
+TEST_F(SwSwitchValidateConfigTest, ValidateConfigColdBootStillRejectsInvalid) {
+  // A coldboot only lets through changes that need a coldboot.
+  EXPECT_THAT(
+      [&] {
+        sw_->validateConfig(
+            invalidChange(), thrift::ConfigApplyMethod::DISRUPTIVE_RESTART);
+      },
+      testing::ThrowsMessage<FbossError>(
+          testing::HasSubstr("VLAN 1 has no interface")));
 }

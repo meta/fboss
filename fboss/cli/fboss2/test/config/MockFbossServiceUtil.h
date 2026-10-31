@@ -42,6 +42,14 @@ class MockFbossServiceUtil : public FbossServiceUtil {
       reloadConfig,
       (cli::ServiceType service, const HostInfo& hostInfo),
       (override));
+  MOCK_METHOD(
+      void,
+      validateConfig,
+      (cli::ServiceType service,
+       const std::string& config,
+       cli::ConfigActionLevel level,
+       const HostInfo& hostInfo),
+      (override));
 };
 
 } // namespace facebook::fboss

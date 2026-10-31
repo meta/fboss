@@ -1307,6 +1307,18 @@ ConfigSession::CommitResult ConfigSession::commit(const HostInfo& hostInfo) {
     return CommitResult{"", {}, {}};
   }
 
+  // Ask each service to validate its candidate config before the new config
+  // is written or any service is touched: a config the service would reject
+  // fails here with the service's reason, and there is nothing to roll back.
+  ensureFbossServiceUtil(hostInfo, /*needsAgentState=*/false);
+  for (const auto& p : pending) {
+    auto it = actions.find(p.domain.service);
+    const auto level =
+        it == actions.end() ? cli::ConfigActionLevel::HITLESS : it->second;
+    fbossServiceUtil_->validateConfig(
+        p.domain.service, p.staged, level, hostInfo);
+  }
+
   // Path discovery may have added metadata while examining staged domains.
   saveMetadata();
 

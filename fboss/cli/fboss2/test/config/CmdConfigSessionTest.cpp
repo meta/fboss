@@ -69,6 +69,11 @@ class ConfigSessionTestFixture : public CmdConfigTestBase {
   std::string commitDescription(const std::string& description) {
     auto mock = std::make_unique<::testing::StrictMock<MockFbossServiceUtil>>();
     auto* mockPtr = mock.get();
+    EXPECT_CALL(
+        *mockPtr,
+        validateConfig(
+            cli::ServiceType::AGENT, ::testing::_, ::testing::_, ::testing::_))
+        .Times(1);
     EXPECT_CALL(*mockPtr, reloadConfig(cli::ServiceType::AGENT, ::testing::_))
         .Times(1);
     TestableConfigSession session(
@@ -1969,6 +1974,11 @@ TEST_F(ConfigSessionTestFixture, rollbackUsesRecordedActionLevel) {
   {
     MockFbossServiceUtil* mock = nullptr;
     auto session = makeSession(mock);
+    EXPECT_CALL(
+        *mock,
+        validateConfig(
+            cli::ServiceType::AGENT, ::testing::_, ::testing::_, ::testing::_))
+        .Times(1);
     EXPECT_CALL(*mock, reloadConfig(cli::ServiceType::AGENT, ::testing::_))
         .Times(1);
     session->setCommandLine(
@@ -1986,6 +1996,14 @@ TEST_F(ConfigSessionTestFixture, rollbackUsesRecordedActionLevel) {
   {
     MockFbossServiceUtil* mock = nullptr;
     auto session = makeSession(mock);
+    EXPECT_CALL(
+        *mock,
+        validateConfig(
+            cli::ServiceType::AGENT,
+            ::testing::_,
+            cli::ConfigActionLevel::SERVICE_RESTART,
+            ::testing::_))
+        .Times(1);
     EXPECT_CALL(
         *mock,
         restartService(

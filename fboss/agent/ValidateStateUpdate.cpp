@@ -547,13 +547,18 @@ StateUpdateValidator::StateUpdateValidator(
 bool StateUpdateValidator::isValidUpdate(
     const StateDelta& delta,
     SwitchStats* stats) {
+  lastRejectionRequiredApplyMethod_.reset();
   if (!isEcmpWidthUpdateValid(delta)) {
     XLOG(ERR) << "State update is not valid.";
+    lastRejectionRequiredApplyMethod_ =
+        thrift::ConfigApplyMethod::DISRUPTIVE_RESTART;
     return false;
   }
 
   if (!isLlrConfigUpdateValid(delta)) {
     XLOG(ERR) << "State update is not valid.";
+    lastRejectionRequiredApplyMethod_ =
+        thrift::ConfigApplyMethod::DISRUPTIVE_RESTART;
     return false;
   }
 
@@ -626,12 +631,16 @@ void StateUpdateValidator::stateChanged(const StateDelta& delta) {
 void StateUpdateValidator::updateRejected(const StateDelta& delta) {
   /* reconstruct the resource account to reset resources accounted in earlier
    * deltas */
+  reset(delta.oldState());
+}
+
+void StateUpdateValidator::reset(const std::shared_ptr<SwitchState>& state) {
   resourceAccountant_ =
       std::make_unique<ResourceAccountant>(asicTable_, scopeResolver_);
   resourceAccountant_->stateChanged(
-      StateDelta(std::make_shared<SwitchState>(), delta.oldState()));
+      StateDelta(std::make_shared<SwitchState>(), state));
   intfDeltaValidator_.updateRejected(
-      StateDelta(std::make_shared<SwitchState>(), delta.oldState()));
+      StateDelta(std::make_shared<SwitchState>(), state));
 }
 
 } // namespace facebook::fboss
