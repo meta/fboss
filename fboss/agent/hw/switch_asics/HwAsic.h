@@ -683,6 +683,11 @@ class HwAsic {
       std::optional<HwAsic::FabricNodeRole> fabricNodeRole);
 
   virtual bool isSupported(Feature) const = 0;
+  // Some SAI implementations encode an ANY UDF L2 type match with all-ones
+  // data and mask instead of the standard don't-care value and mask.
+  virtual bool useAllOnesForUdfL2TypeAny() const {
+    return false;
+  }
   virtual cfg::AsicType getAsicType() const = 0;
   std::string getAsicTypeStr() const;
   virtual AsicVendor getAsicVendor() const = 0;

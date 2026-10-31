@@ -4,6 +4,10 @@
 
 namespace facebook::fboss {
 
+bool TomahawkUltra1Asic::useAllOnesForUdfL2TypeAny() const {
+  return true;
+}
+
 bool TomahawkUltra1Asic::isSupported(Feature feature) const {
   switch (feature) {
     case HwAsic::Feature::SPAN:

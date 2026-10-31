@@ -10,6 +10,7 @@ class TomahawkUltra1Asic : public BroadcomXgsAsic {
  public:
   using BroadcomXgsAsic::BroadcomXgsAsic;
   bool isSupported(Feature) const override;
+  bool useAllOnesForUdfL2TypeAny() const override;
   cfg::AsicType getAsicType() const override {
     return cfg::AsicType::ASIC_TYPE_TOMAHAWKULTRA1;
   }
