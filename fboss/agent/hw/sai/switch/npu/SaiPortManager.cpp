@@ -1634,17 +1634,30 @@ void SaiPortManager::programSerdes(
      * Serdes objects are no longer created beforehand. Therefore, agent only
      * needs to create a new serdes object without knowing the serdes Id or
      * reloading the object to sai store.
+     *
+     * On the Broadcom DNX SAI that holds only where the ASIC does not claim
+     * PORT_SERDES_CREATED_WITH_PORT: the Qumran4D SAI attaches a default
+     * serdes object to every port it creates and answers a second
+     * create_port_serdes with SAI_STATUS_ITEM_ALREADY_EXISTS, so a port
+     * created at runtime (breakout) must adopt it, as on the other SAIs.
      */
-#if !defined(BRCM_SAI_SDK_XGS_AND_DNX)
-    // serdes is not yet programmed or reloaded from adapter
-    std::optional<SaiPortTraits::Attributes::SerdesId> serdesAttr{};
-    auto serdesId = SaiApiTable::getInstance()->portApi().getAttribute(
-        saiPort->adapterKey(), serdesAttr);
-    if (serdesId.has_value() && serdesId.value() != SAI_NULL_OBJECT_ID) {
-      // but default serdes exists in the adapter.
-      serdes =
-          store.reloadObject(static_cast<PortSerdesSaiId>(serdesId.value()));
+#if !defined(BRCM_SAI_SDK_XGS_AND_DNX) || defined(BRCM_SAI_SDK_DNX)
+#if defined(BRCM_SAI_SDK_DNX)
+    if (platform_->getAsic()->isSupported(
+            HwAsic::Feature::PORT_SERDES_CREATED_WITH_PORT)) {
+#endif
+      // serdes is not yet programmed or reloaded from adapter
+      std::optional<SaiPortTraits::Attributes::SerdesId> serdesAttr{};
+      auto serdesId = SaiApiTable::getInstance()->portApi().getAttribute(
+          saiPort->adapterKey(), serdesAttr);
+      if (serdesId.has_value() && serdesId.value() != SAI_NULL_OBJECT_ID) {
+        // but default serdes exists in the adapter.
+        serdes =
+            store.reloadObject(static_cast<PortSerdesSaiId>(serdesId.value()));
+      }
+#if defined(BRCM_SAI_SDK_DNX)
     }
+#endif
 #endif
   } else {
     // ensure warm boot handles are reclaimed removed

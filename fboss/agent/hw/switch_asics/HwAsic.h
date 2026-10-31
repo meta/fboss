@@ -649,6 +649,13 @@ class HwAsic {
     CSIG,
     // TTL control on the aggregate's shared forwarding service.
     LAG_TTL_DECREMENT_DISABLE,
+    // The adapter attaches a default serdes object to every port it creates
+    // and rejects a second create_port_serdes; the agent adopts that object
+    PORT_SERDES_CREATED_WITH_PORT,
+    // The adapter picks a runtime-created port's TM slot itself, so a system
+    // port names the core and core port index read back from the port, not
+    // the platform mapping's prediction
+    SYSTEM_PORT_CORE_INDEX_FROM_PORT,
   };
 
   enum class AsicMode {
