@@ -91,7 +91,6 @@ void AgentEnsembleLinkTest::SetUp() {
   if (FLAGS_list_production_feature) {
     printProductionFeatures();
     GTEST_SKIP() << "Skipping this test because list_production_feature is set";
-    return;
   }
   AgentEnsembleTest::SetUp();
   initializeCabledPorts();

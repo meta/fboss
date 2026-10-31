@@ -539,10 +539,7 @@ TEST_F(
     AgentV6FlowLabelEcmpLoadBalancerTest,
     EcmpFlowLabelHashEnabledViaConfigChange) {
   if (skipTest()) {
-#if defined(GTEST_SKIP)
     GTEST_SKIP();
-#endif
-    return;
   }
   constexpr unsigned int kEcmpWidth = 8;
   auto* helper = getEcmpSetupHelper();

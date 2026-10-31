@@ -102,7 +102,6 @@ class AgentEnsemblePrbsTest : public AgentEnsembleLinkTest {
       return checkPrbsSupportedOnInterface<apache::thrift::Client<QsfpService>>(
           qsfpServiceClient.get(), interfaceName, component, polynomial);
     }
-    return true;
   }
 
  protected:

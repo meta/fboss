@@ -94,7 +94,6 @@ class PrbsTest : public LinkTest {
       return checkPrbsSupportedOnInterface<apache::thrift::Client<QsfpService>>(
           qsfpServiceClient.get(), interfaceName, component, polynomial);
     }
-    return true;
   }
 
  protected:
