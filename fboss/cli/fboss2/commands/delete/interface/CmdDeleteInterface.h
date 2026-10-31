@@ -25,9 +25,11 @@ namespace facebook::fboss {
  * Usage: delete interface <port-list> [<attr> [<value>] ...]
  *
  * Valueless attributes (reset to default):
- *   description, loopback-mode, lookup-class, mtu, lldp-expected-value,
- *   lldp-expected-chassis, lldp-expected-ttl, lldp-expected-port-desc,
- *   lldp-expected-system-name, lldp-expected-system-desc
+ *   description, loopback-mode, lookup-class, mtu, mirror-ingress,
+ *   mirror-egress,
+ *   lldp-expected-value, lldp-expected-chassis, lldp-expected-ttl,
+ *   lldp-expected-port-desc, lldp-expected-system-name,
+ *   lldp-expected-system-desc
  *
  * mtu is an Interface field and unsets to the agent's default (1500 via
  * Interface::kDefaultMtu); the rest are Port fields.
@@ -48,7 +50,9 @@ struct CmdDeleteInterfaceTraits : public WriteCommandTraits {
     cmd.add_option(
         "interface_delete_config",
         args,
-        "<port-list> [description|loopback-mode|lookup-class|mtu|lldp-expected-*|ip-address <cidr>|ipv6-address <cidr>]");
+        "<port-list> [description|loopback-mode|lookup-class|mtu|"
+        "mirror-ingress|mirror-egress|lldp-expected-*|ip-address <cidr>|"
+        "ipv6-address <cidr>]");
   }
   using ObjectArgType = InterfaceDeleteConfig;
   using RetType = std::string;

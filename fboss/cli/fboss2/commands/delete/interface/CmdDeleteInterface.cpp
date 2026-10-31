@@ -37,7 +37,13 @@ namespace {
 // config and delete commands cannot drift apart.
 const std::unordered_set<std::string> kValuelessDeleteAttributes = [] {
   std::unordered_set<std::string> attrs = {
-      "description", "loopback-mode", "lookup-class", "mtu", "queue-config"};
+      "description",
+      "loopback-mode",
+      "lookup-class",
+      "mtu",
+      "queue-config",
+      "mirror-ingress",
+      "mirror-egress"};
   for (const auto& name : lldpAttrNames()) {
     attrs.insert(name);
   }
@@ -53,7 +59,8 @@ const std::unordered_set<std::string> kKnownDeleteAttributes = [] {
 }();
 
 const std::string kValidDeleteAttrs = fmt::format(
-    "description, loopback-mode, lookup-class, mtu, queue-config, {}, ip-address, ipv6-address",
+    "description, loopback-mode, lookup-class, mtu, queue-config, "
+    "mirror-ingress, mirror-egress, {}, ip-address, ipv6-address",
     folly::join(", ", lldpAttrNames()));
 
 } // namespace
@@ -208,7 +215,7 @@ CmdDeleteInterfaceTraits::RetType CmdDeleteInterface::queryClient(
       }
     } else {
       // Port-level valueless reset (description, loopback-mode, lookup-class,
-      // queue-config, lldp-expected-*).
+      // queue-config, mirror-ingress, mirror-egress, lldp-expected-*).
       std::vector<std::string> resetNames;
       std::vector<std::string> skippedNames;
       for (const utils::Intf& intf : interfaces) {
@@ -238,6 +245,16 @@ CmdDeleteInterfaceTraits::RetType CmdDeleteInterface::queryClient(
           // SwitchConfig::defaultPortQueues.
           if (port->portQueueConfigName().has_value()) {
             port->portQueueConfigName().reset();
+            changed = true;
+          }
+        } else if (attr == "mirror-ingress") {
+          if (port->ingressMirror().has_value()) {
+            port->ingressMirror().reset();
+            changed = true;
+          }
+        } else if (attr == "mirror-egress") {
+          if (port->egressMirror().has_value()) {
+            port->egressMirror().reset();
             changed = true;
           }
         } else if (auto tag = lldpTagForAttr(attr); tag.has_value()) {
