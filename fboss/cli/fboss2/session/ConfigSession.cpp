@@ -29,6 +29,7 @@
 #include <exception>
 #include <filesystem>
 #include <fstream>
+#include <iostream>
 #include <map>
 #include <memory>
 #include <optional>
@@ -1546,29 +1547,122 @@ ConfigSession::rolledBackActionLevels(const std::string& resolvedSha) const {
   return levels;
 }
 
-std::string ConfigSession::rollback(const HostInfo& hostInfo) {
-  // Find the previous commit using the metadata file's history. The metadata
-  // (cli/cli_metadata.json) is committed by every config commit -- agent OR
-  // BGP -- whereas cli/agent.conf is unchanged by a BGP-only commit. Logging
-  // the metadata path therefore includes BGP-only commits, so no-arg rollback
-  // doesn't silently skip them.
-  auto commits = git_->log(getSystemMetadataPath(), 2);
-  if (commits.size() < 2) {
+std::string ConfigSession::snapshotLiveDrift(
+    const std::vector<std::pair<ConfigDomain, std::string>>& drifted,
+    const std::string& head,
+    const std::string& metadataPath) {
+  std::vector<std::string> names;
+  std::vector<std::string> files;
+  // What is on disk now, put back if the commit fails so the tree matches
+  // HEAD again. The live config itself is untouched by a failure here.
+  std::vector<std::pair<std::string, std::string>> previous;
+  std::map<cli::ServiceType, cli::ConfigActionLevel> actions;
+  for (const auto& [domain, live] : drifted) {
+    names.push_back(domain.name);
+    files.push_back(domain.desiredPath);
+    std::string previousDesired;
+    if (!folly::readFile(domain.desiredPath.c_str(), previousDesired)) {
+      throw std::runtime_error(
+          fmt::format("Failed to read config from {}", domain.desiredPath));
+    }
+    previous.emplace_back(domain.desiredPath, std::move(previousDesired));
+    // The drift bypassed the CLI, so the level undoing it needs is unknown
+    // (e.g. l2LearningMode needs a coldboot). Record the harshest level: every
+    // rollback across the snapshot, this one included, coldboots the agent.
+    actions[domain.service] =
+        cli::ConfigActionLevel::DISRUPTIVE_SERVICE_RESTART;
+  }
+  // Commit metadata so rollback can find the snapshot in its history.
+  cli::ConfigSessionMetadata metadata;
+  metadata.action() = actions;
+  metadata.base() = head;
+  metadata.currentConfigPaths() = currentConfigPaths_;
+  std::string metadataData = folly::toPrettyJson(
+      facebook::thrift::to_dynamic(
+          metadata, facebook::thrift::dynamic_format::PORTABLE));
+  std::string previousMetadata;
+  folly::readFile(metadataPath.c_str(), previousMetadata); // absent -> ""
+  previous.emplace_back(metadataPath, previousMetadata);
+  files.push_back(metadataPath);
+
+  std::string snapshotSha;
+  try {
+    for (const auto& [domain, live] : drifted) {
+      // Git tracks the desired path; the service may read a different path.
+      // Save its live content in the desired path before committing it.
+      folly::writeFileAtomic(
+          domain.desiredPath, live, 0644, folly::SyncType::WITH_SYNC);
+    }
+    folly::writeFileAtomic(
+        metadataPath, metadataData, 0644, folly::SyncType::WITH_SYNC);
+    snapshotSha = git_->commit(
+        files,
+        fmt::format(
+            "Snapshot of uncommitted live config before rollback by {}",
+            username_),
+        username_,
+        "");
+  } catch (const std::exception& ex) {
+    for (const auto& [path, content] : previous) {
+      std::error_code ec;
+      if (content.empty()) {
+        fs::remove(path, ec);
+      } else {
+        try {
+          folly::writeFileAtomic(
+              path, content, 0644, folly::SyncType::WITH_SYNC);
+        } catch (const std::exception& restoreEx) {
+          LOG(ERROR) << fmt::format(
+              "Failed to restore {} after snapshot failure: {}",
+              path,
+              restoreEx.what());
+        }
+      }
+    }
     throw std::runtime_error(
-        "Cannot rollback: no previous revision available in Git history");
+        fmt::format(
+            "Failed to snapshot live {} config before rollback: {}",
+            folly::join(", ", names),
+            ex.what()));
   }
 
-  // Rollback to the previous commit (second in the list)
-  return rollback(hostInfo, commits[1].sha1);
+  std::string msg = fmt::format(
+      "Live {} config differed from HEAD {}; committed it as snapshot {} "
+      "before rolling back",
+      folly::join(", ", names),
+      Git::shortSha1(head),
+      Git::shortSha1(snapshotSha));
+  LOG(WARNING) << msg;
+  // glog is not on stderr for fboss2 (Main.cpp folly::init without
+  // logtostderr), so the operator gets told directly as well.
+  std::cerr << "Warning: " << msg << ".\n";
+  return metadataData;
 }
 
 std::string ConfigSession::rollback(
     const HostInfo& hostInfo,
-    const std::string& commitSha) {
+    const std::string& commitSha,
+    bool force) {
   ensureDirectoryExists(getCliConfigDir());
 
-  // Resolve the commit SHA (in case it's a short SHA or ref)
-  std::string resolvedSha = git_->resolveRef(commitSha);
+  std::string resolvedSha;
+  if (commitSha.empty()) {
+    // No revision given: roll back to the previous commit, found via the
+    // metadata file's history. The metadata (cli/cli_metadata.json) is
+    // committed by every config commit -- agent OR BGP -- whereas
+    // cli/agent.conf is unchanged by a BGP-only commit. Logging the metadata
+    // path therefore includes BGP-only commits, so no-arg rollback doesn't
+    // silently skip them.
+    auto commits = git_->log(getSystemMetadataPath(), 2);
+    if (commits.size() < 2) {
+      throw std::runtime_error(
+          "Cannot rollback: no previous revision available in Git history");
+    }
+    resolvedSha = commits[1].sha1;
+  } else {
+    // Resolve the commit SHA (in case it's a short SHA or ref)
+    resolvedSha = git_->resolveRef(commitSha);
+  }
 
   // Read the target metadata; this is present in every commit, so it also
   // validates the revision (a bad ref throws here and propagates).
@@ -1582,6 +1676,52 @@ std::string ConfigSession::rollback(
       throw std::runtime_error(
           fmt::format("Failed to read current metadata from {}", metadataPath));
     }
+  }
+
+  std::string head = git_->getHead();
+
+  // Rolling back over drifted live config would overwrite it with no record.
+  // Refuse, or with --force commit it first so it stays in history and can be
+  // restored.
+  std::vector<std::pair<ConfigDomain, std::string>> drifted;
+  std::vector<std::string> driftedNames;
+  for (const auto& domain : configDomains()) {
+    if (!fs::exists(domain.desiredPath)) {
+      continue;
+    }
+    const auto manager = fileManagerFor(domain);
+    const auto& currentPath = manager.currentPath();
+    const auto& livePath =
+        fs::exists(currentPath) ? currentPath : domain.desiredPath;
+    std::string live;
+    if (!folly::readFile(livePath.c_str(), live)) {
+      throw std::runtime_error(
+          fmt::format("Failed to read live config from {}", livePath));
+    }
+    if (!domainContentEqual(
+            domain, fileAtRevisionOrEmpty(head, domain.gitRelPath), live)) {
+      drifted.emplace_back(domain, std::move(live));
+      driftedNames.push_back(domain.name);
+    }
+  }
+  if (!drifted.empty()) {
+    if (!force) {
+      throw std::runtime_error(
+          fmt::format(
+              "Live {} config differs from the committed HEAD ({}); rolling "
+              "back would discard uncommitted running config. Review the "
+              "difference with 'config session diff {} current', then rerun "
+              "with --force (before the command: 'fboss2-dev --force config "
+              "rollback ...') to commit it as a snapshot and proceed; the "
+              "drift's restart level is unknown, so --force restarts the "
+              "drifted services disruptively (agent coldboot).",
+              folly::join(", ", driftedNames),
+              Git::shortSha1(head),
+              Git::shortSha1(head)));
+    }
+    // The snapshot is now HEAD; a failed rollback below restores to it, not
+    // to the pre-snapshot metadata.
+    oldMetadataData = snapshotLiveDrift(drifted, head, metadataPath);
   }
 
   // Per-domain: target content at the revision vs the current managed state.
@@ -1605,7 +1745,11 @@ std::string ConfigSession::rollback(
       throw std::runtime_error(
           fmt::format("Failed to read config from {}", domain.desiredPath));
     }
-    if (domainContentEqual(domain, target, desired)) {
+    const bool wasDrifted =
+        std::any_of(drifted.begin(), drifted.end(), [&](const auto& entry) {
+          return entry.first.service == domain.service;
+        });
+    if (!wasDrifted && domainContentEqual(domain, target, desired)) {
       continue;
     }
 
@@ -1613,6 +1757,7 @@ std::string ConfigSession::rollback(
     auto manager = fileManagerFor(domain);
     auto snapshot = manager.capture();
     manager.validateWritable();
+
     doms.push_back(
         {domain, std::move(target), std::move(manager), std::move(snapshot)});
   }

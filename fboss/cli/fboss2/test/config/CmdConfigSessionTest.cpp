@@ -48,6 +48,50 @@ class ConfigSessionTestFixture : public CmdConfigTestBase {
   }
 })") {}
 
+  // Commit "First version", then edit the promoted agent.conf behind git's
+  // back -- what a hand edit plus `config reload` leaves behind. Returns the
+  // first commit's sha; the live file now differs from HEAD.
+  std::string commitThenDriftLiveConfig() {
+    fs::path sessionDir = getTestHomeDir() / ".fboss2";
+    fs::path cliConfigPath = getTestEtcDir() / "coop" / "cli" / "agent.conf";
+    std::string sha;
+    {
+      TestableConfigSession session(
+          sessionDir.string(), (getTestEtcDir() / "coop").string());
+      session.setCommandLine(
+          "config interface eth1/1/1 description First version");
+      (*session.getAgentConfig().sw()->ports())[0].description() =
+          "First version";
+      session.saveConfig(
+          cli::ServiceType::AGENT, cli::ConfigActionLevel::HITLESS);
+      sha = session.commit(localhost()).commitSha;
+    }
+    std::string drifted = readFile(cliConfigPath);
+    auto pos = drifted.find("First version");
+    EXPECT_NE(pos, std::string::npos);
+    drifted.replace(pos, std::string("First version").size(), "Hand edited");
+    EXPECT_TRUE(folly::writeFile(drifted, cliConfigPath.c_str()));
+    return sha;
+  }
+
+  // A session whose one rollback must coldboot the agent (the level a --force
+  // snapshot records); a reload or any other restart fails the test.
+  std::unique_ptr<TestableConfigSession> makeColdbootSession() {
+    auto mock = std::make_unique<::testing::StrictMock<MockFbossServiceUtil>>();
+    EXPECT_CALL(
+        *mock,
+        restartService(
+            cli::ServiceType::AGENT,
+            cli::ConfigActionLevel::DISRUPTIVE_SERVICE_RESTART))
+        .Times(1);
+    EXPECT_CALL(*mock, isAgentConfigured(::testing::_))
+        .WillOnce(::testing::Return(true));
+    return std::make_unique<TestableConfigSession>(
+        (getTestHomeDir() / ".fboss2").string(),
+        (getTestEtcDir() / "coop").string(),
+        std::move(mock));
+  }
+
   std::unique_ptr<TestableConfigSession> makeStrictSession() {
     return std::make_unique<TestableConfigSession>(
         (getTestHomeDir() / ".fboss2").string(),
@@ -2093,6 +2137,291 @@ TEST_F(ConfigSessionTestFixture, rollbackRejectsUnreadableTargetMetadata) {
   EXPECT_EQ(git().getHead(), headBeforeRollback);
   EXPECT_EQ(readFile(cliConfigPath), configBeforeRollback);
   EXPECT_EQ(readFile(metadataPath), metadataBeforeRollback);
+}
+
+// Live config that differs from HEAD was applied but never committed; a
+// rollback would overwrite it and its commit would not record it. rollback()
+// must refuse and leave both the file and the history untouched.
+TEST_F(ConfigSessionTestFixture, rollbackRefusesUncommittedLiveDrift) {
+  fs::path sessionDir = getTestHomeDir() / ".fboss2";
+  fs::path cliConfigPath = getTestEtcDir() / "coop" / "cli" / "agent.conf";
+  setupMockedAgentServer();
+  // Only the commit reloads; the refused rollback must not.
+  EXPECT_CALL(getMockAgent(), reloadConfig()).Times(1);
+  std::string firstCommitSha = commitThenDriftLiveConfig();
+
+  TestableConfigSession session(
+      sessionDir.string(), (getTestEtcDir() / "coop").string());
+  size_t commitsBefore = session.getGit().log(cliConfigPath.string()).size();
+  try {
+    session.rollback(localhost(), firstCommitSha);
+    FAIL() << "rollback must refuse when live config differs from HEAD";
+  } catch (const std::runtime_error& ex) {
+    EXPECT_THAT(
+        ex.what(), ::testing::HasSubstr("differs from the committed HEAD"));
+    EXPECT_THAT(ex.what(), ::testing::HasSubstr("--force"));
+  }
+  EXPECT_THAT(readFile(cliConfigPath), ::testing::HasSubstr("Hand edited"));
+  EXPECT_EQ(session.getGit().log(cliConfigPath.string()).size(), commitsBefore);
+}
+
+// With force, the drifted live config is committed as a snapshot before the
+// rollback overwrites it, so it stays recoverable from history. The snapshot
+// must also touch cli_metadata.json: no-arg rollback and the undo action-level
+// scan walk that file's log. The drift's level is unknown, so the rollback
+// coldboots even though every CLI commit it crosses was hitless.
+TEST_F(ConfigSessionTestFixture, rollbackForcedSnapshotsUncommittedLiveDrift) {
+  fs::path cliConfigPath = getTestEtcDir() / "coop" / "cli" / "agent.conf";
+  fs::path metadataPath =
+      getTestEtcDir() / "coop" / "cli" / "cli_metadata.json";
+  setupMockedAgentServer();
+  // Only the commit reloads; the rollback coldboots.
+  EXPECT_CALL(getMockAgent(), reloadConfig()).Times(1);
+  std::string firstCommitSha = commitThenDriftLiveConfig();
+
+  auto session = makeColdbootSession();
+  std::string rollbackSha =
+      session->rollback(localhost(), firstCommitSha, /* force */ true);
+  EXPECT_FALSE(rollbackSha.empty());
+  EXPECT_THAT(readFile(cliConfigPath), ::testing::HasSubstr("First version"));
+
+  // Newest first: rollback, snapshot, first commit, baseline.
+  auto& git = session->getGit();
+  auto commits = git.log(cliConfigPath.string());
+  ASSERT_EQ(commits.size(), 4u);
+  EXPECT_EQ(commits[0].sha1, rollbackSha);
+  EXPECT_THAT(
+      commits[1].subject,
+      ::testing::HasSubstr("Snapshot of uncommitted live config"));
+  EXPECT_EQ(commits[2].sha1, firstCommitSha);
+  EXPECT_THAT(
+      git.fileAtRevision(commits[1].sha1, "cli/agent.conf"),
+      ::testing::HasSubstr("Hand edited"));
+  // Same shape in the metadata log, so rollback's history walk sees the
+  // snapshot.
+  auto metaCommits = git.log(metadataPath.string());
+  ASSERT_EQ(metaCommits.size(), 4u);
+  EXPECT_EQ(metaCommits[1].sha1, commits[1].sha1);
+  // The snapshot's metadata: based on the commit it drifted from, action at
+  // the harshest level.
+  auto snapshotMeta = folly::parseJson(
+      git.fileAtRevision(commits[1].sha1, "cli/cli_metadata.json"));
+  EXPECT_EQ(snapshotMeta["base"].asString(), firstCommitSha);
+  ASSERT_EQ(snapshotMeta["action"].size(), 1u);
+  EXPECT_EQ(
+      snapshotMeta["action"]["AGENT"].asString(), "DISRUPTIVE_SERVICE_RESTART");
+}
+
+// Both domains drifted: the refusal names each of them.
+TEST_F(ConfigSessionTestFixture, rollbackNamesEveryDriftedDomain) {
+  fs::path sessionDir = getTestHomeDir() / ".fboss2";
+  fs::path bgpSys = getTestEtcDir() / "coop" / "bgpcpp" / "bgpcpp.conf";
+  setupMockedAgentServer();
+  EXPECT_CALL(getMockAgent(), reloadConfig()).Times(1);
+  // BGP commit first: commit() stages every promoted file that exists, so a
+  // later BGP commit would sweep the hand-edited agent.conf into HEAD.
+  {
+    TestableConfigSession s(
+        sessionDir.string(), (getTestEtcDir() / "coop").string());
+    useClassicBgpSystemd(s);
+    s.getBgpConfig().router_id() = "1.1.1.1";
+    s.setCommandLine("config protocol bgp global router-id 1.1.1.1");
+    s.saveBgpConfig();
+    ASSERT_FALSE(s.commit(localhost()).commitSha.empty());
+  }
+  std::string agentSha = commitThenDriftLiveConfig();
+  std::string drifted = readFile(bgpSys);
+  auto pos = drifted.find("1.1.1.1");
+  ASSERT_NE(pos, std::string::npos);
+  drifted.replace(pos, std::string("1.1.1.1").size(), "3.3.3.3");
+  ASSERT_TRUE(folly::writeFile(drifted, bgpSys.c_str()));
+
+  TestableConfigSession session(
+      sessionDir.string(), (getTestEtcDir() / "coop").string());
+  try {
+    session.rollback(localhost(), agentSha);
+    FAIL() << "rollback must refuse when both domains drifted";
+  } catch (const std::runtime_error& ex) {
+    EXPECT_THAT(
+        ex.what(), ::testing::HasSubstr("Live Agent, BGP config differs"));
+  }
+}
+
+// Drift is measured at the daemon-facing path. A hand edit that replaced the
+// symlink /etc/coop/agent.conf with a regular file leaves cli/agent.conf equal
+// to HEAD while the running config differs; that is still drift, and --force
+// snapshots the running content and updates the daemon-facing regular file.
+TEST_F(ConfigSessionTestFixture, rollbackDetectsDriftWhenSymlinkReplaced) {
+  fs::path cliConfigPath = getTestEtcDir() / "coop" / "cli" / "agent.conf";
+  fs::path systemPath = getTestEtcDir() / "coop" / "agent.conf";
+  setupMockedAgentServer();
+  EXPECT_CALL(getMockAgent(), reloadConfig()).Times(1);
+  std::string firstCommitSha = commitThenDriftLiveConfig();
+  // Undo the promoted-file drift; move it to a regular file at systemPath.
+  std::string drifted = readFile(cliConfigPath);
+  ASSERT_TRUE(fs::is_symlink(systemPath));
+  ASSERT_TRUE(fs::remove(systemPath));
+  ASSERT_TRUE(folly::writeFile(drifted, systemPath.c_str()));
+  std::string head = readFile(cliConfigPath);
+  auto pos = head.find("Hand edited");
+  ASSERT_NE(pos, std::string::npos);
+  head.replace(pos, std::string("Hand edited").size(), "First version");
+  ASSERT_TRUE(folly::writeFile(head, cliConfigPath.c_str()));
+
+  // The refused rollback applies nothing; the forced one coldboots once.
+  auto session = makeColdbootSession();
+  EXPECT_THROW(
+      session->rollback(localhost(), firstCommitSha), std::runtime_error);
+  EXPECT_THAT(readFile(systemPath), ::testing::HasSubstr("Hand edited"));
+
+  std::string rollbackSha =
+      session->rollback(localhost(), firstCommitSha, /* force */ true);
+  EXPECT_FALSE(rollbackSha.empty());
+  auto commits = session->getGit().log(cliConfigPath.string());
+  ASSERT_GE(commits.size(), 2u);
+  EXPECT_THAT(
+      session->getGit().fileAtRevision(commits[1].sha1, "cli/agent.conf"),
+      ::testing::HasSubstr("Hand edited"));
+  EXPECT_TRUE(fs::is_regular_file(systemPath));
+  EXPECT_THAT(readFile(systemPath), ::testing::HasSubstr("First version"));
+}
+
+// No-arg rollback goes through the same drift check as an explicit revision.
+TEST_F(ConfigSessionTestFixture, rollbackNoArgRefusesUncommittedLiveDrift) {
+  fs::path sessionDir = getTestHomeDir() / ".fboss2";
+  fs::path cliConfigPath = getTestEtcDir() / "coop" / "cli" / "agent.conf";
+  setupMockedAgentServer();
+  EXPECT_CALL(getMockAgent(), reloadConfig()).Times(1);
+  commitThenDriftLiveConfig();
+
+  TestableConfigSession session(
+      sessionDir.string(), (getTestEtcDir() / "coop").string());
+  EXPECT_THROW(session.rollback(localhost()), std::runtime_error);
+  EXPECT_THAT(readFile(cliConfigPath), ::testing::HasSubstr("Hand edited"));
+}
+
+// After a forced rollback the snapshot is the commit right before the
+// rollback, so a plain no-arg rollback restores the drifted live config. Both
+// rollbacks cross the drift, so both coldboot.
+TEST_F(ConfigSessionTestFixture, rollbackNoArgReachesForcedSnapshot) {
+  fs::path cliConfigPath = getTestEtcDir() / "coop" / "cli" / "agent.conf";
+  setupMockedAgentServer();
+  // Only the commit reloads.
+  EXPECT_CALL(getMockAgent(), reloadConfig()).Times(1);
+  commitThenDriftLiveConfig();
+
+  {
+    auto session = makeColdbootSession();
+    std::string sha = session->rollback(localhost(), "", /* force */ true);
+    EXPECT_FALSE(sha.empty());
+  }
+  EXPECT_THAT(
+      readFile(cliConfigPath),
+      ::testing::Not(::testing::HasSubstr("Hand edited")));
+  {
+    auto session = makeColdbootSession();
+    std::string sha = session->rollback(localhost());
+    EXPECT_FALSE(sha.empty());
+  }
+  EXPECT_THAT(readFile(cliConfigPath), ::testing::HasSubstr("Hand edited"));
+}
+
+// The drift check covers the BGP domain too, and names it.
+TEST_F(ConfigSessionTestFixture, rollbackRefusesUncommittedBgpDrift) {
+  fs::path sessionDir = getTestHomeDir() / ".fboss2";
+  fs::path bgpSys = getTestEtcDir() / "coop" / "bgpcpp" / "bgpcpp.conf";
+  auto makeSession = [&]() {
+    auto s = std::make_unique<TestableConfigSession>(
+        sessionDir.string(), (getTestEtcDir() / "coop").string());
+    useClassicBgpSystemd(*s);
+    return s;
+  };
+
+  std::string sha1;
+  {
+    auto s = makeSession();
+    s->getBgpConfig().router_id() = "1.1.1.1";
+    s->setCommandLine("config protocol bgp global router-id 1.1.1.1");
+    s->saveBgpConfig();
+    sha1 = s->commit(localhost()).commitSha;
+    ASSERT_FALSE(sha1.empty());
+  }
+  {
+    auto s = makeSession();
+    s->getBgpConfig().router_id() = "2.2.2.2";
+    s->setCommandLine("config protocol bgp global router-id 2.2.2.2");
+    s->saveBgpConfig();
+    ASSERT_FALSE(s->commit(localhost()).commitSha.empty());
+  }
+  // Hand-edit the live bgpd config behind git's back.
+  std::string drifted = readFile(bgpSys);
+  auto pos = drifted.find("2.2.2.2");
+  ASSERT_NE(pos, std::string::npos);
+  drifted.replace(pos, std::string("2.2.2.2").size(), "3.3.3.3");
+  ASSERT_TRUE(folly::writeFile(drifted, bgpSys.c_str()));
+
+  {
+    auto s = makeSession();
+    try {
+      s->rollback(localhost(), sha1);
+      FAIL() << "rollback must refuse when live BGP config differs from HEAD";
+    } catch (const std::runtime_error& ex) {
+      EXPECT_THAT(ex.what(), ::testing::HasSubstr("Live BGP config differs"));
+    }
+  }
+  EXPECT_THAT(readFile(bgpSys), ::testing::HasSubstr("3.3.3.3"));
+
+  {
+    auto s = makeSession();
+    std::string rb = s->rollback(localhost(), sha1, /* force */ true);
+    EXPECT_FALSE(rb.empty());
+    auto commits = s->getGit().log(bgpSys.string());
+    ASSERT_GE(commits.size(), 2u);
+    EXPECT_THAT(
+        commits[1].subject,
+        ::testing::HasSubstr("Snapshot of uncommitted live config"));
+    EXPECT_THAT(
+        s->getGit().fileAtRevision(commits[1].sha1, "bgpcpp/bgpcpp.conf"),
+        ::testing::HasSubstr("3.3.3.3"));
+  }
+  EXPECT_THAT(readFile(bgpSys), ::testing::HasSubstr("1.1.1.1"));
+}
+
+// A tracked file that is missing on disk is not live drift: nothing is
+// running from it, so there is nothing to snapshot and rollback proceeds.
+TEST_F(ConfigSessionTestFixture, rollbackIgnoresMissingPromotedFile) {
+  fs::path sessionDir = getTestHomeDir() / ".fboss2";
+  fs::path bgpSys = getTestEtcDir() / "coop" / "bgpcpp" / "bgpcpp.conf";
+  auto makeSession = [&]() {
+    auto s = std::make_unique<TestableConfigSession>(
+        sessionDir.string(), (getTestEtcDir() / "coop").string());
+    useClassicBgpSystemd(*s);
+    return s;
+  };
+
+  std::string sha1;
+  {
+    auto s = makeSession();
+    s->getBgpConfig().router_id() = "1.1.1.1";
+    s->setCommandLine("config protocol bgp global router-id 1.1.1.1");
+    s->saveBgpConfig();
+    sha1 = s->commit(localhost()).commitSha;
+    ASSERT_FALSE(sha1.empty());
+  }
+  {
+    auto s = makeSession();
+    s->getBgpConfig().router_id() = "2.2.2.2";
+    s->setCommandLine("config protocol bgp global router-id 2.2.2.2");
+    s->saveBgpConfig();
+    ASSERT_FALSE(s->commit(localhost()).commitSha.empty());
+  }
+  ASSERT_TRUE(fs::remove(bgpSys));
+
+  auto s = makeSession();
+  std::string rb;
+  EXPECT_NO_THROW(rb = s->rollback(localhost(), sha1));
+  EXPECT_FALSE(rb.empty());
+  EXPECT_THAT(readFile(bgpSys), ::testing::HasSubstr("1.1.1.1"));
 }
 
 } // namespace facebook::fboss

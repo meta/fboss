@@ -208,7 +208,7 @@ class ConfigBaseline:
         """Restore the config to ``baseline`` and make sure the agents run it.
 
         Fast path when the config is unchanged and the agents are healthy.
-        Soft path (`fboss2-dev config rollback <sha>`, applied by the CLI at
+        Soft path (`fboss2-dev --force config rollback <sha>`, applied by the CLI at
         the recorded action level) when the config drifted but the agents can
         serve thrift. Hard path (check out the tracked files at the baseline,
         commit, cold boot) when any agent unit is dead or the soft path failed.
@@ -243,8 +243,11 @@ class ConfigBaseline:
         return self._restore_hard(baseline)
 
     def _restore_soft(self, baseline: str) -> bool:
+        # A dirty tree is test debris; without --force the CLI refuses to
+        # discard live config that differs from HEAD (it commits a snapshot).
+        # Global flags must precede the subcommand.
         result = subprocess.run(
-            [self._fboss2_cli, "config", "rollback", baseline],
+            [self._fboss2_cli, "--force", "config", "rollback", baseline],
             capture_output=True,
             text=True,
             check=False,
