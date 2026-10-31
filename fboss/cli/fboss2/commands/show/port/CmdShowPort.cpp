@@ -19,11 +19,24 @@
 #include "fboss/qsfp_service/if/gen-cpp2/transceiver_types.h"
 
 #include <algorithm>
+#include <initializer_list>
 
 namespace facebook::fboss {
 using utils::Table;
 using ObjectArgType = CmdShowPortTraits::ObjectArgType;
 using RetType = CmdShowPortTraits::RetType;
+
+namespace {
+// Sums packet counters, treating counters the hardware does not report
+// (STAT_UNINITIALIZED) as zero.
+int64_t sumPktCounters(std::initializer_list<int64_t> counters) {
+  int64_t total = 0;
+  for (auto counter : counters) {
+    total += std::max<int64_t>(counter, 0);
+  }
+  return total;
+}
+} // namespace
 
 std::string getAdminStateStr(PortAdminState adminState) {
   switch (adminState) {
@@ -542,6 +555,10 @@ RetType CmdShowPort::createModel(
             folly::copy(portHwStatsEntry.inCongestionDiscards_().value());
         cliPortStats.queueOutBytes() =
             portHwStatsEntry.queueOutBytes_().value();
+        cliPortStats.queueOutPackets() =
+            portHwStatsEntry.queueOutPackets_().value();
+        cliPortStats.queueOutDiscardPackets() =
+            portHwStatsEntry.queueOutDiscardPackets_().value();
         if (apache::thrift::get_pointer(portInfo.pfc())) {
           cliPortStats.outPfcPriorityPackets() =
               portHwStatsEntry.outPfc_().value();
@@ -561,6 +578,14 @@ RetType CmdShowPort::createModel(
             folly::copy(portHwStatsEntry.inBytes_().value());
         cliPortStats.egressBytes() =
             folly::copy(portHwStatsEntry.outBytes_().value());
+        cliPortStats.ingressPkts() = sumPktCounters(
+            {folly::copy(portHwStatsEntry.inUnicastPkts_().value()),
+             folly::copy(portHwStatsEntry.inMulticastPkts_().value()),
+             folly::copy(portHwStatsEntry.inBroadcastPkts_().value())});
+        cliPortStats.egressPkts() = sumPktCounters(
+            {folly::copy(portHwStatsEntry.outUnicastPkts_().value()),
+             folly::copy(portHwStatsEntry.outMulticastPkts_().value()),
+             folly::copy(portHwStatsEntry.outBroadcastPkts_().value())});
         cliPortStats.cbfcCfUpdateTx().from_optional(
             portHwStatsEntry.cbfcCfUpdateTx_().to_optional());
         cliPortStats.cbfcCfUpdateRx().from_optional(
@@ -669,27 +694,27 @@ void CmdShowPort::printOutput(const RetType& model, std::ostream& out) {
                   folly::copy(portInfo.numUnicastQueues().value()))));
       detailedOutput.emplace_back(
           fmt::format(
-              "    Ingress (bytes)               \t\t {}",
-              folly::copy(portHwStats.ingressBytes().value())));
+              "    Ingress (pkts)                \t\t {}",
+              folly::copy(portHwStats.ingressPkts().value())));
       detailedOutput.emplace_back(
           fmt::format(
-              "    Egress (bytes)                \t\t {}",
-              folly::copy(portHwStats.egressBytes().value())));
-      for (const auto& queueBytes : portHwStats.queueOutBytes().value()) {
+              "    Egress (pkts)                 \t\t {}",
+              folly::copy(portHwStats.egressPkts().value())));
+      for (const auto& queuePkts : portHwStats.queueOutPackets().value()) {
         const auto iter =
-            portInfo.queueIdToName().value().find(queueBytes.first);
+            portInfo.queueIdToName().value().find(queuePkts.first);
         std::string queueName;
         if (iter != portInfo.queueIdToName().value().end()) {
           queueName = folly::to<std::string>("(", iter->second, ")");
         }
         // print either if the queue is valid or queue has non zero traffic
-        if (queueBytes.second || !queueName.empty()) {
+        if (queuePkts.second || !queueName.empty()) {
           detailedOutput.emplace_back(
               fmt::format(
                   "\tQueue {} {:12}    \t\t {}",
-                  queueBytes.first,
+                  queuePkts.first,
                   queueName,
-                  queueBytes.second));
+                  queuePkts.second));
         }
       }
       detailedOutput.emplace_back(
@@ -712,22 +737,22 @@ void CmdShowPort::printOutput(const RetType& model, std::ostream& out) {
           fmt::format(
               "    Out Congestion Discards (pkts)\t\t {}",
               folly::copy(portHwStats.outCongestionDiscardPkts().value())));
-      for (const auto& queueDiscardBytes :
-           portHwStats.queueOutDiscardBytes().value()) {
+      for (const auto& queueDiscardPkts :
+           portHwStats.queueOutDiscardPackets().value()) {
         const auto iter =
-            portInfo.queueIdToName().value().find(queueDiscardBytes.first);
+            portInfo.queueIdToName().value().find(queueDiscardPkts.first);
         std::string queueName;
         if (iter != portInfo.queueIdToName().value().end()) {
           queueName = folly::to<std::string>("(", iter->second, ")");
         }
         // print either if the queue is valid or queue has non zero traffic
-        if (queueDiscardBytes.second || !queueName.empty()) {
+        if (queueDiscardPkts.second || !queueName.empty()) {
           detailedOutput.emplace_back(
               fmt::format(
                   "\tQueue {} {:12}    \t\t {}",
-                  queueDiscardBytes.first,
+                  queueDiscardPkts.first,
                   queueName,
-                  queueDiscardBytes.second));
+                  queueDiscardPkts.second));
         }
       }
       detailedOutput.emplace_back(

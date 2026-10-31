@@ -62,4 +62,8 @@ struct PortHwStatsEntry {
   17: optional i64 cbfcCfUpdateTx;
   18: optional i64 cbfcCfUpdateRx;
   19: optional i64 cbfcCcUpdateTx;
+  20: map<i16, i64> queueOutPackets;
+  21: map<i16, i64> queueOutDiscardPackets;
+  22: i64 ingressPkts;
+  23: i64 egressPkts;
 }

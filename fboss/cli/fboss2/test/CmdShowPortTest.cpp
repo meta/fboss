@@ -8,9 +8,9 @@
 
 #include <thread>
 
-#include "fboss/agent/AddressUtil.h"
 #include "fboss/agent/if/gen-cpp2/ctrl_types.h"
-#include "fboss/cli/fboss2/utils/CmdClientUtils.h"
+#include "fboss/cli/fboss2/CmdGlobalOptions.h"
+#include "fboss/cli/fboss2/utils/CmdClientUtilsCommon.h"
 
 #include <thrift/lib/cpp2/reflection/testing.h>
 #include "fboss/cli/fboss2/commands/show/port/CmdShowPort.h"
@@ -598,6 +598,149 @@ TEST_F(CmdShowPortTestFixture, queryClient) {
   auto model = cmd.queryClient(localhost(), queriedEntries);
 
   EXPECT_THRIFT_EQ(normalizedModel, model);
+}
+
+namespace {
+// Sets the global --detail option by parsing it through CLI11, the same path
+// the fboss2 binary uses.
+void setDetailFlag(bool detail) {
+  CLI::App app;
+  CmdGlobalOptions::getInstance()->init(app);
+  app.parse(std::vector<std::string>{detail ? "--detail" : "--detail=false"});
+}
+} // namespace
+
+TEST_F(CmdShowPortTestFixture, detailedCountersAreAllPackets) {
+  HwPortStats hwStats;
+  hwStats.inBytes_() = 3900;
+  hwStats.inUnicastPkts_() = 7;
+  hwStats.inMulticastPkts_() = 2;
+  hwStats.inBroadcastPkts_() = 1;
+  hwStats.outBytes_() = 1170;
+  hwStats.outUnicastPkts_() = 3;
+  // Not reported by the hardware: must not be subtracted from the total.
+  hwStats.outMulticastPkts_() = -1;
+  hwStats.outBroadcastPkts_() = 0;
+  hwStats.queueOutBytes_() = {{0, 780}, {1, 390}};
+  hwStats.queueOutPackets_() = {{0, 2}, {1, 1}};
+  hwStats.outCongestionDiscardPkts_() = 3;
+  hwStats.queueOutDiscardBytes_() = {{0, 1170}, {1, 0}};
+  hwStats.queueOutDiscardPackets_() = {{0, 3}, {1, 0}};
+  mockPortStats["eth1/5/1"] = hwStats;
+
+  CmdShowPortTraits::ObjectArgType portQuery(
+      std::vector<std::string>{"eth1/5/1"});
+  auto model = CmdShowPort().createModel(
+      mockPortEntries,
+      mockTransceiverEntries,
+      portQuery,
+      mockPortStats,
+      mockPortToPeer,
+      mockPeerDrainStates,
+      mockPeerPortInfo,
+      mockDrainedInterfaces);
+  ASSERT_EQ(model.portEntries()->size(), 1);
+  model.portEntries()->front().queueIdToName() = {{0, "q0"}, {1, "q1"}};
+
+  setDetailFlag(true);
+  std::stringstream ss;
+  CmdShowPort().printOutput(model, ss);
+  setDetailFlag(false);
+
+  std::string output = ss.str();
+  EXPECT_THAT(output, HasSubstr("    Ingress (pkts)                \t\t 10\n"));
+  EXPECT_THAT(
+      output,
+      HasSubstr(
+          "    Egress (pkts)                 \t\t 3\n"
+          "\tQueue 0 (q0)            \t\t 2\n"
+          "\tQueue 1 (q1)            \t\t 1\n"));
+  EXPECT_THAT(
+      output,
+      HasSubstr(
+          "    Out Congestion Discards (pkts)\t\t 3\n"
+          "\tQueue 0 (q0)            \t\t 3\n"
+          "\tQueue 1 (q1)            \t\t 0\n"));
+  EXPECT_THAT(output, Not(HasSubstr("bytes")));
+}
+
+TEST_F(CmdShowPortTestFixture, detailedCongestionDiscardsSumToTotal) {
+  // 4 DWRR queues on an oversubscribed port, 390-byte frames.
+  HwPortStats hwStats;
+  hwStats.inBytes_() = 150397;
+  hwStats.inUnicastPkts_() = 0;
+  hwStats.inMulticastPkts_() = 290;
+  hwStats.inBroadcastPkts_() = 3;
+  hwStats.outBytes_() = 4412101148860;
+  hwStats.outUnicastPkts_() = 11313079866;
+  hwStats.outMulticastPkts_() = 16;
+  hwStats.outBroadcastPkts_() = 0;
+  hwStats.outDiscards_() = 8483602354;
+  hwStats.outCongestionDiscardPkts_() = 8483602354;
+  hwStats.queueOutBytes_() = {
+      {0, 354641518530},
+      {1, 709141499040},
+      {2, 1418141615280},
+      {3, 1930176514890},
+      {7, 1120}};
+  hwStats.queueOutPackets_() = {
+      {0, 909337227},
+      {1, 1818311536},
+      {2, 3636260552},
+      {3, 4949170551},
+      {7, 16}};
+  hwStats.queueOutDiscardBytes_() = {
+      {0, 1575534998310}, {1, 1221034982700}, {2, 512034937050}, {3, 0}};
+  hwStats.queueOutDiscardPackets_() = {
+      {0, 4039833329}, {1, 3130858930}, {2, 1312910095}, {3, 0}};
+  mockPortStats["eth1/5/1"] = hwStats;
+
+  CmdShowPortTraits::ObjectArgType portQuery(
+      std::vector<std::string>{"eth1/5/1"});
+  auto model = CmdShowPort().createModel(
+      mockPortEntries,
+      mockTransceiverEntries,
+      portQuery,
+      mockPortStats,
+      mockPortToPeer,
+      mockPeerDrainStates,
+      mockPeerPortInfo,
+      mockDrainedInterfaces);
+  ASSERT_EQ(model.portEntries()->size(), 1);
+  model.portEntries()->front().queueIdToName() = {
+      {0, "q0"}, {1, "q1"}, {2, "q2"}, {3, "q3"}};
+
+  int64_t discardSum = 0;
+  for (const auto& [queueId, pkts] :
+       *model.portEntries()->front().hwPortStats()->queueOutDiscardPackets()) {
+    discardSum += pkts;
+  }
+  EXPECT_EQ(discardSum, 8483602354);
+
+  setDetailFlag(true);
+  std::stringstream ss;
+  CmdShowPort().printOutput(model, ss);
+  setDetailFlag(false);
+
+  EXPECT_THAT(
+      ss.str(),
+      HasSubstr(
+          "    Ingress (pkts)                \t\t 293\n"
+          "    Egress (pkts)                 \t\t 11313079882\n"
+          "\tQueue 0 (q0)            \t\t 909337227\n"
+          "\tQueue 1 (q1)            \t\t 1818311536\n"
+          "\tQueue 2 (q2)            \t\t 3636260552\n"
+          "\tQueue 3 (q3)            \t\t 4949170551\n"
+          "\tQueue 7                 \t\t 16\n"));
+  EXPECT_THAT(
+      ss.str(),
+      HasSubstr(
+          "    Out Congestion Discards (pkts)\t\t 8483602354\n"
+          "\tQueue 0 (q0)            \t\t 4039833329\n"
+          "\tQueue 1 (q1)            \t\t 3130858930\n"
+          "\tQueue 2 (q2)            \t\t 1312910095\n"
+          "\tQueue 3 (q3)            \t\t 0\n"));
+  EXPECT_THAT(ss.str(), Not(HasSubstr("bytes")));
 }
 
 // CLI reference wiki hooks: a human description and a non-empty sample model.
