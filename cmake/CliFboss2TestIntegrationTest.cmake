@@ -60,6 +60,7 @@ add_executable(fboss2_integration_test
   fboss/cli/fboss2/test/integration_test/DeleteDhcpSourceOverrideTest.cpp
   fboss/cli/fboss2/test/integration_test/DeleteInterfaceIpv6NdpTest.cpp
   fboss/cli/fboss2/test/integration_test/DeleteLoadBalancingTest.cpp
+  fboss/cli/fboss2/test/integration_test/DeletePfcTest.cpp
   fboss/cli/fboss2/test/integration_test/DeleteQosPolicyTest.cpp
   fboss/cli/fboss2/test/integration_test/DeleteVlanTest.cpp
   fboss/cli/fboss2/test/integration_test/TunnelIpInIpTest.cpp

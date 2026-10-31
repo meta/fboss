@@ -648,8 +648,8 @@ void HwPortFb303Stats::updateStats(
     }
   }
 
-  // PFC duration stats
-  if (curPortStats.rxPfcDurationUsec_()->size()) {
+  // PFC duration stats. The counters only exist while enabled in config.
+  if (isRxPfcDurationEnabled() && !curPortStats.rxPfcDurationUsec_()->empty()) {
     for (const auto& priority : getEnabledPfcPriorities()) {
       updatePfcStat(
           kRxPfcDurationUsec(),
@@ -658,7 +658,7 @@ void HwPortFb303Stats::updateStats(
           nullptr);
     }
   }
-  if (curPortStats.txPfcDurationUsec_()->size()) {
+  if (isTxPfcDurationEnabled() && !curPortStats.txPfcDurationUsec_()->empty()) {
     for (const auto& priority : getEnabledPfcPriorities()) {
       updatePfcStat(
           kTxPfcDurationUsec(),

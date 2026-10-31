@@ -3047,6 +3047,14 @@ void SaiPortManager::updateStats(
         SaiPortTraits::cbfcStats(), SAI_STATS_MODE_READ, "CBFC port counters");
   }
 #endif
+  // curPortStats starts as a copy of the previous collection and nothing
+  // refills these maps once PFC duration collection is disabled.
+  if (!handle->rxPfcDurationStatsEnabled) {
+    curPortStats.rxPfcDurationUsec_()->clear();
+  }
+  if (!handle->txPfcDurationStatsEnabled) {
+    curPortStats.txPfcDurationUsec_()->clear();
+  }
   const auto& counters = handle->port->getStats();
   fillHwPortStats(
       counters,

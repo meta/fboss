@@ -1129,3 +1129,76 @@ TEST(HwPortFb303StatsTest, ChangePfcConfig) {
         HwPortFb303Stats::statName(statKey, kPortName)));
   }
 }
+
+TEST(HwPortFb303StatsTest, DisablePfcDurationWithStaleStats) {
+  cfg::PortPfc pfc;
+  pfc.txPfcDurationEnable() = true;
+  pfc.rxPfcDurationEnable() = true;
+  HwPortFb303Stats stats(
+      kPortName,
+      kQueue2Name,
+      kEnabledPfcPriorities,
+      pfc,
+      true /* inCongestionDiscardCountSupported */,
+      true /* inCongestionDiscardSeenSupported */);
+  auto portStats = getInitedStats();
+  for (const auto& priority : kEnabledPfcPriorities) {
+    portStats.txPfcDurationUsec_()[priority] = 10;
+    portStats.rxPfcDurationUsec_()[priority] = 20;
+  }
+  stats.updateStats(portStats, seconds(1));
+  for (const auto& priority : kEnabledPfcPriorities) {
+    EXPECT_TRUE(fbData->getStatMap()->contains(
+        HwPortFb303Stats::statName(kTxPfcDurationUsec(), kPortName, priority)));
+    EXPECT_TRUE(fbData->getStatMap()->contains(
+        HwPortFb303Stats::statName(kRxPfcDurationUsec(), kPortName, priority)));
+  }
+
+  // Disabling removes the counters, but stats collected before the disable
+  // still carry duration values: updating them must not abort.
+  pfc.txPfcDurationEnable() = false;
+  pfc.rxPfcDurationEnable() = false;
+  stats.pfcConfigChanged(kEnabledPfcPriorities, pfc);
+  stats.updateStats(portStats, seconds(2));
+  for (const auto& priority : kEnabledPfcPriorities) {
+    EXPECT_FALSE(fbData->getStatMap()->contains(
+        HwPortFb303Stats::statName(kTxPfcDurationUsec(), kPortName, priority)));
+    EXPECT_FALSE(fbData->getStatMap()->contains(
+        HwPortFb303Stats::statName(kRxPfcDurationUsec(), kPortName, priority)));
+  }
+}
+
+TEST(HwPortFb303StatsTest, ChangePfcPrioritiesWithDurationEnabled) {
+  cfg::PortPfc pfc;
+  pfc.txPfcDurationEnable() = true;
+  pfc.rxPfcDurationEnable() = true;
+  HwPortFb303Stats stats(
+      kPortName,
+      kQueue2Name,
+      kEnabledPfcPriorities,
+      pfc,
+      true /* inCongestionDiscardCountSupported */,
+      true /* inCongestionDiscardSeenSupported */);
+  std::vector<PfcPriority> newPriorities(
+      {static_cast<PfcPriority>(5), static_cast<PfcPriority>(6)});
+  stats.pfcConfigChanged(newPriorities, pfc);
+  for (auto statKey : {kTxPfcDurationUsec(), kRxPfcDurationUsec()}) {
+    for (const auto& priority : kEnabledPfcPriorities) {
+      EXPECT_FALSE(fbData->getStatMap()->contains(
+          HwPortFb303Stats::statName(statKey, kPortName, priority)));
+    }
+    for (const auto& priority : newPriorities) {
+      EXPECT_TRUE(fbData->getStatMap()->contains(
+          HwPortFb303Stats::statName(statKey, kPortName, priority)));
+    }
+  }
+
+  // Duration stats are collected for every priority, so publishing them for
+  // the newly enabled priorities must find their counters.
+  auto portStats = getInitedStats();
+  for (int priority = 0; priority <= 7; ++priority) {
+    portStats.txPfcDurationUsec_()[priority] = 10;
+    portStats.rxPfcDurationUsec_()[priority] = 20;
+  }
+  stats.updateStats(portStats, seconds(1));
+}
