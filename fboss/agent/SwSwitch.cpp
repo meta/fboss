@@ -1740,6 +1740,20 @@ void SwSwitch::initialConfigApplied(
       << "SwSwitch::initialConfigApplied - Checking for existing interfaces that need neighbor solicitation after warm boot";
   sendNeighborSolicitationForConfiguredInterfaces("warm boot");
 
+  // After warmboot completes, immediately synchronize hardware stats to
+  // software cache (hwSwitchStats_). This ensures that tests reading stats
+  // immediately after warmboot get correct values instead of stale cached
+  // data. The background stats thread normally updates cache every 1 second,
+  // but tests may read stats within milliseconds of warmboot completing.
+
+  try {
+    XLOG(DBG2) << "Warm boot: synchronizing hardware stats to software cache";
+    updateStats();
+    XLOG(DBG2) << "Warm boot: stats synchronization completed";
+  } catch (const std::exception& ex) {
+    XLOG(ERR) << "Warm boot: stats synchronization failed: " << ex.what();
+  }
+
   if (flags_ & SwitchFlags::PUBLISH_STATS) {
     stats()->switchConfiguredMs(
         duration_cast<std::chrono::milliseconds>(
