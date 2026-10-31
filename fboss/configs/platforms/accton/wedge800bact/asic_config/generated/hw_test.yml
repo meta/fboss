@@ -624,11 +624,11 @@ bcm_device:
       global_flexctr_egr_pool_num_reserved: 5
       global_flexctr_egr_op_profile_num_reserved: 10
       global_flexctr_egr_group_num_reserved: 1
-      sai_uncached_port_stats: 0x1
       ecmp_dlb_port_speeds: 1
       l3_ecmp_member_secondary_mem_size: 4096
       sai_rdma_udf_disable: 1
       sai_l3_byte1_udf_disable: 1
+      sai_uncached_port_stats: 0x1
 ...
 ---
 device:
