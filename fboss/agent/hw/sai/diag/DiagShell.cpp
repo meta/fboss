@@ -168,6 +168,13 @@ std::unique_ptr<Repl> DiagShell::makeRepl() const {
 }
 
 void DiagShell::initTerminal() {
+  // Recreate the singleton REPL if its shell loop exited (e.g. user typed
+  // 'quit'), else future clients get the prompt but a dead shell.
+  if (repl_ && repl_->hasExited()) {
+    XLOG(WARNING) << "Diag shell REPL exited previously; recreating it";
+    ts_.reset();
+    repl_.reset();
+  }
   if (!repl_) {
     // Set up REPL on connect if needed
     repl_ = makeRepl();

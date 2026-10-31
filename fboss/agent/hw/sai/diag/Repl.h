@@ -25,6 +25,10 @@ class Repl {
   bool running() const {
     return running_;
   }
+  // True once the underlying shell loop has exited.
+  virtual bool hasExited() const {
+    return false;
+  }
   virtual std::string getPrompt() const = 0;
   virtual std::vector<folly::File> getStreams() const = 0;
 

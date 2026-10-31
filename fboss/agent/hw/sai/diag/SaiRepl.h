@@ -27,6 +27,9 @@ class SaiRepl : public Repl {
   explicit SaiRepl(SwitchSaiId switchId)
       : saiSwitchId_(switchId), exited_(std::atomic<bool>(false)) {}
   ~SaiRepl() noexcept override;
+  bool hasExited() const override {
+    return exited_.load();
+  }
   std::string getPrompt() const override;
   // Get the list of streams the repl expects the shell to dup2 with
   // the pty slave fd passed into the repl constructor
