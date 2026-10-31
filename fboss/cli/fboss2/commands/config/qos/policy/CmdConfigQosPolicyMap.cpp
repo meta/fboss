@@ -111,15 +111,35 @@ QosMapType validateAndGetMapType(const std::string& typeToken, int16_t value) {
 // - mapsRef: reference to the list of map entries
 // - config: the QosMapConfig containing trafficClass, value, and direction
 // - getIngressList: lambda to get the ingress list from an entry
+// - getEgressValue: lambda to read the optional egress value of an entry
 // - setEgressValue: lambda to set the egress value on an entry
-template <typename MapEntry, typename GetIngressList, typename SetEgressValue>
+//
+// An ingress codepoint classifies to exactly one traffic class, so attaching
+// it to a class first detaches it from whichever class carried it before.
+template <
+    typename MapEntry,
+    typename GetIngressList,
+    typename GetEgressValue,
+    typename SetEgressValue>
 void updateQosMapEntry(
     std::vector<MapEntry>& mapsRef,
     const QosMapConfig& config,
     GetIngressList getIngressList,
+    GetEgressValue getEgressValue,
     SetEgressValue setEgressValue) {
   int16_t trafficClass = config.getTrafficClass();
-  // Find or create entry with matching internalTrafficClass
+  auto byteVal = static_cast<int8_t>(config.getValue());
+
+  if (config.getDirection() == QosMapDirection::INGRESS) {
+    // Detaching may drop emptied entries, so look the target up afterwards.
+    utils::eraseQosMapCodepoint(
+        mapsRef,
+        config.getValue(),
+        getIngressList,
+        getEgressValue,
+        trafficClass);
+  }
+
   MapEntry* entry = nullptr;
   for (auto& m : mapsRef) {
     if (*m.internalTrafficClass() == trafficClass) {
@@ -127,7 +147,7 @@ void updateQosMapEntry(
       break;
     }
   }
-  if (entry == nullptr) { // Entry not found, create a new one
+  if (entry == nullptr) {
     MapEntry newEntry;
     newEntry.internalTrafficClass() = trafficClass;
     mapsRef.push_back(std::move(newEntry));
@@ -135,13 +155,12 @@ void updateQosMapEntry(
   }
   if (config.getDirection() == QosMapDirection::INGRESS) {
     auto& fromList = getIngressList(*entry);
-    auto byteVal = static_cast<int8_t>(config.getValue());
     if (std::find(fromList.begin(), fromList.end(), byteVal) ==
         fromList.end()) {
       fromList.push_back(byteVal);
     }
   } else {
-    setEgressValue(*entry, static_cast<int8_t>(config.getValue()));
+    setEgressValue(*entry, byteVal);
   }
 }
 
@@ -221,7 +240,7 @@ bool QosMapConfig::isListMapType() const {
 
 void QosMapConfig::parseListMapType(const std::vector<std::string>& v) {
   // Syntax for DSCP/EXP/DOT1P maps:
-  // Ingress (X -> TC, additive):
+  // Ingress (X -> TC, moves X out of any other TC):
   //   dscp <value> traffic-class <tc>
   //   mpls-exp <value> traffic-class <tc>
   //   dot1p <value> traffic-class <tc>
@@ -347,6 +366,7 @@ CmdConfigQosPolicyMapTraits::RetType CmdConfigQosPolicyMap::queryClient(
             [](cfg::DscpQosMap& e) -> auto& {
               return *e.fromDscpToTrafficClass();
             },
+            [](const cfg::DscpQosMap& e) { return e.fromTrafficClassToDscp(); },
             [](cfg::DscpQosMap& e, int8_t v) {
               e.fromTrafficClassToDscp() = v;
             });
@@ -358,6 +378,7 @@ CmdConfigQosPolicyMapTraits::RetType CmdConfigQosPolicyMap::queryClient(
             [](cfg::ExpQosMap& e) -> auto& {
               return *e.fromExpToTrafficClass();
             },
+            [](const cfg::ExpQosMap& e) { return e.fromTrafficClassToExp(); },
             [](cfg::ExpQosMap& e, int8_t v) { e.fromTrafficClassToExp() = v; });
         break;
       case QosMapType::DOT1P:
@@ -371,6 +392,7 @@ CmdConfigQosPolicyMapTraits::RetType CmdConfigQosPolicyMap::queryClient(
             [](cfg::PcpQosMap& e) -> auto& {
               return *e.fromPcpToTrafficClass();
             },
+            [](const cfg::PcpQosMap& e) { return e.fromTrafficClassToPcp(); },
             [](cfg::PcpQosMap& e, int8_t v) { e.fromTrafficClassToPcp() = v; });
         break;
       default:

@@ -35,7 +35,8 @@ enum class QosMapType {
 
 /**
  * Direction for DSCP/EXP/DOT1P maps.
- * INGRESS: codepoint -> traffic class (additive, classification)
+ * INGRESS: codepoint -> traffic class (classification; a codepoint belongs to
+ *          one class, so re-mapping it moves it)
  * EGRESS: traffic class -> codepoint (rewrite)
  */
 enum class QosMapDirection {
@@ -52,7 +53,7 @@ enum class QosMapDirection {
  *     Example: tc-to-queue 0 0
  *
  *   For DSCP/EXP/DOT1P maps (source -> destination):
- *     dscp <value> tc <tc>           - maps DSCP to traffic class (additive)
+ *     dscp <value> traffic-class <tc> - maps DSCP to traffic class
  *     traffic-class <tc> dscp <value> - maps traffic class to DSCP
  *     mpls-exp <value> traffic-class <tc> - maps MPLS EXP to traffic class
  *     traffic-class <tc> mpls-exp <value> - maps traffic class to MPLS EXP
