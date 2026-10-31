@@ -26,13 +26,15 @@
     "DLB_ECMP_CONFIG",
     "PHB_CONTROL"
   ],
-  "mgmt_port_defaults": {
-    "logical_id": 76,
-    "physical_id": 513,
-    "speed": 100000,
-    "num_lanes": 4,
-    "fec": "PC_FEC_RS528"
-  },
+  "mgmt_port_defaults": [
+    {
+      "logical_id": 76,
+      "physical_id": 513,
+      "speed": 100000,
+      "num_lanes": 4,
+      "fec": "PC_FEC_RS528"
+    }
+  ],
   "preamble_support": false,
 
   "global_defaults": {

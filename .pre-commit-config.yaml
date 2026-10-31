@@ -25,9 +25,9 @@ repos:
         # asic_config generated outputs carry no trailing newline by design.
         exclude: ^fboss/configs/platforms/[^/]+/[^/]+/asic_config/generated/
       - id: check-yaml
-        # asic_config generated outputs are multi-document YAML with complex
-        # mapping keys that PyYAML cannot load; they are generated artifacts.
-        exclude: ^fboss/configs/platforms/[^/]+/[^/]+/asic_config/generated/
+        # asic_config generated outputs and their synced references are
+        # multi-document YAML with complex mapping keys that PyYAML cannot load.
+        exclude: ^fboss/(configs/platforms/[^/]+/[^/]+/asic_config/generated|lib/asic_config_v2/synced_asic_configs)/
       - id: check-json
       - id: check-merge-conflict
   - repo: https://github.com/astral-sh/ruff-pre-commit
