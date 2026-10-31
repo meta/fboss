@@ -3,6 +3,7 @@
 #include <fcntl.h>
 #include <folly/init/Init.h>
 #include <gflags/gflags.h>
+#include <cstdio>
 #include <string.h>
 #include <sys/mman.h>
 #include <sysexits.h>
@@ -500,7 +501,7 @@ int main(int argc, char* argv[]) {
       "minloglevel", "0", gflags::SET_FLAGS_DEFAULT);
 
   char sysfsPath[256];
-  int nChars;
+  char pciId[32];
 
   // Find the PCI bus:slot:function for the Intel NIC i210
   // For Intel NIC i210:
@@ -514,9 +515,21 @@ int main(int argc, char* argv[]) {
 
   // Build the sysfs file path for this NIC device resource0
   // where all registers are mapped
-  nChars = sprintf(sysfsPath, "/sys/bus/pci/devices/0000:");
-  fscanf(fp, "%s", &sysfsPath[nChars]);
-  strcat(sysfsPath, "/resource0");
+  if (fscanf(fp, "%31s", pciId) != 1) {
+    printf("Unable to read NIC i210 PCI id\n");
+    pclose(fp);
+    return EX_SOFTWARE;
+  }
+  int const nChars = snprintf(
+      sysfsPath,
+      sizeof(sysfsPath),
+      "/sys/bus/pci/devices/0000:%s/resource0",
+      pciId);
+  if (nChars < 0 || static_cast<size_t>(nChars) >= sizeof(sysfsPath)) {
+    printf("NIC i210 sysfs path is too long\n");
+    pclose(fp);
+    return EX_SOFTWARE;
+  }
   pclose(fp);
 
   // Open the sysfs file to access the device
