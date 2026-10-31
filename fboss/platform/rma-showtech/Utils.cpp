@@ -40,6 +40,18 @@ void Utils::printHostDetails() {
   std::cout << "#### UPTIME ####" << std::endl;
   std::cout << platformUtils_.execCommand("uptime").second << std::endl;
   std::cout << platformUtils_.execCommand("last reboot").second << std::endl;
+  std::cout << "#### Platform Name ####" << std::endl;
+  std::cout << platformUtils_
+                   .execCommand("cat /var/facebook/fboss/platform_name")
+                   .second
+            << std::endl;
+  std::cout << "#### FRU ID ####" << std::endl;
+  std::cout
+      << platformUtils_.execCommand("cat /var/facebook/fboss/fruid.json").second
+      << std::endl;
+  std::cout << "#### DMI Information ####" << std::endl;
+  std::cout << platformUtils_.execCommand("dmidecode -t system").second
+            << std::endl;
 }
 
 void Utils::printFbossDetails() {
