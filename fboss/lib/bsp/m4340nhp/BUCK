@@ -1,0 +1,17 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fboss_optics_phy")
+
+cpp_library(
+    name = "m4340nhp_bsp",
+    srcs = [
+        "M4340nhpBspPlatformMapping.cpp",
+    ],
+    headers = [
+        "M4340nhpBspPlatformMapping.h",
+    ],
+    exported_deps = [
+        "//fboss/lib/bsp:bsp_platform_mapping_lib",
+        "//thrift/lib/cpp2/protocol:protocol",
+    ],
+)

@@ -8,6 +8,7 @@
 #include "fboss/lib/bsp/leh800bcls/Leh800bclsBspPlatformMapping.h"
 #include "fboss/lib/bsp/m4061nhp/M4061nhpBspPlatformMapping.h"
 #include "fboss/lib/bsp/m4062nhp/M4062nhpBspPlatformMapping.h"
+#include "fboss/lib/bsp/m4340nhp/M4340nhpBspPlatformMapping.h"
 #include "fboss/lib/bsp/meru800bfa/Meru800bfaBspPlatformMapping.h"
 #include "fboss/lib/bsp/meru800bia/Meru800biaBspPlatformMapping.h"
 #include "fboss/lib/bsp/minipack3bta/Minipack3BTABspPlatformMapping.h"
@@ -93,6 +94,12 @@ TEST_F(BspPlatformMapTest, checkNumPimTransceivers) {
   EXPECT_TRUE(m4061nhpBspPlatformMap.hasTcvrMapping(65));
   EXPECT_FALSE(m4061nhpBspPlatformMap.hasTcvrMapping(66));
   EXPECT_EQ(m4061nhpBspPlatformMap.getLedId(65, 1), 65);
+  // Check M4340nhp
+  auto m4340nhpBspPlatformMap = M4340nhpBspPlatformMapping();
+  EXPECT_EQ(m4340nhpBspPlatformMap.numPims(), 1);
+  EXPECT_EQ(m4340nhpBspPlatformMap.numTransceivers(), 66);
+  EXPECT_TRUE(m4340nhpBspPlatformMap.hasTcvrMapping(66));
+  EXPECT_EQ(m4340nhpBspPlatformMap.getLedId(66, 1), 66);
 }
 
 } // namespace facebook::fboss
