@@ -488,6 +488,14 @@ concept SaiAttributeTuple =
 template <typename SaiObjectTraits>
 struct IsSaiObjectOwnedByAdapter : public std::false_type {};
 
+/*
+ * Hardware can delete objects of some types on its own, without the agent
+ * asking. For those, an object FBOSS still tracks may already be gone from
+ * hardware, so ITEM_NOT_FOUND is an expected outcome rather than a fatal one.
+ */
+template <typename SaiObjectTraits>
+struct SaiObjectMayBeMissingInHw : public std::false_type {};
+
 template <typename SaiObjectTraits>
 struct SaiObjectHasStats : public std::false_type {};
 
