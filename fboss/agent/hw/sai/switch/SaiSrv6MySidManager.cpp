@@ -2,7 +2,10 @@
 
 #include "fboss/agent/hw/sai/switch/SaiSrv6MySidManager.h"
 
+#include <tuple>
 #include <vector>
+
+#include <folly/logging/xlog.h>
 
 #if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)
 #include "fboss/agent/FbossError.h"
@@ -19,6 +22,7 @@
 #include "fboss/agent/hw/sai/switch/SaiVirtualRouterManager.h"
 #include "fboss/agent/state/MySid.h"
 #include "fboss/agent/state/SwitchState.h"
+#include "fboss/lib/HwWriteBehavior.h"
 #endif
 
 namespace facebook::fboss {
@@ -32,6 +36,22 @@ SaiSrv6MySidManager::SaiSrv6MySidManager(
 #if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)
 
 namespace {
+
+#if defined(BRCM_SAI_SDK_XGS_GTE_15_0)
+// Broadcom XGS accepts TunnelId only during MySid creation. Keep it out of the
+// canonical traits so warm-boot reload does not query TunnelId on non-decap
+// MySids, for which Broadcom returns SAI_STATUS_ITEM_NOT_FOUND.
+struct BcmSaiMySidEntryCreateTraits : SaiMySidEntryTraits {
+  using CreateAttributes = std::tuple<
+      Attributes::EndpointBehavior,
+      Attributes::EndpointBehaviorFlavor,
+      Attributes::NextHopId,
+      std::optional<Attributes::Vrf>,
+      Attributes::PacketAction,
+      Attributes::TunnelId>;
+};
+#endif
+
 SaiMySidEntryTraits::CreateAttributes getMySidCreateAttributes(
     const MySid& mySid,
     const std::optional<SaiMySidEntryHandle::NextHopHandle>& nexthopHandle,
@@ -96,6 +116,40 @@ SaiMySidEntryTraits::CreateAttributes getMySidCreateAttributes(
   return SaiMySidEntryTraits::CreateAttributes{
       endpointBehavior, endpointBehaviorFlavor, nextHopId, vrId, packetAction};
 }
+
+#if defined(BRCM_SAI_SDK_XGS_GTE_15_0)
+std::shared_ptr<SaiMySid> createBcmDecapMySidEntry(
+    SaiObjectStore<SaiMySidEntryTraits>& store,
+    const SaiMySidEntryTraits::AdapterHostKey& adapterHostKey,
+    const SaiMySidEntryTraits::CreateAttributes& createAttributes,
+    TunnelSaiId tunnelId) {
+  if (getHwWriteBehavior() == HwWriteBehavior::SKIP) {
+    return store.setObject(adapterHostKey, createAttributes);
+  }
+  BcmSaiMySidEntryCreateTraits::CreateAttributes bcmCreateAttributes =
+      std::tuple_cat(
+          createAttributes,
+          std::make_tuple(SaiMySidEntryTraits::Attributes::TunnelId{tunnelId}));
+  auto& srv6Api = SaiApiTable::getInstance()->srv6Api();
+  srv6Api.create<BcmSaiMySidEntryCreateTraits>(
+      adapterHostKey, bcmCreateAttributes);
+  try {
+    // Adopt the entry using the canonical attributes, which intentionally
+    // exclude TunnelId from warm-boot reload and subsequent updates.
+    return store.reloadObject(adapterHostKey);
+  } catch (const SaiApiError&) {
+    try {
+      srv6Api.remove(adapterHostKey);
+    } catch (const SaiApiError& error) {
+      XLOG(ERR) << "Failed to remove Broadcom MySid after store reload "
+                   "failure: "
+                << error.what();
+    }
+    throw;
+  }
+}
+#endif
+
 } // namespace
 
 SaiMySidEntryTraits::AdapterHostKey getMySidAdapterHostKey(
@@ -284,7 +338,18 @@ void SaiSrv6MySidManager::addMySidEntry(
   auto createAttributes =
       getMySidCreateAttributes(*mySid, nexthopHandle, managerTable_);
   auto& store = saiStore_->get<SaiMySidEntryTraits>();
-  auto mySidEntry = store.setObject(adapterHostKey, createAttributes);
+  std::shared_ptr<SaiMySid> mySidEntry;
+#if defined(BRCM_SAI_SDK_XGS_GTE_15_0)
+  if (decapTunnel && !store.get(adapterHostKey)) {
+    mySidEntry = createBcmDecapMySidEntry(
+        store, adapterHostKey, createAttributes, decapTunnel->adapterKey());
+  } else {
+    // Existing entries were loaded during warm boot. Claim and reconcile them
+    // without setting Broadcom's create-only TunnelId attribute.
+    mySidEntry = store.setObject(adapterHostKey, createAttributes);
+  }
+#else
+  mySidEntry = store.setObject(adapterHostKey, createAttributes);
   if (decapTunnel) {
     // TunnelId is not part of CreateAttributes so warm-boot reload does not
     // query it for MySID behaviors where the attribute is not applicable.
@@ -292,6 +357,7 @@ void SaiSrv6MySidManager::addMySidEntry(
         mySidEntry->adapterKey(),
         SaiMySidEntryTraits::Attributes::TunnelId{decapTunnel->adapterKey()});
   }
+#endif
 
   auto handle = std::make_unique<SaiMySidEntryHandle>();
   if (nexthopHandle) {
