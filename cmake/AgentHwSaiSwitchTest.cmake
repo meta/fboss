@@ -12,6 +12,7 @@ add_executable(switch_test
     fboss/agent/hw/sai/switch/tests/ArsProfileManagerTest.cpp
     fboss/agent/hw/sai/switch/tests/BridgeManagerTest.cpp
     fboss/agent/hw/sai/switch/tests/FdbManagerTest.cpp
+    fboss/agent/hw/sai/switch/tests/HostifManagerTest.cpp
     fboss/agent/hw/sai/switch/tests/InSegEntryManagerTest.cpp
     fboss/agent/hw/sai/switch/tests/LagManagerTest.cpp
     fboss/agent/hw/sai/switch/tests/ManagerTestBase.cpp

@@ -95,7 +95,11 @@ class FakeAsic : public HwAsic {
   }
   int getDefaultNumPortQueues(
       cfg::StreamType streamType,
-      cfg::PortType /*portType*/) const override {
+      cfg::PortType portType) const override {
+    if (portType == cfg::PortType::CPU_PORT) {
+      // Match fake SAI's supported CPU queue count.
+      return 8;
+    }
     return streamType == cfg::StreamType::UNICAST ? 8 : 10;
   }
   uint32_t getMaxLabelStackDepth() const override {
@@ -247,7 +251,7 @@ class FakeAsic : public HwAsic {
     return 2;
   }
   int getHiPriCpuQueueId() const override {
-    return 9;
+    return 7;
   }
   std::optional<uint32_t> getMaxArsGroups() const override {
     return 4;
