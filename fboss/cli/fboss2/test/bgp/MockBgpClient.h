@@ -30,6 +30,7 @@ using facebook::neteng::routing::policy::thrift::TPolicyStats;
 
 class MockBgpClient : public apache::thrift::ServiceHandler<TBgpService> {
  public:
+  MOCK_METHOD(void, getBuildInfo, ((std::map<std::string, std::string>&)));
   MOCK_METHOD(void, getBgpSessions, (std::vector<TBgpSession>&));
   MOCK_METHOD(void, getBgpLocalConfig, (TBgpLocalConfig&));
   MOCK_METHOD(void, getDrainState, (TBgpDrainState&));

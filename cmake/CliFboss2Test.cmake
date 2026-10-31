@@ -132,6 +132,7 @@ add_executable(fboss2_cmd_test
   fboss/cli/fboss2/test/CmdShowBgpStreamSummaryTest.cpp
   fboss/cli/fboss2/test/CmdShowBgpSummaryEgressTest.cpp
   fboss/cli/fboss2/test/CmdShowBgpSummaryTest.cpp
+  fboss/cli/fboss2/test/CmdShowBgpVersionTest.cpp
   fboss/cli/fboss2/test/CmdShowBgpTableCommunityTest.cpp
   fboss/cli/fboss2/test/CmdShowBgpTableDetailTest.cpp
   fboss/cli/fboss2/test/CmdShowBgpTableMoreSpecificsTest.cpp
