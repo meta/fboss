@@ -278,9 +278,10 @@ bool LookupClassUpdater::shouldProcessNeighborEntry(
     // from processChanged()
     if constexpr (std::is_same_v<NeighborEntryT, MacEntry>) {
       // new mac entry created by mac move should also be processed
-      // as a newly created mac entry
-      added =
-          oldEntry->getPort().phyPortID() != newEntry->getPort().phyPortID();
+      // as a newly created mac entry. The old entry may be on a non
+      // physical port (e.g. LAG), which is always a move.
+      added = oldEntry->getPort().phyPortIDIf() !=
+          newEntry->getPort().phyPortIDIf();
     } else {
       // pending to reachable state change should be processed as a newly
       // added neighbor entry
