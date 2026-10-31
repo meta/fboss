@@ -227,6 +227,7 @@ class AgentAclTableGroupTrafficTest : public AgentHwTest {
     if (frontPanel) {
       learnSrcMacOnEcmpTxPortIfPending(kEcmpWidth);
     }
+    getNextUpdatedPortStats(masterLogicalPortIds()[0]);
     auto statBefore = utility::getAclInOutPackets(getSw(), ttlCounterName);
 
     const auto beforePortStats =
@@ -356,6 +357,7 @@ class AgentAclTableGroupTrafficTest : public AgentHwTest {
     if (frontPanel) {
       learnSrcMacOnEcmpTxPortIfPending(kEcmpWidth);
     }
+    getNextUpdatedPortStats(masterLogicalPortIds()[0]);
     auto beforeAclPkts = pktCounterHelper();
     sendAllPacketshelper<AddrT>(dstIP, frontPanel, 0);
 
