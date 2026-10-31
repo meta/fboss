@@ -563,6 +563,9 @@ TEST_F(AgentWatermarkTest, VerifyQueueWatermarkAccuracy) {
 
       uint64_t expectedWatermarkBytes;
       uint64_t roundedWatermarkBytes;
+      // Zero for every ASIC except Yuba and G202X, which may report one
+      // extra buffer when a leaked packet is re-enqueued from MAC loopback.
+      uint64_t extraBufferBytes = 0;
       if (asic->getAsicType() == cfg::AsicType::ASIC_TYPE_JERICHO2) {
         // For Jericho2, there is a limitation that one packet less than
         // expected watermark shows up in watermark.
@@ -579,6 +582,7 @@ TEST_F(AgentWatermarkTest, VerifyQueueWatermarkAccuracy) {
             utility::getEffectiveBytesPerPacket(asic, txPacketLen) *
             kNumberOfPacketsToSend;
         roundedWatermarkBytes = expectedWatermarkBytes;
+        extraBufferBytes = asic->getPacketBufferUnitSize();
       } else {
         expectedWatermarkBytes =
             utility::getEffectiveBytesPerPacket(asic, txPacketLen) *
@@ -594,7 +598,15 @@ TEST_F(AgentWatermarkTest, VerifyQueueWatermarkAccuracy) {
         if (queueWaterMarks.at(kQueueId) > maxWatermarks) {
           maxWatermarks = queueWaterMarks.at(kQueueId);
         }
-        EXPECT_EVENTUALLY_EQ(maxWatermarks, roundedWatermarkBytes);
+        if (extraBufferBytes != 0) {
+          EXPECT_EVENTUALLY_TRUE(
+              maxWatermarks == static_cast<int64_t>(roundedWatermarkBytes) ||
+              maxWatermarks ==
+                  static_cast<int64_t>(
+                      roundedWatermarkBytes + extraBufferBytes));
+        } else {
+          EXPECT_EVENTUALLY_EQ(maxWatermarks, roundedWatermarkBytes);
+        }
       });
 
       XLOG(DBG0) << "Expected rounded watermark bytes: "
