@@ -32,7 +32,6 @@ DEFINE_bool(
 namespace {
 auto constexpr kDefaultMaxBrightness = 255;
 auto constexpr kSensordThriftPort = 5970;
-auto constexpr kAgentTempThriftPort = 5972;
 
 } // namespace
 
@@ -350,7 +349,7 @@ void Bsp::getAsicTempData(const std::shared_ptr<SensorData>& pSensorData) {
   if (FLAGS_subscribe_to_stats_from_fsdb) {
     getAsicTempThroughFsdb(pSensorData);
   } else {
-    getAsicTempDataOverThrift(pSensorData);
+    getAsicTempDataFromSensorService(pSensorData);
   }
 }
 
@@ -376,12 +375,12 @@ void Bsp::getAsicTempThroughFsdb(
   }
 }
 
-void Bsp::getAsicTempDataOverThrift(
+void Bsp::getAsicTempDataFromSensorService(
     const std::shared_ptr<SensorData>& pSensorData) {
   try {
-    auto agentReadResponse =
-        getAsicTempThroughThrift(kAgentTempThriftPort, evbSensor_);
-    for (auto& asicTempData : *agentReadResponse.asicTempData()) {
+    auto sensorReadResponse =
+        getAsicTempThroughSensorService(kSensordThriftPort, evbSensor_);
+    for (const auto& asicTempData : *sensorReadResponse.asicTempData()) {
       // Again, for Thrift too, only honor the entry with value and timestamp.
       if (asicTempData.value() && asicTempData.timeStamp()) {
         pSensorData->updateSensorEntry(
@@ -391,10 +390,10 @@ void Bsp::getAsicTempDataOverThrift(
       }
     }
     XLOG(INFO) << fmt::format(
-        "Got Asic Temp data from agent.  Item count: {}",
-        agentReadResponse.asicTempData()->size());
+        "Got ASIC Temp data from sensor_service.  Item count: {}",
+        sensorReadResponse.asicTempData()->size());
   } catch (std::exception& e) {
-    XLOG(ERR) << "Failed to get ASIC temp data using Thrift, with error : "
+    XLOG(ERR) << "Failed to get ASIC temp data from sensor_service: "
               << e.what();
   }
 }
