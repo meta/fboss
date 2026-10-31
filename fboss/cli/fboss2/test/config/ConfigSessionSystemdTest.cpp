@@ -13,7 +13,9 @@
 
 #include <folly/FileUtil.h>
 #include <thrift/lib/cpp2/protocol/Serializer.h>
+#include <unistd.h>
 #include <filesystem>
+#include "fboss/agent/AgentDirectoryUtil.h"
 #include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/cli/fboss2/session/FbossServiceUtil.h"
 #include "fboss/cli/fboss2/test/TestableConfigSession.h"
@@ -29,6 +31,25 @@ using ::testing::StrictMock;
 using ::testing::Throw;
 
 namespace facebook::fboss {
+
+namespace {
+// An AgentDirectoryUtil rooted under a unique scratch directory, so tests
+// never read or write the real /dev/shm coldboot markers and warm boot flags.
+// Callers keep the returned path if they need to seed files under it.
+// The pid keeps concurrent runs of this binary (CI shards, a shared build
+// host) from wiping each other's seeded flag files mid-test.
+std::string makeScratchStateDir(const std::string& name) {
+  auto dir = std::filesystem::temp_directory_path() /
+      ("fboss_service_util_" + name + "_" + std::to_string(::getpid()));
+  std::filesystem::remove_all(dir);
+  std::filesystem::create_directories(dir / "warm_boot");
+  return dir.string();
+}
+
+AgentDirectoryUtil scratchDirUtil(const std::string& stateDir) {
+  return AgentDirectoryUtil(stateDir, stateDir);
+}
+} // namespace
 
 // Test: isSplitMode() returns true when multi_switch flag is set
 TEST(FbossServiceUtilTest, IsSplitMode_ReturnsTrueWhenMultiSwitchSet) {
@@ -86,24 +107,34 @@ TEST(FbossServiceUtilTest, RestartService_MonolithicMode_Coldboot) {
 }
 
 // Test: Split mode warmboot restart (single hw_agent)
-// hw_agent must be restarted before sw_agent
+// Everything stops (sw_agent first) before anything starts (hw_agent first).
 TEST(FbossServiceUtilTest, RestartService_SplitMode_Warmboot_SingleHwAgent) {
   auto mockSystemd = std::make_unique<StrictMock<MockSystemdInterface>>();
 
+  // Stop phase in reverse order, then start phase in forward order
   InSequence seq;
   EXPECT_CALL(*mockSystemd, getMatchingServices("fboss_hw_agent@0.service"))
       .WillOnce(Return(std::vector<std::string>{"fboss_hw_agent@0.service"}));
   EXPECT_CALL(*mockSystemd, getMatchingServices("fboss_sw_agent.service"))
       .WillOnce(Return(std::vector<std::string>{"fboss_sw_agent.service"}));
-  EXPECT_CALL(*mockSystemd, restartService("fboss_hw_agent@0")).Times(1);
+  EXPECT_CALL(*mockSystemd, stopService("fboss_sw_agent")).Times(1);
+  EXPECT_CALL(*mockSystemd, waitForServiceInactive("fboss_sw_agent", _, _))
+      .Times(1);
+  EXPECT_CALL(*mockSystemd, stopService("fboss_hw_agent@0")).Times(1);
+  EXPECT_CALL(*mockSystemd, waitForServiceInactive("fboss_hw_agent@0", _, _))
+      .Times(1);
+  EXPECT_CALL(*mockSystemd, startService("fboss_hw_agent@0")).Times(1);
   EXPECT_CALL(*mockSystemd, waitForServiceActive("fboss_hw_agent@0", _, _))
       .Times(1);
-  EXPECT_CALL(*mockSystemd, restartService("fboss_sw_agent")).Times(1);
+  EXPECT_CALL(*mockSystemd, startService("fboss_sw_agent")).Times(1);
   EXPECT_CALL(*mockSystemd, waitForServiceActive("fboss_sw_agent", _, _))
       .Times(1);
 
   FbossServiceUtil util(
-      std::vector<int>{0}, /*multiSwitch=*/true, std::move(mockSystemd));
+      std::vector<int>{0},
+      /*multiSwitch=*/true,
+      std::move(mockSystemd),
+      scratchDirUtil(makeScratchStateDir("wb_single")));
 
   auto services = util.restartService(
       cli::ServiceType::AGENT, cli::ConfigActionLevel::SERVICE_RESTART);
@@ -114,7 +145,8 @@ TEST(FbossServiceUtilTest, RestartService_SplitMode_Warmboot_SingleHwAgent) {
 }
 
 // Test: Split mode coldboot restart (single hw_agent)
-// hw_agent must be fully coldbooted before sw_agent
+// Coldboot uses the same stop-all-then-start-all sequence as warmboot; the
+// marker files are written in between.
 TEST(FbossServiceUtilTest, RestartService_SplitMode_Coldboot_SingleHwAgent) {
   auto mockSystemd = std::make_unique<MockSystemdInterface>();
 
@@ -123,18 +155,25 @@ TEST(FbossServiceUtilTest, RestartService_SplitMode_Coldboot_SingleHwAgent) {
   EXPECT_CALL(*mockSystemd, getMatchingServices("fboss_sw_agent.service"))
       .WillOnce(Return(std::vector<std::string>{"fboss_sw_agent.service"}));
 
-  // Expect sequential coldboot: create marker -> restart -> wait for each
-  // service
   InSequence seq;
-  EXPECT_CALL(*mockSystemd, restartService("fboss_hw_agent@0")).Times(1);
+  EXPECT_CALL(*mockSystemd, stopService("fboss_sw_agent")).Times(1);
+  EXPECT_CALL(*mockSystemd, waitForServiceInactive("fboss_sw_agent", _, _))
+      .Times(1);
+  EXPECT_CALL(*mockSystemd, stopService("fboss_hw_agent@0")).Times(1);
+  EXPECT_CALL(*mockSystemd, waitForServiceInactive("fboss_hw_agent@0", _, _))
+      .Times(1);
+  EXPECT_CALL(*mockSystemd, startService("fboss_hw_agent@0")).Times(1);
   EXPECT_CALL(*mockSystemd, waitForServiceActive("fboss_hw_agent@0", _, _))
       .Times(1);
-  EXPECT_CALL(*mockSystemd, restartService("fboss_sw_agent")).Times(1);
+  EXPECT_CALL(*mockSystemd, startService("fboss_sw_agent")).Times(1);
   EXPECT_CALL(*mockSystemd, waitForServiceActive("fboss_sw_agent", _, _))
       .Times(1);
 
   FbossServiceUtil util(
-      std::vector<int>{0}, /*multiSwitch=*/true, std::move(mockSystemd));
+      std::vector<int>{0},
+      /*multiSwitch=*/true,
+      std::move(mockSystemd),
+      scratchDirUtil(makeScratchStateDir("cb_single")));
 
   auto services = util.restartService(
       cli::ServiceType::AGENT,
@@ -146,7 +185,7 @@ TEST(FbossServiceUtilTest, RestartService_SplitMode_Coldboot_SingleHwAgent) {
 }
 
 // Test: Split mode warmboot restart (multiple hw_agents)
-// All hw_agents must be restarted before sw_agent
+// All hw_agents stop after the sw_agent, and all start before it.
 TEST(FbossServiceUtilTest, RestartService_SplitMode_Warmboot_MultipleHwAgents) {
   auto mockSystemd = std::make_unique<MockSystemdInterface>();
 
@@ -157,20 +196,31 @@ TEST(FbossServiceUtilTest, RestartService_SplitMode_Warmboot_MultipleHwAgents) {
   EXPECT_CALL(*mockSystemd, getMatchingServices("fboss_sw_agent.service"))
       .WillOnce(Return(std::vector<std::string>{"fboss_sw_agent.service"}));
 
-  // Each service: restart -> wait, in hw-before-sw order
   InSequence seq;
-  EXPECT_CALL(*mockSystemd, restartService("fboss_hw_agent@0")).Times(1);
+  EXPECT_CALL(*mockSystemd, stopService("fboss_sw_agent")).Times(1);
+  EXPECT_CALL(*mockSystemd, waitForServiceInactive("fboss_sw_agent", _, _))
+      .Times(1);
+  EXPECT_CALL(*mockSystemd, stopService("fboss_hw_agent@1")).Times(1);
+  EXPECT_CALL(*mockSystemd, waitForServiceInactive("fboss_hw_agent@1", _, _))
+      .Times(1);
+  EXPECT_CALL(*mockSystemd, stopService("fboss_hw_agent@0")).Times(1);
+  EXPECT_CALL(*mockSystemd, waitForServiceInactive("fboss_hw_agent@0", _, _))
+      .Times(1);
+  EXPECT_CALL(*mockSystemd, startService("fboss_hw_agent@0")).Times(1);
   EXPECT_CALL(*mockSystemd, waitForServiceActive("fboss_hw_agent@0", _, _))
       .Times(1);
-  EXPECT_CALL(*mockSystemd, restartService("fboss_hw_agent@1")).Times(1);
+  EXPECT_CALL(*mockSystemd, startService("fboss_hw_agent@1")).Times(1);
   EXPECT_CALL(*mockSystemd, waitForServiceActive("fboss_hw_agent@1", _, _))
       .Times(1);
-  EXPECT_CALL(*mockSystemd, restartService("fboss_sw_agent")).Times(1);
+  EXPECT_CALL(*mockSystemd, startService("fboss_sw_agent")).Times(1);
   EXPECT_CALL(*mockSystemd, waitForServiceActive("fboss_sw_agent", _, _))
       .Times(1);
 
   FbossServiceUtil util(
-      std::vector<int>{0, 1}, /*multiSwitch=*/true, std::move(mockSystemd));
+      std::vector<int>{0, 1},
+      /*multiSwitch=*/true,
+      std::move(mockSystemd),
+      scratchDirUtil(makeScratchStateDir("wb_multi")));
 
   auto services = util.restartService(
       cli::ServiceType::AGENT, cli::ConfigActionLevel::SERVICE_RESTART);
@@ -198,17 +248,29 @@ TEST(FbossServiceUtilTest, RestartService_SplitMode_UsesNetosServices) {
           std::vector<std::string>{"netos.service.fboss_sw_agent.service"}));
 
   InSequence seq;
+  EXPECT_CALL(*mockSystemd, stopService("netos.service.fboss_sw_agent"));
   EXPECT_CALL(
-      *mockSystemd, restartService("netos.service.fboss_wedge_agent_brcm_0"));
+      *mockSystemd,
+      waitForServiceInactive("netos.service.fboss_sw_agent", _, _));
+  EXPECT_CALL(
+      *mockSystemd, stopService("netos.service.fboss_wedge_agent_brcm_0"));
+  EXPECT_CALL(
+      *mockSystemd,
+      waitForServiceInactive("netos.service.fboss_wedge_agent_brcm_0", _, _));
+  EXPECT_CALL(
+      *mockSystemd, startService("netos.service.fboss_wedge_agent_brcm_0"));
   EXPECT_CALL(
       *mockSystemd,
       waitForServiceActive("netos.service.fboss_wedge_agent_brcm_0", _, _));
-  EXPECT_CALL(*mockSystemd, restartService("netos.service.fboss_sw_agent"));
+  EXPECT_CALL(*mockSystemd, startService("netos.service.fboss_sw_agent"));
   EXPECT_CALL(
       *mockSystemd, waitForServiceActive("netos.service.fboss_sw_agent", _, _));
 
   FbossServiceUtil util(
-      std::vector<int>{0}, /*multiSwitch=*/true, std::move(mockSystemd));
+      std::vector<int>{0},
+      /*multiSwitch=*/true,
+      std::move(mockSystemd),
+      scratchDirUtil(makeScratchStateDir("netos")));
 
   const std::vector<std::string> expectedServices = {
       "netos.service.fboss_wedge_agent_brcm_0", "netos.service.fboss_sw_agent"};
@@ -263,6 +325,143 @@ TEST(FbossServiceUtilTest, RestartService_ThrowsWhenServiceIsMissing) {
         std::string(ex.what()),
         "No systemd service found for bgpd and netos.service.fboss_bgp");
   }
+}
+
+// Test: the sw_agent is stopped before any hw_agent.
+// This single ordering constraint is the whole bug: taking a hw_agent down
+// while the sw_agent is still up makes HwSwitchConnectionStatusTable treat it
+// as a crash and force both sides to cold boot.
+TEST(
+    FbossServiceUtilTest,
+    RestartService_SplitMode_Warmboot_StopsSwAgentBeforeHwAgent) {
+  // NiceMock: this test asserts one invariant, so the start calls it does not
+  // name are expected to go unmatched rather than warned about.
+  auto mockSystemd = std::make_unique<NiceMock<MockSystemdInterface>>();
+  ON_CALL(*mockSystemd, getMatchingServices(_))
+      .WillByDefault([](const std::string& pattern) {
+        return std::vector<std::string>{pattern};
+      });
+
+  InSequence seq;
+  EXPECT_CALL(*mockSystemd, stopService("fboss_sw_agent")).Times(1);
+  EXPECT_CALL(*mockSystemd, stopService("fboss_hw_agent@1")).Times(1);
+  EXPECT_CALL(*mockSystemd, stopService("fboss_hw_agent@0")).Times(1);
+
+  FbossServiceUtil util(
+      std::vector<int>{0, 1},
+      /*multiSwitch=*/true,
+      std::move(mockSystemd),
+      scratchDirUtil(makeScratchStateDir("stop_order")));
+
+  util.restartService(
+      cli::ServiceType::AGENT, cli::ConfigActionLevel::SERVICE_RESTART);
+}
+
+// Test: a failure mid-sequence still brings the agents back up.
+// systemd will not restart units we stopped explicitly, so bailing out
+// without this would leave the box with no agents at all.
+TEST(FbossServiceUtilTest, RestartService_SplitMode_FailureStartsServicesBack) {
+  auto mockSystemd = std::make_unique<MockSystemdInterface>();
+
+  EXPECT_CALL(*mockSystemd, getMatchingServices(_))
+      .WillRepeatedly([](const std::string& pattern) {
+        return std::vector<std::string>{pattern};
+      });
+  EXPECT_CALL(*mockSystemd, stopService(_)).Times(2);
+  EXPECT_CALL(*mockSystemd, waitForServiceInactive(_, _, _)).Times(2);
+  // The hw_agent start fails; recovery then retries every service.
+  EXPECT_CALL(*mockSystemd, startService("fboss_hw_agent@0"))
+      .Times(2)
+      .WillOnce(Throw(std::runtime_error("Failed to start fboss_hw_agent@0")))
+      .WillOnce(Return());
+  EXPECT_CALL(*mockSystemd, startService("fboss_sw_agent")).Times(1);
+  // Recovery waits for each service it restarts, so the operator learns
+  // whether the box actually came back.
+  EXPECT_CALL(*mockSystemd, waitForServiceActive("fboss_hw_agent@0", _, _))
+      .Times(1);
+  EXPECT_CALL(*mockSystemd, waitForServiceActive("fboss_sw_agent", _, _))
+      .Times(1);
+
+  FbossServiceUtil util(
+      std::vector<int>{0},
+      /*multiSwitch=*/true,
+      std::move(mockSystemd),
+      scratchDirUtil(makeScratchStateDir("recovery")));
+
+  EXPECT_THROW(
+      util.restartService(
+          cli::ServiceType::AGENT, cli::ConfigActionLevel::SERVICE_RESTART),
+      std::runtime_error);
+}
+
+// Test: findServicesMissingWarmBootState() names exactly the services that
+// stopped without leaving warm boot state behind.
+TEST(FbossServiceUtilTest, FindServicesMissingWarmBootState) {
+  auto stateDir = makeScratchStateDir("missing_flags");
+  auto dirUtil = scratchDirUtil(stateDir);
+
+  // sw_agent and hw_agent@0 saved state; hw_agent@1 did not.
+  folly::writeFile(
+      std::string("1"), dirUtil.getSwSwitchCanWarmBootFile().c_str());
+  folly::writeFile(
+      std::string("1"), dirUtil.getHwSwitchCanWarmBootFile(0).c_str());
+
+  FbossServiceUtil util(
+      std::vector<int>{0, 1},
+      /*multiSwitch=*/true,
+      std::make_unique<NiceMock<MockSystemdInterface>>(),
+      dirUtil);
+
+  // bgpd does not warm boot and must never be reported.
+  auto missing = util.findServicesMissingWarmBootState(
+      {"fboss_hw_agent@0", "fboss_hw_agent@1", "fboss_sw_agent", "bgpd"});
+
+  ASSERT_EQ(missing.size(), 1);
+  EXPECT_EQ(missing[0], "fboss_hw_agent@1");
+}
+
+// Test: with every flag present, nothing is reported.
+TEST(FbossServiceUtilTest, FindServicesMissingWarmBootState_AllPresent) {
+  auto stateDir = makeScratchStateDir("all_flags");
+  auto dirUtil = scratchDirUtil(stateDir);
+
+  folly::writeFile(
+      std::string("1"), dirUtil.getSwSwitchCanWarmBootFile().c_str());
+  folly::writeFile(
+      std::string("1"), dirUtil.getHwSwitchCanWarmBootFile(0).c_str());
+
+  FbossServiceUtil util(
+      std::vector<int>{0},
+      /*multiSwitch=*/true,
+      std::make_unique<NiceMock<MockSystemdInterface>>(),
+      dirUtil);
+
+  EXPECT_TRUE(util.findServicesMissingWarmBootState(
+                      {"fboss_hw_agent@0", "fboss_sw_agent"})
+                  .empty());
+}
+
+// Test: NetOS unit names map onto the same warm boot flag files.
+TEST(FbossServiceUtilTest, FindServicesMissingWarmBootState_NetosServices) {
+  auto stateDir = makeScratchStateDir("netos_flags");
+  auto dirUtil = scratchDirUtil(stateDir);
+
+  folly::writeFile(
+      std::string("1"), dirUtil.getSwSwitchCanWarmBootFile().c_str());
+
+  FbossServiceUtil util(
+      std::vector<int>{0},
+      /*multiSwitch=*/true,
+      std::make_unique<NiceMock<MockSystemdInterface>>(),
+      dirUtil);
+
+  auto missing = util.findServicesMissingWarmBootState(
+      {"netos.service.fboss_wedge_agent_brcm_0",
+       "netos.service.fboss_sw_agent",
+       "netos.service.fboss_bgp"});
+
+  ASSERT_EQ(missing.size(), 1);
+  EXPECT_EQ(missing[0], "netos.service.fboss_wedge_agent_brcm_0");
 }
 
 // Test: Service restart failure is propagated

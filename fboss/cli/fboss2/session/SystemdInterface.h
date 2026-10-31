@@ -77,6 +77,30 @@ class SystemdInterface {
       const std::string& serviceName,
       int maxWaitSeconds = 60,
       int pollIntervalMs = 500);
+
+  /**
+   * Wait for a systemd service to stop being active.
+   *
+   * `systemctl stop` already blocks until the unit's stop job completes, so
+   * this is a defensive barrier rather than the primary one: it catches the
+   * case where the unit was stopped by something other than our own
+   * stopService() call, or where the job was still settling.
+   *
+   * Note this cannot distinguish a clean exit from a SIGKILL after
+   * TimeoutStopSec: both land the unit in a not-active state. Callers that
+   * care whether the process shut down gracefully must check for whatever
+   * artifact a graceful shutdown leaves behind.
+   *
+   * @param serviceName The name of the service to wait for
+   * @param maxWaitSeconds Maximum time to wait in seconds
+   * @param pollIntervalMs Polling interval in milliseconds
+   * @throws std::runtime_error if the service is still active after the
+   * timeout
+   */
+  virtual void waitForServiceInactive(
+      const std::string& serviceName,
+      int maxWaitSeconds = 60,
+      int pollIntervalMs = 500);
 };
 
 } // namespace facebook::fboss

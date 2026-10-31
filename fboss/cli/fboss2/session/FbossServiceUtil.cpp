@@ -17,6 +17,8 @@
 #include <stdexcept>
 #include <thread>
 #include "fboss/agent/AgentDirectoryUtil.h"
+#include "fboss/agent/SwitchInfoUtils.h"
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/agent/if/gen-cpp2/FbossCtrl.h"
 #include "fboss/cli/fboss2/session/SystemdInterface.h"
 #include "fboss/cli/fboss2/utils/CmdClientUtilsCommon.h"
@@ -37,6 +39,20 @@ constexpr std::string_view kSystemdServiceSuffix = ".service";
 
 namespace facebook::fboss {
 
+FbossServiceUtil::FbossServiceUtil(const cfg::AgentConfig& agentConfig)
+    : systemd_(std::make_unique<SystemdInterface>()) {
+  const auto& args = *agentConfig.defaultCommandLineArgs();
+  // Parse multi_switch from the on-disk config rather than calling
+  // utils::isMultiSwitchEnabled(hostInfo), so this works independently of
+  // the agent's state without requiring a live thrift connection.
+  multiSwitch_ =
+      args.count("multi_switch") && args.at("multi_switch") == "true";
+  for (const auto& [_, info] : getSwitchInfoFromConfig(&(*agentConfig.sw()))) {
+    switchIndexes_.push_back(*info.switchIndex());
+  }
+  std::sort(switchIndexes_.begin(), switchIndexes_.end());
+}
+
 FbossServiceUtil::FbossServiceUtil(
     std::vector<int> switchIndexes,
     bool multiSwitch)
@@ -47,8 +63,10 @@ FbossServiceUtil::FbossServiceUtil(
 FbossServiceUtil::FbossServiceUtil(
     std::vector<int> switchIndexes,
     bool multiSwitch,
-    std::unique_ptr<SystemdInterface> systemd)
+    std::unique_ptr<SystemdInterface> systemd,
+    AgentDirectoryUtil dirUtil)
     : systemd_(std::move(systemd)),
+      dirUtil_(std::move(dirUtil)),
       switchIndexes_(std::move(switchIndexes)),
       multiSwitch_(multiSwitch) {}
 
@@ -67,26 +85,42 @@ bool FbossServiceUtil::isSplitMode() const {
 }
 
 std::string FbossServiceUtil::getColdbootFileForService(
-    const std::string& service) {
-  AgentDirectoryUtil dirUtil;
-
+    const std::string& service) const {
   if (service == kSwAgent || service == kNetosSwAgent) {
-    return dirUtil.getSwColdBootOnceFile();
+    return dirUtil_.getSwColdBootOnceFile();
   } else if (service.find(kHwAgentPrefix) == 0) {
     std::string indexStr = service.substr(kHwAgentPrefix.size());
     int switchIndex = folly::to<int>(indexStr);
-    return dirUtil.getHwColdBootOnceFile(switchIndex);
+    return dirUtil_.getHwColdBootOnceFile(switchIndex);
   }
   if (service.find(kNetosHwAgentPrefix) == 0) {
     const auto switchIndex =
         folly::to<int>(service.substr(service.rfind('_') + 1));
-    return dirUtil.getHwColdBootOnceFile(switchIndex);
+    return dirUtil_.getHwColdBootOnceFile(switchIndex);
   }
   if (service == kWedgeAgent) {
-    return dirUtil.getColdBootOnceFile();
+    return dirUtil_.getColdBootOnceFile();
   }
   throw std::runtime_error(
       fmt::format("Unknown service type for coldboot: {}", service));
+}
+
+std::optional<std::string> FbossServiceUtil::getCanWarmBootFileForService(
+    const std::string& service) const {
+  if (service == kSwAgent || service == kNetosSwAgent ||
+      service == kWedgeAgent) {
+    return dirUtil_.getSwSwitchCanWarmBootFile();
+  } else if (service.find(kHwAgentPrefix) == 0) {
+    std::string indexStr = service.substr(kHwAgentPrefix.size());
+    return dirUtil_.getHwSwitchCanWarmBootFile(folly::to<int>(indexStr));
+  }
+  if (service.find(kNetosHwAgentPrefix) == 0) {
+    const auto switchIndex =
+        folly::to<int>(service.substr(service.rfind('_') + 1));
+    return dirUtil_.getHwSwitchCanWarmBootFile(switchIndex);
+  }
+  // bgpd and anything else outside the agent do not warm boot.
+  return std::nullopt;
 }
 
 void FbossServiceUtil::createColdbootMarkerFile(
@@ -100,23 +134,115 @@ void FbossServiceUtil::performRestartAndWait(const std::string& service) {
   systemd_->waitForServiceActive(service);
 }
 
+void FbossServiceUtil::performStopAllThenStart(
+    const std::vector<std::string>& services,
+    const std::function<void()>& beforeStart) {
+  bool beforeStartDone = false;
+  try {
+    // Stop order is the reverse of start order: sw_agent first, hw_agents
+    // after. Stopping a hw_agent while the sw_agent is still up looks to the
+    // sw_agent like a hw_agent crash: HwSwitchConnectionStatusTable::
+    // disconnected() writes sw_cold_boot_once and hw_cold_boot_once_<idx>
+    // markers and forces both sides cold on the way back up.
+    const std::vector<std::string> stopOrder(
+        services.rbegin(), services.rend());
+    for (const auto& service : stopOrder) {
+      LOG(INFO) << "Stopping service: " << service;
+      systemd_->stopService(service);
+      systemd_->waitForServiceInactive(service);
+    }
+
+    beforeStart();
+    beforeStartDone = true;
+
+    // Start in forward order: hw_agents first, sw_agent last.
+    for (const auto& service : services) {
+      LOG(INFO) << "Starting service: " << service;
+      systemd_->startService(service);
+      systemd_->waitForServiceActive(service);
+    }
+  } catch (const std::exception& ex) {
+    // systemd does not restart a unit we stopped explicitly, so propagating
+    // straight out of here would leave the box with no agents at all and
+    // nothing to recover them. Best effort: start everything back up first.
+    LOG(ERROR) << "Restart sequence failed: " << ex.what()
+               << ". Attempting to start all services back up";
+    if (!beforeStartDone) {
+      // Coldboot writes its marker files here, so a failure part way through
+      // leaves some services marked and some not. Whatever comes back up may
+      // not be the boot type that was asked for.
+      LOG(ERROR)
+          << "The pre-start step did not complete, so the services below may "
+          << "not come up with the requested boot type. Verify the boot type "
+          << "before relying on this switch.";
+    }
+    for (const auto& service : services) {
+      try {
+        systemd_->startService(service);
+        systemd_->waitForServiceActive(service);
+      } catch (const std::exception& recoveryEx) {
+        LOG(ERROR) << "Failed to bring " << service
+                   << " back up while recovering: " << recoveryEx.what();
+      }
+    }
+    throw;
+  }
+}
+
+std::vector<std::string> FbossServiceUtil::findServicesMissingWarmBootState(
+    const std::vector<std::string>& services) const {
+  std::vector<std::string> missing;
+  for (const auto& service : services) {
+    auto canWarmBootFile = getCanWarmBootFileForService(service);
+    if (canWarmBootFile.has_value() && !checkFileExists(*canWarmBootFile)) {
+      missing.push_back(service);
+    }
+  }
+  return missing;
+}
+
+void FbossServiceUtil::logServicesMissingWarmBootState(
+    const std::vector<std::string>& services) const {
+  auto missing = findServicesMissingWarmBootState(services);
+  if (!missing.empty()) {
+    LOG(ERROR)
+        << "No warm boot state was saved by: " << folly::join(", ", missing)
+        << ". These services will cold boot on start. The usual cause is "
+        << "systemd SIGKILLing them for exceeding TimeoutStopSec before their "
+        << "graceful exit finished.";
+  }
+}
+
 void FbossServiceUtil::performColdboot(
     const std::vector<std::string>& services) {
-  for (const auto& service : services) {
-    LOG(INFO) << "Performing coldboot for service: " << service;
-    createColdbootMarkerFile(getColdbootFileForService(service));
-    performRestartAndWait(service);
-    LOG(INFO) << "Coldboot completed for service: " << service;
+  auto markColdboot = [this, &services]() {
+    for (const auto& service : services) {
+      LOG(INFO) << "Marking coldboot for service: " << service;
+      createColdbootMarkerFile(getColdbootFileForService(service));
+    }
+  };
+
+  if (services.size() == 1) {
+    // Nothing to order against, so keep the smaller restart window.
+    markColdboot();
+    performRestartAndWait(services[0]);
+    return;
   }
+  // Markers are written between the stop and start phases so a service's own
+  // shutdown cannot clobber them.
+  performStopAllThenStart(services, markColdboot);
 }
 
 void FbossServiceUtil::performWarmboot(
     const std::vector<std::string>& services) {
-  for (const auto& service : services) {
-    LOG(INFO) << "Performing warmboot for service: " << service;
-    performRestartAndWait(service);
-    LOG(INFO) << "Warmboot completed for service: " << service;
+  if (services.size() == 1) {
+    // Nothing to order against, so keep the smaller restart window.
+    performRestartAndWait(services[0]);
+    return;
   }
+  performStopAllThenStart(services, [this, &services]() {
+    logServicesMissingWarmBootState(services);
+  });
 }
 
 std::string FbossServiceUtil::resolveSystemdServiceName(
@@ -182,7 +308,7 @@ std::vector<std::string> FbossServiceUtil::getServicesToRestart(
         }
         LOG(INFO) << "Found " << services.size() << " hw_agent instances";
 
-        // Add sw_agent last so hw_agent restarts first
+        // Add sw_agent last: it is started last, and stopped first.
         services.emplace_back(resolveSystemdServiceName(std::string(kSwAgent)));
       } else {
         LOG(INFO)
@@ -286,8 +412,8 @@ std::vector<std::string> FbossServiceUtil::restartService(
   LOG(INFO) << "Restarting " << getServiceName(service) << " (" << restartType
             << ")...";
 
-  // Only an agent coldboot needs the coldboot marker files; every other
-  // (service, level) pair is the same plain restart-and-wait sequence.
+  // Only an agent coldboot needs the coldboot marker files; both paths
+  // otherwise share the same stop-all-then-start-all sequence.
   if (service == cli::ServiceType::AGENT &&
       level == cli::ConfigActionLevel::DISRUPTIVE_SERVICE_RESTART) {
     performColdboot(services);

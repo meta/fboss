@@ -136,4 +136,27 @@ void SystemdInterface::waitForServiceActive(
           maxWaitSeconds));
 }
 
+void SystemdInterface::waitForServiceInactive(
+    const std::string& serviceName,
+    int maxWaitSeconds,
+    int pollIntervalMs) {
+  int waitedMs = 0;
+
+  while (waitedMs < maxWaitSeconds * 1000) {
+    if (!isServiceActive(serviceName)) {
+      XLOG(INFO) << serviceName << " is no longer active";
+      return;
+    }
+    // NOLINTNEXTLINE(facebook-hte-BadCall-sleep_for)
+    std::this_thread::sleep_for(std::chrono::milliseconds(pollIntervalMs));
+    waitedMs += pollIntervalMs;
+  }
+
+  throw std::runtime_error(
+      fmt::format(
+          "{} was still active {} seconds after being stopped",
+          serviceName,
+          maxWaitSeconds));
+}
+
 } // namespace facebook::fboss
