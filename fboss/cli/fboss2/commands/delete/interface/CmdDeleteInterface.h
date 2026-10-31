@@ -24,6 +24,9 @@ namespace facebook::fboss {
  *
  * Usage: delete interface <port-list> [<attr> [<value>] ...]
  *
+ * With no attribute, deletes the named ports; a loopback<N> token deletes the
+ * virtual loopback interface together with its backing VLAN.
+ *
  * Valueless attributes (reset to default):
  *   description, loopback-mode, lookup-class, mtu, lldp-expected-value,
  *   lldp-expected-chassis, lldp-expected-ttl, lldp-expected-port-desc,

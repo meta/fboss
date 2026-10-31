@@ -49,6 +49,7 @@ cpp_binary(
         "ConfigIpRouteTest.cpp",
         "ConfigL2LearningModeTest.cpp",
         "ConfigLoadBalancingTest.cpp",
+        "ConfigLoopbackInterfaceTest.cpp",
         "ConfigMacTest.cpp",
         "ConfigPfcTest.cpp",
         "ConfigPortQueueConfigTest.cpp",
