@@ -526,6 +526,7 @@ class TransceiverManager {
   struct TransceiverPortInfo {
     cfg::PortProfileID profile;
     std::optional<NpuPortStatus> status;
+    int64_t statusReceivedInMs{0};
   };
 
   using PortToPortInfo = std::unordered_map<PortID, TransceiverPortInfo>;
@@ -1203,6 +1204,9 @@ class TransceiverManager {
   folly::Synchronized<
       std::map<int /* agent logical port id */, facebook::fboss::NpuPortStatus>>
       npuPortStatusCache_;
+  // Guarded by npuPortStatusCache_'s lock.
+  int64_t npuPortStatusCacheUpdatedInMs_{0};
+  std::atomic<int64_t> resetDataPathColdbootInMs_{0};
 
   std::unique_ptr<FbossFwStorage> fwStorage_;
 

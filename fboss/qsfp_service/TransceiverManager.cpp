@@ -156,6 +156,12 @@ bool isTransceiverComponent(
   return component == facebook::fboss::phy::PortComponent::TRANSCEIVER_SYSTEM ||
       component == facebook::fboss::phy::PortComponent::TRANSCEIVER_LINE;
 }
+
+// Same clock as the agent's ConfigAppliedInfo timestamps
+int64_t nowInMs() {
+  return duration_cast<milliseconds>(system_clock::now().time_since_epoch())
+      .count();
+}
 } // namespace
 
 namespace facebook::fboss {
@@ -961,6 +967,10 @@ void TransceiverManager::triggerTransceiverEventsForAgentConfigChangeEvent(
   int numResetToDiscovered{0}, numResetToNotPresent{0};
   const auto& presentTransceivers = getPresentTransceivers();
   BlockingStateUpdateResultList results;
+  if (resetDataPath) {
+    resetDataPathColdbootInMs_ =
+        newConfigAppliedInfo.lastColdbootAppliedInMs().value_or(0);
+  }
   for (auto& stateMachine : stateMachineControllers_) {
     // Only need to set true to `needResetDataPath` attribute here. And leave
     // the state machine to change it to false once it finishes
@@ -1764,6 +1774,21 @@ void TransceiverManager::programTransceiver(
     return;
   }
 
+  // Port manager mode infers operState from the port state machine, so it is
+  // not evidence of a live link there.
+  if (needResetDataPath && !FLAGS_port_manager_mode) {
+    const int64_t coldbootInMs = resetDataPathColdbootInMs_;
+    for (const auto& [portID, portInfo] : programmedPortToPortInfo) {
+      if (portInfo.status && portInfo.status->operState &&
+          portInfo.statusReceivedInMs >= coldbootInMs) {
+        MODULE_LOG(INFO, "", id) << "Skip data path reset: Port=" << portID
+                                 << " is already up after agent config change";
+        needResetDataPath = false;
+        break;
+      }
+    }
+  }
+
   // Try to get frequency config from tunable optics config if available
   const auto opticalChannelConfig = getOpticalChannelConfig(id);
 
@@ -1938,7 +1963,9 @@ void TransceiverManager::syncNpuPortStatusUpdate(
 
 void TransceiverManager::updateNpuPortStatusCache(
     std::map<int, facebook::fboss::NpuPortStatus>& portStatus) {
-  npuPortStatusCache_.wlock()->swap(portStatus);
+  auto lockedCache = npuPortStatusCache_.wlock();
+  lockedCache->swap(portStatus);
+  npuPortStatusCacheUpdatedInMs_ = nowInMs();
 }
 
 void TransceiverManager::updateTransceiverPortStatus() noexcept {
@@ -1947,12 +1974,15 @@ void TransceiverManager::updateTransceiverPortStatus() noexcept {
   }
   steady_clock::time_point begin = steady_clock::now();
   std::map<int32_t, NpuPortStatus> newPortToPortStatus;
+  int64_t statusReceivedInMs = nowInMs();
   if (!overrideAgentPortStatusForTesting_.empty()) {
     XLOG(WARN) << "[TEST ONLY] Use overrideAgentPortStatusForTesting_ "
                << "for wedge_agent getPortStatus()";
     newPortToPortStatus = overrideAgentPortStatusForTesting_;
   } else if (FLAGS_subscribe_to_state_from_fsdb) {
-    newPortToPortStatus = *npuPortStatusCache_.rlock();
+    auto lockedCache = npuPortStatusCache_.rlock();
+    newPortToPortStatus = *lockedCache;
+    statusReceivedInMs = npuPortStatusCacheUpdatedInMs_;
   } else {
     try {
       // Then call wedge_agent getPortStatus() to get current port status
@@ -2040,6 +2070,7 @@ void TransceiverManager::updateTransceiverPortStatus() noexcept {
             if (cachedPortInfoIt == portToPortInfoWithLock->end()) {
               TransceiverPortInfo portInfo;
               portInfo.status.emplace(portStatusIt->second);
+              portInfo.statusReceivedInMs = statusReceivedInMs;
               portToPortInfoWithLock->insert({portID, std::move(portInfo)});
               genStateMachineResetEvent(event, isTcvrPresent);
             } else {
@@ -2051,6 +2082,7 @@ void TransceiverManager::updateTransceiverPortStatus() noexcept {
                 statusChangedPorts.insert(portID);
               }
               cachedPortInfoIt->second.status.emplace(portStatusIt->second);
+              cachedPortInfoIt->second.statusReceivedInMs = statusReceivedInMs;
             }
           }
         }
@@ -2213,6 +2245,7 @@ void TransceiverManager::updateTransceiverActiveState(
             }
             // And also update the cached port status
             tcvrPortInfo.status = portStatusIt->second;
+            tcvrPortInfo.statusReceivedInMs = nowInMs();
           }
         }
       }
