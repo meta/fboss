@@ -2636,6 +2636,7 @@ cpp_library(
         ":hw_asic_table",
         ":stats",
         ":switchid_scope_resolver",
+        "//fboss/agent/if:fboss-cpp2-types",
         "//fboss/agent/state:state",
         "//fboss/lib:unique_ref_map",
     ],

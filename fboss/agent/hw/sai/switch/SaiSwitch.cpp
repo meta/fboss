@@ -4552,15 +4552,17 @@ bool SaiSwitch::isValidStateUpdateLocked(
           if (oldSwitchSettings->getL2LearningMode() !=
               newSwitchSettings->getL2LearningMode()) {
             if (l2LearningModeChangeProhibited()) {
-              throw FbossError(
-                  "Chaging L2 learning mode after initial config "
+              throw RestartRequiredError(
+                  thrift::ConfigApplyMethod::DISRUPTIVE_RESTART,
+                  "Changing L2 learning mode after initial config "
                   "application is not permitted");
             }
           }
           if (oldSwitchSettings->getEcmpGroupSettings() !=
               newSwitchSettings->getEcmpGroupSettings()) {
             if (ecmpGroupSettingsChangeProhibited()) {
-              throw FbossError(
+              throw RestartRequiredError(
+                  thrift::ConfigApplyMethod::DISRUPTIVE_RESTART,
                   "Changing ecmpGroupSettings after initial config "
                   "application is not permitted");
             }
