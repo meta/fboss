@@ -62,6 +62,40 @@ int normalizeAclTablePriority(int priority) {
                                               : priority;
 }
 
+#if (                                                                  \
+    (SAI_API_VERSION >= SAI_VERSION(1, 14, 0) ||                       \
+     (defined(BRCM_SAI_SDK_GTE_11_0) && defined(BRCM_SAI_SDK_XGS))) && \
+    !defined(TAJO_SDK))
+template <typename UdfAttribute>
+void normalizeNullUdfAttribute(std::optional<UdfAttribute>& attribute) {
+  if (attribute.has_value() && attribute->value() == SAI_NULL_OBJECT_ID) {
+    attribute.reset();
+  }
+}
+
+void normalizeAclTableUdfAttributes(
+    SaiAclTableTraits::CreateAttributes& attributes) {
+  using Attributes = SaiAclTableTraits::Attributes;
+  normalizeNullUdfAttribute(
+      std::get<std::optional<Attributes::UserDefinedFieldGroupMin0>>(
+          attributes));
+  normalizeNullUdfAttribute(
+      std::get<std::optional<Attributes::UserDefinedFieldGroupMin1>>(
+          attributes));
+  normalizeNullUdfAttribute(
+      std::get<std::optional<Attributes::UserDefinedFieldGroupMin2>>(
+          attributes));
+  normalizeNullUdfAttribute(
+      std::get<std::optional<Attributes::UserDefinedFieldGroupMin3>>(
+          attributes));
+  normalizeNullUdfAttribute(
+      std::get<std::optional<Attributes::UserDefinedFieldGroupMin4>>(
+          attributes));
+}
+#else
+void normalizeAclTableUdfAttributes(SaiAclTableTraits::CreateAttributes&) {}
+#endif
+
 folly::IPAddressV6 ipV6WordToAddress(uint32_t word, int wordIndex) {
   CHECK(wordIndex == 2 || wordIndex == 3)
       << "Only DST IPv6 word2 and word3 are supported";
@@ -211,7 +245,11 @@ AclTableSaiId SaiAclTableManager::addAclTable(
   std::shared_ptr<SaiAclTable> saiAclTable{};
   if (platform_->getHwSwitch()->getBootType() == BootType::WARM_BOOT) {
     if (auto existingAclTable = aclTableStore.get(adapterHostKey)) {
-      if (attributes != existingAclTable->attributes() ||
+      auto expectedAttributes = attributes;
+      auto existingAttributes = existingAclTable->attributes();
+      normalizeAclTableUdfAttributes(expectedAttributes);
+      normalizeAclTableUdfAttributes(existingAttributes);
+      if (expectedAttributes != existingAttributes ||
           FLAGS_force_recreate_acl_tables) {
         auto key = existingAclTable->adapterHostKey();
         auto attrs = existingAclTable->attributes();
@@ -2607,8 +2645,13 @@ void SaiAclTableManager::recreateAclTable(
     XLOG(WARNING) << "feature to update acl table is not supported";
     return;
   }
+  if (!aclTable) {
+    XLOG(ERR) << "cannot recreate a null ACL table";
+    return;
+  }
   XLOG(DBG2) << "refreshing acl table schema";
   auto adapterHostKey = aclTable->adapterHostKey();
+  auto aclTableId = static_cast<sai_object_id_t>(aclTable->adapterKey());
   auto& aclEntryStore = saiStore_->get<SaiAclEntryTraits>();
 
   std::map<
@@ -2617,15 +2660,19 @@ void SaiAclTableManager::recreateAclTable(
       entries{};
   // remove acl entries from acl table, retain their attributes
   for (const auto& entry : aclEntryStore) {
-    auto key = entry.second.lock()->adapterHostKey();
-    if (std::get<SaiAclEntryTraits::Attributes::TableId>(key) !=
-        static_cast<sai_object_id_t>(aclTable->adapterKey())) {
+    auto aclEntry = entry.second.lock();
+    if (!aclEntry) {
+      XLOG(WARNING) << "expired ACL entry during ACL table recreation";
       continue;
     }
-    auto value = entry.second.lock()->attributes();
-    auto aclEntry = aclEntryStore.setObject(key, value);
+    auto key = aclEntry->adapterHostKey();
+    if (std::get<SaiAclEntryTraits::Attributes::TableId>(key) != aclTableId) {
+      continue;
+    }
+    auto value = aclEntry->attributes();
+    auto aclEntryObject = aclEntryStore.setObject(key, value);
     entries.emplace(key, value);
-    aclEntry.reset();
+    aclEntryObject.reset();
   }
   // remove group member and acl table, since store holds only weak ptr after
   // setObject is invoked, clearing returned shared ptr is enough to destroy
@@ -2638,16 +2685,31 @@ void SaiAclTableManager::recreateAclTable(
   if (platform_->getAsic()->isSupported(HwAsic::Feature::ACL_TABLE_GROUP)) {
     for (auto entry : aclGroupMemberStore) {
       auto member = entry.second.lock();
+      if (!member) {
+        XLOG(WARNING) << "expired ACL table-group member during ACL table "
+                         "recreation";
+        continue;
+      }
       auto key = member->adapterHostKey();
       auto attrs = member->attributes();
       if (std::get<SaiAclTableGroupMemberTraits::Attributes::TableId>(attrs) !=
-          static_cast<sai_object_id_t>(aclTable->adapterKey())) {
+          aclTableId) {
         continue;
       }
       groupMember = aclGroupMemberStore.setObject(key, attrs);
+      if (!groupMember) {
+        XLOG(ERR) << "failed to materialize ACL table-group member for ACL "
+                  << aclTableId;
+        return;
+      }
       memberAdapterHostKey = groupMember->adapterHostKey();
       memberAttrs = groupMember->attributes();
       break;
+    }
+    if (!groupMember) {
+      XLOG(ERR) << "ACL table-group member missing for ACL table "
+                << aclTableId;
+      return;
     }
     aclTableGroupId =
         std::get<SaiAclTableGroupMemberTraits::Attributes::TableGroupId>(
