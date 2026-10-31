@@ -9,6 +9,45 @@ mkdir -p "$LOCAL_RPM_REPO_DIR"
 sed -i 's/^PRETTY_NAME=.*/PRETTY_NAME="FBOSS Distro Image"/' /usr/lib/os-release
 sed -i 's/^NAME=.*/NAME="FBOSS Distro Image"/' /usr/lib/os-release
 
+# kiwi's oem-dump blocksize check reads the target's PHYSICAL block size, but
+# kiwi's own docs (elements.rst, target_blocksize) define it as the LOGICAL
+# size. Our NVMe might be 512e (512 logical / 4096 physical), so the stock check
+# aborts the PXE install via report_and_quit -> reboot -f.
+# Upstream: OSInside/kiwi#3022. Delete this once fixed upstream.
+KIWI_DUMP=/usr/lib/dracut/modules.d/55kiwi-dump/kiwi-dump-image.sh
+KIWI_BS_OLD='target_blocksize="/sys/block/${target_node}/queue/physical_block_size"'
+KIWI_BS_NEW='target_blocksize="/sys/block/${target_node}/queue/logical_block_size"'
+if grep -qF "$KIWI_BS_OLD" "$KIWI_DUMP"; then
+  sed -i "s|$KIWI_BS_OLD|$KIWI_BS_NEW|" "$KIWI_DUMP"
+  echo "Patched kiwi oem-dump blocksize check: physical -> logical"
+else
+  echo "kiwi oem-dump blocksize check not in expected form; leaving upstream behaviour"
+fi
+
+# The image is built for 4096-byte logical blocks. On a 512-byte disk the
+# rewrite_512b_partition_tables installer module converts it in place after
+# the dump, so let that one mismatch through; any other mismatch is still
+# refused.
+KIWI_BS_CMP_OLD='if [ ! "${target_blocksize}" = "${image_blocksize}" ];then'
+KIWI_BS_CMP_NEW='if [ ! "${target_blocksize}" = "${image_blocksize}" ] && [ ! "${image_blocksize}:${target_blocksize}" = "4096:512" ];then'
+if grep -qF "$KIWI_BS_CMP_OLD" "$KIWI_DUMP"; then
+  KIWI_DUMP_TMP=$(mktemp)
+  awk -v old="$KIWI_BS_CMP_OLD" -v new="$KIWI_BS_CMP_NEW" '
+    i = index($0, old) { $0 = substr($0, 1, i - 1) new substr($0, i + length(old)) }
+    { print }
+  ' "$KIWI_DUMP" >"$KIWI_DUMP_TMP"
+  if ! bash -n "$KIWI_DUMP_TMP"; then
+    echo "ERROR: patched $KIWI_DUMP does not parse"
+    exit 1
+  fi
+  cat "$KIWI_DUMP_TMP" >"$KIWI_DUMP"
+  rm -f "$KIWI_DUMP_TMP"
+  echo "Patched kiwi oem-dump blocksize check: allow 4096b image on 512b target"
+else
+  echo "ERROR: kiwi oem-dump blocksize comparison not in expected form; 512b installs would be refused"
+  exit 1
+fi
+
 # kiwi's first-boot filesystem resize sorts on the lsblk column "START", which
 # doesn't exist with CentOS 9 Stream's util-linux 2.37.4. Sorting silently
 # no-ops and falls back to kernel, which does not order consistently. Sometimes
@@ -398,101 +437,6 @@ env -i \
   PATH="/usr/bin:/usr/sbin:/bin:/sbin" \
   kernel-install add "${KERNEL_VERSION}" "${VMLINUZ_PATH}" --initrd-file "${INITRD_PATH}"
 echo "Custom kernel ${KERNEL_VERSION} install complete."
-
-# Generate a fix-nvme script that "may" need to be run
-MODULE_DIR="/usr/lib/dracut/modules.d/99nvme-fix"
-mkdir -p "$MODULE_DIR"
-
-# a. Generate the script directly in the target directory
-cat >"$MODULE_DIR/fix-nvme.sh" <<'EOF'
-#!/bin/bash
-# Force all NVMe drives to 512e mode for KIWI compatibility if they are
-# not already in that size
-
-DEV=/dev/nvme0n1
-
-# Only run if the device node exists
-if [ -b "$DEV" ]; then
-  # Check current logical block size
-  if [ -f "/sys/class/block/nvme0n1/queue/logical_block_size" ]; then
-    LB_SIZE=$(cat /sys/class/block/nvme0n1/queue/logical_block_size)
-  fi
-
-  # If != 512 block size, we have a mismatch
-  if [ "$LB_SIZE" != "512" ]; then
-    echo "NVMe-Fix: ${LB_SIZE} NVMe block size detected. Attempting format to 512..." >&2
-
-    # Find the ID of the 512-byte format (usually 0 or 1)
-    # We look for "Data Size: 512" in the output:
-    #
-    #    [root@fboss ~]# nvme id-ns $DEV -H | grep "Data Size:"
-    #    LBA Format  0 : Metadata Size: 0   bytes - Data Size: 512 bytes - Relative Performance: 0x2 Good (in use)
-    #    LBA Format  1 : Metadata Size: 0   bytes - Data Size: 4096 bytes - Relative Performance: 0x1 Better
-    #    [root@fboss ~]#
-
-    FMT_ID=$(nvme id-ns $DEV -H | awk '/Data Size:.*512/ {print $3; exit 0}')
-
-    if [ -n "$FMT_ID" ]; then
-      echo "NVMe-Fix: Formatting $DEV with LBA Format $FMT_ID..." >&2
-      # DANGER: This wipes the drive!
-      nvme format --lbaf=$FMT_ID --force $DEV
-
-      # Wait for the drive to reset
-      sleep 2
-      udevadm settle
-      blockdev --rereadpt $DEV
-      echo "NVMe-Fix: Format complete." >&2
-    else
-      echo "NVMe-Fix: ERROR - No 512-byte format supported by this drive." >&2
-    fi
-  fi
-fi
-EOF
-
-# b. Make the hook executable
-chmod +x "$MODULE_DIR/fix-nvme.sh"
-
-# c. Generate the module-setup.sh
-cat >"$MODULE_DIR/module-setup.sh" <<'EOF'
-#!/bin/bash
-
-check() {
-  # Always run this module
-  return 0
-}
-
-depends() {
-  # No complex dependencies
-  return 0
-}
-
-install() {
-  # Ensure these tools are inside the initrd
-  inst_multiple nvme grep awk head cat sleep udevadm blockdev
-
-  # Install the hook script to run BEFORE mounting (pre-mount priority 00)
-  # $moddir resolves to the directory where this script sits
-  inst_hook pre-mount 00 "$moddir/fix-nvme.sh"
-
-  # Raw disk partition LBAs use the device's logical sector size. KIWI checks
-  # the physical size instead, rejecting 512e NVMe drives after fix-nvme.sh
-  # successfully switches them to 512-byte LBAs.
-  local kiwi_dump_hook="$initdir/lib/dracut/hooks/pre-mount/30-kiwi-dump-image.sh"
-  if [ -f "$kiwi_dump_hook" ]; then
-    if grep -q 'queue/physical_block_size' "$kiwi_dump_hook"; then
-      sed -i \
-        's|queue/physical_block_size|queue/logical_block_size|' \
-        "$kiwi_dump_hook"
-    elif ! grep -q 'queue/logical_block_size' "$kiwi_dump_hook"; then
-      dfatal "NVMe-Fix: KIWI target block-size check has an unknown form"
-      return 1
-    fi
-  fi
-}
-EOF
-
-# d. Make the setup script executable
-chmod +x "$MODULE_DIR/module-setup.sh"
 
 # Use system GRUB 2.06 from packages
 #
