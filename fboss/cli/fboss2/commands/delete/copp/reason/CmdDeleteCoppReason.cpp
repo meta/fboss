@@ -9,6 +9,8 @@
  */
 
 #include "fboss/cli/fboss2/commands/delete/copp/reason/CmdDeleteCoppReason.h"
+#include "fboss/cli/fboss2/commands/config/copp/CoppUtils.h"
+#include "fboss/cli/fboss2/utils/ArgCompletion.h"
 
 #include "fboss/cli/fboss2/CmdHandler.cpp"
 
@@ -80,5 +82,11 @@ void CmdDeleteCoppReason::printOutput(const RetType& logMsg) {
 
 // Explicit template instantiation
 template void CmdHandler<CmdDeleteCoppReason, CmdDeleteCoppReasonTraits>::run();
+
+std::vector<std::string> CmdDeleteCoppReasonTraits::completeArgs(
+    const std::vector<std::string>& typed) {
+  return utils::completion::completePositions(
+      typed, {copp_reason::reasonNames()});
+}
 
 } // namespace facebook::fboss

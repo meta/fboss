@@ -29,6 +29,7 @@
 #include "fboss/agent/if/gen-cpp2/common_types.h"
 #include "fboss/cli/fboss2/gen-cpp2/cli_metadata_types.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
+#include "fboss/cli/fboss2/utils/ArgCompletion.h"
 
 namespace facebook::fboss::tunnel_utils {
 
@@ -423,6 +424,25 @@ std::string configureTunnel(
       direction,
       tunnelId,
       folly::join(", ", results));
+}
+
+std::vector<std::string> completeTunnelConfigArgs(
+    const std::vector<std::string>& typed,
+    const std::unordered_set<std::string>& allowedAttrs) {
+  const std::vector<std::string> modes = {
+      std::string(kTunnelModeUniform), std::string(kTunnelModePipe)};
+  return utils::completion::completeAttrGrammar(
+      typed,
+      {.attrs = utils::completion::toWords(allowedAttrs),
+       .values =
+           {
+               {std::string(kAttrTtlMode), modes},
+               {std::string(kAttrDscpMode), modes},
+               {std::string(kAttrEcnMode), modes},
+               {std::string(kAttrTerminationType),
+                {std::string(kTermTypeP2P), std::string(kTermTypeP2MP)}},
+           },
+       .minObjects = 1});
 }
 
 } // namespace facebook::fboss::tunnel_utils

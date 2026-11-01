@@ -11,6 +11,7 @@ add_executable(fboss2_framework_test
   fboss/cli/fboss2/test/AggregationParsingTest.cpp
   # fboss/cli/fboss2/test/AggregationTest.cpp - excluded (requires bundled schema)
   # fboss/cli/fboss2/test/AggregationValidationTest.cpp - excluded (requires bundled schema)
+  fboss/cli/fboss2/test/ArgCompletionTest.cpp
   fboss/cli/fboss2/test/CmdArgsTest.cpp
   # fboss/cli/fboss2/test/CmdHelpTest.cpp - excluded (requires bundled schema)
   fboss/cli/fboss2/test/CmdReadWriteModeTest.cpp
@@ -38,6 +39,7 @@ gtest_discover_tests(fboss2_framework_test)
 add_executable(fboss2_cmd_test
   fboss/util/oss/TestMain.cpp
   fboss/cli/fboss2/oss/config/CmdListImpl.cpp
+  fboss/cli/fboss2/test/CmdCompletionTest.cpp
   fboss/cli/fboss2/test/CmdConfigSessionClearTest.cpp
   fboss/cli/fboss2/test/CmdGetPcapTest.cpp
   fboss/cli/fboss2/test/CmdListConfigTest.cpp

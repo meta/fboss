@@ -10,6 +10,7 @@
 
 #include "fboss/cli/fboss2/commands/delete/interface/CmdDeleteInterface.h"
 #include "fboss/cli/fboss2/CmdHandler.cpp"
+#include "fboss/cli/fboss2/utils/ArgCompletion.h"
 
 #include <fmt/format.h>
 #include <folly/String.h>
@@ -283,5 +284,16 @@ void CmdDeleteInterface::printOutput(const RetType& logMsg) {
 
 // Explicit template instantiation
 template void CmdHandler<CmdDeleteInterface, CmdDeleteInterfaceTraits>::run();
+
+std::vector<std::string> CmdDeleteInterfaceTraits::completeArgs(
+    const std::vector<std::string>& typed) {
+  return utils::completion::completeAttrGrammar(
+      typed,
+      {.attrs = utils::completion::toWords(kKnownDeleteAttributes),
+       .valueless =
+           {kValuelessDeleteAttributes.begin(),
+            kValuelessDeleteAttributes.end()},
+       .minObjects = 1});
+}
 
 } // namespace facebook::fboss

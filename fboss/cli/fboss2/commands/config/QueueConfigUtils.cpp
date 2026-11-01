@@ -9,6 +9,7 @@
  */
 
 #include "fboss/cli/fboss2/commands/config/QueueConfigUtils.h"
+#include "fboss/cli/fboss2/utils/ArgCompletion.h"
 
 #include <fmt/format.h>
 #include <folly/Conv.h>
@@ -35,6 +36,9 @@ namespace {
 constexpr std::string_view kAttrRateLimit = "rate-limit";
 constexpr std::string_view kRateUnitKbps = "kbps";
 constexpr std::string_view kRateUnitPps = "pps";
+// Consumes every remaining token into the AQM sub-grammar.
+constexpr std::string_view kAttrAqm = "active-queue-management";
+constexpr std::string_view kAttrAqmShort = "aqm";
 
 // Uppercase and turn dashes into underscores so users can type
 // "strict-priority" for the thrift enum STRICT_PRIORITY.
@@ -316,12 +320,66 @@ cfg::ActiveQueueManagement& selectOrCreateAqm(
 
 } // namespace
 
+namespace {
+const std::vector<std::string>& queueAttrNames() {
+  static const std::vector<std::string> kNames = {
+      "name",
+      "reserved-bytes",
+      "shared-bytes",
+      "max-dynamic-shared-bytes",
+      "weight",
+      "scaling-factor",
+      "scheduling",
+      "stream-type",
+      "buffer-pool-name",
+      std::string(kAttrRateLimit),
+      std::string(kAttrAqm),
+  };
+  return kNames;
+}
+} // namespace
+
 const std::string& validQueueAttrs() {
-  static const std::string kAttrs =
-      "name, reserved-bytes, shared-bytes, max-dynamic-shared-bytes, "
-      "weight, scaling-factor, scheduling, stream-type, buffer-pool-name, "
-      "rate-limit, active-queue-management";
+  static const std::string kAttrs = folly::join(", ", queueAttrNames());
   return kAttrs;
+}
+
+std::vector<std::string> completeQueueAttrs(
+    const std::vector<std::string>& typed,
+    size_t minObjects) {
+  // Everything after active-queue-management is its own grammar.
+  for (size_t i = minObjects; i < typed.size(); ++i) {
+    if (typed[i] == kAttrAqm || typed[i] == kAttrAqmShort) {
+      std::vector<std::string> aqmTyped(typed.begin() + i + 1, typed.end());
+      std::vector<std::string> attrs = {"congestion-behavior", "detection"};
+      for (const auto& [key, _] : linearSetters()) {
+        attrs.push_back(key);
+      }
+      return completion::completeAttrGrammar(
+          aqmTyped,
+          {.attrs = std::move(attrs),
+           .values = {
+               {"congestion-behavior",
+                completion::enumNames<cfg::QueueCongestionBehavior>()},
+               {"detection", {"linear"}},
+           }});
+    }
+  }
+  auto scheduling = completion::enumNames<cfg::QueueScheduling>();
+  scheduling.insert(scheduling.end(), {"WRR", "SP", "DRR"});
+  return completion::completeAttrGrammar(
+      typed,
+      {.attrs = queueAttrNames(),
+       .values =
+           {
+               {"scaling-factor",
+                completion::enumNames<cfg::MMUScalingFactor>()},
+               {"scheduling", std::move(scheduling)},
+               {"stream-type", completion::enumNames<cfg::StreamType>()},
+               {std::string(kAttrRateLimit),
+                {std::string(kRateUnitKbps), std::string(kRateUnitPps)}},
+           },
+       .minObjects = minObjects});
 }
 
 void walkQueueAttributes(
@@ -331,7 +389,7 @@ void walkQueueAttributes(
     std::vector<std::string>& aqmAttributes) {
   for (size_t i = begin; i < v.size();) {
     const auto& attr = v[i];
-    if (attr == "active-queue-management" || attr == "aqm") {
+    if (attr == kAttrAqm || attr == kAttrAqmShort) {
       // Everything after the keyword is the AQM sub-arg stream; an empty tail
       // would otherwise parse as "no edit" and silently succeed.
       if (i + 1 >= v.size()) {

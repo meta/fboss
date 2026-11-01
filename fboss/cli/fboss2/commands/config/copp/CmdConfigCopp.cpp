@@ -9,6 +9,7 @@
  */
 
 #include "fboss/cli/fboss2/commands/config/copp/CmdConfigCopp.h"
+#include "fboss/cli/fboss2/utils/ArgCompletion.h"
 
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
 #include "fboss/cli/fboss2/CmdHandler.cpp"
@@ -266,5 +267,25 @@ template void CmdHandler<CmdConfigCoppQueue, CmdConfigCoppQueueTraits>::run();
 template void CmdHandler<CmdConfigCoppReason, CmdConfigCoppReasonTraits>::run();
 template void
 CmdHandler<CmdConfigCoppTrafficPolicy, CmdConfigCoppTrafficPolicyTraits>::run();
+
+std::vector<std::string> CmdConfigCoppQueueTraits::completeArgs(
+    const std::vector<std::string>& typed) {
+  return utils::completeQueueAttrs(typed, /* minObjects */ 1);
+}
+
+std::vector<std::string> CmdConfigCoppReasonTraits::completeArgs(
+    const std::vector<std::string>& typed) {
+  return utils::completion::completePositions(
+      typed,
+      {copp_reason::reasonNames(),
+       {std::string(kSubCmdQueue)},
+       {},
+       {std::string(kSubCmdOrder)}});
+}
+
+std::vector<std::string> CmdConfigCoppTrafficPolicyTraits::completeArgs(
+    const std::vector<std::string>& typed) {
+  return traffic_policy::completeConfigArgs(typed);
+}
 
 } // namespace facebook::fboss

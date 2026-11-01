@@ -115,6 +115,7 @@
         <package name="ipmitool"/>
         <package name="sudo"/>
         <package name="wget"/>
+        <package name="bash-completion"/>
         <package name="vim"/>
         <package name="flashrom"/>
         <package name="libgpiod-utils"/>
