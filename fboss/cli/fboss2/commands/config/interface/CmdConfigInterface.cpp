@@ -9,6 +9,7 @@
  */
 
 #include "fboss/cli/fboss2/commands/config/interface/CmdConfigInterface.h"
+#include "fboss/cli/fboss2/utils/ArgCompletion.h"
 
 #include "fboss/cli/fboss2/CmdHandler.cpp"
 
@@ -702,5 +703,23 @@ void CmdConfigInterface::printOutput(const RetType& logMsg) {
 
 // Explicit template instantiation
 template void CmdHandler<CmdConfigInterface, CmdConfigInterfaceTraits>::run();
+
+std::vector<std::string> CmdConfigInterfaceTraits::completeArgs(
+    const std::vector<std::string>& typed) {
+  const std::vector<std::string> enableDisable = {"enable", "disable"};
+  return utils::completion::completeAttrGrammar(
+      typed,
+      {.attrs = utils::completion::toWords(kKnownAttributes),
+       .valueless = {kValuelessAttributes.begin(), kValuelessAttributes.end()},
+       .values =
+           {
+               {"loopback-mode", {"none", "PHY", "NIF", "MAC"}},
+               {"flow-control-rx", enableDisable},
+               {"flow-control-tx", enableDisable},
+               {"type", {"routed-port"}},
+               {"profile", utils::completion::enumNames<cfg::PortProfileID>()},
+           },
+       .minObjects = 1});
+}
 
 } // namespace facebook::fboss

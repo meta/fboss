@@ -9,6 +9,7 @@
  */
 
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/as-path-list/CmdConfigProtocolBgpPolicyAsPathList.h"
+#include "fboss/cli/fboss2/utils/ArgCompletion.h"
 
 #include "fboss/cli/fboss2/CmdHandler.cpp"
 
@@ -249,5 +250,21 @@ void CmdConfigProtocolBgpPolicyAsPathList::printOutput(const RetType& output) {
 template void CmdHandler<
     CmdConfigProtocolBgpPolicyAsPathList,
     CmdConfigProtocolBgpPolicyAsPathListTraits>::run();
+
+std::vector<std::string>
+CmdConfigProtocolBgpPolicyAsPathListTraits::completeArgs(
+    const std::vector<std::string>& typed) {
+  return utils::completion::completeAttrGrammar(
+      typed,
+      {.attrs =
+           {std::string(kBooleanOperator),
+            std::string(kDescription),
+            std::string(kRegex)},
+       .values =
+           {{std::string(kBooleanOperator),
+             {std::string(kBooleanOperatorAnd),
+              std::string(kBooleanOperatorOr)}}},
+       .minObjects = 1});
+}
 
 } // namespace facebook::fboss

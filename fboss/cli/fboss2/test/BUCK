@@ -94,6 +94,7 @@ cpp_unittest(
         "AggregationParsingTest.cpp",
         "AggregationTest.cpp",
         "AggregationValidationTest.cpp",
+        "ArgCompletionTest.cpp",
         "CmdArgsTest.cpp",
         "CmdHelpTest.cpp",
         "CmdReadWriteModeTest.cpp",
@@ -109,6 +110,7 @@ cpp_unittest(
         ":cmd_test_utils",
         "//fboss/cli/fboss2:cli-cpp2-types",
         "//fboss/cli/fboss2:cli-parser-utils",
+        "//fboss/cli/fboss2:cmd-common-utils",
         "//fboss/cli/fboss2:cmd-global-options",
         "//fboss/cli/fboss2:cmd-handler",
         "//fboss/cli/fboss2:cmd-list-header",
@@ -126,6 +128,7 @@ cpp_unittest(
     name = "cmd_test",
     srcs = [
         "CanonicalRibResolverTest.cpp",
+        "CmdCompletionTest.cpp",
         "CmdConfigSessionClearTest.cpp",
         "CmdGetPcapTest.cpp",
         "CmdListConfigTest.cpp",

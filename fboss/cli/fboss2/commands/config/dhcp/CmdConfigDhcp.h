@@ -51,6 +51,9 @@ class DhcpSourceOverrideArgs : public utils::BaseObjectArgType<std::string> {
 // "ipv4"/"ipv6". Throws std::invalid_argument otherwise.
 std::string normalizeDhcpFamily(std::string family);
 
+// The accepted family tokens, for shell completion.
+std::vector<std::string> dhcpFamilies();
+
 // Returns the SwitchConfig source-override field for the (kind, family)
 // pair. Throws std::invalid_argument unless kind is "relay" or "reply";
 // family must already be normalised.

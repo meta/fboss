@@ -9,6 +9,7 @@
  */
 
 #include "fboss/cli/fboss2/commands/config/ptp/transparent_clock/CmdConfigPtpTransparentClock.h"
+#include "fboss/cli/fboss2/utils/ArgCompletion.h"
 
 #include "fboss/cli/fboss2/CmdHandler.cpp"
 
@@ -87,5 +88,11 @@ void CmdConfigPtpTransparentClock::printOutput(const RetType& output) {
 template void CmdHandler<
     CmdConfigPtpTransparentClock,
     CmdConfigPtpTransparentClockTraits>::run();
+
+std::vector<std::string> CmdConfigPtpTransparentClockTraits::completeArgs(
+    const std::vector<std::string>& typed) {
+  return utils::completion::completePositions(
+      typed, {{std::string(kEnable), std::string(kDisable)}});
+}
 
 } // namespace facebook::fboss

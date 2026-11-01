@@ -9,6 +9,7 @@
  */
 
 #include "fboss/cli/fboss2/commands/config/qos/priority_group_policy/CmdConfigQosPriorityGroupPolicyGroupId.h"
+#include "fboss/cli/fboss2/utils/ArgCompletion.h"
 
 #include "fboss/cli/fboss2/CmdHandler.cpp"
 
@@ -199,5 +200,23 @@ void CmdConfigQosPriorityGroupPolicyGroupId::printOutput(
 template void CmdHandler<
     CmdConfigQosPriorityGroupPolicyGroupId,
     CmdConfigQosPriorityGroupPolicyGroupIdTraits>::run();
+
+std::vector<std::string>
+CmdConfigQosPriorityGroupPolicyGroupIdTraits::completeArgs(
+    const std::vector<std::string>& typed) {
+  return utils::completion::completeAttrGrammar(
+      typed,
+      {.attrs =
+           {"min-limit-bytes",
+            "headroom-limit-bytes",
+            "resume-offset-bytes",
+            "static-limit-bytes",
+            "scaling-factor",
+            "buffer-pool-name"},
+       .values =
+           {{"scaling-factor",
+             utils::completion::enumNames<cfg::MMUScalingFactor>()}},
+       .minObjects = 1});
+}
 
 } // namespace facebook::fboss

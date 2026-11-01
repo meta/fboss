@@ -764,11 +764,15 @@ add_library(fboss2_lib
   fboss/cli/fboss2/commands/start/port/cable_length_measurement/CmdStartPortCableLengthMeasurement.cpp
   fboss/cli/fboss2/commands/stop/pcap/CmdStopPcap.h
   fboss/cli/fboss2/commands/stop/pcap/CmdStopPcap.cpp
+  fboss/cli/fboss2/CmdCompletion.cpp
+  fboss/cli/fboss2/CmdCompletion.h
   fboss/cli/fboss2/CmdSubcommands.cpp
   fboss/cli/fboss2/oss/CmdGlobalOptions.cpp
   fboss/cli/fboss2/oss/CmdList.cpp
   fboss/cli/fboss2/oss/CmdShowUtils.cpp
   fboss/cli/fboss2/utils/CmdUtils.cpp
+  fboss/cli/fboss2/utils/ArgCompletion.cpp
+  fboss/cli/fboss2/utils/ArgCompletion.h
   fboss/cli/fboss2/utils/CLIParserUtils.cpp
   fboss/cli/fboss2/utils/CmdClientUtils.cpp
   fboss/cli/fboss2/utils/CmdUtilsCommon.cpp

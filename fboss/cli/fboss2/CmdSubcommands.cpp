@@ -133,6 +133,9 @@ CLI::App* CmdSubcommands::addCommand(
       // Config commands: direct dispatch via addCliArg
       auto& args = CmdArgsLists::getInstance()->refAt(depth);
       (*argRegistrar)(*subCmd, args);
+      if (argRegistrar->completeArgs) {
+        argCompleters_[subCmd] = argRegistrar->completeArgs;
+      }
     } else if (auto& argTypeHandler = cmd.argTypeHandler) {
       // Non-config commands: enum-based dispatch via switch
       auto& args = CmdArgsLists::getInstance()->refAt(depth);
@@ -291,6 +294,12 @@ CLI::App* CmdSubcommands::addCommand(
     subCmd->require_subcommand();
   }
   return subCmd;
+}
+
+const ArgCompleterFn* FOLLY_NULLABLE
+CmdSubcommands::getArgCompleter(const CLI::App* cmd) const {
+  auto it = argCompleters_.find(cmd);
+  return it == argCompleters_.end() ? nullptr : &it->second;
 }
 
 void CmdSubcommands::addCommandBranch(

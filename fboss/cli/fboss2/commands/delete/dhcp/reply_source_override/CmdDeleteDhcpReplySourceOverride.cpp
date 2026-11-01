@@ -9,6 +9,8 @@
  */
 
 #include "fboss/cli/fboss2/commands/delete/dhcp/reply_source_override/CmdDeleteDhcpReplySourceOverride.h"
+#include "fboss/cli/fboss2/commands/config/dhcp/CmdConfigDhcp.h"
+#include "fboss/cli/fboss2/utils/ArgCompletion.h"
 
 #include "fboss/cli/fboss2/CmdHandler.cpp"
 
@@ -38,5 +40,10 @@ void CmdDeleteDhcpReplySourceOverride::printOutput(const RetType& logMsg) {
 template void CmdHandler<
     CmdDeleteDhcpReplySourceOverride,
     CmdDeleteDhcpReplySourceOverrideTraits>::run();
+
+std::vector<std::string> CmdDeleteDhcpReplySourceOverrideTraits::completeArgs(
+    const std::vector<std::string>& typed) {
+  return utils::completion::completePositions(typed, {dhcpFamilies()});
+}
 
 } // namespace facebook::fboss

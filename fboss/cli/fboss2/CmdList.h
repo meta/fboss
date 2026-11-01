@@ -10,6 +10,7 @@
 #pragma once
 
 #include <algorithm>
+#include <concepts>
 #include <functional>
 #include <string>
 #include <type_traits>
@@ -67,8 +68,31 @@ class CommandHandlerFn {
 
 using ValidFilterHandlerFn = std::function<ValidFilterMapType()>;
 using ArgTypeHandlerFn = std::function<utils::ObjectArgTypeId()>;
-using ArgRegistrarFn =
-    std::function<void(CLI::App&, std::vector<std::string>&)>;
+// Returns the tokens that may follow the positional args typed so far after
+// a command (see utils/ArgCompletion.h).
+using ArgCompleterFn =
+    std::function<std::vector<std::string>(const std::vector<std::string>&)>;
+
+// How a command registers its positional argument with CLI11, plus (when the
+// command's Traits provide completeArgs) how it completes that argument.
+// Built by argRegistrar<Traits> below; constructible from a bare registrar
+// for commands without completion.
+struct ArgRegistrarFn {
+  using RegisterFn = std::function<void(CLI::App&, std::vector<std::string>&)>;
+
+  /* implicit */ ArgRegistrarFn( // NOLINT(google-explicit-constructor)
+      RegisterFn registerArgs,
+      ArgCompleterFn completeArgs = nullptr)
+      : registerArgs(std::move(registerArgs)),
+        completeArgs(std::move(completeArgs)) {}
+
+  void operator()(CLI::App& cmd, std::vector<std::string>& args) const {
+    registerArgs(cmd, args);
+  }
+
+  RegisterFn registerArgs;
+  ArgCompleterFn completeArgs; // empty when the command has no completion
+};
 using LocalOptionsHandlerFn = std::function<std::vector<utils::LocalOption>()>;
 
 using CmdVerb = std::string;
@@ -430,9 +454,26 @@ utils::ObjectArgTypeId argTypeHandler() {
 }
 
 template <typename Traits>
-void argRegistrar(CLI::App& cmd, std::vector<std::string>& args) {
-  Traits::addCliArg(cmd, args);
+concept HasArgCompleter = requires(const std::vector<std::string>& typed) {
+  { Traits::completeArgs(typed) } -> std::same_as<std::vector<std::string>>;
+};
+
+template <typename Traits>
+ArgCompleterFn argCompleterOf() {
+  if constexpr (HasArgCompleter<Traits>) {
+    return &Traits::completeArgs;
+  } else {
+    return nullptr;
+  }
 }
+
+// Usable wherever a command tree entry expects an ArgRegistrarFn:
+// `argRegistrar<CmdConfigFooTraits>` registers the positional via the
+// Traits' addCliArg and, if the Traits declare completeArgs, completes it.
+template <typename Traits>
+inline const ArgRegistrarFn argRegistrar{
+    &Traits::addCliArg,
+    argCompleterOf<Traits>()};
 
 template <typename T>
 std::vector<utils::LocalOption> localOptionsHandler() {

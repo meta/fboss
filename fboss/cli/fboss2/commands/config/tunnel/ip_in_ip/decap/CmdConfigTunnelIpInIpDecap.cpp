@@ -60,4 +60,9 @@ void CmdConfigTunnelIpInIpDecap::printOutput(const RetType& logMsg) {
 template void
 CmdHandler<CmdConfigTunnelIpInIpDecap, CmdConfigTunnelIpInIpDecapTraits>::run();
 
+std::vector<std::string> CmdConfigTunnelIpInIpDecapTraits::completeArgs(
+    const std::vector<std::string>& typed) {
+  return tunnel_utils::completeTunnelConfigArgs(typed, kDecapAttrs);
+}
+
 } // namespace facebook::fboss
