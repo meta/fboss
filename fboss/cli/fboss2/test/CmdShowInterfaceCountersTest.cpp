@@ -5,9 +5,7 @@
 
 #include <limits>
 
-#include <folly/IPAddressV4.h>
-
-#include "fboss/agent/AddressUtil.h"
+#include "fboss/agent/hw/gen-cpp2/hardware_stats_constants.h"
 #include "fboss/agent/if/gen-cpp2/ctrl_types.h"
 
 #include <thrift/lib/cpp2/reflection/testing.h>
@@ -113,16 +111,19 @@ TEST_F(CmdShowInterfaceCountersTestFixture, createModel) {
       cmd.createModel(portEntries, aggregatePortEntries, queriedEntries);
   auto intCounters = model.int_counters().value();
 
+  // Physical ports in front panel order, then port-channels.
   ASSERT_EQ(intCounters.size(), 3);
-  EXPECT_EQ(*intCounters[0].interfaceName(), "Port-Channel1");
-  EXPECT_EQ(*intCounters[0].inputBytes(), 100);
-  EXPECT_EQ(*intCounters[0].inputUcastPkts(), 100);
-  EXPECT_EQ(*intCounters[0].inputMulticastPkts(), 100);
-  EXPECT_EQ(*intCounters[0].inputBroadcastPkts(), 100);
-  EXPECT_EQ(*intCounters[0].outputBytes(), 100);
-  EXPECT_EQ(*intCounters[0].outputUcastPkts(), 100);
-  EXPECT_EQ(*intCounters[0].outputMulticastPkts(), 100);
-  EXPECT_EQ(*intCounters[0].outputBroadcastPkts(), 100);
+  EXPECT_EQ(*intCounters[0].interfaceName(), "eth1/1/1");
+  EXPECT_EQ(*intCounters[1].interfaceName(), "eth2/1/1");
+  EXPECT_EQ(*intCounters[2].interfaceName(), "Port-Channel1");
+  EXPECT_EQ(*intCounters[2].inputBytes(), 100);
+  EXPECT_EQ(*intCounters[2].inputUcastPkts(), 100);
+  EXPECT_EQ(*intCounters[2].inputMulticastPkts(), 100);
+  EXPECT_EQ(*intCounters[2].inputBroadcastPkts(), 100);
+  EXPECT_EQ(*intCounters[2].outputBytes(), 100);
+  EXPECT_EQ(*intCounters[2].outputUcastPkts(), 100);
+  EXPECT_EQ(*intCounters[2].outputMulticastPkts(), 100);
+  EXPECT_EQ(*intCounters[2].outputBroadcastPkts(), 100);
 }
 
 TEST_F(CmdShowInterfaceCountersTestFixture, createModelForAggregatePort) {

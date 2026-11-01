@@ -71,6 +71,7 @@
 #include "fboss/cli/fboss2/commands/show/interface/counters/fec/tail/CmdShowInterfaceCountersFecTail.h"
 #include "fboss/cli/fboss2/commands/show/interface/counters/fec/uncorrectable/CmdShowInterfaceCountersFecUncorrectable.h"
 #include "fboss/cli/fboss2/commands/show/interface/counters/mka/CmdShowInterfaceCountersMKA.h"
+#include "fboss/cli/fboss2/commands/show/interface/counters/queue/CmdShowInterfaceCountersQueue.h"
 #include "fboss/cli/fboss2/commands/show/interface/errors/CmdShowInterfaceErrors.h"
 #include "fboss/cli/fboss2/commands/show/interface/flaps/CmdShowInterfaceFlaps.h"
 #include "fboss/cli/fboss2/commands/show/interface/phy/CmdShowInterfacePhy.h"
@@ -329,6 +330,10 @@ const CommandTree& kCommandTree() {
                  "Show Interface MKA counters",
                  commandHandler<CmdShowInterfaceCountersMKA>,
                  argTypeHandler<CmdShowInterfaceCountersMKATraits>},
+                {"queue",
+                 "Show Interface per-queue egress counters",
+                 commandHandler<CmdShowInterfaceCountersQueue>,
+                 argTypeHandler<CmdShowInterfaceCountersQueueTraits>},
                 {"fec",
                  "Show Interface counters fec",
                  commandHandler<CmdShowInterfaceCountersFec>,

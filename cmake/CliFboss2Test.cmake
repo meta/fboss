@@ -75,6 +75,7 @@ add_executable(fboss2_cmd_test
   fboss/cli/fboss2/test/CmdShowInterfaceCountersFecBerTest.cpp
   fboss/cli/fboss2/test/CmdShowInterfaceCountersFecHistogramTest.cpp
   fboss/cli/fboss2/test/CmdShowInterfaceCountersFecUncorrectableTest.cpp
+  fboss/cli/fboss2/test/CmdShowInterfaceCountersQueueTest.cpp
   fboss/cli/fboss2/test/CmdShowInterfaceCountersTest.cpp
   fboss/cli/fboss2/test/CmdShowInterfaceErrorsTest.cpp
   # fboss/cli/fboss2/test/CmdShowInterfaceFlapsTest.cpp - excluded (depends on hardware model not built in CMake)
@@ -148,6 +149,7 @@ add_executable(fboss2_cmd_test
   fboss/cli/fboss2/test/CmdStopPcapTest.cpp
   fboss/cli/fboss2/test/GitTest.cpp
   fboss/cli/fboss2/test/InterfaceListTest.cpp
+  fboss/cli/fboss2/test/InterfaceSelectionTest.cpp
   fboss/cli/fboss2/test/PortMapTest.cpp
 )
 

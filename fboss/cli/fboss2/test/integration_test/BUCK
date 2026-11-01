@@ -74,6 +74,7 @@ cpp_binary(
         "DeleteQosPolicyTest.cpp",
         "DeleteVlanTest.cpp",
         "Fboss2IntegrationTest.cpp",
+        "ShowInterfaceCountersQueueTest.cpp",
         "ShowRouteFilterTest.cpp",
         "TunnelIpInIpTest.cpp",
         "//fboss/cli/fboss2:cmd-list-config-impl",

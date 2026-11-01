@@ -11,6 +11,7 @@
 #include "fboss/cli/fboss2/commands/show/interface/traffic/CmdShowInterfaceTraffic.h"
 #include "fboss/cli/fboss2/CmdHandler.cpp"
 
+#include "fboss/cli/fboss2/utils/CmdUtils.h"
 #include "fboss/cli/fboss2/utils/Table.h"
 
 #include <boost/algorithm/string/split.hpp>
@@ -71,102 +72,84 @@ CmdShowInterfaceTraffic::RetType CmdShowInterfaceTraffic::createModel(
     const std::vector<std::string>& queriedIfs) {
   RetType ret;
 
-  std::unordered_set<std::string> queriedSet(
-      queriedIfs.begin(), queriedIfs.end());
-
   // Create counter object for each interface
-  for (const auto& portEntry : portCounters) {
-    auto portInfo = portEntry.second;
-    if (queriedIfs.size() == 0 || queriedSet.count(portInfo.name().value())) {
-      cli::TrafficErrorCounters errorCounters;
+  for (const auto* port : utils::getQueriedPorts(portCounters, queriedIfs)) {
+    const auto& portInfo = *port;
+    cli::TrafficErrorCounters errorCounters;
 
-      std::string pname = portInfo.name().value();
+    std::string pname = portInfo.name().value();
 
-      // FBOSS devices only have 2 error counters, so extract those here
-      // The other counters are placeholders to match EOS output
-      int64_t inputErrors = folly::copy(
-          portInfo.input().value().errors().value().errors().value());
-      int64_t outputErrors = folly::copy(
-          portInfo.output().value().errors().value().errors().value());
+    // FBOSS devices only have 2 error counters, so extract those here
+    // The other counters are placeholders to match EOS output
+    int64_t inputErrors = folly::copy(
+        portInfo.input().value().errors().value().errors().value());
+    int64_t outputErrors = folly::copy(
+        portInfo.output().value().errors().value().errors().value());
 
-      const auto operState = folly::copy(portInfo.operState().value());
+    const auto operState = folly::copy(portInfo.operState().value());
 
-      // As mentioned above, only tx and rx errors are meaningful to FBOSS.
-      // The other fields are statically set just to provide output parity
-      // with EOS
-      errorCounters.interfaceName() = pname;
-      errorCounters.peerIf() =
-          extractExpectedPort(portInfo.description().value());
-      errorCounters.ifStatus() =
-          (operState == facebook::fboss::PortOperState::UP) ? "up" : "down";
-      errorCounters.fcsErrors() = 0;
-      errorCounters.alignErrors() = 0;
-      errorCounters.symbolErrors() = 0;
-      errorCounters.rxErrors() = inputErrors;
-      errorCounters.runtErrors() = 0;
-      errorCounters.giantErrors() = 0;
-      errorCounters.txErrors() = outputErrors;
+    // As mentioned above, only tx and rx errors are meaningful to FBOSS.
+    // The other fields are statically set just to provide output parity
+    // with EOS
+    errorCounters.interfaceName() = pname;
+    errorCounters.peerIf() =
+        extractExpectedPort(portInfo.description().value());
+    errorCounters.ifStatus() =
+        (operState == facebook::fboss::PortOperState::UP) ? "up" : "down";
+    errorCounters.fcsErrors() = 0;
+    errorCounters.alignErrors() = 0;
+    errorCounters.symbolErrors() = 0;
+    errorCounters.rxErrors() = inputErrors;
+    errorCounters.runtErrors() = 0;
+    errorCounters.giantErrors() = 0;
+    errorCounters.txErrors() = outputErrors;
 
-      cli::TrafficCounters trafficCounters;
-      // Getting various counters and converting to Mbps
-      int64_t portSpeed = folly::copy(portInfo.speedMbps().value());
+    cli::TrafficCounters trafficCounters;
+    // Getting various counters and converting to Mbps
+    int64_t portSpeed = folly::copy(portInfo.speedMbps().value());
 
-      long inSpeedBps = intCounters[pname + ".in_bytes.rate.60"] * 8;
+    long inSpeedBps = intCounters[pname + ".in_bytes.rate.60"] * 8;
 
-      double inSpeedMbps = (double)inSpeedBps / 1000000;
+    double inSpeedMbps = (double)inSpeedBps / 1000000;
 
-      // Unicast + multicast + broadcast = PPS
-      int64_t inPPS = intCounters[pname + ".in_unicast_pkts.rate.60"] +
-          intCounters[pname + ".in_multicast_pkts.rate.60"] +
-          intCounters[pname + ".in_broadcast_pkts.rate.60"];
+    // Unicast + multicast + broadcast = PPS
+    int64_t inPPS = intCounters[pname + ".in_unicast_pkts.rate.60"] +
+        intCounters[pname + ".in_multicast_pkts.rate.60"] +
+        intCounters[pname + ".in_broadcast_pkts.rate.60"];
 
-      long outSpeedBps = intCounters[pname + ".out_bytes.rate.60"] * 8;
+    long outSpeedBps = intCounters[pname + ".out_bytes.rate.60"] * 8;
 
-      double outSpeedMbps = (double)outSpeedBps / 1000000;
+    double outSpeedMbps = (double)outSpeedBps / 1000000;
 
-      // Unicast + multicast + broadcast = PPS
-      int64_t outPPS = intCounters[pname + ".out_unicast_pkts.rate.60"] +
-          intCounters[pname + ".out_multicast_pkts.rate.60"] +
-          intCounters[pname + ".out_broadcast_pkts.rate.60"];
+    // Unicast + multicast + broadcast = PPS
+    int64_t outPPS = intCounters[pname + ".out_unicast_pkts.rate.60"] +
+        intCounters[pname + ".out_multicast_pkts.rate.60"] +
+        intCounters[pname + ".out_broadcast_pkts.rate.60"];
 
-      trafficCounters.interfaceName() = pname;
-      trafficCounters.peerIf() =
-          extractExpectedPort(portInfo.description().value());
-      trafficCounters.inMbps() = inSpeedMbps;
-      trafficCounters.inPct() =
-          calculateUtilizationPercent(inSpeedMbps, portSpeed);
-      trafficCounters.inKpps() = inPPS / 1000;
-      trafficCounters.outMbps() = outSpeedMbps;
-      trafficCounters.outPct() =
-          calculateUtilizationPercent(outSpeedMbps, portSpeed);
-      trafficCounters.outKpps() = outPPS / 1000;
-      trafficCounters.portSpeed() = portSpeed;
+    trafficCounters.interfaceName() = pname;
+    trafficCounters.peerIf() =
+        extractExpectedPort(portInfo.description().value());
+    trafficCounters.inMbps() = inSpeedMbps;
+    trafficCounters.inPct() =
+        calculateUtilizationPercent(inSpeedMbps, portSpeed);
+    trafficCounters.inKpps() = inPPS / 1000;
+    trafficCounters.outMbps() = outSpeedMbps;
+    trafficCounters.outPct() =
+        calculateUtilizationPercent(outSpeedMbps, portSpeed);
+    trafficCounters.outKpps() = outPPS / 1000;
+    trafficCounters.portSpeed() = portSpeed;
 
-      // The original in fb_toolkit has an option for "show zero".  Since we
-      // can't accept arbitrarily deep parameters right now we will default to
-      // show non-zero and revisit as an option down the road
-      if (isNonZeroErrors(errorCounters)) {
-        ret.error_counters()->push_back(errorCounters);
-      }
+    // The original in fb_toolkit has an option for "show zero".  Since we
+    // can't accept arbitrarily deep parameters right now we will default to
+    // show non-zero and revisit as an option down the road
+    if (isNonZeroErrors(errorCounters)) {
+      ret.error_counters()->push_back(errorCounters);
+    }
 
-      if (isInterestingTraffic(trafficCounters)) {
-        ret.traffic_counters()->push_back(trafficCounters);
-      }
+    if (isInterestingTraffic(trafficCounters)) {
+      ret.traffic_counters()->push_back(trafficCounters);
     }
   }
-  std::sort(
-      ret.error_counters()->begin(),
-      ret.error_counters()->end(),
-      [](cli::TrafficErrorCounters& a, cli::TrafficErrorCounters b) {
-        return a.interfaceName().value() < b.interfaceName().value();
-      });
-
-  std::sort(
-      ret.traffic_counters()->begin(),
-      ret.traffic_counters()->end(),
-      [](cli::TrafficCounters& a, cli::TrafficCounters b) {
-        return a.interfaceName().value() < b.interfaceName().value();
-      });
   return ret;
 }
 

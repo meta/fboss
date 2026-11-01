@@ -11,9 +11,12 @@
 #include "fboss/cli/fboss2/commands/show/interface/CmdShowInterface.h"
 #include "fboss/cli/fboss2/CmdHandler.cpp"
 
+#include "fboss/agent/gen-cpp2/switch_config_types.h"
+#include "fboss/agent/if/gen-cpp2/ctrl_types.h"
+#include "fboss/cli/fboss2/commands/show/interface/gen-cpp2/model_types.h"
+#include "fboss/cli/fboss2/utils/CmdClientUtilsCommon.h"
+#include "fboss/cli/fboss2/utils/CmdUtils.h"
 #include "fboss/cli/fboss2/utils/Table.h"
-
-#include <re2/re2.h>
 
 namespace {
 
@@ -70,8 +73,6 @@ CmdShowInterface::RetType CmdShowInterface::createModel(
     const std::map<int64_t, cfg::DsfNode>& dsfNodes,
     const ObjectArgType& queriedIfs) {
   RetType model;
-  std::unordered_set<std::string> queriedSet(
-      queriedIfs.begin(), queriedIfs.end());
   std::unordered_map<int32_t, int32_t> vlanToMtu;
   std::unordered_map<int32_t, std::vector<cli::IpPrefix>> vlanToPrefixes;
 
@@ -101,72 +102,70 @@ CmdShowInterface::RetType CmdShowInterface::createModel(
     }
   }
 
-  for (const auto& [portId, portInfo] : portEntries) {
-    if (queriedIfs.size() == 0 || queriedSet.count(*portInfo.name())) {
-      cli::Interface ifModel;
-      const auto operState = *portInfo.operState();
-      ifModel.name() = *portInfo.name();
-      ifModel.description() = *portInfo.description();
-      ifModel.status() =
-          (operState == facebook::fboss::PortOperState::UP) ? "up" : "down";
-      ifModel.speed() = std::to_string(*portInfo.speedMbps() / 1000) + "G";
-      ifModel.prefixes() = {};
-      ifModel.portType() = *portInfo.portType();
-      ifModel.scope() = *portInfo.scope();
+  for (const auto* port : utils::getQueriedPorts(portEntries, queriedIfs)) {
+    const auto& portInfo = *port;
+    const auto portId = folly::copy(portInfo.portId().value());
+    cli::Interface ifModel;
+    const auto operState = *portInfo.operState();
+    ifModel.name() = *portInfo.name();
+    ifModel.description() = *portInfo.description();
+    ifModel.status() =
+        (operState == facebook::fboss::PortOperState::UP) ? "up" : "down";
+    ifModel.speed() = std::to_string(*portInfo.speedMbps() / 1000) + "G";
+    ifModel.prefixes() = {};
+    ifModel.portType() = *portInfo.portType();
+    ifModel.scope() = *portInfo.scope();
 
-      // We assume that there is a one-to-one association between
-      // port, interface, and VLAN.
-      if (portInfo.vlans()->size() == 1) {
-        const auto& vlan = portInfo.vlans()->at(0);
-        ifModel.vlan() = vlan;
-        if (vlanToMtu.contains(vlan)) {
-          ifModel.mtu() = vlanToMtu[vlan];
-        }
-        if (vlanToPrefixes.contains(vlan)) {
-          ifModel.prefixes() = vlanToPrefixes[vlan];
-        }
-      } else if (portInfo.vlans()->size() == 0) {
-        // Chenab has no vlans. Putting the equivalent port here for now
-        ifModel.vlan() = *portInfo.portId();
-        if (vlanToMtu.contains(*portInfo.portId())) {
-          ifModel.mtu() = vlanToMtu[*portInfo.portId()];
-        }
-        if (vlanToPrefixes.contains(*portInfo.portId())) {
-          ifModel.prefixes() = vlanToPrefixes[*portInfo.portId()];
-        }
+    // We assume that there is a one-to-one association between
+    // port, interface, and VLAN.
+    if (portInfo.vlans()->size() == 1) {
+      const auto& vlan = portInfo.vlans()->at(0);
+      ifModel.vlan() = vlan;
+      if (vlanToMtu.contains(vlan)) {
+        ifModel.mtu() = vlanToMtu[vlan];
       }
-
-      if (localSysPortOffset.has_value() && globalSysPortOffset.has_value()) {
-        // TODO factor in portId range for this switchId. Needed for
-        // multi-asic systems
-        int systemPortId =
-            (portInfo.scope() == cfg::Scope::GLOBAL ? *globalSysPortOffset
-                                                    : *localSysPortOffset) +
-            portId;
-        ifModel.systemPortId() = systemPortId;
-
-        // Extract IP addresses for DSF switches
-        auto intf = intfDetails.find(systemPortId);
-        if (intf != intfDetails.end()) {
-          for (auto ipPrefix : *intf->second.address()) {
-            cli::IpPrefix prefix;
-            prefix.ip() = folly::IPAddress::fromBinary(
-                              folly::ByteRange(
-                                  reinterpret_cast<const unsigned char*>(
-                                      ipPrefix.ip()->addr()->data()),
-                                  ipPrefix.ip()->addr()->size()))
-                              .str();
-            prefix.prefixLength() = *ipPrefix.prefixLength();
-            ifModel.prefixes()->push_back(std::move(prefix));
-          }
-        }
+      if (vlanToPrefixes.contains(vlan)) {
+        ifModel.prefixes() = vlanToPrefixes[vlan];
       }
-
-      model.interfaces()->push_back(std::move(ifModel));
+    } else if (portInfo.vlans()->size() == 0) {
+      // Chenab has no vlans. Putting the equivalent port here for now
+      ifModel.vlan() = *portInfo.portId();
+      if (vlanToMtu.contains(*portInfo.portId())) {
+        ifModel.mtu() = vlanToMtu[*portInfo.portId()];
+      }
+      if (vlanToPrefixes.contains(*portInfo.portId())) {
+        ifModel.prefixes() = vlanToPrefixes[*portInfo.portId()];
+      }
     }
-  }
 
-  sortByInterfaceName(model);
+    if (localSysPortOffset.has_value() && globalSysPortOffset.has_value()) {
+      // TODO factor in portId range for this switchId. Needed for
+      // multi-asic systems
+      int systemPortId =
+          (portInfo.scope() == cfg::Scope::GLOBAL ? *globalSysPortOffset
+                                                  : *localSysPortOffset) +
+          portId;
+      ifModel.systemPortId() = systemPortId;
+
+      // Extract IP addresses for DSF switches
+      auto intf = intfDetails.find(systemPortId);
+      if (intf != intfDetails.end()) {
+        for (auto ipPrefix : *intf->second.address()) {
+          cli::IpPrefix prefix;
+          prefix.ip() = folly::IPAddress::fromBinary(
+                            folly::ByteRange(
+                                reinterpret_cast<const unsigned char*>(
+                                    ipPrefix.ip()->addr()->data()),
+                                ipPrefix.ip()->addr()->size()))
+                            .str();
+          prefix.prefixLength() = *ipPrefix.prefixLength();
+          ifModel.prefixes()->push_back(std::move(prefix));
+        }
+      }
+    }
+
+    model.interfaces()->push_back(std::move(ifModel));
+  }
 
   return model;
 }
@@ -204,49 +203,6 @@ void CmdShowInterface::populateVlanToPrefixes(
                         .str();
       prefix.prefixLength() = *ifAddr.prefixLength();
       vlanToPrefixes[vlan].emplace_back(std::move(prefix));
-    }
-  }
-}
-
-void CmdShowInterface::sortByInterfaceName(RetType& model) {
-  std::unordered_map<std::string, PortPosition> nameToPortPosition;
-  std::vector<std::string> portNames;
-  for (const auto& intf : *model.interfaces()) {
-    portNames.emplace_back(*intf.name());
-  }
-  populateNameToPortPositionMap(nameToPortPosition, portNames);
-
-  std::sort(
-      model.interfaces()->begin(),
-      model.interfaces()->end(),
-      [&nameToPortPosition](cli::Interface& a, cli::Interface b) {
-        if (nameToPortPosition.contains(*a.name()) &&
-            nameToPortPosition.contains(*b.name())) {
-          const auto& aPos = nameToPortPosition[*a.name()];
-          const auto& bPos = nameToPortPosition[*b.name()];
-          if (aPos.linecard != bPos.linecard) {
-            return aPos.linecard < bPos.linecard;
-          }
-          if (aPos.mod != bPos.mod) {
-            return aPos.mod < bPos.mod;
-          }
-          return aPos.port < bPos.port;
-        }
-        return *a.name() < *b.name();
-      });
-}
-
-void CmdShowInterface::populateNameToPortPositionMap(
-    std::unordered_map<std::string, PortPosition>& nameToPortPosition,
-    const std::vector<std::string>& names) {
-  re2::RE2 ethPortMatcher("eth([0-9]+)/([0-9]+)/([0-9]+)");
-  for (const auto& name : names) {
-    std::string tLinecard, tMod, tPort;
-    if (re2::RE2::FullMatch(name, ethPortMatcher, &tLinecard, &tMod, &tPort)) {
-      nameToPortPosition[name] = PortPosition{
-          folly::to<int32_t>(tLinecard),
-          folly::to<int32_t>(tMod),
-          folly::to<int32_t>(tPort)};
     }
   }
 }

@@ -15,13 +15,16 @@
 #include <folly/String.h>
 #include <folly/gen/Base.h>
 #include <re2/re2.h>
+#include <map>
 #include <optional>
 #include <stdexcept>
 #include <string>
 #include <tuple>
 #include <variant> // NOLINT(misc-include-cleaner)
+#include <vector>
 
 #include "fboss/agent/if/gen-cpp2/FbossCtrlAsyncClient.h"
+#include "fboss/agent/if/gen-cpp2/ctrl_types.h"
 #include "fboss/cli/fboss2/CmdGlobalOptions.h" // NOLINT(misc-include-cleaner)
 #include "fboss/cli/fboss2/gen-cpp2/cli_types.h" // NOLINT(misc-include-cleaner)
 #include "fboss/cli/fboss2/utils/CmdClientUtils.h" // NOLINT(misc-include-cleaner)
@@ -498,6 +501,37 @@ bool comparePortNameOrId(
     int32_t idA,
     const std::string& nameB,
     int32_t idB);
+
+/*
+ * Same ordering as comparePortNameOrId for callers that only have interface
+ * names: names that don't parse fall back to plain string order.
+ */
+bool compareInterfaceName(const std::string& nameA, const std::string& nameB);
+
+/*
+ * Whether a "show interface [<ports>]" command should report the interface
+ * named `name`: every interface when no port was given on the command line,
+ * otherwise only the ones listed.
+ */
+bool isQueriedInterface(
+    const std::string& name,
+    const std::vector<std::string>& queriedIfs);
+
+/*
+ * Returns the ports of portEntries selected by isQueriedInterface(), in front
+ * panel order (comparePortNameOrId). The pointers point into portEntries.
+ */
+std::vector<const PortInfoThrift*> getQueriedPorts(
+    const std::map<int32_t, PortInfoThrift>& portEntries,
+    const std::vector<std::string>& queriedIfs);
+
+/*
+ * Same as getQueriedPorts() for commands that only know interface names,
+ * e.g. ones extracted from fb303 counter names.
+ */
+std::vector<std::string> getQueriedInterfaceNames(
+    const std::vector<std::string>& ifNames,
+    const std::vector<std::string>& queriedIfs);
 
 bool compareSystemPortName(
     const std::basic_string<char>& nameA,

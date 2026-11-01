@@ -3,11 +3,10 @@
 #include "fboss/cli/fboss2/commands/show/interface/phymap/CmdShowInterfacePhymap.h"
 #include "fboss/cli/fboss2/CmdHandler.cpp"
 
+#include "fboss/cli/fboss2/utils/CmdClientUtilsCommon.h"
 #include "fboss/cli/fboss2/utils/Table.h"
 #include "fboss/mka_service/if/gen-cpp2/mka_structs_types.h"
 #include "fboss/qsfp_service/if/gen-cpp2/QsfpService.h"
-
-#include <boost/algorithm/string.hpp>
 
 namespace facebook::fboss {
 
