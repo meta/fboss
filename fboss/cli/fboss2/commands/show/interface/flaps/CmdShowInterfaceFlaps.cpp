@@ -4,11 +4,11 @@
 #include "fboss/cli/fboss2/CmdHandler.cpp"
 
 #include "fboss/agent/if/gen-cpp2/FbossCtrl.h"
+#include "fboss/cli/fboss2/utils/CmdUtils.h"
 #include "fboss/cli/fboss2/utils/Table.h"
 
-#include "fboss/lib/phy/gen-cpp2/phy_types.h"
-
-#include <boost/algorithm/string.hpp>
+#include <boost/algorithm/string/classification.hpp>
+#include <boost/algorithm/string/split.hpp>
 #include <unordered_set>
 
 namespace facebook::fboss {
@@ -21,36 +21,25 @@ CmdShowInterfaceFlapsTraits::RetType createModel(
     const std::vector<std::string>& queriedIfs) {
   CmdShowInterfaceFlapsTraits::RetType ret;
 
-  std::unordered_set<std::string> queriedSet(
-      queriedIfs.begin(), queriedIfs.end());
+  for (const auto& interface :
+       utils::getQueriedInterfaceNames(ifNames, queriedIfs)) {
+    cli::FlapCounters counter;
 
-  for (const std::string& interface : ifNames) {
-    if (queriedIfs.size() == 0 || queriedSet.count(interface)) {
-      cli::FlapCounters counter;
+    std::string oneMinute = interface + ".link_state.flap.sum.60";
+    std::string tenMinutes = interface + ".link_state.flap.sum.600";
+    std::string oneHour = interface + ".link_state.flap.sum.3600";
+    std::string totalFlaps = interface + ".link_state.flap.sum";
+    std::string totalLinkFaults = interface + ".link_fault.sum";
 
-      std::string oneMinute = interface + ".link_state.flap.sum.60";
-      std::string tenMinutes = interface + ".link_state.flap.sum.600";
-      std::string oneHour = interface + ".link_state.flap.sum.3600";
-      std::string totalFlaps = interface + ".link_state.flap.sum";
-      std::string totalLinkFaults = interface + ".link_fault.sum";
+    counter.interfaceName() = interface;
+    counter.oneMinute() = wedgeCounters[oneMinute];
+    counter.tenMinute() = wedgeCounters[tenMinutes];
+    counter.oneHour() = wedgeCounters[oneHour];
+    counter.totalFlaps() = wedgeCounters[totalFlaps];
+    counter.totalLinkFaults() = wedgeCounters[totalLinkFaults];
 
-      counter.interfaceName() = interface;
-      counter.oneMinute() = wedgeCounters[oneMinute];
-      counter.tenMinute() = wedgeCounters[tenMinutes];
-      counter.oneHour() = wedgeCounters[oneHour];
-      counter.totalFlaps() = wedgeCounters[totalFlaps];
-      counter.totalLinkFaults() = wedgeCounters[totalLinkFaults];
-
-      ret.flap_counters()->push_back(counter);
-    }
+    ret.flap_counters()->push_back(counter);
   }
-
-  std::sort(
-      ret.flap_counters()->begin(),
-      ret.flap_counters()->end(),
-      [](cli::FlapCounters& a, cli::FlapCounters b) {
-        return a.interfaceName().value() < b.interfaceName().value();
-      });
 
   return ret;
 }

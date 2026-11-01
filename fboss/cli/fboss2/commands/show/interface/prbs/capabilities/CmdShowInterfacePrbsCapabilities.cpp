@@ -4,6 +4,7 @@
 #include "fboss/cli/fboss2/CmdHandler.cpp"
 
 #include "fboss/agent/if/gen-cpp2/FbossCtrl.h"
+#include "fboss/cli/fboss2/utils/CmdClientUtilsCommon.h"
 #include "fboss/cli/fboss2/utils/PrbsUtils.h"
 #include "fboss/cli/fboss2/utils/Table.h"
 #include "fboss/qsfp_service/if/gen-cpp2/QsfpService.h"
@@ -14,7 +15,6 @@
 #include <folly/String.h>
 #include <folly/gen/Base.h>
 #include <cstdint>
-#include "fboss/agent/if/gen-cpp2/common_types.h"
 #include "fboss/lib/phy/gen-cpp2/prbs_types.h"
 #include "thrift/lib/cpp/util/EnumUtils.h"
 

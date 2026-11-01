@@ -7,9 +7,9 @@
 #include <sstream>
 #include <unordered_set>
 
-#include <boost/algorithm/string.hpp>
+#include <boost/algorithm/string/classification.hpp>
+#include <boost/algorithm/string/split.hpp>
 
-#include "fboss/agent/if/gen-cpp2/FbossCtrl.h"
 #include "fboss/cli/fboss2/utils/CmdUtils.h"
 #include "fboss/cli/fboss2/utils/Table.h"
 #include "fboss/lib/phy/gen-cpp2/phy_types.h"
@@ -46,82 +46,77 @@ cli::ShowInterfaceCountersFecUncorrectableModel createModel(
   cli::ShowInterfaceCountersFecUncorrectableModel model;
   model.direction() = direction;
 
-  std::unordered_set<std::string> queriedSet(
-      queriedIfs.begin(), queriedIfs.end());
+  for (const auto& interface :
+       utils::getQueriedInterfaceNames(ifNames, queriedIfs)) {
+    std::string counterName;
 
-  for (const std::string& interface : ifNames) {
-    if (queriedIfs.size() == 0 || queriedSet.count(interface)) {
-      std::string counterName;
+    counterName = interface + ".fec_uncorrectable_errors.sum";
+    if (iPhyIngressUcSum.contains(counterName)) {
+      model.uncorrectableFrames()[interface][phy::PortComponent::ASIC]
+          .totalCount() = iPhyIngressUcSum.at(counterName);
+    }
 
-      counterName = interface + ".fec_uncorrectable_errors.sum";
-      if (iPhyIngressUcSum.contains(counterName)) {
-        model.uncorrectableFrames()[interface][phy::PortComponent::ASIC]
-            .totalCount() = iPhyIngressUcSum.at(counterName);
-      }
+    counterName = interface + ".fec_uncorrectable_errors.sum.600";
+    if (iPhyIngressUcSum.contains(counterName)) {
+      model.uncorrectableFrames()[interface][phy::PortComponent::ASIC]
+          .tenMinuteCount() = iPhyIngressUcSum.at(counterName);
+    }
 
-      counterName = interface + ".fec_uncorrectable_errors.sum.600";
-      if (iPhyIngressUcSum.contains(counterName)) {
-        model.uncorrectableFrames()[interface][phy::PortComponent::ASIC]
-            .tenMinuteCount() = iPhyIngressUcSum.at(counterName);
-      }
+    counterName = interface + ".xphy.line.fec_uncorrectable.sum";
+    if (xPhyIngressUcSum.contains(counterName)) {
+      model.uncorrectableFrames()[interface][phy::PortComponent::GB_LINE]
+          .totalCount() = xPhyIngressUcSum.at(counterName);
+    }
 
-      counterName = interface + ".xphy.line.fec_uncorrectable.sum";
-      if (xPhyIngressUcSum.contains(counterName)) {
-        model.uncorrectableFrames()[interface][phy::PortComponent::GB_LINE]
-            .totalCount() = xPhyIngressUcSum.at(counterName);
-      }
+    counterName = interface + ".xphy.line.fec_uncorrectable.sum.600";
+    if (xPhyIngressUcSum.contains(counterName)) {
+      model.uncorrectableFrames()[interface][phy::PortComponent::GB_LINE]
+          .tenMinuteCount() = xPhyIngressUcSum.at(counterName);
+    }
 
-      counterName = interface + ".xphy.line.fec_uncorrectable.sum.600";
-      if (xPhyIngressUcSum.contains(counterName)) {
-        model.uncorrectableFrames()[interface][phy::PortComponent::GB_LINE]
-            .tenMinuteCount() = xPhyIngressUcSum.at(counterName);
-      }
+    counterName = "qsfp.interface." + interface + ".media.uncorrectable.sum";
+    if (tcvrIngressUcSum.contains(counterName)) {
+      model
+          .uncorrectableFrames()[interface]
+                                [phy::PortComponent::TRANSCEIVER_LINE]
+          .totalCount() = tcvrIngressUcSum.at(counterName);
+    }
 
-      counterName = "qsfp.interface." + interface + ".media.uncorrectable.sum";
-      if (tcvrIngressUcSum.contains(counterName)) {
-        model
-            .uncorrectableFrames()[interface]
-                                  [phy::PortComponent::TRANSCEIVER_LINE]
-            .totalCount() = tcvrIngressUcSum.at(counterName);
-      }
+    counterName =
+        "qsfp.interface." + interface + ".media.uncorrectable.sum.600";
+    if (tcvrIngressUcSum.contains(counterName)) {
+      model
+          .uncorrectableFrames()[interface]
+                                [phy::PortComponent::TRANSCEIVER_LINE]
+          .tenMinuteCount() = tcvrIngressUcSum.at(counterName);
+    }
 
-      counterName =
-          "qsfp.interface." + interface + ".media.uncorrectable.sum.600";
-      if (tcvrIngressUcSum.contains(counterName)) {
-        model
-            .uncorrectableFrames()[interface]
-                                  [phy::PortComponent::TRANSCEIVER_LINE]
-            .tenMinuteCount() = tcvrIngressUcSum.at(counterName);
-      }
+    counterName = interface + ".xphy.system.fec_uncorrectable.sum";
+    if (xPhyEgressUcSum.contains(counterName)) {
+      model.uncorrectableFrames()[interface][phy::PortComponent::GB_SYSTEM]
+          .totalCount() = xPhyEgressUcSum.at(counterName);
+    }
 
-      counterName = interface + ".xphy.system.fec_uncorrectable.sum";
-      if (xPhyEgressUcSum.contains(counterName)) {
-        model.uncorrectableFrames()[interface][phy::PortComponent::GB_SYSTEM]
-            .totalCount() = xPhyEgressUcSum.at(counterName);
-      }
+    counterName = interface + ".xphy.system.fec_uncorrectable.sum.600";
+    if (xPhyEgressUcSum.contains(counterName)) {
+      model.uncorrectableFrames()[interface][phy::PortComponent::GB_SYSTEM]
+          .tenMinuteCount() = xPhyEgressUcSum.at(counterName);
+    }
 
-      counterName = interface + ".xphy.system.fec_uncorrectable.sum.600";
-      if (xPhyEgressUcSum.contains(counterName)) {
-        model.uncorrectableFrames()[interface][phy::PortComponent::GB_SYSTEM]
-            .tenMinuteCount() = xPhyEgressUcSum.at(counterName);
-      }
+    counterName = "qsfp.interface." + interface + ".host.uncorrectable.sum";
+    if (tcvrEgressUcSum.contains(counterName)) {
+      model
+          .uncorrectableFrames()[interface]
+                                [phy::PortComponent::TRANSCEIVER_SYSTEM]
+          .totalCount() = tcvrEgressUcSum.at(counterName);
+    }
 
-      counterName = "qsfp.interface." + interface + ".host.uncorrectable.sum";
-      if (tcvrEgressUcSum.contains(counterName)) {
-        model
-            .uncorrectableFrames()[interface]
-                                  [phy::PortComponent::TRANSCEIVER_SYSTEM]
-            .totalCount() = tcvrEgressUcSum.at(counterName);
-      }
-
-      counterName =
-          "qsfp.interface." + interface + ".host.uncorrectable.sum.600";
-      if (tcvrEgressUcSum.contains(counterName)) {
-        model
-            .uncorrectableFrames()[interface]
-                                  [phy::PortComponent::TRANSCEIVER_SYSTEM]
-            .tenMinuteCount() = tcvrEgressUcSum.at(counterName);
-      }
+    counterName = "qsfp.interface." + interface + ".host.uncorrectable.sum.600";
+    if (tcvrEgressUcSum.contains(counterName)) {
+      model
+          .uncorrectableFrames()[interface]
+                                [phy::PortComponent::TRANSCEIVER_SYSTEM]
+          .tenMinuteCount() = tcvrEgressUcSum.at(counterName);
     }
   }
 

@@ -5,8 +5,8 @@
 
 #include <iostream>
 
+#include "fboss/cli/fboss2/utils/CmdClientUtilsCommon.h"
 #include "fboss/cli/fboss2/utils/Table.h"
-#include "fboss/lib/phy/gen-cpp2/phy_types.h"
 #include "fboss/qsfp_service/if/gen-cpp2/QsfpService.h"
 
 namespace facebook::fboss {
