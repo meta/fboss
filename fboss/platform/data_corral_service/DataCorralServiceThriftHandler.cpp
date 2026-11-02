@@ -22,21 +22,25 @@ void DataCorralServiceThriftHandler::getFruid(
     bool uncached) {
   auto log = LOG_THRIFT_CALL(DBG1);
 
-  std::vector<FruIdData> vData;
-
-  if (uncached || fruid_.empty()) {
-    fruid_ = createWeUtilIntf(
-                 "chassis" /*eepromName*/, "" /*eepromPath*/, 0 /*offset*/)
-                 ->getContents();
+  if (uncached || fruid_.rlock()->empty()) {
+    auto fruid =
+        createWeUtilIntf("chassis" /*eepromName*/, eepromPath_, 0 /*offset*/)
+            ->getContents();
+    fruid_.withWLock([&](auto& cached) { cached = std::move(fruid); });
   }
 
-  for (const auto& it : fruid_) {
-    FruIdData data;
-    data.name() = it.first;
-    data.value() = it.second;
-    vData.emplace_back(data);
-  }
+  auto vData = fruid_.withRLock([](const auto& fruid) {
+    std::vector<FruIdData> data;
+    data.reserve(fruid.size());
+    for (const auto& [name, value] : fruid) {
+      FruIdData fruIdData;
+      fruIdData.name() = name;
+      fruIdData.value() = value;
+      data.emplace_back(std::move(fruIdData));
+    }
+    return data;
+  });
 
-  response.fruidData() = vData;
+  response.fruidData() = std::move(vData);
 }
 } // namespace facebook::fboss::platform::data_corral_service
