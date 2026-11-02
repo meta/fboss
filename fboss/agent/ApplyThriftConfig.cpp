@@ -4768,6 +4768,7 @@ std::shared_ptr<AclMap> ThriftConfigApplier::updateAclsImpl(
           matchAction.setRedirectToNextHop(
               std::make_pair(*redirectToNextHop, MatchAction::NextHopSet()));
           bool hasTunnelRedirect = false;
+          bool hasNonTunnelRedirect = false;
           for (const auto& nh : *redirectToNextHop->redirectNextHops()) {
             auto nhIp = folly::IPAddress(*nh.ip());
             if (nhIp.isV6() && nhIp.isLinkLocal()) {
@@ -4790,9 +4791,26 @@ std::shared_ptr<AclMap> ThriftConfigApplier::updateAclsImpl(
             if (nh.tunnelType().has_value() &&
                 nh.tunnelType().value() == TunnelType::IP_IN_IP_ENCAP) {
               hasTunnelRedirect = true;
+            } else {
+              hasNonTunnelRedirect = true;
             }
           }
-          if (aclNexthopHandler_) {
+          if (hasTunnelRedirect && hasNonTunnelRedirect) {
+            throw FbossError(
+                "Invalid config: ACL ",
+                *aclCfg.name(),
+                " mixes tunnel encap and non-tunnel redirect nexthops");
+          }
+          // Tunnel encap redirects need no RIB resolution: the ASIC routes
+          // them on the outer header it adds. E.g. with redirect nexthop
+          // 2401::1 on tunnel T, a matching packet
+          //   [IPv6 dst=2401::2 | payload]
+          // is encapsulated as
+          //   [IPv6 src=<T source> dst=2401::1 | IPv6 dst=2401::2 | payload]
+          // and the egress port and neighbor come from the HW route lookup on
+          // the outer dst 2401::1. SAI programs these from the tunnel and
+          // endpoint IP alone and never reads the resolved nexthops.
+          if (aclNexthopHandler_ && !hasTunnelRedirect) {
             aclNexthopHandler_->resolveActionNexthops(matchAction);
           }
           if (!hasTunnelRedirect &&

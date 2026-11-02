@@ -46,6 +46,9 @@ HwSwitchMatcher scope() {
 
 }; // namespace
 
+const std::string kAclName = "acl0";
+const RouteNextHopSet kEmptyNexthopSet;
+
 template <typename AddrType>
 class AclNexthopHandlerTest : public ::testing::Test {
  public:
@@ -85,6 +88,27 @@ class AclNexthopHandlerTest : public ::testing::Test {
       cfg.interfaces()[idx].ipAddresses()[3] = "fe80::/64"; // link local
     }
     return cfg;
+  }
+
+  cfg::SwitchConfig redirectAclConfig(
+      const std::vector<cfg::RedirectNextHop>& nhops) {
+    auto config = testConfig();
+    cfg::AclEntry acl;
+    acl.name() = kAclName;
+    acl.dstIp() = "2401::2/128";
+    config.acls()->push_back(acl);
+    auto redirect = cfg::RedirectToNextHopAction();
+    redirect.redirectNextHops() = nhops;
+    auto action = cfg::MatchAction();
+    action.redirectToNextHop() = redirect;
+    cfg::MatchToAction mta;
+    mta.matcher() = kAclName;
+    mta.action() = action;
+    if (!config.dataPlaneTrafficPolicy().has_value()) {
+      config.dataPlaneTrafficPolicy() = cfg::TrafficPolicyConfig();
+    }
+    config.dataPlaneTrafficPolicy()->matchToAction()->push_back(mta);
+    return config;
   }
 
   void SetUp() override {
@@ -286,9 +310,6 @@ class AclNexthopHandlerTest : public ::testing::Test {
 
 using AclNexthopHandlerTestTypes =
     ::testing::Types<folly::IPAddressV4, folly::IPAddressV6>;
-
-const std::string kAclName = "acl0";
-const RouteNextHopSet kEmptyNexthopSet;
 
 TYPED_TEST_CASE(AclNexthopHandlerTest, AclNexthopHandlerTestTypes);
 
@@ -563,6 +584,57 @@ TYPED_TEST(AclNexthopHandlerTest, NonLinkLocalNexthopWithInterfaceBadConfig) {
     EXPECT_THROW(
         this->sw_->applyConfig("NonLinkLocalNexthopWithIntf", config),
         FbossError);
+  }
+}
+
+// A redirect mixing tunnel encap and non-tunnel nexthops is rejected at
+// config apply; the tunnel-only form of the same ACL is accepted.
+TYPED_TEST(AclNexthopHandlerTest, MixedTunnelAndNonTunnelNexthopBadConfig) {
+  if constexpr (std::is_same_v<
+                    typename TestFixture::AddrT,
+                    folly::IPAddressV6>) {
+    cfg::RedirectNextHop tunnelNhop;
+    tunnelNhop.ip() = "2401::1";
+    tunnelNhop.tunnelType() = TunnelType::IP_IN_IP_ENCAP;
+    tunnelNhop.tunnelId() = "encapTunnel0";
+    cfg::RedirectNextHop plainNhop;
+    plainNhop.ip() = this->getAclNexthopIps(1)[0];
+
+    EXPECT_NO_THROW(this->sw_->applyConfig(
+        "TunnelOnlyNexthop", this->redirectAclConfig({tunnelNhop})));
+    EXPECT_THROW(
+        this->sw_->applyConfig(
+            "MixedTunnelNexthop",
+            this->redirectAclConfig({tunnelNhop, plainNhop})),
+        FbossError);
+  }
+}
+
+// Tunnel encap redirects are routed by HW, so config apply leaves the
+// resolved nexthop set empty even when a route covers the tunnel endpoint.
+TYPED_TEST(AclNexthopHandlerTest, TunnelEncapNexthopSkipsResolutionOnConfig) {
+  if constexpr (std::is_same_v<
+                    typename TestFixture::AddrT,
+                    folly::IPAddressV6>) {
+    RouteNextHopSet routeNexthops =
+        makeResolvedNextHops(this->getResolvedNexthops(1), UCMP_DEFAULT_WEIGHT);
+    this->addRoute(this->makePrefix("2401::/64"), routeNexthops);
+    cfg::RedirectNextHop tunnelNhop;
+    tunnelNhop.ip() = "2401::1";
+    tunnelNhop.tunnelType() = TunnelType::IP_IN_IP_ENCAP;
+    tunnelNhop.tunnelId() = "encapTunnel0";
+
+    this->sw_->applyConfig(
+        "TunnelOnlyNexthop", this->redirectAclConfig({tunnelNhop}));
+
+    this->verifyStateUpdate([this]() {
+      auto aclEntry = this->sw_->getState()->getAcls()->getNodeIf(kAclName);
+      ASSERT_NE(aclEntry, nullptr);
+      auto action =
+          MatchAction::fromThrift(aclEntry->getAclAction()->toThrift());
+      EXPECT_EQ(action.getRedirectToNextHop().value().second, kEmptyNexthopSet);
+      EXPECT_NE(aclEntry->isEnabled(), std::optional<bool>(false));
+    });
   }
 }
 
