@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # pyre-strict
 
-"""Validate ASIC config v3 contents against checked-in internal references.
+"""Validate ASIC config v3 contents and compare available internal references.
 
 Usage (internal, from fbcode/):
     buck2 run //fboss/lib/asic_config_v3/test:validate_asic_configs_contents
@@ -10,9 +10,12 @@ Usage (OSS, from the root of the fboss repository):
     ./fboss/lib/asic_config_v3/validate-contents-helper.sh
 
 Both print a per-variant comparison table and a summary counting BYTE_MATCH,
-SEMANTIC_MATCH and CONTENT_MISMATCH variants. Note that a bare
-``python3 -m ...`` invocation does not work: the generators import
-thrift-python modules that only exist once buck or cmake has run codegen.
+SEMANTIC_MATCH, GENERATED_ONLY and CONTENT_MISMATCH variants. GENERATED_ONLY
+means no legacy or materialized reference exists, so validation is limited to
+ensuring that freshly generated output matches the checked-in v3 artifact.
+Note that a bare ``python3 -m ...`` invocation does not work: the generators
+import thrift-python modules that only exist once buck or cmake has run
+codegen.
 """
 
 import argparse
@@ -36,6 +39,7 @@ from yaml.nodes import MappingNode, ScalarNode, SequenceNode
 class ComparisonResult(Enum):
     BYTE_MATCH = "BYTE_MATCH"
     SEMANTIC_MATCH = "SEMANTIC_MATCH"
+    GENERATED_ONLY = "GENERATED_ONLY"
     CONTENT_MISMATCH = "CONTENT_MISMATCH"
 
 
@@ -73,7 +77,7 @@ class VerificationResults(NamedTuple):
 
 
 class TestValidateAsicConfigV3Contents(unittest.TestCase):
-    """Validate ASIC config v3 output against internal reference contents."""
+    """Validate generated v3 output and any available reference contents."""
 
     _FBOSS_ROOT = "fboss"
     _GENERATE_FRESH_OUTPUT = True
@@ -377,18 +381,17 @@ class TestValidateAsicConfigV3Contents(unittest.TestCase):
                 output_filename,
             )
         except FileNotFoundError as error:
+            missing_reference = str(error.filename)
+            if os.path.isabs(missing_reference):
+                missing_reference = os.path.relpath(missing_reference, paths.fboss_root)
             return VariantVerification(
                 ComparisonRecord(
                     platform,
                     variant,
-                    str(error.filename),
-                    "REFERENCE_MISSING",
+                    missing_reference,
+                    ComparisonResult.GENERATED_ONLY.value,
                 ),
                 stale_generated_file=stale_generated_file,
-                error=(
-                    f"{platform}/{display_variant}: reference file missing: "
-                    f"{error.filename}"
-                ),
             )
         except ValueError as error:
             return VariantVerification(
@@ -482,7 +485,7 @@ class TestValidateAsicConfigV3Contents(unittest.TestCase):
         if failures:
             self.fail("ASIC config v3 verification failed:\n" + "\n".join(failures))
 
-    def test_generated_files_match_internal_references(self) -> None:
+    def test_generated_files_match_available_references(self) -> None:
         paths = AsicConfigPaths.from_root(self._FBOSS_ROOT)
         self._assert_verification_success(self._collect_verification_results(paths))
 
@@ -529,6 +532,79 @@ class TestValidateAsicConfigV3Contents(unittest.TestCase):
         self.assertIn("test_platform/test_variant", output)
         self.assertIn("Reference: reference.yml", output)
 
+    def test_missing_reference_uses_generated_output(self) -> None:
+        missing_reference = "synced_asic_configs/new_platform.yml"
+        generated_output = GeneratedOutput("default.yml", "key: generated\n")
+
+        with (
+            patch.object(
+                self,
+                "_get_generated_output",
+                return_value=(generated_output, None),
+            ),
+            patch.object(
+                self,
+                "_read_reference",
+                side_effect=FileNotFoundError(
+                    2, "No such file or directory", missing_reference
+                ),
+            ),
+        ):
+            verification = self._verify_variant(
+                AsicConfigPaths.from_root(self._FBOSS_ROOT),
+                "new_platform",
+                "default",
+                {"variants": {"default": {}}},
+                "generated",
+            )
+
+        self.assertEqual(
+            verification.record,
+            ComparisonRecord(
+                "new_platform",
+                "default",
+                missing_reference,
+                ComparisonResult.GENERATED_ONLY.value,
+            ),
+        )
+        self.assertIsNone(verification.error)
+        self.assertIsNone(verification.stale_generated_file)
+
+    def test_generated_only_is_reported_and_succeeds(self) -> None:
+        record = ComparisonRecord(
+            "new_platform",
+            "default",
+            "synced_asic_configs/new_platform.yml",
+            ComparisonResult.GENERATED_ONLY.value,
+        )
+        stderr = io.StringIO()
+
+        with patch("sys.stderr", stderr):
+            self._assert_verification_success(VerificationResults([record], [], [], []))
+
+        output = stderr.getvalue()
+        self.assertIn("new_platform", output)
+        self.assertIn("GENERATED_ONLY", output)
+        self.assertIn("GENERATED_ONLY: 1", output)
+
+    def test_generated_only_still_fails_for_stale_generated_output(self) -> None:
+        stale_path = "generated/default.yml"
+        record = ComparisonRecord(
+            "new_platform",
+            "default",
+            "synced_asic_configs/new_platform.yml",
+            ComparisonResult.GENERATED_ONLY.value,
+        )
+
+        with patch("sys.stderr", io.StringIO()):
+            with self.assertRaisesRegex(
+                AssertionError,
+                "1 checked-in generated file.*stale",
+            ):
+                self._assert_verification_success(
+                    VerificationResults([record], [], [stale_path], [])
+                )
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -557,7 +633,7 @@ def main() -> None:
     suite = unittest.TestSuite(
         [
             TestValidateAsicConfigV3Contents(
-                "test_generated_files_match_internal_references"
+                "test_generated_files_match_available_references"
             )
         ]
     )
