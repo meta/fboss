@@ -900,6 +900,22 @@ target_link_libraries(fboss2
 
 install(TARGETS fboss2)
 
+add_executable(fboss2-readonly
+  fboss/cli/fboss2/Main.cpp
+  fboss/cli/fboss2/readonly/CmdListImpl.cpp
+  fboss/cli/fboss2/utils/CmdInitUtils.cpp
+  fboss/cli/fboss2/utils/oss/CmdInitUtils.cpp
+)
+
+target_compile_definitions(fboss2-readonly PRIVATE FBOSS2_READ_ONLY)
+
+target_link_libraries(fboss2-readonly
+  fboss2_lib
+  Folly::folly
+)
+
+install(TARGETS fboss2-readonly)
+
 # Config commands library for fboss2-dev
 add_library(fboss2_config_lib
   fboss/cli/fboss2/commands/config/CmdConfigAppliedInfo.h

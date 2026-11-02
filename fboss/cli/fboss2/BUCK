@@ -1177,6 +1177,25 @@ auto_tab_complete(
     src = ":fboss2",
 )
 
+cpp_binary(
+    name = "fboss2-readonly",
+    srcs = [
+        "Main.cpp",
+        "readonly/CmdListImpl.cpp",
+    ],
+    preprocessor_flags = ["-DFBOSS2_READ_ONLY"],
+    deps = [
+        "fbsource//xplat/folly/init:init",
+        "fbsource//xplat/folly/logging:init",
+        ":cmd-init-utils",
+        ":cmd-list-header",
+        ":fboss2-lib",  # @manual
+    ],
+    external_deps = [
+        "CLI11",
+    ],
+)
+
 # Config commands are in a separate library/binary for now.
 cpp_library(
     name = "fboss2-config-lib",
