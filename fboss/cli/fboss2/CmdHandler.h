@@ -83,6 +83,7 @@ struct BaseCommandTraits {
   static constexpr bool IS_LOCAL_COMMAND = false;
   static constexpr CliReadWriteMode CLI_READ_WRITE_MODE =
       CliReadWriteMode::CLI_MODE_WRITE;
+  static constexpr bool ALLOW_MULTI_HOST = false;
   std::vector<utils::LocalOption> LocalOptions = {};
 
   // Default: no positional argument. Config commands override this.
@@ -93,6 +94,7 @@ struct BaseCommandTraits {
 struct ReadCommandTraits : public BaseCommandTraits {
   static constexpr CliReadWriteMode CLI_READ_WRITE_MODE =
       CliReadWriteMode::CLI_MODE_READ;
+  static constexpr bool ALLOW_MULTI_HOST = true;
 };
 
 struct WriteCommandTraits : public BaseCommandTraits {
