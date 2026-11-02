@@ -1843,3 +1843,5 @@ if (NOT WITH_ASAN)
     endif()
   endforeach()
 endif()
+
+fboss_register_build_info()
