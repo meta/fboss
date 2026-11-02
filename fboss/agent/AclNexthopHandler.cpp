@@ -142,33 +142,14 @@ std::shared_ptr<MultiSwitchAclMap> AclNexthopHandler::updateAcls(
 AclEntry* FOLLY_NULLABLE AclNexthopHandler::updateAcl(
     const std::shared_ptr<AclEntry>& origAclEntry,
     std::shared_ptr<SwitchState>& newState) {
-  if (!needsAclResolution(origAclEntry)) {
+  auto newAclEntry = resolvedAclEntry(origAclEntry);
+  if (!newAclEntry) {
     return nullptr;
   }
-  const auto& origAclAction = origAclEntry->getAclAction();
-  auto newAclEntry = origAclEntry->modify(
-      &newState, sw_->getScopeResolver()->scope(origAclEntry));
-  newAclEntry->setEnabled(true);
-
-  // THRIFT_COPY
-  MatchAction action =
-      MatchAction::fromThrift(newAclEntry->getAclAction()->toThrift());
-  resolveActionNexthops(action);
-  newAclEntry->setAclAction(action);
-  // Disable acl if there are no nexthops available
-  if (action.getRedirectToNextHop().has_value() &&
-      !action.getRedirectToNextHop().value().second.size()) {
-    XLOG(DBG2) << "Disabling acl as no resolved nexthops are available";
-    newAclEntry->setEnabled(false);
-  }
-  const auto& newAclAction = newAclEntry->getAclAction();
-  return ((newAclAction->cref<switch_state_tags::redirectToNextHop>()
-               ->toThrift() !=
-           origAclAction->cref<switch_state_tags::redirectToNextHop>()
-               ->toThrift()) ||
-          (newAclEntry->isEnabled() != origAclEntry->isEnabled()))
-      ? newAclEntry
-      : nullptr;
+  auto* ptr = newAclEntry.get();
+  newState->getAcls()->modify(&newState)->updateNode(
+      std::move(newAclEntry), sw_->getScopeResolver()->scope(origAclEntry));
+  return ptr;
 }
 
 bool AclNexthopHandler::needsAclResolution(
@@ -191,6 +172,41 @@ bool AclNexthopHandler::needsAclResolution(
     }
   }
   return false;
+}
+
+bool AclNexthopHandler::resolveAclEntry(
+    AclEntry* newAclEntry,
+    const std::shared_ptr<AclEntry>& origAclEntry) {
+  newAclEntry->setEnabled(true);
+
+  // THRIFT_COPY
+  MatchAction action =
+      MatchAction::fromThrift(newAclEntry->getAclAction()->toThrift());
+  resolveActionNexthops(action);
+  newAclEntry->setAclAction(action);
+  // Disable acl if there are no nexthops available
+  if (action.getRedirectToNextHop().has_value() &&
+      !action.getRedirectToNextHop().value().second.size()) {
+    XLOG(DBG2) << "Disabling acl as no resolved nexthops are available";
+    newAclEntry->setEnabled(false);
+  }
+  const auto& newAclAction = newAclEntry->getAclAction();
+  const auto& origAclAction = origAclEntry->getAclAction();
+  return (
+      (newAclAction->cref<switch_state_tags::redirectToNextHop>()->toThrift() !=
+       origAclAction->cref<switch_state_tags::redirectToNextHop>()
+           ->toThrift()) ||
+      (newAclEntry->isEnabled() != origAclEntry->isEnabled()));
+}
+
+std::shared_ptr<AclEntry> AclNexthopHandler::resolvedAclEntry(
+    const std::shared_ptr<AclEntry>& origAclEntry) {
+  if (!needsAclResolution(origAclEntry)) {
+    return nullptr;
+  }
+  auto newAclEntry = origAclEntry->clone();
+  return resolveAclEntry(newAclEntry.get(), origAclEntry) ? newAclEntry
+                                                          : nullptr;
 }
 
 } // namespace facebook::fboss

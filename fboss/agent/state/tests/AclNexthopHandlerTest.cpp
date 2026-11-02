@@ -203,8 +203,9 @@ class AclNexthopHandlerTest : public ::testing::Test {
       const std::shared_ptr<SwitchState>& state,
       const std::string& name,
       const std::vector<std::string>& nexthopIps,
-      const std::vector<int32_t>& intfIDs = {}) {
-    auto aclEntry = std::make_shared<AclEntry>(0, name);
+      const std::vector<int32_t>& intfIDs = {},
+      int priority = 0) {
+    auto aclEntry = std::make_shared<AclEntry>(priority, name);
     aclEntry->setDstIp(
         folly::IPAddress::tryCreateNetwork("2401::2/128").value());
     auto cfgRedirectToNextHop = cfg::RedirectToNextHopAction();
@@ -666,6 +667,33 @@ TYPED_TEST(AclNexthopHandlerTest, EmptyRedirectNexthopsStayDisabled) {
       makeResolvedNextHops(this->getResolvedNexthops(1), UCMP_DEFAULT_WEIGHT);
   this->addRoute(this->makePrefix(this->getMatchingPrefixes(1)[0]), nexthops);
   this->verifyResolvedNexthopsInAclAction(kAclName, kEmptyNexthopSet);
+}
+
+TYPED_TEST(AclNexthopHandlerTest, UnchangedAclEntryKeepsIdentity) {
+  auto aclNexthopIps = this->getAclNexthopIps(2);
+  this->updateState(
+      "AclNextHops", [=, this](const std::shared_ptr<SwitchState>& state) {
+        auto newState = this->addAcl(state, "acl0", {aclNexthopIps[0]});
+        return this->addAcl(newState, "acl1", {aclNexthopIps[1]}, {}, 1);
+      });
+
+  auto matchingPrefixes = this->getMatchingPrefixes(2);
+  auto nexthopIps = this->getResolvedNexthops(2);
+  RouteNextHopSet nexthops0 =
+      makeResolvedNextHops({nexthopIps[0]}, UCMP_DEFAULT_WEIGHT);
+  RouteNextHopSet nexthops1 =
+      makeResolvedNextHops({nexthopIps[1]}, UCMP_DEFAULT_WEIGHT);
+  this->addRoute(this->makePrefix(matchingPrefixes[0]), nexthops0);
+  this->verifyResolvedNexthopsInAclAction("acl0", nexthops0);
+
+  std::shared_ptr<AclEntry> acl0;
+  this->verifyStateUpdate(
+      [&]() { acl0 = this->sw_->getState()->getAcls()->getNodeIf("acl0"); });
+  this->addRoute(this->makePrefix(matchingPrefixes[1]), nexthops1);
+  this->verifyResolvedNexthopsInAclAction("acl1", nexthops1);
+  this->verifyStateUpdate([&]() {
+    EXPECT_EQ(this->sw_->getState()->getAcls()->getNodeIf("acl0"), acl0);
+  });
 }
 
 TYPED_TEST(AclNexthopHandlerTest, TunnelEncapNexthopSkipsResolution) {

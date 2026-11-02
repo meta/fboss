@@ -26,6 +26,11 @@ class AclNexthopHandler : public StateObserver {
       std::shared_ptr<SwitchState>& newState);
   bool hasAclChanges(const StateDelta& delta);
   bool needsAclResolution(const std::shared_ptr<AclEntry>& aclEntry);
+  bool resolveAclEntry(
+      AclEntry* newAclEntry,
+      const std::shared_ptr<AclEntry>& origAclEntry);
+  std::shared_ptr<AclEntry> resolvedAclEntry(
+      const std::shared_ptr<AclEntry>& origAclEntry);
 
   SwSwitch* sw_;
 };
