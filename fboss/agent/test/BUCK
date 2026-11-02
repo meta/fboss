@@ -1284,6 +1284,7 @@ cpp_unittest(
         "EcmpResourceMgrDsfScaleTests.cpp",
         "EcmpResourceMgrGroupIdAllocationTests.cpp",
         "EcmpResourceMgrMergeGroupTests.cpp",
+        "EcmpResourceMgrOverrideSetIdTests.cpp",
         "EcmpResourceMgrRibFibTests.cpp",
     ],
     headers = [
@@ -1306,10 +1307,12 @@ cpp_unittest(
         "//fboss/agent:fib_helpers",
         "//fboss/agent:file_based_warmboot_utils",
         "//fboss/agent:hwswitch_matcher",
+        "//fboss/agent:override_set_id_manager",
         "//fboss/agent:utils",
         "//fboss/agent/rib:nexthop_id_manager",
         "//fboss/agent/state:state",
         "//fboss/agent/test/utils:ecmp_resource_mgr_test_utils",
         "//fboss/agent/test/utils:nexthop_id_test_utils",
     ],
+    external_deps = ["gflags"],
 )
