@@ -10,6 +10,7 @@
 #pragma once
 
 #include "fboss/cli/fboss2/CmdArgsLists.h"
+#include "fboss/cli/fboss2/CmdList.h"
 #include "fboss/cli/fboss2/utils/AggregateUtils.h"
 #include "fboss/cli/fboss2/utils/CmdUtilsCommon.h"
 #include "fboss/cli/fboss2/utils/FilterUtils.h"
@@ -65,11 +66,6 @@ template <>
 struct resolve_arg_types<void> {
   using filtered_type = std::tuple<>;
   using unfiltered_type = std::tuple<>;
-};
-
-enum class CliReadWriteMode {
-  CLI_MODE_WRITE,
-  CLI_MODE_READ,
 };
 
 struct BaseCommandTraits {
@@ -137,10 +133,9 @@ inline constexpr bool kHasCliDocs =
      detail::HasClassCliDescription<Cmd>::value) &&
     detail::HasCliSampleModel<Cmd>::value;
 
-// Enforced at the commandHandler<T>() bind point (forward-declared in
-// CmdList.h): every read ("show") command must carry the CLI reference-wiki
-// hooks unless explicitly grandfathered with CliDocsExempt. No-op for write
-// commands.
+// Enforced at the commandHandler<T> bind point: every read ("show") command
+// must carry the CLI reference-wiki hooks unless explicitly grandfathered with
+// CliDocsExempt. No-op for write commands.
 template <typename T>
 void assertReadCommandDocumented() {
   if constexpr (
@@ -152,6 +147,18 @@ void assertReadCommandDocumented() {
         "class, or tag its Traits with CliDocsExempt to defer.");
   }
 }
+
+template <typename T>
+void runCommand() {
+  assertReadCommandDocumented<T>();
+  T().run();
+}
+
+template <typename T>
+inline constexpr CommandRunner commandHandler{
+    &runCommand<T>,
+    T::Traits::CLI_READ_WRITE_MODE,
+    kHasCliDocs<T>};
 
 template <typename CmdTypeT, typename CmdTypeTraits>
 class CmdHandler {

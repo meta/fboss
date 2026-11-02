@@ -108,6 +108,7 @@ cpp_unittest(
         "//fboss/cli/fboss2:cli-cpp2-types",
         "//fboss/cli/fboss2:cli-parser-utils",
         "//fboss/cli/fboss2:cmd-global-options",
+        "//fboss/cli/fboss2:cmd-handler",
         "//fboss/cli/fboss2:cmd-list-header",
         "//fboss/cli/fboss2:cmd-subcommands",
         "//fboss/cli/fboss2:fboss2-lib",
