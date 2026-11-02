@@ -1,0 +1,102 @@
+name: Close Inactive PRs
+
+on:
+  pull_request:
+  schedule:
+    - cron: '17 9 * * *'
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: Close matching PRs instead of previewing them
+        type: boolean
+        default: false
+
+permissions: {}
+
+concurrency:
+  group: close-stale-prs
+  cancel-in-progress: false
+
+jobs:
+  pull-request-dry-run:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            .github
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Test inactive PR script
+        run: python3 -m unittest discover -s .github/scripts/tests -p test_close_stale_prs.py
+
+      - name: Preview inactive PRs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 .github/scripts/close-stale-prs.py
+
+  close-stale-prs:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+          sparse-checkout: |
+            .github
+
+      - name: Ensure do-not-close label exists
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const {owner, repo} = context.repo;
+            try {
+              await github.rest.issues.getLabel({owner, repo, name: 'do-not-close'});
+            } catch (error) {
+              if (error.status !== 404) throw error;
+              try {
+                await github.rest.issues.createLabel({
+                  owner,
+                  repo,
+                  name: 'do-not-close',
+                  color: 'b60205',
+                  description: 'Exempt from automatic inactive PR closure',
+                });
+              } catch (createError) {
+                if (createError.status !== 422) throw createError;
+              }
+            }
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Test inactive PR script
+        run: python3 -m unittest discover -s .github/scripts/tests -p test_close_stale_prs.py
+
+      - name: Check inactive PRs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          APPLY: ${{ (github.event_name == 'schedule' && vars.FBOSS_STALE_PR_CLOSURE_ENABLED == 'true') || (github.event_name == 'workflow_dispatch' && inputs.apply) }}
+        run: |
+          if [ "$APPLY" = "true" ]; then
+            python3 .github/scripts/close-stale-prs.py --apply --confirm-repo meta/fboss
+          else
+            python3 .github/scripts/close-stale-prs.py
+          fi
