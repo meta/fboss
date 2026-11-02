@@ -4,6 +4,11 @@ load("@fbcode_macros//build_defs:python_library.bzl", "python_library")
 oncall("fboss_distro")
 
 python_library(
+    name = "component_version",
+    srcs = ["component_version.py"],
+)
+
+python_library(
     name = "platform_configs_utils",
     srcs = ["platform_configs_utils.py"],
     labels = ["autodeps2_generated"],

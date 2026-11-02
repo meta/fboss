@@ -4,6 +4,13 @@ load("@fbsource//tools/build_defs/testinfra:network_access_utils.bzl", "network_
 oncall("fboss_distro")
 
 python_unittest(
+    name = "test_component_version",
+    srcs = ["test_component_version.py"],
+    network_access = network_access_utils.none(),
+    deps = ["//fboss/oss/scripts:component_version"],
+)
+
+python_unittest(
     name = "test_check_copyright_headers",
     srcs = ["test_check_copyright_headers.py"],
     network_access = network_access_utils.none(),
