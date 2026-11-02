@@ -11,6 +11,7 @@
 
 #include <memory>
 #include <ostream>
+#include <unordered_map>
 #include "fboss/agent/EcmpResourceManagerConfig.h"
 #include "fboss/agent/OverrideSetIdManager.h"
 #include "fboss/agent/state/NextHopIdMaps.h"
@@ -253,12 +254,16 @@ class EcmpResourceManager {
     std::shared_ptr<SwitchState> getInputOldState() const {
       return inputDelta_.oldState();
     }
+    // Inverse of the input state's NextHop id map; empty if it has none.
+    const std::unordered_map<NextHop, NextHopID>& getNextHopToId() const;
 
    private:
     std::vector<StateDelta> out_;
     StateDelta inputDelta_;
     // Written into each delta's FibInfo on publish.
     const OverrideSetIdManager* overrideSetIdMgr_;
+    // Built on first use; the input state is fixed for the whole consolidate.
+    mutable std::optional<std::unordered_map<NextHop, NextHopID>> nhopToId_;
   };
   std::pair<std::shared_ptr<NextHopGroupInfo>, bool> getOrCreateGroupInfo(
       const RouteNextHopSet& nhops,
@@ -459,6 +464,13 @@ class EcmpResourceManager {
   void computeCandidateMergesForNewMergedGroup(
       const NextHopGroupIds& newMergeSet);
   void addCandidateMerge(const NextHopGroupIds& candidateMerge);
+  // Names info.mergedNhops unless already named; leaves it unnamed if any
+  // nexthop lacks a NextHopID.
+  void allocateOverrideSetId(
+      ConsolidationInfo& info,
+      const InputOutputState& inOutState);
+  // Frees ids no merged group holds; runs once at the end of consolidate.
+  void deallocDeadOverrideSetIds();
 
   NextHops2GroupId nextHopGroup2Id_;
   StdRefMap<NextHopGroupId, NextHopGroupInfo> nextHopGroupIdToInfo_;
@@ -564,6 +576,11 @@ class NextHopGroupInfo {
       overrideNhops = (*mergedGroupsToInfoItr_)->second.mergedNhops;
     }
     return overrideNhops;
+  }
+  std::optional<NextHopSetID> getOverrideNextHopSetID() const {
+    return mergedGroupsToInfoItr_.has_value()
+        ? (*mergedGroupsToInfoItr_)->second.overrideSetId
+        : std::nullopt;
   }
 
   bool mergedAndUnmergedNhopsMatch() const {

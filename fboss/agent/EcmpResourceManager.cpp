@@ -15,9 +15,12 @@
 #include "fboss/agent/SwitchStats.h"
 #include "fboss/agent/Utils.h"
 #include "fboss/agent/hw/switch_asics/HwAsic.h"
+#include "fboss/agent/state/FibInfo.h"
 #include "fboss/agent/state/Route.h"
+#include "fboss/agent/state/RouteNextHop.h"
 #include "fboss/agent/state/RouteNextHopEntry.h"
 #include "fboss/agent/state/StateDelta.h"
+#include "fboss/agent/state/SwitchState.h"
 
 #include <limits>
 
@@ -39,8 +42,10 @@ void updateRouteOverrides(
         mergeInfoItr) {
   const auto& curForwardInfo = route->getForwardInfo();
   std::optional<RouteNextHopSet> overrideNhops;
+  std::optional<NextHopSetID> overrideSetId;
   if (mergeInfoItr) {
     overrideNhops = (*mergeInfoItr)->second.mergedNhops;
+    overrideSetId = (*mergeInfoItr)->second.overrideSetId;
   }
   auto newForwardInfo = RouteNextHopEntry(
       curForwardInfo.getNextHopSet(),
@@ -50,7 +55,9 @@ void updateRouteOverrides(
       backupSwitchingMode,
       overrideNhops,
       curForwardInfo.getNormalizedResolvedNextHopSetID(),
-      curForwardInfo.getResolvedNextHopSetID());
+      curForwardInfo.getResolvedNextHopSetID(),
+      curForwardInfo.getClientNextHopSetID(),
+      overrideSetId);
   XLOG(DBG2) << " Set : " << route->str()
              << " backup switching mode to : " << backupSwitchingMode
              << " override next hops to : "
@@ -455,6 +462,7 @@ std::vector<StateDelta> EcmpResourceManager::consolidateImpl(
     updatedState->publish();
     inOutState->replaceLastDelta(StateDelta(curDelta.oldState(), updatedState));
   }
+  deallocDeadOverrideSetIds();
   inOutState->publishLastDelta();
   return inOutState->moveDeltas();
 }
@@ -776,6 +784,7 @@ void EcmpResourceManager::updateMergedGroups(
                  << " with: " << newMergeSet;
       std::tie(newMergeItr, std::ignore) = mergedGroups_.insert(
           {newMergeSet, computeConsolidationInfo(newMergeSet)});
+      allocateOverrideSetId((*newMergeItr)->second, *inOutState);
       computeCandidateMergesForNewMergedGroup(newMergeSet);
       auto [mergeGroupInfo, _] =
           getOrCreateGroupInfo((*newMergeItr)->second.mergedNhops, *inOutState);
@@ -1045,6 +1054,37 @@ EcmpResourceManager::InputOutputState::InputOutputState(
   appendDelta(StateDelta(_in.oldState(), newStateWithOldFibs));
 }
 
+const std::unordered_map<NextHop, NextHopID>&
+EcmpResourceManager::InputOutputState::getNextHopToId() const {
+  if (nhopToId_) {
+    return *nhopToId_;
+  }
+  nhopToId_.emplace();
+  auto addIds = [this](const std::shared_ptr<SwitchState>& state) {
+    const auto& fibsInfoMap = state->getFibsInfoMap();
+    if (fibsInfoMap->empty()) {
+      return;
+    }
+    auto idToNhop = fibsInfoMap->cbegin()->second->getIdToNextHopMap();
+    if (!idToNhop) {
+      return;
+    }
+    for (const auto& [id, nhop] : std::as_const(*idToNhop)) {
+      nhopToId_->emplace(
+          util::fromThrift(nhop->toThrift(), true /* allowV6NonLinkLocal */),
+          NextHopID(id));
+    }
+  };
+  // A NextHop the update released and reallocated is in both maps; the input
+  // state's id is the live one. The base delta's input ∪ old maps add the
+  // nexthops only outgoing groups still use.
+  addIds(getInputNewState());
+  if (!out_.empty()) {
+    addIds(out_.front().newState());
+  }
+  return *nhopToId_;
+}
+
 void EcmpResourceManager::InputOutputState::publishLastDelta() {
   if (out_.size()) {
     DCHECK(out_.back().oldState()->isPublished());
@@ -1240,6 +1280,7 @@ EcmpResourceManager::restoreGroupsTrimmedFromMerge(
     auto [survivorItr, inserted] = mergedGroups_.insert(
         {trimmed.mergeGroup, computeConsolidationInfo(trimmed.mergeGroup)});
     CHECK(inserted);
+    allocateOverrideSetId(survivorItr->second, *inOutState);
     auto [survivorGrpInfo, _] =
         getOrCreateGroupInfo(survivorItr->second.mergedNhops, *inOutState);
     survivorGrpInfo->setMergedGroupInfoItr(survivorItr);
@@ -1320,6 +1361,8 @@ void EcmpResourceManager::mergeGroupAndMigratePrefixes(
 
       });
   CHECK(mergedGroupsInserted);
+  // Before migrating prefixes, which stamp the id onto routes.
+  allocateOverrideSetId(mitr->second, *inOutState);
 
   // Added to merged groups, no longer a candidate merge.
   pruneFromCandidateMerges(mergeSet);
@@ -1481,7 +1524,9 @@ EcmpResourceManager::updateForwardingInfoAndInsertDelta(
                                        : std::optional<cfg::SwitchingMode>(),
       std::optional<RouteNextHopSet>(grpInfo->getOverrideNextHops()),
       curForwardInfo.getNormalizedResolvedNextHopSetID(),
-      curForwardInfo.getResolvedNextHopSetID());
+      curForwardInfo.getResolvedNextHopSetID(),
+      curForwardInfo.getClientNextHopSetID(),
+      grpInfo->getOverrideNextHopSetID());
   auto newRoute = route->clone();
   newRoute->setResolved(std::move(newForwardInfo));
   newRoute->publish();
@@ -2012,6 +2057,7 @@ EcmpResourceManager::appendToOrCreateMergeGroup(
     // Fix up iterators
     fixMergeItreators(newMergeSet, mitr, newMemberGroupIds);
   }
+  allocateOverrideSetId(mitr->second, inOutState);
   auto [mergeGroupInfo, _] =
       getOrCreateGroupInfo(mitr->second.mergedNhops, inOutState);
   mergeGroupInfo->setMergedGroupInfoItr(mitr);
@@ -2486,6 +2532,42 @@ RouteNextHopSet EcmpResourceManager::getCommonNextHops(
       });
 
   return computeCommonNextHops(unmergedNhopSets);
+}
+
+void EcmpResourceManager::allocateOverrideSetId(
+    ConsolidationInfo& info,
+    const InputOutputState& inOutState) {
+  if (info.overrideSetId.has_value() || !FLAGS_enable_nexthop_id_manager) {
+    return;
+  }
+  const auto& nhopToId = inOutState.getNextHopToId();
+  NextHopIDSet members;
+  for (const auto& nhop : info.mergedNhops) {
+    auto itr = nhopToId.find(nhop);
+    if (itr == nhopToId.end()) {
+      throw FbossError("Merged nexthop ", nhop, " has no RIB id");
+    }
+    members.insert(itr->second);
+  }
+  info.overrideSetId = overrideSetIdMgr_.getOrAllocate(members)->second;
+}
+
+void EcmpResourceManager::deallocDeadOverrideSetIds() {
+  std::unordered_set<NextHopSetID> liveIds;
+  for (const auto& [_, info] : mergedGroups_) {
+    if (info.overrideSetId.has_value()) {
+      liveIds.insert(*info.overrideSetId);
+    }
+  }
+  std::vector<NextHopSetID> deadIds;
+  for (const auto& [id, _] : overrideSetIdMgr_.getIdToMembers()) {
+    if (!liveIds.contains(id)) {
+      deadIds.push_back(id);
+    }
+  }
+  for (auto id : deadIds) {
+    CHECK(overrideSetIdMgr_.deallocOverrideSetId(id));
+  }
 }
 
 EcmpResourceManager::ConsolidationInfo
