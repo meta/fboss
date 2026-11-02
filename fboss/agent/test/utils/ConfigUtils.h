@@ -292,6 +292,12 @@ cfg::SwitchInfo generateSwitchInfo(
     const std::string& connectionHandle,
     const HwAsic* asic);
 
+// Adds VRF vrf to config if missing and puts the interfaces of ports in it
+void addVrfForPorts(
+    cfg::SwitchConfig& config,
+    RouterID vrf,
+    const std::vector<PortID>& ports);
+
 cfg::SwitchConfig twoL3IntfConfig(
     SwSwitch* swSwitch,
     PortID port1,
