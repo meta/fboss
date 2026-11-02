@@ -81,7 +81,7 @@
                         },
                         "config_gen_type": {
                             "type": "string",
-                            "enum": ["DEFAULT", "HW_TEST"],
+                            "enum": ["DEFAULT", "HW_TEST", "BENCHMARK", "LINK_TEST"],
                             "description": "Configuration generation profile. Controls which vendor configuration profile is applied. Values must match the AsicConfigGenType enum in fboss/agent/hw/config/asic_config_v2.thrift."
                         },
                         "port_config": {

@@ -47,6 +47,20 @@
     "platform_sai_overrides": {
       "sai_eapol_trap_use_bcast_mac": "1"
     },
+    "conditional_settings": [
+      {
+        "name": "uncached_port_stats_for_tests",
+        "description": "Enables uncached port statistics for the hardware test and link test profiles.",
+        "condition": {
+          "source": "asic_config_params",
+          "param": "config_gen_type",
+          "in": ["HW_TEST", "LINK_TEST"]
+        },
+        "apply": {
+          "global": {"sai_uncached_port_stats": "0x1"}
+        }
+      }
+    ],
     "features": {
       "generate_dlb_config": true,
       "generate_low_clock_freq_settings": false,
