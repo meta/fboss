@@ -170,6 +170,8 @@ class SaiSwitchManager {
       SaiHashTraits::CreateAttributes& hashCreateAttrs);
   template <typename HashAttrT>
   void resetLoadBalancer();
+  template <typename HashAttrT>
+  void detachLoadBalancer();
 
   void setEgressAcl(sai_object_id_t id);
 
