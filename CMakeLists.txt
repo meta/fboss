@@ -1685,6 +1685,7 @@ add_dependencies(fboss2_targets
   fboss2_cmd_config_test
   fboss2_framework_test
   fboss2-dev
+  fboss2-readonly
   fboss2_integration_test
   feature_default_command_args_config_test
 )
@@ -1696,6 +1697,7 @@ if (SAI_IMPL OR BUILD_SAI_FAKE)
     diag_shell_client
     fboss2
     fboss2-dev
+    fboss2-readonly
     fsdb
     qsfp_service
     wedge_qsfp_util
