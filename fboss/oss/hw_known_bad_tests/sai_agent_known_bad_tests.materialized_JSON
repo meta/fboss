@@ -10654,9 +10654,6 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentRouteStatTest.V4V6SeparateCounters$"
         },
         {
-          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.*$"
-        },
-        {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentFlexPortTest.FlexPortFOURX10G$"
         },
         {
@@ -10724,9 +10721,6 @@
         },
         {
           "test_name_regex": "roundtrip.trunk_2_prod_2_trunk.warm_boot.*$"
-        },
-        {
-          "test_name_regex": "roundtrip.prod_2_trunk_2_prod.warm_boot.*$"
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.*$"
@@ -10801,16 +10795,76 @@
           "test_name_regex": "^(cold_boot|warm_boot).*AgentMacLearningMacMoveTest.VerifyMacMoveForPort$"
         },
         {
-          "test_name_regex": "roundtrip.(trunk_2_preprod_2_trunk|prod_2_trunk_2_prod|trunk_2_prod_2_trunk).*AgentMacLearningMacMoveTest.VerifyMacMoveForPort$"
-        },
-        {
           "test_name_regex": "roundtrip.prod_2_trunk_2_prod.cold_boot.AgentAclInDiscardsCounterTest.aclInDiscards$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentAclInDiscardsCounterTest.aclInDiscards$"
         },
         {
-          "test_name_regex": ".*AgentAccessPolicyClassId.*$"
+          "test_name_regex": "(cold_boot|warm_boot|roundtrip.(trunk_2_preprod_2_trunk|trunk_2_prod_2_trunk).cold_boot|roundtrip.(preprod_2_trunk_2_preprod|prod_2_trunk_2_prod).(cold_boot|warm_boot|warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit)).AgentAccessPolicyClassIdAclDeepDstOptsTest.DstOptsLengthsTcpSynDenied$"
+        },
+        {
+          "test_name_regex": "(cold_boot|warm_boot|roundtrip.(trunk_2_preprod_2_trunk|trunk_2_prod_2_trunk).cold_boot).AgentAccessPolicyClassIdAclFirstHalfAddedTest.AccessPolicyAclEntriesSwappedOnWarmboot$"
+        },
+        {
+          "test_name_regex": "(cold_boot|warm_boot|roundtrip.(trunk_2_preprod_2_trunk|trunk_2_prod_2_trunk).cold_boot).AgentAccessPolicyClassIdAclSecondHalfAddedTest.AccessPolicyAclEntriesSwappedOnWarmboot$"
+        },
+        {
+          "test_name_regex": "(cold_boot|warm_boot|roundtrip.(trunk_2_preprod_2_trunk|trunk_2_prod_2_trunk).cold_boot).AgentAccessPolicyClassIdAclV2AddedTest.AccessPolicyAclV2AddedOnWarmboot$"
+        },
+        {
+          "test_name_regex": "(cold_boot|warm_boot|roundtrip.(trunk_2_preprod_2_trunk|trunk_2_prod_2_trunk).cold_boot).AgentAccessPolicyClassIdAclV3AddedTest.AccessPolicyAclV3AddedOnWarmboot$"
+        },
+        {
+          "test_name_regex": "(cold_boot|warm_boot|roundtrip.(trunk_2_preprod_2_trunk|trunk_2_prod_2_trunk).cold_boot).AgentAccessPolicyClassIdAclV3RemovedTest.AccessPolicyAclV3RemovedOnWarmboot$"
+        },
+        {
+          "test_name_regex": "(cold_boot|warm_boot|roundtrip.(trunk_2_preprod_2_trunk|trunk_2_prod_2_trunk).cold_boot).AgentAccessPolicyClassIdAclV3ToV4UpgradedTest.AccessPolicyAclV3ToV4UpgradedOnWarmboot$"
+        },
+        {
+          "test_name_regex": "(cold_boot|warm_boot|roundtrip.(trunk_2_preprod_2_trunk|trunk_2_prod_2_trunk).cold_boot|roundtrip.(preprod_2_trunk_2_preprod|prod_2_trunk_2_prod).(cold_boot|warm_boot|warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit)).AgentAccessPolicyClassIdAclV4AddedTest.AccessPolicyAclV4AddedOnWarmboot$"
+        },
+        {
+          "test_name_regex": "(cold_boot|warm_boot|roundtrip.(trunk_2_preprod_2_trunk|trunk_2_prod_2_trunk).cold_boot).AgentAccessPolicyClassIdAclV4RemovedTest.AccessPolicyAclV4RemovedOnWarmboot$"
+        },
+        {
+          "test_name_regex": "(cold_boot|warm_boot|roundtrip.(trunk_2_preprod_2_trunk|trunk_2_prod_2_trunk).cold_boot).AgentAccessPolicyClassIdAclV4ToV3DowngradedTest.AccessPolicyAclV4ToV3DowngradedOnWarmboot$"
+        },
+        {
+          "test_name_regex": "(cold_boot|warm_boot|roundtrip.(trunk_2_preprod_2_trunk|trunk_2_prod_2_trunk).cold_boot|roundtrip.(preprod_2_trunk_2_preprod|prod_2_trunk_2_prod).(cold_boot|warm_boot|warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit)).AgentAccessPolicyClassIdAclZeroL4PortTest.L4PortsPastParseWindow$"
+        },
+        {
+          "test_name_regex": "(cold_boot|warm_boot|roundtrip.(trunk_2_preprod_2_trunk|trunk_2_prod_2_trunk).cold_boot|roundtrip.prod_2_trunk_2_prod.(cold_boot|warm_boot|warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit|warm_boot_for_warm_boot.0.AgentEmptyVoqTest.CheckInit)).AgentAccessPolicyClassIdControlPlaneStrongDenyTest.ControlPlanePunt$"
+        },
+        {
+          "test_name_regex": "(cold_boot|warm_boot|roundtrip.(trunk_2_preprod_2_trunk|trunk_2_prod_2_trunk).cold_boot).AgentAccessPolicyClassIdControlPlaneTest.ControlPlanePunt$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.(warm_boot|warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit).AgentCoppTest/0.DstIpNetworkControlDscpToHighPriQ$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.(warm_boot|warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit).AgentCoppTest/1.DstIpNetworkControlDscpToHighPriQ$"
+        },
+        {
+          "test_name_regex": "roundtrip.prod_2_trunk_2_prod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentFlexPortTest.FlexPortONEX100G$"
+        },
+        {
+          "test_name_regex": "roundtrip.prod_2_trunk_2_prod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentFlexPortTest.FlexPortONEX40G$"
+        },
+        {
+          "test_name_regex": "(roundtrip.(trunk_2_preprod_2_trunk|trunk_2_prod_2_trunk).cold_boot|roundtrip.preprod_2_trunk_2_preprod.(warm_boot|warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit|warm_boot_for_warm_boot.0.AgentEmptyVoqTest.CheckInit)).AgentMacLearningMacMoveTest.VerifyMacMoveForPort$"
+        },
+        {
+          "test_name_regex": "roundtrip.(preprod_2_trunk_2_preprod|prod_2_trunk_2_prod).(warm_boot|warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit).AgentMacSwLearningModeTest.VerifyDefaultSwAgingForPort$"
+        },
+        {
+          "test_name_regex": "roundtrip.(preprod_2_trunk_2_preprod|prod_2_trunk_2_prod).(warm_boot|warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit).AgentPortBandwidthTest/AgentPortBandwidthParamTest.VerifyPortRateTraffic/0$"
+        },
+        {
+          "test_name_regex": "roundtrip.(preprod_2_trunk_2_preprod|prod_2_trunk_2_prod).(warm_boot|warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit).AgentPortProfileTest_PROFILE_10G_1_NRZ_NOFEC_COPPER.TestProfile$"
+        },
+        {
+          "test_name_regex": "roundtrip.prod_2_trunk_2_prod.(warm_boot|warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit).AgentTest_PROFILE_10G_1_NRZ_NOFEC_OPTICAL.TestProfile$"
         },
         {
           "test_name_regex": "AgentMacSwLearningModeTest.VerifyDefaultSwAgingForPort$"
@@ -11786,18 +11840,6 @@
           "test_name_regex": "roundtrip.*AgentMirrorOnDropSrv6Test.*$"
         },
         {
-          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.*.AgentSflowMirrorTruncateV4Test.VerifySampledPacketRate$"
-        },
-        {
-          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.*.AgentSflowMirrorTruncateV6Test.VerifySampledPacketRate$"
-        },
-        {
-          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.*.AgentSflowMirrorTruncateV4Test.VerifySampledPacketRate$"
-        },
-        {
-          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.*.AgentSflowMirrorTruncateV6Test.VerifySampledPacketRate$"
-        },
-        {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.*.AgentSflowMirrorUntruncateTestV4.VerifySampledPacketRate$"
         },
         {
@@ -12038,7 +12080,13 @@
           "test_name_regex": "AgentTest_PROFILE_800G_.*$"
         },
         {
-          "test_name_regex": "roundtrip.(preprod_2_trunk_2_preprod|trunk_2_preprod_2_trunk).(cold_boot|warm_boot).AgentMyMacTest.*$"
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.(cold_boot|warm_boot).AgentMyMacTest.routerMacAndVirtualMacRouted$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.(cold_boot|warm_boot).AgentMyMacTest.virtualMacNotRoutedAfterMyMacRemovedPostWarmboot$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.(cold_boot|warm_boot).AgentMyMacTest.virtualMacRoutedAfterMyMacAddedPostWarmboot$"
         },
         {
           "test_name_regex": "AgentMacSwLearningModeTest.VerifyDefaultSwAgingForPort$"
