@@ -133,6 +133,7 @@ cpp_unittest(
         "fbsource//xplat/folly/executors/thread_factory:named_thread_factory",
         "fbsource//xplat/folly/io:iobuf",
         "fbsource//xplat/folly/logging:logging",
+        "fbsource//xplat/folly/logging/test:test_handler",
         "fbsource//xplat/folly/portability:gflags",
         "fbsource//xplat/folly/portability:gtest",
         "fbsource//xplat/folly/synchronization:baton",
