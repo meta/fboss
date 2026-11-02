@@ -261,9 +261,10 @@ class SaiPortManager {
       bool updateCableLengths = false);
 
   // Link up/down debounce retrigger counts are leaba READ_ONLY port attributes
-  // (25.5.4210 / 26.2+). Compile-time SDK gate; the per-port read in
-  // updateStats is additionally guarded on the port having a debounce hold
-  // timer configured.
+  // (25.5.4210 / 26.5) or port stats (26.2.4210); Broadcom serves both as
+  // port stats from 15.4 on. Compile-time SDK gate; the per-port read in
+  // updateStats is additionally guarded on the port having that direction's
+  // debounce hold timer configured.
   static bool isLinkDebounceRetriggerCounterSupported(const HwAsic* asic);
 
   void updateConnectivityStats(PortID portID);

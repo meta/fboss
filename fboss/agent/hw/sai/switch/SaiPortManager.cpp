@@ -2856,9 +2856,10 @@ const std::vector<sai_stat_id_t>& SaiPortManager::getSupportedPfcDurationStats(
 
 bool SaiPortManager::isLinkDebounceRetriggerCounterSupported(
     [[maybe_unused]] const HwAsic* asic) {
-#if defined(TAJO_SDK_VERSION_25_5_4210) || \
-    defined(TAJO_SDK_VERSION_26_2_4210) || \
-    (defined(TAJO_SDK_GTE_26_5) && !defined(TAJO_SDK_P200))
+#if defined(TAJO_SDK_VERSION_25_5_4210) ||                     \
+    defined(TAJO_SDK_VERSION_26_2_4210) ||                     \
+    (defined(TAJO_SDK_GTE_26_5) && !defined(TAJO_SDK_P200)) || \
+    (defined(BRCM_SAI_SDK_GTE_15_4) && !defined(SAI_VERSION_15_4_EA_ODP))
   return asic->isSupported(HwAsic::Feature::PORT_DEBOUNCE);
 #else
   return false;
@@ -3091,13 +3092,16 @@ void SaiPortManager::updateStats(
     curPortStats.logicalPortId() = *logicalPortId;
   }
 
-#if defined(TAJO_SDK_VERSION_25_5_4210) || \
-    defined(TAJO_SDK_VERSION_26_2_4210) || \
-    (defined(TAJO_SDK_GTE_26_5) && !defined(TAJO_SDK_P200))
+#if defined(TAJO_SDK_VERSION_25_5_4210) ||                     \
+    defined(TAJO_SDK_VERSION_26_2_4210) ||                     \
+    (defined(TAJO_SDK_GTE_26_5) && !defined(TAJO_SDK_P200)) || \
+    (defined(BRCM_SAI_SDK_GTE_15_4) && !defined(SAI_VERSION_15_4_EA_ODP))
   if (isLinkDebounceRetriggerCounterSupported(platform_->getAsic())) {
     auto& portApi = SaiApiTable::getInstance()->portApi();
     auto adapterKey = handle->port->adapterKey();
     const auto& portAttrs = handle->port->attributes();
+    // Some ASICs clear the retrigger counters on read. Accumulate those so
+    // HwPortStats always reports a monotonic count, as we do for FEC errors.
     auto asicClearsRetriggerCountOnRead =
         platform_->getAsic()->isPortDebounceRetriggerCountClearOnRead();
     auto updateRetriggerCount = [&](auto&& stat,
@@ -3123,16 +3127,15 @@ void SaiPortManager::updateStats(
       if (!value.has_value()) {
         return;
       }
-      // The stats are read and cleared, the attributes report a running total;
-      // accumulate the former so HwPortStats stays monotonic, as we do for FEC.
+      // Accumulate counts that were cleared on read so HwPortStats stays
+      // monotonic, as we do for FEC; a running total is stored as is.
       auto clearOnRead = !statIds.empty() || asicClearsRetriggerCountOnRead;
       stat = clearOnRead && stat.has_value() ? *stat + *value : *value;
     };
+    // Only read a retrigger count for ports that actually have that direction's
+    // debounce hold timer configured.
     auto downPeriod = std::get<
         std::optional<SaiPortTraits::Attributes::LinkDownDebouncePeriodMs>>(
-        portAttrs);
-    auto upPeriod = std::get<
-        std::optional<SaiPortTraits::Attributes::LinkUpDebouncePeriodMs>>(
         portAttrs);
     if (downPeriod.has_value() && downPeriod->value() > 0) {
       updateRetriggerCount(
@@ -3145,7 +3148,21 @@ void SaiPortManager::updateStats(
           },
           "link down debounce retrigger count");
     }
-    if (upPeriod.has_value() && upPeriod->value() > 0) {
+
+    bool upHoldConfigured = false;
+    if (platform_->getAsic()->isSupported(
+            HwAsic::Feature::SWITCH_WIDE_LINK_UP_DEBOUNCE)) {
+      upHoldConfigured =
+          managerTable_->switchManager().getLinkUpDebounceTimeout() > 0;
+    } else {
+#if defined(FBOSS_SAI_PORT_LINK_UP_DEBOUNCE_PERIOD)
+      auto upPeriod = std::get<
+          std::optional<SaiPortTraits::Attributes::LinkUpDebouncePeriodMs>>(
+          portAttrs);
+      upHoldConfigured = upPeriod.has_value() && upPeriod->value() > 0;
+#endif
+    }
+    if (upHoldConfigured) {
       updateRetriggerCount(
           curPortStats.linkUpDebounceRetriggerCount_(),
           SaiPortTraits::linkUpDebounceRetriggerStats(),
