@@ -66,6 +66,7 @@ FORWARDING_BINARIES = [
     "diag_shell_client",
     "fboss2",
     "fboss2-dev",
+    "fboss2-readonly",
     "fboss_hw_agent-sai_impl",
     "fboss_pai_diag_shell_client",
     "fboss_sw_agent",
