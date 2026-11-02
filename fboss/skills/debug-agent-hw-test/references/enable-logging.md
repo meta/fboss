@@ -143,4 +143,4 @@ Re-run a failing cold boot test with SDK and FBOSS verbose logging:
 - Analyze the enhanced logs with [analyze-logs.md](analyze-logs.md)
 - If hypothesis formed: see [hypothesis-driven-debug.md](hypothesis-driven-debug.md)
 - If the root cause is the vendor SDK/silicon: assemble a reproducible vendor-escalation
-  package (replayer log + hw_config + case report) with [vendor-escalation.md](vendor-escalation.md)
+  package (replayer log + hw_config + case report) with the [vendor-escalation skill](../../vendor-escalation/SKILL.md)
