@@ -898,7 +898,6 @@ cpp_library(
         "fbsource//xplat/folly:dynamic",
         "fbsource//xplat/folly:exception_string",
         "fbsource//xplat/folly:file_util",
-        "fbsource//xplat/folly:format",
         "fbsource//xplat/folly:map_util",
         "fbsource//xplat/folly:network_address",
         "fbsource//xplat/folly:range",
