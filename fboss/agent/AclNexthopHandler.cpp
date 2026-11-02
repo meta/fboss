@@ -66,6 +66,21 @@ void AclNexthopHandler::resolveActionNexthops(MatchAction& action) {
   RouteNextHopSet nexthops;
   const auto& redirect = action.getRedirectToNextHop();
 
+  bool hasTunnelNexthop = false;
+  bool hasNonTunnelNexthop = false;
+  for (const auto& nh : *redirect.value().first.redirectNextHops()) {
+    if (nh.tunnelType().has_value() &&
+        nh.tunnelType().value() == TunnelType::IP_IN_IP_ENCAP) {
+      hasTunnelNexthop = true;
+    } else {
+      hasNonTunnelNexthop = true;
+    }
+  }
+  if (hasTunnelNexthop && hasNonTunnelNexthop) {
+    throw FbossError(
+        "Redirect must not mix tunnel encap and non-tunnel nexthops");
+  }
+
   for (auto& nhIpStruct : *redirect.value().first.redirectNextHops()) {
     auto nhIp = folly::IPAddress(*nhIpStruct.ip());
     auto intfID = nhIpStruct.intfID();

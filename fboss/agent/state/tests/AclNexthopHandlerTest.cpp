@@ -541,6 +541,24 @@ TYPED_TEST(AclNexthopHandlerTest, LinkLocalNexthopWithoutInterfaceBadConfig) {
   }
 }
 
+// Mixing tunnel encap and non-tunnel nexthops is invalid, resolution throws.
+TYPED_TEST(AclNexthopHandlerTest, MixedTunnelAndNonTunnelNexthopThrows) {
+  auto cfgRedirectToNextHop = cfg::RedirectToNextHopAction();
+  cfg::RedirectNextHop tunnelNhop;
+  tunnelNhop.ip() = this->getAclNexthopIps(2)[0];
+  tunnelNhop.tunnelType() = TunnelType::IP_IN_IP_ENCAP;
+  tunnelNhop.tunnelId() = "encapTunnel0";
+  cfg::RedirectNextHop plainNhop;
+  plainNhop.ip() = this->getAclNexthopIps(2)[1];
+  cfgRedirectToNextHop.redirectNextHops() = {tunnelNhop, plainNhop};
+  auto redirectToNextHop = MatchAction::RedirectToNextHopAction();
+  redirectToNextHop.first = cfgRedirectToNextHop;
+  MatchAction action = MatchAction();
+  action.setRedirectToNextHop(redirectToNextHop);
+  AclNexthopHandler handler(this->sw_);
+  EXPECT_THROW(handler.resolveActionNexthops(action), FbossError);
+}
+
 // Non-link-local nexthop with interface scoping is invalid, resolution throws.
 TYPED_TEST(AclNexthopHandlerTest, NonLinkLocalNexthopWithInterfaceThrows) {
   auto cfgRedirectToNextHop = cfg::RedirectToNextHopAction();
