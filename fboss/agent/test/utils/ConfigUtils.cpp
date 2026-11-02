@@ -235,6 +235,11 @@ void applyTomahawk6PciAddrs(
   }
 }
 
+void applyTomahawk6PciAddrsFromBus(
+    std::map<SwitchID, cfg::SwitchInfo>& switchIdToSwitchInfo) {
+  applyTomahawk6PciAddrs(discoverTomahawk6PciAddrs(), switchIdToSwitchInfo);
+}
+
 folly::MacAddress kLocalCpuMac() {
   static const folly::MacAddress kLocalMac(
       FLAGS_nodeZ ? "02:00:00:00:00:02" : "02:00:00:00:00:01");

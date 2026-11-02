@@ -18,11 +18,13 @@
 #include "fboss/agent/hw/gen-cpp2/hardware_stats_types.h"
 #include "fboss/agent/hw/test/ConfigFactory.h"
 #include "fboss/agent/test/TestUtils.h"
+#include "fboss/agent/test/utils/ConfigUtils.h"
 #include "fboss/agent/test/utils/PacketSendUtils.h"
 #include "fboss/agent/types.h"
 #include "fboss/lib/CommonFileUtils.h"
 #include "fboss/lib/CommonUtils.h"
 #include "fboss/lib/config/PlatformConfigUtils.h"
+#include "fboss/lib/platforms/PlatformProductInfo.h"
 
 #include <fmt/format.h>
 #include <folly/io/async/EventBase.h>
@@ -54,6 +56,22 @@ constexpr auto kOverriddenAgentConfigFile = "overridden_agent.conf";
 } // namespace
 
 namespace facebook::fboss {
+namespace {
+bool isLadakhOrLeh() {
+  PlatformProductInfo productInfo(FLAGS_fruid_filepath);
+  try {
+    productInfo.initialize();
+  } catch (const std::exception& ex) {
+    // Expected off-switch (eg: devservers), where there is no fruid file.
+    XLOG(INFO) << "Couldn't determine platform type: " << ex.what();
+    return false;
+  }
+  const auto platformType = productInfo.getType();
+  return platformType == PlatformType::PLATFORM_LADAKH800BCLS ||
+      platformType == PlatformType::PLATFORM_LEH800BCLS;
+}
+} // namespace
+
 AgentEnsemble::AgentEnsemble(const std::string& configFileName) {
   setConfigFiles(configFileName);
   setBootType();
@@ -96,6 +114,24 @@ void AgentEnsemble::setupEnsemble(
     if (platformConfigFn) {
       platformConfigFn(
           *(inputAgentConfig.sw()), *(inputAgentConfig.platform()));
+    }
+
+    // Generated configs get this from genPortVlanCfg(); tests that take the
+    // production config verbatim (link tests) would otherwise hand SAI a
+    // handle naming an empty slot on the other COM-E variant. Scoped to the
+    // same platforms as genPortVlanCfg(): other Tomahawk6 platforms leave the
+    // handle unset, and setting it changes how the SDK probes the device.
+    if (isLadakhOrLeh()) {
+      auto& configSwitchInfo =
+          *inputAgentConfig.sw()->switchSettings()->switchIdToSwitchInfo();
+      std::map<SwitchID, cfg::SwitchInfo> switchIdToSwitchInfo;
+      for (const auto& [switchId, switchInfo] : configSwitchInfo) {
+        switchIdToSwitchInfo.emplace(SwitchID(switchId), switchInfo);
+      }
+      utility::applyTomahawk6PciAddrsFromBus(switchIdToSwitchInfo);
+      for (const auto& [switchId, switchInfo] : switchIdToSwitchInfo) {
+        configSwitchInfo[static_cast<int64_t>(switchId)] = switchInfo;
+      }
     }
     // some platform config may need cold boots. so overwrite the config before
     // creating a switch
