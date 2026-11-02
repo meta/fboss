@@ -13,17 +13,139 @@
 
 #include <thrift/lib/cpp/transport/TTransportException.h>
 #include <thrift/lib/cpp/util/EnumUtils.h>
+#include "fboss/agent/hw/gen-cpp2/hardware_stats_constants.h"
 #include "fboss/cli/fboss2/commands/show/port/gen-cpp2/model_types.h"
 #include "fboss/cli/fboss2/utils/CmdUtils.h"
 #include "fboss/cli/fboss2/utils/Table.h"
 #include "fboss/qsfp_service/if/gen-cpp2/transceiver_types.h"
 
 #include <algorithm>
+#include <array>
 
 namespace facebook::fboss {
 using utils::Table;
 using ObjectArgType = CmdShowPortTraits::ObjectArgType;
 using RetType = CmdShowPortTraits::RetType;
+
+namespace {
+
+constexpr auto kWindowedCounterRegex =
+    R"(.*\.(in_bytes|out_bytes|in_unicast_pkts|in_multicast_pkts|in_broadcast_pkts|out_unicast_pkts|out_multicast_pkts|out_broadcast_pkts|in_errors|in_ipv4_header_errors|in_ipv6_header_errors|in_discards|out_errors|out_discards|out_congestion_discards|in_pause_frames|out_pause_frames)\.sum\.(60|600|3600)$|.*\.queue[0-9]+\..*\.(out_bytes|out_congestion_discards)\.sum\.(60|600|3600)$)";
+
+std::string formatHwCounter(int64_t value) {
+  return value == hardware_stats_constants::STAT_UNINITIALIZED()
+      ? "n/a"
+      : folly::to<std::string>(value);
+}
+
+std::optional<cli::WindowedCounter> getWindowedCounter(
+    const std::map<std::string, int64_t>& counters,
+    const std::string& counterName,
+    int64_t multiplier = 1,
+    bool perSecond = false) {
+  cli::WindowedCounter result;
+  bool found = false;
+
+  const auto getValue = [&](int window) -> std::optional<int64_t> {
+    const auto iter =
+        counters.find(fmt::format("{}.sum.{}", counterName, window));
+    if (iter == counters.end()) {
+      return std::nullopt;
+    }
+    const auto value = iter->second * multiplier;
+    return perSecond ? value / window : value;
+  };
+
+  if (auto value = getValue(60)) {
+    result.oneMinute() = *value;
+    found = true;
+  }
+  if (auto value = getValue(600)) {
+    result.tenMinutes() = *value;
+    found = true;
+  }
+  if (auto value = getValue(3600)) {
+    result.oneHour() = *value;
+    found = true;
+  }
+  return found ? std::optional<cli::WindowedCounter>(std::move(result))
+               : std::nullopt;
+}
+
+std::string formatRate(const std::optional<int64_t>& rate, bool bitsPerSecond) {
+  if (!rate.has_value()) {
+    return "--";
+  }
+
+  struct Unit {
+    double scale;
+    std::string_view suffix;
+  };
+  const std::array<Unit, 4> units = bitsPerSecond
+      ? std::array<
+            Unit,
+            4>{Unit{1e12, "Tbps"}, Unit{1e9, "Gbps"}, Unit{1e6, "Mbps"}, Unit{1e3, "Kbps"}}
+      : std::array<Unit, 4>{
+            Unit{1e9, "Gpps"},
+            Unit{1e6, "Mpps"},
+            Unit{1e3, "Kpps"},
+            Unit{1, "pps"}};
+
+  for (const auto& unit : units) {
+    if (*rate >= unit.scale) {
+      return fmt::format("{:.2f} {}", *rate / unit.scale, unit.suffix);
+    }
+  }
+  return fmt::format("{} {}", *rate, bitsPerSecond ? "bps" : "pps");
+}
+
+enum class WindowedValueType {
+  BITS_PER_SECOND,
+  PACKETS,
+  PACKETS_PER_SECOND,
+};
+
+std::string formatWindowedValue(
+    const std::optional<int64_t>& value,
+    WindowedValueType type) {
+  if (type == WindowedValueType::PACKETS) {
+    return value.has_value() ? folly::to<std::string>(*value) : "--";
+  }
+  return formatRate(value, type == WindowedValueType::BITS_PER_SECOND);
+}
+
+void appendWindowedCounter(
+    std::vector<std::string>& output,
+    std::string_view label,
+    const std::optional<cli::WindowedCounter>& counter,
+    WindowedValueType type) {
+  if (!counter.has_value()) {
+    return;
+  }
+  output.emplace_back(
+      fmt::format(
+          "\t{:<36}{:>16}{:>16}{:>16}",
+          label,
+          formatWindowedValue(counter->oneMinute().to_optional(), type),
+          formatWindowedValue(counter->tenMinutes().to_optional(), type),
+          formatWindowedValue(counter->oneHour().to_optional(), type)));
+}
+
+void appendWindowedQueueCounters(
+    std::vector<std::string>& output,
+    const std::map<int16_t, cli::WindowedCounter>& rates,
+    const std::map<int16_t, std::string>& queueIdToName,
+    WindowedValueType type) {
+  for (const auto& [queueId, rate] : rates) {
+    const auto queueNameIter = queueIdToName.find(queueId);
+    const auto queueLabel = queueNameIter == queueIdToName.end()
+        ? fmt::format("    Queue {}", queueId)
+        : fmt::format("    Queue {} ({})", queueId, queueNameIter->second);
+    appendWindowedCounter(output, queueLabel, rate, type);
+  }
+}
+
+} // namespace
 
 std::string getAdminStateStr(PortAdminState adminState) {
   switch (adminState) {
@@ -308,6 +430,7 @@ RetType CmdShowPort::queryClient(
   std::map<int32_t, facebook::fboss::PortInfoThrift> portEntries;
   std::map<int32_t, facebook::fboss::TransceiverInfo> transceiverEntries;
   std::map<std::string, facebook::fboss::HwPortStats> portStats;
+  std::map<std::string, int64_t> fb303Counters;
 
   std::vector<int32_t> requiredTransceiverEntries;
   std::vector<std::string> bgpDrainedInterfaces;
@@ -319,6 +442,8 @@ RetType CmdShowPort::queryClient(
   auto opt = CmdGlobalOptions::getInstance();
   if (opt->isDetailed()) {
     client->sync_getHwPortStats(portStats);
+    fb303Counters =
+        utils::getAgentFb303RegexCounters(hostInfo, kWindowedCounterRegex);
   }
 
   try {
@@ -350,7 +475,8 @@ RetType CmdShowPort::queryClient(
       portToPeer,
       peerDrainStates,
       peerPortInfo,
-      utils::getBgpDrainedInterafces(hostInfo));
+      utils::getBgpDrainedInterafces(hostInfo),
+      fb303Counters);
 }
 
 RetType CmdShowPort::createModel(
@@ -363,7 +489,8 @@ RetType CmdShowPort::createModel(
     const std::unordered_map<std::string, cfg::SwitchDrainState>&
         peerDrainStates,
     const std::unordered_map<std::string, PeerPortInfo>& peerPortInfo,
-    const std::vector<std::string>& drainedInterfaces) {
+    const std::vector<std::string>& drainedInterfaces,
+    const std::map<std::string, int64_t>& fb303Counters) {
   RetType model;
   std::unordered_set<std::string> queriedSet(
       queriedPorts.begin(), queriedPorts.end());
@@ -528,20 +655,70 @@ RetType CmdShowPort::createModel(
         cli::PortHwStatsEntry cliPortStats;
         cliPortStats.inUnicastPkts() =
             folly::copy(portHwStatsEntry.inUnicastPkts_().value());
+        cliPortStats.inMulticastPkts() =
+            folly::copy(portHwStatsEntry.inMulticastPkts_().value());
+        cliPortStats.inBroadcastPkts() =
+            folly::copy(portHwStatsEntry.inBroadcastPkts_().value());
         cliPortStats.inDiscardPkts() =
             folly::copy(portHwStatsEntry.inDiscards_().value());
         cliPortStats.inErrorPkts() =
             folly::copy(portHwStatsEntry.inErrors_().value());
+        cliPortStats.inIpv4HeaderErrorPkts() =
+            folly::copy(portHwStatsEntry.inIpv4HdrErrors_().value());
+        cliPortStats.inIpv6HeaderErrorPkts() =
+            folly::copy(portHwStatsEntry.inIpv6HdrErrors_().value());
+        cliPortStats.outUnicastPkts() =
+            folly::copy(portHwStatsEntry.outUnicastPkts_().value());
+        cliPortStats.outMulticastPkts() =
+            folly::copy(portHwStatsEntry.outMulticastPkts_().value());
+        cliPortStats.outBroadcastPkts() =
+            folly::copy(portHwStatsEntry.outBroadcastPkts_().value());
+        cliPortStats.outErrorPkts() =
+            folly::copy(portHwStatsEntry.outErrors_().value());
         cliPortStats.outDiscardPkts() =
             folly::copy(portHwStatsEntry.outDiscards_().value());
         cliPortStats.outCongestionDiscardPkts() =
             folly::copy(portHwStatsEntry.outCongestionDiscardPkts_().value());
         cliPortStats.queueOutDiscardBytes() =
             portHwStatsEntry.queueOutDiscardBytes_().value();
+        cliPortStats.queueOutDiscardPackets() =
+            portHwStatsEntry.queueOutDiscardPackets_().value();
         cliPortStats.inCongestionDiscards() =
             folly::copy(portHwStatsEntry.inCongestionDiscards_().value());
         cliPortStats.queueOutBytes() =
             portHwStatsEntry.queueOutBytes_().value();
+        for (const auto& queue : portInfo.portQueues().value()) {
+          const auto queueId = folly::copy(queue.id().value());
+          const auto queueName = queue.name().value().empty()
+              ? fmt::format("queue{}", queueId)
+              : queue.name().value();
+          const auto counterPrefix =
+              fmt::format("{}.queue{}.{}", portName, queueId, queueName);
+          const auto queueOutBytes =
+              portHwStatsEntry.queueOutBytes_()->find(queueId);
+          if (queueOutBytes != portHwStatsEntry.queueOutBytes_()->end() &&
+              (queueOutBytes->second != 0 || !queue.name()->empty())) {
+            if (auto rates = getWindowedCounter(
+                    fb303Counters, counterPrefix + ".out_bytes", 8, true)) {
+              cliPortStats.queueOutBitsPerSecond()[queueId] = std::move(*rates);
+            }
+          }
+          const auto queueOutDiscardPackets =
+              portHwStatsEntry.queueOutDiscardPackets_()->find(queueId);
+          if (queueOutDiscardPackets !=
+                  portHwStatsEntry.queueOutDiscardPackets_()->end() &&
+              (queueOutDiscardPackets->second != 0 || !queue.name()->empty())) {
+            if (auto rates = getWindowedCounter(
+                    fb303Counters,
+                    counterPrefix + ".out_congestion_discards",
+                    1,
+                    true)) {
+              cliPortStats
+                  .queueOutCongestionDiscardPacketsPerSecond()[queueId] =
+                  std::move(*rates);
+            }
+          }
+        }
         if (apache::thrift::get_pointer(portInfo.pfc())) {
           cliPortStats.outPfcPriorityPackets() =
               portHwStatsEntry.outPfc_().value();
@@ -561,6 +738,43 @@ RetType CmdShowPort::createModel(
             folly::copy(portHwStatsEntry.inBytes_().value());
         cliPortStats.egressBytes() =
             folly::copy(portHwStatsEntry.outBytes_().value());
+        cli::PortWindowedStatsEntry windowedStats;
+        windowedStats.ingressBitsPerSecond().from_optional(
+            getWindowedCounter(fb303Counters, portName + ".in_bytes", 8, true));
+        windowedStats.egressBitsPerSecond().from_optional(getWindowedCounter(
+            fb303Counters, portName + ".out_bytes", 8, true));
+        windowedStats.inUnicastPkts().from_optional(
+            getWindowedCounter(fb303Counters, portName + ".in_unicast_pkts"));
+        windowedStats.inMulticastPkts().from_optional(
+            getWindowedCounter(fb303Counters, portName + ".in_multicast_pkts"));
+        windowedStats.inBroadcastPkts().from_optional(
+            getWindowedCounter(fb303Counters, portName + ".in_broadcast_pkts"));
+        windowedStats.outUnicastPkts().from_optional(
+            getWindowedCounter(fb303Counters, portName + ".out_unicast_pkts"));
+        windowedStats.outMulticastPkts().from_optional(getWindowedCounter(
+            fb303Counters, portName + ".out_multicast_pkts"));
+        windowedStats.outBroadcastPkts().from_optional(getWindowedCounter(
+            fb303Counters, portName + ".out_broadcast_pkts"));
+        windowedStats.inErrorPkts().from_optional(
+            getWindowedCounter(fb303Counters, portName + ".in_errors"));
+        windowedStats.inIpv4HeaderErrorPkts().from_optional(getWindowedCounter(
+            fb303Counters, portName + ".in_ipv4_header_errors"));
+        windowedStats.inIpv6HeaderErrorPkts().from_optional(getWindowedCounter(
+            fb303Counters, portName + ".in_ipv6_header_errors"));
+        windowedStats.inDiscardPkts().from_optional(
+            getWindowedCounter(fb303Counters, portName + ".in_discards"));
+        windowedStats.outErrorPkts().from_optional(
+            getWindowedCounter(fb303Counters, portName + ".out_errors"));
+        windowedStats.outDiscardPkts().from_optional(
+            getWindowedCounter(fb303Counters, portName + ".out_discards"));
+        windowedStats.outCongestionDiscardPkts().from_optional(
+            getWindowedCounter(
+                fb303Counters, portName + ".out_congestion_discards"));
+        windowedStats.inPausePackets().from_optional(
+            getWindowedCounter(fb303Counters, portName + ".in_pause_frames"));
+        windowedStats.outPausePackets().from_optional(
+            getWindowedCounter(fb303Counters, portName + ".out_pause_frames"));
+        cliPortStats.windowedStats() = std::move(windowedStats);
         cliPortStats.cbfcCfUpdateTx().from_optional(
             portHwStatsEntry.cbfcCfUpdateTx_().to_optional());
         cliPortStats.cbfcCfUpdateRx().from_optional(
@@ -667,14 +881,15 @@ void CmdShowPort::printOutput(const RetType& model, std::ostream& out) {
               "Unicast queues: \t\t {}",
               folly::to<std::string>(
                   folly::copy(portInfo.numUnicastQueues().value()))));
+      detailedOutput.emplace_back("    Cumulative hardware counters");
       detailedOutput.emplace_back(
           fmt::format(
               "    Ingress (bytes)               \t\t {}",
-              folly::copy(portHwStats.ingressBytes().value())));
+              formatHwCounter(portHwStats.ingressBytes().value())));
       detailedOutput.emplace_back(
           fmt::format(
               "    Egress (bytes)                \t\t {}",
-              folly::copy(portHwStats.egressBytes().value())));
+              formatHwCounter(portHwStats.egressBytes().value())));
       for (const auto& queueBytes : portHwStats.queueOutBytes().value()) {
         const auto iter =
             portInfo.queueIdToName().value().find(queueBytes.first);
@@ -695,50 +910,83 @@ void CmdShowPort::printOutput(const RetType& model, std::ostream& out) {
       detailedOutput.emplace_back(
           fmt::format(
               "    Received Unicast (pkts)       \t\t {}",
-              folly::copy(portHwStats.inUnicastPkts().value())));
+              formatHwCounter(portHwStats.inUnicastPkts().value())));
+      detailedOutput.emplace_back(
+          fmt::format(
+              "    Received Multicast (pkts)     \t\t {}",
+              formatHwCounter(portHwStats.inMulticastPkts().value())));
+      detailedOutput.emplace_back(
+          fmt::format(
+              "    Received Broadcast (pkts)     \t\t {}",
+              formatHwCounter(portHwStats.inBroadcastPkts().value())));
+      detailedOutput.emplace_back(
+          fmt::format(
+              "    Sent Unicast (pkts)           \t\t {}",
+              formatHwCounter(portHwStats.outUnicastPkts().value())));
+      detailedOutput.emplace_back(
+          fmt::format(
+              "    Sent Multicast (pkts)         \t\t {}",
+              formatHwCounter(portHwStats.outMulticastPkts().value())));
+      detailedOutput.emplace_back(
+          fmt::format(
+              "    Sent Broadcast (pkts)         \t\t {}",
+              formatHwCounter(portHwStats.outBroadcastPkts().value())));
       detailedOutput.emplace_back(
           fmt::format(
               "    In Errors (pkts)              \t\t {}",
-              folly::copy(portHwStats.inErrorPkts().value())));
+              formatHwCounter(portHwStats.inErrorPkts().value())));
+      detailedOutput.emplace_back(
+          fmt::format(
+              "    In IPv4 Header Errors (pkts)  \t\t {}",
+              formatHwCounter(portHwStats.inIpv4HeaderErrorPkts().value())));
+      detailedOutput.emplace_back(
+          fmt::format(
+              "    In IPv6 Header Errors (pkts)  \t\t {}",
+              formatHwCounter(portHwStats.inIpv6HeaderErrorPkts().value())));
       detailedOutput.emplace_back(
           fmt::format(
               "    In Discards (pkts)            \t\t {}",
-              folly::copy(portHwStats.inDiscardPkts().value())));
+              formatHwCounter(portHwStats.inDiscardPkts().value())));
+      detailedOutput.emplace_back(
+          fmt::format(
+              "    Out Errors (pkts)             \t\t {}",
+              formatHwCounter(portHwStats.outErrorPkts().value())));
       detailedOutput.emplace_back(
           fmt::format(
               "    Out Discards (pkts)           \t\t {}",
-              folly::copy(portHwStats.outDiscardPkts().value())));
+              formatHwCounter(portHwStats.outDiscardPkts().value())));
       detailedOutput.emplace_back(
           fmt::format(
               "    Out Congestion Discards (pkts)\t\t {}",
-              folly::copy(portHwStats.outCongestionDiscardPkts().value())));
-      for (const auto& queueDiscardBytes :
-           portHwStats.queueOutDiscardBytes().value()) {
+              formatHwCounter(portHwStats.outCongestionDiscardPkts().value())));
+      for (const auto& queueDiscardPackets :
+           portHwStats.queueOutDiscardPackets().value()) {
         const auto iter =
-            portInfo.queueIdToName().value().find(queueDiscardBytes.first);
+            portInfo.queueIdToName().value().find(queueDiscardPackets.first);
         std::string queueName;
         if (iter != portInfo.queueIdToName().value().end()) {
           queueName = folly::to<std::string>("(", iter->second, ")");
         }
         // print either if the queue is valid or queue has non zero traffic
-        if (queueDiscardBytes.second || !queueName.empty()) {
+        if (queueDiscardPackets.second || !queueName.empty()) {
           detailedOutput.emplace_back(
               fmt::format(
                   "\tQueue {} {:12}    \t\t {}",
-                  queueDiscardBytes.first,
+                  queueDiscardPackets.first,
                   queueName,
-                  queueDiscardBytes.second));
+                  queueDiscardPackets.second));
         }
       }
       detailedOutput.emplace_back(
           fmt::format(
               "    In Congestion Discards (pkts)\t\t {}",
-              folly::copy(portHwStats.inCongestionDiscards().value())));
+              formatHwCounter(portHwStats.inCongestionDiscards().value())));
       if (apache::thrift::get_pointer(portHwStats.outPfcPackets())) {
         detailedOutput.emplace_back(
             fmt::format(
                 "    PFC Output (pkts)             \t\t {}",
-                *apache::thrift::get_pointer(portHwStats.outPfcPackets())));
+                formatHwCounter(*apache::thrift::get_pointer(
+                    portHwStats.outPfcPackets()))));
         if (apache::thrift::get_pointer(portHwStats.outPfcPriorityPackets())) {
           for (const auto& pfcPriortyCounter : *apache::thrift::get_pointer(
                    portHwStats.outPfcPriorityPackets())) {
@@ -754,7 +1002,8 @@ void CmdShowPort::printOutput(const RetType& model, std::ostream& out) {
         detailedOutput.emplace_back(
             fmt::format(
                 "    PFC Input (pkts)              \t\t {}",
-                *apache::thrift::get_pointer(portHwStats.inPfcPackets())));
+                formatHwCounter(
+                    *apache::thrift::get_pointer(portHwStats.inPfcPackets()))));
         if (apache::thrift::get_pointer(portHwStats.inPfcPriorityPackets())) {
           for (const auto& pfcPriortyCounter : *apache::thrift::get_pointer(
                    portHwStats.inPfcPriorityPackets())) {
@@ -770,13 +1019,15 @@ void CmdShowPort::printOutput(const RetType& model, std::ostream& out) {
         detailedOutput.emplace_back(
             fmt::format(
                 "    Pause Output (pkts)           \t\t {}",
-                *apache::thrift::get_pointer(portHwStats.outPausePackets())));
+                formatHwCounter(*apache::thrift::get_pointer(
+                    portHwStats.outPausePackets()))));
       }
       if (apache::thrift::get_pointer(portHwStats.inPausePackets())) {
         detailedOutput.emplace_back(
             fmt::format(
                 "    Pause Input (pkts)            \t\t {}",
-                *apache::thrift::get_pointer(portHwStats.inPausePackets())));
+                formatHwCounter(*apache::thrift::get_pointer(
+                    portHwStats.inPausePackets()))));
       }
       if (apache::thrift::get_pointer(portHwStats.cbfcCfUpdateTx())) {
         detailedOutput.emplace_back(
@@ -796,6 +1047,111 @@ void CmdShowPort::printOutput(const RetType& model, std::ostream& out) {
                 "    CBFC CC Update Output         \t\t {}",
                 *apache::thrift::get_pointer(portHwStats.cbfcCcUpdateTx())));
       }
+
+      const auto& windowedStats = portHwStats.windowedStats().value();
+      detailedOutput.emplace_back("    Windowed FB303 counters");
+      detailedOutput.emplace_back(
+          fmt::format(
+              "\t{:<36}{:>16}{:>16}{:>16}",
+              "Time interval",
+              "1 minute",
+              "10 minutes",
+              "1 hour"));
+      appendWindowedCounter(
+          detailedOutput,
+          "Ingress",
+          windowedStats.ingressBitsPerSecond().to_optional(),
+          WindowedValueType::BITS_PER_SECOND);
+      appendWindowedCounter(
+          detailedOutput,
+          "Egress",
+          windowedStats.egressBitsPerSecond().to_optional(),
+          WindowedValueType::BITS_PER_SECOND);
+      appendWindowedQueueCounters(
+          detailedOutput,
+          portHwStats.queueOutBitsPerSecond().value(),
+          portInfo.queueIdToName().value(),
+          WindowedValueType::BITS_PER_SECOND);
+      appendWindowedCounter(
+          detailedOutput,
+          "Received Unicast (pkts)",
+          windowedStats.inUnicastPkts().to_optional(),
+          WindowedValueType::PACKETS);
+      appendWindowedCounter(
+          detailedOutput,
+          "Received Multicast (pkts)",
+          windowedStats.inMulticastPkts().to_optional(),
+          WindowedValueType::PACKETS);
+      appendWindowedCounter(
+          detailedOutput,
+          "Received Broadcast (pkts)",
+          windowedStats.inBroadcastPkts().to_optional(),
+          WindowedValueType::PACKETS);
+      appendWindowedCounter(
+          detailedOutput,
+          "Sent Unicast (pkts)",
+          windowedStats.outUnicastPkts().to_optional(),
+          WindowedValueType::PACKETS);
+      appendWindowedCounter(
+          detailedOutput,
+          "Sent Multicast (pkts)",
+          windowedStats.outMulticastPkts().to_optional(),
+          WindowedValueType::PACKETS);
+      appendWindowedCounter(
+          detailedOutput,
+          "Sent Broadcast (pkts)",
+          windowedStats.outBroadcastPkts().to_optional(),
+          WindowedValueType::PACKETS);
+      appendWindowedCounter(
+          detailedOutput,
+          "In Errors (pkts)",
+          windowedStats.inErrorPkts().to_optional(),
+          WindowedValueType::PACKETS);
+      appendWindowedCounter(
+          detailedOutput,
+          "In IPv4 Header Errors (pkts)",
+          windowedStats.inIpv4HeaderErrorPkts().to_optional(),
+          WindowedValueType::PACKETS);
+      appendWindowedCounter(
+          detailedOutput,
+          "In IPv6 Header Errors (pkts)",
+          windowedStats.inIpv6HeaderErrorPkts().to_optional(),
+          WindowedValueType::PACKETS);
+      appendWindowedCounter(
+          detailedOutput,
+          "In Discards (pkts)",
+          windowedStats.inDiscardPkts().to_optional(),
+          WindowedValueType::PACKETS);
+      appendWindowedCounter(
+          detailedOutput,
+          "Out Errors (pkts)",
+          windowedStats.outErrorPkts().to_optional(),
+          WindowedValueType::PACKETS);
+      appendWindowedCounter(
+          detailedOutput,
+          "Out Discards (pkts)",
+          windowedStats.outDiscardPkts().to_optional(),
+          WindowedValueType::PACKETS);
+      appendWindowedCounter(
+          detailedOutput,
+          "Out Congestion Discards (pkts)",
+          windowedStats.outCongestionDiscardPkts().to_optional(),
+          WindowedValueType::PACKETS);
+      appendWindowedQueueCounters(
+          detailedOutput,
+          portHwStats.queueOutCongestionDiscardPacketsPerSecond().value(),
+          portInfo.queueIdToName().value(),
+          WindowedValueType::PACKETS_PER_SECOND);
+      appendWindowedCounter(
+          detailedOutput,
+          "Pause Input (pkts)",
+          windowedStats.inPausePackets().to_optional(),
+          WindowedValueType::PACKETS);
+      appendWindowedCounter(
+          detailedOutput,
+          "Pause Output (pkts)",
+          windowedStats.outPausePackets().to_optional(),
+          WindowedValueType::PACKETS);
     }
     out << folly::join("\n", detailedOutput) << std::endl;
   } else {
@@ -856,7 +1212,7 @@ void CmdShowPort::printOutput(const RetType& model, std::ostream& out) {
 }
 
 std::string_view CmdShowPortTraits::description() {
-  return "Displays low-level port state: admin/link/active state, transceiver presence and ID, speed and port profile, hardware logical port ID, drain state, error flags, and cable length. Use it for detailed port and hardware debugging.";
+  return "Displays low-level port state: admin/link/active state, transceiver presence and ID, speed and port profile, hardware logical port ID, drain state, error flags, and cable length. With --detail, also displays cumulative hardware counters and FB303 traffic rates and packet/error counts over 1-minute, 10-minute and 1-hour windows. Use it for detailed port and hardware debugging.";
 }
 
 CmdShowPort::RetType CmdShowPort::sampleModel() {

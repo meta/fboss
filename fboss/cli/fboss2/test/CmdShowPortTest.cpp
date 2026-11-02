@@ -550,6 +550,103 @@ TEST_F(CmdShowPortTestFixture, cbfc) {
   }
 }
 
+TEST_F(CmdShowPortTestFixture, cumulativeAndWindowedStats) {
+  PortQueueThrift namedQueue;
+  namedQueue.id() = 2;
+  namedQueue.name() = "silver";
+  PortQueueThrift unnamedQueue;
+  unnamedQueue.id() = 4;
+  mockPortEntries.at(1).portQueues() = {namedQueue, unnamedQueue};
+
+  HwPortStats hwPortStats;
+  hwPortStats.inUnicastPkts_() = 10001;
+  hwPortStats.inMulticastPkts_() = 10002;
+  hwPortStats.inBroadcastPkts_() = 10003;
+  hwPortStats.outUnicastPkts_() = 20001;
+  hwPortStats.outMulticastPkts_() = 20002;
+  hwPortStats.outBroadcastPkts_() = 20003;
+  hwPortStats.outErrors_() = 42;
+  hwPortStats.inIpv4HdrErrors_() = 43;
+  hwPortStats.inIpv6HdrErrors_() = 44;
+  hwPortStats.queueOutBytes_() = {{2, 1234}, {4, 0}};
+  hwPortStats.queueOutDiscardBytes_() = {{2, 0}, {4, 0}};
+  hwPortStats.queueOutDiscardPackets_() = {{2, 55}, {4, 0}};
+  mockPortStats["eth1/5/1"] = hwPortStats;
+  const std::map<std::string, int64_t> counters = {
+      {"eth1/5/1.in_bytes.sum.60", 15000},
+      {"eth1/5/1.in_bytes.sum.600", 150000},
+      {"eth1/5/1.in_bytes.sum.3600", 900000},
+      {"eth1/5/1.out_bytes.sum.60", 7500},
+      {"eth1/5/1.out_bytes.sum.600", 75000},
+      {"eth1/5/1.out_bytes.sum.3600", 450000},
+      {"eth1/5/1.in_unicast_pkts.sum.60", 109},
+      {"eth1/5/1.in_unicast_pkts.sum.600", 1100},
+      {"eth1/5/1.in_unicast_pkts.sum.3600", 6647},
+      {"eth1/5/1.in_errors.sum.60", 1},
+      {"eth1/5/1.in_errors.sum.600", 2},
+      {"eth1/5/1.in_errors.sum.3600", 3},
+      {"eth1/5/1.queue2.silver.out_bytes.sum.60", 7500},
+      {"eth1/5/1.queue2.silver.out_bytes.sum.600", 75000},
+      {"eth1/5/1.queue2.silver.out_bytes.sum.3600", 450000},
+      {"eth1/5/1.queue2.silver.out_congestion_discards.sum.60", 120},
+      {"eth1/5/1.queue2.silver.out_congestion_discards.sum.600", 600},
+      {"eth1/5/1.queue2.silver.out_congestion_discards.sum.3600", 3600},
+      {"eth1/5/1.queue4.queue4.out_bytes.sum.60", 1000},
+      {"eth1/5/1.queue4.queue4.out_congestion_discards.sum.60", 10},
+      {"eth1/5/2.in_bytes.sum.60", 9999},
+  };
+
+  CmdShowPortTraits::ObjectArgType queriedPorts(
+      std::vector<std::string>{"eth1/5/1"});
+  auto model = CmdShowPort().createModel(
+      mockPortEntries,
+      mockTransceiverEntries,
+      queriedPorts,
+      mockPortStats,
+      mockPortToPeer,
+      mockPeerDrainStates,
+      mockPeerPortInfo,
+      mockDrainedInterfaces,
+      counters);
+
+  ASSERT_EQ(model.portEntries()->size(), 1);
+  const auto& stats = model.portEntries()->front().hwPortStats().value();
+  EXPECT_EQ(stats.inMulticastPkts(), 10002);
+  EXPECT_EQ(stats.inBroadcastPkts(), 10003);
+  EXPECT_EQ(stats.outUnicastPkts(), 20001);
+  EXPECT_EQ(stats.outMulticastPkts(), 20002);
+  EXPECT_EQ(stats.outBroadcastPkts(), 20003);
+  EXPECT_EQ(stats.outErrorPkts(), 42);
+  EXPECT_EQ(stats.inIpv4HeaderErrorPkts(), 43);
+  EXPECT_EQ(stats.inIpv6HeaderErrorPkts(), 44);
+  EXPECT_EQ(stats.queueOutDiscardPackets()->at(2), 55);
+
+  const auto& windowed = stats.windowedStats().value();
+  EXPECT_EQ(windowed.ingressBitsPerSecond()->oneMinute(), 2000);
+  EXPECT_EQ(windowed.ingressBitsPerSecond()->tenMinutes(), 2000);
+  EXPECT_EQ(windowed.ingressBitsPerSecond()->oneHour(), 2000);
+  EXPECT_EQ(windowed.egressBitsPerSecond()->oneMinute(), 1000);
+  EXPECT_EQ(windowed.inUnicastPkts()->oneMinute(), 109);
+  EXPECT_EQ(windowed.inUnicastPkts()->tenMinutes(), 1100);
+  EXPECT_EQ(windowed.inUnicastPkts()->oneHour(), 6647);
+  EXPECT_EQ(windowed.inErrorPkts()->oneMinute(), 1);
+  EXPECT_EQ(windowed.inErrorPkts()->tenMinutes(), 2);
+  EXPECT_EQ(windowed.inErrorPkts()->oneHour(), 3);
+
+  const auto& namedRates = stats.queueOutBitsPerSecond()->at(2);
+  EXPECT_EQ(namedRates.oneMinute(), 1000);
+  EXPECT_EQ(namedRates.tenMinutes(), 1000);
+  EXPECT_EQ(namedRates.oneHour(), 1000);
+  const auto& discardRates =
+      stats.queueOutCongestionDiscardPacketsPerSecond()->at(2);
+  EXPECT_EQ(discardRates.oneMinute(), 2);
+  EXPECT_EQ(discardRates.tenMinutes(), 1);
+  EXPECT_EQ(discardRates.oneHour(), 1);
+
+  EXPECT_FALSE(stats.queueOutBitsPerSecond()->contains(4));
+  EXPECT_FALSE(stats.queueOutCongestionDiscardPacketsPerSecond()->contains(4));
+}
+
 TEST_F(CmdShowPortTestFixture, invalidPortName) {
   auto invalidPortEntries = createInvalidPortEntries();
 
