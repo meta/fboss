@@ -23,7 +23,6 @@
 #include "fboss/cli/fboss2/commands/config/gen/agent/CmdConfigGenAgent.h"
 #include "fboss/cli/fboss2/commands/get/pcap/CmdGetPcap.h"
 #include "fboss/cli/fboss2/commands/reload/CmdReloadConfigAgent.h"
-#include "fboss/cli/fboss2/commands/set/fanhold/CmdSetFanHold.h"
 #include "fboss/cli/fboss2/commands/set/interface/CmdSetInterface.h"
 #include "fboss/cli/fboss2/commands/set/interface/admin_state/CmdSetInterfaceAdminState.h"
 #include "fboss/cli/fboss2/commands/set/interface/loopback/CmdSetInterfaceLoopback.h"
@@ -617,11 +616,6 @@ const CommandTree& kCommandTree() {
        commandHandler<CmdBounceInterface>,
        argTypeHandler<CmdBounceInterfaceTraits>,
        localOptionsHandler<CmdBounceInterfaceTraits>},
-      {"set",
-       "fanhold",
-       "Set fan hold PWM",
-       commandHandler<CmdSetFanHold>,
-       argTypeHandler<CmdSetFanHoldTraits>},
       {
           "set",
           "interface",

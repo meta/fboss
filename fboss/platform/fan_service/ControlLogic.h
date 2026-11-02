@@ -52,8 +52,6 @@ class ControlLogic {
   }
   unsigned int getControlFrequency() const;
   unsigned int getSensorFetchFrequency() const;
-  void setFanHold(std::optional<int> pwm);
-  std::optional<int> getFanHold();
 
  private:
   const FanServiceConfig config_;
@@ -86,7 +84,6 @@ class ControlLogic {
 
   folly::Synchronized<std::map<std::string /* fanName */, FanStatus>>
       fanStatuses_;
-  std::atomic<std::optional<int>> fanHoldPwm_;
   std::map<std::string /* sensorName */, SensorReadCache> sensorReadCaches_;
   std::map<std::string /* sensorName */, float /* pwm */> opticReadCaches_;
   std::map<std::string /* sensorName */, std::unique_ptr<PidLogicBase>>

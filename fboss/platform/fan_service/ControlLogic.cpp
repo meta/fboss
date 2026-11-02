@@ -803,12 +803,6 @@ float ControlLogic::calculateFanPwm(
       std::min(newFanPwm, static_cast<float>(*config_.pwmUpperThreshold()));
   newFanPwm =
       std::max(newFanPwm, static_cast<float>(*config_.pwmLowerThreshold()));
-
-  std::optional<int> fanHoldPwm = fanHoldPwm_.load();
-  if (fanHoldPwm.has_value()) {
-    newFanPwm = fanHoldPwm.value();
-    XLOG(INFO) << "Using hold PWM " << newFanPwm;
-  }
   return newFanPwm;
 }
 
@@ -829,14 +823,6 @@ void ControlLogic::updatePwmState(const Zone& zone, float fanPwm) {
       }
     }
   }
-}
-
-void ControlLogic::setFanHold(std::optional<int> pwm) {
-  fanHoldPwm_.store(pwm);
-}
-
-std::optional<int> ControlLogic::getFanHold() {
-  return fanHoldPwm_.load();
 }
 
 } // namespace facebook::fboss::platform::fan_service

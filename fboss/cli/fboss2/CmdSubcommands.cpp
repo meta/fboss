@@ -271,9 +271,6 @@ CLI::App* CmdSubcommands::addCommand(
         case utils::ObjectArgTypeId::OBJECT_ARG_TYPE_ID_SWITCH_NAME_LIST:
           subCmd->add_option("switch_name_list", args, "Switch Name(s)");
           break;
-        case utils::ObjectArgTypeId::OBJECT_ARG_TYPE_FAN_PWM:
-          subCmd->add_option("pwm", args, "Fan PWM (0..100) or 'disable'");
-          break;
         case utils::ObjectArgTypeId::OBJECT_ARG_TYPE_MTU:
           subCmd->add_option(
               "mtu",
