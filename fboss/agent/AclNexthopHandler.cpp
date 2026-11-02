@@ -127,54 +127,55 @@ std::shared_ptr<MultiSwitchAclMap> AclNexthopHandler::updateAcls(
 AclEntry* FOLLY_NULLABLE AclNexthopHandler::updateAcl(
     const std::shared_ptr<AclEntry>& origAclEntry,
     std::shared_ptr<SwitchState>& newState) {
-  const auto& origAclAction = origAclEntry->getAclAction();
-  if (origAclAction &&
-      origAclAction->cref<switch_state_tags::redirectToNextHop>()) {
-    // Tunnel encap nexthops are resolved by the HW pipeline via a second
-    // routing lookup on the outer header, so they don't need RIB resolution.
-    auto redirectAction =
-        origAclAction->cref<switch_state_tags::redirectToNextHop>()
-            ->cref<switch_state_tags::action>();
-    auto redirectNhops =
-        redirectAction->cref<switch_config_tags::redirectNextHops>();
-    bool allTunnelEncap = !redirectNhops->empty();
-    for (const auto& nh : std::as_const(*redirectNhops)) {
-      const auto& tunnelType = nh->cref<switch_config_tags::tunnelType>();
-      if (!tunnelType.has_value() ||
-          tunnelType->toThrift() != TunnelType::IP_IN_IP_ENCAP) {
-        allTunnelEncap = false;
-        break;
-      }
-    }
-    if (allTunnelEncap) {
-      return nullptr;
-    }
-
-    auto newAclEntry = origAclEntry->modify(
-        &newState, sw_->getScopeResolver()->scope(origAclEntry));
-    newAclEntry->setEnabled(true);
-
-    // THRIFT_COPY
-    MatchAction action =
-        MatchAction::fromThrift(newAclEntry->getAclAction()->toThrift());
-    resolveActionNexthops(action);
-    newAclEntry->setAclAction(action);
-    // Disable acl if there are no nexthops available
-    if (action.getRedirectToNextHop().has_value() &&
-        !action.getRedirectToNextHop().value().second.size()) {
-      XLOG(DBG2) << "Disabling acl as no resolved nexthops are available";
-      newAclEntry->setEnabled(false);
-    }
-    const auto& newAclAction = newAclEntry->getAclAction();
-    return ((newAclAction->cref<switch_state_tags::redirectToNextHop>()
-                 ->toThrift() !=
-             origAclAction->cref<switch_state_tags::redirectToNextHop>()
-                 ->toThrift()) ||
-            (newAclEntry->isEnabled() != origAclEntry->isEnabled()))
-        ? newAclEntry
-        : nullptr;
+  if (!needsAclResolution(origAclEntry)) {
+    return nullptr;
   }
-  return nullptr;
+  const auto& origAclAction = origAclEntry->getAclAction();
+  auto newAclEntry = origAclEntry->modify(
+      &newState, sw_->getScopeResolver()->scope(origAclEntry));
+  newAclEntry->setEnabled(true);
+
+  // THRIFT_COPY
+  MatchAction action =
+      MatchAction::fromThrift(newAclEntry->getAclAction()->toThrift());
+  resolveActionNexthops(action);
+  newAclEntry->setAclAction(action);
+  // Disable acl if there are no nexthops available
+  if (action.getRedirectToNextHop().has_value() &&
+      !action.getRedirectToNextHop().value().second.size()) {
+    XLOG(DBG2) << "Disabling acl as no resolved nexthops are available";
+    newAclEntry->setEnabled(false);
+  }
+  const auto& newAclAction = newAclEntry->getAclAction();
+  return ((newAclAction->cref<switch_state_tags::redirectToNextHop>()
+               ->toThrift() !=
+           origAclAction->cref<switch_state_tags::redirectToNextHop>()
+               ->toThrift()) ||
+          (newAclEntry->isEnabled() != origAclEntry->isEnabled()))
+      ? newAclEntry
+      : nullptr;
+}
+
+bool AclNexthopHandler::needsAclResolution(
+    const std::shared_ptr<AclEntry>& aclEntry) {
+  const auto& aclAction = aclEntry->getAclAction();
+  if (!aclAction || !aclAction->cref<switch_state_tags::redirectToNextHop>()) {
+    return false;
+  }
+  // Tunnel encap nexthops are resolved by the HW pipeline via a second
+  // routing lookup on the outer header, so only non-tunnel nexthops need
+  // RIB resolution.
+  auto redirectNhops = aclAction->cref<switch_state_tags::redirectToNextHop>()
+                           ->cref<switch_state_tags::action>()
+                           ->cref<switch_config_tags::redirectNextHops>();
+  for (const auto& nh : std::as_const(*redirectNhops)) {
+    const auto& tunnelType = nh->cref<switch_config_tags::tunnelType>();
+    if (!tunnelType.has_value() ||
+        tunnelType->toThrift() != TunnelType::IP_IN_IP_ENCAP) {
+      return true;
+    }
+  }
+  return false;
 }
 
 } // namespace facebook::fboss

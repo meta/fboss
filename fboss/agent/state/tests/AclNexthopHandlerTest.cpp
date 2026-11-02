@@ -638,6 +638,18 @@ TYPED_TEST(AclNexthopHandlerTest, TunnelEncapNexthopSkipsResolutionOnConfig) {
   }
 }
 
+// A redirect with no nexthops has nothing to resolve: it is applied disabled
+// and stays disabled when routes change.
+TYPED_TEST(AclNexthopHandlerTest, EmptyRedirectNexthopsStayDisabled) {
+  this->sw_->applyConfig("EmptyRedirect", this->redirectAclConfig({}));
+  this->verifyResolvedNexthopsInAclAction(kAclName, kEmptyNexthopSet);
+
+  RouteNextHopSet nexthops =
+      makeResolvedNextHops(this->getResolvedNexthops(1), UCMP_DEFAULT_WEIGHT);
+  this->addRoute(this->makePrefix(this->getMatchingPrefixes(1)[0]), nexthops);
+  this->verifyResolvedNexthopsInAclAction(kAclName, kEmptyNexthopSet);
+}
+
 TYPED_TEST(AclNexthopHandlerTest, TunnelEncapNexthopSkipsResolution) {
   this->updateState(
       "TunnelEncapAcl", [=, this](const std::shared_ptr<SwitchState>& state) {
