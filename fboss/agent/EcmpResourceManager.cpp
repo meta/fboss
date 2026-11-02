@@ -1513,6 +1513,19 @@ EcmpResourceManager::updateForwardingInfoAndInsertDelta(
     }
   }
   const auto& curForwardInfo = route->getForwardInfo();
+  auto overrideMode = grpInfo->isBackupEcmpGroupType()
+      ? getBackupEcmpSwitchingMode()
+      : std::optional<cfg::SwitchingMode>();
+  auto overrideSetId = grpInfo->getOverrideNextHopSetID();
+  // Keep the route object when overrides are unchanged, so the RIB and FIB
+  // keep sharing it.
+  if (curForwardInfo.getOverrideEcmpSwitchingMode() == overrideMode &&
+      curForwardInfo.getOverrideNextHopSetID() == overrideSetId &&
+      curForwardInfo.getOverrideNextHops() == grpInfo->getOverrideNextHops()) {
+    inOutState->addOrUpdateRoute(rid, route, addNewDelta);
+    inOutState->updated = true;
+    return grpInfo;
+  }
   XLOG(DBG2) << " Will set backup switching mode for : " << route->str()
              << " to: " << getBackupEcmpSwitchingMode();
   auto newForwardInfo = RouteNextHopEntry(
@@ -1520,13 +1533,12 @@ EcmpResourceManager::updateForwardingInfoAndInsertDelta(
       curForwardInfo.getAdminDistance(),
       curForwardInfo.getCounterID(),
       curForwardInfo.getClassID(),
-      grpInfo->isBackupEcmpGroupType() ? getBackupEcmpSwitchingMode()
-                                       : std::optional<cfg::SwitchingMode>(),
-      std::optional<RouteNextHopSet>(grpInfo->getOverrideNextHops()),
+      overrideMode,
+      grpInfo->getOverrideNextHops(),
       curForwardInfo.getNormalizedResolvedNextHopSetID(),
       curForwardInfo.getResolvedNextHopSetID(),
       curForwardInfo.getClientNextHopSetID(),
-      grpInfo->getOverrideNextHopSetID());
+      overrideSetId);
   auto newRoute = route->clone();
   newRoute->setResolved(std::move(newForwardInfo));
   newRoute->publish();
