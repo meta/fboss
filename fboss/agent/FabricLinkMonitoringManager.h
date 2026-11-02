@@ -91,6 +91,7 @@ class FabricLinkMonitoringManager : private folly::AsyncTimeout {
   // Get port group ID for a given port (ports are grouped by portID % 4)
   int getPortGroup(PortID portId) const;
   size_t getOutstandingPacketCountForGroup(int portGroupId) const;
+  void releasePendingPackets(PortID portId, int portGroupId);
 
   // Per-port-group statistics for flow control
   struct PortGroupStats {
