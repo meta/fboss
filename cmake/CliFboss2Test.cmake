@@ -102,6 +102,7 @@ add_executable(fboss2_cmd_test
   fboss/cli/fboss2/test/CmdShowInterfaceTransceiverEepromTest.cpp
   fboss/cli/fboss2/test/CmdShowTransceiverLoopbackTest.cpp
   # fboss/cli/fboss2/test/CmdShowTransceiverTest.cpp - excluded (depends on configerator bgp namespace)
+  fboss/cli/fboss2/test/CmdShowVersionDistroTest.cpp
   # fboss/cli/fboss2/test/CmdShowVersionAgentTest.cpp - excluded (facebook-only command; depends on configerator)
   fboss/cli/fboss2/test/CmdBgpTestUtils.cpp
   fboss/cli/fboss2/test/CanonicalRibResolverTest.cpp

@@ -225,6 +225,7 @@ cpp_unittest(
         "CmdShowTransceiverLoopbackTest.cpp",
         "CmdShowTransceiverTest.cpp",
         "CmdShowVersionAgentTest.cpp",
+        "CmdShowVersionDistroTest.cpp",
         "CmdStartPcapTest.cpp",
         "CmdStartPortCableLengthMeasurementTest.cpp",
         "CmdStopPcapTest.cpp",

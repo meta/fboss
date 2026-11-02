@@ -75,18 +75,9 @@ class SchemaTest(unittest.TestCase):
                     f"{component} claims {claims.version} but never reports it",
                 )
 
-    def test_documents_which_components_can_report_nothing(self):
-        """A component with no readers states its own gap.
-
-        fboss-platform-stack carries no version information of any kind, so it
-        declares no readers rather than appearing to support one.
-        """
-        silent = sorted(
-            component
-            for component, schema in version_file.MODULE_SCHEMAS.items()
-            if not schema.readers
-        )
-        self.assertEqual(silent, ["fboss-platform-stack"])
+    def test_service_components_read_packaged_build_info(self):
+        for component in ("fboss-forwarding-stack", "fboss-platform-stack"):
+            self.assertIn("build_info", version_file.schema_for(component).readers)
 
     def test_a_component_absent_from_the_schema_reads_nothing(self):
         schema = version_file.schema_for("other_dependencies")
@@ -666,10 +657,73 @@ class ReadArtifactTest(VersionFileTestCase):
         artifact = make_tar(self.root / "k.tar", {SDK_METADATA_MEMBER: sdk_metadata()})
         self.assertNotIn("sdk", version_file.read_artifact("kernel", artifact))
 
-    def test_a_component_with_no_schema_reads_nothing(self):
+    def test_platform_stack_without_a_declaration_reports_nothing(self):
         self.assertEqual(
             version_file.read_artifact("fboss-platform-stack", self.agent()), {}
         )
+
+    def test_service_build_records_are_preserved_in_the_distro_record(self):
+        declaration = {
+            "declaration_schema": 1,
+            "producer": "package.py",
+            "binaries": {
+                "fsdb": {
+                    "schema": 1,
+                    "build_target": "fsdb",
+                    "source_revision": "a" * 40,
+                    "sha256": "b" * 64,
+                },
+                "fan_service": {
+                    "schema": 1,
+                    "build_target": "fan_service",
+                    "source_revision": "c" * 40,
+                    "source_dirty": True,
+                    "sha256": "d" * 64,
+                },
+            },
+        }
+        artifact = make_tar(
+            self.root / "services.tar",
+            {artifact_versions.BUILD_INFO_MEMBER: json.dumps(declaration).encode()},
+        )
+        for label in (
+            "fboss-forwarding-stack[agent]",
+            "fboss-forwarding-stack[fsdb]",
+            "fboss-forwarding-stack[qsfp]",
+            "fboss-forwarding-stack[fboss2]",
+            "fboss-forwarding-stack[led]",
+            "fboss-platform-stack",
+        ):
+            with self.subTest(component=label):
+                record, conflicts = version_file.build(
+                    manifest_path=self.manifest(),
+                    manifest_data={},
+                    component_artifacts={label: artifact},
+                    source_revision="image-revision",
+                )
+                self.assertEqual(
+                    record["components"][label]["provenance"]["build_info"],
+                    declaration,
+                )
+                self.assertEqual(record["image"]["source_revision"], "image-revision")
+                self.assertEqual(conflicts, [])
+
+    def test_invalid_build_declarations_are_ignored(self):
+        for content in (
+            b"not json",
+            b'{"declaration_schema":2,"binaries":{}}',
+            b'{"declaration_schema":1,"binaries":[]}',
+        ):
+            with self.subTest(content=content):
+                artifact = make_tar(
+                    self.root / "invalid.tar",
+                    {artifact_versions.BUILD_INFO_MEMBER: content},
+                )
+                with self.assertLogs("distro_cli.lib.artifact_versions", "WARNING"):
+                    self.assertEqual(
+                        version_file.read_artifact("fboss-platform-stack", artifact),
+                        {},
+                    )
 
 
 class LocatorTest(VersionFileTestCase):

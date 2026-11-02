@@ -690,6 +690,8 @@ add_library(fboss2_lib
   fboss/cli/fboss2/commands/show/bgp/CanonicalRibResolver.cpp
   fboss/cli/fboss2/commands/show/bgp/CmdShowVersionBgp.h
   fboss/cli/fboss2/commands/show/bgp/CmdShowVersionBgp.cpp
+  fboss/cli/fboss2/commands/show/version/CmdShowVersionDistro.h
+  fboss/cli/fboss2/commands/show/version/CmdShowVersionDistro.cpp
   fboss/cli/fboss2/commands/show/bgp/CmdShowBgpOriginatedRoutes.h
   fboss/cli/fboss2/commands/show/bgp/CmdShowBgpOriginatedRoutes.cpp
   fboss/cli/fboss2/commands/show/bgp/CmdShowBgpInitializationEvents.h
