@@ -23,10 +23,13 @@ void DataCorralServiceThriftHandler::getFruid(
   auto log = LOG_THRIFT_CALL(DBG1);
 
   if (uncached || fruid_.rlock()->empty()) {
-    auto fruid =
-        createWeUtilIntf("chassis" /*eepromName*/, eepromPath_, 0 /*offset*/)
-            ->getContents();
-    fruid_.withWLock([&](auto& cached) { cached = std::move(fruid); });
+    fruid_.withWLock([&](auto& fruid) {
+      if (uncached || fruid.empty()) {
+        fruid = createWeUtilIntf(
+                    "chassis" /*eepromName*/, eepromPath_, 0 /*offset*/)
+                    ->getContents();
+      }
+    });
   }
 
   auto vData = fruid_.withRLock([](const auto& fruid) {
