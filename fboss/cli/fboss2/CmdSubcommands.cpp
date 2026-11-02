@@ -18,6 +18,7 @@
 #include <CLI/App.hpp>
 #include <fmt/format.h>
 #include <folly/Singleton.h>
+#include <algorithm>
 #include <map>
 #include <memory>
 #include <stdexcept>
@@ -55,6 +56,13 @@ bool isWriteCommand(const facebook::fboss::Command& cmd) {
   return cmd.commandHandler &&
       cmd.commandHandler->mode() ==
       facebook::fboss::CliReadWriteMode::CLI_MODE_WRITE;
+}
+
+bool usesVerb(
+    const facebook::fboss::CommandTree& cmdTree,
+    const std::string& verb) {
+  return std::ranges::any_of(
+      cmdTree, [&](const auto& cmd) { return cmd.verb == verb; });
 }
 
 template <typename CmdT>
@@ -346,8 +354,13 @@ void CmdSubcommands::init(
     CLI::App& app,
     const CommandTree& cmdTree,
     const CommandTree& additionalCmdTree,
-    const std::vector<Command>& specialCmds) {
+    const std::vector<Command>& specialCmds,
+    VerbRegistration verbRegistration) {
   for (const auto& [verb, helpMsg] : kSupportedVerbs()) {
+    if (verbRegistration == VerbRegistration::kOnlyUsed &&
+        !usesVerb(cmdTree, verb) && !usesVerb(additionalCmdTree, verb)) {
+      continue;
+    }
     app.add_subcommand(verb, helpMsg);
   }
 

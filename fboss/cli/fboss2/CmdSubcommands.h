@@ -17,6 +17,11 @@
 
 namespace facebook::fboss {
 
+enum class VerbRegistration {
+  kAll,
+  kOnlyUsed,
+};
+
 class CmdSubcommands {
  public:
   CmdSubcommands() = default;
@@ -31,7 +36,8 @@ class CmdSubcommands {
       CLI::App& app,
       const CommandTree& cmdTree,
       const CommandTree& additionalCmdTree,
-      const std::vector<Command>& specialCmds);
+      const std::vector<Command>& specialCmds,
+      VerbRegistration verbRegistration = VerbRegistration::kAll);
 
  private:
   CLI::App* addCommand(

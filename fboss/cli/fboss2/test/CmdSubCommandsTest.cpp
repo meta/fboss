@@ -461,5 +461,37 @@ TEST_F(CmdSubCommandsTest, FilterReadCommandsDropsWriteCommands) {
   EXPECT_EQ(filtered[0].subcommands[0].name, "readChild");
 }
 
+TEST_F(CmdSubCommandsTest, RegistersOnlyUsedVerbs) {
+  CommandTree cmdTree = {
+      RootCommand(
+          "show", "testObject", "help", []() {}, noArgType),
+  };
+  CommandTree emptyTree;
+  std::vector<Command> emptySpecialCmds;
+
+  CmdSubcommands::getInstance()->init(
+      *app_, cmdTree, emptyTree, emptySpecialCmds, VerbRegistration::kOnlyUsed);
+
+  EXPECT_NE(utils::getSubcommandIf(*app_, "show"), nullptr);
+  EXPECT_EQ(utils::getSubcommandIf(*app_, "set"), nullptr);
+}
+
+TEST_F(CmdSubCommandsTest, RegistersReadOnlyRealCommandTrees) {
+  std::vector<Command> emptySpecialCmds;
+
+  CmdSubcommands::getInstance()->init(
+      *app_,
+      filterReadCommands(kCommandTree()),
+      filterReadCommands(kAdditionalCommandTree()),
+      emptySpecialCmds,
+      VerbRegistration::kOnlyUsed);
+
+  std::vector<std::string> verbs;
+  for (const auto* verb : app_->get_subcommands(nullptr)) {
+    verbs.push_back(verb->get_name());
+  }
+  EXPECT_EQ(verbs, std::vector<std::string>{"show"});
+}
+
 } // namespace
 } // namespace facebook::fboss
