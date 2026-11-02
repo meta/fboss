@@ -317,6 +317,8 @@ std::vector<StateDelta> BaseEcmpResourceManagerTest::consolidate(
   updateFlowletSwitchingConfig(state);
   updateRoutes(state);
   assertResourceMgrCorrectness(*sw_->getEcmpResourceManager(), sw_->getState());
+  assertOverrideSetIdsConsistency(
+      *sw_->getEcmpResourceManager(), sw_->getState());
   XLOG(DBG2) << " SwSwitch update done";
   // Copy nexthop IDs from sw_->getState() to the new state so that
   // assertResourceMgrCorrectness can resolve nexthops via IDs.
@@ -330,6 +332,8 @@ std::vector<StateDelta> BaseEcmpResourceManagerTest::consolidate(
     assertDeltasForOverflow(deltas);
     assertResourceMgrCorrectness(*consolidator_, deltas.back().newState());
     assertAllDeltaIdsResolvable(deltas);
+    assertOverrideSetIdsConsistency(*consolidator_, deltas.back().newState());
+    assertOverrideSetIdsInDeltas(*consolidator_, deltas);
   }
   XLOG(DBG2) << " Consolidator update done";
   CHECK(state_->isPublished());
@@ -368,8 +372,18 @@ std::vector<StateDelta> BaseEcmpResourceManagerTest::consolidate(
             newRoute->getForwardInfo().getOverrideNextHops(),
             origRoute->getForwardInfo().getOverrideNextHops())
             << " Failed for : " << newRoute->str();
+        EXPECT_EQ(
+            newRoute->getForwardInfo().getOverrideNextHopSetID(),
+            origRoute->getForwardInfo().getOverrideNextHopSetID())
+            << " Failed for : " << newRoute->str();
       }
     }
+    EXPECT_EQ(
+        newConsolidator->getOverrideSetIdManager().getIdToMembers(),
+        sw_->getEcmpResourceManager()
+            ->getOverrideSetIdManager()
+            .getIdToMembers());
+    assertOverrideSetIdsConsistency(*newConsolidator, restoredState);
   }
   return deltas;
 }
@@ -491,6 +505,17 @@ void BaseEcmpResourceManagerTest::TearDown() {
         reconstructedState, reconstructedRib.get());
     facebook::fboss::assertRibFibEquivalence(
         sw_->getState(), reconstructedRib.get());
+    if (auto wbConsolidator = makeResourceMgr()) {
+      auto wbDeltas =
+          wbConsolidator->reconstructFromSwitchState(reconstructedState);
+      EXPECT_EQ(
+          wbConsolidator->getOverrideSetIdManager().getIdToMembers(),
+          sw_->getEcmpResourceManager()
+              ->getOverrideSetIdManager()
+              .getIdToMembers());
+      assertOverrideSetIdsConsistency(
+          *wbConsolidator, wbDeltas.back().newState());
+    }
   }
   if (!getEcmpCompressionThresholdPct()) {
     return;

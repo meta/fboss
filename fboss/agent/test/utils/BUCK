@@ -866,6 +866,7 @@ cpp_library(
     deps = [
         "fbsource//third-party/googletest:gtest",
         "//fboss/agent:fib_helpers",
+        "//fboss/agent:override_set_id_manager",
         "//fboss/agent/rib:standalone_rib",
     ],
     exported_deps = [
