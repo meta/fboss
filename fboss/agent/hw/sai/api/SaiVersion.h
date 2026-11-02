@@ -287,8 +287,14 @@
  *   - CHENAB_SAI_SDK: Flags for all Chenab SDK (set in tp2 BUCK)
  *   - CHENAB_SAI_SDK_GTE_2511_36: Flags for SDK >= 2511.36
  *   - CHENAB_SAI_SDK_GTE_2605_37: Flags for SDK >= 2605.37
+ *   - CHENAB_SAI_SDK_GTE_2605_38: Flags for SDK >= 2605.38
  */
-#if defined(CHENAB_SAI_SDK_VERSION_2605_37_0_20)
+#if defined(CHENAB_SAI_SDK_VERSION_2605_38_251_4)
+#define CHENAB_SAI_SDK_GTE_2605_38
+#endif
+
+#if defined(CHENAB_SAI_SDK_VERSION_2605_37_0_20) || \
+    defined(CHENAB_SAI_SDK_GTE_2605_38)
 #define CHENAB_SAI_SDK_GTE_2605_37
 #endif
 
