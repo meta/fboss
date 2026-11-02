@@ -1584,6 +1584,9 @@ void SwSwitch::init(
   if (pbrAclManager_) {
     pbrAclManager_->updateDone();
   }
+  // Apply the state hardware was given, including manager reconstruct changes.
+  initialState = deltas.back().newState();
+  syncRibEcmpOverrides(StateDelta(origInitialState, initialState));
   // For cold boot there will be discripancy between applied state and state
   // that exists in hardware. this discrepancy is until config is applied, after
   // that the two states are in sync. tolerating this discrepancy for now
@@ -1681,6 +1684,12 @@ void SwSwitch::init(const HwWriteBehavior& hwWriteBehavior, SwitchFlags flags) {
   }
   if (pbrAclManager_) {
     pbrAclManager_->updateDone();
+  }
+  if (bootType_ == BootType::WARM_BOOT) {
+    // Apply the state hardware was given, including manager reconstruct
+    // changes.
+    initialState = deltas.back().newState();
+    syncRibEcmpOverrides(StateDelta(origInitialState, initialState));
   }
   // for cold boot discrepancy may exist between applied state in software
   // switch and state that already exist in hardware. this discrepancy is
@@ -1849,6 +1858,12 @@ std::shared_ptr<SwitchState> SwSwitch::syncNextHopIDsToFIB(
       scopeResolver_.get(), &ribToSwitchStateUpdate, &newState);
   XLOG(INFO) << "Applied RIB NextHop ids to the warm boot state";
   return newState;
+}
+
+void SwSwitch::syncRibEcmpOverrides(const StateDelta& delta) {
+  if (rib_ && ecmpResourceManager_) {
+    rib_->updateEcmpOverrides(delta);
+  }
 }
 
 std::vector<StateDelta> SwSwitch::reconstructStateFromManagers(

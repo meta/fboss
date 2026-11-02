@@ -2840,6 +2840,18 @@ uint32_t RoutingInformationBase::getEcmpWidth() const {
   return ribTables_.getEcmpWidth();
 }
 
+void RibRouteTables::updateEcmpOverrides(const StateDelta& delta) {
+  for (auto vrf : getVrfList()) {
+    updateEcmpOverrides(vrf, delta);
+  }
+}
+
+void RoutingInformationBase::updateEcmpOverrides(const StateDelta& delta) {
+  ensureRunning();
+  ribUpdateEventBase_.runInFbossEventBaseThreadAndWait(
+      [this, &delta]() { ribTables_.updateEcmpOverrides(delta); });
+}
+
 void RibRouteTables::syncStateFromRib(
     const SwitchIdScopeResolver* resolver,
     const RibToSwitchStateFunction& ribToSwitchStateFunc,

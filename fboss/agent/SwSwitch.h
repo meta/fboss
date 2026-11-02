@@ -1165,6 +1165,8 @@ class SwSwitch : public HwSwitchCallback {
   // backfilled NextHop ids, so the state carries the RIB's ids.
   std::shared_ptr<SwitchState> syncNextHopIDsToFIB(
       const std::shared_ptr<SwitchState>& state);
+  // Copies ECMP overrides that manager reconstruct changed into the RIB.
+  void syncRibEcmpOverrides(const StateDelta& delta);
 
   void logLinkStateEvent(PortID port, bool up);
 

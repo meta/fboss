@@ -255,6 +255,8 @@ class RibRouteTables {
   void setEcmpWidth(uint32_t ecmpWidth);
   uint32_t getEcmpWidth() const;
 
+  // Copies ECMP overrides of routes changed in delta into the RIB, all VRFs.
+  void updateEcmpOverrides(const StateDelta& delta);
   // Runs ribToSwitchStateFunc on every VRF outside any route update.
   void syncStateFromRib(
       const SwitchIdScopeResolver* resolver,
@@ -577,6 +579,9 @@ class RoutingInformationBase {
   void setEcmpWidth(uint32_t ecmpWidth);
   uint32_t getEcmpWidth() const;
 
+  // Syncs ECMP overrides changed outside any fib update, e.g. by warm boot
+  // reconstruct, into the RIB.
+  void updateEcmpOverrides(const StateDelta& delta);
   // Applies the RIB to a state outside any route update, e.g. to bring a warm
   // boot state's NextHop ids in line with the RIB's.
   void syncStateFromRib(
