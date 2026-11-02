@@ -24511,6 +24511,9 @@
           "test_name_regex": "AgentOlympicV2SPToWRRQosSchedulerTest.VerifyOlympicV2AllSPTrafficToWRR$"
         },
         {
+          "test_name_regex": "AgentIpInIpEncapTunnelTest.EncapEcmpRoutePortDownUp$"
+        },
+        {
           "test_name_regex": "AgentCoppTest/[01].DstIpNetworkControlDscpToHighPriQ$"
         },
         {
