@@ -1244,7 +1244,7 @@
               "__comment__": "Local temperature high limit for high byte.",
               "regOffset": 11,
               "ioBuf": [
-                100
+                95
               ]
             },
             {
@@ -1258,7 +1258,7 @@
               "__comment__": "Remote temp1 high limit setting for high byte.",
               "regOffset": 13,
               "ioBuf": [
-                100
+                95
               ]
             },
             {
@@ -1272,7 +1272,7 @@
               "__comment__": "Remote temp2 high limit setting for high byte.",
               "regOffset": 21,
               "ioBuf": [
-                100
+                95
               ]
             },
             {
@@ -1323,29 +1323,29 @@
           "pmUnitScopedName": "SMB_L_TH6_SENSOR_TMP432_2",
           "initRegSettings": [
             {
-              "__comment__": "Remote temp1 high limit setting for high byte.",
-              "regOffset": 13,
+              "__comment__": "Local temperature high limit for high byte.",
+              "regOffset": 11,
               "ioBuf": [
-                100
+                95
               ]
             },
             {
-              "__comment__": "Remote temp1 high limit setting for low byte.",
-              "regOffset": 19,
+              "__comment__": "Local temperature high limit for low byte.",
+              "regOffset": 61,
               "ioBuf": [
                 0
               ]
             },
             {
-              "__comment__": "Remote temp2 high limit setting for high byte.",
-              "regOffset": 21,
+              "__comment__": "Remote temp1 high limit setting for high byte.",
+              "regOffset": 13,
               "ioBuf": [
-                100
+                95
               ]
             },
             {
-              "__comment__": "Remote temp2 high limit setting for low byte.",
-              "regOffset": 23,
+              "__comment__": "Remote temp1 high limit setting for low byte.",
+              "regOffset": 19,
               "ioBuf": [
                 0
               ]
@@ -1577,7 +1577,7 @@
               "__comment__": "Local temperature high limit for high byte.",
               "regOffset": 11,
               "ioBuf": [
-                100
+                95
               ]
             },
             {
@@ -1591,7 +1591,7 @@
               "__comment__": "Remote temp1 high limit setting for high byte.",
               "regOffset": 13,
               "ioBuf": [
-                100
+                95
               ]
             },
             {
@@ -1605,7 +1605,7 @@
               "__comment__": "Remote temp2 high limit setting for high byte.",
               "regOffset": 21,
               "ioBuf": [
-                100
+                95
               ]
             },
             {
@@ -1656,29 +1656,29 @@
           "pmUnitScopedName": "SMB_R_TH6_SENSOR_TMP432_2",
           "initRegSettings": [
             {
-              "__comment__": "Remote temp1 high limit setting for high byte.",
-              "regOffset": 13,
+              "__comment__": "Local temperature high limit for high byte.",
+              "regOffset": 11,
               "ioBuf": [
-                100
+                95
               ]
             },
             {
-              "__comment__": "Remote temp1 high limit setting for low byte.",
-              "regOffset": 19,
+              "__comment__": "Local temperature high limit for low byte.",
+              "regOffset": 61,
               "ioBuf": [
                 0
               ]
             },
             {
-              "__comment__": "Remote temp2 high limit setting for high byte.",
-              "regOffset": 21,
+              "__comment__": "Remote temp1 high limit setting for high byte.",
+              "regOffset": 13,
               "ioBuf": [
-                100
+                95
               ]
             },
             {
-              "__comment__": "Remote temp2 high limit setting for low byte.",
-              "regOffset": 23,
+              "__comment__": "Remote temp1 high limit setting for low byte.",
+              "regOffset": 19,
               "ioBuf": [
                 0
               ]
@@ -2131,6 +2131,7 @@
     "/run/devmap/sensors/SMB_L_RTM_ADC3_SENSOR": "/SMB_L_SLOT@0/[SMB_L_RTM_ADC3_SENSOR]",
     "/run/devmap/sensors/SMB_L_TH6_SENSOR_TMP432_2": "/SMB_L_SLOT@0/[SMB_L_TH6_SENSOR_TMP432_2]",
     "/run/devmap/sensors/SMB_L_INLET_TSENSOR3": "/SMB_L_SLOT@0/[SMB_L_INLET_TSENSOR3]",
+    "/run/devmap/sensors/SMB_L_CPLD": "/SMB_L_SLOT@0/[SMB_L_CPLD]",
     "/run/devmap/sensors/SMB_R_ASIC_VOLTAGE_0_1": "/SMB_R_SLOT@0/[SMB_R_ASIC_VOLTAGE_0_1]",
     "/run/devmap/sensors/SMB_R_ASIC_VOLTAGE_0_2": "/SMB_R_SLOT@0/[SMB_R_ASIC_VOLTAGE_0_2]",
     "/run/devmap/sensors/SMB_R_ASIC_VOLTAGE_1": "/SMB_R_SLOT@0/[SMB_R_ASIC_VOLTAGE_1]",
@@ -2158,7 +2159,8 @@
     "/run/devmap/sensors/SMB_R_RTM_ADC2_SENSOR": "/SMB_R_SLOT@0/[SMB_R_RTM_ADC2_SENSOR]",
     "/run/devmap/sensors/SMB_R_RTM_ADC3_SENSOR": "/SMB_R_SLOT@0/[SMB_R_RTM_ADC3_SENSOR]",
     "/run/devmap/sensors/SMB_R_TH6_SENSOR_TMP432_2": "/SMB_R_SLOT@0/[SMB_R_TH6_SENSOR_TMP432_2]",
-    "/run/devmap/sensors/SMB_R_INLET_TSENSOR3": "/SMB_R_SLOT@0/[SMB_R_INLET_TSENSOR3]"
+    "/run/devmap/sensors/SMB_R_INLET_TSENSOR3": "/SMB_R_SLOT@0/[SMB_R_INLET_TSENSOR3]",
+    "/run/devmap/sensors/SMB_R_CPLD": "/SMB_R_SLOT@0/[SMB_R_CPLD]"
   },
   "chassisEepromDevicePath": "/[CHASSIS_EEPROM]",
   "numXcvrs": 2,
