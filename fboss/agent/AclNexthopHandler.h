@@ -6,6 +6,7 @@
 #include "fboss/agent/state/StateDelta.h"
 
 namespace facebook::fboss {
+class HwSwitchMatcher;
 class SwSwitch;
 
 class AclNexthopHandler : public StateObserver {
@@ -31,6 +32,9 @@ class AclNexthopHandler : public StateObserver {
       const std::shared_ptr<AclEntry>& origAclEntry);
   std::shared_ptr<AclEntry> resolvedAclEntry(
       const std::shared_ptr<AclEntry>& origAclEntry);
+  void updateAclTableGroups(
+      std::shared_ptr<SwitchState>& newState,
+      bool& changed);
 
   SwSwitch* sw_;
 };

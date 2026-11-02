@@ -9,9 +9,13 @@
  */
 
 #include "fboss/agent/AclNexthopHandler.h"
+#include "fboss/agent/HwSwitchMatcher.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
 #include "fboss/agent/state/AclEntry.h"
 #include "fboss/agent/state/AclMap.h"
+#include "fboss/agent/state/AclTable.h"
+#include "fboss/agent/state/AclTableGroup.h"
+#include "fboss/agent/state/AclTableGroupMap.h"
 #include "fboss/agent/state/Interface.h"
 #include "fboss/agent/state/Route.h"
 #include "fboss/agent/state/SwitchState.h"
@@ -255,6 +259,66 @@ class AclNexthopHandlerTest : public ::testing::Test {
     return newState;
   }
 
+  std::shared_ptr<SwitchState> addAclToTable(
+      const std::shared_ptr<SwitchState>& state,
+      const std::string& tableName,
+      const std::string& name,
+      const std::vector<std::string>& nexthopIps,
+      const std::vector<int32_t>& intfIDs = {},
+      int priority = 0) {
+    auto aclEntry = std::make_shared<AclEntry>(priority, name);
+    aclEntry->setDstIp(
+        folly::IPAddress::tryCreateNetwork("2401::2/128").value());
+    auto cfgRedirectToNextHop = cfg::RedirectToNextHopAction();
+    auto idx = 0;
+    for (auto nhIp : nexthopIps) {
+      cfg::RedirectNextHop nhop;
+      nhop.ip() = nhIp;
+      if (intfIDs.size()) {
+        nhop.intfID() = intfIDs[idx];
+      }
+      cfgRedirectToNextHop.redirectNextHops()->push_back(nhop);
+      idx++;
+    }
+    auto redirectToNextHop = MatchAction::RedirectToNextHopAction();
+    redirectToNextHop.first = cfgRedirectToNextHop;
+    MatchAction action = MatchAction();
+    action.setRedirectToNextHop(redirectToNextHop);
+    aclEntry->setAclAction(action);
+
+    auto newState = state->isPublished() ? state->clone() : state;
+    auto groups = newState->getAclTableGroups()->modify(&newState);
+    auto groupMap = groups->getMapNodeIf(scope());
+    if (!groupMap) {
+      groupMap = std::make_shared<AclTableGroupMap>();
+      groups->addMapNode(groupMap, scope());
+    }
+    auto group = groupMap->getAclTableGroupIf(cfg::AclStage::INGRESS);
+    if (!group) {
+      group = std::make_shared<AclTableGroup>(cfg::AclStage::INGRESS);
+      group->setAclTableMap(std::make_shared<AclTableMap>());
+      groupMap->addAclTableGroup(group);
+    }
+    auto newGroup = group->isPublished() ? group->clone() : group;
+    auto newTableMap = newGroup->getAclTableMap()->clone();
+    auto origTable = newTableMap->getTableIf(tableName);
+    auto origAcls = origTable ? origTable->getAclMap().unwrap() : nullptr;
+    auto tableAcls = origAcls ? origAcls->clone() : std::make_shared<AclMap>();
+    tableAcls->addEntry(aclEntry);
+    if (origTable) {
+      auto newTable = origTable->clone();
+      newTable->setAclMap(tableAcls);
+      newTableMap->updateNode(newTable);
+    } else {
+      auto newTable = std::make_shared<AclTable>(0, tableName);
+      newTable->setAclMap(tableAcls);
+      newTableMap->addTable(newTable);
+    }
+    newGroup->setAclTableMap(std::move(newTableMap));
+    groupMap->updateNode(newGroup);
+    return newState;
+  }
+
   RouteNextHopSet makeResolvedMplsNextHops(
       std::vector<std::pair<InterfaceID, std::string>> intfAndIPs,
       int baseLabel) {
@@ -275,24 +339,48 @@ class AclNexthopHandlerTest : public ::testing::Test {
   }
 
  protected:
+  void checkResolvedNexthops(
+      const std::shared_ptr<AclEntry>& aclEntry,
+      const RouteNextHopSet& expectedNexthops) {
+    EXPECT_NE(aclEntry, nullptr);
+    const auto& action = aclEntry->getAclAction();
+    auto matchAction = MatchAction::fromThrift(action->toThrift());
+    auto resolvedNexthopSet = matchAction.getRedirectToNextHop().value().second;
+    XLOG(DBG3) << "expected nexthops: " << expectedNexthops
+               << ", resolved nexthops: " << resolvedNexthopSet;
+    EXPECT_EQ(resolvedNexthopSet, expectedNexthops);
+    EXPECT_EQ(*aclEntry->isEnabled(), expectedNexthops.size() ? true : false);
+  }
+
   void verifyResolvedNexthopsInAclAction(
       const std::string& aclName,
       const RouteNextHopSet& expectedNexthops) {
     auto verifyResolvedNexthops = [&]() {
       auto state = sw_->getState();
       auto aclEntry = state->getAcls()->getNodeIf(aclName);
-      EXPECT_NE(aclEntry, nullptr);
-      const auto& action = aclEntry->getAclAction();
-      auto matchAction = MatchAction::fromThrift(action->toThrift());
-      auto resolvedNexthopSet =
-          matchAction.getRedirectToNextHop().value().second;
-      XLOG(DBG3) << "expected nexthops: " << expectedNexthops
-                 << ", resolved nexthops: " << resolvedNexthopSet;
-      // Since the route is deleted, expect no resolved nexthops
-      EXPECT_EQ(resolvedNexthopSet, expectedNexthops);
-      EXPECT_EQ(*aclEntry->isEnabled(), expectedNexthops.size() ? true : false);
+      checkResolvedNexthops(aclEntry, expectedNexthops);
     };
     verifyStateUpdate(verifyResolvedNexthops);
+  }
+
+  void verifyResolvedNexthopsInTableAclAction(
+      const std::string& tableName,
+      const std::string& aclName,
+      const RouteNextHopSet& expectedNexthops) {
+    auto verifyResolvedNexthops = [&]() {
+      checkResolvedNexthops(getTableAcl(tableName, aclName), expectedNexthops);
+    };
+    verifyStateUpdate(verifyResolvedNexthops);
+  }
+
+  std::shared_ptr<AclEntry> getTableAcl(
+      const std::string& tableName,
+      const std::string& aclName) {
+    auto groupMap = sw_->getState()->getAclTableGroups()->getMapNodeIf(scope());
+    auto table = groupMap->getAclTableGroup(cfg::AclStage::INGRESS)
+                     ->getAclTableMap()
+                     ->getTable(tableName);
+    return table->getAclMap().unwrap()->getEntry(aclName);
   }
 
   void runInUpdateEventBaseAndWait(Func func) {
@@ -694,6 +782,75 @@ TYPED_TEST(AclNexthopHandlerTest, UnchangedAclEntryKeepsIdentity) {
   this->verifyStateUpdate([&]() {
     EXPECT_EQ(this->sw_->getState()->getAcls()->getNodeIf("acl0"), acl0);
   });
+}
+
+// Redirect entries in ACL tables resolve exactly like legacy-map entries:
+// disabled while the nexthop is unreachable, resolved once a covering
+// route is programmed, and cleared when it is withdrawn.
+TYPED_TEST(AclNexthopHandlerTest, TableAclNextHopResolution) {
+  this->updateState(
+      "TableAclNextHop", [=, this](const std::shared_ptr<SwitchState>& state) {
+        return this->addAclToTable(
+            state, "table0", kAclName, this->getAclNexthopIps(1));
+      });
+  this->verifyResolvedNexthopsInTableAclAction(
+      "table0", kAclName, kEmptyNexthopSet);
+
+  auto matchingPrefixes = this->getMatchingPrefixes(1);
+  auto nexthopIps = this->getResolvedNexthops(2);
+  auto longestPrefix = this->makePrefix(matchingPrefixes[0]);
+  RouteNextHopSet nexthops =
+      makeResolvedNextHops(nexthopIps, UCMP_DEFAULT_WEIGHT);
+  this->addRoute(longestPrefix, nexthops);
+  this->verifyResolvedNexthopsInTableAclAction("table0", kAclName, nexthops);
+
+  this->delRoute(longestPrefix);
+  this->verifyResolvedNexthopsInTableAclAction(
+      "table0", kAclName, kEmptyNexthopSet);
+}
+
+// Only the entry whose resolution changes is rewritten; its table neighbor
+// keeps the same node, so the HW layer does not reprogram it.
+TYPED_TEST(AclNexthopHandlerTest, TableAclUnchangedEntryKeepsIdentity) {
+  auto aclNexthopIps = this->getAclNexthopIps(2);
+  this->updateState(
+      "TableAclNextHops", [=, this](const std::shared_ptr<SwitchState>& state) {
+        auto newState =
+            this->addAclToTable(state, "table0", "acl0", {aclNexthopIps[0]});
+        return this->addAclToTable(
+            newState, "table0", "acl1", {aclNexthopIps[1]}, {}, 1);
+      });
+
+  auto matchingPrefixes = this->getMatchingPrefixes(2);
+  auto nexthopIps = this->getResolvedNexthops(2);
+  auto prefix0 = this->makePrefix(matchingPrefixes[0]);
+  auto prefix1 = this->makePrefix(matchingPrefixes[1]);
+  RouteNextHopSet nexthops0 =
+      makeResolvedNextHops({nexthopIps[0]}, UCMP_DEFAULT_WEIGHT);
+  RouteNextHopSet nexthops1 =
+      makeResolvedNextHops({nexthopIps[1]}, UCMP_DEFAULT_WEIGHT);
+
+  this->addRoute(prefix0, nexthops0);
+  this->verifyResolvedNexthopsInTableAclAction("table0", "acl0", nexthops0);
+  this->verifyResolvedNexthopsInTableAclAction(
+      "table0", "acl1", kEmptyNexthopSet);
+
+  std::shared_ptr<AclEntry> acl0;
+  this->verifyStateUpdate(
+      [&]() { acl0 = this->getTableAcl("table0", "acl0"); });
+  this->addRoute(prefix1, nexthops1);
+  this->verifyResolvedNexthopsInTableAclAction("table0", "acl1", nexthops1);
+  this->verifyStateUpdate(
+      [&]() { EXPECT_EQ(this->getTableAcl("table0", "acl0"), acl0); });
+
+  std::shared_ptr<AclEntry> acl1;
+  this->verifyStateUpdate(
+      [&]() { acl1 = this->getTableAcl("table0", "acl1"); });
+  this->delRoute(prefix0);
+  this->verifyResolvedNexthopsInTableAclAction(
+      "table0", "acl0", kEmptyNexthopSet);
+  this->verifyStateUpdate(
+      [&]() { EXPECT_EQ(this->getTableAcl("table0", "acl1"), acl1); });
 }
 
 TYPED_TEST(AclNexthopHandlerTest, TunnelEncapNexthopSkipsResolution) {

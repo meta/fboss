@@ -2,11 +2,15 @@
 
 #include "fboss/agent/AclNexthopHandler.h"
 #include <folly/logging/xlog.h>
+#include "fboss/agent/HwSwitchMatcher.h"
 #include "fboss/agent/SwSwitch.h"
 #include "fboss/agent/SwitchIdScopeResolver.h"
 #include "fboss/agent/rib/RoutingInformationBase.h"
 #include "fboss/agent/state/AclEntry.h"
 #include "fboss/agent/state/AclMap.h"
+#include "fboss/agent/state/AclTable.h"
+#include "fboss/agent/state/AclTableGroup.h"
+#include "fboss/agent/state/AclTableGroupMap.h"
 #include "fboss/agent/state/SwitchState.h"
 
 namespace facebook::fboss {
@@ -37,6 +41,7 @@ bool AclNexthopHandler::hasAclChanges(const StateDelta& delta) {
 
   aclsChanged =
       (aclsChanged || fibsMapChanged ||
+       !isEmpty(delta.getAclTableGroupsDelta()) ||
        !isEmpty(delta.getLabelForwardingInformationBaseDelta()));
   XLOG(DBG2) << "aclsChanged: " << aclsChanged;
   return aclsChanged;
@@ -133,6 +138,7 @@ std::shared_ptr<MultiSwitchAclMap> AclNexthopHandler::updateAcls(
       }
     }
   }
+  updateAclTableGroups(newState, changed);
   if (!changed) {
     return nullptr;
   }
@@ -207,6 +213,45 @@ std::shared_ptr<AclEntry> AclNexthopHandler::resolvedAclEntry(
   auto newAclEntry = origAclEntry->clone();
   return resolveAclEntry(newAclEntry.get(), origAclEntry) ? newAclEntry
                                                           : nullptr;
+}
+
+void AclNexthopHandler::updateAclTableGroups(
+    std::shared_ptr<SwitchState>& newState,
+    bool& changed) {
+  auto tableGroups = newState->getAclTableGroups();
+  for (const auto& matcherIter : std::as_const(*tableGroups)) {
+    HwSwitchMatcher matcher(matcherIter.first);
+    for (const auto& groupIter : std::as_const(*matcherIter.second)) {
+      auto stage = groupIter.first;
+      auto tableMap = groupIter.second->getAclTableMap();
+      if (!tableMap) {
+        continue;
+      }
+      for (const auto& tableIter : std::as_const(*tableMap)) {
+        auto table = tableIter.second;
+        auto aclMap = table->getAclMap().unwrap();
+        if (!aclMap) {
+          continue;
+        }
+        std::vector<std::shared_ptr<AclEntry>> updated;
+        for (const auto& entryIter : std::as_const(*aclMap)) {
+          if (auto newEntry = resolvedAclEntry(entryIter.second)) {
+            updated.push_back(std::move(newEntry));
+          }
+        }
+        if (updated.empty()) {
+          continue;
+        }
+        auto* newTable = table->modify(&newState, matcher, stage);
+        auto newAclMap = aclMap->clone();
+        for (auto& newEntry : updated) {
+          newAclMap->updateNode(std::move(newEntry));
+        }
+        newTable->setAclMap(std::move(newAclMap));
+        changed = true;
+      }
+    }
+  }
 }
 
 } // namespace facebook::fboss
