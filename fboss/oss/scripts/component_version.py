@@ -28,6 +28,7 @@ from pathlib import Path
 SCHEMA = 1
 SECTION = ".fboss.build"
 RECORD_DIRECTORY = "fboss_build_info"
+DECLARATION_PATH = "share/fboss-component-version.json"
 logger = logging.getLogger(__name__)
 
 
@@ -148,6 +149,43 @@ def write_binary_build_info(binary: Path, objcopy: str = "objcopy") -> None:
     write_if_changed(
         record_path, json.dumps(build_info, indent=2, sort_keys=True) + "\n"
     )
+
+
+def collect_binary_records(
+    contents: Mapping[Path, str],
+    records_dir: Path | None = None,
+) -> dict[str, dict[str, object]]:
+    records: dict[str, dict[str, object]] = {}
+    for binary, destination in contents.items():
+        if not destination.startswith("bin/") or not binary.is_file():
+            continue
+        directory = records_dir or binary.parent / RECORD_DIRECTORY
+        path = directory / f"{binary.name}.json"
+        if not path.is_file():
+            continue
+        record = json.loads(path.read_text())
+        if (
+            not isinstance(record, dict)
+            or record.get("schema") != SCHEMA
+            or record.get("build_target") != binary.name
+            or record.get("sha256") != checksum(binary)
+        ):
+            raise ValueError(f"Stale or invalid build metadata for {binary}")
+        records[Path(destination).name] = record
+    return records
+
+
+def write_declaration(
+    output: Path, binaries: Mapping[str, object], producer: str
+) -> None:
+    if not binaries:
+        return
+    declaration = {
+        "declaration_schema": SCHEMA,
+        "producer": producer,
+        "binaries": binaries,
+    }
+    write_if_changed(output, json.dumps(declaration, indent=2, sort_keys=True) + "\n")
 
 
 def main() -> None:

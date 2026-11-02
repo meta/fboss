@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 # Copyright 2004-present Facebook. All Rights Reserved.
 
-# pyre-unsafe
-
 import argparse
 import concurrent.futures
 import glob
@@ -11,15 +9,18 @@ import pathlib
 import stat
 import sys
 import tarfile
+import tempfile
 from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING or __package__:
+    from . import component_version
     from .platform_configs_utils import (
         get_forwarding_stack_config_paths,
         get_platform_descriptor_paths,
     )
 else:
+    import component_version
     from platform_configs_utils import (
         get_forwarding_stack_config_paths,
         get_platform_descriptor_paths,
@@ -237,12 +238,19 @@ def write_tar(filename: str, contents: Mapping[pathlib.Path, str]) -> None:
         return
 
     print(f"Creating {filename}...")
+    records = component_version.collect_binary_records(contents)
     with tarfile.open(filename, "w") as tar:
         for src, dest in contents.items():
             if not os.path.exists(src):
                 print(f"Warning: {src} does not exist")
                 continue
             tar.add(src, dest)
+
+        if records:
+            with tempfile.TemporaryDirectory() as temporary:
+                declaration = pathlib.Path(temporary) / "fboss-component-version.json"
+                component_version.write_declaration(declaration, records, "package.py")
+                tar.add(declaration, component_version.DECLARATION_PATH)
 
         # Add lib64 -> lib symlink so binaries with RPATH/RUNPATH pointing to
         # lib64/ can find libraries packaged under lib/ (e.g. fboss2-dev).
@@ -421,9 +429,13 @@ def _build_target(target: str, build_dir: pathlib.Path):
 
 def package_fboss(target_name: str, target: list) -> None:
     with concurrent.futures.ProcessPoolExecutor() as executor:
-        executor.submit(write_tar, f"{target_name}.tar", target[0])
+        futures = [executor.submit(write_tar, f"{target_name}.tar", target[0])]
         if len(target) == 2:
-            executor.submit(write_tar, f"{target_name}-tests.tar", target[1])
+            futures.append(
+                executor.submit(write_tar, f"{target_name}-tests.tar", target[1])
+            )
+        for future in futures:
+            future.result()
 
 
 def parse_args(argv):

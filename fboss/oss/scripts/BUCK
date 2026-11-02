@@ -9,6 +9,15 @@ python_library(
 )
 
 python_library(
+    name = "package_fboss_lib",
+    srcs = {"package-fboss.py": "package_fboss.py"},
+    deps = [
+        ":component_version",
+        ":platform_configs_utils",
+    ],
+)
+
+python_library(
     name = "platform_configs_utils",
     srcs = ["platform_configs_utils.py"],
     labels = ["autodeps2_generated"],
@@ -39,7 +48,10 @@ python_library(
     name = "package_lib",
     srcs = ["package.py"],
     labels = ["autodeps2_generated"],
-    deps = [":platform_configs_utils"],
+    deps = [
+        ":component_version",
+        ":platform_configs_utils",
+    ],
 )
 
 python_binary(

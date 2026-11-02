@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
 import sys
 import tempfile
 import unittest
@@ -126,6 +127,43 @@ class ComponentVersionTest(unittest.TestCase):
                 component_version.generate_build_info_sources(
                     Path(temporary), ["../fsdb"], {}
                 )
+
+    def test_packaging_detects_changed_binary_and_supports_legacy(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            binary = root / "fsdb"
+            binary.write_bytes(b"original executable")
+            record = root / component_version.RECORD_DIRECTORY / "fsdb.json"
+            component_version.write_if_changed(
+                record,
+                json.dumps(
+                    {
+                        "schema": 1,
+                        "build_target": "fsdb",
+                        "source_revision": "a" * 40,
+                        "sha256": component_version.checksum(binary),
+                    }
+                ),
+            )
+            records = component_version.collect_binary_records({binary: "bin/fsdb"})
+            self.assertEqual(records["fsdb"]["source_revision"], "a" * 40)
+            binary.write_bytes(b"replaced executable")
+            with self.assertRaisesRegex(ValueError, "Stale"):
+                component_version.collect_binary_records({binary: "bin/fsdb"})
+            record.unlink()
+            self.assertEqual(
+                component_version.collect_binary_records({binary: "bin/fsdb"}), {}
+            )
+
+    def test_declaration_preserves_multiple_service_revisions(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "declaration.json"
+            binaries = {
+                "fsdb": {"source_revision": "a" * 40},
+                "qsfp_service": {"source_revision": "b" * 40},
+            }
+            component_version.write_declaration(output, binaries, "package.py")
+            self.assertEqual(json.loads(output.read_text())["binaries"], binaries)
 
 
 if __name__ == "__main__":
