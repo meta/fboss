@@ -623,8 +623,7 @@ TEST_F(PortManagerTest, iterator) {
   addedPorts.insert(portMgr.addPort(port2));
   for (const auto& portIdAnHandle : portMgr) {
     auto& handle = portIdAnHandle.second;
-    EXPECT_TRUE(
-        addedPorts.find(handle->port->adapterKey()) != addedPorts.end());
+    EXPECT_TRUE(addedPorts.contains(handle->port->adapterKey()));
     addedPorts.erase(handle->port->adapterKey());
   }
   EXPECT_EQ(0, addedPorts.size());
