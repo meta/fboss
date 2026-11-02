@@ -272,6 +272,9 @@ class AgentIpInIpEncapTunnelTest : public AgentHwTest {
  protected:
   std::string kEncapSrcIp = "2401:db00::1";
   std::string kEncapDstIp = "2401:db00:ffff::1";
+  // Alternate tunnel destination, still covered by the same /64 route
+  // as kEncapDstIp, for changing the tunnel destination in a test.
+  std::string kAltEncapDstIp = "2401:db00:ffff::2";
   std::string kTargetPrefix = "2403:300::";
   int kTargetPrefixLen = 32;
   std::string kV4TargetPrefix = "100.0.0.0/24";
@@ -402,6 +405,30 @@ class AgentIpInIpEncapTunnelTest : public AgentHwTest {
     });
   }
 
+  // Change the effective tunnel destination in one config update:
+  // the redirect nexthop IP of every match-to-action entry that
+  // redirects to the encap tunnel. The outer destination is that
+  // nexthop IP, so the ACL entries are reprogrammed with a new
+  // tunnel-encap nexthop for the new destination. The tunnel config
+  // dstIp field is intentionally left alone: changing it recreates
+  // the tunnel SAI object, and that removal aborts with OBJECT IN
+  // USE while tunnel-encap nexthops still reference the tunnel.
+  void updateEncapDestIp(const std::string& dstIp) {
+    auto cfg = getSw()->getConfig();
+    for (auto& mta : *cfg.dataPlaneTrafficPolicy()->matchToAction()) {
+      if (*mta.matcher() == "acl_encap" || *mta.matcher() == "acl_encap_v4") {
+        cfg::RedirectToNextHopAction redirectAction;
+        cfg::RedirectNextHop nh;
+        nh.ip() = dstIp;
+        nh.tunnelType() = TunnelType::IP_IN_IP_ENCAP;
+        nh.tunnelId() = "encapTunnel0";
+        redirectAction.redirectNextHops() = {nh};
+        mta.action()->redirectToNextHop() = redirectAction;
+      }
+    }
+    applyNewConfig(cfg);
+  }
+
   void setupHelper() {
     auto ports = masterLogicalPortIds();
     // Encap outer dst IP → port 1 (encap egress)
@@ -501,7 +528,8 @@ class AgentIpInIpEncapTunnelTest : public AgentHwTest {
       uint8_t dscp,
       uint8_t ecn,
       const std::vector<PortID>& egressPorts,
-      PortID& usedPort) {
+      PortID& usedPort,
+      const folly::IPAddressV6& expectedEncapDstIp) {
     // The inner packet is built with hop limit / TTL 255. Forwarding
     // decrements it once, so under the UNIFORM TTL mode both the
     // inner header and the outer header carry 254.
@@ -532,7 +560,8 @@ class AgentIpInIpEncapTunnelTest : public AgentHwTest {
       auto probeFrame = utility::EthFrame(probeCursor);
       auto probeOuter = probeFrame.v6PayLoad();
       if (probeOuter.has_value() &&
-          probeOuter->header().dstAddr == folly::IPAddress(kEncapDstIp)) {
+          probeOuter->header().dstAddr ==
+              folly::IPAddress(expectedEncapDstIp)) {
         break;
       }
       capturedPktBuf.reset();
@@ -560,7 +589,7 @@ class AgentIpInIpEncapTunnelTest : public AgentHwTest {
     auto outerHdr = v6Pkt->header();
 
     EXPECT_EQ(outerHdr.srcAddr, folly::IPAddress(kEncapSrcIp));
-    EXPECT_EQ(outerHdr.dstAddr, folly::IPAddress(kEncapDstIp));
+    EXPECT_EQ(outerHdr.dstAddr, folly::IPAddress(expectedEncapDstIp));
     EXPECT_EQ(outerHdr.nextHeader, isV4 ? 4 : 41);
     EXPECT_EQ(outerHdr.trafficClass >> 2, dscp);
     EXPECT_EQ(outerHdr.trafficClass & 0x3, ecn);
@@ -601,10 +630,11 @@ class AgentIpInIpEncapTunnelTest : public AgentHwTest {
       bool cpuInject,
       uint8_t dscp,
       uint8_t ecn,
-      PortID egressPort) {
+      PortID egressPort,
+      const folly::IPAddressV6& expectedEncapDstIp) {
     PortID usedPort = egressPort;
     verifyEncapPacketParsingOnPorts(
-        isV4, cpuInject, dscp, ecn, {egressPort}, usedPort);
+        isV4, cpuInject, dscp, ecn, {egressPort}, usedPort, expectedEncapDstIp);
     EXPECT_EQ(usedPort, egressPort);
   }
 };
@@ -713,14 +743,24 @@ TEST_F(AgentIpInIpEncapTunnelTest, EncapPacketParsing) {
       for (bool cpuInject : {false, true}) {
         for (uint8_t dscp : {uint8_t{0}, uint8_t{32}, uint8_t{48}}) {
           verifyEncapPacketParsing(
-              isV4, cpuInject, dscp, 0, masterLogicalPortIds()[1]);
+              isV4,
+              cpuInject,
+              dscp,
+              0,
+              masterLogicalPortIds()[1],
+              folly::IPAddressV6(kEncapDstIp));
         }
         // ECN is only exposed by the IPv6 packet builders, so the
         // ECN sweep is IPv6-only.
         if (!isV4) {
           for (uint8_t ecn : {uint8_t{1}, uint8_t{2}, uint8_t{3}}) {
             verifyEncapPacketParsing(
-                isV4, cpuInject, 48, ecn, masterLogicalPortIds()[1]);
+                isV4,
+                cpuInject,
+                48,
+                ecn,
+                masterLogicalPortIds()[1],
+                folly::IPAddressV6(kEncapDstIp));
           }
         }
       }
@@ -737,7 +777,8 @@ TEST_F(AgentIpInIpEncapTunnelTest, EncapRouteUpdateMovesEgressPort) {
     auto verifyOnPort = [&, this](PortID egressPort, PortID idlePort) {
       auto beforeIdleOutBytes =
           getLatestPortStats(idlePort).outBytes_().value();
-      verifyEncapPacketParsing(false, false, 48, 0, egressPort);
+      verifyEncapPacketParsing(
+          false, false, 48, 0, egressPort, folly::IPAddressV6(kEncapDstIp));
       EXPECT_EQ(
           getLatestPortStats(idlePort).outBytes_().value(), beforeIdleOutBytes);
     };
@@ -768,7 +809,8 @@ TEST_F(AgentIpInIpEncapTunnelTest, EncapEcmpRoutePortDownUp) {
     auto verifyOnPort = [&, this](PortID egressPort, PortID idlePort) {
       auto beforeIdleOutBytes =
           getLatestPortStats(idlePort).outBytes_().value();
-      verifyEncapPacketParsing(false, false, 48, 0, egressPort);
+      verifyEncapPacketParsing(
+          false, false, 48, 0, egressPort, folly::IPAddressV6(kEncapDstIp));
       EXPECT_EQ(
           getLatestPortStats(idlePort).outBytes_().value(), beforeIdleOutBytes);
     };
@@ -779,7 +821,8 @@ TEST_F(AgentIpInIpEncapTunnelTest, EncapEcmpRoutePortDownUp) {
                << "over ports " << port1 << " and " << port2;
     setupRouteToPorts(ecmpPorts, encapDst, 64);
     PortID usedPort = port1;
-    verifyEncapPacketParsingOnPorts(false, false, 48, 0, ecmpPorts, usedPort);
+    verifyEncapPacketParsingOnPorts(
+        false, false, 48, 0, ecmpPorts, usedPort, encapDst);
     if (HasFailure()) {
       XLOG(INFO) << "EncapEcmpRoutePortDownUp phase 1 failed";
       return;
@@ -813,12 +856,55 @@ TEST_F(AgentIpInIpEncapTunnelTest, EncapEcmpRoutePortDownUp) {
     bringUpPort(downPort);
     unresolveAndResolveNextHop(downPort);
     setupRouteToPorts(ecmpPorts, encapDst, 64);
-    verifyEncapPacketParsingOnPorts(false, false, 48, 0, ecmpPorts, usedPort);
+    verifyEncapPacketParsingOnPorts(
+        false, false, 48, 0, ecmpPorts, usedPort, encapDst);
     if (HasFailure()) {
       XLOG(INFO) << "EncapEcmpRoutePortDownUp phase 4 failed";
     } else {
       XLOG(INFO) << "EncapEcmpRoutePortDownUp phase 4 passed: encap "
                  << "egressed port " << usedPort;
+    }
+  };
+  verifyAcrossWarmBoots(setup, verify);
+}
+
+TEST_F(AgentIpInIpEncapTunnelTest, EncapTunnelDestIpChange) {
+  auto setup = [=, this]() { setupHelper(); };
+  auto verify = [=, this]() {
+    auto egressPort = masterLogicalPortIds()[1];
+    const auto origDstIp = folly::IPAddressV6(kEncapDstIp);
+    const auto altDstIp = folly::IPAddressV6(kAltEncapDstIp);
+
+    // Phase 1: encap with the original tunnel destination.
+    XLOG(INFO) << "EncapTunnelDestIpChange phase 1: tunnel destination "
+               << origDstIp;
+    verifyEncapPacketParsing(false, false, 48, 0, egressPort, origDstIp);
+    if (HasFailure()) {
+      XLOG(INFO) << "EncapTunnelDestIpChange phase 1 failed";
+      return;
+    }
+
+    // Phase 2: change the tunnel destination to an address still
+    // covered by the same /64 route. The ACL entries are reprogrammed
+    // with a new tunnel-encap nexthop, so encap must carry the new
+    // outer destination.
+    XLOG(INFO) << "EncapTunnelDestIpChange phase 2: tunnel destination "
+               << altDstIp;
+    updateEncapDestIp(kAltEncapDstIp);
+    verifyEncapPacketParsing(false, false, 48, 0, egressPort, altDstIp);
+
+    // Phase 3: restore the original tunnel destination before
+    // verify is done, and verify encap carries it again. The restore
+    // runs even if phase 2 failed, so the test leaves the original
+    // destination in place.
+    XLOG(INFO) << "EncapTunnelDestIpChange phase 3: restoring tunnel "
+               << "destination " << origDstIp;
+    updateEncapDestIp(kEncapDstIp);
+    verifyEncapPacketParsing(false, false, 48, 0, egressPort, origDstIp);
+    if (HasFailure()) {
+      XLOG(INFO) << "EncapTunnelDestIpChange phase 3 failed";
+    } else {
+      XLOG(INFO) << "EncapTunnelDestIpChange phase 3 passed";
     }
   };
   verifyAcrossWarmBoots(setup, verify);
