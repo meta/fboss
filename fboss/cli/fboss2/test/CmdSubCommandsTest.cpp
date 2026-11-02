@@ -423,5 +423,43 @@ TEST_F(CmdSubCommandsTest, ReadWriteModeSurvivesSort) {
       CliReadWriteMode::CLI_MODE_READ);
 }
 
+TEST_F(CmdSubCommandsTest, FilterReadCommandsDropsWriteCommands) {
+  CommandTree cmdTree = {
+      RootCommand(
+          "show",
+          "readParent",
+          "help",
+          commandHandler<FakeReadCmd>,
+          noArgType,
+          {Command(
+               "writeChild", "help", commandHandler<FakeWriteCmd>, noArgType),
+           Command(
+               "readChild", "help", commandHandler<FakeReadCmd>, noArgType)}),
+      // A write command's subtree goes with it, even its read children.
+      RootCommand(
+          "set",
+          "writeParent",
+          "help",
+          commandHandler<FakeWriteCmd>,
+          noArgType,
+          {Command(
+              "readChild", "help", commandHandler<FakeReadCmd>, noArgType)}),
+      // A group left with no children is dropped.
+      RootCommand(
+          "clear",
+          "group",
+          "help",
+          {Command(
+              "writeChild", "help", commandHandler<FakeWriteCmd>, noArgType)}),
+  };
+
+  const auto filtered = filterReadCommands(cmdTree);
+
+  ASSERT_EQ(filtered.size(), 1);
+  EXPECT_EQ(filtered[0].name, "readParent");
+  ASSERT_EQ(filtered[0].subcommands.size(), 1);
+  EXPECT_EQ(filtered[0].subcommands[0].name, "readChild");
+}
+
 } // namespace
 } // namespace facebook::fboss

@@ -51,6 +51,23 @@ const std::map<std::string, std::string>& kSupportedVerbs() {
   return supportedVerbs;
 };
 
+bool isWriteCommand(const facebook::fboss::Command& cmd) {
+  return cmd.commandHandler &&
+      cmd.commandHandler->mode() ==
+      facebook::fboss::CliReadWriteMode::CLI_MODE_WRITE;
+}
+
+template <typename CmdT>
+void pruneWriteCommands(std::vector<CmdT>& cmds) {
+  std::erase_if(cmds, [](const CmdT& cmd) { return isWriteCommand(cmd); });
+  for (auto& cmd : cmds) {
+    pruneWriteCommands(cmd.subcommands);
+  }
+  std::erase_if(cmds, [](const CmdT& cmd) {
+    return !cmd.commandHandler && cmd.subcommands.empty();
+  });
+}
+
 } // namespace
 
 using facebook::fboss::CmdSubcommands;
@@ -340,6 +357,16 @@ void CmdSubcommands::init(
     std::string fullCmd;
     addCommand(app, cmd, fullCmd, 0);
   }
+}
+
+CommandTree filterReadCommands(CommandTree cmdTree) {
+  pruneWriteCommands(cmdTree);
+  return cmdTree;
+}
+
+std::vector<Command> filterReadCommands(std::vector<Command> cmds) {
+  pruneWriteCommands(cmds);
+  return cmds;
 }
 
 } // namespace facebook::fboss

@@ -47,4 +47,7 @@ class CmdSubcommands {
   void initCommandTree(CLI::App& app, const CommandTree& cmdTree);
 };
 
+CommandTree filterReadCommands(CommandTree cmdTree);
+std::vector<Command> filterReadCommands(std::vector<Command> cmds);
+
 } // namespace facebook::fboss
