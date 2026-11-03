@@ -18,6 +18,7 @@
 #include "fboss/agent/hw/sai/switch/SaiSrv6SidListManager.h"
 #include "fboss/agent/hw/sai/switch/SaiSrv6TunnelManager.h"
 #include "fboss/agent/hw/sai/switch/SaiSwitchManager.h"
+#include "fboss/agent/hw/sai/switch/SaiVxlanTunnelManager.h"
 #include "fboss/agent/hw/switch_asics/HwAsic.h"
 #include "fboss/agent/platforms/sai/SaiPlatform.h"
 
@@ -36,6 +37,26 @@ ResolvedNextHop getSrv6UnderlayNextHop(const ResolvedNextHop& srv6Nhop) {
   return underlaySrv6Nhop;
 }
 #endif
+
+#if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)
+const SaiVxlanTunnelHandle* getVxlanTunnelHandle(
+    SaiManagerTable* managerTable,
+    const ResolvedNextHop& swNextHop) {
+  if (!swNextHop.tunnelId().has_value() || swNextHop.tunnelId()->empty()) {
+    throw FbossError(
+        "VXLAN next hop without tunnel ID: ", swNextHop.addr().str());
+  }
+  auto* handle = managerTable->vxlanTunnelManager().getVxlanTunnelHandle(
+      swNextHop.tunnelId().value());
+  if (!handle) {
+    throw FbossError(
+        "Missing VXLAN tunnel for tunnel ID: ", swNextHop.tunnelId().value());
+  }
+  return handle;
+}
+
+#endif
+
 } // namespace
 std::shared_ptr<SaiIpNextHop> SaiNextHopManager::addNextHop(
     RouterInterfaceSaiId routerInterfaceId,
@@ -55,6 +76,20 @@ SaiNextHopManager::SaiNextHopManager(
 SaiNextHopTraits::AdapterHostKey SaiNextHopManager::getAdapterHostKey(
     const ResolvedNextHop& swNextHop,
     std::optional<sai_object_id_t> sidListId) {
+  // VXLAN first: keyed by (TunnelId, Ip) with no router interface.
+  // No VNI is programmed on the next hop. The overlay MAC stays in
+  // the create attributes and updates in place on a key hit.
+  if (swNextHop.tunnelType().has_value() &&
+      swNextHop.tunnelType().value() == TunnelType::VXLAN) {
+#if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)
+    auto* tunnelHandle = getVxlanTunnelHandle(managerTable_, swNextHop);
+    auto tunnelSaiId = tunnelHandle->tunnel->adapterKey();
+    folly::IPAddress ip = swNextHop.addr();
+    return SaiTunnelEncapNextHopTraits::AdapterHostKey{tunnelSaiId, ip};
+#else
+    throw FbossError("VXLAN next hops require SAI 1.12 or later");
+#endif
+  }
   auto interfaceId = swNextHop.intfID().value();
   auto routerInterfaceHandle =
       managerTable_->routerInterfaceManager().getRouterInterfaceHandle(
@@ -211,6 +246,10 @@ ManagedSaiNextHop SaiNextHopManager::addManagedSaiNextHop(
     entry->setDisableTTLDecrement(swNextHop.disableTTLDecrement());
 
     return entry;
+  } else if (std::get_if<typename SaiTunnelEncapNextHopTraits::AdapterHostKey>(
+                 &nexthopKey)) {
+    // VXLAN next hops go through addVxlanNextHop.
+    throw FbossError("VXLAN next hops require addVxlanNextHop");
   }
 #if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)
   else if (
@@ -259,6 +298,37 @@ ManagedSaiNextHop SaiNextHopManager::addManagedSaiNextHop(
   throw FbossError("next hop key not found for a given next hop subscriber");
 }
 
+std::shared_ptr<SaiVxlanNextHopHandle> SaiNextHopManager::addVxlanNextHop(
+    const ResolvedNextHop& swNextHop) {
+  if (!swNextHop.tunnelType().has_value() ||
+      swNextHop.tunnelType().value() != TunnelType::VXLAN) {
+    throw FbossError("SaiVxlanNextHopHandle requires a VXLAN next hop");
+  }
+#if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)
+  auto* tunnelHandle = getVxlanTunnelHandle(managerTable_, swNextHop);
+
+  auto nexthopKey = getAdapterHostKey(swNextHop);
+  const auto* vxlanKey =
+      std::get_if<typename SaiTunnelEncapNextHopTraits::AdapterHostKey>(
+          &nexthopKey);
+  CHECK(vxlanKey) << "VXLAN next hop key expected";
+  auto tunnelSaiId = tunnelHandle->tunnel->adapterKey();
+  SaiTunnelEncapNextHopTraits::CreateAttributes attributes{
+      SAI_NEXT_HOP_TYPE_TUNNEL_ENCAP,
+      tunnelSaiId,
+      swNextHop.addr(),
+      swNextHop.overlayDstMac(),
+      std::nullopt};
+  auto nextHop =
+      createSaiObject<SaiTunnelEncapNextHopTraits>(*vxlanKey, attributes);
+  auto [entry, emplaced] =
+      vxlanNextHopHandles_.refOrEmplace(*vxlanKey, *vxlanKey, nextHop);
+  return entry;
+#else
+  throw FbossError("VXLAN next hops require SAI 1.12 or later");
+#endif
+}
+
 template <typename NextHopTraits>
 std::shared_ptr<SaiObject<NextHopTraits>> SaiNextHopManager::createSaiObject(
     typename NextHopTraits::AdapterHostKey adapterHostKey,
@@ -295,7 +365,27 @@ std::string SaiNextHopManager::listManagedObjects() const {
     output += "\n";
   }
 #endif
+  for (const auto& entry : vxlanNextHopHandles_) {
+    auto entryPtr = entry.second.lock();
+    if (!entryPtr) {
+      continue;
+    }
+    output += entryPtr->toString();
+    output += "\n";
+  }
   return output;
+}
+
+std::string SaiVxlanNextHopHandle::toString() const {
+  auto mac =
+      GET_OPT_ATTR(TunnelEncapNextHop, OverlayDstMac, nextHop_->attributes());
+  return folly::to<std::string>(
+      "sai vxlan nexthop handle: tunnelId: ",
+      std::get<0>(key_).value(),
+      " ip: ",
+      std::get<1>(key_).value().str(),
+      " overlayDstMac: ",
+      mac.toString());
 }
 
 template <typename NextHopTraits>

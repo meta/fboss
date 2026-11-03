@@ -15,9 +15,11 @@
 #include "fboss/agent/hw/sai/switch/SaiRouterInterfaceManager.h"
 #include "fboss/agent/hw/sai/switch/SaiSrv6SidListManager.h"
 #include "fboss/agent/hw/sai/switch/SaiSrv6TunnelManager.h"
+#include "fboss/agent/hw/sai/switch/SaiVxlanTunnelManager.h"
 #include "fboss/agent/hw/sai/switch/tests/ManagerTestBase.h"
 #include "fboss/agent/state/RouteNextHop.h"
 #include "fboss/agent/state/Srv6Tunnel.h"
+#include "fboss/agent/state/VxlanTunnel.h"
 
 #include <unordered_set>
 
@@ -727,3 +729,129 @@ TEST_F(Srv6NextHopManagerTest, warmBootKeepsReloadedSidListNextHop) {
   wbSidList.getSidList()->release();
 }
 #endif
+
+namespace {
+
+std::shared_ptr<VxlanTunnel> makeVxlanNhTunnel(
+    const std::string& tunnelId,
+    uint32_t intfID,
+    bool withMapping = true) {
+  auto tunnel = std::make_shared<VxlanTunnel>(tunnelId);
+  tunnel->setType(TunnelType::VXLAN);
+  tunnel->setUnderlayIntfId(InterfaceID(intfID));
+  tunnel->setSrcIP(folly::IPAddressV4("10.0.0.1"));
+  tunnel->setDstIP(folly::IPAddressV4("10.0.0.2"));
+  tunnel->setTTLMode(cfg::TunnelMode::UNIFORM);
+  tunnel->setDscpMode(cfg::TunnelMode::UNIFORM);
+  tunnel->setEcnMode(cfg::TunnelMode::UNIFORM);
+  tunnel->setTunnelTermType(cfg::TunnelTerminationType::P2MP);
+  if (withMapping) {
+    tunnel->setVrf2Vni(std::map<int64_t, int64_t>{{0, 10001}});
+    tunnel->setVniToVrf(std::map<int64_t, int64_t>{{10001, 0}});
+  }
+  return tunnel;
+}
+
+ResolvedNextHop makeVxlanNextHop(
+    uint32_t intfID,
+    const std::string& tunnelId,
+    const folly::IPAddress& addr = folly::IPAddressV4("10.0.0.2"),
+    std::optional<folly::MacAddress> mac =
+        folly::MacAddress("02:00:00:00:00:01")) {
+  return ResolvedNextHop{
+      addr,
+      InterfaceID(intfID),
+      ECMP_WEIGHT,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      {},
+      TunnelType::VXLAN,
+      tunnelId,
+      std::nullopt,
+      NextHopRole::PRIMARY,
+      std::nullopt,
+      mac};
+}
+
+} // namespace
+
+TEST_F(NextHopManagerTest, addVxlanNextHop) {
+  auto swTunnel = makeVxlanNhTunnel("vxlantunnel0", intf0.id);
+  saiManagerTable->vxlanTunnelManager().addVxlanTunnel(swTunnel);
+  auto swNextHop = makeVxlanNextHop(intf0.id, "vxlantunnel0");
+  auto holder = saiManagerTable->nextHopManager().addVxlanNextHop(swNextHop);
+  ASSERT_NE(holder, nullptr);
+  auto tunnelSaiId = saiManagerTable->vxlanTunnelManager()
+                         .getVxlanTunnelHandle("vxlantunnel0")
+                         ->tunnel->adapterKey();
+  auto nhId = holder->adapterKey();
+  EXPECT_EQ(
+      saiApiTable->nextHopApi().getAttribute(
+          NextHopSaiId(nhId), SaiTunnelEncapNextHopTraits::Attributes::Type{}),
+      SAI_NEXT_HOP_TYPE_TUNNEL_ENCAP);
+  EXPECT_EQ(
+      saiApiTable->nextHopApi().getAttribute(
+          NextHopSaiId(nhId),
+          SaiTunnelEncapNextHopTraits::Attributes::TunnelId{}),
+      tunnelSaiId);
+  EXPECT_EQ(
+      saiApiTable->nextHopApi().getAttribute(
+          NextHopSaiId(nhId), SaiTunnelEncapNextHopTraits::Attributes::Ip{}),
+      folly::IPAddressV4("10.0.0.2"));
+  EXPECT_EQ(
+      saiApiTable->nextHopApi().getAttribute(
+          NextHopSaiId(nhId),
+          SaiTunnelEncapNextHopTraits::Attributes::OverlayDstMac{}),
+      folly::MacAddress("02:00:00:00:00:01"));
+  auto holder2 = saiManagerTable->nextHopManager().addVxlanNextHop(swNextHop);
+  EXPECT_EQ(holder2->adapterKey(), nhId);
+  auto otherMacHop = makeVxlanNextHop(
+      intf0.id,
+      "vxlantunnel0",
+      folly::IPAddressV4("10.0.0.2"),
+      folly::MacAddress("02:00:00:00:00:02"));
+  auto otherHolder =
+      saiManagerTable->nextHopManager().addVxlanNextHop(otherMacHop);
+  EXPECT_EQ(otherHolder->adapterKey(), nhId);
+  EXPECT_EQ(
+      saiApiTable->nextHopApi().getAttribute(
+          NextHopSaiId(nhId),
+          SaiTunnelEncapNextHopTraits::Attributes::OverlayDstMac{}),
+      folly::MacAddress("02:00:00:00:00:02"));
+}
+
+TEST_F(NextHopManagerTest, vxlanNextHopMissingTunnelThrows) {
+  auto swNextHop = makeVxlanNextHop(intf0.id, "vxlantunnel9");
+  EXPECT_THROW(
+      saiManagerTable->nextHopManager().addVxlanNextHop(swNextHop), FbossError);
+  EXPECT_THROW(
+      saiManagerTable->nextHopManager().getAdapterHostKey(swNextHop),
+      FbossError);
+}
+
+TEST_F(NextHopManagerTest, vxlanNextHopUsesNextHopAddress) {
+  auto swTunnel = makeVxlanNhTunnel("vxlantunnel0", intf0.id);
+  saiManagerTable->vxlanTunnelManager().addVxlanTunnel(swTunnel);
+  // RIB passes VXLAN tunnel next hops through unresolved, so the
+  // next hop address is the remote VTEP even when it differs from
+  // the tunnel config dstIP.
+  auto swNextHop = makeVxlanNextHop(
+      intf0.id, "vxlantunnel0", folly::IPAddressV4("10.0.0.99"));
+  auto holder = saiManagerTable->nextHopManager().addVxlanNextHop(swNextHop);
+  EXPECT_EQ(
+      saiApiTable->nextHopApi().getAttribute(
+          NextHopSaiId(holder->adapterKey()),
+          SaiTunnelEncapNextHopTraits::Attributes::Ip{}),
+      folly::IPAddressV4("10.0.0.99"));
+}
+
+TEST_F(NextHopManagerTest, vxlanNextHopGenericPathThrows) {
+  auto swTunnel = makeVxlanNhTunnel("vxlantunnel0", intf0.id);
+  saiManagerTable->vxlanTunnelManager().addVxlanTunnel(swTunnel);
+  auto swNextHop = makeVxlanNextHop(intf0.id, "vxlantunnel0");
+  EXPECT_THROW(
+      saiManagerTable->nextHopManager().addManagedSaiNextHop(swNextHop),
+      FbossError);
+}

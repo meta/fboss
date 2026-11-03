@@ -35,6 +35,7 @@ class SaiStore;
 
 using SaiIpNextHop = SaiObject<SaiIpNextHopTraits>;
 using SaiMplsNextHop = SaiObject<SaiMplsNextHopTraits>;
+using SaiTunnelEncapNextHop = SaiObject<SaiTunnelEncapNextHopTraits>;
 #if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)
 using SaiSrv6SidlistNextHop = SaiObject<SaiSrv6SidlistNextHopTraits>;
 #endif
@@ -149,6 +150,49 @@ using ManagedSaiNextHop = std::variant<
 #endif
     >;
 
+/*
+ * VXLAN tunnel next hop holder.
+ *
+ * A dedicated holder that creates the
+ * SaiTunnelEncapNextHopTraits object eagerly through the store and
+ * keeps it alive by shared ownership. The SDK resolves the underlay
+ * ECMP path internally, so there is no neighbor and no underlay
+ * sub-next-hop to wait for; tunnels are programmed before routes,
+ * so the next hop is ready at creation.
+ *
+ * ManagedNextHop<SaiTunnelEncapNextHopTraits> is not reused: that
+ * template is an aggregate subscriber on SaiNeighborTraits and its
+ * createObject CHECKs that the neighbor is alive.
+ */
+class SaiVxlanNextHopHandle {
+ public:
+  using ObjectTraits = SaiTunnelEncapNextHopTraits;
+  using AdapterHostKey = typename ObjectTraits::AdapterHostKey;
+
+  SaiVxlanNextHopHandle(
+      AdapterHostKey key,
+      std::shared_ptr<SaiTunnelEncapNextHop> nextHop)
+      : key_(std::move(key)), nextHop_(std::move(nextHop)) {}
+
+  AdapterHostKey adapterHostKey() const {
+    return key_;
+  }
+
+  std::shared_ptr<SaiTunnelEncapNextHop> getNextHop() const {
+    return nextHop_;
+  }
+
+  sai_object_id_t adapterKey() const {
+    return nextHop_->adapterKey();
+  }
+
+  std::string toString() const;
+
+ private:
+  AdapterHostKey key_;
+  std::shared_ptr<SaiTunnelEncapNextHop> nextHop_;
+};
+
 class SaiNextHopManager {
  public:
   SaiNextHopManager(
@@ -171,6 +215,10 @@ class SaiNextHopManager {
 #endif
   );
 
+  // Returns the eagerly created tunnel next hop.
+  std::shared_ptr<SaiVxlanNextHopHandle> addVxlanNextHop(
+      const ResolvedNextHop& swNextHop);
+
 #if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)
   std::shared_ptr<SaiSrv6SidList> createSrv6SidList(
       const ResolvedNextHop& swNextHop);
@@ -189,6 +237,10 @@ class SaiNextHopManager {
     return managedSrv6NextHops_.get(key);
   }
 #endif
+  const SaiVxlanNextHopHandle* getVxlanNextHop(
+      const SaiVxlanNextHopHandle::AdapterHostKey& key) const {
+    return vxlanNextHopHandles_.get(key);
+  }
 
   template <typename NextHopTraits>
   std::shared_ptr<SaiObject<NextHopTraits>> createSaiObject(
@@ -218,6 +270,10 @@ class SaiNextHopManager {
       ManagedSrv6NextHop>
       managedSrv6NextHops_;
 #endif
+  UnorderedRefMap<
+      typename SaiVxlanNextHopHandle::AdapterHostKey,
+      SaiVxlanNextHopHandle>
+      vxlanNextHopHandles_;
 };
 
 } // namespace facebook::fboss
