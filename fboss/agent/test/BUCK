@@ -46,6 +46,7 @@ cpp_unittest(
         "ICMPTest.cpp",
         "IPv4Test.cpp",
         "IntfDeltaValidatorTest.cpp",
+        "L3TrafficLoopExpiryTest.cpp",
         "LabelForwardingTests.cpp",
         "LinkConnectivityProcessorTest.cpp",
         "LldpManagerTest.cpp",
