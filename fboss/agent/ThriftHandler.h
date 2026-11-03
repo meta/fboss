@@ -9,8 +9,10 @@
  */
 #pragma once
 
+#include <chrono>
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -533,6 +535,11 @@ class ThriftHandler : virtual public FbossCtrlSvIf,
 
  private:
   struct L3TrafficLoopStateStore;
+  void expireL3TrafficLoops() noexcept;
+  std::optional<std::chrono::steady_clock::time_point>
+  getNextL3TrafficLoopExpiration() const;
+  void scheduleL3TrafficLoopExpiry();
+  void stopL3TrafficLoopExpiry();
   void setupL3TrafficLoopImpl(
       const BinaryAddress& qualificationAddress,
       const std::string& portName,
@@ -610,7 +617,7 @@ class ThriftHandler : virtual public FbossCtrlSvIf,
    * for the lifetime of the ThriftHandler.
    */
   SwSwitch* sw_;
-  std::unique_ptr<L3TrafficLoopStateStore> l3TrafficLoopState_;
+  std::shared_ptr<L3TrafficLoopStateStore> l3TrafficLoopState_;
 
   int thriftIdleTimeout_{};
   std::vector<const TConnectionContext*> brokenClients_;

@@ -79,12 +79,15 @@
 #include <folly/IPAddressV4.h>
 #include <folly/IPAddressV6.h>
 #include <folly/Range.h>
+#include <folly/ScopeGuard.h>
 #include <folly/container/F14Map.h>
 #include <folly/io/Cursor.h>
 #include <folly/io/IOBuf.h>
+#include <folly/io/async/AsyncTimeout.h>
 #include <folly/logging/xlog.h>
 #include <thrift/lib/cpp/util/EnumUtils.h>
 #include <algorithm>
+#include <atomic>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -972,6 +975,9 @@ struct ThriftHandler::L3TrafficLoopStateStore {
 
   std::mutex operationMutex;
   folly::Synchronized<std::map<std::string, Loop>> loops;
+  // Only the background EventBase changes the timer while it is running.
+  std::unique_ptr<folly::AsyncTimeout> expiryTimer;
+  std::atomic<bool> expiryStopped{false};
 };
 
 namespace {
@@ -1123,9 +1129,11 @@ void setL3TrafficLoopNeighborTtl(
 ThriftHandler::ThriftHandler(SwSwitch* sw)
     : FacebookBase2("FBOSS"),
       sw_(sw),
-      l3TrafficLoopState_(std::make_unique<L3TrafficLoopStateStore>()) {}
+      l3TrafficLoopState_(std::make_shared<L3TrafficLoopStateStore>()) {}
 
-ThriftHandler::~ThriftHandler() = default;
+ThriftHandler::~ThriftHandler() {
+  stopL3TrafficLoopExpiry();
+}
 
 void ThriftHandler::setupL3TrafficLoopImpl(
     const BinaryAddress& qualificationAddressArg,
@@ -1351,9 +1359,6 @@ void ThriftHandler::setupL3TrafficLoops(
     std::unique_ptr<std::vector<BinaryAddress>> peerNextHops,
     std::unique_ptr<std::vector<std::string>> expectedPeerMacs,
     std::unique_ptr<std::vector<int32_t>> timeoutSeconds) {
-  // Part 6 enables setup after rollback cleanup is implemented.
-  throw FbossError("L3 traffic loop setup requires cleanup support");
-
   if (!qualificationAddresses || !portNames || !peerNextHops ||
       !expectedPeerMacs || !timeoutSeconds) {
     throw FbossError("L3 traffic loop setup lists are required");
@@ -1370,24 +1375,26 @@ void ThriftHandler::setupL3TrafficLoops(
   ensureConfigured(__func__);
 
   std::lock_guard operationLock(l3TrafficLoopState_->operationMutex);
-  std::vector<std::string> configuredPorts;
+  if (l3TrafficLoopState_->expiryStopped.load()) {
+    throw FbossError("L3 traffic loop setup is stopping");
+  }
+  size_t numConfigured = 0;
   try {
-    for (size_t i = 0; i < numLoops; ++i) {
-      const auto& portName = portNames->at(i);
+    for (; numConfigured < numLoops; ++numConfigured) {
       setupL3TrafficLoopImpl(
-          qualificationAddresses->at(i),
-          portName,
-          peerNextHops->at(i),
-          expectedPeerMacs->at(i),
-          timeoutSeconds->at(i));
-      configuredPorts.push_back(portName);
+          qualificationAddresses->at(numConfigured),
+          portNames->at(numConfigured),
+          peerNextHops->at(numConfigured),
+          expectedPeerMacs->at(numConfigured),
+          timeoutSeconds->at(numConfigured));
     }
   } catch (const std::exception& ex) {
-    for (const auto& portName : configuredPorts) {
-      teardownL3TrafficLoopImpl(portName);
+    for (size_t i = 0; i < numConfigured; ++i) {
+      teardownL3TrafficLoopImpl(portNames->at(i));
     }
     throw FbossError("Bulk L3 traffic loop setup failed: ", ex.what());
   }
+  scheduleL3TrafficLoopExpiry();
 }
 
 void ThriftHandler::extendL3TrafficLoops(
@@ -1402,36 +1409,39 @@ void ThriftHandler::extendL3TrafficLoops(
   validateL3TrafficLoopTimeout(timeoutSeconds);
 
   std::lock_guard operationLock(l3TrafficLoopState_->operationMutex);
-  auto loops = l3TrafficLoopState_->loops.wlock();
-  const auto now = std::chrono::steady_clock::now();
-  std::vector<std::pair<std::string, std::chrono::steady_clock::time_point>>
-      expirations;
-  expirations.reserve(portNames->size());
-  for (const auto& portName : *portNames) {
-    auto it = loops->find(portName);
-    if (it == loops->end() ||
-        it->second.status.state() != L3TrafficLoopState::READY) {
-      throw FbossError("L3 traffic loop is not ready yet on port ", portName);
+  {
+    auto loops = l3TrafficLoopState_->loops.wlock();
+    const auto now = std::chrono::steady_clock::now();
+    std::vector<std::pair<std::string, std::chrono::steady_clock::time_point>>
+        expirations;
+    expirations.reserve(portNames->size());
+    for (const auto& portName : *portNames) {
+      auto it = loops->find(portName);
+      if (it == loops->end() ||
+          it->second.status.state() != L3TrafficLoopState::READY) {
+        throw FbossError("L3 traffic loop is not ready yet on port ", portName);
+      }
+      const auto base = std::max(it->second.expiresAt, now);
+      const auto extended = base + std::chrono::seconds(timeoutSeconds);
+      if (extended - now >
+          std::chrono::seconds(kL3TrafficLoopMaxTimeoutSeconds)) {
+        throw FbossError(
+            "L3 traffic loop extension exceeds maximum remaining lease");
+      }
+      expirations.emplace_back(portName, extended);
     }
-    const auto base = std::max(it->second.expiresAt, now);
-    const auto extended = base + std::chrono::seconds(timeoutSeconds);
-    if (extended - now >
-        std::chrono::seconds(kL3TrafficLoopMaxTimeoutSeconds)) {
-      throw FbossError(
-          "L3 traffic loop extension exceeds maximum remaining lease");
-    }
-    expirations.emplace_back(portName, extended);
-  }
 
-  const auto systemNow = std::chrono::system_clock::now();
-  for (const auto& [portName, extended] : expirations) {
-    auto& loop = loops->at(portName);
-    loop.expiresAt = extended;
-    loop.status.expirationTimeMs() =
-        duration_cast<std::chrono::milliseconds>(
-            systemNow.time_since_epoch() + (extended - now))
-            .count();
+    const auto systemNow = std::chrono::system_clock::now();
+    for (const auto& [portName, extended] : expirations) {
+      auto& loop = loops->at(portName);
+      loop.expiresAt = extended;
+      loop.status.expirationTimeMs() =
+          duration_cast<std::chrono::milliseconds>(
+              systemNow.time_since_epoch() + (extended - now))
+              .count();
+    }
   }
+  scheduleL3TrafficLoopExpiry();
 }
 
 void ThriftHandler::teardownL3TrafficLoopImpl(const std::string& portName) {
@@ -1541,6 +1551,7 @@ void ThriftHandler::teardownL3TrafficLoops(
       failures.push_back(folly::to<std::string>(portName, ": ", ex.what()));
     }
   }
+  scheduleL3TrafficLoopExpiry();
   if (!failures.empty()) {
     throw FbossError(
         "Bulk L3 traffic loop cleanup failed: ", folly::join("; ", failures));
@@ -1551,6 +1562,92 @@ void ThriftHandler::getL3TrafficLoopStatus(
     std::map<std::string, L3TrafficLoopStatus>&,
     std::unique_ptr<std::vector<std::string>>) {
   throw FbossError("L3 traffic loop status is not implemented yet");
+}
+
+std::optional<std::chrono::steady_clock::time_point>
+ThriftHandler::getNextL3TrafficLoopExpiration() const {
+  std::optional<std::chrono::steady_clock::time_point> next;
+  auto loops = l3TrafficLoopState_->loops.rlock();
+  for (const auto& [_, loop] : *loops) {
+    if (loop.status.state() == L3TrafficLoopState::READY &&
+        (!next || loop.expiresAt < *next)) {
+      next = loop.expiresAt;
+    }
+  }
+  return next;
+}
+
+void ThriftHandler::scheduleL3TrafficLoopExpiry() {
+  if (l3TrafficLoopState_->expiryStopped.load()) {
+    return;
+  }
+  // A queued callback must not keep using a deleted handler.
+  std::weak_ptr<L3TrafficLoopStateStore> weakState = l3TrafficLoopState_;
+  sw_->getBackgroundEvb()->runInEventBaseThread([this, weakState] {
+    auto state = weakState.lock();
+    if (!state || state->expiryStopped.load()) {
+      return;
+    }
+    if (state->expiryTimer) {
+      state->expiryTimer->cancelTimeout();
+    }
+    const auto next = getNextL3TrafficLoopExpiration();
+    if (!next) {
+      return; // No READY loops: leave the timer canceled.
+    }
+    if (!state->expiryTimer) {
+      state->expiryTimer = folly::AsyncTimeout::make(
+          *sw_->getBackgroundEvb(), [this, weakState]() noexcept {
+            auto state = weakState.lock();
+            if (state && !state->expiryStopped.load()) {
+              expireL3TrafficLoops();
+            }
+          });
+    }
+    const auto delay = std::max(
+        std::chrono::milliseconds(0),
+        std::chrono::ceil<std::chrono::milliseconds>(
+            *next - steady_clock::now()));
+    CHECK(state->expiryTimer->scheduleTimeout(delay, {}));
+  });
+}
+
+void ThriftHandler::stopL3TrafficLoopExpiry() {
+  {
+    // Finish any RPC's rearm request before canceling the timer.
+    std::lock_guard operationLock(l3TrafficLoopState_->operationMutex);
+    l3TrafficLoopState_->expiryStopped.store(true);
+  }
+  auto resetTimer = [this] { l3TrafficLoopState_->expiryTimer.reset(); };
+  auto* evb = sw_->getBackgroundEvb();
+  if (evb->isRunning()) {
+    // Finish any expiry callback before destroying its handler.
+    evb->runInEventBaseThreadAndWait(std::move(resetTimer));
+  } else {
+    resetTimer();
+  }
+}
+
+void ThriftHandler::expireL3TrafficLoops() noexcept {
+  std::lock_guard operationLock(l3TrafficLoopState_->operationMutex);
+  if (l3TrafficLoopState_->expiryStopped.load() || sw_->isExiting()) {
+    return;
+  }
+  const auto now = std::chrono::steady_clock::now();
+  std::vector<std::string> expired;
+  {
+    auto loops = l3TrafficLoopState_->loops.rlock();
+    for (const auto& [portName, loop] : *loops) {
+      if (loop.status.state() == L3TrafficLoopState::READY &&
+          loop.expiresAt <= now) {
+        expired.push_back(portName);
+      }
+    }
+  }
+  for (const auto& portName : expired) {
+    teardownL3TrafficLoopImpl(portName);
+  }
+  scheduleL3TrafficLoopExpiry();
 }
 
 fb_status ThriftHandler::getStatus() {
