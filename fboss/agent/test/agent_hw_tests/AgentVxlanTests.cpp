@@ -270,7 +270,7 @@ class AgentVxlanTest : public AgentHwTest {
       std::optional<size_t> ingressIdx = std::nullopt,
       std::map<PortID, int64_t>* egressBytes = nullptr) {
     std::map<PortID, HwPortStats> before;
-    for (auto port : ports) {
+    for (const auto& port : ports) {
       before[port] = getLatestPortStats(port);
     }
     for (int i = 0; i < numFlows; ++i) {
@@ -289,7 +289,7 @@ class AgentVxlanTest : public AgentHwTest {
     std::map<PortID, int64_t> packets;
     WITH_RETRIES({
       int64_t total = 0;
-      for (auto port : ports) {
+      for (const auto& port : ports) {
         auto after = getLatestPortStats(port);
         packets[port] =
             *after.outUnicastPkts_() - *before[port].outUnicastPkts_();
@@ -298,7 +298,7 @@ class AgentVxlanTest : public AgentHwTest {
       EXPECT_EVENTUALLY_EQ(total, numFlows);
     });
     if (egressBytes) {
-      for (auto port : ports) {
+      for (const auto& port : ports) {
         auto after = getLatestPortStats(port);
         (*egressBytes)[port] = *after.outBytes_() - *before[port].outBytes_();
       }
@@ -332,5 +332,237 @@ class AgentVxlanTest : public AgentHwTest {
     this->applyNewConfig(cfg);
   }
 };
+
+class AgentVxlanEncapTest : public AgentVxlanTest {
+ protected:
+  static inline const folly::IPAddressV6 kLocalVtep{"10::1"};
+  static inline const folly::IPAddressV6 kRemoteVtep{"10::2"};
+  static inline const folly::IPAddressV6 kOverlayPrefix{"100::"};
+  static inline const folly::IPAddressV6 kOverlayDst{"100::1"};
+  static inline const folly::IPAddressV6 kRemoteVtep2{"10::3"};
+  static inline const folly::IPAddressV6 kOverlayPrefix2{"101::"};
+  static inline const folly::IPAddressV6 kOverlayDst2{"101::1"};
+  static inline const folly::IPAddressV6 kOverlayPrefixEcmp{"104::"};
+  static inline const folly::IPAddressV6 kOverlayDstEcmp{"104::1"};
+  static inline const folly::IPAddressV6 kRemoteVtep3{"10::4"};
+  static inline const folly::IPAddressV6 kOverlayPrefix3{"102::"};
+  static inline const folly::IPAddressV6 kOverlayDst3{"102::1"};
+  static inline const folly::IPAddressV6 kRemoteVtep4{"10::5"};
+  static inline const folly::IPAddressV6 kOverlayPrefix4{"103::"};
+  static inline const folly::IPAddressV6 kOverlayDst4{"103::1"};
+  static inline const folly::IPAddressV6 kReresolutionVtep{"10::1:0:0:2"};
+  static inline const folly::IPAddressV6 kLessSpecificPrefix{"10::"};
+  static inline const folly::IPAddressV6 kMoreSpecificPrefix{"10::1:0:0:0"};
+
+  std::vector<ProductionFeature> getProductionFeaturesVerified()
+      const override {
+    return {ProductionFeature::VXLAN_ENCAP};
+  }
+
+  void setCmdLineFlagOverrides() const override {
+    AgentHwTest::setCmdLineFlagOverrides();
+    // Managed VXLAN next hops resolve through next hop IDs.
+    FLAGS_enable_nexthop_id_manager = true;
+    FLAGS_resolve_nexthops_from_id = true;
+  }
+
+  cfg::SwitchConfig initialConfig(
+      const AgentEnsemble& ensemble) const override {
+    return vxlanConfig(ensemble, kLocalVtep, kRemoteVtep);
+  }
+
+  void setupVxlan() {
+    addVxlanRoute(0, kRemoteVtep, kOverlayPrefix, stationMac());
+  }
+
+  void setupTwoVteps() {
+    setupVxlan();
+    addVxlanRoute(1, kRemoteVtep2, kOverlayPrefix2, stationMac());
+  }
+
+  void verifyEncapOnPort(
+      const folly::IPAddressV6& overlayDst,
+      PortID expectPort,
+      const std::vector<PortID>& otherPorts) {
+    auto txPacket =
+        makeInnerPacket(folly::IPAddressV6("100::10"), overlayDst, 8000, 8001);
+    auto innerLen =
+        static_cast<int64_t>(txPacket->buf()->computeChainDataLength());
+    auto expectBefore = getLatestPortStats(expectPort);
+    std::map<PortID, HwPortStats> othersBefore;
+    for (const auto& otherPort : otherPorts) {
+      othersBefore[otherPort] = getLatestPortStats(otherPort);
+    }
+    this->sendPacketSwitchedAsync(std::move(txPacket));
+    WITH_RETRIES({
+      auto statsNow = getLatestPortStats(expectPort);
+      EXPECT_EVENTUALLY_TRUE(*statsNow.outBytes_() > *expectBefore.outBytes_());
+    });
+    auto expectAfter = getNextUpdatedPortStats(expectPort);
+    EXPECT_EQ(
+        *expectAfter.outUnicastPkts_() - *expectBefore.outUnicastPkts_(), 1);
+    EXPECT_EQ(
+        *expectAfter.outBytes_() - *expectBefore.outBytes_(),
+        innerLen + kVxlanOverhead);
+    EXPECT_EQ(
+        *expectAfter.inBytes_() - *expectBefore.inBytes_(),
+        innerLen + kVxlanOverhead);
+    for (const auto& otherPort : otherPorts) {
+      auto otherAfter = getLatestPortStats(otherPort);
+      EXPECT_EQ(*otherAfter.outBytes_(), *othersBefore[otherPort].outBytes_());
+      EXPECT_EQ(
+          *otherAfter.outUnicastPkts_(),
+          *othersBefore[otherPort].outUnicastPkts_());
+    }
+  }
+
+  void verifyTwoVteps() {
+    verifyEncapOnPort(kOverlayDst, logicalPort(0), {logicalPort(1)});
+    verifyEncapOnPort(kOverlayDst2, logicalPort(1), {logicalPort(0)});
+  }
+
+  void setupFourVteps() {
+    setupTwoVteps();
+    addVxlanRoute(2, kRemoteVtep3, kOverlayPrefix3, stationMac());
+    addVxlanRoute(3, kRemoteVtep4, kOverlayPrefix4, stationMac());
+  }
+
+  std::vector<PortID> firstNLogicalPorts(size_t n) const {
+    std::vector<PortID> ports;
+    ports.reserve(n);
+    for (size_t i = 0; i < n; ++i) {
+      ports.push_back(logicalPort(i));
+    }
+    return ports;
+  }
+
+  void verifyFourVteps() {
+    auto ports = firstNLogicalPorts(4);
+    const std::vector<folly::IPAddressV6> dsts{
+        kOverlayDst, kOverlayDst2, kOverlayDst3, kOverlayDst4};
+    for (int i = 0; i < 4; ++i) {
+      std::vector<PortID> others;
+      for (int j = 0; j < 4; ++j) {
+        if (j != i) {
+          others.push_back(ports[j]);
+        }
+      }
+      verifyEncapOnPort(dsts[i], ports[i], others);
+    }
+  }
+
+  void setupOverlayEcmp() {
+    setupFourVteps();
+    auto nhops = resolvedNhops(4);
+    addOverlayRoute(
+        kOverlayPrefixEcmp,
+        {vxlanNextHop(kRemoteVtep, nhops.nhop(0).intf, stationMac()),
+         vxlanNextHop(kRemoteVtep2, nhops.nhop(1).intf, stationMac()),
+         vxlanNextHop(kRemoteVtep3, nhops.nhop(2).intf, stationMac()),
+         vxlanNextHop(kRemoteVtep4, nhops.nhop(3).intf, stationMac())});
+  }
+
+  void verifyOverlayEcmp() {
+    // Prove each member on its own first, so a balancing
+    // failure cannot be a misconfigured member.
+    verifyFourVteps();
+    auto ports = firstNLogicalPorts(4);
+    // Inject on a port outside the ECMP member set, so the
+    // member counters see only encapped egress.
+    std::map<PortID, int64_t> egressBytes;
+    auto packets =
+        countEgressPackets(kOverlayDstEcmp, 64, ports, 4, &egressBytes);
+    int64_t encappedLen = innerPacketLength(kOverlayDstEcmp) + kVxlanOverhead;
+    for (const auto& port : ports) {
+      EXPECT_GT(packets[port], 0);
+      EXPECT_EQ(egressBytes[port], packets[port] * encappedLen);
+    }
+  }
+
+  void setupUnderlayEcmp() {
+    applyHashConfig();
+    addEcmpRoute(folly::IPAddress(kRemoteVtep), 128, {0, 1, 2, 3});
+    auto nhops = resolvedNhops(1);
+    addOverlayRoute(
+        kOverlayPrefix,
+        {vxlanNextHop(kRemoteVtep, nhops.nhop(0).intf, stationMac())});
+  }
+
+  void verifyUnderlayEcmp() {
+    auto ports = firstNLogicalPorts(4);
+    auto packets = countEgressPackets(kOverlayDst, 64, ports);
+    for (const auto& port : ports) {
+      EXPECT_GT(packets[port], 0);
+    }
+  }
+
+  void setupUnderlayReresolution() {
+    applyHashConfig();
+    addEcmpRoute(folly::IPAddress(kLessSpecificPrefix), 64, {0, 1});
+    // The overlay next hop is created after the less specific
+    // underlay route, so the SDK resolves the VTEP through it.
+    auto nhops = resolvedNhops(1);
+    addOverlayRoute(
+        kOverlayPrefix,
+        {vxlanNextHop(kReresolutionVtep, nhops.nhop(0).intf, stationMac())});
+  }
+
+  void verifyUnderlayLb(const std::set<int>& memberIdx) {
+    auto ports = firstNLogicalPorts(4);
+    auto packets = countEgressPackets(kOverlayDst, 64, ports);
+    for (int i = 0; i < 4; ++i) {
+      if (memberIdx.count(i)) {
+        EXPECT_GT(packets[ports[i]], 0)
+            << "expected underlay egress on port " << ports[i];
+      } else {
+        EXPECT_EQ(packets[ports[i]], 0)
+            << "unexpected underlay egress on port " << ports[i];
+      }
+    }
+  }
+
+  void verifyUnderlayReresolution() {
+    // Resolved through the less specific /64: ports 0,1.
+    verifyUnderlayLb({0, 1});
+    addEcmpRoute(folly::IPAddress(kMoreSpecificPrefix), 96, {2, 3});
+    // The more specific /96 takes over the underlay resolution.
+    verifyUnderlayLb({2, 3});
+    removeStaticRoute(folly::IPAddress(kMoreSpecificPrefix), 96);
+    // Removing it falls back to the /64 resolution.
+    verifyUnderlayLb({0, 1});
+  }
+};
+
+// host - local-vtep - tunnel - remote-vtep-a - host-a (port0)
+//                           \- remote-vtep-b - host-b (port1)
+TEST_F(AgentVxlanEncapTest, encapOnCorrectEgressPortPerVtep) {
+  auto setup = [this]() { setupTwoVteps(); };
+  auto verify = [this]() { verifyTwoVteps(); };
+  verifyAcrossWarmBoots(setup, verify);
+}
+
+// host - local-vtep - tunnel - remote-vteps - hosts (ports 0-3)
+TEST_F(AgentVxlanEncapTest, egressOverlayEcmp) {
+  auto setup = [this]() {
+    applyHashConfig();
+    setupOverlayEcmp();
+  };
+  auto verify = [this]() { verifyOverlayEcmp(); };
+  verifyAcrossWarmBoots(setup, verify);
+}
+
+// host - local-vtep - tunnel (4 underlay paths) - remote-vtep - host
+TEST_F(AgentVxlanEncapTest, encapUnderlayEcmp) {
+  auto setup = [this]() { setupUnderlayEcmp(); };
+  auto verify = [this]() { verifyUnderlayEcmp(); };
+  verifyAcrossWarmBoots(setup, verify);
+}
+
+// host - local-vtep - tunnel - remote-vtep - host
+TEST_F(AgentVxlanEncapTest, encapUnderlayReresolution) {
+  auto setup = [this]() { setupUnderlayReresolution(); };
+  auto verify = [this]() { verifyUnderlayReresolution(); };
+  verifyAcrossWarmBoots(setup, verify);
+}
 
 } // namespace facebook::fboss
