@@ -5563,6 +5563,11 @@ shared_ptr<Interface> ThriftConfigApplier::updateInterface(
   }
 
   newIntf->setRouterID(getInterfaceRouterID(*config));
+  if (orig->getRouterID() != newIntf->getRouterID()) {
+    // Neighbors are relearned in the new VRF
+    newIntf->setArpTable(state::NeighborEntries{});
+    newIntf->setNdpTable(state::NeighborEntries{});
+  }
   newIntf->setType(*config->type());
   if (newIntf->getType() == cfg::InterfaceType::VLAN) {
     newIntf->setVlanID(VlanID(*config->vlanID()));

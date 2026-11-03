@@ -8,6 +8,9 @@
 #include "fboss/agent/SwSwitchRouteUpdateWrapper.h"
 #include "fboss/agent/hw/mock/MockPlatform.h"
 #include "fboss/agent/rib/RoutingInformationBase.h"
+#include "fboss/agent/state/ArpTable.h"
+#include "fboss/agent/state/Interface.h"
+#include "fboss/agent/state/NdpTable.h"
 #include "fboss/agent/state/SwitchState.h"
 #include "fboss/agent/state/Vrf.h"
 #include "fboss/agent/test/HwTestHandle.h"
@@ -135,6 +138,40 @@ TEST_F(VrfConfigTest, InterfaceInVrf) {
           ->getNode(InterfaceID(*config_.interfaces()[0].intfID()))
           ->getRouterID(),
       RouterID(1001));
+}
+
+TEST_F(VrfConfigTest, InterfaceMoveFlushesNeighbors) {
+  config_.vrfs() = {makeVrfConfig(1001)};
+  state_ = apply();
+  ASSERT_NE(state_, nullptr);
+  InterfaceID intfId(*config_.interfaces()[0].intfID());
+  state_->getInterfaces()
+      ->getNode(intfId)
+      ->getArpTable()
+      ->modify(intfId, &state_)
+      ->addEntry(
+          folly::IPAddressV4("10.0.0.10"),
+          folly::MacAddress("02:00:00:00:00:01"),
+          PortDescriptor(PortID(1)),
+          intfId);
+  state_->getInterfaces()
+      ->getNode(intfId)
+      ->getNdpTable()
+      ->modify(intfId, &state_)
+      ->addEntry(
+          folly::IPAddressV6("2401:db00:2110:3001::10"),
+          folly::MacAddress("02:00:00:00:00:01"),
+          PortDescriptor(PortID(1)),
+          intfId);
+
+  config_.interfaces()[0].routerID() = 1001;
+  state_ = apply();
+  ASSERT_NE(state_, nullptr);
+
+  auto intf = state_->getInterfaces()->getNode(intfId);
+  EXPECT_EQ(intf->getRouterID(), RouterID(1001));
+  EXPECT_EQ(intf->getArpTable()->size(), 0);
+  EXPECT_EQ(intf->getNdpTable()->size(), 0);
 }
 
 TEST_F(VrfConfigTest, InterfaceInUnconfiguredVrfRejected) {
