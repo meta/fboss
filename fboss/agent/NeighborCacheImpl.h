@@ -155,8 +155,9 @@ class NeighborCacheImpl {
   // was actually flushed from the switch state
   void flushEntry(AddressType ip, bool* flushed = nullptr);
 
+  // static: the flushEntry update lambda must not capture `this`.
   template <typename VlanOrIntfT>
-  bool flushEntryFromSwitchState(
+  static bool flushEntryFromSwitchState(
       std::shared_ptr<SwitchState>* state,
       AddressType ip,
       VlanOrIntfT* vlanOrIntf);
