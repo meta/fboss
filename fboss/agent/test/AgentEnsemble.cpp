@@ -83,7 +83,6 @@ void AgentEnsemble::setupEnsemble(
     AgentEnsemblePlatformConfigFn platformConfigFn,
     uint32_t hwFeaturesDesired,
     const TestEnsembleInitInfo& initInfo) {
-  FLAGS_verify_apply_oper_delta = true;
   FLAGS_enable_bulk_create_ecmp_members = true;
 
   if (bootType_ == BootType::COLD_BOOT || FLAGS_prod_invariant_config_test) {
