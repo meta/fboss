@@ -13,6 +13,7 @@ cpp_library(
         "PlatformConfigUtils.h",
     ],
     deps = [
+        "fbsource//xplat/folly:string",
         "//fboss/agent:fboss-error",
         "//thrift/lib/cpp/util:enum_utils",
     ],
