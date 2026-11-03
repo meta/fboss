@@ -6152,6 +6152,137 @@
           "test_name_regex": "HwAsicDefaultProgrammingTest.verifyDefaultProgramming"
         }
     ],
+    "chenab/2605.38/2605.38/chenab": [
+        {
+          "test_name_regex": "HwVlanTest.VlanApplyConfig"
+        },
+        {
+          "test_name_regex": "HwPacketFloodTest.ArpRequestFloodTest"
+        },
+        {
+          "test_name_regex": "HwPacketFloodTest.NdpFloodTest"
+        },
+        {
+          "test_name_regex": "SaiQPHRollbackTest.*"
+        },
+        {
+          "test_name_regex": "SaiAclTableGroupTrafficTest.VerifyQueuePerHostAclTableAndTtlAclTable"
+        },
+        {
+          "test_name_regex": "SaiAclTableGroupTrafficTest.VerifyDscpMarkingAndTtlAclTable"
+        },
+        {
+          "test_name_regex": "SaiAclTableGroupTrafficTest/0.VerifyQueuePerHostAclTableAndTtlAclTable"
+        },
+        {
+          "test_name_regex": "SaiAclTableGroupTrafficTest/1.VerifyQueuePerHostAclTableAndTtlAclTable"
+        },
+        {
+          "test_name_regex": "SaiAclTableGroupTrafficTest/0.VerifyDscpMarkingAndTtlAclTable"
+        },
+        {
+          "test_name_regex": "SaiAclTableGroupTrafficTest/1.VerifyDscpMarkingAndTtlAclTable"
+        },
+        {
+          "test_name_regex": "HwRouteNeighborTest/0.AddHostRouteAndNeighbor"
+        },
+        {
+          "test_name_regex": "HwRouteNeighborTest/2.AddHostRouteAndNeighbor"
+        },
+        {
+          "test_name_regex": "SaiRouteRollbackTest.rollbackAllWithTrunk"
+        },
+        {
+          "test_name_regex": "SaiRouteRollbackTest.rollbackManyTimesWithTrunk"
+        },
+        {
+          "test_name_regex": "HwTrunkLoadBalancerTest.ECMPFullTrunkHalf4X3WideTrunksV6MplsFrontPanelTraffic"
+        },
+        {
+          "test_name_regex": "HwTrunkLoadBalancerTest.ECMPFullTrunkHalf4X3WideTrunksV4MplsFrontPanelTraffic"
+        },
+        {
+          "test_name_regex": "HwTrunkLoadBalancerTest.ECMPFullTrunkHalf4X3WideTrunksV6MplsSwapFrontPanelTraffic"
+        },
+        {
+          "test_name_regex": "HwTrunkLoadBalancerTest.ECMPFullTrunkHalf4X3WideTrunksV4MplsSwapFrontPanelTraffic"
+        },
+        {
+          "test_name_regex": "HwTrunkLoadBalancerTest.ECMPFullTrunkHalf4X3WideTrunksV6MplsPhpFrontPanelTraffic"
+        },
+        {
+          "test_name_regex": "HwTrunkLoadBalancerTest.ECMPFullTrunkHalf4X3WideTrunksV4MplsPhpFrontPanelTraffic"
+        },
+        {
+          "test_name_regex": "HwTrunkLoadBalancerTest.ECMPFullTrunkHalf4X2WideTrunksV6MplsFrontPanelTraffic"
+        },
+        {
+          "test_name_regex": "HwTrunkLoadBalancerTest.ECMPFullTrunkHalf4X2WideTrunksV4MplsFrontPanelTraffic"
+        },
+        {
+          "test_name_regex": "HwTrunkLoadBalancerTest.ECMPFullTrunkHalf4X2WideTrunksV6MplsSwapFrontPanelTraffic"
+        },
+        {
+          "test_name_regex": "HwTrunkLoadBalancerTest.ECMPFullTrunkHalf4X2WideTrunksV4MplsSwapFrontPanelTraffic"
+        },
+        {
+          "test_name_regex": "HwTrunkLoadBalancerTest.ECMPFullTrunkHalf4X2WideTrunksV6MplsPhpFrontPanelTraffic"
+        },
+        {
+          "test_name_regex": "HwTrunkLoadBalancerTest.ECMPFullTrunkHalf4X2WideTrunksV4MplsPhpFrontPanelTraffic"
+        },
+        {
+          "test_name_regex": "HwEcmpTrunkTest.*"
+        },
+        {
+          "test_name_regex": "HwMirrorTest[01].ResolvedErspanMirrorOnTrunk"
+        },
+        {
+          "test_name_regex": "HwTrunkTest.*"
+        },
+        {
+          "test_name_regex": "HwHashTrunk[4|8]x[3|2]PolarizationTests.*"
+        },
+        {
+          "test_name_regex": "HwTrunkLoadBalancerTest.*"
+        },
+        {
+          "test_name_regex": "HwMirrorTest/[0|1].ResolvedErspanMirrorOnTrunk"
+        },
+        {
+          "test_name_regex": "HwPacketSendReceiveLagTest.LacpPacketReceiveSrcPort"
+        },
+        {
+          "test_name_regex": "SaiRouteRollbackTest.rollbackAllWithTrunk"
+        },
+        {
+          "test_name_regex": "SaiRouteRollbackTest.rollbackManyTimesWithTrunk"
+        },
+        {
+          "test_name_regex": "HwProdInvariantsRswTest.verifyInvariants"
+        },
+        {
+          "test_name_regex": "HwProdInvariantsRswStrictPriorityTest.verifyInvariants"
+        },
+        {
+          "test_name_regex": "HwProdInvariantsFswTest.verifyInvariants"
+        },
+        {
+          "test_name_regex": "HwProdInvariantsFswStrictPriorityTest.verifyInvariants"
+        },
+        {
+          "test_name_regex": "HwProdInvariantsRswMhnicTest.verifyInvariants"
+        },
+        {
+          "test_name_regex": "HwProdInvariantsMmuLosslessTest.*"
+        },
+        {
+          "test_name_regex": "HwArsTest.*"
+        },
+        {
+          "test_name_regex": "HwAsicDefaultProgrammingTest.verifyDefaultProgramming"
+        }
+    ],
     "leaba/1.42.8/1.42.8/gibraltar": [
         {
           "test_name_regex": "HwTrafficPfcTest.*"
@@ -9093,6 +9224,137 @@
         }
     ],
     "nvda/2605.37/2605.37/spectrum4": [
+        {
+          "test_name_regex": "HwVlanTest.VlanApplyConfig"
+        },
+        {
+          "test_name_regex": "HwPacketFloodTest.ArpRequestFloodTest"
+        },
+        {
+          "test_name_regex": "HwPacketFloodTest.NdpFloodTest"
+        },
+        {
+          "test_name_regex": "SaiQPHRollbackTest.*"
+        },
+        {
+          "test_name_regex": "SaiAclTableGroupTrafficTest.VerifyQueuePerHostAclTableAndTtlAclTable"
+        },
+        {
+          "test_name_regex": "SaiAclTableGroupTrafficTest.VerifyDscpMarkingAndTtlAclTable"
+        },
+        {
+          "test_name_regex": "SaiAclTableGroupTrafficTest/0.VerifyQueuePerHostAclTableAndTtlAclTable"
+        },
+        {
+          "test_name_regex": "SaiAclTableGroupTrafficTest/1.VerifyQueuePerHostAclTableAndTtlAclTable"
+        },
+        {
+          "test_name_regex": "SaiAclTableGroupTrafficTest/0.VerifyDscpMarkingAndTtlAclTable"
+        },
+        {
+          "test_name_regex": "SaiAclTableGroupTrafficTest/1.VerifyDscpMarkingAndTtlAclTable"
+        },
+        {
+          "test_name_regex": "HwRouteNeighborTest/0.AddHostRouteAndNeighbor"
+        },
+        {
+          "test_name_regex": "HwRouteNeighborTest/2.AddHostRouteAndNeighbor"
+        },
+        {
+          "test_name_regex": "SaiRouteRollbackTest.rollbackAllWithTrunk"
+        },
+        {
+          "test_name_regex": "SaiRouteRollbackTest.rollbackManyTimesWithTrunk"
+        },
+        {
+          "test_name_regex": "HwTrunkLoadBalancerTest.ECMPFullTrunkHalf4X3WideTrunksV6MplsFrontPanelTraffic"
+        },
+        {
+          "test_name_regex": "HwTrunkLoadBalancerTest.ECMPFullTrunkHalf4X3WideTrunksV4MplsFrontPanelTraffic"
+        },
+        {
+          "test_name_regex": "HwTrunkLoadBalancerTest.ECMPFullTrunkHalf4X3WideTrunksV6MplsSwapFrontPanelTraffic"
+        },
+        {
+          "test_name_regex": "HwTrunkLoadBalancerTest.ECMPFullTrunkHalf4X3WideTrunksV4MplsSwapFrontPanelTraffic"
+        },
+        {
+          "test_name_regex": "HwTrunkLoadBalancerTest.ECMPFullTrunkHalf4X3WideTrunksV6MplsPhpFrontPanelTraffic"
+        },
+        {
+          "test_name_regex": "HwTrunkLoadBalancerTest.ECMPFullTrunkHalf4X3WideTrunksV4MplsPhpFrontPanelTraffic"
+        },
+        {
+          "test_name_regex": "HwTrunkLoadBalancerTest.ECMPFullTrunkHalf4X2WideTrunksV6MplsFrontPanelTraffic"
+        },
+        {
+          "test_name_regex": "HwTrunkLoadBalancerTest.ECMPFullTrunkHalf4X2WideTrunksV4MplsFrontPanelTraffic"
+        },
+        {
+          "test_name_regex": "HwTrunkLoadBalancerTest.ECMPFullTrunkHalf4X2WideTrunksV6MplsSwapFrontPanelTraffic"
+        },
+        {
+          "test_name_regex": "HwTrunkLoadBalancerTest.ECMPFullTrunkHalf4X2WideTrunksV4MplsSwapFrontPanelTraffic"
+        },
+        {
+          "test_name_regex": "HwTrunkLoadBalancerTest.ECMPFullTrunkHalf4X2WideTrunksV6MplsPhpFrontPanelTraffic"
+        },
+        {
+          "test_name_regex": "HwTrunkLoadBalancerTest.ECMPFullTrunkHalf4X2WideTrunksV4MplsPhpFrontPanelTraffic"
+        },
+        {
+          "test_name_regex": "HwEcmpTrunkTest.*"
+        },
+        {
+          "test_name_regex": "HwMirrorTest[01].ResolvedErspanMirrorOnTrunk"
+        },
+        {
+          "test_name_regex": "HwTrunkTest.*"
+        },
+        {
+          "test_name_regex": "HwHashTrunk[4|8]x[3|2]PolarizationTests.*"
+        },
+        {
+          "test_name_regex": "HwTrunkLoadBalancerTest.*"
+        },
+        {
+          "test_name_regex": "HwMirrorTest/[0|1].ResolvedErspanMirrorOnTrunk"
+        },
+        {
+          "test_name_regex": "HwPacketSendReceiveLagTest.LacpPacketReceiveSrcPort"
+        },
+        {
+          "test_name_regex": "SaiRouteRollbackTest.rollbackAllWithTrunk"
+        },
+        {
+          "test_name_regex": "SaiRouteRollbackTest.rollbackManyTimesWithTrunk"
+        },
+        {
+          "test_name_regex": "HwProdInvariantsRswTest.verifyInvariants"
+        },
+        {
+          "test_name_regex": "HwProdInvariantsRswStrictPriorityTest.verifyInvariants"
+        },
+        {
+          "test_name_regex": "HwProdInvariantsFswTest.verifyInvariants"
+        },
+        {
+          "test_name_regex": "HwProdInvariantsFswStrictPriorityTest.verifyInvariants"
+        },
+        {
+          "test_name_regex": "HwProdInvariantsRswMhnicTest.verifyInvariants"
+        },
+        {
+          "test_name_regex": "HwProdInvariantsMmuLosslessTest.*"
+        },
+        {
+          "test_name_regex": "HwArsTest.*"
+        },
+        {
+          "test_name_regex": "HwAsicDefaultProgrammingTest.verifyDefaultProgramming"
+        }
+    ],
+    "nvda/2605.38/2605.38/spectrum4": [
         {
           "test_name_regex": "HwVlanTest.VlanApplyConfig"
         },
