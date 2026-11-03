@@ -190,6 +190,8 @@ class ThriftHandler : virtual public FbossCtrlSvIf,
       int32_t timeoutSeconds) override;
   void teardownL3TrafficLoops(
       std::unique_ptr<std::vector<std::string>> portNames) override;
+  // Return only saved loop records; an empty filter selects all saved records.
+  // Names without a record are omitted, including ports never configured.
   void getL3TrafficLoopStatus(
       std::map<std::string, L3TrafficLoopStatus>& statuses,
       std::unique_ptr<std::vector<std::string>> portNames) override;

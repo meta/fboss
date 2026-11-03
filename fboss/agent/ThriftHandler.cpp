@@ -1559,9 +1559,33 @@ void ThriftHandler::teardownL3TrafficLoops(
 }
 
 void ThriftHandler::getL3TrafficLoopStatus(
-    std::map<std::string, L3TrafficLoopStatus>&,
-    std::unique_ptr<std::vector<std::string>>) {
-  throw FbossError("L3 traffic loop status is not implemented yet");
+    std::map<std::string, L3TrafficLoopStatus>& statuses,
+    std::unique_ptr<std::vector<std::string>> portNamesArg) {
+  if (!portNamesArg) {
+    throw FbossError("L3 traffic loop port list is required");
+  }
+  const auto portNamesForLog = folly::join(",", *portNamesArg);
+  auto log = LOG_THRIFT_CALL_WITH_STATS(DBG1, sw_->stats(), portNamesForLog);
+  ensureConfigured(__func__);
+
+  std::map<std::string, L3TrafficLoopStatus> loopStatuses;
+  {
+    auto loops = l3TrafficLoopState_->loops.rlock();
+    if (portNamesArg->empty()) {
+      for (const auto& [portName, loop] : *loops) {
+        loopStatuses.emplace(portName, loop.status);
+      }
+    } else {
+      for (const auto& portName : *portNamesArg) {
+        auto it = loops->find(portName);
+        if (it != loops->end()) {
+          loopStatuses.emplace(portName, it->second.status);
+        }
+      }
+    }
+  }
+
+  statuses = std::move(loopStatuses);
 }
 
 std::optional<std::chrono::steady_clock::time_point>
