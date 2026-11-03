@@ -17,8 +17,10 @@
 
 #include "fboss/agent/rib/NetworkToRouteMap.h"
 #include "fboss/agent/rib/RibRouteWeightNormalizer.h"
+#include "fboss/agent/rib/VrfRouteTable.h"
 #include "fboss/agent/state/MySid.h"
 
+#include <boost/container/flat_map.hpp>
 #include <folly/IPAddress.h>
 
 DECLARE_bool(enable_capacity_pruning);
@@ -55,6 +57,9 @@ using MySidTable =
  */
 class RibRouteUpdater {
  public:
+  using RouterIDToRouteTable =
+      boost::container::flat_map<RouterID, VrfRouteTable>;
+
   RibRouteUpdater(
       IPv4NetworkToRouteMap* v4Routes,
       IPv6NetworkToRouteMap* v6Routes,
@@ -62,7 +67,8 @@ class RibRouteUpdater {
       MySidTable* mySidTable,
       uint32_t ecmpWidth,
       RouterID routerID = RouterID(0),
-      const std::unordered_set<InterfaceID>* vrfInterfaces = nullptr);
+      const std::unordered_set<InterfaceID>* vrfInterfaces = nullptr,
+      RouterIDToRouteTable* crossVrfRouteTables = nullptr);
 
   RibRouteUpdater(
       IPv4NetworkToRouteMap* v4Routes,
@@ -72,7 +78,8 @@ class RibRouteUpdater {
       MySidTable* mySidTable,
       uint32_t ecmpWidth,
       RouterID routerID = RouterID(0),
-      const std::unordered_set<InterfaceID>* vrfInterfaces = nullptr);
+      const std::unordered_set<InterfaceID>* vrfInterfaces = nullptr,
+      RouterIDToRouteTable* crossVrfRouteTables = nullptr);
 
   struct RouteEntry {
     folly::CIDRNetwork prefix;
@@ -244,6 +251,7 @@ class RibRouteUpdater {
   // Interface-scoped next hops of client routes resolve only through these.
   // Null means no restriction.
   const std::unordered_set<InterfaceID>* vrfInterfaces_{nullptr};
+  RouterIDToRouteTable* crossVrfRouteTables_{nullptr};
   std::unordered_set<void*> needsResolution_;
   std::unordered_set<void*> resolving_;
   std::size_t cyclesDetected_{0};

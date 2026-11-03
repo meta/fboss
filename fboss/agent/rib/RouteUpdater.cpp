@@ -95,7 +95,8 @@ RibRouteUpdater::RibRouteUpdater(
     MySidTable* mySidTable,
     uint32_t ecmpWidth,
     RouterID routerID,
-    const std::unordered_set<InterfaceID>* vrfInterfaces)
+    const std::unordered_set<InterfaceID>* vrfInterfaces,
+    RouterIDToRouteTable* crossVrfRouteTables)
     : v4Routes_(v4Routes),
       v6Routes_(v6Routes),
       nextHopIDManager_(nextHopIDManager),
@@ -103,6 +104,7 @@ RibRouteUpdater::RibRouteUpdater(
       ecmpWidth_(ecmpWidth),
       routerID_(routerID),
       vrfInterfaces_(vrfInterfaces),
+      crossVrfRouteTables_(crossVrfRouteTables),
       weightNormalizer_(
           FLAGS_nsf_num_racks_per_pod,
           FLAGS_nsf_num_parallel_rack_links,
@@ -119,7 +121,8 @@ RibRouteUpdater::RibRouteUpdater(
     MySidTable* mySidTable,
     uint32_t ecmpWidth,
     RouterID routerID,
-    const std::unordered_set<InterfaceID>* vrfInterfaces)
+    const std::unordered_set<InterfaceID>* vrfInterfaces,
+    RouterIDToRouteTable* crossVrfRouteTables)
     : v4Routes_(v4Routes),
       v6Routes_(v6Routes),
       mplsRoutes_(mplsRoutes),
@@ -128,6 +131,7 @@ RibRouteUpdater::RibRouteUpdater(
       ecmpWidth_(ecmpWidth),
       routerID_(routerID),
       vrfInterfaces_(vrfInterfaces),
+      crossVrfRouteTables_(crossVrfRouteTables),
       weightNormalizer_(
           FLAGS_nsf_num_racks_per_pod,
           FLAGS_nsf_num_parallel_rack_links,
@@ -1133,9 +1137,23 @@ std::shared_ptr<Route<AddressT>> RibRouteUpdater::resolveOne(
           break;
         }
 
+        auto* v4Routes = v4Routes_;
+        auto* v6Routes = v6Routes_;
+        if (nh.vrf() && *nh.vrf() != routerID_) {
+          auto table = crossVrfRouteTables_
+              ? crossVrfRouteTables_->find(*nh.vrf())
+              : RouterIDToRouteTable::iterator{};
+          if (!crossVrfRouteTables_ || table == crossVrfRouteTables_->end()) {
+            XLOG(DBG2) << "No route table for VRF " << *nh.vrf()
+                       << " of next hop " << nh;
+            continue;
+          }
+          v4Routes = &table->second.v4NetworkToRoute;
+          v6Routes = &table->second.v6NetworkToRoute;
+        }
         if (addr.isV4()) {
           getFwdInfoFromNhop(
-              v4Routes_,
+              v4Routes,
               nh.addr().asV4(),
               nh.labelForwardingAction(),
               &hasToCpu,
@@ -1153,7 +1171,7 @@ std::shared_ptr<Route<AddressT>> RibRouteUpdater::resolveOne(
         } else {
           CHECK(addr.isV6());
           getFwdInfoFromNhop(
-              v6Routes_,
+              v6Routes,
               nh.addr().asV6(),
               nh.labelForwardingAction(),
               &hasToCpu,

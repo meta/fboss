@@ -101,6 +101,7 @@ cpp_unittest(
     name = "rib_tests",
     srcs = [
         "test/ClassBasedPolicyUpdaterTests.cpp",
+        "test/CrossVrfResolutionTests.cpp",
         "test/FibInteractionTests.cpp",
         "test/MySidMapUpdaterTests.cpp",
         "test/NamedNextHopGroupRibTests.cpp",

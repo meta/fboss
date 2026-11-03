@@ -276,6 +276,7 @@ cpp_unittest(
         ":utils",
         "//fboss/agent:address_utils",
         "//fboss/agent:core",
+        "//fboss/agent:fib_helpers",
         "//fboss/agent:state_observer",
         "//fboss/agent/hw/mock:mock",
         "//fboss/agent/rib:standalone_rib",

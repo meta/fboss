@@ -3,6 +3,7 @@
 #include <gtest/gtest.h>
 
 #include "fboss/agent/AddressUtil.h"
+#include "fboss/agent/FibHelpers.h"
 #include "fboss/agent/StateObserver.h"
 #include "fboss/agent/SwSwitch.h"
 #include "fboss/agent/SwSwitchRouteUpdateWrapper.h"
@@ -326,6 +327,25 @@ bool hasRoute(
       nullptr;
 }
 
+// Egress interface of a v6 route, if it resolves to a next hop
+std::optional<InterfaceID> egressIntf(
+    const std::shared_ptr<SwitchState>& state,
+    RouterID vrf,
+    const std::string& prefix) {
+  auto cidr = folly::IPAddress::createNetwork(prefix);
+  auto route =
+      state->getFibsInfoMap()->getFibContainerIf(vrf)->getFibV6()->exactMatch(
+          {cidr.first.asV6(), cidr.second});
+  if (!route) {
+    return std::nullopt;
+  }
+  auto nhops = getNextHops(state, route->getForwardInfo());
+  if (nhops.empty()) {
+    return std::nullopt;
+  }
+  return nhops.begin()->intf();
+}
+
 RouterID intf55Vrf(const std::shared_ptr<SwitchState>& state) {
   return state->getInterfaces()->getNode(InterfaceID(55))->getRouterID();
 }
@@ -472,4 +492,38 @@ TEST(VrfDelete, LinkLocalNextHopRouteAddedAfterInterfaceMove) {
   ASSERT_GE(intfMoved, 0);
   ASSERT_GE(bgpAdded, 0);
   EXPECT_GE(bgpAdded, intfMoved);
+}
+
+TEST(VrfNextHop, ResolvesInNextHopVrf) {
+  auto config = vrfConfig();
+  auto handle = createTestHandle(&config);
+  auto sw = handle->getSw();
+  // 10.0.0.10 is only reachable in the default VRF
+  auto viaDefaultVrf = makeRoute("2001:db8:200::/64", "10.0.0.10");
+  NextHopThrift nhop;
+  nhop.address() =
+      facebook::network::toBinaryAddress(folly::IPAddress("10.0.0.10"));
+  nhop.vrf() = 0;
+  viaDefaultVrf.nextHopAddrs()->clear();
+  viaDefaultVrf.nextHops() = {nhop};
+  auto viaOwnVrf = makeRoute("2001:db8:201::/64", "10.0.0.10");
+
+  auto updater = sw->getRouteUpdater();
+  updater.addRoute(kTestVrf, ClientID::BGPD, viaDefaultVrf);
+  updater.addRoute(kTestVrf, ClientID::BGPD, viaOwnVrf);
+  updater.program();
+
+  auto state = sw->getState();
+  EXPECT_EQ(egressIntf(state, kTestVrf, "2001:db8:200::/64"), InterfaceID(1));
+  EXPECT_EQ(egressIntf(state, kTestVrf, "2001:db8:201::/64"), std::nullopt);
+
+  // Config apply re-resolves every VRF; the route must stay resolved
+  cfg::StaticRouteNoNextHops nullRoute;
+  nullRoute.routerID() = 0;
+  nullRoute.prefix() = "2001:db8:300::/64";
+  config.staticRoutesToNull()->push_back(nullRoute);
+  sw->applyConfig("add static route", config);
+  EXPECT_EQ(
+      egressIntf(sw->getState(), kTestVrf, "2001:db8:200::/64"),
+      InterfaceID(1));
 }

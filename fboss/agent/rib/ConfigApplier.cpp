@@ -82,7 +82,8 @@ ConfigApplier::ConfigApplier(
     NextHopIDManager* nextHopIDManager,
     MySidTable* mySidTable,
     uint32_t ecmpWidth,
-    const std::unordered_set<InterfaceID>* vrfInterfaces)
+    const std::unordered_set<InterfaceID>* vrfInterfaces,
+    RibRouteUpdater::RouterIDToRouteTable* crossVrfRouteTables)
     : vrf_(vrf),
       v4NetworkToRoute_(v4NetworkToRoute),
       v6NetworkToRoute_(v6NetworkToRoute),
@@ -99,7 +100,8 @@ ConfigApplier::ConfigApplier(
       nextHopIDManager_(nextHopIDManager),
       mySidTable_(mySidTable),
       ecmpWidth_(ecmpWidth),
-      vrfInterfaces_(vrfInterfaces) {
+      vrfInterfaces_(vrfInterfaces),
+      crossVrfRouteTables_(crossVrfRouteTables) {
   CHECK_NOTNULL(v4NetworkToRoute_);
   CHECK_NOTNULL(v6NetworkToRoute_);
   CHECK_NOTNULL(labelToRoute_);
@@ -114,7 +116,8 @@ void ConfigApplier::apply() {
       mySidTable_,
       ecmpWidth_,
       vrf_,
-      vrfInterfaces_);
+      vrfInterfaces_,
+      crossVrfRouteTables_);
 
   // Update static routes
   std::vector<RibRouteUpdater::RouteEntry> staticRoutes;
