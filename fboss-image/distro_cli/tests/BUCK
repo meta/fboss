@@ -2,7 +2,7 @@ load("@fbcode_macros//build_defs:python_library.bzl", "python_library")
 load("@fbcode_macros//build_defs:python_unittest.bzl", "python_unittest")
 load("@fbsource//tools/build_defs/testinfra:network_access_utils.bzl", "network_access_utils")
 
-oncall("fboss_distro")
+oncall("fboss_oss")
 
 python_library(
     name = "device_test",
