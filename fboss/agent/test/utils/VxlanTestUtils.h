@@ -4,6 +4,7 @@
 
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
 #include "fboss/agent/packet/EthFrame.h"
+#include "fboss/agent/packet/PktFactory.h"
 #include "fboss/agent/packet/UDPDatagram.h"
 #include "fboss/agent/types.h"
 
@@ -38,5 +39,37 @@ struct VxlanPacket {
 std::array<uint8_t, kVxlanHeaderSize> makeVxlanHeader(uint32_t vni);
 
 std::optional<VxlanPacket> parseVxlanPacket(const EthFrame& frame);
+
+std::unique_ptr<TxPacket> makeVxlanTxPacket(
+    const AllocatePktFn& allocatePkt,
+    std::optional<VlanID> vlan,
+    folly::MacAddress outerSrcMac,
+    folly::MacAddress outerDstMac,
+    const folly::IPAddressV6& outerSrcIp,
+    const folly::IPAddressV6& outerDstIp,
+    uint32_t vni,
+    folly::MacAddress innerSrcMac,
+    folly::MacAddress innerDstMac,
+    const folly::IPAddressV6& innerSrcIp,
+    const folly::IPAddressV6& innerDstIp,
+    uint16_t innerSrcPort,
+    uint16_t innerDstPort,
+    uint8_t outerTrafficClass = 0,
+    uint8_t innerTrafficClass = 0,
+    uint8_t outerHopLimit = 255,
+    std::optional<std::vector<uint8_t>> payload = std::nullopt);
+
+std::unique_ptr<TxPacket> makeVxlanPacket(
+    const AllocatePktFn& allocatePkt,
+    std::optional<VlanID> vlan,
+    folly::MacAddress outerSrcMac,
+    folly::MacAddress outerDstMac,
+    const folly::IPAddressV6& outerSrcIp,
+    const folly::IPAddressV6& outerDstIp,
+    uint32_t vni,
+    uint16_t outerSrcPort,
+    const EthFrame& innerFrame,
+    uint8_t outerTrafficClass = 0,
+    uint8_t outerHopLimit = 255);
 
 } // namespace facebook::fboss::utility

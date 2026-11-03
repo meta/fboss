@@ -46,6 +46,96 @@ std::optional<VxlanPacket> parseVxlanPayload(
 }
 } // namespace
 
+namespace {
+std::vector<uint8_t> vxlanPayloadBytes(uint32_t vni, const EthFrame& inner) {
+  const auto innerBuf = inner.toIOBuf();
+  std::vector<uint8_t> payload(kVxlanHeaderSize + inner.length());
+  const auto header = makeVxlanHeader(vni);
+  std::copy(header.begin(), header.end(), payload.begin());
+  folly::io::Cursor cursor(innerBuf.get());
+  cursor.pull(
+      payload.data() + kVxlanHeaderSize, payload.size() - kVxlanHeaderSize);
+  return payload;
+}
+
+std::vector<uint8_t> vxlanPayload(
+    uint32_t vni,
+    std::unique_ptr<TxPacket> innerTx) {
+  return vxlanPayloadBytes(
+      vni, makeEthFrame(*innerTx, true /* skipTtlDecrement */));
+}
+} // namespace
+
+std::unique_ptr<TxPacket> makeVxlanTxPacket(
+    const AllocatePktFn& allocatePkt,
+    std::optional<VlanID> vlan,
+    folly::MacAddress outerSrcMac,
+    folly::MacAddress outerDstMac,
+    const folly::IPAddressV6& outerSrcIp,
+    const folly::IPAddressV6& outerDstIp,
+    uint32_t vni,
+    folly::MacAddress innerSrcMac,
+    folly::MacAddress innerDstMac,
+    const folly::IPAddressV6& innerSrcIp,
+    const folly::IPAddressV6& innerDstIp,
+    uint16_t innerSrcPort,
+    uint16_t innerDstPort,
+    uint8_t outerTrafficClass,
+    uint8_t innerTrafficClass,
+    uint8_t outerHopLimit,
+    std::optional<std::vector<uint8_t>> payload) {
+  auto innerTx = makeUDPTxPacket(
+      allocatePkt,
+      std::nullopt,
+      innerSrcMac,
+      innerDstMac,
+      innerSrcIp,
+      innerDstIp,
+      innerSrcPort,
+      innerDstPort,
+      innerTrafficClass,
+      255 /* hopLimit */,
+      payload);
+  return makeUDPTxPacket(
+      allocatePkt,
+      vlan,
+      outerSrcMac,
+      outerDstMac,
+      outerSrcIp,
+      outerDstIp,
+      innerSrcPort,
+      kVxlanUdpDstPort,
+      outerTrafficClass,
+      outerHopLimit,
+      vxlanPayload(vni, std::move(innerTx)));
+}
+
+std::unique_ptr<TxPacket> makeVxlanPacket(
+    const AllocatePktFn& allocatePkt,
+    std::optional<VlanID> vlan,
+    folly::MacAddress outerSrcMac,
+    folly::MacAddress outerDstMac,
+    const folly::IPAddressV6& outerSrcIp,
+    const folly::IPAddressV6& outerDstIp,
+    uint32_t vni,
+    uint16_t outerSrcPort,
+    const EthFrame& innerFrame,
+    uint8_t outerTrafficClass,
+    uint8_t outerHopLimit) {
+  return makeUDPTxPacket(
+      allocatePkt,
+      vlan,
+      outerSrcMac,
+      outerDstMac,
+      outerSrcIp,
+      outerDstIp,
+      outerSrcPort,
+      kVxlanUdpDstPort,
+      outerTrafficClass,
+      outerHopLimit,
+      vxlanPayloadBytes(vni, innerFrame));
+}
+
 std::optional<VxlanPacket> parseVxlanPacket(const EthFrame& frame) {
   if (const auto& v6 = frame.v6PayLoad()) {
     if (const auto& udp = v6->udpPayload()) {
