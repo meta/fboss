@@ -1,0 +1,32 @@
+{
+  "testData": {
+    "M4061CLSC_MCB.SCM_CPLD": {
+      "i2cTestData": {
+        "i2cDumpData": [],
+        "i2cGetData": [
+          {
+            "reg": "0x04",
+            "expected": "0xde"
+          }
+        ],
+        "i2cSetData": [
+          {
+            "reg": "0x04",
+            "value": "0xff"
+          }
+        ]
+      }
+    },
+    "M4061CLSC_MCB.MCB_48V_HSC_MONITOR": {
+      "hwmonTestData": {
+        "expectedFeatures": [
+          "vin",
+          "vout1",
+          "temp1",
+          "pin",
+          "iout1"
+        ]
+      }
+    }
+  }
+}

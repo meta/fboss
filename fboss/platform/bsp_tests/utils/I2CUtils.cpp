@@ -244,7 +244,7 @@ I2CBus I2CUtils::parseI2CDetectLine(const std::string& line) {
 bool I2CUtils::detectI2CDevice(int bus, const std::string& hexAddr) {
   // Try different options for i2cdetect
   std::vector<std::vector<std::string>> options = {
-      {"-y"}, {"-y", "-r"}, {"-y", "-q"}};
+      {"-y", "-a"}, {"-y", "-a", "-r"}, {"-y", "-a", "-q"}};
 
   for (const auto& opt : options) {
     std::vector<std::string> cmd = {"i2cdetect"};
