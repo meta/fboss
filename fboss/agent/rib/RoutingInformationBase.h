@@ -232,6 +232,7 @@ class RibRouteTables {
       flat_map<folly::CIDRNetwork, std::pair<InterfaceID, folly::IPAddress>>;
   using RouterIDAndNetworkToInterfaceRoutes =
       boost::container::flat_map<RouterID, PrefixToInterfaceIDAndIP>;
+  using InterfaceToVrf = std::unordered_map<InterfaceID, RouterID>;
 
   void reconfigure(
       const SwitchIdScopeResolver* resolver,
@@ -248,7 +249,8 @@ class RibRouteTables {
       const std::vector<MySidWithNextHops>& staticMySids,
       RibToSwitchStateFunction ribToSwitchStateFunc,
       void* cookie,
-      bool ecmpModeChanged = false);
+      bool ecmpModeChanged = false,
+      const std::optional<InterfaceToVrf>& interfaceToVrf = std::nullopt);
 
   // ECMP width used to normalize nexthops in the RIB, sourced from
   // cfg.SwitchSettings.ecmpWidth; set at config apply.
@@ -556,6 +558,7 @@ class RoutingInformationBase {
    */
   using RouterIDAndNetworkToInterfaceRoutes =
       RibRouteTables::RouterIDAndNetworkToInterfaceRoutes;
+  using InterfaceToVrf = RibRouteTables::InterfaceToVrf;
 
   void reconfigure(
       const SwitchIdScopeResolver* resolver,
@@ -574,7 +577,9 @@ class RoutingInformationBase {
       void* cookie,
       // Set when config changed the ECMP backup switching mode. Overrides then
       // changed outside any fib update, so sync them for all routes.
-      bool ecmpModeChanged = false);
+      bool ecmpModeChanged = false,
+      // VRF of each configured interface; restricts interface-scoped next hops
+      const std::optional<InterfaceToVrf>& interfaceToVrf = std::nullopt);
 
   void setEcmpWidth(uint32_t ecmpWidth);
   uint32_t getEcmpWidth() const;

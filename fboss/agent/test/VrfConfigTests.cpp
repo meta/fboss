@@ -382,3 +382,57 @@ TEST(VrfMove, RoutesRemovedBeforeInterfaceMove) {
   EXPECT_LT(connectedGone, intfMoved);
   EXPECT_LT(intfMoved, connectedInNewVrf);
 }
+
+TEST(VrfMove, LinkLocalNextHopRoutesRemovedBeforeInterfaceMove) {
+  auto config = testConfigA();
+  config.vrfs().ensure().emplace_back().vrfId() = kTestVrf;
+  auto handle = createTestHandle(&config);
+  auto sw = handle->getSw();
+  auto route = makeRoute("2001:db8:200::/64", "fe80::1");
+  route.nextHopAddrs()->front().ifName() = "fboss55";
+  auto updater = sw->getRouteUpdater();
+  updater.addRoute(RouterID(0), ClientID::BGPD, route);
+  updater.program();
+  ASSERT_TRUE(hasRoute(sw->getState(), RouterID(0), "2001:db8:200::/64"));
+  StateRecorder recorder(sw);
+
+  auto newConfig = config;
+  newConfig.interfaces()[1].routerID() = kTestVrf;
+  sw->applyConfig("move interface out of default vrf", newConfig);
+
+  auto bgpGone = recorder.firstIndex([](const auto& state) {
+    return !hasRoute(state, RouterID(0), "2001:db8:200::/64");
+  });
+  auto intfMoved = recorder.firstIndex(
+      [](const auto& state) { return intf55Vrf(state) == kTestVrf; });
+  ASSERT_GE(bgpGone, 0);
+  EXPECT_LT(bgpGone, intfMoved);
+  // The interface is now in another VRF, so the route stays unresolved
+  EXPECT_FALSE(hasRoute(sw->getState(), RouterID(0), "2001:db8:200::/64"));
+}
+
+TEST(VrfDelete, LinkLocalNextHopRouteAddedAfterInterfaceMove) {
+  auto config = vrfConfig();
+  auto handle = createTestHandle(&config);
+  auto sw = handle->getSw();
+  auto route = makeRoute("2001:db8:200::/64", "fe80::1");
+  route.nextHopAddrs()->front().ifName() = "fboss55";
+  auto updater = sw->getRouteUpdater();
+  updater.addRoute(RouterID(0), ClientID::BGPD, route);
+  updater.program();
+  // Interface 55 is in another VRF, so the route stays unresolved
+  ASSERT_FALSE(hasRoute(sw->getState(), RouterID(0), "2001:db8:200::/64"));
+  StateRecorder recorder(sw);
+
+  // Removing the last VRF moves interface 55 to the default VRF
+  sw->applyConfig("delete vrf", vrfRemovedConfig());
+
+  auto bgpAdded = recorder.firstIndex([](const auto& state) {
+    return hasRoute(state, RouterID(0), "2001:db8:200::/64");
+  });
+  auto intfMoved = recorder.firstIndex(
+      [](const auto& state) { return intf55Vrf(state) == RouterID(0); });
+  ASSERT_GE(intfMoved, 0);
+  ASSERT_GE(bgpAdded, 0);
+  EXPECT_GE(bgpAdded, intfMoved);
+}

@@ -1039,6 +1039,20 @@ shared_ptr<SwitchState> ThriftConfigApplier::run() {
   // Keeps existing entries for VRFs that already have interface routes
   intfRouteTables_.insert(vrfRouteTables.begin(), vrfRouteTables.end());
 
+  // Restrict interface-scoped next hops to their interface's VRF, only on
+  // switches with VRFs, including VRFs that are still being removed.
+  // Interfaces moving to another VRF belong to no VRF until the move.
+  std::optional<RoutingInformationBase::InterfaceToVrf> interfaceToVrf;
+  if (!getConfigVrfs().empty() || orig_->getVrfs()->numNodes() > 0) {
+    interfaceToVrf.emplace();
+    for (const auto& intfCfg : *cfg_->interfaces()) {
+      if (getInterfaceRouterID(intfCfg) == RouterID(*intfCfg.routerID())) {
+        interfaceToVrf->emplace(
+            InterfaceID(*intfCfg.intfID()), RouterID(*intfCfg.routerID()));
+      }
+    }
+  }
+
   if (routeUpdater_) {
     routeUpdater_->setRoutesToConfig(
         intfRouteTables_,
@@ -1050,7 +1064,8 @@ shared_ptr<SwitchState> ThriftConfigApplier::run() {
         *cfg_->staticMplsRoutesToNull(),
         *cfg_->staticMplsRoutesToCPU(),
         std::move(staticMySids),
-        ecmpOverrideModeChanged(*orig_, *cfg_));
+        ecmpOverrideModeChanged(*orig_, *cfg_),
+        std::move(interfaceToVrf));
   } else if (rib_) {
     auto newFibInfo = updateForwardingInformationBaseInfo();
     if (newFibInfo) {
@@ -1077,7 +1092,8 @@ shared_ptr<SwitchState> ThriftConfigApplier::run() {
         staticMySids,
         &updateFibFromConfig,
         static_cast<void*>(&new_),
-        ecmpOverrideModeChanged(*orig_, *cfg_));
+        ecmpOverrideModeChanged(*orig_, *cfg_),
+        interfaceToVrf);
   } else {
     // switch state UTs don't necessary care about RIB updates
     XLOG(WARNING)

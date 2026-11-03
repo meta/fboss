@@ -10,6 +10,8 @@
 
 #pragma once
 
+#include <optional>
+#include <unordered_set>
 #include "fboss/agent/if/gen-cpp2/common_types.h"
 #include "fboss/agent/types.h"
 
@@ -59,7 +61,8 @@ class RibRouteUpdater {
       NextHopIDManager* nextHopIDManager,
       MySidTable* mySidTable,
       uint32_t ecmpWidth,
-      RouterID routerID = RouterID(0));
+      RouterID routerID = RouterID(0),
+      const std::unordered_set<InterfaceID>* vrfInterfaces = nullptr);
 
   RibRouteUpdater(
       IPv4NetworkToRouteMap* v4Routes,
@@ -68,7 +71,8 @@ class RibRouteUpdater {
       NextHopIDManager* nextHopIDManager,
       MySidTable* mySidTable,
       uint32_t ecmpWidth,
-      RouterID routerID = RouterID(0));
+      RouterID routerID = RouterID(0),
+      const std::unordered_set<InterfaceID>* vrfInterfaces = nullptr);
 
   struct RouteEntry {
     folly::CIDRNetwork prefix;
@@ -221,6 +225,11 @@ class RibRouteUpdater {
 
   template <typename AddressT>
   bool needResolve(const std::shared_ptr<Route<AddressT>>& route) const;
+  // Whether intf is in this VRF; always true when interfaces are not
+  // restricted to VRFs
+  bool isInterfaceInVrf(InterfaceID intf) const {
+    return !vrfInterfaces_ || vrfInterfaces_->contains(intf);
+  }
 
   using NextHopIpToForwardInfo =
       std::unordered_map<folly::IPAddress, RouteNextHopSet>;
@@ -232,6 +241,9 @@ class RibRouteUpdater {
   MySidTable* mySidTable_{nullptr};
   uint32_t ecmpWidth_;
   RouterID routerID_{0};
+  // Interface-scoped next hops of client routes resolve only through these.
+  // Null means no restriction.
+  const std::unordered_set<InterfaceID>* vrfInterfaces_{nullptr};
   std::unordered_set<void*> needsResolution_;
   std::unordered_set<void*> resolving_;
   std::size_t cyclesDetected_{0};

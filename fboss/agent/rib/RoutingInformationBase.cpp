@@ -563,7 +563,8 @@ void RibRouteTables::reconfigure(
     const std::vector<MySidWithNextHops>& staticMySids,
     RibToSwitchStateFunction ribToSwitchStateFunc,
     void* cookie,
-    bool ecmpModeChanged) {
+    bool ecmpModeChanged,
+    const std::optional<InterfaceToVrf>& interfaceToVrf) {
   // Config application is accomplished in the following sequence of steps:
   // 1. Update the VRFs held in RoutingInformationBase's
   // SynchronizedRouteTables data-structure
@@ -583,6 +584,22 @@ void RibRouteTables::reconfigure(
   // Steps 2-5 take place in ConfigApplier.
 
   std::vector<RouterID> existingVrfs = getVrfList();
+
+  auto setVrfInterfaces = [&interfaceToVrf](auto& routerIDToRouteTable) {
+    for (auto& [vrf, routeTable] : routerIDToRouteTable) {
+      if (!interfaceToVrf) {
+        routeTable.interfaces.reset();
+        continue;
+      }
+      routeTable.interfaces.emplace();
+      for (const auto& [intf, intfVrf] : *interfaceToVrf) {
+        if (intfVrf == vrf) {
+          routeTable.interfaces->insert(intf);
+        }
+      }
+    }
+  };
+  setVrfInterfaces(synchronizedRouteTables_.wlock()->routerIDToRouteTable);
 
   auto configureRoutesForVrf =
       [&](RouterID vrf, const PrefixToInterfaceIDAndIP& interfaceRoutes) {
@@ -628,7 +645,8 @@ void RibRouteTables::reconfigure(
                   folly::range(staticMySids.cbegin(), staticMySids.cend()),
                   nextHopIDManager,
                   mySidTable,
-                  ecmpWidth);
+                  ecmpWidth,
+                  routeTable.restrictedInterfaces());
               // Apply config
               configApplier.apply();
             });
@@ -683,6 +701,7 @@ void RibRouteTables::reconfigure(
     auto lockedRouteTables = synchronizedRouteTables_.wlock();
     lockedRouteTables->routerIDToRouteTable = constructRouteTables(
         lockedRouteTables, configRouterIDToInterfaceRoutes);
+    setVrfInterfaces(lockedRouteTables->routerIDToRouteTable);
   }
   for (auto& vrf : getVrfList()) {
     const auto& interfaceRoutes = configRouterIDToInterfaceRoutes.at(vrf);
@@ -789,7 +808,9 @@ void RibRouteTables::updateRemoteInterfaceRoutes(
                 &(routeTable.labelToRoute),
                 nextHopIDManager,
                 mySidTable,
-                ecmpWidth);
+                ecmpWidth,
+                vrf,
+                routeTable.restrictedInterfaces());
             updater.update(
                 {{ClientID::REMOTE_INTERFACE_ROUTE, toAddRoutes}},
                 {{ClientID::REMOTE_INTERFACE_ROUTE, toDelRoutes}},
@@ -873,7 +894,8 @@ void RibRouteTables::update(
             nextHopIDManager,
             mySidTable,
             ecmpWidth,
-            routerID);
+            routerID,
+            routeTable.restrictedInterfaces());
         updater.update(
             clientID, resolvedRoutes, toDelPrefixes, resetClientsRoutes);
         if (cyclesDetectedOut) {
@@ -1350,7 +1372,8 @@ void RoutingInformationBase::reconfigure(
     const std::vector<MySidWithNextHops>& staticMySids,
     RibToSwitchStateFunction ribToSwitchStateFunc,
     void* cookie,
-    bool ecmpModeChanged) {
+    bool ecmpModeChanged,
+    const std::optional<InterfaceToVrf>& interfaceToVrf) {
   ensureRunning();
   auto updateFn = [&] {
     ribTables_.reconfigure(
@@ -1366,7 +1389,8 @@ void RoutingInformationBase::reconfigure(
         staticMySids,
         ribToSwitchStateFunc,
         cookie,
-        ecmpModeChanged);
+        ecmpModeChanged,
+        interfaceToVrf);
   };
   ribUpdateEventBase_.runInFbossEventBaseThreadAndWait(updateFn);
 }
