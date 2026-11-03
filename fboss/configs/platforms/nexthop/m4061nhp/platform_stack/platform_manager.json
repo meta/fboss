@@ -51,6 +51,20 @@
           "address": "0x41",
           "kernelDeviceName": "adm1266",
           "pmUnitScopedName": "DPM"
+        },
+        {
+          "busName": "SCM_IOB_I2C_4",
+          "address": "0x0c",
+          "kernelDeviceName": "dummy",
+          "pmUnitScopedName": "SCM_IOB_I2C_4_ARA_RSVD",
+          "__comment__": "Reserves the SMBus Alert Response Address so i2cdetect skips it. A write here latches STATUS_CML in the Renesas CPU VR on this bus."
+        },
+        {
+          "busName": "SCM_IOB_I2C_4",
+          "address": "0x37",
+          "kernelDeviceName": "dummy",
+          "pmUnitScopedName": "SCM_IOB_I2C_4_ZONE_WRITE_RSVD",
+          "__comment__": "Reserves the PMBus ZONE_WRITE address so i2cdetect skips it. A read here latches STATUS_CML in the Renesas CPU VR on this bus."
         }
       ],
       "embeddedSensorConfigs": [
@@ -400,6 +414,20 @@
           "pmUnitScopedName": "DCDC9"
         },
         {
+          "busName": "SMB_MUX_1@0",
+          "address": "0x0c",
+          "kernelDeviceName": "dummy",
+          "pmUnitScopedName": "SMB_MUX_1_CH0_ARA_RSVD",
+          "__comment__": "Reserves the SMBus Alert Response Address so i2cdetect skips it. A write here latches STATUS_CML in every Renesas VR on this bus."
+        },
+        {
+          "busName": "SMB_MUX_1@0",
+          "address": "0x37",
+          "kernelDeviceName": "dummy",
+          "pmUnitScopedName": "SMB_MUX_1_CH0_ZONE_WRITE_RSVD",
+          "__comment__": "Reserves the PMBus ZONE_WRITE address so i2cdetect skips it. A read here latches STATUS_CML in every Renesas VR on this bus."
+        },
+        {
           "busName": "SMB_MUX_1@1",
           "address": "0x70",
           "kernelDeviceName": "pmbus",
@@ -458,6 +486,20 @@
           "address": "0x75",
           "kernelDeviceName": "raa228228",
           "pmUnitScopedName": "DCDC10"
+        },
+        {
+          "busName": "SMB_MUX_3@0",
+          "address": "0x0c",
+          "kernelDeviceName": "dummy",
+          "pmUnitScopedName": "SMB_MUX_3_CH0_ARA_RSVD",
+          "__comment__": "Reserves the SMBus Alert Response Address so i2cdetect skips it. A write here latches STATUS_CML in every Renesas VR on this bus."
+        },
+        {
+          "busName": "SMB_MUX_3@0",
+          "address": "0x37",
+          "kernelDeviceName": "dummy",
+          "pmUnitScopedName": "SMB_MUX_3_CH0_ZONE_WRITE_RSVD",
+          "__comment__": "Reserves the PMBus ZONE_WRITE address so i2cdetect skips it. A read here latches STATUS_CML in every Renesas VR on this bus."
         }
       ]
     }
