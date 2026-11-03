@@ -1206,6 +1206,9 @@ class SwSwitch : public HwSwitchCallback {
   void applyConfigImpl(
       const std::string& reason,
       const cfg::SwitchConfig& newConfig);
+  void applyDeferredVrfChanges(
+      const std::string& reason,
+      const cfg::SwitchConfig& newConfig);
 
   void setConfigImpl(std::unique_ptr<AgentConfig> config);
 

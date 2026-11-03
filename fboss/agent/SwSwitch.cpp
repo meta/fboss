@@ -3875,10 +3875,27 @@ void SwSwitch::applyConfigImpl(
   // us.
   auto routeUpdater = getRouteUpdater();
   auto oldConfig = getConfig();
+  // Config with VRF changes is applied in up to four steps, so hardware never
+  // removes a VRF or moves an interface while routes still use it:
+  //   1. Apply config with VRF removals and interface VRF moves deferred.
+  //      Removed VRFs and interfaces deleted with them stay in state, and
+  //      moving interfaces keep their old VRF, but their interface routes are
+  //      left out of the RIB config.
+  //      The final state is also validated here, before anything changes.
+  //   2. Program routes. The RIB removes all routes (from every client) and
+  //      the FIB of removed VRFs, and the interface routes of moving
+  //      interfaces from their old VRF.
+  //   3. Apply config normally (applyDeferredVrfChanges): removed VRFs are
+  //      deleted and interfaces move to their new VRF.
+  //   4. Program routes: interface routes of moved interfaces are added in
+  //      their new VRF.
+  // Steps 3 and 4 run only if step 1 deferred something.
+  bool hasDeferredVrfChanges = false;
   updateStateBlocking(
       reason,
       [&](const shared_ptr<SwitchState>& state) -> shared_ptr<SwitchState> {
         auto originalState = state;
+        hasDeferredVrfChanges = false;
         auto newState = applyThriftConfig(
             originalState,
             &newConfig,
@@ -3886,11 +3903,31 @@ void SwSwitch::applyConfigImpl(
             platformMapping_.get(),
             hwAsicTable_.get(),
             &routeUpdater,
-            aclNexthopHandler_.get());
+            aclNexthopHandler_.get(),
+            true /* deferVrfChanges */,
+            &hasDeferredVrfChanges);
 
         if (newState &&
             !isValidStateUpdateDryRun(StateDelta(state, newState), stats())) {
           throw FbossError("Invalid config passed in, skipping");
+        }
+        if (hasDeferredVrfChanges) {
+          // Validate the final state now, before routes are removed, so the
+          // deferred pass cannot fail on config after hardware is changed.
+          auto validationRouteUpdater = getRouteUpdater();
+          auto finalState = applyThriftConfig(
+              originalState,
+              &newConfig,
+              supportsAddRemovePort_,
+              platformMapping_.get(),
+              hwAsicTable_.get(),
+              &validationRouteUpdater,
+              aclNexthopHandler_.get());
+          if (finalState &&
+              !isValidStateUpdateDryRun(
+                  StateDelta(originalState, finalState), stats())) {
+            throw FbossError("Invalid config passed in, skipping");
+          }
         }
 
         if (!newState) {
@@ -3925,10 +3962,38 @@ void SwSwitch::applyConfigImpl(
    * and applyConfig. So ensure programming allways goes through the route
    * update wrapper abstraction
    */
+  // Step 2
   routeUpdater.program();
+  if (hasDeferredVrfChanges) {
+    // Steps 3 and 4
+    applyDeferredVrfChanges(reason, newConfig);
+  }
   runFsdbSyncFunction([&oldConfig, &newConfig](auto& syncer) {
     syncer->cfgUpdated(oldConfig, newConfig);
   });
+}
+
+void SwSwitch::applyDeferredVrfChanges(
+    const std::string& reason,
+    const cfg::SwitchConfig& newConfig) {
+  auto routeUpdater = getRouteUpdater();
+  updateStateBlocking(
+      reason + " (VRF removals and moves)",
+      [&](const shared_ptr<SwitchState>& state) -> shared_ptr<SwitchState> {
+        auto newState = applyThriftConfig(
+            state,
+            &newConfig,
+            supportsAddRemovePort_,
+            platformMapping_.get(),
+            hwAsicTable_.get(),
+            &routeUpdater,
+            aclNexthopHandler_.get());
+        // Not validated again: step 1 validated the final state before routes
+        // were removed, so this pass cannot fail validation after hardware
+        // has changed
+        return newState;
+      });
+  routeUpdater.program();
 }
 
 void SwSwitch::updateConfigAppliedInfo() {

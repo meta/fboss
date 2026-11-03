@@ -393,7 +393,9 @@ class ThriftConfigApplier {
       RouteUpdateWrapper* routeUpdater,
       AclNexthopHandler* aclNexthopHandler,
       const PlatformMapping* platformMapping,
-      const HwAsicTable* hwAsicTable)
+      const HwAsicTable* hwAsicTable,
+      bool deferVrfChanges = false,
+      bool* hasDeferredVrfChanges = nullptr)
       : orig_(orig),
         cfg_(config),
         supportsAddRemovePort_(supportsAddRemovePort),
@@ -401,7 +403,9 @@ class ThriftConfigApplier {
         aclNexthopHandler_(aclNexthopHandler),
         scopeResolver_(getSwitchInfoFromConfig(config)),
         platformMapping_(platformMapping),
-        hwAsicTable_(hwAsicTable) {}
+        hwAsicTable_(hwAsicTable),
+        deferVrfChanges_(deferVrfChanges),
+        hasDeferredVrfChanges_(hasDeferredVrfChanges) {}
 
   std::shared_ptr<SwitchState> run();
 
@@ -726,6 +730,10 @@ class ThriftConfigApplier {
   const std::vector<cfg::VrfConfig>& getConfigVrfs() const;
   void validateVrfs() const;
   std::shared_ptr<VrfMap> updateVrfs();
+  // With deferVrfChanges_, VRF removals and interface VRF moves are left for
+  // a second config pass, after the routes they affect have been removed.
+  RouterID getInterfaceRouterID(const cfg::Interface& config) const;
+  void markDeferredVrfChange() const;
   std::shared_ptr<DsfNodeMap> updateDsfNodes();
   void processUpdatedDsfNodes();
   void processReachabilityGroup(
@@ -776,6 +784,8 @@ class ThriftConfigApplier {
   SwitchIdScopeResolver scopeResolver_;
   const PlatformMapping* platformMapping_{nullptr};
   const HwAsicTable* hwAsicTable_{nullptr};
+  bool deferVrfChanges_{false};
+  bool* hasDeferredVrfChanges_{nullptr};
   std::unique_ptr<const FabricLinkMonitoring> fabricLinkMon_;
 
   struct InterfaceIpInfo {
@@ -4040,6 +4050,19 @@ shared_ptr<VlanMap> ThriftConfigApplier::updateVlans() {
     changed |= updateMap(&newVlans, origVlan, newVlan);
   }
 
+  if (deferVrfChanges_) {
+    // Keep VLANs of interfaces kept until their VRF's routes are removed
+    for (const auto& [_, vlanMap] : std::as_const(*origVlans)) {
+      for (const auto& [_id, origVlan] : std::as_const(*vlanMap)) {
+        if (!newVlans.contains(origVlan->getID()) &&
+            vlanInterfaces_.contains(origVlan->getID())) {
+          newVlans.emplace(origVlan->getID(), origVlan);
+          ++numExistingProcessed;
+        }
+      }
+    }
+  }
+
   if (numExistingProcessed != origVlans->numNodes()) {
     // Some existing VLANs were removed.
     CHECK_LT(numExistingProcessed, origVlans->numNodes());
@@ -5305,6 +5328,28 @@ std::shared_ptr<InterfaceMap> ThriftConfigApplier::updateInterfaces() {
     changed |= updateMap(&newIntfs, origIntf, newIntf);
   }
 
+  if (deferVrfChanges_) {
+    // Keep interfaces removed together with their VRF until routes through
+    // them are removed
+    std::set<RouterID> configVrfs;
+    for (const auto& vrfCfg : getConfigVrfs()) {
+      configVrfs.insert(RouterID(*vrfCfg.vrfId()));
+    }
+    for (const auto& [_, intfMap] : std::as_const(*origIntfs)) {
+      for (const auto& [_id, origIntf] : std::as_const(*intfMap)) {
+        if (newIntfs.contains(origIntf->getID()) ||
+            origIntf->getRouterID() == RouterID(0) ||
+            configVrfs.contains(origIntf->getRouterID())) {
+          continue;
+        }
+        updateVlanInterfaces(origIntf.get());
+        newIntfs.emplace(origIntf->getID(), origIntf);
+        ++numExistingProcessed;
+        markDeferredVrfChange();
+      }
+    }
+  }
+
   if (numExistingProcessed != origIntfs->numNodes()) {
     // Some existing interfaces were removed.
     CHECK_LT(numExistingProcessed, origIntfs->numNodes());
@@ -5485,7 +5530,7 @@ shared_ptr<Interface> ThriftConfigApplier::updateInterface(
       desiredPeerChanged(
           config->desiredPeerAddressIPv6(), orig->getDesiredPeerAddressIPv6());
 
-  if (orig->getRouterID() == RouterID(*config->routerID()) &&
+  if (orig->getRouterID() == getInterfaceRouterID(*config) &&
       (orig->getVlanIDHelper() == VlanID(*config->vlanID())) &&
       (orig->getPortIDf() == cfgPort) &&
       (orig->getAggregatePortIDf() == cfgAggregatePort) &&
@@ -5501,7 +5546,7 @@ shared_ptr<Interface> ThriftConfigApplier::updateInterface(
     return nullptr;
   }
 
-  newIntf->setRouterID(RouterID(*config->routerID()));
+  newIntf->setRouterID(getInterfaceRouterID(*config));
   newIntf->setType(*config->type());
   if (newIntf->getType() == cfg::InterfaceType::VLAN) {
     newIntf->setVlanID(VlanID(*config->vlanID()));
@@ -6968,6 +7013,10 @@ Interface::Addresses ThriftConfigApplier::getInterfaceAddresses(
     if (intfAddr.first.isV6() && intfAddr.first.isLinkLocal()) {
       continue;
     }
+    if (getInterfaceRouterID(*config) != RouterID(*config->routerID())) {
+      // Moving to another VRF: drop its routes before the move
+      continue;
+    }
     auto ret2 = intfRouteTables_[RouterID(*config->routerID())].emplace(
         IPAddress::createNetwork(addr),
         std::make_pair(InterfaceID(*config->intfID()), intfAddr.first));
@@ -7933,6 +7982,18 @@ std::shared_ptr<VrfMap> ThriftConfigApplier::updateVrfs() {
     }
     changed |= updateThriftMapNode(newVrfs.get(), origVrf, newVrf);
   }
+  if (deferVrfChanges_) {
+    // Keep VRFs removed from config until their routes are removed
+    for (const auto& [matcher, vrfMap] : std::as_const(*origVrfs)) {
+      for (const auto& [vrfId, vrf] : std::as_const(*vrfMap)) {
+        if (!newVrfs->getNodeIf(vrf->getID())) {
+          updateThriftMapNode(newVrfs.get(), vrf, std::shared_ptr<Vrf>());
+          ++numExistingProcessed;
+          markDeferredVrfChange();
+        }
+      }
+    }
+  }
 
   if (numExistingProcessed != origVrfs->numNodes()) {
     changed = true;
@@ -7941,6 +8002,28 @@ std::shared_ptr<VrfMap> ThriftConfigApplier::updateVrfs() {
     return nullptr;
   }
   return newVrfs;
+}
+
+RouterID ThriftConfigApplier::getInterfaceRouterID(
+    const cfg::Interface& config) const {
+  RouterID routerId(*config.routerID());
+  if (!deferVrfChanges_) {
+    return routerId;
+  }
+  // An interface moving to another VRF stays in its old VRF until routes
+  // through it are removed
+  auto orig = orig_->getInterfaces()->getNodeIf(InterfaceID(*config.intfID()));
+  if (orig && orig->getRouterID() != routerId) {
+    markDeferredVrfChange();
+    return orig->getRouterID();
+  }
+  return routerId;
+}
+
+void ThriftConfigApplier::markDeferredVrfChange() const {
+  if (hasDeferredVrfChanges_) {
+    *hasDeferredVrfChanges_ = true;
+  }
 }
 
 std::shared_ptr<MultiLabelForwardingInformationBase>
@@ -8154,7 +8237,9 @@ std::shared_ptr<SwitchState> applyThriftConfig(
     const PlatformMapping* platformMapping,
     const HwAsicTable* hwAsicTable,
     RouteUpdateWrapper* routeUpdater,
-    AclNexthopHandler* aclNexthopHandler) {
+    AclNexthopHandler* aclNexthopHandler,
+    bool deferVrfChanges,
+    bool* hasDeferredVrfChanges) {
   return ThriftConfigApplier(
              state,
              config,
@@ -8162,7 +8247,9 @@ std::shared_ptr<SwitchState> applyThriftConfig(
              routeUpdater,
              aclNexthopHandler,
              platformMapping,
-             hwAsicTable)
+             hwAsicTable,
+             deferVrfChanges,
+             hasDeferredVrfChanges)
       .run();
 }
 
