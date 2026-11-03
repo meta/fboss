@@ -2803,9 +2803,19 @@ void SaiSwitch::updatePmdInfo(
   }
   managerTable_->portManager().updatePmdChangedFb303Counters(
       portID, *sideState.side(), signalDetectChanged, cdrLockChanged);
-  auto swPort = getProgrammedState()->getPorts()->getNodeIf(portID);
-  bool linkTrainingEnabled =
-      swPort ? swPort->getLinkTraining().value_or(false) : false;
+  bool linkTrainingEnabled = false;
+  if (getSwitchType() == cfg::SwitchType::PHY) {
+    // XPHY link training is set per side at port create, not from the port
+    // config, so read it from this side's SAI port (unset means disabled).
+    const auto& ltEnable =
+        std::get<std::optional<SaiPortTraits::Attributes::LinkTrainingEnable>>(
+            port->attributes());
+    linkTrainingEnabled = ltEnable.has_value() && ltEnable->value();
+  } else {
+    auto swPort = getProgrammedState()->getPorts()->getNodeIf(portID);
+    linkTrainingEnabled =
+        swPort ? swPort->getLinkTraining().value_or(false) : false;
+  }
   if (linkTrainingEnabled) {
     sideState.pmd()->linkTrainingStatus() =
         managerTable_->portManager().getLinkTrainingStatus(
