@@ -175,6 +175,8 @@ struct ClientAndNextHops {
 struct IfAndIP {
   1: i32 interfaceID;
   2: Address.BinaryAddress ip;
+  // VRF the next hop is resolved in; unset means the route's VRF
+  3: optional i32 vrf;
 }
 
 struct RouteDetails {
