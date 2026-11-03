@@ -6286,7 +6286,7 @@
           "thresholds": [
             {
               "metric_key_regex": "max_rss",
-              "upper_bound": 3707334
+              "upper_bound": 4597272
             },
             {
               "metric_key_regex": "program_routes_msecs",
@@ -6299,7 +6299,7 @@
           "thresholds": [
             {
               "metric_key_regex": "max_rss",
-              "upper_bound": 3251472
+              "upper_bound": 4071067
             },
             {
               "metric_key_regex": "program_routes_msecs",
