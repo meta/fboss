@@ -1,0 +1,62 @@
+// Copyright (c) Meta Platforms, Inc. and affiliates.
+
+#include "fboss/agent/test/utils/VxlanTestUtils.h"
+
+#include "fboss/agent/FbossError.h"
+
+#include <folly/io/IOBuf.h>
+
+namespace facebook::fboss::utility {
+
+std::array<uint8_t, kVxlanHeaderSize> makeVxlanHeader(uint32_t vni) {
+  if (vni > kVxlanMaxVni) {
+    throw FbossError("VNI out of range: ", vni);
+  }
+  std::array<uint8_t, kVxlanHeaderSize> header{};
+  header[0] = kVxlanFlagI;
+  header[4] = static_cast<uint8_t>((vni >> 16) & 0xFF);
+  header[5] = static_cast<uint8_t>((vni >> 8) & 0xFF);
+  header[6] = static_cast<uint8_t>(vni & 0xFF);
+  return header;
+}
+
+namespace {
+std::optional<VxlanPacket> parseVxlanPayload(
+    const EthFrame& frame,
+    const UDPDatagram& udp) {
+  if (udp.header().dstPort != kVxlanUdpDstPort) {
+    return std::nullopt;
+  }
+  const auto& payload = udp.payload();
+  if (payload.size() < kVxlanHeaderSize + EthHdr::UNTAGGED_PKT_SIZE) {
+    return std::nullopt;
+  }
+  auto innerBuf = folly::IOBuf::copyBuffer(
+      payload.data() + kVxlanHeaderSize, payload.size() - kVxlanHeaderSize);
+  folly::io::Cursor cursor(innerBuf.get());
+  VxlanPacket packet{
+      frame,
+      udp,
+      payload[0],
+      (static_cast<uint32_t>(payload[4]) << 16) |
+          (static_cast<uint32_t>(payload[5]) << 8) |
+          static_cast<uint32_t>(payload[6]),
+      EthFrame(cursor)};
+  return packet;
+}
+} // namespace
+
+std::optional<VxlanPacket> parseVxlanPacket(const EthFrame& frame) {
+  if (const auto& v6 = frame.v6PayLoad()) {
+    if (const auto& udp = v6->udpPayload()) {
+      return parseVxlanPayload(frame, *udp);
+    }
+  } else if (const auto& v4 = frame.v4PayLoad()) {
+    if (const auto& udp = v4->udpPayload()) {
+      return parseVxlanPayload(frame, *udp);
+    }
+  }
+  return std::nullopt;
+}
+
+} // namespace facebook::fboss::utility

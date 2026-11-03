@@ -20,6 +20,26 @@ cpp_library(
 )
 
 cpp_library(
+    name = "vxlan_test_utils",
+    srcs = [
+        "VxlanTestUtils.cpp",
+    ],
+    headers = [
+        "VxlanTestUtils.h",
+    ],
+    deps = [
+        "//fboss/agent:fboss-error",
+        "//folly/io:iobuf",
+    ],
+    exported_deps = [
+        "fbsource//xplat/folly:network_address",
+        "//fboss/agent:fboss-types",
+        "//fboss/agent:switch_config-cpp2-types",
+        "//fboss/agent/packet:packet_factory",
+    ],
+)
+
+cpp_library(
     name = "srv6_test_utils",
     srcs = [
         "Srv6TestUtils.cpp",
