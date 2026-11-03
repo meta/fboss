@@ -47,7 +47,17 @@ class MockPhyManager : public PhyManager {
     wLocked->lineLanes = std::move(lineLanes);
   }
 
+  bool isSaiPhyManager() const override {
+    return isSaiPhyManager_;
+  }
+
+  void setIsSaiPhyManager(bool isSaiPhyManager) {
+    isSaiPhyManager_ = isSaiPhyManager;
+  }
+
  private:
+  bool isSaiPhyManager_{false};
+
   // Mock the pure virtual private methods
   MOCK_METHOD2(
       createExternalPhy,

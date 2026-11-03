@@ -158,6 +158,10 @@ class SaiPhyManager : public PhyManager {
 
   void gracefulExit() override;
 
+  bool isSaiPhyManager() const override {
+    return true;
+  }
+
   virtual cfg::AsicType getPhyAsicType() const = 0;
 
  protected:
