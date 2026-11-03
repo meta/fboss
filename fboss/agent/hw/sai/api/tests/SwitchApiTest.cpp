@@ -8,6 +8,7 @@
  *
  */
 #include "fboss/agent/hw/sai/api/SwitchApi.h"
+#include "fboss/agent/gen-cpp2/switch_config_constants.h"
 #include "fboss/agent/hw/sai/fake/FakeSai.h"
 
 #include <folly/logging/xlog.h>
@@ -680,6 +681,19 @@ TEST_F(SwitchApiTest, setGetPfcDlrPacketAction) {
       switchApi->getAttribute(
           switchId, SaiSwitchTraits::Attributes::PfcDlrPacketAction{}),
       SAI_PACKET_ACTION_FORWARD);
+}
+
+TEST_F(SwitchApiTest, setGetVxlanDefaultPort) {
+  EXPECT_EQ(
+      switchApi->getAttribute(
+          switchId, SaiSwitchTraits::Attributes::VxlanDefaultPort{}),
+      cfg::switch_config_constants::kVxlanDefaultPort());
+  SaiSwitchTraits::Attributes::VxlanDefaultPort vxlanPort{8472};
+  switchApi->setAttribute(switchId, vxlanPort);
+  EXPECT_EQ(
+      switchApi->getAttribute(
+          switchId, SaiSwitchTraits::Attributes::VxlanDefaultPort{}),
+      8472);
 }
 
 TEST_F(SwitchApiTest, testPfcMonitorEnable) {

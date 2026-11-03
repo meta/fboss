@@ -2461,6 +2461,9 @@ struct Srv6Tunnel {
   9: common.TunnelType tunnelType;
 }
 
+// Default UDP destination port for VXLAN (RFC 7348).
+const i32 kVxlanDefaultPort = 4789;
+
 struct VxLanTunnel {
   1: string vxlanTunnelId;
   2: i32 underlayIntfID;

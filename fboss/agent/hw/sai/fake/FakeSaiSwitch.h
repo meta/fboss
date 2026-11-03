@@ -9,6 +9,7 @@
  */
 #pragma once
 
+#include "fboss/agent/gen-cpp2/switch_config_constants.h"
 #include "fboss/agent/hw/sai/fake/FakeManager.h"
 
 #include <folly/MacAddress.h>
@@ -288,6 +289,14 @@ class FakeSwitch {
     return pfcDlrPacketAction_;
   }
 
+  void setVxlanDefaultPort(sai_uint16_t port) {
+    vxlanDefaultPort_ = port;
+  }
+
+  sai_uint16_t getVxlanDefaultPort() const {
+    return vxlanDefaultPort_;
+  }
+
   void setTamObjectId(sai_object_id_t objectId) {
     tamObjectId_ = objectId;
   }
@@ -413,6 +422,8 @@ class FakeSwitch {
   bool creditWatchDogEnable_{true};
   uint32_t creditWatchDogMs_{500};
   sai_packet_action_t pfcDlrPacketAction_{SAI_PACKET_ACTION_DROP};
+  sai_uint16_t vxlanDefaultPort_ = static_cast<sai_uint16_t>(
+      cfg::switch_config_constants::kVxlanDefaultPort());
   sai_object_id_t tamObjectId_{SAI_NULL_OBJECT_ID};
   bool pfcMonitorEnable_{false};
   bool cablePropagationDelayMeasurement_{false};

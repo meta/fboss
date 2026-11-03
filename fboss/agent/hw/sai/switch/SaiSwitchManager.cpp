@@ -13,6 +13,7 @@
 #include "fboss/agent/AgentFeatures.h"
 #include "fboss/agent/DsfNodeUtils.h"
 #include "fboss/agent/FbossError.h"
+#include "fboss/agent/gen-cpp2/switch_config_constants.h"
 #include "fboss/agent/hw/HwSwitchFb303Stats.h"
 #include "fboss/agent/hw/sai/api/SaiApiTable.h"
 #include "fboss/agent/hw/sai/api/SwitchApi.h"
@@ -805,6 +806,12 @@ void SaiSwitchManager::gracefulExit() {
 void SaiSwitchManager::setMacAgingSeconds(sai_uint32_t agingSeconds) {
   switch_->setOptionalAttribute(
       SaiSwitchTraits::Attributes::MacAgingTime{agingSeconds});
+}
+
+void SaiSwitchManager::setVxlanDefaultPort() {
+  switch_->setOptionalAttribute(
+      SaiSwitchTraits::Attributes::VxlanDefaultPort{static_cast<sai_uint16_t>(
+          cfg::switch_config_constants::kVxlanDefaultPort())});
 }
 sai_uint32_t SaiSwitchManager::getMacAgingSeconds() const {
   return GET_OPT_ATTR(Switch, MacAgingTime, switch_->attributes());

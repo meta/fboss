@@ -526,6 +526,11 @@ struct SaiSwitchTraits {
         SAI_SWITCH_ATTR_PFC_DLR_PACKET_ACTION,
         sai_int32_t,
         SaiPacketActionDefaultDrop>;
+    using VxlanDefaultPort = SaiAttribute<
+        EnumType,
+        SAI_SWITCH_ATTR_VXLAN_DEFAULT_PORT,
+        sai_uint16_t,
+        SaiIntDefault<sai_uint16_t>>;
     struct AttributeFabricRemoteReachablePortList {
       std::optional<sai_attr_id_t> operator()();
     };
@@ -1063,7 +1068,8 @@ struct SaiSwitchTraits {
       std::optional<Attributes::SyncUnlock>,
       std::optional<Attributes::WarmRecover>
 #endif
-      >;
+      ,
+      std::optional<Attributes::VxlanDefaultPort>>;
 
   // Avoid using SAI_SWITCH_STAT_PACKET_INTEGRITY_DROP as that counts
   // both DramPacketError and EgressRcvPacketError. As we now have a
@@ -1202,6 +1208,7 @@ SAI_ATTRIBUTE_NAME(Switch, CreditWdTimer)
 #endif
 SAI_ATTRIBUTE_NAME(Switch, MaxCores)
 SAI_ATTRIBUTE_NAME(Switch, PfcDlrPacketAction)
+SAI_ATTRIBUTE_NAME(Switch, VxlanDefaultPort)
 SAI_ATTRIBUTE_NAME(Switch, SdkBootTime)
 SAI_ATTRIBUTE_NAME(Switch, FabricRemoteReachablePortList)
 SAI_ATTRIBUTE_NAME(Switch, RouteNoImplicitMetaData)

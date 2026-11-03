@@ -1027,6 +1027,7 @@ SaiSwitchTraits::CreateAttributes SaiPlatform::getSwitchAttributes(
       std::nullopt, // SyncUnlock
       std::nullopt, // WarmRecover
 #endif
+      std::nullopt, // VxlanDefaultPort
   };
 }
 
