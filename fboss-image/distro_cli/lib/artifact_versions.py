@@ -32,6 +32,7 @@ logger: logging.Logger = logging.getLogger(__name__)
 # entry per SDK-linked binary.
 SDK_METADATA_MEMBER = "share/npu_sdk_metadata.json"
 BUILD_INFO_MEMBER = "share/fboss-component-version.json"
+KERNEL_BUILD_INFO_MEMBER = "share/kernel-version.json"
 
 _MODULE_SUFFIXES = (".ko", ".ko.xz", ".ko.gz")
 
@@ -145,13 +146,18 @@ def read_sdk(artifact: Path, members: list[str]) -> dict[str, object]:
 
 
 def read_build_info(artifact: Path, members: list[str]) -> dict[str, object]:
-    """Read the packaged build records for an artifact's executables."""
-    member = next(
-        (name for name in members if name.removeprefix("./") == BUILD_INFO_MEMBER),
-        None,
-    )
-    if member is None:
+    """Read packaged executable or component producer build records."""
+    candidates = [
+        name
+        for name in members
+        if name.removeprefix("./") in (BUILD_INFO_MEMBER, KERNEL_BUILD_INFO_MEMBER)
+    ]
+    if not candidates:
         return {}
+    if len(candidates) != 1:
+        logger.warning(f"{artifact.name}: ambiguous build info declarations")
+        return {}
+    member = candidates[0]
     content = _run(["tar", "-xOf", str(artifact), member])
     if content is None:
         logger.warning(f"Could not read {member} from {artifact.name}")
@@ -159,12 +165,18 @@ def read_build_info(artifact: Path, members: list[str]) -> dict[str, object]:
     try:
         declaration = json.loads(content)
     except json.JSONDecodeError:
-        logger.warning(f"{artifact.name}: {BUILD_INFO_MEMBER} will not parse")
+        logger.warning(f"{artifact.name}: {member} will not parse")
         return {}
     if (
         not isinstance(declaration, dict)
         or declaration.get("declaration_schema") != 1
-        or not isinstance(declaration.get("binaries"), dict)
+        or not any(
+            isinstance(declaration.get(key), dict) for key in ("binaries", "build")
+        )
+        or any(
+            key in declaration and not isinstance(declaration[key], dict)
+            for key in ("binaries", "build")
+        )
     ):
         logger.warning(f"{artifact.name}: unsupported build info declaration")
         return {}

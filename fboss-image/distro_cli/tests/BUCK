@@ -56,6 +56,17 @@ python_unittest(
 )
 
 python_unittest(
+    name = "execute_test",
+    srcs = ["execute_test.py"],
+    base_module = "distro_cli.tests",
+    network_access = network_access_utils.none(),
+    deps = [
+        "//fboss/github/fboss-image/distro_cli/lib:execute",
+        "//fboss/oss/scripts:component_version",
+    ],
+)
+
+python_unittest(
     name = "version_file_test",
     srcs = ["version_file_test.py"],
     base_module = "distro_cli.tests",

@@ -7,7 +7,11 @@
 
 """Execute utilities for FBOSS image builder."""
 
+import json
 import logging
+import os
+import subprocess
+import sys
 from pathlib import Path
 
 from distro_cli.lib.docker.container import run_container
@@ -45,6 +49,48 @@ def execute_build_in_container(
     """
     logger.info(f"Executing {component_name} build in Docker container: {image_name}")
 
+    script = Path(command[0])
+    source_dir = next(
+        (
+            (host / script.relative_to(container)).parent
+            for host, container in volumes.items()
+            if script.is_relative_to(container)
+        ),
+        None,
+    )
+    capture_script = next(
+        (
+            host / "component_version.py"
+            for host, container in volumes.items()
+            if container == Path("/fboss/oss/scripts")
+        ),
+        None,
+    )
+    producer_env: dict[str, str] = {}
+    if source_dir is not None and capture_script is not None:
+        try:
+            producer_env = json.loads(
+                subprocess.check_output(
+                    [
+                        sys.executable,
+                        str(capture_script),
+                        "environment",
+                        "--source-dir",
+                        str(source_dir),
+                    ],
+                    env={
+                        name: value
+                        for name, value in os.environ.items()
+                        if name not in ("FBOSS_SOURCE_REVISION", "FBOSS_SOURCE_DIRTY")
+                    },
+                    text=True,
+                )
+            )
+        except (OSError, subprocess.SubprocessError, ValueError) as error:
+            raise BuildError(
+                f"Failed to capture {component_name} producer identity: {error}"
+            ) from error
+
     # Ensure fboss_builder image is built
     build_fboss_builder_image()
 
@@ -67,6 +113,7 @@ def execute_build_in_container(
             command=cmd_list,
             volumes=volumes,
             read_only_volumes=read_only_volumes,
+            env=producer_env,
             privileged=True,
             working_dir=working_dir,
         )

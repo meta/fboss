@@ -221,7 +221,7 @@ _SAI_IN_PATH: re.Pattern = re.compile(r"/agent/[^/]+/([^/]+)/")
 # its locator and checksum; it simply reports nothing about itself yet.
 MODULE_SCHEMAS: dict[str, ModuleSchema] = {
     "kernel": ModuleSchema(
-        readers=("packages",),
+        readers=("packages", "build_info"),
         provides=(Provides("kernel", kernel_from_packages),),
         claims=(Claims("kernel", _KERNEL_IN_PATH),),
     ),
