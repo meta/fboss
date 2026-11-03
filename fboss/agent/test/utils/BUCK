@@ -28,6 +28,7 @@ cpp_library(
         "VxlanTestUtils.h",
     ],
     deps = [
+        "fbsource//third-party/googletest:gtest",
         "//fboss/agent:fboss-error",
         "//folly/io:iobuf",
     ],

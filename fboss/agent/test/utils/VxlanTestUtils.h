@@ -59,6 +59,44 @@ std::unique_ptr<TxPacket> makeVxlanTxPacket(
     uint8_t outerHopLimit = 255,
     std::optional<std::vector<uint8_t>> payload = std::nullopt);
 
+struct VxlanEncapExpected {
+  std::optional<folly::MacAddress> outerDstMac;
+  std::optional<folly::MacAddress> outerSrcMac;
+  std::optional<folly::IPAddress> outerSrcIp;
+  std::optional<folly::IPAddress> outerDstIp;
+  std::optional<uint8_t> outerTrafficClass;
+  std::optional<uint8_t> outerHopLimit;
+  std::optional<uint32_t> outerFlowLabel;
+  std::optional<uint32_t> vni;
+  std::optional<folly::MacAddress> innerDstMac;
+  std::optional<folly::MacAddress> innerSrcMac;
+  std::optional<folly::IPAddress> innerSrcIp;
+  std::optional<folly::IPAddress> innerDstIp;
+  std::optional<uint16_t> innerSrcPort;
+  std::optional<uint16_t> innerDstPort;
+  std::optional<std::vector<uint8_t>> innerPayload;
+};
+
+struct VxlanDecapExpected {
+  std::optional<folly::MacAddress> innerDstMac;
+  std::optional<folly::MacAddress> innerSrcMac;
+  std::optional<folly::IPAddress> innerSrcIp;
+  std::optional<folly::IPAddress> innerDstIp;
+  std::optional<uint8_t> innerTrafficClass;
+  std::optional<uint8_t> innerHopLimit;
+  std::optional<uint16_t> innerSrcPort;
+  std::optional<uint16_t> innerDstPort;
+  std::optional<std::vector<uint8_t>> innerPayload;
+};
+
+void verifyVxlanEncap(
+    const EthFrame& rxFrame,
+    const VxlanEncapExpected& expected);
+
+void verifyVxlanDecap(
+    const EthFrame& rxFrame,
+    const VxlanDecapExpected& expected);
+
 std::unique_ptr<TxPacket> makeVxlanPacket(
     const AllocatePktFn& allocatePkt,
     std::optional<VlanID> vlan,

@@ -5,6 +5,7 @@
 #include "fboss/agent/FbossError.h"
 
 #include <folly/io/IOBuf.h>
+#include <gtest/gtest.h>
 
 namespace facebook::fboss::utility {
 
@@ -147,6 +148,150 @@ std::optional<VxlanPacket> parseVxlanPacket(const EthFrame& frame) {
     }
   }
   return std::nullopt;
+}
+
+namespace {
+void verifyInnerUdp(
+    const EthFrame& innerFrame,
+    const std::optional<uint16_t>& srcPort,
+    const std::optional<uint16_t>& dstPort,
+    const std::optional<std::vector<uint8_t>>& payload) {
+  std::optional<UDPDatagram> udp;
+  if (const auto& v6 = innerFrame.v6PayLoad()) {
+    udp = v6->udpPayload();
+  } else if (const auto& v4 = innerFrame.v4PayLoad()) {
+    udp = v4->udpPayload();
+  }
+  ASSERT_TRUE(udp.has_value());
+  if (srcPort.has_value()) {
+    EXPECT_EQ(udp->header().srcPort, srcPort.value());
+  }
+  if (dstPort.has_value()) {
+    EXPECT_EQ(udp->header().dstPort, dstPort.value());
+  }
+  if (payload.has_value()) {
+    EXPECT_EQ(udp->payload(), payload.value());
+  }
+}
+
+void verifyInnerIps(
+    const EthFrame& innerFrame,
+    const std::optional<folly::IPAddress>& srcIp,
+    const std::optional<folly::IPAddress>& dstIp) {
+  if (const auto& v6 = innerFrame.v6PayLoad()) {
+    if (srcIp.has_value()) {
+      EXPECT_EQ(folly::IPAddress(v6->header().srcAddr), srcIp.value());
+    }
+    if (dstIp.has_value()) {
+      EXPECT_EQ(folly::IPAddress(v6->header().dstAddr), dstIp.value());
+    }
+  } else if (const auto& v4 = innerFrame.v4PayLoad()) {
+    if (srcIp.has_value()) {
+      EXPECT_EQ(folly::IPAddress(v4->header().srcAddr), srcIp.value());
+    }
+    if (dstIp.has_value()) {
+      EXPECT_EQ(folly::IPAddress(v4->header().dstAddr), dstIp.value());
+    }
+  } else {
+    FAIL() << "Inner frame has no IP payload";
+  }
+}
+} // namespace
+
+void verifyVxlanEncap(
+    const EthFrame& rxFrame,
+    const VxlanEncapExpected& expected) {
+  const auto packet = parseVxlanPacket(rxFrame);
+  ASSERT_TRUE(packet.has_value()) << "Rx frame is not a VXLAN packet";
+  const auto outerHdr = rxFrame.header();
+  if (expected.outerDstMac.has_value()) {
+    EXPECT_EQ(outerHdr.dstAddr, expected.outerDstMac.value());
+  }
+  if (expected.outerSrcMac.has_value()) {
+    EXPECT_EQ(outerHdr.srcAddr, expected.outerSrcMac.value());
+  }
+  if (const auto& outerV6 = rxFrame.v6PayLoad()) {
+    const auto v6Hdr = outerV6->header();
+    if (expected.outerSrcIp.has_value()) {
+      EXPECT_EQ(folly::IPAddress(v6Hdr.srcAddr), expected.outerSrcIp.value());
+    }
+    if (expected.outerDstIp.has_value()) {
+      EXPECT_EQ(folly::IPAddress(v6Hdr.dstAddr), expected.outerDstIp.value());
+    }
+    if (expected.outerTrafficClass.has_value()) {
+      EXPECT_EQ(v6Hdr.trafficClass, expected.outerTrafficClass.value());
+    }
+    if (expected.outerHopLimit.has_value()) {
+      EXPECT_EQ(v6Hdr.hopLimit, expected.outerHopLimit.value());
+    }
+    if (expected.outerFlowLabel.has_value()) {
+      EXPECT_EQ(v6Hdr.flowLabel, expected.outerFlowLabel.value());
+    }
+  } else if (const auto& outerV4 = rxFrame.v4PayLoad()) {
+    const auto v4Hdr = outerV4->header();
+    if (expected.outerSrcIp.has_value()) {
+      EXPECT_EQ(folly::IPAddress(v4Hdr.srcAddr), expected.outerSrcIp.value());
+    }
+    if (expected.outerDstIp.has_value()) {
+      EXPECT_EQ(folly::IPAddress(v4Hdr.dstAddr), expected.outerDstIp.value());
+    }
+    if (expected.outerHopLimit.has_value()) {
+      EXPECT_EQ(v4Hdr.ttl, expected.outerHopLimit.value());
+    }
+  } else {
+    FAIL() << "VXLAN outer header has no IP payload";
+  }
+  EXPECT_EQ(packet->udp.header().dstPort, kVxlanUdpDstPort);
+  if (expected.vni.has_value()) {
+    EXPECT_EQ(packet->vni, expected.vni.value());
+  }
+  const auto innerHdr = packet->innerFrame.header();
+  if (expected.innerDstMac.has_value()) {
+    EXPECT_EQ(innerHdr.dstAddr, expected.innerDstMac.value());
+  }
+  if (expected.innerSrcMac.has_value()) {
+    EXPECT_EQ(innerHdr.srcAddr, expected.innerSrcMac.value());
+  }
+  verifyInnerIps(packet->innerFrame, expected.innerSrcIp, expected.innerDstIp);
+  verifyInnerUdp(
+      packet->innerFrame,
+      expected.innerSrcPort,
+      expected.innerDstPort,
+      expected.innerPayload);
+}
+
+void verifyVxlanDecap(
+    const EthFrame& rxFrame,
+    const VxlanDecapExpected& expected) {
+  EXPECT_FALSE(parseVxlanPacket(rxFrame).has_value())
+      << "Decap egress frame still carries a VXLAN header";
+  const auto hdr = rxFrame.header();
+  if (expected.innerDstMac.has_value()) {
+    EXPECT_EQ(hdr.dstAddr, expected.innerDstMac.value());
+  }
+  if (expected.innerSrcMac.has_value()) {
+    EXPECT_EQ(hdr.srcAddr, expected.innerSrcMac.value());
+  }
+  verifyInnerIps(rxFrame, expected.innerSrcIp, expected.innerDstIp);
+  if (const auto& v6 = rxFrame.v6PayLoad()) {
+    const auto v6Hdr = v6->header();
+    if (expected.innerTrafficClass.has_value()) {
+      EXPECT_EQ(v6Hdr.trafficClass, expected.innerTrafficClass.value());
+    }
+    if (expected.innerHopLimit.has_value()) {
+      EXPECT_EQ(v6Hdr.hopLimit, expected.innerHopLimit.value());
+    }
+  } else if (const auto& v4 = rxFrame.v4PayLoad()) {
+    const auto v4Hdr = v4->header();
+    if (expected.innerHopLimit.has_value()) {
+      EXPECT_EQ(v4Hdr.ttl, expected.innerHopLimit.value());
+    }
+  }
+  verifyInnerUdp(
+      rxFrame,
+      expected.innerSrcPort,
+      expected.innerDstPort,
+      expected.innerPayload);
 }
 
 } // namespace facebook::fboss::utility
