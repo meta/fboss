@@ -252,8 +252,11 @@ void SaiFdbManager::addMac(const std::shared_ptr<MacEntry>& macEntry) {
       metadata);
 }
 
-void SaiFdbManager::removeMac(const std::shared_ptr<MacEntry>& macEntry) {
-  removeFdbEntry(getInterfaceId(macEntry), macEntry->getMac());
+void SaiFdbManager::removeMac(
+    const std::shared_ptr<MacEntry>& macEntry,
+    VlanID vlanId) {
+  // Not the port's VLAN: the port may have moved to another VLAN already
+  removeFdbEntry(InterfaceID(vlanId), macEntry->getMac());
 }
 
 void SaiFdbManager::changeMac(
@@ -270,7 +273,7 @@ void SaiFdbManager::changeMac(
 
     if (oldEntry->getPort() != newEntry->getPort() ||
         !iter->second->isAlive()) {
-      removeMac(oldEntry);
+      removeFdbEntry(getInterfaceId(oldEntry), oldEntry->getMac());
       addMac(newEntry);
     } else {
       XLOGF(INFO, "Change fdb entry {}, {}", oldEntry->str(), newEntry->str());
@@ -281,7 +284,7 @@ void SaiFdbManager::changeMac(
         // previous entry was dynamic and got aged out
         if (oldEntry->getType() == MacEntryType::DYNAMIC_ENTRY &&
             e.getSaiStatus() == SAI_STATUS_ITEM_NOT_FOUND) {
-          removeMac(oldEntry);
+          removeFdbEntry(getInterfaceId(oldEntry), oldEntry->getMac());
           addMac(newEntry);
         } else {
           throw;

@@ -765,3 +765,74 @@ TEST_F(RouterInterfaceManagerVrfTest, routerInterfaceInMissingVrf) {
           makeInterface(testInterface)),
       FbossError);
 }
+
+TEST_F(RouterInterfaceManagerVrfTest, moveRouterInterfaceToVrf) {
+  auto state = programmedState->clone();
+  state->getInterfaces()->modify(&state)->addNode(
+      makeInterface(testInterfaces[0]), scope());
+  applyNewState(state);
+  auto oldRifId = saiManagerTable->routerInterfaceManager()
+                      .getRouterInterfaceHandle(InterfaceID(0))
+                      ->adapterKey();
+
+  auto movedInterface = testInterfaces[0];
+  movedInterface.routerId = RouterID(1001);
+  state = programmedState->clone();
+  state->getInterfaces()->modify(&state)->updateNode(
+      makeInterface(movedInterface), scope());
+  applyNewState(state);
+
+  EXPECT_FALSE(FakeSai::getInstance()->routeInterfaceManager.exists(oldRifId));
+  EXPECT_EQ(
+      rifVirtualRouterId(InterfaceID(0)), virtualRouterId(RouterID(1001)));
+  const auto& toMeRoutes = saiManagerTable->routerInterfaceManager()
+                               .getRouterInterfaceHandle(InterfaceID(0))
+                               ->toMeRoutes;
+  EXPECT_FALSE(toMeRoutes.empty());
+  for (const auto& toMeRoute : toMeRoutes) {
+    EXPECT_EQ(
+        toMeRoute->adapterHostKey().virtualRouterId(),
+        virtualRouterId(RouterID(1001)));
+  }
+}
+
+TEST_F(RouterInterfaceManagerVrfTest, moveRouterInterfaceToMissingVrf) {
+  auto oldInterface = makeInterface(testInterfaces[0]);
+  auto state = programmedState->clone();
+  state->getInterfaces()->modify(&state)->addNode(oldInterface, scope());
+  applyNewState(state);
+
+  auto movedInterface = testInterfaces[0];
+  movedInterface.routerId = RouterID(2002);
+  EXPECT_THROW(
+      saiManagerTable->routerInterfaceManager().changeLocalRouterInterface(
+          oldInterface, makeInterface(movedInterface)),
+      FbossError);
+
+  ASSERT_NE(
+      saiManagerTable->routerInterfaceManager().getRouterInterfaceHandle(
+          InterfaceID(0)),
+      nullptr);
+  EXPECT_EQ(rifVirtualRouterId(InterfaceID(0)), virtualRouterId(RouterID(0)));
+}
+
+TEST_F(RouterInterfaceManagerVrfTest, moveRouterInterfaceOutOfRemovedVrf) {
+  auto state = programmedState->clone();
+  state->getInterfaces()->modify(&state)->addNode(
+      makeInterface(testInterfaces[1]), scope());
+  applyNewState(state);
+
+  auto movedInterface = testInterfaces[1];
+  movedInterface.routerId = RouterID(0);
+  state = programmedState->clone();
+  state->getInterfaces()->modify(&state)->updateNode(
+      makeInterface(movedInterface), scope());
+  state->getVrfs()->modify(&state)->removeNode(RouterID(1001));
+  applyNewState(state);
+
+  EXPECT_EQ(
+      saiManagerTable->virtualRouterManager().getVirtualRouterHandle(
+          RouterID(1001)),
+      nullptr);
+  EXPECT_EQ(rifVirtualRouterId(InterfaceID(1)), virtualRouterId(RouterID(0)));
+}

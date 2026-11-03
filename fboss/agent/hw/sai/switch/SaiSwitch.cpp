@@ -1223,7 +1223,9 @@ std::shared_ptr<SwitchState> SaiSwitch::stateChangedImplLocked(
         vlanDelta.getMacDelta(),
         managerTable_->fdbManager(),
         lockPolicy,
-        &SaiFdbManager::removeMac);
+        &SaiFdbManager::removeMac,
+        (vlanDelta.getOld() ? vlanDelta.getOld() : vlanDelta.getNew())
+            ->getID());
   }
 
   // NOTE: Neighbor removals must be processed before changes/adds.
@@ -1261,13 +1263,6 @@ std::shared_ptr<SwitchState> SaiSwitch::stateChangedImplLocked(
       managerTable_->routerInterfaceManager(),
       lockPolicy,
       &SaiRouterInterfaceManager::removeLocalRouterInterface);
-
-  // Remove virtual routers after the routes and router interfaces using them
-  processRemovedDelta(
-      delta.getVrfsDelta(),
-      managerTable_->virtualRouterManager(),
-      lockPolicy,
-      &SaiVirtualRouterManager::removeVrf);
 
   // Remove system ports (which may depend on local ports
   // before removing ports)
@@ -1450,6 +1445,14 @@ std::shared_ptr<SwitchState> SaiSwitch::stateChangedImplLocked(
       managerTable_->routerInterfaceManager(),
       lockPolicy,
       &SaiRouterInterfaceManager::addRemoteRouterInterface);
+
+  // Remove virtual routers after the routes and router interfaces using them
+  // are removed or moved to another virtual router
+  processRemovedDelta(
+      delta.getVrfsDelta(),
+      managerTable_->virtualRouterManager(),
+      lockPolicy,
+      &SaiVirtualRouterManager::removeVrf);
 
   // For VOQ switches, neighbor tables live on port based RIFs.
   // NOTE: Per interface, the order is: change ARP, add ARP, change NDP,
