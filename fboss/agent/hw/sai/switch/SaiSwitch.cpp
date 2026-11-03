@@ -956,6 +956,7 @@ void SaiSwitch::rollback(const std::vector<StateDelta>& deltas) noexcept {
     for (const auto& delta : deltas) {
       stateChangedImplLocked(delta, lockPolicy);
     }
+    updateResourceUsage(lockPolicy);
     saiStore_->printWarmbootHandles();
     saiStore_->removeUnexpectedUnclaimedWarmbootHandles();
     bootType_ = curBootType;
@@ -1153,6 +1154,7 @@ std::shared_ptr<SwitchState> SaiSwitch::stateChangedImpl(
     setIntermediateState(appliedState);
     count++;
   }
+  updateResourceUsage(lockPolicy);
   return appliedState;
 }
 
@@ -1840,11 +1842,6 @@ std::shared_ptr<SwitchState> SaiSwitch::stateChangedImplLocked(
 
   processPfcWatchdogGlobalDelta(delta, lockPolicy);
 
-  if (platform_->getAsic()->isSupported(
-          HwAsic::Feature::RESOURCE_USAGE_STATS)) {
-    updateResourceUsage(lockPolicy);
-  }
-
   // Process link state change delta and update the LED status
   processLinkStateChangeDelta(delta, lockPolicy);
   // Undrain switch last
@@ -1856,6 +1853,10 @@ std::shared_ptr<SwitchState> SaiSwitch::stateChangedImplLocked(
 
 template <typename LockPolicyT>
 void SaiSwitch::updateResourceUsage(const LockPolicyT& lockPolicy) {
+  if (!platform_->getAsic()->isSupported(
+          HwAsic::Feature::RESOURCE_USAGE_STATS)) {
+    return;
+  }
   [[maybe_unused]] const auto& lock = lockPolicy.lock();
 
   try {
