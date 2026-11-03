@@ -15,9 +15,11 @@ class RemoteNeighborUpdater : public StateObserver {
   void stateUpdated(const StateDelta& delta) override;
 
  private:
-  void processChangedInterface(
+  // static: the stateUpdated() update lambda must not capture `this`.
+  static void processChangedInterface(
+      SwSwitch* sw,
       std::shared_ptr<SwitchState>* state,
-      const std::shared_ptr<Interface>& newInterface) const;
+      const std::shared_ptr<Interface>& newInterface);
   SwSwitch* sw_{nullptr};
 };
 

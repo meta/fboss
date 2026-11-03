@@ -867,6 +867,56 @@ TEST_F(SwSwitchTestNbrs, TestStateNonCoalescing) {
   verifyReachableCnt(0);
 }
 
+// The neighbor-cache update lambdas must not reach back into their cache:
+// SwSwitch::stop() destroys every cache before the update queue is drained.
+// Queue updates from a cache of our own, destroy it while the update thread
+// is held, then let them run. Without the by-value captures this is a
+// use-after-free, visible under ASAN; the state check shows the updates ran
+// rather than being dropped.
+TEST_F(SwSwitchTestNbrs, neighborUpdatesOutliveTheirCache) {
+  const PortID kPort1{1};
+  const VlanID kVlan1{1};
+  const InterfaceID kInterfaceID1{1};
+  const IPAddressV4 kIp("10.0.0.2");
+  const MacAddress kMac("01:02:03:04:05:06");
+  const auto kClassID = cfg::AclLookupClass::CLASS_QUEUE_PER_HOST_QUEUE_0;
+  sw->updateStateBlocking(
+      "Bring Ports Up", [](const std::shared_ptr<SwitchState>& state) {
+        return bringAllPortsUp(state);
+      });
+
+  folly::Baton<> blocked;
+  folly::Baton<> release;
+  sw->getUpdateEvb()->runInEventBaseThread([&blocked, &release] {
+    blocked.post();
+    release.wait();
+  });
+  blocked.wait();
+
+  // Cache entries are timeouts on the neighbor-cache evb, so the cache lives
+  // and dies there.
+  sw->getNeighborCacheEvb()->runInFbossEventBaseThreadAndWait(
+      [sw = this->sw, kPort1, kVlan1, kInterfaceID1, kIp, kMac, kClassID] {
+        auto cache = std::make_unique<ArpCache>(
+            sw, sw->getState().get(), kVlan1, "Vlan1", kInterfaceID1);
+        cache->receivedArpMine(
+            kIp, kMac, PortDescriptor(kPort1), ArpOpCode::ARP_OP_REPLY);
+        cache->updateEntryClassID(kIp, kClassID);
+      });
+
+  release.post();
+  waitForStateUpdates(sw);
+
+  auto entry = sw->getState()
+                   ->getInterfaces()
+                   ->getNode(kInterfaceID1)
+                   ->getArpTable()
+                   ->getEntryIf(kIp);
+  // LookupClassUpdater may reassign the classID, so only the MAC is checked.
+  ASSERT_TRUE(entry);
+  EXPECT_EQ(entry->getMac(), kMac);
+}
+
 TEST_F(SwSwitchTest, FillFsdbStatsNullShelManager) {
   // This test exercises fillFsdbStats() on an NPU (non-VOQ) switch
   // configuration where shelManager_ is null. Without the null check
