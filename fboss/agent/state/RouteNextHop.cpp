@@ -97,6 +97,10 @@ NextHop fromThrift(const NextHopThrift& nht, bool allowV6NonLinkLocal) {
     overlayDstMac = folly::MacAddress(*nht.overlayDstMac());
   }
   auto role = *nht.role();
+  std::optional<RouterID> vrf = std::nullopt;
+  if (nht.vrf()) {
+    vrf = RouterID(*nht.vrf());
+  }
 
   auto address = network::toIPAddress(*nht.address());
   NextHopWeight weight = static_cast<NextHopWeight>(*nht.weight());
@@ -121,6 +125,7 @@ NextHop fromThrift(const NextHopThrift& nht, bool allowV6NonLinkLocal) {
         tunnelId,
         cost,
         role,
+        vrf,
         overlayDstMac);
   } else {
     return UnresolvedNextHop(
@@ -135,6 +140,7 @@ NextHop fromThrift(const NextHopThrift& nht, bool allowV6NonLinkLocal) {
         tunnelId,
         cost,
         role,
+        vrf,
         overlayDstMac);
   }
 }
@@ -212,8 +218,10 @@ bool operator<(const NextHop& a, const NextHop& b) {
     return a.overlayDstMac() < b.overlayDstMac();
   } else if (a.cost() != b.cost()) {
     return a.cost() < b.cost();
-  } else {
+  } else if (a.role() != b.role()) {
     return a.role() < b.role();
+  } else {
+    return a.vrf() < b.vrf();
   }
 }
 
@@ -240,7 +248,7 @@ bool operator==(const NextHop& a, const NextHop& b) {
       a.srv6SegmentList() == b.srv6SegmentList() &&
       a.tunnelType() == b.tunnelType() && a.tunnelId() == b.tunnelId() &&
       a.overlayDstMac() == b.overlayDstMac() && a.cost() == b.cost() &&
-      a.role() == b.role());
+      a.role() == b.role() && a.vrf() == b.vrf());
 }
 
 bool operator!=(const NextHop& a, const NextHop& b) {
@@ -260,6 +268,7 @@ ResolvedNextHop::ResolvedNextHop(
     const std::optional<std::string>& tunnelId,
     const std::optional<int64_t>& cost,
     NextHopRole role,
+    const std::optional<RouterID>& vrf,
     const std::optional<folly::MacAddress>& overlayDstMac)
     : addr_(addr),
       intfID_(intfID),
@@ -273,6 +282,7 @@ ResolvedNextHop::ResolvedNextHop(
       tunnelId_(tunnelId),
       cost_(cost),
       role_(role),
+      vrf_(vrf),
       overlayDstMac_(overlayDstMac) {
   validateSrv6Fields(srv6SegmentList_, tunnelType_, tunnelId_);
   validateOverlayDstMac(overlayDstMac_, tunnelType_, tunnelId_);
@@ -291,6 +301,7 @@ ResolvedNextHop::ResolvedNextHop(
     std::optional<std::string>&& tunnelId,
     std::optional<int64_t>&& cost,
     NextHopRole role,
+    const std::optional<RouterID>& vrf,
     std::optional<folly::MacAddress>&& overlayDstMac)
     : addr_(std::move(addr)),
       intfID_(intfID),
@@ -304,6 +315,7 @@ ResolvedNextHop::ResolvedNextHop(
       tunnelId_(std::move(tunnelId)),
       cost_(std::move(cost)),
       role_(role),
+      vrf_(vrf),
       overlayDstMac_(std::move(overlayDstMac)) {
   validateSrv6Fields(srv6SegmentList_, tunnelType_, tunnelId_);
   validateOverlayDstMac(overlayDstMac_, tunnelType_, tunnelId_);
@@ -321,6 +333,7 @@ UnresolvedNextHop::UnresolvedNextHop(
     const std::optional<std::string>& tunnelId,
     const std::optional<int64_t>& cost,
     NextHopRole role,
+    const std::optional<RouterID>& vrf,
     const std::optional<folly::MacAddress>& overlayDstMac)
     : addr_(addr),
       weight_(weight),
@@ -333,6 +346,7 @@ UnresolvedNextHop::UnresolvedNextHop(
       tunnelId_(tunnelId),
       cost_(cost),
       role_(role),
+      vrf_(vrf),
       overlayDstMac_(overlayDstMac) {
   if (addr_.isV6() && addr_.isLinkLocal()) {
     throw FbossError(
@@ -354,6 +368,7 @@ UnresolvedNextHop::UnresolvedNextHop(
     std::optional<std::string>&& tunnelId,
     std::optional<int64_t>&& cost,
     NextHopRole role,
+    const std::optional<RouterID>& vrf,
     std::optional<folly::MacAddress>&& overlayDstMac)
     : addr_(std::move(addr)),
       weight_(weight),
@@ -366,6 +381,7 @@ UnresolvedNextHop::UnresolvedNextHop(
       tunnelId_(std::move(tunnelId)),
       cost_(std::move(cost)),
       role_(role),
+      vrf_(vrf),
       overlayDstMac_(std::move(overlayDstMac)) {
   if (addr_.isV6() && addr_.isLinkLocal()) {
     throw FbossError(
@@ -386,7 +402,7 @@ bool operator==(const ResolvedNextHop& a, const ResolvedNextHop& b) {
       a.srv6SegmentList() == b.srv6SegmentList() &&
       a.tunnelType() == b.tunnelType() && a.tunnelId() == b.tunnelId() &&
       a.overlayDstMac() == b.overlayDstMac() && a.cost() == b.cost() &&
-      a.role() == b.role());
+      a.role() == b.role() && a.vrf() == b.vrf());
 }
 
 bool operator==(const UnresolvedNextHop& a, const UnresolvedNextHop& b) {
@@ -399,7 +415,7 @@ bool operator==(const UnresolvedNextHop& a, const UnresolvedNextHop& b) {
       a.srv6SegmentList() == b.srv6SegmentList() &&
       a.tunnelType() == b.tunnelType() && a.tunnelId() == b.tunnelId() &&
       a.overlayDstMac() == b.overlayDstMac() && a.cost() == b.cost() &&
-      a.role() == b.role());
+      a.role() == b.role() && a.vrf() == b.vrf());
 }
 
 } // namespace facebook::fboss

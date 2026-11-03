@@ -400,6 +400,7 @@ RouteNextHopSet resolveNhopFromRib(
           nh.tunnelId(),
           nh.cost(),
           nh.role(),
+          std::nullopt, /* vrf */
           nh.overlayDstMac()));
     } else {
       std::vector<ResolvedNextHop> nhops;
@@ -418,6 +419,7 @@ RouteNextHopSet resolveNhopFromRib(
             nh.tunnelId(),
             nh.cost(),
             nh.role(),
+            std::nullopt, /* vrf */
             nh.overlayDstMac());
       }
       resolved.insert(nhops.begin(), nhops.end());

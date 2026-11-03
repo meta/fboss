@@ -588,6 +588,7 @@ struct NextHopCombinedWeightsKey {
         tunnelId(nhop.tunnelId()),
         cost(nhop.cost()),
         role(nhop.role()),
+        vrf(nhop.vrf()),
         overlayDstMac(nhop.overlayDstMac()) {
     /* "weightless" next hop, consider all attrs of L3 next hop except its
      * weight, this is used in computing number of required paths to next hop,
@@ -605,6 +606,7 @@ struct NextHopCombinedWeightsKey {
                tunnelId,
                cost,
                role,
+               vrf,
                overlayDstMac) <
         std::tie(
                other.ip,
@@ -617,6 +619,7 @@ struct NextHopCombinedWeightsKey {
                other.tunnelId,
                other.cost,
                other.role,
+               other.vrf,
                other.overlayDstMac);
   }
   folly::IPAddress ip;
@@ -629,6 +632,7 @@ struct NextHopCombinedWeightsKey {
   std::optional<std::string> tunnelId;
   std::optional<int64_t> cost;
   NextHopRole role;
+  std::optional<RouterID> vrf;
   std::optional<folly::MacAddress> overlayDstMac;
 };
 using NextHopCombinedWeights =
@@ -744,6 +748,7 @@ RouteNextHopSet optimizeWeights(const NextHopCombinedWeights& cws) {
         cw.first.tunnelId,
         cw.first.cost,
         cw.first.role,
+        cw.first.vrf,
         cw.first.overlayDstMac));
   }
   return fwd;
@@ -795,6 +800,7 @@ RouteNextHopSet mergeForwardInfosEcmp(
             fnh.tunnelId(),
             fnh.cost(),
             fnh.role(),
+            fnh.vrf(),
             fnh.overlayDstMac()));
       }
     }
@@ -970,6 +976,7 @@ void RibRouteUpdater::getFwdInfoFromNhop(
             srv6Encap.tunnelId,
             cost,
             role,
+            std::nullopt, /* vrf */
             overlayDstMac));
       } else {
         std::for_each(
@@ -1002,6 +1009,7 @@ void RibRouteUpdater::getFwdInfoFromNhop(
                   srv6Encap.tunnelId,
                   cost,
                   role,
+                  nhop.vrf(),
                   overlayDstMac));
             });
       }

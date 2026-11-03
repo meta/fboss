@@ -58,6 +58,9 @@ RouteDetails RouteFields<AddrT>::toRouteDetails(
       IfAndIP ifAndIp;
       *ifAndIp.interfaceID() = nh.intf();
       *ifAndIp.ip() = toBinaryAddress(nh.addr());
+      if (auto vrf = nh.vrf()) {
+        ifAndIp.vrf() = static_cast<int32_t>(*vrf);
+      }
       rdetails.fwdInfo()->push_back(ifAndIp);
       nhops.push_back(nh.toThrift());
     }

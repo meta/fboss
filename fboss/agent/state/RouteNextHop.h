@@ -101,6 +101,10 @@ struct INextHop {
       return folly::poly_call<12>(*this);
     }
 
+    std::optional<RouterID> vrf() const {
+      return folly::poly_call<13>(*this);
+    }
+
     bool isResolved() const {
       return intfID().has_value();
     }
@@ -169,6 +173,9 @@ struct INextHop {
         nht.cost() = value.value();
       }
       *nht.role() = role();
+      if (auto value = vrf()) {
+        nht.vrf() = static_cast<int32_t>(value.value());
+      }
       return nht;
     }
 
@@ -198,7 +205,8 @@ struct INextHop {
       &T::tunnelId,
       &T::cost,
       &T::role,
-      &T::overlayDstMac);
+      &T::overlayDstMac,
+      &T::vrf);
 };
 
 using NextHop = folly::Poly<INextHop>;
@@ -229,6 +237,7 @@ class ResolvedNextHop {
       const std::optional<std::string>& tunnelId = std::nullopt,
       const std::optional<int64_t>& cost = std::nullopt,
       NextHopRole role = NextHopRole::PRIMARY,
+      const std::optional<RouterID>& vrf = std::nullopt,
       const std::optional<folly::MacAddress>& overlayDstMac = std::nullopt);
   ResolvedNextHop(
       folly::IPAddress&& addr,
@@ -244,6 +253,7 @@ class ResolvedNextHop {
       std::optional<std::string>&& tunnelId = std::nullopt,
       std::optional<int64_t>&& cost = std::nullopt,
       NextHopRole role = NextHopRole::PRIMARY,
+      const std::optional<RouterID>& vrf = std::nullopt,
       std::optional<folly::MacAddress>&& overlayDstMac = std::nullopt);
   std::optional<InterfaceID> intfID() const {
     return intfID_;
@@ -325,6 +335,14 @@ class ResolvedNextHop {
     return role_;
   }
 
+  std::optional<RouterID> vrf() const {
+    return vrf_;
+  }
+
+  void setVrf(const std::optional<RouterID>& vrf) {
+    vrf_ = vrf;
+  }
+
  private:
   folly::IPAddress addr_;
   InterfaceID intfID_;
@@ -338,6 +356,7 @@ class ResolvedNextHop {
   std::optional<std::string> tunnelId_;
   std::optional<int64_t> cost_;
   NextHopRole role_;
+  std::optional<RouterID> vrf_;
   std::optional<folly::MacAddress> overlayDstMac_;
 };
 
@@ -358,6 +377,7 @@ class UnresolvedNextHop {
       const std::optional<std::string>& tunnelId = std::nullopt,
       const std::optional<int64_t>& cost = std::nullopt,
       NextHopRole role = NextHopRole::PRIMARY,
+      const std::optional<RouterID>& vrf = std::nullopt,
       const std::optional<folly::MacAddress>& overlayDstMac = std::nullopt);
   UnresolvedNextHop(
       folly::IPAddress&& addr,
@@ -372,6 +392,7 @@ class UnresolvedNextHop {
       std::optional<std::string>&& tunnelId = std::nullopt,
       std::optional<int64_t>&& cost = std::nullopt,
       NextHopRole role = NextHopRole::PRIMARY,
+      const std::optional<RouterID>& vrf = std::nullopt,
       std::optional<folly::MacAddress>&& overlayDstMac = std::nullopt);
   std::optional<InterfaceID> intfID() const {
     return std::nullopt;
@@ -419,6 +440,10 @@ class UnresolvedNextHop {
     return role_;
   }
 
+  std::optional<RouterID> vrf() const {
+    return vrf_;
+  }
+
  private:
   folly::IPAddress addr_;
   NextHopWeight weight_;
@@ -431,6 +456,7 @@ class UnresolvedNextHop {
   std::optional<std::string> tunnelId_;
   std::optional<int64_t> cost_;
   NextHopRole role_;
+  std::optional<RouterID> vrf_;
   std::optional<folly::MacAddress> overlayDstMac_;
 };
 
@@ -488,6 +514,7 @@ struct hash<facebook::fboss::NextHop> {
         nexthop.tunnelId(),
         nexthop.cost(),
         nexthop.role(),
+        nexthop.vrf(),
         nexthop.overlayDstMac());
     for (const auto& seg : nexthop.srv6SegmentList()) {
       seed = folly::hash::hash_combine(seed, seg);
@@ -511,6 +538,7 @@ struct hash<facebook::fboss::ResolvedNextHop> {
         nexthop.tunnelId(),
         nexthop.cost(),
         nexthop.role(),
+        nexthop.vrf(),
         nexthop.overlayDstMac());
     for (const auto& seg : nexthop.srv6SegmentList()) {
       seed = folly::hash::hash_combine(seed, seg);
