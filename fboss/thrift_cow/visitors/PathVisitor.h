@@ -5,6 +5,7 @@
 #include <type_traits>
 #include <utility>
 #include "folly/Conv.h"
+#include "folly/String.h"
 
 #include <fboss/fsdb/if/gen-cpp2/fsdb_oper_types.h>
 #include <fboss/thrift_cow/nodes/NodeUtils.h>
