@@ -397,6 +397,13 @@ DEFINE_bool(
     false,
     "Resolve nexthops from NextHopSetID in FibInfo maps instead of inline nexthops");
 
+DEFINE_bool(
+    drop_inline_nexthops_with_id,
+    false,
+    "Drop inline nexthops from route entries that carry a NextHopSetID. SAI "
+    "only; requires resolve_nexthops_from_id and enable_nexthop_id_manager, "
+    "and turning either of those off afterwards needs a cold boot");
+
 DEFINE_int32(
     ecmp_resource_manager_make_before_break_buffer,
     2,

@@ -967,6 +967,11 @@ void RouteNextHopEntry::setNextHops(const NextHopSet& nhops) {
   set<switch_state_tags::nexthops>(util::fromRouteNextHopSet(nhops));
 }
 
+void RouteNextHopEntry::clearInlineNextHops() {
+  // Bypasses setNextHops, which rejects an empty set.
+  set<switch_state_tags::nexthops>(util::fromRouteNextHopSet(NextHopSet{}));
+}
+
 bool RouteNextHopEntry::hasOverrideSwitchingModeOrNhops() const {
   return hasOverrideSwitchingMode() || hasOverrideNextHops();
 }

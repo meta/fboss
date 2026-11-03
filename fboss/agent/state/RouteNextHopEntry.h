@@ -101,6 +101,9 @@ class RouteNextHopEntry
   // nexthops will be removeed in the future
   NextHopSet getNextHopSet() const;
   void setNextHops(const NextHopSet& nhops);
+  // Drops the inline nexthops, keeping the action and the set IDs. Readers
+  // must already resolve via the IDs.
+  void clearInlineNextHops();
 
   const std::optional<RouteCounterID> getCounterID() const {
     if (auto counter = safe_cref<switch_state_tags::counterID>()) {

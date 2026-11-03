@@ -866,17 +866,11 @@ state::SwitchState SwSwitch::updateOverrideEcmpSwitchingMode(
           switchingMode == cfg::SwitchingMode::PER_PACKET_QUALITY) {
         return;
       }
-      auto newFwd = RouteNextHopEntry(
-          fwd.getNextHopSet(),
-          fwd.getAdminDistance(),
-          fwd.getCounterID(),
-          fwd.getClassID(),
-          std::optional<cfg::SwitchingMode>(switchingMode),
-          fwd.getOverrideNextHops(),
-          fwd.getNormalizedResolvedNextHopSetID(),
-          fwd.getResolvedNextHopSetID(),
-          fwd.getClientNextHopSetID(),
-          fwd.getOverrideNextHopSetID());
+      // Copy and adjust: under drop_inline_nexthops_with_id the inline set
+      // is empty and the nexthop-set ctor rejects it.
+      RouteNextHopEntry newFwd(fwd.toThrift());
+      newFwd.setOverrideEcmpSwitchingMode(
+          std::optional<cfg::SwitchingMode>(switchingMode));
       fib.value().at(routeName).fwd() = newFwd.toThrift();
     }
   };

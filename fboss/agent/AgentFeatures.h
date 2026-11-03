@@ -124,6 +124,7 @@ DECLARE_bool(enable_ecmp_resource_manager);
 DECLARE_int32(ecmp_resource_manager_make_before_break_buffer);
 DECLARE_bool(enable_nexthop_id_manager);
 DECLARE_bool(resolve_nexthops_from_id);
+DECLARE_bool(drop_inline_nexthops_with_id);
 
 DECLARE_int32(update_stats_interval_s);
 DECLARE_bool(update_route_with_dlb_type);

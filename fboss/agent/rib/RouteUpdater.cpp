@@ -17,6 +17,7 @@
 #include <boost/integer/common_factor.hpp>
 #include <folly/logging/xlog.h>
 
+#include "fboss/agent/AgentFeatures.h"
 #include "fboss/agent/FbossError.h"
 #include "fboss/agent/if/gen-cpp2/ctrl_types.h"
 #include "fboss/agent/rib/NextHopIDManager.h"
@@ -251,6 +252,11 @@ std::optional<RouteNextHopEntry> RibRouteUpdater::stampClientNextHopSetID(
     nextHopIDManager_->decrOrDeallocRouteNextHopSetID(*oldClientNextHopSetID);
   }
   entryWithId.setClientNextHopSetID(newClientNextHopSetID);
+  if (FLAGS_drop_inline_nexthops_with_id && newClientNextHopSetID.has_value()) {
+    CHECK(FLAGS_resolve_nexthops_from_id)
+        << "FLAGS_drop_inline_nexthops_with_id requires FLAGS_resolve_nexthops_from_id";
+    entryWithId.clearInlineNextHops();
+  }
   return entryWithId;
 }
 
@@ -1253,6 +1259,12 @@ std::shared_ptr<Route<AddressT>> RibRouteUpdater::resolveOne(
       nhop->setResolvedNextHopSetID(newResolvedNextHopSetId);
       nhop->setNormalizedResolvedNextHopSetID(
           newNormalizedResolvedNextHopSetId);
+      if (FLAGS_drop_inline_nexthops_with_id &&
+          newResolvedNextHopSetId.has_value()) {
+        CHECK(FLAGS_resolve_nexthops_from_id)
+            << "FLAGS_drop_inline_nexthops_with_id requires FLAGS_resolve_nexthops_from_id";
+        nhop->clearInlineNextHops();
+      }
       updatedRoute->setResolved(*nhop);
       if ((clientId == kInterfaceRouteClientId ||
            clientId == kRemoteInterfaceRouteClientId) &&

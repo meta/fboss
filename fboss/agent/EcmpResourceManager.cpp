@@ -47,17 +47,12 @@ void updateRouteOverrides(
     overrideNhops = (*mergeInfoItr)->second.mergedNhops;
     overrideSetId = (*mergeInfoItr)->second.overrideSetId;
   }
-  auto newForwardInfo = RouteNextHopEntry(
-      curForwardInfo.getNextHopSet(),
-      curForwardInfo.getAdminDistance(),
-      curForwardInfo.getCounterID(),
-      curForwardInfo.getClassID(),
-      backupSwitchingMode,
-      overrideNhops,
-      curForwardInfo.getNormalizedResolvedNextHopSetID(),
-      curForwardInfo.getResolvedNextHopSetID(),
-      curForwardInfo.getClientNextHopSetID(),
-      overrideSetId);
+  // Copy and adjust rather than rebuild from the nexthop set: under
+  // drop_inline_nexthops_with_id that set is empty and the ctor rejects it.
+  RouteNextHopEntry newForwardInfo(curForwardInfo.toThrift());
+  newForwardInfo.setOverrideEcmpSwitchingMode(backupSwitchingMode);
+  newForwardInfo.setOverrideNextHops(overrideNhops);
+  newForwardInfo.setOverrideNextHopSetID(overrideSetId);
   XLOG(DBG2) << " Set : " << route->str()
              << " backup switching mode to : " << backupSwitchingMode
              << " override next hops to : "
@@ -1528,17 +1523,12 @@ EcmpResourceManager::updateForwardingInfoAndInsertDelta(
   }
   XLOG(DBG2) << " Will set backup switching mode for : " << route->str()
              << " to: " << getBackupEcmpSwitchingMode();
-  auto newForwardInfo = RouteNextHopEntry(
-      curForwardInfo.getNextHopSet(),
-      curForwardInfo.getAdminDistance(),
-      curForwardInfo.getCounterID(),
-      curForwardInfo.getClassID(),
-      overrideMode,
-      grpInfo->getOverrideNextHops(),
-      curForwardInfo.getNormalizedResolvedNextHopSetID(),
-      curForwardInfo.getResolvedNextHopSetID(),
-      curForwardInfo.getClientNextHopSetID(),
-      overrideSetId);
+  // See updateRouteOverrides: copy and adjust, never rebuild from the
+  // (possibly dropped) inline nexthop set.
+  RouteNextHopEntry newForwardInfo(curForwardInfo.toThrift());
+  newForwardInfo.setOverrideEcmpSwitchingMode(overrideMode);
+  newForwardInfo.setOverrideNextHops(grpInfo->getOverrideNextHops());
+  newForwardInfo.setOverrideNextHopSetID(overrideSetId);
   auto newRoute = route->clone();
   newRoute->setResolved(std::move(newForwardInfo));
   newRoute->publish();

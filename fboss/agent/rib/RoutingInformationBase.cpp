@@ -1179,17 +1179,11 @@ void RibRouteTables::setOverrideEcmpMode(
               }
               ritr->value() = ribRoute->clone();
               const auto& curForwardInfo = ritr->value()->getForwardInfo();
-              auto newForwardInfo = RouteNextHopEntry(
-                  curForwardInfo.getNextHopSet(),
-                  curForwardInfo.getAdminDistance(),
-                  curForwardInfo.getCounterID(),
-                  curForwardInfo.getClassID(),
-                  overrideEcmpMode,
-                  curForwardInfo.getOverrideNextHops(),
-                  curForwardInfo.getNormalizedResolvedNextHopSetID(),
-                  curForwardInfo.getResolvedNextHopSetID(),
-                  curForwardInfo.getClientNextHopSetID(),
-                  curForwardInfo.getOverrideNextHopSetID());
+              // Copy and adjust rather than rebuild from the nexthop set:
+              // under drop_inline_nexthops_with_id that set is empty and the
+              // ctor rejects it.
+              RouteNextHopEntry newForwardInfo(curForwardInfo.toThrift());
+              newForwardInfo.setOverrideEcmpSwitchingMode(overrideEcmpMode);
               ritr->value()->setResolved(newForwardInfo);
               ritr->value()->publish();
             };
@@ -1234,17 +1228,10 @@ void RibRouteTables::setOverrideEcmpNhops(
               }
               ritr->value() = ribRoute->clone();
               const auto& curForwardInfo = ritr->value()->getForwardInfo();
-              auto newForwardInfo = RouteNextHopEntry(
-                  curForwardInfo.getNextHopSet(),
-                  curForwardInfo.getAdminDistance(),
-                  curForwardInfo.getCounterID(),
-                  curForwardInfo.getClassID(),
-                  curForwardInfo.getOverrideEcmpSwitchingMode(),
-                  overrideNhops.nhops,
-                  curForwardInfo.getNormalizedResolvedNextHopSetID(),
-                  curForwardInfo.getResolvedNextHopSetID(),
-                  curForwardInfo.getClientNextHopSetID(),
-                  overrideNhops.setId);
+              // See setOverrideEcmpSwitchingMode: copy and adjust.
+              RouteNextHopEntry newForwardInfo(curForwardInfo.toThrift());
+              newForwardInfo.setOverrideNextHops(overrideNhops.nhops);
+              newForwardInfo.setOverrideNextHopSetID(overrideNhops.setId);
               ritr->value()->setResolved(newForwardInfo);
               ritr->value()->publish();
             };
@@ -1308,6 +1295,11 @@ RibRouteTables::RouterIDToRouteTable RibRouteTables::constructRouteTables(
 }
 
 RoutingInformationBase::RoutingInformationBase() {
+  CHECK(
+      !FLAGS_drop_inline_nexthops_with_id ||
+      (FLAGS_enable_nexthop_id_manager && FLAGS_resolve_nexthops_from_id))
+      << "drop_inline_nexthops_with_id requires enable_nexthop_id_manager and "
+         "resolve_nexthops_from_id";
   XLOG(INFO) << "[NextHop ID Manager] flags:"
              << " enable_nexthop_id_manager="
              << (FLAGS_enable_nexthop_id_manager ? "enabled" : "disabled")
@@ -1315,7 +1307,9 @@ RoutingInformationBase::RoutingInformationBase() {
              << (FLAGS_resolve_nexthops_from_id ? "enabled" : "disabled")
              << " verify_fib_nexthop_id_consistency="
              << (FLAGS_verify_fib_nexthop_id_consistency ? "enabled"
-                                                         : "disabled");
+                                                         : "disabled")
+             << " drop_inline_nexthops_with_id="
+             << (FLAGS_drop_inline_nexthops_with_id ? "enabled" : "disabled");
   ribUpdateThread_ = std::make_unique<std::thread>([this] {
     initThread("ribUpdateThread");
     ribUpdateEventBase_.loopForever();
