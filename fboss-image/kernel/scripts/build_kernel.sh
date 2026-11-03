@@ -26,6 +26,13 @@ CONTAINER_DIST_DIR="$KERNEL_ROOT/dist"
 CONTAINER_SPECS_DIR="$KERNEL_ROOT/specs"
 CONTAINER_CONFIGS_DIR="$KERNEL_ROOT/configs"
 CONTAINER_SCRIPTS_DIR="$KERNEL_ROOT/scripts"
+COMMON_SCRIPTS_DIR="$KERNEL_ROOT/../../../oss/scripts"
+if [ ! -f "$COMMON_SCRIPTS_DIR/component_version.py" ]; then
+  COMMON_SCRIPTS_DIR=/fboss/oss/scripts
+fi
+
+python3 "$COMMON_SCRIPTS_DIR/component_version.py" kernel --prepare \
+  --output-dir "$OUT_DIR" --scripts-dir "$CONTAINER_SCRIPTS_DIR"
 
 # Install kernel build dependencies
 bash "$CONTAINER_SCRIPTS_DIR/setup_kernel_build_deps.sh"
@@ -41,7 +48,10 @@ cd "$BUILD_DIR"
 # actually landed and fall back to the kernel.org git snapshot (converted to
 # .tar.xz to match Source0 in kernel.spec) when the primary source is missing.
 KERNEL_TARBALL="SOURCES/linux-$KERNEL_VERSION.tar.xz"
+KERNEL_SOURCE_INFO="$KERNEL_TARBALL.download-url"
+unset KERNEL_SOURCE_DOWNLOAD_URL
 if [ ! -f "$BUILD_DIR/$KERNEL_TARBALL" ]; then
+  rm -f "$KERNEL_SOURCE_INFO"
   spectool -g -C SOURCES "$CONTAINER_SPECS_DIR/kernel.spec" \
     --define "kernel_version $KERNEL_VERSION"
 
@@ -56,6 +66,15 @@ if [ ! -f "$BUILD_DIR/$KERNEL_TARBALL" ]; then
     # Convert .tar.gz -> .tar.xz so rpmbuild/kernel.spec Source0 matches.
     gunzip -f "SOURCES/linux-$KERNEL_VERSION.tar.gz"
     xz -z "SOURCES/linux-$KERNEL_VERSION.tar"
+    source_checksum="$(sha256sum "$KERNEL_TARBALL")"
+    printf '%s %s\n' "${source_checksum%% *}" "$snapshot_url" > "$KERNEL_SOURCE_INFO"
+  fi
+fi
+
+if [ -f "$KERNEL_SOURCE_INFO" ] && read -r source_sha256 source_url < "$KERNEL_SOURCE_INFO"; then
+  source_checksum="$(sha256sum "$KERNEL_TARBALL")"
+  if [ "${source_checksum%% *}" = "$source_sha256" ]; then
+    export KERNEL_SOURCE_DOWNLOAD_URL="$source_url"
   fi
 fi
 
@@ -83,6 +102,9 @@ echo "$(date) Kernel build completed successfully"
 cp -r RPMS/* "$OUT_DIR"/ 2>/dev/null
 cp -r SRPMS/* "$OUT_DIR"/ 2>/dev/null
 
+python3 "$COMMON_SCRIPTS_DIR/component_version.py" kernel \
+  --output-dir "$OUT_DIR" --scripts-dir "$CONTAINER_SCRIPTS_DIR"
+
 # Create uncompressed tarball
 # Compression will be handled by ImageBuilder on the host if needed
 echo "Creating uncompressed tarball..."
@@ -93,6 +115,9 @@ tar -cf $OUT_DIR/kernel-$KERNEL_VERSION.rpms.tar \
   --transform 's|.*/||' \
   --transform 's|^\(kernel-[^-]\+\)-.*\.\(x86_64\)\.rpm$|\1-\2.rpm|' \
   $(find RPMS -name "*.rpm")
+
+tar -rf "$OUT_DIR/kernel-$KERNEL_VERSION.rpms.tar" \
+  -C "$OUT_DIR" share/kernel-version.json
 
 echo 'Kernel RPM build complete!'
 echo 'Output files:'
