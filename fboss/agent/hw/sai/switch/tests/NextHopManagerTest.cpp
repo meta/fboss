@@ -855,3 +855,49 @@ TEST_F(NextHopManagerTest, vxlanNextHopGenericPathThrows) {
       saiManagerTable->nextHopManager().addManagedSaiNextHop(swNextHop),
       FbossError);
 }
+
+TEST_F(NextHopManagerTest, vxlanNextHopGroup) {
+  auto swTunnel = makeVxlanNhTunnel("vxlantunnel0", intf0.id);
+  saiManagerTable->vxlanTunnelManager().addVxlanTunnel(swTunnel);
+  auto nhop0 = makeVxlanNextHop(intf0.id, "vxlantunnel0");
+  auto nhop1 = makeVxlanNextHop(
+      intf1.id,
+      "vxlantunnel0",
+      folly::IPAddressV4("10.0.0.3"),
+      folly::MacAddress("02:00:00:00:00:02"));
+  RouteNextHopEntry::NextHopSet swNextHops{nhop0, nhop1};
+  SaiNextHopGroupKey key(swNextHops, std::nullopt);
+  auto group =
+      saiManagerTable->nextHopGroupManager().incRefOrAddNextHopGroup(key);
+  ASSERT_NE(group, nullptr);
+  ASSERT_NE(group->nextHopGroup, nullptr);
+  EXPECT_EQ(group->members_.size(), 2);
+  for (const auto& member : group->members_) {
+    EXPECT_TRUE(member->isProgrammed());
+  }
+  auto& nextHopGroupApi = saiApiTable->nextHopGroupApi();
+  auto members = nextHopGroupApi.getAttribute(
+      NextHopGroupSaiId(group->nextHopGroup->adapterKey()),
+      SaiNextHopGroupTraits::Attributes::NextHopMemberList{});
+  ASSERT_EQ(members.size(), 2);
+  std::unordered_set<sai_object_id_t> memberNextHopIds;
+  for (const auto member : members) {
+    auto nextHopId = nextHopGroupApi.getAttribute(
+        NextHopGroupMemberSaiId(member),
+        SaiNextHopGroupMemberTraits::Attributes::NextHopId{});
+    memberNextHopIds.insert(nextHopId);
+    EXPECT_EQ(
+        saiApiTable->nextHopApi().getAttribute(
+            NextHopSaiId(nextHopId),
+            SaiTunnelEncapNextHopTraits::Attributes::Type{}),
+        SAI_NEXT_HOP_TYPE_TUNNEL_ENCAP);
+  }
+  const std::unordered_set<sai_object_id_t> expectedNextHopIds{
+      saiManagerTable->nextHopManager().addVxlanNextHop(nhop0)->adapterKey(),
+      saiManagerTable->nextHopManager().addVxlanNextHop(nhop1)->adapterKey()};
+  EXPECT_EQ(memberNextHopIds, expectedNextHopIds);
+  // Dropping the group removes it and its members.
+  group.reset();
+  auto fake = FakeSai::getInstance();
+  EXPECT_EQ(fake->nextHopGroupManager.map().size(), 0);
+}

@@ -163,6 +163,10 @@ using ManagedSaiNextHop = std::variant<
  * ManagedNextHop<SaiTunnelEncapNextHopTraits> is not reused: that
  * template is an aggregate subscriber on SaiNeighborTraits and its
  * createObject CHECKs that the neighbor is alive.
+ *
+ * This type stays out of ManagedSaiNextHop, whose consumers
+ * subscribe to next hop objects. Next hop groups hold it directly
+ * through an eager group member that needs no readiness wait.
  */
 class SaiVxlanNextHopHandle {
  public:

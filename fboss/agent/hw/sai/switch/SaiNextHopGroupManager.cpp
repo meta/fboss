@@ -434,6 +434,29 @@ SaiNextHopGroupManager::incRefOrAddNextHopGroup(const SaiNextHopGroupKey& key) {
 #endif
 
   for (auto& resolvedNextHop : resolvedNextHops) {
+    auto memberKey = std::make_pair(nextHopGroupId, resolvedNextHop);
+    NextHopGroupMember::NextHopWeight weight;
+    if (nextHopGroupType == SAI_NEXT_HOP_GROUP_TYPE_ECMP) {
+      weight = SaiNextHopGroupMemberTraits::Attributes::Weight{
+          static_cast<sai_uint32_t>(
+              resolvedNextHop.weight() == ECMP_WEIGHT
+                  ? 1
+                  : resolvedNextHop.weight())};
+    }
+    if (resolvedNextHop.tunnelType().has_value() &&
+        resolvedNextHop.tunnelType().value() == TunnelType::VXLAN) {
+      auto vxlanNextHopHandle =
+          managerTable_->nextHopManager().addVxlanNextHop(resolvedNextHop);
+      auto result = nextHopGroupMembers_.refOrEmplace(
+          memberKey,
+          this,
+          nextHopGroupHandle.get(),
+          nextHopGroupId,
+          vxlanNextHopHandle,
+          weight);
+      nextHopGroupHandle->members_.push_back(result.first);
+      continue;
+    }
 #if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)
     std::shared_ptr<SaiSrv6SidListHandle> sidListHandle;
     auto it = srv6SidListMap.find(&resolvedNextHop);
@@ -446,15 +469,6 @@ SaiNextHopGroupManager::incRefOrAddNextHopGroup(const SaiNextHopGroupKey& key) {
     auto managedNextHop =
         managerTable_->nextHopManager().addManagedSaiNextHop(resolvedNextHop);
 #endif
-    auto memberKey = std::make_pair(nextHopGroupId, resolvedNextHop);
-    NextHopGroupMember::NextHopWeight weight;
-    if (nextHopGroupType == SAI_NEXT_HOP_GROUP_TYPE_ECMP) {
-      weight = SaiNextHopGroupMemberTraits::Attributes::Weight{
-          static_cast<sai_uint32_t>(
-              resolvedNextHop.weight() == ECMP_WEIGHT
-                  ? 1
-                  : resolvedNextHop.weight())};
-    }
     auto result = nextHopGroupMembers_.refOrEmplace(
         memberKey,
         this,
@@ -792,6 +806,72 @@ NextHopGroupMember::NextHopGroupMember(
         managedNextHopGroupMember_ = managedMember;
       },
       managedSaiNextHop);
+}
+
+NextHopGroupMember::NextHopGroupMember(
+    SaiNextHopGroupManager* manager,
+    SaiNextHopGroupHandle* nhgroup,
+    SaiNextHopGroupTraits::AdapterKey nexthopGroupId,
+    std::shared_ptr<SaiVxlanNextHopHandle> vxlanNextHopHandle,
+    NextHopWeight nextHopWeight)
+    : managedNextHopGroupMember_(
+          std::make_shared<SaiVxlanNextHopGroupMember>(
+              manager,
+              nhgroup,
+              std::move(vxlanNextHopHandle),
+              nexthopGroupId,
+              nextHopWeight)) {}
+
+SaiVxlanNextHopGroupMember::SaiVxlanNextHopGroupMember(
+    SaiNextHopGroupManager* manager,
+    SaiNextHopGroupHandle* nhgroup,
+    std::shared_ptr<SaiVxlanNextHopHandle> vxlanNextHopHandle,
+    SaiNextHopGroupTraits::AdapterKey nexthopGroupId,
+    NextHopWeight weight)
+    : vxlanNextHopHandle_(std::move(vxlanNextHopHandle)) {
+  auto nexthopId = vxlanNextHopHandle_->adapterKey();
+  adapterHostKey_.emplace(nexthopGroupId, nexthopId);
+  createAttributes_.emplace(
+      nexthopGroupId,
+      nexthopId,
+      weight
+#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
+      ,
+      std::nullopt,
+      std::nullopt
+#endif
+  );
+#if defined(BRCM_SAI_SDK_DNX_GTE_12_0) || defined(BRCM_SAI_SDK_XGS_GTE_13_0)
+  if (FLAGS_enable_bulk_create_ecmp_members && nhgroup && nhgroup->bulkCreate) {
+    // The group bulk creates its members; getAdapterHostKeyAndCreateAttributes
+    // hands this member to that bulk create.
+    return;
+  }
+#endif
+  nextHopGroupMember_ =
+      manager->createSaiObject(*adapterHostKey_, *createAttributes_);
+}
+
+std::pair<
+    std::optional<SaiNextHopGroupMemberTraits::AdapterHostKey>,
+    std::optional<SaiNextHopGroupMemberTraits::CreateAttributes>>
+SaiVxlanNextHopGroupMember::getAdapterHostKeyAndCreateAttributes() {
+  if (nextHopGroupMember_) {
+    return std::make_pair(std::nullopt, std::nullopt);
+  }
+  return std::make_pair(adapterHostKey_, createAttributes_);
+}
+
+std::string SaiVxlanNextHopGroupMember::toString() const {
+  auto nextHopGroupMemberIdStr = nextHopGroupMember_
+      ? std::to_string(nextHopGroupMember_->adapterKey())
+      : "none";
+  return folly::to<std::string>(
+      nextHopGroupMember_ ? "active " : "inactive ",
+      "sai vxlan nhg member: ",
+      vxlanNextHopHandle_->toString(),
+      " NextHopGroupMemberId: ",
+      nextHopGroupMemberIdStr);
 }
 
 SaiNextHopGroupChildGroupMember::SaiNextHopGroupChildGroupMember(
