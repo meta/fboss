@@ -1,4 +1,24 @@
 {
+  "expectedErrors": {
+    "SCM.SCM_IOB_I2C_4_ARA_RSVD": {
+      "1": "Reserved protocol address, not a device. Answers only while SMBALERT# is asserted, and probing it latches STATUS_CML in the Renesas VR."
+    },
+    "SCM.SCM_IOB_I2C_4_ZONE_WRITE_RSVD": {
+      "1": "Reserved protocol address, not a device. Probing it latches STATUS_CML in the Renesas VR."
+    },
+    "SMB.SMB_MUX_1_CH0_ARA_RSVD": {
+      "1": "Reserved protocol address, not a device. Answers only while SMBALERT# is asserted, and probing it latches STATUS_CML in the Renesas VRs."
+    },
+    "SMB.SMB_MUX_1_CH0_ZONE_WRITE_RSVD": {
+      "1": "Reserved protocol address, not a device. Probing it latches STATUS_CML in the Renesas VRs."
+    },
+    "SMB.SMB_MUX_3_CH0_ARA_RSVD": {
+      "1": "Reserved protocol address, not a device. Answers only while SMBALERT# is asserted, and probing it latches STATUS_CML in the Renesas VRs."
+    },
+    "SMB.SMB_MUX_3_CH0_ZONE_WRITE_RSVD": {
+      "1": "Reserved protocol address, not a device. Probing it latches STATUS_CML in the Renesas VRs."
+    }
+  },
   "testData": {
     "SCM.DPM": {
       "i2cTestData": {
