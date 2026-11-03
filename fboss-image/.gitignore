@@ -7,5 +7,12 @@ kernel/dist
 distro_cli/.artifacts
 image_builder/templates/centos-09.0/root
 *.iso
-*.tar*
+# Not *.tar* -- that also matches directories like systemd/sysinit.target.d.
+*.tar
+*.tar.*
 image_builder/output/
+
+# Written by the CLI before each build and handed to the container, which
+# copies them into the image. Generated, so never checked in.
+image_builder/build-provenance
+image_builder/fboss-distro-version.json

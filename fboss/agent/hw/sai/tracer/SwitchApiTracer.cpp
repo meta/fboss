@@ -74,6 +74,7 @@ std::map<int32_t, std::pair<std::string, std::size_t>> _SwitchMap{
     SAI_ATTR_MAP(Switch, FirmwarePathName),
     SAI_ATTR_MAP(Switch, FirmwareLoadMethod),
     SAI_ATTR_MAP(Switch, FirmwareLoadType),
+    SAI_ATTR_MAP(Switch, WarmRecover),
     SAI_ATTR_MAP(Switch, HardwareAccessBus),
     SAI_ATTR_MAP(Switch, PlatformContext),
     SAI_ATTR_MAP(Switch, SwitchProfileId),
@@ -182,12 +183,13 @@ void handleExtensionAttributes() {
   SAI_EXT_ATTR_MAP(Switch, PfcMonitorEnable);
   SAI_EXT_ATTR_MAP(Switch, CablePropagationDelayMeasurement);
   SAI_EXT_ATTR_MAP(Switch, PortCl72RetryEnable);
+  SAI_EXT_ATTR_MAP(Switch, AclDropSnoopDisabled);
   SAI_EXT_ATTR_MAP(Switch, PacketDropTypeIngressList);
   SAI_EXT_ATTR_MAP(Switch, PacketDropTypeEgressList);
 #if defined(BRCM_SAI_SDK_XGS_AND_DNX)
   SAI_EXT_ATTR_MAP(Switch, LocalSystemPortIdRangeList)
 #endif
-#if defined(SAI_BRCM_PAI_IMPL)
+#if defined(BRCM_PAI_SDK)
   SAI_EXT_ATTR_MAP(Switch, SyncLock)
   SAI_EXT_ATTR_MAP(Switch, SyncUnlock)
 #endif

@@ -1,0 +1,36 @@
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbsource//tools/build_defs/testinfra:network_access_utils.bzl", "network_access_utils")
+
+oncall("fboss_platform")
+
+cpp_unittest(
+    name = "reboot_cause_finder_impl_test",
+    srcs = [
+        "RebootCauseFinderImplTest.cpp",
+    ],
+    network_access = network_access_utils.none(),
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        "fbsource//third-party/googletest:gmock",
+        "fbsource//xplat/folly:dynamic",
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly:network_address",
+        "fbsource//xplat/folly:scope_guard",
+        "fbsource//xplat/folly:string",
+        "//fboss/platform/reboot_cause_finder:reboot_cause_finder_lib",
+        "//thrift/lib/cpp2/folly_dynamic:folly_dynamic",
+    ],
+)
+
+cpp_unittest(
+    name = "reboot_history_test",
+    srcs = [
+        "RebootHistoryTest.cpp",
+    ],
+    network_access = network_access_utils.none(),
+    deps = [
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly/testing:test_util",
+        "//fboss/platform/reboot_cause_finder:reboot_history_lib",
+    ],
+)

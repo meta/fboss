@@ -30,7 +30,7 @@ matches what you are doing. Prefer these over improvising a workflow.
 ## Build
 
 FBOSS builds inside a container. See the build documentation at
-https://facebook.github.io/fboss/ for current commands; the runnable snippets
+https://meta.github.io/fboss/ for current commands; the runnable snippets
 live in `docs/static/code_snips/`.
 
 - The container image (`fboss/oss/docker/Dockerfile`) provides the toolchain

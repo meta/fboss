@@ -134,10 +134,7 @@ TEST_F(BcmPortTest, PortLoopbackMode) {
 
 TEST_F(BcmPortTest, PortLoopbackModeMAC40G) {
   if (!isFlexModeSupported(getPlatform(), FlexPortMode::ONEX40G)) {
-#if defined(GTEST_SKIP)
     GTEST_SKIP();
-#endif
-    return;
   }
 
   auto setup = [this]() {
@@ -166,10 +163,7 @@ TEST_F(BcmPortTest, PortLoopbackModeMAC40G) {
 
 TEST_F(BcmPortTest, PortLoopbackModePHY40G) {
   if (!isFlexModeSupported(getPlatform(), FlexPortMode::ONEX40G)) {
-#if defined(GTEST_SKIP)
     GTEST_SKIP();
-#endif
-    return;
   }
 
   auto setup = [this]() {
@@ -198,10 +192,7 @@ TEST_F(BcmPortTest, PortLoopbackModePHY40G) {
 
 TEST_F(BcmPortTest, PortLoopbackModeMAC100G) {
   if (!isFlexModeSupported(getPlatform(), FlexPortMode::ONEX100G)) {
-#if defined(GTEST_SKIP)
     GTEST_SKIP();
-#endif
-    return;
   }
 
   auto setup = [this]() {
@@ -231,10 +222,7 @@ TEST_F(BcmPortTest, PortLoopbackModeMAC100G) {
 
 TEST_F(BcmPortTest, PortLoopbackModePHY100G) {
   if (!isFlexModeSupported(getPlatform(), FlexPortMode::ONEX100G)) {
-#if defined(GTEST_SKIP)
     GTEST_SKIP();
-#endif
-    return;
   }
 
   auto setup = [this]() {
@@ -265,10 +253,7 @@ TEST_F(BcmPortTest, PortLoopbackModePHY100G) {
 TEST_F(BcmPortTest, SampleDestination) {
   // sample destination can't be configured if sflow sampling isn't supported
   if (!getPlatform()->getAsic()->isSupported(HwAsic::Feature::SFLOW_SAMPLING)) {
-#if defined(GTEST_SKIP)
     GTEST_SKIP();
-#endif
-    return;
   }
   auto setup = [=, this]() {
     auto newCfg = initialConfig();
@@ -308,10 +293,7 @@ TEST_F(BcmPortTest, SampleDestination) {
 TEST_F(BcmPortTest, NoSampleDestinationSet) {
   // sample destination can't be configured if sflow sampling isn't supported
   if (!getPlatform()->getAsic()->isSupported(HwAsic::Feature::SFLOW_SAMPLING)) {
-#if defined(GTEST_SKIP)
     GTEST_SKIP();
-#endif
-    return;
   }
   auto setup = [=, this]() { return applyNewConfig(initialConfig()); };
   auto verify = [=, this]() {

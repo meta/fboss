@@ -1,0 +1,158 @@
+{
+  "systemLedConfig": {
+    "presentLedColor": 3,
+    "presentLedSysfsPath": "/sys/class/leds/sys_led:blue:status/brightness",
+    "absentLedColor": 4,
+    "absentLedSysfsPath": "/sys/class/leds/sys_led:amber:status/brightness"
+  },
+  "fruTypeLedConfigs": {
+    "FAN": {
+      "presentLedColor": 3,
+      "presentLedSysfsPath": "/sys/class/leds/fan_led:blue:status/brightness",
+      "absentLedColor": 4,
+      "absentLedSysfsPath": "/sys/class/leds/fan_led:amber:status/brightness"
+    },
+    "SMB": {
+      "presentLedColor": 3,
+      "presentLedSysfsPath": "/sys/class/leds/smb_led:blue:status/brightness",
+      "absentLedColor": 4,
+      "absentLedSysfsPath": "/sys/class/leds/smb_led:amber:status/brightness"
+    },
+    "PSU": {
+      "presentLedColor": 3,
+      "presentLedSysfsPath": "/sys/class/leds/psu_led:blue:status/brightness",
+      "absentLedColor": 4,
+      "absentLedSysfsPath": "/sys/class/leds/psu_led:amber:status/brightness"
+    },
+    "SCM": {
+      "presentLedColor": 3,
+      "presentLedSysfsPath": "/sys/class/leds/scm_led:blue:status/brightness",
+      "absentLedColor": 4,
+      "absentLedSysfsPath": "/sys/class/leds/scm_led:amber:status/brightness"
+    }
+  },
+  "fruConfigs": [
+    {
+      "fruName": "FAN1",
+      "fruType": "FAN",
+      "presenceDetection": {
+        "sysfsFileHandle": {
+          "presenceFilePath": "/run/devmap/sensors/MCB_FAN_PWM/fan1_presence",
+          "desiredValue": 1
+        }
+      }
+    },
+    {
+      "fruName": "FAN2",
+      "fruType": "FAN",
+      "presenceDetection": {
+        "sysfsFileHandle": {
+          "presenceFilePath": "/run/devmap/sensors/MCB_FAN_PWM/fan2_presence",
+          "desiredValue": 1
+        }
+      }
+    },
+    {
+      "fruName": "FAN3",
+      "fruType": "FAN",
+      "presenceDetection": {
+        "sysfsFileHandle": {
+          "presenceFilePath": "/run/devmap/sensors/MCB_FAN_PWM/fan3_presence",
+          "desiredValue": 1
+        }
+      }
+    },
+    {
+      "fruName": "FAN4",
+      "fruType": "FAN",
+      "presenceDetection": {
+        "sysfsFileHandle": {
+          "presenceFilePath": "/run/devmap/sensors/MCB_FAN_PWM/fan4_presence",
+          "desiredValue": 1
+        }
+      }
+    },
+    {
+      "fruName": "FAN5",
+      "fruType": "FAN",
+      "presenceDetection": {
+        "sysfsFileHandle": {
+          "presenceFilePath": "/run/devmap/sensors/MCB_FAN_PWM/fan5_presence",
+          "desiredValue": 1
+        }
+      }
+    },
+    {
+      "fruName": "FAN6",
+      "fruType": "FAN",
+      "presenceDetection": {
+        "sysfsFileHandle": {
+          "presenceFilePath": "/run/devmap/sensors/MCB_FAN_PWM/fan6_presence",
+          "desiredValue": 1
+        }
+      }
+    },
+    {
+      "fruName": "FAN7",
+      "fruType": "FAN",
+      "presenceDetection": {
+        "sysfsFileHandle": {
+          "presenceFilePath": "/run/devmap/sensors/MCB_FAN_PWM/fan7_presence",
+          "desiredValue": 1
+        }
+      }
+    },
+    {
+      "fruName": "FAN8",
+      "fruType": "FAN",
+      "presenceDetection": {
+        "sysfsFileHandle": {
+          "presenceFilePath": "/run/devmap/sensors/MCB_FAN_PWM/fan8_presence",
+          "desiredValue": 1
+        }
+      }
+    },
+    {
+      "fruName": "PSU1",
+      "fruType": "PSU",
+      "presenceDetection": {
+        "gpioLineHandle": {
+          "charDevPath": "/run/devmap/gpiochips/MCB_FPGA_GPIO2",
+          "lineIndex": 47,
+          "desiredValue": 1
+        }
+      }
+    },
+    {
+      "fruName": "PSU2",
+      "fruType": "PSU",
+      "presenceDetection": {
+        "gpioLineHandle": {
+          "charDevPath": "/run/devmap/gpiochips/MCB_FPGA_GPIO2",
+          "lineIndex": 52,
+          "desiredValue": 1
+        }
+      }
+    },
+    {
+      "fruName": "SCM",
+      "fruType": "SCM",
+      "presenceDetection": {
+        "sysfsFileHandle": {
+          "presenceFilePath": "/run/devmap/fpgas/MCB_MCB_INFO_ROM/scm_presence",
+          "desiredValue": 1
+        }
+      }
+    },
+    {
+      "fruName": "SMB",
+      "fruType": "SMB",
+      "presenceDetection": {
+        "sysfsFileHandle": {
+          "presenceFilePath": "/run/devmap/fpgas/MCB_MCB_INFO_ROM/smb_presence",
+          "desiredValue": 1
+        }
+      }
+    }
+  ]
+}

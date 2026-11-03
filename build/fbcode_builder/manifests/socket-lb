@@ -12,7 +12,7 @@ builder = nop
 
 [build.os=linux]
 builder = cmake
-subdir = public_root
+subdir = .
 
 [cmake.defines.test=on]
 BUILD_TESTING = ON
@@ -21,30 +21,33 @@ BUILD_TESTING = ON
 BUILD_TESTING = OFF
 
 [dependencies]
+bpftool
 folly
 gflags
 glog
 katran
 libbpf
 libelf
-numa
 zlib
 
 [dependencies.test=on]
 googletest
 
 [debs]
-bpftool
 clang
+llvm
 
 [rpms]
-bpftool
 clang
 llvm
 
 [shipit.pathmap]
+fbcode/socket-lb/README.md = README.md
+fbcode/socket-lb/LICENSE = LICENSE
+fbcode/socket-lb/VERIFICATION.md = VERIFICATION.md
 fbcode/socket-lb/public_root/.github = .github
-fbcode/socket-lb = .
+fbcode/socket-lb/public_root = .
+fbcode/socket-lb = socket-lb
 
 [shipit.strip]
 ^fbcode/socket-lb/(.*/)?BUCK$

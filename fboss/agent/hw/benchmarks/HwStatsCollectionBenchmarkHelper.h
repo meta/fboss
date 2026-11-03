@@ -29,8 +29,73 @@
 
 namespace facebook::fboss {
 
+// How many collections the stats benchmarks run. Shared so that a benchmark
+// measuring a delta against HwStatsCollection uses the same count on every
+// platform, otherwise the two runs are not comparable.
+inline int statsCollectionBenchmarkIterations(const AgentEnsemble* ensemble) {
+  if (ensemble->getSw()->getSwitchInfoTable().haveVoqSwitches()) {
+    // For VOQ switches we have 2K - 4K remote system ports (each with 4-8
+    // VOQs). This is >10x of local ports on NPU platforms. Therefore, only run
+    // 100 iterations.
+    return 100;
+  }
+  if (ensemble->getSw()->getSwitchInfoTable().haveL3Switches() &&
+      checkSameAndGetAsicForTesting(
+          ensemble->getSw()->getHwAsicTable()->getL3Asics())
+              ->getAsicVendor() == HwAsic::AsicVendor::ASIC_VENDOR_CHENAB) {
+    // TODO(Chenab): 10'000 iterations take 30 minutes on Chenab. Debug this
+    // slowness
+    return 1000;
+  }
+  return 10'000;
+}
+
+// Route counters the stats benchmarks program, with the per ASIC caps applied.
+// Shared for the same reason as the iteration count.
+inline void programStatsCollectionRouteCounters(
+    AgentEnsemble* ensemble,
+    int numRouteCounters) {
+  // Todo: route_counter is only enabled for ASIC_TYPE_YUBA RB role in
+  // ASIC config. This is a temporary fix to make the test
+  //  pass until we have a final decision on the route_counter feature
+  // for general ASIC_TYPE_YUBA use case.
+  const bool routeCountersSupported =
+      ensemble->getSw()->getHwAsicTable()->isFeatureSupportedOnAnyAsic(
+          HwAsic::Feature::ROUTE_COUNTERS) &&
+      checkSameAndGetAsicForTesting(
+          ensemble->getSw()->getHwAsicTable()->getL3Asics())
+              ->getAsicType() != cfg::AsicType::ASIC_TYPE_YUBA;
+  if (!routeCountersSupported) {
+    return;
+  }
+  int maxRouteCounters = numRouteCounters;
+  if (ensemble->getSw()->getSwitchInfoTable().haveL3Switches()) {
+    auto l3AsicType = checkSameAndGetAsicForTesting(
+                          ensemble->getSw()->getHwAsicTable()->getL3Asics())
+                          ->getAsicType();
+    if (l3AsicType == cfg::AsicType::ASIC_TYPE_EBRO ||
+        l3AsicType == cfg::AsicType::ASIC_TYPE_P200) {
+      // MT-762: counter Id 254 is preserved internally in SDK
+      // >= 24.8.3001 for EBRO
+      maxRouteCounters = 254;
+    }
+  }
+  auto updater = ensemble->getSw()->getRouteUpdater();
+  for (auto i = 0; i < maxRouteCounters; i++) {
+    folly::CIDRNetwork nw{
+        folly::IPAddress(fmt::format("2401:db00:0021:{:x}::", i)), 64};
+    std::optional<RouteCounterID> counterID(std::to_string(i));
+    UnicastRoute route = util::toUnicastRoute(
+        nw,
+        RouteNextHopEntry(
+            makeNextHops({"1::"}), AdminDistance::EBGP, counterID));
+    updater.addRoute(RouterID(0), ClientID::BGPD, route);
+  }
+  updater.program();
+}
+
 /*
- * Collect stats 10K times (100 time for VOQ) and benchmark that.
+ * Collect stats statsCollectionBenchmarkIterations() times and benchmark that.
  * Using a fixed number rather than letting framework
  * pick a N for internal iteration, since
  * - We want a large enough number to notice any memory bloat
@@ -105,7 +170,6 @@ inline void runStatsCollectionBenchmark(bool alwaysCollectVoqStats = false) {
 
   ensemble =
       createAgentEnsemble(initialConfigFn, false /*disableLinkStateToggler*/);
-  int iterations = 10'000;
 
   // Setup Remote Intf and System Ports
   if (ensemble->getSw()->getSwitchInfoTable().haveVoqSwitches()) {
@@ -113,61 +177,14 @@ inline void runStatsCollectionBenchmark(bool alwaysCollectVoqStats = false) {
         ensemble->getSw(),
         ensemble->getSw()->getHwAsicTable()->isFeatureSupportedOnAllAsic(
             HwAsic::Feature::RESERVED_ENCAP_INDEX_RANGE));
-    // For VOQ switches we have 2K - 4K remote system ports (each with 4-8
-    // VOQs). This is >10x of local ports on NPU platforms. Therefore, only run
-    // 100 iterations.
-    iterations = 100;
-  } else if (ensemble->getSw()->getSwitchInfoTable().haveL3Switches()) {
-    if (checkSameAndGetAsicForTesting(
-            ensemble->getSw()->getHwAsicTable()->getL3Asics())
-            ->getAsicVendor() == HwAsic::AsicVendor::ASIC_VENDOR_CHENAB) {
-      // TODO(Chenab): 10'000 iterations take 30 minutes on Chenab. Debug this
-      // slowness
-      iterations = 1000;
-    }
   }
+  const int iterations = statsCollectionBenchmarkIterations(ensemble.get());
 
   std::vector<PortID> ports = ensemble->masterLogicalPortIds();
   ports.resize(
       std::min(static_cast<int>(ports.size()), numPortsToCollectStats));
 
-  int maxRouteCounters = numRouteCounters;
-  if (ensemble->getSw()->getSwitchInfoTable().haveL3Switches()) {
-    auto l3AsicType = checkSameAndGetAsicForTesting(
-                          ensemble->getSw()->getHwAsicTable()->getL3Asics())
-                          ->getAsicType();
-    if (l3AsicType == cfg::AsicType::ASIC_TYPE_EBRO ||
-        l3AsicType == cfg::AsicType::ASIC_TYPE_P200) {
-      // MT-762: counter Id 254 is preserved internally in SDK
-      // >= 24.8.3001 for EBRO
-      maxRouteCounters = 254;
-    }
-  }
-
-  // Todo: route_counter is only enabled for ASIC_TYPE_YUBA RB role in
-  // ASIC config. This is a temporary fix to make the test
-  //  pass until we have a final decision on the route_counter feature
-  // for general ASIC_TYPE_YUBA use case.
-  bool routeCountersSupported =
-      ensemble->getSw()->getHwAsicTable()->isFeatureSupportedOnAnyAsic(
-          HwAsic::Feature::ROUTE_COUNTERS) &&
-      checkSameAndGetAsicForTesting(
-          ensemble->getSw()->getHwAsicTable()->getL3Asics())
-              ->getAsicType() != cfg::AsicType::ASIC_TYPE_YUBA;
-  if (routeCountersSupported) {
-    auto updater = ensemble->getSw()->getRouteUpdater();
-    for (auto i = 0; i < maxRouteCounters; i++) {
-      folly::CIDRNetwork nw{
-          folly::IPAddress(fmt::format("2401:db00:0021:{:x}::", i)), 64};
-      std::optional<RouteCounterID> counterID(std::to_string(i));
-      UnicastRoute route = util::toUnicastRoute(
-          nw,
-          RouteNextHopEntry(
-              makeNextHops({"1::"}), AdminDistance::EBGP, counterID));
-      updater.addRoute(RouterID(0), ClientID::BGPD, route);
-    }
-    updater.program();
-  }
+  programStatsCollectionRouteCounters(ensemble.get(), numRouteCounters);
 
   suspender.dismiss();
   for (auto i = 0; i < iterations; ++i) {

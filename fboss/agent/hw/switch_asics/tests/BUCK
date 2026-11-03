@@ -6,8 +6,10 @@ oncall("fboss_agent_push")
 cpp_unittest(
     name = "switch_asic_tests",
     srcs = [
+        "AcceptedValuesTests.cpp",
         "Jericho3AsicTests.cpp",
         "MonitoredObjectFeatureTests.cpp",
+        "SaiSdkVersionTests.cpp",
     ],
     network_access = network_access_utils.none(),
     deps = [

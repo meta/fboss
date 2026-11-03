@@ -5,7 +5,7 @@ name = libaio
 libaio-dev
 
 # AlmaLinux 8 ships libaio-devel in BaseOS; centos_stream and rocky too.
-[rpms.any(distro=centos_stream,distro=alma,distro=rocky)]
+[rpms]
 libaio-devel
 
 [download]
@@ -17,8 +17,8 @@ builder = make
 subdir = libaio-0.3.113
 
 [make.build_args]
-ENABLE_SHARED=0
+ENABLE_SHARED=1
 
 [make.install_args]
 install
-ENABLE_SHARED=0
+ENABLE_SHARED=1

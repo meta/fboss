@@ -132,7 +132,7 @@ class MonolithicHwSwitchHandler : public HwSwitchHandler {
   void notifyHwSwitchDisconnected() override;
 
   HwSwitchOperDeltaSyncState getHwSwitchOperDeltaSyncState() override {
-    return HwSwitchOperDeltaSyncState::CONNECTED;
+    return HwSwitchOperDeltaSyncState::SYNC_CONNECTED;
   }
 
   SwitchRunState getHwSwitchRunState() override;

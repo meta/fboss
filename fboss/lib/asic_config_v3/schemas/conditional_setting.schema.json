@@ -1,0 +1,120 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://github.com/meta/fboss/blob/main/fboss/lib/asic_config_v3/schemas/conditional_setting.schema.json",
+    "title": "Conditional Setting",
+    "description": "A conditional setting shared by every ASIC family. The condition grammar is evaluated by BaseAsicConfigGenerator; each generator declares which effects it can execute and rejects the others when it is constructed.",
+    "$defs": {
+        "operand": {
+            "type": ["string", "number", "boolean"]
+        },
+        "condition": {
+            "type": "object",
+            "description": "The test evaluated against the variant configuration. Names the parameter to test and exactly one operator. An absent parameter evaluates as null, so each negative operator is the strict complement of its positive counterpart.",
+            "required": ["param"],
+            "additionalProperties": false,
+            "properties": {
+                "source": {
+                    "type": "string",
+                    "enum": ["asic_config_params", "features"],
+                    "description": "The variant-config section holding the parameter. Defaults to asic_config_params."
+                },
+                "param": {
+                    "type": "string",
+                    "description": "The name of the parameter to test."
+                },
+                "equals": {
+                    "$ref": "#/$defs/operand",
+                    "description": "Satisfied when the parameter equals this value."
+                },
+                "not_equals": {
+                    "$ref": "#/$defs/operand",
+                    "description": "Satisfied when the parameter does not equal this value."
+                },
+                "in": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {"$ref": "#/$defs/operand"},
+                    "description": "Satisfied when the parameter equals one of these values."
+                },
+                "not_in": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {"$ref": "#/$defs/operand"},
+                    "description": "Satisfied when the parameter equals none of these values."
+                },
+                "starts_with": {
+                    "type": "string",
+                    "description": "Satisfied when the parameter is a string starting with this prefix."
+                },
+                "not_starts_with": {
+                    "type": "string",
+                    "description": "Satisfied when the parameter is not a string starting with this prefix."
+                }
+            },
+            "oneOf": [
+                {"required": ["equals"]},
+                {"required": ["not_equals"]},
+                {"required": ["in"]},
+                {"required": ["not_in"]},
+                {"required": ["starts_with"]},
+                {"required": ["not_starts_with"]}
+            ]
+        },
+        "settings": {
+            "type": "object",
+            "description": "Setting names mapped to values.",
+            "minProperties": 1,
+            "additionalProperties": {
+                "type": ["integer", "string"]
+            }
+        },
+        "conditional_setting": {
+            "type": "object",
+            "description": "A single conditional-setting entry. A condition and at least one effect are required.",
+            "required": ["name", "condition"],
+            "additionalProperties": false,
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "Identifier, unique within the surrounding list."
+                },
+                "description": {
+                    "type": "string",
+                    "description": "Free-form explanation of the setting."
+                },
+                "condition": {
+                    "$ref": "#/$defs/condition"
+                },
+                "apply": {
+                    "type": "object",
+                    "description": "Settings written when the condition holds, keyed by output target: a table name for YAML output, a section name for key-value output.",
+                    "minProperties": 1,
+                    "additionalProperties": {
+                        "$ref": "#/$defs/settings"
+                    }
+                },
+                "apply_from": {
+                    "type": "object",
+                    "description": "Copies the named settings block of the ASIC config into the named output target when the condition holds. Executes before apply within the same entry.",
+                    "required": ["source", "target_table"],
+                    "additionalProperties": false,
+                    "properties": {
+                        "source": {"type": "string"},
+                        "target_table": {"type": "string"}
+                    }
+                },
+                "skip_from_sai_common": {
+                    "type": "array",
+                    "description": "Keys omitted from the vendor SAI common layer while the condition holds. Supported by generators that layer a SAI common block.",
+                    "minItems": 1,
+                    "items": {"type": "string"}
+                }
+            },
+            "anyOf": [
+                {"required": ["apply"]},
+                {"required": ["apply_from"]},
+                {"required": ["skip_from_sai_common"]}
+            ]
+        }
+    }
+}

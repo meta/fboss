@@ -1095,7 +1095,12 @@ struct hash<facebook::fboss::SaiAttribute<AttrEnumT, AttrEnum, DataT, void>> {
       const facebook::fboss::SaiAttribute<AttrEnumT, AttrEnum, DataT, void>&
           attr) const {
     size_t seed = 0;
-    boost::hash_combine(seed, attr.value());
+    if constexpr (std::is_same_v<DataT, folly::MacAddress>) {
+      // folly::MacAddress has std::hash but no boost hash_value
+      boost::hash_combine(seed, std::hash<folly::MacAddress>()(attr.value()));
+    } else {
+      boost::hash_combine(seed, attr.value());
+    }
     return seed;
   }
 };
@@ -1111,7 +1116,12 @@ struct hash<
       const facebook::fboss::SaiAttribute<AttrEnumT, AttrEnum, DataT, DefaultT>&
           attr) const {
     size_t seed = 0;
-    boost::hash_combine(seed, attr.value());
+    if constexpr (std::is_same_v<DataT, folly::MacAddress>) {
+      // folly::MacAddress has std::hash but no boost hash_value
+      boost::hash_combine(seed, std::hash<folly::MacAddress>()(attr.value()));
+    } else {
+      boost::hash_combine(seed, attr.value());
+    }
     return seed;
   }
 };

@@ -10,12 +10,14 @@ cpp_library(
         "facebook/ElbertPlatformMapping.cpp",
     ],
     headers = [
+        "Elbert16QPimPlatformMapping.h",
         "ElbertPlatformMapping.h",
+        "facebook/Elbert8DDPimPlatformMapping.h",
     ],
     deps = [
+        "fbsource//xplat/folly/logging:logging",
         "//fboss/agent:fboss-error",
         "//fboss/lib/fpga/facebook/elbert:elbert_fpga",
-        "//folly/logging:logging",
     ],
     exported_deps = [
         "//fboss/agent/platforms/common:platform_mapping",

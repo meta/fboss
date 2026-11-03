@@ -237,20 +237,19 @@ model ID and serial number being included in DHCP requests.
 
 ### 5.4 weutil
 
-`weutil` is designed to retrieve the Serial Number, Asset Tag and other
-information essential for device identification.
+`weutil` is designed to retrieve the Serial Number and other information
+essential for device identification.
 
 The output is provided as colon+space separated keys and values, one per line.
 And below are the mandatory fields:
 
-- Product Serial Number
-- Local MAC
 - Product Name
-- Product Asset Tag
-- Product Part Number
-- Product Version
-- Product Sub-Version
-- CRC8
+- Production State
+- Production Sub-State
+- Re-Spin/Variant Indicator
+- Product Serial Number
+- BMC MAC Base
+- CRC16
 
 ### 5.5 wedge_us_mac.sh
 

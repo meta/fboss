@@ -536,7 +536,6 @@
           "address": "0x60",
           "kernelDeviceName": "fbg_mcbcpld",
           "pmUnitScopedName": "MCB_CPLD",
-          "__SOURCE_DOC__": "https://drive.google.com/file/d/1P_PwgJ7xJmPQ-HvuHUq0P7wfYsiZsCEt/view",
           "cpldSysfsAttrs": [
             {
               "name": "version_id",
@@ -1473,7 +1472,7 @@
   "chassisEepromDevicePath": "/FCBTOP_SLOT@0/[CHASSIS_EEPROM]",
   "numXcvrs": 65,
   "bspKmodsRpmName": "fboss_bsp_kmods",
-  "bspKmodsRpmVersion": "4.4.1-1",
+  "bspKmodsRpmVersion": "4.4.2-1",
   "nonBspKmodsToLoad": [
     "i2c_i801",
     "spidev",

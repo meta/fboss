@@ -119,6 +119,7 @@ int main(int argc, char* argv[]) {
   const folly::Init init(&argc, &argv, true);
   gflags::SetCommandLineOptionWithMode(
       "minloglevel", "0", gflags::SET_FLAGS_DEFAULT);
+  initPlatformDescriptorPathFromQsfpConfig();
   folly::EventBase evb;
 
   if (FLAGS_list_commands) {
@@ -244,6 +245,7 @@ int main(int argc, char* argv[]) {
         FLAGS_set_100g || FLAGS_set_40g || FLAGS_cdr_enable ||
         FLAGS_cdr_disable || FLAGS_set_low_power || FLAGS_qsfp_hard_reset ||
         FLAGS_electrical_loopback || FLAGS_optical_loopback ||
+        FLAGS_host_output_loopback || FLAGS_media_output_loopback ||
         FLAGS_clear_loopback || FLAGS_read_reg || FLAGS_write_reg ||
         FLAGS_update_module_firmware || FLAGS_get_module_fw_info ||
         FLAGS_app_sel || FLAGS_cdb_command || FLAGS_update_bulk_module_fw ||
@@ -377,6 +379,7 @@ int main(int argc, char* argv[]) {
     }
 
     if (FLAGS_optical_loopback || FLAGS_electrical_loopback ||
+        FLAGS_host_output_loopback || FLAGS_media_output_loopback ||
         FLAGS_clear_loopback) {
       LoopbackMode loopback{noLoopback};
       std::string lbModeStr{"noLoopback"};
@@ -386,6 +389,12 @@ int main(int argc, char* argv[]) {
       } else if (FLAGS_electrical_loopback) {
         loopback = electricalLoopback;
         lbModeStr = "electricalLoopback";
+      } else if (FLAGS_host_output_loopback) {
+        loopback = hostOutputLoopback;
+        lbModeStr = "hostOutputLoopback";
+      } else if (FLAGS_media_output_loopback) {
+        loopback = mediaOutputLoopback;
+        lbModeStr = "mediaOutputLoopback";
       }
 
       if (setTransceiverLoopback(i2cInfo, portNames, loopback, evb)) {

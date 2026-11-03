@@ -20,6 +20,9 @@ enum LinkTestProductionFeature {
   // (which gate test selection via --list_production_feature), these are
   // surfaced only via AgentEnsembleLinkTest::addVerifiedProductionFeatures()
   // for per-test metadata/Scuba reporting and are NOT used for test gating.
+  // Exception: MAC_LEARNING, PTP, MACSEC, REMEDIATION and VDM are also platform
+  // features (see below) when declared in getProductionFeatures().
+  // New reporting values go here, below 100.
   LINK_BRINGUP = 2,
   TRAFFIC_FORWARDING = 3,
   IPHY_DIAGS = 4,
@@ -41,4 +44,18 @@ enum LinkTestProductionFeature {
   VDM = 20,
   IPHY_FEC_COUNTERS = 21,
   TRANSCEIVER_LOOPBACK = 22,
+  TRANSCEIVER_RX_OUTPUT_DISABLE = 23,
+  TRANSCEIVER_MODE_MISMATCH_THERMAL_MARGIN = 24,
+  // Platform features used for test selection, reserved range 100 and above.
+  // A test that declares any of these (in getProductionFeatures()) should run
+  // only on platforms that have all of them; the per-platform map lives in
+  // configerator (fboss/agent/test/link_test_production_features). Names must
+  // match that config; its numbers are not compared and differ from these.
+  // https://docs.google.com/document/d/1rTSDm1sCG2RVuHR8TlighYIU47y9LzXLOfMwvCZlLYk/edit
+  ACTIVE_TRANSCEIVER = 100,
+  XPHY = 101,
+  BMC_LITE = 102,
+  BMC_CLASSIC = 103,
+  ASIC_LAG = 104,
+  DSF_INTERFACE_NODE = 105,
 }

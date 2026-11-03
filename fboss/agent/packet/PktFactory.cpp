@@ -60,6 +60,42 @@ void makeIpPacket(
 }
 
 template <typename IPHDR>
+std::unique_ptr<TxPacket> serializeIpInIpInIpPacket(
+    const AllocatePktFn& allocatePkt,
+    const EthHdr& ethHdr,
+    const IPv6Hdr& outerIpHdr,
+    const IPv6Hdr& middleIpHdr,
+    const IPHDR& innerIpHdr,
+    UDPHeader udpHdr,
+    const std::vector<uint8_t>& payloadBytes) {
+  auto txPacket =
+      allocatePkt(ethHdr.size() + outerIpHdr.size() + outerIpHdr.payloadLength);
+  folly::io::RWPrivateCursor rwCursor(txPacket->buf());
+  writeEthHeader(
+      txPacket,
+      &rwCursor,
+      ethHdr.getDstMac(),
+      ethHdr.getSrcMac(),
+      ethHdr.getVlanTags(),
+      ethHdr.getEtherType());
+  outerIpHdr.serialize(&rwCursor);
+  middleIpHdr.serialize(&rwCursor);
+  innerIpHdr.serialize(&rwCursor);
+
+  udpHdr.write(&rwCursor);
+  folly::io::Cursor payloadStart(rwCursor);
+  rwCursor.push(payloadBytes.data(), payloadBytes.size());
+  // Only the innermost IP header participates in the UDP pseudo-header.
+  udpHdr.updateChecksum(innerIpHdr, payloadStart);
+  folly::io::RWPrivateCursor udpCursor(txPacket->buf());
+  udpCursor.skip(
+      ethHdr.size() + outerIpHdr.size() + middleIpHdr.size() +
+      innerIpHdr.size());
+  udpHdr.write(&udpCursor);
+  return txPacket;
+}
+
+template <typename IPHDR>
 std::unique_ptr<TxPacket> makeUDPTxPacket(
     const AllocatePktFn& allocatePacket,
     const EthHdr& ethHdr,
@@ -602,6 +638,124 @@ std::unique_ptr<facebook::fboss::TxPacket> makeIpInIpTxPacket(
   return txPacket;
 }
 
+std::unique_ptr<TxPacket> makeIpInIpInIpPacket(
+    const AllocatePktFn& allocatePkt,
+    std::optional<VlanID> vlan,
+    folly::MacAddress outerSrcMac,
+    folly::MacAddress outerDstMac,
+    const folly::IPAddressV6& outerSrcIp,
+    const folly::IPAddressV6& outerDstIp,
+    const folly::IPAddressV6& middleSrcIp,
+    const folly::IPAddressV6& middleDstIp,
+    const folly::IPAddressV6& innerSrcIp,
+    const folly::IPAddressV6& innerDstIp,
+    uint16_t srcPort,
+    uint16_t dstPort,
+    uint8_t outerTrafficClass,
+    uint8_t middleTrafficClass,
+    uint8_t innerTrafficClass,
+    uint8_t outerHopLimit,
+    std::optional<uint8_t> middleHopLimit,
+    std::optional<uint8_t> innerHopLimit,
+    uint32_t outerFlowLabel,
+    std::optional<std::vector<uint8_t>> payload) {
+  const auto& payloadBytes = payload ? *payload : kDefaultPayload;
+  // IPv6 payloadLength is 16 bits; the outer payload contains two IP headers.
+  CHECK_LE(
+      payloadBytes.size(), 65535 - 2 * IPv6Hdr::size() - UDPHeader::size());
+  auto ethHdr =
+      makeEthHdr(outerSrcMac, outerDstMac, vlan, ETHERTYPE::ETHERTYPE_IPV6);
+
+  IPv6Hdr innerIpHdr(innerSrcIp, innerDstIp);
+  innerIpHdr.nextHeader = static_cast<uint8_t>(IP_PROTO::IP_PROTO_UDP);
+  innerIpHdr.trafficClass = innerTrafficClass;
+  innerIpHdr.hopLimit = innerHopLimit.value_or(outerHopLimit);
+  innerIpHdr.payloadLength = UDPHeader::size() + payloadBytes.size();
+
+  IPv6Hdr middleIpHdr(middleSrcIp, middleDstIp);
+  middleIpHdr.nextHeader = static_cast<uint8_t>(IP_PROTO::IP_PROTO_IPV6);
+  middleIpHdr.trafficClass = middleTrafficClass;
+  middleIpHdr.hopLimit = middleHopLimit.value_or(outerHopLimit);
+  middleIpHdr.payloadLength = innerIpHdr.size() + innerIpHdr.payloadLength;
+
+  IPv6Hdr outerIpHdr(outerSrcIp, outerDstIp);
+  outerIpHdr.nextHeader = static_cast<uint8_t>(IP_PROTO::IP_PROTO_IPV6);
+  outerIpHdr.trafficClass = outerTrafficClass;
+  outerIpHdr.hopLimit = outerHopLimit;
+  outerIpHdr.flowLabel = outerFlowLabel;
+  outerIpHdr.payloadLength = middleIpHdr.size() + middleIpHdr.payloadLength;
+
+  return serializeIpInIpInIpPacket(
+      allocatePkt,
+      ethHdr,
+      outerIpHdr,
+      middleIpHdr,
+      innerIpHdr,
+      UDPHeader(srcPort, dstPort, UDPHeader::size() + payloadBytes.size()),
+      payloadBytes);
+}
+
+std::unique_ptr<TxPacket> makeIpInIpInIpPacket(
+    const AllocatePktFn& allocatePkt,
+    std::optional<VlanID> vlan,
+    folly::MacAddress outerSrcMac,
+    folly::MacAddress outerDstMac,
+    const folly::IPAddressV6& outerSrcIp,
+    const folly::IPAddressV6& outerDstIp,
+    const folly::IPAddressV6& middleSrcIp,
+    const folly::IPAddressV6& middleDstIp,
+    const folly::IPAddressV4& innerSrcIp,
+    const folly::IPAddressV4& innerDstIp,
+    uint16_t srcPort,
+    uint16_t dstPort,
+    uint8_t outerTrafficClass,
+    uint8_t middleTrafficClass,
+    uint8_t innerDscp,
+    uint8_t outerHopLimit,
+    std::optional<uint8_t> middleHopLimit,
+    std::optional<uint8_t> innerHopLimit,
+    uint32_t outerFlowLabel,
+    std::optional<std::vector<uint8_t>> payload) {
+  const auto& payloadBytes = payload ? *payload : kDefaultPayload;
+  // IPv6 payloadLength is 16 bits; the outer payload contains two IP headers.
+  CHECK_LE(
+      payloadBytes.size(),
+      65535 - IPv6Hdr::size() - IPv4Hdr::minSize() - UDPHeader::size());
+  auto ethHdr =
+      makeEthHdr(outerSrcMac, outerDstMac, vlan, ETHERTYPE::ETHERTYPE_IPV6);
+
+  IPv4Hdr innerIpHdr(
+      innerSrcIp,
+      innerDstIp,
+      static_cast<uint8_t>(IP_PROTO::IP_PROTO_UDP),
+      UDPHeader::size() + payloadBytes.size());
+  innerIpHdr.dscp = innerDscp;
+  innerIpHdr.ttl = innerHopLimit.value_or(outerHopLimit);
+  innerIpHdr.computeChecksum();
+
+  IPv6Hdr middleIpHdr(middleSrcIp, middleDstIp);
+  middleIpHdr.nextHeader = static_cast<uint8_t>(IP_PROTO::IP_PROTO_IPV4);
+  middleIpHdr.trafficClass = middleTrafficClass;
+  middleIpHdr.hopLimit = middleHopLimit.value_or(outerHopLimit);
+  middleIpHdr.payloadLength = innerIpHdr.length;
+
+  IPv6Hdr outerIpHdr(outerSrcIp, outerDstIp);
+  outerIpHdr.nextHeader = static_cast<uint8_t>(IP_PROTO::IP_PROTO_IPV6);
+  outerIpHdr.trafficClass = outerTrafficClass;
+  outerIpHdr.hopLimit = outerHopLimit;
+  outerIpHdr.flowLabel = outerFlowLabel;
+  outerIpHdr.payloadLength = middleIpHdr.size() + middleIpHdr.payloadLength;
+
+  return serializeIpInIpInIpPacket(
+      allocatePkt,
+      ethHdr,
+      outerIpHdr,
+      middleIpHdr,
+      innerIpHdr,
+      UDPHeader(srcPort, dstPort, UDPHeader::size() + payloadBytes.size()),
+      payloadBytes);
+}
+
 std::unique_ptr<facebook::fboss::TxPacket> makeUDPTxPacket(
     const AllocatePktFn& allocator,
     std::optional<VlanID> vlan,
@@ -748,7 +902,8 @@ std::unique_ptr<facebook::fboss::TxPacket> makeTCPTxPacket(
     uint16_t dstPort,
     uint8_t trafficClass,
     uint8_t hopLimit,
-    std::optional<std::vector<uint8_t>> payload) {
+    std::optional<std::vector<uint8_t>> payload,
+    uint8_t tcpFlags) {
   if (!payload) {
     payload = kDefaultPayload;
   }
@@ -763,6 +918,7 @@ std::unique_ptr<facebook::fboss::TxPacket> makeTCPTxPacket(
   ipHdr.hopLimit = hopLimit;
   // TCPHeader
   TCPHeader tcpHdr(srcPort, dstPort);
+  tcpHdr.flags = tcpFlags;
 
   return makeTCPTxPacket(allocatePacket, ethHdr, ipHdr, tcpHdr, payloadBytes);
 }
@@ -778,7 +934,8 @@ std::unique_ptr<facebook::fboss::TxPacket> makeTCPTxPacket(
     uint16_t dstPort,
     uint8_t dscp,
     uint8_t ttl,
-    std::optional<std::vector<uint8_t>> payload) {
+    std::optional<std::vector<uint8_t>> payload,
+    uint8_t tcpFlags) {
   if (!payload) {
     payload = kDefaultPayload;
   }
@@ -796,6 +953,7 @@ std::unique_ptr<facebook::fboss::TxPacket> makeTCPTxPacket(
   ipHdr.computeChecksum();
   // TCPHeader
   TCPHeader tcpHdr(srcPort, dstPort);
+  tcpHdr.flags = tcpFlags;
 
   return makeTCPTxPacket(allocatePacket, ethHdr, ipHdr, tcpHdr, payloadBytes);
 }
@@ -811,7 +969,8 @@ std::unique_ptr<facebook::fboss::TxPacket> makeTCPTxPacket(
     uint16_t dstPort,
     uint8_t trafficClass,
     uint8_t hopLimit,
-    std::optional<std::vector<uint8_t>> payload) {
+    std::optional<std::vector<uint8_t>> payload,
+    uint8_t tcpFlags) {
   CHECK_EQ(srcIp.isV6(), dstIp.isV6());
   if (srcIp.isV6()) {
     return makeTCPTxPacket(
@@ -825,7 +984,8 @@ std::unique_ptr<facebook::fboss::TxPacket> makeTCPTxPacket(
         dstPort,
         trafficClass,
         hopLimit,
-        payload);
+        payload,
+        tcpFlags);
   }
   return makeTCPTxPacket(
       allocatePacket,
@@ -838,7 +998,8 @@ std::unique_ptr<facebook::fboss::TxPacket> makeTCPTxPacket(
       dstPort,
       trafficClass,
       hopLimit,
-      payload);
+      payload,
+      tcpFlags);
 }
 
 std::unique_ptr<TxPacket> makeTCPTxPacket(

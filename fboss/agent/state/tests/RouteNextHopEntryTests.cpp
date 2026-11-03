@@ -62,6 +62,19 @@ const folly::IPAddress nextHopAddr7 =
 const folly::IPAddress nextHopAddr8 =
     folly::IPAddress("2401:db00:e117:9103:1028::1b");
 
+UnresolvedNextHop makeSrv6NextHop(const folly::IPAddress& addr) {
+  return UnresolvedNextHop(
+      addr,
+      ECMP_WEIGHT,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      {folly::IPAddressV6("2001:db8::1")},
+      TunnelType::SRV6_ENCAP,
+      kSrv6Tunnel0);
+}
+
 NetworkTopologyInformation getTopologyInfo() {
   NetworkTopologyInformation topologyInfo;
   topologyInfo.rack_id() = 2;
@@ -1276,6 +1289,44 @@ TEST(RouteNextHopEntry, ClientNextHopSetIDInEquality) {
   EXPECT_NE(a, b);
 }
 
+TEST(RouteNextHopEntry, OverrideNextHopSetID) {
+  RouteNextHopEntry a(RouteNextHopEntry::Action::DROP, kDefaultAdminDistance);
+  RouteNextHopEntry b(RouteNextHopEntry::Action::DROP, kDefaultAdminDistance);
+  EXPECT_FALSE(a.getOverrideNextHopSetID().has_value());
+
+  a.setOverrideNextHopSetID(NextHopSetID(7));
+  EXPECT_EQ(a.getOverrideNextHopSetID(), NextHopSetID(7));
+  EXPECT_FALSE(a.getClientNextHopSetID().has_value());
+  EXPECT_NE(a, b);
+
+  RouteNextHopEntry roundTripped(
+      RouteNextHopEntry::Action::DROP, kDefaultAdminDistance);
+  roundTripped.fromThrift(a.toThrift());
+  EXPECT_EQ(roundTripped.getOverrideNextHopSetID(), NextHopSetID(7));
+  validateThriftStructNodeSerialization<RouteNextHopEntry>(roundTripped);
+
+  RouteNextHopEntry fromCtor(
+      RouteNextHopEntry::Action::DROP,
+      kDefaultAdminDistance,
+      std::optional<RouteCounterID>(),
+      std::optional<RouteNextHopEntry::AclLookupClass>(),
+      std::optional<cfg::SwitchingMode>(),
+      std::optional<RouteNextHopEntry::NextHopSet>(),
+      std::optional<NextHopSetID>(),
+      std::optional<NextHopSetID>(),
+      std::optional<NextHopSetID>(),
+      std::optional<NextHopSetID>(7));
+  EXPECT_EQ(fromCtor, a);
+
+  b.setOverrideNextHopSetID(NextHopSetID(7));
+  EXPECT_EQ(a, b);
+  b.setOverrideNextHopSetID(NextHopSetID(8));
+  EXPECT_NE(a, b);
+
+  a.setOverrideNextHopSetID(std::nullopt);
+  EXPECT_FALSE(a.getOverrideNextHopSetID().has_value());
+}
+
 namespace {
 
 NextHopThrift makeNextHopThrift(const folly::IPAddress& addr, int32_t weight) {
@@ -1326,10 +1377,13 @@ TEST(RouteNextHopEntry, CombineDuplicateWeightsLeavesDistinctEcmpGroupAlone) {
       expected);
 }
 
-TEST(RouteNextHopEntry, CombineDuplicateWeightsOnlyRewritesDuplicated) {
+TEST(RouteNextHopEntry, CombineDuplicateWeightsGivesSinglesAnExplicitShare) {
+  // Once anything is combined the next hop listed once is given an explicit
+  // share rather than being left at ECMP_WEIGHT, otherwise route resolution
+  // downgrades the whole set back to plain ECMP.
   const RouteNextHopSet expected{
       UnresolvedNextHop(nextHopAddr2, 2),
-      UnresolvedNextHop(nextHopAddr3, ECMP_WEIGHT)};
+      UnresolvedNextHop(nextHopAddr3, UCMP_DEFAULT_WEIGHT)};
 
   EXPECT_EQ(
       combineDuplicates(
@@ -1426,6 +1480,21 @@ std::vector<AddrAndWeight> replicateWeighted(const RouteNextHopSet& nhs) {
 
 } // namespace
 
+TEST(RouteNextHopEntry, DetectMixedSrv6NextHops) {
+  EXPECT_FALSE(hasSrv6AndNonSrv6NextHops({}));
+  EXPECT_FALSE(hasSrv6AndNonSrv6NextHops(
+      {UnresolvedNextHop(nextHopAddr2, ECMP_WEIGHT)}));
+  EXPECT_FALSE(hasSrv6AndNonSrv6NextHops(
+      {UnresolvedNextHop(nextHopAddr2, ECMP_WEIGHT),
+       UnresolvedNextHop(nextHopAddr3, ECMP_WEIGHT)}));
+  EXPECT_FALSE(hasSrv6AndNonSrv6NextHops({makeSrv6NextHop(nextHopAddr2)}));
+  EXPECT_FALSE(hasSrv6AndNonSrv6NextHops(
+      {makeSrv6NextHop(nextHopAddr2), makeSrv6NextHop(nextHopAddr3)}));
+  EXPECT_TRUE(hasSrv6AndNonSrv6NextHops(
+      {makeSrv6NextHop(nextHopAddr2),
+       UnresolvedNextHop(nextHopAddr3, ECMP_WEIGHT)}));
+}
+
 TEST(RouteNextHopEntry, ReplicateWeightedNexthopsExpandsWeight) {
   const std::vector<AddrAndWeight> expected{
       {nextHopAddr2.str(), ECMP_WEIGHT},
@@ -1453,7 +1522,16 @@ TEST(RouteNextHopEntry, ReplicateWeightedNexthopsUndoesCombine) {
       makeNextHopThrift(nextHopAddr2, ECMP_WEIGHT),
       makeNextHopThrift(nextHopAddr3, ECMP_WEIGHT)};
 
-  EXPECT_EQ(replicateWeighted(combineDuplicates(nhts)), toAddrAndWeights(nhts));
+  // The duplicated next hop expands back into its two copies. The one listed
+  // once comes back at UCMP_DEFAULT_WEIGHT rather than ECMP_WEIGHT, since
+  // combining now gives singles an explicit share, so the round trip is no
+  // longer weight-for-weight identical to the input.
+  const std::vector<AddrAndWeight> expected{
+      {nextHopAddr3.str(), UCMP_DEFAULT_WEIGHT},
+      {nextHopAddr2.str(), ECMP_WEIGHT},
+      {nextHopAddr2.str(), ECMP_WEIGHT}};
+
+  EXPECT_EQ(replicateWeighted(combineDuplicates(nhts)), expected);
 }
 
 TEST(RouteNextHopEntry, WeightedNexthopsNotReplicatedByDefault) {
@@ -1461,4 +1539,40 @@ TEST(RouteNextHopEntry, WeightedNexthopsNotReplicatedByDefault) {
 
   const RouteNextHopSet weighted{UnresolvedNextHop(nextHopAddr2, 3)};
   EXPECT_EQ(toAddrAndWeights(util::fromRouteNextHopSet(weighted)), expected);
+}
+
+TEST(RouteNextHopEntry, VxlanNextHopsThriftRoundTrip) {
+  RouteNextHopSet nhops;
+  nhops.emplace(ResolvedNextHop(
+      nextHopAddr2,
+      InterfaceID(2),
+      10,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      std::vector<folly::IPAddressV6>{},
+      TunnelType::VXLAN,
+      "vxlan_tunnel_1",
+      std::nullopt,
+      NextHopRole::PRIMARY,
+      folly::MacAddress("02:00:00:00:00:01")));
+
+  auto thriftNhops = util::fromRouteNextHopSet(nhops);
+  ASSERT_EQ(thriftNhops.size(), 1);
+  EXPECT_EQ(thriftNhops.at(0).overlayDstMac(), "02:00:00:00:00:01");
+  auto roundTripped = util::toRouteNextHopSet(thriftNhops, true);
+  ASSERT_EQ(roundTripped.size(), 1);
+  EXPECT_EQ(
+      roundTripped.begin()->overlayDstMac(),
+      folly::MacAddress("02:00:00:00:00:01"));
+  EXPECT_EQ(roundTripped.begin()->tunnelType(), TunnelType::VXLAN);
+
+  // Normalization (the RouteNextHopEntry weight-scaling path) must keep
+  // the MAC: dropping it would merge tunnel NHs for different remotes.
+  auto normalized = RouteNextHopEntry::normalizeNextHops(nhops, 1);
+  ASSERT_EQ(normalized.size(), 1);
+  EXPECT_EQ(
+      normalized.begin()->overlayDstMac(),
+      folly::MacAddress("02:00:00:00:00:01"));
 }

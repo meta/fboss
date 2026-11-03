@@ -78,7 +78,7 @@ bash scripts/strip_and_copy.sh \
   <dest_binary_name>
 ```
 
-This creates `/tmp/<dest_binary_name>` (stripped) and prints its md5.
+This creates `/tmp/<dest_binary_name>` (stripped) and prints its md5. An optional third argument writes it to another directory instead, for upload tools that only read from certain local paths.
 
 ### Step 2: Upload to switch with md5 dedup
 
@@ -106,19 +106,25 @@ Reference Routing table in `SKILL.md` for where to find the Leaba SDK
 `res/` and `lib/` directories and any helper scripts for your
 environment.
 
-Once you have the paths, create tarballs and upload:
+What the binary needs at runtime:
+
+- **All of `lib/dyn`.** The device-family backend libraries are loaded with `dlopen`, so a library set built from the binary's `DT_NEEDED` entries misses them and SDK init aborts. Leave out debug-library directories such as `lib/dyn-dbg`, which can be several times the size of `lib/dyn`.
+- **`res/` from the same SDK build as `lib/dyn`.** Never mix them across versions.
+- **A binary built against the same SDK version.**
+
+Once you have the paths, create a tarball and upload:
 
 ```bash
-# Local: create tarballs (follow symlinks)
-tar czfh /tmp/leaba_res.tar.gz -C <path-containing-res-dir> res
-tar czfh /tmp/leaba_lib.tar.gz -C <path-containing-lib-dir> lib
+# Local: create the tarball (follow symlinks)
+tar czfh /tmp/leaba_runtime.tar.gz -C <sdk-dir> lib/dyn res
 ```
 
-Then upload and extract on the switch:
+Then upload, extract and check the version on the switch:
 
-    UPLOAD /tmp/leaba_res.tar.gz TO <switch>:/tmp/leaba_res.tar.gz
-    UPLOAD /tmp/leaba_lib.tar.gz TO <switch>:/tmp/leaba_lib.tar.gz
-    RUN ON <switch>: mkdir -p /root/<user> && tar xzf /tmp/leaba_res.tar.gz -C /root/<user>/ && tar xzf /tmp/leaba_lib.tar.gz -C /root/<user>/
+    UPLOAD /tmp/leaba_runtime.tar.gz TO <switch>:/tmp/leaba_runtime.tar.gz
+    RUN ON <switch>: mkdir -p /root/<user> && tar xzf /tmp/leaba_runtime.tar.gz -C /root/<user>/ && cat /root/<user>/res/sdk_version.txt
+
+Directory names and file mtimes are not reliable evidence of which SDK is on a switch. Check `res/sdk_version.txt`, and compare `md5sum lib/dyn/libsai.so` with your local copy when two builds share a version string.
 
 ## Broadcom DNX Firmware (Required for All Tests on DNX Platforms)
 

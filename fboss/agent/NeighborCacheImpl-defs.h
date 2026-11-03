@@ -319,7 +319,7 @@ SwSwitch::StateUpdateFn NeighborCacheImpl<NTable>::getUpdateFnToProgramEntry(
     } else {
       if (node->getMac() == fields.mac &&
           ((switchType != cfg::SwitchType::VOQ &&
-            node->getPort().phyPortID() == fields.port.phyPortID()) ||
+            node->getPort() == fields.port) ||
            (switchType == cfg::SwitchType::VOQ &&
             node->getPort().sysPortIDIf() == systemPortID)) &&
           node->getIntfID() == interfaceID &&

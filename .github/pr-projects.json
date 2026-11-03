@@ -1,0 +1,41 @@
+{
+  "npiProjects": [
+    "blackwolf800banw",
+    "darwin",
+    "darwin_48v",
+    "elbert",
+    "fuji",
+    "icecube800banw",
+    "icecube800bc",
+    "janga800bic",
+    "ladakh800bcls",
+    "m4061nhp",
+    "m4062nhp",
+    "m4340nhp",
+    "meru800bfa",
+    "meru800bia",
+    "minipack",
+    "minipack3ba",
+    "minipack3n",
+    "montblanc",
+    "morgan800cc",
+    "morgan800ccm",
+    "tahan800bc",
+    "tahansb800bc",
+    "wedge100s",
+    "wedge400",
+    "wedge400c",
+    "wedge800bact",
+    "wedge800cact",
+    "yamp"
+  ],
+  "nonNpiProjects": [
+    "bug fix",
+    "bugfix",
+    "distro",
+    "fboss2",
+    "fboss2-dev",
+    "feature",
+    "misc"
+  ]
+}

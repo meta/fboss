@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import time
 from argparse import ArgumentParser, Namespace
+from collections.abc import Collection
 from datetime import datetime
 from pathlib import Path
 
@@ -40,11 +41,19 @@ from fboss_test_runner.constants import (
     OPT_ARG_SKIP_KNOWN_BAD_TESTS,
     OPT_ARG_SWITCH_ID_FOR_TESTING,
     OPT_ARG_TEST_RUN_TIMEOUT,
+    OPT_ARG_TIER,
     OPT_KNOWN_BAD_TESTS_FILE,
     OPT_UNSUPPORTED_TESTS_FILE,
     XGS_SIMULATOR_ASICS,
     XGS_SIMULATOR_ENV,
 )
+from fboss_test_runner.crash_detection import (
+    core_is_from,
+    describe_core_dump,
+    find_unclean_unit_exits,
+    list_core_dumps,
+)
+from fboss_test_runner.errors import TestRunnerUsageError
 from fboss_test_runner.reporters.console_reporter import ConsoleReporter
 from fboss_test_runner.reporters.csv_reporter import CsvReporter
 from fboss_test_runner.reporters.json_reporter import JsonReporter
@@ -59,6 +68,14 @@ from fboss_test_runner.runners.utils import (
     get_test_regexes_from_file,
     load_from_file,
     test_matches_any_regex,
+)
+from fboss_test_runner.tier_selection import (
+    load_test_metadata_rules,
+    parse_test_tier,
+    select_test_patterns_for_tier,
+    TestCapability,
+    TestMetadataError,
+    TestTier,
 )
 from npu_sdk_utils import materialize_agent_config, NPU_SDK_METADATA_FILENAME
 
@@ -200,7 +217,13 @@ class TestRunner(abc.ABC):
         sub_parser.add_argument(
             OPT_ARG_PROFILE,
             type=str,
-            help="only include patterns tagged with this profile (requires --filter_file)",
+            help="only include patterns tagged with this profile",
+        )
+        sub_parser.add_argument(
+            OPT_ARG_TIER,
+            choices=("0", "1", "2"),
+            default=None,
+            help="only run tests classified in this certification tier",
         )
         sub_parser.add_argument(
             OPT_ARG_LIST_TESTS,
@@ -352,6 +375,45 @@ class TestRunner(abc.ABC):
 
     def _filter_tests(self, tests: list[str]) -> list[str]:
         return tests
+
+    def _get_tier_metadata_file(self) -> str | None:
+        return None
+
+    def _get_uniform_test_tier(self) -> TestTier | None:
+        """Return the tier shared by every test exposed by this runner."""
+        return None
+
+    def _get_available_test_capabilities(self) -> Collection[TestCapability]:
+        return ()
+
+    def _get_test_patterns_for_tier(self, tier: TestTier) -> list[str]:
+        metadata_file = self._get_tier_metadata_file()
+        if metadata_file is None:
+            command = self.args.command
+            raise TestRunnerUsageError(f"--tier is not supported for {command}")
+
+        try:
+            rules = load_test_metadata_rules(metadata_file)
+        except TestMetadataError as error:
+            raise TestRunnerUsageError(str(error)) from error
+
+        return select_test_patterns_for_tier(
+            rules,
+            tier,
+            available_capabilities=self._get_available_test_capabilities(),
+        )
+
+    def _filter_tests_for_tier(self, tests: list[str], tier: TestTier) -> list[str]:
+        uniform_tier = self._get_uniform_test_tier()
+        if uniform_tier is not None:
+            return tests if tier is uniform_tier else []
+
+        patterns = self._get_test_patterns_for_tier(tier)
+        if not patterns:
+            return []
+
+        tier_tests = set(self._list_tests_to_run(":".join(patterns)))
+        return [test for test in tests if test in tier_tests]
 
     def _get_sai_replayer_log_path(
         self,
@@ -612,6 +674,102 @@ class TestRunner(abc.ABC):
             )
             return RunOutcome(result.as_log_line(), [result])
 
+    def _run_test_guarded(
+        self,
+        conf_file: str,
+        test_prefix: str,
+        test_to_run: str,
+        setup_warmboot: bool,
+        sai_replayer_logging_path: str | None = None,
+    ) -> RunOutcome:
+        """_run_test, then fail the test if a unit it left running crashed.
+
+        Every runner leaves some production units running while its binary
+        executes: sai_test keeps fsdb and the platform services up, sai_agent
+        keeps qsfp_service up, the CLI suite runs against the production
+        agents themselves. Those units run with `Restart=always`, so a crash
+        caused by the test is invisible to gtest: systemd brings the unit
+        back, the binary's own readiness wait rides through it, and the test
+        reports OK while a core sits on disk and the hardware may never have
+        got the config. Two signals, both read after the binary exits:
+          * A unit's main process died uncleanly during the window, as
+            recorded by PID 1 in the journal. Clean exits and SIGTERM deaths
+            are ignored, so the stop/restart the CLI or a warm-boot phase
+            performs on purpose does not register, and a console logout
+            bouncing serial-getty (Restart=always, exit 0) does not either.
+            Units the runner stopped beforehand are inactive and produce
+            nothing.
+          * A core file appeared that was not there before the binary
+            started, from anything but the test binary itself (that one
+            already failed on its own). Deliberately not limited to agent
+            cores: any process dumping core on a production image while a
+            test runs makes that result untrustworthy.
+        """
+        cores_before = list_core_dumps()
+        start_time = time.time()
+        run_outcome = self._run_test(
+            conf_file,
+            test_prefix,
+            test_to_run,
+            setup_warmboot,
+            sai_replayer_logging_path,
+        )
+        reasons = find_unclean_unit_exits(start_time)
+        own_binary = os.path.basename(self._get_test_binary_name())
+        cores = sorted(
+            core
+            for core in list_core_dumps() - cores_before
+            if not core_is_from(core, own_binary)
+        )
+        core_reasons = [describe_core_dump(core) for core in cores]
+        # A core summary names the unit and the crash; the journal's
+        # "<unit> main process dumped core" line for the same unit only
+        # repeats the first half, so drop it to stay within the reason cap.
+        reasons = [
+            r
+            for r in reasons
+            if not any(c.startswith(r.split()[0]) for c in core_reasons)
+        ]
+        reasons.extend(core_reasons)
+        if reasons:
+            self._apply_agent_crash(
+                run_outcome, test_prefix, test_to_run, "; ".join(reasons), cores
+            )
+        return run_outcome
+
+    def _apply_agent_crash(
+        self,
+        run_outcome: RunOutcome,
+        test_prefix: str,
+        test_to_run: str,
+        reason: str,
+        cores: list[str] | None = None,
+    ) -> None:
+        """Downgrade a test to FAILED because a unit crashed while it ran.
+
+        The gtest binary reported its own verdict (often OK: the CLI suite's
+        readiness wait rides through a crash + `RestartSec` retry), so the
+        in-memory results are rewritten. A SKIPPED test is downgraded too: a
+        crash in its window is a real failure regardless of what it did. The
+        binary's own output is kept -- it is the only transcript of the run
+        -- with the verdict appended. Core paths go to the banner only: the
+        failure reason is what result databases classify failures on, and
+        they cap it at a few hundred characters.
+        """
+        core_note = f" (core dump(s): {', '.join(cores)})" if cores else ""
+        banner = (
+            f"########## CRASH detected during {test_prefix}{test_to_run}: "
+            f"{reason}{core_note} -- marking test FAILED"
+        )
+        print(banner, flush=True)
+        for result in run_outcome.results:
+            if result.status in (GtestStatus.OK, GtestStatus.SKIPPED):
+                result.status = GtestStatus.FAILED
+        run_outcome.console_output = "\n".join(
+            [run_outcome.console_output.rstrip("\n"), banner]
+            + [result.as_log_line() for result in run_outcome.results]
+        )
+
     def _string_in_file(self, file_path: str, string: str) -> bool | None:
         try:
             with open(file_path) as file:
@@ -746,7 +904,7 @@ class TestRunner(abc.ABC):
                 print("########## Running test: " + test_to_run, flush=True)
                 if simulator:
                     self._restart_bcmsim(simulator)
-                run_outcome = self._run_test(
+                run_outcome = self._run_test_guarded(
                     conf_file,
                     test_prefix,
                     test_to_run,
@@ -797,7 +955,7 @@ class TestRunner(abc.ABC):
                         f"({wb_iter + 1}/{num_wb_iterations}): {test_to_run}",
                         flush=True,
                     )
-                    run_outcome = self._run_test(
+                    run_outcome = self._run_test_guarded(
                         conf_file,
                         test_prefix,
                         test_to_run,
@@ -856,6 +1014,11 @@ class TestRunner(abc.ABC):
             )
         tests_to_run = self._get_tests_to_run()
         tests_to_run = self._filter_tests(tests_to_run)
+        tier_value = args.tier
+        if tier_value is not None:
+            tests_to_run = self._filter_tests_for_tier(
+                tests_to_run, parse_test_tier(tier_value)
+            )
         # Sort the tests to run to match internal test infra behavior
         return sorted(tests_to_run)
 

@@ -31,6 +31,8 @@
 #include "fboss/agent/state/QosPolicy.h"
 #include "fboss/agent/state/SwitchState.h"
 #include "fboss/agent/state/Vlan.h"
+#include "fboss/agent/state/Vrf.h"
+#include "fboss/agent/state/VrfMap.h"
 #include "fboss/agent/test/utils/NextHopIdTestUtils.h"
 
 #include <fmt/format.h>
@@ -77,9 +79,14 @@ void ManagerTestBase::SetUp() {
   setupSaiPlatform();
 }
 
+std::unique_ptr<SaiPlatform> ManagerTestBase::createSaiPlatformForTest(
+    std::unique_ptr<PlatformProductInfo> productInfo) {
+  return std::make_unique<SaiFakePlatform>(std::move(productInfo));
+}
+
 void ManagerTestBase::setupSaiPlatform() {
   auto productInfo = fakeProductInfo();
-  saiPlatform = std::make_unique<SaiFakePlatform>(std::move(productInfo));
+  saiPlatform = createSaiPlatformForTest(std::move(productInfo));
   auto thriftAgentConfig = getDummyConfig();
   auto agentConfig = std::make_unique<AgentConfig>(
       std::move(thriftAgentConfig), "dummyConfigStr");
@@ -121,6 +128,9 @@ void ManagerTestBase::setupSaiPlatform() {
   for (int i = 0; i < testRemoteInterfaces.size(); ++i) {
     testRemoteInterfaces[i] = TestInterface{10 + i, 1};
   }
+  for (const auto& [intfId, routerId] : testInterfaceRouterIds) {
+    testInterfaces.at(intfId).routerId = routerId;
+  }
 
   HwSwitchMatcher scope(std::unordered_set<SwitchID>({SwitchID(0)}));
   TestQosPolicy testQosPolicy{{10, 0, 2}, {42, 1, 4}};
@@ -159,6 +169,16 @@ void ManagerTestBase::setupSaiPlatform() {
     for (const auto& testInterface : testInterfaces) {
       auto swVlan = makeVlan(testInterface);
       vlans->addNode(swVlan, scopeResolver().scope(swVlan));
+    }
+  }
+  if (setupStage & SetupStage::VRF) {
+    auto* vrfs = setupState->getVrfs()->modify(&setupState);
+    for (const auto& testInterface : testInterfaces) {
+      if (testInterface.routerId != RouterID(0) &&
+          !vrfs->getNodeIf(testInterface.routerId)) {
+        auto vrf = std::make_shared<Vrf>(testInterface.routerId);
+        vrfs->addNode(vrf, scopeResolver().scope(vrf));
+      }
     }
   }
   if (setupStage & SetupStage::INTERFACE) {
@@ -413,7 +433,7 @@ std::shared_ptr<Interface> ManagerTestBase::makeInterface(
   }
   interface = std::make_shared<Interface>(
       getIntfID(testInterface, type),
-      RouterID(0),
+      testInterface.routerId,
       std::optional<VlanID>(vlan),
       folly::StringPiece(fmt::format("intf{}", testInterface.id)),
       testInterface.routerMac,

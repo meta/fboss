@@ -20,6 +20,7 @@ from distro_cli.lib.constants import (
     DEFAULT_ARTIFACT_BUCKET,
     IMAGE_COMPONENTS,
     MANIFEST_METADATA_FIELDS,
+    VARIATION_KEYS,
 )
 
 logger = logging.getLogger(__name__)
@@ -108,6 +109,33 @@ class ImageManifest:
                 logger.error(f"Unrecognised field in manifest: '{field}'{hint}")
             logger.error(f"Known fields: {', '.join(sorted(known))}")
             sys.exit(1)
+
+        self._validate_variation()
+
+    def _validate_variation(self):
+        """Validate the optional variation block."""
+        variation = self.data.get("variation")
+        if variation is None:
+            return
+
+        if not isinstance(variation, dict):
+            logger.error(
+                f"'variation' must be an object, found {type(variation).__name__}"
+            )
+            sys.exit(1)
+
+        unknown = [key for key in variation if key not in VARIATION_KEYS]
+        if unknown:
+            for key in unknown:
+                close = get_close_matches(key, VARIATION_KEYS, n=1)
+                hint = f" (did you mean '{close[0]}'?)" if close else ""
+                logger.error(f"Unrecognised key in 'variation': '{key}'{hint}")
+            logger.error(f"Known variation keys: {', '.join(VARIATION_KEYS)}")
+            sys.exit(1)
+
+    def variation(self) -> dict[str, str]:
+        """Return the manifest's variation fields, empty if it declares none."""
+        return self.data.get("variation", {})
 
     def has_component(self, component: str) -> bool:
         """Check if component is present in manifest."""

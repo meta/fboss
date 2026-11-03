@@ -24,6 +24,10 @@ TEST_F(TransceiverManagerTest, getPortNameToModuleMap) {
       std::out_of_range);
 }
 
+TEST_F(TransceiverManagerTest, getSdkStateWithoutPhyManagerThrows) {
+  EXPECT_THROW(transceiverManager_->getSdkState("sdk_dump"), FbossError);
+}
+
 TEST_F(TransceiverManagerTest, coldBootTest) {
   auto verifyColdBootLogic = [this]() {
     // Delete the existing wedge manager and create a new one

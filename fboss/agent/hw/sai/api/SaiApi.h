@@ -19,7 +19,6 @@
 #include "fboss/lib/HwWriteBehavior.h"
 #include "fboss/lib/TupleUtils.h"
 
-#include <folly/Format.h>
 #include <folly/logging/xlog.h>
 
 #include <algorithm>

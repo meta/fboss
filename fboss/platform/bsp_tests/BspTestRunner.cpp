@@ -4,6 +4,7 @@
 #include <gflags/gflags.h>
 #include <gtest/gtest.h>
 #include "fboss/platform/bsp_tests/BspTestEnvironment.h"
+#include "fboss/platform/bsp_tests/utils/IdpromUtils.h"
 
 #include "fboss/platform/helpers/Init.h"
 
@@ -35,6 +36,8 @@ int main(int argc, char** argv) {
   helpers::init(&argc, &argv);
 
   ::testing::UnitTest::GetInstance()->listeners().Append(new StressTestFilter);
+  BspTestEnvironment::GetInstance()->setPmUnitVersionDetector(
+      &IdpromUtils::detectPmUnitVersions);
   ::testing::AddGlobalTestEnvironment(BspTestEnvironment::GetInstance());
 
   auto ret = RUN_ALL_TESTS();

@@ -4,8 +4,22 @@ load("@fbcode_macros//build_defs:python_library.bzl", "python_library")
 oncall("fboss_distro")
 
 python_library(
-    name = "platform_descriptor_utils",
-    srcs = ["platform_descriptor_utils.py"],
+    name = "component_version",
+    srcs = ["component_version.py"],
+)
+
+python_library(
+    name = "package_fboss_lib",
+    srcs = {"package-fboss.py": "package_fboss.py"},
+    deps = [
+        ":component_version",
+        ":platform_configs_utils",
+    ],
+)
+
+python_library(
+    name = "platform_configs_utils",
+    srcs = ["platform_configs_utils.py"],
     labels = ["autodeps2_generated"],
 )
 
@@ -34,7 +48,10 @@ python_library(
     name = "package_lib",
     srcs = ["package.py"],
     labels = ["autodeps2_generated"],
-    deps = [":platform_descriptor_utils"],
+    deps = [
+        ":component_version",
+        ":platform_configs_utils",
+    ],
 )
 
 python_binary(
@@ -47,6 +64,32 @@ python_library(
     name = "getdeps_fallback_mirror_lib",
     srcs = ["getdeps_fallback_mirror.py"],
     labels = ["autodeps2_generated"],
+)
+
+python_library(
+    name = "compile_mem_lib",
+    srcs = ["compile_mem.py"],
+    # Tests import this as a top-level module, like npu_sdk_utils_lib.
+    # @lint-ignore BUCKLINT no_base_module_usage_python
+    base_module = "",
+    labels = ["autodeps2_generated"],
+)
+
+python_library(
+    name = "check_copyright_headers_lib",
+    srcs = ["check_copyright_headers.py"],
+)
+
+python_binary(
+    name = "check_copyright_headers",
+    main_module = "fboss.oss.scripts.check_copyright_headers",
+    deps = [":check_copyright_headers_lib"],
+)
+
+python_binary(
+    name = "check_compile_mem",
+    main_module = "compile_mem",
+    deps = [":compile_mem_lib"],
 )
 
 python_binary(

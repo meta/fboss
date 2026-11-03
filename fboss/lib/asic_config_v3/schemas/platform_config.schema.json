@@ -1,5 +1,6 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://github.com/meta/fboss/blob/main/fboss/lib/asic_config_v3/schemas/platform_config.schema.json",
     "title": "Platform Config",
     "description": "Per-platform configuration declaring the vendor, ASIC, port layout, and one or more configuration variants for the asic_config_v3 generator.",
     "type": "object",
@@ -26,14 +27,29 @@
             "type": "integer",
             "description": "Optional. Explicit override of the lanes-per-port value derived from num_lanes_per_core / num_ports_per_core. Used by platforms that wire only a subset of the ASIC lanes per port."
         },
+        "output_structure": {
+            "type": "object",
+            "description": "Optional (DNX only). Declares how generated keys are distributed across the thrift AsicConfig struct. Only common_only, for single-NPU platforms, is supported.",
+            "required": ["mode"],
+            "additionalProperties": false,
+            "properties": {
+                "mode": {
+                    "type": "string",
+                    "enum": ["common_only"]
+                }
+            }
+        },
         "defaults": {
             "$ref": "#/$defs/variant",
             "description": "Shared variant fields inherited by every variant via deep merge. Values declared inside a specific variant override the corresponding entries in this block."
         },
         "variants": {
             "type": "object",
-            "description": "Named configuration variants for this platform. Each variant produces a separate output config file. An empty variant name produces filename <platform>.yml, with no variant suffix.",
+            "description": "Named configuration variants for this platform. Each variant produces a separate output config file named <variant>.<extension>.",
             "minProperties": 1,
+            "propertyNames": {
+                "minLength": 1
+            },
             "additionalProperties": {
                 "$ref": "#/$defs/variant"
             }
@@ -53,7 +69,7 @@
                         "config_type": {
                             "type": "string",
                             "enum": ["KEY_VALUE_CONFIG", "JSON_CONFIG", "YAML_CONFIG"],
-                            "description": "Output configuration format."
+                            "description": "Output configuration format. Values must match the AsicConfigType enum in fboss/agent/hw/config/asic_config_v2.thrift."
                         },
                         "exact_match": {
                             "type": "boolean",
@@ -66,7 +82,19 @@
                         "config_gen_type": {
                             "type": "string",
                             "enum": ["DEFAULT", "HW_TEST"],
-                            "description": "Configuration generation profile. Controls which vendor configuration profile is applied."
+                            "description": "Configuration generation profile. Controls which vendor configuration profile is applied. Values must match the AsicConfigGenType enum in fboss/agent/hw/config/asic_config_v2.thrift."
+                        },
+                        "port_config": {
+                            "type": "string",
+                            "description": "DNX only. Port-map profile name (e.g. default, 18*400G-4). Selects the port-map conditional settings; profiles starting with dual_stage additionally select the dual-stage topology."
+                        },
+                        "multistage_role": {
+                            "type": "string",
+                            "description": "DNX only. Multistage fabric role (e.g. NONE, FAP, FE13, FE2). Selects the multistage conditional settings."
+                        },
+                        "hyper_port": {
+                            "type": "boolean",
+                            "description": "DNX only. When true, selects the hyper-port conditional settings."
                         }
                     }
                 },
@@ -174,6 +202,14 @@
                         "core_offset_apply_all": {
                             "type": "boolean",
                             "description": "When true, applies the +1 core offset to every core rather than only cores 0 and 1. Required for platforms with a linear-stride port layout."
+                        },
+                        "exclude_logical_ports": {
+                            "type": "array",
+                            "items": {
+                                "type": "integer"
+                            },
+                            "uniqueItems": true,
+                            "description": "Optional. Logical port IDs omitted from the generated port mapping, so they do not appear in PC_PORT_PHYS_MAP, PC_PORT or PORT. Used for front-panel ports that are not populated on the platform."
                         }
                     }
                 },
@@ -196,10 +232,17 @@
                         "type": ["integer", "string"]
                     }
                 },
+                "platform_sdk_overrides": {
+                    "type": "object",
+                    "description": "Optional (DNX only). Platform-level SDK key-value settings applied on top of the ASIC base_sdk_settings and declarative tables. Keys carry their SOC suffix inline.",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
                 "conditional_settings": {
                     "type": "array",
                     "description": "Optional. Platform-level conditional settings, evaluated after the ASIC-level conditional_settings so that platform values take precedence.",
-                    "items": {"type": "object"}
+                    "items": {"$ref": "https://github.com/meta/fboss/blob/main/fboss/lib/asic_config_v3/schemas/conditional_setting.schema.json#/$defs/conditional_setting"}
                 },
                 "features": {
                     "type": "object",
@@ -225,6 +268,14 @@
                         "generate_phb_control": {
                             "type": "boolean",
                             "description": "When true, emits the PHB_CONTROL output table from the ASIC phb_control_defaults block."
+                        },
+                        "enable_sai_managed_udf_groups": {
+                            "type": "boolean",
+                            "description": "When true, disables Broadcom SDK internal UDF groups so FBOSS can manage UDF objects through SAI."
+                        },
+                        "enable_large_ecmp_member_capacity": {
+                            "type": "boolean",
+                            "description": "When true, enables a platform-defined conditional setting that increases ECMP member capacity."
                         }
                     }
                 },

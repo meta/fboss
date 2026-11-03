@@ -29,12 +29,12 @@ cpp_library(
     ],
     deps = [
         "fbsource//third-party/re2:re2",
+        "fbsource//xplat/folly:dynamic",
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly:subprocess",
+        "fbsource//xplat/folly/logging:logging",
         "//fboss/platform/config_lib:config_lib",
-        "//folly:dynamic",
-        "//folly:file_util",
-        "//folly:string",
-        "//folly:subprocess",
-        "//folly/logging:logging",
         "//thrift/lib/cpp2/protocol:protocol",
     ],
     exported_deps = [
@@ -51,10 +51,10 @@ cpp_binary(
         "main.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly/logging:init",
+        "fbsource//xplat/folly/logging:logging",
         ":watchdog_util_core",
         "//fboss/platform/helpers:init_cli",
-        "//folly/logging:init",
-        "//folly/logging:logging",
     ],
     external_deps = [
         "gflags",

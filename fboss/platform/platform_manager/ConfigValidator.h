@@ -88,6 +88,7 @@ class ConfigValidator {
       const std::string& slotType,
       const PmUnitConfig& pmUnitConfig);
   bool isValidRtmCtrlBlockConfig(const RtmCtrlBlockConfig& rtmCtrlBlockConfig);
+  bool isValidMdioBusBlockConfig(const MdioBusBlockConfig& mdioBusBlockConfig);
 
   // Used by other platform services config validation.
   virtual bool isValidSlotPath(

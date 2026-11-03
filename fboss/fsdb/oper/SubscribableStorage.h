@@ -22,13 +22,20 @@ namespace facebook::fboss::fsdb {
 // Used to pass client specific parameters per subscription
 struct SubscriptionStorageParams {
   explicit SubscriptionStorageParams(
-      std::optional<std::chrono::seconds> heartbeatInterval = std::nullopt) {
+      std::optional<std::chrono::seconds> heartbeatInterval = std::nullopt,
+      std::optional<uint64_t> serveIntervalMs = std::nullopt) {
     if (heartbeatInterval.has_value()) {
       heartbeatInterval_ = heartbeatInterval.value();
+    }
+    if (serveIntervalMs.has_value()) {
+      serveIntervalMs_ = serveIntervalMs.value();
     }
   }
 
   std::optional<std::chrono::seconds> heartbeatInterval_;
+  // Requested serve interval in ms, converted from the seconds the client sent.
+  // The storage rounds it up to a whole tick and clamps it to the default.
+  std::optional<uint64_t> serveIntervalMs_;
 };
 
 /*
@@ -91,7 +98,7 @@ class SubscribableStorage {
       OperProtocol protocol,
       std::optional<SubscriptionStorageParams> subscriptionParams =
           std::nullopt)
-    requires(std::is_same_v<typename folly::remove_cvref_t<Path>::RootT, RootT>)
+    requires(std::is_same_v<typename std::remove_cvref_t<Path>::RootT, RootT>)
   {
     return this->subscribe_encoded(
         std::move(subscriber),
@@ -144,7 +151,7 @@ class SubscribableStorage {
       OperProtocol protocol,
       std::optional<SubscriptionStorageParams> subscriptionParams =
           std::nullopt)
-    requires(std::is_same_v<typename folly::remove_cvref_t<Path>::RootT, RootT>)
+    requires(std::is_same_v<typename std::remove_cvref_t<Path>::RootT, RootT>)
   {
     return this->subscribe_delta(
         std::move(subscriber),
@@ -200,7 +207,7 @@ class SubscribableStorage {
       Path&& path,
       std::optional<SubscriptionStorageParams> subscriptionParams =
           std::nullopt)
-    requires(std::is_same_v<typename folly::remove_cvref_t<Path>::RootT, RootT>)
+    requires(std::is_same_v<typename std::remove_cvref_t<Path>::RootT, RootT>)
   {
     return this->subscribe_patch(
         std::move(subscriber),

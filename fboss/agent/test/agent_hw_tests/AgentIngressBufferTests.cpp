@@ -32,6 +32,31 @@ constexpr int kPoolReservedCells = 4000;
 constexpr int kPoolSharedSizeBytesHighValue = 113091;
 constexpr std::string_view kBufferPoolName = "fooBuffer";
 
+// TU1 programs each of its 33 ingress buffers as pool/33, held within
+// [40540, 46026] cells of default state; these totals land at 43707/41096
+// cells per buffer.
+cfg::BufferPoolConfig getIngressBufferPoolConfig(
+    const HwAsic* asic,
+    int mmuBytesInCell,
+    bool high,
+    int deltaValue = 0) {
+  int headroomCells, sharedCells, reservedCells;
+  if (asic->getAsicType() == cfg::AsicType::ASIC_TYPE_TOMAHAWKULTRA1) {
+    headroomCells = high ? 112776 : 91;
+    sharedCells = high ? 1347107 : 1406071;
+    reservedCells = high ? 9071 : 36286;
+  } else {
+    headroomCells = high ? 12432 : kPoolHeadroomLimitCells;
+    sharedCells = high ? kPoolSharedSizeBytesHighValue : kPoolSharedCells;
+    reservedCells = high ? 1000 : kPoolReservedCells;
+  }
+  cfg::BufferPoolConfig tmpCfg;
+  tmpCfg.headroomBytes() = (headroomCells + deltaValue) * mmuBytesInCell;
+  tmpCfg.sharedBytes() = (sharedCells + deltaValue) * mmuBytesInCell;
+  tmpCfg.reservedBytes() = (reservedCells + deltaValue) * mmuBytesInCell;
+  return tmpCfg;
+}
+
 // util to construct per PG params
 // pass in number of queues and use queueId, deltaValue to differ
 // PG params
@@ -70,27 +95,6 @@ std::vector<cfg::PortPgConfig> getPortPgConfig(
     portPgConfigs.emplace_back(pgConfig);
   }
   return portPgConfigs;
-}
-
-cfg::BufferPoolConfig getBufferPoolHighDefaultConfig(int mmuBytesInCell) {
-  cfg::BufferPoolConfig tmpCfg;
-  tmpCfg.headroomBytes() = 12432 * mmuBytesInCell;
-  tmpCfg.sharedBytes() = kPoolSharedSizeBytesHighValue * mmuBytesInCell;
-  tmpCfg.reservedBytes() = 1000 * mmuBytesInCell;
-  return tmpCfg;
-}
-
-cfg::BufferPoolConfig getBufferPoolConfig(
-    int mmuBytesInCell,
-    int deltaValue = 0) {
-  // same as one in pg
-  // std::string bufferName = "fooBuffer";
-  cfg::BufferPoolConfig tmpCfg;
-  tmpCfg.headroomBytes() =
-      (kPoolHeadroomLimitCells + deltaValue) * mmuBytesInCell;
-  tmpCfg.sharedBytes() = (kPoolSharedCells + deltaValue) * mmuBytesInCell;
-  tmpCfg.reservedBytes() = (kPoolReservedCells + deltaValue) * mmuBytesInCell;
-  return tmpCfg;
 }
 
 } // unnamed namespace
@@ -132,12 +136,8 @@ class AgentIngressBufferTest : public AgentHwTest {
     auto switchId = getSw()->getScopeResolver()->scope(portId).switchId();
     auto asic = getSw()->getHwAsicTable()->getHwAsic(switchId);
 
-    if (useLargeHwValues) {
-      bufferPoolConfig =
-          getBufferPoolHighDefaultConfig(asic->getPacketBufferUnitSize());
-    } else {
-      bufferPoolConfig = getBufferPoolConfig(asic->getPacketBufferUnitSize());
-    }
+    bufferPoolConfig = getIngressBufferPoolConfig(
+        asic, asic->getPacketBufferUnitSize(), useLargeHwValues);
 
     bufferPoolCfgMap.insert(
         make_pair(static_cast<std::string>(kBufferPoolName), bufferPoolConfig));
@@ -401,7 +401,8 @@ TEST_F(AgentIngressBufferPoolTest, validateIngressPoolParamChange) {
     std::map<std::string, cfg::BufferPoolConfig> bufferPoolCfgMap;
     bufferPoolCfgMap.insert(make_pair(
         static_cast<std::string>(kBufferPoolName),
-        getBufferPoolConfig(asic->getPacketBufferUnitSize(), 1)));
+        getIngressBufferPoolConfig(
+            asic, asic->getPacketBufferUnitSize(), false, 1)));
     cfg_.bufferPoolConfigs() = bufferPoolCfgMap;
     // update one PG, and see ifs reflected in the HW
     applyNewConfig(cfg_);

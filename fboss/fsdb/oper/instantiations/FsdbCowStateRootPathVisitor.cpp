@@ -11,4 +11,13 @@ template ThriftTraverseResult RootPathVisitor::visit<FsdbCowStateRoot>(
     const PathVisitOptions& options,
     BasePathVisitorOperator& op);
 
+template ThriftTraverseResult pv_detail::visitNode<
+    apache::thrift::type_class::structure,
+    FsdbCowStateRoot,
+    BasePathVisitorOperator>(
+    FsdbCowStateRoot& node,
+    const pv_detail::VisitImplParams<BasePathVisitorOperator>& params,
+    pv_detail::PathIter cursor,
+    bool isContainerNode);
+
 } // namespace facebook::fboss::thrift_cow

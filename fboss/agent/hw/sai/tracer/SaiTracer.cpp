@@ -26,10 +26,12 @@
 #include "fboss/agent/hw/sai/tracer/FirmwareApiTracer.h"
 #include "fboss/agent/hw/sai/tracer/HashApiTracer.h"
 #include "fboss/agent/hw/sai/tracer/HostifApiTracer.h"
+#include "fboss/agent/hw/sai/tracer/IsolationGroupApiTracer.h"
 #include "fboss/agent/hw/sai/tracer/LagApiTracer.h"
 #include "fboss/agent/hw/sai/tracer/MacsecApiTracer.h"
 #include "fboss/agent/hw/sai/tracer/MirrorApiTracer.h"
 #include "fboss/agent/hw/sai/tracer/MplsApiTracer.h"
+#include "fboss/agent/hw/sai/tracer/MyMacApiTracer.h"
 #include "fboss/agent/hw/sai/tracer/NeighborApiTracer.h"
 #include "fboss/agent/hw/sai/tracer/NextHopApiTracer.h"
 #include "fboss/agent/hw/sai/tracer/NextHopGroupApiTracer.h"
@@ -50,6 +52,7 @@
 #include "fboss/agent/hw/sai/tracer/TunnelApiTracer.h"
 #include "fboss/agent/hw/sai/tracer/UdfApiTracer.h"
 #include "fboss/agent/hw/sai/tracer/VendorSwitchApiTracer.h" // NOLINT(facebook-unused-include-check)
+#include "fboss/agent/hw/sai/tracer/VirtualChannelApiTracer.h" // NOLINT(facebook-unused-include-check)
 #include "fboss/agent/hw/sai/tracer/VirtualRouterApiTracer.h"
 #include "fboss/agent/hw/sai/tracer/VlanApiTracer.h"
 #include "fboss/agent/hw/sai/tracer/WredApiTracer.h"
@@ -373,6 +376,14 @@ sai_status_t __wrap_sai_api_query(
       *api_method_table = facebook::fboss::wrappedRouterInterfaceApi();
       SaiTracer::getInstance()->logApiQuery(sai_api_id, "router_interface_api");
       break;
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 0)
+    case SAI_API_MY_MAC:
+      SaiTracer::getInstance()->myMacApi_ =
+          static_cast<sai_my_mac_api_t*>(*api_method_table);
+      *api_method_table = facebook::fboss::wrappedMyMacApi();
+      SaiTracer::getInstance()->logApiQuery(sai_api_id, "my_mac_api");
+      break;
+#endif
     case SAI_API_SAMPLEPACKET:
       SaiTracer::getInstance()->samplepacketApi_ =
           static_cast<sai_samplepacket_api_t*>(*api_method_table);
@@ -423,11 +434,25 @@ sai_status_t __wrap_sai_api_query(
       *api_method_table = facebook::fboss::wrappedUdfApi();
       SaiTracer::getInstance()->logApiQuery(sai_api_id, "udf_api");
       break;
+#if defined(SAI_CBFC_SUPPORTED)
+    case SAI_API_VIRTUAL_CHANNEL:
+      SaiTracer::getInstance()->virtualChannelApi_ =
+          static_cast<sai_virtual_channel_api_t*>(*api_method_table);
+      *api_method_table = facebook::fboss::wrappedVirtualChannelApi();
+      SaiTracer::getInstance()->logApiQuery(sai_api_id, "virtual_channel_api");
+      break;
+#endif
     case SAI_API_VIRTUAL_ROUTER:
       SaiTracer::getInstance()->virtualRouterApi_ =
           static_cast<sai_virtual_router_api_t*>(*api_method_table);
       *api_method_table = facebook::fboss::wrappedVirtualRouterApi();
       SaiTracer::getInstance()->logApiQuery(sai_api_id, "virtual_router_api");
+      break;
+    case SAI_API_ISOLATION_GROUP:
+      SaiTracer::getInstance()->isolationGroupApi_ =
+          static_cast<sai_isolation_group_api_t*>(*api_method_table);
+      *api_method_table = facebook::fboss::wrappedIsolationGroupApi();
+      SaiTracer::getInstance()->logApiQuery(sai_api_id, "isolation_group_api");
       break;
     case SAI_API_VLAN:
       SaiTracer::getInstance()->vlanApi_ =
@@ -2015,6 +2040,11 @@ vector<string> SaiTracer::setAttrList(
     case SAI_OBJECT_TYPE_SAMPLEPACKET:
       setSamplePacketAttributes(attr_list, attr_count, attrLines, rv);
       break;
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 0)
+    case SAI_OBJECT_TYPE_MY_MAC:
+      setMyMacAttributes(attr_list, attr_count, attrLines, rv);
+      break;
+#endif
     case SAI_OBJECT_TYPE_SCHEDULER:
       setSchedulerAttributes(attr_list, attr_count, attrLines, rv);
       break;
@@ -2051,6 +2081,12 @@ vector<string> SaiTracer::setAttrList(
     case SAI_OBJECT_TYPE_TUNNEL_TERM_TABLE_ENTRY:
       setTunnelTermAttributes(attr_list, attr_count, attrLines, rv);
       break;
+    case SAI_OBJECT_TYPE_TUNNEL_MAP:
+      setTunnelMapAttributes(attr_list, attr_count, attrLines, rv);
+      break;
+    case SAI_OBJECT_TYPE_TUNNEL_MAP_ENTRY:
+      setTunnelMapEntryAttributes(attr_list, attr_count, attrLines, rv);
+      break;
 #if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)
     case SAI_OBJECT_TYPE_SRV6_SIDLIST:
       setSrv6SidListAttributes(attr_list, attr_count, attrLines, rv);
@@ -2068,6 +2104,14 @@ vector<string> SaiTracer::setAttrList(
     case SAI_OBJECT_TYPE_UDF_GROUP:
       setUdfGroupAttributes(attr_list, attr_count, attrLines, rv);
       break;
+#if defined(SAI_CBFC_SUPPORTED)
+    case SAI_OBJECT_TYPE_VIRTUAL_CHANNEL:
+      setVirtualChannelAttributes(attr_list, attr_count, attrLines, rv);
+      break;
+    case SAI_OBJECT_TYPE_CBFC_CREDIT_PROFILE:
+      setCbfcCreditProfileAttributes(attr_list, attr_count, attrLines, rv);
+      break;
+#endif
     case SAI_OBJECT_TYPE_VIRTUAL_ROUTER:
       setVirtualRouterAttributes(attr_list, attr_count, attrLines, rv);
       break;
@@ -2076,6 +2120,12 @@ vector<string> SaiTracer::setAttrList(
       break;
     case SAI_OBJECT_TYPE_VLAN_MEMBER:
       setVlanMemberAttributes(attr_list, attr_count, attrLines, rv);
+      break;
+    case SAI_OBJECT_TYPE_ISOLATION_GROUP:
+      setIsolationGroupAttributes(attr_list, attr_count, attrLines, rv);
+      break;
+    case SAI_OBJECT_TYPE_ISOLATION_GROUP_MEMBER:
+      setIsolationGroupMemberAttributes(attr_list, attr_count, attrLines, rv);
       break;
     case SAI_OBJECT_TYPE_WRED:
       setWredAttributes(attr_list, attr_count, attrLines, rv);
@@ -2562,6 +2612,9 @@ void SaiTracer::initVarCounts() {
   varCounts_.emplace(SAI_OBJECT_TYPE_QUEUE, 0);
   varCounts_.emplace(SAI_OBJECT_TYPE_ROUTER_INTERFACE, 0);
   varCounts_.emplace(SAI_OBJECT_TYPE_SAMPLEPACKET, 0);
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 0)
+  varCounts_.emplace(SAI_OBJECT_TYPE_MY_MAC, 0);
+#endif
   varCounts_.emplace(SAI_OBJECT_TYPE_SCHEDULER, 0);
   varCounts_.emplace(SAI_OBJECT_TYPE_SCHEDULER_GROUP, 0);
   varCounts_.emplace(SAI_OBJECT_TYPE_SWITCH, 0);
@@ -2579,6 +2632,8 @@ void SaiTracer::initVarCounts() {
   varCounts_.emplace(SAI_OBJECT_TYPE_TAM, 0);
   varCounts_.emplace(SAI_OBJECT_TYPE_TUNNEL, 0);
   varCounts_.emplace(SAI_OBJECT_TYPE_TUNNEL_TERM_TABLE_ENTRY, 0);
+  varCounts_.emplace(SAI_OBJECT_TYPE_TUNNEL_MAP, 0);
+  varCounts_.emplace(SAI_OBJECT_TYPE_TUNNEL_MAP_ENTRY, 0);
 #if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)
   varCounts_.emplace(SAI_OBJECT_TYPE_SRV6_SIDLIST, 0);
   varCounts_.emplace(SAI_OBJECT_TYPE_MY_SID_ENTRY, 0);
@@ -2592,9 +2647,15 @@ void SaiTracer::initVarCounts() {
   varCounts_.emplace(
       static_cast<sai_object_type_t>(SAI_OBJECT_TYPE_SWITCH_PIPELINE), 0);
 #endif
+#if defined(SAI_CBFC_SUPPORTED)
+  varCounts_.emplace(SAI_OBJECT_TYPE_VIRTUAL_CHANNEL, 0);
+  varCounts_.emplace(SAI_OBJECT_TYPE_CBFC_CREDIT_PROFILE, 0);
+#endif
   varCounts_.emplace(SAI_OBJECT_TYPE_VIRTUAL_ROUTER, 0);
   varCounts_.emplace(SAI_OBJECT_TYPE_VLAN, 0);
   varCounts_.emplace(SAI_OBJECT_TYPE_VLAN_MEMBER, 0);
+  varCounts_.emplace(SAI_OBJECT_TYPE_ISOLATION_GROUP, 0);
+  varCounts_.emplace(SAI_OBJECT_TYPE_ISOLATION_GROUP_MEMBER, 0);
   varCounts_.emplace(SAI_OBJECT_TYPE_WRED, 0);
 }
 

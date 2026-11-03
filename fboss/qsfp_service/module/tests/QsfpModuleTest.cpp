@@ -16,6 +16,9 @@
 
 #include <gmock/gmock.h>
 
+#include <chrono>
+#include <thread>
+
 namespace {
 std::string kPortName = "eth1/1/1";
 }
@@ -34,7 +37,8 @@ class QsfpModuleTest : public TransceiverManagerTestHelper {
     setupQsfp();
   }
 
-  void setupQsfp() {
+  void setupQsfp(
+      std::shared_ptr<const TransceiverConfig> tcvrConfig = nullptr) {
     auto transceiverImpl = std::make_unique<NiceMock<MockTransceiverImpl>>();
     // So we can check what happens during testing
     transImpl_ = transceiverImpl.get();
@@ -45,7 +49,7 @@ class QsfpModuleTest : public TransceiverManagerTestHelper {
             std::make_unique<MockSffModule>(
                 transceiverManager_->getPortNames(kTcvrID),
                 qsfpImpls_.back().get(),
-                tcvrConfig_,
+                tcvrConfig ? tcvrConfig : tcvrConfig_,
                 transceiverManager_->getTransceiverName(kTcvrID))));
     qsfp_->setVendorPN();
 
@@ -334,6 +338,31 @@ TEST_F(QsfpModuleTest, updateQsfpDataFull) {
   qsfp_->actualUpdateQsfpData(true);
 }
 
+TEST_F(QsfpModuleTest, periodicRefreshSkippedWhenInfoIsFresh) {
+  gflags::FlagSaver flagSaver;
+  gflags::SetCommandLineOptionWithMode(
+      "qsfp_data_refresh_interval", "10", gflags::SET_FLAGS_VALUE);
+  qsfp_->refresh();
+
+  EXPECT_CALL(*qsfp_, updateQsfpData(_)).Times(0);
+  qsfp_->refresh();
+}
+
+TEST_F(QsfpModuleTest, periodicRefreshNotStarvedByOutOfBandReads) {
+  gflags::FlagSaver flagSaver;
+  gflags::SetCommandLineOptionWithMode(
+      "qsfp_data_refresh_interval", "1", gflags::SET_FLAGS_VALUE);
+  qsfp_->refresh();
+  /* sleep override */
+  std::this_thread::sleep_for(std::chrono::milliseconds(1100));
+
+  // Out-of-band read like a failing programTransceiver() retry does
+  qsfp_->actualUpdateQsfpData(false);
+
+  EXPECT_CALL(*qsfp_, updateQsfpData(_)).Times(1);
+  qsfp_->refresh();
+}
+
 TEST_F(QsfpModuleTest, readTransceiver) {
   // Skip the length field and confirm that the length of data in response is 1.
   // Page is also skipped so there should not be a write to byte 127.
@@ -536,6 +565,36 @@ TEST_F(QsfpModuleTest, getFwStorageHandleUnknownPartNumber) {
   transceiverManager_->refreshStateMachines();
   qsfp_->useActualGetTransceiverInfo();
   EXPECT_EQ(qsfp_->getFwStorageHandle(), "");
+}
+
+TEST_F(QsfpModuleTest, vendorOverridesFromQsfpConfig) {
+  TransceiverVendorPartNumber placeholder, transceiver;
+  placeholder.vendor() = "Vendor_1";
+  placeholder.partNumber() = "PartNum_1";
+  transceiver.vendor() = "FBOSSONE";
+  transceiver.partNumber() = "PN_1";
+  TransceiverVendorOverride vendorOverride;
+  vendorOverride.placeholder() = placeholder;
+  vendorOverride.transceivers() = {transceiver};
+  const std::vector<TransceiverVendorOverride> vendorOverrides = {
+      vendorOverride};
+  setupQsfp(
+      std::make_shared<const TransceiverConfig>(
+          TransceiverOverrides{},
+          std::map<std::string, std::string>{},
+          vendorOverrides));
+  transceiverManager_->refreshStateMachines();
+  qsfp_->useActualGetTransceiverInfo();
+  EXPECT_EQ(
+      qsfp_->getTransceiverInfo().tcvrState()->vendorOverrides().to_optional(),
+      vendorOverrides);
+}
+
+TEST_F(QsfpModuleTest, vendorOverridesUnsetWithoutQsfpConfig) {
+  transceiverManager_->refreshStateMachines();
+  qsfp_->useActualGetTransceiverInfo();
+  EXPECT_FALSE(
+      qsfp_->getTransceiverInfo().tcvrState()->vendorOverrides().has_value());
 }
 
 TEST_F(QsfpModuleTest, cdbFwDownloadStartBufferOverflowProtection) {

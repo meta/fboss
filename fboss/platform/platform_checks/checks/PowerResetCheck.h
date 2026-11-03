@@ -3,13 +3,10 @@
 #pragma once
 
 #include <chrono>
-#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
 
-#include "fboss/platform/helpers/PlatformFsUtils.h"
-#include "fboss/platform/helpers/PlatformUtils.h"
 #include "fboss/platform/platform_checks/PlatformCheck.h"
 
 namespace facebook::fboss::platform::platform_checks {
@@ -22,8 +19,9 @@ std::vector<std::string> filterLogsByDate(
     const std::string& timeFormat,
     std::chrono::seconds lookbackTime);
 
-std::vector<std::string> grepFile(
-    const std::string& filePath,
+// Lines of `content` matching `pattern`, case-insensitively.
+std::vector<std::string> grepLines(
+    const std::string& content,
     const std::string& pattern);
 
 std::optional<std::chrono::system_clock::time_point> parseDateTime(
@@ -37,7 +35,8 @@ std::optional<std::chrono::system_clock::time_point> parseDateTime(
  */
 class RecentManualRebootCheck : public PlatformCheck {
  public:
-  RecentManualRebootCheck() = default;
+  explicit RecentManualRebootCheck(CheckTarget target = {})
+      : PlatformCheck(std::move(target)) {}
   ~RecentManualRebootCheck() override = default;
 
   CheckResult run() override;
@@ -64,9 +63,8 @@ class RecentManualRebootCheck : public PlatformCheck {
  */
 class RecentKernelPanicCheck : public PlatformCheck {
  public:
-  explicit RecentKernelPanicCheck(
-      std::shared_ptr<PlatformFsUtils> fsUtils =
-          std::make_shared<PlatformFsUtils>());
+  explicit RecentKernelPanicCheck(CheckTarget target = {})
+      : PlatformCheck(std::move(target)) {}
   ~RecentKernelPanicCheck() override = default;
 
   CheckResult run() override;
@@ -83,9 +81,6 @@ class RecentKernelPanicCheck : public PlatformCheck {
     return "Checks if a kernel panic has occurred recently (within last 7 days)";
   }
 
- protected:
-  std::shared_ptr<PlatformFsUtils> fsUtils_;
-
  private:
   static constexpr const char* PROCESSED_DIR_DATE_FORMAT = "%Y-%m-%dT%H:%M:%S";
   static constexpr const char* CRASH_DIR = "/var/crash/processed";
@@ -96,9 +91,8 @@ class RecentKernelPanicCheck : public PlatformCheck {
  */
 class WatchdogDidNotStopCheck : public PlatformCheck {
  public:
-  explicit WatchdogDidNotStopCheck(
-      std::shared_ptr<PlatformUtils> platformUtils =
-          std::make_shared<PlatformUtils>());
+  explicit WatchdogDidNotStopCheck(CheckTarget target = {})
+      : PlatformCheck(std::move(target)) {}
   ~WatchdogDidNotStopCheck() override = default;
 
   CheckResult run() override;
@@ -114,9 +108,6 @@ class WatchdogDidNotStopCheck : public PlatformCheck {
   std::string getDescription() const override {
     return "Checks dmesg for logs indicating that a watchdog did not stop (within last 3 hours)";
   }
-
- protected:
-  std::shared_ptr<PlatformUtils> platformUtils_;
 
  private:
   static constexpr const char* DMESG_DATE_FORMAT = "[%a %b %d %H:%M:%S %Y]";

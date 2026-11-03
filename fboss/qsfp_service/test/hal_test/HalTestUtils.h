@@ -37,7 +37,8 @@ struct HalTestModule {
 
 HalTestModule createQsfpModule(
     const HalTestTransceiverEntry& entry,
-    const BspPlatformMapping* bspMapping);
+    const BspPlatformMapping* bspMapping,
+    const std::map<std::string, std::string>& fwHandleMap);
 
 // Create QsfpModules for all transceivers in the config.
 std::map<int, HalTestModule> createAllQsfpModules(const HalTestConfig& config);
@@ -66,11 +67,26 @@ bool isZrModule(QsfpModule* module);
 std::optional<cfg::OpticalChannelConfig> makeTunableOpticsConfig(
     QsfpModule* module);
 
-// Attach the module's tunable optics config to every port in state. No-op for
-// non-ZR modules. Returns true if a config was attached.
+// AppSel code the module advertises for a port's media interface code, host
+// lane count and start lane, or nullopt if it doesn't advertise one.
+std::optional<uint8_t> lookupAppSelCode(
+    QsfpModule* module,
+    const PortSpeedConfig& port);
+
+// Like lookupAppSelCode, but throws if the module doesn't advertise it.
+uint8_t findAppSelCode(QsfpModule* module, const PortSpeedConfig& port);
+
+// True if the module advertises an application for every port in combo.
+bool moduleAdvertisesCombo(QsfpModule* module, const SpeedCombination& combo);
+
+// Attach the module's tunable optics config to every port in state, with each
+// port's AppSel looked up from the module's advertised applications for that
+// port's media interface code in combo. No-op for non-ZR modules. Returns true
+// if a config was attached.
 bool applyTunableOpticsConfig(
     QsfpModule* module,
-    ProgramTransceiverState& state);
+    ProgramTransceiverState& state,
+    const SpeedCombination& combo);
 
 // Program a transceiver, retrying until datapath init/deinit completes.
 //

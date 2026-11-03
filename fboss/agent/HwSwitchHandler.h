@@ -39,7 +39,7 @@ enum HwSwitchStateUpdateStatus {
 enum HwSwitchOperDeltaSyncState {
   DISCONNECTED, /* initial state */
   INITIAL_SYNC_SENT, /* initial sync sent, waiting for ack */
-  CONNECTED, /* ready for incremental updates */
+  SYNC_CONNECTED, /* ready for incremental updates */
   CANCELLED, /* indicates client disconnecting or server graceful
                 shutdown */
 };

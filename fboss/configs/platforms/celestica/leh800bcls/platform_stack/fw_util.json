@@ -463,6 +463,14 @@
             "gpioChipValue": "1",
             "gpioChipPin": "1"
           }
+        },
+        {
+          "commandType": "gpioset",
+          "gpiosetArgs": {
+            "gpioChip": "fboss_iob_pci.gpiochip.*",
+            "gpioChipValue": "0",
+            "gpioChipPin": "0"
+          }
         }
       ],
       "upgrade": [
@@ -483,6 +491,13 @@
           "gpiogetArgs": {
             "gpioChip": "fboss_iob_pci.gpiochip.*",
             "gpioChipPin": "1"
+          }
+        },
+        {
+          "commandType": "gpioget",
+          "gpiogetArgs": {
+            "gpioChip": "fboss_iob_pci.gpiochip.*",
+            "gpioChipPin": "0"
           }
         }
       ],

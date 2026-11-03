@@ -90,9 +90,10 @@ class MKAServiceManagerTest : public testing::Test {
     sw_ = handle_->getSw();
     sw_->initialConfigApplied(steady_clock::now());
     for (const auto& portMap : std::as_const(*(sw_->getState()->getPorts()))) {
-      for (const auto& port : std::as_const(*portMap.second)) {
+      const auto& ports = std::as_const(*portMap.second);
+      if (!ports.empty()) {
+        const auto& port = *ports.begin();
         activePort_ = port.second->getID();
-        break;
       }
     }
     if (enableMacsec) {

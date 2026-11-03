@@ -14,12 +14,37 @@
 
 namespace facebook::fboss::loopback_utils {
 
+std::optional<phy::LoopbackMode> parseLoopbackDirection(
+    const std::string& token) {
+  const auto lower = boost::to_lower_copy(token);
+  if (lower == kDirectionInput) {
+    return phy::LoopbackMode::INPUT;
+  }
+  if (lower == kDirectionOutput) {
+    return phy::LoopbackMode::OUTPUT;
+  }
+  return std::nullopt;
+}
+
+std::string_view loopbackDirectionName(phy::LoopbackMode mode) {
+  return mode == phy::LoopbackMode::OUTPUT ? kDirectionOutput : kDirectionInput;
+}
+
 LoopbackComponentAction::LoopbackComponentAction(std::vector<std::string> v)
     : BaseObjectArgType(v) {
+  if (v.size() == 3) {
+    auto direction = parseLoopbackDirection(v[1]);
+    if (!direction) {
+      throw FbossError(
+          "Unknown direction '", v[1], "', expecting 'input' or 'output'");
+    }
+    direction_ = *direction;
+    v.erase(v.begin() + 1);
+  }
   if (v.size() != 2) {
     throw FbossError(
         "Incomplete command, expecting 'loopback <asic|xphy_system|xphy_line|"
-        "transceiver_system|transceiver_line> <enable|disable>'");
+        "transceiver_system|transceiver_line> [input|output] <enable|disable>'");
   }
   componentName_ = boost::to_lower_copy(v[0]);
   // Throws "Unsupported component: <x>" for anything outside the shared list.
@@ -75,7 +100,8 @@ int32_t resolveTransceiverId(
 
   auto* statusPtr = folly::get_ptr(portStatusEntries, portId);
   if (!statusPtr || !statusPtr->transceiverIdx().has_value() ||
-      !statusPtr->transceiverIdx()->transceiverId().has_value()) {
+      !apache::thrift::is_non_optional_field_set_manually_or_by_serializer(
+          statusPtr->transceiverIdx()->transceiverId())) {
     throw FbossError("No transceiver found for port '", portName, "'");
   }
   return *statusPtr->transceiverIdx()->transceiverId();
@@ -94,9 +120,18 @@ LoopbackCapability fetchLoopbackCapability(
   }
 
   const auto& diags = *tcvrInfo->tcvrState()->diagCapability();
+  if (auto lbCap = diags.loopbackCapability().to_optional()) {
+    return LoopbackCapability{
+        .systemInput = *lbCap->hostSideInput(),
+        .systemOutput = *lbCap->hostSideOutput(),
+        .lineInput = *lbCap->mediaSideInput(),
+        .lineOutput = *lbCap->mediaSideOutput(),
+    };
+  }
+  // Modules (e.g. SFF) without the per-mode capability only support INPUT.
   return LoopbackCapability{
-      .capSystem = *diags.loopbackSystem(),
-      .capLine = *diags.loopbackLine(),
+      .systemInput = *diags.loopbackSystem(),
+      .lineInput = *diags.loopbackLine(),
   };
 }
 
@@ -128,16 +163,31 @@ uint8_t readOneByte(
   return respPtr->data()->data()[0];
 }
 
-std::string formatState(uint8_t mediaNear, uint8_t mediaFar) {
+LoopbackState readLoopbackState(
+    apache::thrift::Client<QsfpService>* qsfpService,
+    int32_t transceiverId) {
+  return LoopbackState{
+      .systemInput = readOneByte(
+          qsfpService, transceiverId, kLoopbackPage, kHostInputLbEnOffset),
+      .systemOutput = readOneByte(
+          qsfpService, transceiverId, kLoopbackPage, kHostOutputLbEnOffset),
+      .lineInput = readOneByte(
+          qsfpService, transceiverId, kLoopbackPage, kMediaInputLbEnOffset),
+      .lineOutput = readOneByte(
+          qsfpService, transceiverId, kLoopbackPage, kMediaOutputLbEnOffset),
+  };
+}
+
+std::string formatState(const LoopbackState& state) {
   std::string out;
-  out += fmt::format(
-      "  system (media-far):   0x{:02X}  {}\n",
-      mediaFar,
-      mediaFar ? "enabled" : "disabled");
-  out += fmt::format(
-      "  line (media-near):    0x{:02X}  {}\n",
-      mediaNear,
-      mediaNear ? "enabled" : "disabled");
+  auto line = [&out](std::string_view name, uint8_t value) {
+    out += fmt::format(
+        "  {:<34}0x{:02X}  {}\n", name, value, value ? "enabled" : "disabled");
+  };
+  line("system input (host input):", state.systemInput);
+  line("system output (host output):", state.systemOutput);
+  line("line input (media input):", state.lineInput);
+  line("line output (media output):", state.lineOutput);
   return out;
 }
 
@@ -149,26 +199,19 @@ std::string setTransceiverLoopbackForPort(
     const std::map<int32_t, PortInfoThrift>& portEntries) {
   int32_t transceiverId = resolveTransceiverId(agent, portName, portEntries);
   auto cap = fetchLoopbackCapability(qsfpService, transceiverId);
-  bool capSystem = cap.capSystem;
-  bool capLine = cap.capLine;
 
   if (action.isDisableAll()) {
-    if (!capSystem && !capLine) {
+    if (!cap.any()) {
       return fmt::format(
           "Port: {}\nLoopback not supported by this module, nothing to disable.\n",
           portName);
     }
-  } else {
-    if (action.mode() == kModeSystem && !capSystem) {
-      return fmt::format(
-          "Error ({}): system (media-far) loopback not supported by this module\n",
-          portName);
-    }
-    if (action.mode() == kModeLine && !capLine) {
-      return fmt::format(
-          "Error ({}): line (media-near) loopback not supported by this module\n",
-          portName);
-    }
+  } else if (!cap.supports(action.mode() == kModeSystem, action.direction())) {
+    return fmt::format(
+        "Error ({}): {} {} loopback not supported by this module\n",
+        portName,
+        action.mode(),
+        loopbackDirectionName(action.direction()));
   }
 
   std::string output;
@@ -176,52 +219,74 @@ std::string setTransceiverLoopbackForPort(
   output += fmt::format("Transceiver ID: {}\n", transceiverId);
 
   // Read before state
-  uint8_t beforeNear = 0;
-  uint8_t beforeFar = 0;
+  LoopbackState before;
   try {
-    beforeNear = readOneByte(
-        qsfpService, transceiverId, kLoopbackPage, kMediaNearLbEnOffset);
-    beforeFar = readOneByte(
-        qsfpService, transceiverId, kLoopbackPage, kMediaFarLbEnOffset);
+    before = readLoopbackState(qsfpService, transceiverId);
   } catch (const std::exception& ex) {
     output += fmt::format("Error reading before-state: {}\n", ex.what());
   }
 
   if (action.isDisableAll()) {
     output += "Action: disable-all\n";
-    std::vector<std::pair<phy::PortComponent, std::string_view>> components;
-    if (capSystem) {
-      components.emplace_back(
-          phy::PortComponent::TRANSCEIVER_SYSTEM, kModeSystem);
-    }
-    if (capLine) {
-      components.emplace_back(phy::PortComponent::TRANSCEIVER_LINE, kModeLine);
-    }
+    struct Target {
+      phy::PortComponent component;
+      phy::LoopbackMode mode;
+      bool supported;
+    };
+    std::vector<Target> targets = {
+        {phy::PortComponent::TRANSCEIVER_SYSTEM,
+         phy::LoopbackMode::INPUT,
+         cap.systemInput},
+        {phy::PortComponent::TRANSCEIVER_SYSTEM,
+         phy::LoopbackMode::OUTPUT,
+         cap.systemOutput},
+        {phy::PortComponent::TRANSCEIVER_LINE,
+         phy::LoopbackMode::INPUT,
+         cap.lineInput},
+        {phy::PortComponent::TRANSCEIVER_LINE,
+         phy::LoopbackMode::OUTPUT,
+         cap.lineOutput},
+    };
+    int attempted = 0;
     int failCount = 0;
-    for (const auto& [comp, modeName] : components) {
+    for (const auto& target : targets) {
+      if (!target.supported) {
+        continue;
+      }
+      ++attempted;
       try {
-        qsfpService->sync_setPortLoopbackState(portName, comp, false);
+        qsfpService->sync_setPortLoopbackState(
+            portName, target.component, false, target.mode);
       } catch (const std::exception& ex) {
-        output += fmt::format("Error disabling {}: {}\n", modeName, ex.what());
+        output += fmt::format(
+            "Error disabling {} {}: {}\n",
+            target.component == phy::PortComponent::TRANSCEIVER_SYSTEM
+                ? kModeSystem
+                : kModeLine,
+            loopbackDirectionName(target.mode),
+            ex.what());
         ++failCount;
       }
     }
-    auto resultStr = failCount == 0                       ? "success"
-        : failCount < static_cast<int>(components.size()) ? "partial-failure"
-                                                          : "failure";
+    auto resultStr = failCount == 0 ? "success"
+        : failCount < attempted     ? "partial-failure"
+                                    : "failure";
     output += fmt::format("Result: {}\n", resultStr);
   } else {
     phy::PortComponent component = (action.mode() == kModeSystem)
         ? phy::PortComponent::TRANSCEIVER_SYSTEM
         : phy::PortComponent::TRANSCEIVER_LINE;
 
-    output += fmt::format("Mode: {}\n", action.mode());
+    output += fmt::format(
+        "Mode: {} {}\n",
+        action.mode(),
+        loopbackDirectionName(action.direction()));
     output += fmt::format(
         "Action: {}\n", action.enable() ? kActionEnable : kActionDisable);
 
     try {
       qsfpService->sync_setPortLoopbackState(
-          portName, component, action.enable());
+          portName, component, action.enable(), action.direction());
       output += "Result: success\n";
     } catch (const std::exception& ex) {
       output += "Result: error\n";
@@ -231,16 +296,13 @@ std::string setTransceiverLoopbackForPort(
   }
 
   output += "\nBefore:\n";
-  output += formatState(beforeNear, beforeFar);
+  output += formatState(before);
 
   // Read after state
   try {
-    uint8_t afterNear = readOneByte(
-        qsfpService, transceiverId, kLoopbackPage, kMediaNearLbEnOffset);
-    uint8_t afterFar = readOneByte(
-        qsfpService, transceiverId, kLoopbackPage, kMediaFarLbEnOffset);
+    auto after = readLoopbackState(qsfpService, transceiverId);
     output += "\nAfter:\n";
-    output += formatState(afterNear, afterFar);
+    output += formatState(after);
   } catch (const std::exception& ex) {
     output += fmt::format("\nError reading after-state: {}\n", ex.what());
   }

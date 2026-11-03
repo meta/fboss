@@ -22,6 +22,7 @@
 #include "fboss/agent/test/EcmpSetupHelper.h"
 #include "fboss/agent/test/TestUtils.h"
 #include "fboss/agent/test/TrunkUtils.h"
+#include "fboss/agent/test/utils/ConfigUtils.h"
 #include "fboss/agent/test/utils/LoadBalancerTestUtils.h"
 #include "fboss/agent/test/utils/Srv6TestUtils.h"
 #include "folly/IPAddressV4.h"
@@ -73,15 +74,17 @@ class AgentTrunkLoadBalancerTest : public AgentHwTest {
     return 13;
   }
 
-  void addAggregatePorts(cfg::SwitchConfig* config, AggPortInfo aggInfo) const {
-    AggregatePortID curAggId{1};
+  std::vector<utility::AggregatePortInfo> getAggregatePortInfos(
+      AggPortInfo aggInfo) const {
+    std::vector<utility::AggregatePortInfo> aggPorts;
     for (auto i = 0; i < aggInfo.numAggPorts; ++i) {
-      std::vector<int32_t> members(aggInfo.aggPortWidth);
+      std::vector<PortID> members;
       for (auto j = 0; j < aggInfo.aggPortWidth; ++j) {
-        members[j] = masterLogicalPortIds()[i * aggInfo.aggPortWidth + j];
+        members.push_back(masterLogicalPortIds()[i * aggInfo.aggPortWidth + j]);
       }
-      utility::addAggPort(curAggId++, members, config);
+      aggPorts.push_back({AggregatePortID(i + 1), members});
     }
+    return aggPorts;
   }
   std::vector<PortDescriptor> getPhysicalPorts(AggPortInfo aggInfo) const {
     std::vector<PortDescriptor> physicalPorts;
@@ -106,6 +109,42 @@ class AgentTrunkLoadBalancerTest : public AgentHwTest {
           return utility::enableTrunkPorts(state);
         },
         "enable trunk ports");
+  }
+
+  // On ASICs with directly-bound aggregate-port RIFs the SDK rejects
+  // lag-member create while a PORT RIF is still bound to the member, and a
+  // single config delta programs member creates before the RIF rebind. Tear
+  // the RIFs down from the live config in a separate apply first, so that
+  // the subsequent setup() creates members on RIF-less ports, mirroring
+  // boot-time programming. No-op on all other ASICs.
+  void unlinkPortsForLagIfNeeded() {
+    if (!isSupportedOnAllAsics(
+            HwAsic::Feature::AGGREGATE_PORT_ROUTER_INTERFACE)) {
+      return;
+    }
+    auto unlinked = getSw()->getConfig();
+    unlinked.interfaces() = {};
+    unlinked.aggregatePorts() = {};
+    unlinked.srv6Tunnels() = {};
+    // With no interfaces left, the config validator requires every port to
+    // be admin-disabled ("VLAN has no interface, even when corresp port is
+    // enabled"). Re-enable happens in setup()'s full config apply.
+    for (auto& portCfg : *unlinked.ports()) {
+      if (*portCfg.state() == cfg::PortState::ENABLED) {
+        portCfg.state() = cfg::PortState::DISABLED;
+      }
+    }
+    applyNewConfig(unlinked);
+  }
+
+  template <typename SETUP_FN, typename VERIFY_FN>
+  void verifyAcrossWarmBootsImpl(SETUP_FN setup, VERIFY_FN verify) {
+    verifyAcrossWarmBoots(
+        [=, this]() {
+          unlinkPortsForLagIfNeeded();
+          setup();
+        },
+        verify);
   }
 
   template <typename ECMP_HELPER>
@@ -206,9 +245,12 @@ class AgentTrunkLoadBalancerTest : public AgentHwTest {
   }
 
   cfg::SwitchConfig configureAggregatePorts(AggPortInfo aggInfo) {
-    auto config = initialConfig(*getAgentEnsemble());
-    addAggregatePorts(&config, aggInfo);
-    return config;
+    auto& ensemble = *getAgentEnsemble();
+    return utility::oneAggregatePortPerInterfaceConfig(
+        ensemble.getSw(),
+        ensemble.masterLogicalPortIds(),
+        getAggregatePortInfos(aggInfo),
+        true /*interfaceHasSubnet*/);
   }
 
   void setupIPECMP(AggPortInfo aggInfo) {
@@ -460,7 +502,7 @@ class AgentTrunkLoadBalancerTest : public AgentHwTest {
             deviation);
       }
     };
-    verifyAcrossWarmBoots(setup, verify);
+    verifyAcrossWarmBootsImpl(setup, verify);
   }
 };
 
@@ -578,7 +620,7 @@ class AgentSrv6UcmpTrunkLoadBalancerTest
           25 /* deviation */,
           kSrv6TrunkUcmpWeights());
     };
-    verifyAcrossWarmBoots(setup, verify);
+    verifyAcrossWarmBootsImpl(setup, verify);
   }
 };
 
@@ -829,7 +871,7 @@ TEST_F(AgentSrv6TrunkLoadBalancerTest, Srv6TrunkEcmpLoadBalance) {
         kSrv6AggInfo,
         25 /* deviation */);
   };
-  verifyAcrossWarmBoots(setup, verify);
+  verifyAcrossWarmBootsImpl(setup, verify);
 }
 
 TEST_F(AgentSrv6UcmpTrunkLoadBalancerTest, Srv6TrunkUcmpLoadBalanceCpuTraffic) {
@@ -850,7 +892,7 @@ TEST_F(
     pumpIPv6FlowLabelTrafficAndVerifyLoadBalanced(
         false /* loopThroughFrontPanel */, k4X3WideAggs, 25 /* deviation */);
   };
-  verifyAcrossWarmBoots(setup, verify);
+  verifyAcrossWarmBootsImpl(setup, verify);
 }
 
 TEST_F(
@@ -861,7 +903,7 @@ TEST_F(
     pumpIPv6FlowLabelTrafficAndVerifyLoadBalanced(
         true /* loopThroughFrontPanel */, k4X3WideAggs, 25 /* deviation */);
   };
-  verifyAcrossWarmBoots(setup, verify);
+  verifyAcrossWarmBootsImpl(setup, verify);
 }
 
 // Regression test for S698336: the agent crashed when a config change altered
@@ -950,7 +992,7 @@ TEST_F(AgentTrunkLoadBalancerTest, TrunkV6HashFieldsChangedViaConfigChange) {
     applyLoadBalancers(trunkWithoutFlowLabel());
     verifyTrunkFlowLabel(false);
   };
-  verifyAcrossWarmBoots(setup, verify);
+  verifyAcrossWarmBootsImpl(setup, verify);
 }
 
 } // namespace facebook::fboss

@@ -9,6 +9,7 @@
  */
 #include "fboss/agent/HwSwitch.h"
 #include "fboss/agent/hw/sai/api/AddressUtil.h"
+#include "fboss/agent/hw/sai/switch/SaiCounterManager.h"
 #include "fboss/agent/hw/sai/switch/SaiFdbManager.h"
 #include "fboss/agent/hw/sai/switch/SaiManagerTable.h"
 #include "fboss/agent/hw/sai/switch/SaiNeighborManager.h"
@@ -89,6 +90,22 @@ class RouteManagerTest : public ManagerTestBase {
     return route;
   }
 
+  // Protected route whose primary has been pruned by resolution, leaving only
+  // backup next hops.
+  std::shared_ptr<Route<folly::IPAddressV4>> makeBackupOnlyRoute(
+      const folly::CIDRNetwork& destination,
+      const RouteNextHopEntry::NextHopSet& backupNextHops) {
+    RouteNextHopEntry entry(backupNextHops, AdminDistance::STATIC_ROUTE);
+    RouteFields<folly::IPAddressV4>::Prefix prefix(
+        destination.first.asV4(), destination.second);
+    auto route = std::make_shared<Route<folly::IPAddressV4>>(
+        RouteV4::makeThrift(prefix));
+    route->update(ClientID{42}, entry);
+    allocateRouteNextHopIds(nextHopIDManager_.get(), entry);
+    route->setResolved(entry);
+    return route;
+  }
+
   SaiRouteHandle* programRoute(
       const std::shared_ptr<Route<folly::IPAddressV4>>& route) {
     saiManagerTable->routeManager().addRoute<folly::IPAddressV4>(
@@ -111,6 +128,68 @@ class RouteManagerTest : public ManagerTestBase {
     return saiApiTable->nextHopGroupApi().getAttribute(
         childMember->adapterKey(),
         SaiNextHopGroupMemberTraits::Attributes::NextHopId{});
+  }
+
+  std::shared_ptr<Route<folly::IPAddressV4>> makeRouteWithEntry(
+      const folly::CIDRNetwork& destination,
+      RouteNextHopEntry entry) {
+    RouteFields<folly::IPAddressV4>::Prefix prefix(
+        destination.first.asV4(), destination.second);
+    auto route = std::make_shared<Route<folly::IPAddressV4>>(
+        Route<folly::IPAddressV4>::makeThrift(prefix));
+    route->update(ClientID{42}, entry);
+    allocateRouteNextHopIds(nextHopIDManager_.get(), entry);
+    route->setResolved(entry);
+    return route;
+  }
+
+  // A forwarding route over `intf`, optionally counted.
+  std::shared_ptr<Route<folly::IPAddressV4>> makeCountedNextHopRoute(
+      const folly::CIDRNetwork& destination,
+      const TestInterface& intf,
+      const std::optional<RouteCounterID>& counterID) {
+    RouteNextHopEntry::NextHopSet nextHops{makeNextHop(intf)};
+    return makeRouteWithEntry(
+        destination,
+        RouteNextHopEntry(
+            std::move(nextHops), AdminDistance::STATIC_ROUTE, counterID));
+  }
+
+  // A route with no next hops -- DROP or TO_CPU -- optionally counted.
+  std::shared_ptr<Route<folly::IPAddressV4>> makeCountedActionRoute(
+      const folly::CIDRNetwork& destination,
+      RouteForwardAction action,
+      const std::optional<RouteCounterID>& counterID) {
+    return makeRouteWithEntry(
+        destination,
+        RouteNextHopEntry(action, AdminDistance::STATIC_ROUTE, counterID));
+  }
+
+  SaiRouteHandle* changeRoute(
+      const std::shared_ptr<Route<folly::IPAddressV4>>& oldRoute,
+      const std::shared_ptr<Route<folly::IPAddressV4>>& newRoute) {
+    saiManagerTable->routeManager().changeRoute<folly::IPAddressV4>(
+        oldRoute, newRoute, RouterID(0), getProgrammedState());
+    auto routeEntry = saiManagerTable->routeManager().routeEntryFromSwRoute(
+        RouterID(0), newRoute);
+    return saiManagerTable->routeManager().getRouteHandle(routeEntry);
+  }
+
+  // Fake SAI allocates object ids from zero, so the first counter created
+  // would have adapter key 0 -- indistinguishable from SAI_NULL_OBJECT_ID,
+  // which makes every assertion below vacuously true. Hold one throwaway
+  // counter so the counter under test gets a non-zero id.
+  std::shared_ptr<SaiCounterHandle> reserveCounterIdZero() {
+    return saiManagerTable->counterManager().incRefOrAddRouteCounter(
+        "reserved.counter.zero");
+  }
+
+  // The SAI_ROUTE_ENTRY_ATTR_COUNTER_ID actually programmed on the route,
+  // as opposed to what the manager thinks it set.
+  sai_object_id_t programmedCounterId(const SaiRouteHandle* routeHandle) {
+    return saiApiTable->routeApi().getAttribute(
+        routeHandle->route->adapterKey(),
+        SaiRouteTraits::Attributes::CounterID{});
   }
 
   folly::CIDRNetwork d1;
@@ -216,6 +295,49 @@ TEST_F(
       NextHopGroupSaiId(childGroupId.value()),
       SaiNextHopGroupTraits::Attributes::Type{});
   EXPECT_EQ(childGroupType, SAI_NEXT_HOP_GROUP_TYPE_HW_PROTECTION);
+}
+
+TEST_F(RouteManagerTest, backupOnlyRouteCreatesProtectionGroup) {
+  // Losing the primary is exactly when protection matters, so a route left
+  // with a single backup next hop must still be a protection group. Branching
+  // on next hop count alone would program it as a plain next hop and forward
+  // over the backup as though it were the primary path.
+  RouteNextHopEntry::NextHopSet backupNextHops{
+      makeResolvedNextHop(testInterfaces.at(1), NextHopRole::BACKUP),
+  };
+  auto route = makeBackupOnlyRoute(d1, backupNextHops);
+  auto routeHandle = programRoute(route);
+  ASSERT_NE(routeHandle, nullptr);
+
+  auto groupHandle = routeHandle->nextHopGroupHandle();
+  ASSERT_NE(groupHandle, nullptr);
+  ASSERT_NE(groupHandle->nextHopGroup, nullptr);
+  auto& nextHopGroupApi = saiApiTable->nextHopGroupApi();
+  EXPECT_EQ(
+      nextHopGroupApi.getAttribute(
+          groupHandle->nextHopGroup->adapterKey(),
+          SaiNextHopGroupTraits::Attributes::Type{}),
+      SAI_NEXT_HOP_GROUP_TYPE_PROTECTION);
+
+  auto childGroupId = getChildGroupId(groupHandle);
+  ASSERT_TRUE(childGroupId.has_value());
+  EXPECT_EQ(
+      nextHopGroupApi.getAttribute(
+          NextHopGroupSaiId(childGroupId.value()),
+          SaiNextHopGroupTraits::Attributes::Type{}),
+      SAI_NEXT_HOP_GROUP_TYPE_HW_PROTECTION);
+}
+
+TEST_F(RouteManagerTest, singlePrimaryRouteDoesNotCreateProtectionGroup) {
+  // The counterpart guard: an ordinary single next hop route must keep taking
+  // the plain next hop path rather than being promoted to a group.
+  TestRoute singleNextHopRoute;
+  singleNextHopRoute.destination = d2;
+  singleNextHopRoute.nextHopInterfaces.push_back(testInterfaces.at(0));
+  auto route = makeRoute(singleNextHopRoute);
+  auto routeHandle = programRoute(route);
+  ASSERT_NE(routeHandle, nullptr);
+  EXPECT_EQ(routeHandle->nextHopGroupHandle(), nullptr);
 }
 
 TEST_F(RouteManagerTest, protectionRoutesWithSameBackupsShareChildGroup) {
@@ -1486,3 +1608,100 @@ TEST_F(Srv6RouteTest, createSrv6SidListThrowsOnEmptySegmentList) {
       FbossError);
 }
 #endif
+
+// A route's SAI_ROUTE_ENTRY_ATTR_COUNTER_ID must follow its counterID for
+// every forwarding action, not just the next-hop ones. These assert on the
+// attribute programmed in hardware rather than on counter removal, because
+// fake SAI does not reference count counters and so will happily remove one
+// a route still points at.
+TEST_F(RouteManagerTest, counterDetachedWhenRouteBecomesDrop) {
+  const RouteCounterID kCounterID{"route.counter.drop"};
+  auto padCounter = reserveCounterIdZero();
+  auto counted = makeCountedNextHopRoute(d1, testInterfaces.at(0), kCounterID);
+  auto* countedHandle = programRoute(counted);
+  ASSERT_NE(countedHandle, nullptr);
+  ASSERT_NE(countedHandle->counterHandle_, nullptr);
+  ASSERT_NE(
+      countedHandle->counterHandle_->adapterKey(),
+      CounterSaiId(SAI_NULL_OBJECT_ID));
+  EXPECT_EQ(
+      programmedCounterId(countedHandle),
+      countedHandle->counterHandle_->adapterKey());
+
+  auto dropped = makeCountedActionRoute(
+      d1, RouteForwardAction::DROP, std::nullopt /*counterID*/);
+  auto* droppedHandle = changeRoute(counted, dropped);
+  ASSERT_NE(droppedHandle, nullptr);
+  EXPECT_EQ(droppedHandle->counterHandle_, nullptr);
+  EXPECT_EQ(programmedCounterId(droppedHandle), SAI_NULL_OBJECT_ID);
+}
+
+TEST_F(RouteManagerTest, counterDetachedWhenRouteBecomesToCpu) {
+  const RouteCounterID kCounterID{"route.counter.tocpu"};
+  auto padCounter = reserveCounterIdZero();
+  auto counted = makeCountedNextHopRoute(d1, testInterfaces.at(0), kCounterID);
+  auto* countedHandle = programRoute(counted);
+  ASSERT_NE(countedHandle, nullptr);
+  ASSERT_NE(countedHandle->counterHandle_, nullptr);
+  ASSERT_NE(
+      countedHandle->counterHandle_->adapterKey(),
+      CounterSaiId(SAI_NULL_OBJECT_ID));
+  ASSERT_EQ(
+      programmedCounterId(countedHandle),
+      countedHandle->counterHandle_->adapterKey());
+
+  auto toCpu = makeCountedActionRoute(
+      d1, RouteForwardAction::TO_CPU, std::nullopt /*counterID*/);
+  auto* toCpuHandle = changeRoute(counted, toCpu);
+  ASSERT_NE(toCpuHandle, nullptr);
+  EXPECT_EQ(toCpuHandle->counterHandle_, nullptr);
+  EXPECT_EQ(programmedCounterId(toCpuHandle), SAI_NULL_OBJECT_ID);
+}
+
+// A counted route is still counted when it drops: the handle the manager
+// holds has to be attached in hardware, not just reference counted.
+TEST_F(RouteManagerTest, counterAttachedToDropRoute) {
+  const RouteCounterID kCounterID{"route.counter.ondrop"};
+  auto padCounter = reserveCounterIdZero();
+  auto dropped =
+      makeCountedActionRoute(d1, RouteForwardAction::DROP, kCounterID);
+  auto* droppedHandle = programRoute(dropped);
+  ASSERT_NE(droppedHandle, nullptr);
+  ASSERT_NE(droppedHandle->counterHandle_, nullptr);
+  ASSERT_NE(
+      droppedHandle->counterHandle_->adapterKey(),
+      CounterSaiId(SAI_NULL_OBJECT_ID));
+  EXPECT_EQ(
+      programmedCounterId(droppedHandle),
+      droppedHandle->counterHandle_->adapterKey());
+}
+
+// Moving a route from one counter to another repoints it in hardware and
+// releases the counter it no longer uses.
+TEST_F(RouteManagerTest, routeCounterIdUpdated) {
+  const RouteCounterID kOldCounterID{"route.counter.old"};
+  const RouteCounterID kNewCounterID{"route.counter.new"};
+  auto padCounter = reserveCounterIdZero();
+
+  auto withOldCounter =
+      makeCountedNextHopRoute(d1, testInterfaces.at(0), kOldCounterID);
+  auto* oldHandle = programRoute(withOldCounter);
+  ASSERT_NE(oldHandle, nullptr);
+  ASSERT_NE(oldHandle->counterHandle_, nullptr);
+  auto oldCounterId = oldHandle->counterHandle_->adapterKey();
+  ASSERT_NE(oldCounterId, CounterSaiId(SAI_NULL_OBJECT_ID));
+  ASSERT_EQ(programmedCounterId(oldHandle), oldCounterId);
+  // The route handle is the only owner, so this expires once the route stops
+  // referencing the counter.
+  std::weak_ptr<SaiCounterHandle> oldCounter = oldHandle->counterHandle_;
+
+  auto withNewCounter =
+      makeCountedNextHopRoute(d1, testInterfaces.at(0), kNewCounterID);
+  auto* newHandle = changeRoute(withOldCounter, withNewCounter);
+  ASSERT_NE(newHandle, nullptr);
+  ASSERT_NE(newHandle->counterHandle_, nullptr);
+  auto newCounterId = newHandle->counterHandle_->adapterKey();
+  EXPECT_NE(newCounterId, oldCounterId);
+  EXPECT_EQ(programmedCounterId(newHandle), newCounterId);
+  EXPECT_TRUE(oldCounter.expired());
+}

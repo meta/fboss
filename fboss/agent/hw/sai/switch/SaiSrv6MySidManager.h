@@ -12,6 +12,7 @@
 #include "fboss/agent/hw/sai/switch/SaiNextHopManager.h"
 
 #include <memory>
+#include <optional>
 #include <variant>
 
 namespace facebook::fboss {
@@ -87,6 +88,13 @@ class SaiSrv6MySidManager {
 #endif
 
  private:
+#if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)
+  std::optional<SaiMySidEntryHandle::NextHopHandle> getNextHopHandle(
+      const SaiMySidEntryTraits::AdapterHostKey& adapterHostKey,
+      const MySid& mySid,
+      const std::shared_ptr<SwitchState>& state);
+#endif
+
   SaiStore* saiStore_;
   SaiManagerTable* managerTable_;
 #if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)

@@ -16,7 +16,7 @@ _QSFP_SERVICE_PROD = "qsfp_service"
 _QSFP_SERVICE_FOR_TESTING = "qsfp_service_for_testing"
 # Introduce an oss version of qsfp_service to run in oss environment.
 _QSFP_SERVICE_OSS = "qsfp_service_oss"
-_QSFP_SERVICE_UNIT_FILE_PATH = f"/tmp/{_QSFP_SERVICE_OSS}.service"
+_QSFP_SERVICE_UNIT_FILE_PATH = f"/run/systemd/system/{_QSFP_SERVICE_OSS}.service"
 
 
 def _setup_qsfp_service(
@@ -47,8 +47,7 @@ def _setup_qsfp_service(
         )
     if bsp_platform_mapping_override_path:
         service_utils.validate_path(
-            bsp_platform_mapping_override_path,
-            "bsp_platform_mapping override path",
+            bsp_platform_mapping_override_path, "bsp_platform_mapping override path"
         )
         extra_args += f" {_BSP_PLATFORM_MAPPING_OVERRIDE_PATH_ARG} {bsp_platform_mapping_override_path}"
 

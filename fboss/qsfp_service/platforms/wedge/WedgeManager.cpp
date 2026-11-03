@@ -95,7 +95,9 @@ void WedgeManager::loadConfig() {
     partNumberToFwHandle = *tcvrFw->fwHandleMap();
   }
   tcvrConfig_ = std::make_shared<TransceiverConfig>(
-      *qsfpCfg.transceiverConfigOverrides(), partNumberToFwHandle);
+      *qsfpCfg.transceiverConfigOverrides(),
+      partNumberToFwHandle,
+      qsfpCfg.transceiverVendorOverrides().to_optional());
 
   qsfpConfig_->writePhyConfigToFile();
 
@@ -245,7 +247,8 @@ void WedgeManager::getTransceiversInfo(
       auto currentState = getCurrentStateSnapshot(tcvrID);
       info[i].tcvrState()->stateMachineState() = currentState;
     } catch (const std::exception& ex) {
-      MODULE_LOG(ERR, "", i) << "Error calling getTransceiverInfo(): " << ex.what();
+      MODULE_LOG(ERR, "", i)
+          << "Error calling getTransceiverInfo(): " << ex.what();
     }
   }
 }
@@ -311,7 +314,8 @@ void WedgeManager::getTransceiversRawDOMData(
       try {
         data = it->second->getRawDOMData();
       } catch (const std::exception& ex) {
-        MODULE_LOG(ERR, "", i) << "Error calling getRawDOMData(): " << ex.what();
+        MODULE_LOG(ERR, "", i)
+            << "Error calling getRawDOMData(): " << ex.what();
       }
       info[i] = data;
     }
@@ -339,7 +343,8 @@ void WedgeManager::getTransceiversDOMDataUnion(
       try {
         data = it->second->getDOMDataUnion();
       } catch (const std::exception& ex) {
-        MODULE_LOG(ERR, "", i) << "Error calling getDOMDataUnion(): " << ex.what();
+        MODULE_LOG(ERR, "", i)
+            << "Error calling getDOMDataUnion(): " << ex.what();
       }
       info[i] = data;
     }
@@ -488,8 +493,7 @@ void WedgeManager::updateTransceiverLogInfo(
     try {
       tcvrInfo = getTransceiverInfo(tcvrID);
     } catch (const QsfpModuleError&) {
-      MODULE_LOG(INFO, "", tcvrID)
-          << "Failed to update tcvr log info";
+      MODULE_LOG(INFO, "", tcvrID) << "Failed to update tcvr log info";
       continue;
     }
     const auto& state = tcvrInfo.tcvrState();
@@ -701,7 +705,8 @@ std::vector<TransceiverID> WedgeManager::updateTransceiverMap() {
       // Also only create transceivers that are defined in platform mapping
       // (have non empty port list)
       if (transceiversInReset->count(idx) != 0) {
-        MODULE_LOG(INFO, "", idx) << "is held in reset. Not creating transceiver";
+        MODULE_LOG(INFO, "", idx)
+            << "is held in reset. Not creating transceiver";
       } else if (getPortNames(static_cast<TransceiverID>(idx)).empty()) {
         MODULE_LOG(INFO, "", idx)
             << "is not in platform mapping. Not creating transceiver";
@@ -1012,7 +1017,8 @@ bool WedgeManager::initExternalPhyMap(
     return true;
   }
 
-  // For platforms that require PHY config, fail hard if the phy config file doesn't exist.
+  // For platforms that require PHY config, fail hard if the phy config file
+  // doesn't exist.
   if (requiresPhyConfig()) {
     auto phyConfigPath = folly::to<std::string>(
         FLAGS_qsfp_service_volatile_dir, "/", kPhyHwConfigFileName);
@@ -1195,7 +1201,7 @@ std::string WedgeManager::listHwObjects(
 
 bool WedgeManager::getSdkState(std::string filename) const {
   if (!phyManager_) {
-    return false;
+    throw FbossError("getSdkState: no external PHY on this platform");
   }
   return phyManager_->getSdkState(filename);
 }

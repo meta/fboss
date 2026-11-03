@@ -524,6 +524,15 @@ TEST_F(SwitchApiTest, testFwLoadType) {
   EXPECT_EQ(loadType, gotLoadType);
 }
 
+TEST_F(SwitchApiTest, testWarmRecover) {
+  SaiSwitchTraits::Attributes::WarmRecover warmRecover{true};
+  switchApi->setAttribute(switchId, warmRecover);
+
+  auto gotWarmRecover = switchApi->getAttribute(
+      switchId, SaiSwitchTraits::Attributes::WarmRecover{});
+  EXPECT_EQ(warmRecover, gotWarmRecover);
+}
+
 TEST_F(SwitchApiTest, testAccessBus) {
   SaiSwitchTraits::Attributes::HardwareAccessBus bus{
       SAI_SWITCH_HARDWARE_ACCESS_BUS_MDIO};
@@ -748,6 +757,21 @@ TEST_F(SwitchApiTest, testPortCl72RetryEnable) {
       switchApi->getAttribute(
           switchId, SaiSwitchTraits::Attributes::PortCl72RetryEnable{}),
       false);
+}
+
+TEST_F(SwitchApiTest, testAclDropSnoopDisabled) {
+  EXPECT_FALSE(switchApi->getAttribute(
+      switchId, SaiSwitchTraits::Attributes::AclDropSnoopDisabled{}));
+
+  switchApi->setAttribute(
+      switchId, SaiSwitchTraits::Attributes::AclDropSnoopDisabled{true});
+  EXPECT_TRUE(switchApi->getAttribute(
+      switchId, SaiSwitchTraits::Attributes::AclDropSnoopDisabled{}));
+
+  switchApi->setAttribute(
+      switchId, SaiSwitchTraits::Attributes::AclDropSnoopDisabled{false});
+  EXPECT_FALSE(switchApi->getAttribute(
+      switchId, SaiSwitchTraits::Attributes::AclDropSnoopDisabled{}));
 }
 
 TEST_F(SwitchApiTest, getPacketDropTypeIngressList) {

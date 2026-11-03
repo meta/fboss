@@ -9,6 +9,95 @@ mkdir -p "$LOCAL_RPM_REPO_DIR"
 sed -i 's/^PRETTY_NAME=.*/PRETTY_NAME="FBOSS Distro Image"/' /usr/lib/os-release
 sed -i 's/^NAME=.*/NAME="FBOSS Distro Image"/' /usr/lib/os-release
 
+# kiwi's first-boot filesystem resize sorts on the lsblk column "START", which
+# doesn't exist with CentOS 9 Stream's util-linux 2.37.4. Sorting silently
+# no-ops and falls back to kernel, which does not order consistently. Sometimes
+# the EFI partition is selected for resizing instead of the btrfs root and the
+# rootfs is never resized.
+#
+# Resolve by partition NUMBER from sysfs instead, with the upstream lookup as
+# a fallback.
+KIWI_PARTLIB=/usr/lib/dracut/modules.d/59kiwi-lib/kiwi-partitions-lib.sh
+KIWI_GPNN_NEW=$(mktemp)
+cat >"$KIWI_GPNN_NEW" <<'EOF'
+function get_partition_node_name {
+    local disk=$1
+    local partid=$2
+    local index=1
+    local disk_node
+    local part_sysfs
+    local partnode
+    local sysfs_seen=0
+    udev_pending
+    # BUGFIX: resolve by partition number, not by position in the listing
+    disk_node=$(readlink -f "${disk}")
+    disk_node=${disk_node##*/}
+    for part_sysfs in /sys/block/"${disk_node}"/*/partition; do
+        [ -r "${part_sysfs}" ] || continue
+        sysfs_seen=1
+        [ "$(cat "${part_sysfs}")" = "${partid}" ] || continue
+        partnode=${part_sysfs%/partition}
+        partnode=/dev/${partnode##*/}
+        if [ -b "${partnode}" ];then
+            echo "${partnode}"
+            return 0
+        fi
+    done
+    # Where sysfs described this disk its answer is authoritative, including
+    # "no such partition"; falling through on a gap in the numbering would let
+    # the positional lookup return a neighbouring partition.
+    if [ "${sysfs_seen}" = "1" ];then
+        return 1
+    fi
+    # Upstream positional lookup, for whole-disk devices sysfs does not
+    # enumerate this way (device mapper, fake raid)
+    for partnode in $(
+        { lsblk -p -l -o NAME,TYPE,START -x START "${disk}" 2>/dev/null ||\
+        lsblk -p -l -o NAME,TYPE "${disk}"; } |\
+        grep -E "part|md$" | cut -f1 -d ' '
+    );do
+        if [ "${index}" = "${partid}" ];then
+            echo "${partnode}"
+            return 0
+        fi
+        index=$((index + 1))
+    done
+    return 1
+}
+EOF
+
+if [ ! -f "$KIWI_PARTLIB" ]; then
+  echo "WARNING: $KIWI_PARTLIB not found; leaving upstream get_partition_node_name"
+elif grep -q 'BUGFIX: resolve by partition number' "$KIWI_PARTLIB"; then
+  echo "kiwi get_partition_node_name already patched"
+elif ! grep -q '^function get_partition_node_name {$' "$KIWI_PARTLIB"; then
+  echo "WARNING: get_partition_node_name not in expected form; leaving upstream behaviour"
+else
+  KIWI_PARTLIB_TMP=$(mktemp)
+  awk -v newfn="$KIWI_GPNN_NEW" '
+    $0 == "function get_partition_node_name {" {
+      while ((getline line < newfn) > 0) print line
+      close(newfn)
+      skip = 1
+      next
+    }
+    skip && $0 == "}" { skip = 0; next }
+    skip { next }
+    { print }
+  ' "$KIWI_PARTLIB" >"$KIWI_PARTLIB_TMP"
+
+  # A botched splice breaks the initrd and the box does not boot, so validate
+  # before it goes anywhere near the image.
+  if ! bash -n "$KIWI_PARTLIB_TMP"; then
+    echo "ERROR: patched $KIWI_PARTLIB does not parse"
+    exit 1
+  fi
+  cat "$KIWI_PARTLIB_TMP" >"$KIWI_PARTLIB"
+  rm -f "$KIWI_PARTLIB_TMP"
+  echo "Patched kiwi get_partition_node_name: positional -> by partition number"
+fi
+rm -f "$KIWI_GPNN_NEW"
+
 echo "Creating FBOSS log directories..."
 mkdir -p /var/facebook/logs/fboss/sdk
 mkdir -p /var/facebook/logs/fboss/archive
@@ -31,7 +120,10 @@ restorecon -Rv /var/facebook/logs/fboss
 # default ACL forces group rwx on every new file/dir regardless of umask, and
 # is itself inherited by new subdirectories, so it cascades indefinitely.
 echo "Creating coop user/group and /etc/coop directory..."
-groupadd -f -r switching
+# Pin gid 1001: without -g the gid floats with creation order (kiwi
+# pre-created it at 1001 when netops listed it; alone, -r yields a
+# system gid instead), and the netadmin container matches it by number.
+groupadd -f -r -g 1001 switching
 useradd -r -g switching -s /sbin/nologin -M -d /nonexistent coop
 mkdir -p /etc/coop
 chown -R coop:switching /etc/coop
@@ -42,12 +134,17 @@ setfacl -R -d -m g:switching:rwx -m o::rx /etc/coop
 # Default to python 3.12, also simulate the Debian python-is-python3 package
 update-alternatives --install /usr/bin/python python /usr/bin/python3.12 1
 update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1
+# Fixup firewalld and its CLIs to definitively use the original system python
+# like the rest of the system tools and services.
+for fwbin in /usr/sbin/firewalld /usr/bin/firewall-cmd /usr/bin/firewall-offline-cmd; do
+  [ -f "$fwbin" ] && sed -i '1s#bin/python3 #bin/python3.9 #' "$fwbin"
+done
 
 # All dnf invocations with an invalid RPM repo configured will fail. Create the
 # metadata for the local_rpm_repo now to prevent that.
 createrepo /usr/local/share/local_rpm_repo
 
-# 1. Process component artifacts and install RPMs
+# Process component artifacts and install RPMs
 #
 # Component artifacts are copied to /repos/<component_name>/
 # Each component is processed in isolation to avoid conflicts
@@ -127,17 +224,21 @@ process_npu_sai_tarball() {
 
   local tarball="${tarballs[0]}"
 
-  # Two shapes are published. The SDK vendors ship sai-runtime.rpm inside a
+  # Two shapes are published. The SDK vendors ship a sai-runtime RPM inside a
   # tarball; the periodic kmod builds ship the .ko files directly, already
   # laid out under lib/modules/<kver>/extra/<vendor>/.
-  if tar tf "$tarball" | grep -qE '^(\./)?sai-runtime\.rpm$'; then
-    echo "  Extracting sai-runtime.rpm from $(basename "$tarball")..."
-    tar -xf "$tarball" -C "$component_dir" --wildcards '*sai-runtime.rpm'
+  #
+  # The RPM name is matched with a wildcard so it can carry its version --
+  # sai-runtime-14.2.0-1.xgs_6_5_34.x86_64.rpm -- which is what makes
+  # `rpm -qi sai-runtime` on a switch report which SDK the image was built with.
+  if tar tf "$tarball" | grep -qE '^(\./)?sai-runtime.*\.rpm$'; then
+    echo "  Extracting sai-runtime RPM from $(basename "$tarball")..."
+    tar -xf "$tarball" -C "$component_dir" --wildcards '*sai-runtime*.rpm'
 
     local rpm
-    rpm=$(find "$component_dir" -name sai-runtime.rpm -print -quit)
+    rpm=$(find "$component_dir" -name 'sai-runtime*.rpm' -print -quit)
     if [ -z "$rpm" ]; then
-      echo "ERROR: sai-runtime.rpm listed in $(basename "$tarball") but not extracted"
+      echo "ERROR: sai-runtime RPM listed in $(basename "$tarball") but not extracted"
       return 1
     fi
 
@@ -260,7 +361,8 @@ for component_dir in /repos/*; do
 done
 shopt -u nullglob
 
-# 2. Define paths
+# Define paths
+#
 # Detect the installed kernel version from the boot directory
 # shellcheck disable=SC2012
 VMLINUZ_PATH=$(ls /boot/vmlinuz-* 2>/dev/null | head -n 1)
@@ -282,13 +384,14 @@ echo "Detected kernel version: ${KERNEL_VERSION}"
 echo "Vmlinuz path: ${VMLINUZ_PATH}"
 echo "Initrd path: ${INITRD_PATH}"
 
-# 3. Manually run dracut to create the initrd
+# Manually run dracut to create the initrd
 #    --force is needed to overwrite any existing file
 #    --kver specifies the kernel version to build for
 echo "Running dracut manually..."
 dracut --force --kver "${KERNEL_VERSION}" "${INITRD_PATH}"
 
-# 4. Run kernel-install for grub config
+# Run kernel-install for grub config
+#
 # This wipes ALL interfering variables set by kiwi-ng
 # and runs kernel-install in a "sterile" environment.
 env -i \
@@ -296,11 +399,11 @@ env -i \
   kernel-install add "${KERNEL_VERSION}" "${VMLINUZ_PATH}" --initrd-file "${INITRD_PATH}"
 echo "Custom kernel ${KERNEL_VERSION} install complete."
 
-# 5. Generate a fix-nvme script that "may" need to be run
+# Generate a fix-nvme script that "may" need to be run
 MODULE_DIR="/usr/lib/dracut/modules.d/99nvme-fix"
 mkdir -p "$MODULE_DIR"
 
-# 5a. Generate the script directly in the target directory
+# a. Generate the script directly in the target directory
 cat >"$MODULE_DIR/fix-nvme.sh" <<'EOF'
 #!/bin/bash
 # Force all NVMe drives to 512e mode for KIWI compatibility if they are
@@ -346,10 +449,10 @@ if [ -b "$DEV" ]; then
 fi
 EOF
 
-# 5b. Make the hook executable
+# b. Make the hook executable
 chmod +x "$MODULE_DIR/fix-nvme.sh"
 
-# 5c. Generate the module-setup.sh
+# c. Generate the module-setup.sh
 cat >"$MODULE_DIR/module-setup.sh" <<'EOF'
 #!/bin/bash
 
@@ -370,13 +473,29 @@ install() {
   # Install the hook script to run BEFORE mounting (pre-mount priority 00)
   # $moddir resolves to the directory where this script sits
   inst_hook pre-mount 00 "$moddir/fix-nvme.sh"
+
+  # Raw disk partition LBAs use the device's logical sector size. KIWI checks
+  # the physical size instead, rejecting 512e NVMe drives after fix-nvme.sh
+  # successfully switches them to 512-byte LBAs.
+  local kiwi_dump_hook="$initdir/lib/dracut/hooks/pre-mount/30-kiwi-dump-image.sh"
+  if [ -f "$kiwi_dump_hook" ]; then
+    if grep -q 'queue/physical_block_size' "$kiwi_dump_hook"; then
+      sed -i \
+        's|queue/physical_block_size|queue/logical_block_size|' \
+        "$kiwi_dump_hook"
+    elif ! grep -q 'queue/logical_block_size' "$kiwi_dump_hook"; then
+      dfatal "NVMe-Fix: KIWI target block-size check has an unknown form"
+      return 1
+    fi
+  fi
 }
 EOF
 
-# 5d. Make the setup script executable
+# d. Make the setup script executable
 chmod +x "$MODULE_DIR/module-setup.sh"
 
-# 6. Use system GRUB 2.06 from packages
+# Use system GRUB 2.06 from packages
+#
 # The grub2-efi-x64 package already provides grubx64.efi with all necessary modules
 # We just need to make sure the btrfs module is accessible on the EFI partition
 echo "Using system GRUB 2.06 from grub2-efi-x64 package..."
@@ -414,7 +533,7 @@ mkdir -p /boot/grub2/x86_64-efi
 cp -r /usr/lib/grub/x86_64-efi/* /boot/grub2/x86_64-efi/
 echo "Copied all GRUB modules to /boot/grub2/x86_64-efi/ (root partition)"
 
-# 7. Enable systemd services
+# Enable systemd services
 echo "Enabling FBOSS systemd services..."
 # Ships in sai-runtime.rpm (npu_sai component). The vendor spec is meant to
 # enable it from %post, but not every SDK drop does -- 14.2.0 carries no
@@ -433,17 +552,28 @@ systemctl enable fan_service.service
 systemctl enable sensor_service.service
 systemctl enable fsdb.service
 systemctl enable qsfp_service.service
+systemctl enable led_service.service
 systemctl enable fboss_sw_agent.service
 systemctl enable fboss_hw_agents.target
 # Normally enabled by systemd preset; enabled explicitly so FBOSS log rotation
 # does not depend on preset behaviour in the image build.
 systemctl enable logrotate.timer
 
-# 8. Fix NetworkManager connection profile permissions
+# firewalld's default public zone allows only ssh/dhcpv6-client/cockpit
+# and rejects everything else. Enable the "fboss" service (thrift ports) and
+# the fboss-forward policy (transit) for the default zone here so the ports are
+# reachable off-box and transit traffic is not rejected.
+echo "Configuring firewalld for FBOSS..."
+if ! firewall-offline-cmd --zone=public --add-service=fboss; then
+  echo "config.sh: FATAL: could not add the fboss service to the public firewalldzone" >&2
+  exit 1
+fi
+
+# Fix NetworkManager connection profile permissions
 # NM ignores profiles that are world-readable
 chmod 600 /etc/NetworkManager/system-connections/eth0.nmconnection
 
-# 9. Done! Cleanup and install additional packages
+# Done! Cleanup and install additional packages
 echo "Cleaning up /repos directory..."
 rm -rf /repos
 
@@ -454,7 +584,7 @@ if ! rpm -q jq >/dev/null 2>&1; then
   JQ_INSTALLED=true
 fi
 
-#8. Install additional packages from after_pkgs input file user "may" have passed in
+# Install additional packages from after_pkgs input file user "may" have passed in
 if [ -f /var/tmp/after_pkgs_install_file.json ]; then
 
   echo "Processing after_pkgs_install JSON file..."
@@ -474,7 +604,7 @@ else
   echo "No after_pkgs_install JSON file"
 fi
 
-#9. Excute additional commands from after_pkgs_execute_file.json user "may" have passed in
+# Execute additional commands from after_pkgs_execute_file.json user "may" have passed in
 if [ -f /var/tmp/after_pkgs_execute_file.json ]; then
 
   echo "Processing after_pkgs_execute JSON file..."

@@ -3,20 +3,15 @@
     "SMBus iSMT adapter at 914c1000"
   ],
   "i2cDumpDevices": [
-    "/run/devmap/cplds/MERU800BFA_SMB_CPLD",
     "/run/devmap/cplds/FAN0_CPLD",
     "/run/devmap/cplds/FAN1_CPLD",
     "/run/devmap/cplds/FAN2_CPLD",
-    "/run/devmap/sensors/SMB_RAA228926_R3R0_CORE",
-    "/run/devmap/sensors/SMB_ISL68226_R3R0_ANLG0",
-    "/run/devmap/sensors/SMB_ISL68226_R3R0_ANLG1",
-    "/run/devmap/sensors/SMB_RAA228926_R3R1_CORE",
-    "/run/devmap/sensors/SMB_ISL68226_R3R1_ANLG0",
-    "/run/devmap/sensors/SMB_ISL68226_R3R1_ANLG1",
-    "/run/devmap/sensors/SMB_ISL68226_OSFP_TL",
-    "/run/devmap/sensors/SMB_ISL68226_OSFP_TR",
-    "/run/devmap/sensors/SMB_ISL68226_OSFP_BL",
-    "/run/devmap/sensors/SMB_ISL68226_OSFP_BR"
+    "/run/devmap/cplds/MERU800BFA_SMB_CPLD",
+    "/run/devmap/sensors/FAN0_TMP75",
+    "/run/devmap/sensors/FAN1_TMP75",
+    "/run/devmap/sensors/FAN2_TMP75",
+    "/run/devmap/sensors/SMB_MAX6581",
+    "/run/devmap/sensors/SMB_TMP75"
   ],
   "psus": [
     "/run/devmap/sensors/PSU1_PMBUS",
@@ -27,6 +22,22 @@
   "gpios": [],
   "pems": [],
   "fanspinners": [],
+  "regDumpDevices": [
+    "/run/devmap/sensors/CPU_MPS_PMBUS",
+    "/run/devmap/sensors/SMB_ISL68226_OSFP_BL",
+    "/run/devmap/sensors/SMB_ISL68226_OSFP_BR",
+    "/run/devmap/sensors/SMB_ISL68226_OSFP_TL",
+    "/run/devmap/sensors/SMB_ISL68226_OSFP_TR",
+    "/run/devmap/sensors/SMB_ISL68226_R3R0_ANLG0",
+    "/run/devmap/sensors/SMB_ISL68226_R3R0_ANLG1",
+    "/run/devmap/sensors/SMB_ISL68226_R3R1_ANLG0",
+    "/run/devmap/sensors/SMB_ISL68226_R3R1_ANLG1",
+    "/run/devmap/sensors/SMB_MP5990_L",
+    "/run/devmap/sensors/SMB_MP5990_R",
+    "/run/devmap/sensors/SMB_RAA228926_R3R0_CORE",
+    "/run/devmap/sensors/SMB_RAA228926_R3R1_CORE",
+    "/run/devmap/sensors/SMB_UCD90320"
+  ],
   "scPowerGood": {
     "sysfsAttribute": {
       "name": "SMB_POWERGOOD",

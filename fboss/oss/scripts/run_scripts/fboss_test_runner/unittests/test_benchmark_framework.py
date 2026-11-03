@@ -168,6 +168,20 @@ def test_get_benchmarks_to_run_no_filter_returns_all(framework, bench_args):
     assert framework._get_benchmarks_to_run(_ALL, bench_args) == _ALL
 
 
+def test_tier_patterns_intersect_user_filter(framework, bench_args):
+    bench_args.filter = "*Route*"
+    assert framework._get_benchmarks_to_run(_ALL, bench_args, ["*FswScale*"]) == [
+        "HwFswScaleRouteAddBenchmark"
+    ]
+
+
+def test_empty_tier_patterns_select_nothing(framework, bench_args, capsys):
+    assert framework._get_benchmarks_to_run(_ALL, bench_args, []) is None
+    assert (
+        "No benchmark patterns configured for requested tier" in capsys.readouterr().out
+    )
+
+
 def test_get_benchmarks_to_run_no_match_is_error(framework, bench_args, capsys):
     bench_args.filter = "*NoSuchThing*"
     assert framework._get_benchmarks_to_run(_ALL, bench_args) is None
@@ -394,6 +408,21 @@ def test_run_with_filter_file(
     bench_args.filter_file = _filter_file(tmp_path, "*Route*", "-*Del*")
     framework.run(bench_args)
     assert mock_run.call_count == 1
+
+
+@patch.object(BenchmarkFramework, "_write_results_and_summary")
+@patch.object(BenchmarkFramework, "_run_benchmark_binary")
+@patch.object(BenchmarkFramework, "_list_benchmarks")
+def test_run_tier_with_no_matches_stops_after_diagnostic(
+    mock_list, mock_run, mock_write, framework, bench_args, capsys
+):
+    mock_list.return_value = ["HwEcmpGroupShrink"]
+    framework.run(bench_args, [".*Scale.*"])
+
+    mock_run.assert_not_called()
+    mock_write.assert_not_called()
+    output = capsys.readouterr().out
+    assert "No benchmarks matching tier patterns '.*Scale.*'" in output
 
 
 @patch.object(BenchmarkFramework, "_run_benchmark_binary")

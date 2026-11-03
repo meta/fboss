@@ -32,6 +32,7 @@
 #include "fboss/agent/packet/ICMPHdr.h"
 #include "fboss/agent/packet/IPv4Hdr.h"
 #include "fboss/agent/packet/UDPHeader.h"
+#include "fboss/agent/rib/RoutingInformationBase.h"
 #include "fboss/agent/state/Interface.h"
 #include "fboss/agent/state/InterfaceMap.h"
 #include "fboss/agent/state/Route.h"
@@ -419,16 +420,18 @@ bool IPv4Handler::resolveMac(
   // need to find out our own IP and MAC addresses so that we can send the
   // ARP request out. Since the request will be broadcast, there is no need to
   // worry about which port to send the packet out.
-  auto route = sw_->longestMatch(state, dest, RouterID(0));
+  // The RIB can lead the published state, so ids must resolve from the RIB.
+  auto routeAndNextHops = sw_->getRib()->getRouteAndNextHops(
+      dest, RouterID(0), false /* normalized */);
 
-  if (!route || !route->isResolved()) {
+  if (!routeAndNextHops || !routeAndNextHops->first->isResolved()) {
     sw_->portStats(ingressPort)->ipv4DstLookupFailure();
     // No way to reach dest
     return false;
   }
+  const auto& [route, nhs] = *routeAndNextHops;
 
   auto intfs = state->getInterfaces();
-  auto nhs = getNextHops(state, route->getForwardInfo());
   auto sent = false;
   for (auto nh : nhs) {
     auto intf = intfs->getNodeIf(nh.intf());

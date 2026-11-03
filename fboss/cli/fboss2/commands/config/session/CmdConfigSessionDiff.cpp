@@ -46,22 +46,23 @@ std::string readFileOrEmpty(const std::string& path) {
 // Get config content from a revision specifier for a specific domain file.
 // "current" reads the live system file. A path absent at the given revision
 // (e.g. a commit predating BGP config) is treated as empty content.
-// validationPath is a file present in every commit (the agent config), used to
-// distinguish a genuinely invalid revision from a domain simply absent there.
+// validationPath is a file present in every commit, used to distinguish a
+// genuinely invalid revision from a domain simply absent there.
 std::pair<std::string, std::string> getRevisionContent(
     const std::string& revision,
     const ConfigDomain& domain,
     const std::string& validationPath,
+    ConfigSession& session,
     Git& git) {
   if (revision == "current") {
-    return {readFileOrEmpty(domain.systemPath), "current live config"};
+    return {
+        readFileOrEmpty(session.getCurrentConfigPath(domain.service)),
+        "current live config"};
   }
   std::string resolvedSha = git.resolveRef(revision);
   // Verify the revision is real before treating a missing domain path as empty.
-  // The agent config is present in every commit (including the initial one), so
-  // a genuinely invalid revision throws here and propagates; only a path absent
-  // at an otherwise-valid revision (e.g. bgpcpp.conf before BGP existed) is
-  // treated as empty.
+  // A genuinely invalid revision throws here and propagates; only a path absent
+  // at an otherwise-valid revision is treated as empty.
   git.fileAtRevision(resolvedSha, validationPath);
   std::string content;
   try {
@@ -161,9 +162,8 @@ CmdConfigSessionDiffTraits::RetType CmdConfigSessionDiff::queryClient(
   auto& git = session.getGit();
   auto domains = session.configDomains();
 
-  // A git path present in every commit (the agent config), used to validate a
-  // revision in getRevisionContent(). configDomains() lists the agent first.
-  std::string validationPath = domains.front().gitRelPath;
+  // Metadata is present even before either service establishes its baseline.
+  const std::string validationPath = "cli/cli_metadata.json";
 
   // Modes 1 and 2 both diff each staged domain's session file against some
   // "base" (current live config for mode 1; a revision for mode 2). The only
@@ -199,7 +199,8 @@ CmdConfigSessionDiffTraits::RetType CmdConfigSessionDiff::queryClient(
     }
     return diffStagedDomains([&](const ConfigDomain& d) {
       return std::make_pair(
-          readFileOrEmpty(d.systemPath), std::string("current live config"));
+          readFileOrEmpty(session.getCurrentConfigPath(d.service)),
+          std::string("current live config"));
     });
   }
 
@@ -209,7 +210,7 @@ CmdConfigSessionDiffTraits::RetType CmdConfigSessionDiff::queryClient(
       return "No config session exists. Make a config change first.";
     }
     return diffStagedDomains([&](const ConfigDomain& d) {
-      return getRevisionContent(revisions[0], d, validationPath, git);
+      return getRevisionContent(revisions[0], d, validationPath, session, git);
     });
   }
 
@@ -220,8 +221,10 @@ CmdConfigSessionDiffTraits::RetType CmdConfigSessionDiff::queryClient(
     // when more than one domain is shown.
     std::vector<std::pair<std::string, std::string>> sections; // {name, body}
     for (const auto& d : domains) {
-      auto [c1, l1] = getRevisionContent(revisions[0], d, validationPath, git);
-      auto [c2, l2] = getRevisionContent(revisions[1], d, validationPath, git);
+      auto [c1, l1] =
+          getRevisionContent(revisions[0], d, validationPath, session, git);
+      auto [c2, l2] =
+          getRevisionContent(revisions[1], d, validationPath, session, git);
       if (c1.empty() && c2.empty()) {
         continue; // domain absent at both revisions
       }

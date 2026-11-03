@@ -132,6 +132,17 @@
       "apply_from": {"source": "dlb_defaults", "target_table": "global"}
     },
     {
+      "name": "sai_managed_udf_groups",
+      "description": "Disables Broadcom SDK internal UDF groups so FBOSS can manage UDF objects through SAI.",
+      "condition": {"source": "features", "param": "enable_sai_managed_udf_groups", "equals": true},
+      "apply": {
+        "global": {
+          "sai_rdma_udf_disable": 1,
+          "sai_l3_byte1_udf_disable": 1
+        }
+      }
+    },
+    {
       "name": "dlb_ecmp_config",
       "description": "Emits the DLB_ECMP_CONFIG path-quality profile settings.",
       "condition": {"source": "features", "param": "generate_dlb_ecmp_config", "equals": true},

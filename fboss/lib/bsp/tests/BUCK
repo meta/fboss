@@ -13,12 +13,12 @@ cpp_unittest(
         "bsp_platform_mapping_json/sample.json",
     ],
     deps = [
+        "fbsource//xplat/folly:file_util",
         "//fboss/lib/bsp:bsp_platform_mapping-cpp2-types",
         "//fboss/lib/bsp:build_from_xcvr_lib",
         "//fboss/lib/led:led_mapping-cpp2-types",
         "//fboss/platform/config_lib:config_lib",
         "//fboss/platform/xcvr_lib:xcvr_lib",
-        "//folly:file_util",
         "//thrift/lib/cpp2/protocol:protocol",
     ],
 )

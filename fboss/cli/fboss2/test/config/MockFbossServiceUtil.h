@@ -36,6 +36,7 @@ class MockFbossServiceUtil : public FbossServiceUtil {
       restartService,
       (cli::ServiceType service, cli::ConfigActionLevel level),
       (override));
+  MOCK_METHOD(bool, isAgentConfigured, (const HostInfo& hostInfo), (override));
   MOCK_METHOD(
       std::vector<std::string>,
       reloadConfig,

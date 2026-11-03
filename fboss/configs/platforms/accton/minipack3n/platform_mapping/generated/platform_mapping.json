@@ -4334,6 +4334,36 @@
                 ]
               }
           },
+          "47": {
+              "pins": {
+                "iphy": [
+                  {
+                    "id": {
+                      "chip": "NPU-CHENAB_NIF-slot1/chip1/core0",
+                      "lane": 256
+                    },
+                    "tx": {
+                      "pre": -10,
+                      "pre2": 1,
+                      "main": 52,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "driveCurrent": 55,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-OSFP-slot1/chip33",
+                      "lane": 0
+                    }
+                  }
+                ]
+              }
+          },
           "50": {
               "subsumedPorts": [
                 15
@@ -4921,6 +4951,36 @@
                     "id": {
                       "chip": "TRANSCEIVER-OSFP-slot1/chip33",
                       "lane": 7
+                    }
+                  }
+                ]
+              }
+          },
+          "47": {
+              "pins": {
+                "iphy": [
+                  {
+                    "id": {
+                      "chip": "NPU-CHENAB_NIF-slot1/chip1/core0",
+                      "lane": 260
+                    },
+                    "tx": {
+                      "pre": -10,
+                      "pre2": 1,
+                      "main": 52,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "driveCurrent": 55,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-OSFP-slot1/chip33",
+                      "lane": 4
                     }
                   }
                 ]
@@ -9262,6 +9322,36 @@
                 ]
               }
           },
+          "47": {
+              "pins": {
+                "iphy": [
+                  {
+                    "id": {
+                      "chip": "NPU-CHENAB_NIF-slot1/chip1/core0",
+                      "lane": 288
+                    },
+                    "tx": {
+                      "pre": -10,
+                      "pre2": 1,
+                      "main": 52,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "driveCurrent": 55,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-OSFP-slot1/chip37",
+                      "lane": 0
+                    }
+                  }
+                ]
+              }
+          },
           "50": {
               "subsumedPorts": [
                 31
@@ -9849,6 +9939,36 @@
                     "id": {
                       "chip": "TRANSCEIVER-OSFP-slot1/chip37",
                       "lane": 7
+                    }
+                  }
+                ]
+              }
+          },
+          "47": {
+              "pins": {
+                "iphy": [
+                  {
+                    "id": {
+                      "chip": "NPU-CHENAB_NIF-slot1/chip1/core0",
+                      "lane": 292
+                    },
+                    "tx": {
+                      "pre": -10,
+                      "pre2": 1,
+                      "main": 52,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "driveCurrent": 55,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-OSFP-slot1/chip37",
+                      "lane": 4
                     }
                   }
                 ]
@@ -10494,6 +10614,36 @@
                 ]
               }
           },
+          "47": {
+              "pins": {
+                "iphy": [
+                  {
+                    "id": {
+                      "chip": "NPU-CHENAB_NIF-slot1/chip1/core0",
+                      "lane": 336
+                    },
+                    "tx": {
+                      "pre": -10,
+                      "pre2": 1,
+                      "main": 52,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "driveCurrent": 55,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-OSFP-slot1/chip43",
+                      "lane": 0
+                    }
+                  }
+                ]
+              }
+          },
           "50": {
               "subsumedPorts": [
                 35
@@ -11081,6 +11231,36 @@
                     "id": {
                       "chip": "TRANSCEIVER-OSFP-slot1/chip43",
                       "lane": 7
+                    }
+                  }
+                ]
+              }
+          },
+          "47": {
+              "pins": {
+                "iphy": [
+                  {
+                    "id": {
+                      "chip": "NPU-CHENAB_NIF-slot1/chip1/core0",
+                      "lane": 340
+                    },
+                    "tx": {
+                      "pre": -10,
+                      "pre2": 1,
+                      "main": 52,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "driveCurrent": 55,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-OSFP-slot1/chip43",
+                      "lane": 4
                     }
                   }
                 ]
@@ -14190,6 +14370,36 @@
                 ]
               }
           },
+          "47": {
+              "pins": {
+                "iphy": [
+                  {
+                    "id": {
+                      "chip": "NPU-CHENAB_NIF-slot1/chip1/core0",
+                      "lane": 320
+                    },
+                    "tx": {
+                      "pre": -10,
+                      "pre2": 1,
+                      "main": 52,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "driveCurrent": 55,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-OSFP-slot1/chip41",
+                      "lane": 0
+                    }
+                  }
+                ]
+              }
+          },
           "50": {
               "subsumedPorts": [
                 47
@@ -14777,6 +14987,36 @@
                     "id": {
                       "chip": "TRANSCEIVER-OSFP-slot1/chip41",
                       "lane": 7
+                    }
+                  }
+                ]
+              }
+          },
+          "47": {
+              "pins": {
+                "iphy": [
+                  {
+                    "id": {
+                      "chip": "NPU-CHENAB_NIF-slot1/chip1/core0",
+                      "lane": 324
+                    },
+                    "tx": {
+                      "pre": -10,
+                      "pre2": 1,
+                      "main": 52,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "driveCurrent": 55,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-OSFP-slot1/chip41",
+                      "lane": 4
                     }
                   }
                 ]
@@ -19118,6 +19358,36 @@
                 ]
               }
           },
+          "47": {
+              "pins": {
+                "iphy": [
+                  {
+                    "id": {
+                      "chip": "NPU-CHENAB_NIF-slot1/chip1/core0",
+                      "lane": 352
+                    },
+                    "tx": {
+                      "pre": -10,
+                      "pre2": 1,
+                      "main": 52,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "driveCurrent": 55,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-OSFP-slot1/chip45",
+                      "lane": 0
+                    }
+                  }
+                ]
+              }
+          },
           "50": {
               "subsumedPorts": [
                 63
@@ -19705,6 +19975,36 @@
                     "id": {
                       "chip": "TRANSCEIVER-OSFP-slot1/chip45",
                       "lane": 7
+                    }
+                  }
+                ]
+              }
+          },
+          "47": {
+              "pins": {
+                "iphy": [
+                  {
+                    "id": {
+                      "chip": "NPU-CHENAB_NIF-slot1/chip1/core0",
+                      "lane": 356
+                    },
+                    "tx": {
+                      "pre": -10,
+                      "pre2": 1,
+                      "main": 52,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "driveCurrent": 55,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-OSFP-slot1/chip45",
+                      "lane": 4
                     }
                   }
                 ]
@@ -22814,6 +23114,36 @@
                 ]
               }
           },
+          "47": {
+              "pins": {
+                "iphy": [
+                  {
+                    "id": {
+                      "chip": "NPU-CHENAB_NIF-slot1/chip1/core0",
+                      "lane": 384
+                    },
+                    "tx": {
+                      "pre": -11,
+                      "pre2": 1,
+                      "main": 51,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "driveCurrent": 55,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-OSFP-slot1/chip49",
+                      "lane": 0
+                    }
+                  }
+                ]
+              }
+          },
           "50": {
               "subsumedPorts": [
                 75
@@ -23401,6 +23731,36 @@
                     "id": {
                       "chip": "TRANSCEIVER-OSFP-slot1/chip49",
                       "lane": 7
+                    }
+                  }
+                ]
+              }
+          },
+          "47": {
+              "pins": {
+                "iphy": [
+                  {
+                    "id": {
+                      "chip": "NPU-CHENAB_NIF-slot1/chip1/core0",
+                      "lane": 388
+                    },
+                    "tx": {
+                      "pre": -11,
+                      "pre2": 1,
+                      "main": 51,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "driveCurrent": 55,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-OSFP-slot1/chip49",
+                      "lane": 4
                     }
                   }
                 ]
@@ -27742,6 +28102,36 @@
                 ]
               }
           },
+          "47": {
+              "pins": {
+                "iphy": [
+                  {
+                    "id": {
+                      "chip": "NPU-CHENAB_NIF-slot1/chip1/core0",
+                      "lane": 416
+                    },
+                    "tx": {
+                      "pre": -11,
+                      "pre2": 1,
+                      "main": 51,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "driveCurrent": 55,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-OSFP-slot1/chip53",
+                      "lane": 0
+                    }
+                  }
+                ]
+              }
+          },
           "50": {
               "subsumedPorts": [
                 91
@@ -28329,6 +28719,36 @@
                     "id": {
                       "chip": "TRANSCEIVER-OSFP-slot1/chip53",
                       "lane": 7
+                    }
+                  }
+                ]
+              }
+          },
+          "47": {
+              "pins": {
+                "iphy": [
+                  {
+                    "id": {
+                      "chip": "NPU-CHENAB_NIF-slot1/chip1/core0",
+                      "lane": 420
+                    },
+                    "tx": {
+                      "pre": -11,
+                      "pre2": 1,
+                      "main": 51,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "driveCurrent": 55,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-OSFP-slot1/chip53",
+                      "lane": 4
                     }
                   }
                 ]
@@ -32670,6 +33090,36 @@
                 ]
               }
           },
+          "47": {
+              "pins": {
+                "iphy": [
+                  {
+                    "id": {
+                      "chip": "NPU-CHENAB_NIF-slot1/chip1/core0",
+                      "lane": 448
+                    },
+                    "tx": {
+                      "pre": -11,
+                      "pre2": 1,
+                      "main": 51,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "driveCurrent": 55,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-OSFP-slot1/chip57",
+                      "lane": 0
+                    }
+                  }
+                ]
+              }
+          },
           "50": {
               "subsumedPorts": [
                 107
@@ -33257,6 +33707,36 @@
                     "id": {
                       "chip": "TRANSCEIVER-OSFP-slot1/chip57",
                       "lane": 7
+                    }
+                  }
+                ]
+              }
+          },
+          "47": {
+              "pins": {
+                "iphy": [
+                  {
+                    "id": {
+                      "chip": "NPU-CHENAB_NIF-slot1/chip1/core0",
+                      "lane": 452
+                    },
+                    "tx": {
+                      "pre": -11,
+                      "pre2": 1,
+                      "main": 51,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "driveCurrent": 55,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-OSFP-slot1/chip57",
+                      "lane": 4
                     }
                   }
                 ]
@@ -37598,6 +38078,36 @@
                 ]
               }
           },
+          "47": {
+              "pins": {
+                "iphy": [
+                  {
+                    "id": {
+                      "chip": "NPU-CHENAB_NIF-slot1/chip1/core0",
+                      "lane": 480
+                    },
+                    "tx": {
+                      "pre": -11,
+                      "pre2": 1,
+                      "main": 51,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "driveCurrent": 55,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-OSFP-slot1/chip61",
+                      "lane": 0
+                    }
+                  }
+                ]
+              }
+          },
           "50": {
               "subsumedPorts": [
                 123
@@ -38185,6 +38695,36 @@
                     "id": {
                       "chip": "TRANSCEIVER-OSFP-slot1/chip61",
                       "lane": 7
+                    }
+                  }
+                ]
+              }
+          },
+          "47": {
+              "pins": {
+                "iphy": [
+                  {
+                    "id": {
+                      "chip": "NPU-CHENAB_NIF-slot1/chip1/core0",
+                      "lane": 484
+                    },
+                    "tx": {
+                      "pre": -11,
+                      "pre2": 1,
+                      "main": 51,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "driveCurrent": 55,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-OSFP-slot1/chip61",
+                      "lane": 4
                     }
                   }
                 ]
@@ -41294,6 +41834,36 @@
                 ]
               }
           },
+          "47": {
+              "pins": {
+                "iphy": [
+                  {
+                    "id": {
+                      "chip": "NPU-CHENAB_NIF-slot1/chip1/core0",
+                      "lane": 224
+                    },
+                    "tx": {
+                      "pre": -10,
+                      "pre2": 1,
+                      "main": 52,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "driveCurrent": 55,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-OSFP-slot1/chip29",
+                      "lane": 0
+                    }
+                  }
+                ]
+              }
+          },
           "50": {
               "subsumedPorts": [
                 135
@@ -41881,6 +42451,36 @@
                     "id": {
                       "chip": "TRANSCEIVER-OSFP-slot1/chip29",
                       "lane": 7
+                    }
+                  }
+                ]
+              }
+          },
+          "47": {
+              "pins": {
+                "iphy": [
+                  {
+                    "id": {
+                      "chip": "NPU-CHENAB_NIF-slot1/chip1/core0",
+                      "lane": 228
+                    },
+                    "tx": {
+                      "pre": -10,
+                      "pre2": 1,
+                      "main": 52,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "driveCurrent": 55,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-OSFP-slot1/chip29",
+                      "lane": 4
                     }
                   }
                 ]
@@ -46222,6 +46822,36 @@
                 ]
               }
           },
+          "47": {
+              "pins": {
+                "iphy": [
+                  {
+                    "id": {
+                      "chip": "NPU-CHENAB_NIF-slot1/chip1/core0",
+                      "lane": 192
+                    },
+                    "tx": {
+                      "pre": -10,
+                      "pre2": 1,
+                      "main": 52,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "driveCurrent": 55,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-OSFP-slot1/chip25",
+                      "lane": 0
+                    }
+                  }
+                ]
+              }
+          },
           "50": {
               "subsumedPorts": [
                 151
@@ -46809,6 +47439,36 @@
                     "id": {
                       "chip": "TRANSCEIVER-OSFP-slot1/chip25",
                       "lane": 7
+                    }
+                  }
+                ]
+              }
+          },
+          "47": {
+              "pins": {
+                "iphy": [
+                  {
+                    "id": {
+                      "chip": "NPU-CHENAB_NIF-slot1/chip1/core0",
+                      "lane": 196
+                    },
+                    "tx": {
+                      "pre": -10,
+                      "pre2": 1,
+                      "main": 52,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "driveCurrent": 55,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-OSFP-slot1/chip25",
+                      "lane": 4
                     }
                   }
                 ]
@@ -51150,6 +51810,36 @@
                 ]
               }
           },
+          "47": {
+              "pins": {
+                "iphy": [
+                  {
+                    "id": {
+                      "chip": "NPU-CHENAB_NIF-slot1/chip1/core0",
+                      "lane": 160
+                    },
+                    "tx": {
+                      "pre": -10,
+                      "pre2": 1,
+                      "main": 52,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "driveCurrent": 55,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-OSFP-slot1/chip21",
+                      "lane": 0
+                    }
+                  }
+                ]
+              }
+          },
           "50": {
               "subsumedPorts": [
                 167
@@ -51737,6 +52427,36 @@
                     "id": {
                       "chip": "TRANSCEIVER-OSFP-slot1/chip21",
                       "lane": 7
+                    }
+                  }
+                ]
+              }
+          },
+          "47": {
+              "pins": {
+                "iphy": [
+                  {
+                    "id": {
+                      "chip": "NPU-CHENAB_NIF-slot1/chip1/core0",
+                      "lane": 164
+                    },
+                    "tx": {
+                      "pre": -10,
+                      "pre2": 1,
+                      "main": 52,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "driveCurrent": 55,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-OSFP-slot1/chip21",
+                      "lane": 4
                     }
                   }
                 ]
@@ -56078,6 +56798,36 @@
                 ]
               }
           },
+          "47": {
+              "pins": {
+                "iphy": [
+                  {
+                    "id": {
+                      "chip": "NPU-CHENAB_NIF-slot1/chip1/core0",
+                      "lane": 128
+                    },
+                    "tx": {
+                      "pre": -10,
+                      "pre2": 1,
+                      "main": 52,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "driveCurrent": 55,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-OSFP-slot1/chip17",
+                      "lane": 0
+                    }
+                  }
+                ]
+              }
+          },
           "50": {
               "subsumedPorts": [
                 183
@@ -56665,6 +57415,36 @@
                     "id": {
                       "chip": "TRANSCEIVER-OSFP-slot1/chip17",
                       "lane": 7
+                    }
+                  }
+                ]
+              }
+          },
+          "47": {
+              "pins": {
+                "iphy": [
+                  {
+                    "id": {
+                      "chip": "NPU-CHENAB_NIF-slot1/chip1/core0",
+                      "lane": 132
+                    },
+                    "tx": {
+                      "pre": -10,
+                      "pre2": 1,
+                      "main": 52,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "driveCurrent": 55,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-OSFP-slot1/chip17",
+                      "lane": 4
                     }
                   }
                 ]
@@ -59774,6 +60554,36 @@
                 ]
               }
           },
+          "47": {
+              "pins": {
+                "iphy": [
+                  {
+                    "id": {
+                      "chip": "NPU-CHENAB_NIF-slot1/chip1/core0",
+                      "lane": 96
+                    },
+                    "tx": {
+                      "pre": -11,
+                      "pre2": 1,
+                      "main": 51,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "driveCurrent": 55,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-OSFP-slot1/chip13",
+                      "lane": 0
+                    }
+                  }
+                ]
+              }
+          },
           "50": {
               "subsumedPorts": [
                 195
@@ -60361,6 +61171,36 @@
                     "id": {
                       "chip": "TRANSCEIVER-OSFP-slot1/chip13",
                       "lane": 7
+                    }
+                  }
+                ]
+              }
+          },
+          "47": {
+              "pins": {
+                "iphy": [
+                  {
+                    "id": {
+                      "chip": "NPU-CHENAB_NIF-slot1/chip1/core0",
+                      "lane": 100
+                    },
+                    "tx": {
+                      "pre": -11,
+                      "pre2": 1,
+                      "main": 51,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "driveCurrent": 55,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-OSFP-slot1/chip13",
+                      "lane": 4
                     }
                   }
                 ]
@@ -64702,6 +65542,36 @@
                 ]
               }
           },
+          "47": {
+              "pins": {
+                "iphy": [
+                  {
+                    "id": {
+                      "chip": "NPU-CHENAB_NIF-slot1/chip1/core0",
+                      "lane": 64
+                    },
+                    "tx": {
+                      "pre": -11,
+                      "pre2": 1,
+                      "main": 51,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "driveCurrent": 55,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-OSFP-slot1/chip9",
+                      "lane": 0
+                    }
+                  }
+                ]
+              }
+          },
           "50": {
               "subsumedPorts": [
                 211
@@ -65289,6 +66159,36 @@
                     "id": {
                       "chip": "TRANSCEIVER-OSFP-slot1/chip9",
                       "lane": 7
+                    }
+                  }
+                ]
+              }
+          },
+          "47": {
+              "pins": {
+                "iphy": [
+                  {
+                    "id": {
+                      "chip": "NPU-CHENAB_NIF-slot1/chip1/core0",
+                      "lane": 68
+                    },
+                    "tx": {
+                      "pre": -11,
+                      "pre2": 1,
+                      "main": 51,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "driveCurrent": 55,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-OSFP-slot1/chip9",
+                      "lane": 4
                     }
                   }
                 ]
@@ -69630,6 +70530,36 @@
                 ]
               }
           },
+          "47": {
+              "pins": {
+                "iphy": [
+                  {
+                    "id": {
+                      "chip": "NPU-CHENAB_NIF-slot1/chip1/core0",
+                      "lane": 32
+                    },
+                    "tx": {
+                      "pre": -11,
+                      "pre2": 1,
+                      "main": 51,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "driveCurrent": 55,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-OSFP-slot1/chip5",
+                      "lane": 0
+                    }
+                  }
+                ]
+              }
+          },
           "50": {
               "subsumedPorts": [
                 227
@@ -70217,6 +71147,36 @@
                     "id": {
                       "chip": "TRANSCEIVER-OSFP-slot1/chip5",
                       "lane": 7
+                    }
+                  }
+                ]
+              }
+          },
+          "47": {
+              "pins": {
+                "iphy": [
+                  {
+                    "id": {
+                      "chip": "NPU-CHENAB_NIF-slot1/chip1/core0",
+                      "lane": 36
+                    },
+                    "tx": {
+                      "pre": -11,
+                      "pre2": 1,
+                      "main": 51,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "driveCurrent": 55,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-OSFP-slot1/chip5",
+                      "lane": 4
                     }
                   }
                 ]
@@ -74558,6 +75518,36 @@
                 ]
               }
           },
+          "47": {
+              "pins": {
+                "iphy": [
+                  {
+                    "id": {
+                      "chip": "NPU-CHENAB_NIF-slot1/chip1/core0",
+                      "lane": 0
+                    },
+                    "tx": {
+                      "pre": -11,
+                      "pre2": 1,
+                      "main": 51,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "driveCurrent": 55,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-OSFP-slot1/chip1",
+                      "lane": 0
+                    }
+                  }
+                ]
+              }
+          },
           "50": {
               "subsumedPorts": [
                 243
@@ -75145,6 +76135,36 @@
                     "id": {
                       "chip": "TRANSCEIVER-OSFP-slot1/chip1",
                       "lane": 7
+                    }
+                  }
+                ]
+              }
+          },
+          "47": {
+              "pins": {
+                "iphy": [
+                  {
+                    "id": {
+                      "chip": "NPU-CHENAB_NIF-slot1/chip1/core0",
+                      "lane": 4
+                    },
+                    "tx": {
+                      "pre": -11,
+                      "pre2": 1,
+                      "main": 51,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "driveCurrent": 55,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-OSFP-slot1/chip1",
+                      "lane": 4
                     }
                   }
                 ]
@@ -78254,6 +79274,36 @@
                 ]
               }
           },
+          "47": {
+              "pins": {
+                "iphy": [
+                  {
+                    "id": {
+                      "chip": "NPU-CHENAB_NIF-slot1/chip1/core0",
+                      "lane": 16
+                    },
+                    "tx": {
+                      "pre": -11,
+                      "pre2": 1,
+                      "main": 51,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "driveCurrent": 55,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-OSFP-slot1/chip3",
+                      "lane": 0
+                    }
+                  }
+                ]
+              }
+          },
           "50": {
               "subsumedPorts": [
                 255
@@ -78841,6 +79891,36 @@
                     "id": {
                       "chip": "TRANSCEIVER-OSFP-slot1/chip3",
                       "lane": 7
+                    }
+                  }
+                ]
+              }
+          },
+          "47": {
+              "pins": {
+                "iphy": [
+                  {
+                    "id": {
+                      "chip": "NPU-CHENAB_NIF-slot1/chip1/core0",
+                      "lane": 20
+                    },
+                    "tx": {
+                      "pre": -11,
+                      "pre2": 1,
+                      "main": 51,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "driveCurrent": 55,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-OSFP-slot1/chip3",
+                      "lane": 4
                     }
                   }
                 ]
@@ -79509,6 +80589,21 @@
           "fec": 11,
           "medium": 1,
           "interfaceType": 12
+        }
+      }
+    },
+    {
+      "factor": {
+        "profileID": 47
+      },
+      "profile": {
+        "speed": 100000,
+        "iphy": {
+          "numLanes": 1,
+          "modulation": 2,
+          "fec": 11,
+          "medium": 3,
+          "interfaceType": 1
         }
       }
     },

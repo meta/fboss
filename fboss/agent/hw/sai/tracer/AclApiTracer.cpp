@@ -46,6 +46,7 @@ std::map<int32_t, std::pair<std::string, std::size_t>> _AclTableMap{
     SAI_ATTR_MAP(AclTable, FieldDstMac),
     SAI_ATTR_MAP(AclTable, FieldIpType),
     SAI_ATTR_MAP(AclTable, FieldTtl),
+    SAI_ATTR_MAP(AclTable, FieldMplsLabel0Ttl),
     SAI_ATTR_MAP(AclTable, FieldFdbDstUserMeta),
     SAI_ATTR_MAP(AclTable, FieldRouteDstUserMeta),
     SAI_ATTR_MAP(AclTable, FieldNeighborDstUserMeta),
@@ -128,6 +129,7 @@ std::map<int32_t, std::pair<std::string, std::size_t>> _AclEntryMap{
     SAI_ATTR_MAP(AclEntry, FieldDstMac),
     SAI_ATTR_MAP(AclEntry, FieldIpType),
     SAI_ATTR_MAP(AclEntry, FieldTtl),
+    SAI_ATTR_MAP(AclEntry, FieldMplsLabel0Ttl),
     SAI_ATTR_MAP(AclEntry, FieldFdbDstUserMeta),
     SAI_ATTR_MAP(AclEntry, FieldRouteDstUserMeta),
     SAI_ATTR_MAP(AclEntry, FieldNeighborDstUserMeta),
@@ -171,6 +173,10 @@ std::map<int32_t, std::pair<std::string, std::size_t>> _AclEntryMap{
 #if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
     SAI_ATTR_MAP(AclEntry, ActionSetEcmpHashAlgorithm),
 #endif
+#if (defined(TAJO_SDK_GTE_26_5) && !defined(TAJO_SDK_P200)) || \
+    defined(BRCM_SAI_SDK_XGS_GTE_15_4_1)
+    SAI_ATTR_MAP(AclEntry, Label),
+#endif
 };
 
 void handleExtensionAttributes() {
@@ -178,7 +184,7 @@ void handleExtensionAttributes() {
   SAI_EXT_ATTR_MAP(AclEntry, ActionL3SwitchCancel);
 #endif
   SAI_EXT_ATTR_MAP(AclEntry, FieldRouteDestination);
-  SAI_EXT_ATTR_MAP(AclEntry, LabelExtended);
+  SAI_EXT_ATTR_MAP(AclTable, FieldRouteDestination);
 }
 
 } // namespace

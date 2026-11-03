@@ -34,7 +34,7 @@ namespace facebook::fboss::phy {
 
 namespace {
 
-#if defined(SAI_BRCM_PAI_IMPL)
+#if defined(BRCM_PAI_SDK)
 // Global mutex fallback, used when the enable_xphy_global_lock gflag is set.
 std::mutex gPaiGlobalMutex;
 
@@ -228,7 +228,8 @@ void* SaiPhyRetimer::getRegisterWriteFuncPtr() {
   return reinterpret_cast<void*>(saiPhyRetimerSwitchRegisterWrite);
 }
 
-SaiSwitchTraits::CreateAttributes SaiPhyRetimer::getSwitchAttributes() {
+SaiSwitchTraits::CreateAttributes SaiPhyRetimer::getSwitchAttributes(
+    bool warmboot) {
   XLOG(DBG5) << __func__ << ": Starting for xphyID=" << xphyID_;
 
   SaiSwitchTraits::Attributes::InitSwitch initSwitch(true);
@@ -261,7 +262,12 @@ SaiSwitchTraits::CreateAttributes SaiPhyRetimer::getSwitchAttributes() {
       SAI_SWITCH_FIRMWARE_LOAD_METHOD_INTERNAL);
 
   std::optional<SaiSwitchTraits::Attributes::FirmwareLoadType> fwLoadType(
-      SAI_SWITCH_FIRMWARE_LOAD_TYPE_AUTO);
+      warmboot ? SAI_SWITCH_FIRMWARE_LOAD_TYPE_SKIP
+               : SAI_SWITCH_FIRMWARE_LOAD_TYPE_AUTO);
+  std::optional<SaiSwitchTraits::Attributes::WarmRecover> warmRecover;
+  if (warmboot) {
+    warmRecover = true;
+  }
 
   // Phy is accessible on MDIO
   std::optional<SaiSwitchTraits::Attributes::HardwareAccessBus> hwAccessBus(
@@ -289,15 +295,15 @@ SaiSwitchTraits::CreateAttributes SaiPhyRetimer::getSwitchAttributes() {
   std::optional<SaiSwitchTraits::Attributes::SysPortConfigList>
       sysPortConfigList(sysPortConfigVec);
 
-#if defined(SAI_BRCM_PAI_IMPL)
-  XLOG(INFO) << "[PAI-SYNC] SAI_BRCM_PAI_IMPL is COMPILED IN. Installing PAI "
+#if defined(BRCM_PAI_SDK)
+  XLOG(INFO) << "[PAI-SYNC] BRCM_PAI_SDK is COMPILED IN. Installing PAI "
              << "sync lock/unlock callbacks for xphy:" << getPhyAddr()
              << " (xphyID=" << xphyID_ << "), mode="
              << (FLAGS_enable_xphy_global_lock ? "GLOBAL" : "PER-XPHY")
              << ", platform_context(this)=" << static_cast<const void*>(this)
              << ", paiMutex=" << static_cast<void*>(&paiMutex_);
 #else
-  XLOG(WARNING) << "[PAI-SYNC] SAI_BRCM_PAI_IMPL is NOT compiled in; PAI sync "
+  XLOG(WARNING) << "[PAI-SYNC] BRCM_PAI_SDK is NOT compiled in; PAI sync "
                 << "lock/unlock callbacks will NOT be passed to PAI for xphy:"
                 << getPhyAddr() << " (xphyID=" << xphyID_
                 << "). PAI access is UNPROTECTED.";
@@ -403,13 +409,15 @@ SaiSwitchTraits::CreateAttributes SaiPhyRetimer::getSwitchAttributes() {
       std::nullopt, // enable PFC monitoring for the switch
       std::nullopt, // enable cable propagation delay measurement
       std::nullopt, // enable CL72 link training retry
+      std::nullopt, // disable snoop on ingress ACL drop
       std::nullopt, // switching mode
 #if SAI_API_VERSION >= SAI_VERSION(1, 18, 0)
       std::nullopt, // link up debounce timeout
 #endif
-#if defined(SAI_BRCM_PAI_IMPL)
+#if defined(BRCM_PAI_SDK)
       reinterpret_cast<sai_pointer_t>(pai_lock_callback), // user sync_lock
       reinterpret_cast<sai_pointer_t>(pai_unlock_callback), // user sync_unlock
+      warmRecover, // Warm recover
 #endif
   };
 }
@@ -607,8 +615,10 @@ PhyPortConfig SaiPhyRetimer::getConfigOnePort(
   config.profile.speed = sysSpeed;
 
   // Helper to build PhySideConfig (lane configs with TX settings)
+  const bool post3Supported = platform_->getAsic()->isSupported(
+      HwAsic::Feature::XPHY_SERDES_TX_FIR_POST3);
   auto buildPhySideConfig =
-      [&serdesStore, readFromHw](
+      [&serdesStore, readFromHw, post3Supported](
           std::shared_ptr<SaiObject<SaiPortTraits>> portObj,
           const std::vector<uint32_t>& lanes) -> PhySideConfig {
     PhySideConfig side;
@@ -634,8 +644,10 @@ PhyPortConfig SaiPhyRetimer::getConfigOnePort(
             serdesSaiId, SAI_PORT_SERDES_ATTR_TX_FIR_POST1, numLanes);
         txPost2 = getSerdesAttrFromHw(
             serdesSaiId, SAI_PORT_SERDES_ATTR_TX_FIR_POST2, numLanes);
-        txPost3 = getSerdesAttrFromHw(
-            serdesSaiId, SAI_PORT_SERDES_ATTR_TX_FIR_POST3, numLanes);
+        if (post3Supported) {
+          txPost3 = getSerdesAttrFromHw(
+              serdesSaiId, SAI_PORT_SERDES_ATTR_TX_FIR_POST3, numLanes);
+        }
       } else {
         const auto& attrs = serdes->attributes();
         txPre1 = extractSerdesAttr<SaiPortSerdesTraits::Attributes::TxFirPre1>(
@@ -652,9 +664,11 @@ PhyPortConfig SaiPhyRetimer::getConfigOnePort(
         txPost2 =
             extractSerdesAttr<SaiPortSerdesTraits::Attributes::TxFirPost2>(
                 attrs);
-        txPost3 =
-            extractSerdesAttr<SaiPortSerdesTraits::Attributes::TxFirPost3>(
-                attrs);
+        if (post3Supported) {
+          txPost3 =
+              extractSerdesAttr<SaiPortSerdesTraits::Attributes::TxFirPost3>(
+                  attrs);
+        }
       }
     }
 

@@ -18,6 +18,7 @@
 #include "fboss/agent/ThriftHandler.h"
 #include "fboss/agent/TxPacket.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
+#include "fboss/agent/ndp/IPv6RouteAdvertiser.h"
 #include "fboss/agent/packet/EthHdr.h"
 #include "fboss/agent/packet/Ethertype.h"
 #include "fboss/agent/packet/ICMPHdr.h"
@@ -26,6 +27,7 @@
 #include "fboss/agent/state/AggregatePort.h"
 #include "fboss/agent/state/Interface.h"
 #include "fboss/agent/state/InterfaceMap.h"
+#include "fboss/agent/state/NdpTable.h"
 #include "fboss/agent/state/SwitchState.h"
 #include "fboss/agent/test/CounterCache.h"
 #include "fboss/agent/test/HwTestHandle.h"
@@ -37,6 +39,7 @@
 #include <folly/io/Cursor.h>
 #include <netinet/icmp6.h>
 #include <future>
+#include <thread>
 
 using namespace facebook::fboss;
 using facebook::network::toBinaryAddress;
@@ -1334,6 +1337,96 @@ TEST_F(NdpTest, RouterAdvConfigWithRouterAddressPortRif) {
   this->validateRouterAdvForPortRif("fe80::face:b00c");
 }
 
+TEST_F(NdpTest, RouterAdvertiserMoveAssignStopsReplacedAdvertiser) {
+  // A long RA interval keeps periodic advertisements from firing, so the only
+  // RAs counted are the final ones sent when an advertiser is stopped.
+  auto config = createSwitchConfig(seconds(3600), seconds(0));
+  auto handle = createTestHandle(&config);
+  auto sw = handle->getSw();
+  sw->initialConfigApplied(std::chrono::steady_clock::now());
+  EXPECT_MANY_SWITCHED_PKTS(sw, "router advertisement", [](const TxPacket*) {});
+
+  auto state = sw->getState();
+  auto intf = state->getInterfaces()->getNode(InterfaceID(5));
+  const std::string kRaCounter = "PrimaryInterface.router_advertisements.sum";
+
+  IPv6RouteAdvertiser replaced(sw, state.get(), intf.get());
+  IPv6RouteAdvertiser replacement(sw, state.get(), intf.get());
+  waitForBackgroundThread(sw);
+  CounterCache counters(sw);
+
+  // flat_map::erase() shifts entries with move assignment, so the advertiser
+  // being overwritten must be stopped rather than left running.
+  replaced = std::move(replacement);
+  waitForBackgroundThread(sw);
+  counters.update();
+  counters.checkDelta(kRaCounter, 1);
+}
+
+TEST_F(
+    NdpTest,
+    RouterAdvertiserTimerDoesNotContinueAfterInterfaceNdpEntryChange) {
+  constexpr auto kOriginalRaIntervalSeconds = 1;
+  constexpr auto kReplacementRaIntervalSeconds = 3600;
+  auto config = createSwitchConfig(
+      seconds(kOriginalRaIntervalSeconds), seconds(0), false, std::nullopt, 3);
+  config.interfaces()[2].ndp() = cfg::NdpConfig();
+  *config.interfaces()[2].ndp()->routerAdvertisementSeconds() =
+      kReplacementRaIntervalSeconds;
+
+  auto handle = createTestHandle(&config);
+  auto sw = handle->getSw();
+  sw->initialConfigApplied(std::chrono::steady_clock::now());
+  EXPECT_MANY_SWITCHED_PKTS(sw, "router advertisement", [](const TxPacket*) {});
+  waitForBackgroundThread(sw);
+
+  const InterfaceID intfID(5);
+  const IPAddressV6 neighborIP("2401:db00:2110:3004::b");
+  // On production VOQ switches, local NDP entries are children of Interface.
+  // Updating this table makes IPv6Handler::stateUpdated() erase and recreate
+  // interface 5's advertiser. The later RA-enabled interface forces erase()
+  // to shift a flat_map entry over the advertiser being torn down. Give the
+  // replacement a long interval so any subsequent RA during this test can only
+  // come from the leaked pre-update advertiser, which retains its 1s interval.
+  sw->updateStateBlocking(
+      "Add NDP neighbor under interface",
+      [intfID, neighborIP, kReplacementRaIntervalSeconds](
+          const std::shared_ptr<SwitchState> state) {
+        auto newState = state->clone();
+        auto ndpTable = std::make_shared<NdpTable>();
+        ndpTable->addEntry(
+            neighborIP,
+            MacAddress("02:05:73:f9:46:fb"),
+            PortDescriptor(PortID(1)),
+            intfID);
+        auto oldIntf = state->getInterfaces()->getNode(intfID);
+        auto newIntf = oldIntf->modify(&newState);
+        auto ndpConfig = oldIntf->getNdpConfig()->toThrift();
+        *ndpConfig.routerAdvertisementSeconds() = kReplacementRaIntervalSeconds;
+        newIntf->setNdpConfig(std::move(ndpConfig));
+        newIntf->setNdpTable(std::move(ndpTable));
+        return newState;
+      });
+  waitForBackgroundThread(sw);
+
+  ASSERT_NE(
+      sw->getState()
+          ->getInterfaces()
+          ->getNode(intfID)
+          ->getNdpTable()
+          ->getEntryIf(neighborIP),
+      nullptr);
+
+  // Take the baseline after the state update has completed. The replacement
+  // and the later interface both have long intervals. With the move-assignment
+  // fix, no RA should follow; without it, the leaked advertiser keeps firing.
+  CounterCache counters(sw);
+  std::this_thread::sleep_for(seconds(kOriginalRaIntervalSeconds + 1));
+  waitForBackgroundThread(sw);
+  counters.update();
+  counters.checkDelta("PrimaryInterface.router_advertisements.sum", 0);
+}
+
 TEST_F(NdpTest, receiveNeighborAdvertisementUnsolicited) {
   auto handle = this->setupTestHandle();
   auto sw = handle->getSw();
@@ -1512,6 +1605,57 @@ TEST_F(NdpTest, FlushOnAggPortTransition) {
       entry->getPort(), PortDescriptor(AggregatePortID(kAggregatePortID)));
 }
 
+TEST_F(NdpTest, UpdateNeighborEntryToAggregatePort) {
+  auto handle = this->setupTestHandle();
+  auto sw = handle->getSw();
+  const auto neighborAddr = IPAddressV6("2401:db00:2110:3004::b");
+  const auto neighborMac = MacAddress("02:05:73:f9:46:fb");
+  const auto intfID =
+      sw->getState()->getInterfaceIDForPort(PortDescriptor(PortID(1)));
+
+  // Configure the aggregate descriptor. The L3 traffic-loop setup seeds this
+  // neighbor with a physical descriptor, but NDP learning can update it with
+  // an aggregate descriptor.
+  auto config = createSwitchConfig(seconds(0), seconds(0), true);
+  sw->applyConfig("Add aggports", config);
+
+  sw->getNeighborUpdater()->receivedNdpMineForIntf(
+      intfID,
+      neighborAddr,
+      neighborMac,
+      PortDescriptor(PortID(1)),
+      ICMPv6Type::ICMPV6_TYPE_NDP_NEIGHBOR_ADVERTISEMENT,
+      0);
+  sw->getNeighborUpdater()->waitForPendingUpdates();
+  waitForStateUpdates(sw);
+  auto entry = sw->getState()
+                   ->getInterfaces()
+                   ->getNodeIf(intfID)
+                   ->getNdpTable()
+                   ->getEntryIf(neighborAddr);
+  ASSERT_NE(entry, nullptr);
+  ASSERT_EQ(entry->getPort(), PortDescriptor(PortID(1)));
+
+  sw->getNeighborUpdater()->receivedNdpMineForIntf(
+      intfID,
+      neighborAddr,
+      neighborMac,
+      PortDescriptor(AggregatePortID(kAggregatePortID)),
+      ICMPv6Type::ICMPV6_TYPE_NDP_NEIGHBOR_ADVERTISEMENT,
+      ND_NA_FLAG_OVERRIDE);
+  sw->getNeighborUpdater()->waitForPendingUpdates();
+  waitForStateUpdates(sw);
+
+  entry = sw->getState()
+              ->getInterfaces()
+              ->getNodeIf(intfID)
+              ->getNdpTable()
+              ->getEntryIf(neighborAddr);
+  ASSERT_NE(entry, nullptr);
+  EXPECT_EQ(
+      entry->getPort(), PortDescriptor(AggregatePortID(kAggregatePortID)));
+}
+
 TEST_F(NdpTest, PendingNdp) {
   auto handle = this->setupTestHandleWithPortRif();
   auto sw = handle->getSw();
@@ -1671,6 +1815,22 @@ TEST_F(NdpTest, PendingNdpCleanup) {
   counters.checkDelta(SwitchStats::kCounterPrefix + "trapped.pkts.sum", 1);
   counters.checkDelta(SwitchStats::kCounterPrefix + "trapped.ndp.sum", 0);
 
+  // ndpTimeout=1 lets this entry reach PROBE and send a unicast probe while
+  // the rest of the test is still running, so expect it before resolving.
+  EXPECT_OUT_OF_PORT_PKT(
+      sw,
+      "neighbor solicitation",
+      checkNeighborSolicitation(
+          MacAddress("00:02:00:00:00:55"),
+          IPAddressV6("2401:db00:2110:3004::"),
+          MacAddress("02:10:20:30:40:22"),
+          IPAddressV6("2401:db00:2110:3004::1:0"),
+          IPAddressV6("2401:db00:2110:3004::1:0"),
+          VlanID(1),
+          false),
+      PortID(1),
+      std::optional<uint8_t>(kNCStrictPriorityQueue));
+
   // Resolve the pending entry by injecting a Neighbor Advertisement
   WaitForNdpEntryReachable neighborEntryReachable(
       sw, IPAddressV6("2401:db00:2110:3004::1:0"), intfID);
@@ -1749,20 +1909,6 @@ TEST_F(NdpTest, PendingNdpCleanup) {
   // Set up unicast probe expectations BEFORE resolving entries, since with
   // ndpTimeout=1 entries can advance through REACHABLE -> STALE -> PROBE
   // before we get a chance to register expectations after NA injection.
-  EXPECT_OUT_OF_PORT_PKT(
-      sw,
-      "neighbor solicitation",
-      checkNeighborSolicitation(
-          MacAddress("00:02:00:00:00:55"),
-          IPAddressV6("2401:db00:2110:3004::"),
-          MacAddress("02:10:20:30:40:22"),
-          IPAddressV6("2401:db00:2110:3004::1:0"),
-          IPAddressV6("2401:db00:2110:3004::1:0"),
-          VlanID(1),
-          false),
-      PortID(1),
-      std::optional<uint8_t>(kNCStrictPriorityQueue));
-
   EXPECT_OUT_OF_PORT_PKT(
       sw,
       "neighbor solicitation",

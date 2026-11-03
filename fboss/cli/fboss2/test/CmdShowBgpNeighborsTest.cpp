@@ -21,6 +21,7 @@
 #include "configerator/structs/neteng/fboss/bgp/if/gen-cpp2/bgp_attr_types.h"
 #include "fboss/cli/fboss2/commands/show/bgp/CmdShowUtils.h"
 #include "fboss/cli/fboss2/commands/show/bgp/neighbors/CmdShowBgpNeighbors.h"
+#include "fboss/cli/fboss2/commands/show/bgp/neighbors/session_id/CmdBgpNeighborsSessionId.h"
 #include "neteng/fboss/bgp/if/gen-cpp2/bgp_thrift_types.h"
 #ifndef IS_OSS
 // Avoid EXPECT_THRIFT_EQ clash with <thrift/lib/cpp2/reflection/testing.h>
@@ -747,5 +748,22 @@ TEST_F(CmdShowBgpNeighborsTestFixture, wikiDocHooks) {
   EXPECT_THAT(output, HasSubstr("Prefix Telemetry"));
   EXPECT_THAT(output, HasSubstr("neighbor 2 of 2"));
   EXPECT_THAT(output, HasSubstr("BGP state is IDLE"));
+}
+
+TEST_F(CmdShowBgpNeighborsTestFixture, sessionIdWikiDocHooks) {
+  EXPECT_FALSE(CmdBgpNeighborsSessionIdTraits::description().empty());
+
+  // A session ID selects one session, so unlike the parent command's sample
+  // there is no second entry and no 'neighbor N of M' separator.
+  const auto model = CmdBgpNeighborsSessionId::sampleModel();
+  ASSERT_EQ(model.size(), 1);
+
+  std::stringstream ss;
+  CmdBgpNeighborsSessionId().printOutput(model, ss);
+  const std::string output = ss.str();
+
+  EXPECT_THAT(output, HasSubstr("BGP state is ESTABLISHED"));
+  EXPECT_THAT(output, HasSubstr("Prefix Telemetry"));
+  EXPECT_THAT(output, Not(HasSubstr("neighbor 1 of")));
 }
 } // namespace facebook::fboss

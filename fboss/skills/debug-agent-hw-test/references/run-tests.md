@@ -42,6 +42,8 @@ download commands in your environment. The general pattern is:
 Use `scripts/run_mono_test.sh`. Args: `<binary_path> <config_path> <test_filter> <user> [ld_library_path]`
 
 > **Leaba/Cisco devices**: For Leaba ASIC targets, pass the LD_LIBRARY_PATH as the 5th argument. This sets `LD_LIBRARY_PATH` and `BASE_OUTPUT_DIR` for the test binary. Example: `/root/<user>/lib/dyn/`
+>
+> `BASE_OUTPUT_DIR` must be the directory holding the SDK's `res/`. It defaults to `/root/<user>`; when the runtime lives elsewhere (one directory per SDK version, say), set `BASE_OUTPUT_DIR` in the environment of the launching command. Set `ASIC` there too on platforms that need it (`ASIC=GR2_A0` on G200). Without the right values the SDK aborts during device creation, after FBOSS init has already succeeded.
 
 ```
 # Upload script (once per session)
@@ -52,6 +54,9 @@ RUN IN BACKGROUND ON <switch>: bash /tmp/run_mono_test.sh /root/<user>/<binary> 
 
 # Run (Leaba — with LD_LIBRARY_PATH)
 RUN IN BACKGROUND ON <switch>: bash /tmp/run_mono_test.sh /root/<user>/<binary> /root/<user>/<config> <TestSuite.TestName> <user> /root/<user>/lib/dyn/
+
+# Run (Leaba G200, runtime in a per-version directory)
+RUN IN BACKGROUND ON <switch>: ASIC=GR2_A0 BASE_OUTPUT_DIR=<dir>/ bash /tmp/run_mono_test.sh <dir>/<binary> <dir>/<config> <TestSuite.TestName> <user> <dir>/lib/dyn/
 
 # Monitor until complete
 
@@ -155,6 +160,18 @@ Print this combined table at the end of the batch:
 ```
 
 Follow with the category summary counts and pass rate.
+
+## Gotchas
+
+These apply to every vendor, and to hand-run commands as well as the scripts.
+
+- **Cold boot with `--setup-for-warmboot` exits 0 even when an `EXPECT_*` failed.** Exit code alone is not a pass. Count gtest failure lines, `grep -acE ':[0-9]+: Failure$' <log>`, which must be 0. `run_mono_test.sh` does this check and marks the cold boot FAILED. In the warm-boot log, confirm `Boot Type: WARM_BOOT`; otherwise the second run silently cold booted.
+- **One test per process.** `SetUp()` initializes the process once. A `--gtest_filter` matching two tests runs the first and aborts (SIGABRT, exit 134) in the second `SetUp()`. Run each test as its own invocation, as Mode B does.
+- **`pkill -f <name>` sent as a remote command kills itself.** The pattern matches the remote shell's own command line, so the command dies (exit 137) and nothing else is killed. Run it as a separate command with a bracket pattern, `pkill -9 -f '[s]ai_agent_hw_test'`, or kill by PID. Wait about 2 s before the next run.
+- **Output buffering.** Redirect to a file and run under `stdbuf -oL -eL`, then grep the file. Piping a long run through `tail` or `head` shows nothing until it exits.
+- **Per-test ceiling of about 5 minutes.** Past that, the test is most likely stuck in SAI init or deadlocked; kill it and categorize as `FAIL_TIMEOUT`.
+- **fb303 counters publish about 1 s late.** A single read right after traffic races the publish; poll with retries.
+- **Stale warm-boot state.** A switch keeps the previous run's state under `/dev/shm/fboss/`, and the next run warm boots into it. Both scripts clear it; clear it yourself before a hand-run cold boot.
 
 ## Next Steps
 

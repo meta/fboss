@@ -1,0 +1,77 @@
+name: Verify Generated Agent Configs
+run-name: Verify Generated Agent Configs
+
+on:
+  pull_request:
+    paths:
+      - 'fboss/agent/hw/switch_asics/**'
+      - 'fboss/agent/if/agent_config.thrift'
+      - 'fboss/agent/platforms/common/**'
+      - 'fboss/cli/fboss2/commands/config/gen/**'
+      - 'fboss/configs/platforms/**/asic_config/asic_config.json'
+      - 'fboss/configs/platforms/**/asic_config/generated/**'
+      - 'fboss/configs/platforms/**/forwarding_stack/config_generation.json'
+      - 'fboss/configs/platforms/**/forwarding_stack/generated/agent/**'
+      - 'fboss/configs/platforms/**/platform_mapping/generated/**'
+      - 'fboss/configs/platforms/generic/forwarding_stack/**'
+      - 'fboss/lib/config/**'
+      - 'fboss/lib/if/fboss_common.thrift'
+      - 'fboss/lib/platforms/**'
+      - 'cmake/CliFboss2.cmake'
+      - 'cmake/ConfigsPlatformsGenericForwardingStack.cmake'
+      - '.github/workflows/agent-config-generation-verification.yml'
+  workflow_dispatch:
+  # Catch dependency or trigger omissions after ShipIt synchronizes OSS.
+  schedule:
+    - cron: '51 1,13 * * *'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify-generated-agent-configs:
+    if: github.repository_owner == 'meta'
+    runs-on: 32-core-ubuntu
+    timeout-minutes: 120
+    steps:
+      - run: echo "Confirming hardware specifications:"; sudo lscpu
+      - name: Clean workspace
+        run: sudo rm -rf ${{ github.workspace }}/*
+      - name: Check out repository code
+        uses: actions/checkout@v7
+      - name: Build fboss2
+        run: >
+          sudo
+          ./fboss/oss/scripts/docker-build.py
+          --scratch-path
+          ${{ github.workspace }}/.build_dir
+          --target
+          fboss2
+          --no-docker-output
+          --env-var
+          GITHUB_ACTIONS_BUILD
+          --local
+          --num-jobs
+          18
+      - name: Verify declaration-generated Agent configs
+        run: >
+          sudo
+          docker
+          run
+          --rm
+          -v
+          ${{ github.workspace }}:/var/FBOSS/fboss:z
+          -v
+          ${{ github.workspace }}/.build_dir:/var/FBOSS/tmp_bld_dir:z
+          fboss_image:latest
+          /var/FBOSS/tmp_bld_dir/build/fboss/fboss2
+          config
+          gen
+          agent
+          --fboss-root
+          /var/FBOSS/fboss/fboss
+          --verify

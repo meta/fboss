@@ -101,6 +101,8 @@ bool G202xAsic::isSupportedNonFabric(Feature feature) const {
     case HwAsic::Feature::ACL_DST_IPV6_WORD_QUALIFIERS:
     case HwAsic::Feature::SAI_MPLS_LABEL_LOOKUP_FAIL_COUNTER:
     case HwAsic::Feature::SAI_MPLS_TTL_1_TRAP:
+    case HwAsic::Feature::SAI_ACL_MPLS_LABEL0_TTL:
+    case HwAsic::Feature::SAI_MPLS_NEXTHOP_OUTSEG_TYPE:
     case HwAsic::Feature::SAI_MPLS_INSEGMENT:
     case HwAsic::Feature::RESERVED_ENCAP_INDEX_RANGE:
     case HwAsic::Feature::HOSTTABLE:
@@ -243,16 +245,28 @@ bool G202xAsic::isSupportedNonFabric(Feature feature) const {
     case HwAsic::Feature::CUT_THROUGH_FORWARDING:
     case HwAsic::Feature::SRV6_MYSID_DISCARD_COUNTER:
     case HwAsic::Feature::SRV6_MYSID_RESOURCE_COUNTER:
+    case HwAsic::Feature::SRV6_BINDING_USID_UA_USD:
     case HwAsic::Feature::DEVICE_WATERMARK_SUPPORT:
     case HwAsic::Feature::ECN_PROBABILISTIC_MARKING:
     case HwAsic::Feature::SWITCH_DROP_DEBUG_COUNTER:
     case HwAsic::Feature::SWITCH_CUSTOM_DROP_BITMAP_SUPPORT:
     case HwAsic::Feature::SWITCH_DROP_REASON_LIST_SUPPORT:
     case HwAsic::Feature::ECMP_RANDOM_SPRAY_HIERARCHICAL_LEVEL:
+    case HwAsic::Feature::CBFC:
     case HwAsic::Feature::LINK_LAYER_RETRANSMISSION:
     case HwAsic::Feature::SLL_HLL_DISCARD_COUNTERS:
+    case HwAsic::Feature::HW_PROTECTION_SWITCHOVER_COUNTERS:
+    case HwAsic::Feature::PBR_ACL_BYTE_COUNTER:
     case HwAsic::Feature::NEXT_HOP_GROUP_MEMBER_MONITORED_OBJECT:
     case HwAsic::Feature::RX_PACKET_TYPE:
+    case HwAsic::Feature::MY_MAC:
+    case HwAsic::Feature::ISOLATION_GROUP:
+    case HwAsic::Feature::CSIG:
+    case HwAsic::Feature::SWITCH_WIDE_LINK_UP_DEBOUNCE:
+    case HwAsic::Feature::ACL_ENTRY_OUT_PORT_QUALIFIER:
+    case HwAsic::Feature::XPHY_SERDES_TX_FIR_POST3:
+    case HwAsic::Feature::LAG_TTL_DECREMENT_DISABLE:
+    case HwAsic::Feature::PORT_LATCH_STATUS:
       return false;
   }
   return false;

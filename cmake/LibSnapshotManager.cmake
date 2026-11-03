@@ -9,6 +9,7 @@ add_library(async_filewriter_factory
 
 target_link_libraries(async_filewriter_factory
   Folly::folly
+  Boost::filesystem
 )
 
 

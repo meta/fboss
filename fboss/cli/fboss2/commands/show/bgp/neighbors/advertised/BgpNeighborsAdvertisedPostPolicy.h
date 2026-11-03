@@ -81,7 +81,7 @@ class BgpNeighborsAdvertisedPostPolicy
   static RetType sampleModel() {
     return sampleNetworkPaths(
         SampleRouteDirection::Advertised,
-        "Accepted/Modified by PROPAGATE_RSW_FSW_OUT term LOCAL_ACCEPT_RULE_990");
+        "Accepted/Modified by SAMPLE_UPLINK_OUT term SAMPLE_ACCEPT_TERM");
   }
 
   void printOutput(

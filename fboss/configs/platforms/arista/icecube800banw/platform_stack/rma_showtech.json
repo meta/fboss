@@ -1,0 +1,81 @@
+{
+  "i2cBusIgnore": [],
+  "i2cDumpDevices": [
+    "/run/devmap/sensors/AMBIENT_TEMP",
+    "/run/devmap/sensors/CHASSIS_REAR_TMP75"
+  ],
+  "psus": [],
+  "gpios": [
+    {
+      "path": "/run/devmap/gpiochips/SMB_PCA",
+      "lines": [
+        {
+          "name": "SCD_DONE",
+          "lineIndex": 0
+        },
+        {
+          "name": "OVER_TEMP_L",
+          "lineIndex": 1
+        },
+        {
+          "name": "SYS_PGOOD",
+          "lineIndex": 2
+        },
+        {
+          "name": "SCD_INIT_L",
+          "lineIndex": 3
+        },
+        {
+          "name": "SCD_CRC_ERR",
+          "lineIndex": 4
+        },
+        {
+          "name": "SCD_PRG_L",
+          "lineIndex": 8
+        },
+        {
+          "name": "SCD_RESET_L",
+          "lineIndex": 15
+        }
+      ]
+    }
+  ],
+  "pems": [],
+  "fanspinners": [],
+  "regDumpDevices": [
+    "/run/devmap/sensors/CPU_DPM_UCD90320",
+    "/run/devmap/sensors/CPU_POS48V",
+    "/run/devmap/sensors/SMB_FRONT_LEFT_TMP431",
+    "/run/devmap/sensors/SMB_POS0V72_TRVDD_01_23",
+    "/run/devmap/sensors/SMB_POS0V72_TRVDD_45_67",
+    "/run/devmap/sensors/SMB_POS0V75_PHYCORE_0_1",
+    "/run/devmap/sensors/SMB_POS0V75_PHYCORE_2_3",
+    "/run/devmap/sensors/SMB_POS0V75_PHYCORE_4_5",
+    "/run/devmap/sensors/SMB_POS0V75_PHYCORE_6_7",
+    "/run/devmap/sensors/SMB_POS0V75_TRVDD_0",
+    "/run/devmap/sensors/SMB_POS0V75_TRVDD_1",
+    "/run/devmap/sensors/SMB_POS12V_LHS",
+    "/run/devmap/sensors/SMB_POS12V_MCORE_LHS",
+    "/run/devmap/sensors/SMB_POS12V_MCORE_RHS",
+    "/run/devmap/sensors/SMB_POS12V_OPTIC0",
+    "/run/devmap/sensors/SMB_POS12V_OPTICS1",
+    "/run/devmap/sensors/SMB_POS12V_OPTICS2",
+    "/run/devmap/sensors/SMB_POS12V_OPTICS3",
+    "/run/devmap/sensors/SMB_POS12V_RHS",
+    "/run/devmap/sensors/SMB_POS1V2_VDDA",
+    "/run/devmap/sensors/SMB_POS1V5_RVDD_0",
+    "/run/devmap/sensors/SMB_POS1V5_RVDD_1",
+    "/run/devmap/sensors/SMB_POS1V8_VDD0",
+    "/run/devmap/sensors/SMB_POS3V3_OPTICS0_1",
+    "/run/devmap/sensors/SMB_POS3V3_OPTICS2_3",
+    "/run/devmap/sensors/SMB_POS48V_LHS",
+    "/run/devmap/sensors/SMB_POS48V_OPTICS_01",
+    "/run/devmap/sensors/SMB_POS48V_OPTICS_23",
+    "/run/devmap/sensors/SMB_POS48V_RHS",
+    "/run/devmap/sensors/SMB_REAR_LEFT_TMP431",
+    "/run/devmap/sensors/SMB_REAR_MIDDLE_TMP431",
+    "/run/devmap/sensors/SMB_TH6_MCORE",
+    "/run/devmap/sensors/SMB_UCD90320_0",
+    "/run/devmap/sensors/SMB_UCD90320_1"
+  ]
+}

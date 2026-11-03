@@ -2,8 +2,11 @@
 
 #include <fmt/core.h>
 
+#include "fboss/agent/hw/sai/api/QosMapApi.h"
+#include "fboss/agent/hw/sai/api/SaiApiError.h"
 #include "fboss/agent/hw/sai/switch/SaiLagManager.h"
 #include "fboss/agent/hw/sai/switch/SaiSwitch.h"
+#include "fboss/agent/hw/sai/switch/SaiVirtualChannelManager.h"
 #include "fboss/agent/hw/switch_asics/HwAsic.h"
 #include "fboss/agent/hw/test/HwPortUtils.h"
 #include "fboss/agent/hw/test/HwTestPortUtils.h"
@@ -95,6 +98,116 @@ void HwTestThriftHandler::getPortLlrInfo(
           SaiPortLlrProfileTraits::Attributes::FlushLlrFrameAction{}));
 #else
   throw FbossError("LLR requires SAI 1.18 or newer");
+#endif
+}
+
+void HwTestThriftHandler::getPortVcInfo(
+    [[maybe_unused]] ::facebook::fboss::utility::PortVcInfo& portVcInfo,
+    [[maybe_unused]] int32_t port) {
+#if defined(SAI_CBFC_SUPPORTED)
+  auto saiSwitch = static_cast<const SaiSwitch*>(hwSwitch_);
+  auto* handle = saiSwitch->managerTable()
+                     ->virtualChannelManager()
+                     .getVirtualChannelHandle(PortID(port));
+  auto portHandle =
+      saiSwitch->managerTable()->portManager().getPortHandle(PortID(port));
+  CHECK(portHandle);
+  auto& portApi = SaiApiTable::getInstance()->portApi();
+  auto portKey = portHandle->port->adapterKey();
+
+  // Read-only, derived by hardware from the MMU carving. These are the values
+  // the credit sizing question turns on, and nothing in FBOSS writes them.
+  //
+  // Each read is tolerated individually: SDK support for these varies and is
+  // exactly what we are here to discover, so one NOT IMPLEMENTED attribute
+  // must not cost us the readings that did work. An unset field means the SDK
+  // refused, which is a result rather than a failure.
+  auto tryRead = [](auto&& field, auto&& read) {
+    try {
+      field = read();
+    } catch (const SaiApiError& e) {
+      XLOG(WARN) << "CBFC attribute not readable on this SDK: " << e.what();
+    }
+  };
+
+  tryRead(portVcInfo.receiverNativeCreditSize(), [&] {
+    return portApi.getAttribute(
+        portKey, SaiPortTraits::Attributes::CbfcReceiverNativeCreditSize{});
+  });
+  tryRead(portVcInfo.receiverNativePacketOverhead(), [&] {
+    return portApi.getAttribute(
+        portKey, SaiPortTraits::Attributes::CbfcReceiverNativePacketOverhead{});
+  });
+  tryRead(portVcInfo.receiverNativeTotalCredits(), [&] {
+    return portApi.getAttribute(
+        portKey, SaiPortTraits::Attributes::CbfcReceiverNativeTotalCredits{});
+  });
+  tryRead(portVcInfo.senderCreditSize(), [&] {
+    return portApi.getAttribute(
+        portKey, SaiPortTraits::Attributes::CbfcSenderCreditSize{});
+  });
+  tryRead(portVcInfo.senderPacketOverhead(), [&] {
+    return portApi.getAttribute(
+        portKey, SaiPortTraits::Attributes::CbfcSenderPacketOverhead{});
+  });
+
+  auto& qosMapApi = SaiApiTable::getInstance()->qosMapApi();
+  auto readVcMap = [&](auto attr, auto keyOf) {
+    std::map<int16_t, int16_t> vcMap;
+    auto mapId = portApi.getAttribute(portKey, attr);
+    if (mapId == SAI_NULL_OBJECT_ID) {
+      return vcMap;
+    }
+    for (const auto& entry : qosMapApi.getAttribute(
+             QosMapSaiId(mapId),
+             SaiQosMapTraits::Attributes::MapToValueList{})) {
+      vcMap[keyOf(entry.key)] = entry.value.vc;
+    }
+    return vcMap;
+  };
+  tryRead(portVcInfo.trafficClassToVcId(), [&] {
+    return readVcMap(
+        SaiPortTraits::Attributes::QosTcToVcMap{},
+        [](const sai_qos_map_params_t& key) { return key.tc; });
+  });
+  tryRead(portVcInfo.queueToVcId(), [&] {
+    return readVcMap(
+        SaiPortTraits::Attributes::QosQueueToVcMap{},
+        [](const sai_qos_map_params_t& key) { return key.queue_index; });
+  });
+
+  if (!handle) {
+    return;
+  }
+  auto& vcApi = SaiApiTable::getInstance()->virtualChannelApi();
+  for (const auto& vc : handle->virtualChannels) {
+    auto vcKey = vc->adapterKey();
+    ::facebook::fboss::utility::VcInfo vcInfo;
+    vcInfo.vcId() = static_cast<int64_t>(vcKey);
+    vcInfo.index() =
+        vcApi.getAttribute(vcKey, SaiVirtualChannelTraits::Attributes::Index{});
+    vcInfo.senderEnable() = vcApi.getAttribute(
+        vcKey, SaiVirtualChannelTraits::Attributes::CbfcSenderEnable{});
+    vcInfo.receiverEnable() = vcApi.getAttribute(
+        vcKey, SaiVirtualChannelTraits::Attributes::CbfcReceiverEnable{});
+    tryRead(vcInfo.receiverNativeCreditLimit(), [&] {
+      return vcApi.getAttribute(
+          vcKey,
+          SaiVirtualChannelTraits::Attributes::CbfcReceiverNativeCreditLimit{});
+    });
+    auto profileId = vcApi.getAttribute(
+        vcKey, SaiVirtualChannelTraits::Attributes::CbfcSenderCreditProfile{});
+    vcInfo.hasCreditProfile() = profileId != SAI_NULL_OBJECT_ID;
+    vcInfo.creditProfileId() = static_cast<int64_t>(profileId);
+    if (*vcInfo.hasCreditProfile()) {
+      vcInfo.reservedCreditSize() = vcApi.getAttribute(
+          CbfcCreditProfileSaiId(profileId),
+          SaiCbfcCreditProfileTraits::Attributes::ReservedCreditSize{});
+    }
+    portVcInfo.virtualChannels()->push_back(std::move(vcInfo));
+  }
+#else
+  throw FbossError("CBFC requires SAI 1.19 or a Broadcom 16.0 SDK");
 #endif
 }
 

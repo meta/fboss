@@ -18,6 +18,7 @@ const std::string kJanga800bic = "janga800bic";
 const std::string kTahan800bc = "tahan800bc";
 const std::string kBlackwolf800banw = "blackwolf800banw";
 const std::string kIcecube = "icecube";
+const std::string kM4061nhp = "m4061nhp";
 const std::string kM4062nhp = "m4062nhp";
 const std::string kSample = "sample";
 const std::string kWedge800cact = "wedge800cact";
@@ -34,6 +35,7 @@ TEST(ConfigLibTest, Basic) {
   EXPECT_NO_THROW(ConfigLib().getSensorServiceConfig(kJanga800bic));
   EXPECT_NO_THROW(ConfigLib().getSensorServiceConfig(kTahan800bc));
   EXPECT_NO_THROW(ConfigLib().getSensorServiceConfig(kBlackwolf800banw));
+  EXPECT_NO_THROW(ConfigLib().getSensorServiceConfig(kM4061nhp));
   EXPECT_THROW(
       ConfigLib().getSensorServiceConfig(kNonExistentPlatform),
       std::runtime_error);
@@ -47,6 +49,7 @@ TEST(ConfigLibTest, Basic) {
   EXPECT_NO_THROW(ConfigLib().getFanServiceConfig(kTahan800bc));
   EXPECT_NO_THROW(ConfigLib().getFanServiceConfig(kBlackwolf800banw));
   EXPECT_NO_THROW(ConfigLib().getFanServiceConfig(kSample));
+  EXPECT_NO_THROW(ConfigLib().getFanServiceConfig(kM4061nhp));
   EXPECT_THROW(
       ConfigLib().getFanServiceConfig(kNonExistentPlatform),
       std::runtime_error);
@@ -55,6 +58,7 @@ TEST(ConfigLibTest, Basic) {
   EXPECT_NO_THROW(ConfigLib().getPlatformManagerConfig(kMeru800bia));
   EXPECT_NO_THROW(ConfigLib().getPlatformManagerConfig(kMeru800bfa));
   EXPECT_NO_THROW(ConfigLib().getPlatformManagerConfig(kMontblanc));
+  EXPECT_NO_THROW(ConfigLib().getPlatformManagerConfig(kM4061nhp));
   EXPECT_NO_THROW(ConfigLib().getPlatformManagerConfig(kM4062nhp));
   EXPECT_NO_THROW(ConfigLib().getPlatformManagerConfig(kMorgan800cc));
   EXPECT_NO_THROW(ConfigLib().getPlatformManagerConfig(kJanga800bic));
@@ -72,12 +76,14 @@ TEST(ConfigLibTest, Basic) {
   EXPECT_NO_THROW(ConfigLib().getFwUtilConfig(kMeru800bia));
   EXPECT_NO_THROW(ConfigLib().getFwUtilConfig(kJanga800bic));
   EXPECT_NO_THROW(ConfigLib().getFwUtilConfig(kTahan800bc));
+  EXPECT_NO_THROW(ConfigLib().getFwUtilConfig(kM4061nhp));
   EXPECT_THROW(
       ConfigLib().getFwUtilConfig(kNonExistentPlatform), std::runtime_error);
 
   // LedManager Configs
   EXPECT_NO_THROW(ConfigLib().getLedManagerConfig(kDarwin));
   EXPECT_NO_THROW(ConfigLib().getLedManagerConfig(kMorgan800cc));
+  EXPECT_NO_THROW(ConfigLib().getLedManagerConfig(kM4061nhp));
   EXPECT_THROW(
       ConfigLib().getLedManagerConfig(kNonExistentPlatform),
       std::runtime_error);
@@ -85,6 +91,7 @@ TEST(ConfigLibTest, Basic) {
   // BspTests Configs
   EXPECT_NO_THROW(ConfigLib().getBspTestConfig(kMeru800bfa));
   EXPECT_NO_THROW(ConfigLib().getBspTestConfig(kBlackwolf800banw));
+  EXPECT_NO_THROW(ConfigLib().getBspTestConfig(kM4061nhp));
   EXPECT_NO_THROW(ConfigLib().getBspTestConfig(kM4062nhp));
   EXPECT_THROW(
       ConfigLib().getBspTestConfig(kNonExistentPlatform), std::out_of_range);
@@ -92,6 +99,7 @@ TEST(ConfigLibTest, Basic) {
   // Showtech Configs
   EXPECT_NO_THROW(ConfigLib().getShowtechConfig(kMorgan800cc));
   EXPECT_NO_THROW(ConfigLib().getShowtechConfig(kSample));
+  EXPECT_NO_THROW(ConfigLib().getShowtechConfig(kM4061nhp));
   EXPECT_THROW(
       ConfigLib().getShowtechConfig(kNonExistentPlatform), std::out_of_range);
 

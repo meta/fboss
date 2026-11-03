@@ -23,6 +23,7 @@ from fboss.lib.platform_mapping_v2.read_files_utils import (
     read_platform_descriptor,
     read_vendor_data,
 )
+from fboss.lib.platform_mapping_v2.static_mapping import StaticMapping
 from neteng.fboss.phy.phy.thrift_types import (
     DataPlanePhyChip,
     DataPlanePhyChipType,
@@ -47,6 +48,8 @@ from neteng.fboss.platform_config.platform_config.thrift_types import (
     PlatformPortMapping,
     PlatformPortProfileConfigEntry,
 )
+from neteng.fboss.platform_mapping_config import thrift_types as pm_types
+from neteng.fboss.platform_mapping_config.thrift_types import ChipType, CoreType
 from neteng.fboss.switch_config.thrift_types import (
     PortProfileID,
     PortSpeed,
@@ -798,6 +801,132 @@ class TestPlatformMappingGeneration(unittest.TestCase):
         self.assertNotIn("variantAttributes", descriptor)
 
 
+class StaticMappingPerChipTest(unittest.TestCase):
+    """Per-chip lane/polarity maps on a multi-NPU platform.
+
+    The flat maps are keyed by core_id alone, so two NPUs sharing a core_id
+    collapse into one entry. These cover the chip-aware views that keep them
+    apart.
+    """
+
+    CORE_ID = 3
+    NUM_LANES = 4
+
+    def _connection(
+        self, chip_id: int, lane_id: int, tx_swap: bool, rx_swap: bool
+    ) -> pm_types.ConnectionPair:
+        return pm_types.ConnectionPair(
+            a=pm_types.ConnectionEnd(
+                chip=pm_types.Chip(
+                    slot_id=1,
+                    chip_id=chip_id,
+                    chip_type=ChipType.NPU,
+                    core_id=self.CORE_ID,
+                    core_type=CoreType.TH6_NIF,
+                ),
+                lane=pm_types.Lane(
+                    logical_id=lane_id,
+                    tx_physical_lane=lane_id + (10 * chip_id),
+                    rx_physical_lane=lane_id + (20 * chip_id),
+                    tx_polarity_swap=tx_swap,
+                    rx_polarity_swap=rx_swap,
+                ),
+            )
+        )
+
+    def setUp(self) -> None:
+        # chip 1 and chip 2 share core_id but differ in polarity on every lane,
+        # mirroring the leh800bcls board-level P/N swap on one NPU only.
+        connections = []
+        for lane_id in range(self.NUM_LANES):
+            connections.append(self._connection(1, lane_id, True, False))
+            connections.append(self._connection(2, lane_id, False, True))
+        self.static_mapping = StaticMapping(connections)
+
+    def test_pn_swap_filtered_by_chip_id(self) -> None:
+        chip1_tx = self.static_mapping._get_pn_swap_map_by_core(
+            self.CORE_ID, "TX", chip_id=1
+        )
+        chip2_tx = self.static_mapping._get_pn_swap_map_by_core(
+            self.CORE_ID, "TX", chip_id=2
+        )
+        self.assertEqual([1] * self.NUM_LANES, chip1_tx)
+        self.assertEqual([0] * self.NUM_LANES, chip2_tx)
+
+        chip1_rx = self.static_mapping._get_pn_swap_map_by_core(
+            self.CORE_ID, "RX", chip_id=1
+        )
+        chip2_rx = self.static_mapping._get_pn_swap_map_by_core(
+            self.CORE_ID, "RX", chip_id=2
+        )
+        self.assertEqual([0] * self.NUM_LANES, chip1_rx)
+        self.assertEqual([1] * self.NUM_LANES, chip2_rx)
+
+    def test_phy_lane_map_filtered_by_chip_id(self) -> None:
+        self.assertEqual(
+            [lane + 10 for lane in range(self.NUM_LANES)],
+            self.static_mapping._get_phy_lane_map_by_core(
+                self.CORE_ID, "TX", chip_id=1
+            ),
+        )
+        self.assertEqual(
+            [lane + 20 for lane in range(self.NUM_LANES)],
+            self.static_mapping._get_phy_lane_map_by_core(
+                self.CORE_ID, "TX", chip_id=2
+            ),
+        )
+        self.assertEqual(
+            [lane + 20 for lane in range(self.NUM_LANES)],
+            self.static_mapping._get_phy_lane_map_by_core(
+                self.CORE_ID, "RX", chip_id=1
+            ),
+        )
+        self.assertEqual(
+            [lane + 40 for lane in range(self.NUM_LANES)],
+            self.static_mapping._get_phy_lane_map_by_core(
+                self.CORE_ID, "RX", chip_id=2
+            ),
+        )
+
+    def test_omitting_chip_id_preserves_flat_behaviour(self) -> None:
+        # Without a chip_id the walk spans both chips and the last row wins,
+        # which is exactly why the by_chip views are needed.
+        flat_tx = self.static_mapping._get_pn_swap_map_by_core(self.CORE_ID, "TX")
+        chip2_tx = self.static_mapping._get_pn_swap_map_by_core(
+            self.CORE_ID, "TX", chip_id=2
+        )
+        self.assertEqual(chip2_tx, flat_tx)
+
+    def test_by_chip_maps_keep_npus_distinct(self) -> None:
+        polarity = self.static_mapping.gen_polarity_swap_map_by_chip()
+        self.assertEqual([1, 2], sorted(polarity))
+        self.assertNotEqual(polarity[1][self.CORE_ID], polarity[2][self.CORE_ID])
+        self.assertEqual([1] * self.NUM_LANES, polarity[1][self.CORE_ID].tx_lane_info)
+        self.assertEqual([0] * self.NUM_LANES, polarity[2][self.CORE_ID].tx_lane_info)
+
+        lanes = self.static_mapping.gen_phy_lane_map_by_chip()
+        self.assertEqual([1, 2], sorted(lanes))
+        self.assertNotEqual(lanes[1][self.CORE_ID], lanes[2][self.CORE_ID])
+
+    def test_get_static_mapping_populates_both_views(self) -> None:
+        mapping = self.static_mapping.get_static_mapping()
+        # Flat maps still present and unchanged for existing consumers.
+        self.assertIn(self.CORE_ID, mapping.phy_lane_map)
+        self.assertIn(self.CORE_ID, mapping.polarity_swap_map)
+        # New per-chip views carry both NPUs. The fields are optional on the
+        # thrift struct, so bind and narrow before indexing.
+        polarity_by_chip = mapping.polarity_swap_map_by_chip
+        lane_by_chip = mapping.phy_lane_map_by_chip
+        assert polarity_by_chip is not None
+        assert lane_by_chip is not None
+        self.assertEqual([1, 2], sorted(polarity_by_chip))
+        self.assertEqual([1, 2], sorted(lane_by_chip))
+        self.assertNotEqual(
+            polarity_by_chip[1][self.CORE_ID],
+            polarity_by_chip[2][self.CORE_ID],
+        )
+
+
 def run_tests() -> None:
     # Provided for add_fb_python_executable callable
     loader = unittest.TestLoader()
@@ -805,6 +934,7 @@ def run_tests() -> None:
         (
             loader.loadTestsFromTestCase(TestPlatformMappingInputDiscovery),
             loader.loadTestsFromTestCase(TestPlatformMappingGeneration),
+            loader.loadTestsFromTestCase(StaticMappingPerChipTest),
         )
     )
     result = unittest.TextTestRunner().run(suite)

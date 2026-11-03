@@ -184,6 +184,11 @@ uint64_t getAclInOutPackets(
     const std::string& statName,
     bool bytes = false);
 
+std::map<std::string, uint64_t> getAclInOutPacketsMap(
+    const SwSwitch* sw,
+    const std::vector<std::string>& statNames,
+    bool bytes = false);
+
 uint64_t getAclInOutPackets(
     const HwSwitch* hw,
     const std::string& statName,

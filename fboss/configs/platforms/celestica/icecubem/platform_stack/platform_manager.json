@@ -194,14 +194,30 @@
               "deviceName": "dom1_i2c_master",
               "csrOffsetCalc": "0x42000 + ({adapterIndex} - {startAdapterIndex})*0x100",
               "startAdapterIndex": 1,
-              "numAdapters": 34
+              "numAdapters": 32,
+              "busFreqHz": 400000
+            },
+            {
+              "pmUnitScopedNamePrefix": "PIC_B_DOM_I2C_MASTER",
+              "deviceName": "dom1_i2c_master",
+              "csrOffsetCalc": "0x44000 + ({adapterIndex} - {startAdapterIndex})*0x100",
+              "startAdapterIndex": 33,
+              "numAdapters": 2
             },
             {
               "pmUnitScopedNamePrefix": "PIC_T_DOM_I2C_MASTER",
               "deviceName": "dom2_i2c_master",
               "csrOffsetCalc": "0x4a000 + ({adapterIndex} - {startAdapterIndex})*0x100",
               "startAdapterIndex": 1,
-              "numAdapters": 34
+              "numAdapters": 32,
+              "busFreqHz": 400000
+            },
+            {
+              "pmUnitScopedNamePrefix": "PIC_T_DOM_I2C_MASTER",
+              "deviceName": "dom2_i2c_master",
+              "csrOffsetCalc": "0x4c000 + ({adapterIndex} - {startAdapterIndex})*0x100",
+              "startAdapterIndex": 33,
+              "numAdapters": 2
             }
           ],
           "gpioChipConfigs": [
@@ -1557,7 +1573,7 @@
   "chassisEepromDevicePath": "/[CHASSIS_EEPROM]",
   "numXcvrs": 65,
   "bspKmodsRpmName": "fboss_bsp_kmods",
-  "bspKmodsRpmVersion": "4.4.1-1",
+  "bspKmodsRpmVersion": "4.4.2-1",
   "nonBspKmodsToLoad": [
     "i2c_i801",
     "spidev",

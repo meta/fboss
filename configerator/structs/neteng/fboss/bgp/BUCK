@@ -11,11 +11,9 @@ thrift_library(
         "cpp2",
         "go",
         "py3-deprecated",
-        "py-deprecated",
         "python",
     ],
     py3_namespace = "configerator.structs.neteng.fboss.bgp",
-    py_base_module = "neteng/fboss",
     thrift_cpp2_options = "json",
     thrift_srcs = {
         "bgp_config.thrift": [],

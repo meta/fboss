@@ -48,6 +48,7 @@ struct NextHopInfo {
   7: optional list<string> srv6SegmentList;
   8: optional i32 cost;
   9: bool isBackup = false;
+  10: optional i32 preNormalizationWeight;
 }
 
 struct ClientAndNextHops {

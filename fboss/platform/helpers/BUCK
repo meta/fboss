@@ -14,8 +14,8 @@ cpp_library(
         "PlatformThriftAcceptorUtil.h",
     ],
     exported_deps = [
-        "//folly:network_address",
-        "//folly:string",
+        "fbsource//xplat/folly:network_address",
+        "fbsource//xplat/folly:string",
     ],
 )
 
@@ -27,10 +27,10 @@ cpp_library(
         "PlatformThriftAcceptor.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:network_address",
+        "fbsource//xplat/folly/io/async:async_transport",
+        "fbsource//xplat/folly/logging:logging",
         ":platform_thrift_acceptor_util",
-        "//folly:network_address",
-        "//folly/io/async:async_transport",
-        "//folly/logging:logging",
         "//thrift/lib/cpp2:server",
         "//wangle/acceptor:acceptor",
     ],
@@ -44,9 +44,9 @@ cpp_unittest(
     # Pure in-process string/IP logic; no network access needed.
     network_access = network_access_utils.none(),
     deps = [
+        "fbsource//xplat/folly:network_address",
         ":platform_thrift_acceptor",
         ":platform_thrift_acceptor_util",
-        "//folly:network_address",
     ],
 )
 
@@ -66,10 +66,13 @@ cpp_library(
     srcs = [
         "PlatformNameLib.cpp",
     ],
+    headers = [
+        "PlatformNameLib.h",
+    ],
     deps = [
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/logging:logging",
         "//fb303:service_data",
-        "//folly:string",
-        "//folly/logging:logging",
     ],
     exported_deps = [
         ":platform_fs_utils",
@@ -82,10 +85,13 @@ cpp_library(
     srcs = [
         "PlatformUtils.cpp",
     ],
+    headers = [
+        "PlatformUtils.h",
+    ],
     deps = [
-        "//folly:subprocess",
-        "//folly/logging:logging",
-        "//folly/system:shell",
+        "fbsource//xplat/folly:subprocess",
+        "fbsource//xplat/folly/logging:logging",
+        "fbsource//xplat/folly/system:shell",
     ],
     exported_deps = [],
 )
@@ -95,13 +101,16 @@ cpp_library(
     srcs = [
         "PlatformFsUtils.cpp",
     ],
+    headers = [
+        "PlatformFsUtils.h",
+    ],
     deps = [
-        "//folly:file_util",
-        "//folly:string",
-        "//folly/logging:logging",
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/logging:logging",
     ],
     exported_deps = [
-        "//folly/portability:fcntl",
+        "fbsource//xplat/folly/portability:fcntl",
     ],
 )
 
@@ -125,8 +134,8 @@ cpp_library(
         "//common/services/cpp:thrift_acl_checker_module_config",
     ],
     exported_deps = [
-        "//folly:function",
-        "//folly/io/async:async_signal_handler",
+        "fbsource//xplat/folly:function",
+        "fbsource//xplat/folly/io/async:async_signal_handler",
         "//thrift/lib/cpp2:server",
         "//thrift/lib/cpp2/async:async_processor",
     ],
@@ -149,8 +158,8 @@ cpp_library(
         "InitCli.h",
     ],
     deps = [
+        "fbsource//xplat/folly/init:init",
         "//common/base:build_info",
-        "//folly/init:init",
     ],
     exported_deps = [],
     exported_external_deps = [
@@ -190,8 +199,8 @@ cpp_library(
     ],
     deps = [
         "fbsource//third-party/fmt:fmt",
+        "fbsource//xplat/folly/logging:logging",
         ":platform_name_lib",
-        "//folly/logging:logging",
     ],
     exported_deps = [],
 )

@@ -27,6 +27,7 @@
 #include "fboss/agent/packet/NDP.h"
 #include "fboss/agent/packet/PktUtil.h"
 #include "fboss/agent/packet/UDPHeader.h"
+#include "fboss/agent/rib/RoutingInformationBase.h"
 #include "fboss/agent/state/AggregatePort.h"
 #include "fboss/agent/state/Interface.h"
 #include "fboss/agent/state/InterfaceMap.h"
@@ -1041,15 +1042,16 @@ void IPv6Handler::resolveDestAndHandlePacket(
     }
   }
 
-  auto route = sw_->longestMatch(state, targetIP, RouterID(0));
-  if (!route || !route->isResolved()) {
+  auto routeAndNextHops = sw_->getRib()->getRouteAndNextHops(
+      targetIP, RouterID(0), false /* normalized */);
+  if (!routeAndNextHops || !routeAndNextHops->first->isResolved()) {
     sw_->portStats(ingressPort)->ipv6DstLookupFailure();
     // No way to reach targetIP
     return;
   }
+  const auto& [route, nexthops] = *routeAndNextHops;
 
   auto interfaces = state->getInterfaces();
-  auto nexthops = getNextHops(state, route->getForwardInfo());
 
   for (auto nexthop : nexthops) {
     // get interface needed to reach next hop
@@ -1106,15 +1108,17 @@ void IPv6Handler::sendMulticastNeighborSolicitations(
 
   auto state = sw_->getState();
 
-  auto route = sw_->longestMatch(state, targetIP, RouterID(0));
-  if (!route || !route->isResolved()) {
+  // The RIB can lead the published state, so ids must resolve from the RIB.
+  auto routeAndNextHops = sw_->getRib()->getRouteAndNextHops(
+      targetIP, RouterID(0), false /* normalized */);
+  if (!routeAndNextHops || !routeAndNextHops->first->isResolved()) {
     sw_->portStats(ingressPort)->ipv6DstLookupFailure();
     // No way to reach targetIP
     return;
   }
+  const auto& [route, nhs] = *routeAndNextHops;
 
   auto intfs = state->getInterfaces();
-  auto nhs = getNextHops(state, route->getForwardInfo());
   for (auto nh : nhs) {
     auto intf = intfs->getNodeIf(nh.intf());
     if (intf) {

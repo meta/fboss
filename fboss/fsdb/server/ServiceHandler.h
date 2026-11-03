@@ -13,7 +13,9 @@
 #include "fboss/fsdb/if/gen-cpp2/FsdbService.h"
 #include "fboss/fsdb/if/gen-cpp2/fsdb_common_types.h"
 #include "fboss/fsdb/if/gen-cpp2/fsdb_oper_types.h"
+#include "fboss/fsdb/oper/NaivePeriodicSubscribableStorageBase.h"
 #include "fboss/fsdb/oper/instantiations/FsdbNaivePeriodicSubscribableStorage.h"
+#include "fboss/fsdb/oper/instantiations/FsdbStateStorage.h"
 #include "fboss/fsdb/server/FsdbConfig.h"
 #include "fboss/fsdb/server/FsdbOperTreeMetadataTracker.h"
 #include "fboss/lib/ThreadHeartbeat.h"
@@ -29,6 +31,7 @@ DECLARE_bool(checkSubscriberConfig);
 DECLARE_bool(enforceSubscriberConfig);
 DECLARE_bool(checkOperOwnership);
 DECLARE_bool(enforcePublisherConfig);
+DECLARE_bool(enableHybridStateStorage);
 
 namespace facebook::fboss::fsdb {
 
@@ -219,19 +222,26 @@ class ServiceHandler : public FsdbServiceSvIf,
   // Expensive API to copy root thrift object. To be used only
   // in tests.
   FsdbOperStateRoot operRootExpensive() const {
-    return operStorage_.currentStateExpensive();
+    return operStorage_->currentStateExpensive();
   }
   // Expensive API to copy root thrift object. To be used only
   // in tests.
-  FsdbOperStatsRoot operStatsRootExpensive() const {
-    return operStatsStorage_.currentStateExpensive();
+  FsdbOperStatsRoot operStatsRootExpensive() const;
+
+  // To be used only in tests.
+  std::vector<OperSubscriberInfo> getStateStorageSubscriptions() const {
+    return stateStorageBase().getSubscriptions();
   }
 
   FsdbOperTreeMetadataTracker getStatsPublisherMetadata() const {
     return operStatsStorage_.getMetadata();
   }
   FsdbOperTreeMetadataTracker getStatePublisherMetadata() const {
-    return operStorage_.getMetadata();
+    return stateStorageBase().getMetadata();
+  }
+
+  bool usingHybridStateStorage() const {
+    return operStorage_->usingHybridStorage();
   }
 
   // Client key (clientId, Path, PubSubType, isStats)
@@ -361,12 +371,18 @@ class ServiceHandler : public FsdbServiceSvIf,
   TLTimeseries num_publisher_path_requests_rejected_;
   TLTimeseries num_dropped_stats_changes_;
   TLTimeseries num_dropped_state_changes_;
-  FsdbNaivePeriodicSubscribableStorage operStorage_;
+  // cow or hybrid nodes, selected by FLAGS_enableHybridStateStorage.
+  std::unique_ptr<FsdbStateStorage> operStorage_;
   // TODO - decide on right DB abstraction for stats
   FsdbNaivePeriodicSubscribableStatsStorage operStatsStorage_;
 
+  // Node-flavor independent APIs live on the storage base.
+  NaivePeriodicSubscribableStorageBase& stateStorageBase() const {
+    return operStorage_->base();
+  }
+
   /*
-   * A thread dedicated to monitor operStorage_ and operStatsStorage_
+   * A thread dedicated to monitor the state and stats storage threads
    */
   std::unique_ptr<ThreadHeartbeatWatchdog> heartbeatWatchdog_;
 

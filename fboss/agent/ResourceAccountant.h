@@ -91,7 +91,11 @@ class ResourceAccountant {
   void mySidStateChangedImpl(const StateDelta& delta);
   bool checkMySidResource(bool intermediateState);
 
+  void vrfStateChangedImpl(const StateDelta& delta);
+  bool checkVrfResource() const;
+
   size_t countSrv6NextHops(const RouteNextHopSet& nhSet) const;
+  bool checkSrv6UcmpDistinctWeights(const RouteNextHopSet& nhSet) const;
 
   template <typename AddrT>
   bool checkAndUpdateSrv6NextHopResource(
@@ -152,6 +156,7 @@ class ResourceAccountant {
   // group members. Other asics keep them in hw reserved space, so they are not
   // charged as members.
   bool countBackupNextHopMembers_{false};
+  std::optional<uint32_t> maxSrv6UcmpDistinctWeights_;
   bool checkRouteUpdate_;
   uint32_t l2Entries_{0};
   uint32_t ecmpMemberUsage_{0};
@@ -162,6 +167,8 @@ class ResourceAccountant {
   uint32_t virtualArsGroupCount_{0};
   uint32_t routeUsage_{0};
   uint32_t mySidUsage_{0};
+  // Configured VRFs, excluding the default VRF
+  uint32_t vrfUsage_{0};
   // SRv6 next hop tracking: keyed by NextHopSetID for efficient lookup.
   // Stores {refCount, srv6Count} per unique NextHopSet.
   struct Srv6NextHopSetInfo {
@@ -210,10 +217,14 @@ class ResourceAccountant {
   FRIEND_TEST(ResourceAccountantTest, checkMySidResource);
   FRIEND_TEST(ResourceAccountantTest, mySidStateChanged);
   FRIEND_TEST(ResourceAccountantTest, mySidResourceExceeded);
+  FRIEND_TEST(ResourceAccountantTest, vrfResourceExceeded);
   FRIEND_TEST(ResourceAccountantTest, checkAndUpdateSrv6NextHopResource);
   FRIEND_TEST(ResourceAccountantTest, srv6NextHopResourceExceeded);
+  FRIEND_TEST(ResourceAccountantTest, srv6UcmpDistinctWeights);
   FRIEND_TEST(ResourceAccountantTest, checkAndUpdateRouteCounterResource);
   FRIEND_TEST(ResourceAccountantTest, routeCounterResourceExceeded);
   FRIEND_TEST(MacTableManagerTest, MacLearnedBulkCb);
+  FRIEND_TEST(StaticMacConfigTest, ApplyConfigAccountsStaticMacsOnce);
+  FRIEND_TEST(StaticMacConfigTest, IsValidStateUpdateDryRun);
 };
 } // namespace facebook::fboss

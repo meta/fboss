@@ -372,4 +372,7 @@ class Fboss2IntegrationTestRunner(TestRunner):
         else:
             print("Cleaning up agent services.")
             cleanup_sw_agent_service(SW_AGENT_SERVICE_PROD)
-            cleanup_hw_agent_service(self._switch_indexes)
+            cleanup_hw_agent_service(
+                self._switch_indexes,
+                hw_agent_service_name=HW_AGENT_SERVICE_PROD,
+            )

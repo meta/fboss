@@ -1,5 +1,7 @@
 load("@fbcode_macros//build_defs:python_binary.bzl", "python_binary")
 load("@fbcode_macros//build_defs:python_library.bzl", "python_library")
+load("@fbcode_macros//build_defs:python_unittest.bzl", "python_unittest")
+load("@fbsource//tools/build_defs/testinfra:network_access_utils.bzl", "network_access_utils")
 
 oncall("fboss_agent")
 
@@ -15,8 +17,10 @@ python_library(
     ],
     deps = [
         "//configerator/distribution/api/py:configerator_client",
+        "//configerator/structs/neteng/fboss/coop:mapping-python-types",
         "//configerator/structs/neteng/netwhoami:netwhoami-python-types",
         "//configerator/structs/neteng/policydb:resources-python-types",
+        "//neteng/fboss/coop/data:input_chooser",
         "//neteng/netwhoami/lib/py:matcher",
         "//thrift/lib/python:types",
     ],
@@ -30,5 +34,17 @@ python_binary(
     main_function = "fboss.util.mimic_config_gen.mimic_config_gen.main",
     deps = [
         ":mimic_config_gen_lib",
+    ],
+)
+
+python_unittest(
+    name = "select_selection_test",
+    srcs = [
+        "select_selection_test.py",
+    ],
+    network_access = network_access_utils.none(),
+    deps = [
+        ":mimic_config_gen_lib",
+        "//configerator/structs/neteng/netwhoami:netwhoami-python-types",
     ],
 )

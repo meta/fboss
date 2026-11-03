@@ -254,7 +254,11 @@ std::shared_ptr<SaiTamTransport> SaiTamManager::createTamTransport(
       report->getCollectorPort(),
       report->getMtu(),
       folly::MacAddress(report->getSwitchMac()),
-      dstMac,
+      dstMac
+#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
+      ,
+      std::nullopt // GreProtocolType
+#endif
   };
   return transportStore.setObject(transportTraits, transportTraits);
 }
@@ -269,9 +273,31 @@ std::shared_ptr<SaiTamCollector> SaiTamManager::createTamCollector(
       report->getCollectorIp(),
       truncateSize,
       transportId,
-      report->getDscp(),
+      report->getDscp()
+#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
+          ,
+      std::nullopt, // SrcMacAddress
+      std::nullopt, // DstMacAddress
+      std::nullopt // Destination
+#endif
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 0)
+      ,
+      std::nullopt // Localhost
+#endif
   };
-  return collectorStore.setObject(collectorTraits, collectorTraits);
+#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0) && defined(BRCM_SAI_SDK_GTE_14_0)
+  auto collectorKey = collectorTraits;
+  // These SDKs return zero MACs and false localhost for unset collector fields.
+  std::get<std::optional<SaiTamCollectorTraits::Attributes::SrcMacAddress>>(
+      collectorKey) = folly::MacAddress{};
+  std::get<std::optional<SaiTamCollectorTraits::Attributes::DstMacAddress>>(
+      collectorKey) = folly::MacAddress{};
+  std::get<std::optional<SaiTamCollectorTraits::Attributes::Localhost>>(
+      collectorKey) = false;
+#else
+  const auto& collectorKey = collectorTraits;
+#endif
+  return collectorStore.setObject(collectorKey, collectorTraits);
 }
 
 std::shared_ptr<SaiTam> SaiTamManager::createTam(
@@ -402,6 +428,8 @@ void SaiTamManager::addDnxMirrorOnDropReport(
   std::vector<sai_int32_t> bindpoints = {
       SAI_TAM_BIND_POINT_TYPE_SWITCH, SAI_TAM_BIND_POINT_TYPE_PORT};
   auto tam = createTam(eventIds, bindpoints);
+  // DNX reports always carry a mirror port.
+  const auto mirrorPortId = report->getMirrorPortId().value();
   storeTamHandle(
       report->getID(),
       reportObj,
@@ -410,9 +438,9 @@ void SaiTamManager::addDnxMirrorOnDropReport(
       collector,
       events,
       tam,
-      report->getMirrorPortId(),
+      mirrorPortId,
       agingGroups);
-  bindTam(tam->adapterKey(), report->getMirrorPortId());
+  bindTam(tam->adapterKey(), mirrorPortId);
 }
 #endif
 
@@ -445,8 +473,16 @@ void SaiTamManager::addXgsMirrorOnDropReport(
   auto action = createTamAction(reportObj->adapterKey());
   auto transport = createTamTransport(
       report, SAI_TAM_TRANSPORT_TYPE_PORT, folly::MacAddress(destMac));
+  // 0 means "do not truncate". It still has to be passed explicitly
+  // TruncateSize is part of SaiTamCollectorTraits::AdapterHostKey and warm boot
+  // re-derives that key from HW GETs. 16.0 implements it and returns 0
+#if defined(BRCM_SAI_SDK_XGS_GTE_16_0)
+  const std::optional<uint16_t> truncateSize{0};
+#else
+  const std::optional<uint16_t> truncateSize{std::nullopt};
+#endif
   auto collector =
-      createTamCollector(report, transport->adapterKey(), std::nullopt);
+      createTamCollector(report, transport->adapterKey(), truncateSize);
 
   // Create SamplePacket if samplingRate is configured
   std::shared_ptr<SaiSamplePacket> samplePacket = nullptr;

@@ -237,6 +237,10 @@ class AclApiTest : public ::testing::Test {
     return std::make_pair(128, 128);
   }
 
+  std::pair<sai_uint8_t, sai_uint8_t> kMplsLabel0Ttl() const {
+    return std::make_pair(1, 0xFF);
+  }
+
   std::pair<sai_uint8_t, sai_uint8_t> kTtl2() const {
     return std::make_pair(64, 64);
   }
@@ -376,11 +380,6 @@ class AclApiTest : public ::testing::Test {
     return std::make_pair(81, 0);
   }
 
-  std::vector<int8_t> kLabelExtended() const {
-    static const std::string kLabel{"acl-entry-label"};
-    return std::vector<int8_t>(kLabel.begin(), kLabel.end());
-  }
-
   std::pair<sai_object_id_t, sai_uint32_t> kRouteDestination2() const {
     return std::make_pair(810, 0);
   }
@@ -455,6 +454,7 @@ class AclApiTest : public ::testing::Test {
             true, // dstMac
             true, // ipType
             true, // ttl
+            true, // mpls label0 ttl
             true, // fdb meta
             true, // route meta
             true, // neighbor meta
@@ -468,6 +468,9 @@ class AclApiTest : public ::testing::Test {
             kUserDefinedFieldGroup2(), // udf group 2
             kUserDefinedFieldGroup3(), // udf group 3
             kUserDefinedFieldGroup4(), // udf group 4
+#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
+            true, // route destination
+#endif
             true, // port meta
         },
         kSwitchID());
@@ -543,6 +546,8 @@ class AclApiTest : public ::testing::Test {
         AclEntryFieldU32(kIpType())};
     SaiAclEntryTraits::Attributes::FieldTtl aclFieldTtlAttribute{
         AclEntryFieldU8(kTtl())};
+    SaiAclEntryTraits::Attributes::FieldMplsLabel0Ttl
+        aclFieldMplsLabel0TtlAttribute{AclEntryFieldU8(kMplsLabel0Ttl())};
     SaiAclEntryTraits::Attributes::FieldFdbDstUserMeta
         aclFieldFdbDstUserMetaAttribute{AclEntryFieldU32(kFdbDstUserMeta())};
     SaiAclEntryTraits::Attributes::FieldRouteDstUserMeta
@@ -599,8 +604,6 @@ class AclApiTest : public ::testing::Test {
     SaiAclEntryTraits::Attributes::FieldRouteDestination
         aclFieldRouteDestination{
             AclEntryFieldSaiObjectIdT(kRouteDestination())};
-    SaiAclEntryTraits::Attributes::LabelExtended aclLabelExtended{
-        kLabelExtended()};
 
     return aclApi->create<SaiAclEntryTraits>(
         {aclTableIdAttribute,
@@ -628,6 +631,7 @@ class AclApiTest : public ::testing::Test {
          aclFieldDstMacAttribute,
          aclFieldIpTypeAttribute,
          aclFieldTtlAttribute,
+         aclFieldMplsLabel0TtlAttribute,
          aclFieldFdbDstUserMetaAttribute,
          aclFieldRouteDstUserMetaAttribute,
          aclFieldNeighborDstUserMetaAttribute,
@@ -655,7 +659,6 @@ class AclApiTest : public ::testing::Test {
          aclActionSetEcmpHashAlgorithm,
          aclActionL3SwitchCancel,
          aclFieldRouteDestination,
-         aclLabelExtended,
          std::nullopt /* fieldPortUserMeta */},
         kSwitchID());
   }
@@ -851,6 +854,8 @@ class AclApiTest : public ::testing::Test {
         aclEntryId, SaiAclEntryTraits::Attributes::FieldIpType());
     auto aclFieldTtlGot = aclApi->getAttribute(
         aclEntryId, SaiAclEntryTraits::Attributes::FieldTtl());
+    auto aclFieldMplsLabel0TtlGot = aclApi->getAttribute(
+        aclEntryId, SaiAclEntryTraits::Attributes::FieldMplsLabel0Ttl());
     auto aclFieldFdbDstUserMetaGot = aclApi->getAttribute(
         aclEntryId, SaiAclEntryTraits::Attributes::FieldFdbDstUserMeta());
     auto aclFieldRouteDstUserMetaGot = aclApi->getAttribute(
@@ -904,8 +909,6 @@ class AclApiTest : public ::testing::Test {
         aclEntryId, SaiAclEntryTraits::Attributes::ActionL3SwitchCancel());
     auto aclFieldRouteDestinationGot = aclApi->getAttribute(
         aclEntryId, SaiAclEntryTraits::Attributes::FieldRouteDestination());
-    auto aclLabelExtendedGot = aclApi->getAttribute(
-        aclEntryId, SaiAclEntryTraits::Attributes::LabelExtended());
 
     EXPECT_EQ(aclPriorityGot, priority);
     EXPECT_EQ(aclEnabledGot, enabled);
@@ -932,6 +935,7 @@ class AclApiTest : public ::testing::Test {
     EXPECT_EQ(aclFieldDstMacGot.getDataAndMask(), dstMac);
     EXPECT_EQ(aclFieldIpTypeGot.getDataAndMask(), ipType);
     EXPECT_EQ(aclFieldTtlGot.getDataAndMask(), ttl);
+    EXPECT_EQ(aclFieldMplsLabel0TtlGot.getDataAndMask(), kMplsLabel0Ttl());
     EXPECT_EQ(aclFieldFdbDstUserMetaGot.getDataAndMask(), fdbDstUserMeta);
     EXPECT_EQ(aclFieldRouteDstUserMetaGot.getDataAndMask(), routeDstUserMeta);
     EXPECT_EQ(
@@ -959,7 +963,6 @@ class AclApiTest : public ::testing::Test {
     EXPECT_EQ(aclActionSetEcmpHashAlgorithmGot.getData(), setEcmpHashAlgorithm);
     EXPECT_EQ(aclActionL3SwitchCancelGot.getData(), l3SwitchCancel);
     EXPECT_EQ(aclFieldRouteDestinationGot.getDataAndMask(), routeDestination);
-    EXPECT_EQ(aclLabelExtendedGot, kLabelExtended());
   }
 
   std::shared_ptr<FakeSai> fs;
@@ -1104,6 +1107,8 @@ TEST_F(AclApiTest, getAclTableAttribute) {
       aclTableId, SaiAclTableTraits::Attributes::FieldIpType());
   auto aclTableFieldTtlGot = aclApi->getAttribute(
       aclTableId, SaiAclTableTraits::Attributes::FieldTtl());
+  auto aclTableFieldMplsLabel0TtlGot = aclApi->getAttribute(
+      aclTableId, SaiAclTableTraits::Attributes::FieldMplsLabel0Ttl());
   auto aclTableFieldFdbDstUserMetaGot = aclApi->getAttribute(
       aclTableId, SaiAclTableTraits::Attributes::FieldFdbDstUserMeta());
   auto aclTableFieldRouteDstUserMetaGot = aclApi->getAttribute(
@@ -1152,6 +1157,7 @@ TEST_F(AclApiTest, getAclTableAttribute) {
   EXPECT_EQ(aclTableFieldDstMacGot, true);
   EXPECT_EQ(aclTableFieldIpTypeGot, true);
   EXPECT_EQ(aclTableFieldTtlGot, true);
+  EXPECT_EQ(aclTableFieldMplsLabel0TtlGot, true);
   EXPECT_EQ(aclTableFieldFdbDstUserMetaGot, true);
   EXPECT_EQ(aclTableFieldRouteDstUserMetaGot, true);
   EXPECT_EQ(aclTableFieldNeighborDstUserMetaGot, true);

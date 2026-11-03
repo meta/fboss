@@ -135,6 +135,18 @@ def build_unit_file_content(
     tsan_options: str = "die_after_fork=0",
 ) -> str:
     library_path = os.environ.get("LD_LIBRARY_PATH") or "/opt/fboss/lib"
+    environment = [
+        f"Environment=TSAN_OPTIONS={tsan_options}",
+        f"Environment=LD_LIBRARY_PATH={library_path}",
+    ]
+    # systemd does not inherit the launching shell's env, so vars the SDK needs
+    # must be declared here. Silicon One resolves its resource tree as
+    # $BASE_OUTPUT_DIR/res and aborts hw_agent init without it. Forwarded only
+    # when set, so it is a no-op for SDKs that don't use it.
+    if base_output_dir := os.environ.get("BASE_OUTPUT_DIR"):
+        environment.append(f"Environment=BASE_OUTPUT_DIR={base_output_dir}")
+    environment_lines = "\n".join(environment)
+
     return f"""
 [Unit]
 Description={description}
@@ -145,8 +157,7 @@ LimitCORE=32G
 MemoryMax={memory_max}
 MemorySwapMax=0
 
-Environment=TSAN_OPTIONS={tsan_options}
-Environment=LD_LIBRARY_PATH={library_path}
+{environment_lines}
 ExecStart={exec_start_cmd}
 SyslogIdentifier={syslog_identifier}
 Restart=no

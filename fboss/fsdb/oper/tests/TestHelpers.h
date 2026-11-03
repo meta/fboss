@@ -62,8 +62,11 @@ class SynchronousServeStorage
   using Base::Base;
 
   void serveOnce() {
-    auto [oldRoot, newRoot, metadataServer] = this->publishCurrentState();
-    this->subscriptions_.serveSubscriptions(oldRoot, newRoot, metadataServer);
+    constexpr size_t kBucket = 0;
+    auto [oldRoot, newRoot, metadataServer] =
+        this->publishCurrentState(kBucket);
+    this->subscriptions_.serveSubscriptions(
+        oldRoot, newRoot, metadataServer, kBucket);
   }
 };
 

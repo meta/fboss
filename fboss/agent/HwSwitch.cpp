@@ -9,6 +9,7 @@
  */
 #include "fboss/agent/HwSwitch.h"
 
+#include "fboss/agent/AgentFeatures.h"
 #include "fboss/agent/FbossError.h"
 #include "fboss/agent/HwSwitchRouteUpdateWrapper.h"
 #include "fboss/agent/TxPacketUtils.h"
@@ -43,11 +44,6 @@ DEFINE_int32(
     update_voq_stats_interval_s,
     60,
     "Update voq stats interval in seconds");
-
-DEFINE_int32(
-    update_phy_info_interval_s,
-    10,
-    "Update phy info interval in seconds");
 
 DEFINE_bool(
     flowletStatsEnable,
@@ -260,12 +256,11 @@ uint32_t HwSwitch::generateDeterministicSeed(LoadBalancerID loadBalancerID) {
 }
 
 void HwSwitch::gracefulExit() {
-  /* For ASIC_TYPE_ELBERT_8DD warmboot support, we need to store the switch
-   * state in graceful exit. This ensures the state is preserved and
-   * can be restored when the system comes back up in warmboot.
+  /* For xphy warmboot support, we need to store the switch state in graceful
+   * exit. SaiPhyManager::initializeXphyImpl reads it back on every xphy warm
+   * boot and fails if it is missing.
    */
-  if (getPlatform()->getAsic()->getAsicType() ==
-      cfg::AsicType::ASIC_TYPE_ELBERT_8DD) {
+  if (getPlatform()->getAsic()->getSwitchType() == cfg::SwitchType::PHY) {
     auto thriftSwitchState = getProgrammedState()->toThrift();
     if (auto warmBootHelper = getPlatform()->getWarmBootHelper()) {
       warmBootHelper->storeWarmBootThriftState(thriftSwitchState);

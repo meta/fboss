@@ -8,7 +8,7 @@
  * Set tests cover all 16 AclEntry match-field attributes:
  *   source-ip, destination-ip, protocol, source-port, destination-port,
  *   dscp, tcp-flags, icmp-type, icmp-code, ip-fragment, ttl,
- *   destination-mac, ethertype, vlan, ip-type, packet-lookup-result.
+ *   destination-mac, ip-type, packet-lookup-result.
  *
  * For each attribute a `Set` test:
  *   `config acl rule` upserts an entry with the attribute set, commit, then
@@ -177,6 +177,23 @@ class ConfigAclRuleTest : public Fboss2IntegrationTest {
     EXPECT_THAT(result.stdout, HasSubstr(attr));
   }
 
+  // Attach an action to `rule` through the data-plane traffic policy. The acl
+  // rule command no longer writes MatchAction fields; the policy verb names
+  // the policy the action belongs to.
+  void runTrafficPolicyActionCli(
+      const std::string& rule,
+      const std::vector<std::string>& action) {
+    std::vector<std::string> argv{
+        "config", "data-plane", "traffic-policy", "match", rule, "action"};
+    for (const auto& a : action) {
+      argv.push_back(a);
+    }
+    auto result = runCli(argv);
+    ASSERT_EQ(result.exitCode, 0)
+        << "stdout=" << result.stdout << " stderr=" << result.stderr;
+    EXPECT_THAT(result.stdout, HasSubstr(action[0]));
+  }
+
   void runDeleteCli(const std::string& table, const std::string& rule) {
     auto result = runCli({"delete", "acl", "rule", table, rule});
     ASSERT_EQ(result.exitCode, 0)
@@ -343,17 +360,6 @@ TEST_F(ConfigAclRuleTest, SetDestinationMac) {
   });
 }
 
-TEST_F(ConfigAclRuleTest, SetEtherType) {
-  // EtherType::IPv4 = 0x0800
-  runSet("ethertype", {"ipv4"}, [](auto& e) {
-    EXPECT_EQ(e["etherType"].asInt(), 0x0800);
-  });
-}
-
-TEST_F(ConfigAclRuleTest, SetVlan) {
-  runSet("vlan", {"100"}, [](auto& e) { EXPECT_EQ(e["vlanID"].asInt(), 100); });
-}
-
 TEST_F(ConfigAclRuleTest, SetIpType) {
   // cfg::IpType::IP6 = 3
   runSet(
@@ -366,13 +372,35 @@ TEST_F(ConfigAclRuleTest, SetPacketLookupResult) {
   });
 }
 
+// Class ids are given the same way as to `config interface <intf>
+// lookup-class`: a numeric id or a class name.
+TEST_F(ConfigAclRuleTest, SetLookupClassL2) {
+  runSet("lookup-class-l2", {"10"}, [](auto& e) {
+    EXPECT_EQ(e["lookupClassL2"].asInt(), 10);
+  });
+}
+
+TEST_F(ConfigAclRuleTest, SetLookupClassNeighbor) {
+  runSet(
+      "lookup-class-neighbor", {"CLASS_QUEUE_PER_HOST_QUEUE_5"}, [](auto& e) {
+        EXPECT_EQ(e["lookupClassNeighbor"].asInt(), 15);
+      });
+}
+
+TEST_F(ConfigAclRuleTest, SetLookupClassRoute) {
+  runSet("lookup-class-route", {"13"}, [](auto& e) {
+    EXPECT_EQ(e["lookupClassRoute"].asInt(), 13);
+  });
+}
+
 // =============================================================
-// Action tests — `config acl rule <table> <rule> action <subattr> [val]`
+// Action tests — `config acl rule <table> <rule> action <subattr>`
 //
-// permit/deny mutate AclEntry.actionType in place. The remaining action
-// sub-attrs land on a MatchAction in dataPlaneTrafficPolicy.matchToAction
-// keyed by rule name. Each test creates the entry on demand by setting a
-// neutral match field (dscp), then exercises the action.
+// The only actions this command takes are the three that mutate
+// AclEntry.actionType in place. Each test creates the entry on demand by
+// setting a neutral match field (dscp), then exercises the action. Richer
+// actions belong to a traffic policy and are covered by
+// ConfigCoppTrafficPolicyTest / the data-plane traffic-policy unit tests.
 // =============================================================
 
 TEST_F(ConfigAclRuleTest, SetActionPermit) {
@@ -392,56 +420,6 @@ TEST_F(ConfigAclRuleTest, SetActionDeny) {
     EXPECT_EQ((*e)["actionType"].asInt(), 0);
   });
 }
-
-TEST_F(ConfigAclRuleTest, SetActionSendToQueue) {
-  runActionSet("send-to-queue", {"3"}, [this](const std::string&) {
-    auto a = getMatchAction(kTestRuleName);
-    ASSERT_TRUE(a.has_value());
-    EXPECT_EQ((*a)["sendToQueue"]["queueId"].asInt(), 3);
-  });
-}
-
-TEST_F(ConfigAclRuleTest, SetActionSetDscp) {
-  runActionSet("set-dscp", {"46"}, [this](const std::string&) {
-    auto a = getMatchAction(kTestRuleName);
-    ASSERT_TRUE(a.has_value());
-    EXPECT_EQ((*a)["setDscp"]["dscpValue"].asInt(), 46);
-  });
-}
-
-TEST_F(ConfigAclRuleTest, SetActionSetTc) {
-  runActionSet("set-tc", {"5"}, [this](const std::string&) {
-    auto a = getMatchAction(kTestRuleName);
-    ASSERT_TRUE(a.has_value());
-    EXPECT_EQ((*a)["setTc"]["tcValue"].asInt(), 5);
-  });
-}
-
-TEST_F(ConfigAclRuleTest, SetActionTrapToCpu) {
-  runActionSet("trap-to-cpu", {}, [this](const std::string&) {
-    auto a = getMatchAction(kTestRuleName);
-    ASSERT_TRUE(a.has_value());
-    // ToCpuAction::TRAP == 1
-    EXPECT_EQ((*a)["toCpuAction"].asInt(), 1);
-  });
-}
-
-TEST_F(ConfigAclRuleTest, SetActionCopyToCpu) {
-  runActionSet("copy-to-cpu", {}, [this](const std::string&) {
-    auto a = getMatchAction(kTestRuleName);
-    ASSERT_TRUE(a.has_value());
-    // ToCpuAction::COPY == 0
-    EXPECT_EQ((*a)["toCpuAction"].asInt(), 0);
-  });
-}
-
-// mirror-ingress/mirror-egress and redirect nexthop are intentionally
-// covered only at the unit-test layer for now: SAI rejects acl entries
-// that reference an undefined mirror name or an unresolvable nexthop,
-// and provisioning a real mirror session / nexthop on the DUT is out of
-// scope for this PR. The CLI does construct the right config delta
-// (proven in the unit tests); end-to-end validation is deferred until a
-// follow-up sets up the supporting state.
 
 // =============================================================
 // Delete test — `delete acl rule <table> <rule>`
@@ -472,7 +450,7 @@ TEST_F(ConfigAclRuleTest, DeleteRuleWithAction) {
              << kTestRuleName;
 
   runConfigCli(tableName, kTestRuleName, "dscp", {"46"});
-  runConfigCli(tableName, kTestRuleName, "action", {"set-dscp", "32"});
+  runTrafficPolicyActionCli(kTestRuleName, {"set-dscp", "32"});
   commitConfig();
   ASSERT_TRUE(getRule(tableName, kTestRuleName).has_value())
       << "rule missing after upsert";

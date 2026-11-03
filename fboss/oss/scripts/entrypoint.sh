@@ -24,6 +24,7 @@ if [ "$FBOSS_META_ENV" = "1" ]; then
     [ -d "$FBOSS_SRC/build/fbcode_builder" ] || cp -r "$FBCODE/opensource/fbcode_builder" "$FBOSS_SRC/build/fbcode_builder"
 
     # devserver-only extras (docker/lint/docs), not needed by the on-diff build.
+    ln -sfn "$FBCODE/fboss/github/fboss-sim" "$FBOSS_SRC/fboss-sim"
     cp -r "$FBCODE/fboss/github/.pre-commit-config.yaml" "$FBOSS_SRC/.pre-commit-config.yaml"
     ln -sfn "$FBCODE/fboss/github/requirements-dev.txt" "$FBOSS_SRC/requirements-dev.txt"
     ln -sfn "$FBCODE/fboss/github/getdeps.sh" "$FBOSS_SRC/getdeps.sh"

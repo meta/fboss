@@ -25,6 +25,7 @@ def execute_build_in_container(
     component_name: str,
     working_dir: str | None = None,
     dependency_install_paths: dict[str, Path] | None = None,
+    read_only_volumes: dict[Path, Path] | None = None,
 ) -> None:
     """Execute build command in Docker container.
 
@@ -37,6 +38,7 @@ def execute_build_in_container(
         dependency_install_paths: Dict mapping dependency names to their container mount paths
                                   (e.g., {'kernel': Path('/deps/kernel')})
                                   RPMs from these paths will be installed before running the build
+        read_only_volumes: Host to container path mappings mounted read-only
 
     Raises:
         BuildError: If build fails
@@ -64,6 +66,7 @@ def execute_build_in_container(
             image=image_name,
             command=cmd_list,
             volumes=volumes,
+            read_only_volumes=read_only_volumes,
             privileged=True,
             working_dir=working_dir,
         )

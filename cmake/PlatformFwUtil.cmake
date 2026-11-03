@@ -53,6 +53,10 @@ target_link_libraries(fw_util_sw_test
   ${LIBGMOCK_LIBRARIES}
 )
 
+gtest_discover_tests(fw_util_sw_test)
+
+install(TARGETS fw_util_sw_test)
+
 add_executable(fw_util_hw_test
   fboss/platform/fw_util/hw_test/FwUtilHwTest.cpp
 )

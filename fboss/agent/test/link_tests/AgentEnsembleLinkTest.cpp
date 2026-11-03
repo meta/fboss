@@ -48,6 +48,7 @@ const std::vector<std::string> l1LinkTestNames = {
     "getTransceivers",
     "opticsTxDisableRandomPorts",
     "opticsTxDisableEnable",
+    "opticsRxOutputDisableEnable",
     "testOpticsRemediation",
     "qsfpColdbootAfterAgentUp",
     "fabricLinkHealth",
@@ -384,6 +385,15 @@ AgentEnsembleLinkTest::getSingleVlanOrRoutedCabledPorts(
   auto singleVlanOrRoutedPorts =
       utility::getSingleVlanOrRoutedCabledPorts(getSw());
   for (auto port : getCabledPorts()) {
+    // Only L3 interface ports can carry the ECMP group. The VLAN-interface
+    // branch of utility::getSingleVlanOrRoutedCabledPorts() does not filter on
+    // port type, so a management port that is the sole member of its VLAN
+    // otherwise lands here with no interface to resolve a nexthop against.
+    auto portType = getSw()->getState()->getPort(port)->getPortType();
+    if (portType != cfg::PortType::INTERFACE_PORT &&
+        portType != cfg::PortType::HYPER_PORT) {
+      continue;
+    }
     auto matcher = getSw()->getScopeResolver()->scope(
         getSw()->getState(), PortDescriptor(port));
     SwitchID portSwitchId = matcher.switchId();
@@ -426,9 +436,7 @@ void AgentEnsembleLinkTest::programDefaultRoute(
       dstMac,
       RouterID(0),
       false,
-      {cfg::PortType::INTERFACE_PORT,
-       cfg::PortType::MANAGEMENT_PORT,
-       cfg::PortType::HYPER_PORT});
+      {cfg::PortType::INTERFACE_PORT, cfg::PortType::HYPER_PORT});
   programDefaultRoute(ecmpPorts, ecmp6);
 }
 
@@ -460,9 +468,7 @@ void AgentEnsembleLinkTest::createL3DataplaneFlood(
       getSw()->getLocalMac(switchId),
       RouterID(0),
       false,
-      {cfg::PortType::INTERFACE_PORT,
-       cfg::PortType::MANAGEMENT_PORT,
-       cfg::PortType::HYPER_PORT});
+      {cfg::PortType::INTERFACE_PORT, cfg::PortType::HYPER_PORT});
   if (getSw()->getHwAsicTable()->isFeatureSupported(
           switchId, HwAsic::Feature::NEXTHOP_TTL_DECREMENT_DISABLE)) {
     programDefaultRouteWithDisableTTLDecrement(ecmpPorts, ecmp6);
@@ -474,7 +480,7 @@ void AgentEnsembleLinkTest::createL3DataplaneFlood(
   utility::pumpTraffic(
       true,
       utility::getAllocatePktFn(getSw()),
-      utility::getSendPktFunc(getSw()),
+      utility::getSendPktFunc(getSw(), switchId),
       getSw()->getLocalMac(switchId),
       vlanID);
   // TODO: Assert that traffic reached a certain rate
@@ -803,24 +809,65 @@ void AgentEnsembleLinkTest::setForceTrafficOverFabric(bool force) {
   });
 }
 
+namespace {
+// Platform features individual tests on this fixture require. A test absent
+// from this map declares none, so it runs on every platform.
+const std::map<
+    std::string,
+    std::vector<link_test_production_features::LinkTestProductionFeature>>
+    kTestPlatformFeatures = {
+        {"xPhyInfoTest",
+         {link_test_production_features::LinkTestProductionFeature::XPHY}},
+        {"fabricLinkHealth",
+         {link_test_production_features::LinkTestProductionFeature::
+              DSF_INTERFACE_NODE}},
+        {"opticsTxDisableRandomPorts",
+         {link_test_production_features::LinkTestProductionFeature::
+              ACTIVE_TRANSCEIVER}},
+        {"opticsTxDisableEnable",
+         {link_test_production_features::LinkTestProductionFeature::
+              ACTIVE_TRANSCEIVER}},
+        {"opticsRxOutputDisableEnable",
+         {link_test_production_features::LinkTestProductionFeature::
+              ACTIVE_TRANSCEIVER}},
+        {"testOpticsRemediation",
+         {link_test_production_features::LinkTestProductionFeature::
+              ACTIVE_TRANSCEIVER,
+          link_test_production_features::LinkTestProductionFeature::
+              REMEDIATION}},
+        {"opticsVdmPerformanceMonitoring",
+         {link_test_production_features::LinkTestProductionFeature::
+              ACTIVE_TRANSCEIVER,
+          link_test_production_features::LinkTestProductionFeature::VDM}},
+};
+} // namespace
+
 std::vector<link_test_production_features::LinkTestProductionFeature>
 AgentEnsembleLinkTest::getProductionFeatures() const {
   const std::string testName =
       testing::UnitTest::GetInstance()->current_test_info()->name();
 
+  std::vector<link_test_production_features::LinkTestProductionFeature>
+      features;
   if (std::find(l1LinkTestNames.begin(), l1LinkTestNames.end(), testName) !=
       l1LinkTestNames.end()) {
-    return {
-        link_test_production_features::LinkTestProductionFeature::L1_LINK_TEST};
+    features.push_back(
+        link_test_production_features::LinkTestProductionFeature::L1_LINK_TEST);
   } else if (
       std::find(l2LinkTestNames.begin(), l2LinkTestNames.end(), testName) !=
       l2LinkTestNames.end()) {
-    return {
-        link_test_production_features::LinkTestProductionFeature::L2_LINK_TEST};
+    features.push_back(
+        link_test_production_features::LinkTestProductionFeature::L2_LINK_TEST);
   } else {
     throw std::runtime_error(
         "Test type (L1/L2) not specified for this test case");
   }
+
+  if (auto it = kTestPlatformFeatures.find(testName);
+      it != kTestPlatformFeatures.end()) {
+    features.insert(features.end(), it->second.begin(), it->second.end());
+  }
+  return features;
 }
 
 void AgentEnsembleLinkTest::printProductionFeatures() const {

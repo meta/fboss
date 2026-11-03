@@ -6,7 +6,7 @@
 #include "fboss/lib/phy/gen-cpp2/phy_types.h"
 #include "folly/gen/String.h"
 
-#include <folly/Format.h>
+#include <fmt/format.h>
 #include <folly/logging/xlog.h>
 
 namespace {

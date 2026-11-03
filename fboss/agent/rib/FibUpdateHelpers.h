@@ -30,7 +30,8 @@ StateDelta ribToSwitchStateUpdate(
     const LabelToRouteMap& labelToRoute,
     const NextHopIDManager* nextHopIDManager,
     const MySidTable& mySidTable,
-    void* cookie);
+    void* cookie,
+    bool vrfDeleted);
 
 StateDelta noopFibUpdate(
     const SwitchIdScopeResolver* resolver,
@@ -40,5 +41,6 @@ StateDelta noopFibUpdate(
     const LabelToRouteMap& labelToRoute,
     const NextHopIDManager* nextHopIDManager,
     const MySidTable& mySidTable,
-    void* cookie);
+    void* cookie,
+    bool vrfDeleted);
 } // namespace facebook::fboss

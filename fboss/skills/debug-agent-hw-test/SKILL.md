@@ -100,6 +100,8 @@ Follow this iterative cycle for each failing test:
 
 **Broadcom DNX firmware prerequisite**: All tests on Broadcom DNX switches (Jericho3, Ramon3, etc.) require the firmware `db/` directory at `/tmp/db/` on the switch. See [build-and-load.md](references/build-and-load.md#broadcom-dnx-firmware-required-for-all-tests-on-dnx-platforms) for details. Without this, hw_agent processes abort with `FW: ... is not accessible error:-1`. This does not apply to Broadcom XGS or Leaba/Cisco platforms.
 
+**Leaba/Cisco prerequisite**: the SDK runtime (`lib/dyn` and `res/`) from the same SDK build as the binary must be on the switch. The run also needs `LD_LIBRARY_PATH`, `BASE_OUTPUT_DIR` and, on some ASICs, `ASIC` (`GR2_A0` on G200). Without them the SDK aborts after FBOSS init has succeeded. See the Leaba row in Reference Routing below.
+
 **Discipline**: Work on one test at a time. Try up to 5 iterations before categorizing and moving to the next test.
 
 ## Batch Execution Loop (Mode B)
@@ -177,7 +179,7 @@ Categorize every test into one of these 7 outcomes:
 | FAIL: Test hung or timed out | `FAIL_TIMEOUT` | Test did not complete within allowed time, possible deadlock |
 | TODO: assess ASIC chip config change | `TODO_ASIC_CONFIG` | May need ASIC config (lane map, MMU, etc.) change |
 
-For `FAIL_VENDOR` (or `PASS_VENDOR_FIX`), produce a vendor-escalation package — SAI Replayer log + hw_config + a case report the vendor can reproduce from — using `references/vendor-escalation.md`. It is vendor-generic (Broadcom CSP / Cisco TAC / NVIDIA support).
+For `FAIL_VENDOR` (or `PASS_VENDOR_FIX`), produce a vendor-escalation package — SAI Replayer log + hw_config + a case report the vendor can reproduce from — using the `vendor-escalation` skill (`../vendor-escalation/SKILL.md`). It is vendor-generic (Broadcom CSP / Cisco TAC / NVIDIA support).
 
 ## Scripts
 
@@ -189,13 +191,12 @@ These scripts run **on the switch**. Upload them once per session, then run in t
 |--------|---------|------|
 | `scripts/run_mono_test.sh` | Mono cold+warm boot cycle | `<binary> <config> <filter> <user> [ld_library_path]` |
 | `scripts/run_multi_test.sh` | Multi-switch cold+warm boot for one switch_id | `<hw_agent> <test_binary> <config> <filter> <switch_id>` |
-| `scripts/collect_vendor_escalation.sh` | Collect a vendor-escalation package (SAI replayer log + hw_config), with optional packet-send logging | `<mono\|multi> <hw_agent\|-> <test_binary> <config> <filter> <switch_id> <out_dir> <pkt_log:0\|1> [get_attr_log:0\|1] [suffix]` |
 
 ### Local Helper Scripts (run on build host only)
 
 | Script | Purpose | Args | Output |
 |--------|---------|------|--------|
-| `scripts/strip_and_copy.sh` | Strip binary, print stripped path + md5 | `<source_path> <dest_name>` | Stripped binary at `/tmp/<dest_name>` |
+| `scripts/strip_and_copy.sh` | Strip binary, print stripped path + md5 | `<source_path> <dest_name> [output_dir]` | Stripped binary at `<output_dir>/<dest_name>` (default `/tmp`) |
 
 > **Vendor firmware scripts**: See [build-environment.md](references/build-environment.md)
 > for environment-specific SDK path resolution and firmware preparation scripts.
@@ -226,12 +227,13 @@ This routing is client-agnostic:
 | Device access (upload, download, run on switch) | `facebook/device-access.md` | `references/device-access.md` |
 | Build commands, SDK paths, config locations | `facebook/build-environment.md` | `references/build-environment.md` |
 | Build mono/multi binaries, copy to switch | — | `references/build-and-load.md` |
+| Leaba/Cisco runs — SDK runtime staging and checks, environment, benchmarks, lab devices | `facebook/leaba-device.md` | `references/build-and-load.md` (Leaba/Cisco SDK Libraries) and `references/run-tests.md` |
 | Run tests (cold/warm, mono/multi), parse results | — | `references/run-tests.md` |
 | Analyze SAI Replayer logs, read code for root cause | — | `references/analyze-logs.md` |
-| Enable SAI logging, replayer logging, packet tx logs | — | `references/enable-logging.md` |
+| Enable SAI logging, replayer logging, packet tx logs, BCM SDK debug logs | — | `references/enable-logging.md` |
 | SAI Replayer — capabilities/flags (packet/get/elapsed-time log), capture, build, run | `facebook/sai-replayer.md` | `references/sai-replayer.md` |
 | Debug crashes — non-stripped binaries, GDB, stack traces | — | `references/crash-debug.md` |
 | Vendor diagnostic shell — counters, routes, neighbors, techsupport dumps | `facebook/vendor-diag-shell.md` | `references/vendor-diag-shell.md` |
 | Insert XLOGs, re-run, validate hypotheses | — | `references/hypothesis-driven-debug.md` |
 | Full categorization guide and tracking template | — | `references/test-categorization.md` |
-| Build a vendor-escalation package (SAI replayer log + hw_config + case report) for `FAIL_VENDOR` | — | `references/vendor-escalation.md` |
+| Build a vendor-escalation package (SAI replayer log + hw_config + case report) for `FAIL_VENDOR` | — | the `vendor-escalation` skill (`../vendor-escalation/SKILL.md`) |

@@ -87,6 +87,13 @@ api_unittest(
 )
 
 api_unittest(
+    name = "isolation_group_api_test",
+    srcs = [
+        "IsolationGroupApiTest.cpp",
+    ],
+)
+
+api_unittest(
     name = "lag_api_test",
     srcs = [
         "LagApiTest.cpp",
@@ -166,6 +173,13 @@ api_unittest(
 )
 
 api_unittest(
+    name = "my_mac_api_test",
+    srcs = [
+        "MyMacApiTest.cpp",
+    ],
+)
+
+api_unittest(
     name = "samplepacket_api_test",
     srcs = [
         "SamplePacketApiTest.cpp",
@@ -198,12 +212,22 @@ api_unittest(
     srcs = [
         "TamApiTest.cpp",
     ],
+    deps = [
+        "fbsource//xplat/folly/container:f14_hash",
+    ],
 )
 
 api_unittest(
     name = "tunnel_api_test",
     srcs = [
         "TunnelApiTest.cpp",
+    ],
+)
+
+api_unittest(
+    name = "tunnel_map_api_test",
+    srcs = [
+        "TunnelMapApiTest.cpp",
     ],
 )
 
@@ -249,6 +273,13 @@ api_unittest(
     name = "wred_api_test",
     srcs = [
         "WredApiTest.cpp",
+    ],
+)
+
+api_unittest(
+    name = "virtual_channel_api_test",
+    srcs = [
+        "VirtualChannelApiTest.cpp",
     ],
 )
 

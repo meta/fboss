@@ -16,8 +16,16 @@ jobs:
         with:
           python-version: "3.9" # pre-commit-hooks requires Python 3.9+
       - name: Show changed files
-        run: git diff --name-only HEAD^...
+        run: >-
+          git diff --name-only
+          ${{ github.event.pull_request.base.sha || github.event.before }}...${{ github.sha }}
       - uses: pre-commit/action@v3.0.1
+        env:
+          PRE_COMMIT_FROM_REF: ${{ github.event.pull_request.base.sha || github.event.before }}
+          PRE_COMMIT_TO_REF: ${{ github.sha }}
         with:
-          # replace the default extra_args = "--all-files" since we only care about the changed files for now
-          extra_args: "--from-ref HEAD^ --to-ref HEAD"
+          # Replace the default extra_args = "--all-files" since we only care
+          # about the files changed by the pull request or push.
+          extra_args: >-
+            --from-ref ${{ github.event.pull_request.base.sha || github.event.before }}
+            --to-ref ${{ github.sha }}

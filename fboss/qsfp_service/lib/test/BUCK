@@ -16,12 +16,12 @@ cpp_binary(
         # cannot infer it.
         "//fboss/lib/thrift_service_client:thrift-service-client",  # @manual
         "//fboss/qsfp_service/lib:qsfp-cache",
-        "//folly:random",
-        "//folly/executors:function_scheduler",
-        "//folly/init:init",
-        "//folly/io/async:async_base",
-        "//folly/io/async:async_socket",
-        "//folly/logging:logging",
+        "fbsource//xplat/folly:random",
+        "fbsource//xplat/folly/executors:function_scheduler",
+        "fbsource//xplat/folly/init:init",
+        "fbsource//xplat/folly/io/async:async_base",
+        "fbsource//xplat/folly/io/async:async_socket",
+        "fbsource//xplat/folly/logging:logging",
         "//thrift/lib/cpp2/async:rocket_client_channel",
     ],
 )

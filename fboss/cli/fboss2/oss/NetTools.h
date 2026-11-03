@@ -65,8 +65,8 @@ class BgpAttrCommunityC {
   std::string commStr_;
 };
 
-// Constant for null/empty message
-constexpr const char* kNullMessage = "";
+// Keep unresolved aliases consistent with the internal BGP utility.
+constexpr const char* kNullMessage = "(NA)";
 
 // Well-known BGP communities (subset)
 // Format: "asn:value" -> "ALIAS"

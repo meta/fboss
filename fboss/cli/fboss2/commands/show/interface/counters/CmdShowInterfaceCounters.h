@@ -47,6 +47,7 @@ class CmdShowInterfaceCounters : public CmdHandler<
       const std::vector<std::string>& queriedIfs);
   RetType createModel(
       const std::map<int32_t, facebook::fboss::PortInfoThrift>& portCounters,
+      const std::vector<facebook::fboss::AggregatePortThrift>& aggregatePorts,
       const std::vector<std::string>& queriedIfs);
   void printOutput(const RetType& model, std::ostream& out = std::cout);
 

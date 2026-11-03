@@ -233,6 +233,9 @@
         },
         {
           "test_name_regex": "warm_boot.AgentAclScaleTest.CreateTripleWideTableMaxAclEntries$"
+        },
+        {
+          "test_name_regex": ".*AgentAccessPolicyClassId.*$"
         }
     ],
     "brcm/13.3.0.0_odp/13.3.0.0_odp/tomahawk3/multi_switch": [
@@ -250,6 +253,9 @@
         },
         {
           "test_name_regex": "warm_boot.AgentAclScaleTest.CreateTripleWideTableMaxAclEntries$"
+        },
+        {
+          "test_name_regex": ".*AgentAccessPolicyClassId.*$"
         }
     ],
     "brcm/13.3.0.0_odp/13.3.0.0_odp/tomahawk4/mono": [

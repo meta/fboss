@@ -667,7 +667,7 @@ struct PathVisitorImpl<
           ThriftTraverseResult::Code::VISITOR_EXCEPTION, message);
     }
     // get the value based on the key
-    using KeyT = typename folly::remove_cvref_t<decltype(tObj)>::key_type;
+    using KeyT = typename std::remove_cvref_t<decltype(tObj)>::key_type;
     // Get key
     auto token = *cursor++;
     auto key = folly::tryTo<KeyT>(token);
@@ -722,7 +722,7 @@ struct PathVisitorImpl<
     }
     // get the value based on the key
     auto& tObj = node.ref();
-    using KeyT = typename folly::remove_cvref_t<decltype(tObj)>::key_type;
+    using KeyT = typename std::remove_cvref_t<decltype(tObj)>::key_type;
     // Get key
     auto token = *cursor++;
     auto key = folly::tryTo<KeyT>(token);
@@ -855,7 +855,7 @@ struct PathVisitorImpl<apache::thrift::type_class::variant> {
 
     // iterate over all members and find the one with the matching key
     auto key = *cursor++;
-    using T = folly::remove_cvref_t<Fields>;
+    using T = std::remove_cvref_t<Fields>;
     visitMember<T>(key, [&]<class Id>(Id) {
       using TC_ = typename TypeTagToTypeClass<
           apache::thrift::op::get_type_tag<T, Id>>::type;
@@ -1178,7 +1178,7 @@ struct PathVisitorImpl {
           ThriftTraverseResult::Code::SKIPPING_PRIMITIVE_NODE);
     }
 
-    if constexpr (optional_field<folly::remove_cvref_t<Node>>::value) {
+    if constexpr (optional_field<std::remove_cvref_t<Node>>::value) {
       if (params.options.skipOptionalOrImmutablePrimitiveNode) {
         return ThriftTraverseResult();
       }

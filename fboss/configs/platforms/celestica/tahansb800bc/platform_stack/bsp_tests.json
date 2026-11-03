@@ -203,6 +203,30 @@
           "pin2",
           "pout1",
           "pout2"
+        ],
+        "expVersionedFeaturesList": [
+          [
+            "vin",
+            "pin",
+            "vout1",
+            "pout1",
+            "iin",
+            "iout1"
+          ],
+          [
+            "iin1",
+            "iin2",
+            "iout1",
+            "iout2",
+            "vin",
+            "vmon",
+            "vout1",
+            "vout2",
+            "pin1",
+            "pin2",
+            "pout1",
+            "pout2"
+          ]
         ]
       }
     },
@@ -350,6 +374,22 @@
           "pin2",
           "pout1",
           "pout2"
+        ],
+        "expVersionedFeaturesList": [
+          [
+            "iin1",
+            "iin2",
+            "iout1",
+            "iout2",
+            "vin",
+            "vmon",
+            "vout1",
+            "vout2",
+            "pin1",
+            "pin2",
+            "pout1",
+            "pout2"
+          ]
         ]
       }
     },
@@ -368,6 +408,22 @@
           "pin2",
           "pout1",
           "pout2"
+        ],
+        "expVersionedFeaturesList": [
+          [
+            "iin1",
+            "iin2",
+            "iout1",
+            "iout2",
+            "vin",
+            "vmon",
+            "vout1",
+            "vout2",
+            "pin1",
+            "pin2",
+            "pout1",
+            "pout2"
+          ]
         ]
       }
     },
@@ -431,6 +487,22 @@
           "pin2",
           "pout1",
           "pout2"
+        ],
+        "expVersionedFeaturesList": [
+          [
+            "iin1",
+            "iin2",
+            "iout1",
+            "iout2",
+            "vin",
+            "vmon",
+            "vout1",
+            "vout2",
+            "pin1",
+            "pin2",
+            "pout1",
+            "pout2"
+          ]
         ]
       }
     },
@@ -456,6 +528,22 @@
           "pin2",
           "pout1",
           "pout2"
+        ],
+        "expVersionedFeaturesList": [
+          [
+            "iin1",
+            "iin2",
+            "iout1",
+            "iout2",
+            "vin",
+            "vmon",
+            "vout1",
+            "vout2",
+            "pin1",
+            "pin2",
+            "pout1",
+            "pout2"
+          ]
         ]
       }
     },
@@ -511,6 +599,22 @@
           "pin2",
           "pout1",
           "pout2"
+        ],
+        "expVersionedFeaturesList": [
+          [
+            "iin1",
+            "iin2",
+            "iout1",
+            "iout2",
+            "vin",
+            "vmon",
+            "vout1",
+            "vout2",
+            "pin1",
+            "pin2",
+            "pout1",
+            "pout2"
+          ]
         ]
       }
     },
@@ -529,6 +633,22 @@
           "pin2",
           "pout1",
           "pout2"
+        ],
+        "expVersionedFeaturesList": [
+          [
+            "iin1",
+            "iin2",
+            "iout1",
+            "iout2",
+            "vin",
+            "vmon",
+            "vout1",
+            "vout2",
+            "pin1",
+            "pin2",
+            "pout1",
+            "pout2"
+          ]
         ]
       }
     },
@@ -547,6 +667,22 @@
           "pin2",
           "pout1",
           "pout2"
+        ],
+        "expVersionedFeaturesList": [
+          [
+            "iin1",
+            "iin2",
+            "iout1",
+            "iout2",
+            "vin",
+            "vmon",
+            "vout1",
+            "vout2",
+            "pin1",
+            "pin2",
+            "pout1",
+            "pout2"
+          ]
         ]
       }
     },
@@ -565,6 +701,22 @@
           "pin2",
           "pout1",
           "pout2"
+        ],
+        "expVersionedFeaturesList": [
+          [
+            "iin1",
+            "iin2",
+            "iout1",
+            "iout2",
+            "vin",
+            "vmon",
+            "vout1",
+            "vout2",
+            "pin1",
+            "pin2",
+            "pout1",
+            "pout2"
+          ]
         ]
       }
     },
@@ -583,6 +735,22 @@
           "pin2",
           "pout1",
           "pout2"
+        ],
+        "expVersionedFeaturesList": [
+          [
+            "iin1",
+            "iin2",
+            "iout1",
+            "iout2",
+            "vin",
+            "vmon",
+            "vout1",
+            "vout2",
+            "pin1",
+            "pin2",
+            "pout1",
+            "pout2"
+          ]
         ]
       }
     },
@@ -677,6 +845,22 @@
           "pin",
           "pout1",
           "pout2"
+        ],
+        "expVersionedFeaturesList": [
+          [
+            "iin1",
+            "iin2",
+            "iout1",
+            "iout2",
+            "vin",
+            "vmon",
+            "vout1",
+            "vout2",
+            "pin1",
+            "pin2",
+            "pout1",
+            "pout2"
+          ]
         ]
       }
     }

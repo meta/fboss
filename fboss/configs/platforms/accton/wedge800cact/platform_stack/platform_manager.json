@@ -1091,7 +1091,7 @@
   "chassisEepromDevicePath": "/[CHASSIS_EEPROM]",
   "numXcvrs": 33,
   "bspKmodsRpmName": "fboss_bsp_kmods",
-  "bspKmodsRpmVersion": "4.4.1-1",
+  "bspKmodsRpmVersion": "4.4.2-1",
   "nonBspKmodsToLoad": [
     "i2c_i801",
     "spidev",

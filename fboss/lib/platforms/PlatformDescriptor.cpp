@@ -19,6 +19,7 @@
 #include <folly/FileUtil.h>
 #include <folly/logging/xlog.h>
 #include <gflags/gflags.h>
+#include <thrift/lib/cpp/util/EnumUtils.h>
 #include <thrift/lib/cpp2/FieldRef.h>
 #include <thrift/lib/cpp2/protocol/Serializer.h>
 
@@ -217,22 +218,65 @@ std::optional<PlatformType> PlatformDescriptorRegistry::findPlatformType(
     for (const auto& entry : descriptorEntries_) {
       for (const auto& modeName : entry.descriptor.modeNames().value()) {
         if (equalsNormalized(mode, normalize(modeName))) {
-          return entry.descriptor.platformType().value();
+          const auto platformType = entry.descriptor.platformType().value();
+          XLOG(DBG2) << "Using platform descriptor file "
+                     << fs::path(entry.platformMappingPath)
+                            .replace_filename(kPlatformDescriptorFileName)
+                            .string()
+                     << " for mode '" << mode << "' (platform type "
+                     << apache::thrift::util::enumNameSafe(platformType) << ")";
+          return platformType;
         }
       }
     }
     return std::nullopt;
   }
 
+  std::optional<PlatformType> bestMatch;
+  std::optional<PlatformType> conflictingBestMatch;
+  std::string bestMatchPrefix;
+  const PlatformDescriptorEntry* bestMatchEntry{nullptr};
+  size_t bestMatchLength = 0;
   for (const auto& entry : descriptorEntries_) {
     for (const auto& productNamePrefix :
          entry.descriptor.productNamePrefixes().value()) {
-      if (startsWithNormalized(productName, normalize(productNamePrefix))) {
-        return entry.descriptor.platformType().value();
+      const auto normalizedPrefix = normalize(productNamePrefix);
+      if (!startsWithNormalized(productName, normalizedPrefix)) {
+        continue;
+      }
+      const auto platformType = entry.descriptor.platformType().value();
+      if (!bestMatch || normalizedPrefix.size() > bestMatchLength) {
+        bestMatch = platformType;
+        conflictingBestMatch.reset();
+        bestMatchPrefix = productNamePrefix;
+        bestMatchEntry = &entry;
+        bestMatchLength = normalizedPrefix.size();
+      } else if (
+          normalizedPrefix.size() == bestMatchLength &&
+          *bestMatch != platformType) {
+        conflictingBestMatch = platformType;
       }
     }
   }
-  return std::nullopt;
+  if (conflictingBestMatch) {
+    throw FbossError(
+        "Product name '",
+        productName,
+        "' ambiguously matches platform types ",
+        static_cast<int>(*bestMatch),
+        " and ",
+        static_cast<int>(*conflictingBestMatch));
+  }
+  if (bestMatch) {
+    XLOG(DBG2) << "Using platform descriptor file "
+               << fs::path(bestMatchEntry->platformMappingPath)
+                      .replace_filename(kPlatformDescriptorFileName)
+                      .string()
+               << " for product name '" << productName << "' using prefix '"
+               << bestMatchPrefix << "' (platform type "
+               << apache::thrift::util::enumNameSafe(*bestMatch) << ")";
+  }
+  return bestMatch;
 }
 
 std::optional<std::string> PlatformDescriptorRegistry::loadPlatformMapping(
@@ -288,7 +332,8 @@ cfg::PlatformMapping PlatformDescriptorRegistry::loadPlatformMappingFromRaw(
   }
 
   return reconstructPlatformMapping(
-      readRawPlatformMapping(entry->rawPlatformMappingPath),
+      readRawPlatformMapping(
+          resolveRawPlatformMappingPath(entry->rawPlatformMappingPath)),
       *portIdToPortAssignment);
 }
 
@@ -347,7 +392,7 @@ PlatformDescriptorRegistry::loadPlatformDescriptorEntriesFromDirectory(
         PlatformDescriptorEntry{
             loadPlatformDescriptorFromFile(descriptorFile.string()),
             mappingFile.string(),
-            fs::exists(rawMappingFile) ? rawMappingFile.string() : ""});
+            rawMappingFile.string()});
   }
   return descriptorEntries;
 }

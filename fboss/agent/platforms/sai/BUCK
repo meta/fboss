@@ -12,7 +12,7 @@ cpp_library(
         "BcmRequiredSymbols.cpp",
     ],
     exported_deps = [
-        "//folly/logging:logging",
+        "fbsource//xplat/folly/logging:logging",
     ],
     exported_external_deps = [
         # Don't remove this dependency for now until we've figured out why it's

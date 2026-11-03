@@ -56,6 +56,7 @@ OSS_MULTI_NPU_SUPPORTED_PLATFORMS: dict[bool, list[str]] = {
         "montblanc_odd_ports_8x100G",
         "montblanc_gtsw_yolo",
         "minipack3n",
+        "minipack3n_fpf_gtsw",
         "minipack3bta",
         "minipack3bta_16rifs",
         "meru800bia",
@@ -85,12 +86,13 @@ OSS_MULTI_NPU_SUPPORTED_PLATFORMS: dict[bool, list[str]] = {
         "wedge800bact",
         "m4052actm",
         "m4062nhp",
+        "m4061nhp",
         "m4061clsc",
         "m5120csc",
         "wedge800bnhp",
         "wedge800cact",
+        "wedge800cnhp",
         "blackwolf800banw",
-        "j4sim",
         "icecube800banw",
         "example_integrated_optics",
     ],
@@ -107,16 +109,31 @@ OSS_MULTI_NPU_SUPPORTED_PLATFORMS: dict[bool, list[str]] = {
         "leh800bcls",
         "leh800bcls_rack",
         "leh800bcls_test_fixture",
-        "saintpaul",
+        "leh800bcls_osfp_tray",
     ],
 }
 
 _RAW_PLATFORM_MAPPING_FAMILIES: dict[str, tuple[str, ...]] = {
+    "icecube800banw": ("icecube800banw",),
     "icecube800bc": ("icecube800bc",),
+    "ladakh800bcls": ("ladakh800bcls",),
+    "ladakh800bcls_osfp_tray": ("ladakh800bcls_osfp_tray",),
+    "ladakh800bcls_rack": ("ladakh800bcls_rack",),
+    "ladakh800bcls_test_fixture": ("ladakh800bcls_test_fixture",),
+    "leh800bcls": ("leh800bcls",),
+    "leh800bcls_osfp_tray": ("leh800bcls_osfp_tray",),
+    "leh800bcls_rack": ("leh800bcls_rack",),
+    "leh800bcls_test_fixture": ("leh800bcls_test_fixture",),
+    "m4052actm": ("m4052actm",),
+    "m4061clsc": ("m4061clsc",),
+    "m4062nhp": ("m4062nhp",),
+    "m5120csc": ("m5120csc",),
+    "morgan800cc": ("morgan800cc",),
     "montblanc": ("montblanc", "montblanc_odd_ports_8x100G", "montblanc_gtsw_yolo"),
+    "minipack3n": ("minipack3n", "minipack3n_fpf_gtsw"),
     "tahansb800bc": ("tahansb800bc", "tahansb800bc_test_fixture"),
     "wedge800bact": ("wedge800bact", "wedge800bnhp"),
-    "wedge800cact": ("wedge800cact",),
+    "wedge800cact": ("wedge800cact", "wedge800cnhp"),
 }
 
 
@@ -225,10 +242,7 @@ def get_command_line_args() -> tuple[str, Optional[str], str, bool]:
 
 
 def generate_platform_mappings(
-    input_dir: str,
-    output_dir: Optional[str],
-    platform_name: str,
-    is_multi_npu: bool,
+    input_dir: str, output_dir: Optional[str], platform_name: str, is_multi_npu: bool
 ) -> None:
     print(f"Finding vendor data in {input_dir}...", file=sys.stderr)
     input_dir = os.path.expanduser(input_dir)
@@ -256,10 +270,7 @@ def generate_platform_mappings_from_vendor_data(
         vendor_data_map, platform_name
     )
     output_dir = get_platform_mapping_output_dir(
-        vendor_data_map,
-        platform_name,
-        output_dir,
-        platform_descriptor_data,
+        vendor_data_map, platform_name, output_dir, platform_descriptor_data
     )
     output_file = os.path.join(output_dir, "platform_mapping.json")
 
@@ -356,9 +367,23 @@ def write_raw_platform_mapping_artifacts(
 
     raw_mapping_file = os.path.join(output_dir, "raw_platform_mapping.json")
     assignment_file = os.path.join(output_dir, "port_id_to_port_assignment.json")
-    print(f"Writing to file {raw_mapping_file}...", file=sys.stderr)
-    with open(raw_mapping_file, "w") as f:
-        f.write(_serialize_thrift(raw_mapping))
+    raw_mapping_json = _serialize_thrift(raw_mapping)
+    base_platform = vendor_data_map[platform_name].base_platform
+    write_raw_mapping = True
+    if platform_name != base_platform:
+        base_raw_mapping_file = os.path.join(
+            vendor_data_map[base_platform].input_dir,
+            "generated",
+            "raw_platform_mapping.json",
+        )
+        if os.path.exists(base_raw_mapping_file):
+            with open(base_raw_mapping_file) as base_raw_mapping:
+                write_raw_mapping = base_raw_mapping.read() != raw_mapping_json
+
+    if write_raw_mapping:
+        print(f"Writing to file {raw_mapping_file}...", file=sys.stderr)
+        with open(raw_mapping_file, "w") as f:
+            f.write(raw_mapping_json)
     print(f"Writing to file {assignment_file}...", file=sys.stderr)
     with open(assignment_file, "w") as f:
         f.write(_serialize_port_assignments(generator))

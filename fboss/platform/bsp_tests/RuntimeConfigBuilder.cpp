@@ -124,6 +124,7 @@ RuntimeConfigBuilder::findAdapter(
 
 void RuntimeConfigBuilder::processIdpromDevices(
     const PlatformConfig& pmConfig,
+    const PmUnitConfigMap& pmUnits,
     std::map<std::string, facebook::fboss::platform::bsp_tests::I2CAdapter>&
         adapters) {
   // Process idprom devices from the slotTypeConfigs section
@@ -136,7 +137,7 @@ void RuntimeConfigBuilder::processIdpromDevices(
     const IdpromConfig& idpromConfig = *slotTypeConfig.idpromConfig();
 
     // Find the pmUnit for this slotType
-    for (const auto& [pmUnitName, pmUnit] : *pmConfig.pmUnitConfigs()) {
+    for (const auto& [pmUnitName, pmUnit] : pmUnits) {
       // Skip if this pmUnit is not of the current slotType
       if (*pmUnit.pluggedInSlotType() != slotType) {
         continue;
@@ -146,6 +147,7 @@ void RuntimeConfigBuilder::processIdpromDevices(
         // Find the actual adapter for the idprom device
         auto [adapterPmUnit, adapterName, channel] = getActualAdapter(
             pmConfig,
+            pmUnits,
             pmUnitName,
             *idpromConfig.busName(),
             *pmUnit.pluggedInSlotType());
@@ -185,8 +187,12 @@ RuntimeConfig RuntimeConfigBuilder::buildRuntimeConfig(
     const BspTestsConfig& testConfig,
     const PlatformConfig& pmConfig,
     const BspKmodsFile& kmods,
-    const std::string& platformName) {
+    const std::string& platformName,
+    const PmUnitVersionMap& pmUnitVersions) {
   RuntimeConfig config;
+
+  const PmUnitConfigMap pmUnits =
+      Utils::resolvePmUnitConfigs(pmConfig, pmUnitVersions);
 
   auto kmodsToUse = kmods;
   config.platform() = platformName;
@@ -218,7 +224,7 @@ RuntimeConfig RuntimeConfigBuilder::buildRuntimeConfig(
   // Process all PCI devices from the platform manager config
   // Adds i2cAdapters, i2cDevices, and all auxDevices to the actual
   // pmUnit those devices are attached to
-  for (const auto& [unitName, pmUnit] : *pmConfig.pmUnitConfigs()) {
+  for (const auto& [unitName, pmUnit] : pmUnits) {
     for (const auto& dev : *pmUnit.pciDeviceConfigs()) {
       PciDevice pciDevice;
       pciDevice.pciInfo()->vendorId() = *dev.vendorId();
@@ -311,7 +317,7 @@ RuntimeConfig RuntimeConfigBuilder::buildRuntimeConfig(
   // Add any mux adapters - without their parentAdapter. Once All Muxes have
   // been added, populate the parentAdapter field since the parent may be a mux
   // adapter
-  for (const auto& [pmUnitName, pmUnit] : *pmConfig.pmUnitConfigs()) {
+  for (const auto& [pmUnitName, pmUnit] : pmUnits) {
     for (const auto& i2cDevice : *pmUnit.i2cDeviceConfigs()) {
       if (i2cDevice.numOutgoingChannels().has_value()) {
         I2CAdapter i2cAdapter;
@@ -321,6 +327,7 @@ RuntimeConfig RuntimeConfigBuilder::buildRuntimeConfig(
 
         auto [adapterPmUnit, adapterName, channel] = getActualAdapter(
             pmConfig,
+            pmUnits,
             pmUnitName,
             *i2cDevice.busName(),
             *pmUnit.pluggedInSlotType());
@@ -334,13 +341,14 @@ RuntimeConfig RuntimeConfigBuilder::buildRuntimeConfig(
     }
   }
 
-  for (const auto& [pmUnitName, pmUnit] : *pmConfig.pmUnitConfigs()) {
+  for (const auto& [pmUnitName, pmUnit] : pmUnits) {
     for (const auto& i2cDevice : *pmUnit.i2cDeviceConfigs()) {
       if (i2cDevice.numOutgoingChannels().has_value()) {
         I2CAdapter* i2cAdapter =
             findAdapter(i2cAdapters, pmUnitName, *i2cDevice.pmUnitScopedName());
         auto [adapterPmUnit, adapterName, channel] = getActualAdapter(
             pmConfig,
+            pmUnits,
             pmUnitName,
             *i2cDevice.busName(),
             *pmUnit.pluggedInSlotType());
@@ -354,10 +362,14 @@ RuntimeConfig RuntimeConfigBuilder::buildRuntimeConfig(
   // Add each i2cDevice to the actual adapter that is is attached to.
   // Traverses platform_manager config to find the adapter if "INCOMING"
   // bus is used.
-  for (const auto& [pmUnitName, pmUnit] : *pmConfig.pmUnitConfigs()) {
+  for (const auto& [pmUnitName, pmUnit] : pmUnits) {
     for (const auto& pmDev : *pmUnit.i2cDeviceConfigs()) {
       auto [adapterPmUnit, adapterName, channel] = getActualAdapter(
-          pmConfig, pmUnitName, *pmDev.busName(), *pmUnit.pluggedInSlotType());
+          pmConfig,
+          pmUnits,
+          pmUnitName,
+          *pmDev.busName(),
+          *pmUnit.pluggedInSlotType());
 
       if (adapterPmUnit.empty()) {
         throw std::runtime_error(
@@ -387,7 +399,7 @@ RuntimeConfig RuntimeConfigBuilder::buildRuntimeConfig(
   }
 
   // Process idprom devices from the slotTypeConfigs section
-  processIdpromDevices(pmConfig, i2cAdapters);
+  processIdpromDevices(pmConfig, pmUnits, i2cAdapters);
 
   config.devices() = devices;
   config.i2cAdapters() = i2cAdapters;
@@ -405,6 +417,7 @@ RuntimeConfig RuntimeConfigBuilder::buildRuntimeConfig(
 std::tuple<std::string, std::string, int>
 RuntimeConfigBuilder::getActualAdapter(
     const PlatformConfig& pmConfig,
+    const PmUnitConfigMap& pmUnits,
     const std::string& sourceUnitName,
     const std::string& sourceBusName,
     const std::string& slotType) {
@@ -431,7 +444,7 @@ RuntimeConfigBuilder::getActualAdapter(
   }
 
   // Look for the adapter in other PM units
-  for (const auto& [pmUnitName, pmUnit] : *pmConfig.pmUnitConfigs()) {
+  for (const auto& [pmUnitName, pmUnit] : pmUnits) {
     auto outgoingIt = pmUnit.outgoingSlotConfigs()->find(slotType + "@0");
     if (outgoingIt == pmUnit.outgoingSlotConfigs()->end()) {
       continue;
@@ -446,7 +459,11 @@ RuntimeConfigBuilder::getActualAdapter(
     if (actualBusName.find("INCOMING") == 0) {
       // If bus in incoming again, we have to repeat the process
       return getActualAdapter(
-          pmConfig, pmUnitName, actualBusName, *pmUnit.pluggedInSlotType());
+          pmConfig,
+          pmUnits,
+          pmUnitName,
+          actualBusName,
+          *pmUnit.pluggedInSlotType());
     }
 
     // Check if the resolved bus name matches a CPU adapter (where @N is

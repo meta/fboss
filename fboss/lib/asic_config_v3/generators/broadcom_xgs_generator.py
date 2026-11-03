@@ -20,6 +20,9 @@ class BroadcomXgsGenerator(BaseAsicConfigGenerator):
     """
 
     ASIC_FAMILY: str = "xgs"
+    SUPPORTED_EFFECTS: frozenset[str] = frozenset(
+        {"apply", "apply_from", "skip_from_sai_common"}
+    )
 
     def __init__(
         self,
@@ -31,10 +34,10 @@ class BroadcomXgsGenerator(BaseAsicConfigGenerator):
         super().__init__(platform_name, variant, platform_config, paths)
 
         self.values: dict[str, Any] = {}
-        self.asic_config: dict[str, Any] = {}
 
-        self._load_vendor_configs()
+        self._load_asic_vendor_input_configs()
         self._init_tables()
+        self._validate_conditional_settings()
 
         # A variant may target a sibling platform_mapping_v2 directory rather
         # than the platform's own when several variants share an asic_config
@@ -58,8 +61,8 @@ class BroadcomXgsGenerator(BaseAsicConfigGenerator):
     def output_extension(self) -> str:
         return ".yml"
 
-    def _load_vendor_configs(self) -> None:
-        """Load the family-wide OCP, SDK, SAI common blocks and the per-ASIC config."""
+    def _load_asic_vendor_input_configs(self) -> None:
+        """Load the input config files from the asic_vendors directory."""
         vendor = self.asic_vendor
         asic = self.asic_name
 
@@ -140,57 +143,27 @@ class BroadcomXgsGenerator(BaseAsicConfigGenerator):
             )
             self.values[target_table].update(data)
 
-    def _compute_skip_from_sai_common(self) -> list[str]:
-        """Collect skip_from_sai_common fields from all active conditional settings."""
-        skip_fields: list[str] = []
-        for cs in self.asic_config.get("conditional_settings", []):
-            condition = cs.get("condition", {})
-            source = condition.get("source", "asic_config_params")
-            if source == "asic_config_params":
-                param_value = self.asic_config_params.get(condition["param"])
-            elif source == "features":
-                param_value = self.variant_config.get("features", {}).get(
-                    condition["param"]
-                )
-            else:
-                continue
-            if param_value == condition.get("equals"):
-                skip_fields.extend(cs.get("skip_from_sai_common", []))
-        return skip_fields
+    def _apply_settings(self, target: str, settings: dict[str, Any]) -> None:
+        """Write settings into the named output table."""
+        self.values[target].update(settings)
 
-    def _apply_conditional_settings(self) -> None:
-        """Evaluate and apply conditional settings.
+    def _validate_apply_target(self, name: str, target: str) -> None:
+        """Raise ValueError when the ASIC does not declare the target table."""
+        if target not in self.values:
+            raise ValueError(
+                f"Conditional setting '{name}' targets table '{target}', which "
+                "is not listed in the ASIC table_names"
+            )
 
-        ASIC-level entries from ``asic_config.conditional_settings`` are
-        evaluated first, then platform-level entries from
-        ``variant_config.conditional_settings``. Within each list, matching
-        entries are applied in array order. Platform entries are applied after
-        ASIC entries so platform settings can override chip-level ones.
-        """
-        asic_entries = self.asic_config.get("conditional_settings", [])
-        platform_entries = self.variant_config.get("conditional_settings", [])
-        for cs in list(asic_entries) + list(platform_entries):
-            condition = cs.get("condition", {})
-            source = condition.get("source", "asic_config_params")
-            if source == "asic_config_params":
-                param_value = self.asic_config_params.get(condition["param"])
-            elif source == "features":
-                param_value = self.variant_config.get("features", {}).get(
-                    condition["param"]
-                )
-            else:
-                continue
-            if param_value != condition.get("equals"):
-                continue
-
-            for table_name, entries in cs.get("apply", {}).items():
-                self.values.setdefault(table_name, {}).update(entries)
-
-            apply_from = cs.get("apply_from")
-            if apply_from:
-                source_key = apply_from["source"]
-                target_table = apply_from["target_table"]
-                self.values[target_table].update(self.asic_config.get(source_key, {}))
+    def _validate_apply_value(
+        self, name: str, target: str, key: str, value: Any
+    ) -> None:
+        """Raise ValueError unless the value is an integer or a string."""
+        if isinstance(value, bool) or not isinstance(value, (int, str)):
+            raise ValueError(
+                f"Conditional setting '{name}' sets {target}.{key} to a value that "
+                "is neither an integer nor a string"
+            )
 
     def _apply_layered_global_settings(self) -> None:
         """Apply layered settings to the ``global`` table. Higher-numbered steps override lower."""
@@ -204,7 +177,7 @@ class BroadcomXgsGenerator(BaseAsicConfigGenerator):
         self.values["global"].update(self.vendor_sdk_common.get("global", {}))
 
         # Vendor SAI common (with skip_from_sai_common filtering)
-        skip_fields = self._compute_skip_from_sai_common()
+        skip_fields = self._collect_effect_values("skip_from_sai_common")
         for key, value in self.vendor_sai_common.get("global", {}).items():
             if key in skip_fields:
                 continue
@@ -256,6 +229,9 @@ class BroadcomXgsGenerator(BaseAsicConfigGenerator):
           * ``lp_offset_simple``: when true, compute the per-port logical-port
             offset as ``i * lanes_per_port`` on all cores rather than using
             the default even / odd conditional.
+          * ``exclude_logical_ports``: logical port IDs omitted from the
+            mapping, and therefore from PC_PORT_PHYS_MAP, PC_PORT and PORT.
+            Used for front-panel ports that are not populated on a platform.
         """
         port_arch = self.asic_config.get("port_architecture", {})
         port_mapping_overrides = self.variant_config.get("port_mapping_overrides", {})
@@ -272,6 +248,9 @@ class BroadcomXgsGenerator(BaseAsicConfigGenerator):
         lanes_per_core = port_arch.get("num_lanes_per_core", 8)
         lp_start_step_offset = port_mapping_overrides.get("lp_start_step_offset", 1)
         lp_offset_simple = port_mapping_overrides.get("lp_offset_simple", False)
+        exclude_logical_ports = set(
+            port_mapping_overrides.get("exclude_logical_ports", [])
+        )
 
         logical_to_physical_port_mapping = []
         cores = self._get_core_range()
@@ -295,6 +274,8 @@ class BroadcomXgsGenerator(BaseAsicConfigGenerator):
                 pp_offset = i * self.lanes_per_port
                 lp_id = lp_start + lp_offset
                 pp_id = pp_start + pp_offset
+                if lp_id in exclude_logical_ports:
+                    continue
                 logical_to_physical_port_mapping.append([lp_id, pp_id])
 
         return logical_to_physical_port_mapping
@@ -467,7 +448,7 @@ class BroadcomXgsGenerator(BaseAsicConfigGenerator):
         """
         self._apply_layered_global_settings()
         self._apply_pass_through_settings()
-        self._apply_conditional_settings()
+        self._execute_apply_effects()
         self._generate_device_config_overrides()
         self._generate_logical_port_to_physical_port_mapping(mgmt_port=True)
         self._generate_port_config(mgmt_port=True)

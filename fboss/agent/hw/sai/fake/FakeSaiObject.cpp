@@ -84,6 +84,9 @@ sai_status_t sai_get_object_count(
       }
       break;
     }
+    case SAI_OBJECT_TYPE_ISOLATION_GROUP:
+      *count = fs->isolationGroupManager.map().size();
+      break;
     case SAI_OBJECT_TYPE_BRIDGE:
       *count = fs->bridgeManager.map().size();
       break;
@@ -102,6 +105,12 @@ sai_status_t sai_get_object_count(
       }
       break;
     }
+    case SAI_OBJECT_TYPE_ISOLATION_GROUP_MEMBER: {
+      for (const auto& g : fs->isolationGroupManager.map()) {
+        *count += g.second.fm().map().size();
+      }
+      break;
+    }
     case SAI_OBJECT_TYPE_QOS_MAP:
       *count = fs->qosMapManager.map().size();
       break;
@@ -110,6 +119,9 @@ sai_status_t sai_get_object_count(
       break;
     case SAI_OBJECT_TYPE_SAMPLEPACKET:
       *count = fs->samplePacketManager.map().size();
+      break;
+    case SAI_OBJECT_TYPE_MY_MAC:
+      *count = static_cast<uint32_t>(fs->myMacManager.map().size());
       break;
     case SAI_OBJECT_TYPE_SCHEDULER:
       *count = fs->scheduleManager.map().size();
@@ -154,6 +166,12 @@ sai_status_t sai_get_object_count(
     case SAI_OBJECT_TYPE_WRED:
       *count = fs->wredManager.map().size();
       break;
+    case SAI_OBJECT_TYPE_VIRTUAL_CHANNEL:
+      *count = static_cast<uint32_t>(fs->virtualChannelManager.map().size());
+      break;
+    case SAI_OBJECT_TYPE_CBFC_CREDIT_PROFILE:
+      *count = static_cast<uint32_t>(fs->cbfcCreditProfileManager.map().size());
+      break;
     case SAI_OBJECT_TYPE_TAM_COLLECTOR:
       *count = fs->tamCollectorManager.map().size();
       break;
@@ -180,6 +198,12 @@ sai_status_t sai_get_object_count(
       break;
     case SAI_OBJECT_TYPE_TUNNEL_TERM_TABLE_ENTRY:
       *count = fs->tunnelTermManager.map().size();
+      break;
+    case SAI_OBJECT_TYPE_TUNNEL_MAP:
+      *count = fs->tunnelMapManager.map().size();
+      break;
+    case SAI_OBJECT_TYPE_TUNNEL_MAP_ENTRY:
+      *count = fs->tunnelMapEntryManager.map().size();
       break;
 #if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)
     case SAI_OBJECT_TYPE_SRV6_SIDLIST:
@@ -385,6 +409,20 @@ sai_status_t sai_get_object_key(
       }
       break;
     }
+    case SAI_OBJECT_TYPE_ISOLATION_GROUP: {
+      for (const auto& g : fs->isolationGroupManager.map()) {
+        object_list[i++].key.object_id = g.second.id;
+      }
+      break;
+    }
+    case SAI_OBJECT_TYPE_ISOLATION_GROUP_MEMBER: {
+      for (const auto& g : fs->isolationGroupManager.map()) {
+        for (const auto& member : g.second.fm().map()) {
+          object_list[i++].key.object_id = member.second.id;
+        }
+      }
+      break;
+    }
     case SAI_OBJECT_TYPE_BRIDGE: {
       for (const auto& b : fs->bridgeManager.map()) {
         object_list[i++].key.object_id = b.second.id;
@@ -432,6 +470,12 @@ sai_status_t sai_get_object_key(
     case SAI_OBJECT_TYPE_SAMPLEPACKET: {
       for (const auto& sp : fs->samplePacketManager.map()) {
         object_list[i++].key.object_id = sp.second.id;
+      }
+      break;
+    }
+    case SAI_OBJECT_TYPE_MY_MAC: {
+      for (const auto& myMac : fs->myMacManager.map()) {
+        object_list[i++].key.object_id = myMac.second.id;
       }
       break;
     }
@@ -518,6 +562,18 @@ sai_status_t sai_get_object_key(
       }
       break;
     }
+    case SAI_OBJECT_TYPE_VIRTUAL_CHANNEL: {
+      for (const auto& virtualChannel : fs->virtualChannelManager.map()) {
+        object_list[i++].key.object_id = virtualChannel.second.id;
+      }
+      break;
+    }
+    case SAI_OBJECT_TYPE_CBFC_CREDIT_PROFILE: {
+      for (const auto& profile : fs->cbfcCreditProfileManager.map()) {
+        object_list[i++].key.object_id = profile.second.id;
+      }
+      break;
+    }
     case SAI_OBJECT_TYPE_TAM_COLLECTOR: {
       for (const auto& ob : fs->tamCollectorManager.map()) {
         object_list[i++].key.object_id = ob.second.id;
@@ -568,6 +624,18 @@ sai_status_t sai_get_object_key(
     }
     case SAI_OBJECT_TYPE_TUNNEL_TERM_TABLE_ENTRY: {
       for (const auto& ob : fs->tunnelTermManager.map()) {
+        object_list[i++].key.object_id = ob.second.id;
+      }
+      break;
+    }
+    case SAI_OBJECT_TYPE_TUNNEL_MAP: {
+      for (const auto& ob : fs->tunnelMapManager.map()) {
+        object_list[i++].key.object_id = ob.second.id;
+      }
+      break;
+    }
+    case SAI_OBJECT_TYPE_TUNNEL_MAP_ENTRY: {
+      for (const auto& ob : fs->tunnelMapEntryManager.map()) {
         object_list[i++].key.object_id = ob.second.id;
       }
       break;

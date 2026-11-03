@@ -108,6 +108,7 @@ std::
       true, // fieldDstMac
       std::nullopt, // ipType
       std::nullopt, // ttl
+      std::nullopt, // mplsLabel0Ttl
       std::nullopt, // fieldFdbDstUserMeta
       std::nullopt, // route meta
       std::nullopt, // neighbor meta
@@ -125,6 +126,9 @@ std::
       std::nullopt, // UserDefinedFieldGroupMin2
       std::nullopt, // UserDefinedFieldGroupMin3
       std::nullopt, // UserDefinedFieldGroupMin4
+#endif
+#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
+      std::nullopt, // FieldRouteDestination
 #endif
       std::nullopt, // port meta
   };

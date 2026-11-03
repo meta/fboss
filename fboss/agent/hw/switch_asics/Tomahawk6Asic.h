@@ -31,6 +31,8 @@ class Tomahawk6Asic : public BroadcomXgsAsic {
   int getDefaultNumPortQueues(
       cfg::StreamType streamType,
       cfg::PortType portType) const override;
+  int getBasePortQueueId(cfg::StreamType streamType, cfg::PortType portType)
+      const override;
   uint32_t getMaxLabelStackDepth() const override {
     return 9;
   }
@@ -105,6 +107,10 @@ class Tomahawk6Asic : public BroadcomXgsAsic {
   std::optional<uint32_t> getMaxEcmpMembers() const override {
     return 128000;
   }
+  std::optional<AcceptedValues> getAcceptedLinkUpHoldoffTimeMs()
+      const override {
+    return AcceptedValues::range(2, 500);
+  }
   uint32_t getStaticQueueLimitBytes() const override {
     return getMMUSizeBytes();
   }
@@ -114,12 +120,19 @@ class Tomahawk6Asic : public BroadcomXgsAsic {
   std::optional<uint32_t> getMaxNdpTableSize() const override {
     return 8192;
   }
+  std::optional<uint32_t> getMaxVrfs() const override {
+    return 8192;
+  }
   std::optional<uint32_t> getMaxRoutes() const override {
     return 125000;
   }
   std::optional<uint32_t> getMaxArsGroups() const override;
   std::optional<uint32_t> getArsBaseIndex() const override;
   std::optional<uint32_t> getMaxArsWidth() const override;
+
+  cfg::L2LearningMode getDefaultL2LearningMode() const override {
+    return cfg::L2LearningMode::SOFTWARE;
+  }
 };
 
 } // namespace facebook::fboss

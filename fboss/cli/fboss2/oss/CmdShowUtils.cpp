@@ -520,6 +520,9 @@ void printRIBEntries(
         totalPaths - inactivePaths,
         inactivePaths);
     out << folly::join('\n', pathsToPrint) << std::endl;
+    if (entry.fib_out().has_value()) {
+      printFibOut(out, entry);
+    }
   }
 }
 

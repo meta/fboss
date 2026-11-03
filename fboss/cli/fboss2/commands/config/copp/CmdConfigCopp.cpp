@@ -242,9 +242,29 @@ void CmdConfigCoppReason::printOutput(const RetType& logMsg) {
   std::cout << logMsg << std::endl;
 }
 
+CmdConfigCoppTrafficPolicyTraits::RetType
+CmdConfigCoppTrafficPolicy::queryClient(
+    const HostInfo& /* hostInfo */,
+    const ObjectArgType& args) {
+  auto& session = ConfigSession::getInstance();
+  auto msg = traffic_policy::applyAction(
+      *session.getAgentConfig().sw(),
+      traffic_policy::PolicyKind::Cpu,
+      args.getMatcherName(),
+      args.getActionTokens());
+  session.saveConfig(cli::ServiceType::AGENT, cli::ConfigActionLevel::HITLESS);
+  return msg;
+}
+
+void CmdConfigCoppTrafficPolicy::printOutput(const RetType& logMsg) {
+  std::cout << logMsg << std::endl;
+}
+
 // Explicit template instantiations
 template void CmdHandler<CmdConfigCopp, CmdConfigCoppTraits>::run();
 template void CmdHandler<CmdConfigCoppQueue, CmdConfigCoppQueueTraits>::run();
 template void CmdHandler<CmdConfigCoppReason, CmdConfigCoppReasonTraits>::run();
+template void
+CmdHandler<CmdConfigCoppTrafficPolicy, CmdConfigCoppTrafficPolicyTraits>::run();
 
 } // namespace facebook::fboss

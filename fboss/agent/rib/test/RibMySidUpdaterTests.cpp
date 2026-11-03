@@ -47,11 +47,24 @@ std::shared_ptr<MySid> makeMySid(
 }
 
 RouteNextHopSet makeResolvedNhops(
-    const std::vector<std::pair<std::string, InterfaceID>>& nhops) {
+    const std::vector<std::pair<std::string, InterfaceID>>& nhops,
+    NextHopRole role = NextHopRole::PRIMARY,
+    NextHopWeight weight = ECMP_WEIGHT) {
   RouteNextHopSet result;
   for (const auto& [addr, intfId] : nhops) {
-    result.emplace(
-        ResolvedNextHop(folly::IPAddress(addr), intfId, ECMP_WEIGHT));
+    result.emplace(ResolvedNextHop(
+        folly::IPAddress(addr),
+        intfId,
+        weight,
+        std::nullopt,
+        std::nullopt,
+        std::nullopt,
+        std::nullopt,
+        {},
+        std::nullopt,
+        std::nullopt,
+        std::nullopt,
+        role));
   }
   return result;
 }
@@ -200,6 +213,127 @@ TEST_F(RibMySidUpdaterTest, gatewayNhopMatchingV6Route_resolvedSetIdAllocated) {
   ASSERT_TRUE(resolvedNhops.has_value());
   // Resolved set comes from normalizedNextHops(), so only verify size matches.
   EXPECT_EQ(resolvedNhops->size(), routeNhops.size());
+}
+
+TEST_F(RibMySidUpdaterTest, nextHopSetIdsChangeOnlyWhenResolvedNextHopsChange) {
+  const folly::IPAddress gatewayAddr("2001:db8::1");
+  const folly::CIDRNetwork relevantRoutePrefix{
+      folly::IPAddress("2001:db8::"), 32};
+  const folly::CIDRNetwork unrelatedRoutePrefix{
+      folly::IPAddress("2001:db9::"), 32};
+  const auto initialRouteNhops = makeResolvedNhops(
+      {{"fe80::1", InterfaceID(1)}, {"fe80::2", InterfaceID(2)}});
+  RibRouteUpdater routeUpdater(
+      &v4Routes_, &v6Routes_, &manager(), nullptr, kEcmpWidth);
+  auto updateRoute = [&routeUpdater](
+                         const folly::CIDRNetwork& prefix,
+                         const RouteNextHopSet& nhops) {
+    routeUpdater.update<RibRouteUpdater::RouteEntry, folly::CIDRNetwork>(
+        ClientID::OPENR,
+        {{prefix, RouteNextHopEntry(nhops, AdminDistance::OPENR)}},
+        {},
+        false);
+  };
+  updateRoute(relevantRoutePrefix, initialRouteNhops);
+  updateRoute(
+      unrelatedRoutePrefix, makeResolvedNhops({{"fe80::10", InterfaceID(10)}}));
+
+  const RouteNextHopSet primaryUnresolvedNhops{
+      UnresolvedNextHop(gatewayAddr, ECMP_WEIGHT)};
+  const RouteNextHopSet backupUnresolvedNhops{UnresolvedNextHop(
+      gatewayAddr,
+      ECMP_WEIGHT,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      {},
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      NextHopRole::BACKUP)};
+  const auto primaryUnresolvedId = allocUnresolvedSet(primaryUnresolvedNhops);
+  const auto backupUnresolvedId = allocUnresolvedSet(backupUnresolvedNhops);
+
+  auto mySid = makeMySid("fc00:100::1", 48, MySidType::ADJACENCY_MICRO_SID);
+  mySid->setUnresolveNextHopsId(primaryUnresolvedId);
+  mySid->setBackupUnresolveNextHopsId(backupUnresolvedId);
+  const folly::CIDRNetworkV6 key{folly::IPAddressV6("fc00:100::1"), 48};
+  mySidTable_[key] = mySid;
+
+  RibMySidUpdater updater(
+      {{&v4Routes_, &v6Routes_}}, &manager(), &mySidTable_, kEcmpWidth);
+  updater.resolve();
+
+  const auto initialPrimaryResolvedId =
+      mySidTable_.at(key)->getResolvedNextHopsId();
+  const auto initialBackupResolvedId =
+      mySidTable_.at(key)->getBackupResolvedNextHopsId();
+  ASSERT_TRUE(initialPrimaryResolvedId.has_value());
+  ASSERT_TRUE(initialBackupResolvedId.has_value());
+  const auto initialResolvedMySid = mySidTable_.at(key);
+  const auto expectBackupRole = [this](NextHopSetID id) {
+    const auto& nextHops = manager().getNextHops(id);
+    ASSERT_FALSE(nextHops.empty());
+    for (const auto& nextHop : nextHops) {
+      EXPECT_EQ(nextHop.role(), NextHopRole::BACKUP);
+    }
+  };
+  expectBackupRole(*initialBackupResolvedId);
+
+  updateRoute(
+      unrelatedRoutePrefix, makeResolvedNhops({{"fe80::11", InterfaceID(11)}}));
+  updater.resolve();
+
+  const auto primaryResolvedIdAfterUnrelatedUpdate =
+      mySidTable_.at(key)->getResolvedNextHopsId();
+  const auto backupResolvedIdAfterUnrelatedUpdate =
+      mySidTable_.at(key)->getBackupResolvedNextHopsId();
+  ASSERT_TRUE(primaryResolvedIdAfterUnrelatedUpdate.has_value());
+  ASSERT_TRUE(backupResolvedIdAfterUnrelatedUpdate.has_value());
+  EXPECT_EQ(mySidTable_.at(key), initialResolvedMySid);
+  EXPECT_EQ(*primaryResolvedIdAfterUnrelatedUpdate, *initialPrimaryResolvedId);
+  EXPECT_EQ(*backupResolvedIdAfterUnrelatedUpdate, *initialBackupResolvedId);
+  EXPECT_EQ(
+      *mySidTable_.at(key)->getUnresolveNextHopsId(), primaryUnresolvedId);
+  EXPECT_EQ(
+      *mySidTable_.at(key)->getBackupUnresolveNextHopsId(), backupUnresolvedId);
+
+  const auto updatedRouteNhops = makeResolvedNhops(
+      {{"fe80::3", InterfaceID(3)}, {"fe80::4", InterfaceID(4)}});
+  const auto expectedPrimaryResolvedNhops = makeResolvedNhops(
+      {{"fe80::3", InterfaceID(3)}, {"fe80::4", InterfaceID(4)}},
+      NextHopRole::PRIMARY,
+      UCMP_DEFAULT_WEIGHT);
+  const auto expectedBackupResolvedNhops = makeResolvedNhops(
+      {{"fe80::3", InterfaceID(3)}, {"fe80::4", InterfaceID(4)}},
+      NextHopRole::BACKUP,
+      UCMP_DEFAULT_WEIGHT);
+  updateRoute(relevantRoutePrefix, updatedRouteNhops);
+  updater.resolve();
+
+  const auto primaryResolvedIdAfterRelevantUpdate =
+      mySidTable_.at(key)->getResolvedNextHopsId();
+  const auto backupResolvedIdAfterRelevantUpdate =
+      mySidTable_.at(key)->getBackupResolvedNextHopsId();
+  ASSERT_TRUE(primaryResolvedIdAfterRelevantUpdate.has_value());
+  ASSERT_TRUE(backupResolvedIdAfterRelevantUpdate.has_value());
+  EXPECT_NE(mySidTable_.at(key), initialResolvedMySid);
+  EXPECT_NE(*primaryResolvedIdAfterRelevantUpdate, *initialPrimaryResolvedId);
+  EXPECT_NE(*backupResolvedIdAfterRelevantUpdate, *initialBackupResolvedId);
+  EXPECT_EQ(
+      manager().getNextHops(*primaryResolvedIdAfterRelevantUpdate),
+      expectedPrimaryResolvedNhops);
+  EXPECT_EQ(
+      manager().getNextHops(*backupResolvedIdAfterRelevantUpdate),
+      expectedBackupResolvedNhops);
+  EXPECT_FALSE(manager().getNextHopsIf(*initialPrimaryResolvedId).has_value());
+  EXPECT_FALSE(manager().getNextHopsIf(*initialBackupResolvedId).has_value());
+  expectBackupRole(*backupResolvedIdAfterRelevantUpdate);
+  EXPECT_EQ(
+      *mySidTable_.at(key)->getUnresolveNextHopsId(), primaryUnresolvedId);
+  EXPECT_EQ(
+      *mySidTable_.at(key)->getBackupUnresolveNextHopsId(), backupUnresolvedId);
 }
 
 TEST_F(RibMySidUpdaterTest, gatewayNhopNoRouteMatch_noResolvedSetId) {
@@ -418,6 +552,97 @@ TEST_F(
   const RouteNextHopSet expected{
       ResolvedNextHop(gatewayAddr, connectedIntf, NextHopWeight(1))};
   EXPECT_EQ(*resolvedNhops, expected);
+}
+
+TEST_F(
+    RibMySidUpdaterTest,
+    primaryAndBackupNhopsResolveOverConnectedAndOpenrRoutes) {
+  const InterfaceID connectedIntf{1};
+  const InterfaceID openrIntf{2};
+  const folly::IPAddress connectedGateway("2001:db8:1::20");
+  const folly::IPAddress openrGateway("2001:db8:3::20");
+  const folly::IPAddress openrNextHop("2001:db8:2::10");
+
+  RibRouteUpdater routeUpdater(
+      &v4Routes_, &v6Routes_, &manager(), nullptr, kEcmpWidth);
+  const RouteNextHopSet connectedRouteNhops{ResolvedNextHop(
+      folly::IPAddress("2001:db8:1::1"), connectedIntf, UCMP_DEFAULT_WEIGHT)};
+  const RouteNextHopSet openrUnderlayRouteNhops{ResolvedNextHop(
+      folly::IPAddress("2001:db8:2::1"), openrIntf, UCMP_DEFAULT_WEIGHT)};
+  routeUpdater.update<RibRouteUpdater::RouteEntry, folly::CIDRNetwork>(
+      ClientID::INTERFACE_ROUTE,
+      {
+          {{folly::IPAddress("2001:db8:1::"), 64},
+           RouteNextHopEntry(
+               connectedRouteNhops, AdminDistance::DIRECTLY_CONNECTED)},
+          {{folly::IPAddress("2001:db8:2::"), 64},
+           RouteNextHopEntry(
+               openrUnderlayRouteNhops, AdminDistance::DIRECTLY_CONNECTED)},
+      },
+      {},
+      false);
+  const RouteNextHopSet openrRouteNhops{
+      UnresolvedNextHop(openrNextHop, ECMP_WEIGHT)};
+  routeUpdater.update<RibRouteUpdater::RouteEntry, folly::CIDRNetwork>(
+      ClientID::OPENR,
+      {{{folly::IPAddress("2001:db8:3::"), 64},
+        RouteNextHopEntry(openrRouteNhops, AdminDistance::OPENR)}},
+      {},
+      false);
+
+  const auto makeUnresolvedNextHop = [](const folly::IPAddress& address,
+                                        NextHopRole role) {
+    return UnresolvedNextHop(
+        address,
+        ECMP_WEIGHT,
+        std::nullopt,
+        std::nullopt,
+        std::nullopt,
+        std::nullopt,
+        {},
+        std::nullopt,
+        std::nullopt,
+        std::nullopt,
+        role);
+  };
+  const RouteNextHopSet primaryUnresolvedNhops{
+      makeUnresolvedNextHop(connectedGateway, NextHopRole::PRIMARY),
+      makeUnresolvedNextHop(openrGateway, NextHopRole::PRIMARY)};
+  const RouteNextHopSet backupUnresolvedNhops{
+      makeUnresolvedNextHop(connectedGateway, NextHopRole::BACKUP),
+      makeUnresolvedNextHop(openrGateway, NextHopRole::BACKUP)};
+  const auto primaryUnresolvedId = allocUnresolvedSet(primaryUnresolvedNhops);
+  const auto backupUnresolvedId = allocUnresolvedSet(backupUnresolvedNhops);
+
+  auto mySid = makeMySid("fc00:100::1", 48, MySidType::ADJACENCY_MICRO_SID);
+  mySid->setUnresolveNextHopsId(primaryUnresolvedId);
+  mySid->setBackupUnresolveNextHopsId(backupUnresolvedId);
+  const folly::CIDRNetworkV6 key{folly::IPAddressV6("fc00:100::1"), 48};
+  mySidTable_[key] = mySid;
+
+  RibMySidUpdater updater(
+      {{&v4Routes_, &v6Routes_}}, &manager(), &mySidTable_, kEcmpWidth);
+  updater.resolve();
+
+  const std::set<std::pair<folly::IPAddress, InterfaceID>> expectedNextHops{
+      {connectedGateway, connectedIntf}, {openrNextHop, openrIntf}};
+  const auto expectResolvedNextHops = [this, &expectedNextHops](
+                                          std::optional<NextHopSetID> id,
+                                          NextHopRole role) {
+    ASSERT_TRUE(id.has_value());
+    const auto nextHops = manager().getNextHops(*id);
+    ASSERT_EQ(nextHops.size(), expectedNextHops.size());
+    std::set<std::pair<folly::IPAddress, InterfaceID>> actualNextHops;
+    for (const auto& nextHop : nextHops) {
+      actualNextHops.emplace(nextHop.addr(), nextHop.intf());
+      EXPECT_EQ(nextHop.role(), role);
+    }
+    EXPECT_EQ(actualNextHops, expectedNextHops);
+  };
+  expectResolvedNextHops(
+      mySidTable_.at(key)->getResolvedNextHopsId(), NextHopRole::PRIMARY);
+  expectResolvedNextHops(
+      mySidTable_.at(key)->getBackupResolvedNextHopsId(), NextHopRole::BACKUP);
 }
 
 TEST_F(

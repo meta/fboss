@@ -67,8 +67,8 @@ TEST_F(CmdShowBgpConfigTestFixture, printOutputRendersSample) {
   EXPECT_THAT(output, HasSubstr("\n  \"communities\""));
   // The community mnemonics that let other commands print names instead of
   // raw asn:value pairs.
-  EXPECT_THAT(output, HasSubstr("AS64496.DEFAULT"));
-  EXPECT_THAT(output, HasSubstr("64496:200"));
+  EXPECT_THAT(output, HasSubstr("AS65108.DEFAULT"));
+  EXPECT_THAT(output, HasSubstr("65108:337"));
   // description() calls out the local-pref mnemonics, peer groups and policy
   // statements, so the example has to actually contain them.
   EXPECT_THAT(output, HasSubstr("SAMPLE_LOCALPREF_100"));

@@ -14,12 +14,17 @@
 #include <thrift/lib/cpp2/async/RocketClientChannel.h>
 #include <thrift/lib/cpp2/protocol/Serializer.h>
 #include "fboss/agent/EnumUtils.h"
+#include "fboss/agent/FbossError.h"
 #include "fboss/led_service/BspLedManager.h"
 #include "fboss/led_service/LedManager.h"
 #include "fboss/led_service/LedUtils.h"
 #include "fboss/led_service/hw_test/LedServiceTest.h"
 #include "fboss/lib/bsp/BspSystemContainer.h"
 #include "fboss/lib/led/LedIO.h"
+
+#ifndef IS_OSS
+#include "common/base/Proc.h"
+#endif
 
 namespace facebook::fboss {
 
@@ -45,10 +50,38 @@ void LedServiceTest::SetUp() {
 }
 
 void LedServiceTest::TearDown() {
+  if (ensemble_ != nullptr) {
+    EXPECT_NO_THROW(checkLedMemoryInBounds());
+  }
   // Remove ensemble and objects contained there
   ensemble_.reset();
   ledManager_ = nullptr;
   platformMap_ = nullptr;
+}
+
+void LedServiceTest::checkLedMemoryInBounds() const {
+#ifndef IS_OSS
+  const auto* ledConfig = ledManager_->getLedConfig();
+  if (ledConfig == nullptr) {
+    throw FbossError("LED config is not loaded, cannot check memory bounds");
+  }
+  auto ledTestConfig = ledConfig->thriftConfig_.ledTestConfig();
+  if (!ledTestConfig.has_value() ||
+      !ledTestConfig->ledServiceMemLimitBytes().has_value()) {
+    XLOG(INFO) << "ledServiceMemLimitBytes not set in led config, "
+               << "skipping memory check";
+    return;
+  }
+  int64_t memUsage = facebook::Proc::getMemoryUsage();
+  auto memUsageThreshold = *ledTestConfig->ledServiceMemLimitBytes();
+  if (memUsage > memUsageThreshold) {
+    throw FbossError(
+        "LED service RSS memory ",
+        memUsage,
+        " above expected ",
+        memUsageThreshold);
+  }
+#endif
 }
 
 std::vector<TransceiverID> LedServiceTest::getAllTransceivers(

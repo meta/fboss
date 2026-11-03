@@ -329,6 +329,11 @@ struct SaiSwitchTraits {
         SAI_SWITCH_ATTR_FIRMWARE_LOAD_TYPE,
         int32_t,
         SaiIntDefault<int32_t>>;
+    using WarmRecover = SaiAttribute<
+        EnumType,
+        SAI_SWITCH_ATTR_WARM_RECOVER,
+        bool,
+        SaiBoolDefaultFalse>;
     using HardwareAccessBus = SaiAttribute<
         EnumType,
         SAI_SWITCH_ATTR_HARDWARE_ACCESS_BUS,
@@ -890,6 +895,13 @@ struct SaiSwitchTraits {
         bool,
         AttributePortCl72RetryEnable,
         SaiBoolDefaultFalse>;
+    struct AttributeAclDropSnoopDisabled {
+      std::optional<sai_attr_id_t> operator()();
+    };
+    using AclDropSnoopDisabled = SaiExtensionAttribute<
+        bool,
+        AttributeAclDropSnoopDisabled,
+        SaiBoolDefaultFalse>;
     struct AttributePacketDropTypeIngressList {
       std::optional<sai_attr_id_t> operator()();
     };
@@ -915,7 +927,7 @@ struct SaiSwitchTraits {
         sai_int32_t,
         SaiIntDefault<sai_int32_t>>;
 
-#if defined(SAI_BRCM_PAI_IMPL)
+#if defined(BRCM_PAI_SDK)
     struct AttributeSyncLockWrapper {
       std::optional<sai_attr_id_t> operator()();
     };
@@ -1038,16 +1050,18 @@ struct SaiSwitchTraits {
       std::optional<Attributes::PfcMonitorEnable>,
       std::optional<Attributes::CablePropagationDelayMeasurement>,
       std::optional<Attributes::PortCl72RetryEnable>,
+      std::optional<Attributes::AclDropSnoopDisabled>,
       std::optional<Attributes::SwitchingMode>
 #if SAI_API_VERSION >= SAI_VERSION(1, 18, 0)
       ,
       std::optional<Attributes::LinkUpDebounceTimeout>
 #endif
 
-#if defined(SAI_BRCM_PAI_IMPL)
+#if defined(BRCM_PAI_SDK)
       ,
       std::optional<Attributes::SyncLock>,
-      std::optional<Attributes::SyncUnlock>
+      std::optional<Attributes::SyncUnlock>,
+      std::optional<Attributes::WarmRecover>
 #endif
       >;
 
@@ -1155,6 +1169,7 @@ SAI_ATTRIBUTE_NAME(Switch, FirmwarePathName)
 SAI_ATTRIBUTE_NAME(Switch, FirmwareLogFile)
 SAI_ATTRIBUTE_NAME(Switch, FirmwareLoadMethod)
 SAI_ATTRIBUTE_NAME(Switch, FirmwareLoadType)
+SAI_ATTRIBUTE_NAME(Switch, WarmRecover)
 SAI_ATTRIBUTE_NAME(Switch, HardwareAccessBus)
 SAI_ATTRIBUTE_NAME(Switch, PlatformContext)
 SAI_ATTRIBUTE_NAME(Switch, SwitchProfileId)
@@ -1247,6 +1262,7 @@ SAI_ATTRIBUTE_NAME(Switch, DefaultCpuEgressBufferPool)
 SAI_ATTRIBUTE_NAME(Switch, PfcMonitorEnable)
 SAI_ATTRIBUTE_NAME(Switch, CablePropagationDelayMeasurement)
 SAI_ATTRIBUTE_NAME(Switch, PortCl72RetryEnable)
+SAI_ATTRIBUTE_NAME(Switch, AclDropSnoopDisabled)
 #if SAI_API_VERSION >= SAI_VERSION(1, 18, 0)
 SAI_ATTRIBUTE_NAME(Switch, LinkUpDebounceTimeout)
 #endif
@@ -1259,7 +1275,7 @@ SAI_ATTRIBUTE_NAME(Switch, PacketDropTypeEgressList)
 SAI_ATTRIBUTE_NAME(Switch, LocalSystemPortIdRangeList)
 #endif
 
-#if defined(SAI_BRCM_PAI_IMPL)
+#if defined(BRCM_PAI_SDK)
 SAI_ATTRIBUTE_NAME(Switch, SyncLock)
 SAI_ATTRIBUTE_NAME(Switch, SyncUnlock)
 #endif

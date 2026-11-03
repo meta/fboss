@@ -19,6 +19,9 @@ namespace facebook::fboss::platform::platform_checks {
  */
 class KernelVersionCheck : public PlatformCheck {
  public:
+  explicit KernelVersionCheck(CheckTarget target = {})
+      : PlatformCheck(std::move(target)) {}
+
   CheckResult run() override;
 
   CheckType getType() const override {

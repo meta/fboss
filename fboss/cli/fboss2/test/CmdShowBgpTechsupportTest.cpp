@@ -79,7 +79,7 @@ TEST_F(CmdShowBgpTechsupportTestFixture, sectionsCarryTheirCommandsContent) {
   EXPECT_EQ(
       *model.bgpRunningConfig(),
       folly::toPrettyJson(CmdShowConfigRunningBgp::sampleModel()));
-  EXPECT_THAT(output, HasSubstr("AS64496.DEFAULT"));
+  EXPECT_THAT(output, HasSubstr("AS65108.DEFAULT"));
   EXPECT_THAT(output, HasSubstr("SAMPLE_LOCALPREF_100"));
 
   // Table section: the prefix headers and the best-path marker.
@@ -92,8 +92,11 @@ TEST_F(CmdShowBgpTechsupportTestFixture, sectionsCarryTheirCommandsContent) {
   EXPECT_THAT(output, HasSubstr("route filter policy (version 1784328957)"));
 
   // Summary section: the global header and the peer table.
-  EXPECT_THAT(output, HasSubstr("Router ID - 192.0.2.1, Local ASN - 65499"));
-  EXPECT_THAT(output, HasSubstr("Peers: UP - 4, TOTAL - 5"));
+  EXPECT_THAT(output, HasSubstr("Router ID - 192.0.2.1, Local ASN - 65108"));
+  EXPECT_THAT(output, HasSubstr("Peers: UP - 4, TOTAL - 4"));
+  EXPECT_THAT(output, HasSubstr("Peer Groups Configured - 1"));
+  EXPECT_THAT(output, HasSubstr("EOR sent (UP peers) - 4/4"));
+  EXPECT_THAT(output, HasSubstr("EORs received (UP peers) - 4/4"));
   EXPECT_THAT(output, HasSubstr("198.51.100.0/24"));
 }
 

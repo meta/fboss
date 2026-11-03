@@ -74,17 +74,22 @@ class AgentSrv6BindingSidTest : public AgentHwTest {
 
   cfg::SwitchConfig initialConfig(
       const AgentEnsemble& ensemble) const override {
-    auto cfg = utility::onePortPerInterfaceConfig(
-        ensemble.getSw(),
-        ensemble.masterLogicalPortIds(),
-        true /*interfaceHasSubnet*/);
+    auto masterLogicalPorts = ensemble.masterLogicalPortIds();
+    cfg::SwitchConfig cfg;
     if constexpr (kIsTrunk) {
+      std::vector<utility::AggregatePortInfo> aggPorts;
+      aggPorts.reserve(kNumNextHops);
       for (int i = 0; i < kNumNextHops; ++i) {
-        utility::addAggPort(
-            i + 1,
-            {static_cast<int32_t>(ensemble.masterLogicalPortIds()[i])},
-            &cfg);
+        aggPorts.push_back({AggregatePortID(i + 1), {masterLogicalPorts[i]}});
       }
+      cfg = utility::oneAggregatePortPerInterfaceConfig(
+          ensemble.getSw(),
+          masterLogicalPorts,
+          aggPorts,
+          true /*interfaceHasSubnet*/);
+    } else {
+      cfg = utility::onePortPerInterfaceConfig(
+          ensemble.getSw(), masterLogicalPorts, true /*interfaceHasSubnet*/);
     }
     cfg.loadBalancers() =
         utility::getEcmpFullWithFlowLabelTrunkFullWithFlowLabelHashConfig(

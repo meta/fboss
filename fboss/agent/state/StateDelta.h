@@ -38,6 +38,8 @@
 #include "fboss/agent/state/Srv6TunnelMap.h"
 #include "fboss/agent/state/UdfGroupMap.h"
 #include "fboss/agent/state/UdfPacketMatcherMap.h"
+#include "fboss/agent/state/VrfMap.h"
+#include "fboss/agent/state/VxlanTunnelMap.h"
 
 #include "fboss/agent/state/SflowCollectorMap.h"
 #include "fboss/agent/state/SwitchSettings.h"
@@ -114,7 +116,9 @@ class StateDelta {
   MultiSwitchMapDelta<MultiSwitchSystemPortMap> getSystemPortsDelta() const;
   ThriftMapDelta<IpTunnelMap> getIpTunnelsDelta() const;
   ThriftMapDelta<Srv6TunnelMap> getSrv6TunnelsDelta() const;
+  ThriftMapDelta<VxlanTunnelMap> getVxlanTunnelsDelta() const;
   ThriftMapDelta<MySidMap> getMySidsDelta() const;
+  ThriftMapDelta<VrfMap> getVrfsDelta() const;
   MultiSwitchMapDelta<MultiTeFlowTable> getTeFlowEntriesDelta() const;
   // Remote object deltas
   MultiSwitchMapDelta<MultiSwitchSystemPortMap> getRemoteSystemPortsDelta()

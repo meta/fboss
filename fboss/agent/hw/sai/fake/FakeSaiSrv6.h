@@ -3,6 +3,7 @@
 #pragma once
 
 #include <array>
+#include <optional>
 #include <vector>
 #include "fboss/agent/hw/sai/fake/FakeManager.h"
 #include "fboss/agent/hw/sai/fake/FakeSaiMySidEntry.h"
@@ -35,7 +36,7 @@ struct FakeMySidEntryAttributes {
   sai_object_id_t nextHopId{SAI_NULL_OBJECT_ID};
   sai_object_id_t vrf{SAI_NULL_OBJECT_ID};
   sai_int32_t packetAction{SAI_PACKET_ACTION_FORWARD};
-  sai_object_id_t tunnelId{SAI_NULL_OBJECT_ID};
+  std::optional<sai_object_id_t> tunnelId;
 };
 
 using FakeMySidEntryManager =

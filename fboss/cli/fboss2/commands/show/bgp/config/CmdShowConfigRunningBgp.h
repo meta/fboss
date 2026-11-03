@@ -34,7 +34,7 @@ class CmdShowConfigRunningBgp : public CmdHandler<
    * rendered sample is published to the CLI reference wiki, so it must not
    * carry a real switch's routing configuration - community values, policy or
    * peer-group names, and AS numbers are all Business Confidential. AS numbers
-   * come from the RFC 5398 documentation range (64496-64511) and every name is
+   * are sample values from the RFC 6996 private-use range and every name is
    * obviously an example.
    *
    * The KEYS, by contrast, are the real thrift field names: the internal
@@ -54,12 +54,12 @@ class CmdShowConfigRunningBgp : public CmdHandler<
             folly::dynamic::array("sample_feature_a", "sample_feature_b")))(
         "communities",
         folly::dynamic::array(
-            folly::dynamic::object("name", "AS64496.AGGREGATE.GLOBAL")(
+            folly::dynamic::object("name", "AS65108.AGGREGATE.GLOBAL")(
                 "description", "Global public aggregates")(
-                "communities", folly::dynamic::array("64496:300")),
-            folly::dynamic::object("name", "AS64496.DEFAULT")(
+                "communities", folly::dynamic::array("65108:814")),
+            folly::dynamic::object("name", "AS65108.DEFAULT")(
                 "description", "Default routes")(
-                "communities", folly::dynamic::array("64496:200"))))(
+                "communities", folly::dynamic::array("65108:337"))))(
         "localprefs",
         folly::dynamic::array(
             folly::dynamic::object("name", "SAMPLE_LOCALPREF_100")(
@@ -69,7 +69,7 @@ class CmdShowConfigRunningBgp : public CmdHandler<
         "peer_groups",
         folly::dynamic::array(
             folly::dynamic::object("name", "SAMPLE_UPLINK_GROUP")(
-                "remote_as_4_byte", 64498)(
+                "remote_as_4_byte", 65221)(
                 "ingress_policy_name", "SAMPLE_UPLINK_IN")(
                 "egress_policy_name", "SAMPLE_UPLINK_OUT")))(
         "policies",

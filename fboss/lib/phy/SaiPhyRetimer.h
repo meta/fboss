@@ -183,7 +183,7 @@ class SaiPhyRetimer : public ExternalPhy, public HwSwitchCallback {
 
   void* getRegisterReadFuncPtr();
   void* getRegisterWriteFuncPtr();
-  SaiSwitchTraits::CreateAttributes getSwitchAttributes();
+  SaiSwitchTraits::CreateAttributes getSwitchAttributes(bool warmboot);
 
   std::mutex& getPaiMutex() {
     return paiMutex_;

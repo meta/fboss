@@ -1,3 +1,6 @@
 "Test Case","Hardware","Vendor","SDK Version","ASIC","Switch Mode","Role","Status"
-"warm_boot.ProdInvariantTest.verifyInvariants","fuji","Broadcom","10.2.0.0_odp","tomahawk4","multi switch","","PASSED"
-"cold_boot.ProdInvariantTest.verifyInvariants","fuji","Broadcom","10.2.0.0_odp","tomahawk4","multi switch","","PASSED"
+"warm_boot.ProdInvariantTest.verifyInvariants","elbert","Broadcom","10.2.0.0_odp","tomahawk4","multi switch","","PASSED"
+"cold_boot.ProdInvariantTest.verifyInvariants","elbert","Broadcom","10.2.0.0_odp","tomahawk4","multi switch","","PASSED"
+"cold_boot.ProdInvariantFtswTest.verifyInvariants","fuji","Broadcom","10.2.0.0_odp","tomahawk4","multi switch","","FAILED"
+"cold_boot.ProdInvariantRtswTest.verifyInvariants","fuji","Broadcom","10.2.0.0_odp","tomahawk4","multi switch","","FAILED"
+"cold_boot.ProdInvariantStswTest.verifyInvariants","fuji","Broadcom","10.2.0.0_odp","tomahawk4","multi switch","","FAILED"

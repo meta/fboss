@@ -12,6 +12,8 @@ cpp_unittest(
     ],
     compiler_flags = QSFP_COMMON_COMPILER_FLAGS,
     network_access = network_access_utils.none(),
+    # Links the x86-64-only vendor SAI SDK.
+    target_compatible_with = ["ovr_config//cpu:x86_64"],
     deps = [
         "fbsource//third-party/fmt:fmt",
         "fbsource//third-party/googletest:gmock",
@@ -30,6 +32,8 @@ cpp_library(
     headers = [
         "MockWedgeManager.h",
     ],
+    # Links the x86-64-only vendor SAI SDK.
+    target_compatible_with = ["ovr_config//cpu:x86_64"],
     exported_deps = [
         "//fboss/agent:fboss-error",
         "//fboss/agent/platforms/common/fake_test:fake_test_platform_mapping",

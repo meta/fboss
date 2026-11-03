@@ -92,7 +92,8 @@ CmdDeleteCoppQueueTraits::RetType CmdDeleteCoppQueue::queryClient(
   const auto queueId = args.getQueueId();
   auto it = copp_queue::findQueue(queues, queueId);
   if (it == queues.end()) {
-    throw std::runtime_error(fmt::format("No queue {} in the config", queueId));
+    return fmt::format(
+        "Warning: queue {} not found, nothing to delete", queueId);
   }
 
   const auto references = findQueueReferences(swConfig, queueId);

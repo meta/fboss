@@ -4,6 +4,33 @@ load("@fbsource//tools/build_defs/testinfra:network_access_utils.bzl", "network_
 oncall("fboss_distro")
 
 python_unittest(
+    name = "test_package_versions",
+    srcs = ["test_package_versions.py"],
+    network_access = network_access_utils.none(),
+    deps = [
+        "//fboss/oss/scripts:component_version",
+        "//fboss/oss/scripts:package_fboss_lib",
+        "//fboss/oss/scripts:package_lib",
+    ],
+)
+
+python_unittest(
+    name = "test_component_version",
+    srcs = ["test_component_version.py"],
+    network_access = network_access_utils.none(),
+    deps = ["//fboss/oss/scripts:component_version"],
+)
+
+python_unittest(
+    name = "test_check_copyright_headers",
+    srcs = ["test_check_copyright_headers.py"],
+    network_access = network_access_utils.none(),
+    deps = [
+        "//fboss/oss/scripts:check_copyright_headers_lib",
+    ],
+)
+
+python_unittest(
     name = "test_package",
     srcs = ["test_package.py"],
     network_access = network_access_utils.none(),
@@ -13,11 +40,11 @@ python_unittest(
 )
 
 python_unittest(
-    name = "test_platform_descriptor_utils",
-    srcs = ["test_platform_descriptor_utils.py"],
+    name = "test_platform_configs_utils",
+    srcs = ["test_platform_configs_utils.py"],
     network_access = network_access_utils.none(),
     deps = [
-        "//fboss/oss/scripts:platform_descriptor_utils",
+        "//fboss/oss/scripts:platform_configs_utils",
     ],
 )
 
@@ -36,5 +63,14 @@ python_unittest(
     network_access = network_access_utils.none(),
     deps = [
         "//fboss/oss/scripts:npu_sdk_utils_lib",
+    ],
+)
+
+python_unittest(
+    name = "test_compile_mem",
+    srcs = ["test_compile_mem.py"],
+    network_access = network_access_utils.none(),
+    deps = [
+        "//fboss/oss/scripts:compile_mem_lib",
     ],
 )

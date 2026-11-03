@@ -199,6 +199,9 @@ TEST_F(AgentHwAclStatCounterTypeTest, AclStatChangeCounterType) {
   };
 
   auto setupPostWB = [=, this]() {
+    if (!isSupportedOnAllAsics(HwAsic::Feature::ACL_BYTE_COUNTER)) {
+      return;
+    }
     auto& ensemble = *getAgentEnsemble();
     auto newCfg = initialConfig(ensemble);
     addDscpAcl(&newCfg, "acl0");
@@ -207,6 +210,9 @@ TEST_F(AgentHwAclStatCounterTypeTest, AclStatChangeCounterType) {
   };
 
   auto verifyPostWB = [=, this]() {
+    if (!isSupportedOnAllAsics(HwAsic::Feature::ACL_BYTE_COUNTER)) {
+      return;
+    }
     auto& ensemble = *getAgentEnsemble();
     auto client = ensemble.getHwAgentTestClient(SwitchID(0));
 

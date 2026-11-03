@@ -58,7 +58,13 @@ class CmdConfigCoppTestFixture : public CmdConfigTestBase {
         { "rxReason": 11, "queueId": 9 },
         { "rxReason": 13, "queueId": 2 },
         { "rxReason": 0,  "queueId": 1 }
-      ]
+      ],
+      "trafficPolicy": {
+        "matchToAction": [
+          { "matcher": "cpuPolicy-mid",
+            "action": { "counter": "cpuPolicy-mid-counter" } }
+        ]
+      }
     }
   }
 })") {}
@@ -66,6 +72,7 @@ class CmdConfigCoppTestFixture : public CmdConfigTestBase {
  protected:
   const std::string cpuQueueCmdPrefix_ = "config copp queue";
   const std::string reasonCmdPrefix_ = "config copp reason";
+  const std::string cpuTrafficPolicyCmdPrefix_ = "config copp traffic-policy";
 
   // Helper: find the cpuQueues entry with the given id, or nullptr.
   const cfg::PortQueue* findQueue(int16_t id) const {
@@ -85,6 +92,21 @@ class CmdConfigCoppTestFixture : public CmdConfigTestBase {
     for (const auto& entry : *policy.rxReasonToQueueOrderedList()) {
       if (*entry.rxReason() == r) {
         return &entry;
+      }
+    }
+    return nullptr;
+  }
+
+  // Helper: find the matchToAction entry with the given matcher, or nullptr.
+  const cfg::MatchToAction* findMatchToAction(const std::string& name) const {
+    auto& config = ConfigSession::getInstance().getAgentConfig();
+    const auto& policy = *config.sw()->cpuTrafficPolicy();
+    if (!policy.trafficPolicy().has_value()) {
+      return nullptr;
+    }
+    for (const auto& mta : *policy.trafficPolicy()->matchToAction()) {
+      if (*mta.matcher() == name) {
+        return &mta;
       }
     }
     return nullptr;
@@ -623,6 +645,170 @@ TEST_F(CmdConfigCoppTestFixture, reason_orderOutOfRange) {
       cmd.queryClient(
           hostInfo, CoppReasonArgs({"bgp", "queue", "2", "order", "5"})),
       std::invalid_argument);
+}
+
+// =============================================================
+// TrafficPolicyArgs validation tests
+//
+// The arg class validates only shape (arity, the match/action literals, a
+// non-empty rule name). The action keyword and its value are checked by
+// traffic_policy::applyAction against the shared action table, so those cases
+// live in the apply tests below.
+// =============================================================
+
+TEST_F(CmdConfigCoppTestFixture, trafficPolicyArgs_valid) {
+  traffic_policy::TrafficPolicyArgs a(
+      {"match", "acl-x", "action", "send-to-queue", "2"});
+  EXPECT_EQ(a.getMatcherName(), "acl-x");
+  EXPECT_EQ(
+      a.getActionTokens(), (std::vector<std::string>{"send-to-queue", "2"}));
+
+  traffic_policy::TrafficPolicyArgs b(
+      {"match", "acl-x", "action", "counter", "cnt"});
+  EXPECT_EQ(b.getActionTokens(), (std::vector<std::string>{"counter", "cnt"}));
+
+  // Valueless actions are a legal 4-token form.
+  traffic_policy::TrafficPolicyArgs c(
+      {"match", "acl-x", "action", "trap-to-cpu"});
+  EXPECT_EQ(c.getActionTokens(), (std::vector<std::string>{"trap-to-cpu"}));
+
+  // redirect carries two value tokens.
+  traffic_policy::TrafficPolicyArgs d(
+      {"match", "acl-x", "action", "redirect", "nexthop", "1.1.1.1"});
+  EXPECT_EQ(
+      d.getActionTokens(),
+      (std::vector<std::string>{"redirect", "nexthop", "1.1.1.1"}));
+}
+
+TEST_F(CmdConfigCoppTestFixture, trafficPolicyArgs_badArity) {
+  EXPECT_THROW(traffic_policy::TrafficPolicyArgs({}), std::invalid_argument);
+  EXPECT_THROW(
+      traffic_policy::TrafficPolicyArgs({"match", "acl-x", "action"}),
+      std::invalid_argument);
+}
+
+TEST_F(CmdConfigCoppTestFixture, trafficPolicyArgs_badLiterals) {
+  EXPECT_THROW(
+      traffic_policy::TrafficPolicyArgs(
+          {"matcher", "acl-x", "action", "counter", "cnt"}),
+      std::invalid_argument);
+  EXPECT_THROW(
+      traffic_policy::TrafficPolicyArgs(
+          {"match", "acl-x", "actions", "counter", "cnt"}),
+      std::invalid_argument);
+  EXPECT_THROW(
+      traffic_policy::TrafficPolicyArgs(
+          {"match", "", "action", "counter", "cnt"}),
+      std::invalid_argument);
+}
+
+// =============================================================
+// queryClient() tests — traffic-policy
+// =============================================================
+
+TEST_F(CmdConfigCoppTestFixture, cpuTrafficPolicy_addActionToExistingMatcher) {
+  setupTestableConfigSession(
+      cpuTrafficPolicyCmdPrefix_, "match cpuPolicy-mid action send-to-queue 2");
+  CmdConfigCoppTrafficPolicy cmd;
+  HostInfo hostInfo("testhost");
+  traffic_policy::TrafficPolicyArgs args(
+      {"match", "cpuPolicy-mid", "action", "send-to-queue", "2"});
+
+  auto result = cmd.queryClient(hostInfo, args);
+  EXPECT_THAT(result, HasSubstr("cpuPolicy-mid"));
+
+  const auto* mta = findMatchToAction("cpuPolicy-mid");
+  ASSERT_NE(mta, nullptr);
+  ASSERT_TRUE(mta->action()->sendToQueue().has_value());
+  EXPECT_EQ(*mta->action()->sendToQueue()->queueId(), 2);
+  // The pre-existing counter action on the same matcher must be preserved.
+  ASSERT_TRUE(mta->action()->counter().has_value());
+  EXPECT_EQ(*mta->action()->counter(), "cpuPolicy-mid-counter");
+}
+
+TEST_F(CmdConfigCoppTestFixture, cpuTrafficPolicy_createsNewMatcherEntry) {
+  setupTestableConfigSession(
+      cpuTrafficPolicyCmdPrefix_, "match acl-new action set-tc 3");
+  CmdConfigCoppTrafficPolicy cmd;
+  HostInfo hostInfo("testhost");
+  traffic_policy::TrafficPolicyArgs args(
+      {"match", "acl-new", "action", "set-tc", "3"});
+
+  cmd.queryClient(hostInfo, args);
+
+  const auto* mta = findMatchToAction("acl-new");
+  ASSERT_NE(mta, nullptr);
+  ASSERT_TRUE(mta->action()->setTc().has_value());
+  EXPECT_EQ(*mta->action()->setTc()->tcValue(), 3);
+}
+
+TEST_F(CmdConfigCoppTestFixture, cpuTrafficPolicy_userDefinedTrap) {
+  setupTestableConfigSession(
+      cpuTrafficPolicyCmdPrefix_,
+      "match cpuPolicy-mid action user-defined-trap 9");
+  CmdConfigCoppTrafficPolicy cmd;
+  HostInfo hostInfo("testhost");
+  traffic_policy::TrafficPolicyArgs args(
+      {"match", "cpuPolicy-mid", "action", "user-defined-trap", "9"});
+
+  cmd.queryClient(hostInfo, args);
+
+  const auto* mta = findMatchToAction("cpuPolicy-mid");
+  ASSERT_NE(mta, nullptr);
+  ASSERT_TRUE(mta->action()->userDefinedTrap().has_value());
+  EXPECT_EQ(*mta->action()->userDefinedTrap()->queueId(), 9);
+}
+
+TEST_F(CmdConfigCoppTestFixture, cpuTrafficPolicy_overwritesSameActionType) {
+  setupTestableConfigSession(
+      cpuTrafficPolicyCmdPrefix_, "match cpuPolicy-mid action counter cnt-new");
+  CmdConfigCoppTrafficPolicy cmd;
+  HostInfo hostInfo("testhost");
+  traffic_policy::TrafficPolicyArgs args(
+      {"match", "cpuPolicy-mid", "action", "counter", "cnt-new"});
+
+  cmd.queryClient(hostInfo, args);
+
+  const auto* mta = findMatchToAction("cpuPolicy-mid");
+  ASSERT_NE(mta, nullptr);
+  ASSERT_TRUE(mta->action()->counter().has_value());
+  EXPECT_EQ(*mta->action()->counter(), "cnt-new");
+}
+
+// Adding an action when the device has neither cpuTrafficPolicy nor
+// trafficPolicy must create both containers, not throw.
+class CmdConfigCoppNoCpuTrafficPolicyFixture : public CmdConfigTestBase {
+ public:
+  CmdConfigCoppNoCpuTrafficPolicyFixture()
+      : CmdConfigTestBase(
+            "fboss_copp_config_no_policy_test_%%%%-%%%%-%%%%-%%%%",
+            R"({"sw": {}})") {}
+
+ protected:
+  const std::string cpuTrafficPolicyCmdPrefix_ = "config copp traffic-policy";
+};
+
+TEST_F(
+    CmdConfigCoppNoCpuTrafficPolicyFixture,
+    cpuTrafficPolicy_createsPolicyFromAbsent) {
+  setupTestableConfigSession(
+      cpuTrafficPolicyCmdPrefix_, "match acl-new action send-to-queue 2");
+  CmdConfigCoppTrafficPolicy cmd;
+  HostInfo hostInfo("testhost");
+  traffic_policy::TrafficPolicyArgs args(
+      {"match", "acl-new", "action", "send-to-queue", "2"});
+
+  cmd.queryClient(hostInfo, args);
+
+  auto& config = ConfigSession::getInstance().getAgentConfig();
+  ASSERT_TRUE(config.sw()->cpuTrafficPolicy().has_value());
+  const auto& policy = *config.sw()->cpuTrafficPolicy();
+  ASSERT_TRUE(policy.trafficPolicy().has_value());
+  const auto& matchToActions = *policy.trafficPolicy()->matchToAction();
+  ASSERT_EQ(matchToActions.size(), 1);
+  EXPECT_EQ(*matchToActions[0].matcher(), "acl-new");
+  ASSERT_TRUE(matchToActions[0].action()->sendToQueue().has_value());
+  EXPECT_EQ(*matchToActions[0].action()->sendToQueue()->queueId(), 2);
 }
 
 } // namespace facebook::fboss

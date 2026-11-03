@@ -22,8 +22,9 @@
 #include "fboss/cli/fboss2/commands/clear/interface/prbs/stats/CmdClearInterfacePrbsStats.h"
 #include "fboss/cli/fboss2/commands/config/gen/agent/CmdConfigGenAgent.h"
 #include "fboss/cli/fboss2/commands/get/pcap/CmdGetPcap.h"
-#include "fboss/cli/fboss2/commands/set/fanhold/CmdSetFanHold.h"
+#include "fboss/cli/fboss2/commands/reload/CmdReloadConfigAgent.h"
 #include "fboss/cli/fboss2/commands/set/interface/CmdSetInterface.h"
+#include "fboss/cli/fboss2/commands/set/interface/admin_state/CmdSetInterfaceAdminState.h"
 #include "fboss/cli/fboss2/commands/set/interface/loopback/CmdSetInterfaceLoopback.h"
 #include "fboss/cli/fboss2/commands/set/interface/prbs/CmdSetInterfacePrbs.h"
 #include "fboss/cli/fboss2/commands/set/interface/prbs/state/CmdSetInterfacePrbsState.h"
@@ -81,6 +82,8 @@
 #include "fboss/cli/fboss2/commands/show/interface/status/CmdShowInterfaceStatus.h"
 #include "fboss/cli/fboss2/commands/show/interface/traffic/CmdShowInterfaceTraffic.h"
 #include "fboss/cli/fboss2/commands/show/interface/transceiver/CmdShowInterfaceTransceiver.h"
+#include "fboss/cli/fboss2/commands/show/interface/transceiver/eeprom/CmdShowInterfaceTransceiverEeprom.h"
+#include "fboss/cli/fboss2/commands/show/interface/transceiver/eeprom/CmdShowInterfaceTransceiverEepromDump.h"
 #include "fboss/cli/fboss2/commands/show/interface/transceiver/performancemonitoring/CmdShowInterfaceTransceiverPerformanceMonitoring.h"
 #include "fboss/cli/fboss2/commands/show/l2/CmdShowL2.h"
 #include "fboss/cli/fboss2/commands/show/lldp/CmdShowLldp.h"
@@ -88,6 +91,7 @@
 #include "fboss/cli/fboss2/commands/show/mac/CmdShowMacDetails.h"
 #include "fboss/cli/fboss2/commands/show/mirror/CmdShowMirror.h"
 #include "fboss/cli/fboss2/commands/show/mpls/CmdShowMplsRoute.h"
+#include "fboss/cli/fboss2/commands/show/mymac/CmdShowMyMac.h"
 #include "fboss/cli/fboss2/commands/show/mysid/CmdShowMySid.h"
 #include "fboss/cli/fboss2/commands/show/ndp/CmdShowNdp.h"
 #include "fboss/cli/fboss2/commands/show/nexthopgroups/CmdShowNextHopGroups.h"
@@ -98,6 +102,7 @@
 #endif
 #include "fboss/cli/fboss2/commands/show/product/CmdShowProduct.h"
 #include "fboss/cli/fboss2/commands/show/product/CmdShowProductDetails.h"
+#include "fboss/cli/fboss2/commands/show/reboot_history/CmdShowRebootHistory.h"
 #include "fboss/cli/fboss2/commands/show/rif/CmdShowRif.h"
 #include "fboss/cli/fboss2/commands/show/route/CmdShowRoute.h"
 #include "fboss/cli/fboss2/commands/show/route/CmdShowRouteCounters.h"
@@ -107,8 +112,6 @@
 #include "fboss/cli/fboss2/commands/show/systemport/CmdShowSystemPort.h"
 #include "fboss/cli/fboss2/commands/show/teflow/CmdShowTeFlow.h"
 #include "fboss/cli/fboss2/commands/show/transceiver/CmdShowTransceiver.h"
-#include "fboss/cli/fboss2/commands/show/transceiver/eeprom/CmdShowTransceiverEeprom.h"
-#include "fboss/cli/fboss2/commands/show/transceiver/eeprom/CmdShowTransceiverEepromDump.h"
 #include "fboss/cli/fboss2/commands/show/transceiver/loopback/CmdShowTransceiverLoopback.h"
 #include "fboss/cli/fboss2/commands/start/pcap/CmdStartPcap.h"
 #include "fboss/cli/fboss2/commands/start/port/CmdStartPort.h"
@@ -129,6 +132,14 @@ const CommandTree& kCommandTree() {
          commandHandler<CmdConfigGenAgent>,
          argTypeHandler<CmdConfigGenAgentTraits>,
          localOptionsHandler<CmdConfigGenAgentTraits>}}},
+
+      {"reload",
+       "config",
+       "Reload binary configuration file",
+       {{"agent",
+         "Reload the agent config",
+         commandHandler<CmdReloadConfigAgent>,
+         argTypeHandler<CmdReloadConfigAgentTraits>}}},
 
       {"show",
        "acl",
@@ -398,6 +409,17 @@ const CommandTree& kCommandTree() {
             commandHandler<CmdShowInterfaceTransceiver>,
             argTypeHandler<CmdShowInterfaceTransceiverTraits>,
             {
+                {"eeprom",
+                 "Read transceiver EEPROM registers",
+                 commandHandler<CmdShowInterfaceTransceiverEeprom>,
+                 argTypeHandler<CmdShowInterfaceTransceiverEepromTraits>,
+                 {
+                     {"dump",
+                      "Dump all diagnostic EEPROM pages",
+                      commandHandler<CmdShowInterfaceTransceiverEepromDump>,
+                      argTypeHandler<
+                          CmdShowInterfaceTransceiverEepromDumpTraits>},
+                 }},
                 {"performance-monitoring",
                  "Show transceiver VDM performance monitoring stats",
                  commandHandler<
@@ -411,15 +433,7 @@ const CommandTree& kCommandTree() {
        "Show Transceiver information",
        commandHandler<CmdShowTransceiver>,
        argTypeHandler<CmdShowTransceiverTraits>,
-       {{"eeprom",
-         "Read transceiver EEPROM registers",
-         commandHandler<CmdShowTransceiverEeprom>,
-         argTypeHandler<CmdShowTransceiverEepromTraits>,
-         {{"dump",
-           "Dump all EEPROM pages (3 iterations with 2s delay)",
-           commandHandler<CmdShowTransceiverEepromDump>,
-           argTypeHandler<CmdShowTransceiverEepromDumpTraits>}}},
-        {"loopback",
+       {{"loopback",
          "Show transceiver loopback capability and state",
          commandHandler<CmdShowTransceiverLoopback>,
          argTypeHandler<CmdShowTransceiverLoopbackTraits>}}},
@@ -460,6 +474,12 @@ const CommandTree& kCommandTree() {
        "Show mirror",
        commandHandler<CmdShowMirror>,
        argTypeHandler<CmdShowMirrorTraits>},
+
+      {"show",
+       "my-mac",
+       "Show MY_MAC entries",
+       commandHandler<CmdShowMyMac>,
+       argTypeHandler<CmdShowMyMacTraits>},
 
       {"show",
        "mysid",
@@ -596,11 +616,6 @@ const CommandTree& kCommandTree() {
        commandHandler<CmdBounceInterface>,
        argTypeHandler<CmdBounceInterfaceTraits>,
        localOptionsHandler<CmdBounceInterfaceTraits>},
-      {"set",
-       "fanhold",
-       "Set fan hold PWM",
-       commandHandler<CmdSetFanHold>,
-       argTypeHandler<CmdSetFanHoldTraits>},
       {
           "set",
           "interface",
@@ -622,6 +637,13 @@ const CommandTree& kCommandTree() {
                "Set loopback mode: <component> <enable|disable>",
                commandHandler<CmdSetInterfaceLoopback>,
                argRegistrar<CmdSetInterfaceLoopbackTraits>,
+           },
+           {
+               "admin-state",
+               "Set XPHY admin state: <xphy_system|xphy_line> <enable|disable>",
+               commandHandler<CmdSetInterfaceAdminState>,
+               argRegistrar<CmdSetInterfaceAdminStateTraits>,
+               localOptionsHandler<CmdSetInterfaceAdminStateTraits>,
            }},
       },
       {"set",
@@ -693,6 +715,12 @@ const CommandTree& kCommandTree() {
          "Show Product Detail Information",
          commandHandler<CmdShowProductDetails>,
          argTypeHandler<CmdShowProductDetailsTraits>}}},
+
+      {"show",
+       "reboot-history",
+       "Show the switch's reboot history and causes",
+       commandHandler<CmdShowRebootHistory>,
+       argTypeHandler<CmdShowRebootHistoryTraits>},
 
       {"stream",
        "fsdb",

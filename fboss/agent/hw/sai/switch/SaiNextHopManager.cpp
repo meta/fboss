@@ -99,13 +99,26 @@ SaiNextHopTraits::AdapterHostKey SaiNextHopManager::getAdapterHostKey(
   if (LabelForwardingAction::LabelForwardingType::SWAP ==
       labelForwardingAction->type()) {
     labels.push_back(swNextHop.labelForwardingAction()->swapWith().value());
-    return SaiMplsNextHopTraits::AdapterHostKey{rifId, ip, labels};
+    return SaiMplsNextHopTraits::AdapterHostKey{
+        rifId, ip, labels, SAI_OUTSEG_TYPE_SWAP};
   }
   for (auto label : labelForwardingAction->pushStack().value()) {
     labels.push_back(label);
   }
 
-  return SaiMplsNextHopTraits::AdapterHostKey{rifId, ip, labels};
+  /*
+   * Only a push action reaches here, so PUSH is the value we want. Where the
+   * asic does not honour the attribute we key on SWAP and send nothing at
+   * create time, so the key matches the swap next hop the adapter creates.
+   * gibraltar accepts the attribute on create but does not return it on get,
+   * so a PUSH key there disagrees with what warm boot reads back and the
+   * store churns the object.
+   */
+  const auto outsegType = platform_->getAsic()->isSupported(
+                              HwAsic::Feature::SAI_MPLS_NEXTHOP_OUTSEG_TYPE)
+      ? SAI_OUTSEG_TYPE_PUSH
+      : SAI_OUTSEG_TYPE_SWAP;
+  return SaiMplsNextHopTraits::AdapterHostKey{rifId, ip, labels, outsegType};
 }
 
 #if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)
@@ -308,12 +321,22 @@ void ManagedNextHop<NextHopTraits>::createObject(PublishedObjects added) {
          std::nullopt});
 
   } else if constexpr (std::is_same_v<NextHopTraits, SaiMplsNextHopTraits>) {
+    // Withhold the attribute entirely where the asic does not honour it: an
+    // implementation that does not fails next hop create rather than ignoring
+    // it, and the key is kept on SWAP to match in that case.
+    std::optional<typename NextHopTraits::Attributes::OutsegType> outsegType{};
+    if (manager_->getPlatform()->getAsic()->isSupported(
+            HwAsic::Feature::SAI_MPLS_NEXTHOP_OUTSEG_TYPE)) {
+      outsegType = std::get<
+          std::optional<typename NextHopTraits::Attributes::OutsegType>>(key_);
+    }
     object = manager_->createSaiObject<NextHopTraits>(
         key_,
         {SAI_NEXT_HOP_TYPE_MPLS,
          std::get<typename NextHopTraits::Attributes::RouterInterfaceId>(key_),
          std::get<typename NextHopTraits::Attributes::Ip>(key_),
          std::get<typename NextHopTraits::Attributes::LabelStack>(key_),
+         outsegType,
          std::nullopt});
   }
 #if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)

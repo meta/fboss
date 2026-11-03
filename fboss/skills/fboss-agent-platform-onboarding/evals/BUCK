@@ -1,0 +1,9 @@
+load("@fbcode_macros//build_defs:python_library.bzl", "python_library")
+
+oncall("fboss_agent")
+
+python_library(
+    name = "eval_criteria",
+    srcs = ["eval_criteria.yaml"],
+    labels = ["autodeps2_generated"],
+)

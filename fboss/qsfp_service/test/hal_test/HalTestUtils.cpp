@@ -11,7 +11,6 @@
 
 #include <folly/Conv.h>
 #include <folly/FileUtil.h>
-#include <folly/Format.h>
 #include <folly/logging/xlog.h>
 #include <thrift/lib/cpp2/protocol/Serializer.h>
 
@@ -32,7 +31,6 @@ namespace {
 // config generates (configerator
 // neteng/fboss/lab/config/link_test/qsfp_test_config.cinc).
 constexpr int32_t kZrTxPower0P01Dbm = -200; // -2.00 dBm
-constexpr int32_t kZrAppSelCode = 5;
 // C-Band spans 191.375 - 196.025 THz and L-Band 186.125 - 190.775 THz. A HAL
 // test only needs some valid in-band channel, so take the first of each.
 constexpr int32_t kZrCBandFrequencyMhz = 191375000;
@@ -142,14 +140,16 @@ std::unique_ptr<BspTransceiverImpl> createBspTransceiverImpl(
 
 HalTestModule createQsfpModule(
     const HalTestTransceiverEntry& entry,
-    const BspPlatformMapping* bspMapping) {
+    const BspPlatformMapping* bspMapping,
+    const std::map<std::string, std::string>& fwHandleMap) {
   HalTestModule result;
   result.impl = createBspTransceiverImpl(entry, bspMapping);
 
   std::set<std::string> portNames;
   portNames.insert(*entry.name());
 
-  auto cfg = std::make_shared<const TransceiverConfig>(TransceiverOverrides{});
+  auto cfg = std::make_shared<const TransceiverConfig>(
+      TransceiverOverrides{}, fwHandleMap);
 
   result.module = std::make_unique<CmisModule>(
       std::move(portNames),
@@ -191,7 +191,8 @@ std::map<int, HalTestModule> createAllQsfpModules(const HalTestConfig& config) {
   std::map<int, HalTestModule> modules;
   for (const auto& entry : *config.transceivers()) {
     int id = *entry.id();
-    modules[id] = createQsfpModule(entry, bspMapping.get());
+    modules[id] =
+        createQsfpModule(entry, bspMapping.get(), *config.fwHandleMap());
   }
   return modules;
 }
@@ -218,7 +219,7 @@ ProgramTransceiverState createProgramTransceiverState(
     portState.numHostLanes = static_cast<uint8_t>(*port.hostLanes()->count());
     state.ports.emplace(portState.portName, portState);
   }
-  applyTunableOpticsConfig(module, state);
+  applyTunableOpticsConfig(module, state, combo);
   return state;
 }
 
@@ -288,7 +289,6 @@ std::optional<cfg::OpticalChannelConfig> makeTunableOpticsConfig(
   cfg::OpticalChannelConfig config;
   config.frequencyConfig() = frequency;
   config.txPower0P01Dbm() = kZrTxPower0P01Dbm;
-  config.appSelCode() = kZrAppSelCode;
 
   XLOG(INFO) << "Module " << module->getID()
              << ": built tunable optics config, band="
@@ -297,15 +297,82 @@ std::optional<cfg::OpticalChannelConfig> makeTunableOpticsConfig(
   return config;
 }
 
+std::optional<uint8_t> lookupAppSelCode(
+    QsfpModule* module,
+    const PortSpeedConfig& port) {
+  auto* cmis = dynamic_cast<CmisModule*>(module);
+  if (cmis == nullptr) {
+    return std::nullopt;
+  }
+  const auto mediaCode = static_cast<uint8_t>(
+      extractFromMediaInterfaceUnion<SMFMediaInterfaceCode>(
+          *port.mediaLaneCode()));
+  const auto hostLaneCount = static_cast<uint8_t>(*port.hostLanes()->count());
+  const auto startHostLane = static_cast<uint8_t>(
+      *port.hostLanes()->start() % CmisModule::kMaxOsfpNumLanes);
+  for (const auto& capability : cmis->getModuleCapabilities()) {
+    const auto& startLanes = capability.hostStartLanes;
+    if (capability.moduleMediaInterface == mediaCode &&
+        capability.hostLaneCount == hostLaneCount &&
+        std::find(startLanes.begin(), startLanes.end(), startHostLane) !=
+            startLanes.end()) {
+      return capability.ApSelCode;
+    }
+  }
+  return std::nullopt;
+}
+
+uint8_t findAppSelCode(QsfpModule* module, const PortSpeedConfig& port) {
+  if (auto appSelCode = lookupAppSelCode(module, port)) {
+    return *appSelCode;
+  }
+  throw FbossError(
+      "Module ",
+      module->getID(),
+      fmt::format(
+          " does not advertise media interface {:#x} with {} host lanes "
+          "starting at lane {}",
+          static_cast<uint8_t>(
+              extractFromMediaInterfaceUnion<SMFMediaInterfaceCode>(
+                  *port.mediaLaneCode())),
+          *port.hostLanes()->count(),
+          *port.hostLanes()->start() % CmisModule::kMaxOsfpNumLanes));
+}
+
+bool moduleAdvertisesCombo(QsfpModule* module, const SpeedCombination& combo) {
+  return std::all_of(
+      combo.ports()->begin(), combo.ports()->end(), [module](const auto& port) {
+        return lookupAppSelCode(module, port).has_value();
+      });
+}
+
 bool applyTunableOpticsConfig(
     QsfpModule* module,
-    ProgramTransceiverState& state) {
+    ProgramTransceiverState& state,
+    const SpeedCombination& combo) {
   auto config = makeTunableOpticsConfig(module);
   if (!config.has_value()) {
     return false;
   }
-  for (auto& [_, portState] : state.ports) {
-    portState.opticalChannelConfig = config;
+  std::map<uint8_t, uint8_t> startHostLaneToAppSel;
+  for (const auto& port : *combo.ports()) {
+    startHostLaneToAppSel[*port.hostLanes()->start()] =
+        findAppSelCode(module, port);
+  }
+  for (auto& [portName, portState] : state.ports) {
+    auto portConfig = *config;
+    portConfig.appSelCode() = startHostLaneToAppSel.at(portState.startHostLane);
+    portState.opticalChannelConfig = portConfig;
+    const auto configJson =
+        apache::thrift::SimpleJSONSerializer::serialize<std::string>(
+            portConfig);
+    XLOG(INFO) << "Module " << module->getID() << ": applying tunable optics "
+               << "config to port " << portName << " (speed "
+               << apache::thrift::util::enumNameSafe(portState.speed)
+               << ", startHostLane "
+               << static_cast<int>(portState.startHostLane) << ", numHostLanes "
+               << static_cast<int>(portState.numHostLanes)
+               << "): " << configJson;
   }
   return true;
 }

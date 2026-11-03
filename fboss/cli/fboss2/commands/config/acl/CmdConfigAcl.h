@@ -34,7 +34,8 @@ class CmdConfigAcl : public CmdHandler<CmdConfigAcl, CmdConfigAclTraits> {
 
   RetType queryClient(const HostInfo& /* hostInfo */) {
     throw std::runtime_error(
-        "Incomplete command, please use a subcommand (e.g. 'rule')");
+        "Incomplete command, please use a subcommand: "
+        "'rule', 'table' or 'table-group'");
   }
 
   void printOutput(const RetType& /* model */) {}

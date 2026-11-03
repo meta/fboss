@@ -10,7 +10,8 @@
 
 namespace facebook::fboss {
 class FabricLinkMonitoringManager;
-}
+class SwSwitch;
+} // namespace facebook::fboss
 
 namespace facebook::fboss::utility {
 
@@ -63,6 +64,14 @@ std::map<PortID, std::pair<int64_t, int64_t>> collectFabricLinkMonitoringStats(
 // Returns true if all ports have incremented counters, false otherwise.
 bool allPortsHaveFabricLinkMonitoringCounterIncrements(
     FabricLinkMonitoringManager* mgr,
+    const std::vector<PortID>& fabricPorts,
+    const std::map<PortID, std::pair<int64_t, int64_t>>& initialStats,
+    size_t numPortsToCheck,
+    int64_t minIncrement = kFabricLinkMonitoringMinCounterIncrement);
+
+// Validates the assembled FSDB payload without requiring an FSDB server.
+bool allPortsHaveFabricLinkMonitoringFsdbStats(
+    SwSwitch* sw,
     const std::vector<PortID>& fabricPorts,
     const std::map<PortID, std::pair<int64_t, int64_t>>& initialStats,
     size_t numPortsToCheck,

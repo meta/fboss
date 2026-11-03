@@ -1,0 +1,20 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+# Licensed under the BSD-style license found in the LICENSE file in this tree.
+[Unit]
+Description=OSS BGP++ for FBOSS Simulator
+After=fboss_sw_agent.service fboss_hw_agent@0.service
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/bgp
+Environment="LD_LIBRARY_PATH=/opt/bgp/lib:/opt/bgp/lib64"
+ExecStart=/opt/bgp/bin/bgp --config=/etc/coop/bgpcpp.conf --platform=fboss --thrift_port=6909 --stream_port=6910
+Restart=on-failure
+RestartSec=1
+TimeoutStopSec=15
+StandardOutput=append:/var/facebook/logs/bgp/bgpd.log
+StandardError=append:/var/facebook/logs/bgp/bgpd.log
+
+[Install]
+WantedBy=multi-user.target

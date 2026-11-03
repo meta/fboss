@@ -8,7 +8,10 @@ cpp_library(
     name = "drop_reason_utils",
     srcs = ["DropReasonUtils.cpp"],
     headers = ["DropReasonUtils.h"],
-    deps = ["//folly/logging:logging"],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        "//folly/logging:logging",
+    ],
     exported_deps = [],
 )
 

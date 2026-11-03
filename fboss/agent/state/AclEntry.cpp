@@ -120,6 +120,9 @@ std::set<cfg::AclTableQualifier> AclEntry::getRequiredAclTableQualifiers()
   if (getLookupClassPort()) {
     qualifiers.insert(cfg::AclTableQualifier::LOOKUP_CLASS_PORT);
   }
+  if (getMplsLabel0Ttl()) {
+    qualifiers.insert(cfg::AclTableQualifier::MPLS_LABEL0_TTL);
+  }
   if (getPacketLookupResult()) {
     // TODO: add qualifier in AclTableQualifier enum
   }

@@ -42,7 +42,7 @@ SaiFakePlatform::SaiFakePlatform(
 void SaiFakePlatform::setupAsic(
     std::optional<int64_t> switchId,
     const cfg::SwitchInfo& switchInfo,
-    std::optional<HwAsic::FabricNodeRole> fabricNodeRole) {
+    std::optional<HwAsic::FabricNodeRole> /* fabricNodeRole */) {
   asic_ = std::make_unique<FakeAsic>(switchId, switchInfo);
 }
 

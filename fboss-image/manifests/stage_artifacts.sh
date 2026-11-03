@@ -37,6 +37,7 @@ All options are required:
   --fsdb PATH       Path to fsdb_fboss_bins.tar.zst
   --qsfp PATH       Path to qsfp_fboss_bins.tar.zst
   --fboss2 PATH     Path to fboss2_fboss_bins.tar.zst
+  --led PATH        Path to led_fboss_bins.tar.zst
   -h, --help        Show this help message
 EOF
     exit 1
@@ -49,6 +50,7 @@ AGENT=""
 FSDB=""
 QSFP=""
 FBOSS2=""
+LED=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -59,6 +61,7 @@ while [[ $# -gt 0 ]]; do
         --fsdb)     FSDB="$2"; shift 2 ;;
         --qsfp)     QSFP="$2"; shift 2 ;;
         --fboss2)   FBOSS2="$2"; shift 2 ;;
+        --led)      LED="$2"; shift 2 ;;
         -h|--help)  usage ;;
         *)          echo "Error: Unknown option: $1"; usage ;;
     esac
@@ -73,6 +76,7 @@ missing=()
 [[ -z "$FSDB" ]]     && missing+=("--fsdb")
 [[ -z "$QSFP" ]]     && missing+=("--qsfp")
 [[ -z "$FBOSS2" ]]   && missing+=("--fboss2")
+[[ -z "$LED" ]]      && missing+=("--led")
 
 if [[ ${#missing[@]} -gt 0 ]]; then
     echo "Error: Missing required arguments: ${missing[*]}"
@@ -82,7 +86,7 @@ fi
 
 # Use parallel arrays to avoid duplicate-key issues with associative arrays
 # (if two args point to the same source path, both must still be staged)
-SRCS=("$PLATFORM" "$BSP" "$SAI" "$AGENT" "$FSDB" "$QSFP" "$FBOSS2")
+SRCS=("$PLATFORM" "$BSP" "$SAI" "$AGENT" "$FSDB" "$QSFP" "$FBOSS2" "$LED")
 DESTS=(
     "platform_fboss_bins.tar.zst"
     "fboss_bsp_kmods.tar"
@@ -91,6 +95,7 @@ DESTS=(
     "fsdb_fboss_bins.tar.zst"
     "qsfp_fboss_bins.tar.zst"
     "fboss2_fboss_bins.tar.zst"
+    "led_fboss_bins.tar.zst"
 )
 
 # Validate all source files exist

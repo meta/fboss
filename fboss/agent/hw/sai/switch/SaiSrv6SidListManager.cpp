@@ -26,10 +26,16 @@ ManagedSrv6SidList::ManagedSrv6SidList(
     : Base(std::move(nexthopKey)),
       manager_(manager),
       sidListKey_(std::move(sidListKey)),
-      attrs_(std::move(attrs)),
-      sidList_(saiStore->get<SaiSrv6SidListTraits>().setObject(
-          sidListKey_,
-          attrs_)) {}
+      attrs_(std::move(attrs)) {
+  using NextHopIdAttr =
+      std::optional<SaiSrv6SidListTraits::Attributes::NextHopId>;
+  auto& store = saiStore->get<SaiSrv6SidListTraits>();
+  if (auto wbSidList = store.getWarmbootHandle(sidListKey_)) {
+    std::get<NextHopIdAttr>(attrs_) =
+        std::get<NextHopIdAttr>(wbSidList->attributes());
+  }
+  sidList_ = store.setObject(sidListKey_, attrs_);
+}
 
 std::shared_ptr<SaiSrv6SidListHandle>
 SaiSrv6SidListManager::addOrReuseSrv6SidList(

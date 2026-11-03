@@ -36,6 +36,8 @@ class AgentPortBoundIngressAclTest : public AgentHwTest {
   }
 
  protected:
+  enum class L4Protocol { UDP, TCP };
+
   cfg::SwitchConfig initialConfig(
       const AgentEnsemble& ensemble) const override {
     return utility::onePortPerInterfaceConfig(
@@ -149,22 +151,36 @@ class AgentPortBoundIngressAclTest : public AgentHwTest {
     applyNewConfig(config);
   }
 
-  void sendPacket(PortID ingressPort, uint16_t l4DstPort) {
+  void sendPacket(
+      PortID ingressPort,
+      uint16_t l4DstPort,
+      L4Protocol protocol = L4Protocol::UDP) {
     auto vlanId = getVlanIDForTx();
     auto intfMac =
         getMacForFirstInterfaceWithPortsForTesting(getProgrammedState());
     auto srcMac = utility::MacAddressGenerator().get(intfMac.u64HBO() + 1);
-    auto packet = utility::makeUDPTxPacket(
-        getSw(),
-        vlanId,
-        srcMac,
-        intfMac,
-        folly::IPAddressV6(kSrcIp),
-        folly::IPAddressV6(kDstIp),
-        kL4SrcPort,
-        l4DstPort,
-        0,
-        255);
+    auto packet = protocol == L4Protocol::UDP ? utility::makeUDPTxPacket(
+                                                    getSw(),
+                                                    vlanId,
+                                                    srcMac,
+                                                    intfMac,
+                                                    folly::IPAddressV6(kSrcIp),
+                                                    folly::IPAddressV6(kDstIp),
+                                                    kL4SrcPort,
+                                                    l4DstPort,
+                                                    0,
+                                                    255)
+                                              : utility::makeTCPTxPacket(
+                                                    getSw(),
+                                                    vlanId,
+                                                    srcMac,
+                                                    intfMac,
+                                                    folly::IPAddressV6(kSrcIp),
+                                                    folly::IPAddressV6(kDstIp),
+                                                    kL4SrcPort,
+                                                    l4DstPort,
+                                                    0,
+                                                    255);
     getSw()->sendPacketOutOfPortAsync(std::move(packet), ingressPort);
   }
 
@@ -181,7 +197,8 @@ class AgentPortBoundIngressAclTest : public AgentHwTest {
       uint16_t l4DstPort,
       const std::string& permitCounterName,
       const std::string& denyCounterName,
-      bool expectPermit) {
+      bool expectPermit,
+      L4Protocol protocol = L4Protocol::UDP) {
     const auto egressPort = masterLogicalPortIds()[0];
     const auto permitCounterBefore =
         utility::getAclInOutPackets(getSw(), permitCounterName);
@@ -190,12 +207,12 @@ class AgentPortBoundIngressAclTest : public AgentHwTest {
     const auto egressPacketsBefore =
         getPortCounter(egressPort, kOutUnicastPktsCounterName);
 
-    XLOG(INFO) << "[PortBoundIngressAcl][" << caseName
-               << "] Sending IPv6 UDP packet " << kSrcIp << ":" << kL4SrcPort
-               << " -> " << kDstIp << ":" << l4DstPort << " on ingress port "
-               << ingressPort << "; expected "
-               << (expectPermit ? "PERMIT" : "DROP");
-    sendPacket(ingressPort, l4DstPort);
+    XLOG(INFO) << "[PortBoundIngressAcl][" << caseName << "] Sending IPv6 "
+               << (protocol == L4Protocol::UDP ? "UDP" : "TCP") << " packet "
+               << kSrcIp << ":" << kL4SrcPort << " -> " << kDstIp << ":"
+               << l4DstPort << " on ingress port " << ingressPort
+               << "; expected " << (expectPermit ? "PERMIT" : "DROP");
+    sendPacket(ingressPort, l4DstPort, protocol);
     WITH_RETRIES({
       if (expectPermit) {
         EXPECT_EVENTUALLY_GE(
@@ -362,6 +379,47 @@ class AgentPortBoundIngressAclTest : public AgentHwTest {
                << " to " << kBlockAclTableName << " and removing "
                << kRestrictAclTableName << " in the same config update";
     applyNewConfig(config);
+  }
+
+  void addProtocolQualifierToRestrictAclTable() {
+    auto config = getAgentEnsemble()->getCurrentConfig();
+    cfg::AclTable* restrictAclTable{nullptr};
+    for (auto& aclTableGroup : *config.aclTableGroups()) {
+      if (*aclTableGroup.name() != kAclTableGroupName) {
+        continue;
+      }
+      for (auto& aclTable : *aclTableGroup.aclTables()) {
+        if (*aclTable.name() == kRestrictAclTableName) {
+          restrictAclTable = &aclTable;
+          break;
+        }
+      }
+    }
+    CHECK(restrictAclTable);
+    restrictAclTable->qualifiers() = {
+        cfg::AclTableQualifier::IP_PROTOCOL_NUMBER,
+        cfg::AclTableQualifier::L4_DST_PORT};
+
+    auto permitAcl = std::find_if(
+        restrictAclTable->aclEntries()->begin(),
+        restrictAclTable->aclEntries()->end(),
+        [](const auto& acl) { return *acl.name() == kRestrictPermitAclName; });
+    CHECK(permitAcl != restrictAclTable->aclEntries()->end());
+    permitAcl->proto() = 17;
+
+    XLOG(INFO) << "[PortBoundIngressAclQualifierChange] Adding the IP protocol "
+                  "qualifier to "
+               << kRestrictAclTableName << " while it remains bound to port "
+               << masterLogicalPortIds()[1];
+    applyNewConfig(config);
+
+    // Wait for stats from the replacement table before measuring traffic.
+    WITH_RETRIES({
+      EXPECT_EVENTUALLY_EQ(
+          utility::getAclInOutPackets(getSw(), kRestrictPermitCounterName), 0);
+      EXPECT_EVENTUALLY_EQ(
+          utility::getAclInOutPackets(getSw(), kRestrictDenyCounterName), 0);
+    });
   }
 
   void verifyPortUsesBlockAclTable(PortID ingressPort) {
@@ -612,7 +670,9 @@ TEST_F(AgentPortBoundIngressAclTest, VerifyPortBoundAclAfterPortRecreate) {
     auto config = getAgentEnsemble()->getCurrentConfig();
     for (const auto& port : {restrictPort, blockPort}) {
       const auto portConfig = utility::findCfgPort(config, port);
-      ASSERT_TRUE(portConfig->profileID().has_value());
+      ASSERT_TRUE(
+          apache::thrift::is_non_optional_field_set_manually_or_by_serializer(
+              portConfig->profileID()));
       ASSERT_TRUE(portConfig->ingressAclTableName().has_value());
       XLOG(INFO) << "[PortBoundIngressAclRecreate] Changing port " << port
                  << " from profile "
@@ -660,6 +720,48 @@ TEST_F(
     replaceRestrictAclTableWithBlockAclTable();
   };
   auto verifyPostWarmboot = [this]() { verifyReplacement(); };
+
+  verifyAcrossWarmBoots(setup, verify, setupPostWarmboot, verifyPostWarmboot);
+}
+
+// Adding a qualifier recreates the bound SAI ACL table. UDP/53 remains
+// permitted, while TCP/53 stops matching the now UDP-specific permit entry.
+TEST_F(AgentPortBoundIngressAclTest, VerifyPortBoundAclTableQualifierChange) {
+  const auto restrictPort = masterLogicalPortIds()[1];
+  auto setup = [=, this]() {
+    setupL3Forwarding();
+    configurePortBoundAcl({restrictPort}, masterLogicalPortIds()[2]);
+  };
+  auto verify = [=, this]() {
+    verifyAclPacket(
+        "Before qualifier change TCP/53",
+        restrictPort,
+        kRestrictPermitL4DstPort,
+        kRestrictPermitCounterName,
+        kRestrictDenyCounterName,
+        true,
+        L4Protocol::TCP);
+  };
+  auto setupPostWarmboot = [this]() {
+    addProtocolQualifierToRestrictAclTable();
+  };
+  auto verifyPostWarmboot = [=, this]() {
+    verifyAclPacket(
+        "After qualifier change UDP/53",
+        restrictPort,
+        kRestrictPermitL4DstPort,
+        kRestrictPermitCounterName,
+        kRestrictDenyCounterName,
+        true);
+    verifyAclPacket(
+        "After qualifier change TCP/53",
+        restrictPort,
+        kRestrictPermitL4DstPort,
+        kRestrictPermitCounterName,
+        kRestrictDenyCounterName,
+        false,
+        L4Protocol::TCP);
+  };
 
   verifyAcrossWarmBoots(setup, verify, setupPostWarmboot, verifyPostWarmboot);
 }

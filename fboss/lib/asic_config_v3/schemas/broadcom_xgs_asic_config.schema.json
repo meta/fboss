@@ -1,5 +1,6 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://github.com/meta/fboss/blob/main/fboss/lib/asic_config_v3/schemas/broadcom_xgs_asic_config.schema.json",
     "title": "Broadcom XGS ASIC Config",
     "description": "Per-ASIC configuration defining the chip's port architecture, output table layout, and SDK / SAI default settings used by the asic_config_v3 generator.",
     "type": "object",
@@ -204,74 +205,7 @@
             "type": "array",
             "description": "Declarative conditional settings. Each entry is evaluated against the variant config; matching entries are applied to the named output tables.",
             "items": {
-                "$ref": "#/$defs/conditional_setting"
-            }
-        }
-    },
-    "$defs": {
-        "conditional_setting": {
-            "type": "object",
-            "required": ["name", "condition"],
-            "additionalProperties": false,
-            "properties": {
-                "name": {
-                    "type": "string",
-                    "description": "Identifier for this conditional setting; must be unique within the surrounding list."
-                },
-                "description": {
-                    "type": "string",
-                    "description": "Free-form description of the conditional setting and the configuration it produces."
-                },
-                "condition": {
-                    "type": "object",
-                    "required": ["source", "param", "equals"],
-                    "additionalProperties": false,
-                    "properties": {
-                        "source": {
-                            "type": "string",
-                            "enum": ["asic_config_params", "features"],
-                            "description": "Variant-config section holding the parameter to evaluate."
-                        },
-                        "param": {
-                            "type": "string",
-                            "description": "Name of the parameter to compare."
-                        },
-                        "equals": {
-                            "description": "Expected value; the condition is satisfied when the parameter equals this value."
-                        }
-                    }
-                },
-                "apply": {
-                    "type": "object",
-                    "description": "Inline settings applied when the condition is satisfied. Keyed by target output table name.",
-                    "additionalProperties": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "type": ["integer", "string"]
-                        }
-                    }
-                },
-                "apply_from": {
-                    "type": "object",
-                    "description": "Reference to a data block elsewhere in this ASIC config. The named source block is copied into the named target table when the condition is satisfied.",
-                    "required": ["source", "target_table"],
-                    "additionalProperties": false,
-                    "properties": {
-                        "source": {
-                            "type": "string"
-                        },
-                        "target_table": {
-                            "type": "string"
-                        }
-                    }
-                },
-                "skip_from_sai_common": {
-                    "type": "array",
-                    "description": "Keys to omit from the vendor sai_common block when this condition is satisfied.",
-                    "items": {
-                        "type": "string"
-                    }
-                }
+                "$ref": "https://github.com/meta/fboss/blob/main/fboss/lib/asic_config_v3/schemas/conditional_setting.schema.json#/$defs/conditional_setting"
             }
         }
     }

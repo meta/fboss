@@ -65,6 +65,9 @@ struct CabledTestPair {
 struct QsfpTestConfig {
   1: list<CabledTestPair> cabledPortPairs;
   2: TransceiverFirmware firmwareForUpgradeTest;
+  // Maximum qsfp_service RSS (bytes) allowed at the end of each qsfp_hw_test.
+  // The check is skipped when unset.
+  3: optional i64 qsfpServiceMemLimitBytes;
 }
 
 enum FirmwareType {
@@ -127,6 +130,37 @@ struct OpticalChannelConfig {
   4: i32 rxConsActHoldOffTimerMs = 0;
 }
 
+enum TransceiverDspType {
+  MARVELL_SPICA_5NM = 1,
+  MARVELL_SPICA_PLUS = 2,
+  BRCM_GEMERA = 3,
+  BRCM_PORTOFINO = 4,
+  MARVELL_SPICA_GEN2 = 5,
+  // LPO (linear pluggable optics) modules have no DSP at all. Kept as an
+  // explicit type rather than omitting the module, so an LPO part resolves
+  // to a known zero delay instead of falling through as "unknown".
+  NO_DSP_LPO = 6,
+}
+
+struct TransceiverDspDelayInfo {
+  1: i32 txDelayNs;
+  2: i32 rxDelayNs;
+  3: i32 txErrorNs;
+  4: i32 rxErrorNs;
+}
+
+struct TransceiverDelayConstants {
+  // DSP type to delay values
+  1: map<TransceiverDspType, TransceiverDspDelayInfo> dspDelayMap;
+  // Transceiver MPN to DSP type
+  2: map<string, TransceiverDspType> mpnToDspMap;
+}
+
+// Only used by the deprecated QsfpServiceConfig field 11.
+struct TransceiverProperties {
+  1: optional TransceiverDelayConstants delayConstants;
+}
+
 struct QsfpServiceConfig {
   // This is used to override the default command line arguments we
   // pass to qsfp service.
@@ -163,4 +197,14 @@ struct QsfpServiceConfig {
   // Map of thrift API name to Rate limit in thrift API queries per second.
   // Methods not present in the map are not rate limited.
   10: map<string, double> thriftApiToRateLimitInQps = {};
+
+  // [DEPRECATED] fboss2 reads the transceiver catalog from configerator directly.
+  11: optional TransceiverProperties transceiverProperties_DEPRECATED;
+
+  // Platform mapping placeholder vendors (used in
+  // PlatformPortConfigOverrideFactor.vendor) and the real transceivers each
+  // stands for.
+  12: optional list<
+    transceiver.TransceiverVendorOverride
+  > transceiverVendorOverrides;
 }

@@ -345,6 +345,10 @@ std::map<std::string, HwPortStats> AgentEnsembleTest::getNextUpdatedHwPortStats(
         // clear the port stats between each retry
         portStats.clear();
         getSw()->getAllHwPortStats(portStats);
+        // Stats can be briefly empty right after warmboot
+        if (portStats.empty()) {
+          return false;
+        }
         // Since each port can have a unique timestamp, compare with the first
         // port
         if (*portStats.begin()->second.timestamp_() == timestamp) {
@@ -357,7 +361,7 @@ std::map<std::string, HwPortStats> AgentEnsembleTest::getNextUpdatedHwPortStats(
             return false;
           }
         }
-        return !portStats.empty();
+        return true;
       },
       120,
       std::chrono::milliseconds(1000),

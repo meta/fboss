@@ -10,6 +10,7 @@
 #pragma once
 
 #include <chrono>
+#include <optional>
 
 #include "fboss/agent/if/gen-cpp2/FbossCtrl.h"
 #include "fboss/agent/if/gen-cpp2/FbossHwCtrl.h"
@@ -64,6 +65,21 @@ createBgpClient(const HostInfo& hostInfo);
 MultiSwitchRunState getMultiSwitchRunState(const HostInfo& hostInfo);
 int getNumHwSwitches(const HostInfo& hostInfo);
 bool isMultiSwitchEnabled(const HostInfo& hostInfo);
+
+// OSS fb303 FacebookService has no getRegexExportedValues.
+#ifndef IS_OSS
+using HwAgentExportedValues =
+    std::map<int32_t, std::optional<std::map<std::string, std::string>>>;
+
+// Unreachable hw agents map to std::nullopt; empty result on mono switches.
+HwAgentExportedValues getHwAgentExportedValues(
+    const HostInfo& hostInfo,
+    const std::string& regex);
+HwAgentExportedValues getHwAgentExportedValues(
+    const HostInfo& hostInfo,
+    const MultiSwitchRunState& runState,
+    const std::string& regex);
+#endif
 
 void runOnAllHwAgents(const HostInfo& hostInfo, RunForHwAgentFn fn);
 void runOnAllHwAgents(const HostInfo& hostInfo, RunForAgentFn fn);

@@ -107,6 +107,52 @@ void validateTrafficClassToPgId(
   EXPECT_EQ(cfgStateTc2PgId, swStateTc2PgId);
 }
 
+void validateTrafficClassToVcId(
+    const cfg::QosPolicy& cfgQosPolicy,
+    std::shared_ptr<QosPolicy> swQosPolicy) {
+  const auto& qosMap = cfgQosPolicy.qosMap().value_or({});
+  // trafficClassToVcId is map<i16, i16>; keep the comparison signed so a
+  // negative value does not silently wrap on insertion.
+  std::set<std::pair<int16_t, int16_t>> cfgStateTc2VcId;
+  std::set<std::pair<int16_t, int16_t>> swStateTc2VcId;
+
+  if (qosMap.trafficClassToVcId()) {
+    for (auto entry : *qosMap.trafficClassToVcId()) {
+      cfgStateTc2VcId.emplace(entry.first, entry.second);
+    }
+  }
+
+  if (auto trafficClassToVcId = swQosPolicy->getTrafficClassToVcId()) {
+    for (auto entry : std::as_const(*trafficClassToVcId)) {
+      swStateTc2VcId.emplace(entry.first, entry.second->cref());
+    }
+  }
+  EXPECT_EQ(cfgStateTc2VcId, swStateTc2VcId);
+}
+
+void validateQueueToVcId(
+    const cfg::QosPolicy& cfgQosPolicy,
+    std::shared_ptr<QosPolicy> swQosPolicy) {
+  const auto& qosMap = cfgQosPolicy.qosMap().value_or({});
+  // queueToVcId is map<i16, i16>; keep the comparison signed so a negative
+  // value does not silently wrap on insertion.
+  std::set<std::pair<int16_t, int16_t>> cfgStateQueue2VcId;
+  std::set<std::pair<int16_t, int16_t>> swStateQueue2VcId;
+
+  if (qosMap.queueToVcId()) {
+    for (auto entry : *qosMap.queueToVcId()) {
+      cfgStateQueue2VcId.emplace(entry.first, entry.second);
+    }
+  }
+
+  if (auto queueToVcId = swQosPolicy->getQueueToVcId()) {
+    for (auto entry : std::as_const(*queueToVcId)) {
+      swStateQueue2VcId.emplace(entry.first, entry.second->cref());
+    }
+  }
+  EXPECT_EQ(cfgStateQueue2VcId, swStateQueue2VcId);
+}
+
 void validatePfcPriToPgId(
     const cfg::QosPolicy& cfgQosPolicy,
     std::shared_ptr<QosPolicy> swQosPolicy) {
@@ -172,6 +218,8 @@ void checkQosPolicy(
   validateTrafficClass(cfgQosPolicy, swQosPolicy);
   validatePfcPriToQueue(cfgQosPolicy, swQosPolicy);
   validateTrafficClassToPgId(cfgQosPolicy, swQosPolicy);
+  validateTrafficClassToVcId(cfgQosPolicy, swQosPolicy);
+  validateQueueToVcId(cfgQosPolicy, swQosPolicy);
   validatePfcPriToPgId(cfgQosPolicy, swQosPolicy);
   validatePcpMap(cfgQosPolicy, swQosPolicy);
 }
@@ -379,6 +427,126 @@ TEST(QosPolicy, EmptyRules) {
   cfg::QosPolicy p1;
   *p1.name() = "qosPolicy_1";
   *p1.rules() = dscpRules({{7, {}}});
+  config.qosPolicies()->push_back(p1);
+
+  EXPECT_THROW(
+      publishAndApplyConfig(stateV0, &config, platform.get()), FbossError);
+}
+
+TEST(QosPolicy, TrafficClassToVcIdApplied) {
+  cfg::SwitchConfig config;
+  auto platform = createMockPlatform();
+  auto stateV0 = make_shared<SwitchState>();
+
+  cfg::QosPolicy p1;
+  *p1.name() = "qosPolicy_1";
+  cfg::QosMap qosMap;
+  qosMap.dscpMaps() = {};
+  qosMap.trafficClassToQueueId() = {{0, 0}};
+  qosMap.trafficClassToVcId() = {{2, 2}, {6, 6}};
+  p1.qosMap() = qosMap;
+  config.qosPolicies()->push_back(p1);
+
+  auto stateV1 = publishAndApplyConfig(stateV0, &config, platform.get());
+  ASSERT_NE(nullptr, stateV1);
+
+  auto swQosPolicy = stateV1->getQosPolicies()->getNode("qosPolicy_1");
+  const std::map<int16_t, int16_t> expected{{2, 2}, {6, 6}};
+  EXPECT_EQ(swQosPolicy->getTrafficClassToVcId()->toThrift(), expected);
+}
+
+TEST(QosPolicy, TrafficClassToVcIdOutOfRange) {
+  cfg::SwitchConfig config;
+  auto platform = createMockPlatform();
+  auto stateV0 = make_shared<SwitchState>();
+
+  cfg::QosPolicy p1;
+  *p1.name() = "qosPolicy_1";
+  cfg::QosMap qosMap;
+  qosMap.dscpMaps() = {};
+  qosMap.trafficClassToQueueId() = {{0, 0}};
+  // PORT_VC_VALUE_MAX is 31; 32 is one past the last valid VC index.
+  qosMap.trafficClassToVcId() = {{2, 32}};
+  p1.qosMap() = qosMap;
+  config.qosPolicies()->push_back(p1);
+
+  EXPECT_THROW(
+      publishAndApplyConfig(stateV0, &config, platform.get()), FbossError);
+}
+
+TEST(QosPolicy, TrafficClassToVcIdNegative) {
+  cfg::SwitchConfig config;
+  auto platform = createMockPlatform();
+  auto stateV0 = make_shared<SwitchState>();
+
+  cfg::QosPolicy p1;
+  *p1.name() = "qosPolicy_1";
+  cfg::QosMap qosMap;
+  qosMap.dscpMaps() = {};
+  qosMap.trafficClassToQueueId() = {{0, 0}};
+  // map<i16, i16> is signed, so a negative vc id is representable.
+  qosMap.trafficClassToVcId() = {{2, -1}};
+  p1.qosMap() = qosMap;
+  config.qosPolicies()->push_back(p1);
+
+  EXPECT_THROW(
+      publishAndApplyConfig(stateV0, &config, platform.get()), FbossError);
+}
+
+TEST(QosPolicy, QueueToVcIdApplied) {
+  cfg::SwitchConfig config;
+  auto platform = createMockPlatform();
+  auto stateV0 = make_shared<SwitchState>();
+
+  cfg::QosPolicy p1;
+  *p1.name() = "qosPolicy_1";
+  cfg::QosMap qosMap;
+  qosMap.dscpMaps() = {};
+  qosMap.trafficClassToQueueId() = {{0, 0}};
+  qosMap.queueToVcId() = {{2, 2}, {6, 6}};
+  p1.qosMap() = qosMap;
+  config.qosPolicies()->push_back(p1);
+
+  auto stateV1 = publishAndApplyConfig(stateV0, &config, platform.get());
+  ASSERT_NE(nullptr, stateV1);
+
+  auto swQosPolicy = stateV1->getQosPolicies()->getNode("qosPolicy_1");
+  const std::map<int16_t, int16_t> expected{{2, 2}, {6, 6}};
+  EXPECT_EQ(swQosPolicy->getQueueToVcId()->toThrift(), expected);
+}
+
+TEST(QosPolicy, QueueToVcIdOutOfRange) {
+  cfg::SwitchConfig config;
+  auto platform = createMockPlatform();
+  auto stateV0 = make_shared<SwitchState>();
+
+  cfg::QosPolicy p1;
+  *p1.name() = "qosPolicy_1";
+  cfg::QosMap qosMap;
+  qosMap.dscpMaps() = {};
+  qosMap.trafficClassToQueueId() = {{0, 0}};
+  // PORT_VC_VALUE_MAX is 31; 32 is one past the last valid VC index.
+  qosMap.queueToVcId() = {{2, 32}};
+  p1.qosMap() = qosMap;
+  config.qosPolicies()->push_back(p1);
+
+  EXPECT_THROW(
+      publishAndApplyConfig(stateV0, &config, platform.get()), FbossError);
+}
+
+TEST(QosPolicy, QueueToVcIdNegative) {
+  cfg::SwitchConfig config;
+  auto platform = createMockPlatform();
+  auto stateV0 = make_shared<SwitchState>();
+
+  cfg::QosPolicy p1;
+  *p1.name() = "qosPolicy_1";
+  cfg::QosMap qosMap;
+  qosMap.dscpMaps() = {};
+  qosMap.trafficClassToQueueId() = {{0, 0}};
+  // map<i16, i16> is signed, so a negative vc id is representable.
+  qosMap.queueToVcId() = {{2, -1}};
+  p1.qosMap() = qosMap;
   config.qosPolicies()->push_back(p1);
 
   EXPECT_THROW(

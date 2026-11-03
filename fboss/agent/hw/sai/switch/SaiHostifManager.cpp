@@ -885,6 +885,12 @@ void SaiHostifManager::setCpuQosPolicy(
   if (!qosMapHandle) {
     throw FbossError("empty qos map handle for cpu port");
   }
+#if defined(SAI_CBFC_SUPPORTED)
+  // Before DSCP_TO_TC, as on the front panel ports: the CPU port shares their
+  // DSCP_TO_TC map, and brcm-sai rejects that bind with OBJECT IN USE unless
+  // the CPU port carries the same TC_TO_VC.
+  setCpuPortTcToVcMap(qosMapHandle->tcToVcMap);
+#endif
   setCpuPortQosPolicy(
       qosMapHandle->dscpToTcMap->adapterKey(),
       qosMapHandle->tcToQueueMap->adapterKey());
@@ -902,6 +908,9 @@ void SaiHostifManager::setCpuQosPolicy(
 void SaiHostifManager::clearQosPolicy() {
   setCpuPortQosPolicy(
       QosMapSaiId(SAI_NULL_OBJECT_ID), QosMapSaiId(SAI_NULL_OBJECT_ID));
+#if defined(SAI_CBFC_SUPPORTED)
+  setCpuPortTcToVcMap(nullptr);
+#endif
   if (tcToVoqMap_) {
     setCpuSystemPortQosPolicy(QosMapSaiId(SAI_NULL_OBJECT_ID));
   }
@@ -943,6 +952,20 @@ void SaiHostifManager::setCpuPortQosPolicy(
         SaiPortTraits::Attributes::QosTcToQueueMap{tcToQueue});
   }
 }
+
+#if defined(SAI_CBFC_SUPPORTED)
+void SaiHostifManager::setCpuPortTcToVcMap(
+    const std::shared_ptr<SaiQosMap>& tcToVc) {
+  if (tcToVc == tcToVcQosMap_) {
+    return;
+  }
+  SaiApiTable::getInstance()->portApi().setAttribute(
+      cpuPortHandle_->cpuPortId,
+      SaiPortTraits::Attributes::QosTcToVcMap{
+          tcToVc ? tcToVc->adapterKey() : QosMapSaiId(SAI_NULL_OBJECT_ID)});
+  tcToVcQosMap_ = tcToVc;
+}
+#endif
 
 void SaiHostifManager::setCpuSystemPortQosPolicy(QosMapSaiId tcToQueue) {
   if (!cpuPortHandle_->cpuSystemPortId) {

@@ -278,6 +278,9 @@ sai_status_t set_switch_attribute_fn(
     case SAI_SWITCH_ATTR_FIRMWARE_LOAD_TYPE:
       sw.setFirmwareLoadType(attr->value.s32);
       break;
+    case SAI_SWITCH_ATTR_WARM_RECOVER:
+      sw.setWarmRecover(attr->value.booldata);
+      break;
     case SAI_SWITCH_ATTR_HARDWARE_ACCESS_BUS:
       sw.setHardwareAccessBus(attr->value.s32);
       break;
@@ -349,6 +352,9 @@ sai_status_t set_switch_attribute_fn(
       break;
     case SAI_SWITCH_ATTR_PORT_CL72_RETRY_ENABLE:
       sw.setPortCl72RetryEnable(attr->value.booldata);
+      break;
+    case SAI_SWITCH_ATTR_ACL_DROP_SNOOP_DISABLED:
+      sw.setAclDropSnoopDisabled(attr->value.booldata);
       break;
 #if SAI_API_VERSION >= SAI_VERSION(1, 18, 0)
     case SAI_SWITCH_ATTR_LINK_UP_DEBOUNCE_TIMEOUT:
@@ -557,6 +563,9 @@ sai_status_t get_switch_attribute_fn(
       case SAI_SWITCH_ATTR_FIRMWARE_LOAD_TYPE:
         attr[i].value.s32 = sw.firmwareLoadType();
         break;
+      case SAI_SWITCH_ATTR_WARM_RECOVER:
+        attr[i].value.booldata = sw.warmRecover();
+        break;
       case SAI_SWITCH_ATTR_HARDWARE_ACCESS_BUS:
         attr[i].value.s32 = sw.hardwareAccessBus();
         break;
@@ -638,6 +647,9 @@ sai_status_t get_switch_attribute_fn(
         break;
       case SAI_SWITCH_ATTR_PORT_CL72_RETRY_ENABLE:
         attr[i].value.booldata = sw.getPortCl72RetryEnable();
+        break;
+      case SAI_SWITCH_ATTR_ACL_DROP_SNOOP_DISABLED:
+        attr[i].value.booldata = sw.getAclDropSnoopDisabled();
         break;
 #if SAI_API_VERSION >= SAI_VERSION(1, 18, 0)
       case SAI_SWITCH_ATTR_LINK_UP_DEBOUNCE_TIMEOUT:

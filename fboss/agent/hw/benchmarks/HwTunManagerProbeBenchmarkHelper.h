@@ -196,20 +196,18 @@ inline void runTunManagerProbeBenchmark() {
   printAllNetworkDebugInfo(ensemble.get(), tunMgr);
   printSwitchStateInterfaces(ensemble.get(), tunMgr);
 
-  // Set probeDone_ to false before calling probe()
-  tunMgr->probeDone_ = false;
-
   // Start measuring only the critical probe and cleanup operations
   suspender.dismiss();
 
   const auto startTs = std::chrono::steady_clock::now();
 
-  // Probe kernel for existing TUN interface state
-  tunMgr->probe();
-
-  // Force cleanup by calling deleteAllProbedData directly. This ensures cleanup
-  // happens regardless of interface mapping comparison
-  tunMgr->deleteAllProbedData();
+  {
+    // Hold mutex_ so a concurrent sync() can't walk intfs_ mid-cleanup.
+    std::lock_guard<std::mutex> lock(tunMgr->mutex_);
+    tunMgr->probeDone_ = false;
+    tunMgr->doProbe(lock);
+    tunMgr->deleteAllProbedData();
+  }
 
   const auto endTs = std::chrono::steady_clock::now();
   auto elapsedMs =

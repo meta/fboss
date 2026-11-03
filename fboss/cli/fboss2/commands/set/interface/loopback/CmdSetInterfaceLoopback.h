@@ -24,7 +24,8 @@ struct CmdSetInterfaceLoopbackTraits : public WriteCommandTraits {
         "loopback_args",
         args,
         "<asic|xphy_system|xphy_line|transceiver_system|transceiver_line> "
-        "<enable|disable>");
+        "[input|output] <enable|disable>. input/output selects the CMIS "
+        "loopback on that side (transceiver only; default input)");
   }
   using ObjectArgType = loopback_utils::LoopbackComponentAction;
   using RetType = std::string;

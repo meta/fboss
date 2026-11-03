@@ -103,7 +103,8 @@
         "zPortName": "fab1/16/8",
         "profileID": 42
       }
-    ]
+    ],
+    "qsfpServiceMemLimitBytes": 2000000000
   },
   "transceiverFirmwareVersions": {
     "versionsMap": {
@@ -251,6 +252,30 @@
             }
           ]
       },
+      "EOLO-138HG-5H-6B": {
+          "versions": [
+            {
+              "fwType": 1,
+              "version": "3.5"
+            }
+          ]
+      },
+      "EOLO-138HG-5H-6T": {
+          "versions": [
+            {
+              "fwType": 1,
+              "version": "3.5"
+            }
+          ]
+      },
+      "EOLO-138HG-5H-6W": {
+          "versions": [
+            {
+              "fwType": 1,
+              "version": "3.5"
+            }
+          ]
+      },
       "EOLO-138HG-5H-7B": {
           "versions": [
             {
@@ -259,7 +284,39 @@
             }
           ]
       },
+      "EOLO-138HG-5H-9B": {
+          "versions": [
+            {
+              "fwType": 1,
+              "version": "3.5"
+            }
+          ]
+      },
+      "EOLO-138HG-5H-AB": {
+          "versions": [
+            {
+              "fwType": 1,
+              "version": "3.5"
+            }
+          ]
+      },
       "EOLO-138HG-5H-B": {
+          "versions": [
+            {
+              "fwType": 1,
+              "version": "3.5"
+            }
+          ]
+      },
+      "EOLO-138HG-5H-BB": {
+          "versions": [
+            {
+              "fwType": 1,
+              "version": "3.5"
+            }
+          ]
+      },
+      "EOLO-138HG-5H-GB": {
           "versions": [
             {
               "fwType": 1,
@@ -527,6 +584,14 @@
             }
           ]
       },
+      "SPQ8E44DOCOA": {
+          "versions": [
+            {
+              "fwType": 1,
+              "version": "0.1"
+            }
+          ]
+      },
       "SPTSHP3CLCK2": {
           "versions": [
             {
@@ -624,6 +689,14 @@
           ]
       },
       "T-OH8CNH-NFM": {
+          "versions": [
+            {
+              "fwType": 1,
+              "version": "36.197"
+            }
+          ]
+      },
+      "T-OH8CNH-NFY": {
           "versions": [
             {
               "fwType": 1,

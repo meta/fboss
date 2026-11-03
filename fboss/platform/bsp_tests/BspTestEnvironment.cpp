@@ -65,7 +65,23 @@ void BspTestEnvironment::SetUp() {
     RuntimeConfigBuilder configBuilder;
     runtimeConfig_ = configBuilder.buildRuntimeConfig(
         *testConfig_, *platformManagerConfig_, kmods_, platform_);
+    // The default config is enough to reach every IDPROM: no
+    // versionedPmUnitConfigs entry moves the muxes, FPGA adapters or slot buses
+    // leading to one.
+    if (pmUnitVersionDetector_) {
+      runtimeConfig_ = configBuilder.buildRuntimeConfig(
+          *testConfig_,
+          *platformManagerConfig_,
+          kmods_,
+          platform_,
+          pmUnitVersionDetector_(*platformManagerConfig_, *runtimeConfig_));
+    }
   }
+}
+
+void BspTestEnvironment::setPmUnitVersionDetector(
+    PmUnitVersionDetector detector) {
+  pmUnitVersionDetector_ = std::move(detector);
 }
 
 void BspTestEnvironment::TearDown() {}

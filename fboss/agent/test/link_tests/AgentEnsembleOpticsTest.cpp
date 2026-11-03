@@ -169,7 +169,9 @@ class AgentEnsembleOpticsTest : public AgentEnsembleLinkTest {
   std::vector<link_test_production_features::LinkTestProductionFeature>
   getProductionFeatures() const override {
     return {
-        link_test_production_features::LinkTestProductionFeature::L1_LINK_TEST};
+        link_test_production_features::LinkTestProductionFeature::L1_LINK_TEST,
+        link_test_production_features::LinkTestProductionFeature::
+            ACTIVE_TRANSCEIVER};
   }
 
  public:
@@ -381,6 +383,115 @@ TEST_F(AgentEnsembleOpticsTest, verifyTxRxLatches) {
 
   XLOG(INFO) << "Testing TX_LOS, TX_LOL on Z side, RX_LOS, RX_LOL on A side";
   verify(false /* disableAPort */);
+}
+
+/*
+ * verifyNoModeMismatchOrNegativeThermalMargin
+ *
+ * On a healthy, correctly configured link, a module built to the Meta FW spec
+ * should report that its operation mode matches the host and line signal rates
+ * and that its DSP and laser are running within their rated temperatures.
+ * Asserting a mode mismatch requires deliberately driving the host PHY at a
+ * different rate, so any mismatch seen here is a real misconfiguration.
+ * Steps:
+ * 1. Find optical ports whose module advertises the custom features
+ *    (Page 01h Byte 191), and mark only those as the ports under test
+ * 2. Wait for a TransceiverInfo refresh that started after the test began --
+ *    the Byte 67 flags are latched and read-to-clear, so a flag set during
+ *    link bringup would otherwise still be present in the cached snapshot
+ * 3. Expect no latched flag set, no lane reporting a mode mismatch, and both
+ *    thermal margins positive
+ */
+TEST_F(AgentEnsembleOpticsTest, verifyNoModeMismatchOrNegativeThermalMargin) {
+  addVerifiedProductionFeatures(
+      {link_test_production_features::LinkTestProductionFeature::
+           TRANSCEIVER_MODE_MISMATCH_THERMAL_MARGIN});
+
+  auto opticalPortPairs = getConnectedOpticalPortPairs();
+  EXPECT_FALSE(opticalPortPairs.empty())
+      << "Did not detect any optical transceivers";
+
+  std::map<int32_t, std::vector<PortID>> tcvrIdToPorts;
+  for (const auto& [portID1, portID2] : opticalPortPairs) {
+    for (const auto& portID : {portID1, portID2}) {
+      auto tcvrId = int32_t(
+          getSw()->getPlatformMapping()->getTransceiverIdFromSwPort(portID));
+      tcvrIdToPorts[tcvrId].push_back(portID);
+    }
+  }
+  std::vector<int32_t> allTcvrIds;
+  allTcvrIds.reserve(tcvrIdToPorts.size());
+  for (const auto& [tcvrId, _] : tcvrIdToPorts) {
+    allTcvrIds.push_back(tcvrId);
+  }
+
+  // 1. Keep only the transceivers that advertise at least one of the custom
+  // features. The registers are CMIS Custom space and mean nothing otherwise.
+  // Only their ports count as tested -- the rest of the optical ports are
+  // untouched by this test.
+  auto transceiverInfos =
+      utility::waitForTransceiverInfo(allTcvrIds, /*includeLpo*/ false);
+  std::vector<int32_t> capableTcvrIds;
+  for (const auto& [tcvrId, info] : transceiverInfos) {
+    const auto& diagCapability = *info.tcvrState()->diagCapability();
+    if (*diagCapability.modeMismatchFlag() || *diagCapability.dspTempMargin() ||
+        *diagCapability.laserTempMargin()) {
+      capableTcvrIds.push_back(tcvrId);
+      addTestedPorts(tcvrIdToPorts.at(tcvrId));
+    }
+  }
+  ASSERT_FALSE(capableTcvrIds.empty())
+      << "No optics advertise mode mismatch or thermal margin support";
+
+  // 2. The Byte 67 flags are read-to-clear, so require a snapshot qsfp_service
+  // collected after this point rather than trusting the cached one, which may
+  // still carry a flag latched while the link was coming up.
+  std::map<int32_t, TransceiverInfo> freshInfos;
+  ASSERT_TRUE(
+      utility::waitForFreshTransceiverInfo(
+          capableTcvrIds, transceiverInfos, freshInfos, /*includeLpo*/ false))
+      << "qsfp_service did not refresh all transceivers under test";
+
+  // 3. Verify nothing is mismatched and nothing is over temperature.
+  for (const auto& tcvrId : capableTcvrIds) {
+    auto freshInfoItr = freshInfos.find(tcvrId);
+    ASSERT_TRUE(freshInfoItr != freshInfos.end());
+    const auto& tcvrState = *freshInfoItr->second.tcvrState();
+    const auto& tcvrStats = *freshInfoItr->second.tcvrStats();
+    const auto& tcvrName = *tcvrState.tcvrName();
+    const auto& diagCapability = *tcvrState.diagCapability();
+    ASSERT_TRUE(tcvrState.status().has_value()) << tcvrName;
+    const auto& status = *tcvrState.status();
+
+    if (*diagCapability.modeMismatchFlag()) {
+      EXPECT_EQ(status.modeMismatchFlag(), false)
+          << tcvrName << ": module reports its operation mode does not match "
+          << "the host or line signal rate";
+      for (const auto& signal : tcvrState.hostLaneSignals().value_or({})) {
+        EXPECT_EQ(signal.modeMismatch(), false)
+            << tcvrName << ": host lane " << *signal.lane() << " mismatched";
+      }
+      for (const auto& signal : tcvrState.mediaLaneSignals().value_or({})) {
+        EXPECT_EQ(signal.modeMismatch(), false)
+            << tcvrName << ": media lane " << *signal.lane() << " mismatched";
+      }
+    }
+
+    // A margin is the headroom to the component's rated limit, so a value at
+    // or below zero means it is running at or past that limit.
+    if (*diagCapability.dspTempMargin()) {
+      ASSERT_TRUE(tcvrStats.dspTempMargin().has_value()) << tcvrName;
+      EXPECT_EQ(status.dspTempNegativeMarginFlag(), false) << tcvrName;
+      EXPECT_GT(*tcvrStats.dspTempMargin(), 0)
+          << tcvrName << ": DSP is over its rated temperature";
+    }
+    if (*diagCapability.laserTempMargin()) {
+      ASSERT_TRUE(tcvrStats.laserTempMargin().has_value()) << tcvrName;
+      EXPECT_EQ(status.laserTempNegativeMarginFlag(), false) << tcvrName;
+      EXPECT_GT(*tcvrStats.laserTempMargin(), 0)
+          << tcvrName << ": laser is over its rated temperature";
+    }
+  }
 }
 
 /*

@@ -89,7 +89,7 @@ class BgpNeighborsAdvertisedRejected
   static RetType sampleModel() {
     return sampleNetworkPaths(
         SampleRouteDirection::Advertised,
-        "Denied by PROPAGATE_RSW_FSW_OUT term RULE_RSW_DENY_A_HOP3_A_HOP4_520");
+        "Denied by SAMPLE_UPLINK_OUT term SAMPLE_DENY_LONG_PATH");
   }
 
   void printOutput(

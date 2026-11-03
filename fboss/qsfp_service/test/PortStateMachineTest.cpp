@@ -3326,6 +3326,57 @@ TEST_F(PortStateMachineTest, PrematureRemediationBlockedByLastDownTime) {
   }
 }
 
+TEST_F(PortStateMachineTest, NoRemediationWhileAsicPrbsEnabled) {
+  const std::string kTestName = "NoRemediationWhileAsicPrbsEnabled";
+  gflags::FlagSaver flagSaver;
+  for (const auto& [mappingType, isMultiTcvr, isMultiPort] :
+       getTestModeCombinations()) {
+    logTestExecution(kTestName, isMultiTcvr, isMultiPort);
+    initManagers(mappingType);
+    xcvr1_ = overrideTransceiver(isMultiPort, true /*isMock*/, tcvrId1_);
+    if (isMultiTcvr) {
+      xcvr2_ = overrideTransceiver(isMultiPort, true /*isMock*/, tcvrId2_);
+    }
+    setState(
+        makeStates(
+            TransceiverStateMachineState::TRANSCEIVER_PROGRAMMED,
+            PortStateMachineState::PORT_UP,
+            isMultiTcvr,
+            isMultiPort),
+        isMultiPort,
+        isMultiTcvr);
+    gflags::SetCommandLineOptionWithMode(
+        "initial_remediate_interval", "0", gflags::SET_FLAGS_DEFAULT);
+    transceiverManager_->setPauseRemediation(0, nullptr /* evb */);
+
+    // Ports are down because they're running ASIC PRBS
+    portManager_->setOverrideAllAgentPortStatusForTesting(
+        false /* up */,
+        true /* enabled */,
+        false /* clearOnly */,
+        true /* asicPrbsEnabled */);
+    portManager_->updateTransceiverPortStatus();
+    portManager_->updatePortActiveStatusInTransceiverManager();
+    // Give 1s buffer when comparing lastDownTime_ in shouldRemediate()
+    /* sleep override */
+    sleep(1);
+    portManager_->refreshStateMachines();
+    EXPECT_FALSE(xcvr1_->getDirty_());
+    if (isMultiTcvr) {
+      EXPECT_FALSE(xcvr2_->getDirty_());
+    }
+
+    // Once PRBS is off the same down ports get remediated
+    portManager_->setOverrideAllAgentPortStatusForTesting(
+        false /* up */, true /* enabled */);
+    portManager_->refreshStateMachines();
+    EXPECT_TRUE(xcvr1_->getDirty_());
+    if (isMultiTcvr) {
+      EXPECT_TRUE(xcvr2_->getDirty_());
+    }
+  }
+}
+
 /*
  * Test for race condition where a non-lowest-indexed port becomes the
  * orchestrator for IPHY programming because the lowest-indexed port hasn't

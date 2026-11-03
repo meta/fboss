@@ -115,6 +115,9 @@ struct OperSubRequest {
   // Forcefully subscribe even if there is already a subscriber with the same SubscriberId
   4: bool forceSubscribe = false;
   5: optional i64 heartbeatInterval;
+  // Requested serve cadence in seconds. Rounded up to a whole serve tick and
+  // clamped to the storage's default interval; absent means the default.
+  6: optional i32 serveIntervalSec;
 }
 
 struct OperSubInitResponse {
@@ -132,6 +135,9 @@ struct OperSubRequestExtended {
   // Forcefully subscribe even if there is already a subscriber with the same SubscriberId
   4: bool forceSubscribe = false;
   5: optional i64 heartbeatInterval;
+  // Requested serve cadence in seconds. Rounded up to a whole serve tick and
+  // clamped to the storage's default interval; absent means the default.
+  6: optional i32 serveIntervalSec;
 }
 
 struct OperSubPathUnit {
@@ -160,6 +166,9 @@ struct SubRequest {
   4: bool forceSubscribe = false;
   5: optional i64 heartbeatInterval;
   6: map<SubscriptionKey, ExtendedOperPath> extPaths;
+  // Requested serve cadence in seconds. Rounded up to a whole serve tick and
+  // clamped to the storage's default interval; absent means the default.
+  7: optional i32 serveIntervalSec;
 }
 
 // Request to append paths to an already-created patch subscription, located by

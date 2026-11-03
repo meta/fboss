@@ -12,6 +12,7 @@
 #include "fboss/agent/AgentFeatures.h"
 #include "fboss/agent/AsicUtils.h"
 #include "fboss/agent/FabricLinkMonitoringManager.h"
+#include "fboss/agent/SwSwitch.h"
 #include "fboss/agent/VoqUtils.h"
 #include "fboss/agent/test/utils/ConfigUtils.h"
 
@@ -255,6 +256,51 @@ bool allPortsHaveFabricLinkMonitoringCounterIncrements(
                << ", RX increment=" << rxIncrement;
 
     if (txIncrement < minIncrement || rxIncrement < minIncrement) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool allPortsHaveFabricLinkMonitoringFsdbStats(
+    SwSwitch* sw,
+    const std::vector<PortID>& fabricPorts,
+    const std::map<PortID, std::pair<int64_t, int64_t>>& initialStats,
+    size_t numPortsToCheck,
+    int64_t minIncrement) {
+  const auto agentStats = sw->fillFsdbStats();
+  const auto state = sw->getState();
+  for (size_t i = 0; i < numPortsToCheck && i < fabricPorts.size(); ++i) {
+    const auto& portId = fabricPorts[i];
+    const auto port = state->getPorts()->getNodeIf(portId);
+    if (!port) {
+      return false;
+    }
+    const auto it = agentStats.hwPortStats()->find(port->getName());
+    if (it == agentStats.hwPortStats()->end()) {
+      return false;
+    }
+    const auto& stats = it->second;
+    auto tx = stats.fabricLinkMonitoringTxPackets_();
+    auto rx = stats.fabricLinkMonitoringRxPackets_();
+    auto dropped = stats.fabricLinkMonitoringDroppedPackets_();
+    auto invalid = stats.fabricLinkMonitoringInvalidPayloadPackets_();
+    auto noPending = stats.fabricLinkMonitoringNoPendingSeqNumPackets_();
+    if (!tx.has_value() || !rx.has_value() || !dropped.has_value() ||
+        !invalid.has_value() || !noPending.has_value()) {
+      return false;
+    }
+    if (*tx < 0 || *rx < 0 || *dropped < 0 || *invalid < 0 || *noPending < 0) {
+      return false;
+    }
+    const auto initial = initialStats.find(portId);
+    if (initial == initialStats.end()) {
+      XLOG(DBG3) << "Port " << portId
+                 << " has no initial Fabric Link Monitoring stats";
+      return false;
+    }
+    const auto [initialTx, initialRx] = initial->second;
+    if (*tx - initialTx < minIncrement || *rx - initialRx < minIncrement) {
       return false;
     }
   }

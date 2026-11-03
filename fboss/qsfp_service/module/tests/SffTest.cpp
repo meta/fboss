@@ -229,7 +229,7 @@ TEST_F(SffTest, fr1TransceiverInfoTest) {
       info.tcvrState()->moduleMediaInterface(), MediaInterfaceCode::FR1_100G);
   for (auto& media : *info.tcvrState()->settings()->mediaInterface()) {
     EXPECT_EQ(
-        media.media()->get_extendedSpecificationComplianceCode(),
+        media.media()->extendedSpecificationComplianceCode().value(),
         ExtendedSpecComplianceCode::FR1_100G);
     EXPECT_EQ(media.code(), MediaInterfaceCode::FR1_100G);
   }
@@ -282,7 +282,7 @@ TEST_F(SffTest, miniphotonTransceiverInfoTest) {
       info.tcvrState()->moduleMediaInterface(), MediaInterfaceCode::CWDM4_100G);
   for (auto& media : *info.tcvrState()->settings()->mediaInterface()) {
     EXPECT_EQ(
-        media.media()->get_extendedSpecificationComplianceCode(),
+        media.media()->extendedSpecificationComplianceCode().value(),
         ExtendedSpecComplianceCode::CWDM4_100G);
     EXPECT_EQ(media.code(), MediaInterfaceCode::CWDM4_100G);
   }
@@ -314,7 +314,7 @@ TEST_F(SffTest, unknownTransceiverInfoTest) {
       info.tcvrState()->moduleMediaInterface(), MediaInterfaceCode::CWDM4_100G);
   for (auto& media : *info.tcvrState()->settings()->mediaInterface()) {
     EXPECT_EQ(
-        media.media()->get_extendedSpecificationComplianceCode(),
+        media.media()->extendedSpecificationComplianceCode().value(),
         ExtendedSpecComplianceCode::CWDM4_100G);
     EXPECT_EQ(media.code(), MediaInterfaceCode::CWDM4_100G);
   }
@@ -463,7 +463,7 @@ TEST_F(SfpTest, sfp10GTransceiverInfoTest) {
       info.tcvrState()->moduleMediaInterface(), MediaInterfaceCode::LR_10G);
   for (auto& media : *info.tcvrState()->settings()->mediaInterface()) {
     EXPECT_EQ(
-        media.media()->get_ethernet10GComplianceCode(),
+        media.media()->ethernet10GComplianceCode().value(),
         Ethernet10GComplianceCode::LR_10G);
     EXPECT_EQ(media.code(), MediaInterfaceCode::LR_10G);
   }
@@ -517,7 +517,7 @@ TEST_F(SfpTest, sfp10GBaseTTransceiverInfoTest) {
       info.tcvrState()->moduleMediaInterface(), MediaInterfaceCode::BASE_T_10G);
   for (auto& media : *info.tcvrState()->settings()->mediaInterface()) {
     EXPECT_EQ(
-        media.media()->get_extendedSpecificationComplianceCode(),
+        media.media()->extendedSpecificationComplianceCode().value(),
         ExtendedSpecComplianceCode::BASE_T_10G);
     EXPECT_EQ(media.code(), MediaInterfaceCode::BASE_T_10G);
   }
@@ -566,7 +566,7 @@ TEST_F(SffTest, 200GCr4TransceiverInfoTest) {
       info.tcvrState()->moduleMediaInterface(), MediaInterfaceCode::CR4_200G);
   for (auto& media : *info.tcvrState()->settings()->mediaInterface()) {
     EXPECT_EQ(
-        media.media()->get_extendedSpecificationComplianceCode(),
+        media.media()->extendedSpecificationComplianceCode().value(),
         ExtendedSpecComplianceCode::CR_50G_CHANNELS);
     EXPECT_EQ(media.code(), MediaInterfaceCode::CR4_200G);
   }
@@ -608,4 +608,17 @@ TEST_F(SffTest, 200GCr4TransceiverInfoTest) {
   EXPECT_TRUE(info.tcvrState()->errorStates()->empty());
 }
 
+// SFF modules have no CMIS output loopbacks, so OUTPUT is rejected outright.
+TEST_F(SffTest, setTransceiverLoopbackRejectsOutputMode) {
+  auto xcvrID = TransceiverID(0);
+  auto xcvr = overrideSffModule<SffCwdm4Transceiver>(xcvrID);
+  auto portName = *transceiverManager_->getPortNames(xcvrID).begin();
+
+  for (auto side : {phy::Side::SYSTEM, phy::Side::LINE}) {
+    EXPECT_THROW(
+        xcvr->setTransceiverLoopback(
+            portName, side, true, phy::LoopbackMode::OUTPUT),
+        FbossError);
+  }
+}
 } // namespace facebook::fboss

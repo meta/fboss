@@ -588,8 +588,148 @@
         {
           "busName": "MCB_IOB_I2C_MASTER_14",
           "address": "0x60",
-          "kernelDeviceName": "mp3_mcbcpld",
-          "pmUnitScopedName": "MCB_CPLD"
+          "kernelDeviceName": "fbg_mcbcpld",
+          "pmUnitScopedName": "MCB_CPLD",
+          "cpldSysfsAttrs": [
+            {
+              "name": "version_id",
+              "regAddr": "0x00",
+              "bitOffset": 4,
+              "numBits": 3,
+              "description": "Hardware version ID"
+            },
+            {
+              "name": "board_id",
+              "regAddr": "0x00",
+              "numBits": 4,
+              "description": "Board ID"
+            },
+            {
+              "name": "cpld_ver",
+              "regAddr": "0x01",
+              "numBits": 7,
+              "description": "CPLD major version"
+            },
+            {
+              "name": "cpld_minor_ver",
+              "regAddr": "0x02",
+              "numBits": 8,
+              "description": "CPLD minor version"
+            },
+            {
+              "name": "cpld_sub_ver",
+              "regAddr": "0x03",
+              "numBits": 8,
+              "description": "CPLD sub version"
+            },
+            {
+              "name": "psu_l_present",
+              "regAddr": "0x10",
+              "bitOffset": 6,
+              "flags": [
+                "negate"
+              ],
+              "description": "Left PSU present. 1 present, 0 not present."
+            },
+            {
+              "name": "psu_r_present",
+              "regAddr": "0x10",
+              "bitOffset": 7,
+              "flags": [
+                "negate"
+              ],
+              "description": "Right PSU present. 1 present, 0 not present."
+            },
+            {
+              "name": "scm_module_present",
+              "regAddr": "0xB5",
+              "bitOffset": 4,
+              "description": "SCM module present. 0 present, 1 not present."
+            },
+            {
+              "name": "smb_pwrok",
+              "regAddr": "0xB5",
+              "bitOffset": 3,
+              "description": "SMB power OK. 1 normal, 0 fail."
+            },
+            {
+              "name": "come_pwrok",
+              "regAddr": "0xB5",
+              "description": "COMe power OK. 1 normal, 0 fail."
+            },
+            {
+              "name": "pdb_r_sensor_int",
+              "regAddr": "0x11",
+              "bitOffset": 7,
+              "description": "Right PSU thermal sensor status.  1 normal, 0 alert.",
+              "flags": [
+                "decimal"
+              ]
+            },
+            {
+              "name": "pdb_l_sensor_int",
+              "regAddr": "0x11",
+              "bitOffset": 6,
+              "description": "Left PSU thermal sensor status.  1 normal, 0 alert.",
+              "flags": [
+                "decimal"
+              ]
+            },
+            {
+              "name": "psu_r_ac_ok",
+              "regAddr": "0x11",
+              "bitOffset": 5,
+              "description": "Right PSU input power status.  1 normal, 0 fail.",
+              "flags": [
+                "decimal"
+              ]
+            },
+            {
+              "name": "psu_l_ac_ok",
+              "regAddr": "0x11",
+              "bitOffset": 4,
+              "description": "Left PSU input power status.  1 normal, 0 fail.",
+              "flags": [
+                "decimal"
+              ]
+            },
+            {
+              "name": "cpld_psu_r_pg",
+              "regAddr": "0x11",
+              "bitOffset": 3,
+              "description": "Right PSU 12v output power status.  1 normal, 0 fail.",
+              "flags": [
+                "decimal"
+              ]
+            },
+            {
+              "name": "cpld_psu_l_pg",
+              "regAddr": "0x11",
+              "bitOffset": 2,
+              "description": "Left PSU 12v output power status.  1 normal, 0 fail.",
+              "flags": [
+                "decimal"
+              ]
+            },
+            {
+              "name": "pdb_psu_r_alert",
+              "regAddr": "0x11",
+              "bitOffset": 1,
+              "description": "Right PSU alert status. 1 normal, 0 alert.",
+              "flags": [
+                "decimal"
+              ]
+            },
+            {
+              "name": "pdb_psu_l_alert",
+              "regAddr": "0x11",
+              "bitOffset": 0,
+              "description": "Left PSU alert status. 1 normal, 0 alert.",
+              "flags": [
+                "decimal"
+              ]
+            }
+          ]
         },
         {
           "busName": "MCB_IOB_I2C_MASTER_19",
@@ -1394,7 +1534,7 @@
   "chassisEepromDevicePath": "/FCBTOP_SLOT@0/[CHASSIS_EEPROM]",
   "numXcvrs": 65,
   "bspKmodsRpmName": "fboss_bsp_kmods",
-  "bspKmodsRpmVersion": "4.4.1-1",
+  "bspKmodsRpmVersion": "4.4.2-1",
   "nonBspKmodsToLoad": [
     "i2c_i801",
     "spidev",

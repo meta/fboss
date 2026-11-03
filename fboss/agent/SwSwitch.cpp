@@ -42,6 +42,7 @@
 #include "fboss/agent/SwitchInfoUtils.h"
 #include "fboss/agent/TxPacketUtils.h"
 #include "fboss/agent/Utils.h"
+#include "fboss/agent/rib/FibUpdateHelpers.h"
 #include "fboss/agent/rib/RoutingInformationBase.h"
 #include "fboss/agent/state/StateUtils.h"
 #include "fboss/lib/phy/gen-cpp2/prbs_types.h"
@@ -874,7 +875,8 @@ state::SwitchState SwSwitch::updateOverrideEcmpSwitchingMode(
           fwd.getOverrideNextHops(),
           fwd.getNormalizedResolvedNextHopSetID(),
           fwd.getResolvedNextHopSetID(),
-          fwd.getClientNextHopSetID());
+          fwd.getClientNextHopSetID(),
+          fwd.getOverrideNextHopSetID());
       fib.value().at(routeName).fwd() = newFwd.toThrift();
     }
   };
@@ -886,7 +888,8 @@ state::SwitchState SwSwitch::updateOverrideEcmpSwitchingMode(
     auto& fibInfoFields = it->second;
     const auto& idToNextHopIdSet = *fibInfoFields.idToNextHopIdSet();
     auto fibs = fibInfoFields.fibsMap();
-    if (fibs.has_value()) {
+    if (apache::thrift::is_non_optional_field_set_manually_or_by_serializer(
+            fibs)) {
       for (auto& [_, fib] : *fibs) {
         auto fibV4 = fib.fibV4();
         for (auto& [name, thriftRoute] : *fibV4) {
@@ -1073,6 +1076,9 @@ AgentStats SwSwitch::fillFsdbStats() {
     }
   }
   stats()->fillAgentStats(agentStats);
+  if (auto* manager = getFabricLinkMonitoringManager()) {
+    manager->fillAgentFabricLinkMonitoringStats(agentStats);
+  }
   getHwSwitchHandler()->fillHwAgentConnectionStatus(agentStats);
   // fill old fields using first switch values for backward compatibility
   if (!agentStats.hwResourceStatsMap()->empty()) {
@@ -1097,6 +1103,26 @@ void SwSwitch::publishStatsToFsdb() {
   auto agentStats = fillFsdbStats();
   runFsdbSyncFunction([&agentStats](auto& syncer) {
     syncer->statsUpdated(std::move(agentStats));
+  });
+}
+
+void SwSwitch::publishIPhyStatesToFsdb(
+    const std::map<PortID, phy::PhyInfo>& phyInfo) {
+  auto now = std::chrono::steady_clock::now();
+  if (publishedIPhyStatesToFsdbAt_ &&
+      std::chrono::duration_cast<std::chrono::seconds>(
+          now - *publishedIPhyStatesToFsdbAt_)
+              .count() < FLAGS_update_phy_info_interval_s) {
+    return;
+  }
+  publishedIPhyStatesToFsdbAt_ = now;
+
+  std::map<std::string, phy::PhyState> iPhyStates;
+  for (const auto& [portID, phyInfoEntry] : phyInfo) {
+    iPhyStates.emplace(*phyInfoEntry.state()->name(), *phyInfoEntry.state());
+  }
+  runFsdbSyncFunction([&iPhyStates](auto& syncer) {
+    syncer->iPhyStatesUpdated(std::move(iPhyStates));
   });
 }
 
@@ -1201,6 +1227,7 @@ void SwSwitch::updateStats() {
   }
   phySnapshotManager_->updatePhyInfos(phyInfo);
   updatePhyFb303Stats(phyInfo);
+  publishIPhyStatesToFsdb(phyInfo);
   updateFabricLinkMonitoringStats();
 }
 
@@ -1532,6 +1559,7 @@ void SwSwitch::init(
     initialState = getAppliedState();
   }
   initialState->publish();
+  initialState = syncNextHopIDsToFIB(initialState);
   auto emptyState = std::make_shared<SwitchState>();
   auto origInitialState = initialState;
   emptyState->publish();
@@ -1556,6 +1584,9 @@ void SwSwitch::init(
   if (pbrAclManager_) {
     pbrAclManager_->updateDone();
   }
+  // Apply the state hardware was given, including manager reconstruct changes.
+  initialState = deltas.back().newState();
+  syncRibEcmpOverrides(StateDelta(origInitialState, initialState));
   // For cold boot there will be discripancy between applied state and state
   // that exists in hardware. this discrepancy is until config is applied, after
   // that the two states are in sync. tolerating this discrepancy for now
@@ -1624,6 +1655,7 @@ void SwSwitch::init(const HwWriteBehavior& hwWriteBehavior, SwitchFlags flags) {
   if (!getHwSwitchHandler()->waitUntilHwSwitchConnected()) {
     throw FbossError("Waiting for HwSwitch to be connected cancelled");
   }
+  initialState = syncNextHopIDsToFIB(initialState);
   auto origInitialState = initialState;
   auto deltas = reconstructStateFromManagers(emptyState, initialState);
   // Notify resource accountant of the initial state.
@@ -1652,6 +1684,12 @@ void SwSwitch::init(const HwWriteBehavior& hwWriteBehavior, SwitchFlags flags) {
   }
   if (pbrAclManager_) {
     pbrAclManager_->updateDone();
+  }
+  if (bootType_ == BootType::WARM_BOOT) {
+    // Apply the state hardware was given, including manager reconstruct
+    // changes.
+    initialState = deltas.back().newState();
+    syncRibEcmpOverrides(StateDelta(origInitialState, initialState));
   }
   // for cold boot discrepancy may exist between applied state in software
   // switch and state that already exist in hardware. this discrepancy is
@@ -1735,10 +1773,20 @@ void SwSwitch::logRouteUpdates(
       RoutePrefix<folly::IPAddress>{folly::IPAddress{addr}, mask},
       identifier,
       false};
+  if (isExiting()) {
+    XLOG(DBG2) << "Skipping route update logging for " << identifier
+               << ": switch is exiting";
+    return;
+  }
   routeUpdateLogger_->startLoggingForPrefix(r);
 }
 
 void SwSwitch::stopLoggingRouteUpdates(const std::string& identifier) {
+  if (isExiting()) {
+    XLOG(DBG2) << "Skipping stop of route update logging for " << identifier
+               << ": switch is exiting";
+    return;
+  }
   routeUpdateLogger_->stopLoggingForIdentifier(identifier);
 }
 
@@ -1797,6 +1845,25 @@ void SwSwitch::notifyStateObservers(const StateDelta& delta) {
     }
   }
   runFsdbSyncFunction([&delta](auto& syncer) { syncer->stateUpdated(delta); });
+}
+
+std::shared_ptr<SwitchState> SwSwitch::syncNextHopIDsToFIB(
+    const std::shared_ptr<SwitchState>& state) {
+  if (bootType_ != BootType::WARM_BOOT || !rib_ ||
+      !rib_->nextHopIdsChangedAtWarmboot()) {
+    return state;
+  }
+  auto newState = state;
+  rib_->syncStateFromRib(
+      scopeResolver_.get(), &ribToSwitchStateUpdate, &newState);
+  XLOG(INFO) << "Applied RIB NextHop ids to the warm boot state";
+  return newState;
+}
+
+void SwSwitch::syncRibEcmpOverrides(const StateDelta& delta) {
+  if (rib_ && ecmpResourceManager_) {
+    rib_->updateEcmpOverrides(delta);
+  }
 }
 
 std::vector<StateDelta> SwSwitch::reconstructStateFromManagers(
@@ -3828,7 +3895,7 @@ void SwSwitch::applyConfigImpl(
             aclNexthopHandler_.get());
 
         if (newState &&
-            !isValidStateUpdate(StateDelta(state, newState), stats())) {
+            !isValidStateUpdateDryRun(StateDelta(state, newState), stats())) {
           throw FbossError("Invalid config passed in, skipping");
         }
 
@@ -3843,17 +3910,6 @@ void SwSwitch::applyConfigImpl(
 
   if (rib_) {
     rib_->setEcmpWidth(getEcmpWidth(getState()));
-  }
-  if (FLAGS_enable_ecmp_resource_manager) {
-    // Since config update can also update ecmp overrides - in
-    // case of config changing ecmp switching mode. Sync these
-    // route overrides to rib
-    updateEventBase_.runInFbossEventBaseThreadAndWait([this]() {
-      if (rib_) {
-        rib_->updateEcmpOverrides(
-            StateDelta(std::make_shared<SwitchState>(), getState()));
-      }
-    });
   }
   // Since we're using blocking state update, once we reach here, the new
   // config should be already applied and programmed into hardware.
@@ -3905,6 +3961,12 @@ void SwSwitch::updateConfigAppliedInfo() {
 bool SwSwitch::isValidStateUpdate(const StateDelta& delta, SwitchStats* stats)
     const {
   return stateUpdateValidator_->isValidUpdate(delta, stats);
+}
+
+bool SwSwitch::isValidStateUpdateDryRun(
+    const StateDelta& delta,
+    SwitchStats* stats) const {
+  return stateUpdateValidator_->isValidUpdateDryRun(delta, stats);
 }
 
 AdminDistance SwSwitch::clientIdToAdminDistance(int clientId) const {

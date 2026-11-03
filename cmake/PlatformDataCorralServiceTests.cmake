@@ -6,6 +6,7 @@
 
 add_executable(platform_data_corral_sw_test
   fboss/platform/data_corral_service/tests/ConfigValidatorTest.cpp
+  fboss/platform/data_corral_service/tests/DataCorralServiceThriftHandlerTest.cpp
   fboss/platform/data_corral_service/tests/FruPresenceExplorerTests.cpp
   fboss/platform/data_corral_service/tests/LedManagerTests.cpp
 )

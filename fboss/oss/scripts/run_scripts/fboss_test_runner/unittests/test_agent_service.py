@@ -39,6 +39,30 @@ class TestServiceUnitEnvironment:
 
         assert "Environment=LD_LIBRARY_PATH=/opt/fboss/lib" in unit
 
+    def test_base_output_dir_forwarded_into_unit(self, monkeypatch):
+        # systemd does not inherit the shell env; the SDK-locating BASE_OUTPUT_DIR
+        # must be declared in the unit or SDK resource resolution fails (hw_agent
+        # aborts on e.g. g202_slices_mappings.json). Assert on whole lines: a
+        # directive merged with its neighbour is a unit systemd would reject.
+        sdk_dir = "/opt/fboss/cisco/mklib.G202X.dc-25.11.4210.7"
+        monkeypatch.setenv("BASE_OUTPUT_DIR", sdk_dir)
+
+        unit = service_utils.build_unit_file_content("test", "true", "test")
+
+        lines = unit.splitlines()
+        assert f"Environment=BASE_OUTPUT_DIR={sdk_dir}" in lines
+        assert "ExecStart=true" in lines
+
+    def test_base_output_dir_absent_when_unset(self, monkeypatch):
+        # No regression for SDKs/platforms that don't use BASE_OUTPUT_DIR:
+        # the line must be omitted entirely when the var is unset.
+        monkeypatch.delenv("BASE_OUTPUT_DIR", raising=False)
+
+        unit = service_utils.build_unit_file_content("test", "true", "test")
+
+        assert "BASE_OUTPUT_DIR" not in unit
+        assert "ExecStart=true" in unit.splitlines()
+
 
 class TestCleanupHwAgentService:
     def test_stops_all_three_service_variants_and_pkills(self):
@@ -54,6 +78,20 @@ class TestCleanupHwAgentService:
         assert "pkill -f fboss_hw_agent@0" in joined
         assert "pkill -f fboss_hw_agent_for_testing_0" in joined
         assert "pkill -f fboss_hw_agent_oss@0" in joined
+
+    def test_disables_requested_service_name(self):
+        with patch.object(service_utils.subprocess, "run") as mock_run:
+            cleanup_hw_agent_service(
+                [0],
+                hw_agent_service_name=fboss_agent_utils.HW_AGENT_SERVICE_PROD,
+            )
+
+        disable_commands = [
+            invocation.args[0]
+            for invocation in mock_run.call_args_list
+            if invocation.args[0].startswith("systemctl disable")
+        ]
+        assert disable_commands == ["systemctl disable fboss_hw_agent@0"]
 
 
 class TestSetupHwAgentServicePreconditions:
@@ -77,11 +115,29 @@ class TestSetupHwAgentServicePreconditions:
 
 
 class TestSetupAndStartDispatch:
+    def test_setup_disables_the_service_name_it_will_replace(self, tmp_path):
+        config_path = tmp_path / "agent.conf"
+        config_path.write_text("")
+        with (
+            patch.object(fboss_agent_utils, "cleanup_hw_agent_service") as cleanup,
+            patch.object(service_utils, "write_unit_file"),
+            patch.object(service_utils, "write_rsyslog_conf"),
+            patch.object(fboss_agent_utils.subprocess, "run"),
+            patch.object(fboss_agent_utils, "cold_boot_hw_agent", return_value=[0]),
+        ):
+            setup_and_start_hw_agent_service(
+                switch_indexes=[0],
+                fboss_agent_config_path=str(config_path),
+                hw_agent_service_bin_path=sys.executable,
+                hw_agent_service_name=fboss_agent_utils.HW_AGENT_SERVICE_PROD,
+            )
+
+        cleanup.assert_called_once_with(
+            [0], hw_agent_service_name=fboss_agent_utils.HW_AGENT_SERVICE_PROD
+        )
+
     # _setup_hw_agent_service writes systemd unit files to /tmp and rsyslog
-    # configs to /etc/rsyslog.d (which fails for non-root and is a real-system
-    # side effect). The tests here only verify the warm/cold dispatch and
-    # failure propagation in setup_and_start_hw_agent_service, so we stub
-    # _setup_hw_agent_service out entirely.
+    # configs to /etc/rsyslog.d, so dispatch-only tests stub it out entirely.
     def test_warm_boot_dispatch(self):
         with (
             patch.object(fboss_agent_utils, "_setup_hw_agent_service"),

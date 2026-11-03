@@ -183,6 +183,48 @@ std::shared_ptr<SaiQosMap> SaiQosMapManager::setTcToQueueQosMap(
   return store.setObject(k, c);
 }
 
+#if defined(SAI_CBFC_SUPPORTED)
+std::shared_ptr<SaiQosMap> SaiQosMapManager::setTcToVcQosMap(
+    const std::shared_ptr<QosPolicy>& qosPolicy) {
+  const auto& newTcToVcMap = qosPolicy->getTrafficClassToVcId();
+  std::vector<sai_qos_map_t> mapToValueList;
+  mapToValueList.reserve(newTcToVcMap->size());
+  for (const auto& [tc, vc] : std::as_const(*newTcToVcMap)) {
+    sai_qos_map_t mapping{};
+    mapping.key.tc = tc;
+    mapping.value.vc = vc->cref();
+    mapToValueList.push_back(mapping);
+  }
+  SaiQosMapTraits::Attributes::Type typeAttribute{SAI_QOS_MAP_TYPE_TC_TO_VC};
+  SaiQosMapTraits::Attributes::MapToValueList mapToValueListAttribute{
+      mapToValueList};
+  auto& store = saiStore_->get<SaiQosMapTraits>();
+  SaiQosMapTraits::AdapterHostKey k{typeAttribute, mapToValueListAttribute};
+  SaiQosMapTraits::CreateAttributes c = k;
+  return store.setObject(k, c);
+}
+
+std::shared_ptr<SaiQosMap> SaiQosMapManager::setQueueToVcQosMap(
+    const std::shared_ptr<QosPolicy>& qosPolicy) {
+  const auto& newQueueToVcMap = qosPolicy->getQueueToVcId();
+  std::vector<sai_qos_map_t> mapToValueList;
+  mapToValueList.reserve(newQueueToVcMap->size());
+  for (const auto& [queue, vc] : std::as_const(*newQueueToVcMap)) {
+    sai_qos_map_t mapping{};
+    mapping.key.queue_index = queue;
+    mapping.value.vc = vc->cref();
+    mapToValueList.push_back(mapping);
+  }
+  SaiQosMapTraits::Attributes::Type typeAttribute{SAI_QOS_MAP_TYPE_QUEUE_TO_VC};
+  SaiQosMapTraits::Attributes::MapToValueList mapToValueListAttribute{
+      mapToValueList};
+  auto& store = saiStore_->get<SaiQosMapTraits>();
+  SaiQosMapTraits::AdapterHostKey k{typeAttribute, mapToValueListAttribute};
+  SaiQosMapTraits::CreateAttributes c = k;
+  return store.setObject(k, c);
+}
+#endif
+
 std::shared_ptr<SaiQosMap> SaiQosMapManager::setTcToPgQosMap(
     const std::shared_ptr<QosPolicy>& qosPolicy) {
   const auto& newTcToPgMap = qosPolicy->getTrafficClassToPgId();
@@ -283,6 +325,16 @@ void SaiQosMapManager::setQosMaps(
       handle->tcToPcpMap = setTcToPcpQosMap(newQosPolicy);
     }
   }
+#if defined(SAI_CBFC_SUPPORTED)
+  if (platform_->getAsic()->isSupported(HwAsic::Feature::CBFC) &&
+      newQosPolicy->getTrafficClassToVcId()) {
+    handle->tcToVcMap = setTcToVcQosMap(newQosPolicy);
+  }
+  if (platform_->getAsic()->isSupported(HwAsic::Feature::CBFC) &&
+      newQosPolicy->getQueueToVcId()) {
+    handle->queueToVcMap = setQueueToVcQosMap(newQosPolicy);
+  }
+#endif
   if (newQosPolicy->getTrafficClassToVoqId() &&
       !newQosPolicy->getTrafficClassToVoqId()->empty()) {
     handle->tcToVoqMap = setTcToQueueQosMap(newQosPolicy, true);

@@ -14,4 +14,6 @@ std::optional<facebook::netwhoami::NetWhoAmI> getNetWhoAmI(
 
 bool isDsfRole(Role role);
 
+bool isNetosNative(const HostInfo& hostInfo);
+
 } // namespace facebook::fboss

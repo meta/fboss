@@ -14,10 +14,10 @@ cpp_library(
         "LedServiceHandler.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/futures:core",
         ":led_manager",
         "//common/fb303/cpp:fb303",
         "//fboss/led_service/if:led_service-cpp2-services",
-        "//folly/futures:core",
     ],
     exported_external_deps = [
         "gflags",
@@ -29,10 +29,13 @@ cpp_library(
     srcs = [
         "LedUtils.cpp",
     ],
+    headers = [
+        "LedUtils.h",
+    ],
     deps = [
+        "fbsource//xplat/folly/logging:logging",
         ":led-config",
         "//fboss/agent:fboss-error",
-        "//folly/logging:logging",
     ],
     exported_deps = [
         "//fboss/led_service/if:led_structs-cpp2-types",
@@ -53,6 +56,9 @@ cpp_library(
         "LedManager.cpp",
         "LedManagerInit.cpp",
         "Leh800bclsLedManager.cpp",
+        "M4052ACTMLedManager.cpp",
+        "M4061clscLedManager.cpp",
+        "M4061nhpLedManager.cpp",
         "M4062nhpLedManager.cpp",
         "Meru800bfaLedManager.cpp",
         "Meru800biaLedManager.cpp",
@@ -89,6 +95,9 @@ cpp_library(
         "LedManager.h",
         "LedManagerInit.h",
         "Leh800bclsLedManager.h",
+        "M4052ACTMLedManager.h",
+        "M4061clscLedManager.h",
+        "M4061nhpLedManager.h",
         "M4062nhpLedManager.h",
         "Meru800bfaLedManager.h",
         "Meru800biaLedManager.h",
@@ -114,7 +123,6 @@ cpp_library(
         "//fboss/agent/platforms/common/darwin:darwin_platform_mapping",
         "//fboss/agent/platforms/common/elbert:elbert_platform_mapping",
         "//fboss/agent/platforms/common/fuji:fuji_platform_mapping",
-        "//fboss/agent/platforms/common/icecube800banw:icecube800banw_platform_mapping",
         "//fboss/agent/platforms/common/icecube800bc:icecube800bc_platform_mapping",
         "//fboss/agent/platforms/common/icetea800bc:icetea800bc_platform_mapping",
         "//fboss/agent/platforms/common/janga800bic:janga800bic_platform_mapping",
@@ -141,6 +149,9 @@ cpp_library(
         "//fboss/lib/bsp/janga800bic:janga800bic_bsp",
         "//fboss/lib/bsp/ladakh800bcls:ladakh800bcls_bsp",
         "//fboss/lib/bsp/leh800bcls:leh800bcls_bsp",
+        "//fboss/lib/bsp/m4052actm:m4052actm_bsp",
+        "//fboss/lib/bsp/m4061clsc:m4061clsc_bsp",
+        "//fboss/lib/bsp/m4061nhp:m4061nhp_bsp",
         "//fboss/lib/bsp/m4062nhp:m4062nhp_bsp",
         "//fboss/lib/bsp/meru800bfa:meru800bfa_bsp",
         "//fboss/lib/bsp/meru800bia:meru800bia_bsp",
@@ -165,6 +176,9 @@ cpp_library(
         "//thrift/lib/cpp2/protocol:protocol",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:synchronized",
+        "fbsource//xplat/folly/io/async:async_base",
+        "fbsource//xplat/folly/logging:logging",
         ":led-config",
         ":led_utils",
         "//fboss/agent:fboss-error",
@@ -176,10 +190,6 @@ cpp_library(
         "//fboss/lib/bsp:bsp_core",
         "//fboss/lib/led:led_lib",
         "//fboss/lib/led:led_mapping-cpp2-types",
-        "//folly:format",
-        "//folly:synchronized",
-        "//folly/io/async:async_base",
-        "//folly/logging:logging",
     ],
 )
 
@@ -190,12 +200,12 @@ cpp_binary(
     ],
     headers = [],
     deps = [
+        "fbsource//xplat/folly/logging:init",
+        "fbsource//xplat/folly/logging:logging",
         ":led_core",
         ":led_utils",
         "//fb303:logging",
         "//fboss/platform/helpers:init",
-        "//folly/logging:init",
-        "//folly/logging:logging",
     ],
     external_deps = [
         "gflags",
@@ -211,9 +221,9 @@ cpp_library(
         "LedConfig.h",
     ],
     deps = [
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly/logging:logging",
         "//fboss/agent:fboss-error",
-        "//folly:file_util",
-        "//folly/logging:logging",
         "//thrift/lib/cpp2/protocol:protocol",
     ],
     exported_deps = [

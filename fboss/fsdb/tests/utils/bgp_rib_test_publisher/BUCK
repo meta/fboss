@@ -8,8 +8,8 @@ cpp_library(
     srcs = ["BgpRibTestPublisher.cpp"],
     headers = ["BgpRibTestPublisher.h"],
     deps = [
-        "//folly:network_address",
-        "//folly/logging:logging",
+        "fbsource//xplat/folly:network_address",
+        "fbsource//xplat/folly/logging:logging",
     ],
     exported_deps = [
         "//fboss/fsdb/client:fsdb_pub_sub",
@@ -24,13 +24,13 @@ cpp_binary(
     name = "bgp_rib_test_publisher",
     srcs = ["main.cpp"],
     deps = [
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/init:init",
+        "fbsource//xplat/folly/io/async:async_base",
+        "fbsource//xplat/folly/io/async:async_signal_handler",
+        "fbsource//xplat/folly/logging:logging",
         ":bgp_rib_test_publisher_lib",
         "//fboss/fsdb/common:flags",
-        "//folly:string",
-        "//folly/init:init",
-        "//folly/io/async:async_base",
-        "//folly/io/async:async_signal_handler",
-        "//folly/logging:logging",
     ],
     external_deps = [
         "gflags",

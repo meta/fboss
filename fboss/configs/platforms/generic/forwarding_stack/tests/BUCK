@@ -1,0 +1,39 @@
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbsource//tools/build_defs/testinfra:network_access_utils.bzl", "network_access_utils")
+
+oncall("fboss_oss")
+
+cpp_unittest(
+    name = "config_generation_spec_utils_test",
+    srcs = ["ConfigGenerationSpecUtilsTest.cpp"],
+    network_access = network_access_utils.none(),
+    deps = [
+        "fbsource//third-party/googletest:gtest",
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly/testing:test_util",
+        "//fboss/configs/platforms/generic/forwarding_stack/utils:config_generation_utils",
+    ],
+)
+
+cpp_unittest(
+    name = "feature_default_command_args_config_test",
+    srcs = ["FeatureDefaultCommandArgsConfigTest.cpp"],
+    network_access = network_access_utils.none(),
+    deps = [
+        "fbsource//third-party/googletest:gtest",
+        "//fboss/configs/platforms/generic/forwarding_stack/utils:config_generation_utils",
+    ],
+)
+
+cpp_unittest(
+    name = "link_topology_utils_test",
+    srcs = ["LinkTopologyUtilsTest.cpp"],
+    network_access = network_access_utils.none(),
+    deps = [
+        "fbsource//third-party/googletest:gtest",
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly/testing:test_util",
+        "//fboss/agent:fboss-error",
+        "//fboss/configs/platforms/generic/forwarding_stack/utils:config_generation_utils",
+    ],
+)

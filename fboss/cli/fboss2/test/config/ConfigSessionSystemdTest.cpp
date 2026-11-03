@@ -23,7 +23,9 @@
 
 using ::testing::_; // NOLINT(bugprone-reserved-identifier)
 using ::testing::InSequence;
+using ::testing::NiceMock;
 using ::testing::Return;
+using ::testing::StrictMock;
 using ::testing::Throw;
 
 namespace facebook::fboss {
@@ -86,10 +88,13 @@ TEST(FbossServiceUtilTest, RestartService_MonolithicMode_Coldboot) {
 // Test: Split mode warmboot restart (single hw_agent)
 // hw_agent must be restarted before sw_agent
 TEST(FbossServiceUtilTest, RestartService_SplitMode_Warmboot_SingleHwAgent) {
-  auto mockSystemd = std::make_unique<MockSystemdInterface>();
+  auto mockSystemd = std::make_unique<StrictMock<MockSystemdInterface>>();
 
-  // Each service: restart -> wait, in hw-before-sw order
   InSequence seq;
+  EXPECT_CALL(*mockSystemd, getMatchingServices("fboss_hw_agent@0.service"))
+      .WillOnce(Return(std::vector<std::string>{"fboss_hw_agent@0.service"}));
+  EXPECT_CALL(*mockSystemd, getMatchingServices("fboss_sw_agent.service"))
+      .WillOnce(Return(std::vector<std::string>{"fboss_sw_agent.service"}));
   EXPECT_CALL(*mockSystemd, restartService("fboss_hw_agent@0")).Times(1);
   EXPECT_CALL(*mockSystemd, waitForServiceActive("fboss_hw_agent@0", _, _))
       .Times(1);
@@ -112,6 +117,11 @@ TEST(FbossServiceUtilTest, RestartService_SplitMode_Warmboot_SingleHwAgent) {
 // hw_agent must be fully coldbooted before sw_agent
 TEST(FbossServiceUtilTest, RestartService_SplitMode_Coldboot_SingleHwAgent) {
   auto mockSystemd = std::make_unique<MockSystemdInterface>();
+
+  EXPECT_CALL(*mockSystemd, getMatchingServices("fboss_hw_agent@0.service"))
+      .WillOnce(Return(std::vector<std::string>{"fboss_hw_agent@0.service"}));
+  EXPECT_CALL(*mockSystemd, getMatchingServices("fboss_sw_agent.service"))
+      .WillOnce(Return(std::vector<std::string>{"fboss_sw_agent.service"}));
 
   // Expect sequential coldboot: create marker -> restart -> wait for each
   // service
@@ -140,6 +150,13 @@ TEST(FbossServiceUtilTest, RestartService_SplitMode_Coldboot_SingleHwAgent) {
 TEST(FbossServiceUtilTest, RestartService_SplitMode_Warmboot_MultipleHwAgents) {
   auto mockSystemd = std::make_unique<MockSystemdInterface>();
 
+  EXPECT_CALL(*mockSystemd, getMatchingServices("fboss_hw_agent@0.service"))
+      .WillOnce(Return(std::vector<std::string>{"fboss_hw_agent@0.service"}));
+  EXPECT_CALL(*mockSystemd, getMatchingServices("fboss_hw_agent@1.service"))
+      .WillOnce(Return(std::vector<std::string>{"fboss_hw_agent@1.service"}));
+  EXPECT_CALL(*mockSystemd, getMatchingServices("fboss_sw_agent.service"))
+      .WillOnce(Return(std::vector<std::string>{"fboss_sw_agent.service"}));
+
   // Each service: restart -> wait, in hw-before-sw order
   InSequence seq;
   EXPECT_CALL(*mockSystemd, restartService("fboss_hw_agent@0")).Times(1);
@@ -162,6 +179,90 @@ TEST(FbossServiceUtilTest, RestartService_SplitMode_Warmboot_MultipleHwAgents) {
   EXPECT_EQ(services[0], "fboss_hw_agent@0");
   EXPECT_EQ(services[1], "fboss_hw_agent@1");
   EXPECT_EQ(services[2], "fboss_sw_agent");
+}
+
+TEST(FbossServiceUtilTest, RestartService_SplitMode_UsesNetosServices) {
+  auto mockSystemd = std::make_unique<MockSystemdInterface>();
+
+  EXPECT_CALL(*mockSystemd, getMatchingServices(_))
+      .WillRepeatedly(Return(std::vector<std::string>{}));
+  EXPECT_CALL(
+      *mockSystemd,
+      getMatchingServices("netos.service.fboss_wedge_agent_*_0.service"))
+      .WillOnce(Return(
+          std::vector<std::string>{
+              "netos.service.fboss_wedge_agent_brcm_0.service"}));
+  EXPECT_CALL(
+      *mockSystemd, getMatchingServices("netos.service.fboss_sw_agent.service"))
+      .WillOnce(Return(
+          std::vector<std::string>{"netos.service.fboss_sw_agent.service"}));
+
+  InSequence seq;
+  EXPECT_CALL(
+      *mockSystemd, restartService("netos.service.fboss_wedge_agent_brcm_0"));
+  EXPECT_CALL(
+      *mockSystemd,
+      waitForServiceActive("netos.service.fboss_wedge_agent_brcm_0", _, _));
+  EXPECT_CALL(*mockSystemd, restartService("netos.service.fboss_sw_agent"));
+  EXPECT_CALL(
+      *mockSystemd, waitForServiceActive("netos.service.fboss_sw_agent", _, _));
+
+  FbossServiceUtil util(
+      std::vector<int>{0}, /*multiSwitch=*/true, std::move(mockSystemd));
+
+  const std::vector<std::string> expectedServices = {
+      "netos.service.fboss_wedge_agent_brcm_0", "netos.service.fboss_sw_agent"};
+  EXPECT_EQ(
+      util.restartService(
+          cli::ServiceType::AGENT,
+          cli::ConfigActionLevel::DISRUPTIVE_SERVICE_RESTART),
+      expectedServices);
+}
+
+TEST(FbossServiceUtilTest, RestartService_BgpUsesNetosService) {
+  auto mockSystemd = std::make_unique<MockSystemdInterface>();
+
+  EXPECT_CALL(*mockSystemd, getMatchingServices("bgpd.service"))
+      .WillOnce(Return(std::vector<std::string>{}));
+  EXPECT_CALL(
+      *mockSystemd, getMatchingServices("netos.service.fboss_bgp.service"))
+      .WillOnce(
+          Return(std::vector<std::string>{"netos.service.fboss_bgp.service"}));
+  EXPECT_CALL(*mockSystemd, restartService("netos.service.fboss_bgp"));
+  EXPECT_CALL(
+      *mockSystemd, waitForServiceActive("netos.service.fboss_bgp", _, _));
+
+  FbossServiceUtil util(
+      std::vector<int>{}, /*multiSwitch=*/false, std::move(mockSystemd));
+
+  EXPECT_EQ(
+      util.restartService(
+          cli::ServiceType::BGP, cli::ConfigActionLevel::SERVICE_RESTART),
+      std::vector<std::string>{"netos.service.fboss_bgp"});
+}
+
+TEST(FbossServiceUtilTest, RestartService_ThrowsWhenServiceIsMissing) {
+  auto mockSystemd = std::make_unique<StrictMock<MockSystemdInterface>>();
+
+  InSequence seq;
+  EXPECT_CALL(*mockSystemd, getMatchingServices("bgpd.service"))
+      .WillOnce(Return(std::vector<std::string>{}));
+  EXPECT_CALL(
+      *mockSystemd, getMatchingServices("netos.service.fboss_bgp.service"))
+      .WillOnce(Return(std::vector<std::string>{}));
+
+  FbossServiceUtil util(
+      std::vector<int>{}, /*multiSwitch=*/false, std::move(mockSystemd));
+
+  try {
+    util.restartService(
+        cli::ServiceType::BGP, cli::ConfigActionLevel::SERVICE_RESTART);
+    FAIL() << "Expected restartService() to reject missing systemd services";
+  } catch (const std::runtime_error& ex) {
+    EXPECT_EQ(
+        std::string(ex.what()),
+        "No systemd service found for bgpd and netos.service.fboss_bgp");
+  }
 }
 
 // Test: Service restart failure is propagated
@@ -200,6 +301,36 @@ TEST(FbossServiceUtilTest, RestartService_ServiceFailsToStart) {
 }
 
 // ============================================================
+// Test: waitForAgentConfigured() polls the given host until the agent is
+// configured.
+TEST(FbossServiceUtilTest, WaitForAgentConfigured_PollsUntilConfigured) {
+  MockFbossServiceUtil util;
+  HostInfo hostInfo("dut1", "dut1-oob", folly::IPAddress("10.0.0.1"));
+
+  EXPECT_CALL(
+      util, isAgentConfigured(::testing::Property(&HostInfo::getName, "dut1")))
+      .WillOnce(Return(false))
+      .WillOnce(Return(false))
+      .WillOnce(Return(true));
+
+  util.waitForAgentConfigured(
+      hostInfo, /*maxWaitSeconds=*/5, /*pollIntervalMs=*/10);
+}
+
+// Test: waitForAgentConfigured() throws if the agent never becomes configured.
+TEST(FbossServiceUtilTest, WaitForAgentConfigured_ThrowsOnTimeout) {
+  MockFbossServiceUtil util;
+  HostInfo hostInfo(
+      "localhost", "localhost-oob", folly::IPAddress("127.0.0.1"));
+
+  EXPECT_CALL(util, isAgentConfigured(_)).WillRepeatedly(Return(false));
+
+  EXPECT_THROW(
+      util.waitForAgentConfigured(
+          hostInfo, /*maxWaitSeconds=*/1, /*pollIntervalMs=*/10),
+      std::runtime_error);
+}
+
 // ConfigSession integration tests using MockFbossServiceUtil
 // These verify that ConfigSession::applyServiceActions() correctly
 // delegates to fbossServiceUtil_ without touching real systemd or thrift.
@@ -221,6 +352,7 @@ TEST(
       restartService(
           cli::ServiceType::AGENT, cli::ConfigActionLevel::SERVICE_RESTART))
       .WillOnce(::testing::Return(std::vector<std::string>{"wedge_agent"}));
+  EXPECT_CALL(*mockPtr, isAgentConfigured(_)).WillOnce(Return(true));
 
   TestableConfigSession session(
       "/tmp/test_session", "/tmp/test_system", std::move(mock));
@@ -252,6 +384,7 @@ TEST(
       .WillOnce(
           ::testing::Return(
               std::vector<std::string>{"fboss_hw_agent@0", "fboss_sw_agent"}));
+  EXPECT_CALL(*mockPtr, isAgentConfigured(_)).WillOnce(Return(true));
 
   TestableConfigSession session(
       "/tmp/test_session", "/tmp/test_system", std::move(mock));
@@ -279,6 +412,7 @@ TEST(
 
   EXPECT_CALL(*mockPtr, reloadConfig(cli::ServiceType::AGENT, ::testing::_))
       .WillOnce(::testing::Return(std::vector<std::string>{"wedge_agent"}));
+  EXPECT_CALL(*mockPtr, isAgentConfigured(_)).Times(0);
 
   TestableConfigSession session(
       "/tmp/test_session", "/tmp/test_system", std::move(mock));
@@ -348,8 +482,14 @@ TEST(
 
   // Simulate Thrift RPC reporting multi-switch with 1 hw_agent at index 0
   session.setMultiSwitchOverride(true, {0});
-  session.setMockSystemdFactory(
-      [] { return std::make_unique<MockSystemdInterface>(); });
+  session.setMockSystemdFactory([] {
+    auto mock = std::make_unique<NiceMock<MockSystemdInterface>>();
+    ON_CALL(*mock, getMatchingServices(_))
+        .WillByDefault([](const std::string& pattern) {
+          return std::vector<std::string>{pattern};
+        });
+    return mock;
+  });
 
   HostInfo hostInfo(
       "localhost", "localhost-oob", folly::IPAddress("127.0.0.1"));

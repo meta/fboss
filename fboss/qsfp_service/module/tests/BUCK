@@ -12,6 +12,8 @@ cpp_unittest(
     ],
     compiler_flags = QSFP_COMMON_COMPILER_FLAGS,
     network_access = network_access_utils.none(),
+    # Links the x86-64-only vendor SAI SDK.
+    target_compatible_with = ["ovr_config//cpu:x86_64"],
     deps = [
         "//fboss/qsfp_service/module:qsfp-module",
         "//fboss/qsfp_service/module/tests:fake-transceiver-impl",
@@ -28,6 +30,8 @@ cpp_unittest(
     ],
     compiler_flags = QSFP_COMMON_COMPILER_FLAGS,
     network_access = network_access_utils.none(),
+    # Links the x86-64-only vendor SAI SDK.
+    target_compatible_with = ["ovr_config//cpu:x86_64"],
     deps = [
         ":fake-transceiver-impl",
         ":transceiver-tests-helper",
@@ -50,15 +54,17 @@ cpp_unittest(
     ],
     compiler_flags = QSFP_COMMON_COMPILER_FLAGS,
     network_access = network_access_utils.none(),
+    # Links the x86-64-only vendor SAI SDK.
+    target_compatible_with = ["ovr_config//cpu:x86_64"],
     deps = [
         "fbsource//third-party/googletest:gmock",
+        "fbsource//xplat/folly:memory",
         "//fboss/agent:switch_config-cpp2-types",
         "//fboss/qsfp_service:transceiver-manager",
         "//fboss/qsfp_service/if:transceiver-cpp2-types",
         "//fboss/qsfp_service/module:firmware_upgrader",
         "//fboss/qsfp_service/module:qsfp-module",
         "//fboss/qsfp_service/test:transceiver_manager_test_helper",
-        "//folly:memory",
     ],
 )
 
@@ -70,11 +76,11 @@ cpp_unittest(
     compiler_flags = QSFP_COMMON_COMPILER_FLAGS,
     network_access = network_access_utils.none(),
     deps = [
+        "fbsource//xplat/folly:random",
+        "fbsource//xplat/folly/testing:test_util",
         "//fboss/lib/usb:transceiver_access_parameter",
         "//fboss/qsfp_service/module:i2c_log_buffer",
         "//fboss/qsfp_service/module/cmis:cmis-cpp2-types",
-        "//folly:random",
-        "//folly/testing:test_util",
     ],
 )
 
@@ -88,11 +94,11 @@ cpp_library(
     exported_deps = [
         "fbsource//third-party/googletest:gmock",
         "fbsource//third-party/googletest:gtest",
+        "fbsource//xplat/folly:memory",
         "//fboss/agent:switch_config-cpp2-types",
         "//fboss/qsfp_service:transceiver-manager",
         "//fboss/qsfp_service/if:transceiver-cpp2-types",
         "//fboss/qsfp_service/module:qsfp-module",
-        "//folly:memory",
     ],
 )
 

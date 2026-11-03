@@ -73,6 +73,7 @@ const list<string> ALLOWED_PMUNIT_NAMES = [
   "MINIPACK3BA_MCB",
   "MINIPACK3BAM_MCB",
   "MINIPACK3N_MCB",
+  "MINIPACK3NM_MCB",
   "TAHANSB800BC_MCB",
   "TAHANSB800BCM_MCB",
   // The whole board is a PmUnit for these
@@ -95,6 +96,7 @@ const list<string> PLATFORMS_WITH_IDPROM_CHASSIS_EEPROM = [
   "MORGAN800CC",
   "JANGA800BIC",
   "TAHAN800BC",
+  "M4062NHP",
 ];
 
 // List of platforms that are allowed to have logical EEPROMs.

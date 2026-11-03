@@ -30,8 +30,8 @@ cpp_unittest(
     ],
     network_access = network_access_utils.none(),
     deps = [
+        "fbsource//xplat/folly/logging:logging",
         "//fboss/platform/weutil:config_validator",
-        "//folly/logging:logging",
         "//thrift/lib/cpp2/protocol:protocol",
     ],
 )
@@ -43,10 +43,10 @@ cpp_unittest(
     ],
     network_access = network_access_utils.none(),
     deps = [
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly/testing:test_util",
         "//fboss/platform/weutil:fboss_eeprom_lib",
         "//fboss/platform/weutil/if:eeprom_contents-cpp2-types",
-        "//folly:file_util",
-        "//folly/testing:test_util",
     ],
 )
 
@@ -57,8 +57,8 @@ cpp_unittest(
     ],
     network_access = network_access_utils.none(),
     deps = [
+        "fbsource//xplat/folly:file_util",
         "//fboss/platform/weutil:config_utils_lib",
-        "//folly:file_util",
         "//thrift/lib/cpp2/protocol:protocol",
     ],
 )
@@ -70,9 +70,9 @@ cpp_unittest(
     ],
     network_access = network_access_utils.none(),
     deps = [
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly/testing:test_util",
         "//fboss/platform/weutil:crc16_ccitt_aug",
         "//fboss/platform/weutil:fboss_eeprom_lib",
-        "//folly:file_util",
-        "//folly/testing:test_util",
     ],
 )

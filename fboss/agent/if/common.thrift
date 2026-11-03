@@ -51,10 +51,9 @@ struct NextHopThrift {
   1: Address.BinaryAddress address;
   // Default weight of 0 represents an ECMP route.
   // This default is chosen for two reasons:
-  // 1) We rely on the arithmetic properties of 0 for ECMP vs UCMP route
-  //    resolution calculations. A 0 weight next hop being present at a variety
-  //    of layers in a route resolution tree will cause the entire route
-  //    resolution to use ECMP.
+  // 1) A next hop at weight 0 states no explicit weighting. When route
+  //    resolution combines it with explicitly weighted next hops, it counts
+  //    as one effective share; a set with no explicit weights remains ECMP.
   // 2) A client which does not set a value will result in
   //    0 being populated even with strange behavior in the client language
   //    which is consistent with C++
@@ -65,6 +64,7 @@ struct NextHopThrift {
   5: list<Address.BinaryAddress> srv6SegmentList;
   6: optional TunnelType tunnelType;
   7: optional string tunnelId;
+  8: optional string overlayDstMac;
 
   /**
   * For capturing topology information to assist Agent path pruning decisions
@@ -113,6 +113,8 @@ struct NextHopGroup {
   1: optional string name;
   2: list<NextHopThrift> nexthops;
   3: optional bool isProgrammed;
+  // NextHopSetId of the group. Output only; ignored when adding groups.
+  4: optional i64 id;
 }
 
 /*
@@ -243,6 +245,7 @@ enum TunnelType {
   SRV6_ENCAP = 1,
   IP_IN_IP_ENCAP = 2,
   SRV6_DECAP = 3,
+  VXLAN = 4,
 }
 
 enum MySidType {

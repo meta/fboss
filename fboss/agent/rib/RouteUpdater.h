@@ -210,6 +210,7 @@ class RibRouteUpdater {
       const std::optional<std::string>& tunnelId,
       const std::optional<int64_t>& cost,
       NextHopRole role,
+      const std::optional<folly::MacAddress>& overlayDstMac,
       std::optional<RouteCounterID>* inheritedCounterID,
       RouteNextHopSet& fwd);
 

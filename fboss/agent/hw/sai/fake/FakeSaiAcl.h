@@ -171,6 +171,10 @@ class FakeAclEntry {
   sai_uint8_t fieldTtlData;
   sai_uint8_t fieldTtlMask;
 
+  bool fieldMplsLabel0TtlEnable{false};
+  sai_uint8_t fieldMplsLabel0TtlData{};
+  sai_uint8_t fieldMplsLabel0TtlMask{};
+
   bool fieldFdbDstUserMetaEnable{false};
   sai_uint32_t fieldFdbDstUserMetaData;
   sai_uint32_t fieldFdbDstUserMetaMask;
@@ -264,11 +268,6 @@ class FakeAclEntry {
   bool actionL3SwitchCancelEnable{false};
   bool actionL3SwitchCancelData{false};
 
-  void setLabelExtended(const sai_attribute_t* attr);
-  sai_status_t getLabelExtended(sai_attribute_t* attr) const;
-
-  std::vector<int8_t> labelExtended;
-
   sai_object_id_t id;
 };
 
@@ -300,6 +299,7 @@ class FakeAclTable {
       bool fieldDstMac,
       bool fieldIpType,
       bool fieldTtl,
+      bool fieldMplsLabel0Ttl,
       bool fieldFdbDstUserMeta,
       bool fieldRouteDstUserMeta,
       bool fieldNeighborDstUserMeta,
@@ -339,6 +339,7 @@ class FakeAclTable {
         fieldDstMac(fieldDstMac),
         fieldIpType(fieldIpType),
         fieldTtl(fieldTtl),
+        fieldMplsLabel0Ttl(fieldMplsLabel0Ttl),
         fieldFdbDstUserMeta(fieldFdbDstUserMeta),
         fieldRouteDstUserMeta(fieldRouteDstUserMeta),
         fieldNeighborDstUserMeta(fieldNeighborDstUserMeta),
@@ -384,6 +385,7 @@ class FakeAclTable {
   bool fieldDstMac;
   bool fieldIpType;
   bool fieldTtl;
+  bool fieldMplsLabel0Ttl;
   bool fieldFdbDstUserMeta;
   bool fieldRouteDstUserMeta;
   bool fieldNeighborDstUserMeta;
@@ -398,6 +400,7 @@ class FakeAclTable {
   sai_object_id_t userDefinedFieldGroupMin2;
   sai_object_id_t userDefinedFieldGroupMin3;
   sai_object_id_t userDefinedFieldGroupMin4;
+  bool fieldRouteDestination{false};
 };
 
 class FakeAclCounter {

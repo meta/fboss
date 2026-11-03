@@ -92,7 +92,7 @@ CmdShowBgpStatsPolicy::RetType CmdShowBgpStatsPolicy::sampleModel() {
   // An origination policy that has matched nothing on this switch, showing the
   // implicit default-deny row printOutput appends.
   TPolicyStatementStats originate;
-  originate.name() = "ORIGINATE_RACK_PRIVATE_PREFIXES";
+  originate.name() = "SAMPLE_ORIGINATE_LOCAL";
   originate.num_of_runs() = 0;
   originate.prefix_hit_count() = 0;
   originate.avg_time() = 0;
@@ -103,7 +103,7 @@ CmdShowBgpStatsPolicy::RetType CmdShowBgpStatsPolicy::sampleModel() {
   // An ingress policy that is actively matching, so the per-term hits and the
   // running miss count are both non-trivial.
   TPolicyStatementStats propagate;
-  propagate.name() = "PROPAGATE_FSW_RSW_IN";
+  propagate.name() = "SAMPLE_UPLINK_IN";
   propagate.num_of_runs() = 1464;
   propagate.prefix_hit_count() = 1464;
   propagate.avg_time() = 3;

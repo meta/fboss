@@ -113,8 +113,10 @@ class CmdShowBgpNeighbors
     establishedDetails.recv_update_withdrawals() = 12;
 
     TBgpPeer establishedPeer;
-    establishedPeer.local_as_4_byte() = 65499;
-    establishedPeer.remote_as_4_byte() = 6001;
+    // Sample ASNs (RFC 6996 private-use range); see the note in sampleModel()
+    // of CmdShowBgpSummary.h.
+    establishedPeer.local_as_4_byte() = 65108;
+    establishedPeer.remote_as_4_byte() = 65221;
     establishedPeer.hold_time() = 120;
     establishedPeer.peer_state() = TBgpPeerState::ESTABLISHED;
     establishedPeer.lastResetHoldTimer() = 0;
@@ -144,7 +146,7 @@ class CmdShowBgpNeighbors
     listenRangeDetails.gr_remote_restart_time() = 0;
 
     TBgpPeer listenRangePeer = establishedPeer;
-    listenRangePeer.remote_as_4_byte() = 65499;
+    listenRangePeer.remote_as_4_byte() = 65108;
     listenRangePeer.peer_state() = TBgpPeerState::IDLE;
 
     TBgpSession listenRange;

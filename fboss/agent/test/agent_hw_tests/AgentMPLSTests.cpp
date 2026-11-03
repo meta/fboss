@@ -128,15 +128,21 @@ class AgentMPLSTest : public AgentHwTest {
     auto l3Asics = ensemble.getL3Asics();
     auto asic = checkSameAndGetAsicForTesting(l3Asics);
     auto masterLogicalPorts = ensemble.masterLogicalPortIds();
-    auto config = utility::onePortPerInterfaceConfig(
-        ensemble.getSw(),
-        ensemble.masterLogicalPortIds(),
-        true /*interfaceHasSubnet*/);
-
+    cfg::SwitchConfig config;
     if constexpr (std::is_same_v<PortType, AggregatePortID>) {
-      utility::addAggPort(1, {masterLogicalPorts[0]}, &config);
-      utility::addAggPort(2, {masterLogicalPorts[1]}, &config);
-      utility::addAggPort(3, {masterLogicalPorts[2]}, &config);
+      config = utility::oneAggregatePortPerInterfaceConfig(
+          ensemble.getSw(),
+          masterLogicalPorts,
+          {utility::AggregatePortInfo(
+               AggregatePortID(1), {masterLogicalPorts[0]}),
+           utility::AggregatePortInfo(
+               AggregatePortID(2), {masterLogicalPorts[1]}),
+           utility::AggregatePortInfo(
+               AggregatePortID(3), {masterLogicalPorts[2]})},
+          true /*interfaceHasSubnet*/);
+    } else {
+      config = utility::onePortPerInterfaceConfig(
+          ensemble.getSw(), masterLogicalPorts, true /*interfaceHasSubnet*/);
     }
     cfg::QosMap qosMap;
     for (auto tc = 0; tc < 8; tc++) {

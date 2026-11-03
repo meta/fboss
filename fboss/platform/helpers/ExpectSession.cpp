@@ -31,6 +31,7 @@ ExpectSession::~ExpectSession() {
   if (masterFd_ >= 0) {
     close(masterFd_);
   }
+  // isAlive() may already have reaped the child.
   if (childPid_ > 0) {
     kill(childPid_, SIGTERM);
     int status;
@@ -91,11 +92,40 @@ std::string ExpectSession::getOutput() const {
   return lastOutput_;
 }
 
-bool ExpectSession::isAlive() const {
+std::optional<std::string> ExpectSession::readExactly(
+    size_t count,
+    std::chrono::milliseconds timeout) {
+  auto deadline = std::chrono::steady_clock::now() + timeout;
+  while (buffer_.size() < count) {
+    auto remaining = std::chrono::duration_cast<std::chrono::milliseconds>(
+        deadline - std::chrono::steady_clock::now());
+    if (eof_ || remaining.count() <= 0) {
+      return std::nullopt;
+    }
+    readAvailable(remaining);
+  }
+  std::string data = buffer_.substr(0, count);
+  buffer_.erase(0, count);
+  return data;
+}
+
+bool ExpectSession::isEof() const {
+  return eof_;
+}
+
+bool ExpectSession::isAlive() {
   if (childPid_ <= 0) {
     return false;
   }
-  return kill(childPid_, 0) == 0;
+  // kill(pid, 0) succeeds for a zombie, so reap instead. ECHILD means the
+  // child is gone too (e.g. reaped elsewhere, or SIGCHLD is ignored).
+  int status;
+  auto reaped = waitpid(childPid_, &status, WNOHANG);
+  if (reaped == childPid_ || (reaped < 0 && errno != EINTR)) {
+    childPid_ = -1;
+    return false;
+  }
+  return true;
 }
 
 void ExpectSession::readAvailable(std::chrono::milliseconds timeout) {
@@ -113,7 +143,8 @@ void ExpectSession::readAvailable(std::chrono::milliseconds timeout) {
     auto n = read(masterFd_, buf, sizeof(buf));
     if (n > 0) {
       buffer_.append(buf, n);
-    } else if (n == 0) {
+    } else if (n == 0 || (n < 0 && errno != EINTR)) {
+      // Linux reports a closed terminal as EIO rather than end of file.
       eof_ = true;
     }
   }

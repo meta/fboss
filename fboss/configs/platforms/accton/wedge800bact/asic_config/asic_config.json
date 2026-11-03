@@ -54,10 +54,13 @@
     }
   },
   "variants": {
-    "": {},
+    "default": {},
     "hw_test": {
       "asic_config_params": {
         "config_gen_type": "HW_TEST"
+      },
+      "features": {
+        "enable_sai_managed_udf_groups": true
       }
     }
   }

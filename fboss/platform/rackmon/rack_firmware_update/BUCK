@@ -14,10 +14,10 @@ cpp_library(
     ],
     deps = [
         "fbsource//third-party/fmt:fmt",
+        "fbsource//xplat/folly/io/async:async_socket",
         ":rackmon_client",
         ":updater_exceptions",
         "//fboss/platform/rackmon/if:rackmonsvc-cpp2-services",
-        "//folly/io/async:async_socket",
         "//thrift/lib/cpp2/async:rocket_client_channel",
     ],
     exported_deps = [],
@@ -44,10 +44,10 @@ cpp_library(
         "RackmonClient.h",
     ],
     deps = [
+        "fbsource//xplat/folly/io/async:async_base",
+        "fbsource//xplat/folly/io/async:async_socket",
         ":updater_exceptions",
         "//fboss/platform/rackmon/if:rackmonsvc-cpp2-clients",
-        "//folly/io/async:async_base",
-        "//folly/io/async:async_socket",
         "//thrift/lib/cpp2/async:rocket_client_channel",
     ],
     exported_deps = [
@@ -129,11 +129,11 @@ cpp_binary(
     ],
     deps = [
         "fbsource//third-party/fmt:fmt",
+        "fbsource//xplat/folly/init:init",
         ":mei_rack_firmware_updater",
         ":rackmon_client",
         ":updater_exceptions",
         ":updater_utils",
-        "//folly/init:init",
     ],
     external_deps = [
         "gflags",
@@ -148,11 +148,11 @@ cpp_binary(
     ],
     deps = [
         "fbsource//third-party/fmt:fmt",
+        "fbsource//xplat/folly/init:init",
         ":mailbox_rack_firmware_updater",
         ":rackmon_client",
         ":updater_exceptions",
         ":updater_utils",
-        "//folly/init:init",
     ],
     external_deps = [
         "gflags",

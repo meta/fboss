@@ -13,9 +13,11 @@
 #include "fboss/agent/SwSwitch.h"
 #include "fboss/agent/SwitchIdScopeResolver.h"
 #include "fboss/agent/SwitchStats.h"
+#include "fboss/agent/rib/ClassBasedPolicyUpdater.h"
 #include "fboss/agent/rib/NextHopIDManager.h"
 #include "fboss/agent/rib/RibToSwitchStateUpdater.h"
 #include "fboss/agent/rib/RouteUpdater.h"
+#include "fboss/agent/rib/SwitchStateNextHopIdUpdater.h"
 
 #include "fboss/agent/state/SwitchState.h"
 
@@ -33,7 +35,8 @@ RibToSwitchStateFunction createRibToSwitchStateFunction(
              const facebook::fboss::LabelToRouteMap& labelToRoute,
              const NextHopIDManager* nextHopIDManager,
              const MySidTable& mySidTable,
-             void* cookie) -> StateDelta {
+             void* cookie,
+             bool vrfDeleted) -> StateDelta {
     folly::Synchronized<facebook::fboss::RibToSwitchStateUpdater>
         ribToSwitchStateUpdater(
             std::in_place,
@@ -43,7 +46,9 @@ RibToSwitchStateFunction createRibToSwitchStateFunction(
             v6NetworkToRoute,
             labelToRoute,
             nextHopIDManager,
-            mySidTable);
+            mySidTable,
+            facebook::fboss::RibToSwitchStateUpdater::kAllActions,
+            vrfDeleted);
 
     auto wRibToSwitchStateUpdater = ribToSwitchStateUpdater.wlock();
     auto sw = static_cast<facebook::fboss::SwSwitch*>(cookie);
@@ -62,6 +67,20 @@ RibToSwitchStateFunction createRibToSwitchStateFunction(
         lastDelta ? lastDelta->oldState() : std::make_shared<SwitchState>();
     return StateDelta(oldState, sw->getState());
   };
+}
+
+std::function<void(const NextHopIDManager*)> createNextHopIdStateUpdate(
+    SwSwitch* sw,
+    std::string name) {
+  return
+      [sw, name = std::move(name)](const NextHopIDManager* nextHopIDManager) {
+        SwitchStateNextHopIdUpdater nhopUpdater(nextHopIDManager);
+        ClassBasedPolicyUpdater policyUpdater(nextHopIDManager);
+        sw->updateStateWithHwFailureProtection(
+            name, [&](const std::shared_ptr<SwitchState>& state) {
+              return policyUpdater(nhopUpdater(state));
+            });
+      };
 }
 
 SwSwitchRouteUpdateWrapper::SwSwitchRouteUpdateWrapper(

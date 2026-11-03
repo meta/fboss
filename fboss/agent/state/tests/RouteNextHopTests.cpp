@@ -1148,3 +1148,88 @@ TEST(RouteNextHopTest, Srv6ValidationMissingTunnelId) {
       makeSrv6UnresolvedNextHop(addr, 10, segList, TunnelType::SRV6_ENCAP),
       FbossError);
 }
+
+TEST(RouteNextHopTest, OverlayDstMacThriftRoundTrip) {
+  UnresolvedNextHop nh(
+      folly::IPAddress("10.0.0.1"),
+      1,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      {},
+      TunnelType::VXLAN,
+      "vxlan_tunnel_1",
+      std::nullopt,
+      NextHopRole::PRIMARY,
+      folly::MacAddress("02:00:00:00:00:01"));
+  auto thrift = NextHop(nh).toThrift();
+  ASSERT_TRUE(thrift.overlayDstMac().has_value());
+  EXPECT_EQ(*thrift.overlayDstMac(), "02:00:00:00:00:01");
+  auto roundTripped = util::fromThrift(thrift);
+  EXPECT_EQ(
+      roundTripped.overlayDstMac(), folly::MacAddress("02:00:00:00:00:01"));
+  EXPECT_EQ(roundTripped.tunnelType(), TunnelType::VXLAN);
+  EXPECT_EQ(roundTripped.tunnelId(), "vxlan_tunnel_1");
+
+  // A different MAC must not compare or hash equal: the SAI tunnel NH
+  // key includes the MAC.
+  UnresolvedNextHop otherMac(
+      folly::IPAddress("10.0.0.1"),
+      1,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      {},
+      TunnelType::VXLAN,
+      "vxlan_tunnel_1",
+      std::nullopt,
+      NextHopRole::PRIMARY,
+      folly::MacAddress("02:00:00:00:00:02"));
+  EXPECT_NE(NextHop(nh), NextHop(otherMac));
+  EXPECT_NE(
+      std::hash<NextHop>{}(NextHop(nh)),
+      std::hash<NextHop>{}(NextHop(otherMac)));
+}
+
+TEST(RouteNextHopTest, OverlayDstMacValidation) {
+  // overlayDstMac without a VXLAN tunnel type is an error, never dropped.
+  EXPECT_THROW(
+      UnresolvedNextHop(
+          folly::IPAddress("10.0.0.1"),
+          1,
+          std::nullopt,
+          std::nullopt,
+          std::nullopt,
+          std::nullopt,
+          {},
+          std::nullopt,
+          std::nullopt,
+          std::nullopt,
+          NextHopRole::PRIMARY,
+          folly::MacAddress("02:00:00:00:00:01")),
+      std::exception);
+  EXPECT_THROW(
+      UnresolvedNextHop(
+          folly::IPAddress("10.0.0.1"),
+          1,
+          std::nullopt,
+          std::nullopt,
+          std::nullopt,
+          std::nullopt,
+          {},
+          TunnelType::VXLAN,
+          std::nullopt,
+          std::nullopt,
+          NextHopRole::PRIMARY,
+          folly::MacAddress("02:00:00:00:00:01")),
+      std::exception);
+  NextHopThrift nht;
+  *nht.address() =
+      facebook::network::toBinaryAddress(folly::IPAddress("10.0.0.1"));
+  nht.tunnelType() = TunnelType::VXLAN;
+  nht.tunnelId() = "vxlan_tunnel_1";
+  nht.overlayDstMac() = "not-a-mac";
+  EXPECT_THROW(util::fromThrift(nht), std::exception);
+}

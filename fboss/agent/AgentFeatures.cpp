@@ -456,8 +456,6 @@ DEFINE_uint32(
     64,
     "Max ecmp width. Also implies ucmp normalization factor");
 
-DEFINE_bool(enable_th5_ars_scale_mode, false, "Enable ARS scale mode");
-
 DEFINE_bool(
     check_wb_handles,
     false,
@@ -551,6 +549,11 @@ DEFINE_int32(
     fsdbStatsStreamIntervalSeconds,
     5,
     "Interval at which stats subscriptions are served");
+
+DEFINE_int32(
+    update_phy_info_interval_s,
+    10,
+    "Update phy info interval in seconds");
 
 DEFINE_bool(
     recover_from_hw_switch,

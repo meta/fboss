@@ -13,7 +13,7 @@
 #include "fboss/agent/test/EcmpSetupHelper.h"
 #include "fboss/agent/test/ResourceLibUtil.h"
 #include "fboss/agent/test/TestUtils.h"
-#include "fboss/agent/test/agent_hw_tests/AgentTestEcmpConstants.h"
+#include "fboss/agent/test/utils/AgentTestEcmpConstants.h"
 #include "fboss/agent/test/utils/ConfigUtils.h"
 #include "fboss/agent/test/utils/QosTestUtils.h"
 #include "fboss/agent/test/utils/QueuePerHostTestUtils.h"
@@ -41,6 +41,12 @@ class AgentQueuePerHostRouteTest : public AgentHwTest {
         ensemble.getSw()->getPlatformType());
     utility::addQueuePerHostQueueConfig(&cfg);
     utility::addQueuePerHostAcls(&cfg, ensemble.isSai());
+    // Disabled so warm boot doesn't bring up an L2 loop with the first port.
+    for (auto& port : *cfg.ports()) {
+      if (PortID(*port.logicalID()) == ensemble.masterLogicalPortIds()[1]) {
+        port.state() = cfg::PortState::DISABLED;
+      }
+    }
     return cfg;
   }
 
@@ -214,6 +220,9 @@ class AgentQueuePerHostRouteTest : public AgentHwTest {
         VlanID(*initialConfig(*getAgentEnsemble()).vlanPorts()[0].vlanID());
     auto intfMac = utility::getInterfaceMac(getProgrammedState(), vlanId);
     auto srcMac = utility::MacAddressGenerator().get(intfMac.u64HBO() + 1);
+    if (useFrontPanel) {
+      learnL2EntryIfPending(srcMac, masterLogicalPortIds()[1]);
+    }
 
     utility::verifyQueuePerHostMapping(
         getAgentEnsemble(),
@@ -227,6 +236,17 @@ class AgentQueuePerHostRouteTest : public AgentHwTest {
         std::nullopt, /* l4SrcPort */
         std::nullopt, /* l4DstPort */
         std::nullopt); /* dscp */
+  }
+
+  void setFrontPanelPortAdminState(cfg::PortState state) {
+    applyNewState([&](const std::shared_ptr<SwitchState>& in) {
+      auto newState = in->clone();
+      newState->getPorts()
+          ->getNodeIf(masterLogicalPortIds()[1])
+          ->modify(&newState)
+          ->setAdminState(state);
+      return newState;
+    });
   }
 
   void verifyAllFamilies(bool useFrontPanel, bool blockNeighbor) {
@@ -244,9 +264,13 @@ class AgentQueuePerHostRouteTest : public AgentHwTest {
 TEST_F(AgentQueuePerHostRouteTest, VerifyHostToQueueMappingClassID) {
   auto setup = [=, this]() { setupHelper(false /* blockNeighbor */); };
   auto verify = [=, this]() {
+    // No ARP/NDP broadcasts while both looped ports are up.
+    FLAGS_disable_neighbor_updates = true;
+    setFrontPanelPortAdminState(cfg::PortState::ENABLED);
     getAgentEnsemble()->bringUpPort(masterLogicalPortIds()[1]);
     verifyAllFamilies(true /* front panel port */, false /* block neighbor */);
     getAgentEnsemble()->bringDownPort(masterLogicalPortIds()[1]);
+    setFrontPanelPortAdminState(cfg::PortState::DISABLED);
     verifyAllFamilies(false /* cpu port */, false /* block neighbor */);
   };
 
@@ -256,9 +280,13 @@ TEST_F(AgentQueuePerHostRouteTest, VerifyHostToQueueMappingClassID) {
 TEST_F(AgentQueuePerHostRouteTest, VerifyHostToQueueMappingClassIDBlock) {
   auto setup = [=, this]() { setupHelper(true /* blockNeighbor */); };
   auto verify = [=, this]() {
+    // No ARP/NDP broadcasts while both looped ports are up.
+    FLAGS_disable_neighbor_updates = true;
+    setFrontPanelPortAdminState(cfg::PortState::ENABLED);
     getAgentEnsemble()->bringUpPort(masterLogicalPortIds()[1]);
     verifyAllFamilies(true /* front panel port */, true /* block neighbor */);
     getAgentEnsemble()->bringDownPort(masterLogicalPortIds()[1]);
+    setFrontPanelPortAdminState(cfg::PortState::DISABLED);
     verifyAllFamilies(false /* cpu port */, true /* block neighbor */);
   };
 

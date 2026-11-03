@@ -45,12 +45,24 @@ class FsdbPubSubTest : public ::testing::Test {
   using SubscriberT = typename TestParam::SubscriberT;
   using SubUnitT = typename TestParam::SubUnitT;
 
+  // Dispatch axes, so added parameterizations compose without touching helpers.
+  static bool constexpr kIsStats = TestParam::PubSubStats;
+  static bool constexpr kIsDelta = std::is_same_v<PubUnitT, OperDelta>;
+  static bool constexpr kIsPath = std::is_same_v<PubUnitT, OperState>;
+  static bool constexpr kIsPatch = std::is_same_v<PubUnitT, Patch>;
+  static_assert(
+      kIsDelta || kIsPath || kIsPatch,
+      "TestParam::PubUnitT must be OperDelta, OperState or Patch");
+
   void SetUp() override {
     folly::LoggerDB::get().setLevel("fboss.thrift_cow", folly::LogLevel::DBG4);
     folly::LoggerDB::get().setLevel("fboss.fsdb", folly::LogLevel::DBG4);
     auto config = getFsdbConfig();
     FLAGS_deltaSubscriptionQueueFullMinSize = 4;
     FLAGS_deltaSubscriptionQueueMemoryLimit_mb = 1;
+    // ServiceHandler reads the flag in its ctor.
+    savedEnableHybridStateStorage_ = FLAGS_enableHybridStateStorage;
+    FLAGS_enableHybridStateStorage = TestParam::EnableHybridStateStorage;
     fsdbTestServer_ = std::make_unique<FsdbTestServer>(
         std::move(config),
         0,
@@ -74,6 +86,7 @@ class FsdbPubSubTest : public ::testing::Test {
     subscriberStreamEvbThread_.reset();
     publisherStreamEvbThread_.reset();
     connRetryEvbThread_.reset();
+    FLAGS_enableHybridStateStorage = savedEnableHybridStateStorage_;
   }
 
  protected:
@@ -231,27 +244,27 @@ class FsdbPubSubTest : public ::testing::Test {
   template <typename SubRequestT>
   auto subscribe(const SubRequestT& reqIn) {
     auto req = std::make_unique<SubRequestT>(reqIn);
-    if constexpr (std::is_same_v<TestParam, DeltaPubSubForState>) {
+    if constexpr (kIsDelta && !kIsStats) {
       return folly::coro::blockingWait(
           this->fsdbTestServer_->serviceHandler().co_subscribeOperStateDelta(
               std::move(req)));
-    } else if constexpr (std::is_same_v<TestParam, StatePubSubForState>) {
+    } else if constexpr (kIsPath && !kIsStats) {
       return folly::coro::blockingWait(
           this->fsdbTestServer_->serviceHandler().co_subscribeOperStatePath(
               std::move(req)));
-    } else if constexpr (std::is_same_v<TestParam, DeltaPubSubForStats>) {
+    } else if constexpr (kIsDelta && kIsStats) {
       return folly::coro::blockingWait(
           this->fsdbTestServer_->serviceHandler().co_subscribeOperStatsDelta(
               std::move(req)));
-    } else if constexpr (std::is_same_v<TestParam, StatePubSubForStats>) {
+    } else if constexpr (kIsPath && kIsStats) {
       return folly::coro::blockingWait(
           this->fsdbTestServer_->serviceHandler().co_subscribeOperStatsPath(
               std::move(req)));
-    } else if constexpr (std::is_same_v<TestParam, PatchPubSubForState>) {
+    } else if constexpr (kIsPatch && !kIsStats) {
       return folly::coro::blockingWait(
           this->fsdbTestServer_->serviceHandler().co_subscribeState(
               std::move(req)));
-    } else if constexpr (std::is_same_v<TestParam, PatchPubSubForStats>) {
+    } else {
       return folly::coro::blockingWait(
           this->fsdbTestServer_->serviceHandler().co_subscribeStats(
               std::move(req)));
@@ -260,28 +273,28 @@ class FsdbPubSubTest : public ::testing::Test {
 
   template <typename SubRequestT>
   auto subscribeExtended(const SubRequestT& reqIn) {
-    if constexpr (std::is_same_v<TestParam, DeltaPubSubForState>) {
+    if constexpr (kIsDelta && !kIsStats) {
       return folly::coro::blockingWait(
           this->fsdbTestServer_->getClient()
               ->co_subscribeOperStateDeltaExtended(reqIn));
-    } else if constexpr (std::is_same_v<TestParam, StatePubSubForState>) {
+    } else if constexpr (kIsPath && !kIsStats) {
       return folly::coro::blockingWait(
           this->fsdbTestServer_->getClient()->co_subscribeOperStatePathExtended(
               reqIn));
-    } else if constexpr (std::is_same_v<TestParam, DeltaPubSubForStats>) {
+    } else if constexpr (kIsDelta && kIsStats) {
       return folly::coro::blockingWait(
           this->fsdbTestServer_->getClient()
               ->co_subscribeOperStatsDeltaExtended(reqIn));
-    } else if constexpr (std::is_same_v<TestParam, StatePubSubForStats>) {
+    } else if constexpr (kIsPath && kIsStats) {
       return folly::coro::blockingWait(
           this->fsdbTestServer_->getClient()->co_subscribeOperStatsPathExtended(
               reqIn));
-    } else if constexpr (std::is_same_v<TestParam, PatchPubSubForState>) {
+    } else if constexpr (kIsPatch && !kIsStats) {
       auto req = std::make_unique<SubRequestT>(reqIn);
       return folly::coro::blockingWait(
           this->fsdbTestServer_->serviceHandler().co_subscribeStateExtended(
               std::move(req)));
-    } else if constexpr (std::is_same_v<TestParam, PatchPubSubForStats>) {
+    } else {
       auto req = std::make_unique<SubRequestT>(reqIn);
       return folly::coro::blockingWait(
           this->fsdbTestServer_->serviceHandler().co_subscribeStatsExtended(
@@ -347,27 +360,27 @@ class FsdbPubSubTest : public ::testing::Test {
   template <typename Req>
   auto setupPublisher(const Req& reqIn) {
     auto req = std::make_unique<Req>(reqIn);
-    if constexpr (std::is_same_v<TestParam, DeltaPubSubForState>) {
+    if constexpr (kIsDelta && !kIsStats) {
       return folly::coro::blockingWait(
           this->fsdbTestServer_->serviceHandler().co_publishOperStateDelta(
               std::move(req)));
-    } else if constexpr (std::is_same_v<TestParam, StatePubSubForState>) {
+    } else if constexpr (kIsPath && !kIsStats) {
       return folly::coro::blockingWait(
           this->fsdbTestServer_->serviceHandler().co_publishOperStatePath(
               std::move(req)));
-    } else if constexpr (std::is_same_v<TestParam, DeltaPubSubForStats>) {
+    } else if constexpr (kIsDelta && kIsStats) {
       return folly::coro::blockingWait(
           this->fsdbTestServer_->serviceHandler().co_publishOperStatsDelta(
               std::move(req)));
-    } else if constexpr (std::is_same_v<TestParam, StatePubSubForStats>) {
+    } else if constexpr (kIsPath && kIsStats) {
       return folly::coro::blockingWait(
           this->fsdbTestServer_->serviceHandler().co_publishOperStatsPath(
               std::move(req)));
-    } else if constexpr (std::is_same_v<TestParam, PatchPubSubForState>) {
+    } else if constexpr (kIsPatch && !kIsStats) {
       return folly::coro::blockingWait(
           this->fsdbTestServer_->serviceHandler().co_publishState(
               std::move(req)));
-    } else if constexpr (std::is_same_v<TestParam, PatchPubSubForStats>) {
+    } else {
       return folly::coro::blockingWait(
           this->fsdbTestServer_->serviceHandler().co_publishStats(
               std::move(req)));
@@ -382,6 +395,7 @@ class FsdbPubSubTest : public ::testing::Test {
   std::unique_ptr<folly::ScopedEventBaseThread> connRetryEvbThread_;
   std::unique_ptr<SubscriberT> subscriber_;
   std::unique_ptr<PublisherT> publisher_;
+  bool savedEnableHybridStateStorage_{false};
 };
 
 using TestTypes = ::testing::Types<
@@ -390,7 +404,11 @@ using TestTypes = ::testing::Types<
     PatchPubSubForState,
     DeltaPubSubForStats,
     StatePubSubForStats,
-    PatchPubSubForStats>;
+    PatchPubSubForStats,
+    // State variants only: the stats tree is always COW.
+    DeltaPubSubForHybridState,
+    StatePubSubForHybridState,
+    PatchPubSubForHybridState>;
 
 TYPED_TEST_SUITE(FsdbPubSubTest, TestTypes);
 

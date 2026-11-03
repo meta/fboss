@@ -8,7 +8,7 @@
 #include "fboss/agent/packet/PktFactory.h"
 #include "fboss/agent/test/TestUtils.h"
 #include "fboss/agent/test/TrunkUtils.h"
-#include "fboss/agent/test/agent_hw_tests/AgentTestAddressConstants.h"
+#include "fboss/agent/test/utils/AgentTestAddressConstants.h"
 #include "fboss/agent/test/utils/ConfigUtils.h"
 #include "fboss/agent/test/utils/CoppTestUtils.h"
 #include "fboss/agent/test/utils/MultiPortTrafficTestUtils.h"
@@ -374,21 +374,16 @@ class AgentPacketSendReceiveLagTest : public AgentPacketSendReceiveTest {
       const AgentEnsemble& ensemble) const override {
     auto masterLogicalPortIds = ensemble.masterLogicalPortIds();
     auto l3Asics = ensemble.getSw()->getHwAsicTable()->getL3Asics();
-    auto asic = checkSameAndGetAsicForTesting(l3Asics);
-    auto cfg = utility::oneL3IntfTwoPortConfig(
-        ensemble.getSw()->getPlatformMapping(),
-        asic,
-        masterLogicalPortIds[0],
-        masterLogicalPortIds[1],
-        ensemble.getSw()->getPlatformSupportsAddRemovePort(),
-        asic->desiredLoopbackModes(),
-        ensemble.getSw()->getPlatformType());
+    std::vector<PortID> members;
+    for (auto port : {masterLogicalPortIds[0], masterLogicalPortIds[1]}) {
+      members.emplace_back(port);
+    }
+    auto cfg = utility::oneAggregatePortPerInterfaceConfig(
+        ensemble.getSw(),
+        members,
+        {{AggregatePortID(kAggId), members, cfg::LacpPortRate::SLOW}});
     utility::setDefaultCpuTrafficPolicyConfig(cfg, l3Asics, ensemble.isSai());
     utility::addCpuQueueConfig(cfg, l3Asics, ensemble.isSai());
-
-    std::vector<int32_t> ports{
-        masterLogicalPortIds[0], masterLogicalPortIds[1]};
-    utility::addAggPort(kAggId, ports, &cfg, cfg::LacpPortRate::SLOW);
     return cfg;
   }
 

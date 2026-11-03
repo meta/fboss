@@ -175,11 +175,13 @@ std::shared_ptr<SaiTamEvent> createMirrorOnDropEvent(
 
 // Tajo-specific TamReport: vendor-extn type plus optional sample-rate /
 // max-report-rate / max-report-burst attributes (Tajo SDK 25.5+, SAI v1.16+).
-// SampleRate maps to MoD samplingRate; the max-rate / max-burst caps are not
-// currently surfaced by MirrorOnDropReport so they default to nullopt.
+// SampleRate maps to MoD samplingRate and MaxReportRate to the MoD aggregate
+// rate cap. The SDK hard-codes the aggregate burst, so MaxReportBurst stays
+// nullopt.
 std::shared_ptr<SaiTamReport> createMirrorOnDropReport(
     SaiStore* saiStore,
-    std::optional<int32_t> samplingRate) {
+    std::optional<int32_t> samplingRate,
+    std::optional<int32_t> aggregateRateThreshold) {
 #if SAI_API_VERSION < SAI_VERSION(1, 16, 0)
   if (samplingRate.has_value()) {
     XLOG_EVERY_MS(WARN, 60'000)
@@ -196,7 +198,10 @@ std::shared_ptr<SaiTamReport> createMirrorOnDropReport(
           ? std::optional<SaiTamReportTraits::Attributes::SampleRate>(
                 static_cast<sai_uint32_t>(*samplingRate))
           : std::nullopt,
-      std::nullopt /* MaxReportRate */,
+      (aggregateRateThreshold.has_value() && *aggregateRateThreshold > 0)
+          ? std::optional<SaiTamReportTraits::Attributes::MaxReportRate>(
+                static_cast<sai_uint64_t>(*aggregateRateThreshold))
+          : std::nullopt,
       std::nullopt /* MaxReportBurst */
 #endif
   };
@@ -239,7 +244,11 @@ std::shared_ptr<SaiTamTransport> SaiTamManager::createTamTransport(
       report->getCollectorPort(),
       report->getMtu(),
       std::nullopt, // srcMac unsupported on Tajo (SDK derives it from RIF)
-      std::nullopt, // dstMac unsupported on Tajo
+      std::nullopt // dstMac unsupported on Tajo
+#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
+      ,
+      std::nullopt // GreProtocolType
+#endif
   };
   return transportStore.setObject(transportTraits, transportTraits);
 }
@@ -254,9 +263,27 @@ std::shared_ptr<SaiTamCollector> SaiTamManager::createTamCollector(
       report->getCollectorIp(),
       truncateSize,
       transportId,
-      report->getDscp(),
+      report->getDscp()
+#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
+          ,
+      std::nullopt, // SrcMacAddress
+      std::nullopt, // DstMacAddress
+      std::nullopt // Destination
+#endif
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 0)
+      ,
+      std::nullopt // Localhost
+#endif
   };
-  return collectorStore.setObject(collectorTraits, collectorTraits);
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 0)
+  auto collectorKey = collectorTraits;
+  // Match SDK default readback without programming the omitted attribute.
+  std::get<std::optional<SaiTamCollectorTraits::Attributes::Localhost>>(
+      collectorKey) = false;
+#else
+  const auto& collectorKey = collectorTraits;
+#endif
+  return collectorStore.setObject(collectorKey, collectorTraits);
 }
 
 std::shared_ptr<SaiTam> SaiTamManager::createTam(
@@ -385,10 +412,15 @@ void SaiTamManager::addMirrorOnDropReport(
              << " collectorIp=" << report->getCollectorIp().str()
              << " collectorPort=" << report->getCollectorPort()
              << " dscp=" << static_cast<int>(report->getDscp())
-             << " egressPort=" << egressPort;
+             << " egressPort=" << egressPort << " dropPacketRateThreshold="
+             << report->getDropPacketRateThreshold().value_or(0)
+             << " aggregateDropPacketRateThreshold="
+             << report->getAggregateDropPacketRateThreshold().value_or(0);
 
-  auto reportObj =
-      createMirrorOnDropReport(saiStore_, report->getSamplingRate());
+  auto reportObj = createMirrorOnDropReport(
+      saiStore_,
+      report->getSamplingRate(),
+      report->getAggregateDropPacketRateThreshold());
   auto action = createTamAction(reportObj->adapterKey());
   auto transport = createTamTransport(report, SAI_TAM_TRANSPORT_TYPE_UDP);
   auto collector = createTamCollector(

@@ -17,6 +17,18 @@ python_library(
 )
 
 python_library(
+    name = "broadcom_dnx_generator",
+    srcs = ["generators/broadcom_dnx_generator.py"],
+    labels = ["autodeps2_generated"],
+    deps = [
+        ":base_generator",
+        ":paths",
+        "//fboss/lib/platform_mapping_v2:platform_mapping_v2",
+        "//fboss/lib/platform_mapping_v2:read_files_utils",
+    ],
+)
+
+python_library(
     name = "broadcom_xgs_generator",
     srcs = ["generators/broadcom_xgs_generator.py"],
     labels = ["autodeps2_generated"],
@@ -37,6 +49,7 @@ python_binary(
     par_style = "xar",
     deps = [
         ":base_generator",
+        ":broadcom_dnx_generator",
         ":broadcom_xgs_generator",
         ":paths",
     ],

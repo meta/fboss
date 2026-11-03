@@ -38,65 +38,51 @@ cpp_unittest(
 )
 
 cpp_library(
-    name = "port_config_utils",
+    name = "fboss_agent_config_utils",
     srcs = [
+        "agent/AclConfigUtils.cpp",
+        "agent/CoppConfigUtils.cpp",
+        "agent/InterfaceConfigUtils.cpp",
         "agent/PortConfigUtils.cpp",
+        "agent/VlanConfigUtils.cpp",
     ],
     headers = [
+        "agent/AclConfigUtils.h",
+        "agent/CoppConfigUtils.h",
+        "agent/InterfaceConfigUtils.h",
         "agent/PortConfigUtils.h",
+        "agent/VlanConfigUtils.h",
     ],
     deps = [
+        "fbsource//xplat/folly:cpp_attributes",
         "//fboss/agent:fboss-error",
+        "//fboss/agent/hw/switch_asics:switch_asics",
         "//fboss/agent/platforms/common:platform_mapping",
+        "//thrift/lib/cpp/util:enum_utils",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:network_address",
         "//fboss/agent:fboss-types",
         "//fboss/agent:switch_config-cpp2-types",
     ],
 )
 
 cpp_unittest(
-    name = "port_config_utils_tests",
+    name = "fboss_agent_config_utils_tests",
     srcs = [
+        "agent/tests/AclConfigUtilsTest.cpp",
+        "agent/tests/CoppConfigUtilsTest.cpp",
+        "agent/tests/InterfaceConfigUtilsTest.cpp",
         "agent/tests/PortConfigUtilsTest.cpp",
+        "agent/tests/VlanConfigUtilsTest.cpp",
     ],
     network_access = network_access_utils.none(),
     deps = [
-        ":port_config_utils",
+        ":fboss_agent_config_utils",
         "//fboss/agent:fboss-error",
         "//fboss/agent:platform_config-cpp2-types",
         "//fboss/agent:switch_config-cpp2-types",
+        "//fboss/agent/hw/switch_asics:switch_asics",
         "//fboss/agent/platforms/common:platform_mapping",
-    ],
-)
-
-cpp_library(
-    name = "acl_config_utils",
-    srcs = [
-        "agent/AclConfigUtils.cpp",
-    ],
-    headers = [
-        "agent/AclConfigUtils.h",
-    ],
-    deps = [
-        "//fboss/agent:fboss-error",
-        "//fboss/agent/hw/switch_asics:switch_asics",
-        "//folly:cpp_attributes",
-    ],
-    exported_deps = [
-        "//fboss/agent:switch_config-cpp2-types",
-    ],
-)
-
-cpp_unittest(
-    name = "acl_config_utils_tests",
-    srcs = [
-        "agent/tests/AclConfigUtilsTest.cpp",
-    ],
-    network_access = network_access_utils.none(),
-    deps = [
-        ":acl_config_utils",
-        "//fboss/agent:switch_config-cpp2-types",
-        "//fboss/agent/hw/switch_asics:switch_asics",
     ],
 )

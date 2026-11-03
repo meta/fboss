@@ -15,9 +15,9 @@ cpp_binary(
     ],
     deps = [
         "fbsource//third-party/glog:glog",
+        "fbsource//xplat/folly:conv",
+        "fbsource//xplat/folly:range",
         "//fboss/lib/usb:cp2112",
-        "//folly:conv",
-        "//folly:range",
     ],
     external_deps = [
         "gflags",
@@ -39,6 +39,8 @@ cpp_binary(
         "broadcom-plp-millenio": "5.5",
     },
     deps = [
+        "fbsource//xplat/folly/gen:base",
+        "fbsource//xplat/folly/init:init",
         ":wedge_qsfp_util_module",
         "//fboss/agent:fboss-types",
         "//fboss/lib/firmware_storage:firmware_storage",
@@ -50,8 +52,6 @@ cpp_binary(
         "//fboss/qsfp_service/module:firmware_upgrader",
         "//fboss/qsfp_service/platforms/wedge:wedge-platform-default",
         "//fboss/qsfp_service/platforms/wedge:wedge-transceiver",
-        "//folly/gen:base",
-        "//folly/init:init",
     ],
     external_deps = [
         "gflags",
@@ -70,12 +70,19 @@ cpp_library(
     headers = [
         "qsfp/QsfpServiceDetector.h",
         "qsfp/QsfpUtilContainer.cpp",
+        "qsfp/QsfpUtilContainer.h",
         "qsfp/QsfpUtilTx.h",
         "wedge_qsfp_util.h",
     ],
     compiler_flags = QSFP_COMMON_COMPILER_FLAGS,
     deps = [
         "fbsource//third-party/fmt:fmt",
+        "fbsource//xplat/folly:conv",
+        "fbsource//xplat/folly:dynamic",
+        "fbsource//xplat/folly:exception",
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly:memory",
+        "fbsource//xplat/folly/logging:logging",
         "//fboss/agent:enum_utils",
         "//fboss/lib/bsp:bsp_core",
         "//fboss/lib/bsp/icecube800bc:icecube800bc_bsp",
@@ -83,6 +90,9 @@ cpp_library(
         "//fboss/lib/bsp/janga800bic:janga800bic_bsp",
         "//fboss/lib/bsp/ladakh800bcls:ladakh800bcls_bsp",
         "//fboss/lib/bsp/leh800bcls:leh800bcls_bsp",
+        "//fboss/lib/bsp/m4061clsc:m4061clsc_bsp",
+        "//fboss/lib/bsp/m4061nhp:m4061nhp_bsp",
+        "//fboss/lib/bsp/m4062nhp:m4062nhp_bsp",
         "//fboss/lib/bsp/meru800bfa:meru800bfa_bsp",
         "//fboss/lib/bsp/meru800bia:meru800bia_bsp",
         "//fboss/lib/bsp/minipack3bta:minipack3bta_bsp",
@@ -99,20 +109,19 @@ cpp_library(
         "//fboss/lib/fpga/facebook/fuji:fuji_container",
         "//fboss/lib/fpga/facebook/yamp:yamp_i2c",
         "//fboss/lib/i2c/facebook/fuji:fuji_i2c",
+        "//fboss/lib/platforms:platform_descriptor",
         "//fboss/lib/platforms:product-info",
         "//fboss/lib/usb:wedge_i2c",
+        "//fboss/qsfp_service:qsfp-config",
         "//fboss/qsfp_service/if:config-cpp2-types",
         "//fboss/qsfp_service/module:i2c_log_buffer",
         "//fboss/qsfp_service/module:qsfp-module",
-        "//folly:conv",
-        "//folly:dynamic",
-        "//folly:exception",
-        "//folly:file_util",
-        "//folly:memory",
-        "//folly/logging:logging",
         "//thrift/lib/cpp/util:enum_utils",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:singleton",
+        "fbsource//xplat/folly/gen:base",
+        "fbsource//xplat/folly/io/async:async_base",
         "//fboss/agent:fboss-types",
         "//fboss/lib/firmware_storage:firmware_storage",
         "//fboss/lib/usb:i2-api",
@@ -120,9 +129,6 @@ cpp_library(
         "//fboss/qsfp_service/lib:qsfp-service-client",
         "//fboss/qsfp_service/module:firmware_upgrader",
         "//fboss/qsfp_service/platforms/wedge:wedge-transceiver",
-        "//folly:singleton",
-        "//folly/gen:base",
-        "//folly/io/async:async_base",
     ],
     external_deps = ["gflags"],
     exported_external_deps = [
@@ -143,7 +149,7 @@ cpp_binary(
         "nic_util.cpp",
     ],
     deps = [
-        "//folly/init:init",
+        "fbsource//xplat/folly/init:init",
     ],
     external_deps = [
         "gflags",
@@ -156,9 +162,9 @@ cpp_binary(
         "scd_fpga_util.cpp",
     ],
     deps = [
-        "//folly:conv",
-        "//folly:string",
-        "//folly/init:init",
+        "fbsource//xplat/folly:conv",
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/init:init",
     ],
     external_deps = [
         "gflags",
@@ -171,9 +177,9 @@ cpp_binary(
         "csc_fpga_util.cpp",
     ],
     deps = [
-        "//folly:conv",
-        "//folly:string",
-        "//folly/init:init",
+        "fbsource//xplat/folly:conv",
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/init:init",
     ],
     external_deps = [
         "gflags",
@@ -186,8 +192,8 @@ cpp_binary(
         "credo_macsec_util.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly/init:init",
         ":credo_macsec_util_module",
-        "//folly/init:init",
     ],
 )
 
@@ -200,8 +206,8 @@ cpp_library(
         "CredoMacsecUtil.h",
     ],
     deps = [
+        "fbsource//xplat/folly:file_util",
         "//fboss/agent/hw:hardware_stats-cpp2-types",
-        "//folly:file_util",
         "//thrift/lib/cpp2/protocol:protocol",
     ],
     exported_deps = [
@@ -215,8 +221,8 @@ cpp_binary(
         "sai_phy_util.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly/init:init",
         "//fboss/qsfp_service/lib:qsfp-service-client",
-        "//folly/init:init",
     ],
 )
 

@@ -12,6 +12,7 @@ RUN python3 -m pip config set global.break-system-packages true
 RUN apt install -y wget autoconf automake binutils binutils-dev bzip2 \
     libbz2-dev cmake libcurl4-openssl-dev \
     libcurl4 libdwarf-dev libevent-dev libffi-dev \
+    libjemalloc-dev \
     libnghttp2-dev libnl-3-dev libnl-route-3-dev libsodium-dev libtool libunwind-dev \
     libusb-1.0-0-dev zstd libzstd-dev liblz4-dev libncurses-dev ninja-build \
     libssl-dev python3-all-dev libre2-dev libsnappy-dev xxhash libxxhash-dev \
@@ -34,5 +35,3 @@ RUN apt install -y doxygen graphviz aspell aspell-en bc libyaml-dev libyaml-liby
 RUN ln -s /usr/bin/python3 /usr/bin/python
 
 RUN python3 -m pip install setuptools 'Cython>=3.0,<3.2' wheel auditwheel patchelf pyyaml filelock
-# ============================================================
-RUN python3 -m pip config set global.break-system-packages false

@@ -1,7 +1,6 @@
 // Copyright 2004-present Facebook. All Rights Reserved.
 
 #include "fboss/agent/hw/switch_asics/Tomahawk5Asic.h"
-#include "fboss/agent/AgentFeatures.h"
 
 namespace facebook::fboss {
 
@@ -101,6 +100,7 @@ bool Tomahawk5Asic::isSupported(Feature feature) const {
     case HwAsic::Feature::SAI_ECMP_HASH_ALGORITHM:
     case HwAsic::Feature::ACL_BYTE_COUNTER:
     case HwAsic::Feature::PORT_DEBOUNCE:
+    case HwAsic::Feature::SWITCH_WIDE_LINK_UP_DEBOUNCE:
     case HwAsic::Feature::SAI_PRBS:
     case HwAsic::Feature::L3_INTF_MTU:
     case HwAsic::Feature::CPU_QUEUE_WATERMARK_STATS:
@@ -128,8 +128,12 @@ bool Tomahawk5Asic::isSupported(Feature feature) const {
     case HwAsic::Feature::CUT_THROUGH_FORWARDING:
     case HwAsic::Feature::SRV6_MYSID_DISCARD_COUNTER:
     case HwAsic::Feature::SRV6_MYSID_RESOURCE_COUNTER:
+    case HwAsic::Feature::SRV6_BINDING_USID_UA_USD:
     case HwAsic::Feature::SAI_SERDES_RX_REACH:
     case HwAsic::Feature::SAI_SERDES_PRECODING:
+    case HwAsic::Feature::ACL_ENTRY_OUT_PORT_QUALIFIER:
+    case HwAsic::Feature::MY_MAC:
+    case HwAsic::Feature::HW_PROTECTION_SWITCHOVER_COUNTERS:
       return true;
     // features not working well with bcmsim
     case HwAsic::Feature::MIRROR_PACKET_TRUNCATION:
@@ -154,6 +158,8 @@ bool Tomahawk5Asic::isSupported(Feature feature) const {
     case HwAsic::Feature::SAI_ACL_TABLE_UPDATE:
     case HwAsic::Feature::PORT_EYE_VALUES:
     case HwAsic::Feature::SAI_MPLS_TTL_1_TRAP:
+    case HwAsic::Feature::SAI_ACL_MPLS_LABEL0_TTL:
+    case HwAsic::Feature::SAI_MPLS_NEXTHOP_OUTSEG_TYPE:
     case HwAsic::Feature::SAI_MPLS_LABEL_LOOKUP_FAIL_COUNTER:
     case HwAsic::Feature::FABRIC_PORTS:
 
@@ -245,11 +251,18 @@ bool Tomahawk5Asic::isSupported(Feature feature) const {
     case HwAsic::Feature::SWITCH_CUSTOM_DROP_BITMAP_SUPPORT:
     case HwAsic::Feature::ECMP_RANDOM_SPRAY_HIERARCHICAL_LEVEL:
     case HwAsic::Feature::PBR_ACL:
+    case HwAsic::Feature::PBR_ACL_BYTE_COUNTER:
+    case HwAsic::Feature::CBFC:
     case HwAsic::Feature::LINK_LAYER_RETRANSMISSION:
     case HwAsic::Feature::ACL_DST_IPV6_WORD_QUALIFIERS:
     case HwAsic::Feature::SLL_HLL_DISCARD_COUNTERS:
     case HwAsic::Feature::NEXT_HOP_GROUP_MEMBER_MONITORED_OBJECT:
     case HwAsic::Feature::RX_PACKET_TYPE:
+    case HwAsic::Feature::ISOLATION_GROUP:
+    case HwAsic::Feature::XPHY_SERDES_TX_FIR_POST3:
+    case HwAsic::Feature::CSIG:
+    case HwAsic::Feature::LAG_TTL_DECREMENT_DISABLE:
+    case HwAsic::Feature::PORT_LATCH_STATUS:
       return false;
   }
   return false;
@@ -296,7 +309,7 @@ Tomahawk5Asic::desiredLoopbackModes() const {
 }
 
 std::optional<uint32_t> Tomahawk5Asic::getMaxArsGroups() const {
-  return FLAGS_enable_th5_ars_scale_mode ? 256 : 128;
+  return 128;
 }
 
 std::optional<uint32_t> Tomahawk5Asic::getArsBaseIndex() const {

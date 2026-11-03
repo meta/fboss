@@ -10,6 +10,7 @@
 #pragma once
 
 #include <folly/IPAddress.h>
+#include <folly/MacAddress.h>
 #include <folly/Poly.h>
 #include <folly/Range.h>
 #include <folly/json/dynamic.h>
@@ -96,6 +97,10 @@ struct INextHop {
       return folly::poly_call<11>(*this);
     }
 
+    std::optional<folly::MacAddress> overlayDstMac() const {
+      return folly::poly_call<12>(*this);
+    }
+
     bool isResolved() const {
       return intfID().has_value();
     }
@@ -157,6 +162,9 @@ struct INextHop {
       if (auto value = tunnelId()) {
         nht.tunnelId() = value.value();
       }
+      if (auto value = overlayDstMac()) {
+        nht.overlayDstMac() = value->toString();
+      }
       if (auto value = cost()) {
         nht.cost() = value.value();
       }
@@ -189,7 +197,8 @@ struct INextHop {
       &T::tunnelType,
       &T::tunnelId,
       &T::cost,
-      &T::role);
+      &T::role,
+      &T::overlayDstMac);
 };
 
 using NextHop = folly::Poly<INextHop>;
@@ -219,7 +228,8 @@ class ResolvedNextHop {
       const std::optional<TunnelType>& tunnelType = std::nullopt,
       const std::optional<std::string>& tunnelId = std::nullopt,
       const std::optional<int64_t>& cost = std::nullopt,
-      NextHopRole role = NextHopRole::PRIMARY);
+      NextHopRole role = NextHopRole::PRIMARY,
+      const std::optional<folly::MacAddress>& overlayDstMac = std::nullopt);
   ResolvedNextHop(
       folly::IPAddress&& addr,
       InterfaceID intfID,
@@ -233,7 +243,8 @@ class ResolvedNextHop {
       std::optional<TunnelType>&& tunnelType = std::nullopt,
       std::optional<std::string>&& tunnelId = std::nullopt,
       std::optional<int64_t>&& cost = std::nullopt,
-      NextHopRole role = NextHopRole::PRIMARY);
+      NextHopRole role = NextHopRole::PRIMARY,
+      std::optional<folly::MacAddress>&& overlayDstMac = std::nullopt);
   std::optional<InterfaceID> intfID() const {
     return intfID_;
   }
@@ -294,6 +305,14 @@ class ResolvedNextHop {
     tunnelId_ = tunnelId;
   }
 
+  std::optional<folly::MacAddress> overlayDstMac() const {
+    return overlayDstMac_;
+  }
+
+  void setOverlayDstMac(std::optional<folly::MacAddress> overlayDstMac) {
+    overlayDstMac_ = overlayDstMac;
+  }
+
   std::optional<int64_t> cost() const {
     return cost_;
   }
@@ -319,6 +338,7 @@ class ResolvedNextHop {
   std::optional<std::string> tunnelId_;
   std::optional<int64_t> cost_;
   NextHopRole role_;
+  std::optional<folly::MacAddress> overlayDstMac_;
 };
 
 bool operator==(const ResolvedNextHop& a, const ResolvedNextHop& b);
@@ -337,7 +357,8 @@ class UnresolvedNextHop {
       const std::optional<TunnelType>& tunnelType = std::nullopt,
       const std::optional<std::string>& tunnelId = std::nullopt,
       const std::optional<int64_t>& cost = std::nullopt,
-      NextHopRole role = NextHopRole::PRIMARY);
+      NextHopRole role = NextHopRole::PRIMARY,
+      const std::optional<folly::MacAddress>& overlayDstMac = std::nullopt);
   UnresolvedNextHop(
       folly::IPAddress&& addr,
       const NextHopWeight& weight,
@@ -350,7 +371,8 @@ class UnresolvedNextHop {
       std::optional<TunnelType>&& tunnelType = std::nullopt,
       std::optional<std::string>&& tunnelId = std::nullopt,
       std::optional<int64_t>&& cost = std::nullopt,
-      NextHopRole role = NextHopRole::PRIMARY);
+      NextHopRole role = NextHopRole::PRIMARY,
+      std::optional<folly::MacAddress>&& overlayDstMac = std::nullopt);
   std::optional<InterfaceID> intfID() const {
     return std::nullopt;
   }
@@ -385,6 +407,10 @@ class UnresolvedNextHop {
     return tunnelId_;
   }
 
+  std::optional<folly::MacAddress> overlayDstMac() const {
+    return overlayDstMac_;
+  }
+
   std::optional<int64_t> cost() const {
     return cost_;
   }
@@ -405,6 +431,7 @@ class UnresolvedNextHop {
   std::optional<std::string> tunnelId_;
   std::optional<int64_t> cost_;
   NextHopRole role_;
+  std::optional<folly::MacAddress> overlayDstMac_;
 };
 
 bool operator==(const UnresolvedNextHop& a, const UnresolvedNextHop& b);
@@ -460,7 +487,8 @@ struct hash<facebook::fboss::NextHop> {
         nexthop.tunnelType(),
         nexthop.tunnelId(),
         nexthop.cost(),
-        nexthop.role());
+        nexthop.role(),
+        nexthop.overlayDstMac());
     for (const auto& seg : nexthop.srv6SegmentList()) {
       seed = folly::hash::hash_combine(seed, seg);
     }
@@ -482,7 +510,8 @@ struct hash<facebook::fboss::ResolvedNextHop> {
         nexthop.tunnelType(),
         nexthop.tunnelId(),
         nexthop.cost(),
-        nexthop.role());
+        nexthop.role(),
+        nexthop.overlayDstMac());
     for (const auto& seg : nexthop.srv6SegmentList()) {
       seed = folly::hash::hash_combine(seed, seg);
     }

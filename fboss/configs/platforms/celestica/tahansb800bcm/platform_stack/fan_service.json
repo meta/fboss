@@ -6,6 +6,7 @@
   "pwmTransitionValue": 50,
   "pwmLowerThreshold": 30,
   "pwmUpperThreshold": 100,
+  "shutdownCmd": "echo 0 > /run/devmap/cplds/SMB_CPLD/th6_pwr_en",
   "watchdog": {
     "sysfsPath": "/run/devmap/watchdogs/FAN_WATCHDOG",
     "value": 0
@@ -14,17 +15,42 @@
     "sensorReadInterval": 5,
     "pwmUpdateInterval": 5
   },
+  "shutdownCondition": {
+    "numOvertempSensorForShutdown": 2,
+    "conditions": [
+      {
+        "sensorName": "SMB_U2_TH6_TEMP",
+        "overtempThreshold": 102,
+        "slidingWindowSize": 3
+      },
+      {
+        "sensorName": "SMB_U29_LEFT_TMP432_1_TEMP2",
+        "overtempThreshold": 88,
+        "slidingWindowSize": 3
+      },
+      {
+        "sensorName": "SMB_U29_LEFT_TMP432_1_TEMP3",
+        "overtempThreshold": 88,
+        "slidingWindowSize": 3
+      },
+      {
+        "sensorName": "SMB_U30_RIGHT_TMP432_2_TEMP2",
+        "overtempThreshold": 88,
+        "slidingWindowSize": 3
+      }
+    ]
+  },
   "sensors": [
     {
       "sensorName": "COME_U1_CPU_UNCORE_TEMP",
       "pwmCalcType": "SENSOR_PWM_CALC_TYPE_INCREMENTAL_PID",
       "pidSetting": {
-        "kp": 2,
-        "ki": 0.6,
+        "kp": 1,
+        "ki": 0.2,
         "kd": 0,
-        "setPoint": 90,
-        "posHysteresis": 3,
-        "negHysteresis": 3
+        "setPoint": 83,
+        "posHysteresis": 2,
+        "negHysteresis": 2
       }
     },
     {
@@ -43,52 +69,52 @@
       "sensorName": "MCB_PS109_XP12R0V_PB2_TEMPARTURES",
       "pwmCalcType": "SENSOR_PWM_CALC_TYPE_INCREMENTAL_PID",
       "pidSetting": {
-        "kp": 8,
-        "ki": 0.6,
+        "kp": 6,
+        "ki": 0.5,
         "kd": 0,
-        "setPoint": 104,
-        "posHysteresis": 1,
-        "negHysteresis": 1
+        "setPoint": 103,
+        "posHysteresis": 2,
+        "negHysteresis": 2
       }
     },
     {
       "sensorName": "MCB_U62_PB_INLET_TSENSOR",
       "pwmCalcType": "SENSOR_PWM_CALC_TYPE_FOUR_LINEAR_TABLE",
       "normalUpTable": {
-        "23": 30,
-        "28": 35,
-        "33": 40,
-        "38": 45
+        "24": 45,
+        "29": 55,
+        "34": 60,
+        "39": 75
       },
       "normalDownTable": {
-        "21": 30,
-        "26": 35,
-        "31": 40,
-        "36": 45
+        "22": 45,
+        "27": 55,
+        "32": 60,
+        "37": 75
       },
       "failUpTable": {
-        "23": 50,
-        "28": 60,
-        "33": 70,
-        "38": 80
+        "24": 50,
+        "29": 60,
+        "34": 70,
+        "39": 85
       },
       "failDownTable": {
-        "21": 50,
-        "26": 60,
-        "31": 70,
-        "36": 80
+        "22": 50,
+        "27": 60,
+        "32": 70,
+        "37": 85
       },
       "twoRotorsFailUpTable": {
-        "23": 100,
-        "28": 100,
-        "33": 100,
-        "38": 100
+        "24": 100,
+        "29": 100,
+        "34": 100,
+        "39": 100
       },
       "twoRotorsFailDownTable": {
-        "21": 100,
-        "26": 100,
-        "31": 100,
-        "36": 100
+        "22": 100,
+        "27": 100,
+        "32": 100,
+        "37": 100
       }
     }
   ],

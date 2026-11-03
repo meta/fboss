@@ -8,6 +8,9 @@
  *
  */
 
+#include "fboss/agent/state/FibInfo.h"
+#include "fboss/agent/state/FibInfoMap.h"
+#include "fboss/agent/state/NextHopIdMaps.h"
 #include "fboss/agent/test/BaseEcmpResourceMgrMergeGroupsTests.h"
 #include "fboss/agent/test/CounterCache.h"
 #include "fboss/agent/test/utils/EcmpResourceManagerTestUtils.h"
@@ -1297,5 +1300,18 @@ TEST_F(
 
   // nhop count: manager's ecmp member count matches the FIB.
   assertResourceMgrCorrectness(*mgr, sw_->getState());
+}
+
+TEST_F(EcmpResourceMgrMergeGroupTest, reconstructRebuildsOverrideSetIds) {
+  addNextRoute();
+  addNextRoute();
+  addNextRoute();
+  const auto& idToMembers =
+      sw_->getEcmpResourceManager()->getOverrideSetIdManager().getIdToMembers();
+  ASSERT_EQ(idToMembers.size(), 3);
+  auto newConsolidator = makeResourceMgr();
+  newConsolidator->reconstructFromSwitchState(sw_->getState());
+  EXPECT_EQ(
+      newConsolidator->getOverrideSetIdManager().getIdToMembers(), idToMembers);
 }
 } // namespace facebook::fboss

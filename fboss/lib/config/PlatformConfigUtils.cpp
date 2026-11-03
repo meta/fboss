@@ -23,11 +23,11 @@ bool recurseCheckPortOwnsChip(
   }
   if (auto zPinRef = pinConn.z()) {
     if (zPinRef->getType() == Pin::Type::end) {
-      if (zPinRef->get_end().chip().value() == chip.name().value()) {
+      if (zPinRef->end()->chip().value() == chip.name().value()) {
         return true;
       }
     } else if (zPinRef->getType() == Pin::Type::junction) {
-      const auto& zJunction = zPinRef->get_junction();
+      const auto& zJunction = zPinRef->junction().value();
       if (zJunction.system().value().chip().value() == chip.name().value()) {
         return true;
       }
@@ -60,21 +60,21 @@ void recurseGetPinsByChipType(
   }
   auto zPin = *zPinRef;
   if (zPin.getType() == Pin::Type::end) {
-    if (chipsMap.find(*zPin.get_end().chip()) != chipsMap.end()) {
+    if (chipsMap.find(*zPin.end().as_const()->chip()) != chipsMap.end()) {
       Pin temp;
-      temp.end() = zPin.get_end();
+      temp.end() = zPin.end().as_const().value();
       pins.push_back(temp);
       return;
     }
   } else if (zPin.getType() == Pin::Type::junction) {
-    auto zJunction = zPin.get_junction();
+    auto zJunction = zPin.junction().as_const().value();
     if (chipsMap.find(*zJunction.system()->chip()) != chipsMap.end()) {
       Pin temp;
       temp.junction() = zJunction;
       pins.push_back(temp);
       return;
     }
-    for (const auto& connection : *zPin.get_junction().line()) {
+    for (const auto& connection : *zPin.junction().as_const()->line()) {
       recurseGetPinsByChipType(connection, chipsMap, pins);
     }
   }
@@ -132,9 +132,9 @@ std::vector<Pin> getPinsByChipType(
 
 std::string getChipName(const Pin& pin) {
   if (pin.getType() == Pin::Type::junction) {
-    return *pin.get_junction().system()->chip();
+    return *pin.junction()->system()->chip();
   }
-  return *pin.get_end().chip();
+  return *pin.end()->chip();
 }
 
 std::string getChipName(const PinConfig& pinConfig) {
@@ -186,7 +186,7 @@ std::vector<phy::PinID> getTransceiverLanes(
         phy::DataPlanePhyChipType::TRANSCEIVER);
     // the return pins should always be PinID for transceiver
     for (auto pin : pins) {
-      lanes.push_back(pin.get_end());
+      lanes.push_back(pin.end().as_const().value());
     }
   }
   return lanes;
@@ -262,7 +262,7 @@ std::map<int32_t, phy::PolaritySwap> getXphyLinePolaritySwapMap(
         *platformPortEntry.mapping()->pins(),
         phy::DataPlanePhyChipType::XPHY);
     for (const auto& pin : xphyPinList) {
-      for (const auto& connection : *pin.get_junction().line()) {
+      for (const auto& connection : *pin.junction()->line()) {
         if (auto pn = connection.polaritySwap()) {
           xphyPolaritySwapMap.emplace(*connection.a()->lane(), *pn);
         }
@@ -305,7 +305,7 @@ std::vector<phy::PinID> getOrderedIphyLanes(
         chipsMap, *port.mapping()->pins(), phy::DataPlanePhyChipType::IPHY);
     // the return pins should always be PinID for transceiver
     for (auto pin : pins) {
-      lanes.push_back(pin.get_end());
+      lanes.push_back(pin.end().as_const().value());
     }
   }
   if (lanes.empty()) {

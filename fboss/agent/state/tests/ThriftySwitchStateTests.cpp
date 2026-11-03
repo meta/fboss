@@ -86,6 +86,68 @@ void setNeighborTablesAndDHCPRelay(
         IPAddressV6("2401:db00:21:70cb:face:0:96:0")}});
 }
 
+constexpr int64_t kOverrideId = 300;
+
+NextHopThrift makeNextHopThrift(const std::string& addr, int intf) {
+  NextHopThrift nh;
+  nh.address() = facebook::network::toBinaryAddress(folly::IPAddress(addr));
+  nh.address()->ifName() = folly::to<std::string>("fboss", intf);
+  *nh.weight() = UCMP_DEFAULT_WEIGHT;
+  return nh;
+}
+
+// One merged v4 route carrying override id kOverrideId, listed in FibInfo's
+// override id map. withNextHopIds also persists the NextHop id maps.
+state::SwitchState makeOverrideIdState(bool withNextHopIds) {
+  auto stateThrift = SwitchState().toThrift();
+  RouteNextHopSet nhops;
+  nhops.insert(ResolvedNextHop(
+      folly::IPAddress("10.0.1.1"), InterfaceID(1), UCMP_DEFAULT_WEIGHT));
+  nhops.insert(ResolvedNextHop(
+      folly::IPAddress("10.0.1.2"), InterfaceID(2), UCMP_DEFAULT_WEIGHT));
+  auto routeFields =
+      Route<folly::IPAddressV4>::makeThrift(makePrefixV4("10.0.0.0/24"));
+  routeFields.fwd() =
+      RouteNextHopEntry(nhops, AdminDistance::DIRECTLY_CONNECTED).toThrift();
+  routeFields.fwd()->overrideNextHopSetID() = kOverrideId;
+
+  state::FibInfoFields fibInfo;
+  fibInfo.overrideIdToNextHopIdSet()->emplace(
+      kOverrideId, std::set<int64_t>{1, 2});
+  if (withNextHopIds) {
+    routeFields.fwd()->resolvedNextHopSetID() = 100;
+    routeFields.fwd()->normalizedResolvedNextHopSetID() = 100;
+    fibInfo.idToNextHop()->emplace(1, makeNextHopThrift("10.0.1.1", 1));
+    fibInfo.idToNextHop()->emplace(2, makeNextHopThrift("10.0.1.2", 2));
+    fibInfo.idToNextHopIdSet()->emplace(100, std::set<int64_t>{1, 2});
+  }
+  state::FibContainerFields fibContainer;
+  fibContainer.vrf() = 0;
+  fibContainer.fibV4()->emplace("10.0.0.0/24", routeFields);
+  fibInfo.fibsMap()->emplace(0, fibContainer);
+  stateThrift.fibsInfoMap()->emplace(
+      HwSwitchMatcher::defaultHwSwitchMatcherKey(), fibInfo);
+  return stateThrift;
+}
+
+std::optional<NextHopSetID> routeOverrideId(
+    const std::shared_ptr<SwitchState>& state) {
+  auto fibV4 = state->getFibsInfoMap()
+                   ->getFibInfo(scope())
+                   ->getfibsMap()
+                   ->getFibContainerIf(RouterID(0))
+                   ->getFibV4();
+  CHECK_EQ(fibV4->size(), 1);
+  return fibV4->cbegin()->second->getForwardInfo().getOverrideNextHopSetID();
+}
+
+size_t overrideIdMapSize(const std::shared_ptr<SwitchState>& state) {
+  return state->getFibsInfoMap()
+      ->getFibInfo(scope())
+      ->getOverrideIdToNextHopIdSetMap()
+      ->size();
+}
+
 } // namespace
 
 TEST(ThriftySwitchState, BasicTest) {
@@ -373,7 +435,7 @@ TEST(ThriftySwitchState, IpAddressConversion) {
 
 TEST(ThriftySwitchState, FromThriftIdMapCleanupOnRollback) {
   // When FLAGS_enable_nexthop_id_manager is OFF, fromThrift() must wipe
-  // every resolvedNextHopSetID/normalizedResolvedNextHopSetID from routes
+  // every resolved/normalized/override NextHopSetID from routes
   // (V4, V6, label) and mySid entries, and clear FibInfo's id maps. This
   // guarantees a future flag-ON warmboot starts from a clean slate without
   // orphan IDs colliding with newly allocated IDs.
@@ -408,6 +470,7 @@ TEST(ThriftySwitchState, FromThriftIdMapCleanupOnRollback) {
       RouteNextHopEntry(v4NhSet, AdminDistance::DIRECTLY_CONNECTED).toThrift();
   v4Fields.fwd()->resolvedNextHopSetID() = 100;
   v4Fields.fwd()->normalizedResolvedNextHopSetID() = 100;
+  v4Fields.fwd()->overrideNextHopSetID() = 300;
   // Per-client entry carrying a stray clientNextHopSetID — must be wiped.
   auto v4ClientEntry =
       RouteNextHopEntry(v4NhSet, AdminDistance::DIRECTLY_CONNECTED).toThrift();
@@ -450,6 +513,7 @@ TEST(ThriftySwitchState, FromThriftIdMapCleanupOnRollback) {
   fibInfo.idToNextHopIdSet()->emplace(200, std::set<int64_t>{3, 4});
   fibInfo.nameToNextHopSetId()->emplace("v4_group", 100);
   fibInfo.nameToNextHopSetId()->emplace("v6_group", 200);
+  fibInfo.overrideIdToNextHopIdSet()->emplace(300, std::set<int64_t>{1});
 
   stateThrift.fibsInfoMap()->emplace(matcherKey, fibInfo);
 
@@ -496,6 +560,8 @@ TEST(ThriftySwitchState, FromThriftIdMapCleanupOnRollback) {
       EXPECT_FALSE(route->getForwardInfo()
                        .getNormalizedResolvedNextHopSetID()
                        .has_value());
+      EXPECT_FALSE(
+          route->getForwardInfo().getOverrideNextHopSetID().has_value());
       for (const auto& [_clientId, entry] :
            std::as_const(route->getEntryForClients())) {
         EXPECT_FALSE(entry->getClientNextHopSetID().has_value());
@@ -511,6 +577,7 @@ TEST(ThriftySwitchState, FromThriftIdMapCleanupOnRollback) {
   EXPECT_EQ(fibInfoOut->getIdToNextHopMap()->size(), 0);
   EXPECT_EQ(fibInfoOut->getIdToNextHopIdSetMap()->size(), 0);
   EXPECT_TRUE(fibInfoOut->getNameToNextHopSetId().empty());
+  EXPECT_EQ(fibInfoOut->getOverrideIdToNextHopIdSetMap()->size(), 0);
 
   // Label route IDs cleared.
   auto multiLabelFib = deserialized->getLabelForwardingInformationBase();
@@ -680,4 +747,51 @@ TEST(ThriftySwitchState, FromThriftIdMapCleanupOnRollForward) {
       EXPECT_FALSE(mySidEntry->getUnresolveNextHopsId().has_value());
     }
   }
+}
+
+TEST(ThriftySwitchState, FromThriftClearsOverrideIdsWhenOnlyOverrideMapLeft) {
+  // Manager off and only the override id map left (a manager-off binary that
+  // cleared just the NextHop id maps): override ids must still be cleared.
+  auto savedFlag = FLAGS_enable_nexthop_id_manager;
+  FLAGS_enable_nexthop_id_manager = false;
+  SCOPE_EXIT {
+    FLAGS_enable_nexthop_id_manager = savedFlag;
+  };
+
+  auto state =
+      SwitchState::fromThrift(makeOverrideIdState(false /*withNextHopIds*/));
+
+  EXPECT_EQ(routeOverrideId(state), std::nullopt);
+  EXPECT_EQ(overrideIdMapSize(state), 0);
+}
+
+TEST(ThriftySwitchState, FromThriftClearsLeftoverOverrideIdsOnRollForward) {
+  // Manager on with empty NextHop id maps: leftover override ids point at
+  // NextHop ids that no longer exist and must be cleared.
+  auto savedFlag = FLAGS_enable_nexthop_id_manager;
+  FLAGS_enable_nexthop_id_manager = true;
+  SCOPE_EXIT {
+    FLAGS_enable_nexthop_id_manager = savedFlag;
+  };
+
+  auto state =
+      SwitchState::fromThrift(makeOverrideIdState(false /*withNextHopIds*/));
+
+  EXPECT_EQ(routeOverrideId(state), std::nullopt);
+  EXPECT_EQ(overrideIdMapSize(state), 0);
+}
+
+TEST(ThriftySwitchState, FromThriftKeepsOverrideIdsWithNextHopIds) {
+  // Manager on with NextHop id maps present: override ids are kept.
+  auto savedFlag = FLAGS_enable_nexthop_id_manager;
+  FLAGS_enable_nexthop_id_manager = true;
+  SCOPE_EXIT {
+    FLAGS_enable_nexthop_id_manager = savedFlag;
+  };
+
+  auto state =
+      SwitchState::fromThrift(makeOverrideIdState(true /*withNextHopIds*/));
+
+  EXPECT_EQ(routeOverrideId(state), NextHopSetID(kOverrideId));
+  EXPECT_EQ(overrideIdMapSize(state), 1);
 }

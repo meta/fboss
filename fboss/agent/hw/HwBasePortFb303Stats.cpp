@@ -85,9 +85,8 @@ void HwBasePortFb303Stats::reinitStats(std::optional<std::string> oldPortName) {
     // just delete the counter
     utility::deleteCounter(statName(statKey, oldPortName.value_or("")));
   }
-  // Phy transition timeseries are not in either list above: they are neither
-  // registered up front (they only exist on ports that actually report phy
-  // info) nor set every stats round. Only the old name needs clearing.
+  // Phy transition timeseries and latch-derived stats are not in either list
+  // above. Only their old names need clearing here.
   if (oldPortName) {
     for (auto statKey :
          {kLineRxSignalDetectChanged(),
@@ -95,7 +94,8 @@ void HwBasePortFb303Stats::reinitStats(std::optional<std::string> oldPortName) {
           kLineRxCdrLockChanged(),
           kSystemRxCdrLockChanged(),
           kLineLocalFaultChanged(),
-          kLineRemoteFaultChanged()}) {
+          kLineRemoteFaultChanged(),
+          kLinkDownDuringWarmBoot()}) {
       utility::deleteCounter(statName(statKey, *oldPortName));
     }
   }
@@ -136,6 +136,10 @@ void HwBasePortFb303Stats::reinitStats(std::optional<std::string> oldPortName) {
   if (sllHllDiscardCounterSupported_) {
     reinitStat(kOutDiscardsSll(), portName_, oldPortName);
     reinitStat(kOutDiscardsHll(), portName_, oldPortName);
+  }
+  if (portLatchStatusSupported_) {
+    fb303::fbData->setCounter(
+        statName(kLinkDownDuringWarmBoot(), portName_), 0);
   }
   // Init per priority PFC stats
   if (getEnabledPfcPriorities().size()) {

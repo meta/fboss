@@ -63,3 +63,26 @@ TEST_F(ConfigIcmpV4UnavailableSrcAddrTest, SetAndRestoreAddress) {
 
   XLOG(INFO) << "TEST PASSED";
 }
+
+TEST_F(ConfigIcmpV4UnavailableSrcAddrTest, SetThenDelete) {
+  const std::string testAddr = "10.0.0.2";
+
+  XLOG(INFO) << "[Step 1] Setting address to " << testAddr << "...";
+  setIcmpV4SrcAddr(testAddr);
+  EXPECT_EQ(getIcmpV4SrcAddr(), testAddr);
+
+  XLOG(INFO) << "[Step 2] delete switch icmpv4-unavailable-src-addr";
+  auto result = runCli({"delete", "switch", "icmpv4-unavailable-src-addr"});
+  ASSERT_EQ(result.exitCode, 0)
+      << "delete icmpv4-unavailable-src-addr CLI failed: " << result.stderr;
+  commitConfig();
+
+  // Deleting removes the field entirely, so the config ends in the true
+  // pristine state (the agent synthesizes 192.0.0.8 when the field is absent).
+  XLOG(INFO) << "[Step 3] Verifying the field is absent...";
+  EXPECT_EQ(
+      getSwConfigField<std::string>("icmpV4UnavailableSrcAddress", "<absent>"),
+      "<absent>");
+
+  XLOG(INFO) << "TEST PASSED";
+}

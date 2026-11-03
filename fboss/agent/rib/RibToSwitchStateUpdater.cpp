@@ -11,6 +11,8 @@
 
 #include "fboss/agent/AgentFeatures.h"
 #include "fboss/agent/FbossHwUpdateError.h"
+#include "fboss/agent/FibHelpers.h"
+#include "fboss/agent/state/FibDeltaHelpers.h"
 #include "fboss/agent/state/SwitchState.h"
 
 namespace facebook::fboss {
@@ -23,7 +25,8 @@ RibToSwitchStateUpdater::RibToSwitchStateUpdater(
     const LabelToRouteMap& labelToRoute,
     const NextHopIDManager* nextHopIDManager,
     const MySidTable& mySidTable,
-    int actions)
+    int actions,
+    bool vrfDeleted)
     : actions_(actions),
       fibUpdater_(
           resolver,
@@ -31,9 +34,11 @@ RibToSwitchStateUpdater::RibToSwitchStateUpdater(
           v4NetworkToRoute,
           v6NetworkToRoute,
           labelToRoute,
-          nextHopIDManager),
+          nextHopIDManager,
+          vrfDeleted),
       mySidUpdater_(resolver, mySidTable),
-      nhopStateUpdater_(nextHopIDManager) {}
+      nhopStateUpdater_(nextHopIDManager),
+      classBasedPolicyUpdater_(nextHopIDManager) {}
 
 std::shared_ptr<SwitchState> RibToSwitchStateUpdater::operator()(
     const std::shared_ptr<SwitchState>& state) {
@@ -45,6 +50,7 @@ std::shared_ptr<SwitchState> RibToSwitchStateUpdater::operator()(
     nextState = mySidUpdater_(nextState);
   }
   nextState = nhopStateUpdater_(nextState);
+  nextState = classBasedPolicyUpdater_(nextState);
   StateDelta delta(state, nextState);
   /*
    * We validate nhops here and not in fibUpdater_ as
@@ -56,6 +62,48 @@ std::shared_ptr<SwitchState> RibToSwitchStateUpdater::operator()(
     throw FbossHwUpdateError(
         nextState, state, "Invalid link-local next hop: ", *invalidNextHop);
   }
+
+  // Route resolution is complete and next-hop ID maps are populated here.
+  // Reject through FbossHwUpdateError so updateFib() reconstructs the RIB and
+  // NextHopIDManager from the previously applied switch state.
+  auto validateRouteNextHops = [&](RouterID routeVrf, const auto& route) {
+    if (!FLAGS_srv6 || !route->isResolved()) {
+      return;
+    }
+    const auto& forwarding = route->getForwardInfo();
+    if (forwarding.getAction() != RouteForwardAction::NEXTHOPS) {
+      return;
+    }
+
+    const auto nextHops = getNormalizedNextHops(nextState, forwarding);
+    if (!hasSrv6AndNonSrv6NextHops(nextHops)) {
+      return;
+    }
+
+    size_t srv6Count = 0;
+    for (const auto& nextHop : nextHops) {
+      srv6Count += !nextHop.srv6SegmentList().empty();
+    }
+    throw FbossHwUpdateError(
+        nextState,
+        state,
+        "Mixed SRv6 and non-SRv6 next hops are unsupported: vrf=",
+        routeVrf,
+        " prefix=",
+        route->prefix().str(),
+        " srv6=",
+        srv6Count,
+        " nonSrv6=",
+        nextHops.size() - srv6Count);
+  };
+  forEachChangedRoute(
+      delta,
+      [&](RouterID routeVrf, const auto& /* oldRoute */, const auto& newRoute) {
+        validateRouteNextHops(routeVrf, newRoute);
+      },
+      validateRouteNextHops,
+      [](RouterID /* routeVrf */, const auto& /* oldRoute */) {});
+
   if (!FLAGS_verify_fib_nexthop_id_consistency) {
     DCHECK(nhopStateUpdater_.verifyNextHopIdConsistency(nextState));
   } else {

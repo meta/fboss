@@ -16,8 +16,11 @@ namespace facebook::fboss::platform::platform_checks {
  */
 class MacAddressCheck : public PlatformCheck {
  public:
-  explicit MacAddressCheck(std::string interfaceName = "eth0")
-      : interfaceName_(std::move(interfaceName)) {}
+  explicit MacAddressCheck(
+      CheckTarget target = {},
+      std::string interfaceName = "eth0")
+      : PlatformCheck(std::move(target)),
+        interfaceName_(std::move(interfaceName)) {}
 
   CheckResult run() override;
 

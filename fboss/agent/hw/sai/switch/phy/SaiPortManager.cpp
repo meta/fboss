@@ -26,6 +26,12 @@
 #include <fmt/core.h>
 #include <folly/logging/xlog.h>
 
+#if defined(BRCM_PAI_SDK)
+extern "C" {
+#include <brcm_pai_extensions.h>
+}
+#endif
+
 DEFINE_bool(
     enable_xphy_link_training_line_side,
     false,
@@ -109,7 +115,19 @@ PortSaiId SaiPortManager::addPortImpl(const std::shared_ptr<Port>& swPort) {
 
   if (swPort->isEnabled()) {
     portStats_.emplace(
-        swPort->getID(), std::make_unique<HwPortFb303Stats>(swPort->getName()));
+        swPort->getID(),
+        std::make_unique<HwPortFb303Stats>(
+            swPort->getName(),
+            HwBasePortFb303Stats::QueueId2Name{} /*queueId2Name*/,
+            std::vector<PfcPriority>{} /*enabledPfcPriorities*/,
+            std::nullopt /*pfcCfg*/,
+            false /*inCongestionDiscardCountSupported*/,
+            false /*inCongestionDiscardSeenSupported*/,
+            false /*srv6MysidDiscardCounterSupported*/,
+            false /*mplsLabelLookupFailCounterSupported*/,
+            false /*linkDebounceRetriggerCounterSupported*/,
+            false /*sllHllDiscardCounterSupported*/,
+            false));
   }
 
   // set platform port's speed
@@ -182,7 +200,8 @@ SaiPortTraits::CreateAttributes SaiPortManager::attributesFromSwPort(
     fecMode = utility::getSaiPortFecMode(phyFecMode);
   }
 
-#if SAI_API_VERSION >= SAI_VERSION(1, 10, 0)
+// Extended FEC is not used on PAI and is not modeled in its port attributes.
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 0) && !defined(BRCM_PAI_SDK)
   std::optional<SaiPortTraits::Attributes::UseExtendedFec> useExtendedFec(
       std::nullopt);
   std::optional<SaiPortTraits::Attributes::ExtendedFecMode> extendedFecMode(
@@ -274,7 +293,7 @@ SaiPortTraits::CreateAttributes SaiPortManager::attributesFromSwPort(
       static_cast<uint32_t>(speed),
       enabled,
       fecMode,
-#if SAI_API_VERSION >= SAI_VERSION(1, 10, 0)
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 0) && !defined(BRCM_PAI_SDK)
       useExtendedFec,
       extendedFecMode,
 #endif
@@ -313,6 +332,13 @@ SaiPortTraits::CreateAttributes SaiPortManager::attributesFromSwPort(
       std::nullopt, // TC to Priority Group map
       std::nullopt, // PFC Priority to Queue map
       std::nullopt, // PFC Priority to Priority Group map
+#if defined(SAI_CBFC_SUPPORTED)
+      std::nullopt, // TC to VC map
+      std::nullopt, // Queue to VC map
+      std::nullopt, // CBFC sender credit size
+      std::nullopt, // CBFC sender packet overhead
+      std::nullopt, // CBFC sender credit limit
+#endif
 #if SAI_API_VERSION >= SAI_VERSION(1, 9, 0)
       std::nullopt,
 #endif
@@ -364,7 +390,10 @@ SaiPortTraits::CreateAttributes SaiPortManager::attributesFromSwPort(
 #endif
       std::nullopt, // PfcPauseDurationOverride
       std::nullopt, // Ingress ACL
+      std::nullopt, // IsolationGroup
       std::nullopt, // Metadata
+      std::nullopt, // CsigTagAction
+      std::nullopt, // CsigLinkLocator
   };
 }
 
@@ -410,7 +439,10 @@ void SaiPortManager::programSerdes(
       serdesAttributesFromSwPinConfigs(
           saiLinePort->adapterKey(),
           swPort->getLinePinConfigs().value(),
-          lineSerdes);
+          lineSerdes,
+          false /* zeroPreemphasis */,
+          std::nullopt /* customCollection */,
+          FLAGS_enable_xphy_link_training_line_side);
 
   // create Line port Serdes
   portHandle->serdes = store.setObject(lineSerdesKey, serdesAttributes);
@@ -426,58 +458,15 @@ void SaiPortManager::programSerdes(
   }
 
   serdesAttributes = serdesAttributesFromSwPinConfigs(
-      saiSysPort->adapterKey(), swPort->getPinConfigs(), sysSerdes);
+      saiSysPort->adapterKey(),
+      swPort->getPinConfigs(),
+      sysSerdes,
+      false /* zeroPreemphasis */,
+      std::nullopt /* customCollection */,
+      FLAGS_enable_xphy_link_training_sys_side);
 
   // create System port serdes
   portHandle->sysSerdes = store.setObject(sysSerdesKey, serdesAttributes);
-
-#if SAI_API_VERSION >= SAI_VERSION(1, 14, 0)
-  // Apply TX/RX precoding from the platform mapping pin configs. These aren't
-  // serdes CreateAttributes, so set them after the serdes object is created.
-  // Skip precoding on a side when link training is enabled on that side: LT
-  // negotiates the precoder with the link partner, so forcing precoding (and
-  // the derived ER mode) conflicts with LT and can drive the TX FIR through the
-  // Agera3 NLC path (which rejects those taps when precoding resolves to 0).
-  if (platform_->getAsic()->isSupported(
-          HwAsic::Feature::SAI_SERDES_PRECODING)) {
-    auto applyPrecoding = [](const std::shared_ptr<SaiPortSerdes>& serdes,
-                             const std::vector<phy::PinConfig>& pinConfigs) {
-      if (!serdes) {
-        return;
-      }
-      SaiPortSerdesTraits::Attributes::TxPrecoding::ValueType txPrecoding;
-      SaiPortSerdesTraits::Attributes::RxPrecoding::ValueType rxPrecoding;
-      for (const auto& pinConfig : pinConfigs) {
-        if (auto tx = pinConfig.tx()) {
-          if (auto precoding = tx->precoding()) {
-            txPrecoding.push_back(precoding.value());
-          }
-        }
-        if (auto rx = pinConfig.rx()) {
-          if (auto precoding = rx->precoding()) {
-            rxPrecoding.push_back(precoding.value());
-          }
-        }
-      }
-      if (!txPrecoding.empty()) {
-        SaiApiTable::getInstance()->portApi().setAttribute(
-            serdes->adapterKey(),
-            SaiPortSerdesTraits::Attributes::TxPrecoding{txPrecoding});
-      }
-      if (!rxPrecoding.empty()) {
-        SaiApiTable::getInstance()->portApi().setAttribute(
-            serdes->adapterKey(),
-            SaiPortSerdesTraits::Attributes::RxPrecoding{rxPrecoding});
-      }
-    };
-    if (!FLAGS_enable_xphy_link_training_line_side) {
-      applyPrecoding(portHandle->serdes, swPort->getLinePinConfigs().value());
-    }
-    if (!FLAGS_enable_xphy_link_training_sys_side) {
-      applyPrecoding(portHandle->sysSerdes, swPort->getPinConfigs());
-    }
-  }
-#endif
 }
 
 /*
@@ -494,8 +483,19 @@ SaiPortManager::serdesAttributesFromSwPinConfigs(
     const std::shared_ptr<SaiPortSerdes>& /* serdes */,
     bool /* zeroPreemphasis */,
     const std::optional<std::string>& customCollection,
-    bool /* skipSerdesProgramming */) {
+    bool skipSerdesProgramming,
+    bool /* txPrecodingEnabled */,
+    bool /* rxPrecodingEnabled */) {
   SaiPortSerdesTraits::CreateAttributes attrs;
+  std::get<SaiPortSerdesTraits::Attributes::PortId>(attrs) =
+      static_cast<sai_object_id_t>(portSaiId);
+  // Same as NPU: with link training on, the trained TX FIR taps are owned by
+  // link training, so don't program (or reconcile on warm boot) them.
+  if (skipSerdesProgramming) {
+    XLOG(DBG2) << "skipSerdesProgramming set, skip TX FIR for port serdes "
+               << static_cast<uint64_t>(portSaiId);
+    return attrs;
+  }
 
   SaiPortSerdesTraits::Attributes::TxFirPre1::ValueType txPre1;
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 0)
@@ -506,6 +506,8 @@ SaiPortManager::serdesAttributesFromSwPinConfigs(
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 0)
   SaiPortSerdesTraits::Attributes::TxFirPost1::ValueType txPost2;
   SaiPortSerdesTraits::Attributes::TxFirPost1::ValueType txPost3;
+  const bool post3Supported = platform_->getAsic()->isSupported(
+      HwAsic::Feature::XPHY_SERDES_TX_FIR_POST3);
 #endif
 
   // Now use pinConfigs from SW port as the source of truth
@@ -521,7 +523,9 @@ SaiPortManager::serdesAttributesFromSwPinConfigs(
       txPost1.push_back(*tx->post());
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 0)
       txPost2.push_back(*tx->post2());
-      txPost3.push_back(*tx->post3());
+      if (post3Supported) {
+        txPost3.push_back(*tx->post3());
+      }
 #endif
     }
   }
@@ -533,8 +537,6 @@ SaiPortManager::serdesAttributesFromSwPinConfigs(
     }
   };
 
-  std::get<SaiPortSerdesTraits::Attributes::PortId>(attrs) =
-      static_cast<sai_object_id_t>(portSaiId);
   setTxAttr(attrs, SaiPortSerdesTraits::Attributes::TxFirPre1{}, txPre1);
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 0)
   setTxAttr(attrs, SaiPortSerdesTraits::Attributes::TxFirPre2{}, txPre2);
@@ -545,6 +547,45 @@ SaiPortManager::serdesAttributesFromSwPinConfigs(
   setTxAttr(attrs, SaiPortSerdesTraits::Attributes::TxFirPost3{}, txPost3);
 #endif
   setTxAttr(attrs, SaiPortSerdesTraits::Attributes::TxFirMain{}, txMain);
+
+#if SAI_API_VERSION >= SAI_VERSION(1, 14, 0)
+  if (platform_->getAsic()->isSupported(
+          HwAsic::Feature::SAI_SERDES_PRECODING)) {
+    SaiPortSerdesTraits::Attributes::TxPrecodingAttr::ValueType txPrecoding;
+    SaiPortSerdesTraits::Attributes::RxPrecodingAttr::ValueType rxPrecoding;
+    for (const auto& pinConfig : pinConfigs) {
+      if (auto tx = pinConfig.tx(); tx && tx->precoding()) {
+        txPrecoding.push_back(tx->precoding().value());
+      }
+      if (auto rx = pinConfig.rx(); rx && rx->precoding()) {
+        rxPrecoding.push_back(rx->precoding().value());
+      }
+    }
+    setTxAttr(
+        attrs, SaiPortSerdesTraits::Attributes::TxPrecodingAttr{}, txPrecoding);
+    setTxAttr(
+        attrs, SaiPortSerdesTraits::Attributes::RxPrecodingAttr{}, rxPrecoding);
+  }
+#endif
+#if defined(BRCM_PAI_SDK)
+  // Same as NPU: per-lane NR/ER from the pin config. PAI requires a value for
+  // every lane, so a partial list is not sent.
+  if (platform_->getAsic()->isSupported(HwAsic::Feature::SAI_SERDES_RX_REACH)) {
+    SaiPortSerdesTraits::Attributes::RxReach::ValueType rxReach;
+    for (const auto& pinConfig : pinConfigs) {
+      if (auto rx = pinConfig.rx(); rx && rx->rxReach()) {
+        rxReach.push_back(
+            *rx->rxReach() == phy::RxReach::RX_NORMAL_REACH
+                ? SAI_PORT_SERDES_REACH_MODE_NR
+                : SAI_PORT_SERDES_REACH_MODE_ER);
+      }
+    }
+    if (!rxReach.empty() && rxReach.size() == pinConfigs.size()) {
+      std::get<std::optional<SaiPortSerdesTraits::Attributes::RxReach>>(attrs) =
+          rxReach;
+    }
+  }
+#endif
 
   std::string dbgOutput;
   dbgOutput.append(

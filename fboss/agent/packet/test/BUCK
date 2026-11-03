@@ -34,6 +34,12 @@ cpp_unittest(
     ],
     network_access = network_access_utils.none(),
     deps = [
+        "fbsource//xplat/folly:conv",
+        "fbsource//xplat/folly:memory",
+        "fbsource//xplat/folly:network_address",
+        "fbsource//xplat/folly:random",
+        "fbsource//xplat/folly/io:iobuf",
+        "fbsource//xplat/folly/logging:logging",
         "//fboss/agent:core",
         "//fboss/agent:dhcpv4_options_of_interest",
         "//fboss/agent:fboss-error",
@@ -47,12 +53,6 @@ cpp_unittest(
         "//fboss/agent/packet:packet_factory",
         "//fboss/agent/state:state",
         "//fboss/agent/test:utils",
-        "//folly:conv",
-        "//folly:memory",
-        "//folly:network_address",
-        "//folly:random",
-        "//folly/io:iobuf",
-        "//folly/logging:logging",
     ],
 )
 
@@ -65,9 +65,9 @@ cpp_unittest(
     network_access = network_access_utils.none(),
     deps = [
         "fbsource//third-party/googletest:gmock",
+        "fbsource//xplat/folly:network_address",
+        "fbsource//xplat/folly/container:array",
         "//fboss/agent/packet:sflow_structs",
-        "//folly:network_address",
-        "//folly/container:array",
     ],
 )
 
@@ -79,11 +79,11 @@ cpp_unittest(
     ],
     network_access = network_access_utils.none(),
     deps = [
+        "fbsource//xplat/folly:network_address",
+        "fbsource//xplat/folly/io:iobuf",
         "//fboss/agent:core",
         "//fboss/agent:fboss-error",
         "//fboss/agent/packet:packet",
-        "//folly:network_address",
-        "//folly/io:iobuf",
     ],
 )
 
@@ -94,9 +94,9 @@ cpp_unittest(
     ],
     network_access = network_access_utils.none(),
     deps = [
+        "fbsource//xplat/folly:network_address",
         "//fboss/agent:packet",
         "//fboss/agent/packet:packet_factory",
         "//fboss/agent/packet:sflow_structs",
-        "//folly:network_address",
     ],
 )

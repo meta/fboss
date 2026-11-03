@@ -96,17 +96,22 @@ class AgentSrv6EncapTest : public AgentHwTest {
 
   cfg::SwitchConfig initialConfig(
       const AgentEnsemble& ensemble) const override {
-    auto cfg = utility::onePortPerInterfaceConfig(
-        ensemble.getSw(),
-        ensemble.masterLogicalPortIds(),
-        true /*interfaceHasSubnet*/);
+    auto masterLogicalPorts = ensemble.masterLogicalPortIds();
+    cfg::SwitchConfig cfg;
     if constexpr (kIsTrunk) {
+      std::vector<utility::AggregatePortInfo> aggPorts;
+      aggPorts.reserve(kNumNextHops);
       for (int i = 0; i < kNumNextHops; ++i) {
-        utility::addAggPort(
-            i + 1,
-            {static_cast<int32_t>(ensemble.masterLogicalPortIds()[i])},
-            &cfg);
+        aggPorts.push_back({AggregatePortID(i + 1), {masterLogicalPorts[i]}});
       }
+      cfg = utility::oneAggregatePortPerInterfaceConfig(
+          ensemble.getSw(),
+          masterLogicalPorts,
+          aggPorts,
+          true /*interfaceHasSubnet*/);
+    } else {
+      cfg = utility::onePortPerInterfaceConfig(
+          ensemble.getSw(), masterLogicalPorts, true /*interfaceHasSubnet*/);
     }
     addSrv6TunnelConfig(cfg);
     cfg.loadBalancers() =
@@ -616,6 +621,14 @@ class AgentSrv6EncapTest : public AgentHwTest {
     routeUpdater.program();
   }
 
+  // Deletes one client's entry for kChildPrefix, leaving any other client's
+  // entry for the same prefix in place.
+  void delChildRoute(ClientID clientID) {
+    auto routeUpdater = this->getSw()->getRouteUpdater();
+    routeUpdater.delRoute(RouterID(0), kChildPrefix, kChildPrefixLen, clientID);
+    routeUpdater.program();
+  }
+
   template <typename CIDRNetworkT>
   void addEncapRoute(
       const CIDRNetworkT& prefix,
@@ -692,12 +705,22 @@ class AgentSrv6EncapTest : public AgentHwTest {
     int64_t counterPacketsBefore = 0;
     if (!counterID.empty()) {
       auto hwSwitchStats = this->getHwSwitchStats();
+      const auto statsTimestampBefore = hwSwitchStats.timestamp().value();
+      WITH_RETRIES({
+        hwSwitchStats = this->getHwSwitchStats();
+        EXPECT_EVENTUALLY_GT(
+            hwSwitchStats.timestamp().value(), statsTimestampBefore);
+        const auto& routeCounters =
+            *hwSwitchStats.counterStats()->routeCounters();
+        EXPECT_EVENTUALLY_TRUE(
+            routeCounters.find(counterID) != routeCounters.end());
+      });
       auto& routeCounters = *hwSwitchStats.counterStats()->routeCounters();
       auto it = routeCounters.find(counterID);
-      if (it != routeCounters.end()) {
-        counterBytesBefore = it->second.bytes().value_or(0);
-        counterPacketsBefore = it->second.packets().value_or(0);
-      }
+      ASSERT_NE(it, routeCounters.end())
+          << "Route counter " << counterID << " not found in fresh stats";
+      counterBytesBefore = it->second.bytes().value_or(0);
+      counterPacketsBefore = it->second.packets().value_or(0);
     }
 
     auto intfMac =
@@ -854,6 +877,78 @@ class AgentSrv6EncapTest : public AgentHwTest {
     }
   }
 
+  // Send a packet for the encap route while its only next hop is down or
+  // unresolved, and expect it discarded on ingress instead of encapped out.
+  // kEncapRoutePrefix / 100.0.0.0/24 carry a single sidList, so they resolve
+  // to exactly one next hop (ecmpHelper.nhop(0)) and lose their only path
+  // when that port goes down.
+  // Front panel ingress only: a CPU-injected packet takes a different path
+  // into the pipeline, so it is not the ingress-discard case under test.
+  void verifyEncapRouteDrop(PortID injectPort, PortID egressPort, bool isV4) {
+    // inDiscards must move and inSrv6MySidDiscards must not. inDstNullDiscards
+    // is logged only, so a run still shows which counter a resolution-failure
+    // drop actually lands in.
+    auto statsStr = [](const auto& stats) {
+      auto srv6Discards = stats.inSrv6MySidDiscards_();
+      return fmt::format(
+          "inDiscards={} inDstNullDiscards={} inSrv6MySidDiscards={}",
+          *stats.inDiscards_(),
+          *stats.inDstNullDiscards_(),
+          srv6Discards.has_value() ? std::to_string(*srv6Discards) : "unset");
+    };
+    auto portStatsBefore = this->getLatestPortStats(injectPort);
+    auto egressStatsBefore = this->getLatestPortStats(egressPort);
+    auto srv6DiscardsBefore =
+        portStatsBefore.inSrv6MySidDiscards_().value_or(0);
+    XLOG(DBG2) << "verifyEncapRouteDrop: inner=" << (isV4 ? "v4" : "v6")
+               << " ingressPort=" << injectPort
+               << " before: " << statsStr(portStatsBefore);
+
+    auto intfMac =
+        getMacForFirstInterfaceWithPortsForTesting(this->getProgrammedState());
+    constexpr auto kTc{42};
+    constexpr auto kTtl{24};
+    auto srcIp =
+        isV4 ? folly::IPAddress("10.0.0.1") : folly::IPAddress("1::10");
+    auto dstIp = isV4 ? folly::IPAddress("100.0.0.1")
+                      : folly::IPAddress(kEncapRouteDstIp);
+    auto txPacket = utility::makeUDPTxPacket(
+        this->getSw(),
+        this->getVlanIDForTx(),
+        intfMac,
+        intfMac,
+        srcIp,
+        dstIp,
+        8000,
+        8001,
+        static_cast<uint8_t>(kTc << 2),
+        kTtl);
+    this->getSw()->sendPacketOutOfPortAsync(std::move(txPacket), injectPort);
+
+    WITH_RETRIES({
+      auto portStatsAfter = this->getLatestPortStats(injectPort);
+      auto egressStatsAfter = this->getLatestPortStats(egressPort);
+      EXPECT_EVENTUALLY_GT(
+          *portStatsAfter.inDiscards_(), *portStatsBefore.inDiscards_());
+      // Nothing should make it out the (down) egress port.
+      EXPECT_EVENTUALLY_EQ(
+          *egressStatsAfter.outBytes_(), *egressStatsBefore.outBytes_());
+    });
+
+    auto portStatsAfter = this->getLatestPortStats(injectPort);
+    XLOG(DBG2) << "verifyEncapRouteDrop: inner=" << (isV4 ? "v4" : "v6")
+               << " ingressPort=" << injectPort
+               << "  after: " << statsStr(portStatsAfter);
+
+    // A resolution-failure drop is not local-SID processing, so the mysid
+    // counter must stay put. Checked after the loop rather than as an
+    // EXPECT_EVENTUALLY_EQ inside it: these counters are monotonic, so an
+    // increment would never retry away, and the loop would burn its whole
+    // timeout before failing.
+    EXPECT_EQ(
+        portStatsAfter.inSrv6MySidDiscards_().value_or(0), srv6DiscardsBefore);
+  }
+
   PortID findInjectPort(const std::vector<PortID>& egressPorts) {
     for (const auto& portMap :
          std::as_const(*this->getProgrammedState()->getPorts())) {
@@ -929,6 +1024,31 @@ TYPED_TEST(AgentSrv6EncapTest, sendPacketToEncapRouteAfterLinkFlap) {
     auto egressPort = this->getEgressPort(ecmpHelper.nhop(0).portDesc);
     this->verifyEncapPacketCpuAndFrontPanel(
         {egressPort}, {this->kSid0}, "kSid0");
+  };
+  this->verifyAcrossWarmBoots(setup, verify);
+}
+
+TYPED_TEST(AgentSrv6EncapTest, sendPacketToEncapRouteUnresolvedDropped) {
+  auto setup = [this]() {
+    this->setupHelper();
+    auto ecmpHelper = this->makeEcmpHelper();
+    auto egressPort = this->getEgressPort(ecmpHelper.nhop(0).portDesc);
+
+    this->bringDownPort(egressPort);
+    XLOG(DBG2) << "Brought down egress port " << egressPort;
+    this->unresolveNextHops(2);
+    XLOG(DBG2) << "Unresolved neighbors for the encap route next hop";
+  };
+
+  // The route's only next hop is both down and unresolved, so traffic for it
+  // must be discarded on ingress rather than leaking out some other port.
+  auto verify = [this]() {
+    auto ecmpHelper = this->makeEcmpHelper();
+    auto egressPort = this->getEgressPort(ecmpHelper.nhop(0).portDesc);
+    auto injectPort = this->findInjectPort({egressPort});
+    for (bool isV4 : {false, true}) {
+      this->verifyEncapRouteDrop(injectPort, egressPort, isV4);
+    }
   };
   this->verifyAcrossWarmBoots(setup, verify);
 }
@@ -1214,7 +1334,7 @@ TYPED_TEST(AgentSrv6EncapTest, verifySrv6EncapEcnMarking) {
             tcField,
             64,
             std::vector<uint8_t>(7000, 0xff));
-        this->getSw()->sendPacketSwitchedAsync(std::move(txPacket));
+        this->sendPacketSwitchedAsync(std::move(txPacket));
       }
     };
 
@@ -1270,7 +1390,7 @@ TYPED_TEST(AgentSrv6EncapTest, VerifyDscpQueueMapping) {
       if (frontPanel) {
         this->getSw()->sendPacketOutOfPortAsync(std::move(txPacket), port);
       } else {
-        this->getSw()->sendPacketSwitchedAsync(std::move(txPacket));
+        this->sendPacketSwitchedAsync(std::move(txPacket));
       }
     };
 
@@ -1353,6 +1473,92 @@ TYPED_TEST(AgentSrv6EncapTest, multiHopUnresolvedToResolved) {
   };
 
   this->verifyAcrossWarmBoots(setup, verify);
+}
+
+// A counted route that loses its last next hop must detach its counter in
+// hardware before the agent drops its reference to it.
+TYPED_TEST(AgentSrv6EncapTest, openRAndTeAgentRoutesChurn) {
+  // Skip direct encap routes to avoid colliding SRv6 managed next hop keys
+  // with recursive resolution, matching the other recursive tests.
+  this->setupHelper(true /*resolveNeighbors*/, false /*programEncapRoutes*/);
+  this->addProductionRecursiveSrv6Routes();
+
+  auto ecmpHelper = this->makeEcmpHelper();
+  std::vector<PortID> egressPorts;
+  egressPorts.reserve(this->kNumNextHops);
+  for (int i = 0; i < this->kNumNextHops; ++i) {
+    egressPorts.push_back(this->getEgressPort(ecmpHelper.nhop(i).portDesc));
+  }
+
+  // The parent forwards over the child's SID-list next hops and counts into
+  // the counter it inherited from the child.
+  this->verifyEncapPacket(
+      egressPorts,
+      false /*ecnMarked*/,
+      false /*isV4*/,
+      {this->kSid0},
+      std::nullopt /*injectPort*/,
+      this->kEncapRouteDstIp,
+      this->kChildRouteCounter);
+
+  // Remove both child entries, so kChildPrefix goes away entirely and the
+  // parent falls back to ::/0. On the unfixed agent the hw agent aborts here.
+  this->delChildRoute(ClientID::OPENR);
+  this->delChildRoute(ClientID::TE_AGENT);
+
+  // The parent is now a drop route. Checked on inDstNullDiscards rather than
+  // the generic inDiscards that verifyEncapRouteDrop uses: the parent falls
+  // back to ::/0, so this must land as a null-route drop specifically, and
+  // inDiscards would also be satisfied by an unrelated ingress drop.
+  auto injectPort = this->findInjectPort(egressPorts);
+  auto nullDiscardsBefore =
+      *this->getLatestPortStats(injectPort).inDstNullDiscards_();
+  std::map<PortID, int64_t> egressBytesBefore;
+  for (auto port : egressPorts) {
+    egressBytesBefore[port] = *this->getLatestPortStats(port).outBytes_();
+  }
+
+  constexpr auto kTc{42};
+  constexpr auto kTtl{24};
+  auto intfMac =
+      getMacForFirstInterfaceWithPortsForTesting(this->getProgrammedState());
+  this->getSw()->sendPacketOutOfPortAsync(
+      utility::makeUDPTxPacket(
+          this->getSw(),
+          this->getVlanIDForTx(),
+          intfMac,
+          intfMac,
+          folly::IPAddress("1::10"),
+          folly::IPAddress(this->kEncapRouteDstIp),
+          8000,
+          8001,
+          static_cast<uint8_t>(kTc << 2),
+          kTtl),
+      injectPort);
+
+  WITH_RETRIES({
+    EXPECT_EVENTUALLY_GT(
+        *this->getLatestPortStats(injectPort).inDstNullDiscards_(),
+        nullDiscardsBefore);
+  });
+  // And nothing leaked out of the next hops the parent used to egress on.
+  for (auto port : egressPorts) {
+    EXPECT_EQ(
+        *this->getLatestPortStats(port).outBytes_(), egressBytesBefore[port]);
+  }
+
+  // Put the child back. The parent re-resolves, re-inherits the counter and
+  // counts again -- which it cannot do if the counter was stranded in
+  // hardware by the detach that never happened.
+  this->addProductionRecursiveSrv6Routes();
+  this->verifyEncapPacket(
+      egressPorts,
+      false /*ecnMarked*/,
+      false /*isV4*/,
+      {this->kSid0},
+      std::nullopt /*injectPort*/,
+      this->kEncapRouteDstIp,
+      this->kChildRouteCounter);
 }
 
 } // namespace facebook::fboss

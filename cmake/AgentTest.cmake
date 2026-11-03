@@ -102,6 +102,19 @@ target_link_libraries(mpls_handler_test
 
 gtest_discover_tests(mpls_handler_test)
 
+add_executable(vrf_config_test
+  fboss/util/oss/TestMain.cpp
+  fboss/agent/test/VrfConfigTests.cpp
+)
+
+target_link_libraries(vrf_config_test
+  agent_test_utils
+  ${GTEST}
+  ${LIBGMOCK_LIBRARIES}
+)
+
+gtest_discover_tests(vrf_config_test)
+
 add_library(agent_test_lib
   fboss/agent/test/AgentTest.cpp
 )

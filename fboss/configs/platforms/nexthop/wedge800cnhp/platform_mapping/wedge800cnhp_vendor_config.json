@@ -1,0 +1,22 @@
+{
+    "config" : {
+        "common_config" : {
+
+        },
+        "prod_config_only" : {
+
+        },
+        "hw_test_config_only" : {
+          "sai_uncached_port_stats": "0x1"
+        },
+        "link_test_config_only" : {
+          "sai_uncached_port_stats": "0x1"
+        },
+        "benchmark_config_only" : {
+
+        },
+        "port_map_config" : {
+
+        }
+    }
+}

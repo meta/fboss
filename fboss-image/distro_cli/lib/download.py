@@ -10,7 +10,6 @@
 import json
 import logging
 import os
-import re
 import shutil
 import subprocess
 import urllib.request
@@ -18,14 +17,12 @@ from http import HTTPStatus
 from pathlib import Path
 
 from .artifact import ArtifactStore
+from .constants import DEFAULT_MANIFOLD_CLI, MANIFOLD_CLI_VAR, MANIFOLD_URL_PREFIX
 from .exceptions import ArtifactError
 
 logger = logging.getLogger(__name__)
 
 FILE_URL_PREFIX = "file:"
-MANIFOLD_URL_PREFIX = "manifold:"
-MANIFOLD_CLI_VAR = "MANIFOLD_CLI"
-MANIFOLD_TIMEOUT_SECONDS = 3600
 HTTP_METADATA_FILENAME = ".http_metadata.json"  # Stored alongside cached artifact
 
 
@@ -108,109 +105,49 @@ def download_artifact(
         return (False, [temp_data_path], [metadata_path])
 
     if url.startswith(MANIFOLD_URL_PREFIX):
-        return _download_manifold_with_cache(
-            url, cached_data_files, cached_metadata_files
-        )
+        return _download_manifold(url)
 
     return _download_http_with_cache(url, cached_data_files, cached_metadata_files)
 
 
-def _manifold_etag(path: str) -> str | None:
-    """Return Manifold's etag for an object, or None if it cannot be read.
+def _download_manifold(url: str) -> tuple[bool, list[Path], list[Path]]:
+    """Fetch a Manifold-hosted artifact by shelling out to the manifold CLI.
 
-    Used only to decide whether a cached copy is still current, so a failure
-    here costs a redundant download rather than a failed build.
-    """
-    try:
-        result = subprocess.run(
-            [_manifold_cli(), "getMeta", path],
-            capture_output=True,
-            text=True,
-            timeout=MANIFOLD_TIMEOUT_SECONDS,
-            check=True,
-        )
-    except (OSError, subprocess.SubprocessError) as e:
-        logger.warning(f"Could not read Manifold metadata for {path}: {e}")
-        return None
-
-    match = re.search(r"etag='([^']*)'", result.stdout)
-    if not match:
-        logger.warning(f"No etag in Manifold metadata for {path}")
-        return None
-    return match.group(1)
-
-
-def _manifold_cli() -> str:
-    """Path to the Manifold CLI.
-
-    Overridable because CI fetches it to a fixed location via fbpkg rather
-    than installing it on PATH.
-    """
-    return os.environ.get(MANIFOLD_CLI_VAR, "manifold")
-
-
-def _download_manifold_with_cache(
-    url: str,
-    cached_data_files: list[Path] | None,
-    cached_metadata_files: list[Path] | None,
-) -> tuple[bool, list[Path], list[Path]]:
-    """Fetch an artifact from Manifold, reusing the cached copy when unchanged.
-
-    Manifold is a Thrift service, not something urllib can fetch, so this
-    shells out to the CLI. Change detection uses the object's etag, which
-    plays the same role as the ETag header on the HTTP path.
+    Manifold has no HTTP endpoint reachable from the build container, so there is
+    no ETag/mtime to compare against; every call re-fetches.
 
     Args:
         url: manifold:<bucket>/<path> URL
-        cached_data_files: Cached data files (expects 0 or 1 file)
-        cached_metadata_files: Cached metadata files (expects 0 or 1 file)
 
     Returns:
         Tuple of (cache_hit, data_files, metadata_files)
 
     Raises:
-        ArtifactError: If the fetch fails
+        ArtifactError: If the CLI is missing or the fetch fails
     """
-    path = url.removeprefix(MANIFOLD_URL_PREFIX)
-    etag = _manifold_etag(path)
-
-    if etag and cached_data_files and cached_metadata_files:
-        metadata_path = cached_metadata_files[0].parent / HTTP_METADATA_FILENAME
-        if metadata_path.exists():
-            cached_etag = _load_http_metadata(metadata_path).get("etag")
-            if cached_etag == etag:
-                logger.info(f"Using cached Manifold artifact (unchanged): {path}")
-                return (True, cached_data_files, cached_metadata_files)
+    blob_path = url.removeprefix(MANIFOLD_URL_PREFIX)
+    cli = os.environ.get(MANIFOLD_CLI_VAR, DEFAULT_MANIFOLD_CLI)
 
     temp_download_dir = ArtifactStore.create_temp_dir(prefix="download-")
-    artifact_path = temp_download_dir / path.split("/")[-1]
-
+    temp_data_path = temp_download_dir / Path(blob_path).name
     try:
         subprocess.run(
-            [_manifold_cli(), "get", path, str(artifact_path)],
+            [cli, "get", blob_path, str(temp_data_path)],
+            check=True,
             capture_output=True,
             text=True,
-            timeout=MANIFOLD_TIMEOUT_SECONDS,
-            check=True,
         )
-    except subprocess.CalledProcessError as e:
+    except FileNotFoundError as e:
         ArtifactStore.delete_temp_dir(temp_download_dir)
         raise ArtifactError(
-            f"Failed to fetch {path} from Manifold: {e.stderr or e}"
+            f"manifold CLI not found at {cli!r}; set {MANIFOLD_CLI_VAR}"
         ) from e
-    except (OSError, subprocess.SubprocessError) as e:
+    except subprocess.CalledProcessError as e:
         ArtifactStore.delete_temp_dir(temp_download_dir)
-        raise ArtifactError(f"Failed to fetch {path} from Manifold: {e}") from e
+        raise ArtifactError(f"Failed to fetch {url}: {e.stderr}") from e
 
-    if not artifact_path.exists():
-        ArtifactStore.delete_temp_dir(temp_download_dir)
-        raise ArtifactError(f"Manifold reported success but produced no file: {path}")
-
-    metadata_path = temp_download_dir / HTTP_METADATA_FILENAME
-    _save_http_metadata(temp_download_dir, etag, None)
-
-    logger.info(f"Fetched from Manifold: {path} -> {artifact_path}")
-    return (False, [artifact_path], [metadata_path])
+    logger.info(f"Fetched from Manifold: {blob_path}")
+    return (False, [temp_data_path], [])
 
 
 def _load_http_metadata(metadata_path: Path) -> dict:

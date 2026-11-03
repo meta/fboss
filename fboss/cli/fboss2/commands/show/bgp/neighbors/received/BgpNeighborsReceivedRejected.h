@@ -88,7 +88,7 @@ class BgpNeighborsReceivedRejected : public CmdHandler<
   static RetType sampleModel() {
     return sampleNetworkPaths(
         SampleRouteDirection::Received,
-        "Denied by PROPAGATE_RSW_FSW_IN term RULE_DENY_MARTIAN_120");
+        "Denied by SAMPLE_UPLINK_IN term SAMPLE_DENY_MARTIAN");
   }
 
   void printOutput(

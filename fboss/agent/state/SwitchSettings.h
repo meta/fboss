@@ -499,6 +499,15 @@ class SwitchSettings
     set<switch_state_tags::ecmpGroupSettings>(ecmpGroupSettings);
   }
 
+  std::vector<cfg::MacAndVlan> getMyMacs() const {
+    // THRIFT_COPY
+    return get<switch_state_tags::myMacs>()->toThrift();
+  }
+
+  void setMyMacs(const std::vector<cfg::MacAndVlan>& myMacs) {
+    set<switch_state_tags::myMacs>(myMacs);
+  }
+
   std::optional<bool> getCreditWatchdog() const {
     if (auto creditWatchdog = cref<switch_state_tags::creditWatchdog>()) {
       return creditWatchdog->toThrift();

@@ -13,6 +13,7 @@
 #include <folly/MacAddress.h>
 #include <folly/logging/xlog.h>
 #include <netinet/icmp6.h>
+#include <utility>
 #include "fboss/agent/FbossError.h"
 #include "fboss/agent/InterfaceStats.h"
 #include "fboss/agent/SwSwitch.h"
@@ -202,18 +203,25 @@ IPv6RouteAdvertiser::IPv6RouteAdvertiser(IPv6RouteAdvertiser&& other) noexcept
 }
 
 IPv6RouteAdvertiser::~IPv6RouteAdvertiser() {
+  stop();
+}
+
+IPv6RouteAdvertiser& IPv6RouteAdvertiser::operator=(
+    IPv6RouteAdvertiser&& other) noexcept {
+  if (this != &other) {
+    stop();
+    adv_ = std::exchange(other.adv_, nullptr);
+  }
+  return *this;
+}
+
+void IPv6RouteAdvertiser::stop() {
   if (!adv_) {
     return;
   }
   adv_->getSw()->getBackgroundEvb()->runInFbossEventBaseThread(
       IPv6RAImpl::stop, adv_);
-}
-
-IPv6RouteAdvertiser& IPv6RouteAdvertiser::operator=(
-    IPv6RouteAdvertiser&& other) noexcept {
-  adv_ = other.adv_;
-  other.adv_ = nullptr;
-  return *this;
+  adv_ = nullptr;
 }
 
 /* static */ uint32_t IPv6RouteAdvertiser::getPacketSize(

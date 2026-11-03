@@ -34,6 +34,10 @@ auto constexpr kDefaultMaxBrightness = 255;
 auto constexpr kSensordThriftPort = 5970;
 auto constexpr kAgentTempThriftPort = 5972;
 
+} // namespace
+
+namespace facebook::fboss::platform::fan_service {
+
 std::optional<std::string> getOpticTypeFromMediaCode(
     std::optional<facebook::fboss::MediaInterfaceCode> mediaInterfaceCode,
     const std::string& unknownFallback) {
@@ -63,14 +67,15 @@ std::optional<std::string> getOpticTypeFromMediaCode(
       return constants::OPTIC_TYPE_800_GENERIC();
     case MediaInterfaceCode::ZR_800G:
       return constants::OPTIC_TYPE_800_ZR();
+    case MediaInterfaceCode::DR4_2x800G:
+    case MediaInterfaceCode::FR4_2x800G:
+    case MediaInterfaceCode::DR8_1600G:
+    case MediaInterfaceCode::CR8_1600G:
+      return constants::OPTIC_TYPE_1600_GENERIC();
     default:
       return std::nullopt;
   }
 }
-
-} // namespace
-
-namespace facebook::fboss::platform::fan_service {
 
 Bsp::Bsp(const FanServiceConfig& config) : config_(config) {
   fsdbPubSubMgr_ = std::make_unique<fsdb::FsdbPubSubManager>("fan_service");

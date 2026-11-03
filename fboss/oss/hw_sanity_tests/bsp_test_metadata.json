@@ -1,0 +1,46 @@
+{
+    "RepoSyncHeader": [
+        "(c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.",
+        "This file is generated. Do not modify it manually!",
+        "@codegen-source : configerator\/raw_configs\/fboss\/test\/bsp_test_metadata\/metadata.json",
+        "@generated SignedSource<<fe3e8311341d9b96362a6ce61452a6e8>>"
+    ],
+    "rules": [
+        {
+            "testNamePattern": "EmptyHwTest.CheckInit",
+            "tier": "T0",
+            "requiredCapabilities": [],
+            "profiles": []
+        },
+        {
+            "testNamePattern": "HwTest.i2cStressRead",
+            "tier": "T0",
+            "requiredCapabilities": [],
+            "profiles": []
+        },
+        {
+            "testNamePattern": "HwTest.i2cStressWrite",
+            "tier": "T0",
+            "requiredCapabilities": [],
+            "profiles": []
+        },
+        {
+            "testNamePattern": "HwTest.i2cUniqueSerialNumbers",
+            "tier": "T0",
+            "requiredCapabilities": [],
+            "profiles": []
+        },
+        {
+            "testNamePattern": "HwTransceiverResetTest.verifyResetControl",
+            "tier": "T0",
+            "requiredCapabilities": [],
+            "profiles": []
+        },
+        {
+            "testNamePattern": "HwTransceiverResetTest.resetTranscieverAndDetectPresence",
+            "tier": "T0",
+            "requiredCapabilities": [],
+            "profiles": []
+        }
+    ]
+}

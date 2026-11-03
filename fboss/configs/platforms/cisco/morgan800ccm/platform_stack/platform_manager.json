@@ -1158,7 +1158,7 @@
   },
   "chassisEepromDevicePath": "/FCB_SLOT@0/[CHASSIS_EEPROM]",
   "bspKmodsRpmName": "cisco_bsp_kmods",
-  "bspKmodsRpmVersion": "3.0.6-1",
+  "bspKmodsRpmVersion": "2026.10.3-1",
   "numXcvrs": 65,
   "nonBspKmodsToLoad": [
     "spidev",

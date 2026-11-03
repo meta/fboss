@@ -12,6 +12,8 @@
 #include <algorithm>
 #include <functional>
 #include <string>
+#include <type_traits>
+#include <utility>
 #include <vector>
 
 #include <CLI/App.hpp>
@@ -24,7 +26,45 @@ namespace facebook::fboss {
 using ValidFilterMapType = std::unordered_map<
     std::string_view,
     std::shared_ptr<CmdGlobalOptions::BaseTypeVerifier>>;
-using CommandHandlerFn = std::function<void()>;
+
+enum class CliReadWriteMode {
+  CLI_MODE_WRITE,
+  CLI_MODE_READ,
+};
+
+struct CommandRunner {
+  void (*run)();
+  CliReadWriteMode mode;
+  bool documented;
+};
+
+class CommandHandlerFn {
+ public:
+  /* implicit */ CommandHandlerFn(const CommandRunner& runner)
+      : fn_{runner.run}, mode_{runner.mode}, documented_{runner.documented} {}
+
+  template <typename F>
+    requires(
+        !std::is_same_v<std::remove_cvref_t<F>, CommandHandlerFn> &&
+        std::is_invocable_v<F&>)
+  /* implicit */ CommandHandlerFn(F&& fn) : fn_{std::forward<F>(fn)} {}
+
+  void operator()() const {
+    fn_();
+  }
+  CliReadWriteMode mode() const {
+    return mode_;
+  }
+  bool documented() const {
+    return documented_;
+  }
+
+ private:
+  std::function<void()> fn_;
+  CliReadWriteMode mode_{CliReadWriteMode::CLI_MODE_WRITE};
+  bool documented_{false};
+};
+
 using ValidFilterHandlerFn = std::function<ValidFilterMapType()>;
 using ArgTypeHandlerFn = std::function<utils::ObjectArgTypeId()>;
 using ArgRegistrarFn =
@@ -372,20 +412,12 @@ const CommandTree& kBaseAdditionalCommandTree();
 const CommandTree& kAdditionalCommandTree();
 const std::vector<Command>& kSpecialCommands();
 
-// Defined in CmdHandler.h. For a read ("show") command this static_asserts that
-// the command carries the CLI reference-wiki hooks (or a CliDocsExempt tag); a
-// no-op for write commands. Instantiated only at the command-tree registration
-// sites (CmdList.cpp variants), which include CmdHandler.h via command headers.
-template <typename T>
-void assertReadCommandDocumented();
-
-template <typename T>
-void commandHandler() {
-  assertReadCommandDocumented<T>();
-  T().run();
-}
-
 void helpCommandHandler();
+
+inline constexpr CommandRunner kHelpCommandRunner{
+    &helpCommandHandler,
+    CliReadWriteMode::CLI_MODE_READ,
+    false /*documented*/};
 
 template <typename T>
 ValidFilterMapType validFilterHandler() {

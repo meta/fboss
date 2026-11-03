@@ -1,4 +1,6 @@
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbsource//tools/build_defs/testinfra:network_access_utils.bzl", "network_access_utils")
 
 oncall("fboss_agent_push")
 
@@ -12,8 +14,8 @@ cpp_library(
     ],
     deps = ["//nettools/flowtools/sflow:sflow_sample_parser"],
     exported_deps = [
-        "//folly:network_address",
-        "//folly/io:iobuf",
+        "fbsource//xplat/folly:network_address",
+        "fbsource//xplat/folly/io:iobuf",
     ],
 )
 
@@ -21,6 +23,9 @@ cpp_library(
     name = "srv6_test_utils",
     srcs = [
         "Srv6TestUtils.cpp",
+    ],
+    headers = [
+        "Srv6TestUtils.h",
     ],
     deps = [
         "fbsource//third-party/fmt:fmt",
@@ -39,11 +44,11 @@ cpp_library(
         "//fboss/lib:common_utils",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:network_address",
         "//fboss/agent:fboss-types",
         "//fboss/agent:switch_config-cpp2-types",
         "//fboss/agent/if:ctrl-cpp2-types",
         "//fboss/agent/test:ecmp_helper",
-        "//folly:network_address",
     ],
 )
 
@@ -61,7 +66,29 @@ cpp_library(
         "//fboss/agent:switch_config-cpp2-types",
         "//fboss/agent/hw/switch_asics:switch_asics",
         "//fboss/agent/state:state",
-        "//fboss/lib/config:acl_config_utils",
+        "//fboss/lib/config:fboss_agent_config_utils",
+    ],
+)
+
+cpp_library(
+    name = "access_policy_acl_test_utils",
+    srcs = ["facebook/AccessPolicyAclTestUtils.cpp"],
+    headers = ["facebook/AccessPolicyAclTestUtils.h"],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        "fbsource//xplat/folly:network_address",
+        "fbsource//xplat/folly/logging:logging",
+        ":acl_test_utils",
+        ":config_utils",
+        "//fboss/agent:asic_utils",
+        "//fboss/agent:fboss-error",
+        "//fboss/agent/packet:ipproto",
+        "//thrift/lib/cpp/util:enum_utils",
+    ],
+    exported_deps = [
+        "//fboss/agent:fboss-types",
+        "//fboss/agent:switch_config-cpp2-types",
+        "//fboss/agent/hw/switch_asics:switch_asics",
     ],
 )
 
@@ -86,14 +113,15 @@ cpp_library(
     ],
     exported_deps = [
         "fbsource//third-party/googletest:gtest",
+        "fbsource//xplat/folly:network_address",
+        "fbsource//xplat/folly/logging:logging",
         "//fboss/agent:core",
         "//fboss/agent:fboss-types",
         "//fboss/agent:switch_config-cpp2-types",
         "//fboss/agent/hw:hardware_stats-cpp2-types",
         "//fboss/agent/hw/switch_asics:switch_asics",
         "//fboss/agent/state:state",
-        "//folly:network_address",
-        "//folly/logging:logging",
+        "//fboss/lib/config:fboss_agent_config_utils",
     ],
 )
 
@@ -112,28 +140,30 @@ cpp_library(
     srcs = [
         "PacketSendUtils.cpp",
         "PacketTestUtils.cpp",
+        "facebook/ChenabPacketTestUtils.cpp",
     ],
     headers = [
         "PacketSendUtils.h",
         "PacketTestUtils.h",
     ],
     deps = [
+        "fbsource//xplat/folly/logging:logging",
         "//fboss/agent:core",
         "//fboss/agent:hw_switch",
         "//fboss/agent:packet",
         "//fboss/agent/packet:ipproto",
         "//fboss/agent/packet:packet",
+        "//fboss/agent/packet/chenab:chenab_mod_header",
         "//fboss/agent/packet/tajo:tajo_punt_header",
         "//fboss/agent/test:test_ensemble_if",
-        "//folly/logging:logging",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:network_address",
         "//fboss/agent:fboss-types",
         "//fboss/agent:tx_packet_utils",
         "//fboss/agent/hw:hardware_stats-cpp2-types",
         "//fboss/agent/packet:packet_factory",
         "//fboss/agent/state:state",
-        "//folly:network_address",
     ],
 )
 
@@ -279,9 +309,9 @@ cpp_library(
         "//fboss/agent/test:test_ensemble_if",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:network_address",
         "//fboss/agent:agent_features",
         "//fboss/agent/if:ctrl-cpp2-types",
-        "//folly:network_address",
     ],
 )
 
@@ -293,18 +323,21 @@ cpp_library(
     headers = ["ConfigUtils.h"],
     deps = [
         "fbsource//third-party/fmt:fmt",
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/testing:test_util",
         ":port_test_utils",
         ":voq_test_utils",
         "//fboss/agent:core",
+        "//fboss/agent:load_agent_config",
+        "//fboss/agent:switchinfo_utils",
         "//fboss/agent/test:test_ensemble_if",
         "//fboss/agent/test:trunk_utils",
         "//fboss/agent/test:utils",
-        "//fboss/lib/config:acl_config_utils",
         "//fboss/lib/config:fboss_config_utils",
-        "//folly:format",
-        "//folly/testing:test_util",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:network_address",
         "//fboss/agent:agent_features",
         "//fboss/agent:fboss-error",
         "//fboss/agent:fboss-types",
@@ -312,8 +345,18 @@ cpp_library(
         "//fboss/agent/hw/switch_asics:switch_asics",
         "//fboss/agent/platforms/common:platform_mapping",
         "//fboss/agent/state:state",
-        "//fboss/lib/config:port_config_utils",
-        "//folly:network_address",
+        "//fboss/lib/config:fboss_agent_config_utils",
+    ],
+)
+
+cpp_unittest(
+    name = "config_utils_test",
+    srcs = [
+        "ConfigUtilsTest.cpp",
+    ],
+    network_access = network_access_utils.none(),
+    deps = [
+        ":config_utils",
     ],
 )
 
@@ -347,6 +390,7 @@ cpp_library(
     ],
     exported_deps = [
         "fbsource//third-party/googletest:gtest",
+        "fbsource//xplat/folly:network_address",
         ":pkt_test_utils",
         "//fboss/agent:core",
         "//fboss/agent:fboss-types",
@@ -358,7 +402,6 @@ cpp_library(
         "//fboss/agent/test:test_ensemble_if",
         "//fboss/agent/test:utils",
         "//fboss/lib:common_utils",
-        "//folly:network_address",
     ],
 )
 
@@ -366,6 +409,9 @@ cpp_library(
     name = "load_balancer_test_utils",
     srcs = [
         "LoadBalancerTestUtils.cpp",
+    ],
+    headers = [
+        "LoadBalancerTestUtils.h",
     ],
     deps = [
         "fbsource//third-party/fmt:fmt",
@@ -382,13 +428,13 @@ cpp_library(
         "//fboss/lib:common_utils",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/gen:base",
         "//fboss/agent:agent_features",
         "//fboss/agent:switchid_scope_resolver",
         "//fboss/agent:utils",
         "//fboss/agent/hw/switch_asics:switch_asics",
         "//fboss/agent/state:state",
         "//fboss/agent/test:test_ensemble_if",
-        "//folly/gen:base",
     ],
 )
 
@@ -419,12 +465,15 @@ cpp_library(
     srcs = [
         "TrapPacketUtils.cpp",
     ],
+    headers = [
+        "TrapPacketUtils.h",
+    ],
     deps = [":acl_test_utils"],
     exported_deps = [
+        "fbsource//xplat/folly:network_address",
         "//fboss/agent:fboss-types",
         "//fboss/agent:switch_config-cpp2-types",
         "//fboss/agent/hw/switch_asics:switch_asics",
-        "//folly:network_address",
     ],
 )
 
@@ -460,12 +509,12 @@ cpp_library(
         "//fboss/lib:common_utils",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:network_address",
         "//fboss/agent:fboss-types",
         "//fboss/agent:route_update_wrapper",
         "//fboss/agent:switch_config-cpp2-types",
         "//fboss/agent/hw:hardware_stats-cpp2-types",
         "//fboss/agent/state:state",
-        "//folly:network_address",
     ],
 )
 
@@ -473,6 +522,9 @@ cpp_library(
     name = "ecmp_dataplane_test_util",
     srcs = [
         "EcmpDataPlaneTestUtil.cpp",
+    ],
+    headers = [
+        "EcmpDataPlaneTestUtil.h",
     ],
     deps = [
         "fbsource//third-party/fmt:fmt",
@@ -497,9 +549,12 @@ cpp_library(
     srcs = [
         "PortStatsTestUtils.cpp",
     ],
+    headers = [
+        "PortStatsTestUtils.h",
+    ],
     deps = [
+        "fbsource//xplat/folly/logging:logging",
         "//fboss/agent:core",
-        "//folly/logging:logging",
         "//thrift/lib/cpp2/protocol:protocol",
     ],
     exported_deps = [
@@ -518,12 +573,12 @@ cpp_library(
     ],
     exported_deps = [
         "fbsource//third-party/googletest:gtest",
+        "fbsource//xplat/folly:optional",
+        "fbsource//xplat/folly/io:iobuf",
         "//fboss/agent:fboss-types",
         "//fboss/agent:packet",
         "//fboss/agent:packet_observer",
         "//fboss/agent/packet:packet_factory",
-        "//folly:optional",
-        "//folly/io:iobuf",
     ],
 )
 
@@ -568,9 +623,43 @@ cpp_library(
 )
 
 cpp_library(
+    name = "agent_test_address_constants",
+    headers = [
+        "AgentTestAddressConstants.h",
+    ],
+)
+
+cpp_library(
+    name = "agent_test_ecmp_constants",
+    headers = [
+        "AgentTestEcmpConstants.h",
+    ],
+)
+
+cpp_library(
+    name = "mpls_dataplane_test_utils",
+    srcs = [
+        "AgentMPLSDataplaneTestUtils.cpp",
+    ],
+    headers = [
+        "AgentMPLSDataplaneTestUtils.h",
+    ],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+    ],
+    exported_deps = [
+        "//fboss/agent/packet:packet",
+        "//fboss/agent/state:label_forwarding_action",
+    ],
+)
+
+cpp_library(
     name = "agent_hw_test_constants",
     srcs = [
         "AgentHwTestConstants.cpp",
+    ],
+    headers = [
+        "AgentHwTestConstants.h",
     ],
     exported_deps = [
         "//fboss/agent/if:mpls-cpp2-types",
@@ -599,17 +688,17 @@ cpp_library(
     srcs = ["AgentFsdbIntegrationBenchmarkHelper.cpp"],
     headers = ["AgentFsdbIntegrationBenchmarkHelper.h"],
     deps = [
+        "fbsource//xplat/folly:benchmark",
         "//fboss/agent:agent_fsdb_sync_manager",
         "//fboss/lib:common_file_utils",
-        "//folly:benchmark",
         "//servicerouter/client/cpp2:cpp2",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/synchronization:baton",
         "//fboss/agent/benchmarks:agent_benchmarks_h",  # @manual
         "//fboss/agent/test:agent_ensemble",
         "//fboss/fsdb/client:fsdb_pub_sub",
         "//fboss/fsdb/common:flags",
-        "//folly/synchronization:baton",
     ],
     exported_external_deps = [
         "gflags",
@@ -620,6 +709,9 @@ cpp_library(
     name = "invariant_test_utils",
     srcs = [
         "InvariantTestUtils.cpp",
+    ],
+    headers = [
+        "InvariantTestUtils.h",
     ],
     deps = [
         ":config_utils",
@@ -640,6 +732,9 @@ cpp_library(
     srcs = [
         "RouteTestUtils.cpp",
     ],
+    headers = [
+        "RouteTestUtils.h",
+    ],
     deps = [
         "//fboss/agent:route_update_wrapper",
         "//fboss/agent/test:agent_ensemble",
@@ -656,15 +751,18 @@ cpp_library(
     srcs = [
         "MirrorTestUtils.cpp",
     ],
+    headers = [
+        "MirrorTestUtils.h",
+    ],
     deps = [
         ":config_utils",
         ":trap_packet_utils",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:network_address",
         "//fboss/agent:fboss-types",
         "//fboss/agent:switch_config-cpp2-types",
         "//fboss/agent/test:agent_ensemble",
-        "//folly:network_address",
     ],
 )
 
@@ -677,6 +775,7 @@ cpp_library(
         "PfcTestUtils.h",
     ],
     deps = [
+        "fbsource//xplat/folly:map_util",
         ":acl_test_utils",
         ":port_test_utils",
         "//fboss/agent:asic_utils",
@@ -685,15 +784,14 @@ cpp_library(
         "//fboss/agent/test:resourcelibutil",
         "//fboss/agent/test:utils",
         "//fboss/lib:common_utils",
-        "//folly:map_util",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:network_address",
         "//fboss/agent:packet",
         "//fboss/agent:switch_config-cpp2-types",
         "//fboss/agent/hw:hardware_stats-cpp2-types",
         "//fboss/agent/test:agent_ensemble",
         "//fboss/agent/test:test_ensemble_if",
-        "//folly:network_address",
     ],
 )
 
@@ -723,10 +821,10 @@ cpp_library(
     ],
     deps = ["//fboss/agent:core"],
     exported_deps = [
+        "fbsource//xplat/folly:optional",
         "//fboss/agent:hwswitchcallback",
         "//fboss/agent:l2learn_event_observer",
         "//fboss/agent/test:agent_ensemble",
-        "//folly:optional",
     ],
 )
 
@@ -768,6 +866,7 @@ cpp_library(
     deps = [
         "fbsource//third-party/googletest:gtest",
         "//fboss/agent:fib_helpers",
+        "//fboss/agent:override_set_id_manager",
         "//fboss/agent/rib:standalone_rib",
     ],
     exported_deps = [
@@ -786,12 +885,12 @@ cpp_library(
         "DsfConfigUtils.h",
     ],
     deps = [
+        "fbsource//xplat/folly/logging:logging",
         ":config_utils",
         "//fboss/agent:agent_features",
         "//fboss/agent:asic_utils",
         "//fboss/agent:core",
         "//fboss/agent:voq_utils",
-        "//folly/logging:logging",
     ],
     exported_deps = [
         "//fboss/agent:fboss-types",
@@ -842,6 +941,7 @@ cpp_library(
         "SystemScaleTestUtils.h",
     ],
     deps = [
+        "fbsource//xplat/folly:benchmark",
         ":acl_scale_test_utils",
         ":acl_test_utils",
         ":copp_test_utils",
@@ -858,7 +958,6 @@ cpp_library(
         "//fboss/agent/test:ecmp_helper",
         "//fboss/agent/test:route_scale_gen",
         "//fboss/lib:function_call_time_reporter",
-        "//folly:benchmark",
     ],
     exported_deps = [
         "//fboss/agent:agent_features",
@@ -894,6 +993,7 @@ cpp_library(
         "StressTestUtils.h",
     ],
     deps = [
+        "fbsource//xplat/folly:benchmark",
         ":acl_test_utils",
         ":copp_test_utils",
         ":trap_packet_utils",
@@ -902,7 +1002,6 @@ cpp_library(
         "//fboss/agent/hw/test:config_factory",
         "//fboss/agent/test:route_scale_gen",
         "//fboss/lib:function_call_time_reporter",
-        "//folly:benchmark",
     ],
     exported_deps = [
         "//fboss/agent/benchmarks:agent_benchmarks_h",  # @manual
@@ -955,13 +1054,13 @@ cpp_library(
     headers = ["TunnelMgrTestUtils.h"],
     deps = [
         "fbsource//third-party/googletest:gtest",
+        "fbsource//xplat/folly:conv",
+        "fbsource//xplat/folly:network_address",
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/logging:logging",
         "//fboss/agent:core",
         "//fboss/agent:utils",
         "//fboss/agent/state:state",
-        "//folly:conv",
-        "//folly:network_address",
-        "//folly:string",
-        "//folly/logging:logging",
     ],
     exported_deps = [
         "//fboss/agent:fboss-types",

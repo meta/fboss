@@ -81,6 +81,7 @@ add_executable(fan_service_sw_test
   fboss/platform/fan_service/tests/BspTests.cpp
   fboss/platform/fan_service/tests/ControlLogicTests.cpp
   fboss/platform/fan_service/tests/OvertempTests.cpp
+  fboss/platform/fan_service/tests/PidLogicTests.cpp
 )
 
 target_link_libraries(fan_service_sw_test

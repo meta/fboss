@@ -38,7 +38,7 @@ constexpr auto kSrcRouteDrop = "SRC_ROUTE_DROP";
 // that the ingress field processor's name suggests. Both enumerators exist;
 // this is the one the ASIC raises.
 constexpr auto kRxFilterDrop = "RFILDR";
-constexpr auto kTl2Mtu = "TL2_MTU";
+constexpr auto kEgrMtu = "EGR_MTU";
 constexpr auto kSrcPortKnockout = "SRC_PORT_KNOCKOUT_DROP";
 
 // Reasons the ASIC reports alongside a specific one rather than instead of
@@ -283,7 +283,7 @@ TEST_F(AgentDropReasonAclTest, ingressAclDenyDrop) {
   verifyAcrossWarmBoots(setup, verify);
 }
 
-// A routed packet larger than the egress port MTU reports TL2_MTU on the
+// A routed packet larger than the egress port MTU reports EGR_MTU on the
 // egress list and nothing on ingress.
 TEST_F(AgentDropReasonTest, egressMtuDrop) {
   auto setup = [&]() { setupEgressMtuDropScenario(); };
@@ -296,11 +296,11 @@ TEST_F(AgentDropReasonTest, egressMtuDrop) {
       sendOversizedPacketToRoutedDst();
       accumulate(reasons, getAggregatedDropReasons());
       logObserved("egress MTU", reasons);
-      EXPECT_EVENTUALLY_TRUE(reasons.egress.contains(kTl2Mtu));
+      EXPECT_EVENTUALLY_TRUE(reasons.egress.contains(kEgrMtu));
     });
     logPortDropCounters("egress MTU");
     XLOG(INFO) << "Drop reason test [egress MTU] final: " << toString(reasons);
-    verifyOnlyExpectedReason(reasons, Direction::Egress, kTl2Mtu, "egress MTU");
+    verifyOnlyExpectedReason(reasons, Direction::Egress, kEgrMtu, "egress MTU");
     verifyDropReasonLogged("DROP reasons egress", "egress MTU log");
   };
   verifyAcrossWarmBoots(setup, verify);

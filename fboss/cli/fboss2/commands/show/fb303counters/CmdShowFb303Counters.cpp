@@ -12,6 +12,7 @@
 #include "fboss/cli/fboss2/CmdHandler.cpp"
 
 #include <folly/logging/xlog.h>
+#include <thrift/lib/cpp/TApplicationException.h>
 #include <algorithm>
 #include <stdexcept>
 
@@ -31,8 +32,10 @@ using CountersBySource =
 // The platform entries (led..platform_manager) answer fb303 only in internal
 // builds: their handler comes from ServiceFrameworkLight in
 // fboss/platform/helpers/facebook/Init.cpp, and the OSS runThriftService
-// installs none. agent, qsfp, fsdb and bgp serve fb303 from their own thrift
-// interfaces and so work in either build.
+// installs none. agent, qsfp and fsdb serve fb303 from their own thrift
+// handlers and so work in either build. bgpd's handler only inherits the fb303
+// methods without implementing them; OSS bgpd multiplexes fb303::BaseService
+// in front of it (neteng/fboss/bgp/cpp/MainOSS.cpp).
 const std::vector<std::pair<std::string, uint16_t>>& serviceTable() {
   static const std::vector<std::pair<std::string, uint16_t>> kServices = {
       {"agent", 5909},
@@ -161,6 +164,16 @@ CountersBySource fetchService(
       throw std::runtime_error("client creation returned null");
     }
     return {{service, fetch(*client, regex)}};
+  } catch (const apache::thrift::TApplicationException& ex) {
+    // An application error is a reply, so the service is up. UNKNOWN_METHOD
+    // means it has no fb303 handler, e.g. an OSS bgpd that predates one.
+    const std::string reason =
+        ex.getType() == apache::thrift::TApplicationException::UNKNOWN_METHOD
+        ? " is running but does not serve fb303 counters: "
+        : " is running but failed the counter query: ";
+    throw std::runtime_error(
+        service + " on port " + std::to_string(portForService(service)) +
+        reason + ex.what());
   } catch (const std::exception& ex) {
     // A refused connect is expected for a service that is not running on this
     // platform -- rackmon needs rack power hardware. Report it plainly rather

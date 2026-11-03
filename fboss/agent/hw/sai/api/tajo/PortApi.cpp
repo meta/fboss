@@ -7,6 +7,7 @@ extern "C" {
 
 #if defined(TAJO_SDK_GTE_26_5)
 #include <saiextensions.h>
+#include <saiportcustom.h>
 #else
 #include <experimental/sai_attr_ext.h>
 #endif
@@ -436,7 +437,8 @@ const std::vector<sai_stat_id_t>& SaiPortTraits::pfcXoffTotalDurationStats() {
 // path below is used instead.
 const std::vector<sai_stat_id_t>&
 SaiPortTraits::linkDownDebounceRetriggerStats() {
-#if defined(TAJO_SDK_VERSION_26_2_4210)
+#if defined(TAJO_SDK_VERSION_26_2_4210) || \
+    defined(TAJO_SDK_VERSION_26_5_4210) || defined(TAJO_SDK_VERSION_26_5_5210)
   static const std::vector<sai_stat_id_t> stats{
       SAI_PORT_STAT_EXT_LINK_DOWN_DEBOUNCE_RETRIGGER_COUNT};
 #else
@@ -447,7 +449,8 @@ SaiPortTraits::linkDownDebounceRetriggerStats() {
 
 const std::vector<sai_stat_id_t>&
 SaiPortTraits::linkUpDebounceRetriggerStats() {
-#if defined(TAJO_SDK_VERSION_26_2_4210)
+#if defined(TAJO_SDK_VERSION_26_2_4210) || \
+    defined(TAJO_SDK_VERSION_26_5_4210) || defined(TAJO_SDK_VERSION_26_5_5210)
   static const std::vector<sai_stat_id_t> stats{
       SAI_PORT_STAT_EXT_LINK_UP_DEBOUNCE_RETRIGGER_COUNT};
 #else
@@ -476,6 +479,17 @@ SaiPortTraits::Attributes::AttributePfcPauseDurationOverride::operator()() {
   return std::nullopt;
 }
 
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 3)
+std::optional<sai_attr_id_t>
+SaiPortTraits::Attributes::AttributeExtOperStatusLatch::operator()() {
+#if defined(TAJO_SDK_VERSION_25_5_4210)
+  return SAI_PORT_ATTR_EXT_OPER_STATUS_LATCH;
+#else
+  return std::nullopt;
+#endif
+}
+#endif
+
 std::optional<sai_attr_id_t>
 SaiPortTraits::Attributes::AttributeCablePropagationDelayMeasure::operator()() {
   return std::nullopt;
@@ -502,7 +516,7 @@ SaiPortTraits::Attributes::AttributeLinkDownDebouncePeriodMs::operator()() {
 std::optional<sai_attr_id_t>
 SaiPortTraits::Attributes::AttributeLinkUpDebounceRetriggerCount::operator()() {
 // 26.2.4210 deprecated this attribute
-#if defined(TAJO_SDK_VERSION_25_5_4210) || defined(TAJO_SDK_VERSION_26_5_5210)
+#if defined(TAJO_SDK_VERSION_25_5_4210)
   return SAI_PORT_ATTR_LINK_UP_DEBOUNCE_RETRIGGER_COUNT;
 #else
   return std::nullopt;
@@ -511,7 +525,7 @@ SaiPortTraits::Attributes::AttributeLinkUpDebounceRetriggerCount::operator()() {
 
 std::optional<sai_attr_id_t> SaiPortTraits::Attributes::
     AttributeLinkDownDebounceRetriggerCount::operator()() {
-#if defined(TAJO_SDK_VERSION_25_5_4210) || defined(TAJO_SDK_VERSION_26_5_5210)
+#if defined(TAJO_SDK_VERSION_25_5_4210)
   return SAI_PORT_ATTR_LINK_DOWN_DEBOUNCE_RETRIGGER_COUNT;
 #else
   return std::nullopt;
@@ -526,6 +540,25 @@ const std::vector<sai_stat_id_t>& SaiPortTraits::llrExtensionStats() {
 std::optional<sai_attr_id_t>
 SaiPortTraits::Attributes::AttributeLinkScanMode::operator()() {
   return std::nullopt;
+}
+
+// CSIG is delivered in Leaba SDK 26.5.5210.4.
+std::optional<sai_attr_id_t>
+SaiPortTraits::Attributes::AttributeCsigTagActionWrapper::operator()() {
+#if defined(TAJO_SDK_GTE_26_5)
+  return SAI_PORT_ATTR_CSIG_TAG_ACTION;
+#else
+  return std::nullopt;
+#endif
+}
+
+std::optional<sai_attr_id_t>
+SaiPortTraits::Attributes::AttributeCsigLinkLocatorWrapper::operator()() {
+#if defined(TAJO_SDK_GTE_26_5)
+  return SAI_PORT_ATTR_CSIG_LINK_LOCATOR;
+#else
+  return std::nullopt;
+#endif
 }
 
 } // namespace facebook::fboss

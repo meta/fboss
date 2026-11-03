@@ -199,7 +199,10 @@ sai_status_t get_my_sid_entry_attribute_fn(
         attr_list[i].value.s32 = entry.packetAction;
         break;
       case SAI_MY_SID_ENTRY_ATTR_TUNNEL_ID:
-        attr_list[i].value.oid = entry.tunnelId;
+        if (!entry.tunnelId.has_value()) {
+          return SAI_STATUS_ITEM_NOT_FOUND;
+        }
+        attr_list[i].value.oid = entry.tunnelId.value();
         break;
       default:
         return SAI_STATUS_INVALID_PARAMETER;

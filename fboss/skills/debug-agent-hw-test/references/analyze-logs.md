@@ -4,12 +4,13 @@
 
 When a test **fails** and you need to determine the root cause. Only analyze logs after a failure — skip this for passing tests.
 
-## Two Log Sources
+## Log Sources
 
 | Log | Location | Contains |
 |-----|----------|----------|
 | Test output (stdout/stderr) | Captured during test run | gtest assertions, XLOG messages, crash signals |
 | SAI Replayer log | `/root/<user>/sai_replayer-cb.log` or `sai_replayer-wb.log` | Every SAI API call and its return code |
+| BCM SDK log | `log file=` path from `--bcm_sdk_log_file` (e.g. `/tmp/brcm_sdk.log`) | SDK logical-table ops and API traces (only if captured, see [enable-logging.md](enable-logging.md) option (F)) |
 
 ## Step 1: Analyze Test Output
 
@@ -71,7 +72,29 @@ What to look for:
 
 The SAI API call immediately before the error return tells you which operation failed.
 
-## Step 3: Correlate
+## Step 3: Analyze BCM SDK Logs (If Captured)
+
+Only when the run used `--bcm_sdk_log_file`. Line format is
+`lt <TABLE> <op> <KEY=...> <FIELD=...>` with ops `lookup`/`update`/`insert`.
+
+```bash
+# Did the SDK touch the table at all?
+grep -c "TM_THD_UC_Q" /tmp/brcm_sdk.log
+
+# What did it program for one port/queue?
+grep "TM_THD_UC_Q update PORT_ID=268 TM_UC_Q_ID=2 " /tmp/brcm_sdk.log
+```
+
+What to look for:
+- No `update` for the entry — SDK never wrote it; the SAI call didn't map to a table write (vendor issue, escalate with the replayer + SDK logs).
+- `update` with an unexpected value — compare against the SAI call's attributes.
+- `OBJECT IN USE` / `ERROR` lines — teardown or state-conflict failures.
+
+With `debug bcmlt verbose`, entries carry field-level detail (`Unit=0 Table <T>:`,
+`TABLE_FIELD_INFO` lookups); with `debug bcmapi verbose`, look for the
+`API: bcm_*` call sequence instead of table content.
+
+## Step 4: Correlate
 
 1. **Match test assertion to SAI call**: the expected vs actual mismatch in the test often maps to a specific SAI API call that returned wrong data or failed
 2. **Find the code path**: locate the test source and trace through agent code to the SAI call
@@ -86,6 +109,7 @@ The SAI API call immediately before the error return tells you which operation f
 | SIGABRT / CHECK failed | N/A | FBOSS internal assertion | Read stack trace |
 | SIGSEGV | N/A | Null pointer / bad memory | See [crash-debug.md](crash-debug.md) |
 | No errors in output | SAI call returns error near end | Silent SDK failure | Investigate SAI error code |
+| Assertion mismatch | All SAI calls succeed (`rv:0`) | SDK didn't program HW | Check SDK log for missing/wrong table `update` |
 
 ## Next Steps
 

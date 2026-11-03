@@ -33,9 +33,11 @@ ForwardingInformationBaseUpdater::ForwardingInformationBaseUpdater(
     const IPv4NetworkToRouteMap& v4NetworkToRoute,
     const IPv6NetworkToRouteMap& v6NetworkToRoute,
     const LabelToRouteMap& labelToRoute,
-    const NextHopIDManager* nextHopIDManager)
+    const NextHopIDManager* nextHopIDManager,
+    bool vrfDeleted)
     : resolver_(resolver),
       vrf_(vrf),
+      vrfDeleted_(vrfDeleted),
       v4NetworkToRoute_(v4NetworkToRoute),
       v6NetworkToRoute_(v6NetworkToRoute),
       labelToRoute_(labelToRoute),
@@ -55,6 +57,16 @@ std::shared_ptr<SwitchState> ForwardingInformationBaseUpdater::operator()(
 
   auto previousFibContainer =
       nextState->getFibsInfoMap()->getFibContainerIf(vrf_);
+  if (vrfDeleted_) {
+    if (previousFibContainer) {
+      auto fibInfoMap = nextState->getFibsInfoMap()->modify(&nextState);
+      auto fibInfo =
+          fibInfoMap->getFibInfo(resolver_->scope(previousFibContainer));
+      CHECK(fibInfo);
+      fibInfo->removeFibContainer(vrf_, &nextState);
+    }
+    return nextState;
+  }
   if (!previousFibContainer) {
     auto fibInfoMap = nextState->getFibsInfoMap()->modify(&nextState);
 

@@ -7,6 +7,7 @@
 #include "fboss/agent/gen-cpp2/switch_reachability_types.h"
 #include "fboss/fsdb/client/FsdbPubSubManager.h"
 #include "fboss/fsdb/client/FsdbStreamClient.h"
+#include "fboss/lib/phy/gen-cpp2/phy_types.h"
 
 #include <memory>
 
@@ -44,6 +45,8 @@ class FsdbSyncer {
       switch_reachability::SwitchReachability newReachability);
 
   void agentInfoChanged(agent_info::AgentInfo newAgentInfo);
+
+  void iPhyStatesUpdated(std::map<std::string, phy::PhyState>&& iPhyStates);
 
   void start();
   void stop(bool gracefulStop = false);

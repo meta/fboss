@@ -307,6 +307,24 @@ const std::shared_ptr<MultiSwitchLlrConfigMap> SwitchState::getLlrConfigs()
   return safe_cref<switch_state_tags::llrCfgMaps>();
 }
 
+void SwitchState::resetIsolationGroups(
+    std::shared_ptr<MultiSwitchIsolationGroupMap> groups) {
+  ref<switch_state_tags::isolationGroupMaps>() = groups;
+}
+
+const std::shared_ptr<MultiSwitchIsolationGroupMap>
+SwitchState::getIsolationGroups() const {
+  return safe_cref<switch_state_tags::isolationGroupMaps>();
+}
+
+void SwitchState::resetVrfs(std::shared_ptr<MultiSwitchVrfMap> vrfs) {
+  ref<switch_state_tags::vrfMaps>() = vrfs;
+}
+
+const std::shared_ptr<MultiSwitchVrfMap> SwitchState::getVrfs() const {
+  return safe_cref<switch_state_tags::vrfMaps>();
+}
+
 const std::shared_ptr<MultiSwitchLoadBalancerMap>&
 SwitchState::getLoadBalancers() const {
   return safe_cref<switch_state_tags::loadBalancerMaps>();
@@ -412,6 +430,16 @@ void SwitchState::resetSrv6Tunnels(
 const std::shared_ptr<MultiSwitchSrv6TunnelMap>& SwitchState::getSrv6Tunnels()
     const {
   return safe_cref<switch_state_tags::srv6TunnelMaps>();
+}
+
+void SwitchState::resetVxlanTunnels(
+    std::shared_ptr<MultiSwitchVxlanTunnelMap> tunnels) {
+  ref<switch_state_tags::vxlanTunnelMaps>() = tunnels;
+}
+
+const std::shared_ptr<MultiSwitchVxlanTunnelMap>& SwitchState::getVxlanTunnels()
+    const {
+  return safe_cref<switch_state_tags::vxlanTunnelMaps>();
 }
 
 void SwitchState::resetMySids(std::shared_ptr<MultiSwitchMySidMap> mySids) {
@@ -723,12 +751,12 @@ void SwitchState::fromThrift(bool emptyMnpuMapOk) {
 // TODO: remove once the NextHopIDManager migration is complete and
 // enable_nexthop_id_manager is permanently on.
 //
-// Clear stale resolvedNextHopSetID / normalizedResolvedNextHopSetID from every
-// route, the matching MPLS labelFib and the matching mySid map for one
-// switch's FibInfo, and wipe that FibInfo's id maps. Caller invokes this
-// per-FibInfo so that per-switch divergence (today every FibInfo is mirrored,
-// but the cleanup must not silently miss a divergent switch tomorrow) is
-// handled correctly.
+// Clear stale resolvedNextHopSetID / normalizedResolvedNextHopSetID /
+// overrideNextHopSetID from every route, the matching MPLS labelFib and the
+// matching mySid map for one switch's FibInfo, and wipe that FibInfo's id
+// maps. Caller invokes this per-FibInfo so that per-switch divergence (today
+// every FibInfo is mirrored, but the cleanup must not silently miss a divergent
+// switch tomorrow) is handled correctly.
 void clearNextHopIdsForFibInfo(
     SwitchState& state,
     const std::string& matcher,
@@ -739,6 +767,7 @@ void clearNextHopIdsForFibInfo(
     RouteNextHopEntry newFwd(fwd.toThrift());
     newFwd.setResolvedNextHopSetID(nullId);
     newFwd.setNormalizedResolvedNextHopSetID(nullId);
+    newFwd.setOverrideNextHopSetID(nullId);
     route->setResolved(newFwd);
   };
 
@@ -769,7 +798,8 @@ void clearNextHopIdsForFibInfo(
     for (const auto& [_, route] : std::as_const(*routeMap)) {
       const auto& fwd = route->getForwardInfo();
       if (fwd.getResolvedNextHopSetID().has_value() ||
-          fwd.getNormalizedResolvedNextHopSetID().has_value()) {
+          fwd.getNormalizedResolvedNextHopSetID().has_value() ||
+          fwd.getOverrideNextHopSetID().has_value()) {
         clearRouteIds(route);
       }
       clearClientIds(route);
@@ -790,6 +820,9 @@ void clearNextHopIdsForFibInfo(
   }
   if (auto idToNhSet = fibInfo->getIdToNextHopIdSetMap()) {
     idToNhSet->clear();
+  }
+  if (auto overrideIdToNhSet = fibInfo->getOverrideIdToNextHopIdSetMap()) {
+    overrideIdToNhSet->clear();
   }
   fibInfo->setNameToNextHopSetId({});
 
@@ -895,13 +928,17 @@ std::unique_ptr<SwitchState> SwitchState::uniquePtrFromThrift(
     for (auto& [matcher, fibInfo] : std::as_const(*fibsInfoMap)) {
       const auto& idToNh = fibInfo->getIdToNextHopMap();
       const auto& idToNhSet = fibInfo->getIdToNextHopIdSetMap();
+      const auto& overrideIdToNhSet = fibInfo->getOverrideIdToNextHopIdSetMap();
       bool idMapsEmpty =
           (!idToNh || idToNh->empty()) && (!idToNhSet || idToNhSet->empty());
+      bool overrideIdMapEmpty =
+          !overrideIdToNhSet || overrideIdToNhSet->empty();
 
       XLOG(DBG3) << "NextHopId cleanup gate: matcher=" << matcher
                  << " flag=" << (FLAGS_enable_nexthop_id_manager ? "ON" : "OFF")
                  << " idMapsEmpty=" << idMapsEmpty;
-      if (!FLAGS_enable_nexthop_id_manager && !idMapsEmpty) {
+      if (!FLAGS_enable_nexthop_id_manager &&
+          (!idMapsEmpty || !overrideIdMapEmpty)) {
         clearNextHopIdsForFibInfo(*state, matcher, fibInfo);
       }
       if (FLAGS_enable_nexthop_id_manager && idMapsEmpty) {
@@ -1157,6 +1194,8 @@ template MultiSwitchIpTunnelMap* SwitchState::modify<
     switch_state_tags::ipTunnelMaps>(std::shared_ptr<SwitchState>*);
 template MultiSwitchSrv6TunnelMap* SwitchState::modify<
     switch_state_tags::srv6TunnelMaps>(std::shared_ptr<SwitchState>*);
+template MultiSwitchVxlanTunnelMap* SwitchState::modify<
+    switch_state_tags::vxlanTunnelMaps>(std::shared_ptr<SwitchState>*);
 template MultiSwitchMySidMap* SwitchState::modify<switch_state_tags::mySidMaps>(
     std::shared_ptr<SwitchState>*);
 template MultiSwitchSystemPortMap* SwitchState::modify<
@@ -1186,6 +1225,10 @@ template MultiSwitchPortFlowletCfgMap* SwitchState::modify<
     switch_state_tags::portFlowletCfgMaps>(std::shared_ptr<SwitchState>*);
 template MultiSwitchLlrConfigMap* SwitchState::modify<
     switch_state_tags::llrCfgMaps>(std::shared_ptr<SwitchState>*);
+template MultiSwitchIsolationGroupMap* SwitchState::modify<
+    switch_state_tags::isolationGroupMaps>(std::shared_ptr<SwitchState>*);
+template MultiSwitchVrfMap* SwitchState::modify<switch_state_tags::vrfMaps>(
+    std::shared_ptr<SwitchState>*);
 template MultiSwitchDsfNodeMap* SwitchState::modify<
     switch_state_tags::dsfNodesMap>(std::shared_ptr<SwitchState>*);
 template MultiSwitchAclTableGroupMap* SwitchState::modify<

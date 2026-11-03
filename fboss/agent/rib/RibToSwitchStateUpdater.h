@@ -9,6 +9,7 @@
  */
 #pragma once
 
+#include "fboss/agent/rib/ClassBasedPolicyUpdater.h"
 #include "fboss/agent/rib/ForwardingInformationBaseUpdater.h"
 #include "fboss/agent/rib/MySidMapUpdater.h"
 #include "fboss/agent/rib/RouteUpdater.h"
@@ -35,6 +36,7 @@ class RibToSwitchStateUpdater {
     UPDATE_FIB = 2,
     UPDATE_MYSID = 4,
   };
+  static constexpr int kAllActions = UPDATE_FIB | UPDATE_MYSID;
 
   RibToSwitchStateUpdater(
       const SwitchIdScopeResolver* resolver,
@@ -44,7 +46,8 @@ class RibToSwitchStateUpdater {
       const LabelToRouteMap& labelToRoute,
       const NextHopIDManager* nextHopIDManager,
       const MySidTable& mySidTable,
-      int actions = UPDATE_FIB | UPDATE_MYSID);
+      int actions = kAllActions,
+      bool vrfDeleted = false);
 
   std::shared_ptr<SwitchState> operator()(
       const std::shared_ptr<SwitchState>& state);
@@ -60,6 +63,7 @@ class RibToSwitchStateUpdater {
   ForwardingInformationBaseUpdater fibUpdater_;
   MySidMapUpdater mySidUpdater_;
   SwitchStateNextHopIdUpdater nhopStateUpdater_;
+  ClassBasedPolicyUpdater classBasedPolicyUpdater_;
   std::optional<StateDelta> lastDelta_;
 };
 

@@ -6,11 +6,14 @@
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
 import tarfile
 import tempfile
+from pathlib import Path
+from urllib.parse import urlparse
 
 # We don't import cache.create_cache directly as the facebook
 # specific import below may monkey patch it, and we want to
@@ -24,7 +27,9 @@ from .cmd_base import BUILD_TYPE_ARG, ProjectCmdBase, UsageError
 from .dyndeps import create_dyn_dep_munger
 from .errors import TransientFailure
 from .fetcher import (
+    ArchiveFetcher,
     file_name_is_cmake_file,
+    GitFetcher,
     is_public_commit,
     list_files_under_dir_newer_than_timestamp,
     safe_extractall,
@@ -95,17 +100,17 @@ class CachedProject:
         return self.cache and self.m.shipit_project is None
 
     def was_cached(self):
-        cached_marker = os.path.join(self.inst_dir, ".getdeps-cached-build")
-        return os.path.exists(cached_marker)
+        cached_marker = Path(self.inst_dir, ".getdeps-cached-build")
+        return cached_marker.exists()
 
     def download(self):
-        if self.is_cacheable() and not os.path.exists(self.inst_dir):
+        if self.is_cacheable() and not Path(self.inst_dir).exists():
             print("check cache for %s" % self.cache_file_name)
-            dl_dir = os.path.join(self.loader.build_opts.scratch_dir, "downloads")
-            if not os.path.exists(dl_dir):
-                os.makedirs(dl_dir)
+            dl_dir = Path(self.loader.build_opts.scratch_dir, "downloads")
+            if not dl_dir.exists():
+                dl_dir.mkdir(parents=True, exist_ok=True)
             try:
-                target_file_name = os.path.join(dl_dir, self.cache_file_name)
+                target_file_name = os.fspath(dl_dir / self.cache_file_name)
                 if self.cache.download_to_file(self.cache_file_name, target_file_name):
                     with tarfile.open(target_file_name, "r") as tf:
                         print(
@@ -114,7 +119,7 @@ class CachedProject:
                         )
                         safe_extractall(tf, self.inst_dir)
 
-                    cached_marker = os.path.join(self.inst_dir, ".getdeps-cached-build")
+                    cached_marker = Path(self.inst_dir, ".getdeps-cached-build")
                     with open(cached_marker, "w") as f:
                         f.write("\n")
 
@@ -128,7 +133,7 @@ class CachedProject:
         if self.is_cacheable():
             # We can prepare an archive and stick it in LFS
             tempdir = tempfile.mkdtemp()
-            tarfilename = os.path.join(tempdir, self.cache_file_name)
+            tarfilename = os.fspath(Path(tempdir, self.cache_file_name))
             print("Archiving for cache: %s..." % tarfilename)
             tf = tarfile.open(tarfilename, "w:gz")
             tf.add(self.inst_dir, arcname=".")
@@ -179,8 +184,8 @@ class FetchCmd(ProjectCmdBase):
                 continue
 
             inst_dir = loader.get_project_install_dir(m)
-            built_marker = os.path.join(inst_dir, ".built-by-getdeps")
-            if os.path.exists(built_marker):
+            built_marker = Path(inst_dir, ".built-by-getdeps")
+            if built_marker.exists():
                 with open(built_marker, "r") as f:
                     built_hash = f.read().strip()
 
@@ -190,6 +195,202 @@ class FetchCmd(ProjectCmdBase):
 
             # We need to fetch the sources
             fetcher.update()
+
+
+def _warn_about_dangling_symlinks(src_dir: str, project: str) -> None:
+    """Print a warning for each broken symlink under src_dir.
+
+    The vendor copy below dereferences symlinks (and drops dangling ones),
+    so without this a broken link would vanish from the vendored tree with
+    no diagnostic. .git contents are skipped: they are not vendored either.
+    """
+    for root, dirs, files in os.walk(src_dir):
+        if ".git" in dirs:
+            dirs.remove(".git")
+        for name in files + dirs:
+            path = os.path.join(root, name)
+            if os.path.islink(path) and not os.path.exists(path):
+                print(
+                    "Warning: %s contains dangling symlink %s; it will be "
+                    "missing from the vendored tree" % (project, path)
+                )
+
+
+@cmd("vendor", "copy the sources of a project's dependencies into a directory")
+class VendorCmd(ProjectCmdBase):
+    """Populate a directory with one source tree per third-party dependency,
+    analogous to `cargo vendor`, so that a later build can run without
+    network access (see --vendor-dir)."""
+
+    def setup_project_cmd_parser(self, parser):
+        parser.add_argument(
+            "--output-dir",
+            required=True,
+            help=(
+                "Directory to populate; each dependency is copied "
+                "to <output-dir>/<project>"
+            ),
+        )
+        # NB: not read in run_project_cmd below. Like fetch/list-deps,
+        # this is consumed generically by buildopts._check_host_type
+        # during setup_build_options, before the loader is built.
+        parser.add_argument(
+            "--host-type",
+            help="Vendor deps for this host type rather than the current system",
+        )
+
+    def run_project_cmd(self, args, loader, manifest):
+        os.makedirs(args.output_dir, exist_ok=True)
+        vendored = []
+        vendored_names = set()
+        for m in loader.manifests_in_dependency_order():
+            if m == manifest:
+                continue
+            fetcher = loader.create_fetcher(m)
+            if isinstance(fetcher, SystemPackageFetcher):
+                # Satisfied by system packages; nothing to vendor
+                continue
+            fetcher.update()
+            _warn_about_dangling_symlinks(fetcher.get_src_dir(), m.name)
+            dest = os.path.join(args.output_dir, m.name)
+            if os.path.exists(dest):
+                shutil.rmtree(dest)
+            print("Vendoring %s -> %s" % (m.name, dest))
+            # Follow symlinks so the result is self-contained: subproject
+            # fetchers link into the scratch dir, which won't exist offline.
+            shutil.copytree(
+                fetcher.get_src_dir(),
+                dest,
+                ignore=shutil.ignore_patterns(".git"),
+                ignore_dangling_symlinks=True,
+            )
+            entry = "%s %s" % (m.name, _vendored_revision(fetcher))
+            version = _vendored_version(fetcher)
+            if version:
+                entry += " " + version
+            vendored.append(entry + "\n")
+            vendored_names.add(m.name)
+        # Drop trees recorded by a previous run that are no longer
+        # dependencies (e.g. after --allow-system-packages or --no-tests
+        # changes) so a later --vendor-dir build cannot silently use stale
+        # sources. Only names from the previous manifest are removed: an
+        # unrelated directory mistakenly passed as --output-dir, or files
+        # the user placed here themselves, are left alone.
+        previous: set[str] = set()
+        manifest_path = os.path.join(args.output_dir, "getdeps-vendor.txt")
+        if os.path.isfile(manifest_path):
+            with open(manifest_path) as f:
+                for line in f:
+                    parts = line.split()
+                    if parts:
+                        previous.add(parts[0])
+        for name in sorted(previous - vendored_names):
+            stale = os.path.join(args.output_dir, name)
+            if not os.path.lexists(stale):
+                continue
+            print("Removing stale %s" % stale)
+            if os.path.isdir(stale) and not os.path.islink(stale):
+                shutil.rmtree(stale)
+            else:
+                os.remove(stale)
+        with open(os.path.join(args.output_dir, "getdeps-vendor.txt"), "w") as f:
+            f.writelines(vendored)
+
+
+_VERSION_IN_NAME = re.compile(r"\d+(?:[._]\d+)+|\d{4}-\d{2}-\d{2}")
+
+
+def _version_from_url(url: str) -> str | None:
+    """Best-effort version of a downloaded archive, from its file name:
+    liboqs/archive/refs/tags/0.12.0.tar.gz -> 0.12.0,
+    boost_1_83_0.tar.bz2 -> 1.83.0, re2/archive/2020-11-01.tar.gz ->
+    2020.11.01. None when the name has no version-like run (e.g. a commit
+    hash)."""
+    name = urlparse(url).path.rsplit("/", 1)[-1]
+    m = _VERSION_IN_NAME.search(name)
+    if not m:
+        return None
+    return m.group(0).replace("_", ".").replace("-", ".")
+
+
+def _git_describe_version(repo_dir: str) -> str | None:
+    """Version of a git checkout relative to its nearest tag, in the form
+    a distribution can use: the tag itself (without a leading v) when HEAD
+    is tagged, else <tag>^<distance>.<short commit>. getdeps clones are
+    shallow, so deepen the history a few times before giving up."""
+    git = ["git", "-C", repo_dir]
+
+    def describe() -> str | None:
+        try:
+            out = subprocess.check_output(
+                git + ["describe", "--tags", "--long", "--abbrev=7"],
+                stderr=subprocess.DEVNULL,
+            )
+        except (subprocess.CalledProcessError, OSError):
+            return None
+        return out.decode("utf-8").strip()
+
+    desc = describe()
+    for _ in range(4):
+        if desc:
+            break
+        try:
+            subprocess.check_call(
+                git + ["fetch", "-q", "--tags", "--deepen=250", "origin"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+        except (subprocess.CalledProcessError, OSError):
+            return None
+        desc = describe()
+    if not desc:
+        return None
+    m = re.match(r"^(.*)-(\d+)-g([0-9a-f]+)$", desc)
+    if not m:
+        return None
+    tag, distance, commit = m.groups()
+    tag = re.sub(r"^v(?=\d)", "", tag)
+    if distance == "0":
+        return tag
+    return "%s^%s.%s" % (tag, distance, commit)
+
+
+def _vendored_version(fetcher) -> str | None:
+    """The version to record next to a vendored tree, or None when it cannot
+    be determined; see _version_from_url and _git_describe_version."""
+    if isinstance(fetcher, GitFetcher):
+        repo_dir = fetcher.get_src_dir()
+        if os.path.isdir(os.path.join(repo_dir, ".git")):
+            return _git_describe_version(repo_dir)
+        return None
+    if isinstance(fetcher, ArchiveFetcher):
+        return _version_from_url(fetcher.url)
+    return None
+
+
+def _vendored_revision(fetcher) -> str:
+    """The revision to record for a vendored tree.
+
+    fetcher.hash() is the manifest's idea of the version, which for a git
+    project without a pinned rev is a branch name ("main"); record the
+    commit that was actually checked out so the vendor manifest identifies
+    the sources. Falls back to hash() when there is no checkout to ask."""
+    if isinstance(fetcher, GitFetcher):
+        repo_dir = fetcher.get_src_dir()
+        if os.path.isdir(os.path.join(repo_dir, ".git")):
+            try:
+                return (
+                    subprocess.check_output(
+                        ["git", "rev-parse", "HEAD"],
+                        cwd=repo_dir,
+                        stderr=subprocess.DEVNULL,
+                    )
+                    .decode("utf-8")
+                    .strip()
+                )
+            except (subprocess.CalledProcessError, OSError):
+                pass
+    return fetcher.hash()
 
 
 @cmd("install-system-deps", "Install system packages to satisfy the deps for a project")
@@ -218,7 +419,7 @@ class InstallSysDepsCmd(ProjectCmdBase):
         parser.add_argument(
             "--distro",
             help="Filter to just this distro to run",
-            choices=["ubuntu", "centos_stream"],
+            choices=["ubuntu", "centos_stream", "fedora", "rhel"],
             action="store",
             dest="distro",
             default=None,
@@ -335,9 +536,9 @@ class ListDepsCmd(ProjectCmdBase):
 
 def clean_dirs(opts):
     for d in ["build", "installed", "extracted", "shipit"]:
-        d = os.path.join(opts.scratch_dir, d)
+        d = Path(opts.scratch_dir, d)
         print("Cleaning %s..." % d)
-        if os.path.exists(d):
+        if d.exists():
             shutil.rmtree(d)
 
 
@@ -500,7 +701,7 @@ class BuildCmd(ProjectCmdBase):
                 print("Assessing %s..." % m.name)
                 project_hash = loader.get_project_hash(m)
                 ctx = loader.ctx_gen.get_context(m.name)
-                built_marker = os.path.join(inst_dir, ".built-by-getdeps")
+                built_marker = Path(inst_dir, ".built-by-getdeps")
 
                 cached_project = CachedProject(cache, loader, m)
 
@@ -508,7 +709,7 @@ class BuildCmd(ProjectCmdBase):
                     cached_project, fetcher, m, built_marker, project_hash
                 )
 
-                if os.path.exists(built_marker) and not cached_project.was_cached():
+                if built_marker.exists() and not cached_project.was_cached():
                     # We've previously built this. We may need to reconfigure if
                     # our deps have changed, so let's check them.
                     dep_reconfigure, dep_build = self.compute_dep_change_status(
@@ -531,9 +732,9 @@ class BuildCmd(ProjectCmdBase):
 
                 cmake_targets = args.cmake_target or ["install"]
 
-                if sources_changed or reconfigure or not os.path.exists(built_marker):
-                    if os.path.exists(built_marker):
-                        os.unlink(built_marker)
+                if sources_changed or reconfigure or not built_marker.exists():
+                    if built_marker.exists():
+                        built_marker.unlink()
                     src_dir = fetcher.get_src_dir()
                     # Prepare builders write out config before the main builder runs
                     prepare_builders = m.create_prepare_builders(
@@ -569,7 +770,7 @@ class BuildCmd(ProjectCmdBase):
                     # cmake
                     has_built_marker = False
                     if not (m == manifest and "install" not in cmake_targets):
-                        os.makedirs(os.path.dirname(built_marker), exist_ok=True)
+                        built_marker.parent.mkdir(parents=True, exist_ok=True)
                         with open(built_marker, "w") as f:
                             f.write(project_hash)
                             has_built_marker = True
@@ -602,7 +803,7 @@ class BuildCmd(ProjectCmdBase):
             for dep_file in list_files_under_dir_newer_than_timestamp(
                 dep_root, st.st_mtime
             ):
-                if os.path.basename(dep_file) == ".built-by-getdeps":
+                if Path(dep_file).name == ".built-by-getdeps":
                     continue
                 if file_name_is_cmake_file(dep_file):
                     if not reconfigure:
@@ -628,11 +829,11 @@ class BuildCmd(ProjectCmdBase):
         reconfigure = False
         sources_changed = False
         if cached_project.download():
-            if not os.path.exists(built_marker):
+            if not Path(built_marker).exists():
                 fetcher.update()
         else:
             check_fetcher = True
-            if os.path.exists(built_marker):
+            if Path(built_marker).exists():
                 check_fetcher = False
                 with open(built_marker, "r") as f:
                     built_hash = f.read().strip()
@@ -839,7 +1040,7 @@ def get_arg_var_name(args):
     raise Exception("unable to determine argument variable name from %r" % (args,))
 
 
-def parse_args():
+def parse_args(argv: list[str] | None = None):
     # We want to allow common arguments to be specified either before or after
     # the subcommand name.  In order to do this we add them to the main parser
     # and to subcommand parsers.  In order for this to work, we need to tell
@@ -905,6 +1106,16 @@ def parse_args():
         default=False,
     )
     add_common_arg(
+        "--features-from",
+        help=(
+            "Resolve features, with tests off, from the dependency graph of "
+            "this project instead of the one named on the command line. CI "
+            "passes it to every step of a job so that each dependency gets the "
+            "features the whole graph needs. Feature requests made only for "
+            "test builds are rejected."
+        ),
+    )
+    add_common_arg(
         "--extra-cmake-defines",
         help=(
             "Input json map that contains extra cmake defines to be used "
@@ -917,6 +1128,15 @@ def parse_args():
         help="Allow satisfying third party deps from installed system packages",
         action="store_true",
         default=False,
+    )
+    add_common_arg(
+        "--vendor-dir",
+        help=(
+            "Take third party sources from <vendor-dir>/<project>, as populated "
+            "by the vendor command, and fail rather than download anything "
+            "that is missing there"
+        ),
+        default=None,
     )
     add_common_arg(
         "-v",
@@ -967,7 +1187,7 @@ def parse_args():
 
     add_subcommands(sub, common_args)
 
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
     for var_name, default_value in common_defaults.items():
         if not hasattr(args, var_name):
             setattr(args, var_name, default_value)

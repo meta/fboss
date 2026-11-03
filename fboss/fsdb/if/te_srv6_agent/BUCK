@@ -10,17 +10,12 @@ thrift_library(
     languages = [
         "cpp2",
         "go",
-        "py-deprecated",
         "py3-deprecated",
-        "py-deprecated-asyncio",
         "python",
         "rust",
     ],
     py3_namespace = "neteng.fboss",
-    py_asyncio_base_module = "neteng.fboss.asyncio",
-    py_base_module = "neteng.fboss",
     thrift_cpp2_options = "json",
-    thrift_py_options = "json,sort_keys",
     thrift_srcs = {
         "te_srv6_agent_stats.thrift": [],
     },

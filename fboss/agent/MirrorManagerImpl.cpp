@@ -5,6 +5,7 @@
 #include "folly/IPAddress.h"
 
 #include "fboss/agent/SwSwitch.h"
+#include "fboss/agent/SwitchIdScopeResolver.h"
 #include "fboss/agent/Utils.h"
 #include "fboss/agent/platforms/common/PlatformMapping.h"
 #include "fboss/agent/state/Interface.h"
@@ -21,6 +22,16 @@ folly::MacAddress getEventorPortInterfaceMac(
   auto intfID = state->getInterfaceIDForPort(PortDescriptor(portId));
   auto intf = state->getInterfaces()->getNodeIf(intfID);
   return intf->getMac();
+}
+
+bool isEgressPortOnSwitch(
+    const SwitchIdScopeResolver* resolver,
+    const PortDescriptor& egressPort,
+    SwitchID switchId) {
+  if (!egressPort.isPhysicalPort()) {
+    return true;
+  }
+  return resolver->scope(egressPort.phyPortID()).has(switchId);
 }
 
 } // namespace
@@ -69,6 +80,15 @@ std::shared_ptr<Mirror> MirrorManagerImpl<AddrT>::updateMirror(
       mirror->getSamplingRate());
   newMirror->setSwitchId(mirror->getSwitchId());
 
+  auto asic = sw_->getHwAsicTable()->getHwAsic(mirror->getSwitchId());
+  const bool useEventorPort = newMirror->type() == Mirror::Type::SFLOW &&
+      asic->isSupported(HwAsic::Feature::EVENTOR_PORT_FOR_SFLOW);
+  // A HwSwitch can only program a mirror whose physical egress port it owns.
+  // Mirrors are replicated to every switch, so skip next hops on another
+  // switch's ports unless the egress port is overridden below.
+  const bool checkEgressPortScope =
+      !useEventorPort && FLAGS_sflow_egress_port_id <= 0;
+
   for (const auto& nexthop : nexthops) {
     // Dont consider nextHops that do not match incoming Address family
     if (isV4 != nexthop.addr().isV4()) {
@@ -101,6 +121,14 @@ std::shared_ptr<Mirror> MirrorManagerImpl<AddrT>::updateMirror(
       continue;
     }
 
+    if (checkEgressPortScope &&
+        !isEgressPortOnSwitch(
+            sw_->getScopeResolver(),
+            resolvedEgressPort.value(),
+            mirror->getSwitchId())) {
+      continue;
+    }
+
     std::optional<AddrT> srcIp = newMirror->getSrcIp()
         ? getIPAddress<AddrT>(mirror->getSrcIp().value())
         : std::optional<AddrT>(std::nullopt);
@@ -115,9 +143,7 @@ std::shared_ptr<Mirror> MirrorManagerImpl<AddrT>::updateMirror(
     break;
   }
 
-  auto asic = sw_->getHwAsicTable()->getHwAsic(mirror->getSwitchId());
-  if (newMirror && newMirror->type() == Mirror::Type::SFLOW &&
-      asic->isSupported(HwAsic::Feature::EVENTOR_PORT_FOR_SFLOW)) {
+  if (useEventorPort) {
     auto eventorPort = getEventorPortForSflowMirror(mirror->getSwitchId());
     auto eventorMac = getEventorPortInterfaceMac(state, eventorPort);
     XLOG(DBG2) << "updateMirror: switchId=" << mirror->getSwitchId()

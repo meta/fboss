@@ -9,7 +9,6 @@
  */
 #pragma once
 
-#include <folly/Format.h>
 #include <folly/Synchronized.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/logging/xlog.h>
@@ -103,6 +102,9 @@ class LedManager {
   LedManager();
   virtual ~LedManager();
 
+  // Must be called before destruction, while the derived object is alive
+  void stop();
+
   void subscribeToFsdb();
 
   // Initialize the Led Manager, get system container
@@ -144,6 +146,10 @@ class LedManager {
 
   const PlatformMapping* getPlatformMapping() const {
     return platformMapping_.get();
+  }
+
+  const LedConfig* getLedConfig() const {
+    return ledConfig_.get();
   }
 
   virtual bool blinkingSupported() const {

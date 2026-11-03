@@ -177,4 +177,8 @@ struct StaticMapping {
   1: map<i32, TxRxLaneInfo> phy_lane_map;
   2: map<i32, TxRxLaneInfo> polarity_swap_map;
   3: list<ConnectionPair> az_connections;
+  // Per-NPU view of fields 1/2, which are keyed by core_id alone and so
+  // collapse both NPUs of a multi-NPU platform into one key space.
+  4: optional map<i32, map<i32, TxRxLaneInfo>> phy_lane_map_by_chip;
+  5: optional map<i32, map<i32, TxRxLaneInfo>> polarity_swap_map_by_chip;
 }

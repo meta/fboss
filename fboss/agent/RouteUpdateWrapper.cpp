@@ -162,7 +162,8 @@ void RouteUpdateWrapper::programStandAloneRib(const SyncFibFor& syncFibFor) {
         configRoutes_->staticMplsRoutesToCpu,
         configRoutes_->staticMySids,
         *ribToSwitchStateFunc_,
-        ribToSwitchStateCookie_);
+        ribToSwitchStateCookie_,
+        configRoutes_->ecmpOverrideModeChanged);
   }
   if (!remoteLoopbackIntfRouteToAdd_.empty() ||
       !remoteLoopbackIntfRouteToDel_.empty()) {
@@ -239,7 +240,8 @@ void RouteUpdateWrapper::setRoutesToConfig(
         _staticMplsRoutesWithNextHops,
     const std::vector<cfg::StaticMplsRouteNoNextHops>& _staticMplsRoutesToNull,
     const std::vector<cfg::StaticMplsRouteNoNextHops>& _staticMplsRoutesToCpu,
-    std::vector<MySidWithNextHops> _staticMySids) {
+    std::vector<MySidWithNextHops> _staticMySids,
+    bool _ecmpOverrideModeChanged) {
   configRoutes_ = std::make_unique<ConfigRoutes>(ConfigRoutes{
       _configRouterIDToInterfaceRoutes,
       _staticRoutesWithNextHops,
@@ -249,7 +251,8 @@ void RouteUpdateWrapper::setRoutesToConfig(
       _staticMplsRoutesWithNextHops,
       _staticMplsRoutesToNull,
       _staticMplsRoutesToCpu,
-      std::move(_staticMySids)});
+      std::move(_staticMySids),
+      _ecmpOverrideModeChanged});
 }
 
 void RouteUpdateWrapper::setRemoteLoopbackInterfaceRoutesToConfig(

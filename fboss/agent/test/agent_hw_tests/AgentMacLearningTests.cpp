@@ -374,6 +374,39 @@ class AgentMacLearningTest : public AgentHwTest {
     return VlanID(*initialConfig(*getAgentEnsemble()).vlanPorts()[0].vlanID());
   }
 
+  std::pair<int, int> getMacChunkSizeAndSleepUsecs() {
+    // Some platforms only support SDK Software Learning, which is usually
+    // slower
+    // than Hardware Learning to let SDK learn MAC Address from hardware.
+    // For these platforms, they will use cache mechanism to let hardware put
+    // new MAC addresses into a cache, and then SDK will either read the cache
+    // periodically or once the cache is full.
+    // Therefore, instead of adding sleep time for sending each L2 packet, we
+    // send a chunck of packets consecutively without sleep, which will shorten
+    // the whole sleep time for this test.
+    // However, we also need to make sure we don't flood the cache with a big
+    // chunck size, which will drop those MAC addresses which can't be put in
+    // the cache because cache is full. TH3 cache size is 16 so we use 16 as
+    // trunk size to maximize the speed. NOTE: There's an on-going investigation
+    // why TH3 needs significant longer sleep time than TH4. (T83358080)
+    static const std::unordered_map<cfg::AsicType, std::pair<int, int>>
+        kAsicToMacChunkSizeAndSleepUsecs = {
+            {cfg::AsicType::ASIC_TYPE_TOMAHAWK3, {16, 500000}},
+            {cfg::AsicType::ASIC_TYPE_TOMAHAWK4, {32, 10000}},
+            {cfg::AsicType::ASIC_TYPE_TOMAHAWK, {16, 10000}}};
+    auto switchId = getSw()
+                        ->getScopeResolver()
+                        ->scope(masterLogicalPortIds()[0])
+                        .switchId();
+    if (auto p = kAsicToMacChunkSizeAndSleepUsecs.find(
+            getSw()->getHwAsicTable()->getHwAsic(switchId)->getAsicType());
+        p != kAsicToMacChunkSizeAndSleepUsecs.end()) {
+      return p->second;
+    } else {
+      return {1 /* No need chunk */, 0 /* No sleep time */};
+    }
+  }
+
   L2LearningUpdateObserverUtil l2LearningObserver_;
 
  private:
@@ -540,8 +573,14 @@ class AgentMacSwLearningModeTest : public AgentMacLearningTest {
       // between them and relearns its own source MAC faster than any ager.
       getAgentEnsemble()->bringDownPort(masterLogicalPortIds()[1]);
 
+      // An unpaced burst overruns the ASIC learn cache and loses most MACs.
+      auto [chunkSize, sleepUsecsBetweenChunks] =
+          getMacChunkSizeAndSleepUsecs();
       for (auto i = 0; i < kNumAgingMacs; i++) {
         sendPkt(agingMacAt(i));
+        if ((i + 1) % chunkSize == 0) {
+          usleep(sleepUsecsBetweenChunks);
+        }
       }
       WITH_RETRIES(
           { EXPECT_EVENTUALLY_GE(agingMacsPresent(), kMinAgingMacsLearnt); });
@@ -1212,39 +1251,6 @@ TEST_F(AgentMacLearningMacMoveTest, VerifyMacMoveForPort) {
 
 class AgentMacLearningBatchEntriesTest : public AgentMacLearningTest {
  protected:
-  std::pair<int, int> getMacChunkSizeAndSleepUsecs() {
-    // Some platforms only support SDK Software Learning, which is usually
-    // slower
-    // than Hardware Learning to let SDK learn MAC Address from hardware.
-    // For these platforms, they will use cache mechanism to let hardware put
-    // new MAC addresses into a cache, and then SDK will either read the cache
-    // periodically or once the cache is full.
-    // Therefore, instead of adding sleep time for sending each L2 packet, we
-    // send a chunck of packets consecutively without sleep, which will shorten
-    // the whole sleep time for this test.
-    // However, we also need to make sure we don't flood the cache with a big
-    // chunck size, which will drop those MAC addresses which can't be put in
-    // the cache because cache is full. TH3 cache size is 16 so we use 16 as
-    // trunk size to maximize the speed. NOTE: There's an on-going investigation
-    // why TH3 needs significant longer sleep time than TH4. (T83358080)
-    static const std::unordered_map<cfg::AsicType, std::pair<int, int>>
-        kAsicToMacChunkSizeAndSleepUsecs = {
-            {cfg::AsicType::ASIC_TYPE_TOMAHAWK3, {16, 500000}},
-            {cfg::AsicType::ASIC_TYPE_TOMAHAWK4, {32, 10000}},
-            {cfg::AsicType::ASIC_TYPE_TOMAHAWK, {16, 10000}}};
-    auto switchId = getSw()
-                        ->getScopeResolver()
-                        ->scope(masterLogicalPortIds()[0])
-                        .switchId();
-    if (auto p = kAsicToMacChunkSizeAndSleepUsecs.find(
-            getSw()->getHwAsicTable()->getHwAsic(switchId)->getAsicType());
-        p != kAsicToMacChunkSizeAndSleepUsecs.end()) {
-      return p->second;
-    } else {
-      return {1 /* No need chunk */, 0 /* No sleep time */};
-    }
-  }
-
   std::vector<folly::MacAddress> generateMacs(int num) {
     std::vector<folly::MacAddress> macs;
     auto generator = utility::MacAddressGenerator();

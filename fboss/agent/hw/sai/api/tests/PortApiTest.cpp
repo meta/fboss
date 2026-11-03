@@ -16,6 +16,7 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <vector>
 
 using namespace facebook::fboss;
@@ -64,6 +65,13 @@ class PortApiTest : public ::testing::Test {
         std::nullopt, // TC to Priority Group map
         std::nullopt, // PFC Priority to Queue map
         std::nullopt, // PFC Priority to Priority Group map
+#if defined(SAI_CBFC_SUPPORTED)
+        std::nullopt, // TC to VC map
+        std::nullopt, // Queue to VC map
+        std::nullopt, // CBFC sender credit size
+        std::nullopt, // CBFC sender packet overhead
+        std::nullopt, // CBFC sender credit limit
+#endif
 #if SAI_API_VERSION >= SAI_VERSION(1, 9, 0)
         std::nullopt, // Inter frame gap
 #endif
@@ -105,7 +113,10 @@ class PortApiTest : public ::testing::Test {
 #endif
         std::nullopt, // PfcPauseDurationOverride
         std::nullopt, // Ingress ACL
+        std::nullopt, // IsolationGroup
         std::nullopt, // Metadata
+        std::nullopt, // CsigTagAction
+        std::nullopt, // CsigLinkLocator
     };
     return portApi->create<SaiPortTraits>(a, 0);
   }
@@ -176,6 +187,15 @@ class PortApiTest : public ::testing::Test {
 #if SAI_API_VERSION >= SAI_VERSION(1, 16, 4)
         std::nullopt, // CustomCollection
 #endif
+#if defined(BRCM_SAI_SDK_GTE_13_0)
+        std::nullopt, // RxReach
+#endif
+#if defined(BRCM_SAI_SDK_GTE_13_0) ||            \
+    (SAI_API_VERSION >= SAI_VERSION(1, 14, 0) && \
+     !defined(BRCM_SAI_SDK_XGS_AND_DNX))
+        std::nullopt, // TxPrecoding
+        std::nullopt, // RxPrecoding
+#endif
     };
     return portApi->create<SaiPortSerdesTraits>(a, 0 /*switch id*/);
   }
@@ -224,6 +244,79 @@ TEST_F(PortApiTest, onePort) {
   EXPECT_EQ(lanes.size(), 1);
   EXPECT_EQ(lanes[0], 42);
 }
+
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 3)
+TEST_F(PortApiTest, readExtOperStatusLatchClearsChanged) {
+  auto id = createPort(100000, {42}, true);
+  auto& fakePort = fs->portManager.get(id);
+  fakePort.portExtOperStatusLatch.current_status = true;
+  fakePort.portExtOperStatusLatch.changed = true;
+
+  auto firstRead = portApi->getAttribute(
+      id, SaiPortTraits::Attributes::ExtOperStatusLatch{});
+  EXPECT_TRUE(firstRead.current_status);
+  EXPECT_TRUE(firstRead.changed);
+
+  auto secondRead = portApi->getAttribute(
+      id, SaiPortTraits::Attributes::ExtOperStatusLatch{});
+  EXPECT_TRUE(secondRead.current_status);
+  EXPECT_FALSE(secondRead.changed);
+}
+#endif
+
+#if defined(SAI_CBFC_SUPPORTED)
+TEST_F(PortApiTest, readNativeCbfcReceiverAttributes) {
+  auto id = createPort(100000, {42}, true);
+
+  // READ_ONLY, derived by hardware from the MMU carving. Fake cans them, so
+  // this asserts the types and union members round-trip, not the values.
+  EXPECT_EQ(
+      portApi->getAttribute(
+          id, SaiPortTraits::Attributes::CbfcReceiverNativeCreditSize{}),
+      256);
+  EXPECT_EQ(
+      portApi->getAttribute(
+          id, SaiPortTraits::Attributes::CbfcReceiverNativeTotalCredits{}),
+      1000);
+  // Signed on purpose: the spec range is -16..127, and modelling this as
+  // unsigned would read back 65520 rather than -16.
+  EXPECT_EQ(
+      portApi->getAttribute(
+          id, SaiPortTraits::Attributes::CbfcReceiverNativePacketOverhead{}),
+      -16);
+}
+
+TEST_F(PortApiTest, setCbfcSenderCreditSize) {
+  auto id = createPort(100000, {42}, true);
+  EXPECT_EQ(
+      portApi->getAttribute(
+          id, SaiPortTraits::Attributes::CbfcSenderCreditSize{}),
+      128);
+
+  portApi->setAttribute(
+      id, SaiPortTraits::Attributes::CbfcSenderCreditSize{56});
+  EXPECT_EQ(
+      portApi->getAttribute(
+          id, SaiPortTraits::Attributes::CbfcSenderCreditSize{}),
+      56);
+}
+
+TEST_F(PortApiTest, setCbfcSenderPacketOverhead) {
+  auto id = createPort(100000, {42}, true);
+  EXPECT_EQ(
+      portApi->getAttribute(
+          id, SaiPortTraits::Attributes::CbfcSenderPacketOverhead{}),
+      0);
+
+  // Negative is legal (-16..127) and catches an unsigned model.
+  portApi->setAttribute(
+      id, SaiPortTraits::Attributes::CbfcSenderPacketOverhead{-16});
+  EXPECT_EQ(
+      portApi->getAttribute(
+          id, SaiPortTraits::Attributes::CbfcSenderPacketOverhead{}),
+      -16);
+}
+#endif
 
 TEST_F(PortApiTest, fourPorts) {
   auto portIds = createFivePorts();
@@ -518,6 +611,29 @@ TEST_F(PortApiTest, getSome) {
   EXPECT_EQ(stats.size(), 2);
 }
 
+#if defined(SAI_CBFC_SUPPORTED)
+// Three of the six SAI_PORT_STAT_CBFC_* counters have no BCM counter behind
+// them on Tomahawk Ultra 1 (SENDER_CREDITS_USED is B0-stepping only). Because
+// get_port_stats is all-or-nothing, one of them in the list would fail every
+// CBFC stat read, so guard against them creeping back in.
+TEST_F(PortApiTest, cbfcStatsOmitsUnbackedCounters) {
+  const auto& ids = SaiPortTraits::cbfcStats();
+  for (auto unbacked :
+       {SAI_PORT_STAT_CBFC_SENDER_CREDITS_USED,
+        SAI_PORT_STAT_CBFC_SENDER_CREDITS_USED_WATERMARK,
+        SAI_PORT_STAT_CBFC_NUM_CC_UPDATE_MESSAGES_RX}) {
+    EXPECT_EQ(std::find(ids.begin(), ids.end(), unbacked), ids.end());
+  }
+}
+
+TEST_F(PortApiTest, getCbfcStats) {
+  auto id = createPort(100000, {42}, true);
+  auto stats = portApi->getStats<SaiPortTraits>(
+      id, SaiPortTraits::cbfcStats(), SAI_STATS_MODE_READ);
+  EXPECT_EQ(stats.size(), SaiPortTraits::cbfcStats().size());
+}
+#endif
+
 TEST_F(PortApiTest, serdesApi) {
   auto id = createPort(100000, {42}, true);
   auto serdesId =
@@ -556,6 +672,22 @@ TEST_F(PortApiTest, serdesApi) {
   EXPECT_EQ(rxAcCouplingByPass, std::vector<sai_int32_t>{7});
   EXPECT_EQ(rxAfeAdaptiveEnable, std::vector<sai_int32_t>{8});
   EXPECT_EQ(txFirPre3, std::vector<sai_uint32_t>{9});
+}
+
+TEST_F(PortApiTest, optionalSerdesListAttributesHaveDefaults) {
+  EXPECT_TRUE(SaiPortSerdesTraits::Attributes::RxReach::defaultValue().empty());
+  EXPECT_TRUE(
+      SaiPortSerdesTraits::Attributes::TransmitPrecodingState::defaultValue()
+          .empty());
+  EXPECT_TRUE(
+      SaiPortSerdesTraits::Attributes::ReceivePrecodingState::defaultValue()
+          .empty());
+#if SAI_API_VERSION >= SAI_VERSION(1, 14, 0)
+  EXPECT_TRUE(
+      SaiPortSerdesTraits::Attributes::TxPrecoding::defaultValue().empty());
+  EXPECT_TRUE(
+      SaiPortSerdesTraits::Attributes::RxPrecoding::defaultValue().empty());
+#endif
 }
 
 // The precoding vendor extensions are programmed after serdes create, the way
@@ -866,7 +998,8 @@ TEST_F(PortApiTest, removeLlrProfile) {
 }
 
 TEST_F(PortApiTest, portLlrAttributes) {
-  auto portId = createPort(100000, {42}, true);
+  // Admin disabled, since a profile cannot be attached to an enabled port.
+  auto portId = createPort(100000, {42}, false);
   auto profileId = createLlrProfile(portApi.get());
 
   // Defaults on a freshly created port: LLR disabled, no profile, status OFF.
@@ -903,4 +1036,58 @@ TEST_F(PortApiTest, portLlrAttributes) {
   EXPECT_EQ(port.llrModeRemote, true);
   EXPECT_EQ(port.llrProfile, static_cast<sai_object_id_t>(profileId));
 }
+
+// Clearing an LLR mode, and attaching or detaching a profile, are refused while
+// the port is administratively enabled (Broadcom CS00012478409). Setting a mode
+// is not: that is how the one-shot LLR_MODE_REMOTE trigger is armed on link up.
+TEST_F(PortApiTest, portLlrAttributesOnEnabledPort) {
+  auto portId = createPort(100000, {42}, false);
+  auto profileId = createLlrProfile(portApi.get());
+  portApi->setAttribute(
+      portId,
+      SaiPortTraits::Attributes::LlrProfile{
+          static_cast<sai_object_id_t>(profileId)});
+  portApi->setAttribute(portId, SaiPortTraits::Attributes::LlrModeLocal{true});
+  portApi->setAttribute(portId, SaiPortTraits::Attributes::AdminState{true});
+
+  EXPECT_THROW(
+      portApi->setAttribute(
+          portId, SaiPortTraits::Attributes::LlrModeLocal{false}),
+      SaiApiError);
+  auto otherProfileId = createLlrProfile(portApi.get());
+  EXPECT_THROW(
+      portApi->setAttribute(
+          portId,
+          SaiPortTraits::Attributes::LlrProfile{
+              static_cast<sai_object_id_t>(otherProfileId)}),
+      SaiApiError);
+
+  // Re-asserting a mode on an enabled port is allowed.
+  portApi->setAttribute(portId, SaiPortTraits::Attributes::LlrModeRemote{true});
+  SaiPortTraits::Attributes::LlrModeRemote modeRemoteBlank;
+  EXPECT_EQ(portApi->getAttribute(portId, modeRemoteBlank), true);
+}
 #endif
+
+TEST_F(PortApiTest, setGetIsolationGroup) {
+  auto portIds = createFivePorts();
+  constexpr sai_object_id_t kIsolationGroupId{42};
+  using IsolationGroup = SaiPortTraits::Attributes::IsolationGroup;
+
+  // getAttribute fills in the attribute it is handed, so every read uses a
+  // fresh one -- reusing the attribute being set would clobber its value.
+  EXPECT_EQ(
+      portApi->getAttribute(portIds[0], IsolationGroup{}), SAI_NULL_OBJECT_ID);
+
+  portApi->setAttribute(portIds[0], IsolationGroup{kIsolationGroupId});
+  EXPECT_EQ(
+      portApi->getAttribute(portIds[0], IsolationGroup{}), kIsolationGroupId);
+  // Binding one port must not bind any other.
+  EXPECT_EQ(
+      portApi->getAttribute(portIds[1], IsolationGroup{}), SAI_NULL_OBJECT_ID);
+
+  // Unbinding is an explicit write of the null oid.
+  portApi->setAttribute(portIds[0], IsolationGroup{SAI_NULL_OBJECT_ID});
+  EXPECT_EQ(
+      portApi->getAttribute(portIds[0], IsolationGroup{}), SAI_NULL_OBJECT_ID);
+}

@@ -111,6 +111,37 @@ TEST_F(ConfigAdminDistanceTest, SetAndRestoreAdminDistance) {
   XLOG(INFO) << "TEST PASSED";
 }
 
+TEST_F(ConfigAdminDistanceTest, SetThenDeleteAdminDistance) {
+  auto original = getAdminDistances();
+
+  // Pick a client-id with no entry in the running config, so set + delete
+  // returns the config exactly to its original state.
+  int clientId = 900;
+  while (original.count(clientId)) {
+    ++clientId;
+  }
+
+  XLOG(INFO) << "[Step 1] Adding admin distance entry for unused client-id "
+             << clientId << "...";
+  setAdminDistance(clientId, 42);
+  EXPECT_EQ(getAdminDistances()[clientId], 42);
+
+  XLOG(INFO) << "[Step 2] delete switch admin-distance " << clientId;
+  auto result =
+      runCli({"delete", "switch", "admin-distance", std::to_string(clientId)});
+  ASSERT_EQ(result.exitCode, 0)
+      << "delete admin-distance CLI failed: " << result.stderr;
+  commitConfig();
+  waitForAgentReady();
+
+  XLOG(INFO) << "[Step 3] Verifying the entry is gone and others survive...";
+  auto afterDelete = getAdminDistances();
+  EXPECT_FALSE(afterDelete.count(clientId));
+  EXPECT_EQ(afterDelete, original);
+
+  XLOG(INFO) << "TEST PASSED";
+}
+
 TEST_F(ConfigAdminDistanceTest, ForbiddenClientIdsRejected) {
   // client-ids 1-4 have hardcoded admin distances in the agent; the CLI must
   // reject them before touching config so no coldboot is triggered.
@@ -127,6 +158,13 @@ TEST_F(ConfigAdminDistanceTest, ForbiddenClientIdsRejected) {
     EXPECT_NE(result.exitCode, 0)
         << "Expected failure for forbidden client-id " << clientId << " ("
         << name << ") but CLI succeeded";
+
+    // delete is symmetric with config: the same ids are rejected.
+    auto deleteResult = runCli(
+        {"delete", "switch", "admin-distance", std::to_string(clientId)});
+    EXPECT_NE(deleteResult.exitCode, 0)
+        << "Expected delete failure for forbidden client-id " << clientId
+        << " (" << name << ") but CLI succeeded";
   }
   XLOG(INFO) << "TEST PASSED";
 }

@@ -172,20 +172,20 @@ struct ThriftDeltaVisitor<apache::thrift::type::map<KeyTag, MappedTag>> {
         f(path,
           MappedTag{},
           std::make_optional(val),
-          std::optional<folly::remove_cvref_t<decltype(val)>>());
+          std::optional<std::remove_cvref_t<decltype(val)>>());
       }
       path.pop_back();
     }
 
     for (const auto& [key, val] : newNode) {
-      if (oldNode.find(key) == oldNode.end()) {
+      if (!oldNode.contains(key)) {
         // only look at keys that didn't exist. First loop should handle all
         // replacement deltas
         hasDifferences = true;
         path.push_back(folly::to<std::string>(key));
         f(path,
           MappedTag{},
-          std::optional<folly::remove_cvref_t<decltype(val)>>(),
+          std::optional<std::remove_cvref_t<decltype(val)>>(),
           std::make_optional(val));
         path.pop_back();
       }

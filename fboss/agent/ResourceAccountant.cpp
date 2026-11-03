@@ -14,6 +14,7 @@
 #include "fboss/agent/state/DeltaFunctions.h"
 #include "fboss/agent/state/FlowletSwitchingConfig.h"
 #include "fboss/agent/state/SwitchState.h"
+#include "fboss/agent/state/VrfMap.h"
 
 namespace {
 constexpr auto kHundredPercentage = 100;
@@ -67,6 +68,12 @@ ResourceAccountant::ResourceAccountant(
         return asicType == cfg::AsicType::ASIC_TYPE_YUBA ||
             asicType == cfg::AsicType::ASIC_TYPE_G202X;
       });
+  for (const auto& [_, asic] : asics) {
+    if (auto limit = asic->getMaxSrv6UcmpDistinctWeights()) {
+      maxSrv6UcmpDistinctWeights_ =
+          std::min(maxSrv6UcmpDistinctWeights_.value_or(*limit), *limit);
+    }
+  }
   checkRouteUpdate_ = shouldCheckRouteUpdate();
 }
 
@@ -737,6 +744,28 @@ bool ResourceAccountant::checkMySidResource(bool intermediateState) {
   return true;
 }
 
+void ResourceAccountant::vrfStateChangedImpl(const StateDelta& delta) {
+  DeltaFunctions::forEachChanged(
+      delta.getVrfsDelta(),
+      [&](const auto& /*oldVrf*/, const auto& /*newVrf*/) {},
+      [&](const auto& /*newVrf*/) { vrfUsage_++; },
+      [&](const auto& /*deletedVrf*/) { vrfUsage_--; });
+}
+
+bool ResourceAccountant::checkVrfResource() const {
+  // +1 for the default VRF
+  const auto numVrfs = vrfUsage_ + 1;
+  for (const auto& [_, hwAsic] : asicTable_->getHwAsics()) {
+    const auto maxVrfs = hwAsic->getMaxVrfs();
+    if (maxVrfs.has_value() && numVrfs > maxVrfs.value()) {
+      XLOG(ERR) << "VRF resource limit exceeded. VRFs: " << numVrfs
+                << " ASIC limit: " << maxVrfs.value();
+      return false;
+    }
+  }
+  return true;
+}
+
 size_t ResourceAccountant::countSrv6NextHops(
     const RouteNextHopSet& nhSet) const {
   size_t count = 0;
@@ -746,6 +775,18 @@ size_t ResourceAccountant::countSrv6NextHops(
     }
   }
   return count;
+}
+
+bool ResourceAccountant::checkSrv6UcmpDistinctWeights(
+    const RouteNextHopSet& nhSet) const {
+  if (!maxSrv6UcmpDistinctWeights_.has_value() || hasBackupNextHop(nhSet)) {
+    return true;
+  }
+  std::set<NextHopWeight> weights;
+  for (const auto& nhop : nhSet) {
+    weights.insert(nhop.weight());
+  }
+  return weights.size() <= *maxSrv6UcmpDistinctWeights_;
 }
 
 template <typename AddrT>
@@ -799,6 +840,12 @@ bool ResourceAccountant::checkAndUpdateSrv6NextHopResource(
     srv6EcmpNextHopUsage_ += srv6Count;
   } else {
     srv6SingleNextHopUsage_ += srv6Count;
+  }
+  if (!checkSrv6UcmpDistinctWeights(nhSet)) {
+    XLOG(DBG2) << "Route " << route->prefix().str()
+               << " SRv6 UCMP group exceeds ASIC limit of "
+               << *maxSrv6UcmpDistinctWeights_ << " distinct weights";
+    return false;
   }
   return true;
 }
@@ -1092,6 +1139,8 @@ void ResourceAccountant::stateChanged(const StateDelta& delta) {
   if (FLAGS_enable_mysid_resource_protection) {
     mySidStateChangedImpl(delta);
   }
+
+  vrfStateChangedImpl(delta);
 }
 
 // check if the resource is available for the update as per fboss limits
@@ -1110,6 +1159,9 @@ bool ResourceAccountant::isValidUpdate(const StateDelta& delta) {
     mySidStateChangedImpl(delta);
     isValidUpdate &= checkMySidResource(false /* intermediateState */);
   }
+
+  vrfStateChangedImpl(delta);
+  isValidUpdate &= checkVrfResource();
 
   return isValidUpdate;
 }

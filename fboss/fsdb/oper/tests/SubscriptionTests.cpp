@@ -2,6 +2,7 @@
 
 #include <fboss/fsdb/oper/Subscription.h>
 #include <fboss/fsdb/oper/SubscriptionStore.h>
+#include <limits>
 
 #include <folly/coro/BlockingWait.h>
 #include <folly/coro/Timeout.h>
@@ -309,6 +310,109 @@ TEST(ExtendedSubscriptionTest, unregisterClearsAddedPathsTracking) {
   // If unregister failed to erase the tracking entry, its strong shared_ptr
   // would keep the cancelled subscription alive here.
   EXPECT_TRUE(weak.expired());
+}
+
+TEST(ServeInterval, RoundsUpAndClamps) {
+  constexpr uint32_t kTick = 1000;
+  constexpr uint32_t kMax = 10000;
+
+  // Sub-tick and non-multiples round UP to the next whole tick.
+  EXPECT_EQ(normalizeServeIntervalMs(1, kTick, kMax), 1000u);
+  EXPECT_EQ(normalizeServeIntervalMs(1500, kTick, kMax), 2000u);
+  EXPECT_EQ(normalizeServeIntervalMs(2000, kTick, kMax), 2000u);
+
+  // Zero clamps up to the floor; anything above the default clamps down to it.
+  EXPECT_EQ(normalizeServeIntervalMs(0, kTick, kMax), 1000u);
+  EXPECT_EQ(normalizeServeIntervalMs(60000, kTick, kMax), kMax);
+
+  // The largest cadence a client can express: i32 seconds converted to ms.
+  // Must clamp to the default rather than wrap through the round-up.
+  constexpr uint64_t kMaxRequestMs =
+      static_cast<uint64_t>(std::numeric_limits<int32_t>::max()) * 1000;
+  EXPECT_EQ(normalizeServeIntervalMs(kMaxRequestMs, kTick, kMax), kMax);
+
+  // A disabled tick collapses every request onto the default interval.
+  EXPECT_EQ(normalizeServeIntervalMs(2000, 0, kMax), kMax);
+}
+
+TEST(ServeInterval, ResolveServeTick) {
+  constexpr uint32_t kDefault = 10000;
+
+  // Non-positive means "no sub-default intervals": everyone at the default.
+  EXPECT_EQ(resolveServeTickMs(0, kDefault), kDefault);
+  EXPECT_EQ(resolveServeTickMs(-1, kDefault), kDefault);
+
+  // Ticks that divide the default are taken as requested.
+  EXPECT_EQ(resolveServeTickMs(2000, kDefault), 2000u);
+  EXPECT_EQ(resolveServeTickMs(2500, kDefault), 2500u);
+  EXPECT_EQ(resolveServeTickMs(5000, kDefault), 5000u);
+
+  // Below the floor: raised, so the bucket count cannot exceed the cap.
+  EXPECT_EQ(resolveServeTickMs(1, kDefault), 2000u);
+  EXPECT_EQ(resolveServeTickMs(1500, kDefault), 2000u);
+
+  // At or above the default: one bucket.
+  EXPECT_EQ(resolveServeTickMs(kDefault, kDefault), kDefault);
+  EXPECT_EQ(resolveServeTickMs(20000, kDefault), kDefault);
+
+  // A tick that does not divide the default is rejected outright: the slowest
+  // bucket would otherwise land ahead of the default cadence.
+  EXPECT_EQ(resolveServeTickMs(3000, kDefault), kDefault);
+  EXPECT_EQ(resolveServeTickMs(4000, kDefault), kDefault);
+  EXPECT_EQ(resolveServeTickMs(6000, kDefault), kDefault);
+  EXPECT_EQ(resolveServeTickMs(9000, kDefault), kDefault);
+
+  // The invariant the snapping exists to protect: whatever an operator asks
+  // for, the slowest bucket lands exactly on the default cadence and the
+  // bucket count stays within the cap.
+  for (int64_t requested = 1; requested <= 2 * kDefault; ++requested) {
+    const uint32_t tick = resolveServeTickMs(requested, kDefault);
+    ASSERT_GT(tick, 0u) << "requested " << requested;
+    const size_t buckets = serveBucketCount(tick, kDefault);
+    EXPECT_EQ(buckets * tick, kDefault) << "requested " << requested;
+    EXPECT_LE(buckets, kMaxServeBuckets) << "requested " << requested;
+  }
+}
+
+TEST(ServeInterval, BucketIndexing) {
+  constexpr uint32_t kTick = 1000;
+  constexpr uint32_t kMax = 10000;
+
+  // Bucket 0 is served every tick; the last bucket is the default interval.
+  EXPECT_EQ(serveBucketIndex(1000, kTick), 0u);
+  EXPECT_EQ(serveBucketIndex(2000, kTick), 1u);
+  EXPECT_EQ(serveBucketIndex(10000, kTick), 9u);
+  EXPECT_EQ(serveBucketCount(kTick, kMax), 10u);
+
+  // Every normalized interval must land inside the allocated bucket space.
+  for (uint32_t requested = 0; requested <= 2 * kMax; requested += 137) {
+    const auto interval = normalizeServeIntervalMs(requested, kTick, kMax);
+    EXPECT_LT(serveBucketIndex(interval, kTick), serveBucketCount(kTick, kMax));
+  }
+}
+
+TEST(SubscriptionStoreSubscriberCount, TracksRegisterAndUnregister) {
+  folly::ScopedEventBaseThread evbThread("ServeIntervalTest");
+  SubscriptionStore store;
+  EXPECT_FALSE(store.hasAny());
+
+  std::vector<std::string> path = {"test"};
+  auto [gen, sub] = PathSubscription::create(
+      SubscriptionIdentifier("interval-sub"),
+      path.begin(),
+      path.end(),
+      OperProtocol::BINARY,
+      std::nullopt,
+      evbThread.getEventBase(),
+      std::chrono::milliseconds(100),
+      kSubscriptionServeQueueSize);
+  store.registerSubscription(std::move(sub));
+
+  EXPECT_TRUE(store.hasAny());
+
+  ASSERT_EQ(store.subscriptions().size(), 1);
+  store.unregisterSubscription(store.subscriptions().begin()->first);
+  EXPECT_FALSE(store.hasAny());
 }
 
 } // namespace facebook::fboss::fsdb::test

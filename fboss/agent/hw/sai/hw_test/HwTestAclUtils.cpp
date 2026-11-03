@@ -206,7 +206,9 @@ void checkSwHwAclMatch(
     auto [tcpFlagsDataGot, tcpFlagsMaskGot] =
         aclFieldTcpFlagsGot.getDataAndMask();
     EXPECT_EQ(tcpFlagsDataGot, swAcl->getTcpFlagsBitMap().value());
-    EXPECT_EQ(tcpFlagsMaskGot, SaiAclTableManager::kTcpFlagsMask);
+    EXPECT_EQ(
+        tcpFlagsMaskGot,
+        swAcl->getTcpFlagsMask().value_or(SaiAclTableManager::kTcpFlagsMask));
   }
 
   if (swAcl->getIpFrag()) {

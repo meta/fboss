@@ -56,7 +56,7 @@ const TBgpPeerState kIdlePeerState = TBgpPeerState::IDLE;
 const int kEstablishedRemoteAS = 1;
 const std::string_view kEstablishedPeerAddress = "1.2.3.4";
 const std::string_view kEstablishedRemoteBgpId = "4.3.2.1";
-const std::string_view kEstablishedDescription = "fsw001.p015.f01.prn6";
+const std::string_view kEstablishedDescription = "leaf01.p099.f01.lab0";
 const int kUptime = 1000;
 const int kEstablishedDowntime = 2000;
 const int kEstablishedNumResets = 9;
@@ -72,7 +72,7 @@ const int kEstablishedSuppressedUpdates = 5;
 const int kIdleRemoteAS = 4651;
 const std::string_view kIdlePeerAddress = "2.3.4.5";
 const std::string_view kIdleRemoteBgpId = "6.7.8.9";
-const std::string_view kIdleDescription = "fsw007.p015.f01.prn6";
+const std::string_view kIdleDescription = "leaf07.p099.f01.lab0";
 const bool kIdleIsGraceful = false;
 const int kIdlePrePolicyRcvdPrefixCount = 0;
 const int kIdlePostPolicySentPrefixCount = 0;
@@ -145,9 +145,9 @@ TBgpPath buildPath(
 
   if (setCommunity) {
     TBgpCommunity community;
-    community.community() = 4294390177;
-    community.asn() = 65527;
-    community.value() = 12705;
+    community.community() = 4274352190;
+    community.asn() = 65221;
+    community.value() = 28734;
     path.communities() = std::initializer_list<TBgpCommunity>({community});
   }
   if (setExtCommunity) {
@@ -169,7 +169,7 @@ TBgpPath buildPath(
   if (setAsPath) {
     TAsPathSeg pathSegment;
     pathSegment.seg_type() = TAsPathSegType::AS_SEQUENCE;
-    pathSegment.asns() = {65301};
+    pathSegment.asns() = {64712};
 
     path.as_path() = std::initializer_list<TAsPathSeg>({pathSegment});
   }
@@ -180,7 +180,7 @@ TBgpPath buildPath(
     path.originator_id() = htonl(*originatorId);
   }
   if (setPolicy) {
-    path.policy_name() = "Accepted/Modified by PROPAGATE_RSW_FSW_IN term N/A";
+    path.policy_name() = "Accepted/Modified by SAMPLE_UPLINK_POLICY term N/A";
   }
   if (isBestPath) {
     path.is_best_path() = isBestPath.value_or(false /* default */);

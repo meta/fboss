@@ -110,7 +110,7 @@ If the return status is not the same, it will print out this message with the se
 
 To enable compilation with compilers which do not support large files, exceedingly large SAI replayer logs (several millions of LOC) may need be split into multiple smaller logs.
 
-The script [`postProcess.py`](https://github.com/facebook/fboss/blob/main/fboss/agent/hw/sai/tracer/run/postProcess.py) splits a single file into multiple smaller files and a header, to be compiled together into a single output binary.
+The script [`postProcess.py`](https://github.com/meta/fboss/blob/main/fboss/agent/hw/sai/tracer/run/postProcess.py) splits a single file into multiple smaller files and a header, to be compiled together into a single output binary.
 
 By default, the script will consume a SAI Replayer log named `SaiLog.cpp` in the same directory as the executing shell, and will output the split files in the `output/` directory.
 

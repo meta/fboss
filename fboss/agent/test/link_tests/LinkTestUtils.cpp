@@ -6,6 +6,7 @@
 #include "fboss/agent/platforms/common/PlatformMapping.h"
 #include "fboss/agent/test/link_tests/LinkTestUtils.h"
 #include "fboss/lib/CommonFileUtils.h"
+#include "fboss/lib/CommonUtils.h"
 #include "fboss/lib/config/PlatformConfigUtils.h"
 #include "fboss/lib/thrift_service_client/ThriftServiceClient.h"
 
@@ -52,6 +53,17 @@ void restartQsfpService(bool coldboot) {
   folly::Subprocess(kRestartQsfpService).waitChecked();
 
 #endif
+
+  checkWithRetry(
+      [] {
+        return utils::createQsfpServiceClient()
+                   ->sync_getQsfpServiceRunState() ==
+            QsfpServiceRunState::ACTIVE;
+      },
+      300 /* retries */,
+      std::chrono::milliseconds(1000),
+      "QSFP Service did not become ACTIVE after restart",
+      true /* retryOnException */);
 }
 
 // Retrieves the config validation status for all active transceivers. Strings

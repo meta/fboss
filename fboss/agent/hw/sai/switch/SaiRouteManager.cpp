@@ -37,20 +37,6 @@ DEFINE_bool(
 
 namespace facebook::fboss {
 
-namespace {
-sai_next_hop_group_type_t getNextHopGroupType(
-    const RouteNextHopEntry::NextHopSet& nextHops) {
-#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
-  if (std::any_of(nextHops.begin(), nextHops.end(), [](const auto& nextHop) {
-        return nextHop.role() == NextHopRole::BACKUP;
-      })) {
-    return SAI_NEXT_HOP_GROUP_TYPE_PROTECTION;
-  }
-#endif
-  return SAI_NEXT_HOP_GROUP_TYPE_ECMP;
-}
-} // namespace
-
 sai_object_id_t SaiRouteHandle::nextHopAdapterKey() const {
   return std::visit(
       [](auto& handle) { return handle->adapterKey(); }, nexthopHandle_);
@@ -206,6 +192,19 @@ void SaiRouteManager::addOrUpdateRoute(
     packetAction = SAI_PACKET_ACTION_FORWARD;
     const auto nhops = getNextHops(state, fwd);
     /*
+     * A route carrying a backup next hop must be programmed as a protection
+     * group even when only one next hop survives resolution -- losing the
+     * primary is exactly when protection matters. As a plain next hop the
+     * standby semantics are dropped at the hardware boundary and traffic
+     * forwards over the backup as though it were the primary path.
+     *
+     * Role is a per next hop property that normalization preserves, so the
+     * group type can be decided from the unnormalized set and the more
+     * expensive getNormalizedNextHops() stays on the group path only.
+     */
+    const bool needsProtectionGroup =
+        isProtectionNextHopGroupType(getNextHopGroupType(nhops));
+    /*
      * A Route which satisfies isConnected() is an interface subnet route.
      * It will have one NextHop with the ip configured for the interface
      * and with the configured InterfaceID.
@@ -245,7 +244,7 @@ void SaiRouteManager::addOrUpdateRoute(
       if (packetAction == SAI_PACKET_ACTION_DROP) {
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 0)
         attributes = SaiRouteTraits::CreateAttributes{
-            packetAction, SAI_NULL_OBJECT_ID, metadata, std::nullopt};
+            packetAction, SAI_NULL_OBJECT_ID, metadata, counterID};
 #else
         attributes = SaiRouteTraits::CreateAttributes{
             packetAction, SAI_NULL_OBJECT_ID, metadata};
@@ -304,7 +303,7 @@ void SaiRouteManager::addOrUpdateRoute(
             routerInterfaceHandle->adapterKey()};
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 0)
         attributes = SaiRouteTraits::CreateAttributes{
-            packetAction, routerInterfaceId, metadata, std::nullopt};
+            packetAction, routerInterfaceId, metadata, counterID};
 #else
         attributes = SaiRouteTraits::CreateAttributes{
             packetAction, routerInterfaceId, metadata};
@@ -313,7 +312,7 @@ void SaiRouteManager::addOrUpdateRoute(
         XLOG(DBG3) << "Connected route: " << newRoute->str()
                    << " routerInterfaceId: " << routerInterfaceId;
       }
-    } else if (nhops.size() > 1) {
+    } else if (nhops.size() > 1 || needsProtectionGroup) {
       /*
        * A Route which has more than one NextHops will create or reference an
        * existing SaiNextHopGroup corresponding to ECMP over those next hops.
@@ -340,7 +339,7 @@ void SaiRouteManager::addOrUpdateRoute(
                    << ", setting route to DROP: " << newRoute->str();
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 0)
         attributes = SaiRouteTraits::CreateAttributes{
-            packetAction, SAI_NULL_OBJECT_ID, metadata, std::nullopt};
+            packetAction, SAI_NULL_OBJECT_ID, metadata, counterID};
 #else
         attributes = SaiRouteTraits::CreateAttributes{
             packetAction, SAI_NULL_OBJECT_ID, metadata};
@@ -384,7 +383,7 @@ void SaiRouteManager::addOrUpdateRoute(
               << interfaceId << ", drop it";
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 0)
           attributes = SaiRouteTraits::CreateAttributes{
-              packetAction, SAI_NULL_OBJECT_ID, metadata, std::nullopt};
+              packetAction, SAI_NULL_OBJECT_ID, metadata, counterID};
 #else
           attributes = SaiRouteTraits::CreateAttributes{
               packetAction, SAI_NULL_OBJECT_ID, metadata};
@@ -446,7 +445,7 @@ void SaiRouteManager::addOrUpdateRoute(
           packetAction = SAI_PACKET_ACTION_DROP;
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 0)
           attributes = SaiRouteTraits::CreateAttributes{
-              packetAction, SAI_NULL_OBJECT_ID, metadata, std::nullopt};
+              packetAction, SAI_NULL_OBJECT_ID, metadata, counterID};
 #else
           attributes = SaiRouteTraits::CreateAttributes{
               packetAction, SAI_NULL_OBJECT_ID, metadata};
@@ -532,7 +531,7 @@ void SaiRouteManager::addOrUpdateRoute(
     }
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 0)
     attributes = SaiRouteTraits::CreateAttributes{
-        packetAction, cpuPortId, metadata, std::nullopt};
+        packetAction, cpuPortId, metadata, counterID};
 #else
     attributes =
         SaiRouteTraits::CreateAttributes{packetAction, cpuPortId, metadata};
@@ -544,7 +543,7 @@ void SaiRouteManager::addOrUpdateRoute(
     packetAction = SAI_PACKET_ACTION_DROP;
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 0)
     attributes = SaiRouteTraits::CreateAttributes{
-        packetAction, SAI_NULL_OBJECT_ID, metadata, std::nullopt};
+        packetAction, SAI_NULL_OBJECT_ID, metadata, counterID};
 #else
     attributes = SaiRouteTraits::CreateAttributes{
         packetAction, SAI_NULL_OBJECT_ID, metadata};
@@ -751,23 +750,6 @@ void SaiRouteManager::checkMetadata(SaiRouteTraits::RouteEntry entry) {
   auto route = getRouteObject(entry);
   if (!route) {
     return;
-  }
-
-  // Read ARS metadata from SDK and set it back to sync all layers
-  // This is needed because metadata is an optional SAI attribute
-  if (FLAGS_enable_th5_ars_scale_mode) {
-    auto& api = SaiApiTable::getInstance()->routeApi();
-    auto sdkMetadata = api.getAttribute(
-        route->adapterKey(), SaiRouteTraits::Attributes::Metadata{});
-    if (sdkMetadata ==
-            static_cast<sai_uint32_t>(
-                cfg::AclLookupClass::ARS_ALTERNATE_MEMBERS_CLASS) ||
-        sdkMetadata == 0) {
-      // Set it back to sync all layers
-      api.setAttribute(
-          route->adapterKey(),
-          SaiRouteTraits::Attributes::Metadata{sdkMetadata});
-    }
   }
 
   auto attributes = route->attributes();

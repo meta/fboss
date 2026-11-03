@@ -193,6 +193,8 @@ class SaiPhyManager : public PhyManager {
       return *appliedStateDontUseDirectly_.rlock();
     }
 
+    void seedStateFromHwSwitch();
+
    private:
     PlatformInfo(PlatformInfo&&) = delete;
     PlatformInfo& operator=(PlatformInfo&&) = delete;
@@ -207,6 +209,7 @@ class SaiPhyManager : public PhyManager {
     std::mutex updateMutex_;
   };
   PlatformInfo* getPlatformInfo(GlobalXphyID xphyID);
+  void seedPlatformStateAfterWarmBoot(GlobalXphyID xphyID);
   const PlatformInfo* getPlatformInfo(GlobalXphyID xphyID) const {
     return const_cast<SaiPhyManager*>(this)->getPlatformInfo(xphyID);
   }
@@ -293,7 +296,7 @@ void SaiPhyManager::initializeXphyImpl(
   // Create xphy sai switch
   auto xphy = static_cast<xphychipT*>(getExternalPhy(xphyID));
   // Set xphy's customized switch attributes before calling init
-  saiPlatform->setSwitchAttributes(xphy->getSwitchAttributes());
+  saiPlatform->setSwitchAttributes(xphy->getSwitchAttributes(warmboot));
   cfg::AgentConfig config;
   cfg::SwitchInfo switchInfo;
   switchInfo.switchType() = cfg::SwitchType::PHY;
@@ -339,6 +342,10 @@ void SaiPhyManager::initializeXphyImpl(
         saiPlatform->getWarmBootHelper()->reconstructWarmBootThriftState(
             wbState);
     initSaiSwitch(statePrev);
+    // TODO: seed Elbert too once Credo is validated.
+    if (getPhyAsicType() != cfg::AsicType::ASIC_TYPE_ELBERT_8DD) {
+      seedPlatformStateAfterWarmBoot(xphyID);
+    }
   } else {
     initSaiSwitch(nullptr);
   }

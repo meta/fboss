@@ -44,7 +44,7 @@ std::optional<std::string> getNpuSpecificYamlConfig(
                << " is not a yamlConfig; falling back to common config";
     return std::nullopt;
   }
-  return npuEntry->second.get_yamlConfig();
+  return npuEntry->second.yamlConfig().value();
 }
 
 // Returns the common HSDK yamlConfig if present, std::nullopt otherwise.
@@ -54,7 +54,7 @@ std::optional<std::string> getCommonYamlConfig(
       cfg::AsicConfigEntry::Type::yamlConfig) {
     return std::nullopt;
   }
-  return asicConfig.common()->get_yamlConfig();
+  return asicConfig.common()->yamlConfig().value();
 }
 
 // SOC properties pointing at a diag/SOC command file the SDK runs at init.
@@ -97,7 +97,7 @@ std::string SaiBcmPlatform::getHwConfig() {
     std::string yamlConfig;
     try {
       const auto& asicConfig =
-          config()->thrift.platform()->chip()->get_asicConfig();
+          config()->thrift.platform()->chip()->asicConfig().value();
       const int16_t switchIndex = getAsic()->getSwitchIndex();
       // Prefer a per-NPU yamlConfig (needed for differing polarities across
       // NPUs on multi-NPU platforms); an empty per-NPU entry defers to the
@@ -122,8 +122,7 @@ std::string SaiBcmPlatform::getHwConfig() {
        */
       XLOG(WARN) << "Exception in SaiBcmPlatform::getHwConfig: " << e.what()
                  << ", falling back to bcm.yamlConfig()";
-      yamlConfig =
-          *(config()->thrift.platform()->chip()->get_bcm().yamlConfig());
+      yamlConfig = *(config()->thrift.platform()->chip()->bcm()->yamlConfig());
     }
     if (!yamlConfig.empty()) {
       // For HSDK only yamlConfig reaches the SDK, so SOC properties must be
@@ -169,7 +168,7 @@ std::string SaiBcmPlatform::getHwConfig() {
      * (TODO): Once asic config v2 is rolled out to the fleet, we
      * should remove this fallback and always use the config v2
      */
-    auto& cfg = *config()->thrift.platform()->chip()->get_bcm().config();
+    auto& cfg = *config()->thrift.platform()->chip()->bcm()->config();
     std::vector<std::string> nameValStrs;
     for (const auto& entry : cfg) {
       // Skip keys we override below so the emitted string and hwConfig_ carry

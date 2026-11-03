@@ -6,7 +6,7 @@ oncall("fboss_agent_push")
 thrift_library(
     name = "fsdb_common",
     cpp2_deps = [
-        "//folly/container:f14_hash",
+        "fbsource//xplat/folly/container:f14_hash",
     ],
     go_thrift_namespaces = {
         "fsdb_common.thrift": "facebook.fboss.fsdb_common",
@@ -16,12 +16,10 @@ thrift_library(
         "go",
         "py-deprecated",
         "py3-deprecated",
-        "py-deprecated-asyncio",
         "python",
         "rust",
     ],
     py3_namespace = "neteng.fboss",
-    py_asyncio_base_module = "neteng.fboss.asyncio",
     py_base_module = "neteng.fboss",
     rust_gen_metadata = True,
     thrift_cpp2_options = "reflection,json",
@@ -44,7 +42,6 @@ thrift_library(
         "go",
         "py-deprecated",
         "py3-deprecated",
-        "py-deprecated-asyncio",
         "rust",
         "python",
     ],
@@ -55,7 +52,6 @@ thrift_library(
         "//thrift/annotation:python",
     ],
     py3_namespace = "neteng.fboss",
-    py_asyncio_base_module = "neteng.fboss.asyncio",
     py_base_module = "neteng.fboss",
     rust_gen_metadata = True,
     thrift_cpp2_options = "json",
@@ -93,8 +89,8 @@ thrift_library(
 thrift_library(
     name = "fsdb",
     cpp2_deps = [
-        "//folly/container:f14_hash",
-        "//folly:fbstring",
+        "fbsource//xplat/folly/container:f14_hash",
+        "fbsource//xplat/folly:fbstring",
     ],
     go_thrift_namespaces = {
         "fsdb.thrift": "facebook.fboss.fsdb",

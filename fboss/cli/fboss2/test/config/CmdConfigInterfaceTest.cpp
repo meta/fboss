@@ -12,11 +12,12 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <cstdlib>
+#include <map>
 #include <stdexcept>
 #include <vector>
 
+#include "fboss/agent/platforms/common/PlatformMapping.h"
 #include "fboss/cli/fboss2/commands/config/interface/CmdConfigInterface.h"
-#include "fboss/cli/fboss2/commands/config/interface/ProfileValidation.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
 
@@ -85,10 +86,10 @@ class CmdConfigInterfaceTestFixture : public CmdConfigTestBase {
 
   void SetUp() override {
     CmdConfigTestBase::SetUp();
-    setupProfileValidationMocks();
+    setupProfileSupportMocks();
   }
 
-  void setupProfileValidationMocks() {
+  void setupProfileSupportMocks() {
     // Create a mock PlatformMapping with common profiles supported
     cfg::PlatformMapping platformMapping;
 
@@ -730,27 +731,26 @@ TEST_F(
 }
 
 // ============================================================================
-// ProfileValidator::parseProfile Static Tests
+// Profile parsing tests
 // ============================================================================
 
 // Test valid uppercase profile string
 TEST_F(CmdConfigInterfaceTestFixture, parseProfileValidUppercase) {
-  auto result =
-      ProfileValidator::parseProfile("PROFILE_100G_4_NRZ_RS528_COPPER");
+  auto result = parsePortProfile("PROFILE_100G_4_NRZ_RS528_COPPER");
   EXPECT_EQ(result, cfg::PortProfileID::PROFILE_100G_4_NRZ_RS528_COPPER);
 }
 
-// Test valid lowercase profile string (case-insensitive)
-TEST_F(CmdConfigInterfaceTestFixture, parseProfileValidLowercase) {
-  auto result =
-      ProfileValidator::parseProfile("profile_100g_4_nrz_rs528_copper");
-  EXPECT_EQ(result, cfg::PortProfileID::PROFILE_100G_4_NRZ_RS528_COPPER);
+// Profile names must match the Thrift enum exactly.
+TEST_F(CmdConfigInterfaceTestFixture, parseProfileRejectsLowercase) {
+  EXPECT_THROW(
+      parsePortProfile("profile_100g_4_nrz_rs528_copper"),
+      std::invalid_argument);
 }
 
 // Test unknown profile string throws
 TEST_F(CmdConfigInterfaceTestFixture, parseProfileUnknown) {
   try {
-    ProfileValidator::parseProfile("PROFILE_BOGUS");
+    parsePortProfile("PROFILE_BOGUS");
     FAIL() << "Expected std::invalid_argument";
   } catch (const std::invalid_argument& e) {
     EXPECT_THAT(e.what(), HasSubstr("not a valid PortProfileID"));
@@ -760,149 +760,7 @@ TEST_F(CmdConfigInterfaceTestFixture, parseProfileUnknown) {
 
 // Test empty string throws
 TEST_F(CmdConfigInterfaceTestFixture, parseProfileEmpty) {
-  EXPECT_THROW(ProfileValidator::parseProfile(""), std::invalid_argument);
-}
-
-// ============================================================================
-// ProfileValidator::validateProfile Tests (using test constructor)
-// ============================================================================
-
-// Test that a supported profile passes validation without throwing
-TEST_F(CmdConfigInterfaceTestFixture, validateProfileSupported) {
-  cfg::PlatformMapping platformMapping;
-
-  cfg::PlatformPortProfileConfigEntry profile100G;
-  profile100G.factor()->profileID() =
-      cfg::PortProfileID::PROFILE_100G_4_NRZ_CL91;
-  profile100G.profile()->speed() = cfg::PortSpeed::HUNDREDG;
-  platformMapping.platformSupportedProfiles()->push_back(profile100G);
-
-  cfg::PlatformPortEntry port1;
-  port1.mapping()->name() = "eth1/1/1";
-  port1.mapping()->id() = 1;
-  port1.supportedProfiles()[cfg::PortProfileID::PROFILE_100G_4_NRZ_CL91] =
-      cfg::PlatformPortConfig();
-  platformMapping.ports()[1] = port1;
-
-  std::map<std::string, std::vector<cfg::PortProfileID>> emptyProfiles;
-  ProfileValidator validator(platformMapping, emptyProfiles);
-
-  EXPECT_NO_THROW(validator.validateProfile(
-      "eth1/1/1", cfg::PortProfileID::PROFILE_100G_4_NRZ_CL91));
-}
-
-// Test unsupported profile throws std::invalid_argument
-TEST_F(CmdConfigInterfaceTestFixture, validateProfileNotSupported) {
-  cfg::PlatformMapping platformMapping;
-
-  cfg::PlatformPortEntry port1;
-  port1.mapping()->name() = "eth1/1/1";
-  port1.mapping()->id() = 1;
-  // Only supports 100G
-  port1.supportedProfiles()[cfg::PortProfileID::PROFILE_100G_4_NRZ_CL91] =
-      cfg::PlatformPortConfig();
-  platformMapping.ports()[1] = port1;
-
-  std::map<std::string, std::vector<cfg::PortProfileID>> emptyProfiles;
-  ProfileValidator validator(platformMapping, emptyProfiles);
-
-  try {
-    validator.validateProfile(
-        "eth1/1/1", cfg::PortProfileID::PROFILE_400G_8_PAM4_RS544X2N);
-    FAIL() << "Expected std::invalid_argument";
-  } catch (const std::invalid_argument& e) {
-    EXPECT_THAT(e.what(), HasSubstr("Invalid profile"));
-    EXPECT_THAT(e.what(), HasSubstr("eth1/1/1"));
-    EXPECT_THAT(e.what(), HasSubstr("Supported profiles"));
-  }
-}
-
-// Test port not found throws std::runtime_error
-TEST_F(CmdConfigInterfaceTestFixture, validateProfilePortNotFound) {
-  cfg::PlatformMapping platformMapping;
-  std::map<std::string, std::vector<cfg::PortProfileID>> emptyProfiles;
-  ProfileValidator validator(platformMapping, emptyProfiles);
-
-  try {
-    validator.validateProfile(
-        "eth99/99/99", cfg::PortProfileID::PROFILE_100G_4_NRZ_CL91);
-    FAIL() << "Expected std::runtime_error";
-  } catch (const std::runtime_error& e) {
-    EXPECT_THAT(e.what(), HasSubstr("not found"));
-  }
-}
-
-// Test QSFP profiles take priority over PlatformMapping
-TEST_F(CmdConfigInterfaceTestFixture, validateProfileQsfpPrimaryFallback) {
-  cfg::PlatformMapping platformMapping;
-
-  // PlatformMapping only has 400G
-  cfg::PlatformPortEntry port1;
-  port1.mapping()->name() = "eth1/1/1";
-  port1.mapping()->id() = 1;
-  port1.supportedProfiles()[cfg::PortProfileID::PROFILE_400G_8_PAM4_RS544X2N] =
-      cfg::PlatformPortConfig();
-  platformMapping.ports()[1] = port1;
-
-  // QSFP says only 100G is supported for this port
-  std::map<std::string, std::vector<cfg::PortProfileID>> qsfpProfiles;
-  qsfpProfiles["eth1/1/1"] = {cfg::PortProfileID::PROFILE_100G_4_NRZ_CL91};
-
-  ProfileValidator validator(platformMapping, qsfpProfiles);
-
-  // Should succeed because QSFP says 100G is supported
-  EXPECT_NO_THROW(validator.validateProfile(
-      "eth1/1/1", cfg::PortProfileID::PROFILE_100G_4_NRZ_CL91));
-
-  // Should fail because QSFP does NOT include 400G (even though PlatformMapping
-  // does)
-  try {
-    validator.validateProfile(
-        "eth1/1/1", cfg::PortProfileID::PROFILE_400G_8_PAM4_RS544X2N);
-    FAIL() << "Expected std::invalid_argument";
-  } catch (const std::invalid_argument& e) {
-    EXPECT_THAT(e.what(), HasSubstr("Invalid profile"));
-  }
-}
-
-// ============================================================================
-// ProfileValidator::getProfileSpeed Tests
-// ============================================================================
-
-// Test getProfileSpeed returns correct speed for known profile
-TEST_F(CmdConfigInterfaceTestFixture, getProfileSpeedKnown) {
-  cfg::PlatformMapping platformMapping;
-
-  cfg::PlatformPortProfileConfigEntry profile100G;
-  profile100G.factor()->profileID() =
-      cfg::PortProfileID::PROFILE_100G_4_NRZ_CL91;
-  profile100G.profile()->speed() = cfg::PortSpeed::HUNDREDG;
-  platformMapping.platformSupportedProfiles()->push_back(profile100G);
-
-  cfg::PlatformPortEntry port1;
-  port1.mapping()->name() = "eth1/1/1";
-  port1.mapping()->id() = 1;
-  port1.supportedProfiles()[cfg::PortProfileID::PROFILE_100G_4_NRZ_CL91] =
-      cfg::PlatformPortConfig();
-  platformMapping.ports()[1] = port1;
-
-  std::map<std::string, std::vector<cfg::PortProfileID>> emptyProfiles;
-  ProfileValidator validator(platformMapping, emptyProfiles);
-
-  auto speed = validator.getProfileSpeed(
-      PortID(1), cfg::PortProfileID::PROFILE_100G_4_NRZ_CL91);
-  EXPECT_EQ(speed, cfg::PortSpeed::HUNDREDG);
-}
-
-// Test getProfileSpeed returns DEFAULT for unknown profile
-TEST_F(CmdConfigInterfaceTestFixture, getProfileSpeedUnknown) {
-  cfg::PlatformMapping platformMapping;
-  std::map<std::string, std::vector<cfg::PortProfileID>> emptyProfiles;
-  ProfileValidator validator(platformMapping, emptyProfiles);
-
-  auto speed = validator.getProfileSpeed(
-      PortID(1), cfg::PortProfileID::PROFILE_400G_8_PAM4_RS544X2N);
-  EXPECT_EQ(speed, cfg::PortSpeed::DEFAULT);
+  EXPECT_THROW(parsePortProfile(""), std::invalid_argument);
 }
 
 // ============================================================================
@@ -1012,6 +870,25 @@ TEST_F(CmdConfigInterfaceTestFixture, queryClientSetProfileMultiPort) {
   auto& ports = *switchConfig.ports();
   for (const auto& port : ports) {
     EXPECT_EQ(*port.profileID(), cfg::PortProfileID::PROFILE_100G_4_NRZ_CL91);
+  }
+}
+
+TEST_F(CmdConfigInterfaceTestFixture, queryClientDeduplicatesInterfaceNames) {
+  setupTestableConfigSession(
+      cmdPrefix_, "eth1/1/1 eth1/1/1 profile PROFILE_100G_4_NRZ_CL91");
+  auto cmd = CmdConfigInterface();
+  InterfacesConfig config(
+      {"eth1/1/1", "eth1/1/1", "profile", "PROFILE_100G_4_NRZ_CL91"});
+
+  ASSERT_EQ(config.getInterfaces().size(), 1);
+  auto result = cmd.queryClient(localhost(), config);
+
+  EXPECT_THAT(result, HasSubstr("Successfully configured"));
+  auto& ports = *ConfigSession::getInstance().getAgentConfig().sw()->ports();
+  for (const auto& port : ports) {
+    if (*port.name() == "eth1/1/1") {
+      EXPECT_EQ(*port.profileID(), cfg::PortProfileID::PROFILE_100G_4_NRZ_CL91);
+    }
   }
 }
 
@@ -1841,7 +1718,7 @@ class ApplyProfileSubsumeTestFixture : public CmdConfigTestBase {
 })") {}
 
   // Platform mapping where eth1/1/1 at 400G subsumes eth1/1/2.
-  ProfileValidator makeSubsumeValidator() {
+  PlatformMapping makeSubsumePlatformMapping() {
     cfg::PlatformMapping pm;
 
     cfg::PlatformPortProfileConfigEntry profile400G;
@@ -1869,8 +1746,7 @@ class ApplyProfileSubsumeTestFixture : public CmdConfigTestBase {
         cfg::PlatformPortConfig();
     pm.ports()[2] = port2;
 
-    return ProfileValidator(
-        pm, std::map<std::string, std::vector<cfg::PortProfileID>>{});
+    return PlatformMapping(pm);
   }
 };
 
@@ -1879,12 +1755,16 @@ TEST_F(
     appliesProfileRemovesSubsumedAndReports) {
   setupTestableConfigSession(
       "config interface", "eth1/1/1 profile PROFILE_400G_8_PAM4_RS544X2N");
-  auto validator = makeSubsumeValidator();
+  auto platformMapping = makeSubsumePlatformMapping();
   auto& swConfig = *ConfigSession::getInstance().getAgentConfig().sw();
   utils::InterfaceList interfaces({"eth1/1/1"});
 
   auto result = applyProfileImpl(
-      validator, swConfig, interfaces, "PROFILE_400G_8_PAM4_RS544X2N");
+      swConfig,
+      platformMapping,
+      {},
+      interfaces,
+      "PROFILE_400G_8_PAM4_RS544X2N");
 
   EXPECT_THAT(result, HasSubstr("profile=PROFILE_400G_8_PAM4_RS544X2N"));
   EXPECT_THAT(result, HasSubstr("auto-removed subsumed port(s): eth1/1/2"));
@@ -1917,14 +1797,15 @@ TEST_F(
 TEST_F(ApplyProfileSubsumeTestFixture, subsumeEscalatesToColdboot) {
   setupTestableConfigSession(
       "config interface", "eth1/1/1 profile PROFILE_400G_8_PAM4_RS544X2N");
-  auto validator = makeSubsumeValidator();
+  auto platformMapping = makeSubsumePlatformMapping();
   auto& swConfig = *ConfigSession::getInstance().getAgentConfig().sw();
   utils::InterfaceList interfaces({"eth1/1/1"});
 
   cli::ConfigActionLevel actionLevel = cli::ConfigActionLevel::HITLESS;
   applyProfileImpl(
-      validator,
       swConfig,
+      platformMapping,
+      {},
       interfaces,
       "PROFILE_400G_8_PAM4_RS544X2N",
       &actionLevel);
@@ -1983,10 +1864,8 @@ cfg::PlatformMapping makePendingPlatformMapping(bool port2IsFabric = false) {
   return pm;
 }
 
-ProfileValidator makePendingValidator(bool port2IsFabric = false) {
-  return ProfileValidator(
-      makePendingPlatformMapping(port2IsFabric),
-      std::map<std::string, std::vector<cfg::PortProfileID>>{});
+PlatformMapping makePendingMapping(bool port2IsFabric = false) {
+  return PlatformMapping(makePendingPlatformMapping(port2IsFabric));
 }
 } // namespace
 
@@ -2006,13 +1885,13 @@ class CreatePendingInterfacePortsTestFixture : public CmdConfigTestBase {
 // the created port.
 TEST_F(CreatePendingInterfacePortsTestFixture, createsSupportedInterfacePort) {
   setupTestableConfigSession();
-  auto validator = makePendingValidator();
+  auto platformMapping = makePendingMapping();
   cfg::SwitchConfig config;
   utils::InterfaceList interfaces(
       std::vector<std::string>{"eth1/1/1"}, /*allowMissing*/ true);
 
   auto result = applyProfileImpl(
-      validator, config, interfaces, "PROFILE_100G_4_NRZ_CL91");
+      config, platformMapping, {}, interfaces, "PROFILE_100G_4_NRZ_CL91");
 
   EXPECT_THAT(result, HasSubstr("created port(s): eth1/1/1"));
 
@@ -2025,18 +1904,45 @@ TEST_F(CreatePendingInterfacePortsTestFixture, createsSupportedInterfacePort) {
   EXPECT_EQ(config.interfaces()->size(), 1);
 }
 
+TEST_F(
+    CreatePendingInterfacePortsTestFixture,
+    rejectsProfileUnsupportedByQsfp) {
+  setupTestableConfigSession();
+  auto platformMapping = makePendingMapping();
+  cfg::SwitchConfig config;
+  utils::InterfaceList interfaces(
+      std::vector<std::string>{"eth1/1/1"}, /*allowMissing*/ true);
+  const utility::PortProfileSupportMap qsfpSupportedProfiles{
+      {"eth1/1/1", {cfg::PortProfileID::PROFILE_400G_8_PAM4_RS544X2N}}};
+
+  EXPECT_THROW(
+      applyProfileImpl(
+          config,
+          platformMapping,
+          qsfpSupportedProfiles,
+          interfaces,
+          "PROFILE_100G_4_NRZ_CL91"),
+      std::invalid_argument);
+  EXPECT_TRUE(config.ports()->empty());
+}
+
 // Creating a port removes nothing, so the action level stays HITLESS (no
 // coldboot needed; the commit remains a hitless reloadConfig). See T281221621.
 TEST_F(CreatePendingInterfacePortsTestFixture, createStaysHitless) {
   setupTestableConfigSession();
-  auto validator = makePendingValidator();
+  auto platformMapping = makePendingMapping();
   cfg::SwitchConfig config;
   utils::InterfaceList interfaces(
       std::vector<std::string>{"eth1/1/1"}, /*allowMissing*/ true);
 
   cli::ConfigActionLevel actionLevel = cli::ConfigActionLevel::HITLESS;
   applyProfileImpl(
-      validator, config, interfaces, "PROFILE_100G_4_NRZ_CL91", &actionLevel);
+      config,
+      platformMapping,
+      {},
+      interfaces,
+      "PROFILE_100G_4_NRZ_CL91",
+      &actionLevel);
 
   EXPECT_EQ(actionLevel, cli::ConfigActionLevel::HITLESS);
 }
@@ -2044,13 +1950,14 @@ TEST_F(CreatePendingInterfacePortsTestFixture, createStaysHitless) {
 // A pending non-INTERFACE_PORT (e.g. FABRIC_PORT) cannot be created.
 TEST_F(CreatePendingInterfacePortsTestFixture, throwsOnNonInterfacePort) {
   setupTestableConfigSession();
-  auto validator = makePendingValidator(/*port2IsFabric*/ true);
+  auto platformMapping = makePendingMapping(/*port2IsFabric*/ true);
   cfg::SwitchConfig config;
   utils::InterfaceList interfaces(
       std::vector<std::string>{"eth1/1/2"}, /*allowMissing*/ true);
 
   try {
-    applyProfileImpl(validator, config, interfaces, "PROFILE_100G_4_NRZ_CL91");
+    applyProfileImpl(
+        config, platformMapping, {}, interfaces, "PROFILE_100G_4_NRZ_CL91");
     FAIL() << "Expected std::invalid_argument";
   } catch (const std::invalid_argument& e) {
     EXPECT_THAT(e.what(), HasSubstr("Only interface ports can be created"));
@@ -2062,14 +1969,14 @@ TEST_F(CreatePendingInterfacePortsTestFixture, throwsOnNonInterfacePort) {
 // A name that is not a platform port at all is rejected.
 TEST_F(CreatePendingInterfacePortsTestFixture, throwsOnBogusName) {
   setupTestableConfigSession();
-  auto validator = makePendingValidator();
+  auto platformMapping = makePendingMapping();
   cfg::SwitchConfig config;
   utils::InterfaceList interfaces(
       std::vector<std::string>{"eth9/9/9"}, /*allowMissing*/ true);
 
   EXPECT_THROW(
       applyProfileImpl(
-          validator, config, interfaces, "PROFILE_100G_4_NRZ_CL91"),
+          config, platformMapping, {}, interfaces, "PROFILE_100G_4_NRZ_CL91"),
       std::invalid_argument);
 }
 
@@ -2080,7 +1987,7 @@ TEST_F(
     CreatePendingInterfacePortsTestFixture,
     existingNarrowedFreesAbsentSubport) {
   setupTestableConfigSession();
-  auto validator = makePendingValidator();
+  auto platformMapping = makePendingMapping();
   // Controlling port 1 is present at 400G (which subsumes port 2).
   cfg::SwitchConfig config;
   cfg::Port controlling;
@@ -2096,7 +2003,7 @@ TEST_F(
   interfaces[0].setPort(&config.ports()->at(0));
 
   auto result = applyProfileImpl(
-      validator, config, interfaces, "PROFILE_100G_4_NRZ_CL91");
+      config, platformMapping, {}, interfaces, "PROFILE_100G_4_NRZ_CL91");
 
   EXPECT_THAT(result, HasSubstr("created port(s): eth1/1/2"));
   ASSERT_EQ(config.ports()->size(), 2);
@@ -2112,7 +2019,7 @@ TEST_F(
     CreatePendingInterfacePortsTestFixture,
     throwsWhenSubsumedAndLeavesConfig) {
   setupTestableConfigSession();
-  auto validator = makePendingValidator();
+  auto platformMapping = makePendingMapping();
   // Controlling port 1 is already in the config at 400G, which subsumes port 2.
   cfg::SwitchConfig config;
   cfg::Port controlling;
@@ -2128,7 +2035,7 @@ TEST_F(
   const cfg::SwitchConfig before = config;
   EXPECT_THROW(
       applyProfileImpl(
-          validator, config, interfaces, "PROFILE_100G_4_NRZ_CL91"),
+          config, platformMapping, {}, interfaces, "PROFILE_100G_4_NRZ_CL91"),
       std::invalid_argument);
   EXPECT_EQ(config, before);
 }

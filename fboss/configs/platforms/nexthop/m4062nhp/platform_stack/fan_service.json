@@ -1,10 +1,10 @@
 {
   "pwmBoostOnNumDeadFan": 1,
   "pwmBoostOnNumDeadSensor": 0,
-  "pwmBoostOnNoQsfpAfterInSec": 90,
-  "pwmBoostValue": 60,
-  "pwmTransitionValue": 50,
-  "pwmLowerThreshold": 24,
+  "pwmBoostOnNoQsfpAfterInSec": 0,
+  "pwmBoostValue": 100,
+  "pwmTransitionValue": 60,
+  "pwmLowerThreshold": 60,
   "pwmUpperThreshold": 100,
   "controlInterval": {
     "sensorReadInterval": 5,
@@ -35,7 +35,7 @@
         "fan_8_inner",
         "fan_8_outer"
       ],
-      "slope": 2
+      "slope": 5
     }
   ],
   "fans": [
@@ -50,7 +50,8 @@
       "pwmMax": 255,
       "fanPresentVal": 1,
       "fanMissingVal": 0,
-      "rpmMin": 6000
+      "rpmMin": 6000,
+      "rpmMax": 25000
     },
     {
       "fanName": "fan_1_outer",
@@ -63,7 +64,8 @@
       "pwmMax": 255,
       "fanPresentVal": 1,
       "fanMissingVal": 0,
-      "rpmMin": 6000
+      "rpmMin": 6000,
+      "rpmMax": 25000
     },
     {
       "fanName": "fan_2_inner",
@@ -76,7 +78,8 @@
       "pwmMax": 255,
       "fanPresentVal": 1,
       "fanMissingVal": 0,
-      "rpmMin": 6000
+      "rpmMin": 6000,
+      "rpmMax": 25000
     },
     {
       "fanName": "fan_2_outer",
@@ -89,7 +92,8 @@
       "pwmMax": 255,
       "fanPresentVal": 1,
       "fanMissingVal": 0,
-      "rpmMin": 6000
+      "rpmMin": 6000,
+      "rpmMax": 25000
     },
     {
       "fanName": "fan_3_inner",
@@ -102,7 +106,8 @@
       "pwmMax": 255,
       "fanPresentVal": 1,
       "fanMissingVal": 0,
-      "rpmMin": 6000
+      "rpmMin": 6000,
+      "rpmMax": 25000
     },
     {
       "fanName": "fan_3_outer",
@@ -115,7 +120,8 @@
       "pwmMax": 255,
       "fanPresentVal": 1,
       "fanMissingVal": 0,
-      "rpmMin": 6000
+      "rpmMin": 6000,
+      "rpmMax": 25000
     },
     {
       "fanName": "fan_4_inner",
@@ -128,7 +134,8 @@
       "pwmMax": 255,
       "fanPresentVal": 1,
       "fanMissingVal": 0,
-      "rpmMin": 6000
+      "rpmMin": 6000,
+      "rpmMax": 25000
     },
     {
       "fanName": "fan_4_outer",
@@ -141,7 +148,8 @@
       "pwmMax": 255,
       "fanPresentVal": 1,
       "fanMissingVal": 0,
-      "rpmMin": 6000
+      "rpmMin": 6000,
+      "rpmMax": 25000
     },
     {
       "fanName": "fan_5_inner",
@@ -154,7 +162,8 @@
       "pwmMax": 255,
       "fanPresentVal": 1,
       "fanMissingVal": 0,
-      "rpmMin": 6000
+      "rpmMin": 6000,
+      "rpmMax": 25000
     },
     {
       "fanName": "fan_5_outer",
@@ -167,7 +176,8 @@
       "pwmMax": 255,
       "fanPresentVal": 1,
       "fanMissingVal": 0,
-      "rpmMin": 6000
+      "rpmMin": 6000,
+      "rpmMax": 25000
     },
     {
       "fanName": "fan_6_inner",
@@ -180,7 +190,8 @@
       "pwmMax": 255,
       "fanPresentVal": 1,
       "fanMissingVal": 0,
-      "rpmMin": 6000
+      "rpmMin": 6000,
+      "rpmMax": 25000
     },
     {
       "fanName": "fan_6_outer",
@@ -193,7 +204,8 @@
       "pwmMax": 255,
       "fanPresentVal": 1,
       "fanMissingVal": 0,
-      "rpmMin": 6000
+      "rpmMin": 6000,
+      "rpmMax": 25000
     },
     {
       "fanName": "fan_7_inner",
@@ -206,7 +218,8 @@
       "pwmMax": 255,
       "fanPresentVal": 1,
       "fanMissingVal": 0,
-      "rpmMin": 6000
+      "rpmMin": 6000,
+      "rpmMax": 25000
     },
     {
       "fanName": "fan_7_outer",
@@ -219,7 +232,8 @@
       "pwmMax": 255,
       "fanPresentVal": 1,
       "fanMissingVal": 0,
-      "rpmMin": 6000
+      "rpmMin": 6000,
+      "rpmMax": 25000
     },
     {
       "fanName": "fan_8_inner",
@@ -232,7 +246,8 @@
       "pwmMax": 255,
       "fanPresentVal": 1,
       "fanMissingVal": 0,
-      "rpmMin": 6000
+      "rpmMin": 6000,
+      "rpmMax": 25000
     },
     {
       "fanName": "fan_8_outer",
@@ -245,7 +260,74 @@
       "pwmMax": 255,
       "fanPresentVal": 1,
       "fanMissingVal": 0,
-      "rpmMin": 6000
+      "rpmMin": 6000,
+      "rpmMax": 25000
     }
-  ]
+  ],
+  "shutdownCmd": "/usr/sbin/shutdown -h now",
+  "shutdownCondition": {
+    "numOvertempSensorForShutdown": 2,
+    "conditions": [
+      {
+        "sensorName": "ASIC_DIODE_0",
+        "overtempThreshold": 122.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "ASIC_DIODE_1",
+        "overtempThreshold": 122.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "ASIC_DIODE_2",
+        "overtempThreshold": 122.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "ASIC_TEMP_MAX_C",
+        "overtempThreshold": 112.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "ASIC_TEMP_MIN_C",
+        "overtempThreshold": 112.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "SWITCH_CARD_REAR",
+        "overtempThreshold": 92.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "CPU_TCTL_TEMP",
+        "overtempThreshold": 120.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "CPU_TCCD1_TEMP",
+        "overtempThreshold": 120.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "CPU_TCCD2_TEMP",
+        "overtempThreshold": 120.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "DIMM1_TEMP",
+        "overtempThreshold": 95.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "DIMM2_TEMP",
+        "overtempThreshold": 95.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "NVME_COMPOSITE_TEMP",
+        "overtempThreshold": 95.0,
+        "slidingWindowSize": 10
+      }
+    ]
+  }
 }

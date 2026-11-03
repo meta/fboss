@@ -10,9 +10,9 @@ cpp_library(
     ],
     exported_deps = [
         "fbsource//third-party/glog:glog",
-        "//folly:conv",
-        "//folly:memory",
-        "//folly:network_address",
+        "fbsource//xplat/folly:conv",
+        "fbsource//xplat/folly:memory",
+        "fbsource//xplat/folly:network_address",
     ],
 )
 
@@ -22,7 +22,7 @@ cpp_library(
         "TimeSeriesWithMinMax.h",
         "TimeSeriesWithMinMax-inl.h",
     ],
-    exported_deps = ["//folly:synchronized"],
+    exported_deps = ["fbsource//xplat/folly:synchronized"],
     exported_external_deps = ["boost"],
 )
 
@@ -36,12 +36,12 @@ cpp_library(
     ],
     deps = [
         "fbsource//third-party/fmt:fmt",
-        "//folly:format",
-        "//folly/logging:logging",
+        "fbsource//xplat/folly:exception",
+        "fbsource//xplat/folly/logging:logging",
     ],
     exported_deps = [
         "fbsource//third-party/glog:glog",
-        "//folly:file",
+        "fbsource//xplat/folly:file",
     ],
     exported_external_deps = [
         "boost",
@@ -58,11 +58,11 @@ cpp_library(
         "PciDevice.h",
         "PciSystem.h",
     ],
+    deps = ["fbsource//third-party/fmt:fmt"],
     exported_deps = [
-        "//folly:exception",
-        "//folly:format",
-        "//folly:singleton",
-        "//folly/logging:logging",
+        "fbsource//xplat/folly:exception",
+        "fbsource//xplat/folly:singleton",
+        "fbsource//xplat/folly/logging:logging",
     ],
     exported_external_deps = [
         ("libpciaccess", None, "pciaccess"),
@@ -84,14 +84,18 @@ cpp_library(
     srcs = [
         "RestClient.cpp",
     ],
+    headers = [
+        "RestClient.h",
+    ],
     deps = [
         "fbsource//third-party/curl:curl",
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/logging:logging",
         "//fboss/agent:fboss-error",
-        "//folly:file_util",
-        "//folly/logging:logging",
     ],
     exported_deps = [
-        "//folly:network_address",
+        "fbsource//xplat/folly:network_address",
     ],
 )
 
@@ -100,7 +104,10 @@ cpp_library(
     srcs = [
         "BmcRestClient.cpp",
     ],
-    deps = ["//folly:network_address"],
+    headers = [
+        "BmcRestClient.h",
+    ],
+    deps = ["fbsource//xplat/folly:network_address"],
     exported_deps = [
         ":rest-client",
     ],
@@ -119,17 +126,20 @@ cpp_library(
         "LogThriftCall.cpp",
         "facebook/LogThriftCall.cpp",
     ],
+    headers = [
+        "LogThriftCall.h",
+    ],
     deps = [
         ":thrift_call_duration_logger",
         "//infrasec/authorization:simple_identity_util",
     ],
     exported_deps = [
-        "//folly:conv",
-        "//folly:range",
-        "//folly/futures:core",
-        "//folly/json:dynamic",
-        "//folly/logging:log_level",
-        "//folly/logging:logging",
+        "fbsource//xplat/folly:conv",
+        "fbsource//xplat/folly:range",
+        "fbsource//xplat/folly/futures:core",
+        "fbsource//xplat/folly/json:dynamic",
+        "fbsource//xplat/folly/logging:log_level",
+        "fbsource//xplat/folly/logging:logging",
         "//thrift/lib/cpp2/server:cpp2_conn_context",
     ],
 )
@@ -139,10 +149,12 @@ cpp_library(
     srcs = [
         "AlertLogger.cpp",
     ],
+    headers = [
+        "AlertLogger.h",
+    ],
     exported_deps = [
         "fbsource//third-party/fmt:fmt",
-        "//folly:format",
-        "//folly/logging:logging",
+        "fbsource//xplat/folly/logging:logging",
     ],
 )
 
@@ -184,16 +196,16 @@ cpp_library(
         "CommonUtils.h",
     ],
     deps = [
+        "fbsource//xplat/folly:subprocess",
         ":common_file_utils",
-        "//folly:subprocess",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/debugging/exception_tracer:exception_tracer_base",
+        "fbsource//xplat/folly/logging:logging",
+        "fbsource//xplat/folly/system:shell",
         "//fb303:thread_cached_service_data",
         "//fb303:thread_local_stats",
         "//fboss/agent:fboss-error",
-        "//folly/debugging/exception_tracer:exception_tracer_base",
-        "//folly/logging:logging",
-        "//folly/system:shell",
     ],
 )
 
@@ -218,19 +230,19 @@ cpp_library(
         "FunctionCallTimeReporter.cpp",
     ],
     headers = [
+        "FunctionCallTimeReporter.h",
         "PhysicalMemory.h",
     ],
     deps = [
-        "//folly/logging:logging",
-        "//folly/system:thread_name",
+        "fbsource//xplat/folly/logging:logging",
+        "fbsource//xplat/folly/system:thread_name",
     ],
     exported_deps = [
         "fbsource//third-party/fmt:fmt",
         "fbsource//third-party/glog:glog",
-        "//folly:file",
-        "//folly:format",
-        "//folly:scope_guard",
-        "//folly:singleton",
+        "fbsource//xplat/folly:file",
+        "fbsource//xplat/folly:scope_guard",
+        "fbsource//xplat/folly:singleton",
     ],
     external_deps = ["gflags"],
     exported_external_deps = [
@@ -248,12 +260,12 @@ cpp_library(
         "CommonFileUtils.h",
     ],
     deps = [
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/logging:logging",
         "//fboss/agent:fboss-error",
-        "//folly:string",
-        "//folly/logging:logging",
     ],
     exported_deps = [
-        "//folly:range",
+        "fbsource//xplat/folly:range",
     ],
     exported_external_deps = [("boost", None, "boost_filesystem")],
 )
@@ -268,7 +280,7 @@ cpp_library(
     ],
     deps = [
         "fbsource//third-party/re2:re2",
-        "//folly/logging:logging",
+        "fbsource//xplat/folly/logging:logging",
     ],
     exported_deps = [],
 )
@@ -282,15 +294,15 @@ cpp_library(
         "CommonThriftUtils.h",
     ],
     deps = [
-        "//folly/coro:blocking_wait",
-        "//folly/io/async:async_base",
-        "//folly/logging:logging",
+        "fbsource//xplat/folly/coro:blocking_wait",
+        "fbsource//xplat/folly/io/async:async_base",
+        "fbsource//xplat/folly/logging:logging",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:network_address",
+        "fbsource//xplat/folly/coro:async_scope",
         "//fb303:thread_cached_service_data",
         "//fboss/lib/thrift_service_client:thrift-service-client",
-        "//folly:network_address",
-        "//folly/coro:async_scope",
     ],
     exported_external_deps = [],
 )
@@ -303,9 +315,8 @@ cpp_library(
     headers = [
         "GpiodLine.h",
     ],
-    exported_deps = [
-        "//folly:format",
-    ],
+    deps = ["fbsource//xplat/folly:string"],
+    exported_deps = [],
     exported_external_deps = [
         ("libgpiod", None, "gpiod"),
     ],
@@ -320,9 +331,9 @@ cpp_library(
         "ThreadHeartbeat.h",
     ],
     exported_deps = [
-        "//folly/concurrency:concurrent_hash_map",
-        "//folly/io/async:async_base",
-        "//folly/logging:logging",
+        "fbsource//xplat/folly/concurrency:concurrent_hash_map",
+        "fbsource//xplat/folly/io/async:async_base",
+        "fbsource//xplat/folly/logging:logging",
     ],
 )
 
@@ -335,7 +346,7 @@ cpp_library(
         "ThriftMethodRateLimit.h",
     ],
     exported_deps = [
-        "//folly:token_bucket",
+        "fbsource//xplat/folly:token_bucket",
         "//thrift/lib/cpp2/server:preprocess_functions",
     ],
 )
@@ -349,10 +360,10 @@ cpp_library(
         "ThriftMethodRateLimitSetup.h",
     ],
     deps = [
+        "fbsource//xplat/folly/logging:logging",
         ":thrift_method_rate_limit",
         "//fb303:export_type",
         "//fb303:service_data",
-        "//folly/logging:logging",
         "//thrift/lib/cpp2:server",
     ],
     exported_deps = [],
@@ -369,6 +380,9 @@ cpp_library(
     name = "devmap",
     srcs = [
         "DevMap.cpp",
+    ],
+    headers = [
+        "DevMap.h",
     ],
     deps = [
         "fbsource//third-party/fmt:fmt",
@@ -412,14 +426,14 @@ cpp_library(
         "WarmBootFileUtils.h",
     ],
     deps = [
+        "fbsource//xplat/folly:file_util",
         "//fboss/agent:utils",
         "//fboss/agent/state:state",
-        "//folly:file_util",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/logging:logging",
         "//fboss/agent:fboss-error",
         "//fboss/agent:switch_state-cpp2-types",
-        "//folly/logging:logging",
     ],
 )
 
@@ -432,7 +446,7 @@ cpp_library(
         "ThriftServiceUtils.h",
     ],
     exported_deps = [
-        "//folly:function",
+        "fbsource//xplat/folly:function",
         "//thrift/lib/cpp2:server",
     ],
 )
@@ -446,14 +460,14 @@ cpp_library(
         "ThriftServiceUtils.h",
     ],
     deps = [
-        "//folly/executors:io_thread_pool_executor",
-        "//folly/io/async:epoll",
-        "//folly/io/async:epoll_backend",
-        "//folly/logging:logging",
-        "//folly/system:hardware_concurrency",
+        "fbsource//xplat/folly/executors:io_thread_pool_executor",
+        "fbsource//xplat/folly/io/async:epoll",
+        "fbsource//xplat/folly/io/async:epoll_backend",
+        "fbsource//xplat/folly/logging:logging",
+        "fbsource//xplat/folly/system:hardware_concurrency",
     ],
     exported_deps = [
-        "//folly:function",
+        "fbsource//xplat/folly:function",
         "//thrift/lib/cpp2:server",
     ],
 )

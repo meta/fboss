@@ -1,0 +1,31 @@
+# /usr/lib/systemd/system/led_service.service
+[Unit]
+Description=FBOSS LED Service
+After=platform_manager.service
+After=fsdb.service
+After=qsfp_service.service
+After=rc-local.service
+Wants=fboss_init.service
+After=fboss_init.service
+
+[Service]
+Type=simple
+LimitNOFILE=10000000
+LimitCORE=32G
+
+Environment="PATH=/opt/fboss/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"
+Environment="LD_LIBRARY_PATH=/opt/fboss/lib"
+WorkingDirectory=/opt/fboss
+ExecStart=/bin/bash -c 'source /opt/fboss/bin/setup_fboss_env && exec /opt/fboss/bin/led_service'
+
+Restart=always
+RestartSec=30
+TimeoutStartSec=180s
+
+# Logging to journald
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=led_service
+
+[Install]
+WantedBy=multi-user.target

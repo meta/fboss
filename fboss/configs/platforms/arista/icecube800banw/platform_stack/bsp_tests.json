@@ -1,71 +1,5 @@
 {
   "testData": {
-    "SMB.CPU_VCCIN_1V8_CPU": {
-      "hwmonTestData": {
-        "expectedFeatures": [
-          "vin1",
-          "vin2",
-          "vout1",
-          "vout2",
-          "temp1",
-          "temp2",
-          "temp3",
-          "temp4",
-          "iin1",
-          "iin2",
-          "iout1",
-          "iout2",
-          "pin1",
-          "pin2",
-          "pout1",
-          "pout2"
-        ]
-      }
-    },
-    "SMB.CPU_1V2_VDDQ_1V0_CPU": {
-      "hwmonTestData": {
-        "expectedFeatures": [
-          "vin1",
-          "vin2",
-          "vout1",
-          "vout2",
-          "temp1",
-          "temp2",
-          "temp3",
-          "temp4",
-          "iin1",
-          "iin2",
-          "iout1",
-          "iout2",
-          "pin1",
-          "pin2",
-          "pout1",
-          "pout2"
-        ]
-      }
-    },
-    "SMB.CPU_1V05_CPU_VNN_PCH": {
-      "hwmonTestData": {
-        "expectedFeatures": [
-          "vin1",
-          "vin2",
-          "vout1",
-          "vout2",
-          "temp1",
-          "temp2",
-          "temp3",
-          "temp4",
-          "iin1",
-          "iin2",
-          "iout1",
-          "iout2",
-          "pin1",
-          "pin2",
-          "pout1",
-          "pout2"
-        ]
-      }
-    },
     "SMB.SMB_POS1V8_VDD0": {
       "hwmonTestData": {
         "expectedFeatures": [
@@ -357,6 +291,66 @@
           "pin2",
           "pout1",
           "pout2"
+        ]
+      }
+    },
+    "SMB.SMB_POS48V_LHS": {
+      "hwmonTestData": {
+        "expectedFeatures": [
+          "vin",
+          "vout1",
+          "vmon",
+          "temp1",
+          "iin",
+          "pin"
+        ]
+      }
+    },
+    "SMB.SMB_POS48V_RHS": {
+      "hwmonTestData": {
+        "expectedFeatures": [
+          "vin",
+          "vout1",
+          "vmon",
+          "temp1",
+          "iin",
+          "pin"
+        ]
+      }
+    },
+    "SMB.SMB_POS48V_OPTICS_01": {
+      "hwmonTestData": {
+        "expectedFeatures": [
+          "vin",
+          "vout1",
+          "vmon",
+          "temp1",
+          "iin",
+          "pin"
+        ]
+      }
+    },
+    "SMB.SMB_POS48V_OPTICS_23": {
+      "hwmonTestData": {
+        "expectedFeatures": [
+          "vin",
+          "vout1",
+          "vmon",
+          "temp1",
+          "iin",
+          "pin"
+        ]
+      }
+    },
+    "SMB.CPU_POS48V": {
+      "hwmonTestData": {
+        "expectedFeatures": [
+          "vin",
+          "vout1",
+          "vmon",
+          "temp1",
+          "iin",
+          "pin"
         ]
       }
     }

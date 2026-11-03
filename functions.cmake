@@ -80,7 +80,12 @@ function (add_sai_sdk_dependencies name)
   # link those too so binaries can resolve the SDK's undefined symbols.
   # Entries may be bare filenames (libfoo.so) that resolve against the
   # SDK's lib dir, -lfoo flags, or absolute paths.
-  if (DEFINED SAI_IMPL_DIR AND EXISTS "${SAI_IMPL_DIR}/lib/sai_dependencies.txt")
+  # cmake/*.cmake are included alphabetically, and some callers sort before
+  # AgentHwSaiApi.cmake, which otherwise finds SAI_IMPL_DIR first.
+  if (NOT SAI_IMPL_DIR)
+    find_path(SAI_IMPL_DIR NAMES lib/libsai_impl.a lib/libsai_impl.so)
+  endif ()
+  if (SAI_IMPL_DIR AND EXISTS "${SAI_IMPL_DIR}/lib/sai_dependencies.txt")
     file(READ "${SAI_IMPL_DIR}/lib/sai_dependencies.txt" SAI_DEPENDENCIES_TEXT)
     string(REPLACE "\n" ";" SAI_DEPENDENCIES "${SAI_DEPENDENCIES_TEXT}")
     target_link_directories(${name} PRIVATE "${SAI_IMPL_DIR}/lib")

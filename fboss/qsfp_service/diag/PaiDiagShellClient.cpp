@@ -54,7 +54,6 @@
 #include <folly/init/Init.h>
 #include <folly/io/async/AsyncSignalHandler.h>
 #include <folly/io/async/EventBase.h>
-#include <folly/logging/xlog.h>
 
 #include <netdb.h>
 #include <sys/select.h>

@@ -269,7 +269,8 @@ class Transceiver {
   virtual void setTransceiverLoopback(
       const std::string& /* portName */,
       phy::Side /* side */,
-      bool /* setLoopback */) = 0;
+      bool /* setLoopback */,
+      phy::LoopbackMode /* mode */) = 0;
 
   time_t modulePauseRemediationUntil_{0};
   virtual void setModulePauseRemediation(int32_t timeout) = 0;

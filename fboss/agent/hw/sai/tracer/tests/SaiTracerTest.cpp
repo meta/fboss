@@ -712,4 +712,48 @@ TEST_F(SaiTracerTest, LogMySidEntryCreateFnWithReplayerEnabled) {
 }
 #endif
 
+/*
+ * A new api has to be registered in three separate maps in SaiTracer --
+ * varNames_, varCounts_ (via initVarCounts) and fnPrefix_. All three are
+ * folly::get_or_throw lookups keyed on object type, so a missing entry links
+ * cleanly and throws the first time the object is traced. Nothing else in the
+ * build or test suite exercises those maps, so assert them directly.
+ */
+TEST_F(SaiTracerTest, IsolationGroupObjectTypesAreRegistered) {
+  folly::SingletonVault::singleton()->destroyInstances();
+  folly::SingletonVault::singleton()->reenableInstances();
+
+  FLAGS_enable_replayer = true;
+  FLAGS_sai_log = "/dev/null";
+
+  auto tracer = getTracer();
+  if (!tracer) {
+    FLAGS_enable_replayer = false;
+    return;
+  }
+
+  sai_object_id_t oid = 1000;
+  sai_attribute_t attr{};
+  attr.id = SAI_ISOLATION_GROUP_ATTR_TYPE;
+  attr.value.s32 = SAI_ISOLATION_GROUP_TYPE_PORT;
+
+  // A missing entry throws out of these calls and fails the test.
+  for (auto objectType :
+       {SAI_OBJECT_TYPE_ISOLATION_GROUP,
+        SAI_OBJECT_TYPE_ISOLATION_GROUP_MEMBER}) {
+    // varNames_ and varCounts_
+    auto [declaration, varName] = tracer->declareVariable(&oid, objectType);
+    EXPECT_FALSE(declaration.empty());
+    EXPECT_FALSE(varName.empty());
+    // fnPrefix_
+    EXPECT_FALSE(tracer->logCreateFn("create_fn", &oid, 0, 1, &attr, objectType)
+                     .empty());
+  }
+
+  tracer.reset();
+  folly::SingletonVault::singleton()->destroyInstances();
+  folly::SingletonVault::singleton()->reenableInstances();
+  FLAGS_enable_replayer = false;
+}
+
 } // namespace facebook::fboss

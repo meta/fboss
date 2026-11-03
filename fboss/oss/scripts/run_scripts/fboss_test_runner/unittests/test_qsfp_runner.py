@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from fboss_test_runner.runners.qsfp_test_runner import QSFP_SERVICE_DIR, QsfpTestRunner
+from fboss_test_runner.tier_selection import TestCapability
 
 
 @pytest.fixture
@@ -19,9 +20,34 @@ def _make_args(**overrides):
     args.platform_mapping_override_path = None
     args.bsp_platform_mapping_override_path = None
     args.known_bad_tests_file = None
+    args.without_transceivers = False
     for k, v in overrides.items():
         setattr(args, k, v)
     return args
+
+
+class TestTierCapabilities:
+    @pytest.mark.parametrize(
+        ("without_transceivers", "expected_capabilities"),
+        [
+            (False, (TestCapability.TRANSCEIVER,)),
+            (True, (TestCapability.EXTERNAL_PHY,)),
+        ],
+    )
+    def test_capabilities_follow_cli_flag(
+        self,
+        qsfp_runner,
+        without_transceivers,
+        expected_capabilities,
+    ):
+        with patch.object(
+            qsfp_runner,
+            "args",
+            new=_make_args(without_transceivers=without_transceivers),
+        ):
+            assert (
+                qsfp_runner._get_available_test_capabilities() == expected_capabilities
+            )
 
 
 class TestRunArgsOverrides:

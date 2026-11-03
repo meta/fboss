@@ -54,6 +54,15 @@ void FibInfo::updateFibContainer(
   modifiedFibInfo->ref<switch_state_tags::fibsMap>() = fibsMap;
 }
 
+void FibInfo::removeFibContainer(
+    RouterID vrf,
+    std::shared_ptr<SwitchState>* state) {
+  auto modifiedFibInfo = modify(state);
+  auto fibsMap = modifiedFibInfo->getfibsMap()->clone();
+  fibsMap->removeNode(vrf);
+  modifiedFibInfo->ref<switch_state_tags::fibsMap>() = fibsMap;
+}
+
 std::vector<NextHop> FibInfo::resolveNextHopSetFromId(NextHopSetId id) const {
   auto idToNextHopIdSetMap = getIdToNextHopIdSetMap();
   if (!idToNextHopIdSetMap) {
@@ -135,14 +144,22 @@ FibInfo::getNextHopSetIdRefCountsFromRoutes() const {
   auto collectFromFib = [&refCounts](const auto& fib) {
     for (const auto& [_, route] : std::as_const(*fib)) {
       const auto& fwdInfo = route->getForwardInfo();
-      if (auto id = fwdInfo.getClientNextHopSetID()) {
-        ++refCounts[*id];
-      }
       if (auto id = fwdInfo.getResolvedNextHopSetID()) {
         ++refCounts[*id];
       }
       if (auto id = fwdInfo.getNormalizedResolvedNextHopSetID()) {
         ++refCounts[*id];
+      }
+      const auto& clientEntries = route->getEntryForClients();
+      const auto bestClientId = clientEntries.lowestAdminDistanceClientId();
+      for (const auto& [clientId, entry] : clientEntries) {
+        if (clientId != bestClientId) {
+          continue;
+        }
+        if (auto id = entry->getClientNextHopSetID()) {
+          ++refCounts[*id];
+        }
+        break;
       }
     }
   };

@@ -9,6 +9,7 @@
  */
 #include "fboss/qsfp_service/test/hw_test/HwTransceiverUtils.h"
 
+#include <algorithm>
 #include <set>
 
 #include <fmt/format.h>
@@ -18,8 +19,10 @@
 #include "fboss/agent/FbossError.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
 #include "fboss/agent/platforms/common/PlatformMapping.h"
+#include "fboss/agent/test/utils/PortTestUtils.h"
 #include "fboss/lib/config/PlatformConfigUtils.h"
 #include "fboss/qsfp_service/TransceiverManager.h"
+#include "fboss/qsfp_service/module/cmis/CmisHelper.h"
 #include "fboss/qsfp_service/module/properties/TransceiverPropertiesManager.h"
 
 namespace facebook::fboss::utility {
@@ -311,6 +314,8 @@ void HwTransceiverUtils::verifyOpticsSettings(
     EXPECT_TRUE(
         *settings.powerControl() == PowerControlState::POWER_OVERRIDE ||
         *settings.powerControl() == PowerControlState::HIGH_POWER_OVERRIDE);
+    bool isCpoModule =
+        (tcvrState.identifier().value() == TransceiverModuleIdentifier::CPO);
 
     // No need to Check CDR for AEC cables T234995630
     bool isAec =
@@ -318,7 +323,9 @@ void HwTransceiverUtils::verifyOpticsSettings(
     // LPO Modules dont have a DSP, so we dont need to check for CDR.
     bool isLpoModule =
         (tcvrState.moduleTechnology().value() == ModuleTechnology::LPO);
-    if (!(isAec || isLpoModule)) {
+    if (isCpoModule) {
+      EXPECT_EQ(*settings.cdrTx(), FeatureState::ENABLED);
+    } else if (!(isAec || isLpoModule)) {
       EXPECT_EQ(*settings.cdrTx(), FeatureState::ENABLED);
       EXPECT_EQ(*settings.cdrRx(), FeatureState::ENABLED);
     }
@@ -364,6 +371,14 @@ void HwTransceiverUtils::verifyMediaInterfaceCompliance(
   for (auto mediaLane : tcvrState.portNameToMediaLanes()->at(portName)) {
     ASSERT_TRUE(mediaLane < allMediaInterfaces.size());
     mediaInterfaces.push_back(allMediaInterfaces[mediaLane]);
+  }
+
+  if (isAoc(tcvrState)) {
+    // An AOC programs like an active cable regardless of the profile's
+    // copper/optical suffix, so the per-profile verifiers below (which
+    // read smfCode or expect a copper transmitter) don't apply.
+    verifyActiveOpticalCableProfile(mgmtInterface, mediaInterfaces, profile);
+    return;
   }
 
   switch (profile) {
@@ -426,10 +441,18 @@ void HwTransceiverUtils::verifyMediaInterfaceCompliance(
 
     case cfg::PortProfileID::PROFILE_800G_4_PAM4_RS544X2N_OPTICAL:
     case cfg::PortProfileID::PROFILE_800G_8_PAM4_RS544X2N_OPTICAL:
-      verifyOptical800gProfile(mgmtInterface, mediaInterfaces);
+      verifyOpticalProfileForSpeed(
+          mgmtInterface, mediaInterfaces, cfg::PortSpeed::EIGHTHUNDREDG);
+      break;
+    case cfg::PortProfileID::PROFILE_1600G_8_PAM4_RS544X2N_OPTICAL:
+      verifyOpticalProfileForSpeed(
+          mgmtInterface, mediaInterfaces, cfg::PortSpeed::ONEPOINTSIXT);
       break;
     case cfg::PortProfileID::PROFILE_800G_8_PAM4_RS544X2N_COPPER:
       verifyCopper800gProfile(tcvrState, mediaInterfaces);
+      break;
+    case cfg::PortProfileID::PROFILE_1600G_8_PAM4_RS544X2N_COPPER:
+      verifyCopper1600gProfile(tcvrState, mediaInterfaces);
       break;
     default:
       throw FbossError(
@@ -519,14 +542,18 @@ void HwTransceiverUtils::verify200gProfile(
         *mediaId.media()->smfCode() == SMFMediaInterfaceCode::DR2_200G ||
         *mediaId.media()->smfCode() == SMFMediaInterfaceCode::DR1_200G ||
         *mediaId.media()->smfCode() == SMFMediaInterfaceCode::FR1_200G ||
-        *mediaId.media()->smfCode() == SMFMediaInterfaceCode::FR2_200G);
+        *mediaId.media()->smfCode() == SMFMediaInterfaceCode::FR2_200G ||
+        // 800G ZR in 3x200G mode
+        *mediaId.media()->smfCode() ==
+            SMFMediaInterfaceCode::ZR_OROADM_FLEXO_6E_DPO_600G);
     EXPECT_TRUE(
         *mediaId.code() == MediaInterfaceCode::FR4_200G ||
         *mediaId.code() == MediaInterfaceCode::LR4_200G ||
         *mediaId.code() == MediaInterfaceCode::DR2_200G ||
         *mediaId.code() == MediaInterfaceCode::DR1_200G ||
         *mediaId.code() == MediaInterfaceCode::FR1_200G ||
-        *mediaId.code() == MediaInterfaceCode::FR2_200G);
+        *mediaId.code() == MediaInterfaceCode::FR2_200G ||
+        *mediaId.code() == MediaInterfaceCode::ZR_800G);
   }
 }
 
@@ -622,16 +649,17 @@ void HwTransceiverUtils::verifyCopper53gProfile(
   }
 }
 
-void HwTransceiverUtils::verifyOptical800gProfile(
+void HwTransceiverUtils::verifyOpticalProfileForSpeed(
     const TransceiverManagementInterface mgmtInterface,
-    const std::vector<MediaInterfaceId>& mediaInterfaces) {
+    const std::vector<MediaInterfaceId>& mediaInterfaces,
+    cfg::PortSpeed speed) {
   EXPECT_EQ(mgmtInterface, TransceiverManagementInterface::CMIS);
 
-  // Collect valid SMF codes for 800G speed from config
+  // Collect valid SMF codes for this speed from config
   std::set<SMFMediaInterfaceCode> validSmfCodes;
   for (auto code : TransceiverPropertiesManager::getKnownCodes()) {
     auto codes = TransceiverPropertiesManager::getMediaCodesForSpeed<
-        SMFMediaInterfaceCode>(code, cfg::PortSpeed::EIGHTHUNDREDG);
+        SMFMediaInterfaceCode>(code, speed);
     validSmfCodes.insert(codes.begin(), codes.end());
   }
 
@@ -662,6 +690,63 @@ void HwTransceiverUtils::verifyCopper800gProfile(
           *mediaId.media()->activeCuCode() ==
           ActiveCuHostInterfaceCode::AUI_PAM4_8S_800G);
     }
+  }
+}
+
+bool HwTransceiverUtils::isAoc(const TcvrState& tcvrState) {
+  return TransceiverManager::activeCable(tcvrState) &&
+      *tcvrState.cable()->transmitterTech() == TransmitterTechnology::OPTICAL;
+}
+
+void HwTransceiverUtils::verifyActiveOpticalCableProfile(
+    const TransceiverManagementInterface mgmtInterface,
+    const std::vector<MediaInterfaceId>& mediaInterfaces,
+    cfg::PortProfileID profile) {
+  EXPECT_EQ(mgmtInterface, TransceiverManagementInterface::CMIS);
+
+  const auto& speedApplications = CmisHelper::getActiveSpeedApplication();
+  auto expectedCodesIt = speedApplications.find(utility::getSpeed(profile));
+  if (expectedCodesIt == speedApplications.end()) {
+    throw FbossError(
+        "No active cable application for profile ",
+        apache::thrift::util::enumNameSafe(profile));
+  }
+  const auto& expectedCodes = expectedCodesIt->second;
+  const auto& activeMediaMap = CmisHelper::getActiveMediaInterfaceMapping();
+
+  for (const auto& mediaId : mediaInterfaces) {
+    auto activeCuCode = *mediaId.media()->activeCuCode();
+    EXPECT_TRUE(
+        std::find(expectedCodes.begin(), expectedCodes.end(), activeCuCode) !=
+        expectedCodes.end())
+        << "Unexpected activeCuCode "
+        << apache::thrift::util::enumNameSafe(activeCuCode) << " for profile "
+        << apache::thrift::util::enumNameSafe(profile);
+    auto mediaCodeIt = activeMediaMap.find(activeCuCode);
+    ASSERT_TRUE(mediaCodeIt != activeMediaMap.end());
+    EXPECT_EQ(*mediaId.code(), mediaCodeIt->second);
+  }
+}
+
+void HwTransceiverUtils::verifyCopper1600gProfile(
+    const TcvrState& tcvrState,
+    const std::vector<MediaInterfaceId>& mediaInterfaces) {
+  const auto& cable = *tcvrState.cable();
+  const auto& transmitterTech = *cable.transmitterTech();
+  auto mgmtInterface =
+      apache::thrift::can_throw(*tcvrState.transceiverManagementInterface());
+
+  EXPECT_EQ(mgmtInterface, TransceiverManagementInterface::CMIS);
+  EXPECT_EQ(TransmitterTechnology::COPPER, transmitterTech);
+  // 1.6T over copper only exists as an active cable: a passive DAC carries no
+  // 200G/lane SerDes on any of our platforms.
+  EXPECT_TRUE(TransceiverManager::activeCable(tcvrState));
+
+  for (const auto& mediaId : mediaInterfaces) {
+    EXPECT_EQ(*mediaId.code(), MediaInterfaceCode::CR8_1600G);
+    EXPECT_EQ(
+        *mediaId.media()->activeCuCode(),
+        ActiveCuHostInterfaceCode::AUI_PAM4_8_1600G);
   }
 }
 

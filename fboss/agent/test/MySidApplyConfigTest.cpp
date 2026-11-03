@@ -296,3 +296,29 @@ TEST_F(MySidApplyConfigTest, AdjacencyEntryHasInterfaceId) {
   ASSERT_TRUE(mySid->getAdjacencyInterfaceId().has_value());
   EXPECT_EQ(mySid->getAdjacencyInterfaceId().value(), 1);
 }
+
+TEST_F(MySidApplyConfigTest, AddAndRemoveSecondLocatorPrefix) {
+  auto config = baseConfig_;
+  cfg::MySidConfig mySidConfig;
+  mySidConfig.locatorPrefix() = "fdad:ffff::/32";
+  mySidConfig.locatorPrefixes() = {"fdad:ffff::/32"};
+  mySidConfig.entries()[0x7fff].decap() = cfg::DecapMySidConfig{};
+  config.mySidConfig() = mySidConfig;
+  applyConfig(config);
+  auto legacySid = getMySid("fdad:ffff:7fff::/48");
+  ASSERT_NE(legacySid, nullptr);
+
+  mySidConfig.locatorPrefixes() = {"fdad:ffff::/32", "fdad:20d::/32"};
+  config.mySidConfig() = mySidConfig;
+  applyConfig(config);
+  EXPECT_EQ(getMySidCount(), 2);
+  EXPECT_EQ(getMySid("fdad:ffff:7fff::/48"), legacySid);
+  EXPECT_NE(getMySid("fdad:20d:7fff::/48"), nullptr);
+
+  mySidConfig.locatorPrefixes() = {"fdad:ffff::/32"};
+  config.mySidConfig() = mySidConfig;
+  applyConfig(config);
+  EXPECT_EQ(getMySidCount(), 1);
+  EXPECT_EQ(getMySid("fdad:ffff:7fff::/48"), legacySid);
+  EXPECT_EQ(getMySid("fdad:20d:7fff::/48"), nullptr);
+}

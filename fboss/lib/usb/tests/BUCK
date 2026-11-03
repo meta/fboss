@@ -13,8 +13,8 @@ cpp_library(
         "MockTransceiverI2CApi.h",
     ],
     deps = [
+        "fbsource//xplat/folly/logging:logging",
         "//fboss/qsfp_service/if:transceiver-cpp2-types",
-        "//folly/logging:logging",
     ],
     exported_deps = [
         "fbsource//third-party/googletest:gmock",
@@ -32,8 +32,8 @@ cpp_unittest(
     network_access = network_access_utils.none(),
     deps = [
         "fbsource//third-party/googletest:gmock",
+        "fbsource//xplat/folly/container:enumerate",
         "//fboss/lib/usb:cp2112",
         "//fboss/lib/usb:wedge_i2c",
-        "//folly/container:enumerate",
     ],
 )

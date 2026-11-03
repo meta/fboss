@@ -29,6 +29,7 @@ buck_filegroup(
     srcs = [src for src in _GENERATED_PLATFORM_MAPPING_FILES if "/".join(src.split("/")[:-1]) in _PLATFORM_DESCRIPTOR_DIRS],
     visibility = [
         "//fboss/agent/fbpkg/...",
+        "//fboss/agent/sim/facebook/nplsim/...",
         "//fboss/led_service/fbpkg/...",
         "//fboss/lib/platforms/facebook/tests/...",
         "//netos/services/fboss_led_service/...",
@@ -36,4 +37,12 @@ buck_filegroup(
         "//netos/services/fboss_sw_agent/...",
         "//netos/services/fboss_wedge_agent/...",
     ],
+)
+
+buck_filegroup(
+    name = "minipack3n_fpf_gtsw_platform_mapping",
+    srcs = glob([
+        "platforms/accton/minipack3n/variants/minipack3n_fpf_gtsw/platform_mapping/generated/*.json",
+    ]),
+    visibility = ["//fboss/lib/platforms/facebook/tests/..."],
 )

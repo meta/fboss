@@ -310,8 +310,7 @@ bool PhyManager::setPortToPortCacheInfoLocked(
   // Now check system lane id
   if (matched) {
     for (auto i = 0; i < lockedCache->systemLanes.size(); ++i) {
-      if (systemLanesConfig.find(lockedCache->systemLanes[i]) ==
-          systemLanesConfig.end()) {
+      if (!systemLanesConfig.contains(lockedCache->systemLanes[i])) {
         matched = false;
         break;
       }
@@ -320,8 +319,7 @@ bool PhyManager::setPortToPortCacheInfoLocked(
   // Now check line lane id
   if (matched) {
     for (auto i = 0; i < lockedCache->lineLanes.size(); ++i) {
-      if (lineLanesConfig.find(lockedCache->lineLanes[i]) ==
-          lineLanesConfig.end()) {
+      if (!lineLanesConfig.contains(lockedCache->lineLanes[i])) {
         matched = false;
         break;
       }
@@ -847,8 +845,7 @@ std::vector<PortID> PhyManager::getPortsSupportingFeature(
       portToCacheInfo_.end(),
       [&ports, this, &xphysSupportingFeature](auto& portAndInfo) {
         auto portXphy = getRLockedCache(portAndInfo.first)->xphyID;
-        if (xphysSupportingFeature.find(portXphy) !=
-            xphysSupportingFeature.end()) {
+        if (xphysSupportingFeature.contains(portXphy)) {
           ports.push_back(portAndInfo.first);
         }
       });
@@ -907,7 +904,7 @@ std::optional<cfg::PortSpeed> PhyManager::getProgrammedSpeed(PortID portID) {
 }
 
 bool PhyManager::shouldInitializePimXphy(PimID pim) const {
-  return xphyMap_.find(pim) != xphyMap_.end();
+  return xphyMap_.contains(pim);
 }
 
 PhyManager::PortStatsRLockedPtr PhyManager::getRLockedStats(

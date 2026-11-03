@@ -84,26 +84,6 @@
         "profileID": 58
       },
       {
-        "aPortName": "eth1/8/1",
-        "zPortName": "eth1/8/1",
-        "profileID": 58
-      },
-      {
-        "aPortName": "eth1/8/3",
-        "zPortName": "eth1/8/3",
-        "profileID": 58
-      },
-      {
-        "aPortName": "eth1/8/5",
-        "zPortName": "eth1/8/5",
-        "profileID": 58
-      },
-      {
-        "aPortName": "eth1/8/7",
-        "zPortName": "eth1/8/7",
-        "profileID": 58
-      },
-      {
         "aPortName": "eth1/9/1",
         "zPortName": "eth1/9/5",
         "profileID": 58
@@ -504,26 +484,6 @@
         "profileID": 58
       },
       {
-        "aPortName": "eth1/40/1",
-        "zPortName": "eth1/80/1",
-        "profileID": 58
-      },
-      {
-        "aPortName": "eth1/40/3",
-        "zPortName": "eth1/80/3",
-        "profileID": 58
-      },
-      {
-        "aPortName": "eth1/40/5",
-        "zPortName": "eth1/80/5",
-        "profileID": 58
-      },
-      {
-        "aPortName": "eth1/40/7",
-        "zPortName": "eth1/80/7",
-        "profileID": 58
-      },
-      {
         "aPortName": "eth1/41/1",
         "zPortName": "eth1/81/5",
         "profileID": 58
@@ -614,43 +574,23 @@
         "profileID": 58
       },
       {
-        "aPortName": "eth1/46/1",
-        "zPortName": "eth1/46/1",
-        "profileID": 58
-      },
-      {
-        "aPortName": "eth1/46/3",
-        "zPortName": "eth1/46/3",
-        "profileID": 58
-      },
-      {
-        "aPortName": "eth1/46/5",
-        "zPortName": "eth1/46/5",
-        "profileID": 58
-      },
-      {
-        "aPortName": "eth1/46/7",
-        "zPortName": "eth1/46/7",
-        "profileID": 58
-      },
-      {
         "aPortName": "eth1/47/1",
-        "zPortName": "eth1/93/7",
+        "zPortName": "eth1/93/1",
         "profileID": 58
       },
       {
         "aPortName": "eth1/47/3",
-        "zPortName": "eth1/93/5",
-        "profileID": 58
-      },
-      {
-        "aPortName": "eth1/47/5",
         "zPortName": "eth1/93/3",
         "profileID": 58
       },
       {
+        "aPortName": "eth1/47/5",
+        "zPortName": "eth1/93/5",
+        "profileID": 58
+      },
+      {
         "aPortName": "eth1/47/7",
-        "zPortName": "eth1/93/1",
+        "zPortName": "eth1/93/7",
         "profileID": 58
       },
       {
@@ -744,26 +684,6 @@
         "profileID": 58
       },
       {
-        "aPortName": "eth1/54/1",
-        "zPortName": "eth1/54/1",
-        "profileID": 58
-      },
-      {
-        "aPortName": "eth1/54/3",
-        "zPortName": "eth1/54/3",
-        "profileID": 58
-      },
-      {
-        "aPortName": "eth1/54/5",
-        "zPortName": "eth1/54/5",
-        "profileID": 58
-      },
-      {
-        "aPortName": "eth1/54/7",
-        "zPortName": "eth1/54/7",
-        "profileID": 58
-      },
-      {
         "aPortName": "eth1/55/1",
         "zPortName": "eth1/55/1",
         "profileID": 58
@@ -841,26 +761,6 @@
       {
         "aPortName": "eth1/62/7",
         "zPortName": "eth1/66/7",
-        "profileID": 58
-      },
-      {
-        "aPortName": "eth1/64/1",
-        "zPortName": "eth1/64/1",
-        "profileID": 58
-      },
-      {
-        "aPortName": "eth1/64/3",
-        "zPortName": "eth1/64/3",
-        "profileID": 58
-      },
-      {
-        "aPortName": "eth1/64/5",
-        "zPortName": "eth1/64/5",
-        "profileID": 58
-      },
-      {
-        "aPortName": "eth1/64/7",
-        "zPortName": "eth1/64/7",
         "profileID": 58
       },
       {
@@ -1054,26 +954,6 @@
         "profileID": 58
       },
       {
-        "aPortName": "eth1/96/1",
-        "zPortName": "eth1/104/1",
-        "profileID": 58
-      },
-      {
-        "aPortName": "eth1/96/3",
-        "zPortName": "eth1/104/3",
-        "profileID": 58
-      },
-      {
-        "aPortName": "eth1/96/5",
-        "zPortName": "eth1/104/5",
-        "profileID": 58
-      },
-      {
-        "aPortName": "eth1/96/7",
-        "zPortName": "eth1/104/7",
-        "profileID": 58
-      },
-      {
         "aPortName": "eth1/97/1",
         "zPortName": "eth1/97/5",
         "profileID": 58
@@ -1194,26 +1074,6 @@
         "profileID": 58
       },
       {
-        "aPortName": "eth1/110/1",
-        "zPortName": "eth1/110/1",
-        "profileID": 58
-      },
-      {
-        "aPortName": "eth1/110/3",
-        "zPortName": "eth1/110/3",
-        "profileID": 58
-      },
-      {
-        "aPortName": "eth1/110/5",
-        "zPortName": "eth1/110/5",
-        "profileID": 58
-      },
-      {
-        "aPortName": "eth1/110/7",
-        "zPortName": "eth1/110/7",
-        "profileID": 58
-      },
-      {
         "aPortName": "eth1/111/1",
         "zPortName": "eth1/111/1",
         "profileID": 58
@@ -1294,26 +1154,6 @@
         "profileID": 58
       },
       {
-        "aPortName": "eth1/118/1",
-        "zPortName": "eth1/118/1",
-        "profileID": 58
-      },
-      {
-        "aPortName": "eth1/118/3",
-        "zPortName": "eth1/118/3",
-        "profileID": 58
-      },
-      {
-        "aPortName": "eth1/118/5",
-        "zPortName": "eth1/118/5",
-        "profileID": 58
-      },
-      {
-        "aPortName": "eth1/118/7",
-        "zPortName": "eth1/118/7",
-        "profileID": 58
-      },
-      {
         "aPortName": "eth1/119/1",
         "zPortName": "eth1/119/1",
         "profileID": 58
@@ -1384,26 +1224,6 @@
         "profileID": 58
       },
       {
-        "aPortName": "eth1/128/1",
-        "zPortName": "eth1/128/1",
-        "profileID": 58
-      },
-      {
-        "aPortName": "eth1/128/3",
-        "zPortName": "eth1/128/3",
-        "profileID": 58
-      },
-      {
-        "aPortName": "eth1/128/5",
-        "zPortName": "eth1/128/5",
-        "profileID": 58
-      },
-      {
-        "aPortName": "eth1/128/7",
-        "zPortName": "eth1/128/7",
-        "profileID": 58
-      },
-      {
         "aPortName": "eth1/129/1",
         "zPortName": "eth1/129/5",
         "profileID": 58
@@ -1418,7 +1238,8 @@
         "zPortName": "eth1/2/1",
         "profileID": 23
       }
-    ]
+    ],
+    "qsfpServiceMemLimitBytes": 2500000000
   },
   "transceiverFirmwareVersions": {
     "versionsMap": {
@@ -1566,6 +1387,30 @@
             }
           ]
       },
+      "EOLO-138HG-5H-6B": {
+          "versions": [
+            {
+              "fwType": 1,
+              "version": "3.5"
+            }
+          ]
+      },
+      "EOLO-138HG-5H-6T": {
+          "versions": [
+            {
+              "fwType": 1,
+              "version": "3.5"
+            }
+          ]
+      },
+      "EOLO-138HG-5H-6W": {
+          "versions": [
+            {
+              "fwType": 1,
+              "version": "3.5"
+            }
+          ]
+      },
       "EOLO-138HG-5H-7B": {
           "versions": [
             {
@@ -1574,7 +1419,39 @@
             }
           ]
       },
+      "EOLO-138HG-5H-9B": {
+          "versions": [
+            {
+              "fwType": 1,
+              "version": "3.5"
+            }
+          ]
+      },
+      "EOLO-138HG-5H-AB": {
+          "versions": [
+            {
+              "fwType": 1,
+              "version": "3.5"
+            }
+          ]
+      },
       "EOLO-138HG-5H-B": {
+          "versions": [
+            {
+              "fwType": 1,
+              "version": "3.5"
+            }
+          ]
+      },
+      "EOLO-138HG-5H-BB": {
+          "versions": [
+            {
+              "fwType": 1,
+              "version": "3.5"
+            }
+          ]
+      },
+      "EOLO-138HG-5H-GB": {
           "versions": [
             {
               "fwType": 1,
@@ -1842,6 +1719,14 @@
             }
           ]
       },
+      "SPQ8E44DOCOA": {
+          "versions": [
+            {
+              "fwType": 1,
+              "version": "0.1"
+            }
+          ]
+      },
       "SPTSHP3CLCK2": {
           "versions": [
             {
@@ -1939,6 +1824,14 @@
           ]
       },
       "T-OH8CNH-NFM": {
+          "versions": [
+            {
+              "fwType": 1,
+              "version": "36.197"
+            }
+          ]
+      },
+      "T-OH8CNH-NFY": {
           "versions": [
             {
               "fwType": 1,

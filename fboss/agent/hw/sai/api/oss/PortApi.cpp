@@ -470,6 +470,13 @@ std::optional<sai_attr_id_t> SaiPortTraits::Attributes::
   return std::nullopt;
 }
 
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 3)
+std::optional<sai_attr_id_t>
+SaiPortTraits::Attributes::AttributeExtOperStatusLatch::operator()() {
+  return std::nullopt;
+}
+#endif
+
 const std::vector<sai_stat_id_t>& SaiPortTraits::llrExtensionStats() {
   static const std::vector<sai_stat_id_t> stats;
   return stats;
@@ -477,6 +484,16 @@ const std::vector<sai_stat_id_t>& SaiPortTraits::llrExtensionStats() {
 
 std::optional<sai_attr_id_t>
 SaiPortTraits::Attributes::AttributeLinkScanMode::operator()() {
+  return std::nullopt;
+}
+
+std::optional<sai_attr_id_t>
+SaiPortTraits::Attributes::AttributeCsigTagActionWrapper::operator()() {
+  return std::nullopt;
+}
+
+std::optional<sai_attr_id_t>
+SaiPortTraits::Attributes::AttributeCsigLinkLocatorWrapper::operator()() {
   return std::nullopt;
 }
 

@@ -21,6 +21,7 @@
 #include <folly/MacAddress.h>
 #include <folly/String.h>
 #include <folly/io/Cursor.h>
+#include <optional>
 #include <ostream>
 #include "fboss/agent/packet/Ethertype.h"
 #include "fboss/agent/packet/HdrParseError.h"
@@ -141,6 +142,51 @@ inline bool operator>=(const VlanTag& lhs, const VlanTag& rhs) {
 }
 
 /*
+ * A CSIG (Congestion Signaling) tag. On the wire it is the CSIG TPID (0x9900)
+ * followed by a 16-bit word:
+ *   signalType (3) | reserved (1) | signal (5) | linkLocator (7)
+ * and then the next EtherType. Untagged and VLAN-tagged frames can both carry
+ * it; in a VLAN-tagged frame it follows the VLAN tags.
+ */
+struct CsigTag {
+  /*
+   * Size on the wire, including the TPID
+   */
+  enum { SIZE = 4 };
+  CsigTag() = default;
+  /*
+   * data constructor, from the 16-bit word following the TPID
+   */
+  explicit CsigTag(uint16_t tag) : value(tag) {}
+  /*
+   * Data constructor with individual members
+   */
+  CsigTag(uint8_t signalType, uint8_t signal, uint8_t linkLocator)
+      : value(
+            ((signalType & 0x7) << 13) | ((signal & 0x1f) << 7) |
+            (linkLocator & 0x7f)) {}
+
+  uint8_t signalType() const {
+    return (value & 0xE000) >> 13;
+  }
+  uint8_t signal() const {
+    return (value & 0x0F80) >> 7;
+  }
+  uint8_t linkLocator() const {
+    return value & 0x007F;
+  }
+
+  std::string toString() const;
+
+  bool operator==(const CsigTag&) const = default;
+
+  /*
+   * The 16-bit tag word (without the TPID), in host byte order
+   */
+  uint16_t value{0};
+};
+
+/*
  * An Ethernet Header. The payload is not represented here.
  */
 class EthHdr {
@@ -212,8 +258,17 @@ class EthHdr {
   uint16_t getEtherType() const {
     return etherType;
   }
+  const std::optional<CsigTag>& getCsigTag() const {
+    return csigTag;
+  }
   uint32_t size() const {
-    return getVlanTags().size() == 0 ? EthHdr::UNTAGGED_PKT_SIZE : EthHdr::SIZE;
+    uint32_t hdrSize =
+        getVlanTags().empty() ? EthHdr::UNTAGGED_PKT_SIZE : EthHdr::SIZE;
+    // A CSIG tag can be present with or without VLAN tags.
+    if (csigTag) {
+      hdrSize += CsigTag::SIZE;
+    }
+    return hdrSize;
   }
   void setDstMac(const folly::MacAddress& dstMac) {
     dstAddr = dstMac;
@@ -233,6 +288,9 @@ class EthHdr {
   void setVlan(VlanID vlan, ETHERTYPE ether = ETHERTYPE::ETHERTYPE_VLAN) {
     setVlans({vlan}, ether);
   }
+  void setCsigTag(std::optional<CsigTag> tag) {
+    csigTag = tag;
+  }
 
   std::string printVlanTags();
 
@@ -250,6 +308,10 @@ class EthHdr {
    */
   VlanTags_t vlanTags;
   /*
+   * CSIG tag is optional, on untagged or VLAN-tagged frames
+   */
+  std::optional<CsigTag> csigTag;
+  /*
    * Either Ethernet II "EtherType" or IEEE 802.3 "size/length"
    */
   uint16_t etherType{0};
@@ -257,7 +319,8 @@ class EthHdr {
 
 inline bool operator==(const EthHdr& lhs, const EthHdr& rhs) {
   return lhs.dstAddr == rhs.dstAddr && lhs.srcAddr == rhs.srcAddr &&
-      lhs.vlanTags == rhs.vlanTags && lhs.etherType == rhs.etherType;
+      lhs.vlanTags == rhs.vlanTags && lhs.csigTag == rhs.csigTag &&
+      lhs.etherType == rhs.etherType;
 }
 
 inline bool operator!=(const EthHdr& lhs, const EthHdr& rhs) {

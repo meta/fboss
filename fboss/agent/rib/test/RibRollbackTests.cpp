@@ -96,7 +96,8 @@ class FailSomeUpdates {
       const LabelToRouteMap& labelToRoute,
       const NextHopIDManager* nextHopIDManager,
       const MySidTable& mySidTable,
-      void* cookie) {
+      void* cookie,
+      bool vrfDeleted) {
     if (toFail_.find(++cnt_) != toFail_.end()) {
       auto curSwitchStatePtr =
           static_cast<std::shared_ptr<facebook::fboss::SwitchState>*>(cookie);
@@ -110,7 +111,8 @@ class FailSomeUpdates {
           labelToRoute,
           nextHopIDManager,
           mySidTable,
-          static_cast<void*>(&desiredState));
+          static_cast<void*>(&desiredState),
+          vrfDeleted);
       throw FbossHwUpdateError(desiredState, *curSwitchStatePtr);
     }
     return ribToSwitchStateUpdate(
@@ -121,7 +123,8 @@ class FailSomeUpdates {
         labelToRoute,
         nextHopIDManager,
         mySidTable,
-        cookie);
+        cookie,
+        vrfDeleted);
   }
 
  private:
@@ -493,7 +496,8 @@ class FailWithMySidInAppliedState {
       const LabelToRouteMap& labelToRoute,
       const NextHopIDManager* nextHopIDManager,
       const MySidTable& mySidTable,
-      void* cookie) {
+      void* cookie,
+      bool vrfDeleted) {
     auto curSwitchStatePtr = static_cast<std::shared_ptr<SwitchState>*>(cookie);
     (*curSwitchStatePtr)->publish();
 
@@ -507,7 +511,8 @@ class FailWithMySidInAppliedState {
         labelToRoute,
         nextHopIDManager,
         mySidTable,
-        static_cast<void*>(&desiredState));
+        static_cast<void*>(&desiredState),
+        vrfDeleted);
 
     // Build the applied state from the ORIGINAL state (not desiredState),
     // since in a partial HW update the FIB may not have been updated.

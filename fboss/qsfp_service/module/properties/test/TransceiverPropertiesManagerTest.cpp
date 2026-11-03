@@ -67,8 +67,12 @@ TEST_F(TransceiverPropertiesManagerTest, DefaultConfigAllCodesKnown) {
   EXPECT_TRUE(
       TransceiverPropertiesManager::isKnown(MediaInterfaceCode::DR4_2x800G));
   EXPECT_TRUE(
+      TransceiverPropertiesManager::isKnown(MediaInterfaceCode::DR8_800G));
+  EXPECT_TRUE(
       TransceiverPropertiesManager::isKnown(
           MediaInterfaceCode::FR4_LPO_2x400G));
+  EXPECT_TRUE(
+      TransceiverPropertiesManager::isKnown(MediaInterfaceCode::DR8_1600G));
 }
 
 TEST_F(TransceiverPropertiesManagerTest, DR4_2x800G_Properties) {
@@ -77,6 +81,66 @@ TEST_F(TransceiverPropertiesManagerTest, DR4_2x800G_Properties) {
   auto code = MediaInterfaceCode::DR4_2x800G;
   EXPECT_EQ(TransceiverPropertiesManager::getNumHostLanes(code), 8);
   EXPECT_EQ(TransceiverPropertiesManager::getNumMediaLanes(code), 8);
+}
+
+TEST_F(TransceiverPropertiesManagerTest, DR8_800G_Properties) {
+  initDefault();
+
+  auto code = MediaInterfaceCode::DR8_800G;
+  EXPECT_EQ(TransceiverPropertiesManager::getNumHostLanes(code), 8);
+  EXPECT_EQ(TransceiverPropertiesManager::getNumMediaLanes(code), 8);
+  EXPECT_EQ(
+      TransceiverPropertiesManager::deriveSmfCode(0x56, {0}, 0x52, 500), code);
+}
+
+TEST_F(TransceiverPropertiesManagerTest, DR8_800G_4x200GCombination) {
+  initDefault();
+
+  const auto& props =
+      TransceiverPropertiesManager::getProperties(MediaInterfaceCode::DR8_800G);
+  ASSERT_EQ(props.supportedSpeedCombinations()->size(), 3);
+  EXPECT_EQ(
+      props.supportedSpeedCombinations()[2].combinationName(), "4x200G-DR2");
+  ASSERT_EQ(props.supportedSpeedCombinations()[2].ports()->size(), 4);
+  for (int i = 0; i < 4; ++i) {
+    const auto& port = props.supportedSpeedCombinations()[2].ports()[i];
+    EXPECT_EQ(*port.speed(), cfg::PortSpeed::TWOHUNDREDG);
+    EXPECT_EQ(*port.hostLanes()->start(), i * 2);
+    EXPECT_EQ(*port.hostLanes()->count(), 2);
+    EXPECT_EQ(*port.mediaLanes()->start(), i * 2);
+    EXPECT_EQ(*port.mediaLanes()->count(), 2);
+    EXPECT_EQ(
+        port.mediaLaneCode()->smfCode().value(),
+        SMFMediaInterfaceCode::DR2_200G);
+    EXPECT_EQ(*port.mediaInterfaceCode(), MediaInterfaceCode::DR2_200G);
+  }
+}
+
+TEST_F(TransceiverPropertiesManagerTest, DR8_1600G_Properties) {
+  initDefault();
+
+  auto code = MediaInterfaceCode::DR8_1600G;
+  EXPECT_EQ(TransceiverPropertiesManager::getNumHostLanes(code), 8);
+  EXPECT_EQ(TransceiverPropertiesManager::getNumMediaLanes(code), 8);
+  EXPECT_EQ(
+      TransceiverPropertiesManager::deriveSmfCode(
+          0x73, {0, 1, 2, 3, 4, 5, 6, 7}, 0x80, 500),
+      code);
+
+  const auto& props = TransceiverPropertiesManager::getProperties(code);
+  ASSERT_EQ(props.supportedSpeedCombinations()->size(), 4);
+  EXPECT_EQ(
+      props.supportedSpeedCombinations()[0].combinationName(), "1x1600G-DR8");
+  ASSERT_EQ(props.supportedSpeedCombinations()[0].ports()->size(), 1);
+  EXPECT_EQ(
+      *props.supportedSpeedCombinations()[0].ports()[0].speed(),
+      cfg::PortSpeed::ONEPOINTSIXT);
+  EXPECT_EQ(
+      props.supportedSpeedCombinations()[1].combinationName(), "2x800G-DR4");
+  EXPECT_EQ(
+      props.supportedSpeedCombinations()[2].combinationName(), "4x400G-DR2");
+  EXPECT_EQ(
+      props.supportedSpeedCombinations()[3].combinationName(), "8x200G-DR1");
 }
 
 TEST_F(TransceiverPropertiesManagerTest, TwoPort400G_Properties) {
@@ -417,6 +481,12 @@ TEST_F(TransceiverPropertiesManagerTest, MediaLaneCodeToMediaInterfaceCode) {
   EXPECT_EQ(
       TransceiverPropertiesManager::mediaLaneCodeToMediaInterfaceCode(0xF7),
       MediaInterfaceCode::ZR_800G);
+  EXPECT_EQ(
+      TransceiverPropertiesManager::mediaLaneCodeToMediaInterfaceCode(0x6A),
+      MediaInterfaceCode::ZR_800G);
+  EXPECT_EQ(
+      TransceiverPropertiesManager::mediaLaneCodeToMediaInterfaceCode(0x7F),
+      MediaInterfaceCode::DR8_1600G);
 
   // Unknown code throws
   EXPECT_THROW(

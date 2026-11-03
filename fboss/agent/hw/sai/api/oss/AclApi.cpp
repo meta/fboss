@@ -15,7 +15,7 @@ SaiAclEntryTraits::Attributes::AttributeFieldRouteDestination::operator()() {
 }
 
 std::optional<sai_attr_id_t>
-SaiAclEntryTraits::Attributes::AttributeLabelExtendedWrapper::operator()() {
+SaiAclTableTraits::Attributes::AttributeFieldRouteDestination::operator()() {
   return std::nullopt;
 }
 

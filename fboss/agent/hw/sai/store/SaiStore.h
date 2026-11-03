@@ -13,12 +13,14 @@
 #include "fboss/agent/gen-cpp2/switch_config_constants.h"
 #include "fboss/agent/hw/sai/api/AclApi.h"
 #include "fboss/agent/hw/sai/api/AdapterKeySerializers.h"
+#include "fboss/agent/hw/sai/api/IsolationGroupApi.h"
 #include "fboss/agent/hw/sai/api/LagApi.h"
 #include "fboss/agent/hw/sai/api/LoggingUtil.h"
 #include "fboss/agent/hw/sai/api/NextHopGroupApi.h"
 #include "fboss/agent/hw/sai/api/SaiApiTable.h"
 #include "fboss/agent/hw/sai/api/SaiObjectApi.h"
 #include "fboss/agent/hw/sai/api/Traits.h"
+#include "fboss/agent/hw/sai/api/TunnelMapApi.h"
 #include "fboss/agent/hw/sai/store/LoggingUtil.h"
 #include "fboss/agent/hw/sai/store/SaiObject.h"
 #include "fboss/agent/hw/sai/store/SaiObjectWithCounters.h"
@@ -52,6 +54,16 @@ struct AdapterHostKeyWarmbootRecoverable<SaiAclTableTraits> : std::false_type {
 template <>
 struct AdapterHostKeyWarmbootRecoverable<SaiUdfGroupTraits> : std::false_type {
 };
+
+// Keyed by the FBOSS isolation group name, which the adapter knows nothing
+// about, so it must be serialized into warm boot state.
+template <>
+struct AdapterHostKeyWarmbootRecoverable<SaiIsolationGroupTraits>
+    : std::false_type {};
+
+template <>
+struct AdapterHostKeyWarmbootRecoverable<SaiVirtualRouterTraits>
+    : std::false_type {};
 
 #if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)
 template <>
@@ -126,6 +138,32 @@ class SaiObjectStore {
       const typename SaiObjectTraits::AdapterKey& adapterKey,
       bool addToWarmbootHandles = false) {
     auto object = reloadObject(adapterKey, addToWarmbootHandles);
+    object->setOwnedByAdapter(true);
+    XLOGF(DBG5, "SaiStore reload by adapter {}", *object.get());
+    return object;
+  }
+
+  // For objects whose adapter host key cannot be derived from the adapter
+  std::shared_ptr<ObjectType> loadObjectOwnedByAdapter(
+      const typename SaiObjectTraits::AdapterKey& adapterKey,
+      const typename SaiObjectTraits::AdapterHostKey& adapterHostKey) {
+    auto object = objects_.ref(adapterHostKey);
+    if (!object) {
+      object = objects_
+                   .refOrInsert(
+                       adapterHostKey,
+                       ObjectType(adapterKey, adapterHostKey),
+                       true /*force*/)
+                   .first;
+    }
+    if (object->adapterKey() != adapterKey) {
+      throw FbossError(
+          "Adapter key mismatch loading object owned by adapter: stored ",
+          object->adapterKey(),
+          ", adapter ",
+          adapterKey);
+    }
+    warmBootHandles_.erase(adapterHostKey);
     object->setOwnedByAdapter(true);
     XLOGF(DBG5, "SaiStore reload by adapter {}", *object.get());
     return object;
@@ -533,6 +571,11 @@ class SaiObjectStore {
           // to allow build
           return ObjectType(key, SaiUdfGroupTraits::AdapterHostKey{"udfGroup"});
         }
+        if constexpr (std::is_same_v<ObjectTraits, SaiVirtualRouterTraits>) {
+          // Warm boot state from before virtual routers were keyed by RouterID
+          // has only the default virtual router
+          return ObjectType(key, RouterID(0));
+        }
         throw FbossError(
             "attempting to load an object whose adapter host key is not found.");
       }
@@ -687,6 +730,8 @@ class SaiStore {
       SaiObjectStore<SaiUdfMatchTraits>,
       SaiObjectStore<SaiVlanTraits>,
       SaiObjectStore<SaiVlanMemberTraits>,
+      SaiObjectStore<SaiIsolationGroupTraits>,
+      SaiObjectStore<SaiIsolationGroupMemberTraits>,
       SaiObjectStore<SaiRouteTraits>,
       SaiObjectStore<SaiVlanRouterInterfaceTraits>,
       SaiObjectStore<SaiMplsRouterInterfaceTraits>,
@@ -711,6 +756,9 @@ class SaiStore {
       SaiObjectStore<SaiQueueTraits>,
       SaiObjectStore<SaiSchedulerTraits>,
       SaiObjectStore<SaiSamplePacketTraits>,
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 0)
+      SaiObjectStore<SaiMyMacTraits>,
+#endif
       SaiObjectStore<SaiHashTraits>,
       SaiObjectStore<SaiInSegTraits>,
       SaiObjectStore<SaiQosMapTraits>,
@@ -718,6 +766,10 @@ class SaiStore {
       SaiObjectStore<SaiPortConnectorTraits>,
 #if SAI_API_VERSION >= SAI_VERSION(1, 18, 0)
       SaiObjectStore<SaiPortLlrProfileTraits>,
+#endif
+#if defined(SAI_CBFC_SUPPORTED)
+      SaiObjectStore<SaiVirtualChannelTraits>,
+      SaiObjectStore<SaiCbfcCreditProfileTraits>,
 #endif
       SaiObjectStore<SaiWredTraits>,
       SaiObjectStore<SaiTamTraits>,
@@ -734,6 +786,7 @@ class SaiStore {
 #if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)
       SaiObjectStore<SaiSrv6TunnelTraits>,
 #endif
+      SaiObjectStore<SaiVxlanTunnelTraits>,
 #if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)
       SaiObjectStore<SaiMySidEntryTraits>,
       SaiObjectStore<SaiSrv6SidListTraits>,
@@ -743,6 +796,9 @@ class SaiStore {
 #endif
       SaiObjectStore<SaiP2MPTunnelTermTraits>,
       SaiObjectStore<SaiP2PTunnelTermTraits>,
+      SaiObjectStore<SaiTunnelMapTraits>,
+      SaiObjectStore<SaiVniToVrTunnelMapEntryTraits>,
+      SaiObjectStore<SaiVrToVniTunnelMapEntryTraits>,
       SaiObjectStore<SaiLagTraits>,
       SaiObjectStore<SaiLagMemberTraits>,
       SaiObjectStore<SaiMacsecTraits>,

@@ -46,4 +46,8 @@ struct ConfigSessionMetadata {
   // Git commit SHA that this session is based on. Used to detect if someone
   // else committed changes while this session was in progress.
   3: string base;
+  // Validated COOP config paths keyed by service. These let recovery commands
+  // use the last known active config when a service is unavailable. Optional
+  // for compatibility with metadata written before config path discovery.
+  4: optional map<ServiceType, string> currentConfigPaths;
 }

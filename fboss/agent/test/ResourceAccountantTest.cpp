@@ -20,6 +20,7 @@
 #include "fboss/agent/state/MySid.h"
 #include "fboss/agent/state/RouteNextHopEntry.h"
 #include "fboss/agent/state/SwitchState.h"
+#include "fboss/agent/state/Vrf.h"
 #include "fboss/agent/test/TestUtils.h"
 
 namespace {
@@ -1936,6 +1937,33 @@ TEST_F(ResourceAccountantTest, mySidResourceExceeded) {
   EXPECT_FALSE(this->resourceAccountant_->isValidUpdate(delta7));
 }
 
+TEST_F(ResourceAccountantTest, vrfResourceExceeded) {
+  // MockAsic supports 8 VRFs, including the default VRF
+  HwSwitchMatcher vrfScope(std::unordered_set<SwitchID>{SwitchID(0)});
+  auto addVrfs = [&](const std::shared_ptr<SwitchState>& state,
+                     int32_t first,
+                     int32_t last) {
+    auto newState = state->clone();
+    auto vrfs = newState->getVrfs()->modify(&newState);
+    for (auto id = first; id <= last; ++id) {
+      vrfs->addNode(std::make_shared<Vrf>(RouterID(id)), vrfScope);
+    }
+    newState->publish();
+    return newState;
+  };
+
+  auto oldState = std::make_shared<SwitchState>();
+  oldState->publish();
+  auto stateWith7 = addVrfs(oldState, 1, 7);
+  EXPECT_TRUE(this->resourceAccountant_->isValidUpdate(
+      StateDelta(oldState, stateWith7)));
+  EXPECT_EQ(this->resourceAccountant_->vrfUsage_, 7);
+
+  auto stateWith8 = addVrfs(stateWith7, 8, 8);
+  EXPECT_FALSE(this->resourceAccountant_->isValidUpdate(
+      StateDelta(stateWith7, stateWith8)));
+}
+
 TEST_F(ResourceAccountantTest, checkAndUpdateSrv6NextHopResource) {
   FLAGS_enable_srv6_nexthop_resource_protection = true;
 
@@ -2083,6 +2111,57 @@ TEST_F(ResourceAccountantTest, srv6NextHopResourceExceeded) {
       overflowRoute, true, state_));
   EXPECT_FALSE(this->resourceAccountant_->checkSrv6NextHopResource(
       false /* intermediateState */));
+}
+
+TEST_F(ResourceAccountantTest, srv6UcmpDistinctWeights) {
+  FLAGS_enable_srv6_nexthop_resource_protection = true;
+  const int limit = asicTable_->getHwAsic(SwitchID(0))
+                        ->getMaxSrv6UcmpDistinctWeights()
+                        .value();
+
+  auto makeSrv6Nhops = [limit](int group, int maxWeight, NextHopRole lastRole) {
+    RouteNextHopSet nhops;
+    for (int i = 1; i <= limit + 1; ++i) {
+      nhops.insert(ResolvedNextHop(
+          folly::IPAddress(fmt::format("1.1.{}.{}", group, i)),
+          InterfaceID(1),
+          std::min(i, maxWeight),
+          std::nullopt,
+          std::nullopt,
+          std::nullopt,
+          std::nullopt,
+          std::vector<folly::IPAddressV6>{folly::IPAddressV6(
+              fmt::format("3001:db8:{:x}:{:x}::", group, i))},
+          TunnelType::SRV6_ENCAP,
+          std::string("srv6Tunnel0"),
+          std::nullopt,
+          i == limit + 1 ? lastRole : NextHopRole::PRIMARY));
+    }
+    return nhops;
+  };
+  auto checkAdd = [&](int idx, const RouteNextHopSet& nhops) {
+    RouteNextHopEntry entry(nhops, AdminDistance::EBGP);
+    auto route = makeV6Route(
+        {folly::IPAddressV6(fmt::format("2800:{:x}::", idx)), 48},
+        entry,
+        nhops);
+    return this->resourceAccountant_->checkAndUpdateSrv6NextHopResource(
+        route, true /* add */, state_);
+  };
+
+  // 1) limit + 1 distinct weights is rejected
+  EXPECT_FALSE(checkAdd(0, makeSrv6Nhops(0, limit + 1, NextHopRole::PRIMARY)));
+  // 2) limit distinct weights over limit + 1 next hops is accepted
+  EXPECT_TRUE(checkAdd(1, makeSrv6Nhops(1, limit, NextHopRole::PRIMARY)));
+  // 3) Protection groups are not limited
+  EXPECT_TRUE(checkAdd(2, makeSrv6Nhops(2, limit + 1, NextHopRole::BACKUP)));
+  // 4) Non-SRv6 groups are not limited
+  RouteNextHopSet regular;
+  for (int i = 1; i <= limit + 1; ++i) {
+    regular.insert(ResolvedNextHop(
+        folly::IPAddress(fmt::format("2.2.2.{}", i)), InterfaceID(2), i));
+  }
+  EXPECT_TRUE(checkAdd(3, regular));
 }
 
 TEST_F(ResourceAccountantTest, checkAndUpdateRouteCounterResource) {

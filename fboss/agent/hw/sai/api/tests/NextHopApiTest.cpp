@@ -44,18 +44,22 @@ class NextHopApiTest : public ::testing::Test {
 
   NextHopSaiId createMplsNextHop(
       folly::IPAddress ip,
-      std::vector<sai_uint32_t> stack) {
+      std::vector<sai_uint32_t> stack,
+      sai_int32_t outsegType = SAI_OUTSEG_TYPE_SWAP) {
     SaiMplsNextHopTraits::Attributes::Type typeAttribute(
         SAI_NEXT_HOP_TYPE_MPLS);
     SaiMplsNextHopTraits::Attributes::RouterInterfaceId
         routerInterfaceIdAttribute(0);
     SaiMplsNextHopTraits::Attributes::Ip ipAttribute(ip4);
     SaiMplsNextHopTraits::Attributes::LabelStack labelStack{stack};
+    SaiMplsNextHopTraits::Attributes::OutsegType outsegTypeAttribute{
+        outsegType};
     auto nextHopId = nextHopApi->create<SaiMplsNextHopTraits>(
         {typeAttribute,
          routerInterfaceIdAttribute,
          ipAttribute,
          labelStack,
+         outsegTypeAttribute,
          std::nullopt},
         0);
     auto fnh = fs->nextHopManager.get(nextHopId);
@@ -63,6 +67,7 @@ class NextHopApiTest : public ::testing::Test {
     EXPECT_EQ(ip, fnh.ip);
     EXPECT_EQ(0, fnh.routerInterfaceId);
     EXPECT_EQ(stack, fnh.labelStack);
+    EXPECT_EQ(outsegType, fnh.outsegType);
 
     return nextHopId;
   }
@@ -149,6 +154,21 @@ TEST_F(NextHopApiTest, getMplsTypeAttribute) {
   EXPECT_EQ(nextHopTypeGot, SAI_NEXT_HOP_TYPE_MPLS);
 }
 
+TEST_F(NextHopApiTest, getMplsOutsegTypeAttribute) {
+  auto pushNextHopId =
+      createMplsNextHop(ip4, {1001, 2001}, SAI_OUTSEG_TYPE_PUSH);
+  auto swapNextHopId = createMplsNextHop(ip4, {3001}, SAI_OUTSEG_TYPE_SWAP);
+
+  EXPECT_EQ(
+      nextHopApi->getAttribute(
+          pushNextHopId, SaiMplsNextHopTraits::Attributes::OutsegType()),
+      SAI_OUTSEG_TYPE_PUSH);
+  EXPECT_EQ(
+      nextHopApi->getAttribute(
+          swapNextHopId, SaiMplsNextHopTraits::Attributes::OutsegType()),
+      SAI_OUTSEG_TYPE_SWAP);
+}
+
 // IP is create only, so if we try to set it, we expect to fail
 TEST_F(NextHopApiTest, setIpTypeAttribute) {
   auto nextHopId = createNextHop(ip4);
@@ -195,6 +215,8 @@ TEST_F(NextHopApiTest, formatNextHopAttributes) {
   EXPECT_EQ(fmt::format("Ip: {}", str4), fmt::format("{}", ip));
   SaiMplsNextHopTraits::Attributes::LabelStack ls{{42, 100}};
   EXPECT_EQ("LabelStack: [42, 100]", fmt::format("{}", ls));
+  SaiMplsNextHopTraits::Attributes::OutsegType ot{SAI_OUTSEG_TYPE_PUSH};
+  EXPECT_EQ("OutsegType: 0", fmt::format("{}", ot));
 }
 
 #if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)
@@ -233,3 +255,36 @@ TEST_F(NextHopApiTest, formatSrv6SidlistNextHopAttributes) {
   EXPECT_EQ("Srv6SidlistId: 100", fmt::format("{}", sid));
 }
 #endif
+
+TEST_F(NextHopApiTest, createTunnelEncapNextHopWithOverlayDstMac) {
+  SaiTunnelEncapNextHopTraits::Attributes::Type type{
+      SAI_NEXT_HOP_TYPE_TUNNEL_ENCAP};
+  SaiTunnelEncapNextHopTraits::Attributes::TunnelId tunnelId{42};
+  SaiTunnelEncapNextHopTraits::Attributes::Ip ip{ip4};
+  SaiTunnelEncapNextHopTraits::Attributes::OverlayDstMac overlayDstMac{
+      folly::MacAddress("02:00:00:00:00:01")};
+  SaiTunnelEncapNextHopTraits::CreateAttributes attrs{
+      type, tunnelId, ip, overlayDstMac, std::nullopt};
+  auto nextHopId = nextHopApi->create<SaiTunnelEncapNextHopTraits>(attrs, 0);
+  EXPECT_EQ(
+      nextHopApi->getAttribute(
+          nextHopId, SaiTunnelEncapNextHopTraits::Attributes::Type{}),
+      SAI_NEXT_HOP_TYPE_TUNNEL_ENCAP);
+  EXPECT_EQ(
+      nextHopApi->getAttribute(
+          nextHopId, SaiTunnelEncapNextHopTraits::Attributes::OverlayDstMac{}),
+      folly::MacAddress("02:00:00:00:00:01"));
+  const auto& fnh = fs->nextHopManager.get(nextHopId);
+  EXPECT_EQ(fnh.tunnelId, 42);
+  EXPECT_EQ(fnh.overlayDstMac, folly::MacAddress("02:00:00:00:00:01"));
+
+  // An unset MAC must not alias a set one in the host key.
+  SaiTunnelEncapNextHopTraits::CreateAttributes noMacAttrs{
+      type, tunnelId, ip, std::nullopt, std::nullopt};
+  auto noMacId = nextHopApi->create<SaiTunnelEncapNextHopTraits>(noMacAttrs, 0);
+  EXPECT_NE(noMacId, nextHopId);
+  EXPECT_EQ(
+      nextHopApi->getAttribute(
+          noMacId, SaiTunnelEncapNextHopTraits::Attributes::OverlayDstMac{}),
+      folly::MacAddress("00:00:00:00:00:00"));
+}

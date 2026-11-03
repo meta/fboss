@@ -687,4 +687,43 @@ TEST_F(Srv6NextHopManagerTest, linkDownAndReResolveUsesCachedSidList) {
       sidListId, SaiSrv6SidListTraits::Attributes::NextHopId{});
   EXPECT_EQ(updatedNextHopId, newUnderlayNhopId);
 }
+
+TEST_F(Srv6NextHopManagerTest, warmBootKeepsReloadedSidListNextHop) {
+  auto swTunnel = makeSrv6Tunnel("srv6tunnel0", intf0.id);
+  saiManagerTable->srv6TunnelManager().addSrv6Tunnel(swTunnel);
+  auto swNextHop = makeSrv6NextHop(intf0, "srv6tunnel0");
+  auto managedNextHop = saiManagerTable->nextHopManager().addManagedSaiNextHop(
+      swNextHop, makeSrv6SidListHandle(swNextHop));
+  auto srv6NextHop =
+      std::get<std::shared_ptr<ManagedSrv6NextHop>>(managedNextHop);
+  auto underlayIpNhop = std::get<std::shared_ptr<ManagedIpNextHop>>(
+      *srv6NextHop->getUnderlayNextHop());
+  auto underlayNhopId = underlayIpNhop->getSaiObject()->adapterKey();
+
+  // 1. Reload the SID list into a second store, as warm boot does
+  auto adapterKeys = saiStore->adapterKeysFollyDynamic();
+  auto ak2Ahk = saiStore->adapterKeys2AdapterHostKeysFollyDynamic();
+  SaiStore wbStore(0);
+  wbStore.reload(&adapterKeys, &ak2Ahk, {SAI_OBJECT_TYPE_SRV6_SIDLIST});
+
+  // 2. Re-create the managed SID list with the cold boot create attributes
+  auto rifId = saiManagerTable->routerInterfaceManager()
+                   .getRouterInterfaceHandle(swNextHop.intfID().value())
+                   ->adapterKey();
+  auto [sidListKey, sidListAttrs] =
+      makeSrv6SidListKeyAndAttributes(rifId, swNextHop);
+  ManagedSrv6SidList wbSidList(
+      &saiManagerTable->srv6SidListManager(),
+      &wbStore,
+      SaiIpNextHopTraits::AdapterHostKey{rifId, swNextHop.addr()},
+      sidListKey,
+      sidListAttrs);
+
+  // 3. The reloaded NextHopId is kept, so re-publishing it is not a write
+  EXPECT_EQ(
+      std::get<std::optional<SaiSrv6SidListTraits::Attributes::NextHopId>>(
+          wbSidList.getSidList()->attributes()),
+      SaiSrv6SidListTraits::Attributes::NextHopId{underlayNhopId});
+  wbSidList.getSidList()->release();
+}
 #endif

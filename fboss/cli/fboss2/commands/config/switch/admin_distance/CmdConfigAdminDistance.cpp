@@ -21,14 +21,10 @@ namespace facebook::fboss {
 
 namespace {
 constexpr int32_t kMaxAdminDistance = 255;
+} // namespace
 
-// ClientIDs whose admin distance is hardcoded in the agent and cannot be
-// overridden via clientIdToAdminDistance config:
-//   STATIC_ROUTE (1)         -> AdminDistance::STATIC_ROUTE
-//   INTERFACE_ROUTE (2)      -> AdminDistance::DIRECTLY_CONNECTED
-//   LINKLOCAL_ROUTE (3)      -> AdminDistance::DIRECTLY_CONNECTED
-//   REMOTE_INTERFACE_ROUTE (4) -> AdminDistance::DIRECTLY_CONNECTED
-const std::unordered_map<int32_t, std::string>& forbiddenClients() {
+const std::unordered_map<int32_t, std::string>&
+forbiddenAdminDistanceClients() {
   static const std::unordered_map<int32_t, std::string> kForbidden = {
       {1,
        "STATIC_ROUTE is hardcoded to AdminDistance::STATIC_ROUTE in the agent"},
@@ -41,7 +37,33 @@ const std::unordered_map<int32_t, std::string>& forbiddenClients() {
   };
   return kForbidden;
 }
-} // namespace
+
+int32_t parseAdminDistanceClientId(
+    const std::string& token,
+    std::string_view action) {
+  int32_t clientId = 0;
+  try {
+    clientId = folly::to<int32_t>(token);
+  } catch (const folly::ConversionError&) {
+    throw std::invalid_argument(
+        fmt::format("Invalid client-id '{}': must be an integer", token));
+  }
+  if (clientId < 0) {
+    throw std::invalid_argument(
+        fmt::format("client-id must be a non-negative integer, got {}", token));
+  }
+  const auto& forbidden = forbiddenAdminDistanceClients();
+  auto it = forbidden.find(clientId);
+  if (it != forbidden.end()) {
+    throw std::invalid_argument(
+        fmt::format(
+            "FBOSS does not allow {} for client-id {}: {}",
+            action,
+            clientId,
+            it->second));
+  }
+  return clientId;
+}
 
 AdminDistanceArg::AdminDistanceArg(std::vector<std::string> v) {
   if (v.size() != 2) {
@@ -51,26 +73,7 @@ AdminDistanceArg::AdminDistanceArg(std::vector<std::string> v) {
             v.size()));
   }
 
-  try {
-    clientId_ = folly::to<int32_t>(v[0]);
-  } catch (const folly::ConversionError&) {
-    throw std::invalid_argument(
-        fmt::format("Invalid client-id '{}': must be an integer", v[0]));
-  }
-  if (clientId_ < 0) {
-    throw std::invalid_argument(
-        fmt::format("client-id must be a non-negative integer, got {}", v[0]));
-  }
-
-  const auto& forbidden = forbiddenClients();
-  auto it = forbidden.find(clientId_);
-  if (it != forbidden.end()) {
-    throw std::invalid_argument(
-        fmt::format(
-            "FBOSS does not allow changing admin distance for client-id {}: {}",
-            clientId_,
-            it->second));
-  }
+  clientId_ = parseAdminDistanceClientId(v[0], "changing admin distance");
 
   try {
     distance_ = folly::to<int32_t>(v[1]);

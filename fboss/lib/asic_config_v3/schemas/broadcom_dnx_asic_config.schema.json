@@ -1,0 +1,143 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://github.com/meta/fboss/blob/main/fboss/lib/asic_config_v3/schemas/broadcom_dnx_asic_config.schema.json",
+    "title": "Broadcom DNX ASIC Config",
+    "description": "Per-ASIC configuration for the Broadcom DNX family. Captures the SOC key formats, core-type handling, always-emitted SDK settings, and declarative tables consumed by BroadcomDnxGenerator.",
+    "type": "object",
+    "required": [
+        "vendor",
+        "asic",
+        "asic_family",
+        "config_type",
+        "asic_suffix",
+        "num_lanes_per_core",
+        "core_types",
+        "key_formats"
+    ],
+    "additionalProperties": false,
+    "properties": {
+        "vendor": {
+            "type": "string",
+            "const": "broadcom"
+        },
+        "asic": {
+            "type": "string",
+            "description": "ASIC chip identifier. Must match the basename of this JSON file."
+        },
+        "asic_family": {
+            "type": "string",
+            "const": "dnx"
+        },
+        "config_type": {
+            "type": "string",
+            "const": "KEY_VALUE_CONFIG",
+            "description": "AsicConfigType enum value. DNX configs are key-value SOC property maps carried in AsicConfigEntry.config."
+        },
+        "asic_suffix": {
+            "type": "string",
+            "description": "SOC key suffix appended to generated keys (e.g. BCM8889X for Jericho3)."
+        },
+        "additional_asic_suffixes": {
+            "type": "array",
+            "description": "Further SOC key suffixes appearing in this ASIC's settings data, for example BCM8889X_ADAPTER. Listed for documentation and validation; settings data carries these suffixes inline.",
+            "items": {
+                "type": "string"
+            }
+        },
+        "num_lanes_per_core": {
+            "type": "integer",
+            "description": "Number of serdes lanes per core. Used to flatten (core_id, core_lane) into the SOC lane number as core_id * num_lanes_per_core + core_lane."
+        },
+        "core_types": {
+            "type": "object",
+            "description": "Core types (platform_mapping_v2 CoreType enum names) whose connections are traversed for lane and polarity keys, mapped to the key families used when rendering them.",
+            "minProperties": 1,
+            "additionalProperties": {
+                "type": "object",
+                "required": ["lane_map_family", "polarity_family"],
+                "additionalProperties": false,
+                "properties": {
+                    "lane_map_family": {
+                        "type": "string",
+                        "description": "Family token substituted into key_formats.lane_map (e.g. nif, fabric)."
+                    },
+                    "polarity_family": {
+                        "type": "string",
+                        "description": "Family token substituted into key_formats.polarity_rx/tx (e.g. phy, fabric)."
+                    }
+                }
+            }
+        },
+        "key_formats": {
+            "type": "object",
+            "description": "Format strings for the generated wiring keys. Placeholders: {family}, {lane}, {suffix}, {rx}, {tx}.",
+            "required": ["lane_map", "lane_map_value", "polarity_rx", "polarity_tx"],
+            "additionalProperties": false,
+            "properties": {
+                "lane_map": {"type": "string"},
+                "lane_map_value": {"type": "string"},
+                "polarity_rx": {"type": "string"},
+                "polarity_tx": {"type": "string"}
+            }
+        },
+        "default_polarity_settings": {
+            "type": "object",
+            "description": "Default polarity keys without a lane number, emitted verbatim after the per-lane polarity keys. Optional.",
+            "additionalProperties": {
+                "type": "string"
+            }
+        },
+        "base_sdk_settings": {
+            "type": "object",
+            "description": "ASIC-wide SDK settings emitted for every platform and variant, regardless of scenario. Keys carry their SOC suffix inline.",
+            "additionalProperties": {
+                "type": "string"
+            }
+        },
+        "declarative_tables": {
+            "type": "object",
+            "description": "Declarative ASIC tables emitted as fixed SOC properties. Optional; ASICs without such tables omit the field.",
+            "additionalProperties": false,
+            "properties": {
+                "port_speed_map": {
+                    "type": "object",
+                    "description": "port_init_speed_* interface-type-to-speed entries.",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "tm_port_headers": {
+                    "type": "object",
+                    "description": "TM port header settings emitted for every variant. Topology-specific header sets are selected through conditional settings.",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "dtm_flow_region_map": {
+                    "type": "object",
+                    "description": "DTM flow mapping mode regions, expanded to count keys starting at start_region.",
+                    "required": ["key_format", "start_region", "count", "value"],
+                    "additionalProperties": false,
+                    "properties": {
+                        "key_format": {"type": "string"},
+                        "start_region": {"type": "integer"},
+                        "count": {"type": "integer"},
+                        "value": {"type": "string"}
+                    }
+                },
+                "flow_remote_cores": {
+                    "type": "object",
+                    "description": "Flow remote-cores entries emitted verbatim.",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "conditional_settings": {
+            "type": "array",
+            "description": "Optional ASIC-level conditional settings, evaluated before platform-level ones.",
+            "items": {"$ref": "https://github.com/meta/fboss/blob/main/fboss/lib/asic_config_v3/schemas/conditional_setting.schema.json#/$defs/conditional_setting"}
+        }
+    }
+}

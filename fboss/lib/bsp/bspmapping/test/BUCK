@@ -13,7 +13,7 @@ cpp_unittest(
         "test_data/test_example.csv",
     ],
     deps = [
+        "fbsource//xplat/folly:range",
         "//fboss/lib/bsp/bspmapping:parser",
-        "//folly:range",
     ],
 )

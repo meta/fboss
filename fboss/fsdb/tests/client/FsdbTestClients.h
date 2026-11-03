@@ -165,37 +165,43 @@ using TestFsdbStateSubscriber = TestFsdbSubscriber<StateSubT>;
 using TestFsdbPatchSubscriber = TestFsdbSubscriber<PatchSubT>;
 using TestFsdbExtStateSubscriber = TestFsdbSubscriber<StateExtSubT>;
 
-template <bool pubSubStats>
+template <bool pubSubStats, bool enableHybridStateStorage = false>
 struct DeltaPubSubT {
   using PubUnitT = OperDelta;
   using PublisherT = FsdbDeltaPublisher;
   using SubUnitT = OperDelta;
   using SubscriberT = TestFsdbDeltaSubscriber;
   static bool constexpr PubSubStats = pubSubStats;
+  static bool constexpr EnableHybridStateStorage = enableHybridStateStorage;
 };
 using DeltaPubSubForStats = DeltaPubSubT<true>;
 using DeltaPubSubForState = DeltaPubSubT<false>;
-template <bool pubSubStats>
+using DeltaPubSubForHybridState = DeltaPubSubT<false, true>;
+template <bool pubSubStats, bool enableHybridStateStorage = false>
 struct StatePubSubT {
   using PubUnitT = OperState;
   using PublisherT = FsdbStatePublisher;
   using SubUnitT = PubUnitT;
   using SubscriberT = TestFsdbStateSubscriber;
   static bool constexpr PubSubStats = pubSubStats;
+  static bool constexpr EnableHybridStateStorage = enableHybridStateStorage;
 };
 
 using StatePubSubForStats = StatePubSubT<true>;
 using StatePubSubForState = StatePubSubT<false>;
+using StatePubSubForHybridState = StatePubSubT<false, true>;
 
-template <bool pubSubStats>
+template <bool pubSubStats, bool enableHybridStateStorage = false>
 struct PatchPubSubT {
   using PubUnitT = Patch;
   using PublisherT = FsdbPatchPublisher;
   using SubUnitT = SubscriberChunk;
   using SubscriberT = TestFsdbPatchSubscriber;
   static bool constexpr PubSubStats = pubSubStats;
+  static bool constexpr EnableHybridStateStorage = enableHybridStateStorage;
 };
 
 using PatchPubSubForStats = PatchPubSubT<true>;
 using PatchPubSubForState = PatchPubSubT<false>;
+using PatchPubSubForHybridState = PatchPubSubT<false, true>;
 } // namespace facebook::fboss::fsdb::test

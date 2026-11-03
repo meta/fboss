@@ -16,12 +16,27 @@
     "pwmUpdateInterval": 5
   },
   "shutdownCondition": {
-    "numOvertempSensorForShutdown": 1,
+    "numOvertempSensorForShutdown": 2,
     "conditions": [
       {
         "sensorName": "SMB_U2_TH6_TEMP",
-        "overtempThreshold": 120,
-        "slidingWindowSize": 10
+        "overtempThreshold": 102,
+        "slidingWindowSize": 3
+      },
+      {
+        "sensorName": "SMB_U29_LEFT_TMP432_1_TEMP2",
+        "overtempThreshold": 88,
+        "slidingWindowSize": 3
+      },
+      {
+        "sensorName": "SMB_U29_LEFT_TMP432_1_TEMP3",
+        "overtempThreshold": 88,
+        "slidingWindowSize": 3
+      },
+      {
+        "sensorName": "SMB_U30_RIGHT_TMP432_2_TEMP2",
+        "overtempThreshold": 88,
+        "slidingWindowSize": 3
       }
     ]
   },

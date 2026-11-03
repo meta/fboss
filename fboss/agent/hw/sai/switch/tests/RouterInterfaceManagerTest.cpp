@@ -13,6 +13,7 @@
 #include "fboss/agent/hw/sai/switch/SaiManagerTable.h"
 #include "fboss/agent/hw/sai/switch/SaiRouterInterfaceManager.h"
 #include "fboss/agent/hw/sai/switch/SaiSystemPortManager.h"
+#include "fboss/agent/hw/sai/switch/SaiVirtualRouterManager.h"
 #include "fboss/agent/hw/sai/switch/tests/ManagerTestBase.h"
 #include "fboss/agent/state/Interface.h"
 #include "fboss/agent/state/SwitchState.h"
@@ -710,4 +711,57 @@ TEST_F(RouterInterfaceManagerTest, changeAggregatePortRifToPortRif) {
   portIdGot = saiApiTable->routerInterfaceApi().getAttribute(
       handle->adapterKey(), SaiPortRouterInterfaceTraits::Attributes::PortId{});
   EXPECT_NE(portIdGot, static_cast<sai_object_id_t>(lagSaiId));
+}
+
+class RouterInterfaceManagerVrfTest : public ManagerTestBase {
+ public:
+  void SetUp() override {
+    setupStage = SetupStage::PORT | SetupStage::VLAN | SetupStage::VRF;
+    testInterfaceRouterIds = {{1, RouterID(1001)}};
+    ManagerTestBase::SetUp();
+  }
+
+  VirtualRouterSaiId virtualRouterId(RouterID routerId) const {
+    return saiManagerTable->virtualRouterManager()
+        .getVirtualRouterHandle(routerId)
+        ->virtualRouter->adapterKey();
+  }
+
+  sai_object_id_t rifVirtualRouterId(InterfaceID intfId) const {
+    return saiApiTable->routerInterfaceApi().getAttribute(
+        saiManagerTable->routerInterfaceManager()
+            .getRouterInterfaceHandle(intfId)
+            ->adapterKey(),
+        SaiVlanRouterInterfaceTraits::Attributes::VirtualRouterId{});
+  }
+};
+
+TEST_F(RouterInterfaceManagerVrfTest, vlanRouterInterfaceInVrf) {
+  auto state = programmedState->clone();
+  auto rifMap = state->getInterfaces()->modify(&state);
+  rifMap->addNode(makeInterface(testInterfaces[0]), scope());
+  rifMap->addNode(makeInterface(testInterfaces[1]), scope());
+  applyNewState(state);
+
+  EXPECT_EQ(
+      rifVirtualRouterId(InterfaceID(1)), virtualRouterId(RouterID(1001)));
+  EXPECT_EQ(rifVirtualRouterId(InterfaceID(0)), virtualRouterId(RouterID(0)));
+  auto toMeRoutes = saiManagerTable->routerInterfaceManager()
+                        .getRouterInterfaceHandle(InterfaceID(1))
+                        ->toMeRoutes;
+  EXPECT_FALSE(toMeRoutes.empty());
+  for (const auto& toMeRoute : toMeRoutes) {
+    EXPECT_EQ(
+        toMeRoute->adapterHostKey().virtualRouterId(),
+        virtualRouterId(RouterID(1001)));
+  }
+}
+
+TEST_F(RouterInterfaceManagerVrfTest, routerInterfaceInMissingVrf) {
+  auto testInterface = testInterfaces[2];
+  testInterface.routerId = RouterID(2002);
+  EXPECT_THROW(
+      saiManagerTable->routerInterfaceManager().addLocalRouterInterface(
+          makeInterface(testInterface)),
+      FbossError);
 }

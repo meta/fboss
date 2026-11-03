@@ -982,7 +982,7 @@ DOMDataUnion SffModule::getDOMDataUnion() {
       sffData.page3() = IOBuf::wrapBufferAsValue(page3_, MAX_QSFP_PAGE_SIZE);
     }
   }
-  sffData.timeCollected() = lastRefreshTime_;
+  sffData.timeCollected() = lastQsfpDataUpdateTime_;
   DOMDataUnion data;
   data.sff8636() = sffData;
   return data;
@@ -1006,7 +1006,7 @@ void SffModule::updateQsfpData(bool allPages) {
     QSFP_LOG(DBG2, this) << "Performing " << ((allPages) ? "full" : "partial")
                          << " qsfp data cache refresh";
     readSffField(SffField::PAGE_LOWER, lowerPage_);
-    lastRefreshTime_ = std::time(nullptr);
+    lastQsfpDataUpdateTime_ = std::time(nullptr);
     dirty_ = false;
     setQsfpFlatMem();
 
@@ -1940,7 +1940,16 @@ bool SffModule::setTransceiverTxImplLocked(
 void SffModule::setTransceiverLoopbackLocked(
     const std::string& portName,
     phy::Side side,
-    bool setLoopback) {
+    bool setLoopback,
+    phy::LoopbackMode mode) {
+  if (mode != phy::LoopbackMode::INPUT) {
+    throw FbossError(
+        fmt::format(
+            "Module {:s} only supports INPUT loopback, got {:s}",
+            portName,
+            apache::thrift::util::enumNameSafe(mode)));
+  }
+
   // Check if the module supports Loopback feature first
   if (!isTransceiverFeatureSupported(TransceiverFeature::LOOPBACK, side)) {
     throw FbossError(

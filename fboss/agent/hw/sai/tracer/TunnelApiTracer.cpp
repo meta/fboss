@@ -5,6 +5,7 @@
 #include <utility>
 
 #include "fboss/agent/hw/sai/api/TunnelApi.h"
+#include "fboss/agent/hw/sai/api/TunnelMapApi.h"
 #include "fboss/agent/hw/sai/tracer/Utils.h"
 
 using folly::to;
@@ -21,6 +22,8 @@ std::map<int32_t, std::pair<std::string, std::size_t>> _TunnelMap{
     SAI_ATTR_MAP(IpInIpTunnel, EncapTtlMode),
     SAI_ATTR_MAP(IpInIpTunnel, EncapDscpMode),
     SAI_ATTR_MAP(IpInIpTunnel, EncapEcnMode),
+    SAI_ATTR_MAP(VxlanTunnel, EncapMappers),
+    SAI_ATTR_MAP(VxlanTunnel, DecapMappers),
 #if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)
     // SRv6 tunnels share the SAI_TUNNEL_ATTR_* ids with IP-in-IP but are
     // distinct AttributeName types (default getters), so they need their own
@@ -46,6 +49,19 @@ std::map<int32_t, std::pair<std::string, std::size_t>> _TunnelTermMap{
     SAI_ATTR_MAP(P2MPTunnelTerm, SrcIpMask),
     SAI_ATTR_MAP(P2MPTunnelTerm, TunnelType),
     SAI_ATTR_MAP(P2MPTunnelTerm, ActionTunnelId),
+};
+
+std::map<int32_t, std::pair<std::string, std::size_t>> _TunnelMapMap{
+    SAI_ATTR_MAP(TunnelMap, Type),
+};
+
+std::map<int32_t, std::pair<std::string, std::size_t>> _TunnelMapEntryMap{
+    SAI_ATTR_MAP(VniToVrTunnelMapEntry, TunnelMapType),
+    SAI_ATTR_MAP(VniToVrTunnelMapEntry, TunnelMap),
+    SAI_ATTR_MAP(VniToVrTunnelMapEntry, VniIdKey),
+    SAI_ATTR_MAP(VniToVrTunnelMapEntry, VirtualRouterIdValue),
+    SAI_ATTR_MAP(VrToVniTunnelMapEntry, VirtualRouterIdKey),
+    SAI_ATTR_MAP(VrToVniTunnelMapEntry, VniIdValue),
 };
 } // namespace
 
@@ -73,6 +89,16 @@ WRAP_GET_ATTR_FUNC(
     SAI_OBJECT_TYPE_TUNNEL_TERM_TABLE_ENTRY,
     tunnel);
 
+WRAP_CREATE_FUNC(tunnel_map, SAI_OBJECT_TYPE_TUNNEL_MAP, tunnel);
+WRAP_REMOVE_FUNC(tunnel_map, SAI_OBJECT_TYPE_TUNNEL_MAP, tunnel);
+WRAP_SET_ATTR_FUNC(tunnel_map, SAI_OBJECT_TYPE_TUNNEL_MAP, tunnel);
+WRAP_GET_ATTR_FUNC(tunnel_map, SAI_OBJECT_TYPE_TUNNEL_MAP, tunnel);
+
+WRAP_CREATE_FUNC(tunnel_map_entry, SAI_OBJECT_TYPE_TUNNEL_MAP_ENTRY, tunnel);
+WRAP_REMOVE_FUNC(tunnel_map_entry, SAI_OBJECT_TYPE_TUNNEL_MAP_ENTRY, tunnel);
+WRAP_SET_ATTR_FUNC(tunnel_map_entry, SAI_OBJECT_TYPE_TUNNEL_MAP_ENTRY, tunnel);
+WRAP_GET_ATTR_FUNC(tunnel_map_entry, SAI_OBJECT_TYPE_TUNNEL_MAP_ENTRY, tunnel);
+
 sai_tunnel_api_t* wrappedTunnelApi() {
   static sai_tunnel_api_t tunnelWrappers;
 
@@ -90,10 +116,24 @@ sai_tunnel_api_t* wrappedTunnelApi() {
   tunnelWrappers.set_tunnel_term_table_entry_attribute =
       &wrap_set_tunnel_term_table_entry_attribute;
 
+  tunnelWrappers.create_tunnel_map = &wrap_create_tunnel_map;
+  tunnelWrappers.remove_tunnel_map = &wrap_remove_tunnel_map;
+  tunnelWrappers.set_tunnel_map_attribute = &wrap_set_tunnel_map_attribute;
+  tunnelWrappers.get_tunnel_map_attribute = &wrap_get_tunnel_map_attribute;
+
+  tunnelWrappers.create_tunnel_map_entry = &wrap_create_tunnel_map_entry;
+  tunnelWrappers.remove_tunnel_map_entry = &wrap_remove_tunnel_map_entry;
+  tunnelWrappers.set_tunnel_map_entry_attribute =
+      &wrap_set_tunnel_map_entry_attribute;
+  tunnelWrappers.get_tunnel_map_entry_attribute =
+      &wrap_get_tunnel_map_entry_attribute;
+
   return &tunnelWrappers;
 }
 
 SET_SAI_ATTRIBUTES(Tunnel);
 SET_SAI_ATTRIBUTES(TunnelTerm);
+SET_SAI_ATTRIBUTES(TunnelMap);
+SET_SAI_ATTRIBUTES(TunnelMapEntry);
 
 } // namespace facebook::fboss

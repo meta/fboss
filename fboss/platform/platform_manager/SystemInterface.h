@@ -48,14 +48,11 @@ class SystemInterface {
   virtual std::string getHostKernelVersion() const;
   int installLocalRpm() const;
 
-  // Returns the BSP version installed for the running kernel: from the RPMs
-  // named rpmBaseName, selects the one whose package name matches
-  // getHostKernelVersion() and parses out its version token; std::nullopt if
-  // none matches or the token is unparseable. Non-virtual: derived purely from
-  // the virtual host-state reads above, so tests drive it by faking
-  // getHostKernelVersion() and getInstalledRpms().
-  std::optional<BspVersion> getInstalledBspVersion(
-      const std::string& rpmBaseName) const;
+  // Returns the MODULE_VERSION of the kernel module whose driver is bound to
+  // the device at devicePath (<devicePath>/driver/module/version), trimmed;
+  // std::nullopt if no driver is bound or the module declares no version.
+  virtual std::optional<std::string> getBoundDriverVersion(
+      const std::string& devicePath) const;
 
  private:
   std::shared_ptr<PlatformUtils> platformUtils_;

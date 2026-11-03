@@ -8,6 +8,7 @@
  *
  */
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <stdexcept>
 #include <string>
@@ -125,12 +126,19 @@ TEST_F(CmdDeleteAclRuleTestFixture, argValidation_validArity) {
 // queryClient() tests
 // =============================================================
 
-TEST_F(CmdDeleteAclRuleTestFixture, ruleNotFound) {
+TEST_F(CmdDeleteAclRuleTestFixture, ruleNotFoundIsNoop) {
   setupTestableConfigSession(cmdPrefix_, "AclTable1 nope");
+  const auto sessionBefore = sessionConfigText();
   CmdDeleteAclRule cmd;
   HostInfo host("testhost");
   AclRuleDeleteArgs args({"AclTable1", "nope"});
-  EXPECT_THROW(cmd.queryClient(host, args), std::runtime_error);
+  EXPECT_THAT(
+      cmd.queryClient(host, args), HasSubstr("not found in table 'AclTable1'"));
+  // The existing rules are untouched.
+  EXPECT_TRUE(hasRule("rule-1"));
+  EXPECT_TRUE(hasRule("rule-2"));
+  EXPECT_EQ(sessionConfigText(), sessionBefore)
+      << "a no-op delete must not save the config";
 }
 
 TEST_F(CmdDeleteAclRuleTestFixture, tableNotFound) {

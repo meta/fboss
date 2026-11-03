@@ -294,7 +294,8 @@ class SffModule : public QsfpModule {
   virtual void setTransceiverLoopbackLocked(
       const std::string& portName,
       phy::Side side,
-      bool setLoopback) override;
+      bool setLoopback,
+      phy::LoopbackMode mode) override;
 
  private:
   // no copy or assignment

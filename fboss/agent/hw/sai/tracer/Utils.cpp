@@ -654,6 +654,10 @@ string u8Attr(const sai_attribute_t* attr_list, int i) {
   return to<string>("s_a[", i, "].value.u8=", attr_list[i].value.u8);
 }
 
+string s16Attr(const sai_attribute_t* attr_list, int i) {
+  return to<string>("s_a[", i, "].value.s16=", attr_list[i].value.s16);
+}
+
 string u16Attr(const sai_attribute_t* attr_list, int i) {
   return to<string>("s_a[", i, "].value.u16=", attr_list[i].value.u16);
 }

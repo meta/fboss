@@ -2,6 +2,7 @@
 
 #include "fboss/agent/test/prod_agent_tests/ProdInvariantTests.h"
 #include <folly/gen/Base.h>
+#include <thrift/lib/cpp/transport/TTransportException.h>
 #include <chrono>
 #include <thread>
 #include "fboss/agent/AgentConfig.h"
@@ -230,7 +231,30 @@ PortID ProdInvariantTest::getDownlinkPort() {
         "port's PFC portPgConfigName, so a config generated without PFC "
         "yields none.");
   }
-  return downlinks[0];
+  // The lists are derived from the config, which spans every NPU. Each run
+  // targets a single NPU, so pick a downlink belonging to it.
+  auto switchPorts = portsForSwitchUnderTest(downlinks);
+  if (switchPorts.empty()) {
+    throw FbossError(
+        "No downlink ports on switch ",
+        FLAGS_switch_id_for_testing,
+        " (config has ",
+        downlinks.size(),
+        " downlinks across all NPUs)");
+  }
+  return switchPorts[0];
+}
+
+std::vector<PortID> ProdInvariantTest::portsForSwitchUnderTest(
+    const std::vector<PortID>& ports) const {
+  const SwitchID switchId(FLAGS_switch_id_for_testing);
+  std::vector<PortID> filtered;
+  for (const auto& portId : ports) {
+    if (getSw()->getScopeResolver()->scope(portId).has(switchId)) {
+      filtered.push_back(portId);
+    }
+  }
+  return filtered;
 }
 
 std::vector<PortID> ProdInvariantTest::getEcmpPortIds() {
@@ -246,12 +270,44 @@ std::vector<PortID> ProdInvariantTest::getEcmpPortIds() {
 void ProdInvariantTest::verifyAcl() {
   AgentEnsemble* ensemble = getAgentEnsemble();
   auto switchConfig = getSw()->getConfig();
-  auto aclTableGroup = utility::getAclTableGroup(switchConfig);
-  auto switchId = getSw()->getScopeResolver()->scope(*aclTableGroup).switchId();
+  // Each invocation of this test targets a single NPU, identified by
+  // FLAGS_switch_id_for_testing; netcastle runs the test once per NPU. ACL
+  // table groups are scoped to every L3 switch, so resolving a single switch
+  // ID from that scope would throw on a multi-NPU platform.
+  const SwitchID switchId(FLAGS_switch_id_for_testing);
   auto client = ensemble->getHwAgentTestClient(switchId);
 
-  WITH_RETRIES(
-      { EXPECT_EVENTUALLY_TRUE(client->sync_isDefaultAclTableEnabled()); });
+  const auto pollHwAgent = [&](const auto& rpc) -> bool {
+    try {
+      return rpc();
+    } catch (const apache::thrift::transport::TTransportException& ex) {
+      if (ex.getType() !=
+          apache::thrift::transport::TTransportException::NOT_OPEN) {
+        throw;
+      }
+      XLOG(DBG2) << "HW agent thrift not ready: " << ex.what();
+      return false;
+    }
+  };
+  WITH_RETRIES({
+    EXPECT_EVENTUALLY_TRUE(
+        pollHwAgent([&]() { return client->sync_isDefaultAclTableEnabled(); }));
+  });
+
+  for (const auto& aclTableGroup : *switchConfig.aclTableGroups()) {
+    if (aclTableGroup.stage().value() != cfg::AclStage::INGRESS) {
+      continue;
+    }
+
+    EXPECT_FALSE(aclTableGroup.aclTables()->empty());
+    for (const auto& aclTable : *aclTableGroup.aclTables()) {
+      WITH_RETRIES({
+        EXPECT_EVENTUALLY_TRUE(pollHwAgent([&]() {
+          return client->sync_isAclTableEnabled(aclTable.name().value());
+        }));
+      });
+    }
+  }
 
   XLOG(DBG2) << "Verify ACL Done";
   std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -317,6 +373,16 @@ void ProdInvariantTest::verifyDscpToQueueMapping() {
        it != uplinkDownlinkPorts.second.end();
        ++it) {
     portIds.push_back(*it);
+  }
+  // The config spans every NPU, but each run targets one. Stats are tracked
+  // per switch index, so asking for another NPU's ports lets getLatestPortStats
+  // return as soon as that NPU reports, before this one's stats are in.
+  portIds = portsForSwitchUnderTest(portIds);
+  if (portIds.empty()) {
+    throw FbossError(
+        "No uplink or downlink ports on switch ",
+        FLAGS_switch_id_for_testing,
+        "; cannot verify DSCP to queue mapping");
   }
 
   auto getPortStatsFn = [&]() -> std::map<PortID, HwPortStats> {
@@ -798,7 +864,9 @@ TEST_F(ProdInvariantFtswTest, verifyInvariants) {
   auto verify = [&]() {
     verifyAcl();
     verifyCopp();
-    verifyLoadBalancing();
+    // Disabled: src-port-prune is not supported on MAC loopback ports,
+    // so hashed egress distribution is undefined.
+    // verifyLoadBalancing();
     verifyDscpToQueueMapping();
     verifySafeDiagCommands();
     verifyThriftHandler();
@@ -850,7 +918,9 @@ TEST_F(ProdInvariantStswTest, verifyInvariants) {
   auto verify = [&]() {
     verifyAcl();
     verifyCopp();
-    verifyLoadBalancing(90000);
+    // Disabled: src-port-prune is not supported on MAC loopback ports,
+    // so hashed egress distribution is undefined.
+    // verifyLoadBalancing(90000);
     verifyDscpToQueueMapping();
     verifySafeDiagCommands();
     verifyThriftHandler();
@@ -885,9 +955,10 @@ class ProdInvariantSuswTest : public ProdInvariantTest {
   // priority CPU queue, so an exact-delta check on it is not meaningful here.
   // Verify only the mid priority (IP2Me) queue.
   void verifyCopp() {
-    AgentEnsemble* ensemble = getAgentEnsemble();
-    const auto ports = getAllPlatformPorts(ensemble->getPlatformPorts());
-    const auto switchId = getSw()->getScopeResolver()->scope(ports).switchId();
+    // Target the NPU under test; netcastle runs this test once per NPU.
+    // Resolving a switch ID from every platform port would span both NPUs and
+    // throw on a multi-NPU platform.
+    const SwitchID switchId(FLAGS_switch_id_for_testing);
     const auto asic = getSw()->getHwAsicTable()->getHwAsic(switchId);
     const auto state = getSw()->getState();
     const auto srcPort = getDownlinkPort();
@@ -928,9 +999,8 @@ class ProdInvariantSuswTest : public ProdInvariantTest {
     if (!FLAGS_ndp_static_neighbor) {
       return;
     }
-    AgentEnsemble* ensemble = getAgentEnsemble();
-    const auto ports = getAllPlatformPorts(ensemble->getPlatformPorts());
-    const auto switchId = getSw()->getScopeResolver()->scope(ports).switchId();
+    // Target the NPU under test, matching verifyCopp().
+    const SwitchID switchId(FLAGS_switch_id_for_testing);
     const auto asic = getSw()->getHwAsicTable()->getHwAsic(switchId);
     const auto hiPriQueueId = utility::getCoppHighPriQueueId(asic);
     const auto before =
@@ -945,6 +1015,24 @@ class ProdInvariantSuswTest : public ProdInvariantTest {
       EXPECT_EVENTUALLY_GT(after, before);
     });
     XLOG(DBG2) << "Verify ndp_static_neighbor high priority CPU punts Done";
+  }
+
+  // Ladakh and its follow-on variant Leh carry no DSCP -> queue mapping: their
+  // prod qosMap has expMaps/pcpMaps/trafficClassToQueueId but an empty
+  // dscpMaps, and no qosRules. The base implementation builds its expectations
+  // with getOlympicQosMaps(), which reads only qosMap.dscpMaps, so it yields an
+  // empty map and verifyQueueMappings() reports that as a plain false with no
+  // indication of why. Skip on those platforms only - the other SUSWs are L3
+  // and do have a DSCP -> queue mapping to verify.
+  void verifyDscpToQueueMapping() override {
+    const auto platformType = getSw()->getPlatformType();
+    if (platformType == PlatformType::PLATFORM_LADAKH800BCLS ||
+        platformType == PlatformType::PLATFORM_LEH800BCLS) {
+      XLOG(DBG2) << "Skipping DSCP to queue mapping verification: this "
+                 << "platform carries no DSCP -> queue mapping in its config";
+      return;
+    }
+    ProdInvariantTest::verifyDscpToQueueMapping();
   }
 };
 

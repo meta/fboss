@@ -24,6 +24,7 @@ namespace facebook::fboss {
 class SaiManagerTable;
 class SaiPlatform;
 class SaiStore;
+class Vrf;
 
 using SaiVirtualRouter = SaiObject<SaiVirtualRouterTraits>;
 using SaiMplsRouterInterface = SaiObject<SaiMplsRouterInterfaceTraits>;
@@ -40,6 +41,12 @@ class SaiVirtualRouterManager {
       SaiManagerTable* managerTable,
       const SaiPlatform* platform);
   VirtualRouterSaiId addVirtualRouter(const RouterID& routerId);
+  void removeVirtualRouter(const RouterID& routerId);
+  void addVrf(const std::shared_ptr<Vrf>& vrf);
+  void removeVrf(const std::shared_ptr<Vrf>& vrf);
+  void changeVrf(
+      const std::shared_ptr<Vrf>& oldVrf,
+      const std::shared_ptr<Vrf>& newVrf);
   SaiVirtualRouterHandle* getVirtualRouterHandle(const RouterID& routerId);
   const SaiVirtualRouterHandle* getVirtualRouterHandle(
       const RouterID& routerId) const;

@@ -16,12 +16,10 @@ _FSDB_SERVICE_FOR_TESTING = "fsdb_service_for_testing"
 # Introduce an oss version of fsdb_service to run in oss environment.
 _FSDB_SERVICE_OSS = "fsdb_service_oss"
 
-_FSDB_SERVICE_UNIT_FILE_PATH = f"/tmp/{_FSDB_SERVICE_OSS}.service"
+_FSDB_SERVICE_UNIT_FILE_PATH = f"/run/systemd/system/{_FSDB_SERVICE_OSS}.service"
 
 
-def _setup_fsdb_service(
-    fsdb_service_config_path: str | None = None,
-) -> None:
+def _setup_fsdb_service(fsdb_service_config_path: str | None = None) -> None:
     print(f"Setting up {_FSDB_SERVICE_OSS}")
 
     fsdb_service_bin_path = service_utils.resolve_binary(
@@ -58,8 +56,7 @@ def _setup_fsdb_service(
 
 
 def setup_and_start_fsdb_service(
-    fsdb_service_config_path: str | None = None,
-    is_warm_boot: bool = False,
+    fsdb_service_config_path: str | None = None, is_warm_boot: bool = False
 ) -> None:
     _setup_fsdb_service(fsdb_service_config_path)
     service_utils.start_service(

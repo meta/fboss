@@ -54,7 +54,7 @@ DEFINE_int32(
 DEFINE_string(
     publishRole,
     "MaxScale",
-    "Role for data generation scale (Minimal, MaxScale, RSW, FSW, SSW, RTSW, FTSW, STSW, XSW, MA, FA, RDSW, FDSW, SDSW, EDSW)");
+    "Role for data generation scale (Minimal, MaxScale, RSW, FSW, SSW, RTSW, FTSW, STSW, XSW, MA, FA, RDSW, FDSW, SDSW, EDSW, RGSW)");
 
 using namespace facebook::fboss::fsdb;
 using namespace facebook::fboss::test_data;
@@ -81,27 +81,8 @@ struct RawPath {
 };
 
 RoleSelector parseRoleSelector(const std::string& roleStr) {
-  static const std::map<std::string, RoleSelector> roleMap = {
-      {"Minimal", RoleSelector::Minimal},
-      {"MaxScale", RoleSelector::MaxScale},
-      {"RTSW", RoleSelector::RTSW},
-      {"FTSW", RoleSelector::FTSW},
-      {"STSW", RoleSelector::STSW},
-      {"RSW", RoleSelector::RSW},
-      {"FSW", RoleSelector::FSW},
-      {"SSW", RoleSelector::SSW},
-      {"XSW", RoleSelector::XSW},
-      {"MA", RoleSelector::MA},
-      {"FA", RoleSelector::FA},
-      {"RDSW", RoleSelector::RDSW},
-      {"FDSW", RoleSelector::FDSW},
-      {"SDSW", RoleSelector::SDSW},
-      {"EDSW", RoleSelector::EDSW},
-  };
-
-  auto it = roleMap.find(roleStr);
-  if (it != roleMap.end()) {
-    return it->second;
+  if (auto role = statsRoleFromString(roleStr)) {
+    return *role;
   }
   std::cerr << "Unknown role: " << roleStr << ", using Minimal" << std::endl;
   return RoleSelector::Minimal;

@@ -32,6 +32,7 @@ class RxPacket;
 class TxPacket;
 class Port;
 class SwitchState;
+class AgentStats;
 
 // FabricLinkMonitoringManager sends periodic monitoring packets on fabric ports
 // to verify link health and track packet loss
@@ -66,6 +67,8 @@ class FabricLinkMonitoringManager : private folly::AsyncTimeout {
   // Get statistics for all monitored ports (for fb303 export)
   std::map<PortID, FabricLinkMonPortStats> getAllFabricLinkMonPortStats() const;
 
+  void fillAgentFabricLinkMonitoringStats(AgentStats& agentStats) const;
+
   // Get pending sequence numbers for a specific port (for testing)
   std::vector<uint64_t> getPendingSequenceNumbers(const PortID& portId) const;
 
@@ -88,6 +91,7 @@ class FabricLinkMonitoringManager : private folly::AsyncTimeout {
   // Get port group ID for a given port (ports are grouped by portID % 4)
   int getPortGroup(PortID portId) const;
   size_t getOutstandingPacketCountForGroup(int portGroupId) const;
+  void releasePendingPackets(PortID portId, int portGroupId);
 
   // Per-port-group statistics for flow control
   struct PortGroupStats {

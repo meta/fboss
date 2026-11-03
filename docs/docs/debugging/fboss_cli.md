@@ -980,7 +980,6 @@ fboss2 set <subcommand> [options]
 | `interface` | Set Interface information |
 | `port` | Set Port information |
 | `debug` | Set debug level |
-| `fanhold` | Set fan hold PWM |
 
 ### set interface
 
@@ -1004,14 +1003,6 @@ Set debug level for logging.
 
 ```bash
 fboss2 set debug [options]
-```
-
-### set fanhold
-
-Set fan hold PWM value.
-
-```bash
-fboss2 set fanhold <value>
 ```
 
 ---
@@ -1234,7 +1225,24 @@ When a session is committed, the CLI determines, **per service**, the least disr
 | `tunnel` | Configure IP-in-IP tunnels |
 | `vlan` | Configure VLAN settings |
 
-Most `config` subcommands have a matching `delete` counterpart to remove or reset the corresponding piece of configuration (e.g. `fboss2-dev delete protocol static ip route ...`).  Note, that not all configuration parameters can be individually deleted.  Modification of leaf parameters may require deleting the parent object and re-configuring with the desired parameter modified or deleted appropriately.
+Most `config` subcommands have a matching `delete` counterpart to remove or reset the corresponding piece of configuration (e.g. `fboss2-dev delete protocol static ip route ...`).  Note, that not all configuration parameters can be individually deleted.  Modification of leaf parameters may require deleting the parent object and re-configuring with the desired parameter modified or deleted appropriately.  `delete` commands are intended to be idempotent: deleting something that doesn't exist is not an error.
+
+### Config vs. Set - what's the difference?
+
+As noted, `fboss2-dev` is a strict superset of the `fboss2` command suite.  This leads some to wonder what the differences and expected applications are for the `config` and `set` commands.
+
+`set` is a runtime write operation; nothing is persisted.  There is a limited suite of commands which are available under the `set` command hierarchy and these commands open a thrift client to the running agent and set a value/state.  The changes associated with `set` actions are not persisted to `agent.conf`, nothing is committed to git, and the change lives only in the running `SwitchState`.
+
+`config` edits the configuration file through a staged session.  Every `config <area> ...` command changes the associated `AgentConfig` elements and writes it to a per-user session file that is subsequently committed to the `agent.conf` (or the associated configuration file for the changes of interest).
+
+#### What happens when both are run on a switch?
+
+1. `config` will "win" in terms of application. `fboss2 set port <ports> state disable` and `fboss2-dev config interface <ports> shutdown` both drive port admin state: `set` ephemerally at runtime, `config` via `ports[].state` in `agent.conf`. Any subsequent config session commit or config reload, even for a completely unrelated change, re-applies the config and reverts a `set`. The same holds true for a warmboot or coldboot restart. Runtime `set` state has no protection against a `config` apply.
+
+2. `set` is invisible to an audit trail.  It never appears in a `config session diff`, it is never committed into `git`, and `config history` won't capture it.  If a change needs to survive a reload or a reboot, it must be driven by a `config` change.
+
+3. `config` has no impact until a `commit` action is completed.  `fboss2 show ...` reports the current running state, so a staged edit will show nothing.  `config session diff` is the only way to see what is pending.
+
 
 ### BGP Configuration
 
@@ -1247,9 +1255,9 @@ BGP is configured through the same session model, but the changes are staged for
 The BGP command families are:
 
 - **`config protocol bgp global [<attribute> <value> ...]`**: process-wide settings such as `router-id`, `local-asn`, `hold-time`, `confed-asn`, `cluster-id`, `network6` (advertised networks), and `switch-limit` overload-protection settings.
-- **`config protocol bgp neighbor <ip-address> [<attribute> <value> ...]`**: per-neighbor settings such as `remote-asn`, `local-asn`, `peer-group`, `description`, `bind-addr address`, `next-hop4`/`next-hop6`/`next-hop-self`, `connect-mode <PASSIVE|ACTIVE>`, `afi disable-ipv4-afi`/`disable-ipv6-afi`, `rr-client`, `confed-peer`, `type`, `ingress-policy`/`egress-policy`, `add-path send|receive`, `link-bandwidth`, `graceful-restart restart-time`, `timers hold-time|keepalive|out-delay|withdraw-unprog-delay`, and `max-route pre-filter|post-filter` limits. A bare `neighbor <ip-address>` creates the neighbor.
+- **`config protocol bgp neighbor <ip-address> [<attribute> <value> ...]`**: per-neighbor settings such as `remote-asn`, `local-asn`, `peer-group`, `description`, `bind-addr address`, `next-hop4`/`next-hop6`/`next-hop-self`, `passive <true|false>`, `afi disable-ipv4-afi`/`disable-ipv6-afi`, `rr-client`, `confed-peer`, `type`, `ingress-policy`/`egress-policy`, `add-path send|receive`, `link-bandwidth`, `graceful-restart restart-time`, `timers hold-time|keepalive|out-delay|withdraw-unprog-delay`, and `max-route pre-filter|post-filter` limits. A bare `neighbor <ip-address>` creates the neighbor.
 - **`config protocol bgp peer-group <name> [<attribute> <value> ...]`**: the same attribute family applied to a peer group, which neighbors can then reference via `peer-group`.
-- **`config protocol bgp policy as-path-list <name> [entry <seq-num>] [<attribute> <value> ...]`**: BGP routing policy objects. `as-path-list` entries support `asn-regexp`, `description`, and `match-logic <EQUAL|NOT_EQUAL>`. More policy object types (community-list, prefix-list, routing-policy) will follow the same pattern.
+- **`config protocol bgp policy as-path-list <name> [<attribute> <value> ...]`**: BGP routing policy objects. An `as-path-list` is a flat set of AS-path regexes: `regex <regex>` appends one pattern (repeat the command per pattern; join AS numbers with `_`, e.g. `^65000_65001$`), plus `description` and `boolean-operator <AND|OR>`. `delete ... as-path-list <name> regex <regex>` removes one pattern. More policy object types (community-list, prefix-list, routing-policy) follow the same pattern.
 
 Each family has a `delete` counterpart, e.g. `fboss2-dev delete protocol bgp neighbor <ip-address>`.
 

@@ -236,3 +236,54 @@ TEST(LlrConfigTest, rejectOutOfSpecRange) {
   ctlosTooHigh.ctlosTargetSpacing() = 16385;
   expectRejected(ctlosTooHigh);
 }
+
+namespace {
+std::shared_ptr<Port> makeLlrPort(
+    const std::optional<std::string>& name,
+    std::optional<int32_t> outstandingBytesMax) {
+  state::PortFields fields;
+  fields.portId() = PortID(1);
+  fields.portName() = "port1";
+  auto port = std::make_shared<Port>(std::move(fields));
+  port->setLlrConfigName(name);
+  if (outstandingBytesMax.has_value()) {
+    // An lvalue: passing a temporary here selects NodeBaseT's variadic
+    // constructor over LlrConfig(const std::string&).
+    const std::string id = name.value_or("llr");
+    auto llr = std::make_shared<LlrConfig>(id);
+    llr->setOutstandingBytesMax(*outstandingBytesMax);
+    port->setLlrConfig(llr);
+  }
+  return port;
+}
+} // namespace
+
+// llrConfigChanged compares the resolved profile by content.
+// ThriftConfigApplier rebuilds every node in the LlrConfig map whenever any
+// profile changes, so a port whose own profile is untouched is handed a new
+// node holding identical config; comparing nodes by identity would call that a
+// change.
+TEST(LlrConfigTest, llrConfigChangedComparesByContent) {
+  // Neither port has LLR.
+  EXPECT_FALSE(llrConfigChanged(
+      makeLlrPort(std::nullopt, std::nullopt),
+      makeLlrPort(std::nullopt, std::nullopt)));
+
+  // Distinct nodes holding identical config are not a change.
+  auto a = makeLlrPort("llr", 105800);
+  auto b = makeLlrPort("llr", 105800);
+  EXPECT_NE(a->getLlrConfig().value(), b->getLlrConfig().value());
+  EXPECT_FALSE(llrConfigChanged(a, b));
+
+  // A different profile name is a change even when the content matches: the
+  // two resolve to separate SAI profile objects.
+  EXPECT_FALSE(llrConfigChanged(a, makeLlrPort("llr", 105800)));
+  EXPECT_TRUE(llrConfigChanged(a, makeLlrPort("llrOther", 105800)));
+
+  // Retuning under the same name is a change.
+  EXPECT_TRUE(llrConfigChanged(a, makeLlrPort("llr", 64000)));
+
+  // Binding and unbinding are changes.
+  EXPECT_TRUE(llrConfigChanged(makeLlrPort(std::nullopt, std::nullopt), a));
+  EXPECT_TRUE(llrConfigChanged(a, makeLlrPort(std::nullopt, std::nullopt)));
+}

@@ -786,6 +786,12 @@ void SaiSwitchManager::resetEgressAcl() {
 }
 
 void SaiSwitchManager::gracefulExit() {
+#if defined(BRCM_PAI_SDK)
+  // PAI's remove_switch frees the PHY/CFG_PHY/CFG_LANE records that warm boot
+  // restores. PAI warm shutdown is RESTART_WARM (set by SaiSwitch) followed by
+  // process exit, so the switch object is intentionally not destroyed.
+  __attribute__((unused)) auto leakedSwitch = switch_.release();
+#else
   // On graceful exit we trigger the warm boot path on
   // ASIC by destroying the switch (and thus calling the
   // remove switch function
@@ -793,6 +799,7 @@ void SaiSwitchManager::gracefulExit() {
   // Other objects are left intact to preserve data plane
   // forwarding during warm boot
   switch_.reset();
+#endif
 }
 
 void SaiSwitchManager::setMacAgingSeconds(sai_uint32_t agingSeconds) {
@@ -1181,7 +1188,8 @@ const HwSwitchWatermarkStats SaiSwitchManager::getHwSwitchWatermarkStats()
   fillHwSwitchWatermarkStats(statsMap, switchWatermarkStats);
   if (platform_->getAsic()->isSupported(
           HwAsic::Feature::DEVICE_WATERMARK_SUPPORT)) {
-    if (!switchWatermarkStats.deviceWatermarkBytes().has_value()) {
+    if (!apache::thrift::is_non_optional_field_set_manually_or_by_serializer(
+            switchWatermarkStats.deviceWatermarkBytes())) {
       switchWatermarkStats.deviceWatermarkBytes() = 0;
     }
   } else {
@@ -1513,7 +1521,7 @@ void SaiSwitchManager::updateStats(bool updateWatermarks) {
 }
 
 void SaiSwitchManager::updateSdkDumpSuppressedCounter() {
-#if defined(SAI_VERSION_12_2_0_0_DNX_ODP)
+#if defined(SAI_SDK_DUMP_RATE_LIMIT_SUPPORTED)
   if (!platform_->getAsic()->isSupported(HwAsic::Feature::SDK_REGISTER_DUMP)) {
     return;
   }
@@ -1681,6 +1689,31 @@ void SaiSwitchManager::setConditionalEntropyRehashPeriodUS(
       SaiSwitchTraits::Attributes::CondEntropyRehashPeriodUS{
           static_cast<uint32_t>(conditionalEntropyRehashPeriodUS)});
 #endif
+}
+
+void SaiSwitchManager::setLinkUpDebounceTimeout(
+    [[maybe_unused]] uint32_t linkUpDebounceTimeoutUs) {
+#if defined(BRCM_SAI_SDK_GTE_15_4)
+  switch_->setOptionalAttribute(
+      SaiSwitchTraits::Attributes::LinkUpDebounceTimeout{
+          linkUpDebounceTimeoutUs});
+#else
+  throw FbossError("Set switch wide link up debounce timeout not supported");
+#endif
+}
+
+uint32_t SaiSwitchManager::getLinkUpDebounceTimeout() const {
+#if defined(BRCM_SAI_SDK_GTE_15_4)
+  const auto& attr = std::get<
+      std::optional<SaiSwitchTraits::Attributes::LinkUpDebounceTimeout>>(
+      switch_->attributes());
+  // Unset means the switch object was created without the attribute, which
+  // leaves the SDK on its own default of no debounce.
+  if (attr.has_value()) {
+    return attr->value();
+  }
+#endif
+  return 0;
 }
 
 void SaiSwitchManager::setShelConfig(

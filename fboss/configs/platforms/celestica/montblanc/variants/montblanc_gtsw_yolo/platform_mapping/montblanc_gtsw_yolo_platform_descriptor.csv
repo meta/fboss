@@ -1,2 +1,2 @@
 System_Vendor,Platform_Type,Product_Name_Prefixes,Mode_Names,Asic_Type,Variant_Attributes
-celestica,PLATFORM_MONTBLANC,Montblanc-MONTBLANC-Montblancm-MONTBLANCM-MINIPACK3_CHASSIS_BUNDLE,montblanc-montblancm-minipack3ba,ASIC_TYPE_TOMAHAWK5,montblanc_gtsw_yolo=true
+celestica,PLATFORM_MONTBLANC,Montblanc-MONTBLANC-Montblancm-MONTBLANCM-MINIPACK3_CHASSIS_BUNDLE-MINIPACK3-MINIPACK3M-MINIPACK3BAM,montblanc-montblancm-minipack3ba-minipack3bam,ASIC_TYPE_TOMAHAWK5,montblanc_gtsw_yolo=true

@@ -66,6 +66,11 @@ InterfaceID firstInterfaceIDWithPorts(
     const std::shared_ptr<SwitchState>& state,
     const SwitchID& switchId,
     std::optional<cfg::Scope> scope = std::nullopt);
+// Same, but returns nullopt instead of throwing.
+std::optional<InterfaceID> firstInterfaceIDWithPortsIf(
+    const std::shared_ptr<SwitchState>& state,
+    const SwitchID& switchId,
+    std::optional<cfg::Scope> scope = std::nullopt);
 std::shared_ptr<Interface> firstInterfaceWithPorts(
     const std::shared_ptr<SwitchState>& state,
     const SwitchID& switchId);

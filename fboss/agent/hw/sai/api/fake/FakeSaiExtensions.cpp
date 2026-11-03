@@ -7,6 +7,7 @@
 #include "fboss/agent/hw/sai/api/CounterApi.h"
 #include "fboss/agent/hw/sai/api/DebugCounterApi.h"
 #include "fboss/agent/hw/sai/api/HostifApi.h"
+#include "fboss/agent/hw/sai/api/LagApi.h"
 #include "fboss/agent/hw/sai/api/MirrorApi.h"
 #include "fboss/agent/hw/sai/api/NextHopGroupApi.h"
 #include "fboss/agent/hw/sai/api/PortApi.h"
@@ -20,6 +21,11 @@ extern "C" {
 }
 
 namespace facebook::fboss {
+
+std::optional<sai_attr_id_t>
+SaiLagTraits::Attributes::AttributeDisableTtlDecrement::operator()() {
+  return std::nullopt;
+}
 
 namespace detail {
 std::optional<sai_int32_t> trapDrops() {
@@ -193,6 +199,13 @@ SaiPortTraits::Attributes::AttributeCrcErrorDetect::operator()() {
   return SAI_PORT_ATTR_CRC_ERROR_TOKEN_DETECT;
 }
 
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 3)
+std::optional<sai_attr_id_t>
+SaiPortTraits::Attributes::AttributeExtOperStatusLatch::operator()() {
+  return SAI_PORT_ATTR_EXT_FAKE_OPER_STATUS_LATCH;
+}
+#endif
+
 std::optional<sai_attr_id_t>
 SaiPortTraits::Attributes::AttributeRxLaneSquelchEnable::operator()() {
   return SAI_PORT_ATTR_RX_LANE_SQUELCH_ENABLE;
@@ -356,6 +369,16 @@ std::optional<sai_attr_id_t> SaiPortTraits::Attributes::
 std::optional<sai_attr_id_t>
 SaiPortTraits::Attributes::AttributeLinkScanMode::operator()() {
   return SAI_PORT_ATTR_EXT_LINKSCAN_MODE;
+}
+
+std::optional<sai_attr_id_t>
+SaiPortTraits::Attributes::AttributeCsigTagActionWrapper::operator()() {
+  return std::nullopt;
+}
+
+std::optional<sai_attr_id_t>
+SaiPortTraits::Attributes::AttributeCsigLinkLocatorWrapper::operator()() {
+  return std::nullopt;
 }
 
 std::optional<sai_attr_id_t>
@@ -1109,6 +1132,11 @@ SaiSwitchTraits::Attributes::AttributePortCl72RetryEnable::operator()() {
 }
 
 std::optional<sai_attr_id_t>
+SaiSwitchTraits::Attributes::AttributeAclDropSnoopDisabled::operator()() {
+  return SAI_SWITCH_ATTR_ACL_DROP_SNOOP_DISABLED;
+}
+
+std::optional<sai_attr_id_t>
 SaiSwitchTraits::Attributes::AttributePacketDropTypeIngressList::operator()() {
   return SAI_SWITCH_ATTR_EXT_PACKET_DROP_TYPE_INGRESS_LIST;
 }
@@ -1121,21 +1149,6 @@ SaiSwitchTraits::Attributes::AttributePacketDropTypeEgressList::operator()() {
 std::optional<sai_attr_id_t>
 SaiArsProfileTraits::Attributes::AttributeArsMaxGroups::operator()() {
   return SAI_ARS_PROFILE_ATTR_EXTENSION_ECMP_ARS_MAX_GROUPS;
-}
-
-std::optional<sai_attr_id_t> SaiArsProfileTraits::Attributes::
-    AttributeArsAlternateMembersRouteMetaData::operator()() {
-  return SAI_ARS_PROFILE_ATTR_ROUTE_ARS_ALTERNATE_MEMBERS_META_DATA;
-}
-
-std::optional<sai_attr_id_t>
-SaiArsProfileTraits::Attributes::AttributeArsRouteMetaDataMask::operator()() {
-  return SAI_ARS_PROFILE_ATTR_ROUTE_ARS_META_DATA_MASK;
-}
-
-std::optional<sai_attr_id_t> SaiArsProfileTraits::Attributes::
-    AttributeArsPrimaryMembersRouteMetaData::operator()() {
-  return SAI_ARS_PROFILE_ATTR_ROUTE_ARS_PRIMARY_MEMBERS_META_DATA;
 }
 
 std::optional<sai_attr_id_t>
@@ -1179,8 +1192,8 @@ SaiAclEntryTraits::Attributes::AttributeFieldRouteDestination::operator()() {
 }
 
 std::optional<sai_attr_id_t>
-SaiAclEntryTraits::Attributes::AttributeLabelExtendedWrapper::operator()() {
-  return SAI_ACL_ENTRY_ATTR_EXT_LABEL_EXTENDED;
+SaiAclTableTraits::Attributes::AttributeFieldRouteDestination::operator()() {
+  return SAI_ACL_TABLE_ATTR_FIELD_ROUTE_DST;
 }
 
 std::optional<sai_attr_id_t>
@@ -1196,6 +1209,21 @@ SaiArsTraits::Attributes::AttributeSourcePortPrune::operator()() {
 std::optional<sai_attr_id_t>
 SaiArsTraits::Attributes::AttributeEcmpMemberCount::operator()() {
   return SAI_ARS_ATTR_EXTENSION_ECMP_MEMBER_COUNT;
+}
+
+std::optional<sai_attr_id_t>
+SaiArsTraits::Attributes::AttributeMaxAltMembersPerGroup::operator()() {
+  return SAI_ARS_ATTR_MAX_ALT_MEMEBERS_PER_GROUP;
+}
+
+std::optional<sai_attr_id_t>
+SaiArsTraits::Attributes::AttributeMaxPrimaryMembersPerGroup::operator()() {
+  return SAI_ARS_ATTR_MAX_PRIMARY_MEMEBERS_PER_GROUP;
+}
+
+std::optional<sai_attr_id_t>
+SaiArsTraits::Attributes::AttributeCommonMembersThresholdCount::operator()() {
+  return SAI_ARS_ATTR_EXTENSION_COMMON_MEMBERS_THRESHOLD_COUNT;
 }
 #endif
 

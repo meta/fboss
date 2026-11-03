@@ -9,6 +9,7 @@
 #include <optional>
 #include <set>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 #include "fboss/agent/if/gen-cpp2/common_types.h"
 #include "fboss/agent/state/FibInfoMap.h"
@@ -28,6 +29,8 @@ class MultiSwitchClassBasedPolicyMap;
 // A set of NextHopIDs (used as key for NextHopIDSetID mapping)
 using NextHopIDSet = std::set<NextHopID>;
 
+using PolicySet = std::unordered_set<std::string>;
+
 } // namespace facebook::fboss
 
 // Hash function for NextHopIDSet to be used in unordered_map
@@ -44,6 +47,8 @@ struct ClassBasedPolicyNhgs {
   std::string defaultNexthopGroup;
   // Forwarding class -> redirect NHG name.
   std::map<ForwardingClass, std::string> class2NextHopGroup;
+  // One held reference per distinct NHG name this policy references.
+  std::unordered_map<std::string, NextHopSetID> normalizedIds;
 };
 
 /**
@@ -203,9 +208,23 @@ class NextHopIDManager {
   NextHopDeallocationResult deallocateNamedNextHopGroup(
       const std::string& name);
 
+  /**
+   * Point every class-based policy referencing named group `name` at the
+   * normalized next-hop set id for that group's resolved next hops. This is
+   * the id a PBR ACL synthesized from those policies matches on.
+   */
+  void updateNormalizedNamedNhgId(
+      const std::string& name,
+      const RouteNextHopSet& resolvedNextHopSet,
+      uint32_t ecmpWidth);
+
   // Get the NextHopSetID for a named next-hop group
   // Returns std::nullopt if the group doesn't exist
   std::optional<NextHopSetID> getNextHopSetIDForName(
+      const std::string& name) const;
+
+  // Only groups a class-based policy references carry a normalized set id.
+  std::optional<NextHopSetID> getNormalizedNextHopSetIDForPolicyNhg(
       const std::string& name) const;
 
   // Get the nexthops for a named next-hop group
@@ -285,6 +304,13 @@ class NextHopIDManager {
 
   const ClassBasedPolicyNhgs* getPolicy(const std::string& name) const;
 
+  // Empty if no class-based policy references `name`.
+  const PolicySet& getPoliciesForNamedNhg(const std::string& name) const;
+
+  // True if any policy references this named NHG, as its default or as a
+  // redirect target.
+  bool hasPoliciesForNamedNhg(const std::string& name) const;
+
   const std::unordered_map<std::string, ClassBasedPolicyNhgs>&
   getPbrPolicyToNamedNhg() const {
     return pbrPolicyToNamedNhg_;
@@ -333,12 +359,32 @@ class NextHopIDManager {
       std::unordered_map<NextHopSetID, NextHopSetID>* setIdRemapOut = nullptr);
 
  private:
+  static constexpr int64_t kNextHopIDStart = 1;
+  static constexpr int64_t kNextHopIDEnd =
+      nextHopIdTypeEnd(NextHopIdType::NEXTHOP);
+  static constexpr int64_t kNextHopSetIDStart =
+      nextHopIdTypeStart(NextHopIdType::NEXTHOP_SET);
+  static constexpr int64_t kNextHopSetIDEnd =
+      nextHopIdTypeEnd(NextHopIdType::NEXTHOP_SET);
+
+  static constexpr bool isNextHopID(int64_t id) {
+    return id >= kNextHopIDStart && id < kNextHopIDEnd;
+  }
+  static constexpr bool isNextHopSetID(int64_t id) {
+    return nextHopIdType(id) == NextHopIdType::NEXTHOP_SET;
+  }
+
   // Decrement reference count for a NextHopID and deallocate if count reaches 0
   // Returns true if deallocated, false otherwise.
   bool decrOrDeallocateNextHopByID(const NextHopID& nextHopID);
 
-  static constexpr int64_t kNextHopIDStart = 1;
-  static constexpr int64_t kNextHopSetIDStart = 1LL << 62;
+  // Move one policy's normalized id for `nhgName` onto the set id for
+  // `normalized`, taking a reference for the policy and releasing the one it
+  // held. Returns the new id.
+  NextHopSetID updatePolicyNormalizedId(
+      const std::string& policyName,
+      const std::string& nhgName,
+      const RouteNextHopSet& normalized);
 
   // Mutable state threaded through the reconstructFromSwitchStateMaps passes.
   // The member maps the passes update are reached directly; only these running
@@ -402,7 +448,8 @@ class NextHopIDManager {
   // policy's persisted NamedNextHopGroupAndID.
   void reconstructClassBasedPolicyPass(
       const std::shared_ptr<MultiSwitchClassBasedPolicyMap>&
-          classBasedPolicyMaps);
+          classBasedPolicyMaps,
+      ReconstructionContext& ctx);
 
   // Returns the first SetID strictly above every persisted SetID. Used by
   // reconstructFromSwitchStateMaps to mint fresh SetIDs for deduped
@@ -413,12 +460,10 @@ class NextHopIDManager {
   static NextHopSetID computeFreshSetIdSeed(
       const std::shared_ptr<MultiSwitchFibInfoMap>& fibsInfoMap);
 
-  // Counter for generating NextHop IDs, starting from 1
-  // allocate 0 - (2^62 -1) IDs for NextHops.
+  // Allocates from [kNextHopIDStart, kNextHopIDEnd).
   NextHopID nextAvailableNextHopID_{kNextHopIDStart};
 
-  // Counter for generating NextHopSet IDs, starting from 2^62
-  // Allocate 2^62 - INT64_MAX IDs for NextHopIDSets.
+  // Allocates from [kNextHopSetIDStart, kNextHopSetIDEnd).
   NextHopSetID nextAvailableNextHopSetID_{kNextHopSetIDStart};
 
   // Mapping from NextHop to its assigned NextHopID
@@ -445,6 +490,14 @@ class NextHopIDManager {
 
   // Class-based policy store: policy name -> the NHG names it references.
   std::unordered_map<std::string, ClassBasedPolicyNhgs> pbrPolicyToNamedNhg_;
+  // Inverse of pbrPolicyToNamedNhg_.
+  std::unordered_map<std::string, PolicySet> namedNhgToPbrPolicies_;
+
+  void addPolicy2NamedNhgMap(
+      const std::string& policyName,
+      const ClassBasedPolicyNhgs& nhgs);
+
+  void delPolicy2NamedNhgMap(const std::string& policyName);
 
   // Get the ref count for a given NextHop
   uint32_t getNextHopRefCount(const NextHop& nextHop);

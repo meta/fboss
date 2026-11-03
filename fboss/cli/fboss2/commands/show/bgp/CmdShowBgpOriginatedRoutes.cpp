@@ -102,17 +102,16 @@ CmdShowBgpOriginatedRoutes::RetType CmdShowBgpOriginatedRoutes::sampleModel() {
     return route;
   };
 
-  /*
-   * A LIVE marker plus a loopback / rack-private marker - the shape of the set
-   * an RSW attaches to its own prefixes, with invented values. This file is
-   * built into the open-source distribution and the rendered sample is
-   * published to the CLI reference wiki, so real community assignments must
-   * not appear here; these come from the RFC 5398 documentation ASN range.
-   */
+  // The LIVE marker plus a rack-private / loopback marker - the shape of the
+  // set an RSW attaches to its own prefixes. Sample ASNs (RFC 6996 private-use
+  // range): these values ship in the open-source tree and must not be real
+  // ones.
   const std::vector<TBgpCommunity> loopbackCommunities = {
-      sampleCommunity(64497, 100), sampleCommunity(64498, 400)};
+      sampleCommunity(kSampleLiveCommunity),
+      sampleCommunity(kSampleLoopbackCommunity)};
   const std::vector<TBgpCommunity> rackCommunities = {
-      sampleCommunity(64497, 100), sampleCommunity(64496, 500)};
+      sampleCommunity(kSampleLiveCommunity),
+      sampleCommunity(kSampleRackCommunity)};
 
   TOriginatedRouteWithHost result;
   /*

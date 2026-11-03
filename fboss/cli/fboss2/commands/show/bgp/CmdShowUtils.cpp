@@ -8,6 +8,7 @@
  *
  */
 
+#include <stdexcept>
 #include <utility>
 
 #include "configerator/structs/neteng/fboss/bgp/if/gen-cpp2/bgp_attr_types.h"
@@ -67,6 +68,31 @@ using facebook::neteng::fboss::bgp::thrift::TBgpService;
 using facebook::neteng::fboss::bgp::thrift::TBgpSessionDetail;
 using neteng::fboss::bgp::thrift::TBgpPeerState;
 
+LoadedBgpPolicy getLoadedBgpPolicy(const HostInfo& hostInfo) {
+  auto client = utils::createClient<Client<TBgpService>>(hostInfo);
+  if (client->sync_hasPolicySymlink()) {
+    std::string policyConfigJson;
+    client->sync_getPolicyConfig(policyConfigJson);
+    if (policyConfigJson.empty()) {
+      throw std::runtime_error(
+          "BGP reports a standalone policy artifact, but getPolicyConfig returned empty");
+    }
+    return {
+        BgpPolicySource::POLICY_ARTIFACT,
+        apache::thrift::SimpleJSONSerializer::deserialize<
+            facebook::bgp::thrift::BgpPolicyConfig>(policyConfigJson)};
+  }
+
+  facebook::bgp::thrift::BgpConfig bgpConfig;
+  client->sync_getRunningConfigStruct(bgpConfig);
+  facebook::bgp::thrift::BgpPolicyConfig policyConfig;
+  policyConfig.communities().copy_from(bgpConfig.communities());
+  policyConfig.localprefs().copy_from(bgpConfig.localprefs());
+  policyConfig.policies().copy_from(bgpConfig.policies());
+  return {BgpPolicySource::BGP_CONFIG, std::move(policyConfig)};
+}
+
+// Route-detail views remain best-effort when the artifact RPC is unavailable.
 std::optional<facebook::bgp::bgp_policy::BgpPolicies> getRunningBgpPolicies(
     const HostInfo& hostInfo) {
   auto client = utils::createClient<Client<TBgpService>>(hostInfo);
@@ -335,6 +361,10 @@ TIpPrefix sampleIpPrefix(const std::string& cidr) {
   return prefix;
 }
 
+TBgpCommunity sampleCommunity(const SampleCommunity& community) {
+  return sampleCommunity(community.asn, community.value);
+}
+
 TBgpCommunity sampleCommunity(uint16_t asn, uint16_t value) {
   TBgpCommunity community;
   community.asn() = asn;
@@ -342,6 +372,58 @@ TBgpCommunity sampleCommunity(uint16_t asn, uint16_t value) {
   community.community() =
       static_cast<int64_t>((static_cast<uint32_t>(asn) << 16) | value);
   return community;
+}
+
+std::string formatBgpIpAddress(const TIpPrefix& prefix) {
+  const auto address = IPAddress::tryFromBinary(
+      folly::ByteRange(folly::StringPiece(*prefix.prefix_bin())));
+  return address.hasValue() ? address->str() : "<invalid>";
+}
+
+void printFibOut(std::ostream& out, const TRibEntry& entry) {
+  if (!entry.fib_out().has_value()) {
+    return;
+  }
+
+  const auto& fibOut = *entry.fib_out();
+  out << fmt::format(
+      "  FIB-out: {}", apache::thrift::util::enumNameSafe(*fibOut.operation()));
+  if (fibOut.nexthop_set_ref_count().has_value()) {
+    out << fmt::format(
+        " | Route References: {}", *fibOut.nexthop_set_ref_count());
+  }
+  if (fibOut.admin_distance().has_value()) {
+    out << fmt::format(" | Admin Distance: {}", *fibOut.admin_distance());
+  }
+  if (fibOut.class_id().has_value()) {
+    out << fmt::format(" | Class ID: {}", *fibOut.class_id());
+  }
+  out << '\n';
+
+  for (const auto& nextHop : *fibOut.next_hops()) {
+    out << fmt::format(
+        "    {} | Weight: {} | Role: {}",
+        formatBgpIpAddress(*nextHop.next_hop()),
+        *nextHop.weight(),
+        apache::thrift::util::enumNameSafe(*nextHop.role()));
+    if (nextHop.is_connected().has_value()) {
+      out << fmt::format(
+          " | Connected: {}", *nextHop.is_connected() ? "true" : "false");
+    }
+    if (nextHop.interface_name().has_value()) {
+      out << fmt::format(" | Interface: {}", *nextHop.interface_name());
+    }
+    if (nextHop.topology_info().has_value()) {
+      std::vector<std::pair<std::string, int64_t>> topology(
+          nextHop.topology_info()->begin(), nextHop.topology_info()->end());
+      std::sort(topology.begin(), topology.end());
+      out << " | Topology:";
+      for (const auto& [name, value] : topology) {
+        out << fmt::format(" {}={}", name, value);
+      }
+    }
+    out << '\n';
+  }
 }
 
 namespace {
@@ -388,13 +470,15 @@ TBgpPath sampleBgpPath(const SamplePathSpec& spec) {
 
   neteng::fboss::bgp_attr::TAsPathSeg segment;
   segment.seg_type() = TAsPathSegType::AS_SEQUENCE;
-  segment.asns() = {65301, 65332, 64984, 32934};
+  // Sample ASNs (RFC 6996 private-use range). These samples are published to
+  // the CLI reference wiki and ship in the open-source tree, so they must not
+  // carry real AS numbers or community assignments.
+  segment.asns() = {64712, 65017, 64961, 65108};
   path.as_path() = TAsPath{segment};
 
-  // AS32934.DEFAULT, the community a real default route carries.
-  constexpr uint16_t kDefaultRouteAsn = 65529;
-  constexpr uint16_t kDefaultRouteValue = 15990;
-  path.communities() = {sampleCommunity(kDefaultRouteAsn, kDefaultRouteValue)};
+  // The community a default route carries; the 'show bgp config' sample
+  // defines the matching AS65108.DEFAULT mnemonic for it.
+  path.communities() = {sampleCommunity(kSampleDefaultCommunity)};
 
   return path;
 }
@@ -436,7 +520,6 @@ TRibEntryWithHost sampleRibEntriesWithHost() {
             .routerAddress = "192.0.2.103",
             .isBestPath = false,
             .bestPathFilterDescription = ""})}}};
-
   TRibEntry v6Prefix;
   v6Prefix.prefix() = sampleIpPrefix("2001:db8:1c00::/40");
   v6Prefix.best_group() = "best";
@@ -451,13 +534,47 @@ TRibEntryWithHost sampleRibEntriesWithHost() {
             .routerAddress = "192.0.2.101",
             .isBestPath = true,
             .bestPathFilterDescription = ""})}}};
-
   TRibEntryWithHost data;
   data.tRibEntries() = {defaultRoute, v6Prefix};
   data.host() = "rsw001.p001.f01.abc1";
   data.oobName() = "rsw001.p001.f01.abc1.oob";
   data.ip() = "192.0.2.1";
   return data;
+}
+
+TFibOutTable sampleFibOutTable() {
+  TFibOutRoute defaultRoute;
+  defaultRoute.operation() = TFibOutOperation::PROGRAM;
+  defaultRoute.admin_distance() = 20;
+  for (const auto& address : {"192.0.2.11", "192.0.2.12"}) {
+    TFibOutNextHop nextHop;
+    nextHop.next_hop() = sampleIpPrefix(address);
+    nextHop.weight() = 0;
+    nextHop.role() = TFibOutNextHopRole::PRIMARY;
+    defaultRoute.next_hops()->emplace_back(std::move(nextHop));
+  }
+  defaultRoute.nexthop_set_ref_count() = 1;
+  TFibOutEntry defaultEntry;
+  defaultEntry.prefix() = sampleIpPrefix("0.0.0.0/0");
+  defaultEntry.fib_out() = std::move(defaultRoute);
+
+  TFibOutNextHop v6NextHop;
+  v6NextHop.next_hop() = sampleIpPrefix("2001:db8:e11e:1062::4e");
+  v6NextHop.weight() = 0;
+  v6NextHop.role() = TFibOutNextHopRole::PRIMARY;
+  TFibOutRoute v6Route;
+  v6Route.operation() = TFibOutOperation::PROGRAM;
+  v6Route.next_hops() = {std::move(v6NextHop)};
+  v6Route.admin_distance() = 20;
+  v6Route.nexthop_set_ref_count() = 1;
+  TFibOutEntry v6Entry;
+  v6Entry.prefix() = sampleIpPrefix("2001:db8:1c00::/40");
+  v6Entry.fib_out() = std::move(v6Route);
+
+  TFibOutTable table;
+  table.enabled() = true;
+  table.entries() = {std::move(defaultEntry), std::move(v6Entry)};
+  return table;
 }
 
 NetworkPathWithHost sampleNetworkPaths(
@@ -502,19 +619,16 @@ NetworkPathWithHost sampleNetworkPaths(
    * from and the peer we advertise to are in different sub-ASes, which is
    * what makes the two directions distinguishable in the rendered AS path.
    */
-  constexpr int64_t kUpstreamAsn = 6001;
-  constexpr int64_t kDownstreamAsn = 6002;
+  constexpr int64_t kUpstreamAsn = 65221;
+  constexpr int64_t kDownstreamAsn = 64650;
 
   // LIVE, plus the community that identifies the prefix class.
   const std::vector<TBgpCommunity> aggregateCommunities = {
-      sampleCommunity(65446, 30), sampleCommunity(65527, 36327)};
-  // AS32934.DEFAULT, the community a real default route carries; same values
-  // sampleBgpPath() names for the 'table detail' sample.
-  constexpr uint16_t kDefaultRouteAsn = 65529;
-  constexpr uint16_t kDefaultRouteValue = 15990;
+      sampleCommunity(kSampleLiveCommunity),
+      sampleCommunity(kSampleAggregateCommunity)};
   const std::vector<TBgpCommunity> defaultRouteCommunities = {
-      sampleCommunity(65446, 30),
-      sampleCommunity(kDefaultRouteAsn, kDefaultRouteValue)};
+      sampleCommunity(kSampleLiveCommunity),
+      sampleCommunity(kSampleDefaultCommunity)};
 
   NetworkPathWithHost result;
   if (received) {
@@ -937,7 +1051,7 @@ float getLinkBandwidthFromExtCommunities(
       // not a two-byte ASN
       continue;
     }
-    const auto& asn = commUnion.get_two_byte_asn();
+    const auto& asn = commUnion.two_byte_asn().value();
 
     if (folly::copy(asn.type().value()) !=
         static_cast<int>(TBgpTwoByteAsnExtCommType::LINK_BANDWIDTH_TYPE)) {

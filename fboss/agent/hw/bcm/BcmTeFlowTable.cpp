@@ -160,7 +160,6 @@ BcmTeFlowEntry* BcmTeFlowTable::getTeFlow(
 }
 
 void BcmTeFlowTable::processChangedTeFlow(
-    const int groupId,
     const std::shared_ptr<TeFlowEntry>& oldTeFlow,
     const std::shared_ptr<TeFlowEntry>& newTeFlow) {
   getTeFlow(oldTeFlow)->updateTeFlowEntry(newTeFlow);

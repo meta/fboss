@@ -3,7 +3,7 @@
         "(c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.",
         "This file is generated. Do not modify it manually!",
         "@codegen-source : configerator\/raw_configs\/neteng\/fboss\/coop\/inputs\/platform_to_agent_sdk_version",
-        "@generated SignedSource<<5cd70719dac5e4926648aba299287471>>"
+        "@generated SignedSource<<4a54b9e493ed2961862580a0f5d918e0>>"
     ],
     "MINIPACK": [
         {
@@ -146,12 +146,6 @@
     "WEDGE800BACT": [
         {
             "rolloutType": "PRODUCTION",
-            "asicSdk": "6.5.30",
-            "saiSdk": "11.7.0.0_odp",
-            "saiVersion": "1.14.0"
-        },
-        {
-            "rolloutType": "RELEASE_CANDIDATE",
             "asicSdk": "6.5.32",
             "saiSdk": "13.3.0.0_odp",
             "saiVersion": "1.16.1"
@@ -160,12 +154,6 @@
     "WEDGE800BNHP": [
         {
             "rolloutType": "PRODUCTION",
-            "asicSdk": "6.5.30",
-            "saiSdk": "11.7.0.0_odp",
-            "saiVersion": "1.14.0"
-        },
-        {
-            "rolloutType": "RELEASE_CANDIDATE",
             "asicSdk": "6.5.32",
             "saiSdk": "13.3.0.0_odp",
             "saiVersion": "1.16.1"
@@ -193,6 +181,12 @@
             "asicSdk": "6.5.34",
             "saiSdk": "14.2.0.0_odp",
             "saiVersion": "1.17.4"
+        },
+        {
+            "rolloutType": "RELEASE_CANDIDATE",
+            "asicSdk": "6.5.36",
+            "saiSdk": "16.0_ea_odp",
+            "saiVersion": "1.18.1"
         }
     ],
     "MINIPACK3N": [
@@ -307,6 +301,12 @@
             "asicSdk": "6.5.34",
             "saiSdk": "14.2.0.0_odp",
             "saiVersion": "1.17.4"
+        },
+        {
+            "rolloutType": "RELEASE_CANDIDATE",
+            "asicSdk": "6.5.36",
+            "saiSdk": "16.0_ea_odp",
+            "saiVersion": "1.18.1"
         }
     ],
     "LADAKH800BCLS": [
@@ -315,14 +315,48 @@
             "asicSdk": "6.5.34",
             "saiSdk": "14.2.0.0_odp",
             "saiVersion": "1.17.4"
+        },
+        {
+            "rolloutType": "RELEASE_CANDIDATE",
+            "asicSdk": "6.5.36",
+            "saiSdk": "16.0_ea_odp",
+            "saiVersion": "1.18.1"
+        }
+    ],
+    "LEH800BCLS": [
+        {
+            "rolloutType": "PRODUCTION",
+            "asicSdk": "6.5.34",
+            "saiSdk": "14.2.0.0_odp",
+            "saiVersion": "1.17.4"
+        },
+        {
+            "rolloutType": "RELEASE_CANDIDATE",
+            "asicSdk": "6.5.36",
+            "saiSdk": "16.0_ea_odp",
+            "saiVersion": "1.18.1"
         }
     ],
     "MINIPACK3BTA": [
         {
             "rolloutType": "PRODUCTION",
-            "asicSdk": "6.5.35",
-            "saiSdk": "15.4_ea_odp",
-            "saiVersion": "1.18.0"
+            "asicSdk": "6.5.36",
+            "saiSdk": "16.0_ea_odp",
+            "saiVersion": "1.18.1"
+        }
+    ],
+    "M4062NHP": [
+        {
+            "rolloutType": "PRODUCTION",
+            "asicSdk": "6.5.34",
+            "saiSdk": "14.2.0.0_odp",
+            "saiVersion": "1.17.4"
+        },
+        {
+            "rolloutType": "RELEASE_CANDIDATE",
+            "asicSdk": "6.5.36",
+            "saiSdk": "16.0_ea_odp",
+            "saiVersion": "1.18.1"
         }
     ]
 }

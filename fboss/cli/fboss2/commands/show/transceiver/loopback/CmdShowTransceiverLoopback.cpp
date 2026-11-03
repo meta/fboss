@@ -27,29 +27,25 @@ std::string showLoopbackForPort(
   output += fmt::format("Port: {}\n", portName);
   output += fmt::format("Transceiver ID: {}\n", transceiverId);
 
-  bool capSystem = cap.capSystem;
-  bool capLine = cap.capLine;
-
   output += "\nCapability:\n";
-  output += fmt::format(
-      "  system (media-far):   {}\n",
-      capSystem ? "supported" : "not-supported");
-  output += fmt::format(
-      "  line (media-near):    {}\n", capLine ? "supported" : "not-supported");
+  auto addCapability = [&output](std::string_view name, bool supported) {
+    output += fmt::format(
+        "  {:<34}{}\n", name, supported ? "supported" : "not-supported");
+  };
+  addCapability("system input (host input):", cap.systemInput);
+  addCapability("system output (host output):", cap.systemOutput);
+  addCapability("line input (media input):", cap.lineInput);
+  addCapability("line output (media output):", cap.lineOutput);
 
-  if (!capLine && !capSystem) {
+  if (!cap.any()) {
     output += "\nLoopback not supported by this module.\n";
     return output;
   }
 
   try {
-    uint8_t mediaNear = readOneByte(
-        qsfpService, transceiverId, kLoopbackPage, kMediaNearLbEnOffset);
-    uint8_t mediaFar = readOneByte(
-        qsfpService, transceiverId, kLoopbackPage, kMediaFarLbEnOffset);
-
+    auto state = readLoopbackState(qsfpService, transceiverId);
     output += "\nState:\n";
-    output += formatState(mediaNear, mediaFar);
+    output += formatState(state);
   } catch (const std::exception& ex) {
     output += fmt::format("\nError reading state: {}\n", ex.what());
   }
@@ -97,7 +93,7 @@ void CmdShowTransceiverLoopback::printOutput(
 }
 
 std::string_view CmdShowTransceiverLoopbackTraits::description() {
-  return "Displays a transceiver's loopback capability and current state for the system (media-far) and line (media-near) sides. Use it to check optic loopback support and whether loopback is enabled.";
+  return "Displays a transceiver's loopback capability and current state for the four CMIS loopbacks: system (host side) input/output and line (media side) input/output. Use it to check optic loopback support and whether loopback is enabled.";
 }
 
 CmdShowTransceiverLoopback::RetType CmdShowTransceiverLoopback::sampleModel() {
@@ -105,12 +101,16 @@ CmdShowTransceiverLoopback::RetType CmdShowTransceiverLoopback::sampleModel() {
 Transceiver ID: 0
 
 Capability:
-  system (media-far):   supported
-  line (media-near):    supported
+  system input (host input):        supported
+  system output (host output):      supported
+  line input (media input):         supported
+  line output (media output):       supported
 
 State:
-  system (media-far):   0x00  disabled
-  line (media-near):    0x00  disabled
+  system input (host input):        0x00  disabled
+  system output (host output):      0x00  disabled
+  line input (media input):         0x00  disabled
+  line output (media output):       0x00  disabled
 )";
 }
 

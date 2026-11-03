@@ -40,6 +40,7 @@ class MockAsic : public HwAsic {
       case HwAsic::Feature::EVENTOR_PORT_FOR_SFLOW:
       case HwAsic::Feature::SWITCH_ASIC_SDK_HEALTH_NOTIFY:
       case HwAsic::Feature::ROUTER_INTERFACE_STATISTICS:
+      case HwAsic::Feature::PORT_LATCH_STATUS:
         return false;
       case HwAsic::Feature::CPU_TX_PACKET_REQUIRES_VLAN_TAG:
         return getSwitchType() == cfg::SwitchType::NPU;
@@ -52,6 +53,9 @@ class MockAsic : public HwAsic {
   }
   cfg::AsicType getAsicType() const override {
     return cfg::AsicType::ASIC_TYPE_MOCK;
+  }
+  std::optional<uint32_t> getMaxVrfs() const override {
+    return 8;
   }
   phy::DataPlanePhyChipType getDataPlanePhyChipType() const override {
     return phy::DataPlanePhyChipType::IPHY;
@@ -161,6 +165,9 @@ class MockAsic : public HwAsic {
   std::optional<uint32_t> getMaxSrv6SingleNextHops() const override {
     return 8;
   }
+  std::optional<uint32_t> getMaxSrv6UcmpDistinctWeights() const override {
+    return 8;
+  }
   std::optional<uint32_t> getMaxNdpTableSize() const override {
     return 8;
   }
@@ -247,6 +254,12 @@ class MockAsic : public HwAsic {
   }
   std::optional<uint32_t> getMaxArsWidth() const override {
     return 64;
+  }
+  std::vector<int16_t> getCbfcSenderCreditSizes() const override {
+    return {32, 56};
+  }
+  std::vector<int16_t> getCbfcSenderPacketOverheads() const override {
+    return {0, 16, 32, 48, 64, 80};
   }
   const std::set<uint16_t>& getL1FabricPortsToConnectToL2() const override {
     static const std::set<uint16_t> l1FabricPortsToConnectToL2{};

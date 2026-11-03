@@ -69,13 +69,13 @@
             },
             {
               "busName": "INCOMING@1",
-              "address": "0x4c",
+              "address": "0x4a",
               "kernelDeviceName": "tmp75",
               "pmUnitScopedName": "COME_INLET_TSENSOR"
             },
             {
               "busName": "INCOMING@1",
-              "address": "0x4a",
+              "address": "0x4c",
               "kernelDeviceName": "tmp75",
               "pmUnitScopedName": "COME_OUTLET_TSENSOR"
             },
@@ -94,6 +94,56 @@
           ]
         },
         "productSubVersion": 2
+      },
+      {
+        "pmUnitConfig": {
+          "pluggedInSlotType": "COMESE_SLOT",
+          "i2cDeviceConfigs": [
+            {
+              "busName": "INCOMING@0",
+              "address": "0x20",
+              "kernelDeviceName": "bp4f_raa228244",
+              "pmUnitScopedName": "COME_HWMON1"
+            },
+            {
+              "busName": "INCOMING@0",
+              "address": "0x21",
+              "kernelDeviceName": "bp4f_raa228244",
+              "pmUnitScopedName": "COME_HWMON2"
+            },
+            {
+              "busName": "INCOMING@1",
+              "address": "0x40",
+              "kernelDeviceName": "ina230",
+              "pmUnitScopedName": "COME_HWMON3"
+            },
+            {
+              "busName": "INCOMING@1",
+              "address": "0x4a",
+              "kernelDeviceName": "tmp75",
+              "pmUnitScopedName": "COME_INLET_TSENSOR"
+            },
+            {
+              "busName": "INCOMING@1",
+              "address": "0x4c",
+              "kernelDeviceName": "tmp75",
+              "pmUnitScopedName": "COME_OUTLET_TSENSOR"
+            },
+            {
+              "busName": "INCOMING@1",
+              "address": "0x50",
+              "kernelDeviceName": "spd5118",
+              "pmUnitScopedName": "COME_DIMM1_TSENSOR"
+            },
+            {
+              "busName": "INCOMING@1",
+              "address": "0x51",
+              "kernelDeviceName": "spd5118",
+              "pmUnitScopedName": "COME_DIMM2_TSENSOR"
+            }
+          ]
+        },
+        "productSubVersion": 3
       }
     ]
   },
@@ -358,9 +408,16 @@
         {
           "busName": "MCB_IOB_I2C_MASTER_14",
           "address": "0x33",
-          "kernelDeviceName": "tahansb_fancpld",
+          "kernelDeviceName": "fbfancpld",
           "pmUnitScopedName": "MCB_FAN_CPLD",
-          "isWatchdog": true
+          "isWatchdog": true,
+          "fanCpldConfig": {
+            "numFans": 4,
+            "pwmMax": 64,
+            "speedMultiplier": 300,
+            "hasRearTach": true,
+            "hasLeds": false
+          }
         },
         {
           "busName": "MCB_IOB_I2C_MASTER_14",
@@ -629,13 +686,13 @@
         },
         {
           "busName": "INCOMING@1",
-          "address": "0x4c",
+          "address": "0x4a",
           "kernelDeviceName": "tmp75",
           "pmUnitScopedName": "COME_INLET_TSENSOR"
         },
         {
           "busName": "INCOMING@1",
-          "address": "0x4a",
+          "address": "0x4c",
           "kernelDeviceName": "tmp75",
           "pmUnitScopedName": "COME_OUTLET_TSENSOR"
         },
@@ -682,17 +739,17 @@
           "pmUnitScopedName": "SMB_TH6_SENSOR_TMP432_1",
           "initRegSettings": [
             {
-              "__comment__": "Local temp(temp1) high limit setting for high byte. PR:1001",
+              "__comment__": "Local temp(temp1) high limit setting for high byte. PR:1092",
               "regOffset": 11,
               "ioBuf": [
-                95
+                90
               ]
             },
             {
-              "__comment__": "Remote temp1(temp2) high limit setting for high byte. PR:1001",
+              "__comment__": "Remote temp1(temp2) high limit setting for high byte. PR:1092",
               "regOffset": 13,
               "ioBuf": [
-                95
+                90
               ]
             },
             {
@@ -703,10 +760,10 @@
               ]
             },
             {
-              "__comment__": "Remote temp2(temp3) high limit setting for high byte. PR:1001",
+              "__comment__": "Remote temp2(temp3) high limit setting for high byte. PR:1092",
               "regOffset": 21,
               "ioBuf": [
-                95
+                90
               ]
             },
             {
@@ -764,17 +821,17 @@
           "pmUnitScopedName": "SMB_TH6_SENSOR_TMP432_2",
           "initRegSettings": [
             {
-              "__comment__": "Local temp(temp1) high limit setting for high byte. PR:1001",
+              "__comment__": "Local temp(temp1) high limit setting for high byte. PR:1092",
               "regOffset": 11,
               "ioBuf": [
-                95
+                90
               ]
             },
             {
-              "__comment__": "Remote temp1(temp2) high limit setting for high byte. PR:1001",
+              "__comment__": "Remote temp1(temp2) high limit setting for high byte. PR:1092",
               "regOffset": 13,
               "ioBuf": [
-                95
+                90
               ]
             },
             {
@@ -943,6 +1000,7 @@
     "/run/devmap/sensors/SMB_ADC2_SENSOR": "/SMB_SLOT@0/[SMB_ADC2_SENSOR]",
     "/run/devmap/sensors/SMB_INLET_TH6_TSENSOR": "/SMB_SLOT@0/[SMB_INLET_TH6_TSENSOR]",
     "/run/devmap/sensors/SMB_VDDCORE": "/SMB_SLOT@0/[SMB_VDDCORE]",
+    "/run/devmap/sensors/SMB_CPLD": "/SMB_SLOT@0/[SMB_CPLD]",
     "/run/devmap/gpiochips/MCB_GPIO_CHIP_1": "/[MCB_GPIO_CHIP_1]",
     "/run/devmap/flashes/MCB_SPI_MASTER_1_DEVICE_1": "/[MCB_SPI_MASTER_1_DEVICE_1]",
     "/run/devmap/flashes/MCB_SPI_MASTER_2_DEVICE_1": "/[MCB_SPI_MASTER_2_DEVICE_1]",
@@ -973,7 +1031,7 @@
   "chassisEepromDevicePath": "/[CHASSIS_EEPROM]",
   "numXcvrs": 9,
   "bspKmodsRpmName": "fboss_bsp_kmods",
-  "bspKmodsRpmVersion": "4.4.1-1",
+  "bspKmodsRpmVersion": "4.4.2-1",
   "nonBspKmodsToLoad": [
     "i2c_i801",
     "spidev",

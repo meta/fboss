@@ -87,7 +87,11 @@ CmdDeleteQosPolicyTraits::RetType CmdDeleteQosPolicy::queryClient(
   }
   auto& qosPolicies = *switchConfig.qosPolicies();
 
-  auto it = utils::findQosPolicyOrThrow(qosPolicies, name);
+  auto it = utils::findQosPolicy(qosPolicies, name);
+  if (it == qosPolicies.end()) {
+    return fmt::format(
+        "Warning: QoS policy '{}' not found, nothing to delete", name);
+  }
 
   // Refuse rather than cascade: clearing the referring field would silently
   // change forwarding behaviour on ports the user did not name. Point at the

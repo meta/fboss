@@ -125,6 +125,8 @@ class SaiSwitchManager {
   void setVoqDramBoundTh(uint32_t dramBoundThreshold);
   void setConditionalEntropyRehashPeriodUS(
       int conditionalEntropyRehashPeriodUS);
+  void setLinkUpDebounceTimeout(uint32_t linkUpDebounceTimeoutUs);
+  uint32_t getLinkUpDebounceTimeout() const;
   void setShelConfig(
       const std::optional<cfg::SelfHealingEcmpLagConfig>& shelConfig);
   void setLocalVoqMaxExpectedLatency(int localVoqMaxExpectedLatencyNsec);

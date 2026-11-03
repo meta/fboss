@@ -120,7 +120,8 @@ class PortManager {
   void setPortLoopbackState(
       const std::string& /* portName */,
       phy::PortComponent /* component */,
-      bool /* setLoopback */);
+      bool /* setLoopback */,
+      phy::LoopbackMode mode = phy::LoopbackMode::INPUT);
 
   void setPortAdminState(
       const std::string& /* portName */,
@@ -252,7 +253,8 @@ class PortManager {
   void setOverrideAllAgentPortStatusForTesting(
       bool up,
       bool enabled,
-      bool clearOnly = false);
+      bool clearOnly = false,
+      bool asicPrbsEnabled = false);
 
   void setOverrideAgentConfigAppliedInfoForTesting(
       std::optional<ConfigAppliedInfo> configAppliedInfo);
@@ -533,6 +535,9 @@ class PortManager {
   folly::Synchronized<
       std::map<int /* agent logical port id */, facebook::fboss::NpuPortStatus>>
       npuPortStatusCache_;
+
+  // As of the last updateTransceiverPortStatus()
+  folly::Synchronized<std::unordered_set<PortID>> asicPrbsEnabledPorts_;
 
   // Cache of XPHY Ports retrieved by phyManager_. This is never updated, since
   // ports assigned to XPHY are based on static PlatformMapping.

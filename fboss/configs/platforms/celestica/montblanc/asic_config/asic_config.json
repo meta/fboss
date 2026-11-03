@@ -48,9 +48,34 @@
       "generate_dlb_config": true,
       "generate_low_clock_freq_settings": true,
       "generate_autoload_board_settings": true
-    }
+    },
+    "conditional_settings": [
+      {
+        "name": "large_ecmp_member_capacity",
+        "description": "Expands the secondary ECMP member table for workloads requiring additional ECMP member capacity.",
+        "condition": {
+          "source": "features",
+          "param": "enable_large_ecmp_member_capacity",
+          "equals": true
+        },
+        "apply": {
+          "global": {
+            "l3_ecmp_member_secondary_mem_size": "16384"
+          }
+        }
+      }
+    ]
   },
   "variants": {
-    "": {}
+    "default": {},
+    "hw_test": {
+      "asic_config_params": {
+        "config_gen_type": "HW_TEST"
+      },
+      "features": {
+        "enable_sai_managed_udf_groups": true,
+        "enable_large_ecmp_member_capacity": true
+      }
+    }
   }
 }

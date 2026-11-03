@@ -16,7 +16,6 @@
 #include "fboss/agent/hw/sai/api/ArsApi.h"
 #include "fboss/agent/hw/sai/api/MplsApi.h"
 #include "fboss/agent/hw/sai/api/SystemPortApi.h"
-#include "fboss/agent/hw/sai/api/TamApi.h"
 #include "fboss/agent/hw/sai/api/VirtualRouterApi.h"
 #include "fboss/agent/hw/switch_asics/HwAsic.h"
 
@@ -77,6 +76,13 @@ GenericSaiYangraPlatform::getSaiProfileVendorExtensionValues() const {
   // packet with the same source and destination IP, and routing resolves
   // the egress back to the same ingress port.
   kv_map.insert(std::make_pair("SAI_KEY_NOT_DROP_SIP_DIP_EQUAL", "1"));
+
+  // Skip the SX SDK vs kmod version check at SDK init. When unset, the SDK
+  // fails create_switch on any SDK/kmod version mismatch (e.g. during a
+  // rolling upgrade or when testing against a different kmod). FBOSS manages
+  // the kmod lifecycle externally, so a mismatch should warn, not abort.
+  // Replaces the former Meta SDK patch 0002 (skip_version_check = TRUE).
+  kv_map.insert(std::make_pair("SAI_KEY_SDK_SKIP_VERSION_CHECK", "1"));
 
   // PG0 is the default priority group — traffic is mapped to it when no
   // specific priority group is configured. It is lossy/best-effort. The
@@ -212,14 +218,13 @@ const std::set<sai_api_t>& GenericSaiYangraPlatform::getSupportedApiList()
     const {
   static auto apis = getDefaultSwitchAsicSupportedApis();
   apis.erase(facebook::fboss::MplsApi::ApiType);
-  apis.erase(facebook::fboss::TamApi::ApiType);
   apis.erase(facebook::fboss::SystemPortApi::ApiType);
   return apis;
 }
 
 std::string GenericSaiYangraPlatform::getHwConfig() {
   std::string xml_filename =
-      *config()->thrift.platform()->chip().value().get_asic().config();
+      *config()->thrift.platform()->chip().value().asic()->config();
   std::string base_filename =
       xml_filename.substr(0, xml_filename.find(".xml") + 4);
   std::ifstream xml_file(base_filename);

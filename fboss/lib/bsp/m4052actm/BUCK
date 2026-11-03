@@ -1,0 +1,20 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fboss_optics_phy")
+
+cpp_library(
+    # @autodeps-skip BspPlatformMapping.h is owned by both :bsp_platform_mapping_lib
+    # (acyclic base) and :bsp_core (aggregates platform bsps); autodeps picks :bsp_core
+    # -> cycle. Keep the acyclic :bsp_platform_mapping_lib dep.
+    name = "m4052actm_bsp",
+    srcs = [
+        "M4052ACTMBspPlatformMapping.cpp",
+    ],
+    headers = [
+        "M4052ACTMBspPlatformMapping.h",
+    ],
+    deps = ["//thrift/lib/cpp2/protocol:protocol"],
+    exported_deps = [
+        "//fboss/lib/bsp:bsp_platform_mapping_lib",
+    ],
+)

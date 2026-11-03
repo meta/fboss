@@ -142,8 +142,8 @@ BgpNeighborsByNameAdvertisedRejected::sampleRejectedPrefixes(
   // ingress paths name different policies, so the two directions must not
   // share one string.
   const std::string namedTerm = direction == SampleRouteDirection::Advertised
-      ? "Denied by PROPAGATE_RSW_FSW_OUT term DENY_RFC1918"
-      : "Denied by PROPAGATE_RSW_FSW_IN term DENY_RFC1918";
+      ? "Denied by SAMPLE_UPLINK_OUT term DENY_RFC1918"
+      : "Denied by SAMPLE_UPLINK_IN term DENY_RFC1918";
 
   /*
    * Three groups covering what the prose describes: one named-term rejection

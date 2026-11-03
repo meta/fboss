@@ -67,6 +67,7 @@ add_library(common_file_utils
 
 target_link_libraries(common_file_utils
   fboss_error
+  Boost::filesystem
 )
 
 add_library(common_port_utils

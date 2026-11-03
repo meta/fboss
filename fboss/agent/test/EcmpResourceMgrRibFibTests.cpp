@@ -11,6 +11,7 @@
 #include "fboss/agent/AgentFeatures.h"
 #include "fboss/agent/EcmpResourceManager.h"
 #include "fboss/agent/FibHelpers.h"
+#include "fboss/agent/FileBasedWarmbootUtils.h"
 #include "fboss/agent/SwSwitch.h"
 #include "fboss/agent/rib/NextHopIDManager.h"
 #include "fboss/agent/state/Route.h"
@@ -177,6 +178,126 @@ TEST_F(EcmpResourceManagerRibFibTest, addRoutesAboveEcmpLimit) {
     fib6->addNode(route);
   }
   updateRoutes(newState);
+}
+
+// Warm boot into a binary that reads two persisted NextHops as one, e.g. a
+// rollback to a binary that does not know a NextHopThrift field the previous
+// binary set. ERM must still reconstruct from the warm boot switch state.
+TEST_F(EcmpResourceManagerRibFibTest, ermReconstructsAfterNextHopCollapse) {
+  // Warm boot state as persisted on graceful exit.
+  auto wb = sw_->gracefulExitState();
+  auto& fibInfos = *wb.swSwitchState()->fibsInfoMap();
+  const auto& anyFibInfo = fibInfos.begin()->second;
+  const auto persistedSets = *anyFibInfo.idToNextHopIdSet();
+
+  // A collapse needs one NextHop under two ids, each used by a different
+  // route, so the RIB must renumber one route's set when it merges them.
+  // `sharedNhId` is a NextHopID used by both route 0 (nh1..nh20) and route 1
+  // (nh2..nh20); `setToMove` is route 1's resolved set, which is moved onto a
+  // duplicate of `sharedNhId` below while route 0 keeps the original.
+  const auto& fib6 = *anyFibInfo.fibsMap()->at(0).fibV6();
+  auto setToMove = *fib6.at(makePrefix(1).str()).fwd()->resolvedNextHopSetID();
+  auto sharedNhId = *persistedSets.at(setToMove).begin();
+
+  // Mimic the collapse: persist a second NextHopID with the same
+  // NextHopThrift and move only route 1's set onto it, e.g.
+  //   idToNextHop:      2 -> nh2, 1020 -> nh2
+  //   idToNextHopIdSet: route 0 {1, 2, ...}, route 1 {1020, 3, ...}
+  auto duplicateNhId = anyFibInfo.idToNextHop()->rbegin()->first + 1000;
+  for (auto& [_, fibInfo] : fibInfos) {
+    (*fibInfo.idToNextHop())[duplicateNhId] =
+        fibInfo.idToNextHop()->at(sharedNhId);
+    auto& members = fibInfo.idToNextHopIdSet()->at(setToMove);
+    members.erase(sharedNhId);
+    members.insert(duplicateNhId);
+  }
+
+  // Rebuild as warm boot does; the RIB keeps one of the two NextHopIDs and
+  // gives an affected route a new NextHopSetID.
+  auto [state, rib] = reconstructStateAndRib(wb, true /*hasL3*/);
+
+  // Precondition: the RIB minted a NextHopSetID that was not persisted.
+  auto ribMintedSetId = false;
+  for (const auto& [_, route] : std::as_const(*cfib(state))) {
+    auto ribRoute = rib->longestMatch(route->prefix().network(), RouterID(0));
+    auto setId = ribRoute->getForwardInfo().getResolvedNextHopSetID();
+    ribMintedSetId |= setId && !persistedSets.contains(*setId);
+  }
+  ASSERT_TRUE(ribMintedSetId);
+
+  // ERM resolves routes by NextHopSetID; it throws if the switch state names
+  // a set id its own maps do not have.
+  auto erm = makeEcmpResourceManager(
+      state, sw_->getHwAsicTable()->getL3Asics().front());
+  EXPECT_NO_THROW(erm->reconstructFromSwitchState(state));
+}
+
+TEST_F(EcmpResourceManagerRibFibTest, ribMirrorsOverrideNextHopSetId) {
+  const NextHopSetID setId(nextHopIdTypeStart(NextHopIdType::OVERRIDE_SET));
+  auto withOverrides = [](const auto& state,
+                          const std::optional<NextHopSetID>& id,
+                          std::optional<cfg::SwitchingMode> mode) {
+    auto newState = state->clone();
+    auto fib6 = fib(newState);
+    auto route = fib6->cbegin()->second->clone();
+    RouteNextHopEntry fwd(route->getForwardInfo().toThrift());
+    fwd.setOverrideNextHopSetID(id);
+    fwd.setOverrideEcmpSwitchingMode(mode);
+    route->setResolved(fwd);
+    fib6->updateNode(route);
+    newState->publish();
+    return std::make_pair(newState, route->prefix().network());
+  };
+  auto ribSetId = [this](const folly::IPAddressV6& ip) {
+    waitForStateUpdates(sw_);
+    return sw_->getRib()
+        ->longestMatch(ip, RouterID(0))
+        ->getForwardInfo()
+        .getOverrideNextHopSetID();
+  };
+  // An empty RIB update whose fib delta carries the overrides.
+  auto syncOverrides = [this](const auto& oldState, const auto& newState) {
+    sw_->getRib()->update(
+        sw_->getScopeResolver(),
+        RouterID(0),
+        ClientID::BGPD,
+        AdminDistance::EBGP,
+        std::vector<UnicastRoute>{},
+        std::vector<IpPrefix>{},
+        false,
+        "sync overrides",
+        [&](const SwitchIdScopeResolver*,
+            RouterID,
+            const IPv4NetworkToRouteMap&,
+            const IPv6NetworkToRouteMap&,
+            const LabelToRouteMap&,
+            const NextHopIDManager*,
+            const MySidTable&,
+            void*,
+            bool) { return StateDelta(oldState, newState); },
+        nullptr);
+  };
+  auto state0 = sw_->getState();
+  auto [state1, ip] = withOverrides(state0, setId, std::nullopt);
+  syncOverrides(state0, state1);
+  EXPECT_EQ(ribSetId(ip), setId);
+  // A mode-only change keeps the id.
+  auto [state2, _] =
+      withOverrides(state1, setId, cfg::SwitchingMode::PER_PACKET_RANDOM);
+  syncOverrides(state1, state2);
+  EXPECT_EQ(ribSetId(ip), setId);
+  auto [state3, __] = withOverrides(state2, std::nullopt, std::nullopt);
+  syncOverrides(state2, state3);
+  EXPECT_EQ(ribSetId(ip), std::nullopt);
+  // A newly resolved route with only the id still mirrors it.
+  auto unresolvedState = state3->clone();
+  auto unresolvedFib = fib(unresolvedState);
+  unresolvedFib->updateNode(
+      unresolvedFib->cbegin()->second->cloneForReresolve());
+  unresolvedState->publish();
+  auto [state4, ___] = withOverrides(unresolvedState, setId, std::nullopt);
+  syncOverrides(unresolvedState, state4);
+  EXPECT_EQ(ribSetId(ip), setId);
 }
 
 } // namespace facebook::fboss

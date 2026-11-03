@@ -35,12 +35,13 @@ CmdDeleteQosQueueConfigQueueId::queryClient(
   auto& agentConfig = session.getAgentConfig();
   auto& switchConfig = *agentConfig.sw();
 
-  // findQueueConfigList rather than queueConfigListForWrite: a typo'd name must
-  // fail here, not silently create an empty entry.
+  // findQueueConfigList rather than queueConfigListForWrite: a missing name
+  // must not silently create an empty entry.
   auto* configList = utils::findQueueConfigList(switchConfig, name);
   if (configList == nullptr) {
-    throw std::runtime_error(
-        fmt::format("No queue config '{}' exists", name.getName()));
+    return fmt::format(
+        "Warning: queue config '{}' not found, nothing to delete",
+        name.getName());
   }
 
   int16_t queueIdVal = queueId.getQueueId();
@@ -50,9 +51,10 @@ CmdDeleteQosQueueConfigQueueId::queryClient(
       });
 
   if (it == configList->end()) {
-    throw std::runtime_error(
-        fmt::format(
-            "No queue-id {} in queue config '{}'", queueIdVal, name.getName()));
+    return fmt::format(
+        "Warning: queue-id {} not found in queue config '{}', nothing to delete",
+        queueIdVal,
+        name.getName());
   }
 
   // No binding check here, unlike whole-config deletion: dropping one queue

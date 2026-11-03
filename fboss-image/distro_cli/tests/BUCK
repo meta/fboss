@@ -1,5 +1,6 @@
 load("@fbcode_macros//build_defs:python_library.bzl", "python_library")
 load("@fbcode_macros//build_defs:python_unittest.bzl", "python_unittest")
+load("@fbsource//tools/build_defs/testinfra:network_access_utils.bzl", "network_access_utils")
 
 oncall("fboss_distro")
 
@@ -51,5 +52,18 @@ python_unittest(
         ":test_helpers",
         "//fboss/github/fboss-image/distro_cli/lib:device_update",
         "//fboss/github/fboss-image/distro_cli/lib:manifest",
+    ],
+)
+
+python_unittest(
+    name = "version_file_test",
+    srcs = ["version_file_test.py"],
+    base_module = "distro_cli.tests",
+    labels = ["autodeps2_generated"],
+    # Filesystem and tar only; rpm and modinfo are absent or return nothing.
+    network_access = network_access_utils.none(),
+    deps = [
+        "//fboss/github/fboss-image/distro_cli/lib:artifact_versions",
+        "//fboss/github/fboss-image/distro_cli/lib:version_file",
     ],
 )

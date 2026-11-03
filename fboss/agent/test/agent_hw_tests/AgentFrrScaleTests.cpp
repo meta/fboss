@@ -18,22 +18,17 @@
 
 namespace facebook::fboss {
 
-namespace {
-// One group per port: each port is the primary of its own group and a backup
-// in every other. 96 groups of 1 primary + 95 backups.
-constexpr size_t kNumFrrGroups = 96;
-} // namespace
-
 /*
  * Scale shape for FRR protection groups with split horizon on.
  *
  * Every port is the primary of exactly one group, and a backup member of all
- * the others, so each of the 96 groups carries 1 primary and 95 backups. That
- * is the widest fan-out the port count allows and the densest sharing of next
- * hops between groups, which is what makes it worth programming: the backup
- * sets overlap almost completely, so any per-group duplication in how the SDK
- * lays out secondary members shows up here and nowhere in the functional tests,
- * which use four to six members.
+ * the others, so with N interface ports each group carries 1 primary and N-1
+ * backups.
+ * That is the widest fan-out the port count allows and the densest sharing of
+ * next hops between groups, which is what makes it worth programming: the
+ * backup sets overlap almost completely, so any per-group duplication in how
+ * the SDK lays out secondary members shows up here and nowhere in the
+ * functional tests, which use four to six members.
  *
  * No traffic is sent, so the loopback mode does not matter and the default MAC
  * loopback is used. That also lifts the 800G-only restriction the prune tests
@@ -75,11 +70,7 @@ class AgentFrrScaleTest : public AgentHwTest {
   }
 
   std::vector<PortID> scalePorts() const {
-    auto ports = masterLogicalInterfacePortIds();
-    CHECK_GE(ports.size(), kNumFrrGroups)
-        << "need " << kNumFrrGroups << " interface ports, found "
-        << ports.size();
-    return {ports.begin(), ports.begin() + kNumFrrGroups};
+    return masterLogicalInterfacePortIds();
   }
 
   // Group i: port[i] is the primary, every other port is a backup.
@@ -134,17 +125,18 @@ class AgentFrrScaleTest : public AgentHwTest {
 };
 
 // Programs the full set and checks it survives a warm boot. There is no traffic
-// to assert on; what this catches is the agent or the SDK failing to lay out 96
-// protection pairs -- a resource exhaustion, a programming error, or a crash on
-// replay. Route presence is asserted so a silently dropped update fails here
-// rather than looking like a pass.
+// to assert on; what this catches is the agent or the SDK failing to lay out
+// the protection pairs -- a resource exhaustion, a programming error, or a
+// crash on replay. Route presence is asserted so a silently dropped update
+// fails here rather than looking like a pass.
 TEST_F(AgentFrrScaleTest, ProgramFrrGroupsWithSplitHorizon) {
   auto setup = [this]() { programFrrGroups(); };
 
   auto verify = [this]() {
     const auto state = getProgrammedState();
+    const auto numGroups = scalePorts().size();
     size_t found = 0;
-    for (size_t i = 0; i < kNumFrrGroups; ++i) {
+    for (size_t i = 0; i < numGroups; ++i) {
       const auto prefix =
           folly::IPAddressV6(folly::to<std::string>("2001::", i + 1));
       auto route =
@@ -153,9 +145,10 @@ TEST_F(AgentFrrScaleTest, ProgramFrrGroupsWithSplitHorizon) {
         ++found;
       }
     }
-    EXPECT_EQ(kNumFrrGroups, found);
-    XLOG(INFO) << "FRR scale: " << found << " of " << kNumFrrGroups
-               << " protection groups programmed, 95 backups each";
+    EXPECT_EQ(numGroups, found);
+    XLOG(INFO) << "FRR scale: " << found << " of " << numGroups
+               << " protection groups programmed, " << numGroups - 1
+               << " backups each";
   };
 
   verifyAcrossWarmBoots(setup, verify);

@@ -7,10 +7,10 @@ namespace facebook::fboss::fsdb {
 size_t getPatchNodeSize(const thrift_cow::PatchNode& val) {
   switch (val.getType()) {
     case thrift_cow::PatchNode::Type::val:
-      return val.get_val().length();
+      return val.val()->length();
     case thrift_cow::PatchNode::Type::struct_node: {
       size_t totalSize = 0;
-      const auto& structNode = val.get_struct_node();
+      const auto& structNode = val.struct_node().value();
       for (const auto& [key, child] : *structNode.children()) {
         totalSize += getPatchNodeSize(child);
       }
@@ -21,7 +21,7 @@ size_t getPatchNodeSize(const thrift_cow::PatchNode& val) {
     }
     case thrift_cow::PatchNode::Type::map_node: {
       size_t totalSize = 0;
-      const auto& mapNode = val.get_map_node();
+      const auto& mapNode = val.map_node().value();
       for (const auto& [key, child] : *mapNode.children()) {
         totalSize += getPatchNodeSize(child);
       }
@@ -32,7 +32,7 @@ size_t getPatchNodeSize(const thrift_cow::PatchNode& val) {
     }
     case thrift_cow::PatchNode::Type::list_node: {
       size_t totalSize = 0;
-      const auto& listNode = val.get_list_node();
+      const auto& listNode = val.list_node().value();
       for (const auto& [key, child] : *listNode.children()) {
         totalSize += getPatchNodeSize(child);
       }
@@ -43,7 +43,7 @@ size_t getPatchNodeSize(const thrift_cow::PatchNode& val) {
     }
     case thrift_cow::PatchNode::Type::set_node: {
       size_t totalSize = 0;
-      const auto& setNode = val.get_set_node();
+      const auto& setNode = val.set_node().value();
       for (const auto& [key, child] : *setNode.children()) {
         totalSize += getPatchNodeSize(child);
       }
@@ -53,8 +53,8 @@ size_t getPatchNodeSize(const thrift_cow::PatchNode& val) {
       return totalSize;
     }
     case thrift_cow::PatchNode::Type::variant_node: {
-      if (val.get_variant_node().child()) {
-        return getPatchNodeSize(*val.get_variant_node().child());
+      if (val.variant_node()->child()) {
+        return getPatchNodeSize(*val.variant_node()->child());
       }
       return 0;
     }

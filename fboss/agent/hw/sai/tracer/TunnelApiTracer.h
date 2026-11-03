@@ -9,5 +9,7 @@ sai_tunnel_api_t* wrappedTunnelApi();
 
 SET_ATTRIBUTE_FUNC_DECLARATION(Tunnel);
 SET_ATTRIBUTE_FUNC_DECLARATION(TunnelTerm);
+SET_ATTRIBUTE_FUNC_DECLARATION(TunnelMap);
+SET_ATTRIBUTE_FUNC_DECLARATION(TunnelMapEntry);
 
 } // namespace facebook::fboss

@@ -110,7 +110,7 @@ void visitNode(
     Func&& f)
     // only enable for Node types
   requires(std::is_same_v<
-           typename folly::remove_cvref_t<NodePtr>::element_type::CowType,
+           typename std::remove_cvref_t<NodePtr>::element_type::CowType,
            NodeType>)
 {
   if (options.mode == RecurseVisitMode::UNPUBLISHED && node->isPublished()) {
@@ -156,7 +156,7 @@ struct RecurseVisitor<apache::thrift::type_class::set<ValueTypeClass>> {
       Func&& f)
       // only enable for Node types
     requires(std::is_same_v<
-             typename folly::remove_cvref_t<NodePtr>::element_type::CowType,
+             typename std::remove_cvref_t<NodePtr>::element_type::CowType,
              NodeType>)
   {
     return rv_detail::visitNode<TC>(
@@ -171,7 +171,7 @@ struct RecurseVisitor<apache::thrift::type_class::set<ValueTypeClass>> {
       Func&& f)
       // only enable for HybridNode types
     requires(std::is_same_v<
-             typename folly::remove_cvref_t<NodePtr>::element_type::CowType,
+             typename std::remove_cvref_t<NodePtr>::element_type::CowType,
              HybridNodeType>)
   {
     rv_detail::invokeVisitorFnHelper(
@@ -214,7 +214,7 @@ struct RecurseVisitor<apache::thrift::type_class::list<ValueTypeClass>> {
       Func&& f)
       // only enable for Node types
     requires(std::is_same_v<
-             typename folly::remove_cvref_t<NodePtr>::element_type::CowType,
+             typename std::remove_cvref_t<NodePtr>::element_type::CowType,
              NodeType>)
   {
     return rv_detail::visitNode<TC>(
@@ -229,7 +229,7 @@ struct RecurseVisitor<apache::thrift::type_class::list<ValueTypeClass>> {
       Func&& f)
       // only enable for HybridNode types
     requires(std::is_same_v<
-             typename folly::remove_cvref_t<NodePtr>::element_type::CowType,
+             typename std::remove_cvref_t<NodePtr>::element_type::CowType,
              HybridNodeType>)
   {
     if (options.mode == RecurseVisitMode::UNPUBLISHED) {
@@ -294,7 +294,7 @@ struct RecurseVisitor<
       Func&& f)
       // only enable for Node types
     requires(std::is_same_v<
-             typename folly::remove_cvref_t<NodePtr>::element_type::CowType,
+             typename std::remove_cvref_t<NodePtr>::element_type::CowType,
              NodeType>)
   {
     return rv_detail::visitNode<TC>(
@@ -309,7 +309,7 @@ struct RecurseVisitor<
       Func&& f)
       // only enable for HybridNode types
     requires(std::is_same_v<
-             typename folly::remove_cvref_t<NodePtr>::element_type::CowType,
+             typename std::remove_cvref_t<NodePtr>::element_type::CowType,
              HybridNodeType>)
   {
     if (options.mode == RecurseVisitMode::UNPUBLISHED) {
@@ -391,7 +391,7 @@ struct RecurseVisitor<apache::thrift::type_class::variant> {
       Func&& f)
       // only enable for Node types
     requires(std::is_same_v<
-             typename folly::remove_cvref_t<NodePtr>::element_type::CowType,
+             typename std::remove_cvref_t<NodePtr>::element_type::CowType,
              NodeType>)
   {
     return rv_detail::visitNode<TC>(
@@ -406,7 +406,7 @@ struct RecurseVisitor<apache::thrift::type_class::variant> {
       Func&& f)
       // only enable for HybridNode types
     requires(std::is_same_v<
-             typename folly::remove_cvref_t<NodePtr>::element_type::CowType,
+             typename std::remove_cvref_t<NodePtr>::element_type::CowType,
              HybridNodeType>)
   {
     rv_detail::invokeVisitorFnHelper(
@@ -471,7 +471,7 @@ struct RecurseVisitor<apache::thrift::type_class::structure> {
       Func&& f)
       // only enable for Node types
     requires(std::is_same_v<
-             typename folly::remove_cvref_t<NodePtr>::element_type::CowType,
+             typename std::remove_cvref_t<NodePtr>::element_type::CowType,
              NodeType>)
   {
     return rv_detail::visitNode<TC>(
@@ -486,7 +486,7 @@ struct RecurseVisitor<apache::thrift::type_class::structure> {
       Func&& f)
       // only enable for HybridNode types
     requires(std::is_same_v<
-             typename folly::remove_cvref_t<NodePtr>::element_type::CowType,
+             typename std::remove_cvref_t<NodePtr>::element_type::CowType,
              HybridNodeType>)
   {
     rv_detail::invokeVisitorFnHelper(

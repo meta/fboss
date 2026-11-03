@@ -128,6 +128,11 @@ void FsdbSyncer::agentInfoChanged(agent_info::AgentInfo newAgentInfo) {
   agentFsdbSyncManager_->agentInfoChanged(std::move(newAgentInfo));
 }
 
+void FsdbSyncer::iPhyStatesUpdated(
+    std::map<std::string, phy::PhyState>&& iPhyStates) {
+  agentFsdbSyncManager_->updateIPhyStates(std::move(iPhyStates));
+}
+
 void FsdbSyncer::statsUpdated(const AgentStats& stats) {
   if (!readyForStatPublishing_.load()) {
     return;

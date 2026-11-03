@@ -615,21 +615,6 @@ TEST(Acl, AclGeneration) {
       ->ecmpHashAction()
       ->switchingMode() = cfg::SwitchingMode::FIXED_ASSIGNMENT;
 
-  // Add ACL with enableAlternateArsMembers action
-  config.acls()->resize(8);
-  *config.acls()[7].name() = "acl8";
-  config.acls()[7].proto() = kUdpProto;
-  config.acls()[7].l4DstPort() = 2048;
-
-  config.dataPlaneTrafficPolicy()->matchToAction()->resize(6);
-  *config.dataPlaneTrafficPolicy()->matchToAction()[5].matcher() = "acl8";
-  *config.dataPlaneTrafficPolicy()->matchToAction()[5].action() =
-      cfg::MatchAction();
-  config.dataPlaneTrafficPolicy()
-      ->matchToAction()[5]
-      .action()
-      ->enableAlternateArsMembers() = true;
-
   auto stateV1 = publishAndApplyConfig(stateV0, &config, platform.get());
   EXPECT_NE(stateV1, nullptr);
   auto acls = stateV1->getAcls();
@@ -685,13 +670,6 @@ TEST(Acl, AclGeneration) {
           ->getAclAction()
           ->cref<switch_state_tags::ecmpHashAction>()
           ->cref<switch_config_tags::switchingMode>()
-          ->cref());
-  EXPECT_TRUE(acls->getNodeIf("acl8")->getAclAction() != nullptr);
-  EXPECT_EQ(
-      true,
-      acls->getNodeIf("acl8")
-          ->getAclAction()
-          ->cref<switch_state_tags::enableAlternateArsMembers>()
           ->cref());
 }
 
@@ -1555,6 +1533,91 @@ TEST(Acl, L4DstPortRangeValidation) {
     EXPECT_EQ(*acl->getL4DstPortRange()->minimum(), 1000);
     EXPECT_EQ(*acl->getL4DstPortRange()->maximum(), 2000);
   }
+}
+
+TEST(Acl, TcpFlagsMaskValidation) {
+  FLAGS_enable_acl_table_group = false;
+  auto platform = createMockPlatform();
+  auto stateV0 = make_shared<SwitchState>();
+  registerPort(stateV0, PortID(1), "port1", scope());
+
+  auto makeConfig = [](std::optional<int16_t> tcpFlagsBitMap,
+                       std::optional<int16_t> tcpFlagsMask) {
+    cfg::SwitchConfig config;
+    config.ports()->resize(1);
+    preparedMockPortConfig(config.ports()[0], 1);
+    config.acls()->resize(1);
+    *config.acls()[0].name() = "acl0";
+    *config.acls()[0].actionType() = cfg::AclActionType::DENY;
+    config.acls()[0].proto() = 6;
+    if (tcpFlagsBitMap) {
+      config.acls()[0].tcpFlagsBitMap() = *tcpFlagsBitMap;
+    }
+    if (tcpFlagsMask) {
+      config.acls()[0].tcpFlagsMask() = *tcpFlagsMask;
+    }
+    return config;
+  };
+  auto expectRejected = [&](std::optional<int16_t> tcpFlagsBitMap,
+                            std::optional<int16_t> tcpFlagsMask) {
+    auto config = makeConfig(tcpFlagsBitMap, tcpFlagsMask);
+    EXPECT_THROW(
+        publishAndApplyConfig(stateV0, &config, platform.get()), FbossError);
+  };
+
+  // The bitmap must fit in the 8-bit TCP flags field.
+  expectRejected(256, std::nullopt);
+  // A negative bitmap is not a valid set of flags.
+  expectRejected(-1, std::nullopt);
+  // A mask has nothing to apply to without a bitmap.
+  expectRejected(std::nullopt, 0x12);
+  // A zero mask compares no flags, so the rule would match all TCP.
+  expectRejected(0x02, 0);
+  // A negative mask is not a valid set of flags.
+  expectRejected(0x02, -1);
+  // 0x40 (ECE) is past the six flags a mask may cover.
+  expectRejected(0x02, 0x40);
+  // The state field is a byte, so this must not be truncated to 0x12.
+  expectRejected(0x02, 0x112);
+  // 0x08 (PSH) is outside the mask, so it would never be compared.
+  expectRejected(0x0A, 0x12);
+
+  auto config = makeConfig(0x02, 0x12);
+  auto stateV1 = publishAndApplyConfig(stateV0, &config, platform.get());
+  auto acl = stateV1->getAcl("acl0");
+  ASSERT_NE(nullptr, acl);
+  EXPECT_EQ(acl->getTcpFlagsBitMap(), 0x02);
+  EXPECT_EQ(acl->getTcpFlagsMask(), 0x12);
+}
+
+TEST(Acl, TcpFlagsMaskChange) {
+  FLAGS_enable_acl_table_group = false;
+  auto platform = createMockPlatform();
+  auto stateV0 = make_shared<SwitchState>();
+  registerPort(stateV0, PortID(1), "port1", scope());
+
+  cfg::SwitchConfig config;
+  config.ports()->resize(1);
+  preparedMockPortConfig(config.ports()[0], 1);
+  config.acls()->resize(1);
+  *config.acls()[0].name() = "acl0";
+  *config.acls()[0].actionType() = cfg::AclActionType::DENY;
+  config.acls()[0].proto() = 6;
+  config.acls()[0].tcpFlagsBitMap() = 0x02;
+
+  auto stateV1 = publishAndApplyConfig(stateV0, &config, platform.get());
+  ASSERT_NE(nullptr, stateV1);
+  EXPECT_EQ(stateV1->getAcl("acl0")->getTcpFlagsMask(), std::nullopt);
+
+  config.acls()[0].tcpFlagsMask() = 0x12;
+  auto stateV2 = publishAndApplyConfig(stateV1, &config, platform.get());
+  ASSERT_NE(nullptr, stateV2);
+  EXPECT_EQ(stateV2->getAcl("acl0")->getTcpFlagsMask(), 0x12);
+
+  config.acls()[0].tcpFlagsMask().reset();
+  auto stateV3 = publishAndApplyConfig(stateV2, &config, platform.get());
+  ASSERT_NE(nullptr, stateV3);
+  EXPECT_EQ(stateV3->getAcl("acl0")->getTcpFlagsMask(), std::nullopt);
 }
 
 TEST(Acl, DstIpV6WordValidation) {

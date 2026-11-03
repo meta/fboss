@@ -148,6 +148,11 @@ using IPv4NetworkToRouteMap = NetworkToRouteMap<folly::IPAddressV4>;
 using IPv6NetworkToRouteMap = NetworkToRouteMap<folly::IPAddressV6>;
 using LabelToRouteMap = NetworkToRouteMap<LabelID>;
 
+// One (v4RouteMap, v6RouteMap) pair per VRF. Resolution tries each in order
+// and uses the first matching route.
+using VrfRouteTables =
+    std::vector<std::pair<IPv4NetworkToRouteMap*, IPv6NetworkToRouteMap*>>;
+
 template <typename AddrT>
 std::shared_ptr<Route<AddrT>>& value(
     typename NetworkToRouteMap<AddrT>::Iterator& iter) {

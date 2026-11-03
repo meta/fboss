@@ -194,6 +194,24 @@ TEST(EthFrameExtTest, getEthFrameV4) {
   EXPECT_EQ(udp->header().dstPort, 8001);
   // Default payload is 256 bytes
   EXPECT_EQ(udp->payload().size(), 256);
+  ASSERT_EQ(frame.header().vlanTags.size(), 1);
+  EXPECT_EQ(frame.header().vlanTags[0].vid(), 1);
+}
+
+TEST(EthFrameExtTest, getEthFrameV4NoVlan) {
+  auto frame = getEthFrame(
+      kSrcMac,
+      kDstMac,
+      kSrcIpV4,
+      kDstIpV4,
+      /*sPort=*/8000,
+      /*dPort=*/8001,
+      std::nullopt);
+
+  EXPECT_TRUE(frame.header().vlanTags.empty());
+  EXPECT_TRUE(frame.v4PayLoad().has_value());
+  EXPECT_EQ(frame.v4PayLoad()->header().srcAddr, kSrcIpV4);
+  EXPECT_EQ(frame.v4PayLoad()->header().dstAddr, kDstIpV4);
 }
 
 // --- getEthFrame helper V6 ---
@@ -249,13 +267,37 @@ TEST(EthFrameExtTest, getEthFrameWithMPLSLabels) {
       kSrcIpV4,
       kDstIpV4,
       /*sPort=*/7000,
-      /*dPort=*/7001);
+      /*dPort=*/7001,
+      VlanID(1));
 
   EXPECT_TRUE(frame.mplsPayLoad().has_value());
   EXPECT_EQ(
       frame.header().etherType,
       static_cast<uint16_t>(ETHERTYPE::ETHERTYPE_MPLS));
   EXPECT_TRUE(frame.mplsPayLoad()->v4PayLoad().has_value());
+  ASSERT_EQ(frame.header().vlanTags.size(), 1);
+  EXPECT_EQ(frame.header().vlanTags[0].vid(), 1);
+}
+
+TEST(EthFrameExtTest, getEthFrameWithMPLSLabelsNoVlan) {
+  std::vector<MPLSHdr::Label> labels = {
+      {100, 0, true, 64},
+  };
+  auto frame = getEthFrame(
+      kSrcMac,
+      kDstMac,
+      labels,
+      kSrcIpV4,
+      kDstIpV4,
+      /*sPort=*/7000,
+      /*dPort=*/7001,
+      std::nullopt);
+
+  EXPECT_TRUE(frame.header().vlanTags.empty());
+  EXPECT_TRUE(frame.mplsPayLoad().has_value());
+  EXPECT_EQ(
+      frame.header().etherType,
+      static_cast<uint16_t>(ETHERTYPE::ETHERTYPE_MPLS));
 }
 
 // --- setDstMac ---

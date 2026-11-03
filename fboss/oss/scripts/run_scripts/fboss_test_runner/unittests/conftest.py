@@ -10,6 +10,8 @@ from unittest.mock import Mock
 
 import pytest
 
+# Expose npu_sdk_utils as a top-level module, matching the /opt/fboss/bin layout.
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 from fboss_test_runner.runners.test_runner import TestRunner
@@ -40,6 +42,7 @@ def mock_args():
     args = Mock()
     args.filter_file = None
     args.list_tests = False
+    args.tier = None
     args.list_tests_for_features = None
     args.results_json = None
     args.config = None

@@ -30,21 +30,6 @@ SaiArsProfileTraits::Attributes::AttributeArsBaseIndex::operator()() {
   return std::nullopt;
 }
 
-std::optional<sai_attr_id_t> SaiArsProfileTraits::Attributes::
-    AttributeArsAlternateMembersRouteMetaData::operator()() {
-  return std::nullopt;
-}
-
-std::optional<sai_attr_id_t>
-SaiArsProfileTraits::Attributes::AttributeArsRouteMetaDataMask::operator()() {
-  return std::nullopt;
-}
-
-std::optional<sai_attr_id_t> SaiArsProfileTraits::Attributes::
-    AttributeArsPrimaryMembersRouteMetaData::operator()() {
-  return std::nullopt;
-}
-
 std::optional<sai_attr_id_t>
 SaiArsProfileTraits::Attributes::AttributeEcmpMemberCount::operator()() {
   return std::nullopt;

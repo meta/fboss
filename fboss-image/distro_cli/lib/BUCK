@@ -71,6 +71,7 @@ python_library(
     labels = ["autodeps2_generated"],
     deps = [
         ":artifact",
+        ":constants",
         ":exceptions",
     ],
 )
@@ -92,4 +93,18 @@ python_library(
     base_module = "distro_cli.lib",
     labels = ["autodeps2_generated"],
     deps = [":constants"],
+)
+
+python_library(
+    name = "artifact_versions",
+    srcs = ["artifact_versions.py"],
+    base_module = "distro_cli.lib",
+    labels = ["autodeps2_generated"],
+)
+
+python_library(
+    name = "version_file",
+    srcs = ["version_file.py"],
+    base_module = "distro_cli.lib",
+    deps = ["//fboss/github/fboss-image/distro_cli/lib:artifact_versions"],
 )

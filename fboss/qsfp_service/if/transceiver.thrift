@@ -38,6 +38,19 @@ struct Vendor {
   6: string dateCode;
 }
 
+// A transceiver identified by the vendor name and part number from its EEPROM.
+struct TransceiverVendorPartNumber {
+  1: string vendor;
+  2: string partNumber;
+}
+
+// A placeholder vendor/part number used in platform mapping overrides, and the
+// real transceivers it stands for.
+struct TransceiverVendorOverride {
+  1: TransceiverVendorPartNumber placeholder;
+  2: list<TransceiverVendorPartNumber> transceivers;
+}
+
 struct Thresholds {
   1: double low;
   2: double high;
@@ -246,6 +259,15 @@ enum MediaInterfaceCode {
   // 8x800G over DR4: 4 banks, each a 2x800G-DR4
   DR4_8x800G = 36,
   FR2_200G = 37,
+  DR8_800G = 38,
+  // 1.6TBASE-DR8 (IEEE 802.3 Clause 180)
+  DR8_1600G = 39,
+  // Active copper at 200G/lane (IEEE 802.3 Clause 179). The hw test runner
+  // parses the trailing speed off these names, so keep the suffix.
+  CR1_200G = 40,
+  CR2_400G = 41,
+  CR4_800G = 42,
+  CR8_1600G = 43,
 }
 
 // The extended specification compliance code of the transceiver module.
@@ -309,6 +331,7 @@ enum SMFMediaInterfaceCode {
   DR2_200G = 0x98,
   DR2_400G = 0x75,
   DR4_800G = 0x77,
+  DR8_800G = 0x56,
   DR1_100G = 0x14,
   FR8_800G = 0xC1,
   ZR_OIF_ZRA_800G = 0x6C,
@@ -320,6 +343,7 @@ enum SMFMediaInterfaceCode {
   FR2_200G = 0xC0,
   FR2_400G = 0xC2,
   FR1_200G = 0xC4,
+  DR8_1600G = 0x7F,
   ZR_VENDOR_CUSTOM = 0xF7,
 }
 
@@ -357,6 +381,13 @@ enum ActiveCuHostInterfaceCode {
   AUI_PAM4_2S_200G = 0x4D,
   AUI_PAM4_4S_400G = 0x4F,
   AUI_PAM4_8S_800G = 0x51,
+  // 200G/lane host interfaces (IEEE 802.3 Annex 176E). Annex 176E defines no
+  // short/long reach variants, so these carry no -S/-L suffix unlike the
+  // 100G/lane codes above (0x4B/0x4D/0x4F/0x51 are the -S half of a pair).
+  AUI_PAM4_1_200G = 0x80,
+  AUI_PAM4_2_400G = 0x81,
+  AUI_PAM4_4_800G = 0x82,
+  AUI_PAM4_8_1600G = 0x83,
 }
 
 union MediaInterfaceUnion {
@@ -798,6 +829,9 @@ struct TcvrState {
   31: set<TransceiverErrorState> errorStates;
   32: ModuleTechnology moduleTechnology = GREY;
   33: PagingSupport pagingSupport = PagingSupport.UNKNOWN;
+  // Copied from QsfpServiceConfig.transceiverVendorOverrides. Unset if the
+  // config doesn't have it.
+  34: optional list<TransceiverVendorOverride> vendorOverrides;
 }
 
 struct TcvrStats {
@@ -1027,6 +1061,17 @@ struct WriteResponse {
   1: bool success;
 }
 
+// CMIS Page 13h Byte 128
+struct LoopbackCapability {
+  1: bool mediaSideOutput = false;
+  2: bool mediaSideInput = false;
+  3: bool hostSideOutput = false;
+  4: bool hostSideInput = false;
+  5: bool perLaneHostSide = false;
+  6: bool perLaneMediaSide = false;
+  7: bool simultaneousHostAndMediaSide = false;
+}
+
 struct DiagsCapability {
   1: bool diagnostics = false;
   2: bool vdm = false;
@@ -1053,6 +1098,7 @@ struct DiagsCapability {
   21: bool modeMismatchFlag = false;
   22: bool dspTempMargin = false;
   23: bool laserTempMargin = false;
+  24: optional LoopbackCapability loopbackCapability;
 }
 
 enum TransceiverStateMachineState {

@@ -21,7 +21,7 @@
       }
     },
     {
-      "name": "scm_iob",
+      "name": "scm_cpld",
       "location": "System Control Module",
       "display_location": "scm",
       "field_replaceable": false,
@@ -32,24 +32,17 @@
       }
     },
     {
-      "name": "smb0_iob",
+      "name": "smb_fpga",
       "location": "Switch Main Board",
       "display_location": "smb",
       "field_replaceable": false,
-      "pcie_address": "04:00.0",
+      "instances": {
+        "range": "1-2",
+        "position": "before_first_underscore"
+      },
+      "pcie_address": ["04:00.0", "05:00.0"],
       "firmware": {
         "priority": 3,
-        "shared_with_platforms": []
-      }
-    },
-    {
-      "name": "smb1_iob",
-      "location": "Switch Main Board",
-      "display_location": "smb",
-      "field_replaceable": false,
-      "pcie_address": "05:00.0",
-      "firmware": {
-        "priority": 4,
         "shared_with_platforms": []
       }
     }

@@ -23,7 +23,7 @@
 #include "fboss/agent/test/ResourceLibUtil.h"
 #include "fboss/agent/test/TestEnsembleIf.h"
 #include "fboss/agent/test/TestUtils.h"
-#include "fboss/agent/test/agent_hw_tests/AgentTestAddressConstants.h"
+#include "fboss/agent/test/utils/AgentTestAddressConstants.h"
 #include "fboss/agent/test/utils/AqmTestUtils.h"
 #include "fboss/agent/test/utils/ConfigUtils.h"
 #include "fboss/agent/test/utils/CoppTestUtils.h"
@@ -561,6 +561,9 @@ class AgentAqmTest : public AgentHwTest {
         })
       };
 
+      learnL2EntryIfPending(
+          utility::MacAddressGenerator().get(getIntfMac().u64HBO() + 1),
+          masterLogicalInterfacePortIds()[1]);
       // Send traffic with queue buildup and get the stats at the start.
       // Update the stats to initialize them before sending packets to build up
       // the queue.

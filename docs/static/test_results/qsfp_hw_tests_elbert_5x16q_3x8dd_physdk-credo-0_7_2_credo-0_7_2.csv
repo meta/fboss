@@ -1,5 +1,6 @@
 "Test Case","Platform","PHY SDK","Status"
-"cold_boot.HwXphyPortStatsCollectionTest.checkXphyStatsCollectionDone","elbert_5x16Q_3x8DD","credo-0.7.2","FAILED"
+"cold_boot.HwXphyPortStatsCollectionTest.checkXphyStatsCollectionDone","elbert_5x16Q_3x8DD","credo-0.7.2","PASSED"
+"cold_boot.EmptyHwTest.CheckInit","elbert_5x16Q_3x8DD","credo-0.7.2","FAILED"
 "cold_boot.HwXphyFirmwareTest.CheckDefaultXphyFirmwareVersion","elbert_5x16Q_3x8DD","credo-0.7.2","FAILED"
 "cold_boot.HwTransceiverThermalDataTest.thermalDataValidate","elbert_5x16Q_3x8DD","credo-0.7.2","FAILED"
 "cold_boot.HwTransceiverThermalDataTest.systemConfigTest","elbert_5x16Q_3x8DD","credo-0.7.2","FAILED"
@@ -27,4 +28,3 @@
 "cold_boot.HwStateMachineTest.CheckPortStatusUpdated","elbert_5x16Q_3x8DD","credo-0.7.2","FAILED"
 "cold_boot.HwStateMachineTest.CheckAgentConfigChanged","elbert_5x16Q_3x8DD","credo-0.7.2","FAILED"
 "cold_boot.HwPimTest.CheckPimPresent","elbert_5x16Q_3x8DD","credo-0.7.2","FAILED"
-"cold_boot.EmptyHwTest.CheckInit","elbert_5x16Q_3x8DD","credo-0.7.2","FAILED"

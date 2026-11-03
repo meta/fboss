@@ -7,6 +7,7 @@
 #include <gtest/gtest.h>
 #include "fboss/agent/AgentFeatures.h"
 #include "fboss/agent/AsicUtils.h"
+#include "fboss/agent/HwSwitchMatcher.h"
 #include "fboss/agent/gen-cpp2/switch_config_constants.h"
 #include "fboss/agent/hw/switch_asics/HwAsic.h"
 #include "fboss/agent/hw/test/ConfigFactory.h"
@@ -14,6 +15,7 @@
 #include "fboss/agent/test/AgentHwTest.h"
 #include "fboss/agent/test/EcmpSetupHelper.h"
 #include "fboss/agent/test/TrunkUtils.h"
+#include "fboss/agent/test/utils/ConfigUtils.h"
 #include "fboss/lib/CommonUtils.h"
 
 namespace facebook::fboss {
@@ -165,9 +167,32 @@ class AgentHwMirrorTest : public AgentHwTest {
     return getAgentEnsemble()->getHwAgentTestClient(getSwitchId());
   }
 
+  // Other switches' copies may stay unresolved on multi-NPU.
+  std::vector<std::shared_ptr<Mirror>> getMirrorsOnSwitchUnderTest() {
+    std::vector<std::shared_ptr<Mirror>> result;
+    auto mirrors = this->getProgrammedState()->getMirrors()->getMapNodeIf(
+        HwSwitchMatcher(std::unordered_set<SwitchID>({getSwitchId()})));
+    if (mirrors) {
+      for (const auto& [_, mirror] : std::as_const(*mirrors)) {
+        result.push_back(mirror);
+      }
+    }
+    return result;
+  }
+
+  std::shared_ptr<Mirror> getMirrorOnSwitchUnderTest(
+      const std::string& mirrorName) {
+    auto mirrors = this->getProgrammedState()->getMirrors()->getMapNodeIf(
+        HwSwitchMatcher(std::unordered_set<SwitchID>({getSwitchId()})));
+    return mirrors ? mirrors->getNodeIf(mirrorName) : nullptr;
+  }
+
   std::optional<HwResourceStats> getMirrorStats() {
     try {
-      auto stats = getSw()->getHwSwitchStatsExpensive(getSwitchId());
+      auto switchIndex =
+          getSw()->getSwitchInfoTable().getSwitchIndexFromSwitchId(
+              getSwitchId());
+      auto stats = getSw()->getHwSwitchStatsExpensive(switchIndex);
       return *(stats.hwResourceStats());
     } catch (const std::exception&) {
       return std::nullopt;
@@ -177,9 +202,8 @@ class AgentHwMirrorTest : public AgentHwTest {
   void programMirrorRoute(
       utility::EcmpSetupAnyNPorts<AddrT>& ecmpHelper,
       const folly::IPAddress& dip,
-      PortID mirrorToPort) {
-    auto nhopPorts = boost::container::flat_set<PortDescriptor>{
-        PortDescriptor(mirrorToPort)};
+      const PortDescriptor& mirrorToPort) {
+    auto nhopPorts = boost::container::flat_set<PortDescriptor>{mirrorToPort};
     auto wrapper = getSw()->getRouteUpdater();
     if constexpr (std::is_same_v<AddrT, folly::IPAddressV4>) {
       ecmpHelper.programRoutes(
@@ -198,6 +222,12 @@ class AgentHwMirrorTest : public AgentHwTest {
   }
 
   void resolveMirror(const std::string& mirrorName, PortID mirrorToPort) {
+    resolveMirror(mirrorName, PortDescriptor(mirrorToPort));
+  }
+
+  void resolveMirror(
+      const std::string& mirrorName,
+      const PortDescriptor& mirrorToPort) {
     utility::EcmpSetupAnyNPorts<AddrT> ecmpHelper(
         getProgrammedState(),
         getSw()->needL2EntryForNeighbor(),
@@ -205,9 +235,7 @@ class AgentHwMirrorTest : public AgentHwTest {
         getEcmpPortTypes());
     applyNewState([&](const std::shared_ptr<SwitchState>& in) {
       return ecmpHelper.resolveNextHops(
-          in,
-          boost::container::flat_set<PortDescriptor>{
-              PortDescriptor(mirrorToPort)});
+          in, boost::container::flat_set<PortDescriptor>{mirrorToPort});
     });
     auto mirror =
         this->getProgrammedState()->getMirrors()->getNodeIf(mirrorName);
@@ -235,7 +263,9 @@ class AgentHwMirrorTest : public AgentHwTest {
         auto mirror = iter.second;
         if (mirror->getDestinationIp().has_value()) {
           programMirrorRoute(
-              ecmpHelper, mirror->getDestinationIp().value(), mirrorToPort);
+              ecmpHelper,
+              mirror->getDestinationIp().value(),
+              PortDescriptor(mirrorToPort));
         }
       }
     }
@@ -294,6 +324,16 @@ TYPED_TEST_SUITE(AgentHwSflowMirrorTest, TestTypes);
 template <typename AddrT>
 class AgentHwMirrorTrunkTest : public AgentHwMirrorTest<AddrT> {
  protected:
+  cfg::SwitchConfig initialConfig(
+      const AgentEnsemble& ensemble) const override {
+    return utility::oneAggregatePortPerInterfaceConfig(
+        ensemble.getSw(),
+        ensemble.masterLogicalPortIds(),
+        {utility::AggregatePortInfo(
+            AggregatePortID(1),
+            {ensemble.masterLogicalInterfacePortIds()[0]})});
+  }
+
   std::vector<ProductionFeature> getProductionFeaturesVerified()
       const override {
     if constexpr (std::is_same_v<AddrT, folly::IPAddressV6>) {
@@ -495,11 +535,9 @@ TYPED_TEST(AgentHwSflowMirrorTest, HwResolvedMirrorStat) {
   };
   auto verify = [=, this]() {
     WITH_RETRIES({
-      auto span = this->getProgrammedState()->getMirrors()->getNodeIf(kSpan);
-      auto erspan =
-          this->getProgrammedState()->getMirrors()->getNodeIf(kErspan);
-      auto sflowMirror =
-          this->getProgrammedState()->getMirrors()->getNodeIf(kSflow);
+      auto span = this->getMirrorOnSwitchUnderTest(kSpan);
+      auto erspan = this->getMirrorOnSwitchUnderTest(kErspan);
+      auto sflowMirror = this->getMirrorOnSwitchUnderTest(kSflow);
       ASSERT_EVENTUALLY_NE(span, nullptr);
       ASSERT_EVENTUALLY_NE(erspan, nullptr);
       ASSERT_EVENTUALLY_NE(sflowMirror, nullptr);
@@ -535,11 +573,9 @@ TYPED_TEST(AgentHwSflowMirrorTest, HwUnresolvedMirrorStat) {
   };
   auto verify = [=, this]() {
     WITH_RETRIES({
-      auto span = this->getProgrammedState()->getMirrors()->getNodeIf(kSpan);
-      auto erspan =
-          this->getProgrammedState()->getMirrors()->getNodeIf(kErspan);
-      auto sflowMirror =
-          this->getProgrammedState()->getMirrors()->getNodeIf(kSflow);
+      auto span = this->getMirrorOnSwitchUnderTest(kSpan);
+      auto erspan = this->getMirrorOnSwitchUnderTest(kErspan);
+      auto sflowMirror = this->getMirrorOnSwitchUnderTest(kSflow);
       EXPECT_EVENTUALLY_TRUE(span && span->isResolved());
       EXPECT_EVENTUALLY_TRUE(erspan && !erspan->isResolved());
       EXPECT_EVENTUALLY_TRUE(sflowMirror && !sflowMirror->isResolved());
@@ -683,27 +719,20 @@ TYPED_TEST(AgentHwSflowMirrorTest, SflowMirrorWithErspanMirror) {
   auto verify = [=, this]() {
     auto client = this->getClient();
     WITH_RETRIES({
-      bool allResolved = true;
-      for (auto mniter :
-           std::as_const(*this->getProgrammedState()->getMirrors())) {
-        for (auto iter : std::as_const(*mniter.second)) {
-          auto mirror = iter.second;
-          if (!mirror || !mirror->isResolved()) {
-            allResolved = false;
-          }
+      auto mirrors = this->getMirrorsOnSwitchUnderTest();
+      bool allResolved = !mirrors.empty();
+      for (const auto& mirror : mirrors) {
+        if (!mirror->isResolved()) {
+          allResolved = false;
         }
       }
       EXPECT_EVENTUALLY_TRUE(allResolved);
       if (!allResolved) {
         continue;
       }
-      for (auto mniter :
-           std::as_const(*this->getProgrammedState()->getMirrors())) {
-        for (auto iter : std::as_const(*mniter.second)) {
-          auto mirror = iter.second;
-          auto fields = mirror->toThrift();
-          EXPECT_EVENTUALLY_TRUE(client->sync_verifyResolvedMirror(fields));
-        }
+      for (const auto& mirror : mirrors) {
+        EXPECT_EVENTUALLY_TRUE(
+            client->sync_verifyResolvedMirror(mirror->toThrift()));
       }
     });
     std::vector<int64_t> destinations;
@@ -778,27 +807,20 @@ TYPED_TEST(AgentHwSflowMirrorTest, SflowMirrorWithErspanMirrorOnePortSflow) {
   auto verify = [=, this]() {
     auto client = this->getClient();
     WITH_RETRIES({
-      bool allResolved = true;
-      for (auto mniter :
-           std::as_const(*this->getProgrammedState()->getMirrors())) {
-        for (auto iter : std::as_const(*mniter.second)) {
-          auto mirror = iter.second;
-          if (!mirror || !mirror->isResolved()) {
-            allResolved = false;
-          }
+      auto mirrors = this->getMirrorsOnSwitchUnderTest();
+      bool allResolved = !mirrors.empty();
+      for (const auto& mirror : mirrors) {
+        if (!mirror->isResolved()) {
+          allResolved = false;
         }
       }
       EXPECT_EVENTUALLY_TRUE(allResolved);
       if (!allResolved) {
         continue;
       }
-      for (auto mniter :
-           std::as_const(*this->getProgrammedState()->getMirrors())) {
-        for (auto iter : std::as_const(*mniter.second)) {
-          auto mirror = iter.second;
-          auto fields = mirror->toThrift();
-          EXPECT_EVENTUALLY_TRUE(client->sync_verifyResolvedMirror(fields));
-        }
+      for (const auto& mirror : mirrors) {
+        EXPECT_EVENTUALLY_TRUE(
+            client->sync_verifyResolvedMirror(mirror->toThrift()));
       }
     });
     std::vector<int64_t> destinations;
@@ -876,27 +898,20 @@ TYPED_TEST(AgentHwSflowMirrorTest, SflowMirrorWithErspanMirrorNoPortSflow) {
   auto verify = [=, this]() {
     auto client = this->getClient();
     WITH_RETRIES({
-      bool allResolved = true;
-      for (auto mniter :
-           std::as_const(*this->getProgrammedState()->getMirrors())) {
-        for (auto iter : std::as_const(*mniter.second)) {
-          auto mirror = iter.second;
-          if (!mirror || !mirror->isResolved()) {
-            allResolved = false;
-          }
+      auto mirrors = this->getMirrorsOnSwitchUnderTest();
+      bool allResolved = !mirrors.empty();
+      for (const auto& mirror : mirrors) {
+        if (!mirror->isResolved()) {
+          allResolved = false;
         }
       }
       EXPECT_EVENTUALLY_TRUE(allResolved);
       if (!allResolved) {
         continue;
       }
-      for (auto mniter :
-           std::as_const(*this->getProgrammedState()->getMirrors())) {
-        for (auto iter : std::as_const(*mniter.second)) {
-          auto mirror = iter.second;
-          auto fields = mirror->toThrift();
-          EXPECT_EVENTUALLY_TRUE(client->sync_verifyResolvedMirror(fields));
-        }
+      for (const auto& mirror : mirrors) {
+        EXPECT_EVENTUALLY_TRUE(
+            client->sync_verifyResolvedMirror(mirror->toThrift()));
       }
     });
     std::vector<int64_t> destinations;
@@ -1258,14 +1273,15 @@ TYPED_TEST(AgentHwMirrorTrunkTest, ResolvedErspanMirrorOnTrunk) {
   auto setup = [=, this]() {
     auto cfg = this->initialConfig(*this->getAgentEnsemble());
 
-    utility::addAggPort(1, {this->masterLogicalInterfacePortIds()[0]}, &cfg);
     cfg.mirrors()->push_back(this->getErspanMirror());
     auto state = this->applyNewConfig(cfg);
     this->applyNewState([=](const std::shared_ptr<SwitchState>&) {
       return utility::enableTrunkPorts(state);
     });
 
-    this->resolveMirror(kErspan, this->masterLogicalInterfacePortIds()[0]);
+    // Egress the mirror over the LAG: the member port carries no RIF, so
+    // next-hop resolution must target the aggregate.
+    this->resolveMirror(kErspan, PortDescriptor(AggregatePortID(1)));
   };
   auto verify = [=, this]() {
     auto client = this->getClient();

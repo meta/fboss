@@ -1228,7 +1228,7 @@ std::set<PortID> getL2ConnectedL1FabricPorts(
         const auto& neighbor = expectedNeighbors.front();
         if (apache::thrift::is_non_optional_field_set_manually_or_by_serializer(
                 neighbor.remoteSystem()) &&
-            l2NodeNames.find(*neighbor.remoteSystem()) != l2NodeNames.end()) {
+            l2NodeNames.contains(*neighbor.remoteSystem())) {
           l2ConnectedPorts.insert(portId);
         }
       }

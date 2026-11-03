@@ -10,6 +10,7 @@ set(
     "fboss/lib/asic_config_v3/gen.py"
     "fboss/lib/asic_config_v3/paths.py"
     "fboss/lib/asic_config_v3/generators/__init__.py"
+    "fboss/lib/asic_config_v3/generators/broadcom_dnx_generator.py"
     "fboss/lib/asic_config_v3/generators/broadcom_xgs_generator.py"
     "fboss/lib/platform_mapping_v2/asic_vendor_config.py"
     "fboss/lib/platform_mapping_v2/gen.py"
@@ -38,3 +39,15 @@ add_fb_thrift_python_executable(
 )
 
 install_fb_python_executable(fboss-asic-config-v3-gen)
+
+add_fb_python_unittest(
+    asic_config_v3_conditional_settings_test
+    SOURCES
+        "fboss/lib/asic_config_v3/__init__.py"
+        "fboss/lib/asic_config_v3/base_generator.py"
+        "fboss/lib/asic_config_v3/paths.py"
+        "fboss/lib/asic_config_v3/test/__init__.py"
+        "fboss/lib/asic_config_v3/test/test_conditional_settings.py"
+    PROPERTIES
+        LABELS "unit"
+)

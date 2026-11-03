@@ -42,5 +42,14 @@ void addDefaultAclTable(
 // Returns true when ACL table groups are supported and should be enabled.
 bool setupDefaultAclTableGroups(cfg::SwitchConfig& config, const HwAsic& asic);
 
+// Adds an ACL entry directly to the default table for the requested stage.
+// The table group must already have been created by
+// setupDefaultAclTableGroups(). This avoids using the legacy flat ACL list as
+// an intermediate representation.
+void addAclEntryToDefaultAclTable(
+    cfg::SwitchConfig& config,
+    cfg::AclEntry acl,
+    cfg::AclStage stage = cfg::AclStage::INGRESS);
+
 } // namespace utility
 } // namespace facebook::fboss

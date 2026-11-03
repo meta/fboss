@@ -479,21 +479,36 @@ std::vector<cfg::CounterType> getAclCounterTypes(
   }
 }
 
+std::map<std::string, uint64_t> getAclInOutPacketsMap(
+    const SwSwitch* sw,
+    const std::vector<std::string>& statNames,
+    bool bytes) {
+  // getHwSwitchStatsExpensive() copies every switch's stats, so a caller
+  // reading many counters must fetch once rather than once per counter.
+  auto hwSwitchStatsMap = sw->getHwSwitchStatsExpensive();
+  std::map<std::string, uint64_t> statValues;
+  for (const auto& statName : statNames) {
+    statValues.emplace(statName, 0);
+  }
+  const std::string suffix = bytes ? ".bytes" : ".packets";
+  for (const auto& [switchIndex, hwswitchStats] : hwSwitchStatsMap) {
+    const auto& nameToCounter =
+        *hwswitchStats.aclStats()->statNameToCounterMap();
+    for (auto& [statName, statValue] : statValues) {
+      auto entry = nameToCounter.find(statName + suffix);
+      if (entry != nameToCounter.end()) {
+        statValue += entry->second;
+      }
+    }
+  }
+  return statValues;
+}
+
 uint64_t getAclInOutPackets(
     const SwSwitch* sw,
     const std::string& statName,
     bool bytes) {
-  auto statStr = bytes ? statName + ".bytes" : statName + ".packets";
-  auto hwSwitchStatsMap = sw->getHwSwitchStatsExpensive();
-  int64_t statValue = 0;
-  for (const auto& [switchIndex, hwswitchStats] : hwSwitchStatsMap) {
-    auto aclStats = hwswitchStats.aclStats();
-    auto entry = aclStats->statNameToCounterMap()->find(statStr);
-    if (entry != aclStats->statNameToCounterMap()->end()) {
-      statValue += entry->second;
-    }
-  }
-  return statValue;
+  return getAclInOutPacketsMap(sw, {statName}, bytes).at(statName);
 }
 
 uint64_t getAclInOutPackets(
@@ -524,22 +539,22 @@ std::shared_ptr<AclEntry> getAclEntry(
     const std::string& name,
     bool enableAclTableGroup) {
   if (enableAclTableGroup) {
-    auto entry =
-        state
-            ->getAclsForTable(
-                cfg::AclStage::INGRESS,
-                cfg::switch_config_constants::DEFAULT_INGRESS_ACL_TABLE())
-            ->getNodeIf(name);
+    auto defaultAcls = state->getAclsForTable(
+        cfg::AclStage::INGRESS,
+        cfg::switch_config_constants::DEFAULT_INGRESS_ACL_TABLE());
+    auto entry = defaultAcls ? defaultAcls->getNodeIf(name) : nullptr;
     // acl entries are expected to have unique name across all groups
     if (!entry) {
-      for (const auto& groupMap : std::as_const(*state->getAclTableGroups())) {
-        for (const auto& [stage, group] : std::as_const(*groupMap.second)) {
-          for (const auto& [tableName, table] :
-               std::as_const(*group->getAclTableMap())) {
-            std::ignore = tableName;
-            entry = getAclEntryByName(state, stage, tableName, name);
-            if (entry) {
-              return entry;
+      if (auto aclTableGroups = state->getAclTableGroups()) {
+        for (const auto& groupMap : std::as_const(*aclTableGroups)) {
+          for (const auto& [stage, group] : std::as_const(*groupMap.second)) {
+            for (const auto& [tableName, table] :
+                 std::as_const(*group->getAclTableMap())) {
+              std::ignore = tableName;
+              entry = table->getAclMap()->getNodeIf(name);
+              if (entry) {
+                return entry;
+              }
             }
           }
         }
@@ -822,6 +837,10 @@ std::set<cfg::AclTableQualifier> getRequiredQualifers(
 
       case cfg::AclTableQualifier::LOOKUP_CLASS_PORT:
         addQualifier(aclEntry.lookupClassPort().has_value(), qualifier);
+        break;
+
+      case cfg::AclTableQualifier::MPLS_LABEL0_TTL:
+        addQualifier(aclEntry.mplsLabel0Ttl().has_value(), qualifier);
         break;
 
       case cfg::AclTableQualifier::ETHER_TYPE:

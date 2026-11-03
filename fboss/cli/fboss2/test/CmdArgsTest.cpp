@@ -2,6 +2,7 @@
 
 #include <fboss/cli/fboss2/utils/CmdUtils.h>
 #include <fboss/cli/fboss2/utils/LoopbackUtils.h>
+#include <fboss/cli/fboss2/utils/PrbsUtils.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <memory>
@@ -149,6 +150,10 @@ TEST(CmdArgsTest, HwObjectList) {
   EXPECT_THAT(
       utils::HwObjectList({"SAMPLE_PACKET"}).data(),
       ElementsAre(HwObjectType::SAMPLE_PACKET));
+  ASSERT_NO_THROW(utils::HwObjectList({"MY_MAC"}));
+  EXPECT_THAT(
+      utils::HwObjectList({"MY_MAC"}).data(),
+      ElementsAre(HwObjectType::MY_MAC));
 
   // test invalid arguments
   ASSERT_THROW(utils::HwObjectList({"M"}), std::out_of_range);
@@ -200,6 +205,45 @@ TEST(CmdArgsTest, LoopbackComponentActionEnableDisable) {
   EXPECT_EQ(mixedCase.componentName(), "xphy_line");
 }
 
+TEST(CmdArgsTest, LoopbackComponentActionDirection) {
+  using loopback_utils::LoopbackComponentAction;
+
+  EXPECT_EQ(
+      LoopbackComponentAction({"transceiver_line", "enable"}).direction(),
+      phy::LoopbackMode::INPUT);
+  auto output =
+      LoopbackComponentAction({"transceiver_line", "OUTPUT", "enable"});
+  EXPECT_EQ(output.direction(), phy::LoopbackMode::OUTPUT);
+  EXPECT_EQ(output.component(), phy::PortComponent::TRANSCEIVER_LINE);
+  EXPECT_TRUE(output.enable());
+  EXPECT_EQ(
+      LoopbackComponentAction({"transceiver_system", "input", "disable"})
+          .direction(),
+      phy::LoopbackMode::INPUT);
+  EXPECT_THROW(
+      LoopbackComponentAction({"transceiver_line", "sideways", "enable"}),
+      std::exception);
+}
+
+TEST(CmdArgsTest, LoopbackActionDirection) {
+  using loopback_utils::LoopbackAction;
+
+  auto defaulted = LoopbackAction({"system", "enable"});
+  EXPECT_EQ(defaulted.mode(), "system");
+  EXPECT_EQ(defaulted.direction(), phy::LoopbackMode::INPUT);
+  EXPECT_TRUE(defaulted.enable());
+
+  auto output = LoopbackAction({"line", "output", "disable"});
+  EXPECT_EQ(output.mode(), "line");
+  EXPECT_EQ(output.direction(), phy::LoopbackMode::OUTPUT);
+  EXPECT_FALSE(output.enable());
+
+  EXPECT_TRUE(LoopbackAction({"disable"}).isDisableAll());
+  EXPECT_THROW(LoopbackAction({"line", "sideways", "enable"}), std::exception);
+  EXPECT_THROW(
+      LoopbackAction({"line", "output", "enable", "extra"}), std::exception);
+}
+
 TEST(CmdArgsTest, LoopbackComponentActionInvalid) {
   using loopback_utils::LoopbackComponentAction;
 
@@ -220,6 +264,23 @@ TEST(CmdArgsTest, LoopbackComponentActionInvalid) {
   // Unknown action.
   EXPECT_THROW(LoopbackComponentAction({"xphy_line", "on"}), std::exception);
   EXPECT_THROW(LoopbackComponentAction({"xphy_line", "none"}), std::exception);
+}
+
+TEST(CmdArgsTest, PrbsComponentRequiredForWrites) {
+  EXPECT_THROW(
+      utils::PrbsComponent(std::vector<std::string>{}), std::runtime_error);
+  EXPECT_THROW(
+      prbsComponents({}, false /* returnAllIfEmpty */), std::runtime_error);
+}
+
+TEST(CmdArgsTest, PrbsComponentDefaultsToAllForShow) {
+  const std::vector<phy::PortComponent> expected = {
+      phy::PortComponent::ASIC,
+      phy::PortComponent::GB_SYSTEM,
+      phy::PortComponent::GB_LINE,
+      phy::PortComponent::TRANSCEIVER_SYSTEM,
+      phy::PortComponent::TRANSCEIVER_LINE};
+  EXPECT_EQ(prbsComponents({}, true /* returnAllIfEmpty */), expected);
 }
 
 } // namespace facebook::fboss

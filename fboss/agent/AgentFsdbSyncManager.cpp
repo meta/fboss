@@ -274,4 +274,23 @@ void AgentFsdbSyncManager::agentInfoChanged(
       true /* printUpdateDelay */);
 }
 
+void AgentFsdbSyncManager::updateIPhyStates(
+    std::map<std::string, phy::PhyState>&& iPhyStates) {
+  if (!FLAGS_agent_fsdb_sync) {
+    return;
+  }
+  updateState(
+      [iPhyStates = std::move(iPhyStates)](const auto& agentState) mutable {
+        using iPhyStatesKey = fsdb_model_tags::iPhyStates;
+        auto newAgentState = agentState->clone();
+        auto& newIPhyStates =
+            newAgentState->template modify<iPhyStatesKey>(&newAgentState);
+        // Every entry carries a fresh timeCollected each collection cycle, so
+        // there is nothing to be gained from a per-port diff here.
+        newIPhyStates->fromThrift(std::move(iPhyStates));
+        return newAgentState;
+      },
+      true /* printUpdateDelay */);
+}
+
 } // namespace facebook::fboss

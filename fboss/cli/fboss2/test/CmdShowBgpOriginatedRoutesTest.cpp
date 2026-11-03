@@ -37,7 +37,7 @@ const auto kIpVersion = TBgpAfi::AFI_IPV4;
 const auto kBinaryAddress =
     facebook::network::toBinaryAddress(folly::IPAddress("8.0.0.0"));
 const auto kAddressMask = 32;
-const auto kCommunityNumber = 4294390177;
+const auto kCommunityNumber = 4274352190;
 const auto kSupportingRoutes = 0;
 
 class CmdShowBgpOriginatedRoutesTestFixture : public CmdHandlerTestBase {
@@ -97,9 +97,9 @@ TEST_F(CmdShowBgpOriginatedRoutesTestFixture, printOutput) {
         folly::dynamic value = folly::dynamic::object
           ("communities",
           folly::dynamic::array(
-          folly::dynamic::object("name", "FABRIC_POD_RSW_LOOP")
+          folly::dynamic::object("name", "SAMPLE_LOOPBACK_COM")
           ("description", "rsw loopback")
-          ("communities", folly::dynamic::array("65527:12705"))
+          ("communities", folly::dynamic::array("65221:28734"))
           )
         );
         // clang-format on
@@ -117,7 +117,7 @@ TEST_F(CmdShowBgpOriginatedRoutesTestFixture, printOutput) {
   std::string expectedOutput =
       " Prefix      Communities                      Supporting Route Cnt  Minimum supporting route  Require Nexthop Resolution \n"
       "-------------------------------------------------------------------------------------------------------------------------------\n"
-      " 8.0.0.0/32  FABRIC_POD_RSW_LOOP/65527:12705  0                     0                         N/A                        \n\n";
+      " 8.0.0.0/32  SAMPLE_LOOPBACK_COM/65221:28734  0                     0                         N/A                        \n\n";
 
   EXPECT_EQ(output, expectedOutput);
 }
@@ -156,12 +156,12 @@ TEST_F(CmdShowBgpOriginatedRoutesTestFixture, wikiDocHooks) {
   const std::string expectedOutput =
       " Prefix                       Communities     Supporting Route Cnt  Minimum supporting route  Require Nexthop Resolution \n"
       "-------------------------------------------------------------------------------------------------------------------------------\n"
-      " 192.0.2.1/32                 (NA)/64497:100  0                     0                         0                          \n"
-      "                              (NA)/64498:400                                                                             \n"
-      " 2001:db8:e111:f162:27::/128  (NA)/64497:100  0                     0                         0                          \n"
-      "                              (NA)/64498:400                                                                             \n"
-      " 2001:db8:111c:6227::/64      (NA)/64496:500  12                    8                         1                          \n"
-      "                              (NA)/64497:100                                                                             \n"
+      " 192.0.2.1/32                 (NA)/64873:521  0                     0                         0                          \n"
+      "                              (NA)/65221:291                                                                             \n"
+      " 2001:db8:e111:f162:27::/128  (NA)/64873:521  0                     0                         0                          \n"
+      "                              (NA)/65221:291                                                                             \n"
+      " 2001:db8:111c:6227::/64      (NA)/64873:521  12                    8                         1                          \n"
+      "                              (NA)/65108:725                                                                             \n"
       "\n";
 
   EXPECT_EQ(ss.str(), expectedOutput);

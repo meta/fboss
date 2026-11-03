@@ -117,18 +117,18 @@ TEST_F(NeighborsAdvertisedRejectedTestFixture, printOutput) {
         folly::dynamic value = folly::dynamic::object
           ("communities",
           folly::dynamic::array(
-          folly::dynamic::object("name", "FABRIC_POD_RSW_LOOP")
+          folly::dynamic::object("name", "SAMPLE_LOOPBACK_COM")
           ("description", "rsw loopback")
-          ("communities", folly::dynamic::array("65527:12705"))
+          ("communities", folly::dynamic::array("65221:28734"))
           )
         )
         ("localprefs",
         folly::dynamic::array(
           folly::dynamic::object("localpref", 20)
-          ("name", "LOCALPREF_CTRL_BACKUP")
+          ("name", "LOCALPREF_SAMPLE_BKUP")
           ("description", "low-priority supplementary/backup routes from bgp controller"),
           folly::dynamic::object("localpref", 25)
-          ("name", "LOCALPREF_DEPRIO")
+          ("name", "LOCALPREF_SAMPL1")
           ("description", "deprioritized local preference value"))
         );
         // clang-format on
@@ -149,14 +149,14 @@ TEST_F(NeighborsAdvertisedRejectedTestFixture, printOutput) {
       "Nexthop: 8.0.0.1\n"
       "Router/OriginatorId:   --  \n"
       "ClusterList: []\n"
-      "Communities: FABRIC_POD_RSW_LOOP/65527:12705\n"
+      "Communities: SAMPLE_LOOPBACK_COM/65221:28734\n"
       "ExtCommunities: \n"
-      "AsPath: 65301\n"
-      "LocalPref: DEPRIO/25\n"
+      "AsPath: 64712\n"
+      "LocalPref: SAMPL1/25\n"
       "Origin: INCOMPLETE\n"
       "MED: 10\n"
       "LastModified: 2021-10-26 13:07:40.724 PDT\n"
-      "Policy: Accepted/Modified by PROPAGATE_RSW_FSW_IN term N/A\n";
+      "Policy: Accepted/Modified by SAMPLE_UPLINK_POLICY term N/A\n";
   EXPECT_EQ(output, expectedOutput);
 }
 
@@ -168,18 +168,18 @@ TEST_F(NeighborsAdvertisedRejectedTestFixtureWithoutMed, printOutput) {
         folly::dynamic value = folly::dynamic::object
           ("communities",
           folly::dynamic::array(
-          folly::dynamic::object("name", "FABRIC_POD_RSW_LOOP")
+          folly::dynamic::object("name", "SAMPLE_LOOPBACK_COM")
           ("description", "rsw loopback")
-          ("communities", folly::dynamic::array("65527:12705"))
+          ("communities", folly::dynamic::array("65221:28734"))
           )
         )
         ("localprefs",
         folly::dynamic::array(
           folly::dynamic::object("localpref", 20)
-          ("name", "LOCALPREF_CTRL_BACKUP")
+          ("name", "LOCALPREF_SAMPLE_BKUP")
           ("description", "low-priority supplementary/backup routes from bgp controller"),
           folly::dynamic::object("localpref", 25)
-          ("name", "LOCALPREF_DEPRIO")
+          ("name", "LOCALPREF_SAMPL1")
           ("description", "deprioritized local preference value"))
         );
         // clang-format on
@@ -200,14 +200,14 @@ TEST_F(NeighborsAdvertisedRejectedTestFixtureWithoutMed, printOutput) {
       "Nexthop: 8.0.0.1\n"
       "Router/OriginatorId:   --  \n"
       "ClusterList: []\n"
-      "Communities: FABRIC_POD_RSW_LOOP/65527:12705\n"
+      "Communities: SAMPLE_LOOPBACK_COM/65221:28734\n"
       "ExtCommunities: \n"
-      "AsPath: 65301\n"
-      "LocalPref: DEPRIO/25\n"
+      "AsPath: 64712\n"
+      "LocalPref: SAMPL1/25\n"
       "Origin: INCOMPLETE\n"
       "MED: Not set\n"
       "LastModified: 2021-10-26 13:07:40.724 PDT\n"
-      "Policy: Accepted/Modified by PROPAGATE_RSW_FSW_IN term N/A\n";
+      "Policy: Accepted/Modified by SAMPLE_UPLINK_POLICY term N/A\n";
   EXPECT_EQ(output, expectedOutput);
 }
 
@@ -237,8 +237,8 @@ TEST_F(NeighborsAdvertisedRejectedTestFixture, wikiDocHooks) {
   EXPECT_THAT(output, HasSubstr("Network: 198.51.100.0/24"));
   // The advertised direction must render the downstream confed ASN; this
   // pins that sampleNetworkPaths() honours its ASN argument.
-  EXPECT_THAT(output, HasSubstr("AsPath: (6002)"));
-  EXPECT_THAT(output, HasSubstr("Policy: Denied by PROPAGATE_RSW_FSW_OUT"));
+  EXPECT_THAT(output, HasSubstr("AsPath: (64650)"));
+  EXPECT_THAT(output, HasSubstr("Policy: Denied by SAMPLE_UPLINK_OUT"));
 }
 
 } // namespace facebook::fboss

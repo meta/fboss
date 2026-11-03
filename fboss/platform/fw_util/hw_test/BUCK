@@ -7,6 +7,9 @@ cpp_binary(
     srcs = [
         "FwUtilHwTest.cpp",
     ],
+    headers = [
+        "FwUtilHwTest.h",
+    ],
     deps = [
         "fbsource//third-party/googletest:gtest",
         "//fboss/platform/config_lib:config_lib",

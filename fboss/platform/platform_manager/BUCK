@@ -67,15 +67,18 @@ cpp_library(
     srcs = [
         "ConfigValidator.cpp",
     ],
+    headers = [
+        "ConfigValidator.h",
+    ],
     deps = [
         "fbsource//third-party/range-v3:range-v3",
         "fbsource//third-party/re2:re2",
+        "fbsource//xplat/folly/logging:logging",
         ":cpld_manager",
         ":fbcpld_ioctl_h",
         ":i2c_misc",
         ":platform_manager_validators-cpp2-types",
         ":utils",
-        "//folly/logging:logging",
         "//thrift/lib/cpp2/op:get",
     ],
     exported_deps = [
@@ -88,20 +91,23 @@ cpp_library(
     srcs = [
         "I2cExplorer.cpp",
     ],
+    headers = [
+        "I2cExplorer.h",
+    ],
     deps = [
+        "fbsource//xplat/folly:cpu_id",
+        "fbsource//xplat/folly:file_util",
         ":utils",
         "//fboss/lib/i2c:i2c_ctrl",
-        "//folly:cpu_id",
-        "//folly:file_util",
     ],
     exported_deps = [
         "fbsource//third-party/fmt:fmt",
         "fbsource//third-party/re2:re2",
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/logging:logging",
         ":i2c_misc",
         ":platform_manager_config-cpp2-types",
         "//fboss/platform/helpers:platform_fs_utils",
-        "//folly:string",
-        "//folly/logging:logging",
     ],
 )
 
@@ -110,13 +116,16 @@ cpp_library(
     srcs = [
         "PciExplorer.cpp",
     ],
+    headers = [
+        "PciExplorer.h",
+    ],
     deps = [
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/logging:logging",
         ":i2c_explorer",
         ":utils",
         "//fb303:service_data",
-        "//folly:file_util",
-        "//folly:string",
-        "//folly/logging:logging",
     ],
     exported_deps = [
         "fbsource//third-party/re2:re2",
@@ -129,9 +138,13 @@ cpp_library(
 cpp_library(
     name = "device_path_resolver",
     srcs = ["DevicePathResolver.cpp"],
+    headers = [
+        "DevicePathResolver.h",
+    ],
     deps = [
         ":pci_explorer",
         ":utils",
+        "//folly/logging:logging",
     ],
     exported_deps = [
         ":data_store",
@@ -143,6 +156,9 @@ cpp_library(
 cpp_library(
     name = "presence_checker",
     srcs = ["PresenceChecker.cpp"],
+    headers = [
+        "PresenceChecker.h",
+    ],
     exported_deps = [
         ":device_path_resolver",
         ":utils",
@@ -155,12 +171,16 @@ cpp_library(
     srcs = [
         "SystemInterface.cpp",
     ],
+    headers = [
+        "SystemInterface.h",
+    ],
     deps = [
         "fbsource//third-party/fmt:fmt",
         "fbsource//third-party/range-v3:range-v3",
-        "//folly:conv",
-        "//folly:string",
-        "//folly/logging:logging",
+        "fbsource//xplat/folly:conv",
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/logging:logging",
     ],
     exported_deps = [
         "//fboss/platform/helpers:platform_utils",
@@ -172,13 +192,16 @@ cpp_library(
     srcs = [
         "PkgManager.cpp",
     ],
+    headers = [
+        "PkgManager.h",
+    ],
     deps = [
         "fbsource//third-party/range-v3:range-v3",
         "fbsource//third-party/re2:re2",
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/logging:logging",
         "//fb303:service_data",
-        "//folly:file_util",
-        "//folly:string",
-        "//folly/logging:logging",
         "//thrift/lib/cpp2/protocol:protocol",
     ],
     exported_deps = [
@@ -210,11 +233,14 @@ cpp_library(
     srcs = [
         "PlatformSnapshotBuilder.cpp",
     ],
+    headers = [
+        "PlatformSnapshotBuilder.h",
+    ],
     deps = [
         "fbsource//third-party/fmt:fmt",
+        "fbsource//xplat/folly/logging:logging",
         ":i2c_misc",
         ":utils",
-        "//folly/logging:logging",
     ],
     exported_deps = [
         ":data_store",
@@ -229,8 +255,14 @@ cpp_library(
         "ExplorationSummary.cpp",
         "PlatformExplorer.cpp",
     ],
+    headers = [
+        "ExplorationSummary.h",
+        "PlatformExplorer.h",
+    ],
     deps = [
         "fbsource//third-party/re2:re2",
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly/logging:logging",
         ":cpld_manager",
         ":fan_cpld_manager",
         ":utils",
@@ -239,8 +271,6 @@ cpp_library(
         "//fboss/platform/helpers:structured_logger",
         "//fboss/platform/weutil:fboss_eeprom_lib",
         "//fboss/platform/weutil:ioctl_smbus_eeprom_reader",
-        "//folly:file_util",
-        "//folly/logging:logging",
     ],
     exported_deps = [
         ":data_store",
@@ -256,16 +286,37 @@ cpp_library(
 )
 
 cpp_library(
+    name = "pm_unit_identity",
+    srcs = [
+        "PmUnitIdentity.cpp",
+    ],
+    headers = [
+        "PmUnitIdentity.h",
+    ],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        "fbsource//xplat/folly/logging:logging",
+    ],
+    exported_deps = [
+        ":platform_manager_config-cpp2-types",
+        "//fboss/platform/weutil/if:eeprom_contents-cpp2-types",
+    ],
+)
+
+cpp_library(
     name = "utils",
     srcs = [
         "Utils.cpp",
     ],
+    headers = [
+        "Utils.h",
+    ],
     exported_deps = [
         "fbsource//third-party/exprtk:exprtk",
         "fbsource//third-party/re2:re2",
+        "fbsource//xplat/folly/logging:logging",
         ":platform_manager_config-cpp2-types",
         "//fboss/lib:gpiod_line",
-        "//folly/logging:logging",
     ],
     exported_external_deps = [
         ("libgpiod", None, "gpiod"),
@@ -276,6 +327,9 @@ cpp_library(
     name = "config_utils",
     srcs = [
         "ConfigUtils.cpp",
+    ],
+    headers = [
+        "ConfigUtils.h",
     ],
     # Prevent other libraries from depending on this one. This is to prevent
     # BIOS access from other binaries. Only platform_manager should read from
@@ -288,11 +342,11 @@ cpp_library(
     ],
     deps = [
         "fbsource//third-party/fmt:fmt",
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/hash:hash",
+        "fbsource//xplat/folly/logging:logging",
         ":config_validator",
         "//fboss/platform/helpers:init",
-        "//folly:string",
-        "//folly/hash:hash",
-        "//folly/logging:logging",
         "//thrift/lib/cpp2/protocol:protocol",
     ],
     exported_deps = [
@@ -317,10 +371,13 @@ cpp_library(
 cpp_library(
     name = "data_store",
     srcs = ["DataStore.cpp"],
+    headers = [
+        "DataStore.h",
+    ],
     deps = [
         "fbsource//third-party/fmt:fmt",
+        "fbsource//xplat/folly/logging:logging",
         ":utils",
-        "//folly/logging:logging",
     ],
     exported_deps = [
         ":platform_manager_config-cpp2-types",
@@ -332,6 +389,9 @@ cpp_library(
     name = "platform_manager_handler",
     srcs = [
         "PlatformManagerHandler.cpp",
+    ],
+    headers = [
+        "PlatformManagerHandler.h",
     ],
     deps = [":platform_snapshot_builder"],
     exported_deps = [
@@ -377,13 +437,16 @@ cpp_library(
 cpp_library(
     name = "cpld_manager",
     srcs = ["CpldManager.cpp"],
+    headers = [
+        "CpldManager.h",
+    ],
     deps = [
         "fbsource//third-party/fmt:fmt",
+        "fbsource//xplat/folly:conv",
+        "fbsource//xplat/folly:file",
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/logging:logging",
         ":utils",
-        "//folly:conv",
-        "//folly:file",
-        "//folly:string",
-        "//folly/logging:logging",
     ],
     exported_deps = [
         ":fbcpld_ioctl_h",
@@ -402,13 +465,16 @@ cpp_library(
 cpp_library(
     name = "fan_cpld_manager",
     srcs = ["FanCpldManager.cpp"],
+    headers = [
+        "FanCpldManager.h",
+    ],
     deps = [
         "fbsource//third-party/fmt:fmt",
+        "fbsource//xplat/folly:file",
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/logging:logging",
         ":fbfancpld_ioctl_h",
         ":utils",
-        "//folly:file",
-        "//folly:string",
-        "//folly/logging:logging",
     ],
     exported_deps = [
         ":i2c_misc",

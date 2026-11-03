@@ -15,8 +15,8 @@
 #include "fboss/agent/test/EcmpSetupHelper.h"
 #include "fboss/agent/test/ResourceLibUtil.h"
 #include "fboss/agent/test/TestUtils.h"
-#include "fboss/agent/test/agent_hw_tests/AgentTestAddressConstants.h"
-#include "fboss/agent/test/agent_hw_tests/AgentTestEcmpConstants.h"
+#include "fboss/agent/test/utils/AgentTestAddressConstants.h"
+#include "fboss/agent/test/utils/AgentTestEcmpConstants.h"
 #include "fboss/agent/test/utils/ConfigUtils.h"
 #include "fboss/agent/test/utils/OlympicTestUtils.h"
 #include "fboss/agent/test/utils/PacketTestUtils.h"
@@ -94,6 +94,9 @@ class Agent2QueueToOlympicQoSTest : public AgentHwTest {
     }
     XLOG(DBG2) << "verify send packets "
                << (frontPanel ? "out of port" : "switched");
+    if (frontPanel) {
+      learnSrcMacOnEcmpTxPortIfPending(kDefaultEcmpWidth);
+    }
     utility::sendPktAndVerifyQueueHit(
         queueToDscp,
         getSw(),

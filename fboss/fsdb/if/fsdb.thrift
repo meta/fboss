@@ -67,6 +67,9 @@ struct OperSubscriberInfo {
   // Counts
   18: optional i64 numUpdatesServed; // cumulative count of updates served
   19: optional fsdb_common.SubscriberId configKey; // server-only
+  // Serve interval in seconds granted by the server (rounded up, clamped);
+  // absent means the subscription is served at the default interval.
+  20: optional i32 serveIntervalSec;
 }
 
 @cpp.Type{template = "folly::F14FastMap"}

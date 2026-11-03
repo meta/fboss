@@ -12,11 +12,12 @@ cpp_library(
     headers = [
         "Wedge400CGrandTetonPlatformMapping.h",
         "Wedge400CPlatformMapping.h",
+        "Wedge400CPlatformUtil.h",
     ],
     deps = [
+        "fbsource//xplat/folly/logging:logging",
         "//configerator/structs/neteng/netwhoami:netwhoami-cpp2-types",
         "//fboss/agent:platform_config-cpp2-types",
-        "//folly/logging:logging",
         "//neteng/netwhoami/lib/cpp:recover",
     ],
     exported_deps = [

@@ -82,7 +82,7 @@ class CmdShowBgpStreamSubscriberPostPolicy
   static RetType sampleModel() {
     return sampleNetworkPaths(
         SampleRouteDirection::Advertised,
-        "Accepted/Modified by STREAM_EXPORT term LOCAL_ACCEPT_RULE_990");
+        "Accepted/Modified by STREAM_EXPORT term SAMPLE_ACCEPT_TERM");
   }
 
   void printOutput(RetType& routesWithHost, std::ostream& out = std::cout) {

@@ -10,6 +10,9 @@ cpp_unittest(
         "facebook/PlatformMappingTest.cpp",
     ],
     network_access = network_access_utils.none(),
+    source_headers = [
+        "PlatformMappingTest.h",
+    ],
     deps = [
         "//fboss/agent:fboss-error",
         "//fboss/agent/platforms/common:platform_mapping",

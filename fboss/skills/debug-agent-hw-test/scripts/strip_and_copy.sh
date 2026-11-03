@@ -4,9 +4,10 @@
 # Strip a binary locally for deployment to a switch.
 # The remote upload is handled by lab_ssh_upload MCP tool (see references/build-and-load.md).
 #
-# Usage: bash strip_and_copy.sh <source_binary_path> <dest_binary_name>
+# Usage: bash strip_and_copy.sh <source_binary_path> <dest_binary_name> [output_dir]
 #
-# Output: Stripped binary at /tmp/<dest_binary_name> with md5 printed.
+# Output: Stripped binary at <output_dir>/<dest_binary_name> (default /tmp) with md5 printed.
+# If your upload tool only accepts local paths under $HOME, pass an output_dir there (e.g. ~/scratch).
 #
 # Example:
 #   bash strip_and_copy.sh \
@@ -17,8 +18,10 @@ set -euo pipefail
 
 SOURCE_BINARY="$1"
 DEST_BINARY_NAME="$2"
+OUTPUT_DIR="${3:-/tmp}"
 
-STRIPPED="/tmp/${DEST_BINARY_NAME}"
+mkdir -p "${OUTPUT_DIR}"
+STRIPPED="${OUTPUT_DIR}/${DEST_BINARY_NAME}"
 
 echo "Stripping ${SOURCE_BINARY} -> ${STRIPPED}"
 strip -o "${STRIPPED}" "${SOURCE_BINARY}"

@@ -66,6 +66,14 @@ target_link_libraries(tajo_punt_header
   Folly::folly
 )
 
+add_library(chenab_mod_header
+  fboss/agent/packet/chenab/oss/ChenabModHeader.cpp
+)
+
+target_link_libraries(chenab_mod_header
+  Folly::folly
+)
+
 add_library(pktutil
   fboss/agent/packet/PktUtil.cpp
 )
@@ -121,3 +129,4 @@ target_link_libraries(tajo_punt_header_test
 )
 
 gtest_discover_tests(tajo_punt_header_test)
+
