@@ -99,6 +99,10 @@ struct NextHopThrift {
   //    o every nexthop in this list<backupNexthops>
   //       - role = NextHopRole.BACKUP,
   //       - list<backupNexthops> member is empty.
+
+  // VRF to resolve this next hop in; unset means the route's VRF. Only
+  // tunnel next hops (e.g. VXLAN to a VTEP) may set it, to the default VRF.
+  20: optional i32 vrf;
 }
 
 /*

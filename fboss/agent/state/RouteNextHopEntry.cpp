@@ -534,6 +534,7 @@ RouteNextHopEntry::NextHopSet RouteNextHopEntry::normalizeNextHops(
         nhop.tunnelId(),
         nhop.cost(),
         nhop.role(),
+        nhop.vrf(),
         nhop.overlayDstMac()));
   }
   // 2)
@@ -587,6 +588,7 @@ RouteNextHopEntry::NextHopSet RouteNextHopEntry::normalizeNextHops(
               nhop.tunnelId(),
               nhop.cost(),
               nhop.role(),
+              nhop.vrf(),
               nhop.overlayDstMac()));
           scaledTotalWeight += weight;
         }
@@ -613,6 +615,7 @@ RouteNextHopEntry::NextHopSet RouteNextHopEntry::normalizeNextHops(
             nhop.tunnelId(),
             nhop.cost(),
             nhop.role(),
+            nhop.vrf(),
             nhop.overlayDstMac()));
         scaledTotalWeight += w;
       }
@@ -646,6 +649,7 @@ RouteNextHopEntry::NextHopSet RouteNextHopEntry::normalizeNextHops(
               maxItr->tunnelId(),
               maxItr->cost(),
               maxItr->role(),
+              maxItr->vrf(),
               maxItr->overlayDstMac());
           // remove the max weight next hop and replace with the
           // decremented version, if the decremented version would
@@ -689,6 +693,7 @@ RouteNextHopEntry::NextHopSet RouteNextHopEntry::normalizeNextHops(
           nhop.tunnelId(),
           nhop.cost(),
           nhop.role(),
+          nhop.vrf(),
           nhop.overlayDstMac()));
     }
     XLOG(DBG3) << "Scaled next hops from " << nhopSet << " to "
