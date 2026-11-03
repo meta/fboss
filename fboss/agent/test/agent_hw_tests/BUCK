@@ -325,6 +325,7 @@ cpp_library(
         "AgentTrunkTests.cpp",
         "AgentTunnelMgrTests.cpp",
         "AgentVrfTests.cpp",
+        "AgentVxlanTests.cpp",
         "facebook/AgentAccessPolicyAclTests.cpp",
     ],
     headers = [
@@ -437,6 +438,7 @@ cpp_library(
         "//fboss/agent/test/utils:tunnel_mgr_test_utils",
         "//fboss/agent/test/utils:udf_test_utils",
         "//fboss/agent/test/utils:voq_test_utils",
+        "//fboss/agent/test/utils:vxlan_test_utils",
         "//fboss/agent/thrift_packet_stream:packet_stream_client",
         "//fboss/lib:common_utils",
         "//fboss/lib/config:fboss_config_utils",
