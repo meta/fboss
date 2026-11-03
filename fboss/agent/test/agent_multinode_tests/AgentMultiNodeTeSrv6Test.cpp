@@ -192,7 +192,8 @@ void setupLoopEndpoint(
     const std::string& portName,
     const folly::IPAddressV6& qualificationAddress,
     const folly::IPAddressV6& peerNextHop,
-    const std::string& peerMac) {
+    const std::string& peerMac,
+    int32_t leaseSeconds) {
   client.sync_setupL3TrafficLoops(
       std::vector<network::thrift::BinaryAddress>{
           network::toBinaryAddress(qualificationAddress)},
@@ -200,7 +201,7 @@ void setupLoopEndpoint(
       std::vector<network::thrift::BinaryAddress>{
           network::toBinaryAddress(peerNextHop)},
       std::vector<std::string>{peerMac},
-      std::vector<int32_t>{kL3LoopInitialLeaseSeconds});
+      std::vector<int32_t>{leaseSeconds});
 }
 
 void getReadyLoopStatus(
@@ -812,14 +813,16 @@ TEST_F(AgentMultiNodeL3TrafficLoopTest, VerifyThriftApiLifecycle) {
       link.localPort,
       qualificationAddress,
       remoteAddresses.front(),
-      localPeerMac);
+      localPeerMac,
+      kL3LoopInitialLeaseSeconds);
   remoteConfigured = true;
   setupLoopEndpoint(
       *remoteClient,
       link.remotePort,
       qualificationAddress,
       localAddresses.front(),
-      remotePeerMac);
+      remotePeerMac,
+      kL3LoopInitialLeaseSeconds);
 
   L3TrafficLoopStatus localStatus;
   L3TrafficLoopStatus remoteStatus;
@@ -933,6 +936,246 @@ TEST_F(AgentMultiNodeL3TrafficLoopTest, VerifyThriftApiLifecycle) {
   EXPECT_EQ(
       *remoteStatuses.at(link.remotePort).state(),
       L3TrafficLoopState::NOT_CONFIGURED);
+}
+
+TEST_F(AgentMultiNodeL3TrafficLoopTest, VerifyThriftApiExpiration) {
+  const auto links = getTestLinks();
+  ASSERT_FALSE(links.empty());
+  const auto localHostname = *getSw()->getConfig().hostname();
+  const auto remoteHostname = getRemoteHostname(links);
+  const auto& link = links.front();
+  std::string readinessFailure;
+  int64_t localReadySnapshot{0};
+  int64_t remoteReadySnapshot{0};
+  ASSERT_TRUE(checkWithRetryErrorReturn(
+      [&] {
+        const bool localReady = qsfpProgrammingComplete(
+            localHostname,
+            links,
+            &TestLink::localPort,
+            localReadySnapshot,
+            readinessFailure);
+        const bool remoteReady = qsfpProgrammingComplete(
+            remoteHostname,
+            links,
+            &TestLink::remotePort,
+            remoteReadySnapshot,
+            readinessFailure);
+        return localReady && remoteReady &&
+            linksAreUp(localHostname, remoteHostname, links, readinessFailure);
+      },
+      kLinkUpRetries,
+      kLinkUpRetryInterval,
+      true))
+      << readinessFailure;
+
+  const std::vector<TestLink> loopLink{link};
+  const auto localAddresses = getRemoteLinkAddresses(localHostname, loopLink);
+  const auto remoteAddresses = getRemoteLinkAddresses(remoteHostname, loopLink);
+  ASSERT_EQ(localAddresses.size(), 1);
+  ASSERT_EQ(remoteAddresses.size(), 1);
+  auto localClient = utility::getSwAgentThriftClient(localHostname);
+  auto remoteClient = utility::getSwAgentThriftClient(remoteHostname);
+  const folly::IPAddressV6 qualificationAddress{"100::fffe"};
+  const auto localPeerMac =
+      getInterfaceMac(remoteHostname, remoteAddresses.front());
+  const auto remotePeerMac =
+      getInterfaceMac(localHostname, localAddresses.front());
+
+  auto cleanup = [](auto& client, const std::string& portName) {
+    try {
+      client.sync_teardownL3TrafficLoops(std::vector<std::string>{portName});
+    } catch (const std::exception& ex) {
+      XLOG(ERR) << "Failed to clean up L3 traffic loop on " << portName << ": "
+                << ex.what();
+    }
+  };
+  // Explicit cleanup runs only after the assertions, including on test failure.
+  SCOPE_EXIT {
+    cleanup(*remoteClient, link.remotePort);
+    cleanup(*localClient, link.localPort);
+  };
+
+  constexpr int32_t kLocalLeaseSeconds{60};
+  constexpr int32_t kRemoteLeaseSeconds{90};
+  const auto localStarted = std::chrono::steady_clock::now();
+  setupLoopEndpoint(
+      *localClient,
+      link.localPort,
+      qualificationAddress,
+      remoteAddresses.front(),
+      localPeerMac,
+      kLocalLeaseSeconds);
+  const auto remoteStarted = std::chrono::steady_clock::now();
+  setupLoopEndpoint(
+      *remoteClient,
+      link.remotePort,
+      qualificationAddress,
+      localAddresses.front(),
+      remotePeerMac,
+      kRemoteLeaseSeconds);
+  L3TrafficLoopStatus localStatus;
+  L3TrafficLoopStatus remoteStatus;
+  ASSERT_NO_FATAL_FAILURE(
+      getReadyLoopStatus(*localClient, link.localPort, localStatus));
+  ASSERT_NO_FATAL_FAILURE(
+      getReadyLoopStatus(*remoteClient, link.remotePort, remoteStatus));
+
+  auto hasLoopRoute = [&](auto& client) {
+    std::vector<UnicastRoute> routes;
+    client.sync_getRouteTable(routes);
+    return std::any_of(routes.begin(), routes.end(), [&](const auto& route) {
+      return network::toIPAddress(*route.dest()->ip()) ==
+          qualificationAddress &&
+          *route.dest()->prefixLength() == 128;
+    });
+  };
+  ASSERT_TRUE(hasLoopRoute(*localClient));
+  ASSERT_TRUE(hasLoopRoute(*remoteClient));
+
+  auto packet = utility::makeUDPTxPacket(
+      getSw(),
+      std::nullopt,
+      folly::MacAddress(remotePeerMac),
+      folly::MacAddress(localPeerMac),
+      localAddresses.front(),
+      qualificationAddress,
+      8000,
+      8001,
+      0,
+      255,
+      std::vector<uint8_t>(1200, 0xff));
+  auto* buffer = packet->buf();
+  buffer->coalesce();
+  const size_t offset = EthHdr::UNTAGGED_PKT_SIZE;
+  ASSERT_GT(buffer->length(), offset);
+  localClient->sync_txPktL3(
+      folly::fbstring(
+          reinterpret_cast<const char*>(buffer->data() + offset),
+          buffer->length() - offset),
+      1000,
+      10);
+  const auto localSpeed =
+      *utility::getPortIdToPortInfo(localHostname)
+           .at(getPortIdByName(localHostname, link.localPort))
+           .speedMbps();
+  const auto remoteSpeed =
+      *utility::getPortIdToPortInfo(remoteHostname)
+           .at(getPortIdByName(remoteHostname, link.remotePort))
+           .speedMbps();
+  const auto localBefore = readPortStats(*localClient, link.localPort);
+  const auto remoteBefore = readPortStats(*remoteClient, link.remotePort);
+  ASSERT_TRUE(checkWithRetryErrorReturn(
+      [&] {
+        const auto localAfter = readPortStats(*localClient, link.localPort);
+        const auto remoteAfter = readPortStats(*remoteClient, link.remotePort);
+        return *localAfter.timestamp_() - *localBefore.timestamp_() >= 5 &&
+            *remoteAfter.timestamp_() - *remoteBefore.timestamp_() >= 5 &&
+            intervalIsAtLineRate(
+                localBefore, localAfter, localSpeed, localHostname) &&
+            intervalIsAtLineRate(
+                remoteBefore, remoteAfter, remoteSpeed, remoteHostname);
+      },
+      20,
+      std::chrono::seconds(1),
+      true))
+      << "Both endpoints must carry looping traffic before expiration";
+
+  auto expired = [](auto& client, const std::string& portName) {
+    std::map<std::string, L3TrafficLoopStatus> statuses;
+    client.sync_getL3TrafficLoopStatus(statuses, {portName});
+    const auto& status = statuses.at(portName);
+    return *status.state() == L3TrafficLoopState::NOT_CONFIGURED &&
+        !status.expirationTimeMs().has_value();
+  };
+  // Status queries do not trigger cleanup. Each agent must fire its own timer.
+  ASSERT_TRUE(checkWithRetryErrorReturn(
+      [&] { return expired(*localClient, link.localPort); },
+      90,
+      std::chrono::seconds(1),
+      true));
+  EXPECT_GE(
+      std::chrono::steady_clock::now() - localStarted,
+      std::chrono::seconds(kLocalLeaseSeconds));
+  EXPECT_FALSE(hasLoopRoute(*localClient));
+  ASSERT_NO_FATAL_FAILURE(
+      getReadyLoopStatus(*remoteClient, link.remotePort, remoteStatus));
+  EXPECT_TRUE(hasLoopRoute(*remoteClient));
+
+  auto localStopped = readPortStats(*localClient, link.localPort);
+  auto remoteStopped = readPortStats(*remoteClient, link.remotePort);
+  auto trafficStopped =
+      [](const auto& before, const auto& after, int64_t speed) {
+        const auto seconds = *after.timestamp_() - *before.timestamp_();
+        if (seconds < 5 || *after.inBytes_() < *before.inBytes_() ||
+            *after.outBytes_() < *before.outBytes_()) {
+          return false;
+        }
+        // Allow LLDP/LACP traffic, but require RX and TX below 1% of line rate.
+        const auto limit = speed * 1000000.0 / 8 * seconds * 0.01;
+        XLOG(DBG2) << "L3 expiry sample on " << *after.portName_()
+                   << ": seconds=" << seconds << ", inMbps="
+                   << (*after.inBytes_() - *before.inBytes_()) * 8.0 / seconds /
+                1000000
+                   << ", outMbps="
+                   << (*after.outBytes_() - *before.outBytes_()) * 8.0 /
+                seconds / 1000000;
+        return *after.inBytes_() - *before.inBytes_() < limit &&
+            *after.outBytes_() - *before.outBytes_() < limit;
+      };
+  ASSERT_TRUE(checkWithRetryErrorReturn(
+      [&] {
+        auto localAfter = readPortStats(*localClient, link.localPort);
+        auto remoteAfter = readPortStats(*remoteClient, link.remotePort);
+        if (*localAfter.timestamp_() - *localStopped.timestamp_() < 5 ||
+            *remoteAfter.timestamp_() - *remoteStopped.timestamp_() < 5) {
+          return false;
+        }
+        const bool localQuiet =
+            trafficStopped(localStopped, localAfter, localSpeed);
+        const bool remoteQuiet =
+            trafficStopped(remoteStopped, remoteAfter, remoteSpeed);
+        // The first cached snapshot may still include traffic before cleanup.
+        // Advance both baselines to measure a fresh interval after expiration.
+        localStopped = std::move(localAfter);
+        remoteStopped = std::move(remoteAfter);
+        return localQuiet && remoteQuiet;
+      },
+      20,
+      std::chrono::seconds(1),
+      true))
+      << "Traffic must stop on both endpoints when the first lease expires";
+
+  ASSERT_TRUE(checkWithRetryErrorReturn(
+      [&] { return expired(*remoteClient, link.remotePort); },
+      90,
+      std::chrono::seconds(1),
+      true));
+  EXPECT_GE(
+      std::chrono::steady_clock::now() - remoteStarted,
+      std::chrono::seconds(kRemoteLeaseSeconds));
+  EXPECT_FALSE(hasLoopRoute(*localClient));
+  EXPECT_FALSE(hasLoopRoute(*remoteClient));
+
+  // Setup rejects a port/LAG/neighbor whose TTL control was not restored.
+  setupLoopEndpoint(
+      *localClient,
+      link.localPort,
+      qualificationAddress,
+      remoteAddresses.front(),
+      localPeerMac,
+      kLocalLeaseSeconds);
+  setupLoopEndpoint(
+      *remoteClient,
+      link.remotePort,
+      qualificationAddress,
+      localAddresses.front(),
+      remotePeerMac,
+      kRemoteLeaseSeconds);
+  ASSERT_NO_FATAL_FAILURE(
+      getReadyLoopStatus(*localClient, link.localPort, localStatus));
+  ASSERT_NO_FATAL_FAILURE(
+      getReadyLoopStatus(*remoteClient, link.remotePort, remoteStatus));
 }
 
 } // namespace facebook::fboss
