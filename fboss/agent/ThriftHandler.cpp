@@ -1434,13 +1434,117 @@ void ThriftHandler::extendL3TrafficLoops(
   }
 }
 
-void ThriftHandler::teardownL3TrafficLoopImpl(const std::string&) {
-  throw FbossError("L3 traffic loop cleanup is not implemented yet");
+void ThriftHandler::teardownL3TrafficLoopImpl(const std::string& portName) {
+  L3TrafficLoopStateStore::Loop loop;
+  {
+    auto loops = l3TrafficLoopState_->loops.wlock();
+    auto it = loops->find(portName);
+    if (it == loops->end()) {
+      throw FbossError("No L3 traffic loop on port ", portName);
+    }
+    if (it->second.status.state() == L3TrafficLoopState::NOT_CONFIGURED) {
+      return;
+    }
+    if (it->second.status.state() == L3TrafficLoopState::CLEARING) {
+      throw FbossError(
+          "L3 traffic loop cleanup is already in progress on ", portName);
+    }
+    it->second.status.state() = L3TrafficLoopState::CLEARING;
+    loop = it->second;
+  }
+
+  try {
+    // Keep the destination safely blackholed while restoring TTL and neighbor
+    // state. Removing the route is the final cleanup operation.
+    auto dropRoute =
+        makeL3TrafficLoopRoute(loop.qualificationAddress, std::nullopt, false);
+    addUnicastRoute(
+        kL3TrafficLoopClientId,
+        std::make_unique<UnicastRoute>(std::move(dropRoute)));
+
+    if (loop.aggregateTtlChanged) {
+      sw_->updateStateBlocking(
+          "restore LAG TTL decrement after L3 traffic loop",
+          [&](const std::shared_ptr<SwitchState>& state) {
+            auto newState = state;
+            auto aggregate =
+                state->getAggregatePorts()->getNodeIf(*loop.aggregatePortId);
+            if (!aggregate) {
+              throw FbossError("No aggregate while restoring loop TTL");
+            }
+            aggregate->modify(&newState)->setTTLDisableDecrement(false);
+            return newState;
+          });
+    }
+    if (loop.portTtlChanged) {
+      const auto portId = loop.portId;
+      sw_->updateStateBlocking(
+          "restore TTL decrement after L3 traffic loop",
+          [portId](const std::shared_ptr<SwitchState>& oldState) {
+            auto newState = oldState;
+            auto oldPort = newState->getPorts()->getNodeIf(portId);
+            if (!oldPort) {
+              throw FbossError("No port ", portId, " while restoring TTL");
+            }
+            auto newPort = oldPort->modify(&newState);
+            newPort->setTTLDisableDecrement(false);
+            return newState;
+          });
+    }
+    if (loop.neighborTtlChanged) {
+      setL3TrafficLoopNeighborTtl(
+          sw_, loop.interfaceId, loop.peerNextHop, false);
+    }
+    if (loop.removeNeighborOnCleanup) {
+      sw_->getNeighborUpdater()
+          ->flushEntryForIntf(loop.interfaceId, IPAddress(loop.peerNextHop))
+          .get(kL3TrafficLoopNeighborUpdateTimeout);
+    }
+
+    auto prefix = makeL3TrafficLoopPrefix(loop.qualificationAddress);
+    deleteUnicastRoute(
+        kL3TrafficLoopClientId, std::make_unique<IpPrefix>(prefix));
+    loop.status.state() = L3TrafficLoopState::NOT_CONFIGURED;
+    loop.status.expirationTimeMs().reset();
+    loop.aggregateTtlChanged = false;
+    loop.portTtlChanged = false;
+    loop.neighborTtlChanged = false;
+    loop.removeNeighborOnCleanup = false;
+    {
+      auto loops = l3TrafficLoopState_->loops.wlock();
+      loops->at(portName) = loop;
+    }
+    XLOG(DBG2) << "Cleaned up L3 traffic loop on " << portName;
+  } catch (const std::exception& ex) {
+    XLOG(FATAL) << "L3 traffic loop cleanup failed on " << portName << ": "
+                << ex.what();
+  } catch (...) {
+    XLOG(FATAL) << "L3 traffic loop cleanup failed on " << portName
+                << ": unknown exception";
+  }
 }
 
 void ThriftHandler::teardownL3TrafficLoops(
-    std::unique_ptr<std::vector<std::string>>) {
-  throw FbossError("L3 traffic loop teardown is not implemented yet");
+    std::unique_ptr<std::vector<std::string>> portNames) {
+  if (!portNames) {
+    throw FbossError("L3 traffic loop port list is required");
+  }
+  const auto portNamesForLog = folly::join(",", *portNames);
+  auto log = LOG_THRIFT_CALL_WITH_STATS(DBG1, sw_->stats(), portNamesForLog);
+  ensureConfigured(__func__);
+  std::lock_guard operationLock(l3TrafficLoopState_->operationMutex);
+  std::vector<std::string> failures;
+  for (const auto& portName : *portNames) {
+    try {
+      teardownL3TrafficLoopImpl(portName);
+    } catch (const std::exception& ex) {
+      failures.push_back(folly::to<std::string>(portName, ": ", ex.what()));
+    }
+  }
+  if (!failures.empty()) {
+    throw FbossError(
+        "Bulk L3 traffic loop cleanup failed: ", folly::join("; ", failures));
+  }
 }
 
 void ThriftHandler::getL3TrafficLoopStatus(
