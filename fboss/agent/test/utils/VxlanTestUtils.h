@@ -36,6 +36,24 @@ struct VxlanPacket {
   EthFrame innerFrame;
 };
 
+cfg::VxLanTunnel makeVxlanTunnelConfig(
+    const std::string& name,
+    InterfaceID underlayIntf,
+    const folly::IPAddressV6& srcIp,
+    const folly::IPAddressV6& dstIp,
+    cfg::TunnelMode ttlMode = cfg::TunnelMode::UNIFORM,
+    cfg::TunnelMode dscpMode = cfg::TunnelMode::UNIFORM,
+    cfg::TunnelMode ecnMode = cfg::TunnelMode::UNIFORM);
+
+cfg::VxLanTunnel makeVxlanTunnelConfig(
+    const std::string& name,
+    InterfaceID underlayIntf,
+    const folly::IPAddress& srcIp,
+    const folly::IPAddress& dstIp,
+    cfg::TunnelMode ttlMode = cfg::TunnelMode::UNIFORM,
+    cfg::TunnelMode dscpMode = cfg::TunnelMode::UNIFORM,
+    cfg::TunnelMode ecnMode = cfg::TunnelMode::UNIFORM);
+
 std::array<uint8_t, kVxlanHeaderSize> makeVxlanHeader(uint32_t vni);
 
 std::optional<VxlanPacket> parseVxlanPacket(const EthFrame& frame);

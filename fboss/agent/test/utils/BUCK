@@ -30,6 +30,7 @@ cpp_library(
     deps = [
         "fbsource//third-party/googletest:gtest",
         "//fboss/agent:fboss-error",
+        "//fboss/agent/if:common-cpp2-types",
         "//folly/io:iobuf",
     ],
     exported_deps = [

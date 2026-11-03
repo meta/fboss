@@ -3,11 +3,51 @@
 #include "fboss/agent/test/utils/VxlanTestUtils.h"
 
 #include "fboss/agent/FbossError.h"
+#include "fboss/agent/if/gen-cpp2/common_types.h"
 
 #include <folly/io/IOBuf.h>
 #include <gtest/gtest.h>
 
 namespace facebook::fboss::utility {
+
+cfg::VxLanTunnel makeVxlanTunnelConfig(
+    const std::string& name,
+    InterfaceID underlayIntf,
+    const folly::IPAddressV6& srcIp,
+    const folly::IPAddressV6& dstIp,
+    cfg::TunnelMode ttlMode,
+    cfg::TunnelMode dscpMode,
+    cfg::TunnelMode ecnMode) {
+  return makeVxlanTunnelConfig(
+      name,
+      underlayIntf,
+      folly::IPAddress(srcIp),
+      folly::IPAddress(dstIp),
+      ttlMode,
+      dscpMode,
+      ecnMode);
+}
+
+cfg::VxLanTunnel makeVxlanTunnelConfig(
+    const std::string& name,
+    InterfaceID underlayIntf,
+    const folly::IPAddress& srcIp,
+    const folly::IPAddress& dstIp,
+    cfg::TunnelMode ttlMode,
+    cfg::TunnelMode dscpMode,
+    cfg::TunnelMode ecnMode) {
+  cfg::VxLanTunnel tunnel;
+  tunnel.vxlanTunnelId() = name;
+  tunnel.underlayIntfID() = static_cast<int32_t>(underlayIntf);
+  tunnel.srcIp() = srcIp.str();
+  tunnel.dstIp() = dstIp.str();
+  tunnel.ttlMode() = ttlMode;
+  tunnel.dscpMode() = dscpMode;
+  tunnel.ecnMode() = ecnMode;
+  tunnel.tunnelTermType() = cfg::TunnelTerminationType::P2MP;
+  tunnel.tunnelType() = TunnelType::VXLAN;
+  return tunnel;
+}
 
 std::array<uint8_t, kVxlanHeaderSize> makeVxlanHeader(uint32_t vni) {
   if (vni > kVxlanMaxVni) {
