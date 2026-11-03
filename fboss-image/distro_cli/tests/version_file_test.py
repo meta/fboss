@@ -14,6 +14,7 @@ import tarfile
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from distro_cli.lib import artifact_versions, version_file
 from distro_cli.lib.artifact_versions import READERS, SDK_METADATA_MEMBER
@@ -708,11 +709,64 @@ class ReadArtifactTest(VersionFileTestCase):
                 self.assertEqual(record["image"]["source_revision"], "image-revision")
                 self.assertEqual(conflicts, [])
 
+    def test_kernel_build_evidence_is_collected_without_replacing_rpm_release(self):
+        declaration = {
+            "declaration_schema": 1,
+            "producer": "build_kernel.sh",
+            "build": {
+                "upstream": {
+                    "version": "6.11.1",
+                    "source_archive": {"sha256": "a" * 64},
+                },
+                "build_version": "kernel-42",
+                "inputs": {"kernel.spec": "b" * 64},
+                "config_sha256": "c" * 64,
+            },
+        }
+        artifact = make_tar(
+            self.root / "kernel.tar",
+            {
+                artifact_versions.KERNEL_BUILD_INFO_MEMBER: json.dumps(
+                    declaration
+                ).encode(),
+            },
+        )
+        packages = [{"nevra": "kernel-core-6.11.1-1.fboss.el9.x86_64"}]
+        with mock.patch.dict(READERS, {"packages": lambda artifact, members: packages}):
+            record, conflicts = version_file.build(
+                manifest_path=self.manifest(),
+                manifest_data={},
+                component_artifacts={"kernel": artifact},
+                source_revision="assembler",
+            )
+        self.assertEqual(
+            record["components"]["kernel"]["provenance"]["build_info"], declaration
+        )
+        self.assertEqual(
+            record["components"]["kernel"]["provenance"]["packages"], packages
+        )
+        self.assertEqual(record["versions"]["kernel"], "6.11.1-1.fboss.el9")
+        self.assertEqual(record["image"]["source_revision"], "assembler")
+        self.assertEqual(conflicts, [])
+
+    def test_legacy_kernel_artifact_keeps_rpm_evidence_without_build_info(self):
+        artifact = make_tar(
+            self.root / "legacy-kernel.tar", {"kernel-core.rpm": b"fixture"}
+        )
+        packages = [{"nevra": "kernel-core-6.11.1-1.fboss.el9.x86_64"}]
+        with mock.patch.dict(READERS, {"packages": lambda artifact, members: packages}):
+            self.assertEqual(
+                version_file.read_artifact("kernel", artifact), {"packages": packages}
+            )
+
     def test_invalid_build_declarations_are_ignored(self):
         for content in (
             b"not json",
             b'{"declaration_schema":2,"binaries":{}}',
             b'{"declaration_schema":1,"binaries":[]}',
+            b'{"declaration_schema":1,"build":[]}',
+            b'{"declaration_schema":1,"build":{},"binaries":[]}',
+            b'{"declaration_schema":1}',
         ):
             with self.subTest(content=content):
                 artifact = make_tar(
