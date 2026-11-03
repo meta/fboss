@@ -565,4 +565,417 @@ TEST_F(AgentVxlanEncapTest, encapUnderlayReresolution) {
   verifyAcrossWarmBoots(setup, verify);
 }
 
+class AgentVxlanDecapTest : public AgentVxlanTest {
+ protected:
+  std::vector<ProductionFeature> getProductionFeaturesVerified()
+      const override {
+    return {ProductionFeature::VXLAN_DECAP};
+  }
+
+  cfg::SwitchConfig initialConfig(
+      const AgentEnsemble& ensemble) const override {
+    return decapConfig(ensemble);
+  }
+
+  void setupDecap() {
+    addDecapRoute();
+    // TODO(CS00012485397): SIP lookup needs resolution. Decap
+    // only terminates once an overlay next hop to the remote
+    // VTEP programs the SIP->SVP match for its packets.
+    addVxlanRoute(0, kDecapRemoteVtep, kDecapOverlayPrefix, stationMac());
+  }
+
+  void verifyDecap() {
+    auto txPacket = utility::makeVxlanTxPacket(
+        utility::makeAllocator(this->getSw()),
+        this->getVlanIDForTx(),
+        kRemoteMac,
+        intfMac(),
+        kDecapRemoteVtep,
+        kDecapLocalVtep,
+        kVni,
+        kHostMac,
+        stationMac(),
+        kDecapInnerSrcIp,
+        kDecapInnerDstIp,
+        8000,
+        8001);
+    auto outerLen =
+        static_cast<int64_t>(txPacket->buf()->computeChainDataLength());
+    auto ingressPort = logicalPort(0);
+    auto egressPort = logicalPort(1);
+    auto ingressBefore = getLatestPortStats(ingressPort);
+    auto egressBefore = getLatestPortStats(egressPort);
+    this->getAgentEnsemble()->ensureSendPacketOutOfPort(
+        std::move(txPacket), ingressPort);
+    WITH_RETRIES({
+      auto statsNow = getLatestPortStats(egressPort);
+      EXPECT_EVENTUALLY_TRUE(*statsNow.outBytes_() > *egressBefore.outBytes_());
+    });
+    auto egressAfter = getNextUpdatedPortStats(egressPort);
+    auto ingressAfter = getLatestPortStats(ingressPort);
+    EXPECT_EQ(
+        *egressAfter.outUnicastPkts_() - *egressBefore.outUnicastPkts_(), 1);
+    EXPECT_EQ(
+        *egressAfter.outBytes_() - *egressBefore.outBytes_(),
+        outerLen - kVxlanOverhead);
+    EXPECT_EQ(*ingressAfter.inBytes_() - *ingressBefore.inBytes_(), outerLen);
+  }
+
+  // Route the decapped inner destination over ports 1-4.
+  // Port 0 stays the VXLAN ingress, outside the member set.
+  void setupDecapEcmp() {
+    applyHashConfig();
+    auto nhops = resolvedNhops(5, true /*useLinkLocal*/);
+    RouteNextHopSet nextHops;
+    for (int idx = 1; idx <= 4; ++idx) {
+      auto nhop = nhops.nhop(idx);
+      CHECK(nhop.linkLocalNhopIp.has_value());
+      nextHops.insert(
+          plainNextHop(folly::IPAddress(*nhop.linkLocalNhopIp), nhop.intf));
+    }
+    addStaticRoute(folly::IPAddress(kDecapInnerDstIp), 128, nextHops);
+    // TODO(CS00012485397): SIP lookup needs resolution. Decap
+    // only terminates once an overlay next hop to the remote
+    // VTEP programs the SIP->SVP match for its packets.
+    addVxlanRoute(0, kDecapRemoteVtep, kDecapOverlayPrefix, stationMac());
+  }
+
+  void verifyDecapEcmp() {
+    std::vector<PortID> ports;
+    for (int i = 1; i <= 4; ++i) {
+      ports.push_back(logicalPort(i));
+    }
+    std::map<PortID, HwPortStats> before;
+    for (auto port : ports) {
+      before[port] = getLatestPortStats(port);
+    }
+    int64_t outerLen = 0;
+    constexpr int kNumFlows = 64;
+    for (int i = 0; i < kNumFlows; ++i) {
+      auto txPacket = utility::makeVxlanTxPacket(
+          utility::makeAllocator(this->getSw()),
+          this->getVlanIDForTx(),
+          kRemoteMac,
+          intfMac(),
+          kDecapRemoteVtep,
+          kDecapLocalVtep,
+          kVni,
+          kHostMac,
+          stationMac(),
+          kDecapInnerSrcIp,
+          kDecapInnerDstIp,
+          static_cast<uint16_t>(8000 + i),
+          8001);
+      outerLen =
+          static_cast<int64_t>(txPacket->buf()->computeChainDataLength());
+      this->getAgentEnsemble()->ensureSendPacketOutOfPort(
+          std::move(txPacket), logicalPort(0));
+    }
+    std::map<PortID, int64_t> packets;
+    WITH_RETRIES({
+      int64_t total = 0;
+      for (auto port : ports) {
+        auto after = getLatestPortStats(port);
+        packets[port] =
+            *after.outUnicastPkts_() - *before[port].outUnicastPkts_();
+        total += packets[port];
+      }
+      EXPECT_EVENTUALLY_EQ(total, kNumFlows);
+    });
+    int64_t innerLen = outerLen - kVxlanOverhead;
+    for (auto port : ports) {
+      auto after = getLatestPortStats(port);
+      EXPECT_GT(packets[port], 0);
+      EXPECT_EQ(
+          *after.outBytes_() - *before[port].outBytes_(),
+          packets[port] * innerLen);
+    }
+  }
+};
+
+// remote-vtep - tunnel - local-vtep - host (port1)
+TEST_F(AgentVxlanDecapTest, receivePacketOnVxlanDecapTunnel) {
+  auto setup = [this]() { setupDecap(); };
+  auto verify = [this]() { verifyDecap(); };
+  verifyAcrossWarmBoots(setup, verify);
+}
+
+// remote-vtep - tunnel - local-vtep - hosts (ports 1-4)
+TEST_F(AgentVxlanDecapTest, decapEgressEcmp) {
+  auto setup = [this]() { setupDecapEcmp(); };
+  auto verify = [this]() { verifyDecapEcmp(); };
+  verifyAcrossWarmBoots(setup, verify);
+}
+
+class AgentVxlanSnoopTest : public AgentVxlanTest {
+ protected:
+  static inline const folly::IPAddressV6 kLocalVtep{"10::1"};
+  static inline const folly::IPAddressV6 kRemoteVtep{"10::2"};
+  static inline const folly::IPAddressV6 kOverlayPrefix{"100::"};
+  static inline const folly::IPAddressV6 kOverlayDst{"100::1"};
+
+  std::vector<ProductionFeature> getProductionFeaturesVerified()
+      const override {
+    return {
+        ProductionFeature::VXLAN_ENCAP,
+        ProductionFeature::VXLAN_DECAP,
+        ProductionFeature::EGRESS_MIRRORING};
+  }
+
+  void setCmdLineFlagOverrides() const override {
+    AgentHwTest::setCmdLineFlagOverrides();
+    // Managed VXLAN next hops resolve through next hop IDs.
+    FLAGS_enable_nexthop_id_manager = true;
+    FLAGS_resolve_nexthops_from_id = true;
+  }
+
+  cfg::SwitchConfig initialConfig(
+      const AgentEnsemble& ensemble) const override {
+    return vxlanConfig(ensemble, kLocalVtep, kRemoteVtep);
+  }
+
+  void setupEncapSnoop() {
+    auto cfg = this->initialConfig(*this->getAgentEnsemble());
+    programHashObject(cfg);
+    applyEgressMirror(cfg, {logicalPort(0)});
+    addVxlanRoute(0, kRemoteVtep, kOverlayPrefix, stationMac());
+  }
+
+  void verifyUdpSportVaries() {
+    utility::SwSwitchPacketSnooper snooper(this->getSw(), "vxlanSportSnooper");
+    snooper.ignoreUnclaimedRxPkts();
+    constexpr int kNumFlows = 64;
+    for (int i = 0; i < kNumFlows; ++i) {
+      auto packet = makeInnerPacket(
+          folly::IPAddressV6("100::" + std::to_string(10 + i)),
+          kOverlayDst,
+          static_cast<uint16_t>(8000 + i),
+          8001);
+      this->getAgentEnsemble()->ensureSendPacketOutOfPort(
+          std::move(packet), logicalPort(4));
+    }
+    std::set<uint16_t> sports;
+    int captured = 0;
+    while (captured < kNumFlows) {
+      auto pktBuf = snooper.waitForPacket(2);
+      if (!pktBuf.has_value()) {
+        break;
+      }
+      folly::io::Cursor cursor(pktBuf->get());
+      auto frame = utility::EthFrame(cursor);
+      auto vxlan = utility::parseVxlanPacket(frame);
+      if (vxlan.has_value()) {
+        sports.insert(vxlan->udp.header().srcPort);
+        ++captured;
+      }
+    }
+    XLOG(INFO) << "UDP sport capture: " << captured << " VXLAN packets, "
+               << sports.size() << " distinct source ports";
+    EXPECT_GT(captured, 0);
+    // The outer UDP source port is the only per-flow entropy
+    // the underlay ECMP can hash on; a fixed port fails here.
+    EXPECT_GE(sports.size(), 2);
+  }
+
+  void verifyUniformHeaderCopy() {
+    // The traffic class byte is (DSCP << 2) | ECN. Vary one
+    // inner field at a time so a wrong copy has a unique
+    // signature.
+    struct Probe {
+      uint16_t dstPort;
+      uint8_t trafficClass;
+      uint8_t hopLimit;
+    };
+    const std::vector<Probe> probes{
+        {9001, static_cast<uint8_t>((46 << 2) | 0x2), 37},
+        {9002, static_cast<uint8_t>((46 << 2) | 0x2), 99},
+        {9003, static_cast<uint8_t>((10 << 2) | 0x2), 99},
+        {9004, static_cast<uint8_t>((10 << 2) | 0x1), 99},
+    };
+    utility::SwSwitchPacketSnooper snooper(this->getSw(), "vxlanHdrSnooper");
+    snooper.ignoreUnclaimedRxPkts();
+    for (const auto& probe : probes) {
+      auto packet = makeInnerPacket(
+          folly::IPAddressV6("100::10"),
+          kOverlayDst,
+          8000,
+          probe.dstPort,
+          probe.trafficClass,
+          probe.hopLimit);
+      this->getAgentEnsemble()->ensureSendPacketOutOfPort(
+          std::move(packet), logicalPort(4));
+    }
+    int verified = 0;
+    while (verified < static_cast<int>(probes.size())) {
+      auto pktBuf = snooper.waitForPacket(2);
+      if (!pktBuf.has_value()) {
+        break;
+      }
+      folly::io::Cursor cursor(pktBuf->get());
+      auto frame = utility::EthFrame(cursor);
+      auto vxlan = utility::parseVxlanPacket(frame);
+      if (!vxlan.has_value()) {
+        continue;
+      }
+      const auto& innerV6 = vxlan->innerFrame.v6PayLoad();
+      if (!innerV6.has_value() || !innerV6->udpPayload().has_value()) {
+        continue;
+      }
+      auto dstPort = innerV6->udpPayload()->header().dstPort;
+      const Probe* probe = nullptr;
+      for (const auto& candidate : probes) {
+        if (candidate.dstPort == dstPort) {
+          probe = &candidate;
+          break;
+        }
+      }
+      if (!probe) {
+        continue;
+      }
+      utility::VxlanEncapExpected expected;
+      expected.outerSrcIp = folly::IPAddress(kLocalVtep);
+      expected.outerDstIp = folly::IPAddress(kRemoteVtep);
+      expected.outerTrafficClass = probe->trafficClass;
+      // The inner packet is routed before it is encapsulated,
+      // so the copied hop limit is already decremented.
+      expected.outerHopLimit = static_cast<uint8_t>(probe->hopLimit - 1);
+      expected.vni = kVni;
+      expected.innerDstMac = stationMac();
+      expected.innerDstIp = folly::IPAddress(kOverlayDst);
+      expected.innerDstPort = probe->dstPort;
+      utility::verifyVxlanEncap(frame, expected);
+      ++verified;
+    }
+    EXPECT_EQ(verified, static_cast<int>(probes.size()));
+  }
+
+  void setupDecapSnoop() {
+    applyEgressMirror(decapConfig(*this->getAgentEnsemble()), {logicalPort(1)});
+    addDecapRoute();
+    // TODO(CS00012485397): SIP lookup needs resolution. Decap
+    // only terminates once an overlay next hop to the remote
+    // VTEP programs the SIP->SVP match for its packets.
+    addVxlanRoute(0, kDecapRemoteVtep, kDecapOverlayPrefix, stationMac());
+  }
+
+  void verifyDecapUniformHeaderCopy() {
+    // Inner traffic class is DSCP 10, ECN ECT for every
+    // probe. Vary the outer header so DSCP copy, ECN
+    // merge, and TTL copy are checked on separate
+    // packets, then DSCP and ECN together.
+    struct Probe {
+      uint16_t dstPort;
+      uint8_t outerTrafficClass;
+      uint8_t outerHopLimit;
+      uint8_t expectedTrafficClass;
+    };
+    const std::vector<Probe> probes{
+        // DSCP only: outer ECN matches the inner ECT.
+        {9101,
+         static_cast<uint8_t>((46 << 2) | 0x2),
+         99,
+         static_cast<uint8_t>((46 << 2) | 0x2)},
+        // ECN only: outer DSCP matches the inner DSCP.
+        {9102,
+         static_cast<uint8_t>((10 << 2) | 0x3),
+         99,
+         static_cast<uint8_t>((10 << 2) | 0x3)},
+        // Both: outer DSCP is copied and outer CE merges.
+        {9103,
+         static_cast<uint8_t>((46 << 2) | 0x3),
+         99,
+         static_cast<uint8_t>((46 << 2) | 0x3)},
+        // TTL only: outer traffic class matches the inner.
+        {9104,
+         static_cast<uint8_t>((10 << 2) | 0x2),
+         42,
+         static_cast<uint8_t>((10 << 2) | 0x2)},
+    };
+    utility::SwSwitchPacketSnooper snooper(
+        this->getSw(), "vxlanDecapHdrSnooper");
+    snooper.ignoreUnclaimedRxPkts();
+    for (const auto& probe : probes) {
+      auto txPacket = utility::makeVxlanTxPacket(
+          utility::makeAllocator(this->getSw()),
+          this->getVlanIDForTx(),
+          kRemoteMac,
+          intfMac(),
+          kDecapRemoteVtep,
+          kDecapLocalVtep,
+          kVni,
+          kHostMac,
+          stationMac(),
+          kDecapInnerSrcIp,
+          kDecapInnerDstIp,
+          8000,
+          probe.dstPort,
+          probe.outerTrafficClass,
+          static_cast<uint8_t>((10 << 2) | 0x2),
+          probe.outerHopLimit);
+      this->getAgentEnsemble()->ensureSendPacketOutOfPort(
+          std::move(txPacket), logicalPort(0));
+    }
+    int verified = 0;
+    while (verified < static_cast<int>(probes.size())) {
+      auto pktBuf = snooper.waitForPacket(2);
+      if (!pktBuf.has_value()) {
+        break;
+      }
+      folly::io::Cursor cursor(pktBuf->get());
+      auto frame = utility::EthFrame(cursor);
+      const auto& v6 = frame.v6PayLoad();
+      if (!v6.has_value() || !v6->udpPayload().has_value()) {
+        continue;
+      }
+      auto dstPort = v6->udpPayload()->header().dstPort;
+      const Probe* probe = nullptr;
+      for (const auto& candidate : probes) {
+        if (candidate.dstPort == dstPort) {
+          probe = &candidate;
+          break;
+        }
+      }
+      if (!probe) {
+        continue;
+      }
+      utility::VxlanDecapExpected expected;
+      // UNIFORM decap copies the outer DSCP to the inner
+      // header; STANDARD ECN turns an inner ECT into CE when
+      // the outer header carries CE.
+      expected.innerTrafficClass = probe->expectedTrafficClass;
+      // The decapped packet is routed before it egresses, so
+      // the copied hop limit is already decremented.
+      expected.innerHopLimit = static_cast<uint8_t>(probe->outerHopLimit - 1);
+      expected.innerSrcIp = folly::IPAddress(kDecapInnerSrcIp);
+      expected.innerDstIp = folly::IPAddress(kDecapInnerDstIp);
+      expected.innerDstPort = probe->dstPort;
+      utility::verifyVxlanDecap(frame, expected);
+      ++verified;
+    }
+    EXPECT_EQ(verified, static_cast<int>(probes.size()));
+  }
+};
+
+// host - local-vtep - tunnel - remote-vtep - host
+TEST_F(AgentVxlanSnoopTest, encapUdpSportVariesAcrossFlows) {
+  auto setup = [this]() { setupEncapSnoop(); };
+  auto verify = [this]() { verifyUdpSportVaries(); };
+  verifyAcrossWarmBoots(setup, verify);
+}
+
+// host - local-vtep - tunnel - remote-vtep - host
+TEST_F(AgentVxlanSnoopTest, encapUniformCopiesToOuterHeader) {
+  auto setup = [this]() { setupEncapSnoop(); };
+  auto verify = [this]() { verifyUniformHeaderCopy(); };
+  verifyAcrossWarmBoots(setup, verify);
+}
+
+// remote-vtep - tunnel - local-vtep - host (port1)
+TEST_F(AgentVxlanSnoopTest, decapUniformCopiesToInnerHeader) {
+  auto setup = [this]() { setupDecapSnoop(); };
+  auto verify = [this]() { verifyDecapUniformHeaderCopy(); };
+  verifyAcrossWarmBoots(setup, verify);
+}
+
 } // namespace facebook::fboss
