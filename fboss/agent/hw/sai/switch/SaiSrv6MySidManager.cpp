@@ -17,6 +17,8 @@
 #include "fboss/agent/hw/sai/switch/SaiSrv6TunnelManager.h"
 #include "fboss/agent/hw/sai/switch/SaiSwitchManager.h"
 #include "fboss/agent/hw/sai/switch/SaiVirtualRouterManager.h"
+#include "fboss/agent/hw/switch_asics/HwAsic.h"
+#include "fboss/agent/platforms/sai/SaiPlatform.h"
 #include "fboss/agent/state/MySid.h"
 #include "fboss/agent/state/SwitchState.h"
 #endif
@@ -26,8 +28,8 @@ namespace facebook::fboss {
 SaiSrv6MySidManager::SaiSrv6MySidManager(
     SaiStore* saiStore,
     SaiManagerTable* managerTable,
-    SaiPlatform* /*platform*/)
-    : saiStore_(saiStore), managerTable_(managerTable) {}
+    SaiPlatform* platform)
+    : saiStore_(saiStore), managerTable_(managerTable), platform_(platform) {}
 
 #if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)
 
@@ -35,7 +37,8 @@ namespace {
 SaiMySidEntryTraits::CreateAttributes getMySidCreateAttributes(
     const MySid& mySid,
     const std::optional<SaiMySidEntryHandle::NextHopHandle>& nexthopHandle,
-    SaiManagerTable* managerTable) {
+    SaiManagerTable* managerTable,
+    const HwAsic& asic) {
   sai_int32_t endpointBehavior;
   sai_int32_t endpointBehaviorFlavor =
       SAI_MY_SID_ENTRY_ENDPOINT_BEHAVIOR_FLAVOR_NONE;
@@ -64,7 +67,12 @@ SaiMySidEntryTraits::CreateAttributes getMySidCreateAttributes(
 #endif
     }
     case MySidType::BINDING_MICRO_SID:
-      endpointBehavior = SAI_MY_SID_ENTRY_ENDPOINT_BEHAVIOR_B6_ENCAPS_RED;
+      if (asic.isSupported(HwAsic::Feature::SRV6_BINDING_USID_UA_USD)) {
+        endpointBehavior = SAI_MY_SID_ENTRY_ENDPOINT_BEHAVIOR_UA;
+        endpointBehaviorFlavor = SAI_MY_SID_ENTRY_ENDPOINT_BEHAVIOR_FLAVOR_USD;
+      } else {
+        endpointBehavior = SAI_MY_SID_ENTRY_ENDPOINT_BEHAVIOR_B6_ENCAPS_RED;
+      }
       break;
   }
 
@@ -281,8 +289,8 @@ void SaiSrv6MySidManager::addMySidEntry(
   }
 #endif
 
-  auto createAttributes =
-      getMySidCreateAttributes(*mySid, nexthopHandle, managerTable_);
+  auto createAttributes = getMySidCreateAttributes(
+      *mySid, nexthopHandle, managerTable_, *platform_->getAsic());
   auto& store = saiStore_->get<SaiMySidEntryTraits>();
   auto mySidEntry = store.setObject(adapterHostKey, createAttributes);
   if (decapTunnel) {
@@ -334,7 +342,8 @@ void SaiSrv6MySidManager::changeMySidEntry(
   auto nexthopHandle = getNextHopHandle(adapterHostKey, *newMySid, state);
   saiStore_->get<SaiMySidEntryTraits>().setObject(
       adapterHostKey,
-      getMySidCreateAttributes(*newMySid, nexthopHandle, managerTable_));
+      getMySidCreateAttributes(
+          *newMySid, nexthopHandle, managerTable_, *platform_->getAsic()));
   handle->nexthopHandle =
       nexthopHandle.value_or(SaiMySidEntryHandle::NextHopHandle{});
 }
