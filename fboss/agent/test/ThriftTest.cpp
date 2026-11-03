@@ -2447,6 +2447,38 @@ TEST_F(ThriftTest, addUnicastRoutesIsHwProtected) {
   });
 }
 
+TEST_F(ThriftTest, setPortPrbsIsHwProtected) {
+  ThriftHandler handler(sw_);
+  const PortID portId(1);
+  auto asicPrbsEnabled = [&]() {
+    return *sw_->getState()
+                ->getPorts()
+                ->getNodeIf(portId)
+                ->getAsicPrbs()
+                .enabled();
+  };
+  phy::PortPrbsState prbsOn;
+  prbsOn.enabled() = true;
+  prbsOn.polynominal() = 31;
+  sw_->updateStateBlocking(
+      "enable asic prbs",
+      [&](const shared_ptr<SwitchState>& state) -> shared_ptr<SwitchState> {
+        shared_ptr<SwitchState> newState{state};
+        auto newPort =
+            newState->getPorts()->getNodeIf(portId)->modify(&newState);
+        newPort->setAsicPrbs(prbsOn);
+        return newState;
+      });
+  ASSERT_TRUE(asicPrbsEnabled());
+
+  // Fail HW update by returning current state
+  EXPECT_HW_CALL(sw_, stateChangedImpl(_, _)).WillOnce(Return(sw_->getState()));
+  EXPECT_THROW(
+      handler.setPortPrbs(portId, phy::PortComponent::ASIC, false, 31),
+      FbossHwUpdateError);
+  EXPECT_TRUE(asicPrbsEnabled());
+}
+
 TEST_F(ThriftTest, getRouteTable) {
   ThriftHandler handler(sw_);
   auto [v4Routes, v6Routes] = getRouteCount(sw_->getState());

@@ -2801,7 +2801,7 @@ void ThriftHandler::setPortPrbs(
       }
       return newState;
     };
-    sw_->updateStateBlocking("set port asic prbs", updateFn);
+    sw_->updateStateWithHwFailureProtection("set port asic prbs", updateFn);
   } else if (component == phy::PortComponent::GB_SYSTEM) {
     auto updateFn = [=](const shared_ptr<SwitchState>& state) {
       shared_ptr<SwitchState> newState{state};
@@ -2812,7 +2812,8 @@ void ThriftHandler::setPortPrbs(
       }
       return newState;
     };
-    sw_->updateStateBlocking("set port gearbox system side prbs", updateFn);
+    sw_->updateStateWithHwFailureProtection(
+        "set port gearbox system side prbs", updateFn);
   } else if (component == phy::PortComponent::GB_LINE) {
     auto updateFn = [=](const shared_ptr<SwitchState>& state) {
       shared_ptr<SwitchState> newState{state};
@@ -2823,7 +2824,8 @@ void ThriftHandler::setPortPrbs(
       }
       return newState;
     };
-    sw_->updateStateBlocking("set port gearbox line side prbs", updateFn);
+    sw_->updateStateWithHwFailureProtection(
+        "set port gearbox line side prbs", updateFn);
   } else {
     XLOG(DBG2) << "Unrecognized component to setPortPrbs: "
                << apache::thrift::util::enumNameSafe(component);
