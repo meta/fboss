@@ -200,6 +200,11 @@ class Cmis2x400GFr4IbFirstTransceiver : public Cmis2x400GFr4Transceiver {
   explicit Cmis2x400GFr4IbFirstTransceiver(int module, TransceiverManager* mgr);
 };
 
+class CmisNvidia2x400GFr4Transceiver : public FakeTransceiverImpl {
+ public:
+  explicit CmisNvidia2x400GFr4Transceiver(int module, TransceiverManager* mgr);
+};
+
 class Cmis2x400GFr4LiteTransceiver : public FakeTransceiverImpl {
  public:
   explicit Cmis2x400GFr4LiteTransceiver(int module, TransceiverManager* mgr);
