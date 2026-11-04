@@ -50,7 +50,7 @@ void ShelManager::updateRefCount(
     const std::shared_ptr<SwitchState>& origState,
     bool add) {
   for (const auto& nhop : routeNhops) {
-    if (nhop.isResolved()) {
+    if (nhop.intfID().has_value()) {
       auto lockedMap = intf2RefCnt_.wlock();
       auto iter = lockedMap->find(nhop.intf());
       if (add) {

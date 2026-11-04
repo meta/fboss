@@ -434,6 +434,11 @@ bool IPv4Handler::resolveMac(
   auto intfs = state->getInterfaces();
   auto sent = false;
   for (auto nh : nhs) {
+    // TODO: resolve the underlay neighbors of next hops resolved in the next
+    // level
+    if (nh.resolvedInNextLevel()) {
+      continue;
+    }
     auto intf = intfs->getNodeIf(nh.intf());
     if (intf) {
       if (nh.addr().isV4()) {
