@@ -520,7 +520,8 @@ class CmisModule : public QsfpModule {
       uint8_t appSelCode,
       uint8_t moduleMediaInterfaceCode,
       const TransceiverPortState& state,
-      uint8_t numHostLanes);
+      uint8_t numHostLanes,
+      bool programAllDatapaths);
 
   // Stage set 0 AppSel bytes setApplicationSelectCodeAllPorts programs for the
   // port's bank, or nullopt if there is no valid speed combo
@@ -533,6 +534,18 @@ class CmisModule : public QsfpModule {
   std::pair<uint8_t, uint8_t> getAllPortsResetLaneMasks(
       const TransceiverPortState& state,
       uint8_t numHostLanes);
+
+  // Stage set 0 and reset masks for every datapath advertised by a specific
+  // application. Tunable multi-datapath applications must retain the explicit
+  // AppSel because multiple applications can share the same media code.
+  std::optional<AllLaneConfig> getAllPortsStageSet0ConfigForApplication(
+      const TransceiverPortState& state,
+      uint8_t numHostLanes,
+      uint8_t appSelCode);
+  std::pair<uint8_t, uint8_t> getAllPortsResetLaneMasksForApplication(
+      const TransceiverPortState& state,
+      uint8_t numHostLanes,
+      uint8_t appSelCode);
 
   /*
    * Helper function to read an interface code (host or media) for a given
@@ -1253,6 +1266,10 @@ class CmisModule : public QsfpModule {
   void setApplicationSelectCodeAllPorts(
       const TransceiverPortState& state,
       uint8_t numHostLanes);
+  void setApplicationSelectCodeAllPortsForApplication(
+      const TransceiverPortState& state,
+      uint8_t numHostLanes,
+      uint8_t appSelCode);
 
   // Sets the sampling percentage for
   // FEC errors if supported by transceiver.
