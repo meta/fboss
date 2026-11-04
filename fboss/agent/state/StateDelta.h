@@ -129,6 +129,8 @@ class StateDelta {
   MultiSwitchMapDelta<MultiSwitchDsfNodeMap> getDsfNodesDelta() const;
 
   const fsdb::OperDelta& getOperDelta() const;
+  // As getOperDelta(), but a computed delta is not cached: the caller owns it.
+  fsdb::OperDelta computeOperDeltaUncached() const;
 
   // Check if routes or neighbors (ARP/NDP) changed.
   // Shared by MirrorManager and TamManager for next-hop resolution.
