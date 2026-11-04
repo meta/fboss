@@ -227,6 +227,16 @@ class CmisModule : public QsfpModule {
   ApplicationAdvertisingFields getModuleCapabilities() {
     return moduleCapabilities_;
   }
+  /*
+   * Returns the ApplicationAdvertisingField that should be programmed for the
+   * media interface code.
+   * Skips advertised applications that have the wrong lane count, as well as
+   * InfiniBand applications
+   */
+  std::optional<ApplicationAdvertisingField> selectApplicationField(
+      uint8_t mediaInterfaceCode,
+      uint8_t startHostLane,
+      std::optional<int> hostLaneCount) const;
   // Public since its used for unit testing
   static uint8_t laneMask(uint8_t startLane, uint8_t numLanes) {
     return ((1 << numLanes) - 1) << startLane;
@@ -862,16 +872,6 @@ class CmisModule : public QsfpModule {
   std::optional<ApplicationAdvertisingField> getApplicationField(
       uint8_t mediaInterfaceCode,
       uint8_t startHostLane) const;
-  /*
-   * Returns the ApplicationAdvertisingField that should be programmed for the
-   * media interface code.
-   * Skips advertised applications that have the wrong lane count, as well as
-   * InfiniBand applications
-   */
-  std::optional<ApplicationAdvertisingField> selectApplicationField(
-      uint8_t mediaInterfaceCode,
-      uint8_t startHostLane,
-      std::optional<int> hostLaneCount) const;
 
   // Returns the list of host lanes configured in the same datapath as the
   // provided startHostLane

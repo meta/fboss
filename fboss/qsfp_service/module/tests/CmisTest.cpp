@@ -73,7 +73,6 @@ class MockCmisModule : public CmisModule {
   using CmisModule::portDatapathStates_;
   using CmisModule::readModifyWriteCmisField;
   using CmisModule::resetDataPath;
-  using CmisModule::selectApplicationField;
   using CmisModule::triggerModuleReset;
 
  private:
