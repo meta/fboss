@@ -1,5 +1,5 @@
 {
-  "platformName": "MONTBLANCM",
+  "platformName": "MINIPACK3M",
   "pmUnitSensorsList": [
     {
       "slotPath": "/",
@@ -812,7 +812,7 @@
               "sysfsPath": "/run/devmap/sensors/COME_VOLTAGE_MONITOR1/curr3_input",
               "type": 2,
               "thresholds": {
-                "upperCriticalVal": 164.8
+                "upperCriticalVal": 180
               },
               "compute": "@/1000"
             },
@@ -821,7 +821,7 @@
               "sysfsPath": "/run/devmap/sensors/COME_VOLTAGE_MONITOR1/curr4_input",
               "type": 2,
               "thresholds": {
-                "upperCriticalVal": 38.625
+                "upperCriticalVal": 44
               },
               "compute": "@/1000"
             },
@@ -879,7 +879,7 @@
               "sysfsPath": "/run/devmap/sensors/COME_VOLTAGE_MONITOR2/curr3_input",
               "type": 2,
               "thresholds": {
-                "upperCriticalVal": 30.9
+                "upperCriticalVal": 35.75
               },
               "compute": "@/1000"
             }
@@ -963,7 +963,7 @@
               "sysfsPath": "/run/devmap/sensors/COME_VOLTAGE_MONITOR1/curr3_input",
               "type": 2,
               "thresholds": {
-                "upperCriticalVal": 164.8
+                "upperCriticalVal": 180
               },
               "compute": "@/1000"
             },
@@ -972,7 +972,7 @@
               "sysfsPath": "/run/devmap/sensors/COME_VOLTAGE_MONITOR1/curr4_input",
               "type": 2,
               "thresholds": {
-                "upperCriticalVal": 38.625
+                "upperCriticalVal": 44
               },
               "compute": "@/1000"
             },
@@ -1021,7 +1021,7 @@
               "sysfsPath": "/run/devmap/sensors/COME_VOLTAGE_MONITOR2/curr3_input",
               "type": 2,
               "thresholds": {
-                "upperCriticalVal": 30.9
+                "upperCriticalVal": 35.75
               },
               "compute": "@/1000"
             }
@@ -1247,7 +1247,7 @@
               "sysfsPath": "/run/devmap/sensors/COME_VOLTAGE_MONITOR1/curr3_input",
               "type": 2,
               "thresholds": {
-                "upperCriticalVal": 164.8
+                "upperCriticalVal": 180
               },
               "compute": "@/1000"
             },
@@ -1256,7 +1256,7 @@
               "sysfsPath": "/run/devmap/sensors/COME_VOLTAGE_MONITOR1/curr4_input",
               "type": 2,
               "thresholds": {
-                "upperCriticalVal": 38.625
+                "upperCriticalVal": 44
               },
               "compute": "@/1000"
             },
@@ -1314,7 +1314,7 @@
               "sysfsPath": "/run/devmap/sensors/COME_VOLTAGE_MONITOR2/curr3_input",
               "type": 2,
               "thresholds": {
-                "upperCriticalVal": 30.9
+                "upperCriticalVal": 35.75
               },
               "compute": "@/1000"
             }
@@ -1398,7 +1398,7 @@
               "sysfsPath": "/run/devmap/sensors/COME_VOLTAGE_MONITOR1/curr3_input",
               "type": 2,
               "thresholds": {
-                "upperCriticalVal": 164.8
+                "upperCriticalVal": 180
               },
               "compute": "@/1000"
             },
@@ -1407,7 +1407,7 @@
               "sysfsPath": "/run/devmap/sensors/COME_VOLTAGE_MONITOR1/curr4_input",
               "type": 2,
               "thresholds": {
-                "upperCriticalVal": 38.625
+                "upperCriticalVal": 44
               },
               "compute": "@/1000"
             },
@@ -1456,7 +1456,7 @@
               "sysfsPath": "/run/devmap/sensors/COME_VOLTAGE_MONITOR2/curr3_input",
               "type": 2,
               "thresholds": {
-                "upperCriticalVal": 30.9
+                "upperCriticalVal": 35.75
               },
               "compute": "@/1000"
             }
@@ -1540,7 +1540,7 @@
               "sysfsPath": "/run/devmap/sensors/COME_VOLTAGE_MONITOR1/curr3_input",
               "type": 2,
               "thresholds": {
-                "upperCriticalVal": 164.8
+                "upperCriticalVal": 180
               },
               "compute": "@/1000"
             },
@@ -1549,7 +1549,7 @@
               "sysfsPath": "/run/devmap/sensors/COME_VOLTAGE_MONITOR1/curr4_input",
               "type": 2,
               "thresholds": {
-                "upperCriticalVal": 38.625
+                "upperCriticalVal": 44
               },
               "compute": "@/1000"
             },
@@ -1598,7 +1598,7 @@
               "sysfsPath": "/run/devmap/sensors/COME_VOLTAGE_MONITOR2/curr3_input",
               "type": 2,
               "thresholds": {
-                "upperCriticalVal": 30.9
+                "upperCriticalVal": 35.75
               },
               "compute": "@/1000"
             }
