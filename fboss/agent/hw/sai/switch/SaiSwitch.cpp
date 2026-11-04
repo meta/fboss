@@ -143,7 +143,9 @@ DEFINE_int32(
     "Interval for reading serdes stats");
 
 namespace {
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 3)
 constexpr auto kExtOperStatusLatchWarmBootCaptureDelayMs = 1000;
+#endif
 /*
  * For the devices/SDK we use, the only events we should get (and process)
  * are LEARN and AGED.
