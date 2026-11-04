@@ -1945,7 +1945,8 @@ void ThriftHandler::updateUnicastRoutesImpl(
             NamedRouteDestination::Type::nextHopGroup) {
       route.counterID() = *route.namedRouteDestination()->nextHopGroup_ref();
     }
-    updater.addRoute(routerID, clientID, route);
+    // The request is not read again.
+    updater.addRoute(routerID, clientID, std::move(route));
   }
   RouteUpdateWrapper::SyncFibFor syncFibs;
 
