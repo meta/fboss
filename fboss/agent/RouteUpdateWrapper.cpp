@@ -56,6 +56,14 @@ void RouteUpdateWrapper::addRoute(
   ribRoutesToAddDel_[std::make_pair(vrf, clientId)].toAdd.emplace_back(route);
 }
 
+void RouteUpdateWrapper::addRoute(
+    RouterID vrf,
+    ClientID clientId,
+    UnicastRoute&& route) {
+  ribRoutesToAddDel_[std::make_pair(vrf, clientId)].toAdd.emplace_back(
+      std::move(route));
+}
+
 void RouteUpdateWrapper::delRoute(
     RouterID vrf,
     const folly::IPAddress& network,
@@ -175,13 +183,14 @@ void RouteUpdateWrapper::programStandAloneRib(const SyncFibFor& syncFibFor) {
         *ribToSwitchStateFunc_,
         ribToSwitchStateCookie_);
   }
-  for (const auto& [ridClientId, addDelRoutes] : ribRoutesToAddDel_) {
+  for (auto& [ridClientId, addDelRoutes] : ribRoutesToAddDel_) {
+    // Cleared after programming, so the RIB may consume the routes.
     auto stats = getRib()->update(
         resolver_,
         ridClientId.first,
         ridClientId.second,
         clientIdToAdminDistance(ridClientId.second),
-        addDelRoutes.toAdd,
+        std::move(addDelRoutes.toAdd),
         addDelRoutes.toDel,
         syncFibFor.find(ridClientId) != syncFibFor.end(),
         "RIB update",

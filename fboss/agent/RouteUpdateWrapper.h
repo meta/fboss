@@ -86,7 +86,8 @@ class RouteUpdateWrapper {
       const RouteNextHopEntry& entry,
       std::optional<RouteNextHopSet> nhops = std::nullopt);
 
-  void addRoute(RouterID id, ClientID clientId, const UnicastRoute& route);
+  void addRoute(RouterID vrf, ClientID clientId, const UnicastRoute& route);
+  void addRoute(RouterID vrf, ClientID clientId, UnicastRoute&& route);
   void addRoute(ClientID clientId, const MplsRoute& route);
   // Takes nexthops directly; the entry was only read for its inline set.
   void
