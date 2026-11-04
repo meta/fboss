@@ -118,6 +118,41 @@ TEST_F(TransceiverPropertiesManagerTest, DR8_800G_4x200GCombination) {
   }
 }
 
+TEST_F(TransceiverPropertiesManagerTest, ZR_800G_2x400GCombinations) {
+  initDefault();
+
+  const auto code = MediaInterfaceCode::ZR_800G;
+  for (const auto& [name, mediaCode] :
+       std::vector<std::pair<std::string, SMFMediaInterfaceCode>>{
+           {"2x400G-ZR",
+            SMFMediaInterfaceCode::ZR_OROADM_FLEXO_8E_DPO_800G},
+           {"2x400G-ZR-OIF-ZRA",
+            SMFMediaInterfaceCode::ZR_OIF_ZRA_800G}}) {
+    const auto& combo =
+        TransceiverPropertiesManager::findSpeedCombination(code, name);
+    ASSERT_EQ(combo.ports()->size(), 2);
+    for (int port = 0; port < 2; ++port) {
+      const auto& portConfig = combo.ports()[port];
+      EXPECT_EQ(*portConfig.speed(), cfg::PortSpeed::FOURHUNDREDG);
+      EXPECT_EQ(*portConfig.hostLanes()->start(), port * 4);
+      EXPECT_EQ(*portConfig.hostLanes()->count(), 4);
+      EXPECT_EQ(*portConfig.mediaLanes()->start(), 0);
+      EXPECT_EQ(*portConfig.mediaLanes()->count(), 1);
+      EXPECT_EQ(portConfig.mediaLaneCode()->smfCode().value(), mediaCode);
+      EXPECT_EQ(*portConfig.mediaInterfaceCode(), code);
+    }
+  }
+
+  const auto mediaCodes =
+      TransceiverPropertiesManager::getMediaCodesForSpeed<
+          SMFMediaInterfaceCode>(code, cfg::PortSpeed::FOURHUNDREDG);
+  EXPECT_EQ(
+      mediaCodes,
+      (std::vector<SMFMediaInterfaceCode>{
+          SMFMediaInterfaceCode::ZR_OROADM_FLEXO_8E_DPO_800G,
+          SMFMediaInterfaceCode::ZR_OIF_ZRA_800G}));
+}
+
 TEST_F(TransceiverPropertiesManagerTest, DR8_1600G_Properties) {
   initDefault();
 
