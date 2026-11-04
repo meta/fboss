@@ -348,6 +348,14 @@ const fsdb::OperDelta& StateDelta::getOperDelta() const {
   return operDelta_.value();
 }
 
+fsdb::OperDelta StateDelta::computeOperDeltaUncached() const {
+  if (operDelta_.has_value()) {
+    return operDelta_.value();
+  }
+  return fsdb::computeOperDelta(
+      old_, new_, {}, FLAGS_state_oper_delta_use_id_paths);
+}
+
 // Explicit instantiations of NodeMapDelta that are used by StateDelta.
 template struct ThriftMapDelta<InterfaceMap>;
 template struct ThriftMapDelta<PortMap>;
