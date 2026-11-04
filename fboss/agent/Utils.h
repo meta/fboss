@@ -435,7 +435,16 @@ class OperDeltaFilter {
   std::optional<fsdb::OperDelta> filter(const fsdb::OperDelta& delta, int index)
       const;
 
+  // In place: drops other switches' units without copying the rest.
+  std::optional<fsdb::OperDelta> filterWithSwitchStateRootPath(
+      fsdb::OperDelta&& delta) const {
+    return filter(std::move(delta), kOperDeltaHwSwitchMatcherPathIndex);
+  }
+  std::optional<fsdb::OperDelta> filter(fsdb::OperDelta&& delta, int index)
+      const;
+
  private:
+  bool matches(const fsdb::OperDeltaUnit& change, int index) const;
   SwitchID switchId_;
   mutable std::map<std::string, HwSwitchMatcher> matchersCache_;
 };

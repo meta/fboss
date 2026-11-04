@@ -9,12 +9,15 @@ namespace facebook::fboss {
 
 HwSwitchStateUpdate::HwSwitchStateUpdate(
     const std::vector<StateDelta>& deltas,
-    bool transaction)
+    bool transaction,
+    bool soleConsumer)
     : oldState(deltas.front().oldState()),
       newState(deltas.back().newState()),
       isTransaction(transaction) {
+  // A sole consumer needs no cached copy: build one, move it to the HwSwitch.
   for (const auto& delta : deltas) {
-    operDeltas.push_back(delta.getOperDelta());
+    operDeltas.push_back(
+        soleConsumer ? delta.computeOperDeltaUncached() : delta.getOperDelta());
   }
 }
 
@@ -61,7 +64,7 @@ folly::Future<HwSwitchStateUpdateResult> HwSwitchHandler::stateChanged(
        deltaApplicationBehavior = deltaApplicationBehavior,
        this]() mutable {
         capturedPromise.setWith(
-            [update, hwWriteBehavior, deltaApplicationBehavior, this]() {
+            [&update, &hwWriteBehavior, &deltaApplicationBehavior, this]() {
               return stateChangedImpl(
                   update, hwWriteBehavior, deltaApplicationBehavior);
             });
@@ -72,24 +75,25 @@ folly::Future<HwSwitchStateUpdateResult> HwSwitchHandler::stateChanged(
 }
 
 HwSwitchStateUpdateResult HwSwitchHandler::stateChangedImpl(
-    const HwSwitchStateUpdate& update,
+    HwSwitchStateUpdate& update,
     const HwWriteBehavior& hwWriteBehavior,
     const std::optional<StateDeltaApplication>& deltaApplicationBehavior) {
   std::vector<fsdb::OperDelta> inDeltas;
-  for (const auto& operDelta : update.operDeltas) {
-    auto inDelta = operDeltaFilter_.filterWithSwitchStateRootPath(operDelta);
+  for (auto& operDelta : update.operDeltas) {
+    auto inDelta =
+        operDeltaFilter_.filterWithSwitchStateRootPath(std::move(operDelta));
     if (inDelta.has_value()) {
-      inDeltas.push_back(inDelta.value());
+      inDeltas.push_back(std::move(*inDelta));
     }
   }
-  if (inDeltas.size() == 0) {
+  if (inDeltas.empty()) {
     // no-op
     return {
         update.newState,
         HwSwitchStateUpdateStatus::HWSWITCH_STATE_UPDATE_SUCCEEDED};
   }
   auto stateUpdateResult = stateChangedImpl(
-      inDeltas,
+      std::move(inDeltas),
       update.isTransaction,
       update.oldState,
       update.newState,
@@ -118,14 +122,14 @@ HwSwitchStateUpdateResult HwSwitchHandler::stateChangedImpl(
 }
 
 HwSwitchStateOperUpdateResult HwSwitchHandler::stateChangedImpl(
-    const std::vector<fsdb::OperDelta>& deltas,
+    std::vector<fsdb::OperDelta> deltas,
     bool transaction,
     const std::shared_ptr<SwitchState>& oldState,
     const std::shared_ptr<SwitchState>& newState,
     const HwWriteBehavior& hwWriteBehavior,
     const std::optional<StateDeltaApplication>& deltaApplicationBehavior) {
   return stateChanged(
-      deltas,
+      std::move(deltas),
       transaction,
       oldState,
       newState,
