@@ -109,7 +109,7 @@
           "busName": "INCOMING@0",
           "address": "0x23",
           "kernelDeviceName": "scd_vcpld",
-          "pmUnitScopedName": "SCD_VCPLD"
+          "pmUnitScopedName": "SMB_CPLD"
         },
         {
           "busName": "INCOMING@0",
@@ -475,6 +475,7 @@
     "/run/devmap/sensors/FAN_CPLD": "/SMB_SLOT@0/[FAN_CPLD]",
     "/run/devmap/sensors/PSU1_PMBUS": "/SMB_SLOT@0/PSU_SLOT@0/[PSU_PMBUS]",
     "/run/devmap/sensors/PSU2_PMBUS": "/SMB_SLOT@0/PSU_SLOT@1/[PSU_PMBUS]",
+    "/run/devmap/cplds/MERU800BIA_SMB_CPLD": "/SMB_SLOT@0/[SMB_CPLD]",
     "/run/devmap/cplds/FAN_CPLD": "/SMB_SLOT@0/[FAN_CPLD]",
     "/run/devmap/fpgas/MERU_SCM_CPLD": "/[SCM_FPGA]",
     "/run/devmap/fpgas/MERU_SCM_CPLD_INFO_ROM": "/[SCM_FPGA_INFO_ROM]",
