@@ -177,6 +177,8 @@ struct IfAndIP {
   2: Address.BinaryAddress ip;
   // VRF the next hop is resolved in; unset means the route's VRF
   3: optional i32 vrf;
+  // Set on next hops resolved in the next level, which have no interface
+  4: optional bool resolvedInNextLevel;
 }
 
 struct RouteDetails {
