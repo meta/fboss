@@ -1657,6 +1657,7 @@ class VxlanRouteTest : public ManagerTestBase {
         std::nullopt,
         NextHopRole::PRIMARY,
         std::nullopt,
+        false /* resolvedInNextLevel */,
         mac};
   }
 

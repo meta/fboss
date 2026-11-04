@@ -1288,3 +1288,82 @@ TEST(RouteNextHopTest, NextHopsDifferingOnlyInVrf) {
       std::hash<ResolvedNextHop>()(resolved),
       std::hash<ResolvedNextHop>()(resolvedInDefaultVrf));
 }
+
+TEST(RouteNextHopTest, ResolvedTunnelNextHopWithoutInterface) {
+  auto vtep = folly::IPAddress("2001:db8:500::1");
+  NextHop resolved = ResolvedNextHop(
+      vtep,
+      std::nullopt,
+      UCMP_DEFAULT_WEIGHT,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      {},
+      TunnelType::VXLAN,
+      "vx0",
+      std::nullopt,
+      NextHopRole::PRIMARY,
+      std::nullopt,
+      true /* resolvedInNextLevel */);
+  EXPECT_TRUE(resolved.isResolved());
+  EXPECT_TRUE(resolved.resolvedInNextLevel());
+  EXPECT_EQ(resolved.intfID(), std::nullopt);
+
+  auto nht = resolved.toThrift();
+  EXPECT_TRUE(*nht.resolvedInNextLevel());
+  EXPECT_FALSE(nht.address()->ifName().has_value());
+  EXPECT_EQ(util::fromThrift(nht), resolved);
+
+  NextHop unresolved = UnresolvedNextHop(
+      vtep,
+      UCMP_DEFAULT_WEIGHT,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      {},
+      TunnelType::VXLAN,
+      "vx0");
+  EXPECT_FALSE(unresolved.isResolved());
+  EXPECT_FALSE(unresolved.resolvedInNextLevel());
+  EXPECT_NE(resolved, unresolved);
+  EXPECT_NE(std::hash<NextHop>()(resolved), std::hash<NextHop>()(unresolved));
+  EXPECT_FALSE(unresolved.toThrift().resolvedInNextLevel().has_value());
+}
+
+TEST(RouteNextHopTest, ResolvedNextHopWithInterfaceOmitsFlag) {
+  NextHop resolved = ResolvedNextHop(
+      folly::IPAddress("2401:db00::10"), InterfaceID(1), UCMP_DEFAULT_WEIGHT);
+  EXPECT_TRUE(resolved.isResolved());
+  EXPECT_FALSE(resolved.resolvedInNextLevel());
+  auto nht = resolved.toThrift();
+  EXPECT_FALSE(nht.resolvedInNextLevel().has_value());
+  EXPECT_EQ(util::fromThrift(nht, true), resolved);
+}
+
+TEST(RouteNextHopTest, ResolvedNextHopInterfaceOrNextLevel) {
+  auto addr = folly::IPAddress("2401:db00::10");
+  auto make = [&](const std::optional<InterfaceID>& intf,
+                  bool resolvedInNextLevel) {
+    return ResolvedNextHop(
+        addr,
+        intf,
+        UCMP_DEFAULT_WEIGHT,
+        std::nullopt,
+        std::nullopt,
+        std::nullopt,
+        std::nullopt,
+        {},
+        std::nullopt,
+        std::nullopt,
+        std::nullopt,
+        NextHopRole::PRIMARY,
+        std::nullopt,
+        resolvedInNextLevel);
+  };
+  // Neither an interface nor resolved in the next level
+  EXPECT_THROW(make(std::nullopt, false), FbossError);
+  // Both
+  EXPECT_THROW(make(InterfaceID(1), true), FbossError);
+}

@@ -383,7 +383,13 @@ RouteNextHopSet resolveNhopFromRib(
 
     const auto fwdNhops = getNormalizedNextHopsFromRib(
         manager, route->getForwardInfo(), ecmpWidth);
-    if (fwdNhops.empty()) {
+    // Only MySid and policy next hop group next hops resolve here, and they
+    // need an egress interface in this level. Next hops resolved in the next
+    // level have none; unicast routes resolve through them in RibRouteUpdater.
+    if (fwdNhops.empty() ||
+        std::any_of(fwdNhops.begin(), fwdNhops.end(), [](const auto& fwdNh) {
+          return fwdNh.resolvedInNextLevel();
+        })) {
       return false;
     }
     if (route->isConnected()) {
@@ -401,6 +407,7 @@ RouteNextHopSet resolveNhopFromRib(
           nh.cost(),
           nh.role(),
           std::nullopt, /* vrf */
+          false, /* resolvedInNextLevel */
           nh.overlayDstMac()));
     } else {
       std::vector<ResolvedNextHop> nhops;
@@ -420,6 +427,7 @@ RouteNextHopSet resolveNhopFromRib(
             nh.cost(),
             nh.role(),
             std::nullopt, /* vrf */
+            false, /* resolvedInNextLevel */
             nh.overlayDstMac());
       }
       resolved.insert(nhops.begin(), nhops.end());

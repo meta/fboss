@@ -523,7 +523,7 @@ RouteNextHopEntry::NextHopSet RouteNextHopEntry::normalizeNextHops(
     // will prevent the nexthop from being identified as unique
     normalizedNextHops.insert(ResolvedNextHop(
         nhop.addr(),
-        nhop.intf(),
+        nhop.intfID(),
         std::max(nhop.weight(), NextHopWeight(1)),
         nhop.labelForwardingAction(),
         nhop.disableTTLDecrement(),
@@ -535,6 +535,7 @@ RouteNextHopEntry::NextHopSet RouteNextHopEntry::normalizeNextHops(
         nhop.cost(),
         nhop.role(),
         nhop.vrf(),
+        nhop.resolvedInNextLevel(),
         nhop.overlayDstMac()));
   }
   // 2)
@@ -577,7 +578,7 @@ RouteNextHopEntry::NextHopSet RouteNextHopEntry::normalizeNextHops(
         if (weight) {
           scaledNextHops.insert(ResolvedNextHop(
               nhop.addr(),
-              nhop.intf(),
+              nhop.intfID(),
               weight,
               nhop.labelForwardingAction(),
               nhop.disableTTLDecrement(),
@@ -589,6 +590,7 @@ RouteNextHopEntry::NextHopSet RouteNextHopEntry::normalizeNextHops(
               nhop.cost(),
               nhop.role(),
               nhop.vrf(),
+              nhop.resolvedInNextLevel(),
               nhop.overlayDstMac()));
           scaledTotalWeight += weight;
         }
@@ -604,7 +606,7 @@ RouteNextHopEntry::NextHopSet RouteNextHopEntry::normalizeNextHops(
             NextHopWeight(1));
         scaledNextHops.insert(ResolvedNextHop(
             nhop.addr(),
-            nhop.intf(),
+            nhop.intfID(),
             w,
             nhop.labelForwardingAction(),
             nhop.disableTTLDecrement(),
@@ -616,6 +618,7 @@ RouteNextHopEntry::NextHopSet RouteNextHopEntry::normalizeNextHops(
             nhop.cost(),
             nhop.role(),
             nhop.vrf(),
+            nhop.resolvedInNextLevel(),
             nhop.overlayDstMac()));
         scaledTotalWeight += w;
       }
@@ -638,7 +641,7 @@ RouteNextHopEntry::NextHopSet RouteNextHopEntry::normalizeNextHops(
           // create a clone of the max weight next hop with weight decremented
           ResolvedNextHop decMax = ResolvedNextHop(
               maxItr->addr(),
-              maxItr->intf(),
+              maxItr->intfID(),
               maxItr->weight() - 1,
               maxItr->labelForwardingAction(),
               maxItr->disableTTLDecrement(),
@@ -650,6 +653,7 @@ RouteNextHopEntry::NextHopSet RouteNextHopEntry::normalizeNextHops(
               maxItr->cost(),
               maxItr->role(),
               maxItr->vrf(),
+              maxItr->resolvedInNextLevel(),
               maxItr->overlayDstMac());
           // remove the max weight next hop and replace with the
           // decremented version, if the decremented version would
@@ -682,7 +686,7 @@ RouteNextHopEntry::NextHopSet RouteNextHopEntry::normalizeNextHops(
     for (const auto& nhop : normalizedNextHops) {
       normalizedToMaxPathNextHops.insert(ResolvedNextHop(
           nhop.addr(),
-          nhop.intf(),
+          nhop.intfID(),
           nhopWeights.at(idx++),
           nhop.labelForwardingAction(),
           nhop.disableTTLDecrement(),
@@ -694,6 +698,7 @@ RouteNextHopEntry::NextHopSet RouteNextHopEntry::normalizeNextHops(
           nhop.cost(),
           nhop.role(),
           nhop.vrf(),
+          nhop.resolvedInNextLevel(),
           nhop.overlayDstMac()));
     }
     XLOG(DBG3) << "Scaled next hops from " << nhopSet << " to "

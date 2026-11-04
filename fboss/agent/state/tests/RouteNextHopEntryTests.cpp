@@ -1557,6 +1557,7 @@ TEST(RouteNextHopEntry, VxlanNextHopsThriftRoundTrip) {
       std::nullopt,
       NextHopRole::PRIMARY,
       std::nullopt, /* vrf */
+      false, /* resolvedInNextLevel */
       folly::MacAddress("02:00:00:00:00:01")));
 
   auto thriftNhops = util::fromRouteNextHopSet(nhops);
