@@ -729,6 +729,7 @@ class ThriftConfigApplier {
   std::shared_ptr<VxlanTunnelMap> updateVxlanTunnels();
   const std::vector<cfg::VrfConfig>& getConfigVrfs() const;
   void validateVrfs() const;
+  void validateStaticRouteNextHops() const;
   std::shared_ptr<VrfMap> updateVrfs();
   // With deferVrfChanges_, VRF removals and interface VRF moves are left for
   // a second config pass, after the routes they affect have been removed.
@@ -1038,6 +1039,8 @@ shared_ptr<SwitchState> ThriftConfigApplier::run() {
   }
   // Keeps existing entries for VRFs that already have interface routes
   intfRouteTables_.insert(vrfRouteTables.begin(), vrfRouteTables.end());
+
+  validateStaticRouteNextHops();
 
   // Restrict interface-scoped next hops to their interface's VRF, only on
   // switches with VRFs, including VRFs that are still being removed.
@@ -7950,6 +7953,25 @@ shared_ptr<VxlanTunnel> ThriftConfigApplier::createVxlanTunnel(
 const std::vector<cfg::VrfConfig>& ThriftConfigApplier::getConfigVrfs() const {
   static const std::vector<cfg::VrfConfig> kNoVrfs;
   return cfg_->vrfs() ? *cfg_->vrfs() : kNoVrfs;
+}
+
+// Only the agent resolves next hops in the next level
+void ThriftConfigApplier::validateStaticRouteNextHops() const {
+  auto validate = [](const std::vector<NextHopThrift>& nextHops) {
+    for (const auto& nhop : nextHops) {
+      if (nhop.resolvedInNextLevel().has_value()) {
+        throw FbossError(
+            "resolvedInNextLevel cannot be set in config, next hop ",
+            network::toIPAddress(*nhop.address()).str());
+      }
+    }
+  };
+  for (const auto& route : *cfg_->staticIp2MplsRoutes()) {
+    validate(*route.nexthops());
+  }
+  for (const auto& route : *cfg_->staticMplsRoutesWithNhops()) {
+    validate(*route.nexthops());
+  }
 }
 
 void ThriftConfigApplier::validateVrfs() const {

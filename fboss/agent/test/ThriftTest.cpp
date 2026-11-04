@@ -2214,6 +2214,20 @@ TEST_F(ThriftTest, addUnicastRoutesRejectsMplsAndSrv6) {
   EXPECT_NO_THROW(handler.addUnicastRoute(bgpClient, std::move(srv6OnlyRoute)));
 }
 
+TEST_F(ThriftTest, addUnicastRoutesRejectsResolvedInNextLevel) {
+  ThriftHandler handler(sw_);
+
+  auto bgpClient = static_cast<int16_t>(ClientID::BGPD);
+  auto route = makeEcmpUnicastRoute(
+      "7.1.0.0/16", {}, sw_->clientIdToAdminDistance(bgpClient));
+  NextHopThrift nh;
+  nh.address() = toBinaryAddress(IPAddress("10.0.0.11"));
+  nh.resolvedInNextLevel() = true;
+  route->nextHops() = {nh};
+  EXPECT_THROW(
+      handler.addUnicastRoute(bgpClient, std::move(route)), FbossError);
+}
+
 TEST_F(ThriftTest, addUnicastRoutesRejectsSrv6WithInvalidTunnelType) {
   ThriftHandler handler(sw_);
 
@@ -3872,6 +3886,17 @@ TEST_F(ThriftTest, addMySidEntryRejectsAdjacencyType) {
   auto entries = std::make_unique<std::vector<MySidEntry>>();
   entries->push_back(
       makeMySidEntry("2001:db8::1", 64, MySidType::ADJACENCY_MICRO_SID));
+  EXPECT_THROW(handler.addMySidEntries(std::move(entries)), FbossError);
+}
+
+TEST_F(ThriftTest, addMySidEntryRejectsResolvedInNextLevel) {
+  ThriftHandler handler(sw_);
+
+  auto entry = makeMySidEntryWithNextHops(
+      "2001:db8::1", 64, MySidType::BINDING_MICRO_SID, {"2001:db8::ff"});
+  entry.nextHops()->front().resolvedInNextLevel() = true;
+  auto entries = std::make_unique<std::vector<MySidEntry>>();
+  entries->push_back(std::move(entry));
   EXPECT_THROW(handler.addMySidEntries(std::move(entries)), FbossError);
 }
 
