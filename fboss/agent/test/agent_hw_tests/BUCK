@@ -348,6 +348,7 @@ cpp_library(
         "fbsource//third-party/fmt:fmt",
         "fbsource//third-party/googletest:gmock",
         "fbsource//third-party/re2:re2",
+        "fbsource//xplat/folly:demangle",
         "fbsource//xplat/folly:file_util",
         "fbsource//xplat/folly:map_util",
         "fbsource//xplat/folly:scope_guard",
@@ -442,6 +443,7 @@ cpp_library(
         "//fboss/agent/thrift_packet_stream:packet_stream_client",
         "//fboss/lib:common_utils",
         "//fboss/lib/config:fboss_config_utils",
+        "//fboss/lib/fpga:multi_pim_container",
         "//fboss/lib/phy:phy_utils",
         "//thrift/lib/cpp2/test:matcher",
     ],
@@ -585,6 +587,7 @@ cpp_library(
     ],
     link_whole = True,
     deps = [
+        "fbsource//xplat/folly:demangle",
         "fbsource//xplat/folly:network_address",
         "//fboss/agent/packet:packet",
         "//fboss/agent/packet:packet_factory",
@@ -595,6 +598,7 @@ cpp_library(
         "//fboss/agent/test/utils:packet_snooper",
         "//fboss/agent/test/utils:pkt_test_utils",
         "//fboss/agent/test/utils:trap_packet_utils",
+        "//fboss/lib/fpga:multi_pim_container",
     ],
     exported_deps = [],
 )

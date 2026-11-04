@@ -8,6 +8,7 @@
  *
  */
 
+#include <folly/Demangle.h>
 #include <folly/IPAddress.h>
 #include "fboss/agent/packet/IPv6Hdr.h"
 #include "fboss/agent/packet/PTPHeader.h"
@@ -20,6 +21,7 @@
 #include "fboss/agent/test/utils/PacketSnooper.h"
 #include "fboss/agent/test/utils/PacketTestUtils.h"
 #include "fboss/agent/test/utils/TrapPacketUtils.h"
+#include "fboss/lib/fpga/MultiPimPlatformSystemContainer.h"
 
 namespace {} // namespace
 
@@ -45,7 +47,21 @@ class AgentHwPtpTcProvisionTests : public AgentHwTest {
   const folly::MacAddress kSrcMac = folly::MacAddress("aa:bb:cc:00:00:01");
 
   void SetUp() override {
-    AgentHwTest::SetUp();
+    try {
+      AgentHwTest::SetUp();
+    } catch (const PimTypeError& e) {
+      // A dead PIM fails platform init before any PTP code runs. Record it so
+      // the provision test runner can report it as a hardware fault.
+      RecordProperty(
+          "exception_type", folly::demangle(typeid(e)).toStdString());
+      RecordProperty("exception_message", e.what());
+      RecordProperty("exception_pim", e.getPim());
+      RecordProperty(
+          "exception_reason",
+          e.getReason() == PimTypeError::Reason::UNREADABLE ? "UNREADABLE"
+                                                            : "UNRECOGNIZED");
+      throw;
+    }
   }
 
   std::vector<ProductionFeature> getProductionFeaturesVerified()
