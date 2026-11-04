@@ -268,6 +268,8 @@ enum MediaInterfaceCode {
   CR2_400G = 41,
   CR4_800G = 42,
   CR8_1600G = 43,
+  // 2x400G-FR4 whose first application has an InfiniBand host interface
+  FR4_2x400G_IB = 44,
 }
 
 // The extended specification compliance code of the transceiver module.
