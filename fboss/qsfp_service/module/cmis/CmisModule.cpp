@@ -3505,23 +3505,6 @@ CmisModule::getAppSelCodeForSpeed(
       startHostLane,
       numHostLanesForPort);
 
-  // We use the module Media Interface ID for Optical modules, which is located
-  // at the second byte of the field (byteOffset = 1), as Application ID here.
-  // If we have an AEC cable, we use the module host interface ID which has a
-  // byteOffset of 0. This is in page 00h app sel advertising (starting at
-  // offset 86 for page)
-  int byteOffset =
-      isAecModule() ? kHostInterfaceCodeOffset : kMediaInterfaceCodeOffset;
-
-  // Get the current application interface code based on module type
-  uint8_t currentApplication = 0;
-  if (currentApplicationSel >= 1 && currentApplicationSel <= 15) {
-    currentApplication =
-        getInterfaceCodeForAppSel(currentApplicationSel, byteOffset);
-  } else {
-    QSFP_LOG(INFO, this) << "currentApplication: not selected yet";
-  }
-
   // Loop through all the applications that we support for the given speed and
   // check if any of those are present in the moduleCapabilities. We configure
   // the first application that both we support and the module supports. A
@@ -3540,11 +3523,13 @@ CmisModule::getAppSelCodeForSpeed(
     auto numHostLanes = capability->hostLaneCount;
 
     // If the currently configured application is the same as what we are trying
-    // to configure, then skip the configuration
-    if (application == currentApplication) {
+    // to configure, then skip the configuration. Compare AppSel codes rather
+    // than interface codes since a module can advertise the same interface
+    // code in more than one application.
+    if (capability->ApSelCode == currentApplicationSel) {
       QSFP_LOG(INFO, this) << fmt::format(
-          "Speed matches: currentApplication {:#x}. Doing nothing",
-          currentApplication);
+          "Speed matches: currentApplicationSel {:#x}. Doing nothing",
+          currentApplicationSel);
       // Make sure the datapath is initialized, otherwise initialize it before
       // returning. The port's lanes live in one bank; use an intra-bank mask.
       const uint8_t bank = laneToBank(startHostLane);

@@ -3845,6 +3845,7 @@ Cmis2x400GFr4IbFirstTransceiver::Cmis2x400GFr4IbFirstTransceiver(
   writeApplication(1, {0x32, 0x1D, 0x44, 0x11}); // IB NDR
   writeApplication(6, {0x52, 0x1D, 0x88, 0x01}); // 800GAUI-8 L C2M
   writeApplication(7, {0x50, 0x1D, 0x44, 0x11}); // 400GAUI-4-L C2M
+  setAppSelGatedDatapath();
 }
 
 Cmis2x400GFr4LiteTransceiver::Cmis2x400GFr4LiteTransceiver(

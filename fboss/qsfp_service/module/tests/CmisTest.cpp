@@ -1365,6 +1365,31 @@ TEST_F(CmisTest, selectApplicationFieldSkipsInfiniBandAndOtherLaneCounts) {
   }
 }
 
+// The module is in AppSel 1 (IB NDR), which has the same media interface as the
+// AppSel 7 (400GAUI-4-L) application 400G ports should move it to
+TEST_F(CmisTest, programTransceiverMovesOffApplicationWithSameMedia) {
+  auto xcvr = overrideCmisModule<Cmis2x400GFr4IbFirstTransceiver>(
+      TransceiverID(1), TransceiverModuleIdentifier::OSFP);
+  ProgramTransceiverState programTcvrState;
+  for (uint8_t startHostLane : {0, 4}) {
+    TransceiverPortState portState;
+    portState.portName = fmt::format("eth1/1/{}", startHostLane + 1);
+    portState.startHostLane = startHostLane;
+    portState.speed = cfg::PortSpeed::FOURHUNDREDG;
+    portState.numHostLanes = 4;
+    programTcvrState.ports.emplace(portState.portName, portState);
+  }
+
+  xcvr->programTransceiver(programTcvrState, false);
+
+  // AppSel 7 with datapath IDs 0 and 4
+  const std::vector<uint8_t> appSel7ActiveAppSel = {
+      0x70, 0x70, 0x70, 0x70, 0x78, 0x78, 0x78, 0x78};
+  EXPECT_EQ(
+      readUpperPage(lastQsfpImpl(), kPage11h, kActiveAppSelOffset, 8),
+      appSel7ActiveAppSel);
+}
+
 TEST_F(CmisTest, cmis2x400GFr4LiteTransceiverInfoTest) {
   auto xcvrID = TransceiverID(1);
   auto xcvr = overrideCmisModule<Cmis2x400GFr4LiteTransceiver>(
