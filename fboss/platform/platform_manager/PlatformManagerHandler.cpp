@@ -3,9 +3,36 @@
 
 #include "fboss/platform/platform_manager/PlatformManagerHandler.h"
 
+#include "fboss/platform/platform_manager/ExplorationErrors.h"
 #include "fboss/platform/platform_manager/PlatformSnapshotBuilder.h"
+#include "fboss/platform/platform_manager/Utils.h"
 
 namespace facebook::fboss::platform::platform_manager {
+namespace {
+// exploreSlot() records a slot as absent before checking presence, and leaves
+// it that way if the check throws. A stored absence for such a slot is really
+// unknown, so it must not be served as confirmed absence.
+// TODO: Record no PresenceInfo when the check throws, then remove this.
+bool hasPresenceCheckError(
+    const PlatformManagerStatus& pmStatus,
+    const std::string& slotPath) {
+  const auto& failedDevices = pmStatus.failedDevices();
+  if (!failedDevices) {
+    return false;
+  }
+  auto it = failedDevices->find(Utils().createDevicePath(slotPath, "<ABSENT>"));
+  if (it == failedDevices->end()) {
+    return false;
+  }
+  return std::any_of(
+      it->second.begin(), it->second.end(), [](const auto& explorationError) {
+        return *explorationError.errorType() ==
+            toExplorationErrorTypeStr(
+                ExplorationErrorType::SLOT_PRESENCE_CHECK);
+      });
+}
+} // namespace
+
 PlatformManagerHandler::PlatformManagerHandler(
     const PlatformExplorer& platformExplorer,
     const DataStore& dataStore,
@@ -26,14 +53,20 @@ void PlatformManagerHandler::getPmUnitInfo(
     PmUnitInfoResponse& pmUnitInfoResp,
     std::unique_ptr<PmUnitInfoRequest> pmUnitInfoReq) {
   auto pmStatus = platformExplorer_.getPMStatus();
-  if (*pmStatus.explorationStatus() == ExplorationStatus::FAILED ||
-      // TODO: 1) Retry on in progress 2) Ensure PM isn't running forever.
-      *pmStatus.explorationStatus() == ExplorationStatus::IN_PROGRESS) {
+  // TODO: 1) Retry on in progress 2) Ensure PM isn't running forever.
+  if (*pmStatus.explorationStatus() == ExplorationStatus::IN_PROGRESS) {
     auto error = PlatformManagerError();
     error.errorCode() = PlatformManagerErrorCode::EXPLORATION_NOT_SUCCEEDED;
     error.message() = fmt::format(
         "PM exploration status is {}, not SUCCEEDED",
         static_cast<int>(*pmStatus.explorationStatus()));
+    throw error;
+  }
+  if (hasPresenceCheckError(pmStatus, *pmUnitInfoReq->slotPath())) {
+    auto error = PlatformManagerError();
+    error.errorCode() = PlatformManagerErrorCode::EXPLORATION_NOT_SUCCEEDED;
+    error.message() = fmt::format(
+        "Presence check failed for SlotPath {}", *pmUnitInfoReq->slotPath());
     throw error;
   }
   try {
