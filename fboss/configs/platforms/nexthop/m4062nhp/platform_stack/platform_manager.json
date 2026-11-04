@@ -1,5 +1,5 @@
 {
-  "___COMMENT___": "Platform Manager Configuration for M4062nhp. The SCM IDPROM bus is named by adapter string, not CPU_BUS@N, because P1 and P2 CPU cards sit on different ACPI nodes. Temporary: switch back to CPU_BUS@N once P1 units are decommissioned.",
+  "___COMMENT___": "__TEST__Platform Manager Configuration for M4062nhp. The SCM IDPROM bus is named by adapter string, not CPU_BUS@N, because P1 and P2 CPU cards sit on different ACPI nodes. Temporary: switch back to CPU_BUS@N once P1 units are decommissioned.",
   "platformName": "M4062NHP",
   "rootPmUnitName": "SCM",
   "rootSlotType": "SCM_SLOT",
