@@ -193,6 +193,13 @@ class Cmis2x400GFr4Transceiver : public FakeTransceiverImpl {
   explicit Cmis2x400GFr4Transceiver(int module, TransceiverManager* mgr);
 };
 
+// Advertises IB NDR (AppSel 1) and 800GAUI-8 (AppSel 6) with 400G-FR4 media
+// ahead of 400GAUI-4-L (AppSel 7)
+class Cmis2x400GFr4IbFirstTransceiver : public Cmis2x400GFr4Transceiver {
+ public:
+  explicit Cmis2x400GFr4IbFirstTransceiver(int module, TransceiverManager* mgr);
+};
+
 class Cmis2x400GFr4LiteTransceiver : public FakeTransceiverImpl {
  public:
   explicit Cmis2x400GFr4LiteTransceiver(int module, TransceiverManager* mgr);

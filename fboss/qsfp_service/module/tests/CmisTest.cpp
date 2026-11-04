@@ -73,6 +73,7 @@ class MockCmisModule : public CmisModule {
   using CmisModule::portDatapathStates_;
   using CmisModule::readModifyWriteCmisField;
   using CmisModule::resetDataPath;
+  using CmisModule::selectApplicationField;
   using CmisModule::triggerModuleReset;
 
  private:
@@ -1347,6 +1348,21 @@ TEST_F(CmisTest, cmis2x400GFr4TransceiverInfoTest) {
     EXPECT_FALSE(xcvr->tcvrPortStateSupported(portState));
   }
   EXPECT_TRUE(info.tcvrState()->errorStates()->empty());
+}
+
+// AppSel 1 (IB NDR) and AppSel 6 (800GAUI-8) also advertise 400G-FR4 media from
+// lane 0, but a 400G port must use AppSel 7 (400GAUI-4-L)
+TEST_F(CmisTest, selectApplicationFieldSkipsInfiniBandAndOtherLaneCounts) {
+  auto xcvr = overrideCmisModule<Cmis2x400GFr4IbFirstTransceiver>(
+      TransceiverID(1), TransceiverModuleIdentifier::OSFP);
+  for (uint8_t startHostLane : {0, 4}) {
+    auto field = xcvr->selectApplicationField(
+        static_cast<uint8_t>(SMFMediaInterfaceCode::FR4_400G),
+        startHostLane,
+        4);
+    ASSERT_NE(field, std::nullopt);
+    EXPECT_EQ(field->ApSelCode, 7);
+  }
 }
 
 TEST_F(CmisTest, cmis2x400GFr4LiteTransceiverInfoTest) {

@@ -651,19 +651,52 @@ bool isValidVdmConfigType(int vdmConf) {
   return false;
 }
 
+namespace {
+bool hasHostStartLane(
+    const CmisModule::ApplicationAdvertisingField& capability,
+    uint8_t startHostLane) {
+  return std::find(
+             capability.hostStartLanes.begin(),
+             capability.hostStartLanes.end(),
+             startHostLane) != capability.hostStartLanes.end();
+}
+
+bool isInfiniBandHostInterface(uint8_t hostInterface) {
+  const auto code = static_cast<ActiveCuHostInterfaceCode>(hostInterface);
+  return (code >= ActiveCuHostInterfaceCode::IB_SDR &&
+          code <= ActiveCuHostInterfaceCode::IB_NDR) ||
+      code == ActiveCuHostInterfaceCode::IB_XDR;
+}
+} // namespace
+
 std::optional<CmisModule::ApplicationAdvertisingField>
-CmisModule::getApplicationField(uint8_t application, uint8_t startHostLane)
-    const {
+CmisModule::getApplicationField(
+    uint8_t mediaInterfaceCode,
+    uint8_t startHostLane) const {
   // Module capabilities advertise per-bank (intra-bank) host start lanes. A
   // port's lanes are confined to one bank, so match against the intra-bank
   // position (identity for single-bank modules / lanes 0-7).
   uint8_t intraStartHostLane = laneInBank(startHostLane);
   for (const auto& capability : moduleCapabilities_) {
-    if (capability.moduleMediaInterface == application &&
-        std::find(
-            capability.hostStartLanes.begin(),
-            capability.hostStartLanes.end(),
-            intraStartHostLane) != capability.hostStartLanes.end()) {
+    if (capability.moduleMediaInterface == mediaInterfaceCode &&
+        hasHostStartLane(capability, intraStartHostLane)) {
+      return capability;
+    }
+  }
+  return std::nullopt;
+}
+
+std::optional<CmisModule::ApplicationAdvertisingField>
+CmisModule::selectApplicationField(
+    uint8_t mediaInterfaceCode,
+    uint8_t startHostLane,
+    std::optional<int> hostLaneCount) const {
+  uint8_t intraStartHostLane = laneInBank(startHostLane);
+  for (const auto& capability : moduleCapabilities_) {
+    if (capability.moduleMediaInterface == mediaInterfaceCode &&
+        !isInfiniBandHostInterface(capability.moduleHostInterface) &&
+        (!hostLaneCount || capability.hostLaneCount == *hostLaneCount) &&
+        hasHostStartLane(capability, intraStartHostLane)) {
       return capability;
     }
   }
@@ -3171,8 +3204,15 @@ std::optional<CmisModule::AllLaneConfig> CmisModule::getAllPortsStageSet0Config(
   }
   AllLaneConfig stageSet0Config;
   for (auto lane = 0; lane < kMaxOsfpNumLanes;) {
-    if (auto laneCapability =
-            getApplicationField(laneProgramValues[lane], lane)) {
+    // Speed combos only carry the media interface per lane, so prefer the
+    // requesting port's lane count for every port in the combo
+    auto laneCapability =
+        selectApplicationField(laneProgramValues[lane], lane, numHostLanes);
+    if (!laneCapability) {
+      laneCapability =
+          selectApplicationField(laneProgramValues[lane], lane, std::nullopt);
+    }
+    if (laneCapability) {
       uint8_t currApSelCode = laneCapability.value().ApSelCode;
       for (auto currApLane = lane;
            currApLane < lane + laneCapability.value().hostLaneCount;
@@ -3484,9 +3524,13 @@ CmisModule::getAppSelCodeForSpeed(
 
   // Loop through all the applications that we support for the given speed and
   // check if any of those are present in the moduleCapabilities. We configure
-  // the first application that both we support and the module supports
+  // the first application that both we support and the module supports. A
+  // speed can be served by applications with different host lane counts (800G
+  // as 8x100G via 800GAUI-8, or as 4x200G via 800GAUI-4), so the lane count
+  // always has to match, at every speed.
   for (auto application : appCodes) {
-    auto capability = getApplicationField(application, startHostLane);
+    auto capability =
+        selectApplicationField(application, startHostLane, numHostLanesForPort);
 
     // Check if the module supports the application
     if (!capability) {
@@ -3494,14 +3538,6 @@ CmisModule::getAppSelCodeForSpeed(
     }
 
     auto numHostLanes = capability->hostLaneCount;
-    // A speed can be served by applications with different host lane counts
-    // (800G as 8x100G via 800GAUI-8, or as 4x200G via 800GAUI-4), so the lane
-    // count always has to match, at every speed. getMediaIntfCodeFromSpeed()
-    // and tcvrPortStateSupported() already filter unconditionally; this keeps
-    // all three selection paths in agreement.
-    if (numHostLanesForPort != numHostLanes) {
-      continue;
-    }
 
     // If the currently configured application is the same as what we are trying
     // to configure, then skip the configuration
@@ -4062,13 +4098,8 @@ bool CmisModule::tcvrPortStateSupported(TransceiverPortState& portState) const {
   }
 
   for (auto application : appCodes) {
-    if (auto capability = getApplicationField(application, startHostLane)) {
-      // Application supported on the starting host lane
-      auto hostLaneCount = capability->hostLaneCount;
-      if (numHostLanes == hostLaneCount) {
-        // Host Lane count also matches
-        return true;
-      }
+    if (selectApplicationField(application, startHostLane, numHostLanes)) {
+      return true;
     }
   }
   return false;

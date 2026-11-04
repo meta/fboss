@@ -3831,6 +3831,22 @@ Cmis2x400GFr4Transceiver::Cmis2x400GFr4Transceiver(
           kCmis2x400GFr4UpperPages,
           mgr) {}
 
+Cmis2x400GFr4IbFirstTransceiver::Cmis2x400GFr4IbFirstTransceiver(
+    int module,
+    TransceiverManager* mgr)
+    : Cmis2x400GFr4Transceiver(module, mgr) {
+  // Application advertisements are 4 bytes each starting at Lower Page byte 86:
+  // host interface, media interface, lane counts, host lane assignment
+  auto writeApplication = [this](int appSel, std::array<uint8_t, 4> app) {
+    TransceiverAccessParameter param(
+        TransceiverAccessParameter::ADDR_QSFP, 86 + 4 * (appSel - 1), 4);
+    writeTransceiver(param, app.data(), 0, 0);
+  };
+  writeApplication(1, {0x32, 0x1D, 0x44, 0x11}); // IB NDR
+  writeApplication(6, {0x52, 0x1D, 0x88, 0x01}); // 800GAUI-8 L C2M
+  writeApplication(7, {0x50, 0x1D, 0x44, 0x11}); // 400GAUI-4-L C2M
+}
+
 Cmis2x400GFr4LiteTransceiver::Cmis2x400GFr4LiteTransceiver(
     int module,
     TransceiverManager* mgr)

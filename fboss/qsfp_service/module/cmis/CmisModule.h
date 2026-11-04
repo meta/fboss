@@ -852,12 +852,22 @@ class CmisModule : public QsfpModule {
    */
   std::optional<TunableLaserStatus> getTunableLaserStatus() override;
   /*
-   * Returns the ApplicationAdvertisingField corresponding to the application
-   * or nullopt if it doesn't exist
+   * Returns the ApplicationAdvertisingField corresponding to the media
+   * interface code (moduleMediaInterface) or nullopt if it doesn't exist
    */
   std::optional<ApplicationAdvertisingField> getApplicationField(
-      uint8_t application,
+      uint8_t mediaInterfaceCode,
       uint8_t startHostLane) const;
+  /*
+   * Returns the ApplicationAdvertisingField that should be programmed for the
+   * media interface code.
+   * Skips advertised applications that have the wrong lane count, as well as
+   * InfiniBand applications
+   */
+  std::optional<ApplicationAdvertisingField> selectApplicationField(
+      uint8_t mediaInterfaceCode,
+      uint8_t startHostLane,
+      std::optional<int> hostLaneCount) const;
 
   // Returns the list of host lanes configured in the same datapath as the
   // provided startHostLane
