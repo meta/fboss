@@ -2041,6 +2041,27 @@ CmisModule::VdmDiagsLocationStatus CmisModule::getVdmDiagsValLocation(
   return vdmConfigDataLocations_.at(vdmConf);
 }
 
+bool CmisModule::hasVdmStatisticsObservables() const {
+  for (auto vdmConf :
+       {PRE_FEC_BER_MEDIA_IN_MIN,
+        PRE_FEC_BER_HOST_IN_MIN,
+        PRE_FEC_BER_MEDIA_IN_MAX,
+        PRE_FEC_BER_HOST_IN_MAX,
+        PRE_FEC_BER_MEDIA_IN_AVG,
+        PRE_FEC_BER_HOST_IN_AVG,
+        ERR_FRAME_MEDIA_IN_MIN,
+        ERR_FRAME_HOST_IN_MIN,
+        ERR_FRAME_MEDIA_IN_MAX,
+        ERR_FRAME_HOST_IN_MAX,
+        ERR_FRAME_MEDIA_IN_AVG,
+        ERR_FRAME_HOST_IN_AVG}) {
+    if (getVdmDiagsValLocation(vdmConf).vdmConfImplementedByModule) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /*
  * getCdbSymbolErrorHistogramLocked
  *
@@ -5012,6 +5033,12 @@ bool CmisModule::driveVdmCaptureLocked() {
     // behind the cheap armed-flag load.
     if (captureVdmStats_.load() && isReadyForVdmFreezeLocked() &&
         captureVdmStats_.exchange(false)) {
+      if (!hasVdmStatisticsObservables()) {
+        // Nothing to freeze; read the live basic observables in this refresh
+        readVdmFrozenPagesLocked();
+        vdmIntervalStartTime_ = std::time(nullptr);
+        return true;
+      }
       requestVdmFreezeLocked();
     }
     return false;

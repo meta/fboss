@@ -212,6 +212,10 @@ class CmisModule : public QsfpModule {
 
   VdmDiagsLocationStatus getVdmDiagsValLocation(VdmConfigType vdmConf) const;
 
+  // CMIS only defines the VDM freeze for statistics (min/max/average)
+  // reporting registers
+  bool hasVdmStatisticsObservables() const;
+
   bool tcvrPortStateSupported(TransceiverPortState& portState) const override;
 
   bool isRequestValidMultiportSpeedConfig(

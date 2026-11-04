@@ -3338,6 +3338,42 @@ TEST_F(CmisTest, cmisVdmForOdsCaptureIsAsync) {
                   .has_value());
 }
 
+// The NVIDIA module's only VDM observables are eSNR, which aren't statistics,
+// so a capture reads them in the triggering refresh without a freeze
+TEST_F(CmisTest, cmisVdmCaptureWithoutStatisticsSkipsFreeze) {
+  auto xcvrID = TransceiverID(1);
+  auto xcvr = overrideCmisModule<CmisNvidia2x400GFr4Transceiver>(
+      xcvrID, TransceiverModuleIdentifier::OSFP);
+  auto* qsfpImpl = lastQsfpImpl();
+  ASSERT_TRUE(xcvr->isVdmSupported());
+  ASSERT_FALSE(xcvr->hasVdmStatisticsObservables());
+  ProgramTransceiverState programTcvrState;
+  for (uint8_t startHostLane : {0, 4}) {
+    TransceiverPortState portState;
+    portState.portName = fmt::format("eth1/1/{}", startHostLane + 1);
+    portState.startHostLane = startHostLane;
+    portState.speed = cfg::PortSpeed::FOURHUNDREDG;
+    portState.numHostLanes = 4;
+    programTcvrState.ports.emplace(portState.portName, portState);
+  }
+  xcvr->programTransceiver(programTcvrState, false);
+  const int baseFreezeWrites = qsfpImpl->getUpperPageWriteCount(
+      kPage2f, kVdmLatchRequestUpperPageOffset);
+
+  std::vector<int32_t> xcvrIds = {xcvrID};
+  transceiverManager_->triggerVdmStatsCapture(xcvrIds);
+  transceiverManager_->refreshStateMachines();
+
+  EXPECT_EQ(
+      qsfpImpl->getUpperPageWriteCount(
+          kPage2f, kVdmLatchRequestUpperPageOffset),
+      baseFreezeWrites);
+  EXPECT_TRUE(xcvr->getTransceiverInfo()
+                  .tcvrStats()
+                  ->vdmPerfMonitorStatsForOds()
+                  .has_value());
+}
+
 TEST_F(CmisTest, cmis2x400GFr4DatapathProgramTest) {
   TransceiverPropertiesManager::initDefault();
   auto xcvrID = TransceiverID(1);
