@@ -232,6 +232,9 @@ class ThriftHandler : virtual public FbossCtrlSvIf,
       std::vector<UnicastRoute>& routeTable,
       int16_t clientId) override;
   void getRouteTableDetails(std::vector<RouteDetails>& routeTable) override;
+  void getRouteTableDetailsByVrf(
+      std::vector<RouteDetails>& routeTable,
+      int32_t vrfId) override;
 
   void getRouteTableSize(RouteCount& routeCount) override;
 

@@ -38,8 +38,8 @@ class AgentHwCbfcTest : public AgentHwTest {
   // The two lossless classes SUSWs run today: pg2 rdma, pg6 monitoring.
   static constexpr int16_t kRdmaVc = 2;
   static constexpr int16_t kMonitoringVc = 6;
-  // 36 and 12 cells. brcm-sai reads reserved credits as bytes (/56), so 36
-  // alone programs 0 cells. Back to cells once CS00012481990 fixes the unit.
+  // 36 and 12 cells. The Tomahawk Ultra 1 SAI reads reserved credits as bytes,
+  // so 36 alone programs 0 cells. Back to cells once the SAI fixes the unit.
   static constexpr int64_t kRdmaReservedCredits = 36 * 56;
   static constexpr int64_t kMonitoringReservedCredits = 12 * 56;
   // 8192 cells, in bytes for the same reason. 8192 alone programs 146 cells.
@@ -185,7 +185,7 @@ void AgentHwCbfcTest::verifyCbfcProgrammed() {
       }
 
       // From the SDK sender table. 32 / 0 means the sender was left at the
-      // values brcm-sai writes for fields it was never given.
+      // values the SAI writes for fields it was never given.
       EXPECT_EQ(vcInfo.senderCreditSize(), kSenderCreditSize);
       EXPECT_EQ(vcInfo.senderPacketOverhead(), kSenderPacketOverhead);
       EXPECT_EQ(vcInfo.trafficClassToVcId(), kVcMap);

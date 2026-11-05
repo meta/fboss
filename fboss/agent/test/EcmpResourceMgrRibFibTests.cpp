@@ -267,14 +267,10 @@ TEST_F(EcmpResourceManagerRibFibTest, ribMirrorsOverrideNextHopSetId) {
         false,
         "sync overrides",
         [&](const SwitchIdScopeResolver*,
-            RouterID,
-            const IPv4NetworkToRouteMap&,
-            const IPv6NetworkToRouteMap&,
-            const LabelToRouteMap&,
+            const std::vector<RibVrfFib>&,
             const NextHopIDManager*,
             const MySidTable&,
-            void*,
-            bool) { return StateDelta(oldState, newState); },
+            void*) { return StateDelta(oldState, newState); },
         nullptr);
   };
   auto state0 = sw_->getState();

@@ -18,6 +18,7 @@
 
 #include <memory>
 #include <optional>
+#include <vector>
 
 namespace facebook::fboss {
 
@@ -49,6 +50,14 @@ class RibToSwitchStateUpdater {
       int actions = kAllActions,
       bool vrfDeleted = false);
 
+  // Updates the FIBs of all given VRFs
+  RibToSwitchStateUpdater(
+      const SwitchIdScopeResolver* resolver,
+      const std::vector<RibVrfFib>& vrfFibs,
+      const NextHopIDManager* nextHopIDManager,
+      const MySidTable& mySidTable,
+      int actions = kAllActions);
+
   std::shared_ptr<SwitchState> operator()(
       const std::shared_ptr<SwitchState>& state);
 
@@ -60,7 +69,7 @@ class RibToSwitchStateUpdater {
 
  private:
   int actions_;
-  ForwardingInformationBaseUpdater fibUpdater_;
+  std::vector<ForwardingInformationBaseUpdater> fibUpdaters_;
   MySidMapUpdater mySidUpdater_;
   SwitchStateNextHopIdUpdater nhopStateUpdater_;
   ClassBasedPolicyUpdater classBasedPolicyUpdater_;

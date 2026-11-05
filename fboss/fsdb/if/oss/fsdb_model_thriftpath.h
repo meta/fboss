@@ -3256,6 +3256,7 @@ class ChildThriftPath<::facebook::fboss::state::RouteNextHopEntry, ::facebook::f
     STRUCT_CHILD_GETTERS(namedNextHopGroup, 10);
     STRUCT_CHILD_GETTERS(clientNextHopSetID, 11);
     STRUCT_CHILD_GETTERS(overrideNextHopSetID, 12);
+    STRUCT_CHILD_GETTERS(level, 13);
 };
 
 
@@ -7282,6 +7283,7 @@ class ChildThriftPath<::facebook::fboss::NextHopThrift, ::facebook::fboss::fsdb:
     STRUCT_CHILD_GETTERS(role, 18);
     STRUCT_CHILD_GETTERS(backupNexthops, 19);
     STRUCT_CHILD_GETTERS(vrf, 20);
+    STRUCT_CHILD_GETTERS(resolvedInNextLevel, 21);
 };
 
 

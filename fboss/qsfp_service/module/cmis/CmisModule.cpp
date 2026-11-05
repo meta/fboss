@@ -651,19 +651,52 @@ bool isValidVdmConfigType(int vdmConf) {
   return false;
 }
 
+namespace {
+bool hasHostStartLane(
+    const CmisModule::ApplicationAdvertisingField& capability,
+    uint8_t startHostLane) {
+  return std::find(
+             capability.hostStartLanes.begin(),
+             capability.hostStartLanes.end(),
+             startHostLane) != capability.hostStartLanes.end();
+}
+
+bool isInfiniBandHostInterface(uint8_t hostInterface) {
+  const auto code = static_cast<ActiveCuHostInterfaceCode>(hostInterface);
+  return (code >= ActiveCuHostInterfaceCode::IB_SDR &&
+          code <= ActiveCuHostInterfaceCode::IB_NDR) ||
+      code == ActiveCuHostInterfaceCode::IB_XDR;
+}
+} // namespace
+
 std::optional<CmisModule::ApplicationAdvertisingField>
-CmisModule::getApplicationField(uint8_t application, uint8_t startHostLane)
-    const {
+CmisModule::getApplicationField(
+    uint8_t mediaInterfaceCode,
+    uint8_t startHostLane) const {
   // Module capabilities advertise per-bank (intra-bank) host start lanes. A
   // port's lanes are confined to one bank, so match against the intra-bank
   // position (identity for single-bank modules / lanes 0-7).
   uint8_t intraStartHostLane = laneInBank(startHostLane);
   for (const auto& capability : moduleCapabilities_) {
-    if (capability.moduleMediaInterface == application &&
-        std::find(
-            capability.hostStartLanes.begin(),
-            capability.hostStartLanes.end(),
-            intraStartHostLane) != capability.hostStartLanes.end()) {
+    if (capability.moduleMediaInterface == mediaInterfaceCode &&
+        hasHostStartLane(capability, intraStartHostLane)) {
+      return capability;
+    }
+  }
+  return std::nullopt;
+}
+
+std::optional<CmisModule::ApplicationAdvertisingField>
+CmisModule::selectApplicationField(
+    uint8_t mediaInterfaceCode,
+    uint8_t startHostLane,
+    std::optional<int> hostLaneCount) const {
+  uint8_t intraStartHostLane = laneInBank(startHostLane);
+  for (const auto& capability : moduleCapabilities_) {
+    if (capability.moduleMediaInterface == mediaInterfaceCode &&
+        !isInfiniBandHostInterface(capability.moduleHostInterface) &&
+        (!hostLaneCount || capability.hostLaneCount == *hostLaneCount) &&
+        hasHostStartLane(capability, intraStartHostLane)) {
       return capability;
     }
   }
@@ -2008,6 +2041,27 @@ CmisModule::VdmDiagsLocationStatus CmisModule::getVdmDiagsValLocation(
   return vdmConfigDataLocations_.at(vdmConf);
 }
 
+bool CmisModule::hasVdmStatisticsObservables() const {
+  for (auto vdmConf :
+       {PRE_FEC_BER_MEDIA_IN_MIN,
+        PRE_FEC_BER_HOST_IN_MIN,
+        PRE_FEC_BER_MEDIA_IN_MAX,
+        PRE_FEC_BER_HOST_IN_MAX,
+        PRE_FEC_BER_MEDIA_IN_AVG,
+        PRE_FEC_BER_HOST_IN_AVG,
+        ERR_FRAME_MEDIA_IN_MIN,
+        ERR_FRAME_HOST_IN_MIN,
+        ERR_FRAME_MEDIA_IN_MAX,
+        ERR_FRAME_HOST_IN_MAX,
+        ERR_FRAME_MEDIA_IN_AVG,
+        ERR_FRAME_HOST_IN_AVG}) {
+    if (getVdmDiagsValLocation(vdmConf).vdmConfImplementedByModule) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /*
  * getCdbSymbolErrorHistogramLocked
  *
@@ -3171,8 +3225,15 @@ std::optional<CmisModule::AllLaneConfig> CmisModule::getAllPortsStageSet0Config(
   }
   AllLaneConfig stageSet0Config;
   for (auto lane = 0; lane < kMaxOsfpNumLanes;) {
-    if (auto laneCapability =
-            getApplicationField(laneProgramValues[lane], lane)) {
+    // Speed combos only carry the media interface per lane, so prefer the
+    // requesting port's lane count for every port in the combo
+    auto laneCapability =
+        selectApplicationField(laneProgramValues[lane], lane, numHostLanes);
+    if (!laneCapability) {
+      laneCapability =
+          selectApplicationField(laneProgramValues[lane], lane, std::nullopt);
+    }
+    if (laneCapability) {
       uint8_t currApSelCode = laneCapability.value().ApSelCode;
       for (auto currApLane = lane;
            currApLane < lane + laneCapability.value().hostLaneCount;
@@ -3465,28 +3526,15 @@ CmisModule::getAppSelCodeForSpeed(
       startHostLane,
       numHostLanesForPort);
 
-  // We use the module Media Interface ID for Optical modules, which is located
-  // at the second byte of the field (byteOffset = 1), as Application ID here.
-  // If we have an AEC cable, we use the module host interface ID which has a
-  // byteOffset of 0. This is in page 00h app sel advertising (starting at
-  // offset 86 for page)
-  int byteOffset =
-      isAecModule() ? kHostInterfaceCodeOffset : kMediaInterfaceCodeOffset;
-
-  // Get the current application interface code based on module type
-  uint8_t currentApplication = 0;
-  if (currentApplicationSel >= 1 && currentApplicationSel <= 15) {
-    currentApplication =
-        getInterfaceCodeForAppSel(currentApplicationSel, byteOffset);
-  } else {
-    QSFP_LOG(INFO, this) << "currentApplication: not selected yet";
-  }
-
   // Loop through all the applications that we support for the given speed and
   // check if any of those are present in the moduleCapabilities. We configure
-  // the first application that both we support and the module supports
+  // the first application that both we support and the module supports. A
+  // speed can be served by applications with different host lane counts (800G
+  // as 8x100G via 800GAUI-8, or as 4x200G via 800GAUI-4), so the lane count
+  // always has to match, at every speed.
   for (auto application : appCodes) {
-    auto capability = getApplicationField(application, startHostLane);
+    auto capability =
+        selectApplicationField(application, startHostLane, numHostLanesForPort);
 
     // Check if the module supports the application
     if (!capability) {
@@ -3494,21 +3542,15 @@ CmisModule::getAppSelCodeForSpeed(
     }
 
     auto numHostLanes = capability->hostLaneCount;
-    // A speed can be served by applications with different host lane counts
-    // (800G as 8x100G via 800GAUI-8, or as 4x200G via 800GAUI-4), so the lane
-    // count always has to match, at every speed. getMediaIntfCodeFromSpeed()
-    // and tcvrPortStateSupported() already filter unconditionally; this keeps
-    // all three selection paths in agreement.
-    if (numHostLanesForPort != numHostLanes) {
-      continue;
-    }
 
     // If the currently configured application is the same as what we are trying
-    // to configure, then skip the configuration
-    if (application == currentApplication) {
+    // to configure, then skip the configuration. Compare AppSel codes rather
+    // than interface codes since a module can advertise the same interface
+    // code in more than one application.
+    if (capability->ApSelCode == currentApplicationSel) {
       QSFP_LOG(INFO, this) << fmt::format(
-          "Speed matches: currentApplication {:#x}. Doing nothing",
-          currentApplication);
+          "Speed matches: currentApplicationSel {:#x}. Doing nothing",
+          currentApplicationSel);
       // Make sure the datapath is initialized, otherwise initialize it before
       // returning. The port's lanes live in one bank; use an intra-bank mask.
       const uint8_t bank = laneToBank(startHostLane);
@@ -4062,13 +4104,8 @@ bool CmisModule::tcvrPortStateSupported(TransceiverPortState& portState) const {
   }
 
   for (auto application : appCodes) {
-    if (auto capability = getApplicationField(application, startHostLane)) {
-      // Application supported on the starting host lane
-      auto hostLaneCount = capability->hostLaneCount;
-      if (numHostLanes == hostLaneCount) {
-        // Host Lane count also matches
-        return true;
-      }
+    if (selectApplicationField(application, startHostLane, numHostLanes)) {
+      return true;
     }
   }
   return false;
@@ -4996,6 +5033,12 @@ bool CmisModule::driveVdmCaptureLocked() {
     // behind the cheap armed-flag load.
     if (captureVdmStats_.load() && isReadyForVdmFreezeLocked() &&
         captureVdmStats_.exchange(false)) {
+      if (!hasVdmStatisticsObservables()) {
+        // Nothing to freeze; read the live basic observables in this refresh
+        readVdmFrozenPagesLocked();
+        vdmIntervalStartTime_ = std::time(nullptr);
+        return true;
+      }
       requestVdmFreezeLocked();
     }
     return false;
@@ -6059,6 +6102,7 @@ uint64_t CmisModule::getFwUpgradeCdbWriteDelayUsec() const {
     case MediaInterfaceCode::LR4_400G_10KM:
     case MediaInterfaceCode::DR4_400G:
     case MediaInterfaceCode::FR4_2x400G:
+    case MediaInterfaceCode::FR4_2x400G_IB:
     case MediaInterfaceCode::DR4_2x400G:
     case MediaInterfaceCode::FR8_800G:
     case MediaInterfaceCode::FR4_LITE_2x400G:

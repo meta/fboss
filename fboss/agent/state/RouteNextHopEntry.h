@@ -202,6 +202,22 @@ class RouteNextHopEntry
     }
   }
 
+  // Unset means level 0
+  int32_t getLevel() const {
+    if (auto level = safe_cref<switch_state_tags::level>()) {
+      return level->cref();
+    }
+    return 0;
+  }
+
+  void setLevel(int32_t level) {
+    if (level) {
+      ref<switch_state_tags::level>() = level;
+    } else {
+      ref<switch_state_tags::level>().reset();
+    }
+  }
+
   const std::optional<AclLookupClass> getClassID() const {
     if (auto classID = safe_cref<switch_state_tags::classID>()) {
       return classID->cref();

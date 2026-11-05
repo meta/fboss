@@ -105,6 +105,19 @@
                 "fec": {
                     "type": "string",
                     "description": "Forward Error Correction (FEC) mode (e.g. \"PC_FEC_RS528\")."
+                },
+                "breakout_ports": {
+                    "type": "array",
+                    "description": "Optional. Ordered logical/physical port pairs of the management port lanes, used when a platform variant breaks the management port out into several ports (mgmt_port_overrides.num_ports > 1).",
+                    "items": {
+                        "type": "object",
+                        "required": ["logical_id", "physical_id"],
+                        "additionalProperties": false,
+                        "properties": {
+                            "logical_id": {"type": "integer"},
+                            "physical_id": {"type": "integer"}
+                        }
+                    }
                 }
             }
         },

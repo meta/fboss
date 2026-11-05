@@ -142,9 +142,9 @@ cpp_library(
         "DevicePathResolver.h",
     ],
     deps = [
+        "fbsource//xplat/folly/logging:logging",
         ":pci_explorer",
         ":utils",
-        "//folly/logging:logging",
     ],
     exported_deps = [
         ":data_store",
@@ -393,7 +393,11 @@ cpp_library(
     headers = [
         "PlatformManagerHandler.h",
     ],
-    deps = [":platform_snapshot_builder"],
+    deps = [
+        ":exploration_errors",
+        ":platform_snapshot_builder",
+        ":utils",
+    ],
     exported_deps = [
         ":pkg_manager",
         ":platform_explorer",

@@ -547,23 +547,6 @@
           "test_name_regex": "AgentEcmpTest.CreateMaxUcmpMembers$"
         }
     ],
-    "nvda/2605.37/2605.37/spectrum4/multi_switch": [
-        {
-          "test_name_regex": "AgentAclScaleTest.CreateMaxAclTripleWideTables$"
-        },
-        {
-          "test_name_regex": "AgentAclScaleTest.CreateTripleWideTableMaxAclEntries$"
-        },
-        {
-          "test_name_regex": "AgentAclScaleTest.CreateVariableWidthAclEntries$"
-        },
-        {
-          "test_name_regex": "AgentAclScaleTest.CreateVariableWidthAclTables$"
-        },
-        {
-          "test_name_regex": "AgentEcmpTest.CreateMaxUcmpMembers$"
-        }
-    ],
     "nvda/2605.38/2605.38/spectrum4/multi_switch": [
         {
           "test_name_regex": "AgentAclScaleTest.CreateMaxAclTripleWideTables$"

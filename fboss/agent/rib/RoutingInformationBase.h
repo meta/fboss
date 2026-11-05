@@ -51,16 +51,13 @@ void reconstructMySidTableFromSwitchState(
     const std::shared_ptr<MultiSwitchMySidMap>& mySidMap,
     MySidTable* mySidTable);
 
+// Programs the routes of all given VRFs in one switch state update
 using RibToSwitchStateFunction = std::function<StateDelta(
     const SwitchIdScopeResolver* resolver,
-    RouterID vrf,
-    const IPv4NetworkToRouteMap& v4NetworkToRoute,
-    const IPv6NetworkToRouteMap& v6NetworkToRoute,
-    const LabelToRouteMap& labelToRoute,
+    const std::vector<RibVrfFib>& vrfFibs,
     const NextHopIDManager* nextHopIDManager,
     const MySidTable& mySidTable,
-    void* cookie,
-    bool vrfDeleted)>;
+    void* cookie)>;
 
 using RibMySidToSwitchStateFunction = std::function<StateDelta(
     const SwitchIdScopeResolver* resolver,
@@ -338,9 +335,28 @@ class RibRouteTables {
       void* cookie,
       bool ecmpModeChanged = false,
       bool vrfDeleted = false);
+  void updateFib(
+      const SwitchIdScopeResolver* resolver,
+      const std::vector<RouterID>& vrfs,
+      const RibToSwitchStateFunction& ribToSwitchStateFunc,
+      void* cookie,
+      bool ecmpModeChanged = false);
+  struct VrfFibUpdate {
+    RouterID vrf;
+    bool deleted{false};
+  };
+  // Programs the FIBs of all vrfs in one switch state update
+  void updateFib(
+      const SwitchIdScopeResolver* resolver,
+      const std::vector<VrfFibUpdate>& vrfs,
+      const RibToSwitchStateFunction& ribToSwitchStateFunc,
+      void* cookie,
+      bool ecmpModeChanged = false);
   template <typename RibUpdateFn>
   void updateRib(RouterID vrf, const RibUpdateFn& updateRib);
-  void updateEcmpOverrides(RouterID vrf, const StateDelta& delta);
+  void updateEcmpOverrides(
+      const std::vector<RouterID>& vrfs,
+      const StateDelta& delta);
 
   /*
    * MySid updates
@@ -380,6 +396,17 @@ class RibRouteTables {
   };
 
   using SynchronizedRouteTables = folly::Synchronized<RouteTables>;
+
+  // After a change in changedVrf, re-resolves the VRFs whose next hops may
+  // resolve in it and adds them to vrfsToProgram
+  static void resolveDependentVrfs(
+      RouterID changedVrf,
+      RouterIDToRouteTable& routeTables,
+      NextHopIDManager* nextHopIDManager,
+      MySidTable* mySidTable,
+      uint32_t ecmpWidth,
+      std::size_t* cyclesDetectedOut,
+      std::vector<RouterID>& vrfsToProgram);
 
   void importFibs(
       const SynchronizedRouteTables::WLockedPtr& lockedRouteTables,
