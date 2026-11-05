@@ -123,6 +123,9 @@ struct UnicastRoute {
   8: optional switch_config.AclLookupClass classID;
   9: optional switch_config.SwitchingMode overrideEcmpSwitchingMode;
   10: optional list<common.NextHopThrift> overrideNextHops;
+  // Next hops are resolved recursively through routes of the same level, and
+  // in the next level through routes of another level. Unset means level 0.
+  11: optional i32 level;
 }
 
 struct MplsRoute {
