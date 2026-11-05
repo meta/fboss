@@ -322,7 +322,7 @@ constexpr int64_t kNow = 1790723381;
 TEST_F(RebootCauseFinderImplTest, PowerLossWhenBmcAndX86StartedTogether) {
   const int64_t btime = kNow - 400; // x86 up 400s
   auto attempt = detail::parseSuddenPowerLoss(
-      bmcInfoBody("550.25", "Power ON Reset"), btime, kNow);
+      bmcInfoBody("550.25", "Power ON Reset"), btime, kNow, std::nullopt);
   EXPECT_EQ(*attempt.status(), rcc::RebootCauseProviderStatus::OK);
   ASSERT_EQ(attempt.causes()->size(), 1);
   EXPECT_EQ(*attempt.causes()->front().description(), "SuddenPowerLoss");
@@ -337,7 +337,7 @@ TEST_F(RebootCauseFinderImplTest, PowerLossWhenBmcAndX86StartedTogether) {
 TEST_F(RebootCauseFinderImplTest, NoPowerLossWhenBmcStayedUp) {
   const int64_t btime = kNow - 400;
   auto attempt = detail::parseSuddenPowerLoss(
-      bmcInfoBody("86400.0", "Power ON Reset"), btime, kNow);
+      bmcInfoBody("86400.0", "Power ON Reset"), btime, kNow, std::nullopt);
   EXPECT_EQ(*attempt.status(), rcc::RebootCauseProviderStatus::OK);
   EXPECT_TRUE(attempt.causes()->empty());
 }
@@ -347,7 +347,7 @@ TEST_F(RebootCauseFinderImplTest, NoPowerLossWhenBmcStayedUp) {
 TEST_F(RebootCauseFinderImplTest, NoPowerLossWhenBmcIsYoungerThanX86) {
   const int64_t btime = kNow - 4000;
   auto attempt = detail::parseSuddenPowerLoss(
-      bmcInfoBody("120.0", "Power ON Reset"), btime, kNow);
+      bmcInfoBody("120.0", "Power ON Reset"), btime, kNow, std::nullopt);
   EXPECT_TRUE(attempt.causes()->empty());
 }
 
@@ -358,13 +358,37 @@ TEST_F(RebootCauseFinderImplTest, PowerLossAcceptsTheMeasuredBootSkewBand) {
     auto attempt = detail::parseSuddenPowerLoss(
         bmcInfoBody(folly::to<std::string>(300 + skew, ".0"), "Power ON Reset"),
         btime,
-        kNow);
+        kNow,
+        std::nullopt);
     EXPECT_EQ(attempt.causes()->size(), 1) << "skew " << skew;
   }
 }
 
+// fboss322798810.snc1, 2026-10-25 PDT: a chassis reset at 14:08 started the
+// BMC at 14:08:31 and the x86 at 14:09:16 (boot A); a soft reboot at 14:16
+// brought the x86 back at 14:18:29 (boot B). For boot B the BMC is 598s older
+// than the x86, inside the skew band, but it was already up through boot A.
+TEST_F(RebootCauseFinderImplTest, NoPowerLossWhenBmcStartedBeforePreviousBoot) {
+  const int64_t btime = kNow - 99;
+  const int64_t previousBootAtSec = btime - 553;
+  auto attempt = detail::parseSuddenPowerLoss(
+      bmcInfoBody("697.0", "Power ON Reset"), btime, kNow, previousBootAtSec);
+  EXPECT_EQ(*attempt.status(), rcc::RebootCauseProviderStatus::OK);
+  EXPECT_TRUE(attempt.causes()->empty());
+}
+
+TEST_F(RebootCauseFinderImplTest, PowerLossWhenBmcStartedAfterPreviousBoot) {
+  const int64_t btime = kNow - 400;
+  const int64_t previousBootAtSec = btime - 3600;
+  auto attempt = detail::parseSuddenPowerLoss(
+      bmcInfoBody("550.0", "Power ON Reset"), btime, kNow, previousBootAtSec);
+  ASSERT_EQ(attempt.causes()->size(), 1);
+  EXPECT_EQ(*attempt.causes()->front().occurredAtMs(), (kNow - 550) * 1000);
+}
+
 TEST_F(RebootCauseFinderImplTest, PowerLossReportsParseFailedOnGarbage) {
-  auto attempt = detail::parseSuddenPowerLoss("not json", kNow - 100, kNow);
+  auto attempt =
+      detail::parseSuddenPowerLoss("not json", kNow - 100, kNow, std::nullopt);
   EXPECT_EQ(*attempt.status(), rcc::RebootCauseProviderStatus::PARSE_FAILED);
   EXPECT_TRUE(attempt.causes()->empty());
 }
@@ -375,7 +399,8 @@ TEST_F(
   auto attempt = detail::parseSuddenPowerLoss(
       R"({"Information": {"Reset Reason": "Power ON Reset"}})",
       kNow - 100,
-      kNow);
+      kNow,
+      std::nullopt);
   EXPECT_EQ(*attempt.status(), rcc::RebootCauseProviderStatus::PARSE_FAILED);
 }
 
@@ -1771,7 +1796,8 @@ TEST_F(RebootCauseFinderImplTest, BmcWedgePowerParseFailureDetailCarriesWhy) {
 }
 
 TEST_F(RebootCauseFinderImplTest, SuddenPowerLossParseFailureDetailCarriesWhy) {
-  const auto attempt = detail::parseSuddenPowerLoss("{\"bogus\": 1}", 0, 100);
+  const auto attempt =
+      detail::parseSuddenPowerLoss("{\"bogus\": 1}", 0, 100, std::nullopt);
 
   EXPECT_EQ(*attempt.status(), rcc::RebootCauseProviderStatus::PARSE_FAILED);
   EXPECT_THAT(*attempt.detail(), ::testing::StartsWith("/api/sys/bmc: "));

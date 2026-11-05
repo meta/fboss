@@ -952,10 +952,16 @@ reboot_cause_config::RebootCauseProviderAttempt readBmcWedgePower(
 // chance to write one. It is inferred instead from the BMC and the x86 having
 // started together. Deliberately not windowed against btime: the event this
 // describes IS this boot, not something that happened before it.
+//
+// previousBootAtSec is when the x86 booted before this boot, taken from
+// bootTimeMs of the newest earlier record in the reboot history. Losing power
+// restarts the BMC. If the BMC has been up since before previousBootAtSec,
+// power was not lost between that boot and this one, so nothing is reported.
 reboot_cause_config::RebootCauseProviderAttempt parseSuddenPowerLoss(
     const std::string& body,
     int64_t btimeSec,
-    int64_t nowSec) {
+    int64_t nowSec,
+    std::optional<int64_t> previousBootAtSec) {
   double bmcUptimeSec = 0;
   std::string resetReason;
   try {
@@ -977,15 +983,29 @@ reboot_cause_config::RebootCauseProviderAttempt parseSuddenPowerLoss(
   }
 
   const int64_t bmcUptime = static_cast<int64_t>(bmcUptimeSec);
+  const int64_t bmcStartedAtSec = nowSec - bmcUptime;
   const int64_t x86Uptime = nowSec - btimeSec;
   const int64_t skew = bmcUptime - x86Uptime;
+
+  if (previousBootAtSec && bmcStartedAtSec < *previousBootAtSec) {
+    XLOG(INFO) << fmt::format(
+        "No sudden power loss: the BMC started at {}, before the previous x86 "
+        "boot at {}",
+        pacificString(static_cast<std::time_t>(bmcStartedAtSec)),
+        pacificString(static_cast<std::time_t>(*previousBootAtSec)));
+    return makeAttempt(
+        kSuddenPowerLossProvider,
+        reboot_cause_config::RebootCauseProviderStatus::OK,
+        kBmcInfoPath,
+        {});
+  }
 
   std::vector<reboot_cause_config::RebootCause> causes;
   if (skew >= kMinBmcToX86BootSkewSec && skew <= kMaxBmcToX86BootSkewSec) {
     // The BMC started first, so its start is the closest estimate of when
     // power was lost.
-    auto cause = makeCause(
-        "SuddenPowerLoss", static_cast<std::time_t>(nowSec - bmcUptime));
+    auto cause =
+        makeCause("SuddenPowerLoss", static_cast<std::time_t>(bmcStartedAtSec));
     cause.rawValue() = fmt::format(
         "BMC uptime {}s, x86 uptime {}s, skew {}s, BMC reset reason '{}'",
         bmcUptime,
@@ -1003,7 +1023,8 @@ reboot_cause_config::RebootCauseProviderAttempt parseSuddenPowerLoss(
 
 reboot_cause_config::RebootCauseProviderAttempt readSuddenPowerLoss(
     int64_t btimeSec,
-    int64_t nowSec) {
+    int64_t nowSec,
+    std::optional<int64_t> previousBootAtSec) {
   std::string body;
   std::string failure;
   try {
@@ -1024,7 +1045,7 @@ reboot_cause_config::RebootCauseProviderAttempt readSuddenPowerLoss(
             kBmcInfoPath, failure.empty() ? "empty response" : failure),
         {});
   }
-  return parseSuddenPowerLoss(body, btimeSec, nowSec);
+  return parseSuddenPowerLoss(body, btimeSec, nowSec, previousBootAtSec);
 }
 
 reboot_cause_config::RebootCauseProviderAttempt readProvider(
@@ -1294,11 +1315,11 @@ RunResult RebootCauseFinderImpl::determineRebootCause() {
   std::vector<reboot_cause_config::RebootCauseProviderAttempt> attempts;
   std::optional<reboot_cause_config::DeterminedCause> determined;
 
+  std::optional<int64_t> previousBootAtSec;
   if (btime) {
+    previousBootAtSec = previousBootStartSec(paths_.historyDir, bootId, *btime);
     const int64_t window = detail::boundWindowByPreviousBoot(
-        *btime,
-        FLAGS_software_cause_lookback_sec,
-        previousBootStartSec(paths_.historyDir, bootId, *btime));
+        *btime, FLAGS_software_cause_lookback_sec, previousBootAtSec);
     if (window < FLAGS_software_cause_lookback_sec) {
       XLOG(INFO) << fmt::format(
           "Searching the {}s since the previous boot started, not the "
@@ -1374,7 +1395,8 @@ RunResult RebootCauseFinderImpl::determineRebootCause() {
   if (btime && bmcLogWasRead) {
     auto attempt = detail::readSuddenPowerLoss(
         *btime,
-        static_cast<int64_t>(std::chrono::system_clock::to_time_t(now)));
+        static_cast<int64_t>(std::chrono::system_clock::to_time_t(now)),
+        previousBootAtSec);
     if (!determined.has_value() && !attempt.causes()->empty()) {
       reboot_cause_config::DeterminedCause d;
       d.providerName() = kSuddenPowerLossProvider;

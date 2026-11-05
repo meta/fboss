@@ -84,14 +84,21 @@ reboot_cause_config::RebootCauseProviderAttempt parseBmcWedgePower(
 // a PSU, or a rail all look the same from here.
 // Last resort only: it asserts a cause from the absence of evidence, so it
 // must not outrank a provider that found a positive signal.
+// previousBootAtSec is when the x86 booted before this boot, in seconds since
+// the epoch, or std::nullopt when the reboot history has no earlier record.
+// Nothing is reported if the BMC started before it.
 reboot_cause_config::RebootCauseProviderAttempt readSuddenPowerLoss(
     int64_t btimeSec,
-    int64_t nowSec);
+    int64_t nowSec,
+    std::optional<int64_t> previousBootAtSec);
 
 // Exposed separately from readSuddenPowerLoss so the inference can be tested
 // without an HTTP server.
-reboot_cause_config::RebootCauseProviderAttempt
-parseSuddenPowerLoss(const std::string& body, int64_t btimeSec, int64_t nowSec);
+reboot_cause_config::RebootCauseProviderAttempt parseSuddenPowerLoss(
+    const std::string& body,
+    int64_t btimeSec,
+    int64_t nowSec,
+    std::optional<int64_t> previousBootAtSec);
 
 // std::nullopt when the name is not a timestamp this code understands.
 std::optional<std::time_t> parseCrashDirName(const std::string& name);
