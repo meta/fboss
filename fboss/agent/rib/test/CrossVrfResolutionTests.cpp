@@ -79,15 +79,13 @@ class CrossVrfResolutionTest : public ::testing::Test {
   RibToSwitchStateFunction fibUpdate() {
     return [this](
                const SwitchIdScopeResolver*,
-               RouterID vrf,
-               const IPv4NetworkToRouteMap&,
-               const IPv6NetworkToRouteMap&,
-               const LabelToRouteMap&,
+               const std::vector<RibVrfFib>& vrfFibs,
                const NextHopIDManager*,
                const MySidTable&,
-               void*,
-               bool) {
-      ++fibUpdates_[vrf];
+               void*) {
+      for (const auto& vrfFib : vrfFibs) {
+        ++fibUpdates_[vrfFib.vrf];
+      }
       return StateDelta(nullptr, nullptr);
     };
   }
