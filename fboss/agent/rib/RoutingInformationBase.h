@@ -169,7 +169,7 @@ class RibRouteTables {
       RouterID routerID,
       ClientID clientID,
       AdminDistance adminDistanceFromClientID,
-      const std::vector<RouteType>& toAddRoutes,
+      std::vector<RouteType> toAddRoutes,
       const std::vector<RouteIdType>& toDelPrefixes,
       bool resetClientsRoutes,
       folly::StringPiece updateType,
@@ -461,6 +461,19 @@ class RoutingInformationBase {
       ClientID clientID,
       AdminDistance adminDistanceFromClientID,
       const std::vector<UnicastRoute>& toAdd,
+      const std::vector<IpPrefix>& toDelete,
+      bool resetClientsRoutes,
+      folly::StringPiece updateType,
+      RibToSwitchStateFunction ribToSwitchStateFunc,
+      void* cookie);
+
+  // As above, but frees each thrift route once it is converted.
+  UpdateStatistics update(
+      const SwitchIdScopeResolver* resolver,
+      RouterID routerID,
+      ClientID clientID,
+      AdminDistance adminDistanceFromClientID,
+      std::vector<UnicastRoute>&& toAdd,
       const std::vector<IpPrefix>& toDelete,
       bool resetClientsRoutes,
       folly::StringPiece updateType,
@@ -771,7 +784,8 @@ class RoutingInformationBase {
       bool resetClientsRoutes,
       folly::StringPiece updateType,
       RibToSwitchStateFunction ribToSwitchStateFunc,
-      void* cookie);
+      void* cookie,
+      std::vector<typename TraitsType::ThriftRoute>* ownedToAdd = nullptr);
 
   std::unique_ptr<std::thread> ribUpdateThread_;
   FbossEventBase ribUpdateEventBase_{"RibUpdateEventBase"};
