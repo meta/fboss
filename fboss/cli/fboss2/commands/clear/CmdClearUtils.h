@@ -32,7 +32,7 @@ std::string flushNeighborEntries(
     }
 
     auto ip = folly::IPAddress::fromBinary(
-        folly::ByteRange(folly::StringPiece(entry.get_ip().get_addr())));
+        folly::ByteRange(folly::StringPiece(entry.get_ip().addr().value())));
     auto shouldFlush = networkFilter.empty() ||
         std::find_if(
             networkFilter.begin(),
