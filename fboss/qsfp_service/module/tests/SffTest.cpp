@@ -149,6 +149,19 @@ TEST_F(SffTest, cwdm4TransceiverInfoTest) {
   for (auto portState : {goodPortState1, goodPortState2}) {
     EXPECT_TRUE(xcvr->tcvrPortStateSupported(portState));
   }
+  // 4x25G breakout: every host lane can start a single-lane 25G port
+  for (uint8_t startHostLane = 0; startHostLane < 4; startHostLane++) {
+    TransceiverPortState portState{
+        "",
+        startHostLane,
+        cfg::PortSpeed::TWENTYFIVEG,
+        1,
+        TransmitterTechnology::OPTICAL,
+        std::nullopt,
+        std::nullopt,
+        std::nullopt};
+    EXPECT_TRUE(xcvr->tcvrPortStateSupported(portState));
+  }
 
   TransceiverPortState badPortState1{
       "",
@@ -168,7 +181,30 @@ TEST_F(SffTest, cwdm4TransceiverInfoTest) {
       cfg::PortSpeed::FORTYG,
       3,
       TransmitterTechnology::OPTICAL}; // Invalid num lanes
-  for (auto portState : {badPortState1, badPortState2, badPortState3}) {
+  TransceiverPortState badPortState4{
+      "",
+      4,
+      cfg::PortSpeed::TWENTYFIVEG,
+      1,
+      TransmitterTechnology::OPTICAL,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt}; // Invalid start lane
+  TransceiverPortState badPortState5{
+      "",
+      0,
+      cfg::PortSpeed::TWENTYFIVEG,
+      2,
+      TransmitterTechnology::OPTICAL,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt}; // Invalid num lanes
+  for (auto portState :
+       {badPortState1,
+        badPortState2,
+        badPortState3,
+        badPortState4,
+        badPortState5}) {
     EXPECT_FALSE(xcvr->tcvrPortStateSupported(portState));
   }
   EXPECT_TRUE(info.tcvrState()->errorStates()->empty());
