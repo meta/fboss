@@ -847,6 +847,10 @@ class HwAsic {
   virtual std::vector<int16_t> getCbfcSenderPacketOverheads() const {
     return {};
   }
+  // CBFC virtual channels per port. 0 on ASICs without CBFC.
+  virtual int16_t getCbfcNumVirtualChannels() const {
+    return 0;
+  }
   // TODO(zecheng): Define more specific limits for v4/v6 routes with different
   // mask lengths
   virtual std::optional<uint32_t> getMaxRoutes() const {

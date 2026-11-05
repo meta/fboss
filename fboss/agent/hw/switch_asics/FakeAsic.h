@@ -261,6 +261,9 @@ class FakeAsic : public HwAsic {
   std::vector<int16_t> getCbfcSenderPacketOverheads() const override {
     return {0, 16, 32, 48, 64, 80};
   }
+  int16_t getCbfcNumVirtualChannels() const override {
+    return 16;
+  }
 };
 
 /**

@@ -3266,6 +3266,20 @@ shared_ptr<Port> ThriftConfigApplier::updatePort(
             ". Valid range is 0 to: ",
             cfg::switch_config_constants::PORT_VC_VALUE_MAX());
       }
+      if (vcId >= asic->getCbfcNumVirtualChannels()) {
+        throw FbossError(
+            "Port ",
+            orig->getID(),
+            " cbfc config ",
+            *cbfcConfigName,
+            ": vc id ",
+            vcId,
+            " is not supported by ",
+            asic->getAsicTypeStr(),
+            ", which has ",
+            asic->getCbfcNumVirtualChannels(),
+            " virtual channels per port");
+      }
       if (!seenVcIds.insert(vcId).second) {
         throw FbossError(
             "Duplicate vc id ", vcId, " in cbfc config ", *cbfcConfigName);
