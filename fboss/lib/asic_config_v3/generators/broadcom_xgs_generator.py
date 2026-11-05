@@ -484,11 +484,16 @@ class BroadcomXgsGenerator(BaseAsicConfigGenerator):
 
         if mgmt_port and mgmt_port_config.get("enabled", False):
             mgmt_speed = mgmt_overrides.get("speed", mgmt_defaults.get("speed", 100000))
+            speed_config = mgmt_port_config.get("speed_variants", {}).get(
+                str(mgmt_speed), {}
+            )
             mgmt_num_lanes = mgmt_overrides.get(
-                "num_lanes", mgmt_defaults.get("num_lanes", 4)
+                "num_lanes",
+                speed_config.get("num_lanes", mgmt_defaults.get("num_lanes", 4)),
             )
             mgmt_fec = mgmt_overrides.get(
-                "fec", mgmt_defaults.get("fec", "PC_FEC_RS528")
+                "fec",
+                speed_config.get("fec", mgmt_defaults.get("fec", "PC_FEC_RS528")),
             )
             mgmt_enable = mgmt_port_config.get("enable", 0)
 
@@ -502,6 +507,12 @@ class BroadcomXgsGenerator(BaseAsicConfigGenerator):
                     f"MAX_FRAME_SIZE: {self.mmu_size}",
                 )
                 self.values["PC_PORT"][mgmt_port_key] = mgmt_port_value
+
+                pmd_firmware = speed_config.get("pmd_firmware", {})
+                if pmd_firmware:
+                    self.values["PC_PMD_FIRMWARE"][mgmt_port_key] = tuple(
+                        f"{key}: {value}" for key, value in pmd_firmware.items()
+                    )
 
                 # Optionally include the mgmt port in the PORT (MTU) range alongside FP.
                 if mgmt_port_config.get("in_port_block", False):

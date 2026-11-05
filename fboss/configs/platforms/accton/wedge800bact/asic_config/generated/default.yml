@@ -566,9 +566,9 @@ device:
         PORT_ID: 76
       :
         ENABLE: 0
-        SPEED: 100000
-        NUM_LANES: 4
-        FEC_MODE: PC_FEC_RS528
+        SPEED: 10000
+        NUM_LANES: 1
+        FEC_MODE: PC_FEC_NONE
         MAX_FRAME_SIZE: 9416
 ...
 ---
@@ -667,4 +667,14 @@ device:
       CTR_ING_EFLEX_OPERMODE_PIPE_INSTANCE_UNIQUE: 1
       CTR_EGR_EFLEX_OPERMODE_PIPEUNIQUE: 1
       CTR_EGR_EFLEX_OPERMODE_PIPE_INSTANCE_UNIQUE: 1
+...
+---
+device:
+  0:
+    PC_PMD_FIRMWARE:
+      ?
+        PORT_ID: 76
+      :
+        MEDIUM_TYPE_AUTO: 0
+        MEDIUM_TYPE: PC_PHY_MEDIUM_COPPER
 ...

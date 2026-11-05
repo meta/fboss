@@ -84,9 +84,7 @@
     "mgmt_4x25g": {
       "mgmt_port_overrides": {
         "num_ports": 4,
-        "speed": 25000,
-        "num_lanes": 1,
-        "fec": "PC_FEC_RS528"
+        "speed": 25000
       }
     }
   }
