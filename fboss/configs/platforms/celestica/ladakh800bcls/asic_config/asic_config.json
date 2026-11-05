@@ -79,7 +79,10 @@
       }
     },
     "test_fixture": {
-      "platform_mapping_name": "ladakh800bcls_test_fixture"
+      "platform_mapping_name": "ladakh800bcls_test_fixture",
+      "asic_config_params": {
+        "config_gen_type": "HW_TEST"
+      }
     },
     "test_fixture_postevt": {
       "platform_mapping_name": "ladakh800bcls_test_fixture_postevt"
