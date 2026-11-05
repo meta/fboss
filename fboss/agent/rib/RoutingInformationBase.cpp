@@ -101,13 +101,14 @@ class RibIpRouteUpdate {
         RouteNextHopEntry entry(
             RouteForwardAction::NEXTHOPS, adminDistance, counterID, classID);
         entry.setNamedNextHopGroup(namedNhg);
+        entry.setLevel(route.level().value_or(0));
         return RibRoute{{network, mask}, entry};
       }
     }
 
-    return RibRoute{
-        {network, mask},
-        RouteNextHopEntry::from(route, distance, counterID, classID)};
+    auto entry = RouteNextHopEntry::from(route, distance, counterID, classID);
+    entry.setLevel(route.level().value_or(0));
+    return RibRoute{{network, mask}, entry};
   }
   static RibRouteId ToDelFn(
       const ThriftRouteId& prefix,
@@ -2477,6 +2478,7 @@ void RibRouteTables::addOrUpdateNamedNextHopGroups(
                   entry->getOverrideEcmpSwitchingMode(),
                   entry->getOverrideNextHops());
               nhopEntry.setNamedNextHopGroup(name);
+              nhopEntry.setLevel(entry->getLevel());
               routesToReprogram[{rid, ClientID(cid)}].emplace_back(
                   prefix, nhopEntry);
             }

@@ -199,3 +199,22 @@ TEST_F(CrossVrfResolutionTest, DefaultVrfChangeProgramsOtherVrfs) {
       makeRoute("2001:db8:200::/64", makeNextHop("2001:db8:1::10", 0)));
   EXPECT_EQ(fibUpdates_, (FibUpdates{{kTenantVrf}}));
 }
+
+TEST_F(CrossVrfResolutionTest, RouteLevelFromClient) {
+  auto level = [this]() {
+    auto routeAndNhops = rib_.getRouteAndNextHops(
+        folly::IPAddressV6("2001:db8:200::1"), kTenantVrf, false);
+    CHECK(routeAndNhops);
+    return routeAndNhops->first->getBestEntry().second->getLevel();
+  };
+  auto route = makeRoute(
+      "2001:db8:200::/64", makeNextHop("2001:db8:55::10", std::nullopt));
+  route.level() = 1;
+  addRoute(kTenantVrf, route);
+  EXPECT_EQ(level(), 1);
+
+  // A level change alone updates the route
+  route.level().reset();
+  addRoute(kTenantVrf, route);
+  EXPECT_EQ(level(), 0);
+}

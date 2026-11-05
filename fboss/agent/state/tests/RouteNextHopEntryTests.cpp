@@ -216,6 +216,27 @@ TEST(RouteNextHop, SameInterfaceAndAddressRemainContiguous) {
   EXPECT_EQ(targetGroupSize, 2);
 }
 
+TEST(RouteNextHopEntry, Level) {
+  RouteNextHopEntry underlay(RouteForwardAction::DROP, kDefaultAdminDistance);
+  EXPECT_EQ(underlay.getLevel(), 0);
+
+  RouteNextHopEntry overlay(underlay.toThrift());
+  overlay.setLevel(1);
+  EXPECT_EQ(overlay.getLevel(), 1);
+  EXPECT_FALSE(underlay == overlay);
+  EXPECT_EQ(RouteNextHopEntry(overlay.toThrift()).getLevel(), 1);
+  EXPECT_EQ(
+      *util::toUnicastRoute(
+           folly::IPAddress::createNetwork("10.0.0.0/24"), overlay)
+           .level(),
+      1);
+
+  // Level 0 is stored unset
+  overlay.setLevel(0);
+  EXPECT_FALSE(overlay.toThrift().level().has_value());
+  EXPECT_TRUE(underlay == overlay);
+}
+
 TEST(RouteNextHopEntry, FromNextHopsThrift) {
   // Note that we can't use UnicastRoute's constructor because it expects to be
   // passed both nextHopAddrs and nextHops
