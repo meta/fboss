@@ -6,6 +6,7 @@
 #include "fboss/agent/FbossError.h"
 #include "fboss/agent/hw/HwPortFb303Stats.h"
 #include "fboss/agent/hw/gen-cpp2/hardware_stats_constants.h"
+#include "fboss/agent/hw/sai/api/SaiApiError.h"
 #include "fboss/agent/hw/sai/store/SaiStore.h"
 #include "fboss/agent/hw/sai/switch/ConcurrentIndices.h"
 #include "fboss/agent/hw/sai/switch/SaiAclTableManager.h"
@@ -1746,6 +1747,30 @@ void SaiPortManager::programSerdes(
       swPort->getZeroPreemphasis()) {
     createSerdesWithZeroPreemphasis(portHandle, swPort->getPinConfigs());
   }
+  // Adopt existing serdes on ITEM_ALREADY_EXISTS (XGS keeps it on recreate).
+  auto setSerdesObject =
+      [&](const SaiPortSerdesTraits::CreateAttributes& serdesCreateAttributes) {
+        try {
+          return store.setObject(serdesKey, serdesCreateAttributes);
+        } catch (const SaiApiError& e) {
+          if (e.getSaiStatus() != SAI_STATUS_ITEM_ALREADY_EXISTS) {
+            throw;
+          }
+          std::optional<SaiPortTraits::Attributes::SerdesId> serdesIdAttr{};
+          auto serdesId = SaiApiTable::getInstance()->portApi().getAttribute(
+              saiPort->adapterKey(), serdesIdAttr);
+          if (!serdesId.has_value() || serdesId.value() == SAI_NULL_OBJECT_ID) {
+            // Nothing to adopt; surface the original error.
+            throw;
+          }
+          XLOG(WARNING) << "Port serdes already exists for port "
+                        << swPort->getID()
+                        << "; adopting existing serdes object "
+                        << serdesId.value();
+          store.reloadObject(static_cast<PortSerdesSaiId>(serdesId.value()));
+          return store.setObject(serdesKey, serdesCreateAttributes);
+        }
+      };
   if (platform_->getAsic()->getAsicType() ==
           cfg::AsicType::ASIC_TYPE_TOMAHAWK5 ||
       platform_->getAsic()->getAsicType() ==
@@ -1797,13 +1822,13 @@ void SaiPortManager::programSerdes(
       txPost1.resize(numLanes, 0);
       std::get<std::optional<SaiPortSerdesTraits::Attributes::TxFirPost1>>(
           attributes) = txPost1;
-      portHandle->serdes = store.setObject(serdesKey, attributes);
+      portHandle->serdes = setSerdesObject(attributes);
     } else {
       XLOG(DBG2) << "No tx main setting for port " << swPort->getID();
     }
   }
   // create if serdes doesn't exist or update existing serdes
-  portHandle->serdes = store.setObject(serdesKey, serdesAttributes);
+  portHandle->serdes = setSerdesObject(serdesAttributes);
 
   if (platform_->getAsic()->getAsicType() ==
           cfg::AsicType::ASIC_TYPE_TOMAHAWK5 &&
