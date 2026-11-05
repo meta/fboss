@@ -1808,7 +1808,7 @@
   "chassisEepromDevicePath": "/FCBTOP_SLOT@0/[CHASSIS_EEPROM]",
   "numXcvrs": 65,
   "bspKmodsRpmName": "fboss_bsp_kmods",
-  "bspKmodsRpmVersion": "4.4.2-1",
+  "bspKmodsRpmVersion": "2026.10.3-1",
   "nonBspKmodsToLoad": [
     "spidev",
     "ledtrig_timer"
