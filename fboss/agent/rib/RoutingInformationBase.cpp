@@ -47,12 +47,16 @@ namespace facebook::fboss {
 
 namespace {
 
+// MySids and class-based policy next hop groups resolve only in the default
+// VRF, never through routes of other VRFs
 template <typename RouterIDToRouteTableT>
 RibMySidUpdater::VrfRouteTables makeVrfRouteTables(
     RouterIDToRouteTableT& routerIDToRouteTable) {
   RibMySidUpdater::VrfRouteTables routeTables;
-  for (auto& [_rid, rt] : routerIDToRouteTable) {
-    routeTables.emplace_back(&rt.v4NetworkToRoute, &rt.v6NetworkToRoute);
+  auto it = routerIDToRouteTable.find(RouterID(0));
+  if (it != routerIDToRouteTable.end()) {
+    routeTables.emplace_back(
+        &it->second.v4NetworkToRoute, &it->second.v6NetworkToRoute);
   }
   return routeTables;
 }

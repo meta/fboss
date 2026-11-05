@@ -3045,6 +3045,29 @@ TEST_F(RibMySidNextHopTest, routeUpdateResolvesMySidNextHops) {
       rib_->getMySidTableCopy().at(prefix).resolvedNextHopsId().has_value());
 }
 
+TEST_F(RibMySidNextHopTest, routeInOtherVrfDoesNotResolveMySidNextHops) {
+  const RouterID kOtherVrf(1001);
+  rib_->ensureVrf(kOtherVrf);
+  rib_->update(
+      scopeResolver(),
+      {makeMySidEntryWithNextHops("fc00:100::1", 48, {"2001:db8::1"})},
+      {},
+      "add mysid with unresolvable nexthop",
+      mySidToSwitchStateUpdate,
+      &switchState_);
+
+  RoutingInformationBase::RouterIDAndNetworkToInterfaceRoutes interfaceRoutes;
+  interfaceRoutes[kOtherVrf][{folly::IPAddress("2001:db8::"), 64}] = {
+      InterfaceID(1), folly::IPAddress("2001:db8::2")};
+  rib_->updateRemoteInterfaceRoutes(
+      scopeResolver(), interfaceRoutes, {}, noopFibUpdate, &switchState_);
+
+  EXPECT_FALSE(rib_->getMySidTableCopy()
+                   .at(makeSidPrefix("fc00:100::1", 48))
+                   .resolvedNextHopsId()
+                   .has_value());
+}
+
 TEST_F(RibMySidNextHopTest, routeDeleteUnresolvesMySidNextHops) {
   // Add an interface route and a MySid whose nexthop resolves through it.
   RoutingInformationBase::RouterIDAndNetworkToInterfaceRoutes interfaceRoutes;
