@@ -157,6 +157,14 @@ std::vector<network::thrift::BinaryAddress> fromFwdNextHops(
 
 namespace {
 
+void ensureVrfConfigured(
+    const std::shared_ptr<SwitchState>& state,
+    int32_t vrfId) {
+  if (!state->getFibsInfoMap()->getFibContainerIf(RouterID(vrfId))) {
+    throw FbossError("VRF ", vrfId, " not configured");
+  }
+}
+
 template <typename RouteT>
 UnicastRoute toUnicastRoute(
     const std::shared_ptr<RouteT>& route,
@@ -3184,6 +3192,7 @@ void ThriftHandler::getRouteTableDetailsByVrf(
   auto log = LOG_THRIFT_CALL_WITH_STATS(DBG1, sw_->stats());
   ensureConfigured(__func__);
   auto state = sw_->getState();
+  ensureVrfConfigured(state, vrfId);
   ClientNextHopsResolver resolveClient =
       [&state](const RouteNextHopEntry& entry) {
         return getClientNextHops(state, entry);
@@ -3216,6 +3225,7 @@ void ThriftHandler::getIpRoute(
   folly::IPAddress ipAddr = toIPAddress(*addr);
 
   auto state = sw_->getState();
+  ensureVrfConfigured(state, vrfId);
   if (ipAddr.isV4()) {
     auto match = sw_->longestMatch(state, ipAddr.asV4(), RouterID(vrfId));
     if (!match || !match->isResolved()) {
@@ -3255,6 +3265,7 @@ void ThriftHandler::getIpRouteDetails(
   ensureConfigured(__func__);
   folly::IPAddress ipAddr = toIPAddress(*addr);
   auto state = sw_->getState();
+  ensureVrfConfigured(state, vrfId);
   ClientNextHopsResolver resolveClient =
       [&state](const RouteNextHopEntry& entry) {
         return getClientNextHops(state, entry);

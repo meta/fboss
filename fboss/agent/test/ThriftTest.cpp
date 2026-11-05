@@ -197,6 +197,24 @@ TEST_F(ThriftTest, getRouteTableDetailsByVrf) {
   EXPECT_FALSE(prefixesInVrf(0).contains("10.0.55.0/24"));
 }
 
+TEST_F(ThriftTest, routeReadsRejectUnknownVrf) {
+  ThriftHandler handler(sw_);
+  constexpr int32_t kUnknownVrf = 2000;
+  auto addr = [] {
+    return std::make_unique<facebook::network::thrift::Address>(
+        facebook::network::toAddress(IPAddress("10.0.0.1")));
+  };
+
+  std::vector<RouteDetails> routes;
+  EXPECT_THROW(
+      handler.getRouteTableDetailsByVrf(routes, kUnknownVrf), FbossError);
+  RouteDetails details;
+  EXPECT_THROW(
+      handler.getIpRouteDetails(details, addr(), kUnknownVrf), FbossError);
+  UnicastRoute route;
+  EXPECT_THROW(handler.getIpRoute(route, addr(), kUnknownVrf), FbossError);
+}
+
 TEST_F(ThriftTest, getInterfaceDetail) {
   ThriftHandler handler(this->sw_);
 
