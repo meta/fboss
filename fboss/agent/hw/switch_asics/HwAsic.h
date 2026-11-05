@@ -591,9 +591,12 @@ class HwAsic {
     NEXT_HOP_GROUP_MEMBER_MONITORED_OBJECT,
     SRV6_MYSID_DISCARD_COUNTER,
     SRV6_MYSID_RESOURCE_COUNTER,
-    // Binding uSIDs use uA with USD and an SRv6 decap tunnel rather than
-    // B6_ENCAPS_RED with no flavor or decap tunnel.
+    // Binding uSIDs use uA with USD rather than B6_ENCAPS_RED with no flavor.
     SRV6_BINDING_USID_UA_USD,
+    // Decapsulating MySid entries (DECAPSULATE_AND_LOOKUP and binding uSIDs)
+    // carry the SRv6 decap tunnel, which supplies the TTL/DSCP/ECN modes for
+    // the decapsulation.
+    SRV6_DECAP_TUNNEL,
     DEVICE_WATERMARK_SUPPORT,
     // Per-stage HW drop cause bitmaps via custom SAI switch stats
     // (SAI_SWITCH_STAT_CUSTOM_HW_DROP_CAUSE_*). Each bitmap is an i64

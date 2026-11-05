@@ -55,6 +55,7 @@ class FakeAsic : public HwAsic {
       case HwAsic::Feature::TEMPERATURE_MONITORING:
       case HwAsic::Feature::SWITCH_WIDE_LINK_UP_DEBOUNCE:
       case HwAsic::Feature::SRV6_BINDING_USID_UA_USD:
+      case HwAsic::Feature::SRV6_DECAP_TUNNEL:
       case HwAsic::Feature::PORT_LATCH_STATUS:
         return false;
 
