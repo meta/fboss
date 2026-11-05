@@ -22,7 +22,7 @@ OUT_DIR="${2:?output dir required}"
 # Determine KERNEL_ROOT from the script's location
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 KERNEL_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-CONTAINER_DIST_DIR="$KERNEL_ROOT/dist"
+CONTAINER_BUILD_ROOT="$KERNEL_ROOT/.build"
 CONTAINER_SPECS_DIR="$KERNEL_ROOT/specs"
 CONTAINER_CONFIGS_DIR="$KERNEL_ROOT/configs"
 CONTAINER_SCRIPTS_DIR="$KERNEL_ROOT/scripts"
@@ -37,8 +37,8 @@ python3 "$COMMON_SCRIPTS_DIR/component_version.py" kernel --prepare \
 # Install kernel build dependencies
 bash "$CONTAINER_SCRIPTS_DIR/setup_kernel_build_deps.sh"
 
-# Use a separate build directory to avoid cluttering dist/
-BUILD_DIR="$CONTAINER_DIST_DIR/build-$KERNEL_VERSION"
+# Build outside dist/ because the kernel version capture reads every RPM under it, so the rpmbuild tree with duplicate RPMS/ causes failure
+BUILD_DIR="$CONTAINER_BUILD_ROOT/build-$KERNEL_VERSION"
 
 mkdir -p "$BUILD_DIR/SOURCES"
 cd "$BUILD_DIR"
@@ -67,11 +67,11 @@ if [ ! -f "$BUILD_DIR/$KERNEL_TARBALL" ]; then
     gunzip -f "SOURCES/linux-$KERNEL_VERSION.tar.gz"
     xz -z "SOURCES/linux-$KERNEL_VERSION.tar"
     source_checksum="$(sha256sum "$KERNEL_TARBALL")"
-    printf '%s %s\n' "${source_checksum%% *}" "$snapshot_url" > "$KERNEL_SOURCE_INFO"
+    printf '%s %s\n' "${source_checksum%% *}" "$snapshot_url" >"$KERNEL_SOURCE_INFO"
   fi
 fi
 
-if [ -f "$KERNEL_SOURCE_INFO" ] && read -r source_sha256 source_url < "$KERNEL_SOURCE_INFO"; then
+if [ -f "$KERNEL_SOURCE_INFO" ] && read -r source_sha256 source_url <"$KERNEL_SOURCE_INFO"; then
   source_checksum="$(sha256sum "$KERNEL_TARBALL")"
   if [ "${source_checksum%% *}" = "$source_sha256" ]; then
     export KERNEL_SOURCE_DOWNLOAD_URL="$source_url"
@@ -118,6 +118,8 @@ tar -cf $OUT_DIR/kernel-$KERNEL_VERSION.rpms.tar \
 
 tar -rf "$OUT_DIR/kernel-$KERNEL_VERSION.rpms.tar" \
   -C "$OUT_DIR" share/kernel-version.json
+
+rm -rf "$BUILD_DIR"
 
 echo 'Kernel RPM build complete!'
 echo 'Output files:'
