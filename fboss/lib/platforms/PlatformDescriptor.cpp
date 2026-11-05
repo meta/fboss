@@ -16,6 +16,7 @@
 #include <optional>
 #include <utility>
 
+#include <folly/Conv.h>
 #include <folly/FileUtil.h>
 #include <folly/logging/xlog.h>
 #include <gflags/gflags.h>
@@ -49,6 +50,7 @@ namespace {
 constexpr auto kPlatformDescriptorFileName = "platform_descriptor.json";
 constexpr auto kPlatformMappingFileName = "platform_mapping.json";
 constexpr auto kRawPlatformMappingFileName = "raw_platform_mapping.json";
+constexpr auto kAsicConfigFileName = "asic_config.yaml";
 
 std::string normalize(std::string_view value) {
   return boost::algorithm::to_lower_copy(std::string(value));
@@ -314,6 +316,35 @@ std::optional<std::string> PlatformDescriptorRegistry::loadPlatformMapping(
         ex.what());
   }
   return mappingJson;
+}
+
+std::optional<std::string> PlatformDescriptorRegistry::loadAsicConfigYaml(
+    PlatformType type,
+    std::optional<int16_t> switchIndex) const {
+  auto entry = getDescriptorEntry(type);
+  if (!entry || entry->platformMappingPath.empty()) {
+    return std::nullopt;
+  }
+  const auto dir = fs::path(entry->platformMappingPath).parent_path();
+  // Multi-NPU platforms may ship a per-NPU asic_config_idx<N>.yaml, which
+  // wins over the shared asic_config.yaml.
+  auto yamlPath = dir / kAsicConfigFileName;
+  if (switchIndex.has_value()) {
+    auto perNpuPath =
+        dir / folly::to<std::string>("asic_config_idx", *switchIndex, ".yaml");
+    if (fs::exists(perNpuPath)) {
+      yamlPath = std::move(perNpuPath);
+    }
+  }
+  if (!fs::exists(yamlPath)) {
+    return std::nullopt;
+  }
+  std::string yaml;
+  if (!folly::readFile(yamlPath.c_str(), yaml)) {
+    throw FbossError("Unable to read asic config yaml ", yamlPath.string());
+  }
+  XLOG(INFO) << "Loaded asic config yaml from " << yamlPath.string();
+  return yaml;
 }
 
 cfg::PlatformMapping PlatformDescriptorRegistry::loadPlatformMappingFromRaw(
