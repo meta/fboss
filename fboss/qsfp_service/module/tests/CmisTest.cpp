@@ -4273,25 +4273,28 @@ TEST_F(CmisTest, programTransceiverSkipsResetOfJustInitializedLanes) {
 TEST_F(CmisTest, rediscoverWhenCmisIdentityChangesWithoutPresenceEdge) {
   auto xcvr = overrideCmisModule<Cmis200GTransceiver>(TransceiverID(0));
   auto* qsfpImpl = lastQsfpImpl();
-  auto originalPartNumber = xcvr->getPartNumber();
-  ASSERT_FALSE(originalPartNumber.empty());
+  const auto originalVendorName =
+      xcvr->getTransceiverInfo().tcvrState()->vendor()->name().value();
+  ASSERT_FALSE(originalVendorName.empty());
 
   auto page0 = readUpperPage(qsfpImpl, 0, 0, 128);
-  constexpr int kPartNumberOffset = 20;
+  constexpr int kVendorNameOffset = 1;
   constexpr int kPage0ChecksumOffset = 94;
   const auto replacement =
-      static_cast<uint8_t>(page0[kPartNumberOffset] == 'X' ? 'Y' : 'X');
+      static_cast<uint8_t>(page0[kVendorNameOffset] == 'X' ? 'Y' : 'X');
   const auto checksum = static_cast<uint8_t>(
-      page0[kPage0ChecksumOffset] + replacement - page0[kPartNumberOffset]);
+      page0[kPage0ChecksumOffset] + replacement - page0[kVendorNameOffset]);
   writeUpperPage(
-      qsfpImpl, 0, kPartNumberOffset, std::vector<uint8_t>{replacement});
+      qsfpImpl, 0, kVendorNameOffset, std::vector<uint8_t>{replacement});
   writeUpperPage(
       qsfpImpl, 0, kPage0ChecksumOffset, std::vector<uint8_t>{checksum});
 
   transceiverManager_->refreshStateMachines();
 
-  EXPECT_NE(xcvr->getPartNumber(), originalPartNumber);
-  EXPECT_EQ(xcvr->getPartNumber()[0], replacement);
+  const auto updatedVendorName =
+      xcvr->getTransceiverInfo().tcvrState()->vendor()->name().value();
+  EXPECT_NE(updatedVendorName, originalVendorName);
+  EXPECT_EQ(updatedVendorName[0], replacement);
 }
 
 } // namespace facebook::fboss

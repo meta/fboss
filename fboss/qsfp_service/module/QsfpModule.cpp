@@ -1093,7 +1093,7 @@ void QsfpModule::refreshLocked() {
            "rediscovering transceiver";
     dirty_ = true;
     qsfpImpl_->updateTransceiverState(
-        TransceiverStateMachineEvent::TCVR_EV_RESET_TO_NOT_PRESENT);
+        TransceiverStateMachineEvent::TCVR_EV_REMOVE_TRANSCEIVER);
     qsfpImpl_->updateTransceiverState(
         TransceiverStateMachineEvent::TCVR_EV_EVENT_DETECT_TRANSCEIVER);
 
