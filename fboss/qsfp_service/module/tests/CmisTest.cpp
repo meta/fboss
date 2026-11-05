@@ -4266,4 +4266,32 @@ TEST_F(CmisTest, programTransceiverSkipsResetOfJustInitializedLanes) {
           kPage10h, kDataPathDeinitOffset - 128),
       2);
 }
+
+// A CMIS-to-CMIS replacement can keep the platform presence signal asserted.
+// Verify that a changed identity causes the existing discovery sequence to
+// run even though the same CmisModule object is retained.
+TEST_F(CmisTest, rediscoverWhenCmisIdentityChangesWithoutPresenceEdge) {
+  auto xcvr = overrideCmisModule<Cmis200GTransceiver>(TransceiverID(0));
+  auto* qsfpImpl = lastQsfpImpl();
+  auto originalPartNumber = xcvr->getPartNumber();
+  ASSERT_FALSE(originalPartNumber.empty());
+
+  auto page0 = readUpperPage(qsfpImpl, 0, 0, 128);
+  constexpr int kPartNumberOffset = 20;
+  constexpr int kPage0ChecksumOffset = 94;
+  const auto replacement =
+      static_cast<uint8_t>(page0[kPartNumberOffset] == 'X' ? 'Y' : 'X');
+  const auto checksum = static_cast<uint8_t>(
+      page0[kPage0ChecksumOffset] + replacement - page0[kPartNumberOffset]);
+  writeUpperPage(
+      qsfpImpl, 0, kPartNumberOffset, std::vector<uint8_t>{replacement});
+  writeUpperPage(
+      qsfpImpl, 0, kPage0ChecksumOffset, std::vector<uint8_t>{checksum});
+
+  transceiverManager_->refreshStateMachines();
+
+  EXPECT_NE(xcvr->getPartNumber(), originalPartNumber);
+  EXPECT_EQ(xcvr->getPartNumber()[0], replacement);
+}
+
 } // namespace facebook::fboss
