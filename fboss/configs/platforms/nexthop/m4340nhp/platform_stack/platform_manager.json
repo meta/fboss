@@ -1,4 +1,5 @@
 {
+  "__COMMENT__": "test",
   "platformName": "M4340NHP",
   "rootPmUnitName": "SCM",
   "rootSlotType": "SCM_SLOT",
