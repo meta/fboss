@@ -142,9 +142,9 @@ cpp_library(
         "DevicePathResolver.h",
     ],
     deps = [
+        "fbsource//xplat/folly/logging:logging",
         ":pci_explorer",
         ":utils",
-        "//folly/logging:logging",
     ],
     exported_deps = [
         ":data_store",
