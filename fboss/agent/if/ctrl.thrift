@@ -203,6 +203,7 @@ struct RouteDetails {
   14: optional i64 normalizedResolvedNextHopSetID;
   // Resolved next hops before hardware normalization.
   15: optional list<common.NextHopThrift> resolvedNextHops;
+  16: optional i32 vrf;
 }
 
 struct MplsRouteDetails {
@@ -1198,6 +1199,9 @@ service FbossCtrl extends phy.FbossCommonPhyCtrl {
   list<RouteDetails> getRouteTableDetailsByClients(
     1: list<i16> clientId,
   ) throws (1: fboss.FbossBaseError error);
+  list<RouteDetails> getRouteTableDetailsByVrf(1: i32 vrfId) throws (
+    1: fboss.FbossBaseError error,
+  );
   InterfaceDetail getInterfaceDetail(1: i32 interfaceId) throws (
     1: fboss.FbossBaseError error,
   );
