@@ -1,4 +1,13 @@
 {
+  "companies": [
+    "accton",
+    "celestica",
+    "nexthop",
+    "arista",
+    "cisco",
+    "nvidia",
+    "meta"
+  ],
   "npiProjects": [
     "blackwolf800banw",
     "darwin",
