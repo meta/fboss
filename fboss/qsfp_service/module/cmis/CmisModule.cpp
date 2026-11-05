@@ -7106,12 +7106,12 @@ uint64_t CmisModule::getIdentityFingerprint() const {
     }
   };
 
-  addBytes(lowerPage_, 2);       // identifier and CMIS revision
-  addBytes(lowerPage_ + 85, 5);  // media type and applications 1-8
-  addBytes(page0_ + 1, 16);      // vendor name
-  addBytes(page0_ + 17, 3);      // vendor OUI
-  addBytes(page0_ + 20, 16);     // part number
-  addBytes(page0_ + 38, 16);     // serial number
+  addBytes(lowerPage_, 2); // identifier and CMIS revision
+  addBytes(lowerPage_ + 85, 5); // media type and applications 1-8
+  addBytes(page0_ + 1, 16); // vendor name
+  addBytes(page0_ + 17, 3); // vendor OUI
+  addBytes(page0_ + 20, 16); // part number
+  addBytes(page0_ + 38, 16); // serial number
   return fingerprint;
 }
 
