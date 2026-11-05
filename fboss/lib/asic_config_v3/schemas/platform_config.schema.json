@@ -45,7 +45,7 @@
         },
         "variants": {
             "type": "object",
-            "description": "Named configuration variants for this platform. Each variant produces a separate output config file named <variant>.<extension>.",
+            "description": "Named configuration variants for this platform. Each variant produces either a common <variant>.<extension> file or indexed <variant>_<npu-index>.<extension> files when its NPU payloads differ.",
             "minProperties": 1,
             "propertyNames": {
                 "minLength": 1

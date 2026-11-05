@@ -4,7 +4,10 @@ import argparse
 import os
 import sys
 
-from fboss.lib.asic_config_v3.base_generator import BaseAsicConfigGenerator
+from fboss.lib.asic_config_v3.base_generator import (
+    BaseAsicConfigGenerator,
+    GeneratedVariant,
+)
 from fboss.lib.asic_config_v3.generators.broadcom_dnx_generator import (
     BroadcomDnxGenerator,
 )
@@ -39,6 +42,41 @@ def get_output_filename(variant: str, extension: str) -> str:
     if not variant:
         raise ValueError("ASIC config variant names must not be empty")
     return f"{variant}{extension}"
+
+
+def get_output_files(
+    variant: str, extension: str, generated: GeneratedVariant
+) -> dict[str, str]:
+    """Map serialized ``AsicConfig`` sections to deterministic artifacts.
+
+    A common-only result keeps the existing ``<variant>`` filename. Indexed
+    payloads use ``<variant>_<index>``; when both section types exist, the
+    common payload uses ``<variant>_common`` to make every section explicit.
+    """
+    get_output_filename(variant, extension)
+
+    if not generated.npu_entries:
+        if generated.common is None:
+            raise ValueError(
+                f"ASIC config variant '{variant}' generated no common or NPU payloads"
+            )
+        return {get_output_filename(variant, extension): generated.common}
+
+    # Configo can assemble npuEntries without discovering holes or remapping
+    # indices when every generated set follows this invariant.
+    indices = sorted(generated.npu_entries)
+    if indices != list(range(len(indices))):
+        raise ValueError(
+            f"ASIC config variant '{variant}' generated non-contiguous NPU "
+            f"indices {indices}"
+        )
+
+    outputs = {}
+    if generated.common is not None:
+        outputs[f"{variant}_common{extension}"] = generated.common
+    for npu_index in indices:
+        outputs[f"{variant}_{npu_index}{extension}"] = generated.npu_entries[npu_index]
+    return outputs
 
 
 def _generate_platform(
@@ -76,17 +114,16 @@ def _generate_platform(
             generator = get_generator(
                 platform_name, variant_name, platform_config, paths
             )
-            output = generator.generate()
-
-            output_filename = get_output_filename(
-                variant_name, generator.output_extension
+            generated = generator.generate()
+            outputs = get_output_files(
+                variant_name, generator.output_extension, generated
             )
-            output_path = os.path.join(output_dir, output_filename)
-
-            print(f"Writing to {output_path}", file=sys.stderr)
-            os.makedirs(output_dir, exist_ok=True)
-            with open(output_path, "w", encoding="utf-8") as f:
-                f.write(output)
+            for output_filename, contents in outputs.items():
+                output_path = os.path.join(output_dir, output_filename)
+                print(f"Writing to {output_path}", file=sys.stderr)
+                os.makedirs(output_dir, exist_ok=True)
+                with open(output_path, "w", encoding="utf-8") as f:
+                    f.write(contents)
 
         except Exception as e:
             print(f"Error generating config for {display_name}: {e}", file=sys.stderr)
@@ -146,7 +183,7 @@ def generate_single_platform(platform_name: str, paths: AsicConfigPaths) -> None
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Generate asic_config_v3 ASIC config YAML."
+        description="Generate asic_config_v3 ASIC config artifacts."
     )
     parser.add_argument(
         "--fboss-root",

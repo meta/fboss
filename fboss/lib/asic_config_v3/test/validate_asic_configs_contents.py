@@ -26,12 +26,22 @@ import os
 import sys
 import unittest
 from enum import Enum
-from typing import Any, NamedTuple, Optional
+from typing import Any, cast, NamedTuple, Optional
 from unittest.mock import patch
 
 import yaml
-from fboss.lib.asic_config_v3.base_generator import resolve_variant_config
-from fboss.lib.asic_config_v3.gen import get_generator, get_output_filename
+from fboss.lib.asic_config_v3.base_generator import (
+    GeneratedVariant,
+    resolve_variant_config,
+)
+from fboss.lib.asic_config_v3.gen import (
+    get_generator,
+    get_output_filename,
+    get_output_files,
+)
+from fboss.lib.asic_config_v3.generators.broadcom_xgs_generator import (
+    BroadcomXgsGenerator,
+)
 from fboss.lib.asic_config_v3.paths import AsicConfigPaths, discover_platforms
 from yaml.nodes import MappingNode, ScalarNode, SequenceNode
 
@@ -59,14 +69,13 @@ class ContentMismatch(NamedTuple):
 class VariantVerification(NamedTuple):
     record: ComparisonRecord
     mismatch: Optional[ContentMismatch] = None
-    stale_generated_file: Optional[str] = None
+    stale_generated_files: tuple[str, ...] = ()
     error: Optional[str] = None
 
 
 class GeneratedOutput(NamedTuple):
-    filename: str
-    contents: str
-    stale_generated_file: Optional[str] = None
+    files: dict[str, str]
+    stale_generated_files: tuple[str, ...] = ()
 
 
 class VerificationResults(NamedTuple):
@@ -300,13 +309,12 @@ class TestValidateAsicConfigV3Contents(unittest.TestCase):
                     error=f"{platform}/{display_variant}: generation failed: {error}",
                 ),
             )
-        output_filename = get_output_filename(variant, generator.output_extension)
-        generated_path = os.path.join(output_dir, output_filename)
-        try:
-            with open(generated_path, encoding="utf-8") as f:
-                checked_in = f.read()
-        except FileNotFoundError:
-            if not self._GENERATE_FRESH_OUTPUT:
+
+        checked_in = self._read_checked_in_outputs(
+            output_dir, variant, generator.output_extension
+        )
+        if not self._GENERATE_FRESH_OUTPUT:
+            if not checked_in:
                 return (
                     None,
                     VariantVerification(
@@ -317,20 +325,17 @@ class TestValidateAsicConfigV3Contents(unittest.TestCase):
                             "GENERATED_FILE_MISSING",
                         ),
                         error=(
-                            f"{platform}/{display_variant}: generated file missing: "
-                            f"{generated_path}"
+                            f"{platform}/{display_variant}: no generated files found "
+                            f"in {output_dir}"
                         ),
                     ),
                 )
-            checked_in = None
-
-        if not self._GENERATE_FRESH_OUTPUT:
-            if checked_in is None:
-                raise AssertionError("Missing generated file was not reported")
-            return GeneratedOutput(output_filename, checked_in), None
+            return GeneratedOutput(checked_in), None
 
         try:
-            generated = generator.generate()
+            generated = get_output_files(
+                variant, generator.output_extension, generator.generate()
+            )
         except Exception as error:
             return (
                 None,
@@ -342,11 +347,46 @@ class TestValidateAsicConfigV3Contents(unittest.TestCase):
                 ),
             )
 
-        stale_generated_file = generated_path if generated != checked_in else None
+        stale_generated_files = tuple(
+            os.path.join(output_dir, filename)
+            for filename in sorted(generated.keys() | checked_in.keys())
+            if generated.get(filename) != checked_in.get(filename)
+        )
         return (
-            GeneratedOutput(output_filename, generated, stale_generated_file),
+            GeneratedOutput(generated, stale_generated_files),
             None,
         )
+
+    def _read_checked_in_outputs(
+        self, output_dir: str, variant: str, extension: str
+    ) -> dict[str, str]:
+        """Read every valid artifact shape belonging to one variant.
+
+        Including both the common and indexed naming schemes lets validation
+        report obsolete files when a variant changes between identical and
+        distinct NPU mappings.
+        """
+        if not os.path.isdir(output_dir):
+            return {}
+
+        common_filename = get_output_filename(variant, extension)
+        section_prefix = f"{variant}_"
+        outputs = {}
+        for filename in sorted(os.listdir(output_dir)):
+            if filename == common_filename:
+                pass
+            elif filename == f"{variant}_common{extension}":
+                pass
+            elif filename.startswith(section_prefix) and filename.endswith(extension):
+                index = filename[len(section_prefix) : -len(extension)]
+                if not index.isdigit():
+                    continue
+            else:
+                continue
+
+            with open(os.path.join(output_dir, filename), encoding="utf-8") as f:
+                outputs[filename] = f.read()
+        return outputs
 
     def _verify_variant(
         self,
@@ -365,9 +405,26 @@ class TestValidateAsicConfigV3Contents(unittest.TestCase):
         if generated_output is None:
             raise AssertionError("Generated output is missing without an error")
 
-        generated = generated_output.contents
-        output_filename = generated_output.filename
-        stale_generated_file = generated_output.stale_generated_file
+        generated_files = generated_output.files
+        stale_generated_files = generated_output.stale_generated_files
+
+        common_filename = get_output_filename(
+            variant,
+            os.path.splitext(next(iter(generated_files)))[1],
+        )
+        if set(generated_files) != {common_filename}:
+            return VariantVerification(
+                ComparisonRecord(
+                    platform,
+                    variant,
+                    "<per-NPU generated outputs>",
+                    ComparisonResult.GENERATED_ONLY.value,
+                ),
+                stale_generated_files=stale_generated_files,
+            )
+
+        output_filename = common_filename
+        generated = generated_files[output_filename]
 
         materialized_relative_path = self._materialized_reference_path(
             platform, variant, platform_config
@@ -391,7 +448,7 @@ class TestValidateAsicConfigV3Contents(unittest.TestCase):
                     missing_reference,
                     ComparisonResult.GENERATED_ONLY.value,
                 ),
-                stale_generated_file=stale_generated_file,
+                stale_generated_files=stale_generated_files,
             )
         except ValueError as error:
             return VariantVerification(
@@ -401,7 +458,7 @@ class TestValidateAsicConfigV3Contents(unittest.TestCase):
                     materialized_relative_path or "<unknown>",
                     "REFERENCE_ERROR",
                 ),
-                stale_generated_file=stale_generated_file,
+                stale_generated_files=stale_generated_files,
                 error=f"{platform}/{display_variant}: invalid reference: {error}",
             )
 
@@ -410,7 +467,7 @@ class TestValidateAsicConfigV3Contents(unittest.TestCase):
         except yaml.YAMLError as error:
             return VariantVerification(
                 ComparisonRecord(platform, variant, reference_path, "PARSE_ERROR"),
-                stale_generated_file=stale_generated_file,
+                stale_generated_files=stale_generated_files,
                 error=(f"{platform}/{display_variant}: failed to parse YAML: {error}"),
             )
 
@@ -420,7 +477,7 @@ class TestValidateAsicConfigV3Contents(unittest.TestCase):
             if result is ComparisonResult.CONTENT_MISMATCH
             else None
         )
-        return VariantVerification(record, mismatch, stale_generated_file)
+        return VariantVerification(record, mismatch, stale_generated_files)
 
     def _collect_verification_results(
         self, paths: AsicConfigPaths
@@ -440,8 +497,7 @@ class TestValidateAsicConfigV3Contents(unittest.TestCase):
                 records.append(verification.record)
                 if verification.mismatch:
                     mismatches.append(verification.mismatch)
-                if verification.stale_generated_file:
-                    stale_generated_files.append(verification.stale_generated_file)
+                stale_generated_files.extend(verification.stale_generated_files)
                 if verification.error:
                     errors.append(verification.error)
 
@@ -503,6 +559,64 @@ class TestValidateAsicConfigV3Contents(unittest.TestCase):
             ComparisonResult.CONTENT_MISMATCH,
         )
 
+    def test_output_file_contract(self) -> None:
+        self.assertEqual(
+            get_output_files("rack", ".yml", GeneratedVariant(common="shared")),
+            {"rack.yml": "shared"},
+        )
+        self.assertEqual(
+            get_output_files(
+                "rack",
+                ".yml",
+                GeneratedVariant(common=None, npu_entries={0: "npu0", 1: "npu1"}),
+            ),
+            {"rack_0.yml": "npu0", "rack_1.yml": "npu1"},
+        )
+        self.assertEqual(
+            get_output_files(
+                "default",
+                ".json",
+                GeneratedVariant(common="common", npu_entries={0: "npu0", 1: "npu1"}),
+            ),
+            {
+                "default_common.json": "common",
+                "default_0.json": "npu0",
+                "default_1.json": "npu1",
+            },
+        )
+
+    def test_output_file_contract_rejects_missing_and_gapped_sections(self) -> None:
+        with self.assertRaisesRegex(ValueError, "no common or NPU payloads"):
+            get_output_files("rack", ".yml", GeneratedVariant(common=None))
+        with self.assertRaisesRegex(ValueError, "non-contiguous NPU indices"):
+            get_output_files(
+                "rack",
+                ".yml",
+                GeneratedVariant(common=None, npu_entries={0: "npu0", 2: "npu2"}),
+            )
+
+    def test_leh800bcls_rack_npu_pm_core_differences(self) -> None:
+        paths = AsicConfigPaths.from_root(self._FBOSS_ROOT)
+        platform_config, _ = discover_platforms(paths)["leh800bcls"]
+        generator = cast(
+            BroadcomXgsGenerator,
+            get_generator("leh800bcls", "rack", platform_config, paths),
+        )
+
+        generator.generate()
+        self.assertEqual(set(generator.npu_pm_core), {0, 1})
+        npu0 = generator.npu_pm_core[0]
+        npu1 = generator.npu_pm_core[1]
+        differing_keys = {key for key in npu0 if npu0[key] != npu1[key]}
+        differing_pm_ids = {
+            int(key[0].removeprefix("PC_PM_ID: ")) for key in differing_keys
+        }
+        self.assertEqual(differing_pm_ids, {29, 31, 32, 33, 34, 35, 36})
+
+        for key in differing_keys:
+            self.assertEqual(npu0[key][:4], npu1[key][:4])
+            self.assertNotEqual(npu0[key][4:], npu1[key][4:])
+
     def test_content_mismatch_is_listed_and_fails(self) -> None:
         record = ComparisonRecord(
             "test_platform",
@@ -534,7 +648,7 @@ class TestValidateAsicConfigV3Contents(unittest.TestCase):
 
     def test_missing_reference_uses_generated_output(self) -> None:
         missing_reference = "synced_asic_configs/new_platform.yml"
-        generated_output = GeneratedOutput("default.yml", "key: generated\n")
+        generated_output = GeneratedOutput({"default.yml": "key: generated\n"})
 
         with (
             patch.object(
@@ -568,7 +682,7 @@ class TestValidateAsicConfigV3Contents(unittest.TestCase):
             ),
         )
         self.assertIsNone(verification.error)
-        self.assertIsNone(verification.stale_generated_file)
+        self.assertFalse(verification.stale_generated_files)
 
     def test_generated_only_is_reported_and_succeeds(self) -> None:
         record = ComparisonRecord(
