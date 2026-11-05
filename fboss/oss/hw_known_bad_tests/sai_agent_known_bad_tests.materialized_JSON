@@ -22700,6 +22700,9 @@
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentTrunkTest.TrunkPortStats$"
+        },
+        {
+          "test_name_regex": "AgentTrunkMixedSpeedTest.LongHaulPortSpeedsAndLags$"
         }
     ],
     "chenab/2605.37/2605.37/chenab/mono": [
@@ -23052,6 +23055,9 @@
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentTrunkTest.TrunkPortStats$"
+        },
+        {
+          "test_name_regex": "AgentTrunkMixedSpeedTest.LongHaulPortSpeedsAndLags$"
         }
     ],
     "chenab/2605.38/2605.38/chenab/mono": [
@@ -23404,6 +23410,9 @@
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentTrunkTest.TrunkPortStats$"
+        },
+        {
+          "test_name_regex": "AgentTrunkMixedSpeedTest.LongHaulPortSpeedsAndLags$"
         }
     ],
     "leaba/1.42.8/1.42.8/gibraltar/multi_switch": [
@@ -29764,6 +29773,9 @@
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentTrunkTest.TrunkPortStats$"
+        },
+        {
+          "test_name_regex": "AgentTrunkMixedSpeedTest.LongHaulPortSpeedsAndLags$"
         }
     ],
     "nvda/2605.37/2605.37/spectrum4/mono": [
@@ -30116,6 +30128,9 @@
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentTrunkTest.TrunkPortStats$"
+        },
+        {
+          "test_name_regex": "AgentTrunkMixedSpeedTest.LongHaulPortSpeedsAndLags$"
         }
     ],
     "nvda/2605.37/2605.37/spectrum6/simulator/mono": [
@@ -30740,6 +30755,9 @@
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentTrunkTest.TrunkPortStats$"
+        },
+        {
+          "test_name_regex": "AgentTrunkMixedSpeedTest.LongHaulPortSpeedsAndLags$"
         }
     ],
     "nvda/2605.38/2605.38/spectrum6/simulator/mono": [
