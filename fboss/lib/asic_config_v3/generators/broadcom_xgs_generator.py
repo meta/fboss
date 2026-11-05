@@ -280,6 +280,38 @@ class BroadcomXgsGenerator(BaseAsicConfigGenerator):
 
         return logical_to_physical_port_mapping
 
+    def _get_mgmt_logical_to_physical_ports(self) -> list[list[int]]:
+        """Return the [logical, physical] pairs of the management port(s).
+
+        A single management port is emitted unless the variant sets
+        ``mgmt_port_overrides.num_ports`` above 1, in which case the first
+        ``num_ports`` entries of the ASIC-level ``mgmt_port_defaults.breakout_ports``
+        are used (one logical port per management lane, e.g. 4x25G).
+        """
+        mgmt_defaults = self.asic_config.get("mgmt_port_defaults", {})
+        mgmt_overrides = self.variant_config.get("mgmt_port_overrides", {})
+        num_ports = mgmt_overrides.get("num_ports", 1)
+        if num_ports == 1:
+            logical_id = mgmt_overrides.get(
+                "logical_id", mgmt_defaults.get("logical_id", 76)
+            )
+            physical_id = mgmt_overrides.get(
+                "physical_id", mgmt_defaults.get("physical_id", 513)
+            )
+            return [[logical_id, physical_id]]
+
+        breakout_ports = mgmt_defaults.get("breakout_ports", [])
+        if num_ports > len(breakout_ports):
+            raise ValueError(
+                f"{self.platform_name}: mgmt_port_overrides.num_ports={num_ports} "
+                f"but the ASIC only defines {len(breakout_ports)} management "
+                "breakout ports"
+            )
+        return [
+            [port["logical_id"], port["physical_id"]]
+            for port in breakout_ports[:num_ports]
+        ]
+
     def _generate_logical_port_to_physical_port_mapping(
         self, mgmt_port: bool = False
     ) -> None:
@@ -295,17 +327,10 @@ class BroadcomXgsGenerator(BaseAsicConfigGenerator):
             self.values["PC_PORT_PHYS_MAP"][pm_key] = pm_value
 
         if mgmt_port:
-            mgmt_defaults = self.asic_config.get("mgmt_port_defaults", {})
-            mgmt_overrides = self.variant_config.get("mgmt_port_overrides", {})
-            logical_id = mgmt_overrides.get(
-                "logical_id", mgmt_defaults.get("logical_id", 76)
-            )
-            physical_id = mgmt_overrides.get(
-                "physical_id", mgmt_defaults.get("physical_id", 513)
-            )
-            pm_key = (f"PORT_ID: {logical_id}",)
-            pm_value = (f"PC_PHYS_PORT_ID: {physical_id}",)
-            self.values["PC_PORT_PHYS_MAP"][pm_key] = pm_value
+            for logical_id, physical_id in self._get_mgmt_logical_to_physical_ports():
+                pm_key = (f"PORT_ID: {logical_id}",)
+                pm_value = (f"PC_PHYS_PORT_ID: {physical_id}",)
+                self.values["PC_PORT_PHYS_MAP"][pm_key] = pm_value
 
     def _generate_lane_map(self) -> None:
         """Generate lane map entries in PC_PM_CORE."""
@@ -383,9 +408,6 @@ class BroadcomXgsGenerator(BaseAsicConfigGenerator):
         self.values["PC_PORT"][pc_key] = pc_value
 
         if mgmt_port and mgmt_port_config.get("enabled", False):
-            logical_id = mgmt_overrides.get(
-                "logical_id", mgmt_defaults.get("logical_id", 76)
-            )
             mgmt_speed = mgmt_overrides.get("speed", mgmt_defaults.get("speed", 100000))
             mgmt_num_lanes = mgmt_overrides.get(
                 "num_lanes", mgmt_defaults.get("num_lanes", 4)
@@ -395,21 +417,22 @@ class BroadcomXgsGenerator(BaseAsicConfigGenerator):
             )
             mgmt_enable = mgmt_port_config.get("enable", 0)
 
-            mgmt_port_key = (f"PORT_ID: {logical_id}",)
-            mgmt_port_value = (
-                f"ENABLE: {mgmt_enable}",
-                f"SPEED: {mgmt_speed}",
-                f"NUM_LANES: {mgmt_num_lanes}",
-                f"FEC_MODE: {mgmt_fec}",
-                f"MAX_FRAME_SIZE: {self.mmu_size}",
-            )
-            self.values["PC_PORT"][mgmt_port_key] = mgmt_port_value
+            for logical_id, _ in self._get_mgmt_logical_to_physical_ports():
+                mgmt_port_key = (f"PORT_ID: {logical_id}",)
+                mgmt_port_value = (
+                    f"ENABLE: {mgmt_enable}",
+                    f"SPEED: {mgmt_speed}",
+                    f"NUM_LANES: {mgmt_num_lanes}",
+                    f"FEC_MODE: {mgmt_fec}",
+                    f"MAX_FRAME_SIZE: {self.mmu_size}",
+                )
+                self.values["PC_PORT"][mgmt_port_key] = mgmt_port_value
 
-            # Optionally include the mgmt port in the PORT (MTU) range alongside FP.
-            if mgmt_port_config.get("in_port_block", False):
-                port_ranges.append(f"[{logical_id}, {logical_id}]")
-                port_ranges_str = ", ".join(port_ranges)
-                pc_key = (f"PORT_ID: [{port_ranges_str}]",)
+                # Optionally include the mgmt port in the PORT (MTU) range alongside FP.
+                if mgmt_port_config.get("in_port_block", False):
+                    port_ranges.append(f"[{logical_id}, {logical_id}]")
+                    port_ranges_str = ", ".join(port_ranges)
+                    pc_key = (f"PORT_ID: [{port_ranges_str}]",)
 
         self.values["PORT"][pc_key] = (f"MTU: {self.mmu_size}", "MTU_CHECK: 1")
 
