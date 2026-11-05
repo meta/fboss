@@ -2347,6 +2347,9 @@ struct PortVcConfig {
   // does not cap the VC. The ceiling is CbfcConfig.senderCreditLimit, shared by
   // every VC on the port.
   //
+  // SAI and UE Spec define this in credits, but the Tomahawk Ultra 1 SAI reads
+  // it in bytes: give credits x senderCreditSize, or the VC gets 0 credits.
+  //
   // There is deliberately no shared-threshold field. SAI defines
   // THRESHOLD_MODE / SHARED_{DYNAMIC,STATIC}_TH on the credit profile, the
   // analogue of PortPgConfig.scalingFactor, but brcm-sai 16.0_ea_odp rejects
@@ -2360,7 +2363,11 @@ struct CbfcConfig {
   // Total credits the port may have outstanding across all its VCs
   // (SAI_PORT_ATTR_CBFC_SENDER_CREDIT_LIMIT). Port-scoped rather than per-VC,
   // and the closest analogue of the ingress buffer pool shared by every PG.
-  // Optional: the SDK treats an unset limit as no port ceiling configured.
+  // Optional: unset leaves the SDK default limit, not an unlimited one.
+  //
+  // SAI and UE Spec define this in credits, but the Tomahawk Ultra 1 SAI reads
+  // it in bytes: give credits x senderCreditSize. The SAI maximum for the
+  // field then caps the port at about 18.7k credits.
   2: optional i64 senderCreditLimit;
   // Bytes per credit the sender charges (SAI_PORT_ATTR_CBFC_SENDER_CREDIT_SIZE).
   // Must match the peer's receiver, or the two ends count different credits for
