@@ -48,7 +48,8 @@ Confirm it is stopped before continuing:
 systemctl status qsfp_service
 ```
 
-Restart it with `systemctl start qsfp_service` once testing is complete.
+Restart it once testing is complete, as described in
+[Restore QSFP Service](#step-3-optional-restore-qsfp-service).
 
 ### Step 2: Get the Test Binary and Shared Libraries
 
@@ -271,7 +272,13 @@ tests reflash the module and take significantly longer than the others.
 
 ### Step 3: [Optional] Restore QSFP Service
 
+`LD_LIBRARY_PATH` still points at the libraries copied for the HAL test, which
+may not match the QSFP Service installed on the switch. Reset it to the FBOSS
+install paths before starting the service:
+
 ```bash
+unset LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=/opt/fboss/lib64:/opt/fboss/lib
 systemctl start qsfp_service
 ```
 

@@ -13,6 +13,7 @@
 #include "fboss/agent/hw/switch_asics/HwAsic.h"
 #include "fboss/agent/platforms/common/utils/BcmYamlConfig.h"
 #include "fboss/lib/config/PlatformConfigUtils.h"
+#include "fboss/lib/platforms/PlatformDescriptor.h"
 
 #include <folly/logging/xlog.h>
 #include <cstdio>
@@ -95,34 +96,50 @@ std::string SaiBcmPlatform::getHwConfig() {
   const auto socProperties = getBcmSdkLogFileSocProperties();
   if (getAsic()->isSupported(HwAsic::Feature::HSDK)) {
     std::string yamlConfig;
-    try {
-      const auto& asicConfig =
-          config()->thrift.platform()->chip()->asicConfig().value();
-      const int16_t switchIndex = getAsic()->getSwitchIndex();
-      // Prefer a per-NPU yamlConfig (needed for differing polarities across
-      // NPUs on multi-NPU platforms); an empty per-NPU entry defers to the
-      // common config.
-      auto npuYamlConfig = getNpuSpecificYamlConfig(asicConfig, switchIndex);
-      if (npuYamlConfig && !npuYamlConfig->empty()) {
-        XLOG(INFO) << "Loading NPU-specific yamlConfig for switchIndex="
-                   << switchIndex;
-        yamlConfig = std::move(*npuYamlConfig);
-      } else if (auto commonYamlConfig = getCommonYamlConfig(asicConfig)) {
-        XLOG(INFO) << "Loading common HSDK yamlConfig for switchIndex="
-                   << switchIndex;
-        yamlConfig = std::move(*commonYamlConfig);
+    // A platform descriptor variant may ship its own SDK yaml so the config
+    // follows the same hardware-revision selection as the platform mapping.
+    // The embedded agent.conf yamlConfig stays the fallback for platforms
+    // (and descriptor dirs) that carry no yaml of their own.
+    if (!FLAGS_platform_descriptor_config_path.empty()) {
+      if (auto descriptorYaml =
+              PlatformDescriptorRegistry::get().loadAsicConfigYaml(
+                  getType(), getAsic()->getSwitchIndex())) {
+        XLOG(INFO)
+            << "Loading HSDK yamlConfig from the selected platform descriptor";
+        yamlConfig = std::move(*descriptorYaml);
       }
-      if (yamlConfig.empty()) {
-        throw FbossError("No HSDK yamlConfig found in asicConfig");
+    }
+    if (yamlConfig.empty()) {
+      try {
+        const auto& asicConfig =
+            config()->thrift.platform()->chip()->asicConfig().value();
+        const int16_t switchIndex = getAsic()->getSwitchIndex();
+        // Prefer a per-NPU yamlConfig (needed for differing polarities across
+        // NPUs on multi-NPU platforms); an empty per-NPU entry defers to the
+        // common config.
+        auto npuYamlConfig = getNpuSpecificYamlConfig(asicConfig, switchIndex);
+        if (npuYamlConfig && !npuYamlConfig->empty()) {
+          XLOG(INFO) << "Loading NPU-specific yamlConfig for switchIndex="
+                     << switchIndex;
+          yamlConfig = std::move(*npuYamlConfig);
+        } else if (auto commonYamlConfig = getCommonYamlConfig(asicConfig)) {
+          XLOG(INFO) << "Loading common HSDK yamlConfig for switchIndex="
+                     << switchIndex;
+          yamlConfig = std::move(*commonYamlConfig);
+        }
+        if (yamlConfig.empty()) {
+          throw FbossError("No HSDK yamlConfig found in asicConfig");
+        }
+      } catch (const std::exception& e) {
+        /*
+         * (TODO): Once asic config v2 is rolled out to the fleet, we
+         * should remove this fallback and always use the config v2
+         */
+        XLOG(WARN) << "Exception in SaiBcmPlatform::getHwConfig: " << e.what()
+                   << ", falling back to bcm.yamlConfig()";
+        yamlConfig =
+            *(config()->thrift.platform()->chip()->bcm()->yamlConfig());
       }
-    } catch (const std::exception& e) {
-      /*
-       * (TODO): Once asic config v2 is rolled out to the fleet, we
-       * should remove this fallback and always use the config v2
-       */
-      XLOG(WARN) << "Exception in SaiBcmPlatform::getHwConfig: " << e.what()
-                 << ", falling back to bcm.yamlConfig()";
-      yamlConfig = *(config()->thrift.platform()->chip()->bcm()->yamlConfig());
     }
     if (!yamlConfig.empty()) {
       // For HSDK only yamlConfig reaches the SDK, so SOC properties must be

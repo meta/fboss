@@ -77,6 +77,8 @@ class FabricLinkMonitoringManager : private folly::AsyncTimeout {
   static bool isTestMode();
 
  private:
+  friend class FabricLinkMonitoringManagerTestPeer;
+
   void timeoutExpired() noexcept override;
   void sendPacketsOnAllFabricPorts();
   void sendPacketsForPortGroup(int portGroupId);
@@ -102,6 +104,8 @@ class FabricLinkMonitoringManager : private folly::AsyncTimeout {
   SwSwitch* sw_;
   std::chrono::milliseconds intervalMsecs_;
 
+  // Nested lock order: portStats_ map -> per-port stats ->
+  // portPendingSequenceNumbers_ -> portGroupStats_.
   folly::Synchronized<
       std::map<PortID, folly::Synchronized<FabricLinkMonPortStats>>>
       portStats_;

@@ -39,7 +39,6 @@
 #include <folly/portability/GFlags.h>
 #include <folly/synchronization/Baton.h>
 
-#include <algorithm>
 #include <thread>
 
 using namespace facebook::fboss;

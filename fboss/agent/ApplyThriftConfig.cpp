@@ -144,24 +144,12 @@ bool ecmpOverrideModeChanged(
 
 StateDelta updateFibFromConfig(
     const facebook::fboss::SwitchIdScopeResolver* resolver,
-    facebook::fboss::RouterID vrf,
-    const facebook::fboss::IPv4NetworkToRouteMap& v4NetworkToRoute,
-    const facebook::fboss::IPv6NetworkToRouteMap& v6NetworkToRoute,
-    const facebook::fboss::LabelToRouteMap& labelToRoute,
+    const std::vector<facebook::fboss::RibVrfFib>& vrfFibs,
     facebook::fboss::NextHopIDManager const* nextHopIDManager,
     const facebook::fboss::MySidTable& mySidTable,
-    void* cookie,
-    bool vrfDeleted) {
+    void* cookie) {
   facebook::fboss::RibToSwitchStateUpdater ribToSwitchStateUpdater(
-      resolver,
-      vrf,
-      v4NetworkToRoute,
-      v6NetworkToRoute,
-      labelToRoute,
-      nextHopIDManager,
-      mySidTable,
-      facebook::fboss::RibToSwitchStateUpdater::kAllActions,
-      vrfDeleted);
+      resolver, vrfFibs, nextHopIDManager, mySidTable);
 
   auto nextStatePtr =
       static_cast<std::shared_ptr<facebook::fboss::SwitchState>*>(cookie);
@@ -729,6 +717,7 @@ class ThriftConfigApplier {
   std::shared_ptr<VxlanTunnelMap> updateVxlanTunnels();
   const std::vector<cfg::VrfConfig>& getConfigVrfs() const;
   void validateVrfs() const;
+  void validateStaticRouteNextHops() const;
   std::shared_ptr<VrfMap> updateVrfs();
   // With deferVrfChanges_, VRF removals and interface VRF moves are left for
   // a second config pass, after the routes they affect have been removed.
@@ -1038,6 +1027,8 @@ shared_ptr<SwitchState> ThriftConfigApplier::run() {
   }
   // Keeps existing entries for VRFs that already have interface routes
   intfRouteTables_.insert(vrfRouteTables.begin(), vrfRouteTables.end());
+
+  validateStaticRouteNextHops();
 
   // Restrict interface-scoped next hops to their interface's VRF, only on
   // switches with VRFs, including VRFs that are still being removed.
@@ -3262,6 +3253,20 @@ shared_ptr<Port> ThriftConfigApplier::updatePort(
             vcId,
             ". Valid range is 0 to: ",
             cfg::switch_config_constants::PORT_VC_VALUE_MAX());
+      }
+      if (vcId >= asic->getCbfcNumVirtualChannels()) {
+        throw FbossError(
+            "Port ",
+            orig->getID(),
+            " cbfc config ",
+            *cbfcConfigName,
+            ": vc id ",
+            vcId,
+            " is not supported by ",
+            asic->getAsicTypeStr(),
+            ", which has ",
+            asic->getCbfcNumVirtualChannels(),
+            " virtual channels per port");
       }
       if (!seenVcIds.insert(vcId).second) {
         throw FbossError(
@@ -7805,7 +7810,9 @@ shared_ptr<Srv6Tunnel> ThriftConfigApplier::updateSrv6Tunnel(
 shared_ptr<Srv6Tunnel> ThriftConfigApplier::createSrv6Tunnel(
     const cfg::Srv6Tunnel& config) {
   auto tunnel = make_shared<Srv6Tunnel>(*config.srv6TunnelId());
-  tunnel->setUnderlayIntfId(InterfaceID(*config.underlayIntfID()));
+  if (auto underlayIntfID = config.underlayIntfID()) {
+    tunnel->setUnderlayIntfId(InterfaceID(*underlayIntfID));
+  }
   tunnel->setType(*config.tunnelType());
   if (config.tunnelTermType().has_value()) {
     tunnel->setTunnelTermType(*config.tunnelTermType());
@@ -7827,6 +7834,12 @@ shared_ptr<Srv6Tunnel> ThriftConfigApplier::createSrv6Tunnel(
   }
   auto type = tunnel->getType();
   if (type == TunnelType::SRV6_ENCAP) {
+    if (!config.underlayIntfID().has_value()) {
+      throw FbossError(
+          "Underlay interface not set for: ",
+          tunnel->getID(),
+          ", SRv6 encap tunnel");
+    }
     if (!tunnel->getSrcIP()) {
       throw FbossError(
           "Src IP not set for: ", tunnel->getID(), ", SRv6 encap tunnel");
@@ -7950,6 +7963,25 @@ shared_ptr<VxlanTunnel> ThriftConfigApplier::createVxlanTunnel(
 const std::vector<cfg::VrfConfig>& ThriftConfigApplier::getConfigVrfs() const {
   static const std::vector<cfg::VrfConfig> kNoVrfs;
   return cfg_->vrfs() ? *cfg_->vrfs() : kNoVrfs;
+}
+
+// Only the agent resolves next hops in the next level
+void ThriftConfigApplier::validateStaticRouteNextHops() const {
+  auto validate = [](const std::vector<NextHopThrift>& nextHops) {
+    for (const auto& nhop : nextHops) {
+      if (nhop.resolvedInNextLevel().has_value()) {
+        throw FbossError(
+            "resolvedInNextLevel cannot be set in config, next hop ",
+            network::toIPAddress(*nhop.address()).str());
+      }
+    }
+  };
+  for (const auto& route : *cfg_->staticIp2MplsRoutes()) {
+    validate(*route.nexthops());
+  }
+  for (const auto& route : *cfg_->staticMplsRoutesWithNhops()) {
+    validate(*route.nexthops());
+  }
 }
 
 void ThriftConfigApplier::validateVrfs() const {

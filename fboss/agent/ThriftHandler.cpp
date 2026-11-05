@@ -143,7 +143,9 @@ std::vector<network::thrift::BinaryAddress> fromFwdNextHops(
   nhs.reserve(nexthops.size());
   for (auto const& nexthop : nexthops) {
     auto addr = network::toBinaryAddress(nexthop.addr());
-    addr.ifName() = utility::createTunIntfName(nexthop.intf());
+    if (nexthop.intfID().has_value()) {
+      addr.ifName() = utility::createTunIntfName(nexthop.intf());
+    }
     nhs.emplace_back(std::move(addr));
   }
   return nhs;
@@ -154,6 +156,14 @@ std::vector<network::thrift::BinaryAddress> fromFwdNextHops(
 } // namespace facebook::fboss
 
 namespace {
+
+void ensureVrfConfigured(
+    const std::shared_ptr<SwitchState>& state,
+    int32_t vrfId) {
+  if (!state->getFibsInfoMap()->getFibContainerIf(RouterID(vrfId))) {
+    throw FbossError("VRF ", vrfId, " not configured");
+  }
+}
 
 template <typename RouteT>
 UnicastRoute toUnicastRoute(
@@ -174,6 +184,9 @@ UnicastRoute toUnicastRoute(
   if (auto classID = entry.getClassID()) {
     tempRoute.classID() = *classID;
   }
+  if (auto level = entry.getLevel()) {
+    tempRoute.level() = level;
+  }
   if (auto overrideEcmpSwitchingMode = entry.getOverrideEcmpSwitchingMode()) {
     tempRoute.overrideEcmpSwitchingMode() = *overrideEcmpSwitchingMode;
   }
@@ -189,12 +202,14 @@ UnicastRoute toUnicastRoute(
 template <typename RouteT>
 RouteDetails toRouteDetails(
     const std::shared_ptr<SwitchState>& state,
+    RouterID rid,
     const std::shared_ptr<RouteT>& route,
     const ClientNextHopsResolver& resolveClient) {
   auto details = route->toRouteDetails(
       getNonOverrideNormalizedNextHops(state, route->getForwardInfo()),
       getNormalizedNextHops(state, route->getForwardInfo()),
       resolveClient);
+  details.vrf() = rid;
   details.resolvedNextHops() = std::vector<NextHopThrift>();
   auto preNormalizationNextHops = getNextHops(state, route->getForwardInfo());
   const auto& bestEntry = route->getBestEntry().second;
@@ -816,6 +831,17 @@ void validateAndDefaultSrv6NextHops(
         }
         nhop.tunnelId() = defaultSrv6TunnelId.value();
       }
+    }
+  }
+}
+
+// Only the agent resolves next hops in the next level
+void validateNextHops(const std::vector<NextHopThrift>& nextHops) {
+  for (const auto& nhop : nextHops) {
+    if (nhop.resolvedInNextLevel().has_value()) {
+      throw FbossError(
+          "resolvedInNextLevel cannot be set by clients, next hop ",
+          toIPAddress(*nhop.address()).str());
     }
   }
 }
@@ -1867,6 +1893,7 @@ void ThriftHandler::updateUnicastRoutesImpl(
       throw FbossError(
           "Override nhops or switching mode cannot be set by clients");
     }
+    validateNextHops(*route.nextHops());
     validateAndDefaultSrv6NextHops(*route.nextHops(), defaultSrv6TunnelId);
     validateLinkLocalNextHopInterfaces(*route.nextHops(), state);
     if (FLAGS_enable_route_counters_for_named_nhg &&
@@ -1898,6 +1925,7 @@ void ThriftHandler::addMySidEntries(
   auto log = LOG_THRIFT_CALL_WITH_STATS(DBG1, sw_->stats());
   ensureConfigured(__func__);
   for (const auto& entry : *mySidEntries) {
+    validateNextHops(*entry.nextHops());
     switch (*entry.type()) {
       case MySidType::BINDING_MICRO_SID:
         break;
@@ -2707,6 +2735,7 @@ void ThriftHandler::addAdjacencyFrr(
   for (auto& nextHop : *backupNextHops) {
     nextHop.role() = NextHopRole::BACKUP;
   }
+  validateNextHops(*backupNextHops);
   validateAndDefaultSrv6NextHops(*backupNextHops, defaultSrv6TunnelId);
   validateLinkLocalNextHopInterfaces(*backupNextHops, state);
   std::vector<MySidFrrProtectionUpdate> toAddOrUpdate{MySidFrrProtectionUpdate{
@@ -3152,8 +3181,29 @@ void ThriftHandler::getRouteTableDetails(std::vector<RouteDetails>& routes) {
   forAllRoutes(
       state,
       [&routes, &state, &resolveClient](
-          const RouterID& /*rid*/, const auto& route) {
-        routes.emplace_back(toRouteDetails(state, route, resolveClient));
+          const RouterID& rid, const auto& route) {
+        routes.emplace_back(toRouteDetails(state, rid, route, resolveClient));
+      });
+}
+
+void ThriftHandler::getRouteTableDetailsByVrf(
+    std::vector<RouteDetails>& routes,
+    int32_t vrfId) {
+  auto log = LOG_THRIFT_CALL_WITH_STATS(DBG1, sw_->stats());
+  ensureConfigured(__func__);
+  auto state = sw_->getState();
+  ensureVrfConfigured(state, vrfId);
+  ClientNextHopsResolver resolveClient =
+      [&state](const RouteNextHopEntry& entry) {
+        return getClientNextHops(state, entry);
+      };
+  forAllRoutes(
+      state,
+      [&routes, &state, &resolveClient, vrfId](
+          const RouterID& rid, const auto& route) {
+        if (rid == RouterID(vrfId)) {
+          routes.emplace_back(toRouteDetails(state, rid, route, resolveClient));
+        }
       });
 }
 
@@ -3175,6 +3225,7 @@ void ThriftHandler::getIpRoute(
   folly::IPAddress ipAddr = toIPAddress(*addr);
 
   auto state = sw_->getState();
+  ensureVrfConfigured(state, vrfId);
   if (ipAddr.isV4()) {
     auto match = sw_->longestMatch(state, ipAddr.asV4(), RouterID(vrfId));
     if (!match || !match->isResolved()) {
@@ -3214,6 +3265,7 @@ void ThriftHandler::getIpRouteDetails(
   ensureConfigured(__func__);
   folly::IPAddress ipAddr = toIPAddress(*addr);
   auto state = sw_->getState();
+  ensureVrfConfigured(state, vrfId);
   ClientNextHopsResolver resolveClient =
       [&state](const RouteNextHopEntry& entry) {
         return getClientNextHops(state, entry);
@@ -3222,12 +3274,12 @@ void ThriftHandler::getIpRouteDetails(
   if (ipAddr.isV4()) {
     auto match = sw_->longestMatch(state, ipAddr.asV4(), RouterID(vrfId));
     if (match && match->isResolved()) {
-      route = toRouteDetails(state, match, resolveClient);
+      route = toRouteDetails(state, RouterID(vrfId), match, resolveClient);
     }
   } else {
     auto match = sw_->longestMatch(state, ipAddr.asV6(), RouterID(vrfId));
     if (match && match->isResolved()) {
-      route = toRouteDetails(state, match, resolveClient);
+      route = toRouteDetails(state, RouterID(vrfId), match, resolveClient);
     }
   }
 }
@@ -3880,6 +3932,7 @@ void ThriftHandler::addMplsRoutesImpl(
         throw FbossError("MPLS route next hop cannot have srv6SegmentList");
       }
     }
+    validateNextHops(*mplsRoute.nextHops());
     auto adminDistance = mplsRoute.adminDistance().has_value()
         ? mplsRoute.adminDistance().value()
         : sw_->clientIdToAdminDistance(static_cast<int>(clientId));
@@ -3971,6 +4024,7 @@ void ThriftHandler::addMplsRibRoutes(
         throw FbossError("MPLS route next hop cannot have srv6SegmentList");
       }
     }
+    validateNextHops(*route.nextHops());
     updater.addRoute(clientID, route);
   }
   RouteUpdateWrapper::SyncFibFor syncFibs;
@@ -4389,6 +4443,7 @@ void ThriftHandler::addNamedNextHopGroupsImpl(
           " characters: ",
           *group.name());
     }
+    validateNextHops(*group.nexthops());
     validateAndDefaultSrv6NextHops(*group.nexthops(), defaultSrv6TunnelId);
     validateLinkLocalNextHopInterfaces(*group.nexthops(), state);
     auto nextHops = util::toRouteNextHopSet(

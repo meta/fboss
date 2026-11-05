@@ -131,7 +131,8 @@ std::unique_ptr<facebook::fboss::TxPacket> makeIpInIpTxPacket(
     std::optional<uint8_t> innerHopLimit = std::nullopt,
     uint32_t outerFlowLabel = 0,
     std::optional<std::vector<uint8_t>> payload =
-        std::optional<std::vector<uint8_t>>());
+        std::optional<std::vector<uint8_t>>(),
+    uint8_t innerEcn = 0);
 
 // Ethernet / IPv6 / IPv6 / IPv6 / UDP / payload. Missing middle and inner
 // hop limits inherit the outer hop limit; omitted payload uses the default.
@@ -428,7 +429,8 @@ std::unique_ptr<facebook::fboss::TxPacket> makeIpInIpTxPacket(
     std::optional<uint8_t> innerHopLimit = std::nullopt,
     uint32_t outerFlowLabel = 0,
     std::optional<std::vector<uint8_t>> payload =
-        std::optional<std::vector<uint8_t>>()) {
+        std::optional<std::vector<uint8_t>>(),
+    uint8_t innerEcn = 0) {
   return makeIpInIpTxPacket(
       makeAllocator(switchT),
       vlan,
@@ -445,7 +447,8 @@ std::unique_ptr<facebook::fboss::TxPacket> makeIpInIpTxPacket(
       outerHopLimit,
       innerHopLimit,
       outerFlowLabel,
-      payload);
+      payload,
+      innerEcn);
 }
 
 template <typename SwitchT, typename InnerIPAddrT>

@@ -232,6 +232,7 @@ add_library(agent_hw_test_src
 
 target_link_libraries(agent_hw_test_src
   erspan_parser
+  fpga_multi_pim_container
   agent_ars_test_src
   agent_qos_test_src
   agent_voq_test_src

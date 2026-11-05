@@ -404,13 +404,12 @@ void FabricLinkMonitoringManager::packetSendAndOutstandingHandling(
                  << FLAGS_fabric_link_monitoring_max_pending_seq_numbers
                  << " subsequent packets)";
     }
-  }
-
-  // If the outstanding packet count has changed, update the group stats.
-  if (changeToOutstandingPacketCount) {
-    auto lockedStats = portGroupStats_.wlock();
-    auto& groupStats = (*lockedStats)[portGroupId];
-    groupStats.outstandingPackets += changeToOutstandingPacketCount;
+    // RX must not observe a pending sequence before its group credit.
+    if (changeToOutstandingPacketCount) {
+      auto lockedStats = portGroupStats_.wlock();
+      auto& groupStats = (*lockedStats)[portGroupId];
+      groupStats.outstandingPackets += changeToOutstandingPacketCount;
+    }
   }
 }
 

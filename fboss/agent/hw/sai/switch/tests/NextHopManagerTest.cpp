@@ -772,6 +772,7 @@ ResolvedNextHop makeVxlanNextHop(
       std::nullopt,
       NextHopRole::PRIMARY,
       std::nullopt,
+      false /* resolvedInNextLevel */,
       mac};
 }
 

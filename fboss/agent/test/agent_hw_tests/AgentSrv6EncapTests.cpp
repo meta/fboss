@@ -12,6 +12,7 @@
 #include "fboss/agent/packet/PktFactory.h"
 #include "fboss/agent/rib/RoutingInformationBase.h"
 #include "fboss/agent/state/AggregatePort.h"
+#include "fboss/agent/state/ControlPlane.h"
 #include "fboss/agent/state/RouteNextHop.h"
 #include "fboss/agent/test/AgentHwTest.h"
 #include "fboss/agent/test/EcmpSetupHelper.h"
@@ -877,17 +878,9 @@ class AgentSrv6EncapTest : public AgentHwTest {
     }
   }
 
-  // Send a packet for the encap route while its only next hop is down or
-  // unresolved, and expect it discarded on ingress instead of encapped out.
-  // kEncapRoutePrefix / 100.0.0.0/24 carry a single sidList, so they resolve
-  // to exactly one next hop (ecmpHelper.nhop(0)) and lose their only path
-  // when that port goes down.
-  // Front panel ingress only: a CPU-injected packet takes a different path
-  // into the pipeline, so it is not the ingress-discard case under test.
-  void verifyEncapRouteDrop(PortID injectPort, PortID egressPort, bool isV4) {
-    // inDiscards must move and inSrv6MySidDiscards must not. inDstNullDiscards
-    // is logged only, so a run still shows which counter a resolution-failure
-    // drop actually lands in.
+  // Front-panel traffic for an encap route with no resolved adjacency goes
+  // to the CPU without incrementing ingress or local-SID discard counters.
+  void verifyEncapRoutePunt(PortID injectPort, PortID egressPort, bool isV4) {
     auto statsStr = [](const auto& stats) {
       auto srv6Discards = stats.inSrv6MySidDiscards_();
       return fmt::format(
@@ -898,11 +891,20 @@ class AgentSrv6EncapTest : public AgentHwTest {
     };
     auto portStatsBefore = this->getLatestPortStats(injectPort);
     auto egressStatsBefore = this->getLatestPortStats(egressPort);
+    auto switchId = this->scopeResolver()
+                        .scope(this->getProgrammedState(), injectPort)
+                        .switchId();
+    auto cpuPacketsBefore =
+        utility::getCpuQueueOutPacketsAndBytes(
+            this->getSw(), utility::kCoppLowPriQueueId, switchId)
+            .first;
     auto srv6DiscardsBefore =
         portStatsBefore.inSrv6MySidDiscards_().value_or(0);
-    XLOG(DBG2) << "verifyEncapRouteDrop: inner=" << (isV4 ? "v4" : "v6")
+    XLOG(INFO) << "verifyEncapRoutePunt: inner=" << (isV4 ? "v4" : "v6")
                << " ingressPort=" << injectPort
-               << " before: " << statsStr(portStatsBefore);
+               << " before: " << statsStr(portStatsBefore)
+               << " cpuQueue=" << utility::kCoppLowPriQueueId
+               << " cpuPackets=" << cpuPacketsBefore;
 
     auto intfMac =
         getMacForFirstInterfaceWithPortsForTesting(this->getProgrammedState());
@@ -926,25 +928,29 @@ class AgentSrv6EncapTest : public AgentHwTest {
     this->getSw()->sendPacketOutOfPortAsync(std::move(txPacket), injectPort);
 
     WITH_RETRIES({
-      auto portStatsAfter = this->getLatestPortStats(injectPort);
       auto egressStatsAfter = this->getLatestPortStats(egressPort);
-      EXPECT_EVENTUALLY_GT(
-          *portStatsAfter.inDiscards_(), *portStatsBefore.inDiscards_());
+      auto cpuPacketsAfter =
+          utility::getCpuQueueOutPacketsAndBytes(
+              this->getSw(), utility::kCoppLowPriQueueId, switchId)
+              .first;
+      EXPECT_EVENTUALLY_GT(cpuPacketsAfter, cpuPacketsBefore);
       // Nothing should make it out the (down) egress port.
       EXPECT_EVENTUALLY_EQ(
           *egressStatsAfter.outBytes_(), *egressStatsBefore.outBytes_());
     });
 
     auto portStatsAfter = this->getLatestPortStats(injectPort);
-    XLOG(DBG2) << "verifyEncapRouteDrop: inner=" << (isV4 ? "v4" : "v6")
+    auto cpuPacketsAfter =
+        utility::getCpuQueueOutPacketsAndBytes(
+            this->getSw(), utility::kCoppLowPriQueueId, switchId)
+            .first;
+    XLOG(INFO) << "verifyEncapRoutePunt: inner=" << (isV4 ? "v4" : "v6")
                << " ingressPort=" << injectPort
-               << "  after: " << statsStr(portStatsAfter);
+               << "  after: " << statsStr(portStatsAfter)
+               << " cpuQueue=" << utility::kCoppLowPriQueueId
+               << " cpuPackets=" << cpuPacketsAfter;
 
-    // A resolution-failure drop is not local-SID processing, so the mysid
-    // counter must stay put. Checked after the loop rather than as an
-    // EXPECT_EVENTUALLY_EQ inside it: these counters are monotonic, so an
-    // increment would never retry away, and the loop would burn its whole
-    // timeout before failing.
+    EXPECT_EQ(*portStatsAfter.inDiscards_(), *portStatsBefore.inDiscards_());
     EXPECT_EQ(
         portStatsAfter.inSrv6MySidDiscards_().value_or(0), srv6DiscardsBefore);
   }
@@ -1028,9 +1034,18 @@ TYPED_TEST(AgentSrv6EncapTest, sendPacketToEncapRouteAfterLinkFlap) {
   this->verifyAcrossWarmBoots(setup, verify);
 }
 
-TYPED_TEST(AgentSrv6EncapTest, sendPacketToEncapRouteUnresolvedDropped) {
+TYPED_TEST(AgentSrv6EncapTest, sendPacketToEncapRouteUnresolvedPuntedToCpu) {
   auto setup = [this]() {
     this->setupHelper();
+    auto config = this->getSw()->getConfig();
+    utility::addCpuQueueConfig(
+        config,
+        this->getAgentEnsemble()->getL3Asics(),
+        this->getAgentEnsemble()->isSai());
+    config.cpuTrafficPolicy()->rxReasonToQueueOrderedList() = {
+        ControlPlane::makeRxReasonToQueueEntry(
+            cfg::PacketRxReason::CPU_IS_NHOP, utility::kCoppLowPriQueueId)};
+    this->applyNewConfig(config);
     auto ecmpHelper = this->makeEcmpHelper();
     auto egressPort = this->getEgressPort(ecmpHelper.nhop(0).portDesc);
 
@@ -1040,14 +1055,12 @@ TYPED_TEST(AgentSrv6EncapTest, sendPacketToEncapRouteUnresolvedDropped) {
     XLOG(DBG2) << "Unresolved neighbors for the encap route next hop";
   };
 
-  // The route's only next hop is both down and unresolved, so traffic for it
-  // must be discarded on ingress rather than leaking out some other port.
   auto verify = [this]() {
     auto ecmpHelper = this->makeEcmpHelper();
     auto egressPort = this->getEgressPort(ecmpHelper.nhop(0).portDesc);
     auto injectPort = this->findInjectPort({egressPort});
     for (bool isV4 : {false, true}) {
-      this->verifyEncapRouteDrop(injectPort, egressPort, isV4);
+      this->verifyEncapRoutePunt(injectPort, egressPort, isV4);
     }
   };
   this->verifyAcrossWarmBoots(setup, verify);

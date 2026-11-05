@@ -625,6 +625,8 @@ struct RouteNextHopEntry {
   10: optional string namedNextHopGroup;
   11: optional i64 clientNextHopSetID;
   12: optional i64 overrideNextHopSetID;
+  // Level of the route, from UnicastRoute.level
+  13: optional i32 level;
 }
 
 struct RouteNextHopsMulti {
