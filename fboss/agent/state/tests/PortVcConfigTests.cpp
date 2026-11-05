@@ -198,6 +198,18 @@ TEST(PortVcConfig, VcIdOutOfRange) {
       publishAndApplyConfig(stateV0, &config, platform.get()), FbossError);
 }
 
+TEST(PortVcConfig, VcIdAboveAsicVcCount) {
+  auto cbfcConfig = makeCbfcConfig();
+  // Within PORT_VC_VALUE_MAX, but the mock ASIC has 16 VCs per port.
+  cbfcConfig.virtualChannels()[0].id() = 16;
+  auto platform = createMockPlatform();
+  auto stateV0 = make_shared<SwitchState>();
+  auto config = makeConfigWithCbfc(cbfcConfig);
+
+  EXPECT_THROW(
+      publishAndApplyConfig(stateV0, &config, platform.get()), FbossError);
+}
+
 TEST(PortVcConfig, VcIdNegative) {
   auto cbfcConfig = makeCbfcConfig();
   // PortVcConfig.id is i16, so a negative index is representable.

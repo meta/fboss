@@ -123,6 +123,9 @@ struct UnicastRoute {
   8: optional switch_config.AclLookupClass classID;
   9: optional switch_config.SwitchingMode overrideEcmpSwitchingMode;
   10: optional list<common.NextHopThrift> overrideNextHops;
+  // Next hops are resolved recursively through routes of the same level, and
+  // in the next level through routes of another level. Unset means level 0.
+  11: optional i32 level;
 }
 
 struct MplsRoute {
@@ -200,6 +203,7 @@ struct RouteDetails {
   14: optional i64 normalizedResolvedNextHopSetID;
   // Resolved next hops before hardware normalization.
   15: optional list<common.NextHopThrift> resolvedNextHops;
+  16: optional i32 vrf;
 }
 
 struct MplsRouteDetails {
@@ -1195,6 +1199,9 @@ service FbossCtrl extends phy.FbossCommonPhyCtrl {
   list<RouteDetails> getRouteTableDetailsByClients(
     1: list<i16> clientId,
   ) throws (1: fboss.FbossBaseError error);
+  list<RouteDetails> getRouteTableDetailsByVrf(1: i32 vrfId) throws (
+    1: fboss.FbossBaseError error,
+  );
   InterfaceDetail getInterfaceDetail(1: i32 interfaceId) throws (
     1: fboss.FbossBaseError error,
   );

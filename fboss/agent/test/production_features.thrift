@@ -155,6 +155,7 @@ enum ProductionFeature {
   VXLAN_DECAP = 137,
   MIRROR_ON_DROP_STATEFUL = 138,
   MULTI_VRF = 139,
+  ROUTE_COUNTERS_EXTENDED_LABEL = 140,
   # production feature which is present on all platforms, keep it at the end
   HW_SWITCH = 65536,
 }

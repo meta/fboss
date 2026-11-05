@@ -212,6 +212,10 @@ class CmisModule : public QsfpModule {
 
   VdmDiagsLocationStatus getVdmDiagsValLocation(VdmConfigType vdmConf) const;
 
+  // CMIS only defines the VDM freeze for statistics (min/max/average)
+  // reporting registers
+  bool hasVdmStatisticsObservables() const;
+
   bool tcvrPortStateSupported(TransceiverPortState& portState) const override;
 
   bool isRequestValidMultiportSpeedConfig(
@@ -223,6 +227,16 @@ class CmisModule : public QsfpModule {
   ApplicationAdvertisingFields getModuleCapabilities() {
     return moduleCapabilities_;
   }
+  /*
+   * Returns the ApplicationAdvertisingField that should be programmed for the
+   * media interface code.
+   * Skips advertised applications that have the wrong lane count, as well as
+   * InfiniBand applications
+   */
+  std::optional<ApplicationAdvertisingField> selectApplicationField(
+      uint8_t mediaInterfaceCode,
+      uint8_t startHostLane,
+      std::optional<int> hostLaneCount) const;
   // Public since its used for unit testing
   static uint8_t laneMask(uint8_t startLane, uint8_t numLanes) {
     return ((1 << numLanes) - 1) << startLane;
@@ -852,11 +866,11 @@ class CmisModule : public QsfpModule {
    */
   std::optional<TunableLaserStatus> getTunableLaserStatus() override;
   /*
-   * Returns the ApplicationAdvertisingField corresponding to the application
-   * or nullopt if it doesn't exist
+   * Returns the ApplicationAdvertisingField corresponding to the media
+   * interface code (moduleMediaInterface) or nullopt if it doesn't exist
    */
   std::optional<ApplicationAdvertisingField> getApplicationField(
-      uint8_t application,
+      uint8_t mediaInterfaceCode,
       uint8_t startHostLane) const;
 
   // Returns the list of host lanes configured in the same datapath as the

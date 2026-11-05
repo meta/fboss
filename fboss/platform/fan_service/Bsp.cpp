@@ -58,6 +58,7 @@ std::optional<std::string> getOpticTypeFromMediaCode(
     case MediaInterfaceCode::DR4_400G:
       return constants::OPTIC_TYPE_400_GENERIC();
     case MediaInterfaceCode::FR4_2x400G:
+    case MediaInterfaceCode::FR4_2x400G_IB:
     case MediaInterfaceCode::FR4_LITE_2x400G:
     case MediaInterfaceCode::FR4_LPO_2x400G:
     case MediaInterfaceCode::DR4_2x400G:

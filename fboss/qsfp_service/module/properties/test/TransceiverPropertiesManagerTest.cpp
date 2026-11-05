@@ -73,6 +73,8 @@ TEST_F(TransceiverPropertiesManagerTest, DefaultConfigAllCodesKnown) {
           MediaInterfaceCode::FR4_LPO_2x400G));
   EXPECT_TRUE(
       TransceiverPropertiesManager::isKnown(MediaInterfaceCode::DR8_1600G));
+  EXPECT_TRUE(
+      TransceiverPropertiesManager::isKnown(MediaInterfaceCode::FR4_2x400G_IB));
 }
 
 TEST_F(TransceiverPropertiesManagerTest, DR4_2x800G_Properties) {
@@ -193,6 +195,18 @@ TEST_F(TransceiverPropertiesManagerTest, DeriveSmfCodeFR4_2x400G) {
   EXPECT_EQ(
       TransceiverPropertiesManager::deriveSmfCode(0x1D, {0, 4}, 0x50, 3000),
       MediaInterfaceCode::FR4_2x400G);
+}
+
+// First application is IB NDR (0x32); the SMF length isn't used to match
+TEST_F(TransceiverPropertiesManagerTest, DeriveSmfCodeFR4_2x400G_IB) {
+  initDefault();
+
+  EXPECT_EQ(
+      TransceiverPropertiesManager::deriveSmfCode(0x1D, {0, 4}, 0x32, 2000),
+      MediaInterfaceCode::FR4_2x400G_IB);
+  EXPECT_EQ(
+      TransceiverPropertiesManager::deriveSmfCode(0x1D, {0, 4}, 0x32, 3000),
+      MediaInterfaceCode::FR4_2x400G_IB);
 }
 
 TEST_F(TransceiverPropertiesManagerTest, DeriveSmfCodeFR4_LITE_2x400G) {

@@ -949,6 +949,8 @@ AclEntrySaiId SaiAclTableManager::addAclEntry(
 
   auto& aclEntryStore = saiStore_->get<SaiAclEntryTraits>();
 
+  const bool aclEnabled = addedAclEntry->isEnabled().value_or(true);
+
   SaiAclEntryTraits::Attributes::TableId aclTableId{
       aclTableHandle->aclTable->adapterKey()};
   SaiAclEntryTraits::Attributes::Priority priority{
@@ -1871,7 +1873,7 @@ AclEntrySaiId SaiAclTableManager::addAclEntry(
   SaiAclEntryTraits::CreateAttributes attributes{
       aclTableId,
       priority,
-      true,
+      aclEnabled,
       fieldSrcIpV6,
       fieldDstIpV6,
       fieldDstIpV6Word3,
@@ -1973,7 +1975,8 @@ AclEntrySaiId SaiAclTableManager::addAclEntry(
   auto enabled = SaiApiTable::getInstance()->aclApi().getAttribute(
       it->second->aclEntry->adapterKey(),
       SaiAclEntryTraits::Attributes::Enabled{});
-  CHECK(enabled) << "Acl entry: " << addedAclEntry->getID() << " not enabled";
+  CHECK_EQ(enabled, aclEnabled)
+      << "Acl entry: " << addedAclEntry->getID() << " enabled state mismatch";
   return it->second->aclEntry->adapterKey();
 }
 

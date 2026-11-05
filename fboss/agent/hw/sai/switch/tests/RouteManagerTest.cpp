@@ -421,6 +421,40 @@ TEST_F(RouteManagerTest, updatingBackupsStopsChildGroupSharing) {
   EXPECT_NE(firstChildGroupId, secondChildGroupId);
 }
 
+TEST_F(RouteManagerTest, nextHopResolvedInNextLevelRejected) {
+  ResolvedNextHop nextLevel(
+      folly::IPAddress("10.10.10.10"),
+      std::nullopt,
+      ECMP_WEIGHT,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      {},
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      NextHopRole::PRIMARY,
+      std::nullopt,
+      true /* resolvedInNextLevel */);
+
+  auto singleNextHop = makeRouteWithEntry(
+      d1,
+      RouteNextHopEntry(
+          RouteNextHopEntry::NextHopSet{nextLevel},
+          AdminDistance::STATIC_ROUTE));
+  EXPECT_THROW(programRoute(singleNextHop), FbossError);
+
+  auto ecmp = makeRouteWithEntry(
+      d2,
+      RouteNextHopEntry(
+          RouteNextHopEntry::NextHopSet{
+              nextLevel,
+              makeResolvedNextHop(testInterfaces.at(0), NextHopRole::PRIMARY)},
+          AdminDistance::STATIC_ROUTE));
+  EXPECT_THROW(programRoute(ecmp), FbossError);
+}
+
 TEST_F(RouteManagerTest, addRouteOneNextHop) {
   tr1.nextHopInterfaces = {testInterfaces.at(1)};
   auto r = makeRoute(tr1);

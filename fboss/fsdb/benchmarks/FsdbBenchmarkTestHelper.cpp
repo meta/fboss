@@ -84,8 +84,8 @@ void FsdbBenchmarkTestHelper::publishPath(
     const AgentStats& stats,
     uint64_t stamp) {
   fsdb::OperState state;
-  state.set_contents(
-      apache::thrift::BinarySerializer::serialize<std::string>(stats));
+  state.contents() =
+      apache::thrift::BinarySerializer::serialize<std::string>(stats);
   state.protocol() = fsdb::OperProtocol::BINARY;
   state.metadata() = fsdb::OperMetadata();
   state.metadata()->lastConfirmedAt() = stamp;

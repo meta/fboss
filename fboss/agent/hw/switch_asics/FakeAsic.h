@@ -55,6 +55,7 @@ class FakeAsic : public HwAsic {
       case HwAsic::Feature::TEMPERATURE_MONITORING:
       case HwAsic::Feature::SWITCH_WIDE_LINK_UP_DEBOUNCE:
       case HwAsic::Feature::SRV6_BINDING_USID_UA_USD:
+      case HwAsic::Feature::SRV6_DECAP_TUNNEL:
       case HwAsic::Feature::PORT_LATCH_STATUS:
         return false;
 
@@ -260,6 +261,9 @@ class FakeAsic : public HwAsic {
   }
   std::vector<int16_t> getCbfcSenderPacketOverheads() const override {
     return {0, 16, 32, 48, 64, 80};
+  }
+  int16_t getCbfcNumVirtualChannels() const override {
+    return 16;
   }
 };
 

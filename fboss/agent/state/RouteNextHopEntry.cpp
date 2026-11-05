@@ -208,6 +208,9 @@ UnicastRoute toUnicastRoute(
   if (nhopEntry.getClassID().has_value()) {
     thriftRoute.classID() = nhopEntry.getClassID().value();
   }
+  if (auto level = nhopEntry.getLevel()) {
+    thriftRoute.level() = level;
+  }
   if (nhopEntry.getAction() == RouteForwardAction::NEXTHOPS) {
     thriftRoute.nextHops() = fromRouteNextHopSet(nhops);
   }
@@ -314,7 +317,7 @@ bool operator==(const RouteNextHopEntry& a, const RouteNextHopEntry& b) {
           a.getNextHopSet() == b.getNextHopSet() &&
           a.getAdminDistance() == b.getAdminDistance() &&
           a.getCounterID() == b.getCounterID() &&
-          a.getClassID() == b.getClassID() &&
+          a.getClassID() == b.getClassID() && a.getLevel() == b.getLevel() &&
           a.getOverrideEcmpSwitchingMode() ==
               b.getOverrideEcmpSwitchingMode() &&
           a.getOverrideNextHops() == b.getOverrideNextHops()) &&

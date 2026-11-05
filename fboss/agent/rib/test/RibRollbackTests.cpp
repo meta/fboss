@@ -90,14 +90,10 @@ class FailSomeUpdates {
       : toFail_(std::move(toFail)) {}
   StateDelta operator()(
       const SwitchIdScopeResolver* resolver,
-      RouterID vrf,
-      const IPv4NetworkToRouteMap& v4NetworkToRoute,
-      const IPv6NetworkToRouteMap& v6NetworkToRoute,
-      const LabelToRouteMap& labelToRoute,
+      const std::vector<RibVrfFib>& vrfFibs,
       const NextHopIDManager* nextHopIDManager,
       const MySidTable& mySidTable,
-      void* cookie,
-      bool vrfDeleted) {
+      void* cookie) {
     if (toFail_.find(++cnt_) != toFail_.end()) {
       auto curSwitchStatePtr =
           static_cast<std::shared_ptr<facebook::fboss::SwitchState>*>(cookie);
@@ -105,26 +101,14 @@ class FailSomeUpdates {
       auto desiredState = *curSwitchStatePtr;
       ribToSwitchStateUpdate(
           resolver,
-          vrf,
-          v4NetworkToRoute,
-          v6NetworkToRoute,
-          labelToRoute,
+          vrfFibs,
           nextHopIDManager,
           mySidTable,
-          static_cast<void*>(&desiredState),
-          vrfDeleted);
+          static_cast<void*>(&desiredState));
       throw FbossHwUpdateError(desiredState, *curSwitchStatePtr);
     }
     return ribToSwitchStateUpdate(
-        resolver,
-        vrf,
-        v4NetworkToRoute,
-        v6NetworkToRoute,
-        labelToRoute,
-        nextHopIDManager,
-        mySidTable,
-        cookie,
-        vrfDeleted);
+        resolver, vrfFibs, nextHopIDManager, mySidTable, cookie);
   }
 
  private:
@@ -490,14 +474,10 @@ class FailWithMySidInAppliedState {
 
   StateDelta operator()(
       const SwitchIdScopeResolver* resolver,
-      RouterID vrf,
-      const IPv4NetworkToRouteMap& v4NetworkToRoute,
-      const IPv6NetworkToRouteMap& v6NetworkToRoute,
-      const LabelToRouteMap& labelToRoute,
+      const std::vector<RibVrfFib>& vrfFibs,
       const NextHopIDManager* nextHopIDManager,
       const MySidTable& mySidTable,
-      void* cookie,
-      bool vrfDeleted) {
+      void* cookie) {
     auto curSwitchStatePtr = static_cast<std::shared_ptr<SwitchState>*>(cookie);
     (*curSwitchStatePtr)->publish();
 
@@ -505,14 +485,10 @@ class FailWithMySidInAppliedState {
     auto desiredState = *curSwitchStatePtr;
     ribToSwitchStateUpdate(
         resolver,
-        vrf,
-        v4NetworkToRoute,
-        v6NetworkToRoute,
-        labelToRoute,
+        vrfFibs,
         nextHopIDManager,
         mySidTable,
-        static_cast<void*>(&desiredState),
-        vrfDeleted);
+        static_cast<void*>(&desiredState));
 
     // Build the applied state from the ORIGINAL state (not desiredState),
     // since in a partial HW update the FIB may not have been updated.
