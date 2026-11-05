@@ -199,10 +199,6 @@
                             "type": "boolean",
                             "description": "When true, computes the per-port logical-port offset as i * lanes_per_port on all cores rather than using the default even / odd conditional."
                         },
-                        "core_offset_apply_all": {
-                            "type": "boolean",
-                            "description": "When true, applies the +1 core offset to every core rather than only cores 0 and 1. Required for platforms with a linear-stride port layout."
-                        },
                         "exclude_logical_ports": {
                             "type": "array",
                             "items": {
@@ -214,15 +210,11 @@
                     }
                 },
                 "mgmt_port_overrides": {
-                    "type": "object",
-                    "description": "Optional. Per-platform overrides of the ASIC-level mgmt_port_defaults.",
-                    "additionalProperties": false,
-                    "properties": {
-                        "logical_id": {"type": "integer"},
-                        "physical_id": {"type": "integer"},
-                        "speed": {"type": "integer"},
-                        "num_lanes": {"type": "integer"},
-                        "fec": {"type": "string"}
+                    "type": "array",
+                    "description": "Optional. Per-platform overrides of the ASIC-level mgmt_port_defaults, overriding the port at the same index. Entries beyond the defaults list declare additional ports and must be complete; the generator rejects incomplete additional entries and duplicate logical or physical port identifiers.",
+                    "minItems": 1,
+                    "items": {
+                        "$ref": "#/$defs/mgmt_port_override"
                     }
                 },
                 "platform_sai_overrides": {
@@ -294,6 +286,18 @@
                         "type": ["integer", "string"]
                     }
                 }
+            }
+        },
+        "mgmt_port_override": {
+            "type": "object",
+            "description": "Overrides for one management port. Fields not given keep the ASIC-level default for that port.",
+            "additionalProperties": false,
+            "properties": {
+                "logical_id": {"type": "integer"},
+                "physical_id": {"type": "integer"},
+                "speed": {"type": "integer"},
+                "num_lanes": {"type": "integer"},
+                "fec": {"type": "string"}
             }
         },
         "mgmt_speed_config": {

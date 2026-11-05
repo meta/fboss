@@ -81,31 +81,11 @@
             "minItems": 1
         },
         "mgmt_port_defaults": {
-            "type": "object",
-            "description": "Default settings for the management (out-of-band) port.",
-            "required": ["logical_id", "physical_id", "speed", "num_lanes", "fec"],
-            "additionalProperties": false,
-            "properties": {
-                "logical_id": {
-                    "type": "integer",
-                    "description": "Logical port identifier for the management port."
-                },
-                "physical_id": {
-                    "type": "integer",
-                    "description": "Physical port identifier for the management port."
-                },
-                "speed": {
-                    "type": "integer",
-                    "description": "Default port speed in Mbps (e.g. 100000 for 100 GbE)."
-                },
-                "num_lanes": {
-                    "type": "integer",
-                    "description": "Number of physical lanes used by the management port."
-                },
-                "fec": {
-                    "type": "string",
-                    "description": "Forward Error Correction (FEC) mode (e.g. \"PC_FEC_RS528\")."
-                }
+            "type": "array",
+            "description": "Default settings for the management (out-of-band) ports, one entry per port.",
+            "minItems": 1,
+            "items": {
+                "$ref": "#/$defs/mgmt_port_settings"
             }
         },
         "preamble_support": {
@@ -206,6 +186,36 @@
             "description": "Declarative conditional settings. Each entry is evaluated against the variant config; matching entries are applied to the named output tables.",
             "items": {
                 "$ref": "https://github.com/meta/fboss/blob/main/fboss/lib/asic_config_v3/schemas/conditional_setting.schema.json#/$defs/conditional_setting"
+            }
+        }
+    },
+    "$defs": {
+        "mgmt_port_settings": {
+            "type": "object",
+            "description": "Default settings for one management port.",
+            "required": ["logical_id", "physical_id", "speed", "num_lanes", "fec"],
+            "additionalProperties": false,
+            "properties": {
+                "logical_id": {
+                    "type": "integer",
+                    "description": "Logical port identifier for the management port."
+                },
+                "physical_id": {
+                    "type": "integer",
+                    "description": "Physical port identifier for the management port."
+                },
+                "speed": {
+                    "type": "integer",
+                    "description": "Default port speed in Mbps (e.g. 100000 for 100 GbE)."
+                },
+                "num_lanes": {
+                    "type": "integer",
+                    "description": "Number of physical lanes used by the management port."
+                },
+                "fec": {
+                    "type": "string",
+                    "description": "Forward Error Correction (FEC) mode (e.g. \"PC_FEC_RS528\")."
+                }
             }
         }
     }
