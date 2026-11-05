@@ -2458,7 +2458,7 @@ struct IpInIpTunnel {
 
 struct Srv6Tunnel {
   1: string srv6TunnelId;
-  2: i32 underlayIntfID;
+  2: optional i32 underlayIntfID;
   3: optional string srcIp;
   4: optional string dstIp;
   5: optional TunnelMode ttlMode;

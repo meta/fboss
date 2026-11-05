@@ -7822,7 +7822,9 @@ shared_ptr<Srv6Tunnel> ThriftConfigApplier::updateSrv6Tunnel(
 shared_ptr<Srv6Tunnel> ThriftConfigApplier::createSrv6Tunnel(
     const cfg::Srv6Tunnel& config) {
   auto tunnel = make_shared<Srv6Tunnel>(*config.srv6TunnelId());
-  tunnel->setUnderlayIntfId(InterfaceID(*config.underlayIntfID()));
+  if (auto underlayIntfID = config.underlayIntfID()) {
+    tunnel->setUnderlayIntfId(InterfaceID(*underlayIntfID));
+  }
   tunnel->setType(*config.tunnelType());
   if (config.tunnelTermType().has_value()) {
     tunnel->setTunnelTermType(*config.tunnelTermType());
@@ -7844,6 +7846,12 @@ shared_ptr<Srv6Tunnel> ThriftConfigApplier::createSrv6Tunnel(
   }
   auto type = tunnel->getType();
   if (type == TunnelType::SRV6_ENCAP) {
+    if (!config.underlayIntfID().has_value()) {
+      throw FbossError(
+          "Underlay interface not set for: ",
+          tunnel->getID(),
+          ", SRv6 encap tunnel");
+    }
     if (!tunnel->getSrcIP()) {
       throw FbossError(
           "Src IP not set for: ", tunnel->getID(), ", SRv6 encap tunnel");
