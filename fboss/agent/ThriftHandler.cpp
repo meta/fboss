@@ -143,7 +143,9 @@ std::vector<network::thrift::BinaryAddress> fromFwdNextHops(
   nhs.reserve(nexthops.size());
   for (auto const& nexthop : nexthops) {
     auto addr = network::toBinaryAddress(nexthop.addr());
-    addr.ifName() = utility::createTunIntfName(nexthop.intf());
+    if (nexthop.intfID().has_value()) {
+      addr.ifName() = utility::createTunIntfName(nexthop.intf());
+    }
     nhs.emplace_back(std::move(addr));
   }
   return nhs;

@@ -56,7 +56,11 @@ RouteDetails RouteFields<AddrT>::toRouteDetails(
     std::vector<NextHopThrift> nhops;
     for (const auto& nh : nhopSet) {
       IfAndIP ifAndIp;
-      *ifAndIp.interfaceID() = nh.intf();
+      if (nh.intfID().has_value()) {
+        *ifAndIp.interfaceID() = nh.intf();
+      } else if (nh.resolvedInNextLevel()) {
+        ifAndIp.resolvedInNextLevel() = true;
+      }
       *ifAndIp.ip() = toBinaryAddress(nh.addr());
       if (auto vrf = nh.vrf()) {
         ifAndIp.vrf() = static_cast<int32_t>(*vrf);
