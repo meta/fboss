@@ -123,6 +123,8 @@ class SaiSystemPortManager {
   void loadQueues(
       SaiSystemPortHandle& sysPortHandle,
       const std::shared_ptr<SystemPort>& swSystemPort);
+  std::optional<std::pair<uint32_t, uint32_t>> coreAndPortIndexFromPort(
+      const std::shared_ptr<SystemPort>& swSystemPort) const;
   SaiSystemPortTraits::CreateAttributes attributesFromSwSystemPort(
       const std::shared_ptr<SystemPort>& swSystemPort) const;
   SaiQueueHandle* FOLLY_NULLABLE

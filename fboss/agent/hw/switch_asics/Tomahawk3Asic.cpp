@@ -111,6 +111,8 @@ bool Tomahawk3Asic::isSupported(Feature feature) const {
       return true;
     case HwAsic::Feature::ISOLATION_GROUP:
     case HwAsic::Feature::CSIG:
+    case HwAsic::Feature::PORT_SERDES_CREATED_WITH_PORT:
+    case HwAsic::Feature::SYSTEM_PORT_CORE_INDEX_FROM_PORT:
     case HwAsic::Feature::QCM:
     case HwAsic::Feature::SMAC_EQUALS_DMAC_CHECK_ENABLED:
     case HwAsic::Feature::PORT_TTL_DECREMENT_DISABLE:
