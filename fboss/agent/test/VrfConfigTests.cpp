@@ -573,3 +573,72 @@ TEST(VrfNextHop, ReresolvesOnDefaultVrfChange) {
   EXPECT_EQ(
       egressIntf(sw->getState(), kTestVrf, "2001:db8:200::/64"), std::nullopt);
 }
+
+namespace {
+// Route via VTEP 2001:db8:500::1, resolved in the default VRF
+UnicastRoute makeVxlanRoute(
+    const std::string& prefix,
+    const std::string& tunnelId) {
+  auto route = makeRoute(prefix, "2001:db8:500::1");
+  NextHopThrift nhop;
+  nhop.address() =
+      facebook::network::toBinaryAddress(folly::IPAddress("2001:db8:500::1"));
+  nhop.tunnelType() = TunnelType::VXLAN;
+  nhop.tunnelId() = tunnelId;
+  nhop.vrf() = 0;
+  route.nextHopAddrs()->clear();
+  route.nextHops() = {nhop};
+  route.level() = 1;
+  return route;
+}
+} // namespace
+
+TEST(VrfNextHop, VxlanNextHopKeepsVtep) {
+  auto config = vrfConfig();
+  auto handle = createTestHandle(&config);
+  auto sw = handle->getSw();
+
+  {
+    auto updater = sw->getRouteUpdater();
+    updater.addRoute(
+        RouterID(0),
+        ClientID::BGPD,
+        makeRoute("2001:db8:500::/64", "10.0.0.10"));
+    updater.addRoute(
+        kTestVrf, ClientID::BGPD, makeVxlanRoute("2001:db8:200::/64", "vx0"));
+    updater.program();
+  }
+
+  auto state = sw->getState();
+  auto route = state->getFibsInfoMap()
+                   ->getFibContainerIf(kTestVrf)
+                   ->getFibV6()
+                   ->exactMatch({folly::IPAddressV6("2001:db8:200::"), 64});
+  ASSERT_NE(route, nullptr);
+  auto nhops = getNextHops(state, route->getForwardInfo());
+  ASSERT_EQ(nhops.size(), 1);
+  const auto& nhop = *nhops.begin();
+  EXPECT_EQ(nhop.addr(), folly::IPAddress("2001:db8:500::1"));
+  EXPECT_EQ(nhop.intfID(), std::nullopt);
+  EXPECT_TRUE(nhop.resolvedInNextLevel());
+  EXPECT_EQ(nhop.tunnelType(), TunnelType::VXLAN);
+  EXPECT_EQ(nhop.tunnelId(), "vx0");
+
+  // VTEP unreachable in the default VRF
+  {
+    auto updater = sw->getRouteUpdater();
+    IpPrefix prefix;
+    prefix.ip() =
+        facebook::network::toBinaryAddress(folly::IPAddress("2001:db8:500::"));
+    prefix.prefixLength() = 64;
+    updater.delRoute(RouterID(0), prefix, ClientID::BGPD);
+    updater.program();
+  }
+  EXPECT_EQ(
+      sw->getState()
+          ->getFibsInfoMap()
+          ->getFibContainerIf(kTestVrf)
+          ->getFibV6()
+          ->exactMatch({folly::IPAddressV6("2001:db8:200::"), 64}),
+      nullptr);
+}
