@@ -33,7 +33,6 @@
 #include "fboss/agent/types.h"
 
 #include <fmt/format.h>
-#include <gflags/gflags.h>
 #include <optional>
 #include <set>
 
