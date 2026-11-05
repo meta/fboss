@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-# pyre-strict
-
 """Validate ASIC config v3 contents and compare available internal references.
 
 Usage (internal, from fbcode/):
@@ -35,6 +33,8 @@ from fboss.lib.asic_config_v3.base_generator import (
     resolve_variant_config,
 )
 from fboss.lib.asic_config_v3.gen import (
+    generate_asic_configs,
+    GeneratedAsicConfigs,
     get_generator,
     get_output_filename,
     get_output_files,
@@ -295,6 +295,7 @@ class TestValidateAsicConfigV3Contents(unittest.TestCase):
         variant: str,
         platform_config: dict[str, Any],
         output_dir: str,
+        generated_variant: GeneratedVariant | None = None,
     ) -> tuple[Optional[GeneratedOutput], Optional[VariantVerification]]:
         display_variant = variant or "<default>"
         try:
@@ -334,7 +335,13 @@ class TestValidateAsicConfigV3Contents(unittest.TestCase):
 
         try:
             generated = get_output_files(
-                variant, generator.output_extension, generator.generate()
+                variant,
+                generator.output_extension,
+                (
+                    generated_variant
+                    if generated_variant is not None
+                    else generator.generate()
+                ),
             )
         except Exception as error:
             return (
@@ -395,10 +402,16 @@ class TestValidateAsicConfigV3Contents(unittest.TestCase):
         variant: str,
         platform_config: dict[str, Any],
         output_dir: str,
+        generated_variant: GeneratedVariant | None = None,
     ) -> VariantVerification:
         display_variant = variant or "<default>"
         generated_output, generation_error = self._get_generated_output(
-            paths, platform, variant, platform_config, output_dir
+            paths,
+            platform,
+            variant,
+            platform_config,
+            output_dir,
+            generated_variant,
         )
         if generation_error:
             return generation_error
@@ -480,7 +493,9 @@ class TestValidateAsicConfigV3Contents(unittest.TestCase):
         return VariantVerification(record, mismatch, stale_generated_files)
 
     def _collect_verification_results(
-        self, paths: AsicConfigPaths
+        self,
+        paths: AsicConfigPaths,
+        generated_configs: GeneratedAsicConfigs | None = None,
     ) -> VerificationResults:
         records: list[ComparisonRecord] = []
         mismatches: list[ContentMismatch] = []
@@ -491,8 +506,18 @@ class TestValidateAsicConfigV3Contents(unittest.TestCase):
             discover_platforms(paths).items()
         ):
             for variant in platform_config.get("variants", {}):
+                generated_variant = (
+                    generated_configs[platform][variant]
+                    if generated_configs is not None
+                    else None
+                )
                 verification = self._verify_variant(
-                    paths, platform, variant, platform_config, output_dir
+                    paths,
+                    platform,
+                    variant,
+                    platform_config,
+                    output_dir,
+                    generated_variant,
                 )
                 records.append(verification.record)
                 if verification.mismatch:
@@ -543,7 +568,14 @@ class TestValidateAsicConfigV3Contents(unittest.TestCase):
 
     def test_generated_files_match_available_references(self) -> None:
         paths = AsicConfigPaths.from_root(self._FBOSS_ROOT)
-        self._assert_verification_success(self._collect_verification_results(paths))
+        generated_configs = (
+            generate_asic_configs(paths) if self._GENERATE_FRESH_OUTPUT else None
+        )
+        if generated_configs is not None:
+            self.assertTrue(generated_configs, "No registered ASIC configs generated")
+        self._assert_verification_success(
+            self._collect_verification_results(paths, generated_configs)
+        )
 
     def test_comparison_result_classification(self) -> None:
         self.assertEqual(

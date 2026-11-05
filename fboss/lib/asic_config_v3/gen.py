@@ -1,8 +1,7 @@
-# pyre-strict
-
 import argparse
 import os
 import sys
+from typing import Any
 
 from fboss.lib.asic_config_v3.base_generator import (
     BaseAsicConfigGenerator,
@@ -23,9 +22,14 @@ _GENERATOR_REGISTRY: dict[tuple[str, str], type[BaseAsicConfigGenerator]] = {
     ("broadcom", "jericho3"): BroadcomDnxGenerator,
 }
 
+GeneratedAsicConfigs = dict[str, dict[str, GeneratedVariant]]
+
 
 def get_generator(
-    platform_name: str, variant: str, platform_config: dict, paths: AsicConfigPaths
+    platform_name: str,
+    variant: str,
+    platform_config: dict[str, Any],
+    paths: AsicConfigPaths,
 ) -> BaseAsicConfigGenerator:
     """Instantiate the correct generator based on vendor and ASIC."""
     vendor = platform_config["vendor"]
@@ -35,6 +39,38 @@ def get_generator(
     if not generator_cls:
         raise ValueError(f"No generator registered for vendor={vendor}, asic={asic}")
     return generator_cls(platform_name, variant, platform_config, paths)
+
+
+def _generate_variant(
+    platform_name: str,
+    variant: str,
+    platform_config: dict[str, Any],
+    paths: AsicConfigPaths,
+) -> tuple[BaseAsicConfigGenerator, GeneratedVariant]:
+    """Generate one variant while retaining its generator metadata."""
+    generator = get_generator(platform_name, variant, platform_config, paths)
+    return generator, generator.generate()
+
+
+def generate_asic_configs(paths: AsicConfigPaths) -> GeneratedAsicConfigs:
+    """Generate serialized ASIC configs without writing output files.
+
+    Results are keyed first by platform and then by the variant names declared
+    in that platform's ``asic_config.json``. Every discovered platform must
+    have a registered generator.
+    """
+    platforms = discover_platforms(paths)
+    generated_configs: GeneratedAsicConfigs = {}
+    for current_platform in sorted(platforms):
+        platform_config, _ = platforms[current_platform]
+        generated_configs[current_platform] = {}
+        for variant in platform_config.get("variants", {}):
+            _, generated = _generate_variant(
+                current_platform, variant, platform_config, paths
+            )
+            generated_configs[current_platform][variant] = generated
+
+    return generated_configs
 
 
 def get_output_filename(variant: str, extension: str) -> str:
@@ -81,7 +117,7 @@ def get_output_files(
 
 def _generate_platform(
     platform_name: str,
-    platform_config: dict,
+    platform_config: dict[str, Any],
     output_dir: str,
     paths: AsicConfigPaths,
     clean_output: bool = False,
@@ -111,10 +147,9 @@ def _generate_platform(
         print(f"Generating ASIC config for {display_name}...", file=sys.stderr)
 
         try:
-            generator = get_generator(
+            generator, generated = _generate_variant(
                 platform_name, variant_name, platform_config, paths
             )
-            generated = generator.generate()
             outputs = get_output_files(
                 variant_name, generator.output_extension, generated
             )
