@@ -16,6 +16,9 @@
  */
 #include <fmt/format.h>
 #include <gtest/gtest.h>
+#include <algorithm>
+#include <cctype>
+#include <optional>
 
 #include <folly/IPAddress.h>
 #include <folly/IPAddressV6.h>
@@ -385,14 +388,24 @@ TEST(IPv6HdrTest, toString) {
 
 namespace {
 
-// Fixed IPv6 header from fe80::1 to ff02::1 with the given next header.
-std::string ipv6HdrHex(const std::string& nextHeader) {
+size_t hexLength(const std::string& hex) {
+  return std::count_if(hex.begin(), hex.end(), ::isxdigit) / 2;
+}
+
+// IPv6 packet from fe80::1 to ff02::1 with the given next header and payload.
+// The Payload Length field is the length of payload unless payloadLength is
+// given.
+std::string ipv6Hex(
+    const std::string& nextHeader,
+    const std::string& payload,
+    std::optional<size_t> payloadLength = std::nullopt) {
   return "60 00 00 00" // Version, Traffic Class, Flow Label
-         "00 00" // Payload Length
-      + nextHeader + // Next Header
+      + fmt::format("{:04x}", payloadLength.value_or(hexLength(payload))) +
+      nextHeader + // Next Header
       "ff" // Hop Limit
       "fe 80 00 00 00 00 00 00 00 00 00 00 00 00 00 01"
-      "ff 02 00 00 00 00 00 00 00 00 00 00 00 00 00 01";
+      "ff 02 00 00 00 00 00 00 00 00 00 00 00 00 00 01" +
+      payload;
 }
 
 // An options extension header (Hop-by-Hop or Destination Options) of
@@ -415,7 +428,7 @@ uint8_t proto(IP_PROTO p) {
 } // namespace
 
 TEST(IPv6HdrTest, noExtensionHeaders) {
-  auto pkt = MockRxPacket::fromHex(ipv6HdrHex("3a") + kRouterAdvertisementHex);
+  auto pkt = MockRxPacket::fromHex(ipv6Hex("3a", kRouterAdvertisementHex));
   Cursor cursor(pkt->buf());
   IPv6Hdr hdr(cursor);
   EXPECT_FALSE(hdr.hasExtensionHeaders());
@@ -425,9 +438,10 @@ TEST(IPv6HdrTest, noExtensionHeaders) {
 }
 
 TEST(IPv6HdrTest, extensionHeaderChain) {
-  auto pkt = MockRxPacket::fromHex(
-      ipv6HdrHex("00") + optionsHdrHex("3c", 8) + optionsHdrHex("3a", 16) +
-      kRouterAdvertisementHex);
+  auto pkt = MockRxPacket::fromHex(ipv6Hex(
+      "00",
+      optionsHdrHex("3c", 8) + optionsHdrHex("3a", 16) +
+          kRouterAdvertisementHex));
   Cursor cursor(pkt->buf());
   IPv6Hdr hdr(cursor);
   const std::vector<uint8_t> expected{
@@ -445,7 +459,7 @@ TEST(IPv6HdrTest, extensionHeaderChain) {
 // A Router Advertisement behind a 248 octet Hop-by-Hop header (T296568668).
 TEST(IPv6HdrTest, longHopByHopHeader) {
   auto pkt = MockRxPacket::fromHex(
-      ipv6HdrHex("00") + optionsHdrHex("3a", 248) + kRouterAdvertisementHex);
+      ipv6Hex("00", optionsHdrHex("3a", 248) + kRouterAdvertisementHex));
   Cursor cursor(pkt->buf());
   IPv6Hdr hdr(cursor);
   EXPECT_TRUE(hdr.hasExtensionHeaders());
@@ -454,13 +468,13 @@ TEST(IPv6HdrTest, longHopByHopHeader) {
 }
 
 TEST(IPv6HdrTest, fragmentAndAuthenticationHeaders) {
-  auto pkt = MockRxPacket::fromHex(
-      ipv6HdrHex("2c") +
+  auto pkt = MockRxPacket::fromHex(ipv6Hex(
+      "2c",
       // Fragment: Next Header AH, reserved, offset 0, id
       "33 00 00 00 00 00 00 01"
       // AH: Next Header TCP, Payload Len 4 -> (4 + 2) * 4 = 24 octets
       "06 04 00 00 00 00 00 01 00 00 00 01"
-      "00 00 00 00 00 00 00 00 00 00 00 00");
+      "00 00 00 00 00 00 00 00 00 00 00 00"));
   Cursor cursor(pkt->buf());
   IPv6Hdr hdr(cursor);
   const std::vector<uint8_t> expected{
@@ -475,12 +489,12 @@ TEST(IPv6HdrTest, fragmentAndAuthenticationHeaders) {
 // A non-first fragment carries no upper-layer header, so its chain ends at
 // the Fragment header.
 TEST(IPv6HdrTest, nonFirstFragment) {
-  auto pkt = MockRxPacket::fromHex(
-      ipv6HdrHex("2c") +
+  auto pkt = MockRxPacket::fromHex(ipv6Hex(
+      "2c",
       // Fragment: Next Header ICMPv6, reserved, offset 8 octets, id
       "3a 00 00 08 00 00 00 01"
       // Fragment data
-      "00 00 00 00 00 00 00 00");
+      "00 00 00 00 00 00 00 00"));
   Cursor cursor(pkt->buf());
   IPv6Hdr hdr(cursor);
   const std::vector<uint8_t> expected{proto(IP_PROTO::IP_PROTO_IPV6_FRAG)};
@@ -491,9 +505,29 @@ TEST(IPv6HdrTest, nonFirstFragment) {
 }
 
 TEST(IPv6HdrTest, truncatedExtensionHeader) {
-  // Hop-by-Hop header claims 16 octets but only 8 are present.
+  // Hop-by-Hop header claims 16 octets, as does the Payload Length, but only
+  // 8 are present.
   auto pkt =
-      MockRxPacket::fromHex(ipv6HdrHex("00") + "3a 01 01 04 00 00 00 00");
+      MockRxPacket::fromHex(ipv6Hex("00", "3a 01 01 04 00 00 00 00", 16));
   Cursor cursor(pkt->buf());
   EXPECT_THROW({ IPv6Hdr hdr(cursor); }, HdrParseError);
+}
+
+// The chain must fit in the declared payload even when the buffer holds more,
+// e.g. Ethernet padding.
+TEST(IPv6HdrTest, extensionHeaderPastPayloadLength) {
+  auto pkt = MockRxPacket::fromHex(
+      ipv6Hex("00", optionsHdrHex("3a", 16) + kRouterAdvertisementHex, 8));
+  Cursor cursor(pkt->buf());
+  EXPECT_THROW({ IPv6Hdr hdr(cursor); }, HdrParseError);
+}
+
+// Without extension headers Payload Length isn't checked against the cursor,
+// even when the cursor is bounded short of it.
+TEST(IPv6HdrTest, noExtensionHeadersPayloadLengthNotChecked) {
+  auto pkt = MockRxPacket::fromHex(ipv6Hex("3a", kRouterAdvertisementHex, 64));
+  Cursor cursor(pkt->buf(), pkt->buf()->computeChainDataLength());
+  IPv6Hdr hdr(cursor);
+  EXPECT_FALSE(hdr.hasExtensionHeaders());
+  EXPECT_EQ(64, hdr.payloadLength);
 }

@@ -180,7 +180,8 @@ class IPv6Hdr {
    * header chain, e.g. {HOPOPT, IPV6_OPTS, IPV6_ICMP}. Empty unless parsed
    * from a cursor and the packet has extension headers. For a non-first
    * fragment the chain ends at IPV6_FRAG, as the headers that follow it are
-   * only in the first fragment.
+   * only in the first fragment. A chain that runs past payloadLength or the
+   * end of the buffer throws HdrParseError.
    */
   std::vector<uint8_t> nextHeaderChain;
   /*

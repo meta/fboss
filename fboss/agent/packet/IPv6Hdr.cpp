@@ -148,6 +148,16 @@ void IPv6Hdr::parseNextHeaderChain(Cursor cursor) {
   }
   nextHeaderChain.push_back(header);
   try {
+    // Bytes past the declared payload, e.g. Ethernet padding, are not part of
+    // the chain.
+    //
+    // Jumbograms (RFC 2675) declare a payload length of 0 and so fail to
+    // parse. That is intended: a jumbogram's payload exceeds 65,535 octets and
+    // it may not be fragmented, so it needs a link MTU above 65,575 octets
+    // (65,535 + the 40 octet IPv6 header). Ethernet MTUs, jumbo frames
+    // included, are around 9K at most, so a jumbogram never arrives on a
+    // switch port; a packet claiming to be one is malformed.
+    cursor = Cursor(cursor, payloadLength);
     while (isExtensionHeader(header)) {
       auto next = cursor.read<uint8_t>();
       auto hdrExtLen = cursor.read<uint8_t>();
