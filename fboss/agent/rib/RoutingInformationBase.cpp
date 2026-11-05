@@ -546,6 +546,41 @@ void RibRouteTables::updateRib(RouterID vrf, const RibUpdateFn& updateRibFn) {
   }
 }
 
+void RibRouteTables::resolveDependentVrfs(
+    RouterID changedVrf,
+    RouterIDToRouteTable& routeTables,
+    NextHopIDManager* nextHopIDManager,
+    MySidTable* mySidTable,
+    uint32_t ecmpWidth,
+    std::size_t* cyclesDetectedOut,
+    std::vector<RouterID>& vrfsToProgram) {
+  // TODO: next hops are expected to point only into the default VRF; enforce
+  // it, or re-resolve the VRFs depending on any changed VRF
+  if (changedVrf != RouterID(0)) {
+    return;
+  }
+  for (auto& [vrf, routeTable] : routeTables) {
+    if (vrf == RouterID(0)) {
+      continue;
+    }
+    RibRouteUpdater updater(
+        &routeTable.v4NetworkToRoute,
+        &routeTable.v6NetworkToRoute,
+        &routeTable.labelToRoute,
+        nextHopIDManager,
+        mySidTable,
+        ecmpWidth,
+        vrf,
+        routeTable.restrictedInterfaces(),
+        &routeTables);
+    updater.update({}, {}, std::set<ClientID>{});
+    if (cyclesDetectedOut) {
+      *cyclesDetectedOut += updater.cyclesDetected();
+    }
+    vrfsToProgram.push_back(vrf);
+  }
+}
+
 template <typename RibUpdateFn>
 void RibRouteTables::updateRibMySids(const RibUpdateFn& updateRibFn) {
   auto lockedRouteTables = synchronizedRouteTables_.wlock();
@@ -785,6 +820,7 @@ void RibRouteTables::updateRemoteInterfaceRoutes(
     }
     const auto& toDelIter = toDel.find(vrf);
     if (!toAddRoutes.empty() || toDelIter != toDel.end()) {
+      std::vector<RouterID> vrfsToProgram{vrf};
       updateRib(
           vrf,
           [&](auto& routeTable,
@@ -829,8 +865,16 @@ void RibRouteTables::updateRemoteInterfaceRoutes(
                 {{ClientID::REMOTE_INTERFACE_ROUTE, toAddRoutes}},
                 {{ClientID::REMOTE_INTERFACE_ROUTE, toDelRoutes}},
                 {});
+            resolveDependentVrfs(
+                vrf,
+                routeTables,
+                nextHopIDManager,
+                mySidTable,
+                ecmpWidth,
+                nullptr /* cyclesDetectedOut */,
+                vrfsToProgram);
           });
-      updateFib(resolver, vrf, ribToSwitchStateFunc, cookie);
+      updateFib(resolver, vrfsToProgram, ribToSwitchStateFunc, cookie);
     }
   }
 }
@@ -848,6 +892,7 @@ void RibRouteTables::update(
     const RibToSwitchStateFunction& ribToSwitchStateFunc,
     void* cookie,
     std::size_t* cyclesDetectedOut) {
+  std::vector<RouterID> vrfsToProgram{routerID};
   updateRib(
       routerID,
       [&](auto& routeTable,
@@ -917,8 +962,16 @@ void RibRouteTables::update(
         if (cyclesDetectedOut) {
           *cyclesDetectedOut += updater.cyclesDetected();
         }
+        resolveDependentVrfs(
+            routerID,
+            routeTables,
+            nextHopIDManager,
+            mySidTable,
+            ecmpWidth,
+            cyclesDetectedOut,
+            vrfsToProgram);
       });
-  updateFib(resolver, routerID, ribToSwitchStateFunc, cookie);
+  updateFib(resolver, vrfsToProgram, ribToSwitchStateFunc, cookie);
 }
 
 void RibRouteTables::updateFib(

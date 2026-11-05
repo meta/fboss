@@ -527,3 +527,49 @@ TEST(VrfNextHop, ResolvesInNextHopVrf) {
       egressIntf(sw->getState(), kTestVrf, "2001:db8:200::/64"),
       InterfaceID(1));
 }
+
+TEST(VrfNextHop, ReresolvesOnDefaultVrfChange) {
+  auto config = vrfConfig();
+  auto handle = createTestHandle(&config);
+  auto sw = handle->getSw();
+  auto vrfRoute = makeRoute("2001:db8:200::/64", "2001:db8:500::1");
+  NextHopThrift nhop;
+  nhop.address() =
+      facebook::network::toBinaryAddress(folly::IPAddress("2001:db8:500::1"));
+  nhop.vrf() = 0;
+  vrfRoute.nextHopAddrs()->clear();
+  vrfRoute.nextHops() = {nhop};
+  {
+    auto updater = sw->getRouteUpdater();
+    updater.addRoute(kTestVrf, ClientID::BGPD, vrfRoute);
+    updater.program();
+  }
+  EXPECT_EQ(
+      egressIntf(sw->getState(), kTestVrf, "2001:db8:200::/64"), std::nullopt);
+
+  // The next hop becomes reachable in the default VRF
+  {
+    auto updater = sw->getRouteUpdater();
+    updater.addRoute(
+        RouterID(0),
+        ClientID::BGPD,
+        makeRoute("2001:db8:500::/64", "10.0.0.10"));
+    updater.program();
+  }
+  EXPECT_EQ(
+      egressIntf(sw->getState(), kTestVrf, "2001:db8:200::/64"),
+      InterfaceID(1));
+
+  // And unreachable again
+  {
+    auto updater = sw->getRouteUpdater();
+    IpPrefix prefix;
+    prefix.ip() =
+        facebook::network::toBinaryAddress(folly::IPAddress("2001:db8:500::"));
+    prefix.prefixLength() = 64;
+    updater.delRoute(RouterID(0), prefix, ClientID::BGPD);
+    updater.program();
+  }
+  EXPECT_EQ(
+      egressIntf(sw->getState(), kTestVrf, "2001:db8:200::/64"), std::nullopt);
+}

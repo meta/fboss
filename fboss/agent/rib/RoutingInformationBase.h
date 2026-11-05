@@ -397,6 +397,17 @@ class RibRouteTables {
 
   using SynchronizedRouteTables = folly::Synchronized<RouteTables>;
 
+  // After a change in changedVrf, re-resolves the VRFs whose next hops may
+  // resolve in it and adds them to vrfsToProgram
+  static void resolveDependentVrfs(
+      RouterID changedVrf,
+      RouterIDToRouteTable& routeTables,
+      NextHopIDManager* nextHopIDManager,
+      MySidTable* mySidTable,
+      uint32_t ecmpWidth,
+      std::size_t* cyclesDetectedOut,
+      std::vector<RouterID>& vrfsToProgram);
+
   void importFibs(
       const SynchronizedRouteTables::WLockedPtr& lockedRouteTables,
       const std::shared_ptr<MultiSwitchFibInfoMap>& fibsInfoMap,

@@ -83,8 +83,9 @@ class CrossVrfResolutionTest : public ::testing::Test {
                const NextHopIDManager*,
                const MySidTable&,
                void*) {
+      auto& vrfs = fibUpdates_.emplace_back();
       for (const auto& vrfFib : vrfFibs) {
-        ++fibUpdates_[vrfFib.vrf];
+        vrfs.push_back(vrfFib.vrf);
       }
       return StateDelta(nullptr, nullptr);
     };
@@ -104,6 +105,24 @@ class CrossVrfResolutionTest : public ::testing::Test {
         nullptr);
   }
 
+  void delRoute(RouterID vrf, const std::string& prefix) {
+    auto network = folly::IPAddress::createNetwork(prefix);
+    IpPrefix ipPrefix;
+    ipPrefix.ip() = facebook::network::toBinaryAddress(network.first);
+    ipPrefix.prefixLength() = network.second;
+    rib_.update(
+        scopeResolver(),
+        vrf,
+        ClientID::BGPD,
+        AdminDistance::EBGP,
+        {},
+        {ipPrefix},
+        false,
+        "delete",
+        fibUpdate(),
+        nullptr);
+  }
+
   RouteNextHopSet nextHops(RouterID vrf, const std::string& addr) {
     auto routeAndNhops =
         rib_.getRouteAndNextHops(folly::IPAddressV6(addr), vrf, false);
@@ -112,7 +131,8 @@ class CrossVrfResolutionTest : public ::testing::Test {
 
   RoutingInformationBase::RouterIDAndNetworkToInterfaceRoutes interfaceRoutes_;
   RoutingInformationBase rib_;
-  std::map<RouterID, int> fibUpdates_;
+  // VRFs of each FIB update
+  std::vector<std::vector<RouterID>> fibUpdates_;
 };
 
 TEST_F(CrossVrfResolutionTest, UnknownNextHopVrfUnresolved) {
@@ -143,4 +163,39 @@ TEST_F(CrossVrfResolutionTest, RemoteInterfaceRouteKeepsCrossVrfNextHop) {
       fibUpdate(),
       nullptr);
   EXPECT_EQ(nextHops(kTenantVrf, "2001:db8:200::1"), expected);
+}
+
+TEST_F(CrossVrfResolutionTest, RemoteInterfaceRouteInDefaultVrfReresolves) {
+  addRoute(
+      kTenantVrf,
+      makeRoute("2001:db8:200::/64", makeNextHop("2001:db8:77::10", 0)));
+  EXPECT_TRUE(nextHops(kTenantVrf, "2001:db8:200::1").empty());
+
+  rib_.updateRemoteInterfaceRoutes(
+      scopeResolver(),
+      {{kVrf0,
+        {{folly::IPAddress::createNetwork("2001:db8:77::/64"),
+          {InterfaceID(77), folly::IPAddress("2001:db8:77::1")}}}}},
+      {},
+      fibUpdate(),
+      nullptr);
+  auto nhops = nextHops(kTenantVrf, "2001:db8:200::1");
+  ASSERT_EQ(nhops.size(), 1);
+  EXPECT_EQ(nhops.begin()->intf(), InterfaceID(77));
+}
+
+TEST_F(CrossVrfResolutionTest, DefaultVrfChangeProgramsOtherVrfs) {
+  using FibUpdates = std::vector<std::vector<RouterID>>;
+  fibUpdates_.clear();
+  addRoute(
+      kVrf0,
+      makeRoute(
+          "2001:db8:300::/64", makeNextHop("2001:db8:1::10", std::nullopt)));
+  EXPECT_EQ(fibUpdates_, (FibUpdates{{kVrf0, kTenantVrf}}));
+
+  fibUpdates_.clear();
+  addRoute(
+      kTenantVrf,
+      makeRoute("2001:db8:200::/64", makeNextHop("2001:db8:1::10", 0)));
+  EXPECT_EQ(fibUpdates_, (FibUpdates{{kTenantVrf}}));
 }
