@@ -37,6 +37,8 @@ void Utils::printHostDetails() {
   std::cout << platformUtils_.execCommand("hostname").second << std::endl;
   std::cout << "#### Linux Kernel Version ####" << std::endl;
   std::cout << platformUtils_.execCommand("uname -r").second << std::endl;
+  std::cout << "#### Loaded Kernel Modules ####" << std::endl;
+  std::cout << platformUtils_.execCommand("lsmod").second << std::endl;
   std::cout << "#### UPTIME ####" << std::endl;
   std::cout << platformUtils_.execCommand("uptime").second << std::endl;
   std::cout << platformUtils_.execCommand("last reboot").second << std::endl;
