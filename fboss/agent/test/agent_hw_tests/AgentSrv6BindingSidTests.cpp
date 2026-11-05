@@ -631,6 +631,10 @@ class AgentSrv6BindingSidTest : public AgentHwTest {
     tunnelList.push_back(
         utility::makeSrv6TunnelConfig(
             "srv6Tunnel0", InterfaceID(cfg.interfaces()[0].intfID().value())));
+    // The decap tunnel does not take effect on Cisco (Leaba), whose SDK does
+    // not create SRv6 decap tunnels.
+    tunnelList.push_back(
+        utility::makeSrv6DecapTunnelConfig("srv6DecapTunnel0"));
     cfg.srv6Tunnels() = tunnelList;
   }
 };
