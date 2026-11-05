@@ -34,6 +34,13 @@ DEFINE_string(
     "platform_descriptor.json are discovered recursively and must also contain "
     "platform_mapping.json.");
 
+// Defined beside the registry rather than in AgentFeatures so every registry
+// user registers it (qsfp_service does not link the agent flag library).
+DEFINE_bool(
+    hwrev_state1_substate1_respin0,
+    false,
+    "Chassis hardware revision: production state 1, sub-state 1, re-spin 0");
+
 namespace fs = std::filesystem;
 
 namespace facebook::fboss {
