@@ -80,6 +80,7 @@ target_link_libraries(bsp_test_environment
 add_executable(bsp_tests
   fboss/platform/bsp_tests/BspTest.cpp
   fboss/platform/bsp_tests/BspTestRunner.cpp
+  fboss/platform/bsp_tests/CableCartridgesTests.cpp
   fboss/platform/bsp_tests/CdevTests.cpp
   fboss/platform/bsp_tests/GpioTests.cpp
   fboss/platform/bsp_tests/KmodTests.cpp
