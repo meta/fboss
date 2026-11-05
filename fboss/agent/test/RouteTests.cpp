@@ -241,6 +241,51 @@ class RouteTest : public ::testing::Test {
   std::unique_ptr<HwTestHandle> handle_;
 };
 
+TEST_F(RouteTest, routeDetailsOfNextHopResolvedInNextLevel) {
+  RoutePrefixV6 pfx6{folly::IPAddressV6("2001::"), 64};
+  RouteV6 route(
+      RouteV6::makeThrift(
+          pfx6,
+          kClientA,
+          RouteNextHopEntry(makeNextHops({"2::10"}), DISTANCE)));
+  RouteNextHopSet nhops{
+      ResolvedNextHop(
+          folly::IPAddress("2::10"), InterfaceID(1), UCMP_DEFAULT_WEIGHT),
+      ResolvedNextHop(
+          folly::IPAddress("2001:db8:500::1"),
+          std::nullopt,
+          UCMP_DEFAULT_WEIGHT,
+          std::nullopt,
+          std::nullopt,
+          std::nullopt,
+          std::nullopt,
+          {},
+          TunnelType::VXLAN,
+          "vx0",
+          std::nullopt,
+          NextHopRole::PRIMARY,
+          RouterID(0),
+          true /* resolvedInNextLevel */)};
+  ClientNextHopsResolver readInline = [](const RouteNextHopEntry& entry) {
+    return entry.getNextHopSet();
+  };
+
+  auto fwdInfo =
+      *route.toRouteDetails(nhops, std::nullopt, readInline).fwdInfo();
+
+  IfAndIP viaInterface;
+  viaInterface.interfaceID() = 1;
+  viaInterface.ip() = toBinaryAddress(folly::IPAddress("2::10"));
+  IfAndIP inNextLevel;
+  inNextLevel.ip() = toBinaryAddress(folly::IPAddress("2001:db8:500::1"));
+  inNextLevel.vrf() = 0;
+  inNextLevel.resolvedInNextLevel() = true;
+  std::vector<IfAndIP> expected{viaInterface, inNextLevel};
+  std::sort(fwdInfo.begin(), fwdInfo.end());
+  std::sort(expected.begin(), expected.end());
+  EXPECT_EQ(fwdInfo, expected);
+}
+
 TEST_F(RouteTest, routeApi) {
   RoutePrefixV6 pfx6{folly::IPAddressV6("2001::"), 64};
   RouteNextHopSet nhops = makeNextHops({"2::10"});

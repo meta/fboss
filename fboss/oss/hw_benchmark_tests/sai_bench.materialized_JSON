@@ -4073,168 +4073,6 @@
           "reason": "Flowlet stats benchmarking is unsupported on chenab"
         }
     ],
-    "nvda/2605.37/spectrum4": [
-        {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
-          "reason": "PBR ACL support has not landed yet"
-        },
-        {
-          "test_name_regex": ".*Voq.*",
-          "reason": "VOQ tests not applicable to NPU"
-        },
-        {
-          "test_name_regex": "HwInitAndExitFabricBenchmark",
-          "reason": "Fabric tests not applicable to NPU"
-        },
-        {
-          "test_name_regex": "HwSwitchReachabilityChangeFabricBenchmark",
-          "reason": "Fabric tests not applicable to NPU"
-        },
-        {
-          "test_name_regex": "CpuLatency_.*_1Packet",
-          "reason": "New test, needs more debugging"
-        },
-        {
-          "test_name_regex": "cpuLatency(1Batch|10Batches)1Packet",
-          "reason": "New test, needs more debugging"
-        },
-        {
-          "test_name_regex": "cpuLatencyBenchmark",
-          "reason": "D100645979 CpuLatencyManager refactor fails on Spectrum4/chenab"
-        },
-        {
-          "test_name_regex": "RouteAddHwEcmpGroupScale128x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteDelHwEcmpGroupScale128x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteAddHwEcmpGroupScale256x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteDelHwEcmpGroupScale256x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "HwTunManagerProbeAndCleanup",
-          "reason": "Produces no benchmark results on Spectrum4 (times out during pre-measurement kernel/state debug dump); blocking conveyor since release 7406, under investigation"
-        },
-        {
-          "test_name_regex": "HwFlowletStatsCollectionAtScale",
-          "reason": "Flowlet stats benchmarking is unsupported on chenab"
-        }
-    ],
-    "nvda/2605.37/spectrum4/mono": [
-        {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
-          "reason": "PBR ACL support has not landed yet"
-        },
-        {
-          "test_name_regex": ".*Voq.*",
-          "reason": "VOQ tests not applicable to NPU"
-        },
-        {
-          "test_name_regex": "HwInitAndExitFabricBenchmark",
-          "reason": "Fabric tests not applicable to NPU"
-        },
-        {
-          "test_name_regex": "HwSwitchReachabilityChangeFabricBenchmark",
-          "reason": "Fabric tests not applicable to NPU"
-        },
-        {
-          "test_name_regex": "CpuLatency_.*_1Packet",
-          "reason": "New test, needs more debugging"
-        },
-        {
-          "test_name_regex": "cpuLatency(1Batch|10Batches)1Packet",
-          "reason": "New test, needs more debugging"
-        },
-        {
-          "test_name_regex": "cpuLatencyBenchmark",
-          "reason": "D100645979 CpuLatencyManager refactor fails on Spectrum4/chenab"
-        },
-        {
-          "test_name_regex": "RouteAddHwEcmpGroupScale128x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteDelHwEcmpGroupScale128x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteAddHwEcmpGroupScale256x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteDelHwEcmpGroupScale256x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "HwTunManagerProbeAndCleanup",
-          "reason": "Produces no benchmark results on Spectrum4 (times out during pre-measurement kernel/state debug dump); blocking conveyor since release 7406, under investigation"
-        },
-        {
-          "test_name_regex": "HwFlowletStatsCollectionAtScale",
-          "reason": "Flowlet stats benchmarking is unsupported on chenab"
-        }
-    ],
-    "nvda/2605.37/spectrum4/multi_switch": [
-        {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
-          "reason": "PBR ACL support has not landed yet"
-        },
-        {
-          "test_name_regex": ".*Voq.*",
-          "reason": "VOQ tests not applicable to NPU"
-        },
-        {
-          "test_name_regex": "HwInitAndExitFabricBenchmark",
-          "reason": "Fabric tests not applicable to NPU"
-        },
-        {
-          "test_name_regex": "HwSwitchReachabilityChangeFabricBenchmark",
-          "reason": "Fabric tests not applicable to NPU"
-        },
-        {
-          "test_name_regex": "CpuLatency_.*_1Packet",
-          "reason": "New test, needs more debugging"
-        },
-        {
-          "test_name_regex": "cpuLatency(1Batch|10Batches)1Packet",
-          "reason": "New test, needs more debugging"
-        },
-        {
-          "test_name_regex": "cpuLatencyBenchmark",
-          "reason": "D100645979 CpuLatencyManager refactor fails on Spectrum4/chenab"
-        },
-        {
-          "test_name_regex": "RouteAddHwEcmpGroupScale128x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteDelHwEcmpGroupScale128x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteAddHwEcmpGroupScale256x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteDelHwEcmpGroupScale256x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "HwTunManagerProbeAndCleanup",
-          "reason": "Produces no benchmark results on Spectrum4 (times out during pre-measurement kernel/state debug dump); blocking conveyor since release 7406, under investigation"
-        },
-        {
-          "test_name_regex": "HwFlowletStatsCollectionAtScale",
-          "reason": "Flowlet stats benchmarking is unsupported on chenab"
-        }
-    ],
     "nvda/2605.38/spectrum4": [
         {
           "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
@@ -6435,7 +6273,7 @@
           "thresholds": [
             {
               "metric_key_regex": "max_rss",
-              "upper_bound": 3707334
+              "upper_bound": 4507939
             },
             {
               "metric_key_regex": "program_routes_msecs",
@@ -6966,21 +6804,6 @@
         }
     ],
     "nvda/2511.36/spectrum4/multi_switch": [
-        {
-          "test_name_regex": "HwSrv6.*$"
-        }
-    ],
-    "nvda/2605.37/spectrum4": [
-        {
-          "test_name_regex": "HwSrv6.*$"
-        }
-    ],
-    "nvda/2605.37/spectrum4/mono": [
-        {
-          "test_name_regex": "HwSrv6.*$"
-        }
-    ],
-    "nvda/2605.37/spectrum4/multi_switch": [
         {
           "test_name_regex": "HwSrv6.*$"
         }

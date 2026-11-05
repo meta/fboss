@@ -51,11 +51,23 @@
     "rack": {
       "platform_mapping_name": "leh800bcls_rack"
     },
+    "rack_mmu_lossless": {
+      "platform_mapping_name": "leh800bcls_rack",
+      "asic_config_params": {
+        "mmu_lossless": true
+      }
+    },
     "test_fixture": {
       "platform_mapping_name": "leh800bcls_test_fixture"
     },
     "osfp_tray": {
       "platform_mapping_name": "leh800bcls_osfp_tray"
+    },
+    "osfp_tray_mmu_lossless": {
+      "platform_mapping_name": "leh800bcls_osfp_tray",
+      "asic_config_params": {
+        "mmu_lossless": true
+      }
     }
   }
 }

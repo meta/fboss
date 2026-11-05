@@ -49,6 +49,7 @@ bool Agera3PhyAsic::isSupported(Feature feature) const {
     case HwAsic::Feature::SRV6_MYSID_DISCARD_COUNTER:
     case HwAsic::Feature::SRV6_MYSID_RESOURCE_COUNTER:
     case HwAsic::Feature::SRV6_BINDING_USID_UA_USD:
+    case HwAsic::Feature::SRV6_DECAP_TUNNEL:
     case HwAsic::Feature::PBR_ACL:
     case HwAsic::Feature::DEVICE_WATERMARK_SUPPORT:
     case HwAsic::Feature::ECN_PROBABILISTIC_MARKING:

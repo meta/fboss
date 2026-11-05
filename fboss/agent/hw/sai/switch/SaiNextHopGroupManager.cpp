@@ -263,6 +263,12 @@ SaiNextHopGroupManager::incRefOrAddNextHopGroup(const SaiNextHopGroupKey& key) {
       srv6SidListMap;
 #endif
   for (const auto& swNextHop : memberNhops) {
+    if (swNextHop.resolvedInNextLevel()) {
+      // TODO: program next hops resolved in the next level
+      throw FbossError(
+          "Next hops resolved in the next level are not supported: ",
+          swNextHop.addr().str());
+    }
     // Compute the sai id of the next hop's router interface
     const InterfaceID interfaceId = swNextHop.intf();
     auto routerInterfaceHandle =

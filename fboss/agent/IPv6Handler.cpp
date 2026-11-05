@@ -1054,6 +1054,11 @@ void IPv6Handler::resolveDestAndHandlePacket(
   auto interfaces = state->getInterfaces();
 
   for (auto nexthop : nexthops) {
+    // TODO: send packet too big for next hops resolved in the next level, using
+    // the underlay MTU less the tunnel overhead
+    if (nexthop.resolvedInNextLevel()) {
+      continue;
+    }
     // get interface needed to reach next hop
     auto intf = interfaces->getNodeIf(nexthop.intf());
     if (intf) {
@@ -1120,6 +1125,11 @@ void IPv6Handler::sendMulticastNeighborSolicitations(
 
   auto intfs = state->getInterfaces();
   for (auto nh : nhs) {
+    // TODO: resolve the underlay neighbors of next hops resolved in the next
+    // level
+    if (nh.resolvedInNextLevel()) {
+      continue;
+    }
     auto intf = intfs->getNodeIf(nh.intf());
     if (intf) {
       if (nh.addr().isV6()) {

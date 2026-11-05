@@ -12,24 +12,12 @@ namespace {
 
 facebook::fboss::StateDelta updateFibForRemoteConnectedRoutes(
     const facebook::fboss::SwitchIdScopeResolver* resolver,
-    facebook::fboss::RouterID vrf,
-    const facebook::fboss::IPv4NetworkToRouteMap& v4NetworkToRoute,
-    const facebook::fboss::IPv6NetworkToRouteMap& v6NetworkToRoute,
-    const facebook::fboss::LabelToRouteMap& labelToRoute,
+    const std::vector<facebook::fboss::RibVrfFib>& vrfFibs,
     facebook::fboss::NextHopIDManager const* nextHopIDManager,
     const facebook::fboss::MySidTable& mySidTable,
-    void* cookie,
-    bool vrfDeleted) {
+    void* cookie) {
   facebook::fboss::RibToSwitchStateUpdater ribToSwitchStateUpdater(
-      resolver,
-      vrf,
-      v4NetworkToRoute,
-      v6NetworkToRoute,
-      labelToRoute,
-      nextHopIDManager,
-      mySidTable,
-      facebook::fboss::RibToSwitchStateUpdater::kAllActions,
-      vrfDeleted);
+      resolver, vrfFibs, nextHopIDManager, mySidTable);
 
   auto nextStatePtr =
       static_cast<std::shared_ptr<facebook::fboss::SwitchState>*>(cookie);

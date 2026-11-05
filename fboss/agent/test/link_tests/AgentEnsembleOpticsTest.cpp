@@ -77,6 +77,7 @@ void validateVdm(
         // relaxed CWDM4 SNR minimum instead of the PAM4 one.
         auto snrMinThreshold =
             ((moduleMediaInterface == MediaInterfaceCode::FR4_2x400G ||
+              moduleMediaInterface == MediaInterfaceCode::FR4_2x400G_IB ||
               moduleMediaInterface == MediaInterfaceCode::FR4_LITE_2x400G) &&
              portMediaInterface == MediaInterfaceCode::CWDM4_100G)
             ? thresholds.cwdm4Snr.minThreshold

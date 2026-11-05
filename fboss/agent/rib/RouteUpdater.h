@@ -209,7 +209,7 @@ class RibRouteUpdater {
 
   template <typename AddressT>
   void getFwdInfoFromNhop(
-      NetworkToRouteMap<AddressT>* routes,
+      typename NetworkToRouteMap<AddressT>::Iterator it,
       const AddressT& nh,
       const std::optional<LabelForwardingAction>& labelAction,
       bool* hasToCpu,
@@ -223,6 +223,12 @@ class RibRouteUpdater {
       NextHopRole role,
       const std::optional<folly::MacAddress>& overlayDstMac,
       std::optional<RouteCounterID>* inheritedCounterID,
+      RouteNextHopSet& fwd);
+
+  template <typename AddressT>
+  void resolveInNextLevel(
+      typename NetworkToRouteMap<AddressT>::Iterator it,
+      const NextHop& nh,
       RouteNextHopSet& fwd);
 
   template <typename AddressT>
@@ -264,7 +270,9 @@ class RibRouteUpdater {
     RouteNextHopSet nextHops;
     std::optional<RouteCounterID> counterID;
   };
-  std::map<RouteNextHopSet, ResolvedForwardInfo> unresolvedToResolvedNhops_;
+  // Keyed by route level too, since next hops resolve differently per level
+  std::map<std::pair<int32_t, RouteNextHopSet>, ResolvedForwardInfo>
+      unresolvedToResolvedNhops_;
   RibRouteWeightNormalizer weightNormalizer_;
 };
 

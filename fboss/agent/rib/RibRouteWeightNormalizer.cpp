@@ -122,7 +122,7 @@ RouteNextHopSet RibRouteWeightNormalizer::getNormalizedNexthops(
   for (const auto& nhop : nhops) {
     resolvedNexthops.emplace_back(
         nhop.addr(),
-        nhop.intf(),
+        nhop.intfID(),
         nhop.weight(),
         nhop.labelForwardingAction(),
         nhop.disableTTLDecrement(),
@@ -134,6 +134,7 @@ RouteNextHopSet RibRouteWeightNormalizer::getNormalizedNexthops(
         nhop.cost(),
         nhop.role(),
         nhop.vrf(),
+        nhop.resolvedInNextLevel(),
         nhop.overlayDstMac());
   }
   normalizeWeightsForNexthops(resolvedNexthops);

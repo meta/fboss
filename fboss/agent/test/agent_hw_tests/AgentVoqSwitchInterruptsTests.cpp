@@ -2,6 +2,7 @@
 #include <fmt/format.h>
 #include <algorithm>
 #include <chrono>
+#include <filesystem>
 #include <string_view>
 
 #include <folly/FileUtil.h>
@@ -93,8 +94,11 @@ class AgentVoqSwitchSdkDumpRateLimitTest : public AgentVoqSwitchInterruptTest {
     // The rate limiter has nothing to suppress unless the SDK is dumping.
     FLAGS_skip_sdk_reg_dump = false;
     FLAGS_sdk_dump_rate_limit_window_ms = windowSecs() * 1000;
-    // Keep the dump off /var/facebook so the test can read it back.
-    FLAGS_sdk_reg_dump_path_prefix = "/tmp/sdk_reg_dump_rate_limit";
+    // Keep the dump off /var/facebook so the test can read it back. The temp
+    // dir, not a fixed /tmp, since the hw agent may run with its own /tmp.
+    FLAGS_sdk_reg_dump_path_prefix =
+        (std::filesystem::temp_directory_path() / "sdk_reg_dump_rate_limit")
+            .string();
   }
 
  protected:

@@ -152,6 +152,9 @@ perform_build() {
     elif [ -n "${SAI_TAJO_IMPL:-}" ]; then
       sai_name="sai-tajo-${SAI_SDK_VERSION}"
       npu_flags+=("--npu-sai-impl" "SAI_TAJO_IMPL")
+    elif [ -n "${CHENAB_SAI_SDK:-}" ]; then
+      sai_name="sai-chenab-${SAI_SDK_VERSION}"
+      npu_flags+=("--npu-sai-impl" "CHENAB_SAI_SDK")
     else
       sai_name="sai-unknown-${SAI_SDK_VERSION}"
     fi

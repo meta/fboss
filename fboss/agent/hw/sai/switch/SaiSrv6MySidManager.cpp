@@ -104,6 +104,21 @@ SaiMySidEntryTraits::CreateAttributes getMySidCreateAttributes(
   return SaiMySidEntryTraits::CreateAttributes{
       endpointBehavior, endpointBehaviorFlavor, nextHopId, vrId, packetAction};
 }
+
+bool shouldProgramSrv6DecapTunnel(const MySid& mySid, const HwAsic& asic) {
+  if (!asic.isSupported(HwAsic::Feature::SRV6_DECAP_TUNNEL)) {
+    return false;
+  }
+  switch (mySid.getType()) {
+    case MySidType::DECAPSULATE_AND_LOOKUP:
+    case MySidType::BINDING_MICRO_SID:
+      return true;
+    case MySidType::ADJACENCY_MICRO_SID:
+    case MySidType::NODE_MICRO_SID:
+      return false;
+  }
+  return false;
+}
 } // namespace
 
 SaiMySidEntryTraits::AdapterHostKey getMySidAdapterHostKey(
@@ -280,7 +295,7 @@ void SaiSrv6MySidManager::addMySidEntry(
 
   std::shared_ptr<SaiObject<SaiSrv6TunnelTraits>> decapTunnel;
 #if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)
-  if (mySid->getType() == MySidType::DECAPSULATE_AND_LOOKUP) {
+  if (shouldProgramSrv6DecapTunnel(*mySid, *platform_->getAsic())) {
     const auto* decapTunnelHandle =
         managerTable_->srv6TunnelManager().getDecapTunnelHandle();
     if (decapTunnelHandle && decapTunnelHandle->tunnel) {

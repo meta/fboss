@@ -231,14 +231,10 @@ StateDelta mySidToSwitchStateUpdate(
 
 StateDelta noOpRibToSwitchStateUpdate(
     const SwitchIdScopeResolver* /*resolver*/,
-    RouterID /*vrf*/,
-    const IPv4NetworkToRouteMap& /*v4NetworkToRoute*/,
-    const IPv6NetworkToRouteMap& /*v6NetworkToRoute*/,
-    const LabelToRouteMap& /*labelToRoute*/,
+    const std::vector<RibVrfFib>& /*vrfFibs*/,
     const NextHopIDManager* /*nextHopIDManager*/,
     const MySidTable& /*mySidTable*/,
-    void* cookie,
-    bool /*vrfDeleted*/) {
+    void* cookie) {
   auto switchState =
       static_cast<std::shared_ptr<facebook::fboss::SwitchState>*>(cookie);
   return StateDelta(*switchState, *switchState);
@@ -397,24 +393,17 @@ StateDelta mySidToSwitchStateUpdateViaRibUpdater(
 // re-resolution to be observable in SwitchState.
 StateDelta routeToSwitchStateUpdateViaRibUpdater(
     const SwitchIdScopeResolver* resolver,
-    RouterID vrf,
-    const IPv4NetworkToRouteMap& v4NetworkToRoute,
-    const IPv6NetworkToRouteMap& v6NetworkToRoute,
-    const LabelToRouteMap& labelToRoute,
+    const std::vector<RibVrfFib>& vrfFibs,
     const NextHopIDManager* nextHopIDManager,
     const MySidTable& mySidTable,
-    void* cookie,
-    bool /*vrfDeleted*/) {
+    void* cookie) {
   auto switchState =
       static_cast<std::shared_ptr<facebook::fboss::SwitchState>*>(cookie);
   auto oldState = *switchState;
 
   RibToSwitchStateUpdater updater(
       resolver,
-      vrf,
-      v4NetworkToRoute,
-      v6NetworkToRoute,
-      labelToRoute,
+      vrfFibs,
       nextHopIDManager,
       mySidTable,
       RibToSwitchStateUpdater::UPDATE_MYSID);

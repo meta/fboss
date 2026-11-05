@@ -1349,6 +1349,90 @@ TEST_F(CmisTest, cmis2x400GFr4TransceiverInfoTest) {
   EXPECT_TRUE(info.tcvrState()->errorStates()->empty());
 }
 
+// AppSel 1 (IB NDR) and AppSel 6 (800GAUI-8) also advertise 400G-FR4 media from
+// lane 0, but a 400G port must use AppSel 7 (400GAUI-4-L)
+TEST_F(CmisTest, selectApplicationFieldSkipsInfiniBandAndOtherLaneCounts) {
+  auto xcvr = overrideCmisModule<Cmis2x400GFr4IbFirstTransceiver>(
+      TransceiverID(1), TransceiverModuleIdentifier::OSFP);
+  for (uint8_t startHostLane : {0, 4}) {
+    auto field = xcvr->selectApplicationField(
+        static_cast<uint8_t>(SMFMediaInterfaceCode::FR4_400G),
+        startHostLane,
+        4);
+    ASSERT_NE(field, std::nullopt);
+    EXPECT_EQ(field->ApSelCode, 7);
+  }
+}
+
+// The module is in AppSel 1 (IB NDR), which has the same media interface as the
+// AppSel 7 (400GAUI-4-L) application 400G ports should move it to
+TEST_F(CmisTest, programTransceiverMovesOffApplicationWithSameMedia) {
+  auto xcvr = overrideCmisModule<Cmis2x400GFr4IbFirstTransceiver>(
+      TransceiverID(1), TransceiverModuleIdentifier::OSFP);
+  ProgramTransceiverState programTcvrState;
+  for (uint8_t startHostLane : {0, 4}) {
+    TransceiverPortState portState;
+    portState.portName = fmt::format("eth1/1/{}", startHostLane + 1);
+    portState.startHostLane = startHostLane;
+    portState.speed = cfg::PortSpeed::FOURHUNDREDG;
+    portState.numHostLanes = 4;
+    programTcvrState.ports.emplace(portState.portName, portState);
+  }
+
+  xcvr->programTransceiver(programTcvrState, false);
+
+  // AppSel 7 with datapath IDs 0 and 4
+  const std::vector<uint8_t> appSel7ActiveAppSel = {
+      0x70, 0x70, 0x70, 0x70, 0x78, 0x78, 0x78, 0x78};
+  EXPECT_EQ(
+      readUpperPage(lastQsfpImpl(), kPage11h, kActiveAppSelOffset, 8),
+      appSel7ActiveAppSel);
+}
+
+TEST_F(CmisTest, cmisNvidia2x400GFr4TransceiverInfoTest) {
+  auto xcvrID = TransceiverID(1);
+  auto xcvr = overrideCmisModule<CmisNvidia2x400GFr4Transceiver>(
+      xcvrID, TransceiverModuleIdentifier::OSFP);
+  const auto& info = xcvr->getTransceiverInfo();
+  EXPECT_EQ(
+      info.tcvrState()->transceiverManagementInterface(),
+      TransceiverManagementInterface::CMIS);
+  EXPECT_EQ(xcvr->numHostLanes(), 8);
+  EXPECT_EQ(xcvr->numMediaLanes(), 8);
+  EXPECT_EQ(
+      info.tcvrState()->moduleMediaInterface(),
+      MediaInterfaceCode::FR4_2x400G_IB);
+  for (auto& media : *info.tcvrState()->settings()->mediaInterface()) {
+    EXPECT_EQ(media.media()->get_smfCode(), SMFMediaInterfaceCode::FR4_400G);
+    EXPECT_EQ(media.code(), MediaInterfaceCode::FR4_400G);
+  }
+}
+
+// The module powers up in AppSel 1 (IB NDR); 400G ports should move it to
+// AppSel 4 (400GAUI-4-L)
+TEST_F(CmisTest, cmisNvidia2x400GFr4ProgramsEthernetApplication) {
+  auto xcvr = overrideCmisModule<CmisNvidia2x400GFr4Transceiver>(
+      TransceiverID(1), TransceiverModuleIdentifier::OSFP);
+  ProgramTransceiverState programTcvrState;
+  for (uint8_t startHostLane : {0, 4}) {
+    TransceiverPortState portState;
+    portState.portName = fmt::format("eth1/1/{}", startHostLane + 1);
+    portState.startHostLane = startHostLane;
+    portState.speed = cfg::PortSpeed::FOURHUNDREDG;
+    portState.numHostLanes = 4;
+    programTcvrState.ports.emplace(portState.portName, portState);
+  }
+
+  xcvr->programTransceiver(programTcvrState, false);
+
+  // AppSel 4 with datapath IDs 0 and 4
+  const std::vector<uint8_t> appSel4ActiveAppSel = {
+      0x40, 0x40, 0x40, 0x40, 0x48, 0x48, 0x48, 0x48};
+  EXPECT_EQ(
+      readUpperPage(lastQsfpImpl(), kPage11h, kActiveAppSelOffset, 8),
+      appSel4ActiveAppSel);
+}
+
 TEST_F(CmisTest, cmis2x400GFr4LiteTransceiverInfoTest) {
   auto xcvrID = TransceiverID(1);
   auto xcvr = overrideCmisModule<Cmis2x400GFr4LiteTransceiver>(
@@ -3247,6 +3331,42 @@ TEST_F(CmisTest, cmisVdmForOdsCaptureIsAsync) {
       qsfpImpl->getUpperPageWriteCount(
           kPage2f, kVdmLatchRequestUpperPageOffset),
       baseFreezeWrites + 2);
+  EXPECT_TRUE(xcvr->getTransceiverInfo()
+                  .tcvrStats()
+                  ->vdmPerfMonitorStatsForOds()
+                  .has_value());
+}
+
+// The NVIDIA module's only VDM observables are eSNR, which aren't statistics,
+// so a capture reads them in the triggering refresh without a freeze
+TEST_F(CmisTest, cmisVdmCaptureWithoutStatisticsSkipsFreeze) {
+  auto xcvrID = TransceiverID(1);
+  auto xcvr = overrideCmisModule<CmisNvidia2x400GFr4Transceiver>(
+      xcvrID, TransceiverModuleIdentifier::OSFP);
+  auto* qsfpImpl = lastQsfpImpl();
+  ASSERT_TRUE(xcvr->isVdmSupported());
+  ASSERT_FALSE(xcvr->hasVdmStatisticsObservables());
+  ProgramTransceiverState programTcvrState;
+  for (uint8_t startHostLane : {0, 4}) {
+    TransceiverPortState portState;
+    portState.portName = fmt::format("eth1/1/{}", startHostLane + 1);
+    portState.startHostLane = startHostLane;
+    portState.speed = cfg::PortSpeed::FOURHUNDREDG;
+    portState.numHostLanes = 4;
+    programTcvrState.ports.emplace(portState.portName, portState);
+  }
+  xcvr->programTransceiver(programTcvrState, false);
+  const int baseFreezeWrites = qsfpImpl->getUpperPageWriteCount(
+      kPage2f, kVdmLatchRequestUpperPageOffset);
+
+  std::vector<int32_t> xcvrIds = {xcvrID};
+  transceiverManager_->triggerVdmStatsCapture(xcvrIds);
+  transceiverManager_->refreshStateMachines();
+
+  EXPECT_EQ(
+      qsfpImpl->getUpperPageWriteCount(
+          kPage2f, kVdmLatchRequestUpperPageOffset),
+      baseFreezeWrites);
   EXPECT_TRUE(xcvr->getTransceiverInfo()
                   .tcvrStats()
                   ->vdmPerfMonitorStatsForOds()

@@ -91,8 +91,11 @@ std::shared_ptr<SwitchState> ForwardingInformationBaseUpdater::operator()(
   auto newFibV6 = createUpdatedFib(
       v6NetworkToRoute_, previousFibContainer->getFibV6(), nextState);
 
-  auto newLabelFib = createUpdatedLabelFib(
-      labelToRoute_, state->getLabelForwardingInformationBase());
+  // The label FIB is global and belongs to the default VRF
+  auto newLabelFib = vrf_ == RouterID(0)
+      ? createUpdatedLabelFib(
+            labelToRoute_, state->getLabelForwardingInformationBase())
+      : nullptr;
 
   if (!newFibV4 && !newFibV6 && !newLabelFib) {
     // return nextState in case we modified state above to insert new VRF
