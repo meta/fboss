@@ -285,6 +285,11 @@ class AgentSrv6BindingSidTest : public AgentHwTest {
     auto outerTc = ecnMarked ? static_cast<uint8_t>((kDscp << 2) | 0x3)
                              : static_cast<uint8_t>(kDscp << 2);
 
+    // The binding SID's decap tunnel is UNIFORM, so the ASIC copies the outer
+    // TTL and DSCP/ECN onto the inner header before the route lookup decrements
+    // the TTL. Send an inner header that already carries the outer DSCP/ECN, as
+    // in production, and an outer TTL one above the inner, so the received
+    // inner packet matches the one sent on every vendor.
     std::unique_ptr<TxPacket> txPacket;
     if (isV4) {
       txPacket = utility::makeIpInIpTxPacket(
@@ -299,9 +304,12 @@ class AgentSrv6BindingSidTest : public AgentHwTest {
           8000,
           8001,
           outerTc,
-          0,
+          kDscp,
+          kHopLimit + 1,
           kHopLimit,
-          64);
+          0 /* outerFlowLabel */,
+          std::nullopt /* payload */,
+          static_cast<uint8_t>(outerTc & 0x3) /* innerEcn */);
     } else {
       txPacket = utility::makeIpInIpTxPacket(
           this->getSw(),
@@ -315,9 +323,9 @@ class AgentSrv6BindingSidTest : public AgentHwTest {
           8000,
           8001,
           outerTc,
-          0,
-          kHopLimit,
-          64);
+          outerTc,
+          kHopLimit + 1,
+          kHopLimit);
     }
 
     auto originalFrame = utility::makeEthFrame(*txPacket);
@@ -383,7 +391,7 @@ class AgentSrv6BindingSidTest : public AgentHwTest {
     EXPECT_TRUE(sidMatch) << "Outer DA " << v6Hdr.dstAddr
                           << " does not match any expected SID";
 
-    EXPECT_EQ(v6Hdr.hopLimit, kHopLimit - 1);
+    EXPECT_EQ(v6Hdr.hopLimit, kHopLimit);
     EXPECT_EQ(v6Hdr.trafficClass >> 2, kDscp);
     EXPECT_EQ(v6Hdr.trafficClass & 0x3, ecnMarked ? 0x3 : 0);
 
