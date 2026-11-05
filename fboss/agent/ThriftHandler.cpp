@@ -194,12 +194,14 @@ UnicastRoute toUnicastRoute(
 template <typename RouteT>
 RouteDetails toRouteDetails(
     const std::shared_ptr<SwitchState>& state,
+    RouterID rid,
     const std::shared_ptr<RouteT>& route,
     const ClientNextHopsResolver& resolveClient) {
   auto details = route->toRouteDetails(
       getNonOverrideNormalizedNextHops(state, route->getForwardInfo()),
       getNormalizedNextHops(state, route->getForwardInfo()),
       resolveClient);
+  details.vrf() = rid;
   details.resolvedNextHops() = std::vector<NextHopThrift>();
   auto preNormalizationNextHops = getNextHops(state, route->getForwardInfo());
   const auto& bestEntry = route->getBestEntry().second;
@@ -3171,8 +3173,28 @@ void ThriftHandler::getRouteTableDetails(std::vector<RouteDetails>& routes) {
   forAllRoutes(
       state,
       [&routes, &state, &resolveClient](
-          const RouterID& /*rid*/, const auto& route) {
-        routes.emplace_back(toRouteDetails(state, route, resolveClient));
+          const RouterID& rid, const auto& route) {
+        routes.emplace_back(toRouteDetails(state, rid, route, resolveClient));
+      });
+}
+
+void ThriftHandler::getRouteTableDetailsByVrf(
+    std::vector<RouteDetails>& routes,
+    int32_t vrfId) {
+  auto log = LOG_THRIFT_CALL_WITH_STATS(DBG1, sw_->stats());
+  ensureConfigured(__func__);
+  auto state = sw_->getState();
+  ClientNextHopsResolver resolveClient =
+      [&state](const RouteNextHopEntry& entry) {
+        return getClientNextHops(state, entry);
+      };
+  forAllRoutes(
+      state,
+      [&routes, &state, &resolveClient, vrfId](
+          const RouterID& rid, const auto& route) {
+        if (rid == RouterID(vrfId)) {
+          routes.emplace_back(toRouteDetails(state, rid, route, resolveClient));
+        }
       });
 }
 
@@ -3241,12 +3263,12 @@ void ThriftHandler::getIpRouteDetails(
   if (ipAddr.isV4()) {
     auto match = sw_->longestMatch(state, ipAddr.asV4(), RouterID(vrfId));
     if (match && match->isResolved()) {
-      route = toRouteDetails(state, match, resolveClient);
+      route = toRouteDetails(state, RouterID(vrfId), match, resolveClient);
     }
   } else {
     auto match = sw_->longestMatch(state, ipAddr.asV6(), RouterID(vrfId));
     if (match && match->isResolved()) {
-      route = toRouteDetails(state, match, resolveClient);
+      route = toRouteDetails(state, RouterID(vrfId), match, resolveClient);
     }
   }
 }

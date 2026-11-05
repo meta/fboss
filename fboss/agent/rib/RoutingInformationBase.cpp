@@ -1905,6 +1905,7 @@ std::vector<RouteDetails> RibRouteTables::getRouteTableDetails(
             getResolvedNextHopsFromRib(manager, rit->value()->getForwardInfo()),
             std::nullopt,
             resolveClient));
+        routeDetails.back().vrf() = rid;
       }
       for (auto rit = it->second.v6NetworkToRoute.begin();
            rit != it->second.v6NetworkToRoute.end();
@@ -1913,6 +1914,7 @@ std::vector<RouteDetails> RibRouteTables::getRouteTableDetails(
             getResolvedNextHopsFromRib(manager, rit->value()->getForwardInfo()),
             std::nullopt,
             resolveClient));
+        routeDetails.back().vrf() = rid;
       }
     }
   });

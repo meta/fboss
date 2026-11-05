@@ -172,6 +172,31 @@ TEST_F(ThriftTest, getVrfs) {
   EXPECT_EQ(vrfs, (std::vector<VrfInfo>{defaultVrf, red}));
 }
 
+TEST_F(ThriftTest, getRouteTableDetailsByVrf) {
+  auto config = testConfigA();
+  config.vrfs().ensure().emplace_back().vrfId() = 1001;
+  config.interfaces()[1].routerID() = 1001;
+  sw_->applyConfig("add vrf", config);
+
+  ThriftHandler handler(sw_);
+  auto prefixesInVrf = [&handler](int32_t vrf) {
+    std::vector<RouteDetails> routes;
+    handler.getRouteTableDetailsByVrf(routes, vrf);
+    std::set<std::string> prefixes;
+    for (const auto& route : routes) {
+      EXPECT_EQ(*route.vrf(), vrf);
+      prefixes.insert(
+          fmt::format(
+              "{}/{}",
+              facebook::network::toIPAddress(*route.dest()->ip()).str(),
+              *route.dest()->prefixLength()));
+    }
+    return prefixes;
+  };
+  EXPECT_TRUE(prefixesInVrf(1001).contains("10.0.55.0/24"));
+  EXPECT_FALSE(prefixesInVrf(0).contains("10.0.55.0/24"));
+}
+
 TEST_F(ThriftTest, getInterfaceDetail) {
   ThriftHandler handler(this->sw_);
 
