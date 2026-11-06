@@ -1440,6 +1440,7 @@ class ChildThriftPath<::facebook::bgp::thrift::BgpSettingConfig, ::facebook::fbo
     STRUCT_CHILD_GETTERS(stream_subscriber_limit, 22);
     STRUCT_CHILD_GETTERS(enable_route_refresh, 23);
     STRUCT_CHILD_GETTERS(enable_fib_out_tracking, 24);
+    STRUCT_CHILD_GETTERS(enable_gr_notification, 25);
 };
 
 
