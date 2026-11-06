@@ -108,6 +108,7 @@ bool YubaAsic::isSupportedNonFabric(Feature feature) const {
     case HwAsic::Feature::ROUTE_COUNTERS:
     case HwAsic::Feature::PORT_DEBOUNCE:
     case HwAsic::Feature::SAI_PORT_ERR_STATUS:
+    case HwAsic::Feature::ACL_DST_IP_WITH_MASK:
     case HwAsic::Feature::ACL_DST_IPV6_WORD_QUALIFIERS:
     case HwAsic::Feature::NEXT_HOP_GROUP_MEMBER_MONITORED_OBJECT:
     case HwAsic::Feature::PBR_ACL:
@@ -280,7 +281,6 @@ bool YubaAsic::isSupportedNonFabric(Feature feature) const {
     case HwAsic::Feature::SWITCH_WIDE_LINK_UP_DEBOUNCE:
     case HwAsic::Feature::ACL_ENTRY_OUT_PORT_QUALIFIER:
     case HwAsic::Feature::XPHY_SERDES_TX_FIR_POST3:
-    case HwAsic::Feature::ACL_DST_IP_WITH_MASK:
       return false;
   }
   return false;
