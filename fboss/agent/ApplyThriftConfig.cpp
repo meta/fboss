@@ -596,7 +596,9 @@ class ThriftConfigApplier {
   std::map<uint32_t, std::set<PortDescriptor>>
   getMapOfVlanToPortsNeedingMacClear(
       const std::shared_ptr<MultiSwitchPortMap> newPorts,
-      const std::shared_ptr<MultiSwitchPortMap> origPorts);
+      const std::shared_ptr<MultiSwitchPortMap> origPorts,
+      const std::shared_ptr<MultiSwitchAggregatePortMap> newAggPorts,
+      const std::shared_ptr<MultiSwitchAggregatePortMap> origAggPorts);
   std::shared_ptr<Vlan> createVlan(const cfg::Vlan* config);
   std::shared_ptr<Vlan> updateVlan(
       const std::shared_ptr<Vlan>& orig,
@@ -4031,7 +4033,9 @@ uint8_t ThriftConfigApplier::computeMinimumLinkCount(
 std::map<uint32_t, std::set<PortDescriptor>>
 ThriftConfigApplier::getMapOfVlanToPortsNeedingMacClear(
     const std::shared_ptr<MultiSwitchPortMap> newPorts,
-    const std::shared_ptr<MultiSwitchPortMap> origPorts) {
+    const std::shared_ptr<MultiSwitchPortMap> origPorts,
+    const std::shared_ptr<MultiSwitchAggregatePortMap> newAggPorts,
+    const std::shared_ptr<MultiSwitchAggregatePortMap> origAggPorts) {
   std::map<uint32_t, std::set<PortDescriptor>> vlanToPortMap;
 
   for (auto& portMap : std::as_const(*origPorts)) {
@@ -4049,6 +4053,25 @@ ThriftConfigApplier::getMapOfVlanToPortsNeedingMacClear(
           } else {
             vlanIter->second.insert(PortDescriptor(oldPort->getID()));
           }
+        }
+      }
+    }
+  }
+
+  // Clear MACs on removed AggregatePorts in this delta, while the hw agent can
+  // still resolve the LAG. An AggregatePort has no VLANs, so use its members'.
+  for (auto& aggPortMap : std::as_const(*origAggPorts)) {
+    for (auto& [oldAggPortId, oldAggPort] : std::as_const(*aggPortMap.second)) {
+      if (std::as_const(*newAggPorts).getNodeIf(oldAggPortId)) {
+        continue;
+      }
+      for (const auto& subport : oldAggPort->sortedSubports()) {
+        auto memberPort = std::as_const(*origPorts).getNodeIf(subport.portID);
+        if (!memberPort) {
+          continue;
+        }
+        for (auto& [vlanId, _] : memberPort->getVlans()) {
+          vlanToPortMap[vlanId].insert(PortDescriptor(oldAggPort->getID()));
         }
       }
     }
@@ -4081,8 +4104,11 @@ shared_ptr<VlanMap> ThriftConfigApplier::updateVlans() {
 
   std::map<uint32_t, std::set<PortDescriptor>> vlanToPortMap{};
   if (new_ && orig_) {
-    vlanToPortMap =
-        getMapOfVlanToPortsNeedingMacClear(new_->getPorts(), orig_->getPorts());
+    vlanToPortMap = getMapOfVlanToPortsNeedingMacClear(
+        new_->getPorts(),
+        orig_->getPorts(),
+        new_->getAggregatePorts(),
+        orig_->getAggregatePorts());
   }
   // Process all supplied VLAN configs
   size_t numExistingProcessed = 0;

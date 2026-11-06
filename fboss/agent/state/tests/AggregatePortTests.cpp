@@ -13,10 +13,13 @@
 #include "fboss/agent/state/AggregatePort.h"
 #include "fboss/agent/state/AggregatePortMap.h"
 #include "fboss/agent/state/DeltaFunctions.h"
+#include "fboss/agent/state/MacEntry.h"
+#include "fboss/agent/state/MacTable.h"
 #include "fboss/agent/state/NodeMapDelta.h"
 #include "fboss/agent/state/Port.h"
 #include "fboss/agent/state/PortMap.h"
 #include "fboss/agent/state/SwitchState.h"
+#include "fboss/agent/state/Vlan.h"
 #include "fboss/agent/test/TestUtils.h"
 
 #include <gtest/gtest.h>
@@ -720,6 +723,64 @@ TEST(AggregatePort, multiTrunkRemove) {
       *startAggPorts->getNodeIf(AggregatePortID(40)));
   validateThriftStructNodeSerialization(
       *startAggPorts->getNodeIf(AggregatePortID(90)));
+}
+
+/*
+ * Removing an AggregatePort must also drop the MAC entries learned on it.
+ * Otherwise the entry outlives the aggregate while still naming it, and when
+ * the peer's traffic is re-learned on the ex-member port the delta is a
+ * *change* (AggregatePort -> PhysicalPort) rather than an add.
+ * SaiFdbManager::changeMac() then calls removeMac() on the old entry, which
+ * resolves the now-deleted LAG handle via SaiLagManager::getLagHandle() and
+ * aborts fboss_hw_agent with "handle for aggregate port <n> not found".
+ */
+TEST(AggregatePort, removeTrunkClearsLearnedMacs) {
+  auto platform = createMockPlatform();
+
+  // testStateA(): VLAN 1 holds ports 1-10, VLAN 55 holds ports 11-20.
+  auto baseConfig = testConfigA();
+  baseConfig.aggregatePorts()->resize(1);
+  *baseConfig.aggregatePorts()[0].key() = 55;
+  *baseConfig.aggregatePorts()[0].name() = "lag55";
+  *baseConfig.aggregatePorts()[0].description() = "members live in VLAN 1";
+  setAggregatePortMemberIDs(
+      *baseConfig.aggregatePorts()[0].memberPorts(), {1, 2});
+
+  auto startState =
+      publishAndApplyConfig(testStateA(), &baseConfig, platform.get());
+  ASSERT_NE(nullptr, startState);
+  ASSERT_NE(
+      nullptr, startState->getAggregatePorts()->getNodeIf(AggregatePortID(55)));
+
+  // Seed VLAN 1's MAC table with one MAC learned on the trunk and one on a
+  // physical port the config keeps. Only the former should be cleared.
+  const folly::MacAddress kTrunkMac("02:00:00:00:00:55");
+  const folly::MacAddress kPortMac("02:00:00:00:00:03");
+  auto seededState = startState->clone();
+  auto* macTable =
+      seededState->getVlans()->getNodeIf(VlanID(1))->getMacTable()->modify(
+          VlanID(1), &seededState);
+  macTable->addEntry(
+      std::make_shared<MacEntry>(
+          kTrunkMac, PortDescriptor(AggregatePortID(55))));
+  macTable->addEntry(
+      std::make_shared<MacEntry>(kPortMac, PortDescriptor(PortID(3))));
+  seededState->publish();
+
+  // Remove the aggregate port.
+  auto config = baseConfig;
+  config.aggregatePorts()->clear();
+  auto endState = publishAndApplyConfig(seededState, &config, platform.get());
+  ASSERT_NE(nullptr, endState);
+  EXPECT_EQ(
+      nullptr, endState->getAggregatePorts()->getNodeIf(AggregatePortID(55)));
+
+  auto endMacTable = endState->getVlans()->getNodeIf(VlanID(1))->getMacTable();
+  ASSERT_NE(nullptr, endMacTable);
+  // The stale trunk-backed entry is gone ...
+  EXPECT_EQ(nullptr, endMacTable->getMacIf(kTrunkMac));
+  // ... and the unrelated physical-port entry is untouched.
+  EXPECT_NE(nullptr, endMacTable->getMacIf(kPortMac));
 }
 
 TEST(AggregatePort, subPortSerializationInverseOfDeserialization) {
