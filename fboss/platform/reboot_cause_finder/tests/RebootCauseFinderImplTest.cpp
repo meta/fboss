@@ -1107,6 +1107,7 @@ facebook::fboss::platform::reboot_cause_config::RebootCause causeAt(
     int64_t epochSec) {
   facebook::fboss::platform::reboot_cause_config::RebootCause c;
   c.description() = description;
+  c.occurredAtSec() = epochSec;
   c.occurredAtMs() = epochSec * 1000;
   c.occurredAtPacific() = "";
   return c;

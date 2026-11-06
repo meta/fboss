@@ -33,10 +33,14 @@ struct RebootCauseConfig {
 //
 // `description`: Human-readable decoded cause from the provider.
 //
-// `occurredAtMs`: When the cause occurred, epoch milliseconds (canonical).
+// `occurredAtSec`: When the cause occurred, seconds since the epoch; 0 when
+// unknown.
+//
+// `occurredAtMs`: Deprecated, `occurredAtSec` * 1000. Still written for readers
+// not yet on `occurredAtSec`.
 //
 // `occurredAtPacific`: Same instant in Pacific time for humans, e.g.
-// "2026-07-02 23:16:55 PDT". Display only; `occurredAtMs` is authoritative.
+// "2026-07-02 23:16:55 PDT". Display only; `occurredAtSec` is authoritative.
 //
 // `rawValue`: Raw undecoded register value, if the provider exposes it.
 struct RebootCause {
@@ -44,6 +48,7 @@ struct RebootCause {
   2: i64 occurredAtMs;
   3: string occurredAtPacific;
   4: optional string rawValue;
+  5: i64 occurredAtSec;
 }
 
 // `DeterminedCause` pairs the winning cause with the provider that reported
@@ -108,7 +113,10 @@ const string REBOOT_HISTORY_DIR = "/var/facebook/fboss/reboot_history";
 // `RebootCauseRecord` is the per-boot record persisted under
 // /var/facebook/fboss/reboot_history/.
 //
-// `detectedAtMs`: When the finder ran, epoch milliseconds (canonical).
+// `detectedAtSec`: When the finder ran, seconds since the epoch.
+//
+// `detectedAtMs`: Deprecated, when the finder ran in epoch milliseconds. Still
+// written for readers not yet on `detectedAtSec`.
 //
 // `detectedAtPacific`: Detection time in Pacific for humans, e.g.
 // "2026-07-02 23:22:12 PDT".
@@ -118,8 +126,12 @@ const string REBOOT_HISTORY_DIR = "/var/facebook/fboss/reboot_history";
 // synthetic "Unknown" cause has to carry a synthetic timestamp, and that
 // timestamp is necessarily after the boot it claims to explain.
 //
-// `bootTimeMs`: Boot start from /proc/stat btime, epoch milliseconds. 0 when
-// it could not be read, in which case the implicit providers were skipped.
+// `bootTimeSec`: Boot start from /proc/stat btime, seconds since the epoch. 0
+// when it could not be read, in which case the implicit providers were
+// skipped.
+//
+// `bootTimeMs`: Deprecated, `bootTimeSec` * 1000. Still written for readers not
+// yet on `bootTimeSec`.
 //
 // `providersAttempted`: Every provider consulted this boot and how it fared,
 // including the implicit KernelPanic and ManualReboot providers.
@@ -144,4 +156,6 @@ struct RebootCauseRecord {
   8: string kernelRelease;
   // 9 was `incomplete`; it is now `causeStatus == INTERRUPTED`. Do not reuse.
   10: optional RebootCauseStatus causeStatus;
+  11: i64 detectedAtSec;
+  12: i64 bootTimeSec;
 }

@@ -287,7 +287,7 @@ std::optional<int64_t> previousBootStartSec(
   }
   // Newest boot first, so the first earlier boot is the previous one.
   for (const auto& record : history.records) {
-    const int64_t startSec = *record.bootTimeMs() / 1000;
+    const int64_t startSec = *record.bootTimeSec();
     if (*record.bootId() != bootId && startSec > 0 && startSec < btimeSec) {
       return startSec;
     }
@@ -456,13 +456,20 @@ std::optional<int64_t> readBootTimeSec(const std::string& procStatPath) {
   return btime;
 }
 
+void setOccurredAt(
+    reboot_cause_config::RebootCause& cause,
+    std::time_t occurredAt) {
+  cause.occurredAtSec() = static_cast<int64_t>(occurredAt);
+  cause.occurredAtMs() = toEpochMs(occurredAt);
+  cause.occurredAtPacific() = pacificString(occurredAt);
+}
+
 reboot_cause_config::RebootCause makeCause(
     const std::string& description,
     std::time_t occurredAt) {
   reboot_cause_config::RebootCause cause;
   cause.description() = description;
-  cause.occurredAtMs() = toEpochMs(occurredAt);
-  cause.occurredAtPacific() = pacificString(occurredAt);
+  setOccurredAt(cause, occurredAt);
   return cause;
 }
 
@@ -672,7 +679,7 @@ std::optional<reboot_cause_config::DeterminedCause> selectNearestToBoot(
   std::optional<reboot_cause_config::DeterminedCause> best;
   for (const auto& attempt : attempts) {
     for (const auto& cause : *attempt.causes()) {
-      if (!best || *cause.occurredAtMs() > *best->cause()->occurredAtMs()) {
+      if (!best || *cause.occurredAtSec() > *best->cause()->occurredAtSec()) {
         reboot_cause_config::DeterminedCause determined;
         determined.providerName() = *attempt.name();
         determined.cause() = cause;
@@ -971,7 +978,7 @@ reboot_cause_config::RebootCauseProviderAttempt readBmcWedgePower(
 // describes IS this boot, not something that happened before it.
 //
 // previousBootAtSec is when the x86 booted before this boot, taken from
-// bootTimeMs of the newest earlier record in the reboot history. Losing power
+// bootTimeSec of the newest earlier record in the reboot history. Losing power
 // restarts the BMC. If the BMC has been up since before previousBootAtSec,
 // power was not lost between that boot and this one, so nothing is reported.
 reboot_cause_config::RebootCauseProviderAttempt parseSuddenPowerLoss(
@@ -1073,7 +1080,7 @@ const reboot_cause_config::RebootCause* FOLLY_NULLABLE firstCauseInBootWindow(
     std::optional<int64_t> btimeSec,
     std::optional<int64_t> previousBootAtSec) {
   for (const auto& cause : causes) {
-    const int64_t atSec = *cause.occurredAtMs() / 1000;
+    const int64_t atSec = *cause.occurredAtSec();
     std::string skipReason;
     if (atSec <= 0) {
       skipReason = "it has no timeTs";
@@ -1128,10 +1135,8 @@ reboot_cause_config::RebootCauseProviderAttempt readProvider(
       reboot_cause_config::RebootCause cause;
       cause.description() = causeJson["description"].asString();
 
-      cause.occurredAtMs() = 0;
       if (auto t = parseTimeTs(causeJson, *providerConfig.name())) {
-        cause.occurredAtMs() = toEpochMs(*t);
-        cause.occurredAtPacific() = pacificString(*t);
+        setOccurredAt(cause, *t);
       }
       if (causeJson.count("rawValue")) {
         cause.rawValue() = causeJson["rawValue"].asString();
@@ -1293,14 +1298,13 @@ RunResult RebootCauseFinderImpl::determineRebootCause() {
   }
 
   const auto btime = detail::readBootTimeSec(paths_.procStat);
-  const int64_t bootTimeMs =
-      btime ? toEpochMs(static_cast<std::time_t>(*btime)) : 0;
+  const int64_t bootTimeSec = btime.value_or(0);
   const auto kernelRelease = readKernelRelease(paths_.osRelease);
 
   // Computed once, so the placeholder and the finished record are the same
   // file even when the stamp falls back to the current time.
-  const auto stampTime = bootTimeMs > 0
-      ? static_cast<std::time_t>(bootTimeMs / 1000)
+  const auto stampTime = bootTimeSec > 0
+      ? static_cast<std::time_t>(bootTimeSec)
       : std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
   const auto filePath = fmt::format(
       "{}/reboot-cause-{}{}",
@@ -1318,10 +1322,12 @@ RunResult RebootCauseFinderImpl::determineRebootCause() {
         std::chrono::duration_cast<std::chrono::milliseconds>(
             start.time_since_epoch())
             .count();
+    placeholder.detectedAtSec() = std::chrono::system_clock::to_time_t(start);
     placeholder.detectedAtPacific() =
         pacificString(std::chrono::system_clock::to_time_t(start));
     placeholder.bootId() = bootId;
-    placeholder.bootTimeMs() = bootTimeMs;
+    placeholder.bootTimeSec() = bootTimeSec;
+    placeholder.bootTimeMs() = toEpochMs(bootTimeSec);
     placeholder.kernelRelease() = kernelRelease;
     placeholder.causeStatus() =
         reboot_cause_config::RebootCauseStatus::INTERRUPTED;
@@ -1461,6 +1467,7 @@ RunResult RebootCauseFinderImpl::determineRebootCause() {
   record.detectedAtMs() = std::chrono::duration_cast<std::chrono::milliseconds>(
                               now.time_since_epoch())
                               .count();
+  record.detectedAtSec() = std::chrono::system_clock::to_time_t(now);
   record.detectedAtPacific() =
       pacificString(std::chrono::system_clock::to_time_t(now));
   // Left unset when nothing was found. A placeholder cause would have to
@@ -1470,7 +1477,8 @@ RunResult RebootCauseFinderImpl::determineRebootCause() {
     record.determinedCause() = *determined;
   }
   record.bootId() = bootId;
-  record.bootTimeMs() = bootTimeMs;
+  record.bootTimeSec() = bootTimeSec;
+  record.bootTimeMs() = toEpochMs(bootTimeSec);
   record.kernelRelease() = kernelRelease;
   record.providersAttempted() = attempts;
   record.causeStatus() =

@@ -26,6 +26,30 @@ constexpr size_t kMaxWarnings = 8;
 constexpr std::string_view kRecordPrefix = "reboot-cause-";
 constexpr std::string_view kRecordSuffix = ".json";
 
+// Records written before the *Sec fields existed carry only the *Ms ones.
+void fillSecFromMs(reboot_cause_config::RebootCause& cause) {
+  if (*cause.occurredAtSec() == 0 && *cause.occurredAtMs() > 0) {
+    cause.occurredAtSec() = *cause.occurredAtMs() / 1000;
+  }
+}
+
+void fillSecFromMs(reboot_cause_config::RebootCauseRecord& record) {
+  if (*record.bootTimeSec() == 0 && *record.bootTimeMs() > 0) {
+    record.bootTimeSec() = *record.bootTimeMs() / 1000;
+  }
+  if (*record.detectedAtSec() == 0 && *record.detectedAtMs() > 0) {
+    record.detectedAtSec() = *record.detectedAtMs() / 1000;
+  }
+  if (record.determinedCause()) {
+    fillSecFromMs(*record.determinedCause()->cause());
+  }
+  for (auto& attempt : *record.providersAttempted()) {
+    for (auto& cause : *attempt.causes()) {
+      fillSecFromMs(cause);
+    }
+  }
+}
+
 } // namespace
 
 void addWarning(RebootHistory& history, const std::string& warning) {
@@ -89,7 +113,7 @@ void readRebootHistory(
   // heuristic for "newest" -- reboot_cause_finder may stamp a record before
   // NTP has corrected the clock. It is good enough to decide which files to
   // read when there are more than the cap; the ordering actually returned is
-  // by bootTimeMs below.
+  // by bootTimeSec below.
   std::sort(paths.begin(), paths.end());
   if (paths.size() > kMaxRecords) {
     history.skippedCount += static_cast<int32_t>(paths.size() - kMaxRecords);
@@ -127,6 +151,7 @@ void readRebootHistory(
           folly::parseJson(contents),
           facebook::thrift::dynamic_format::PORTABLE,
           facebook::thrift::format_adherence::LENIENT);
+      fillSecFromMs(record);
       history.records.push_back(std::move(record));
     } catch (const std::exception& ex) {
       // A record still being written, or truncated by a full disk.
@@ -136,17 +161,17 @@ void readRebootHistory(
     }
   }
 
-  // Newest boot first, like `last reboot`. Ordering by detectedAtMs would
+  // Newest boot first, like `last reboot`. Ordering by detectedAtSec would
   // move a boot whose cause was determined late (a manual or redo run) above
   // later boots. A record with no boot time sorts last.
   std::sort(
       history.records.begin(),
       history.records.end(),
       [](const auto& a, const auto& b) {
-        if (*a.bootTimeMs() != *b.bootTimeMs()) {
-          return *a.bootTimeMs() > *b.bootTimeMs();
+        if (*a.bootTimeSec() != *b.bootTimeSec()) {
+          return *a.bootTimeSec() > *b.bootTimeSec();
         }
-        return *a.detectedAtMs() > *b.detectedAtMs();
+        return *a.detectedAtSec() > *b.detectedAtSec();
       });
 }
 } // namespace facebook::fboss::platform::reboot_cause_finder

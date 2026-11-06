@@ -149,6 +149,41 @@ TEST_F(RebootHistoryTest, RecordWithoutBootTimeSortsLast) {
   EXPECT_EQ(*response.records.at(1).bootTimeMs(), 0);
 }
 
+// Records written before the *Sec fields existed carry only *Ms; the reader
+// fills each *Sec from *Ms / 1000.
+TEST_F(RebootHistoryTest, SecFieldsAreFilledFromMsInOlderRecords) {
+  write(
+      path("reboot-cause-a.json"),
+      R"({"bootId": "old", "bootTimeMs": 1793671755000,
+          "detectedAtMs": 1793918093694,
+          "determinedCause": {"providerName": "TEST_CPLD",
+            "cause": {"description": "Fresh", "occurredAtMs": 1793671635000}},
+          "providersAttempted": [{"name": "TEST_CPLD", "status": "OK",
+            "causes": [{"description": "Fresh",
+                        "occurredAtMs": 1793671635000}]}]})");
+  auto response = call();
+  ASSERT_EQ(response.records.size(), 1);
+  const auto& record = response.records.at(0);
+  EXPECT_EQ(*record.bootTimeSec(), 1793671755);
+  EXPECT_EQ(*record.detectedAtSec(), 1793918093);
+  EXPECT_EQ(*record.determinedCause()->cause()->occurredAtSec(), 1793671635);
+  EXPECT_EQ(
+      *record.providersAttempted()->at(0).causes()->at(0).occurredAtSec(),
+      1793671635);
+}
+
+// A record carrying both keeps its *Sec values.
+TEST_F(RebootHistoryTest, SecFieldsWinOverMs) {
+  write(
+      path("reboot-cause-a.json"),
+      R"({"bootId": "new", "bootTimeSec": 100, "bootTimeMs": 999000,
+          "detectedAtSec": 200, "detectedAtMs": 999000})");
+  auto response = call();
+  ASSERT_EQ(response.records.size(), 1);
+  EXPECT_EQ(*response.records.at(0).bootTimeSec(), 100);
+  EXPECT_EQ(*response.records.at(0).detectedAtSec(), 200);
+}
+
 TEST_F(RebootHistoryTest, MalformedRecordIsSkippedAndOthersSurvive) {
   write(path("reboot-cause-good.json"), makeRecord("good", 2000));
   write(path("reboot-cause-bad.json"), "{ this is not json");
@@ -232,7 +267,7 @@ TEST_F(RebootHistoryTest, CapsRecordCountAndReportsTheRest) {
     snprintf(name, sizeof(name), "reboot-cause-%03d.json", i);
     char id[16];
     snprintf(id, sizeof(id), "%03d", i);
-    write(path(name), makeRecord(id, 1000 + i));
+    write(path(name), makeRecord(id, (1000 + i) * 1000));
   }
   auto response = call();
   EXPECT_EQ(response.records.size(), 64);

@@ -6,7 +6,7 @@ include "fboss/platform/reboot_cause_finder/if/reboot_cause_config.thrift"
 
 // The records reboot_cause_finder wrote on this switch.
 //
-// `records`: Newest boot first, by bootTimeMs. `causeStatus` is unset on
+// `records`: Newest boot first, by bootTimeSec. `causeStatus` is unset on
 // records written before the finder recorded it.
 //
 // `skippedCount`: Records that could not be read or parsed.

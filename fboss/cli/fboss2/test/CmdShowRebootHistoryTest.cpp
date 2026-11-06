@@ -131,6 +131,8 @@ TEST_F(CmdShowRebootHistoryTestFixture, readsRecordsNewestBootFirst) {
 
   EXPECT_EQ(*newest.bootId(), "dd4135e3-5bd3-45f8-baad-eff5d4770e68");
   EXPECT_EQ(*newest.bootTimeMs(), kNewestBootMs);
+  // Written before bootTimeSec existed; the reader fills it from bootTimeMs.
+  EXPECT_EQ(*newest.bootTimeSec(), kNewestBootMs / 1000);
   EXPECT_EQ(*newest.kernelRelease(), "6.4.3-0_fbk15_2630_gf27365f948db");
   EXPECT_EQ(
       *newest.determinedCause()->cause()->description(), "X86 Reboot Command");
@@ -224,7 +226,7 @@ TEST_F(CmdShowRebootHistoryTestFixture, printOutput) {
   cli::ShowRebootHistoryModel model;
   auto record = [](int64_t bootTimeMs, rcc::RebootCauseStatus status) {
     rcc::RebootCauseRecord r;
-    r.bootTimeMs() = bootTimeMs;
+    r.bootTimeSec() = bootTimeMs / 1000;
     r.causeStatus() = status;
     return r;
   };
@@ -242,7 +244,7 @@ TEST_F(CmdShowRebootHistoryTestFixture, printOutput) {
   };
   // Written before the finder recorded causeStatus.
   rcc::RebootCauseRecord older;
-  older.bootTimeMs() = kMiddleBootMs - 115411000 - 2 * 86400000;
+  older.bootTimeSec() = (kMiddleBootMs - 115411000 - 2 * 86400000) / 1000;
   model.records()->push_back(older);
   // A cause with no description.
   auto blank = record(
