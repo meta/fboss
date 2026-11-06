@@ -347,9 +347,11 @@ TEST_F(
   const auto initialChildGroupId = getChildGroupId(initialGroup);
   ASSERT_TRUE(initialChildGroupId.has_value());
 
-  auto expectProtectionGroup = [&](const auto& groupHandle) {
+  auto expectProtectionGroup = [&](const auto& groupHandle,
+                                   size_t expectedMemberCount) {
     ASSERT_NE(groupHandle, nullptr);
     ASSERT_NE(groupHandle->nextHopGroup, nullptr);
+    EXPECT_EQ(groupHandle->nextHopGroupSize(), expectedMemberCount);
     EXPECT_EQ(
         nextHopGroupApi.getAttribute(
             groupHandle->nextHopGroup->adapterKey(),
@@ -364,7 +366,7 @@ TEST_F(
             SaiNextHopGroupTraits::Attributes::Type{}),
         SAI_NEXT_HOP_GROUP_TYPE_HW_PROTECTION);
   };
-  expectProtectionGroup(initialGroup);
+  expectProtectionGroup(initialGroup, 2);
 
   // Resolution removes the primary from the forwarding set. The existing
   // protection group must remain programmed so GR2 can continue using the
@@ -377,7 +379,7 @@ TEST_F(
   backupOnlyRoute->setResolved(backupResolvedEntry);
   changeRoute(protectedRoute, backupOnlyRoute);
   EXPECT_EQ(routeHandle->nextHopAdapterKey(), initialGroupId);
-  expectProtectionGroup(routeHandle->nextHopGroupHandle());
+  expectProtectionGroup(routeHandle->nextHopGroupHandle(), 1);
 
   // When the primary resolves again, the same group is retained and its
   // subscribed primary member is recreated by the next-hop manager.
@@ -385,7 +387,7 @@ TEST_F(
       makeProtectionRoute(d1, testInterfaces.at(0), backupNextHops);
   changeRoute(backupOnlyRoute, restoredRoute);
   EXPECT_EQ(routeHandle->nextHopAdapterKey(), initialGroupId);
-  expectProtectionGroup(routeHandle->nextHopGroupHandle());
+  expectProtectionGroup(routeHandle->nextHopGroupHandle(), 2);
 }
 
 TEST_F(RouteManagerTest, protectionRouteDoesNotReuseGroupWhenPrimaryRemoved) {
