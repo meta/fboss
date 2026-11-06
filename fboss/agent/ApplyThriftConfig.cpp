@@ -126,6 +126,39 @@ constexpr auto kHyperPortSpeed = cfg::PortSpeed::THREEPOINTTWOT;
 // and validate during a config change.
 std::optional<std::string> sharedBufferPoolName;
 
+void checkAclIpMatch(const cfg::AclIpMatch& match) {
+  folly::IPAddress ip;
+  folly::IPAddress mask;
+  try {
+    ip = folly::IPAddress(*match.ip());
+    mask = folly::IPAddress(*match.mask());
+  } catch (const folly::IPAddressFormatException& ex) {
+    throw FbossError("Invalid dstIpWithMask: ", ex.what());
+  }
+  if (ip.isV4() != mask.isV4()) {
+    throw FbossError(
+        "dstIpWithMask ip ",
+        *match.ip(),
+        " and mask ",
+        *match.mask(),
+        " must be of the same address family");
+  }
+  if (mask.isZero()) {
+    throw FbossError("dstIpWithMask mask must not be zero");
+  }
+  // Bits outside the mask are never compared, so a rule that sets them does
+  // not match what it appears to.
+  for (size_t i = 0; i < ip.byteCount(); ++i) {
+    if (ip.bytes()[i] & ~mask.bytes()[i]) {
+      throw FbossError(
+          "dstIpWithMask ip ",
+          *match.ip(),
+          " sets bits outside mask ",
+          *match.mask());
+    }
+  }
+}
+
 // ECMP resource manager re-modes existing backup group routes' overrides
 // whenever the backup switching mode changes.
 bool ecmpOverrideModeChanged(
@@ -5039,6 +5072,14 @@ void ThriftConfigApplier::checkAcl(const cfg::AclEntry* config) const {
     throw FbossError(
         "dstIp cannot be combined with dstIpV6Word3 or dstIpV6Word2");
   }
+  if (auto dstIpWithMask = config->dstIpWithMask()) {
+    if (config->dstIp() || config->dstIpV6Word3() || config->dstIpV6Word2()) {
+      throw FbossError(
+          "dstIpWithMask cannot be combined with dstIp, dstIpV6Word3 or "
+          "dstIpV6Word2");
+    }
+    checkAclIpMatch(*dstIpWithMask);
+  }
   if (config->icmpCode() && !config->icmpType()) {
     throw FbossError("icmp type must be set when icmp code is set");
   }
@@ -5131,6 +5172,9 @@ shared_ptr<AclEntry> ThriftConfigApplier::createAcl(
   }
   if (auto dstIp = config->dstIp()) {
     newAcl->setDstIp(IPAddress::createNetwork(*dstIp));
+  }
+  if (auto dstIpWithMask = config->dstIpWithMask()) {
+    newAcl->setDstIpWithMask(*dstIpWithMask);
   }
   if (auto dstIpV6Word3 = config->dstIpV6Word3()) {
     newAcl->setDstIpV6Word3(*dstIpV6Word3);
