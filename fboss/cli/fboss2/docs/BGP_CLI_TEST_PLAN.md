@@ -122,6 +122,7 @@ diff <(jq -S . /tmp/rsw_bgp_nao.txt) <(jq -S . ~/.fboss2/bgp_config.json)
 | Category | Command | Description |
 |----------|---------|-------------|
 | Global | `config protocol bgp global router-id <id>` | Set router ID |
+| Global | `config protocol bgp global cluster-id <ipv4>` | Set route-reflector cluster ID |
 | Global | `config protocol bgp global local-asn <asn>` | Set local AS number |
 | Global | `config protocol bgp global network6 add <prefix> [policy <name>] [install-to-fib <bool>] [min-routes <n>]` | Add IPv6 network |
 | Global | `config protocol bgp global switch-limit <n>` | Set prefix limit |

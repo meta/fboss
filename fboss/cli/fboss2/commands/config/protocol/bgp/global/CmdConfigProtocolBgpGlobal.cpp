@@ -43,6 +43,7 @@ namespace {
 // CLI attribute names. Kept here (not as raw string literals at the dispatch
 // sites) so the valid-attribute set and the handler table stay in sync.
 constexpr std::string_view kRouterId = "router-id";
+constexpr std::string_view kClusterId = "cluster-id";
 constexpr std::string_view kLocalAsn = "local-asn";
 constexpr std::string_view kHoldTime = "hold-time";
 constexpr std::string_view kConfedAsn = "confed-asn";
@@ -73,24 +74,38 @@ using bgpcli::Result;
 // Each handler mutates the typed bgp::thrift::BgpConfig directly. Field names
 // map 1:1 to bgp_config.thrift, so the compiler validates them.
 
-// bgpd constructs an IPAddress from router_id at config load (a bad string
-// fails the load) and later calls asV4() on it, so only an IPv4 address is
-// safe to persist. Stored normalized.
-Result applyRouterId(BgpConfig& cfg, const Tokens& values) {
+// bgpd constructs an IPAddress from router_id / cluster_id at config load (a
+// bad string fails the load) and later calls asV4() on it, so only an IPv4
+// address is safe to persist. Stored normalized.
+Result applyV4Address(
+    const Tokens& values,
+    std::string_view attr,
+    const std::function<void(const std::string&)>& set) {
   if (values.size() != 1) {
-    return err("Error: router-id requires <ip-address>");
+    return err(fmt::format("Error: {} requires <ip-address>", attr));
   }
   auto addr = folly::IPAddress::tryFromString(values[0]);
   if (!addr.hasValue()) {
-    return err(fmt::format("Error: Invalid router-id address '{}'", values[0]));
+    return err(fmt::format("Error: Invalid {} address '{}'", attr, values[0]));
   }
   if (!addr->isV4()) {
     return err(
         fmt::format(
-            "Error: router-id requires an IPv4 address, got '{}'", values[0]));
+            "Error: {} requires an IPv4 address, got '{}'", attr, values[0]));
   }
-  cfg.router_id() = addr->str();
-  return ok(fmt::format("Successfully set BGP router-id to: {}", addr->str()));
+  set(addr->str());
+  return ok(fmt::format("Successfully set BGP {} to: {}", attr, addr->str()));
+}
+
+Result applyRouterId(BgpConfig& cfg, const Tokens& values) {
+  return applyV4Address(
+      values, kRouterId, [&](const std::string& v) { cfg.router_id() = v; });
+}
+
+// RFC 4456 route-reflector CLUSTER_ID; bgpd falls back to router_id when unset.
+Result applyClusterId(BgpConfig& cfg, const Tokens& values) {
+  return applyV4Address(
+      values, kClusterId, [&](const std::string& v) { cfg.cluster_id() = v; });
 }
 
 Result applyLocalAsn(BgpConfig& cfg, const Tokens& values) {
@@ -338,6 +353,7 @@ using AttrHandler = std::function<Result(BgpConfig&, const Tokens&)>;
 const std::map<std::string_view, AttrHandler>& attrHandlers() {
   static const std::map<std::string_view, AttrHandler> kHandlers = {
       {kRouterId, applyRouterId},
+      {kClusterId, applyClusterId},
       {kLocalAsn, applyLocalAsn},
       {kConfedAsn, applyConfedAsn},
       {kHoldTime, applyHoldTime},
