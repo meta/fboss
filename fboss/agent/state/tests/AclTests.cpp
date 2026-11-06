@@ -1716,6 +1716,84 @@ TEST(Acl, DstIpV6WordValidation) {
   }
 }
 
+TEST(Acl, DstIpWithMaskValidation) {
+  FLAGS_enable_acl_table_group = false;
+  auto platform = createMockPlatform();
+  auto stateV0 = make_shared<SwitchState>();
+  registerPort(stateV0, PortID(1), "port1", scope());
+
+  auto makeConfig = [](const std::string& ip, const std::string& mask) {
+    cfg::SwitchConfig config;
+    config.ports()->resize(1);
+    preparedMockPortConfig(config.ports()[0], 1);
+    config.acls()->resize(1);
+    config.acls()[0].name() = "acl0";
+    config.acls()[0].actionType() = cfg::AclActionType::DENY;
+    cfg::AclIpMatch match;
+    match.ip() = ip;
+    match.mask() = mask;
+    config.acls()[0].dstIpWithMask() = match;
+    return config;
+  };
+
+  auto applyConfig = [&](cfg::SwitchConfig* config) {
+    return publishAndApplyConfig(stateV0, config, platform.get());
+  };
+
+  auto expectValid = [&](const std::string& ip,
+                         const std::string& mask,
+                         cfg::AclTableQualifier qualifier) {
+    SCOPED_TRACE(ip + " " + mask);
+    auto config = makeConfig(ip, mask);
+    auto stateV1 = applyConfig(&config);
+    auto acl = stateV1->getAcl("acl0");
+    ASSERT_NE(nullptr, acl);
+    auto expected =
+        std::make_pair(folly::IPAddress(ip), folly::IPAddress(mask));
+    EXPECT_EQ(acl->getDstIpWithMask(), expected);
+    EXPECT_FALSE(acl->getDstIp().first);
+    EXPECT_TRUE(acl->hasMatcher());
+    EXPECT_EQ(
+        acl->getRequiredAclTableQualifiers(),
+        std::set<cfg::AclTableQualifier>{qualifier});
+  };
+
+  // Non-contiguous masks are valid.
+  expectValid(
+      "::4a1c:1230:0:0", "::efff:fffc:0:0", cfg::AclTableQualifier::DST_IPV6);
+  expectValid("10.32.5.0", "255.240.15.0", cfg::AclTableQualifier::DST_IPV4);
+
+  auto expectInvalid = [&](cfg::SwitchConfig config) {
+    EXPECT_THROW(applyConfig(&config), FbossError);
+  };
+
+  // ip sets bits outside mask.
+  expectInvalid(makeConfig("::5a1c:1230:0:0", "::efff:fffc:0:0"));
+  expectInvalid(makeConfig("10.32.5.1", "255.240.15.0"));
+  // Address family mismatch.
+  expectInvalid(makeConfig("10.32.5.0", "::efff:fffc:0:0"));
+  // Zero mask.
+  expectInvalid(makeConfig("::", "::"));
+  // Unparsable address.
+  expectInvalid(makeConfig("10.32.5.0/24", "255.240.15.0"));
+  // Cannot be combined with dstIp or DST IPv6 word qualifiers.
+  {
+    auto config = makeConfig("::4a1c:1230:0:0", "::efff:fffc:0:0");
+    config.acls()[0].dstIp() = "1234:5678:9abc:def0::1/128";
+    expectInvalid(config);
+  }
+  {
+    auto config = makeConfig("::4a1c:1230:0:0", "::efff:fffc:0:0");
+    config.acls()[0].dstIpV6Word3() = 0x12345678;
+    expectInvalid(config);
+  }
+  {
+    auto config = makeConfig("::4a1c:1230:0:0", "::efff:fffc:0:0");
+    config.acls()[0].dstIpV6Word2() = 0x9abcdef0;
+    expectInvalid(config);
+  }
+}
+
 namespace {
 
 std::shared_ptr<AclEntry> makeAclEntryWithCounter(

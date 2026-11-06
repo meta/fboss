@@ -27,11 +27,11 @@ namespace rcc = platform::reboot_cause_config;
 namespace {
 
 // Whole seconds in the switch's local time zone, as `last reboot` shows them.
-std::string formatBootTime(int64_t bootTimeMs) {
-  if (bootTimeMs <= 0) {
+std::string formatBootTime(int64_t bootTimeSec) {
+  if (bootTimeSec <= 0) {
     return "-";
   }
-  const std::time_t secs = bootTimeMs / 1000;
+  const std::time_t secs = bootTimeSec;
   std::tm tm{};
   localtime_r(&secs, &tm);
   std::array<char, 64> buf{};
@@ -120,12 +120,12 @@ void CmdShowRebootHistory::printOutput(
       const auto& record = records[i];
       // How long this boot ran: until the next recorded boot. Blank for the
       // newest, which a record cannot confirm is the running boot.
-      const int64_t bootMs = *record.bootTimeMs();
-      const int64_t nextBootMs = i > 0 ? *records[i - 1].bootTimeMs() : 0;
+      const int64_t bootSec = *record.bootTimeSec();
+      const int64_t nextBootSec = i > 0 ? *records[i - 1].bootTimeSec() : 0;
       table.addRow(
-          {formatBootTime(bootMs),
-           bootMs > 0 && nextBootMs > 0
-               ? formatDuration((nextBootMs - bootMs) / 1000)
+          {formatBootTime(bootSec),
+           bootSec > 0 && nextBootSec > 0
+               ? formatDuration(nextBootSec - bootSec)
                : "-",
            record.kernelRelease()->empty() ? "-" : *record.kernelRelease(),
            causeText(record)});
@@ -146,29 +146,29 @@ std::string_view CmdShowRebootHistoryTraits::description() {
 
 CmdShowRebootHistory::RetType CmdShowRebootHistory::sampleModel() {
   RetType model;
-  const int64_t newestBootMs = 1792089290000;
+  const int64_t newestBootSec = 1792089290;
   const struct {
-    int64_t bootTimeMs;
+    int64_t bootTimeSec;
     const char* cause;
     const char* provider;
     rcc::RebootCauseStatus status;
   } boots[] = {
-      {newestBootMs,
+      {newestBootSec,
        "X86 Reboot Command",
        "X86RebootCommand",
        rcc::RebootCauseStatus::FOUND},
-      {newestBootMs - 63150000,
+      {newestBootSec - 63150,
        "ChassisResetFromBmc",
        "BMCWedgePower",
        rcc::RebootCauseStatus::FOUND},
-      {newestBootMs - 174600000, "", "", rcc::RebootCauseStatus::UNEXPLAINED},
-      {newestBootMs - 260000000, "", "", rcc::RebootCauseStatus::INCONCLUSIVE},
-      {newestBootMs - 345000000, "", "", rcc::RebootCauseStatus::INTERRUPTED},
+      {newestBootSec - 174600, "", "", rcc::RebootCauseStatus::UNEXPLAINED},
+      {newestBootSec - 260000, "", "", rcc::RebootCauseStatus::INCONCLUSIVE},
+      {newestBootSec - 345000, "", "", rcc::RebootCauseStatus::INTERRUPTED},
   };
   for (size_t i = 0; i < std::size(boots); ++i) {
     rcc::RebootCauseRecord record;
     record.bootId() = fmt::format("00000000-0000-0000-0000-00000000000{}", i);
-    record.bootTimeMs() = boots[i].bootTimeMs;
+    record.bootTimeSec() = boots[i].bootTimeSec;
     record.kernelRelease() = "6.4.3-0_fbk15_2630_gf27365f948db";
     record.causeStatus() = boots[i].status;
     if (*boots[i].cause != '\0') {

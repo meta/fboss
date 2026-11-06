@@ -345,6 +345,46 @@ TEST_F(AclTableManagerTest, addAclEntryWithTcpFlags) {
       DataAndMask(0x02, 0x12));
 }
 
+TEST_F(AclTableManagerTest, addAclEntryWithDstIpWithMask) {
+  auto addDstIpWithMaskEntry = [this](
+                                   int priority,
+                                   const std::string& name,
+                                   const std::string& ip,
+                                   const std::string& mask) {
+    auto aclEntry = std::make_shared<AclEntry>(priority, name);
+    cfg::AclIpMatch match;
+    match.ip() = ip;
+    match.mask() = mask;
+    aclEntry->setDstIpWithMask(match);
+    aclEntry->setActionType(kActionType());
+    return saiManagerTable->aclTableManager().addAclEntry(
+        aclEntry,
+        cfg::switch_config_constants::DEFAULT_INGRESS_ACL_TABLE(),
+        nullptr /*state*/);
+  };
+
+  auto v6EntryId = addDstIpWithMaskEntry(
+      kPriority(), "AclEntry1", "::4a1c:1230:0:0", "::efff:fffc:0:0");
+  EXPECT_EQ(
+      saiApiTable->aclApi()
+          .getAttribute(
+              v6EntryId, SaiAclEntryTraits::Attributes::FieldDstIpV6{})
+          .getDataAndMask(),
+      std::make_pair(
+          folly::IPAddressV6("::4a1c:1230:0:0"),
+          folly::IPAddressV6("::efff:fffc:0:0")));
+
+  auto v4EntryId = addDstIpWithMaskEntry(
+      kPriority2(), "AclEntry2", "10.32.5.0", "255.240.15.0");
+  EXPECT_EQ(
+      saiApiTable->aclApi()
+          .getAttribute(
+              v4EntryId, SaiAclEntryTraits::Attributes::FieldDstIpV4{})
+          .getDataAndMask(),
+      std::make_pair(
+          folly::IPAddressV4("10.32.5.0"), folly::IPAddressV4("255.240.15.0")));
+}
+
 TEST_F(AclTableManagerTest, defaultAclTableOmitsLookupClassPort) {
   auto* aclTableHandle = saiManagerTable->aclTableManager().getAclTableHandle(
       cfg::switch_config_constants::DEFAULT_INGRESS_ACL_TABLE());

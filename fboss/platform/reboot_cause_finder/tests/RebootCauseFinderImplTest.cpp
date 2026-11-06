@@ -1107,6 +1107,7 @@ facebook::fboss::platform::reboot_cause_config::RebootCause causeAt(
     int64_t epochSec) {
   facebook::fboss::platform::reboot_cause_config::RebootCause c;
   c.description() = description;
+  c.occurredAtSec() = epochSec;
   c.occurredAtMs() = epochSec * 1000;
   c.occurredAtPacific() = "";
   return c;
@@ -1394,8 +1395,10 @@ TEST_F(DetermineRebootCauseTest, PartiallyParsedProviderKeepsWholeCauses) {
   ASSERT_TRUE(
       folly::writeFile(
           std::string(
-              R"({"causes":[{"description":"Power loss","date":)"
-              R"("09-24-2026 16:32:00"},{"no_description":1}]})"),
+              fmt::format(
+                  R"({{"causes":[{{"description":"Power loss","timeTs":{}}},)"
+                  R"({{"no_description":1}}]}})",
+                  btime_ - 60)),
           path.c_str()));
 
   RebootCauseFinderImpl(configWithProvider(path), paths())
@@ -1409,6 +1412,69 @@ TEST_F(DetermineRebootCauseTest, PartiallyParsedProviderKeepsWholeCauses) {
   ASSERT_EQ(rec.count("determinedCause"), 1) << "a whole cause must promote";
   EXPECT_EQ(
       rec["determinedCause"]["cause"]["description"].asString(), "Power loss");
+}
+
+// A latched cause from before the previous x86 boot is still recorded on the
+// provider's attempt, but it did not cause this boot, so it is not chosen.
+TEST_F(DetermineRebootCauseTest, ProviderCauseBeforePreviousBootIsNotChosen) {
+  writeEarlierBootRecord(btime_ - 600);
+  const auto path = (tmpDir_ / "causes").string();
+  ASSERT_TRUE(
+      folly::writeFile(
+          fmt::format(
+              R"({{"causes":[{{"description":"Power loss","timeTs":{}}}]}})",
+              btime_ - 3600),
+          path.c_str()));
+
+  RebootCauseFinderImpl(configWithProvider(path), paths())
+      .determineRebootCause();
+
+  const auto rec = readThisBootsRecord();
+  EXPECT_EQ(rec.count("determinedCause"), 0);
+  EXPECT_EQ(attemptNamed(rec, "TEST_CPLD")["causes"].size(), 1);
+}
+
+TEST_F(DetermineRebootCauseTest, ProviderCauseAfterPreviousBootIsChosen) {
+  writeEarlierBootRecord(btime_ - 600);
+  const auto path = (tmpDir_ / "causes").string();
+  ASSERT_TRUE(
+      folly::writeFile(
+          fmt::format(
+              R"({{"causes":[{{"description":"Power loss","timeTs":{}}}]}})",
+              btime_ - 60),
+          path.c_str()));
+
+  RebootCauseFinderImpl(configWithProvider(path), paths())
+      .determineRebootCause();
+
+  const auto rec = readThisBootsRecord();
+  ASSERT_EQ(rec.count("determinedCause"), 1);
+  EXPECT_EQ(rec["determinedCause"]["providerName"].asString(), "TEST_CPLD");
+  EXPECT_EQ(
+      rec["determinedCause"]["cause"]["occurredAtMs"].asInt(),
+      (btime_ - 60) * 1000);
+}
+
+// A cause without timeTs cannot be placed in time, so it is recorded but not
+// chosen. Its `date` is ignored.
+TEST_F(DetermineRebootCauseTest, ProviderCauseWithoutTimeTsIsNotChosen) {
+  const auto path = (tmpDir_ / "causes").string();
+  ASSERT_TRUE(
+      folly::writeFile(
+          std::string(
+              R"({"causes":[{"description":"Power loss",)"
+              R"("date":"11-04-2026 10:00:00.000"}]})"),
+          path.c_str()));
+
+  RebootCauseFinderImpl(configWithProvider(path), paths())
+      .determineRebootCause();
+
+  const auto rec = readRecord();
+  EXPECT_EQ(rec.count("determinedCause"), 0);
+  const auto causes = attemptNamed(rec, "TEST_CPLD")["causes"];
+  ASSERT_EQ(causes.size(), 1);
+  EXPECT_EQ(causes[0]["occurredAtMs"].asInt(), 0);
+  EXPECT_EQ(causes[0].count("rawValue"), 0);
 }
 
 // The guard is the record itself: a second run in the same boot is a no-op.
@@ -1810,7 +1876,8 @@ TEST_F(RebootCauseFinderImplTest, ProviderGoodReadIsOkAndDecodes) {
       folly::writeFile(
           std::string(
               R"({"causes":[{"description":"Power loss",)"
-              R"("date":"09-24-2026 16:32:00","rawValue":"0x40"}]})"),
+              R"("date":"09-24-2026 16:32:00.000","timeTs":1790281920,)"
+              R"("rawValue":"0x40"}]})"),
           path.c_str()));
 
   const auto attempt = detail::readProvider(providerAt(path));
@@ -1821,7 +1888,43 @@ TEST_F(RebootCauseFinderImplTest, ProviderGoodReadIsOkAndDecodes) {
   EXPECT_EQ(*causes[0].description(), "Power loss");
   ASSERT_TRUE(causes[0].rawValue().has_value());
   EXPECT_EQ(*causes[0].rawValue(), "0x40");
-  EXPECT_NE(*causes[0].occurredAtMs(), 0);
+  EXPECT_EQ(*causes[0].occurredAtMs(), int64_t{1790281920} * 1000);
+}
+
+TEST_F(RebootCauseFinderImplTest, ProviderTimeTsAsNumericStringIsAccepted) {
+  const auto path = (tmpDir_ / "causes").string();
+  ASSERT_TRUE(
+      folly::writeFile(
+          std::string(
+              R"({"causes":[{"description":"Power loss",)"
+              R"("timeTs":"1790281920"}]})"),
+          path.c_str()));
+
+  const auto attempt = detail::readProvider(providerAt(path));
+
+  EXPECT_EQ(*attempt.status(), rcc::RebootCauseProviderStatus::OK);
+  ASSERT_EQ(attempt.causes()->size(), 1);
+  EXPECT_EQ(
+      *attempt.causes()->front().occurredAtMs(), int64_t{1790281920} * 1000);
+}
+
+// A bad timeTs leaves the cause undated instead of failing the provider.
+TEST_F(RebootCauseFinderImplTest, ProviderInvalidTimeTsLeavesCauseUndated) {
+  for (const auto* timeTs : {R"("soon")", "-5", "0", "1.5"}) {
+    const auto path = (tmpDir_ / "causes").string();
+    ASSERT_TRUE(
+        folly::writeFile(
+            fmt::format(
+                R"({{"causes":[{{"description":"Power loss","timeTs":{}}}]}})",
+                timeTs),
+            path.c_str()));
+
+    const auto attempt = detail::readProvider(providerAt(path));
+
+    EXPECT_EQ(*attempt.status(), rcc::RebootCauseProviderStatus::OK) << timeTs;
+    ASSERT_EQ(attempt.causes()->size(), 1) << timeTs;
+    EXPECT_EQ(*attempt.causes()->front().occurredAtMs(), 0) << timeTs;
+  }
 }
 
 // A provider that reads cleanly but reports nothing is OK with no causes --
@@ -1857,9 +1960,8 @@ TEST_F(RebootCauseFinderImplTest, ProviderMissingFileIsReadFailed) {
   EXPECT_TRUE(causes.empty());
 }
 
-// An unparseable date must not discard the cause: the description is still
-// the useful part, and the raw string is preserved for a human.
-TEST_F(RebootCauseFinderImplTest, ProviderUnparseableDateKeepsTheCause) {
+// Without timeTs the cause is kept but undated.
+TEST_F(RebootCauseFinderImplTest, ProviderCauseWithoutTimeTsIsUndated) {
   const auto path = (tmpDir_ / "causes").string();
   ASSERT_TRUE(
       folly::writeFile(
@@ -1873,11 +1975,83 @@ TEST_F(RebootCauseFinderImplTest, ProviderUnparseableDateKeepsTheCause) {
   EXPECT_EQ(*attempt.status(), rcc::RebootCauseProviderStatus::OK);
   ASSERT_EQ(causes.size(), 1);
   EXPECT_EQ(*causes[0].occurredAtMs(), 0);
-  // The unparsed text is not a timestamp, so the rendered field is left
-  // empty and the text is kept verbatim where unparsed source belongs.
   EXPECT_TRUE(causes[0].occurredAtPacific()->empty());
-  ASSERT_TRUE(causes[0].rawValue().has_value());
-  EXPECT_EQ(*causes[0].rawValue(), "soon");
+  EXPECT_FALSE(causes[0].rawValue().has_value());
+}
+
+// `date` is not read, whatever its type; only timeTs dates a cause.
+TEST_F(RebootCauseFinderImplTest, ProviderDateIsIgnored) {
+  const auto path = (tmpDir_ / "causes").string();
+  ASSERT_TRUE(
+      folly::writeFile(
+          std::string(
+              R"({"causes":[{"description":"Power loss","date":{"y":2026}},)"
+              R"({"description":"Overtemp","date":"09-24-2026 16:32:00",)"
+              R"("timeTs":1790281920}]})"),
+          path.c_str()));
+
+  const auto attempt = detail::readProvider(providerAt(path));
+  const auto& causes = *attempt.causes();
+
+  EXPECT_EQ(*attempt.status(), rcc::RebootCauseProviderStatus::OK);
+  ASSERT_EQ(causes.size(), 2);
+  EXPECT_EQ(*causes[0].occurredAtMs(), 0);
+  EXPECT_FALSE(causes[0].rawValue().has_value());
+  EXPECT_EQ(*causes[1].occurredAtMs(), int64_t{1790281920} * 1000);
+  EXPECT_FALSE(causes[1].rawValue().has_value());
+}
+
+namespace {
+constexpr int64_t kBootAt = 1790000000;
+constexpr int64_t kPreviousBootAt = kBootAt - 600;
+} // namespace
+
+TEST_F(RebootCauseFinderImplTest, BootWindowIncludesPreviousBootExcludesBoot) {
+  const std::vector<rcc::RebootCause> atPrevious{
+      causeAt("at previous boot", kPreviousBootAt)};
+  const std::vector<rcc::RebootCause> atBoot{causeAt("at boot", kBootAt)};
+
+  EXPECT_NE(
+      detail::firstCauseInBootWindow(
+          atPrevious, "TEST_CPLD", kBootAt, kPreviousBootAt),
+      nullptr);
+  EXPECT_EQ(
+      detail::firstCauseInBootWindow(
+          atBoot, "TEST_CPLD", kBootAt, kPreviousBootAt),
+      nullptr);
+}
+
+TEST_F(RebootCauseFinderImplTest, BootWindowSkipsStaleCauseForInWindowOne) {
+  const std::vector<rcc::RebootCause> causes{
+      causeAt("stale", kPreviousBootAt - 1),
+      causeAt("undated", 0),
+      causeAt("fresh", kBootAt - 60)};
+
+  const auto* chosen = detail::firstCauseInBootWindow(
+      causes, "TEST_CPLD", kBootAt, kPreviousBootAt);
+
+  ASSERT_NE(chosen, nullptr);
+  EXPECT_EQ(*chosen->description(), "fresh");
+}
+
+TEST_F(
+    RebootCauseFinderImplTest,
+    BootWindowWithoutPreviousBootHasNoLowerBound) {
+  const std::vector<rcc::RebootCause> causes{causeAt("old", kBootAt - 86400)};
+
+  EXPECT_NE(
+      detail::firstCauseInBootWindow(
+          causes, "TEST_CPLD", kBootAt, std::nullopt),
+      nullptr);
+}
+
+TEST_F(RebootCauseFinderImplTest, BootWindowChoosesNothingWithoutBootTime) {
+  const std::vector<rcc::RebootCause> causes{causeAt("fresh", kBootAt - 60)};
+
+  EXPECT_EQ(
+      detail::firstCauseInBootWindow(
+          causes, "TEST_CPLD", std::nullopt, kPreviousBootAt),
+      nullptr);
 }
 
 } // namespace

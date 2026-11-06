@@ -287,7 +287,7 @@ std::optional<int64_t> previousBootStartSec(
   }
   // Newest boot first, so the first earlier boot is the previous one.
   for (const auto& record : history.records) {
-    const int64_t startSec = *record.bootTimeMs() / 1000;
+    const int64_t startSec = *record.bootTimeSec();
     if (*record.bootId() != bootId && startSec > 0 && startSec < btimeSec) {
       return startSec;
     }
@@ -372,15 +372,32 @@ std::string filenameStamp(std::time_t t) {
   return buf;
 }
 
-// Parse a provider's local-time date string ("MM-DD-YYYY HH:MM:SS[.mmm]") into
-// an epoch time_t; std::nullopt if it doesn't match.
-std::optional<std::time_t> parseProviderDate(const std::string& s) {
-  std::tm tm{};
-  if (strptime(s.c_str(), "%m-%d-%Y %H:%M:%S", &tm) == nullptr) {
+// A provider cause's `timeTs`: when the cause latched, in whole seconds since
+// the epoch. Accepts a JSON integer or a numeric string. std::nullopt when the
+// field is absent or not a positive number, which leaves the cause undated.
+std::optional<std::time_t> parseTimeTs(
+    const folly::dynamic& causeJson,
+    const std::string& providerName) {
+  const auto* timeTs = causeJson.get_ptr("timeTs");
+  if (timeTs == nullptr) {
     return std::nullopt;
   }
-  tm.tm_isdst = -1; // let mktime resolve PST vs PDT
-  return std::mktime(&tm);
+  std::optional<int64_t> sec;
+  if (timeTs->isInt()) {
+    sec = timeTs->getInt();
+  } else if (timeTs->isString()) {
+    if (auto parsed = folly::tryTo<int64_t>(timeTs->getString())) {
+      sec = *parsed;
+    }
+  }
+  if (!sec || *sec <= 0) {
+    XLOG(ERR) << fmt::format(
+        "Provider '{}' wrote an invalid timeTs '{}'",
+        providerName,
+        folly::toJson(*timeTs));
+    return std::nullopt;
+  }
+  return static_cast<std::time_t>(*sec);
 }
 
 } // namespace
@@ -439,13 +456,20 @@ std::optional<int64_t> readBootTimeSec(const std::string& procStatPath) {
   return btime;
 }
 
+void setOccurredAt(
+    reboot_cause_config::RebootCause& cause,
+    std::time_t occurredAt) {
+  cause.occurredAtSec() = static_cast<int64_t>(occurredAt);
+  cause.occurredAtMs() = toEpochMs(occurredAt);
+  cause.occurredAtPacific() = pacificString(occurredAt);
+}
+
 reboot_cause_config::RebootCause makeCause(
     const std::string& description,
     std::time_t occurredAt) {
   reboot_cause_config::RebootCause cause;
   cause.description() = description;
-  cause.occurredAtMs() = toEpochMs(occurredAt);
-  cause.occurredAtPacific() = pacificString(occurredAt);
+  setOccurredAt(cause, occurredAt);
   return cause;
 }
 
@@ -655,7 +679,7 @@ std::optional<reboot_cause_config::DeterminedCause> selectNearestToBoot(
   std::optional<reboot_cause_config::DeterminedCause> best;
   for (const auto& attempt : attempts) {
     for (const auto& cause : *attempt.causes()) {
-      if (!best || *cause.occurredAtMs() > *best->cause()->occurredAtMs()) {
+      if (!best || *cause.occurredAtSec() > *best->cause()->occurredAtSec()) {
         reboot_cause_config::DeterminedCause determined;
         determined.providerName() = *attempt.name();
         determined.cause() = cause;
@@ -954,7 +978,7 @@ reboot_cause_config::RebootCauseProviderAttempt readBmcWedgePower(
 // describes IS this boot, not something that happened before it.
 //
 // previousBootAtSec is when the x86 booted before this boot, taken from
-// bootTimeMs of the newest earlier record in the reboot history. Losing power
+// bootTimeSec of the newest earlier record in the reboot history. Losing power
 // restarts the BMC. If the BMC has been up since before previousBootAtSec,
 // power was not lost between that boot and this one, so nothing is reported.
 reboot_cause_config::RebootCauseProviderAttempt parseSuddenPowerLoss(
@@ -1042,10 +1066,46 @@ reboot_cause_config::RebootCauseProviderAttempt readSuddenPowerLoss(
         kSuddenPowerLossProvider,
         reboot_cause_config::RebootCauseProviderStatus::READ_FAILED,
         detailWithReason(
-            kBmcInfoPath, failure.empty() ? "empty response" : failure),
+            kBmcInfoPath,
+            failure.empty() ? folly::StringPiece("empty response")
+                            : folly::StringPiece(failure)),
         {});
   }
   return parseSuddenPowerLoss(body, btimeSec, nowSec, previousBootAtSec);
+}
+
+const reboot_cause_config::RebootCause* FOLLY_NULLABLE firstCauseInBootWindow(
+    const std::vector<reboot_cause_config::RebootCause>& causes,
+    const std::string& providerName,
+    std::optional<int64_t> btimeSec,
+    std::optional<int64_t> previousBootAtSec) {
+  for (const auto& cause : causes) {
+    const int64_t atSec = *cause.occurredAtSec();
+    std::string skipReason;
+    if (atSec <= 0) {
+      skipReason = "it has no timeTs";
+    } else if (!btimeSec) {
+      skipReason = "this boot's start time is unknown";
+    } else if (atSec >= *btimeSec) {
+      skipReason = fmt::format(
+          "it is dated {}, after this boot at {}",
+          pacificString(static_cast<std::time_t>(atSec)),
+          pacificString(static_cast<std::time_t>(*btimeSec)));
+    } else if (previousBootAtSec && atSec < *previousBootAtSec) {
+      skipReason = fmt::format(
+          "it is dated {}, before the previous x86 boot at {}",
+          pacificString(static_cast<std::time_t>(atSec)),
+          pacificString(static_cast<std::time_t>(*previousBootAtSec)));
+    } else {
+      return &cause;
+    }
+    XLOG(INFO) << fmt::format(
+        "Not using cause '{}' from provider '{}': {}",
+        *cause.description(),
+        providerName,
+        skipReason);
+  }
+  return nullptr;
 }
 
 reboot_cause_config::RebootCauseProviderAttempt readProvider(
@@ -1075,27 +1135,11 @@ reboot_cause_config::RebootCauseProviderAttempt readProvider(
       reboot_cause_config::RebootCause cause;
       cause.description() = causeJson["description"].asString();
 
-      auto dateStr = causeJson["date"].asString();
-      bool dateParsed = false;
-      if (auto t = parseProviderDate(dateStr)) {
-        cause.occurredAtMs() = toEpochMs(*t);
-        cause.occurredAtPacific() = pacificString(*t);
-        dateParsed = true;
-      } else {
-        // Leave the rendered field unset rather than filling it with text
-        // that is not a timestamp.
-        cause.occurredAtMs() = 0;
-        XLOG(ERR) << fmt::format(
-            "Provider '{}' wrote an unparsable date '{}'",
-            *providerConfig.name(),
-            dateStr);
+      if (auto t = parseTimeTs(causeJson, *providerConfig.name())) {
+        setOccurredAt(cause, *t);
       }
-
       if (causeJson.count("rawValue")) {
         cause.rawValue() = causeJson["rawValue"].asString();
-      } else if (!dateParsed) {
-        // Nothing better to show, so keep what the provider actually wrote.
-        cause.rawValue() = dateStr;
       }
       causes.push_back(std::move(cause));
     }
@@ -1254,14 +1298,13 @@ RunResult RebootCauseFinderImpl::determineRebootCause() {
   }
 
   const auto btime = detail::readBootTimeSec(paths_.procStat);
-  const int64_t bootTimeMs =
-      btime ? toEpochMs(static_cast<std::time_t>(*btime)) : 0;
+  const int64_t bootTimeSec = btime.value_or(0);
   const auto kernelRelease = readKernelRelease(paths_.osRelease);
 
   // Computed once, so the placeholder and the finished record are the same
   // file even when the stamp falls back to the current time.
-  const auto stampTime = bootTimeMs > 0
-      ? static_cast<std::time_t>(bootTimeMs / 1000)
+  const auto stampTime = bootTimeSec > 0
+      ? static_cast<std::time_t>(bootTimeSec)
       : std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
   const auto filePath = fmt::format(
       "{}/reboot-cause-{}{}",
@@ -1279,10 +1322,12 @@ RunResult RebootCauseFinderImpl::determineRebootCause() {
         std::chrono::duration_cast<std::chrono::milliseconds>(
             start.time_since_epoch())
             .count();
+    placeholder.detectedAtSec() = std::chrono::system_clock::to_time_t(start);
     placeholder.detectedAtPacific() =
         pacificString(std::chrono::system_clock::to_time_t(start));
     placeholder.bootId() = bootId;
-    placeholder.bootTimeMs() = bootTimeMs;
+    placeholder.bootTimeSec() = bootTimeSec;
+    placeholder.bootTimeMs() = toEpochMs(bootTimeSec);
     placeholder.kernelRelease() = kernelRelease;
     placeholder.causeStatus() =
         reboot_cause_config::RebootCauseStatus::INTERRUPTED;
@@ -1358,14 +1403,20 @@ RunResult RebootCauseFinderImpl::determineRebootCause() {
   for (const auto& providerConfig : providerConfigs) {
     XLOG(INFO) << fmt::format("Reading provider '{}'", *providerConfig.name());
     auto attempt = detail::readProvider(providerConfig);
-    // Providers are sorted by priority, so the first one to report anything
-    // is the highest-priority hardware answer. It only applies when neither
-    // implicit provider found a cause.
-    if (!determined.has_value() && !attempt.causes()->empty()) {
-      reboot_cause_config::DeterminedCause d;
-      d.providerName() = *providerConfig.name();
-      d.cause() = attempt.causes()->front();
-      determined = d;
+    // Providers are sorted by priority, so the first one with a cause dated
+    // inside this boot's window is the highest-priority hardware answer. It
+    // only applies when neither implicit provider found a cause.
+    if (!determined.has_value()) {
+      if (const auto* cause = detail::firstCauseInBootWindow(
+              *attempt.causes(),
+              *providerConfig.name(),
+              btime,
+              previousBootAtSec)) {
+        reboot_cause_config::DeterminedCause d;
+        d.providerName() = *providerConfig.name();
+        d.cause() = *cause;
+        determined = d;
+      }
     }
     attempts.push_back(std::move(attempt));
   }
@@ -1416,6 +1467,7 @@ RunResult RebootCauseFinderImpl::determineRebootCause() {
   record.detectedAtMs() = std::chrono::duration_cast<std::chrono::milliseconds>(
                               now.time_since_epoch())
                               .count();
+  record.detectedAtSec() = std::chrono::system_clock::to_time_t(now);
   record.detectedAtPacific() =
       pacificString(std::chrono::system_clock::to_time_t(now));
   // Left unset when nothing was found. A placeholder cause would have to
@@ -1425,7 +1477,8 @@ RunResult RebootCauseFinderImpl::determineRebootCause() {
     record.determinedCause() = *determined;
   }
   record.bootId() = bootId;
-  record.bootTimeMs() = bootTimeMs;
+  record.bootTimeSec() = bootTimeSec;
+  record.bootTimeMs() = toEpochMs(bootTimeSec);
   record.kernelRelease() = kernelRelease;
   record.providersAttempted() = attempts;
   record.causeStatus() =

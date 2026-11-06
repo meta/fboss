@@ -37,6 +37,7 @@ TEST(ConfigLibTest, Basic) {
   EXPECT_NO_THROW(ConfigLib().getSensorServiceConfig(kTahan800bc));
   EXPECT_NO_THROW(ConfigLib().getSensorServiceConfig(kBlackwolf800banw));
   EXPECT_NO_THROW(ConfigLib().getSensorServiceConfig(kM4061nhp));
+  EXPECT_NO_THROW(ConfigLib().getSensorServiceConfig(kM4340nhp));
   EXPECT_THROW(
       ConfigLib().getSensorServiceConfig(kNonExistentPlatform),
       std::runtime_error);
@@ -86,6 +87,7 @@ TEST(ConfigLibTest, Basic) {
   EXPECT_NO_THROW(ConfigLib().getLedManagerConfig(kDarwin));
   EXPECT_NO_THROW(ConfigLib().getLedManagerConfig(kMorgan800cc));
   EXPECT_NO_THROW(ConfigLib().getLedManagerConfig(kM4061nhp));
+  EXPECT_NO_THROW(ConfigLib().getLedManagerConfig(kM4340nhp));
   EXPECT_THROW(
       ConfigLib().getLedManagerConfig(kNonExistentPlatform),
       std::runtime_error);

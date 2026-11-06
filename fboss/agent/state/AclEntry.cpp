@@ -58,6 +58,11 @@ std::set<cfg::AclTableQualifier> AclEntry::getRequiredAclTableQualifiers()
       cfg::AclTableQualifier::DST_IPV4,
       cfg::AclTableQualifier::DST_IPV6);
 
+  if (auto dstIpWithMask = getDstIpWithMask()) {
+    qualifiers.insert(
+        dstIpWithMask->first.isV4() ? cfg::AclTableQualifier::DST_IPV4
+                                    : cfg::AclTableQualifier::DST_IPV6);
+  }
   if (getDstIpV6Word3()) {
     qualifiers.insert(cfg::AclTableQualifier::DST_IPV6_WORD3);
   }

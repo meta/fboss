@@ -4117,6 +4117,9 @@ bool BcmSwitch::hasValidAclMatcher(const std::shared_ptr<AclEntry>& acl) const {
   if (acl->getTcpFlagsMask()) {
     return false;
   }
+  if (acl->getDstIpWithMask()) {
+    return false;
+  }
 
   return true;
 }

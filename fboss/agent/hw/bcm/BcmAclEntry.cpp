@@ -157,6 +157,9 @@ void BcmAclEntry::createAclQualifiers() {
   if (acl_->getTcpFlagsMask()) {
     throw FbossError("tcpFlagsMask is not supported on BcmSwitch");
   }
+  if (acl_->getDstIpWithMask()) {
+    throw FbossError("dstIpWithMask is not supported on BcmSwitch");
+  }
   if (acl_->getTcpFlagsBitMap()) {
     rv = bcm_field_qualify_TcpControl(
         hw_->getUnit(), handle_, acl_->getTcpFlagsBitMap().value(), 0xFF);

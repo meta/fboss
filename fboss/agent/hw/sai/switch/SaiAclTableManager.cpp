@@ -1013,6 +1013,25 @@ AclEntrySaiId SaiAclTableManager::addAclEntry(
                   addedAclEntry->getDstIp().first.asV4(), dstIpV4Mask))};
     }
   }
+  if (auto dstIpWithMask = addedAclEntry->getDstIpWithMask()) {
+    if (!platform_->getAsic()->isSupported(
+            HwAsic::Feature::ACL_DST_IP_WITH_MASK)) {
+      throw FbossError(
+          "ACL entry ",
+          addedAclEntry->getID(),
+          " uses dstIpWithMask, but ASIC ",
+          platform_->getAsic()->getAsicTypeStr(),
+          " does not support ACL_DST_IP_WITH_MASK");
+    }
+    const auto& [dstIp, dstIpMask] = *dstIpWithMask;
+    if (dstIp.isV6()) {
+      fieldDstIpV6 = SaiAclEntryTraits::Attributes::FieldDstIpV6{
+          AclEntryFieldIpV6(std::make_pair(dstIp.asV6(), dstIpMask.asV6()))};
+    } else {
+      fieldDstIpV4 = SaiAclEntryTraits::Attributes::FieldDstIpV4{
+          AclEntryFieldIpV4(std::make_pair(dstIp.asV4(), dstIpMask.asV4()))};
+    }
+  }
   const auto dstIpV6Word3 = addedAclEntry->getDstIpV6Word3();
   const auto dstIpV6Word2 = addedAclEntry->getDstIpV6Word2();
   const auto dstIpV6WordQualifiersSupported = platform_->getAsic()->isSupported(

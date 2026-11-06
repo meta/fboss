@@ -44,6 +44,7 @@ thrift_library(
         "go",
         "python",
         "py-deprecated",
+        "rust",
     ],
     py3_namespace = "nettools.bgplib",
     py_base_module = "nettools.bgplib",

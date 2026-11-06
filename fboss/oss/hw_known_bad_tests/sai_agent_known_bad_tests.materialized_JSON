@@ -1093,9 +1093,6 @@
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.*AgentCoppTest/0.DstIpNetworkControlDscpToHighPriQ$"
         },
         {
-          "test_name_regex": "^(cold_boot|warm_boot).*AgentMacLearningMacMoveTest.VerifyMacMoveForPort$"
-        },
-        {
           "test_name_regex": "roundtrip.(trunk_2_preprod_2_trunk|prod_2_trunk_2_prod|trunk_2_prod_2_trunk).*AgentMacLearningMacMoveTest.VerifyMacMoveForPort$"
         },
         {
@@ -3497,12 +3494,6 @@
           "test_name_regex": "AgentMacLearningStaticEntriesTest.VerifyStaticMacEntryAdd$"
         },
         {
-          "test_name_regex": "AgentFabricSwitchTest.verifySourceRoutedCellHandling$"
-        },
-        {
-          "test_name_regex": "AgentFabricSwitchSelfLoopTest.portDrained$"
-        },
-        {
           "test_name_regex": "AgentAsicDefaultProgrammingTest.verifyDefaultProgramming$"
         },
         {
@@ -3516,6 +3507,12 @@
         },
         {
           "test_name_regex": "AgentRollbackTest.rollbackNeighborResolution$"
+        },
+        {
+          "test_name_regex": "roundtrip.(preprod_2_trunk_2_preprod|trunk_2_preprod_2_trunk|prod_2_trunk_2_prod|trunk_2_prod_2_trunk).(cold_boot|warm_boot|warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit|warm_boot_for_warm_boot.0.AgentEmptyVoqTest.CheckInit).AgentFabricSwitchSelfLoopTest.portDrained$"
+        },
+        {
+          "test_name_regex": "roundtrip.(preprod_2_trunk_2_preprod|trunk_2_preprod_2_trunk|prod_2_trunk_2_prod|trunk_2_prod_2_trunk).(cold_boot|warm_boot|warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit|warm_boot_for_warm_boot.0.AgentEmptyVoqTest.CheckInit).AgentFabricSwitchTest.verifySourceRoutedCellHandling$"
         }
     ],
     "brcm/11.7.0.0_dnx_odp/12.2.0.0_dnx_odp/jericho3/mono": [
@@ -10393,9 +10390,6 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentRouteStatTest.V4V6SeparateCounters$"
         },
         {
-          "test_name_regex": "roundtrip.trunk_2_prod_2_trunk.*.AgentRouteStatTest.V4V6SeparateCounters$"
-        },
-        {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentRouteCounterOverflowTest.overflowRouteCounters$"
         },
         {
@@ -10705,9 +10699,6 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentRouteStatTest.V4V6SeparateCounters$"
         },
         {
-          "test_name_regex": "roundtrip.trunk_2_prod_2_trunk.*.AgentRouteStatTest.V4V6SeparateCounters$"
-        },
-        {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentRouteCounterOverflowTest.overflowRouteCounters$"
         },
         {
@@ -10828,9 +10819,6 @@
           "test_name_regex": "AgentCoppQueueStuckTest.CpuQueueHighRateTraffic$"
         },
         {
-          "test_name_regex": "roundtrip.trunk_2_prod_2_trunk.warm_boot.*$"
-        },
-        {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.*$"
         },
         {
@@ -10912,40 +10900,40 @@
           "test_name_regex": "(cold_boot|warm_boot|roundtrip.(trunk_2_preprod_2_trunk|trunk_2_prod_2_trunk).cold_boot|roundtrip.(preprod_2_trunk_2_preprod|prod_2_trunk_2_prod).(cold_boot|warm_boot|warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit)).AgentAccessPolicyClassIdAclDeepDstOptsTest.DstOptsLengthsTcpSynDenied$"
         },
         {
-          "test_name_regex": "(cold_boot|warm_boot|roundtrip.(trunk_2_preprod_2_trunk|trunk_2_prod_2_trunk).cold_boot).AgentAccessPolicyClassIdAclFirstHalfAddedTest.AccessPolicyAclEntriesSwappedOnWarmboot$"
+          "test_name_regex": "^(cold_boot|warm_boot|roundtrip.(preprod_2_trunk_2_preprod|trunk_2_preprod_2_trunk|prod_2_trunk_2_prod).(cold_boot|warm_boot)).AgentAccessPolicyClassIdAclFirstHalfAddedTest.AccessPolicyAclEntriesSwappedOnWarmboot$"
         },
         {
-          "test_name_regex": "(cold_boot|warm_boot|roundtrip.(trunk_2_preprod_2_trunk|trunk_2_prod_2_trunk).cold_boot).AgentAccessPolicyClassIdAclSecondHalfAddedTest.AccessPolicyAclEntriesSwappedOnWarmboot$"
+          "test_name_regex": "^(cold_boot|warm_boot|roundtrip.(preprod_2_trunk_2_preprod|trunk_2_preprod_2_trunk|prod_2_trunk_2_prod).(cold_boot|warm_boot)).AgentAccessPolicyClassIdAclSecondHalfAddedTest.AccessPolicyAclEntriesSwappedOnWarmboot$"
         },
         {
-          "test_name_regex": "(cold_boot|warm_boot|roundtrip.(trunk_2_preprod_2_trunk|trunk_2_prod_2_trunk).cold_boot).AgentAccessPolicyClassIdAclV2AddedTest.AccessPolicyAclV2AddedOnWarmboot$"
+          "test_name_regex": "^(cold_boot|warm_boot|roundtrip.(preprod_2_trunk_2_preprod|trunk_2_preprod_2_trunk|prod_2_trunk_2_prod).(cold_boot|warm_boot)).AgentAccessPolicyClassIdAclV2AddedTest.AccessPolicyAclV2AddedOnWarmboot$"
         },
         {
-          "test_name_regex": "(cold_boot|warm_boot|roundtrip.(trunk_2_preprod_2_trunk|trunk_2_prod_2_trunk).cold_boot).AgentAccessPolicyClassIdAclV3AddedTest.AccessPolicyAclV3AddedOnWarmboot$"
+          "test_name_regex": "^(cold_boot|warm_boot|roundtrip.(preprod_2_trunk_2_preprod|trunk_2_preprod_2_trunk|prod_2_trunk_2_prod).(cold_boot|warm_boot)).AgentAccessPolicyClassIdAclV3AddedTest.AccessPolicyAclV3AddedOnWarmboot$"
         },
         {
-          "test_name_regex": "(cold_boot|warm_boot|roundtrip.(trunk_2_preprod_2_trunk|trunk_2_prod_2_trunk).cold_boot).AgentAccessPolicyClassIdAclV3RemovedTest.AccessPolicyAclV3RemovedOnWarmboot$"
+          "test_name_regex": "^(cold_boot|warm_boot|roundtrip.(preprod_2_trunk_2_preprod|trunk_2_preprod_2_trunk|prod_2_trunk_2_prod).(cold_boot|warm_boot)).AgentAccessPolicyClassIdAclV3RemovedTest.AccessPolicyAclV3RemovedOnWarmboot$"
         },
         {
-          "test_name_regex": "(cold_boot|warm_boot|roundtrip.(trunk_2_preprod_2_trunk|trunk_2_prod_2_trunk).cold_boot).AgentAccessPolicyClassIdAclV3ToV4UpgradedTest.AccessPolicyAclV3ToV4UpgradedOnWarmboot$"
+          "test_name_regex": "^(cold_boot|warm_boot|roundtrip.(preprod_2_trunk_2_preprod|trunk_2_preprod_2_trunk|prod_2_trunk_2_prod).(cold_boot|warm_boot)).AgentAccessPolicyClassIdAclV3ToV4UpgradedTest.AccessPolicyAclV3ToV4UpgradedOnWarmboot$"
         },
         {
-          "test_name_regex": "(cold_boot|warm_boot|roundtrip.(trunk_2_preprod_2_trunk|trunk_2_prod_2_trunk).cold_boot|roundtrip.(preprod_2_trunk_2_preprod|prod_2_trunk_2_prod).(cold_boot|warm_boot|warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit)).AgentAccessPolicyClassIdAclV4AddedTest.AccessPolicyAclV4AddedOnWarmboot$"
+          "test_name_regex": "^(cold_boot|warm_boot|roundtrip.(preprod_2_trunk_2_preprod|trunk_2_preprod_2_trunk|prod_2_trunk_2_prod).(cold_boot|warm_boot)|roundtrip.(preprod_2_trunk_2_preprod|prod_2_trunk_2_prod).(cold_boot|warm_boot|warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit)).AgentAccessPolicyClassIdAclV4AddedTest.AccessPolicyAclV4AddedOnWarmboot$"
         },
         {
-          "test_name_regex": "(cold_boot|warm_boot|roundtrip.(trunk_2_preprod_2_trunk|trunk_2_prod_2_trunk).cold_boot).AgentAccessPolicyClassIdAclV4RemovedTest.AccessPolicyAclV4RemovedOnWarmboot$"
+          "test_name_regex": "^(cold_boot|warm_boot|roundtrip.(preprod_2_trunk_2_preprod|trunk_2_preprod_2_trunk|prod_2_trunk_2_prod).(cold_boot|warm_boot)).AgentAccessPolicyClassIdAclV4RemovedTest.AccessPolicyAclV4RemovedOnWarmboot$"
         },
         {
-          "test_name_regex": "(cold_boot|warm_boot|roundtrip.(trunk_2_preprod_2_trunk|trunk_2_prod_2_trunk).cold_boot).AgentAccessPolicyClassIdAclV4ToV3DowngradedTest.AccessPolicyAclV4ToV3DowngradedOnWarmboot$"
+          "test_name_regex": "^(cold_boot|warm_boot|roundtrip.(preprod_2_trunk_2_preprod|trunk_2_preprod_2_trunk|prod_2_trunk_2_prod).(cold_boot|warm_boot)).AgentAccessPolicyClassIdAclV4ToV3DowngradedTest.AccessPolicyAclV4ToV3DowngradedOnWarmboot$"
         },
         {
-          "test_name_regex": "(cold_boot|warm_boot|roundtrip.(trunk_2_preprod_2_trunk|trunk_2_prod_2_trunk).cold_boot|roundtrip.(preprod_2_trunk_2_preprod|prod_2_trunk_2_prod).(cold_boot|warm_boot|warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit)).AgentAccessPolicyClassIdAclZeroL4PortTest.L4PortsPastParseWindow$"
+          "test_name_regex": "^(cold_boot|warm_boot|roundtrip.(preprod_2_trunk_2_preprod|trunk_2_preprod_2_trunk|prod_2_trunk_2_prod).(cold_boot|warm_boot)|roundtrip.(preprod_2_trunk_2_preprod|prod_2_trunk_2_prod).(cold_boot|warm_boot|warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit)).AgentAccessPolicyClassIdAclZeroL4PortTest.L4PortsPastParseWindow$"
         },
         {
-          "test_name_regex": "(cold_boot|warm_boot|roundtrip.(trunk_2_preprod_2_trunk|trunk_2_prod_2_trunk).cold_boot|roundtrip.prod_2_trunk_2_prod.(cold_boot|warm_boot|warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit|warm_boot_for_warm_boot.0.AgentEmptyVoqTest.CheckInit)).AgentAccessPolicyClassIdControlPlaneStrongDenyTest.ControlPlanePunt$"
+          "test_name_regex": "^(cold_boot|warm_boot|roundtrip.(preprod_2_trunk_2_preprod|trunk_2_preprod_2_trunk|prod_2_trunk_2_prod).(cold_boot|warm_boot)|roundtrip.prod_2_trunk_2_prod.(cold_boot|warm_boot|warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit|warm_boot_for_warm_boot.0.AgentEmptyVoqTest.CheckInit)).AgentAccessPolicyClassIdControlPlaneStrongDenyTest.ControlPlanePunt$"
         },
         {
-          "test_name_regex": "(cold_boot|warm_boot|roundtrip.(trunk_2_preprod_2_trunk|trunk_2_prod_2_trunk).cold_boot).AgentAccessPolicyClassIdControlPlaneTest.ControlPlanePunt$"
+          "test_name_regex": "^(cold_boot|warm_boot|roundtrip.(preprod_2_trunk_2_preprod|trunk_2_preprod_2_trunk|prod_2_trunk_2_prod).(cold_boot|warm_boot)).AgentAccessPolicyClassIdControlPlaneTest.ControlPlanePunt$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.(warm_boot|warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit).AgentCoppTest/0.DstIpNetworkControlDscpToHighPriQ$"
@@ -10960,7 +10948,7 @@
           "test_name_regex": "roundtrip.prod_2_trunk_2_prod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentFlexPortTest.FlexPortONEX40G$"
         },
         {
-          "test_name_regex": "(roundtrip.(trunk_2_preprod_2_trunk|trunk_2_prod_2_trunk).cold_boot|roundtrip.preprod_2_trunk_2_preprod.(warm_boot|warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit|warm_boot_for_warm_boot.0.AgentEmptyVoqTest.CheckInit)).AgentMacLearningMacMoveTest.VerifyMacMoveForPort$"
+          "test_name_regex": "(roundtrip.trunk_2_preprod_2_trunk.cold_boot|roundtrip.preprod_2_trunk_2_preprod.(warm_boot|warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit|warm_boot_for_warm_boot.0.AgentEmptyVoqTest.CheckInit)).AgentMacLearningMacMoveTest.VerifyMacMoveForPort$"
         },
         {
           "test_name_regex": "roundtrip.(preprod_2_trunk_2_preprod|prod_2_trunk_2_prod).(warm_boot|warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit).AgentMacSwLearningModeTest.VerifyDefaultSwAgingForPort$"
@@ -10973,6 +10961,9 @@
         },
         {
           "test_name_regex": "roundtrip.prod_2_trunk_2_prod.(warm_boot|warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit).AgentTest_PROFILE_10G_1_NRZ_NOFEC_OPTICAL.TestProfile$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_prod_2_trunk.(warm_boot|warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit).AgentAccessPolicyClassIdAclDeepDstOptsTest.DstOptsLengthsTcpSynDenied$"
         },
         {
           "test_name_regex": "AgentMacSwLearningModeTest.VerifyDefaultSwAgingForPort$"
@@ -23104,9 +23095,6 @@
           "test_name_regex": "warm_boot.AgentMacSwLearningModeTest.VerifySwAgingForPort$"
         },
         {
-          "test_name_regex": "AgentPacketSendTest.PortTxEnableTest$"
-        },
-        {
           "test_name_regex": "AgentAclConflictAndDscpQueueMappingTest.VerifyAclAndQosMapConflict$"
         },
         {
@@ -23243,9 +23231,6 @@
         },
         {
           "test_name_regex": "AgentSflowMirrorEventorTest.VerifyEventorMtu$"
-        },
-        {
-          "test_name_regex": "AgentQueuePerHostTest.VerifyTtldCounter$"
         },
         {
           "test_name_regex": "AgentDiagShellStressTest.stressDiagCmds$"
@@ -23678,6 +23663,12 @@
         },
         {
           "test_name_regex": "AgentCoppQueueStuckTest.CpuQueueHighRateTraffic$"
+        },
+        {
+          "test_name_regex": "roundtrip.(preprod_2_trunk_2_preprod|trunk_2_preprod_2_trunk|prod_2_trunk_2_prod|trunk_2_prod_2_trunk).(cold_boot|warm_boot|warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit|warm_boot_for_warm_boot.0.AgentEmptyVoqTest.CheckInit).AgentPacketSendTest.PortTxEnableTest$"
+        },
+        {
+          "test_name_regex": "roundtrip.(preprod_2_trunk_2_preprod|trunk_2_preprod_2_trunk|prod_2_trunk_2_prod|trunk_2_prod_2_trunk).(cold_boot|warm_boot|warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit|warm_boot_for_warm_boot.0.AgentEmptyVoqTest.CheckInit).AgentQueuePerHostTest.VerifyTtldCounter$"
         }
     ],
     "leaba/24.8.3001/24.8.3001/gibraltar/multi_switch": [
@@ -23856,9 +23847,6 @@
           "test_name_regex": "AgentMPLSTest/[01].AclRedirectToNexthopDrop$"
         },
         {
-          "test_name_regex": "AgentMPLSTest/[01].AclRedirectToNexthopMismatch$"
-        },
-        {
           "test_name_regex": "AgentMPLSTest/[01].AclRedirectToNexthopMultipleNexthops$"
         },
         {
@@ -23884,9 +23872,6 @@
         },
         {
           "test_name_regex": "AgentV6FlowLabelEcmpLoadBalancerTest.EcmpFlowLabelHashEnabledViaConfigChange$"
-        },
-        {
-          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.*$"
         },
         {
           "test_name_regex": "AgentMacLearningMacMoveTest.*$"
@@ -23932,9 +23917,6 @@
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentRouteTest/[01].StaticIp2MplsRoutes$"
-        },
-        {
-          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentMplsRouteTest.StaticIp2MplsRoutes$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.*AgentCoppTest/[01].DstIpNetworkControlDscpToHighPriQ$"
@@ -24168,9 +24150,6 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentMPLSTest.*$"
         },
         {
-          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentMPLSTest.*$"
-        },
-        {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentMPLSHeadEndTest.*$"
         },
         {
@@ -24235,6 +24214,12 @@
         },
         {
           "test_name_regex": "AgentCoppQueueStuckTest.CpuQueueHighRateTraffic$"
+        },
+        {
+          "test_name_regex": "^(cold_boot|warm_boot|roundtrip.(trunk_2_preprod_2_trunk|prod_2_trunk_2_prod|trunk_2_prod_2_trunk).(cold_boot|warm_boot|warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit|warm_boot_for_warm_boot.0.AgentEmptyVoqTest.CheckInit)).AgentMPLSTest/0.AclRedirectToNexthopMismatch$"
+        },
+        {
+          "test_name_regex": "^(cold_boot|warm_boot|roundtrip.(trunk_2_preprod_2_trunk|prod_2_trunk_2_prod|trunk_2_prod_2_trunk).(cold_boot|warm_boot|warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit|warm_boot_for_warm_boot.0.AgentEmptyVoqTest.CheckInit)).AgentMPLSTest/1.AclRedirectToNexthopMismatch$"
         }
     ],
     "leaba/24.8.3001/24.8.3001/graphene200/multi_switch": [
@@ -24766,9 +24751,6 @@
           "test_name_regex": "AgentWatermarkTest.VerifyQueueWatermarkAccuracy$"
         },
         {
-          "test_name_regex": "AgentAclInDiscardsCounterTest.verifyAclInDiscards$"
-        },
-        {
           "test_name_regex": "AgentAclAndDscpQueueMappingTest.VerifyAclAndQosMap$"
         },
         {
@@ -24842,9 +24824,6 @@
         },
         {
           "test_name_regex": "AgentMPLSTest/[01].AclRedirectToNexthopDrop$"
-        },
-        {
-          "test_name_regex": "AgentMPLSTest/[01].AclRedirectToNexthopMismatch$"
         },
         {
           "test_name_regex": "AgentMPLSTest/[01].AclRedirectToNexthopMultipleNexthops$"
@@ -25223,6 +25202,15 @@
         },
         {
           "test_name_regex": "AgentCoppQueueStuckTest.CpuQueueHighRateTraffic$"
+        },
+        {
+          "test_name_regex": "roundtrip.(preprod_2_trunk_2_preprod|trunk_2_preprod_2_trunk|prod_2_trunk_2_prod|trunk_2_prod_2_trunk).(cold_boot|warm_boot|warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit|warm_boot_for_warm_boot.0.AgentEmptyVoqTest.CheckInit).AgentAclInDiscardsCounterTest.verifyAclInDiscards$"
+        },
+        {
+          "test_name_regex": "roundtrip.(preprod_2_trunk_2_preprod|trunk_2_preprod_2_trunk|prod_2_trunk_2_prod|trunk_2_prod_2_trunk).(cold_boot|warm_boot|warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit|warm_boot_for_warm_boot.0.AgentEmptyVoqTest.CheckInit).AgentMPLSTest/0.AclRedirectToNexthopMismatch$"
+        },
+        {
+          "test_name_regex": "roundtrip.(preprod_2_trunk_2_preprod|trunk_2_preprod_2_trunk|prod_2_trunk_2_prod|trunk_2_prod_2_trunk).(cold_boot|warm_boot|warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit|warm_boot_for_warm_boot.0.AgentEmptyVoqTest.CheckInit).AgentMPLSTest/1.AclRedirectToNexthopMismatch$"
         }
     ],
     "leaba/25.11.4210/25.11.4210/graphene202x/multi_switch": [

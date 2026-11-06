@@ -1235,6 +1235,44 @@ TEST_F(ThriftTest, addUnicastRouteWithLinkLocalInterfaceSucceeds) {
       static_cast<int16_t>(ClientID::OPENR), std::move(route)));
 }
 
+TEST_F(ThriftTest, addUnicastRouteInVrfValidatesNextHopVrf) {
+  auto config = testConfigA();
+  config.vrfs().ensure().emplace_back().vrfId() = 1001;
+  config.vrfs()->emplace_back().vrfId() = 1002;
+  config.interfaces()[1].routerID() = 1001;
+  sw_->applyConfig("add vrfs", config);
+
+  ThriftHandler handler(sw_);
+  auto addRoute = [&handler](
+                      int32_t routeVrf,
+                      int32_t nhopVrf,
+                      const std::string& addr = "2401:db00::1",
+                      const std::optional<std::string>& ifName = std::nullopt) {
+    auto route = std::make_unique<UnicastRoute>();
+    route->dest() = ipPrefix("2001:db8::/64");
+    route->adminDistance() = AdminDistance::OPENR;
+    NextHopThrift nexthop;
+    nexthop.address() = toBinaryAddress(IPAddress(addr));
+    nexthop.address()->ifName().from_optional(ifName);
+    nexthop.weight() = ECMP_WEIGHT;
+    nexthop.vrf() = nhopVrf;
+    route->nextHops()->push_back(std::move(nexthop));
+    handler.addUnicastRouteInVrf(
+        static_cast<int16_t>(ClientID::OPENR), std::move(route), routeVrf);
+  };
+
+  EXPECT_NO_THROW(addRoute(1001, 1001));
+  EXPECT_NO_THROW(addRoute(1001, 0));
+  EXPECT_NO_THROW(addRoute(0, 0));
+  EXPECT_NO_THROW(addRoute(1001, 1001, "fe80:face:b00c::1", "fboss55"));
+
+  EXPECT_THROW(addRoute(0, 1001), FbossError);
+  EXPECT_THROW(addRoute(1001, 1002), FbossError);
+  EXPECT_THROW(addRoute(1001, 2002), FbossError);
+  EXPECT_THROW(addRoute(1001, -1), FbossError);
+  EXPECT_THROW(addRoute(1001, 0, "fe80:face:b00c::1", "fboss55"), FbossError);
+}
+
 TEST_F(ThriftTest, addUnicastRouteWithNonLinkLocalInterfaceThrows) {
   ThriftHandler handler(sw_);
   auto route = std::make_unique<UnicastRoute>();
