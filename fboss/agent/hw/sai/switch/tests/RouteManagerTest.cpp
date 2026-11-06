@@ -343,6 +343,28 @@ TEST_F(
   ASSERT_NE(initialGroup, nullptr);
   ASSERT_NE(initialGroup->nextHopGroup, nullptr);
   const auto initialGroupId = initialGroup->nextHopGroup->adapterKey();
+  auto& nextHopGroupApi = saiApiTable->nextHopGroupApi();
+  const auto initialChildGroupId = getChildGroupId(initialGroup);
+  ASSERT_TRUE(initialChildGroupId.has_value());
+
+  auto expectProtectionGroup = [&](const auto& groupHandle) {
+    ASSERT_NE(groupHandle, nullptr);
+    ASSERT_NE(groupHandle->nextHopGroup, nullptr);
+    EXPECT_EQ(
+        nextHopGroupApi.getAttribute(
+            groupHandle->nextHopGroup->adapterKey(),
+            SaiNextHopGroupTraits::Attributes::Type{}),
+        SAI_NEXT_HOP_GROUP_TYPE_PROTECTION);
+    const auto childGroupId = getChildGroupId(groupHandle);
+    ASSERT_TRUE(childGroupId.has_value());
+    EXPECT_EQ(childGroupId, initialChildGroupId);
+    EXPECT_EQ(
+        nextHopGroupApi.getAttribute(
+            NextHopGroupSaiId(childGroupId.value()),
+            SaiNextHopGroupTraits::Attributes::Type{}),
+        SAI_NEXT_HOP_GROUP_TYPE_HW_PROTECTION);
+  };
+  expectProtectionGroup(initialGroup);
 
   // Resolution removes the primary from the forwarding set. The existing
   // protection group must remain programmed so GR2 can continue using the
@@ -355,6 +377,7 @@ TEST_F(
   backupOnlyRoute->setResolved(backupResolvedEntry);
   changeRoute(protectedRoute, backupOnlyRoute);
   EXPECT_EQ(routeHandle->nextHopAdapterKey(), initialGroupId);
+  expectProtectionGroup(routeHandle->nextHopGroupHandle());
 
   // When the primary resolves again, the same group is retained and its
   // subscribed primary member is recreated by the next-hop manager.
@@ -362,6 +385,7 @@ TEST_F(
       makeProtectionRoute(d1, testInterfaces.at(0), backupNextHops);
   changeRoute(backupOnlyRoute, restoredRoute);
   EXPECT_EQ(routeHandle->nextHopAdapterKey(), initialGroupId);
+  expectProtectionGroup(routeHandle->nextHopGroupHandle());
 }
 
 TEST_F(RouteManagerTest, protectionRouteDoesNotReuseGroupWhenPrimaryRemoved) {
