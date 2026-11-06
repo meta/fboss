@@ -587,6 +587,18 @@ struct AclUdfEntry {
 }
 
 /**
+ * IP address match with an arbitrary, possibly non-contiguous, mask. Both ip
+ * and mask are in address notation and must be of the same family, e.g.
+ * ip "::4a1c:1230:0:0" with mask "::efff:fffc:0:0", or ip "10.32.5.0" with
+ * mask "255.240.15.0". A packet matches when
+ * (packet address & mask) == (ip & mask). ip must not set bits outside mask.
+ */
+struct AclIpMatch {
+  1: string ip;
+  2: string mask;
+}
+
+/**
  * An access control entry
  */
 struct AclEntry {
@@ -728,6 +740,12 @@ struct AclEntry {
    * Valid values [1-63], and valid only when tcpFlagsBitMap is set.
    */
   41: optional i16 tcpFlagsMask;
+
+  /*
+   * Match destination IP with an arbitrary mask. Cannot be combined with
+   * dstIp, dstIpV6Word3 or dstIpV6Word2.
+   */
+  42: optional AclIpMatch dstIpWithMask;
 }
 
 enum AclTableActionType {
