@@ -21,10 +21,27 @@ using facebook::fboss::ArpTable;
 using facebook::fboss::MacEntry;
 using facebook::fboss::MacTable;
 using facebook::fboss::NdpTable;
+using facebook::fboss::PortDescriptor;
 using facebook::fboss::SwitchState;
 using facebook::fboss::Vlan;
 using facebook::fboss::VlanID;
 using facebook::fboss::cfg::AclLookupClass;
+
+// A MacEntry must not name an AggregatePort that is absent from state: the hw
+// agent has already removed that LAG and cannot program the entry.
+bool isMissingAggregatePort(
+    const std::shared_ptr<SwitchState>& state,
+    const PortDescriptor& port,
+    const folly::MacAddress& mac) {
+  if (!port.isAggregatePort() ||
+      state->getAggregatePorts()->getNodeIf(port.aggPortID())) {
+    return false;
+  }
+  XLOG(ERR) << "AggregatePort: " << port.aggPortID()
+            << " does not exist in current state, skipping mac entry for "
+            << mac.toString();
+  return true;
+}
 
 std::shared_ptr<SwitchState> modifyClassIDForEntry(
     const std::shared_ptr<SwitchState>& state,
@@ -37,6 +54,9 @@ std::shared_ptr<SwitchState> modifyClassIDForEntry(
 
   auto mac = macEntry->getMac();
   auto portDescr = macEntry->getPort();
+  if (isMissingAggregatePort(state, portDescr, mac)) {
+    return state;
+  }
   auto vlan = state->getVlans()->getNodeIf(vlanID).get();
   std::shared_ptr<SwitchState> newState{state};
   auto* macTable = vlan->getMacTable().get();
@@ -119,6 +139,11 @@ std::shared_ptr<SwitchState> MacTableUtils::updateMacTable(
   }
 
   if (l2EntryUpdateType == L2EntryUpdateType::L2_ENTRY_UPDATE_TYPE_ADD) {
+    // Drop learn events for an AggregatePort that no longer exists; the MAC is
+    // re-learned on the member port.
+    if (isMissingAggregatePort(state, portDescr, mac)) {
+      return newState;
+    }
     if (!node || node->getPort() != portDescr) {
       // If the node deos not exist we need to add it. OTOH if node does
       // exist we update it only if the port association changed. The latter
@@ -161,6 +186,9 @@ std::shared_ptr<SwitchState> MacTableUtils::updateOrAddStaticEntry(
     VlanID vlanId,
     folly::MacAddress mac,
     std::optional<bool> configured) {
+  if (isMissingAggregatePort(state, port, mac)) {
+    return state;
+  }
   // Neighbor-created MACs stay off a port error-disabled for its MAC limit
   // until the error is cleared.
   if (!configured.value_or(false) && isMacLimitErrorDisabled(state, port)) {
@@ -322,6 +350,10 @@ std::shared_ptr<SwitchState> MacTableUtils::updateOrAddStaticEntryIfNbrExists(
     // For Static MAC entry, we miror the port neighbor was resolved on
     auto port = arpItr != arpTable.end() ? (arpItr->second)->getPort()
                                          : (ndpItr->second)->getPort();
+    // The neighbor outlives its aggregate until NeighborUpdater flushes it.
+    if (isMissingAggregatePort(state, port, mac)) {
+      return state;
+    }
     if (isMacLimitErrorDisabled(state, port)) {
       return state;
     }

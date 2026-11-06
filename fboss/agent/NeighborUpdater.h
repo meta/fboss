@@ -111,6 +111,7 @@ class NeighborUpdater : public StateObserver {
   void aggregatePortChanged(
       const std::shared_ptr<AggregatePort>& oldAggPort,
       const std::shared_ptr<AggregatePort>& newAggPort);
+  void aggregatePortRemoved(const std::shared_ptr<AggregatePort>& oldAggPort);
 
   // TODO(skhare) Remove after completely migrating to intfCaches_
   void sendNeighborUpdates(const VlanDelta& delta);
