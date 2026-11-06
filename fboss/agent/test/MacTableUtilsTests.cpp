@@ -12,10 +12,16 @@
 
 #include "fboss/agent/L2Entry.h"
 #include "fboss/agent/MacTableUtils.h"
+#include "fboss/agent/hw/mock/MockPlatform.h" // NOLINT(misc-include-cleaner)
+#include "fboss/agent/state/Interface.h"
+#include "fboss/agent/state/MacEntry.h"
+#include "fboss/agent/state/MacTable.h"
+#include "fboss/agent/state/NdpTable.h"
 #include "fboss/agent/state/SwitchState.h"
 #include "fboss/agent/state/Vlan.h"
 #include "fboss/agent/test/TestUtils.h"
 
+#include <folly/IPAddressV6.h>
 #include <folly/MacAddress.h>
 
 using folly::MacAddress;
@@ -122,6 +128,132 @@ class MacTableUtilsTest : public ::testing::Test {
     return macTable->getMacIf(kMacAddress());
   }
 };
+
+/*
+ * A learn event can name an AggregatePort that config has since removed: the
+ * ASIC generates it before the aggregate is torn down and the sw agent applies
+ * it afterwards. Programming it would leave a MacEntry pointing at a dead
+ * aggregate that SaiFdbManager::addMac() cannot resolve. The
+ * event must be dropped when the aggregate is absent from state, and applied
+ * as usual when it is present.
+ */
+TEST_F(MacTableUtilsTest, VerifyUpdateMacTableSkipsAddOnMissingAggregatePort) {
+  const AggregatePortID kMissingAggPort(55);
+  auto state = testStateA();
+  ASSERT_EQ(nullptr, state->getAggregatePorts()->getNodeIf(kMissingAggPort));
+
+  L2Entry l2Entry(
+      kMacAddress(),
+      kVlan(),
+      PortDescriptor(kMissingAggPort),
+      L2Entry::L2EntryType::L2_ENTRY_TYPE_VALIDATED);
+  auto newState = MacTableUtils::updateMacTable(
+      state, l2Entry, L2EntryUpdateType::L2_ENTRY_UPDATE_TYPE_ADD);
+
+  EXPECT_EQ(
+      nullptr,
+      newState->getVlans()->getNodeIf(kVlan())->getMacTable()->getMacIf(
+          kMacAddress()));
+}
+
+TEST_F(MacTableUtilsTest, VerifyUpdateMacTableAddOnPresentAggregatePort) {
+  const AggregatePortID kAggPort(55);
+  auto platform = createMockPlatform();
+  auto config = testConfigA();
+  config.aggregatePorts()->resize(1);
+  *config.aggregatePorts()[0].key() = static_cast<int16_t>(kAggPort);
+  *config.aggregatePorts()[0].name() = "lag55";
+  config.aggregatePorts()[0].memberPorts()->resize(1);
+  *config.aggregatePorts()[0].memberPorts()[0].memberPortID() = kPortID();
+  auto state = publishAndApplyConfig(testStateA(), &config, platform.get());
+  ASSERT_NE(nullptr, state);
+  ASSERT_NE(nullptr, state->getAggregatePorts()->getNodeIf(kAggPort));
+
+  L2Entry l2Entry(
+      kMacAddress(),
+      kVlan(),
+      PortDescriptor(kAggPort),
+      L2Entry::L2EntryType::L2_ENTRY_TYPE_VALIDATED);
+  auto newState = MacTableUtils::updateMacTable(
+      state, l2Entry, L2EntryUpdateType::L2_ENTRY_UPDATE_TYPE_ADD);
+
+  auto entry =
+      newState->getVlans()->getNodeIf(kVlan())->getMacTable()->getMacIf(
+          kMacAddress());
+  ASSERT_NE(nullptr, entry);
+  EXPECT_EQ(entry->getPort(), PortDescriptor(kAggPort));
+}
+
+/*
+ * A neighbor resolved on an AggregatePort outlives the aggregate until
+ * NeighborUpdater flushes it. Mirroring it into a static MacEntry in that
+ * window would hand the hw agent a MAC on a LAG it has already removed.
+ */
+class MacTableUtilsStaticNbrTest : public MacTableUtilsTest {
+ public:
+  std::shared_ptr<SwitchState> stateWithNeighborOn(const PortDescriptor& port) {
+    auto state = testStateA()->clone();
+    const InterfaceID intfId(1); // testStateA(): VLAN 1 -> interface 1
+    auto* ndpTable =
+        state->getInterfaces()->getNode(intfId)->getNdpTable()->modify(
+            intfId, &state);
+    ndpTable->addEntry(
+        folly::IPAddressV6("2401:db00:2110:3001::2"),
+        kMacAddress(),
+        port,
+        intfId);
+    state->publish();
+    return state;
+  }
+
+  std::shared_ptr<MacEntry> macEntryIn(
+      const std::shared_ptr<SwitchState>& state) {
+    return state->getVlans()->getNodeIf(kVlan())->getMacTable()->getMacIf(
+        kMacAddress());
+  }
+};
+
+TEST_F(MacTableUtilsStaticNbrTest, StaticEntryIfNbrExistsOnPhysicalPort) {
+  auto newState = MacTableUtils::updateOrAddStaticEntryIfNbrExists(
+      stateWithNeighborOn(PortDescriptor(kPortID())), kVlan(), kMacAddress());
+  auto entry = macEntryIn(newState);
+  ASSERT_NE(nullptr, entry);
+  EXPECT_EQ(entry->getPort(), PortDescriptor(kPortID()));
+  EXPECT_EQ(entry->getType(), MacEntryType::STATIC_ENTRY);
+}
+
+TEST_F(MacTableUtilsStaticNbrTest, StaticEntryIfNbrExistsSkipsMissingAggPort) {
+  const AggregatePortID kMissingAggPort(55);
+  auto state = stateWithNeighborOn(PortDescriptor(kMissingAggPort));
+  ASSERT_EQ(nullptr, state->getAggregatePorts()->getNodeIf(kMissingAggPort));
+
+  auto newState = MacTableUtils::updateOrAddStaticEntryIfNbrExists(
+      state, kVlan(), kMacAddress());
+  EXPECT_EQ(nullptr, macEntryIn(newState));
+}
+
+TEST_F(MacTableUtilsTest, VerifyStaticEntrySkipsMissingAggregatePort) {
+  auto newState = MacTableUtils::updateOrAddStaticEntry(
+      testStateA(),
+      PortDescriptor(AggregatePortID(55)),
+      kVlan(),
+      kMacAddress());
+  EXPECT_EQ(
+      nullptr,
+      newState->getVlans()->getNodeIf(kVlan())->getMacTable()->getMacIf(
+          kMacAddress()));
+}
+
+TEST_F(MacTableUtilsTest, VerifyAddWithClassIDSkipsMissingAggregatePort) {
+  auto macEntry = std::make_shared<MacEntry>(
+      kMacAddress(), PortDescriptor(AggregatePortID(55)));
+  auto newState = MacTableUtils::updateOrAddEntryWithClassID(
+      testStateA(), kVlan(), macEntry, kClassID());
+  EXPECT_EQ(
+      nullptr,
+      newState->getVlans()->getNodeIf(kVlan())->getMacTable()->getMacIf(
+          kMacAddress()));
+}
 
 TEST_F(MacTableUtilsTest, VerifyUpdateMacTableAddMac) {
   verifyAddMac(testStateA());
