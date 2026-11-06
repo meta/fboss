@@ -9,16 +9,31 @@ cpp_unittest(
     network_access = network_access_utils.none(),
     deps = [
         "fbsource//third-party/googletest:gtest",
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly/testing:test_util",
         "//fboss/agent:agent_config-cpp2-types",
         "//fboss/agent:fboss-error",
         "//fboss/cli/fboss2:cli-parser-utils",
+        "//fboss/cli/fboss2:cmd-local-options",
         "//fboss/cli/fboss2:cmd-subcommands",
         "//fboss/cli/fboss2:fboss2-config-gen-lib",
         "//fboss/cli/fboss2:fboss2-lib",
-        "//fboss/configs/platforms/generic/forwarding_stacks:feature_default_command_args-cpp2-types",
-        "//folly:file_util",
-        "//folly/testing:test_util",
+        "//fboss/configs/platforms/generic/forwarding_stack:feature_default_command_args-cpp2-types",
+        "//fboss/configs/platforms/generic/forwarding_stack/utils:config_generation_utils",
+        "//fboss/lib/config:fboss_agent_config_utils",
         "//thrift/lib/cpp2/protocol:protocol",
     ],
     external_deps = ["CLI11"],
+)
+
+cpp_unittest(
+    name = "agent_config_parity_test",
+    srcs = ["AgentConfigParityTest.cpp"],
+    network_access = network_access_utils.none(),
+    deps = [
+        "fbsource//third-party/googletest:gtest",
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly/testing:test_util",
+        "//fboss/cli/fboss2:fboss2-config-gen-lib",
+    ],
 )

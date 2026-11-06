@@ -93,18 +93,21 @@ bool BspSaiPhyManager::initExternalPhyMap(bool warmboot) {
   XLOG(DBG5) << __func__ << ": Starting with warmboot=" << warmboot;
   std::optional<GlobalXphyID> firstXphy;
 
-  // Reset all PHY IO controllers and PHYs during coldboot only
-  if (!warmboot) {
-    XLOG(INFO) << "Coldboot: Resetting all PHY IO controllers and PHYs";
-    for (const auto& [pimID, pimMapping] : bspMapping_->getPimMappings()) {
-      auto pimContainer = systemContainer_->getPimContainerFromPimID(pimID);
+  XLOG(INFO)
+      << (warmboot ? "Warmboot: Initializing PHY IO controllers without reset"
+                   : "Coldboot: Resetting all PHY IO controllers and PHYs");
+  for (const auto& [pimID, pimMapping] : bspMapping_->getPimMappings()) {
+    auto pimContainer = systemContainer_->getPimContainerFromPimID(pimID);
 
-      // 1. Reset MDIO bus controllers first
-      pimContainer->initAllPhyIOControllers();
+    // 1. Init MDIO bus controllers first
+    pimContainer->initAllPhyIOControllers(/*forceReset=*/!warmboot);
 
-      // 2. Then reset individual PHY retimers
+    // 2. Then reset individual PHY retimers
+    if (!warmboot) {
       pimContainer->initAllPhys();
     }
+  }
+  if (!warmboot) {
     XLOG(INFO) << "Coldboot: All PHY resets complete";
   }
 
@@ -150,7 +153,7 @@ bool BspSaiPhyManager::initExternalPhyMap(bool warmboot) {
     // Mark the SAI adaptor as thread-safe to enable parallel XPHY
     // initialization. Gated to PAI 4.1+ (which installs the PAI lock-sync
     // callbacks); on PAI 4.0 PAI access is unprotected, so keep serial init.
-#if defined(SAI_BRCM_PAI_IMPL) && SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+#if defined(BRCM_PAI_SDK) && SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
     SaiApiLock::getInstance()->setAdaptorIsThreadSafe(true);
 #endif
   }

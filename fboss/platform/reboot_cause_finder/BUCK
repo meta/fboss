@@ -14,7 +14,27 @@ cpp_library(
     ],
     deps = [
         "fbsource//third-party/fmt:fmt",
-        "//folly/logging:logging",
+        "fbsource//xplat/folly/logging:logging",
+    ],
+    exported_deps = [
+        "//fboss/platform/reboot_cause_finder/if:reboot_cause_config-cpp2-types",
+    ],
+)
+
+cpp_library(
+    name = "reboot_history_lib",
+    srcs = [
+        "RebootHistory.cpp",
+    ],
+    headers = [
+        "RebootHistory.h",
+    ],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        "fbsource//xplat/folly:dynamic",
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly:json",
+        "//thrift/lib/cpp2/folly_dynamic:folly_dynamic",
     ],
     exported_deps = [
         "//fboss/platform/reboot_cause_finder/if:reboot_cause_config-cpp2-types",
@@ -31,12 +51,19 @@ cpp_library(
     ],
     deps = [
         "fbsource//third-party/fmt:fmt",
-        "//folly:dynamic",
-        "//folly:file_util",
-        "//folly/logging:logging",
-        "//thrift/lib/cpp2/protocol:protocol",
+        "fbsource//third-party/re2:re2",
+        "fbsource//xplat/folly:conv",
+        "fbsource//xplat/folly:dynamic",
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/logging:logging",
+        ":reboot_history_lib",
+        "//fboss/lib:rest-client",
+        "//thrift/lib/cpp/util:enum_utils",
+        "//thrift/lib/cpp2/folly_dynamic:folly_dynamic",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:range",
         "//fboss/platform/reboot_cause_finder/if:reboot_cause_config-cpp2-types",
     ],
     external_deps = ["gflags"],
@@ -51,11 +78,14 @@ cpp_binary(
         "Main.cpp",
     ],
     deps = [
+        "fbsource//third-party/fmt:fmt",
+        "fbsource//xplat/folly/logging:logging",
         ":config_validator",
         ":reboot_cause_finder_lib",
         "//fb303:logging",
         "//fboss/platform/config_lib:config_lib",
         "//fboss/platform/helpers:init",
+        "//fboss/platform/helpers:structured_logger",
         "//thrift/lib/cpp2/protocol:protocol",
     ],
 )

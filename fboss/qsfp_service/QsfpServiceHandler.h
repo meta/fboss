@@ -267,7 +267,8 @@ class QsfpServiceHandler
   void setPortLoopbackState(
       std::unique_ptr<std::string> portName,
       phy::PortComponent component,
-      bool setLoopback) override;
+      bool setLoopback,
+      phy::LoopbackMode mode) override;
 
   void setPortAdminState(
       std::unique_ptr<std::string> portName,

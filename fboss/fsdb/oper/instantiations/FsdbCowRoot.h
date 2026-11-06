@@ -18,6 +18,15 @@ namespace facebook::fboss::thrift_cow {
 extern template class ThriftStructNode<fsdb::FsdbOperStateRoot>;
 using FsdbCowStateRoot = ThriftStructNode<fsdb::FsdbOperStateRoot>;
 
+extern template class ThriftStructNode<
+    fsdb::FsdbOperStateRoot,
+    ThriftStructResolver<fsdb::FsdbOperStateRoot, true>,
+    /*EnableHybridStorage=*/true>;
+using FsdbHybridCowStateRoot = ThriftStructNode<
+    fsdb::FsdbOperStateRoot,
+    ThriftStructResolver<fsdb::FsdbOperStateRoot, true>,
+    /*EnableHybridStorage=*/true>;
+
 extern template class ThriftStructNode<fsdb::FsdbOperStatsRoot>;
 using FsdbCowStatsRoot = ThriftStructNode<fsdb::FsdbOperStatsRoot>;
 

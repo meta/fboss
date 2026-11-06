@@ -13,11 +13,12 @@ cpp_library(
         "DataCorralServiceThriftHandler.h",
     ],
     deps = [
+        "fbsource//xplat/folly/logging:logging",
         "//fboss/lib:log_thrift_call",
         "//fboss/platform/weutil:weutil_core",
-        "//folly/logging:logging",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:synchronized",
         "//fboss/platform/data_corral_service/if:data_corral_service-cpp2-services",
     ],
 )
@@ -28,13 +29,17 @@ cpp_library(
         "FruPresenceExplorer.cpp",
         "LedManager.cpp",
     ],
+    headers = [
+        "FruPresenceExplorer.h",
+        "LedManager.h",
+    ],
     deps = [
         "fbsource//third-party/fmt:fmt",
+        "fbsource//xplat/folly/logging:logging",
         "//fb303:service_data",
         "//fboss/lib:common_file_utils",
         "//fboss/platform/helpers:structured_logger",
         "//fboss/platform/platform_manager:utils",
-        "//folly/logging:logging",
     ],
     exported_deps = [
         "//fboss/platform/data_corral_service/if:led_manager-cpp2-types",
@@ -46,7 +51,10 @@ cpp_library(
     srcs = [
         "ConfigValidator.cpp",
     ],
-    deps = ["//folly/logging:logging"],
+    headers = [
+        "ConfigValidator.h",
+    ],
+    deps = ["fbsource//xplat/folly/logging:logging"],
     exported_deps = [
         "//fboss/platform/data_corral_service/if:led_manager-cpp2-types",
     ],
@@ -58,6 +66,7 @@ cpp_binary(
         "Main.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly/executors:function_scheduler",
         ":config_validator",
         ":core",
         ":led_management",
@@ -66,7 +75,6 @@ cpp_binary(
         "//fboss/platform/helpers:init",
         "//fboss/platform/helpers:platform_name_lib",
         "//fboss/platform/helpers:structured_logger",
-        "//folly/executors:function_scheduler",
         "//thrift/lib/cpp2/protocol:protocol",
     ],
     external_deps = [

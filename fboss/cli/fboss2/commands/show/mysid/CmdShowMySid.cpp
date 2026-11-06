@@ -2,6 +2,7 @@
 
 #include "fboss/cli/fboss2/commands/show/mysid/CmdShowMySid.h"
 #include "fboss/cli/fboss2/CmdHandler.cpp"
+#include "fboss/cli/fboss2/commands/show/route/utils.h"
 
 #include <unordered_map>
 
@@ -64,6 +65,17 @@ std::unordered_map<int32_t, std::string> buildAggPortIdToNameMap(
   return aggPortIdToName;
 }
 
+// A link local address is ambiguous without the interface it was learned on,
+// so scope it the way the kernel tooling does.
+std::string getNextHopIpStr(const network::thrift::BinaryAddress& addr) {
+  auto ip = network::toIPAddress(addr);
+  auto ifNamePtr = apache::thrift::get_pointer(addr.ifName());
+  if (ifNamePtr != nullptr && ip.isV6() && ip.asV6().isLinkLocal()) {
+    return fmt::format("{}@{}", ip.str(), *ifNamePtr);
+  }
+  return ip.str();
+}
+
 // Helper function to get port name from port descriptor
 std::string getPortNameFromDescriptor(
     const cfg::PortDescriptor& portDesc,
@@ -104,6 +116,62 @@ std::string getPortNameFromDescriptor(
   }
 
   return portName;
+}
+
+// Reuses the route utils' renderer so an SRv6 nexthop's SID list reads the
+// same here as under `show namednexthopgroups`.
+std::string getSrv6SidListStr(const NextHopThrift& nh) {
+  cli::NextHopInfo nextHopInfo;
+  show::route::utils::getNextHopInfoThrift(nh, nextHopInfo);
+  return show::route::utils::getSrv6SidListStr(nextHopInfo);
+}
+
+// Render one resolved nexthop (primary or backup), including egress port
+// information when the nexthop resolves via a known ARP/NDP entry.
+std::string formatResolvedNextHopStr(
+    const NextHopThrift& nh,
+    const std::map<IpIntfKey, cfg::PortDescriptor>& ipIntfToPortDesc,
+    const std::unordered_map<int32_t, std::string>& portIdToName,
+    const std::unordered_map<int32_t, std::string>& aggPortIdToName) {
+  auto nhIp = network::toIPAddress(nh.address().value()).str();
+
+  // Try to get interface name from the address if available
+  bool found = false;
+  cfg::PortDescriptor portDesc;
+  std::string ifNameStr;
+  auto ifNamePtr = apache::thrift::get_pointer(nh.address().value().ifName());
+  if (ifNamePtr != nullptr) {
+    ifNameStr = *ifNamePtr;
+    // Address has interface name, extract interface ID
+    // Format is typically "fboss<id>" or just "<id>"
+    std::string ifName = *ifNamePtr;
+    // Remove "fboss" prefix if present
+    if (ifName.find("fboss") == 0) {
+      ifName = ifName.substr(5);
+    }
+    try {
+      int32_t intfId = folly::to<int32_t>(ifName);
+      auto key = IpIntfKey{nhIp, intfId};
+      auto it = ipIntfToPortDesc.find(key);
+      if (it != ipIntfToPortDesc.end()) {
+        portDesc = it->second;
+        found = true;
+      }
+    } catch (const std::exception&) {
+      // Failed to parse interface ID
+    }
+  }
+
+  auto sidListStr = getSrv6SidListStr(nh);
+  if (found) {
+    // Found in ARP/NDP table, get port name using helper function
+    std::string portName = getPortNameFromDescriptor(
+        portDesc, portIdToName, aggPortIdToName, ifNameStr);
+    return fmt::format("{} via {}{}", nhIp, portName, sidListStr);
+  }
+  // No egress port to show, so scope a link local address to its
+  // interface instead.
+  return fmt::format("{}{}", getNextHopIpStr(nh.address().value()), sidListStr);
 }
 
 } // namespace
@@ -160,7 +228,10 @@ CmdShowMySid::RetType CmdShowMySid::createModel(
       case MySidType::BINDING_MICRO_SID:
         for (const auto& nh : entry.nextHops().value()) {
           entryModel.nextHops()->push_back(
-              network::toIPAddress(nh.address().value()).str());
+              fmt::format(
+                  "{}{}",
+                  getNextHopIpStr(nh.address().value()),
+                  getSrv6SidListStr(nh)));
         }
         break;
       case MySidType::ADJACENCY_MICRO_SID:
@@ -171,46 +242,13 @@ CmdShowMySid::RetType CmdShowMySid::createModel(
     // Continue showing resolvedNextHops for all if present
     // Include egress port information if available
     for (const auto& nh : entry.resolvedNextHops().value()) {
-      auto nhIp = network::toIPAddress(nh.address().value()).str();
-
-      // Try to get interface name from the address if available
-      bool found = false;
-      cfg::PortDescriptor portDesc;
-      std::string ifNameStr;
-      auto ifNamePtr =
-          apache::thrift::get_pointer(nh.address().value().ifName());
-      if (ifNamePtr != nullptr) {
-        ifNameStr = *ifNamePtr;
-        // Address has interface name, extract interface ID
-        // Format is typically "fboss<id>" or just "<id>"
-        std::string ifName = *ifNamePtr;
-        // Remove "fboss" prefix if present
-        if (ifName.find("fboss") == 0) {
-          ifName = ifName.substr(5);
-        }
-        try {
-          int32_t intfId = folly::to<int32_t>(ifName);
-          auto key = IpIntfKey{nhIp, intfId};
-          auto it = ipIntfToPortDesc.find(key);
-          if (it != ipIntfToPortDesc.end()) {
-            portDesc = it->second;
-            found = true;
-          }
-        } catch (const std::exception&) {
-          // Failed to parse interface ID
-        }
-      }
-
-      if (found) {
-        // Found in ARP/NDP table, get port name using helper function
-        std::string portName = getPortNameFromDescriptor(
-            portDesc, portIdToName, aggPortIdToName, ifNameStr);
-        entryModel.resolvedNextHops()->push_back(
-            fmt::format("{} via {}", nhIp, portName));
-      } else {
-        // Port not found, just show IP
-        entryModel.resolvedNextHops()->push_back(nhIp);
-      }
+      entryModel.resolvedNextHops()->push_back(formatResolvedNextHopStr(
+          nh, ipIntfToPortDesc, portIdToName, aggPortIdToName));
+    }
+    // Show backup (FRR standby) resolved nexthops separately from primaries
+    for (const auto& nh : entry.backupResolvedNextHops().value()) {
+      entryModel.backupResolvedNextHops()->push_back(formatResolvedNextHopStr(
+          nh, ipIntfToPortDesc, portIdToName, aggPortIdToName));
     }
 
     model.mySidEntries()->push_back(std::move(entryModel));
@@ -222,11 +260,23 @@ void CmdShowMySid::printOutput(const RetType& model, std::ostream& out) {
   for (const auto& entry : model.mySidEntries().value()) {
     out << fmt::format(
         "MySid: {}  Type: {}\n", entry.prefix().value(), entry.type().value());
-    for (const auto& nh : entry.nextHops().value()) {
-      out << fmt::format("\tdestination {}\n", nh);
+    if (!entry.nextHops()->empty()) {
+      out << "\tDestination:\n";
+      for (const auto& nh : entry.nextHops().value()) {
+        out << fmt::format("\t\t{}\n", nh);
+      }
     }
-    for (const auto& nh : entry.resolvedNextHops().value()) {
-      out << fmt::format("\tresolved via {}\n", nh);
+    if (!entry.resolvedNextHops()->empty()) {
+      out << "\tResolved via:\n";
+      for (const auto& nh : entry.resolvedNextHops().value()) {
+        out << fmt::format("\t\t{}\n", nh);
+      }
+    }
+    if (!entry.backupResolvedNextHops()->empty()) {
+      out << "\tBackup resolved via:\n";
+      for (const auto& nh : entry.backupResolvedNextHops().value()) {
+        out << fmt::format("\t\t{}\n", nh);
+      }
     }
   }
 }
@@ -244,6 +294,7 @@ CmdShowMySid::RetType CmdShowMySid::sampleModel() {
   entry1.type() = "ADJACENCY_MICRO_SID";
   entry1.nextHops() = std::vector<std::string>();
   entry1.resolvedNextHops() = std::vector<std::string>();
+  entry1.backupResolvedNextHops() = std::vector<std::string>();
   model.mySidEntries()->push_back(entry1);
 
   // Second entry: fdad:ffff:0002::/48 ADJACENCY_MICRO_SID (with resolved
@@ -254,7 +305,21 @@ CmdShowMySid::RetType CmdShowMySid::sampleModel() {
   entry2.nextHops() = std::vector<std::string>();
   entry2.resolvedNextHops() = std::vector<std::string>{
       "fe80::200:11ff:fe22:3301 via Port-Channel914, fboss2006"};
+  entry2.backupResolvedNextHops() = std::vector<std::string>();
   model.mySidEntries()->push_back(entry2);
+
+  // Binding sid: an unresolved nexthop and a resolved one, both carrying the
+  // SRv6 SID list they encap with.
+  cli::MySidEntryModel entryBinding;
+  entryBinding.prefix() = "fdad:ffff:0003::/48";
+  entryBinding.type() = "BINDING_MICRO_SID";
+  entryBinding.nextHops() = std::vector<std::string>{
+      "fe80::200:11ff:fe22:3303@fboss2007 SRv6 SID List [fdad:ffff:7fff::]"};
+  entryBinding.resolvedNextHops() = std::vector<std::string>{
+      "fe80::200:11ff:fe22:3303 via Port-Channel915, fboss2007 SRv6 SID List [fdad:ffff:7fff::]"};
+  entryBinding.backupResolvedNextHops() = std::vector<std::string>{
+      "fe80::200:11ff:fe22:3304 via Port-Channel916, fboss2008 SRv6 SID List [fdad:ffff:7fff::]"};
+  model.mySidEntries()->push_back(entryBinding);
 
   // Third entry: fdad:ffff:7fff::/48 DECAPSULATE_AND_LOOKUP (no resolved
   // nexthop)
@@ -263,6 +328,7 @@ CmdShowMySid::RetType CmdShowMySid::sampleModel() {
   entry3.type() = "DECAPSULATE_AND_LOOKUP";
   entry3.nextHops() = std::vector<std::string>();
   entry3.resolvedNextHops() = std::vector<std::string>();
+  entry3.backupResolvedNextHops() = std::vector<std::string>();
   model.mySidEntries()->push_back(entry3);
 
   return model;

@@ -98,7 +98,8 @@ void FwUtilImpl::performJamUpgrade(const JamConfig& jamConfig) {
 
   // Construct the JAM command with the provided configuration
   std::vector<std::string> jamCmd = {jamBinaryPath};
-  if (jamConfig.jamExtraArgs().has_value()) {
+  if (apache::thrift::is_non_optional_field_set_manually_or_by_serializer(
+          jamConfig.jamExtraArgs())) {
     for (const auto& arg : *jamConfig.jamExtraArgs()) {
       jamCmd.push_back(arg);
     }
@@ -128,7 +129,8 @@ void FwUtilImpl::performXappUpgrade(const XappConfig& xappConfig) {
 
   // Construct the XAPP command with the provided configuration
   std::vector<std::string> xappCmd = {xappBinaryPath};
-  if (xappConfig.xappExtraArgs().has_value()) {
+  if (apache::thrift::is_non_optional_field_set_manually_or_by_serializer(
+          xappConfig.xappExtraArgs())) {
     for (const auto& arg : *xappConfig.xappExtraArgs()) {
       xappCmd.push_back(arg);
     }

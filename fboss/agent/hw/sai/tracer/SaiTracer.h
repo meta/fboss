@@ -288,6 +288,7 @@ class SaiTracer {
 #endif
   sai_hash_api_t* hashApi_;
   sai_hostif_api_t* hostifApi_;
+  sai_isolation_group_api_t* isolationGroupApi_;
   sai_lag_api_t* lagApi_;
   sai_neighbor_api_t* neighborApi_;
   sai_next_hop_api_t* nextHopApi_;
@@ -295,6 +296,9 @@ class SaiTracer {
   sai_macsec_api_t* macsecApi_;
   sai_mirror_api_t* mirrorApi_;
   sai_mpls_api_t* mplsApi_;
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 0)
+  sai_my_mac_api_t* myMacApi_;
+#endif
   sai_port_api_t* portApi_;
   sai_queue_api_t* queueApi_;
   sai_qos_map_api_t* qosMapApi_;
@@ -317,6 +321,9 @@ class SaiTracer {
   sai_vendor_switch_api_t* vendorSwitchApi_;
   sai_switch_pipeline_api_t* switchPipelineApi_;
 #endif
+#if defined(SAI_CBFC_SUPPORTED)
+  sai_virtual_channel_api_t* virtualChannelApi_;
+#endif
   sai_virtual_router_api_t* virtualRouterApi_;
   sai_vlan_api_t* vlanApi_;
   sai_wred_api_t* wredApi_;
@@ -329,6 +336,7 @@ class SaiTracer {
       {TYPE_INDEX(bool), &boolAttr},
       {TYPE_INDEX(sai_uint8_t), &u8Attr},
       {TYPE_INDEX(sai_int8_t), &s8Attr},
+      {TYPE_INDEX(sai_int16_t), &s16Attr},
       {TYPE_INDEX(sai_uint16_t), &u16Attr},
       {TYPE_INDEX(sai_uint32_t), &u32Attr},
       {TYPE_INDEX(sai_int32_t), &s32Attr},
@@ -512,6 +520,9 @@ class SaiTracer {
       {SAI_OBJECT_TYPE_QUEUE, "queue_"},
       {SAI_OBJECT_TYPE_ROUTER_INTERFACE, "routerInterface_"},
       {SAI_OBJECT_TYPE_SAMPLEPACKET, "samplepacket_"},
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 0)
+      {SAI_OBJECT_TYPE_MY_MAC, "myMac_"},
+#endif
       {SAI_OBJECT_TYPE_SCHEDULER, "scheduler_"},
       {SAI_OBJECT_TYPE_SCHEDULER_GROUP, "schedulerGroup_"},
       {SAI_OBJECT_TYPE_SWITCH, "switch_"},
@@ -529,6 +540,8 @@ class SaiTracer {
       {SAI_OBJECT_TYPE_TAM, "tam_"},
       {SAI_OBJECT_TYPE_TUNNEL, "tunnel_"},
       {SAI_OBJECT_TYPE_TUNNEL_TERM_TABLE_ENTRY, "tunnelTerm_"},
+      {SAI_OBJECT_TYPE_TUNNEL_MAP, "tunnelMap_"},
+      {SAI_OBJECT_TYPE_TUNNEL_MAP_ENTRY, "tunnelMapEntry_"},
 #if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)
       {SAI_OBJECT_TYPE_SRV6_SIDLIST, "srv6SidList_"},
 #endif
@@ -539,9 +552,15 @@ class SaiTracer {
       {static_cast<sai_object_type_t>(SAI_OBJECT_TYPE_VENDOR_SWITCH), "vendorSwitch_"},
       {static_cast<sai_object_type_t>(SAI_OBJECT_TYPE_SWITCH_PIPELINE), "switchPipeline_"},
 #endif
+#if defined(SAI_CBFC_SUPPORTED)
+      {SAI_OBJECT_TYPE_VIRTUAL_CHANNEL, "virtualChannel_"},
+      {SAI_OBJECT_TYPE_CBFC_CREDIT_PROFILE, "cbfcCreditProfile_"},
+#endif
       {SAI_OBJECT_TYPE_VIRTUAL_ROUTER, "virtualRouter_"},
       {SAI_OBJECT_TYPE_VLAN, "vlan_"},
       {SAI_OBJECT_TYPE_VLAN_MEMBER, "vlanMember_"},
+      {SAI_OBJECT_TYPE_ISOLATION_GROUP, "isolationGroup_"},
+      {SAI_OBJECT_TYPE_ISOLATION_GROUP_MEMBER, "isolationGroupMember_"},
       {SAI_OBJECT_TYPE_WRED, "wred_"},
       {SAI_OBJECT_TYPE_SYSTEM_PORT, "systemPort_"}};
 
@@ -596,6 +615,9 @@ class SaiTracer {
       {SAI_OBJECT_TYPE_QOS_MAP, "qos_map_api->"},
       {SAI_OBJECT_TYPE_QUEUE, "queue_api->"},
       {SAI_OBJECT_TYPE_SAMPLEPACKET, "samplepacket_api->"},
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 0)
+      {SAI_OBJECT_TYPE_MY_MAC, "my_mac_api->"},
+#endif
       {SAI_OBJECT_TYPE_SCHEDULER, "scheduler_api->"},
       {SAI_OBJECT_TYPE_SCHEDULER_GROUP, "scheduler_group_api->"},
       {SAI_OBJECT_TYPE_SWITCH, "switch_api->"},
@@ -613,6 +635,8 @@ class SaiTracer {
       {SAI_OBJECT_TYPE_TAM, "tam_api->"},
       {SAI_OBJECT_TYPE_TUNNEL, "tunnel_api->"},
       {SAI_OBJECT_TYPE_TUNNEL_TERM_TABLE_ENTRY, "tunnel_api->"},
+      {SAI_OBJECT_TYPE_TUNNEL_MAP, "tunnel_api->"},
+      {SAI_OBJECT_TYPE_TUNNEL_MAP_ENTRY, "tunnel_api->"},
 #if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)
       {SAI_OBJECT_TYPE_SRV6_SIDLIST, "srv6_api->"},
       {SAI_OBJECT_TYPE_MY_SID_ENTRY, "srv6_api->"},
@@ -626,9 +650,15 @@ class SaiTracer {
       {static_cast<sai_object_type_t>(SAI_OBJECT_TYPE_SWITCH_PIPELINE),
           "switch_pipeline_api->"},
 #endif
+#if defined(SAI_CBFC_SUPPORTED)
+      {SAI_OBJECT_TYPE_VIRTUAL_CHANNEL, "virtual_channel_api->"},
+      {SAI_OBJECT_TYPE_CBFC_CREDIT_PROFILE, "virtual_channel_api->"},
+#endif
       {SAI_OBJECT_TYPE_VIRTUAL_ROUTER, "virtual_router_api->"},
       {SAI_OBJECT_TYPE_VLAN, "vlan_api->"},
       {SAI_OBJECT_TYPE_VLAN_MEMBER, "vlan_api->"},
+      {SAI_OBJECT_TYPE_ISOLATION_GROUP, "isolation_group_api->"},
+      {SAI_OBJECT_TYPE_ISOLATION_GROUP_MEMBER, "isolation_group_api->"},
       {SAI_OBJECT_TYPE_WRED, "wred_api->"}};
   // clang-format on
 

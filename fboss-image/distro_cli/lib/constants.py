@@ -47,3 +47,13 @@ ARTIFACT_BASE_VAR = "ARTIFACT_BASE"
 
 # Shown in the error when ARTIFACT_BASE is required but unset.
 DEFAULT_ARTIFACT_BUCKET = "fboss.oss.platform.artifacts/tree"
+
+# Scheme for artifacts held in Manifold, fetched by shelling out to the manifold
+# CLI. Used when ARTIFACT_BASE points at a bucket rather than a URL or directory.
+MANIFOLD_URL_PREFIX = "manifold:"
+
+# Where to find the manifold CLI. The conveyor installs it outside PATH, so the
+# location is overridable; the default resolves for anyone who has it installed
+# normally.
+MANIFOLD_CLI_VAR = "MANIFOLD_CLI"
+DEFAULT_MANIFOLD_CLI = "manifold"

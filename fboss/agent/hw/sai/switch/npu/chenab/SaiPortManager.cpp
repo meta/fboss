@@ -6,13 +6,18 @@
 
 #include "fboss/agent/FbossError.h"
 #include "fboss/agent/hw/sai/switch/SaiManagerTable.h"
+#include "fboss/agent/hw/sai/switch/SaiTamManager.h"
 #include "fboss/agent/platforms/sai/SaiPlatform.h"
 
 #include <folly/logging/xlog.h>
 
 namespace facebook::fboss {
 
-void SaiPortManager::addRemovedHandle(const PortID& /*portID*/) {}
+void SaiPortManager::addRemovedHandle(const PortID& portID) {
+  // Unlike BCM/Tajo collectors, Chenab's Destination holds the egress port OID.
+  // Release the collector graph before destroying that port.
+  managerTable_->tamManager().removeMirrorOnDropReportsForPort(portID);
+}
 
 void SaiPortManager::removeRemovedHandleIf(const PortID& /*portID*/) {}
 

@@ -30,7 +30,6 @@ facebook::fboss::cfg::PortLoopbackMode bcmToFbLoopbackMode(
     default:
       CHECK(0) << "Should never reach here";
   }
-  return facebook::fboss::cfg::PortLoopbackMode::NONE;
 }
 } // namespace
 
@@ -66,6 +65,13 @@ void HwTestThriftHandler::getPortLlrInfo(
     int32_t /*port*/) {
   // LLR is a SAI-only feature today; no BCM-native implementation.
   throw FbossError("getPortLlrInfo is not implemented in bcm");
+}
+
+void HwTestThriftHandler::getPortVcInfo(
+    ::facebook::fboss::utility::PortVcInfo& /*portVcInfo*/,
+    int32_t /*port*/) {
+  // CBFC is a SAI-only feature today; no BCM-native implementation.
+  throw FbossError("getPortVcInfo is not implemented in bcm");
 }
 
 bool HwTestThriftHandler::verifyPortLedStatus(int /*portId*/, bool /*status*/) {

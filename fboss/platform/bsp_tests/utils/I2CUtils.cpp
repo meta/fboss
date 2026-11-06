@@ -16,7 +16,7 @@
 
 #include <fmt/format.h>
 #include <folly/FileUtil.h>
-#include <folly/Format.h>
+#include <folly/String.h>
 #include <folly/logging/xlog.h>
 
 #include "fboss/platform/bsp_tests/utils/CdevUtils.h"
@@ -76,10 +76,14 @@ I2CAdapterCreationResult I2CUtils::createI2CAdapter(
   // TODO: Check if it already exists
   if (*adapter.isCpuAdapter()) {
     // No need to create, just return the bus
-    auto existingBuses = findI2CBuses();
-    for (const auto& bus : existingBuses) {
-      if (bus.name == *adapter.busName()) {
-        result.buses = {{0, bus}};
+    std::vector<std::string> i2cCpuAdapter = {*adapter.busName()};
+    for (const auto& [busName, busNum] :
+         platform_manager::I2cExplorer().getBusNums(i2cCpuAdapter)) {
+      if (busName == *adapter.busName()) {
+        I2CBus i2cBus;
+        i2cBus.busNum = busNum;
+        i2cBus.name = *adapter.busName();
+        result.buses = {{0, i2cBus}};
         // CPU adapters are not created, so don't add to createdAdapters
         return result;
       }

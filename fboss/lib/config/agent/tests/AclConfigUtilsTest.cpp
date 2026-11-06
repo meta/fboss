@@ -93,6 +93,24 @@ TEST(AclConfigUtilsTest, SetsUpDefaultAclTableGroup) {
   EXPECT_EQ(config, expected);
 }
 
+TEST(AclConfigUtilsTest, AddsEntryDirectlyToDefaultAclTable) {
+  Tomahawk5Asic asic(
+      0,
+      makeSwitchInfo(cfg::AsicType::ASIC_TYPE_TOMAHAWK5, cfg::SwitchType::NPU));
+  cfg::SwitchConfig config;
+  ASSERT_TRUE(utility::setupDefaultAclTableGroups(config, asic));
+
+  cfg::AclEntry acl;
+  acl.name() = "cpu-acl";
+  utility::addAclEntryToDefaultAclTable(config, acl);
+
+  EXPECT_TRUE(config.acls()->empty());
+  ASSERT_EQ(config.aclTableGroups()->size(), 1);
+  const auto& tables = config.aclTableGroups()->front().aclTables().value();
+  ASSERT_EQ(tables.size(), 1);
+  EXPECT_EQ(*tables.front().aclEntries(), std::vector<cfg::AclEntry>{acl});
+}
+
 TEST(AclConfigUtilsTest, MigratesAclsForQumran4DMultipleTables) {
   Qumran4DAsic asic(
       0,

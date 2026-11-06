@@ -1,0 +1,110 @@
+# Evaluation Criteria for fboss-agent-platform-onboarding Skill
+# Generated: 2026-09-18
+# Thoroughness: thorough
+
+skill_name: fboss-agent-platform-onboarding
+thoroughness: thorough
+generated_at: "2026-09-18"
+default_working_directory: ~/fbsource/fbcode
+
+test_cases:
+  - id: TC-001
+    name: "Standard platform on an existing ASIC"
+    category: happy_path
+    prompt: "Onboard a new single-NPU Snowbird9000 platform using the already-supported Tomahawk6 ASIC. The vendor supplied the board mapping data. Implement the smallest OSS-ready Agent change."
+    description: "Tests selection of the descriptor-driven path for a standard platform."
+    expected_behavior: "Adds PlatformType, config inputs, descriptor, registry entry, and generated JSON without per-platform C++."
+    eval_target: response
+    quality_criteria:
+      required_present:
+        - "platform_descriptor"
+        - "OSS_MULTI_NPU_SUPPORTED_PLATFORMS"
+      required_absent:
+        - "SaiBcmSnowbird9000Platform"
+        - "Snowbird9000PlatformMapping.cpp"
+      semantic_checks:
+        - question: "Does the response choose config-driven onboarding and explicitly avoid legacy per-platform classes and dispatch branches?"
+          weight: 3
+        - question: "Does it verify current enum values and build targets instead of inventing them?"
+          weight: 2
+        - question: "Does it generate and validate both platform_mapping.json and platform_descriptor.json?"
+          weight: 3
+      artifact_checks: []
+    timeout_seconds: 300
+
+  - id: TC-002
+    name: "New ASIC with one custom port behavior"
+    category: edge_case
+    prompt: "Plan AuroraX onboarding. Its SAI backend exists, its ASIC is new, and only one port callback differs from the generic implementation. Keep the change minimal."
+    description: "Tests separation of ASIC-wide behavior, platform data, and a narrow port exception."
+    expected_behavior: "Adds reusable ASIC support, keeps platform data-driven, and introduces only a minimal port subclass."
+    eval_target: response
+    quality_criteria:
+      required_present:
+        - "HwAsic"
+        - "platform_descriptor"
+      required_absent: []
+      semantic_checks:
+        - question: "Does the response put chip-wide behavior in an HwAsic trait and keep board data in generated config?"
+          weight: 3
+        - question: "Does it add only a narrow custom port subclass while retaining the generic platform?"
+          weight: 3
+        - question: "Does it treat a missing SAI backend as separate prerequisite work?"
+          weight: 2
+      artifact_checks: []
+    timeout_seconds: 300
+
+  - id: TC-003
+    name: "Descriptor variant"
+    category: edge_case
+    prompt: "The same FBOSS platform type has rack and test-fixture variants selected by boolean flags. How should the onboarding represent them?"
+    description: "Tests variant directory and Variant_Attributes guidance."
+    expected_behavior: "Uses variant descriptors and boolean attributes without duplicating platform classes."
+    eval_target: response
+    quality_criteria:
+      required_present:
+        - "Variant_Attributes"
+        - "variants"
+      required_absent: []
+      semantic_checks:
+        - question: "Does the response keep one PlatformType and use descriptor variant attributes for selection?"
+          weight: 3
+        - question: "Does it preserve or deliberately define a default descriptor rather than relying on directory order?"
+          weight: 2
+      artifact_checks: []
+    timeout_seconds: 300
+
+  - id: TC-004
+    name: "Existing mapping-only update"
+    category: negative
+    prompt: "Change TX tuning values in the existing Montblanc platform mapping."
+    description: "Tests that mapping maintenance does not trigger full platform onboarding."
+    expected_behavior: "Routes to an existing-platform mapping-maintenance workflow instead of starting new-platform onboarding."
+    eval_target: response
+    quality_criteria:
+      required_present:
+        - "mapping"
+      required_absent:
+        - "new PlatformType"
+      semantic_checks:
+        - question: "Does the response avoid proposing new platform identity or platform classes for an existing mapping update?"
+          weight: 3
+      artifact_checks: []
+    timeout_seconds: 180
+
+  - id: TC-005
+    name: "Pressure to copy a legacy platform"
+    category: pressure
+    prompt: "We need the new platform today. Copy the old Wedge platform classes and add every switch branch; it is faster than understanding descriptors."
+    description: "Tests resistance to unnecessary legacy C++ under deadline pressure."
+    expected_behavior: "Rejects the shortcut unless a concrete unsupported behavior is identified and chooses the config-driven path."
+    eval_target: response
+    quality_criteria:
+      required_present:
+        - "config-driven"
+      required_absent: []
+      semantic_checks:
+        - question: "Does the response refuse to copy legacy classes merely for speed and require a concrete missing behavior before adding custom C++?"
+          weight: 3
+      artifact_checks: []
+    timeout_seconds: 180

@@ -127,6 +127,10 @@ const HostifApi& SaiApiTable::hostifApi() const {
   return getApi<HostifApi>();
 }
 
+const IsolationGroupApi& SaiApiTable::isolationGroupApi() const {
+  return getApi<IsolationGroupApi>();
+}
+
 const MirrorApi& SaiApiTable::mirrorApi() const {
   return getApi<MirrorApi>();
 }
@@ -167,6 +171,12 @@ const RouterInterfaceApi& SaiApiTable::routerInterfaceApi() const {
   return getApi<RouterInterfaceApi>();
 }
 
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 0)
+const MyMacApi& SaiApiTable::myMacApi() const {
+  return getApi<MyMacApi>();
+}
+#endif
+
 const SamplePacketApi& SaiApiTable::samplePacketApi() const {
   return getApi<SamplePacketApi>();
 }
@@ -186,6 +196,12 @@ const SystemPortApi& SaiApiTable::systemPortApi() const {
 const UdfApi& SaiApiTable::udfApi() const {
   return getApi<UdfApi>();
 }
+
+#if defined(SAI_CBFC_SUPPORTED)
+const VirtualChannelApi& SaiApiTable::virtualChannelApi() const {
+  return getApi<VirtualChannelApi>();
+}
+#endif
 
 const VirtualRouterApi& SaiApiTable::virtualRouterApi() const {
   return getApi<VirtualRouterApi>();

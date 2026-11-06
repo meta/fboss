@@ -87,6 +87,145 @@ class QosMapManagerTest : public ManagerTestBase {
   }
 };
 
+#if defined(SAI_CBFC_SUPPORTED)
+TEST_F(QosMapManagerTest, queueToVcMapBuiltAndBound) {
+  TestQosPolicy testQosPolicy{{10, 0, 2}, {42, 1, 4}};
+  auto qp = makeQosPolicy("default", testQosPolicy);
+  // The two lossless classes SUSWs run today: queue 2 -> vc 2, queue 6 -> vc 6.
+  qp->setQueueToVcIdMap({{2, 2}, {6, 6}});
+  saiManagerTable->qosMapManager().addQosMap(qp, true);
+
+  auto* handle = saiManagerTable->qosMapManager().getQosMap();
+  ASSERT_TRUE(handle);
+  ASSERT_TRUE(handle->queueToVcMap);
+
+  auto& qosMapApi = SaiApiTable::getInstance()->qosMapApi();
+  EXPECT_EQ(
+      qosMapApi.getAttribute(
+          handle->queueToVcMap->adapterKey(),
+          SaiQosMapTraits::Attributes::Type{}),
+      SAI_QOS_MAP_TYPE_QUEUE_TO_VC);
+
+  // Keyed on queue_index, not tc -- by egress the traffic class has already
+  // been spent selecting the queue.
+  auto mapToValueList = qosMapApi.getAttribute(
+      handle->queueToVcMap->adapterKey(),
+      SaiQosMapTraits::Attributes::MapToValueList{});
+  std::map<int, int> got;
+  for (const auto& entry : mapToValueList) {
+    got[entry.key.queue_index] = entry.value.vc;
+  }
+  const std::map<int, int> expected{{2, 2}, {6, 6}};
+  EXPECT_EQ(got, expected);
+}
+
+TEST_F(QosMapManagerTest, noQueueToVcMapWhenUnconfigured) {
+  TestQosPolicy testQosPolicy{{10, 0, 2}, {42, 1, 4}};
+  auto qp = makeQosPolicy("default", testQosPolicy);
+  saiManagerTable->qosMapManager().addQosMap(qp, true);
+
+  auto* handle = saiManagerTable->qosMapManager().getQosMap();
+  ASSERT_TRUE(handle);
+  EXPECT_FALSE(handle->queueToVcMap);
+}
+
+TEST_F(QosMapManagerTest, vcQosMapsBoundToPort) {
+  TestQosPolicy testQosPolicy{{10, 0, 2}, {42, 1, 4}};
+  auto qp = makeQosPolicy("default", testQosPolicy);
+  qp->setTrafficClassToVcIdMap({{0, 2}});
+  qp->setQueueToVcIdMap({{2, 2}});
+  saiManagerTable->qosMapManager().addQosMap(qp, true);
+
+  auto portId = PortID(1);
+  saiManagerTable->portManager().setQosPolicy(portId, "default");
+
+  auto* handle = saiManagerTable->qosMapManager().getQosMap();
+  auto portSaiId =
+      saiManagerTable->portManager().getPortHandle(portId)->port->adapterKey();
+  auto& portApi = SaiApiTable::getInstance()->portApi();
+
+  EXPECT_EQ(
+      portApi.getAttribute(
+          portSaiId, SaiPortTraits::Attributes::QosTcToVcMap{}),
+      handle->tcToVcMap->adapterKey());
+  EXPECT_EQ(
+      portApi.getAttribute(
+          portSaiId, SaiPortTraits::Attributes::QosQueueToVcMap{}),
+      handle->queueToVcMap->adapterKey());
+}
+
+TEST_F(QosMapManagerTest, onlyTcToVcMapBoundToManagementPort) {
+  TestQosPolicy testQosPolicy{{10, 0, 2}, {42, 1, 4}};
+  auto qp = makeQosPolicy("default", testQosPolicy);
+  qp->setTrafficClassToVcIdMap({{0, 2}});
+  qp->setQueueToVcIdMap({{2, 2}});
+  saiManagerTable->qosMapManager().addQosMap(qp, true);
+
+  auto oldPort = makePort(TestPort{1});
+  auto mgmtPort = oldPort->clone();
+  mgmtPort->setPortType(cfg::PortType::MANAGEMENT_PORT);
+  saiManagerTable->portManager().changePort(oldPort, mgmtPort);
+  auto portId = mgmtPort->getID();
+  saiManagerTable->portManager().setQosPolicy(portId, "default");
+
+  auto* handle = saiManagerTable->qosMapManager().getQosMap();
+  auto portSaiId =
+      saiManagerTable->portManager().getPortHandle(portId)->port->adapterKey();
+  auto& portApi = SaiApiTable::getInstance()->portApi();
+
+  // TC_TO_VC goes with the shared DSCP_TO_TC map; QUEUE_TO_VC is skipped.
+  EXPECT_EQ(
+      portApi.getAttribute(
+          portSaiId, SaiPortTraits::Attributes::QosTcToVcMap{}),
+      handle->tcToVcMap->adapterKey());
+  EXPECT_EQ(
+      portApi.getAttribute(
+          portSaiId, SaiPortTraits::Attributes::QosQueueToVcMap{}),
+      SAI_NULL_OBJECT_ID);
+}
+
+TEST_F(QosMapManagerTest, vcQosMapsReboundOnReapply) {
+  TestQosPolicy testQosPolicy{{10, 0, 2}, {42, 1, 4}};
+  auto qp = makeQosPolicy("default", testQosPolicy);
+  qp->setTrafficClassToVcIdMap({{0, 2}});
+  qp->setQueueToVcIdMap({{2, 2}});
+  saiManagerTable->qosMapManager().addQosMap(qp, true);
+
+  auto portId = PortID(1);
+  saiManagerTable->portManager().setQosPolicy(portId, "default");
+  // Reapplying must leave the binding intact, which is the rebuild path in
+  // getSaiIdsForQosMaps().
+  saiManagerTable->portManager().setQosPolicy(portId, "default");
+
+  auto* handle = saiManagerTable->qosMapManager().getQosMap();
+  auto portSaiId =
+      saiManagerTable->portManager().getPortHandle(portId)->port->adapterKey();
+  auto& portApi = SaiApiTable::getInstance()->portApi();
+
+  EXPECT_EQ(
+      portApi.getAttribute(
+          portSaiId, SaiPortTraits::Attributes::QosQueueToVcMap{}),
+      handle->queueToVcMap->adapterKey());
+}
+
+TEST_F(QosMapManagerTest, queueToVcMapIsSeparateFromTcToVcMap) {
+  TestQosPolicy testQosPolicy{{10, 0, 2}, {42, 1, 4}};
+  auto qp = makeQosPolicy("default", testQosPolicy);
+  qp->setTrafficClassToVcIdMap({{0, 2}});
+  qp->setQueueToVcIdMap({{2, 2}});
+  saiManagerTable->qosMapManager().addQosMap(qp, true);
+
+  auto* handle = saiManagerTable->qosMapManager().getQosMap();
+  ASSERT_TRUE(handle);
+  ASSERT_TRUE(handle->tcToVcMap);
+  ASSERT_TRUE(handle->queueToVcMap);
+  // Receive-side and send-side classification are distinct objects even when
+  // they resolve to the same VC.
+  EXPECT_NE(
+      handle->tcToVcMap->adapterKey(), handle->queueToVcMap->adapterKey());
+}
+#endif
+
 TEST_F(QosMapManagerTest, addQosMap) {
   TestQosPolicy testQosPolicy{{10, 0, 2}, {42, 1, 4}};
   auto qp = makeQosPolicy("default", testQosPolicy);

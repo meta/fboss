@@ -801,7 +801,8 @@ BufferProfileTraits::CreateAttributes SaiBufferManager::profileCreateAttrs(
 
 void SaiBufferManager::setupBufferPool(
     const state::PortPgFields& portPgConfig) {
-  if (!portPgConfig.bufferPoolName().has_value() ||
+  if (!apache::thrift::is_non_optional_field_set_manually_or_by_serializer(
+          portPgConfig.bufferPoolName()) ||
       !portPgConfig.bufferPoolConfig().has_value()) {
     throw FbossError(
         "Ingress buffer pool config should have pool name and config specified!");

@@ -4,8 +4,11 @@
 
 #include "fboss/cli/fboss2/test/CmdHandlerTestBase.h"
 
+#include <folly/FileUtil.h>
 #include <filesystem>
+#include <string>
 
+#include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/session/Git.h"
 
 namespace facebook::fboss {
@@ -40,6 +43,17 @@ class CmdConfigTestBase : public CmdHandlerTestBase {
   }
   bool cliConfigDirExists() const {
     return std::filesystem::exists(cliConfigDir_);
+  }
+
+  // Contents of the agent session config file. Loading the config writes it
+  // as read; only saveConfig() rewrites it, so a no-op command must leave it
+  // unchanged. Loads the config first so the snapshot is taken after that.
+  static std::string sessionConfigText() {
+    auto& session = ConfigSession::getInstance();
+    session.getAgentConfig();
+    std::string text;
+    folly::readFile(session.getSessionConfigPath().c_str(), text);
+    return text;
   }
 
   Git& git() {

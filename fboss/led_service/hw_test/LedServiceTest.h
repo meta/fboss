@@ -39,6 +39,7 @@ class LedServiceTest : public ::testing::Test {
   const facebook::fboss::PlatformMapping* platformMap_ = nullptr;
 
  private:
+  void checkLedMemoryInBounds() const;
   // Forbidden copy constructor and assignment operator
   LedServiceTest(LedServiceTest const&) = delete;
   LedServiceTest& operator=(LedServiceTest const&) = delete;

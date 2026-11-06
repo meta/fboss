@@ -54,12 +54,12 @@ CmdDeleteAclRuleTraits::RetType CmdDeleteAclRule::queryClient(
         return *e.name() == args.getRuleName();
       });
   if (eit == entries.end()) {
-    throw std::runtime_error(
-        fmt::format(
-            "AclEntry '{}' not found in table '{}' (group '{}')",
-            args.getRuleName(),
-            args.getTableName(),
-            matchingGroupName));
+    return fmt::format(
+        "Warning: acl rule '{}' not found in table '{}' (group '{}'), "
+        "nothing to delete",
+        args.getRuleName(),
+        args.getTableName(),
+        matchingGroupName);
   }
 
   entries.erase(eit);

@@ -3,7 +3,9 @@
 #pragma once
 
 #include <folly/IPAddress.h>
+#include <map>
 #include <optional>
+#include <string>
 #include "configerator/structs/neteng/fboss/bgp/if/gen-cpp2/bgp_attr_types.h"
 #include "fboss/agent/gen-cpp2/switch_state_types.h"
 #include "fboss/agent/if/gen-cpp2/common_types.h"
@@ -79,6 +81,34 @@ enum RoleSelector {
   RGSW = 16,
   GTSW = 17,
 };
+
+// RUSW and GTSW are absent deliberately: neither has an entry in
+// FsdbStatsDataFactory::getRoleScale, which falls back to the Minimal (1,1,1)
+// scale instead of failing, so accepting them by name would report a
+// single-port measurement as if it were that role's.
+inline std::optional<RoleSelector> statsRoleFromString(
+    const std::string& name) {
+  static const std::map<std::string, RoleSelector> kRoles{
+      {"Minimal", Minimal},
+      {"MaxScale", MaxScale},
+      {"RTSW", RTSW},
+      {"FTSW", FTSW},
+      {"STSW", STSW},
+      {"RSW", RSW},
+      {"FSW", FSW},
+      {"SSW", SSW},
+      {"XSW", XSW},
+      {"MA", MA},
+      {"FA", FA},
+      {"RDSW", RDSW},
+      {"FDSW", FDSW},
+      {"SDSW", SDSW},
+      {"EDSW", EDSW},
+      {"RGSW", RGSW}};
+  auto it = kRoles.find(name);
+  return it == kRoles.end() ? std::nullopt
+                            : std::optional<RoleSelector>(it->second);
+}
 
 struct AgentStatsScale {
   int hwPortStatsCount{0};

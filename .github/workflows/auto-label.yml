@@ -1,0 +1,34 @@
+name: Validate and Label PR Metadata
+
+on:
+  pull_request_target:
+    types: [opened, edited, reopened, ready_for_review]
+
+permissions: {}
+
+concurrency:
+  group: pr-metadata-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  label-pr-metadata:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+          sparse-checkout: |
+            .github
+
+      - uses: actions/github-script@v9
+        with:
+          script: |
+            const labelPullRequestMetadata = require(
+              './.github/scripts/label-pr-metadata.js'
+            );
+            await labelPullRequestMetadata({ github, context, core });

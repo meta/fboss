@@ -148,6 +148,11 @@ using IPv4NetworkToRouteMap = NetworkToRouteMap<folly::IPAddressV4>;
 using IPv6NetworkToRouteMap = NetworkToRouteMap<folly::IPAddressV6>;
 using LabelToRouteMap = NetworkToRouteMap<LabelID>;
 
+// One (v4RouteMap, v6RouteMap) pair per VRF. Resolution tries each in order
+// and uses the first matching route.
+using VrfRouteTables =
+    std::vector<std::pair<IPv4NetworkToRouteMap*, IPv6NetworkToRouteMap*>>;
+
 template <typename AddrT>
 std::shared_ptr<Route<AddrT>>& value(
     typename NetworkToRouteMap<AddrT>::Iterator& iter) {
@@ -170,4 +175,13 @@ std::shared_ptr<Route<AddrT>>& value(
     std::pair<const AddrT, std::shared_ptr<Route<AddrT>>>& iter) {
   return iter.second;
 }
+
+// Routes of one VRF to program in a FIB update
+struct RibVrfFib {
+  RouterID vrf;
+  const IPv4NetworkToRouteMap* v4NetworkToRoute;
+  const IPv6NetworkToRouteMap* v6NetworkToRoute;
+  const LabelToRouteMap* labelToRoute;
+  bool vrfDeleted{false};
+};
 } // namespace facebook::fboss

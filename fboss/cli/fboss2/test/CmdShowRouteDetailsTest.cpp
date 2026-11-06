@@ -129,6 +129,9 @@ std::vector<RouteDetails> createRouteEntries() {
   topologyInfo.remote_rack_capacity() = 3;
   nextHop1_2.topologyInfo() = topologyInfo;
   routeEntry1.nextHops()->emplace_back(nextHop1_2);
+  auto resolvedNextHop1_2 = nextHop1_2;
+  resolvedNextHop1_2.weight() = 2;
+  routeEntry1.resolvedNextHops() = {resolvedNextHop1_2};
   routeEntry1.classID() = cfg::AclLookupClass::DST_CLASS_L3_DPR;
   routeEntry1.resolvedNextHopSetID() = 100;
   routeEntry1.normalizedResolvedNextHopSetID() = 200;
@@ -197,6 +200,7 @@ std::vector<RouteDetails> createRouteEntries() {
   nextHop3.srv6SegmentList() = {binarySid3_1, binarySid3_2};
 
   routeEntry3.nextHops()->emplace_back(nextHop3);
+  routeEntry3.resolvedNextHops() = {nextHop3};
   routeEntry3.action() = "Nexthops";
   routeEntry3.isConnected() = false;
 
@@ -285,6 +289,7 @@ cli::ShowRouteDetailsModel createRouteModel() {
   nextHopInfo1_2.mplsAction() = mplsActionInfo1_2;
   nextHopInfo1_2.ifName() = "Port-Channel304";
   nextHopInfo1_2.isBackup() = true;
+  nextHopInfo1_2.preNormalizationWeight() = 2;
   NetworkTopologyInformation topologyInfo;
   topologyInfo.rack_id() = 5;
   topologyInfo.spine_id() = 17;
@@ -398,6 +403,7 @@ class CmdShowRouteDetailsTestFixture : public CmdHandlerTestBase {
           .WillOnce([](std::string& config) {
             config = createStandaloneFpfPolicyConfig();
           });
+      EXPECT_CALL(getMockBgp(), getRunningConfigStruct(_)).Times(0);
       return;
     }
     EXPECT_CALL(getMockBgp(), getPolicyConfig(_))
@@ -426,6 +432,113 @@ TEST_F(CmdShowRouteDetailsTestFixture, queryClient) {
   auto model = cmd.queryClient(localhost(), queriedEntries);
 
   EXPECT_THRIFT_EQ(normalizedModel, model);
+}
+
+TEST_F(CmdShowRouteDetailsTestFixture, preNormalizationWeightEquivalence) {
+  const struct {
+    int32_t preNormalizationWeight;
+    int32_t postNormalizationWeight;
+    bool showPreNormalizationWeight;
+  } cases[] = {
+      {0, 0, false},
+      {0, 1, false},
+      {1, 0, false},
+      {1, 1, false},
+      {2, 2, false},
+      {0, 2, true},
+      {2, 0, true},
+      {1, 2, true},
+      {2, 1, true},
+  };
+  for (const auto& testCase : cases) {
+    SCOPED_TRACE(
+        testing::Message() << "pre=" << testCase.preNormalizationWeight
+                           << ", post=" << testCase.postNormalizationWeight);
+    routeEntries[0].resolvedNextHops()->at(0).weight() =
+        testCase.preNormalizationWeight;
+    routeEntries[0].nextHops()->at(0).weight() =
+        testCase.postNormalizationWeight;
+
+    auto expectedModel = normalizedModel;
+    expectedModel.nsfTeWeightEncoding().reset();
+    auto& expectedNextHop =
+        expectedModel.routeEntries()->at(0).nextHops()->at(0);
+    expectedNextHop.weight() = testCase.postNormalizationWeight;
+    expectedNextHop.preNormalizationWeight().reset();
+    if (testCase.showPreNormalizationWeight) {
+      expectedNextHop.preNormalizationWeight() =
+          testCase.preNormalizationWeight;
+    }
+
+    auto cmd = CmdShowRouteDetails();
+    const auto model = cmd.createModel(
+        routeEntries, CmdShowRouteDetailsTraits::ObjectArgType());
+    EXPECT_THRIFT_EQ(expectedModel, model);
+
+    std::stringstream output;
+    cmd.printOutput(model, output);
+    EXPECT_THAT(output.str(), Not(HasSubstr("weight 0")));
+    EXPECT_THAT(output.str(), Not(HasSubstr("pre-normalization weight: 0")));
+    if (testCase.showPreNormalizationWeight) {
+      EXPECT_THAT(output.str(), HasSubstr("(pre-normalization weight:"));
+    } else {
+      EXPECT_THAT(output.str(), Not(HasSubstr("(pre-normalization weight:")));
+    }
+  }
+}
+
+TEST_F(
+    CmdShowRouteDetailsTestFixture,
+    showPreNormalizationWeightsForWholeRoute) {
+  auto& route = routeEntries[0];
+  auto unchangedNextHop = route.nextHops()->at(0);
+  unchangedNextHop.address() =
+      facebook::network::toBinaryAddress(folly::IPAddress("2001:db8::2"));
+  unchangedNextHop.weight() = 1;
+  auto ecmpNextHop = unchangedNextHop;
+  ecmpNextHop.address() =
+      facebook::network::toBinaryAddress(folly::IPAddress("2001:db8::3"));
+  ecmpNextHop.weight() = 0;
+  route.nextHops()->push_back(unchangedNextHop);
+  route.nextHops()->push_back(ecmpNextHop);
+  route.resolvedNextHops()->push_back(unchangedNextHop);
+  route.resolvedNextHops()->push_back(ecmpNextHop);
+
+  auto cmd = CmdShowRouteDetails();
+  auto model =
+      cmd.createModel(routeEntries, CmdShowRouteDetailsTraits::ObjectArgType());
+  const std::vector<int32_t> expectedPreNormalizationWeights{2, 1, 0};
+  std::vector<int32_t> preNormalizationWeights;
+  for (const auto& nextHop : *model.routeEntries()->at(0).nextHops()) {
+    ASSERT_TRUE(nextHop.preNormalizationWeight().has_value());
+    preNormalizationWeights.push_back(*nextHop.preNormalizationWeight());
+  }
+  EXPECT_EQ(preNormalizationWeights, expectedPreNormalizationWeights);
+  // Other routes with unchanged weights do not get annotations.
+  EXPECT_FALSE(model.routeEntries()
+                   ->at(2)
+                   .nextHops()
+                   ->at(0)
+                   .preNormalizationWeight()
+                   .has_value());
+
+  std::stringstream output;
+  cmd.printOutput(model, output);
+  EXPECT_THAT(
+      output.str(), HasSubstr("weight 1 (pre-normalization weight: 2)"));
+  EXPECT_THAT(
+      output.str(), HasSubstr("weight 1 (pre-normalization weight: 1)"));
+  EXPECT_THAT(output.str(), Not(HasSubstr("weight 0")));
+  EXPECT_THAT(output.str(), Not(HasSubstr("pre-normalization weight: 0")));
+
+  route.resolvedNextHops()->at(0).weight() = 1;
+  route.resolvedNextHops()->at(1).weight() = 0;
+  route.resolvedNextHops()->at(2).weight() = 1;
+  model =
+      cmd.createModel(routeEntries, CmdShowRouteDetailsTraits::ObjectArgType());
+  for (const auto& nextHop : *model.routeEntries()->at(0).nextHops()) {
+    EXPECT_FALSE(nextHop.preNormalizationWeight().has_value());
+  }
 }
 
 TEST_F(CmdShowRouteDetailsTestFixture, queryNetworkEntries) {
@@ -494,7 +607,7 @@ Network Address: 2401:db00::/32
       Class Id: DST_CLASS_L3_DPR(20)
   Action: Nexthops
   Forwarding via:
-    2401:db00:e32f:8fc::2 dev Port-Channel304 weight 1 MPLS -> PUSH : {2,3} rack 5 spine id 17 remote weight 3 (BACKUP)
+    2401:db00:e32f:8fc::2 dev Port-Channel304 weight 1 (pre-normalization weight: 2) MPLS -> PUSH : {2,3} rack 5 spine id 17 remote weight 3 (BACKUP)
   Overridden ECMP mode: None
   Resolved NextHop Set ID: 100
   Normalized Resolved NextHop Set ID: 200
@@ -502,12 +615,12 @@ Network Address: 2401:db00::/32
 Network Address: 176.161.6.0/32 (connected)
 > Client: STATIC_ROUTE (Admin Distance: 0)
       Nexthops:
-        240.161.6.0
+        240.161.6.0 weight 1
       Counter Id: counter0
       Class Id: None
   Action: Nexthops
   Forwarding via:
-    (i/f 0) 240.161.6.0
+    (i/f 0) 240.161.6.0 weight 1
   Overridden ECMP mode: None
 
 Network Address: fc00::/48

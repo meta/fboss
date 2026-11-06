@@ -991,7 +991,7 @@ template <typename IPAddrT>
 LabelForwardingAction
 MplsEcmpSetupTargetedPorts<IPAddrT>::getLabelForwardingAction(
     PortDescriptor port) const {
-  auto label = port.isAggregatePort() ? port.aggPortID() : port.phyPortID();
+  auto label = static_cast<int32_t>(port.intID());
 
   LabelForwardingAction::LabelStack pushStack;
   for (auto i = 1; i <= 3; i++) {

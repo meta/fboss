@@ -1,2 +1,2 @@
 System_Vendor,Platform_Type,Product_Name_Prefixes,Mode_Names,Asic_Type,Variant_Attributes
-accton,PLATFORM_M4052ACTM,M4052ACTM,m4052actm,ASIC_TYPE_TOMAHAWK5
+accton,PLATFORM_M4052ACTM,M4052ACTM-M4052ACTI,m4052actm-m4052acti,ASIC_TYPE_TOMAHAWK5

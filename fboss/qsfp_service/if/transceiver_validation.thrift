@@ -27,7 +27,7 @@ struct TransceiverAttributes {
 struct VendorConfig {
   1: string vendorName;
   @cpp.Type{
-    name = "std::unordered_map<std::string, facebook::fboss::TransceiverAttributes>",
+    template = "std::unordered_map",
   }
   2: map<string, TransceiverAttributes> partNumberToTransceiverAttributes;
 }

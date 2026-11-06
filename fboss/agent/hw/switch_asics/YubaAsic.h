@@ -132,6 +132,9 @@ class YubaAsic : public TajoAsic {
   std::optional<uint32_t> getMaxSrv6SingleNextHops() const override {
     return 3000;
   }
+  std::optional<uint32_t> getMaxSrv6UcmpDistinctWeights() const override {
+    return 8;
+  }
   std::optional<uint32_t> getMaxEcmpMembers() const override {
     /*
      * G200 has two level ECMP. Each level owns one resolution stage of the
@@ -185,6 +188,10 @@ class YubaAsic : public TajoAsic {
     return 512;
   }
 
+  std::optional<uint32_t> getMaxVrfs() const override {
+    return 256;
+  }
+
   std::optional<uint32_t> getMaxArpTableSize() const override {
     return 512;
   }
@@ -218,9 +225,12 @@ class YubaAsic : public TajoAsic {
 
  private:
   bool isSrv6Supported() const;
+  bool isCsigSupported() const;
   bool isSupportedFabric(Feature feature) const;
   bool isSupportedNonFabric(Feature feature) const;
   static constexpr auto kSrv6MinSdkRequired = "26.2.4210";
+  // CSIG is delivered in 26.5.5210.4.
+  static constexpr auto kCsigMinSdkRequired = "26.5.4210";
   std::optional<uint64_t> currentSdkVersion_{std::nullopt};
 };
 

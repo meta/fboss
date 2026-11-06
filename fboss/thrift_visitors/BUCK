@@ -34,9 +34,9 @@ cpp_library(
     ],
     compiler_flags = ["-ftemplate-backtrace-limit=0"],
     exported_deps = [
+        "fbsource//xplat/folly:conv",
         ":results-cpp2-types",
         "//fboss/fsdb/if:fsdb_oper-cpp2-types",
-        "//folly:conv",
         "//thrift/lib/cpp/util:enum_utils",
         "//thrift/lib/cpp2:thrift-core",
         "//thrift/lib/cpp2/op:get",

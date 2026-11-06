@@ -13,7 +13,6 @@
 #include <fmt/format.h>
 #include <folly/logging/xlog.h>
 
-#include <folly/Format.h>
 #include <folly/Singleton.h>
 #include <folly/system/ThreadName.h>
 #include <gflags/gflags.h>

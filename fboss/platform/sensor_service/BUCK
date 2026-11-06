@@ -13,21 +13,23 @@ cpp_library(
         "facebook/FsdbSyncer.cpp",
     ],
     headers = [
+        "FsdbSyncer.h",
         "SensorServiceImpl.h",
     ],
     deps = [
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/logging:logging",
         "//fb303:service_data",
         "//fboss/fsdb/common:flags",
         "//fboss/fsdb/if:fsdb_model",
         "//fboss/fsdb/if:fsdb_oper-cpp2-types",
         "//fboss/platform/sensor_service/utilities:power_config_utils",
-        "//folly:file_util",
-        "//folly:string",
-        "//folly/logging:logging",
         "//thrift/lib/cpp/util:enum_utils",
         "//thrift/lib/cpp2/protocol:protocol",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:synchronized",
         ":pmunit_info_fetcher",
         ":sensor_service_stats-cpp2-types",
         ":utils",
@@ -37,7 +39,6 @@ cpp_library(
         "//fboss/platform/helpers:structured_logger",
         "//fboss/platform/sensor_service/if:sensor_config-cpp2-types",
         "//fboss/platform/sensor_service/if:sensor_service-cpp2-types",
-        "//folly:synchronized",
     ],
 )
 
@@ -47,10 +48,17 @@ cpp_library(
         "Flags.cpp",
         "SensorServiceThriftHandler.cpp",
     ],
+    headers = [
+        "Flags.h",
+        "SensorServiceThriftHandler.h",
+    ],
     deps = [
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly/logging:logging",
         ":utils",
         "//fboss/lib:log_thrift_call",
-        "//folly/logging:logging",
+        "//fboss/platform/reboot_cause_finder:reboot_history_lib",
+        "//fboss/platform/reboot_cause_finder/if:reboot_cause_config-cpp2-types",
     ],
     exported_deps = [
         ":service",
@@ -66,13 +74,16 @@ cpp_library(
     srcs = [
         "Utils.cpp",
     ],
+    headers = [
+        "Utils.h",
+    ],
     deps = [
         "fbsource//third-party/exprtk:exprtk",
         "fbsource//third-party/re2:re2",
+        "fbsource//xplat/folly/logging:logging",
         ":config_validator",
         "//fboss/platform/config_lib:config_lib",
         "//fboss/platform/helpers:platform_name_lib",
-        "//folly/logging:logging",
     ],
     exported_deps = [
         ":pmunit_info_fetcher",
@@ -86,23 +97,27 @@ cpp_library(
         "PmClientFactory.cpp",
         "PmUnitInfoFetcher.cpp",
     ],
+    headers = [
+        "PmClientFactory.h",
+        "PmUnitInfoFetcher.h",
+    ],
     deps = [
         "fbsource//third-party/fmt:fmt",
+        "fbsource//xplat/folly/io/async:async_ssl_socket",
+        "fbsource//xplat/folly/io/async:ssl_options",
+        "fbsource//xplat/folly/logging:logging",
         "//common/fbwhoami:fb_who_am_i",
         "//common/services/cpp:facebook_identity_verifier",
         "//common/services/cpp:tls_constants",
         "//configerator/structs/infrasec/if:acl-cpp2-types",
-        "//folly/io/async:async_ssl_socket",
-        "//folly/io/async:ssl_options",
-        "//folly/logging:logging",
         "//infrasec/authorization:base_identity_util",
         "//security/ca/lib:cert_path_picker",
         "//thrift/lib/cpp2/async:rocket_client_channel",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/io/async:async_base",
         "//fboss/platform/platform_manager:platform_manager_config-cpp2-types",
         "//fboss/platform/platform_manager:platform_manager_service-cpp2-services",
-        "//folly/io/async:async_base",
     ],
 )
 
@@ -111,11 +126,14 @@ cpp_library(
     srcs = [
         "ConfigValidator.cpp",
     ],
+    headers = [
+        "ConfigValidator.h",
+    ],
     deps = [
         "fbsource//third-party/fmt:fmt",
         "fbsource//third-party/re2:re2",
+        "fbsource//xplat/folly/logging:logging",
         "//fboss/platform/sensor_service/utilities:power_config_utils",
-        "//folly/logging:logging",
         "//thrift/lib/cpp2:field_ref",
     ],
     exported_deps = [
@@ -129,13 +147,13 @@ cpp_binary(
         "Main.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly/executors:function_scheduler",
+        "fbsource//xplat/folly/logging:logging",
         ":core",
         ":utils",
         "//fb303:logging",
         "//fboss/platform/helpers:init",
         "//fboss/platform/helpers:structured_logger",
-        "//folly/executors:function_scheduler",
-        "//folly/logging:logging",
     ],
 )
 
@@ -181,10 +199,10 @@ cpp_binary(
     default_strip_mode = "full",
     strip_mode = "full",
     deps = [
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/init:init",
         "//fboss/platform/helpers:init_cli",
         "//fboss/platform/sensor_service/if:sensor_service-cpp2-clients",
-        "//folly:string",
-        "//folly/init:init",
         "//thrift/lib/cpp2/async:rocket_client_channel",
     ],
     external_deps = [

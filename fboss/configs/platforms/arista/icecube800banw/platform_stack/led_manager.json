@@ -3,11 +3,6 @@
     "presentLedSysfsPath": "/sys/class/leds/sys_led:blue:status/brightness",
     "absentLedSysfsPath": "/sys/class/leds/sys_led:amber:status/brightness"
   },
-  "fruTypeLedConfigs": {
-    "PSU": {
-      "presentLedSysfsPath": "/sys/class/leds/psu_led:blue:status/brightness",
-      "absentLedSysfsPath": "/sys/class/leds/psu_led:amber:status/brightness"
-    }
-  },
+  "fruTypeLedConfigs": {},
   "fruConfigs": []
 }

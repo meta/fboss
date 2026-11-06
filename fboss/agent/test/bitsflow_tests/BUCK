@@ -10,7 +10,11 @@ cpp_unittest(
         "facebook/BitsflowHelperTest.cpp",
     ],
     network_access = network_access_utils.all(),
+    source_headers = [
+        "facebook/BitsflowAclTest.h",
+    ],
     deps = [
+        "//common/services/cpp:simple_thrift_aclchecker_handler",
         "//common/services/cpp:thrift_acl_checker_module_config",
         "//configerator/structs/neteng/fboss/bitsflow:bitsflow-cpp2-types",
         "//fboss/agent:apply_thrift_config",
@@ -20,6 +24,7 @@ cpp_unittest(
         "//fboss/agent/test:hw_test_handle",
         "//fboss/agent/test:utils",
         "//fboss/facebook/bitsflow:bitsflow_helper",
+        "//fboss/facebook/thrift_acl:simple_acl_handler",
         "//fboss/lib/thrift_service_client:thrift-service-client",
         "//infrasec/authorization:identity_util",
         "//infrasec/authorization/aclchecker:simple_acl_checker",

@@ -42,6 +42,7 @@ class CmdDeleteInterfaceTestFixture : public CmdConfigTestBase {
         "speed": 100000,
         "loopbackMode": 1,
         "lookupClasses": [10, 11],
+        "description": "to-spine1",
         "expectedLLDPValues": {
           "2": "ge-0/0/0"
         }
@@ -53,7 +54,23 @@ class CmdDeleteInterfaceTestFixture : public CmdConfigTestBase {
         "speed": 100000
       }
     ],
-    "interfaces": []
+    "interfaces": [
+      {
+        "intfID": 1,
+        "routerID": 0,
+        "vlanID": 0,
+        "portID": 1,
+        "name": "eth1/1/1",
+        "mtu": 9000
+      },
+      {
+        "intfID": 2,
+        "routerID": 0,
+        "vlanID": 0,
+        "portID": 2,
+        "name": "eth1/2/1"
+      }
+    ]
   }
 })") {}
 
@@ -195,6 +212,94 @@ TEST_F(CmdDeleteInterfaceTestFixture, queryClientMultipleAttrs) {
   auto& ports = *ConfigSession::getInstance().getAgentConfig().sw()->ports();
   EXPECT_EQ(*ports[0].loopbackMode(), cfg::PortLoopbackMode::NONE);
   EXPECT_EQ(ports[0].expectedLLDPValues()->count(cfg::LLDPTag::PORT), 0);
+}
+
+// ---------------------------------------------------------------------------
+// queryClient: clears the port description
+// ---------------------------------------------------------------------------
+
+TEST_F(CmdDeleteInterfaceTestFixture, queryClientResetsDescription) {
+  setupTestableConfigSession(cmdPrefix_, "eth1/1/1 description");
+  auto cmd = CmdDeleteInterface();
+  auto deleteAttrs = InterfaceDeleteConfig({"eth1/1/1", "description"});
+
+  auto& ports = *ConfigSession::getInstance().getAgentConfig().sw()->ports();
+  ASSERT_EQ(*ports[0].description(), "to-spine1");
+
+  auto result = cmd.queryClient(localhost(), deleteAttrs);
+
+  EXPECT_THAT(result, HasSubstr("description"));
+  EXPECT_THAT(result, HasSubstr("eth1/1/1"));
+  EXPECT_FALSE(ports[0].description().has_value());
+  // Other port attributes survive.
+  EXPECT_EQ(ports[0].expectedLLDPValues()->count(cfg::LLDPTag::PORT), 1);
+}
+
+TEST_F(CmdDeleteInterfaceTestFixture, queryClientIdempotentNoDescription) {
+  setupTestableConfigSession(cmdPrefix_, "eth1/2/1 description");
+  auto cmd = CmdDeleteInterface();
+  auto deleteAttrs = InterfaceDeleteConfig({"eth1/2/1", "description"});
+
+  auto result = cmd.queryClient(localhost(), deleteAttrs);
+
+  EXPECT_THAT(result, HasSubstr("eth1/2/1"));
+  auto& ports = *ConfigSession::getInstance().getAgentConfig().sw()->ports();
+  EXPECT_FALSE(ports[1].description().has_value());
+}
+
+// ---------------------------------------------------------------------------
+// queryClient: unsets the interface MTU (agent falls back to kDefaultMtu)
+// ---------------------------------------------------------------------------
+
+TEST_F(CmdDeleteInterfaceTestFixture, queryClientResetsMtu) {
+  setupTestableConfigSession(cmdPrefix_, "eth1/1/1 mtu");
+  auto cmd = CmdDeleteInterface();
+  auto deleteAttrs = InterfaceDeleteConfig({"eth1/1/1", "mtu"});
+
+  auto& ifaces =
+      *ConfigSession::getInstance().getAgentConfig().sw()->interfaces();
+  ASSERT_EQ(*ifaces[0].mtu(), 9000);
+
+  auto result = cmd.queryClient(localhost(), deleteAttrs);
+
+  EXPECT_THAT(result, HasSubstr("mtu"));
+  EXPECT_THAT(result, HasSubstr("eth1/1/1"));
+  EXPECT_FALSE(ifaces[0].mtu().has_value());
+  // The sibling interface is untouched.
+  EXPECT_FALSE(ifaces[1].mtu().has_value());
+}
+
+TEST_F(CmdDeleteInterfaceTestFixture, queryClientIdempotentNoMtu) {
+  setupTestableConfigSession(cmdPrefix_, "eth1/2/1 mtu");
+  auto cmd = CmdDeleteInterface();
+  auto deleteAttrs = InterfaceDeleteConfig({"eth1/2/1", "mtu"});
+
+  auto result = cmd.queryClient(localhost(), deleteAttrs);
+
+  // Assert on the success wording, not just the port name: the
+  // "No interface config found for: eth1/2/1" failure message also contains it.
+  EXPECT_THAT(result, HasSubstr("Successfully reset attribute 'mtu'"));
+  EXPECT_THAT(result, Not(HasSubstr("No interface config found")));
+  auto& ifaces =
+      *ConfigSession::getInstance().getAgentConfig().sw()->interfaces();
+  EXPECT_FALSE(ifaces[1].mtu().has_value());
+}
+
+// description is a Port field and mtu an Interface field, so a combined
+// invocation has to touch both objects in one pass.
+TEST_F(CmdDeleteInterfaceTestFixture, queryClientDescriptionAndMtuTogether) {
+  setupTestableConfigSession(cmdPrefix_, "eth1/1/1 description mtu");
+  auto cmd = CmdDeleteInterface();
+  auto deleteAttrs = InterfaceDeleteConfig({"eth1/1/1", "description", "mtu"});
+
+  auto result = cmd.queryClient(localhost(), deleteAttrs);
+
+  EXPECT_THAT(result, HasSubstr("description"));
+  EXPECT_THAT(result, HasSubstr("mtu"));
+
+  auto& config = ConfigSession::getInstance().getAgentConfig();
+  EXPECT_FALSE((*config.sw()->ports())[0].description().has_value());
+  EXPECT_FALSE((*config.sw()->interfaces())[0].mtu().has_value());
 }
 
 // ---------------------------------------------------------------------------

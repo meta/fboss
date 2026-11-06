@@ -65,13 +65,13 @@ struct CmdShowBgpSummaryTraits : public ReadCommandTraits {
       {kBgpSummarySortBy,
        "Comma-separated column keys to sort peers by, applied in the order "
        "given: peer, as, state, gr, pr, pa, ps, prd, ug, ugps, uptime, "
-       "downtime, description, session-id, flaps. Append ':desc' to a key to "
-       "reverse it, e.g. --sort-by pr:desc,peer"}};
+       "downtime, description, session-id, flaps. Append "
+       "':desc' to a key to reverse it, e.g. --sort-by pr:desc,peer"}};
 
   // Human-authored guide prose for the CLI reference wiki. Superset of the
   // one-line help string registered in the command tree.
   static std::string_view description() {
-    return "Displays a one-line-per-peer overview of every BGP session, under a global header carrying the daemon uptime, router ID, local and confederation ASNs, switch drain state, UCMP and update-group settings, aggregate path counts, loc-RIB prefix count and RIB version. The 'BGP is up for' and 'Loc-RIB Prefix Count' header lines are omitted entirely against a bgpd too old to report them, so their absence means an older daemon rather than a zero value. Each row shows the peer address, remote AS, session state, graceful-restart support, prefixes received/accepted/sent, session uptime, the peer's description (its hostname), the peer's BGP identifier in the 'Session ID' column - despite the column name this is the peer's router ID, not a per-connection handle - and the flap count. Three columns are conditional and are absent from the example below: PRD (prefixes received dropped) appears only once some peer has dropped routes at its prefix limit, UG/UGPS only when update-group is enabled, and Downtime only for a peer that is IDLE or admin-down AND has reset at least once - a peer that flapped and is currently retrying in ACTIVE or CONNECT shows no downtime. Listen-range entries with no active session render as IDLE with zero counters. Rows are ordered by peer address by default; '--sort-by' takes a comma-separated list of column keys (peer, as, state, gr, pr, pa, ps, prd, ug, ugps, uptime, description, downtime, session-id, flaps) applied in the order given, each optionally suffixed with ':desc' to reverse it - so '--sort-by pr:desc,peer' puts the noisiest peers first and breaks ties by address. Numeric columns sort numerically, and peers that tie on every requested key stay in peer-address order. This is the usual first stop when triaging BGP reachability; drill into a single session with 'show bgp neighbors <peer>'.";
+    return "Displays a one-line-per-peer overview of every BGP session, under a global header carrying the daemon uptime, router ID, local and confederation ASNs, switch drain state, UCMP and update-group settings, aggregate path counts, loc-RIB prefix count and RIB version. EOR sent and EORs received report completed directions out of established peers, or N/A against a bgpd too old to report EoR status. For per-peer timestamps and pending status use 'show bgp neighbors <peer>'. Dynamic listen ranges render as IDLE rows but are not peers: the Peers total excludes them and a Peer Groups Configured line counts them separately. The 'BGP is up for' and 'Loc-RIB Prefix Count' header lines are omitted entirely against a bgpd too old to report them. Rows show peer address, remote AS, session state, graceful-restart support, prefixes received/accepted/sent, uptime, description, peer BGP identifier and flap count. PRD appears only when prefixes were dropped, UG/UGPS only when update-group is enabled, and Downtime only for a peer that is IDLE or admin-down and has reset at least once. Listen-range entries with no active session render as IDLE with zero counters. Rows are ordered by peer address by default; '--sort-by' accepts comma-separated keys (peer, as, state, gr, pr, pa, ps, prd, ug, ugps, uptime, downtime, description, session-id, flaps), each optionally suffixed with ':desc'. Numeric columns sort numerically, and peers that tie on every requested key stay in peer-address order.";
   }
 };
 
@@ -325,6 +325,11 @@ class CmdShowBgpSummary
     const uint64_t total_neighbors = sessions.size();
     uint64_t up_neighbors = 0, paths_rcvd = 0, paths_accepted = 0,
              paths_sent = 0;
+    // Dynamic listen ranges ("peer groups", e.g. 10.127.240.0/23) render as
+    // IDLE rows but are not peers: they never establish and never send EoR.
+    // The server renders their address as a prefix, which is how they are
+    // told apart here.
+    uint64_t peer_group_count = 0;
 
     // First pass: collect row data and detect whether any peer has downtime, so
     // the Downtime column can be omitted entirely when no peer is down.
@@ -348,12 +353,21 @@ class CmdShowBgpSummary
     std::vector<PeerRowData> rows;
     bool hasAnyDowntime = false;
     bool hasAnyPreDrops = false;
+    // Optional status is present even when no EoR has completed. Older
+    // daemons do not populate it at all.
+    bool hasEoRReceivedStatus = false;
+    bool hasEoRSentStatus = false;
+    size_t eorReceivedCount = 0;
+    size_t eorSentCount = 0;
 
     for (const auto& bgpSession : sessions) {
       const auto& peer = bgpSession.peer().value();
       up_neighbors +=
           (folly::copy(peer.peer_state().value()) ==
            TBgpPeerState::ESTABLISHED);
+      if (bgpSession.peer_addr().value().find('/') != std::string::npos) {
+        ++peer_group_count;
+      }
 
       auto rcvd_prefix = *bgpSession.prepolicy_rcvd_prefix_count();
       auto accepted_prefix = *bgpSession.postpolicy_rcvd_prefix_count();
@@ -398,6 +412,21 @@ class CmdShowBgpSummary
       }
       if (!downtimeDurationString.empty()) {
         hasAnyDowntime = true;
+      }
+
+      if (bgpSession.eor_received().has_value()) {
+        hasEoRReceivedStatus = true;
+        if (*peer.peer_state() == TBgpPeerState::ESTABLISHED &&
+            *bgpSession.eor_received()) {
+          ++eorReceivedCount;
+        }
+      }
+      if (bgpSession.eor_sent().has_value()) {
+        hasEoRSentStatus = true;
+        if (*peer.peer_state() == TBgpPeerState::ESTABLISHED &&
+            *bgpSession.eor_sent()) {
+          ++eorSentCount;
+        }
       }
 
       // Update-group ID: show value or "-" if not set.
@@ -490,8 +519,27 @@ class CmdShowBgpSummary
       table.addRow({fields.begin(), fields.end()});
     }
 
-    out << "Peers: UP - " << up_neighbors << ", TOTAL - " << total_neighbors
+    // Peer prefix groups (dynamic listen ranges) are listed but are not peers.
+    const uint64_t peer_total = total_neighbors - peer_group_count;
+    out << "Peers: UP - " << up_neighbors << ", TOTAL - " << peer_total
         << std::endl;
+    out << "Peer Groups Configured - " << peer_group_count << std::endl;
+    // Count only established peers; pending EoRs are false, not absent.
+    // Absence signals an old daemon without EoR status support.
+    out << "EOR sent (UP peers) - ";
+    if (hasEoRSentStatus) {
+      out << eorSentCount << "/" << up_neighbors;
+    } else {
+      out << "N/A";
+    }
+    out << std::endl;
+    out << "EORs received (UP peers) - ";
+    if (hasEoRReceivedStatus) {
+      out << eorReceivedCount << "/" << up_neighbors;
+    } else {
+      out << "N/A";
+    }
+    out << std::endl;
     out << "Paths: Received - " << paths_rcvd << ", Accepted - "
         << paths_accepted << ", Sent - " << paths_sent << std::endl;
     /*
@@ -714,6 +762,8 @@ class CmdShowBgpSummary
       session.postpolicy_rcvd_prefix_count() = rcvd;
       session.postpolicy_sent_prefix_count() = sent;
       session.uptime() = kSessionUptimeMs;
+      session.eor_received() = true;
+      session.eor_sent() = true;
       session.reset_time() = 0;
       session.num_resets() = 0;
       session.description() = description;
@@ -738,6 +788,8 @@ class CmdShowBgpSummary
     listenRange.num_resets() = 0;
     listenRange.description() = "";
     listenRange.peer_bgp_id() = "0.0.0.0";
+    listenRange.eor_received() = false;
+    listenRange.eor_sent() = false;
 
     RetType model;
     // Ordered the way createModel() sorts live sessions: by peer address

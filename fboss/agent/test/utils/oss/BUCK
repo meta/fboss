@@ -1,0 +1,9 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fboss_agent_push")
+
+cpp_library(
+    name = "chenab_packet_test_utils",
+    srcs = ["ChenabPacketTestUtils.cpp"],
+    deps = ["//fboss/agent/test/utils:pkt_test_utils"],
+)

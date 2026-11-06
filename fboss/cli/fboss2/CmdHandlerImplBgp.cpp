@@ -16,6 +16,7 @@
 #include "fboss/cli/fboss2/commands/show/bgp/CmdShowVersionBgp.h"
 #include "fboss/cli/fboss2/commands/show/bgp/changelist/CmdShowBgpChangelist.h"
 #include "fboss/cli/fboss2/commands/show/bgp/config/CmdShowConfigRunningBgp.h"
+#include "fboss/cli/fboss2/commands/show/bgp/fibnexthops/CmdShowBgpFibNexthops.h"
 #include "fboss/cli/fboss2/commands/show/bgp/neighbors/CmdShowBgpNeighbors.h"
 #include "fboss/cli/fboss2/commands/show/bgp/neighbors/advertised/BgpNeighborsAdvertisedPostPolicy.h"
 #include "fboss/cli/fboss2/commands/show/bgp/neighbors/advertised/BgpNeighborsAdvertisedPrePolicy.h"
@@ -99,6 +100,8 @@ template void
 CmdHandler<CmdShowBgpTableCommunity, CmdShowBgpTableCommunityTraits>::run();
 template void
 CmdHandler<CmdShowBgpTableDetail, CmdShowBgpTableDetailTraits>::run();
+template void
+CmdHandler<CmdShowBgpFibNexthops, CmdShowBgpFibNexthopsTraits>::run();
 template void
 CmdHandler<CmdShowBgpTableSummary, CmdShowBgpTableSummaryTraits>::run();
 template void CmdHandler<

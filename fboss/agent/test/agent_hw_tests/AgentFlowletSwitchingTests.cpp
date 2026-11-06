@@ -11,6 +11,8 @@
 #include "fboss/agent/test/agent_hw_tests/AgentArsBase.h"
 
 #include <folly/Conv.h>
+#include <algorithm>
+#include <array>
 
 #include "fboss/agent/AgentFeatures.h"
 #include "fboss/agent/AsicUtils.h"
@@ -21,8 +23,8 @@
 #include "fboss/agent/test/AgentHwTest.h"
 #include "fboss/agent/test/EcmpSetupHelper.h"
 #include "fboss/agent/test/TestUtils.h"
-#include "fboss/agent/test/agent_hw_tests/AgentTestEcmpConstants.h"
 #include "fboss/agent/test/utils/AclTestUtils.h"
+#include "fboss/agent/test/utils/AgentTestEcmpConstants.h"
 #include "fboss/agent/test/utils/ConfigUtils.h"
 #include "fboss/agent/test/utils/LoadBalancerTestUtils.h"
 #include "fboss/agent/test/utils/MirrorTestUtils.h"
@@ -418,6 +420,118 @@ TEST_F(AgentFlowletSourcePortPruneTest, VerifyArsSourcePortPruneDisabled) {
   verifyAcrossWarmBoots(setup, verify);
 }
 
+// One of the cases that increments the ARS fail counter is a packet whose
+// group has no member left to forward it out of. This drives that case:
+//   1. program an ARS group with two members, both neighbors on the same port
+//   2. ingress the traffic on that port, routed out of that same group
+//   3. split horizon prunes both members, leaving nothing to forward on
+//
+// Two members rather than one because a single next hop route is programmed as
+// a plain next hop and not a group, so it would carry no ARS object to count
+// against.
+class AgentFlowletArsDlbFailPacketsTest
+    : public AgentFlowletArsSourcePortPruneEnabledTest {
+ protected:
+  static constexpr int kIngressPortIdx = 0;
+  static constexpr int kFailPacketCount = 1;
+
+  void setCmdLineFlagOverrides() const override {
+    AgentFlowletArsSourcePortPruneEnabledTest::setCmdLineFlagOverrides();
+    FLAGS_flowletStatsEnable = true;
+  }
+
+  // A second neighbor sharing the first one's port and interface. The
+  // interface address and every next hop the helper builds differ only in the
+  // last byte, so moving the byte above it lands outside all of them without
+  // having to reason about which last byte values are taken.
+  utility::EcmpNextHop<folly::IPAddressV6> secondNhopOnPort(
+      const PortDescriptor& portDesc) const {
+    auto first = helper_->nhop(portDesc);
+    auto bytes = first.ip.toByteArray();
+    bytes[bytes.size() - 2] += 1;
+    auto mac = folly::MacAddress::fromHBO(first.mac.u64HBO() + 1);
+    return utility::EcmpNextHop<folly::IPAddressV6>(
+        folly::IPAddressV6(bytes), portDesc, mac, first.intf);
+  }
+
+  static int64_t dlbFailPackets(const multiswitch::HwSwitchStats& stats) {
+    return stats.flowletStats()->l3EcmpDlbFailPackets().value();
+  }
+};
+
+TEST_F(AgentFlowletArsDlbFailPacketsTest, VerifyArsDlbFailPackets) {
+  auto setup = [&]() {
+    ASSERT_FALSE(getTestPorts().empty());
+    generateApplyConfig(AclType::FLOWLET);
+
+    PortDescriptor ingressDesc(getTestPorts()[kIngressPortIdx]);
+    auto nhop = helper_->nhop(ingressDesc);
+    auto secondNhop = secondNhopOnPort(ingressDesc);
+
+    applyNewState([&](const std::shared_ptr<SwitchState>& in) {
+      return helper_->resolveNextHop(
+          helper_->resolveNextHop(in, nhop), secondNhop);
+    });
+
+    RouteNextHopSet nhops{
+        UnresolvedNextHop(nhop.ip, ECMP_WEIGHT),
+        UnresolvedNextHop(secondNhop.ip, ECMP_WEIGHT)};
+    auto updater = getSw()->getRouteUpdater();
+    updater.addRoute(
+        RouterID(0),
+        folly::IPAddressV6(kRoceDstIp),
+        128,
+        ClientID::BGPD,
+        RouteNextHopEntry(nhops, AdminDistance::EBGP));
+    updater.program();
+
+    applyNewState([&](const std::shared_ptr<SwitchState>& in) {
+      auto out = in->clone();
+      for (const auto& [_, switchSetting] :
+           std::as_const(*out->getSwitchSettings())) {
+        auto newSwitchSettings = switchSetting->modify(&out);
+        newSwitchSettings->setForceEcmpDynamicMemberUp(true);
+      }
+      return out;
+    });
+  };
+
+  auto verify = [&]() {
+    ASSERT_FALSE(getTestPorts().empty());
+    auto ingressPort = getTestPorts()[kIngressPortIdx];
+    auto switchId = getSw()->getScopeResolver()->scope(ingressPort).switchId();
+    auto switchIndex =
+        getSw()->getSwitchInfoTable().getSwitchIndexFromSwitchId(switchId);
+
+    int64_t failPacketsBefore = 0;
+    WITH_RETRIES({
+      auto switchStats = getSw()->getHwSwitchStatsExpensive();
+      ASSERT_EVENTUALLY_TRUE(
+          switchStats.find(switchIndex) != switchStats.end());
+      failPacketsBefore = dlbFailPackets(switchStats.at(switchIndex));
+    });
+
+    sendRoceTraffic(
+        ingressPort,
+        utility::kUdfRoceOpcodeWriteImmediate,
+        std::nullopt,
+        kFailPacketCount,
+        utility::kUdfL4DstPort,
+        0);
+
+    WITH_RETRIES({
+      auto failPacketsAfter =
+          dlbFailPackets(getSw()->getHwSwitchStatsExpensive(switchIndex));
+      XLOG(DBG2) << "DLB fail packets: " << failPacketsBefore << " -> "
+                 << failPacketsAfter;
+      EXPECT_EVENTUALLY_EQ(
+          failPacketsAfter, failPacketsBefore + kFailPacketCount);
+    });
+  };
+
+  verifyAcrossWarmBoots(setup, verify);
+}
+
 class AgentFlowletAclPriorityTest : public AgentFlowletSwitchingTest {
  public:
   std::vector<ProductionFeature> getProductionFeaturesVerified()
@@ -476,6 +590,26 @@ class AgentFlowletAclPriorityTest : public AgentFlowletSwitchingTest {
         .cancel = read(AclType::ECMP_HASH_CANCEL)};
   }
 
+  // A counter the HW agent has not published yet reads as 0. After warm boot
+  // the HW counters keep their values, so a baseline taken before the first
+  // stats sync inflates every delta.
+  bool countersPublished() {
+    constexpr std::array<AclType, 4> kAclTypes{
+        AclType::UDF_ACK,
+        AclType::UDF_FLOWLET,
+        AclType::ROCE_SPRAY_MISS,
+        AclType::ECMP_HASH_CANCEL};
+    for (const auto& [_, stats] : getSw()->getHwSwitchStatsExpensive()) {
+      const auto& nameToCounter = *stats.aclStats()->statNameToCounterMap();
+      if (std::all_of(kAclTypes.begin(), kAclTypes.end(), [&](AclType type) {
+            return nameToCounter.contains(getCounterName(type) + ".packets");
+          })) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   void applyAclConfig(bool withSprayMiss = true) {
     auto newCfg{initialConfig(*getAgentEnsemble())};
     std::vector<std::string> udfGroups =
@@ -511,6 +645,7 @@ class AgentFlowletAclPriorityTest : public AgentFlowletSwitchingTest {
   // an over-matching entry is caught.
   void
   runStep(int roceOpcode, uint8_t bthReserved, int l4DstPort, ExpectedHit hit) {
+    WITH_RETRIES({ ASSERT_EVENTUALLY_TRUE(countersPublished()); });
     auto before = readCounters();
 
     sendRoceTraffic(
@@ -1642,202 +1777,6 @@ TEST_F(
   verifyAcrossWarmBoots(setup, verify);
 }
 
-class AgentFlowletSwitchingEnhancedScaleTest
-    : public AgentFlowletSwitchingTest {
- public:
-  std::vector<ProductionFeature> getProductionFeaturesVerified()
-      const override {
-    return {
-        ProductionFeature::DLB,
-        ProductionFeature::ALTERNATE_ARS_MEMBERS,
-        ProductionFeature::UDF_WR_IMMEDIATE_ACL,
-        ProductionFeature::SINGLE_ACL_TABLE};
-  }
-  void setCmdLineFlagOverrides() const override {
-    AgentFlowletSwitchingTest::setCmdLineFlagOverrides();
-    FLAGS_enable_th5_ars_scale_mode = true;
-    FLAGS_dlbResourceCheckEnable = false;
-  }
-
-  std::optional<size_t> maxRequiredInterfacePorts() const override {
-    // Enhanced scale test creates large ECMP objects needing many ports
-    return std::nullopt;
-  }
-};
-
-TEST_F(AgentFlowletSwitchingEnhancedScaleTest, VerifyAlternateArsEcmpObjects) {
-  auto setup = [this]() {
-    this->setup(32);
-    generateApplyConfig(AclType::FLOWLET);
-
-    generatePrefixes();
-
-    auto wrapper = getSw()->getRouteUpdater();
-
-    const int maxGroups = 254;
-    std::vector<RoutePrefixV6> testPrefixes(
-        prefixes.begin(),
-        prefixes.begin() + std::min(maxGroups, (int)prefixes.size()));
-    std::vector<boost::container::flat_set<PortDescriptor>> testNhopSets(
-        nhopSets.begin(),
-        nhopSets.begin() + std::min(maxGroups, (int)nhopSets.size()));
-
-    helper_->programRoutes(&wrapper, testNhopSets, testPrefixes);
-
-    // Set default route to use ports [0,1,2,3] combination
-    boost::container::flat_set<PortDescriptor> trafficNhopSet;
-    std::vector<PortDescriptor> tempPortDescs = {
-        helper_->ecmpPortDescriptorAt(0),
-        helper_->ecmpPortDescriptorAt(1),
-        helper_->ecmpPortDescriptorAt(2),
-        helper_->ecmpPortDescriptorAt(3)};
-    trafficNhopSet.insert(
-        std::make_move_iterator(tempPortDescs.begin()),
-        std::make_move_iterator(tempPortDescs.end()));
-
-    auto defaultPrefix = RoutePrefixV6{folly::IPAddressV6("::"), 0};
-    std::vector<RoutePrefixV6> defaultPrefixes = {defaultPrefix};
-    std::vector<boost::container::flat_set<PortDescriptor>> defaultNhopSets = {
-        trafficNhopSet};
-    helper_->programRoutes(&wrapper, defaultNhopSets, defaultPrefixes);
-  };
-
-  auto verify = [this]() {
-    auto verifyCounts =
-        [this](
-            int destPort, bool bumpOnHit, int portCount, bool useAlternateArs) {
-          std::vector<PortID> ecmpPorts;
-          std::vector<uint64_t> pktsBefore, pktsAfter;
-
-          // Collect port IDs and before stats
-          for (int i = 0; i < portCount; ++i) {
-            ecmpPorts.push_back(helper_->ecmpPortDescriptorAt(i).phyPortID());
-            pktsBefore.push_back(
-                *getNextUpdatedPortStats(ecmpPorts[i]).outUnicastPkts_());
-          }
-
-          uint64_t pktsBeforeTotal =
-              std::accumulate(pktsBefore.begin(), pktsBefore.end(), 0ULL);
-          // Use appropriate ACL counter based on ARS configuration
-          auto aclPktCountBefore = utility::getAclInOutPackets(
-              getSw(), getCounterName(AclType::FLOWLET, useAlternateArs));
-
-          std::vector<uint8_t> rethHdr(16);
-          rethHdr[15] = 0xFF;
-          auto egressPort =
-              helper_->ecmpPortDescriptorAt(kFrontPanelPortForTest).phyPortID();
-          sendRoceTraffic(
-              egressPort,
-              utility::kUdfRoceOpcodeWriteImmediate,
-              rethHdr,
-              1000,
-              destPort);
-
-          WITH_RETRIES({
-            auto aclPktCountAfter = utility::getAclInOutPackets(
-                getSw(), getCounterName(AclType::FLOWLET, useAlternateArs));
-
-            // Collect after stats
-            pktsAfter.clear();
-            for (int i = 0; i < portCount; ++i) {
-              pktsAfter.push_back(
-                  *getNextUpdatedPortStats(ecmpPorts[i]).outUnicastPkts_());
-              XLOG(DBG2) << "Ecmp egress Port " << i << ": " << ecmpPorts[i]
-                         << ", Count: " << pktsBefore[i] << " -> "
-                         << pktsAfter[i];
-            }
-
-            uint64_t pktsAfterTotal =
-                std::accumulate(pktsAfter.begin(), pktsAfter.end(), 0ULL);
-            XLOG(DBG2) << "Total packets: " << pktsBeforeTotal << " -> "
-                       << pktsAfterTotal;
-            XLOG(DBG2) << "ACL count: " << aclPktCountBefore << " -> "
-                       << aclPktCountAfter;
-
-            // Check total packets across all ports in the ECMP group
-            EXPECT_EVENTUALLY_GE(pktsAfterTotal, pktsBeforeTotal + 1000);
-
-            // Count ports with traffic using vector comparison
-            int portsWithTraffic = 0;
-            for (int i = 0; i < portCount; ++i) {
-              if (pktsAfter[i] > pktsBefore[i]) {
-                portsWithTraffic++;
-              }
-            }
-
-            if (bumpOnHit) {
-              EXPECT_EVENTUALLY_GE(aclPktCountAfter, aclPktCountBefore + 1000);
-              // Verify that traffic is distributed across all ports when DLB is
-              // enabled
-              EXPECT_EVENTUALLY_EQ(portsWithTraffic, portCount);
-            } else {
-              EXPECT_EVENTUALLY_EQ(aclPktCountAfter, aclPktCountBefore);
-              // When DLB is disabled, traffic should use traditional ECMP
-              // hashing and go to exactly one port for a consistent flow
-              EXPECT_EVENTUALLY_EQ(portsWithTraffic, 1);
-            }
-          });
-        };
-
-    // Initial verification with 4 ports (primary ARS)
-    verifyCounts(4791, true, 4, true); // DLB enabled, alternate ARS
-    verifyCounts(1024, false, 4, true); // DLB disabled, alternate ARS
-
-    // Modify default route to point to primary ars
-    {
-      auto wrapper = getSw()->getRouteUpdater();
-
-      // Create nexthop set with first 3 ports [0,1,2]
-      boost::container::flat_set<PortDescriptor> threePortNhopSet;
-      std::vector<PortDescriptor> tempPortDescs = {
-          helper_->ecmpPortDescriptorAt(0),
-          helper_->ecmpPortDescriptorAt(1),
-          helper_->ecmpPortDescriptorAt(2)};
-      threePortNhopSet.insert(
-          std::make_move_iterator(tempPortDescs.begin()),
-          std::make_move_iterator(tempPortDescs.end()));
-
-      auto defaultPrefix = RoutePrefixV6{folly::IPAddressV6("::"), 0};
-      std::vector<RoutePrefixV6> defaultPrefixes = {defaultPrefix};
-      std::vector<boost::container::flat_set<PortDescriptor>>
-          threePortNhopSets = {threePortNhopSet};
-      helper_->programRoutes(&wrapper, threePortNhopSets, defaultPrefixes);
-    }
-
-    // Verify traffic on the 3 ports (should trigger primary ARS)
-    verifyCounts(4791, true, 3, false); // DLB enabled, 3 ports, primary ARS
-    verifyCounts(1024, false, 3, false); // DLB disabled, 3 ports, primary ARS
-
-    // Move default route back to alternate ars
-    {
-      auto wrapper = getSw()->getRouteUpdater();
-
-      // Create nexthop set with first 4 ports [0,1,2,3]
-      boost::container::flat_set<PortDescriptor> fourPortNhopSet;
-      std::vector<PortDescriptor> tempPortDescs = {
-          helper_->ecmpPortDescriptorAt(0),
-          helper_->ecmpPortDescriptorAt(1),
-          helper_->ecmpPortDescriptorAt(2),
-          helper_->ecmpPortDescriptorAt(3)};
-      fourPortNhopSet.insert(
-          std::make_move_iterator(tempPortDescs.begin()),
-          std::make_move_iterator(tempPortDescs.end()));
-
-      auto defaultPrefix = RoutePrefixV6{folly::IPAddressV6("::"), 0};
-      std::vector<RoutePrefixV6> defaultPrefixes = {defaultPrefix};
-      std::vector<boost::container::flat_set<PortDescriptor>> fourPortNhopSets =
-          {fourPortNhopSet};
-      helper_->programRoutes(&wrapper, fourPortNhopSets, defaultPrefixes);
-    }
-
-    // Verify traffic on the 4 ports again (back to alternate ARS)
-    verifyCounts(4791, true, 4, true); // DLB enabled, 4 ports, alternate ARS
-    verifyCounts(1024, false, 4, true); // DLB disabled, 4 ports, alternate ARS
-  };
-
-  verifyAcrossWarmBoots(setup, verify);
-}
-
 class AgentFlowletWideArsSwitchingTest : public AgentFlowletSwitchingTest {
  public:
   std::vector<ProductionFeature> getProductionFeaturesVerified()
@@ -2068,6 +2007,352 @@ TEST_F(AgentFlowletWideArsSwitchingTest, EcmpScaleTest) {
     verifyTrafficDistribution(kDefaultRouteEcmpWidth, 1024, false);
   };
 
+  verifyAcrossWarmBoots(setup, verify);
+}
+
+// Two wide virtual ARS groups sharing part of their width, with slots reserved
+// for alternate members. The adapter only programs the DGM parameters from a
+// virtual group, so this only runs where VIRTUAL_ARS_GROUP is supported.
+class AgentFlowletWideArsAlternateMemberTest
+    : public AgentFlowletWideArsSwitchingTest {
+ protected:
+  static constexpr int kAlternateMembers = 8;
+  static constexpr int kCommonMembersThreshold = 4;
+  static constexpr int kFirstGroupWidth = 150;
+  static constexpr int kSecondGroupWidth = 120;
+  static constexpr int kCommonMembers = 30;
+  // Overlap the tail of the first group with the head of the second.
+  static constexpr int kSecondGroupStart = kFirstGroupWidth - kCommonMembers;
+  static constexpr int kPortsUsed = kSecondGroupStart + kSecondGroupWidth;
+  // Quality bands are three bits wide. At 7 the adapter documents the DGM
+  // action as always valid, so the alternate path is always a candidate.
+  static constexpr int kMaxQualityBand = 7;
+  static constexpr int kTrafficPacketCount = 1000;
+  // Member kFrontPanelPortForTest is left out of the totals below because
+  // traffic is injected out of it, so even a fully collected spread accounts
+  // for slightly less than kTrafficPacketCount. Leave room for that member's
+  // share rather than waiting for a total that never arrives.
+  static constexpr int kMinAccountedPackets = kTrafficPacketCount * 9 / 10;
+  static constexpr int kDlbDestPort = 4791;
+  // Alternate members all come out of the shared set, so once DGM moves the
+  // flows onto them the shared set carries essentially everything.
+  static constexpr double kAllTrafficOnSharedMembers = 0.9;
+  // How far the overlap between the two groups slides when the common set is
+  // churned. Members entering the window become common for the first time and
+  // members leaving it go stale, both in the same update.
+  static constexpr int kOverlapShift = 10;
+  static constexpr int kShiftedStart = kSecondGroupStart - kOverlapShift;
+  static constexpr int kShiftedEnd = kFirstGroupWidth - kOverlapShift;
+
+  static_assert(
+      kFirstGroupWidth >= kMinWidthForArsVirtualGroup &&
+          kSecondGroupWidth >= kMinWidthForArsVirtualGroup,
+      "both groups have to be wide enough to be backed by a virtual group");
+  static_assert(
+      kPortsUsed <= kWideEcmpWidth,
+      "not enough ports to build both groups");
+  static_assert(
+      kCommonMembers > kCommonMembersThreshold,
+      "common members have to exceed the threshold for the adapter to promote "
+      "any of them to alternates");
+  static_assert(
+      kShiftedStart > 0 && kShiftedEnd < kFirstGroupWidth,
+      "the shifted overlap has to leave first group members on both sides of "
+      "the window so the update both adds and stales common members");
+  static_assert(
+      (kShiftedEnd - kShiftedStart) + (kPortsUsed - kFirstGroupWidth) >=
+          kMinWidthForArsVirtualGroup,
+      "the second group has to stay wide enough to be backed by a virtual "
+      "group once the overlap moves");
+
+  virtual int primaryPathQualityThreshold() const = 0;
+  virtual int alternatePathCost() const = 0;
+  virtual int alternatePathBias() const = 0;
+
+  cfg::SwitchConfig initialConfig(
+      const AgentEnsemble& ensemble) const override {
+    auto cfg = AgentFlowletWideArsSwitchingTest::initialConfig(ensemble);
+    auto& flowletCfg = *cfg.flowletSwitchingConfig();
+    flowletCfg.arsVirtualGroupAlternateMembers() = kAlternateMembers;
+    flowletCfg.arsVirtualGroupCommonMembersThreshold() =
+        kCommonMembersThreshold;
+    flowletCfg.primaryPathQualityThreshold() = primaryPathQualityThreshold();
+    flowletCfg.alternatePathCost() = alternatePathCost();
+    flowletCfg.alternatePathBias() = alternatePathBias();
+    return cfg;
+  }
+
+  // The traffic check sends to the default route, so make that the first
+  // virtual group rather than standing a third one up beside it: a member only
+  // counts as common once it appears in every group of the super group, so an
+  // extra group would leave the two below with nothing shared.
+  void setupTwoVirtualGroups() {
+    this->setup(kFirstGroupWidth);
+    generateApplyConfig(AclType::FLOWLET);
+    generatePrefixes();
+
+    boost::container::flat_set<PortDescriptor> secondGroup;
+    for (int i = kSecondGroupStart; i < kPortsUsed; ++i) {
+      secondGroup.insert(helper_->ecmpPortDescriptorAt(i));
+    }
+    std::vector<boost::container::flat_set<PortDescriptor>> nhopSets = {
+        secondGroup};
+    std::vector<RoutePrefixV6> testPrefixes = {prefixes[0]};
+
+    auto wrapper = getSw()->getRouteUpdater();
+    helper_->programRoutes(&wrapper, nhopSets, testPrefixes);
+
+    XLOG(DBG2) << "Virtual ARS groups of " << kFirstGroupWidth << " and "
+               << kSecondGroupWidth << " members sharing " << kCommonMembers
+               << ", up to " << kAlternateMembers
+               << " of the shared ones promoted to alternates; quality "
+               << "threshold " << primaryPathQualityThreshold() << ", cost "
+               << alternatePathCost() << ", bias " << alternatePathBias();
+  }
+
+  static std::vector<int> memberRange(int begin, int end) {
+    std::vector<int> members;
+    for (int i = begin; i < end; ++i) {
+      members.push_back(i);
+    }
+    return members;
+  }
+
+  // Reprograms the second virtual group over the given first group member
+  // indices. A member is common only while it sits in every group, so moving
+  // this set is how members are made to gain or lose common status.
+  void programSecondGroup(const std::vector<int>& memberIndices) {
+    boost::container::flat_set<PortDescriptor> secondGroup;
+    for (auto i : memberIndices) {
+      secondGroup.insert(helper_->ecmpPortDescriptorAt(i));
+    }
+    std::vector<boost::container::flat_set<PortDescriptor>> nhopSets = {
+        secondGroup};
+    std::vector<RoutePrefixV6> testPrefixes = {prefixes[0]};
+    auto wrapper = getSw()->getRouteUpdater();
+    helper_->programRoutes(&wrapper, nhopSets, testPrefixes);
+  }
+
+  // Share of the traffic that left on first group members in [begin, end).
+  double trafficFractionInRange(
+      const std::vector<int64_t>& perMember,
+      int begin,
+      int end) const {
+    int64_t inRange = 0;
+    int64_t totalPkts = 0;
+    for (int i = 0; i < kFirstGroupWidth; ++i) {
+      if (i == kFrontPanelPortForTest) {
+        continue;
+      }
+      totalPkts += perMember[i];
+      if (i >= begin && i < end) {
+        inRange += perMember[i];
+      }
+    }
+    return static_cast<double>(inRange) / static_cast<double>(totalPkts);
+  }
+
+  // Walks the adapter through the common member transitions and leaves behind
+  // exactly the two group state setupTwoVirtualGroups() would have, so the
+  // caller's verify() and the warm boot rerun of it are unchanged. What the
+  // warm boot then has to restore is a ring that has been churned rather than
+  // one built in a single shot.
+  void walkCommonMemberTransitions() {
+    this->setup(kFirstGroupWidth);
+    generateApplyConfig(AclType::FLOWLET);
+    generatePrefixes();
+
+    // One virtual group on its own: every member passes the common test
+    // trivially, but each is already primary in its own DLB and a port cannot
+    // sit in both sections, so none of them can become an alternate.
+    {
+      SCOPED_TRACE("first virtual group only");
+      EXPECT_LT(
+          trafficFractionInRange(
+              sendDlbTrafficAndCountPerMember(),
+              kSecondGroupStart,
+              kFirstGroupWidth),
+          kAllTrafficOnSharedMembers);
+    }
+
+    // Overlapping the tail of the first group takes the shared members past
+    // the threshold. They are already in the ring from the first group, so the
+    // adapter promotes them when the add re-confirms them rather than on the
+    // insert path.
+    {
+      SCOPED_TRACE("second virtual group added");
+      programSecondGroup(memberRange(kSecondGroupStart, kPortsUsed));
+      EXPECT_GT(
+          trafficFractionInRange(
+              sendDlbTrafficAndCountPerMember(),
+              kSecondGroupStart,
+              kFirstGroupWidth),
+          kAllTrafficOnSharedMembers);
+    }
+
+    // Slide the overlap down. Members entering the window become common for
+    // the first time while those leaving it go stale, and the stale entries
+    // only give their alternate slots back at the end of the member add, so
+    // the new ones are promoted by the rescan that follows the stale scan.
+    {
+      SCOPED_TRACE("overlap window moved");
+      auto shifted = memberRange(kShiftedStart, kShiftedEnd);
+      auto beyondFirstGroup = memberRange(kFirstGroupWidth, kPortsUsed);
+      shifted.insert(
+          shifted.end(), beyondFirstGroup.begin(), beyondFirstGroup.end());
+      programSecondGroup(shifted);
+      EXPECT_GT(
+          trafficFractionInRange(
+              sendDlbTrafficAndCountPerMember(), kShiftedStart, kShiftedEnd),
+          kAllTrafficOnSharedMembers);
+    }
+
+    // Put the original overlap back so verify() sees the same state it would
+    // have after setupTwoVirtualGroups().
+    programSecondGroup(memberRange(kSecondGroupStart, kPortsUsed));
+  }
+
+  // Sends DLB traffic once and returns the per member packet counts for the
+  // first group, indexed the way ecmpPortDescriptorAt is. Every member is
+  // counted rather than sampled: only a handful end up as alternates, so
+  // sampling would miss them.
+  std::vector<int64_t> sendDlbTrafficAndCountPerMember() {
+    std::vector<PortID> ports;
+    ports.reserve(kFirstGroupWidth);
+    for (int i = 0; i < kFirstGroupWidth; ++i) {
+      ports.push_back(helper_->ecmpPortDescriptorAt(i).phyPortID());
+    }
+    auto before = getNextUpdatedPortStats(ports);
+    auto aclBefore =
+        utility::getAclInOutPackets(getSw(), getCounterName(AclType::FLOWLET));
+
+    std::vector<uint8_t> rethHdr(16);
+    rethHdr[15] = 0xFF;
+    sendRoceTraffic(
+        helper_->ecmpPortDescriptorAt(kFrontPanelPortForTest).phyPortID(),
+        utility::kUdfRoceOpcodeWriteImmediate,
+        rethHdr,
+        kTrafficPacketCount,
+        kDlbDestPort);
+
+    // The flowlet ACL counter and the port counters are refreshed by separate
+    // collection cycles, so a single snapshot can catch either one still
+    // holding its pre-traffic value. Retry until both have caught up -
+    // asserting on one snapshot reports a half-collected count as a routing
+    // failure, and the counts are recomputed each round so the returned
+    // per-member spread comes from the snapshot that satisfied both.
+    std::vector<int64_t> perMember(kFirstGroupWidth);
+    int64_t sharedPkts = 0;
+    int64_t totalPkts = 0;
+    WITH_RETRIES({
+      auto after = getNextUpdatedPortStats(ports);
+      sharedPkts = 0;
+      totalPkts = 0;
+      for (int i = 0; i < kFirstGroupWidth; ++i) {
+        // Traffic is injected out of this member and loops back in, so its
+        // counter carries the injected packets as well as any routed to it and
+        // cannot be compared against the rest.
+        if (i == kFrontPanelPortForTest) {
+          continue;
+        }
+        auto port = ports[i];
+        perMember[i] =
+            *after[port].outUnicastPkts_() - *before[port].outUnicastPkts_();
+        totalPkts += perMember[i];
+        if (i >= kSecondGroupStart) {
+          sharedPkts += perMember[i];
+        }
+      }
+      XLOG(DBG2) << "Traffic on shared members: " << sharedPkts << "/"
+                 << totalPkts;
+      // Traffic that misses the ACL is statically hashed onto a single member,
+      // which would land wholly inside or outside the shared set and make the
+      // counts above meaningless either way.
+      EXPECT_EVENTUALLY_GE(
+          utility::getAclInOutPackets(
+              getSw(), getCounterName(AclType::FLOWLET)),
+          aclBefore + kTrafficPacketCount);
+      EXPECT_EVENTUALLY_GE(totalPkts, kMinAccountedPackets);
+    });
+    CHECK_GT(totalPkts, 0) << "no traffic reached the group";
+    return perMember;
+  }
+
+  // Share of the traffic that left on members the two groups have in common.
+  // Alternate members are promoted out of that shared set, so this is what
+  // separates an alternate path decision from a primary one.
+  double sharedMemberTrafficFraction(const std::vector<int64_t>& perMember) {
+    int64_t sharedPkts = 0;
+    int64_t totalPkts = 0;
+    for (int i = 0; i < kFirstGroupWidth; ++i) {
+      if (i == kFrontPanelPortForTest) {
+        continue;
+      }
+      totalPkts += perMember[i];
+      if (i >= kSecondGroupStart) {
+        sharedPkts += perMember[i];
+      }
+    }
+    return static_cast<double>(sharedPkts) / static_cast<double>(totalPkts);
+  }
+};
+
+// DGM only applies while the primary sits in band 0, switching to an alternate
+// costs the most a band can, and nothing biases the choice toward it, so the
+// primary members carry the traffic.
+class AgentFlowletArsPrimaryMemberTest
+    : public AgentFlowletWideArsAlternateMemberTest {
+ protected:
+  int primaryPathQualityThreshold() const override {
+    return 0;
+  }
+  int alternatePathCost() const override {
+    return kMaxQualityBand;
+  }
+  int alternatePathBias() const override {
+    return 0;
+  }
+};
+
+TEST_F(AgentFlowletArsPrimaryMemberTest, VerifyEcmp) {
+  auto setup = [this]() { setupTwoVirtualGroups(); };
+  auto verify = [this]() {
+    auto perMember = sendDlbTrafficAndCountPerMember();
+    // Sampled the way the other wide ARS tests are. Spread over the primary
+    // members every sampled one sees traffic, including those outside the
+    // range shared with the second group; had DGM moved the flows onto
+    // alternates only the shared members would.
+    for (int i = 0; i < kFirstGroupWidth; i += kStatsCheckInterval) {
+      EXPECT_GT(perMember[i], 0) << "no traffic on member " << i;
+    }
+  };
+  verifyAcrossWarmBoots(setup, verify);
+}
+
+// The mirror image: a threshold of 7 keeps the DGM action always valid so the
+// alternate is always a candidate, switching is free, and the alternate gets
+// the largest bias the band allows.
+class AgentFlowletArsAlternateMemberTest
+    : public AgentFlowletWideArsAlternateMemberTest {
+ protected:
+  int primaryPathQualityThreshold() const override {
+    return kMaxQualityBand;
+  }
+  int alternatePathCost() const override {
+    return 0;
+  }
+  int alternatePathBias() const override {
+    return kMaxQualityBand;
+  }
+};
+
+TEST_F(AgentFlowletArsAlternateMemberTest, VerifyEcmp) {
+  auto setup = [this]() { walkCommonMemberTransitions(); };
+  auto verify = [this]() {
+    EXPECT_GT(
+        sharedMemberTrafficFraction(sendDlbTrafficAndCountPerMember()),
+        kAllTrafficOnSharedMembers);
+  };
   verifyAcrossWarmBoots(setup, verify);
 }
 

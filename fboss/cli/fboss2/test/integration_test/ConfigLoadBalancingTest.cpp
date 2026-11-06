@@ -30,6 +30,7 @@
 #include <vector>
 #include "fboss/agent/if/gen-cpp2/FbossCtrlAsyncClient.h"
 #include "fboss/cli/fboss2/test/integration_test/Fboss2IntegrationTest.h"
+#include "fboss/cli/fboss2/test/integration_test/LoadBalancingTestUtils.h"
 #include "fboss/cli/fboss2/utils/CmdClientUtilsCommon.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
 
@@ -197,31 +198,6 @@ class ConfigLoadBalancingTest : public Fboss2IntegrationTest {
 
     runAndCommit({"config", "load-balancing", area, attrName, restoreTokens});
     EXPECT_EQ(getFieldSet(idValue, fieldKey), originalFields);
-  }
-
- private:
-  static std::string algorithmIntToToken(int enumValue) {
-    switch (enumValue) {
-      case 1:
-        return "crc16-ccitt";
-      case 3:
-        return "crc32-lo";
-      case 4:
-        return "crc32-hi";
-      case 5:
-        return "crc32-ethernet-lo";
-      case 6:
-        return "crc32-ethernet-hi";
-      case 7:
-        return "crc32-koopman-lo";
-      case 8:
-        return "crc32-koopman-hi";
-      case 9:
-        return "crc";
-      default:
-        throw std::runtime_error(
-            fmt::format("Unknown HashingAlgorithm enum value {}", enumValue));
-    }
   }
 };
 

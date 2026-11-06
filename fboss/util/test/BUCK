@@ -11,12 +11,19 @@ cpp_unittest(
     ],
     compiler_flags = QSFP_COMMON_COMPILER_FLAGS,
     network_access = network_access_utils.none(),
-    deps = [
-        "//common/init:init",
-        "//fboss/util:wedge_qsfp_util_module",
-        "//folly:singleton",
-        "//folly/logging:logging",
+    source_headers = [
+        "QsfpUtilTest.h",
     ],
+    deps = [
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly:singleton",
+        "fbsource//xplat/folly/logging:logging",
+        "fbsource//xplat/folly/testing:test_util",
+        "//common/init:init",
+        "//fboss/lib/platforms:platform_descriptor",
+        "//fboss/util:wedge_qsfp_util_module",
+    ],
+    external_deps = ["gflags"],
 )
 
 cpp_unittest(
@@ -25,11 +32,14 @@ cpp_unittest(
         "CredoMacsecUtilTest.cpp",
     ],
     network_access = network_access_utils.none(),
+    source_headers = [
+        "CredoMacsecUtilTest.h",
+    ],
     deps = [
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly:singleton",
+        "fbsource//xplat/folly/testing:test_util",
         "//common/init:init",
         "//fboss/util:credo_macsec_util_module",
-        "//folly:file_util",
-        "//folly:singleton",
-        "//folly/testing:test_util",
     ],
 )

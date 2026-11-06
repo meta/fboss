@@ -1,0 +1,86 @@
+{
+    "RepoSyncHeader": [
+        "(c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.",
+        "This file is generated. Do not modify it manually!",
+        "@codegen-source : configerator\/raw_configs\/fboss\/test\/link_test_metadata\/metadata.json",
+        "@generated SignedSource<<09046e3dcd99146b6923fe9c75d5d54a>>"
+    ],
+    "rules": [
+        {
+            "testNamePattern": "EmptyLinkTest.CheckInit",
+            "tier": "T0",
+            "requiredCapabilities": [],
+            "profiles": []
+        },
+        {
+            "testNamePattern": "LinkTest.trafficRxTx",
+            "tier": "T0",
+            "requiredCapabilities": [],
+            "profiles": []
+        },
+        {
+            "testNamePattern": "LinkTest.asicLinkFlap",
+            "tier": "T0",
+            "requiredCapabilities": [],
+            "profiles": []
+        },
+        {
+            "testNamePattern": "LinkTest.getTransceivers",
+            "tier": "T0",
+            "requiredCapabilities": [
+                "TRANSCEIVER"
+            ],
+            "profiles": []
+        },
+        {
+            "testNamePattern": "LinkTest.iPhyInfoTest",
+            "tier": "T0",
+            "requiredCapabilities": [],
+            "profiles": []
+        },
+        {
+            "testNamePattern": "LinkSanityTestDataPlaneFlood.warmbootIsHitLess",
+            "tier": "T0",
+            "requiredCapabilities": [],
+            "profiles": []
+        },
+        {
+            "testNamePattern": "AgentEnsembleEmptyLinkTest.CheckInit",
+            "tier": "T0",
+            "requiredCapabilities": [],
+            "profiles": []
+        },
+        {
+            "testNamePattern": "AgentEnsembleLinkTest.trafficRxTx",
+            "tier": "T0",
+            "requiredCapabilities": [],
+            "profiles": []
+        },
+        {
+            "testNamePattern": "AgentEnsembleLinkTest.asicLinkFlap",
+            "tier": "T0",
+            "requiredCapabilities": [],
+            "profiles": []
+        },
+        {
+            "testNamePattern": "AgentEnsembleLinkTest.getTransceivers",
+            "tier": "T0",
+            "requiredCapabilities": [
+                "TRANSCEIVER"
+            ],
+            "profiles": []
+        },
+        {
+            "testNamePattern": "AgentEnsembleLinkTest.iPhyInfoTest",
+            "tier": "T0",
+            "requiredCapabilities": [],
+            "profiles": []
+        },
+        {
+            "testNamePattern": "AgentEnsembleLinkSanityTestDataPlaneFlood.warmbootIsHitLess",
+            "tier": "T0",
+            "requiredCapabilities": [],
+            "profiles": []
+        }
+    ]
+}

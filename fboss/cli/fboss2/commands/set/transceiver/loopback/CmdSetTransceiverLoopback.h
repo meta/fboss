@@ -17,7 +17,9 @@ struct CmdSetTransceiverLoopbackTraits : public WriteCommandTraits {
     cmd.add_option(
         "loopback_args",
         args,
-        "<system|line> <enable|disable>, or 'disable' to disable all modes");
+        "<system|line> [input|output] <enable|disable>, or 'disable' to "
+        "disable all modes. system = host side, line = media side; "
+        "input/output selects the CMIS loopback on that side (default input)");
   }
   using ObjectArgType = loopback_utils::LoopbackAction;
   using RetType = std::string;

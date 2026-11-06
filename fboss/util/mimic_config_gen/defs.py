@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import dataclasses
+import json
 import sys
 import typing as t
 
@@ -147,3 +148,60 @@ def unwrap_selection(doc: t.Mapping[str, t.Any]) -> dict[str, t.Any]:
             f"expected a struct in the union arm, got {type(inner).__name__}"
         )
     return inner
+
+
+@dataclasses.dataclass(frozen=True)
+class SelectionCtx:
+    """Who to resolve a multi-selection artifact for.
+
+    whoami is a NetWhoAmI thrift (same type coop matches against) and
+    enabled_features the device's on-state feature names (same membership
+    coop checks selector `features` against).
+    """
+
+    whoami: t.Any
+    enabled_features: t.FrozenSet[str]
+
+
+def select_selection(
+    doc: t.Mapping[str, t.Any],
+    ctx: SelectionCtx,
+    input_name: str,
+) -> dict[str, t.Any]:
+    """Return the payload of the selection coop would serve this device.
+
+    Single-selection docs take the legacy path unchanged. Multi-selection
+    docs pick the first selection whose selector matches, exactly like
+    neteng.fboss.coop.data.input_chooser.resolve_selector (first match wins,
+    evaluated with coop's own match_input_to_device, so semantics cannot
+    drift from production). Raises MimicError with coop's nearest-mismatch
+    report when nothing matches.
+    """
+    try:
+        selections = doc["selections"]
+    except (KeyError, TypeError) as e:
+        raise MimicError(
+            f"artifact {input_name!r} is not shaped like a coop input: {e}"
+        ) from e
+    if len(selections) == 1:
+        return unwrap_selection(doc)
+    if not selections:
+        raise MimicError(f"artifact {input_name!r} has no selections to choose from")
+    from configerator.structs.neteng.fboss.coop.mapping.thrift_types import Selector
+    from neteng.fboss.coop.data.input_chooser import match_input_to_device
+    from thrift.python import serializer
+
+    nearest: list[str] = []
+    for sel in selections:
+        raw = sel.get("selector") or {}
+        selector = serializer.deserialize(
+            Selector, json.dumps(raw).encode(), serializer.Protocol.JSON
+        )
+        result = match_input_to_device(selector, ctx.whoami, set(ctx.enabled_features))
+        if result.matches():
+            return unwrap_selection({"selections": [sel]})
+        nearest.append(result.get_match_string())
+    raise MimicError(
+        f"{input_name}: {len(selections)} selections but none matches this "
+        f"device; nearest: {'; '.join(nearest)}"
+    )

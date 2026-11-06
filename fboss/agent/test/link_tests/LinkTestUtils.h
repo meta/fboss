@@ -66,4 +66,7 @@ bool waitForFreshTransceiverInfo(
 const TransceiverSpec* getTransceiverSpec(const SwSwitch* sw, PortID portId);
 std::optional<int32_t> getPortExternalPhyID(const SwSwitch* sw, PortID port);
 std::map<std::string, MediaInterfaceCode> getPortToMediaInterface();
+// Transceivers whose Rx output disable is known not to take effect. The
+// internal build lists them in facebook/; the open-source build lists none.
+bool isRxOutputDisableUnsupported(const TcvrState& tcvrState);
 } // namespace facebook::fboss::utility

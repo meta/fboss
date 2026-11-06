@@ -10,9 +10,12 @@
 
 #include "fboss/cli/fboss2/commands/show/bgp/policy/CmdShowBgpPolicy.h"
 
+#include <utility>
+
 #include "fboss/cli/fboss2/CmdHandler.cpp"
 
 #include <folly/json/json.h>
+#include <thrift/lib/cpp2/FieldRef.h>
 #include <thrift/lib/cpp2/folly_dynamic/folly_dynamic.h>
 #include "fboss/cli/fboss2/commands/show/bgp/CmdShowUtils.h"
 
@@ -21,44 +24,48 @@ namespace facebook::fboss {
 CmdShowBgpPolicy::RetType CmdShowBgpPolicy::queryClient(
     const HostInfo& hostInfo,
     const std::vector<std::string>& policyNames) {
+  const auto loaded = getLoadedBgpPolicy(hostInfo);
+  const auto* source = loaded.source == BgpPolicySource::POLICY_ARTIFACT
+      ? "BGP policy"
+      : "BGP config";
   if (policyNames.empty()) {
-    std::cerr << "No policy name provided. Usage: show bgp policy <policy_name>"
+    return folly::dynamic::object("source", source)(
+        "policy",
+        facebook::thrift::to_dynamic(
+            loaded.config, facebook::thrift::dynamic_format::PORTABLE));
+  }
+
+  folly::dynamic policy;
+  if (auto policies = loaded.config.policies();
+      policies &&
+      apache::thrift::is_non_optional_field_set_manually_or_by_serializer(
+          policies->bgp_policy_statements())) {
+    for (const auto& statement : policies->bgp_policy_statements().value()) {
+      if (*statement.name() == policyNames.front()) {
+        policy = facebook::thrift::to_dynamic(
+            statement, facebook::thrift::dynamic_format::PORTABLE);
+        break;
+      }
+    }
+  }
+
+  if (policy.isNull()) {
+    std::cerr << "Policy '" << policyNames.front() << "' not found"
               << std::endl;
     return folly::dynamic::object;
   }
 
-  const auto& policyName = policyNames[0];
-
-  const auto policies = getRunningBgpPolicies(hostInfo);
-  if (!policies.has_value()) {
-    std::cerr << "No policies found in config" << std::endl;
-    return folly::dynamic::object;
-  }
-  const auto policiesJson = facebook::thrift::to_dynamic(
-      *policies, facebook::thrift::dynamic_format::PORTABLE);
-  if (!policiesJson.isObject() ||
-      !policiesJson.count("bgp_policy_statements")) {
-    std::cerr << "No policy statements found in config" << std::endl;
-    return folly::dynamic::object;
-  }
-
-  const auto& statements = policiesJson["bgp_policy_statements"];
-  for (const auto& statement : statements) {
-    if (statement.isObject() && statement.count("name") &&
-        statement["name"].asString() == policyName) {
-      return statement;
-    }
-  }
-
-  std::cerr << "Policy '" << policyName << "' not found" << std::endl;
-  return folly::dynamic::object;
+  return folly::dynamic::object("source", source)("policy", std::move(policy));
 }
 
-void CmdShowBgpPolicy::printOutput(RetType& policyConfig, std::ostream& out) {
+void CmdShowBgpPolicy::printOutput(
+    const RetType& policyConfig,
+    std::ostream& out) {
   if (policyConfig.empty()) {
     return;
   }
-  out << folly::toPrettyJson(policyConfig) << std::endl;
+  out << "Policy source: " << policyConfig["source"].asString() << '\n';
+  out << folly::toPrettyJson(policyConfig["policy"]) << '\n';
 }
 
 template void CmdHandler<CmdShowBgpPolicy, CmdShowBgpPolicyTraits>::run();

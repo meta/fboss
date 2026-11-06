@@ -13,14 +13,17 @@
 #include "fboss/agent/ApplyThriftConfig.h"
 #include "fboss/agent/ArpHandler.h"
 #include "fboss/agent/FbossHwUpdateError.h"
+#include "fboss/agent/FibHelpers.h"
 #include "fboss/agent/HwAsicTable.h"
 #include "fboss/agent/SwSwitch.h"
 #include "fboss/agent/SwSwitchMySidUpdater.h"
 #include "fboss/agent/SwitchIdScopeResolver.h"
 #include "fboss/agent/ThriftHandler.h"
+#include "fboss/agent/gen-cpp2/switch_config_constants.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
 #include "fboss/agent/hw/mock/MockPlatform.h"
 #include "fboss/agent/if/gen-cpp2/common_types.h"
+#include "fboss/agent/packet/EthHdr.h"
 #include "fboss/agent/state/AggregatePort.h"
 #include "fboss/agent/state/FibInfo.h"
 #include "fboss/agent/state/ForwardingInformationBase.h"
@@ -33,6 +36,7 @@
 #include "fboss/agent/test/CounterCache.h"
 #include "fboss/agent/test/HwTestHandle.h"
 #include "fboss/agent/test/RouteScaleGenerators.h"
+#include "fboss/agent/test/TestPacketFactory.h"
 #include "fboss/agent/test/TestUtils.h"
 #include "fboss/agent/test/utils/NextHopIdTestUtils.h"
 #include "fboss/lib/CommonUtils.h"
@@ -92,6 +96,33 @@ IpPrefix ipPrefix(StringPiece prefixStr) {
   return ipPrefix(IPAddress::createNetwork(prefixStr));
 }
 
+Policy makeCbfPolicy(
+    const std::string& name,
+    const std::string& defaultNhg,
+    const std::map<ForwardingClass, NextHopGroup>& class2Nhg = {}) {
+  ClassBasedPolicy cbfPolicy;
+  cbfPolicy.name() = name;
+  cbfPolicy.defaultNexthopGroup() = defaultNhg;
+  for (const auto& [forwardingClass, nhg] : class2Nhg) {
+    cbfPolicy.class2NextHopGroup()[forwardingClass] = nhg;
+  }
+  Policy policy;
+  policy.cbfPolicy() = std::move(cbfPolicy);
+  return policy;
+}
+
+NextHopGroup namedNhgRef(const std::string& name) {
+  NextHopGroup nhg;
+  nhg.name() = name;
+  return nhg;
+}
+
+std::unique_ptr<std::vector<Policy>> onePolicy(Policy policy) {
+  auto policies = std::make_unique<std::vector<Policy>>();
+  policies->push_back(std::move(policy));
+  return policies;
+}
+
 } // unnamed namespace
 
 class ThriftTest : public ::testing::Test {
@@ -118,6 +149,71 @@ class ThriftTestWithNhopIdMgr : public ThriftTest {
     FLAGS_enable_nexthop_id_manager = false;
   }
 };
+
+TEST_F(ThriftTest, getVrfs) {
+  auto config = testConfigA();
+  auto& vrfConfig = config.vrfs().ensure().emplace_back();
+  vrfConfig.vrfId() = 1001;
+  vrfConfig.name() = "red";
+  config.interfaces()[1].routerID() = 1001;
+  sw_->applyConfig("add vrf", config);
+
+  ThriftHandler handler(sw_);
+  std::vector<VrfInfo> vrfs;
+  handler.getVrfs(vrfs);
+
+  VrfInfo defaultVrf;
+  defaultVrf.vrfId() = 0;
+  defaultVrf.interfaceIds() = {*config.interfaces()[0].intfID()};
+  VrfInfo red;
+  red.vrfId() = 1001;
+  red.name() = "red";
+  red.interfaceIds() = {*config.interfaces()[1].intfID()};
+  EXPECT_EQ(vrfs, (std::vector<VrfInfo>{defaultVrf, red}));
+}
+
+TEST_F(ThriftTest, getRouteTableDetailsByVrf) {
+  auto config = testConfigA();
+  config.vrfs().ensure().emplace_back().vrfId() = 1001;
+  config.interfaces()[1].routerID() = 1001;
+  sw_->applyConfig("add vrf", config);
+
+  ThriftHandler handler(sw_);
+  auto prefixesInVrf = [&handler](int32_t vrf) {
+    std::vector<RouteDetails> routes;
+    handler.getRouteTableDetailsByVrf(routes, vrf);
+    std::set<std::string> prefixes;
+    for (const auto& route : routes) {
+      EXPECT_EQ(*route.vrf(), vrf);
+      prefixes.insert(
+          fmt::format(
+              "{}/{}",
+              facebook::network::toIPAddress(*route.dest()->ip()).str(),
+              *route.dest()->prefixLength()));
+    }
+    return prefixes;
+  };
+  EXPECT_TRUE(prefixesInVrf(1001).contains("10.0.55.0/24"));
+  EXPECT_FALSE(prefixesInVrf(0).contains("10.0.55.0/24"));
+}
+
+TEST_F(ThriftTest, routeReadsRejectUnknownVrf) {
+  ThriftHandler handler(sw_);
+  constexpr int32_t kUnknownVrf = 2000;
+  auto addr = [] {
+    return std::make_unique<facebook::network::thrift::Address>(
+        facebook::network::toAddress(IPAddress("10.0.0.1")));
+  };
+
+  std::vector<RouteDetails> routes;
+  EXPECT_THROW(
+      handler.getRouteTableDetailsByVrf(routes, kUnknownVrf), FbossError);
+  RouteDetails details;
+  EXPECT_THROW(
+      handler.getIpRouteDetails(details, addr(), kUnknownVrf), FbossError);
+  UnicastRoute route;
+  EXPECT_THROW(handler.getIpRoute(route, addr(), kUnknownVrf), FbossError);
+}
 
 TEST_F(ThriftTest, getInterfaceDetail) {
   ThriftHandler handler(this->sw_);
@@ -159,6 +255,32 @@ TEST_F(ThriftTest, getInterfaceDetail) {
   EXPECT_THROW(handler.getInterfaceDetail(info, 123), FbossError);
 }
 
+TEST_F(ThriftTest, txPktL3WithNonzeroInterfaceIds) {
+  ThriftHandler handler(sw_);
+  ASSERT_EQ(
+      sw_->getState()->getInterfaces()->getNodeIf(InterfaceID(0)), nullptr);
+  ASSERT_NE(
+      sw_->getState()->getInterfaces()->getNodeIf(InterfaceID(1)), nullptr);
+
+  // No packets are sent: this checks interface selection without hardware I/O.
+  EXPECT_NO_THROW(handler.txPktL3(std::make_unique<folly::fbstring>(), 0, 0));
+}
+
+TEST_F(ThriftTest, txPktL3WithNonemptyPayload) {
+  ThriftHandler handler(sw_);
+  auto packet = createV6Packet(
+      IPAddressV6(kNhopAddrA),
+      IPAddressV6(kNhopAddrB),
+      kMacAddress,
+      kMacAddress);
+  // txPktL3 takes only the IP packet, without the Ethernet header.
+  auto payload = std::make_unique<folly::fbstring>(
+      reinterpret_cast<const char*>(packet.data() + EthHdr::SIZE),
+      packet.length() - EthHdr::SIZE);
+  ASSERT_FALSE(payload->empty());
+  EXPECT_NO_THROW(handler.txPktL3(std::move(payload), 1, 0));
+}
+
 TEST_F(ThriftTest, getPortInfoUserMetaData) {
   ThriftHandler handler(sw_);
   constexpr int32_t kTestPortId = 1;
@@ -190,6 +312,52 @@ TEST_F(ThriftTest, getPortInfoUserMetaData) {
   EXPECT_EQ(
       allPortInfo[kTestPortId].userMetaData(),
       cfg::AclLookupClassPort::CLASS_PORT_RESTRICTED);
+}
+
+TEST_F(ThriftTest, getPortInfoCbfc) {
+  ThriftHandler handler(sw_);
+  constexpr int32_t kTestPortId = 1;
+
+  PortInfoThrift before;
+  handler.getPortInfo(before, kTestPortId);
+  EXPECT_FALSE(before.cbfc().has_value());
+
+  cfg::PortVcConfig rdma;
+  rdma.id() = 2;
+  rdma.senderEnable() = true;
+  rdma.receiverEnable() = true;
+  cfg::PortVcConfig monitoring;
+  monitoring.id() = 6;
+  monitoring.senderEnable() = true;
+  monitoring.receiverEnable() = true;
+  cfg::CbfcConfig cbfcConfig;
+  cbfcConfig.virtualChannels() = {rdma, monitoring};
+  cbfcConfig.senderCreditLimit() = 8192;
+  cbfcConfig.senderCreditSize() = 56;
+  cbfcConfig.senderPacketOverhead() = 16;
+
+  auto config = testConfigA();
+  config.cbfcConfigs() = {{"cbfc", cbfcConfig}};
+  for (auto& port : *config.ports()) {
+    if (*port.logicalID() == kTestPortId) {
+      port.cbfcConfigName() = "cbfc";
+    }
+  }
+  sw_->applyConfig("bind cbfc profile to port", config);
+
+  PortInfoThrift after;
+  handler.getPortInfo(after, kTestPortId);
+  ASSERT_TRUE(after.cbfc().has_value());
+  EXPECT_EQ(*after.cbfc()->configName(), "cbfc");
+  EXPECT_EQ(*after.cbfc()->virtualChannels(), (std::vector<int16_t>{2, 6}));
+  EXPECT_EQ(after.cbfc()->senderCreditSize(), 56);
+  EXPECT_EQ(after.cbfc()->senderPacketOverhead(), 16);
+  EXPECT_EQ(after.cbfc()->senderCreditLimit(), 8192);
+
+  std::map<int32_t, PortInfoThrift> allPortInfo;
+  handler.getAllPortInfo(allPortInfo);
+  ASSERT_TRUE(allPortInfo.contains(kTestPortId));
+  EXPECT_EQ(allPortInfo[kTestPortId].cbfc(), after.cbfc());
 }
 
 TEST_F(ThriftTest, getPortInfoIngressAclTableName) {
@@ -1067,6 +1235,44 @@ TEST_F(ThriftTest, addUnicastRouteWithLinkLocalInterfaceSucceeds) {
       static_cast<int16_t>(ClientID::OPENR), std::move(route)));
 }
 
+TEST_F(ThriftTest, addUnicastRouteInVrfValidatesNextHopVrf) {
+  auto config = testConfigA();
+  config.vrfs().ensure().emplace_back().vrfId() = 1001;
+  config.vrfs()->emplace_back().vrfId() = 1002;
+  config.interfaces()[1].routerID() = 1001;
+  sw_->applyConfig("add vrfs", config);
+
+  ThriftHandler handler(sw_);
+  auto addRoute = [&handler](
+                      int32_t routeVrf,
+                      int32_t nhopVrf,
+                      const std::string& addr = "2401:db00::1",
+                      const std::optional<std::string>& ifName = std::nullopt) {
+    auto route = std::make_unique<UnicastRoute>();
+    route->dest() = ipPrefix("2001:db8::/64");
+    route->adminDistance() = AdminDistance::OPENR;
+    NextHopThrift nexthop;
+    nexthop.address() = toBinaryAddress(IPAddress(addr));
+    nexthop.address()->ifName().from_optional(ifName);
+    nexthop.weight() = ECMP_WEIGHT;
+    nexthop.vrf() = nhopVrf;
+    route->nextHops()->push_back(std::move(nexthop));
+    handler.addUnicastRouteInVrf(
+        static_cast<int16_t>(ClientID::OPENR), std::move(route), routeVrf);
+  };
+
+  EXPECT_NO_THROW(addRoute(1001, 1001));
+  EXPECT_NO_THROW(addRoute(1001, 0));
+  EXPECT_NO_THROW(addRoute(0, 0));
+  EXPECT_NO_THROW(addRoute(1001, 1001, "fe80:face:b00c::1", "fboss55"));
+
+  EXPECT_THROW(addRoute(0, 1001), FbossError);
+  EXPECT_THROW(addRoute(1001, 1002), FbossError);
+  EXPECT_THROW(addRoute(1001, 2002), FbossError);
+  EXPECT_THROW(addRoute(1001, -1), FbossError);
+  EXPECT_THROW(addRoute(1001, 0, "fe80:face:b00c::1", "fboss55"), FbossError);
+}
+
 TEST_F(ThriftTest, addUnicastRouteWithNonLinkLocalInterfaceThrows) {
   ThriftHandler handler(sw_);
   auto route = std::make_unique<UnicastRoute>();
@@ -1377,6 +1583,35 @@ TYPED_TEST(ThriftTestAllSwitchTypes, getSwitchIndicesForInterfaces) {
   for (auto i = 0; i < interfaces.size(); i++) {
     EXPECT_EQ(interfaces[i], fetchedInterfaces[i]);
   }
+}
+
+TEST_F(ThriftTest, getMyMacs) {
+  ThriftHandler handler(sw_);
+
+  std::vector<cfg::MacAndVlan> myMacs;
+  handler.getMyMacs(myMacs);
+  EXPECT_TRUE(myMacs.empty());
+
+  auto config = testConfigA();
+  std::vector<cfg::MacAndVlan> cfgMyMacs;
+  for (const auto& macAddress : {"02:00:00:00:00:01", "02:00:00:00:00:02"}) {
+    cfg::MacAndVlan myMac;
+    myMac.vlanID() = 1;
+    myMac.macAddress() = macAddress;
+    cfgMyMacs.push_back(myMac);
+  }
+  config.switchSettings()->myMacs() = cfgMyMacs;
+  sw_->applyConfig("add myMacs", config);
+
+  handler.getMyMacs(myMacs);
+  EXPECT_EQ(myMacs, cfgMyMacs);
+
+  config.switchSettings()->myMacs()->clear();
+  sw_->applyConfig("remove myMacs", config);
+
+  myMacs.clear();
+  handler.getMyMacs(myMacs);
+  EXPECT_TRUE(myMacs.empty());
 }
 
 TEST_F(ThriftTest, getAndSetMacAddrsToBlock) {
@@ -2060,6 +2295,20 @@ TEST_F(ThriftTest, addUnicastRoutesRejectsMplsAndSrv6) {
   EXPECT_NO_THROW(handler.addUnicastRoute(bgpClient, std::move(srv6OnlyRoute)));
 }
 
+TEST_F(ThriftTest, addUnicastRoutesRejectsResolvedInNextLevel) {
+  ThriftHandler handler(sw_);
+
+  auto bgpClient = static_cast<int16_t>(ClientID::BGPD);
+  auto route = makeEcmpUnicastRoute(
+      "7.1.0.0/16", {}, sw_->clientIdToAdminDistance(bgpClient));
+  NextHopThrift nh;
+  nh.address() = toBinaryAddress(IPAddress("10.0.0.11"));
+  nh.resolvedInNextLevel() = true;
+  route->nextHops() = {nh};
+  EXPECT_THROW(
+      handler.addUnicastRoute(bgpClient, std::move(route)), FbossError);
+}
+
 TEST_F(ThriftTest, addUnicastRoutesRejectsSrv6WithInvalidTunnelType) {
   ThriftHandler handler(sw_);
 
@@ -2291,6 +2540,38 @@ TEST_F(ThriftTest, addUnicastRoutesIsHwProtected) {
   WITH_RETRIES({
     EXPECT_EVENTUALLY_GT(sw_->stats()->getRouteProgrammingUpdateFailures(), 0);
   });
+}
+
+TEST_F(ThriftTest, setPortPrbsIsHwProtected) {
+  ThriftHandler handler(sw_);
+  const PortID portId(1);
+  auto asicPrbsEnabled = [&]() {
+    return *sw_->getState()
+                ->getPorts()
+                ->getNodeIf(portId)
+                ->getAsicPrbs()
+                .enabled();
+  };
+  phy::PortPrbsState prbsOn;
+  prbsOn.enabled() = true;
+  prbsOn.polynominal() = 31;
+  sw_->updateStateBlocking(
+      "enable asic prbs",
+      [&](const shared_ptr<SwitchState>& state) -> shared_ptr<SwitchState> {
+        shared_ptr<SwitchState> newState{state};
+        auto newPort =
+            newState->getPorts()->getNodeIf(portId)->modify(&newState);
+        newPort->setAsicPrbs(prbsOn);
+        return newState;
+      });
+  ASSERT_TRUE(asicPrbsEnabled());
+
+  // Fail HW update by returning current state
+  EXPECT_HW_CALL(sw_, stateChangedImpl(_, _)).WillOnce(Return(sw_->getState()));
+  EXPECT_THROW(
+      handler.setPortPrbs(portId, phy::PortComponent::ASIC, false, 31),
+      FbossHwUpdateError);
+  EXPECT_TRUE(asicPrbsEnabled());
 }
 
 TEST_F(ThriftTest, getRouteTable) {
@@ -3370,6 +3651,16 @@ IpPrefix toMySidIpPrefix(const std::string& addr, uint8_t len) {
   return prefix;
 }
 
+facebook::network::thrift::IPPrefix toFrrMySidIpPrefix(
+    const std::string& addr,
+    uint8_t len) {
+  facebook::network::thrift::IPPrefix prefix;
+  prefix.prefixAddress() =
+      facebook::network::toBinaryAddress(folly::IPAddressV6(addr));
+  prefix.prefixLength() = len;
+  return prefix;
+}
+
 MySidEntry makeMySidEntryWithNextHops(
     const std::string& addr,
     uint8_t len,
@@ -3394,6 +3685,233 @@ MySidEntry makeMySidEntryWithNextHops(
 }
 
 } // namespace
+
+TEST_F(ThriftTest, addAdjacencyFrrRejectsMissingMySid) {
+  ThriftHandler handler(sw_);
+  auto protectedObject = std::make_unique<FrrProtectedObject>();
+  protectedObject->mySid() = toFrrMySidIpPrefix("2001:db8::1", 64);
+  NextHopThrift backupNextHop;
+  backupNextHop.address() =
+      facebook::network::toBinaryAddress(folly::IPAddressV6("2001:db8::ff"));
+  backupNextHop.role() = NextHopRole::BACKUP;
+  auto backupNextHops = std::make_unique<std::vector<NextHopThrift>>();
+  backupNextHops->push_back(std::move(backupNextHop));
+
+  EXPECT_THROW(
+      handler.addAdjacencyFrr(
+          std::move(protectedObject), std::move(backupNextHops)),
+      FbossError);
+}
+
+TEST_F(ThriftTestWithNhopIdMgr, addAdjacencyFrrRejectsEmptyBackupNextHops) {
+  auto ribMySidToSwitchStateFunc =
+      createRibMySidToSwitchStateFunction(std::nullopt);
+  state::MySidFields fields;
+  fields.type() = MySidType::ADJACENCY_MICRO_SID;
+  fields.mySid() = toFrrMySidIpPrefix("2001:db8::1", 64);
+  fields.adjacencyInterfaceId() = static_cast<int32_t>(kInterfaceA);
+  fields.isV6() = true;
+  fields.clientId() = ClientID::STATIC_ROUTE;
+  auto mySid = std::make_shared<MySid>(fields);
+  const RouteNextHopSet nextHops{
+      ResolvedNextHop(folly::IPAddress(kNhopAddrA), kInterfaceA, ECMP_WEIGHT)};
+  sw_->getRib()->update(
+      sw_->getScopeResolver(),
+      std::vector<MySidWithNextHops>{{mySid, nextHops, std::nullopt}},
+      {},
+      {},
+      "add adjacency mysid via rib",
+      ribMySidToSwitchStateFunc,
+      sw_);
+
+  ThriftHandler handler(sw_);
+  auto protectedObjectWithBackup = std::make_unique<FrrProtectedObject>();
+  protectedObjectWithBackup->mySid() = toFrrMySidIpPrefix("2001:db8::1", 64);
+  NextHopThrift backupNextHop;
+  backupNextHop.address() =
+      facebook::network::toBinaryAddress(folly::IPAddressV6("2001:db8::ff"));
+  auto backupNextHopsWithBackup =
+      std::make_unique<std::vector<NextHopThrift>>();
+  backupNextHopsWithBackup->push_back(std::move(backupNextHop));
+  handler.addAdjacencyFrr(
+      std::move(protectedObjectWithBackup),
+      std::move(backupNextHopsWithBackup));
+
+  const folly::CIDRNetworkV6 prefix{folly::IPAddressV6("2001:db8::1"), 64};
+  const auto mySidBefore = sw_->getRib()->getMySidTableCopy().at(prefix);
+  ASSERT_TRUE(mySidBefore.backupUnresolveNextHopsId().has_value());
+  const auto backupId = *mySidBefore.backupUnresolveNextHopsId();
+  const auto managerBefore = sw_->getRib()->getNextHopIDManagerCopy();
+  ASSERT_NE(managerBefore, nullptr);
+  const auto backupNextHopsBefore =
+      managerBefore->getNextHops(NextHopSetID(backupId));
+
+  auto protectedObject = std::make_unique<FrrProtectedObject>();
+  protectedObject->mySid() = toFrrMySidIpPrefix("2001:db8::1", 64);
+  auto backupNextHops = std::make_unique<std::vector<NextHopThrift>>();
+
+  EXPECT_THROW(
+      handler.addAdjacencyFrr(
+          std::move(protectedObject), std::move(backupNextHops)),
+      FbossError);
+
+  const auto mySidAfter = sw_->getRib()->getMySidTableCopy().at(prefix);
+  ASSERT_TRUE(mySidAfter.backupUnresolveNextHopsId().has_value());
+  EXPECT_EQ(*mySidAfter.backupUnresolveNextHopsId(), backupId);
+  const auto managerAfter = sw_->getRib()->getNextHopIDManagerCopy();
+  ASSERT_NE(managerAfter, nullptr);
+  EXPECT_EQ(
+      managerAfter->getNextHops(NextHopSetID(backupId)), backupNextHopsBefore);
+}
+
+TEST_F(ThriftTest, addAdjacencyFrrRejectsSrv6NextHopWithoutTunnel) {
+  ThriftHandler handler(sw_);
+  auto protectedObject = std::make_unique<FrrProtectedObject>();
+  protectedObject->mySid() = toFrrMySidIpPrefix("2001:db8::1", 64);
+  NextHopThrift backupNextHop;
+  backupNextHop.address() =
+      facebook::network::toBinaryAddress(folly::IPAddressV6("2001:db8::ff"));
+  backupNextHop.srv6SegmentList() = {
+      facebook::network::toBinaryAddress(folly::IPAddressV6("2001:db8::1"))};
+  auto backupNextHops = std::make_unique<std::vector<NextHopThrift>>();
+  backupNextHops->push_back(std::move(backupNextHop));
+
+  // No SRV6_ENCAP tunnel in config, so no tunnelId can be defaulted.
+  EXPECT_THROW(
+      handler.addAdjacencyFrr(
+          std::move(protectedObject), std::move(backupNextHops)),
+      FbossError);
+}
+
+TEST_F(ThriftTest, addAdjacencyFrrRejectsBadLinkLocalInterface) {
+  ThriftHandler handler(sw_);
+  auto protectedObject = std::make_unique<FrrProtectedObject>();
+  protectedObject->mySid() = toFrrMySidIpPrefix("2001:db8::1", 64);
+  NextHopThrift backupNextHop;
+  backupNextHop.address() =
+      facebook::network::toBinaryAddress(folly::IPAddressV6("fe80::1"));
+  backupNextHop.address()->ifName() = "fboss9999";
+  auto backupNextHops = std::make_unique<std::vector<NextHopThrift>>();
+  backupNextHops->push_back(std::move(backupNextHop));
+
+  EXPECT_THROW(
+      handler.addAdjacencyFrr(
+          std::move(protectedObject), std::move(backupNextHops)),
+      FbossError);
+}
+
+TEST_F(ThriftTestWithNhopIdMgr, addAdjacencyFrrDefaultsSrv6Tunnel) {
+  // Add an SRv6 tunnel to the config so the defaulting logic can find it.
+  auto config = sw_->getConfig();
+  cfg::Srv6Tunnel srv6Tunnel;
+  srv6Tunnel.srv6TunnelId() = "srv6Tunnel0";
+  srv6Tunnel.underlayIntfID() = 1;
+  srv6Tunnel.tunnelType() = TunnelType::SRV6_ENCAP;
+  srv6Tunnel.srcIp() = "2001:db8::100";
+  config.srv6Tunnels() = {srv6Tunnel};
+  sw_->applyConfig("Add SRv6 tunnel", config);
+
+  auto ribMySidToSwitchStateFunc =
+      createRibMySidToSwitchStateFunction(std::nullopt);
+  state::MySidFields fields;
+  fields.type() = MySidType::ADJACENCY_MICRO_SID;
+  fields.mySid() = toFrrMySidIpPrefix("2001:db8::1", 64);
+  fields.adjacencyInterfaceId() = static_cast<int32_t>(kInterfaceA);
+  fields.isV6() = true;
+  fields.clientId() = ClientID::STATIC_ROUTE;
+  auto mySid = std::make_shared<MySid>(fields);
+  const RouteNextHopSet nextHops{
+      ResolvedNextHop(folly::IPAddress(kNhopAddrA), kInterfaceA, ECMP_WEIGHT)};
+  sw_->getRib()->update(
+      sw_->getScopeResolver(),
+      std::vector<MySidWithNextHops>{{mySid, nextHops, std::nullopt}},
+      {},
+      {},
+      "add adjacency mysid via rib",
+      ribMySidToSwitchStateFunc,
+      sw_);
+
+  ThriftHandler handler(sw_);
+  auto protectedObject = std::make_unique<FrrProtectedObject>();
+  protectedObject->mySid() = toFrrMySidIpPrefix("2001:db8::1", 64);
+  NextHopThrift backupNextHop;
+  backupNextHop.address() =
+      facebook::network::toBinaryAddress(folly::IPAddressV6("2001:db8::ff"));
+  backupNextHop.srv6SegmentList() = {
+      facebook::network::toBinaryAddress(folly::IPAddressV6("2001:db8::1"))};
+  // tunnelId not set — should default to "srv6Tunnel0" from config.
+  auto backupNextHops = std::make_unique<std::vector<NextHopThrift>>();
+  backupNextHops->push_back(std::move(backupNextHop));
+  EXPECT_NO_THROW(handler.addAdjacencyFrr(
+      std::move(protectedObject), std::move(backupNextHops)));
+
+  const folly::CIDRNetworkV6 prefix{folly::IPAddressV6("2001:db8::1"), 64};
+  const auto mySidEntry = sw_->getRib()->getMySidTableCopy().at(prefix);
+  ASSERT_TRUE(mySidEntry.backupUnresolveNextHopsId().has_value());
+  const auto manager = sw_->getRib()->getNextHopIDManagerCopy();
+  ASSERT_NE(manager, nullptr);
+  const auto storedBackupNextHops = manager->getNextHops(
+      NextHopSetID(*mySidEntry.backupUnresolveNextHopsId()));
+  ASSERT_EQ(storedBackupNextHops.size(), 1);
+  EXPECT_EQ(storedBackupNextHops.begin()->tunnelId(), "srv6Tunnel0");
+}
+
+TEST_F(ThriftTest, deleteAdjacencyFrrRejectsMissingMySid) {
+  ThriftHandler handler(sw_);
+  auto protectedObject = std::make_unique<FrrProtectedObject>();
+  protectedObject->mySid() = toFrrMySidIpPrefix("2001:db8::1", 64);
+
+  EXPECT_THROW(
+      handler.deleteAdjacencyFrr(std::move(protectedObject)), FbossError);
+}
+
+TEST_F(ThriftTest, addAdjacencyFrrRejectsMplsLabel) {
+  ThriftHandler handler(sw_);
+  auto protectedObject = std::make_unique<FrrProtectedObject>();
+  protectedObject->mplsLabel() = 100;
+  auto backupNextHops = std::make_unique<std::vector<NextHopThrift>>();
+
+  EXPECT_THROW(
+      handler.addAdjacencyFrr(
+          std::move(protectedObject), std::move(backupNextHops)),
+      FbossError);
+}
+
+TEST_F(ThriftTest, deleteAdjacencyFrrRejectsMplsLabel) {
+  ThriftHandler handler(sw_);
+  auto protectedObject = std::make_unique<FrrProtectedObject>();
+  protectedObject->mplsLabel() = 100;
+
+  EXPECT_THROW(
+      handler.deleteAdjacencyFrr(std::move(protectedObject)), FbossError);
+}
+
+TEST_F(ThriftTest, addAdjacencyFrrRejectsUnsetProtectedObject) {
+  // An unset union names no protected object. Rejecting it is what keeps the
+  // call from reaching the RIB as an empty update, which would install no
+  // protection and still report success.
+  ThriftHandler handler(sw_);
+  auto protectedObject = std::make_unique<FrrProtectedObject>();
+  NextHopThrift backupNextHop;
+  backupNextHop.address() =
+      facebook::network::toBinaryAddress(folly::IPAddressV6("2001:db8::ff"));
+  backupNextHop.role() = NextHopRole::BACKUP;
+  auto backupNextHops = std::make_unique<std::vector<NextHopThrift>>();
+  backupNextHops->push_back(std::move(backupNextHop));
+
+  EXPECT_THROW(
+      handler.addAdjacencyFrr(
+          std::move(protectedObject), std::move(backupNextHops)),
+      FbossError);
+}
+
+TEST_F(ThriftTest, deleteAdjacencyFrrRejectsUnsetProtectedObject) {
+  ThriftHandler handler(sw_);
+  auto protectedObject = std::make_unique<FrrProtectedObject>();
+
+  EXPECT_THROW(
+      handler.deleteAdjacencyFrr(std::move(protectedObject)), FbossError);
+}
 
 TEST_F(ThriftTest, addMySidEntries) {
   ThriftHandler handler(sw_);
@@ -3449,6 +3967,17 @@ TEST_F(ThriftTest, addMySidEntryRejectsAdjacencyType) {
   auto entries = std::make_unique<std::vector<MySidEntry>>();
   entries->push_back(
       makeMySidEntry("2001:db8::1", 64, MySidType::ADJACENCY_MICRO_SID));
+  EXPECT_THROW(handler.addMySidEntries(std::move(entries)), FbossError);
+}
+
+TEST_F(ThriftTest, addMySidEntryRejectsResolvedInNextLevel) {
+  ThriftHandler handler(sw_);
+
+  auto entry = makeMySidEntryWithNextHops(
+      "2001:db8::1", 64, MySidType::BINDING_MICRO_SID, {"2001:db8::ff"});
+  entry.nextHops()->front().resolvedInNextLevel() = true;
+  auto entries = std::make_unique<std::vector<MySidEntry>>();
+  entries->push_back(std::move(entry));
   EXPECT_THROW(handler.addMySidEntries(std::move(entries)), FbossError);
 }
 
@@ -3587,6 +4116,57 @@ TEST_F(ThriftTest, getMySidEntriesReflectsDelete) {
       folly::IPAddress::networkToString(
           {ip, (uint8_t)*result[0].mySid()->prefixLength()}),
       "2001:db8::2/64");
+}
+
+TEST_F(ThriftTestWithNhopIdMgr, getMySidEntriesReportsBackupNextHops) {
+  // Add an ADJACENCY MySid directly via the RIB (bypassing ThriftHandler
+  // validation), then protect it via addAdjacencyFrr. The backup resolves
+  // against connected routes configured in testConfigA().
+  auto ribMySidToSwitchStateFunc =
+      createRibMySidToSwitchStateFunction(std::nullopt);
+  state::MySidFields fields;
+  fields.type() = MySidType::ADJACENCY_MICRO_SID;
+  fields.mySid() = toFrrMySidIpPrefix("2001:db8::1", 64);
+  fields.adjacencyInterfaceId() = static_cast<int32_t>(kInterfaceA);
+  fields.isV6() = true;
+  fields.clientId() = ClientID::STATIC_ROUTE;
+  auto mySid = std::make_shared<MySid>(fields);
+  const RouteNextHopSet nextHops{
+      ResolvedNextHop(folly::IPAddress(kNhopAddrA), kInterfaceA, ECMP_WEIGHT)};
+  sw_->getRib()->update(
+      sw_->getScopeResolver(),
+      std::vector<MySidWithNextHops>{{mySid, nextHops, std::nullopt}},
+      {},
+      {},
+      "add adjacency mysid via rib",
+      ribMySidToSwitchStateFunc,
+      sw_);
+
+  ThriftHandler handler(sw_);
+  auto protectedObject = std::make_unique<FrrProtectedObject>();
+  protectedObject->mySid() = toFrrMySidIpPrefix("2001:db8::1", 64);
+  NextHopThrift backupNextHop;
+  backupNextHop.address() =
+      facebook::network::toBinaryAddress(folly::IPAddressV6(kNhopAddrB));
+  auto backupNextHops = std::make_unique<std::vector<NextHopThrift>>();
+  backupNextHops->push_back(std::move(backupNextHop));
+  handler.addAdjacencyFrr(
+      std::move(protectedObject), std::move(backupNextHops));
+
+  std::vector<MySidEntry> result;
+  handler.getMySidEntries(result);
+  ASSERT_EQ(result.size(), 1);
+  const auto& entry = result[0];
+  ASSERT_EQ(entry.backupUnresolvedNextHops()->size(), 1);
+  EXPECT_EQ(
+      facebook::network::toIPAddress(
+          *entry.backupUnresolvedNextHops()[0].address()),
+      folly::IPAddress(kNhopAddrB));
+  ASSERT_EQ(entry.backupResolvedNextHops()->size(), 1);
+  EXPECT_EQ(
+      facebook::network::toIPAddress(
+          *entry.backupResolvedNextHops()[0].address()),
+      folly::IPAddress(kNhopAddrB));
 }
 
 TEST_F(ThriftTestWithNhopIdMgr, getMySidEntriesNodeAndAdjacencyTypesViaRib) {
@@ -3746,18 +4326,62 @@ void addUnicastRouteWithNextHops(
       static_cast<int16_t>(ClientID::BGPD), std::move(route));
 }
 
-void addUnicastRouteWithNamedNextHopGroup(
+// Unlike addUnicastRouteWithNextHops, this carries whole NextHopThrifts, so
+// the route keeps per-next-hop attributes such as ifName and the SID list.
+void addUnicastRouteWithNextHopThrifts(
     ThriftHandler& handler,
     const std::string& prefix,
-    const std::string& nhgName) {
+    const std::vector<NextHopThrift>& nhops,
+    ClientID client = ClientID::BGPD,
+    AdminDistance adminDistance = AdminDistance::EBGP) {
   auto network = IPAddress::createNetwork(prefix);
   auto route = std::make_unique<UnicastRoute>();
   route->dest()->ip() = toBinaryAddress(network.first);
   route->dest()->prefixLength() = network.second;
-  route->namedRouteDestination()->nextHopGroup() = nhgName;
-  route->adminDistance() = AdminDistance::EBGP;
-  handler.addUnicastRoute(
-      static_cast<int16_t>(ClientID::BGPD), std::move(route));
+  route->nextHops() = nhops;
+  route->adminDistance() = adminDistance;
+  handler.addUnicastRoute(static_cast<int16_t>(client), std::move(route));
+}
+
+void addUnicastRouteWithNamedNextHopGroup(
+    ThriftHandler& handler,
+    const std::string& prefix,
+    const std::string& nhgName,
+    ClientID client = ClientID::BGPD,
+    AdminDistance adminDistance = AdminDistance::EBGP) {
+  auto network = IPAddress::createNetwork(prefix);
+  auto route = std::make_unique<UnicastRoute>();
+  route->dest()->ip() = toBinaryAddress(network.first);
+  route->dest()->prefixLength() = network.second;
+  // Assign the whole NamedRouteDestination: namedRouteDestination is an
+  // optional field, so reaching through operator-> writes the value without
+  // ever marking it set, and the route reaches the RIB with no named group.
+  NamedRouteDestination namedDest;
+  namedDest.nextHopGroup() = nhgName;
+  route->namedRouteDestination() = namedDest;
+  route->adminDistance() = adminDistance;
+  handler.addUnicastRoute(static_cast<int16_t>(client), std::move(route));
+}
+
+// Plain link-local next hop on an interface that exists in testConfigA.
+NextHopThrift makeLinkLocalNextHopThrift(const std::string& ip) {
+  auto nhop = makeNextHopThrift(ip);
+  nhop.address()->ifName() = "fboss1";
+  return nhop;
+}
+
+// Link-local next hop carrying an SRv6 SID list, on an interface that exists
+// in testConfigA. Repeating one of these verbatim is what combining collapses
+// into a single weighted next hop.
+NextHopThrift makeLinkLocalSrv6NextHopThrift(
+    const std::string& ip,
+    const std::string& sid) {
+  auto nhop = makeNextHopThrift(ip);
+  nhop.address()->ifName() = "fboss1";
+  nhop.srv6SegmentList() = {toBinaryAddress(folly::IPAddress(sid))};
+  nhop.tunnelType() = TunnelType::SRV6_ENCAP;
+  nhop.tunnelId() = "tunnel1";
+  return nhop;
 }
 
 } // unnamed namespace
@@ -3799,6 +4423,27 @@ TEST_F(NamedNextHopGroupThriftTest, addAndGetNextHopGroup) {
   EXPECT_EQ(result[0].nexthops()->size(), 2);
 }
 
+TEST_F(NamedNextHopGroupThriftTest, rejectMixedSrv6AndPlainNextHops) {
+  ThriftHandler handler(sw_);
+
+  NextHopGroup group;
+  group.name() = "mixed_group";
+  group.nexthops() = {
+      makeLinkLocalNextHopThrift("fe80:face:b00c::1"),
+      makeLinkLocalSrv6NextHopThrift("fe80:face:b00c::2", "2001:db8::2")};
+  auto groups = std::make_unique<std::vector<NextHopGroup>>();
+  groups->push_back(std::move(group));
+
+  EXPECT_THROW(
+      handler.addOrUpdateNamedNextHopGroups(std::move(groups)), FbossError);
+
+  std::vector<NextHopGroup> result;
+  auto nameFilter = std::make_unique<std::vector<std::string>>();
+  nameFilter->push_back("mixed_group");
+  handler.getNamedNextHopGroups(result, std::move(nameFilter));
+  EXPECT_TRUE(result.empty());
+}
+
 namespace {
 // Weight each next hop of a named group came back with, keyed by address.
 std::map<std::string, int32_t> readGroupWeights(
@@ -3830,10 +4475,11 @@ TEST_F(NamedNextHopGroupThriftTest, duplicateNextHopsCombinedWhenRequested) {
        "2401:db00:2110:3001::3"}));
   handler.addOrUpdateNamedNextHopGroups(std::move(groups), true);
 
-  // The repeated next hop becomes one weighted next hop; the one listed once
-  // keeps ECMP_WEIGHT.
+  // The repeated next hop becomes one weighted next hop. Since something was
+  // combined, the one listed once is given an explicit share of 1 rather than
+  // ECMP_WEIGHT, so the weights survive route resolution.
   const std::map<std::string, int32_t> expected{
-      {"2401:db00:2110:3001::2", 2}, {"2401:db00:2110:3001::3", 0}};
+      {"2401:db00:2110:3001::2", 2}, {"2401:db00:2110:3001::3", 1}};
   EXPECT_EQ(readGroupWeights(handler, "group1"), expected);
 }
 
@@ -3849,7 +4495,7 @@ TEST_F(NamedNextHopGroupThriftTest, addNamedNextHopGroupsCombinesDuplicates) {
   handler.addNamedNextHopGroups(std::move(groups), true);
 
   const std::map<std::string, int32_t> expected{
-      {"2401:db00:2110:3001::2", 2}, {"2401:db00:2110:3001::3", 0}};
+      {"2401:db00:2110:3001::2", 2}, {"2401:db00:2110:3001::3", 1}};
   EXPECT_EQ(readGroupWeights(handler, "group1"), expected);
 }
 
@@ -3910,6 +4556,474 @@ TEST_F(NamedNextHopGroupThriftTest, duplicateNextHopsDroppedByDefault) {
   const std::map<std::string, int32_t> expected{
       {"2401:db00:2110:3001::2", 0}, {"2401:db00:2110:3001::3", 0}};
   EXPECT_EQ(readGroupWeights(handler, "group1"), expected);
+}
+
+TEST_F(NamedNextHopGroupThriftTest, teAgentRouteOverridesOpenrWithWeights) {
+  ThriftHandler handler(sw_);
+
+  constexpr auto kPrefix = "fdad:ffff::4/128";
+  constexpr auto kPrefixAddr = "fdad:ffff::4";
+
+  // Both clients program the same prefix over the same three link-local next
+  // hop addresses. OpenR's carry no SID list; the TE agent's are SRv6 next
+  // hops reached through a named group that repeats one of them and is added
+  // with combineDuplicatedNextHops.
+  const auto openrNhop1 = makeLinkLocalNextHopThrift("fe80:face:b00c::1");
+  const auto openrNhop2 = makeLinkLocalNextHopThrift("fe80:face:b00c::2");
+  const auto openrNhop3 = makeLinkLocalNextHopThrift("fe80:face:b00c::3");
+
+  const auto nhop1 =
+      makeLinkLocalSrv6NextHopThrift("fe80:face:b00c::1", "2001:db8::1");
+  const auto nhop2 =
+      makeLinkLocalSrv6NextHopThrift("fe80:face:b00c::2", "2001:db8::2");
+  const auto nhop3 =
+      makeLinkLocalSrv6NextHopThrift("fe80:face:b00c::3", "2001:db8::3");
+
+  // Resolved next hops straight off the FIB, as weight and SID list keyed by
+  // address. Going through getIpRouteDetails instead would report every
+  // ECMP_WEIGHT next hop as 1 and hide the difference between the two clients.
+  auto resolvedNextHops = [this, kPrefixAddr]() {
+    auto state = sw_->getState();
+    auto route = findRoute<folly::IPAddressV6>(
+        RouterID(0), {folly::IPAddress(kPrefixAddr), 128}, state);
+    CHECK(route) << "route " << kPrefixAddr << " not in the FIB";
+    std::map<std::string, NextHopWeight> weights;
+    std::map<std::string, std::vector<std::string>> sids;
+    for (const auto& nhop : getNextHops(state, route->getForwardInfo())) {
+      const auto addr = nhop.addr().str();
+      weights[addr] = nhop.weight();
+      for (const auto& sid : nhop.srv6SegmentList()) {
+        sids[addr].push_back(sid.str());
+      }
+    }
+    return std::make_pair(weights, sids);
+  };
+
+  // OpenR gets there first, carrying its next hops on the route itself. With
+  // no named group there is nothing to combine, so the route is plain ECMP,
+  // and its next hops carry no SID list.
+  addUnicastRouteWithNextHopThrifts(
+      handler,
+      kPrefix,
+      {openrNhop1, openrNhop2, openrNhop3},
+      ClientID::OPENR,
+      AdminDistance::OPENR);
+
+  auto [openrWeights, openrSids] = resolvedNextHops();
+  const std::map<std::string, NextHopWeight> expectedOpenrWeights{
+      {"fe80:face:b00c::1", ECMP_WEIGHT},
+      {"fe80:face:b00c::2", ECMP_WEIGHT},
+      {"fe80:face:b00c::3", ECMP_WEIGHT}};
+  EXPECT_EQ(openrWeights, expectedOpenrWeights);
+  EXPECT_TRUE(openrSids.empty());
+
+  // The TE agent then programs the same prefix through a combined group.
+  // AdminDistance::TE_AGENT (2) beats OPENR (10), so its entry becomes the
+  // route's best entry and the combined weights take effect. The comparison
+  // in RouteNextHopsMulti is strictly less-than, so this only displaces OpenR
+  // because the distance is genuinely lower, not because it arrived later.
+  NextHopGroup teAgentGroup;
+  teAgentGroup.name() = "te_agent_group";
+  teAgentGroup.nexthops() = {nhop1, nhop1, nhop2, nhop3};
+  auto teAgentGroups = std::make_unique<std::vector<NextHopGroup>>();
+  teAgentGroups->push_back(std::move(teAgentGroup));
+  handler.addOrUpdateNamedNextHopGroups(
+      std::move(teAgentGroups), /*combineDuplicatedNextHops=*/true);
+
+  addUnicastRouteWithNamedNextHopGroup(
+      handler,
+      kPrefix,
+      "te_agent_group",
+      ClientID::TE_AGENT,
+      AdminDistance::TE_AGENT);
+
+  std::vector<NextHopGroup> programmedGroups;
+  auto groupNames = std::make_unique<std::vector<std::string>>();
+  groupNames->push_back("te_agent_group");
+  handler.getNamedNextHopGroups(programmedGroups, std::move(groupNames));
+  ASSERT_EQ(programmedGroups.size(), 1);
+  ASSERT_TRUE(programmedGroups[0].isProgrammed().has_value());
+  EXPECT_TRUE(*programmedGroups[0].isProgrammed());
+
+  auto [teAgentWeights, teAgentSids] = resolvedNextHops();
+  const std::map<std::string, NextHopWeight> expectedTeAgentWeights{
+      {"fe80:face:b00c::1", 2},
+      {"fe80:face:b00c::2", 1},
+      {"fe80:face:b00c::3", 1}};
+  // Same next hop addresses as OpenR's, but now each carries its SID list.
+  const std::map<std::string, std::vector<std::string>> expectedTeAgentSids{
+      {"fe80:face:b00c::1", {"2001:db8::1"}},
+      {"fe80:face:b00c::2", {"2001:db8::2"}},
+      {"fe80:face:b00c::3", {"2001:db8::3"}}};
+  EXPECT_EQ(teAgentWeights, expectedTeAgentWeights);
+  EXPECT_EQ(teAgentSids, expectedTeAgentSids);
+}
+
+TEST_F(
+    NamedNextHopGroupThriftTest,
+    teAgentRouteOverridesOpenrWithNormalizedWeights) {
+  ThriftHandler handler(sw_);
+
+  constexpr auto kPrefix = "fdad:ffff::4/128";
+  constexpr auto kPrefixAddr = "fdad:ffff::4";
+
+  const auto openrNhop1 = makeLinkLocalNextHopThrift("fe80:face:b00c::1");
+  const auto openrNhop2 = makeLinkLocalNextHopThrift("fe80:face:b00c::2");
+  const auto nhop1 =
+      makeLinkLocalSrv6NextHopThrift("fe80:face:b00c::1", "2001:db8::1");
+  const auto nhop2 =
+      makeLinkLocalSrv6NextHopThrift("fe80:face:b00c::2", "2001:db8::2");
+
+  addUnicastRouteWithNextHopThrifts(
+      handler,
+      kPrefix,
+      {openrNhop1, openrNhop2},
+      ClientID::OPENR,
+      AdminDistance::OPENR);
+
+  NextHopGroup teAgentGroup;
+  teAgentGroup.name() = "te_agent_group";
+  teAgentGroup.nexthops() = {nhop1, nhop1, nhop2, nhop2};
+  auto teAgentGroups = std::make_unique<std::vector<NextHopGroup>>();
+  teAgentGroups->push_back(std::move(teAgentGroup));
+  handler.addOrUpdateNamedNextHopGroups(
+      std::move(teAgentGroups), /*combineDuplicatedNextHops=*/true);
+
+  addUnicastRouteWithNamedNextHopGroup(
+      handler,
+      kPrefix,
+      "te_agent_group",
+      ClientID::TE_AGENT,
+      AdminDistance::TE_AGENT);
+
+  std::vector<NextHopGroup> programmedGroups;
+  auto groupNames = std::make_unique<std::vector<std::string>>();
+  groupNames->push_back("te_agent_group");
+  handler.getNamedNextHopGroups(programmedGroups, std::move(groupNames));
+  ASSERT_EQ(programmedGroups.size(), 1);
+  ASSERT_TRUE(programmedGroups[0].isProgrammed().has_value());
+  EXPECT_TRUE(*programmedGroups[0].isProgrammed());
+
+  auto state = sw_->getState();
+  auto route = findRoute<folly::IPAddressV6>(
+      RouterID(0), {folly::IPAddress(kPrefixAddr), 128}, state);
+  ASSERT_NE(route, nullptr);
+  std::map<std::string, NextHopWeight> weights;
+  for (const auto& nhop : getNextHops(state, route->getForwardInfo())) {
+    weights[nhop.addr().str()] = nhop.weight();
+  }
+  const std::map<std::string, NextHopWeight> expectedWeights{
+      {"fe80:face:b00c::1", 1}, {"fe80:face:b00c::2", 1}};
+  EXPECT_EQ(weights, expectedWeights);
+
+  std::vector<RouteDetails> routeDetails;
+  handler.getRouteTableDetails(routeDetails);
+  const auto detail = std::find_if(
+      routeDetails.begin(), routeDetails.end(), [](const auto& routeDetail) {
+        return facebook::network::toIPAddress(*routeDetail.dest()->ip()) ==
+            folly::IPAddress("fdad:ffff::4");
+      });
+  ASSERT_NE(detail, routeDetails.end());
+  ASSERT_TRUE(detail->resolvedNextHops().has_value());
+
+  std::map<std::string, NextHopWeight> postNormalizationWeights;
+  for (const auto& nhop : *detail->nextHops()) {
+    postNormalizationWeights[facebook::network::toIPAddress(*nhop.address())
+                                 .str()] = *nhop.weight();
+  }
+  std::map<std::string, NextHopWeight> preNormalizationWeights;
+  for (const auto& nhop : *detail->resolvedNextHops()) {
+    preNormalizationWeights[facebook::network::toIPAddress(*nhop.address())
+                                .str()] = *nhop.weight();
+  }
+  const std::map<std::string, NextHopWeight> expectedPreNormalizationWeights{
+      {"fe80:face:b00c::1", 2}, {"fe80:face:b00c::2", 2}};
+  const std::map<std::string, NextHopWeight> expectedPostNormalizationWeights{
+      {"fe80:face:b00c::1", 1}, {"fe80:face:b00c::2", 1}};
+  EXPECT_EQ(preNormalizationWeights, expectedPreNormalizationWeights);
+  EXPECT_EQ(postNormalizationWeights, expectedPostNormalizationWeights);
+  EXPECT_NE(preNormalizationWeights, postNormalizationWeights);
+}
+
+TEST_F(NamedNextHopGroupThriftTest, bgpRouteRecursesOntoTeAgentWeights) {
+  ThriftHandler handler(sw_);
+
+  constexpr auto kTePrefix = "fdad:ffff::4/128";
+  constexpr auto kTePrefixAddr = "fdad:ffff::4";
+  constexpr auto kBgpPrefix = "100::/64";
+  // findRoute is an exact prefix match, so this is the network address, not
+  // an address inside the prefix.
+  constexpr auto kBgpPrefixAddr = "100::";
+
+  const auto openrNhop1 = makeLinkLocalNextHopThrift("fe80:face:b00c::1");
+  const auto openrNhop2 = makeLinkLocalNextHopThrift("fe80:face:b00c::2");
+  const auto openrNhop3 = makeLinkLocalNextHopThrift("fe80:face:b00c::3");
+
+  const auto nhop1 =
+      makeLinkLocalSrv6NextHopThrift("fe80:face:b00c::1", "2001:db8::1");
+  const auto nhop2 =
+      makeLinkLocalSrv6NextHopThrift("fe80:face:b00c::2", "2001:db8::2");
+  const auto nhop3 =
+      makeLinkLocalSrv6NextHopThrift("fe80:face:b00c::3", "2001:db8::3");
+
+  auto resolvedWeights = [this](const std::string& addr, uint8_t mask) {
+    auto state = sw_->getState();
+    auto route = findRoute<folly::IPAddressV6>(
+        RouterID(0), {folly::IPAddress(addr), mask}, state);
+    CHECK(route) << "route " << addr << "/" << static_cast<int>(mask)
+                 << " not in the FIB";
+    std::map<std::string, NextHopWeight> weights;
+    for (const auto& nhop : getNextHops(state, route->getForwardInfo())) {
+      weights[nhop.addr().str()] = nhop.weight();
+    }
+    return weights;
+  };
+
+  // Same two steps as teAgentRouteOverridesOpenrWithWeights: OpenR programs
+  // the prefix unweighted, then the TE agent takes it over with a combined
+  // group and wins on admin distance.
+  addUnicastRouteWithNextHopThrifts(
+      handler,
+      kTePrefix,
+      {openrNhop1, openrNhop2, openrNhop3},
+      ClientID::OPENR,
+      AdminDistance::OPENR);
+
+  NextHopGroup teAgentGroup;
+  teAgentGroup.name() = "te_agent_group";
+  teAgentGroup.nexthops() = {nhop1, nhop1, nhop2, nhop3};
+  auto teAgentGroups = std::make_unique<std::vector<NextHopGroup>>();
+  teAgentGroups->push_back(std::move(teAgentGroup));
+  handler.addOrUpdateNamedNextHopGroups(
+      std::move(teAgentGroups), /*combineDuplicatedNextHops=*/true);
+
+  addUnicastRouteWithNamedNextHopGroup(
+      handler,
+      kTePrefix,
+      "te_agent_group",
+      ClientID::TE_AGENT,
+      AdminDistance::TE_AGENT);
+
+  std::vector<NextHopGroup> programmedGroups;
+  auto groupNames = std::make_unique<std::vector<std::string>>();
+  groupNames->push_back("te_agent_group");
+  handler.getNamedNextHopGroups(programmedGroups, std::move(groupNames));
+  ASSERT_EQ(programmedGroups.size(), 1);
+  ASSERT_TRUE(programmedGroups[0].isProgrammed().has_value());
+  EXPECT_TRUE(*programmedGroups[0].isProgrammed());
+
+  const std::map<std::string, NextHopWeight> expectedWeights{
+      {"fe80:face:b00c::1", 2},
+      {"fe80:face:b00c::2", 1},
+      {"fe80:face:b00c::3", 1}};
+  EXPECT_EQ(resolvedWeights(kTePrefixAddr, 128), expectedWeights);
+
+  // A BGP route recursing through that prefix inherits the same weighted next
+  // hops. Its own next hop is at ECMP_WEIGHT, as an ordinary BGP next hop is:
+  // stating no weight of its own, it does not override the weights the TE
+  // agent programmed underneath it.
+  addUnicastRouteWithNextHops(handler, kBgpPrefix, {kTePrefixAddr});
+
+  EXPECT_EQ(resolvedWeights(kBgpPrefixAddr, 64), expectedWeights);
+
+  std::vector<RouteDetails> routeDetails;
+  handler.getRouteTableDetails(routeDetails);
+  const auto detail = std::find_if(
+      routeDetails.begin(), routeDetails.end(), [](const auto& routeDetail) {
+        return facebook::network::toIPAddress(*routeDetail.dest()->ip()) ==
+            folly::IPAddress("100::");
+      });
+  ASSERT_NE(detail, routeDetails.end());
+  ASSERT_TRUE(detail->resolvedNextHops().has_value());
+
+  std::map<std::string, NextHopWeight> preNormalizationWeights;
+  for (const auto& nhop : *detail->resolvedNextHops()) {
+    preNormalizationWeights[facebook::network::toIPAddress(*nhop.address())
+                                .str()] = *nhop.weight();
+  }
+  std::map<std::string, NextHopWeight> postNormalizationWeights;
+  for (const auto& nhop : *detail->nextHops()) {
+    postNormalizationWeights[facebook::network::toIPAddress(*nhop.address())
+                                 .str()] = *nhop.weight();
+  }
+  // The inherited weights have a GCD of 1, so normalization preserves them.
+  const std::map<std::string, NextHopWeight> expectedPreNormalizationWeights{
+      {"fe80:face:b00c::1", 2},
+      {"fe80:face:b00c::2", 1},
+      {"fe80:face:b00c::3", 1}};
+  const std::map<std::string, NextHopWeight> expectedPostNormalizationWeights{
+      {"fe80:face:b00c::1", 2},
+      {"fe80:face:b00c::2", 1},
+      {"fe80:face:b00c::3", 1}};
+  EXPECT_EQ(preNormalizationWeights, expectedPreNormalizationWeights);
+  EXPECT_EQ(postNormalizationWeights, expectedPostNormalizationWeights);
+}
+
+TEST_F(
+    NamedNextHopGroupThriftTest,
+    bgpRouteRecursesOntoTeAgentNormalizedWeights) {
+  ThriftHandler handler(sw_);
+
+  constexpr auto kTePrefix = "fdad:ffff::4/128";
+  constexpr auto kTePrefixAddr = "fdad:ffff::4";
+  constexpr auto kBgpPrefix = "100::/64";
+  constexpr auto kBgpPrefixAddr = "100::";
+
+  const auto openrNhop1 = makeLinkLocalNextHopThrift("fe80:face:b00c::1");
+  const auto openrNhop2 = makeLinkLocalNextHopThrift("fe80:face:b00c::2");
+  const auto nhop1 =
+      makeLinkLocalSrv6NextHopThrift("fe80:face:b00c::1", "2001:db8::1");
+  const auto nhop2 =
+      makeLinkLocalSrv6NextHopThrift("fe80:face:b00c::2", "2001:db8::2");
+
+  auto resolvedWeights = [this](const std::string& addr, uint8_t mask) {
+    auto state = sw_->getState();
+    auto route = findRoute<folly::IPAddressV6>(
+        RouterID(0), {folly::IPAddress(addr), mask}, state);
+    CHECK(route) << "route " << addr << "/" << static_cast<int>(mask)
+                 << " not in the FIB";
+    std::map<std::string, NextHopWeight> weights;
+    for (const auto& nhop : getNextHops(state, route->getForwardInfo())) {
+      weights[nhop.addr().str()] = nhop.weight();
+    }
+    return weights;
+  };
+
+  addUnicastRouteWithNextHopThrifts(
+      handler,
+      kTePrefix,
+      {openrNhop1, openrNhop2},
+      ClientID::OPENR,
+      AdminDistance::OPENR);
+
+  NextHopGroup teAgentGroup;
+  teAgentGroup.name() = "te_agent_group";
+  teAgentGroup.nexthops() = {nhop1, nhop1, nhop2, nhop2};
+  auto teAgentGroups = std::make_unique<std::vector<NextHopGroup>>();
+  teAgentGroups->push_back(std::move(teAgentGroup));
+  handler.addOrUpdateNamedNextHopGroups(
+      std::move(teAgentGroups), /*combineDuplicatedNextHops=*/true);
+
+  addUnicastRouteWithNamedNextHopGroup(
+      handler,
+      kTePrefix,
+      "te_agent_group",
+      ClientID::TE_AGENT,
+      AdminDistance::TE_AGENT);
+
+  const std::map<std::string, NextHopWeight> expectedTeWeights{
+      {"fe80:face:b00c::1", 1}, {"fe80:face:b00c::2", 1}};
+  EXPECT_EQ(resolvedWeights(kTePrefixAddr, 128), expectedTeWeights);
+
+  addUnicastRouteWithNextHops(handler, kBgpPrefix, {kTePrefixAddr});
+
+  const std::map<std::string, NextHopWeight> expectedBgpWeights{
+      {"fe80:face:b00c::1", ECMP_WEIGHT}, {"fe80:face:b00c::2", ECMP_WEIGHT}};
+  EXPECT_EQ(resolvedWeights(kBgpPrefixAddr, 64), expectedBgpWeights);
+
+  std::vector<NextHopGroup> programmedGroups;
+  auto groupNames = std::make_unique<std::vector<std::string>>();
+  groupNames->push_back("te_agent_group");
+  handler.getNamedNextHopGroups(programmedGroups, std::move(groupNames));
+  ASSERT_EQ(programmedGroups.size(), 1);
+  ASSERT_TRUE(programmedGroups[0].isProgrammed().has_value());
+  EXPECT_TRUE(*programmedGroups[0].isProgrammed());
+
+  std::vector<RouteDetails> routeDetails;
+  handler.getRouteTableDetails(routeDetails);
+  const auto detail = std::find_if(
+      routeDetails.begin(), routeDetails.end(), [](const auto& routeDetail) {
+        return facebook::network::toIPAddress(*routeDetail.dest()->ip()) ==
+            folly::IPAddress("100::");
+      });
+  ASSERT_NE(detail, routeDetails.end());
+  ASSERT_TRUE(detail->resolvedNextHops().has_value());
+
+  std::map<std::string, NextHopWeight> postNormalizationWeights;
+  for (const auto& nhop : *detail->nextHops()) {
+    postNormalizationWeights[facebook::network::toIPAddress(*nhop.address())
+                                 .str()] = *nhop.weight();
+  }
+  std::map<std::string, NextHopWeight> preNormalizationWeights;
+  for (const auto& nhop : *detail->resolvedNextHops()) {
+    preNormalizationWeights[facebook::network::toIPAddress(*nhop.address())
+                                .str()] = *nhop.weight();
+  }
+  // Recursing through equal TE weights produces unweighted ECMP next hops.
+  // Route details preserve ECMP_WEIGHT (0) before normalization and report
+  // explicit weights of 1 after normalization.
+  const std::map<std::string, NextHopWeight> expectedPreNormalizationWeights{
+      {"fe80:face:b00c::1", ECMP_WEIGHT}, {"fe80:face:b00c::2", ECMP_WEIGHT}};
+  const std::map<std::string, NextHopWeight> expectedPostNormalizationWeights{
+      {"fe80:face:b00c::1", 1}, {"fe80:face:b00c::2", 1}};
+  EXPECT_EQ(preNormalizationWeights, expectedPreNormalizationWeights);
+  EXPECT_EQ(postNormalizationWeights, expectedPostNormalizationWeights);
+  EXPECT_NE(preNormalizationWeights, postNormalizationWeights);
+}
+
+TEST_F(NamedNextHopGroupThriftTest, combinedGroupWeightsFollowGroupUpdates) {
+  ThriftHandler handler(sw_);
+
+  constexpr auto kNhop1 = "2401:db00:2110:3001::2";
+  constexpr auto kNhop2 = "2401:db00:2110:3001::3";
+  constexpr auto kNhop3 = "2401:db00:2110:3055::2";
+  constexpr auto kPrefix = "2401::100/128";
+  constexpr auto kPrefixAddr = "2401::100";
+
+  // Every add below passes combineDuplicatedNextHops, so the only thing that
+  // varies across the three steps is whether a next hop is repeated. Both
+  // this and the route add below come back with the FIB already updated:
+  // the RIB call blocks on its own thread and the rib-to-switch-state
+  // function it runs blocks on the state update, so no waiting is needed.
+  auto setGroupNextHops = [&handler](const std::vector<std::string>& ips) {
+    auto groups = std::make_unique<std::vector<NextHopGroup>>();
+    groups->push_back(makeGroup("group1", ips));
+    handler.addOrUpdateNamedNextHopGroups(std::move(groups), true);
+  };
+
+  auto resolvedWeights = [this, kPrefixAddr]() {
+    auto state = sw_->getState();
+    auto route = findRoute<folly::IPAddressV6>(
+        RouterID(0), {folly::IPAddress(kPrefixAddr), 128}, state);
+    CHECK(route) << "route " << kPrefixAddr << " not in the FIB";
+    std::map<std::string, NextHopWeight> weights;
+    for (const auto& nhop : getNextHops(state, route->getForwardInfo())) {
+      weights[nhop.addr().str()] = nhop.weight();
+    }
+    return weights;
+  };
+
+  // Nothing repeated, so there is nothing to combine and the group stays a
+  // plain ECMP group.
+  setGroupNextHops({kNhop1, kNhop2, kNhop3});
+  addUnicastRouteWithNamedNextHopGroup(handler, kPrefix, "group1");
+
+  // Nothing was combined, so every next hop stays at ECMP_WEIGHT in both the
+  // group and the resolved route.
+  const std::map<std::string, int32_t> unweightedGroup{
+      {kNhop1, 0}, {kNhop2, 0}, {kNhop3, 0}};
+  const std::map<std::string, NextHopWeight> unweightedResolved{
+      {kNhop1, ECMP_WEIGHT}, {kNhop2, ECMP_WEIGHT}, {kNhop3, ECMP_WEIGHT}};
+  EXPECT_EQ(readGroupWeights(handler, "group1"), unweightedGroup);
+  EXPECT_EQ(resolvedWeights(), unweightedResolved);
+
+  // Repeat one next hop. It takes the pair's weight and, because the set can
+  // no longer carry any ECMP_WEIGHT member without resolution downgrading the
+  // whole thing, the other two are given an explicit share of 1. Group and
+  // resolved route agree once everything is weighted.
+  setGroupNextHops({kNhop1, kNhop1, kNhop2, kNhop3});
+
+  const std::map<std::string, int32_t> weightedGroup{
+      {kNhop1, 2}, {kNhop2, 1}, {kNhop3, 1}};
+  const std::map<std::string, NextHopWeight> weightedResolved{
+      {kNhop1, 2}, {kNhop2, 1}, {kNhop3, 1}};
+  EXPECT_EQ(readGroupWeights(handler, "group1"), weightedGroup);
+  EXPECT_EQ(resolvedWeights(), weightedResolved);
+
+  // Drop the repeat again and both views go back to plain ECMP.
+  setGroupNextHops({kNhop1, kNhop2, kNhop3});
+  EXPECT_EQ(readGroupWeights(handler, "group1"), unweightedGroup);
+  EXPECT_EQ(resolvedWeights(), unweightedResolved);
 }
 
 namespace {
@@ -4167,6 +5281,41 @@ TEST_F(
   EXPECT_EQ(orphanGroup->nexthops()->size(), 1);
 }
 
+TEST_F(NamedNextHopGroupThriftTest, nextHopGroupsReportNextHopSetId) {
+  ThriftHandler handler(sw_);
+
+  auto groups = std::make_unique<std::vector<NextHopGroup>>();
+  groups->push_back(makeGroup("group1", {"2401:db00:2110:3001::2"}));
+  groups->push_back(makeGroup("group2", {"2401:db00:2110:3055::2"}));
+  handler.addOrUpdateNamedNextHopGroups(std::move(groups));
+
+  std::map<std::string, int64_t> expected;
+  auto fibInfo = sw_->getState()->getFibsInfoMap()->cbegin()->second;
+  for (const auto& [name, setId] : fibInfo->getNameToNextHopSetId()) {
+    expected[name] = setId;
+  }
+  ASSERT_EQ(expected.size(), 2);
+
+  auto toNameToId = [](const std::vector<NextHopGroup>& result) {
+    std::map<std::string, int64_t> nameToId;
+    for (const auto& group : result) {
+      if (group.name().has_value() && group.id().has_value()) {
+        nameToId[*group.name()] = *group.id();
+      }
+    }
+    return nameToId;
+  };
+
+  std::vector<NextHopGroup> namedGroups;
+  handler.getNamedNextHopGroups(
+      namedGroups, std::make_unique<std::vector<std::string>>());
+  EXPECT_EQ(toNameToId(namedGroups), expected);
+
+  std::vector<NextHopGroup> allGroups;
+  handler.getNextHopGroups(allGroups);
+  EXPECT_EQ(toNameToId(allGroups), expected);
+}
+
 TEST_F(NamedNextHopGroupThriftTest, getNextHopGroupsNamedIsProgrammed) {
   ThriftHandler handler(sw_);
 
@@ -4206,6 +5355,71 @@ TEST_F(NamedNextHopGroupThriftTest, getNextHopGroupsNamedIsProgrammed) {
   EXPECT_FALSE(nameToProgrammedState.at("single_ref"));
   EXPECT_FALSE(nameToProgrammedState.at("orphan"));
   EXPECT_EQ(nameToProgrammedState, namedApiProgrammedState);
+}
+
+TEST_F(NamedNextHopGroupThriftTest, pbrRedirectGroupIsProgrammed) {
+  SCOPE_EXIT {
+    FLAGS_enable_acl_table_group = false;
+  };
+  FLAGS_enable_acl_table_group = true;
+  cfg::AclTable pbrTable;
+  pbrTable.name() = cfg::switch_config_constants::DEFAULT_PBR_ACL_TABLE();
+  pbrTable.priority() = 1;
+  pbrTable.actionTypes() = {
+      cfg::AclTableActionType::COUNTER, cfg::AclTableActionType::REDIRECT};
+  pbrTable.qualifiers() = {
+      cfg::AclTableQualifier::TC, cfg::AclTableQualifier::NEXT_HOP_GROUP_ID};
+  cfg::AclTableGroup tableGroup;
+  tableGroup.name() = "ingress-group";
+  tableGroup.stage() = cfg::AclStage::INGRESS;
+  tableGroup.aclTables() = {pbrTable};
+  auto config = testConfigA();
+  config.aclTableGroups() = {tableGroup};
+  sw_->applyConfig("add PBR ACL table", config);
+
+  ThriftHandler handler(sw_);
+  auto groups = std::make_unique<std::vector<NextHopGroup>>();
+  groups->push_back(makeGroup("defaultNhg", {"2401:db00:2110:3001::2"}));
+  groups->push_back(makeGroup("classNhg", {"2401:db00:2110:3001::3"}));
+  groups->push_back(makeGroup("aliasNhg", {"2401:db00:2110:3001::3"}));
+  handler.addOrUpdateNamedNextHopGroups(std::move(groups));
+  handler.addPolicies(onePolicy(makeCbfPolicy(
+      "pol1",
+      "defaultNhg",
+      {{ForwardingClass::CLASS_1, namedNhgRef("classNhg")}})));
+
+  auto namedGroups = [&handler]() {
+    std::vector<NextHopGroup> named;
+    handler.getNamedNextHopGroups(
+        named, std::make_unique<std::vector<std::string>>());
+    std::map<std::string, NextHopGroup> byName;
+    for (auto& group : named) {
+      const auto name = *group.name();
+      byName[name] = std::move(group);
+    }
+    return byName;
+  };
+
+  // 1. No route names the default group, so the policy programs no ACL entry.
+  EXPECT_FALSE(*namedGroups().at("classNhg").isProgrammed());
+
+  // 2. A route on the default group makes the rule redirect to classNhg.
+  // aliasNhg has the same members, so it shares classNhg's next-hop set id.
+  addUnicastRouteWithNamedNextHopGroup(handler, "2401::100/128", "defaultNhg");
+  auto byName = namedGroups();
+  ASSERT_EQ(*byName.at("aliasNhg").id(), *byName.at("classNhg").id());
+  for (const auto* name : {"defaultNhg", "classNhg", "aliasNhg"}) {
+    EXPECT_TRUE(*byName.at(name).isProgrammed()) << name;
+  }
+
+  // 3. getNextHopGroups agrees, under whichever name the shared id kept.
+  std::vector<NextHopGroup> allGroups;
+  handler.getNextHopGroups(allGroups);
+  for (const auto& group : allGroups) {
+    if (group.name().has_value()) {
+      EXPECT_TRUE(*group.isProgrammed()) << *group.name();
+    }
+  }
 }
 
 TEST_F(NamedNextHopGroupThriftTest, removeNextHopGroup) {
@@ -4734,4 +5948,47 @@ TEST_F(ThriftTest, routeCounterUpdatedWhenNamedNhgChanges) {
       RouterID(0), IPAddress::createNetwork("2401::70/128"), state);
   ASSERT_NE(nullptr, rt);
   EXPECT_EQ(rt->getForwardInfo().getCounterID(), "nhg_two");
+}
+
+TEST_F(NamedNextHopGroupThriftTest, addPoliciesRejectsInlineNexthopsInPolicy) {
+  ThriftHandler handler(sw_);
+  auto inlineNhops = makeGroup("classNhg", {"2401:db00:2110:3001::2"});
+  EXPECT_THAT(
+      [&] {
+        handler.addPolicies(onePolicy(makeCbfPolicy(
+            "pol1", "defaultNhg", {{ForwardingClass::CLASS_1, inlineNhops}})));
+      },
+      ::testing::ThrowsMessage<FbossError>(
+          ::testing::HasSubstr("supplies inline next hops")));
+}
+
+TEST_F(NamedNextHopGroupThriftTest, addPoliciesRejectsTheTemporaryEntryPrefix) {
+  ThriftHandler handler(sw_);
+  auto groups = std::make_unique<std::vector<NextHopGroup>>();
+  groups->push_back(makeGroup("defaultNhg", {"2401:db00:2110:3001::2"}));
+  handler.addOrUpdateNamedNextHopGroups(std::move(groups));
+
+  EXPECT_THAT(
+      [&] {
+        handler.addPolicies(onePolicy(makeCbfPolicy("#pol1", "defaultNhg")));
+      },
+      ::testing::ThrowsMessage<FbossError>(
+          ::testing::HasSubstr("cannot start with")));
+}
+
+// testConfigA has no PBR ACL table, so a policy that passes validation fails
+// the HW update.
+TEST_F(NamedNextHopGroupThriftTest, addPoliciesPassesValidationWhenWellFormed) {
+  ThriftHandler handler(sw_);
+  auto groups = std::make_unique<std::vector<NextHopGroup>>();
+  groups->push_back(makeGroup("defaultNhg", {"2401:db00:2110:3001::2"}));
+  groups->push_back(makeGroup("classNhg", {"2401:db00:2110:3001::3"}));
+  handler.addOrUpdateNamedNextHopGroups(std::move(groups));
+
+  EXPECT_THROW(
+      handler.addPolicies(onePolicy(makeCbfPolicy(
+          "pol1",
+          "defaultNhg",
+          {{ForwardingClass::CLASS_1, namedNhgRef("classNhg")}}))),
+      FbossHwUpdateError);
 }

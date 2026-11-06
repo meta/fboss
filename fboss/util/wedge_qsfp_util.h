@@ -34,6 +34,8 @@ DECLARE_int32(reset_type);
 DECLARE_int32(reset_action);
 DECLARE_bool(electrical_loopback);
 DECLARE_bool(optical_loopback);
+DECLARE_bool(host_output_loopback);
+DECLARE_bool(media_output_loopback);
 DECLARE_bool(clear_loopback);
 DECLARE_bool(skip_check);
 DECLARE_bool(read_reg);
@@ -75,7 +77,15 @@ DECLARE_bool(dump_tcvr_i2c_log);
 DECLARE_bool(port_info_summary);
 DECLARE_string(ssl_policy);
 
-enum LoopbackMode { noLoopback, electricalLoopback, opticalLoopback };
+// electricalLoopback = CMIS Host Side Input, opticalLoopback = CMIS Media Side
+// Input. hostOutputLoopback and mediaOutputLoopback are CMIS only.
+enum LoopbackMode {
+  noLoopback,
+  electricalLoopback,
+  opticalLoopback,
+  hostOutputLoopback,
+  mediaOutputLoopback,
+};
 
 namespace facebook::fboss {
 
@@ -264,11 +274,7 @@ bool doMiniphotonLoopbackDirect(
     unsigned int port,
     LoopbackMode mode);
 
-void cmisHostInputLoopbackDirect(
-    TransceiverI2CApi* bus,
-    unsigned int port,
-    LoopbackMode mode);
-void cmisMediaInputLoopbackDirect(
+bool cmisLoopbackDirect(
     TransceiverI2CApi* bus,
     unsigned int port,
     LoopbackMode mode);
@@ -350,6 +356,9 @@ void setModulePrbs(
 void getModulePrbsStats(DirectI2cInfo i2cInfo, std::vector<PortID> portList);
 
 bool verifyDirectI2cCompliance();
+
+// Fall back to qsfp_service's platform descriptor path when none is passed.
+void initPlatformDescriptorPathFromQsfpConfig();
 
 void printModuleTransactionStats(
     const std::vector<int32_t>& ports,

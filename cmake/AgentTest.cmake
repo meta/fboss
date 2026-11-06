@@ -102,6 +102,33 @@ target_link_libraries(mpls_handler_test
 
 gtest_discover_tests(mpls_handler_test)
 
+add_executable(l3_traffic_loop_expiry_test
+  fboss/util/oss/TestMain.cpp
+  fboss/agent/test/L3TrafficLoopExpiryTest.cpp
+)
+
+target_link_libraries(l3_traffic_loop_expiry_test
+  agent_test_utils
+  handler
+  ${GTEST}
+  ${LIBGMOCK_LIBRARIES}
+)
+
+gtest_discover_tests(l3_traffic_loop_expiry_test)
+
+add_executable(vrf_config_test
+  fboss/util/oss/TestMain.cpp
+  fboss/agent/test/VrfConfigTests.cpp
+)
+
+target_link_libraries(vrf_config_test
+  agent_test_utils
+  ${GTEST}
+  ${LIBGMOCK_LIBRARIES}
+)
+
+gtest_discover_tests(vrf_config_test)
+
 add_library(agent_test_lib
   fboss/agent/test/AgentTest.cpp
 )

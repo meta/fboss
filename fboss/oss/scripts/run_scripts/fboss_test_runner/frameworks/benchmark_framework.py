@@ -133,12 +133,16 @@ class BenchmarkFramework:
         return compiled
 
     def _get_benchmarks_to_run(
-        self, all_benchmarks: list[str], args: Namespace
+        self,
+        all_benchmarks: list[str],
+        args: Namespace,
+        tier_patterns: list[str] | None = None,
     ) -> list[str] | None:
         """Narrow the benchmark list by ``--filter`` / ``--filter_file``, both of
         which take the gtest grammar (``include:include:-exclude``) so a filter
         file written for the gtest runners selects the same way. ``--filter_file``
-        wins when both are given. Returns None on error."""
+        wins when both are given. Tier patterns are intersected with that user
+        selection. Returns None on error."""
         if args.filter_file:
             if not os.path.exists(args.filter_file):
                 print(f"Error: Configuration file not found: {args.filter_file}")
@@ -151,25 +155,40 @@ class BenchmarkFramework:
         else:
             filter_string = args.filter or ""
 
-        if not filter_string:
-            return list(all_benchmarks)
+        benchmarks = list(all_benchmarks)
+        if filter_string:
+            includes, excludes = self._split_filter(filter_string)
+            include_res = self._compile_patterns(includes, "include")
+            exclude_res = self._compile_patterns(excludes, "exclude")
+            if include_res is None or exclude_res is None:
+                return None
 
-        includes, excludes = self._split_filter(filter_string)
-        include_res = self._compile_patterns(includes, "include")
-        exclude_res = self._compile_patterns(excludes, "exclude")
-        if include_res is None or exclude_res is None:
-            return None
+            benchmarks = [
+                name
+                for name in benchmarks
+                if (not include_res or any(r.search(name) for r in include_res))
+                and not any(r.search(name) for r in exclude_res)
+            ]
+            if not benchmarks:
+                print(f"No benchmarks matching filter '{filter_string}'")
+                return None
+            print(f"Filter '{filter_string}' matched {len(benchmarks)} benchmarks")
 
-        benchmarks = [
-            name
-            for name in all_benchmarks
-            if (not include_res or any(r.search(name) for r in include_res))
-            and not any(r.search(name) for r in exclude_res)
-        ]
-        if not benchmarks:
-            print(f"No benchmarks matching filter '{filter_string}'")
-            return None
-        print(f"Filter '{filter_string}' matched {len(benchmarks)} benchmarks")
+        if tier_patterns is not None:
+            if not tier_patterns:
+                print("No benchmark patterns configured for requested tier")
+                return None
+            tier_res = self._compile_patterns(tier_patterns, "tier")
+            if tier_res is None:
+                return None
+            benchmarks = [
+                name for name in benchmarks if any(r.search(name) for r in tier_res)
+            ]
+            if not benchmarks:
+                print(
+                    f"No benchmarks matching tier patterns '{':'.join(tier_patterns)}'"
+                )
+                return None
         return benchmarks
 
     def _filter_known_bad(
@@ -266,6 +285,7 @@ class BenchmarkFramework:
 
         for key in ("cpu_time_usec", "max_rss", "cpu_rx_pps", "cpu_tx_pps"):
             if key in all_metrics:
+                # pyrefly: ignore [unsupported-operation]
                 result[key] = str(all_metrics[key])
 
         return result
@@ -447,7 +467,9 @@ class BenchmarkFramework:
 
     # ---- top-level orchestration --------------------------------------------
 
-    def _prepare_benchmarks(self, args: Namespace) -> _BenchmarkSelection | None:
+    def _prepare_benchmarks(
+        self, args: Namespace, tier_patterns: list[str] | None = None
+    ) -> _BenchmarkSelection | None:
         """Discover and filter benchmarks for listing or execution."""
         known_bad_regexes: list[str] = []
         unsupported_regexes: list[str] = []
@@ -475,8 +497,10 @@ class BenchmarkFramework:
             return None
         print(f"Discovered {len(all_benchmarks)} benchmarks in binary")
 
-        benchmarks_to_run = self._get_benchmarks_to_run(all_benchmarks, args)
-        if not benchmarks_to_run:
+        benchmarks_to_run = self._get_benchmarks_to_run(
+            all_benchmarks, args, tier_patterns
+        )
+        if benchmarks_to_run is None:
             return None
 
         benchmarks_to_run, unsupported_skipped = self._filter_unsupported(
@@ -494,17 +518,19 @@ class BenchmarkFramework:
             thresholds=all_thresholds,
         )
 
-    def list_tests(self, args: Namespace) -> None:
+    def list_tests(
+        self, args: Namespace, tier_patterns: list[str] | None = None
+    ) -> None:
         """Print the selected benchmark names without running them."""
-        selection = self._prepare_benchmarks(args)
+        selection = self._prepare_benchmarks(args, tier_patterns)
         if selection is None:
             return
         for name in selection.benchmark_names:
             print(name)
 
-    def run(self, args: Namespace) -> None:
+    def run(self, args: Namespace, tier_patterns: list[str] | None = None) -> None:
         """Run selected benchmarks, check thresholds, and report results."""
-        selection = self._prepare_benchmarks(args)
+        selection = self._prepare_benchmarks(args, tier_patterns)
         if selection is None:
             return
 

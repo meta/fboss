@@ -124,17 +124,19 @@ bcm_cosq_gport_discard_t cfgAqmToBcmAqm(
     discard.flags |= BCM_COSQ_DISCARD_ENABLE;
     switch (detection.value().getType()) {
       case cfg::QueueCongestionDetection::Type::linear:
-        discard.min_thresh = *detection.value().get_linear().minimumLength();
-        discard.max_thresh = *detection.value().get_linear().maximumLength();
-        discard.drop_probability =
-            folly::copy(detection.value().get_linear().probability().value());
+        discard.min_thresh =
+            *detection.value().linear().as_const()->minimumLength();
+        discard.max_thresh =
+            *detection.value().linear().as_const()->maximumLength();
+        discard.drop_probability = folly::copy(
+            detection.value().linear().as_const()->probability().value());
         break;
       case cfg::QueueCongestionDetection::Type::__EMPTY__:
         LOG(WARNING) << "Invalid queue congestion detection config";
         break;
     }
   } else {
-    auto defaultDetection = defaultAqm.detection()->get_linear();
+    auto defaultDetection = defaultAqm.detection()->linear().value();
     // reset the threshold to default
     discard.min_thresh = *defaultDetection.minimumLength();
     discard.max_thresh = *defaultDetection.maximumLength();
@@ -146,7 +148,7 @@ bcm_cosq_gport_discard_t cfgAqmToBcmAqm(
 std::optional<cfg::ActiveQueueManagement> bcmAqmToCfgAqm(
     const bcm_cosq_gport_discard_t& discard,
     const cfg::ActiveQueueManagement& defaultAqm) {
-  auto defaultDetection = defaultAqm.detection()->get_linear();
+  auto defaultDetection = defaultAqm.detection()->linear().value();
   bool isMinThreshSet = discard.min_thresh &&
       discard.min_thresh != *defaultDetection.minimumLength();
   bool isMaxThreshSet = discard.max_thresh &&

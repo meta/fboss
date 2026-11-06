@@ -7,6 +7,7 @@
 #include <folly/testing/TestUtil.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <filesystem>
 #include <optional>
 #include "fboss/qsfp_service/platforms/wedge/tests/MockWedgeManager.h"
 #include "fboss/qsfp_service/test/FakeConfigsHelper.h"
@@ -40,7 +41,8 @@ class PortManagerTest : public ::testing::Test {
   void initManagers(
       int numModules = 1,
       int numPortsPerModule = 4,
-      bool setPhyManager = false) {
+      bool setPhyManager = false,
+      bool isSaiPhyManager = false) {
     const auto platformMapping =
         makeFakePlatformMapping(numModules, numPortsPerModule);
     const std::shared_ptr<const PlatformMapping> castedPlatformMapping =
@@ -51,6 +53,7 @@ class PortManagerTest : public ::testing::Test {
 
     std::unique_ptr<MockPhyManager> phyManager =
         std::make_unique<MockPhyManager>(platformMapping.get());
+    phyManager->setIsSaiPhyManager(isSaiPhyManager);
     phyManager_ = phyManager.get();
     transceiverManager_ = std::make_shared<MockWedgeManager>(
         numModules, 4, platformMapping, qsfpServiceThreads);
@@ -453,6 +456,64 @@ TEST_F(PortManagerTest, getInitializedTransceiverIdsForPort) {
       ::testing::ElementsAre(TransceiverID(0), TransceiverID(1)));
 }
 
+TEST_F(PortManagerTest, transceiverManagerKnowsPortManagerOwnsPhyManager) {
+  initManagers(1, 4, true /* setPhyManager */);
+  EXPECT_EQ(transceiverManager_->getPhyManager(), nullptr);
+  EXPECT_TRUE(transceiverManager_->hasExternalPhy());
+}
+
+TEST_F(PortManagerTest, transceiverManagerHasNoExternalPhyWithoutPhyManager) {
+  initManagers(1, 4, false /* setPhyManager */);
+  EXPECT_FALSE(transceiverManager_->hasExternalPhy());
+}
+
+TEST_F(PortManagerTest, warmBootFlagConsumedAtInitWithSaiXphy) {
+  gflags::FlagSaver flagSaver;
+  gflags::SetCommandLineOptionWithMode(
+      "can_qsfp_service_warm_boot", "1", gflags::SET_FLAGS_DEFAULT);
+  const auto warmBootFlag = TransceiverManager::warmBootFlagFileName();
+  close(creat(warmBootFlag.c_str(), 0644));
+
+  // A start after a graceful exit warm boots and consumes the flag.
+  initManagers(1, 4, true /* setPhyManager */, true /* isSaiPhyManager */);
+  transceiverManager_->init();
+  EXPECT_TRUE(transceiverManager_->canWarmBoot());
+  EXPECT_FALSE(std::filesystem::exists(warmBootFlag));
+
+  // A restart without a graceful exit (e.g. a crash) cold boots.
+  portManager_.reset();
+  transceiverManager_.reset();
+  initManagers(1, 4, true /* setPhyManager */, true /* isSaiPhyManager */);
+  transceiverManager_->init();
+  EXPECT_FALSE(transceiverManager_->canWarmBoot());
+}
+
+TEST_F(PortManagerTest, warmBootFlagKeptAtInitWithNonSaiXphy) {
+  gflags::FlagSaver flagSaver;
+  gflags::SetCommandLineOptionWithMode(
+      "can_qsfp_service_warm_boot", "1", gflags::SET_FLAGS_DEFAULT);
+  const auto warmBootFlag = TransceiverManager::warmBootFlagFileName();
+  close(creat(warmBootFlag.c_str(), 0644));
+
+  initManagers(1, 4, true /* setPhyManager */, false /* isSaiPhyManager */);
+  transceiverManager_->init();
+  EXPECT_TRUE(transceiverManager_->canWarmBoot());
+  EXPECT_TRUE(std::filesystem::exists(warmBootFlag));
+}
+
+TEST_F(PortManagerTest, warmBootFlagKeptAtInitWithoutExternalPhy) {
+  gflags::FlagSaver flagSaver;
+  gflags::SetCommandLineOptionWithMode(
+      "can_qsfp_service_warm_boot", "1", gflags::SET_FLAGS_DEFAULT);
+  const auto warmBootFlag = TransceiverManager::warmBootFlagFileName();
+  close(creat(warmBootFlag.c_str(), 0644));
+
+  initManagers(1, 4, false /* setPhyManager */);
+  transceiverManager_->init();
+  EXPECT_TRUE(transceiverManager_->canWarmBoot());
+  EXPECT_TRUE(std::filesystem::exists(warmBootFlag));
+}
+
 TEST_F(PortManagerTest, setBothPortsEnabledAndUpForTesting) {
   initManagers(1, 4);
   portManager_->setOverrideAgentPortStatusForTesting(
@@ -578,7 +639,7 @@ TEST_F(PortManagerTest, getInterfacePhyInfo) {
   std::map<std::string, phy::PhyInfo> phyInfos;
   // Test a valid interface
   portManager_->getInterfacePhyInfo(phyInfos, "eth1/1/1");
-  EXPECT_TRUE(phyInfos.find("eth1/1/1") != phyInfos.end());
+  EXPECT_TRUE(phyInfos.contains("eth1/1/1"));
   // Simulate an exception from xphyInfo and confirm that the map doesn't
   // include that interface's key
   EXPECT_CALL(*portManager_, getXphyInfo(PortID(9)))
@@ -587,7 +648,7 @@ TEST_F(PortManagerTest, getInterfacePhyInfo) {
   portManager_->getInterfacePhyInfo(phyInfos, "eth1/2/1");
   EXPECT_EQ(phyInfos.size(), 1);
   // We still expect the previous interface to exist in the map
-  EXPECT_TRUE(phyInfos.find("eth1/1/1") != phyInfos.end());
+  EXPECT_TRUE(phyInfos.contains("eth1/1/1"));
 
   // Test an invalid interface
   EXPECT_THROW(
@@ -1029,11 +1090,11 @@ TEST_F(PortManagerTest, getPortStates) {
   EXPECT_NO_THROW(portManager_->getPortStates(states, std::move(portIds)));
 
   // Verify that valid ports are in the map
-  EXPECT_TRUE(states.find(1) != states.end());
-  EXPECT_TRUE(states.find(3) != states.end());
+  EXPECT_TRUE(states.contains(1));
+  EXPECT_TRUE(states.contains(3));
 
   // Verify that invalid port is NOT in the map (it was caught and skipped)
-  EXPECT_TRUE(states.find(999) == states.end());
+  EXPECT_TRUE(!states.contains(999));
 
   // Verify we got the expected number of entries (only valid ports)
   EXPECT_EQ(states.size(), 2);
@@ -1336,7 +1397,7 @@ TEST_F(PortManagerTest, getMultiTransceiverPortProfileIDs) {
       portManager_->getMultiTransceiverPortProfileIDs(tcvrId_, multiPortInput);
 
   EXPECT_EQ(result1.size(), 1);
-  EXPECT_TRUE(result1.find(tcvrId_) != result1.end());
+  EXPECT_TRUE(result1.contains(tcvrId_));
   EXPECT_EQ(result1[tcvrId_].size(), 2);
   EXPECT_EQ(result1[tcvrId_][1], multiPortProfile_);
   EXPECT_EQ(result1[tcvrId_][3], multiPortProfile_);
@@ -1350,7 +1411,7 @@ TEST_F(PortManagerTest, getMultiTransceiverPortProfileIDs) {
       portManager_->getMultiTransceiverPortProfileIDs(tcvrId_, singlePortInput);
 
   EXPECT_EQ(result2.size(), 1);
-  EXPECT_TRUE(result2.find(tcvrId_) != result2.end());
+  EXPECT_TRUE(result2.contains(tcvrId_));
   EXPECT_EQ(result2[tcvrId_].size(), 1);
   EXPECT_EQ(result2[tcvrId_][1], multiPortProfile_);
 
@@ -1365,8 +1426,8 @@ TEST_F(PortManagerTest, getMultiTransceiverPortProfileIDs) {
 
   // Should split into two transceivers with per-transceiver profiles
   EXPECT_EQ(result3.size(), 2);
-  EXPECT_TRUE(result3.find(TransceiverID(0)) != result3.end());
-  EXPECT_TRUE(result3.find(TransceiverID(1)) != result3.end());
+  EXPECT_TRUE(result3.contains(TransceiverID(0)));
+  EXPECT_TRUE(result3.contains(TransceiverID(1)));
 
   // Each transceiver should have one port mapped to the per-transceiver
   // profile
@@ -1388,7 +1449,7 @@ TEST_F(PortManagerTest, getMultiTransceiverPortProfileIDs) {
       tcvrId_, singleTcvrProfileInput);
 
   EXPECT_EQ(result4.size(), 1);
-  EXPECT_TRUE(result4.find(tcvrId_) != result4.end());
+  EXPECT_TRUE(result4.contains(tcvrId_));
   EXPECT_EQ(result4[tcvrId_].size(), 1);
   EXPECT_EQ(
       result4[tcvrId_][1],
@@ -1544,6 +1605,10 @@ TEST_F(PortManagerTest, setPortLoopbackStateInvalidPortThrows) {
       portManager_->setPortLoopbackState(
           "invalid_port", phy::PortComponent::GB_LINE, true),
       FbossError);
+}
+
+TEST_F(PortManagerTest, getSdkStateWithoutPhyManagerThrows) {
+  EXPECT_THROW(portManager_->getSdkState("sdk_dump"), FbossError);
 }
 
 } // namespace facebook::fboss

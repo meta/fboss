@@ -7,6 +7,7 @@
 #include "fboss/agent/AgentFeatures.h"
 #include "fboss/agent/AsicUtils.h"
 #include "fboss/agent/SwSwitchRouteUpdateWrapper.h"
+#include "fboss/agent/ThriftHandler.h"
 #include "fboss/agent/Utils.h"
 #include "fboss/agent/benchmarks/AgentBenchmarks.h"
 #include "fboss/agent/state/RouteNextHop.h"
@@ -27,6 +28,23 @@ namespace {
 folly::IPAddressV6 makeSid(int index) {
   return folly::IPAddressV6(
       fmt::format("3001:db8:{:x}:{:x}::", (index >> 8) + 1, index & 0xFF));
+}
+
+ResolvedNextHop makeSrv6NextHop(
+    const folly::IPAddress& ip,
+    InterfaceID intf,
+    const folly::IPAddressV6& sid) {
+  return ResolvedNextHop(
+      ip,
+      intf,
+      ECMP_WEIGHT,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      std::vector<folly::IPAddressV6>{sid},
+      TunnelType::SRV6_ENCAP,
+      std::string("srv6Tunnel0"));
 }
 
 // MySID SID offset: keeps the /48 MySID entries
@@ -51,7 +69,7 @@ AgentEnsembleSwitchConfigFn makeSrv6ConfigFn() {
         asic,
         portIds,
         ensemble.supportsAddRemovePort(),
-        utility::kDefaultLoopbackMap(),
+        asic->desiredLoopbackModes(),
         true /*interfaceHasSubnet*/,
         true /*setInterfaceMac*/,
         utility::kBaseVlanId,
@@ -68,6 +86,29 @@ AgentEnsembleSwitchConfigFn makeSrv6ConfigFn() {
     }
     return cfg;
   };
+}
+
+std::unique_ptr<AgentEnsemble> createSrv6Ensemble() {
+  auto ensemble = createAgentEnsemble(
+      makeSrv6ConfigFn(), false /*disableLinkStateToggler*/);
+  ensemble->applyNewState(
+      [](const std::shared_ptr<SwitchState>& in) {
+        return utility::enableTrunkPorts(in);
+      },
+      "enable trunk ports");
+  return ensemble;
+}
+
+int resolveSrv6NextHops(
+    AgentEnsemble& ensemble,
+    const utility::EcmpSetupAnyNPorts6& ecmpHelper) {
+  auto numNhops =
+      std::min(static_cast<int>(ecmpHelper.getNextHops().size()), 64);
+  CHECK_GT(numNhops, 0);
+  ensemble.applyNewState([&](const std::shared_ptr<SwitchState>& in) {
+    return ecmpHelper.resolveNextHops(in, numNhops);
+  });
+  return numNhops;
 }
 
 // Add numGroups SRv6 ECMP-group routes (2800:<group>::/48), each with
@@ -91,17 +132,8 @@ std::vector<RoutePrefix<folly::IPAddressV6>> addSrv6EcmpGroupRoutes(
     for (int member = 0; member < membersPerGroup; ++member) {
       auto globalIndex = group * membersPerGroup + member;
       auto nhop = ecmpHelper.nhop(globalIndex % numNhops);
-      members.emplace_back(
-          nhop.ip,
-          nhop.intf,
-          ECMP_WEIGHT,
-          std::nullopt,
-          std::nullopt,
-          std::nullopt,
-          std::nullopt,
-          std::vector<folly::IPAddressV6>{makeSid(sidBase + globalIndex)},
-          TunnelType::SRV6_ENCAP,
-          std::string("srv6Tunnel0"));
+      members.push_back(
+          makeSrv6NextHop(nhop.ip, nhop.intf, makeSid(sidBase + globalIndex)));
     }
     RouteNextHopSet nhops(members.begin(), members.end());
     RoutePrefix<folly::IPAddressV6> prefix(
@@ -129,17 +161,8 @@ RouteNextHopSet makeSharedSrv6Nhops(
   members.reserve(numShared);
   for (int i = 0; i < numShared; ++i) {
     auto nhop = ecmpHelper.nhop(i % numNhops);
-    members.emplace_back(
-        nhop.ip,
-        nhop.intf,
-        ECMP_WEIGHT,
-        std::nullopt,
-        std::nullopt,
-        std::nullopt,
-        std::nullopt,
-        std::vector<folly::IPAddressV6>{makeSid(sidBase + i)},
-        TunnelType::SRV6_ENCAP,
-        std::string("srv6Tunnel0"));
+    members.push_back(
+        makeSrv6NextHop(nhop.ip, nhop.intf, makeSid(sidBase + i)));
   }
   return RouteNextHopSet(members.begin(), members.end());
 }
@@ -201,26 +224,11 @@ void srv6EcmpGroupScaleBenchmark(int numGroups, int membersPerGroup) {
   folly::BenchmarkSuspender suspender;
 
   FLAGS_ecmp_resource_percentage = 100;
-  auto ensemble = createAgentEnsemble(
-      makeSrv6ConfigFn(), false /*disableLinkStateToggler*/);
-  ensemble->applyNewState(
-      [](const std::shared_ptr<SwitchState>& in) {
-        return utility::enableTrunkPorts(in);
-      },
-      "enable trunk ports");
-
+  auto ensemble = createSrv6Ensemble();
   utility::EcmpSetupAnyNPorts6 ecmpHelper(
       ensemble->getSw()->getState(),
       ensemble->getSw()->needL2EntryForNeighbor());
-  // Use ecmpHelper's nhop count — with 2-port LAGs, deduplicated nhops
-  // are fewer than physical ports
-  auto numNhops =
-      std::min(static_cast<int>(ecmpHelper.getNextHops().size()), 64);
-  CHECK_GT(numNhops, 0);
-
-  ensemble->applyNewState([&](const std::shared_ptr<SwitchState>& in) {
-    return ecmpHelper.resolveNextHops(in, numNhops);
-  });
+  auto numNhops = resolveSrv6NextHops(*ensemble, ecmpHelper);
 
   // Timed: program and unprogram all routes in one shot
   suspender.dismiss();
@@ -238,6 +246,61 @@ void srv6EcmpGroupScaleBenchmark(int numGroups, int membersPerGroup) {
     routeUpdater.program();
   }
 
+  suspender.rehire();
+}
+
+void srv6NamedNhgScaleBenchmark(
+    int numGroups,
+    const std::vector<int>& weights) {
+  folly::BenchmarkSuspender suspender;
+
+  FLAGS_ecmp_resource_percentage = 100;
+  FLAGS_srv6_nexthop_resource_percentage = 100;
+  FLAGS_enable_nexthop_id_manager = true;
+  auto ensemble = createSrv6Ensemble();
+  utility::EcmpSetupAnyNPorts6 ecmpHelper(
+      ensemble->getSw()->getState(),
+      ensemble->getSw()->needL2EntryForNeighbor());
+  auto numNhops = resolveSrv6NextHops(*ensemble, ecmpHelper);
+
+  auto groups = std::make_unique<std::vector<NextHopGroup>>(numGroups);
+  auto routes = std::make_unique<std::vector<UnicastRoute>>(numGroups);
+  auto prefixes = std::make_unique<std::vector<IpPrefix>>();
+  auto names = std::make_unique<std::vector<std::string>>();
+  for (int group = 0; group < numGroups; ++group) {
+    auto name = fmt::format("srv6_nhg_{}", group);
+    auto prefix =
+        toIpPrefix({folly::IPAddress(fmt::format("2800:{:x}::", group)), 48});
+    auto& nhg = (*groups)[group];
+    nhg.name() = name;
+    const int numUnique = static_cast<int>(weights.size());
+    for (int i = 0; i < numUnique; ++i) {
+      auto globalIndex = group * numUnique + i;
+      nhg.nexthops()->insert(
+          nhg.nexthops()->end(),
+          weights[i],
+          utility::makeSrv6NextHopThrift(
+              ecmpHelper.nhop(globalIndex % numNhops).ip,
+              makeSid(globalIndex)));
+    }
+    NamedRouteDestination namedDest;
+    namedDest.nextHopGroup() = name;
+    auto& route = (*routes)[group];
+    route.dest() = prefix;
+    route.namedRouteDestination() = namedDest;
+    route.adminDistance() = AdminDistance::TE_AGENT;
+    prefixes->push_back(prefix);
+    names->push_back(name);
+  }
+  ThriftHandler handler(ensemble->getSw());
+  constexpr auto kClient = static_cast<int16_t>(ClientID::TE_AGENT);
+
+  suspender.dismiss();
+  handler.addOrUpdateNamedNextHopGroups(
+      std::move(groups), true /*combineDuplicatedNextHops*/);
+  handler.addUnicastRoutes(kClient, std::move(routes));
+  handler.deleteUnicastRoutes(kClient, std::move(prefixes));
+  handler.deleteNamedNextHopGroups(std::move(names));
   suspender.rehire();
 }
 
@@ -361,14 +424,7 @@ void srv6RouteScaleBenchmark(int numV6Routes, int numV4Routes) {
   folly::BenchmarkSuspender suspender;
   constexpr int kNumSharedSrv6Nhops = 8;
 
-  auto ensemble = createAgentEnsemble(
-      makeSrv6ConfigFn(), false /*disableLinkStateToggler*/);
-  ensemble->applyNewState(
-      [](const std::shared_ptr<SwitchState>& in) {
-        return utility::enableTrunkPorts(in);
-      },
-      "enable trunk ports");
-
+  auto ensemble = createSrv6Ensemble();
   utility::EcmpSetupAnyNPorts6 ecmpHelper6(
       ensemble->getSw()->getState(),
       ensemble->getSw()->needL2EntryForNeighbor());
@@ -481,12 +537,7 @@ void srv6RouteCounterStatsCollectionBenchmark(int numRoutes) {
   utility::EcmpSetupAnyNPorts6 ecmpHelper6(
       ensemble->getSw()->getState(),
       ensemble->getSw()->needL2EntryForNeighbor());
-  auto numNhops =
-      std::min(static_cast<int>(ecmpHelper6.getNextHops().size()), 64);
-  CHECK_GT(numNhops, 0);
-  ensemble->applyNewState([&](const std::shared_ptr<SwitchState>& in) {
-    return ecmpHelper6.resolveNextHops(in, numNhops);
-  });
+  auto numNhops = resolveSrv6NextHops(*ensemble, ecmpHelper6);
 
   auto sharedV6Nhops =
       makeSharedSrv6Nhops(ecmpHelper6, numNhops, kNumSharedSrv6Nhops);
@@ -525,8 +576,8 @@ void srv6FullScaleWarmbootBenchmark(
     int numV6Routes,
     int numMySidEntries) {
   folly::BenchmarkSuspender suspender;
-  constexpr int kNumSharedSrv6Nhops = 8;
   FLAGS_ecmp_resource_percentage = 100;
+  FLAGS_srv6_nexthop_resource_percentage = 100;
   // Don't cap MySID usage at the default percentage (match the MySID
   // benchmark).
   FLAGS_enable_mysid_resource_protection = true;
@@ -551,12 +602,7 @@ void srv6FullScaleWarmbootBenchmark(
     utility::EcmpSetupAnyNPorts6 ecmpHelper(
         ensemble->getSw()->getState(),
         ensemble->getSw()->needL2EntryForNeighbor());
-    auto numNhops =
-        std::min(static_cast<int>(ecmpHelper.getNextHops().size()), 64);
-    CHECK_GT(numNhops, 0);
-    ensemble->applyNewState([&](const std::shared_ptr<SwitchState>& in) {
-      return ecmpHelper.resolveNextHops(in, numNhops);
-    });
+    auto numNhops = resolveSrv6NextHops(*ensemble, ecmpHelper);
 
     auto routeUpdater = ensemble->getSw()->getRouteUpdater();
 
@@ -565,11 +611,11 @@ void srv6FullScaleWarmbootBenchmark(
     addSrv6EcmpGroupRoutes(
         routeUpdater, ecmpHelper, numNhops, numGroups, membersPerGroup);
 
-    // numV6Routes routes sharing one SRv6 nhop set. SIDs start after the group
-    // SIDs; base under 2a00:: to avoid colliding with the 2800::/48 group
-    // routes above.
-    auto sharedV6Nhops = makeSharedSrv6Nhops(
-        ecmpHelper, numNhops, kNumSharedSrv6Nhops, numGroups * membersPerGroup);
+    // numV6Routes routes reuse group 0's nhop set, so they add no SRv6 nhops
+    // past numGroups * membersPerGroup (the ASIC limit). Base under 2a00:: to
+    // avoid colliding with the 2800::/48 group routes above.
+    auto sharedV6Nhops =
+        makeSharedSrv6Nhops(ecmpHelper, numNhops, membersPerGroup);
     auto v6Prefixes = genDistributedPrefixes<folly::IPAddressV6>(
         scaleDistribution(kSrv6V6PrefixDistribution, numV6Routes),
         folly::IPAddressV6("2a00::"));
@@ -613,6 +659,24 @@ BENCHMARK(HwSrv6EcmpGroupScaleBenchmark) {
 // next hop (3000 distinct SidList + underlay-nhop SAI objects).
 BENCHMARK(HwSrv6SingleNextHopRouteScaleBenchmark) {
   srv6EcmpGroupScaleBenchmark(3000, 1);
+}
+
+constexpr int kRbbNhgEntries = 16;
+
+BENCHMARK(HwSrv6NamedNhgEcmpNextHopScaleBenchmark) {
+  srv6NamedNhgScaleBenchmark(390, std::vector<int>(kRbbNhgEntries, 1));
+}
+
+BENCHMARK(HwSrv6NamedNhgUcmpNextHopScaleBenchmark) {
+  srv6NamedNhgScaleBenchmark(780, {1, 2, 3, 4, 5, 6, 7, 8});
+}
+
+BENCHMARK(HwSrv6NamedNhgEcmpGroupScaleBenchmark) {
+  srv6NamedNhgScaleBenchmark(1024, std::vector<int>(5, 1));
+}
+
+BENCHMARK(HwSrv6NamedNhgUcmpGroupScaleBenchmark) {
+  srv6NamedNhgScaleBenchmark(1024, {1, 2, 3, 4, 5});
 }
 
 // ASIC supports 50K routes with SRv6 encap. Routes follow a prod backbone

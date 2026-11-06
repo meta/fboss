@@ -75,6 +75,18 @@ SaiPhyManager::PlatformInfo::PlatformInfo(std::unique_ptr<SaiPlatform> platform)
 
 SaiPhyManager::PlatformInfo::~PlatformInfo() {}
 
+void SaiPhyManager::PlatformInfo::seedStateFromHwSwitch() {
+  std::lock_guard<std::mutex> g(updateMutex_);
+  setState(getHwSwitch()->getProgrammedState());
+}
+
+// PlatformInfo starts with an empty SwitchState in every process. Without
+// seeding it after warm boot, the next applyUpdate computes {} -> {port N}
+// against the restored HwSwitch state and removes every other port.
+void SaiPhyManager::seedPlatformStateAfterWarmBoot(GlobalXphyID xphyID) {
+  getPlatformInfo(xphyID)->seedStateFromHwSwitch();
+}
+
 SaiPhyManager::PlatformInfo* SaiPhyManager::getPlatformInfo(
     GlobalXphyID xphyID) {
   const auto& phyIDInfo = getPhyIDInfo(xphyID);
@@ -502,8 +514,13 @@ void SaiPhyManager::programOnePort(
     // Before actually calling sai sdk to program the port again, we should
     // check whether the port has been programmed in HW with the same config.
     // We avoid reprogramming the port if the config matches with what we have
-    // already programmed before, unless the needResetDataPath flag is set
+    // already programmed before, unless the needResetDataPath flag is set.
+    // Only Elbert (Credo) still does this; other xphys rely on the SwitchState
+    // delta in applyUpdate (as the agent does): an unchanged port yields an
+    // empty delta and no SAI calls.
+    // TODO: drop this for Elbert after Credo  validation.
     if (!needResetDataPath &&
+        getPhyAsicType() == cfg::AsicType::ASIC_TYPE_ELBERT_8DD &&
         !(wLockedCache->systemLanes.empty() ||
           wLockedCache->lineLanes.empty())) {
       const auto& actualPhyPortConfig =
@@ -760,8 +777,9 @@ void SaiPhyManager::setSaiPortAdminState(
       saiSwitch->managerTable()->portManager().getPortHandle(swPort);
 
   if (portHandle == nullptr) {
-    XLOG(INFO) << "Port Handle is null";
-    return;
+    throw FbossError(
+        "setSaiPortAdminState: no xphy port handle for port ",
+        static_cast<int>(swPort));
   }
 
   auto portAdapterKey = (component == phy::PortComponent::GB_LINE)
@@ -1041,13 +1059,13 @@ bool SaiPhyManager::getSdkState(const std::string& fileName) {
 
   auto pimPlatformItr = saiPlatforms_.begin();
   if (pimPlatformItr == saiPlatforms_.end()) {
-    return false;
+    throw FbossError("getSdkState: no external PHY has been initialized");
   }
   auto& pimPlatform = pimPlatformItr->second;
 
   auto platformItr = pimPlatform.begin();
   if (platformItr == pimPlatform.end()) {
-    return false;
+    throw FbossError("getSdkState: no external PHY has been initialized");
   }
 
   GlobalXphyID xphyID = platformItr->first;

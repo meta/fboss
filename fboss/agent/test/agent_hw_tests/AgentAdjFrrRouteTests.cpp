@@ -668,8 +668,26 @@ TEST_F(AgentAdjFrrRouteTest, routeWithPrimaryAndBackupNhops) {
         injectionPort, primaryPorts, kPacketCount, "Primary");
 
     bringDownPort(primaryPort);
+
+    // While the primary is down, every failover packet must count a
+    // switchover event on the ingress port. Only asserted where supported.
+    const bool checkSwitchoverEvents = isSupportedOnAllAsics(
+        HwAsic::Feature::HW_PROTECTION_SWITCHOVER_COUNTERS);
+    const auto eventsBefore = checkSwitchoverEvents
+        ? std::optional(getLatestPortStats(injectionPort))
+        : std::nullopt;
     sendTrafficAndVerifyOutPackets(
         injectionPort, backupPorts, kPacketCount, "Backup");
+    if (checkSwitchoverEvents) {
+      WITH_RETRIES({
+        const auto eventsAfter = getLatestPortStats(injectionPort);
+        EXPECT_EVENTUALLY_TRUE(
+            eventsAfter.hwProtectionSwitchoverEvents_().has_value());
+        EXPECT_EVENTUALLY_GT(
+            eventsAfter.hwProtectionSwitchoverEvents_().value_or(0),
+            eventsBefore->hwProtectionSwitchoverEvents_().value_or(0));
+      });
+    }
 
     restoreNextHop(primaryPort);
 
@@ -678,6 +696,31 @@ TEST_F(AgentAdjFrrRouteTest, routeWithPrimaryAndBackupNhops) {
         primaryPorts,
         kPacketCount,
         "Primary after next-hop re-resolution");
+  };
+
+  verifyAcrossWarmBoots(setup, verify);
+}
+
+// A route whose whole forwarding set is one backup next hop -- the shape a
+// protected route collapses to once resolution drops its primary. Such a route
+// is programmed as a protection group rather than a plain next hop, so the
+// group is created with a single member in its backup half. Widths above one
+// are covered by the balance tests below; this pins the narrowest case, where
+// the group has the least room to hide a programming error.
+TEST_F(AgentAdjFrrRouteTest, routeWithSingleBackupNhopOnly) {
+  constexpr size_t kNumBackups = 1;
+  auto setup = [this]() {
+    setupRouteWithPrimaryAndBackupNhops(
+        false /* includePrimaryNextHop */, kNumBackups);
+  };
+
+  auto verify = [this]() {
+    constexpr int kPacketCount = 10000;
+    CHECK_GE(phyLoopbackPortIds_.size(), kNumRequiredPhyLoopbackPorts);
+    const std::vector<PortID> backupPorts{phyLoopbackPortIds_.at(1)};
+    const auto injectionPort = phyLoopbackPortIds_.at(kNumRouteNextHops);
+    sendTrafficAndVerifyOutPackets(
+        injectionPort, backupPorts, kPacketCount, "Single backup next hop");
   };
 
   verifyAcrossWarmBoots(setup, verify);

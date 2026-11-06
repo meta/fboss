@@ -6,6 +6,7 @@
 #include "fboss/cli/fboss2/commands/show/fsdb/CmdShowFsdbOperStats.h"
 #include "fboss/cli/fboss2/commands/show/fsdb/CmdShowFsdbPublishers.h"
 #include "fboss/cli/fboss2/commands/show/fsdb/CmdShowFsdbSubscribers.h"
+#include "fboss/cli/fboss2/commands/show/fsdb/CmdShowFsdbUtils.h"
 #include "fboss/cli/fboss2/test/CmdHandlerTestBase.h"
 #include "fboss/cli/fboss2/utils/CmdUtils.h"
 
@@ -92,6 +93,17 @@ TEST_F(CmdShowFsdbTestFixture, testGetSubscriptionPathStrExtendedFallback) {
   subscriber.extendedPaths() = {extPath};
 
   EXPECT_EQ(utils::getSubscriptionPathStr(subscriber), "99999");
+}
+
+TEST_F(CmdShowFsdbTestFixture, serveIntervalFormatting) {
+  fsdb::OperSubscriberInfo subscriber;
+  EXPECT_EQ(
+      fsdb_cli_format::serveIntervalToString(subscriber.serveIntervalSec()),
+      "default");
+  subscriber.serveIntervalSec() = 2;
+  EXPECT_EQ(
+      fsdb_cli_format::serveIntervalToString(subscriber.serveIntervalSec()),
+      "2s");
 }
 
 TEST_F(CmdShowFsdbTestFixture, wikiDocHooksSubscribers) {

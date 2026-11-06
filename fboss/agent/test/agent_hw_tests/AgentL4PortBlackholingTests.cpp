@@ -17,6 +17,7 @@
 #include "fboss/agent/test/gen-cpp2/production_features_types.h"
 
 #include "fboss/agent/test/EcmpSetupHelper.h"
+#include "fboss/agent/test/ResourceLibUtil.h"
 
 #include "fboss/agent/state/Interface.h"
 #include "fboss/agent/state/SwitchState.h"
@@ -43,13 +44,15 @@ class AgentL4PortBlackHolingTest : public AgentHwTest {
     auto dstIp = IPAddress(isV6 ? "2001::1" : "201.101.0.1");
     auto vlanId = getVlanIDForTx();
     auto mac = getMacForFirstInterfaceWithPortsForTesting(getProgrammedState());
+    // Router MAC as src would flap in the L2 table under SW learning.
+    auto srcMac = utility::MacAddressGenerator().get(mac.u64HBO() + 1);
     enum class Dir { SRC_PORT, DST_PORT };
     for (auto l4Port = 1; l4Port <= kNumL4Ports(); ++l4Port) {
       for (auto dir : {Dir::SRC_PORT, Dir::DST_PORT}) {
         auto pkt = utility::makeUDPTxPacket(
             getSw(),
             vlanId,
-            mac,
+            srcMac,
             mac,
             srcIp,
             dstIp,

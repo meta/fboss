@@ -124,12 +124,15 @@ def stop_existing_container(container_name: str) -> None:
         print("  → No existing container found")
 
 
-def teardown() -> int:
+def teardown(network: str = NETWORK_NAME) -> int:
     """Stop + remove the sim container (gracefully) and its IPv6 network."""
     print("\n🧹 Tearing down fboss-sim container + network...")
     # stop_existing_container does `docker stop` (STOPSIGNAL SIGRTMIN+3 -> clean
     # systemd shutdown) then `docker rm`.
     stop_existing_container(DEFAULT_CONTAINER_NAME)
+    if network != NETWORK_NAME:
+        print("✓ Teardown complete (selected network left intact)")
+        return 0
     result = subprocess.run(
         ["docker", "network", "rm", NETWORK_NAME],
         check=False,
@@ -144,7 +147,7 @@ def teardown() -> int:
     return 0
 
 
-def _base_run_flags() -> list[str]:
+def _base_run_flags(network: str = NETWORK_NAME) -> list[str]:
     """Systemd + networking + capability flags shared by both modes."""
     return [
         "-d",
@@ -155,7 +158,7 @@ def _base_run_flags() -> list[str]:
         "--device=/dev/net/tun",
         # IPv6-enabled user-defined network (avoids Docker default bridge
         # setting net.ipv6.conf.eth0.disable_ipv6=1)
-        f"--network={NETWORK_NAME}",
+        f"--network={network}",
         "--shm-size=512m",
         "--memory=4g",
         "--cgroupns=host",
@@ -168,17 +171,17 @@ def _base_run_flags() -> list[str]:
     ]
 
 
-def run_container() -> int:
+def run_container(network: str = NETWORK_NAME) -> int:
     """Production-like mode: run the packaged runtime image (systemd baked in)."""
     image_tag = f"{DEFAULT_IMAGE_NAME}:latest"
     print("\n🚀 Starting fboss-sim runtime container...")
     print(f"  Image:     {image_tag}")
     print(f"  Container: {DEFAULT_CONTAINER_NAME}")
-    print(f"  Network:   {NETWORK_NAME} (IPv6-enabled)")
+    print(f"  Network:   {network}")
 
     cmd = (
         ["docker", "run"]
-        + _base_run_flags()
+        + _base_run_flags(network)
         + ["--name", DEFAULT_CONTAINER_NAME, image_tag]
     )
 
@@ -220,7 +223,8 @@ mkdir -p /opt/fboss/bin /opt/fboss/lib /opt/fboss/share /etc/coop /root/config \
          /var/facebook/fboss /var/facebook/logs/fboss /dev/shm/fboss
 
 echo "→ Installing systemd units + rootfs overlay..."
-cp -a "$ROOTFS"/. /
+# Host checkout ownership must not carry into the container's runtime files.
+cp -a --no-preserve=ownership "$ROOTFS"/. /
 
 echo "→ Symlinking freshly built binaries into /opt/fboss/bin..."
 for f in wedge_agent-sai_impl fboss_sw_agent fboss_hw_agent-sai_impl \
@@ -289,6 +293,35 @@ echo "✓ local setup complete"
 """
 
 
+_BGP_SETUP = r"""
+set -eo pipefail
+REPO=/var/FBOSS/fboss
+mkdir -p /opt/bgp /etc/coop/bgpcpp /var/facebook/logs/bgp
+tar --no-same-owner -xf /opt/bgp.tar -C /opt/bgp
+if [ ! -x /opt/bgp/bin/bgp ] && [ -x /opt/bgp/sbin/bgp ]; then
+  mkdir -p /opt/bgp/bin
+  ln -s ../sbin/bgp /opt/bgp/bin/bgp
+fi
+test -x /opt/bgp/bin/bgp
+cp "$REPO/fboss-sim/docker/runtime/bgpcpp.conf" /etc/coop/bgpcpp/bgpcpp.conf
+ln -sfn bgpcpp/bgpcpp.conf /etc/coop/bgpcpp.conf
+git -C /etc/coop add bgpcpp/bgpcpp.conf bgpcpp.conf
+git -C /etc/coop commit -qm 'Initial BGP simulator config'
+cp "$REPO/fboss-sim/docker/runtime/bgpd.service" /etc/systemd/system/bgpd.service
+systemctl daemon-reload
+systemctl start bgpd
+for attempt in $(seq 1 60); do
+  if timeout 5s /opt/fboss/bin/fboss2 show bgp config running 2>/dev/null |
+     jq -se 'length == 1 and .[0].router_id != null' >/dev/null 2>&1; then
+    exit 0
+  fi
+  sleep 1
+done
+echo "BGP did not become ready" >&2
+exit 1
+"""
+
+
 def _docker_exec(container: str, script: str) -> int:
     return subprocess.run(
         ["docker", "exec", container, "bash", "-c", script], check=False
@@ -309,16 +342,26 @@ def run_local(args: argparse.Namespace) -> int:
     print("\n🚀 Starting fboss-sim LOCAL dev container (systemd)...")
     print(f"  Image:     {args.build_image}")
     print(f"  Container: {DEFAULT_CONTAINER_NAME}")
-    print(f"  Repo:      {repo} -> /var/FBOSS/fboss")
+    print(f"  Network:   {args.network}")
+    source_flags = []
+    if not args.no_default_repo_mount:
+        source_flags += ["-v", f"{repo}:/var/FBOSS/fboss"]
+        print(f"  Repo:      {repo} -> /var/FBOSS/fboss")
+    for volume in args.volume:
+        source_flags += ["--volume", volume]
+        print(f"  Volume:    {volume}")
+    for environment in args.env:
+        source_flags += ["--env", environment]
+    if args.bgp_tar:
+        source_flags += ["--volume", f"{Path(args.bgp_tar).resolve()}:/opt/bgp.tar:ro"]
     print(f"  Build:     {build_dir} -> {runpath}  (RUNPATH-matching)")
     print(f"  Mode:      {args.mode}")
 
     cmd = (
         ["docker", "run"]
-        + _base_run_flags()
+        + _base_run_flags(args.network)
+        + source_flags
         + [
-            "-v",
-            f"{repo}:/var/FBOSS/fboss",
             "-v",
             f"{build_dir}:{runpath}",
             "--name",
@@ -336,7 +379,20 @@ def run_local(args: argparse.Namespace) -> int:
     print(f"  ✓ Container started (ID: {result.stdout.strip()[:12]})")
 
     print("\n🔧 Setting up sim environment inside the container...")
-    setup = _LOCAL_SETUP.format(repo="/var/FBOSS/fboss", runpath=runpath)
+    # A detached launch can return before the image entrypoint finishes staging.
+    ready = r"""
+set -e
+for attempt in $(seq 1 60); do
+  state=$(systemctl show --property=SystemState --value 2>/dev/null || true)
+  case "$state" in running|degraded) break ;; esac
+  sleep 1
+done
+case "$state" in
+  running|degraded) ;;
+  *) echo "systemd did not become ready within 60 seconds" >&2; exit 1 ;;
+esac
+"""
+    setup = ready + _LOCAL_SETUP.format(repo="/var/FBOSS/fboss", runpath=runpath)
     rc = _docker_exec(DEFAULT_CONTAINER_NAME, setup)
     if rc != 0:
         print("❌ In-container setup failed")
@@ -461,16 +517,53 @@ def _parse_args() -> argparse.Namespace:
         "from this script's location.",
     )
     parser.add_argument(
+        "--volume",
+        action="append",
+        default=[],
+        metavar="SOURCE:DEST[:OPTIONS]",
+        help="[--local] Additional Docker volume; may be repeated.",
+    )
+    parser.add_argument(
+        "--env",
+        action="append",
+        default=[],
+        metavar="NAME[=VALUE]",
+        help="[--local] Docker environment variable; may be repeated.",
+    )
+    parser.add_argument(
+        "--no-default-repo-mount",
+        action="store_true",
+        help="[--local] Skip the automatic --repo-dir mount at /var/FBOSS/fboss. "
+        "Additional --volume mounts still apply.",
+    )
+    parser.add_argument(
         "--build-image",
         default=DEFAULT_BUILD_IMAGE,
         help=f"[--local] Build image to run. Default: {DEFAULT_BUILD_IMAGE}",
+    )
+    parser.add_argument(
+        "--network",
+        default=NETWORK_NAME,
+        help="Docker network name or mode (for example, host). Default: "
+        "the managed IPv6 simulator network. Other networks must already exist.",
     )
     parser.add_argument(
         "--teardown",
         action="store_true",
         help="Stop and remove the sim container and its IPv6 network, then exit.",
     )
-    return parser.parse_args()
+    parser.add_argument(
+        "--bgp-tar",
+        help="[--local] Host path to an OSS BGP++ tar archive containing "
+        "bin/bgp (or sbin/bgp) and lib/. Starts bgpd for the existing test suite.",
+    )
+    args = parser.parse_args()
+    if args.bgp_tar:
+        if not args.local:
+            parser.error("--bgp-tar requires --local")
+        if not Path(args.bgp_tar).is_file():
+            parser.error(f"BGP archive not found: {args.bgp_tar}")
+    return args
 
 
 def _print_usage_footer(is_mono: bool) -> None:
@@ -496,23 +589,32 @@ def main() -> int:
     print("=" * 60)
 
     if args.teardown:
-        return teardown()
+        return teardown(args.network)
 
     print("\n🔍 Checking for existing container...")
     stop_existing_container(DEFAULT_CONTAINER_NAME)
 
     print("\n🌐 Setting up network...")
-    ensure_network(NETWORK_NAME)
+    if args.network == NETWORK_NAME:
+        ensure_network(NETWORK_NAME)
+    else:
+        print(f"  → Using {args.network}; skipping managed network creation")
 
     if args.local:
         ret = run_local(args)
         is_mono = args.mode == "mono"
     else:
-        ret = run_container()
+        ret = run_container(args.network)
         is_mono = False
     if ret != 0:
         return ret
 
+    if args.bgp_tar:
+        print("\n▶ Starting BGP...")
+        rc = _docker_exec(DEFAULT_CONTAINER_NAME, _BGP_SETUP)
+        if rc != 0:
+            print("❌ Failed to start BGP")
+            return rc
     emit_github_output("container_name", DEFAULT_CONTAINER_NAME)
     _print_usage_footer(is_mono)
     return 0

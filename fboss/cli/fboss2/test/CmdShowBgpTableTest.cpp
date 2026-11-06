@@ -8,13 +8,15 @@
  *
  */
 
+#include <stdexcept>
+#include <vector>
+
 #include <fmt/core.h>
 #include <folly/json.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <thrift/lib/cpp/TApplicationException.h>
 #include <thrift/lib/cpp2/reflection/testing.h> // NOLINT(misc-include-cleaner)
-#include <vector>
 #include "fboss/cli/fboss2/commands/show/bgp/CmdShowUtils.h"
 #include "fboss/cli/fboss2/test/CmdHandlerTestBase.h"
 
@@ -258,6 +260,7 @@ TEST_F(CmdShowBgpTableTestFixture, wikiDocHooks) {
   // and a lower-local-pref path outside the best group.
   EXPECT_THAT(output, HasSubstr("*@  from 192.0.2.11"));
   EXPECT_THAT(output, HasSubstr("*   from 192.0.2.12"));
+  EXPECT_THAT(output, Not(HasSubstr("FIB-out:")));
   EXPECT_THAT(output, HasSubstr("    from 192.0.2.13"));
   EXPECT_THAT(output, HasSubstr("> 0.0.0.0/0, Selected 2/3 paths"));
   // The plain view is one line per path, with none of detail's extra lines.

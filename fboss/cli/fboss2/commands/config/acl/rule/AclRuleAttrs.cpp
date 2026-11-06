@@ -27,6 +27,7 @@
 #include <vector>
 
 #include "fboss/cli/fboss2/utils/CmdUtilsCommon.h"
+#include "fboss/cli/fboss2/utils/LookupClassUtils.h"
 
 namespace facebook::fboss {
 
@@ -364,6 +365,33 @@ const std::vector<AclRuleRow>& matchFieldRows() {
          auto plr = parsePacketLookupResult(v[kValue0]);
          return onEntry(
              [plr](cfg::AclEntry& r) { r.packetLookupResult() = plr; });
+       }},
+      // Same spelling as `config interface <intf> lookup-class`: a numeric id
+      // or a class name, parsed and range-checked by the shared helper.
+      {kAclRuleAttrLookupClassL2,
+       kOneValue,
+       kOneValue,
+       "<class-id>",
+       [](std::string_view, Values v) {
+         auto lc = lookup_class::parseLookupClassId(v[kValue0]);
+         return onEntry([lc](cfg::AclEntry& r) { r.lookupClassL2() = lc; });
+       }},
+      {kAclRuleAttrLookupClassNeighbor,
+       kOneValue,
+       kOneValue,
+       "<class-id>",
+       [](std::string_view, Values v) {
+         auto lc = lookup_class::parseLookupClassId(v[kValue0]);
+         return onEntry(
+             [lc](cfg::AclEntry& r) { r.lookupClassNeighbor() = lc; });
+       }},
+      {kAclRuleAttrLookupClassRoute,
+       kOneValue,
+       kOneValue,
+       "<class-id>",
+       [](std::string_view, Values v) {
+         auto lc = lookup_class::parseLookupClassId(v[kValue0]);
+         return onEntry([lc](cfg::AclEntry& r) { r.lookupClassRoute() = lc; });
        }},
   };
   return kRows;

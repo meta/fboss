@@ -2,6 +2,12 @@
 
 How to build FBOSS test binaries, locate config files, and find vendor SDK artifacts.
 
+> **For the build system itself**, the `build-fboss-oss-local` skill is the
+> canonical reference: container setup, the full `run-getdeps.py` flag surface,
+> supplying a vendor SAI SDK, build targets, and a troubleshooting catalogue
+> indexed by error message. This file covers what an AgentHwTest workflow needs
+> on top of that.
+
 > **Customization point**: If your environment has a different build system
 > or SDK layout, create `facebook/build-environment.md` in this skill
 > directory with your environment-specific commands and paths. The skill

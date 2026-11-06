@@ -2433,6 +2433,14 @@
         {
           "test_name_regex": "RxSlowPathArpBenchmark",
           "reason": "not able to generate linerate traffic on cisco asic"
+        },
+        {
+          "test_name_regex": "HwInitAndExit400Gx400GBenchmark",
+          "reason": "Times out on leaba 1.42.8 after D118563817 (MAC loopback storm)"
+        },
+        {
+          "test_name_regex": "HwInitAndExit40Gx10GBenchmark",
+          "reason": "Times out on leaba 1.42.8 after D118563817 (MAC loopback storm)"
         }
     ],
     "leaba/1.42.8/gibraltar/mono": [
@@ -2487,6 +2495,14 @@
         {
           "test_name_regex": "RxSlowPathArpBenchmark",
           "reason": "not able to generate linerate traffic on cisco asic"
+        },
+        {
+          "test_name_regex": "HwInitAndExit400Gx400GBenchmark",
+          "reason": "Times out on leaba 1.42.8 after D118563817 (MAC loopback storm)"
+        },
+        {
+          "test_name_regex": "HwInitAndExit40Gx10GBenchmark",
+          "reason": "Times out on leaba 1.42.8 after D118563817 (MAC loopback storm)"
         }
     ],
     "leaba/1.42.8/gibraltar/multi_switch": [
@@ -2541,6 +2557,14 @@
         {
           "test_name_regex": "RxSlowPathArpBenchmark",
           "reason": "not able to generate linerate traffic on cisco asic"
+        },
+        {
+          "test_name_regex": "HwInitAndExit400Gx400GBenchmark",
+          "reason": "Times out on leaba 1.42.8 after D118563817 (MAC loopback storm)"
+        },
+        {
+          "test_name_regex": "HwInitAndExit40Gx10GBenchmark",
+          "reason": "Times out on leaba 1.42.8 after D118563817 (MAC loopback storm)"
         }
     ],
     "leaba/24.8.3001/gibraltar": [
@@ -4049,7 +4073,7 @@
           "reason": "Flowlet stats benchmarking is unsupported on chenab"
         }
     ],
-    "nvda/2605.37/spectrum4": [
+    "nvda/2605.38/spectrum4": [
         {
           "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
           "reason": "PBR ACL support has not landed yet"
@@ -4103,7 +4127,7 @@
           "reason": "Flowlet stats benchmarking is unsupported on chenab"
         }
     ],
-    "nvda/2605.37/spectrum4/mono": [
+    "nvda/2605.38/spectrum4/mono": [
         {
           "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
           "reason": "PBR ACL support has not landed yet"
@@ -4157,7 +4181,7 @@
           "reason": "Flowlet stats benchmarking is unsupported on chenab"
         }
     ],
-    "nvda/2605.37/spectrum4/multi_switch": [
+    "nvda/2605.38/spectrum4/multi_switch": [
         {
           "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
           "reason": "PBR ACL support has not landed yet"
@@ -4874,6 +4898,17 @@
             {
               "metric_key_regex": "HwEcmpGroupShrinkWithCompetingRouteUpdates",
               "upper_bound": 25000000000
+            }
+          ]
+        }
+    ],
+    "fboss.agent.hw.sai.benchmarks.sai_bench_test.HwFlowletStatsCollectionAtScale": [
+        {
+          "test_config_regex": ".*/tomahawk5.*",
+          "thresholds": [
+            {
+              "metric_key_regex": "HwFlowletStatsCollectionAtScale",
+              "upper_bound": 10028000000000000
             }
           ]
         }
@@ -6238,7 +6273,7 @@
           "thresholds": [
             {
               "metric_key_regex": "max_rss",
-              "upper_bound": 3707334
+              "upper_bound": 4507939
             },
             {
               "metric_key_regex": "program_routes_msecs",
@@ -6251,7 +6286,7 @@
           "thresholds": [
             {
               "metric_key_regex": "max_rss",
-              "upper_bound": 3707334
+              "upper_bound": 4597272
             },
             {
               "metric_key_regex": "program_routes_msecs",
@@ -6264,7 +6299,7 @@
           "thresholds": [
             {
               "metric_key_regex": "max_rss",
-              "upper_bound": 3251472
+              "upper_bound": 4071067
             },
             {
               "metric_key_regex": "program_routes_msecs",
@@ -6773,17 +6808,17 @@
           "test_name_regex": "HwSrv6.*$"
         }
     ],
-    "nvda/2605.37/spectrum4": [
+    "nvda/2605.38/spectrum4": [
         {
           "test_name_regex": "HwSrv6.*$"
         }
     ],
-    "nvda/2605.37/spectrum4/mono": [
+    "nvda/2605.38/spectrum4/mono": [
         {
           "test_name_regex": "HwSrv6.*$"
         }
     ],
-    "nvda/2605.37/spectrum4/multi_switch": [
+    "nvda/2605.38/spectrum4/multi_switch": [
         {
           "test_name_regex": "HwSrv6.*$"
         }

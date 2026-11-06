@@ -81,6 +81,31 @@ namespace facebook::fboss {
 
 using LoadBalancerID = cfg::LoadBalancerID;
 
+// The top 4 bits of a NextHopID/NextHopSetID name the allocator that owns it,
+// so a bare id is never ambiguous. Every allocator gets its own type here.
+// Values must stay below 0b1000; bit 63 is the sign bit.
+enum class NextHopIdType : int64_t {
+  NEXTHOP = 0b0000,
+  // 0100 rather than 0001: persisted from 2^62 before types existed.
+  NEXTHOP_SET = 0b0100,
+  // EcmpResourceManager override groups.
+  OVERRIDE_SET = 0b0101,
+};
+
+constexpr int kNextHopIdTypeShift = 60;
+
+constexpr NextHopIdType nextHopIdType(int64_t id) {
+  return static_cast<NextHopIdType>(id >> kNextHopIdTypeShift);
+}
+
+constexpr int64_t nextHopIdTypeStart(NextHopIdType type) {
+  return static_cast<int64_t>(type) << kNextHopIdTypeShift;
+}
+
+constexpr int64_t nextHopIdTypeEnd(NextHopIdType type) {
+  return (static_cast<int64_t>(type) + 1) << kNextHopIdTypeShift;
+}
+
 namespace cfg {
 
 std::ostream& operator<<(std::ostream& out, LoadBalancerID id);

@@ -643,11 +643,11 @@ SaiSwitchTraits::Attributes::AttributeSdkRegDumpLogPath::operator()() {
 // allows the write if it cannot read the configured window.
 //
 // The id only exists on the DNX releases carrying the CS00012465650 backport,
-// which is why they are listed individually below. Returning nullopt elsewhere
-// is what keeps SaiExtensionAttribute from CHECK failing on an unresolvable id.
+// see SAI_SDK_DUMP_RATE_LIMIT_SUPPORTED. Returning nullopt elsewhere is what
+// keeps SaiExtensionAttribute from CHECK failing on an unresolvable id.
 std::optional<sai_attr_id_t>
 SaiSwitchTraits::Attributes::AttributeSdkDumpRateLimitWindow::operator()() {
-#if defined(SAI_VERSION_12_2_0_0_DNX_ODP)
+#if defined(SAI_SDK_DUMP_RATE_LIMIT_SUPPORTED)
   return SAI_SWITCH_ATTR_SDK_DUMP_RATE_LIMIT_WINDOW;
 #endif
   return std::nullopt;
@@ -659,11 +659,11 @@ SaiSwitchTraits::Attributes::AttributeSdkDumpRateLimitWindow::operator()() {
 // to sum the deltas themselves. READ_ONLY, so it is not a create attribute.
 //
 // The id only exists on the DNX releases carrying the CS00012465650 backport,
-// which is why they are listed individually below. Returning nullopt elsewhere
-// is what keeps SaiExtensionAttribute from CHECK failing on an unresolvable id.
+// see SAI_SDK_DUMP_RATE_LIMIT_SUPPORTED. Returning nullopt elsewhere is what
+// keeps SaiExtensionAttribute from CHECK failing on an unresolvable id.
 std::optional<sai_attr_id_t>
 SaiSwitchTraits::Attributes::AttributeSdkDumpSuppressedCount::operator()() {
-#if defined(SAI_VERSION_12_2_0_0_DNX_ODP)
+#if defined(SAI_SDK_DUMP_RATE_LIMIT_SUPPORTED)
   return SAI_SWITCH_ATTR_SDK_DUMP_SUPPRESSED_COUNT;
 #endif
   return std::nullopt;
@@ -798,6 +798,11 @@ SaiSwitchTraits::Attributes::AttributePortCl72RetryEnable::operator()() {
 #if defined(BRCM_SAI_SDK_XGS_GTE_14_2)
   return SAI_SWITCH_ATTR_PORT_CL72_RETRY_ENABLE;
 #endif
+  return std::nullopt;
+}
+
+std::optional<sai_attr_id_t>
+SaiSwitchTraits::Attributes::AttributeAclDropSnoopDisabled::operator()() {
   return std::nullopt;
 }
 

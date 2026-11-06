@@ -129,6 +129,7 @@ reconstructStateAndRib(
   if (warmBootState.has_value()) {
     /* warm boot: reconstruct from warm boot state */
     state = SwitchState::fromThrift(*(warmBootState->swSwitchState()));
+    state->publish();
     rib = RoutingInformationBase::fromThrift(
         *(warmBootState->routeTables()),
         state->getFibsInfoMap(),

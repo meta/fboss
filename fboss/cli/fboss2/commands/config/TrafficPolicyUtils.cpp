@@ -39,7 +39,6 @@ constexpr std::string_view kActionRedirectNexthopKeyword = "nexthop";
 constexpr std::string_view kActionUserDefinedTrap = "user-defined-trap";
 constexpr std::string_view kActionFlowlet = "flowlet";
 constexpr std::string_view kActionEcmpHash = "ecmp-hash";
-constexpr std::string_view kActionAlternateArsMembers = "alternate-ars-members";
 
 constexpr int64_t kQueueIdMax = 32767; // i16 QueueMatchAction
 constexpr int64_t kDscpMax = 63; // 6-bit codepoint
@@ -311,17 +310,6 @@ const std::vector<ActionRow>& actionRows() {
          ma.ecmpHashAction().reset();
          return had;
        }},
-      {kActionAlternateArsMembers,
-       0,
-       "",
-       [](cfg::MatchAction& ma, const std::vector<std::string>&) {
-         ma.enableAlternateArsMembers() = true;
-       },
-       [](cfg::MatchAction& ma) {
-         bool had = ma.enableAlternateArsMembers().has_value();
-         ma.enableAlternateArsMembers().reset();
-         return had;
-       }},
   };
   return kRows;
 }
@@ -359,7 +347,7 @@ std::string configHelpText() {
       "match <rule-name> action <action-type> [<value>] where <action-type> "
       "is one of: " +
       actionKeysCsv() +
-      ". trap-to-cpu, copy-to-cpu and alternate-ars-members take no value; "
+      ". trap-to-cpu and copy-to-cpu take no value; "
       "'redirect' takes 'nexthop <ip>'.";
   return kText;
 }

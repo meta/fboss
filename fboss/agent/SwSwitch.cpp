@@ -42,6 +42,7 @@
 #include "fboss/agent/SwitchInfoUtils.h"
 #include "fboss/agent/TxPacketUtils.h"
 #include "fboss/agent/Utils.h"
+#include "fboss/agent/rib/FibUpdateHelpers.h"
 #include "fboss/agent/rib/RoutingInformationBase.h"
 #include "fboss/agent/state/StateUtils.h"
 #include "fboss/lib/phy/gen-cpp2/prbs_types.h"
@@ -865,16 +866,11 @@ state::SwitchState SwSwitch::updateOverrideEcmpSwitchingMode(
           switchingMode == cfg::SwitchingMode::PER_PACKET_QUALITY) {
         return;
       }
-      auto newFwd = RouteNextHopEntry(
-          fwd.getNextHopSet(),
-          fwd.getAdminDistance(),
-          fwd.getCounterID(),
-          fwd.getClassID(),
-          std::optional<cfg::SwitchingMode>(switchingMode),
-          fwd.getOverrideNextHops(),
-          fwd.getNormalizedResolvedNextHopSetID(),
-          fwd.getResolvedNextHopSetID(),
-          fwd.getClientNextHopSetID());
+      // Copy and adjust: under drop_inline_nexthops_with_id the inline set
+      // is empty and the nexthop-set ctor rejects it.
+      RouteNextHopEntry newFwd(fwd.toThrift());
+      newFwd.setOverrideEcmpSwitchingMode(
+          std::optional<cfg::SwitchingMode>(switchingMode));
       fib.value().at(routeName).fwd() = newFwd.toThrift();
     }
   };
@@ -886,7 +882,8 @@ state::SwitchState SwSwitch::updateOverrideEcmpSwitchingMode(
     auto& fibInfoFields = it->second;
     const auto& idToNextHopIdSet = *fibInfoFields.idToNextHopIdSet();
     auto fibs = fibInfoFields.fibsMap();
-    if (fibs.has_value()) {
+    if (apache::thrift::is_non_optional_field_set_manually_or_by_serializer(
+            fibs)) {
       for (auto& [_, fib] : *fibs) {
         auto fibV4 = fib.fibV4();
         for (auto& [name, thriftRoute] : *fibV4) {
@@ -1073,6 +1070,9 @@ AgentStats SwSwitch::fillFsdbStats() {
     }
   }
   stats()->fillAgentStats(agentStats);
+  if (auto* manager = getFabricLinkMonitoringManager()) {
+    manager->fillAgentFabricLinkMonitoringStats(agentStats);
+  }
   getHwSwitchHandler()->fillHwAgentConnectionStatus(agentStats);
   // fill old fields using first switch values for backward compatibility
   if (!agentStats.hwResourceStatsMap()->empty()) {
@@ -1553,6 +1553,7 @@ void SwSwitch::init(
     initialState = getAppliedState();
   }
   initialState->publish();
+  initialState = syncNextHopIDsToFIB(initialState);
   auto emptyState = std::make_shared<SwitchState>();
   auto origInitialState = initialState;
   emptyState->publish();
@@ -1577,6 +1578,9 @@ void SwSwitch::init(
   if (pbrAclManager_) {
     pbrAclManager_->updateDone();
   }
+  // Apply the state hardware was given, including manager reconstruct changes.
+  initialState = deltas.back().newState();
+  syncRibEcmpOverrides(StateDelta(origInitialState, initialState));
   // For cold boot there will be discripancy between applied state and state
   // that exists in hardware. this discrepancy is until config is applied, after
   // that the two states are in sync. tolerating this discrepancy for now
@@ -1645,6 +1649,7 @@ void SwSwitch::init(const HwWriteBehavior& hwWriteBehavior, SwitchFlags flags) {
   if (!getHwSwitchHandler()->waitUntilHwSwitchConnected()) {
     throw FbossError("Waiting for HwSwitch to be connected cancelled");
   }
+  initialState = syncNextHopIDsToFIB(initialState);
   auto origInitialState = initialState;
   auto deltas = reconstructStateFromManagers(emptyState, initialState);
   // Notify resource accountant of the initial state.
@@ -1673,6 +1678,12 @@ void SwSwitch::init(const HwWriteBehavior& hwWriteBehavior, SwitchFlags flags) {
   }
   if (pbrAclManager_) {
     pbrAclManager_->updateDone();
+  }
+  if (bootType_ == BootType::WARM_BOOT) {
+    // Apply the state hardware was given, including manager reconstruct
+    // changes.
+    initialState = deltas.back().newState();
+    syncRibEcmpOverrides(StateDelta(origInitialState, initialState));
   }
   // for cold boot discrepancy may exist between applied state in software
   // switch and state that already exist in hardware. this discrepancy is
@@ -1756,10 +1767,20 @@ void SwSwitch::logRouteUpdates(
       RoutePrefix<folly::IPAddress>{folly::IPAddress{addr}, mask},
       identifier,
       false};
+  if (isExiting()) {
+    XLOG(DBG2) << "Skipping route update logging for " << identifier
+               << ": switch is exiting";
+    return;
+  }
   routeUpdateLogger_->startLoggingForPrefix(r);
 }
 
 void SwSwitch::stopLoggingRouteUpdates(const std::string& identifier) {
+  if (isExiting()) {
+    XLOG(DBG2) << "Skipping stop of route update logging for " << identifier
+               << ": switch is exiting";
+    return;
+  }
   routeUpdateLogger_->stopLoggingForIdentifier(identifier);
 }
 
@@ -1818,6 +1839,25 @@ void SwSwitch::notifyStateObservers(const StateDelta& delta) {
     }
   }
   runFsdbSyncFunction([&delta](auto& syncer) { syncer->stateUpdated(delta); });
+}
+
+std::shared_ptr<SwitchState> SwSwitch::syncNextHopIDsToFIB(
+    const std::shared_ptr<SwitchState>& state) {
+  if (bootType_ != BootType::WARM_BOOT || !rib_ ||
+      !rib_->nextHopIdsChangedAtWarmboot()) {
+    return state;
+  }
+  auto newState = state;
+  rib_->syncStateFromRib(
+      scopeResolver_.get(), &ribToSwitchStateUpdate, &newState);
+  XLOG(INFO) << "Applied RIB NextHop ids to the warm boot state";
+  return newState;
+}
+
+void SwSwitch::syncRibEcmpOverrides(const StateDelta& delta) {
+  if (rib_ && ecmpResourceManager_) {
+    rib_->updateEcmpOverrides(delta);
+  }
 }
 
 std::vector<StateDelta> SwSwitch::reconstructStateFromManagers(
@@ -3835,10 +3875,27 @@ void SwSwitch::applyConfigImpl(
   // us.
   auto routeUpdater = getRouteUpdater();
   auto oldConfig = getConfig();
+  // Config with VRF changes is applied in up to four steps, so hardware never
+  // removes a VRF or moves an interface while routes still use it:
+  //   1. Apply config with VRF removals and interface VRF moves deferred.
+  //      Removed VRFs and interfaces deleted with them stay in state, and
+  //      moving interfaces keep their old VRF, but their interface routes are
+  //      left out of the RIB config.
+  //      The final state is also validated here, before anything changes.
+  //   2. Program routes. The RIB removes all routes (from every client) and
+  //      the FIB of removed VRFs, and the interface routes of moving
+  //      interfaces from their old VRF.
+  //   3. Apply config normally (applyDeferredVrfChanges): removed VRFs are
+  //      deleted and interfaces move to their new VRF.
+  //   4. Program routes: interface routes of moved interfaces are added in
+  //      their new VRF.
+  // Steps 3 and 4 run only if step 1 deferred something.
+  bool hasDeferredVrfChanges = false;
   updateStateBlocking(
       reason,
       [&](const shared_ptr<SwitchState>& state) -> shared_ptr<SwitchState> {
         auto originalState = state;
+        hasDeferredVrfChanges = false;
         auto newState = applyThriftConfig(
             originalState,
             &newConfig,
@@ -3846,11 +3903,31 @@ void SwSwitch::applyConfigImpl(
             platformMapping_.get(),
             hwAsicTable_.get(),
             &routeUpdater,
-            aclNexthopHandler_.get());
+            aclNexthopHandler_.get(),
+            true /* deferVrfChanges */,
+            &hasDeferredVrfChanges);
 
         if (newState &&
-            !isValidStateUpdate(StateDelta(state, newState), stats())) {
+            !isValidStateUpdateDryRun(StateDelta(state, newState), stats())) {
           throw FbossError("Invalid config passed in, skipping");
+        }
+        if (hasDeferredVrfChanges) {
+          // Validate the final state now, before routes are removed, so the
+          // deferred pass cannot fail on config after hardware is changed.
+          auto validationRouteUpdater = getRouteUpdater();
+          auto finalState = applyThriftConfig(
+              originalState,
+              &newConfig,
+              supportsAddRemovePort_,
+              platformMapping_.get(),
+              hwAsicTable_.get(),
+              &validationRouteUpdater,
+              aclNexthopHandler_.get());
+          if (finalState &&
+              !isValidStateUpdateDryRun(
+                  StateDelta(originalState, finalState), stats())) {
+            throw FbossError("Invalid config passed in, skipping");
+          }
         }
 
         if (!newState) {
@@ -3864,17 +3941,6 @@ void SwSwitch::applyConfigImpl(
 
   if (rib_) {
     rib_->setEcmpWidth(getEcmpWidth(getState()));
-  }
-  if (FLAGS_enable_ecmp_resource_manager) {
-    // Since config update can also update ecmp overrides - in
-    // case of config changing ecmp switching mode. Sync these
-    // route overrides to rib
-    updateEventBase_.runInFbossEventBaseThreadAndWait([this]() {
-      if (rib_) {
-        rib_->updateEcmpOverrides(
-            StateDelta(std::make_shared<SwitchState>(), getState()));
-      }
-    });
   }
   // Since we're using blocking state update, once we reach here, the new
   // config should be already applied and programmed into hardware.
@@ -3896,10 +3962,38 @@ void SwSwitch::applyConfigImpl(
    * and applyConfig. So ensure programming allways goes through the route
    * update wrapper abstraction
    */
+  // Step 2
   routeUpdater.program();
+  if (hasDeferredVrfChanges) {
+    // Steps 3 and 4
+    applyDeferredVrfChanges(reason, newConfig);
+  }
   runFsdbSyncFunction([&oldConfig, &newConfig](auto& syncer) {
     syncer->cfgUpdated(oldConfig, newConfig);
   });
+}
+
+void SwSwitch::applyDeferredVrfChanges(
+    const std::string& reason,
+    const cfg::SwitchConfig& newConfig) {
+  auto routeUpdater = getRouteUpdater();
+  updateStateBlocking(
+      reason + " (VRF removals and moves)",
+      [&](const shared_ptr<SwitchState>& state) -> shared_ptr<SwitchState> {
+        auto newState = applyThriftConfig(
+            state,
+            &newConfig,
+            supportsAddRemovePort_,
+            platformMapping_.get(),
+            hwAsicTable_.get(),
+            &routeUpdater,
+            aclNexthopHandler_.get());
+        // Not validated again: step 1 validated the final state before routes
+        // were removed, so this pass cannot fail validation after hardware
+        // has changed
+        return newState;
+      });
+  routeUpdater.program();
 }
 
 void SwSwitch::updateConfigAppliedInfo() {
@@ -3926,6 +4020,12 @@ void SwSwitch::updateConfigAppliedInfo() {
 bool SwSwitch::isValidStateUpdate(const StateDelta& delta, SwitchStats* stats)
     const {
   return stateUpdateValidator_->isValidUpdate(delta, stats);
+}
+
+bool SwSwitch::isValidStateUpdateDryRun(
+    const StateDelta& delta,
+    SwitchStats* stats) const {
+  return stateUpdateValidator_->isValidUpdateDryRun(delta, stats);
 }
 
 AdminDistance SwSwitch::clientIdToAdminDistance(int clientId) const {

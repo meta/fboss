@@ -393,15 +393,20 @@ unsigned int QsfpModule::numHostLanes() const {
     case MediaInterfaceCode::BASE_T_10G:
     case MediaInterfaceCode::CR_10G:
     case MediaInterfaceCode::CR1_100G:
+    case MediaInterfaceCode::CR1_200G:
       return 1;
+    case MediaInterfaceCode::CR2_400G:
+      return 2;
     case MediaInterfaceCode::CWDM4_100G:
     case MediaInterfaceCode::CR4_100G:
     case MediaInterfaceCode::FR1_100G:
     case MediaInterfaceCode::CR4_200G:
     case MediaInterfaceCode::CR4_400G:
+    case MediaInterfaceCode::CR4_800G:
       return 4;
     case MediaInterfaceCode::CR8_400G:
     case MediaInterfaceCode::CR8_800G:
+    case MediaInterfaceCode::CR8_1600G:
       return 8;
     case MediaInterfaceCode::UNKNOWN:
       return 0;
@@ -422,14 +427,19 @@ unsigned int QsfpModule::numMediaLanes() const {
     case MediaInterfaceCode::BASE_T_10G:
     case MediaInterfaceCode::CR_10G:
     case MediaInterfaceCode::CR1_100G:
+    case MediaInterfaceCode::CR1_200G:
       return 1;
+    case MediaInterfaceCode::CR2_400G:
+      return 2;
     case MediaInterfaceCode::CWDM4_100G:
     case MediaInterfaceCode::CR4_100G:
     case MediaInterfaceCode::CR4_200G:
     case MediaInterfaceCode::CR4_400G:
+    case MediaInterfaceCode::CR4_800G:
       return 4;
     case MediaInterfaceCode::CR8_400G:
     case MediaInterfaceCode::CR8_800G:
+    case MediaInterfaceCode::CR8_1600G:
       return 8;
     case MediaInterfaceCode::UNKNOWN:
       return 0;
@@ -482,6 +492,9 @@ void QsfpModule::updateCachedTransceiverInfoLocked(ModuleStatus moduleStatus) {
     }
     tcvrStats.sensor() = sensorInfo;
     tcvrState.vendor() = getVendorInfo();
+    if (tcvrConfig_ && tcvrConfig_->vendorOverrides_) {
+      tcvrState.vendorOverrides() = *tcvrConfig_->vendorOverrides_;
+    }
     tcvrState.cable() = getCableInfo();
     if (auto threshold = getThresholdInfo()) {
       tcvrState.thresholds() = *threshold;
@@ -589,8 +602,8 @@ void QsfpModule::updateCachedTransceiverInfoLocked(ModuleStatus moduleStatus) {
       }
     }
 
-    tcvrState.timeCollected() = lastRefreshTime_;
-    tcvrStats.timeCollected() = lastRefreshTime_;
+    tcvrState.timeCollected() = lastQsfpDataUpdateTime_;
+    tcvrStats.timeCollected() = lastQsfpDataUpdateTime_;
 
     const auto thermalMargins = getThermalMargins();
     if (thermalMargins.dspTempMargin) {
@@ -667,6 +680,7 @@ void QsfpModule::updateCachedTransceiverInfoLocked(ModuleStatus moduleStatus) {
   tcvrStats.interfaces() = getInterfaces();
 
   *info_.wlock() = info;
+  lastTcvrInfoUpdateTime_ = std::time(nullptr);
 }
 
 bool QsfpModule::customizationSupported() const {
@@ -677,7 +691,7 @@ bool QsfpModule::customizationSupported() const {
 }
 
 bool QsfpModule::shouldRefresh(time_t cooldown) const {
-  return std::time(nullptr) - lastRefreshTime_ >= cooldown;
+  return std::time(nullptr) - lastTcvrInfoUpdateTime_ >= cooldown;
 }
 
 void QsfpModule::ensureOutOfReset() const {
@@ -819,11 +833,12 @@ bool QsfpModule::setTransceiverTx(
 void QsfpModule::setTransceiverLoopback(
     const std::string& portName,
     phy::Side side,
-    bool setLoopback) {
+    bool setLoopback,
+    phy::LoopbackMode mode) {
   // Lambda to call Locked function
   auto setTcvrFn = [&]() {
     lock_guard<std::mutex> g(qsfpModuleMutex_);
-    setTransceiverLoopbackLocked(portName, side, setLoopback);
+    setTransceiverLoopbackLocked(portName, side, setLoopback, mode);
   };
 
   auto i2cEvb = qsfpImpl_->getI2cEventBase();
@@ -1540,6 +1555,7 @@ void QsfpModule::programTransceiver(
             getNameString(),
             " - Cache is not valid, so cannot program the transceiver");
       }
+      datapathInitDoneInProgramMask_.clear();
       // Make sure customize xcvr first so that we can set the application code
       // correctly and then call configureModule() later to program serdes like
       // Rx equalizer setting based on QSFP config

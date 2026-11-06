@@ -6,6 +6,10 @@
   "pwmTransitionValue": 50,
   "pwmLowerThreshold": 30,
   "pwmUpperThreshold": 100,
+  "watchdog": {
+    "sysfsPath": "/run/devmap/watchdogs/FAN_CPLD_WATCHDOG",
+    "value": 0
+  },
   "optics": [
     {
       "opticName": "osfp_group_1",

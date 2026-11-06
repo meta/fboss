@@ -1,0 +1,45 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fboss_optics_phy")
+
+cpp_library(
+    name = "CmdShowInterfaceTransceiverEeprom",
+    srcs = ["CmdShowInterfaceTransceiverEeprom.cpp"],
+    headers = [
+        "CmdShowInterfaceTransceiverEeprom.h",
+    ],
+    labels = ["autodeps2_generated"],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        "fbsource//xplat/folly:map_util",
+        "//fboss/agent/if:ctrl-cpp2-services",
+        "//fboss/agent/if:ctrl-cpp2-types",
+        "//fboss/qsfp_service/if:qsfp-cpp2-services",
+        "//fboss/qsfp_service/if:transceiver-cpp2-types",
+    ],
+    exported_deps = [
+        "//fboss/cli/fboss2:cmd-handler",
+        "//fboss/cli/fboss2:fboss2-lib",
+    ],
+)
+
+cpp_library(
+    name = "CmdShowInterfaceTransceiverEepromDump",
+    srcs = ["CmdShowInterfaceTransceiverEepromDump.cpp"],
+    headers = [
+        "CmdShowInterfaceTransceiverEepromDump.h",
+    ],
+    labels = ["autodeps2_generated"],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        "fbsource//xplat/folly:map_util",
+        "//fboss/agent/if:ctrl-cpp2-services",
+        "//fboss/agent/if:ctrl-cpp2-types",
+        "//fboss/qsfp_service/if:qsfp-cpp2-services",
+        "//fboss/qsfp_service/if:transceiver-cpp2-types",
+    ],
+    exported_deps = [
+        "//fboss/cli/fboss2:cmd-handler",
+        "//fboss/cli/fboss2:fboss2-lib",
+    ],
+)

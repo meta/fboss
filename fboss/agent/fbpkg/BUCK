@@ -7,6 +7,7 @@ load(
 )
 load(
     "//fboss/agent/fbpkg:test_artifacts.bzl",
+    "build_generic_multinode_test_fbpkg",
     "build_hw_agent_artifacts_fbpkgs",
     "build_test_artifacts_fbpkgs",
 )
@@ -20,7 +21,6 @@ fboss_fbpkg_builder(
     name = "neteng.fboss.wedge_agent_nvda",
     buck_opts = fbpkg.buck_opts(
         config = {
-            "fbcode.enable_distributed_thinlto": "true",
             "fbcode.split-dwarf": "true",
         },
         num_threads = 20,
@@ -42,7 +42,6 @@ fboss_fbpkg_builder(
     name = "neteng.fboss.wedge_agent",
     buck_opts = fbpkg.buck_opts(
         config = {
-            "fbcode.enable_distributed_thinlto": "true",
             "fbcode.split-dwarf": "true",
         },
         num_threads = 20,
@@ -61,7 +60,6 @@ fboss_fbpkg_builder(
     name = "neteng.fboss.wedge_agent_csco",
     buck_opts = fbpkg.buck_opts(
         config = {
-            "fbcode.enable_distributed_thinlto": "true",
             "fbcode.split-dwarf": "true",
         },
         num_threads = 20,
@@ -80,7 +78,6 @@ fboss_fbpkg_builder(
     name = "neteng.fboss.wedge_agent_dnx",
     buck_opts = fbpkg.buck_opts(
         config = {
-            "fbcode.enable_distributed_thinlto": "true",
             "fbcode.split-dwarf": "true",
         },
         num_threads = 20,
@@ -116,6 +113,8 @@ build_test_artifacts_fbpkgs(
 
 # Build BCM_native_sdk test artifacts fbpkg (native_bcm)
 build_test_artifacts_fbpkgs(product_lines = [ProductLine.BCM_NATIVE_SDK])
+
+build_generic_multinode_test_fbpkg()
 
 build_hw_agent_artifacts_fbpkgs(product_lines = [ProductLine.NVIDIA_SAI_SDK])
 

@@ -123,6 +123,7 @@ void SplitSwAgentInitializer::stopAgent(bool setupWarmboot, bool gracefulExit) {
 
 void SplitSwAgentInitializer::exitForColdBoot() {
   initializer_->stopFunctionScheduler();
+  multiSwitchThriftHandler_->cancelEventSyncers();
   sw_->stop(false /* gracefulStop */, true /* revertToMinAlpmState */);
   sw_->getHwSwitchHandler()->stop();
   stopServer();

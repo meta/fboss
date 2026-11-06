@@ -10,17 +10,11 @@
 
 #include "fboss/platform/platform_checks/checks/MacAddressCheck.h"
 
-#include <net/if.h>
-#include <net/if_arp.h>
-#include <sys/ioctl.h>
-#include <unistd.h>
-
-#include <memory>
 #include <stdexcept>
 
 #include <folly/logging/xlog.h>
+#include "fboss/platform/platform_checks/HostEeprom.h"
 #include "fboss/platform/weutil/ConfigUtils.h"
-#include "fboss/platform/weutil/FbossEepromInterface.h"
 
 namespace facebook::fboss::platform::platform_checks {
 
@@ -52,51 +46,53 @@ CheckResult MacAddressCheck::run() {
 }
 
 folly::MacAddress MacAddressCheck::getMacAddress(const std::string& interface) {
-  auto sock_deleter = [](int* fd) {
-    if (*fd >= 0) {
-      close(*fd);
-    }
-    delete fd;
-  };
-  std::unique_ptr<int, decltype(sock_deleter)> sock(
-      new int(socket(AF_INET, SOCK_DGRAM, 0)), sock_deleter);
-  if (*sock < 0) {
-    throw std::runtime_error("Failed to create socket");
+  auto address =
+      host().readTrimmedFile("/sys/class/net/" + interface + "/address");
+  if (!address) {
+    throw std::runtime_error("Failed to get mac address of " + interface);
   }
-
-  struct ifreq ifr = {};
-  std::strncpy(ifr.ifr_name, interface.c_str(), IFNAMSIZ - 1);
-  if (ioctl(*sock, SIOCGIFHWADDR, &ifr) < 0) {
-    throw std::runtime_error("Failed to get mac address");
+  auto mac = folly::MacAddress::tryFromString(*address);
+  if (!mac) {
+    throw std::runtime_error("Invalid mac address: " + *address);
   }
-  if (ifr.ifr_hwaddr.sa_family != ARPHRD_ETHER) {
-    throw std::runtime_error("Invalid mac address");
-  }
-  return folly::MacAddress::fromBinary(
-      {reinterpret_cast<const unsigned char*>(ifr.ifr_hwaddr.sa_data), 6});
+  return *mac;
 }
 
 std::unordered_map<std::string, folly::MacAddress>
 MacAddressCheck::getEepromMacAddressList() {
   std::unordered_map<std::string, folly::MacAddress> eepromMacList;
-  auto fruEepromList = weutil::ConfigUtils().getFruEepromList();
+  auto fruEepromList = weutil::ConfigUtils(platformName()).getFruEepromList();
 
   for (const auto& [eepromName, eeprom] : fruEepromList) {
-    FbossEepromInterface eepromInterface(eeprom.path, eeprom.offset);
-    std::string eepromMacStr =
-        (*eepromInterface.getEepromContents().x86CpuMac());
-    eepromMacStr = eepromMacStr.substr(0, eepromMacStr.find(','));
-    if (!eepromMacStr.empty()) {
-      auto eepromMac = folly::MacAddress::fromString(eepromMacStr);
-      if (eepromMac == folly::MacAddress::ZERO) {
-        // For Icecube/tahansb800bc/ladakh800bcls, the MAC address is
-        // actually in CHASSIS_EEPROM, the x86CpuMac field in COME_EEPROM is
-        // zero.
-        continue;
-      }
-      eepromMacList[eepromName] = eepromMac;
-      XLOG(INFO) << "eepromName: " << eepromName << " x86CpuMac: " << eepromMac;
+    // An EEPROM without a devmap path (DARWIN's CHASSIS) is read by weutil
+    // dumping the BIOS flash with flashrom, too heavy for a routine check.
+    if (eeprom.path.empty()) {
+      continue;
     }
+    auto fields = readEepromByName(host(), eepromName);
+    // DARWIN EEPROMs (Arista prefdl) only have the switch's "Local MAC".
+    auto field =
+        fields.contains("X86 CPU MAC Base") ? "X86 CPU MAC Base" : "Local MAC";
+    const std::string& eepromMacStr = fields[field];
+    if (eepromMacStr.empty()) {
+      continue;
+    }
+    auto eepromMac = folly::MacAddress::tryFromString(eepromMacStr);
+    // Another EEPROM may still hold a usable MAC; if none does, run() reports
+    // that no EEPROM MAC address was found.
+    if (!eepromMac) {
+      XLOG(WARN) << "Ignoring malformed MAC '" << eepromMacStr << "' in "
+                 << eepromName;
+      continue;
+    }
+    if (*eepromMac == folly::MacAddress::ZERO) {
+      // For Icecube/tahansb800bc/ladakh800bcls, the MAC address is
+      // actually in CHASSIS_EEPROM, the x86CpuMac field in COME_EEPROM is
+      // zero.
+      continue;
+    }
+    eepromMacList[eepromName] = *eepromMac;
+    XLOG(INFO) << "eepromName: " << eepromName << " x86CpuMac: " << *eepromMac;
   }
 
   return eepromMacList;

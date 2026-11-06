@@ -84,7 +84,8 @@ void setPhyLoopback(QsfpServiceAsyncClient* qsfpHandler, bool setLoopback) {
       ? phy::PortComponent::GB_LINE
       : phy::PortComponent::GB_SYSTEM;
 
-  qsfpHandler->sync_setPortLoopbackState(FLAGS_port, component, setLoopback);
+  qsfpHandler->sync_setPortLoopbackState(
+      FLAGS_port, component, setLoopback, phy::LoopbackMode::INPUT);
   printf(
       "Port Loopback %s got %s\n",
       FLAGS_port.c_str(),
@@ -196,7 +197,7 @@ void saiPhyCreatePort(QsfpServiceAsyncClient* qsfpHandler) {
 }
 
 int main(int argc, char* argv[]) {
-  folly::init(&argc, &argv, true);
+  const folly::Init init(&argc, &argv, true);
   gflags::SetCommandLineOptionWithMode(
       "minloglevel", "0", gflags::SET_FLAGS_DEFAULT);
   folly::EventBase evb;

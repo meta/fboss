@@ -369,6 +369,87 @@ TEST_F(CmdConfigAclRuleTestFixture, setIpType) {
   EXPECT_EQ(*getRule("rule-1").ipType(), cfg::IpType::IP6);
 }
 
+TEST_F(CmdConfigAclRuleTestFixture, setLookupClassL2) {
+  setupTestableConfigSession(cmdPrefix_, "AclTable1 rule-1 lookup-class-l2 10");
+  CmdConfigAclRule cmd;
+  HostInfo host("testhost");
+  AclRuleConfigArgs args({"AclTable1", "rule-1", "lookup-class-l2", "10"});
+  cmd.queryClient(host, args);
+  EXPECT_EQ(
+      *getRule("rule-1").lookupClassL2(),
+      cfg::AclLookupClass::CLASS_QUEUE_PER_HOST_QUEUE_0);
+}
+
+TEST_F(CmdConfigAclRuleTestFixture, setLookupClassNeighbor) {
+  // By name rather than by id, and at the top of the range.
+  setupTestableConfigSession(
+      cmdPrefix_,
+      "AclTable1 rule-1 lookup-class-neighbor CLASS_QUEUE_PER_HOST_QUEUE_9");
+  CmdConfigAclRule cmd;
+  HostInfo host("testhost");
+  AclRuleConfigArgs args(
+      {"AclTable1",
+       "rule-1",
+       "lookup-class-neighbor",
+       "CLASS_QUEUE_PER_HOST_QUEUE_9"});
+  cmd.queryClient(host, args);
+  EXPECT_EQ(
+      *getRule("rule-1").lookupClassNeighbor(),
+      cfg::AclLookupClass::CLASS_QUEUE_PER_HOST_QUEUE_9);
+}
+
+TEST_F(CmdConfigAclRuleTestFixture, setLookupClassRoute) {
+  setupTestableConfigSession(
+      cmdPrefix_, "AclTable1 rule-2 lookup-class-route 13");
+  CmdConfigAclRule cmd;
+  HostInfo host("testhost");
+  AclRuleConfigArgs args({"AclTable1", "rule-2", "lookup-class-route", "13"});
+  cmd.queryClient(host, args);
+  EXPECT_EQ(
+      *getRule("rule-2").lookupClassRoute(),
+      cfg::AclLookupClass::CLASS_QUEUE_PER_HOST_QUEUE_3);
+  // The three lookup-class attrs are independent fields on the same entry.
+  EXPECT_FALSE(getRule("rule-2").lookupClassL2().has_value());
+  EXPECT_FALSE(getRule("rule-2").lookupClassNeighbor().has_value());
+}
+
+TEST_F(CmdConfigAclRuleTestFixture, argValidation_lookupClassAcceptsIdOrName) {
+  // Same two spellings `config interface <intf> lookup-class` accepts.
+  EXPECT_NO_THROW(
+      AclRuleConfigArgs({"AclTable1", "rule-1", "lookup-class-l2", "10"}));
+  EXPECT_NO_THROW(AclRuleConfigArgs(
+      {"AclTable1",
+       "rule-1",
+       "lookup-class-neighbor",
+       "CLASS_QUEUE_PER_HOST_QUEUE_3"}));
+  EXPECT_NO_THROW(AclRuleConfigArgs(
+      {"AclTable1",
+       "rule-1",
+       "lookup-class-route",
+       "class_queue_per_host_queue_9"}));
+}
+
+TEST_F(CmdConfigAclRuleTestFixture, argValidation_lookupClassRejectsReserved) {
+  // CLASS_DROP (9) and the DST_CLASS_L3_LOCAL_* values are the agent's to
+  // assign, so an operator must not be able to match on them here either.
+  EXPECT_THROW(
+      AclRuleConfigArgs({"AclTable1", "rule-1", "lookup-class-l2", "9"}),
+      std::invalid_argument);
+  EXPECT_THROW(
+      AclRuleConfigArgs(
+          {"AclTable1", "rule-1", "lookup-class-l2", "CLASS_DROP"}),
+      std::invalid_argument);
+}
+
+TEST_F(CmdConfigAclRuleTestFixture, argValidation_lookupClassRejectsJunk) {
+  EXPECT_THROW(
+      AclRuleConfigArgs({"AclTable1", "rule-1", "lookup-class-l2", "999"}),
+      std::invalid_argument);
+  EXPECT_THROW(
+      AclRuleConfigArgs({"AclTable1", "rule-1", "lookup-class-l2", "bogus"}),
+      std::invalid_argument);
+}
+
 // =============================================================
 // action sub-attribute tests
 // =============================================================

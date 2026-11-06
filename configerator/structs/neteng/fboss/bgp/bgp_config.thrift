@@ -593,7 +593,11 @@ struct BgpSettingConfig {
 
   /**
    * Enable egress queue backpressure when queueing updates to TCP socket.
+   *
+   * DEPRECATED: bgp++ always uses egress queue backpressure and ignores this
+   * field.
    */
+  @thrift.Deprecated
   8: optional bool enable_egress_queue_backpressure;
 
   /**
@@ -684,7 +688,11 @@ struct BgpSettingConfig {
    * unbounded buffer inside bgpd. Default (unset or false): the legacy
    * unbounded egress path, so the feature can be turned off instantly for
    * rollback.
+   *
+   * DEPRECATED: bgp++ always uses the bounded, backpressured egress path for
+   * thrift stream subscribers and ignores this field.
    */
+  @thrift.Deprecated
   20: optional bool enable_stream_subscriber_backpressure;
 
   /**
@@ -692,6 +700,24 @@ struct BgpSettingConfig {
    * immediately; a link-up is held until the interface is stable.
    */
   21: optional bool enable_netlink_dampening;
+
+  /**
+   * Maximum number of concurrent thrift stream subscribers (MP-BGP monitors).
+   * Takes effect only when the "stream_subscriber_limit" feature string is
+   * also present in `features`.
+   */
+  22: optional i32 stream_subscriber_limit;
+
+  /**
+   * Globally enable RFC 2918 Route Refresh capability advertisement. When
+   * enabled, peers inherit an enabled default unless a peer or peer-group
+   * explicitly disables route_refresh. Default (unset or false): Route
+   * Refresh is disabled for every peer.
+   */
+  23: optional bool enable_route_refresh;
+
+  /** Record the latest platform-normalized FIB request for each RIB entry. */
+  24: optional bool enable_fib_out_tracking;
 }
 
 /**
@@ -913,4 +939,13 @@ struct BgpConfig {
    * NetServiceFramework configuration for EBB deployments
    */
   38: optional BgpNetServiceThriftConfig net_service_config;
+
+  /**
+   * Route-reflector CLUSTER_ID (RFC 4456), as a dotted quad. It is an opaque
+   * 4-octet identifier, so it need not be routable or match any configured
+   * interface. Redundant reflectors serving one cluster must share this value
+   * while keeping distinct router_ids, which is why it cannot be derived from
+   * router_id. When unset the router_id is used, per RFC 4456 section 1.1.
+   */
+  39: optional string cluster_id;
 }

@@ -1,5 +1,7 @@
 load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbsource//tools/build_defs/testinfra:network_access_utils.bzl", "network_access_utils")
 load("//fbpkg:fbpkg.bzl", "fbpkg")
 
 oncall("fboss_platform")
@@ -17,17 +19,127 @@ cpp_library(
     ],
 )
 
+cpp_library(
+    name = "check_runner",
+    srcs = [
+        "CheckRunner.cpp",
+    ],
+    headers = [
+        "CheckRunner.h",
+    ],
+    deps = [
+        "fbsource//third-party/re2:re2",
+        "fbsource//xplat/folly/logging:logging",
+    ],
+    exported_deps = [
+        "//fboss/platform/platform_checks:platform_check",
+    ],
+)
+
+cpp_library(
+    name = "check_environment",
+    srcs = [
+        "CheckEnvironment.cpp",
+    ],
+    headers = [
+        "CheckEnvironment.h",
+    ],
+    deps = [
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/logging:logging",
+        "//fboss/platform/platform_checks:platform_name",
+    ],
+    exported_deps = [
+        "//fboss/platform/platform_checks:host",
+        "//fboss/platform/platform_checks:remote_host",
+    ],
+)
+
+cpp_library(
+    name = "password_prompt",
+    srcs = [
+        "PasswordPrompt.cpp",
+    ],
+    headers = [
+        "PasswordPrompt.h",
+    ],
+    deps = [
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly:scope_guard",
+    ],
+)
+
+cpp_library(
+    name = "check_registry",
+    srcs = [
+        "CheckRegistry.cpp",
+    ],
+    headers = [
+        "CheckRegistry.h",
+    ],
+    deps = [
+        "//fboss/platform/platform_checks:host",
+        "//fboss/platform/platform_checks:platform_checks",
+    ],
+    exported_deps = [
+        ":check_environment",
+        "//fboss/platform/platform_checks:platform_check",
+    ],
+)
+
+cpp_library(
+    name = "cli_options",
+    srcs = [
+        "CliOptions.cpp",
+    ],
+    headers = [
+        "CliOptions.h",
+    ],
+    deps = [
+        "fbsource//xplat/folly:string",
+    ],
+    exported_deps = [
+        ":check_environment",
+        ":check_runner",
+    ],
+    exported_external_deps = [
+        "CLI11",
+    ],
+)
+
+cpp_library(
+    name = "extensions",
+    srcs = [
+        "Extensions.cpp",
+    ],
+    headers = [
+        "Extensions.h",
+    ],
+    exported_deps = [
+        "//fboss/platform/platform_checks:check_types-cpp2-types",
+    ],
+    exported_external_deps = [
+        "CLI11",
+    ],
+)
+
 cpp_binary(
     name = "fixmyfboss",
     srcs = [
         "main.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/logging:logging",
+        ":check_environment",
+        ":check_registry",
+        ":check_runner",
+        ":cli_options",
+        ":extensions",
+        ":password_prompt",
         ":result_printer",
-        "//fboss/platform/helpers:platform_name_lib",
-        "//fboss/platform/platform_checks:platform_check",
-        "//fboss/platform/platform_checks:platform_checks",
-        "//folly/logging:logging",
+        "//fboss/platform/fixmyfboss/facebook:report_paste",
+        "//thrift/lib/cpp2/protocol:protocol",
     ],
     external_deps = [
         "CLI11",
@@ -40,4 +152,60 @@ fbpkg.builder(
     path_actions = {
         "fixmyfboss": "//fboss/platform/fixmyfboss:fixmyfboss",
     },
+)
+
+cpp_unittest(
+    name = "result_printer_test",
+    srcs = [
+        "tests/ResultPrinterTest.cpp",
+    ],
+    network_access = network_access_utils.none(),
+    deps = [
+        "fbsource//third-party/googletest:gmock",
+        ":result_printer",
+    ],
+)
+
+cpp_unittest(
+    name = "check_runner_test",
+    srcs = [
+        "tests/CheckRunnerTest.cpp",
+    ],
+    network_access = network_access_utils.none(),
+    deps = [
+        ":check_runner",
+    ],
+)
+
+cpp_unittest(
+    name = "check_environment_test",
+    srcs = [
+        "tests/CheckEnvironmentTest.cpp",
+    ],
+    network_access = network_access_utils.none(),
+    deps = [
+        ":check_environment",
+    ],
+)
+
+cpp_unittest(
+    name = "extensions_test",
+    srcs = [
+        "tests/ExtensionsTest.cpp",
+    ],
+    network_access = network_access_utils.none(),
+    deps = [
+        ":extensions",
+    ],
+)
+
+cpp_unittest(
+    name = "cli_options_test",
+    srcs = [
+        "tests/CliOptionsTest.cpp",
+    ],
+    network_access = network_access_utils.none(),
+    deps = [
+        ":cli_options",
+    ],
 )

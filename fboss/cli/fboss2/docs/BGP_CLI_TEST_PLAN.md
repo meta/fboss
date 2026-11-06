@@ -73,16 +73,16 @@ fboss2 config protocol bgp peer-group RSW-FSW-V6 next-hop-self true
 fboss2 config protocol bgp peer-group RSW-FSW-V6 confed-peer true
 fboss2 config protocol bgp peer-group RSW-FSW-V6 ingress-policy PROPAGATE_RSW_FSW_IN
 fboss2 config protocol bgp peer-group RSW-FSW-V6 egress-policy PROPAGATE_RSW_FSW_OUT
-fboss2 config protocol bgp peer-group RSW-FSW-V6 v4-over-v6-nh true
+fboss2 config protocol bgp peer-group RSW-FSW-V6 afi ipv4-over-ipv6-nh true
 fboss2 config protocol bgp peer-group RSW-FSW-V6 timers hold-time 30
 fboss2 config protocol bgp peer-group RSW-FSW-V6 timers keepalive 10
-fboss2 config protocol bgp peer-group RSW-RTSW-V6 disable-ipv4-afi true
+fboss2 config protocol bgp peer-group RSW-RTSW-V6 afi disable-ipv4-afi true
 
 # Peer configuration (with explicit disable_ipv4_afi: false preserved)
-fboss2 config protocol bgp peer 2401:db00:501c::/64 remote-asn 65000
-fboss2 config protocol bgp peer 2401:db00:501c::/64 local-addr 2401:db00:501c::a
-fboss2 config protocol bgp peer 2401:db00:501c::/64 passive true
-fboss2 config protocol bgp peer 2401:db00:501c::/64 disable-ipv4-afi false
+fboss2 config protocol bgp neighbor 2401:db00:501c::/64 remote-asn 65000
+fboss2 config protocol bgp neighbor 2401:db00:501c::/64 bind-addr address 2401:db00:501c::a
+fboss2 config protocol bgp neighbor 2401:db00:501c::/64 passive true
+fboss2 config protocol bgp neighbor 2401:db00:501c::/64 afi disable-ipv4-afi false
 ```
 
 ### Step 5: Execute Script
@@ -131,17 +131,18 @@ diff <(jq -S . /tmp/rsw_bgp_nao.txt) <(jq -S . ~/.fboss2/bgp_config.json)
 | Peer Group | `config protocol bgp peer-group <name> remote-asn <asn>` | Set remote AS |
 | Peer Group | `config protocol bgp peer-group <name> description <text>` | Set description |
 | Peer Group | `config protocol bgp peer-group <name> next-hop-self <bool>` | Enable/disable next-hop-self |
-| Peer Group | `config protocol bgp peer-group <name> disable-ipv4-afi <bool>` | Disable IPv4 AFI |
-| Peer Group | `config protocol bgp peer-group <name> v4-over-v6-nh <bool>` | Enable v4-over-v6 nexthop |
+| Peer Group | `config protocol bgp peer-group <name> afi disable-ipv4-afi <bool>` | Disable IPv4 AFI |
+| Peer Group | `config protocol bgp peer-group <name> afi ipv4-over-ipv6-nh <bool>` | Enable v4-over-v6 nexthop |
 | Peer Group | `config protocol bgp peer-group <name> timers hold-time <sec>` | Set hold time |
 | Peer Group | `config protocol bgp peer-group <name> timers keepalive <sec>` | Set keepalive interval |
-| Peer Group | `config protocol bgp peer-group <name> max-routes <n>` | Set max routes |
-| Peer | `config protocol bgp peer <addr> remote-asn <asn>` | Set remote AS |
-| Peer | `config protocol bgp peer <addr> peer-group <name>` | Assign to peer group |
-| Peer | `config protocol bgp peer <addr> local-addr <addr>` | Set local address |
-| Peer | `config protocol bgp peer <addr> passive <bool>` | Set passive mode |
-| Peer | `config protocol bgp peer <addr> disable-ipv4-afi <bool>` | Disable IPv4 AFI |
-| Peer | `config protocol bgp peer <addr> link-bandwidth <bw>` | Set link bandwidth |
+| Peer Group | `config protocol bgp peer-group <name> max-route pre-filter <n>` | Set max routes (pre-policy; 0 = unlimited) |
+| Neighbor | `config protocol bgp neighbor <addr> remote-asn <asn>` | Set remote AS |
+| Neighbor | `config protocol bgp neighbor <addr> peer-group <name>` | Assign to peer group |
+| Neighbor | `config protocol bgp neighbor <addr> bind-addr address <addr>` | Set local address |
+| Neighbor | `config protocol bgp neighbor <addr> passive <true|false>` | Listen-only (true) or listen-and-connect (false) session |
+| Neighbor | `delete protocol bgp neighbor <addr>` | Delete a neighbor |
+| Neighbor | `config protocol bgp neighbor <addr> afi disable-ipv4-afi <bool>` | Disable IPv4 AFI |
+| Neighbor | `config protocol bgp neighbor <addr> link-bandwidth <bw>` | Set link bandwidth |
 
 ## Automated Test Script
 

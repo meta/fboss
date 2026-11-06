@@ -69,13 +69,11 @@ class PortAndEgressIds
 
   folly::dynamic toFollyDynamic() const override {
     CHECK(0); // Not needed yet
-    return folly::dynamic::object;
   }
 
   static std::shared_ptr<PortAndEgressIds> fromFollyDynamic(
       const folly::dynamic& /*json*/) {
     CHECK(0); // Not needed yet
-    return std::make_shared<PortAndEgressIds>(0, EgressIdSet());
   }
 
  private:

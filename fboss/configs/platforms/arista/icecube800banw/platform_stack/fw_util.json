@@ -27,7 +27,7 @@
       },
       "priority": 3
     },
-    "cpu_cpld": {
+    "scm_cpld": {
       "upgrade": [
         {
           "commandType": "jam",
@@ -42,7 +42,7 @@
       ],
       "version": {
         "versionType": "sysfs",
-        "path": "/run/devmap/inforoms/CPU_FPGA_INFO_ROM/fw_ver"
+        "path": "/run/devmap/inforoms/SCM_FPGA_INFO_ROM/fw_ver"
       },
       "priority": 2
     },
@@ -67,7 +67,7 @@
       ],
       "version": {
         "versionType": "sysfs",
-        "path": "/run/devmap/inforoms/ICECUBE800BANW_SMB_FPGA_INFO_ROM/fw_ver"
+        "path": "/run/devmap/inforoms/SMB_FPGA_INFO_ROM/fw_ver"
       },
       "priority": 1
     }

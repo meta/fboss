@@ -53,6 +53,7 @@ cpp_library(
     name = "fsdb_model_thriftpath",
     headers = ["fsdb_model_thriftpath.h"],
     exported_deps = [
+        "fbsource//xplat/folly:unit",
         ":fsdb_model-cpp2-types",
         "//configerator/structs/neteng/bgp_policy/thrift:rib_policy-cpp2-types",
         "//fboss/agent:agent_config-cpp2-types",
@@ -67,7 +68,6 @@ cpp_library(
         "//fboss/qsfp_service/if:state-cpp2-types",
         "//fboss/qsfp_service/if:stats-cpp2-types",
         "//fboss/thriftpath_plugin:path",
-        "//folly:unit",
         "//neteng/fboss/bgp/if:bgp_route_types-cpp2-types",
         "//neteng/fboss/bgp/public_tld/configerator/structs/neteng/fboss/bgp:bgp_config_oss-cpp2-types",
     ],
@@ -106,11 +106,10 @@ custom_unittest(
     ],
 )
 
-# Land-blocking diff signal: runs verify_oss_thriftpath whenever any thrift file
-# in the fsdb_model dependency closure changes. Uses explicit ci_srcs glob
-# patterns since ci_deps with thrift_library targets does not resolve transitive
-# thrift includes to source files for Citadel triggering.
-# Modeled after neteng/fboss/bgp/tools/oss:verify_oss_thrift_signal.
+# Runs verify_oss_thriftpath whenever any thrift file in the fsdb_model
+# dependency closure changes. Uses explicit ci_srcs glob patterns since ci_deps
+# with thrift_library targets does not resolve transitive thrift includes to
+# source files for Citadel triggering.
 # @ci-signal-ack
 ci_sandcastle(
     name = "verify_oss_thriftpath_signal",
@@ -125,7 +124,9 @@ ci_sandcastle(
         ],
     },
     capabilities = {
-        "tenant": "default-tenant",
+        # default-tenant has no guaranteed quota, and CI force-downgrades
+        # unfunded diff-time workflows to non-land-blocking.
+        "tenant": "fboss-oss",
         "type": "fbcode",
         "vcs": "full-fbsource",
     },
@@ -157,5 +158,6 @@ ci_sandcastle(
     oncall = "fboss_agent_push",
     schedules = [
         ci.diff,
+        ci.land,
     ],
 )

@@ -41,3 +41,15 @@ target_link_libraries(platform_helpers_platform_fs_utils_test
 )
 
 gtest_discover_tests(platform_helpers_platform_fs_utils_test)
+
+add_executable(platform_helpers_expect_session_test
+  fboss/platform/helpers/tests/ExpectSessionTest.cpp
+)
+
+target_link_libraries(platform_helpers_expect_session_test
+  expect_session
+  ${GTEST}
+  ${LIBGMOCK_LIBRARIES}
+)
+
+gtest_discover_tests(platform_helpers_expect_session_test)

@@ -71,6 +71,55 @@ class EcmpBackupGroupTypeTest : public BaseEcmpResourceManagerTest {
     assertEndState(newState, {});
     XLOG(DBG2) << "EcmpResourceMgrBackupGrpTest SetUp done";
   }
+
+  // Adds one route per new nhop group past the ECMP limit, in nextNhopSets()
+  // order, so each lands in its own backup group.
+  std::vector<RouteV6::Prefix> addBackupGroupRoutes() {
+    auto nhopSets = nextNhopSets();
+    auto newState = state_->clone();
+    auto fib6 = fib(newState);
+    auto routesBefore = getPostConfigResolvedRoutes(newState).size();
+    std::vector<RouteV6::Prefix> prefixes;
+    for (auto i = 0; i < numStartRoutes(); ++i) {
+      auto route = makeRoute(makePrefix(routesBefore + i), nhopSets[i]);
+      prefixes.push_back(route->prefix());
+      fib6->addNode(route);
+    }
+    consolidate(newState);
+    assertEndState(newState, {prefixes.begin(), prefixes.end()});
+    return prefixes;
+  }
+
+  // Re-pushes pfx carrying staleMode, as a rib that has not yet synced a
+  // backup switching mode change does, and returns the mode ERM programs.
+  std::optional<cfg::SwitchingMode> pushStaleBackupMode(
+      const RouteV6::Prefix& pfx,
+      cfg::SwitchingMode staleMode) {
+    auto newState = state_->clone();
+    auto fib6 = fib(newState);
+    auto staleRoute = fib6->exactMatch(pfx)->clone();
+    const auto& fwd = staleRoute->getForwardInfo();
+    RouteNextHopEntry staleFwd(
+        fwd.getNextHopSet(),
+        fwd.getAdminDistance(),
+        fwd.getCounterID(),
+        fwd.getClassID(),
+        std::optional<cfg::SwitchingMode>(staleMode),
+        fwd.getOverrideNextHops(),
+        fwd.getNormalizedResolvedNextHopSetID(),
+        fwd.getResolvedNextHopSetID());
+    staleRoute->setResolved(staleFwd);
+    staleRoute->publish();
+    fib6->updateNode(staleRoute);
+    newState->publish();
+    auto deltas = consolidator_->consolidate(StateDelta(state_, newState));
+    consolidator_->updateDone();
+    return cfib(deltas.back().newState())
+        ->exactMatch(pfx)
+        ->getForwardInfo()
+        .getOverrideEcmpSwitchingMode();
+  }
+  static constexpr auto kStaleBackupMode = cfg::SwitchingMode::FIXED_ASSIGNMENT;
 };
 
 TEST_F(EcmpBackupGroupTypeTest, addSingleNhopRoutesBelowEcmpLimit) {
@@ -754,6 +803,34 @@ TEST_F(EcmpBackupGroupTypeTest, overflowRoutesAndThenSwitchingModeChange) {
   auto deltas2 = consolidate(newerState);
   EXPECT_EQ(deltas2.size(), 1);
   assertEndState(newerState, overflowPrefixes);
+}
+
+TEST_F(EcmpBackupGroupTypeTest, staleBackupModeRestampedWhenGroupRecreated) {
+  ASSERT_NE(consolidator_->getBackupEcmpSwitchingMode(), kStaleBackupMode);
+  // Each backup group has a single route, so the update frees and recreates
+  // the group.
+  auto prefixes = addBackupGroupRoutes();
+
+  EXPECT_EQ(
+      pushStaleBackupMode(prefixes.front(), kStaleBackupMode),
+      consolidator_->getBackupEcmpSwitchingMode());
+}
+
+TEST_F(EcmpBackupGroupTypeTest, staleBackupModeRestampedInExistingGroup) {
+  ASSERT_NE(consolidator_->getBackupEcmpSwitchingMode(), kStaleBackupMode);
+  auto prefixes = addBackupGroupRoutes();
+  // A second route keeps the backup group alive across the stale update.
+  auto newState = state_->clone();
+  auto sharedPrefix = makePrefix(getPostConfigResolvedRoutes(newState).size());
+  fib(newState)->addNode(makeRoute(sharedPrefix, nextNhopSets().front()));
+  consolidate(newState);
+  std::set<RouteV6::Prefix> backupPrefixes(prefixes.begin(), prefixes.end());
+  backupPrefixes.insert(sharedPrefix);
+  assertEndState(newState, backupPrefixes);
+
+  EXPECT_EQ(
+      pushStaleBackupMode(prefixes.front(), kStaleBackupMode),
+      consolidator_->getBackupEcmpSwitchingMode());
 }
 
 TEST_F(EcmpBackupGroupTypeTest, resetBackupSwitchingModeProhibited) {

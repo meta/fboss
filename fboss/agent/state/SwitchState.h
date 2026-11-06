@@ -34,6 +34,8 @@
 #include "fboss/agent/state/Interface.h"
 #include "fboss/agent/state/InterfaceMap.h"
 #include "fboss/agent/state/IpTunnelMap.h"
+#include "fboss/agent/state/IsolationGroup.h"
+#include "fboss/agent/state/IsolationGroupMap.h"
 #include "fboss/agent/state/LabelForwardingInformationBase.h"
 #include "fboss/agent/state/LlrConfig.h"
 #include "fboss/agent/state/LlrConfigMap.h"
@@ -56,6 +58,9 @@
 #include "fboss/agent/state/UdfConfig.h"
 #include "fboss/agent/state/Vlan.h"
 #include "fboss/agent/state/VlanMap.h"
+#include "fboss/agent/state/Vrf.h"
+#include "fboss/agent/state/VrfMap.h"
+#include "fboss/agent/state/VxlanTunnelMap.h"
 #include "fboss/agent/types.h"
 
 DECLARE_bool(enable_acl_table_group);
@@ -77,6 +82,8 @@ class BufferPoolCfgMap;
 class FlowletSwitchingConfig;
 class PortFlowletCfg;
 class PortFlowletCfgMap;
+class IsolationGroup;
+class IsolationGroupMap;
 class LlrConfig;
 class LlrConfigMap;
 
@@ -114,6 +121,10 @@ RESOLVE_STRUCT_MEMBER(
     SwitchState,
     switch_state_tags::srv6TunnelMaps,
     MultiSwitchSrv6TunnelMap);
+RESOLVE_STRUCT_MEMBER(
+    SwitchState,
+    switch_state_tags::vxlanTunnelMaps,
+    MultiSwitchVxlanTunnelMap);
 RESOLVE_STRUCT_MEMBER(
     SwitchState,
     switch_state_tags::mySidMaps,
@@ -202,6 +213,14 @@ RESOLVE_STRUCT_MEMBER(
     SwitchState,
     switch_state_tags::llrCfgMaps,
     MultiSwitchLlrConfigMap);
+RESOLVE_STRUCT_MEMBER(
+    SwitchState,
+    switch_state_tags::isolationGroupMaps,
+    MultiSwitchIsolationGroupMap);
+RESOLVE_STRUCT_MEMBER(
+    SwitchState,
+    switch_state_tags::vrfMaps,
+    MultiSwitchVrfMap);
 /*
  * SwitchState stores the current switch configuration.
  *
@@ -339,6 +358,11 @@ class SwitchState : public ThriftStructNode<SwitchState, state::SwitchState> {
 
   const std::shared_ptr<MultiSwitchLlrConfigMap> getLlrConfigs() const;
 
+  const std::shared_ptr<MultiSwitchIsolationGroupMap> getIsolationGroups()
+      const;
+
+  const std::shared_ptr<MultiSwitchVrfMap> getVrfs() const;
+
   std::chrono::seconds getNdpTimeout() const;
 
   std::chrono::seconds getArpAgerInterval() const;
@@ -376,6 +400,8 @@ class SwitchState : public ThriftStructNode<SwitchState, state::SwitchState> {
   const std::shared_ptr<MultiSwitchIpTunnelMap>& getTunnels() const;
 
   const std::shared_ptr<MultiSwitchSrv6TunnelMap>& getSrv6Tunnels() const;
+
+  const std::shared_ptr<MultiSwitchVxlanTunnelMap>& getVxlanTunnels() const;
 
   const std::shared_ptr<MultiSwitchMySidMap>& getMySids() const;
 
@@ -454,6 +480,9 @@ class SwitchState : public ThriftStructNode<SwitchState, state::SwitchState> {
       std::shared_ptr<MultiSwitchTransceiverMap> transceivers);
   void resetPortFlowletCfgs(std::shared_ptr<MultiSwitchPortFlowletCfgMap> cfgs);
   void resetLlrConfigs(std::shared_ptr<MultiSwitchLlrConfigMap> cfgs);
+  void resetIsolationGroups(
+      std::shared_ptr<MultiSwitchIsolationGroupMap> groups);
+  void resetVrfs(std::shared_ptr<MultiSwitchVrfMap> vrfs);
   void resetSystemPorts(
       const std::shared_ptr<MultiSwitchSystemPortMap>& systemPorts);
   void resetRemoteSystemPorts(
@@ -464,6 +493,8 @@ class SwitchState : public ThriftStructNode<SwitchState, state::SwitchState> {
   void resetTunnels(std::shared_ptr<MultiSwitchIpTunnelMap> tunnels);
 
   void resetSrv6Tunnels(std::shared_ptr<MultiSwitchSrv6TunnelMap> tunnels);
+
+  void resetVxlanTunnels(std::shared_ptr<MultiSwitchVxlanTunnelMap> tunnels);
 
   void resetMySids(std::shared_ptr<MultiSwitchMySidMap> mySids);
 

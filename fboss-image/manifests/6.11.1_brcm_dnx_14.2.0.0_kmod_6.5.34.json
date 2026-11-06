@@ -27,16 +27,24 @@
   "phy_sai": {},
   "fboss-forwarding-stack": [
     {
+      "name": "agent",
       "download": "${ARTIFACT_BASE}/agent/brcm/14.2.0.0_dnx_odp/fboss_bins.tar.zst"
     },
     {
+      "name": "fsdb",
       "download": "${ARTIFACT_BASE}/fsdb/fboss_bins.tar.zst"
     },
     {
+      "name": "qsfp",
       "download": "${ARTIFACT_BASE}/qsfp/fboss_bins.tar.zst"
     },
     {
+      "name": "fboss2",
       "download": "${ARTIFACT_BASE}/fboss2/fboss_bins.tar.zst"
+    },
+    {
+      "name": "led",
+      "download": "${ARTIFACT_BASE}/led/fboss_bins.tar.zst"
     }
   ],
   "image_build_hooks": {}

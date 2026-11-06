@@ -52,7 +52,7 @@ Patch awaitPatch(PatchGenerator& patchSubStream, bool isInitial = false) {
       folly::coro::timeout(
           consumeOne(patchSubStream), std::chrono::seconds(5)));
   SubscriberMessage patchMsg = std::move(element.val);
-  auto patchGroups = *patchMsg.get_chunk().patchGroups();
+  auto patchGroups = *patchMsg.chunk().as_const()->patchGroups();
   EXPECT_EQ(patchGroups.size(), 1);
   auto patches = patchGroups.begin()->second;
   EXPECT_EQ(patches.size(), 1);
@@ -73,7 +73,7 @@ void applyPatchAndVerify(
   auto srcState = srcStorage.get(subscriptionPath).value();
   std::optional<StorageError> result = tgtStorage.patch(std::move(patch));
   EXPECT_EQ(result.has_value(), false);
-  tgtStorage.publishCurrentState();
+  tgtStorage.refreshPublishedStateForReads();
   auto tgtState = tgtStorage.get(subscriptionPath).value();
   EXPECT_EQ(srcState, tgtState);
 }
@@ -90,7 +90,7 @@ void applyDeltaAndVerify(
   }
   std::optional<StorageError> result = tgtStorage.patch(std::move(patch));
   EXPECT_EQ(result.has_value(), false);
-  tgtStorage.publishCurrentState();
+  tgtStorage.refreshPublishedStateForReads();
   auto tgtState = tgtStorage.get(subscriptionPath).value();
   auto srcState = srcStorage.get(subscriptionPath).value();
   EXPECT_EQ(srcState, tgtState);
@@ -161,7 +161,7 @@ struct TestDataFactory<StorageT, TestDataType::kHybridMapOfStruct> {
   }
 
   void verifyOperDeltaForDeepUpdate(OperDelta& deltaMsg, bool isHybridStorage) {
-    storage_.publishCurrentState();
+    storage_.refreshPublishedStateForReads();
     auto first = deltaMsg.changes()->at(0);
     if (isHybridStorage) {
       // expect both old and new state
@@ -273,7 +273,7 @@ struct TestDataFactory<StorageT, TestDataType::kMapOfHybridStruct> {
   }
 
   void verifyOperDeltaForDeepUpdate(OperDelta& deltaMsg, bool isHybridStorage) {
-    storage_.publishCurrentState();
+    storage_.refreshPublishedStateForReads();
     auto first = deltaMsg.changes()->at(0);
     // expect both old and new states
     EXPECT_TRUE(first.oldState());

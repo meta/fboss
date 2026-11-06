@@ -14,7 +14,7 @@
 #include "fboss/agent/hw/bcm/BcmSdkVer.h"
 #include "fboss/agent/hw/bcm/BcmSwitch.h"
 
-#include <folly/Format.h>
+#include <fmt/format.h>
 #include <folly/logging/xlog.h>
 
 extern "C" {
@@ -90,7 +90,7 @@ void bcmCheckError(int err, Args&&... msgArgs) {
 template <typename... Args>
 void bcmLogFatal(int err, const BcmSwitchIf* hw, Args&&... msgArgs) {
   if (BCM_FAILURE(err)) {
-    auto errMsg = folly::sformat(
+    auto errMsg = fmt::format(
         "{}: {}, {}",
         folly::to<std::string>(std::forward<Args>(msgArgs)...),
         bcm_errmsg(err),

@@ -26,4 +26,7 @@ struct HalTestTransceiverEntry {
 
 struct HalTestConfig {
   1: list<HalTestTransceiverEntry> transceivers;
+  // Transceiver Part Number to its firmware handle in fboss_firmware.yaml map,
+  // same as qsfp_service_config.TransceiverFirmware.fwHandleMap
+  2: map<string, string> fwHandleMap;
 }

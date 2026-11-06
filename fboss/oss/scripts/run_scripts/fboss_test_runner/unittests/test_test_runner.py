@@ -6,13 +6,18 @@ fallback for early-exit binaries, warmboot loop, timeout handling, config
 backup, filter merging), plus the load_from_file helper consumed
 by _get_tests_to_run via args.filter_file."""
 
+import json
 import os
 import subprocess
 import tempfile
+from argparse import Namespace
 from unittest.mock import MagicMock, patch
 
+import pytest
+from fboss_test_runner.errors import TestRunnerUsageError
 from fboss_test_runner.result_types import GtestResult, GtestStatus, RunOutcome
 from fboss_test_runner.runners.utils import load_from_file
+from fboss_test_runner.tier_selection import TestCapability, TestTier
 
 
 class TestLoadFromFile:
@@ -92,6 +97,137 @@ class TestLoadFromFile:
             assert result == ["entry1"]
         finally:
             os.unlink(temp_file)
+
+
+class TestTierFilterComposition:
+    def test_prepare_tests_applies_tier_filter_after_runner_filter(self, runner):
+        args = Namespace(tier="0")
+        with (
+            patch("shutil.which", return_value="/opt/fboss/bin/test_binary"),
+            patch.object(runner, "_initialize_test_lists"),
+            patch.object(
+                runner, "_get_tests_to_run", return_value=["Suite.B", "Suite.A"]
+            ),
+            patch.object(
+                runner, "_filter_tests", return_value=["Suite.A"]
+            ) as runner_filter,
+            patch.object(
+                runner, "_filter_tests_for_tier", return_value=["Suite.A"]
+            ) as tier_filter,
+        ):
+            assert runner._prepare_tests(args) == ["Suite.A"]
+
+        runner_filter.assert_called_once_with(["Suite.B", "Suite.A"])
+        tier_filter.assert_called_once_with(["Suite.A"], TestTier.T0)
+
+    def test_base_runner_rejects_tier_selection(self, runner):
+        runner.args = Namespace(command="unsupported")
+        with pytest.raises(TestRunnerUsageError, match="not supported for unsupported"):
+            runner._filter_tests_for_tier([], TestTier.T0)
+
+    @pytest.mark.parametrize(
+        "requested_tier,expected",
+        [
+            (TestTier.T0, ["Suite.B", "Suite.A"]),
+            (TestTier.T1, []),
+        ],
+    )
+    def test_uniform_tier_filters_without_metadata(
+        self, runner, requested_tier, expected
+    ):
+        tests = ["Suite.B", "Suite.A"]
+        with (
+            patch.object(runner, "_get_uniform_test_tier", return_value=TestTier.T0),
+            patch.object(runner, "_get_tier_metadata_file") as metadata_file,
+        ):
+            assert runner._filter_tests_for_tier(tests, requested_tier) == expected
+
+        metadata_file.assert_not_called()
+
+    def test_metadata_filter_expands_patterns_and_intersects_candidates(
+        self, runner, tmp_path
+    ):
+        metadata = tmp_path / "test_metadata.json"
+        metadata.write_text(
+            json.dumps(
+                {
+                    "rules": [
+                        {
+                            "testNamePattern": "EmptyTest.*",
+                            "tier": "T0",
+                            "requiredCapabilities": [],
+                            "profiles": [],
+                        },
+                        {
+                            "testNamePattern": "CapableTest.*",
+                            "tier": "T0",
+                            "requiredCapabilities": [TestCapability.TRANSCEIVER.value],
+                            "profiles": [],
+                        },
+                        {
+                            "testNamePattern": "OtherTier.*",
+                            "tier": "T1",
+                            "requiredCapabilities": [],
+                            "profiles": [],
+                        },
+                    ]
+                }
+            )
+        )
+        candidates = [
+            "Unrelated.Test",
+            "CapableTest.Case",
+            "EmptyTest.CheckInit",
+        ]
+        with (
+            patch.object(runner, "_get_tier_metadata_file", return_value=str(metadata)),
+            patch.object(
+                runner,
+                "_get_available_test_capabilities",
+                return_value=(TestCapability.TRANSCEIVER,),
+            ),
+            patch.object(
+                runner,
+                "_list_tests_to_run",
+                return_value=["EmptyTest.CheckInit", "CapableTest.Case"],
+            ) as expand_patterns,
+        ):
+            selected = runner._filter_tests_for_tier(candidates, TestTier.T0)
+
+        expand_patterns.assert_called_once_with("EmptyTest.*:CapableTest.*")
+        assert selected == ["CapableTest.Case", "EmptyTest.CheckInit"]
+
+    def test_metadata_filter_reports_missing_file(self, runner, tmp_path):
+        missing = str(tmp_path / "missing.json")
+        with (
+            patch.object(runner, "_get_tier_metadata_file", return_value=missing),
+            pytest.raises(TestRunnerUsageError, match="Unable to load test metadata"),
+        ):
+            runner._filter_tests_for_tier([], TestTier.T0)
+
+    def test_metadata_filter_skips_gtest_when_no_patterns_match(self, runner, tmp_path):
+        metadata = tmp_path / "test_metadata.json"
+        metadata.write_text(
+            json.dumps(
+                {
+                    "rules": [
+                        {
+                            "testNamePattern": "OtherTier.*",
+                            "tier": "T1",
+                            "requiredCapabilities": [],
+                            "profiles": [],
+                        }
+                    ]
+                }
+            )
+        )
+        with (
+            patch.object(runner, "_get_tier_metadata_file", return_value=str(metadata)),
+            patch.object(runner, "_list_tests_to_run") as expand_patterns,
+        ):
+            assert runner._filter_tests_for_tier(["Suite.Test"], TestTier.T0) == []
+
+        expand_patterns.assert_not_called()
 
 
 class TestRunTestGtestFallback:
@@ -487,3 +623,203 @@ class TestGetTestRunCmdSwitchId:
         with patch.object(runner, "args", new=mock_args):
             cmd = runner._get_test_run_cmd("dummy.conf", "HwFooTest.Bar", [])
             assert not any("switch_id_for_testing" in item for item in cmd)
+
+
+class TestAgentCrashDowngrade:
+    """A unit crash detected after a test must fail that test even though the
+    gtest binary itself reported OK (systemd Restart= resurrects a crashed
+    production agent inside the test's own readiness wait, so gtest never
+    sees it)."""
+
+    _MOD = "fboss_test_runner.runners.test_runner"
+
+    def _make_args(self, mock_args, **overrides):
+        # _run_tests probes these with os.path / getattr; a bare Mock breaks them.
+        mock_args.sai_replayer_logging = None
+        mock_args.simulator = None
+        for k, v in overrides.items():
+            setattr(mock_args, k, v)
+        return mock_args
+
+    def _make_conf(self, tmp_path):
+        conf = tmp_path / "test.conf"
+        conf.write_text("")
+        return str(conf)
+
+    def _ok_outcome(self):
+        return RunOutcome(
+            "[ OK ] cold_boot.HwT.t (1 ms)",
+            [GtestResult("cold_boot.HwT.t", GtestStatus.OK, 1)],
+        )
+
+    def _run(self, runner, mock_args, tmp_path, exits):
+        args = self._make_args(mock_args, coldboot_only=True)
+        conf = self._make_conf(tmp_path)
+        with (
+            patch.object(runner, "_run_test", return_value=self._ok_outcome()),
+            patch.object(runner, "_setup_coldboot_test"),
+            patch.object(runner, "_end_run"),
+            patch(f"{self._MOD}.find_unclean_unit_exits", return_value=exits) as e,
+            patch(f"{self._MOD}.list_core_dumps", return_value=set()) as c,
+            patch(f"{self._MOD}.describe_core_dump"),
+        ):
+            all_results = runner._run_tests(["HwT.t"], conf, args)
+        # the journal is read once per test; cores are listed before and after
+        e.assert_called_once()
+        assert c.call_count == 2
+        return all_results
+
+    def test_crash_reason_downgrades_ok_to_failed(self, runner, mock_args, tmp_path):
+        all_results = self._run(
+            runner,
+            mock_args,
+            tmp_path,
+            exits=["fboss_hw_agent@0.service main process dumped core (status=6/ABRT)"],
+        )
+        assert [r.status for r in all_results] == [GtestStatus.FAILED]
+
+    def test_no_crash_leaves_result_untouched(self, runner, mock_args, tmp_path):
+        all_results = self._run(runner, mock_args, tmp_path, exits=[])
+        assert [r.status for r in all_results] == [GtestStatus.OK]
+
+
+class TestCrashDetection:
+    """What `_run_test_guarded` treats as a crash: any unit the test left
+    running (production agents for the CLI suite, qsfp_service and the
+    platform services for the SAI suites, ...) dying uncleanly inside the
+    test window, or any core dump from a process other than the test binary."""
+
+    _MOD = "fboss_test_runner.runners.test_runner"
+
+    _OLD_CORE = "/var/lib/systemd/coredump/core.fboss_sw_agent.0.x.9.9.zst"
+
+    def _reason(self, runner, exits, cores, summaries=None):
+        """Run one guarded test and return the crash reason handed to
+        _apply_agent_crash, or None if it was not called. `summaries` maps a
+        core path to what `describe_core_dump` says about it."""
+        outcome = RunOutcome("", [GtestResult("cold_boot.HwT.t", GtestStatus.OK, 1)])
+        listings = iter([{self._OLD_CORE}, {self._OLD_CORE, *cores}])
+        summaries = summaries or {}
+        with (
+            patch(f"{self._MOD}.time.time", return_value=1.0),
+            patch.object(runner, "_run_test", return_value=outcome),
+            patch.object(runner, "_apply_agent_crash") as apply,
+            patch(f"{self._MOD}.find_unclean_unit_exits", return_value=exits) as e,
+            patch(
+                f"{self._MOD}.list_core_dumps", side_effect=lambda: next(listings)
+            ) as c,
+            patch(
+                f"{self._MOD}.describe_core_dump",
+                side_effect=lambda core: summaries.get(core, f"core {core}"),
+            ),
+        ):
+            assert (
+                runner._run_test_guarded("c", "cold_boot.", "HwT.t", False) is outcome
+            )
+        # both probes look at the window that opened when the binary started
+        e.assert_called_once_with(1.0)
+        assert c.call_count == 2
+        if not apply.called:
+            return None
+        apply.assert_called_once()
+        assert apply.call_args[0][:3] == (outcome, "cold_boot.", "HwT.t")
+        # the core paths ride along for the banner, never in the reason
+        assert apply.call_args[0][4] == sorted(
+            core for core in cores if "sai_test-sai_im" not in core
+        )
+        return apply.call_args[0][3]
+
+    def test_unit_crash_is_reported(self, runner):
+        reason = self._reason(
+            runner,
+            ["qsfp_service.service main process dumped core (status=6/ABRT)"],
+            [],
+        )
+        assert reason == "qsfp_service.service main process dumped core (status=6/ABRT)"
+
+    def test_foreign_cores_are_described_not_listed(self, runner):
+        """The reason is what result databases index and classify failures
+        on, and they cap it at a few hundred characters: a core path would
+        crowd out the crash. Each core contributes its stack summary; the
+        paths go to the banner."""
+        hw = "/var/lib/systemd/coredump/core.fboss_hw_agent-.0.x.1.2.zst"
+        qsfp = "/var/lib/systemd/coredump/core.qsfp_service.0.x.3.4.zst"
+        reason = self._reason(
+            runner,
+            [],
+            [hw, qsfp],
+            {
+                hw: "fboss_hw_agent@0.service SIGABRT in SaiStore::check < SaiSwitch::init",
+                qsfp: "qsfp_service.service SIGSEGV in TransceiverManager::refresh",
+            },
+        )
+        assert reason == (
+            "fboss_hw_agent@0.service SIGABRT in SaiStore::check < SaiSwitch::init; "
+            "qsfp_service.service SIGSEGV in TransceiverManager::refresh"
+        )
+
+    def test_own_core_is_ignored(self, runner):
+        """The test binary dumping core already failed the test on its own;
+        naming its core as a unit crash would be noise."""
+        with patch.object(
+            runner,
+            "_get_test_binary_name",
+            return_value="/opt/fboss/bin/sai_test-sai_impl",
+        ):
+            assert (
+                self._reason(
+                    runner,
+                    [],
+                    ["/var/lib/systemd/coredump/core.sai_test-sai_im.0.x.5.6.zst"],
+                )
+                is None
+            )
+
+    def test_core_summary_replaces_the_units_exit_line(self, runner):
+        """PID 1's "main process dumped core" line and the core summary
+        describe the same death; only the summary says why. A unit that
+        died without leaving a core keeps its journal line."""
+        hw = "/var/lib/systemd/coredump/core.fboss_hw_agent-.0.x.1.2.zst"
+        reason = self._reason(
+            runner,
+            [
+                "fboss_hw_agent@0.service main process dumped core (status=11/SEGV)",
+                "fboss_sw_agent.service main process exited (status=1/FAILURE)",
+            ],
+            [hw],
+            {hw: "fboss_hw_agent@0.service SIGSEGV in SaiPortManager::addPort"},
+        )
+        assert reason == (
+            "fboss_sw_agent.service main process exited (status=1/FAILURE); "
+            "fboss_hw_agent@0.service SIGSEGV in SaiPortManager::addPort"
+        )
+
+    def test_healthy_window_is_not_a_crash(self, runner):
+        assert self._reason(runner, [], []) is None
+
+    def test_apply_downgrades_ok_and_skipped_only(self, runner):
+        outcome = RunOutcome(
+            "gtest transcript line 1\ngtest transcript line 2\n",
+            [
+                GtestResult("cold_boot.HwT.ok", GtestStatus.OK, 1),
+                GtestResult("cold_boot.HwT.skipped", GtestStatus.SKIPPED, 1),
+                GtestResult("cold_boot.HwT.timeout", GtestStatus.TIMEOUT, 1),
+            ],
+        )
+        runner._apply_agent_crash(
+            outcome, "cold_boot.", "HwT.*", "x.service dumped core"
+        )
+        assert [r.status for r in outcome.results] == [
+            GtestStatus.FAILED,
+            GtestStatus.FAILED,
+            GtestStatus.TIMEOUT,
+        ]
+        # the binary's transcript is kept (it is the only copy), the verdict
+        # is appended after it
+        assert outcome.console_output.startswith(
+            "gtest transcript line 1\ngtest transcript line 2\n########## CRASH"
+        )
+        assert "x.service dumped core" in outcome.console_output
+        assert outcome.console_output.endswith(
+            "\n".join(r.as_log_line() for r in outcome.results)
+        )

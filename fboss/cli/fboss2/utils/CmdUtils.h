@@ -183,28 +183,6 @@ class VlanIdValue : public BaseObjectArgType<int32_t> {
   const static ObjectArgTypeId id = ObjectArgTypeId::OBJECT_ARG_TYPE_VLAN_ID;
 };
 
-// Custom type for trunk VLAN action (add/remove VLANs from trunk port)
-class TrunkVlanAction : public BaseObjectArgType<int32_t> {
- public:
-  /* implicit */ TrunkVlanAction( // NOLINT(google-explicit-constructor)
-      const std::vector<std::string>& v);
-
-  bool isAdd() const {
-    return isAdd_;
-  }
-
-  bool isRemove() const {
-    return !isAdd_;
-  }
-
-  const std::vector<int32_t>& getVlanIds() const {
-    return data_;
-  }
-
- private:
-  bool isAdd_{true};
-};
-
 class VipInjectorID : public BaseObjectArgType<std::string> {
  public:
   /* implicit */ VipInjectorID( // NOLINT(google-explicit-constructor)
@@ -341,46 +319,6 @@ class PortState : public BaseObjectArgType<std::string> {
     throw std::runtime_error(
         folly::to<std::string>(
             "Unexpected state '", v, "', expecting 'enable|disable'"));
-  }
-};
-
-class FanPwm : public BaseObjectArgType<std::string> {
- public:
-  /* implicit */ FanPwm(std::vector<std::string> v) : BaseObjectArgType(v) {
-    if (v.empty()) {
-      throw std::runtime_error(
-          "Incomplete command, expecting 'fanhold <disable>|0|1|..|100'");
-    }
-    if (v.size() != 1) {
-      throw std::runtime_error(
-          folly::to<std::string>(
-              "Unexpected fanhold '",
-              folly::join<std::string, std::vector<std::string>>(" ", v),
-              "', expecting 'disable|0|1|...|100'"));
-    }
-
-    pwm = getPwm(v[0]);
-  }
-  std::optional<int> pwm;
-  const static ObjectArgTypeId id = ObjectArgTypeId::OBJECT_ARG_TYPE_FAN_PWM;
-
- private:
-  std::optional<int> getPwm(std::string& v) {
-    auto state = boost::to_upper_copy(v);
-    if (state == "DISABLE") {
-      return std::nullopt;
-    }
-    auto asint = folly::tryTo<int>(state);
-    if (asint.hasValue()) {
-      int value = asint.value();
-      if (value >= 0 && value <= 100) {
-        return value;
-      }
-    }
-
-    throw std::runtime_error(
-        folly::to<std::string>(
-            "Unexpected fanhold '", v, "', expecting 'disable|0|1|...|100'"));
   }
 };
 

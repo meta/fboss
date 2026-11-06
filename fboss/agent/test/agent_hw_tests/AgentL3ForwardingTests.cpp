@@ -168,36 +168,36 @@ TEST_F(AgentL3ForwardingTest, ttl255) {
       memberPorts.push_back(ecmpHelper6.nhop(0).portDesc.phyPortID());
     }
     auto constexpr kBytesPerPort = 1000;
-    auto pumpTraffic = [=, this]() {
+    // Use a distinct src MAC so the test packet's SMAC != DMAC; TU1 drops
+    // L3 packets whose SMAC equals DMAC.
+    auto srcMac = folly::MacAddress("02:01:02:03:04:05");
+    auto inPort = ecmpHelper6.nhop(1).portDesc.phyPortID();
+    auto sendPkt = [=, this](bool isV6) {
+      auto srcIp = folly::IPAddress(isV6 ? "1001::1" : "10.0.0.1");
+      auto dstIp = folly::IPAddress(isV6 ? "100:100:100::1" : "100.100.100.1");
+      constexpr uint8_t kTtl = 255;
+      auto pkt = utility::makeUDPTxPacket(
+          getSw(),
+          getVlanIDForTx(),
+          srcMac,
+          getMacForFirstInterfaceWithPortsForTesting(getProgrammedState()),
+          srcIp,
+          dstIp,
+          10000,
+          10001,
+          0,
+          kTtl,
+          std::vector<uint8_t>(kBytesPerPort, 0xff));
+      getSw()->sendPacketOutOfPortAsync(std::move(pkt), inPort);
+    };
+    auto pumpTraffic = [=]() {
       for (auto isV6 : {true, false}) {
-        auto vlanId = getVlanIDForTx();
-        auto intfMac =
-            getMacForFirstInterfaceWithPortsForTesting(getProgrammedState());
-        // Use a distinct src MAC so the test packet's SMAC != DMAC; TU1 drops
-        // L3 packets whose SMAC equals DMAC.
-        auto srcMac = folly::MacAddress("02:01:02:03:04:05");
-        auto srcIp = folly::IPAddress(isV6 ? "1001::1" : "10.0.0.1");
-        auto dstIp =
-            folly::IPAddress(isV6 ? "100:100:100::1" : "100.100.100.1");
-        constexpr uint8_t kTtl = 255;
         for (auto i = 0; i < memberPorts.size(); ++i) {
-          auto pkt = utility::makeUDPTxPacket(
-              getSw(),
-              vlanId,
-              srcMac,
-              intfMac,
-              srcIp,
-              dstIp,
-              10000,
-              10001,
-              0,
-              kTtl,
-              std::vector<uint8_t>(kBytesPerPort, 0xff));
-          getSw()->sendPacketOutOfPortAsync(
-              std::move(pkt), ecmpHelper6.nhop(1).portDesc.phyPortID());
+          sendPkt(isV6);
         }
       }
     };
+    learnL2EntryIfPending(srcMac, inPort, [&]() { sendPkt(true); });
     auto port = ecmpHelper6.nhop(0).portDesc.phyPortID();
     auto allPorts = memberPorts;
     allPorts.push_back(port);

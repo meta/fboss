@@ -11,7 +11,9 @@
 
 #include <memory>
 #include <ostream>
+#include <unordered_map>
 #include "fboss/agent/EcmpResourceManagerConfig.h"
+#include "fboss/agent/OverrideSetIdManager.h"
 #include "fboss/agent/state/NextHopIdMaps.h"
 #include "fboss/agent/state/RouteNextHopEntry.h"
 #include "fboss/agent/state/StateDelta.h"
@@ -110,6 +112,8 @@ class EcmpResourceManager {
     // mergedGroupInfo is set when the merged nhops get
     // used as part of a merged group
     std::shared_ptr<NextHopGroupInfo> mergedGroupInfo;
+    // Gives an ID to mergedNhops; unset until the merge is in use.
+    std::optional<NextHopSetID> overrideSetId;
   };
   ConsolidationInfo computeConsolidationInfo(
       const NextHopGroupIds& grpIds) const;
@@ -139,6 +143,9 @@ class EcmpResourceManager {
     auto grpInfo = nextHopGroupIdToInfo_.ref(gid);
     return grpInfo ? grpInfo.get() : nullptr;
   }
+  const OverrideSetIdManager& getOverrideSetIdManager() const {
+    return overrideSetIdMgr_;
+  }
   /* Test helper API end */
 
  private:
@@ -148,7 +155,8 @@ class EcmpResourceManager {
         uint32_t _primaryEcmpGroupsCnt,
         uint32_t _virtualEcmpGroupsCnt,
         uint32_t ecmpMemberCnt,
-        const StateDelta& _in);
+        const StateDelta& _in,
+        const OverrideSetIdManager* _overrideSetIdMgr);
     /*
      * addOrUpdateRoute has 1 interesting knobs
      * addNewDelta - This route update should be placed on a new
@@ -227,9 +235,7 @@ class EcmpResourceManager {
     /*
      * Return and empty out_ deltas
      */
-    std::vector<StateDelta> moveDeltas() {
-      return std::move(out_);
-    }
+    std::vector<StateDelta> moveDeltas();
     /*
      * Number of ECMP groups of primary ECMP type. Once these
      * reach the maxEcmpGroups limit, we either compress groups
@@ -239,6 +245,8 @@ class EcmpResourceManager {
     uint32_t virtualEcmpGroupsCnt{0};
     uint32_t ecmpMemberCnt{0};
     bool updated{false};
+    // Set while replaying a recovered state, whose overrides are taken as-is.
+    bool reconstructing{false};
 
     std::shared_ptr<SwitchState> getInputNewState() const {
       return inputDelta_.newState();
@@ -246,10 +254,16 @@ class EcmpResourceManager {
     std::shared_ptr<SwitchState> getInputOldState() const {
       return inputDelta_.oldState();
     }
+    // Inverse of the input state's NextHop id map; empty if it has none.
+    const std::unordered_map<NextHop, NextHopID>& getNextHopToId() const;
 
    private:
     std::vector<StateDelta> out_;
     StateDelta inputDelta_;
+    // Written into each delta's FibInfo on publish.
+    const OverrideSetIdManager* overrideSetIdMgr_;
+    // Built on first use; the input state is fixed for the whole consolidate.
+    mutable std::optional<std::unordered_map<NextHop, NextHopID>> nhopToId_;
   };
   std::pair<std::shared_ptr<NextHopGroupInfo>, bool> getOrCreateGroupInfo(
       const RouteNextHopSet& nhops,
@@ -450,12 +464,20 @@ class EcmpResourceManager {
   void computeCandidateMergesForNewMergedGroup(
       const NextHopGroupIds& newMergeSet);
   void addCandidateMerge(const NextHopGroupIds& candidateMerge);
+  // Names info.mergedNhops unless already named; leaves it unnamed if any
+  // nexthop lacks a NextHopID.
+  void allocateOverrideSetId(
+      ConsolidationInfo& info,
+      const InputOutputState& inOutState);
+  // Frees ids no merged group holds; runs once at the end of consolidate.
+  void deallocDeadOverrideSetIds();
 
   NextHops2GroupId nextHopGroup2Id_;
   StdRefMap<NextHopGroupId, NextHopGroupInfo> nextHopGroupIdToInfo_;
   PrefixToGroupInfo prefixToGroupInfo_;
   std::map<NextHopGroupIds, ConsolidationInfo> mergedGroups_;
   std::map<NextHopGroupIds, ConsolidationInfo> candidateMergeGroups_;
+  OverrideSetIdManager overrideSetIdMgr_;
   SwitchStatsGetter statsGetter_;
   EcmpResourceManagerConfig config_;
 };
@@ -554,6 +576,11 @@ class NextHopGroupInfo {
       overrideNhops = (*mergedGroupsToInfoItr_)->second.mergedNhops;
     }
     return overrideNhops;
+  }
+  std::optional<NextHopSetID> getOverrideNextHopSetID() const {
+    return mergedGroupsToInfoItr_.has_value()
+        ? (*mergedGroupsToInfoItr_)->second.overrideSetId
+        : std::nullopt;
   }
 
   bool mergedAndUnmergedNhopsMatch() const {

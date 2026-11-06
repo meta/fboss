@@ -1,0 +1,216 @@
+{
+    "platform_name": "meru800bia",
+    "vendor": "broadcom",
+    "asic": "jericho3",
+    "output_structure": {
+        "mode": "common_only"
+    },
+    "defaults": {
+        "asic_config_params": {
+            "config_type": "KEY_VALUE_CONFIG",
+            "config_gen_type": "DEFAULT",
+            "port_config": "default",
+            "multistage_role": "NONE"
+        },
+        "platform_sdk_overrides": {
+            "appl_param_local_system_port_voq_connector_start": "93184",
+            "custom_feature_programmability_standard_image_name.BCM8889X": "AI23",
+            "custom_feature_rx_fifo_monitoring_interval_ms": "200",
+            "customer_x_fap_ss": "1",
+            "tm_port_header_type_in_44.BCM8889X": "INJECTED",
+            "tm_port_header_type_in_45.BCM8889X": "INJECTED",
+            "tm_port_header_type_in_46.BCM8889X": "INJECTED",
+            "tm_port_header_type_out_44.BCM8889X": "CPU",
+            "tm_port_header_type_out_45.BCM8889X": "CPU",
+            "tm_port_header_type_out_46.BCM8889X": "CPU"
+        },
+        "conditional_settings": [
+            {
+                "name": "single_stage_port_map",
+                "condition": {
+                    "param": "port_config",
+                    "not_starts_with": "dual_stage"
+                },
+                "apply": {
+                    "common": {
+                        "fabric_connect_mode.BCM8889X": "FE",
+                        "port_priorities_1": "2",
+                        "port_priorities_2": "2",
+                        "port_priorities_3": "2",
+                        "port_priorities_4": "2",
+                        "port_priorities_44": "2",
+                        "port_priorities_45": "2",
+                        "port_priorities_46": "2",
+                        "port_priorities_5": "2",
+                        "sai_global_scoped_rcy_port": "1",
+                        "sat_enable.BCM8889X_ADAPTER": "1",
+                        "ucode_port_0.BCM8889X": "CPU.0:core_0.0",
+                        "ucode_port_0.BCM8889X_ADAPTER": "CPU.0:core_0.0",
+                        "ucode_port_1.BCM8889X": "RCY.25:core_2.2",
+                        "ucode_port_2.BCM8889X": "RCY.21:core_0.1",
+                        "ucode_port_218.BCM8889X_ADAPTER": "SAT:core_0.218",
+                        "ucode_port_3.BCM8889X": "RCY.22:core_1.1",
+                        "ucode_port_4.BCM8889X": "RCY.23:core_2.1",
+                        "ucode_port_44.BCM8889X": "CPU.8:core_1.0",
+                        "ucode_port_44.BCM8889X_ADAPTER": "CPU.8:core_1.0",
+                        "ucode_port_45.BCM8889X": "CPU.16:core_2.0",
+                        "ucode_port_45.BCM8889X_ADAPTER": "CPU.16:core_2.0",
+                        "ucode_port_46.BCM8889X": "CPU.24:core_3.0",
+                        "ucode_port_46.BCM8889X_ADAPTER": "CPU.24:core_3.0",
+                        "ucode_port_5.BCM8889X": "RCY.24:core_3.1",
+                        "ucode_port_6.BCM8889X": "EVENTOR:core_0.12",
+                        "ucode_port_7.BCM8889X": "CGE36:core_2.11"
+                    }
+                }
+            },
+            {
+                "name": "port_profile_default",
+                "condition": {
+                    "param": "port_config",
+                    "equals": "default"
+                },
+                "apply": {
+                    "common": {
+                        "rcy_mirror_to_forward_port_map_107.BCM8889X": "7",
+                        "rcy_mirror_to_forward_port_map_108.BCM8889X": "8",
+                        "rcy_mirror_to_forward_port_map_109.BCM8889X": "9",
+                        "rcy_mirror_to_forward_port_map_110.BCM8889X": "10",
+                        "rcy_mirror_to_forward_port_map_111.BCM8889X": "11",
+                        "rcy_mirror_to_forward_port_map_112.BCM8889X": "12",
+                        "rcy_mirror_to_forward_port_map_113.BCM8889X": "13",
+                        "rcy_mirror_to_forward_port_map_114.BCM8889X": "14",
+                        "rcy_mirror_to_forward_port_map_115.BCM8889X": "15",
+                        "rcy_mirror_to_forward_port_map_116.BCM8889X": "16",
+                        "rcy_mirror_to_forward_port_map_117.BCM8889X": "17",
+                        "rcy_mirror_to_forward_port_map_118.BCM8889X": "18",
+                        "rcy_mirror_to_forward_port_map_119.BCM8889X": "19",
+                        "rcy_mirror_to_forward_port_map_120.BCM8889X": "20",
+                        "rcy_mirror_to_forward_port_map_121.BCM8889X": "21",
+                        "rcy_mirror_to_forward_port_map_122.BCM8889X": "22",
+                        "rcy_mirror_to_forward_port_map_123.BCM8889X": "23",
+                        "rcy_mirror_to_forward_port_map_124.BCM8889X": "24",
+                        "rcy_mirror_to_forward_port_map_125.BCM8889X": "25",
+                        "rcy_mirror_to_forward_port_map_126.BCM8889X": "26",
+                        "rcy_mirror_to_forward_port_map_127.BCM8889X": "27",
+                        "rcy_mirror_to_forward_port_map_128.BCM8889X": "28",
+                        "rcy_mirror_to_forward_port_map_129.BCM8889X": "29",
+                        "rcy_mirror_to_forward_port_map_130.BCM8889X": "30",
+                        "rcy_mirror_to_forward_port_map_131.BCM8889X": "31",
+                        "rcy_mirror_to_forward_port_map_132.BCM8889X": "32",
+                        "rcy_mirror_to_forward_port_map_133.BCM8889X": "33",
+                        "rcy_mirror_to_forward_port_map_134.BCM8889X": "34",
+                        "rcy_mirror_to_forward_port_map_135.BCM8889X": "35",
+                        "rcy_mirror_to_forward_port_map_136.BCM8889X": "36",
+                        "rcy_mirror_to_forward_port_map_137.BCM8889X": "37",
+                        "rcy_mirror_to_forward_port_map_138.BCM8889X": "38",
+                        "rcy_mirror_to_forward_port_map_139.BCM8889X": "39",
+                        "rcy_mirror_to_forward_port_map_140.BCM8889X": "40",
+                        "rcy_mirror_to_forward_port_map_141.BCM8889X": "41",
+                        "rcy_mirror_to_forward_port_map_142.BCM8889X": "42",
+                        "rcy_mirror_to_forward_port_map_143.BCM8889X": "43",
+                        "ucode_port_10.BCM8889X": "CDGE4_2:core_0.4",
+                        "ucode_port_107.BCM8889X": "RCY_MIRROR.7:core_2.107",
+                        "ucode_port_108.BCM8889X": "RCY_MIRROR.8:core_0.108",
+                        "ucode_port_109.BCM8889X": "RCY_MIRROR.9:core_0.109",
+                        "ucode_port_11.BCM8889X": "CDGE4_3:core_0.5",
+                        "ucode_port_110.BCM8889X": "RCY_MIRROR.10:core_0.110",
+                        "ucode_port_111.BCM8889X": "RCY_MIRROR.11:core_0.111",
+                        "ucode_port_112.BCM8889X": "RCY_MIRROR.12:core_0.112",
+                        "ucode_port_113.BCM8889X": "RCY_MIRROR.13:core_0.113",
+                        "ucode_port_114.BCM8889X": "RCY_MIRROR.14:core_0.114",
+                        "ucode_port_115.BCM8889X": "RCY_MIRROR.15:core_0.115",
+                        "ucode_port_116.BCM8889X": "RCY_MIRROR.16:core_0.116",
+                        "ucode_port_117.BCM8889X": "RCY_MIRROR.17:core_0.117",
+                        "ucode_port_118.BCM8889X": "RCY_MIRROR.18:core_1.118",
+                        "ucode_port_119.BCM8889X": "RCY_MIRROR.19:core_1.119",
+                        "ucode_port_12.BCM8889X": "CDGE4_4:core_0.6",
+                        "ucode_port_120.BCM8889X": "RCY_MIRROR.20:core_1.120",
+                        "ucode_port_121.BCM8889X": "RCY_MIRROR.21:core_1.121",
+                        "ucode_port_122.BCM8889X": "RCY_MIRROR.22:core_1.122",
+                        "ucode_port_123.BCM8889X": "RCY_MIRROR.23:core_1.123",
+                        "ucode_port_124.BCM8889X": "RCY_MIRROR.24:core_1.124",
+                        "ucode_port_125.BCM8889X": "RCY_MIRROR.25:core_1.125",
+                        "ucode_port_126.BCM8889X": "RCY_MIRROR.26:core_2.126",
+                        "ucode_port_127.BCM8889X": "RCY_MIRROR.27:core_2.127",
+                        "ucode_port_128.BCM8889X": "RCY_MIRROR.28:core_2.128",
+                        "ucode_port_129.BCM8889X": "RCY_MIRROR.29:core_2.129",
+                        "ucode_port_13.BCM8889X": "CDGE4_5:core_0.7",
+                        "ucode_port_130.BCM8889X": "RCY_MIRROR.30:core_2.130",
+                        "ucode_port_131.BCM8889X": "RCY_MIRROR.31:core_2.131",
+                        "ucode_port_132.BCM8889X": "RCY_MIRROR.32:core_2.132",
+                        "ucode_port_133.BCM8889X": "RCY_MIRROR.33:core_2.133",
+                        "ucode_port_134.BCM8889X": "RCY_MIRROR.34:core_3.134",
+                        "ucode_port_135.BCM8889X": "RCY_MIRROR.35:core_3.135",
+                        "ucode_port_136.BCM8889X": "RCY_MIRROR.36:core_3.136",
+                        "ucode_port_137.BCM8889X": "RCY_MIRROR.37:core_3.137",
+                        "ucode_port_138.BCM8889X": "RCY_MIRROR.38:core_3.138",
+                        "ucode_port_139.BCM8889X": "RCY_MIRROR.39:core_3.139",
+                        "ucode_port_14.BCM8889X": "CDGE4_6:core_0.8",
+                        "ucode_port_140.BCM8889X": "RCY_MIRROR.40:core_3.140",
+                        "ucode_port_141.BCM8889X": "RCY_MIRROR.41:core_3.141",
+                        "ucode_port_142.BCM8889X": "RCY_MIRROR.42:core_3.142",
+                        "ucode_port_143.BCM8889X": "RCY_MIRROR.43:core_3.143",
+                        "ucode_port_15.BCM8889X": "CDGE4_7:core_0.9",
+                        "ucode_port_16.BCM8889X": "CDGE4_8:core_0.10",
+                        "ucode_port_17.BCM8889X": "CDGE4_9:core_0.11",
+                        "ucode_port_18.BCM8889X": "CDGE4_10:core_1.12",
+                        "ucode_port_19.BCM8889X": "CDGE4_11:core_1.3",
+                        "ucode_port_20.BCM8889X": "CDGE4_12:core_1.4",
+                        "ucode_port_21.BCM8889X": "CDGE4_13:core_1.5",
+                        "ucode_port_22.BCM8889X": "CDGE4_14:core_1.6",
+                        "ucode_port_23.BCM8889X": "CDGE4_15:core_1.7",
+                        "ucode_port_24.BCM8889X": "CDGE4_16:core_1.8",
+                        "ucode_port_25.BCM8889X": "CDGE4_17:core_1.9",
+                        "ucode_port_26.BCM8889X": "CDGE4_18:core_2.12",
+                        "ucode_port_27.BCM8889X": "CDGE4_19:core_2.3",
+                        "ucode_port_28.BCM8889X": "CDGE4_20:core_2.4",
+                        "ucode_port_29.BCM8889X": "CDGE4_21:core_2.5",
+                        "ucode_port_30.BCM8889X": "CDGE4_22:core_2.6",
+                        "ucode_port_31.BCM8889X": "CDGE4_23:core_2.7",
+                        "ucode_port_32.BCM8889X": "CDGE4_24:core_2.8",
+                        "ucode_port_33.BCM8889X": "CDGE4_25:core_2.9",
+                        "ucode_port_34.BCM8889X": "CDGE4_26:core_3.2",
+                        "ucode_port_35.BCM8889X": "CDGE4_27:core_3.3",
+                        "ucode_port_36.BCM8889X": "CDGE4_28:core_3.4",
+                        "ucode_port_37.BCM8889X": "CDGE4_29:core_3.5",
+                        "ucode_port_38.BCM8889X": "CDGE4_30:core_3.6",
+                        "ucode_port_39.BCM8889X": "CDGE4_31:core_3.7",
+                        "ucode_port_40.BCM8889X": "CDGE4_32:core_3.8",
+                        "ucode_port_41.BCM8889X": "CDGE4_33:core_3.9",
+                        "ucode_port_42.BCM8889X": "CDGE4_34:core_3.10",
+                        "ucode_port_43.BCM8889X": "CDGE4_35:core_3.11",
+                        "ucode_port_8.BCM8889X": "CDGE4_0:core_0.2",
+                        "ucode_port_9.BCM8889X": "CDGE4_1:core_0.3"
+                    }
+                }
+            },
+            {
+                "name": "prod_sdk_settings",
+                "condition": {
+                    "param": "config_gen_type",
+                    "equals": "DEFAULT"
+                },
+                "apply": {
+                    "common": {
+                        "dpp_db_path": "/etc/packages/neteng-fboss-wedge_agent/current/db"
+                    }
+                }
+            },
+            {
+                "name": "multistage_role_none",
+                "condition": {
+                    "param": "multistage_role",
+                    "equals": "NONE"
+                },
+                "apply": {
+                    "common": {
+                        "l3_ecmp_max_group_size": "512"
+                    }
+                }
+            }
+        ]
+    },
+    "variants": {
+        "default": {}
+    }
+}

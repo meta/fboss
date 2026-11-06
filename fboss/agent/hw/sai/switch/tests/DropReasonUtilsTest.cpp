@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <iostream>
+#include <limits>
 #include <span>
 
 #include <gtest/gtest.h>
@@ -17,6 +18,26 @@ namespace {
 // shape a stringified X-macro entry has: "<PREFIX><NAME><SUFFIX> = <value>,".
 constexpr std::string_view kPrefix = "TEST_DROP_CAUSE_";
 constexpr std::string_view kSuffix = "_X";
+
+struct DropReasonLogParams {
+  std::string_view stage;
+  std::optional<uint64_t> bitmap;
+  std::string header;
+};
+
+class DropReasonLogTest : public testing::TestWithParam<DropReasonLogParams> {};
+
+INSTANTIATE_TEST_SUITE_P(
+    Unified,
+    DropReasonLogTest,
+    testing::Values(
+        DropReasonLogParams{"ingress", std::nullopt, "DROP reasons ingress: "},
+        DropReasonLogParams{"egress", std::nullopt, "DROP reasons egress: "},
+        DropReasonLogParams{"CGM", 0x80001, "DROP reasons CGM: (0x80001) "},
+        DropReasonLogParams{
+            "pipelineIpv4",
+            0x80001,
+            "DROP reasons pipelineIpv4: (0x80001) "}));
 
 const char* const kEnums[] = {
     "TEST_DROP_CAUSE_ALPHA_X = 0,",
@@ -212,6 +233,59 @@ TEST(DropReasonUtilsTest, decodeOfZeroBitmapIsEmpty) {
   EXPECT_TRUE(decodeDropBitmap(0, kEnums, kPrefix, kSuffix).empty());
 }
 
+TEST_P(DropReasonLogTest, reasonsPackedWithHeader) {
+  const auto& [stage, bitmap, header] = GetParam();
+  EXPECT_EQ(
+      formatDropReasonLogLines(stage, {"ALPHA", "BRAVO"}, bitmap),
+      (std::vector<std::string>{header + "ALPHA, BRAVO"}));
+}
+
+TEST_P(DropReasonLogTest, reasonsWrapWithRepeatedHeaders) {
+  const auto& [stage, bitmap, header] = GetParam();
+  const std::vector<std::string> names{
+      std::string(127, 'A'), std::string(127, 'B'), std::string(127, 'C')};
+  auto lines = formatDropReasonLogLines(stage, names, bitmap);
+  EXPECT_EQ(
+      lines,
+      (std::vector<std::string>{
+          header + names[0] + ", " + names[1], header + names[2]}));
+
+  std::vector<std::string> payloads;
+  for (const auto& line : lines) {
+    ASSERT_TRUE(line.starts_with(header));
+    payloads.push_back(line.substr(header.size()));
+    EXPECT_LE(payloads.back().size(), 256);
+  }
+  EXPECT_EQ(namesAcrossLines(payloads), names);
+}
+
+TEST_P(DropReasonLogTest, reasonsWrapAtPayloadBoundary) {
+  const auto& [stage, bitmap, header] = GetParam();
+  const std::string name(256, 'A');
+  EXPECT_EQ(
+      formatDropReasonLogLines(stage, {name, "B"}, bitmap),
+      (std::vector<std::string>{header + name, header + "B"}));
+}
+
+TEST(DropReasonUtilsTest, logReasonsKeepHighBitmapBit) {
+  EXPECT_EQ(
+      formatDropReasonLogLines("stage", {"ALPHA"}, 1ULL << 63),
+      (std::vector<std::string>{
+          "DROP reasons stage: (0x8000000000000000) ALPHA"}));
+}
+
+TEST_P(DropReasonLogTest, emptyReasonsProduceNoLines) {
+  const auto& [stage, bitmap, header] = GetParam();
+  EXPECT_TRUE(formatDropReasonLogLines(stage, {}, bitmap).empty());
+}
+
+TEST(DropReasonUtilsTest, logReasonsWithDecodedBitmap) {
+  EXPECT_EQ(
+      formatDropReasonLogLines(
+          "stage", decodeDropBitmap(5, kEnums, kPrefix, kSuffix), 5),
+      (std::vector<std::string>{"DROP reasons stage: (0x5) ALPHA, CHARLIE"}));
+}
+
 TEST(DropReasonUtilsTest, decodeSingleBit) {
   EXPECT_EQ(
       decodeDropBitmap(1 << 0, kEnums, kPrefix, kSuffix),
@@ -224,17 +298,27 @@ TEST(DropReasonUtilsTest, decodeHighestBitInTable) {
       std::vector<std::string>{"ECHO"});
 }
 
+TEST(DropReasonUtilsTest, decodeHighBitmapBitInOrder) {
+  std::vector<const char*> enumNames(64, nullptr);
+  enumNames[0] = kEnums[0];
+  enumNames[63] = "TEST_DROP_CAUSE_HIGH_X = 63,";
+  const auto bitmap = std::numeric_limits<int64_t>::min() | 1;
+  EXPECT_EQ(
+      decodeDropBitmap(bitmap, enumNames, kPrefix, kSuffix),
+      (std::vector<std::string>{"ALPHA", "HIGH"}));
+}
+
 TEST(DropReasonUtilsTest, decodeReturnsOnlySetBits) {
   // Bits 0 and 2 set.
   EXPECT_EQ(
       decodeDropBitmap(0b101, kEnums, kPrefix, kSuffix),
-      std::vector<std::string>{"ALPHA, CHARLIE"});
+      (std::vector<std::string>{"ALPHA", "CHARLIE"}));
 }
 
 TEST(DropReasonUtilsTest, decodeAllBitsInTable) {
   EXPECT_EQ(
       decodeDropBitmap(0b11111, kEnums, kPrefix, kSuffix),
-      std::vector<std::string>{"ALPHA, BRAVO, CHARLIE, DELTA, ECHO"});
+      (std::vector<std::string>{"ALPHA", "BRAVO", "CHARLIE", "DELTA", "ECHO"}));
 }
 
 TEST(DropReasonUtilsTest, decodeIgnoresBitsPastTheTable) {
@@ -260,7 +344,7 @@ TEST(DropReasonUtilsTest, decodeSkipsNullTableEntries) {
   };
   EXPECT_EQ(
       decodeDropBitmap(0b111, sparse, kPrefix, kSuffix),
-      std::vector<std::string>{"FIRST, THIRD"});
+      (std::vector<std::string>{"FIRST", "THIRD"}));
 }
 
 TEST(DropReasonUtilsTest, decodeSkipsNullAtBitZero) {
@@ -277,40 +361,4 @@ TEST(DropReasonUtilsTest, decodeRejectsBadTable) {
   EXPECT_TRUE(
       decodeDropBitmap(0b1, std::span<const char* const>{}, kPrefix, kSuffix)
           .empty());
-}
-
-TEST(DropReasonUtilsTest, decodeSplitsLongOutput) {
-  const char* const longEnums[] = {
-      "TEST_DROP_CAUSE_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA_X = 0,",
-      "TEST_DROP_CAUSE_BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB_X = 1,",
-      "TEST_DROP_CAUSE_CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC_X = 2,",
-      "TEST_DROP_CAUSE_DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD_X = 3,",
-      "TEST_DROP_CAUSE_EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE_X = 4,",
-      "TEST_DROP_CAUSE_FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF_X = 5,",
-      "TEST_DROP_CAUSE_GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG_X = 6,",
-      "TEST_DROP_CAUSE_HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH_X = 7,",
-      "TEST_DROP_CAUSE_IIIIIIIIIIIIIIIIIIIIIIIIIIIIIII_X = 8,",
-      "TEST_DROP_CAUSE_JJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJ_X = 9,",
-  };
-  auto lines = decodeDropBitmap(0x3FF, longEnums, kPrefix, kSuffix);
-  showLoggedLines(lines);
-
-  // All ten reasons are reported rather than cut off at the cap.
-  EXPECT_GT(lines.size(), 1);
-  for (const auto& line : lines) {
-    EXPECT_LE(line.size(), 256);
-  }
-  EXPECT_EQ(
-      namesAcrossLines(lines),
-      (std::vector<std::string>{
-          "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-          "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
-          "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC",
-          "DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD",
-          "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE",
-          "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
-          "GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG",
-          "HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH",
-          "IIIIIIIIIIIIIIIIIIIIIIIIIIIIIII",
-          "JJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJ"}));
 }

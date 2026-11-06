@@ -62,6 +62,12 @@ void FsdbPublisher<PubUnit>::handleStateChange(
     State newState) {
 #if FOLLY_HAS_COROUTINES
   auto pipeWPtr = asyncPipe_.wlock();
+  // setState() invokes this callback outside its state lock, so a CONNECTING
+  // callback can run after the service loop has already moved to CONNECTED and
+  // would reset the fresh pipe. Ignore stale transitions.
+  if (newState != getState()) {
+    return;
+  }
   if (newState != State::CONNECTED) {
     cancelHeartbeatLoop();
     // If we went to any other state than CONNECTED, reset the publish queue.

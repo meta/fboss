@@ -17,9 +17,9 @@
 #include "fboss/agent/types.h"
 #include "fboss/cli/fboss2/CmdHandler.h"
 #include "fboss/cli/fboss2/commands/config/interface/InterfaceAttrArgsBase.h"
-#include "fboss/cli/fboss2/commands/config/interface/ProfileValidation.h"
 #include "fboss/cli/fboss2/gen-cpp2/cli_metadata_types.h"
 #include "fboss/cli/fboss2/utils/InterfaceList.h"
+#include "fboss/lib/config/agent/PortConfigUtils.h"
 
 namespace facebook::fboss {
 
@@ -81,9 +81,12 @@ class CmdConfigInterface
 // T281221621). Callers thread one ConfigActionLevel through every attribute
 // handler and commit at the resulting level, so any future attribute needing
 // warmboot/coldboot can escalate it too.
+cfg::PortProfileID parsePortProfile(const std::string& profile);
+
 std::string applyProfileImpl(
-    ProfileValidator& validator,
     cfg::SwitchConfig& swConfig,
+    const PlatformMapping& platformMapping,
+    const utility::PortProfileSupportMap& qsfpSupportedProfiles,
     const utils::InterfaceList& interfaces,
     const std::string& value,
     cli::ConfigActionLevel* actionLevel = nullptr);

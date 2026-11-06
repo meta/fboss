@@ -173,13 +173,21 @@ TEST_F(CmdDeleteQosPolicyTestFixture, deleteReferencedPolicyRefused) {
   EXPECT_NE(findPolicy("in-use"), nullptr);
 }
 
-TEST_F(CmdDeleteQosPolicyTestFixture, deleteMissingPolicyFails) {
+TEST_F(CmdDeleteQosPolicyTestFixture, deleteMissingPolicyIsNoop) {
   setupTestableConfigSession("delete qos policy", "nope");
+  const auto sessionBefore = sessionConfigText();
 
+  const auto before =
+      *ConfigSession::getInstance().getAgentConfig().sw()->qosPolicies();
   auto cmd = CmdDeleteQosPolicy();
-  EXPECT_THROW(
+  EXPECT_THAT(
       cmd.queryClient(localhost(), QosPolicyName({"nope"})),
-      std::runtime_error);
+      ::testing::HasSubstr("nothing to delete"));
+  EXPECT_EQ(
+      *ConfigSession::getInstance().getAgentConfig().sw()->qosPolicies(),
+      before);
+  EXPECT_EQ(sessionConfigText(), sessionBefore)
+      << "a no-op delete must not save the config";
 }
 
 // ------------------------------------------------------------ delete map dscp
@@ -233,16 +241,21 @@ TEST_F(CmdDeleteQosPolicyTestFixture, deleteDscpKeepsEntryWithEgressRewrite) {
   EXPECT_TRUE(entry->fromTrafficClassToDscp().has_value());
 }
 
-TEST_F(CmdDeleteQosPolicyTestFixture, deleteMissingDscpFails) {
+TEST_F(CmdDeleteQosPolicyTestFixture, deleteMissingDscpIsNoop) {
   setupTestableConfigSession("delete qos policy map", "dscp 63");
+  const auto sessionBefore = sessionConfigText();
 
+  const auto before = *findPolicy("unreferenced")->qosMap();
   auto cmd = CmdDeleteQosPolicyMap();
-  EXPECT_THROW(
+  EXPECT_THAT(
       cmd.queryClient(
           localhost(),
           QosPolicyName({"unreferenced"}),
           DeleteQosMapEntry({"dscp", "63"})),
-      std::runtime_error);
+      ::testing::HasSubstr("nothing to delete"));
+  EXPECT_EQ(*findPolicy("unreferenced")->qosMap(), before);
+  EXPECT_EQ(sessionConfigText(), sessionBefore)
+      << "a no-op delete must not save the config";
 }
 
 // ----------------------------------------------------- delete map tc-to-queue
@@ -267,16 +280,21 @@ TEST_F(CmdDeleteQosPolicyTestFixture, deleteTcToQueue) {
   EXPECT_EQ(tcToQueue.at(2), 2);
 }
 
-TEST_F(CmdDeleteQosPolicyTestFixture, deleteMissingTcToQueueFails) {
+TEST_F(CmdDeleteQosPolicyTestFixture, deleteMissingTcToQueueIsNoop) {
   setupTestableConfigSession("delete qos policy map", "tc-to-queue 7");
+  const auto sessionBefore = sessionConfigText();
 
+  const auto before = *findPolicy("unreferenced")->qosMap();
   auto cmd = CmdDeleteQosPolicyMap();
-  EXPECT_THROW(
+  EXPECT_THAT(
       cmd.queryClient(
           localhost(),
           QosPolicyName({"unreferenced"}),
           DeleteQosMapEntry({"tc-to-queue", "7"})),
-      std::runtime_error);
+      ::testing::HasSubstr("nothing to delete"));
+  EXPECT_EQ(*findPolicy("unreferenced")->qosMap(), before);
+  EXPECT_EQ(sessionConfigText(), sessionBefore)
+      << "a no-op delete must not save the config";
 }
 
 // ------------------------------------------------- delete map remaining kinds
@@ -298,16 +316,21 @@ TEST_F(CmdDeleteQosPolicyTestFixture, deleteMplsExpDropsEntry) {
   EXPECT_TRUE(policy->qosMap()->expMaps()->empty());
 }
 
-TEST_F(CmdDeleteQosPolicyTestFixture, deleteMissingMplsExpFails) {
+TEST_F(CmdDeleteQosPolicyTestFixture, deleteMissingMplsExpIsNoop) {
   setupTestableConfigSession("delete qos policy map", "mpls-exp 0");
+  const auto sessionBefore = sessionConfigText();
 
+  const auto before = *findPolicy("unreferenced")->qosMap();
   auto cmd = CmdDeleteQosPolicyMap();
-  EXPECT_THROW(
+  EXPECT_THAT(
       cmd.queryClient(
           localhost(),
           QosPolicyName({"unreferenced"}),
           DeleteQosMapEntry({"mpls-exp", "0"})),
-      std::runtime_error);
+      ::testing::HasSubstr("nothing to delete"));
+  EXPECT_EQ(*findPolicy("unreferenced")->qosMap(), before);
+  EXPECT_EQ(sessionConfigText(), sessionBefore)
+      << "a no-op delete must not save the config";
 }
 
 TEST_F(CmdDeleteQosPolicyTestFixture, deleteLastDot1pResetsPcpMaps) {
@@ -326,16 +349,21 @@ TEST_F(CmdDeleteQosPolicyTestFixture, deleteLastDot1pResetsPcpMaps) {
   EXPECT_FALSE(policy->qosMap()->pcpMaps().has_value());
 }
 
-TEST_F(CmdDeleteQosPolicyTestFixture, deleteMissingDot1pFails) {
+TEST_F(CmdDeleteQosPolicyTestFixture, deleteMissingDot1pIsNoop) {
   setupTestableConfigSession("delete qos policy map", "dot1p 0");
+  const auto sessionBefore = sessionConfigText();
 
+  const auto before = *findPolicy("unreferenced")->qosMap();
   auto cmd = CmdDeleteQosPolicyMap();
-  EXPECT_THROW(
+  EXPECT_THAT(
       cmd.queryClient(
           localhost(),
           QosPolicyName({"unreferenced"}),
           DeleteQosMapEntry({"dot1p", "0"})),
-      std::runtime_error);
+      ::testing::HasSubstr("nothing to delete"));
+  EXPECT_EQ(*findPolicy("unreferenced")->qosMap(), before);
+  EXPECT_EQ(sessionConfigText(), sessionBefore)
+      << "a no-op delete must not save the config";
 }
 
 TEST_F(CmdDeleteQosPolicyTestFixture, deleteLastPfcPriToQueueResetsMap) {
@@ -372,16 +400,21 @@ TEST_F(CmdDeleteQosPolicyTestFixture, deleteTcToPgKeepsRemainingKeys) {
   EXPECT_EQ(tcToPg->at(5), 5);
 }
 
-TEST_F(CmdDeleteQosPolicyTestFixture, deletePfcPriToPgOnUnsetKeyFails) {
+TEST_F(CmdDeleteQosPolicyTestFixture, deletePfcPriToPgOnUnsetKeyIsNoop) {
   setupTestableConfigSession("delete qos policy map", "pfc-pri-to-pg 0");
+  const auto sessionBefore = sessionConfigText();
 
+  const auto before = *findPolicy("unreferenced")->qosMap();
   auto cmd = CmdDeleteQosPolicyMap();
-  EXPECT_THROW(
+  EXPECT_THAT(
       cmd.queryClient(
           localhost(),
           QosPolicyName({"unreferenced"}),
           DeleteQosMapEntry({"pfc-pri-to-pg", "0"})),
-      std::runtime_error);
+      ::testing::HasSubstr("nothing to delete"));
+  EXPECT_EQ(*findPolicy("unreferenced")->qosMap(), before);
+  EXPECT_EQ(sessionConfigText(), sessionBefore)
+      << "a no-op delete must not save the config";
 }
 
 TEST_F(CmdDeleteQosPolicyTestFixture, deletePfcPriToPg) {
@@ -457,22 +490,20 @@ TEST_F(CmdDeleteQosPolicyTestFixture, deleteCpuReferencedPolicyRefused) {
   EXPECT_NE(findPolicy("cpu-ref"), nullptr);
 }
 
-// Deleting a map entry on a policy that has no qosMap reports the missing map
-// rather than dereferencing an unset optional.
-TEST_F(CmdDeleteQosPolicyTestFixture, mapDeleteOnPolicyWithNoQosMapFails) {
+// Deleting a map entry on a policy that has no qosMap is a no-op rather than
+// dereferencing an unset optional.
+TEST_F(CmdDeleteQosPolicyTestFixture, mapDeleteOnPolicyWithNoQosMapIsNoop) {
   setupTestableConfigSession("delete qos policy map", "dscp 1");
+  const auto sessionBefore = sessionConfigText();
 
   auto cmd = CmdDeleteQosPolicyMap();
-  try {
-    cmd.queryClient(
-        localhost(),
-        QosPolicyName({"no-map"}),
-        DeleteQosMapEntry({"dscp", "1"}));
-    FAIL() << "expected map delete on policy without qosMap to throw";
-  } catch (const std::runtime_error& e) {
-    EXPECT_THAT(
-        std::string(e.what()), ::testing::HasSubstr("no qosMap configured"));
-  }
+  auto result = cmd.queryClient(
+      localhost(), QosPolicyName({"no-map"}), DeleteQosMapEntry({"dscp", "1"}));
+  EXPECT_THAT(result, ::testing::HasSubstr("no qosMap configured"));
+  EXPECT_THAT(result, ::testing::HasSubstr("nothing to delete"));
+  EXPECT_FALSE(findPolicy("no-map")->qosMap().has_value());
+  EXPECT_EQ(sessionConfigText(), sessionBefore)
+      << "a no-op delete must not save the config";
 }
 
 } // namespace facebook::fboss

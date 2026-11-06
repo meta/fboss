@@ -3,6 +3,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <limits>
+
 #include <folly/IPAddressV4.h>
 
 #include "fboss/agent/AddressUtil.h"
@@ -72,37 +74,115 @@ std::map<int32_t, PortInfoThrift> createInterfaceCountersEntries() {
 class CmdShowInterfaceCountersTestFixture : public CmdHandlerTestBase {
  public:
   std::map<int32_t, facebook::fboss::PortInfoThrift> portEntries;
+  std::vector<facebook::fboss::AggregatePortThrift> aggregatePortEntries;
   std::vector<std::string> queriedEntries;
   void SetUp() override {
     CmdHandlerTestBase::SetUp();
     portEntries = createInterfaceCountersEntries();
+
+    AggregatePortMemberThrift member1;
+    member1.memberPortID() = 1;
+    AggregatePortMemberThrift member2;
+    member2.memberPortID() = 2;
+    AggregatePortThrift aggregatePort;
+    aggregatePort.name() = "Port-Channel1";
+    aggregatePort.memberPorts() = {member1, member2};
+    aggregatePortEntries.push_back(std::move(aggregatePort));
   }
 };
 
 TEST_F(CmdShowInterfaceCountersTestFixture, queryClient) {
   setupMockedAgentServer();
   EXPECT_CALL(getMockAgent(), getAllPortInfo(_))
-      .WillOnce(Invoke(
-          [&](auto& countersEntries) { countersEntries = portEntries; }));
+      .WillOnce([&](auto& countersEntries) { countersEntries = portEntries; });
+  EXPECT_CALL(getMockAgent(), getAggregatePortTable(_))
+      .WillOnce(
+          [&](auto& aggregatePorts) { aggregatePorts = aggregatePortEntries; });
 
   auto cmd = CmdShowInterfaceCounters();
   auto result = cmd.queryClient(localhost(), queriedEntries);
-  auto model = cmd.createModel(portEntries, queriedEntries);
+  auto model =
+      cmd.createModel(portEntries, aggregatePortEntries, queriedEntries);
 
   EXPECT_THRIFT_EQ(model, result);
 }
 
 TEST_F(CmdShowInterfaceCountersTestFixture, createModel) {
   auto cmd = CmdShowInterfaceCounters();
-  auto model = cmd.createModel(portEntries, queriedEntries);
+  auto model =
+      cmd.createModel(portEntries, aggregatePortEntries, queriedEntries);
   auto intCounters = model.int_counters().value();
 
-  EXPECT_EQ(intCounters.size(), 2);
+  ASSERT_EQ(intCounters.size(), 3);
+  EXPECT_EQ(*intCounters[0].interfaceName(), "Port-Channel1");
+  EXPECT_EQ(*intCounters[0].inputBytes(), 100);
+  EXPECT_EQ(*intCounters[0].inputUcastPkts(), 100);
+  EXPECT_EQ(*intCounters[0].inputMulticastPkts(), 100);
+  EXPECT_EQ(*intCounters[0].inputBroadcastPkts(), 100);
+  EXPECT_EQ(*intCounters[0].outputBytes(), 100);
+  EXPECT_EQ(*intCounters[0].outputUcastPkts(), 100);
+  EXPECT_EQ(*intCounters[0].outputMulticastPkts(), 100);
+  EXPECT_EQ(*intCounters[0].outputBroadcastPkts(), 100);
+}
+
+TEST_F(CmdShowInterfaceCountersTestFixture, createModelForAggregatePort) {
+  auto cmd = CmdShowInterfaceCounters();
+  auto model =
+      cmd.createModel(portEntries, aggregatePortEntries, {"Port-Channel1"});
+
+  ASSERT_EQ(model.int_counters()->size(), 1);
+  EXPECT_EQ(*model.int_counters()->front().interfaceName(), "Port-Channel1");
+  EXPECT_EQ(*model.int_counters()->front().inputBytes(), 100);
+  EXPECT_EQ(*model.int_counters()->front().outputBytes(), 100);
+}
+
+TEST_F(CmdShowInterfaceCountersTestFixture, preservesUninitializedCounter) {
+  portEntries.at(2).input()->bytes() =
+      hardware_stats_constants::STAT_UNINITIALIZED();
+
+  auto model = CmdShowInterfaceCounters().createModel(
+      portEntries, aggregatePortEntries, {"Port-Channel1"});
+
+  ASSERT_EQ(model.int_counters()->size(), 1);
+  EXPECT_EQ(
+      *model.int_counters()->front().inputBytes(),
+      hardware_stats_constants::STAT_UNINITIALIZED());
+}
+
+TEST_F(CmdShowInterfaceCountersTestFixture, missingMemberIsUninitialized) {
+  portEntries.erase(2);
+
+  auto model = CmdShowInterfaceCounters().createModel(
+      portEntries, aggregatePortEntries, {"Port-Channel1"});
+
+  ASSERT_EQ(model.int_counters()->size(), 1);
+  const auto& counter = model.int_counters()->front();
+  const auto uninitialized = hardware_stats_constants::STAT_UNINITIALIZED();
+  EXPECT_EQ(*counter.inputBytes(), uninitialized);
+  EXPECT_EQ(*counter.inputUcastPkts(), uninitialized);
+  EXPECT_EQ(*counter.inputMulticastPkts(), uninitialized);
+  EXPECT_EQ(*counter.inputBroadcastPkts(), uninitialized);
+  EXPECT_EQ(*counter.outputBytes(), uninitialized);
+  EXPECT_EQ(*counter.outputUcastPkts(), uninitialized);
+  EXPECT_EQ(*counter.outputMulticastPkts(), uninitialized);
+  EXPECT_EQ(*counter.outputBroadcastPkts(), uninitialized);
+}
+
+TEST_F(CmdShowInterfaceCountersTestFixture, saturatesCounterOnOverflow) {
+  portEntries.at(1).input()->bytes() = std::numeric_limits<int64_t>::max() - 50;
+
+  auto model = CmdShowInterfaceCounters().createModel(
+      portEntries, aggregatePortEntries, {"Port-Channel1"});
+
+  ASSERT_EQ(model.int_counters()->size(), 1);
+  EXPECT_EQ(
+      *model.int_counters()->front().inputBytes(),
+      std::numeric_limits<int64_t>::max());
 }
 
 TEST_F(CmdShowInterfaceCountersTestFixture, printOutput) {
   auto cmd = CmdShowInterfaceCounters();
-  auto model = cmd.createModel(portEntries, queriedEntries);
+  auto model = cmd.createModel(portEntries, {}, queriedEntries);
 
   std::stringstream ss;
   cmd.printOutput(model, ss);

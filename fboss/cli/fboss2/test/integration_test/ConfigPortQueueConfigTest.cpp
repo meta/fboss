@@ -112,19 +112,14 @@ TEST_F(ConfigPortQueueConfigTest, BuildAndAssignPolicy) {
   XLOG(INFO) << "Using test interface " << ifName;
 
   XLOG(INFO) << "[Step 1] Configuring buffer pool...";
-  configureBufferPool(/*sharedBytes=*/78773528, /*headroomBytes=*/4405376);
+  configureBufferPool(/*sharedBytes=*/1048576, /*headroomBytes=*/0);
 
   XLOG(INFO) << "[Step 2] Configuring queues...";
   configureQueue(
-      2, {"scheduling", "SP", "shared-bytes", "83618832", "weight", "10"});
+      2, {"scheduling", "SP", "shared-bytes", "1048576", "weight", "10"});
   configureQueue(
       6,
-      {"scheduling",
-       "SP",
-       "shared-bytes",
-       "83618832",
-       "scaling-factor",
-       "TWO"});
+      {"scheduling", "SP", "shared-bytes", "1048576", "scaling-factor", "TWO"});
   configureQueue(
       7,
       {"scheduling",
@@ -142,7 +137,7 @@ TEST_F(ConfigPortQueueConfigTest, BuildAndAssignPolicy) {
       {"scheduling",
        "SP",
        "shared-bytes",
-       "83618832",
+       "1048576",
        "active-queue-management",
        "congestion-behavior",
        "ECN",
@@ -174,8 +169,8 @@ TEST_F(ConfigPortQueueConfigTest, BuildAndAssignPolicy) {
   const auto& pools = sw["bufferPoolConfigs"];
   ASSERT_TRUE(pools.count(bufferPoolName_))
       << "buffer pool " << bufferPoolName_ << " missing";
-  EXPECT_EQ(pools[bufferPoolName_]["sharedBytes"].asInt(), 78773528);
-  EXPECT_EQ(pools[bufferPoolName_]["headroomBytes"].asInt(), 4405376);
+  EXPECT_EQ(pools[bufferPoolName_]["sharedBytes"].asInt(), 1048576);
+  EXPECT_EQ(pools[bufferPoolName_]["headroomBytes"].asInt(), 0);
 
   // Named queue config
   ASSERT_TRUE(sw.count("portQueueConfigs"));
@@ -189,7 +184,7 @@ TEST_F(ConfigPortQueueConfigTest, BuildAndAssignPolicy) {
     const auto* q = findQueue(queues, 2);
     ASSERT_NE(q, nullptr);
     EXPECT_EQ((*q)["scheduling"].asInt(), kSchedSp);
-    EXPECT_EQ((*q)["sharedBytes"].asInt(), 83618832);
+    EXPECT_EQ((*q)["sharedBytes"].asInt(), 1048576);
     EXPECT_EQ((*q)["weight"].asInt(), 10);
     EXPECT_EQ(
         (*q).getDefault("streamType", kStreamUnicast).asInt(), kStreamUnicast);

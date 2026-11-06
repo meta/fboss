@@ -31,6 +31,37 @@
         ]
       }
     },
+    "SCM.DPM_1": {
+      "i2cTestData": {
+        "i2cGetData": [
+          {
+            "reg": "0x98",
+            "expected": "0x22"
+          }
+        ]
+      },
+      "hwmonTestData": {
+        "expectedFeatures": [
+          "vout1",
+          "vout2",
+          "vout3",
+          "vout4",
+          "vout5",
+          "vout6",
+          "vout7",
+          "vout8",
+          "vout9",
+          "vout10",
+          "vout11",
+          "vout12",
+          "vout13",
+          "vout14",
+          "vout15",
+          "vout16",
+          "vout17"
+        ]
+      }
+    },
     "SCM.DPM_2": {
       "i2cTestData": {
         "i2cGetData": [

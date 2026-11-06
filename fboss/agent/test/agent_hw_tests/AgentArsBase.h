@@ -41,12 +41,8 @@ class AgentArsBase : public AgentHwTest {
   std::optional<size_t> maxRequiredInterfacePorts() const override {
     return kMaxEcmpWidthForTest;
   }
-  std::string getAclName(
-      AclType aclType,
-      bool enableArsAlternateMembers = false) const;
-  std::string getCounterName(
-      AclType aclType,
-      bool enableAlternateArsMembers = false) const;
+  std::string getAclName(AclType aclType) const;
+  std::string getCounterName(AclType aclType) const;
   void setup(int ecmpWidth = 1);
   void addSamplingConfig(cfg::SwitchConfig& config);
   void addAclTableConfig(
@@ -155,6 +151,9 @@ class AgentArsBase : public AgentHwTest {
   static inline constexpr auto kAclMirror = "acl_mirror";
   static inline constexpr auto sflowDestinationVIP = "2001::101";
   static inline constexpr auto aclDestinationVIP = "2002::101";
+  // Match the addresses pumpRoCETraffic itself defaults to for IPv6.
+  static inline constexpr auto kRoceSrcIp = "1001::1";
+  static inline constexpr auto kRoceDstIp = "2001::1";
   static inline constexpr auto kFrontPanelPortForTest = 8;
   std::unique_ptr<utility::EcmpSetupTargetedPorts6> helper_;
   std::vector<boost::container::flat_set<PortDescriptor>> nhopSets;

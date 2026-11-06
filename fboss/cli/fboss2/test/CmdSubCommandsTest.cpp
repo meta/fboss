@@ -5,12 +5,28 @@
 
 #include <CLI/CLI.hpp>
 
+#include "fboss/cli/fboss2/CmdHandler.h"
 #include "fboss/cli/fboss2/CmdList.h"
 #include "fboss/cli/fboss2/CmdSubcommands.h"
 #include "fboss/cli/fboss2/utils/CLIParserUtils.h"
 
 namespace facebook::fboss {
 namespace {
+
+struct FakeReadCmdTraits : public ReadCommandTraits, public CliDocsExempt {};
+struct FakeReadCmd {
+  using Traits = FakeReadCmdTraits;
+  void run() {}
+};
+
+struct FakeWriteCmd {
+  using Traits = WriteCommandTraits;
+  void run() {}
+};
+
+utils::ObjectArgTypeId noArgType() {
+  return utils::ObjectArgTypeId::OBJECT_ARG_TYPE_ID_NONE;
+}
 
 class CmdSubCommandsTest : public ::testing::Test {
  protected:
@@ -377,6 +393,104 @@ TEST_F(CmdSubCommandsTest, RegistersLocalOptionsFromRealCommandTree) {
   auto* summaryCmd = utils::getSubcommandIf(*bgpCmd, "summary");
   ASSERT_NE(summaryCmd, nullptr);
   EXPECT_NE(summaryCmd->get_option_no_throw("--sort-by"), nullptr);
+}
+
+TEST_F(CmdSubCommandsTest, CommandRecordsReadWriteMode) {
+  Command readCmd("r", "read", commandHandler<FakeReadCmd>, noArgType);
+  Command writeCmd("w", "write", commandHandler<FakeWriteCmd>, noArgType);
+  Command lambdaCmd("l", "lambda", []() {}, noArgType);
+
+  EXPECT_EQ(readCmd.commandHandler->mode(), CliReadWriteMode::CLI_MODE_READ);
+  EXPECT_EQ(writeCmd.commandHandler->mode(), CliReadWriteMode::CLI_MODE_WRITE);
+  EXPECT_EQ(lambdaCmd.commandHandler->mode(), CliReadWriteMode::CLI_MODE_WRITE);
+}
+
+TEST_F(CmdSubCommandsTest, ReadWriteModeSurvivesSort) {
+  Command parent(
+      "p",
+      "parent",
+      {Command("b", "read", commandHandler<FakeReadCmd>, noArgType),
+       Command("a", "write", commandHandler<FakeWriteCmd>, noArgType)});
+
+  ASSERT_EQ(parent.subcommands.size(), 2);
+  EXPECT_EQ(parent.subcommands[0].name, "a");
+  EXPECT_EQ(
+      parent.subcommands[0].commandHandler->mode(),
+      CliReadWriteMode::CLI_MODE_WRITE);
+  EXPECT_EQ(parent.subcommands[1].name, "b");
+  EXPECT_EQ(
+      parent.subcommands[1].commandHandler->mode(),
+      CliReadWriteMode::CLI_MODE_READ);
+}
+
+TEST_F(CmdSubCommandsTest, FilterReadCommandsDropsWriteCommands) {
+  CommandTree cmdTree = {
+      RootCommand(
+          "show",
+          "readParent",
+          "help",
+          commandHandler<FakeReadCmd>,
+          noArgType,
+          {Command(
+               "writeChild", "help", commandHandler<FakeWriteCmd>, noArgType),
+           Command(
+               "readChild", "help", commandHandler<FakeReadCmd>, noArgType)}),
+      // A write command's subtree goes with it, even its read children.
+      RootCommand(
+          "set",
+          "writeParent",
+          "help",
+          commandHandler<FakeWriteCmd>,
+          noArgType,
+          {Command(
+              "readChild", "help", commandHandler<FakeReadCmd>, noArgType)}),
+      // A group left with no children is dropped.
+      RootCommand(
+          "clear",
+          "group",
+          "help",
+          {Command(
+              "writeChild", "help", commandHandler<FakeWriteCmd>, noArgType)}),
+  };
+
+  const auto filtered = filterReadCommands(cmdTree);
+
+  ASSERT_EQ(filtered.size(), 1);
+  EXPECT_EQ(filtered[0].name, "readParent");
+  ASSERT_EQ(filtered[0].subcommands.size(), 1);
+  EXPECT_EQ(filtered[0].subcommands[0].name, "readChild");
+}
+
+TEST_F(CmdSubCommandsTest, RegistersOnlyUsedVerbs) {
+  CommandTree cmdTree = {
+      RootCommand(
+          "show", "testObject", "help", []() {}, noArgType),
+  };
+  CommandTree emptyTree;
+  std::vector<Command> emptySpecialCmds;
+
+  CmdSubcommands::getInstance()->init(
+      *app_, cmdTree, emptyTree, emptySpecialCmds, VerbRegistration::kOnlyUsed);
+
+  EXPECT_NE(utils::getSubcommandIf(*app_, "show"), nullptr);
+  EXPECT_EQ(utils::getSubcommandIf(*app_, "set"), nullptr);
+}
+
+TEST_F(CmdSubCommandsTest, RegistersReadOnlyRealCommandTrees) {
+  std::vector<Command> emptySpecialCmds;
+
+  CmdSubcommands::getInstance()->init(
+      *app_,
+      filterReadCommands(kCommandTree()),
+      filterReadCommands(kAdditionalCommandTree()),
+      emptySpecialCmds,
+      VerbRegistration::kOnlyUsed);
+
+  std::vector<std::string> verbs;
+  for (const auto* verb : app_->get_subcommands(nullptr)) {
+    verbs.push_back(verb->get_name());
+  }
+  EXPECT_EQ(verbs, std::vector<std::string>{"show"});
 }
 
 } // namespace

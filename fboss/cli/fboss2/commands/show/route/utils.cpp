@@ -195,10 +195,13 @@ std::string getInterfaceIDStr(const cli::NextHopInfo& nextHopInfo) {
   return interfaceIDStr;
 }
 std::string getWeightStr(const cli::NextHopInfo& nextHopInfo) {
-  std::string weightStr;
-  if (folly::copy(nextHopInfo.weight().value())) {
-    weightStr =
-        fmt::format(" weight {}", folly::copy(nextHopInfo.weight().value()));
+  const auto weight = folly::copy(nextHopInfo.weight().value());
+  std::string weightStr = fmt::format(" weight {}", weight == 0 ? 1 : weight);
+  if (nextHopInfo.preNormalizationWeight().has_value()) {
+    const auto preNormalizationWeight = *nextHopInfo.preNormalizationWeight();
+    weightStr += fmt::format(
+        " (pre-normalization weight: {})",
+        preNormalizationWeight == 0 ? 1 : preNormalizationWeight);
   }
   return weightStr;
 }

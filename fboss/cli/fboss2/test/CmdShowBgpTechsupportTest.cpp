@@ -93,7 +93,10 @@ TEST_F(CmdShowBgpTechsupportTestFixture, sectionsCarryTheirCommandsContent) {
 
   // Summary section: the global header and the peer table.
   EXPECT_THAT(output, HasSubstr("Router ID - 192.0.2.1, Local ASN - 65108"));
-  EXPECT_THAT(output, HasSubstr("Peers: UP - 4, TOTAL - 5"));
+  EXPECT_THAT(output, HasSubstr("Peers: UP - 4, TOTAL - 4"));
+  EXPECT_THAT(output, HasSubstr("Peer Groups Configured - 1"));
+  EXPECT_THAT(output, HasSubstr("EOR sent (UP peers) - 4/4"));
+  EXPECT_THAT(output, HasSubstr("EORs received (UP peers) - 4/4"));
   EXPECT_THAT(output, HasSubstr("198.51.100.0/24"));
 }
 

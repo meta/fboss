@@ -19,15 +19,16 @@
 namespace facebook::fboss {
 
 namespace {
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 0)
 constexpr size_t kMaxCounterLabelSize = 31;
+#endif
 } // namespace
 
 std::shared_ptr<SaiCounterHandle> SaiCounterManager::incRefOrAddRouteCounter(
     std::string counterID) {
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 0)
   bool useExtendedLabel = false;
-#if defined(TAJO_SDK_GTE_26_2) && !defined(TAJO_SDK_VERSION_26_2_5210) && \
-    !defined(TAJO_SDK_P200)
+#if defined(TAJO_SDK_GTE_26_2) && !defined(TAJO_SDK_P200)
   useExtendedLabel = true;
 #endif
   if (!useExtendedLabel && counterID.size() > kMaxCounterLabelSize) {

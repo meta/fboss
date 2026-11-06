@@ -684,6 +684,11 @@ class SwitchStats : public boost::noncopyable, public ThriftCallDurationLogger {
     thriftStreamConnectionStatus_[switchIndex].rxBadPktReceived();
   }
 
+  void hwAgentSwitchReachabilityChangeEventReceived(int switchIndex) {
+    thriftStreamConnectionStatus_[switchIndex]
+        .switchReachabilityChangeEventReceived();
+  }
+
   void dsfSessionGrExpired() {
     dsfGrExpired_.addValue(1);
   }

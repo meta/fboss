@@ -22,4 +22,9 @@ SaiAclEntryTraits::Attributes::AttributeFieldRouteDestination::operator()() {
   return std::nullopt;
 }
 
+std::optional<sai_attr_id_t>
+SaiAclTableTraits::Attributes::AttributeFieldRouteDestination::operator()() {
+  return std::nullopt;
+}
+
 } // namespace facebook::fboss

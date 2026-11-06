@@ -38,32 +38,6 @@ void SaiArsManager::addArs(
           SaiArsTraits::Attributes::AlternatePathBias{0},
           std::nullopt,
           toSourcePortPruneAttribute(splitHorizonEnabled)));
-
-  auto cost = flowletSwitchConfig->getAlternatePathCost();
-  auto bias = flowletSwitchConfig->getAlternatePathBias();
-  if (cost.has_value() && bias.has_value()) {
-    std::optional<SaiArsTraits::Attributes::PrimaryPathQualityThreshold>
-        primaryPathQualityThreshold = std::nullopt;
-    if (auto threshold =
-            flowletSwitchConfig->getPrimaryPathQualityThreshold()) {
-      primaryPathQualityThreshold =
-          SaiArsTraits::Attributes::PrimaryPathQualityThreshold{
-              static_cast<sai_uint32_t>(*threshold)};
-    }
-    setArsObject(
-        alternateMemberArsHandle_.get(),
-        makeArsAttributes(
-            switchingMode,
-            idleTime,
-            maxFlows,
-            primaryPathQualityThreshold,
-            SaiArsTraits::Attributes::AlternatePathCost{
-                static_cast<sai_uint32_t>(*cost)},
-            SaiArsTraits::Attributes::AlternatePathBias{
-                static_cast<sai_uint32_t>(*bias)},
-            std::nullopt,
-            std::nullopt));
-  }
 }
 
 #endif

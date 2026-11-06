@@ -26,16 +26,6 @@ struct FanStatusesResponse {
   1: map<string /*fanName*/, FanStatus> fanStatuses;
 }
 
-struct PwmHoldRequest {
-  1: optional i32 pwm; // Removes hold if unset
-}
-
-struct PwmHoldStatus {
-  1: optional i32 pwm; // No hold if unset
-}
-
 service FanService {
   FanStatusesResponse getFanStatuses();
-  void setPwmHold(1: PwmHoldRequest pwmHoldRequest);
-  PwmHoldStatus getPwmHold();
 }

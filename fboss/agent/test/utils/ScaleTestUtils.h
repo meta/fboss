@@ -14,6 +14,9 @@
 #include "fboss/agent/SwSwitch.h"
 #include "fboss/agent/types.h"
 
+#include <cstddef>
+#include <cstdint>
+
 DECLARE_int32(ecmp_resource_percentage);
 
 namespace facebook::fboss {
@@ -24,6 +27,9 @@ namespace utility {
 
 constexpr auto oddUcmpWeight = 3;
 constexpr auto evenUcmpWeight = 2;
+
+// C(n, k): ceiling on how many width-wide distinct groups n ports supply.
+uint64_t numDistinctEcmpGroups(size_t numPorts, size_t groupWidth);
 
 std::vector<std::vector<PortDescriptor>> generateEcmpGroupScale(
     const std::vector<PortDescriptor>& inputs,

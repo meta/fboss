@@ -103,6 +103,20 @@ void Port::removeError(PortError error) {
   set<switch_state_tags::activeErrors>(errors);
 }
 
+bool llrConfigChanged(
+    const std::shared_ptr<Port>& oldPort,
+    const std::shared_ptr<Port>& newPort) {
+  if (oldPort->getLlrConfigName() != newPort->getLlrConfigName()) {
+    return true;
+  }
+  auto oldLlr = oldPort->getLlrConfig();
+  auto newLlr = newPort->getLlrConfig();
+  if (oldLlr.has_value() != newLlr.has_value()) {
+    return true;
+  }
+  return oldLlr.has_value() && *oldLlr.value() != *newLlr.value();
+}
+
 template struct ThriftStructNode<Port, state::PortFields>;
 
 } // namespace facebook::fboss

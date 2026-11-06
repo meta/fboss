@@ -13,7 +13,7 @@ cpp_library(
         "VisitorTestUtils.h",
     ],
     deps = [
-        "//folly/json:dynamic",
+        "fbsource//xplat/folly/json:dynamic",
         "//thrift/lib/cpp2/folly_dynamic:folly_dynamic",
     ],
     exported_deps = [
@@ -32,13 +32,13 @@ cpp_unittest(
     preprocessor_flags = ["-DENABLE_DYNAMIC_APIS"],
     deps = [
         "fbsource//third-party/googletest:gmock",
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/json:dynamic",
+        "fbsource//xplat/folly/logging:logging",
         ":visitor_test_utils",
         "//fboss/agent:switch_config-cpp2-types",
         "//fboss/thrift_cow/nodes:nodes",
         "//fboss/thrift_cow/visitors:visitors",
-        "//folly:string",
-        "//folly/json:dynamic",
-        "//folly/logging:logging",
         "//thrift/lib/cpp2/folly_dynamic:folly_dynamic",
     ],
 )
@@ -53,14 +53,14 @@ cpp_unittest(
     deps = [
         "fbsource//third-party/fmt:fmt",
         "fbsource//third-party/googletest:gmock",
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/json:dynamic",
+        "fbsource//xplat/folly/logging:logging",
         ":visitor_test_utils",
         "//fboss/agent:switch_config-cpp2-types",
         "//fboss/fsdb/oper:extended_path_builder",
         "//fboss/thrift_cow/nodes:nodes",
         "//fboss/thrift_cow/visitors:visitors",
-        "//folly:string",
-        "//folly/json:dynamic",
-        "//folly/logging:logging",
         "//thrift/lib/cpp2/folly_dynamic:folly_dynamic",
     ],
 )
@@ -85,12 +85,12 @@ cpp_unittest(
     preprocessor_flags = ["-DENABLE_DYNAMIC_APIS"],
     deps = [
         "fbsource//third-party/googletest:gmock",
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/json:dynamic",
+        "fbsource//xplat/folly/logging:logging",
         ":visitor_test_utils",
         "//fboss/thrift_cow/nodes:nodes",
         "//fboss/thrift_cow/visitors:visitors",
-        "//folly:string",
-        "//folly/json:dynamic",
-        "//folly/logging:logging",
     ],
 )
 
@@ -103,13 +103,13 @@ cpp_unittest(
     preprocessor_flags = ["-DENABLE_DYNAMIC_APIS"],
     deps = [
         "fbsource//third-party/googletest:gmock",
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/json:dynamic",
+        "fbsource//xplat/folly/logging:logging",
         ":visitor_test_utils",
         "//fboss/thrift_cow/nodes:nodes",
         "//fboss/thrift_cow/nodes/tests:test-cpp2-types",
         "//fboss/thrift_cow/visitors:visitors",
-        "//folly:string",
-        "//folly/json:dynamic",
-        "//folly/logging:logging",
         "//thrift/lib/cpp2/folly_dynamic:folly_dynamic",
     ],
 )
@@ -126,12 +126,12 @@ cpp_unittest(
         "-DENABLE_DYNAMIC_APIS",
     ],
     deps = [
+        "fbsource//xplat/folly/json:dynamic",
         ":visitor_test_utils",
         "//fboss/fsdb/if:fsdb_oper-cpp2-types",
         "//fboss/thrift_cow:patch-cpp2-types",
         "//fboss/thrift_cow/nodes:nodes",
         "//fboss/thrift_cow/nodes/tests:test-cpp2-types",
         "//fboss/thrift_cow/visitors:visitors",
-        "//folly/json:dynamic",
     ],
 )

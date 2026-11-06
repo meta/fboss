@@ -9,10 +9,15 @@
  */
 #pragma once
 
+#include <map>
+#include <optional>
 #include <set>
+#include <string>
+#include <vector>
 
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
 #include "fboss/agent/types.h"
+#include "fboss/lib/config/agent/VlanConfigUtils.h"
 
 namespace facebook::fboss {
 class PlatformMapping;
@@ -24,29 +29,50 @@ namespace utility {
  * config CLI so both paths use the same configuration logic.
  */
 
-/*
- * Use vlan 2000, as the base vlan for ports in configs generated here.
- * Anything except 0, 1 would actually work fine. 0 because
- * its reserved, and 1 because BRCM uses that as default VLAN.
- * So for example if we use VLAN 1, BRCM will also add cpu port to
- * that vlan along with our configured ports. This causes unnecessary
- * confusion for our tests.
- */
-auto constexpr kBaseVlanId = 2000;
-/*
- * Default VLAN
- */
-auto constexpr kDefaultVlanId4094 = 4094;
-auto constexpr kDefaultVlanId1 = 1;
-auto constexpr kDownlinkBaseVlanId = 2000;
-auto constexpr kUplinkBaseVlanId = 4000;
+struct SafeProfileSelectionOptions {
+  cfg::AsicType asicType{cfg::AsicType::ASIC_TYPE_FAKE};
+  // When true, ports outside requiredPorts may be omitted or subsumed.
+  bool supportsAddRemovePort{false};
+  bool dualStageRdsw3q2q{false};
+  bool preferOpticalProfiles{false};
+  // Ports which must coexist in the resulting configuration. When unset,
+  // every port in each supplied group is required.
+  std::optional<std::set<PortID>> requiredPorts;
+};
 
-// Per-port interface-vlan allocation band for incrementally-created
-// INTERFACE_PORTs. Starts just above the shared downlink base (kBaseVlanId) and
-// stops before the sidelink band (3000), so allocated ids avoid every reserved
-// range (loopback 10/11, sidelink 3000-3024, uplink 3100/4001+, default 4094).
-auto constexpr kInterfaceVlanIdMin = kBaseVlanId + 1;
-auto constexpr kInterfaceVlanIdMax = 2999;
+using PortProfileMap = std::map<PortID, cfg::PortProfileID>;
+using PortProfileSupportMap =
+    std::map<std::string, std::vector<cfg::PortProfileID>>;
+
+struct PortProfileRequest {
+  std::string portName;
+  cfg::PortProfileID profileID;
+};
+
+struct ResolvedPortProfileRequest {
+  std::string portName;
+  PortID portID;
+  cfg::PortProfileID profileID;
+  cfg::PortSpeed speed;
+  bool wasPresent;
+};
+
+// Selects one compatible profile per controlling-port group and returns that
+// profile for every port which must be present in the resulting config. The
+// fastest safe profile wins; when requested, equal-speed interface and
+// management profiles prefer optical when available.
+PortProfileMap getSafeProfileIDs(
+    const PlatformMapping& platformMapping,
+    const std::map<PortID, std::vector<PortID>>&
+        controllingPortToSubsidiaryPorts,
+    const SafeProfileSelectionOptions& options);
+
+// Per-NPU portless loopback interfaces on dual-NPU SUSW platforms. These have
+// no member ports, so SwitchInfo::loopbackIntfId is what binds each one to
+// its owning ASIC. Mirrors FBOSS_LOOPBACKS_INTF / FBOSS_LOOPBACK1_INTF in
+// neteng/fboss/coop/defines.py.
+auto constexpr kNpu0LoopbackIntfId = 10;
+auto constexpr kNpu1LoopbackIntfId = 11;
 
 // Bare port body. Speed derived from PlatformMapping (nullopt ->
 // cfg::PortSpeed::DEFAULT). Sets name/portType/scope (from
@@ -58,6 +84,23 @@ cfg::Port createDefaultPortConfig(
     cfg::PortProfileID profileID,
     int32_t ingressVlan);
 
+// Basic building blocks for a routed NPU interface or management port. Callers
+// may adjust policy-specific fields before inserting the returned objects into
+// a config.
+cfg::Port createRoutedPortConfig(
+    const PlatformMapping& platformMapping,
+    PortID id,
+    cfg::PortProfileID profileID,
+    VlanID ingressVlan);
+
+// As above, but restricted to INTERFACE_PORT.
+cfg::Port createInterfacePortConfig(
+    const PlatformMapping& platformMapping,
+    PortID id,
+    cfg::PortProfileID profileID,
+    VlanID ingressVlan);
+cfg::VlanPort createVlanPortConfig(PortID portID, VlanID vlanID);
+
 // Lowest-free vlan id in [minId, maxId] not used by any vlan id or any
 // interface intfID in config. Throws FbossError if none free.
 int32_t allocateFreeVlanId(
@@ -65,10 +108,25 @@ int32_t allocateFreeVlanId(
     int32_t minId = kInterfaceVlanIdMin,
     int32_t maxId = kInterfaceVlanIdMax);
 
-// Append a VLAN-style interface port into an EXISTING config: allocates N via
-// allocateFreeVlanId, then appends Port(routable=true, ingressVlan=N,
-// state=DISABLED) + Vlan(N) + VlanPort(N->id) + Interface(intfID=N, vlanID=N,
-// type=VLAN). Returns N.
+// Append a routed VLAN-style interface or management port into an existing
+// config, using vlanID for both the VLAN and interface ID.
+void addRoutedPortToConfig(
+    cfg::SwitchConfig& config,
+    const PlatformMapping* platformMapping,
+    PortID id,
+    cfg::PortProfileID profileID,
+    VlanID vlanID);
+
+// Append a VLAN-style interface port into an existing config, using vlanID for
+// both the VLAN and interface ID.
+void addInterfacePortToConfig(
+    cfg::SwitchConfig& config,
+    const PlatformMapping* platformMapping,
+    PortID id,
+    cfg::PortProfileID profileID,
+    VlanID vlanID);
+
+// As above, but allocate the lowest free VLAN/interface ID and return it.
 int32_t addInterfacePortToConfig(
     cfg::SwitchConfig& config,
     const PlatformMapping* platformMapping,
@@ -83,6 +141,24 @@ enum class PortRemovalMode {
   // do not support adding/removing ports at runtime.
   Disable,
 };
+
+struct PortProfileChangeResult {
+  std::vector<ResolvedPortProfileRequest> requestedPorts;
+  std::map<PortID, std::string> subsumedPorts;
+};
+
+// Applies a batch atomically. Existing ports have profile and speed updated,
+// missing routed ports are created with an allocated VLAN/interface, and
+// subsumed ports are returned for the caller to erase or disable as needed.
+// Every requested profile must be supported by the platform mapping. A
+// non-empty entry in qsfpSupportedProfiles additionally constrains that port
+// to profiles supported by its transceiver; absent or empty entries fall back
+// to platform-only validation.
+PortProfileChangeResult applyPortProfileChanges(
+    cfg::SwitchConfig& config,
+    const PlatformMapping& platformMapping,
+    const std::vector<PortProfileRequest>& requests,
+    const PortProfileSupportMap& qsfpSupportedProfiles = {});
 
 // Removes `portsToRemove` from `config`. In Erase mode each port and its
 // vlanPort are dropped; in Disable mode each port is kept but set to DISABLED

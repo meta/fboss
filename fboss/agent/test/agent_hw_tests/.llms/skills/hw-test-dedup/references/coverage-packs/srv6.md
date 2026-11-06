@@ -12,7 +12,9 @@ Capture under `coveragePack["srv6"]`, in addition to the universal fingerprint:
 - **`sidFormat`** — `uSID` (micro-SID: locator block + function, advanced by a bit-shift, e.g. `fdad:ffff:1:2::` → `fdad:ffff:2::`) vs `fullSID` (128-bit segment popped from a segment list).
 - **`usidOp`** — for midpoint/transit: `shift` (pop active uSID, advance to next) vs `terminal` (last uSID, no next → drop). Distinguishes a forward test from a last-SID drop.
 - **`srv6Role`** — `encap` / `decap` / `midpoint` / `binding`. The pipeline block under test; orthogonal to traffic direction and often a distinct ProductionFeature with distinct ASIC support.
-- **`mySidDropReason`** — for negative tests: `unresolved_binding`, `no_match`, `terminal_no_next_usid`, `hoplimit_exceeded`. The hardware cause behind a shared `inSrv6MySidDiscards` increment (see universal Gate 6 root-cause rule).
+- **`mySidDropReason`** — for negative tests: `unresolved_binding`, `no_match`, `terminal_no_next_usid`,
+  `hoplimit_exceeded`, each paired with the discard counter asserted. Not all bump `inSrv6MySidDiscards`:
+  `verifyUnconfiguredSidDrop` asserts `inDstNullDiscards` while `inSrv6MySidDiscards` stays flat (Gate 6).
 - **`outerHeaderTransform`** — outer-header mutations verified: `dstRewrite`, `hopLimitDecrement`, `tcPreserve`, `ecnPreserve`, `flowLabel`.
 - **`innerInvariance`** — whether the inner packet is asserted unchanged, plus inner address family/families (`v4`/`v6`). Midpoint must not touch the inner packet.
 - **`segmentListDepth`** — number of SIDs/segments exercised (1 vs N). Depth-1 ≠ depth-N transit.

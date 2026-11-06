@@ -9,7 +9,6 @@
  */
 #pragma once
 
-#include <folly/Format.h>
 #include <folly/Synchronized.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/logging/xlog.h>

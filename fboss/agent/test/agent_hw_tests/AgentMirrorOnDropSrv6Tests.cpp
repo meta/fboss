@@ -138,12 +138,16 @@ class AgentMirrorOnDropSrv6Test : public AgentMirrorOnDropStatelessTest {
       auto frameRx = snooper.waitForPacket(1);
       ASSERT_EVENTUALLY_TRUE(frameRx.has_value());
       auto fields = parseMirrorOnDropPacket(frameRx->get());
+      XLOG(INFO) << "Captured MirrorOnDrop packet, ingress drop reason: "
+                 << fields.dropReasonIngress
+                 << ", egress drop reason: " << fields.dropReasonEgress
+                 << ", inner src: " << fields.innerSrcIp
+                 << ", inner dst: " << fields.innerDstIp << ":\n"
+                 << PktUtil::hexDump(frameRx->get());
       ASSERT_EVENTUALLY_EQ(
           fields.dropReasonIngress, expectedReasons.ingressDropReason);
       ASSERT_EVENTUALLY_EQ(
           fields.dropReasonEgress, expectedReasons.egressDropReason);
-      XLOG(INFO) << "Captured MirrorOnDrop packet:\n"
-                 << PktUtil::hexDump(frameRx->get());
       validateMirrorOnDropPacket(
           frameRx->get(), injectionPortId, expectedReasons, innerDst, innerSrc);
     });

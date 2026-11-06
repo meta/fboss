@@ -10,13 +10,18 @@
 
 #pragma once
 
+#include <fmt/format.h>
 #include <folly/Conv.h>
+#include <cstddef>
 #include <cstdint>
 #include <exception>
 #include <limits>
 #include <optional>
+#include <stdexcept>
 #include <string>
+#include <string_view>
 #include <utility>
+#include <vector>
 
 /**
  * Value parsing helpers shared by the BGP config dispatchers
@@ -91,6 +96,60 @@ inline std::optional<int64_t> parseAsn4Byte(const std::string& value) {
     return std::nullopt;
   }
   return static_cast<int64_t>(*parsed);
+}
+
+// ---- constructor-time token parsing ----------------------------------------
+// Unlike the value parsers above, this runs while constructing a command's
+// ObjectArgType, where throwing std::invalid_argument IS the framework's
+// error channel — the message is surfaced to the user as the parse error.
+
+// The `<list-name> [<keyword> <member-name>]` prefix, for the *delete*
+// command of a policy list whose members are keyed objects (prefix-list
+// entries): the list name, the optional member selected by `keyword`, and
+// where any remaining tokens begin.
+//
+// Only delete parses this shape by hand. The config side reaches the same
+// grammar through CLI11 subcommand nesting instead — the member keyword is a
+// registered subcommand there, so each level gets its own already-split token
+// vector and never calls this helper. Lists whose members are a flat string
+// list in the daemon (as-path-list `regex`, community-list `community`) have
+// no member level at all: their optional `<keyword> <value>` selector is a
+// plain attribute-style pair, parsed inline by their own delete command.
+struct ListMemberSelector {
+  std::string listName;
+  std::optional<std::string> memberName;
+  // Index of the first token after the parsed prefix (== tokens.size() when
+  // nothing follows). The delete dispatcher rejects any tail.
+  size_t restStart;
+};
+
+// Parse the prefix. `objectName` is the list flavor for messages (e.g.
+// "community-list"), `memberKeyword` selects the nested member (e.g.
+// `community`), and `usage` is the whole-command usage line thrown when no
+// tokens were given. A second token other than `memberKeyword` is left to
+// the caller (restStart == 1), which delete rejects as an unexpected token.
+inline ListMemberSelector parseListMemberSelector(
+    const std::vector<std::string>& tokens,
+    std::string_view objectName,
+    std::string_view memberKeyword,
+    std::string_view usage) {
+  if (tokens.empty()) {
+    throw std::invalid_argument(std::string(usage));
+  }
+  if (tokens[0].empty()) {
+    throw std::invalid_argument(
+        fmt::format("Error: {} name must not be empty", objectName));
+  }
+  ListMemberSelector selector{tokens[0], std::nullopt, 1};
+  if (tokens.size() > 1 && tokens[1] == memberKeyword) {
+    if (tokens.size() < 3 || tokens[2].empty()) {
+      throw std::invalid_argument(
+          fmt::format("Error: `{}` requires a <name>", memberKeyword));
+    }
+    selector.memberName = tokens[2];
+    selector.restStart = 3;
+  }
+  return selector;
 }
 
 } // namespace facebook::fboss::bgpcli

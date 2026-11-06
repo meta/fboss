@@ -79,6 +79,20 @@ class TestCleanupHwAgentService:
         assert "pkill -f fboss_hw_agent_for_testing_0" in joined
         assert "pkill -f fboss_hw_agent_oss@0" in joined
 
+    def test_disables_requested_service_name(self):
+        with patch.object(service_utils.subprocess, "run") as mock_run:
+            cleanup_hw_agent_service(
+                [0],
+                hw_agent_service_name=fboss_agent_utils.HW_AGENT_SERVICE_PROD,
+            )
+
+        disable_commands = [
+            invocation.args[0]
+            for invocation in mock_run.call_args_list
+            if invocation.args[0].startswith("systemctl disable")
+        ]
+        assert disable_commands == ["systemctl disable fboss_hw_agent@0"]
+
 
 class TestSetupHwAgentServicePreconditions:
     def test_raises_when_binary_missing(self, tmp_path):
@@ -101,11 +115,29 @@ class TestSetupHwAgentServicePreconditions:
 
 
 class TestSetupAndStartDispatch:
+    def test_setup_disables_the_service_name_it_will_replace(self, tmp_path):
+        config_path = tmp_path / "agent.conf"
+        config_path.write_text("")
+        with (
+            patch.object(fboss_agent_utils, "cleanup_hw_agent_service") as cleanup,
+            patch.object(service_utils, "write_unit_file"),
+            patch.object(service_utils, "write_rsyslog_conf"),
+            patch.object(fboss_agent_utils.subprocess, "run"),
+            patch.object(fboss_agent_utils, "cold_boot_hw_agent", return_value=[0]),
+        ):
+            setup_and_start_hw_agent_service(
+                switch_indexes=[0],
+                fboss_agent_config_path=str(config_path),
+                hw_agent_service_bin_path=sys.executable,
+                hw_agent_service_name=fboss_agent_utils.HW_AGENT_SERVICE_PROD,
+            )
+
+        cleanup.assert_called_once_with(
+            [0], hw_agent_service_name=fboss_agent_utils.HW_AGENT_SERVICE_PROD
+        )
+
     # _setup_hw_agent_service writes systemd unit files to /tmp and rsyslog
-    # configs to /etc/rsyslog.d (which fails for non-root and is a real-system
-    # side effect). The tests here only verify the warm/cold dispatch and
-    # failure propagation in setup_and_start_hw_agent_service, so we stub
-    # _setup_hw_agent_service out entirely.
+    # configs to /etc/rsyslog.d, so dispatch-only tests stub it out entirely.
     def test_warm_boot_dispatch(self):
         with (
             patch.object(fboss_agent_utils, "_setup_hw_agent_service"),

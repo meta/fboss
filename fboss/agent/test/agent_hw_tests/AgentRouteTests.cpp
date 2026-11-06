@@ -17,7 +17,7 @@
 #include "fboss/agent/test/AgentHwTest.h"
 #include "fboss/agent/test/EcmpSetupHelper.h"
 #include "fboss/agent/test/TestUtils.h"
-#include "fboss/agent/test/agent_hw_tests/AgentTestEcmpConstants.h"
+#include "fboss/agent/test/utils/AgentTestEcmpConstants.h"
 #include "fboss/agent/test/utils/ConfigUtils.h"
 #include "fboss/agent/test/utils/CoppTestUtils.h"
 #include "fboss/agent/test/utils/OlympicTestUtils.h"
@@ -492,6 +492,7 @@ class AgentRouteTest : public AgentHwTest {
     auto vlanId = this->getVlanIDForTx();
     auto intfMac =
         getMacForFirstInterfaceWithPortsForTesting(this->getProgrammedState());
+    this->learnL2EntryIfPending(intfMac, ports[1].phyPortID());
 
     auto beforeOutPkts =
         *this->getLatestPortStats(egressPort).outUnicastPkts__ref();
@@ -621,6 +622,7 @@ class AgentRouteTest : public AgentHwTest {
     auto vlanId = this->getVlanIDForTx();
     auto intfMac =
         getMacForFirstInterfaceWithPortsForTesting(this->getProgrammedState());
+    this->learnL2EntryIfPending(intfMac, ports[0].phyPortID());
     auto beforeOutPkts =
         *this->getLatestPortStats(egressPort).outUnicastPkts__ref();
     auto v6TxPkt = utility::makeUDPTxPacket(

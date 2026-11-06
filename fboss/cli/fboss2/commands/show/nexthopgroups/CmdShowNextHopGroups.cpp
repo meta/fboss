@@ -21,6 +21,11 @@ std::string getProgrammedState(const NextHopGroup& group) {
   return *isProgrammed ? "yes" : "no";
 }
 
+std::string getGroupId(const cli::NextHopGroupEntry& group) {
+  auto id = apache::thrift::get_pointer(group.id());
+  return id == nullptr ? "--" : std::to_string(*id);
+}
+
 bool isNamedGroup(const NextHopGroup& group) {
   return apache::thrift::get_pointer(group.name()) != nullptr;
 }
@@ -38,6 +43,9 @@ cli::ShowNextHopGroupsModel createNextHopGroupsModel(
     entry.name() = getGroupName(group);
     entry.isNamed() = isNamedGroup(group);
     entry.programmed() = getProgrammedState(group);
+    if (auto id = apache::thrift::get_pointer(group.id())) {
+      entry.id() = *id;
+    }
 
     for (const auto& nextHop : group.nexthops().value()) {
       cli::NextHopInfo nextHopInfo;
@@ -56,8 +64,9 @@ void printNextHopGroups(
     std::ostream& out) {
   for (const auto& group : model.nextHopGroups().value()) {
     out << fmt::format(
-        "NextHopGroup: {}  Programmed: {}\n",
+        "NextHopGroup: {}  Id: {}  Programmed: {}\n",
         group.name().value(),
+        getGroupId(group),
         group.programmed().value());
     for (const auto& nextHop : group.nextHops().value()) {
       out << fmt::format("  {}\n", nextHop);
@@ -126,6 +135,7 @@ CmdShowNextHopGroups::RetType CmdShowNextHopGroups::sampleModel() {
   group1.name() = "--";
   group1.isNamed() = false;
   group1.programmed() = "yes";
+  group1.id() = 1;
   group1.nextHops() = std::vector<std::string>{
       "fe80::200:11ff:fe22:3301 dev fboss2008 cost 202",
       "fe80::200:11ff:fe22:3302 dev fboss2002 cost 202"};
@@ -137,6 +147,7 @@ CmdShowNextHopGroups::RetType CmdShowNextHopGroups::sampleModel() {
   group2.name() = "lspgrp_example";
   group2.isNamed() = true;
   group2.programmed() = "yes";
+  group2.id() = 2;
   group2.nextHops() = std::vector<std::string>{
       "fe80::200:11ff:fe22:3301 dev fboss2008 SRv6 SID List [fdad:ffff:7fff::]"};
   model.nextHopGroups()->push_back(group2);
@@ -155,6 +166,7 @@ CmdShowNamedNextHopGroups::RetType CmdShowNamedNextHopGroups::sampleModel() {
   group1.name() = "lspgrp_dc1-dc2-t000-class";
   group1.isNamed() = true;
   group1.programmed() = "no";
+  group1.id() = 3;
   group1.nextHops() = std::vector<std::string>{
       "fe80::200:11ff:fe22:3302 dev fboss2002 SRv6 SID List [fdad:ffff:7fff::]"};
   model.nextHopGroups()->push_back(group1);
@@ -163,6 +175,7 @@ CmdShowNamedNextHopGroups::RetType CmdShowNamedNextHopGroups::sampleModel() {
   group2.name() = "lspgrp_dc1-dc2-t001-class";
   group2.isNamed() = true;
   group2.programmed() = "yes";
+  group2.id() = 4;
   group2.nextHops() = std::vector<std::string>{
       "fe80::200:11ff:fe22:3301 dev fboss2001 SRv6 SID List [fdad:ffff:7fff::]"};
   model.nextHopGroups()->push_back(group2);
@@ -171,6 +184,7 @@ CmdShowNamedNextHopGroups::RetType CmdShowNamedNextHopGroups::sampleModel() {
   group3.name() = "lspgrp_rb01-01_dc1-dc2-gold-class";
   group3.isNamed() = true;
   group3.programmed() = "yes";
+  group3.id() = 5;
   group3.nextHops() = std::vector<std::string>{
       "fe80::200:11ff:fe22:3308 dev fboss2008 SRv6 SID List [fdad:ffff:7fff::]",
       "fe80::200:11ff:fe22:3307 dev fboss2007 SRv6 SID List [fdad:ffff:7fff::]",

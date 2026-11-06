@@ -308,6 +308,19 @@ phy::FecMode getFecModeFromSaiExtendedFecMode(
     case SAI_PORT_FEC_MODE_EXTENDED_FC:
       mode = phy::FecMode::CL74;
       break;
+#if SAI_API_VERSION >= SAI_VERSION(1, 19, 0)
+    // phy::FecMode has no distinct value for the ETC and CL172 interleaved
+    // variants or for low latency RS544, so they collapse onto the closest
+    // mode FBOSS models. FBOSS never programs them - getSaiPortExtendedFecMode
+    // cannot produce them - so this only affects what hardware reports back.
+    case SAI_PORT_FEC_MODE_EXTENDED_RS544_INTERLEAVED_ETC:
+    case SAI_PORT_FEC_MODE_EXTENDED_RS544_INTERLEAVED_CL172:
+      mode = phy::FecMode::RS544_2N;
+      break;
+    case SAI_PORT_FEC_MODE_EXTENDED_RS544_LOW_LATENCY:
+      mode = phy::FecMode::RS544;
+      break;
+#endif
   }
   return mode;
 }

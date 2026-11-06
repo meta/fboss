@@ -86,7 +86,12 @@ struct RouterInterfaceTraitsAttributes<
       typename Attributes::Type,
       typename Attributes::PortId,
       std::optional<typename Attributes::SrcMac>,
-      std::optional<typename Attributes::Mtu>>;
+      std::optional<typename Attributes::Mtu>
+#if SAI_API_VERSION >= SAI_VERSION(1, 9, 0)
+      ,
+      std::optional<typename Attributes::AdminMplsState>
+#endif
+      >;
   using AdapterHostKey = std::
       tuple<typename Attributes::VirtualRouterId, typename Attributes::PortId>;
 };

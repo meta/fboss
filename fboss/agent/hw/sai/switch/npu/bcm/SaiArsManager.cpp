@@ -50,8 +50,17 @@ void SaiArsManager::addArs(
 #endif
   std::optional<SaiArsTraits::Attributes::EcmpMemberCount>
       ecmpMemberCountForArs = std::nullopt;
+#if defined(BRCM_SAI_SDK_GTE_16_0)
+  // On TH5, past the ASIC's native ARS width the adapter splits the group into
+  // primary and alternate member sets.
+  if (auto arsGroupWidth = flowletSwitchConfig->getArsGroupWidth()) {
+    ecmpMemberCountForArs = SaiArsTraits::Attributes::EcmpMemberCount{
+        static_cast<sai_uint32_t>(*arsGroupWidth)};
+  }
+#endif
 #if defined(BRCM_SAI_SDK_GTE_15_4)
-  if (platform_->getAsic()->isSupported(HwAsic::Feature::VIRTUAL_ARS_GROUP)) {
+  if (!ecmpMemberCountForArs &&
+      platform_->getAsic()->isSupported(HwAsic::Feature::VIRTUAL_ARS_GROUP)) {
     if (auto arsWidth = platform_->getAsic()->getMaxArsWidth()) {
       ecmpMemberCountForArs =
           SaiArsTraits::Attributes::EcmpMemberCount{*arsWidth};
@@ -80,33 +89,6 @@ void SaiArsManager::addArs(
           toSourcePortPruneAttribute(splitHorizonEnabled),
           ecmpMemberCountForArs));
 
-  auto cost = flowletSwitchConfig->getAlternatePathCost();
-  auto bias = flowletSwitchConfig->getAlternatePathBias();
-  if (cost.has_value() && bias.has_value()) {
-    std::optional<SaiArsTraits::Attributes::PrimaryPathQualityThreshold>
-        primaryPathQualityThreshold = std::nullopt;
-    if (auto threshold =
-            flowletSwitchConfig->getPrimaryPathQualityThreshold()) {
-      primaryPathQualityThreshold =
-          SaiArsTraits::Attributes::PrimaryPathQualityThreshold{
-              static_cast<sai_uint32_t>(*threshold)};
-    }
-    setArsObject(
-        alternateMemberArsHandle_.get(),
-        makeArsAttributes(
-            switchingMode,
-            idleTime,
-            maxFlows,
-            primaryPathQualityThreshold,
-            SaiArsTraits::Attributes::AlternatePathCost{
-                static_cast<sai_uint32_t>(*cost)},
-            SaiArsTraits::Attributes::AlternatePathBias{
-                static_cast<sai_uint32_t>(*bias)},
-            nextHopGroupType,
-            std::nullopt,
-            ecmpMemberCountForArs));
-  }
-
 #if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
   auto standbySwitchingMode = flowletSwitchConfig->getStandbySwitchingMode();
   if (standbySwitchingMode.has_value()) {
@@ -134,7 +116,17 @@ void SaiArsManager::addArs(
         virtualArsQualityThreshold = std::nullopt;
     std::optional<SaiArsTraits::Attributes::EcmpMemberCount> ecmpMemberCount =
         std::nullopt;
+    std::optional<SaiArsTraits::Attributes::MaxAltMembersPerGroup>
+        maxAltMembers = std::nullopt;
+    std::optional<SaiArsTraits::Attributes::MaxPrimaryMembersPerGroup>
+        maxPrimaryMembers = std::nullopt;
+    std::optional<SaiArsTraits::Attributes::CommonMembersThresholdCount>
+        commonMembersThreshold = std::nullopt;
+    auto virtualAlternatePathCost = alternatePathCostForArs;
+    auto virtualAlternatePathBias = alternatePathBiasForArs;
 #if defined(BRCM_SAI_SDK_GTE_15_4)
+    auto cost = flowletSwitchConfig->getAlternatePathCost();
+    auto bias = flowletSwitchConfig->getAlternatePathBias();
     virtualArsQualityThreshold =
         SaiArsTraits::Attributes::PrimaryPathQualityThreshold{0};
     if (auto threshold =
@@ -145,8 +137,36 @@ void SaiArsManager::addArs(
     }
     if (auto width = flowletSwitchConfig->getMaxArsVirtualGroupWidth();
         width && *width > 0) {
-      ecmpMemberCount = SaiArsTraits::Attributes::EcmpMemberCount{
-          static_cast<sai_uint32_t>(*width)};
+      auto total = static_cast<sai_uint32_t>(*width);
+      ecmpMemberCount = SaiArsTraits::Attributes::EcmpMemberCount{total};
+      if (auto alternateMembers =
+              flowletSwitchConfig->getArsVirtualGroupAlternateMembers()) {
+        // ThriftConfigApplier bounds this to (0, maxArsVirtualGroupWidth), so
+        // the primary count below cannot underflow or reach zero.
+        auto alternates = static_cast<sai_uint32_t>(*alternateMembers);
+        maxAltMembers =
+            SaiArsTraits::Attributes::MaxAltMembersPerGroup{alternates};
+        maxPrimaryMembers = SaiArsTraits::Attributes::MaxPrimaryMembersPerGroup{
+            total - alternates};
+        if (auto threshold = flowletSwitchConfig
+                                 ->getArsVirtualGroupCommonMembersThreshold()) {
+          commonMembersThreshold =
+              SaiArsTraits::Attributes::CommonMembersThresholdCount{
+                  static_cast<sai_uint32_t>(*threshold)};
+        }
+      }
+    }
+    // The adapter only programs the DGM parameters from a virtual group, so
+    // this is the one object where the alternate path cost and bias reach
+    // hardware. Everywhere else they stay 0 to keep the adapter host key
+    // matching what the adapter reports back. Config sets the two fields
+    // independently, so apply them only as a pair: cost without bias, or the
+    // reverse, is half a DGM policy rather than a weaker one.
+    if (cost.has_value() && bias.has_value()) {
+      virtualAlternatePathCost = SaiArsTraits::Attributes::AlternatePathCost{
+          static_cast<sai_uint32_t>(*cost)};
+      virtualAlternatePathBias = SaiArsTraits::Attributes::AlternatePathBias{
+          static_cast<sai_uint32_t>(*bias)};
     }
 #endif
     setArsObject(
@@ -156,12 +176,15 @@ void SaiArsManager::addArs(
             idleTime,
             maxFlows,
             virtualArsQualityThreshold,
-            alternatePathCostForArs,
-            alternatePathBiasForArs,
+            virtualAlternatePathCost,
+            virtualAlternatePathBias,
             SaiArsTraits::Attributes::NextHopGroupType{
                 SAI_ARS_NEXT_HOP_GROUP_TYPE_VIRTUAL},
             std::nullopt,
-            ecmpMemberCount));
+            ecmpMemberCount,
+            maxAltMembers,
+            maxPrimaryMembers,
+            commonMembersThreshold));
   } else if (virtualArsGroupHandle_->ars) {
     // Config no longer asks for virtual groups, so drop the one we created.
     virtualArsGroupHandle_->ars.reset();

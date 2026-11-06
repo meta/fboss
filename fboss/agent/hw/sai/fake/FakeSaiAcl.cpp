@@ -67,6 +67,8 @@ bool FakeAclTable::entryFieldSupported(const sai_attribute_t& attr) const {
       return fieldIpType;
     case SAI_ACL_ENTRY_ATTR_FIELD_TTL:
       return fieldTtl;
+    case SAI_ACL_ENTRY_ATTR_FIELD_MPLS_LABEL0_TTL:
+      return fieldMplsLabel0Ttl;
     case SAI_ACL_ENTRY_ATTR_FIELD_FDB_DST_USER_META:
       return fieldFdbDstUserMeta;
     case SAI_ACL_ENTRY_ATTR_FIELD_ROUTE_DST_USER_META:
@@ -147,6 +149,7 @@ sai_status_t create_acl_table_fn(
   bool fieldDstMac = 0;
   bool fieldIpType = 0;
   bool fieldTtl = 0;
+  bool fieldMplsLabel0Ttl = 0;
   bool fieldFdbDstUserMeta = 0;
   bool fieldRouteDstUserMeta = 0;
   bool fieldNeighborDstUserMeta = 0;
@@ -161,6 +164,7 @@ sai_status_t create_acl_table_fn(
   sai_object_id_t userDefinedFieldGroupMin2 = SAI_NULL_OBJECT_ID;
   sai_object_id_t userDefinedFieldGroupMin3 = SAI_NULL_OBJECT_ID;
   sai_object_id_t userDefinedFieldGroupMin4 = SAI_NULL_OBJECT_ID;
+  bool fieldRouteDestination = false;
 
   for (int i = 0; i < attr_count; ++i) {
     switch (attr_list[i].id) {
@@ -236,6 +240,9 @@ sai_status_t create_acl_table_fn(
       case SAI_ACL_TABLE_ATTR_FIELD_TC:
         fieldTc = attr_list[i].value.booldata;
         break;
+      case SAI_ACL_TABLE_ATTR_FIELD_ROUTE_DST:
+        fieldRouteDestination = attr_list[i].value.booldata;
+        break;
       case SAI_ACL_TABLE_ATTR_FIELD_DST_MAC:
         fieldDstMac = attr_list[i].value.booldata;
         break;
@@ -244,6 +251,9 @@ sai_status_t create_acl_table_fn(
         break;
       case SAI_ACL_TABLE_ATTR_FIELD_TTL:
         fieldTtl = attr_list[i].value.booldata;
+        break;
+      case SAI_ACL_TABLE_ATTR_FIELD_MPLS_LABEL0_TTL:
+        fieldMplsLabel0Ttl = attr_list[i].value.booldata;
         break;
       case SAI_ACL_TABLE_ATTR_FIELD_FDB_DST_USER_META:
         fieldFdbDstUserMeta = attr_list[i].value.booldata;
@@ -324,6 +334,7 @@ sai_status_t create_acl_table_fn(
       fieldDstMac,
       fieldIpType,
       fieldTtl,
+      fieldMplsLabel0Ttl,
       fieldFdbDstUserMeta,
       fieldRouteDstUserMeta,
       fieldNeighborDstUserMeta,
@@ -338,6 +349,9 @@ sai_status_t create_acl_table_fn(
       userDefinedFieldGroupMin2,
       userDefinedFieldGroupMin3,
       userDefinedFieldGroupMin4);
+
+  fs->aclTableManager.get(*acl_table_id).fieldRouteDestination =
+      fieldRouteDestination;
 
   return SAI_STATUS_SUCCESS;
 }
@@ -496,6 +510,10 @@ sai_status_t get_acl_table_attribute_fn(
         const auto& aclTable = fs->aclTableManager.get(acl_table_id);
         attr[i].value.booldata = aclTable.fieldTc;
       } break;
+      case SAI_ACL_TABLE_ATTR_FIELD_ROUTE_DST: {
+        const auto& aclTable = fs->aclTableManager.get(acl_table_id);
+        attr[i].value.booldata = aclTable.fieldRouteDestination;
+      } break;
       case SAI_ACL_TABLE_ATTR_FIELD_DST_MAC: {
         const auto& aclTable = fs->aclTableManager.get(acl_table_id);
         attr[i].value.booldata = aclTable.fieldDstMac;
@@ -507,6 +525,10 @@ sai_status_t get_acl_table_attribute_fn(
       case SAI_ACL_TABLE_ATTR_FIELD_TTL: {
         const auto& aclTable = fs->aclTableManager.get(acl_table_id);
         attr[i].value.booldata = aclTable.fieldTtl;
+      } break;
+      case SAI_ACL_TABLE_ATTR_FIELD_MPLS_LABEL0_TTL: {
+        const auto& aclTable = fs->aclTableManager.get(acl_table_id);
+        attr[i].value.booldata = aclTable.fieldMplsLabel0Ttl;
       } break;
       case SAI_ACL_TABLE_ATTR_FIELD_FDB_DST_USER_META: {
         const auto& aclTable = fs->aclTableManager.get(acl_table_id);
@@ -780,6 +802,12 @@ sai_status_t set_acl_entry_attribute_fn(
       aclEntry.fieldTtlEnable = attr->value.aclfield.enable;
       aclEntry.fieldTtlData = attr->value.aclfield.data.u8;
       aclEntry.fieldTtlMask = attr->value.aclfield.mask.u8;
+      res = SAI_STATUS_SUCCESS;
+      break;
+    case SAI_ACL_ENTRY_ATTR_FIELD_MPLS_LABEL0_TTL:
+      aclEntry.fieldMplsLabel0TtlEnable = attr->value.aclfield.enable;
+      aclEntry.fieldMplsLabel0TtlData = attr->value.aclfield.data.u8;
+      aclEntry.fieldMplsLabel0TtlMask = attr->value.aclfield.mask.u8;
       res = SAI_STATUS_SUCCESS;
       break;
     case SAI_ACL_ENTRY_ATTR_FIELD_FDB_DST_USER_META:
@@ -1146,6 +1174,11 @@ sai_status_t get_acl_entry_attribute_fn(
         attr_list[i].value.aclfield.enable = aclEntry.fieldTtlEnable;
         attr_list[i].value.aclfield.data.u8 = aclEntry.fieldTtlData;
         attr_list[i].value.aclfield.mask.u8 = aclEntry.fieldTtlMask;
+        break;
+      case SAI_ACL_ENTRY_ATTR_FIELD_MPLS_LABEL0_TTL:
+        attr_list[i].value.aclfield.enable = aclEntry.fieldMplsLabel0TtlEnable;
+        attr_list[i].value.aclfield.data.u8 = aclEntry.fieldMplsLabel0TtlData;
+        attr_list[i].value.aclfield.mask.u8 = aclEntry.fieldMplsLabel0TtlMask;
         break;
       case SAI_ACL_ENTRY_ATTR_FIELD_FDB_DST_USER_META:
         attr_list[i].value.aclfield.enable = aclEntry.fieldFdbDstUserMetaEnable;

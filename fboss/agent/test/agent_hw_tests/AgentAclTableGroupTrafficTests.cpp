@@ -224,6 +224,9 @@ class AgentAclTableGroupTrafficTest : public AgentHwTest {
 
     auto ttlCounterName = utility::getQueuePerHostTtlCounterName();
 
+    if (frontPanel) {
+      learnSrcMacOnEcmpTxPortIfPending(kEcmpWidth);
+    }
     auto statBefore = utility::getAclInOutPackets(getSw(), ttlCounterName);
 
     const auto beforePortStats =
@@ -350,6 +353,9 @@ class AgentAclTableGroupTrafficTest : public AgentHwTest {
     auto [testType, dstIP] = testTypeAndIpHelper<AddrT>();
     XLOG(DBG2) << "TestType: " << testType;
 
+    if (frontPanel) {
+      learnSrcMacOnEcmpTxPortIfPending(kEcmpWidth);
+    }
     auto beforeAclPkts = pktCounterHelper();
     sendAllPacketshelper<AddrT>(dstIP, frontPanel, 0);
 

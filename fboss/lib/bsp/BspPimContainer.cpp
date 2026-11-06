@@ -2,7 +2,7 @@
 
 #include "fboss/lib/bsp/BspPimContainer.h"
 
-#include <folly/Format.h>
+#include <fmt/format.h>
 #include "fboss/agent/FbossError.h"
 #include "fboss/lib/bsp/BspLedContainer.h"
 #include "fboss/lib/bsp/BspPhyContainer.h"
@@ -156,13 +156,13 @@ void BspPimContainer::releaseTransceiverReset(int tcvrID) const {
   getTransceiverContainer(tcvrID)->releaseTransceiverReset();
 }
 
-void BspPimContainer::initAllPhyIOControllers() const {
+void BspPimContainer::initAllPhyIOControllers(bool forceReset) const {
   XLOG(INFO) << fmt::format(
       "BspPimContainerTrace: {} initializing all PHY IO controllers for PIM {:d}",
       __func__,
       *bspPimMapping_.pimID());
   for (const auto& [controllerId, phyIO] : phyIOControllers_) {
-    phyIO->init(true);
+    phyIO->init(forceReset);
   }
 }
 

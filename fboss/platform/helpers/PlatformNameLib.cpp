@@ -8,12 +8,10 @@
 #include <folly/String.h>
 #include <folly/logging/xlog.h>
 
-namespace {
+namespace facebook::fboss::platform::helpers {
 
-// Some platforms do not have the standardized platform-names in dmidecode yet.
-// For such platforms, we use a translation function to get the standardized
-// platform-names.
-std::string sanitizePlatformName(const std::string& platformNameFromBios) {
+std::string PlatformNameLib::sanitizePlatformName(
+    const std::string& platformNameFromBios) {
   std::string platformNameUpper(platformNameFromBios);
   std::transform(
       platformNameUpper.begin(),
@@ -37,10 +35,6 @@ std::string sanitizePlatformName(const std::string& platformNameFromBios) {
   }
   return platformNameUpper;
 }
-
-} // namespace
-
-namespace facebook::fboss::platform::helpers {
 
 PlatformNameLib::PlatformNameLib(
     const std::shared_ptr<PlatformUtils> platformUtils,

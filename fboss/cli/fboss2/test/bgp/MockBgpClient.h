@@ -66,6 +66,20 @@ class MockBgpClient : public apache::thrift::ServiceHandler<TBgpService> {
       getPostfilterAdvertisedNetworks2,
       (networks, std::unique_ptr<std::string>));
   MOCK_METHOD(void, getRibEntries, (std::vector<TRibEntry>&, TBgpAfi));
+  /** Mock the compact exact-prefix FIB-out RPC. */
+  MOCK_METHOD(
+      void,
+      getFibOutPrefix,
+      (TFibOutTable&, std::unique_ptr<TFibOutPrefixRequest>));
+
+  using apache::thrift::ServiceHandler<TBgpService>::sync_getFibOutPrefix;
+
+  /** Adapt the generated client signature to this handler-based mock. */
+  void sync_getFibOutPrefix(
+      TFibOutTable& table,
+      const TFibOutPrefixRequest& request) {
+    getFibOutPrefix(table, std::make_unique<TFibOutPrefixRequest>(request));
+  }
   MOCK_METHOD(void, getRibSummary, (TRibSummary&, TBgpAfi));
   MOCK_METHOD(void, getChangeListEntries, (std::vector<TRibEntry>&, TBgpAfi));
   MOCK_METHOD(void, getShadowRibEntries, (std::vector<TRibEntry>&, TBgpAfi));
@@ -75,6 +89,7 @@ class MockBgpClient : public apache::thrift::ServiceHandler<TBgpService> {
       getRunningConfigStruct,
       (facebook::bgp::thrift::BgpConfig&));
   MOCK_METHOD(void, getPolicyConfig, (std::string&));
+  MOCK_METHOD(bool, hasPolicySymlink, ());
   MOCK_METHOD(
       void,
       getRibPrefix,

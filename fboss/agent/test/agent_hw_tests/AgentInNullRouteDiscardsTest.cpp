@@ -73,6 +73,9 @@ TEST_F(AgentInNullRouteDiscardsCounterTest, nullRouteHit) {
     auto isVoqSwitch =
         checkSameAndGetAsicForTesting(getAgentEnsemble()->getL3Asics())
             ->getSwitchType() == cfg::SwitchType::VOQ;
+    learnL2EntryIfPending(
+        getMacForFirstInterfaceWithPortsForTesting(getProgrammedState()),
+        portId);
     auto portStatsBefore = getLatestPortStats(portId);
     auto switchDropStatsBefore = getAggregatedSwitchDropStats();
     pumpTraffic(true);
@@ -88,9 +91,9 @@ TEST_F(AgentInNullRouteDiscardsCounterTest, nullRouteHit) {
           2,
           *portStatsAfter.inDstNullDiscards_() -
               *portStatsBefore.inDstNullDiscards_());
-      EXPECT_EVENTUALLY_EQ(
-          *portStatsAfter.inDiscardsRaw_(),
-          *portStatsAfter.inDstNullDiscards_());
+      // No lifetime raw == null check: raw also counts the pending-SA learn
+      // drop. The two deltas above already prove all discards were null route.
+
       // Route discards should not increment congestion discards
       EXPECT_EQ(
           *portStatsAfter.inCongestionDiscards_(),

@@ -6946,14 +6946,6 @@
           "reason": "Transceiver type not supported."
         },
         {
-          "test_name_regex": "RefreshTransceiver_DR4_800G_GEARBOX$",
-          "reason": "Transceiver type not supported."
-        },
-        {
-          "test_name_regex": "ReadRegister_DR4_800G_GEARBOX$",
-          "reason": "Transceiver type not supported."
-        },
-        {
           "test_name_regex": "RefreshTransceiver_DR4_8x800G$",
           "reason": "Transceiver type not supported."
         },

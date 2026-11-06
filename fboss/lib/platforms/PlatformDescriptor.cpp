@@ -16,9 +16,11 @@
 #include <optional>
 #include <utility>
 
+#include <folly/Conv.h>
 #include <folly/FileUtil.h>
 #include <folly/logging/xlog.h>
 #include <gflags/gflags.h>
+#include <thrift/lib/cpp/util/EnumUtils.h>
 #include <thrift/lib/cpp2/FieldRef.h>
 #include <thrift/lib/cpp2/protocol/Serializer.h>
 
@@ -33,6 +35,13 @@ DEFINE_string(
     "platform_descriptor.json are discovered recursively and must also contain "
     "platform_mapping.json.");
 
+// Defined beside the registry rather than in AgentFeatures so every registry
+// user registers it (qsfp_service does not link the agent flag library).
+DEFINE_bool(
+    hwrev_state1_substate1_respin0,
+    false,
+    "Chassis hardware revision: production state 1, sub-state 1, re-spin 0");
+
 namespace fs = std::filesystem;
 
 namespace facebook::fboss {
@@ -41,6 +50,7 @@ namespace {
 constexpr auto kPlatformDescriptorFileName = "platform_descriptor.json";
 constexpr auto kPlatformMappingFileName = "platform_mapping.json";
 constexpr auto kRawPlatformMappingFileName = "raw_platform_mapping.json";
+constexpr auto kAsicConfigFileName = "asic_config.yaml";
 
 std::string normalize(std::string_view value) {
   return boost::algorithm::to_lower_copy(std::string(value));
@@ -217,22 +227,65 @@ std::optional<PlatformType> PlatformDescriptorRegistry::findPlatformType(
     for (const auto& entry : descriptorEntries_) {
       for (const auto& modeName : entry.descriptor.modeNames().value()) {
         if (equalsNormalized(mode, normalize(modeName))) {
-          return entry.descriptor.platformType().value();
+          const auto platformType = entry.descriptor.platformType().value();
+          XLOG(DBG2) << "Using platform descriptor file "
+                     << fs::path(entry.platformMappingPath)
+                            .replace_filename(kPlatformDescriptorFileName)
+                            .string()
+                     << " for mode '" << mode << "' (platform type "
+                     << apache::thrift::util::enumNameSafe(platformType) << ")";
+          return platformType;
         }
       }
     }
     return std::nullopt;
   }
 
+  std::optional<PlatformType> bestMatch;
+  std::optional<PlatformType> conflictingBestMatch;
+  std::string bestMatchPrefix;
+  const PlatformDescriptorEntry* bestMatchEntry{nullptr};
+  size_t bestMatchLength = 0;
   for (const auto& entry : descriptorEntries_) {
     for (const auto& productNamePrefix :
          entry.descriptor.productNamePrefixes().value()) {
-      if (startsWithNormalized(productName, normalize(productNamePrefix))) {
-        return entry.descriptor.platformType().value();
+      const auto normalizedPrefix = normalize(productNamePrefix);
+      if (!startsWithNormalized(productName, normalizedPrefix)) {
+        continue;
+      }
+      const auto platformType = entry.descriptor.platformType().value();
+      if (!bestMatch || normalizedPrefix.size() > bestMatchLength) {
+        bestMatch = platformType;
+        conflictingBestMatch.reset();
+        bestMatchPrefix = productNamePrefix;
+        bestMatchEntry = &entry;
+        bestMatchLength = normalizedPrefix.size();
+      } else if (
+          normalizedPrefix.size() == bestMatchLength &&
+          *bestMatch != platformType) {
+        conflictingBestMatch = platformType;
       }
     }
   }
-  return std::nullopt;
+  if (conflictingBestMatch) {
+    throw FbossError(
+        "Product name '",
+        productName,
+        "' ambiguously matches platform types ",
+        static_cast<int>(*bestMatch),
+        " and ",
+        static_cast<int>(*conflictingBestMatch));
+  }
+  if (bestMatch) {
+    XLOG(DBG2) << "Using platform descriptor file "
+               << fs::path(bestMatchEntry->platformMappingPath)
+                      .replace_filename(kPlatformDescriptorFileName)
+                      .string()
+               << " for product name '" << productName << "' using prefix '"
+               << bestMatchPrefix << "' (platform type "
+               << apache::thrift::util::enumNameSafe(*bestMatch) << ")";
+  }
+  return bestMatch;
 }
 
 std::optional<std::string> PlatformDescriptorRegistry::loadPlatformMapping(
@@ -265,6 +318,35 @@ std::optional<std::string> PlatformDescriptorRegistry::loadPlatformMapping(
   return mappingJson;
 }
 
+std::optional<std::string> PlatformDescriptorRegistry::loadAsicConfigYaml(
+    PlatformType type,
+    std::optional<int16_t> switchIndex) const {
+  auto entry = getDescriptorEntry(type);
+  if (!entry || entry->platformMappingPath.empty()) {
+    return std::nullopt;
+  }
+  const auto dir = fs::path(entry->platformMappingPath).parent_path();
+  // Multi-NPU platforms may ship a per-NPU asic_config_idx<N>.yaml, which
+  // wins over the shared asic_config.yaml.
+  auto yamlPath = dir / kAsicConfigFileName;
+  if (switchIndex.has_value()) {
+    auto perNpuPath =
+        dir / folly::to<std::string>("asic_config_idx", *switchIndex, ".yaml");
+    if (fs::exists(perNpuPath)) {
+      yamlPath = std::move(perNpuPath);
+    }
+  }
+  if (!fs::exists(yamlPath)) {
+    return std::nullopt;
+  }
+  std::string yaml;
+  if (!folly::readFile(yamlPath.c_str(), yaml)) {
+    throw FbossError("Unable to read asic config yaml ", yamlPath.string());
+  }
+  XLOG(INFO) << "Loaded asic config yaml from " << yamlPath.string();
+  return yaml;
+}
+
 cfg::PlatformMapping PlatformDescriptorRegistry::loadPlatformMappingFromRaw(
     PlatformType type,
     const cfg::PlatformConfig& platformConfig) const {
@@ -288,7 +370,8 @@ cfg::PlatformMapping PlatformDescriptorRegistry::loadPlatformMappingFromRaw(
   }
 
   return reconstructPlatformMapping(
-      readRawPlatformMapping(entry->rawPlatformMappingPath),
+      readRawPlatformMapping(
+          resolveRawPlatformMappingPath(entry->rawPlatformMappingPath)),
       *portIdToPortAssignment);
 }
 
@@ -347,7 +430,7 @@ PlatformDescriptorRegistry::loadPlatformDescriptorEntriesFromDirectory(
         PlatformDescriptorEntry{
             loadPlatformDescriptorFromFile(descriptorFile.string()),
             mappingFile.string(),
-            fs::exists(rawMappingFile) ? rawMappingFile.string() : ""});
+            rawMappingFile.string()});
   }
   return descriptorEntries;
 }

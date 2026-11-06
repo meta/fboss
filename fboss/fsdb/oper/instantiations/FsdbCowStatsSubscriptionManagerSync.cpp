@@ -14,7 +14,7 @@ namespace facebook::fboss::fsdb {
 
 template void
 CowSubscriptionManager<thrift_cow::FsdbCowStatsRoot>::publishAndAddPaths(
-    SubscriptionStore&,
+    const std::vector<SubscriptionStore*>&,
     std::shared_ptr<thrift_cow::FsdbCowStatsRoot>&);
 
 template void

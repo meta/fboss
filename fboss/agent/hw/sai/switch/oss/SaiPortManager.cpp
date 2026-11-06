@@ -11,7 +11,30 @@ void SaiPortManager::removeRemovedHandleIf(const PortID& /*portID*/) {}
 bool SaiPortManager::checkPortSerdesAttributes(
     const SaiPortSerdesTraits::CreateAttributes& fromStore,
     const SaiPortSerdesTraits::CreateAttributes& fromSwPort) {
-  return fromSwPort == fromStore;
+  auto swPortAttributes = fromSwPort;
+#if defined(BRCM_SAI_SDK_GTE_13_0) ||            \
+    (SAI_API_VERSION >= SAI_VERSION(1, 14, 0) && \
+     !defined(BRCM_SAI_SDK_XGS_AND_DNX))
+  auto ignoreUnsetAuxiliaryAttribute = [&](auto type) {
+    using Attribute = std::decay_t<decltype(type)>;
+    auto& desired = std::get<std::optional<Attribute>>(swPortAttributes);
+    if (!desired.has_value()) {
+      desired = std::get<std::optional<Attribute>>(fromStore);
+    }
+  };
+#endif
+#if defined(BRCM_SAI_SDK_GTE_13_0)
+  ignoreUnsetAuxiliaryAttribute(SaiPortSerdesTraits::Attributes::RxReach{});
+#endif
+#if defined(BRCM_SAI_SDK_GTE_13_0) ||            \
+    (SAI_API_VERSION >= SAI_VERSION(1, 14, 0) && \
+     !defined(BRCM_SAI_SDK_XGS_AND_DNX))
+  ignoreUnsetAuxiliaryAttribute(
+      SaiPortSerdesTraits::Attributes::TxPrecodingAttr{});
+  ignoreUnsetAuxiliaryAttribute(
+      SaiPortSerdesTraits::Attributes::RxPrecodingAttr{});
+#endif
+  return swPortAttributes == fromStore;
 }
 
 void SaiPortManager::changePortByRecreate(

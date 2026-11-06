@@ -492,8 +492,17 @@ BUILD_HW_BENCHMARK_LIBS(flowlet_stats_collection_speed
   DEPS
     config_factory
     hw_packet_utils
+    dsf_config_utils
+    voq_test_utils
     ecmp_helper
+    agent_ensemble
+    config_utils
+    scale_test_utils
+    common_utils
     load_balancer_utils
+    load_balancer_test_utils
+    copp_test_utils
+    network_ai_qos_utils
     Folly::folly
     Folly::follybenchmark
     udf_test_utils
@@ -526,8 +535,19 @@ BUILD_HW_BENCHMARK_LIBS(srv6_scale_benchmark
   DEPS
     config_factory
     ecmp_helper
+    handler
     scale_test_utils
     srv6_test_utils
+    Folly::folly
+    Folly::follybenchmark
+)
+
+BUILD_HW_BENCHMARK_LIBS(pbr_scale_benchmark
+  SRCS fboss/agent/hw/benchmarks/HwPbrScaleBenchmark.cpp
+  DEPS
+    acl_test_utils
+    config_factory
+    ecmp_helper
     Folly::folly
     Folly::follybenchmark
 )

@@ -44,7 +44,17 @@ class RouterInterfaceStoreTest : public SaiStoreTest {
       sai_uint32_t mtu) {
     return saiApiTable->routerInterfaceApi()
         .create<SaiPortRouterInterfaceTraits>(
-            {0, SAI_ROUTER_INTERFACE_TYPE_PORT, portId, mac, mtu}, 0);
+            {0,
+             SAI_ROUTER_INTERFACE_TYPE_PORT,
+             portId,
+             mac,
+             mtu
+#if SAI_API_VERSION >= SAI_VERSION(1, 9, 0)
+             ,
+             std::nullopt
+#endif
+            },
+            0);
   }
 
   LagSaiId createLag(const std::string& label) {
@@ -161,7 +171,16 @@ TEST_F(RouterInterfaceStoreTest, routerInterfaceCreateCtor) {
   {
     SaiPortRouterInterfaceTraits::AdapterHostKey k{0, 41};
     SaiPortRouterInterfaceTraits::CreateAttributes c{
-        0, SAI_ROUTER_INTERFACE_TYPE_PORT, 41, srcMac, 9000};
+        0,
+        SAI_ROUTER_INTERFACE_TYPE_PORT,
+        41,
+        srcMac,
+        9000
+#if SAI_API_VERSION >= SAI_VERSION(1, 9, 0)
+        ,
+        std::nullopt
+#endif
+    };
 
     auto obj = createObj<SaiPortRouterInterfaceTraits>(k, c, 0);
     EXPECT_EQ(GET_ATTR(PortRouterInterface, PortId, obj.attributes()), 41);
@@ -227,7 +246,16 @@ TEST_F(RouterInterfaceStoreTest, routerInterfaceSetSrcMac) {
   {
     SaiPortRouterInterfaceTraits::AdapterHostKey k{0, 41};
     SaiPortRouterInterfaceTraits::CreateAttributes c{
-        0, SAI_ROUTER_INTERFACE_TYPE_PORT, 41, srcMac, 9000};
+        0,
+        SAI_ROUTER_INTERFACE_TYPE_PORT,
+        41,
+        srcMac,
+        9000
+#if SAI_API_VERSION >= SAI_VERSION(1, 9, 0)
+        ,
+        std::nullopt
+#endif
+    };
 
     auto obj = createObj<SaiPortRouterInterfaceTraits>(k, c, 0);
     EXPECT_EQ(GET_ATTR(PortRouterInterface, PortId, obj.attributes()), 41);
@@ -237,7 +265,16 @@ TEST_F(RouterInterfaceStoreTest, routerInterfaceSetSrcMac) {
 
     folly::MacAddress srcMac2{"42:42:42:42:42:42"};
     SaiPortRouterInterfaceTraits::CreateAttributes newAttrs{
-        0, SAI_ROUTER_INTERFACE_TYPE_PORT, 41, srcMac2, 1514};
+        0,
+        SAI_ROUTER_INTERFACE_TYPE_PORT,
+        41,
+        srcMac2,
+        1514
+#if SAI_API_VERSION >= SAI_VERSION(1, 9, 0)
+        ,
+        std::nullopt
+#endif
+    };
     obj.setAttributes(newAttrs);
     EXPECT_EQ(GET_ATTR(PortRouterInterface, PortId, obj.attributes()), 41);
     EXPECT_EQ(
@@ -311,12 +348,25 @@ TEST_F(RouterInterfaceStoreTest, routerFormatTest) {
   {
     SaiPortRouterInterfaceTraits::AdapterHostKey k{0, 41};
     SaiPortRouterInterfaceTraits::CreateAttributes c{
-        0, SAI_ROUTER_INTERFACE_TYPE_PORT, 41, srcMac, 9000};
+        0,
+        SAI_ROUTER_INTERFACE_TYPE_PORT,
+        41,
+        srcMac,
+        9000
+#if SAI_API_VERSION >= SAI_VERSION(1, 9, 0)
+        ,
+        std::nullopt
+#endif
+    };
     auto obj = createObj<SaiPortRouterInterfaceTraits>(k, c, 0);
     auto expected =
         "RouterInterfaceSaiId(1): "
         "(VirtualRouterId: 0, Type: 0, PortId: 41, "
-        "SrcMac: 41:41:41:41:41:41, Mtu: 9000)";
+        "SrcMac: 41:41:41:41:41:41, Mtu: 9000"
+#if SAI_API_VERSION >= SAI_VERSION(1, 9, 0)
+        ", nullopt"
+#endif
+        ")";
     EXPECT_EQ(expected, fmt::format("{}", obj));
   }
   {
@@ -414,7 +464,16 @@ TEST_F(RouterInterfaceStoreTest, lagRouterInterfaceSetMtu) {
 
   SaiPortRouterInterfaceTraits::AdapterHostKey k{0, lagSaiId};
   SaiPortRouterInterfaceTraits::CreateAttributes newAttrs{
-      0, SAI_ROUTER_INTERFACE_TYPE_PORT, lagSaiId, srcMac, 9000};
+      0,
+      SAI_ROUTER_INTERFACE_TYPE_PORT,
+      lagSaiId,
+      srcMac,
+      9000
+#if SAI_API_VERSION >= SAI_VERSION(1, 9, 0)
+      ,
+      std::nullopt
+#endif
+  };
   auto obj = store.setObject(k, newAttrs);
   EXPECT_EQ(GET_OPT_ATTR(PortRouterInterface, Mtu, obj->attributes()), 9000);
   EXPECT_EQ(GET_ATTR(PortRouterInterface, PortId, obj->attributes()), lagSaiId);

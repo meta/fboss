@@ -62,6 +62,21 @@ DEFINE_int32(
     100,
     "Queue timeout for fsdb thrift server");
 
+DEFINE_int32(
+    fsdb_workers_join_timeout_s,
+    4,
+    "Time to wait for FSDB thrift workers to drain during shutdown (1-4s)");
+DEFINE_validator(
+    fsdb_workers_join_timeout_s,
+    [](const char* /*flagName*/, int32_t value) {
+      if (value < 1 || value > 4) {
+        XLOG(ERR) << "fsdb_workers_join_timeout_s must be between 1 and 4 "
+                     "seconds to fit the classic 15-second shutdown budget";
+        return false;
+      }
+      return true;
+    });
+
 namespace facebook::fboss::fsdb {
 
 static apache::thrift::SSLPolicy getThriftServerSSLPolicy() {
@@ -141,7 +156,8 @@ std::shared_ptr<apache::thrift::ThriftServer> createThriftServer(
   server->setStreamExpireTime(
       std::chrono::milliseconds((FLAGS_streamExpire_ms)));
   server->setAllowPlaintextOnLoopback(true);
-  server->setWorkersJoinTimeout(std::chrono::seconds(2));
+  server->setWorkersJoinTimeout(
+      std::chrono::seconds(FLAGS_fsdb_workers_join_timeout_s));
   server->setQuickExitOnShutdownTimeout(true);
   server->setTosReflect(FLAGS_enable_tos_reflect);
   server->setSSLPolicy(getThriftServerSSLPolicy());

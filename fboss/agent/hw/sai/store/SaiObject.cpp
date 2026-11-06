@@ -63,6 +63,13 @@ folly::dynamic nhopMemberKeyToFollyDynamic(
       object[AttributeName<SaiMplsNextHopTraits::Attributes::LabelStack>::value]
           .push_back(folly::to<std::string>(label));
     }
+    if (const auto& outsegType = std::get<
+            std::optional<SaiMplsNextHopTraits::Attributes::OutsegType>>(
+            *mplsAhk)) {
+      object
+          [AttributeName<SaiMplsNextHopTraits::Attributes::OutsegType>::value] =
+              folly::to<std::string>(outsegType->value());
+    }
   }
 #if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)
   else if (
@@ -143,6 +150,13 @@ detail::NextHopMemberKey follyDynamicToNhopMemberKey(
         stack.push_back(static_cast<sai_uint32_t>(label.asInt()));
       }
       std::get<SaiMplsNextHopTraits::Attributes::LabelStack>(mplsAhk) = stack;
+      // Absent when warm booting from an agent that predates the attribute;
+      // those next hops were created as the SAI default, SWAP.
+      auto outsegType = object.get_ptr(
+          AttributeName<SaiMplsNextHopTraits::Attributes::OutsegType>::value);
+      std::get<std::optional<SaiMplsNextHopTraits::Attributes::OutsegType>>(
+          mplsAhk) = outsegType ? folly::to<sai_int32_t>(outsegType->asString())
+                                : SAI_OUTSEG_TYPE_SWAP;
       return detail::NextHopMemberKey(mplsAhk, weight);
     }
 
@@ -366,6 +380,32 @@ typename SaiUdfGroupTraits::AdapterHostKey
 SaiObject<SaiUdfGroupTraits>::follyDynamicToAdapterHostKey(
     const folly::dynamic& json) {
   return json.asString();
+}
+
+template <>
+folly::dynamic
+SaiObject<SaiIsolationGroupTraits>::adapterHostKeyToFollyDynamic() {
+  return adapterHostKey_;
+}
+
+template <>
+typename SaiIsolationGroupTraits::AdapterHostKey
+SaiObject<SaiIsolationGroupTraits>::follyDynamicToAdapterHostKey(
+    const folly::dynamic& json) {
+  return json.asString();
+}
+
+template <>
+folly::dynamic
+SaiObject<SaiVirtualRouterTraits>::adapterHostKeyToFollyDynamic() {
+  return static_cast<uint32_t>(adapterHostKey_);
+}
+
+template <>
+typename SaiVirtualRouterTraits::AdapterHostKey
+SaiObject<SaiVirtualRouterTraits>::follyDynamicToAdapterHostKey(
+    const folly::dynamic& json) {
+  return RouterID(static_cast<uint32_t>(json.asInt()));
 }
 
 #if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)

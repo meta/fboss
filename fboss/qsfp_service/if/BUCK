@@ -1,6 +1,15 @@
+load("@fbcode_macros//build_defs:export_files.bzl", "export_file")
 load("@fbcode_macros//build_defs:thrift_library.bzl", "thrift_library")
 
 oncall("fboss_optics_phy")
+
+export_file(name = "qsfp_service_config.thrift")
+
+export_file(name = "qsfp_state.thrift")
+
+export_file(name = "qsfp_stats.thrift")
+
+export_file(name = "transceiver.thrift")
 
 thrift_library(
     name = "qsfp",
@@ -83,15 +92,12 @@ thrift_library(
     languages = [
         "cpp2",
         "go",
-        "py-deprecated",
         "py3-deprecated",
         "rust",
         "python",
     ],
     py3_namespace = "neteng.fboss",
-    py_base_module = "neteng.fboss",
     thrift_cpp2_options = "json,reflection",
-    thrift_py_options = "json,sort_keys",
     thrift_rust_options = [
         "deprecated_default_enum_min_i32",
         "serde",
@@ -163,15 +169,12 @@ thrift_library(
     languages = [
         "cpp2",
         "go",
-        "py-deprecated",
         "py3-deprecated",
         "rust",
         "python",
     ],
     py3_namespace = "neteng.fboss",
-    py_base_module = "neteng.fboss",
     thrift_cpp2_options = "json,reflection",
-    thrift_py_options = "json,sort_keys",
     thrift_rust_options = "serde",
     thrift_srcs = {"port_state.thrift": []},
     deps = [
@@ -206,17 +209,12 @@ thrift_library(
     languages = [
         "cpp2",
         "go",
-        "py-deprecated",
         "py3-deprecated",
-        "py-deprecated-asyncio",
         "rust",
         "python",
     ],
     py3_namespace = "neteng.fboss",
-    py_asyncio_base_module = "neteng.fboss.asyncio",
-    py_base_module = "neteng.fboss",
     thrift_cpp2_options = "json,reflection",
-    thrift_py_options = "json,sort_keys",
     thrift_rust_options = "serde",
     thrift_srcs = {"transceiver_validation.thrift": []},
     deps = [

@@ -634,6 +634,7 @@ struct MdioBusBlockConfig {
   2: string deviceName;
   3: string csrOffsetCalc;
   4: i32 numBuses;
+  5: string iobufOffsetCalc;
 }
 
 // Defines the Retimer Controller block in FPGAs.

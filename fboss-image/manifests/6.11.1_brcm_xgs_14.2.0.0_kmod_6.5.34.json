@@ -17,17 +17,35 @@
     "download": "${ARTIFACT_BASE}/platform/fboss_bins.tar.zst"
   },
   "bsps": [
-    {"download": "${ARTIFACT_BASE}/bsp/6.11.1/fboss_bsp_kmods.tar"}
+    {
+      "download": "${ARTIFACT_BASE}/bsp/6.11.1/fboss_bsp_kmods.tar"
+    }
   ],
   "npu_sai": {
     "download": "${ARTIFACT_BASE}/kmods/6.11.1/xgs_6_5_34/fboss_sai_kmods_xgs_6_5_34.tar"
   },
   "phy_sai": {},
   "fboss-forwarding-stack": [
-    {"download": "${ARTIFACT_BASE}/agent/brcm/14.2.0.0_odp/fboss_bins.tar.zst"},
-    {"download": "${ARTIFACT_BASE}/fsdb/fboss_bins.tar.zst"},
-    {"download": "${ARTIFACT_BASE}/qsfp/fboss_bins.tar.zst"},
-    {"download": "${ARTIFACT_BASE}/fboss2/fboss_bins.tar.zst"}
+    {
+      "name": "agent",
+      "download": "${ARTIFACT_BASE}/agent/brcm/14.2.0.0_odp/fboss_bins.tar.zst"
+    },
+    {
+      "name": "fsdb",
+      "download": "${ARTIFACT_BASE}/fsdb/fboss_bins.tar.zst"
+    },
+    {
+      "name": "qsfp",
+      "download": "${ARTIFACT_BASE}/qsfp/fboss_bins.tar.zst"
+    },
+    {
+      "name": "fboss2",
+      "download": "${ARTIFACT_BASE}/fboss2/fboss_bins.tar.zst"
+    },
+    {
+      "name": "led",
+      "download": "${ARTIFACT_BASE}/led/fboss_bins.tar.zst"
+    }
   ],
   "image_build_hooks": {}
 }

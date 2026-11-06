@@ -53,7 +53,7 @@ CmdSetInterfaceLoopback::RetType CmdSetInterfaceLoopback::queryClient(
   if (queriedIfs.data().empty()) {
     return "No interface specified. Usage: set interface <intf> loopback "
            "<asic|xphy_system|xphy_line|transceiver_system|transceiver_line> "
-           "<enable|disable>\n";
+           "[input|output] <enable|disable>\n";
   }
 
   const auto component = action.component();
@@ -68,10 +68,17 @@ CmdSetInterfaceLoopback::RetType CmdSetInterfaceLoopback::queryClient(
         "Component '{}' is not supported by this command; nothing was changed.\n",
         action.componentName());
   }
+  if (!isTransceiverComponent(component) &&
+      action.direction() != phy::LoopbackMode::INPUT) {
+    return fmt::format(
+        "Direction '{}' is only supported on transceiver components; nothing was changed.\n",
+        loopbackDirectionName(action.direction()));
+  }
 
   const auto target = fmt::format(
-      "{} loopback on component '{}' for interface(s) [{}] on {}",
+      "{} {} loopback on component '{}' for interface(s) [{}] on {}",
       enable ? "enable" : "disable",
+      loopbackDirectionName(action.direction()),
       action.componentName(),
       folly::join(", ", queriedIfs.data()),
       hostInfo.getName());
@@ -97,6 +104,7 @@ CmdSetInterfaceLoopback::RetType CmdSetInterfaceLoopback::queryClient(
         : std::string(kModeLine);
     const std::string act =
         enable ? std::string(kActionEnable) : std::string(kActionDisable);
+    const std::string direction(loopbackDirectionName(action.direction()));
 
     for (const auto& intf : queriedIfs.data()) {
       try {
@@ -104,7 +112,7 @@ CmdSetInterfaceLoopback::RetType CmdSetInterfaceLoopback::queryClient(
             agent.get(),
             qsfpClient.get(),
             intf,
-            LoopbackAction({mode, act}),
+            LoopbackAction({mode, direction, act}),
             portEntries);
         if (queriedIfs.data().size() > 1) {
           output += "\n";
@@ -120,7 +128,8 @@ CmdSetInterfaceLoopback::RetType CmdSetInterfaceLoopback::queryClient(
   // the transceiver components above.
   for (const auto& intf : queriedIfs.data()) {
     try {
-      qsfpClient->sync_setPortLoopbackState(intf, component, enable);
+      qsfpClient->sync_setPortLoopbackState(
+          intf, component, enable, action.direction());
       output += fmt::format(
           "Set loopback {}={} on {}\n",
           action.componentName(),

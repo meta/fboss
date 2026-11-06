@@ -18,19 +18,21 @@ cpp_binary(
         "Main.cpp",
     ],
     compiler_flags = QSFP_COMMON_COMPILER_FLAGS,
+    # Links the x86-64-only vendor SAI SDK.
+    target_compatible_with = ["ovr_config//cpu:x86_64"],
     versions = {
         "broadcom-plp-barchetta2": "5.2",
         "broadcom-plp-epdm": "4.1.2",
         "broadcom-plp-millenio": "5.5",
     },
     deps = [
+        "fbsource//xplat/folly/executors:function_scheduler",
+        "fbsource//xplat/folly/logging:init",
         ":core-credo-0.7.2",  # @manual
         ":handler",
         ":port-manager",
         ":stats",
         "//fboss/qsfp_service/platforms/wedge:wedge-platform-credo-0.7.2",  # @manual
-        "//folly/executors:function_scheduler",
-        "//folly/logging:init",
         "//thrift/lib/cpp2:server",
     ],
 )
@@ -45,6 +47,9 @@ cpp_library(
     srcs = [
         "QsfpServiceHandler.cpp",
     ],
+    headers = [
+        "QsfpServiceHandler.h",
+    ],
     compiler_flags = QSFP_COMMON_COMPILER_FLAGS,
     # PaiDiagShell symbols come from per-impl pai-diag-shell-{impl} libraries
     # that are linked at the final qsfp_service binary stage (via core-{impl}
@@ -52,14 +57,15 @@ cpp_library(
     # closure at binary stage).
     undefined_symbols = True,
     deps = [
+        "fbsource//xplat/folly/logging:logging",
         ":sdk_dump_path",
         "//fboss/agent:fboss-error",
         "//fboss/fsdb/client:fsdb_pub_sub",
         "//fboss/fsdb/common:flags",
         "//fboss/lib:log_thrift_call",
-        "//folly/logging:logging",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/futures:core",
         ":port-manager",
         ":transceiver-manager",
         "//common/fb303/cpp:fb303",
@@ -71,7 +77,6 @@ cpp_library(
         "//fboss/qsfp_service/diag:pai-diag-shell-headers",
         "//fboss/qsfp_service/fsdb:fsdb-subscriber",
         "//fboss/qsfp_service/if:qsfp-cpp2-services",
-        "//folly/futures:core",
     ],
 )
 
@@ -89,14 +94,9 @@ cpp_library(
 )
 
 cpp_library(
-    name = "transceiver-delay-constants",
-    headers = [
-        "facebook/TransceiverDelayConstants.h",
-    ],
-)
-
-cpp_library(
     name = "core-default",
+    # Links the x86-64-only vendor SAI SDK.
+    target_compatible_with = ["ovr_config//cpu:x86_64"],
     exported_deps = [
         ":core-credo-0.7.2",  # @manual
     ],
@@ -112,8 +112,8 @@ cpp_library(
     ],
     compiler_flags = QSFP_COMMON_COMPILER_FLAGS,
     deps = [
+        "fbsource//xplat/folly/logging:logging",
         "//fb303:thread_cached_service_data",
-        "//folly/logging:logging",
     ],
     exported_deps = [
         ":transceiver-manager",
@@ -131,17 +131,17 @@ cpp_library(
     ],
     compiler_flags = QSFP_COMMON_COMPILER_FLAGS,
     deps = [
+        "fbsource//xplat/folly/logging:logging",
         ":port-manager",
         ":stats-helper",
         ":transceiver-manager",
         "//fb303:thread_cached_service_data",
         "//fboss/lib/phy:phy_management_base",
-        "//folly/logging:logging",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/io/async:async_base",
         "//fboss/agent:fboss-types",
         "//fboss/qsfp_service/if:transceiver-cpp2-types",
-        "//folly/io/async:async_base",
     ],
 )
 
@@ -164,6 +164,8 @@ cpp_library(
     compiler_flags = QSFP_COMMON_COMPILER_FLAGS,
     deps = [
         "fbsource//third-party/re2:re2",
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly/json:dynamic",
         "//fb303:thread_cached_service_data",
         "//fboss/agent:utils",
         "//fboss/fsdb/common:flags",
@@ -173,11 +175,16 @@ cpp_library(
         "//fboss/lib/restart_tracker:restart_time_tracker",
         "//fboss/lib/thrift_service_client:thrift-service-client",
         "//fboss/qsfp_service/module/properties:transceiver-properties-manager",
-        "//folly:file_util",
-        "//folly/json:dynamic",
     ],
     exported_deps = [
         "fbsource//third-party/fmt:fmt",
+        "fbsource//xplat/folly:intrusive_list",
+        "fbsource//xplat/folly:spin_lock",
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly:synchronized",
+        "fbsource//xplat/folly/futures:core",
+        "fbsource//xplat/folly/io/async:async_base",
+        "fbsource//xplat/folly/logging:logging",
         ":qsfp-config",
         ":qsfp-service-threads",
         ":slot-thread-helper",
@@ -201,13 +208,6 @@ cpp_library(
         "//fboss/qsfp_service/if:config-cpp2-types",
         "//fboss/qsfp_service/if:port_state-cpp2-types",
         "//fboss/qsfp_service/if:transceiver-cpp2-types",
-        "//folly:intrusive_list",
-        "//folly:spin_lock",
-        "//folly:string",
-        "//folly:synchronized",
-        "//folly/futures:core",
-        "//folly/io/async:async_base",
-        "//folly/logging:logging",
         "//thrift/lib/cpp/util:enum_utils",
     ],
     exported_external_deps = [
@@ -226,10 +226,10 @@ cpp_library(
     ],
     compiler_flags = QSFP_COMMON_COMPILER_FLAGS,
     deps = [
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/logging:logging",
         "//fboss/agent:fboss-error",
-        "//folly:file_util",
-        "//folly:string",
-        "//folly/logging:logging",
         "//thrift/lib/cpp2/protocol:protocol",
     ],
     exported_deps = [
@@ -247,10 +247,10 @@ cpp_library(
     ],
     compiler_flags = QSFP_COMMON_COMPILER_FLAGS,
     exported_deps = [
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/logging:logging",
         "//fboss/lib:alert_logger",
         "//fboss/qsfp_service/if:transceiver_validation-cpp2-types",
-        "//folly:string",
-        "//folly/logging:logging",
         "//thrift/lib/cpp/util:enum_utils",
     ],
 )
@@ -263,7 +263,7 @@ cpp_library(
     compiler_flags = QSFP_COMMON_COMPILER_FLAGS,
     exported_deps = [
         "fbsource//third-party/fmt:fmt",
-        "//folly/logging:logging",
+        "fbsource//xplat/folly/logging:logging",
     ],
 )
 
@@ -277,11 +277,11 @@ cpp_library(
     ],
     compiler_flags = QSFP_COMMON_COMPILER_FLAGS,
     exported_deps = [
+        "fbsource//xplat/folly:intrusive_list",
+        "fbsource//xplat/folly:spin_lock",
+        "fbsource//xplat/folly:synchronized",
         "//fboss/agent:fboss-types",
         "//fboss/lib:thread_heartbeat",
-        "//folly:intrusive_list",
-        "//folly:spin_lock",
-        "//folly:synchronized",
     ],
     exported_external_deps = [
         ("boost", None, "boost_bimap"),
@@ -322,13 +322,16 @@ cpp_library(
     ],
     compiler_flags = QSFP_COMMON_COMPILER_FLAGS,
     deps = [
+        "fbsource//xplat/folly/json:dynamic",
         ":qsfp-config",
         "//fboss/agent:utils",
         "//fboss/lib/thrift_service_client:thrift-service-client",
-        "//folly/json:dynamic",
     ],
     exported_deps = [
         "fbsource//third-party/fmt:fmt",
+        "fbsource//xplat/folly:spin_lock",
+        "fbsource//xplat/folly:synchronized",
+        "fbsource//xplat/folly/logging:logging",
         ":qsfp-service-threads",
         ":transceiver-manager",
         "//fboss/agent:fboss-error",
@@ -338,9 +341,6 @@ cpp_library(
         "//fboss/fsdb/common:flags",
         "//fboss/lib/config:fboss_config_utils",
         "//fboss/qsfp_service/if:transceiver-cpp2-types",
-        "//folly:spin_lock",
-        "//folly:synchronized",
-        "//folly/logging:logging",
         "//thrift/lib/cpp/util:enum_utils",
     ],
     exported_external_deps = [

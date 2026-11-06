@@ -34,6 +34,7 @@ thrift_library(
     deps = [
         ":sensor_config",
         "//fboss/agent/if:fboss",
+        "//fboss/platform/reboot_cause_finder/if:reboot_cause_config",
     ],
 )
 
@@ -46,13 +47,11 @@ thrift_library(
         "cpp2",
         "go",
         "py3-deprecated",
-        "py-deprecated-asyncio",
         "rust",
         "py-deprecated",
         "python",
     ],
     py3_namespace = "neteng.fboss.platform.sensor_config",
-    py_asyncio_base_module = "neteng.fboss.platform.asyncio",
     py_base_module = "neteng.fboss.platform",
     thrift_cpp2_options = [
         "json",

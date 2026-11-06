@@ -57,6 +57,13 @@ class PortStoreTest : public SaiStoreTest {
         std::nullopt, // TC to Priority Group map
         std::nullopt, // PFC Priority to Queue map
         std::nullopt, // PFC Priority to Priority Group map
+#if defined(SAI_CBFC_SUPPORTED)
+        std::nullopt, // TC to VC map
+        std::nullopt, // Queue to VC map
+        std::nullopt, // CBFC sender credit size
+        std::nullopt, // CBFC sender packet overhead
+        std::nullopt, // CBFC sender credit limit
+#endif
 #if SAI_API_VERSION >= SAI_VERSION(1, 9, 0)
         std::nullopt, // Inter Frame Gap
 #endif
@@ -98,7 +105,10 @@ class PortStoreTest : public SaiStoreTest {
 #endif
         std::nullopt, // PfcPauseDurationOverride
         std::nullopt, // Ingress ACL
+        std::nullopt, // IsolationGroup
         std::nullopt, // Metadata
+        std::nullopt, // CsigTagAction
+        std::nullopt, // CsigLinkLocator
     };
   }
 
@@ -175,6 +185,20 @@ TEST_F(PortStoreTest, portCreateCtor) {
       obj.adapterKey(), SaiPortTraits::Attributes::Speed{});
   EXPECT_EQ(apiSpeed, 100000);
 }
+
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 3)
+TEST_F(PortStoreTest, reloadDoesNotConsumeClearOnReadOperStatusLatch) {
+  auto portId = createPort(0);
+  auto& fakePort = FakeSai::getInstance()->portManager.get(portId);
+  fakePort.portExtOperStatusLatch.current_status = true;
+  fakePort.portExtOperStatusLatch.changed = true;
+
+  SaiStore s(0);
+  s.reload();
+
+  EXPECT_TRUE(fakePort.portExtOperStatusLatch.changed);
+}
+#endif
 
 TEST_F(PortStoreTest, portSetSpeed) {
   auto portId = createPort(0);
@@ -529,7 +553,11 @@ TEST_F(PortStoreTest, portSetPfcMonitorDirection) {
 TEST_F(PortStoreTest, loadPortBoundToLlrProfile) {
   auto profileId = saiApiTable->portApi().create<SaiPortLlrProfileTraits>(
       makeLlrProfileAttrs(), 0);
-  auto portId = createPort(0);
+  // Admin disabled: the fake refuses a profile attach on an enabled port, as
+  // the SDK does (CS00012478409). This passed before only because the profile
+  // was given id 0, making the attach below a write of SAI_NULL_OBJECT_ID.
+  auto portId = saiApiTable->portApi().create<SaiPortTraits>(
+      makeAttrs(0, 100000, /*adminStateOpt*/ false), 0);
   saiApiTable->portApi().setAttribute(
       portId,
       SaiPortTraits::Attributes::LlrProfile{

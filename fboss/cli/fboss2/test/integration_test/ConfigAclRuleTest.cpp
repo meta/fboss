@@ -372,6 +372,27 @@ TEST_F(ConfigAclRuleTest, SetPacketLookupResult) {
   });
 }
 
+// Class ids are given the same way as to `config interface <intf>
+// lookup-class`: a numeric id or a class name.
+TEST_F(ConfigAclRuleTest, SetLookupClassL2) {
+  runSet("lookup-class-l2", {"10"}, [](auto& e) {
+    EXPECT_EQ(e["lookupClassL2"].asInt(), 10);
+  });
+}
+
+TEST_F(ConfigAclRuleTest, SetLookupClassNeighbor) {
+  runSet(
+      "lookup-class-neighbor", {"CLASS_QUEUE_PER_HOST_QUEUE_5"}, [](auto& e) {
+        EXPECT_EQ(e["lookupClassNeighbor"].asInt(), 15);
+      });
+}
+
+TEST_F(ConfigAclRuleTest, SetLookupClassRoute) {
+  runSet("lookup-class-route", {"13"}, [](auto& e) {
+    EXPECT_EQ(e["lookupClassRoute"].asInt(), 13);
+  });
+}
+
 // =============================================================
 // Action tests — `config acl rule <table> <rule> action <subattr>`
 //

@@ -11,7 +11,6 @@ thrift_library(
     languages = [
         "cpp2",
         "py3-deprecated",
-        "py-deprecated-asyncio",
         "go",
         "rust",
         "java-swift",
@@ -21,7 +20,6 @@ thrift_library(
     ],
     plugins = [thrift_plugin_automock],
     py3_namespace = "nettools.bgplib",
-    py_asyncio_base_module = "nettools.bgplib_asyncio",
     py_base_module = "nettools.bgplib",
     thrift_cpp2_options = "json",
     thrift_rust_options = [
@@ -122,7 +120,7 @@ thrift_library(
 thrift_library(
     name = "bgp_thrift",
     cpp2_deps = [
-        "//folly/container:f14_hash",
+        "fbsource//xplat/folly/container:f14_hash",
     ],
     go_thrift_namespaces = {
         "bgp_thrift.thrift": "neteng.fboss.bgp_thrift",

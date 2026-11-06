@@ -16,7 +16,7 @@
 namespace facebook::fboss::platform::platform_checks {
 platform_manager::PlatformConfig PlatformCheck::getPlatformConfig() const {
   std::string configJson =
-      fboss::platform::ConfigLib().getPlatformManagerConfig();
+      fboss::platform::ConfigLib().getPlatformManagerConfig(platformName());
   fboss::platform::platform_manager::PlatformConfig config;
   try {
     apache::thrift::SimpleJSONSerializer::deserialize<

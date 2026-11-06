@@ -13,7 +13,9 @@
 #include <fmt/format.h>
 #include <folly/String.h>
 #include <glog/logging.h>
+#include <chrono>
 #include <stdexcept>
+#include <thread>
 #include "fboss/agent/AgentDirectoryUtil.h"
 #include "fboss/agent/if/gen-cpp2/FbossCtrl.h"
 #include "fboss/cli/fboss2/session/SystemdInterface.h"
@@ -26,6 +28,11 @@ constexpr std::string_view kWedgeAgent = "wedge_agent";
 constexpr std::string_view kSwAgent = "fboss_sw_agent";
 constexpr std::string_view kHwAgentPrefix = "fboss_hw_agent@";
 constexpr std::string_view kBgpd = "bgpd";
+constexpr std::string_view kNetosSwAgent = "netos.service.fboss_sw_agent";
+constexpr std::string_view kNetosBgpd = "netos.service.fboss_bgp";
+constexpr std::string_view kNetosHwAgentPrefix =
+    "netos.service.fboss_wedge_agent_";
+constexpr std::string_view kSystemdServiceSuffix = ".service";
 } // namespace
 
 namespace facebook::fboss {
@@ -63,18 +70,23 @@ std::string FbossServiceUtil::getColdbootFileForService(
     const std::string& service) {
   AgentDirectoryUtil dirUtil;
 
-  if (service == kSwAgent) {
+  if (service == kSwAgent || service == kNetosSwAgent) {
     return dirUtil.getSwColdBootOnceFile();
   } else if (service.find(kHwAgentPrefix) == 0) {
     std::string indexStr = service.substr(kHwAgentPrefix.size());
     int switchIndex = folly::to<int>(indexStr);
     return dirUtil.getHwColdBootOnceFile(switchIndex);
-  } else if (service == kWedgeAgent) {
-    return dirUtil.getColdBootOnceFile();
-  } else {
-    throw std::runtime_error(
-        fmt::format("Unknown service type for coldboot: {}", service));
   }
+  if (service.find(kNetosHwAgentPrefix) == 0) {
+    const auto switchIndex =
+        folly::to<int>(service.substr(service.rfind('_') + 1));
+    return dirUtil.getHwColdBootOnceFile(switchIndex);
+  }
+  if (service == kWedgeAgent) {
+    return dirUtil.getColdBootOnceFile();
+  }
+  throw std::runtime_error(
+      fmt::format("Unknown service type for coldboot: {}", service));
 }
 
 void FbossServiceUtil::createColdbootMarkerFile(
@@ -107,6 +119,54 @@ void FbossServiceUtil::performWarmboot(
   }
 }
 
+std::string FbossServiceUtil::resolveSystemdServiceName(
+    const std::string& service) const {
+  if (!systemd_
+           ->getMatchingServices(
+               fmt::format("{}{}", service, kSystemdServiceSuffix))
+           .empty()) {
+    return service;
+  }
+
+  std::string netosService;
+  if (service == kSwAgent) {
+    netosService = kNetosSwAgent;
+  } else if (service == kBgpd) {
+    netosService = kNetosBgpd;
+  }
+  if (service.find(kHwAgentPrefix) == 0) {
+    const auto switchIndex = service.substr(kHwAgentPrefix.size());
+    // Native HW-agent units include a platform-specific vendor component
+    // (for example, brcm or csco). Discover it from systemd so this OSS code
+    // does not duplicate or depend on NetOS vendor metadata.
+    netosService = fmt::format("{}*_{}", kNetosHwAgentPrefix, switchIndex);
+  }
+  if (netosService.empty()) {
+    throw std::runtime_error(fmt::format("Unknown FBOSS service: {}", service));
+  }
+
+  auto matches = systemd_->getMatchingServices(
+      fmt::format("{}{}", netosService, kSystemdServiceSuffix));
+  if (matches.size() > 1) {
+    throw std::runtime_error(
+        fmt::format(
+            "Found multiple systemd services matching {}: {}",
+            netosService,
+            folly::join(", ", matches)));
+  }
+  if (matches.size() == 1) {
+    auto resolvedService = std::move(matches.front());
+    if (folly::StringPiece(resolvedService).endsWith(kSystemdServiceSuffix)) {
+      resolvedService.resize(
+          resolvedService.size() - kSystemdServiceSuffix.size());
+    }
+    return resolvedService;
+  }
+  throw std::runtime_error(
+      fmt::format(
+          "No systemd service found for {} and {}", service, netosService));
+}
+
 std::vector<std::string> FbossServiceUtil::getServicesToRestart(
     cli::ServiceType service) const {
   switch (service) {
@@ -117,13 +177,13 @@ std::vector<std::string> FbossServiceUtil::getServicesToRestart(
             << "Detected split mode (multi-switch enabled on running agent)";
 
         for (const auto& switchIndex : switchIndexes_) {
-          services.emplace_back(
-              fmt::format("{}{}", kHwAgentPrefix, switchIndex));
+          services.emplace_back(resolveSystemdServiceName(
+              fmt::format("{}{}", kHwAgentPrefix, switchIndex)));
         }
         LOG(INFO) << "Found " << services.size() << " hw_agent instances";
 
         // Add sw_agent last so hw_agent restarts first
-        services.emplace_back(kSwAgent);
+        services.emplace_back(resolveSystemdServiceName(std::string(kSwAgent)));
       } else {
         LOG(INFO)
             << "Detected monolithic mode (multi-switch not enabled on running agent)";
@@ -133,7 +193,7 @@ std::vector<std::string> FbossServiceUtil::getServicesToRestart(
     }
     case cli::ServiceType::BGP:
       // BGP++ is a single, mode-independent service.
-      return {std::string(kBgpd)};
+      return {resolveSystemdServiceName(std::string(kBgpd))};
   }
   throw std::runtime_error("Unknown service type");
 }
@@ -182,6 +242,38 @@ std::string FbossServiceUtil::restartTypeName(
       return "reload";
   }
   return "restart";
+}
+
+// Same check as SwSwitch::isFullyConfigured().
+bool FbossServiceUtil::isAgentConfigured(const HostInfo& hostInfo) {
+  try {
+    auto client =
+        utils::createClient<apache::thrift::Client<FbossCtrl>>(hostInfo);
+    auto runState = client->sync_getSwitchRunState();
+    return runState >= SwitchRunState::CONFIGURED &&
+        runState != SwitchRunState::EXITING;
+  } catch (const std::exception&) {
+    // Expected while the agent is still starting up.
+    return false;
+  }
+}
+
+void FbossServiceUtil::waitForAgentConfigured(
+    const HostInfo& hostInfo,
+    int maxWaitSeconds,
+    int pollIntervalMs) {
+  int waitedMs = 0;
+  while (waitedMs < maxWaitSeconds * 1000) {
+    if (isAgentConfigured(hostInfo)) {
+      return;
+    }
+    // NOLINTNEXTLINE(facebook-hte-BadCall-sleep_for)
+    std::this_thread::sleep_for(std::chrono::milliseconds(pollIntervalMs));
+    waitedMs += pollIntervalMs;
+  }
+  throw std::runtime_error(
+      fmt::format(
+          "Agent did not become configured within {} seconds", maxWaitSeconds));
 }
 
 std::vector<std::string> FbossServiceUtil::restartService(

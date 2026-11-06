@@ -55,6 +55,8 @@ using SaiNextHopGroupMemberInfo = std::pair<
 sai_next_hop_group_type_t getNextHopGroupType(
     const RouteNextHopEntry::NextHopSet& nextHops);
 
+bool isProtectionNextHopGroupType(sai_next_hop_group_type_t nextHopGroupType);
+
 struct SaiNextHopGroupKey {
   SaiNextHopGroupKey(
       RouteNextHopEntry::NextHopSet nextHops,
@@ -181,6 +183,52 @@ class SaiNextHopGroupChildGroupMember {
   std::shared_ptr<SaiNextHopGroupMember> nextHopGroupMember_;
 };
 
+// Group member over a VXLAN tunnel next hop. The tunnel next hop
+// is created eagerly and has no neighbor to wait for, so the
+// member object is created directly, as with a child group member.
+// When the group bulk creates its members, creation is deferred
+// to that bulk create instead.
+class SaiVxlanNextHopGroupMember {
+ public:
+  using NextHopWeight =
+      std::optional<SaiNextHopGroupMemberTraits::Attributes::Weight>;
+
+  SaiVxlanNextHopGroupMember(
+      SaiNextHopGroupManager* manager,
+      SaiNextHopGroupHandle* nhgroup,
+      std::shared_ptr<SaiVxlanNextHopHandle> vxlanNextHopHandle,
+      SaiNextHopGroupTraits::AdapterKey nexthopGroupId,
+      NextHopWeight weight);
+
+  bool isAlive() const {
+    return nextHopGroupMember_ != nullptr;
+  }
+
+  std::pair<
+      std::optional<SaiNextHopGroupMemberTraits::AdapterHostKey>,
+      std::optional<SaiNextHopGroupMemberTraits::CreateAttributes>>
+  getAdapterHostKeyAndCreateAttributes();
+
+  void setObjectOwnership(
+      const std::shared_ptr<SaiNextHopGroupMember>& object) {
+    nextHopGroupMember_ = object;
+  }
+
+  std::shared_ptr<SaiObject<SaiNextHopGroupMemberTraits>>
+  getNhopGroupMemberObject() {
+    return nextHopGroupMember_;
+  }
+
+  std::string toString() const;
+
+ private:
+  std::shared_ptr<SaiVxlanNextHopHandle> vxlanNextHopHandle_;
+  std::optional<SaiNextHopGroupMemberTraits::AdapterHostKey> adapterHostKey_;
+  std::optional<SaiNextHopGroupMemberTraits::CreateAttributes>
+      createAttributes_;
+  std::shared_ptr<SaiNextHopGroupMember> nextHopGroupMember_;
+};
+
 class NextHopGroupMember {
  public:
   using NextHopWeight =
@@ -202,6 +250,13 @@ class NextHopGroupMember {
       ManagedSaiNextHop managedSaiNextHop,
       NextHopWeight nextHopWeight,
       bool fixedWidthMode);
+
+  NextHopGroupMember(
+      SaiNextHopGroupManager* manager,
+      SaiNextHopGroupHandle* nhgroup,
+      SaiNextHopGroupTraits::AdapterKey nexthopGroupId,
+      std::shared_ptr<SaiVxlanNextHopHandle> vxlanNextHopHandle,
+      NextHopWeight nextHopWeight);
 
   bool isProgrammed() const {
     return std::visit(
@@ -262,7 +317,8 @@ class NextHopGroupMember {
  private:
   std::variant<
       std::shared_ptr<ManagedIpNextHopGroupMember>,
-      std::shared_ptr<ManagedMplsNextHopGroupMember>
+      std::shared_ptr<ManagedMplsNextHopGroupMember>,
+      std::shared_ptr<SaiVxlanNextHopGroupMember>
 #if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)
       ,
       std::shared_ptr<ManagedSrv6NextHopGroupMember>

@@ -255,10 +255,8 @@ int hwAgentMain(
   server->setMonitoringInterface(std::move(monitor));
   server->setControlInterface(
       std::make_shared<facebook::fb303::DefaultControl>());
-  // The NetOS native-service watchdog gates systemd readiness on an fb303
-  // getStatus() call against the HwAgent thrift port. Without a status
-  // interface that method is unresolvable, so the service never reaches
-  // READY and is killed by the watchdog before SwAgent can start.
+  // Serve fb303 getStatus() for external health checks (NHS/netstate) that
+  // query the HwAgent thrift port directly.
   server->setStatusInterface(std::move(status));
 #endif
 

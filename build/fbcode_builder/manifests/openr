@@ -57,13 +57,15 @@ fb303
 fbthrift
 folly
 googletest
+libsodium
 re2
 range-v3
+snappy
 
-[dependencies.all(distro=centos_stream,distro_vers=9)]
+[dependencies.all(distro_family=rhel,distro_vers=9)]
 gcc12
 
-[cmake.defines.all(distro=centos_stream,distro_vers=9)]
+[cmake.defines.all(distro_family=rhel,distro_vers=9)]
 CMAKE_C_COMPILER=/opt/rh/gcc-toolset-12/root/usr/bin/gcc
 CMAKE_CXX_COMPILER=/opt/rh/gcc-toolset-12/root/usr/bin/g++
 

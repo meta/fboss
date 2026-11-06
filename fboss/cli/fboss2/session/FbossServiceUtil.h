@@ -48,6 +48,15 @@ class FbossServiceUtil {
       cli::ServiceType service,
       cli::ConfigActionLevel level);
 
+  // Waits until the agent at hostInfo can take config commands; systemd
+  // reports it active well before that. Throws on timeout.
+  void waitForAgentConfigured(
+      const HostInfo& hostInfo,
+      int maxWaitSeconds = 300,
+      int pollIntervalMs = 1000);
+
+  virtual bool isAgentConfigured(const HostInfo& hostInfo);
+
   // Reload config for a service without restart (for HITLESS changes).
   // Calls sync_reloadConfig() on the primary service (sw_agent in split mode,
   // wedge_agent in monolithic mode).
@@ -75,6 +84,9 @@ class FbossServiceUtil {
 
   // Returns ordered list of services to restart (hw_agent first, sw_agent last)
   std::vector<std::string> getServicesToRestart(cli::ServiceType service) const;
+
+  // Prefers classic unit names and falls back to the installed NetOS unit.
+  std::string resolveSystemdServiceName(const std::string& service) const;
 
   // Shared per-service helper: restart and wait for active.
   void performRestartAndWait(const std::string& service);

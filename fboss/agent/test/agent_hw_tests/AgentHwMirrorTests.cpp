@@ -7,6 +7,7 @@
 #include <gtest/gtest.h>
 #include "fboss/agent/AgentFeatures.h"
 #include "fboss/agent/AsicUtils.h"
+#include "fboss/agent/HwSwitchMatcher.h"
 #include "fboss/agent/gen-cpp2/switch_config_constants.h"
 #include "fboss/agent/hw/switch_asics/HwAsic.h"
 #include "fboss/agent/hw/test/ConfigFactory.h"
@@ -166,9 +167,32 @@ class AgentHwMirrorTest : public AgentHwTest {
     return getAgentEnsemble()->getHwAgentTestClient(getSwitchId());
   }
 
+  // Other switches' copies may stay unresolved on multi-NPU.
+  std::vector<std::shared_ptr<Mirror>> getMirrorsOnSwitchUnderTest() {
+    std::vector<std::shared_ptr<Mirror>> result;
+    auto mirrors = this->getProgrammedState()->getMirrors()->getMapNodeIf(
+        HwSwitchMatcher(std::unordered_set<SwitchID>({getSwitchId()})));
+    if (mirrors) {
+      for (const auto& [_, mirror] : std::as_const(*mirrors)) {
+        result.push_back(mirror);
+      }
+    }
+    return result;
+  }
+
+  std::shared_ptr<Mirror> getMirrorOnSwitchUnderTest(
+      const std::string& mirrorName) {
+    auto mirrors = this->getProgrammedState()->getMirrors()->getMapNodeIf(
+        HwSwitchMatcher(std::unordered_set<SwitchID>({getSwitchId()})));
+    return mirrors ? mirrors->getNodeIf(mirrorName) : nullptr;
+  }
+
   std::optional<HwResourceStats> getMirrorStats() {
     try {
-      auto stats = getSw()->getHwSwitchStatsExpensive(getSwitchId());
+      auto switchIndex =
+          getSw()->getSwitchInfoTable().getSwitchIndexFromSwitchId(
+              getSwitchId());
+      auto stats = getSw()->getHwSwitchStatsExpensive(switchIndex);
       return *(stats.hwResourceStats());
     } catch (const std::exception&) {
       return std::nullopt;
@@ -511,11 +535,9 @@ TYPED_TEST(AgentHwSflowMirrorTest, HwResolvedMirrorStat) {
   };
   auto verify = [=, this]() {
     WITH_RETRIES({
-      auto span = this->getProgrammedState()->getMirrors()->getNodeIf(kSpan);
-      auto erspan =
-          this->getProgrammedState()->getMirrors()->getNodeIf(kErspan);
-      auto sflowMirror =
-          this->getProgrammedState()->getMirrors()->getNodeIf(kSflow);
+      auto span = this->getMirrorOnSwitchUnderTest(kSpan);
+      auto erspan = this->getMirrorOnSwitchUnderTest(kErspan);
+      auto sflowMirror = this->getMirrorOnSwitchUnderTest(kSflow);
       ASSERT_EVENTUALLY_NE(span, nullptr);
       ASSERT_EVENTUALLY_NE(erspan, nullptr);
       ASSERT_EVENTUALLY_NE(sflowMirror, nullptr);
@@ -551,11 +573,9 @@ TYPED_TEST(AgentHwSflowMirrorTest, HwUnresolvedMirrorStat) {
   };
   auto verify = [=, this]() {
     WITH_RETRIES({
-      auto span = this->getProgrammedState()->getMirrors()->getNodeIf(kSpan);
-      auto erspan =
-          this->getProgrammedState()->getMirrors()->getNodeIf(kErspan);
-      auto sflowMirror =
-          this->getProgrammedState()->getMirrors()->getNodeIf(kSflow);
+      auto span = this->getMirrorOnSwitchUnderTest(kSpan);
+      auto erspan = this->getMirrorOnSwitchUnderTest(kErspan);
+      auto sflowMirror = this->getMirrorOnSwitchUnderTest(kSflow);
       EXPECT_EVENTUALLY_TRUE(span && span->isResolved());
       EXPECT_EVENTUALLY_TRUE(erspan && !erspan->isResolved());
       EXPECT_EVENTUALLY_TRUE(sflowMirror && !sflowMirror->isResolved());
@@ -699,27 +719,20 @@ TYPED_TEST(AgentHwSflowMirrorTest, SflowMirrorWithErspanMirror) {
   auto verify = [=, this]() {
     auto client = this->getClient();
     WITH_RETRIES({
-      bool allResolved = true;
-      for (auto mniter :
-           std::as_const(*this->getProgrammedState()->getMirrors())) {
-        for (auto iter : std::as_const(*mniter.second)) {
-          auto mirror = iter.second;
-          if (!mirror || !mirror->isResolved()) {
-            allResolved = false;
-          }
+      auto mirrors = this->getMirrorsOnSwitchUnderTest();
+      bool allResolved = !mirrors.empty();
+      for (const auto& mirror : mirrors) {
+        if (!mirror->isResolved()) {
+          allResolved = false;
         }
       }
       EXPECT_EVENTUALLY_TRUE(allResolved);
       if (!allResolved) {
         continue;
       }
-      for (auto mniter :
-           std::as_const(*this->getProgrammedState()->getMirrors())) {
-        for (auto iter : std::as_const(*mniter.second)) {
-          auto mirror = iter.second;
-          auto fields = mirror->toThrift();
-          EXPECT_EVENTUALLY_TRUE(client->sync_verifyResolvedMirror(fields));
-        }
+      for (const auto& mirror : mirrors) {
+        EXPECT_EVENTUALLY_TRUE(
+            client->sync_verifyResolvedMirror(mirror->toThrift()));
       }
     });
     std::vector<int64_t> destinations;
@@ -794,27 +807,20 @@ TYPED_TEST(AgentHwSflowMirrorTest, SflowMirrorWithErspanMirrorOnePortSflow) {
   auto verify = [=, this]() {
     auto client = this->getClient();
     WITH_RETRIES({
-      bool allResolved = true;
-      for (auto mniter :
-           std::as_const(*this->getProgrammedState()->getMirrors())) {
-        for (auto iter : std::as_const(*mniter.second)) {
-          auto mirror = iter.second;
-          if (!mirror || !mirror->isResolved()) {
-            allResolved = false;
-          }
+      auto mirrors = this->getMirrorsOnSwitchUnderTest();
+      bool allResolved = !mirrors.empty();
+      for (const auto& mirror : mirrors) {
+        if (!mirror->isResolved()) {
+          allResolved = false;
         }
       }
       EXPECT_EVENTUALLY_TRUE(allResolved);
       if (!allResolved) {
         continue;
       }
-      for (auto mniter :
-           std::as_const(*this->getProgrammedState()->getMirrors())) {
-        for (auto iter : std::as_const(*mniter.second)) {
-          auto mirror = iter.second;
-          auto fields = mirror->toThrift();
-          EXPECT_EVENTUALLY_TRUE(client->sync_verifyResolvedMirror(fields));
-        }
+      for (const auto& mirror : mirrors) {
+        EXPECT_EVENTUALLY_TRUE(
+            client->sync_verifyResolvedMirror(mirror->toThrift()));
       }
     });
     std::vector<int64_t> destinations;
@@ -892,27 +898,20 @@ TYPED_TEST(AgentHwSflowMirrorTest, SflowMirrorWithErspanMirrorNoPortSflow) {
   auto verify = [=, this]() {
     auto client = this->getClient();
     WITH_RETRIES({
-      bool allResolved = true;
-      for (auto mniter :
-           std::as_const(*this->getProgrammedState()->getMirrors())) {
-        for (auto iter : std::as_const(*mniter.second)) {
-          auto mirror = iter.second;
-          if (!mirror || !mirror->isResolved()) {
-            allResolved = false;
-          }
+      auto mirrors = this->getMirrorsOnSwitchUnderTest();
+      bool allResolved = !mirrors.empty();
+      for (const auto& mirror : mirrors) {
+        if (!mirror->isResolved()) {
+          allResolved = false;
         }
       }
       EXPECT_EVENTUALLY_TRUE(allResolved);
       if (!allResolved) {
         continue;
       }
-      for (auto mniter :
-           std::as_const(*this->getProgrammedState()->getMirrors())) {
-        for (auto iter : std::as_const(*mniter.second)) {
-          auto mirror = iter.second;
-          auto fields = mirror->toThrift();
-          EXPECT_EVENTUALLY_TRUE(client->sync_verifyResolvedMirror(fields));
-        }
+      for (const auto& mirror : mirrors) {
+        EXPECT_EVENTUALLY_TRUE(
+            client->sync_verifyResolvedMirror(mirror->toThrift()));
       }
     });
     std::vector<int64_t> destinations;

@@ -392,7 +392,8 @@ TEST(PacketUtilTest, GetEthFrameV4MPLS) {
       folly::IPAddressV4("10.0.1.1"),
       folly::IPAddressV4("10.0.1.2"),
       10010,
-      10020);
+      10020,
+      kVlan1);
 
   auto txPkt = ethFrame0.getTxPacket(
       [&hwSwitch](uint32_t size) { return hwSwitch.allocatePacket(size); });
@@ -419,7 +420,8 @@ TEST(PacketUtilTest, GetEthFrameV6MPLS) {
       folly::IPAddressV6("1001::1"),
       folly::IPAddressV6("1001::2"),
       10010,
-      10020);
+      10020,
+      kVlan1);
 
   auto txPkt = ethFrame0.getTxPacket(
       [&hwSwitch](uint32_t size) { return hwSwitch.allocatePacket(size); });

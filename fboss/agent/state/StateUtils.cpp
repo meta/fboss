@@ -93,7 +93,7 @@ folly::MacAddress getMacForFirstInterfaceWithPorts(
   return getInterfaceMac(state, intfID);
 }
 
-InterfaceID firstInterfaceIDWithPorts(
+std::optional<InterfaceID> firstInterfaceIDWithPortsIf(
     const std::shared_ptr<SwitchState>& state,
     const SwitchID& switchId,
     std::optional<cfg::Scope> scope) {
@@ -110,9 +110,20 @@ InterfaceID firstInterfaceIDWithPorts(
       return InterfaceID(intfID);
     }
   }
-  throw FbossError(
-      "No interface found in state for switchId: ",
-      static_cast<int64_t>(switchId));
+  return std::nullopt;
+}
+
+InterfaceID firstInterfaceIDWithPorts(
+    const std::shared_ptr<SwitchState>& state,
+    const SwitchID& switchId,
+    std::optional<cfg::Scope> scope) {
+  auto intfID = firstInterfaceIDWithPortsIf(state, switchId, scope);
+  if (!intfID.has_value()) {
+    throw FbossError(
+        "No interface found in state for switchId: ",
+        static_cast<int64_t>(switchId));
+  }
+  return intfID.value();
 }
 
 std::vector<folly::IPAddress> getIntfAddrs(

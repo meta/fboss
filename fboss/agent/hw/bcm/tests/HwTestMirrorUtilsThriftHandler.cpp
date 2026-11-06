@@ -243,7 +243,9 @@ bool HwTestThriftHandler::verifyResolvedMirror(
     return false;
   }
 
-  if (auto truncateOpt = mirror->truncate(); truncateOpt.has_value()) {
+  if (auto truncateOpt = mirror->truncate();
+      apache::thrift::is_non_optional_field_set_manually_or_by_serializer(
+          truncateOpt)) {
     if (bool(mirror_dest.truncate & BCM_MIRROR_PAYLOAD_TRUNCATE) !=
         truncateOpt.value()) {
       XLOG(ERR) << "mirror_dest.truncate: " << mirror_dest.truncate

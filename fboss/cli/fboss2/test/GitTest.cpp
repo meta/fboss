@@ -122,4 +122,18 @@ TEST_F(GitTest, BasicOperations) {
   EXPECT_EQ("version 2", contentAtSecond);
 }
 
+TEST_F(GitTest, CommitExplicitlyIgnoredFile) {
+  Git git(testRepoPath_.string());
+  git.init();
+
+  writeFile(".gitignore", "*\n!*/\n!*.conf\n");
+  fs::create_directories(testRepoPath_ / "cli");
+  writeFile("cli/cli_metadata.json", "metadata");
+
+  const auto sha = git.commit(
+      {"cli/cli_metadata.json"}, "Add metadata", "User", "user@test.com");
+
+  EXPECT_EQ("metadata", git.fileAtRevision(sha, "cli/cli_metadata.json"));
+}
+
 } // namespace facebook::fboss

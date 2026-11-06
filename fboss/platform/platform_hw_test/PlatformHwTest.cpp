@@ -39,7 +39,7 @@ class PlatformHwTest : public ::testing::Test {
 };
 
 TEST_F(PlatformHwTest, CorrectMacX86) {
-  platform_checks::MacAddressCheck macCheck(FLAGS_mgmt_interface);
+  platform_checks::MacAddressCheck macCheck({}, FLAGS_mgmt_interface);
   auto result = macCheck.run();
 
   if (result.status() != platform_checks::CheckStatus::OK) {

@@ -3,6 +3,8 @@
 #pragma once
 #include <bitset>
 
+#include <filesystem>
+
 #include "fboss/platform/helpers/PlatformUtils.h"
 #include "fboss/platform/rma-showtech/I2cHelper.h"
 #include "fboss/platform/rma-showtech/gen-cpp2/showtech_config_types.h"
@@ -18,10 +20,12 @@ class Utils {
   void printFbossDetails();
   void printWeutilDetails();
   void printFwutilDetails();
+  void printMfrVersionDetails();
   void printLspciDetails();
   void printPortDetails();
   void printSensorDetails();
   void printI2cDetails();
+  void printRegDumpDetails();
   void printI2cDumpDetails();
   void printPsuDetails();
   void printGpioDetails();
@@ -39,6 +43,13 @@ class Utils {
   I2cHelper i2cHelper_{};
   void runFbossCliCmd(const std::string& cmd);
   void printSysfsAttribute(const std::string& label, const std::string& path);
+  void printFileContent(const std::string& path);
+  static bool regDumpEntryOrder(
+      const std::filesystem::path& a,
+      const std::filesystem::path& b);
+  static std::string regDumpEntryLabel(const std::filesystem::path& entry);
+  static std::filesystem::path getDebugfsPathFromHwmonPath(
+      const std::filesystem::path& hwmonPath);
   void printGpio(const showtech_config::Gpio& gpio);
   void printServiceLogs(const std::string& service) const;
   std::optional<std::tuple<int, int>> getI2cInfoForDevice(

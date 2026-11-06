@@ -9,6 +9,7 @@
  */
 #pragma once
 
+#include "fboss/agent/FbossError.h"
 #include "fboss/agent/types.h"
 #include "fboss/lib/fpga/MultiPimPlatformPimContainer.h"
 #include "fboss/lib/if/gen-cpp2/pim_state_types.h"
@@ -21,6 +22,46 @@
 namespace facebook::fboss {
 
 class FpgaDevice;
+
+/*
+ * Thrown by getPimType() when a PIM's type register can't be read or holds a
+ * value no supported PIM type uses. Carries the PIM and the reason so callers
+ * can tell a dead PIM from an unknown type without parsing the message.
+ */
+class PimTypeError : public FbossError {
+ public:
+  enum class Reason {
+    // All ones or 0: no supported PIM type reads as either, so the PIM isn't
+    // answering
+    UNREADABLE,
+    // Some other value no supported PIM type uses
+    UNRECOGNIZED,
+  };
+
+  template <typename... Args>
+  PimTypeError(int pim, uint32_t pimTypeReg, Reason reason, Args&&... args)
+      : FbossError(std::forward<Args>(args)...),
+        pim_(pim),
+        pimTypeReg_(pimTypeReg),
+        reason_(reason) {}
+
+  int getPim() const {
+    return pim_;
+  }
+
+  uint32_t getPimTypeReg() const {
+    return pimTypeReg_;
+  }
+
+  Reason getReason() const {
+    return reason_;
+  }
+
+ private:
+  int pim_;
+  uint32_t pimTypeReg_;
+  Reason reason_;
+};
 
 /*
  * Multi-pim Platform System Container base class.
@@ -51,6 +92,7 @@ class MultiPimPlatformSystemContainer {
 
   virtual MultiPimPlatformPimContainer* getPimContainer(int pim) const;
 
+  // Throws PimTypeError if the PIM type register can't be read or decoded.
   virtual MultiPimPlatformPimContainer::PimType getPimType(int pim) const = 0;
 
   size_t getNumPims() const {

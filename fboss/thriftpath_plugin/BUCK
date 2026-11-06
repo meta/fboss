@@ -12,10 +12,10 @@ cpp_library(
     ],
     exported_deps = [
         "fbsource//third-party/re2:re2",
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly:unit",
         "//fboss/fsdb/common:utils",
         "//fboss/fsdb/if:fsdb_oper-cpp2-types",
-        "//folly:string",
-        "//folly:unit",
         "//thrift/lib/cpp2/op:get",
         "//thrift/lib/cpp2/type:tag",
         "//thrift/lib/cpp2/type/detail:type_class_from_type_tag",

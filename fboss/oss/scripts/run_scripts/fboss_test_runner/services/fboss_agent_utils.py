@@ -10,6 +10,7 @@ _DEFAULT_OSS_HW_AGENT_SERVICE_BINARY = "fboss_hw_agent-sai_impl"
 _PLATFORM_MAPPING_OVERRIDE_PATH_ARG = "--platform_mapping_override_path"
 
 # Default values synced from fboss/agent/AgentDirectoryUtil.cpp
+# patternlint-disable-next-line no-dev-shm-usage
 FBOSS_AGENT_VOLATILE_STATE_DIR = "/dev/shm/fboss"
 FBOSS_AGENT_WB_FLAG_FILE = f"{FBOSS_AGENT_VOLATILE_STATE_DIR}/warm_boot/can_warm_boot"
 
@@ -31,7 +32,10 @@ def agent_can_warm_boot_file_path(switch_index: int | None = None) -> str:
     return f"{FBOSS_AGENT_WB_FLAG_FILE}_{switch_index}"
 
 
-def cleanup_hw_agent_service(switch_indexes: list[int]) -> None:
+def cleanup_hw_agent_service(
+    switch_indexes: list[int],
+    hw_agent_service_name: str = _HW_AGENT_SERVICE_OSS,
+) -> None:
     for switch_index in switch_indexes:
         print(f"Cleaning up FBOSS HW Agent Service for index={switch_index}...")
         for svc in [
@@ -42,7 +46,7 @@ def cleanup_hw_agent_service(switch_indexes: list[int]) -> None:
             service_utils.systemctl_stop(f"{svc}{switch_index}")
             service_utils.pkill_service(f"{svc}{switch_index}")
             service_utils.remove_rsyslog_conf(f"{svc}{switch_index}")
-        service_utils.systemctl_disable(f"{_HW_AGENT_SERVICE_OSS}{switch_index}")
+        service_utils.systemctl_disable(f"{hw_agent_service_name}{switch_index}")
         service_utils.systemctl_daemon_reload()
     service_utils.restart_rsyslog()
 
@@ -144,7 +148,9 @@ def _setup_hw_agent_service(
     )
     service_utils.validate_path(fboss_agent_config_path, "FBOSS Agent config path")
 
-    cleanup_hw_agent_service(switch_indexes)
+    cleanup_hw_agent_service(
+        switch_indexes, hw_agent_service_name=hw_agent_service_name
+    )
 
     for switch_index in switch_indexes:
         service_full_name = f"{hw_agent_service_name}{switch_index}"

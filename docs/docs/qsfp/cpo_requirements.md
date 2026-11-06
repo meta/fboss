@@ -70,7 +70,7 @@ There are different levels of the requirements:
     - `/run/devmap/xcvrs/xcvr_ctrl_1/xcvr_reset_1`
     - `/run/devmap/xcvrs/xcvr_ctrl_1/xcvr_present_1`
 
-    For the complete and most recent BSP specification, refer to [https://facebook.github.io/fboss/docs/platform/bsp_api_specification/](https://facebook.github.io/fboss/docs/platform/bsp_api_specification/)
+    For the complete and most recent BSP specification, refer to [https://meta.github.io/fboss/docs/platform/bsp_api_specification/](https://meta.github.io/fboss/docs/platform/bsp_api_specification/)
 
 2. Software will communicate with the CMIS MCU over I2C using linux standard ioctl calls to `/run/devmap/xcvrs/xcvr_io_X`.
 

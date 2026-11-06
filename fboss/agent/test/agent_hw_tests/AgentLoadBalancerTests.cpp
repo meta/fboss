@@ -107,6 +107,15 @@ class AgentLoadBalancerTest
     // isFeatureSupported();
     return getAgentEnsemble();
   }
+
+  void learnFrontPanelSrcMac(PortID frontPanelPort) override {
+    // pumpTraffic's default SA.
+    auto intfMac =
+        getMacForFirstInterfaceWithPortsForTesting(getProgrammedState());
+    learnL2EntryIfPending(
+        utility::MacAddressGenerator().get(intfMac.u64HBO() + 1),
+        frontPanelPort);
+  }
 };
 
 template <typename EcmpDataPlateUtils, bool kWideEcmp = false>

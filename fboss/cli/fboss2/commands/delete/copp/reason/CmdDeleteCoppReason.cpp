@@ -45,14 +45,15 @@ CmdDeleteCoppReasonTraits::RetType CmdDeleteCoppReason::queryClient(
 
   const auto reasonName = apache::thrift::util::enumNameSafe(args.getReason());
 
-  const auto noMappingError = [&reasonName] {
-    return std::runtime_error(
-        fmt::format("No rxReason -> queue mapping for {}", reasonName));
+  const auto noMapping = [&reasonName] {
+    return fmt::format(
+        "Warning: no rxReason -> queue mapping for {}, nothing to delete",
+        reasonName);
   };
 
   if (!swConfig.cpuTrafficPolicy().has_value() ||
       !swConfig.cpuTrafficPolicy()->rxReasonToQueueOrderedList().has_value()) {
-    throw noMappingError();
+    return noMapping();
   }
   auto& list = *swConfig.cpuTrafficPolicy()->rxReasonToQueueOrderedList();
 
@@ -61,7 +62,7 @@ CmdDeleteCoppReasonTraits::RetType CmdDeleteCoppReason::queryClient(
         return *e.rxReason() == args.getReason();
       });
   if (it == list.end()) {
-    throw noMappingError();
+    return noMapping();
   }
 
   const auto queueId = *it->queueId();

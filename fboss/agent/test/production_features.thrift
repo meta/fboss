@@ -10,6 +10,11 @@ namespace py.asyncio neteng.fboss.test.asyncio.production_features
 namespace cpp2 facebook.fboss.test.production_features
 namespace go neteng.fboss.test.production_features
 
+# This enum is mirrored by hand in the configerator copy of this file,
+# configerator/source/fboss/agent/test/production_features.thrift, which
+# also holds the FeatureSupportSpec entries. Netcastle matches the two, so
+# an id must mean the same thing in both. The copies have drifted: pick an
+# id that is free in BOTH before adding a feature here.
 enum ProductionFeature {
   VOQ = 0,
   FABRIC = 1,
@@ -137,6 +142,20 @@ enum ProductionFeature {
   DROP_REASON_LIST_SUPPORT = 123,
   PORT_BOUND_INGRESS_ACL = 125,
   ACL_DENY_DATA_AND_CONTROL_PLANE = 126,
+  PORT_USER_METADATA = 127,
+  MYSID_ADJACENCY_FRR = 128,
+  BUFFER_MIN_GUARANTEE_WITH_DELAY_DROPS = 129,
+  CREDIT_BASED_FLOW_CONTROL = 130,
+  MPLS_TTL_ACL = 131,
+  ACCESS_POLICY_CLASS_ID_ACL = 132,
+  MY_MAC = 133,
+  MIRROR_ON_DROP_AGGREGATE_RATE_LIMIT = 134,
+  PBR_ACL = 135,
+  VXLAN_ENCAP = 136,
+  VXLAN_DECAP = 137,
+  MIRROR_ON_DROP_STATEFUL = 138,
+  MULTI_VRF = 139,
+  ROUTE_COUNTERS_EXTENDED_LABEL = 140,
   # production feature which is present on all platforms, keep it at the end
   HW_SWITCH = 65536,
 }

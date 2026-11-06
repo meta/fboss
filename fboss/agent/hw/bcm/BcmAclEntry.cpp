@@ -154,6 +154,9 @@ void BcmAclEntry::createAclQualifiers() {
         hw_->getUnit(), handle_, acl_->getL4DstPort().value(), 0xFFFF);
     bcmCheckError(rv, "failed to add L4 Dst Port field");
   }
+  if (acl_->getTcpFlagsMask()) {
+    throw FbossError("tcpFlagsMask is not supported on BcmSwitch");
+  }
   if (acl_->getTcpFlagsBitMap()) {
     rv = bcm_field_qualify_TcpControl(
         hw_->getUnit(), handle_, acl_->getTcpFlagsBitMap().value(), 0xFF);

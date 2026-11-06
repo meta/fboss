@@ -1,5 +1,6 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://github.com/meta/fboss/blob/main/fboss/lib/asic_config_v3/schemas/vendor_common.schema.json",
     "title": "Vendor Common Config",
     "description": "Vendor-level common settings (sdk_common.json and sai_common.json). All key-value pairs under 'global' are pass-through settings copied to the output.",
     "type": "object",

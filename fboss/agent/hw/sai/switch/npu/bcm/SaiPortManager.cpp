@@ -59,6 +59,8 @@ void SaiPortManager::removeRemovedHandleIf(const PortID& portID) {
 // speed and port type, we don't have a default value fixed per ASIC. This is a
 // temporary workaround to skip preemphasis and idriver if we're not using them,
 // but need to check what are the default values of them.
+// Similarly, treat unset RxReach and precoding config values as don't-care:
+// SAI may read back hardware defaults even when FBOSS did not program them.
 bool SaiPortManager::checkPortSerdesAttributes(
     const SaiPortSerdesTraits::CreateAttributes& fromStore,
     const SaiPortSerdesTraits::CreateAttributes& fromSwPort) {
@@ -68,6 +70,18 @@ bool SaiPortManager::checkPortSerdesAttributes(
         (std::get<std::optional<std::decay_t<decltype(type)>>>(attrs1)) ==
         (std::get<std::optional<std::decay_t<decltype(type)>>>(attrs2)));
   };
+#if defined(BRCM_SAI_SDK_GTE_13_0) ||            \
+    (SAI_API_VERSION >= SAI_VERSION(1, 14, 0) && \
+     !defined(BRCM_SAI_SDK_XGS_AND_DNX))
+  auto checkOptionalSerdesAttribute =
+      [](auto type, const auto& desiredAttrs, const auto& storedAttrs) -> bool {
+    const auto& desired =
+        std::get<std::optional<std::decay_t<decltype(type)>>>(desiredAttrs);
+    return !desired.has_value() ||
+        desired ==
+        std::get<std::optional<std::decay_t<decltype(type)>>>(storedAttrs);
+  };
+#endif
   auto iDriver = std::get<std::optional<
       std::decay_t<decltype(SaiPortSerdesTraits::Attributes::IDriver{})>>>(
       fromSwPort);
@@ -86,6 +100,22 @@ bool SaiPortManager::checkPortSerdesAttributes(
           SaiPortSerdesTraits::Attributes::TxFirPost1{},
           fromSwPort,
           fromStore)) &&
+#if defined(BRCM_SAI_SDK_GTE_13_0)
+      (checkOptionalSerdesAttribute(
+          SaiPortSerdesTraits::Attributes::RxReach{}, fromSwPort, fromStore)) &&
+#endif
+#if defined(BRCM_SAI_SDK_GTE_13_0) ||            \
+    (SAI_API_VERSION >= SAI_VERSION(1, 14, 0) && \
+     !defined(BRCM_SAI_SDK_XGS_AND_DNX))
+      (checkOptionalSerdesAttribute(
+          SaiPortSerdesTraits::Attributes::TxPrecodingAttr{},
+          fromSwPort,
+          fromStore)) &&
+      (checkOptionalSerdesAttribute(
+          SaiPortSerdesTraits::Attributes::RxPrecodingAttr{},
+          fromSwPort,
+          fromStore)) &&
+#endif
       (!iDriver.has_value() ||
        iDriver ==
            std::get<std::optional<std::decay_t<

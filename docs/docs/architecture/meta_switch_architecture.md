@@ -423,7 +423,7 @@ A few notes:
     * BMC to external interface shall not be changed (from fboss_lite layer)
       * `weutil` capable of reading chassis EEPROM.
     * BMC SW need to meet all the requirements in this document
-      * [https://github.com/facebook/fboss/blob/main/fboss/docs/openbmc_software_requirements.md](https://github.com/facebook/fboss/blob/main/fboss/docs/openbmc_software_requirements.md)
+      * [https://github.com/meta/fboss/blob/main/fboss/docs/openbmc_software_requirements.md](https://github.com/meta/fboss/blob/main/fboss/docs/openbmc_software_requirements.md)
       * While most of the requirements in this document are already implemented
         in fboss_lite BMC layer, vendors and partners are required to verify
         these features.

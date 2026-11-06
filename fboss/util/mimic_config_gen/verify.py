@@ -23,7 +23,7 @@ import logging
 import pathlib
 import typing as t
 
-from fboss.util.mimic_config_gen.defs import MimicError, unwrap_selection
+from fboss.util.mimic_config_gen.defs import MimicError, select_selection, SelectionCtx
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -63,14 +63,18 @@ def _rif_model(sw: t.Mapping[str, t.Any]) -> str:
     return "+".join(sorted(_INTERFACE_TYPE_NAMES.get(k, str(k)) for k in kinds))
 
 
-def template_rif_model(template_doc: t.Mapping[str, t.Any]) -> str:
+def template_rif_model(
+    template_doc: t.Mapping[str, t.Any],
+    ctx: SelectionCtx,
+    input_name: str = "agent_sw_template",
+) -> str:
     """RIF model declared by a coop switch-config template.
 
     Returns "unknown" rather than raising: this is a characterisation input,
     and an artifact shape we cannot read should not abort generation.
     """
     try:
-        return _rif_model(unwrap_selection(template_doc))
+        return _rif_model(select_selection(template_doc, ctx, input_name))
     except MimicError as e:
         logger.warning("could not read the target RIF model: %s", e)
         return "unknown"

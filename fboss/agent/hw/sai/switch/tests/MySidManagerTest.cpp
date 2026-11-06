@@ -163,6 +163,25 @@ class MySidManagerWithNextHopIdTest : public MySidManagerTest {
     FLAGS_enable_nexthop_id_manager = false;
   }
 
+  std::shared_ptr<MySid> makeResolvedAdjacencySid(const TestInterface& intf) {
+    RouteNextHopSet nextHops{makeNextHop(intf)};
+    auto mySid = makeMySid("fc00:100::1", 48, MySidType::ADJACENCY_MICRO_SID);
+    mySid->setResolvedNextHopsId(
+        nextHopIDManager_->getOrAllocRouteNextHopSetID(nextHops)
+            .nextHopIdSetIter->second.id);
+    return mySid;
+  }
+
+  // The returned weak_ptr expires iff the SAI entry is removed.
+  std::weak_ptr<SaiMySid> addAndWatchMySid(
+      const std::shared_ptr<MySid>& mySid,
+      const std::shared_ptr<SwitchState>& state) {
+    auto& mySidManager = saiManagerTable->srv6MySidManager();
+    mySidManager.addMySidEntry(mySid, state);
+    return mySidManager.getMySidObject(
+        getMySidAdapterHostKey(*mySid, saiManagerTable));
+  }
+
 #if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
   ResolvedNextHop makeResolvedNextHop(
       const TestInterface& intf,
@@ -191,12 +210,43 @@ class MySidManagerWithNextHopIdTest : public MySidManagerTest {
     return nextHops;
   }
 
+  std::shared_ptr<MySid> makeAdjacencySid(
+      const std::string& address,
+      const TestInterface& primaryInterface,
+      const RouteNextHopSet& backupNextHops) {
+    RouteNextHopSet primaryNextHops{
+        makeResolvedNextHop(primaryInterface, NextHopRole::PRIMARY),
+    };
+    auto primaryAllocResult =
+        nextHopIDManager_->getOrAllocRouteNextHopSetID(primaryNextHops);
+    auto backupAllocResult =
+        nextHopIDManager_->getOrAllocRouteNextHopSetID(backupNextHops);
+    auto mySid = makeMySid(address, 48, MySidType::ADJACENCY_MICRO_SID);
+    mySid->setResolvedNextHopsId(
+        primaryAllocResult.nextHopIdSetIter->second.id);
+    mySid->setBackupResolvedNextHopsId(
+        backupAllocResult.nextHopIdSetIter->second.id);
+    return mySid;
+  }
+
+  // Protected uA MySID whose adjacency neighbor has not resolved yet, so it
+  // carries backup next hops only.
+  std::shared_ptr<MySid> makeBackupOnlyAdjacencySid(
+      const std::string& address,
+      const RouteNextHopSet& backupNextHops) {
+    auto backupAllocResult =
+        nextHopIDManager_->getOrAllocRouteNextHopSetID(backupNextHops);
+    auto mySid = makeMySid(address, 48, MySidType::ADJACENCY_MICRO_SID);
+    mySid->setBackupResolvedNextHopsId(
+        backupAllocResult.nextHopIdSetIter->second.id);
+    return mySid;
+  }
+
   std::shared_ptr<MySid> addAdjacencySid(
       const std::string& address,
-      const RouteNextHopSet& nextHops) {
-    auto allocResult = nextHopIDManager_->getOrAllocRouteNextHopSetID(nextHops);
-    auto mySid = makeMySid(address, 48, MySidType::ADJACENCY_MICRO_SID);
-    mySid->setResolvedNextHopsId(allocResult.nextHopIdSetIter->second.id);
+      const TestInterface& primaryInterface,
+      const RouteNextHopSet& backupNextHops) {
+    auto mySid = makeAdjacencySid(address, primaryInterface, backupNextHops);
     saiManagerTable->srv6MySidManager().addMySidEntry(
         mySid, getProgrammedState());
     return mySid;
@@ -295,7 +345,8 @@ TEST_F(
       makeResolvedNextHop(testInterfaces.at(1), NextHopRole::BACKUP),
   };
   auto nextHops = makeProtectionNextHops(testInterfaces.at(0), backupNextHops);
-  auto mySid = addAdjacencySid("fc00:100::1", nextHops);
+  auto mySid =
+      addAdjacencySid("fc00:100::1", testInterfaces.at(0), backupNextHops);
 
   const auto* groupHandle = getProtectionNextHopGroup(nextHops);
   ASSERT_NE(groupHandle, nullptr);
@@ -324,6 +375,112 @@ TEST_F(
 
 TEST_F(
     MySidManagerWithNextHopIdTest,
+    backupOnlyAdjacencySidCreatesProtectionGroup) {
+  // Before the adjacency neighbor resolves, a protected uA MySID carries only
+  // its backup next hops. A single one of those must still be programmed as a
+  // protection group: as a plain next hop the standby semantics are lost and
+  // traffic forwards over the backup as though it were the primary path.
+  RouteNextHopSet backupNextHops{
+      makeResolvedNextHop(testInterfaces.at(1), NextHopRole::BACKUP),
+  };
+  auto mySid = makeBackupOnlyAdjacencySid("fc00:100::1", backupNextHops);
+  saiManagerTable->srv6MySidManager().addMySidEntry(
+      mySid, getProgrammedState());
+
+  const auto* groupHandle = getProtectionNextHopGroup(backupNextHops);
+  ASSERT_NE(groupHandle, nullptr);
+  ASSERT_NE(groupHandle->nextHopGroup, nullptr);
+
+  auto& nextHopGroupApi = saiApiTable->nextHopGroupApi();
+  EXPECT_EQ(
+      nextHopGroupApi.getAttribute(
+          groupHandle->nextHopGroup->adapterKey(),
+          SaiNextHopGroupTraits::Attributes::Type{}),
+      SAI_NEXT_HOP_GROUP_TYPE_PROTECTION);
+
+  auto childGroupId = getChildGroupId(groupHandle);
+  ASSERT_TRUE(childGroupId.has_value());
+  EXPECT_EQ(
+      nextHopGroupApi.getAttribute(
+          NextHopGroupSaiId(childGroupId.value()),
+          SaiNextHopGroupTraits::Attributes::Type{}),
+      SAI_NEXT_HOP_GROUP_TYPE_HW_PROTECTION);
+
+  auto key = getMySidAdapterHostKey(*mySid, saiManagerTable);
+  ASSERT_NE(saiManagerTable->srv6MySidManager().getMySidObject(key), nullptr);
+  EXPECT_EQ(
+      saiApiTable->srv6Api().getAttribute(
+          key, SaiMySidEntryTraits::Attributes::NextHopId{}),
+      groupHandle->nextHopGroup->adapterKey());
+}
+
+TEST_F(
+    MySidManagerWithNextHopIdTest,
+    backupOnlyAdjacencySidGainsPrimaryOnChange) {
+  // When the adjacency neighbor resolves, the entry moves from a backup-only
+  // protection group to one covering both the primary and backup paths.
+  RouteNextHopSet backupNextHops{
+      makeResolvedNextHop(testInterfaces.at(1), NextHopRole::BACKUP),
+  };
+  auto backupOnlyMySid =
+      makeBackupOnlyAdjacencySid("fc00:100::1", backupNextHops);
+  saiManagerTable->srv6MySidManager().addMySidEntry(
+      backupOnlyMySid, getProgrammedState());
+  ASSERT_NE(getProtectionNextHopGroup(backupNextHops), nullptr);
+
+  auto protectedMySid =
+      makeAdjacencySid("fc00:100::1", testInterfaces.at(0), backupNextHops);
+  saiManagerTable->srv6MySidManager().changeMySidEntry(
+      backupOnlyMySid, protectedMySid, getProgrammedState());
+
+  auto nextHops = makeProtectionNextHops(testInterfaces.at(0), backupNextHops);
+  const auto* groupHandle = getProtectionNextHopGroup(nextHops);
+  ASSERT_NE(groupHandle, nullptr);
+  ASSERT_NE(groupHandle->nextHopGroup, nullptr);
+  EXPECT_EQ(
+      saiApiTable->nextHopGroupApi().getAttribute(
+          groupHandle->nextHopGroup->adapterKey(),
+          SaiNextHopGroupTraits::Attributes::Type{}),
+      SAI_NEXT_HOP_GROUP_TYPE_PROTECTION);
+
+  auto key = getMySidAdapterHostKey(*protectedMySid, saiManagerTable);
+  ASSERT_NE(saiManagerTable->srv6MySidManager().getMySidObject(key), nullptr);
+  EXPECT_EQ(
+      saiApiTable->srv6Api().getAttribute(
+          key, SaiMySidEntryTraits::Attributes::NextHopId{}),
+      groupHandle->nextHopGroup->adapterKey());
+}
+
+TEST_F(MySidManagerWithNextHopIdTest, protectedAdjacencySidLosesPrimary) {
+  RouteNextHopSet backupNextHops{
+      makeResolvedNextHop(testInterfaces.at(1), NextHopRole::BACKUP),
+  };
+  auto protectedMySid =
+      makeAdjacencySid("fc00:100::1", testInterfaces.at(0), backupNextHops);
+  saiManagerTable->srv6MySidManager().addMySidEntry(
+      protectedMySid, getProgrammedState());
+  const auto protectedNextHops =
+      makeProtectionNextHops(testInterfaces.at(0), backupNextHops);
+  ASSERT_NE(getProtectionNextHopGroup(protectedNextHops), nullptr);
+
+  auto backupOnlyMySid =
+      makeBackupOnlyAdjacencySid("fc00:100::1", backupNextHops);
+  saiManagerTable->srv6MySidManager().changeMySidEntry(
+      protectedMySid, backupOnlyMySid, getProgrammedState());
+
+  EXPECT_EQ(getProtectionNextHopGroup(protectedNextHops), nullptr);
+  const auto* backupOnlyGroup = getProtectionNextHopGroup(backupNextHops);
+  ASSERT_NE(backupOnlyGroup, nullptr);
+  ASSERT_NE(backupOnlyGroup->nextHopGroup, nullptr);
+  EXPECT_EQ(
+      saiApiTable->srv6Api().getAttribute(
+          getMySidAdapterHostKey(*backupOnlyMySid, saiManagerTable),
+          SaiMySidEntryTraits::Attributes::NextHopId{}),
+      backupOnlyGroup->nextHopGroup->adapterKey());
+}
+
+TEST_F(
+    MySidManagerWithNextHopIdTest,
     protectionAdjacencySidsWithSameBackupsShareChildGroup) {
   RouteNextHopSet backupNextHops{
       makeResolvedNextHop(testInterfaces.at(2), NextHopRole::BACKUP),
@@ -334,8 +491,8 @@ TEST_F(
   auto secondNextHops =
       makeProtectionNextHops(testInterfaces.at(1), backupNextHops);
 
-  addAdjacencySid("fc00:100::1", firstNextHops);
-  addAdjacencySid("fc00:100::2", secondNextHops);
+  addAdjacencySid("fc00:100::1", testInterfaces.at(0), backupNextHops);
+  addAdjacencySid("fc00:100::2", testInterfaces.at(1), backupNextHops);
 
   const auto* firstGroupHandle = getProtectionNextHopGroup(firstNextHops);
   const auto* secondGroupHandle = getProtectionNextHopGroup(secondNextHops);
@@ -366,8 +523,9 @@ TEST_F(
   auto secondNextHops =
       makeProtectionNextHops(testInterfaces.at(1), sharedBackupNextHops);
 
-  addAdjacencySid("fc00:100::1", firstNextHops);
-  auto secondMySid = addAdjacencySid("fc00:100::2", secondNextHops);
+  addAdjacencySid("fc00:100::1", testInterfaces.at(0), sharedBackupNextHops);
+  auto secondMySid = addAdjacencySid(
+      "fc00:100::2", testInterfaces.at(1), sharedBackupNextHops);
 
   const auto* firstGroupHandle = getProtectionNextHopGroup(firstNextHops);
   const auto* secondGroupHandle = getProtectionNextHopGroup(secondNextHops);
@@ -385,12 +543,8 @@ TEST_F(
   };
   auto updatedSecondNextHops =
       makeProtectionNextHops(testInterfaces.at(1), updatedBackupNextHops);
-  auto allocResult =
-      nextHopIDManager_->getOrAllocRouteNextHopSetID(updatedSecondNextHops);
-  auto updatedSecondMySid =
-      makeMySid("fc00:100::2", 48, MySidType::ADJACENCY_MICRO_SID);
-  updatedSecondMySid->setResolvedNextHopsId(
-      allocResult.nextHopIdSetIter->second.id);
+  auto updatedSecondMySid = makeAdjacencySid(
+      "fc00:100::2", testInterfaces.at(1), updatedBackupNextHops);
   saiManagerTable->srv6MySidManager().changeMySidEntry(
       secondMySid, updatedSecondMySid, getProgrammedState());
 
@@ -472,6 +626,145 @@ TEST_F(MySidManagerWithNextHopIdTest, changeUnresolvedToResolved) {
       key, SaiMySidEntryTraits::Attributes::PacketAction{});
   EXPECT_EQ(gotAction, SAI_PACKET_ACTION_FORWARD);
 }
+
+TEST_F(MySidManagerWithNextHopIdTest, changeResolvedNextHopUpdatesInPlace) {
+  auto oldMySid = makeResolvedAdjacencySid(testInterfaces.at(0));
+  auto newMySid = makeResolvedAdjacencySid(testInterfaces.at(1));
+  auto entry = addAndWatchMySid(oldMySid, getProgrammedState());
+
+  saiManagerTable->srv6MySidManager().changeMySidEntry(
+      oldMySid, newMySid, getProgrammedState());
+
+  EXPECT_FALSE(entry.expired());
+  auto key = getMySidAdapterHostKey(*newMySid, saiManagerTable);
+  auto& srv6Api = saiApiTable->srv6Api();
+  auto nextHopId =
+      srv6Api.getAttribute(key, SaiMySidEntryTraits::Attributes::NextHopId{});
+  ASSERT_NE(nextHopId, SAI_NULL_OBJECT_ID);
+  EXPECT_EQ(
+      saiApiTable->nextHopApi().getAttribute(
+          NextHopSaiId(nextHopId), SaiIpNextHopTraits::Attributes::Ip{}),
+      testInterfaces.at(1).remoteHosts.at(0).ip);
+  EXPECT_EQ(
+      srv6Api.getAttribute(
+          key, SaiMySidEntryTraits::Attributes::PacketAction{}),
+      SAI_PACKET_ACTION_FORWARD);
+}
+
+TEST_F(
+    MySidManagerWithNextHopIdTest,
+    changeResolvedToUnresolvedUpdatesInPlace) {
+  auto oldMySid = makeResolvedAdjacencySid(testInterfaces.at(0));
+  auto newMySid = makeMySid("fc00:100::1", 48, MySidType::ADJACENCY_MICRO_SID);
+  auto entry = addAndWatchMySid(oldMySid, getProgrammedState());
+
+  saiManagerTable->srv6MySidManager().changeMySidEntry(
+      oldMySid, newMySid, getProgrammedState());
+
+  EXPECT_FALSE(entry.expired());
+  auto key = getMySidAdapterHostKey(*newMySid, saiManagerTable);
+  auto& srv6Api = saiApiTable->srv6Api();
+  EXPECT_EQ(
+      srv6Api.getAttribute(key, SaiMySidEntryTraits::Attributes::NextHopId{}),
+      SAI_NULL_OBJECT_ID);
+  EXPECT_EQ(
+      srv6Api.getAttribute(
+          key, SaiMySidEntryTraits::Attributes::PacketAction{}),
+      SAI_PACKET_ACTION_DROP);
+}
+
+TEST_F(
+    MySidManagerWithNextHopIdTest,
+    changeUnresolvedToResolvedUpdatesInPlace) {
+  auto oldMySid = makeMySid("fc00:100::1", 48, MySidType::ADJACENCY_MICRO_SID);
+  auto newMySid = makeResolvedAdjacencySid(testInterfaces.at(0));
+  auto entry = addAndWatchMySid(oldMySid, getProgrammedState());
+
+  saiManagerTable->srv6MySidManager().changeMySidEntry(
+      oldMySid, newMySid, getProgrammedState());
+
+  EXPECT_FALSE(entry.expired());
+  auto key = getMySidAdapterHostKey(*newMySid, saiManagerTable);
+  auto& srv6Api = saiApiTable->srv6Api();
+  EXPECT_NE(
+      srv6Api.getAttribute(key, SaiMySidEntryTraits::Attributes::NextHopId{}),
+      SAI_NULL_OBJECT_ID);
+  EXPECT_EQ(
+      srv6Api.getAttribute(
+          key, SaiMySidEntryTraits::Attributes::PacketAction{}),
+      SAI_PACKET_ACTION_FORWARD);
+}
+
+TEST_F(MySidManagerWithNextHopIdTest, changeTypeRecreatesEntry) {
+  auto oldMySid = makeResolvedAdjacencySid(testInterfaces.at(0));
+  auto newMySid =
+      makeMySid("fc00:100::1", 48, MySidType::DECAPSULATE_AND_LOOKUP);
+  auto entry = addAndWatchMySid(oldMySid, getProgrammedState());
+  auto key = getMySidAdapterHostKey(*newMySid, saiManagerTable);
+  ASSERT_EQ(getMySidAdapterHostKey(*oldMySid, saiManagerTable), key);
+
+  saiManagerTable->srv6MySidManager().changeMySidEntry(
+      oldMySid, newMySid, getProgrammedState());
+
+  EXPECT_TRUE(entry.expired());
+  EXPECT_EQ(
+      saiApiTable->srv6Api().getAttribute(
+          key, SaiMySidEntryTraits::Attributes::EndpointBehavior{}),
+      SAI_MY_SID_ENTRY_ENDPOINT_BEHAVIOR_UDT46);
+}
+
+#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
+TEST_F(MySidManagerWithNextHopIdTest, changeAddingFrrBackupUpdatesInPlace) {
+  RouteNextHopSet backupNextHops{
+      makeResolvedNextHop(testInterfaces.at(1), NextHopRole::BACKUP),
+  };
+  auto oldMySid = makeResolvedAdjacencySid(testInterfaces.at(0));
+  auto newMySid =
+      makeAdjacencySid("fc00:100::1", testInterfaces.at(0), backupNextHops);
+  auto entry = addAndWatchMySid(oldMySid, getProgrammedState());
+
+  saiManagerTable->srv6MySidManager().changeMySidEntry(
+      oldMySid, newMySid, getProgrammedState());
+
+  EXPECT_FALSE(entry.expired());
+  const auto* groupHandle = getProtectionNextHopGroup(
+      makeProtectionNextHops(testInterfaces.at(0), backupNextHops));
+  ASSERT_NE(groupHandle, nullptr);
+  ASSERT_NE(groupHandle->nextHopGroup, nullptr);
+  EXPECT_EQ(
+      saiApiTable->srv6Api().getAttribute(
+          getMySidAdapterHostKey(*newMySid, saiManagerTable),
+          SaiMySidEntryTraits::Attributes::NextHopId{}),
+      groupHandle->nextHopGroup->adapterKey());
+}
+
+TEST_F(MySidManagerWithNextHopIdTest, changeRemovingFrrBackupUpdatesInPlace) {
+  RouteNextHopSet backupNextHops{
+      makeResolvedNextHop(testInterfaces.at(1), NextHopRole::BACKUP),
+  };
+  auto oldMySid =
+      makeAdjacencySid("fc00:100::1", testInterfaces.at(0), backupNextHops);
+  auto newMySid = makeResolvedAdjacencySid(testInterfaces.at(0));
+  auto entry = addAndWatchMySid(oldMySid, getProgrammedState());
+  const auto protectionNextHops =
+      makeProtectionNextHops(testInterfaces.at(0), backupNextHops);
+  ASSERT_NE(getProtectionNextHopGroup(protectionNextHops), nullptr);
+
+  saiManagerTable->srv6MySidManager().changeMySidEntry(
+      oldMySid, newMySid, getProgrammedState());
+
+  EXPECT_FALSE(entry.expired());
+  EXPECT_EQ(getProtectionNextHopGroup(protectionNextHops), nullptr);
+  auto key = getMySidAdapterHostKey(*newMySid, saiManagerTable);
+  auto nextHopId = saiApiTable->srv6Api().getAttribute(
+      key, SaiMySidEntryTraits::Attributes::NextHopId{});
+  ASSERT_NE(nextHopId, SAI_NULL_OBJECT_ID);
+  EXPECT_EQ(
+      saiApiTable->nextHopApi().getAttribute(
+          NextHopSaiId(nextHopId), SaiIpNextHopTraits::Attributes::Ip{}),
+      testInterfaces.at(0).remoteHosts.at(0).ip);
+}
+#endif
 
 TEST_F(MySidManagerWithNextHopIdTest, addNodeMicroSidWithResolvedNextHop) {
   RouteNextHopSet nhopSet;
@@ -1034,6 +1327,62 @@ TEST_F(MySidBindingSidTest, distinctNextHopWhenRouterInterfaceDiffers) {
   auto nhId0 = verifySrv6SidListAndNextHop(srv6NextHop0);
   auto nhId1 = verifySrv6SidListAndNextHop(srv6NextHop1);
   EXPECT_NE(nhId0, nhId1);
+}
+
+TEST_F(MySidBindingSidTest, changeToUnresolvedNextHopUpdatesInPlace) {
+  addSrv6Tunnel();
+  const std::vector<folly::IPAddressV6> sidList{
+      folly::IPAddressV6("2001:db8::10")};
+  const auto oldNextHop = makeSrv6NextHop(
+      testInterfaces[0], folly::IPAddressV6("fe80::10"), sidList);
+  const auto newNextHop = makeSrv6NextHop(
+      testInterfaces[0], folly::IPAddressV6("fe80::20"), sidList);
+  auto makeBindingSid = [this](const ResolvedNextHop& nextHop) {
+    auto mySid = makeMySid("fc00:100::1", 48, MySidType::BINDING_MICRO_SID);
+    mySid->setResolvedNextHopsId(
+        nextHopIDManager_->getOrAllocRouteNextHopSetID(RouteNextHopSet{nextHop})
+            .nextHopIdSetIter->second.id);
+    return mySid;
+  };
+  auto oldMySid = makeBindingSid(oldNextHop);
+  auto newMySid = makeBindingSid(newNextHop);
+  resolveNdp(
+      testInterfaces[0],
+      oldNextHop.addr().asV6(),
+      folly::MacAddress{"10:10:10:10:10:a0"});
+  auto entry = addAndWatchMySid(oldMySid, makeStateWithNextHopIdMaps());
+  auto key = getMySidAdapterHostKey(*newMySid, saiManagerTable);
+  auto& srv6Api = saiApiTable->srv6Api();
+  ASSERT_EQ(
+      srv6Api.getAttribute(
+          key, SaiMySidEntryTraits::Attributes::PacketAction{}),
+      SAI_PACKET_ACTION_FORWARD);
+
+  saiManagerTable->srv6MySidManager().changeMySidEntry(
+      oldMySid, newMySid, makeStateWithNextHopIdMaps());
+
+  EXPECT_FALSE(entry.expired());
+  EXPECT_EQ(
+      srv6Api.getAttribute(key, SaiMySidEntryTraits::Attributes::NextHopId{}),
+      SAI_NULL_OBJECT_ID);
+  EXPECT_EQ(
+      srv6Api.getAttribute(
+          key, SaiMySidEntryTraits::Attributes::PacketAction{}),
+      SAI_PACKET_ACTION_DROP);
+
+  resolveNdp(
+      testInterfaces[0],
+      newNextHop.addr().asV6(),
+      folly::MacAddress{"10:10:10:10:10:a1"});
+
+  EXPECT_FALSE(entry.expired());
+  EXPECT_NE(
+      srv6Api.getAttribute(key, SaiMySidEntryTraits::Attributes::NextHopId{}),
+      SAI_NULL_OBJECT_ID);
+  EXPECT_EQ(
+      srv6Api.getAttribute(
+          key, SaiMySidEntryTraits::Attributes::PacketAction{}),
+      SAI_PACKET_ACTION_FORWARD);
 }
 
 TEST_F(MySidBindingSidTest, singleSrv6NextHopTracksResolutionAndLink) {

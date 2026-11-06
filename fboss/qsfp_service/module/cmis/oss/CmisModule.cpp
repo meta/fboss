@@ -28,5 +28,7 @@ bool CmisModule::shouldRetryCdbFwInfo() const {
   return false;
 }
 
+void CmisModule::setPcsToAmTransparent() {}
+
 } // namespace fboss
 } // namespace facebook

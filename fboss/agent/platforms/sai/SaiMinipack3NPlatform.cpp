@@ -63,11 +63,12 @@ std::string SaiMinipack3NPlatform::getHwConfig() {
   auto hwConfig = config()
                       ->thrift.platform()
                       ->chip()
-                      ->get_asicConfig()
-                      .common()
-                      ->get_config();
+                      ->asicConfig()
+                      ->common()
+                      ->config()
+                      .value();
   auto constexpr kMinipack3nXml = "minipack3n.xml";
-  if (hwConfig.find(kMinipack3nXml) == hwConfig.end()) {
+  if (!hwConfig.contains(kMinipack3nXml)) {
     throw FbossError("xml config not found in hw config");
   }
   return hwConfig[kMinipack3nXml];

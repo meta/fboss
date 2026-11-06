@@ -13,9 +13,16 @@
 #include <folly/FileUtil.h>
 #include <folly/json/json.h>
 #include <folly/logging/xlog.h>
+#include <cstdint>
 #include <cstdlib>
+#include <exception>
 #include <filesystem>
 #include <iostream>
+#include <optional>
+#include <stdexcept>
+#include <string>
+#include <utility>
+#include "folly/json/dynamic.h"
 
 namespace fs = std::filesystem;
 
@@ -42,6 +49,7 @@ folly::dynamic getDefaultBgpConfig() {
 } // namespace
 
 BgpConfigSession::BgpConfigSession() {
+  // NOLINTNEXTLINE(concurrency-mt-unsafe): single-threaded CLI
   const char* homeDir = std::getenv("HOME");
   if (homeDir == nullptr) {
     throw std::runtime_error("HOME environment variable not set");
@@ -56,6 +64,7 @@ BgpConfigSession::BgpConfigSession() {
   bgpConfig_ = getDefaultBgpConfig();
 
   // Check for stub mode via environment variable
+  // NOLINTNEXTLINE(concurrency-mt-unsafe): single-threaded CLI
   const char* stubEnv = std::getenv("FBOSS_BGP_STUB_MODE");
   if (stubEnv != nullptr && std::string(stubEnv) == "1") {
     stubMode_ = true;
@@ -448,284 +457,6 @@ std::optional<int32_t> BgpConfigSession::getUcmpWidth() const {
   return std::nullopt;
 }
 
-// ==================== Peer Configuration ====================
-
-folly::dynamic& BgpConfigSession::findOrCreatePeer(
-    const std::string& peerAddr) {
-  ensureConfigLoaded();
-  auto& peers = bgpConfig_["peers"];
-
-  // Find existing peer
-  for (auto& peer : peers) {
-    if (peer["peer_addr"].asString() == peerAddr) {
-      return peer;
-    }
-  }
-
-  // Create new peer with required fields
-  folly::dynamic newPeer = folly::dynamic::object("peer_addr", peerAddr)(
-      "local_addr", "")("next_hop4", "")("next_hop6", "");
-
-  peers.push_back(std::move(newPeer));
-  return peers[peers.size() - 1];
-}
-
-void BgpConfigSession::createPeer(const std::string& peerAddr) {
-  findOrCreatePeer(peerAddr);
-}
-
-void BgpConfigSession::setPeerRemoteAsn(
-    const std::string& peerAddr,
-    uint64_t remoteAsn) {
-  findOrCreatePeer(peerAddr)["remote_as_4_byte"] =
-      static_cast<int64_t>(remoteAsn);
-}
-
-void BgpConfigSession::setPeerLocalAsn(
-    const std::string& peerAddr,
-    uint64_t localAsn) {
-  findOrCreatePeer(peerAddr)["local_as"] = static_cast<int64_t>(localAsn);
-}
-
-void BgpConfigSession::setPeerDescription(
-    const std::string& peerAddr,
-    const std::string& description) {
-  findOrCreatePeer(peerAddr)["description"] = description;
-}
-
-void BgpConfigSession::setPeerLocalAddr(
-    const std::string& peerAddr,
-    const std::string& localAddr) {
-  findOrCreatePeer(peerAddr)["local_addr"] = localAddr;
-}
-
-void BgpConfigSession::setPeerNextHop4(
-    const std::string& peerAddr,
-    const std::string& nextHop4) {
-  findOrCreatePeer(peerAddr)["next_hop4"] = nextHop4;
-}
-
-void BgpConfigSession::setPeerNextHop6(
-    const std::string& peerAddr,
-    const std::string& nextHop6) {
-  findOrCreatePeer(peerAddr)["next_hop6"] = nextHop6;
-}
-
-void BgpConfigSession::setPeerGroupName(
-    const std::string& peerAddr,
-    const std::string& peerGroupName) {
-  findOrCreatePeer(peerAddr)["peer_group_name"] = peerGroupName;
-}
-
-void BgpConfigSession::setPeerPassive(
-    const std::string& peerAddr,
-    bool isPassive) {
-  findOrCreatePeer(peerAddr)["is_passive"] = isPassive;
-}
-
-void BgpConfigSession::setPeerRrClient(
-    const std::string& peerAddr,
-    bool isRrClient) {
-  findOrCreatePeer(peerAddr)["is_rr_client"] = isRrClient;
-}
-
-void BgpConfigSession::setPeerNextHopSelf(
-    const std::string& peerAddr,
-    bool nextHopSelf) {
-  findOrCreatePeer(peerAddr)["next_hop_self"] = nextHopSelf;
-}
-
-void BgpConfigSession::setPeerConfedPeer(
-    const std::string& peerAddr,
-    bool isConfedPeer) {
-  findOrCreatePeer(peerAddr)["is_confed_peer"] = isConfedPeer;
-}
-
-void BgpConfigSession::setPeerPort(const std::string& peerAddr, int32_t port) {
-  findOrCreatePeer(peerAddr)["peer_port"] = port;
-}
-
-void BgpConfigSession::setPeerLocalPort(
-    const std::string& peerAddr,
-    int32_t port) {
-  findOrCreatePeer(peerAddr)["local_port"] = port;
-}
-
-void BgpConfigSession::setPeerConnectMode(
-    const std::string& peerAddr,
-    const std::string& connectMode) {
-  findOrCreatePeer(peerAddr)["connect_mode"] = connectMode;
-}
-
-// Peer timers helper
-folly::dynamic& BgpConfigSession::ensurePeerTimers(
-    const std::string& peerAddr) {
-  auto& peer = findOrCreatePeer(peerAddr);
-  if (!peer.count("bgp_peer_timers")) {
-    peer["bgp_peer_timers"] = folly::dynamic::object;
-  }
-  return peer["bgp_peer_timers"];
-}
-
-void BgpConfigSession::setPeerHoldTime(
-    const std::string& peerAddr,
-    int32_t holdTime) {
-  ensurePeerTimers(peerAddr)["hold_time_seconds"] = holdTime;
-}
-
-void BgpConfigSession::setPeerKeepalive(
-    const std::string& peerAddr,
-    int32_t keepalive) {
-  ensurePeerTimers(peerAddr)["keep_alive_seconds"] = keepalive;
-}
-
-void BgpConfigSession::setPeerOutDelay(
-    const std::string& peerAddr,
-    int32_t outDelay) {
-  ensurePeerTimers(peerAddr)["out_delay_seconds"] = outDelay;
-}
-
-void BgpConfigSession::setPeerGracefulRestartTime(
-    const std::string& peerAddr,
-    int32_t seconds) {
-  findOrCreatePeer(peerAddr)["graceful_restart_seconds"] = seconds;
-}
-
-void BgpConfigSession::setPeerStatefulHa(
-    const std::string& peerAddr,
-    bool enable) {
-  findOrCreatePeer(peerAddr)["enable_stateful_ha"] = enable;
-}
-
-// Peer AFI/SAFI
-void BgpConfigSession::setPeerDisableIpv4Afi(
-    const std::string& peerAddr,
-    bool disable) {
-  findOrCreatePeer(peerAddr)["disable_ipv4_afi"] = disable;
-}
-
-void BgpConfigSession::setPeerDisableIpv6Afi(
-    const std::string& peerAddr,
-    bool disable) {
-  findOrCreatePeer(peerAddr)["disable_ipv6_afi"] = disable;
-}
-
-void BgpConfigSession::setPeerIpv4LabeledUnicast(
-    const std::string& peerAddr,
-    bool enable) {
-  findOrCreatePeer(peerAddr)["is_afi_ipv4_lu_configured"] = enable;
-}
-
-void BgpConfigSession::setPeerIpv6LabeledUnicast(
-    const std::string& peerAddr,
-    bool enable) {
-  findOrCreatePeer(peerAddr)["is_afi_ipv6_lu_configured"] = enable;
-}
-
-void BgpConfigSession::setPeerIpv4OverIpv6Nh(
-    const std::string& peerAddr,
-    bool enable) {
-  findOrCreatePeer(peerAddr)["v4_over_v6_nexthop"] = enable;
-}
-
-// Peer add-path helper
-folly::dynamic& BgpConfigSession::ensurePeerAddPath(
-    const std::string& peerAddr) {
-  auto& peer = findOrCreatePeer(peerAddr);
-  if (!peer.count("add_path")) {
-    peer["add_path"] = folly::dynamic::object;
-  }
-  return peer["add_path"];
-}
-
-void BgpConfigSession::setPeerAddPathSend(
-    const std::string& peerAddr,
-    bool enable) {
-  ensurePeerAddPath(peerAddr)["send"] = enable;
-}
-
-void BgpConfigSession::setPeerAddPathReceive(
-    const std::string& peerAddr,
-    bool enable) {
-  ensurePeerAddPath(peerAddr)["receive"] = enable;
-}
-
-// Peer AS-path settings
-void BgpConfigSession::setPeerRemovePrivateAs(
-    const std::string& peerAddr,
-    bool remove) {
-  findOrCreatePeer(peerAddr)["remove_private_as"] = remove;
-}
-
-void BgpConfigSession::setPeerEnforceFirstAs(
-    const std::string& peerAddr,
-    bool enforce) {
-  findOrCreatePeer(peerAddr)["enforce_first_as"] = enforce;
-}
-
-// Peer policies
-void BgpConfigSession::setPeerIngressPolicy(
-    const std::string& peerAddr,
-    const std::string& policy) {
-  findOrCreatePeer(peerAddr)["ingress_policy_name"] = policy;
-}
-
-void BgpConfigSession::setPeerEgressPolicy(
-    const std::string& peerAddr,
-    const std::string& policy) {
-  findOrCreatePeer(peerAddr)["egress_policy_name"] = policy;
-}
-
-// Peer route limits helpers
-folly::dynamic& BgpConfigSession::ensurePeerPreFilter(
-    const std::string& peerAddr) {
-  auto& peer = findOrCreatePeer(peerAddr);
-  if (!peer.count("pre_filter")) {
-    peer["pre_filter"] = folly::dynamic::object;
-  }
-  return peer["pre_filter"];
-}
-
-folly::dynamic& BgpConfigSession::ensurePeerPostFilter(
-    const std::string& peerAddr) {
-  auto& peer = findOrCreatePeer(peerAddr);
-  if (!peer.count("post_filter")) {
-    peer["post_filter"] = folly::dynamic::object;
-  }
-  return peer["post_filter"];
-}
-
-void BgpConfigSession::setPeerPreFilterMaxRoutes(
-    const std::string& peerAddr,
-    int64_t maxRoutes) {
-  ensurePeerPreFilter(peerAddr)["max_routes"] = maxRoutes;
-}
-
-void BgpConfigSession::setPeerPostFilterMaxRoutes(
-    const std::string& peerAddr,
-    int64_t maxRoutes) {
-  ensurePeerPostFilter(peerAddr)["max_routes"] = maxRoutes;
-}
-
-// Peer link bandwidth
-void BgpConfigSession::setPeerAdvertiseLbw(
-    const std::string& peerAddr,
-    bool advertise) {
-  findOrCreatePeer(peerAddr)["advertise_link_bandwidth"] = advertise;
-}
-
-void BgpConfigSession::setPeerReceiveLbw(
-    const std::string& peerAddr,
-    bool receive) {
-  findOrCreatePeer(peerAddr)["receive_link_bandwidth"] = receive;
-}
-
-void BgpConfigSession::setPeerLbwValue(
-    const std::string& peerAddr,
-    int64_t bps) {
-  findOrCreatePeer(peerAddr)["link_bandwidth_bps"] = bps;
-}
-
 // ==================== Peer Group Configuration ====================
 
 folly::dynamic& BgpConfigSession::findOrCreatePeerGroup(
@@ -1022,47 +753,6 @@ void BgpConfigSession::setPeerGroupWithdrawUnprogDelay(
     const std::string& groupName,
     int32_t seconds) {
   ensurePeerGroupTimers(groupName)["withdraw_unprog_delay_seconds"] = seconds;
-}
-
-// ==================== Peer Identification (RSW compatibility)
-// ====================
-
-void BgpConfigSession::setPeerPeerId(
-    const std::string& peerAddr,
-    const std::string& peerId) {
-  findOrCreatePeer(peerAddr)["peer_id"] = peerId;
-}
-
-void BgpConfigSession::setPeerType(
-    const std::string& peerAddr,
-    const std::string& type) {
-  findOrCreatePeer(peerAddr)["type"] = type;
-}
-
-void BgpConfigSession::setPeerPeerTag(
-    const std::string& peerAddr,
-    const std::string& peerTag) {
-  findOrCreatePeer(peerAddr)["peer_tag"] = peerTag;
-}
-
-// Peer pre_filter warning settings
-void BgpConfigSession::setPeerPreFilterWarningLimit(
-    const std::string& peerAddr,
-    int64_t limit) {
-  ensurePeerPreFilter(peerAddr)["warning_limit"] = limit;
-}
-
-void BgpConfigSession::setPeerPreFilterWarningOnly(
-    const std::string& peerAddr,
-    bool warningOnly) {
-  ensurePeerPreFilter(peerAddr)["warning_only"] = warningOnly;
-}
-
-// Peer timer: withdraw_unprog_delay_seconds
-void BgpConfigSession::setPeerWithdrawUnprogDelay(
-    const std::string& peerAddr,
-    int32_t seconds) {
-  ensurePeerTimers(peerAddr)["withdraw_unprog_delay_seconds"] = seconds;
 }
 
 // ==================== Networks Configuration ====================

@@ -94,7 +94,9 @@ class AgentEnsembleLoopbackTest : public AgentEnsembleLinkTest {
   std::vector<link_test_production_features::LinkTestProductionFeature>
   getProductionFeatures() const override {
     return {
-        link_test_production_features::LinkTestProductionFeature::L1_LINK_TEST};
+        link_test_production_features::LinkTestProductionFeature::L1_LINK_TEST,
+        link_test_production_features::LinkTestProductionFeature::
+            ACTIVE_TRANSCEIVER};
   }
 
  protected:
@@ -506,7 +508,9 @@ std::vector<PairUnderTest> AgentEnsembleLoopbackTest::getPairsUnderTest(
     }
     const auto& diagCapability =
         tcvrInfoItr->second.tcvrState()->diagCapability();
-    if (!diagCapability.has_value() || !*diagCapability->diagnostics()) {
+    if (!apache::thrift::is_non_optional_field_set_manually_or_by_serializer(
+            diagCapability) ||
+        !*diagCapability->diagnostics()) {
       return false;
     }
     return mode.side == phy::Side::SYSTEM ? *diagCapability->loopbackSystem()
@@ -583,7 +587,7 @@ void AgentEnsembleLoopbackTest::setLoopback(
       << apache::thrift::util::enumNameSafe(mode.side) << " loopback on "
       << getPortName(port);
   qsfpServiceClient_->sync_setPortLoopbackState(
-      getPortName(port), mode.component, enable);
+      getPortName(port), mode.component, enable, phy::LoopbackMode::INPUT);
 }
 
 // Best effort: keep clearing the remaining optics even if one of them fails,

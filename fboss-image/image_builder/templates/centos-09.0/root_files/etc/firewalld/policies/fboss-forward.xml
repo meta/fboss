@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A switch forwards transit traffic; the host firewall must not filter it.
+     The default public zone binds no interface (NetworkManager is disabled), so
+     firewalld's intra-zone <forward/> never matches and every forwarded packet
+     falls through filter_FWD_public to "reject with icmpx admin-prohibited".
+     This policy accepts zone-to-zone forwarding while leaving INPUT filtered. -->
+<policy target="ACCEPT">
+  <short>fboss-forward</short>
+  <description>Accept transit traffic forwarded by the switch dataplane.</description>
+  <ingress-zone name="ANY"/>
+  <egress-zone name="ANY"/>
+</policy>

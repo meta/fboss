@@ -9,6 +9,11 @@ cpp_library(
         "Wedge400GrandTetonPlatformMapping.cpp",
         "Wedge400PlatformMapping.cpp",
     ],
+    headers = [
+        "Wedge400AcadiaPlatformMapping.h",
+        "Wedge400GrandTetonPlatformMapping.h",
+        "Wedge400PlatformMapping.h",
+    ],
     exported_deps = [
         "//fboss/agent/platforms/common:platform_mapping",
     ],
@@ -23,9 +28,9 @@ cpp_library(
         "Wedge400PlatformUtil.h",
     ],
     deps = [
+        "fbsource//xplat/folly/logging:logging",
         "//configerator/structs/neteng/netwhoami:netwhoami-cpp2-types",
         "//fboss/agent:platform_config-cpp2-types",
-        "//folly/logging:logging",
         "//neteng/netwhoami/lib/cpp:recover",
     ],
     exported_deps = [

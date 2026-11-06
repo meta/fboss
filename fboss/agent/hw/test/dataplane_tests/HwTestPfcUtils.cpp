@@ -121,7 +121,9 @@ void enablePfcMapsConfig(cfg::SwitchConfig& cfg) {
     pfcPri2QueueId.emplace(i, i);
   }
 
-  if (cfg.qosPolicies().is_set() && cfg.qosPolicies()[0].qosMap().has_value()) {
+  if (apache::thrift::is_non_optional_field_set_manually_or_by_serializer(
+          cfg.qosPolicies()) &&
+      cfg.qosPolicies()[0].qosMap().has_value()) {
     cfg.qosPolicies()[0].qosMap()->trafficClassToPgId() = std::move(tc2PgId);
     cfg.qosPolicies()[0].qosMap()->pfcPriorityToPgId() = std::move(pfcPri2PgId);
     cfg.qosPolicies()[0].qosMap()->pfcPriorityToQueueId() =

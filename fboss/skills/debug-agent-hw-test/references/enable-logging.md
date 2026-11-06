@@ -76,6 +76,42 @@ slow warmboot or a scale operation.
 > capture, post-process, build, and run the `sai_replayer-<impl>-<ver>` binary, see
 > [sai-replayer.md](sai-replayer.md).
 
+### (F) Broadcom SDK Debug Log — `--bcm_sdk_log_file <soc-file>`
+
+Next level below the SAI replayer: the replayer shows the SAI *calls* FBOSS made,
+this shows what the SDK *did* with them — logical-table operations, API traces.
+Broadcom only.
+
+The flag takes a diag/SOC command file, injected as the SDK's
+`sai_preinit_cmd_file` and `sai_postinit_cmd_file` (throws `FbossError` if the
+path does not exist):
+
+```bash
+# /tmp/enable_bcm_debugs.soc on the switch
+debug bcm info
+log file=/tmp/brcm_sdk.log
+```
+
+```bash
+--bcm_sdk_log_file /tmp/enable_bcm_debugs.soc
+```
+
+**What each debug module dumps** (one cold boot; sizes approximate):
+
+| SOC command | Log size | Content |
+|-------------|----------|---------|
+| `debug bcm info` | ~49 MB | Master switch. All `lt <TABLE> <lookup|update|insert>` op traces plus driver chatter. Sufficient alone for table-programming checks; submodule `info` lines add nothing. |
+| `debug soc info`/`verbose`, `debug bcmlt info`, `debug bcmapi info` | ~580 B | Silent — init banners + warnings only. |
+| `debug bcmlt verbose` | ~1 GB | Full table ops with field-level detail (`TABLE_FIELD_INFO` lookups: keys, widths, limits). |
+| `debug bcmapi verbose` | ~180 MB | BCM API call traces (`API: bcm_* ->`). No table content. |
+
+**Inspect**: the `log file=` path — analyze per [analyze-logs.md](analyze-logs.md) Step 3.
+
+**When to use**: replayer shows the right SAI calls with `rv:0` but HW behavior
+is still wrong — confirm the SDK wrote the expected table entries. Start with
+`debug bcm info`; escalate to `debug bcmlt verbose` for field detail. Delete
+large logs from `/tmp` when done.
+
 ## Example: Combining Options
 
 Re-run a failing cold boot test with SDK and FBOSS verbose logging:
@@ -98,6 +134,7 @@ Re-run a failing cold boot test with SDK and FBOSS verbose logging:
 | Agent logic seems wrong | (B) FBOSS logs |
 | Need to see values read from SDK | (C) Get attribute logs |
 | Packets not arriving / test expects packet | (D) Packet TX logs |
+| SAI calls look right but HW state wrong | (F) BCM SDK debug log |
 | No clue where to start | (A) + (B) together |
 
 ## Next Steps
@@ -106,4 +143,4 @@ Re-run a failing cold boot test with SDK and FBOSS verbose logging:
 - Analyze the enhanced logs with [analyze-logs.md](analyze-logs.md)
 - If hypothesis formed: see [hypothesis-driven-debug.md](hypothesis-driven-debug.md)
 - If the root cause is the vendor SDK/silicon: assemble a reproducible vendor-escalation
-  package (replayer log + hw_config + case report) with [vendor-escalation.md](vendor-escalation.md)
+  package (replayer log + hw_config + case report) with the [vendor-escalation skill](../../vendor-escalation/SKILL.md)

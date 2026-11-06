@@ -8,6 +8,8 @@
  *
  */
 
+#include <fmt/format.h>
+#include <gflags/gflags.h>
 #include <gtest/gtest.h>
 
 #include "fboss/agent/AgentFeatures.h"
@@ -305,6 +307,15 @@ class StaticMacConfigTest : public MacTableManagerTest {
     cfg_.staticMacAddrs()->push_back(staticMac);
   }
 
+  void addStaticMacs(int first, int last) {
+    for (int i = first; i <= last; ++i) {
+      addStaticMacToConfig(
+          MacAddress(fmt::format("02:00:00:00:00:{:02x}", i)),
+          kVlan(),
+          kPortID());
+    }
+  }
+
   void removeStaticMacFromConfig(
       const folly::MacAddress& mac,
       VlanID vlanId,
@@ -500,5 +511,70 @@ TEST_F(StaticMacConfigTest, InvalidVlanOrPortStaticMac) {
   addStaticMacToConfig(mac2, vlanId, invalidPortId);
   EXPECT_THROW(applyConfig(cfg_), FbossError);
   cfg_.staticMacAddrs()->clear(); // Reset config
+}
+
+TEST_F(StaticMacConfigTest, ApplyConfigAccountsStaticMacsOnce) {
+  gflags::FlagSaver flagSaver;
+  auto l2Entries = [&] { return getSw()->getResourceAccountant()->l2Entries_; };
+  getSw()->applyConfig("base config", cfg_);
+  const auto base = l2Entries();
+  FLAGS_max_l2_entries = base + 4;
+
+  // 1) Each added static MAC is accounted once
+  addStaticMacs(1, 2);
+  getSw()->applyConfig("2 static macs", cfg_);
+  EXPECT_EQ(l2Entries(), base + 2);
+
+  // 2) A rejected config leaves the accounting untouched
+  addStaticMacs(3, 5);
+  EXPECT_THROW(getSw()->applyConfig("5 static macs", cfg_), FbossError);
+  EXPECT_EQ(l2Entries(), base + 2);
+
+  // 3) A config at the limit is accepted
+  cfg_.staticMacAddrs()->pop_back();
+  getSw()->applyConfig("4 static macs", cfg_);
+  EXPECT_EQ(l2Entries(), base + 4);
+
+  // 4) Reapplying the same config changes nothing
+  getSw()->applyConfig("4 static macs again", cfg_);
+  EXPECT_EQ(l2Entries(), base + 4);
+
+  // 5) Each removed static MAC is accounted once
+  cfg_.staticMacAddrs()->resize(2);
+  getSw()->applyConfig("2 static macs again", cfg_);
+  EXPECT_EQ(l2Entries(), base + 2);
+}
+
+TEST_F(StaticMacConfigTest, IsValidStateUpdateDryRun) {
+  gflags::FlagSaver flagSaver;
+  auto l2Entries = [&] { return getSw()->getResourceAccountant()->l2Entries_; };
+  getSw()->applyConfig("base config", cfg_);
+  const auto base = l2Entries();
+  FLAGS_max_l2_entries = base + 2;
+  const auto oldState = getSw()->getState();
+  auto platform = createMockPlatform();
+  auto deltaToConfig = [&]() {
+    return StateDelta(
+        oldState, publishAndApplyConfig(oldState, &cfg_, platform.get()));
+  };
+  addStaticMacs(1, 2);
+  const auto withinLimit = deltaToConfig();
+  addStaticMacs(3, 3);
+  const auto overLimit = deltaToConfig();
+
+  // 1) A passing dry run leaves the accounting untouched, however often run
+  for (int i = 0; i < 3; ++i) {
+    EXPECT_TRUE(
+        getSw()->isValidStateUpdateDryRun(withinLimit, getSw()->stats()));
+  }
+  EXPECT_EQ(l2Entries(), base);
+
+  // 2) A failing dry run leaves the accounting untouched
+  EXPECT_FALSE(getSw()->isValidStateUpdateDryRun(overLimit, getSw()->stats()));
+  EXPECT_EQ(l2Entries(), base);
+
+  // 3) The committing check records the same delta
+  EXPECT_TRUE(getSw()->isValidStateUpdate(withinLimit, getSw()->stats()));
+  EXPECT_EQ(l2Entries(), base + 2);
 }
 } // namespace facebook::fboss

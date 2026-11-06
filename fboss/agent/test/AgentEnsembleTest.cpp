@@ -23,6 +23,7 @@ char** argVec{nullptr};
 
 DECLARE_string(config);
 DECLARE_bool(disable_looped_fabric_ports);
+DECLARE_bool(verify_apply_oper_delta);
 DEFINE_bool(
     enable_sdk_dump,
     false,
@@ -63,6 +64,7 @@ void AgentEnsembleTest::setCmdLineFlagOverrides() const {
   FLAGS_hw_agent_connection_timeout_ms = 130000;
   // Link snapshots use a huge amount of logspace and aren't human-readable
   FLAGS_enable_snapshot_debugs = false;
+  FLAGS_verify_apply_oper_delta = true;
 }
 
 void AgentEnsembleTest::TearDown() {
@@ -345,6 +347,10 @@ std::map<std::string, HwPortStats> AgentEnsembleTest::getNextUpdatedHwPortStats(
         // clear the port stats between each retry
         portStats.clear();
         getSw()->getAllHwPortStats(portStats);
+        // Stats can be briefly empty right after warmboot
+        if (portStats.empty()) {
+          return false;
+        }
         // Since each port can have a unique timestamp, compare with the first
         // port
         if (*portStats.begin()->second.timestamp_() == timestamp) {
@@ -357,7 +363,7 @@ std::map<std::string, HwPortStats> AgentEnsembleTest::getNextUpdatedHwPortStats(
             return false;
           }
         }
-        return !portStats.empty();
+        return true;
       },
       120,
       std::chrono::milliseconds(1000),

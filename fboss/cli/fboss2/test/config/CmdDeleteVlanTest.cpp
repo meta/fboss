@@ -28,7 +28,7 @@ namespace facebook::fboss {
 
 // Seed covers every deleteVlan branch:
 //   100 - barebone VLAN + its paired interface (fboss100, no IPs): deletable,
-//         and trunk port 3 is a member of it alongside the default VLAN
+//         and port 3 is a member of it alongside the default VLAN
 //   200 - untagged ingress VLAN for port eth1/1/1
 //   300 - switchport member only (VlanPort logicalPort 2): deletable, the
 //         membership row is cascaded away
@@ -82,9 +82,17 @@ class CmdDeleteVlanTestFixture : public CmdConfigTestBase {
 // VlanManager::deleteVlan — refuse matrix + not-found
 // ============================================================================
 
-TEST_F(CmdDeleteVlanTestFixture, refuseNotFound) {
+TEST_F(CmdDeleteVlanTestFixture, notFoundIsNoop) {
   setupTestableConfigSession(cmdPrefix_, "999");
-  EXPECT_THROW(VlanManager::deleteVlan(swConfig(), VlanID(999)), FbossError);
+  const auto sessionBefore = sessionConfigText();
+  CmdDeleteVlan cmd;
+  EXPECT_THAT(
+      cmd.queryClient(HostInfo("testhost"), VlanId({"999"})),
+      HasSubstr("not found, nothing to delete"));
+  // Nothing was touched.
+  EXPECT_EQ(swConfig().vlans()->size(), 5);
+  EXPECT_EQ(sessionConfigText(), sessionBefore)
+      << "a no-op delete must not save the config";
 }
 
 TEST_F(CmdDeleteVlanTestFixture, refuseDefaultVlan) {
@@ -149,7 +157,7 @@ TEST_F(CmdDeleteVlanTestFixture, deleteUnreferencedRemovesVlanAndBareboneIntf) {
   EXPECT_TRUE(std::none_of(macs.begin(), macs.end(), [](const auto& e) {
     return *e.vlanID() == 100;
   }));
-  // Trunk port 3's membership row for this VLAN goes with it, but its row for
+  // Port 3's membership row for this VLAN goes with it, but its row for
   // the default VLAN is untouched — the cascade is scoped to the deleted VLAN.
   const auto& vlanPorts = *swConfig().vlanPorts();
   EXPECT_TRUE(

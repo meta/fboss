@@ -23,6 +23,36 @@ std::string getActualAclTableName(
       : facebook::fboss::cfg::switch_config_constants::
             DEFAULT_INGRESS_ACL_TABLE();
 }
+
+#if (defined(TAJO_SDK_GTE_26_5) && !defined(TAJO_SDK_P200)) || \
+    defined(BRCM_SAI_SDK_XGS_GTE_15_4_1)
+bool isAclEntryLabelSame(
+    const facebook::fboss::SaiAclEntryHandle* aclEntryHandle,
+    const std::string& aclEntryName) {
+  using facebook::fboss::SaiAclEntryTraits;
+  auto labelGot =
+      facebook::fboss::SaiApiTable::getInstance()->aclApi().getAttribute(
+          aclEntryHandle->aclEntry->adapterKey(),
+          SaiAclEntryTraits::Attributes::Label());
+  std::string labelGotStr(labelGot.begin(), labelGot.end());
+  labelGotStr.erase(labelGotStr.find_last_not_of('\0') + 1);
+  if (labelGotStr != aclEntryName) {
+    XLOG(ERR) << "ACL entry label mismatch: " << aclEntryName << " vs "
+              << labelGotStr;
+    return false;
+  }
+  // Raw bytes: warm boot rebuilds the AdapterHostKey from this GET.
+  const auto& labelInKey =
+      std::get<std::optional<SaiAclEntryTraits::Attributes::Label>>(
+          aclEntryHandle->aclEntry->adapterHostKey());
+  if (!labelInKey || labelInKey->value() != labelGot) {
+    XLOG(ERR) << "ACL entry " << aclEntryName
+              << " label read from HW differs from its AdapterHostKey";
+    return false;
+  }
+  return true;
+}
+#endif
 } // namespace
 
 namespace facebook {
@@ -354,6 +384,13 @@ bool HwTestThriftHandler::isAclEntrySame(
     return false;
   }
 
+#if (defined(TAJO_SDK_GTE_26_5) && !defined(TAJO_SDK_P200)) || \
+    defined(BRCM_SAI_SDK_XGS_GTE_15_4_1)
+  if (!isAclEntryLabelSame(aclEntryHandle, swAcl->getID())) {
+    return false;
+  }
+#endif
+
   if (swAcl->getSrcIp().first) {
     if (swAcl->getSrcIp().first.isV6()) {
       auto aclFieldSrcIpV6Got =
@@ -494,7 +531,9 @@ bool HwTestThriftHandler::isAclEntrySame(
         aclFieldTcpFlagsGot.getDataAndMask();
 
     if (tcpFlagsDataGot != swAcl->getTcpFlagsBitMap().value() ||
-        tcpFlagsMaskGot != SaiAclTableManager::kTcpFlagsMask) {
+        tcpFlagsMaskGot !=
+            swAcl->getTcpFlagsMask().value_or(
+                SaiAclTableManager::kTcpFlagsMask)) {
       return false;
     }
   }

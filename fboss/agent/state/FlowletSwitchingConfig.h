@@ -297,6 +297,57 @@ class FlowletSwitchingConfig : public ThriftStructNode<
     return std::nullopt;
   }
 
+  void setArsVirtualGroupAlternateMembers(
+      const std::optional<int32_t>& arsVirtualGroupAlternateMembers) {
+    if (arsVirtualGroupAlternateMembers) {
+      set<switch_config_tags::arsVirtualGroupAlternateMembers>(
+          *arsVirtualGroupAlternateMembers);
+    } else {
+      ref<switch_config_tags::arsVirtualGroupAlternateMembers>().reset();
+    }
+  }
+
+  std::optional<int32_t> getArsVirtualGroupAlternateMembers() const {
+    if (auto arsVirtualGroupAlternateMembers =
+            get<switch_config_tags::arsVirtualGroupAlternateMembers>()) {
+      return arsVirtualGroupAlternateMembers->cref();
+    }
+    return std::nullopt;
+  }
+
+  void setArsVirtualGroupCommonMembersThreshold(
+      const std::optional<int32_t>& arsVirtualGroupCommonMembersThreshold) {
+    if (arsVirtualGroupCommonMembersThreshold) {
+      set<switch_config_tags::arsVirtualGroupCommonMembersThreshold>(
+          *arsVirtualGroupCommonMembersThreshold);
+    } else {
+      ref<switch_config_tags::arsVirtualGroupCommonMembersThreshold>().reset();
+    }
+  }
+
+  std::optional<int32_t> getArsVirtualGroupCommonMembersThreshold() const {
+    if (auto arsVirtualGroupCommonMembersThreshold =
+            get<switch_config_tags::arsVirtualGroupCommonMembersThreshold>()) {
+      return arsVirtualGroupCommonMembersThreshold->cref();
+    }
+    return std::nullopt;
+  }
+
+  void setArsGroupWidth(const std::optional<int32_t>& arsGroupWidth) {
+    if (arsGroupWidth) {
+      set<switch_config_tags::arsGroupWidth>(*arsGroupWidth);
+    } else {
+      ref<switch_config_tags::arsGroupWidth>().reset();
+    }
+  }
+
+  std::optional<int32_t> getArsGroupWidth() const {
+    if (auto arsGroupWidth = get<switch_config_tags::arsGroupWidth>()) {
+      return arsGroupWidth->cref();
+    }
+    return std::nullopt;
+  }
+
   FlowletSwitchingConfig* modify(std::shared_ptr<SwitchState>* state);
 
  private:

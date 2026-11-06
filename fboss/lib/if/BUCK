@@ -116,17 +116,13 @@ thrift_library(
     },
     languages = [
         "cpp2",
-        "py-deprecated",
         "py3-deprecated",
         "go",
         "rust",
         "python",
     ],
     py3_namespace = "neteng.fboss",
-    py_base_module = "neteng.fboss",
-    py_remote_service_router = True,
     thrift_cpp2_options = "json,reflection",
-    thrift_py_options = "json",
     thrift_rust_options = [
         "deprecated_default_enum_min_i32",
         "serde",

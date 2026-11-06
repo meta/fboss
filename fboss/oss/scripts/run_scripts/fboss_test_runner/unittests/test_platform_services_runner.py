@@ -17,6 +17,7 @@ from fboss_test_runner.runners.platform_services_test_runner import (
     PlatformServicesTestRunner,
 )
 from fboss_test_runner.runners.test_runner import TestRunner
+from fboss_test_runner.tier_selection import TestTier
 
 
 @pytest.fixture
@@ -29,6 +30,7 @@ def _make_args(**overrides):
         "type": None,
         "config": None,
         "list_tests": False,
+        "tier": None,
         "skip_known_bad_tests": None,
         "sai_logging": "WARN",
         "fboss_logging": "WARN",
@@ -67,6 +69,10 @@ class TestBinaryNameByType:
             platform_runner, "args", new=_make_args(type="not_a_real_type")
         ):
             assert platform_runner._get_test_binary_name() == "platform_hw_test"
+
+
+def test_all_platform_tests_are_t0(platform_runner):
+    assert platform_runner._get_uniform_test_tier() is TestTier.T0
 
 
 class TestRunTestMultiTypeIteration:

@@ -46,6 +46,11 @@ inline constexpr std::string_view kAclRuleAttrVlan = "vlan";
 inline constexpr std::string_view kAclRuleAttrIpType = "ip-type";
 inline constexpr std::string_view kAclRuleAttrPacketLookupResult =
     "packet-lookup-result";
+inline constexpr std::string_view kAclRuleAttrLookupClassL2 = "lookup-class-l2";
+inline constexpr std::string_view kAclRuleAttrLookupClassNeighbor =
+    "lookup-class-neighbor";
+inline constexpr std::string_view kAclRuleAttrLookupClassRoute =
+    "lookup-class-route";
 inline constexpr std::string_view kAclRuleAttrAction = "action";
 
 // `action <subattr>` sub-attributes. All three mutate AclEntry.actionType,

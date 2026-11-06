@@ -17,6 +17,7 @@
 #include <boost/integer/common_factor.hpp>
 #include <folly/logging/xlog.h>
 
+#include "fboss/agent/AgentFeatures.h"
 #include "fboss/agent/FbossError.h"
 #include "fboss/agent/if/gen-cpp2/ctrl_types.h"
 #include "fboss/agent/rib/NextHopIDManager.h"
@@ -93,13 +94,17 @@ RibRouteUpdater::RibRouteUpdater(
     NextHopIDManager* nextHopIDManager,
     MySidTable* mySidTable,
     uint32_t ecmpWidth,
-    RouterID routerID)
+    RouterID routerID,
+    const std::unordered_set<InterfaceID>* vrfInterfaces,
+    RouterIDToRouteTable* crossVrfRouteTables)
     : v4Routes_(v4Routes),
       v6Routes_(v6Routes),
       nextHopIDManager_(nextHopIDManager),
       mySidTable_(mySidTable),
       ecmpWidth_(ecmpWidth),
       routerID_(routerID),
+      vrfInterfaces_(vrfInterfaces),
+      crossVrfRouteTables_(crossVrfRouteTables),
       weightNormalizer_(
           FLAGS_nsf_num_racks_per_pod,
           FLAGS_nsf_num_parallel_rack_links,
@@ -115,7 +120,9 @@ RibRouteUpdater::RibRouteUpdater(
     NextHopIDManager* nextHopIDManager,
     MySidTable* mySidTable,
     uint32_t ecmpWidth,
-    RouterID routerID)
+    RouterID routerID,
+    const std::unordered_set<InterfaceID>* vrfInterfaces,
+    RouterIDToRouteTable* crossVrfRouteTables)
     : v4Routes_(v4Routes),
       v6Routes_(v6Routes),
       mplsRoutes_(mplsRoutes),
@@ -123,6 +130,8 @@ RibRouteUpdater::RibRouteUpdater(
       mySidTable_(mySidTable),
       ecmpWidth_(ecmpWidth),
       routerID_(routerID),
+      vrfInterfaces_(vrfInterfaces),
+      crossVrfRouteTables_(crossVrfRouteTables),
       weightNormalizer_(
           FLAGS_nsf_num_racks_per_pod,
           FLAGS_nsf_num_parallel_rack_links,
@@ -251,6 +260,11 @@ std::optional<RouteNextHopEntry> RibRouteUpdater::stampClientNextHopSetID(
     nextHopIDManager_->decrOrDeallocRouteNextHopSetID(*oldClientNextHopSetID);
   }
   entryWithId.setClientNextHopSetID(newClientNextHopSetID);
+  if (FLAGS_drop_inline_nexthops_with_id && newClientNextHopSetID.has_value()) {
+    CHECK(FLAGS_resolve_nexthops_from_id)
+        << "FLAGS_drop_inline_nexthops_with_id requires FLAGS_resolve_nexthops_from_id";
+    entryWithId.clearInlineNextHops();
+  }
   return entryWithId;
 }
 
@@ -579,7 +593,7 @@ using NextHopForwardInfos = std::map<NextHop, RouteNextHopSet>;
 struct NextHopCombinedWeightsKey {
   explicit NextHopCombinedWeightsKey(NextHop nhop)
       : ip(nhop.addr()),
-        intfId(nhop.intf()), // must be resolved next hop
+        intfId(nhop.intfID()),
         action(nhop.labelForwardingAction()),
         disableTTLDecrement(nhop.disableTTLDecrement()),
         topologyInfo(nhop.topologyInfo()),
@@ -587,7 +601,10 @@ struct NextHopCombinedWeightsKey {
         tunnelType(nhop.tunnelType()),
         tunnelId(nhop.tunnelId()),
         cost(nhop.cost()),
-        role(nhop.role()) {
+        role(nhop.role()),
+        vrf(nhop.vrf()),
+        resolvedInNextLevel(nhop.resolvedInNextLevel()),
+        overlayDstMac(nhop.overlayDstMac()) {
     /* "weightless" next hop, consider all attrs of L3 next hop except its
      * weight, this is used in computing number of required paths to next hop,
      * for correct programming of unequal cost multipath */
@@ -603,7 +620,10 @@ struct NextHopCombinedWeightsKey {
                tunnelType,
                tunnelId,
                cost,
-               role) <
+               role,
+               vrf,
+               resolvedInNextLevel,
+               overlayDstMac) <
         std::tie(
                other.ip,
                other.intfId,
@@ -614,10 +634,13 @@ struct NextHopCombinedWeightsKey {
                other.tunnelType,
                other.tunnelId,
                other.cost,
-               other.role);
+               other.role,
+               other.vrf,
+               other.resolvedInNextLevel,
+               other.overlayDstMac);
   }
   folly::IPAddress ip;
-  InterfaceID intfId;
+  std::optional<InterfaceID> intfId;
   std::optional<LabelForwardingAction> action;
   std::optional<bool> disableTTLDecrement;
   std::optional<NetworkTopologyInformation> topologyInfo;
@@ -626,70 +649,55 @@ struct NextHopCombinedWeightsKey {
   std::optional<std::string> tunnelId;
   std::optional<int64_t> cost;
   NextHopRole role;
+  std::optional<RouterID> vrf;
+  bool resolvedInNextLevel;
+  std::optional<folly::MacAddress> overlayDstMac;
 };
 using NextHopCombinedWeights =
     boost::container::flat_map<NextHopCombinedWeightsKey, NextHopWeight>;
 
+// A next hop at ECMP_WEIGHT states no weight of its own but still takes a
+// share alongside its siblings, which normalizeNextHops settles at one before
+// either hardware layer. Weight arithmetic uses that same value, so that a
+// share of nothing never reaches a multiply or a gcd: zero annihilates an LCM
+// and over-reduces a GCD, either of which silently discards a weighting the
+// route did ask for.
+NextHopWeight effectiveWeight(const NextHop& nhop) {
+  return std::max(nhop.weight(), NextHopWeight(1));
+}
+
+NextHopWeight totalEffectiveWeight(const RouteNextHopSet& nhops) {
+  return std::accumulate(
+      nhops.begin(),
+      nhops.end(),
+      NextHopWeight(0),
+      [](NextHopWeight w, const NextHop& nhop) {
+        return w + effectiveWeight(nhop);
+      });
+}
+
 NextHopWeight totalWeightsLcm(const NextHopForwardInfos& nhToFwds) {
   auto lcmAccumFn =
       [](NextHopWeight l,
-         std::pair<NextHop, RouteNextHopSet> nhToFwd) -> NextHopWeight {
-    auto t = totalWeight(nhToFwd.second);
-    return boost::integer::lcm(l, t);
+         const std::pair<NextHop, RouteNextHopSet>& nhToFwd) -> NextHopWeight {
+    return boost::integer::lcm(l, totalEffectiveWeight(nhToFwd.second));
   };
-  return std::accumulate(nhToFwds.begin(), nhToFwds.end(), 1, lcmAccumFn);
+  return std::accumulate(
+      nhToFwds.begin(), nhToFwds.end(), NextHopWeight(1), lcmAccumFn);
 }
 
-bool hasEcmpNextHop(const NextHopForwardInfos& nhToFwds) {
+// Whether the route states a weighting across its own next hops. A route
+// that does is resolved by combineWeights(), which scales each next hop's
+// share by the weights of what it resolves onto. A route that does not has
+// no split of its own to express, so its resolved next hop sets are brought
+// in as they are.
+bool hasUcmpNextHop(const NextHopForwardInfos& nhToFwds) {
   for (const auto& nhToFwd : nhToFwds) {
-    if (nhToFwd.first.weight() == 0) {
+    if (nhToFwd.first.weight() != ECMP_WEIGHT) {
       return true;
     }
   }
   return false;
-}
-
-/*
- * In the case that any next hop has weight 0, go through the next hop set
- * of each resolved next hop and bring its next hop set in with weight 0.
- */
-template <typename AddressT>
-RouteNextHopSet mergeForwardInfosEcmp(
-    const NextHopForwardInfos& nhToFwds,
-    const std::shared_ptr<Route<AddressT>>& route) {
-  RouteNextHopSet fwd;
-  for (const auto& nhToFwd : nhToFwds) {
-    const NextHop& nh = nhToFwd.first;
-    const RouteNextHopSet& fw = nhToFwd.second;
-    if (nh.weight()) {
-      XLOG(WARNING) << "While resolving " << route->str()
-                    << " defaulting resolution of weighted next hop " << nh
-                    << " to ECMP because another next hop has weight 0";
-    }
-    for (const auto& fnh : fw) {
-      if (fnh.weight()) {
-        XLOG(DBG4)
-            << "While resolving " << route->str()
-            << " defaulting weighted recursively resolved next hop " << fnh
-            << " to ECMP because the next hop being resolved has weight 0: "
-            << nh;
-      }
-      fwd.emplace(ResolvedNextHop(
-          fnh.addr(),
-          fnh.intf(),
-          ECMP_WEIGHT,
-          fnh.labelForwardingAction(),
-          fnh.disableTTLDecrement(),
-          fnh.topologyInfo(),
-          std::nullopt, /* adjustedWeight */
-          fnh.srv6SegmentList(),
-          fnh.tunnelType(),
-          fnh.tunnelId(),
-          fnh.cost(),
-          fnh.role()));
-    }
-  }
-  return fwd;
 }
 
 /*
@@ -698,11 +706,12 @@ RouteNextHopSet mergeForwardInfosEcmp(
  * the LCM of the total weights of each resolved next hop set. The odd map
  * representation is needed to combine weights for different instances of
  * the same next hop coming from different recursively resolved next hop sets.
+ *
+ * ECMP_WEIGHT counts as a single share at either level, so a next hop that
+ * states no weight neither disappears from the result nor discards the
+ * weighting of its siblings.
  */
-template <typename AddressT>
-NextHopCombinedWeights combineWeights(
-    const NextHopForwardInfos& nhToFwds,
-    const std::shared_ptr<Route<AddressT>>& route) {
+NextHopCombinedWeights combineWeights(const NextHopForwardInfos& nhToFwds) {
   NextHopCombinedWeights cws;
   NextHopWeight l = totalWeightsLcm(nhToFwds);
   for (const auto& nhToFwd : nhToFwds) {
@@ -711,29 +720,14 @@ NextHopCombinedWeights combineWeights(
     if (fw.empty()) {
       continue;
     }
-    NextHopWeight normalization;
-    NextHopWeight t = totalWeight(fw);
-    // If total weight of any resolved next hop set is 0, the LCM will
-    // also be 0. This represents the case where one of the recursively
-    // resolved routes has ECMP next hops. In this case, we want the
-    // ECMP behavior to "propagate up" to this route, so lcm and thus
-    // the normalizationg factor being 0 is desirable.
-    // We need to check t for 0 for precisely the ecmp
-    // recursively resolved next hop sets to not do 0/0.
-    normalization = t ? l / t : 0;
-    bool loggedEcmpDefault = false;
+    // Every share counts for at least one, so this total is never 0 and the
+    // LCM it feeds is never 0 either. The route's own weighting therefore
+    // survives a recursively resolved next hop set that states none of its
+    // own, instead of being annihilated by it.
+    const NextHopWeight normalization = l / totalEffectiveWeight(fw);
     for (const auto& fnh : fw) {
-      NextHopWeight w = fnh.weight() * normalization * unh.weight();
-      // We only want to log this once per recursively resolved next hop
-      // to prevent a large ecmp group from spamming pointless logs
-      if (!loggedEcmpDefault && !w && unh.weight()) {
-        XLOG(WARNING) << "While resolving " << route->str()
-                      << " defaulting resolution of weighted next hop " << unh
-                      << " to ECMP because another next hop in the resolution"
-                      << " tree uses ECMP.";
-        loggedEcmpDefault = true;
-      }
-      cws[NextHopCombinedWeightsKey(fnh)] += w;
+      cws[NextHopCombinedWeightsKey(fnh)] +=
+          effectiveWeight(fnh) * normalization * effectiveWeight(unh);
     }
   }
   return cws;
@@ -754,7 +748,7 @@ RouteNextHopSet optimizeWeights(const NextHopCombinedWeights& cws) {
   auto fwdWeightGcd = std::accumulate(cws.begin(), cws.end(), 0, gcdAccumFn);
   for (const auto& cw : cws) {
     const folly::IPAddress& addr = cw.first.ip;
-    const InterfaceID& intf = cw.first.intfId;
+    const auto& intf = cw.first.intfId;
     const auto& action = cw.first.action;
     const auto& disableTTLDecrement = cw.first.disableTTLDecrement;
     const auto& topologyInfo = cw.first.topologyInfo;
@@ -771,9 +765,72 @@ RouteNextHopSet optimizeWeights(const NextHopCombinedWeights& cws) {
         cw.first.tunnelType,
         cw.first.tunnelId,
         cw.first.cost,
-        cw.first.role));
+        cw.first.role,
+        cw.first.vrf,
+        cw.first.resolvedInNextLevel,
+        cw.first.overlayDstMac));
   }
   return fwd;
+}
+
+/*
+ * Resolution for a route that states no weighting across its own next hops.
+ *
+ * Stating none is not the same as stating an even one. If the routes it
+ * resolves onto are weighted, the route has expressed no preference that
+ * would override them, so their weighting is kept and scaled against the
+ * other resolved sets by the same arithmetic a weighted route uses. Only
+ * when nothing below is weighted either does the route resolve to plain
+ * ECMP.
+ */
+template <typename AddressT>
+RouteNextHopSet mergeForwardInfosEcmp(
+    const NextHopForwardInfos& nhToFwds,
+    const std::shared_ptr<Route<AddressT>>& route) {
+  // A resolved next hop at a single share is not stating a weighting:
+  // resolving through a connected route mints one at UCMP_DEFAULT_WEIGHT
+  // whether or not anyone asked for a split.
+  auto carriesAWeighting = [](const auto& nhToFwd) {
+    return std::any_of(
+        nhToFwd.second.begin(), nhToFwd.second.end(), [](const NextHop& fnh) {
+          return fnh.weight() > UCMP_DEFAULT_WEIGHT;
+        });
+  };
+
+  if (std::none_of(nhToFwds.begin(), nhToFwds.end(), carriesAWeighting)) {
+    // Keep ECMP_WEIGHT rather than emitting a uniform one share each. Both
+    // program the same split, but next hop group identity orders on weight,
+    // so rewriting it would churn dedup for routes that carry no weighting
+    // at any level. Every weight here is equal, so the set collapses next
+    // hops that resolved onto a shared destination without any help.
+    RouteNextHopSet fwd;
+    for (const auto& nhToFwd : nhToFwds) {
+      for (const auto& fnh : nhToFwd.second) {
+        fwd.emplace(ResolvedNextHop(
+            fnh.addr(),
+            fnh.intfID(),
+            ECMP_WEIGHT,
+            fnh.labelForwardingAction(),
+            fnh.disableTTLDecrement(),
+            fnh.topologyInfo(),
+            std::nullopt, /* adjustedWeight */
+            fnh.srv6SegmentList(),
+            fnh.tunnelType(),
+            fnh.tunnelId(),
+            fnh.cost(),
+            fnh.role(),
+            fnh.vrf(),
+            fnh.resolvedInNextLevel(),
+            fnh.overlayDstMac()));
+      }
+    }
+    return fwd;
+  }
+
+  XLOG(DBG4) << "While resolving " << route->str()
+             << " keeping the weighting of the recursively resolved next hops,"
+             << " since the route states none of its own";
+  return optimizeWeights(combineWeights(nhToFwds));
 }
 
 /*
@@ -781,20 +838,25 @@ RouteNextHopSet optimizeWeights(const NextHopCombinedWeights& cws) {
  * from each recursively resolved next hop and merge them together.
  *
  * There are two cases:
- * 1) Any of the weights of the current routes next hops are 0.
- *    This represents a mix of ECMP and UCMP next hops. In this case,
- *    we default to just ECMP-ing everything from all the next hops.
- * 2) This route's next hops all have weight. In this case, we run through
- *    algorithm to normalize all the weights for the next hops resolved for
- *    each next hop (combineWeights) then minimize the weights
+ * 1) None of this route's next hops is weighted. If a recursively resolved
+ *    set carries a weighting, combineWeights() preserves its internal ratio
+ *    while giving each top-level next hop an equal aggregate share. If no
+ *    recursively resolved set is weighted either, everything is brought in
+ *    at ECMP_WEIGHT.
+ * 2) At least one of this route's next hops is weighted. In this case, we run
+ *    through algorithm to normalize all the weights for the next hops resolved
+ *    for each next hop (combineWeights) then minimize the weights
  *    (optimizeWeights). Both of these algorithms will preserve the critical
  *    ratio w_i/w_j for any two weights w_i, w_j of next hops i, j in both
  *    the current route's weights and in the recursively resolved route's
  *    weights.
  *
- * NOTE: case 1) will propagate recursively, so in effect, any ECMP next hop
- *       anywhere in the resolution tree for a route will result in the entire
- *       tree ultimately being treated as an ECMP route.
+ * NOTE: A route with no weighting of its own does not overwrite explicit
+ *       weighting below it; only an entirely unweighted resolution tree stays
+ *       ECMP. A weighted route no longer loses its weighting because one of
+ *       its own next hops is at ECMP_WEIGHT, nor because a route it resolves
+ *       onto is unweighted: ECMP_WEIGHT counts as a single share in case 2),
+ *       so neither the LCM nor the GCD is driven to zero by it.
  *
  * An example to illustrate the requirement:
  * We will represent the recursive route resolution tree for three routes
@@ -810,7 +872,7 @@ RouteNextHopSet optimizeWeights(const NextHopCombinedWeights& cws) {
  * In resolving R1, resolveOne and getFwdInfoFromNhop will mutually recursively
  * get to a point where we have resolved R2 and R3 to having next hops I1 with
  * weight 5, I2 with weight 4, and I3 with weight 3 and I4 with weight 2
- * respectively: {R2x3:{I1x5, I2x4}, R3x2:{I3x2, I4x2}}
+ * respectively: {R2x3:{I1x5, I2x4}, R3x2:{I3x3, I4x2}}
  * We need to preserve the following ratios in the final result:
  * I1/I2=5/4; I3/I4=3/2; (I1+I2)/(I3+I4)=3/2
  * To do this, we normalize the weights by finding the LCM of the total
@@ -830,10 +892,10 @@ RouteNextHopSet mergeForwardInfos(
     const NextHopForwardInfos& nhToFwds,
     const std::shared_ptr<Route<AddressT>>& route) {
   RouteNextHopSet fwd;
-  if (hasEcmpNextHop(nhToFwds)) {
+  if (!hasUcmpNextHop(nhToFwds)) {
     fwd = mergeForwardInfosEcmp(nhToFwds, route);
   } else {
-    NextHopCombinedWeights cws = combineWeights(nhToFwds, route);
+    NextHopCombinedWeights cws = combineWeights(nhToFwds);
     fwd = optimizeWeights(cws);
   }
   return fwd;
@@ -862,7 +924,7 @@ Srv6Encap resolveSrv6Encap(
 
 template <typename AddressT>
 void RibRouteUpdater::getFwdInfoFromNhop(
-    NetworkToRouteMap<AddressT>* routes,
+    typename NetworkToRouteMap<AddressT>::Iterator it,
     const AddressT& nh,
     const std::optional<LabelForwardingAction>& labelAction,
     bool* hasToCpu,
@@ -874,15 +936,9 @@ void RibRouteUpdater::getFwdInfoFromNhop(
     const std::optional<std::string>& tunnelId,
     const std::optional<int64_t>& cost,
     NextHopRole role,
+    const std::optional<folly::MacAddress>& overlayDstMac,
     std::optional<RouteCounterID>* inheritedCounterID,
     RouteNextHopSet& fwd) {
-  auto it = routes->longestMatch(nh, nh.bitCount());
-  if (it == routes->end()) {
-    XLOG(DBG3) << "Could not find subnet for next-hop:  " << nh;
-    // Unresolvable next hop
-    return;
-  }
-
   auto route = it->value();
   CHECK(route);
 
@@ -932,7 +988,10 @@ void RibRouteUpdater::getFwdInfoFromNhop(
             srv6Encap.tunnelType,
             srv6Encap.tunnelId,
             cost,
-            role));
+            role,
+            std::nullopt, /* vrf */
+            false, /* resolvedInNextLevel */
+            overlayDstMac));
       } else {
         std::for_each(
             nhops.begin(),
@@ -945,12 +1004,13 @@ void RibRouteUpdater::getFwdInfoFromNhop(
              &tunnelType,
              &tunnelId,
              &cost,
-             role](const auto& nhop) {
+             role,
+             &overlayDstMac](const auto& nhop) {
               const auto srv6Encap =
                   resolveSrv6Encap(srv6SegmentList, tunnelType, tunnelId, nhop);
               fwd.insert(ResolvedNextHop(
                   nhop.addr(),
-                  nhop.intf(),
+                  nhop.intfID(),
                   nhop.weight(),
                   LabelForwardingAction::combinePushLabelStack(
                       labelAction, nhop.labelForwardingAction()),
@@ -962,12 +1022,56 @@ void RibRouteUpdater::getFwdInfoFromNhop(
                   srv6Encap.tunnelType,
                   srv6Encap.tunnelId,
                   cost,
-                  role));
+                  role,
+                  nhop.vrf(),
+                  nhop.resolvedInNextLevel(),
+                  overlayDstMac));
             });
       }
     }
   }
 }
+// A next hop resolved through a route of another level keeps its address; the
+// route only decides whether it is reachable.
+template <typename AddressT>
+void RibRouteUpdater::resolveInNextLevel(
+    typename NetworkToRouteMap<AddressT>::Iterator it,
+    const NextHop& nh,
+    RouteNextHopSet& fwd) {
+  auto route = it->value();
+  if (resolving_.contains(route.get())) {
+    XLOG(DBG2) << "Cycle detected resolving nexthop " << nh
+               << " — route is already being resolved";
+    ++cyclesDetected_;
+    return;
+  }
+  if (needResolve(route)) {
+    route = resolveOne<AddressT>(it);
+    CHECK(route);
+  }
+  if (!route->isResolved() || route->getForwardInfo().isDrop() ||
+      route->getForwardInfo().isToCPU()) {
+    XLOG(DBG2) << "Next hop unreachable in the next level: " << nh;
+    return;
+  }
+  fwd.emplace(ResolvedNextHop(
+      nh.addr(),
+      std::nullopt,
+      UCMP_DEFAULT_WEIGHT,
+      nh.labelForwardingAction(),
+      nh.disableTTLDecrement(),
+      nh.topologyInfo(),
+      std::nullopt,
+      nh.srv6SegmentList(),
+      nh.tunnelType(),
+      nh.tunnelId(),
+      nh.cost(),
+      nh.role(),
+      nh.vrf(),
+      true /* resolvedInNextLevel */,
+      nh.overlayDstMac()));
+}
+
 /*
  * Policy for inheriting next hop properties during resolution.
  * --------------------------------------------------------------
@@ -1031,7 +1135,9 @@ std::shared_ptr<Route<AddressT>> RibRouteUpdater::resolveOne(
     const RouteNextHopSet bestEntryNhops =
         getClientNextHopsFromRib(nextHopIDManager_, *bestEntry);
     std::optional<RouteCounterID> inheritedCounterID;
-    auto fwItr = unresolvedToResolvedNhops_.find(bestEntryNhops);
+    const std::pair<int32_t, RouteNextHopSet> cacheKey{
+        bestEntry->getLevel(), bestEntryNhops};
+    auto fwItr = unresolvedToResolvedNhops_.find(cacheKey);
     if (fwItr == unresolvedToResolvedNhops_.end()) {
       NextHopForwardInfos nhToFwds;
       // loop through all nexthops to find out the forward info
@@ -1049,6 +1155,14 @@ std::shared_ptr<Route<AddressT>> RibRouteUpdater::resolveOne(
               clientId == kRemoteInterfaceRouteClientId ||
               (addr.isV6() && addr.isLinkLocal()))
               << "Next hop:" << nh << " cannot be associated with a RIF";
+          if (clientId != kInterfaceRouteClientId &&
+              clientId != kRemoteInterfaceRouteClientId &&
+              !isInterfaceInVrf(*nh.intfID())) {
+            XLOG(DBG2) << "Next hop " << nh << " of " << route->str()
+                       << " is unresolved: interface " << *nh.intfID()
+                       << " is not in VRF " << routerID_;
+            continue;
+          }
           nhToFwds[nh].emplace(nh);
           continue;
         }
@@ -1067,9 +1181,35 @@ std::shared_ptr<Route<AddressT>> RibRouteUpdater::resolveOne(
           break;
         }
 
+        auto* v4Routes = v4Routes_;
+        auto* v6Routes = v6Routes_;
+        if (nh.vrf() && *nh.vrf() != routerID_) {
+          auto table = crossVrfRouteTables_
+              ? crossVrfRouteTables_->find(*nh.vrf())
+              : RouterIDToRouteTable::iterator{};
+          if (!crossVrfRouteTables_ || table == crossVrfRouteTables_->end()) {
+            XLOG(DBG2) << "No route table for VRF " << *nh.vrf()
+                       << " of next hop " << nh;
+            continue;
+          }
+          v4Routes = &table->second.v4NetworkToRoute;
+          v6Routes = &table->second.v6NetworkToRoute;
+        }
+        auto& nhFwd = nhToFwds[nh];
         if (addr.isV4()) {
+          auto it = v4Routes->longestMatch(addr.asV4(), addr.bitCount());
+          if (it == v4Routes->end()) {
+            XLOG(DBG3) << "Could not find subnet for next-hop:  " << nh;
+            continue;
+          }
+          // Resolve recursively through routes of the same level only
+          if (it->value()->getBestEntry().second->getLevel() !=
+              bestEntry->getLevel()) {
+            resolveInNextLevel<folly::IPAddressV4>(it, nh, nhFwd);
+            continue;
+          }
           getFwdInfoFromNhop(
-              v4Routes_,
+              it,
               nh.addr().asV4(),
               nh.labelForwardingAction(),
               &hasToCpu,
@@ -1081,12 +1221,24 @@ std::shared_ptr<Route<AddressT>> RibRouteUpdater::resolveOne(
               nh.tunnelId(),
               nh.cost(),
               nh.role(),
+              nh.overlayDstMac(),
               &inheritedCounterID,
-              nhToFwds[nh]);
+              nhFwd);
         } else {
           CHECK(addr.isV6());
+          auto it = v6Routes->longestMatch(addr.asV6(), addr.bitCount());
+          if (it == v6Routes->end()) {
+            XLOG(DBG3) << "Could not find subnet for next-hop:  " << nh;
+            continue;
+          }
+          // Resolve recursively through routes of the same level only
+          if (it->value()->getBestEntry().second->getLevel() !=
+              bestEntry->getLevel()) {
+            resolveInNextLevel<folly::IPAddressV6>(it, nh, nhFwd);
+            continue;
+          }
           getFwdInfoFromNhop(
-              v6Routes_,
+              it,
               nh.addr().asV6(),
               nh.labelForwardingAction(),
               &hasToCpu,
@@ -1098,8 +1250,9 @@ std::shared_ptr<Route<AddressT>> RibRouteUpdater::resolveOne(
               nh.tunnelId(),
               nh.cost(),
               nh.role(),
+              nh.overlayDstMac(),
               &inheritedCounterID,
-              nhToFwds[nh]);
+              nhFwd);
         }
       }
 
@@ -1121,7 +1274,7 @@ std::shared_ptr<Route<AddressT>> RibRouteUpdater::resolveOne(
       fwItr =
           unresolvedToResolvedNhops_
               .insert(
-                  {bestEntryNhops,
+                  {cacheKey,
                    ResolvedForwardInfo{std::move(nhSet), inheritedCounterID}})
               .first;
     } else {
@@ -1203,6 +1356,12 @@ std::shared_ptr<Route<AddressT>> RibRouteUpdater::resolveOne(
       nhop->setResolvedNextHopSetID(newResolvedNextHopSetId);
       nhop->setNormalizedResolvedNextHopSetID(
           newNormalizedResolvedNextHopSetId);
+      if (FLAGS_drop_inline_nexthops_with_id &&
+          newResolvedNextHopSetId.has_value()) {
+        CHECK(FLAGS_resolve_nexthops_from_id)
+            << "FLAGS_drop_inline_nexthops_with_id requires FLAGS_resolve_nexthops_from_id";
+        nhop->clearInlineNextHops();
+      }
       updatedRoute->setResolved(*nhop);
       if ((clientId == kInterfaceRouteClientId ||
            clientId == kRemoteInterfaceRouteClientId) &&

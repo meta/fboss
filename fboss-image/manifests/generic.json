@@ -5,11 +5,14 @@
     "onie": "fboss-distro-image_onie.bin"
   },
   "kernel": {
-    "execute": ["../kernel/scripts/build_kernel.sh", "6.11.1", "/output"],
+    "execute": [
+      "../kernel/scripts/build_kernel.sh",
+      "6.11.1",
+      "/output"
+    ],
     "artifact": "kernel-6.11.1.rpms.tar"
   },
-  "other_dependencies": [
-  ],
+  "other_dependencies": [],
   "fboss-platform-stack": {
     "download": "file:///tmp/fboss-image-staging/platform_fboss_bins.tar.zst"
   },
@@ -21,11 +24,26 @@
   },
   "phy_sai": {},
   "fboss-forwarding-stack": [
-    {"download": "file:///tmp/fboss-image-staging/agent_fboss_bins.tar.zst"},
-    {"download": "file:///tmp/fboss-image-staging/fsdb_fboss_bins.tar.zst"},
-    {"download": "file:///tmp/fboss-image-staging/qsfp_fboss_bins.tar.zst"},
-    {"download": "file:///tmp/fboss-image-staging/fboss2_fboss_bins.tar.zst"}
+    {
+      "name": "agent",
+      "download": "file:///tmp/fboss-image-staging/agent_fboss_bins.tar.zst"
+    },
+    {
+      "name": "fsdb",
+      "download": "file:///tmp/fboss-image-staging/fsdb_fboss_bins.tar.zst"
+    },
+    {
+      "name": "qsfp",
+      "download": "file:///tmp/fboss-image-staging/qsfp_fboss_bins.tar.zst"
+    },
+    {
+      "name": "fboss2",
+      "download": "file:///tmp/fboss-image-staging/fboss2_fboss_bins.tar.zst"
+    },
+    {
+      "name": "led",
+      "download": "file:///tmp/fboss-image-staging/led_fboss_bins.tar.zst"
+    }
   ],
-  "image_build_hooks": {
-  }
+  "image_build_hooks": {}
 }

@@ -222,8 +222,8 @@ TEST(CmdShowRouteTest, AnnotatesBackupNextHops) {
   EXPECT_EQ(
       output.str(),
       "Network Address: 2401:db00::/64\n"
-      "\tvia 1::1\n"
-      "\tvia 2::1 (BACKUP)\n");
+      "\tvia 1::1 weight 1\n"
+      "\tvia 2::1 weight 1 (BACKUP)\n");
 }
 
 // CLI reference wiki hooks: a human description and a non-empty sample model.

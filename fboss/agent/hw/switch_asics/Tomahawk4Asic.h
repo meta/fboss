@@ -121,12 +121,20 @@ class Tomahawk4Asic : public BroadcomXgsAsic {
     return 8192;
   }
 
+  std::optional<uint32_t> getMaxVrfs() const override {
+    return 8192;
+  }
+
   std::optional<uint32_t> getMaxArpTableSize() const override {
     return 16384;
   }
   std::optional<uint32_t> getMaxArsGroups() const override;
   std::optional<uint32_t> getArsBaseIndex() const override;
   std::optional<uint32_t> getMaxArsWidth() const override;
+
+  cfg::L2LearningMode getDefaultL2LearningMode() const override {
+    return cfg::L2LearningMode::SOFTWARE;
+  }
 };
 
 } // namespace facebook::fboss

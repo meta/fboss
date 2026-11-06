@@ -35,7 +35,7 @@ struct TCPHeader {
       uint32_t _seqNumber,
       uint32_t _ackNumber,
       uint8_t _flags,
-      uint8_t _windowSize,
+      uint16_t _windowSize,
       uint16_t _urgentPointer)
       : srcPort(_srcPort),
         dstPort(_dstPort),

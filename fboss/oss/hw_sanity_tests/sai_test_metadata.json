@@ -1,0 +1,245 @@
+{
+    "RepoSyncHeader": [
+        "(c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.",
+        "This file is generated. Do not modify it manually!",
+        "@codegen-source : configerator\/raw_configs\/fboss\/test\/sai_test_metadata\/metadata.json",
+        "@generated SignedSource<<ee7afbae390fd28913808d0559d85380>>"
+    ],
+    "rules": [
+        {
+            "testNamePattern": "*Empty*",
+            "tier": "T0",
+            "requiredCapabilities": [],
+            "profiles": [
+                "TRADITIONAL",
+                "SCALE_UP"
+            ]
+        },
+        {
+            "testNamePattern": "*HwRoute*",
+            "tier": "T0",
+            "requiredCapabilities": [],
+            "profiles": [
+                "TRADITIONAL",
+                "SCALE_UP"
+            ]
+        },
+        {
+            "testNamePattern": "*PROFILE*",
+            "tier": "T0",
+            "requiredCapabilities": [],
+            "profiles": [
+                "TRADITIONAL",
+                "SCALE_UP"
+            ]
+        },
+        {
+            "testNamePattern": "*Vlan*",
+            "tier": "T0",
+            "requiredCapabilities": [],
+            "profiles": [
+                "TRADITIONAL",
+                "SCALE_UP"
+            ]
+        },
+        {
+            "testNamePattern": "*NextHopGroup*",
+            "tier": "T0",
+            "requiredCapabilities": [],
+            "profiles": [
+                "TRADITIONAL",
+                "SCALE_UP"
+            ]
+        },
+        {
+            "testNamePattern": "*PortAdminState*",
+            "tier": "T0",
+            "requiredCapabilities": [],
+            "profiles": [
+                "TRADITIONAL",
+                "SCALE_UP"
+            ]
+        },
+        {
+            "testNamePattern": "*AclStat*",
+            "tier": "T1",
+            "requiredCapabilities": [],
+            "profiles": [
+                "TRADITIONAL",
+                "SCALE_UP"
+            ]
+        },
+        {
+            "testNamePattern": "*RouteStat*",
+            "tier": "T1",
+            "requiredCapabilities": [],
+            "profiles": [
+                "TRADITIONAL",
+                "SCALE_UP"
+            ]
+        },
+        {
+            "testNamePattern": "*AclTable*",
+            "tier": "T1",
+            "requiredCapabilities": [],
+            "profiles": [
+                "TRADITIONAL",
+                "SCALE_UP"
+            ]
+        },
+        {
+            "testNamePattern": "*HwInPause*",
+            "tier": "T1",
+            "requiredCapabilities": [],
+            "profiles": [
+                "TRADITIONAL",
+                "SCALE_UP"
+            ]
+        },
+        {
+            "testNamePattern": "*AlpmStress*",
+            "tier": "T2",
+            "requiredCapabilities": [],
+            "profiles": [
+                "TRADITIONAL"
+            ]
+        },
+        {
+            "testNamePattern": "*ArsFlowlet*",
+            "tier": "T2",
+            "requiredCapabilities": [],
+            "profiles": [
+                "TRADITIONAL"
+            ]
+        },
+        {
+            "testNamePattern": "*ArsSpray*",
+            "tier": "T2",
+            "requiredCapabilities": [],
+            "profiles": [
+                "TRADITIONAL"
+            ]
+        },
+        {
+            "testNamePattern": "*EcmpTrunk*",
+            "tier": "T2",
+            "requiredCapabilities": [],
+            "profiles": [
+                "TRADITIONAL"
+            ]
+        },
+        {
+            "testNamePattern": "*Hash*",
+            "tier": "T2",
+            "requiredCapabilities": [],
+            "profiles": [
+                "TRADITIONAL",
+                "SCALE_UP"
+            ]
+        },
+        {
+            "testNamePattern": "*LoadBalancer*",
+            "tier": "T2",
+            "requiredCapabilities": [],
+            "profiles": [
+                "TRADITIONAL",
+                "SCALE_UP"
+            ]
+        },
+        {
+            "testNamePattern": "*PacketSendReceiveLag*",
+            "tier": "T2",
+            "requiredCapabilities": [],
+            "profiles": [
+                "TRADITIONAL"
+            ]
+        },
+        {
+            "testNamePattern": "*ParityError*",
+            "tier": "T2",
+            "requiredCapabilities": [],
+            "profiles": [
+                "TRADITIONAL",
+                "SCALE_UP"
+            ]
+        },
+        {
+            "testNamePattern": "*PortStress*",
+            "tier": "T2",
+            "requiredCapabilities": [],
+            "profiles": [
+                "TRADITIONAL",
+                "SCALE_UP"
+            ]
+        },
+        {
+            "testNamePattern": "*ProdInvariantsFswStrictPriority*",
+            "tier": "T2",
+            "requiredCapabilities": [],
+            "profiles": [
+                "TRADITIONAL"
+            ]
+        },
+        {
+            "testNamePattern": "*PtpTc*",
+            "tier": "T2",
+            "requiredCapabilities": [],
+            "profiles": [
+                "TRADITIONAL",
+                "SCALE_UP"
+            ]
+        },
+        {
+            "testNamePattern": "*Sflow*",
+            "tier": "T2",
+            "requiredCapabilities": [],
+            "profiles": [
+                "TRADITIONAL",
+                "SCALE_UP"
+            ]
+        },
+        {
+            "testNamePattern": "*SplitAgentCallback*",
+            "tier": "T2",
+            "requiredCapabilities": [],
+            "profiles": [
+                "TRADITIONAL",
+                "SCALE_UP"
+            ]
+        },
+        {
+            "testNamePattern": "*SwitchStateReplay*",
+            "tier": "T2",
+            "requiredCapabilities": [],
+            "profiles": [
+                "TRADITIONAL",
+                "SCALE_UP"
+            ]
+        },
+        {
+            "testNamePattern": "*Trunk*",
+            "tier": "T2",
+            "requiredCapabilities": [],
+            "profiles": [
+                "TRADITIONAL"
+            ]
+        },
+        {
+            "testNamePattern": "*QPHRollback*",
+            "tier": "T2",
+            "requiredCapabilities": [],
+            "profiles": [
+                "TRADITIONAL"
+            ]
+        },
+        {
+            "testNamePattern": "*Rollback*",
+            "tier": "T2",
+            "requiredCapabilities": [],
+            "profiles": [
+                "TRADITIONAL",
+                "SCALE_UP"
+            ]
+        }
+    ]
+}

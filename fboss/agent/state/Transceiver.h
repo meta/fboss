@@ -81,6 +81,19 @@ class TransceiverSpec
     set<switch_state_tags::vendor>(vendor);
   }
 
+  std::optional<std::vector<TransceiverVendorOverride>> getVendorOverrides()
+      const {
+    if (auto vendorOverrides = get<switch_state_tags::vendorOverrides>()) {
+      return vendorOverrides->toThrift();
+    }
+    return std::nullopt;
+  }
+
+  void setVendorOverrides(
+      const std::vector<TransceiverVendorOverride>& vendorOverrides) {
+    set<switch_state_tags::vendorOverrides>(vendorOverrides);
+  }
+
  private:
   // Inherit the constructors required for clone()
   using Base::Base;

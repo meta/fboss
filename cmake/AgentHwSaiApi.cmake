@@ -55,9 +55,11 @@ set(SAI_API_SRC
   fboss/agent/hw/sai/api/FirmwareApi.h
   fboss/agent/hw/sai/api/HashApi.h
   fboss/agent/hw/sai/api/HostifApi.h
+  fboss/agent/hw/sai/api/IsolationGroupApi.h
   fboss/agent/hw/sai/api/LagApi.h
   fboss/agent/hw/sai/api/MirrorApi.h
   fboss/agent/hw/sai/api/MplsApi.h
+  fboss/agent/hw/sai/api/MyMacApi.h
   fboss/agent/hw/sai/api/NextHopApi.h
   fboss/agent/hw/sai/api/NextHopGroupApi.h
   fboss/agent/hw/sai/api/PortApi.h
@@ -81,6 +83,7 @@ set(SAI_API_SRC
   fboss/agent/hw/sai/api/Srv6Api.cpp
   fboss/agent/hw/sai/api/Srv6Api.h
   fboss/agent/hw/sai/api/TunnelApi.h
+  fboss/agent/hw/sai/api/TunnelMapApi.h
   fboss/agent/hw/sai/api/Types.h
   fboss/agent/hw/sai/api/UdfApi.h
   fboss/agent/hw/sai/api/VendorSwitchApi.h
@@ -93,6 +96,7 @@ set(SAI_API_SRC
 
 if (SAI_TAJO_IMPL)
   list(APPEND SAI_API_SRC
+    fboss/agent/hw/sai/api/tajo/LagApi.cpp
     fboss/agent/hw/sai/api/tajo/ArsApi.cpp
     fboss/agent/hw/sai/api/tajo/ArsProfileApi.cpp
     fboss/agent/hw/sai/api/tajo/PortApi.cpp
@@ -109,13 +113,14 @@ if (SAI_TAJO_IMPL)
     fboss/agent/hw/sai/api/oss/HostifApi.cpp
   )
 
-  find_path(SAI_IMPL_DIR NAMES lib/libsai_impl.a)
+  find_path(SAI_IMPL_DIR NAMES lib/libsai_impl.a lib/libsai_impl.so)
   include_directories(${SAI_IMPL_DIR})
   message(STATUS "Found SAI_IMPL_DIR: ${SAI_IMPL_DIR}")
   include_directories(${SAI_EXPERIMENTAL_INCLUDE_DIR})
   message(STATUS "Using SAI Experimental dir: ${SAI_EXPERIMENTAL_INCLUDE_DIR}")
 elseif (SAI_BRCM_IMPL)
   list(APPEND SAI_API_SRC
+    fboss/agent/hw/sai/api/bcm/LagApi.cpp
     fboss/agent/hw/sai/api/bcm/ArsApi.cpp
     fboss/agent/hw/sai/api/bcm/ArsProfileApi.cpp
     fboss/agent/hw/sai/api/bcm/PortApi.cpp
@@ -132,13 +137,14 @@ elseif (SAI_BRCM_IMPL)
     fboss/agent/hw/sai/api/bcm/HostifApi.cpp
   )
 
-  find_path(SAI_IMPL_DIR NAMES lib/libsai_impl.a)
+  find_path(SAI_IMPL_DIR NAMES lib/libsai_impl.a lib/libsai_impl.so)
   include_directories(${SAI_IMPL_DIR})
   message(STATUS "Found SAI_IMPL_DIR: ${SAI_IMPL_DIR}")
   include_directories(${SAI_EXPERIMENTAL_INCLUDE_DIR})
   message(STATUS "Using SAI Experimental dir: ${SAI_EXPERIMENTAL_INCLUDE_DIR}")
 elseif (CHENAB_SAI_SDK)
   list(APPEND SAI_API_SRC
+    fboss/agent/hw/sai/api/chenab/LagApi.cpp
     fboss/agent/hw/sai/api/oss/ArsApi.cpp
     fboss/agent/hw/sai/api/oss/ArsProfileApi.cpp
     fboss/agent/hw/sai/api/chenab/PortApi.cpp
@@ -155,20 +161,21 @@ elseif (CHENAB_SAI_SDK)
     fboss/agent/hw/sai/api/oss/HostifApi.cpp
   )
 
-  find_path(SAI_IMPL_DIR NAMES lib/libsai_impl.a)
+  find_path(SAI_IMPL_DIR NAMES lib/libsai_impl.a lib/libsai_impl.so)
   include_directories(${SAI_IMPL_DIR})
   message(STATUS "Found SAI_IMPL_DIR: ${SAI_IMPL_DIR}")
   include_directories(${SAI_EXPERIMENTAL_INCLUDE_DIR})
   message(STATUS "Using SAI Experimental dir: ${SAI_EXPERIMENTAL_INCLUDE_DIR}")
 elseif (SAI_BRCM_PAI_IMPL)
   list(APPEND SAI_API_SRC
+    fboss/agent/hw/sai/api/oss/LagApi.cpp
     fboss/agent/hw/sai/api/oss/AclApi.cpp
     fboss/agent/hw/sai/api/oss/ArsApi.cpp
     fboss/agent/hw/sai/api/oss/ArsProfileApi.cpp
     fboss/agent/hw/sai/api/oss/CounterApi.cpp
     fboss/agent/hw/sai/api/oss/DebugCounterApi.cpp
     fboss/agent/hw/sai/api/oss/NextHopGroupApi.cpp
-    fboss/agent/hw/sai/api/oss/PortApi.cpp
+    fboss/agent/hw/sai/api/brcm_pai/PortApi.cpp
     fboss/agent/hw/sai/api/oss/SwitchApi.cpp
     fboss/agent/hw/sai/api/oss/TamApi.cpp
     fboss/agent/hw/sai/api/oss/BufferApi.cpp

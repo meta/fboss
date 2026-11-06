@@ -32,16 +32,16 @@ cpp_library(
     ],
     deps = [
         "fbsource//third-party/fmt:fmt",
-        "//folly:string",
-        "//folly/system:thread_name",
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/system:thread_name",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/container:f14_hash",
+        "fbsource//xplat/folly/logging:logging",
         "//fboss/fsdb/if:fsdb_common-cpp2-types",
         "//fboss/fsdb/if:fsdb_oper-cpp2-types",
         "//fboss/thrift_cow/storage:cow_storage",
         "//fboss/thrift_cow/visitors:visitors",
-        "//folly/container:f14_hash",
-        "//folly/logging:logging",
         "//thrift/lib/cpp/util:enum_utils",
     ],
 )

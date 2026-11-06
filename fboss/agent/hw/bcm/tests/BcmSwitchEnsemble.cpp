@@ -77,11 +77,10 @@ std::unique_ptr<AgentConfig> loadCfgFromLocalFile(
       yamlCfg = can_throw(*(platform->config()->thrift)
                                .platform()
                                ->chip()
-                               ->get_bcm()
-                               .yamlConfig());
+                               ->bcm()
+                               ->yamlConfig());
     } else {
-      cfg =
-          *(platform->config()->thrift).platform()->chip()->get_bcm().config();
+      cfg = *(platform->config()->thrift).platform()->chip()->bcm()->config();
     }
   } else {
     throw FbossError("No config file to load!");

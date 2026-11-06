@@ -56,6 +56,22 @@ getAclTableGroup(cfg::SwitchConfig& config, cfg::AclStage stage) {
   return nullptr;
 }
 
+cfg::AclTable* FOLLY_NULLABLE
+getDefaultAclTable(cfg::SwitchConfig& config, cfg::AclStage stage) {
+  auto* group = getAclTableGroup(config, stage);
+  if (!group) {
+    return nullptr;
+  }
+  const auto tableName = stage == cfg::AclStage::INGRESS
+      ? defaultIngressAclTableName()
+      : defaultPostLookupIngressAclTableName();
+  const auto table = std::find_if(
+      group->aclTables()->begin(),
+      group->aclTables()->end(),
+      [&](const auto& candidate) { return *candidate.name() == tableName; });
+  return table == group->aclTables()->end() ? nullptr : &*table;
+}
+
 cfg::AclTableGroup& addAclTableGroup(
     cfg::SwitchConfig& config,
     cfg::AclStage stage,
@@ -359,6 +375,19 @@ bool setupDefaultAclTableGroups(cfg::SwitchConfig& config, const HwAsic& asic) {
   setupDefaultIngressAclTableGroup(config, asic);
   setupDefaultPostLookupIngressAclTableGroup(config, asic);
   return true;
+}
+
+void addAclEntryToDefaultAclTable(
+    cfg::SwitchConfig& config,
+    cfg::AclEntry acl,
+    cfg::AclStage stage) {
+  auto* table = getDefaultAclTable(config, stage);
+  if (!table) {
+    throw FbossError(
+        "Attempted to add an ACL entry without a default table for stage ",
+        apache::thrift::util::enumNameSafe(stage));
+  }
+  table->aclEntries()->push_back(std::move(acl));
 }
 
 } // namespace facebook::fboss::utility

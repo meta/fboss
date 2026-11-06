@@ -222,8 +222,7 @@ void addFlowletAcl(
     bool isSai,
     const std::string& aclName,
     const std::string& aclCounterName,
-    bool udfFlowlet,
-    bool enableAlternateArsMembers) {
+    bool udfFlowlet) {
   cfg::AclEntry acl;
   acl.name() = aclName;
   acl.actionType() = cfg::AclActionType::PERMIT;
@@ -233,11 +232,6 @@ void addFlowletAcl(
   if (checkSameAndGetAsicType(cfg) == cfg::AsicType::ASIC_TYPE_CHENAB ||
       checkSameAndGetAsicType(cfg) == cfg::AsicType::ASIC_TYPE_CHENAB2) {
     acl.etherType() = cfg::EtherType::IPv6;
-  }
-  if (FLAGS_enable_th5_ars_scale_mode) {
-    acl.lookupClassRoute() = enableAlternateArsMembers
-        ? cfg::AclLookupClass::ARS_ALTERNATE_MEMBERS_CLASS
-        : cfg::AclLookupClass(0);
   }
   if (udfFlowlet) {
     if (isSai) {
@@ -257,9 +251,6 @@ void addFlowletAcl(
   cfg::MatchAction matchAction = cfg::MatchAction();
   matchAction.flowletAction() = cfg::FlowletAction::FORWARD;
   matchAction.counter() = aclCounterName;
-  if (enableAlternateArsMembers) {
-    matchAction.enableAlternateArsMembers() = true;
-  }
   std::vector<cfg::CounterType> counterTypes{
       cfg::CounterType::PACKETS, cfg::CounterType::BYTES};
   auto counter = cfg::TrafficCounter();
@@ -279,11 +270,6 @@ void addFlowletConfigs(
   cfg::FlowletSwitchingConfig flowletCfg =
       utility::getDefaultFlowletSwitchingConfig(
           isSai, switchingMode, backupSwitchingMode, supportsFuturePortLoad);
-  if (FLAGS_enable_th5_ars_scale_mode) {
-    flowletCfg.primaryPathQualityThreshold() = 7;
-    flowletCfg.alternatePathCost() = 0;
-    flowletCfg.alternatePathBias() = 7;
-  }
   cfg.flowletSwitchingConfig() = flowletCfg;
 
   std::map<std::string, cfg::PortFlowletConfig> portFlowletCfgMap;
@@ -714,16 +700,12 @@ size_t pumpTraffic(
                              : MacAddressGenerator().get(dstMac.u64HBO() + 1));
   for (auto i = 0; i < int(std::sqrt(numPackets)); ++i) {
     auto srcIp = folly::IPAddress(
-        folly::sformat(
-            isV6 ? "1001::{}:{}" : "100.10.{}.{}",
-            (i + 1) / 256,
-            (i + 1) % 256));
+        isV6 ? fmt::format("1001::{}:{}", (i + 1) / 256, (i + 1) % 256)
+             : fmt::format("100.10.{}.{}", (i + 1) / 256, (i + 1) % 256));
     for (auto j = 0; j < int(numPackets / std::sqrt(numPackets)); ++j) {
       auto dstIp = folly::IPAddress(
-          folly::sformat(
-              isV6 ? "2001::{}:{}" : "201.10.{}.{}",
-              (j + 1) / 256,
-              (j + 1) % 256));
+          isV6 ? fmt::format("2001::{}:{}", (j + 1) / 256, (j + 1) % 256)
+               : fmt::format("201.10.{}.{}", (j + 1) / 256, (j + 1) % 256));
       auto pkt = makeUDPTxPacket(
           allocateFn,
           vlan,
@@ -923,10 +905,12 @@ void pumpMplsTraffic(
   std::unique_ptr<TxPacket> pkt;
   for (auto i = 0; i < 100; ++i) {
     auto srcIp = folly::IPAddress(
-        folly::sformat(isV6 ? "1001::{}" : "100.10.0.{}", i + 1));
+        isV6 ? fmt::format("1001::{}", i + 1)
+             : fmt::format("100.10.0.{}", i + 1));
     for (auto j = 0; j < 100; ++j) {
       auto dstIp = folly::IPAddress(
-          folly::sformat(isV6 ? "2001::{}" : "200.10.0.{}", j + 1));
+          isV6 ? fmt::format("2001::{}", j + 1)
+               : fmt::format("200.10.0.{}", j + 1));
 
       auto frame = isV6 ? utility::getEthFrame(
                               intfMac,

@@ -14,7 +14,7 @@
 #include "fboss/agent/test/AgentHwTest.h"
 #include "fboss/agent/test/EcmpSetupHelper.h"
 #include "fboss/agent/test/TestUtils.h"
-#include "fboss/agent/test/agent_hw_tests/AgentTestAddressConstants.h"
+#include "fboss/agent/test/utils/AgentTestAddressConstants.h"
 #include "fboss/agent/test/utils/ConfigUtils.h"
 #include "fboss/agent/test/utils/PortStatsTestUtils.h"
 #include "fboss/lib/CommonUtils.h"
@@ -89,6 +89,14 @@ class AgentLoopBackTest : public AgentHwTest {
       const auto switchType =
           checkSameAndGetAsicForTesting(getAgentEnsemble()->getL3Asics())
               ->getSwitchType();
+      auto intfMac =
+          getMacForFirstInterfaceWithPortsForTesting(getProgrammedState());
+      learnL2EntryIfPending(
+          srcEqualDstMac
+              ? intfMac
+              : utility::MacAddressGenerator().get(intfMac.u64HBO() + 1),
+          portIdToTest(),
+          [&]() { sendPkt(true, 1, srcEqualDstMac, srcEqualDstIp); });
       for (auto frontPanel : {true, false}) {
         auto beforePortStats = getLatestPortStats(this->portIdToTest());
         sendPkt(frontPanel, pktTtl, srcEqualDstMac, srcEqualDstIp);

@@ -10,9 +10,9 @@ cpp_unittest(
     ],
     network_access = network_access_utils.none(),
     deps = [
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly/testing:test_util",
         "//fboss/agent:fboss-error",
         "//fboss/qsfp_service/module/properties:transceiver-properties-manager",
-        "//folly:file_util",
-        "//folly/testing:test_util",
     ],
 )

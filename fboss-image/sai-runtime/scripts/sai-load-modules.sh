@@ -30,9 +30,10 @@ done
 depmod -a "${KVER}"
 
 # The module set differs per SDK variant -- XGS drops ship linux-bcm-knet, DNX
-# drops do not, SDKLT drops add the ngknet family -- so load whichever modules
-# the package actually carries. Load order comes from the depends= each .ko
-# declares, which is what modprobe resolves and insmod cannot.
+# drops do not, SDKLT drops add the ngknet family, Leaba ships leaba_module --
+# so load whichever modules the package actually carries. Load order comes from
+# the depends= each .ko declares (leaba_module pulls in uio), which is what
+# modprobe resolves and insmod cannot.
 failed=()
 for ko in "${modules[@]}"; do
   name=$(basename "${ko}" .ko)
@@ -46,7 +47,8 @@ fi
 # The modules register character devices but do not create the nodes, and udev
 # is not running this early (the unit orders itself Before=sysinit.target).
 # Majors are read back from the kernel rather than hardcoded, because they
-# differ across SDK variants.
+# differ across SDK variants. leaba_module needs none: it registers UIO devices,
+# and devtmpfs creates /dev/uioN itself.
 while read -r major name; do
   case "${name}" in
   linux-bcm-knet | linux-kernel-bde | linux-user-bde | linux_ng* | linux_bcmgenl)

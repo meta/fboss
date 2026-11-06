@@ -8,6 +8,7 @@ bool Agera3PhyAsic::isSupported(Feature feature) const {
   switch (feature) {
     case HwAsic::Feature::SAI_PORT_SERDES_PROGRAMMING:
     case HwAsic::Feature::SAI_SERDES_PRECODING:
+    case HwAsic::Feature::SAI_SERDES_RX_REACH:
     case HwAsic::Feature::PMD_RX_SIGNAL_DETECT:
     case HwAsic::Feature::PMD_RX_LOCK_STATUS:
     // Enable the FEC-monitor read paths for the Agera3 retimer. FEC mode
@@ -28,24 +29,27 @@ bool Agera3PhyAsic::isSupported(Feature feature) const {
     case HwAsic::Feature::FEC_AM_LOCK_STATUS:
     // Per-lane RX SNR. PAI 4.1-only (SAI 1.18.1): the read is gated in
     // SaiPortManager::rxSNRSupported() by
-    // (SAI_BRCM_PAI_IMPL && SAI_API_VERSION >= 1.18.1), so it stays off on
+    // (BRCM_PAI_SDK && SAI_API_VERSION >= 1.18.1), so it stays off on
     // PAI 4.0 which does not implement SAI_PORT_ATTR_RX_SNR.
     case HwAsic::Feature::RX_SNR:
+    case HwAsic::Feature::WARMBOOT:
+    case HwAsic::Feature::OBJECT_KEY_CACHE:
       return true;
     case HwAsic::Feature::MACSEC:
     case HwAsic::Feature::REMOVE_PORTS_FOR_COLDBOOT:
     case HwAsic::Feature::EMPTY_ACL_MATCHER:
     case HwAsic::Feature::PORT_EYE_VALUES:
     case HwAsic::Feature::XPHY_PORT_STATE_TOGGLE:
+    case HwAsic::Feature::XPHY_SERDES_TX_FIR_POST3:
     case HwAsic::Feature::PCS_RX_LINK_STATUS:
-    case HwAsic::Feature::WARMBOOT:
-    case HwAsic::Feature::OBJECT_KEY_CACHE:
     case HwAsic::Feature::ARS_ALTERNATE_MEMBERS:
     case HwAsic::Feature::ARS_FUTURE_PORT_LOAD:
     case HwAsic::Feature::VIRTUAL_ARS_GROUP:
     case HwAsic::Feature::CUT_THROUGH_FORWARDING:
     case HwAsic::Feature::SRV6_MYSID_DISCARD_COUNTER:
     case HwAsic::Feature::SRV6_MYSID_RESOURCE_COUNTER:
+    case HwAsic::Feature::SRV6_BINDING_USID_UA_USD:
+    case HwAsic::Feature::SRV6_DECAP_TUNNEL:
     case HwAsic::Feature::PBR_ACL:
     case HwAsic::Feature::DEVICE_WATERMARK_SUPPORT:
     case HwAsic::Feature::ECN_PROBABILISTIC_MARKING:
@@ -53,6 +57,8 @@ bool Agera3PhyAsic::isSupported(Feature feature) const {
     case HwAsic::Feature::SWITCH_DROP_REASON_LIST_SUPPORT:
     case HwAsic::Feature::ECMP_RANDOM_SPRAY_HIERARCHICAL_LEVEL:
     case HwAsic::Feature::ACL_DST_IPV6_WORD_QUALIFIERS:
+    case HwAsic::Feature::LAG_TTL_DECREMENT_DISABLE:
+    case HwAsic::Feature::PORT_LATCH_STATUS:
       return false;
     default:
       return false;

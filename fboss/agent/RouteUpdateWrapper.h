@@ -54,6 +54,8 @@ class RouteUpdateWrapper {
     std::vector<cfg::StaticMplsRouteNoNextHops> staticMplsRoutesToNull;
     std::vector<cfg::StaticMplsRouteNoNextHops> staticMplsRoutesToCpu;
     std::vector<MySidWithNextHops> staticMySids;
+    bool ecmpOverrideModeChanged{false};
+    std::optional<RibRouteTables::InterfaceToVrf> interfaceToVrf;
   };
   using RouterIDAndClient = std::pair<RouterID, ClientID>;
   using SyncFibFor = std::unordered_set<RouterIDAndClient>;
@@ -110,7 +112,10 @@ class RouteUpdateWrapper {
       const std::vector<cfg::StaticMplsRouteNoNextHops>&
           _staticMplsRoutesToNull,
       const std::vector<cfg::StaticMplsRouteNoNextHops>& _staticMplsRoutesToCpu,
-      std::vector<MySidWithNextHops> _staticMySids = {});
+      std::vector<MySidWithNextHops> _staticMySids = {},
+      bool _ecmpOverrideModeChanged = false,
+      std::optional<RibRouteTables::InterfaceToVrf> _interfaceToVrf =
+          std::nullopt);
   void setRemoteLoopbackInterfaceRoutesToConfig(
       const RouterIDAndNetworkToInterfaceRoutes& toAdd,
       const RouterIDToPrefixes& toDel);

@@ -314,6 +314,37 @@ TEST_F(AclTableManagerTest, addAclEntry) {
   EXPECT_EQ(tableIdGot, aclTableId);
 }
 
+TEST_F(AclTableManagerTest, addAclEntryWithTcpFlags) {
+  auto addTcpFlagsEntry = [this](
+                              int priority,
+                              const std::string& name,
+                              std::optional<uint8_t> tcpFlagsMask) {
+    auto aclEntry = std::make_shared<AclEntry>(priority, name);
+    aclEntry->setProto(6);
+    aclEntry->setTcpFlagsBitMap(0x02);
+    if (tcpFlagsMask) {
+      aclEntry->setTcpFlagsMask(*tcpFlagsMask);
+    }
+    aclEntry->setActionType(kActionType());
+    auto aclEntryId = saiManagerTable->aclTableManager().addAclEntry(
+        aclEntry,
+        cfg::switch_config_constants::DEFAULT_INGRESS_ACL_TABLE(),
+        nullptr /*state*/);
+    return saiApiTable->aclApi()
+        .getAttribute(
+            aclEntryId, SaiAclEntryTraits::Attributes::FieldTcpFlags{})
+        .getDataAndMask();
+  };
+
+  using DataAndMask = std::pair<uint8_t, uint8_t>;
+  EXPECT_EQ(
+      addTcpFlagsEntry(kPriority(), "AclEntry1", std::nullopt),
+      DataAndMask(0x02, 0x3F));
+  EXPECT_EQ(
+      addTcpFlagsEntry(kPriority2(), "AclEntry2", 0x12),
+      DataAndMask(0x02, 0x12));
+}
+
 TEST_F(AclTableManagerTest, defaultAclTableOmitsLookupClassPort) {
   auto* aclTableHandle = saiManagerTable->aclTableManager().getAclTableHandle(
       cfg::switch_config_constants::DEFAULT_INGRESS_ACL_TABLE());
@@ -906,6 +937,62 @@ TEST_F(AclTableManagerPbrTest, pbrRedirectNhgUnknownIdThrows) {
           cfg::switch_config_constants::DEFAULT_INGRESS_ACL_TABLE(),
           getProgrammedState()),
       FbossError);
+}
+
+TEST_F(AclTableManagerPbrTest, pbrRedirectNhgEmptyProgramsDrop) {
+  // 1. A named NHG whose members all failed to resolve carries an id that maps
+  // to the empty set. Redirecting at it cannot forward, so the entry is
+  // programmed to drop instead of being rejected.
+  nextHopIDManager_->allocateNamedNextHopGroup("emptyNhg", RouteNextHopSet{});
+  auto emptyNhgIdOpt = nextHopIDManager_->getNextHopSetIDForName("emptyNhg");
+  ASSERT_TRUE(emptyNhgIdOpt.has_value());
+
+  auto aclEntry =
+      std::make_shared<AclEntry>(kPriority(), std::string("PbrEmptyRedirect"));
+  MatchAction action;
+  action.setRedirectNextHopGroupId(static_cast<int64_t>(*emptyNhgIdOpt));
+  aclEntry->setAclAction(action);
+
+  // 2. Programming succeeds and holds no redirect NHG.
+  AclEntrySaiId aclEntryId = saiManagerTable->aclTableManager().addAclEntry(
+      aclEntry,
+      cfg::switch_config_constants::DEFAULT_INGRESS_ACL_TABLE(),
+      getProgrammedState());
+  auto* aclTableHandle = saiManagerTable->aclTableManager().getAclTableHandle(
+      cfg::switch_config_constants::DEFAULT_INGRESS_ACL_TABLE());
+  auto* entryHandle = saiManagerTable->aclTableManager().getAclEntryHandle(
+      aclTableHandle, kPriority(), std::string("PbrEmptyRedirect"));
+  ASSERT_NE(entryHandle, nullptr);
+  EXPECT_EQ(entryHandle->redirectNhgHandle, nullptr);
+
+  // 3. The SAI entry drops rather than forwarding to a group it cannot use.
+  auto packetAction = saiApiTable->aclApi().getAttribute(
+      aclEntryId, SaiAclEntryTraits::Attributes::ActionPacketAction());
+  EXPECT_EQ(packetAction.getData(), SAI_PACKET_ACTION_DROP);
+}
+
+TEST_F(AclTableManagerPbrTest, pbrMatchNhgEmptySkipsEntry) {
+  nextHopIDManager_->allocateNamedNextHopGroup("emptyNhg", RouteNextHopSet{});
+  auto emptyNhgIdOpt = nextHopIDManager_->getNextHopSetIDForName("emptyNhg");
+  ASSERT_TRUE(emptyNhgIdOpt.has_value());
+
+  auto aclEntry =
+      std::make_shared<AclEntry>(kPriority(), std::string("PbrEmptyMatch"));
+  aclEntry->setNextHopGroupId(static_cast<int64_t>(*emptyNhgIdOpt));
+  aclEntry->setActionType(kActionType());
+
+  EXPECT_EQ(
+      saiManagerTable->aclTableManager().addAclEntry(
+          aclEntry,
+          cfg::switch_config_constants::DEFAULT_INGRESS_ACL_TABLE(),
+          getProgrammedState()),
+      AclEntrySaiId{0});
+  auto* aclTableHandle = saiManagerTable->aclTableManager().getAclTableHandle(
+      cfg::switch_config_constants::DEFAULT_INGRESS_ACL_TABLE());
+  EXPECT_EQ(
+      saiManagerTable->aclTableManager().getAclEntryHandle(
+          aclTableHandle, kPriority(), std::string("PbrEmptyMatch")),
+      nullptr);
 }
 
 TEST_F(AclTableManagerPbrTest, pbrMatchNhgNullStateThrows) {

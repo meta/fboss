@@ -12,9 +12,43 @@
 
 namespace facebook::fboss::fsdb {
 
-template class CowStorage<FsdbOperStateRoot>;
+using FsdbCowStateStorage = CowStorage<FsdbOperStateRoot>;
 
-// Explicit instantiation for CowStorage constructor with const reference
-template CowStorage<FsdbOperStateRoot>::CowStorage(const FsdbOperStateRoot&);
+template bool FsdbCowStateStorage::isPublished_impl();
+
+template void FsdbCowStateStorage::publish_impl();
+
+template folly::Expected<OperState, StorageError>
+    FsdbCowStateStorage::get_encoded_impl(
+        FsdbCowStateStorage::PathIter,
+        FsdbCowStateStorage::PathIter,
+        OperProtocol) const;
+
+template std::vector<TaggedOperState>
+    FsdbCowStateStorage::get_encoded_extended_impl(
+        FsdbCowStateStorage::ExtPathIter,
+        FsdbCowStateStorage::ExtPathIter,
+        OperProtocol) const;
+
+template std::optional<StorageError> FsdbCowStateStorage::set_encoded_impl(
+    FsdbCowStateStorage::PathIter,
+    FsdbCowStateStorage::PathIter,
+    const OperState&);
+
+template std::optional<StorageError> FsdbCowStateStorage::patch_impl(
+    const OperDelta&);
+
+template std::optional<StorageError> FsdbCowStateStorage::patch_impl(
+    const TaggedOperState&);
+
+template std::optional<StorageError> FsdbCowStateStorage::remove_impl(
+    FsdbCowStateStorage::PathIter,
+    FsdbCowStateStorage::PathIter);
+
+template const std::shared_ptr<FsdbCowStateStorage::StorageImpl>&
+FsdbCowStateStorage::root() const;
+
+template std::shared_ptr<FsdbCowStateStorage::StorageImpl>
+FsdbCowStateStorage::root();
 
 } // namespace facebook::fboss::fsdb

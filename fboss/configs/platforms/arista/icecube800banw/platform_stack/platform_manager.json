@@ -19,19 +19,19 @@
       "pluggedInSlotType": "SMB_SLOT",
       "i2cDeviceConfigs": [
         {
-          "busName": "CPU_I2C_MASTER_0@1",
+          "busName": "SCM_I2C_MASTER_0@1",
           "address": "0x31",
           "kernelDeviceName": "icecubcpu_aucd90320",
           "pmUnitScopedName": "CPU_DPM_UCD90320"
         },
         {
-          "busName": "CPU_I2C_MASTER_0@6",
+          "busName": "SCM_I2C_MASTER_0@6",
           "address": "0x49",
           "kernelDeviceName": "lm75",
           "pmUnitScopedName": "AMBIENT_TEMP"
         },
         {
-          "busName": "CPU_I2C_MASTER_1@0",
+          "busName": "SCM_I2C_MASTER_1@0",
           "address": "0x53",
           "kernelDeviceName": "24c512",
           "pmUnitScopedName": "CHASSIS_EEPROM",
@@ -39,184 +39,184 @@
           "eepromOffset": 15360
         },
         {
-          "busName": "CPU_I2C_MASTER_1@0",
+          "busName": "SCM_I2C_MASTER_1@0",
           "address": "0x74",
           "kernelDeviceName": "pca9539",
           "pmUnitScopedName": "SMB_PCA",
           "isGpioChip": true
         },
         {
-          "busName": "CPU_I2C_MASTER_1@1",
+          "busName": "SCM_I2C_MASTER_1@1",
           "address": "0x11",
           "kernelDeviceName": "icecube0_aucd90320",
           "pmUnitScopedName": "SMB_UCD90320_0"
         },
         {
-          "busName": "CPU_I2C_MASTER_1@1",
+          "busName": "SCM_I2C_MASTER_1@1",
           "address": "0x13",
           "kernelDeviceName": "icecube1_aucd90320",
           "pmUnitScopedName": "SMB_UCD90320_1"
         },
         {
-          "busName": "CPU_I2C_MASTER_1@2",
+          "busName": "SCM_I2C_MASTER_1@2",
           "address": "0x4b",
           "kernelDeviceName": "atda38740a",
           "pmUnitScopedName": "SMB_POS1V8_VDD0"
         },
         {
-          "busName": "CPU_I2C_MASTER_1@2",
+          "busName": "SCM_I2C_MASTER_1@2",
           "address": "0x4a",
           "kernelDeviceName": "atda38740a",
           "pmUnitScopedName": "SMB_POS1V2_VDDA"
         },
         {
-          "busName": "CPU_I2C_MASTER_1@2",
+          "busName": "SCM_I2C_MASTER_1@2",
           "address": "0x60",
           "kernelDeviceName": "axdpe1a2g5b",
           "pmUnitScopedName": "SMB_TH6_MCORE"
         },
         {
-          "busName": "CPU_I2C_MASTER_1@2",
+          "busName": "SCM_I2C_MASTER_1@2",
           "address": "0x62",
           "kernelDeviceName": "axdpe1b284b",
           "pmUnitScopedName": "SMB_POS0V75_PHYCORE_0_1"
         },
         {
-          "busName": "CPU_I2C_MASTER_1@2",
+          "busName": "SCM_I2C_MASTER_1@2",
           "address": "0x64",
           "kernelDeviceName": "axdpe1b284b",
           "pmUnitScopedName": "SMB_POS0V75_PHYCORE_2_3"
         },
         {
-          "busName": "CPU_I2C_MASTER_1@2",
+          "busName": "SCM_I2C_MASTER_1@2",
           "address": "0x66",
           "kernelDeviceName": "axdpe1b284b",
           "pmUnitScopedName": "SMB_POS0V75_PHYCORE_4_5"
         },
         {
-          "busName": "CPU_I2C_MASTER_1@2",
+          "busName": "SCM_I2C_MASTER_1@2",
           "address": "0x68",
           "kernelDeviceName": "axdpe1b284b",
           "pmUnitScopedName": "SMB_POS0V75_PHYCORE_6_7"
         },
         {
-          "busName": "CPU_I2C_MASTER_1@2",
+          "busName": "SCM_I2C_MASTER_1@2",
           "address": "0x6a",
           "kernelDeviceName": "axdpe1b284b",
           "pmUnitScopedName": "SMB_POS0V72_TRVDD_01_23"
         },
         {
-          "busName": "CPU_I2C_MASTER_1@2",
+          "busName": "SCM_I2C_MASTER_1@2",
           "address": "0x6c",
           "kernelDeviceName": "axdpe1b284b",
           "pmUnitScopedName": "SMB_POS0V72_TRVDD_45_67"
         },
         {
-          "busName": "CPU_I2C_MASTER_1@2",
+          "busName": "SCM_I2C_MASTER_1@2",
           "address": "0x6e",
           "kernelDeviceName": "axdpe1b284b",
           "pmUnitScopedName": "SMB_POS0V75_TRVDD_0"
         },
         {
-          "busName": "CPU_I2C_MASTER_1@2",
+          "busName": "SCM_I2C_MASTER_1@2",
           "address": "0x70",
           "kernelDeviceName": "axdpe1b284b",
           "pmUnitScopedName": "SMB_POS0V75_TRVDD_1"
         },
         {
-          "busName": "CPU_I2C_MASTER_1@2",
+          "busName": "SCM_I2C_MASTER_1@2",
           "address": "0x4e",
           "kernelDeviceName": "atda38740a",
           "pmUnitScopedName": "SMB_POS1V5_RVDD_0"
         },
         {
-          "busName": "CPU_I2C_MASTER_1@2",
+          "busName": "SCM_I2C_MASTER_1@2",
           "address": "0x4f",
           "kernelDeviceName": "atda38740a",
           "pmUnitScopedName": "SMB_POS1V5_RVDD_1"
         },
         {
-          "busName": "CPU_I2C_MASTER_1@2",
+          "busName": "SCM_I2C_MASTER_1@2",
           "address": "0x72",
           "kernelDeviceName": "axdpe1a2g5b",
           "pmUnitScopedName": "SMB_POS3V3_OPTICS0_1"
         },
         {
-          "busName": "CPU_I2C_MASTER_1@2",
+          "busName": "SCM_I2C_MASTER_1@2",
           "address": "0x74",
           "kernelDeviceName": "axdpe1a2g5b",
           "pmUnitScopedName": "SMB_POS3V3_OPTICS2_3"
         },
         {
-          "busName": "CPU_I2C_MASTER_1@2",
+          "busName": "SCM_I2C_MASTER_1@2",
           "address": "0x52",
-          "kernelDeviceName": "pmbus",
+          "kernelDeviceName": "bp4a_tps16890",
           "pmUnitScopedName": "SMB_POS48V_LHS"
         },
         {
-          "busName": "CPU_I2C_MASTER_1@2",
+          "busName": "SCM_I2C_MASTER_1@2",
           "address": "0x53",
-          "kernelDeviceName": "pmbus",
+          "kernelDeviceName": "bp4a_tps16890",
           "pmUnitScopedName": "SMB_POS48V_RHS"
         },
         {
-          "busName": "CPU_I2C_MASTER_1@2",
+          "busName": "SCM_I2C_MASTER_1@2",
           "address": "0x54",
-          "kernelDeviceName": "pmbus",
+          "kernelDeviceName": "bp4a_tps16890",
           "pmUnitScopedName": "SMB_POS48V_OPTICS_01"
         },
         {
-          "busName": "CPU_I2C_MASTER_1@2",
+          "busName": "SCM_I2C_MASTER_1@2",
           "address": "0x55",
-          "kernelDeviceName": "pmbus",
+          "kernelDeviceName": "bp4a_tps16890",
           "pmUnitScopedName": "SMB_POS48V_OPTICS_23"
         },
         {
-          "busName": "CPU_I2C_MASTER_1@2",
+          "busName": "SCM_I2C_MASTER_1@2",
           "address": "0x10",
-          "kernelDeviceName": "pmbus",
+          "kernelDeviceName": "apmbus",
           "pmUnitScopedName": "SMB_POS12V_LHS"
         },
         {
-          "busName": "CPU_I2C_MASTER_1@2",
+          "busName": "SCM_I2C_MASTER_1@2",
           "address": "0x11",
-          "kernelDeviceName": "pmbus",
+          "kernelDeviceName": "apmbus",
           "pmUnitScopedName": "SMB_POS12V_RHS"
         },
         {
-          "busName": "CPU_I2C_MASTER_1@2",
+          "busName": "SCM_I2C_MASTER_1@2",
           "address": "0x12",
-          "kernelDeviceName": "pmbus",
+          "kernelDeviceName": "apmbus",
           "pmUnitScopedName": "SMB_POS12V_MCORE_LHS"
         },
         {
-          "busName": "CPU_I2C_MASTER_1@2",
+          "busName": "SCM_I2C_MASTER_1@2",
           "address": "0x13",
-          "kernelDeviceName": "pmbus",
+          "kernelDeviceName": "apmbus",
           "pmUnitScopedName": "SMB_POS12V_MCORE_RHS"
         },
         {
-          "busName": "CPU_I2C_MASTER_1@2",
+          "busName": "SCM_I2C_MASTER_1@2",
           "address": "0x14",
-          "kernelDeviceName": "pmbus",
+          "kernelDeviceName": "apmbus",
           "pmUnitScopedName": "SMB_POS12V_OPTIC0"
         },
         {
-          "busName": "CPU_I2C_MASTER_1@2",
+          "busName": "SCM_I2C_MASTER_1@2",
           "address": "0x15",
-          "kernelDeviceName": "pmbus",
+          "kernelDeviceName": "apmbus",
           "pmUnitScopedName": "SMB_POS12V_OPTICS1"
         },
         {
-          "busName": "CPU_I2C_MASTER_1@2",
+          "busName": "SCM_I2C_MASTER_1@2",
           "address": "0x16",
-          "kernelDeviceName": "pmbus",
+          "kernelDeviceName": "apmbus",
           "pmUnitScopedName": "SMB_POS12V_OPTICS2"
         },
         {
-          "busName": "CPU_I2C_MASTER_1@2",
+          "busName": "SCM_I2C_MASTER_1@2",
           "address": "0x17",
-          "kernelDeviceName": "pmbus",
+          "kernelDeviceName": "apmbus",
           "pmUnitScopedName": "SMB_POS12V_OPTICS3"
         },
         {
@@ -238,29 +238,28 @@
           "pmUnitScopedName": "SMB_REAR_LEFT_TMP431"
         },
         {
-          "busName": "CPU_I2C_MASTER_1@3",
+          "busName": "SCM_I2C_MASTER_1@3",
           "address": "0x48",
           "kernelDeviceName": "lm75",
           "pmUnitScopedName": "CHASSIS_REAR_TMP75"
         },
         {
-          "busName": "CPU_I2C_MASTER_1@3",
+          "busName": "SCM_I2C_MASTER_1@3",
           "address": "0x52",
-          "kernelDeviceName": "pmbus",
+          "kernelDeviceName": "bp4a_tps16890",
           "pmUnitScopedName": "CPU_POS48V"
         }
       ],
-      "outgoingSlotConfigs": {},
       "pciDeviceConfigs": [
         {
-          "pmUnitScopedName": "CPU_FPGA",
+          "pmUnitScopedName": "SCM_FPGA",
           "vendorId": "0x3475",
           "deviceId": "0x0001",
           "subSystemVendorId": "0x3475",
           "subSystemDeviceId": "0x0017",
           "i2cAdapterBlockConfigs": [
             {
-              "pmUnitScopedNamePrefix": "CPU_I2C_MASTER",
+              "pmUnitScopedNamePrefix": "SCM_I2C_MASTER",
               "deviceName": "i2c_master",
               "csrOffsetCalc": "0x8000 + ({adapterIndex} - {startAdapterIndex})*0x80",
               "startAdapterIndex": 0,
@@ -288,7 +287,7 @@
           ],
           "infoRomConfigs": [
             {
-              "pmUnitScopedName": "CPU_FPGA_INFO_ROM",
+              "pmUnitScopedName": "SCM_FPGA_INFO_ROM",
               "deviceName": "fpga_info_iob",
               "csrOffset": "0x100"
             }
@@ -306,8 +305,17 @@
               "deviceName": "i2c_master",
               "csrOffsetCalc": "0x8000 + ({adapterIndex} - {startAdapterIndex})*0x80",
               "startAdapterIndex": 0,
-              "numAdapters": 9,
+              "numAdapters": 1,
               "numBusesPerAdapter": 8
+            },
+            {
+              "pmUnitScopedNamePrefix": "SMB_I2C_MASTER",
+              "deviceName": "i2c_master",
+              "csrOffsetCalc": "0x8080 + ({adapterIndex} - {startAdapterIndex})*0x80",
+              "startAdapterIndex": 1,
+              "numAdapters": 8,
+              "numBusesPerAdapter": 8,
+              "busFreqHz": 400000
             }
           ],
           "spiMasterConfigs": [
@@ -373,6 +381,10 @@
       ],
       "embeddedSensorConfigs": [
         {
+          "pmUnitScopedName": "CPU_CORE_TEMP",
+          "sysfsPath": "/sys/bus/pci/drivers/k10temp/0000:00:18.3"
+        },
+        {
           "pmUnitScopedName": "NVME_TEMP",
           "sysfsPath": "/sys/class/nvme/nvme0"
         }
@@ -383,104 +395,9 @@
     "CPU_BUS@1"
   ],
   "symbolicLinkToDevicePath": {
-    "/run/devmap/fpgas/CPU_FPGA": "/[CPU_FPGA]",
-    "/run/devmap/fpgas/CPU_FPGA_INFO_ROM": "/[CPU_FPGA_INFO_ROM]",
-    "/run/devmap/inforoms/CPU_FPGA_INFO_ROM": "/[CPU_FPGA_INFO_ROM]",
-    "/run/devmap/fpgas/ICECUBE800BANW_SMB_FPGA": "/[SMB_FPGA]",
-    "/run/devmap/fpgas/ICECUBE800BANW_SMB_FPGA_INFO_ROM": "/[SMB_FPGA_INFO_ROM]",
-    "/run/devmap/inforoms/ICECUBE800BANW_SMB_FPGA_INFO_ROM": "/[SMB_FPGA_INFO_ROM]",
-    "/run/devmap/i2c-busses/CPU_FPGA_SMBUS0_CH0": "/[CPU_I2C_MASTER_0@0]",
-    "/run/devmap/i2c-busses/CPU_FPGA_SMBUS0_CH1": "/[CPU_I2C_MASTER_0@1]",
-    "/run/devmap/i2c-busses/CPU_FPGA_SMBUS0_CH2": "/[CPU_I2C_MASTER_0@2]",
-    "/run/devmap/i2c-busses/CPU_FPGA_SMBUS0_CH3": "/[CPU_I2C_MASTER_0@3]",
-    "/run/devmap/i2c-busses/CPU_FPGA_SMBUS0_CH4": "/[CPU_I2C_MASTER_0@4]",
-    "/run/devmap/i2c-busses/CPU_FPGA_SMBUS0_CH5": "/[CPU_I2C_MASTER_0@5]",
-    "/run/devmap/i2c-busses/CPU_FPGA_SMBUS0_CH6": "/[CPU_I2C_MASTER_0@6]",
-    "/run/devmap/i2c-busses/CPU_FPGA_SMBUS0_CH7": "/[CPU_I2C_MASTER_0@7]",
-    "/run/devmap/i2c-busses/CPU_FPGA_SMBUS1_CH0": "/[CPU_I2C_MASTER_1@0]",
-    "/run/devmap/i2c-busses/CPU_FPGA_SMBUS1_CH1": "/[CPU_I2C_MASTER_1@1]",
-    "/run/devmap/i2c-busses/CPU_FPGA_SMBUS1_CH2": "/[CPU_I2C_MASTER_1@2]",
-    "/run/devmap/i2c-busses/CPU_FPGA_SMBUS1_CH3": "/[CPU_I2C_MASTER_1@3]",
-    "/run/devmap/i2c-busses/CPU_FPGA_SMBUS1_CH4": "/[CPU_I2C_MASTER_1@4]",
-    "/run/devmap/i2c-busses/CPU_FPGA_SMBUS1_CH5": "/[CPU_I2C_MASTER_1@5]",
-    "/run/devmap/i2c-busses/CPU_FPGA_SMBUS1_CH6": "/[CPU_I2C_MASTER_1@6]",
-    "/run/devmap/i2c-busses/CPU_FPGA_SMBUS1_CH7": "/[CPU_I2C_MASTER_1@7]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS0_CH0": "/[SMB_I2C_MASTER_0@0]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS0_CH1": "/[SMB_I2C_MASTER_0@1]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS0_CH2": "/[SMB_I2C_MASTER_0@2]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS0_CH3": "/[SMB_I2C_MASTER_0@3]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS0_CH4": "/[SMB_I2C_MASTER_0@4]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS0_CH5": "/[SMB_I2C_MASTER_0@5]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS0_CH6": "/[SMB_I2C_MASTER_0@6]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS0_CH7": "/[SMB_I2C_MASTER_0@7]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS1_CH0": "/[SMB_I2C_MASTER_1@0]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS1_CH1": "/[SMB_I2C_MASTER_1@1]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS1_CH2": "/[SMB_I2C_MASTER_1@2]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS1_CH3": "/[SMB_I2C_MASTER_1@3]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS1_CH4": "/[SMB_I2C_MASTER_1@4]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS1_CH5": "/[SMB_I2C_MASTER_1@5]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS1_CH6": "/[SMB_I2C_MASTER_1@6]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS1_CH7": "/[SMB_I2C_MASTER_1@7]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS2_CH0": "/[SMB_I2C_MASTER_2@0]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS2_CH1": "/[SMB_I2C_MASTER_2@1]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS2_CH2": "/[SMB_I2C_MASTER_2@2]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS2_CH3": "/[SMB_I2C_MASTER_2@3]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS2_CH4": "/[SMB_I2C_MASTER_2@4]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS2_CH5": "/[SMB_I2C_MASTER_2@5]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS2_CH6": "/[SMB_I2C_MASTER_2@6]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS2_CH7": "/[SMB_I2C_MASTER_2@7]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS3_CH0": "/[SMB_I2C_MASTER_3@0]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS3_CH1": "/[SMB_I2C_MASTER_3@1]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS3_CH2": "/[SMB_I2C_MASTER_3@2]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS3_CH3": "/[SMB_I2C_MASTER_3@3]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS3_CH4": "/[SMB_I2C_MASTER_3@4]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS3_CH5": "/[SMB_I2C_MASTER_3@5]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS3_CH6": "/[SMB_I2C_MASTER_3@6]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS3_CH7": "/[SMB_I2C_MASTER_3@7]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS4_CH0": "/[SMB_I2C_MASTER_4@0]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS4_CH1": "/[SMB_I2C_MASTER_4@1]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS4_CH2": "/[SMB_I2C_MASTER_4@2]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS4_CH3": "/[SMB_I2C_MASTER_4@3]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS4_CH4": "/[SMB_I2C_MASTER_4@4]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS4_CH5": "/[SMB_I2C_MASTER_4@5]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS4_CH6": "/[SMB_I2C_MASTER_4@6]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS4_CH7": "/[SMB_I2C_MASTER_4@7]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS5_CH0": "/[SMB_I2C_MASTER_5@0]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS5_CH1": "/[SMB_I2C_MASTER_5@1]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS5_CH2": "/[SMB_I2C_MASTER_5@2]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS5_CH3": "/[SMB_I2C_MASTER_5@3]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS5_CH4": "/[SMB_I2C_MASTER_5@4]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS5_CH5": "/[SMB_I2C_MASTER_5@5]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS5_CH6": "/[SMB_I2C_MASTER_5@6]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS5_CH7": "/[SMB_I2C_MASTER_5@7]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS6_CH0": "/[SMB_I2C_MASTER_6@0]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS6_CH1": "/[SMB_I2C_MASTER_6@1]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS6_CH2": "/[SMB_I2C_MASTER_6@2]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS6_CH3": "/[SMB_I2C_MASTER_6@3]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS6_CH4": "/[SMB_I2C_MASTER_6@4]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS6_CH5": "/[SMB_I2C_MASTER_6@5]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS6_CH6": "/[SMB_I2C_MASTER_6@6]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS6_CH7": "/[SMB_I2C_MASTER_6@7]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS7_CH0": "/[SMB_I2C_MASTER_7@0]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS7_CH1": "/[SMB_I2C_MASTER_7@1]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS7_CH2": "/[SMB_I2C_MASTER_7@2]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS7_CH3": "/[SMB_I2C_MASTER_7@3]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS7_CH4": "/[SMB_I2C_MASTER_7@4]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS7_CH5": "/[SMB_I2C_MASTER_7@5]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS7_CH6": "/[SMB_I2C_MASTER_7@6]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS7_CH7": "/[SMB_I2C_MASTER_7@7]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS8_CH0": "/[SMB_I2C_MASTER_8@0]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS8_CH1": "/[SMB_I2C_MASTER_8@1]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS8_CH2": "/[SMB_I2C_MASTER_8@2]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS8_CH3": "/[SMB_I2C_MASTER_8@3]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS8_CH4": "/[SMB_I2C_MASTER_8@4]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS8_CH5": "/[SMB_I2C_MASTER_8@5]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS8_CH6": "/[SMB_I2C_MASTER_8@6]",
-    "/run/devmap/i2c-busses/ICECUBE800BANW_SMB_FPGA_SMBUS8_CH7": "/[SMB_I2C_MASTER_8@7]",
+    "/run/devmap/eeproms/CHASSIS_EEPROM": "/[CHASSIS_EEPROM]",
     "/run/devmap/sensors/CPU_DPM_UCD90320": "/[CPU_DPM_UCD90320]",
     "/run/devmap/sensors/AMBIENT_TEMP": "/[AMBIENT_TEMP]",
-    "/run/devmap/eeproms/CHASSIS_EEPROM": "/[CHASSIS_EEPROM]",
-    "/run/devmap/gpiochips/SMB_PCA": "/[SMB_PCA]",
     "/run/devmap/sensors/SMB_UCD90320_0": "/[SMB_UCD90320_0]",
     "/run/devmap/sensors/SMB_UCD90320_1": "/[SMB_UCD90320_1]",
     "/run/devmap/sensors/SMB_POS1V8_VDD0": "/[SMB_POS1V8_VDD0]",
@@ -515,7 +432,103 @@
     "/run/devmap/sensors/SMB_REAR_LEFT_TMP431": "/[SMB_REAR_LEFT_TMP431]",
     "/run/devmap/sensors/CHASSIS_REAR_TMP75": "/[CHASSIS_REAR_TMP75]",
     "/run/devmap/sensors/CPU_POS48V": "/[CPU_POS48V]",
+    "/run/devmap/sensors/CPU_CORE_TEMP": "/[CPU_CORE_TEMP]",
     "/run/devmap/sensors/NVME_TEMP": "/[NVME_TEMP]",
+    "/run/devmap/fpgas/SCM_FPGA": "/[SCM_FPGA]",
+    "/run/devmap/fpgas/SCM_FPGA_INFO_ROM": "/[SCM_FPGA_INFO_ROM]",
+    "/run/devmap/fpgas/SMB_FPGA": "/[SMB_FPGA]",
+    "/run/devmap/fpgas/SMB_FPGA_INFO_ROM": "/[SMB_FPGA_INFO_ROM]",
+    "/run/devmap/inforoms/SCM_FPGA_INFO_ROM": "/[SCM_FPGA_INFO_ROM]",
+    "/run/devmap/inforoms/SMB_FPGA_INFO_ROM": "/[SMB_FPGA_INFO_ROM]",
+    "/run/devmap/i2c-busses/SCM_FPGA_SMBUS0_CH0": "/[SCM_I2C_MASTER_0@0]",
+    "/run/devmap/i2c-busses/SCM_FPGA_SMBUS0_CH1": "/[SCM_I2C_MASTER_0@1]",
+    "/run/devmap/i2c-busses/SCM_FPGA_SMBUS0_CH2": "/[SCM_I2C_MASTER_0@2]",
+    "/run/devmap/i2c-busses/SCM_FPGA_SMBUS0_CH3": "/[SCM_I2C_MASTER_0@3]",
+    "/run/devmap/i2c-busses/SCM_FPGA_SMBUS0_CH4": "/[SCM_I2C_MASTER_0@4]",
+    "/run/devmap/i2c-busses/SCM_FPGA_SMBUS0_CH5": "/[SCM_I2C_MASTER_0@5]",
+    "/run/devmap/i2c-busses/SCM_FPGA_SMBUS0_CH6": "/[SCM_I2C_MASTER_0@6]",
+    "/run/devmap/i2c-busses/SCM_FPGA_SMBUS0_CH7": "/[SCM_I2C_MASTER_0@7]",
+    "/run/devmap/i2c-busses/SCM_FPGA_SMBUS1_CH0": "/[SCM_I2C_MASTER_1@0]",
+    "/run/devmap/i2c-busses/SCM_FPGA_SMBUS1_CH1": "/[SCM_I2C_MASTER_1@1]",
+    "/run/devmap/i2c-busses/SCM_FPGA_SMBUS1_CH2": "/[SCM_I2C_MASTER_1@2]",
+    "/run/devmap/i2c-busses/SCM_FPGA_SMBUS1_CH3": "/[SCM_I2C_MASTER_1@3]",
+    "/run/devmap/i2c-busses/SCM_FPGA_SMBUS1_CH4": "/[SCM_I2C_MASTER_1@4]",
+    "/run/devmap/i2c-busses/SCM_FPGA_SMBUS1_CH5": "/[SCM_I2C_MASTER_1@5]",
+    "/run/devmap/i2c-busses/SCM_FPGA_SMBUS1_CH6": "/[SCM_I2C_MASTER_1@6]",
+    "/run/devmap/i2c-busses/SCM_FPGA_SMBUS1_CH7": "/[SCM_I2C_MASTER_1@7]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS0_CH0": "/[SMB_I2C_MASTER_0@0]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS0_CH1": "/[SMB_I2C_MASTER_0@1]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS0_CH2": "/[SMB_I2C_MASTER_0@2]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS0_CH3": "/[SMB_I2C_MASTER_0@3]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS0_CH4": "/[SMB_I2C_MASTER_0@4]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS0_CH5": "/[SMB_I2C_MASTER_0@5]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS0_CH6": "/[SMB_I2C_MASTER_0@6]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS0_CH7": "/[SMB_I2C_MASTER_0@7]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS1_CH0": "/[SMB_I2C_MASTER_1@0]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS1_CH1": "/[SMB_I2C_MASTER_1@1]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS1_CH2": "/[SMB_I2C_MASTER_1@2]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS1_CH3": "/[SMB_I2C_MASTER_1@3]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS1_CH4": "/[SMB_I2C_MASTER_1@4]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS1_CH5": "/[SMB_I2C_MASTER_1@5]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS1_CH6": "/[SMB_I2C_MASTER_1@6]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS1_CH7": "/[SMB_I2C_MASTER_1@7]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS2_CH0": "/[SMB_I2C_MASTER_2@0]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS2_CH1": "/[SMB_I2C_MASTER_2@1]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS2_CH2": "/[SMB_I2C_MASTER_2@2]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS2_CH3": "/[SMB_I2C_MASTER_2@3]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS2_CH4": "/[SMB_I2C_MASTER_2@4]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS2_CH5": "/[SMB_I2C_MASTER_2@5]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS2_CH6": "/[SMB_I2C_MASTER_2@6]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS2_CH7": "/[SMB_I2C_MASTER_2@7]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS3_CH0": "/[SMB_I2C_MASTER_3@0]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS3_CH1": "/[SMB_I2C_MASTER_3@1]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS3_CH2": "/[SMB_I2C_MASTER_3@2]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS3_CH3": "/[SMB_I2C_MASTER_3@3]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS3_CH4": "/[SMB_I2C_MASTER_3@4]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS3_CH5": "/[SMB_I2C_MASTER_3@5]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS3_CH6": "/[SMB_I2C_MASTER_3@6]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS3_CH7": "/[SMB_I2C_MASTER_3@7]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS4_CH0": "/[SMB_I2C_MASTER_4@0]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS4_CH1": "/[SMB_I2C_MASTER_4@1]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS4_CH2": "/[SMB_I2C_MASTER_4@2]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS4_CH3": "/[SMB_I2C_MASTER_4@3]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS4_CH4": "/[SMB_I2C_MASTER_4@4]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS4_CH5": "/[SMB_I2C_MASTER_4@5]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS4_CH6": "/[SMB_I2C_MASTER_4@6]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS4_CH7": "/[SMB_I2C_MASTER_4@7]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS5_CH0": "/[SMB_I2C_MASTER_5@0]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS5_CH1": "/[SMB_I2C_MASTER_5@1]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS5_CH2": "/[SMB_I2C_MASTER_5@2]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS5_CH3": "/[SMB_I2C_MASTER_5@3]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS5_CH4": "/[SMB_I2C_MASTER_5@4]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS5_CH5": "/[SMB_I2C_MASTER_5@5]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS5_CH6": "/[SMB_I2C_MASTER_5@6]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS5_CH7": "/[SMB_I2C_MASTER_5@7]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS6_CH0": "/[SMB_I2C_MASTER_6@0]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS6_CH1": "/[SMB_I2C_MASTER_6@1]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS6_CH2": "/[SMB_I2C_MASTER_6@2]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS6_CH3": "/[SMB_I2C_MASTER_6@3]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS6_CH4": "/[SMB_I2C_MASTER_6@4]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS6_CH5": "/[SMB_I2C_MASTER_6@5]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS6_CH6": "/[SMB_I2C_MASTER_6@6]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS6_CH7": "/[SMB_I2C_MASTER_6@7]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS7_CH0": "/[SMB_I2C_MASTER_7@0]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS7_CH1": "/[SMB_I2C_MASTER_7@1]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS7_CH2": "/[SMB_I2C_MASTER_7@2]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS7_CH3": "/[SMB_I2C_MASTER_7@3]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS7_CH4": "/[SMB_I2C_MASTER_7@4]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS7_CH5": "/[SMB_I2C_MASTER_7@5]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS7_CH6": "/[SMB_I2C_MASTER_7@6]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS7_CH7": "/[SMB_I2C_MASTER_7@7]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS8_CH0": "/[SMB_I2C_MASTER_8@0]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS8_CH1": "/[SMB_I2C_MASTER_8@1]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS8_CH2": "/[SMB_I2C_MASTER_8@2]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS8_CH3": "/[SMB_I2C_MASTER_8@3]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS8_CH4": "/[SMB_I2C_MASTER_8@4]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS8_CH5": "/[SMB_I2C_MASTER_8@5]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS8_CH6": "/[SMB_I2C_MASTER_8@6]",
+    "/run/devmap/i2c-busses/SMB_FPGA_SMBUS8_CH7": "/[SMB_I2C_MASTER_8@7]",
+    "/run/devmap/gpiochips/SMB_PCA": "/[SMB_PCA]",
     "/run/devmap/flashes/SMB_SPI_MASTER0_DEVICE1": "/[SMB_SPI_MASTER0_DEVICE1]",
     "/run/devmap/xcvrs/xcvr_io_1": "/[SMB_I2C_MASTER_1@0]",
     "/run/devmap/xcvrs/xcvr_ctrl_1": "/[OSFP_XCVR_CTRL_PORT_1]",
@@ -651,10 +664,9 @@
   "chassisEepromDevicePath": "/[CHASSIS_EEPROM]",
   "numXcvrs": 65,
   "bspKmodsRpmName": "arista_bsp_kmods",
-  "bspKmodsRpmVersion": "0.7.27-1",
-  "requiredKmodsToLoad": [
+  "bspKmodsRpmVersion": "0.7.32-1",
+  "nonBspKmodsToLoad": [
     "spidev",
-    "i2c_i801",
     "ledtrig_timer"
   ]
 }

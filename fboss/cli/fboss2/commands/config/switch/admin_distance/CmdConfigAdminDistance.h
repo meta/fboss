@@ -10,10 +10,32 @@
 
 #pragma once
 
+#include <cstdint>
+#include <string>
+#include <string_view>
+#include <unordered_map>
 #include "fboss/cli/fboss2/CmdHandler.h"
 #include "fboss/cli/fboss2/commands/config/switch/CmdConfigSwitch.h"
 
 namespace facebook::fboss {
+
+// ClientIDs whose admin distance is hardcoded in the agent, so a
+// clientIdToAdminDistance entry for them is never consulted:
+//   STATIC_ROUTE (1)           -> AdminDistance::STATIC_ROUTE
+//   INTERFACE_ROUTE (2)        -> AdminDistance::DIRECTLY_CONNECTED
+//   LINKLOCAL_ROUTE (3)        -> AdminDistance::DIRECTLY_CONNECTED
+//   REMOTE_INTERFACE_ROUTE (4) -> AdminDistance::DIRECTLY_CONNECTED
+// Maps client-id to the reason it is rejected. Both `config switch
+// admin-distance` and `delete switch admin-distance` refuse these ids.
+const std::unordered_map<int32_t, std::string>& forbiddenAdminDistanceClients();
+
+// Parses and validates the <client-id> token shared by `config switch
+// admin-distance` and `delete switch admin-distance`: must be a non-negative
+// integer and not a forbidden client. `action` names the operation for the
+// refusal message (e.g. "changing admin distance").
+int32_t parseAdminDistanceClientId(
+    const std::string& token,
+    std::string_view action);
 
 // Parses the two positional arguments of
 //   config switch admin-distance <client-id> <distance>

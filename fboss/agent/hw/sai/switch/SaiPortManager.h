@@ -143,6 +143,10 @@ class SaiPortManager {
   static constexpr double kRateConversionFactor = 1024. * 1024. * 1024.;
 
  public:
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 3)
+  using ExtOperStatusLatchWarmBootState = std::map<PortID, sai_latch_status_t>;
+#endif
+
   SaiPortManager(
       SaiStore* saiStore,
       SaiManagerTable* managerTable,
@@ -162,6 +166,7 @@ class SaiPortManager {
   void replaceIngressAcl(
       AclTableSaiId oldAclTableId,
       AclTableSaiId newAclTableId);
+  void resetIngressAcl();
 
   bool createOnlyAttributeChanged(
       const std::shared_ptr<Port>& oldPort,
@@ -184,7 +189,9 @@ class SaiPortManager {
       const std::shared_ptr<SaiPortSerdes>& serdes,
       bool zeroPreemphasis = false,
       const std::optional<std::string>& customCollection = std::nullopt,
-      bool skipSerdesProgramming = false);
+      bool skipSerdesProgramming = false,
+      bool txPrecodingEnabled = false,
+      bool rxPrecodingEnabled = false);
 
   const SaiPortHandle* getPortHandle(PortID swId) const;
   SaiPortHandle* getPortHandle(PortID swId);
@@ -254,9 +261,10 @@ class SaiPortManager {
       bool updateCableLengths = false);
 
   // Link up/down debounce retrigger counts are leaba READ_ONLY port attributes
-  // (25.5.4210 / 26.2+). Compile-time SDK gate; the per-port read in
-  // updateStats is additionally guarded on the port having a debounce hold
-  // timer configured.
+  // (25.5.4210 / 26.5) or port stats (26.2.4210); Broadcom serves both as
+  // port stats from 15.4 on. Compile-time SDK gate; the per-port read in
+  // updateStats is additionally guarded on the port having that direction's
+  // debounce hold timer configured.
   static bool isLinkDebounceRetriggerCounterSupported(const HwAsic* asic);
 
   void updateConnectivityStats(PortID portID);
@@ -313,9 +321,16 @@ class SaiPortManager {
       uint8_t numFecLanes) const;
   std::optional<sai_latch_status_t> getPcsRxLinkStatus(
       PortSaiId saiPortId) const;
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 3)
+  std::optional<sai_latch_status_t> getExtOperStatusLatch(
+      PortSaiId saiPortId) const;
+  ExtOperStatusLatchWarmBootState snapshotExtOperStatusLatch();
+  void updateExtOperStatusLatchAfterWarmBoot(
+      const ExtOperStatusLatchWarmBootState& baseline);
+#endif
 #endif
 
-#if defined(SAI_BRCM_PAI_IMPL) && SAI_API_VERSION >= SAI_VERSION(1, 10, 0)
+#if defined(BRCM_PAI_SDK) && SAI_API_VERSION >= SAI_VERSION(1, 10, 0)
   phy::Loopback getLoopbackMode(PortSaiId saiPortId) const;
 #endif
 
@@ -349,6 +364,8 @@ class SaiPortManager {
       const std::shared_ptr<Port>& oldPort,
       const std::shared_ptr<Port>& newPort);
   cfg::PortType getPortType(PortID portId) const;
+  void programSwitchWideLinkUpDebounceTimeout(
+      const std::shared_ptr<Port>& swPort);
   void setClm(PortID portId, bool clmEnabled);
   bool isClmEnabled(PortID portId) const;
   bool fecCorrectedBitsSupported(PortID portID) const;
@@ -442,7 +459,9 @@ class SaiPortManager {
       std::shared_ptr<Port> swPort,
       SaiPortHandle* portHandle);
   void programLlr(std::shared_ptr<Port> swPort, SaiPortHandle* portHandle);
-  void reissueLlrModeRemote(SaiPortHandle* portHandle);
+  bool llrProfileBindingChanged(
+      std::optional<sai_object_id_t> boundProfile,
+      const std::shared_ptr<Port>& swPort);
   void programSampling(
       PortID portId,
       SamplePacketDirection direction,

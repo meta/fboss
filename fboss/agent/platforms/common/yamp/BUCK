@@ -8,6 +8,10 @@ cpp_library(
         "Yamp16QPimPlatformMapping.cpp",
         "YampPlatformMapping.cpp",
     ],
+    headers = [
+        "Yamp16QPimPlatformMapping.h",
+        "YampPlatformMapping.h",
+    ],
     exported_deps = [
         "//fboss/agent/platforms/common:platform_mapping",
     ],

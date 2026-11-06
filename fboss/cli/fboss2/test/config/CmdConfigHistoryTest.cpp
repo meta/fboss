@@ -215,13 +215,13 @@ TEST_F(CmdConfigHistoryTestFixture, historyLeavesExistingSessionUntouched) {
   EXPECT_TRUE(ConfigSession::getInstance().hasActiveSession());
 }
 
-TEST_F(CmdConfigHistoryTestFixture, defaultSessionStillCreatesSessionFile) {
+TEST_F(CmdConfigHistoryTestFixture, defaultSessionDefersServiceConfig) {
   ASSERT_FALSE(std::filesystem::exists(getSessionConfigPath()));
 
   setupTestableConfigSession();
 
-  EXPECT_TRUE(std::filesystem::exists(getSessionConfigPath()));
-  EXPECT_TRUE(ConfigSession::getInstance().hasActiveSession());
+  EXPECT_FALSE(std::filesystem::exists(getSessionConfigPath()));
+  EXPECT_FALSE(ConfigSession::getInstance().hasActiveSession());
 }
 
 TEST_F(CmdConfigHistoryTestFixture, printOutput) {

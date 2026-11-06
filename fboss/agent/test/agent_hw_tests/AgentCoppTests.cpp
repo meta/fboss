@@ -23,7 +23,7 @@
 #include "fboss/agent/test/EcmpSetupHelper.h"
 #include "fboss/agent/test/TestUtils.h"
 #include "fboss/agent/test/TrunkUtils.h"
-#include "fboss/agent/test/agent_hw_tests/AgentTestAddressConstants.h"
+#include "fboss/agent/test/utils/AgentTestAddressConstants.h"
 #include "fboss/agent/test/utils/ConfigUtils.h"
 #include "fboss/agent/test/utils/CoppTestUtils.h"
 #include "fboss/agent/test/utils/NetworkAITestUtils.h"
@@ -306,6 +306,14 @@ class AgentCoppTest : public AgentHwTest {
     auto vlanId = getVlanIDForTx();
     auto destinationMac = dstMac.value_or(
         getMacForFirstInterfaceWithPortsForTesting(getProgrammedState()));
+    if (outOfPort) {
+      // Same SA makeTCPTxPacket derives.
+      learnL2EntryIfPending(
+          destinationMac.isUnicast()
+              ? folly::MacAddress::fromHBO(destinationMac.u64HBO() + 1)
+              : folly::MacAddress("00:00:01:02:03:04"),
+          portIdsForTest()[0]);
+    }
     auto sendAndInspect = [=, this]() {
       auto pkt = utility::makeTCPTxPacket(
           getSw(),
@@ -1045,7 +1053,10 @@ TYPED_TEST(AgentCoppTest, CpuPortIpv6LinkLocalUcastIp) {
     std::optional<folly::MacAddress> dstMac;
     bool skipTtlDecrement;
     utility::PacketComparatorFn packetComparatorFn = std::nullopt;
-    if (!this->needL3EcmpLoop()) {
+    auto asic =
+        checkSameAndGetAsicForTesting(this->getAgentEnsemble()->getL3Asics());
+    if (!this->needL3EcmpLoop() &&
+        asic->getAsicType() != cfg::AsicType::ASIC_TYPE_P200) {
       // use random mac, packets would be flooded and loopback
       dstMac = folly::MacAddress("00:00:00:00:00:01");
       skipTtlDecrement = true;
@@ -1058,9 +1069,8 @@ TYPED_TEST(AgentCoppTest, CpuPortIpv6LinkLocalUcastIp) {
       packetComparatorFn = utility::makePacketComparator(fields);
     }
     bool outOfPort = false; /* route link local packet */
-    auto asic =
-        checkSameAndGetAsicForTesting(this->getAgentEnsemble()->getL3Asics());
-    if (asic->getAsicVendor() == HwAsic::AsicVendor::ASIC_VENDOR_CHENAB) {
+    if (asic->getAsicVendor() == HwAsic::AsicVendor::ASIC_VENDOR_CHENAB ||
+        asic->getAsicType() == cfg::AsicType::ASIC_TYPE_P200) {
       outOfPort = true; /* routing link local packet is not supported */
       skipTtlDecrement =
           true; /* ttl will not decrement because packet is not routed */
@@ -1211,25 +1221,25 @@ TYPED_TEST(AgentCoppTest, NdpSolicitationToHighPriQ) {
 }
 
 TYPED_TEST(AgentCoppTest, NdpSolicitNeighbor) {
-  // This test case makes sure that addNoActionAclForNw() is
-  // present in ACL table and at the higher priority than that of
+  // This test case makes sure that the CPU-port multicast ACL is
+  // present in the ACL table and at a higher priority than the
   // ACL entry to trap NDP solicit to high priority queue.
   // If both ACL entries are present in the ACL table and at the right order
   // we would recive 1 packet to CPU.
-  // Reason: NS packet enters ASIC via CPU port, hits addNoActionAclForNw()
+  // Reason: NS packet enters ASIC via CPU port, hits the CPU-port multicast
   // ACL because, prefix macthes ff02::/16 and source port is set to CPU port.
   // Hence it will be forwarded. Since it's a multicast packet, it will be
   // sent out of port 1, and the packet loops back into ASIC via port 1.
   //  Now, it hits the NDP solicit ACL entry and copied to CPU.
-  // Note that it did NOT hit addNoActionAclForNw() because source port is set
-  // to 1 after looping back.
+  // Note that it does not hit the CPU-port multicast ACL because source port
+  // is set to 1 after looping back.
 
   // If not we would receive 2 packets to CPU.
   // Reason: When packet enters the ASIC via CPU port, it hits the
-  // addNoActionAclForNw() and it's copied to CPU and another copy is sent out
+  // CPU-port multicast ACL and it's copied to CPU and another copy is sent out
   // of port 1. Now, since we have port 1 in loopback mode, packet enters back
-  // into ASIC via port 1, addNoActionAclForNw() hits  again and copied to CPU
-  // again.
+  // into ASIC via port 1, the CPU-port multicast ACL hits again and copies it
+  // to CPU again.
 
   // More explanation in the test plan section of - D34782575
   auto setup = [=, this]() {
@@ -1241,13 +1251,17 @@ TYPED_TEST(AgentCoppTest, NdpSolicitNeighbor) {
     // do not snoop when L2 is not supported, e.g. J3, where NDP packets goes
     // through L3 pipeline and might change ttl and dst mac
     bool expectRxPacket = !this->needL3EcmpLoop();
+    auto asic =
+        checkSameAndGetAsicForTesting(this->getAgentEnsemble()->getL3Asics());
+    // P200 uses port (routed) interfaces: there is no vlan to flood the
+    // solicitation injected from cpu, so send it out of port instead
+    bool outOfPort = asic->getAsicType() == cfg::AsicType::ASIC_TYPE_P200;
     this->sendPktAndVerifyNdpPacketsCpuQueue(
-        utility::getCoppHighPriQueueId(checkSameAndGetAsicForTesting(
-            this->getAgentEnsemble()->getL3Asics())),
+        utility::getCoppHighPriQueueId(asic),
         folly::IPAddressV6("1::1"), // sender of solicitation
         ICMPv6Type::ICMPV6_TYPE_NDP_NEIGHBOR_SOLICITATION,
         false,
-        false,
+        outOfPort,
         1,
         1,
         expectRxPacket);
@@ -1862,11 +1876,12 @@ TEST_F(AgentCoppQueueStuckTest, CpuQueueHighRateTraffic) {
         utility::getPortQueueRate(asic, utility::kCoppLowPriQueueId);
     uint64_t expectedRate;
     if (portQueueRate.getType() == cfg::PortQueueRate::Type::kbitsPerSec) {
-      expectedRate = portQueueRate.get_kbitsPerSec().maximum().value() * 1024;
+      expectedRate =
+          portQueueRate.kbitsPerSec().as_const()->maximum().value() * 1024;
     } else {
       // pktsPerSec
-      expectedRate =
-          portQueueRate.get_pktsPerSec().maximum().value() * pktSize * 8;
+      expectedRate = portQueueRate.pktsPerSec().as_const()->maximum().value() *
+          pktSize * 8;
     }
     auto expectedRateLow = expectedRate * (1 - kVariance);
     auto expectedRateHigh = expectedRate * (1 + kVariance);

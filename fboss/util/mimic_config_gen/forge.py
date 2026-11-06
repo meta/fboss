@@ -23,7 +23,7 @@ import pathlib
 import re
 import typing as t
 
-from fboss.util.mimic_config_gen.defs import MimicError, unwrap_selection
+from fboss.util.mimic_config_gen.defs import MimicError, select_selection, SelectionCtx
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -118,9 +118,12 @@ def write_json(obj: t.Any, path: pathlib.Path) -> pathlib.Path:
     return path
 
 
-def port_name_to_id(platform_mapping_doc: t.Mapping[str, t.Any]) -> dict[str, int]:
+def port_name_to_id(
+    platform_mapping_doc: t.Mapping[str, t.Any],
+    ctx: SelectionCtx,
+) -> dict[str, int]:
     """Build {port name -> logical id} from a platform_mapping artifact."""
-    inner = unwrap_selection(platform_mapping_doc)
+    inner = select_selection(platform_mapping_doc, ctx, "platform_mapping")
     ports = inner.get("ports")
     if not isinstance(ports, dict):
         raise MimicError("platform_mapping artifact has no ports map")
@@ -141,7 +144,9 @@ def port_name_to_id(platform_mapping_doc: t.Mapping[str, t.Any]) -> dict[str, in
 
 
 def remap_port_ids(
-    template_doc: dict[str, t.Any], name_to_id: t.Mapping[str, int]
+    template_doc: dict[str, t.Any],
+    name_to_id: t.Mapping[str, int],
+    ctx: SelectionCtx,
 ) -> dict[int, int]:
     """Re-key a cloned switch-config template onto the target's port-id space.
 
@@ -151,7 +156,7 @@ def remap_port_ids(
 
     Mutates template_doc in place; returns {old id -> new id}.
     """
-    inner = unwrap_selection(template_doc)
+    inner = select_selection(template_doc, ctx, "agent_sw_template")
     ports = inner.get("ports") or []
     if not ports:
         raise MimicError("switch-config template has no ports to remap")
@@ -226,7 +231,10 @@ def _reject_unhandled_port_id_carriers(inner: t.Mapping[str, t.Any]) -> None:
 
 
 def reconcile_management_ports(
-    template_doc: dict[str, t.Any], hw_donor_template_doc: t.Mapping[str, t.Any]
+    template_doc: dict[str, t.Any],
+    hw_donor_template_doc: t.Mapping[str, t.Any],
+    ctx: SelectionCtx,
+    hw_ctx: SelectionCtx,
 ) -> list[tuple[str, tuple[int, int], tuple[int, int]]]:
     """Take mgmt-port speed/profile from the target hardware's own config.
 
@@ -236,11 +244,16 @@ def reconcile_management_ports(
     """
     donor = {
         p["name"]: p
-        for p in unwrap_selection(hw_donor_template_doc).get("ports") or []
+        for p in select_selection(
+            hw_donor_template_doc, hw_ctx, "agent_sw_template"
+        ).get("ports")
+        or []
         if p.get("portType") == _MANAGEMENT_PORT_TYPE
     }
     changed: list[tuple[str, tuple[int, int], tuple[int, int]]] = []
-    for port in unwrap_selection(template_doc).get("ports") or []:
+    for port in (
+        select_selection(template_doc, ctx, "agent_sw_template").get("ports") or []
+    ):
         if port.get("portType") != _MANAGEMENT_PORT_TYPE:
             continue
         ref = donor.get(port["name"])

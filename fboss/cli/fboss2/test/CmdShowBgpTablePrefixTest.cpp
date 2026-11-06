@@ -17,6 +17,7 @@
 #include <initializer_list>
 #include <memory>
 #include <vector>
+#include "fboss/agent/FbossError.h"
 #include "fboss/cli/fboss2/test/CmdHandlerTestBase.h"
 
 #include "fboss/cli/fboss2/commands/show/bgp/CanonicalRibResolver.h"
@@ -95,12 +96,33 @@ class CmdShowBgpTablePrefixTestFixture : public CmdHandlerTestBase {
   }
 };
 
+/** Build one compact programmed FIB-out row for prefix command tests. */
+TFibOutEntry makeFibOutEntryForPrefixTest(
+    const std::string& prefix,
+    const std::string& nextHop) {
+  TFibOutNextHop thriftNextHop;
+  thriftNextHop.next_hop() = getPrefix(nextHop);
+  thriftNextHop.weight() = 17;
+  thriftNextHop.role() = TFibOutNextHopRole::PRIMARY;
+  TFibOutRoute route;
+  route.operation() = TFibOutOperation::PROGRAM;
+  route.next_hops() = {std::move(thriftNextHop)};
+  TFibOutEntry entry;
+  entry.prefix() = getPrefix(prefix);
+  entry.fib_out() = std::move(route);
+  return entry;
+}
+
 TEST_F(CmdShowBgpTablePrefixTestFixture, queryClient) {
   setupMockedBgpServer();
   auto canonical = buildCanonicalRibState(kPrefixToQuery);
   EXPECT_CALL(getMockBgp(), getRibPrefixCanonical(_, _))
       .WillOnce([&](TCanonicalRibState& state, std::unique_ptr<std::string>) {
         state = canonical;
+      });
+  EXPECT_CALL(getMockBgp(), getFibOutPrefix(_, _))
+      .WillOnce([](TFibOutTable& table, std::unique_ptr<TFibOutPrefixRequest>) {
+        table.enabled() = false;
       });
 
   auto result =
@@ -109,17 +131,165 @@ TEST_F(CmdShowBgpTablePrefixTestFixture, queryClient) {
       *result.tRibEntries(), resolveCanonicalRibState(canonical));
 }
 
-TEST_F(CmdShowBgpTablePrefixTestFixture, queryClientWithInvalidPrefix) {
-  const std::string invalidPrefix = "1.1.1.1/32";
+TEST_F(CmdShowBgpTablePrefixTestFixture, QueryIncludesFibOutWhenEnabled) {
+  setupMockedBgpServer();
+  auto canonical = buildCanonicalRibState(kPrefixToQuery);
+  EXPECT_CALL(getMockBgp(), getRibPrefixCanonical(_, _))
+      .WillOnce([&](TCanonicalRibState& state, std::unique_ptr<std::string>) {
+        state = canonical;
+      });
+  const auto expectedFibOut =
+      makeFibOutEntryForPrefixTest(kPrefixToQuery, kNextHop);
+  EXPECT_CALL(getMockBgp(), getFibOutPrefix(_, _))
+      .WillOnce([&](TFibOutTable& table,
+                    std::unique_ptr<TFibOutPrefixRequest> request) {
+        EXPECT_EQ(*request->prefix(), kPrefixToQuery);
+        table.enabled() = true;
+        table.entries() = {expectedFibOut};
+      });
+
+  const auto result =
+      CmdShowBgpTablePrefix().queryClient(localhost(), {kPrefixToQuery});
+
+  ASSERT_EQ(result.tRibEntries()->size(), 1);
+  const auto& entry = result.tRibEntries()->front();
+  ASSERT_TRUE(entry.fib_out().has_value());
+  EXPECT_EQ(entry.fib_out(), expectedFibOut.fib_out());
+  EXPECT_FALSE(entry.fib_out_pending().has_value());
+}
+
+TEST_F(CmdShowBgpTablePrefixTestFixture, QueryAttachesFibOutToDuplicateRows) {
+  setupMockedBgpServer();
+  const auto canonical = buildCanonicalRibState(kPrefixToQuery);
+  EXPECT_CALL(getMockBgp(), getRibPrefixCanonical(_, _))
+      .Times(2)
+      .WillRepeatedly([&](TCanonicalRibState& state,
+                          std::unique_ptr<std::string>) { state = canonical; });
+  const auto expectedFibOut =
+      makeFibOutEntryForPrefixTest(kPrefixToQuery, kNextHop);
+  EXPECT_CALL(getMockBgp(), getFibOutPrefix(_, _))
+      .Times(2)
+      .WillRepeatedly(
+          [&](TFibOutTable& table, std::unique_ptr<TFibOutPrefixRequest>) {
+            table.enabled() = true;
+            table.entries() = {expectedFibOut};
+          });
+
+  const auto result = CmdShowBgpTablePrefix().queryClient(
+      localhost(), {kPrefixToQuery, kPrefixToQuery});
+
+  ASSERT_EQ(result.tRibEntries()->size(), 2);
+  for (const auto& entry : *result.tRibEntries()) {
+    ASSERT_TRUE(entry.fib_out().has_value());
+    EXPECT_EQ(entry.fib_out(), expectedFibOut.fib_out());
+    EXPECT_FALSE(entry.fib_out_pending().has_value());
+  }
+}
+
+TEST_F(
+    CmdShowBgpTablePrefixTestFixture,
+    QueryDuplicatePrefixUsesLatestFibOutState) {
+  setupMockedBgpServer();
+  const std::string normalizedPrefix = "8.0.0.0/24";
+  const std::string equivalentPrefix = "8.0.0.42/24";
+  const auto canonical = buildCanonicalRibState(normalizedPrefix);
+  EXPECT_CALL(getMockBgp(), getRibPrefixCanonical(_, _))
+      .Times(2)
+      .WillRepeatedly([&](TCanonicalRibState& state,
+                          std::unique_ptr<std::string>) { state = canonical; });
+  const auto submitted =
+      makeFibOutEntryForPrefixTest(normalizedPrefix, kNextHop);
+  EXPECT_CALL(getMockBgp(), getFibOutPrefix(_, _))
+      .WillOnce(
+          [&](TFibOutTable& table, std::unique_ptr<TFibOutPrefixRequest>) {
+            table.enabled() = true;
+            table.entries() = {submitted};
+          })
+      .WillOnce(
+          [&](TFibOutTable& table, std::unique_ptr<TFibOutPrefixRequest>) {
+            table.enabled() = true;
+            table.entries()->clear();
+          });
+
+  const auto result = CmdShowBgpTablePrefix().queryClient(
+      localhost(), {normalizedPrefix, equivalentPrefix});
+
+  ASSERT_EQ(result.tRibEntries()->size(), 2);
+  for (const auto& entry : *result.tRibEntries()) {
+    EXPECT_FALSE(entry.fib_out().has_value());
+    EXPECT_FALSE(entry.fib_out_pending().has_value());
+  }
+}
+
+TEST_F(CmdShowBgpTablePrefixTestFixture, QueryHidesFibOutWhenDisabled) {
+  setupMockedBgpServer();
+  auto canonical = buildCanonicalRibState(kPrefixToQuery);
+  EXPECT_CALL(getMockBgp(), getRibPrefixCanonical(_, _))
+      .WillOnce([&](TCanonicalRibState& state, std::unique_ptr<std::string>) {
+        state = canonical;
+      });
+  EXPECT_CALL(getMockBgp(), getFibOutPrefix(_, _))
+      .WillOnce([](TFibOutTable& table, std::unique_ptr<TFibOutPrefixRequest>) {
+        table.enabled() = false;
+      });
+
+  const auto result =
+      CmdShowBgpTablePrefix().queryClient(localhost(), {kPrefixToQuery});
+
+  ASSERT_EQ(result.tRibEntries()->size(), 1);
+  EXPECT_FALSE(result.tRibEntries()->front().fib_out().has_value());
+  EXPECT_FALSE(result.tRibEntries()->front().fib_out_pending().has_value());
+}
+
+TEST_F(CmdShowBgpTablePrefixTestFixture, QueryHidesFibOutForOlderBinary) {
+  MockBgpClient client;
+  EXPECT_CALL(client, getFibOutPrefix(_, _))
+      .WillOnce(Throw(
+          apache::thrift::TApplicationException(
+              apache::thrift::TApplicationException::UNKNOWN_METHOD,
+              "Method name getFibOutPrefix not found")));
+
+  EXPECT_FALSE(
+      queryFibOutPrefixIfSupported(client, kPrefixToQuery).has_value());
+}
+
+TEST_F(CmdShowBgpTablePrefixTestFixture, QueryPreservesRealFibOutFailure) {
+  MockBgpClient client;
+  EXPECT_CALL(client, getFibOutPrefix(_, _))
+      .WillOnce(Throw(
+          apache::thrift::TApplicationException(
+              apache::thrift::TApplicationException::INTERNAL_ERROR,
+              "RIB event base is unresponsive")));
+
+  EXPECT_THROW(
+      queryFibOutPrefixIfSupported(client, kPrefixToQuery),
+      apache::thrift::TApplicationException);
+}
+
+TEST_F(CmdShowBgpTablePrefixTestFixture, QueryClientWithAbsentPrefix) {
+  const std::string absentPrefix = "1.1.1.1/32";
   setupMockedBgpServer();
   EXPECT_CALL(getMockBgp(), getRibPrefixCanonical(_, _))
       .WillOnce([&](TCanonicalRibState& state, std::unique_ptr<std::string>) {
         state = TCanonicalRibState();
       });
+  EXPECT_CALL(getMockBgp(), getFibOutPrefix(_, _))
+      .WillOnce([](TFibOutTable& table, std::unique_ptr<TFibOutPrefixRequest>) {
+        table.enabled() = true;
+      });
 
   auto result =
-      CmdShowBgpTablePrefix().queryClient(localhost(), {invalidPrefix});
+      CmdShowBgpTablePrefix().queryClient(localhost(), {absentPrefix});
   EXPECT_THAT(*result.tRibEntries(), IsEmpty());
+}
+
+TEST_F(CmdShowBgpTablePrefixTestFixture, QueryClientRejectsMalformedPrefix) {
+  setupMockedBgpServer();
+
+  EXPECT_THROW(
+      CmdShowBgpTablePrefix().queryClient(
+          localhost(), {kPrefixToQuery, "invalid"}),
+      FbossError);
 }
 
 TEST_F(CmdShowBgpTablePrefixTestFixture, printOutput) {
@@ -148,6 +318,79 @@ TEST_F(CmdShowBgpTablePrefixTestFixture, printOutput) {
 
   maskDateInOutput(output);
   EXPECT_EQ(output, expectedOutput);
+}
+
+TEST_F(CmdShowBgpTablePrefixTestFixture, PrintOutputIncludesFibOutWhenPresent) {
+  setupMockedBgpServer();
+  setupConfig();
+  auto fibOutEntry = makeFibOutEntryForPrefixTest(kPrefixToQuery, kNextHop);
+  fibOutEntry.fib_out()->admin_distance() = 20;
+  fibOutEntry.fib_out()->class_id() = 9;
+  fibOutEntry.fib_out()->nexthop_set_ref_count() = 3;
+  queriedEntry_.front().fib_out() = std::move(*fibOutEntry.fib_out());
+  TRibEntryWithHost data;
+  data.tRibEntries() = queriedEntry_;
+  data.host() = localhost().getName();
+  data.oobName() = localhost().getOobName();
+  data.ip() = localhost().getIpStr();
+  std::stringstream output;
+
+  CmdShowBgpTablePrefix().printOutput(data, output);
+
+  EXPECT_THAT(
+      output.str(),
+      HasSubstr(
+          "  FIB-out: PROGRAM | Route References: 3 | Admin Distance: 20 | Class ID: 9\n"
+          "    8.0.0.1 | Weight: 17 | Role: PRIMARY"));
+  EXPECT_THAT(output.str(), Not(HasSubstr(" | Pending: true")));
+}
+
+TEST_F(CmdShowBgpTablePrefixTestFixture, PrintOutputHidesAbsentFibOutState) {
+  setupMockedBgpServer();
+  setupConfig();
+  TRibEntryWithHost data;
+  data.tRibEntries() = queriedEntry_;
+  data.host() = localhost().getName();
+  data.oobName() = localhost().getOobName();
+  data.ip() = localhost().getIpStr();
+  std::stringstream output;
+
+  CmdShowBgpTablePrefix().printOutput(data, output);
+
+  EXPECT_THAT(output.str(), Not(HasSubstr("FIB-out:")));
+}
+
+TEST_F(CmdShowBgpTablePrefixTestFixture, PrintOutputShowsEmptyFibOutState) {
+  setupMockedBgpServer();
+  setupConfig();
+  TFibOutRoute fibOut;
+  fibOut.operation() = TFibOutOperation::NONE;
+  queriedEntry_.front().fib_out() = std::move(fibOut);
+  TRibEntryWithHost data;
+  data.tRibEntries() = queriedEntry_;
+  data.host() = localhost().getName();
+  data.oobName() = localhost().getOobName();
+  data.ip() = localhost().getIpStr();
+  std::stringstream output;
+
+  CmdShowBgpTablePrefix().printOutput(data, output);
+
+  EXPECT_THAT(output.str(), HasSubstr("  FIB-out: NONE\n"));
+}
+
+TEST_F(CmdShowBgpTablePrefixTestFixture, PrintOutputHidesFibOutWhenDisabled) {
+  setupMockedBgpServer();
+  setupConfig();
+  TRibEntryWithHost data;
+  data.tRibEntries() = queriedEntry_;
+  data.host() = localhost().getName();
+  data.oobName() = localhost().getOobName();
+  data.ip() = localhost().getIpStr();
+  std::stringstream output;
+
+  CmdShowBgpTablePrefix().printOutput(data, output);
+
+  EXPECT_THAT(output.str(), Not(HasSubstr("FIB-out:")));
 }
 
 TEST_F(CmdShowBgpTablePrefixTestFixture, PrintOutput_OnlyDefaultPaths) {

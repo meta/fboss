@@ -7,6 +7,9 @@ cpp_library(
     srcs = [
         "Meru800biaPlatformMapping.cpp",
     ],
+    headers = [
+        "Meru800biaPlatformMapping.h",
+    ],
     exported_deps = [
         "//fboss/agent:agent_features",
         "//fboss/agent/hw/switch_asics:switch_asics",

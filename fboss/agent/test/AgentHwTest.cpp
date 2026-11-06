@@ -7,8 +7,15 @@
 #include "fboss/agent/hw/gen-cpp2/hardware_stats_constants.h"
 #include "fboss/agent/hw/test/ConfigFactory.h"
 #include "fboss/agent/hw/test/HwTestCoppUtils.h"
+#include "fboss/agent/packet/PktFactory.h"
+#include "fboss/agent/state/AggregatePortMap.h"
+#include "fboss/agent/state/MacTable.h"
 #include "fboss/agent/state/StateUtils.h"
+#include "fboss/agent/state/Vlan.h"
+#include "fboss/agent/state/VlanMap.h"
 #include "fboss/agent/test/AgentEnsemble.h"
+#include "fboss/agent/test/EcmpSetupHelper.h"
+#include "fboss/agent/test/ResourceLibUtil.h"
 #include "fboss/agent/test/utils/StatsTestUtils.h"
 #include "fboss/lib/CommonUtils.h"
 
@@ -198,6 +205,63 @@ SwitchID AgentHwTest::getSwitchIdUnderTest(const AgentEnsemble& ensemble) {
 bool AgentHwTest::sendPacketSwitchedAsync(std::unique_ptr<TxPacket> pkt) {
   return getSw()->sendPacketSwitchedAsync(
       std::move(pkt), {getSwitchIdUnderTest(*getAgentEnsemble())});
+}
+
+void AgentHwTest::learnL2EntryIfPending(
+    folly::MacAddress mac,
+    PortID port,
+    const std::function<void()>& sendPkt) {
+  // Learn only on BCM: Cisco leaba 24.8 never learns a router-MAC SA, so the
+  // wait below would time out. Drop the BCM-only check once the fleet moves
+  // off leaba 24.8.
+  auto asic = hwAsicForPort(port);
+  if (asic->getAsicVendor() != HwAsic::AsicVendor::ASIC_VENDOR_BCM ||
+      !asic->isSupported(HwAsic::Feature::PENDING_L2_ENTRY) ||
+      utility::getFirstNodeIf(getProgrammedState()->getSwitchSettings())
+              ->getL2LearningMode() != cfg::L2LearningMode::SOFTWARE) {
+    return;
+  }
+  auto learnt = [&]() {
+    auto state = getProgrammedState();
+    auto vlan = state->getPorts()->getNodeIf(port)->getIngressVlan();
+    auto entry = state->getVlans()->getNode(vlan)->getMacTable()->getMacIf(mac);
+    auto aggPort = state->getAggregatePorts()->getAggregatePortForPort(port);
+    return entry &&
+        (entry->getPort() == PortDescriptor(port) ||
+         (aggPort && entry->getPort() == PortDescriptor(aggPort->getID())));
+  };
+  if (learnt()) {
+    return;
+  }
+  sendPkt();
+  WITH_RETRIES({ EXPECT_EVENTUALLY_TRUE(learnt()); });
+  // Refresh stats so callers' baselines include this frame.
+  getNextUpdatedPortStats(port);
+}
+
+void AgentHwTest::learnL2EntryIfPending(folly::MacAddress mac, PortID port) {
+  learnL2EntryIfPending(mac, port, [&]() {
+    auto state = getProgrammedState();
+    // Router MAC as DA so the frame is not flooded back in on other ports.
+    getSw()->sendPacketOutOfPortAsync(
+        utility::makeEthTxPacket(
+            getSw(),
+            state->getPorts()->getNodeIf(port)->getIngressVlan(),
+            mac,
+            getMacForFirstInterfaceWithPorts(state),
+            ETHERTYPE::ETHERTYPE_WOL),
+        port);
+  });
+}
+
+void AgentHwTest::learnSrcMacOnEcmpTxPortIfPending(int ecmpWidth) {
+  auto state = getProgrammedState();
+  auto intfMac = getMacForFirstInterfaceWithPorts(state);
+  utility::EcmpSetupAnyNPorts6 ecmpHelper(
+      state, getSw()->needL2EntryForNeighbor());
+  learnL2EntryIfPending(
+      utility::MacAddressGenerator().get(intfMac.u64HBO() + 1),
+      ecmpHelper.ecmpPortDescriptorAt(ecmpWidth).phyPortID());
 }
 
 folly::MacAddress AgentHwTest::getMacForFirstInterfaceWithPorts(

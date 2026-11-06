@@ -183,10 +183,7 @@ TEST_F(BcmTest, expQosMapForPort) {
 TEST_F(BcmTest, validInterfaceConfig) {
   if (!getHwSwitch()->getPlatform()->getAsic()->isSupported(
           HwAsic::Feature::INGRESS_L3_INTERFACE)) {
-#if defined(GTEST_SKIP)
     GTEST_SKIP();
-#endif
-    return;
   }
   auto cfg = utility::oneL3IntfTwoPortConfig(
       getHwSwitch()->getPlatform()->getPlatformMapping(),

@@ -16,10 +16,10 @@ cpp_library(
     ],
     deps = [
         "fbsource//third-party/re2:re2",
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly/json:dynamic",
         "//fboss/agent:fboss-error",
         "//fboss/agent:utils",
-        "//folly:file_util",
-        "//folly/json:dynamic",
         "//neteng/netwhoami/lib/cpp:recover",
     ],
     exported_deps = [

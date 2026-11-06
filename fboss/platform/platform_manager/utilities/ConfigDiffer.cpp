@@ -141,7 +141,8 @@ void ConfigDiffer::comparePmUnitConfigs(
 void ConfigDiffer::compareVersionedConfigs(const PlatformConfig& config) {
   XLOGF(INFO, "Comparing versioned configs for all PmUnits");
 
-  if (!config.versionedPmUnitConfigs().has_value()) {
+  if (!apache::thrift::is_non_optional_field_set_manually_or_by_serializer(
+          config.versionedPmUnitConfigs())) {
     XLOGF(INFO, "No versioned configs found in platform config");
     return;
   }

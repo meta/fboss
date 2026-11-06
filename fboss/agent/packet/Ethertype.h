@@ -60,5 +60,8 @@ enum class ETHERTYPE : uint16_t {
 
   // Ethernet passive optical n/ws. Used for pause frames
   ETHERTYPE_EPON = 0x8808,
+
+  // Congestion Signaling (CSIG) tag
+  ETHERTYPE_CSIG = 0x9900,
 };
 } // namespace facebook::fboss

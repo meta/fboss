@@ -21,7 +21,7 @@
       }
     },
     {
-      "name": "cpu_cpld",
+      "name": "scm_cpld",
       "platform_identifier": "icecube800banw",
       "location": "System Control Module",
       "display_location": "scm",

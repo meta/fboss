@@ -61,29 +61,33 @@ platform::platform_manager::PlatformConfig makeStandardTestConfig() {
        {"/run/devmap/xcvrs/xcvr_ctrl_4", "/dev/ctrl4"}});
 }
 
-// Fake host-state reader so getResetHoldHi() is hermetic (no rpm/uname shell).
-// Overrides only the low-level virtual reads; getInstalledBspVersion() (the
-// logic under test) runs for real off these.
+// Fake host-state reader so getResetHoldHi() is hermetic (no sysfs reads):
+// maps a device path to the version reported by its bound driver.
 class FakeSystemInterface
     : public platform::platform_manager::package_manager::SystemInterface {
  public:
-  std::string kernelVersion;
-  std::vector<std::string> rpms;
-  mutable int getInstalledRpmsCallCount{0};
+  std::map<std::string, std::string> boundDriverVersions;
+  mutable int getBoundDriverVersionCallCount{0};
 
-  std::string getHostKernelVersion() const override {
-    return kernelVersion;
-  }
-  std::vector<std::string> getInstalledRpms(
-      const std::string& /* rpmBaseName */) const override {
-    ++getInstalledRpmsCallCount;
-    return rpms;
+  std::optional<std::string> getBoundDriverVersion(
+      const std::string& devicePath) const override {
+    ++getBoundDriverVersionCallCount;
+    auto it = boundDriverVersions.find(devicePath);
+    if (it == boundDriverVersions.end()) {
+      return std::nullopt;
+    }
+    return it->second;
   }
 };
 
-platform::platform_manager::PlatformConfig makeAristaTestConfig() {
+platform::platform_manager::PlatformConfig makeAristaTestConfig(
+    int numXcvrs = 1) {
   return makeTestConfig(
-      "TEST_PLATFORM", 1, {makeLedBlock(1, 1, 2, 8)}, {}, "arista_bsp_kmods");
+      "TEST_PLATFORM",
+      numXcvrs,
+      {makeLedBlock(1, numXcvrs, 2, 8)},
+      {},
+      "arista_bsp_kmods");
 }
 
 } // namespace
@@ -215,67 +219,71 @@ TEST(XcvrLibTest, GetResetHoldHiFbossBsp) {
 // The version strings below are mock fixtures, not real BSP releases; they only
 // need to sort below/above the source threshold to exercise both polarity
 // paths.
-constexpr auto kMockKernel = "mock_kernel_running";
-constexpr auto kMockOtherKernel = "mock_kernel_other";
 constexpr auto kMockVersionBelowThreshold = "0.0.1";
 constexpr auto kMockVersionAboveThreshold = "9.9.9";
 
-std::string makeMockBspRpm(
-    const std::string& kernel,
-    const std::string& bspVer) {
-  return fmt::format("arista_bsp_kmods-{}-{}-1.x86_64", kernel, bspVer);
+std::string xcvrCtrlPath(int xcvrId) {
+  return fmt::format("/run/devmap/xcvrs/xcvr_ctrl_{}", xcvrId);
 }
 
 TEST(XcvrLibTest, GetResetHoldHiAristaBelowThreshold) {
-  // Installed BSP sorts below the threshold -> active-low.
+  // Loaded BSP sorts below the threshold -> active-low.
   auto fake = std::make_shared<FakeSystemInterface>();
-  fake->kernelVersion = kMockKernel;
-  fake->rpms = {makeMockBspRpm(kMockKernel, kMockVersionBelowThreshold)};
+  fake->boundDriverVersions = {{xcvrCtrlPath(1), kMockVersionBelowThreshold}};
   XcvrLib xcvr(makeAristaTestConfig(), fake);
   EXPECT_EQ(xcvr.getResetHoldHi(), 0);
 }
 
 TEST(XcvrLibTest, GetResetHoldHiAristaAtOrAboveThreshold) {
-  // Installed BSP sorts at/above the threshold -> active-high.
+  // Loaded BSP sorts at/above the threshold -> active-high.
   auto fake = std::make_shared<FakeSystemInterface>();
-  fake->kernelVersion = kMockKernel;
-  fake->rpms = {makeMockBspRpm(kMockKernel, kMockVersionAboveThreshold)};
+  fake->boundDriverVersions = {{xcvrCtrlPath(1), kMockVersionAboveThreshold}};
   XcvrLib xcvr(makeAristaTestConfig(), fake);
   EXPECT_EQ(xcvr.getResetHoldHi(), 1);
 }
 
-TEST(XcvrLibTest, GetResetHoldHiAristaPicksRunningKernel) {
-  // Two BSP RPMs installed (two kernel variants); polarity is derived from the
-  // running kernel's RPM (above threshold), ignoring the other kernel's RPM.
+TEST(XcvrLibTest, GetResetHoldHiAristaSkipsXcvrWithoutDriverVersion) {
+  // xcvr 1 has no readable driver version; xcvr 2's driver decides.
   auto fake = std::make_shared<FakeSystemInterface>();
-  fake->kernelVersion = kMockKernel;
-  fake->rpms = {
-      makeMockBspRpm(kMockOtherKernel, kMockVersionBelowThreshold),
-      makeMockBspRpm(kMockKernel, kMockVersionAboveThreshold)};
-  XcvrLib xcvr(makeAristaTestConfig(), fake);
+  fake->boundDriverVersions = {{xcvrCtrlPath(2), kMockVersionAboveThreshold}};
+  XcvrLib xcvr(makeAristaTestConfig(2), fake);
   EXPECT_EQ(xcvr.getResetHoldHi(), 1);
 }
 
-TEST(XcvrLibTest, GetResetHoldHiAristaNoMatchFailsSafe) {
-  // No installed RPM matches the running kernel -> fail safe to active-low.
+TEST(XcvrLibTest, GetResetHoldHiAristaNoDriverVersionFailsSafe) {
+  // No xcvr_ctrl reports a driver version -> fail safe to active-low.
   auto fake = std::make_shared<FakeSystemInterface>();
-  fake->kernelVersion = kMockKernel;
-  fake->rpms = {makeMockBspRpm(kMockOtherKernel, kMockVersionAboveThreshold)};
   XcvrLib xcvr(makeAristaTestConfig(), fake);
   EXPECT_EQ(xcvr.getResetHoldHi(), 0);
+}
+
+TEST(XcvrLibTest, GetResetHoldHiAristaUnparseableVersionFailsSafe) {
+  auto fake = std::make_shared<FakeSystemInterface>();
+  fake->boundDriverVersions = {{xcvrCtrlPath(1), "notaversion"}};
+  XcvrLib xcvr(makeAristaTestConfig(), fake);
+  EXPECT_EQ(xcvr.getResetHoldHi(), 0);
+}
+
+TEST(XcvrLibTest, GetResetHoldHiAristaSkipsUnparseableVersion) {
+  // xcvr 1's driver version is unparseable; xcvr 2's driver decides.
+  auto fake = std::make_shared<FakeSystemInterface>();
+  fake->boundDriverVersions = {
+      {xcvrCtrlPath(1), "notaversion"},
+      {xcvrCtrlPath(2), kMockVersionAboveThreshold}};
+  XcvrLib xcvr(makeAristaTestConfig(2), fake);
+  EXPECT_EQ(xcvr.getResetHoldHi(), 1);
 }
 
 TEST(XcvrLibTest, GetResetHoldHiCachesAcrossCalls) {
   // The mapping build calls getResetHoldHi() once per transceiver against one
   // XcvrLib instance; the host-state read must happen only once, not per call.
   auto fake = std::make_shared<FakeSystemInterface>();
-  fake->kernelVersion = kMockKernel;
-  fake->rpms = {makeMockBspRpm(kMockKernel, kMockVersionAboveThreshold)};
+  fake->boundDriverVersions = {{xcvrCtrlPath(1), kMockVersionAboveThreshold}};
   XcvrLib xcvr(makeAristaTestConfig(), fake);
   xcvr.getResetHoldHi();
   xcvr.getResetHoldHi();
   xcvr.getResetHoldHi();
-  EXPECT_EQ(fake->getInstalledRpmsCallCount, 1);
+  EXPECT_EQ(fake->getBoundDriverVersionCallCount, 1);
 }
 
 TEST(XcvrLibTest, GetResetHoldHiCiscoBsp) {

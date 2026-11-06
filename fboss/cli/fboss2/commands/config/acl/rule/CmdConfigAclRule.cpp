@@ -33,7 +33,10 @@ std::string aclRuleConfigHelpText() {
       "<table-name> <rule-name> <attr> <value> [<extra>] "
       "creates the rule if missing; <attr> is one of: " +
       aclRuleAttrKeysCsv() +
-      ". For 'action', <value> is one of: " + aclRuleActionKeysCsv() +
+      ". The lookup-class-* attrs take a class id or name, as "
+      "`config interface <intf> lookup-class` does"
+      ". For 'action', <value> is one of: " +
+      aclRuleActionKeysCsv() +
       " (all take no further value). Richer actions (send-to-queue, set-dscp, "
       "set-tc, mirror, counter, to-cpu, redirect, ...) are set with `config "
       "copp traffic-policy` or `config data-plane traffic-policy`, which name "

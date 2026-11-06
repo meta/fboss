@@ -9,10 +9,13 @@ cpp_library(
     srcs = [
         "PcapUtil.cpp",
     ],
+    headers = [
+        "PcapUtil.h",
+    ],
     exported_deps = [
         "fbsource//third-party/libpcap/1.10.6:pcap",
+        "fbsource//xplat/folly:scope_guard",
         "//fboss/agent:fboss-error",
-        "//folly:scope_guard",
     ],
 )
 
@@ -25,6 +28,9 @@ cpp_unittest(
     ],
     network_access = network_access_utils.none(),
     deps = [
+        "fbsource//xplat/folly:exception",
+        "fbsource//xplat/folly:memory",
+        "fbsource//xplat/folly:scope_guard",
         ":pcap_util",
         "//fboss/agent:apply_thrift_config",
         "//fboss/agent:core",
@@ -35,8 +41,5 @@ cpp_unittest(
         "//fboss/agent/state:state",
         "//fboss/agent/test:hw_test_handle",
         "//fboss/agent/test:utils",
-        "//folly:exception",
-        "//folly:memory",
-        "//folly:scope_guard",
     ],
 )

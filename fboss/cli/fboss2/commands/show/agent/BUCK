@@ -15,6 +15,9 @@ thrift_library(
 cpp_library(
     name = "CmdShowAgentBootType",
     srcs = ["CmdShowAgentBootType.cpp"],
+    headers = [
+        "CmdShowAgentBootType.h",
+    ],
     labels = ["autodeps2_generated"],
     deps = [
         "//fboss/cli/fboss2:table-utils",

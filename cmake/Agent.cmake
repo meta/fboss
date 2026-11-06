@@ -175,15 +175,13 @@ target_link_libraries(utils
   meru800bia_platform_mapping
   meru800bfa_platform_mapping
   janga800bic_platform_mapping
-  j4sim_platform_mapping
-  saintpaul_platform_mapping
   blackwolf800banw_platform_mapping
-  icecube800banw_platform_mapping
   icecube800bc_platform_mapping
   icetea800bc_platform_mapping
   tahansb800bc_platform_mapping
   ladakh800bcls_platform_mapping
   leh800bcls_platform_mapping
+  Boost::filesystem
 )
 
 add_library(stats
@@ -237,6 +235,16 @@ target_link_libraries(fib_helpers
   Folly::folly
 )
 
+add_library(override_set_id_manager
+  fboss/agent/OverrideSetIdManager.cpp
+)
+
+target_link_libraries(override_set_id_manager
+  fboss_error
+  fboss_types
+  nexthop_id_manager
+)
+
 add_library(ecmp_resource_manager
   fboss/agent/EcmpResourceManager.cpp
   fboss/agent/EcmpResourceManagerConfig.cpp
@@ -244,6 +252,7 @@ add_library(ecmp_resource_manager
 
 target_link_libraries(ecmp_resource_manager
   fib_helpers
+  override_set_id_manager
   ref_map
   state
   stats
@@ -273,6 +282,7 @@ target_link_libraries(pbr_acl_manager
 
 add_library(fsdb_adapted_sub_manager
   fboss/agent/FsdbAdaptedCowStorage.cpp
+  fboss/agent/FsdbAdaptedCowStoragePatch.cpp
   fboss/agent/FsdbAdaptedSubManager.cpp
   fboss/agent/FsdbAdaptedTemplateInstantiations.cpp
 )

@@ -64,6 +64,13 @@ class FakeTransceiverImpl : public TransceiverImpl {
     bankedPages_[bank][page] = data;
   }
 
+  // Simulate AppSel-dependent datapath behavior: applying stage set 0 updates
+  // the active control set, and lanes without an active application stay
+  // deactivated when released from deinit.
+  void setAppSelGatedDatapath() {
+    appSelGatedDatapath_ = true;
+  }
+
  private:
   int module_{0};
   std::string moduleName_;
@@ -75,6 +82,7 @@ class FakeTransceiverImpl : public TransceiverImpl {
   std::map<uint8_t, std::map<int, std::array<uint8_t, 128>>> bankedPages_;
   // Write counts keyed by (page, offset within the upper page)
   std::map<std::pair<int, int>, int> upperPageWriteCounts_;
+  bool appSelGatedDatapath_{false};
   std::map<uint8_t, std::array<uint8_t, 128>> lowerPages_;
   TransceiverManager* tcvrManager_;
 };
@@ -185,6 +193,18 @@ class Cmis2x400GFr4Transceiver : public FakeTransceiverImpl {
   explicit Cmis2x400GFr4Transceiver(int module, TransceiverManager* mgr);
 };
 
+// Advertises IB NDR (AppSel 1) and 800GAUI-8 (AppSel 6) with 400G-FR4 media
+// ahead of 400GAUI-4-L (AppSel 7)
+class Cmis2x400GFr4IbFirstTransceiver : public Cmis2x400GFr4Transceiver {
+ public:
+  explicit Cmis2x400GFr4IbFirstTransceiver(int module, TransceiverManager* mgr);
+};
+
+class CmisNvidia2x400GFr4Transceiver : public FakeTransceiverImpl {
+ public:
+  explicit CmisNvidia2x400GFr4Transceiver(int module, TransceiverManager* mgr);
+};
+
 class Cmis2x400GFr4LiteTransceiver : public FakeTransceiverImpl {
  public:
   explicit Cmis2x400GFr4LiteTransceiver(int module, TransceiverManager* mgr);
@@ -198,6 +218,13 @@ class Cmis2x400GFr4LpoTransceiver : public FakeTransceiverImpl {
 class Cmis800GZrTransceiver : public FakeTransceiverImpl {
  public:
   explicit Cmis800GZrTransceiver(int module, TransceiverManager* mgr);
+};
+
+// Cmis800GZr variant that also advertises the 3x200G FlexO-6e-DPO application
+// (AppSel 9) and simulates AppSel-dependent datapath state.
+class Cmis800GZr3x200GTransceiver : public Cmis800GZrTransceiver {
+ public:
+  explicit Cmis800GZr3x200GTransceiver(int module, TransceiverManager* mgr);
 };
 
 // Cmis800GZr variant that does NOT advertise rxConsActHoldOffTmrImpl support
@@ -309,6 +336,14 @@ class CmisCpo6P4TDrReadyTransceiver : public CmisCpo6P4TDrTransceiver {
 class CmisCredo800AEC : public FakeTransceiverImpl {
  public:
   explicit CmisCredo800AEC(int module, TransceiverManager* mgr);
+};
+
+// 200G/lane active electrical cable: advertises the Annex 176E host interface
+// block (200GAUI-1 / 400GAUI-2 / 800GAUI-4 / 1.6TAUI-8) rather than the
+// 100G/lane codes the 800G part uses. Comes up in its 8x200G default.
+class Cmis1600GAec : public FakeTransceiverImpl {
+ public:
+  explicit Cmis1600GAec(int module, TransceiverManager* mgr);
 };
 
 class InvalidDatapathLaneStateTransceiver : public FakeTransceiverImpl {

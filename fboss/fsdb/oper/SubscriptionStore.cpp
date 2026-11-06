@@ -137,6 +137,7 @@ void SubscriptionStore::unregisterSubscription(const std::string& name) {
       updateSubscriberStats(
           subscriberStats_, *rawPtr, updateSubscriberStatsDisconnectReason);
     }
+    adjustSubscriberCount(-1);
     // TODO: trim empty path stores
     initialSyncNeeded_.remove(rawPtr);
     lookup_.remove(rawPtr);
@@ -164,6 +165,7 @@ void SubscriptionStore::unregisterExtendedSubscription(
         idxIt->second.lock() == it->second) {
       extendedSubsByIdentifier_.erase(idxIt);
     }
+    adjustSubscriberCount(-1);
     initialSyncNeededExtended_.erase(it->second);
     // Drop pending added-path work for this subscription: its entry holds a
     // strong shared_ptr, so leaving it would pin the unregistered subscription
@@ -191,6 +193,61 @@ SubscriptionStore::findExtendedSubscription(const SubscriptionIdentifier& id) {
   return subscription;
 }
 
+folly::Expected<std::vector<SubscriptionKey>, FsdbErrorCode>
+SubscriptionStore::validateAndAddPatchSubscriptionPaths(
+    ExtendedSubscription& subscription,
+    ExtSubPathMap newPaths,
+    const std::optional<std::string>& publisherRoot,
+    std::optional<StreamRevision> streamRevision) {
+  if (subscription.type() != PubSubType::PATCH) {
+    XLOG(DBG1) << "addPatchSubscriptionPaths: subscription for subscriber "
+               << subscription.subscriberId() << " is not a patch subscription";
+    return folly::makeUnexpected(FsdbErrorCode::INVALID_REQUEST);
+  }
+  if (newPaths.empty()) {
+    XLOG(DBG1) << "addPatchSubscriptionPaths: no paths provided for "
+               << "subscriber " << subscription.subscriberId();
+    return folly::makeUnexpected(FsdbErrorCode::INVALID_REQUEST);
+  }
+  // New paths must resolve to the subscription's single publisher root.
+  if (subscription.publisherTreeRoot() != publisherRoot.value_or("")) {
+    XLOG(DBG1) << "addPatchSubscriptionPaths: publisher root mismatch for "
+               << "subscriber " << subscription.subscriberId();
+    return folly::makeUnexpected(FsdbErrorCode::INVALID_REQUEST);
+  }
+  // Reject colliding SubscriptionKeys: buffered_/patchGroups() are keyed by
+  // them.
+  const auto& existingPaths = subscription.paths();
+  for (const auto& [key, _] : newPaths) {
+    if (existingPaths.find(key) != existingPaths.end()) {
+      XLOG(DBG1) << "addPatchSubscriptionPaths: SubscriptionKey " << key
+                 << " already exists for subscriber "
+                 << subscription.subscriberId();
+      return folly::makeUnexpected(FsdbErrorCode::ID_ALREADY_EXISTS);
+    }
+  }
+  const auto& patchSubscription =
+      static_cast<const ExtendedPatchSubscription&>(subscription);
+  if (FLAGS_dynamicWildcardPatchResolution &&
+      subscription.getInitialSyncCompletedAt() != 0 &&
+      !patchSubscription.hasWildcardPath() &&
+      std::any_of(newPaths.begin(), newPaths.end(), [](const auto& path) {
+        return thrift_cow::hasWildcard(*path.second.path());
+      })) {
+    XLOG(DBG1) << "addPatchSubscriptionPaths: cannot add the first wildcard "
+                  "path to an initialized eager subscription for subscriber "
+               << subscription.subscriberId();
+    return folly::makeUnexpected(FsdbErrorCode::INVALID_REQUEST);
+  }
+  auto addedKeys = subscription.addPaths(std::move(newPaths));
+  // Stash the client-supplied stream revision so it is echoed back in
+  // OperMetadata.streamRevision on patches served after this add.
+  if (streamRevision.has_value()) {
+    subscription.setStreamRevision(*streamRevision);
+  }
+  return addedKeys;
+}
+
 std::optional<FsdbErrorCode> SubscriptionStore::addPatchSubscriptionPaths(
     const SubscriptionIdentifier& id,
     ExtSubPathMap newPaths,
@@ -202,50 +259,10 @@ std::optional<FsdbErrorCode> SubscriptionStore::addPatchSubscriptionPaths(
                << "subscriber " << id.subscriberId() << " uid " << id.uid();
     return FsdbErrorCode::ID_NOT_FOUND;
   }
-  if (subscription->type() != PubSubType::PATCH) {
-    XLOG(DBG1) << "addPatchSubscriptionPaths: subscription for subscriber "
-               << id.subscriberId() << " is not a patch subscription";
-    return FsdbErrorCode::INVALID_REQUEST;
-  }
-  if (newPaths.empty()) {
-    XLOG(DBG1) << "addPatchSubscriptionPaths: no paths provided for "
-               << "subscriber " << id.subscriberId();
-    return FsdbErrorCode::INVALID_REQUEST;
-  }
-  // New paths must resolve to the subscription's single publisher root.
-  if (subscription->publisherTreeRoot() != publisherRoot.value_or("")) {
-    XLOG(DBG1) << "addPatchSubscriptionPaths: publisher root mismatch for "
-               << "subscriber " << id.subscriberId();
-    return FsdbErrorCode::INVALID_REQUEST;
-  }
-  // Reject colliding SubscriptionKeys: buffered_/patchGroups() are keyed by
-  // them.
-  const auto& existingPaths = subscription->paths();
-  for (const auto& [key, _] : newPaths) {
-    if (existingPaths.find(key) != existingPaths.end()) {
-      XLOG(DBG1) << "addPatchSubscriptionPaths: SubscriptionKey " << key
-                 << " already exists for subscriber " << id.subscriberId();
-      return FsdbErrorCode::ID_ALREADY_EXISTS;
-    }
-  }
-  auto* patchSubscription =
-      static_cast<ExtendedPatchSubscription*>(subscription.get());
-  if (FLAGS_dynamicWildcardPatchResolution &&
-      subscription->getInitialSyncCompletedAt() != 0 &&
-      !patchSubscription->hasWildcardPath() &&
-      std::any_of(newPaths.begin(), newPaths.end(), [](const auto& path) {
-        return thrift_cow::hasWildcard(*path.second.path());
-      })) {
-    XLOG(DBG1) << "addPatchSubscriptionPaths: cannot add the first wildcard "
-                  "path to an initialized eager subscription for subscriber "
-               << id.subscriberId();
-    return FsdbErrorCode::INVALID_REQUEST;
-  }
-  auto addedKeys = subscription->addPaths(std::move(newPaths));
-  // Stash the client-supplied stream revision so it is echoed back in
-  // OperMetadata.streamRevision on patches served after this add.
-  if (streamRevision.has_value()) {
-    subscription->setStreamRevision(*streamRevision);
+  auto addedKeys = validateAndAddPatchSubscriptionPaths(
+      *subscription, std::move(newPaths), publisherRoot, streamRevision);
+  if (addedKeys.hasError()) {
+    return addedKeys.error();
   }
   // If the subscription is still awaiting its own extended initial sync,
   // doInitialSyncExtended will resolve ALL its paths_ (including these) next
@@ -256,7 +273,7 @@ std::optional<FsdbErrorCode> SubscriptionStore::addPatchSubscriptionPaths(
       initialSyncNeededExtended_.end()) {
     extendedSubsWithAddedPaths_.push_back(
         ExtendedSubscriptionAddedPaths{
-            std::move(subscription), std::move(addedKeys)});
+            std::move(subscription), std::move(addedKeys).value()});
   }
   return std::nullopt;
 }
@@ -271,6 +288,7 @@ void SubscriptionStore::registerSubscription(
     throw Utils::createFsdbException(
         FsdbErrorCode::ID_ALREADY_EXISTS, name + " already exixts");
   }
+  adjustSubscriberCount(1);
   initialSyncNeeded_.add(rawPtr, &pathStoreStats_);
 }
 
@@ -285,6 +303,7 @@ void SubscriptionStore::registerExtendedSubscription(
         FsdbErrorCode::ID_ALREADY_EXISTS, name + " already exixts");
   }
   extendedSubsByIdentifier_[subscription->subscriptionId()] = subscription;
+  adjustSubscriberCount(1);
   initialSyncNeededExtended_.insert(std::move(subscription));
 }
 

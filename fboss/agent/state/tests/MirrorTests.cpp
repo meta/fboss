@@ -117,6 +117,54 @@ TEST_F(MirrorTest, ApplyConfigScopesPortReferencedMirrors) {
       switch1Mirrors->getNodeIf("mirror0") == nullptr);
 }
 
+// A mirror resolved on switch 1 that later fans out to switch 0 must not hand
+// switch 0 switch 1's egress port.
+TEST_F(MirrorTest, FanOutDoesNotCopyPeerResolvedEgressPort) {
+  state_ = std::make_shared<SwitchState>();
+  config_.switchSettings()->switchIdToSwitchInfo() = {
+      {0,
+       createSwitchInfo(
+           cfg::SwitchType::NPU, cfg::AsicType::ASIC_TYPE_MOCK, 0, 1, 0)},
+      {1,
+       createSwitchInfo(
+           cfg::SwitchType::NPU, cfg::AsicType::ASIC_TYPE_MOCK, 2, 99, 1)}};
+  config_.mirrors()->push_back(
+      utility::getGREMirror("mirror0", MirrorTest::tunnelDestination));
+  configurePortMirror("mirror0", PortID(3));
+  publishWithStateUpdate();
+
+  const auto npu0 = HwSwitchMatcher(std::unordered_set<SwitchID>{SwitchID(0)});
+  const auto npu1 = HwSwitchMatcher(std::unordered_set<SwitchID>{SwitchID(1)});
+  auto resolvedState = state_->clone();
+  auto mirrors = resolvedState->getMirrors()->modify(&resolvedState);
+  auto resolved = mirrors->getMapNodeIf(npu1)->getNodeIf("mirror0")->clone();
+  resolved->setEgressPortDesc(PortDescriptor(PortID(3)));
+  resolved->setMirrorTunnel(MirrorTunnel(
+      folly::IPAddress("10.0.0.2"),
+      MirrorTest::tunnelDestination,
+      folly::MacAddress("02:00:00:00:00:01"),
+      folly::MacAddress("02:00:00:00:00:02")));
+  mirrors->updateNode(resolved, npu1);
+  resolvedState->publish();
+  state_ = resolvedState;
+
+  // Unreferenced, the mirror now goes to both switches.
+  config_.ports()[2].ingressMirror().reset();
+  config_.ports()[2].egressMirror().reset();
+  publishWithStateUpdate();
+
+  auto npu0Mirror =
+      state_->getMirrors()->getMapNodeIf(npu0)->getNodeIf("mirror0");
+  ASSERT_NE(npu0Mirror, nullptr);
+  EXPECT_FALSE(npu0Mirror->isResolved());
+  EXPECT_FALSE(npu0Mirror->getEgressPortDesc().has_value());
+  auto npu1Mirror =
+      state_->getMirrors()->getMapNodeIf(npu1)->getNodeIf("mirror0");
+  ASSERT_NE(npu1Mirror, nullptr);
+  EXPECT_TRUE(npu1Mirror->isResolved());
+  EXPECT_EQ(npu1Mirror->getEgressPortDesc(), PortDescriptor(PortID(3)));
+}
+
 TEST_F(MirrorTest, MirrorWithPort) {
   config_.mirrors()->push_back(
       utility::getSPANMirror("mirror0", MirrorTest::egressPortName));

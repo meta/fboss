@@ -7,6 +7,7 @@
 #include "fboss/cli/fboss2/commands/show/bgp/CmdShowVersionBgp.h"
 #include "fboss/cli/fboss2/commands/show/bgp/changelist/CmdShowBgpChangelist.h"
 #include "fboss/cli/fboss2/commands/show/bgp/config/CmdShowConfigRunningBgp.h"
+#include "fboss/cli/fboss2/commands/show/bgp/fibnexthops/CmdShowBgpFibNexthops.h"
 #include "fboss/cli/fboss2/commands/show/bgp/health/CmdShowBgpHealth.h"
 #include "fboss/cli/fboss2/commands/show/bgp/holdtimers/CmdShowBgpHoldTimers.h"
 #include "fboss/cli/fboss2/commands/show/bgp/neighbors/CmdShowBgpNeighbors.h"
@@ -45,11 +46,23 @@
 #include "fboss/cli/fboss2/commands/show/config/CmdShowConfigHistoryAgent.h"
 #include "fboss/cli/fboss2/commands/show/config/CmdShowConfigRunningAgent.h"
 #include "fboss/cli/fboss2/commands/show/config/CmdShowConfigTraits.h"
+#include "fboss/cli/fboss2/commands/show/version/CmdShowVersionDistro.h"
 
 namespace facebook::fboss {
 
 const CommandTree& kBaseAdditionalCommandTree() {
   static CommandTree tree = {
+      {"show",
+       "version",
+       "Show the local FBOSS distro image version summary",
+       commandHandler<CmdShowVersionDistro>,
+       validFilterHandler<CmdShowVersionDistro>,
+       argTypeHandler<CmdShowVersionTraits>,
+       {{"detail",
+         "Show the complete FBOSS distro image version record",
+         commandHandler<CmdShowVersionDistroDetail>,
+         validFilterHandler<CmdShowVersionDistroDetail>,
+         argTypeHandler<CmdShowVersionTraits>}}},
       {"show",
        "bgp",
        "Show BGP information",
@@ -57,6 +70,11 @@ const CommandTree& kBaseAdditionalCommandTree() {
          "Show BGP changelist",
          commandHandler<CmdShowBgpChangelist>,
          argTypeHandler<CmdShowBgpChangelistTraits>},
+
+        {"fib-nexthops",
+         "Show unique nexthop sets in submitted BGP FIB-out state",
+         commandHandler<CmdShowBgpFibNexthops>,
+         argTypeHandler<CmdShowBgpFibNexthopsTraits>},
 
         {"config",
          "Show BGP configuration",

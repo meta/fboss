@@ -62,6 +62,7 @@ class MockFbossCtrlAgent : public apache::thrift::ServiceHandler<FbossCtrl> {
   MOCK_METHOD(void, reloadConfig, ());
   MOCK_METHOD(void, getAclTableGroup, (AclTableThrift&));
   MOCK_METHOD(void, getNdpTable, (std::vector<NdpEntryThrift>&));
+  MOCK_METHOD(void, getMyMacs, (std::vector<cfg::MacAndVlan>&));
 
   MOCK_METHOD(
       void,
@@ -92,6 +93,10 @@ class MockFbossCtrlAgent : public apache::thrift::ServiceHandler<FbossCtrl> {
   MOCK_METHOD(void, getPortStatus, (PortStatusMap, Ports));
   MOCK_METHOD(void, getHwAgentConnectionStatus, (HwAgentStatusMap));
   MOCK_METHOD(void, getMultiSwitchRunState, (MultiSwitchRunState&));
+  MOCK_METHOD(
+      void,
+      getRegexExportedValues,
+      ((std::map<std::string, std::string>&), std::unique_ptr<std::string>));
   MOCK_METHOD(void, listHwObjects, (Out, HwObjects, bool));
   MOCK_METHOD(SSLType, getSSLPolicy, ());
   MOCK_METHOD(void, setPortState, (int32_t, bool));
@@ -176,6 +181,8 @@ class MockFbossHwCtrlAgent
 class MockFbossQsfpService
     : public apache::thrift::ServiceHandler<QsfpService> {
  public:
+  using MacsecPortPhyMap = mka::MacsecPortPhyMap&;
+  using PortNames = std::unique_ptr<std::vector<std::string>>;
   using transceiverEntries =
       std::map<int32_t, facebook::fboss::TransceiverInfo>&;
   MOCK_METHOD2(
@@ -190,12 +197,18 @@ class MockFbossQsfpService
   MOCK_METHOD2(
       getAllPortSupportedProfiles,
       void(std::map<std::string, std::vector<cfg::PortProfileID>>&, bool));
+  MOCK_METHOD(void, getMacsecCapablePorts, (std::vector<int32_t>&));
+  MOCK_METHOD(void, macsecGetPhyPortInfo, (MacsecPortPhyMap, PortNames));
   MOCK_METHOD2(
       getSymbolErrorHistogram,
       void(CdbDatapathSymErrHistogram&, std::unique_ptr<std::string>));
   MOCK_METHOD1(
       getPortMediaInterface,
       void(std::map<std::string, MediaInterfaceCode>&));
+  MOCK_METHOD(
+      void,
+      setPortAdminState,
+      (std::unique_ptr<std::string>, phy::PortComponent, bool));
 };
 
 #ifdef IS_OSS

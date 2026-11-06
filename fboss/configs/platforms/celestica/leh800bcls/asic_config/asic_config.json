@@ -1,0 +1,73 @@
+{
+  "platform_name": "leh800bcls",
+  "vendor": "broadcom",
+  "asic": "tomahawk6",
+  "num_ports_per_core": 4,
+  "defaults": {
+    "asic_config_params": {
+      "config_type": "YAML_CONFIG",
+      "exact_match": false,
+      "mmu_lossless": false,
+      "config_gen_type": "DEFAULT"
+    },
+    "port_config": {
+      "default_speed": 400000,
+      "pc_port_overrides": {
+        "LINK_TRAINING": 0
+      },
+      "speed_to_fec": {
+        "100000": "PC_FEC_RS544_2XN",
+        "200000": "PC_FEC_RS544_2XN_IEEE",
+        "400000": "PC_FEC_RS544_2XN_IEEE",
+        "800000": "PC_FEC_RS544_2XN_IEEE"
+      }
+    },
+    "cpu_port": {
+      "speed": 10000,
+      "num_lanes": 1
+    },
+    "mgmt_port": {
+      "enabled": true,
+      "in_port_block": true
+    },
+    "mgmt_port_overrides": {
+      "logical_id": 268,
+      "physical_id": 514
+    },
+    "port_mapping_overrides": {
+      "num_logical_ports_per_datapath": 18,
+      "lp_start_step_offset": 0,
+      "lp_offset_simple": true
+    },
+    "platform_sai_overrides": {
+      "sai_port_phy_time_sync_en": "0",
+      "sai_eapol_trap_use_bcast_mac": "1"
+    },
+    "features": {
+      "generate_autoload_board_settings": true
+    }
+  },
+  "variants": {
+    "rack": {
+      "platform_mapping_name": "leh800bcls_rack"
+    },
+    "rack_mmu_lossless": {
+      "platform_mapping_name": "leh800bcls_rack",
+      "asic_config_params": {
+        "mmu_lossless": true
+      }
+    },
+    "test_fixture": {
+      "platform_mapping_name": "leh800bcls_test_fixture"
+    },
+    "osfp_tray": {
+      "platform_mapping_name": "leh800bcls_osfp_tray"
+    },
+    "osfp_tray_mmu_lossless": {
+      "platform_mapping_name": "leh800bcls_osfp_tray",
+      "asic_config_params": {
+        "mmu_lossless": true
+      }
+    }
+  }
+}

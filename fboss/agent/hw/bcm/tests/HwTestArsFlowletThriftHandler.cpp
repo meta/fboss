@@ -61,7 +61,7 @@ bool HwTestThriftHandler::verifyEcmpForFlowletSwitchingHandler(
         (existing.dynamic_age != *flowletCfg->inactivityIntervalUsecs()) ||
         (existing.dynamic_size != flowletTableSize)) {
       XLOG(ERR)
-          << "verifyEcmpForFlowletSwitching: Flowlet configuration mismatch - "
+          << "verifyEcmpForFlowletSwitchingHandler: Flowlet configuration mismatch - "
           << "dynamic_mode expected: " << dynamicMode
           << ", actual: " << existing.dynamic_mode << ", dynamic_age expected: "
           << *flowletCfg->inactivityIntervalUsecs()
@@ -74,7 +74,7 @@ bool HwTestThriftHandler::verifyEcmpForFlowletSwitchingHandler(
     if ((existing.dynamic_mode != BCM_L3_ECMP_DYNAMIC_MODE_DISABLED) ||
         (existing.dynamic_size != 0)) {
       XLOG(ERR)
-          << "verifyEcmpForFlowletSwitching: Flowlet should be disabled but found - "
+          << "verifyEcmpForFlowletSwitchingHandler: Flowlet should be disabled but found - "
           << "dynamic_mode: " << existing.dynamic_mode
           << " (expected: " << BCM_L3_ECMP_DYNAMIC_MODE_DISABLED << "), "
           << "dynamic_size: " << existing.dynamic_size << " (expected: 0)";
@@ -83,7 +83,7 @@ bool HwTestThriftHandler::verifyEcmpForFlowletSwitchingHandler(
   }
   if ((ecmp > 200128) || (ecmp < 200000)) {
     XLOG(ERR)
-        << "verifyEcmpForFlowletSwitching: ECMP ID out of expected range - "
+        << "verifyEcmpForFlowletSwitchingHandler: ECMP ID out of expected range - "
         << "ecmp: " << ecmp << " (expected range: 200000-200128)";
     isVerified = false;
   }
@@ -99,7 +99,7 @@ bool HwTestThriftHandler::verifyEcmpForFlowletSwitchingHandler(
     if (flowletEnabled) {
       if (status < BCM_L3_ECMP_DYNAMIC_MEMBER_HW) {
         XLOG(ERR)
-            << "verifyEcmpForFlowletSwitching: ECMP member status insufficient for flowlet - "
+            << "verifyEcmpForFlowletSwitchingHandler: ECMP member status insufficient for flowlet - "
             << "member: " << ecmp_member << ", status: " << status
             << " (expected >= " << BCM_L3_ECMP_DYNAMIC_MEMBER_HW << ")";
         isVerified = false;

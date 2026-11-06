@@ -182,6 +182,10 @@ inline folly::StringPiece constexpr kLineRemoteFaultChanged() {
   return "line.remote_fault_changed";
 }
 
+inline folly::StringPiece constexpr kLinkDownDuringWarmBoot() {
+  return "link_down_during_warmboot";
+}
+
 inline folly::StringPiece constexpr kInLabelMissDiscards() {
   return "in_label_miss_discards";
 }
@@ -451,6 +455,22 @@ inline folly::StringPiece constexpr kLlrRxStatus() {
   return "llr_rx_status";
 }
 
+// UEC Credit-Based Flow Control counters (UE Spec 1.0.2 section 5.2). Exported
+// only on CBFC-capable ASICs (Tomahawk Ultra). CF_Update carries the per-VC
+// credit state, CC_Update the periodic credit refresh, so a CF rate of zero on
+// a CBFC-configured port means the sender is not advertising credit.
+inline folly::StringPiece constexpr kCbfcCcUpdateTx() {
+  return "cbfc_cc_update_tx";
+}
+
+inline folly::StringPiece constexpr kCbfcCfUpdateTx() {
+  return "cbfc_cf_update_tx";
+}
+
+inline folly::StringPiece constexpr kCbfcCfUpdateRx() {
+  return "cbfc_cf_update_rx";
+}
+
 // Broadcom LLR stat extensions.
 //
 // A non-zero ineligible rate on a port with an LLR profile bound is the signal
@@ -495,5 +515,15 @@ inline folly::StringPiece constexpr kLlrTxTimerReplayEvent() {
 
 inline folly::StringPiece constexpr kLlrTxError() {
   return "llr_tx_error";
+}
+
+// HW protection (FRR) switchover counters. Populated only on Broadcom
+// Tomahawk 5/6 with XGS SDK 13.3+.
+inline folly::StringPiece constexpr kHwProtectionSwitchoverEvents() {
+  return "hw_protection_switchover_events";
+}
+
+inline folly::StringPiece constexpr kHwProtectionSwitchoverDropPkts() {
+  return "hw_protection_switchover_drop_pkts";
 }
 } // namespace facebook::fboss

@@ -6,12 +6,14 @@
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
 import tarfile
 import tempfile
 from pathlib import Path
+from urllib.parse import urlparse
 
 # We don't import cache.create_cache directly as the facebook
 # specific import below may monkey patch it, and we want to
@@ -25,7 +27,9 @@ from .cmd_base import BUILD_TYPE_ARG, ProjectCmdBase, UsageError
 from .dyndeps import create_dyn_dep_munger
 from .errors import TransientFailure
 from .fetcher import (
+    ArchiveFetcher,
     file_name_is_cmake_file,
+    GitFetcher,
     is_public_commit,
     list_files_under_dir_newer_than_timestamp,
     safe_extractall,
@@ -260,7 +264,11 @@ class VendorCmd(ProjectCmdBase):
                 ignore=shutil.ignore_patterns(".git"),
                 ignore_dangling_symlinks=True,
             )
-            vendored.append("%s %s\n" % (m.name, fetcher.hash()))
+            entry = "%s %s" % (m.name, _vendored_revision(fetcher))
+            version = _vendored_version(fetcher)
+            if version:
+                entry += " " + version
+            vendored.append(entry + "\n")
             vendored_names.add(m.name)
         # Drop trees recorded by a previous run that are no longer
         # dependencies (e.g. after --allow-system-packages or --no-tests
@@ -287,6 +295,102 @@ class VendorCmd(ProjectCmdBase):
                 os.remove(stale)
         with open(os.path.join(args.output_dir, "getdeps-vendor.txt"), "w") as f:
             f.writelines(vendored)
+
+
+_VERSION_IN_NAME = re.compile(r"\d+(?:[._]\d+)+|\d{4}-\d{2}-\d{2}")
+
+
+def _version_from_url(url: str) -> str | None:
+    """Best-effort version of a downloaded archive, from its file name:
+    liboqs/archive/refs/tags/0.12.0.tar.gz -> 0.12.0,
+    boost_1_83_0.tar.bz2 -> 1.83.0, re2/archive/2020-11-01.tar.gz ->
+    2020.11.01. None when the name has no version-like run (e.g. a commit
+    hash)."""
+    name = urlparse(url).path.rsplit("/", 1)[-1]
+    m = _VERSION_IN_NAME.search(name)
+    if not m:
+        return None
+    return m.group(0).replace("_", ".").replace("-", ".")
+
+
+def _git_describe_version(repo_dir: str) -> str | None:
+    """Version of a git checkout relative to its nearest tag, in the form
+    a distribution can use: the tag itself (without a leading v) when HEAD
+    is tagged, else <tag>^<distance>.<short commit>. getdeps clones are
+    shallow, so deepen the history a few times before giving up."""
+    git = ["git", "-C", repo_dir]
+
+    def describe() -> str | None:
+        try:
+            out = subprocess.check_output(
+                git + ["describe", "--tags", "--long", "--abbrev=7"],
+                stderr=subprocess.DEVNULL,
+            )
+        except (subprocess.CalledProcessError, OSError):
+            return None
+        return out.decode("utf-8").strip()
+
+    desc = describe()
+    for _ in range(4):
+        if desc:
+            break
+        try:
+            subprocess.check_call(
+                git + ["fetch", "-q", "--tags", "--deepen=250", "origin"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+        except (subprocess.CalledProcessError, OSError):
+            return None
+        desc = describe()
+    if not desc:
+        return None
+    m = re.match(r"^(.*)-(\d+)-g([0-9a-f]+)$", desc)
+    if not m:
+        return None
+    tag, distance, commit = m.groups()
+    tag = re.sub(r"^v(?=\d)", "", tag)
+    if distance == "0":
+        return tag
+    return "%s^%s.%s" % (tag, distance, commit)
+
+
+def _vendored_version(fetcher) -> str | None:
+    """The version to record next to a vendored tree, or None when it cannot
+    be determined; see _version_from_url and _git_describe_version."""
+    if isinstance(fetcher, GitFetcher):
+        repo_dir = fetcher.get_src_dir()
+        if os.path.isdir(os.path.join(repo_dir, ".git")):
+            return _git_describe_version(repo_dir)
+        return None
+    if isinstance(fetcher, ArchiveFetcher):
+        return _version_from_url(fetcher.url)
+    return None
+
+
+def _vendored_revision(fetcher) -> str:
+    """The revision to record for a vendored tree.
+
+    fetcher.hash() is the manifest's idea of the version, which for a git
+    project without a pinned rev is a branch name ("main"); record the
+    commit that was actually checked out so the vendor manifest identifies
+    the sources. Falls back to hash() when there is no checkout to ask."""
+    if isinstance(fetcher, GitFetcher):
+        repo_dir = fetcher.get_src_dir()
+        if os.path.isdir(os.path.join(repo_dir, ".git")):
+            try:
+                return (
+                    subprocess.check_output(
+                        ["git", "rev-parse", "HEAD"],
+                        cwd=repo_dir,
+                        stderr=subprocess.DEVNULL,
+                    )
+                    .decode("utf-8")
+                    .strip()
+                )
+            except (subprocess.CalledProcessError, OSError):
+                pass
+    return fetcher.hash()
 
 
 @cmd("install-system-deps", "Install system packages to satisfy the deps for a project")
@@ -936,7 +1040,7 @@ def get_arg_var_name(args):
     raise Exception("unable to determine argument variable name from %r" % (args,))
 
 
-def parse_args():
+def parse_args(argv: list[str] | None = None):
     # We want to allow common arguments to be specified either before or after
     # the subcommand name.  In order to do this we add them to the main parser
     # and to subcommand parsers.  In order for this to work, we need to tell
@@ -1000,6 +1104,16 @@ def parse_args():
         ),
         action="store_true",
         default=False,
+    )
+    add_common_arg(
+        "--features-from",
+        help=(
+            "Resolve features, with tests off, from the dependency graph of "
+            "this project instead of the one named on the command line. CI "
+            "passes it to every step of a job so that each dependency gets the "
+            "features the whole graph needs. Feature requests made only for "
+            "test builds are rejected."
+        ),
     )
     add_common_arg(
         "--extra-cmake-defines",
@@ -1073,7 +1187,7 @@ def parse_args():
 
     add_subcommands(sub, common_args)
 
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
     for var_name, default_value in common_defaults.items():
         if not hasattr(args, var_name):
             setattr(args, var_name, default_value)

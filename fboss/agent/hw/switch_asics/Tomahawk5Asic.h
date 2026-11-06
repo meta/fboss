@@ -96,8 +96,15 @@ class Tomahawk5Asic : public BroadcomXgsAsic {
   std::optional<uint32_t> getMaxEcmpGroups() const override {
     return 4096;
   }
+  std::optional<uint32_t> getMaxVrfs() const override {
+    return 8192;
+  }
   std::optional<uint32_t> getMaxEcmpMembers() const override {
     return 64000;
+  }
+  std::optional<AcceptedValues> getAcceptedLinkUpHoldoffTimeMs()
+      const override {
+    return AcceptedValues::range(2, 500);
   }
   uint32_t getStaticQueueLimitBytes() const override {
     // TODO: update numbers if necessary
@@ -110,6 +117,10 @@ class Tomahawk5Asic : public BroadcomXgsAsic {
   std::optional<uint32_t> getMaxArsGroups() const override;
   std::optional<uint32_t> getArsBaseIndex() const override;
   std::optional<uint32_t> getMaxArsWidth() const override;
+
+  cfg::L2LearningMode getDefaultL2LearningMode() const override {
+    return cfg::L2LearningMode::SOFTWARE;
+  }
 };
 
 } // namespace facebook::fboss

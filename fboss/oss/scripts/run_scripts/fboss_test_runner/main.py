@@ -11,6 +11,7 @@ from fboss_test_runner.constants import (
     OPT_ARG_FILTER,
     OPT_ARG_FILTER_FILE,
     OPT_ARG_PROFILE,
+    OPT_ARG_TIER,
     SUB_CMD_BCM,
     SUB_CMD_BENCHMARK,
     SUB_CMD_FBOSS2_INTEGRATION,
@@ -22,7 +23,9 @@ from fboss_test_runner.constants import (
     SUB_CMD_SAI_AGENT,
     SUB_CMD_SAI_AGENT_SCALE,
     SUB_CMD_SAI_INVARIANT_AGENT,
+    SUB_CMD_SERVICES,
 )
+from fboss_test_runner.errors import TestRunnerUsageError
 from fboss_test_runner.log_capture import (
     derive_test_type,
     LOG_BUNDLE_FLAG,
@@ -48,6 +51,7 @@ from fboss_test_runner.runners.sai_invariant_agent_test_runner import (
     SaiInvariantAgentTestRunner,
 )
 from fboss_test_runner.runners.sai_test_runner import SaiTestRunner
+from fboss_test_runner.runners.service_lifecycle_runner import ServiceLifecycleRunner
 from fboss_test_runner.runners.test_runner import TestRunner
 from setup import setup_fboss_env
 
@@ -101,6 +105,12 @@ def _build_parser() -> ArgumentParser:
         Fboss2IntegrationTestRunner,
     )
     _register_runner(SUB_CMD_BENCHMARK, "run benchmark tests", BenchmarkTestRunner)
+
+    services_parser = subparsers.add_parser(
+        SUB_CMD_SERVICES, help="start or stop FBOSS services without running tests"
+    )
+    services_parser.set_defaults(log_bundle=False)
+    ServiceLifecycleRunner().add_subcommands(services_parser)
     return ap
 
 
@@ -111,20 +121,26 @@ def _parse_args(argv: list[str] | None = None) -> Namespace:
     """
     args = _build_parser().parse_args(argv)
 
-    if args.filter and args.filter_file:
-        raise ValueError(
+    if getattr(args, "filter", None) and getattr(args, "filter_file", None):
+        raise TestRunnerUsageError(
             f"Only one of the {OPT_ARG_FILTER} or {OPT_ARG_FILTER_FILE} can be specified at any time"
         )
 
-    if args.profile and not args.filter_file:
-        raise ValueError(
-            f"{OPT_ARG_PROFILE} requires {OPT_ARG_FILTER_FILE} to be specified"
+    if (
+        getattr(args, "profile", None)
+        and not getattr(args, "filter_file", None)
+        and not getattr(args, "tier", None)
+    ):
+        raise TestRunnerUsageError(
+            f"{OPT_ARG_PROFILE} requires {OPT_ARG_FILTER_FILE} or {OPT_ARG_TIER} to be specified"
         )
 
     return args
 
 
 def _runner_action(args: Namespace):
+    if runner_action := getattr(args, "runner_action", None):
+        return runner_action
     return args.runner.list_tests if args.list_tests else args.runner.run_test
 
 
@@ -180,17 +196,21 @@ def main() -> None:
         print("FBOSS environment not set. Run `source /opt/fboss/bin/setup_fboss_env'")
         sys.exit(0)
 
-    args = _parse_args()
-    runner_action = _runner_action(args)
+    try:
+        args = _parse_args()
+        runner_action = _runner_action(args)
 
-    # Log bundling is opt-in via the per-subcommand --log-bundle flag. Without it,
-    # run plainly: no per-run dir, no tee, no zip; result CSVs go to the cwd.
-    if not args.log_bundle:
-        exit_code = runner_action(args)
+        # Log bundling is opt-in via the per-subcommand --log-bundle flag. Without it,
+        # run plainly: no per-run dir, no tee, no zip; result CSVs go to the cwd.
+        if not args.log_bundle:
+            exit_code = runner_action(args)
+            sys.exit(exit_code)
+
+        # LogCapture owns the per-run bundle: it creates the dir, tees output, records
+        # the command, and on exit collects the logs/CSVs and zips -- even on failure.
+        with LogCapture(test_type):
+            exit_code = runner_action(args)
         sys.exit(exit_code)
-
-    # LogCapture owns the per-run bundle: it creates the dir, tees output, records
-    # the command, and on exit collects the logs/CSVs and zips -- even on failure.
-    with LogCapture(test_type):
-        exit_code = runner_action(args)
-    sys.exit(exit_code)
+    except TestRunnerUsageError as error:
+        print(f"Error: {error}", file=sys.stderr)
+        sys.exit(2)

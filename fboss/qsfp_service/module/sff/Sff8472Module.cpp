@@ -188,7 +188,7 @@ void Sff8472Module::updateQsfpData(bool allPages) {
     QSFP_LOG(DBG2, this) << "Performing " << ((allPages) ? "full" : "partial")
                          << " sfp data cache refresh for transceiver";
     readSff8472Field(Sff8472Field::PAGE_LOWER_A2, a2LowerPage_);
-    lastRefreshTime_ = std::time(nullptr);
+    lastQsfpDataUpdateTime_ = std::time(nullptr);
     dirty_ = false;
 
     if (!allPages) {

@@ -7,6 +7,7 @@
 
 #include "fboss/cli/fboss2/commands/config/session/CmdConfigSessionDiff.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
+#include "fboss/cli/fboss2/test/TestableConfigSession.h"
 #include "fboss/cli/fboss2/utils/CmdUtils.h"
 
 #include <string>
@@ -52,9 +53,7 @@ TEST_F(CmdConfigSessionDiffTestFixture, diffNoSession) {
 
 TEST_F(CmdConfigSessionDiffTestFixture, diffIdenticalConfigs) {
   setupTestableConfigSession();
-
-  // initializeTestSession() already creates the session config by copying
-  // the system config, so we don't need to do it again
+  ConfigSession::getInstance().getAgentConfig();
 
   auto cmd = CmdConfigSessionDiff();
   utils::RevisionList emptyRevisions(std::vector<std::string>{});
@@ -250,6 +249,7 @@ TEST_F(CmdConfigSessionDiffTestFixture, diffWithCurrentKeyword) {
 
 TEST_F(CmdConfigSessionDiffTestFixture, diffNonexistentRevision) {
   setupTestableConfigSession();
+  ConfigSession::getInstance().getAgentConfig();
 
   auto cmd = CmdConfigSessionDiff();
   // Use a fake SHA that doesn't exist
@@ -329,6 +329,12 @@ TEST_F(
   std::string secondCommit = git().commit({"cli/agent.conf"}, "Second commit");
 
   setupReadOnlyTestableConfigSession();
+  auto& session = static_cast<TestableConfigSession&>(
+      ConfigSession::getInstance(ConfigSession::SessionInit::ReadOnly));
+  session.setConfigPathResolver([](cli::ServiceType) -> std::string {
+    ADD_FAILURE() << "two-revision diff must not query a service";
+    return {};
+  });
 
   auto cmd = CmdConfigSessionDiff();
   utils::RevisionList revisions(
@@ -346,6 +352,18 @@ TEST_F(CmdConfigSessionDiffTestFixture, diffReadOnlyStillSeesStagedSession) {
   createTestConfig(getSessionConfigPath(), staged);
 
   setupReadOnlyTestableConfigSession();
+  int agentQueries = 0;
+  int bgpQueries = 0;
+  auto& session = static_cast<TestableConfigSession&>(
+      ConfigSession::getInstance(ConfigSession::SessionInit::ReadOnly));
+  session.setConfigPathResolver([&](cli::ServiceType service) {
+    if (service == cli::ServiceType::AGENT) {
+      ++agentQueries;
+      return getSystemConfigPath().string();
+    }
+    ++bgpQueries;
+    return (getTestEtcDir() / "coop/bgpcpp.conf").string();
+  });
 
   auto cmd = CmdConfigSessionDiff();
   utils::RevisionList emptyRevisions(std::vector<std::string>{});
@@ -353,6 +371,8 @@ TEST_F(CmdConfigSessionDiffTestFixture, diffReadOnlyStillSeesStagedSession) {
 
   EXPECT_NE(result.find("400000"), std::string::npos);
   EXPECT_EQ(readFile(getSessionConfigPath()), staged);
+  EXPECT_EQ(agentQueries, 1);
+  EXPECT_EQ(bgpQueries, 0);
 }
 
 TEST_F(CmdConfigSessionDiffTestFixture, printOutputNoDifferences) {

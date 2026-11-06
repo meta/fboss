@@ -186,10 +186,10 @@ enum CmisField {
   MEDIA_CHECKER_PATTERN_SELECT_LANE_8_7 = 158,
   REF_CLK_CTRL = 159,
   BER_CTRL = 160,
-  HOST_NEAR_LB_EN = 161,
-  MEDIA_NEAR_LB_EN = 162,
-  HOST_FAR_LB_EN = 163,
-  MEDIA_FAR_LB_EN = 164,
+  MEDIA_OUTPUT_LB_EN = 161,
+  MEDIA_INPUT_LB_EN = 162,
+  HOST_OUTPUT_LB_EN = 163,
+  HOST_INPUT_LB_EN = 164,
   REF_CLK_LOSS = 165,
   HOST_CHECKER_GATING_COMPLETE = 166,
   MEDIA_CHECKER_GATING_COMPLETE = 167,
@@ -366,4 +366,6 @@ enum CmisField {
   HOST_MODE_MISMATCH = 473,
   // Page 14h, Byte 131: per-media-lane mode mismatch, one bit per lane
   MEDIA_MODE_MISMATCH = 474,
+  // Page C0, Byte 131: Host Lane Ethernet Control (ZR modules)
+  HOST_LANE_ETH_CTRL = 475,
 }

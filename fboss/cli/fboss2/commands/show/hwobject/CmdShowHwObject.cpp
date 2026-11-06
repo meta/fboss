@@ -54,7 +54,7 @@ void CmdShowHwObject::printOutput(
 }
 
 std::string_view CmdShowHwObjectTraits::description() {
-  return "Displays the raw SAI hardware-object state for a given object type. Requires an object-type argument, one of: PORT, LAG, VIRTUAL_ROUTER, NEXT_HOP, NEXT_HOP_GROUP, ROUTER_INTERFACE, CPU_TRAP, HASH, MIRROR, QOS_MAP, QUEUE, SCHEDULER, L2_ENTRY, NEIGHBOR_ENTRY, ROUTE_ENTRY, VLAN, BRIDGE, BUFFER, ACL, DEBUG_COUNTER, TELEMETRY, LABEL_ENTRY, MACSEC, SAI_MANAGED_OBJECTS, IPTUNNEL, SYSTEM_PORT, FIRMWARE, SRV6, NEXT_HOP_GROUP_MEMBER, SAMPLE_PACKET (the HwObjectType enum). The output format is specific to each object type. Use it for low-level SAI/ASIC debugging.";
+  return "Displays the raw SAI hardware-object state for a given object type. Requires an object-type argument, one of: PORT, LAG, VIRTUAL_ROUTER, NEXT_HOP, NEXT_HOP_GROUP, ROUTER_INTERFACE, CPU_TRAP, HASH, MIRROR, QOS_MAP, QUEUE, SCHEDULER, L2_ENTRY, NEIGHBOR_ENTRY, ROUTE_ENTRY, VLAN, BRIDGE, BUFFER, ACL, DEBUG_COUNTER, TELEMETRY, LABEL_ENTRY, MACSEC, SAI_MANAGED_OBJECTS, IPTUNNEL, SYSTEM_PORT, FIRMWARE, SRV6, NEXT_HOP_GROUP_MEMBER, SAMPLE_PACKET, MY_MAC (the HwObjectType enum). The output format is specific to each object type. Use it for low-level SAI/ASIC debugging.";
 }
 
 CmdShowHwObject::RetType CmdShowHwObject::sampleModel() {

@@ -17,7 +17,7 @@
         ]
       }
     },
-    "LEH800BCLS_MCB.MCB_FAN_CPLD": {
+    "PDB.PDB_FAN_CPLD": {
       "i2cTestData": {
         "i2cSetData": [
           {

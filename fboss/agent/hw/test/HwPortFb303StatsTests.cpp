@@ -202,6 +202,20 @@ HwPortStats getInitedStats() {
       0, // llrTxNackReplayEvent
       0, // llrTxTimerReplayEvent
       0, // llrTxError
+      0, // cbfcCcUpdateTx
+      0, // cbfcCfUpdateTx
+      0, // cbfcCfUpdateRx
+      {}, // cbfcVcSenderCreditsConsumed
+      {}, // cbfcVcSenderCreditsFreed
+      {}, // cbfcVcReceiverCreditsConsumed
+      {}, // cbfcVcReceiverCreditsFreed
+      0, // hwProtectionSwitchoverEvents
+      0, // hwProtectionSwitchoverDropPkts
+      {}, // fabricLinkMonitoringTxPackets_
+      {}, // fabricLinkMonitoringRxPackets_
+      {}, // fabricLinkMonitoringDroppedPackets_
+      {}, // fabricLinkMonitoringInvalidPayloadPackets_
+      {}, // fabricLinkMonitoringNoPendingSeqNumPackets_
   };
 }
 
@@ -538,10 +552,120 @@ TEST(HwPortFb303StatsTest, PhyChangedCountersClearedOnPortRename) {
   EXPECT_EQ(publishedSum(kLineRxSignalDetectChanged(), newPortName), 1);
 }
 
+// HW protection switchover counters are optional: only ports that report them
+// (TH5/TH6 on XGS 13.3+) update the timeseries.
+TEST(HwPortFb303StatsTest, HwProtectionSwitchoverCounters) {
+  const std::string portName = "eth1/1/7";
+  HwPortFb303Stats portStats(portName);
+  auto now = duration_cast<seconds>(system_clock::now().time_since_epoch());
+
+  HwPortStats baseline{};
+  baseline.hwProtectionSwitchoverEvents_() = 0;
+  baseline.hwProtectionSwitchoverDropPkts_() = 0;
+  HwPortStats inited = baseline;
+  inited.hwProtectionSwitchoverEvents_() = 5;
+  inited.hwProtectionSwitchoverDropPkts_() = 7;
+  portStats.updateStats(baseline, now);
+  portStats.updateStats(inited, now);
+
+  EXPECT_EQ(
+      portStats.getCounterLastIncrement(
+          HwPortFb303Stats::statName(
+              kHwProtectionSwitchoverEvents(), portName)),
+      5);
+  EXPECT_EQ(
+      portStats.getCounterLastIncrement(
+          HwPortFb303Stats::statName(
+              kHwProtectionSwitchoverDropPkts(), portName)),
+      7);
+}
+
+TEST(
+    HwPortFb303StatsTest,
+    LinkDownDuringWarmBootCounterPublishesBooleanWhenSupported) {
+  const std::string portName = "eth1/1/10";
+  HwPortFb303Stats portStats(
+      portName,
+      {} /*queueId2Name*/,
+      {} /*enabledPfcPriorities*/,
+      std::nullopt /*pfcCfg*/,
+      false /*inCongestionDiscardCountSupported*/,
+      false /*inCongestionDiscardSeenSupported*/,
+      false /*srv6MysidDiscardCounterSupported*/,
+      false /*mplsLabelLookupFailCounterSupported*/,
+      false /*linkDebounceRetriggerCounterSupported*/,
+      false /*sllHllDiscardCounterSupported*/,
+      true /*portLatchStatusSupported*/);
+
+  portStats.updateLinkDownDuringWarmBootCounter(true);
+  EXPECT_EQ(
+      fbData
+          ->getCounterIfExists(
+              HwPortFb303Stats::statName(kLinkDownDuringWarmBoot(), portName))
+          .value_or(-1),
+      1);
+
+  portStats.updateLinkDownDuringWarmBootCounter(false);
+  EXPECT_EQ(
+      fbData
+          ->getCounterIfExists(
+              HwPortFb303Stats::statName(kLinkDownDuringWarmBoot(), portName))
+          .value_or(-1),
+      0);
+}
+
+TEST(
+    HwPortFb303StatsTest,
+    LinkDownDuringWarmBootCounterInitializedOnlyWhenSupported) {
+  const std::string supportedPortName = "latch_supported_init";
+  HwPortFb303Stats supportedPortStats(
+      supportedPortName,
+      {} /*queueId2Name*/,
+      {} /*enabledPfcPriorities*/,
+      std::nullopt /*pfcCfg*/,
+      false /*inCongestionDiscardCountSupported*/,
+      false /*inCongestionDiscardSeenSupported*/,
+      false /*srv6MysidDiscardCounterSupported*/,
+      false /*mplsLabelLookupFailCounterSupported*/,
+      false /*linkDebounceRetriggerCounterSupported*/,
+      false /*sllHllDiscardCounterSupported*/,
+      true /*portLatchStatusSupported*/);
+  const auto supportedCounter = fbData->getCounterIfExists(
+      HwPortFb303Stats::statName(kLinkDownDuringWarmBoot(), supportedPortName));
+  ASSERT_TRUE(supportedCounter.has_value());
+  EXPECT_EQ(*supportedCounter, 0);
+
+  const std::string unsupportedPortName = "latch_unsupported_init";
+  HwPortFb303Stats unsupportedPortStats(unsupportedPortName);
+  EXPECT_FALSE(fbData
+                   ->getCounterIfExists(
+                       HwPortFb303Stats::statName(
+                           kLinkDownDuringWarmBoot(), unsupportedPortName))
+                   .has_value());
+}
+
+TEST(
+    HwPortFb303StatsTest,
+    LinkDownDuringWarmBootCounterNotCreatedWhenUnsupported) {
+  const std::string portName = "eth1/1/10";
+  HwPortFb303Stats portStats(portName);
+
+  portStats.updateLinkDownDuringWarmBootCounter(true);
+  EXPECT_FALSE(
+      fbData
+          ->getCounterIfExists(
+              HwPortFb303Stats::statName(kLinkDownDuringWarmBoot(), portName))
+          .has_value());
+}
+
 TEST(HwPortFb303StatsTest, StatName) {
   EXPECT_EQ(
       HwPortFb303Stats::statName(kOutBytes(), kPortName),
       folly::to<std::string>(kPortName, '.', kOutBytes()));
+  EXPECT_EQ(kLinkDownDuringWarmBoot().str(), "link_down_during_warmboot");
+  EXPECT_EQ(
+      HwPortFb303Stats::statName(kLinkDownDuringWarmBoot(), "eth1/1/10"),
+      "eth1/1/10.link_down_during_warmboot");
   EXPECT_EQ(
       HwPortFb303Stats::statName(kOutBytes(), kPortName, 1, "gold"),
       folly::to<std::string>(kPortName, '.', "queue1.gold.", kOutBytes()));

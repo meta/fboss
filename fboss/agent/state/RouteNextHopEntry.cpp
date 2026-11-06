@@ -45,6 +45,22 @@ DEFINE_double(ucmp_max_error, 0.05, "Max UCMP normalization error");
 
 namespace facebook::fboss {
 
+bool hasSrv6AndNonSrv6NextHops(const RouteNextHopSet& nextHops) {
+  bool hasSrv6 = false;
+  bool hasNonSrv6 = false;
+  for (const auto& nextHop : nextHops) {
+    if (nextHop.srv6SegmentList().empty()) {
+      hasNonSrv6 = true;
+    } else {
+      hasSrv6 = true;
+    }
+    if (hasSrv6 && hasNonSrv6) {
+      return true;
+    }
+  }
+  return false;
+}
+
 namespace util {
 
 namespace {
@@ -77,6 +93,7 @@ std::vector<NextHopThrift> combineDuplicateNextHops(
   std::vector<CombinedNextHop> combined;
   combined.reserve(nhs.size());
   std::map<NextHop, size_t> keyToIndex;
+  bool anyCombined = false;
 
   for (auto const& nh : nhs) {
     auto [it, inserted] = keyToIndex.emplace(
@@ -88,25 +105,30 @@ std::vector<NextHopThrift> combineDuplicateNextHops(
     auto& seen = combined.at(it->second);
     seen.weight += weightShare(nh);
     ++seen.occurrences;
+    anyCombined = true;
   }
 
   constexpr int64_t kMaxWeight = std::numeric_limits<int32_t>::max();
   std::vector<NextHopThrift> deduped;
   deduped.reserve(combined.size());
   for (auto& entry : combined) {
-    // A next hop listed once is left alone, so it keeps ECMP_WEIGHT.
-    if (entry.occurrences > 1) {
-      if (entry.weight > kMaxWeight) {
-        throw FbossError(
-            "Combined weight ",
-            entry.weight,
-            " over ",
-            entry.occurrences,
-            " duplicate next hops to ",
-            network::toIPAddress(*entry.nextHop.address()).str(),
-            " exceeds max weight ",
-            kMaxWeight);
-      }
+    if (entry.occurrences > 1 && entry.weight > kMaxWeight) {
+      throw FbossError(
+          "Combined weight ",
+          entry.weight,
+          " over ",
+          entry.occurrences,
+          " duplicate next hops to ",
+          network::toIPAddress(*entry.nextHop.address()).str(),
+          " exceeds max weight ",
+          kMaxWeight);
+    }
+    // Once anything has been combined, give every member its effective share
+    // so the resulting set explicitly represents the requested split. For
+    // example, one duplicated next hop and two distinct next hops become
+    // {2, 1, 1}. With nothing combined the set is left exactly as it came in,
+    // so passing the flag on an all-distinct group still gives ECMP.
+    if (anyCombined) {
       entry.nextHop.weight() = static_cast<int32_t>(entry.weight);
     }
     deduped.push_back(std::move(entry.nextHop));
@@ -186,6 +208,9 @@ UnicastRoute toUnicastRoute(
   if (nhopEntry.getClassID().has_value()) {
     thriftRoute.classID() = nhopEntry.getClassID().value();
   }
+  if (auto level = nhopEntry.getLevel()) {
+    thriftRoute.level() = level;
+  }
   if (nhopEntry.getAction() == RouteForwardAction::NEXTHOPS) {
     thriftRoute.nextHops() = fromRouteNextHopSet(nhops);
   }
@@ -209,7 +234,8 @@ RouteNextHopEntry::RouteNextHopEntry(
     std::optional<NextHopSet> overrideNextHops,
     std::optional<NextHopSetID> normalizedResolvedNextHopSetID,
     std::optional<NextHopSetID> resolvedNextHopSetID,
-    std::optional<NextHopSetID> clientNextHopSetID) {
+    std::optional<NextHopSetID> clientNextHopSetID,
+    std::optional<NextHopSetID> overrideNextHopSetID) {
   auto data = getRouteNextHopEntryThrift(
       action,
       distance,
@@ -220,7 +246,8 @@ RouteNextHopEntry::RouteNextHopEntry(
       overrideNextHops,
       normalizedResolvedNextHopSetID,
       resolvedNextHopSetID,
-      clientNextHopSetID);
+      clientNextHopSetID,
+      overrideNextHopSetID);
   this->fromThrift(std::move(data));
 }
 
@@ -233,7 +260,8 @@ RouteNextHopEntry::RouteNextHopEntry(
     std::optional<NextHopSet> overrideNextHops,
     std::optional<NextHopSetID> normalizedResolvedNextHopSetID,
     std::optional<NextHopSetID> resolvedNextHopSetID,
-    std::optional<NextHopSetID> clientNextHopSetID) {
+    std::optional<NextHopSetID> clientNextHopSetID,
+    std::optional<NextHopSetID> overrideNextHopSetID) {
   auto data = getRouteNextHopEntryThrift(
       Action::NEXTHOPS,
       distance,
@@ -244,7 +272,8 @@ RouteNextHopEntry::RouteNextHopEntry(
       overrideNextHops,
       normalizedResolvedNextHopSetID,
       resolvedNextHopSetID,
-      clientNextHopSetID);
+      clientNextHopSetID,
+      overrideNextHopSetID);
   this->fromThrift(std::move(data));
 }
 
@@ -257,7 +286,8 @@ RouteNextHopEntry::RouteNextHopEntry(
     std::optional<NextHopSet> overrideNextHops,
     std::optional<NextHopSetID> normalizedResolvedNextHopSetID,
     std::optional<NextHopSetID> resolvedNextHopSetID,
-    std::optional<NextHopSetID> clientNextHopSetID) {
+    std::optional<NextHopSetID> clientNextHopSetID,
+    std::optional<NextHopSetID> overrideNextHopSetID) {
   if (nhopSet.empty()) {
     throw FbossError("Empty nexthop set is passed to the RouteNextHopEntry");
   }
@@ -271,7 +301,8 @@ RouteNextHopEntry::RouteNextHopEntry(
       overrideNextHops,
       normalizedResolvedNextHopSetID,
       resolvedNextHopSetID,
-      clientNextHopSetID);
+      clientNextHopSetID,
+      overrideNextHopSetID);
   this->fromThrift(std::move(data));
 }
 
@@ -286,14 +317,15 @@ bool operator==(const RouteNextHopEntry& a, const RouteNextHopEntry& b) {
           a.getNextHopSet() == b.getNextHopSet() &&
           a.getAdminDistance() == b.getAdminDistance() &&
           a.getCounterID() == b.getCounterID() &&
-          a.getClassID() == b.getClassID() &&
+          a.getClassID() == b.getClassID() && a.getLevel() == b.getLevel() &&
           a.getOverrideEcmpSwitchingMode() ==
               b.getOverrideEcmpSwitchingMode() &&
           a.getOverrideNextHops() == b.getOverrideNextHops()) &&
       a.getNormalizedResolvedNextHopSetID() ==
       b.getNormalizedResolvedNextHopSetID() &&
       a.getResolvedNextHopSetID() == b.getResolvedNextHopSetID() &&
-      a.getClientNextHopSetID() == b.getClientNextHopSetID();
+      a.getClientNextHopSetID() == b.getClientNextHopSetID() &&
+      a.getOverrideNextHopSetID() == b.getOverrideNextHopSetID();
 }
 
 bool operator<(const RouteNextHopEntry& a, const RouteNextHopEntry& b) {
@@ -494,7 +526,7 @@ RouteNextHopEntry::NextHopSet RouteNextHopEntry::normalizeNextHops(
     // will prevent the nexthop from being identified as unique
     normalizedNextHops.insert(ResolvedNextHop(
         nhop.addr(),
-        nhop.intf(),
+        nhop.intfID(),
         std::max(nhop.weight(), NextHopWeight(1)),
         nhop.labelForwardingAction(),
         nhop.disableTTLDecrement(),
@@ -504,7 +536,10 @@ RouteNextHopEntry::NextHopSet RouteNextHopEntry::normalizeNextHops(
         nhop.tunnelType(),
         nhop.tunnelId(),
         nhop.cost(),
-        nhop.role()));
+        nhop.role(),
+        nhop.vrf(),
+        nhop.resolvedInNextLevel(),
+        nhop.overlayDstMac()));
   }
   // 2)
   // Calculate the totalWeight. If that exceeds the max ecmp width, we use the
@@ -546,7 +581,7 @@ RouteNextHopEntry::NextHopSet RouteNextHopEntry::normalizeNextHops(
         if (weight) {
           scaledNextHops.insert(ResolvedNextHop(
               nhop.addr(),
-              nhop.intf(),
+              nhop.intfID(),
               weight,
               nhop.labelForwardingAction(),
               nhop.disableTTLDecrement(),
@@ -556,7 +591,10 @@ RouteNextHopEntry::NextHopSet RouteNextHopEntry::normalizeNextHops(
               nhop.tunnelType(),
               nhop.tunnelId(),
               nhop.cost(),
-              nhop.role()));
+              nhop.role(),
+              nhop.vrf(),
+              nhop.resolvedInNextLevel(),
+              nhop.overlayDstMac()));
           scaledTotalWeight += weight;
         }
         index++;
@@ -571,7 +609,7 @@ RouteNextHopEntry::NextHopSet RouteNextHopEntry::normalizeNextHops(
             NextHopWeight(1));
         scaledNextHops.insert(ResolvedNextHop(
             nhop.addr(),
-            nhop.intf(),
+            nhop.intfID(),
             w,
             nhop.labelForwardingAction(),
             nhop.disableTTLDecrement(),
@@ -581,7 +619,10 @@ RouteNextHopEntry::NextHopSet RouteNextHopEntry::normalizeNextHops(
             nhop.tunnelType(),
             nhop.tunnelId(),
             nhop.cost(),
-            nhop.role()));
+            nhop.role(),
+            nhop.vrf(),
+            nhop.resolvedInNextLevel(),
+            nhop.overlayDstMac()));
         scaledTotalWeight += w;
       }
       // 2c)
@@ -603,7 +644,7 @@ RouteNextHopEntry::NextHopSet RouteNextHopEntry::normalizeNextHops(
           // create a clone of the max weight next hop with weight decremented
           ResolvedNextHop decMax = ResolvedNextHop(
               maxItr->addr(),
-              maxItr->intf(),
+              maxItr->intfID(),
               maxItr->weight() - 1,
               maxItr->labelForwardingAction(),
               maxItr->disableTTLDecrement(),
@@ -613,7 +654,10 @@ RouteNextHopEntry::NextHopSet RouteNextHopEntry::normalizeNextHops(
               maxItr->tunnelType(),
               maxItr->tunnelId(),
               maxItr->cost(),
-              maxItr->role());
+              maxItr->role(),
+              maxItr->vrf(),
+              maxItr->resolvedInNextLevel(),
+              maxItr->overlayDstMac());
           // remove the max weight next hop and replace with the
           // decremented version, if the decremented version would
           // not have weight 0. If it would have weight 0, that means
@@ -645,7 +689,7 @@ RouteNextHopEntry::NextHopSet RouteNextHopEntry::normalizeNextHops(
     for (const auto& nhop : normalizedNextHops) {
       normalizedToMaxPathNextHops.insert(ResolvedNextHop(
           nhop.addr(),
-          nhop.intf(),
+          nhop.intfID(),
           nhopWeights.at(idx++),
           nhop.labelForwardingAction(),
           nhop.disableTTLDecrement(),
@@ -655,7 +699,10 @@ RouteNextHopEntry::NextHopSet RouteNextHopEntry::normalizeNextHops(
           nhop.tunnelType(),
           nhop.tunnelId(),
           nhop.cost(),
-          nhop.role()));
+          nhop.role(),
+          nhop.vrf(),
+          nhop.resolvedInNextLevel(),
+          nhop.overlayDstMac()));
     }
     XLOG(DBG3) << "Scaled next hops from " << nhopSet << " to "
                << normalizedToMaxPathNextHops;
@@ -878,7 +925,8 @@ state::RouteNextHopEntry RouteNextHopEntry::getRouteNextHopEntryThrift(
     const std::optional<RouteNextHopSet>& overrideNextHops,
     const std::optional<NextHopSetID>& normalizedResolvedNextHopSetID,
     const std::optional<NextHopSetID>& resolvedNextHopSetID,
-    const std::optional<NextHopSetID>& clientNextHopSetID) {
+    const std::optional<NextHopSetID>& clientNextHopSetID,
+    const std::optional<NextHopSetID>& overrideNextHopSetID) {
   state::RouteNextHopEntry entry{};
   entry.adminDistance() = distance;
   entry.action() = action;
@@ -907,6 +955,9 @@ state::RouteNextHopEntry RouteNextHopEntry::getRouteNextHopEntryThrift(
   if (clientNextHopSetID) {
     entry.clientNextHopSetID() = static_cast<int64_t>(*clientNextHopSetID);
   }
+  if (overrideNextHopSetID) {
+    entry.overrideNextHopSetID() = static_cast<int64_t>(*overrideNextHopSetID);
+  }
   return entry;
 }
 
@@ -922,6 +973,11 @@ void RouteNextHopEntry::setNextHops(const NextHopSet& nhops) {
   }
   ref<switch_state_tags::action>() = Action::NEXTHOPS;
   set<switch_state_tags::nexthops>(util::fromRouteNextHopSet(nhops));
+}
+
+void RouteNextHopEntry::clearInlineNextHops() {
+  // Bypasses setNextHops, which rejects an empty set.
+  set<switch_state_tags::nexthops>(util::fromRouteNextHopSet(NextHopSet{}));
 }
 
 bool RouteNextHopEntry::hasOverrideSwitchingModeOrNhops() const {

@@ -1713,17 +1713,17 @@ class AgentSflowMirrorRemoteSystemPortTest
   }
 };
 
-using AgentSflowMirrorUntruncateTestV4 =
+using AgentSflowMirrorUntruncateV4Test =
     AgentSflowMirrorUntruncateTest<folly::IPAddressV4>;
-using AgentSflowMirrorUntruncateTestV6 =
+using AgentSflowMirrorUntruncateV6Test =
     AgentSflowMirrorUntruncateTest<folly::IPAddressV6>;
-using AgentSflowMirrorTruncateTestV4 =
+using AgentSflowMirrorTruncateV4Test =
     AgentSflowMirrorTruncateTest<folly::IPAddressV4>;
-using AgentSflowMirrorTruncateTestV6 =
+using AgentSflowMirrorTruncateV6Test =
     AgentSflowMirrorTruncateTest<folly::IPAddressV6>;
-using AgentSflowMirrorOnTrunkTestV4 =
+using AgentSflowMirrorOnTrunkV4Test =
     AgentSflowMirrorOnTrunkTest<folly::IPAddressV4>;
-using AgentSflowMirrorOnTrunkTestV6 =
+using AgentSflowMirrorOnTrunkV6Test =
     AgentSflowMirrorOnTrunkTest<folly::IPAddressV6>;
 
 #define SFLOW_SAMPLING_TEST(fixture, name, code) \
@@ -1734,16 +1734,16 @@ using AgentSflowMirrorOnTrunkTestV6 =
   }
 
 #define SFLOW_SAMPLING_UNTRUNCATE_TEST_V4_V6(name, code)            \
-  SFLOW_SAMPLING_TEST(AgentSflowMirrorUntruncateTestV4, name, code) \
-  SFLOW_SAMPLING_TEST(AgentSflowMirrorUntruncateTestV6, name, code)
+  SFLOW_SAMPLING_TEST(AgentSflowMirrorUntruncateV4Test, name, code) \
+  SFLOW_SAMPLING_TEST(AgentSflowMirrorUntruncateV6Test, name, code)
 
 #define SFLOW_SAMPLING_TRUNCATE_TEST_V4_V6(name, code)            \
-  SFLOW_SAMPLING_TEST(AgentSflowMirrorTruncateTestV4, name, code) \
-  SFLOW_SAMPLING_TEST(AgentSflowMirrorTruncateTestV6, name, code)
+  SFLOW_SAMPLING_TEST(AgentSflowMirrorTruncateV4Test, name, code) \
+  SFLOW_SAMPLING_TEST(AgentSflowMirrorTruncateV6Test, name, code)
 
 #define SFLOW_SAMPLING_TRUNK_TEST_V4_V6(name, code)              \
-  SFLOW_SAMPLING_TEST(AgentSflowMirrorOnTrunkTestV4, name, code) \
-  SFLOW_SAMPLING_TEST(AgentSflowMirrorOnTrunkTestV6, name, code)
+  SFLOW_SAMPLING_TEST(AgentSflowMirrorOnTrunkV4Test, name, code) \
+  SFLOW_SAMPLING_TEST(AgentSflowMirrorOnTrunkV6Test, name, code)
 
 SFLOW_SAMPLING_UNTRUNCATE_TEST_V4_V6(VerifySampledPacket, {
   this->testSampledPacket();
@@ -1956,7 +1956,7 @@ TEST_F(AgentSflowMirrorAddressFamilySwitchingTest, MoveToV4) {
   verifyAcrossWarmBoots(setup, verify, setupPostWb, verifyPostWb);
 }
 
-TEST_F(AgentSflowMirrorTruncateTestV6, verifyL4SrcPortRandomization) {
+TEST_F(AgentSflowMirrorTruncateV6Test, verifyL4SrcPortRandomization) {
   auto setup = [=, this]() {
     auto config = initialConfig(*getAgentEnsemble());
     configureMirrorWithSampling(

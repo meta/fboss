@@ -22,6 +22,8 @@ repos:
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
+        # asic_config generated outputs carry no trailing newline by design.
+        exclude: ^fboss/configs/platforms/[^/]+/[^/]+/asic_config/generated/
       - id: check-yaml
         # asic_config generated outputs are multi-document YAML with complex
         # mapping keys that PyYAML cannot load; they are generated artifacts.
@@ -53,6 +55,13 @@ repos:
 
   - repo: local
     hooks:
+      - id: fboss-copyright-headers
+        name: Check copyright headers in new FBOSS C/C++ files
+        language: system
+        entry: python3 fboss/oss/scripts/check_copyright_headers.py
+        files: ^fboss/.*\.(c|cc|cpp|h|hh|hpp)$
+        pass_filenames: true
+
       - id: do-not-change-fboss-manifests
         name: Prevent sai_impl in fboss manifest
         language: system

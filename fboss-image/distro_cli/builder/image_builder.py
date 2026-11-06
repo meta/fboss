@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import ClassVar
 
 from distro_cli.builder.component import ComponentBuilder
+from distro_cli.lib import version_file
 from distro_cli.lib.artifact import ArtifactStore, find_artifact_in_dir
 from distro_cli.lib.constants import FBOSS_BUILDER_IMAGE, IMAGE_COMPONENTS
 from distro_cli.lib.docker.container import run_container
@@ -25,6 +26,10 @@ from distro_cli.lib.paths import get_abs_path
 
 logger = logging.getLogger(__name__)
 
+# Set by whoever launches the build; the container cannot work it out itself.
+SOURCE_REVISION_VAR = "FBOSS_SOURCE_REVISION"
+
+
 # Component-specific artifact patterns
 # These are used when the manifest doesn't specify an "artifact" field
 # Patterns use base .tar extension - the artifact finder will automatically
@@ -33,8 +38,8 @@ COMPONENT_ARTIFACT_PATTERNS = {
     "kernel": "kernel-*.rpms.tar",
     "npu_sai": "sai-*.tar",
     "phy_sai": "phy_sai-*.tar",
-    "fboss-platform-stack": "fboss-platform-stack-*.tar",
-    "fboss-forwarding-stack": "fboss-forwarding-stack-*.tar",
+    "fboss-platform-stack": "platform-stack*.tar",
+    "fboss-forwarding-stack": "forwarding-stack*.tar",
     "bsps": "bsp-*.tar",
     "other_dependencies": "*.rpm",
 }
@@ -116,7 +121,17 @@ class ImageBuilder:
         self.compress_artifacts = False
 
     def _source_revision(self) -> str:
-        """Best-effort source revision of the tree this manifest came from."""
+        """Best-effort source revision of the tree this manifest came from.
+
+        The environment is asked first because the build container has no
+        revision to probe -- the source is bind mounted without its VCS
+        metadata, and sl is not installed -- so whoever launched the build is
+        the only one that knows.
+        """
+        declared = os.environ.get(SOURCE_REVISION_VAR, "").strip()
+        if declared:
+            return declared
+
         for cmd in (["sl", "id", "-i"], ["git", "rev-parse", "HEAD"]):
             try:
                 result = subprocess.run(
@@ -151,6 +166,50 @@ class ImageBuilder:
         provenance_file = self.image_builder_dir / "build-provenance"
         provenance_file.write_text("\n".join(lines) + "\n")
         logger.info(f"Recorded build provenance in {provenance_file}")
+
+    def _report_version_conflicts(self) -> None:
+        """Report evidence that disagreed, after the build rather than during it.
+
+        A warning logged while artifacts are still being read scrolls past
+        behind the image build; repeating it here is the only place it is read.
+        The image is still produced, because the record is what diagnoses the
+        mismatch -- but its parts are not known to work together.
+        """
+        conflicts = getattr(self, "_version_conflicts", [])
+        if not conflicts:
+            return
+
+        logger.warning(
+            f"{len(conflicts)} version disagreement(s) in this image; its parts "
+            f"may not work together. See {version_file.FILE_NAME}:"
+        )
+        for conflict in conflicts:
+            logger.warning(f"  {conflict}")
+
+    def _write_version_file(self) -> None:
+        """Write the one file describing what this image was assembled from.
+
+        Written before the image is built, because that is the only way it can
+        be in it: the container copies it into the rootfs, and by the time the
+        images exist the rootfs is sealed. So this records what the image was
+        assembled from and not the image's own checksum, which could not be read
+        from inside the image anyway.
+        """
+        record, self._version_conflicts = version_file.build(
+            manifest_path=self.manifest.manifest_path,
+            manifest_data=self.manifest.data,
+            component_artifacts=self.component_artifacts,
+            source_revision=self._source_revision(),
+        )
+
+        # Handed to the container the same way build-provenance is, rather than
+        # into the checked-in rootfs template: a generated file does not belong
+        # in source, and one left there would ship in the *next* image.
+        destinations = [self.image_builder_dir / version_file.FILE_NAME]
+        if self.output_dir:
+            destinations.append(self.output_dir / version_file.FILE_NAME)
+
+        version_file.write(record, destinations)
 
     def _compress_artifact(self, artifact_path: Path, component_name: str) -> Path:
         """Compress artifact using zstd."""
@@ -325,6 +384,7 @@ class ImageBuilder:
 
         self._stage_component_artifacts()
         self._write_build_provenance()
+        self._write_version_file()
 
         command = [
             "/image_builder/bin/build_image_in_container.sh",
@@ -397,6 +457,8 @@ class ImageBuilder:
             self._move_distro_file("usb", "iso")
             self._move_distro_file("pxe", "tar")
             self._move_distro_file("onie", "bin")
+
+            self._report_version_conflicts()
 
             logger.info("Finished base OS image build")
         finally:

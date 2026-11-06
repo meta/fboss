@@ -112,6 +112,12 @@ struct SaiMacAddressDefault {
   }
 };
 
+struct SaiMacAddressExactMatchMaskDefault {
+  folly::MacAddress operator()() const {
+    return folly::MacAddress::BROADCAST;
+  }
+};
+
 template <typename SaiIntRangeT>
 struct SaiIntRangeDefault {
   SaiIntRangeT operator()() const {
@@ -231,6 +237,7 @@ struct SaiIpAddressDefault {
 
 using SaiObjectIdListDefault = SaiListDefault<sai_object_list_t>;
 using SaiU32ListDefault = SaiListDefault<sai_u32_list_t>;
+using SaiS32ListDefault = SaiListDefault<sai_s32_list_t>;
 using SaiS8ListDefault = SaiListDefault<sai_s8_list_t>;
 
 } // namespace facebook::fboss

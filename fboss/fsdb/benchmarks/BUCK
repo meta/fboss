@@ -1,4 +1,5 @@
 load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
+load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 
 oncall("fboss_agent_push")
@@ -27,17 +28,17 @@ cpp_library(
         "FsdbBenchmarkTestHelper.h",
     ],
     deps = [
+        "fbsource//xplat/folly:subprocess",
+        "fbsource//xplat/folly:utility",
+        "fbsource//xplat/folly/system:hardware_concurrency",
         "//fboss/thrift_cow/nodes:nodes",
-        "//folly:subprocess",
-        "//folly:utility",
-        "//folly/system:hardware_concurrency",
         "//thrift/lib/cpp2/op:get",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/executors:io_thread_pool_executor",
+        "fbsource//xplat/folly/synchronization:baton",
         "//fboss/fsdb/client:fsdb_pub_sub",
         "//fboss/fsdb/tests/utils:fsdb_test_server",
-        "//folly/executors:io_thread_pool_executor",
-        "//folly/synchronization:baton",
     ],
     exported_external_deps = [
         "gflags",
@@ -53,12 +54,12 @@ cpp_benchmark(
     deps = [
         "fbsource//third-party/fmt:fmt",
         "fbsource//third-party/googletest:gtest",
-        "//folly:benchmark",
-        "//folly:subprocess",
-        "//folly/init:init",
-        "//folly/json:dynamic",
-        "//folly/logging:init",
-        "//folly/logging:logging",
+        "fbsource//xplat/folly:benchmark",
+        "fbsource//xplat/folly:subprocess",
+        "fbsource//xplat/folly/init:init",
+        "fbsource//xplat/folly/json:dynamic",
+        "fbsource//xplat/folly/logging:init",
+        "fbsource//xplat/folly/logging:logging",
     ],
     external_deps = [
         "gflags",
@@ -78,6 +79,16 @@ cpp_benchmark(
     deps = [
         "fbsource//third-party/glog:glog",
         "fbsource//third-party/googletest:gtest",
+        "fbsource//xplat/folly:benchmark",
+        "fbsource//xplat/folly:conv",
+        "fbsource//xplat/folly:scope_guard",
+        "fbsource//xplat/folly:synchronized",
+        "fbsource//xplat/folly/init:init",
+        "fbsource//xplat/folly/json:dynamic",
+        "fbsource//xplat/folly/logging:init",
+        "fbsource//xplat/folly/logging:logging",
+        "fbsource//xplat/folly/synchronization:baton",
+        "fbsource//xplat/folly/synchronization:latch",
         ":fsdb_benchmark_helper",
         ":state_generator",
         "//fboss/agent:switch_state-cpp2-types",
@@ -86,17 +97,46 @@ cpp_benchmark(
         "//fboss/fsdb/tests/utils:fsdb_test_server",
         "//fboss/lib:common_file_utils",
         "//fboss/lib/thrift_service_client:thrift-service-client",
-        "//folly:benchmark",
-        "//folly:conv",
-        "//folly:scope_guard",
-        "//folly:synchronized",
-        "//folly/init:init",
-        "//folly/json:dynamic",
-        "//folly/logging:init",
-        "//folly/logging:logging",
-        "//folly/synchronization:baton",
-        "//folly/synchronization:latch",
         "//thrift/lib/cpp2/op:get",
+    ],
+    external_deps = [
+        "gflags",
+    ],
+)
+
+cpp_benchmark(
+    name = "subscribable_storage_memory_bench",
+    srcs = [
+        "SubscribableStorageMemoryBench.cpp",
+    ],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        "fbsource//third-party/glog:glog",
+        "fbsource//xplat/folly:benchmark",
+        "fbsource//xplat/folly/init:init",
+        "fbsource//xplat/folly/logging:log_level",
+        "fbsource//xplat/folly/logging:logging",
+        "//fboss/fsdb/oper/instantiations:fsdb_naive_periodic_subscribable_storage",
+        "//fboss/thrift_cow/storage/tests:benchmark_helper",
+        "//fboss/thrift_cow/storage/tests:data_factory",
+    ],
+    external_deps = [
+        "gflags",
+    ],
+)
+
+cpp_binary(
+    name = "subscribable_storage_serve_cpu_bench",
+    srcs = [
+        "SubscribableStorageServeCpuBench.cpp",
+    ],
+    deps = [
+        "fbsource//third-party/glog:glog",
+        "fbsource//xplat/folly/init:init",
+        "fbsource//xplat/folly/logging:log_level",
+        "fbsource//xplat/folly/logging:logging",
+        "//fboss/fsdb/oper/instantiations:fsdb_naive_periodic_subscribable_storage",
+        "//fboss/thrift_cow/storage/tests:data_factory",
     ],
     external_deps = [
         "gflags",

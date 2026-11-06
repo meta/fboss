@@ -20,7 +20,7 @@ CmdSetTransceiverLoopback::RetType CmdSetTransceiverLoopback::queryClient(
     const ObjectArgType& action) {
   if (queriedPorts.empty()) {
     return "Error: at least one port must be specified\n"
-           "Usage: set transceiver <port> loopback <system|line> <enable|disable>\n"
+           "Usage: set transceiver <port> loopback <system|line> [input|output] <enable|disable>\n"
            "       set transceiver <port> loopback disable\n";
   }
 

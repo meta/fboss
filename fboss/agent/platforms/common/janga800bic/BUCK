@@ -12,7 +12,7 @@ cpp_library(
         "Janga800bicProdPlatformMapping.h",
         "Janga800bicTestPlatformMapping.h",
     ],
-    deps = ["//folly/logging:logging"],
+    deps = ["fbsource//xplat/folly/logging:logging"],
     exported_deps = [
         "//fboss/agent:agent_features",
         "//fboss/agent/platforms/common:platform_mapping",

@@ -489,6 +489,14 @@ class SwSwitch : public HwSwitchCallback {
       const;
 
   /*
+   * Same check, but leaves the resource accounting untouched. For callers that
+   * validate inside an update function, since applyUpdate validates again.
+   */
+  bool isValidStateUpdateDryRun(
+      const StateDelta& delta,
+      SwitchStats* stats = nullptr) const;
+
+  /*
    * Get the PortStats for the specified port.
    *
    * Note that this returns a thread-local object specific to the current
@@ -1153,6 +1161,13 @@ class SwSwitch : public HwSwitchCallback {
       const std::shared_ptr<SwitchState>& emptyState,
       const std::shared_ptr<SwitchState>& initialState);
 
+  // On warm boot, applies the RIB to the state if RIB reconstruct merged or
+  // backfilled NextHop ids, so the state carries the RIB's ids.
+  std::shared_ptr<SwitchState> syncNextHopIDsToFIB(
+      const std::shared_ptr<SwitchState>& state);
+  // Copies ECMP overrides that manager reconstruct changed into the RIB.
+  void syncRibEcmpOverrides(const StateDelta& delta);
+
   void logLinkStateEvent(PortID port, bool up);
 
   void logSwitchRunStateChange(
@@ -1189,6 +1204,9 @@ class SwSwitch : public HwSwitchCallback {
   std::unique_ptr<AgentConfig> loadConfig();
 
   void applyConfigImpl(
+      const std::string& reason,
+      const cfg::SwitchConfig& newConfig);
+  void applyDeferredVrfChanges(
       const std::string& reason,
       const cfg::SwitchConfig& newConfig);
 

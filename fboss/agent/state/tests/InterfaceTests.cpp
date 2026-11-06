@@ -61,6 +61,7 @@ class InterfaceTest : public ::testing::Test {
     *intfConfig->intfID() = 1;
     *intfConfig->vlanID() = 1;
     *intfConfig->routerID() = 1;
+    config.vrfs().ensure().emplace_back().vrfId() = 1;
     intfConfig->ipAddresses()->resize(4 + intfLinkLocals.size());
     auto idx = 0;
     intfConfig->ipAddresses()[idx++] = "10.1.1.1/24";
@@ -79,6 +80,7 @@ class InterfaceTest : public ::testing::Test {
     *intfConfig->intfID() = 2;
     *intfConfig->vlanID() = 2;
     *intfConfig->routerID() = 2;
+    config.vrfs().ensure().emplace_back().vrfId() = 2;
     intfConfig->ipAddresses()->resize(4);
     intfConfig->ipAddresses()[0] = "10.1.1.1/24";
     intfConfig->ipAddresses()[1] = "20.1.1.2/24";
@@ -103,6 +105,7 @@ class InterfaceTest : public ::testing::Test {
       portIntf.type() = cfg::InterfaceType::PORT;
       portIntf.portID() = *port.logicalID();
       portIntf.routerID() = *port.logicalID();
+      config.vrfs().ensure().emplace_back().vrfId() = *port.logicalID();
       portIntf.name() = folly::to<std::string>("port-", *port.logicalID());
       portIntf.ipAddresses()->emplace_back("10.1.1.1/24");
       portIntf.ipAddresses()->emplace_back("20.1.1.2/24");
@@ -437,6 +440,7 @@ TEST(Interface, applyConfig) {
 
   // routerID change
   *config.interfaces()[1].routerID() = 1;
+  config.vrfs().ensure().emplace_back().vrfId() = 1;
   updateState();
   EXPECT_EQ(nodeID, interface->getNodeID());
   EXPECT_EQ(oldInterface->getGeneration() + 1, interface->getGeneration());

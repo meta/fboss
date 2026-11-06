@@ -332,6 +332,17 @@ PfcBufferParams PfcBufferParams::getPfcBufferParams(
     buffer.minLimit = 4200; // 10 cells * 420 bytes
     buffer.pgHeadroom = 4200;
     buffer.resumeOffset = 2100; // 5 cells * 420 bytes
+  } else if (asicType == cfg::AsicType::ASIC_TYPE_TOMAHAWKULTRA1) {
+    // TU1 low-latency MMU admits lossless packets against worst-case MTU
+    // (~169 cells); PG headroom must clear it or packets statically reject
+    // instead of triggering XOFF. Pool carries SDK defaults (5486 shared +
+    // 39516 headroom per buffer x33), which program single-step inside the
+    // [40540, 46026] window; smaller pools need two-step.
+    buffer.globalShared = 10138128; // 5486 cells * 33 * 56
+    buffer.globalHeadroom = 73025568; // 39516 cells * 33 * 56
+    buffer.minLimit = 2240; // 40 cells * 56 bytes
+    buffer.pgHeadroom = 11200; // 200 cells * 56 bytes
+    buffer.resumeOffset = 1800; // less than pgHeadroom
   } else {
     buffer.minLimit = 2200;
     buffer.pgHeadroom = 2200; // keep this lower than globalShared (why?)

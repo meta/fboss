@@ -6,6 +6,7 @@
 
 #include <fmt/format.h>
 #include <folly/Conv.h>
+#include <folly/FileUtil.h>
 #include <folly/String.h>
 #include <folly/logging/xlog.h>
 #include <range/v3/range/conversion.hpp>
@@ -154,44 +155,19 @@ bool SystemInterface::isRpmInstalled(const std::string& rpmFullName) const {
   return exitStatus == 0;
 }
 
-std::optional<BspVersion> SystemInterface::getInstalledBspVersion(
-    const std::string& rpmBaseName) const {
-  const auto kernelVersion = getHostKernelVersion();
-  if (kernelVersion.empty()) {
+std::optional<std::string> SystemInterface::getBoundDriverVersion(
+    const std::string& devicePath) const {
+  std::string version;
+  if (!folly::readFile(
+          fmt::format("{}/driver/module/version", devicePath).c_str(),
+          version)) {
     return std::nullopt;
   }
-  // An installed BSP kmods RPM's full package name is laid out as
-  //   {rpmBaseName}-{kernelVersion}-{bspVersion}-{release}.{arch}
-  // uname -r pins the {kernelVersion} segment exactly, so the version token
-  // immediately following that prefix is the BSP version for this kernel.
-  const auto prefix = fmt::format("{}-{}-", rpmBaseName, kernelVersion);
-  for (const auto& rpm : getInstalledRpms(rpmBaseName)) {
-    if (!rpm.starts_with(prefix)) {
-      continue;
-    }
-    auto remainder =
-        rpm.substr(prefix.size()); // "{bspVersion}-{release}.{arch}"
-    auto bspVersionStr = remainder.substr(0, remainder.find('-'));
-    auto bspVersion = BspVersion::fromString(bspVersionStr);
-    if (!bspVersion) {
-      XLOG(ERR) << fmt::format(
-          "Failed to parse BSP version from {} (token '{}')",
-          rpm,
-          bspVersionStr);
-      return std::nullopt;
-    }
-    XLOG(INFO) << fmt::format(
-        "Resolved installed BSP version {} from {} (kernel {})",
-        bspVersionStr,
-        rpm,
-        kernelVersion);
-    return bspVersion;
+  auto trimmed = folly::trimWhitespace(version);
+  if (trimmed.empty()) {
+    return std::nullopt;
   }
-  XLOG(ERR) << fmt::format(
-      "No installed {} RPM matched running kernel {}",
-      rpmBaseName,
-      kernelVersion);
-  return std::nullopt;
+  return std::string(trimmed);
 }
 
 } // namespace package_manager

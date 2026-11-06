@@ -124,6 +124,7 @@ typedef enum _sai_switch_extensions_attr_t {
   SAI_SWITCH_ATTR_SDK_DUMP_SUPPRESSED_COUNT,
   SAI_SWITCH_ATTR_EXT_PACKET_DROP_TYPE_INGRESS_LIST,
   SAI_SWITCH_ATTR_EXT_PACKET_DROP_TYPE_EGRESS_LIST,
+  SAI_SWITCH_ATTR_ACL_DROP_SNOOP_DISABLED,
 } sai_switch_extensions_attr_t;
 
 typedef enum _sai_tam_event_extensions_attr_t {
@@ -168,6 +169,7 @@ typedef enum _sai_port_extensions_attr_t {
   SAI_PORT_ATTR_EXT_PFC_PAUSE_DURATION_OVERRIDE,
   SAI_PORT_ATTR_CABLE_PROPAGATION_DELAY_MEASURE,
   SAI_PORT_ATTR_EXT_LINKSCAN_MODE,
+  SAI_PORT_ATTR_EXT_FAKE_OPER_STATUS_LATCH,
 } sai_port_extensions_attr_t;
 
 typedef enum _sai_ingress_priority_group_extensions_attr_t {
@@ -196,9 +198,6 @@ typedef enum _sai_ars_profile_extensions_attr_t {
   SAI_ARS_PROFILE_ATTR_EXTENSION_ECMP_ARS_MAX_GROUPS =
       SAI_ARS_PROFILE_ATTR_CUSTOM_RANGE_START,
   SAI_ARS_PROFILE_ATTR_EXTENSION_ECMP_ARS_BASE_INDEX,
-  SAI_ARS_PROFILE_ATTR_ROUTE_ARS_ALTERNATE_MEMBERS_META_DATA,
-  SAI_ARS_PROFILE_ATTR_ROUTE_ARS_META_DATA_MASK,
-  SAI_ARS_PROFILE_ATTR_ROUTE_ARS_PRIMARY_MEMBERS_META_DATA,
   SAI_ARS_PROFILE_ATTR_EXTENSION_ECMP_MEMBER_COUNT,
 } sai_ars_profile_extensions_attr_t;
 
@@ -206,6 +205,7 @@ typedef enum _sai_ars_extensions_attr_t {
   SAI_ARS_ATTR_EXTENSION_NEXT_HOP_GROUP_TYPE = SAI_ARS_ATTR_CUSTOM_RANGE_START,
   SAI_ARS_ATTR_EXTENSION_SOURCE_PORT_PRUNE,
   SAI_ARS_ATTR_EXTENSION_ECMP_MEMBER_COUNT,
+  SAI_ARS_ATTR_EXTENSION_COMMON_MEMBERS_THRESHOLD_COUNT,
 } sai_ars_extensions_attr_t;
 
 typedef enum _sai_ars_next_hop_group_type_t {
@@ -218,6 +218,10 @@ typedef enum _sai_acl_entry_extensions_attr_t {
       SAI_ACL_ENTRY_ATTR_CUSTOM_RANGE_START,
   SAI_ACL_ENTRY_ATTR_FIELD_ROUTE_DST,
 } sai_acl_entry_extensions_attr_t;
+
+typedef enum _sai_acl_table_extensions_attr_t {
+  SAI_ACL_TABLE_ATTR_FIELD_ROUTE_DST = SAI_ACL_TABLE_ATTR_CUSTOM_RANGE_START,
+} sai_acl_table_extensions_attr_t;
 
 #define SAI_ACL_ACTION_TYPE_L3_SWITCH_CANCEL \
   SAI_ACL_ENTRY_ATTR_ACTION_L3_SWITCH_CANCEL

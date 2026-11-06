@@ -10,7 +10,7 @@
 #include "fboss/lib/i2c/I2cDevIo.h"
 #include <errno.h>
 #include <fcntl.h>
-#include <folly/Format.h>
+#include <folly/String.h>
 #include <folly/logging/xlog.h>
 #include <linux/i2c-dev.h>
 #include <linux/i2c.h>

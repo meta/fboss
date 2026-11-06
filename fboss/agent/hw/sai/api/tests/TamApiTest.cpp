@@ -1,6 +1,9 @@
 // Copyright 2004-present Facebook. All Rights Reserved.
 
+#include <type_traits>
+
 #include <folly/MacAddress.h>
+#include <folly/container/F14Map.h>
 #include <folly/logging/xlog.h>
 #include <gtest/gtest.h>
 
@@ -45,6 +48,18 @@ TEST_F(TamApiTest, TamCollectorV4) {
       tamApi->getAttribute(
           collectorSaiId, SaiTamCollectorTraits::CreateAttributes{}),
       collectorAttr);
+#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
+  auto unsupported = std::tuple{
+      std::optional<SaiTamCollectorTraits::Attributes::SrcMacAddress>{},
+      std::optional<SaiTamCollectorTraits::Attributes::DstMacAddress>{},
+      std::optional<SaiTamCollectorTraits::Attributes::Destination>{}};
+  EXPECT_EQ(tamApi->getAttribute(collectorSaiId, unsupported), unsupported);
+#endif
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 0)
+  auto localhost =
+      std::optional<SaiTamCollectorTraits::Attributes::Localhost>{};
+  EXPECT_FALSE(tamApi->getAttribute(collectorSaiId, localhost).has_value());
+#endif
   tamApi->remove(collectorSaiId);
   EXPECT_THROW(
       tamApi->getAttribute(
@@ -66,6 +81,35 @@ TEST_F(TamApiTest, TamCollectorV6) {
       transportSaiObjectId;
   std::get<std::optional<SaiTamCollectorTraits::Attributes::DscpValue>>(
       collectorAttr) = 0;
+#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
+  std::get<std::optional<SaiTamCollectorTraits::Attributes::SrcMacAddress>>(
+      collectorAttr) = folly::MacAddress{"00:00:00:00:00:01"};
+  std::get<std::optional<SaiTamCollectorTraits::Attributes::DstMacAddress>>(
+      collectorAttr) = folly::MacAddress{"00:00:00:00:00:02"};
+  std::get<std::optional<SaiTamCollectorTraits::Attributes::Destination>>(
+      collectorAttr) = sai_object_id_t{42};
+
+  const auto verifyMacLookup = [](const auto& attribute) {
+    using Attribute = std::decay_t<decltype(attribute)>;
+    folly::F14FastMap<std::optional<Attribute>, int> entries;
+    entries.emplace(attribute, 1);
+    const auto found = entries.find(Attribute{attribute.value()});
+    ASSERT_NE(found, entries.end());
+    EXPECT_EQ(found->second, 1);
+  };
+  verifyMacLookup(
+      std::get<std::optional<SaiTamCollectorTraits::Attributes::SrcMacAddress>>(
+          collectorAttr)
+          .value());
+  verifyMacLookup(
+      std::get<std::optional<SaiTamCollectorTraits::Attributes::DstMacAddress>>(
+          collectorAttr)
+          .value());
+#endif
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 0)
+  std::get<std::optional<SaiTamCollectorTraits::Attributes::Localhost>>(
+      collectorAttr) = false;
+#endif
 
   auto collectorSaiId =
       tamApi->create<SaiTamCollectorTraits>(collectorAttr, switchId);
@@ -84,9 +128,12 @@ TEST_F(TamApiTest, TamTransport) {
   SaiTamTransportTraits::CreateAttributes transportAttr;
   std::get<SaiTamTransportTraits::Attributes::Type>(transportAttr) =
       SAI_TAM_TRANSPORT_TYPE_UDP;
-  std::get<SaiTamTransportTraits::Attributes::SrcPort>(transportAttr) = 10001;
-  std::get<SaiTamTransportTraits::Attributes::DstPort>(transportAttr) = 10002;
-  std::get<SaiTamTransportTraits::Attributes::Mtu>(transportAttr) = 1500;
+  std::get<std::optional<SaiTamTransportTraits::Attributes::SrcPort>>(
+      transportAttr) = 10001;
+  std::get<std::optional<SaiTamTransportTraits::Attributes::DstPort>>(
+      transportAttr) = 10002;
+  std::get<std::optional<SaiTamTransportTraits::Attributes::Mtu>>(
+      transportAttr) = 1500;
   std::get<std::optional<SaiTamTransportTraits::Attributes::SrcMacAddress>>(
       transportAttr) = folly::MacAddress("00:00:00:00:00:01");
   std::get<std::optional<SaiTamTransportTraits::Attributes::DstMacAddress>>(
@@ -104,6 +151,29 @@ TEST_F(TamApiTest, TamTransport) {
           transportSaiId, SaiTamTransportTraits::CreateAttributes{}),
       std::exception);
 }
+
+#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
+TEST_F(TamApiTest, TamGreTransport) {
+  SaiTamTransportTraits::CreateAttributes attributes;
+  std::get<SaiTamTransportTraits::Attributes::Type>(attributes) =
+      SAI_TAM_TRANSPORT_TYPE_GRE;
+  std::get<std::optional<SaiTamTransportTraits::Attributes::GreProtocolType>>(
+      attributes) = sai_uint16_t{0x6558};
+  const auto transport =
+      tamApi->create<SaiTamTransportTraits>(attributes, switchId);
+  EXPECT_EQ(
+      tamApi->getAttribute(
+          transport, SaiTamTransportTraits::CreateAttributes{}),
+      attributes);
+  tamApi->setAttribute(
+      transport, SaiTamTransportTraits::Attributes::GreProtocolType{0x0800});
+  EXPECT_EQ(
+      tamApi->getAttribute(
+          transport, SaiTamTransportTraits::Attributes::GreProtocolType{}),
+      0x0800);
+  tamApi->remove(transport);
+}
+#endif
 
 TEST_F(TamApiTest, TamReport) {
   SaiTamReportTraits::CreateAttributes reportAttr;

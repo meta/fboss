@@ -4,6 +4,10 @@
 
 #include <CLI/App.hpp>
 
+#include <vector>
+
+#include "fboss/cli/fboss2/CmdList.h" // @manual=:cmd-list-header
+
 namespace facebook::fboss::utils {
 /**
  * This is the main utility library for CLI::App initialization for both
@@ -20,7 +24,15 @@ namespace facebook::fboss::utils {
  * This function is shared between the main CLI binary and CLI E2E tests
  * to ensure consistent CLI initialization.
  */
-void initApp(CLI::App& app);
+void initApp(CLI::App& app, bool readOnly = false);
+
+struct RegisteredCommands {
+  CommandTree cmdTree;
+  CommandTree additionalCmdTree;
+  std::vector<Command> specialCmds;
+};
+
+RegisteredCommands registeredCommands(bool readOnly);
 
 // Called after CLI11 is initlized but before parsing, for any final
 // initialization steps

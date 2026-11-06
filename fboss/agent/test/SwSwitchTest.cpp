@@ -21,10 +21,13 @@
 #include "fboss/agent/hw/switch_asics/HwAsic.h"
 #include "fboss/agent/state/ArpTable.h"
 #include "fboss/agent/state/Interface.h"
+#include "fboss/agent/state/LlrConfig.h"
 #include "fboss/agent/state/Port.h"
 #include "fboss/agent/state/StateUtils.h"
 #include "fboss/agent/state/SwitchState.h"
 
+#include "fboss/agent/AgentFeatures.h"
+#include "fboss/agent/rib/RoutingInformationBase.h"
 #include "fboss/agent/test/CounterCache.h"
 #include "fboss/agent/test/HwTestHandle.h"
 #include "fboss/agent/test/TestUtils.h"
@@ -32,8 +35,11 @@
 #include <folly/IPAddressV4.h>
 #include <folly/IPAddressV6.h>
 #include <folly/MacAddress.h>
+#include <folly/ScopeGuard.h>
+#include <folly/portability/GFlags.h>
+#include <folly/synchronization/Baton.h>
 
-#include <algorithm>
+#include <thread>
 
 using namespace facebook::fboss;
 using folly::IPAddressV4;
@@ -152,6 +158,194 @@ TEST_F(SwSwitchTest, VerifyEcmpWidthChangeRejected) {
   // Changing the width on a running agent is rejected regardless of boot type.
   EXPECT_FALSE(sw->isValidStateUpdate(
       StateDelta(baseState, withEcmpWidth(baseState, 128))));
+}
+
+namespace {
+std::shared_ptr<LlrConfig> makeLlrConfig(
+    const std::string& name,
+    int32_t outstandingBytesMax = 105800) {
+  auto llr = std::make_shared<LlrConfig>(name);
+  llr->setOutstandingFramesMax(1654);
+  llr->setOutstandingBytesMax(outstandingBytesMax);
+  llr->setReplayTimerMax(5000);
+  llr->setReplayCountMax(2);
+  llr->setPcsLostTimeout(1000);
+  llr->setDataAgeTimeout(200000);
+  llr->setInitFrameAction(cfg::LlrFrameAction::BEST_EFFORT);
+  llr->setFlushFrameAction(cfg::LlrFrameAction::BLOCK);
+  llr->setReInitOnFlush(true);
+  llr->setCtlosTargetSpacing(2048);
+  return llr;
+}
+} // namespace
+
+TEST_F(SwSwitchTest, VerifyLlrConfigChangeRejected) {
+  ON_CALL(*getMockHw(sw), isValidStateUpdate(_))
+      .WillByDefault(testing::Return(true));
+
+  const PortID kTestPort{1};
+  auto withAdminState = [kTestPort](
+                            const std::shared_ptr<SwitchState>& base,
+                            cfg::PortState adminState) {
+    auto state = base->clone();
+    state->getPorts()->getNodeIf(kTestPort)->modify(&state)->setAdminState(
+        adminState);
+    state->publish();
+    return state;
+  };
+  // description gives the port a field to change independently of LLR, so the
+  // port lands in the delta even when its LLR config is untouched.
+  auto withLlr = [kTestPort](
+                     const std::shared_ptr<SwitchState>& base,
+                     const std::string& name,
+                     const std::string& description,
+                     cfg::PortState adminState,
+                     int32_t outstandingBytesMax = 105800) {
+    auto state = base->clone();
+    auto port = state->getPorts()->getNodeIf(kTestPort)->modify(&state);
+    port->setLlrConfigName(name);
+    port->setLlrConfig(makeLlrConfig(name, outstandingBytesMax));
+    port->setDescription(description);
+    port->setAdminState(adminState);
+    state->publish();
+    return state;
+  };
+  constexpr auto kUp = cfg::PortState::ENABLED;
+  constexpr auto kDown = cfg::PortState::DISABLED;
+
+  auto enabledNoLlr = withAdminState(sw->getState(), kUp);
+  auto disabledNoLlr = withAdminState(sw->getState(), kDown);
+  auto enabledLlr = withLlr(enabledNoLlr, "llr_default", "a", kUp);
+  auto disabledLlr = withLlr(disabledNoLlr, "llr_default", "a", kDown);
+
+  // A rebuilt profile node holding identical config is not a change, so it is
+  // allowed even on an enabled port. updateLlrConfigs replaces every node in
+  // the map whenever any profile changes, so the port ends up pointing at a new
+  // node with the same contents.
+  EXPECT_TRUE(sw->isValidStateUpdate(
+      StateDelta(enabledLlr, withLlr(enabledLlr, "llr_default", "b", kUp))));
+
+  // The one legal transition is the first bind on a port that is still down,
+  // which is how the coldboot config arrives. The port may stay down...
+  EXPECT_TRUE(sw->isValidStateUpdate(StateDelta(disabledNoLlr, disabledLlr)));
+
+  // ...or come up in the same update, since SaiPortManager holds the enable
+  // until the profile is attached.
+  EXPECT_TRUE(sw->isValidStateUpdate(StateDelta(
+      disabledNoLlr, withLlr(disabledNoLlr, "llr_default", "a", kUp))));
+
+  // Binding onto a port that is already up is rejected: the attach would land
+  // on a port hardware considers enabled.
+  EXPECT_FALSE(sw->isValidStateUpdate(StateDelta(enabledNoLlr, enabledLlr)));
+
+  // Once a port carries a profile, nothing may change it. Not a different
+  // profile, not a retune under the same name...
+  EXPECT_FALSE(sw->isValidStateUpdate(
+      StateDelta(enabledLlr, withLlr(enabledLlr, "llr_other", "a", kUp))));
+  EXPECT_FALSE(sw->isValidStateUpdate(StateDelta(
+      enabledLlr, withLlr(enabledLlr, "llr_default", "a", kUp, 64000))));
+
+  // ...and not unbinding it.
+  EXPECT_FALSE(sw->isValidStateUpdate(StateDelta(enabledLlr, disabledNoLlr)));
+
+  // Draining the port in the same update does not make any of those legal. The
+  // SDK refuses the rebind with the port admin disabled and both LLR modes
+  // cleared beforehand (CS00012478409), so there is nothing to gain by allowing
+  // it and finding out from hardware.
+  EXPECT_FALSE(sw->isValidStateUpdate(
+      StateDelta(enabledLlr, withLlr(enabledLlr, "llr_other", "a", kDown))));
+  EXPECT_FALSE(sw->isValidStateUpdate(
+      StateDelta(disabledLlr, withLlr(disabledLlr, "llr_other", "a", kDown))));
+}
+
+TEST_F(SwSwitchTest, VerifyCbfcSenderChangeRejected) {
+  ON_CALL(*getMockHw(sw), isValidStateUpdate(_))
+      .WillByDefault(testing::Return(true));
+
+  const PortID kTestPort{1};
+  // description gives the port a field to change independently of CBFC, so the
+  // port lands in the delta even when its CBFC values are untouched.
+  auto withCbfc = [kTestPort](
+                      const std::shared_ptr<SwitchState>& base,
+                      const std::string& description,
+                      int16_t creditSize = 56,
+                      int16_t packetOverhead = 16,
+                      int64_t creditLimit = 8192) {
+    auto state = base->clone();
+    auto port = state->getPorts()->getNodeIf(kTestPort)->modify(&state);
+    port->setCbfcConfigName("cbfc");
+    port->setCbfcSenderCreditSize(creditSize);
+    port->setCbfcSenderPacketOverhead(packetOverhead);
+    port->setCbfcSenderCreditLimit(creditLimit);
+    port->setDescription(description);
+    state->publish();
+    return state;
+  };
+  auto withoutCbfc = [kTestPort](const std::shared_ptr<SwitchState>& base) {
+    auto state = base->clone();
+    auto port = state->getPorts()->getNodeIf(kTestPort)->modify(&state);
+    port->setCbfcConfigName(std::nullopt);
+    port->setCbfcSenderCreditSize(std::nullopt);
+    port->setCbfcSenderPacketOverhead(std::nullopt);
+    port->setCbfcSenderCreditLimit(std::nullopt);
+    state->publish();
+    return state;
+  };
+
+  auto noCbfc = withoutCbfc(sw->getState());
+  auto cbfc = withCbfc(noCbfc, "a");
+
+  // The first bind is how CBFC arrives, on a coldboot or a running agent.
+  EXPECT_TRUE(sw->isValidStateUpdate(StateDelta(noCbfc, cbfc)));
+  // Another port field changing leaves the sender values alone.
+  EXPECT_TRUE(sw->isValidStateUpdate(StateDelta(cbfc, withCbfc(cbfc, "b"))));
+  // Removing CBFC from the port needs a coldboot, as for LLR.
+  EXPECT_FALSE(sw->isValidStateUpdate(StateDelta(cbfc, withoutCbfc(cbfc))));
+
+  // Changing any sender value on a port that keeps CBFC needs a coldboot.
+  EXPECT_FALSE(
+      sw->isValidStateUpdate(StateDelta(cbfc, withCbfc(cbfc, "a", 32))));
+  EXPECT_FALSE(
+      sw->isValidStateUpdate(StateDelta(cbfc, withCbfc(cbfc, "a", 56, 0))));
+  EXPECT_FALSE(sw->isValidStateUpdate(
+      StateDelta(cbfc, withCbfc(cbfc, "a", 56, 16, 16384))));
+}
+
+TEST_F(SwSwitchTest, VerifyDuplicateAclPriorityRejected) {
+  ON_CALL(*getMockHw(sw), isValidStateUpdate(_))
+      .WillByDefault(testing::Return(true));
+
+  // 1. Two acls at distinct priorities are fine.
+  auto stateV0 = std::make_shared<SwitchState>();
+  stateV0->publish();
+
+  auto withAcls = [](const std::shared_ptr<SwitchState>& base,
+                     int priorityA,
+                     int priorityB) {
+    auto state = base->clone();
+    auto acls = state->getAcls()->modify(&state);
+    auto aclA = std::make_shared<AclEntry>(priorityA, std::string("aclA"));
+    aclA->setDscp(0x24);
+    acls->addNode(aclA, scope());
+    auto aclB = std::make_shared<AclEntry>(priorityB, std::string("aclB"));
+    aclB->setDscp(0x28);
+    acls->addNode(aclB, scope());
+    state->publish();
+    return state;
+  };
+
+  EXPECT_TRUE(
+      sw->isValidStateUpdate(StateDelta(stateV0, withAcls(stateV0, 1, 2))));
+
+  // 2. Two acls at one priority are indistinguishable in hardware, so the
+  // update is rejected rather than silently collapsing onto one entry.
+  EXPECT_FALSE(
+      sw->isValidStateUpdate(StateDelta(stateV0, withAcls(stateV0, 1, 1))));
+
+  // 3. Only the PBR table may share the PBR priority.
+  EXPECT_FALSE(sw->isValidStateUpdate(StateDelta(
+      stateV0,
+      withAcls(stateV0, FLAGS_pbr_acl_priority, FLAGS_pbr_acl_priority))));
 }
 
 TEST_F(SwSwitchTest, VerifyIsValidStateUpdate) {
@@ -480,6 +674,92 @@ TEST_F(SwSwitchTest, multiSwitchFb303Stats) {
   multiSwitchStats->updateStats(statsUpdate3);
   counters.update();
   checkValues(updatedVal);
+}
+
+/*
+ * applyConfig waits on the rib thread, and the rib thread waits on the update
+ * thread whenever it programs a fib update. Any part of applyConfig that waits
+ * for the rib *from* the update thread closes that cycle and wedges the agent.
+ *
+ * Hold the rib thread the way an in-flight route update does, and assert the
+ * update thread keeps running work while applyConfig waits on it.
+ */
+TEST_F(SwSwitchTest, applyConfigKeepsUpdateThreadFreeWhileRibIsBusy) {
+  gflags::FlagSaver flagSaver;
+  FLAGS_enable_ecmp_resource_manager = true;
+
+  ASSERT_NE(sw->getRib(), nullptr);
+
+  // Declared before the threads and the scope guard: locals are destroyed in
+  // reverse declaration order, so anything the threads reference by pointer
+  // has to outlive the guard that joins them.
+  auto config = testConfigA();
+  auto stateBeforeConfig = sw->getState();
+  folly::Baton<> ribBusy;
+  folly::Baton<> releaseRib;
+  folly::Baton<> applierDone;
+  std::thread ribHog([&] {
+    sw->getRib()->updateStateInRibThread([&] {
+      ribBusy.post();
+      releaseRib.wait();
+    });
+  });
+  std::thread applier;
+  bool ribReleased = false;
+  // Release the rib thread on every exit path, including a failed ASSERT.
+  SCOPE_EXIT {
+    if (!ribReleased) {
+      releaseRib.post();
+    }
+    if (applier.joinable()) {
+      applier.join();
+    }
+    if (ribHog.joinable()) {
+      ribHog.join();
+    }
+  };
+  ribBusy.wait();
+
+  applier = std::thread([&] {
+    SCOPE_EXIT {
+      applierDone.post();
+    };
+    sw->applyConfig("test config", config);
+  });
+
+  // Each probe is a full round trip through the update thread, so the loops
+  // below pace themselves without sleeping.
+  auto updateThreadRunsWork = [this]() {
+    // Shared so the baton outlives this scope if the update never runs.
+    auto probeRan = std::make_shared<folly::Baton<>>();
+    sw->updateState("probe update", [probeRan](const auto& /*state*/) {
+      probeRan->post();
+      return std::shared_ptr<SwitchState>{};
+    });
+    return probeRan->try_wait_for(std::chrono::seconds(20));
+  };
+
+  // Wait for applyConfig's own state update to land, so the assertions below
+  // cannot pass before it even reaches the rib. Bounded, since a config that
+  // changes nothing publishes no new state.
+  constexpr int kMaxProbesAwaitingConfig = 50;
+  for (int i = 0;
+       i < kMaxProbesAwaitingConfig && sw->getState() == stateBeforeConfig;
+       ++i) {
+    ASSERT_TRUE(updateThreadRunsWork())
+        << "update thread wedged on probe " << i << " awaiting config apply";
+  }
+
+  for (int i = 0; i < 10; ++i) {
+    ASSERT_TRUE(updateThreadRunsWork())
+        << "update thread wedged on probe " << i
+        << " while applyConfig waited on a busy rib thread";
+  }
+
+  releaseRib.post();
+  ribReleased = true;
+  EXPECT_TRUE(applierDone.try_wait_for(std::chrono::seconds(30)))
+      << "applyConfig did not complete after the rib thread was released";
 }
 
 TEST_F(SwSwitchTest, swSwitchRunState) {

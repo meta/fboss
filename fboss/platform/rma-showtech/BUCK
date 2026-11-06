@@ -24,9 +24,18 @@ cpp_binary(
         "PsuHelper.cpp",
         "Utils.cpp",
     ],
+    headers = [
+        "FanImpl.h",
+        "I2cHelper.h",
+        "PsuHelper.h",
+        "Utils.h",
+    ],
     deps = [
         "fbsource//third-party/fmt:fmt",
         "fbsource//third-party/re2:re2",
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/logging:logging",
         ":showtech_config-cpp2-types",
         "//fboss/lib:common_file_utils",
         "//fboss/lib:gpiod_line",
@@ -35,8 +44,6 @@ cpp_binary(
         "//fboss/platform/fan_service/if:fan_service-cpp2-types",
         "//fboss/platform/helpers:init_cli",
         "//fboss/platform/helpers:platform_utils",
-        "//folly:string",
-        "//folly/logging:logging",
         "//thrift/lib/cpp2/protocol:protocol",
     ],
     external_deps = [

@@ -142,10 +142,6 @@ TEST_F(CmdConfigDataPlaneTrafficPolicyTestFixture, setMappedActionRows) {
        [](const cfg::MatchAction& a) {
          EXPECT_EQ(*a.toCpuAction(), cfg::ToCpuAction::COPY);
        }},
-      {{"alternate-ars-members"},
-       [](const cfg::MatchAction& a) {
-         EXPECT_TRUE(*a.enableAlternateArsMembers());
-       }},
       {{"flowlet", "forward"},
        [](const cfg::MatchAction& a) {
          EXPECT_EQ(*a.flowletAction(), cfg::FlowletAction::FORWARD);
@@ -314,11 +310,6 @@ TEST_F(CmdConfigDataPlaneTrafficPolicyTestFixture, deleteClearsMappedRows) {
        [](const cfg::MatchAction& a) {
          EXPECT_FALSE(a.toCpuAction().has_value());
        }},
-      {{"alternate-ars-members"},
-       "alternate-ars-members",
-       [](const cfg::MatchAction& a) {
-         EXPECT_FALSE(a.enableAlternateArsMembers().has_value());
-       }},
       {{"flowlet", "forward"},
        "flowlet",
        [](const cfg::MatchAction& a) {
@@ -403,7 +394,7 @@ TEST_F(
   }
 }
 
-// The 0-value forms (trap-to-cpu, copy-to-cpu, alternate-ars-members) and the
+// The 0-value forms (trap-to-cpu, copy-to-cpu) and the
 // 2-value one (redirect) only work because addCliArg says expected(4, 6) with
 // allow_extra_args(). Every other test here builds TrafficPolicyArgs directly,
 // so this is the one that runs the real CLI11 parser over that wiring. It
