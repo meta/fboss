@@ -111,6 +111,8 @@ enum BgpNotifCeaseErrSubCode {
   BN_CEASE_CONFIG_CHANGE = 6,
   BN_CEASE_CONN_COLLISION_RES = 7,
   BN_CEASE_OUT_OF_RESOURCES = 8,
+  /* RFC 8538 */
+  BN_CEASE_HARD_RESET = 9,
 }
 
 enum BgpNotificationRouteRefreshErrSubCode {
