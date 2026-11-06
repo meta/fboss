@@ -83,8 +83,9 @@ bool sameNextHopPath(const NextHop& lhs, const NextHop& rhs) {
       lhs.labelForwardingAction() == rhs.labelForwardingAction() &&
       lhs.disableTTLDecrement() == rhs.disableTTLDecrement() &&
       lhs.srv6SegmentList() == rhs.srv6SegmentList() &&
-      lhs.tunnelType() == rhs.tunnelType() && lhs.tunnelId() == rhs.tunnelId() &&
-      lhs.cost() == rhs.cost() && lhs.role() == rhs.role());
+      lhs.tunnelType() == rhs.tunnelType() &&
+      lhs.tunnelId() == rhs.tunnelId() && lhs.cost() == rhs.cost() &&
+      lhs.role() == rhs.role());
 }
 
 bool sameNextHopPathSet(
