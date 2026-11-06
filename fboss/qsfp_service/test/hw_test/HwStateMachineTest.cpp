@@ -9,12 +9,15 @@
  */
 #include "fboss/qsfp_service/test/hw_test/HwTest.h"
 
+#include "fboss/fsdb/common/Flags.h"
 #include "fboss/lib/CommonUtils.h"
 #include "fboss/qsfp_service/module/QsfpModule.h"
 #include "fboss/qsfp_service/platforms/wedge/WedgeManager.h"
 #include "fboss/qsfp_service/test/hw_test/HwPortUtils.h"
 #include "fboss/qsfp_service/test/hw_test/HwQsfpEnsemble.h"
 #include "fboss/qsfp_service/test/hw_test/HwTransceiverUtils.h"
+
+#include <set>
 
 namespace facebook::fboss {
 
@@ -786,6 +789,26 @@ TEST_F(HwStateMachineTest, CheckAgentConfigChanged) {
             id, getExpectedTransceiverStates(hasXphy, false /* isPresent */));
       }
 
+      // On an agent cold boot, qsfp_service skips the data path reset of a
+      // transceiver whose port the agent reports up after the cold boot. This
+      // test fakes the cold boot without restarting the agent, so a port that
+      // is up now is polled up again and skips the reset. Every other
+      // transceiver still resets: no port up (e.g. the agent is not running),
+      // port status from the FSDB cache (only refreshed when the agent
+      // publishes a change), or port manager mode (operState is inferred).
+      std::set<TransceiverID> tcvrsWithPortUp;
+      if (!FLAGS_port_manager_mode && !FLAGS_subscribe_to_state_from_fsdb) {
+        for (const auto& id : getPresentTransceivers()) {
+          for (const auto& [portId, portInfo] :
+               wedgeMgr->getProgrammedIphyPortToPortInfo(id)) {
+            if (portInfo.status && portInfo.status->operState) {
+              tcvrsWithPortUp.insert(id);
+              break;
+            }
+          }
+        }
+      }
+
       // Override ConfigAppliedInfo
       ConfigAppliedInfo configAppliedInfo;
       auto currentInMs = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -824,8 +847,9 @@ TEST_F(HwStateMachineTest, CheckAgentConfigChanged) {
               false /* isRemediated */,
               isAgentColdboot)));
 
-      bool expectDatapathReset = isAgentColdboot && FLAGS_port_manager_mode;
       for (const auto& id : getPresentTransceivers()) {
+        bool expectDatapathReset =
+            isAgentColdboot && !tcvrsWithPortUp.contains(id);
         auto tcvrInfo = wedgeMgr->getTransceiverInfo(id);
         auto& tcvrState = tcvrInfo.tcvrState().value();
         auto& tcvrStats = tcvrInfo.tcvrStats().value();
