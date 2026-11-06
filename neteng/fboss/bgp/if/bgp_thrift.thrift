@@ -21,6 +21,7 @@ include "configerator/structs/neteng/bgp_policy/thrift/rib_policy.thrift"
 include "configerator/structs/neteng/bgp_policy/thrift/bgp_policy.thrift"
 include "configerator/structs/neteng/fboss/bgp/bgp_config.thrift"
 include "configerator/structs/neteng/fboss/bgp/if/bgp_attr.thrift"
+include "neteng/fboss/bgp/if/BgpStructs.thrift"
 include "neteng/fboss/bgp/if/bgp_route_types.thrift"
 include "neteng/fboss/bgp/if/policy_thrift.thrift"
 include "thrift/annotation/hack.thrift"
@@ -319,6 +320,23 @@ struct TBgpSession {
    */
   28: optional bool eor_received;
   29: optional bool eor_sent;
+  /*
+   * Last BGP NOTIFICATION seen on this session in each direction, retained
+   * across the reset so an operator can see why the session went down.
+   *
+   * last_reset_reason says only that a NOTIFICATION was involved; these carry
+   * the RFC 4271 error code and subcode it actually held, which is what
+   * distinguishes e.g. a peer's administrative shutdown from connection
+   * collision resolution. Unset until a NOTIFICATION is sent/received on the
+   * session.
+   *
+   * Surfaced by `show bgpcpp neighbors <ip>`.
+   */
+  30: optional BgpStructs.BgpNotification last_notification_sent;
+  31: optional BgpStructs.BgpNotification last_notification_received;
+  // When the matching notification was sent/received, in ms since epoch
+  32: optional i64 last_notification_sent_time;
+  33: optional i64 last_notification_received_time;
 }
 
 struct TPeerEgressStats {

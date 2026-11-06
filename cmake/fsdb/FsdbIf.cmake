@@ -174,6 +174,7 @@ add_fbthrift_cpp_library(
     bgp_config_cpp2
     bgp_policy_cpp2
     bgp_route_types_cpp2
+    bgp_structs_cpp2
     fb303_cpp2
     policy_thrift_cpp2
     rib_policy_cpp2

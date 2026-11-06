@@ -274,6 +274,234 @@ TEST_F(CmdShowBgpNeighborsTestFixture, printOutputWithoutAddCapabilities) {
 // locale-dependent column widths while still pinning that each value lands in
 // its own column. The four columns per row use DISTINCT values so a Tx/Rx swap
 // or a Socket/AdjRib column crossing is caught (equal values would hide it).
+namespace {
+facebook::nettools::bgplib::BgpNotification makeNotification(
+    facebook::nettools::bgplib::BgpNotifErrCode code,
+    int16_t subCode,
+    const std::string& subCodeStr,
+    const std::string& data = "") {
+  facebook::nettools::bgplib::BgpNotification notification;
+  notification.errCode() = code;
+  notification.errSubCode() = subCode;
+  notification.errSubCodeStr() = subCodeStr;
+  notification.data() = data;
+  return notification;
+}
+} // namespace
+
+/*
+ * Both the enum name and the RFC 4271 number are rendered: the name is what an
+ * operator reads, the number is what packet captures and the RFC use.
+ */
+TEST_F(CmdShowBgpNeighborsTestFixture, formatBgpNotificationWithSubcodeName) {
+  EXPECT_EQ(
+      "BN_CEASE (6), subcode BN_CEASE_ADMIN_SHUTDOWN (2)",
+      formatBgpNotification(makeNotification(
+          facebook::nettools::bgplib::BgpNotifErrCode::BN_CEASE,
+          2,
+          "BN_CEASE_ADMIN_SHUTDOWN")));
+}
+
+/*
+ * HOLD_TIMER_EXPIRED and FSM_ERROR define no subcode namespace, so the parser
+ * leaves errSubCodeStr empty. Render the bare number rather than an empty
+ * parenthetical.
+ */
+TEST_F(
+    CmdShowBgpNeighborsTestFixture,
+    formatBgpNotificationWithoutSubcodeName) {
+  // "NA" is the parser's seed for an unnamed subcode -- what real output
+  // carries. An empty string is treated the same, for hand-built structs.
+  EXPECT_EQ(
+      "BN_HOLD_TIMER_EXPIRED (4), subcode 0",
+      formatBgpNotification(makeNotification(
+          facebook::nettools::bgplib::BgpNotifErrCode::BN_HOLD_TIMER_EXPIRED,
+          0,
+          "NA")));
+  EXPECT_EQ(
+      "BN_FSM_ERROR (5), subcode 0",
+      formatBgpNotification(makeNotification(
+          facebook::nettools::bgplib::BgpNotifErrCode::BN_FSM_ERROR, 0, "")));
+}
+
+/*
+ * The Data field is decoded where its RFC defines a layout: RFC 9003 shutdown
+ * communication, RFC 4486 max-prefix, and the message length / type errors.
+ */
+TEST_F(CmdShowBgpNeighborsTestFixture, formatBgpNotificationDecodesData) {
+  using facebook::nettools::bgplib::BgpNotifErrCode;
+  const std::string shutdownText = "maintenance";
+  EXPECT_EQ(
+      "BN_CEASE (6), subcode BN_CEASE_ADMIN_SHUTDOWN (2), data: \"maintenance\"",
+      formatBgpNotification(makeNotification(
+          BgpNotifErrCode::BN_CEASE,
+          2,
+          "BN_CEASE_ADMIN_SHUTDOWN",
+          std::string(1, static_cast<char>(shutdownText.size())) +
+              shutdownText)));
+  // AFI 1 (IPv4), SAFI 1 (unicast), limit 1000.
+  EXPECT_EQ(
+      "BN_CEASE (6), subcode BN_CEASE_MAX_PREFIX_LIMIT (1), data: AFI 1 SAFI 1, limit 1000",
+      formatBgpNotification(makeNotification(
+          BgpNotifErrCode::BN_CEASE,
+          1,
+          "BN_CEASE_MAX_PREFIX_LIMIT",
+          std::string("\x00\x01\x01\x00\x00\x03\xe8", 7))));
+  EXPECT_EQ(
+      "BN_MSG_HDR_ERR (1), subcode BN_MH_BAD_MSG_LEN (2), data: length 5000",
+      formatBgpNotification(makeNotification(
+          BgpNotifErrCode::BN_MSG_HDR_ERR,
+          2,
+          "BN_MH_BAD_MSG_LEN",
+          std::string("\x13\x88", 2))));
+}
+
+/*
+ * RFC 9003: the Shutdown Communication is UTF-8, so a multibyte message is
+ * shown as text and an invalid sequence falls back to hex. Length 0 carries no
+ * message.
+ */
+TEST_F(
+    CmdShowBgpNeighborsTestFixture,
+    formatBgpNotificationShutdownCommunication) {
+  using facebook::nettools::bgplib::BgpNotifErrCode;
+  EXPECT_EQ(
+      "BN_CEASE (6), subcode BN_CEASE_ADMIN_SHUTDOWN (2), data: \"caf\xc3\xa9\"",
+      formatBgpNotification(makeNotification(
+          BgpNotifErrCode::BN_CEASE,
+          2,
+          "BN_CEASE_ADMIN_SHUTDOWN",
+          std::string(
+              "\x05"
+              "caf\xc3\xa9",
+              6))));
+  EXPECT_EQ(
+      "BN_CEASE (6), subcode BN_CEASE_ADMIN_SHUTDOWN (2), data: 0x02c328",
+      formatBgpNotification(makeNotification(
+          BgpNotifErrCode::BN_CEASE,
+          2,
+          "BN_CEASE_ADMIN_SHUTDOWN",
+          std::string("\x02\xc3\x28", 3))));
+  // U+0085 (NEL) is valid UTF-8 but a C1 control character
+  EXPECT_EQ(
+      "BN_CEASE (6), subcode BN_CEASE_ADMIN_SHUTDOWN (2), data: 0x02c285",
+      formatBgpNotification(makeNotification(
+          BgpNotifErrCode::BN_CEASE,
+          2,
+          "BN_CEASE_ADMIN_SHUTDOWN",
+          std::string("\x02\xc2\x85", 3))));
+  EXPECT_EQ(
+      "BN_CEASE (6), subcode BN_CEASE_ADMIN_RESET (4), data: (empty)",
+      formatBgpNotification(makeNotification(
+          BgpNotifErrCode::BN_CEASE,
+          4,
+          "BN_CEASE_ADMIN_RESET",
+          std::string("\x00", 1))));
+}
+
+#ifndef IS_OSS
+/*
+ * RFC 8538: a Hard Reset's Data is the NOTIFICATION it carries, which is
+ * decoded in turn. Data too short to hold a NOTIFICATION fails to decode.
+ */
+TEST_F(CmdShowBgpNeighborsTestFixture, formatBgpNotificationDecodesHardReset) {
+  using facebook::nettools::bgplib::BgpNotifErrCode;
+  const std::string shutdownText = "maintenance";
+  EXPECT_EQ(
+      "BN_CEASE (6), subcode BN_CEASE_HARD_RESET (9), data: "
+      "[BN_CEASE (6), subcode BN_CEASE_ADMIN_SHUTDOWN (2), data: \"maintenance\"]",
+      formatBgpNotification(makeNotification(
+          BgpNotifErrCode::BN_CEASE,
+          9,
+          "BN_CEASE_HARD_RESET",
+          std::string("\x06\x02", 2) +
+              std::string(1, static_cast<char>(shutdownText.size())) +
+              shutdownText)));
+  EXPECT_EQ(
+      "BN_CEASE (6), subcode BN_CEASE_HARD_RESET (9), data: "
+      "[BN_HOLD_TIMER_EXPIRED (4), subcode 0]",
+      formatBgpNotification(makeNotification(
+          BgpNotifErrCode::BN_CEASE,
+          9,
+          "BN_CEASE_HARD_RESET",
+          std::string("\x04\x00", 2))));
+  EXPECT_EQ(
+      "BN_CEASE (6), subcode BN_CEASE_HARD_RESET (9), data: [failed to decode raw data]",
+      formatBgpNotification(makeNotification(
+          BgpNotifErrCode::BN_CEASE,
+          9,
+          "BN_CEASE_HARD_RESET",
+          std::string("\x06", 1))));
+}
+#endif
+
+/*
+ * Data with no RFC-defined layout, here the offending attribute of an UPDATE
+ * error, is shown as hex.
+ */
+TEST_F(CmdShowBgpNeighborsTestFixture, formatBgpNotificationDataAsHex) {
+  EXPECT_EQ(
+      "BN_UPDATE_MSG_ERR (3), subcode BN_UM_ATTR_FLAGS_ERR (4), data: 0x40010100",
+      formatBgpNotification(makeNotification(
+          facebook::nettools::bgplib::BgpNotifErrCode::BN_UPDATE_MSG_ERR,
+          4,
+          "BN_UM_ATTR_FLAGS_ERR",
+          std::string("\x40\x01\x01\x00", 4))));
+}
+
+/*
+ * T265127391: last_reset_reason alone cannot distinguish an administrative
+ * shutdown from a collision resolution, so the neighbors output carries the
+ * notification code/subcode for both directions.
+ */
+TEST_F(CmdShowBgpNeighborsTestFixture, printOutputNotificationCodes) {
+  auto sessions = establishedNeighborSession_;
+  sessions[0].last_notification_sent() = makeNotification(
+      facebook::nettools::bgplib::BgpNotifErrCode::BN_HOLD_TIMER_EXPIRED,
+      0,
+      "NA");
+  sessions[0].last_notification_received() = makeNotification(
+      facebook::nettools::bgplib::BgpNotifErrCode::BN_CEASE,
+      2,
+      "BN_CEASE_ADMIN_SHUTDOWN");
+  // 2023-11-14 22:13:20 UTC; the printed date depends on the local timezone
+  sessions[0].last_notification_sent_time() = 1700000000000;
+  sessions[0].last_notification_received_time() = 1700000000000;
+
+  std::stringstream ss;
+  CmdShowBgpNeighbors().printOutput(sessions, ss);
+  const std::string output = ss.str();
+
+  EXPECT_THAT(
+      output,
+      HasSubstr("Last notification sent:     BN_HOLD_TIMER_EXPIRED (4)"));
+  EXPECT_THAT(output, HasSubstr("\n    Sent at 2023-11-1"));
+  EXPECT_THAT(
+      output,
+      HasSubstr(
+          "Last notification received: BN_CEASE (6), subcode BN_CEASE_ADMIN_SHUTDOWN (2)"));
+  EXPECT_THAT(output, HasSubstr("\n    Received at 2023-11-1"));
+}
+
+/*
+ * A session can reset without any NOTIFICATION (socket error, hold timer
+ * expiry with no send). Those lines must then be absent rather than printed
+ * empty.
+ */
+TEST_F(CmdShowBgpNeighborsTestFixture, printOutputOmitsAbsentNotifications) {
+  auto sessions = establishedNeighborSession_;
+  sessions[0].last_notification_sent().reset();
+  sessions[0].last_notification_received().reset();
+
+  std::stringstream ss;
+  CmdShowBgpNeighbors().printOutput(sessions, ss);
+  const std::string output = ss.str();
+
+  EXPECT_THAT(output, Not(HasSubstr("Last notification")));
+  // The pre-existing reset reason line is unaffected.
+  EXPECT_THAT(output, HasSubstr("Last reset reason:"));
+}
+
 TEST_F(CmdShowBgpNeighborsTestFixture, printOutputMessageCounters) {
   auto sessions = establishedNeighborSession_;
   auto& d = sessions[0].details().ensure();

@@ -884,6 +884,7 @@ cpp_library(
         "utils/clients/BmcClient.h",
     ],
     deps = [
+        "fbsource//xplat/folly:unicode",
         "fbsource//xplat/folly/container:f14_hash",
         ":fboss2-config-gen-lib",
     ],
@@ -1728,6 +1729,7 @@ cpp_binary(
         "fbsource//xplat/folly:range",
         "fbsource//xplat/folly:string",
         "fbsource//xplat/folly:subprocess",
+        "fbsource//xplat/folly:unicode",
         "fbsource//xplat/folly/container:f14_hash",
         "fbsource//xplat/folly/init:init",
         "fbsource//xplat/folly/json:dynamic",
