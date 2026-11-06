@@ -98,6 +98,7 @@ class TestValidateAsicConfigV3Contents(unittest.TestCase):
     # variant's effective ``config_gen_type`` so that any platform declaring
     # one of these gen types is picked up without editing this table.
     _MATERIALIZED_REFERENCE_DIRS = {
+        "BENCHMARK": os.path.join("oss", "hw_bench_configs"),
         "HW_TEST": os.path.join("oss", "hw_test_configs"),
     }
     _MATERIALIZED_REFERENCE_SUFFIX = ".agent.materialized_JSON"

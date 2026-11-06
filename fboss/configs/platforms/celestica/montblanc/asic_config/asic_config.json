@@ -72,6 +72,11 @@
   },
   "variants": {
     "default": {},
+    "benchmark": {
+      "asic_config_params": {
+        "config_gen_type": "BENCHMARK"
+      }
+    },
     "hw_test": {
       "asic_config_params": {
         "config_gen_type": "HW_TEST"

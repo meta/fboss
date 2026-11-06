@@ -48,6 +48,12 @@
     }
   },
   "variants": {
+    "benchmark": {
+      "platform_mapping_name": "leh800bcls_test_fixture",
+      "asic_config_params": {
+        "config_gen_type": "BENCHMARK"
+      }
+    },
     "rack": {
       "platform_mapping_name": "leh800bcls_rack"
     },
