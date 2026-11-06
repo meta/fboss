@@ -5,6 +5,7 @@
     "firmware_upgrade_on_tcvr_insert": "true",
     "firmware_upgrade_supported": "true",
     "mode": "icecube800banw",
+    "platform_descriptor_config_path": "/tmp/platform_descriptors/",
     "port_manager_mode": "true",
     "remediation_enabled": "false"
   },
