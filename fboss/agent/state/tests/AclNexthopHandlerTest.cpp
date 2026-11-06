@@ -663,6 +663,27 @@ TYPED_TEST(AclNexthopHandlerTest, MixedTunnelAndNonTunnelNexthopBadConfig) {
   }
 }
 
+// SAI programs only IP-in-IP tunnel encap redirects, so config apply rejects
+// a redirect to any other nexthop on a SAI switch.
+TYPED_TEST(AclNexthopHandlerTest, NonTunnelRedirectNexthopBadConfigOnSai) {
+  cfg::RedirectNextHop nhop;
+  nhop.ip() = this->getAclNexthopIps(1)[0];
+  auto config = this->redirectAclConfig({nhop});
+  cfg::SdkVersion sdkVersion;
+  sdkVersion.saiSdk() = "1.0";
+  config.sdkVersion() = sdkVersion;
+  EXPECT_THROW(
+      this->sw_->applyConfig("NonTunnelRedirectSai", config), FbossError);
+}
+
+// Without a SAI SDK, a redirect to a non-tunnel nexthop is accepted.
+TYPED_TEST(AclNexthopHandlerTest, NonTunnelRedirectNexthopAcceptedOffSai) {
+  cfg::RedirectNextHop nhop;
+  nhop.ip() = this->getAclNexthopIps(1)[0];
+  EXPECT_NO_THROW(this->sw_->applyConfig(
+      "NonTunnelRedirect", this->redirectAclConfig({nhop})));
+}
+
 // Tunnel encap redirects are routed by HW, so config apply leaves the
 // resolved nexthop set empty even when a route covers the tunnel endpoint.
 TYPED_TEST(AclNexthopHandlerTest, TunnelEncapNexthopSkipsResolutionOnConfig) {

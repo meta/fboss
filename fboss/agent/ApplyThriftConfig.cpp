@@ -786,6 +786,7 @@ class ThriftConfigApplier {
       const cfg::LlrConfig& config);
 
   uint32_t generateDeterministicSeed(cfg::LoadBalancerID id);
+  bool isSaiSdk() const;
 
   folly::MacAddress getLocalMac(SwitchID switchId) const;
   SwitchID getSwitchId(const cfg::Interface& intfConfig) const;
@@ -4868,6 +4869,17 @@ std::shared_ptr<AclMap> ThriftConfigApplier::updateAclsImpl(
             if (nh.tunnelType().has_value() &&
                 nh.tunnelType().value() == TunnelType::IP_IN_IP_ENCAP) {
               hasTunnelRedirect = true;
+            } else if (isSaiSdk()) {
+              // The SAI layer programs a redirect only for IP-in-IP tunnel
+              // encap nexthops; any other nexthop would leave the entry
+              // forwarding normally instead of redirecting.
+              throw FbossError(
+                  "Invalid config: redirect nexthop ",
+                  nhIp.str(),
+                  " in ACL ",
+                  *aclCfg.name(),
+                  " is not an IP-in-IP tunnel encap nexthop; SAI supports "
+                  "only tunnel encap redirects");
             } else {
               hasNonTunnelRedirect = true;
             }
@@ -8451,6 +8463,11 @@ bool ThriftConfigApplier::processAddedStaticMacEntries() {
   }
 
   return stateChanged;
+}
+
+bool ThriftConfigApplier::isSaiSdk() const {
+  auto sdkVersion = cfg_->sdkVersion();
+  return sdkVersion.has_value() && sdkVersion->saiSdk().has_value();
 }
 
 } // namespace facebook::fboss
