@@ -182,6 +182,21 @@ class AclEntry : public ThriftStructNode<AclEntry, state::AclEntryFields> {
     setIpV6Word<switch_state_tags::dstIpV6Word2>(word);
   }
 
+  // Returns {ip, mask}
+  std::optional<std::pair<folly::IPAddress, folly::IPAddress>>
+  getDstIpWithMask() const {
+    if (auto dstIpWithMask = cref<switch_state_tags::dstIpWithMask>()) {
+      const auto match = dstIpWithMask->toThrift();
+      return std::make_pair(
+          folly::IPAddress(*match.ip()), folly::IPAddress(*match.mask()));
+    }
+    return std::nullopt;
+  }
+
+  void setDstIpWithMask(const cfg::AclIpMatch& dstIpWithMask) {
+    set<switch_state_tags::dstIpWithMask>(dstIpWithMask);
+  }
+
   std::optional<uint8_t> getProto() const {
     if (auto proto = cref<switch_state_tags::proto>()) {
       return proto->cref();
@@ -532,7 +547,7 @@ class AclEntry : public ThriftStructNode<AclEntry, state::AclEntryFields> {
         getVlanID() || getUdfGroups() || getRoceOpcode() || getRoceBytes() ||
         getRoceMask() || getUdfTable() || getTrafficClass() ||
         getNextHopGroupId() || getDstIpV6Word3() || getDstIpV6Word2() ||
-        getLookupClassPort() || getMplsLabel0Ttl();
+        getLookupClassPort() || getMplsLabel0Ttl() || getDstIpWithMask();
   }
 
   std::set<cfg::AclTableQualifier> getRequiredAclTableQualifiers() const;
