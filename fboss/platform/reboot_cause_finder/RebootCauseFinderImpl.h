@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <folly/CppAttributes.h>
 #include <folly/Range.h>
 #include <optional>
 #include <string>
@@ -98,6 +99,16 @@ reboot_cause_config::RebootCauseProviderAttempt parseSuddenPowerLoss(
     const std::string& body,
     int64_t btimeSec,
     int64_t nowSec,
+    std::optional<int64_t> previousBootAtSec);
+
+// The first cause dated after the previous x86 boot and before this boot,
+// [previousBootAtSec, btimeSec), or nullptr. Times come from the provider's
+// timeTs only, so a cause without one is never chosen; nor is any cause when
+// btimeSec is unknown. With no previous boot only the upper bound applies.
+const reboot_cause_config::RebootCause* FOLLY_NULLABLE firstCauseInBootWindow(
+    const std::vector<reboot_cause_config::RebootCause>& causes,
+    const std::string& providerName,
+    std::optional<int64_t> btimeSec,
     std::optional<int64_t> previousBootAtSec);
 
 // std::nullopt when the name is not a timestamp this code understands.

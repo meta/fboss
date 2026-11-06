@@ -372,15 +372,32 @@ std::string filenameStamp(std::time_t t) {
   return buf;
 }
 
-// Parse a provider's local-time date string ("MM-DD-YYYY HH:MM:SS[.mmm]") into
-// an epoch time_t; std::nullopt if it doesn't match.
-std::optional<std::time_t> parseProviderDate(const std::string& s) {
-  std::tm tm{};
-  if (strptime(s.c_str(), "%m-%d-%Y %H:%M:%S", &tm) == nullptr) {
+// A provider cause's `timeTs`: when the cause latched, in whole seconds since
+// the epoch. Accepts a JSON integer or a numeric string. std::nullopt when the
+// field is absent or not a positive number, which leaves the cause undated.
+std::optional<std::time_t> parseTimeTs(
+    const folly::dynamic& causeJson,
+    const std::string& providerName) {
+  const auto* timeTs = causeJson.get_ptr("timeTs");
+  if (timeTs == nullptr) {
     return std::nullopt;
   }
-  tm.tm_isdst = -1; // let mktime resolve PST vs PDT
-  return std::mktime(&tm);
+  std::optional<int64_t> sec;
+  if (timeTs->isInt()) {
+    sec = timeTs->getInt();
+  } else if (timeTs->isString()) {
+    if (auto parsed = folly::tryTo<int64_t>(timeTs->getString())) {
+      sec = *parsed;
+    }
+  }
+  if (!sec || *sec <= 0) {
+    XLOG(ERR) << fmt::format(
+        "Provider '{}' wrote an invalid timeTs '{}'",
+        providerName,
+        folly::toJson(*timeTs));
+    return std::nullopt;
+  }
+  return static_cast<std::time_t>(*sec);
 }
 
 } // namespace
@@ -1050,6 +1067,40 @@ reboot_cause_config::RebootCauseProviderAttempt readSuddenPowerLoss(
   return parseSuddenPowerLoss(body, btimeSec, nowSec, previousBootAtSec);
 }
 
+const reboot_cause_config::RebootCause* FOLLY_NULLABLE firstCauseInBootWindow(
+    const std::vector<reboot_cause_config::RebootCause>& causes,
+    const std::string& providerName,
+    std::optional<int64_t> btimeSec,
+    std::optional<int64_t> previousBootAtSec) {
+  for (const auto& cause : causes) {
+    const int64_t atSec = *cause.occurredAtMs() / 1000;
+    std::string skipReason;
+    if (atSec <= 0) {
+      skipReason = "it has no timeTs";
+    } else if (!btimeSec) {
+      skipReason = "this boot's start time is unknown";
+    } else if (atSec >= *btimeSec) {
+      skipReason = fmt::format(
+          "it is dated {}, after this boot at {}",
+          pacificString(static_cast<std::time_t>(atSec)),
+          pacificString(static_cast<std::time_t>(*btimeSec)));
+    } else if (previousBootAtSec && atSec < *previousBootAtSec) {
+      skipReason = fmt::format(
+          "it is dated {}, before the previous x86 boot at {}",
+          pacificString(static_cast<std::time_t>(atSec)),
+          pacificString(static_cast<std::time_t>(*previousBootAtSec)));
+    } else {
+      return &cause;
+    }
+    XLOG(INFO) << fmt::format(
+        "Not using cause '{}' from provider '{}': {}",
+        *cause.description(),
+        providerName,
+        skipReason);
+  }
+  return nullptr;
+}
+
 reboot_cause_config::RebootCauseProviderAttempt readProvider(
     const reboot_cause_config::RebootCauseProviderConfig& providerConfig) {
   auto status = reboot_cause_config::RebootCauseProviderStatus::OK;
@@ -1077,27 +1128,13 @@ reboot_cause_config::RebootCauseProviderAttempt readProvider(
       reboot_cause_config::RebootCause cause;
       cause.description() = causeJson["description"].asString();
 
-      auto dateStr = causeJson["date"].asString();
-      bool dateParsed = false;
-      if (auto t = parseProviderDate(dateStr)) {
+      cause.occurredAtMs() = 0;
+      if (auto t = parseTimeTs(causeJson, *providerConfig.name())) {
         cause.occurredAtMs() = toEpochMs(*t);
         cause.occurredAtPacific() = pacificString(*t);
-        dateParsed = true;
-      } else {
-        // Leave the rendered field unset rather than filling it with text
-        // that is not a timestamp.
-        cause.occurredAtMs() = 0;
-        XLOG(ERR) << fmt::format(
-            "Provider '{}' wrote an unparsable date '{}'",
-            *providerConfig.name(),
-            dateStr);
       }
-
       if (causeJson.count("rawValue")) {
         cause.rawValue() = causeJson["rawValue"].asString();
-      } else if (!dateParsed) {
-        // Nothing better to show, so keep what the provider actually wrote.
-        cause.rawValue() = dateStr;
       }
       causes.push_back(std::move(cause));
     }
@@ -1360,14 +1397,20 @@ RunResult RebootCauseFinderImpl::determineRebootCause() {
   for (const auto& providerConfig : providerConfigs) {
     XLOG(INFO) << fmt::format("Reading provider '{}'", *providerConfig.name());
     auto attempt = detail::readProvider(providerConfig);
-    // Providers are sorted by priority, so the first one to report anything
-    // is the highest-priority hardware answer. It only applies when neither
-    // implicit provider found a cause.
-    if (!determined.has_value() && !attempt.causes()->empty()) {
-      reboot_cause_config::DeterminedCause d;
-      d.providerName() = *providerConfig.name();
-      d.cause() = attempt.causes()->front();
-      determined = d;
+    // Providers are sorted by priority, so the first one with a cause dated
+    // inside this boot's window is the highest-priority hardware answer. It
+    // only applies when neither implicit provider found a cause.
+    if (!determined.has_value()) {
+      if (const auto* cause = detail::firstCauseInBootWindow(
+              *attempt.causes(),
+              *providerConfig.name(),
+              btime,
+              previousBootAtSec)) {
+        reboot_cause_config::DeterminedCause d;
+        d.providerName() = *providerConfig.name();
+        d.cause() = *cause;
+        determined = d;
+      }
     }
     attempts.push_back(std::move(attempt));
   }

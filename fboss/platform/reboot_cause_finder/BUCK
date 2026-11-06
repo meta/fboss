@@ -63,6 +63,7 @@ cpp_library(
         "//thrift/lib/cpp2/folly_dynamic:folly_dynamic",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:cpp_attributes",
         "fbsource//xplat/folly:range",
         "//fboss/platform/reboot_cause_finder/if:reboot_cause_config-cpp2-types",
     ],
