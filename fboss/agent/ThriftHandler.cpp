@@ -873,6 +873,47 @@ void validateLinkLocalNextHopInterfaces(
   }
 }
 
+// A next hop resolves in its route's VRF, or a non-default VRF route's next
+// hop in the default VRF
+void validateNextHopVrfs(
+    const std::vector<NextHopThrift>& nextHops,
+    const std::shared_ptr<SwitchState>& state,
+    RouterID routeVrf) {
+  for (const auto& nhop : nextHops) {
+    if (!nhop.vrf()) {
+      continue;
+    }
+    const auto address = toIPAddress(*nhop.address()).str();
+    if (*nhop.vrf() < 0) {
+      throw FbossError("Invalid VRF ", *nhop.vrf(), " of next hop ", address);
+    }
+    const RouterID nhopVrf(*nhop.vrf());
+    if (nhopVrf != RouterID(0) && !state->getVrfs()->getNodeIf(nhopVrf)) {
+      throw FbossError(
+          "VRF ", nhopVrf, " of next hop ", address, " not configured");
+    }
+    if (nhopVrf == routeVrf) {
+      continue;
+    }
+    if (apache::thrift::get_pointer(nhop.address()->ifName())) {
+      throw FbossError(
+          "Interface scoped next hop ",
+          address,
+          " must be in its route's VRF ",
+          routeVrf);
+    }
+    if (nhopVrf != RouterID(0) || routeVrf == RouterID(0)) {
+      throw FbossError(
+          "Next hop ",
+          address,
+          " in VRF ",
+          nhopVrf,
+          " not allowed for a route in VRF ",
+          routeVrf);
+    }
+  }
+}
+
 std::optional<std::string> getDefaultSrv6TunnelId(
     const facebook::fboss::cfg::SwitchConfig& config) {
   if (config.srv6Tunnels().has_value()) {
@@ -1896,6 +1937,7 @@ void ThriftHandler::updateUnicastRoutesImpl(
     validateNextHops(*route.nextHops());
     validateAndDefaultSrv6NextHops(*route.nextHops(), defaultSrv6TunnelId);
     validateLinkLocalNextHopInterfaces(*route.nextHops(), state);
+    validateNextHopVrfs(*route.nextHops(), state, routerID);
     if (FLAGS_enable_route_counters_for_named_nhg &&
         route.namedRouteDestination()->getType() ==
             NamedRouteDestination::Type::nextHopGroup) {
