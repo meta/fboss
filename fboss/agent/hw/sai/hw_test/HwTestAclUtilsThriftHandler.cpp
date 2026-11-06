@@ -451,6 +451,33 @@ bool HwTestThriftHandler::isAclEntrySame(
     }
   }
 
+  if (auto dstIpWithMask = swAcl->getDstIpWithMask()) {
+    const auto& [dstIp, dstIpMask] = *dstIpWithMask;
+    if (dstIp.isV6()) {
+      auto [dstIpV6DataGot, dstIpV6MaskGot] =
+          SaiApiTable::getInstance()
+              ->aclApi()
+              .getAttribute(
+                  aclEntryId, SaiAclEntryTraits::Attributes::FieldDstIpV6())
+              .getDataAndMask();
+      if (dstIpV6DataGot != dstIp.asV6() ||
+          dstIpV6MaskGot != dstIpMask.asV6()) {
+        return false;
+      }
+    } else {
+      auto [dstIpV4DataGot, dstIpV4MaskGot] =
+          SaiApiTable::getInstance()
+              ->aclApi()
+              .getAttribute(
+                  aclEntryId, SaiAclEntryTraits::Attributes::FieldDstIpV4())
+              .getDataAndMask();
+      if (dstIpV4DataGot != dstIp.asV4() ||
+          dstIpV4MaskGot != dstIpMask.asV4()) {
+        return false;
+      }
+    }
+  }
+
   if (swAcl->getSrcPort()) {
     const auto& portManager =
         static_cast<const SaiSwitch*>(hwSwitch_)->managerTable()->portManager();
