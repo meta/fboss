@@ -38,7 +38,6 @@
 #include "fboss/cli/fboss2/commands/config/QueueConfigUtils.h"
 #include "fboss/cli/fboss2/commands/config/interface/InterfaceAttrArgsBase.h"
 #include "fboss/cli/fboss2/commands/config/interface/InterfaceIpUtils.h"
-#include "fboss/cli/fboss2/commands/config/interface/ProfileValidation.h"
 #include "fboss/cli/fboss2/commands/config/vlan/VlanManager.h"
 #include "fboss/cli/fboss2/gen-cpp2/cli_metadata_types.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
