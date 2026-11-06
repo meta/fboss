@@ -39,11 +39,3 @@ buck_filegroup(
         "//netos/services/fboss_wedge_agent/...",
     ],
 )
-
-buck_filegroup(
-    name = "minipack3n_fpf_gtsw_platform_mapping",
-    srcs = glob([
-        "platforms/accton/minipack3n/variants/minipack3n_fpf_gtsw/platform_mapping/generated/*.json",
-    ]),
-    visibility = ["//fboss/lib/platforms/facebook/tests/..."],
-)
