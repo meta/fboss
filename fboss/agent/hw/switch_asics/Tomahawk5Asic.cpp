@@ -133,6 +133,7 @@ bool Tomahawk5Asic::isSupported(Feature feature) const {
     case HwAsic::Feature::SAI_SERDES_RX_REACH:
     case HwAsic::Feature::SAI_SERDES_PRECODING:
     case HwAsic::Feature::ACL_ENTRY_OUT_PORT_QUALIFIER:
+    case HwAsic::Feature::ACL_DST_IP_WITH_MASK:
     case HwAsic::Feature::MY_MAC:
     case HwAsic::Feature::HW_PROTECTION_SWITCHOVER_COUNTERS:
       return true;
@@ -256,7 +257,6 @@ bool Tomahawk5Asic::isSupported(Feature feature) const {
     case HwAsic::Feature::CBFC:
     case HwAsic::Feature::LINK_LAYER_RETRANSMISSION:
     case HwAsic::Feature::ACL_DST_IPV6_WORD_QUALIFIERS:
-    case HwAsic::Feature::ACL_DST_IP_WITH_MASK:
     case HwAsic::Feature::SLL_HLL_DISCARD_COUNTERS:
     case HwAsic::Feature::NEXT_HOP_GROUP_MEMBER_MONITORED_OBJECT:
     case HwAsic::Feature::RX_PACKET_TYPE:
