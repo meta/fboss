@@ -42,6 +42,7 @@ bool RamonAsic::isSupported(Feature feature) const {
     case HwAsic::Feature::SAI_SERDES_PRECODING:
     case HwAsic::Feature::ECMP_RANDOM_SPRAY_HIERARCHICAL_LEVEL:
     case HwAsic::Feature::ACL_DST_IPV6_WORD_QUALIFIERS:
+    case HwAsic::Feature::ACL_DST_IP_WITH_MASK:
     case HwAsic::Feature::LAG_TTL_DECREMENT_DISABLE:
     case HwAsic::Feature::PORT_LATCH_STATUS:
     default:

@@ -71,6 +71,7 @@ bool Ramon3Asic::isSupported(Feature feature) const {
     case HwAsic::Feature::SWITCH_DROP_REASON_LIST_SUPPORT:
     case HwAsic::Feature::ECMP_RANDOM_SPRAY_HIERARCHICAL_LEVEL:
     case HwAsic::Feature::ACL_DST_IPV6_WORD_QUALIFIERS:
+    case HwAsic::Feature::ACL_DST_IP_WITH_MASK:
     // TODO(nivinl): Reported from SDK 16.x, enable once that is in
     // production.
     case HwAsic::Feature::RX_PACKET_TYPE:

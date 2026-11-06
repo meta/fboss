@@ -297,6 +297,7 @@ bool Qumran4DAsic::isSupported(Feature feature) const {
     case HwAsic::Feature::PORT_DEBOUNCE:
     case HwAsic::Feature::SWITCH_WIDE_LINK_UP_DEBOUNCE:
     case HwAsic::Feature::ACL_DST_IPV6_WORD_QUALIFIERS:
+    case HwAsic::Feature::ACL_DST_IP_WITH_MASK:
     case HwAsic::Feature::SLL_HLL_DISCARD_COUNTERS:
     case HwAsic::Feature::HW_PROTECTION_SWITCHOVER_COUNTERS:
     case HwAsic::Feature::PBR_ACL_BYTE_COUNTER:

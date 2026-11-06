@@ -129,6 +129,10 @@ class HwAsic {
     // destination IPv6 word3 and word2.
     ACL_DST_IPV6_WORD_QUALIFIERS,
 
+    // Set to true if the SAI implementation supports ACL destination IP
+    // matchers with an arbitrary, possibly non-contiguous, mask.
+    ACL_DST_IP_WITH_MASK,
+
     // Set to true if the SAI implementation supports ACL Byte counters
     // For SAI, this maps to whether SAI_ACL_COUNTER_ATTR_BYTES can be queried.
     // TODO:

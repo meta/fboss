@@ -280,6 +280,7 @@ bool YubaAsic::isSupportedNonFabric(Feature feature) const {
     case HwAsic::Feature::SWITCH_WIDE_LINK_UP_DEBOUNCE:
     case HwAsic::Feature::ACL_ENTRY_OUT_PORT_QUALIFIER:
     case HwAsic::Feature::XPHY_SERDES_TX_FIR_POST3:
+    case HwAsic::Feature::ACL_DST_IP_WITH_MASK:
       return false;
   }
   return false;
