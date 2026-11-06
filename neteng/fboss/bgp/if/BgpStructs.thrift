@@ -265,6 +265,7 @@ struct BgpCapabilities {
   14: list<BgpExtNHEncodingCapability> extNHEncodingCapabilities; // RFC 5549
   15: bool enhancedRouteRefresh; // RFC 7313
   16: bool routeRefresh; // RFC 2918
+  17: bool grNotification; // GR Notification (N) bit, RFC 8538
 }
 
 // Structure to hold the parsed BgpUpdate
