@@ -94,7 +94,7 @@ static void verifyResolvedErspanMirror(
   auto tos = SaiApiTable::getInstance()->mirrorApi().getAttribute(
       mirrorHandle->adapterKey(),
       SaiEnhancedRemoteMirrorTraits::Attributes::Tos());
-  EXPECT_EQ(tos, mirror->getDscp());
+  EXPECT_EQ(tos, mirror->getDscp() << 2);
 
   const auto& tunnel = mirror->getMirrorTunnel();
 
@@ -146,7 +146,7 @@ static void verifyResolvedSflowMirror(
   // TOS
   auto tos = SaiApiTable::getInstance()->mirrorApi().getAttribute(
       mirrorHandle->adapterKey(), SaiSflowMirrorTraits::Attributes::Tos());
-  EXPECT_EQ(tos, mirror->getDscp());
+  EXPECT_EQ(tos, mirror->getDscp() << 2);
 
   const auto& tunnel = mirror->getMirrorTunnel();
 
