@@ -1042,7 +1042,9 @@ reboot_cause_config::RebootCauseProviderAttempt readSuddenPowerLoss(
         kSuddenPowerLossProvider,
         reboot_cause_config::RebootCauseProviderStatus::READ_FAILED,
         detailWithReason(
-            kBmcInfoPath, failure.empty() ? "empty response" : failure),
+            kBmcInfoPath,
+            failure.empty() ? folly::StringPiece("empty response")
+                            : folly::StringPiece(failure)),
         {});
   }
   return parseSuddenPowerLoss(body, btimeSec, nowSec, previousBootAtSec);
