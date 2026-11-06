@@ -338,6 +338,12 @@ using ArsCounterDelta = ArsHwCounter;
 
 struct SaiNextHopGroupHandle {
   std::shared_ptr<SaiNextHopGroup> nextHopGroup;
+  // The resolved next-hop set used to create this handle. Keep this separate
+  // from the live SAI members: a protection primary can temporarily lose its
+  // neighbor and its member will be removed while the protection group must
+  // remain alive for the standby path.
+  RouteNextHopEntry::NextHopSet nextHops_;
+  sai_next_hop_group_type_t nextHopGroupType_{SAI_NEXT_HOP_GROUP_TYPE_ECMP};
   std::vector<std::shared_ptr<NextHopGroupMember>> members_;
   // Currently only Adj FRR with  1:N protection is supported,
   // so a group can have only one child next hop group member.
@@ -357,6 +363,12 @@ struct SaiNextHopGroupHandle {
     return nextHopGroup->adapterKey();
   }
   size_t nextHopGroupSize() const;
+  // A protection group can be reused while its primary is temporarily absent
+  // from the resolved route. Reusing the group preserves the SDK's autonomous
+  // failover/reversion state and avoids a break-before-make group replacement.
+  bool canReuseProtectionGroup(
+      const RouteNextHopEntry::NextHopSet& resolvedNextHops,
+      const RouteNextHopEntry::NextHopSet& clientNextHops) const;
   // Reads this group's ARS counters off the hardware, stores them in
   // arsHwCounter_ for the next sweep to compare against, and returns how much
   // they moved since the previous sweep. Zero for a group with no ARS object
