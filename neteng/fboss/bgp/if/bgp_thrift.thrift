@@ -248,6 +248,11 @@ struct TBgpSessionDetail {
    * capability. Derived from the AdjRib update-group key.
    */
   54: bool legacy_v4_nlri_encoding;
+  /**
+   * True when Graceful Restart and its RFC 8538 Notification (N) bit are both
+   * negotiated with this peer.
+   */
+  55: bool gr_notification_negotiated;
 }
 
 /**

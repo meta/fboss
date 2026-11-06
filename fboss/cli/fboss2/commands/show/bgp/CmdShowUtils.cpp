@@ -789,6 +789,9 @@ void printBgpCapabilities(const TBgpSessionDetail& details, std::ostream& out) {
   } else {
     out << "    Graceful Restart: NOT sent" << std::endl;
   }
+  if (folly::copy(details.gr_notification_negotiated().value())) {
+    out << "    Graceful Notification: negotiated" << std::endl;
+  }
 }
 
 void printBgpPrefixTelemetry(

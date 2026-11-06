@@ -730,6 +730,25 @@ TEST(PrintBgpCapabilitiesTest, LegacyV4NlriEncoding) {
   }
 }
 
+// RFC 8538 Notification (N) bit
+TEST(PrintBgpCapabilitiesTest, GracefulNotification) {
+  TBgpSessionDetail details;
+
+  details.gr_notification_negotiated() = true;
+  {
+    std::ostringstream out;
+    printBgpCapabilities(details, out);
+    EXPECT_THAT(out.str(), HasSubstr("Graceful Notification: negotiated\n"));
+  }
+
+  details.gr_notification_negotiated() = false;
+  {
+    std::ostringstream out;
+    printBgpCapabilities(details, out);
+    EXPECT_THAT(out.str(), Not(HasSubstr("Graceful Notification")));
+  }
+}
+
 TEST_F(CmdShowBgpNeighborsTestFixture, wikiDocHooks) {
   EXPECT_FALSE(CmdShowBgpNeighborsTraits::description().empty());
   EXPECT_EQ(CmdShowBgpNeighbors::sampleModel().size(), 2);
