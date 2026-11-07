@@ -367,12 +367,16 @@ void SaiRouteManager::addOrUpdateRoute(
        */
       auto swNextHop = folly::poly_cast<ResolvedNextHop>(*(nhops.begin()));
 
-      if (swNextHop.resolvedInNextLevel()) {
+      if (swNextHop.resolvedInNextLevel() &&
+          swNextHop.tunnelType() != TunnelType::VXLAN) {
         // TODO: program next hops resolved in the next level
         throw FbossError(
             "Next hops resolved in the next level are not supported: ",
             swNextHop.addr().str());
       }
+      // A VXLAN next hop resolved in the next level programs as
+      // below: the tunnel next hop needs no interface, only the
+      // endpoint and tunnel fields the next hop carries.
       if (swNextHop.tunnelType() == TunnelType::VXLAN) {
         // Eagerly created and always ready: point the
         // route straight at the tunnel next hop and keep it alive in

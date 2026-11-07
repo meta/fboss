@@ -58,6 +58,12 @@ const SaiVxlanTunnelHandle* getVxlanTunnelHandle(
 #endif
 
 } // namespace
+
+bool isVxlanNextHop(const ResolvedNextHop& swNextHop) {
+  return swNextHop.tunnelType().has_value() &&
+      swNextHop.tunnelType().value() == TunnelType::VXLAN;
+}
+
 std::shared_ptr<SaiIpNextHop> SaiNextHopManager::addNextHop(
     RouterInterfaceSaiId routerInterfaceId,
     const folly::IPAddress& ip) {
@@ -79,8 +85,7 @@ SaiNextHopTraits::AdapterHostKey SaiNextHopManager::getAdapterHostKey(
   // VXLAN first: keyed by (TunnelId, Ip) with no router interface.
   // No VNI is programmed on the next hop. The overlay MAC stays in
   // the create attributes and updates in place on a key hit.
-  if (swNextHop.tunnelType().has_value() &&
-      swNextHop.tunnelType().value() == TunnelType::VXLAN) {
+  if (isVxlanNextHop(swNextHop)) {
 #if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)
     auto* tunnelHandle = getVxlanTunnelHandle(managerTable_, swNextHop);
     auto tunnelSaiId = tunnelHandle->tunnel->adapterKey();

@@ -33,6 +33,8 @@ class ResolvedNextHop;
 class SaiNextHopManager;
 class SaiStore;
 
+bool isVxlanNextHop(const ResolvedNextHop& swNextHop);
+
 using SaiIpNextHop = SaiObject<SaiIpNextHopTraits>;
 using SaiMplsNextHop = SaiObject<SaiMplsNextHopTraits>;
 using SaiTunnelEncapNextHop = SaiObject<SaiTunnelEncapNextHopTraits>;

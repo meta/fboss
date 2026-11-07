@@ -264,10 +264,21 @@ SaiNextHopGroupManager::incRefOrAddNextHopGroup(const SaiNextHopGroupKey& key) {
 #endif
   for (const auto& swNextHop : memberNhops) {
     if (swNextHop.resolvedInNextLevel()) {
-      // TODO: program next hops resolved in the next level
-      throw FbossError(
-          "Next hops resolved in the next level are not supported: ",
-          swNextHop.addr().str());
+      auto resolvedNextHop = folly::poly_cast<ResolvedNextHop>(swNextHop);
+      if (isVxlanNextHop(resolvedNextHop)) {
+        // No interface: the adapter host key is keyed on the tunnel.
+        resolvedNextHops.emplace_back(std::move(resolvedNextHop));
+        auto nhk = managerTable_->nextHopManager().getAdapterHostKey(
+            resolvedNextHops.back());
+        nextHopGroupAdapterHostKey.nhopMemberSet.insert(
+            std::make_pair(nhk, swNextHop.weight()));
+        continue;
+      } else {
+        // TODO: program next hops resolved in the next level
+        throw FbossError(
+            "Next hops resolved in the next level are not supported: ",
+            swNextHop.addr().str());
+      }
     }
     // Compute the sai id of the next hop's router interface
     const InterfaceID interfaceId = swNextHop.intf();
@@ -449,8 +460,7 @@ SaiNextHopGroupManager::incRefOrAddNextHopGroup(const SaiNextHopGroupKey& key) {
                   ? 1
                   : resolvedNextHop.weight())};
     }
-    if (resolvedNextHop.tunnelType().has_value() &&
-        resolvedNextHop.tunnelType().value() == TunnelType::VXLAN) {
+    if (isVxlanNextHop(resolvedNextHop)) {
       auto vxlanNextHopHandle =
           managerTable_->nextHopManager().addVxlanNextHop(resolvedNextHop);
       auto result = nextHopGroupMembers_.refOrEmplace(
