@@ -60,13 +60,21 @@ namespace facebook::fboss {
 
 namespace {
 
-// True for a Neighbor Discovery (RFC 4861) or SEcure Neighbor Discovery (SEND,
-// RFC 3971) message behind IPv6 extension headers, or a chain ending in ICMPv6
-// too short to hold an ICMPv6 type. cursor points just after the fixed IPv6
-// header.
+// True for a Neighbor Discovery (RFC 4861), SEcure Neighbor Discovery (SEND,
+// RFC 3971) or Multicast Listener Discovery (MLD, RFC 2710 / RFC 3810) message
+// behind IPv6 extension headers, or a chain ending in ICMPv6 too short to hold
+// an ICMPv6 type. cursor points just after the fixed IPv6 header.
 //
-// None of these messages needs an extension header, and extension headers are
+// No ND or SEND message needs an extension header, and extension headers are
 // the known way to slip ND past RA-Guard style filters.
+//
+// MLD always carries a Hop-by-Hop Router Alert, so this is the form it
+// arrives in. It is dropped with or without extension headers (see
+// handleICMPv6Packet).
+//
+// A fragmented message is dropped by its first fragment, which carries the
+// ICMPv6 type, or is malformed if it does not. Later fragments carry no type
+// and go to the host, which cannot reassemble them without the first.
 //
 // RFC 6980, Section 5:
 //   "Nodes MUST silently ignore the following Neighbor Discovery and SEcure
@@ -86,7 +94,7 @@ namespace {
 //   the necessary information is missing), and the IPv6 Source Address of
 //   the packet is a link-local address or the unspecified address (::), then
 //   the RA-Guard implementation MUST block the packet."
-bool isNdpBehindExtensionHeaders(const IPv6Hdr& ipv6, Cursor cursor) {
+bool isDroppedIcmpv6BehindExtensionHeaders(const IPv6Hdr& ipv6, Cursor cursor) {
   if (!ipv6.hasExtensionHeaders() ||
       ipv6.lastNextHeader() !=
           static_cast<uint8_t>(IP_PROTO::IP_PROTO_IPV6_ICMP)) {
@@ -104,6 +112,10 @@ bool isNdpBehindExtensionHeaders(const IPv6Hdr& ipv6, Cursor cursor) {
     case ICMPv6Type::ICMPV6_TYPE_NDP_REDIRECT_MESSAGE:
     case ICMPv6Type::ICMPV6_TYPE_SEND_CERTIFICATION_PATH_SOLICITATION:
     case ICMPv6Type::ICMPV6_TYPE_SEND_CERTIFICATION_PATH_ADVERTISEMENT:
+    case ICMPv6Type::ICMPV6_TYPE_MULTICAST_LISTENER_QUERY:
+    case ICMPv6Type::ICMPV6_TYPE_MULTICAST_LISTENER_REPORT:
+    case ICMPv6Type::ICMPV6_TYPE_MULTICAST_LISTENER_DONE:
+    case ICMPv6Type::ICMPV6_TYPE_MULTICAST_LISTENER_DISCOVERY_REPORTS:
       return true;
     default:
       return false;
@@ -409,9 +421,9 @@ void IPv6Handler::handlePacket(
     if (ipv6.hopLimit == 1) {
       sw_->stats()->ipv6HopLimit1Mine();
     }
-    if (isNdpBehindExtensionHeaders(ipv6, cursor)) {
+    if (isDroppedIcmpv6BehindExtensionHeaders(ipv6, cursor)) {
       XLOG_EVERY_MS(WARNING, 1000)
-          << "Dropping ICMPv6 neighbor discovery packet to me with extension "
+          << "Dropping ICMPv6 ND, SEND or MLD packet to me with extension "
           << "headers, port: " << port << " src: " << ipv6.srcAddr.str()
           << " dst: " << ipv6.dstAddr.str();
       sw_->portStats(port)->pktDropped();
@@ -507,6 +519,14 @@ unique_ptr<RxPacket> IPv6Handler::handleICMPv6Packet(
     case ICMPv6Type::ICMPV6_TYPE_SEND_CERTIFICATION_PATH_SOLICITATION:
     case ICMPv6Type::ICMPV6_TYPE_SEND_CERTIFICATION_PATH_ADVERTISEMENT:
       // FBOSS does not implement SEcure Neighbor Discovery (RFC 3971).
+      sw_->portStats(pkt)->pktDropped();
+      return nullptr;
+    case ICMPv6Type::ICMPV6_TYPE_MULTICAST_LISTENER_QUERY:
+    case ICMPv6Type::ICMPV6_TYPE_MULTICAST_LISTENER_REPORT:
+    case ICMPv6Type::ICMPV6_TYPE_MULTICAST_LISTENER_DONE:
+    case ICMPv6Type::ICMPV6_TYPE_MULTICAST_LISTENER_DISCOVERY_REPORTS:
+      // FBOSS does not do IP multicast routing or MLD snooping, and the host
+      // is not a multicast router, so nothing on the switch consumes MLD.
       sw_->portStats(pkt)->pktDropped();
       return nullptr;
     case ICMPv6Type::ICMPV6_TYPE_CPU_LATENCY_PROBE:
