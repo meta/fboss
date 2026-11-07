@@ -453,6 +453,17 @@ template <typename AttrT>
 concept SaiAttributeType =
     IsSaiAttribute<std::remove_reference_t<AttrT>>::value;
 
+/*
+ * SAI attributes declared CREATE_ONLY may be passed at create but
+ * are not settable.
+ */
+template <typename AttrT>
+struct IsCreateOnlyAttribute : public std::false_type {};
+
+template <typename AttrT>
+struct IsCreateOnlyAttribute<std::optional<AttrT>>
+    : public IsCreateOnlyAttribute<AttrT> {};
+
 template <typename T>
 struct IsSaiEntryStruct : public std::false_type {};
 
