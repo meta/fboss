@@ -599,6 +599,17 @@ struct AclIpMatch {
 }
 
 /**
+ * Destination IPv6 word match with an arbitrary mask. value and mask are 32-bit
+ * words carried in i64, since Thrift has no unsigned 32-bit integer type. A
+ * packet matches when (packet word & mask) == value. value must not set bits
+ * outside mask, and mask must not be 0.
+ */
+struct AclIpV6WordMatch {
+  1: i64 value;
+  2: i64 mask;
+}
+
+/**
  * An access control entry
  */
 struct AclEntry {
@@ -746,6 +757,15 @@ struct AclEntry {
    * dstIp, dstIpV6Word3 or dstIpV6Word2.
    */
   42: optional AclIpMatch dstIpWithMask;
+
+  /*
+   * dstIpV6Word1WithMask matches destination IPv6 bits 63:32, and
+   * dstIpV6Word0WithMask matches bits 31:0. For
+   * AAAA:BBBB:CCCC:DDDD:EEEE:FFFF:1111:2222, word1 is EEEE:FFFF and word0 is
+   * 1111:2222. Cannot be combined with dstIp or dstIpWithMask.
+   */
+  43: optional AclIpV6WordMatch dstIpV6Word1WithMask;
+  44: optional AclIpV6WordMatch dstIpV6Word0WithMask;
 }
 
 enum AclTableActionType {
