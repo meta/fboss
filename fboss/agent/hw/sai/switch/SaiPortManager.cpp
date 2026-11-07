@@ -3328,7 +3328,17 @@ void SaiPortManager::clearStats(PortID port) {
           }),
       statsToClear.end());
   portHandle->port->clearStats(statsToClear);
-  managerTable_->queueManager().clearStats(portHandle->configuredQueues);
+  // Clear all queues, not just configuredQueues. Where the port level out
+  // discard counter is derived from the per queue drop counters, a queue left
+  // out keeps outDiscards_ non-zero. configuredQueues covers only the port
+  // queue config, which is unicast only on XGS, so the multicast queues would
+  // never be cleared.
+  std::vector<SaiQueueHandle*> allQueues;
+  allQueues.reserve(portHandle->queues.size());
+  for (const auto& [_, queue] : portHandle->queues) {
+    allQueues.push_back(queue.get());
+  }
+  managerTable_->queueManager().clearStats(allQueues);
 
   // Reset accumulated inDiscards counter in portStats_.
   // inDiscards_ is a software-accumulated counter (+=) that is not
