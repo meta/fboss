@@ -11,6 +11,7 @@
 #include "fboss/cli/fboss2/commands/show/interface/errors/CmdShowInterfaceErrors.h"
 #include "fboss/cli/fboss2/CmdHandler.cpp"
 
+#include "fboss/cli/fboss2/utils/CmdUtils.h"
 #include "fboss/cli/fboss2/utils/Table.h"
 
 namespace facebook::fboss {
@@ -34,34 +35,22 @@ CmdShowInterfaceErrors::RetType CmdShowInterfaceErrors::createModel(
     const std::vector<std::string>& queriedIfs) {
   RetType ret;
 
-  std::unordered_set<std::string> queriedSet(
-      queriedIfs.begin(), queriedIfs.end());
+  for (const auto* port : utils::getQueriedPorts(portCounters, queriedIfs)) {
+    const auto& portInfo = *port;
+    cli::ErrorCounters counter;
 
-  for (const auto& port : portCounters) {
-    auto portInfo = port.second;
-    if (queriedIfs.size() == 0 || queriedSet.count(portInfo.name().value())) {
-      cli::ErrorCounters counter;
+    counter.interfaceName() = portInfo.name().value();
+    counter.inputErrors() =
+        folly::copy(portInfo.input().value().errors().value().errors().value());
+    counter.inputDiscards() = folly::copy(
+        portInfo.input().value().errors().value().discards().value());
+    counter.outputErrors() = folly::copy(
+        portInfo.output().value().errors().value().errors().value());
+    counter.outputDiscards() = folly::copy(
+        portInfo.output().value().errors().value().discards().value());
 
-      counter.interfaceName() = portInfo.name().value();
-      counter.inputErrors() = folly::copy(
-          portInfo.input().value().errors().value().errors().value());
-      counter.inputDiscards() = folly::copy(
-          portInfo.input().value().errors().value().discards().value());
-      counter.outputErrors() = folly::copy(
-          portInfo.output().value().errors().value().errors().value());
-      counter.outputDiscards() = folly::copy(
-          portInfo.output().value().errors().value().discards().value());
-
-      ret.error_counters()->push_back(counter);
-    }
+    ret.error_counters()->push_back(counter);
   }
-
-  std::sort(
-      ret.error_counters()->begin(),
-      ret.error_counters()->end(),
-      [](cli::ErrorCounters& a, cli::ErrorCounters b) {
-        return a.interfaceName().value() < b.interfaceName().value();
-      });
 
   return ret;
 }

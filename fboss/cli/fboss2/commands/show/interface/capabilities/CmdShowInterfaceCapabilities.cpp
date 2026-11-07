@@ -11,7 +11,9 @@
 #include "fboss/cli/fboss2/commands/show/interface/capabilities/CmdShowInterfaceCapabilities.h"
 #include "fboss/cli/fboss2/CmdHandler.cpp"
 
+#include "fboss/cli/fboss2/utils/CmdClientUtilsCommon.h"
 #include "fboss/cli/fboss2/utils/Table.h"
+#include "fboss/qsfp_service/if/gen-cpp2/QsfpService.h"
 
 namespace facebook::fboss {
 

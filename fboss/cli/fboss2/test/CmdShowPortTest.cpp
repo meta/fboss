@@ -648,25 +648,28 @@ TEST_F(CmdShowPortTestFixture, cumulativeAndWindowedStats) {
 }
 
 TEST_F(CmdShowPortTestFixture, invalidPortName) {
+  // Interface names are free-form -- SVIs are named arbitrary things and the
+  // name may be unset -- so a name that doesn't follow the
+  // moduleNum/port/subport pattern must not abort the command. Such entries
+  // are ordered by their numeric port ID instead.
   auto invalidPortEntries = createInvalidPortEntries();
 
-  try {
-    CmdShowPort().createModel(
-        invalidPortEntries,
-        mockTransceiverEntries,
-        queriedEntries,
-        mockPortStats,
-        mockPortToPeer,
-        mockPeerDrainStates,
-        mockPeerPortInfo,
-        mockDrainedInterfaces);
-    FAIL();
-  } catch (const std::invalid_argument& expected) {
-    ASSERT_STREQ(
-        "Invalid port name: eth/5/1\n"
-        "Port name must match 'moduleNum/port/subport' pattern",
-        expected.what());
-  }
+  cli::ShowPortModel model;
+  ASSERT_NO_THROW(
+      model = CmdShowPort().createModel(
+          invalidPortEntries,
+          mockTransceiverEntries,
+          queriedEntries,
+          mockPortStats,
+          mockPortToPeer,
+          mockPeerDrainStates,
+          mockPeerPortInfo,
+          mockDrainedInterfaces));
+
+  auto portEntries = model.portEntries().value();
+  ASSERT_EQ(portEntries.size(), 2);
+  EXPECT_EQ(folly::copy(portEntries[0].id().value()), 1);
+  EXPECT_EQ(folly::copy(portEntries[1].id().value()), 2);
 }
 
 TEST_F(CmdShowPortTestFixture, queryClient) {

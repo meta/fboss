@@ -10,6 +10,7 @@
 #include "fboss/cli/fboss2/utils/CmdUtils.h"
 #include <fboss/agent/if/gen-cpp2/ctrl_types.h>
 #include <fboss/fsdb/oper/instantiations/FsdbPathConverter.h>
+#include <folly/Utility.h>
 #include <folly/logging/LogConfig.h>
 #include <folly/logging/xlog.h>
 #include "folly/Conv.h"
@@ -18,7 +19,10 @@
 #endif
 
 #include <re2/re2.h>
+#include <algorithm>
+#include <map>
 #include <string>
+#include <vector>
 
 using namespace std::chrono;
 
@@ -157,6 +161,91 @@ bool isRunningOnSwitch() {
 #else
   return false;
 #endif
+}
+
+std::optional<PortNameParts> parsePortName(const std::string& name) {
+  static const RE2 exp(R"(([a-z][a-z][a-z])(\d+)/(\d+)/(\d+))");
+  std::string moduleName, moduleNumStr, portNumStr, subportNumStr;
+  if (!RE2::FullMatch(
+          name, exp, &moduleName, &moduleNumStr, &portNumStr, &subportNumStr)) {
+    return std::nullopt;
+  }
+  return PortNameParts{
+      moduleName, stoi(moduleNumStr), stoi(portNumStr), stoi(subportNumStr)};
+}
+
+bool comparePortNameOrId(
+    const std::string& nameA,
+    int32_t idA,
+    const std::string& nameB,
+    int32_t idB) {
+  const auto partsA = parsePortName(nameA);
+  const auto partsB = parsePortName(nameB);
+  // Interface names are free-form: SVIs are named arbitrary things like
+  // "downlinks" and may be unset entirely. Prefer front panel ordering from
+  // the name when it encodes one, and fall back to the numeric ID otherwise.
+  if (partsA && partsB) {
+    return *partsA < *partsB;
+  }
+  if (partsA.has_value() != partsB.has_value()) {
+    // Keep physical ports ahead of names that carry no ordering.
+    return partsA.has_value();
+  }
+  return idA < idB;
+}
+
+bool compareInterfaceName(const std::string& nameA, const std::string& nameB) {
+  const auto partsA = parsePortName(nameA);
+  const auto partsB = parsePortName(nameB);
+  if (partsA && partsB) {
+    return *partsA < *partsB;
+  }
+  if (partsA.has_value() != partsB.has_value()) {
+    return partsA.has_value();
+  }
+  return nameA < nameB;
+}
+
+bool isQueriedInterface(
+    const std::string& name,
+    const std::vector<std::string>& queriedIfs) {
+  return queriedIfs.empty() ||
+      std::find(queriedIfs.begin(), queriedIfs.end(), name) != queriedIfs.end();
+}
+
+std::vector<const PortInfoThrift*> getQueriedPorts(
+    const std::map<int32_t, PortInfoThrift>& portEntries,
+    const std::vector<std::string>& queriedIfs) {
+  std::vector<const PortInfoThrift*> ports;
+  for (const auto& [portId, portInfo] : portEntries) {
+    if (isQueriedInterface(portInfo.name().value(), queriedIfs)) {
+      ports.push_back(&portInfo);
+    }
+  }
+  std::sort(
+      ports.begin(),
+      ports.end(),
+      [](const PortInfoThrift* a, const PortInfoThrift* b) {
+        return comparePortNameOrId(
+            a->name().value(),
+            folly::copy(a->portId().value()),
+            b->name().value(),
+            folly::copy(b->portId().value()));
+      });
+  return ports;
+}
+
+std::vector<std::string> getQueriedInterfaceNames(
+    const std::vector<std::string>& ifNames,
+    const std::vector<std::string>& queriedIfs) {
+  std::vector<std::string> names;
+  for (const auto& name : ifNames) {
+    if (isQueriedInterface(name, queriedIfs)) {
+      names.push_back(name);
+    }
+  }
+  std::sort(names.begin(), names.end(), compareInterfaceName);
+  return names;
 }
 
 bool comparePortName(

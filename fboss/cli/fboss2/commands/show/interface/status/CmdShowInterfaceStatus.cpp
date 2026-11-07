@@ -11,6 +11,7 @@
 #include "fboss/cli/fboss2/commands/show/interface/status/CmdShowInterfaceStatus.h"
 #include "fboss/cli/fboss2/CmdHandler.cpp"
 
+#include "fboss/cli/fboss2/utils/CmdUtils.h"
 #include "fboss/cli/fboss2/utils/Table.h"
 
 namespace facebook::fboss {
@@ -69,51 +70,42 @@ CmdShowInterfaceStatus::RetType CmdShowInterfaceStatus::createModel(
     std::map<int32_t, facebook::fboss::TransceiverInfo> transceiverEntries,
     const std::vector<std::string>& queriedIfs) {
   RetType model;
-  std::unordered_set<std::string> queriedSet(
-      queriedIfs.begin(), queriedIfs.end());
-  for (const auto& [portId, portInfo] : portEntries) {
-    if (queriedIfs.size() == 0 || queriedSet.count(portInfo.name().value())) {
-      cli::InterfaceStatus ifStatus;
-      const auto operState = folly::copy(portInfo.operState().value());
+  for (const auto* port : utils::getQueriedPorts(portEntries, queriedIfs)) {
+    const auto& portInfo = *port;
+    cli::InterfaceStatus ifStatus;
+    const auto operState = folly::copy(portInfo.operState().value());
 
-      ifStatus.name() = portInfo.name().value();
-      ifStatus.description() = portInfo.description().value();
-      ifStatus.status() =
-          (operState == facebook::fboss::PortOperState::UP) ? "up" : "down";
-      if (portInfo.vlans().value().size()) {
-        ifStatus.vlan() = portInfo.vlans().value()[0];
-      }
-      ifStatus.speed() =
-          std::to_string(folly::copy(portInfo.speedMbps().value()) / 1000) +
-          "G";
-
-      ifStatus.vendor() = "Not Present";
-      ifStatus.mpn() = "Not Present";
-      if (auto transceiverIdx = portInfo.transceiverIdx()) {
-        int32_t transceiverId =
-            folly::copy(transceiverIdx->transceiverId().value());
-        const auto& transceiver = transceiverEntries[transceiverId];
-        if (apache::thrift::get_pointer(transceiver.tcvrState()->vendor())) {
-          ifStatus.vendor() =
-              apache::thrift::get_pointer(transceiver.tcvrState()->vendor())
-                  ->name()
-                  .value();
-          ifStatus.mpn() =
-              apache::thrift::get_pointer(transceiver.tcvrState()->vendor())
-                  ->partNumber()
-                  .value();
-        }
-      }
-
-      model.interfaces()->push_back(ifStatus);
+    ifStatus.name() = portInfo.name().value();
+    ifStatus.portId() = folly::copy(portInfo.portId().value());
+    ifStatus.description() = portInfo.description().value();
+    ifStatus.status() =
+        (operState == facebook::fboss::PortOperState::UP) ? "up" : "down";
+    if (!portInfo.vlans().value().empty()) {
+      ifStatus.vlan() = portInfo.vlans().value()[0];
     }
+    ifStatus.speed() =
+        std::to_string(folly::copy(portInfo.speedMbps().value()) / 1000) + "G";
+
+    ifStatus.vendor() = "Not Present";
+    ifStatus.mpn() = "Not Present";
+    if (auto transceiverIdx = portInfo.transceiverIdx()) {
+      int32_t transceiverId =
+          folly::copy(transceiverIdx->transceiverId().value());
+      const auto& transceiver = transceiverEntries[transceiverId];
+      if (apache::thrift::get_pointer(transceiver.tcvrState()->vendor())) {
+        ifStatus.vendor() =
+            apache::thrift::get_pointer(transceiver.tcvrState()->vendor())
+                ->name()
+                .value();
+        ifStatus.mpn() =
+            apache::thrift::get_pointer(transceiver.tcvrState()->vendor())
+                ->partNumber()
+                .value();
+      }
+    }
+
+    model.interfaces()->push_back(ifStatus);
   }
-  std::sort(
-      model.interfaces()->begin(),
-      model.interfaces()->end(),
-      [](cli::InterfaceStatus& a, cli::InterfaceStatus b) {
-        return a.name().value() < b.name().value();
-      });
   return model;
 }
 
