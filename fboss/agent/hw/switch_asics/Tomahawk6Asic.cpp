@@ -272,6 +272,7 @@ bool Tomahawk6Asic::isSupported(Feature feature) const {
     case HwAsic::Feature::LAG_TTL_DECREMENT_DISABLE:
     case HwAsic::Feature::PORT_LATCH_STATUS:
     case HwAsic::Feature::ACL_DST_IP_WITH_MASK:
+    case HwAsic::Feature::ACL_DST_IPV6_WORD_WITH_MASK:
       return false;
   }
   return false;

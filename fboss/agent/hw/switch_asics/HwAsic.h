@@ -133,6 +133,10 @@ class HwAsic {
     // matchers with an arbitrary, possibly non-contiguous, mask.
     ACL_DST_IP_WITH_MASK,
 
+    // Set to true if the SAI implementation supports every ACL destination
+    // IPv6 word matcher FBOSS exposes with an arbitrary mask (word1 and word0).
+    ACL_DST_IPV6_WORD_WITH_MASK,
+
     // Set to true if the SAI implementation supports ACL Byte counters
     // For SAI, this maps to whether SAI_ACL_COUNTER_ATTR_BYTES can be queried.
     // TODO:
