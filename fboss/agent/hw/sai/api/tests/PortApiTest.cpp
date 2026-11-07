@@ -317,6 +317,21 @@ TEST_F(PortApiTest, setCbfcSenderPacketOverhead) {
           id, SaiPortTraits::Attributes::CbfcSenderPacketOverhead{}),
       -16);
 }
+
+TEST_F(PortApiTest, setCbfcReceiverCreditLimit) {
+  auto id = createPort(100000, {42}, true);
+  EXPECT_EQ(
+      portApi->getAttribute(
+          id, SaiPortTraits::Attributes::CbfcReceiverCreditLimit{}),
+      0);
+
+  portApi->setAttribute(
+      id, SaiPortTraits::Attributes::CbfcReceiverCreditLimit{4096});
+  EXPECT_EQ(
+      portApi->getAttribute(
+          id, SaiPortTraits::Attributes::CbfcReceiverCreditLimit{}),
+      4096);
+}
 #endif
 
 TEST_F(PortApiTest, fourPorts) {
