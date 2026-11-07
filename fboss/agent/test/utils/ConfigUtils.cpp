@@ -1431,7 +1431,6 @@ bool isRswPlatform(PlatformType type) {
     default:
       return false;
   };
-  return false;
 }
 /*
  * Returns a pair of vectors of the form (uplinks, downlinks). Pertains
