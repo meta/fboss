@@ -2308,21 +2308,21 @@
       "pmUnitName": "NETLAKE20",
       "sensors": [
         {
-          "name": "COME_U28_INLET_SENSOR_TMP75_TEMP",
-          "sysfsPath": "/run/devmap/sensors/COME_INLET_TSENSOR/temp1_input",
+          "name": "COME_U28_OUTLET_SENSOR_TMP75_TEMP",
+          "sysfsPath": "/run/devmap/sensors/COME_OUTLET_TSENSOR/temp1_input",
           "type": 3,
           "thresholds": {
-            "maxAlarmVal": 46.3,
+            "maxAlarmVal": 80,
             "upperCriticalVal": 100
           },
           "compute": "@/1000.0"
         },
         {
-          "name": "COME_U29_OUTLET_SENSOR_TMP75_TEMP",
-          "sysfsPath": "/run/devmap/sensors/COME_OUTLET_TSENSOR/temp1_input",
+          "name": "COME_U29_INLET_SENSOR_TMP75_TEMP",
+          "sysfsPath": "/run/devmap/sensors/COME_INLET_TSENSOR/temp1_input",
           "type": 3,
           "thresholds": {
-            "maxAlarmVal": 65.4,
+            "maxAlarmVal": 80,
             "upperCriticalVal": 100
           },
           "compute": "@/1000.0"
@@ -2662,150 +2662,8 @@
               "compute": "@/1000.0"
             }
           ],
-          "productionState": 1,
-          "productionSubState": 2,
-          "respinVariantIndicator": 2
-        },
-        {
-          "sensors": [
-            {
-              "name": "COME_PU1_MP29608_PVDDCR_POUT1",
-              "sysfsPath": "/run/devmap/sensors/COME_HWMON1/power3_input",
-              "type": 0,
-              "thresholds": {
-                "upperCriticalVal": 131.84
-              },
-              "compute": "@/1000000.0"
-            },
-            {
-              "name": "COME_PU1_MP29608_PVDDCR_SOC_POUT2",
-              "sysfsPath": "/run/devmap/sensors/COME_HWMON1/power4_input",
-              "type": 0,
-              "thresholds": {
-                "upperCriticalVal": 30.9
-              },
-              "compute": "@/1000000.0"
-            },
-            {
-              "name": "COME_PU1_MP29608_PVDDCR_SOC_MISC_VIN",
-              "sysfsPath": "/run/devmap/sensors/COME_HWMON1/in1_input",
-              "type": 1,
-              "thresholds": {
-                "maxAlarmVal": 13.22,
-                "minAlarmVal": 10.82,
-                "upperCriticalVal": 13.35,
-                "lowerCriticalVal": 10.7
-              },
-              "compute": "@/1000.0"
-            },
-            {
-              "name": "COME_PU1_MP29608_PVDDCR_VOUT1",
-              "sysfsPath": "/run/devmap/sensors/COME_HWMON1/in2_input",
-              "type": 1,
-              "thresholds": {
-                "maxAlarmVal": 1.75,
-                "upperCriticalVal": 1.82
-              },
-              "compute": "@/1000.0"
-            },
-            {
-              "name": "COME_PU1_MP29608_PVDDCR_SOC_VOUT2",
-              "sysfsPath": "/run/devmap/sensors/COME_HWMON1/in3_input",
-              "type": 1,
-              "thresholds": {
-                "maxAlarmVal": 1.36,
-                "upperCriticalVal": 1.46
-              },
-              "compute": "@/1000.0"
-            },
-            {
-              "name": "COME_PU1_MP29608_PVDDCR_TEMP1",
-              "sysfsPath": "/run/devmap/sensors/COME_HWMON1/temp1_input",
-              "type": 3,
-              "thresholds": {
-                "upperCriticalVal": 100
-              },
-              "compute": "@/1000.0"
-            },
-            {
-              "name": "COME_PU1_MP29608_PVDDCR_SOC_TEMP2",
-              "sysfsPath": "/run/devmap/sensors/COME_HWMON1/temp2_input",
-              "type": 3,
-              "thresholds": {
-                "upperCriticalVal": 100
-              },
-              "compute": "@/1000.0"
-            },
-            {
-              "name": "COME_PU1_MP29608_PVDDCR_IOUT1",
-              "sysfsPath": "/run/devmap/sensors/COME_HWMON1/curr3_input",
-              "type": 2,
-              "thresholds": {
-                "upperCriticalVal": 164.8
-              },
-              "compute": "@/1000.0"
-            },
-            {
-              "name": "COME_PU1_MP29608_PVDDCR_SOC_IOUT2",
-              "sysfsPath": "/run/devmap/sensors/COME_HWMON1/curr4_input",
-              "type": 2,
-              "thresholds": {
-                "upperCriticalVal": 38.625
-              },
-              "compute": "@/1000.0"
-            },
-            {
-              "name": "COME_PU37_MP29608_PVDD_MISC_POUT1",
-              "sysfsPath": "/run/devmap/sensors/COME_HWMON2/power3_input",
-              "type": 0,
-              "thresholds": {
-                "upperCriticalVal": 24.72
-              },
-              "compute": "@/1000000.0"
-            },
-            {
-              "name": "COME_PU37_MP29608_PVDDCR_SOC_MISC_VIN",
-              "sysfsPath": "/run/devmap/sensors/COME_HWMON2/in1_input",
-              "type": 1,
-              "thresholds": {
-                "maxAlarmVal": 13.22,
-                "minAlarmVal": 10.82,
-                "upperCriticalVal": 13.35,
-                "lowerCriticalVal": 10.7
-              },
-              "compute": "@/1000.0"
-            },
-            {
-              "name": "COME_PU37_MP29608_PVDD_MISC_VOUT1",
-              "sysfsPath": "/run/devmap/sensors/COME_HWMON2/in2_input",
-              "type": 1,
-              "thresholds": {
-                "maxAlarmVal": 1.29,
-                "upperCriticalVal": 1.42
-              },
-              "compute": "@/1000.0"
-            },
-            {
-              "name": "COME_PU37_MP29608_PVDD_MISC_TEMP1",
-              "sysfsPath": "/run/devmap/sensors/COME_HWMON2/temp1_input",
-              "type": 3,
-              "thresholds": {
-                "upperCriticalVal": 100
-              },
-              "compute": "@/1000.0"
-            },
-            {
-              "name": "COME_PU37_MP29608_PVDD_MISC_IOUT1",
-              "sysfsPath": "/run/devmap/sensors/COME_HWMON2/curr3_input",
-              "type": 2,
-              "thresholds": {
-                "upperCriticalVal": 30.9
-              },
-              "compute": "@/1000.0"
-            }
-          ],
-          "productionState": 1,
-          "productionSubState": 3,
+          "productionState": 3,
+          "productionSubState": 1,
           "respinVariantIndicator": 2
         },
         {
