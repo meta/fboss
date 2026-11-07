@@ -29,6 +29,8 @@
 #include "fboss/agent/test/utils/UdfTestUtils.h"
 #include "fboss/lib/CommonUtils.h"
 
+#include <optional>
+
 DECLARE_bool(flowletSwitchingEnable);
 
 namespace {
@@ -80,6 +82,16 @@ constexpr auto kDstIpWithMaskV4AclName = "dst-ip-with-mask-v4-acl";
 constexpr auto kDstIpWithMaskV4AclCounterName = "dst-ip-with-mask-v4-acl-stats";
 constexpr auto kDstIpWithMaskV4Ip = "200.32.5.0";
 constexpr auto kDstIpWithMaskV4Mask = "255.240.15.0";
+constexpr auto kDstIpV6WordWithMaskAclName = "dst-ipv6-word-with-mask-acl";
+// SAI ACL counter labels are limited to 31 characters.
+constexpr auto kDstIpV6WordWithMaskAclCounterName =
+    "dst-ipv6-word-mask-acl-stats";
+// Word1 mask 0xeffffffc is the ::efff:fffc:0:0 mask; word0 mask 0xff00ff0f is
+// also non-contiguous.
+constexpr uint32_t kDstIpV6Word1Value = 0x4a1c1230;
+constexpr uint32_t kDstIpV6Word1Mask = 0xeffffffc;
+constexpr uint32_t kDstIpV6Word0Value = 0x12003401;
+constexpr uint32_t kDstIpV6Word0Mask = 0xff00ff0f;
 } // namespace
 
 namespace facebook::fboss {
@@ -1130,11 +1142,12 @@ class AgentDstIpWithMaskAclTest : public AgentAclCounterTest {
   void verifyDstIpWithMaskAcl(
       const std::string& name,
       const folly::IPAddress& dstIp,
-      bool expectHit) {
+      bool expectHit,
+      const std::optional<std::string>& aclCounterName = std::nullopt) {
     SCOPED_TRACE(name);
-    const std::string counterName = dstIp.isV4()
-        ? kDstIpWithMaskV4AclCounterName
-        : kDstIpWithMaskV6AclCounterName;
+    const std::string counterName = aclCounterName.value_or(
+        dstIp.isV4() ? kDstIpWithMaskV4AclCounterName
+                     : kDstIpWithMaskV6AclCounterName);
     auto egressPort = helper_->ecmpPortDescriptorAt(0).phyPortID();
     auto egressPktsBefore =
         *getNextUpdatedPortStats(egressPort).outUnicastPkts_();
@@ -1874,6 +1887,111 @@ TEST_F(AgentAclCounterL4DstPortRangeTest, VerifyL4DstPortRangeAcl) {
   verifyAcrossWarmBoots(setup, verify);
 }
 
+class AgentDstIpV6WordWithMaskAclTest : public AgentDstIpWithMaskAclTest {
+ public:
+  std::vector<ProductionFeature> getProductionFeaturesVerified()
+      const override {
+    return {
+        ProductionFeature::DST_IPV6_WORD_WITH_MASK_ACL,
+        ProductionFeature::MODIFY_ACL_QUALIFIERS};
+  }
+
+ protected:
+  void setCmdLineFlagOverrides() const override {
+    AgentDstIpWithMaskAclTest::setCmdLineFlagOverrides();
+    FLAGS_enable_acl_table_group = true;
+  }
+
+  cfg::SwitchConfig initialConfig(
+      const AgentEnsemble& ensemble) const override {
+    auto cfg = AgentAclCounterTest::initialConfig(ensemble);
+    // Q200 requires the first ACL table to carry a superset of the qualifiers
+    // of every later table.
+    auto* defaultTable = utility::getAclTable(
+        cfg, cfg::AclStage::INGRESS, utility::kDefaultAclTable());
+    CHECK(defaultTable);
+    defaultTable->qualifiers() = {
+        cfg::AclTableQualifier::SRC_IPV6,
+        cfg::AclTableQualifier::DST_IPV6,
+        cfg::AclTableQualifier::SRC_IPV4,
+        cfg::AclTableQualifier::DST_IPV4,
+        cfg::AclTableQualifier::IP_PROTOCOL_NUMBER,
+        cfg::AclTableQualifier::DSCP,
+        cfg::AclTableQualifier::IP_TYPE,
+        cfg::AclTableQualifier::TTL,
+        cfg::AclTableQualifier::LOOKUP_CLASS_L2,
+        cfg::AclTableQualifier::LOOKUP_CLASS_NEIGHBOR,
+        cfg::AclTableQualifier::LOOKUP_CLASS_ROUTE,
+        cfg::AclTableQualifier::ETHER_TYPE,
+        cfg::AclTableQualifier::BTH_OPCODE,
+        cfg::AclTableQualifier::SRC_PORT,
+        cfg::AclTableQualifier::L4_SRC_PORT,
+        cfg::AclTableQualifier::L4_DST_PORT,
+        cfg::AclTableQualifier::TCP_FLAGS,
+        cfg::AclTableQualifier::IP_FRAG,
+        cfg::AclTableQualifier::ICMPV4_TYPE,
+        cfg::AclTableQualifier::ICMPV4_CODE,
+        cfg::AclTableQualifier::ICMPV6_TYPE,
+        cfg::AclTableQualifier::ICMPV6_CODE,
+        cfg::AclTableQualifier::DST_MAC,
+        cfg::AclTableQualifier::DST_IPV6_WORD1,
+        cfg::AclTableQualifier::DST_IPV6_WORD0,
+    };
+    utility::addAclTable(
+        &cfg,
+        kDstIpWithMaskAclTableName,
+        1 /* priority */,
+        {
+            cfg::AclTableActionType::PACKET_ACTION,
+            cfg::AclTableActionType::COUNTER,
+        },
+        {cfg::AclTableQualifier::DST_IPV6_WORD1,
+         cfg::AclTableQualifier::DST_IPV6_WORD0,
+         cfg::AclTableQualifier::IP_PROTOCOL_NUMBER});
+    return cfg;
+  }
+
+  void setupDstIpV6WordWithMaskAclTest() {
+    applyNewState([&](const std::shared_ptr<SwitchState>& in) {
+      return helper_->resolveNextHops(in, kDstIpV6WordEcmpWidth);
+    });
+    auto wrapper = getSw()->getRouteUpdater();
+    helper_->programRoutes(&wrapper, kDstIpV6WordEcmpWidth);
+    auto newCfg{initialConfig(*getAgentEnsemble())};
+    cfg::AclEntry acl;
+    acl.name() = kDstIpV6WordWithMaskAclName;
+    acl.actionType() = cfg::AclActionType::DENY;
+    acl.proto() = 6;
+    cfg::AclIpV6WordMatch word1;
+    word1.value() = kDstIpV6Word1Value;
+    word1.mask() = kDstIpV6Word1Mask;
+    acl.dstIpV6Word1WithMask() = word1;
+    cfg::AclIpV6WordMatch word0;
+    word0.value() = kDstIpV6Word0Value;
+    word0.mask() = kDstIpV6Word0Mask;
+    acl.dstIpV6Word0WithMask() = word0;
+    utility::addAclEntry(
+        &newCfg, acl, kDstIpWithMaskAclTableName, cfg::AclStage::INGRESS);
+    utility::addAclStat(
+        &newCfg,
+        kDstIpV6WordWithMaskAclName,
+        kDstIpV6WordWithMaskAclCounterName,
+        {cfg::CounterType::PACKETS, cfg::CounterType::BYTES});
+    applyNewConfig(newCfg);
+  }
+
+  void verifyDstIpV6WordWithMaskAcl(
+      const std::string& name,
+      const std::string& dstIp,
+      bool expectHit) {
+    verifyDstIpWithMaskAcl(
+        name,
+        folly::IPAddress(dstIp),
+        expectHit,
+        kDstIpV6WordWithMaskAclCounterName);
+  }
+};
+
 TEST_F(AgentDstIpV6WordAclCounterTest, VerifyDstIpV6Word2AndWord3AclCounter) {
   auto setup = [this]() { setupDstIpV6WordAclCounterTest(); };
   auto verify = [this]() {
@@ -2229,4 +2347,46 @@ TEST_F(AgentFlowletAclCounterTest, VerifyUdfFlowletWithUdf) {
        AclType::UDF_OPCODE_ACK,
        AclType::UDF_OPCODE_WRITE_IMMEDIATE});
 }
+
+TEST_F(AgentDstIpV6WordWithMaskAclTest, VerifyDstIpV6WordWithMaskDeny) {
+  auto setup = [this]() { setupDstIpV6WordWithMaskAclTest(); };
+  auto verify = [this]() {
+    verifyAclProgrammed(kDstIpV6WordWithMaskAclName);
+
+    // Word1 compares bits 63:32 under 0xeffffffc (not bit 60 or bits 33:32),
+    // and word0 compares bits 31:0 under 0xff00ff0f (not bits 23:16 or
+    // bits 7:4). Words 3 and 2 are never compared.
+    verifyDstIpV6WordWithMaskAcl(
+        "masked bits match, words 3 and 2 differ",
+        "2001:db8:1:2:4a1c:1230:1200:3401",
+        true);
+    verifyDstIpV6WordWithMaskAcl(
+        "word1 unmasked bit 60 differs",
+        "2001:db8:1:2:5a1c:1230:1200:3401",
+        true);
+    verifyDstIpV6WordWithMaskAcl(
+        "word1 unmasked bits 33:32 differ",
+        "2001:db8:1:2:4a1c:1233:1200:3401",
+        true);
+    verifyDstIpV6WordWithMaskAcl(
+        "word0 unmasked bits 23:16 and 7:4 differ",
+        "2001:db8:1:2:4a1c:1230:12ab:34f1",
+        true);
+    verifyDstIpV6WordWithMaskAcl(
+        "word1 masked bit 48 differs",
+        "2001:db8:1:2:4a1d:1230:1200:3401",
+        false);
+    verifyDstIpV6WordWithMaskAcl(
+        "word0 masked bit 1 differs",
+        "2001:db8:1:2:4a1c:1230:1200:3403",
+        false);
+    verifyDstIpV6WordWithMaskAcl(
+        "word0 masked bit 24 differs",
+        "2001:db8:1:2:4a1c:1230:1300:3401",
+        false);
+  };
+
+  verifyAcrossWarmBoots(setup, verify);
+}
+
 } // namespace facebook::fboss
