@@ -1661,4 +1661,48 @@ TEST_F(PortManagerTest, ignoresUnsetAuxiliarySerdesAttributesOnWarmBoot) {
 #endif
 }
 #endif
+
+TEST_F(PortManagerTest, zeroPreemphasisZeroesLanesWithoutTxSettings) {
+  auto swPort = makePort(p0);
+  saiManagerTable->portManager().addPort(swPort);
+  auto* handle = saiManagerTable->portManager().getPortHandle(swPort->getID());
+
+  auto pinConfigs = swPort->getPinConfigs();
+  ASSERT_FALSE(pinConfigs.empty());
+  for (auto& pinConfig : pinConfigs) {
+    pinConfig.tx().reset();
+  }
+
+  auto txAttrs = [&](bool zeroPreemphasis) {
+    auto attrs =
+        saiManagerTable->portManager().serdesAttributesFromSwPinConfigs(
+            handle->port->adapterKey(),
+            pinConfigs,
+            handle->serdes,
+            zeroPreemphasis);
+    return std::make_tuple(
+        std::get<std::optional<SaiPortSerdesTraits::Attributes::TxFirPre1>>(
+            attrs),
+        std::get<std::optional<SaiPortSerdesTraits::Attributes::TxFirMain>>(
+            attrs),
+        std::get<std::optional<SaiPortSerdesTraits::Attributes::TxFirPost1>>(
+            attrs));
+  };
+
+  // Without zero preemphasis, lanes with no TX settings are left to the SDK.
+  auto [pre1, mainTap, post1] = txAttrs(false);
+  EXPECT_FALSE(pre1.has_value());
+  EXPECT_FALSE(mainTap.has_value());
+  EXPECT_FALSE(post1.has_value());
+
+  auto [zeroPre1, zeroMain, zeroPost1] = txAttrs(true);
+  SaiPortSerdesTraits::Attributes::TxFirMain::ValueType zeros(
+      pinConfigs.size(), 0);
+  ASSERT_TRUE(zeroPre1.has_value());
+  ASSERT_TRUE(zeroMain.has_value());
+  ASSERT_TRUE(zeroPost1.has_value());
+  EXPECT_EQ(zeroPre1->value(), zeros);
+  EXPECT_EQ(zeroMain->value(), zeros);
+  EXPECT_EQ(zeroPost1->value(), zeros);
+}
 } // namespace facebook::fboss
