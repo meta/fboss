@@ -1793,6 +1793,88 @@ TEST(Acl, DstIpWithMaskValidation) {
     expectInvalid(config);
   }
 }
+TEST(Acl, DstIpV6WordWithMaskValidation) {
+  FLAGS_enable_acl_table_group = false;
+  auto platform = createMockPlatform();
+  auto stateV0 = make_shared<SwitchState>();
+  registerPort(stateV0, PortID(1), "port1", scope());
+
+  auto makeWordMatch = [](int64_t value, int64_t mask) {
+    cfg::AclIpV6WordMatch match;
+    match.value() = value;
+    match.mask() = mask;
+    return match;
+  };
+
+  auto makeConfig = [](std::optional<cfg::AclIpV6WordMatch> word1,
+                       std::optional<cfg::AclIpV6WordMatch> word0) {
+    cfg::SwitchConfig config;
+    config.ports()->resize(1);
+    preparedMockPortConfig(config.ports()[0], 1);
+    config.acls()->resize(1);
+    config.acls()[0].name() = "acl0";
+    config.acls()[0].actionType() = cfg::AclActionType::DENY;
+    if (word1) {
+      config.acls()[0].dstIpV6Word1WithMask() = *word1;
+    }
+    if (word0) {
+      config.acls()[0].dstIpV6Word0WithMask() = *word0;
+    }
+    return config;
+  };
+
+  auto applyConfig = [&](cfg::SwitchConfig* config) {
+    return publishAndApplyConfig(stateV0, config, platform.get());
+  };
+
+  {
+    // Mask ::efff:fffc:0:0 lies entirely in word1. word3/word2 may be
+    // combined with word1/word0 since they match disjoint bits.
+    auto config = makeConfig(
+        makeWordMatch(0x4a1c1230, 0xeffffffc), makeWordMatch(0x1, 0xffff));
+    config.acls()[0].dstIpV6Word3() = 0x12345678;
+    auto stateV1 = applyConfig(&config);
+    auto acl = stateV1->getAcl("acl0");
+    ASSERT_NE(nullptr, acl);
+    EXPECT_EQ(
+        acl->getDstIpV6Word1WithMask(),
+        std::make_pair(uint32_t{0x4a1c1230}, uint32_t{0xeffffffc}));
+    EXPECT_EQ(
+        acl->getDstIpV6Word0WithMask(),
+        std::make_pair(uint32_t{0x1}, uint32_t{0xffff}));
+    EXPECT_EQ(acl->getDstIpV6Word3(), 0x12345678);
+    EXPECT_TRUE(acl->hasMatcher());
+  }
+
+  auto expectInvalid = [&](cfg::SwitchConfig config) {
+    EXPECT_THROW(applyConfig(&config), FbossError);
+  };
+
+  // value sets bits outside mask.
+  expectInvalid(
+      makeConfig(makeWordMatch(0x5a1c1230, 0xeffffffc), std::nullopt));
+  expectInvalid(makeConfig(std::nullopt, makeWordMatch(0x10001, 0xffff)));
+  // Zero mask.
+  expectInvalid(makeConfig(makeWordMatch(0, 0), std::nullopt));
+  // Not 32-bit.
+  expectInvalid(makeConfig(makeWordMatch(0, 0x1ffffffff), std::nullopt));
+  expectInvalid(makeConfig(std::nullopt, makeWordMatch(-1, 0xffffffff)));
+  // Cannot be combined with dstIp or dstIpWithMask.
+  {
+    auto config =
+        makeConfig(makeWordMatch(0x4a1c1230, 0xeffffffc), std::nullopt);
+    config.acls()[0].dstIp() = "1234:5678:9abc:def0::1/128";
+    expectInvalid(config);
+  }
+  {
+    auto config = makeConfig(std::nullopt, makeWordMatch(0x1, 0xffff));
+    cfg::AclIpMatch match;
+    match.ip() = "::4a1c:1230:0:0";
+    match.mask() = "::efff:fffc:0:0";
+    config.acls()[0].dstIpWithMask() = match;
+    expectInvalid(config);
+  }
+}
 
 namespace {
 
