@@ -59,6 +59,10 @@ void CmdGlobalOptions::init(CLI::App& app) {
       "--aggregate-hosts",
       aggregateAcrossDevices_,
       "whether to perform aggregation across all hosts or not");
+  app.add_flag(
+      "--force",
+      force_,
+      "Proceed with an operation the CLI would otherwise refuse");
 
   initAdditional(app);
 }
