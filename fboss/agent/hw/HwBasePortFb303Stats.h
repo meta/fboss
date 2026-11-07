@@ -211,6 +211,12 @@ class HwBasePortFb303Stats {
   const std::vector<PfcPriority>& getEnabledPfcPriorities() const {
     return pfcInfo_.enabledPfcPriorities;
   }
+  bool isRxPfcDurationEnabled() const {
+    return pfcInfo_.rxPfcDurationEnabled;
+  }
+  bool isTxPfcDurationEnabled() const {
+    return pfcInfo_.txPfcDurationEnabled;
+  }
   bool isSrv6MysidDiscardCounterSupported() const {
     return srv6MysidDiscardCounterSupported_;
   }
