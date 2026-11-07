@@ -168,7 +168,18 @@ ParticipantInfo LacpController::partnerInfo() const {
 }
 
 void LacpController::ntt() {
-  tx_.ntt(LACPDU(actorInfo(), partnerInfo()));
+  auto actor = actorInfo();
+  auto partner = partnerInfo();
+  // 802.1AX Transmit machine: no LACPDU while the Periodic machine is in
+  // NO_PERIODIC. Otherwise two passive ends keep re-syncing each other off
+  // the PDUs every Mux transition emits.
+  if ((actor.state & LacpState::LACP_ACTIVE) == 0 &&
+      (partner.state & LacpState::LACP_ACTIVE) == 0) {
+    XLOG(DBG4) << "LacpController[" << portID_
+               << "]: skipping ntt, actor and partner are both passive";
+    return;
+  }
+  tx_.ntt(LACPDU(actor, partner));
 }
 
 PortID LacpController::portID() const {
