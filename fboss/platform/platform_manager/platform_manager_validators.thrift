@@ -62,10 +62,12 @@ const list<string> ALLOWED_PMUNIT_NAMES = [
   "MINIPACK3M_SMB",
   // The BIOS infers the PlatformName from MCB EEPROM in these platforms
   // This is for platforms reliant on NETLAKE BIOS.
+  "ELSFP",
   "ICECUBE_MCB",
   "ICECUBEM_MCB",
   "LADAKH800BCLS_MCB",
   "LADAKH800BCLSM_MCB",
+  "M4061CLSC_MCB",
   "LEH800BCLS_MCB",
   "LEH800BCLSM_MCB",
   "MINIPACK3_MCB",
