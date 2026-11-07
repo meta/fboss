@@ -289,7 +289,6 @@ bool ChenabAsic::isSupportedFabric(Feature feature) const {
     default:
       return false;
   }
-  return false;
 }
 
 int ChenabAsic::getDefaultNumPortQueues(

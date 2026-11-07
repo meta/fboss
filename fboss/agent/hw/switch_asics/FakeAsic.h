@@ -223,7 +223,6 @@ class FakeAsic : public HwAsic {
             apache::thrift::util::enumNameSafe(scalingFactor));
     }
     CHECK(0) << "Should never get here";
-    return -1;
   }
   uint32_t getStaticQueueLimitBytes() const override {
     return 0;
