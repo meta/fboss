@@ -32,6 +32,7 @@ add_executable(fboss2_cmd_config_test
   fboss/cli/fboss2/test/config/CmdConfigL2LearningModeTest.cpp
   fboss/cli/fboss2/test/config/CmdConfigPtpTransparentClockTest.cpp
   fboss/cli/fboss2/test/config/CmdConfigMacAgingTimeTest.cpp
+  fboss/cli/fboss2/test/config/CmdConfigSflowCollectorTest.cpp
   fboss/cli/fboss2/test/config/CmdConfigLoadBalancingTest.cpp
   fboss/cli/fboss2/test/config/CmdConfigQosBufferPoolTest.cpp
   fboss/cli/fboss2/test/config/CmdConfigQosDefaultPolicyTest.cpp
