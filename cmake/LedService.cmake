@@ -68,6 +68,7 @@ add_library(led_manager_lib
   fboss/led_service/M4052ACTMLedManager.cpp
   fboss/led_service/M4061nhpLedManager.cpp
   fboss/led_service/M4062nhpLedManager.cpp
+  fboss/led_service/M4340nhpLedManager.cpp
   fboss/led_service/Icetea800bcLedManager.cpp
   fboss/led_service/Meru800biaLedManager.cpp
   fboss/led_service/Meru800bfaLedManager.cpp
@@ -97,6 +98,7 @@ target_link_libraries(led_manager_lib
   icecube800bc_bsp
   m4061nhp_bsp
   m4062nhp_bsp
+  m4340nhp_bsp
   icetea800bc_bsp
   meru800bia_bsp
   meru800bfa_bsp
