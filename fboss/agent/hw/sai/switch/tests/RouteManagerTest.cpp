@@ -329,6 +329,106 @@ TEST_F(RouteManagerTest, backupOnlyRouteCreatesProtectionGroup) {
       SAI_NEXT_HOP_GROUP_TYPE_HW_PROTECTION);
 }
 
+TEST_F(
+    RouteManagerTest,
+    protectionRouteReusesGroupAcrossPrimaryResolutionChanges) {
+  RouteNextHopEntry::NextHopSet backupNextHops{
+      makeResolvedNextHop(testInterfaces.at(1), NextHopRole::BACKUP),
+  };
+  auto protectedRoute =
+      makeProtectionRoute(d1, testInterfaces.at(0), backupNextHops);
+  auto routeHandle = programRoute(protectedRoute);
+  ASSERT_NE(routeHandle, nullptr);
+  auto initialGroup = routeHandle->nextHopGroupHandle();
+  ASSERT_NE(initialGroup, nullptr);
+  ASSERT_NE(initialGroup->nextHopGroup, nullptr);
+  const auto initialGroupId = initialGroup->nextHopGroup->adapterKey();
+  auto& nextHopGroupApi = saiApiTable->nextHopGroupApi();
+  const auto initialChildGroupId = getChildGroupId(initialGroup);
+  ASSERT_TRUE(initialChildGroupId.has_value());
+
+  auto expectProtectionGroup = [&](const auto& groupHandle,
+                                   size_t expectedMemberCount) {
+    ASSERT_NE(groupHandle, nullptr);
+    ASSERT_NE(groupHandle->nextHopGroup, nullptr);
+    EXPECT_EQ(groupHandle->nextHopGroupSize(), expectedMemberCount);
+    EXPECT_EQ(
+        nextHopGroupApi.getAttribute(
+            groupHandle->nextHopGroup->adapterKey(),
+            SaiNextHopGroupTraits::Attributes::Type{}),
+        SAI_NEXT_HOP_GROUP_TYPE_PROTECTION);
+    const auto childGroupId = getChildGroupId(groupHandle);
+    ASSERT_TRUE(childGroupId.has_value());
+    EXPECT_EQ(childGroupId, initialChildGroupId);
+    EXPECT_EQ(
+        nextHopGroupApi.getAttribute(
+            NextHopGroupSaiId(childGroupId.value()),
+            SaiNextHopGroupTraits::Attributes::Type{}),
+        SAI_NEXT_HOP_GROUP_TYPE_HW_PROTECTION);
+  };
+  expectProtectionGroup(initialGroup, 2);
+
+  // Resolution removes the primary from the forwarding set. The existing
+  // protection group must remain programmed so GR2 can continue using the
+  // standby member without a group replacement.
+  auto backupOnlyRoute =
+      makeProtectionRoute(d1, testInterfaces.at(0), backupNextHops);
+  RouteNextHopEntry backupResolvedEntry(
+      backupNextHops, AdminDistance::STATIC_ROUTE);
+  allocateRouteNextHopIds(nextHopIDManager_.get(), backupResolvedEntry);
+  backupOnlyRoute->setResolved(backupResolvedEntry);
+  changeRoute(protectedRoute, backupOnlyRoute);
+  EXPECT_EQ(routeHandle->nextHopAdapterKey(), initialGroupId);
+  expectProtectionGroup(routeHandle->nextHopGroupHandle(), 1);
+
+  // When the primary resolves again, the same group is retained and its
+  // subscribed primary member is recreated by the next-hop manager.
+  auto restoredRoute =
+      makeProtectionRoute(d1, testInterfaces.at(0), backupNextHops);
+  changeRoute(backupOnlyRoute, restoredRoute);
+  EXPECT_EQ(routeHandle->nextHopAdapterKey(), initialGroupId);
+  expectProtectionGroup(routeHandle->nextHopGroupHandle(), 2);
+}
+
+TEST_F(RouteManagerTest, protectionRouteDoesNotReuseGroupWhenPrimaryRemoved) {
+  RouteNextHopEntry::NextHopSet backupNextHops{
+      makeResolvedNextHop(testInterfaces.at(1), NextHopRole::BACKUP),
+  };
+  auto protectedRoute =
+      makeProtectionRoute(d1, testInterfaces.at(0), backupNextHops);
+  auto routeHandle = programRoute(protectedRoute);
+  ASSERT_NE(routeHandle, nullptr);
+  const auto initialGroupId = routeHandle->nextHopAdapterKey();
+
+  // Removing the primary from the client entry is an intentional route
+  // change, not a transient resolution event. A stale primary must not be
+  // retained in the protection group.
+  auto backupOnlyRoute = makeBackupOnlyRoute(d1, backupNextHops);
+  auto updatedHandle = changeRoute(protectedRoute, backupOnlyRoute);
+  ASSERT_NE(updatedHandle, nullptr);
+  EXPECT_NE(updatedHandle->nextHopAdapterKey(), initialGroupId);
+}
+
+TEST_F(RouteManagerTest, protectionRouteDoesNotReuseGroupWhenBackupChanges) {
+  RouteNextHopEntry::NextHopSet backupNextHops{
+      makeResolvedNextHop(testInterfaces.at(1), NextHopRole::BACKUP),
+  };
+  auto protectedRoute =
+      makeProtectionRoute(d1, testInterfaces.at(0), backupNextHops);
+  auto routeHandle = programRoute(protectedRoute);
+  ASSERT_NE(routeHandle, nullptr);
+  const auto initialGroupId = routeHandle->nextHopAdapterKey();
+
+  RouteNextHopEntry::NextHopSet updatedBackupNextHops{
+      makeResolvedNextHop(testInterfaces.at(2), NextHopRole::BACKUP),
+  };
+  auto updatedRoute =
+      makeProtectionRoute(d1, testInterfaces.at(0), updatedBackupNextHops);
+  auto updatedHandle = changeRoute(protectedRoute, updatedRoute);
+  ASSERT_NE(updatedHandle, nullptr);
+  EXPECT_NE(updatedHandle->nextHopAdapterKey(), initialGroupId);
+}
+
 TEST_F(RouteManagerTest, singlePrimaryRouteDoesNotCreateProtectionGroup) {
   // The counterpart guard: an ordinary single next hop route must keep taking
   // the plain next hop path rather than being promoted to a group.
