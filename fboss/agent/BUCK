@@ -410,35 +410,6 @@ cpp_library(
 )
 
 cpp_library(
-    name = "fake_main",
-    srcs = [
-        "CommonInit.cpp",
-        "Main.cpp",
-    ],
-    headers = [
-        "CommonInit.h",
-        "Main.h",
-    ],
-    deps = [
-        "fbsource//xplat/folly/logging:init",
-        "fbsource//xplat/folly/logging:logging",
-        ":fboss_init_h",
-        ":load_agent_config",
-        "//fb303:service_data",
-    ],
-    exported_deps = [
-        "fbsource//xplat/folly/io/async:async_signal_handler",
-        ":agent_features",
-        ":agent_initializer_h",
-        "//neteng/fboss/emulation:main",  # @manual
-    ],
-    external_deps = ["gflags"],
-    exported_external_deps = [
-        "gflags",
-    ],
-)
-
-cpp_library(
     name = "buffer_utils",
     srcs = [
         "BufferUtils.cpp",
@@ -2351,11 +2322,8 @@ cpp_library(
     ],
 )
 
-# fake_wedge_agent, links with fake_main and monolithic_agent_initializer.
-# fake_main also links with emulation's main.  monolithic_agent_initializer
-# links with  sw_agent_initializer. emulation's main redefine methods provided
-# by fboss_common_init. so sw_agent_initializer can not link with
-# fboss_common_init so linking with only header
+# sw_agent_initializer links only the CommonInit header; the CommonInit
+# definition comes from the final binary.
 cpp_library(
     # @autodeps-skip autodeps2 adds :fake_main here (pulling emulation:main ->
     # duplicate initializeBitsflow with :fboss_common_init) and drops :hw_asic_table.
