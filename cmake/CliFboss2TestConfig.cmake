@@ -5,6 +5,7 @@ add_executable(fboss2_cmd_config_test
   fboss/util/oss/TestMain.cpp
   fboss/cli/fboss2/oss/config/CmdListImpl.cpp
   fboss/cli/fboss2/test/config/CmdConfigAdminDistanceTest.cpp
+  fboss/cli/fboss2/test/config/CmdConfigAggregatePortTest.cpp
   fboss/cli/fboss2/test/config/CmdConfigAppliedInfoTest.cpp
   fboss/cli/fboss2/test/config/CmdConfigSrv6MySidTest.cpp
   fboss/cli/fboss2/test/config/CmdConfigAclRuleTest.cpp

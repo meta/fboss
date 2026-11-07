@@ -10,6 +10,7 @@ cpp_unittest(
         "CmdConfigAclRuleTest.cpp",
         "CmdConfigAclTest.cpp",
         "CmdConfigAdminDistanceTest.cpp",
+        "CmdConfigAggregatePortTest.cpp",
         "CmdConfigAppliedInfoTest.cpp",
         "CmdConfigArpTest.cpp",
         "CmdConfigBgpGlobalTest.cpp",

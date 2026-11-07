@@ -16,6 +16,7 @@
 #include "fboss/cli/fboss2/commands/config/acl/rule/CmdConfigAclRule.h"
 #include "fboss/cli/fboss2/commands/config/acl/table/CmdConfigAclTable.h"
 #include "fboss/cli/fboss2/commands/config/acl/table_group/CmdConfigAclTableGroup.h"
+#include "fboss/cli/fboss2/commands/config/aggregate_port/CmdConfigAggregatePort.h"
 #include "fboss/cli/fboss2/commands/config/arp/CmdConfigArp.h"
 #include "fboss/cli/fboss2/commands/config/copp/CmdConfigCopp.h"
 #include "fboss/cli/fboss2/commands/config/data_plane/CmdConfigDataPlane.h"
@@ -88,6 +89,7 @@
 #include "fboss/cli/fboss2/commands/delete/acl/CmdDeleteAcl.h"
 #include "fboss/cli/fboss2/commands/delete/acl/rule/CmdDeleteAclRule.h"
 #include "fboss/cli/fboss2/commands/delete/acl/table/CmdDeleteAclTable.h"
+#include "fboss/cli/fboss2/commands/delete/aggregate_port/CmdDeleteAggregatePort.h"
 #include "fboss/cli/fboss2/commands/delete/arp/CmdDeleteArp.h"
 #include "fboss/cli/fboss2/commands/delete/config/CmdDeleteConfig.h"
 #include "fboss/cli/fboss2/commands/delete/copp/CmdDeleteCopp.h"
@@ -245,6 +247,16 @@ const CommandTree& kConfigCommandTree() {
        "Configure ARP settings",
        commandHandler<CmdConfigArp>,
        argRegistrar<CmdConfigArpTraits>},
+
+      {"config",
+       "aggregate-port",
+       "Create or update an aggregate port",
+       commandHandler<CmdConfigAggregatePort>,
+       argRegistrar<CmdConfigAggregatePortTraits>,
+       {{"member",
+         "Add or update aggregate-port members",
+         commandHandler<CmdConfigAggregatePortMember>,
+         argRegistrar<CmdConfigAggregatePortMemberTraits>}}},
 
       {
           "config",
@@ -737,6 +749,20 @@ const CommandTree& kConfigCommandTree() {
        "Reset ARP/NDP timer settings to their defaults",
        commandHandler<CmdDeleteArp>,
        argRegistrar<CmdDeleteArpTraits>},
+
+      {"delete",
+       "aggregate-port",
+       "Delete an aggregate port or one of its settings",
+       commandHandler<CmdDeleteAggregatePort>,
+       argRegistrar<CmdDeleteAggregatePortTraits>,
+       {{"member",
+         "Remove aggregate-port members",
+         commandHandler<CmdDeleteAggregatePortMember>,
+         argRegistrar<CmdDeleteAggregatePortMemberTraits>},
+        {"minimum-capacity-to-up",
+         "Remove the aggregate-port recovery threshold",
+         commandHandler<CmdDeleteAggregatePortMinimumCapacityToUp>,
+         argTypeHandler<CmdDeleteAggregatePortMinimumCapacityToUpTraits>}}},
 
       {
           "delete",

@@ -942,6 +942,10 @@ add_library(fboss2_config_lib
   fboss/cli/fboss2/commands/config/acl/table/CmdConfigAclTable.h
   fboss/cli/fboss2/commands/config/acl/table_group/CmdConfigAclTableGroup.cpp
   fboss/cli/fboss2/commands/config/acl/table_group/CmdConfigAclTableGroup.h
+  fboss/cli/fboss2/commands/config/aggregate_port/AggregatePortConfigUtils.cpp
+  fboss/cli/fboss2/commands/config/aggregate_port/AggregatePortConfigUtils.h
+  fboss/cli/fboss2/commands/config/aggregate_port/CmdConfigAggregatePort.cpp
+  fboss/cli/fboss2/commands/config/aggregate_port/CmdConfigAggregatePort.h
   fboss/cli/fboss2/commands/config/arp/CmdConfigArp.cpp
   fboss/cli/fboss2/commands/config/arp/CmdConfigArp.h
   fboss/cli/fboss2/commands/config/copp/CmdConfigCopp.cpp
@@ -1118,6 +1122,8 @@ add_library(fboss2_config_lib
   fboss/cli/fboss2/commands/delete/acl/rule/CmdDeleteAclRule.h
   fboss/cli/fboss2/commands/delete/acl/table/CmdDeleteAclTable.cpp
   fboss/cli/fboss2/commands/delete/acl/table/CmdDeleteAclTable.h
+  fboss/cli/fboss2/commands/delete/aggregate_port/CmdDeleteAggregatePort.cpp
+  fboss/cli/fboss2/commands/delete/aggregate_port/CmdDeleteAggregatePort.h
   fboss/cli/fboss2/commands/delete/copp/traffic_policy/CmdDeleteCoppTrafficPolicy.cpp
   fboss/cli/fboss2/commands/delete/copp/traffic_policy/CmdDeleteCoppTrafficPolicy.h
   fboss/cli/fboss2/commands/delete/copp/traffic_policy/match/CmdDeleteCoppTrafficPolicyMatch.cpp
