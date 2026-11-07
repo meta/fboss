@@ -446,7 +446,7 @@
             },
             {
               "pmUnitScopedNamePrefix": "SMB_I2C_MASTER_PORT",
-              "deviceName": "i2c_master_ext400k",
+              "deviceName": "i2c_master_ext",
               "csrOffsetCalc": "0x100000 + ({adapterIndex} - {startAdapterIndex})*0x1000",
               "iobufOffsetCalc": "0x100000 + ({adapterIndex} - {startAdapterIndex})*0x1000",
               "startAdapterIndex": 1,
