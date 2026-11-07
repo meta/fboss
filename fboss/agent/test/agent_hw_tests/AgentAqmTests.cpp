@@ -52,6 +52,17 @@ struct AqmThresholdsConfig {
 };
 
 /*
+ * WRED drop accounting is allowed to be off by this percent. Packets
+ * dropped beyond the expected count do not egress, so the expected out
+ * packet count uses the same slack.
+ */
+constexpr int kWredDropErrorPct{10};
+
+int wredDropDeviation(int expectedDroppedPkts) {
+  return kWredDropErrorPct * expectedDroppedPkts / 100;
+}
+
+/*
  * Ensure that the number of dropped packets is as expected. Allow for
  * an error to account for more / less drops while its worked out.
  */
@@ -59,14 +70,15 @@ void verifyWredDroppedPacketCount(
     const AqmTestStats& after,
     const AqmTestStats& before,
     int expectedDroppedPkts) {
-  const int acceptableErrorPct{10};
   int64_t deltaWredDroppedPackets =
       static_cast<int64_t>(after.wredDroppedPackets) -
       before.wredDroppedPackets;
   XLOG(DBG0) << "Delta WRED dropped pkts: " << deltaWredDroppedPackets;
 
-  int allowedDeviation = acceptableErrorPct * expectedDroppedPkts / 100;
-  EXPECT_NEAR(deltaWredDroppedPackets, expectedDroppedPkts, allowedDeviation);
+  EXPECT_NEAR(
+      deltaWredDroppedPackets,
+      expectedDroppedPkts,
+      wredDropDeviation(expectedDroppedPkts));
 }
 
 /*
@@ -578,10 +590,17 @@ class AgentAqmTest : public AgentHwTest {
       extractAqmTestStats(
           beforePortStats, kQueueId, false /*useQueueStatsForAqm*/, before);
 
-      // For ECN all packets are sent out, for WRED, account for drops!
+      // For ECN all packets are sent out. For WRED, subtract the expected
+      // drops and the same 10% slack verifyWredDroppedPacketCount allows.
+      // Extra drops within that slack are not forwarded, so they must not
+      // still be required in the egress count.
+      const int wredOutPacketTolerance = isEct(ecnCodePoint)
+          ? 0
+          : wredDropDeviation(expectedMarkedOrDroppedPacketCount);
       const uint64_t kExpectedOutPackets = isEct(ecnCodePoint)
           ? numPacketsToSend
-          : numPacketsToSend - expectedMarkedOrDroppedPacketCount;
+          : numPacketsToSend - expectedMarkedOrDroppedPacketCount -
+              wredOutPacketTolerance;
 
       bool useQueueStatsForAqm = asic->getSwitchType() == cfg::SwitchType::VOQ;
       WITH_RETRIES_N_TIMED(10, std::chrono::milliseconds(1000), {
@@ -603,7 +622,8 @@ class AgentAqmTest : public AgentHwTest {
         // Check for outpackets as expected and ensure that ECN or WRED
         // counters are incrementing too!
         // - In case of WRED, make sure that dropped packets + out packets
-        //   >= expected drop + out packets.
+        //   >= packets sent. The egress floor is lower by the drop slack,
+        //   but those packets still have to show up in the drop counter.
         // - In case of ECN, ensure that ECN marked packet count is >= the
         //   expected marked packet count, this will ensure test case
         //   waiting long enough to for all marked packets to be seen.
@@ -613,9 +633,7 @@ class AgentAqmTest : public AgentHwTest {
               ecnMarking + markedCountBoundaryTolerance,
               expectedMarkedOrDroppedPacketCount);
         } else {
-          EXPECT_EVENTUALLY_GE(
-              wredDrops + outPackets,
-              kExpectedOutPackets + expectedMarkedOrDroppedPacketCount);
+          EXPECT_EVENTUALLY_GE(wredDrops + outPackets, numPacketsToSend);
         }
       });
       AqmTestStats after = getAqmTestStats(
