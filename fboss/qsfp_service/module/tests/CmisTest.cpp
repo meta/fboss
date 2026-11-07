@@ -159,6 +159,34 @@ readUpperPage(FakeTransceiverImpl* impl, uint8_t page, int offset, int len) {
 const std::vector<uint8_t> k3x200GActiveAppSel =
     {0x90, 0x90, 0x94, 0x94, 0x98, 0x98, 0x00, 0x00};
 
+// Active control set for 2x400G: AppSel 4 on two four-lane datapaths. The
+// fixture also advertises 1x800G applications with the same media code.
+const std::vector<uint8_t> k2x400GActiveAppSel =
+    {0x40, 0x40, 0x40, 0x40, 0x48, 0x48, 0x48, 0x48};
+
+ProgramTransceiverState make2x400GZrProgramState() {
+  ProgramTransceiverState programTcvrState;
+  for (uint8_t startHostLane : {0, 4}) {
+    TransceiverPortState portState;
+    portState.portName = fmt::format("eth1/1/{}", startHostLane + 1);
+    portState.startHostLane = startHostLane;
+    portState.speed = cfg::PortSpeed::FOURHUNDREDG;
+    portState.numHostLanes = 4;
+    cfg::OpticalChannelConfig optChanConfig;
+    cfg::FrequencyConfig freqConfig;
+    freqConfig.frequencyGrid() = FrequencyGrid::LASER_6P25GHZ;
+    cfg::CenterFrequencyConfig centerFreq;
+    centerFreq.set_frequencyMhz(CmisModule::kDefaultFrequencyMhz);
+    freqConfig.centerFrequencyConfig() = centerFreq;
+    optChanConfig.frequencyConfig() = freqConfig;
+    optChanConfig.txPower0P01Dbm() = 0;
+    optChanConfig.appSelCode() = 4;
+    portState.opticalChannelConfig = optChanConfig;
+    programTcvrState.ports.emplace(portState.portName, portState);
+  }
+  return programTcvrState;
+}
+
 ProgramTransceiverState make3x200GZrProgramState() {
   ProgramTransceiverState programTcvrState;
   for (uint8_t startHostLane : {0, 2, 4}) {
@@ -1763,6 +1791,7 @@ TEST_F(CmisTest, cmis2x400GFr4LpoTransceiverInfoTest) {
 
 // TODO: T232388340 Further enhancement for full EEPROM support.
 TEST_F(CmisTest, cmis800GZrTransceiverInfoTest) {
+  TransceiverPropertiesManager::initDefault();
   auto xcvrID = TransceiverID(1);
   auto xcvr = overrideCmisModule<Cmis800GZrTransceiver>(
       xcvrID, TransceiverModuleIdentifier::OSFP);
@@ -1773,6 +1802,10 @@ TEST_F(CmisTest, cmis800GZrTransceiverInfoTest) {
       TransceiverManagementInterface::CMIS);
   EXPECT_EQ(xcvr->numHostLanes(), 8);
   EXPECT_EQ(xcvr->numMediaLanes(), 1);
+  EXPECT_TRUE(xcvr->isRequestValidMultiportSpeedConfig(
+      cfg::PortSpeed::FOURHUNDREDG, 0, 4));
+  EXPECT_TRUE(xcvr->isRequestValidMultiportSpeedConfig(
+      cfg::PortSpeed::FOURHUNDREDG, 4, 4));
   EXPECT_EQ(
       info.tcvrState()->moduleMediaInterface(), MediaInterfaceCode::ZR_800G);
   for (auto& media : *info.tcvrState()->settings()->mediaInterface()) {
@@ -4244,6 +4277,26 @@ TEST_F(CmisTest, cmis800GZr3x200GProgramsAllDatapathsTogether) {
   EXPECT_EQ(
       readUpperPage(lastQsfpImpl(), kPage10h, kDataPathDeinitOffset, 1),
       lanes6And7InDeinit);
+  EXPECT_EQ(
+      lastQsfpImpl()->getUpperPageWriteCount(
+          kPage10h, kDataPathDeinitOffset - 128),
+      2);
+}
+
+// AppSel 4 (2x400G) and AppSel 1/2 (1x800G) use the same media code in this
+// fixture. Preserve the configured AppSel so retries cannot collapse 2x400G
+// into 1x800G and make the two software ports repeatedly reset each other.
+TEST_F(CmisTest, cmis800GZr2x400GPreservesConfiguredAppSel) {
+  TransceiverPropertiesManager::initDefault();
+  auto xcvr = overrideCmisModule<Cmis800GZr3x200GTransceiver>(
+      TransceiverID(1), TransceiverModuleIdentifier::OSFP);
+  auto programTcvrState = make2x400GZrProgramState();
+
+  xcvr->programTransceiver(programTcvrState, false);
+
+  EXPECT_EQ(
+      readUpperPage(lastQsfpImpl(), kPage11h, kActiveAppSelOffset, 8),
+      k2x400GActiveAppSel);
   EXPECT_EQ(
       lastQsfpImpl()->getUpperPageWriteCount(
           kPage10h, kDataPathDeinitOffset - 128),
