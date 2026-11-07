@@ -523,6 +523,8 @@ void getPortInfoHelper(
     cbfc.senderPacketOverhead().from_optional(
         port->getCbfcSenderPacketOverhead());
     cbfc.senderCreditLimit().from_optional(port->getCbfcSenderCreditLimit());
+    cbfc.receiverCreditLimit().from_optional(
+        port->getCbfcReceiverCreditLimit());
     portInfo.cbfc() = std::move(cbfc);
   }
   try {

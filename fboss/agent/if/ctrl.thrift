@@ -486,6 +486,7 @@ struct CbfcInfo {
   3: optional i16 senderCreditSize;
   4: optional i16 senderPacketOverhead;
   5: optional i64 senderCreditLimit;
+  6: optional i64 receiverCreditLimit;
 }
 
 struct PortInfoThrift {
