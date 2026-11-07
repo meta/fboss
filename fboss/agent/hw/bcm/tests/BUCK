@@ -424,16 +424,10 @@ bcm_test_all_hw_common_srcs = [
     "PhyCapabilities.cpp",
 ]
 
-# Ideally, we should have the same srcs for both real and fake bcm tests
-bcm_test_all_hw_facebook_srcs = bcm_test_all_hw_common_srcs + [
-    "facebook/BcmSwitchEnsemble.cpp",
-    "facebook/BcmTestHandler.cpp",
-]
-
 bcm_test_real_hw_common_srcs = bcm_test_all_hw_common_srcs + [
     "BcmQueueStatCollectionTests.cpp",
     "BcmAddDelEcmpTests.cpp",
-    "BcmEmptyEcmpTests.cpp",  # TODO - support this in FakeSdk
+    "BcmEmptyEcmpTests.cpp",
     "BcmDeathTests.cpp",
     "dataplane_tests/BcmQosUtils.cpp",
     "dataplane_tests/BcmQcmDataTests.cpp",
@@ -445,14 +439,6 @@ bcm_test_real_hw_facebook_srcs = bcm_test_real_hw_common_srcs + [
     "facebook/BcmSwitchEnsemble.cpp",
     "facebook/BcmTestHandler.cpp",
     "facebook/BcmChipInvariantsTest.cpp",
-]
-
-bcm_test_fake_hw_facebook_test_srcs = bcm_test_all_hw_facebook_srcs + [
-    "BcmStateDeltaTests.cpp",
-    "facebook/SflowTests.cpp",
-    "facebook/BcmEgressTest.cpp",
-    "dataplane_tests/BcmQosUtils.cpp",
-    "HwTestPacketTrapEntry.cpp",
 ]
 
 [
@@ -509,71 +495,6 @@ bcm_test_fake_hw_facebook_test_srcs = bcm_test_all_hw_facebook_srcs + [
         external_deps = [
             "boost",
             ("broadcom-xgs-robo", None, "xgs_robo"),
-            "gflags",
-        ],
-    )
-    for sdk in BCM_SDKS
-]
-
-[
-    cpp_unittest(
-        name = "fake_bcm_test{}".format(to_impl_suffix(sdk)),
-        srcs = bcm_test_fake_hw_facebook_test_srcs,
-        headers = [
-            "facebook/BcmTestHandler.h",
-        ],
-        source_headers = [
-            "BcmCosQueueManagerTest.h",
-            "BcmLinkStateDependentTests.h",
-            "BcmLinkStateToggler.h",
-            "BcmMplsTestUtils.h",
-            "BcmSwitchEnsemble.h",
-            "BcmTest.h",
-            "BcmTestUtils.h",
-            "BcmTrunkUtils.h",
-            "dataplane_tests/BcmQosUtils.h",
-        ],
-        supports_static_listing = False,
-        # @oss-disable[end= ]: target_compatible_with = sai_impl_target_compatible_with(sdk),
-        versions = to_versions(sdk),
-        deps = [
-            "fbsource//third-party/glog:glog",
-            "fbsource//third-party/googletest:gtest",
-            "fbsource//xplat/folly:memory",
-            "fbsource//xplat/folly/testing:test_util",
-            "//fboss/agent:gtest_defs",
-            "//fboss/agent:handler",
-            "//fboss/agent:setup_thrift",
-            "//fboss/agent:switch_config-cpp2-types",
-            "//fboss/agent/hw/bcm:bcm_mpls_utils",
-            "//fboss/agent/hw/bcm:config",
-            "//fboss/agent/hw/bcm:fake_bcm",
-            "//fboss/agent/hw/bcm/tests:bcm_phy_capabilities",
-            "//fboss/agent/hw/bcm/tests/facebook:if-cpp2-services",
-            "//fboss/agent/hw/test:fake_hw_switch_test",
-            "//fboss/agent/hw/test:hw_packet_utils",
-            "//fboss/agent/hw/test:hw_pfc_utils",
-            "//fboss/agent/hw/test:hw_qos_utils",
-            "//fboss/agent/hw/test:hw_test_aqm_utils",
-            "//fboss/agent/hw/test:hw_test_copp_utils",
-            "//fboss/agent/hw/test:hw_test_main",
-            "//fboss/agent/hw/test:hw_test_neighbor_utils",
-            "//fboss/agent/hw/test:hw_test_packet_trap_entry",
-            "//fboss/agent/hw/test:hw_test_tam_utils",
-            "//fboss/agent/hw/test:load_balancer_utils",
-            "//fboss/agent/platforms/tests/utils:fake_bcm_test_platforms",
-            "//fboss/agent/test:ecmp_helper",
-            "//fboss/agent/test:label_forwarding_utils",
-            "//fboss/agent/test:route_distribution_gen",
-            "//fboss/agent/test:route_scale_gen",
-            "//fboss/agent/test:trunk_utils",
-            "//fboss/agent/test:utils",
-            "//fboss/agent/test/utils:traffic_policy_utils",
-            "//fboss/agent/test/utils:udf_test_utils",
-            "//fboss/lib/platforms:product-info",
-        ],
-        external_deps = [
-            "boost",
             "gflags",
         ],
     )
