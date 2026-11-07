@@ -45,6 +45,9 @@ std::shared_ptr<Interface> InterfaceMap::getInterfaceInVlanIf(
     VlanID vlan) const {
   for (const auto& itr : std::as_const(*this)) {
     const auto& intf = itr.second;
+    if (intf->getType() != cfg::InterfaceType::VLAN) {
+      continue;
+    }
     if (intf->getVlanID() == vlan) {
       return intf;
     }
