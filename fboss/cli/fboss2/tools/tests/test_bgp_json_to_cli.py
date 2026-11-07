@@ -128,6 +128,12 @@ class GenerateGlobalCommandsTest(unittest.TestCase):
         commands = generate_global_commands(config)
         self.assertEqual(commands, ["config protocol bgp global router-id 10.0.0.1"])
 
+    def test_cluster_id(self) -> None:
+        """Cluster ID should generate correct command."""
+        config = {"cluster_id": "10.0.0.2"}
+        commands = generate_global_commands(config)
+        self.assertEqual(commands, ["config protocol bgp global cluster-id 10.0.0.2"])
+
     def test_local_as(self) -> None:
         """Local AS should generate correct command."""
         config = {"local_as_4_byte": 65000}
