@@ -2,7 +2,7 @@
   "pwmBoostOnNumDeadFan": 1,
   "pwmBoostOnNumDeadSensor": 0,
   "pwmBoostOnNoQsfpAfterInSec": 55,
-  "pwmBoostValue": 80,
+  "pwmBoostValue": 100,
   "pwmTransitionValue": 55,
   "pwmLowerThreshold": 20,
   "pwmUpperThreshold": 100,
@@ -17,36 +17,36 @@
       "aggregationType": "OPTIC_AGGREGATION_TYPE_INCREMENTAL_PID",
       "pidSettings": {
         "OPTIC_TYPE_800_GENERIC": {
-          "kp": 2,
+          "kp": 6,
           "ki": 0.6,
           "kd": 0,
           "setPoint": 65.0,
           "posHysteresis": 0.0,
-          "negHysteresis": 2.0
+          "negHysteresis": 3.0
         },
         "OPTIC_TYPE_400_GENERIC": {
-          "kp": 2,
+          "kp": 6,
           "ki": 0.6,
           "kd": 0,
           "setPoint": 65.0,
           "posHysteresis": 0.0,
-          "negHysteresis": 2.0
+          "negHysteresis": 3.0
         },
         "OPTIC_TYPE_200_GENERIC": {
-          "kp": 2,
+          "kp": 6,
           "ki": 0.6,
           "kd": 0,
           "setPoint": 65.0,
           "posHysteresis": 0.0,
-          "negHysteresis": 2.0
+          "negHysteresis": 3.0
         },
         "OPTIC_TYPE_100_GENERIC": {
-          "kp": 2,
+          "kp": 6,
           "ki": 0.6,
           "kd": 0,
           "setPoint": 65.0,
           "posHysteresis": 0.0,
-          "negHysteresis": 2.0
+          "negHysteresis": 3.0
         }
       }
     }
