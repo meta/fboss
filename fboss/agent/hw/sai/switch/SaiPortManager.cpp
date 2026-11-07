@@ -2220,12 +2220,17 @@ bool SaiPortManager::createOnlyAttributeChanged(
 }
 
 cfg::PortType SaiPortManager::derivePortTypeOfLogicalPort(
-    PortSaiId portSaiId) const {
+    PortSaiId portSaiId,
+    PortID portID) const {
   // TODO remove once Broadcom could return MGMT interface type for TH6/TU1
   if (platform_->getAsic()->getAsicType() ==
           cfg::AsicType::ASIC_TYPE_TOMAHAWK6 ||
       platform_->getAsic()->getAsicType() ==
           cfg::AsicType::ASIC_TYPE_TOMAHAWKULTRA1) {
+    if (platform_->getPlatformPort(portID)->getPortType() ==
+        cfg::PortType::MANAGEMENT_PORT) {
+      return cfg::PortType::MANAGEMENT_PORT;
+    }
     auto portSpeed = SaiApiTable::getInstance()->portApi().getAttribute(
         portSaiId, SaiPortTraits::Attributes::Speed{});
 
@@ -2327,7 +2332,7 @@ std::shared_ptr<Port> SaiPortManager::swPortFromAttributes(
       break;
 #else
     case SAI_PORT_TYPE_LOGICAL:
-      port->setPortType(derivePortTypeOfLogicalPort(portSaiId));
+      port->setPortType(derivePortTypeOfLogicalPort(portSaiId, portID));
       break;
 #endif
 #if defined(BRCM_SAI_SDK_DNX_GTE_11_0)
