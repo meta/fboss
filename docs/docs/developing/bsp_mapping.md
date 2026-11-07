@@ -12,3 +12,12 @@ For each transceiver `N`, PlatformManager creates a consistent set of device nod
 
 - `xcvr_io_N` — I2C data path to the module; `qsfp_service` uses it to read/write the module memory map (EEPROM/ID, DOM, registers, config).
 - `xcvr_ctrl_N` — control node exposing `xcvr_reset_N` (reset) and `xcvr_present_N` (presence detect).
+
+## Adding a new platform
+
+The BSP mapping data itself is derived from `platform_manager.json`. A new
+platform only needs to register its BSP system container:
+
+- `fboss/lib/bsp/BspGenericSystemContainer.cpp` — add the `{Platform}BspPlatformMapping.h` include and register the `{Platform}SystemContainer` `folly::Singleton` with its `getInstance()` specialization, so the platform's BSP system container can be retrieved at run time.
+
+See [New Platform Support](https://facebook.github.io/fboss/docs/developing/new_platform_support/) for the full onboarding checklist.
