@@ -1,12 +1,17 @@
 // Copyright (c) 2004-present, Meta Platforms, Inc. and affiliates.
 // All Rights Reserved.
 #include <algorithm>
+#include <ctime>
+#include <filesystem>
+#include <fstream>
+#include <optional>
 #include <ranges>
 #include <set>
 #include <vector>
 
-#include <CLI/CLI.hpp>
+#include <CLI/CLI.hpp> // IWYU pragma: keep
 #include <fmt/core.h>
+#include <folly/ScopeGuard.h>
 #include <folly/logging/xlog.h>
 #include <thrift/lib/cpp2/protocol/Serializer.h>
 
@@ -126,7 +131,26 @@ void executeSingleDetail(
     Utils& showtechUtil,
     const std::string& name,
     const FunctionWithDisruptiveFlag& detailDescriptor,
-    bool disruptiveMode) {
+    bool disruptiveMode,
+    const std::optional<std::string>& outputDir) {
+  std::ofstream outFile;
+  std::streambuf* origBuf = nullptr;
+  if (outputDir) {
+    auto filePath = fmt::format("{}/{}.txt", *outputDir, name);
+    outFile.open(filePath);
+    if (outFile.is_open()) {
+      origBuf = std::cout.rdbuf(outFile.rdbuf());
+    } else {
+      XLOG(ERR) << "Failed to open output file: " << filePath
+                << ", falling back to stdout for this detail";
+    }
+  }
+  SCOPE_EXIT {
+    if (origBuf) {
+      std::cout.rdbuf(origBuf);
+    }
+  };
+
   if (disruptiveMode ||
       detailDescriptor.second == Disruptiveness::NONDISRUPTIVE) {
     detailDescriptor.first(showtechUtil);
@@ -148,14 +172,16 @@ void executeSingleDetail(
 void executeRequestedDetails(
     Utils& showtechUtil,
     const std::vector<std::string>& requestedDetails,
-    bool disruptiveMode) {
+    bool disruptiveMode,
+    const std::optional<std::string>& outputDir) {
   bool runAll =
       std::ranges::find(requestedDetails, "all") != requestedDetails.end();
 
   if (runAll) {
     XLOG(INFO) << "Running all detail functions";
     for (const auto& [name, funcWithFlag] : DETAIL_FUNCTIONS) {
-      executeSingleDetail(showtechUtil, name, funcWithFlag, disruptiveMode);
+      executeSingleDetail(
+          showtechUtil, name, funcWithFlag, disruptiveMode, outputDir);
     }
   } else {
     for (const auto& requestedDetail : requestedDetails) {
@@ -164,10 +190,50 @@ void executeRequestedDetails(
       });
       if (it != DETAIL_FUNCTIONS.end()) {
         executeSingleDetail(
-            showtechUtil, it->first, it->second, disruptiveMode);
+            showtechUtil, it->first, it->second, disruptiveMode, outputDir);
       }
     }
   }
+}
+
+constexpr auto kTarScratchDir = "/tmp/rma-showtech-scratch";
+
+// Creates (recreating if already present) the scratch directory under /tmp
+// for --tar output. Returns its path, or std::nullopt on failure.
+std::optional<std::string> makeTarScratchDir() {
+  std::error_code ec;
+  std::filesystem::remove_all(kTarScratchDir, ec);
+  std::filesystem::create_directory(kTarScratchDir, ec);
+  if (ec) {
+    return std::nullopt;
+  }
+  return std::string(kTarScratchDir);
+}
+
+// Tars/compresses scratchDir into /tmp/rma-showtech-<timestamp>.tar.gz (a
+// fresh timestamped name each run, so repeated invocations don't clobber
+// each other and archives stay distinguishable once uploaded elsewhere),
+// removes scratchDir either way, and returns the tarball path, or
+// std::nullopt on failure.
+std::optional<std::string> packageTarball(const std::string& scratchDir) {
+  std::time_t now = std::time(nullptr);
+  std::tm nowTm{};
+  localtime_r(&now, &nowTm);
+  char timestamp[32];
+  std::strftime(timestamp, sizeof(timestamp), "%Y%m%d-%H%M%S", &nowTm);
+  auto tarballPath = fmt::format("/tmp/rma-showtech-{}.tar.gz", timestamp);
+
+  auto scratchDirName = std::filesystem::path(scratchDir).filename().string();
+
+  PlatformUtils platformUtils;
+  auto [exitStatus, output] = platformUtils.runCommand(
+      {"/usr/bin/tar", "-czf", tarballPath, "-C", "/tmp", scratchDirName});
+  if (exitStatus != 0) {
+    XLOG(ERR) << "tar failed: " << output;
+  }
+  std::filesystem::remove_all(scratchDir);
+  return exitStatus == 0 ? std::optional<std::string>(tarballPath)
+                         : std::nullopt;
 }
 
 } // namespace
@@ -179,6 +245,7 @@ int main(int argc, char** argv) {
   std::vector<std::string> detailsArg = {};
   std::string configFilePath;
   bool disruptiveMode = false;
+  bool tarMode = false;
 
   app.add_flag(
       "--disruptive",
@@ -188,6 +255,11 @@ int main(int argc, char** argv) {
       ->delimiter(',')
       ->required()
       ->check(CLI::IsMember(getValidDetailNames()));
+  app.add_flag(
+      "--tar",
+      tarMode,
+      "Write the requested details to per-detail files and package them "
+      "into a compressed tarball under /tmp instead of printing to stdout");
 
   app.add_option(
       "--config_file", configFilePath, "Path to the showtech config file");
@@ -205,10 +277,32 @@ int main(int argc, char** argv) {
         apache::thrift::SimpleJSONSerializer::deserialize<ShowtechConfig>(
             showtechConfJson);
 
+    std::optional<std::string> outputDir;
+    if (tarMode) {
+      outputDir = makeTarScratchDir();
+      if (!outputDir) {
+        XLOG(ERR) << "Failed to create scratch directory under /tmp";
+        return 1;
+      }
+    }
+
     Utils showtechUtil(config);
-    executeRequestedDetails(showtechUtil, detailsArg, disruptiveMode);
+    executeRequestedDetails(
+        showtechUtil, detailsArg, disruptiveMode, outputDir);
+
+    if (tarMode) {
+      auto tarballPath = packageTarball(*outputDir);
+      if (!tarballPath) {
+        XLOG(ERR) << "Failed to package tarball";
+        return 1;
+      }
+      std::cout << *tarballPath << std::endl;
+    }
   } catch (const std::exception& e) {
     XLOG(ERR) << "Error during showtech execution: " << e.what();
+    return 1;
+  } catch (...) {
+    XLOG(ERR) << "Unknown error during showtech execution";
     return 1;
   }
 
