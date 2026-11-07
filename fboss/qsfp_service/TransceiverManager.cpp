@@ -156,6 +156,12 @@ bool isTransceiverComponent(
   return component == facebook::fboss::phy::PortComponent::TRANSCEIVER_SYSTEM ||
       component == facebook::fboss::phy::PortComponent::TRANSCEIVER_LINE;
 }
+
+// Same clock as the agent's ConfigAppliedInfo timestamps
+int64_t nowInMs() {
+  return duration_cast<milliseconds>(system_clock::now().time_since_epoch())
+      .count();
+}
 } // namespace
 
 namespace facebook::fboss {
@@ -751,9 +757,10 @@ std::optional<FirmwareUpgradeData> TransceiverManager::getFirmwareUpgradeData(
       auto configVersion = fwIt.version().value();
 
       // If config specifies a 3-tuple version (e.g., "1.0.7680"), append the
-      // module's buildNumber to the reported version. If the module does not report a buildNumber, skip upgrade
-      // since the config is treated as SOT and the module can't be validated.
-      // 2-tuple configs (e.g., "1.0") compare as before.
+      // module's buildNumber to the reported version. If the module does not
+      // report a buildNumber, skip upgrade since the config is treated as SOT
+      // and the module can't be validated. 2-tuple configs (e.g., "1.0")
+      // compare as before.
       if (std::count(configVersion.begin(), configVersion.end(), '.') >= 2) {
         if (fwStatus->buildNumber().has_value()) {
           currentVersion = fmt::format(
@@ -961,6 +968,10 @@ void TransceiverManager::triggerTransceiverEventsForAgentConfigChangeEvent(
   int numResetToDiscovered{0}, numResetToNotPresent{0};
   const auto& presentTransceivers = getPresentTransceivers();
   BlockingStateUpdateResultList results;
+  if (resetDataPath) {
+    resetDataPathColdbootInMs_ =
+        newConfigAppliedInfo.lastColdbootAppliedInMs().value_or(0);
+  }
   for (auto& stateMachine : stateMachineControllers_) {
     // Only need to set true to `needResetDataPath` attribute here. And leave
     // the state machine to change it to false once it finishes
@@ -1192,8 +1203,7 @@ void TransceiverManager::handlePendingUpdates() {
   // Try to run one state machine updates on each transceiver.
   // Invoked once per enqueued state update, so rate limit to keep this from
   // dominating the log on large transceiver-count platforms.
-  XLOG_EVERY_MS(DBG2, 60000)
-      << "Trying to update all TransceiverStateMachines";
+  XLOG_EVERY_MS(DBG2, 60000) << "Trying to update all TransceiverStateMachines";
 
   // To expedite all these different transceivers state update, use Future
   std::vector<folly::Future<folly::Unit>> stateUpdateTasks;
@@ -1462,18 +1472,17 @@ void TransceiverManager::programExternalPhyPorts(
     if (std::find(
             supportedXphyPorts.begin(), supportedXphyPorts.end(), portID) ==
         supportedXphyPorts.end()) {
-      MODULE_LOG(DBG2, "", id)
-          << "Skip programming xphy ports, Port=" << portID
-          << ". Can't find supported xphy";
+      MODULE_LOG(DBG2, "", id) << "Skip programming xphy ports, Port=" << portID
+                               << ". Can't find supported xphy";
       continue;
     }
 
     phyManager->programOnePort(
         portID, portInfo.profile, transceiver, needResetDataPath);
-    MODULE_LOG(INFO, "", id) << "Programmed XPHY port, Port=" << portID
-                        << ", Profile="
-                        << apache::thrift::util::enumNameSafe(portInfo.profile)
-                        << ", needResetDataPath=" << needResetDataPath;
+    MODULE_LOG(INFO, "", id)
+        << "Programmed XPHY port, Port=" << portID
+        << ", Profile=" << apache::thrift::util::enumNameSafe(portInfo.profile)
+        << ", needResetDataPath=" << needResetDataPath;
   }
 }
 
@@ -1733,7 +1742,7 @@ TransceiverManager::getOpticalChannelConfig(TransceiverID id) const {
   auto portNames = getPortNames(id);
   for (const auto& portName : portNames) {
     MODULE_LOG(DBG2, "", id) << "Tunable Optics config is present, port_name "
-                        << folly::join(",", portNames);
+                             << folly::join(",", portNames);
     auto tunableOpticsConfigInCfgIt = qsfpCfgTunableOptics->find(portName);
     if (tunableOpticsConfigInCfgIt != qsfpCfgTunableOptics->end()) {
       const auto& opticalChannelConfig = tunableOpticsConfigInCfgIt->second;
@@ -1742,8 +1751,8 @@ TransceiverManager::getOpticalChannelConfig(TransceiverID id) const {
       if (centerFreq->getType() ==
           facebook::fboss::cfg::CenterFrequencyConfig::Type::frequencyMhz) {
         int freqMhz = centerFreq.as_const()->frequencyMhz().value();
-        MODULE_LOG(DBG2, "", id) << "The frequency is " << freqMhz
-                            << " port_name " << portName;
+        MODULE_LOG(DBG2, "", id)
+            << "The frequency is " << freqMhz << " port_name " << portName;
       }
       // Use the frequency config from tunable optics config
       return opticalChannelConfig;
@@ -1762,6 +1771,21 @@ void TransceiverManager::programTransceiver(
     MODULE_LOG(DBG2, "", id)
         << "Skip programming. Can't find programmed iphy port and port info";
     return;
+  }
+
+  // Port manager mode infers operState from the port state machine, so it is
+  // not evidence of a live link there.
+  if (needResetDataPath && !FLAGS_port_manager_mode) {
+    const int64_t coldbootInMs = resetDataPathColdbootInMs_;
+    for (const auto& [portID, portInfo] : programmedPortToPortInfo) {
+      if (portInfo.status && portInfo.status->operState &&
+          portInfo.statusReceivedInMs >= coldbootInMs) {
+        MODULE_LOG(INFO, "", id) << "Skip data path reset: Port=" << portID
+                                 << " is already up after agent config change";
+        needResetDataPath = false;
+        break;
+      }
+    }
   }
 
   // Try to get frequency config from tunable optics config if available
@@ -1807,8 +1831,8 @@ void TransceiverManager::programTransceiver(
           apache::thrift::util::enumNameSafe(portProfile));
     }
     const auto speed = *profileCfgOpt->speed();
-    auto bankId = platformMapping_->getTransceiverBankId(
-        PlatformPortProfileConfigMatcher(
+    auto bankId =
+        platformMapping_->getTransceiverBankId(PlatformPortProfileConfigMatcher(
             portProfile, portToPortInfo.first, std::nullopt));
     TransceiverPortState portState;
     portState.portName = *portName;
@@ -1836,8 +1860,8 @@ void TransceiverManager::programTransceiver(
   // fsdb.
   publishPortStatesToFsdb(id, tcvrIt->second->getPortState());
   MODULE_LOG(INFO, "", id) << "Programmed"
-                      << (needResetDataPath ? " with" : " without")
-                      << " resetting data path";
+                           << (needResetDataPath ? " with" : " without")
+                           << " resetting data path";
 
   // We also want to remove this transceiver from tcvrsReadyForProgramming_ to
   // avoid programming with old settings received from PortManager.
@@ -1938,7 +1962,9 @@ void TransceiverManager::syncNpuPortStatusUpdate(
 
 void TransceiverManager::updateNpuPortStatusCache(
     std::map<int, facebook::fboss::NpuPortStatus>& portStatus) {
-  npuPortStatusCache_.wlock()->swap(portStatus);
+  auto lockedCache = npuPortStatusCache_.wlock();
+  lockedCache->swap(portStatus);
+  npuPortStatusCacheUpdatedInMs_ = nowInMs();
 }
 
 void TransceiverManager::updateTransceiverPortStatus() noexcept {
@@ -1947,12 +1973,15 @@ void TransceiverManager::updateTransceiverPortStatus() noexcept {
   }
   steady_clock::time_point begin = steady_clock::now();
   std::map<int32_t, NpuPortStatus> newPortToPortStatus;
+  int64_t statusReceivedInMs = nowInMs();
   if (!overrideAgentPortStatusForTesting_.empty()) {
     XLOG(WARN) << "[TEST ONLY] Use overrideAgentPortStatusForTesting_ "
                << "for wedge_agent getPortStatus()";
     newPortToPortStatus = overrideAgentPortStatusForTesting_;
   } else if (FLAGS_subscribe_to_state_from_fsdb) {
-    newPortToPortStatus = *npuPortStatusCache_.rlock();
+    auto lockedCache = npuPortStatusCache_.rlock();
+    newPortToPortStatus = *lockedCache;
+    statusReceivedInMs = npuPortStatusCacheUpdatedInMs_;
   } else {
     try {
       // Then call wedge_agent getPortStatus() to get current port status
@@ -2040,6 +2069,7 @@ void TransceiverManager::updateTransceiverPortStatus() noexcept {
             if (cachedPortInfoIt == portToPortInfoWithLock->end()) {
               TransceiverPortInfo portInfo;
               portInfo.status.emplace(portStatusIt->second);
+              portInfo.statusReceivedInMs = statusReceivedInMs;
               portToPortInfoWithLock->insert({portID, std::move(portInfo)});
               genStateMachineResetEvent(event, isTcvrPresent);
             } else {
@@ -2051,6 +2081,7 @@ void TransceiverManager::updateTransceiverPortStatus() noexcept {
                 statusChangedPorts.insert(portID);
               }
               cachedPortInfoIt->second.status.emplace(portStatusIt->second);
+              cachedPortInfoIt->second.statusReceivedInMs = statusReceivedInMs;
             }
           }
         }
@@ -2213,6 +2244,7 @@ void TransceiverManager::updateTransceiverActiveState(
             }
             // And also update the cached port status
             tcvrPortInfo.status = portStatusIt->second;
+            tcvrPortInfo.statusReceivedInMs = nowInMs();
           }
         }
       }
@@ -2711,7 +2743,8 @@ std::pair<bool, std::vector<std::string>> TransceiverManager::areAllPortsDown(
   }
   auto portToPortInfoWithLock = portToPortInfoIt->second->rlock();
   if (portToPortInfoWithLock->empty()) {
-    MODULE_LOG(WARN, "", id) << "Can't find any programmed port in cached tcvrToPortInfo_";
+    MODULE_LOG(WARN, "", id)
+        << "Can't find any programmed port in cached tcvrToPortInfo_";
     //  If no port information for the transceiver is found, we must assume that
     //  ports are up to ensure we don't accidentally remediate on warmboot. This
     //  is consistent for Port Manager mode and non-Port Manager mode.
@@ -2816,8 +2849,7 @@ void TransceiverManager::triggerRemediateEvents(
     auto lockedTransceivers = transceivers_.rlock();
     auto tcvrIt = lockedTransceivers->find(tcvrID);
     if (tcvrIt == lockedTransceivers->end()) {
-      MODULE_LOG(DBG2, "", tcvrID)
-          << "Skip remediating. Not present";
+      MODULE_LOG(DBG2, "", tcvrID) << "Skip remediating. Not present";
       continue;
     }
     if (!tcvrIt->second->shouldRemediate(pauseRemediationUntil_)) {
@@ -2839,8 +2871,7 @@ void TransceiverManager::markLastDownTime(TransceiverID id) noexcept {
   auto lockedTransceivers = transceivers_.rlock();
   auto tcvrIt = lockedTransceivers->find(id);
   if (tcvrIt == lockedTransceivers->end()) {
-    MODULE_LOG(DBG2, "", id)
-        << "Skip markLastDownTime. Not present";
+    MODULE_LOG(DBG2, "", id) << "Skip markLastDownTime. Not present";
     return;
   }
   tcvrIt->second->markLastDownTime();
@@ -2956,8 +2987,7 @@ bool TransceiverManager::verifyEepromChecksumsLocked(TransceiverID id) {
       "verifyEepromChecksumsLocked: transceivers_ is not locked.");
   auto tcvrIt = transceivers_.unsafeGetUnlocked().find(id);
   if (tcvrIt == transceivers_.unsafeGetUnlocked().end()) {
-    MODULE_LOG(DBG2, "", id)
-        << "Skip verifying eeprom checksum. Not present";
+    MODULE_LOG(DBG2, "", id) << "Skip verifying eeprom checksum. Not present";
     return true;
   }
   return tcvrIt->second->verifyEepromChecksums();
@@ -3028,8 +3058,7 @@ std::string TransceiverManager::xphyWarmBootStateDirectory() const {
   }
 
   folly::dynamic configState = folly::dynamic::object;
-  configState[kAgentConfigLastAppliedInMsKey] =
-      *configInfo.lastAppliedInMs();
+  configState[kAgentConfigLastAppliedInMsKey] = *configInfo.lastAppliedInMs();
   if (auto lastColdboot = configInfo.lastColdbootAppliedInMs()) {
     configState[kAgentConfigLastColdbootAppliedInMsKey] = *lastColdboot;
   }
@@ -3040,9 +3069,8 @@ std::string TransceiverManager::xphyWarmBootStateDirectory() const {
     cachedState = std::move(currentState);
 
     steady_clock::time_point assembled = steady_clock::now();
-    XLOG(INFO)
-        << "Finish assembling warm boot state. Time: "
-        << duration_cast<duration<float>>(assembled - begin).count();
+    XLOG(INFO) << "Finish assembling warm boot state. Time: "
+               << duration_cast<duration<float>>(assembled - begin).count();
     folly::writeFile(cachedState, fileName.c_str());
     steady_clock::time_point written = steady_clock::now();
     XLOG(INFO) << "Finish writing warm boot state to file. Time: "
