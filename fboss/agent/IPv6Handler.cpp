@@ -60,18 +60,23 @@ namespace facebook::fboss {
 
 namespace {
 
-// True for a Neighbor Discovery message (RFC 4861) behind IPv6 extension
-// headers, or a chain ending in ICMPv6 too short to hold an ICMPv6 type.
-// cursor points just after the fixed IPv6 header.
+// True for a Neighbor Discovery (RFC 4861) or SEcure Neighbor Discovery (SEND,
+// RFC 3971) message behind IPv6 extension headers, or a chain ending in ICMPv6
+// too short to hold an ICMPv6 type. cursor points just after the fixed IPv6
+// header.
 //
-// No Neighbor Discovery message needs an extension header, and extension
-// headers are the known way to slip ND past RA-Guard style filters.
+// None of these messages needs an extension header, and extension headers are
+// the known way to slip ND past RA-Guard style filters.
 //
 // RFC 6980, Section 5:
 //   "Nodes MUST silently ignore the following Neighbor Discovery and SEcure
 //   Neighbor Discovery messages if the packets carrying them include an IPv6
 //   Fragmentation Header: Neighbor Solicitation, Neighbor Advertisement,
-//   Router Solicitation, Router Advertisement, Redirect ..."
+//   Router Solicitation, Router Advertisement, Redirect, Certification Path
+//   Solicitation."
+// SEND Certification Path Advertisement is not on that list, but FBOSS does not
+// implement SEND, so both SEND messages are dropped with or without extension
+// headers (see handleICMPv6Packet).
 //
 // RFC 7113, Section 3:
 //   "RA-Guard must parse the entire IPv6 header chain present in the packet,
@@ -97,6 +102,8 @@ bool isNdpBehindExtensionHeaders(const IPv6Hdr& ipv6, Cursor cursor) {
     case ICMPv6Type::ICMPV6_TYPE_NDP_NEIGHBOR_SOLICITATION:
     case ICMPv6Type::ICMPV6_TYPE_NDP_NEIGHBOR_ADVERTISEMENT:
     case ICMPv6Type::ICMPV6_TYPE_NDP_REDIRECT_MESSAGE:
+    case ICMPv6Type::ICMPV6_TYPE_SEND_CERTIFICATION_PATH_SOLICITATION:
+    case ICMPv6Type::ICMPV6_TYPE_SEND_CERTIFICATION_PATH_ADVERTISEMENT:
       return true;
     default:
       return false;
@@ -495,6 +502,11 @@ unique_ptr<RxPacket> IPv6Handler::handleICMPv6Packet(
     case ICMPv6Type::ICMPV6_TYPE_NDP_REDIRECT_MESSAGE:
       sw_->portStats(pkt)->ipv6NdpPkt();
       // TODO: Do we need to bother handling this yet?
+      sw_->portStats(pkt)->pktDropped();
+      return nullptr;
+    case ICMPv6Type::ICMPV6_TYPE_SEND_CERTIFICATION_PATH_SOLICITATION:
+    case ICMPv6Type::ICMPV6_TYPE_SEND_CERTIFICATION_PATH_ADVERTISEMENT:
+      // FBOSS does not implement SEcure Neighbor Discovery (RFC 3971).
       sw_->portStats(pkt)->pktDropped();
       return nullptr;
     case ICMPv6Type::ICMPV6_TYPE_CPU_LATENCY_PROBE:
