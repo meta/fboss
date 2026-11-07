@@ -335,6 +335,7 @@ TEST_F(ThriftTest, getPortInfoCbfc) {
   cbfcConfig.senderCreditLimit() = 8192;
   cbfcConfig.senderCreditSize() = 56;
   cbfcConfig.senderPacketOverhead() = 16;
+  cbfcConfig.receiverCreditLimit() = 4096;
 
   auto config = testConfigA();
   config.cbfcConfigs() = {{"cbfc", cbfcConfig}};
@@ -353,6 +354,7 @@ TEST_F(ThriftTest, getPortInfoCbfc) {
   EXPECT_EQ(after.cbfc()->senderCreditSize(), 56);
   EXPECT_EQ(after.cbfc()->senderPacketOverhead(), 16);
   EXPECT_EQ(after.cbfc()->senderCreditLimit(), 8192);
+  EXPECT_EQ(after.cbfc()->receiverCreditLimit(), 4096);
 
   std::map<int32_t, PortInfoThrift> allPortInfo;
   handler.getAllPortInfo(allPortInfo);
