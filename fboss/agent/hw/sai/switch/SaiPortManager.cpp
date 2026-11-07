@@ -43,7 +43,7 @@
 #include <chrono>
 #include <limits>
 
-#include <fmt/ranges.h>
+#include <fmt/ranges.h> // IWYU pragma: keep
 
 #if defined(BRCM_SAI_SDK_DNX) || defined(BRCM_SAI_SDK_XGS)
 #include <experimental/saiportextensions.h>
@@ -2598,6 +2598,9 @@ bool SaiPortManager::rxSerdesParametersSupported() const {
 #if defined(BRCM_SAI_SDK_GTE_13_0)
   return platform_->getAsic()->isSupported(
       HwAsic::Feature::RX_SERDES_PARAMETERS);
+#elif defined(TAJO_SDK_GTE_24_8_3001)
+  return platform_->getAsic()->isSupported(
+      HwAsic::Feature::TAJO_RX_SERDES_PARAMETERS);
 #else
   return false;
 #endif
@@ -4175,12 +4178,22 @@ std::vector<phy::SerdesParameters> SaiPortManager::getSerdesParameters(
     serdesParams[l].lane() = l;
   }
 
-  // Helper function to get serdes parameters with error handling
+  // Helper function to get serdes parameters with error handling. The
+  // attribute is produced by a factory so that, for extension attributes whose
+  // id is not mapped for this SAI implementation (operator() returns
+  // std::nullopt), we skip construction entirely -- constructing such an
+  // attribute would CHECK-fail (fatal) rather than throw SaiApiError.
   auto getSerdesParam =
-      [&](const char* paramName, auto attributeType, auto&& setter) {
+      [&](const char* paramName, auto&& attrFactory, auto&& setter) {
+        using AttrT = std::remove_cvref_t<decltype(attrFactory())>;
+        if constexpr (IsSaiExtensionAttribute<AttrT>::value) {
+          if (!AttrT::optionalExtensionAttributeId().has_value()) {
+            return;
+          }
+        }
         try {
           auto values = SaiApiTable::getInstance()->portApi().getAttribute(
-              serdesSaiPortId, attributeType);
+              serdesSaiPortId, attrFactory());
           for (int l = 0; l < numPmdLanes; l++) {
             setter(serdesParams[l], values[l]);
           }
@@ -4193,78 +4206,102 @@ std::vector<phy::SerdesParameters> SaiPortManager::getSerdesParameters(
   // Get all serdes parameters using the helper function
   getSerdesParam(
       "RVga",
-      SaiPortSerdesTraits::Attributes::RVga{
-          std::vector<sai_uint32_t>(numPmdLanes)},
+      [&] {
+        return SaiPortSerdesTraits::Attributes::RVga{
+            std::vector<sai_uint32_t>(numPmdLanes)};
+      },
       [](auto& param, auto val) { param.rvga() = val; });
 
   getSerdesParam(
       "FltM",
-      SaiPortSerdesTraits::Attributes::FltM{
-          std::vector<sai_uint32_t>(numPmdLanes)},
+      [&] {
+        return SaiPortSerdesTraits::Attributes::FltM{
+            std::vector<sai_uint32_t>(numPmdLanes)};
+      },
       [](auto& param, auto val) { param.rxFltM() = val; });
 
   getSerdesParam(
       "FltS",
-      SaiPortSerdesTraits::Attributes::FltS{
-          std::vector<sai_uint32_t>(numPmdLanes)},
+      [&] {
+        return SaiPortSerdesTraits::Attributes::FltS{
+            std::vector<sai_uint32_t>(numPmdLanes)};
+      },
       [](auto& param, auto val) { param.rxFltS() = val; });
 
   getSerdesParam(
       "RxPf",
-      SaiPortSerdesTraits::Attributes::RxPf{
-          std::vector<sai_uint32_t>(numPmdLanes)},
+      [&] {
+        return SaiPortSerdesTraits::Attributes::RxPf{
+            std::vector<sai_uint32_t>(numPmdLanes)};
+      },
       [](auto& param, auto val) { param.rxPf() = val; });
 
 #if defined(SAI_VERSION_14_0_EA_ODP)
   getSerdesParam(
       "RxPfLfq",
-      SaiPortSerdesTraits::Attributes::RxPfLfq{
-          std::vector<sai_uint32_t>(numPmdLanes)},
+      [&] {
+        return SaiPortSerdesTraits::Attributes::RxPfLfq{
+            std::vector<sai_uint32_t>(numPmdLanes)};
+      },
       [](auto& param, auto val) { param.rxPfLfq() = val; });
 
   getSerdesParam(
       "RxPfHfq",
-      SaiPortSerdesTraits::Attributes::RxPfHfq{
-          std::vector<sai_uint32_t>(numPmdLanes)},
+      [&] {
+        return SaiPortSerdesTraits::Attributes::RxPfHfq{
+            std::vector<sai_uint32_t>(numPmdLanes)};
+      },
       [](auto& param, auto val) { param.rxPfHfq() = val; });
 #endif
 
   getSerdesParam(
       "RxTap2",
-      SaiPortSerdesTraits::Attributes::RxTap2{
-          std::vector<sai_uint32_t>(numPmdLanes)},
+      [&] {
+        return SaiPortSerdesTraits::Attributes::RxTap2{
+            std::vector<sai_uint32_t>(numPmdLanes)};
+      },
       [](auto& param, auto val) { param.rxTap2() = val; });
 
   getSerdesParam(
       "RxTap1",
-      SaiPortSerdesTraits::Attributes::RxTap1{
-          std::vector<sai_uint32_t>(numPmdLanes)},
+      [&] {
+        return SaiPortSerdesTraits::Attributes::RxTap1{
+            std::vector<sai_uint32_t>(numPmdLanes)};
+      },
       [](auto& param, auto val) { param.rxTap1() = val; });
 
   getSerdesParam(
       "TpChn2",
-      SaiPortSerdesTraits::Attributes::TpChn2{
-          std::vector<sai_uint32_t>(numPmdLanes)},
+      [&] {
+        return SaiPortSerdesTraits::Attributes::TpChn2{
+            std::vector<sai_uint32_t>(numPmdLanes)};
+      },
       [](auto& param, auto val) { param.tpChn2() = val; });
 
   getSerdesParam(
       "TpChn1",
-      SaiPortSerdesTraits::Attributes::TpChn1{
-          std::vector<sai_uint32_t>(numPmdLanes)},
+      [&] {
+        return SaiPortSerdesTraits::Attributes::TpChn1{
+            std::vector<sai_uint32_t>(numPmdLanes)};
+      },
       [](auto& param, auto val) { param.tpChn1() = val; });
 
   getSerdesParam(
       "TpChn0",
-      SaiPortSerdesTraits::Attributes::TpChn0{
-          std::vector<sai_uint32_t>(numPmdLanes)},
+      [&] {
+        return SaiPortSerdesTraits::Attributes::TpChn0{
+            std::vector<sai_uint32_t>(numPmdLanes)};
+      },
       [](auto& param, auto val) { param.tpChn0() = val; });
 
 #if defined(BRCM_SAI_SDK_GTE_13_0)
   if (platform_->getAsic()->isSupported(HwAsic::Feature::SAI_SERDES_RX_REACH)) {
     getSerdesParam(
         "RxReach",
-        SaiPortSerdesTraits::Attributes::RxReach{
-            std::vector<sai_int32_t>(numPmdLanes)},
+        [&] {
+          return SaiPortSerdesTraits::Attributes::RxReach{
+              std::vector<sai_int32_t>(numPmdLanes)};
+        },
         [swPortID](auto& param, auto val) {
           if (val == SAI_PORT_SERDES_REACH_MODE_NR) {
             param.rxReach() = phy::RxReach::RX_NORMAL_REACH;
@@ -4284,9 +4321,163 @@ std::vector<phy::SerdesParameters> SaiPortManager::getSerdesParameters(
           HwAsic::Feature::SAI_SERDES_PRECODING)) {
     getSerdesParam(
         "RxPrecoding",
-        SaiPortSerdesTraits::Attributes::RxPrecodingAttr{
-            std::vector<sai_int32_t>(numPmdLanes)},
+        [&] {
+          return SaiPortSerdesTraits::Attributes::RxPrecodingAttr{
+              std::vector<sai_int32_t>(numPmdLanes)};
+        },
         [](auto& param, auto val) { param.rxPrecoding() = val; });
+  }
+#endif
+
+#if defined(TAJO_SDK_GTE_24_8_3001)
+  // Cisco SiliconOne (G202X) native RX serdes parameters. These live in the
+  // SAI_PORT_SERDES_ATTR_EXT_RX_* attributes and have no Broadcom equivalent,
+  // so the BCM-model reads above return nullopt (left unset) on Tajo.
+  if (platform_->getAsic()->isSupported(
+          HwAsic::Feature::TAJO_RX_SERDES_PARAMETERS)) {
+    getSerdesParam(
+        "RxCtleCode",
+        [&] {
+          return SaiPortSerdesTraits::Attributes::RxCtleCode{
+              std::vector<sai_int32_t>(numPmdLanes)};
+        },
+        [](auto& param, auto val) { param.rxCtleCode() = val; });
+    getSerdesParam(
+        "RxDspMode",
+        [&] {
+          return SaiPortSerdesTraits::Attributes::RxDspMode{
+              std::vector<sai_int32_t>(numPmdLanes)};
+        },
+        [](auto& param, auto val) { param.rxDspMode() = val; });
+    getSerdesParam(
+        "RxAfeTrim",
+        [&] {
+          return SaiPortSerdesTraits::Attributes::RxAfeTrim{
+              std::vector<sai_int32_t>(numPmdLanes)};
+        },
+        [](auto& param, auto val) { param.rxAfeTrim() = val; });
+    getSerdesParam(
+        "RxDiffEncoderEn",
+        [&] {
+          return SaiPortSerdesTraits::Attributes::RxDiffEncoderEn{
+              std::vector<sai_int32_t>(numPmdLanes)};
+        },
+        [](auto& param, auto val) { param.rxDiffEncoderEn() = val; });
+    getSerdesParam(
+        "RxInstgBoost1Start",
+        [&] {
+          return SaiPortSerdesTraits::Attributes::RxInstgBoost1Start{
+              std::vector<sai_int32_t>(numPmdLanes)};
+        },
+        [](auto& param, auto val) { param.rxInstgBoost1Start() = val; });
+    getSerdesParam(
+        "RxInstgBoost1Step",
+        [&] {
+          return SaiPortSerdesTraits::Attributes::RxInstgBoost1Step{
+              std::vector<sai_int32_t>(numPmdLanes)};
+        },
+        [](auto& param, auto val) { param.rxInstgBoost1Step() = val; });
+    getSerdesParam(
+        "RxInstgBoost1Stop",
+        [&] {
+          return SaiPortSerdesTraits::Attributes::RxInstgBoost1Stop{
+              std::vector<sai_int32_t>(numPmdLanes)};
+        },
+        [](auto& param, auto val) { param.rxInstgBoost1Stop() = val; });
+    getSerdesParam(
+        "RxInstgBoost2OrHrStart",
+        [&] {
+          return SaiPortSerdesTraits::Attributes::RxInstgBoost2OrHrStart{
+              std::vector<sai_int32_t>(numPmdLanes)};
+        },
+        [](auto& param, auto val) { param.rxInstgBoost2OrHrStart() = val; });
+    getSerdesParam(
+        "RxInstgBoost2OrHrStep",
+        [&] {
+          return SaiPortSerdesTraits::Attributes::RxInstgBoost2OrHrStep{
+              std::vector<sai_int32_t>(numPmdLanes)};
+        },
+        [](auto& param, auto val) { param.rxInstgBoost2OrHrStep() = val; });
+    getSerdesParam(
+        "RxInstgBoost2OrHrStop",
+        [&] {
+          return SaiPortSerdesTraits::Attributes::RxInstgBoost2OrHrStop{
+              std::vector<sai_int32_t>(numPmdLanes)};
+        },
+        [](auto& param, auto val) { param.rxInstgBoost2OrHrStop() = val; });
+    getSerdesParam(
+        "RxInstgC1Start1p7",
+        [&] {
+          return SaiPortSerdesTraits::Attributes::RxInstgC1Start1p7{
+              std::vector<sai_int32_t>(numPmdLanes)};
+        },
+        [](auto& param, auto val) { param.rxInstgC1Start1p7() = val; });
+    getSerdesParam(
+        "RxInstgC1Step1p7",
+        [&] {
+          return SaiPortSerdesTraits::Attributes::RxInstgC1Step1p7{
+              std::vector<sai_int32_t>(numPmdLanes)};
+        },
+        [](auto& param, auto val) { param.rxInstgC1Step1p7() = val; });
+    getSerdesParam(
+        "RxInstgC1Stop1p7",
+        [&] {
+          return SaiPortSerdesTraits::Attributes::RxInstgC1Stop1p7{
+              std::vector<sai_int32_t>(numPmdLanes)};
+        },
+        [](auto& param, auto val) { param.rxInstgC1Stop1p7() = val; });
+    getSerdesParam(
+        "RxInstgDfeStart1p7",
+        [&] {
+          return SaiPortSerdesTraits::Attributes::RxInstgDfeStart1p7{
+              std::vector<sai_int32_t>(numPmdLanes)};
+        },
+        [](auto& param, auto val) { param.rxInstgDfeStart1p7() = val; });
+    getSerdesParam(
+        "RxInstgDfeStep1p7",
+        [&] {
+          return SaiPortSerdesTraits::Attributes::RxInstgDfeStep1p7{
+              std::vector<sai_int32_t>(numPmdLanes)};
+        },
+        [](auto& param, auto val) { param.rxInstgDfeStep1p7() = val; });
+    getSerdesParam(
+        "RxInstgDfeStop1p7",
+        [&] {
+          return SaiPortSerdesTraits::Attributes::RxInstgDfeStop1p7{
+              std::vector<sai_int32_t>(numPmdLanes)};
+        },
+        [](auto& param, auto val) { param.rxInstgDfeStop1p7() = val; });
+    // EXT_RX_INSTG_ENABLE_SCAN. leaba's RX_INSTG_ENABLE_DUMP_SCAN is a
+    // separate register that FBOSS does not read; the two are not expected to
+    // agree.
+    getSerdesParam(
+        "RxInstgEnableScan",
+        [&] {
+          return SaiPortSerdesTraits::Attributes::RxInstgEnableScan{
+              std::vector<sai_int32_t>(numPmdLanes)};
+        },
+        [](auto& param, auto val) { param.rxInstgEnableScan() = val; });
+    getSerdesParam(
+        "RxInstgScanUseSrSettings",
+        [&] {
+          return SaiPortSerdesTraits::Attributes::RxInstgScanUseSrSettings{
+              std::vector<sai_int32_t>(numPmdLanes)};
+        },
+        [](auto& param, auto val) { param.rxInstgScanUseSrSettings() = val; });
+    getSerdesParam(
+        "RxFfeLengthBitmap",
+        [&] {
+          return SaiPortSerdesTraits::Attributes::RxFfeLengthBitmap{
+              std::vector<sai_int32_t>(numPmdLanes)};
+        },
+        [](auto& param, auto val) { param.rxFfeLengthBitmap() = val; });
+    getSerdesParam(
+        "RxFfeLmsDynamicGatingEn",
+        [&] {
+          return SaiPortSerdesTraits::Attributes::RxFfeLmsDynamicGatingEn{
+              std::vector<sai_int32_t>(numPmdLanes)};
+        },
+        [](auto& param, auto val) { param.rxFfeLmsDynamicGatingEn() = val; });
   }
 #endif
 
@@ -4306,11 +4497,20 @@ std::vector<phy::TxSettings> SaiPortManager::getTxSettings(
 
   std::vector<phy::TxSettings> txSettings(numPmdLanes);
 
+  // See getSerdesParameters(): the attribute is produced by a factory so that
+  // extension attributes whose id is not mapped for this SAI implementation are
+  // never constructed (construction would CHECK-fail rather than throw).
   auto getTxParam =
-      [&](const char* paramName, auto attributeType, auto&& setter) {
+      [&](const char* paramName, auto&& attrFactory, auto&& setter) {
+        using AttrT = std::remove_cvref_t<decltype(attrFactory())>;
+        if constexpr (IsSaiExtensionAttribute<AttrT>::value) {
+          if (!AttrT::optionalExtensionAttributeId().has_value()) {
+            return;
+          }
+        }
         try {
           auto values = SaiApiTable::getInstance()->portApi().getAttribute(
-              serdesSaiPortId, attributeType);
+              serdesSaiPortId, attrFactory());
           for (int l = 0; l < numPmdLanes; l++) {
             setter(txSettings[l], values[l]);
           }
@@ -4320,56 +4520,164 @@ std::vector<phy::TxSettings> SaiPortManager::getTxSettings(
         }
       };
 
+  // On the Cisco SiliconOne (G202X) path the taps go to the i32 fir* fields
+  // instead of the legacy i16 pre/main/post: the agent programs values up to
+  // 52428 there, which does not fit in an i16 and wraps negative. Everywhere
+  // else the i16 fields stay authoritative, so nothing outside Tajo changes.
+  // This is the same condition the native TX block below uses.
+  bool wideTaps = false;
+#if defined(TAJO_SDK_GTE_24_8_3001)
+  wideTaps = platform_->getAsic()->isSupported(
+      HwAsic::Feature::TAJO_RX_SERDES_PARAMETERS);
+#endif
+
   getTxParam(
       "TxFirPre1",
-      SaiPortSerdesTraits::Attributes::TxFirPre1{
-          std::vector<sai_uint32_t>(numPmdLanes)},
-      [](auto& param, auto val) { param.pre() = static_cast<int16_t>(val); });
+      [&] {
+        return SaiPortSerdesTraits::Attributes::TxFirPre1{
+            std::vector<sai_uint32_t>(numPmdLanes)};
+      },
+      [wideTaps](auto& param, auto val) {
+        if (wideTaps) {
+          param.firPre1() = static_cast<int32_t>(val);
+        } else {
+          param.pre() = static_cast<int16_t>(val);
+        }
+      });
 
   getTxParam(
       "TxFirPre2",
-      SaiPortSerdesTraits::Attributes::TxFirPre2{
-          std::vector<sai_uint32_t>(numPmdLanes)},
-      [](auto& param, auto val) { param.pre2() = static_cast<int16_t>(val); });
+      [&] {
+        return SaiPortSerdesTraits::Attributes::TxFirPre2{
+            std::vector<sai_uint32_t>(numPmdLanes)};
+      },
+      [wideTaps](auto& param, auto val) {
+        if (wideTaps) {
+          param.firPre2() = static_cast<int32_t>(val);
+        } else {
+          param.pre2() = static_cast<int16_t>(val);
+        }
+      });
 
   getTxParam(
       "TxFirPre3",
-      SaiPortSerdesTraits::Attributes::TxFirPre3{
-          std::vector<sai_uint32_t>(numPmdLanes)},
-      [](auto& param, auto val) { param.pre3() = static_cast<int32_t>(val); });
+      [&] {
+        return SaiPortSerdesTraits::Attributes::TxFirPre3{
+            std::vector<sai_uint32_t>(numPmdLanes)};
+      },
+      [wideTaps](auto& param, auto val) {
+        if (wideTaps) {
+          param.firPre3() = static_cast<int32_t>(val);
+        } else {
+          param.pre3() = static_cast<int32_t>(val);
+        }
+      });
 
   getTxParam(
       "TxFirMain",
-      SaiPortSerdesTraits::Attributes::TxFirMain{
-          std::vector<sai_uint32_t>(numPmdLanes)},
-      [](auto& param, auto val) { param.main() = static_cast<int16_t>(val); });
+      [&] {
+        return SaiPortSerdesTraits::Attributes::TxFirMain{
+            std::vector<sai_uint32_t>(numPmdLanes)};
+      },
+      [wideTaps](auto& param, auto val) {
+        if (wideTaps) {
+          param.firMain() = static_cast<int32_t>(val);
+        } else {
+          param.main() = static_cast<int16_t>(val);
+        }
+      });
 
   getTxParam(
       "TxFirPost1",
-      SaiPortSerdesTraits::Attributes::TxFirPost1{
-          std::vector<sai_uint32_t>(numPmdLanes)},
-      [](auto& param, auto val) { param.post() = static_cast<int16_t>(val); });
+      [&] {
+        return SaiPortSerdesTraits::Attributes::TxFirPost1{
+            std::vector<sai_uint32_t>(numPmdLanes)};
+      },
+      [wideTaps](auto& param, auto val) {
+        if (wideTaps) {
+          param.firPost1() = static_cast<int32_t>(val);
+        } else {
+          param.post() = static_cast<int16_t>(val);
+        }
+      });
 
   getTxParam(
       "TxFirPost2",
-      SaiPortSerdesTraits::Attributes::TxFirPost2{
-          std::vector<sai_uint32_t>(numPmdLanes)},
-      [](auto& param, auto val) { param.post2() = static_cast<int16_t>(val); });
+      [&] {
+        return SaiPortSerdesTraits::Attributes::TxFirPost2{
+            std::vector<sai_uint32_t>(numPmdLanes)};
+      },
+      [wideTaps](auto& param, auto val) {
+        if (wideTaps) {
+          param.firPost2() = static_cast<int32_t>(val);
+        } else {
+          param.post2() = static_cast<int16_t>(val);
+        }
+      });
 
   getTxParam(
       "TxFirPost3",
-      SaiPortSerdesTraits::Attributes::TxFirPost3{
-          std::vector<sai_uint32_t>(numPmdLanes)},
-      [](auto& param, auto val) { param.post3() = static_cast<int16_t>(val); });
+      [&] {
+        return SaiPortSerdesTraits::Attributes::TxFirPost3{
+            std::vector<sai_uint32_t>(numPmdLanes)};
+      },
+      [wideTaps](auto& param, auto val) {
+        if (wideTaps) {
+          param.firPost3() = static_cast<int32_t>(val);
+        } else {
+          param.post3() = static_cast<int16_t>(val);
+        }
+      });
 
 #if defined(BRCM_SAI_SDK_GTE_13_0) || SAI_API_VERSION >= SAI_VERSION(1, 14, 0)
   if (platform_->getAsic()->isSupported(
           HwAsic::Feature::SAI_SERDES_PRECODING)) {
     getTxParam(
         "TxPrecoding",
-        SaiPortSerdesTraits::Attributes::TxPrecodingAttr{
-            std::vector<sai_int32_t>(numPmdLanes)},
+        [&] {
+          return SaiPortSerdesTraits::Attributes::TxPrecodingAttr{
+              std::vector<sai_int32_t>(numPmdLanes)};
+        },
         [](auto& param, auto val) { param.precoding() = val; });
+  }
+#endif
+
+#if defined(TAJO_SDK_GTE_24_8_3001)
+  // Cisco SiliconOne (G202X) native TX serdes parameters, read from the
+  // SAI_PORT_SERDES_ATTR_EXT_TX_* attributes. FFE coefficients 0-4 are not read
+  // here: the Cisco SAI maps the standard TX FIR taps onto them, so they return
+  // the same registers as TxFirPre3..TxFirPost1 above. The rest have no
+  // standard equivalent.
+  if (platform_->getAsic()->isSupported(
+          HwAsic::Feature::TAJO_RX_SERDES_PARAMETERS)) {
+    getTxParam(
+        "TxDriverSwing",
+        [&] {
+          return SaiPortSerdesTraits::Attributes::TxDriverSwing{
+              std::vector<sai_int32_t>(numPmdLanes)};
+        },
+        [](auto& param, auto val) { param.driverSwing() = val; });
+    getTxParam(
+        "TxDigGain",
+        [&] {
+          return SaiPortSerdesTraits::Attributes::TxDigGain{
+              std::vector<sai_int32_t>(numPmdLanes)};
+        },
+        [](auto& param, auto val) { param.digGain() = val; });
+    getTxParam(
+        "TxDiffEncoderEn",
+        [&] {
+          return SaiPortSerdesTraits::Attributes::TxDiffEncoderEn{
+              std::vector<sai_int32_t>(numPmdLanes)};
+        },
+        [](auto& param, auto val) { param.diffEncoderEn() = val; });
+    getTxParam(
+        "TxLdoBypass",
+        [&] {
+          return SaiPortSerdesTraits::Attributes::TxLdoBypass{
+              std::vector<sai_int32_t>(numPmdLanes)};
+        },
+        [](auto& param, auto val) { param.ldoBypass() = val; });
   }
 #endif
 
