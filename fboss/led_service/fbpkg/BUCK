@@ -4,7 +4,10 @@ oncall("fboss_optics_phy")
 
 fbpkg.builder(
     name = "neteng.fboss.led_service",
-    architectures = ["x86_64"],
+    architectures = [
+        "x86_64",
+        "aarch64",
+    ],
     expire_days = 28,
     path_actions = {
         "led_service": "//fboss/led_service:led_service",
@@ -15,6 +18,7 @@ fbpkg.builder(
         "platform_descriptors": fbpkg.copy("//fboss/configs:vendor_platform_descriptors"),
     },
     split_debuginfo = True,
+    variant_distribution = "combined",
 )
 
 fbpkg.builder(
