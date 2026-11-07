@@ -71,6 +71,9 @@
           "test_name_regex": "roundtrip.prod_2_trunk_2_prod.*AgentHwPtpTcProvisionTests.VerifyPtpTcDelayRequest.*$"
         },
         {
+          "test_name_regex": "AgentDropReasonTest.ingressInvalidEtherTypeDrop$"
+        },
+        {
           "test_name_regex": "AgentMacOverFlowTest.*$"
         },
         {
@@ -92,6 +95,9 @@
         },
         {
           "test_name_regex": "roundtrip.prod_2_trunk_2_prod.*AgentHwPtpTcProvisionTests.VerifyPtpTcDelayRequest.*$"
+        },
+        {
+          "test_name_regex": "AgentDropReasonTest.ingressInvalidEtherTypeDrop$"
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.*HwTest_PROFILE_400G_8_PAM4_RS544X2N_COPPER"
@@ -163,6 +169,9 @@
         },
         {
           "test_name_regex": "roundtrip.prod_2_trunk_2_prod.*AgentHwPtpTcProvisionTests.VerifyPtpTcDelayRequest.*$"
+        },
+        {
+          "test_name_regex": "AgentDropReasonTest.ingressInvalidEtherTypeDrop$"
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.*HwTest_PROFILE_400G_8_PAM4_RS544X2N_COPPER"
@@ -855,6 +864,9 @@
           "test_name_regex": "roundtrip.prod_2_trunk_2_prod.*AgentHwPtpTcProvisionTests.VerifyPtpTcDelayRequest.*$"
         },
         {
+          "test_name_regex": "AgentDropReasonTest.ingressInvalidEtherTypeDrop$"
+        },
+        {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.*HwTest_PROFILE_400G_8_PAM4_RS544X2N_COPPER"
         },
         {
@@ -1513,6 +1525,9 @@
           "test_name_regex": "roundtrip.prod_2_trunk_2_prod.*AgentHwPtpTcProvisionTests.VerifyPtpTcDelayRequest.*$"
         },
         {
+          "test_name_regex": "AgentDropReasonTest.ingressInvalidEtherTypeDrop$"
+        },
+        {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.*HwTest_PROFILE_400G_8_PAM4_RS544X2N_COPPER"
         },
         {
@@ -1582,6 +1597,9 @@
         },
         {
           "test_name_regex": "roundtrip.prod_2_trunk_2_prod.*AgentHwPtpTcProvisionTests.VerifyPtpTcDelayRequest.*$"
+        },
+        {
+          "test_name_regex": "AgentDropReasonTest.ingressInvalidEtherTypeDrop$"
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.*HwTest_PROFILE_400G_8_PAM4_RS544X2N_COPPER"
@@ -1656,6 +1674,9 @@
         },
         {
           "test_name_regex": "roundtrip.prod_2_trunk_2_prod.*AgentHwPtpTcProvisionTests.VerifyPtpTcDelayRequest.*$"
+        },
+        {
+          "test_name_regex": "AgentDropReasonTest.ingressInvalidEtherTypeDrop$"
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.*HwTest_PROFILE_400G_8_PAM4_RS544X2N_COPPER"
@@ -2385,6 +2406,9 @@
           "test_name_regex": "roundtrip.prod_2_trunk_2_prod.*AgentHwPtpTcProvisionTests.VerifyPtpTcDelayRequest.*$"
         },
         {
+          "test_name_regex": "AgentDropReasonTest.ingressInvalidEtherTypeDrop$"
+        },
+        {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.*HwTest_PROFILE_400G_8_PAM4_RS544X2N_COPPER"
         },
         {
@@ -2519,6 +2543,9 @@
           "test_name_regex": "roundtrip.prod_2_trunk_2_prod.*AgentHwPtpTcProvisionTests.VerifyPtpTcDelayRequest.*$"
         },
         {
+          "test_name_regex": "AgentDropReasonTest.ingressInvalidEtherTypeDrop$"
+        },
+        {
           "test_name_regex": "AgentMacOverFlowTest.*$"
         },
         {
@@ -2546,6 +2573,9 @@
         },
         {
           "test_name_regex": "roundtrip.prod_2_trunk_2_prod.*AgentHwPtpTcProvisionTests.VerifyPtpTcDelayRequest.*$"
+        },
+        {
+          "test_name_regex": "AgentDropReasonTest.ingressInvalidEtherTypeDrop$"
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.*HwTest_PROFILE_400G_8_PAM4_RS544X2N_COPPER"
@@ -2623,6 +2653,9 @@
         },
         {
           "test_name_regex": "roundtrip.prod_2_trunk_2_prod.*AgentHwPtpTcProvisionTests.VerifyPtpTcDelayRequest.*$"
+        },
+        {
+          "test_name_regex": "AgentDropReasonTest.ingressInvalidEtherTypeDrop$"
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.*HwTest_PROFILE_400G_8_PAM4_RS544X2N_COPPER"
@@ -2705,6 +2738,9 @@
           "test_name_regex": "roundtrip.prod_2_trunk_2_prod.*AgentHwPtpTcProvisionTests.VerifyPtpTcDelayRequest.*$"
         },
         {
+          "test_name_regex": "AgentDropReasonTest.ingressInvalidEtherTypeDrop$"
+        },
+        {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.*HwTest_PROFILE_400G_8_PAM4_RS544X2N_COPPER"
         },
         {
@@ -2777,6 +2813,9 @@
         },
         {
           "test_name_regex": "roundtrip.prod_2_trunk_2_prod.*AgentHwPtpTcProvisionTests.VerifyPtpTcDelayRequest.*$"
+        },
+        {
+          "test_name_regex": "AgentDropReasonTest.ingressInvalidEtherTypeDrop$"
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.*HwTest_PROFILE_400G_8_PAM4_RS544X2N_COPPER"
@@ -3025,6 +3064,9 @@
           "test_name_regex": "roundtrip.prod_2_trunk_2_prod.*AgentHwPtpTcProvisionTests.VerifyPtpTcDelayRequest.*$"
         },
         {
+          "test_name_regex": "AgentDropReasonTest.ingressInvalidEtherTypeDrop$"
+        },
+        {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.*HwTest_PROFILE_400G_8_PAM4_RS544X2N_COPPER"
         },
         {
@@ -3099,6 +3141,9 @@
           "test_name_regex": "roundtrip.prod_2_trunk_2_prod.*AgentHwPtpTcProvisionTests.VerifyPtpTcDelayRequest.*$"
         },
         {
+          "test_name_regex": "AgentDropReasonTest.ingressInvalidEtherTypeDrop$"
+        },
+        {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.*HwTest_PROFILE_400G_8_PAM4_RS544X2N_COPPER"
         },
         {
@@ -3171,6 +3216,9 @@
         },
         {
           "test_name_regex": "roundtrip.prod_2_trunk_2_prod.*AgentHwPtpTcProvisionTests.VerifyPtpTcDelayRequest.*$"
+        },
+        {
+          "test_name_regex": "AgentDropReasonTest.ingressInvalidEtherTypeDrop$"
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.*HwTest_PROFILE_400G_8_PAM4_RS544X2N_COPPER"
@@ -3284,6 +3332,12 @@
         },
         {
           "test_name_regex": "AgentSendPacketToMulticastQueueTest.SendPacketOutOfPortToMCQueue$"
+        },
+        {
+          "test_name_regex": "AgentDropReasonTest.ingressAclDenyDrop$"
+        },
+        {
+          "test_name_regex": "AgentDropReasonTest.ingressL3DstDiscardDrop$"
         }
     ],
     "chenab/2511.36/2511.36/chenab/multi_switch": [
@@ -3340,6 +3394,12 @@
         },
         {
           "test_name_regex": "AgentSendPacketToMulticastQueueTest.SendPacketOutOfPortToMCQueue$"
+        },
+        {
+          "test_name_regex": "AgentDropReasonTest.ingressAclDenyDrop$"
+        },
+        {
+          "test_name_regex": "AgentDropReasonTest.ingressL3DstDiscardDrop$"
         }
     ],
     "chenab/2605.38/2605.38/chenab/mono": [
@@ -3396,6 +3456,12 @@
         },
         {
           "test_name_regex": "AgentSendPacketToMulticastQueueTest.SendPacketOutOfPortToMCQueue$"
+        },
+        {
+          "test_name_regex": "AgentDropReasonTest.ingressAclDenyDrop$"
+        },
+        {
+          "test_name_regex": "AgentDropReasonTest.ingressL3DstDiscardDrop$"
         }
     ],
     "chenab/2605.38/2605.38/chenab/multi_switch": [
@@ -3452,6 +3518,12 @@
         },
         {
           "test_name_regex": "AgentSendPacketToMulticastQueueTest.SendPacketOutOfPortToMCQueue$"
+        },
+        {
+          "test_name_regex": "AgentDropReasonTest.ingressAclDenyDrop$"
+        },
+        {
+          "test_name_regex": "AgentDropReasonTest.ingressL3DstDiscardDrop$"
         }
     ],
     "leaba/1.42.8/1.42.8/gibraltar/multi_switch": [
@@ -4338,6 +4410,12 @@
         },
         {
           "test_name_regex": "AgentSendPacketToMulticastQueueTest.SendPacketOutOfPortToMCQueue$"
+        },
+        {
+          "test_name_regex": "AgentDropReasonTest.ingressAclDenyDrop$"
+        },
+        {
+          "test_name_regex": "AgentDropReasonTest.ingressL3DstDiscardDrop$"
         }
     ],
     "nvda/2511.36/2511.36/spectrum4/multi_switch": [
@@ -4394,6 +4472,12 @@
         },
         {
           "test_name_regex": "AgentSendPacketToMulticastQueueTest.SendPacketOutOfPortToMCQueue$"
+        },
+        {
+          "test_name_regex": "AgentDropReasonTest.ingressAclDenyDrop$"
+        },
+        {
+          "test_name_regex": "AgentDropReasonTest.ingressL3DstDiscardDrop$"
         }
     ],
     "nvda/2605.38/2605.38/spectrum4/mono": [
@@ -4450,6 +4534,12 @@
         },
         {
           "test_name_regex": "AgentSendPacketToMulticastQueueTest.SendPacketOutOfPortToMCQueue$"
+        },
+        {
+          "test_name_regex": "AgentDropReasonTest.ingressAclDenyDrop$"
+        },
+        {
+          "test_name_regex": "AgentDropReasonTest.ingressL3DstDiscardDrop$"
         }
     ],
     "nvda/2605.38/2605.38/spectrum4/multi_switch": [
@@ -4506,6 +4596,12 @@
         },
         {
           "test_name_regex": "AgentSendPacketToMulticastQueueTest.SendPacketOutOfPortToMCQueue$"
+        },
+        {
+          "test_name_regex": "AgentDropReasonTest.ingressAclDenyDrop$"
+        },
+        {
+          "test_name_regex": "AgentDropReasonTest.ingressL3DstDiscardDrop$"
         }
     ],
     "nvda/2605.38/2605.38/spectrum6/simulator/mono": [
@@ -4562,6 +4658,12 @@
         },
         {
           "test_name_regex": "AgentSendPacketToMulticastQueueTest.SendPacketOutOfPortToMCQueue$"
+        },
+        {
+          "test_name_regex": "AgentDropReasonTest.ingressAclDenyDrop$"
+        },
+        {
+          "test_name_regex": "AgentDropReasonTest.ingressL3DstDiscardDrop$"
         }
     ]
   }
