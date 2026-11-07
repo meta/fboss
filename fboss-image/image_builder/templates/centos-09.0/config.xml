@@ -116,7 +116,6 @@
         <package name="sudo"/>
         <package name="wget"/>
         <package name="vim"/>
-        <package name="flashrom"/>
         <package name="libgpiod-utils"/>
         <package name="vi"/>
         <package name="btrfs-progs"/>

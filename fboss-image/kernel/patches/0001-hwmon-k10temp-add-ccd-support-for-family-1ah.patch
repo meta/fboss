@@ -1,0 +1,41 @@
+From: David Hows <david@hows.id.au>
+Date: Thu, 3 Apr 2025 09:08:09 +1100
+Subject: [PATCH] hwmon: (k10temp) Add support for Zen5 Ryzen Desktop
+
+Add support for retrieving CCD temperatures on Zen5 (Granite Ridge)
+Desktop CPUs.
+
+Backport of upstream commit 2c183963fb5fdd849cda66ddf2d93d88d2296a75
+to Linux 6.11.1. Model 0x44 (Fire Range EPYC Embedded) falls within
+case 0x40 ... 0x4f and gains Tccd temperature support.
+
+The upstream commit's hunk applies on top of a tree where the basic
+Family 0x1A block was already present; we adapt the same change to
+6.11.1 which already has that block (commit 3cd9da416d5b).
+
+Signed-off-by: David Hows <david@hows.id.au>
+Link: https://lore.kernel.org/r/Z-21SQkZpuWiWK06@archibald.hows.id.au
+Signed-off-by: Guenter Roeck <linux@roeck-us.net>
+
+---
+ drivers/hwmon/k10temp.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/drivers/hwmon/k10temp.c b/drivers/hwmon/k10temp.c
+index 7854e92c2d41..d8f1be5c3afe 100644
+--- a/drivers/hwmon/k10temp.c
++++ b/drivers/hwmon/k10temp.c
+@@ -500,6 +500,13 @@ static int k10temp_probe(struct pci_dev *pdev, const struct pci_device_id *id)
+ 		data->temp_adjust_mask = ZEN_CUR_TEMP_RANGE_SEL_MASK;
+ 		data->read_tempreg = read_tempreg_nb_zen;
+ 		data->is_zen = true;
++
++		switch (boot_cpu_data.x86_model) {
++		case 0x40 ... 0x4f:	/* Zen5 Ryzen Desktop */
++			data->ccd_offset = 0x308;
++			k10temp_get_ccd_support(data, 8);
++			break;
++		}
+ 	} else {
+ 		data->read_htcreg = read_htcreg_pci;
+ 		data->read_tempreg = read_tempreg_pci;
