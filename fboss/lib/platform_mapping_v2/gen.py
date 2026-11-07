@@ -6,6 +6,8 @@ import sys
 from dataclasses import dataclass
 from typing import Any, Optional, Union
 
+from thrift.python.serializer import Protocol, serialize
+
 from fboss.lib.platform_mapping_v2.platform_mapping_v2 import PlatformMappingV2
 from fboss.lib.platform_mapping_v2.read_files_utils import (
     discover_platform_mapping_inputs,
@@ -15,7 +17,6 @@ from fboss.lib.platform_mapping_v2.read_files_utils import (
 from neteng.fboss.platform_config.platform_config.thrift_types import (
     PortIdToPortAssignmentConfig,
 )
-from thrift.python.serializer import Protocol, serialize
 
 JsonValue = Union[dict[str, Any], list[Any], str, int, float, bool, None]
 PlatformDescriptorData = tuple[str, dict[str, Any]]
@@ -86,7 +87,7 @@ OSS_MULTI_NPU_SUPPORTED_PLATFORMS: dict[bool, list[str]] = {
         "m4052actm",
         "m4062nhp",
         "m4061nhp",
-        "m4061clsc",
+        "m4061clscl",
         "m5120csc",
         "wedge800bnhp",
         "wedge800cact",
@@ -124,7 +125,7 @@ _RAW_PLATFORM_MAPPING_FAMILIES: dict[str, tuple[str, ...]] = {
     "leh800bcls_rack": ("leh800bcls_rack",),
     "leh800bcls_test_fixture": ("leh800bcls_test_fixture",),
     "m4052actm": ("m4052actm",),
-    "m4061clsc": ("m4061clsc",),
+    "m4061clscl": ("m4061clscl",),
     "m4062nhp": ("m4062nhp",),
     "m5120csc": ("m5120csc",),
     "morgan800cc": ("morgan800cc",),
