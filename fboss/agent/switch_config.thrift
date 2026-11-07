@@ -1541,7 +1541,8 @@ struct Port {
    */
   41: optional i32 portUpHoldoffTimeMs;
   // UEC Link Layer Retry: name of the LlrConfig profile to apply to this port.
-  // Presence enables LLR on the port (UE Spec 1.0.2 section 5.1).
+  // Presence enables LLR on the port (UE Spec 1.0.2 section 5.1). Changing or
+  // removing it on a running switch needs a coldboot.
   42: optional LlrConfigName llrConfigName;
 
   // Controls whether TX precoding settings from the platform mapping are
