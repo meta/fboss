@@ -63,7 +63,7 @@ class Bsp {
       std::shared_ptr<SensorData> pSensorData);
   void setEmergencyState(bool state);
   bool writeToWatchdog(const std::string& value);
-  void getAsicTempDataOverThrift(
+  void getAsicTempDataFromSensorService(
       const std::shared_ptr<SensorData>& pSensorData);
   void getAsicTempThroughFsdb(const std::shared_ptr<SensorData>& pSensorData);
   virtual bool writeSysfs(const std::string& path, int value);
