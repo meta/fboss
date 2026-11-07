@@ -893,8 +893,15 @@ bool HwSwitchEnsemble::waitForRateOnPort(
     // interpacket gap. Account for that in linerate.
     auto packetPaddingBytes = (curPortPackets - prevPortPackets) * 20;
     auto curPortBytes = *curPortStats.outBytes_() + packetPaddingBytes;
+    // Port stats are sampled asynchronously by the stats thread, so the
+    // real interval between two samples can differ from the requested
+    // sleep duration. Use the actual timestamp delta when available.
+    const int elapsedSec = static_cast<int>(
+        *curPortStats.timestamp_() - *prevPortStats.timestamp_());
+    const int rateDurationSec =
+        elapsedSec > 0 ? elapsedSec : secondsToWaitPerIteration;
     auto rate = static_cast<uint64_t>((curPortBytes - prevPortBytes) * 8) /
-        secondsToWaitPerIteration;
+        rateDurationSec;
     if (desiredBps == 0 && rate == desiredBps) {
       XLOG(DBG0) << "Expect no traffic: Current rate " << rate << " bps!";
       return true;
