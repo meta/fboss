@@ -226,9 +226,9 @@ const std::string parseTimeToTimeStamp(const long& timeToParse) {
   //      2021-10-27 00:00:06 PDT -> 2021-10-27 00:00:06.475 PDT
   int index = formattedTime.find_last_of(' ');
   return fmt::format(
-      "{}.{} {}",
+      "{}.{:03d} {}",
       formattedTime.substr(0, index), // Date and time
-      splitTime.tv_usec, // fractional seconds
+      splitTime.tv_usec, // fractional seconds (milliseconds, zero-padded)
       formattedTime.substr(index + 1)); // timezone
 }
 
