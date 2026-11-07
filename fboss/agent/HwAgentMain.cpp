@@ -248,6 +248,11 @@ int hwAgentMain(
       handlers,
       {FLAGS_hwagent_port_base + FLAGS_switchIndex},
       true /*setupSSL*/);
+  // The diag shell rides a thrift stream on this server. Rocket does not count
+  // an open stream as activity, so the default 60s idle timeout would close
+  // the session under the user. Disable it, as SwAgentInitializer does.
+  server->setStreamExpireTime(std::chrono::milliseconds(0));
+  server->setIdleTimeout(std::chrono::milliseconds(0));
 #ifndef IS_OSS
   auto monitor = std::make_shared<facebook::fb303::DefaultMonitor>();
   auto status = std::make_shared<facebook::fb303::DefaultStatus>();
