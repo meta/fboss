@@ -408,6 +408,21 @@ class SwSwitch : public HwSwitchCallback {
   void applyConfig(
       const std::string& reason,
       const cfg::SwitchConfig& newConfig);
+  /**
+   * Dry-run newConfig against the current switch state. Runs the same config
+   * to state translation and state update validation as applyConfig(), but
+   * never publishes the resulting state, programs routes or records the
+   * config. Throws FbossError if the config would be rejected.
+   *
+   * applyMethod is how the config will be applied. A change that cannot be
+   * made on a running agent is accepted if applyMethod is disruptive enough
+   * for it, and otherwise throws RestartRequiredError with the method it
+   * needs. Validation stops at the first such change, so checks that would
+   * have run after it do not run.
+   */
+  void validateConfig(
+      const cfg::SwitchConfig& newConfig,
+      thrift::ConfigApplyMethod applyMethod);
 
   /*
    * Get config applied information which include last config applied time(ms).
