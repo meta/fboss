@@ -135,15 +135,16 @@ bool StateUpdateValidator::isLlrConfigUpdateValid(
   return isValid;
 }
 
-bool StateUpdateValidator::isCbfcSenderUpdateValid(
-    const StateDelta& delta) const {
+bool StateUpdateValidator::isCbfcUpdateValid(const StateDelta& delta) const {
   bool isValid = true;
-  // The CBFC sender credit size, packet overhead and credit limit are set once,
-  // when a port takes on CBFC: on a coldboot, or as the first bind on a running
-  // agent. On TU1 each size or overhead write makes the SDK recompute the port
-  // credit limit, so changing them on a live port briefly resets the sender.
-  // Changing them needs a coldboot, and so does removing CBFC from the port,
-  // as for LLR.
+  // The CBFC sender credit size, packet overhead and credit limit, and the
+  // receiver credit limit, are set once, when a port takes on CBFC: on a
+  // coldboot, or as the first bind on a running agent. On TU1 each size or
+  // overhead write makes the SDK recompute the port credit limit, so changing
+  // them on a live port briefly resets the sender. The receiver limit reaches
+  // hardware when the first VC on the port enables its receiver, not when the
+  // port attribute changes. Changing any of them needs a coldboot, and so does
+  // removing CBFC from the port, as for LLR.
   forEachChanged(
       delta.getPortsDelta(),
       [&isValid](
@@ -162,11 +163,13 @@ bool StateUpdateValidator::isCbfcSenderUpdateValid(
             oldPort->getCbfcSenderPacketOverhead() ==
                 newPort->getCbfcSenderPacketOverhead() &&
             oldPort->getCbfcSenderCreditLimit() ==
-                newPort->getCbfcSenderCreditLimit()) {
+                newPort->getCbfcSenderCreditLimit() &&
+            oldPort->getCbfcReceiverCreditLimit() ==
+                newPort->getCbfcReceiverCreditLimit()) {
           return;
         }
-        XLOG(ERR) << "CBFC sender credit size, packet overhead or credit limit"
-                  << " on port " << newPort->getID()
+        XLOG(ERR) << "CBFC sender credit size, packet overhead or credit limit,"
+                  << " or receiver credit limit, on port " << newPort->getID()
                   << " cannot change on a running agent; a coldboot is"
                   << " required to change them";
         isValid = false;
@@ -556,7 +559,7 @@ bool StateUpdateValidator::isValidUpdate(
     return false;
   }
 
-  if (!isCbfcSenderUpdateValid(delta)) {
+  if (!isCbfcUpdateValid(delta)) {
     XLOG(ERR) << "State update is not valid.";
     return false;
   }
