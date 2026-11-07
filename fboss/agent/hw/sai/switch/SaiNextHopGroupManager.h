@@ -344,6 +344,7 @@ struct SaiNextHopGroupHandle {
   std::shared_ptr<SaiNextHopGroupChildGroupMember> childGroupMember_;
   bool fixedWidthMode{false};
   bool bulkCreate{false};
+  bool bulkRemoveEcmpMembers_{false};
   std::set<SaiNextHopGroupMemberInfo> fixedWidthNextHopGroupMembers_;
   uint32_t maxVariableWidthEcmpSize{0};
   std::optional<cfg::SwitchingMode> desiredEcmpSwitchingMode_;

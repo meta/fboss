@@ -422,6 +422,13 @@ SaiNextHopGroupManager::incRefOrAddNextHopGroup(const SaiNextHopGroupKey& key) {
   nextHopGroupHandle->maxVariableWidthEcmpSize =
       platform_->getAsic()->getMaxVariableWidthEcmpSize();
   nextHopGroupHandle->platform_ = platform_;
+  // The handle can be destroyed while the platform itself is being
+  // destroyed, when virtual calls on it are no longer valid. Resolve
+  // the bulk remove decision now, while the platform is fully alive.
+  nextHopGroupHandle->bulkRemoveEcmpMembers_ =
+      FLAGS_enable_bulk_create_ecmp_members &&
+      platform_->getAsic()->isSupported(
+          HwAsic::Feature::BULK_CREATE_ECMP_MEMBER);
 
   XLOG(DBG2) << "Created NexthopGroup OID: " << nextHopGroupId;
 
@@ -1185,9 +1192,7 @@ SaiNextHopGroupHandle::~SaiNextHopGroupHandle() {
 
 #if defined(BRCM_SAI_SDK_DNX_GTE_12_0) || \
     defined(BRCM_SAI_SDK_XGS_GTE_13_0) || defined(CHENAB_SAI_SDK)
-  if (FLAGS_enable_bulk_create_ecmp_members && platform_ &&
-      platform_->getAsic()->isSupported(
-          HwAsic::Feature::BULK_CREATE_ECMP_MEMBER)) {
+  if (bulkRemoveEcmpMembers_) {
     std::vector<SaiNextHopGroupMemberTraits::AdapterKey> adapterKeys;
     for (const auto& member : members_) {
       auto obj = member->getObject();
