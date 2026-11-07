@@ -207,6 +207,91 @@ class ConfigQosPolicyMapTest : public Fboss2IntegrationTest {
   }
 };
 
+TEST_F(ConfigQosPolicyMapTest, MplsExpEntryKeying) {
+  XLOG(INFO) << "========================================";
+  XLOG(INFO) << "ConfigQosPolicyMapTest::MplsExpEntryKeying";
+  XLOG(INFO) << "========================================";
+
+  // cfg::ExpQosMap entries live in a list, not a map. Both forms of the
+  // command locate an entry by scanning for a matching internalTrafficClass
+  // and only append a new entry when none is found, so the field acts as the
+  // entry's key rather than as data. This test pins that keying: repeated
+  // commands naming one traffic class must land in a single entry, and
+  // distinct traffic classes must get distinct entries.
+  constexpr int16_t kTcA = 5;
+  constexpr int16_t kTcB = 6;
+
+  XLOG(INFO) << "[Step 1] Issuing several commands against TC " << kTcA;
+  // Three commands, two directions, all naming TC 5 -- one entry expected.
+  configureMap("mpls-exp", 0, "traffic-class", kTcA);
+  configureMap("mpls-exp", 2, "traffic-class", kTcA);
+  configureMap("traffic-class", kTcA, "mpls-exp", 4);
+
+  XLOG(INFO) << "[Step 2] Issuing one command against TC " << kTcB;
+  configureMap("mpls-exp", 1, "traffic-class", kTcB);
+
+  XLOG(INFO) << "[Step 3] Committing config...";
+  commitConfig();
+
+  XLOG(INFO) << "[Step 4] Verifying entry keying in running config...";
+  auto config = getRunningConfig();
+  const auto* policy = findQosPolicy(config, testPolicyName_);
+  ASSERT_NE(policy, nullptr)
+      << "Test policy '" << testPolicyName_ << "' not found in running config"
+      << " -- was the config committed?";
+  ASSERT_TRUE(policy->count("qosMap")) << "qosMap not found in test policy";
+  const auto& qosMap = (*policy)["qosMap"];
+  ASSERT_TRUE(qosMap.count("expMaps")) << "expMaps not found in qosMap";
+  const auto& expMaps = qosMap["expMaps"];
+  ASSERT_TRUE(expMaps.isArray()) << "expMaps is not an array";
+
+  auto countEntriesForTc = [&expMaps](int16_t trafficClass) {
+    size_t count = 0;
+    for (const auto& e : expMaps) {
+      if (e.isObject() && e.count("internalTrafficClass") &&
+          e["internalTrafficClass"].asInt() == trafficClass) {
+        ++count;
+      }
+    }
+    return count;
+  };
+
+  // Two traffic classes were named, so exactly two entries must exist --
+  // four commands must not produce four entries.
+  EXPECT_EQ(countEntriesForTc(kTcA), 1)
+      << "Expected exactly one expMap entry keyed by TC " << kTcA;
+  EXPECT_EQ(countEntriesForTc(kTcB), 1)
+      << "Expected exactly one expMap entry keyed by TC " << kTcB;
+  EXPECT_EQ(expMaps.size(), 2)
+      << "Expected exactly two expMap entries, one per traffic class named";
+
+  // The single TC 5 entry must carry the accumulated state of all three of
+  // its commands, proving they were merged into one entry rather than
+  // shadowing each other.
+  const folly::dynamic* entryA = nullptr;
+  for (const auto& e : expMaps) {
+    if (e.isObject() && e.count("internalTrafficClass") &&
+        e["internalTrafficClass"].asInt() == kTcA) {
+      entryA = &e;
+      break;
+    }
+  }
+  ASSERT_NE(entryA, nullptr) << "No expMap entry keyed by TC " << kTcA;
+  ASSERT_TRUE(entryA->count("fromExpToTrafficClass"))
+      << "fromExpToTrafficClass missing for TC " << kTcA;
+  const auto& ingressA = (*entryA)["fromExpToTrafficClass"];
+  ASSERT_TRUE(ingressA.isArray());
+  EXPECT_EQ(ingressA.size(), 2)
+      << "Both ingress commands for TC " << kTcA << " must share one entry";
+  ASSERT_TRUE(entryA->count("fromTrafficClassToExp"))
+      << "fromTrafficClassToExp missing for TC " << kTcA
+      << " -- the egress command must have reused the existing entry";
+  EXPECT_EQ((*entryA)["fromTrafficClassToExp"].asInt(), 4);
+  XLOG(INFO) << "  Entry keying verified";
+
+  XLOG(INFO) << "TEST PASSED";
+}
+
 TEST_F(ConfigQosPolicyMapTest, CreateSamplePolicy) {
   XLOG(INFO) << "========================================";
   XLOG(INFO) << "ConfigQosPolicyMapTest::CreateSamplePolicy";
@@ -330,6 +415,100 @@ TEST_F(ConfigQosPolicyMapTest, CreateSamplePolicy) {
   XLOG(INFO) << "TEST PASSED";
 }
 
+TEST_F(ConfigQosPolicyMapTest, MplsExpFromExpToTrafficClass) {
+  XLOG(INFO) << "========================================";
+  XLOG(INFO) << "ConfigQosPolicyMapTest::MplsExpFromExpToTrafficClass";
+  XLOG(INFO) << "========================================";
+
+  // Ingress classification only:
+  //   config qos policy <p> map mpls-exp <v> traffic-class <tc>
+  // appends to ExpQosMap.fromExpToTrafficClass, a list<byte>. MPLS EXP is a
+  // 3-bit field (RFC 3032), so values are 0..7. Several EXP values may
+  // classify onto one traffic class, so the list is additive -- and the CLI
+  // de-dupes before appending. No egress command is issued here, so
+  // fromTrafficClassToExp must stay unset on every entry.
+
+  XLOG(INFO) << "[Step 1] Configuring ingress MPLS EXP -> traffic-class maps";
+  configureMap("mpls-exp", 0, "traffic-class", 0);
+  // Second EXP value onto TC 0: the list must accumulate, not overwrite.
+  configureMap("mpls-exp", 3, "traffic-class", 0);
+  // Same command again: the list must de-dupe, not grow to three elements.
+  configureMap("mpls-exp", 3, "traffic-class", 0);
+  configureMap("mpls-exp", 1, "traffic-class", 1);
+  configureMap("mpls-exp", 7, "traffic-class", 7);
+
+  XLOG(INFO) << "[Step 2] Committing config...";
+  commitConfig();
+
+  XLOG(INFO) << "[Step 3] Verifying ingress maps in running config...";
+  auto config = getRunningConfig();
+  const auto* policy = findQosPolicy(config, testPolicyName_);
+  ASSERT_NE(policy, nullptr)
+      << "Test policy '" << testPolicyName_ << "' not found in running config"
+      << " -- was the config committed?";
+  ASSERT_TRUE(policy->count("qosMap")) << "qosMap not found in test policy";
+  const auto& qosMap = (*policy)["qosMap"];
+  ASSERT_TRUE(qosMap.count("expMaps")) << "expMaps not found in qosMap";
+  const auto& expMaps = qosMap["expMaps"];
+  ASSERT_TRUE(expMaps.isArray()) << "expMaps is not an array";
+  ASSERT_EQ(expMaps.size(), 3) << "Expected 3 expMap entries";
+
+  // Assert the entry for a traffic class carries exactly the given EXP
+  // values, and that the egress field was left untouched. ADD_FAILURE rather
+  // than ASSERT_* because a failing ASSERT inside a lambda returns only from
+  // the lambda, which would let the rest of the checks run on bad state.
+  auto expectIngressOnly = [&expMaps](
+                               int16_t trafficClass,
+                               const std::vector<int8_t>& expectedExpValues) {
+    const folly::dynamic* entry = nullptr;
+    for (const auto& e : expMaps) {
+      if (e.isObject() && e.count("internalTrafficClass") &&
+          e["internalTrafficClass"].asInt() == trafficClass) {
+        entry = &e;
+        break;
+      }
+    }
+    if (entry == nullptr) {
+      ADD_FAILURE() << "expMap entry for TC " << trafficClass << " not found";
+      return;
+    }
+    if (!entry->count("fromExpToTrafficClass")) {
+      ADD_FAILURE() << "fromExpToTrafficClass missing for TC " << trafficClass;
+      return;
+    }
+    const auto& ingressList = (*entry)["fromExpToTrafficClass"];
+    EXPECT_TRUE(ingressList.isArray())
+        << "fromExpToTrafficClass is not an array for TC " << trafficClass;
+    EXPECT_EQ(ingressList.size(), expectedExpValues.size())
+        << "Wrong ingress list size for TC " << trafficClass
+        << " -- the list must accumulate distinct values and de-dupe repeats";
+    for (const auto& expectedVal : expectedExpValues) {
+      // The list order is not guaranteed, so check membership.
+      bool found = false;
+      for (const auto& v : ingressList) {
+        if (v.asInt() == expectedVal) {
+          found = true;
+          break;
+        }
+      }
+      EXPECT_TRUE(found) << "Expected ingress EXP value "
+                         << static_cast<int>(expectedVal)
+                         << " not found for TC " << trafficClass;
+    }
+    EXPECT_FALSE(entry->count("fromTrafficClassToExp"))
+        << "fromTrafficClassToExp unexpectedly set for TC " << trafficClass
+        << " -- an ingress-only command must not write the egress field";
+  };
+
+  // TC 0: exp 0 and 3, de-duped to two elements despite three commands.
+  expectIngressOnly(0, {0, 3});
+  expectIngressOnly(1, {1});
+  expectIngressOnly(7, {7});
+  XLOG(INFO) << "  All ingress expMap entries verified";
+
+  XLOG(INFO) << "TEST PASSED";
+}
+
 TEST_F(ConfigQosPolicyMapTest, IdentityMappingsAcrossAllMapTypes) {
   XLOG(INFO) << "========================================";
   XLOG(INFO) << "ConfigQosPolicyMapTest::IdentityMappingsAcrossAllMapTypes";
@@ -376,6 +555,176 @@ TEST_F(ConfigQosPolicyMapTest, IdentityMappingsAcrossAllMapTypes) {
   expectIdentityObject("pfcPriorityToQueueId");
   expectIdentityObject("trafficClassToPgId");
   expectIdentityObject("pfcPriorityToPgId");
+
+  XLOG(INFO) << "TEST PASSED";
+}
+
+TEST_F(ConfigQosPolicyMapTest, MplsExpFromTrafficClassToExp) {
+  XLOG(INFO) << "========================================";
+  XLOG(INFO) << "ConfigQosPolicyMapTest::MplsExpFromTrafficClassToExp";
+  XLOG(INFO) << "========================================";
+
+  // Egress rewrite only:
+  //   config qos policy <p> map traffic-class <tc> mpls-exp <v>
+  // sets ExpQosMap.fromTrafficClassToExp, an optional byte. Unlike the
+  // ingress list this is a scalar, so re-issuing the command for the same
+  // traffic class must replace the value rather than accumulate. No ingress
+  // command is issued here, so fromExpToTrafficClass must stay empty on
+  // every entry.
+
+  XLOG(INFO) << "[Step 1] Configuring egress traffic-class -> MPLS EXP maps";
+  configureMap("traffic-class", 0, "mpls-exp", 0);
+  configureMap("traffic-class", 1, "mpls-exp", 1);
+  configureMap("traffic-class", 7, "mpls-exp", 5);
+  // Re-issue for TC 7 with a different value: the scalar must be replaced,
+  // leaving 6 rather than 5.
+  configureMap("traffic-class", 7, "mpls-exp", 6);
+
+  XLOG(INFO) << "[Step 2] Committing config...";
+  commitConfig();
+
+  XLOG(INFO) << "[Step 3] Verifying egress maps in running config...";
+  auto config = getRunningConfig();
+  const auto* policy = findQosPolicy(config, testPolicyName_);
+  ASSERT_NE(policy, nullptr)
+      << "Test policy '" << testPolicyName_ << "' not found in running config"
+      << " -- was the config committed?";
+  ASSERT_TRUE(policy->count("qosMap")) << "qosMap not found in test policy";
+  const auto& qosMap = (*policy)["qosMap"];
+  ASSERT_TRUE(qosMap.count("expMaps")) << "expMaps not found in qosMap";
+  const auto& expMaps = qosMap["expMaps"];
+  ASSERT_TRUE(expMaps.isArray()) << "expMaps is not an array";
+  ASSERT_EQ(expMaps.size(), 3) << "Expected 3 expMap entries";
+
+  // Assert the entry for a traffic class carries the given EXP value, and
+  // that the ingress list was left empty. ADD_FAILURE rather than ASSERT_*
+  // because a failing ASSERT inside a lambda returns only from the lambda,
+  // which would let the rest of the checks run on bad state.
+  auto expectEgressOnly = [&expMaps](int16_t trafficClass, int8_t expectedExp) {
+    const folly::dynamic* entry = nullptr;
+    for (const auto& e : expMaps) {
+      if (e.isObject() && e.count("internalTrafficClass") &&
+          e["internalTrafficClass"].asInt() == trafficClass) {
+        entry = &e;
+        break;
+      }
+    }
+    if (entry == nullptr) {
+      ADD_FAILURE() << "expMap entry for TC " << trafficClass << " not found";
+      return;
+    }
+    if (!entry->count("fromTrafficClassToExp")) {
+      ADD_FAILURE() << "fromTrafficClassToExp missing for TC " << trafficClass;
+      return;
+    }
+    EXPECT_EQ((*entry)["fromTrafficClassToExp"].asInt(), expectedExp)
+        << "Wrong egress EXP value for TC " << trafficClass
+        << " -- a repeated command must overwrite, not accumulate";
+    // An egress-only run must not classify anything, so the ingress list is
+    // either absent or present-but-empty.
+    if (entry->count("fromExpToTrafficClass")) {
+      EXPECT_TRUE((*entry)["fromExpToTrafficClass"].empty())
+          << "fromExpToTrafficClass unexpectedly populated for TC "
+          << trafficClass
+          << " -- an egress-only command must not write the ingress list";
+    }
+  };
+
+  expectEgressOnly(0, 0);
+  expectEgressOnly(1, 1);
+  // TC 7 was configured twice; the later value must win.
+  expectEgressOnly(7, 6);
+  XLOG(INFO) << "  All egress expMap entries verified";
+
+  XLOG(INFO) << "TEST PASSED";
+}
+
+TEST_F(ConfigQosPolicyMapTest, DscpFromTrafficClassToDscp) {
+  XLOG(INFO) << "========================================";
+  XLOG(INFO) << "ConfigQosPolicyMapTest::DscpFromTrafficClassToDscp";
+  XLOG(INFO) << "========================================";
+
+  // Egress rewrite only:
+  //   config qos policy <p> map traffic-class <tc> dscp <v>
+  // sets DscpQosMap.fromTrafficClassToDscp, an optional byte. Two things
+  // separate this from the MPLS EXP egress field: DSCP is a 6-bit field
+  // (RFC 2474) so values run 0..63 rather than 0..7, and the value is a
+  // scalar, so re-issuing the command for one traffic class must replace the
+  // value rather than accumulate. No ingress command is issued here, so
+  // fromDscpToTrafficClass must stay empty on every entry.
+
+  XLOG(INFO) << "[Step 1] Configuring egress traffic-class -> DSCP maps";
+  // Real DSCP codepoints, chosen to exercise the range above 7 that a
+  // 3-bit field could not hold: AF11 (10), EF (46), and the maximum (63).
+  configureMap("traffic-class", 0, "dscp", 0);
+  configureMap("traffic-class", 1, "dscp", 10);
+  configureMap("traffic-class", 2, "dscp", 46);
+  configureMap("traffic-class", 7, "dscp", 63);
+  // Re-issue for TC 7 with a different codepoint: the scalar must be
+  // replaced, leaving 48 rather than 63.
+  configureMap("traffic-class", 7, "dscp", 48);
+
+  XLOG(INFO) << "[Step 2] Committing config...";
+  commitConfig();
+
+  XLOG(INFO) << "[Step 3] Verifying egress DSCP maps in running config...";
+  auto config = getRunningConfig();
+  const auto* policy = findQosPolicy(config, testPolicyName_);
+  ASSERT_NE(policy, nullptr)
+      << "Test policy '" << testPolicyName_ << "' not found in running config"
+      << " -- was the config committed?";
+  ASSERT_TRUE(policy->count("qosMap")) << "qosMap not found in test policy";
+  const auto& qosMap = (*policy)["qosMap"];
+  ASSERT_TRUE(qosMap.count("dscpMaps")) << "dscpMaps not found in qosMap";
+  const auto& dscpMaps = qosMap["dscpMaps"];
+  ASSERT_TRUE(dscpMaps.isArray()) << "dscpMaps is not an array";
+  // Four distinct traffic classes were named; the repeat for TC 7 must reuse
+  // its entry rather than add a fifth.
+  ASSERT_EQ(dscpMaps.size(), 4) << "Expected 4 dscpMap entries";
+
+  // Assert the entry for a traffic class carries the given DSCP value, and
+  // that the ingress list was left empty. ADD_FAILURE rather than ASSERT_*
+  // because a failing ASSERT inside a lambda returns only from the lambda,
+  // which would let the rest of the checks run on bad state.
+  auto expectEgressOnly = [&dscpMaps](
+                              int16_t trafficClass, int8_t expectedDscp) {
+    const folly::dynamic* entry = nullptr;
+    for (const auto& e : dscpMaps) {
+      if (e.isObject() && e.count("internalTrafficClass") &&
+          e["internalTrafficClass"].asInt() == trafficClass) {
+        entry = &e;
+        break;
+      }
+    }
+    if (entry == nullptr) {
+      ADD_FAILURE() << "dscpMap entry for TC " << trafficClass << " not found";
+      return;
+    }
+    if (!entry->count("fromTrafficClassToDscp")) {
+      ADD_FAILURE() << "fromTrafficClassToDscp missing for TC " << trafficClass;
+      return;
+    }
+    EXPECT_EQ((*entry)["fromTrafficClassToDscp"].asInt(), expectedDscp)
+        << "Wrong egress DSCP value for TC " << trafficClass
+        << " -- a repeated command must overwrite, not accumulate";
+    // An egress-only run must not classify anything, so the ingress list is
+    // either absent or present-but-empty.
+    if (entry->count("fromDscpToTrafficClass")) {
+      EXPECT_TRUE((*entry)["fromDscpToTrafficClass"].empty())
+          << "fromDscpToTrafficClass unexpectedly populated for TC "
+          << trafficClass
+          << " -- an egress-only command must not write the ingress list";
+    }
+  };
+
+  expectEgressOnly(0, 0);
+  // Codepoints above 7 prove the full 6-bit DSCP range survives the round
+  // trip; an EXP-sized field would truncate these.
+  expectEgressOnly(1, 10);
+  expectEgressOnly(2, 46);
+  // TC 7 was configured twice; the later codepoint must win.
+  expectEgressOnly(7, 48);
+  XLOG(INFO) << "  All egress dscpMap entries verified";
 
   XLOG(INFO) << "TEST PASSED";
 }
