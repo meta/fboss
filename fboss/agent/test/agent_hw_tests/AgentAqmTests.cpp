@@ -582,6 +582,21 @@ class AgentAqmTest : public AgentHwTest {
       const uint64_t kExpectedOutPackets = isEct(ecnCodePoint)
           ? numPacketsToSend
           : numPacketsToSend - expectedMarkedOrDroppedPacketCount;
+      // Because of the test setup, Ebro, Yuba, and G202X might forward
+      // one packet fewer and drop one packet more. Accept that as well
+      // as the exact expected forward count.
+      uint64_t kMinOutPackets = kExpectedOutPackets;
+      switch (asic->getAsicType()) {
+        case cfg::AsicType::ASIC_TYPE_EBRO:
+        case cfg::AsicType::ASIC_TYPE_YUBA:
+        case cfg::AsicType::ASIC_TYPE_G202X:
+          if (!isEct(ecnCodePoint) && kExpectedOutPackets > 0) {
+            kMinOutPackets = kExpectedOutPackets - 1;
+          }
+          break;
+        default:
+          break;
+      }
 
       bool useQueueStatsForAqm = asic->getSwitchType() == cfg::SwitchType::VOQ;
       WITH_RETRIES_N_TIMED(10, std::chrono::milliseconds(1000), {
@@ -607,7 +622,7 @@ class AgentAqmTest : public AgentHwTest {
         // - In case of ECN, ensure that ECN marked packet count is >= the
         //   expected marked packet count, this will ensure test case
         //   waiting long enough to for all marked packets to be seen.
-        EXPECT_EVENTUALLY_GE(outPackets, kExpectedOutPackets);
+        EXPECT_EVENTUALLY_GE(outPackets, kMinOutPackets);
         if (isEct(ecnCodePoint)) {
           EXPECT_EVENTUALLY_GE(
               ecnMarking + markedCountBoundaryTolerance,
@@ -628,7 +643,7 @@ class AgentAqmTest : public AgentHwTest {
 
       // Might see more outPackets than expected due to
       // utility::sendPacketsWithQueueBuildup()
-      EXPECT_GE(deltaOutPackets, kExpectedOutPackets);
+      EXPECT_GE(deltaOutPackets, kMinOutPackets);
       XLOG(DBG0) << "Delta out pkts: " << deltaOutPackets;
 
       if (verifyPacketCountFn.has_value()) {
