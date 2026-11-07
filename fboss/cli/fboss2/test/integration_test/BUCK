@@ -43,6 +43,7 @@ cpp_binary(
         "ConfigInterfaceLldpExpectedValueTest.cpp",
         "ConfigInterfaceLookupClassTest.cpp",
         "ConfigInterfaceLoopbackModeTest.cpp",
+        "ConfigInterfaceMirrorTest.cpp",
         "ConfigInterfaceMtuTest.cpp",
         "ConfigInterfaceProfileTest.cpp",
         "ConfigInterfaceTypeTest.cpp",

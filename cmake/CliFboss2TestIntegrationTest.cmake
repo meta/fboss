@@ -45,6 +45,7 @@ add_executable(fboss2_integration_test
   fboss/cli/fboss2/test/integration_test/ConfigInterfaceLldpExpectedValueTest.cpp
   fboss/cli/fboss2/test/integration_test/ConfigInterfaceLookupClassTest.cpp
   fboss/cli/fboss2/test/integration_test/ConfigInterfaceLoopbackModeTest.cpp
+  fboss/cli/fboss2/test/integration_test/ConfigInterfaceMirrorTest.cpp
   fboss/cli/fboss2/test/integration_test/ConfigInterfaceTypeTest.cpp
   fboss/cli/fboss2/test/integration_test/ConfigQosDefaultPolicyTest.cpp
   fboss/cli/fboss2/test/integration_test/ConfigQosDefaultQueueConfigTest.cpp
