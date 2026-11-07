@@ -19,6 +19,9 @@
  *
  * A second config covers the create/shape/delete lifecycle: a shaped queue,
  * then removal of the whole named entry.
+ *
+ * A third covers AQM entry selection: the congestion behavior is the key that
+ * decides which of a queue's AQM entries an edit lands on.
  */
 
 #include <folly/json/dynamic.h>
@@ -240,6 +243,140 @@ TEST_F(ConfigPortQueueConfigTest, BuildAndAssignPolicy) {
     }
   }
   EXPECT_TRUE(sawPort) << "interface " << ifName << " not in running config";
+
+  XLOG(INFO) << "TEST PASSED";
+}
+
+// Focused coverage for ActiveQueueManagement.behavior:
+//   config qos queue-config <name> queue-id <id> active-queue-management \
+//       congestion-behavior <ECN|EARLY_DROP>
+//
+// behavior is not just another field on the AQM struct, it is the key that
+// picks which AQM entry an edit lands on: aqms is a list, and a queue may
+// carry one ECN entry and one EARLY_DROP entry at the same time. So the
+// checks here are about entry selection, which BuildAndAssignPolicy (one
+// behavior, one entry) cannot make:
+//   - naming the other behavior appends a second entry instead of
+//     overwriting the first,
+//   - naming a behavior that is already there edits that entry rather than
+//     appending a duplicate, and leaves its detection profile alone.
+TEST_F(ConfigPortQueueConfigTest, AqmCongestionBehavior) {
+  // Own name and queue id: tests are not ordered and may be sharded, so this
+  // must not share state with BuildAndAssignPolicy.
+  const std::string name = "cli_e2e_test_qc_aqm";
+  constexpr int kQueueId = 5;
+  constexpr int kBehaviorEarlyDrop = 0;
+  constexpr int kEcnMin = 100000;
+  constexpr int kEcnMax = 200000;
+  constexpr int kEcnProbability = 50;
+  constexpr int kEarlyDropMin = 30000;
+  constexpr int kEarlyDropMax = 40000;
+
+  auto queueCmd = [&](const std::vector<std::string>& attrs) {
+    std::vector<std::string> cmd = {
+        "config",
+        "qos",
+        "queue-config",
+        name,
+        "queue-id",
+        std::to_string(kQueueId)};
+    cmd.insert(cmd.end(), attrs.begin(), attrs.end());
+    return runCli(cmd);
+  };
+
+  XLOG(INFO) << "[Step 1] ECN entry, then EARLY_DROP entry, then ECN again";
+  ASSERT_EQ(
+      queueCmd({"scheduling",
+                "WRR",
+                "weight",
+                "5",
+                "active-queue-management",
+                "congestion-behavior",
+                "ECN",
+                "detection",
+                "linear",
+                "minimum-length",
+                std::to_string(kEcnMin),
+                "maximum-length",
+                std::to_string(kEcnMax),
+                "probability",
+                std::to_string(kEcnProbability)})
+          .exitCode,
+      0);
+  // Different behavior -> a second entry on the same queue, not a rewrite of
+  // the ECN one.
+  ASSERT_EQ(
+      queueCmd({"active-queue-management",
+                "congestion-behavior",
+                "EARLY_DROP",
+                "detection",
+                "linear",
+                "minimum-length",
+                std::to_string(kEarlyDropMin),
+                "maximum-length",
+                std::to_string(kEarlyDropMax)})
+          .exitCode,
+      0);
+  // Behavior already present, and no detection args: must find the existing
+  // ECN entry and leave its detection profile as it was.
+  ASSERT_EQ(
+      queueCmd({"active-queue-management", "congestion-behavior", "ECN"})
+          .exitCode,
+      0);
+
+  commitConfig();
+  waitForAgentReady();
+
+  XLOG(INFO) << "[Step 2] Verifying running config...";
+  auto config = getRunningConfig();
+  const auto& sw = config["sw"];
+  ASSERT_TRUE(sw.count("portQueueConfigs"))
+      << "no portQueueConfigs in running config";
+  ASSERT_TRUE(sw["portQueueConfigs"].count(name)) << name << " missing";
+  const auto* queue = findQueue(sw["portQueueConfigs"][name], kQueueId);
+  ASSERT_NE(queue, nullptr) << "queue " << kQueueId << " missing from " << name;
+
+  ASSERT_TRUE(queue->count("aqms"));
+  const auto& aqms = (*queue)["aqms"];
+  ASSERT_TRUE(aqms.isArray());
+  ASSERT_EQ(aqms.size(), 2u)
+      << "two behaviors were configured and one was repeated, so the queue "
+         "must hold exactly two AQM entries";
+
+  const folly::dynamic* ecn = nullptr;
+  const folly::dynamic* earlyDrop = nullptr;
+  for (const auto& aqm : aqms) {
+    ASSERT_TRUE(aqm.count("behavior")) << "AQM entry without a behavior";
+    if (aqm["behavior"].asInt() == kBehaviorEcn) {
+      ecn = &aqm;
+    } else if (aqm["behavior"].asInt() == kBehaviorEarlyDrop) {
+      earlyDrop = &aqm;
+    }
+  }
+  ASSERT_NE(ecn, nullptr) << "no ECN entry";
+  ASSERT_NE(earlyDrop, nullptr) << "no EARLY_DROP entry";
+
+  const auto& ecnLinear = (*ecn)["detection"]["linear"];
+  EXPECT_EQ(ecnLinear["minimumLength"].asInt(), kEcnMin)
+      << "the bare congestion-behavior command overwrote the ECN detection";
+  EXPECT_EQ(ecnLinear["maximumLength"].asInt(), kEcnMax);
+  EXPECT_EQ(ecnLinear["probability"].asInt(), kEcnProbability);
+
+  const auto& earlyDropLinear = (*earlyDrop)["detection"]["linear"];
+  EXPECT_EQ(earlyDropLinear["minimumLength"].asInt(), kEarlyDropMin);
+  EXPECT_EQ(earlyDropLinear["maximumLength"].asInt(), kEarlyDropMax);
+
+  XLOG(INFO) << "[Step 3] Removing " << name;
+  discardSession();
+  ASSERT_EQ(runCli({"delete", "qos", "queue-config", name}).exitCode, 0);
+  commitConfig();
+  waitForAgentReady();
+
+  auto afterDelete = getRunningConfig();
+  EXPECT_FALSE(
+      afterDelete["sw"].count("portQueueConfigs") &&
+      afterDelete["sw"]["portQueueConfigs"].count(name))
+      << name << " still present after delete";
 
   XLOG(INFO) << "TEST PASSED";
 }
