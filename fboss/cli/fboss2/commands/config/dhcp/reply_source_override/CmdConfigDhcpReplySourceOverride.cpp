@@ -9,6 +9,8 @@
  */
 
 #include "fboss/cli/fboss2/commands/config/dhcp/reply_source_override/CmdConfigDhcpReplySourceOverride.h"
+#include "fboss/cli/fboss2/commands/config/dhcp/CmdConfigDhcp.h"
+#include "fboss/cli/fboss2/utils/ArgCompletion.h"
 
 #include "fboss/cli/fboss2/CmdHandler.cpp"
 
@@ -113,5 +115,10 @@ void CmdConfigDhcpReplySourceOverride::printOutput(const RetType& logMsg) {
 template void CmdHandler<
     CmdConfigDhcpReplySourceOverride,
     CmdConfigDhcpReplySourceOverrideTraits>::run();
+
+std::vector<std::string> CmdConfigDhcpReplySourceOverrideTraits::completeArgs(
+    const std::vector<std::string>& typed) {
+  return utils::completion::completePositions(typed, {dhcpFamilies()});
+}
 
 } // namespace facebook::fboss

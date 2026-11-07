@@ -9,6 +9,7 @@
  */
 
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/global/CmdConfigProtocolBgpGlobal.h"
+#include "fboss/cli/fboss2/utils/ArgCompletion.h"
 
 #include "fboss/cli/fboss2/CmdHandler.cpp"
 
@@ -449,5 +450,21 @@ void CmdConfigProtocolBgpGlobal::printOutput(const RetType& output) {
 // Explicit template instantiation
 template void
 CmdHandler<CmdConfigProtocolBgpGlobal, CmdConfigProtocolBgpGlobalTraits>::run();
+
+std::vector<std::string> CmdConfigProtocolBgpGlobalTraits::completeArgs(
+    const std::vector<std::string>& typed) {
+  std::vector<std::string> attrs;
+  for (const auto& [name, _] : attrHandlers()) {
+    attrs.emplace_back(name);
+  }
+  return utils::completion::completeAttrGrammar(
+      typed,
+      {.attrs = std::move(attrs),
+       .values =
+           {{std::string(kSwitchLimitOverloadProtectionMode),
+             utils::completion::enumNames<
+                 bgp::thrift::OverloadProtectionMode>()}},
+       .repeat = false});
+}
 
 } // namespace facebook::fboss

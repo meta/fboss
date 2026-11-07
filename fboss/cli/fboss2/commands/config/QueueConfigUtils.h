@@ -109,6 +109,12 @@ class QueueIdAndAttributes : public BaseObjectArgType<std::string> {
 // text and the parser's error messages so the two cannot drift.
 const std::string& validQueueAttrs();
 
+// Shell completion for the "<attr> <value...>" grammar walkQueueAttributes()
+// parses, preceded by `minObjects` free-form tokens (the queue id).
+std::vector<std::string> completeQueueAttrs(
+    const std::vector<std::string>& typed,
+    size_t minObjects);
+
 // Walks the `<attr> <value...>` stream starting at v[begin] into
 // `attributes`, with `active-queue-management` (or `aqm`) consuming every
 // remaining token into `aqmAttributes` -- and throwing when that tail is

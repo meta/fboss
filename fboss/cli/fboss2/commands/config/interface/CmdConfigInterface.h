@@ -42,6 +42,8 @@ class InterfacesConfig : public InterfaceAttrArgsBase {
 };
 
 struct CmdConfigInterfaceTraits : public WriteCommandTraits {
+  static std::vector<std::string> completeArgs(
+      const std::vector<std::string>& typed);
   static void addCliArg(CLI::App& cmd, std::vector<std::string>& args) {
     cmd.add_option(
         "interface_config",

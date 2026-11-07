@@ -9,6 +9,7 @@
  */
 
 #include "fboss/cli/fboss2/commands/config/interface/sflow/CmdConfigInterfaceSflow.h"
+#include "fboss/cli/fboss2/utils/ArgCompletion.h"
 
 #include "fboss/cli/fboss2/CmdHandler.cpp"
 
@@ -215,5 +216,18 @@ void CmdConfigInterfaceSflow::printOutput(const RetType& logMsg) {
 // Explicit template instantiation
 template void
 CmdHandler<CmdConfigInterfaceSflow, CmdConfigInterfaceSflowTraits>::run();
+
+std::vector<std::string> CmdConfigInterfaceSflowTraits::completeArgs(
+    const std::vector<std::string>& typed) {
+  return utils::completion::completeAttrGrammar(
+      typed,
+      {.attrs =
+           {std::string(kAttrSampleDest),
+            std::string(kAttrIngressRate),
+            std::string(kAttrEgressRate)},
+       .values = {
+           {std::string(kAttrSampleDest),
+            {std::string(kSampleDestCpu), std::string(kSampleDestMirror)}}}});
+}
 
 } // namespace facebook::fboss

@@ -138,6 +138,8 @@ class CmdConfigCopp : public CmdHandler<CmdConfigCopp, CmdConfigCoppTraits> {
 };
 
 struct CmdConfigCoppQueueTraits : public WriteCommandTraits {
+  static std::vector<std::string> completeArgs(
+      const std::vector<std::string>& typed);
   using ParentCmd = CmdConfigCopp;
   using ObjectArgType = CoppQueueArgs;
   using RetType = std::string;
@@ -172,6 +174,8 @@ class CmdConfigCoppQueue
 };
 
 struct CmdConfigCoppReasonTraits : public WriteCommandTraits {
+  static std::vector<std::string> completeArgs(
+      const std::vector<std::string>& typed);
   using ParentCmd = CmdConfigCopp;
   using ObjectArgType = CoppReasonArgs;
   using RetType = std::string;
@@ -205,6 +209,8 @@ class CmdConfigCoppReason
 };
 
 struct CmdConfigCoppTrafficPolicyTraits : public WriteCommandTraits {
+  static std::vector<std::string> completeArgs(
+      const std::vector<std::string>& typed);
   using ParentCmd = CmdConfigCopp;
   using ObjectArgType = traffic_policy::TrafficPolicyArgs;
   using RetType = std::string;

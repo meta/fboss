@@ -71,6 +71,18 @@ std::string validReasonNames() {
   return folly::join(", ", names);
 }
 
+std::vector<std::string> reasonNames() {
+  std::vector<std::string> names;
+  for (auto value : apache::thrift::TEnumTraits<cfg::PacketRxReason>::values) {
+    auto name = apache::thrift::util::enumNameSafe(value);
+    std::transform(name.begin(), name.end(), name.begin(), [](unsigned char c) {
+      return c == '_' ? '-' : std::tolower(c);
+    });
+    names.push_back(std::move(name));
+  }
+  return names;
+}
+
 cfg::PacketRxReason parseReason(const std::string& s) {
   cfg::PacketRxReason reason{};
   if (!apache::thrift::TEnumTraits<cfg::PacketRxReason>::findValue(

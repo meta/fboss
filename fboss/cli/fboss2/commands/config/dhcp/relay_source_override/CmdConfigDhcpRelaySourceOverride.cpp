@@ -9,6 +9,8 @@
  */
 
 #include "fboss/cli/fboss2/commands/config/dhcp/relay_source_override/CmdConfigDhcpRelaySourceOverride.h"
+#include "fboss/cli/fboss2/commands/config/dhcp/CmdConfigDhcp.h"
+#include "fboss/cli/fboss2/utils/ArgCompletion.h"
 
 #include "fboss/cli/fboss2/CmdHandler.cpp"
 
@@ -45,5 +47,10 @@ void CmdConfigDhcpRelaySourceOverride::printOutput(const RetType& logMsg) {
 template void CmdHandler<
     CmdConfigDhcpRelaySourceOverride,
     CmdConfigDhcpRelaySourceOverrideTraits>::run();
+
+std::vector<std::string> CmdConfigDhcpRelaySourceOverrideTraits::completeArgs(
+    const std::vector<std::string>& typed) {
+  return utils::completion::completePositions(typed, {dhcpFamilies()});
+}
 
 } // namespace facebook::fboss

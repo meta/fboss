@@ -9,8 +9,10 @@
  */
 #pragma once
 
-#include <CLI/CLI.hpp>
+#include <CLI/App.hpp>
+#include <folly/CppAttributes.h>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "fboss/cli/fboss2/CmdList.h" // @manual=:cmd-list-header
@@ -39,6 +41,11 @@ class CmdSubcommands {
       const std::vector<Command>& specialCmds,
       VerbRegistration verbRegistration = VerbRegistration::kAll);
 
+  // Positional-argument completer registered for a CLI11 command, or nullptr
+  // when the command's Traits do not provide one.
+  const ArgCompleterFn* FOLLY_NULLABLE
+  getArgCompleter(const CLI::App* cmd) const;
+
  private:
   CLI::App* addCommand(
       CLI::App& app,
@@ -51,6 +58,8 @@ class CmdSubcommands {
       std::string& fullCmd,
       int depth = 0);
   void initCommandTree(CLI::App& app, const CommandTree& cmdTree);
+
+  std::unordered_map<const CLI::App*, ArgCompleterFn> argCompleters_;
 };
 
 CommandTree filterReadCommands(CommandTree cmdTree);
