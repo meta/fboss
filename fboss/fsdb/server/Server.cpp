@@ -26,12 +26,6 @@ DEFINE_int32(
     "Delay after which connection to a publisher that has not "
     "published to any metric is closed");
 
-DEFINE_int32(
-    stat_publish_interval_ms,
-    1000,
-    "How frequently to publish thread-local stats back to the "
-    "global store. This should generally be less than 1 second.");
-
 DEFINE_bool(
     enable_thrift_acceptor,
     false,
