@@ -315,6 +315,8 @@ struct AclEntryFields {
   39: optional AclTtl mplsLabel0Ttl;
   40: optional byte tcpFlagsMask;
   41: optional switch_config.AclIpMatch dstIpWithMask;
+  42: optional switch_config.AclIpV6WordMatch dstIpV6Word1WithMask;
+  43: optional switch_config.AclIpV6WordMatch dstIpV6Word0WithMask;
 }
 
 struct NamedNextHopGroupAndID {
