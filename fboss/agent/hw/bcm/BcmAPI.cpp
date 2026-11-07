@@ -24,6 +24,7 @@
 #include <glog/logging.h>
 
 #include <atomic>
+#include <bit>
 
 extern "C" {
 #include <sal/core/boot.h>
@@ -307,10 +308,10 @@ void BcmAPI::bdeCreate() {
   if (!isHwInSimMode()) {
     // Initialize the BDE singleton (Broadcom Device Enumerator)
     linux_bde_bus_t bus;
-    bus.be_pio = (folly::Endian::order == folly::Endian::Order::BIG) ? 1 : 0;
+    bus.be_pio = (std::endian::native == std::endian::big) ? 1 : 0;
     bus.be_packet =
         SYS_BE_PACKET; // Always false, regardless of host byte order
-    bus.be_other = (folly::Endian::order == folly::Endian::Order::BIG) ? 1 : 0;
+    bus.be_other = (std::endian::native == std::endian::big) ? 1 : 0;
     rv = linux_bde_create(&bus, &bde);
     bcmCheckError(rv, "failed to initialize BDE");
   } else {
