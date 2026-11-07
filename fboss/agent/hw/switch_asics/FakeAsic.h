@@ -265,6 +265,9 @@ class FakeAsic : public HwAsic {
   int16_t getCbfcNumVirtualChannels() const override {
     return 16;
   }
+  bool isCbfcReceiverCreditLimitSupported() const override {
+    return true;
+  }
 };
 
 /**

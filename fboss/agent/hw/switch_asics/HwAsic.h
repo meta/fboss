@@ -862,6 +862,11 @@ class HwAsic {
   virtual int16_t getCbfcNumVirtualChannels() const {
     return 0;
   }
+  // Whether the SAI implementation takes a NOS-set CBFC receiver credit limit
+  // on a port.
+  virtual bool isCbfcReceiverCreditLimitSupported() const {
+    return false;
+  }
   // TODO(zecheng): Define more specific limits for v4/v6 routes with different
   // mask lengths
   virtual std::optional<uint32_t> getMaxRoutes() const {

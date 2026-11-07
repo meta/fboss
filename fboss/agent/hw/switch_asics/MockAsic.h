@@ -264,6 +264,9 @@ class MockAsic : public HwAsic {
   int16_t getCbfcNumVirtualChannels() const override {
     return 16;
   }
+  bool isCbfcReceiverCreditLimitSupported() const override {
+    return true;
+  }
   const std::set<uint16_t>& getL1FabricPortsToConnectToL2() const override {
     static const std::set<uint16_t> l1FabricPortsToConnectToL2{};
     return l1FabricPortsToConnectToL2;
