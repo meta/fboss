@@ -1421,8 +1421,9 @@ struct Port {
 
   /**
    * Specify the destination of sFlow sampling: CPU or Mirror.
-   * If sampleDest is specified as MIRROR, sFlowEgressRate must be 0 because
-   * egress sampling to mirror destinations is currently unsupported.
+   * If sampleDest is specified as MIRROR, sFlowEgressRate must be 0 and
+   * egressMirror must be unset, because egress sampling to mirror
+   * destinations is currently unsupported.
    */
   21: optional SampleDestination sampleDest;
 

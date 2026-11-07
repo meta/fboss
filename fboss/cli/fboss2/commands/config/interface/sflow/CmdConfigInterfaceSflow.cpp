@@ -169,6 +169,24 @@ CmdConfigInterfaceSflowTraits::RetType CmdConfigInterfaceSflow::queryClient(
               intf.name(),
               kSampleDestMirror));
     }
+    // The agent also rejects sample-dest MIRROR on a port with an
+    // egressMirror: sampleDest covers both directions, so the egress binding
+    // would need egress sampling to a mirror destination. Like the check
+    // above, this also fires when the port is already in that state and the
+    // call only changes a rate, so the message describes the port state and
+    // how to fix it rather than the attribute being set.
+    if (destIsMirror && port->egressMirror().has_value()) {
+      throw std::invalid_argument(
+          fmt::format(
+              "Port {}: sample-dest {} and egress mirror '{}' cannot both be "
+              "set on a port — egress sampling to a mirror destination is "
+              "unsupported. Use sample-dest cpu, or clear it with "
+              "'delete interface {} sflow sample-dest'",
+              intf.name(),
+              kSampleDestMirror,
+              *port->egressMirror(),
+              intf.name()));
+    }
 
     if (newDest.has_value()) {
       port->sampleDest() = *newDest;

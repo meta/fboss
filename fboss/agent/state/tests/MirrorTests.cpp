@@ -40,9 +40,11 @@ class MirrorTest : public ::testing::Test {
       bool setSampleDestination = false) {
     int portIndex = int(port) - 1;
     config_.ports()[portIndex].ingressMirror() = mirror;
-    config_.ports()[portIndex].egressMirror() = mirror;
     if (setSampleDestination) {
+      // Sampling to a mirror is ingress-only; egressMirror is rejected.
       config_.ports()[portIndex].sampleDest() = cfg::SampleDestination::MIRROR;
+    } else {
+      config_.ports()[portIndex].egressMirror() = mirror;
     }
   }
 
@@ -507,6 +509,26 @@ TEST_F(MirrorTest, PortManySampleMirrors) {
   configurePortMirror("mirror1", PortID(2), true);
   publishWithStateUpdate();
   configurePortMirror("mirror2", PortID(3), true);
+  publishWithFbossError();
+}
+
+TEST_F(MirrorTest, SampleDestMirrorWithEgressMirror) {
+  config_.mirrors()->push_back(
+      utility::getSFlowMirror(
+          "mirror1",
+          8998,
+          9889,
+          MirrorTest::tunnelDestination,
+          folly::IPAddress("10.0.0.1"),
+          MirrorTest::dscp,
+          true));
+  publishWithStateUpdate();
+  // Ingress sampling to the mirror is accepted.
+  configurePortMirror("mirror1", PortID(1), true);
+  publishWithStateUpdate();
+  // Adding an egress mirror on the same port is not: it would need egress
+  // sampling to a mirror destination.
+  config_.ports()[0].egressMirror() = "mirror1";
   publishWithFbossError();
 }
 
