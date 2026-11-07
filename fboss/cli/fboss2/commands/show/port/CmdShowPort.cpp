@@ -245,7 +245,10 @@ std::string getCbfcStr(const CbfcInfo& cbfc) {
         *cbfc.senderPacketOverhead());
   }
   if (cbfc.senderCreditLimit()) {
-    cbfcStr += fmt::format(", limit {}", *cbfc.senderCreditLimit());
+    cbfcStr += fmt::format(", sender limit {}", *cbfc.senderCreditLimit());
+  }
+  if (cbfc.receiverCreditLimit()) {
+    cbfcStr += fmt::format(", receiver limit {}", *cbfc.receiverCreditLimit());
   }
   return cbfcStr;
 }

@@ -543,7 +543,8 @@ TEST_F(CmdShowPortTestFixture, cbfc) {
       EXPECT_FALSE(entry.cbfc().has_value());
       continue;
     }
-    EXPECT_EQ(entry.cbfc(), "cbfc, VC 2 6, sender 56 B / 16 B, limit 8192");
+    EXPECT_EQ(
+        entry.cbfc(), "cbfc, VC 2 6, sender 56 B / 16 B, sender limit 8192");
     EXPECT_EQ(entry.hwPortStats()->cbfcCfUpdateTx(), 10);
     EXPECT_EQ(entry.hwPortStats()->cbfcCfUpdateRx(), 20);
     EXPECT_EQ(entry.hwPortStats()->cbfcCcUpdateTx(), 30);
