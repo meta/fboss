@@ -7,7 +7,9 @@
  *  of patent rights can be found in the PATENTS file in the same directory.
  *
  */
+#include "fboss/agent/hw/sai/api/SchedulerApi.h"
 #include "fboss/agent/hw/sai/switch/SaiHostifManager.h"
+#include "fboss/agent/hw/sai/switch/SaiSwitchManager.h"
 #include "fboss/agent/hw/sai/switch/tests/ManagerTestBase.h"
 
 #include "fboss/agent/state/StateDelta.h"
@@ -22,6 +24,89 @@ HwSwitchMatcher scope() {
 } // namespace
 
 class HostifManagerTest : public ManagerTestBase {};
+
+TEST_F(HostifManagerTest, defaultCpuQueueCountMatchesSai) {
+  auto asic = saiPlatform->getAsic();
+  auto queueCount = asic->getDefaultNumPortQueues(
+      cfg::StreamType::MULTICAST, cfg::PortType::CPU_PORT);
+  auto saiQueueCount = saiApiTable->switchApi().getAttribute(
+      saiManagerTable->switchManager().getSwitchSaiId(),
+      SaiSwitchTraits::Attributes::NumberOfCpuQueues{});
+  EXPECT_EQ(queueCount, saiQueueCount);
+  EXPECT_LT(asic->getHiPriCpuQueueId(), queueCount);
+  EXPECT_LT(asic->getHiPriCpuQueueId(), saiQueueCount);
+}
+
+TEST_F(HostifManagerTest, defaultCpuQueuesWithoutExplicitVoqs) {
+  constexpr uint8_t kWeight = 24;
+  auto asic = saiPlatform->getAsic();
+  auto queueCount = asic->getDefaultNumPortQueues(
+      cfg::StreamType::MULTICAST, cfg::PortType::CPU_PORT);
+  std::vector<uint8_t> queueIds;
+  for (int queueId = 0; queueId < queueCount; ++queueId) {
+    queueIds.push_back(queueId);
+  }
+  auto queueConfig = makeQueueConfig(
+      queueIds,
+      cfg::StreamType::MULTICAST,
+      cfg::QueueScheduling::WEIGHTED_ROUND_ROBIN,
+      kWeight);
+  auto controlPlane = std::make_shared<ControlPlane>();
+  controlPlane->resetQueues(queueConfig);
+  ASSERT_TRUE(controlPlane->getVoqs()->empty());
+  auto controlPlanes = std::make_shared<MultiControlPlane>();
+  controlPlanes->addNode(scope().matcherString(), controlPlane);
+  auto oldState = std::make_shared<SwitchState>();
+  auto newState = std::make_shared<SwitchState>();
+  newState->resetControlPlane(controlPlanes);
+  auto delta = StateDelta(oldState, newState);
+  auto& hostifManager = saiManagerTable->hostifManager();
+  const auto& voqStats = hostifManager.getCpuSysPortFb303Stats();
+  for (auto queueId : queueIds) {
+    for (auto statKey : voqStats.kQueueMonotonicCounterStatKeys()) {
+      auto statName = HwSysPortFb303Stats::statName(
+          statKey,
+          voqStats.portName(),
+          queueId,
+          "queue" + std::to_string(queueId));
+      EXPECT_EQ(voqStats.getCounterLastIncrement(statName, -1), -1);
+    }
+  }
+
+  // Without explicit CPU VOQs, the manager uses the CPU queue configuration.
+  hostifManager.processHostifDelta(delta.getControlPlaneDelta());
+
+  auto queues = hostifManager.getQueueSettings();
+  auto voqs = hostifManager.getVoqSettings();
+  ASSERT_EQ(queues.size(), queueIds.size());
+  ASSERT_EQ(voqs.size(), queueIds.size());
+  for (auto queueId : queueIds) {
+    auto queueHandle =
+        hostifManager.getQueueHandle({queueId, cfg::StreamType::MULTICAST});
+    ASSERT_NE(queueHandle, nullptr);
+    ASSERT_TRUE(queueHandle->scheduler);
+    auto schedulerId = saiApiTable->queueApi().getAttribute(
+        queueHandle->queue->adapterKey(),
+        SaiQueueTraits::Attributes::SchedulerProfileId{});
+    EXPECT_EQ(schedulerId, queueHandle->scheduler->adapterKey());
+    EXPECT_EQ(
+        saiApiTable->schedulerApi().getAttribute(
+            queueHandle->scheduler->adapterKey(),
+            SaiSchedulerTraits::Attributes::SchedulingWeight{}),
+        kWeight);
+    EXPECT_NE(
+        hostifManager.getVoqHandle({queueId, cfg::StreamType::MULTICAST}),
+        nullptr);
+    for (auto statKey : voqStats.kQueueMonotonicCounterStatKeys()) {
+      auto statName = HwSysPortFb303Stats::statName(
+          statKey,
+          voqStats.portName(),
+          queueId,
+          "queue" + std::to_string(queueId));
+      EXPECT_EQ(voqStats.getCounterLastIncrement(statName), 0);
+    }
+  }
+}
 
 TEST_F(HostifManagerTest, createHostifTrap) {
   uint32_t queueId = 4;
@@ -165,7 +250,7 @@ TEST_F(HostifManagerTest, addCpuQueueAndCheckStats) {
   for (const auto& portQueue : queueConfig) {
     for (auto statKey : HwCpuFb303Stats::kQueueMonotonicCounterStatKeys()) {
       EXPECT_TRUE(
-          facebook::fbData->getStatMap()->contains(
+          facebook::fb303::fbData->getStatMap()->contains(
               HwCpuFb303Stats::statName(
                   statKey, portQueue->getID(), *portQueue->getName())));
       EXPECT_EQ(
@@ -211,7 +296,7 @@ TEST_F(HostifManagerTest, removeCpuQueueAndCheckStats) {
     auto queueName = folly::to<std::string>("queue", queueId);
     for (auto statKey : HwCpuFb303Stats::kQueueMonotonicCounterStatKeys()) {
       EXPECT_TRUE(
-          facebook::fbData->getStatMap()->contains(
+          facebook::fb303::fbData->getStatMap()->contains(
               HwCpuFb303Stats::statName(statKey, queueId, queueName)));
       EXPECT_EQ(
           cpuStat.getCounterLastIncrement(
@@ -222,7 +307,7 @@ TEST_F(HostifManagerTest, removeCpuQueueAndCheckStats) {
   for (auto queueId : {3, 4}) {
     for (auto statKey : HwCpuFb303Stats::kQueueMonotonicCounterStatKeys()) {
       EXPECT_FALSE(
-          facebook::fbData->getStatMap()->contains(
+          facebook::fb303::fbData->getStatMap()->contains(
               HwCpuFb303Stats::statName(
                   statKey, queueId, folly::to<std::string>("queue", queueId))));
     }
@@ -260,10 +345,10 @@ TEST_F(HostifManagerTest, changeCpuQueueAndCheckStats) {
   const auto& cpuStat = saiManagerTable->hostifManager().getCpuFb303Stats();
   for (auto statKey : HwCpuFb303Stats::kQueueMonotonicCounterStatKeys()) {
     EXPECT_TRUE(
-        facebook::fbData->getStatMap()->contains(
+        facebook::fb303::fbData->getStatMap()->contains(
             HwCpuFb303Stats::statName(statKey, 1, "high")));
     EXPECT_FALSE(
-        facebook::fbData->getStatMap()->contains(
+        facebook::fb303::fbData->getStatMap()->contains(
             HwCpuFb303Stats::statName(statKey, 1, oldQueueName)));
     EXPECT_EQ(
         cpuStat.getCounterLastIncrement(
