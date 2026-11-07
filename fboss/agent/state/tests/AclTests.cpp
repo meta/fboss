@@ -1844,6 +1844,12 @@ TEST(Acl, DstIpV6WordWithMaskValidation) {
         std::make_pair(uint32_t{0x1}, uint32_t{0xffff}));
     EXPECT_EQ(acl->getDstIpV6Word3(), 0x12345678);
     EXPECT_TRUE(acl->hasMatcher());
+    EXPECT_EQ(
+        acl->getRequiredAclTableQualifiers(),
+        (std::set<cfg::AclTableQualifier>{
+            cfg::AclTableQualifier::DST_IPV6_WORD3,
+            cfg::AclTableQualifier::DST_IPV6_WORD1,
+            cfg::AclTableQualifier::DST_IPV6_WORD0}));
   }
 
   auto expectInvalid = [&](cfg::SwitchConfig config) {

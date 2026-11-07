@@ -2449,6 +2449,16 @@ bool SaiAclTableManager::isQualifierSupported(
           std::get<
               std::optional<SaiAclTableTraits::Attributes::FieldDstIpV6Word2>>(
               attributes));
+    case cfg::AclTableQualifier::DST_IPV6_WORD1:
+      return hasField(
+          std::get<
+              std::optional<SaiAclTableTraits::Attributes::FieldDstIpV6Word1>>(
+              attributes));
+    case cfg::AclTableQualifier::DST_IPV6_WORD0:
+      return hasField(
+          std::get<
+              std::optional<SaiAclTableTraits::Attributes::FieldDstIpV6Word0>>(
+              attributes));
     case cfg::AclTableQualifier::SRC_IPV4:
       return hasField(
           std::get<std::optional<SaiAclTableTraits::Attributes::FieldSrcIpV4>>(

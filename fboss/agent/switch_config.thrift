@@ -817,6 +817,8 @@ enum AclTableQualifier {
   DST_IPV6_WORD2 = 31,
   LOOKUP_CLASS_PORT = 32,
   MPLS_LABEL0_TTL = 33,
+  DST_IPV6_WORD1 = 34,
+  DST_IPV6_WORD0 = 35,
 }
 
 enum AclTableGroupBindPoint {

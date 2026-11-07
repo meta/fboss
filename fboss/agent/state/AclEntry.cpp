@@ -69,6 +69,12 @@ std::set<cfg::AclTableQualifier> AclEntry::getRequiredAclTableQualifiers()
   if (getDstIpV6Word2()) {
     qualifiers.insert(cfg::AclTableQualifier::DST_IPV6_WORD2);
   }
+  if (getDstIpV6Word1WithMask()) {
+    qualifiers.insert(cfg::AclTableQualifier::DST_IPV6_WORD1);
+  }
+  if (getDstIpV6Word0WithMask()) {
+    qualifiers.insert(cfg::AclTableQualifier::DST_IPV6_WORD0);
+  }
   if (getProto()) {
     qualifiers.insert(cfg::AclTableQualifier::IP_PROTOCOL_NUMBER);
   }
