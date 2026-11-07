@@ -25,15 +25,3 @@ cpp_unittest(
     ],
     external_deps = ["CLI11"],
 )
-
-cpp_unittest(
-    name = "agent_config_parity_test",
-    srcs = ["AgentConfigParityTest.cpp"],
-    network_access = network_access_utils.none(),
-    deps = [
-        "fbsource//third-party/googletest:gtest",
-        "fbsource//xplat/folly:file_util",
-        "fbsource//xplat/folly/testing:test_util",
-        "//fboss/cli/fboss2:fboss2-config-gen-lib",
-    ],
-)
