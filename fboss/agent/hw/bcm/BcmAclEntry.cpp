@@ -160,6 +160,11 @@ void BcmAclEntry::createAclQualifiers() {
   if (acl_->getDstIpWithMask()) {
     throw FbossError("dstIpWithMask is not supported on BcmSwitch");
   }
+  if (acl_->getDstIpV6Word1WithMask() || acl_->getDstIpV6Word0WithMask()) {
+    throw FbossError(
+        "dstIpV6Word1WithMask and dstIpV6Word0WithMask are not supported on "
+        "BcmSwitch");
+  }
   if (acl_->getTcpFlagsBitMap()) {
     rv = bcm_field_qualify_TcpControl(
         hw_->getUnit(), handle_, acl_->getTcpFlagsBitMap().value(), 0xFF);

@@ -4120,6 +4120,9 @@ bool BcmSwitch::hasValidAclMatcher(const std::shared_ptr<AclEntry>& acl) const {
   if (acl->getDstIpWithMask()) {
     return false;
   }
+  if (acl->getDstIpV6Word1WithMask() || acl->getDstIpV6Word0WithMask()) {
+    return false;
+  }
 
   return true;
 }
