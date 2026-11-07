@@ -158,6 +158,7 @@ enum ProductionFeature {
   ROUTE_COUNTERS_EXTENDED_LABEL = 140,
   DST_IP_WITH_MASK_ACL = 141,
   VOQ_SWITCH_WITH_FABRIC_PORTS = 142,
+  MIXED_IP_SRV6_NEXT_HOP_GROUPS = 143,
   # production feature which is present on all platforms, keep it at the end
   HW_SWITCH = 65536,
 }
