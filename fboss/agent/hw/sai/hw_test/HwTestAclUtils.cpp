@@ -25,6 +25,19 @@ DECLARE_bool(sai_user_defined_trap);
 
 namespace facebook::fboss::utility {
 
+namespace {
+folly::IPAddressV6 ipV6WordToAddress(uint32_t word, int wordIndex) {
+  folly::ByteArray16 bytes{{0}};
+  // SAI word3 is the most-significant IPv6 word; word0 is least-significant.
+  auto byteOffset = (3 - wordIndex) * sizeof(uint32_t);
+  bytes[byteOffset] = static_cast<uint8_t>(word >> 24);
+  bytes[byteOffset + 1] = static_cast<uint8_t>(word >> 16);
+  bytes[byteOffset + 2] = static_cast<uint8_t>(word >> 8);
+  bytes[byteOffset + 3] = static_cast<uint8_t>(word);
+  return folly::IPAddressV6(bytes);
+}
+} // namespace
+
 std::string getActualAclTableName(
     const std::optional<std::string>& aclTableName) {
   // Previously hardcoded kAclTable1 in all use cases since only supported
@@ -162,6 +175,28 @@ void checkSwHwAclMatch(
       EXPECT_EQ(dstIpV4DataGot, dstIp.asV4());
       EXPECT_EQ(dstIpV4MaskGot, dstIpMask.asV4());
     }
+  }
+
+  if (auto word1 = swAcl->getDstIpV6Word1WithMask()) {
+    auto [dataGot, maskGot] =
+        SaiApiTable::getInstance()
+            ->aclApi()
+            .getAttribute(
+                aclEntryId, SaiAclEntryTraits::Attributes::FieldDstIpV6Word1())
+            .getDataAndMask();
+    EXPECT_EQ(dataGot, ipV6WordToAddress(word1->first, 1));
+    EXPECT_EQ(maskGot, ipV6WordToAddress(word1->second, 1));
+  }
+
+  if (auto word0 = swAcl->getDstIpV6Word0WithMask()) {
+    auto [dataGot, maskGot] =
+        SaiApiTable::getInstance()
+            ->aclApi()
+            .getAttribute(
+                aclEntryId, SaiAclEntryTraits::Attributes::FieldDstIpV6Word0())
+            .getDataAndMask();
+    EXPECT_EQ(dataGot, ipV6WordToAddress(word0->first, 0));
+    EXPECT_EQ(maskGot, ipV6WordToAddress(word0->second, 0));
   }
 
   if (swAcl->getSrcPort()) {

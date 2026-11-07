@@ -24,6 +24,17 @@ std::string getActualAclTableName(
             DEFAULT_INGRESS_ACL_TABLE();
 }
 
+folly::IPAddressV6 ipV6WordToAddress(uint32_t word, int wordIndex) {
+  folly::ByteArray16 bytes{{0}};
+  // SAI word3 is the most-significant IPv6 word; word0 is least-significant.
+  auto byteOffset = (3 - wordIndex) * sizeof(uint32_t);
+  bytes[byteOffset] = static_cast<uint8_t>(word >> 24);
+  bytes[byteOffset + 1] = static_cast<uint8_t>(word >> 16);
+  bytes[byteOffset + 2] = static_cast<uint8_t>(word >> 8);
+  bytes[byteOffset + 3] = static_cast<uint8_t>(word);
+  return folly::IPAddressV6(bytes);
+}
+
 #if (defined(TAJO_SDK_GTE_26_5) && !defined(TAJO_SDK_P200)) || \
     defined(BRCM_SAI_SDK_XGS_GTE_15_4_1)
 bool isAclEntryLabelSame(
@@ -475,6 +486,32 @@ bool HwTestThriftHandler::isAclEntrySame(
           dstIpV4MaskGot != dstIpMask.asV4()) {
         return false;
       }
+    }
+  }
+
+  if (auto word1 = swAcl->getDstIpV6Word1WithMask()) {
+    auto [dataGot, maskGot] =
+        SaiApiTable::getInstance()
+            ->aclApi()
+            .getAttribute(
+                aclEntryId, SaiAclEntryTraits::Attributes::FieldDstIpV6Word1())
+            .getDataAndMask();
+    if (dataGot != ipV6WordToAddress(word1->first, 1) ||
+        maskGot != ipV6WordToAddress(word1->second, 1)) {
+      return false;
+    }
+  }
+
+  if (auto word0 = swAcl->getDstIpV6Word0WithMask()) {
+    auto [dataGot, maskGot] =
+        SaiApiTable::getInstance()
+            ->aclApi()
+            .getAttribute(
+                aclEntryId, SaiAclEntryTraits::Attributes::FieldDstIpV6Word0())
+            .getDataAndMask();
+    if (dataGot != ipV6WordToAddress(word0->first, 0) ||
+        maskGot != ipV6WordToAddress(word0->second, 0)) {
+      return false;
     }
   }
 
