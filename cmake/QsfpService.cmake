@@ -412,6 +412,7 @@ add_library(qsfp_handler
 
 target_link_libraries(qsfp_handler
   Folly::folly
+  common_file_utils
   transceiver_manager
   port_manager
   log_thrift_call

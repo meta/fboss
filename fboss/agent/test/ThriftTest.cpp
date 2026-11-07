@@ -45,6 +45,8 @@
 #include <gtest/gtest.h>
 #include <map>
 
+#include <filesystem>
+
 DECLARE_bool(enable_nexthop_id_manager);
 DECLARE_bool(resolve_nexthops_from_id);
 DECLARE_int32(hwswitch_query_timeout);
@@ -614,9 +616,20 @@ TYPED_TEST(ThriftTestAllSwitchTypes, listHwObjects) {
 TYPED_TEST(ThriftTestAllSwitchTypes, getHwDebugDump) {
   ThriftHandler handler(this->sw_);
   std::string out;
-  EXPECT_HW_CALL(this->sw_, dumpDebugState(testing::_)).Times(1);
+  std::string capturedPath;
+  EXPECT_HW_CALL(this->sw_, dumpDebugState(testing::_))
+      .WillOnce(testing::Invoke([&](const std::string& path) {
+        capturedPath = path;
+      }));
   // Mock getHwDebugDump doesn't write any thing so expect FbossError
   EXPECT_THROW(handler.getHwDebugDump(out), FbossError);
+  // The scratch dump directory must not leak even when the dump fails:
+  // getDebugDump() returns the dump via memory, so the on-disk
+  // fboss_sdk_dump.* directory is removed on scope exit.
+  ASSERT_FALSE(capturedPath.empty());
+  EXPECT_FALSE(
+      std::filesystem::exists(
+          std::filesystem::path(capturedPath).parent_path()));
 }
 
 TYPED_TEST(ThriftTestAllSwitchTypes, getL2Table) {

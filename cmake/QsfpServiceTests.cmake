@@ -100,3 +100,17 @@ target_link_libraries(cpo_transceiver_manager_test
 gtest_discover_tests(cpo_transceiver_manager_test
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
+
+add_executable(sdk_dump_path_test
+  fboss/util/oss/TestMain.cpp
+  fboss/qsfp_service/test/SdkDumpPathTest.cpp
+)
+
+target_link_libraries(sdk_dump_path_test
+  ${GTEST}
+  ${LIBGMOCK_LIBRARIES}
+  fboss_error
+  Folly::folly
+)
+
+gtest_discover_tests(sdk_dump_path_test)
