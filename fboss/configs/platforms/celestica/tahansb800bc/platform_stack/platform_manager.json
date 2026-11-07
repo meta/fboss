@@ -95,6 +95,1259 @@
         },
         "productSubVersion": 2
       }
+    ],
+    "TAHANSB800BC_MCB": [
+      {
+        "pmUnitConfig": {
+          "pluggedInSlotType": "MCB_SLOT",
+          "embeddedSensorConfigs": [
+            {
+              "pmUnitScopedName": "CPU_CORE_TEMP",
+              "sysfsPath": "/sys/bus/platform/devices/coretemp.0"
+            }
+          ],
+          "pciDeviceConfigs": [
+            {
+              "pmUnitScopedName": "MCB_IOB",
+              "vendorId": "0x1d9b",
+              "deviceId": "0x0011",
+              "subSystemVendorId": "0x10ee",
+              "subSystemDeviceId": "0x0007",
+              "i2cAdapterBlockConfigs": [
+                {
+                  "pmUnitScopedNamePrefix": "MCB_IOB_I2C_MASTER",
+                  "deviceName": "iob_i2c_master",
+                  "csrOffsetCalc": "0x4000 + ({adapterIndex} - {startAdapterIndex})*0x100",
+                  "startAdapterIndex": 1,
+                  "numAdapters": 28
+                },
+                {
+                  "pmUnitScopedNamePrefix": "MCB_DOM_I2C_MASTER",
+                  "deviceName": "dom1_i2c_master",
+                  "csrOffsetCalc": "0x42000 + ({adapterIndex} - {startAdapterIndex})*0x100",
+                  "startAdapterIndex": 1,
+                  "numAdapters": 8
+                }
+              ],
+              "gpioChipConfigs": [
+                {
+                  "pmUnitScopedName": "MCB_GPIO_CHIP_1",
+                  "deviceName": "gpiochip",
+                  "csrOffset": "0x0400"
+                }
+              ],
+              "spiMasterConfigs": [
+                {
+                  "fpgaIpBlockConfig": {
+                    "pmUnitScopedName": "MCB_SPI_MASTER_1",
+                    "deviceName": "spi_master",
+                    "csrOffset": "0x10000",
+                    "iobufOffset": "0x12000"
+                  },
+                  "spiDeviceConfigs": [
+                    {
+                      "pmUnitScopedName": "MCB_SPI_MASTER_1_DEVICE_1",
+                      "modalias": "spidev",
+                      "chipSelect": 0,
+                      "maxSpeedHz": 25000000
+                    }
+                  ]
+                },
+                {
+                  "fpgaIpBlockConfig": {
+                    "pmUnitScopedName": "MCB_SPI_MASTER_2",
+                    "deviceName": "spi_master",
+                    "csrOffset": "0x10080",
+                    "iobufOffset": "0x12400"
+                  },
+                  "spiDeviceConfigs": [
+                    {
+                      "pmUnitScopedName": "MCB_SPI_MASTER_2_DEVICE_1",
+                      "modalias": "spidev",
+                      "chipSelect": 0,
+                      "maxSpeedHz": 25000000
+                    }
+                  ]
+                },
+                {
+                  "fpgaIpBlockConfig": {
+                    "pmUnitScopedName": "MCB_SPI_MASTER_3",
+                    "deviceName": "spi_master",
+                    "csrOffset": "0x10100",
+                    "iobufOffset": "0x12800"
+                  },
+                  "spiDeviceConfigs": [
+                    {
+                      "pmUnitScopedName": "MCB_SPI_MASTER_3_DEVICE_1",
+                      "modalias": "spidev",
+                      "chipSelect": 0,
+                      "maxSpeedHz": 25000000
+                    }
+                  ]
+                },
+                {
+                  "fpgaIpBlockConfig": {
+                    "pmUnitScopedName": "MCB_SPI_MASTER_4",
+                    "deviceName": "spi_master",
+                    "csrOffset": "0x10180",
+                    "iobufOffset": "0x12c00"
+                  },
+                  "spiDeviceConfigs": [
+                    {
+                      "pmUnitScopedName": "MCB_SPI_MASTER_4_DEVICE_1",
+                      "modalias": "spidev",
+                      "chipSelect": 0,
+                      "maxSpeedHz": 25000000
+                    }
+                  ]
+                },
+                {
+                  "fpgaIpBlockConfig": {
+                    "pmUnitScopedName": "MCB_SPI_MASTER_5",
+                    "deviceName": "spi_master",
+                    "csrOffset": "0x10200",
+                    "iobufOffset": "0x13000"
+                  },
+                  "spiDeviceConfigs": [
+                    {
+                      "pmUnitScopedName": "MCB_SPI_MASTER_5_DEVICE_1",
+                      "modalias": "spidev",
+                      "chipSelect": 0,
+                      "maxSpeedHz": 25000000
+                    }
+                  ]
+                },
+                {
+                  "fpgaIpBlockConfig": {
+                    "pmUnitScopedName": "MCB_SPI_MASTER_6",
+                    "deviceName": "spi_master",
+                    "csrOffset": "0x10280",
+                    "iobufOffset": "0x13400"
+                  },
+                  "spiDeviceConfigs": [
+                    {
+                      "pmUnitScopedName": "MCB_SPI_MASTER_6_DEVICE_1",
+                      "modalias": "spidev",
+                      "chipSelect": 0,
+                      "maxSpeedHz": 25000000
+                    }
+                  ]
+                },
+                {
+                  "fpgaIpBlockConfig": {
+                    "pmUnitScopedName": "MCB_SPI_MASTER_7",
+                    "deviceName": "spi_master",
+                    "csrOffset": "0x10300",
+                    "iobufOffset": "0x13800"
+                  },
+                  "spiDeviceConfigs": [
+                    {
+                      "pmUnitScopedName": "MCB_SPI_MASTER_7_DEVICE_1",
+                      "modalias": "spidev",
+                      "chipSelect": 0,
+                      "maxSpeedHz": 25000000
+                    }
+                  ]
+                }
+              ],
+              "xcvrCtrlBlockConfigs": [
+                {
+                  "pmUnitScopedNamePrefix": "MCB_DOM",
+                  "deviceName": "xcvr_ctrl",
+                  "csrOffsetCalc": "0x40200 + ({portNum} - {startPort})*0x4",
+                  "numPorts": 8,
+                  "startPort": 1
+                },
+                {
+                  "pmUnitScopedNamePrefix": "IOB",
+                  "deviceName": "xcvr_ctrl",
+                  "csrOffsetCalc": "0x1030 + ({portNum} - {startPort})*0x0",
+                  "numPorts": 1,
+                  "startPort": 9
+                }
+              ],
+              "ledCtrlBlockConfigs": [
+                {
+                  "pmUnitScopedNamePrefix": "MCB_LED",
+                  "deviceName": "port_led",
+                  "csrOffsetCalc": "0x404d0 + ({portNum} - {startPort})*0x8 + ({ledNum} - 1)*0x4",
+                  "numPorts": 8,
+                  "ledPerPort": 2,
+                  "startPort": 1
+                },
+                {
+                  "pmUnitScopedNamePrefix": "MCB_LED",
+                  "deviceName": "port_led",
+                  "csrOffsetCalc": "0x40510 + ({portNum} - {startPort})*0x8 + ({ledNum} - 1)*0x4",
+                  "numPorts": 1,
+                  "ledPerPort": 1,
+                  "startPort": 9,
+                  "lanesPerPort": 4
+                }
+              ],
+              "infoRomConfigs": [
+                {
+                  "pmUnitScopedName": "MCB_IOB_INFO_ROM",
+                  "deviceName": "fpga_info_iob",
+                  "csrOffset": "0x0000"
+                },
+                {
+                  "pmUnitScopedName": "MCB_DOM_INFO_ROM",
+                  "deviceName": "fpga_info_dom",
+                  "csrOffset": "0x40000"
+                }
+              ]
+            }
+          ],
+          "i2cDeviceConfigs": [
+            {
+              "busName": "MCB_IOB_I2C_MASTER_2",
+              "address": "0x70",
+              "kernelDeviceName": "pca9546",
+              "pmUnitScopedName": "MCB_MUX",
+              "numOutgoingChannels": 4
+            },
+            {
+              "busName": "MCB_IOB_I2C_MASTER_3",
+              "address": "0x35",
+              "kernelDeviceName": "tahansb_scmcpld",
+              "pmUnitScopedName": "SCM_CPLD"
+            },
+            {
+              "busName": "MCB_IOB_I2C_MASTER_5",
+              "address": "0x60",
+              "kernelDeviceName": "pmbus",
+              "pmUnitScopedName": "PMBUS_1",
+              "initRegSettings": [
+                {
+                  "__comment__": "Set the page to 0 to ensure the driver can read the correct registers. PR:573",
+                  "regOffset": 0,
+                  "ioBuf": [
+                    0
+                  ]
+                }
+              ]
+            },
+            {
+              "busName": "MCB_IOB_I2C_MASTER_5",
+              "address": "0x61",
+              "kernelDeviceName": "pmbus",
+              "pmUnitScopedName": "PMBUS_2",
+              "initRegSettings": [
+                {
+                  "__comment__": "Set the page to 0 to ensure the driver can read the correct registers. PR:573",
+                  "regOffset": 0,
+                  "ioBuf": [
+                    0
+                  ]
+                }
+              ]
+            },
+            {
+              "busName": "MCB_IOB_I2C_MASTER_6",
+              "address": "0x4f",
+              "kernelDeviceName": "lm75b",
+              "pmUnitScopedName": "PB_INLET_TSENSOR"
+            },
+            {
+              "busName": "MCB_IOB_I2C_MASTER_9",
+              "address": "0x46",
+              "kernelDeviceName": "tps1689",
+              "pmUnitScopedName": "48V_STBY_PWR_SENSOR"
+            },
+            {
+              "busName": "MCB_IOB_I2C_MASTER_14",
+              "address": "0x33",
+              "kernelDeviceName": "fbfancpld",
+              "pmUnitScopedName": "MCB_FAN_CPLD",
+              "isWatchdog": true,
+              "fanCpldConfig": {
+                "numFans": 4,
+                "pwmMax": 64,
+                "speedMultiplier": 300,
+                "hasRearTach": true,
+                "hasLeds": false
+              }
+            },
+            {
+              "busName": "MCB_IOB_I2C_MASTER_14",
+              "address": "0x60",
+              "kernelDeviceName": "fbg_mcbcpld",
+              "pmUnitScopedName": "MCB_CPLD",
+              "initRegSettings": [
+                {
+                  "regOffset": 6,
+                  "ioBuf": [
+                    13
+                  ]
+                }
+              ],
+              "cpldSysfsAttrs": [
+                {
+                  "name": "version_id",
+                  "regAddr": "0x00",
+                  "bitOffset": 4,
+                  "numBits": 4,
+                  "description": "Hardware version ID"
+                },
+                {
+                  "name": "board_id",
+                  "regAddr": "0x00",
+                  "numBits": 4,
+                  "description": "Board ID"
+                },
+                {
+                  "name": "cpld_ver",
+                  "regAddr": "0x01",
+                  "numBits": 7,
+                  "description": "CPLD major version"
+                },
+                {
+                  "name": "cpld_minor_ver",
+                  "regAddr": "0x02",
+                  "numBits": 8,
+                  "description": "CPLD minor version"
+                },
+                {
+                  "name": "cpld_sub_ver",
+                  "regAddr": "0x03",
+                  "numBits": 8,
+                  "description": "CPLD sub version"
+                },
+                {
+                  "name": "oob_eeprom_wp",
+                  "mode": "rw",
+                  "regAddr": "0x06",
+                  "bitOffset": 2,
+                  "description": "OOB EEPROM write protect"
+                },
+                {
+                  "name": "oob_eeprom_sel",
+                  "mode": "rw",
+                  "regAddr": "0x06",
+                  "bitOffset": 3,
+                  "description": "OOB EEPROM select"
+                },
+                {
+                  "name": "smb_pg",
+                  "regAddr": "0x0A",
+                  "bitOffset": 1,
+                  "description": "SMB power good"
+                },
+                {
+                  "name": "hs_48v_pg",
+                  "regAddr": "0x0A",
+                  "bitOffset": 6,
+                  "description": "Hot swap 48V power good (1 = present, 0 = absent)"
+                },
+                {
+                  "name": "smb_present",
+                  "regAddr": "0x10",
+                  "bitOffset": 5,
+                  "description": "SMB present (1 = present, 0 = absent)"
+                },
+                {
+                  "name": "slot_present",
+                  "regAddr": "0xA0",
+                  "bitOffset": 3,
+                  "description": "Slot present"
+                },
+                {
+                  "name": "slot_id",
+                  "regAddr": "0xA0",
+                  "numBits": 3,
+                  "description": "Slot ID"
+                }
+              ]
+            },
+            {
+              "busName": "MCB_IOB_I2C_MASTER_15",
+              "address": "0x53",
+              "kernelDeviceName": "24c64",
+              "pmUnitScopedName": "CHASSIS_EEPROM",
+              "isEeprom": true
+            },
+            {
+              "busName": "MCB_IOB_I2C_MASTER_16",
+              "address": "0x4c",
+              "kernelDeviceName": "tps25990",
+              "pmUnitScopedName": "LOAD_SWITCH_MONITOR"
+            },
+            {
+              "busName": "MCB_IOB_I2C_MASTER_17",
+              "address": "0x50",
+              "kernelDeviceName": "24c02",
+              "pmUnitScopedName": "OOB_88E6321_EEPROM"
+            },
+            {
+              "busName": "MCB_IOB_I2C_MASTER_19",
+              "address": "0x4c",
+              "kernelDeviceName": "tps25990",
+              "pmUnitScopedName": "MCB_FAN1_SENSOR"
+            },
+            {
+              "busName": "MCB_IOB_I2C_MASTER_19",
+              "address": "0x4d",
+              "kernelDeviceName": "tps25990",
+              "pmUnitScopedName": "MCB_FAN2_SENSOR"
+            },
+            {
+              "busName": "MCB_IOB_I2C_MASTER_20",
+              "address": "0x4c",
+              "kernelDeviceName": "tps25990",
+              "pmUnitScopedName": "MCB_FAN3_SENSOR"
+            },
+            {
+              "busName": "MCB_IOB_I2C_MASTER_20",
+              "address": "0x4d",
+              "kernelDeviceName": "tps25990",
+              "pmUnitScopedName": "MCB_FAN4_SENSOR"
+            },
+            {
+              "busName": "MCB_IOB_I2C_MASTER_21",
+              "address": "0x4d",
+              "kernelDeviceName": "lm75b",
+              "pmUnitScopedName": "MCB_COME_INLET_TSENSOR"
+            },
+            {
+              "busName": "MCB_IOB_I2C_MASTER_22",
+              "address": "0x76",
+              "kernelDeviceName": "mp2971",
+              "pmUnitScopedName": "OSFP_PWR"
+            },
+            {
+              "busName": "MCB_IOB_I2C_MASTER_23",
+              "address": "0x11",
+              "kernelDeviceName": "ltc4287",
+              "pmUnitScopedName": "48V_HSC_MONITOR"
+            },
+            {
+              "busName": "MCB_IOB_I2C_MASTER_24",
+              "address": "0x35",
+              "kernelDeviceName": "adc128d818",
+              "pmUnitScopedName": "MCB_ADC1_MONITOR",
+              "initRegSettings": [
+                {
+                  "regOffset": 11,
+                  "ioBuf": [
+                    2
+                  ]
+                }
+              ]
+            },
+            {
+              "busName": "MCB_IOB_I2C_MASTER_24",
+              "address": "0x37",
+              "kernelDeviceName": "adc128d818",
+              "pmUnitScopedName": "MCB_ADC2_MONITOR",
+              "initRegSettings": [
+                {
+                  "regOffset": 11,
+                  "ioBuf": [
+                    2
+                  ]
+                }
+              ]
+            },
+            {
+              "busName": "MCB_IOB_I2C_MASTER_26",
+              "address": "0x4e",
+              "kernelDeviceName": "lm75b",
+              "pmUnitScopedName": "MCB_COME_OUTLET_TSENSOR"
+            },
+            {
+              "busName": "MCB_IOB_I2C_MASTER_27",
+              "address": "0x4c",
+              "kernelDeviceName": "lm75b",
+              "pmUnitScopedName": "PB_OUTLET_TSENSOR"
+            },
+            {
+              "busName": "MCB_IOB_I2C_MASTER_27",
+              "address": "0x1f",
+              "kernelDeviceName": "adc128d818",
+              "pmUnitScopedName": "MCB_ADC3_MONITOR",
+              "initRegSettings": [
+                {
+                  "regOffset": 11,
+                  "ioBuf": [
+                    2
+                  ]
+                }
+              ]
+            }
+          ],
+          "outgoingSlotConfigs": {
+            "RUNBMC_SLOT@0": {
+              "slotType": "RUNBMC_SLOT",
+              "outgoingI2cBusNames": [
+                "MCB_IOB_I2C_MASTER_1"
+              ]
+            },
+            "COMESE_SLOT@0": {
+              "slotType": "COMESE_SLOT",
+              "outgoingI2cBusNames": [
+                "MCB_MUX@1",
+                "MCB_IOB_I2C_MASTER_18"
+              ]
+            },
+            "SMB_SLOT@0": {
+              "slotType": "SMB_SLOT",
+              "outgoingI2cBusNames": [
+                "MCB_IOB_I2C_MASTER_7",
+                "MCB_IOB_I2C_MASTER_8",
+                "MCB_IOB_I2C_MASTER_10",
+                "MCB_IOB_I2C_MASTER_11",
+                "MCB_IOB_I2C_MASTER_12"
+              ]
+            }
+          }
+        },
+        "productSubVersion": 20
+      },
+      {
+        "pmUnitConfig": {
+          "pluggedInSlotType": "MCB_SLOT",
+          "embeddedSensorConfigs": [
+            {
+              "pmUnitScopedName": "CPU_CORE_TEMP",
+              "sysfsPath": "/sys/bus/platform/devices/coretemp.0"
+            }
+          ],
+          "pciDeviceConfigs": [
+            {
+              "pmUnitScopedName": "MCB_IOB",
+              "vendorId": "0x1d9b",
+              "deviceId": "0x0011",
+              "subSystemVendorId": "0x10ee",
+              "subSystemDeviceId": "0x0007",
+              "i2cAdapterBlockConfigs": [
+                {
+                  "pmUnitScopedNamePrefix": "MCB_IOB_I2C_MASTER",
+                  "deviceName": "iob_i2c_master",
+                  "csrOffsetCalc": "0x4000 + ({adapterIndex} - {startAdapterIndex})*0x100",
+                  "startAdapterIndex": 1,
+                  "numAdapters": 28
+                },
+                {
+                  "pmUnitScopedNamePrefix": "MCB_DOM_I2C_MASTER",
+                  "deviceName": "dom1_i2c_master",
+                  "csrOffsetCalc": "0x42000 + ({adapterIndex} - {startAdapterIndex})*0x100",
+                  "startAdapterIndex": 1,
+                  "numAdapters": 8
+                }
+              ],
+              "gpioChipConfigs": [
+                {
+                  "pmUnitScopedName": "MCB_GPIO_CHIP_1",
+                  "deviceName": "gpiochip",
+                  "csrOffset": "0x0400"
+                }
+              ],
+              "spiMasterConfigs": [
+                {
+                  "fpgaIpBlockConfig": {
+                    "pmUnitScopedName": "MCB_SPI_MASTER_1",
+                    "deviceName": "spi_master",
+                    "csrOffset": "0x10000",
+                    "iobufOffset": "0x12000"
+                  },
+                  "spiDeviceConfigs": [
+                    {
+                      "pmUnitScopedName": "MCB_SPI_MASTER_1_DEVICE_1",
+                      "modalias": "spidev",
+                      "chipSelect": 0,
+                      "maxSpeedHz": 25000000
+                    }
+                  ]
+                },
+                {
+                  "fpgaIpBlockConfig": {
+                    "pmUnitScopedName": "MCB_SPI_MASTER_2",
+                    "deviceName": "spi_master",
+                    "csrOffset": "0x10080",
+                    "iobufOffset": "0x12400"
+                  },
+                  "spiDeviceConfigs": [
+                    {
+                      "pmUnitScopedName": "MCB_SPI_MASTER_2_DEVICE_1",
+                      "modalias": "spidev",
+                      "chipSelect": 0,
+                      "maxSpeedHz": 25000000
+                    }
+                  ]
+                },
+                {
+                  "fpgaIpBlockConfig": {
+                    "pmUnitScopedName": "MCB_SPI_MASTER_3",
+                    "deviceName": "spi_master",
+                    "csrOffset": "0x10100",
+                    "iobufOffset": "0x12800"
+                  },
+                  "spiDeviceConfigs": [
+                    {
+                      "pmUnitScopedName": "MCB_SPI_MASTER_3_DEVICE_1",
+                      "modalias": "spidev",
+                      "chipSelect": 0,
+                      "maxSpeedHz": 25000000
+                    }
+                  ]
+                },
+                {
+                  "fpgaIpBlockConfig": {
+                    "pmUnitScopedName": "MCB_SPI_MASTER_4",
+                    "deviceName": "spi_master",
+                    "csrOffset": "0x10180",
+                    "iobufOffset": "0x12c00"
+                  },
+                  "spiDeviceConfigs": [
+                    {
+                      "pmUnitScopedName": "MCB_SPI_MASTER_4_DEVICE_1",
+                      "modalias": "spidev",
+                      "chipSelect": 0,
+                      "maxSpeedHz": 25000000
+                    }
+                  ]
+                },
+                {
+                  "fpgaIpBlockConfig": {
+                    "pmUnitScopedName": "MCB_SPI_MASTER_5",
+                    "deviceName": "spi_master",
+                    "csrOffset": "0x10200",
+                    "iobufOffset": "0x13000"
+                  },
+                  "spiDeviceConfigs": [
+                    {
+                      "pmUnitScopedName": "MCB_SPI_MASTER_5_DEVICE_1",
+                      "modalias": "spidev",
+                      "chipSelect": 0,
+                      "maxSpeedHz": 25000000
+                    }
+                  ]
+                },
+                {
+                  "fpgaIpBlockConfig": {
+                    "pmUnitScopedName": "MCB_SPI_MASTER_6",
+                    "deviceName": "spi_master",
+                    "csrOffset": "0x10280",
+                    "iobufOffset": "0x13400"
+                  },
+                  "spiDeviceConfigs": [
+                    {
+                      "pmUnitScopedName": "MCB_SPI_MASTER_6_DEVICE_1",
+                      "modalias": "spidev",
+                      "chipSelect": 0,
+                      "maxSpeedHz": 25000000
+                    }
+                  ]
+                },
+                {
+                  "fpgaIpBlockConfig": {
+                    "pmUnitScopedName": "MCB_SPI_MASTER_7",
+                    "deviceName": "spi_master",
+                    "csrOffset": "0x10300",
+                    "iobufOffset": "0x13800"
+                  },
+                  "spiDeviceConfigs": [
+                    {
+                      "pmUnitScopedName": "MCB_SPI_MASTER_7_DEVICE_1",
+                      "modalias": "spidev",
+                      "chipSelect": 0,
+                      "maxSpeedHz": 25000000
+                    }
+                  ]
+                }
+              ],
+              "xcvrCtrlBlockConfigs": [
+                {
+                  "pmUnitScopedNamePrefix": "MCB_DOM",
+                  "deviceName": "xcvr_ctrl",
+                  "csrOffsetCalc": "0x40200 + ({portNum} - {startPort})*0x4",
+                  "numPorts": 8,
+                  "startPort": 1
+                },
+                {
+                  "pmUnitScopedNamePrefix": "IOB",
+                  "deviceName": "xcvr_ctrl",
+                  "csrOffsetCalc": "0x1030 + ({portNum} - {startPort})*0x0",
+                  "numPorts": 1,
+                  "startPort": 9
+                }
+              ],
+              "ledCtrlBlockConfigs": [
+                {
+                  "pmUnitScopedNamePrefix": "MCB_LED",
+                  "deviceName": "port_led",
+                  "csrOffsetCalc": "0x404d0 + ({portNum} - {startPort})*0x8 + ({ledNum} - 1)*0x4",
+                  "numPorts": 8,
+                  "ledPerPort": 2,
+                  "startPort": 1
+                },
+                {
+                  "pmUnitScopedNamePrefix": "MCB_LED",
+                  "deviceName": "port_led",
+                  "csrOffsetCalc": "0x40510 + ({portNum} - {startPort})*0x8 + ({ledNum} - 1)*0x4",
+                  "numPorts": 1,
+                  "ledPerPort": 1,
+                  "startPort": 9,
+                  "lanesPerPort": 4
+                }
+              ],
+              "infoRomConfigs": [
+                {
+                  "pmUnitScopedName": "MCB_IOB_INFO_ROM",
+                  "deviceName": "fpga_info_iob",
+                  "csrOffset": "0x0000"
+                },
+                {
+                  "pmUnitScopedName": "MCB_DOM_INFO_ROM",
+                  "deviceName": "fpga_info_dom",
+                  "csrOffset": "0x40000"
+                }
+              ]
+            }
+          ],
+          "i2cDeviceConfigs": [
+            {
+              "busName": "MCB_IOB_I2C_MASTER_2",
+              "address": "0x70",
+              "kernelDeviceName": "pca9546",
+              "pmUnitScopedName": "MCB_MUX",
+              "numOutgoingChannels": 4
+            },
+            {
+              "busName": "MCB_IOB_I2C_MASTER_3",
+              "address": "0x35",
+              "kernelDeviceName": "tahansb_scmcpld",
+              "pmUnitScopedName": "SCM_CPLD"
+            },
+            {
+              "busName": "MCB_IOB_I2C_MASTER_5",
+              "address": "0x60",
+              "kernelDeviceName": "pmbus",
+              "pmUnitScopedName": "PMBUS_1",
+              "initRegSettings": [
+                {
+                  "__comment__": "Set the page to 0 to ensure the driver can read the correct registers. PR:573",
+                  "regOffset": 0,
+                  "ioBuf": [
+                    0
+                  ]
+                }
+              ]
+            },
+            {
+              "busName": "MCB_IOB_I2C_MASTER_5",
+              "address": "0x61",
+              "kernelDeviceName": "pmbus",
+              "pmUnitScopedName": "PMBUS_2",
+              "initRegSettings": [
+                {
+                  "__comment__": "Set the page to 0 to ensure the driver can read the correct registers. PR:573",
+                  "regOffset": 0,
+                  "ioBuf": [
+                    0
+                  ]
+                }
+              ]
+            },
+            {
+              "busName": "MCB_IOB_I2C_MASTER_6",
+              "address": "0x4f",
+              "kernelDeviceName": "lm75b",
+              "pmUnitScopedName": "PB_INLET_TSENSOR"
+            },
+            {
+              "busName": "MCB_IOB_I2C_MASTER_9",
+              "address": "0x46",
+              "kernelDeviceName": "tps1689",
+              "pmUnitScopedName": "48V_STBY_PWR_SENSOR"
+            },
+            {
+              "busName": "MCB_IOB_I2C_MASTER_14",
+              "address": "0x33",
+              "kernelDeviceName": "fbfancpld",
+              "pmUnitScopedName": "MCB_FAN_CPLD",
+              "isWatchdog": true,
+              "fanCpldConfig": {
+                "numFans": 4,
+                "pwmMax": 64,
+                "speedMultiplier": 300,
+                "hasRearTach": true,
+                "hasLeds": false
+              }
+            },
+            {
+              "busName": "MCB_IOB_I2C_MASTER_14",
+              "address": "0x60",
+              "kernelDeviceName": "fbg_mcbcpld",
+              "pmUnitScopedName": "MCB_CPLD",
+              "initRegSettings": [
+                {
+                  "regOffset": 6,
+                  "ioBuf": [
+                    13
+                  ]
+                }
+              ],
+              "cpldSysfsAttrs": [
+                {
+                  "name": "version_id",
+                  "regAddr": "0x00",
+                  "bitOffset": 4,
+                  "numBits": 4,
+                  "description": "Hardware version ID"
+                },
+                {
+                  "name": "board_id",
+                  "regAddr": "0x00",
+                  "numBits": 4,
+                  "description": "Board ID"
+                },
+                {
+                  "name": "cpld_ver",
+                  "regAddr": "0x01",
+                  "numBits": 7,
+                  "description": "CPLD major version"
+                },
+                {
+                  "name": "cpld_minor_ver",
+                  "regAddr": "0x02",
+                  "numBits": 8,
+                  "description": "CPLD minor version"
+                },
+                {
+                  "name": "cpld_sub_ver",
+                  "regAddr": "0x03",
+                  "numBits": 8,
+                  "description": "CPLD sub version"
+                },
+                {
+                  "name": "oob_eeprom_wp",
+                  "mode": "rw",
+                  "regAddr": "0x06",
+                  "bitOffset": 2,
+                  "description": "OOB EEPROM write protect"
+                },
+                {
+                  "name": "oob_eeprom_sel",
+                  "mode": "rw",
+                  "regAddr": "0x06",
+                  "bitOffset": 3,
+                  "description": "OOB EEPROM select"
+                },
+                {
+                  "name": "smb_pg",
+                  "regAddr": "0x0A",
+                  "bitOffset": 1,
+                  "description": "SMB power good"
+                },
+                {
+                  "name": "hs_48v_pg",
+                  "regAddr": "0x0A",
+                  "bitOffset": 6,
+                  "description": "Hot swap 48V power good (1 = present, 0 = absent)"
+                },
+                {
+                  "name": "smb_present",
+                  "regAddr": "0x10",
+                  "bitOffset": 5,
+                  "description": "SMB present (1 = present, 0 = absent)"
+                },
+                {
+                  "name": "slot_present",
+                  "regAddr": "0xA0",
+                  "bitOffset": 3,
+                  "description": "Slot present"
+                },
+                {
+                  "name": "slot_id",
+                  "regAddr": "0xA0",
+                  "numBits": 3,
+                  "description": "Slot ID"
+                }
+              ]
+            },
+            {
+              "busName": "MCB_IOB_I2C_MASTER_15",
+              "address": "0x53",
+              "kernelDeviceName": "24c64",
+              "pmUnitScopedName": "CHASSIS_EEPROM",
+              "isEeprom": true
+            },
+            {
+              "busName": "MCB_IOB_I2C_MASTER_16",
+              "address": "0x4c",
+              "kernelDeviceName": "tps25990",
+              "pmUnitScopedName": "LOAD_SWITCH_MONITOR"
+            },
+            {
+              "busName": "MCB_IOB_I2C_MASTER_17",
+              "address": "0x50",
+              "kernelDeviceName": "24c02",
+              "pmUnitScopedName": "OOB_88E6321_EEPROM"
+            },
+            {
+              "busName": "MCB_IOB_I2C_MASTER_19",
+              "address": "0x4c",
+              "kernelDeviceName": "tps25990",
+              "pmUnitScopedName": "MCB_FAN1_SENSOR"
+            },
+            {
+              "busName": "MCB_IOB_I2C_MASTER_19",
+              "address": "0x4d",
+              "kernelDeviceName": "tps25990",
+              "pmUnitScopedName": "MCB_FAN2_SENSOR"
+            },
+            {
+              "busName": "MCB_IOB_I2C_MASTER_20",
+              "address": "0x4c",
+              "kernelDeviceName": "tps25990",
+              "pmUnitScopedName": "MCB_FAN3_SENSOR"
+            },
+            {
+              "busName": "MCB_IOB_I2C_MASTER_20",
+              "address": "0x4d",
+              "kernelDeviceName": "tps25990",
+              "pmUnitScopedName": "MCB_FAN4_SENSOR"
+            },
+            {
+              "busName": "MCB_IOB_I2C_MASTER_21",
+              "address": "0x4d",
+              "kernelDeviceName": "lm75b",
+              "pmUnitScopedName": "MCB_COME_INLET_TSENSOR"
+            },
+            {
+              "busName": "MCB_IOB_I2C_MASTER_22",
+              "address": "0x62",
+              "kernelDeviceName": "bp4f_raa228244",
+              "pmUnitScopedName": "OSFP_PWR"
+            },
+            {
+              "busName": "MCB_IOB_I2C_MASTER_23",
+              "address": "0x11",
+              "kernelDeviceName": "ltc4287",
+              "pmUnitScopedName": "48V_HSC_MONITOR"
+            },
+            {
+              "busName": "MCB_IOB_I2C_MASTER_24",
+              "address": "0x35",
+              "kernelDeviceName": "adc128d818",
+              "pmUnitScopedName": "MCB_ADC1_MONITOR",
+              "initRegSettings": [
+                {
+                  "regOffset": 11,
+                  "ioBuf": [
+                    2
+                  ]
+                }
+              ]
+            },
+            {
+              "busName": "MCB_IOB_I2C_MASTER_24",
+              "address": "0x37",
+              "kernelDeviceName": "adc128d818",
+              "pmUnitScopedName": "MCB_ADC2_MONITOR",
+              "initRegSettings": [
+                {
+                  "regOffset": 11,
+                  "ioBuf": [
+                    2
+                  ]
+                }
+              ]
+            },
+            {
+              "busName": "MCB_IOB_I2C_MASTER_26",
+              "address": "0x4e",
+              "kernelDeviceName": "lm75b",
+              "pmUnitScopedName": "MCB_COME_OUTLET_TSENSOR"
+            },
+            {
+              "busName": "MCB_IOB_I2C_MASTER_27",
+              "address": "0x4c",
+              "kernelDeviceName": "lm75b",
+              "pmUnitScopedName": "PB_OUTLET_TSENSOR"
+            },
+            {
+              "busName": "MCB_IOB_I2C_MASTER_27",
+              "address": "0x1f",
+              "kernelDeviceName": "adc128d818",
+              "pmUnitScopedName": "MCB_ADC3_MONITOR",
+              "initRegSettings": [
+                {
+                  "regOffset": 11,
+                  "ioBuf": [
+                    2
+                  ]
+                }
+              ]
+            }
+          ],
+          "outgoingSlotConfigs": {
+            "RUNBMC_SLOT@0": {
+              "slotType": "RUNBMC_SLOT",
+              "outgoingI2cBusNames": [
+                "MCB_IOB_I2C_MASTER_1"
+              ]
+            },
+            "COMESE_SLOT@0": {
+              "slotType": "COMESE_SLOT",
+              "outgoingI2cBusNames": [
+                "MCB_MUX@1",
+                "MCB_IOB_I2C_MASTER_18"
+              ]
+            },
+            "SMB_SLOT@0": {
+              "slotType": "SMB_SLOT",
+              "outgoingI2cBusNames": [
+                "MCB_IOB_I2C_MASTER_7",
+                "MCB_IOB_I2C_MASTER_8",
+                "MCB_IOB_I2C_MASTER_10",
+                "MCB_IOB_I2C_MASTER_11",
+                "MCB_IOB_I2C_MASTER_12"
+              ]
+            }
+          }
+        },
+        "productSubVersion": 30
+      }
+    ],
+    "SMB": [
+      {
+        "pmUnitConfig": {
+          "pluggedInSlotType": "SMB_SLOT",
+          "i2cDeviceConfigs": [
+            {
+              "busName": "INCOMING@0",
+              "address": "0x74",
+              "kernelDeviceName": "pca9548",
+              "pmUnitScopedName": "SMB_MUX",
+              "numOutgoingChannels": 8
+            },
+            {
+              "busName": "SMB_MUX@0",
+              "address": "0x62",
+              "kernelDeviceName": "bp4f_raa228244",
+              "pmUnitScopedName": "SMB_ASIC_VOLTAGE_0"
+            },
+            {
+              "busName": "SMB_MUX@1",
+              "address": "0x62",
+              "kernelDeviceName": "bp4f_raa228244",
+              "pmUnitScopedName": "SMB_ASIC_VOLTAGE_1"
+            },
+            {
+              "busName": "SMB_MUX@1",
+              "address": "0x4c",
+              "kernelDeviceName": "tmp432",
+              "pmUnitScopedName": "SMB_TH6_SENSOR_TMP432_1",
+              "initRegSettings": [
+                {
+                  "__comment__": "Local temp(temp1) high limit setting for high byte. PR:1092",
+                  "regOffset": 11,
+                  "ioBuf": [
+                    90
+                  ]
+                },
+                {
+                  "__comment__": "Remote temp1(temp2) high limit setting for high byte. PR:1092",
+                  "regOffset": 13,
+                  "ioBuf": [
+                    90
+                  ]
+                },
+                {
+                  "__comment__": "Remote temp1(temp2) high limit setting for low byte. PR:594",
+                  "regOffset": 19,
+                  "ioBuf": [
+                    0
+                  ]
+                },
+                {
+                  "__comment__": "Remote temp2(temp3) high limit setting for high byte. PR:1092",
+                  "regOffset": 21,
+                  "ioBuf": [
+                    90
+                  ]
+                },
+                {
+                  "__comment__": "Remote temp2(temp3) high limit setting for low byte. PR:594",
+                  "regOffset": 23,
+                  "ioBuf": [
+                    0
+                  ]
+                },
+                {
+                  "__comment__": "N-factor correction remote1. PR:594",
+                  "regOffset": 39,
+                  "ioBuf": [
+                    5
+                  ]
+                },
+                {
+                  "__comment__": "N-factor correction remote2. PR:594",
+                  "regOffset": 40,
+                  "ioBuf": [
+                    5
+                  ]
+                },
+                {
+                  "__comment__": "Local temp(temp1) high limit setting for low byte. PR:594",
+                  "regOffset": 61,
+                  "ioBuf": [
+                    0
+                  ]
+                }
+              ]
+            },
+            {
+              "busName": "SMB_MUX@2",
+              "address": "0x62",
+              "kernelDeviceName": "bp4f_raa228244",
+              "pmUnitScopedName": "SMB_ASIC_VOLTAGE_2"
+            },
+            {
+              "busName": "SMB_MUX@2",
+              "address": "0x49",
+              "kernelDeviceName": "lm75b",
+              "pmUnitScopedName": "SMB_OUTLET_TH6_TSENSOR"
+            },
+            {
+              "busName": "SMB_MUX@3",
+              "address": "0x62",
+              "kernelDeviceName": "bp4f_raa228244",
+              "pmUnitScopedName": "SMB_ASIC_VOLTAGE_3"
+            },
+            {
+              "busName": "SMB_MUX@3",
+              "address": "0x4c",
+              "kernelDeviceName": "tmp432",
+              "pmUnitScopedName": "SMB_TH6_SENSOR_TMP432_2",
+              "initRegSettings": [
+                {
+                  "__comment__": "Local temp(temp1) high limit setting for high byte. PR:1092",
+                  "regOffset": 11,
+                  "ioBuf": [
+                    90
+                  ]
+                },
+                {
+                  "__comment__": "Remote temp1(temp2) high limit setting for high byte. PR:1092",
+                  "regOffset": 13,
+                  "ioBuf": [
+                    90
+                  ]
+                },
+                {
+                  "__comment__": "Remote temp1(temp2) high limit setting for low byte. PR:594",
+                  "regOffset": 19,
+                  "ioBuf": [
+                    0
+                  ]
+                },
+                {
+                  "__comment__": "N-factor correction remote1. PR:594",
+                  "regOffset": 39,
+                  "ioBuf": [
+                    5
+                  ]
+                },
+                {
+                  "__comment__": "N-factor correction remote2. PR:594",
+                  "regOffset": 40,
+                  "ioBuf": [
+                    5
+                  ]
+                },
+                {
+                  "__comment__": "Local temp(temp1) high limit setting for low byte. PR:594",
+                  "regOffset": 61,
+                  "ioBuf": [
+                    0
+                  ]
+                }
+              ]
+            },
+            {
+              "busName": "SMB_MUX@4",
+              "address": "0x62",
+              "kernelDeviceName": "bp4f_raa228244",
+              "pmUnitScopedName": "SMB_ASIC_VOLTAGE_4"
+            },
+            {
+              "busName": "SMB_MUX@5",
+              "address": "0x62",
+              "kernelDeviceName": "bp4f_raa228244",
+              "pmUnitScopedName": "SMB_ASIC_VOLTAGE_5_1"
+            },
+            {
+              "busName": "SMB_MUX@5",
+              "address": "0x75",
+              "kernelDeviceName": "bp4f_raa228244",
+              "pmUnitScopedName": "SMB_ASIC_VOLTAGE_5_2"
+            },
+            {
+              "busName": "SMB_MUX@6",
+              "address": "0x62",
+              "kernelDeviceName": "bp4f_raa228244",
+              "pmUnitScopedName": "SMB_ASIC_VOLTAGE_6"
+            },
+            {
+              "busName": "SMB_MUX@7",
+              "address": "0x62",
+              "kernelDeviceName": "bp4f_raa228244",
+              "pmUnitScopedName": "SMB_ASIC_VOLTAGE_7"
+            },
+            {
+              "busName": "INCOMING@1",
+              "address": "0x1f",
+              "kernelDeviceName": "adc128d818",
+              "pmUnitScopedName": "SMB_ADC1_SENSOR",
+              "initRegSettings": [
+                {
+                  "regOffset": 11,
+                  "ioBuf": [
+                    2
+                  ]
+                }
+              ]
+            },
+            {
+              "busName": "INCOMING@2",
+              "address": "0x33",
+              "kernelDeviceName": "th6_smbcpld",
+              "pmUnitScopedName": "SMB_CPLD"
+            },
+            {
+              "busName": "INCOMING@3",
+              "address": "0x35",
+              "kernelDeviceName": "adc128d818",
+              "pmUnitScopedName": "SMB_ADC2_SENSOR",
+              "initRegSettings": [
+                {
+                  "regOffset": 11,
+                  "ioBuf": [
+                    2
+                  ]
+                }
+              ]
+            },
+            {
+              "busName": "INCOMING@4",
+              "address": "0x48",
+              "kernelDeviceName": "lm75b",
+              "pmUnitScopedName": "SMB_INLET_TH6_TSENSOR"
+            },
+            {
+              "busName": "INCOMING@4",
+              "address": "0x75",
+              "kernelDeviceName": "bp4f_raa228244",
+              "pmUnitScopedName": "SMB_VDDCORE"
+            }
+          ]
+        },
+        "productSubVersion": 30
+      }
     ]
   },
   "pmUnitConfigs": {
