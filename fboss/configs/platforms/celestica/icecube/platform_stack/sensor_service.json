@@ -1795,6 +1795,16 @@
             "maxAlarmVal": 61
           },
           "compute": "@/1000.0"
+        },
+        {
+          "name": "TH6_TEMP",
+          "sysfsPath": "/run/devmap/sensors/SMB_CPLD/temp1_input",
+          "type": 3,
+          "thresholds": {
+            "maxAlarmVal": 97,
+            "upperCriticalVal": 101
+          },
+          "compute": "@/1000.0"
         }
       ],
       "versionedSensors": [
@@ -3434,6 +3444,7 @@
     {
       "name": "ASIC",
       "temperatureSensorNames": [
+        "TH6_TEMP",
         "SMB_U29_LEFT_TMP432_1_TEMP2",
         "SMB_U29_LEFT_TMP432_1_TEMP3",
         "SMB_U30_RIGHT_TMP432_2_TEMP2"
