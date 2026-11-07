@@ -53,6 +53,8 @@ class AgentQueuePerHostL2Test : public AgentHwTest {
     auto ttlCounterName = utility::getQueuePerHostTtlCounterName();
 
     auto statBefore = utility::getAclInOutPackets(getSw(), ttlCounterName);
+    XLOG(DBG2) << "ACL counter '" << ttlCounterName
+               << "' statBefore = " << statBefore;
 
     std::map<int, int64_t> beforeQueueOutPkts;
     for (const auto& queueId : utility::kQueuePerhostQueueIds()) {
@@ -142,6 +144,10 @@ class AgentQueuePerHostL2Test : public AgentHwTest {
         auto statAfter =
             utility::getAclInOutPackets(this->getSw(), ttlCounterName);
 
+        XLOG(DBG2) << "ACL counter '" << ttlCounterName
+                   << "' statBefore = " << statBefore
+                   << ", statAfter = " << statAfter
+                   << ", delta = " << (statAfter - statBefore);
         /*
          * counts ttl >= 128 packet only
          * but L2 traffic (so TTL is not decremented, and thus looped back
