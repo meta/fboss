@@ -159,6 +159,28 @@ void checkAclIpMatch(const cfg::AclIpMatch& match) {
   }
 }
 
+void checkAclIpV6WordMatch(
+    const std::string& name,
+    const cfg::AclIpV6WordMatch& match) {
+  constexpr int64_t kMaxIpV6Word = 0xFFFFFFFF;
+  const auto value = *match.value();
+  const auto mask = *match.mask();
+  if (value < 0 || value > kMaxIpV6Word || mask < 0 || mask > kMaxIpV6Word) {
+    throw FbossError(name, " value and mask must be 32-bit values");
+  }
+  if (mask == 0) {
+    throw FbossError(name, " mask must not be zero");
+  }
+  if (value & ~mask) {
+    throw FbossError(
+        name,
+        " value ",
+        fmt::format("{:#x}", value),
+        " sets bits outside mask ",
+        fmt::format("{:#x}", mask));
+  }
+}
+
 // ECMP resource manager re-modes existing backup group routes' overrides
 // whenever the backup switching mode changes.
 bool ecmpOverrideModeChanged(
@@ -5092,6 +5114,19 @@ void ThriftConfigApplier::checkAcl(const cfg::AclEntry* config) const {
     }
     checkAclIpMatch(*dstIpWithMask);
   }
+  if (config->dstIpV6Word1WithMask() || config->dstIpV6Word0WithMask()) {
+    if (config->dstIp() || config->dstIpWithMask()) {
+      throw FbossError(
+          "dstIpV6Word1WithMask and dstIpV6Word0WithMask cannot be combined "
+          "with dstIp or dstIpWithMask");
+    }
+    if (auto word1 = config->dstIpV6Word1WithMask()) {
+      checkAclIpV6WordMatch("dstIpV6Word1WithMask", *word1);
+    }
+    if (auto word0 = config->dstIpV6Word0WithMask()) {
+      checkAclIpV6WordMatch("dstIpV6Word0WithMask", *word0);
+    }
+  }
   if (config->icmpCode() && !config->icmpType()) {
     throw FbossError("icmp type must be set when icmp code is set");
   }
@@ -5193,6 +5228,12 @@ shared_ptr<AclEntry> ThriftConfigApplier::createAcl(
   }
   if (auto dstIpV6Word2 = config->dstIpV6Word2()) {
     newAcl->setDstIpV6Word2(*dstIpV6Word2);
+  }
+  if (auto word1 = config->dstIpV6Word1WithMask()) {
+    newAcl->setDstIpV6Word1WithMask(*word1);
+  }
+  if (auto word0 = config->dstIpV6Word0WithMask()) {
+    newAcl->setDstIpV6Word0WithMask(*word0);
   }
   if (auto proto = config->proto()) {
     newAcl->setProto(*proto);
