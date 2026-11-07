@@ -18,6 +18,7 @@
  */
 
 #include <fmt/format.h>
+#include <folly/ScopeGuard.h>
 #include <folly/json/dynamic.h>
 #include <folly/json/json.h>
 #include <folly/logging/xlog.h>
@@ -211,6 +212,94 @@ TEST_F(ConfigLoadBalancingTest, EcmpHashAlgorithm) {
 
 TEST_F(ConfigLoadBalancingTest, EcmpHashSeed) {
   testSeed("ecmp", kEcmpIdValue, 314159);
+}
+
+// LoadBalancer.id is the key `config load-balancing <ecmp|lag>` finds the entry
+// by (CmdConfigLoadBalancing.cpp findOrCreateLoadBalancer). Changing an ecmp
+// attribute must update the one ECMP entry -- not append a second one -- and
+// leave the LAG entry untouched, both in the running config and in the
+// agent's switch state, which keys loadBalancerMaps by the id. The create half
+// (an absent id gets a new entry) is covered only by the unit test
+// CmdConfigLoadBalancingTestFixture.applyCreatesNewLoadBalancer.
+TEST_F(ConfigLoadBalancingTest, LoadBalancerIdSelectsEntry) {
+  const int newSeed = 271829;
+
+  // Running-config entries with the given id.
+  auto configEntries = [this](int idValue) {
+    std::vector<folly::dynamic> out;
+    auto config = getRunningConfig();
+    for (const auto& lb : config["sw"]["loadBalancers"]) {
+      if (lb.count("id") && lb["id"].asInt() == idValue) {
+        out.push_back(lb);
+      }
+    }
+    return out;
+  };
+  // Switch-state entries with the given id. loadBalancerMaps:
+  // SwitchIdList -> LoadBalancerID -> LoadBalancerFields.
+  auto stateEntries = [this](int idValue) {
+    std::vector<folly::dynamic> out;
+    auto maps = getSwitchState("loadBalancerMaps");
+    for (const auto& [switchIds, lbs] : maps.items()) {
+      for (const auto& [key, lb] : lbs.items()) {
+        if (lb.count("id") && lb["id"].asInt() == idValue) {
+          out.push_back(lb);
+        }
+      }
+    }
+    return out;
+  };
+
+  ASSERT_EQ(configEntries(kEcmpIdValue).size(), 1)
+      << "expected exactly one ECMP load balancer before the test";
+  const auto lagConfigBefore = configEntries(kLagIdValue);
+  const auto lagStateBefore = stateEntries(kLagIdValue);
+  const auto originalSeed = getSeed(kEcmpIdValue);
+  ASSERT_TRUE(!originalSeed.has_value() || *originalSeed != newSeed)
+      << "test seed matches the original -- pick a different one";
+
+  // Puts the original ECMP seed back. Armed as a guard so a failed check
+  // still leaves the DUT as found; runs explicitly in Step 3.
+  auto restore = [&]() {
+    runAndCommit(
+        {"config",
+         "load-balancing",
+         "ecmp",
+         "hash-seed",
+         originalSeed.has_value() ? std::to_string(*originalSeed) : "default"});
+  };
+  auto restoreGuard = folly::makeGuard(restore);
+
+  XLOG(INFO) << "[Step 1] config load-balancing ecmp hash-seed " << newSeed;
+  runAndCommit(
+      {"config",
+       "load-balancing",
+       "ecmp",
+       "hash-seed",
+       std::to_string(newSeed)});
+
+  XLOG(INFO) << "[Step 2] Verifying only the ECMP entry changed...";
+  auto ecmpConfig = configEntries(kEcmpIdValue);
+  ASSERT_EQ(ecmpConfig.size(), 1)
+      << "the command appended an ECMP entry instead of reusing it";
+  ASSERT_TRUE(ecmpConfig[0].count("seed"));
+  EXPECT_EQ(ecmpConfig[0]["seed"].asInt(), newSeed);
+  EXPECT_EQ(configEntries(kLagIdValue), lagConfigBefore)
+      << "LAG load balancer changed in the running config";
+
+  auto ecmpState = stateEntries(kEcmpIdValue);
+  ASSERT_FALSE(ecmpState.empty()) << "no ECMP load balancer in switch state";
+  for (const auto& lb : ecmpState) {
+    EXPECT_EQ(lb["seed"].asInt(), newSeed);
+  }
+  EXPECT_EQ(stateEntries(kLagIdValue), lagStateBefore)
+      << "LAG load balancer changed in switch state";
+
+  XLOG(INFO) << "[Step 3] Restoring the original ECMP seed...";
+  restoreGuard.dismiss();
+  restore();
+  EXPECT_EQ(getSeed(kEcmpIdValue), originalSeed);
+  EXPECT_EQ(configEntries(kEcmpIdValue).size(), 1);
 }
 
 TEST_F(ConfigLoadBalancingTest, EcmpHashFieldsIpv4) {
