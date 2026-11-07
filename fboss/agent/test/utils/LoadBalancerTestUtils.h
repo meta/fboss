@@ -167,6 +167,72 @@ bool isDeviationWithinThreshold(
     int maxDeviationPct,
     bool noTrafficOk = false);
 
+/*
+ * Bounds each ECMP member's egress traffic must fall within, expressed as a
+ * percentage of the fair share (total traffic / number of members).
+ *
+ * TH5 requires the ports in loopback mode to be in the same core to load
+ * balance packets correctly. facebook/fboss 1212ea9dfc lowered the spray ecmp
+ * width from 8 to 6 for this reason. That keeps the members within one core
+ * only where a platform's first 6 master logical ports share one - where they
+ * land on separate cores the split is uneven, deterministic and reproducible,
+ * so no fixed width works across platforms.
+ *
+ * So assert participation rather than an equal split: the floor catches a
+ * starved or dead member (and a group that never sprayed at all), the ceiling
+ * catches one member hogging traffic while the rest stay just above the floor.
+ */
+struct MemberShareBounds {
+  int floorPct{25};
+  int ceilPct{200};
+};
+
+/*
+ * The same fair share check as isTrafficSprayedImpl, for callers that have
+ * already reduced their stats to one counter per member - typically the
+ * increment over a burst, in packets or in bytes.
+ *
+ * A member expected to carry nothing, such as an ingress a split horizon group
+ * has pruned, must be left out by the caller: it would fail the floor, and it
+ * would also pull the fair share down for the members that do forward.
+ */
+bool isWithinMemberShareBounds(
+    const std::map<std::string, uint64_t>& memberCounters,
+    const MemberShareBounds& bounds);
+
+template <typename PortStatsT>
+uint64_t getPortOutBytes(const PortStatsT& stats);
+
+template <typename PortIdT, typename PortStatsT>
+bool isTrafficSprayedImpl(
+    const std::map<PortIdT, PortStatsT>& portIdToStats,
+    const MemberShareBounds& bounds);
+
+template <typename PortIdT, typename PortStatsT>
+std::vector<PortIdT> ecmpPortIds(const std::vector<PortDescriptor>& ecmpPorts) {
+  return folly::gen::from(ecmpPorts) |
+      folly::gen::map([](const auto& portDesc) {
+           if constexpr (std::is_same_v<PortStatsT, HwPortStats>) {
+             return portDesc.phyPortID();
+           } else if constexpr (std::is_same_v<PortStatsT, HwSysPortStats>) {
+             return portDesc.sysPortID();
+           }
+           throw FbossError("Unsupported port stats type in ecmpPortIds");
+         }) |
+      folly::gen::as<std::vector<PortIdT>>();
+}
+
+template <typename PortIdT, typename PortStatsT>
+bool isTrafficSprayed(
+    const std::vector<PortDescriptor>& ecmpPorts,
+    const std::function<std::map<PortIdT, PortStatsT>(
+        const std::vector<PortIdT>&)>& getPortStatsFn,
+    const MemberShareBounds& bounds) {
+  auto portIdToStats =
+      getPortStatsFn(ecmpPortIds<PortIdT, PortStatsT>(ecmpPorts));
+  return isTrafficSprayedImpl(portIdToStats, bounds);
+}
+
 template <typename PortIdT, typename PortStatsT>
 bool isLoadBalancedImpl(
     const std::map<PortIdT, PortStatsT>& portIdToStats,
