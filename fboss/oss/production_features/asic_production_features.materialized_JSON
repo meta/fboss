@@ -46,6 +46,7 @@
         87,
         98,
         115,
+        143,
         36,
         37,
         38,
@@ -101,6 +102,7 @@
         87,
         98,
         115,
+        143,
         36,
         37,
         38,
@@ -665,6 +667,7 @@
         122,
         119,
         123,
+        143,
         133,
         139
     ],
@@ -737,6 +740,7 @@
         104,
         117,
         123,
+        143,
         49,
         111,
         131,
@@ -909,6 +913,7 @@
         "UDF_HASH",
         "PFC_RX_TX_DURATION",
         "CUSTOM_DROP_BITMAP_SUPPORT",
+        "DROP_REASON_REPORTING",
         "RSW_ROUTE_SCALE",
         "FSW_ROUTE_SCALE",
         "HGRID_DU_ROUTE_SCALE",
@@ -964,6 +969,7 @@
         "UDF_HASH",
         "PFC_RX_TX_DURATION",
         "CUSTOM_DROP_BITMAP_SUPPORT",
+        "DROP_REASON_REPORTING",
         "RSW_ROUTE_SCALE",
         "FSW_ROUTE_SCALE",
         "HGRID_DU_ROUTE_SCALE",
@@ -1528,6 +1534,7 @@
         "ARS_SOURCE_PORT_PRUNE",
         "ADJACENCY_FRR",
         "DROP_REASON_LIST_SUPPORT",
+        "DROP_REASON_REPORTING",
         "MY_MAC",
         "MULTI_VRF"
     ],
@@ -1600,6 +1607,7 @@
         "SRV6_MIDPOINT",
         "CABLE_LENGTH_MEASUREMENT",
         "DROP_REASON_LIST_SUPPORT",
+        "DROP_REASON_REPORTING",
         "MIRROR_ON_DROP",
         "MIRROR_ON_DROP_STATELESS",
         "MPLS_TTL_ACL",
@@ -2215,6 +2223,27 @@
           "sdk": 1,
           "minSdkVersion": "15.4.0.0_odp",
           "note": "Active drop reason lists are reported by BRCM_SAI ASICs starting SDK 15.4.0.0_odp"
+        }
+      ]
+    },
+    {
+      "feature": 143,
+      "supportedFrom": [
+        {
+          "asics": [
+            "tomahawk5",
+            "tomahawk6"
+          ],
+          "sdk": 1,
+          "minSdkVersion": "15.4.0.0_odp"
+        },
+        {
+          "asics": [
+            "chenab",
+            "chenab2"
+          ],
+          "sdk": 3,
+          "minSdkVersion": "2511.36"
         }
       ]
     },
