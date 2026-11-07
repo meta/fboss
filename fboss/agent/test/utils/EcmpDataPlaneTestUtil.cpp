@@ -118,6 +118,19 @@ bool HwEcmpDataPlaneTestUtil<EcmpSetupHelperT>::isLoadBalanced(
   return rc;
 }
 
+template <typename EcmpSetupHelperT>
+bool HwEcmpDataPlaneTestUtil<EcmpSetupHelperT>::isTrafficSprayed(
+    const std::vector<PortDescriptor>& portDescs,
+    const MemberShareBounds& bounds) {
+  return utility::isTrafficSprayed<PortID, HwPortStats>(
+      portDescs,
+      [ensemble = ensemble_](
+          const std::vector<PortID>& portIds) -> std::map<PortID, HwPortStats> {
+        return ensemble->getLatestPortStats(portIds);
+      },
+      bounds);
+}
+
 template <typename AddrT>
 void HwEcmpDataPlaneTestUtil<AddrT>::programLoadBalancer(
     const cfg::LoadBalancer& lb) {
@@ -148,7 +161,8 @@ void HwEcmpDataPlaneTestUtil<AddrT>::pumpTrafficPortAndVerifyLoadBalanced(
     bool loopThroughFrontPanel,
     const std::vector<NextHopWeight>& weights,
     int deviation,
-    bool loadBalanceExpected) {
+    bool loadBalanceExpected,
+    const std::optional<MemberShareBounds>& sprayBounds) {
   auto helper = this->ecmpSetupHelper();
   const auto portDescs = helper->ecmpPortDescs(ecmpWidth);
   std::vector<PortID> ports;
@@ -189,7 +203,9 @@ void HwEcmpDataPlaneTestUtil<AddrT>::pumpTrafficPortAndVerifyLoadBalanced(
       },
       this->getNumPacketsToPump(),
       [=, this]() {
-        return this->isLoadBalanced(portDescs, weights, deviation);
+        return sprayBounds.has_value()
+            ? this->isTrafficSprayed(portDescs, *sprayBounds)
+            : this->isLoadBalanced(portDescs, weights, deviation);
       },
       loadBalanceExpected);
 }
