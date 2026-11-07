@@ -281,9 +281,16 @@
             {
               "pmUnitScopedNamePrefix": "IOB",
               "deviceName": "xcvr_ctrl",
-              "csrOffsetCalc": "0x1030 + ({portNum} - {startPort})*0x4",
-              "numPorts": 2,
+              "csrOffsetCalc": "0x1034",
+              "numPorts": 1,
               "startPort": 1
+            },
+            {
+              "pmUnitScopedNamePrefix": "IOB",
+              "deviceName": "xcvr_ctrl",
+              "csrOffsetCalc": "0x1030",
+              "numPorts": 1,
+              "startPort": 2
             }
           ],
           "infoRomConfigs": [
@@ -1590,12 +1597,12 @@
     "/run/devmap/inforoms/RTM_L_DOM_INFO_ROM": "/[RTM_L_DOM_INFO_ROM]",
     "/run/devmap/inforoms/RTM_R_DOM_INFO_ROM": "/[RTM_R_DOM_INFO_ROM]",
     "/run/devmap/watchdogs/FAN_WATCHDOG": "/[MCB_FAN_CPLD]",
-    "/run/devmap/i2c-busses/XCVR_1": "/[MCB_IOB_I2C_MASTER_28]",
-    "/run/devmap/i2c-busses/XCVR_2": "/[MCB_IOB_I2C_MASTER_30]",
+    "/run/devmap/i2c-busses/XCVR_1": "/[MCB_IOB_I2C_MASTER_30]",
+    "/run/devmap/i2c-busses/XCVR_2": "/[MCB_IOB_I2C_MASTER_28]",
     "/run/devmap/gpiochips/MCB_GPIO_CHIP_1": "/[MCB_GPIO_CHIP_1]",
-    "/run/devmap/xcvrs/xcvr_io_1": "/[MCB_IOB_I2C_MASTER_28]",
+    "/run/devmap/xcvrs/xcvr_io_1": "/[MCB_IOB_I2C_MASTER_30]",
     "/run/devmap/xcvrs/xcvr_ctrl_1": "/[IOB_XCVR_CTRL_PORT_1]",
-    "/run/devmap/xcvrs/xcvr_io_2": "/[MCB_IOB_I2C_MASTER_30]",
+    "/run/devmap/xcvrs/xcvr_io_2": "/[MCB_IOB_I2C_MASTER_28]",
     "/run/devmap/xcvrs/xcvr_ctrl_2": "/[IOB_XCVR_CTRL_PORT_2]",
     "/run/devmap/flashes/MCB_SPI_MASTER_1_DEVICE_1": "/[MCB_SPI_MASTER_1_DEVICE_1]",
     "/run/devmap/flashes/MCB_SPI_MASTER_2_DEVICE_1": "/[MCB_SPI_MASTER_2_DEVICE_1]",
