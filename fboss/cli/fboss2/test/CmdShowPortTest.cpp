@@ -520,6 +520,7 @@ TEST_F(CmdShowPortTestFixture, cbfc) {
   cbfc.senderCreditSize() = 56;
   cbfc.senderPacketOverhead() = 16;
   cbfc.senderCreditLimit() = 8192;
+  cbfc.receiverCreditLimit() = 4096;
   portEntries[3].cbfc() = cbfc;
 
   HwPortStats stats;
@@ -544,11 +545,41 @@ TEST_F(CmdShowPortTestFixture, cbfc) {
       continue;
     }
     EXPECT_EQ(
-        entry.cbfc(), "cbfc, VC 2 6, sender 56 B / 16 B, sender limit 8192");
+        entry.cbfc(),
+        "cbfc, VC 2 6, sender 56 B / 16 B, sender limit 8192, "
+        "receiver limit 4096");
     EXPECT_EQ(entry.hwPortStats()->cbfcCfUpdateTx(), 10);
     EXPECT_EQ(entry.hwPortStats()->cbfcCfUpdateRx(), 20);
     EXPECT_EQ(entry.hwPortStats()->cbfcCcUpdateTx(), 30);
   }
+}
+
+TEST_F(CmdShowPortTestFixture, cbfcWithoutReceiverLimit) {
+  auto portEntries = mockPortEntries;
+  CbfcInfo cbfc;
+  cbfc.configName() = "cbfc";
+  cbfc.virtualChannels() = {2};
+  cbfc.senderCreditSize() = 56;
+  cbfc.senderPacketOverhead() = 16;
+  cbfc.senderCreditLimit() = 8192;
+  portEntries[3].cbfc() = cbfc;
+
+  auto model = CmdShowPort().createModel(
+      portEntries,
+      mockTransceiverEntries,
+      queriedEntries,
+      mockPortStats,
+      mockPortToPeer,
+      mockPeerDrainStates,
+      mockPeerPortInfo,
+      mockDrainedInterfaces);
+
+  auto entry = std::find_if(
+      model.portEntries()->begin(),
+      model.portEntries()->end(),
+      [](const auto& portEntry) { return *portEntry.name() == "eth1/5/3"; });
+  ASSERT_NE(entry, model.portEntries()->end());
+  EXPECT_EQ(entry->cbfc(), "cbfc, VC 2, sender 56 B / 16 B, sender limit 8192");
 }
 
 TEST_F(CmdShowPortTestFixture, cumulativeAndWindowedStats) {
