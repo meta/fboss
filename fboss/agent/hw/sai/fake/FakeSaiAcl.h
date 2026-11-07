@@ -86,6 +86,12 @@ class FakeAclEntry {
   bool fieldDstIpV6Word2Enable{false};
   folly::IPAddressV6 fieldDstIpV6Word2Data;
   folly::IPAddressV6 fieldDstIpV6Word2Mask;
+  bool fieldDstIpV6Word1Enable{false};
+  folly::IPAddressV6 fieldDstIpV6Word1Data;
+  folly::IPAddressV6 fieldDstIpV6Word1Mask;
+  bool fieldDstIpV6Word0Enable{false};
+  folly::IPAddressV6 fieldDstIpV6Word0Data;
+  folly::IPAddressV6 fieldDstIpV6Word0Mask;
 
   bool fieldSrcIpV4Enable{false};
   folly::IPAddressV4 fieldSrcIpV4Data;
@@ -281,6 +287,8 @@ class FakeAclTable {
       bool fieldDstIpV6,
       bool fieldDstIpV6Word3,
       bool fieldDstIpV6Word2,
+      bool fieldDstIpV6Word1,
+      bool fieldDstIpV6Word0,
       bool fieldSrcIpV4,
       bool fieldDstIpV4,
       bool fieldL4SrcPort,
@@ -321,6 +329,8 @@ class FakeAclTable {
         fieldDstIpV6(fieldDstIpV6),
         fieldDstIpV6Word3(fieldDstIpV6Word3),
         fieldDstIpV6Word2(fieldDstIpV6Word2),
+        fieldDstIpV6Word1(fieldDstIpV6Word1),
+        fieldDstIpV6Word0(fieldDstIpV6Word0),
         fieldSrcIpV4(fieldSrcIpV4),
         fieldDstIpV4(fieldDstIpV4),
         fieldL4SrcPort(fieldL4SrcPort),
@@ -367,6 +377,8 @@ class FakeAclTable {
   bool fieldDstIpV6;
   bool fieldDstIpV6Word3;
   bool fieldDstIpV6Word2;
+  bool fieldDstIpV6Word1;
+  bool fieldDstIpV6Word0;
   bool fieldSrcIpV4;
   bool fieldDstIpV4;
   bool fieldL4SrcPort;

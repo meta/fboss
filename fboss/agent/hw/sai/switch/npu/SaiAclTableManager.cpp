@@ -242,6 +242,8 @@ std::
       qualifierExistsFn(cfg::AclTableQualifier::DST_IPV6),
       qualifierExistsFn(cfg::AclTableQualifier::DST_IPV6_WORD3),
       qualifierExistsFn(cfg::AclTableQualifier::DST_IPV6_WORD2),
+      false, // dstIpv6Word1
+      false, // dstIpv6Word0
       qualifierExistsFn(cfg::AclTableQualifier::SRC_IPV4),
       qualifierExistsFn(cfg::AclTableQualifier::DST_IPV4),
       qualifierExistsFn(cfg::AclTableQualifier::L4_SRC_PORT),

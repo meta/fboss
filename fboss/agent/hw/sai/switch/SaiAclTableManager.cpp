@@ -1897,6 +1897,8 @@ AclEntrySaiId SaiAclTableManager::addAclEntry(
       fieldDstIpV6,
       fieldDstIpV6Word3,
       fieldDstIpV6Word2,
+      std::nullopt, // dstIpv6Word1
+      std::nullopt, // dstIpv6Word0
       fieldSrcIpV4,
       fieldDstIpV4,
       fieldSrcPort,

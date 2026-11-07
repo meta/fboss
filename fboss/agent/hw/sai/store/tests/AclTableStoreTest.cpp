@@ -58,6 +58,15 @@ class AclTableStoreTest : public SaiStoreTest {
         folly::IPAddressV6("0:0:9abc:def0::"),
         folly::IPAddressV6("0:0:ffff:ffff::"));
   }
+  std::pair<folly::IPAddressV6, folly::IPAddressV6> kDstIpV6Word1() const {
+    return std::make_pair(
+        folly::IPAddressV6("::4a1c:1230:0:0"),
+        folly::IPAddressV6("::efff:fffc:0:0"));
+  }
+  std::pair<folly::IPAddressV6, folly::IPAddressV6> kDstIpV6Word0() const {
+    return std::make_pair(
+        folly::IPAddressV6("::1"), folly::IPAddressV6("::ffff"));
+  }
 
   std::pair<folly::IPAddressV4, folly::IPAddressV4> kSrcIpV4() const {
     return std::make_pair(
@@ -268,6 +277,8 @@ class AclTableStoreTest : public SaiStoreTest {
             true, // dstIpv6
             true, // dstIpv6Word3
             true, // dstIpv6Word2
+            true, // dstIpv6Word1
+            true, // dstIpv6Word0
             true, // srcIpv4
             true, // dstIpv4
             true, // l4SrcPort
@@ -319,6 +330,8 @@ class AclTableStoreTest : public SaiStoreTest {
             AclEntryFieldIpV6(this->kDstIpV6()),
             AclEntryFieldIpV6(this->kDstIpV6Word3()),
             AclEntryFieldIpV6(this->kDstIpV6Word2()),
+            AclEntryFieldIpV6(this->kDstIpV6Word1()),
+            AclEntryFieldIpV6(this->kDstIpV6Word0()),
             AclEntryFieldIpV4(this->kSrcIpV4()),
             AclEntryFieldIpV4(this->kDstIpV4()),
             AclEntryFieldSaiObjectIdT(this->kSrcPort()),
@@ -478,6 +491,8 @@ TEST_P(AclTableStoreParamTest, aclTableCtorCreate) {
       true, // dstIpv6
       true, // dstIpv6Word3
       true, // dstIpv6Word2
+      true, // dstIpv6Word1
+      true, // dstIpv6Word0
       true, // srcIpv4
       true, // dstIpv4
       true, // l4SrcPort
@@ -537,6 +552,8 @@ TEST_P(AclTableStoreParamTest, AclEntryCreateCtor) {
       this->kDstIpV6(),
       this->kDstIpV6Word3(),
       this->kDstIpV6Word2(),
+      this->kDstIpV6Word1(),
+      this->kDstIpV6Word0(),
       this->kSrcIpV4(),
       this->kDstIpV4(),
       this->kSrcPort(),

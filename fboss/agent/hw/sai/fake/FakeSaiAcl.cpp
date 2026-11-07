@@ -30,6 +30,10 @@ bool FakeAclTable::entryFieldSupported(const sai_attribute_t& attr) const {
       return fieldDstIpV6Word3;
     case SAI_ACL_ENTRY_ATTR_FIELD_DST_IPV6_WORD2:
       return fieldDstIpV6Word2;
+    case SAI_ACL_ENTRY_ATTR_FIELD_DST_IPV6_WORD1:
+      return fieldDstIpV6Word1;
+    case SAI_ACL_ENTRY_ATTR_FIELD_DST_IPV6_WORD0:
+      return fieldDstIpV6Word0;
     case SAI_ACL_ENTRY_ATTR_FIELD_SRC_IP:
       return fieldSrcIpV4;
     case SAI_ACL_ENTRY_ATTR_FIELD_DST_IP:
@@ -131,6 +135,8 @@ sai_status_t create_acl_table_fn(
   bool fieldDstIpV6 = 0;
   bool fieldDstIpV6Word3 = 0;
   bool fieldDstIpV6Word2 = 0;
+  bool fieldDstIpV6Word1 = 0;
+  bool fieldDstIpV6Word0 = 0;
   bool fieldSrcIpV4 = 0;
   bool fieldDstIpV4 = 0;
   bool fieldL4SrcPort = 0;
@@ -193,6 +199,12 @@ sai_status_t create_acl_table_fn(
         break;
       case SAI_ACL_TABLE_ATTR_FIELD_DST_IPV6_WORD2:
         fieldDstIpV6Word2 = attr_list[i].value.booldata;
+        break;
+      case SAI_ACL_TABLE_ATTR_FIELD_DST_IPV6_WORD1:
+        fieldDstIpV6Word1 = attr_list[i].value.booldata;
+        break;
+      case SAI_ACL_TABLE_ATTR_FIELD_DST_IPV6_WORD0:
+        fieldDstIpV6Word0 = attr_list[i].value.booldata;
         break;
       case SAI_ACL_TABLE_ATTR_FIELD_SRC_IP:
         fieldSrcIpV4 = attr_list[i].value.booldata;
@@ -316,6 +328,8 @@ sai_status_t create_acl_table_fn(
       fieldDstIpV6,
       fieldDstIpV6Word3,
       fieldDstIpV6Word2,
+      fieldDstIpV6Word1,
+      fieldDstIpV6Word0,
       fieldSrcIpV4,
       fieldDstIpV4,
       fieldL4SrcPort,
@@ -448,6 +462,14 @@ sai_status_t get_acl_table_attribute_fn(
       case SAI_ACL_TABLE_ATTR_FIELD_DST_IPV6_WORD2: {
         const auto& aclTable = fs->aclTableManager.get(acl_table_id);
         attr[i].value.booldata = aclTable.fieldDstIpV6Word2;
+      } break;
+      case SAI_ACL_TABLE_ATTR_FIELD_DST_IPV6_WORD1: {
+        const auto& aclTable = fs->aclTableManager.get(acl_table_id);
+        attr[i].value.booldata = aclTable.fieldDstIpV6Word1;
+      } break;
+      case SAI_ACL_TABLE_ATTR_FIELD_DST_IPV6_WORD0: {
+        const auto& aclTable = fs->aclTableManager.get(acl_table_id);
+        attr[i].value.booldata = aclTable.fieldDstIpV6Word0;
       } break;
       case SAI_ACL_TABLE_ATTR_FIELD_SRC_IP: {
         const auto& aclTable = fs->aclTableManager.get(acl_table_id);
@@ -677,6 +699,22 @@ sai_status_t set_acl_entry_attribute_fn(
       aclEntry.fieldDstIpV6Word2Data =
           facebook::fboss::fromSaiIpAddress(attr->value.aclfield.data.ip6);
       aclEntry.fieldDstIpV6Word2Mask =
+          facebook::fboss::fromSaiIpAddress(attr->value.aclfield.mask.ip6);
+      res = SAI_STATUS_SUCCESS;
+      break;
+    case SAI_ACL_ENTRY_ATTR_FIELD_DST_IPV6_WORD1:
+      aclEntry.fieldDstIpV6Word1Enable = attr->value.aclfield.enable;
+      aclEntry.fieldDstIpV6Word1Data =
+          facebook::fboss::fromSaiIpAddress(attr->value.aclfield.data.ip6);
+      aclEntry.fieldDstIpV6Word1Mask =
+          facebook::fboss::fromSaiIpAddress(attr->value.aclfield.mask.ip6);
+      res = SAI_STATUS_SUCCESS;
+      break;
+    case SAI_ACL_ENTRY_ATTR_FIELD_DST_IPV6_WORD0:
+      aclEntry.fieldDstIpV6Word0Enable = attr->value.aclfield.enable;
+      aclEntry.fieldDstIpV6Word0Data =
+          facebook::fboss::fromSaiIpAddress(attr->value.aclfield.data.ip6);
+      aclEntry.fieldDstIpV6Word0Mask =
           facebook::fboss::fromSaiIpAddress(attr->value.aclfield.mask.ip6);
       res = SAI_STATUS_SUCCESS;
       break;
@@ -1067,6 +1105,24 @@ sai_status_t get_acl_entry_attribute_fn(
             &attr_list[i].value.aclfield.data.ip6);
         facebook::fboss::toSaiIpAddressV6(
             aclEntry.fieldDstIpV6Word2Mask,
+            &attr_list[i].value.aclfield.mask.ip6);
+        break;
+      case SAI_ACL_ENTRY_ATTR_FIELD_DST_IPV6_WORD1:
+        attr_list[i].value.aclfield.enable = aclEntry.fieldDstIpV6Word1Enable;
+        facebook::fboss::toSaiIpAddressV6(
+            aclEntry.fieldDstIpV6Word1Data,
+            &attr_list[i].value.aclfield.data.ip6);
+        facebook::fboss::toSaiIpAddressV6(
+            aclEntry.fieldDstIpV6Word1Mask,
+            &attr_list[i].value.aclfield.mask.ip6);
+        break;
+      case SAI_ACL_ENTRY_ATTR_FIELD_DST_IPV6_WORD0:
+        attr_list[i].value.aclfield.enable = aclEntry.fieldDstIpV6Word0Enable;
+        facebook::fboss::toSaiIpAddressV6(
+            aclEntry.fieldDstIpV6Word0Data,
+            &attr_list[i].value.aclfield.data.ip6);
+        facebook::fboss::toSaiIpAddressV6(
+            aclEntry.fieldDstIpV6Word0Mask,
             &attr_list[i].value.aclfield.mask.ip6);
         break;
       case SAI_ACL_ENTRY_ATTR_FIELD_SRC_IP:
