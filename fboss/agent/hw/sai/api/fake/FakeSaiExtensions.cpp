@@ -382,6 +382,11 @@ SaiPortTraits::Attributes::AttributeCsigLinkLocatorWrapper::operator()() {
 }
 
 std::optional<sai_attr_id_t>
+SaiPortTraits::Attributes::AttributeCbfcReceiverCreditLimit::operator()() {
+  return SAI_PORT_ATTR_EXT_CBFC_RECEIVER_CREDIT_LIMIT;
+}
+
+std::optional<sai_attr_id_t>
 SaiPortTraits::Attributes::AttributeAmIdles::operator()() {
   return std::nullopt;
 }

@@ -561,4 +561,9 @@ SaiPortTraits::Attributes::AttributeCsigLinkLocatorWrapper::operator()() {
 #endif
 }
 
+std::optional<sai_attr_id_t>
+SaiPortTraits::Attributes::AttributeCbfcReceiverCreditLimit::operator()() {
+  return std::nullopt;
+}
+
 } // namespace facebook::fboss

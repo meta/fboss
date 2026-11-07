@@ -665,6 +665,13 @@ SaiPortTraits::Attributes::AttributeCsigLinkLocatorWrapper::operator()() {
   return std::nullopt;
 }
 
+std::optional<sai_attr_id_t>
+SaiPortTraits::Attributes::AttributeCbfcReceiverCreditLimit::operator()() {
+  // TODO(agrewal): return the receiver credit limit extension once the
+  // Tomahawk Ultra 1 SAI defines it.
+  return std::nullopt;
+}
+
 const std::vector<sai_stat_id_t>&
 SaiPortTraits::macTxDataQueueMinWatermarkStats() {
 #if defined(BRCM_SAI_SDK_DNX_GTE_11_7) && !defined(BRCM_SAI_SDK_DNX_GTE_13_0)

@@ -731,6 +731,16 @@ struct SaiPortTraits {
         sai_uint64_t,
         AttributeLinkDownDebounceRetriggerCount,
         SaiIntDefault<sai_uint64_t>>;
+    // CBFC receiver credit limit: the input buffer headroom pool shared by
+    // every lossless VC on the port. Hardware applies it when the first VC on
+    // the port enables CBFC_RECEIVER_ENABLE, so it must be written before that.
+    struct AttributeCbfcReceiverCreditLimit {
+      std::optional<sai_attr_id_t> operator()();
+    };
+    using CbfcReceiverCreditLimit = SaiExtensionAttribute<
+        sai_uint32_t,
+        AttributeCbfcReceiverCreditLimit,
+        SaiIntDefault<sai_uint32_t>>;
 #if SAI_API_VERSION >= SAI_VERSION(1, 18, 0)
     // UEC Link Layer Retry per-port controls (UE Spec 1.0.2 section 5.1).
     // Mode local/remote enable LLR receive/transmit (section 5.1.3); the
@@ -866,6 +876,7 @@ struct SaiPortTraits {
       std::optional<Attributes::CbfcSenderCreditSize>,
       std::optional<Attributes::CbfcSenderPacketOverhead>,
       std::optional<Attributes::CbfcSenderCreditLimit>,
+      std::optional<Attributes::CbfcReceiverCreditLimit>,
 #endif
 #if SAI_API_VERSION >= SAI_VERSION(1, 9, 0)
       std::optional<Attributes::InterFrameGap>,
@@ -1190,6 +1201,7 @@ SAI_ATTRIBUTE_NAME(Port, LinkUpDebouncePeriodMs)
 SAI_ATTRIBUTE_NAME(Port, LinkDownDebouncePeriodMs)
 SAI_ATTRIBUTE_NAME(Port, LinkUpDebounceRetriggerCount)
 SAI_ATTRIBUTE_NAME(Port, LinkDownDebounceRetriggerCount)
+SAI_ATTRIBUTE_NAME(Port, CbfcReceiverCreditLimit)
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 3)
 SAI_ATTRIBUTE_NAME(Port, ExtOperStatusLatch)
 #endif
