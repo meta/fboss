@@ -617,6 +617,13 @@ class QsfpModule : public Transceiver {
    */
   void periodicUpdateQsfpData();
 
+  // Some module types can detect that the module changed even when the
+  // platform presence signal did not report an edge. The refresh path uses
+  // the existing OIR state-machine sequence to rediscover such a module.
+  virtual bool consumeTransceiverIdentityChange() {
+    return false;
+  }
+
   /*
    * Helpers to parse DOM data for DAC cables. These incorporate some
    * extra fields that FB has vendors put in the 'Vendor specific'
