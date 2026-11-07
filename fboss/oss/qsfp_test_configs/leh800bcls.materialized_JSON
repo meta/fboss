@@ -1,5 +1,7 @@
 {
   "defaultCommandLineArgs": {
+    "enable_port_cl72_retry": "true",
+    "enable_xphy_link_training_line_side": "true",
     "enable_xphy_link_training_sys_side": "true",
     "firmware_upgrade_on_coldboot": "true",
     "firmware_upgrade_on_tcvr_insert": "true",
