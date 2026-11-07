@@ -251,6 +251,7 @@ target_link_libraries(platform_manager_pkg_manager
   platform_manager_system_interface
   platform_fs_utils
   platform_utils
+  structured_logger
   Folly::folly
   FBThrift::thriftcpp2
 )

@@ -53,6 +53,8 @@ class PkgManager {
   std::string getKmodsRpmName() const;
   std::string getKmodsRpmBaseWithKernelName() const;
   std::string getBspKmodsFilePath() const;
+  bool bspKmodsOnDisk() const;
+  void logRpmAlert(const std::string& event, const std::string& msg) const;
   void closeWatchdogs() const;
   // Loads every kmod enumerated in kmods.json (shared kmods first, then bsp
   // kmods -- the reverse of the unload order).
