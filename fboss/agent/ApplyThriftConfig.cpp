@@ -3239,6 +3239,7 @@ shared_ptr<Port> ThriftConfigApplier::updatePort(
   std::optional<int64_t> cbfcSenderCreditLimit;
   std::optional<int16_t> cbfcSenderCreditSize;
   std::optional<int16_t> cbfcSenderPacketOverhead;
+  std::optional<int64_t> cbfcReceiverCreditLimit;
   std::optional<std::string> newCbfcConfigName;
   if (auto cbfcConfigName = portConf->cbfcConfigName()) {
     newCbfcConfigName = *cbfcConfigName;
@@ -3355,6 +3356,39 @@ shared_ptr<Port> ThriftConfigApplier::updatePort(
             cfg::switch_config_constants::PORT_CBFC_SENDER_CREDIT_LIMIT_MAX());
       }
       cbfcSenderCreditLimit = *limit;
+    }
+    if (auto limit = it->second.receiverCreditLimit()) {
+      constexpr int64_t kReceiverCreditLimitMax =
+          std::numeric_limits<uint32_t>::max();
+      if (*limit <= 0 || *limit > kReceiverCreditLimitMax) {
+        throw FbossError(
+            "Invalid receiverCreditLimit ",
+            *limit,
+            ", must be 1..",
+            kReceiverCreditLimitMax);
+      }
+      if (!asic->isCbfcReceiverCreditLimitSupported()) {
+        throw FbossError(
+            "Port ",
+            orig->getID(),
+            " cbfc config ",
+            *cbfcConfigName,
+            ": receiverCreditLimit is not supported by ",
+            asic->getAsicTypeStr());
+      }
+      if (std::none_of(
+              configuredVcs.begin(), configuredVcs.end(), [](const auto& vc) {
+                return *vc.receiverEnable();
+              })) {
+        throw FbossError(
+            "Port ",
+            orig->getID(),
+            " cbfc config ",
+            *cbfcConfigName,
+            ": receiverCreditLimit needs a virtual channel with"
+            " receiverEnable");
+      }
+      cbfcReceiverCreditLimit = *limit;
     }
     auto checkSupported = [&](const char* field,
                               int16_t value,
@@ -3668,6 +3702,7 @@ shared_ptr<Port> ThriftConfigApplier::updatePort(
       cbfcSenderCreditLimit == orig->getCbfcSenderCreditLimit() &&
       cbfcSenderCreditSize == orig->getCbfcSenderCreditSize() &&
       cbfcSenderPacketOverhead == orig->getCbfcSenderPacketOverhead() &&
+      cbfcReceiverCreditLimit == orig->getCbfcReceiverCreditLimit() &&
       virtualChannelsUnchanged && interfaceIDsUnchanged) {
     return nullptr;
   }
@@ -3719,6 +3754,7 @@ shared_ptr<Port> ThriftConfigApplier::updatePort(
   newPort->setCbfcSenderCreditLimit(cbfcSenderCreditLimit);
   newPort->setCbfcSenderCreditSize(cbfcSenderCreditSize);
   newPort->setCbfcSenderPacketOverhead(cbfcSenderPacketOverhead);
+  newPort->setCbfcReceiverCreditLimit(cbfcReceiverCreditLimit);
   newPort->setProfileConfig(*newProfileConfigRef);
   newPort->resetPinConfigs(newPinConfigs);
   newPort->setSerdesCustomCollection(newSerdesCustomCollection);

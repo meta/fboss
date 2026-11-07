@@ -216,6 +216,7 @@ struct PortFields {
   81: optional i16 cbfcSenderPacketOverhead;
   82: optional switch_config.CsigTagAction csigTagAction;
   83: optional i16 csigLinkLocator;
+  84: optional i64 cbfcReceiverCreditLimit;
 }
 
 typedef ctrl.SystemPortThrift SystemPortFields

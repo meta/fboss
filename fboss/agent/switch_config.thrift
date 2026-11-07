@@ -2420,6 +2420,12 @@ struct CbfcConfig {
   // (SAI_PORT_ATTR_CBFC_SENDER_PACKET_OVERHEAD). Same rules as
   // senderCreditSize; against another TU1, use 16.
   4: optional i16 senderPacketOverhead;
+  // Receiver input buffer headroom limit for the port, shared by every VC with
+  // receiverEnable. Hardware applies it when the first VC on the port enables
+  // its receiver, so at least one VC must set receiverEnable. Accepted only on
+  // ASICs whose SAI takes a NOS-set receiver limit. Unset leaves the SDK
+  // default.
+  5: optional i64 receiverCreditLimit;
 }
 
 // Defines PG (priority group) configuration for ports

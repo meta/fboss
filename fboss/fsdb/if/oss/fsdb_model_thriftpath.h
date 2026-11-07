@@ -4144,6 +4144,7 @@ class ChildThriftPath<::facebook::fboss::cfg::CbfcConfig, ::facebook::fboss::fsd
     STRUCT_CHILD_GETTERS(senderCreditLimit, 2);
     STRUCT_CHILD_GETTERS(senderCreditSize, 3);
     STRUCT_CHILD_GETTERS(senderPacketOverhead, 4);
+    STRUCT_CHILD_GETTERS(receiverCreditLimit, 5);
 };
 
 
@@ -5544,6 +5545,7 @@ class ChildThriftPath<::facebook::fboss::state::PortFields, ::facebook::fboss::f
     STRUCT_CHILD_GETTERS(cbfcSenderPacketOverhead, 81);
     STRUCT_CHILD_GETTERS(csigTagAction, 82);
     STRUCT_CHILD_GETTERS(csigLinkLocator, 83);
+    STRUCT_CHILD_GETTERS(cbfcReceiverCreditLimit, 84);
 };
 
 
