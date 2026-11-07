@@ -1,0 +1,292 @@
+{
+  "testData": {
+    "SCM.DPM": {
+      "i2cTestData": {
+        "i2cGetData": [
+          {
+            "reg": "0x98",
+            "expected": "0x22"
+          }
+        ]
+      },
+      "hwmonTestData": {
+        "expectedFeatures": [
+          "vout1",
+          "vout2",
+          "vout3",
+          "vout4",
+          "vout5",
+          "vout6",
+          "vout7",
+          "vout8",
+          "vout9",
+          "vout10",
+          "vout11",
+          "vout12",
+          "vout13",
+          "vout14",
+          "vout15",
+          "vout16",
+          "vout17"
+        ]
+      }
+    },
+    "SMB.DPM_1": {
+      "i2cTestData": {
+        "i2cGetData": [
+          {
+            "reg": "0x98",
+            "expected": "0x22"
+          }
+        ]
+      },
+      "hwmonTestData": {
+        "expectedFeatures": [
+          "vout1",
+          "vout2",
+          "vout3",
+          "vout4",
+          "vout5",
+          "vout6",
+          "vout7",
+          "vout8",
+          "vout9",
+          "vout10",
+          "vout11",
+          "vout12",
+          "vout13",
+          "vout14",
+          "vout15",
+          "vout16",
+          "vout17"
+        ]
+      }
+    },
+    "SMB.DPM_2": {
+      "i2cTestData": {
+        "i2cGetData": [
+          {
+            "reg": "0x98",
+            "expected": "0x22"
+          }
+        ]
+      },
+      "hwmonTestData": {
+        "expectedFeatures": [
+          "vout1",
+          "vout2",
+          "vout3",
+          "vout4",
+          "vout5",
+          "vout6",
+          "vout7",
+          "vout8",
+          "vout9",
+          "vout10",
+          "vout11",
+          "vout12",
+          "vout13",
+          "vout14",
+          "vout15",
+          "vout16",
+          "vout17"
+        ]
+      }
+    },
+    "SMB.DPM_3": {
+      "i2cTestData": {
+        "i2cGetData": [
+          {
+            "reg": "0x98",
+            "expected": "0x22"
+          }
+        ]
+      },
+      "hwmonTestData": {
+        "expectedFeatures": [
+          "vout1",
+          "vout2",
+          "vout3",
+          "vout4",
+          "vout5",
+          "vout6",
+          "vout7",
+          "vout8",
+          "vout9",
+          "vout10",
+          "vout11",
+          "vout12",
+          "vout13",
+          "vout14",
+          "vout15",
+          "vout16",
+          "vout17"
+        ]
+      }
+    },
+    "SMB.SWITCH_CARD_TEMP_SENSOR": {
+      "i2cTestData": {
+        "i2cGetData": [
+          {
+            "reg": "0xfe",
+            "expected": "0x54"
+          },
+          {
+            "reg": "0xff",
+            "expected": "0x14"
+          }
+        ]
+      },
+      "hwmonTestData": {
+        "expectedFeatures": [
+          "temp1",
+          "temp2",
+          "temp3",
+          "temp4",
+          "temp5"
+        ]
+      }
+    },
+    "SMB.SWITCH_CARD_TEMP_SENSOR_1": {
+      "i2cTestData": {
+        "i2cGetData": [
+          {
+            "reg": "0xfe",
+            "expected": "0x54"
+          },
+          {
+            "reg": "0xff",
+            "expected": "0x04"
+          }
+        ]
+      },
+      "hwmonTestData": {
+        "expectedFeatures": [
+          "temp1",
+          "temp2",
+          "temp3",
+          "temp4",
+          "temp5",
+          "temp6",
+          "temp7",
+          "temp8",
+          "temp9"
+        ]
+      }
+    },
+    "SMB.SWITCH_CARD_TEMP_SENSOR_2": {
+      "i2cTestData": {
+        "i2cGetData": [
+          {
+            "reg": "0xfe",
+            "expected": "0x54"
+          },
+          {
+            "reg": "0xff",
+            "expected": "0x04"
+          }
+        ]
+      },
+      "hwmonTestData": {
+        "expectedFeatures": [
+          "temp1",
+          "temp2",
+          "temp3",
+          "temp4",
+          "temp5",
+          "temp6",
+          "temp7",
+          "temp8",
+          "temp9"
+        ]
+      }
+    },
+    "SMB.SWITCH_CARD_TEMP_SENSOR_3": {
+      "i2cTestData": {
+        "i2cGetData": [
+          {
+            "reg": "0xfe",
+            "expected": "0x54"
+          },
+          {
+            "reg": "0xff",
+            "expected": "0x04"
+          }
+        ]
+      },
+      "hwmonTestData": {
+        "expectedFeatures": [
+          "temp1",
+          "temp2",
+          "temp3",
+          "temp4",
+          "temp5",
+          "temp6",
+          "temp7",
+          "temp8",
+          "temp9"
+        ]
+      }
+    },
+    "SMB.MGMT_TEMP_SENSOR": {
+      "i2cTestData": {
+        "i2cGetData": [
+          {
+            "reg": "0xfe",
+            "expected": "0x55"
+          },
+          {
+            "reg": "0xff",
+            "expected": "0x00"
+          }
+        ]
+      },
+      "hwmonTestData": {
+        "expectedFeatures": [
+          "temp1",
+          "temp2"
+        ]
+      }
+    },
+    "SMB.PSU1": {
+      "i2cTestData": {
+        "i2cGetData": [
+          {
+            "reg": "0x98",
+            "expected": "0x22"
+          }
+        ]
+      }
+    },
+    "SMB.PSU2": {
+      "i2cTestData": {
+        "i2cGetData": [
+          {
+            "reg": "0x98",
+            "expected": "0x22"
+          }
+        ]
+      }
+    },
+    "SMB.PSU3": {
+      "i2cTestData": {
+        "i2cGetData": [
+          {
+            "reg": "0x98",
+            "expected": "0x22"
+          }
+        ]
+      }
+    },
+    "SMB.PSU4": {
+      "i2cTestData": {
+        "i2cGetData": [
+          {
+            "reg": "0x98",
+            "expected": "0x22"
+          }
+        ]
+      }
+    }
+  }
+}
