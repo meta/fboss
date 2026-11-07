@@ -1096,6 +1096,14 @@ add_library(fboss2_config_lib
   fboss/cli/fboss2/commands/config/tunnel/ip_in_ip/decap/CmdConfigTunnelIpInIpDecap.h
   fboss/cli/fboss2/commands/config/tunnel/ip_in_ip/encap/CmdConfigTunnelIpInIpEncap.cpp
   fboss/cli/fboss2/commands/config/tunnel/ip_in_ip/encap/CmdConfigTunnelIpInIpEncap.h
+  fboss/cli/fboss2/commands/config/tunnel/srv6/CmdConfigTunnelSrv6.cpp
+  fboss/cli/fboss2/commands/config/tunnel/srv6/CmdConfigTunnelSrv6.h
+  fboss/cli/fboss2/commands/config/tunnel/srv6/TunnelSrv6ConfigUtils.cpp
+  fboss/cli/fboss2/commands/config/tunnel/srv6/TunnelSrv6ConfigUtils.h
+  fboss/cli/fboss2/commands/config/tunnel/srv6/decap/CmdConfigTunnelSrv6Decap.cpp
+  fboss/cli/fboss2/commands/config/tunnel/srv6/decap/CmdConfigTunnelSrv6Decap.h
+  fboss/cli/fboss2/commands/config/tunnel/srv6/encap/CmdConfigTunnelSrv6Encap.cpp
+  fboss/cli/fboss2/commands/config/tunnel/srv6/encap/CmdConfigTunnelSrv6Encap.h
   fboss/cli/fboss2/commands/config/vlan/CmdConfigVlan.cpp
   fboss/cli/fboss2/commands/config/vlan/CmdConfigVlan.h
   fboss/cli/fboss2/commands/config/vlan/CmdConfigVlanDefault.cpp
@@ -1200,6 +1208,14 @@ add_library(fboss2_config_lib
   fboss/cli/fboss2/commands/delete/tunnel/ip_in_ip/decap/CmdDeleteTunnelIpInIpDecap.h
   fboss/cli/fboss2/commands/delete/tunnel/ip_in_ip/encap/CmdDeleteTunnelIpInIpEncap.cpp
   fboss/cli/fboss2/commands/delete/tunnel/ip_in_ip/encap/CmdDeleteTunnelIpInIpEncap.h
+  fboss/cli/fboss2/commands/delete/tunnel/srv6/CmdDeleteTunnelSrv6.cpp
+  fboss/cli/fboss2/commands/delete/tunnel/srv6/CmdDeleteTunnelSrv6.h
+  fboss/cli/fboss2/commands/delete/tunnel/srv6/TunnelSrv6DeleteUtils.cpp
+  fboss/cli/fboss2/commands/delete/tunnel/srv6/TunnelSrv6DeleteUtils.h
+  fboss/cli/fboss2/commands/delete/tunnel/srv6/decap/CmdDeleteTunnelSrv6Decap.cpp
+  fboss/cli/fboss2/commands/delete/tunnel/srv6/decap/CmdDeleteTunnelSrv6Decap.h
+  fboss/cli/fboss2/commands/delete/tunnel/srv6/encap/CmdDeleteTunnelSrv6Encap.cpp
+  fboss/cli/fboss2/commands/delete/tunnel/srv6/encap/CmdDeleteTunnelSrv6Encap.h
   fboss/cli/fboss2/commands/delete/vlan/CmdDeleteVlan.cpp
   fboss/cli/fboss2/commands/delete/vlan/CmdDeleteVlan.h
   fboss/cli/fboss2/session/ConfigFileManager.cpp

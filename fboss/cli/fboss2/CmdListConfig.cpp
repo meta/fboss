@@ -78,6 +78,9 @@
 #include "fboss/cli/fboss2/commands/config/tunnel/ip_in_ip/CmdConfigTunnelIpInIp.h"
 #include "fboss/cli/fboss2/commands/config/tunnel/ip_in_ip/decap/CmdConfigTunnelIpInIpDecap.h"
 #include "fboss/cli/fboss2/commands/config/tunnel/ip_in_ip/encap/CmdConfigTunnelIpInIpEncap.h"
+#include "fboss/cli/fboss2/commands/config/tunnel/srv6/CmdConfigTunnelSrv6.h"
+#include "fboss/cli/fboss2/commands/config/tunnel/srv6/decap/CmdConfigTunnelSrv6Decap.h"
+#include "fboss/cli/fboss2/commands/config/tunnel/srv6/encap/CmdConfigTunnelSrv6Encap.h"
 #include "fboss/cli/fboss2/commands/config/vlan/CmdConfigVlan.h"
 #include "fboss/cli/fboss2/commands/config/vlan/CmdConfigVlanDefault.h"
 #include "fboss/cli/fboss2/commands/config/vlan/port/CmdConfigVlanPort.h"
@@ -136,6 +139,9 @@
 #include "fboss/cli/fboss2/commands/delete/tunnel/ip_in_ip/CmdDeleteTunnelIpInIp.h"
 #include "fboss/cli/fboss2/commands/delete/tunnel/ip_in_ip/decap/CmdDeleteTunnelIpInIpDecap.h"
 #include "fboss/cli/fboss2/commands/delete/tunnel/ip_in_ip/encap/CmdDeleteTunnelIpInIpEncap.h"
+#include "fboss/cli/fboss2/commands/delete/tunnel/srv6/CmdDeleteTunnelSrv6.h"
+#include "fboss/cli/fboss2/commands/delete/tunnel/srv6/decap/CmdDeleteTunnelSrv6Decap.h"
+#include "fboss/cli/fboss2/commands/delete/tunnel/srv6/encap/CmdDeleteTunnelSrv6Encap.h"
 #include "fboss/cli/fboss2/commands/delete/vlan/CmdDeleteVlan.h"
 
 namespace facebook::fboss {
@@ -653,23 +659,41 @@ const CommandTree& kConfigCommandTree() {
        commandHandler<CmdConfigTunnel>,
        argTypeHandler<CmdConfigTunnelTraits>,
        {{
-           "ip-in-ip",
-           "Configure IP-in-IP tunnel (use 'encap' or 'decap')",
-           commandHandler<CmdConfigTunnelIpInIp>,
-           argTypeHandler<CmdConfigTunnelIpInIpTraits>,
-           {{
-                "encap",
-                "Configure IP-in-IP encap tunnel",
-                commandHandler<CmdConfigTunnelIpInIpEncap>,
-                argRegistrar<CmdConfigTunnelIpInIpEncapTraits>,
-            },
-            {
-                "decap",
-                "Configure IP-in-IP decap tunnel",
-                commandHandler<CmdConfigTunnelIpInIpDecap>,
-                argRegistrar<CmdConfigTunnelIpInIpDecapTraits>,
-            }},
-       }}},
+            "ip-in-ip",
+            "Configure IP-in-IP tunnel (use 'encap' or 'decap')",
+            commandHandler<CmdConfigTunnelIpInIp>,
+            argTypeHandler<CmdConfigTunnelIpInIpTraits>,
+            {{
+                 "encap",
+                 "Configure IP-in-IP encap tunnel",
+                 commandHandler<CmdConfigTunnelIpInIpEncap>,
+                 argRegistrar<CmdConfigTunnelIpInIpEncapTraits>,
+             },
+             {
+                 "decap",
+                 "Configure IP-in-IP decap tunnel",
+                 commandHandler<CmdConfigTunnelIpInIpDecap>,
+                 argRegistrar<CmdConfigTunnelIpInIpDecapTraits>,
+             }},
+        },
+        {
+            "srv6",
+            "Configure SRv6 tunnel (use 'encap' or 'decap')",
+            commandHandler<CmdConfigTunnelSrv6>,
+            argTypeHandler<CmdConfigTunnelSrv6Traits>,
+            {{
+                 "encap",
+                 "Configure SRv6 encap tunnel",
+                 commandHandler<CmdConfigTunnelSrv6Encap>,
+                 argRegistrar<CmdConfigTunnelSrv6EncapTraits>,
+             },
+             {
+                 "decap",
+                 "Configure SRv6 decap tunnel",
+                 commandHandler<CmdConfigTunnelSrv6Decap>,
+                 argRegistrar<CmdConfigTunnelSrv6DecapTraits>,
+             }},
+        }}},
 
       {"config",
        "traffic-counter",
@@ -1052,24 +1076,42 @@ const CommandTree& kConfigCommandTree() {
        commandHandler<CmdDeleteTunnel>,
        argTypeHandler<CmdDeleteTunnelTraits>,
        {{
-           "ip-in-ip",
-           "Delete IP-in-IP tunnel or reset its attributes (use 'encap' or "
-           "'decap')",
-           commandHandler<CmdDeleteTunnelIpInIp>,
-           argTypeHandler<CmdDeleteTunnelIpInIpTraits>,
-           {{
-                "encap",
-                "Delete IP-in-IP encap tunnel or reset its attributes",
-                commandHandler<CmdDeleteTunnelIpInIpEncap>,
-                argRegistrar<CmdDeleteTunnelIpInIpEncapTraits>,
-            },
-            {
-                "decap",
-                "Delete IP-in-IP decap tunnel or reset its attributes",
-                commandHandler<CmdDeleteTunnelIpInIpDecap>,
-                argRegistrar<CmdDeleteTunnelIpInIpDecapTraits>,
-            }},
-       }}},
+            "ip-in-ip",
+            "Delete IP-in-IP tunnel or reset its attributes (use 'encap' or "
+            "'decap')",
+            commandHandler<CmdDeleteTunnelIpInIp>,
+            argTypeHandler<CmdDeleteTunnelIpInIpTraits>,
+            {{
+                 "encap",
+                 "Delete IP-in-IP encap tunnel or reset its attributes",
+                 commandHandler<CmdDeleteTunnelIpInIpEncap>,
+                 argRegistrar<CmdDeleteTunnelIpInIpEncapTraits>,
+             },
+             {
+                 "decap",
+                 "Delete IP-in-IP decap tunnel or reset its attributes",
+                 commandHandler<CmdDeleteTunnelIpInIpDecap>,
+                 argRegistrar<CmdDeleteTunnelIpInIpDecapTraits>,
+             }},
+        },
+        {
+            "srv6",
+            "Delete SRv6 tunnel or reset optional attributes",
+            commandHandler<CmdDeleteTunnelSrv6>,
+            argTypeHandler<CmdDeleteTunnelSrv6Traits>,
+            {{
+                 "encap",
+                 "Delete SRv6 encap tunnel or reset optional attributes",
+                 commandHandler<CmdDeleteTunnelSrv6Encap>,
+                 argRegistrar<CmdDeleteTunnelSrv6EncapTraits>,
+             },
+             {
+                 "decap",
+                 "Delete SRv6 decap tunnel or reset optional attributes",
+                 commandHandler<CmdDeleteTunnelSrv6Decap>,
+                 argRegistrar<CmdDeleteTunnelSrv6DecapTraits>,
+             }},
+        }}},
 
       {"delete",
        "traffic-counter",
