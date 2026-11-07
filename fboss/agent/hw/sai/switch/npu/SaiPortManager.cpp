@@ -397,6 +397,7 @@ PortSaiId SaiPortManager::addPortImpl(const std::shared_ptr<Port>& swPort) {
   auto saiPort = portStore.setObject(portKey, attributes, swPort->getID());
   handle->port = saiPort;
   programSerdes(saiPort, swPort, handle.get());
+  programFdrEnableBestEffort(saiPort, swPort);
   programLlr(swPort, handle.get());
   managerTable_->virtualChannelManager().programVirtualChannels(
       swPort, saiPort->adapterKey());
@@ -518,6 +519,7 @@ void SaiPortManager::changePortImpl(
   auto saiPort = portStore.setObject(portKey, newAttributes, newPort->getID());
 
   changeZeroPreemphasis(oldPort, newPort);
+  programFdrEnableBestEffort(saiPort, newPort);
 
   programSerdes(saiPort, newPort, existingPort);
   // if vlan changed update it, this is important for rx processing
@@ -906,15 +908,13 @@ SaiPortTraits::CreateAttributes SaiPortManager::attributesFromSwPort(
     linkTrainingEnable = swPort->getLinkTraining().value_or(false);
   }
 
+  // FdrEnable is intentionally kept OUT of the create-time attribute tuple and
+  // applied best-effort after the port object exists (see
+  // programFdrEnableBestEffort), so an unsupported stats attribute can never
+  // abort the agent during port programming.
   std::optional<bool> fdrEnable;
 #if defined(BRCM_SAI_SDK_GTE_10_0) || defined(BRCM_SAI_SDK_DNX_GTE_11_0)
-  if ((swPort->getPortType() == cfg::PortType::INTERFACE_PORT ||
-       swPort->getPortType() == cfg::PortType::HYPER_PORT_MEMBER) &&
-      adminState &&
-      platform_->getAsic()->isSupported(
-          HwAsic::Feature::SAI_FEC_CODEWORDS_STATS)) {
-    fdrEnable = true;
-  }
+  // (intentionally empty: FDR is programmed best-effort post-create)
 #endif
   auto ptpStatusOpt = managerTable_->switchManager().getPtpTcEnabled();
   uint16_t vlanId = swPort->getIngressVlan();
@@ -1534,6 +1534,53 @@ bool SaiPortManager::llrProfileBindingChanged(
   return boundProfile != wanted;
 #else
   return false;
+#endif
+}
+
+void SaiPortManager::programFdrEnableBestEffort(
+    const std::shared_ptr<SaiPort>& saiPort,
+    const std::shared_ptr<Port>& swPort) {
+#if defined(BRCM_SAI_SDK_GTE_10_0) || defined(BRCM_SAI_SDK_DNX_GTE_11_0)
+  bool adminState =
+      swPort->getAdminState() == cfg::PortState::ENABLED ? true : false;
+  bool fecCodewordsStatsSupported = platform_->getAsic()->isSupported(
+      HwAsic::Feature::SAI_FEC_CODEWORDS_STATS);
+  // Same gate as before: only data-plane ports, admin-up, on ASICs that claim
+  // to support FEC codeword (FDR) statistics.
+  bool fdrGate = (swPort->getPortType() == cfg::PortType::INTERFACE_PORT ||
+                  swPort->getPortType() == cfg::PortType::HYPER_PORT_MEMBER) &&
+      adminState && fecCodewordsStatsSupported;
+  // FDR-GATE debug: print the three gate conditions and whether FDR will be
+  // attempted for this port. Unlike the old create-time gate, an attempt that
+  // the SDK rejects is now tolerated (see catch below) instead of aborting.
+  XLOG(DBG2) << "FDR-GATE: portId=" << swPort->getID() << " portType="
+             << apache::thrift::util::enumNameSafe(swPort->getPortType())
+             << " adminState=" << (adminState ? "ENABLED" : "DISABLED")
+             << " fecCodewordsStatsSupported=" << fecCodewordsStatsSupported
+             << " fdrEnable=" << (fdrGate ? "true (best-effort)" : "nullopt");
+  if (!fdrGate) {
+    return;
+  }
+  try {
+    SaiApiTable::getInstance()->portApi().setAttribute(
+        saiPort->adapterKey(), SaiPortTraits::Attributes::FdrEnable{true});
+  } catch (const SaiApiError& e) {
+    auto status = e.getSaiStatus();
+    if (status == SAI_STATUS_NOT_SUPPORTED ||
+        status == SAI_STATUS_NOT_IMPLEMENTED) {
+      // Stats-only attribute rejected by the SDK for this port (e.g. TH5
+      // management / auxiliary ports). Continue without FDR codeword stats
+      // rather than aborting the agent.
+      XLOG(WARN) << "FdrEnable not supported on port " << swPort->getID()
+                 << " (" << e.what()
+                 << "); continuing without FDR codeword stats";
+    } else {
+      throw;
+    }
+  }
+#else
+  (void)saiPort;
+  (void)swPort;
 #endif
 }
 

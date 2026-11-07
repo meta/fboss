@@ -458,6 +458,15 @@ class SaiPortManager {
       std::shared_ptr<SaiPort> saiPort,
       std::shared_ptr<Port> swPort,
       SaiPortHandle* portHandle);
+  // Best-effort programming of SAI_PORT_ATTR_FDR_ENABLE (FEC codeword / S0-S16
+  // stats). Some ASIC/SDK combos advertise it at the SAI layer but reject it in
+  // the SDK for certain ports (e.g. TH5 mgmt/aux ports) with
+  // SAI_STATUS_NOT_SUPPORTED. Setting it via setObject at create time makes
+  // that fatal (uncaught SaiApiError -> terminate during init). This applies it
+  // separately and tolerates NOT_SUPPORTED / NOT_IMPLEMENTED.
+  void programFdrEnableBestEffort(
+      const std::shared_ptr<SaiPort>& saiPort,
+      const std::shared_ptr<Port>& swPort);
   void programLlr(std::shared_ptr<Port> swPort, SaiPortHandle* portHandle);
   bool llrProfileBindingChanged(
       std::optional<sai_object_id_t> boundProfile,
