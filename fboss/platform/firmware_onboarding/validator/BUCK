@@ -57,6 +57,7 @@ python_unittest(
         "//fboss/platform/firmware_onboarding/configs/icecube800banw:spec": "tests/icecube800banw.json",
         "//fboss/platform/firmware_onboarding/configs/icecube800bc:spec": "tests/icecube800bc.json",
         "//fboss/platform/firmware_onboarding/configs/m4062nhp:spec": "tests/m4062nhp.json",
+        "//fboss/platform/firmware_onboarding/configs/m4340nhp:spec": "tests/m4340nhp.json",
     },
     deps = [":preflight"],
 )
