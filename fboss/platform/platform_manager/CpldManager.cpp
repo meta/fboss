@@ -116,6 +116,10 @@ void createCpldSysfsAttrs(
             "Failed to open CPLD char dev {}: {}", charDevPath, e.what()));
   }
 
+  // Clear attrs left over from a previous run (driver state outlives a
+  // platform_manager restart) so CREATE below doesn't hit "already exists".
+  ioctl(devFile.fd(), FBCPLD_IOC_SYSFS_DESTROY_ALL);
+
   auto request = buildCpldIoctlRequest(cpldSysfsAttrs);
 
   int ret = ioctl(devFile.fd(), FBCPLD_IOC_SYSFS_CREATE, &request);
