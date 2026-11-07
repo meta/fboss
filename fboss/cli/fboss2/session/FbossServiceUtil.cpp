@@ -13,11 +13,16 @@
 #include <fmt/format.h>
 #include <folly/String.h>
 #include <glog/logging.h>
+#include <thrift/lib/cpp/TApplicationException.h>
+#include <thrift/lib/cpp/transport/TTransportException.h>
 #include <chrono>
 #include <stdexcept>
+#include <string>
 #include <thread>
+#include <vector>
 #include "fboss/agent/AgentDirectoryUtil.h"
 #include "fboss/agent/if/gen-cpp2/FbossCtrl.h"
+#include "fboss/agent/if/gen-cpp2/fboss_types.h"
 #include "fboss/cli/fboss2/session/SystemdInterface.h"
 #include "fboss/cli/fboss2/utils/CmdClientUtilsCommon.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
@@ -33,6 +38,38 @@ constexpr std::string_view kNetosBgpd = "netos.service.fboss_bgp";
 constexpr std::string_view kNetosHwAgentPrefix =
     "netos.service.fboss_wedge_agent_";
 constexpr std::string_view kSystemdServiceSuffix = ".service";
+
+// The CLI's action levels and the services' apply methods are the same
+// three steps, from least to most disruptive.
+facebook::fboss::thrift::ConfigApplyMethod toApplyMethod(
+    facebook::fboss::cli::ConfigActionLevel level) {
+  using facebook::fboss::cli::ConfigActionLevel;
+  using facebook::fboss::thrift::ConfigApplyMethod;
+  switch (level) {
+    case ConfigActionLevel::HITLESS:
+      return ConfigApplyMethod::RELOAD;
+    case ConfigActionLevel::SERVICE_RESTART:
+      return ConfigApplyMethod::RESTART;
+    case ConfigActionLevel::DISRUPTIVE_SERVICE_RESTART:
+      return ConfigApplyMethod::DISRUPTIVE_RESTART;
+  }
+  return ConfigApplyMethod::RELOAD;
+}
+
+facebook::fboss::cli::ConfigActionLevel toActionLevel(
+    facebook::fboss::thrift::ConfigApplyMethod method) {
+  using facebook::fboss::cli::ConfigActionLevel;
+  using facebook::fboss::thrift::ConfigApplyMethod;
+  switch (method) {
+    case ConfigApplyMethod::RELOAD:
+      return ConfigActionLevel::HITLESS;
+    case ConfigApplyMethod::RESTART:
+      return ConfigActionLevel::SERVICE_RESTART;
+    case ConfigApplyMethod::DISRUPTIVE_RESTART:
+      return ConfigActionLevel::DISRUPTIVE_SERVICE_RESTART;
+  }
+  return ConfigActionLevel::DISRUPTIVE_SERVICE_RESTART;
+}
 } // namespace
 
 namespace facebook::fboss {
@@ -224,6 +261,86 @@ std::vector<std::string> FbossServiceUtil::reloadConfig(
           "bgpd does not support config reload; it must be restarted");
   }
   return reloadedServices;
+}
+
+void FbossServiceUtil::validateConfig(
+    cli::ServiceType service,
+    const std::string& config,
+    cli::ConfigActionLevel level,
+    const HostInfo& hostInfo) {
+  switch (service) {
+    case cli::ServiceType::AGENT: {
+      // Served by the sw_agent in split mode and by wedge_agent otherwise;
+      // either way it is the agent's FbossCtrl endpoint.
+      LOG(INFO) << "Validating config with the agent";
+      thrift::ConfigValidationResult result;
+      try {
+        auto client = utils::createClient<
+            apache::thrift::Client<facebook::fboss::FbossCtrl>>(hostInfo);
+        client->sync_validateConfig(result, config, toApplyMethod(level));
+      } catch (const thrift::FbossBaseError& ex) {
+        // The agent could not run the validation, e.g. it is still starting.
+        if (level != cli::ConfigActionLevel::HITLESS) {
+          // Restarting the agent does not need it to be configured, and may be
+          // how it gets out of that state.
+          LOG(WARNING) << "Agent could not validate the config, skipping "
+                       << "validation since the commit restarts it: "
+                       << ex.what();
+          break;
+        }
+        // reloadConfig() would fail the same way.
+        throw std::runtime_error(
+            fmt::format("Agent could not validate the config: {}", ex.what()));
+      } catch (const apache::thrift::TApplicationException& ex) {
+        if (ex.getType() !=
+            apache::thrift::TApplicationException::UNKNOWN_METHOD) {
+          throw std::runtime_error(
+              fmt::format(
+                  "Agent could not validate the config: {}", ex.what()));
+        }
+        LOG(WARNING)
+            << "Agent does not support validateConfig(); skipping validation";
+        break;
+      } catch (const apache::thrift::transport::TTransportException& ex) {
+        // Only a refused connection means the agent is down. Any other
+        // transport error came after the request was sent, e.g. the agent
+        // died or hung validating this very config, so it must not be
+        // mistaken for "nothing to validate against".
+        if (ex.getType() !=
+            apache::thrift::transport::TTransportException::NOT_OPEN) {
+          throw;
+        }
+        LOG(WARNING) << "Cannot reach the agent to validate the config, "
+                     << "skipping validation: " << ex.what();
+        break;
+      }
+      if (!result.errors()->empty()) {
+        std::vector<std::string> reasons;
+        reasons.reserve(result.errors()->size());
+        for (const auto& error : *result.errors()) {
+          if (auto required = error.requiredApplyMethod()) {
+            // A valid change that this commit's restart cannot make.
+            reasons.push_back(
+                fmt::format(
+                    "{} (needs an agent {}, this commit would {})",
+                    *error.message(),
+                    restartTypeName(service, toActionLevel(*required)),
+                    restartTypeName(service, level)));
+          } else {
+            reasons.push_back(*error.message());
+          }
+        }
+        throw std::runtime_error(
+            fmt::format(
+                "Agent rejected the config: {}", folly::join("; ", reasons)));
+      }
+      LOG(INFO) << "Config validated by the agent";
+      break;
+    }
+    case cli::ServiceType::BGP:
+      // bgpd has no validateConfig() RPC yet.
+      break;
+  }
 }
 
 std::string FbossServiceUtil::restartTypeName(
