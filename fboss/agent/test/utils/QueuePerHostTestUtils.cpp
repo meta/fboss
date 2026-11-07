@@ -394,12 +394,15 @@ void deleteTtlCounters(cfg::SwitchConfig* config) {
 
 void addTtlAclEntry(
     cfg::SwitchConfig* config,
-    const std::string& aclTableName) {
+    const std::string& aclTableName,
+    bool aclByteCounterSupported) {
   cfg::Ttl ttl;
   std::tie(*ttl.value(), *ttl.mask()) = std::make_tuple(0x80, 0x80);
   auto ttlCounterName = getQueuePerHostTtlCounterName();
-  std::vector<cfg::CounterType> counterTypes{
-      cfg::CounterType::PACKETS, cfg::CounterType::BYTES};
+  std::vector<cfg::CounterType> counterTypes{cfg::CounterType::PACKETS};
+  if (aclByteCounterSupported) {
+    counterTypes.push_back(cfg::CounterType::BYTES);
+  }
   utility::addTrafficCounter(config, ttlCounterName, counterTypes);
 
   cfg::AclEntry ttlAcl{};
@@ -407,17 +410,15 @@ void addTtlAclEntry(
   ttlAcl.ttl() = ttl;
   ttlAcl.actionType() = cfg::AclActionType::PERMIT;
   utility::addAclEntry(config, ttlAcl, aclTableName);
-  std::vector<cfg::CounterType> setCounterTypes{
-      cfg::CounterType::PACKETS, cfg::CounterType::BYTES};
-
   utility::addAclStat(
-      config, getQueuePerHostTtlAclName(), ttlCounterName, setCounterTypes);
+      config, getQueuePerHostTtlAclName(), ttlCounterName, counterTypes);
 }
 
 // Utility to add TTL ACL table to a multi acl table group
 void addTtlAclTable(
     cfg::SwitchConfig* config,
     int16_t priority,
+    bool aclByteCounterSupported,
     bool addExtraQualifier) {
   std::vector<cfg::AclTableQualifier> qualifiers = {
       cfg::AclTableQualifier::TTL, cfg::AclTableQualifier::DSCP};
@@ -436,7 +437,7 @@ void addTtlAclTable(
        cfg::AclTableActionType::COUNTER},
       qualifiers);
 
-  addTtlAclEntry(config, getTtlAclTableName());
+  addTtlAclEntry(config, getTtlAclTableName(), aclByteCounterSupported);
 }
 
 void deleteQueuePerHostMatchers(cfg::SwitchConfig* config) {

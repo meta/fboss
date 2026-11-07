@@ -182,6 +182,10 @@ TEST_F(AgentHwAclStatTest, AclStatCreateMultiple) {
 }
 
 TEST_F(AgentHwAclStatCounterTypeTest, AclStatChangeCounterType) {
+  if (!isSupportedOnAllAsics(HwAsic::Feature::ACL_BYTE_COUNTER)) {
+    GTEST_SKIP();
+  }
+
   auto setup = [=, this]() {
     auto& ensemble = *getAgentEnsemble();
     auto newCfg = initialConfig(ensemble);

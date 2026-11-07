@@ -446,12 +446,14 @@ class AgentQueuePerHostTest : public AgentHwTest {
     auto ttlAclName = utility::getQueuePerHostTtlAclName();
     auto ttlCounterName = utility::getQueuePerHostTtlCounterName();
 
+    const auto aclByteCounterSupported =
+        isSupportedOnAllAsics(HwAsic::Feature::ACL_BYTE_COUNTER);
     for (bool frontPanel : {false, true}) {
       getNextUpdatedPortStats(masterLogicalPortIds()[0]);
       auto packetsBefore = utility::getAclInOutPackets(getSw(), ttlCounterName);
-
-      auto bytesBefore =
-          utility::getAclInOutPackets(getSw(), ttlCounterName, true);
+      auto bytesBefore = aclByteCounterSupported
+          ? utility::getAclInOutPackets(getSw(), ttlCounterName, true)
+          : 0;
 
       auto dstIP = getIpToMacAndClassID<AddrT>().begin()->first;
       sendPacket(dstIP, frontPanel, 64 /* ttl < 128 */);
@@ -460,9 +462,9 @@ class AgentQueuePerHostTest : public AgentHwTest {
       WITH_RETRIES({
         auto packetsAfter =
             utility::getAclInOutPackets(getSw(), ttlCounterName);
-
-        auto bytesAfter =
-            utility::getAclInOutPackets(getSw(), ttlCounterName, true);
+        auto bytesAfter = aclByteCounterSupported
+            ? utility::getAclInOutPackets(getSw(), ttlCounterName, true)
+            : 0;
 
         XLOG(DBG2) << "verify send packets "
                    << (frontPanel ? "out of port" : "switched") << "\n"
@@ -473,7 +475,7 @@ class AgentQueuePerHostTest : public AgentHwTest {
 
         // counts ttl >= 128 packet only
         EXPECT_EVENTUALLY_EQ(packetsAfter - packetsBefore, 1);
-        if (isSupportedOnAllAsics(HwAsic::Feature::ACL_BYTE_COUNTER)) {
+        if (aclByteCounterSupported) {
           if (frontPanel) {
             EXPECT_EVENTUALLY_EQ(bytesAfter - bytesBefore, packetSize);
           }

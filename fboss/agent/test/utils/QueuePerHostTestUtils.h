@@ -65,10 +65,14 @@ void updateRoutesClassID(
         std::optional<cfg::AclLookupClass>>& routePrefix2ClassID,
     RouteUpdateWrapper* updater);
 
-void addTtlAclEntry(cfg::SwitchConfig* config, const std::string& aclTableName);
+void addTtlAclEntry(
+    cfg::SwitchConfig* config,
+    const std::string& aclTableName,
+    bool aclByteCounterSupported);
 void addTtlAclTable(
     cfg::SwitchConfig* config,
     int16_t priority,
+    bool aclByteCounterSupported,
     bool addExtraQualifier = false);
 void deleteTtlCounters(cfg::SwitchConfig* config);
 void addQueuePerHostAclEntry(
