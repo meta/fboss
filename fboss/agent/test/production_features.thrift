@@ -159,6 +159,7 @@ enum ProductionFeature {
   DST_IP_WITH_MASK_ACL = 141,
   VOQ_SWITCH_WITH_FABRIC_PORTS = 142,
   MIXED_IP_SRV6_NEXT_HOP_GROUPS = 143,
+  DST_IPV6_WORD_WITH_MASK_ACL = 144,
   # production feature which is present on all platforms, keep it at the end
   HW_SWITCH = 65536,
 }
