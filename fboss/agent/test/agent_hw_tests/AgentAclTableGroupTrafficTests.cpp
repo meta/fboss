@@ -202,13 +202,16 @@ class AgentAclTableGroupTrafficTest : public AgentHwTest {
 
   template <typename AddrT>
   void addResolvedNeighborWithClassID() {
-    applyNewState([this](std::shared_ptr<SwitchState> /*in*/) {
-      auto state1 = addNeighbors<AddrT>(this->getProgrammedState());
+    applyNewState([this](const std::shared_ptr<SwitchState>& in) {
+      auto state1 = addNeighbors<AddrT>(in);
       auto state2 = resolveNeighbors<AddrT>(state1);
       return state2;
     });
-    applyNewState([this](std::shared_ptr<SwitchState> /*in*/) {
-      return updateClassID<AddrT>(this->getProgrammedState());
+    // Build on `in`: getProgrammedState() is still the pre batch state, so
+    // rebuilding from it drops the MAC entry classIDs LookupClassUpdater
+    // queued for the neighbors resolved above if they coalesce into this batch.
+    applyNewState([this](const std::shared_ptr<SwitchState>& in) {
+      return updateClassID<AddrT>(in);
     });
   }
 

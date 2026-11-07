@@ -385,8 +385,8 @@ class AgentQueuePerHostTest : public AgentHwTest {
      * implemented as a state observer which would update resolved neighbors
      * with classIDs.
      */
-    applyNewState([this](std::shared_ptr<SwitchState> /*in*/) {
-      auto state = this->addNeighbors<folly::IPAddressV4>(getProgrammedState());
+    applyNewState([this](const std::shared_ptr<SwitchState>& in) {
+      auto state = this->addNeighbors<folly::IPAddressV4>(in);
       state = this->addNeighbors<folly::IPAddressV6>(state);
       state = this->resolveNeighbors<folly::IPAddressV4>(state);
       state = this->resolveNeighbors<folly::IPAddressV6>(state);
@@ -396,9 +396,12 @@ class AgentQueuePerHostTest : public AgentHwTest {
     if (blockNeighbor) {
       setMacAddrsToBlock();
     }
-    applyNewState([this, blockNeighbor](std::shared_ptr<SwitchState> /*in*/) {
-      auto state = this->updateClassID<folly::IPAddressV4>(
-          getProgrammedState(), blockNeighbor);
+    // Build on `in`: getProgrammedState() is still the pre batch state, so
+    // rebuilding from it drops the MAC entry classIDs LookupClassUpdater
+    // queued for the neighbors resolved above if they coalesce into this batch.
+    applyNewState([this,
+                   blockNeighbor](const std::shared_ptr<SwitchState>& in) {
+      auto state = this->updateClassID<folly::IPAddressV4>(in, blockNeighbor);
       state = this->updateClassID<folly::IPAddressV6>(state, blockNeighbor);
       return state;
     });
