@@ -51,6 +51,7 @@ cpp_binary(
         "ConfigLoadBalancingTest.cpp",
         "ConfigMacTest.cpp",
         "ConfigPfcTest.cpp",
+        "ConfigPortChannelTest.cpp",
         "ConfigPortQueueConfigTest.cpp",
         "ConfigPtpTest.cpp",
         "ConfigQosDefaultPolicyTest.cpp",
