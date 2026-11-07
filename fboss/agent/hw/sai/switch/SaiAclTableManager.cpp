@@ -63,8 +63,8 @@ int normalizeAclTablePriority(int priority) {
 }
 
 folly::IPAddressV6 ipV6WordToAddress(uint32_t word, int wordIndex) {
-  CHECK(wordIndex == 2 || wordIndex == 3)
-      << "Only DST IPv6 word2 and word3 are supported";
+  CHECK(wordIndex >= 0 && wordIndex <= 3)
+      << "DST IPv6 word index must be between 0 and 3";
 
   folly::ByteArray16 bytes{{0}};
   // SAI word3 is the most-significant IPv6 word; word0 is least-significant.
@@ -76,11 +76,14 @@ folly::IPAddressV6 ipV6WordToAddress(uint32_t word, int wordIndex) {
   return folly::IPAddressV6(bytes);
 }
 
-AclEntryFieldIpV6 ipV6WordField(uint32_t word, int wordIndex) {
+AclEntryFieldIpV6 ipV6WordField(
+    uint32_t word,
+    int wordIndex,
+    uint32_t mask = kIpV6WordExactMatchMask) {
   return AclEntryFieldIpV6(
       std::make_pair(
           ipV6WordToAddress(word, wordIndex),
-          ipV6WordToAddress(kIpV6WordExactMatchMask, wordIndex)));
+          ipV6WordToAddress(mask, wordIndex)));
 }
 
 #if (defined(TAJO_SDK_GTE_26_5) && !defined(TAJO_SDK_P200)) || \
@@ -994,6 +997,10 @@ AclEntrySaiId SaiAclTableManager::addAclEntry(
       fieldDstIpV6Word3{std::nullopt};
   std::optional<SaiAclEntryTraits::Attributes::FieldDstIpV6Word2>
       fieldDstIpV6Word2{std::nullopt};
+  std::optional<SaiAclEntryTraits::Attributes::FieldDstIpV6Word1>
+      fieldDstIpV6Word1{std::nullopt};
+  std::optional<SaiAclEntryTraits::Attributes::FieldDstIpV6Word0>
+      fieldDstIpV6Word0{std::nullopt};
   std::optional<SaiAclEntryTraits::Attributes::FieldDstIpV4> fieldDstIpV4{
       std::nullopt};
   if (addedAclEntry->getDstIp().first) {
@@ -1043,6 +1050,20 @@ AclEntrySaiId SaiAclTableManager::addAclEntry(
   if (dstIpV6Word2 && dstIpV6WordQualifiersSupported) {
     fieldDstIpV6Word2 = SaiAclEntryTraits::Attributes::FieldDstIpV6Word2{
         ipV6WordField(*dstIpV6Word2, 2 /* wordIndex */)};
+  }
+  const auto dstIpV6Word1 = addedAclEntry->getDstIpV6Word1WithMask();
+  const auto dstIpV6Word0 = addedAclEntry->getDstIpV6Word0WithMask();
+  const auto dstIpV6WordWithMaskSupported = platform_->getAsic()->isSupported(
+      HwAsic::Feature::ACL_DST_IPV6_WORD_WITH_MASK);
+  if (dstIpV6Word1 && dstIpV6WordWithMaskSupported) {
+    fieldDstIpV6Word1 =
+        SaiAclEntryTraits::Attributes::FieldDstIpV6Word1{ipV6WordField(
+            dstIpV6Word1->first, 1 /* wordIndex */, dstIpV6Word1->second)};
+  }
+  if (dstIpV6Word0 && dstIpV6WordWithMaskSupported) {
+    fieldDstIpV6Word0 =
+        SaiAclEntryTraits::Attributes::FieldDstIpV6Word0{ipV6WordField(
+            dstIpV6Word0->first, 0 /* wordIndex */, dstIpV6Word0->second)};
   }
 
   std::optional<SaiAclEntryTraits::Attributes::FieldSrcPort> fieldSrcPort{
@@ -1800,6 +1821,7 @@ AclEntrySaiId SaiAclTableManager::addAclEntry(
   auto matcherIsValid =
       (fieldSrcIpV6.has_value() || fieldDstIpV6.has_value() ||
        fieldDstIpV6Word3.has_value() || fieldDstIpV6Word2.has_value() ||
+       fieldDstIpV6Word1.has_value() || fieldDstIpV6Word0.has_value() ||
        fieldSrcIpV4.has_value() || fieldDstIpV4.has_value() ||
        fieldSrcPort.has_value() || fieldOutPort.has_value() ||
        fieldL4SrcPort.has_value() || fieldL4DstPort.has_value() ||
@@ -1846,6 +1868,14 @@ AclEntrySaiId SaiAclTableManager::addAclEntry(
        // an ACL with matcher(s) not supported by SaiSwitch.
        (platform_->getAsic()->isSupported(HwAsic::Feature::EMPTY_ACL_MATCHER) &&
         !addedAclEntry->hasMatcher()));
+  if ((dstIpV6Word1 || dstIpV6Word0) && !dstIpV6WordWithMaskSupported) {
+    throw FbossError(
+        "ACL entry ",
+        addedAclEntry->getID(),
+        " uses masked DST IPv6 word qualifiers, but ASIC ",
+        platform_->getAsic()->getAsicTypeStr(),
+        " does not support ACL_DST_IPV6_WORD_WITH_MASK");
+  }
   if ((dstIpV6Word3 || dstIpV6Word2) && !dstIpV6WordQualifiersSupported) {
     throw FbossError(
         "ACL entry ",
@@ -1897,8 +1927,8 @@ AclEntrySaiId SaiAclTableManager::addAclEntry(
       fieldDstIpV6,
       fieldDstIpV6Word3,
       fieldDstIpV6Word2,
-      std::nullopt, // dstIpv6Word1
-      std::nullopt, // dstIpv6Word0
+      fieldDstIpV6Word1,
+      fieldDstIpV6Word0,
       fieldSrcIpV4,
       fieldDstIpV4,
       fieldSrcPort,
