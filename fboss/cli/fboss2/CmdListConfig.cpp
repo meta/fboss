@@ -48,6 +48,9 @@
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/prefix-list/CmdConfigProtocolBgpPolicyPrefixList.h"
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/prefix-list/entry/CmdConfigProtocolBgpPolicyPrefixListEntry.h"
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/routing-policy/CmdConfigProtocolBgpPolicyRoutingPolicy.h"
+#include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/routing-policy/term/CmdConfigProtocolBgpPolicyRoutingPolicyTerm.h"
+#include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/routing-policy/term/action/CmdConfigProtocolBgpPolicyRoutingPolicyTermAction.h"
+#include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/routing-policy/term/match/CmdConfigProtocolBgpPolicyRoutingPolicyTermMatch.h"
 #include "fboss/cli/fboss2/commands/config/protocol/static/CmdConfigProtocolStatic.h"
 #include "fboss/cli/fboss2/commands/config/protocol/static/route/add/CmdConfigProtocolStaticRouteAdd.h"
 #include "fboss/cli/fboss2/commands/config/ptp/CmdConfigPtp.h"
@@ -117,6 +120,7 @@
 #include "fboss/cli/fboss2/commands/delete/protocol/bgp/policy/community-list/CmdDeleteProtocolBgpPolicyCommunityList.h"
 #include "fboss/cli/fboss2/commands/delete/protocol/bgp/policy/prefix-list/CmdDeleteProtocolBgpPolicyPrefixList.h"
 #include "fboss/cli/fboss2/commands/delete/protocol/bgp/policy/routing-policy/CmdDeleteProtocolBgpPolicyRoutingPolicy.h"
+#include "fboss/cli/fboss2/commands/delete/protocol/bgp/policy/routing-policy/term/CmdDeleteProtocolBgpPolicyRoutingPolicyTerm.h"
 #include "fboss/cli/fboss2/commands/delete/protocol/static/CmdDeleteProtocolStatic.h"
 #include "fboss/cli/fboss2/commands/delete/protocol/static/route/CmdDeleteProtocolStaticRoute.h"
 #include "fboss/cli/fboss2/commands/delete/qos/CmdDeleteQos.h"
@@ -482,6 +486,50 @@ const CommandTree& kConfigCommandTree() {
                                    CmdConfigProtocolBgpPolicyRoutingPolicy>,
                                argRegistrar<
                                    CmdConfigProtocolBgpPolicyRoutingPolicyTraits>,
+                               {{
+                                   "term",
+                                   "Configure a routing-policy term: "
+                                   "<seq-num> [<attribute> <value> ...] "
+                                   "(description)",
+                                   commandHandler<
+                                       CmdConfigProtocolBgpPolicyRoutingPolicyTerm>,
+                                   argRegistrar<
+                                       CmdConfigProtocolBgpPolicyRoutingPolicyTermTraits>,
+                                   {{
+                                        "action",
+                                        "Configure a term action",
+                                        {{
+                                             "result",
+                                             "Set the term result: "
+                                             "<ACCEPT|REJECT|CONTINUE>",
+                                             commandHandler<
+                                                 CmdConfigProtocolBgpPolicyRoutingPolicyTermActionResult>,
+                                             argRegistrar<
+                                                 CmdConfigProtocolBgpPolicyRoutingPolicyTermActionResultTraits>,
+                                         },
+                                         {
+                                             "set",
+                                             "Set a route attribute: "
+                                             "as-path prepend|community|"
+                                             "local-pref|med|next-hop|"
+                                             "origin|weight <value> ...",
+                                             commandHandler<
+                                                 CmdConfigProtocolBgpPolicyRoutingPolicyTermActionSet>,
+                                             argRegistrar<
+                                                 CmdConfigProtocolBgpPolicyRoutingPolicyTermActionSetTraits>,
+                                         }},
+                                    },
+                                    {
+                                        "match",
+                                        "Configure a term match: "
+                                        "from as-path-list|origin|"
+                                        "prefix-list <value>",
+                                        commandHandler<
+                                            CmdConfigProtocolBgpPolicyRoutingPolicyTermMatch>,
+                                        argRegistrar<
+                                            CmdConfigProtocolBgpPolicyRoutingPolicyTermMatchTraits>,
+                                    }},
+                               }},
                            }},
                       },
                   },
@@ -862,6 +910,14 @@ const CommandTree& kConfigCommandTree() {
                              CmdDeleteProtocolBgpPolicyRoutingPolicy>,
                          argRegistrar<
                              CmdDeleteProtocolBgpPolicyRoutingPolicyTraits>,
+                         {{
+                             "term",
+                             "Delete a routing-policy term: <seq-num>",
+                             commandHandler<
+                                 CmdDeleteProtocolBgpPolicyRoutingPolicyTerm>,
+                             argRegistrar<
+                                 CmdDeleteProtocolBgpPolicyRoutingPolicyTermTraits>,
+                         }},
                      }},
                 }},
            },
