@@ -14,6 +14,7 @@
 #include "fboss/cli/fboss2/utils/CmdClientUtilsCommon.h" // NOLINT(misc-include-cleaner)
 #include "fboss/cli/fboss2/utils/HostInfo.h"
 #include "neteng/fboss/bgp/if/gen-cpp2/TBgpService.h" // NOLINT(misc-include-cleaner)
+#include "thrift/lib/cpp/TApplicationException.h"
 
 namespace facebook::fboss {
 
@@ -27,11 +28,18 @@ CmdShowVersionBgp::RetType CmdShowVersionBgp::queryClient(
 
   client->sync_getRegexExportedValues(retVal, "build_.*");
 #else
-  // OSS: getRegexExportedValues method not available in TBgpService
-  // This command requires Meta-internal fb303 extensions
-  throw std::runtime_error(
-      "BGP version command not supported in OSS build - "
-      "getRegexExportedValues method not available");
+  auto client = utils::createClient<apache::thrift::Client<
+      facebook::neteng::fboss::bgp::thrift::TBgpService>>(hostInfo);
+  try {
+    client->sync_getBuildInfo(retVal);
+  } catch (const apache::thrift::TApplicationException& ex) {
+    if (ex.getType() != apache::thrift::TApplicationException::UNKNOWN_METHOD) {
+      throw;
+    }
+    throw std::runtime_error(
+        "The running BGP daemon does not support getBuildInfo; upgrade the "
+        "BGP package and restart the service before using this command");
+  }
 #endif
 
   return retVal;
