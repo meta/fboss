@@ -71,7 +71,7 @@ class CmdArgsLists {
  private:
   // since we do a lot of work of figuring out argument types at compile time,
   // for now we need to know the the theoretical max depth of nested subcommands
-  static constexpr auto MAX_DEPTH = 5;
+  static constexpr auto MAX_DEPTH = 6;
 
   std::array<std::vector<std::string>, MAX_DEPTH> data_;
 };

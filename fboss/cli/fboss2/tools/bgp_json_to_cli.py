@@ -825,9 +825,187 @@ def generate_routing_policy_commands(policy: dict[str, Any]) -> list[str]:
                 "equivalent; not emitted"
             )
         )
+    for term in policy.get("policy_entries") or []:
+        commands.extend(generate_routing_policy_term_commands(name, term))
     if not commands:
         # Nothing to set: still recreate the (empty) routing-policy by name.
         commands.append(prefix)
+    return commands
+
+
+def generate_routing_policy_term_commands(
+    policy_name: str, term: dict[str, Any]
+) -> list[str]:
+    """Generate `... routing-policy <name> term <seq-num>` commands for one
+    term. The CLI keys terms by sequence_number."""
+    if "sequence_number" not in term:
+        return [
+            _warning(
+                f"routing-policy {policy_name}: term '{term.get('name', '')}' has "
+                "no sequence_number and cannot be addressed by the CLI; not emitted"
+            )
+        ]
+    prefix = (
+        f"config protocol bgp policy routing-policy {escape_shell_arg(policy_name)} "
+        f"term {escape_shell_arg(term['sequence_number'])}"
+    )
+    commands = []
+    if term.get("description"):
+        commands.append(f"{prefix} description {escape_shell_arg(term['description'])}")
+    # Nested term generators (action, match) hook in here.
+    commands.extend(generate_routing_policy_term_action_commands(prefix, term))
+    if not commands:
+        commands.append(prefix)
+    return commands
+
+
+_POLICY_ACTION_TYPE_NAMES = {
+    1: "AS_PATH_PREPEND",
+    2: "COMMUNITY_LIST",
+    3: "SET_LOCAL_PREF",
+    4: "ORIGIN",
+    5: "PERMIT",
+    6: "DENY",
+    7: "CONTINUE",
+    8: "NEXT_HOP",
+    9: "AS_PATH",
+    10: "MED",
+    11: "GOTO",
+    12: "LBW_EXT_COMMUNITY",
+    13: "AS_PATH_TO_AS_SET",
+    14: "EXT_COMMUNITY_LIST",
+    15: "WEIGHT",
+    16: "ADD_BACKUP_ADDR",
+}
+_ORIGIN_NAMES = {1: "IGP", 2: "EGP", 3: "INCOMPLETE"}
+_COMMUNITY_ACTION_TYPE_NAMES = {1: "ADD", 2: "SET", 3: "REMOVE"}
+_MED_ACTION_TYPE_NAMES = {1: "SET", 2: "UPDATE", 3: "IGP"}
+# Flow-control BgpPolicyActionType (the action bgpd takes when the term
+# matches) -> `action result` keyword; GOTO has no CLI spelling.
+_TERM_RESULT_KEYWORDS = {"PERMIT": "ACCEPT", "DENY": "REJECT", "CONTINUE": "CONTINUE"}
+
+
+def _enum_name(raw: Any, names: dict[int, str]) -> str:
+    if isinstance(raw, str):
+        return raw
+    return names.get(int(raw), str(raw))
+
+
+def _action_as_path_prepend(
+    prefix: str, _label: str, action: dict[str, Any]
+) -> str | None:
+    prepend = action.get("set_as_path_prepend") or {}
+    if "asn" not in prepend:
+        return None
+    repeat = max(int(prepend.get("repeat_times", 1)), 1)
+    asns = " ".join([escape_shell_arg(prepend["asn"])] * repeat)
+    return f"{prefix} as-path prepend {asns}"
+
+
+def _action_community(prefix: str, label: str, action: dict[str, Any]) -> str | None:
+    community_action = action.get("community_action") or {}
+    communities = community_action.get("communities") or []
+    action_type = _enum_name(
+        community_action.get("action_type", 0), _COMMUNITY_ACTION_TYPE_NAMES
+    )
+    if len(communities) == 1 and action_type in ("ADD", "SET"):
+        additive = " additive" if action_type == "ADD" else ""
+        return f"{prefix} community {escape_shell_arg(communities[0])}{additive}"
+    return _warning(
+        f"{label}: community action ({action_type}, {len(communities)} "
+        "communities) is not expressible as a single `community <value> "
+        "[additive]`; not emitted"
+    )
+
+
+def _action_local_pref(prefix: str, _label: str, action: dict[str, Any]) -> str | None:
+    local_pref = (action.get("set_local_pref") or {}).get("local_pref")
+    return (
+        None
+        if local_pref is None
+        else f"{prefix} local-pref {escape_shell_arg(local_pref)}"
+    )
+
+
+def _action_origin(prefix: str, _label: str, action: dict[str, Any]) -> str | None:
+    if "set_origin" not in action:
+        return None
+    return f"{prefix} origin {escape_shell_arg(_enum_name(action['set_origin'], _ORIGIN_NAMES))}"
+
+
+def _action_next_hop(prefix: str, label: str, action: dict[str, Any]) -> str | None:
+    nexthop = action.get("set_nexthop") or {}
+    if nexthop.get("set_self"):
+        return _warning(f"{label}: next-hop self is not supported by bgpd; not emitted")
+    address = (nexthop.get("next_hop") or {}).get("next_hop_prefix")
+    return None if not address else f"{prefix} next-hop {escape_shell_arg(address)}"
+
+
+def _action_med(prefix: str, label: str, action: dict[str, Any]) -> str | None:
+    med = action.get("med_action") or {}
+    med_type = _enum_name(med.get("med_action_type", 0), _MED_ACTION_TYPE_NAMES)
+    if med_type == "SET" and "med_value" in med:
+        return f"{prefix} med {escape_shell_arg(med['med_value'])}"
+    return _warning(f"{label}: med action {med_type} is not expressible; not emitted")
+
+
+def _action_weight(prefix: str, _label: str, action: dict[str, Any]) -> str | None:
+    weight = (action.get("weight_action") or {}).get("weight_value")
+    return None if weight is None else f"{prefix} weight {escape_shell_arg(weight)}"
+
+
+# BgpPolicyActionType name -> emitter of one `action set` line (or a warning);
+# None means the payload the CLI needs is absent.
+_ACTION_SET_EMITTERS = {
+    "AS_PATH_PREPEND": _action_as_path_prepend,
+    "COMMUNITY_LIST": _action_community,
+    "SET_LOCAL_PREF": _action_local_pref,
+    "ORIGIN": _action_origin,
+    "NEXT_HOP": _action_next_hop,
+    "MED": _action_med,
+    "WEIGHT": _action_weight,
+}
+
+
+def _generate_action_set_command(
+    term_prefix: str, label: str, action: dict[str, Any]
+) -> list[str]:
+    """One `action set ...` line for a BgpPolicyAction, or a warning."""
+    kind = _enum_name(action.get("type", 0), _POLICY_ACTION_TYPE_NAMES)
+    emitter = _ACTION_SET_EMITTERS.get(kind)
+    line = emitter(f"{term_prefix} action set", label, action) if emitter else None
+    if line is None:
+        return [
+            _warning(
+                f"{label}: action {kind} is not expressible by the CLI; not emitted"
+            )
+        ]
+    return [line]
+
+
+def generate_routing_policy_term_action_commands(
+    term_prefix: str, term: dict[str, Any]
+) -> list[str]:
+    """Generate the `action result` / `action set` commands of one term."""
+    label = term_prefix.removeprefix("config protocol bgp policy ")
+    commands = []
+    if "term_miss_action" in term:
+        miss_action = _flow_control_action_name(term["term_miss_action"])
+        if miss_action != "NEXT_TERM":  # the thrift default
+            commands.append(
+                _warning(
+                    f"{label}: term_miss_action {miss_action} has no CLI "
+                    "equivalent; not emitted"
+                )
+            )
+    for action in term.get("policy_action_entries") or []:
+        kind = _enum_name(action.get("type", 0), _POLICY_ACTION_TYPE_NAMES)
+        if kind in _TERM_RESULT_KEYWORDS:
+            commands.append(
+                f"{term_prefix} action result {_TERM_RESULT_KEYWORDS[kind]}"
+            )
+            continue
+        commands.extend(_generate_action_set_command(term_prefix, label, action))
     return commands
 
 
