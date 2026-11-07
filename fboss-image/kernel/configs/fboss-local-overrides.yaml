@@ -43,6 +43,8 @@ common_overrides: |
   CONFIG_AQTION=y
   CONFIG_AQUANTIA_PHY=m
 
+  # Selects REGMAP_IRQ for FPGA MSI demux
+  CONFIG_GPIO_PCI_IDIO_16=m
 
 # Kernel version overrides
 # Add kernel version as key, then add config lines in the value
