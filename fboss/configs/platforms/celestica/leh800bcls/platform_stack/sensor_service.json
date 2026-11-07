@@ -320,8 +320,8 @@
           "sysfsPath": "/run/devmap/sensors/48V_HSC_MONITOR/curr1_input",
           "type": 2,
           "thresholds": {
-            "maxAlarmVal": 115,
-            "upperCriticalVal": 120
+            "maxAlarmVal": 130,
+            "upperCriticalVal": 160
           },
           "compute": "3*@/1000.0"
         },
@@ -6134,6 +6134,16 @@
             "lowerCriticalVal": 0.6375
           },
           "compute": "@/1000.0"
+        },
+        {
+          "name": "SMB_L_U2_TH6_TEMP",
+          "sysfsPath": "/run/devmap/sensors/SMB_L_CPLD/temp1_input",
+          "type": 3,
+          "thresholds": {
+            "maxAlarmVal": 100,
+            "upperCriticalVal": 103
+          },
+          "compute": "@/1000.0"
         }
       ]
     },
@@ -10245,6 +10255,16 @@
             "minAlarmVal": 0.675,
             "upperCriticalVal": 0.863,
             "lowerCriticalVal": 0.6375
+          },
+          "compute": "@/1000.0"
+        },
+        {
+          "name": "SMB_R_U2_TH6_TEMP",
+          "sysfsPath": "/run/devmap/sensors/SMB_R_CPLD/temp1_input",
+          "type": 3,
+          "thresholds": {
+            "maxAlarmVal": 100,
+            "upperCriticalVal": 103
           },
           "compute": "@/1000.0"
         }
