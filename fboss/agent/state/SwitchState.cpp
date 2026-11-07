@@ -20,15 +20,15 @@
 #include "fboss/agent/state/AclTableGroupMap.h"
 #include "fboss/agent/state/AggregatePort.h"
 #include "fboss/agent/state/AggregatePortMap.h"
-#include "fboss/agent/state/BufferPoolConfig.h"
+#include "fboss/agent/state/BufferPoolConfig.h" // NOLINT(misc-include-cleaner)
 #include "fboss/agent/state/BufferPoolConfigMap.h"
 #include "fboss/agent/state/ControlPlane.h"
 #include "fboss/agent/state/FibInfo.h"
 #include "fboss/agent/state/FibInfoMap.h"
-#include "fboss/agent/state/ForwardingInformationBaseMap.h"
+#include "fboss/agent/state/ForwardingInformationBaseMap.h" // NOLINT(misc-include-cleaner)
 #include "fboss/agent/state/Interface.h"
 #include "fboss/agent/state/InterfaceMap.h"
-#include "fboss/agent/state/IpTunnel.h"
+#include "fboss/agent/state/IpTunnel.h" // NOLINT(misc-include-cleaner)
 #include "fboss/agent/state/IpTunnelMap.h"
 #include "fboss/agent/state/LabelForwardingInformationBase.h"
 #include "fboss/agent/state/MirrorOnDropReportMap.h"
@@ -40,7 +40,7 @@
 #include "fboss/agent/state/SwitchSettings.h"
 #include "fboss/agent/state/TeFlowEntry.h"
 #include "fboss/agent/state/TeFlowTable.h"
-#include "fboss/agent/state/Transceiver.h"
+#include "fboss/agent/state/Transceiver.h" // NOLINT(misc-include-cleaner)
 #include "fboss/agent/state/TransceiverMap.h"
 #include "fboss/agent/state/Vlan.h"
 #include "fboss/agent/state/VlanMap.h"
@@ -1049,7 +1049,17 @@ std::optional<InterfaceID> SwitchState::getInterfaceIDForPortIf(
       // On VOQ/Fabric switches, port and interface have 1:1 relation.
       // For non VOQ/Fabric switches, in practice, a port is always part of a
       // single VLAN (and thus single interface).
-      return physicalPort->getInterfaceID();
+      // A port can legitimately have no interface (e.g. enabled at runtime
+      // while its VLAN has no interface), so don't use Port::getInterfaceID()
+      // here - it CHECK-fails instead of letting the caller handle it.
+      auto intfIDs = physicalPort->getInterfaceIDs();
+      if (intfIDs.size() != 1) {
+        XLOG_EVERY_N(ERR, 10000)
+            << "Expected exactly 1 interface for port "
+            << physicalPort->getName() << ", got " << intfIDs.size();
+        return std::nullopt;
+      }
+      return InterfaceID(intfIDs.at(0));
     }
     case PortDescriptor::PortType::AGGREGATE: {
       auto aggregatePort = getAggregatePorts()->getNodeIf(port.aggPortID());
