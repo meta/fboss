@@ -14,4 +14,5 @@ struct InterfaceStatus {
   5: string speed;
   6: string vendor;
   7: string mpn;
+  8: i32 portId;
 }

@@ -159,6 +159,37 @@ bool isRunningOnSwitch() {
 #endif
 }
 
+std::optional<PortNameParts> parsePortName(const std::string& name) {
+  static const RE2 exp(R"(([a-z][a-z][a-z])(\d+)/(\d+)/(\d+))");
+  std::string moduleName, moduleNumStr, portNumStr, subportNumStr;
+  if (!RE2::FullMatch(
+          name, exp, &moduleName, &moduleNumStr, &portNumStr, &subportNumStr)) {
+    return std::nullopt;
+  }
+  return PortNameParts{
+      moduleName, stoi(moduleNumStr), stoi(portNumStr), stoi(subportNumStr)};
+}
+
+bool comparePortNameOrId(
+    const std::string& nameA,
+    int32_t idA,
+    const std::string& nameB,
+    int32_t idB) {
+  const auto partsA = parsePortName(nameA);
+  const auto partsB = parsePortName(nameB);
+  // Interface names are free-form: SVIs are named arbitrary things like
+  // "downlinks" and may be unset entirely. Prefer front panel ordering from
+  // the name when it encodes one, and fall back to the numeric ID otherwise.
+  if (partsA && partsB) {
+    return *partsA < *partsB;
+  }
+  if (partsA.has_value() != partsB.has_value()) {
+    // Keep physical ports ahead of names that carry no ordering.
+    return partsA.has_value();
+  }
+  return idA < idB;
+}
+
 bool comparePortName(
     const std::basic_string<char>& nameA,
     const std::basic_string<char>& nameB) {

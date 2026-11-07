@@ -791,7 +791,11 @@ RetType CmdShowPort::createModel(
       model.portEntries()->begin(),
       model.portEntries()->end(),
       [&](const cli::PortEntry& a, const cli::PortEntry& b) {
-        return utils::comparePortName(a.name().value(), b.name().value());
+        return utils::comparePortNameOrId(
+            a.name().value(),
+            folly::copy(a.id().value()),
+            b.name().value(),
+            folly::copy(b.id().value()));
       });
 
   return model;
