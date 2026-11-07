@@ -107,6 +107,56 @@
           ]
         },
         "productSubVersion": 1
+      },
+      {
+        "pmUnitConfig": {
+          "pluggedInSlotType": "COMESE_SLOT",
+          "i2cDeviceConfigs": [
+            {
+              "busName": "INCOMING@0",
+              "address": "0x20",
+              "kernelDeviceName": "raa228228",
+              "pmUnitScopedName": "COME_VOLTAGE_MONITOR1"
+            },
+            {
+              "busName": "INCOMING@0",
+              "address": "0x21",
+              "kernelDeviceName": "raa228228",
+              "pmUnitScopedName": "COME_VOLTAGE_MONITOR2"
+            },
+            {
+              "busName": "INCOMING@1",
+              "address": "0x40",
+              "kernelDeviceName": "ina230",
+              "pmUnitScopedName": "COME_VOLTAGE_MONITOR3"
+            },
+            {
+              "busName": "INCOMING@1",
+              "address": "0x4c",
+              "kernelDeviceName": "tmp75",
+              "pmUnitScopedName": "COME_TSENSOR1"
+            },
+            {
+              "busName": "INCOMING@1",
+              "address": "0x4a",
+              "kernelDeviceName": "tmp75",
+              "pmUnitScopedName": "COME_TSENSOR2"
+            },
+            {
+              "busName": "INCOMING@1",
+              "address": "0x50",
+              "kernelDeviceName": "spd5118",
+              "pmUnitScopedName": "COME_DIMM1_TSENSOR"
+            },
+            {
+              "busName": "INCOMING@1",
+              "address": "0x51",
+              "kernelDeviceName": "spd5118",
+              "pmUnitScopedName": "COME_DIMM2_TSENSOR"
+            }
+          ]
+        },
+        "productSubVersion": 3
       }
     ]
   },
