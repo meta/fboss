@@ -3263,6 +3263,74 @@ TEST_F(RouteTest, rejectRouteWithMixedSrv6AndPlainNextHopsAndRollback) {
       this->findRoute6(this->sw_->getState(), rid, "2700:3::/64"), nullptr);
 }
 
+TEST_F(RouteTest, allowMixedSrv6AndPlainNextHopsWhenFlagEnabled) {
+  folly::FlagSaver flagSaver;
+  FLAGS_srv6 = true;
+  FLAGS_allow_mixed_ip_srv6_nhop_groups = true;
+
+  auto rid = RouterID(0);
+  const std::vector<folly::IPAddressV6> sidList1{
+      folly::IPAddressV6("3001:db8:1::"), folly::IPAddressV6("3001:db8:2::")};
+  const std::vector<folly::IPAddressV6> sidList2{
+      folly::IPAddressV6("3001:db8:3::"), folly::IPAddressV6("3001:db8:4::")};
+
+  RouteNextHopSet nhops;
+  nhops.emplace(UnresolvedNextHop(
+      folly::IPAddress("1::10"),
+      ECMP_WEIGHT,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      sidList1,
+      TunnelType::SRV6_ENCAP,
+      kSrv6Tunnel0));
+  nhops.emplace(UnresolvedNextHop(
+      folly::IPAddress("2::10"),
+      ECMP_WEIGHT,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      sidList2,
+      TunnelType::SRV6_ENCAP,
+      kSrv6Tunnel0));
+  nhops.emplace(UnresolvedNextHop(folly::IPAddress("3::10"), ECMP_WEIGHT));
+  nhops.emplace(UnresolvedNextHop(folly::IPAddress("4::10"), ECMP_WEIGHT));
+
+  auto updater = this->sw_->getRouteUpdater();
+  updater.addRoute(
+      rid,
+      IPAddress("2700:3::"),
+      64,
+      kClientA,
+      RouteNextHopEntry(
+          RouteNextHopSet{
+              UnresolvedNextHop(folly::IPAddress("1::20"), ECMP_WEIGHT)},
+          EBGP_DISTANCE));
+  updater.addRoute(
+      rid,
+      IPAddress("2800:3::"),
+      64,
+      kClientA,
+      RouteNextHopEntry(nhops, EBGP_DISTANCE));
+  updater.program();
+
+  auto route = this->findRoute6(this->sw_->getState(), rid, "2800:3::/64");
+  ASSERT_NE(nullptr, route);
+  ASSERT_TRUE(route->isResolved());
+  const auto fwdNhops =
+      getClientNextHops(this->sw_->getState(), *route->getBestEntry().second);
+  ASSERT_EQ(4, fwdNhops.size());
+  size_t srv6Count = 0;
+  for (const auto& nh : fwdNhops) {
+    srv6Count += !nh.srv6SegmentList().empty();
+  }
+  EXPECT_EQ(2, srv6Count);
+  EXPECT_NE(
+      nullptr, this->findRoute6(this->sw_->getState(), rid, "2700:3::/64"));
+}
+
 TEST_F(RouteTest, rejectRouteThatBecomesMixedAfterRecursiveResolution) {
   folly::FlagSaver flagSaver;
   FLAGS_srv6 = true;

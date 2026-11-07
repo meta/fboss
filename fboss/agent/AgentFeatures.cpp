@@ -306,6 +306,12 @@ DEFINE_bool(
     "(sai_stats_support); leave off otherwise.");
 
 DEFINE_bool(
+    allow_mixed_ip_srv6_nhop_groups,
+    false,
+    "Allow routes whose next-hop group mixes SRv6 next hops with plain IP "
+    "next hops. When false, RibToSwitchStateUpdater rejects such routes.");
+
+DEFINE_bool(
     enable_srv6_nexthop_resource_protection,
     true,
     "Enable SRv6 next hop resource protection in ResourceAccountant");

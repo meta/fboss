@@ -91,7 +91,8 @@ std::shared_ptr<SwitchState> RibToSwitchStateUpdater::operator()(
   // Reject through FbossHwUpdateError so updateFib() reconstructs the RIB and
   // NextHopIDManager from the previously applied switch state.
   auto validateRouteNextHops = [&](RouterID routeVrf, const auto& route) {
-    if (!FLAGS_srv6 || !route->isResolved()) {
+    if (!FLAGS_srv6 || !route->isResolved() ||
+        FLAGS_allow_mixed_ip_srv6_nhop_groups) {
       return;
     }
     const auto& forwarding = route->getForwardInfo();
