@@ -82,6 +82,12 @@ class Fboss2IntegrationTest : public ::testing::Test {
   folly::dynamic getRunningConfig() const;
 
   /**
+   * Fetch one of the agent's effective options (a gflag value such as
+   * "true") via the fb303 getOption thrift call.
+   */
+  std::string getAgentOption(const std::string& name) const;
+
+  /**
    * Read a top-level field from the running config's "sw" object.
    *
    * The return type is controlled by the template parameter:
