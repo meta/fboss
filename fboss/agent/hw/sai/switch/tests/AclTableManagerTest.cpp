@@ -385,6 +385,58 @@ TEST_F(AclTableManagerTest, addAclEntryWithDstIpWithMask) {
           folly::IPAddressV4("10.32.5.0"), folly::IPAddressV4("255.240.15.0")));
 }
 
+TEST_F(AclTableManagerTest, addAclEntryWithDstIpV6WordWithMask) {
+  FLAGS_enable_acl_table_group = true;
+  SCOPE_EXIT {
+    FLAGS_enable_acl_table_group = false;
+  };
+
+  auto aclTable = std::make_shared<AclTable>(0, kAclTable2);
+  aclTable->setQualifiers(
+      {cfg::AclTableQualifier::DST_IPV6_WORD1,
+       cfg::AclTableQualifier::DST_IPV6_WORD0});
+  saiManagerTable->aclTableManager().addAclTable(
+      aclTable, cfg::AclStage::INGRESS, nullptr /*state*/);
+  auto* aclTableHandle =
+      saiManagerTable->aclTableManager().getAclTableHandle(kAclTable2);
+  ASSERT_NE(aclTableHandle, nullptr);
+  EXPECT_TRUE(saiApiTable->aclApi().getAttribute(
+      aclTableHandle->aclTable->adapterKey(),
+      SaiAclTableTraits::Attributes::FieldDstIpV6Word1{}));
+  EXPECT_TRUE(saiApiTable->aclApi().getAttribute(
+      aclTableHandle->aclTable->adapterKey(),
+      SaiAclTableTraits::Attributes::FieldDstIpV6Word0{}));
+
+  auto aclEntry =
+      std::make_shared<AclEntry>(kPriority(), std::string("AclEntry1"));
+  cfg::AclIpV6WordMatch word1;
+  word1.value() = 0x4a1c1230;
+  word1.mask() = 0xeffffffc;
+  aclEntry->setDstIpV6Word1WithMask(word1);
+  cfg::AclIpV6WordMatch word0;
+  word0.value() = 0x1;
+  word0.mask() = 0xffff;
+  aclEntry->setDstIpV6Word0WithMask(word0);
+  aclEntry->setActionType(kActionType());
+  auto entryId = saiManagerTable->aclTableManager().addAclEntry(
+      aclEntry, kAclTable2, nullptr /*state*/);
+
+  EXPECT_EQ(
+      saiApiTable->aclApi()
+          .getAttribute(
+              entryId, SaiAclEntryTraits::Attributes::FieldDstIpV6Word1{})
+          .getDataAndMask(),
+      std::make_pair(
+          folly::IPAddressV6("::4a1c:1230:0:0"),
+          folly::IPAddressV6("::efff:fffc:0:0")));
+  EXPECT_EQ(
+      saiApiTable->aclApi()
+          .getAttribute(
+              entryId, SaiAclEntryTraits::Attributes::FieldDstIpV6Word0{})
+          .getDataAndMask(),
+      std::make_pair(folly::IPAddressV6("::1"), folly::IPAddressV6("::ffff")));
+}
+
 TEST_F(AclTableManagerTest, defaultAclTableOmitsLookupClassPort) {
   auto* aclTableHandle = saiManagerTable->aclTableManager().getAclTableHandle(
       cfg::switch_config_constants::DEFAULT_INGRESS_ACL_TABLE());
