@@ -102,6 +102,12 @@ SAI_ATTRIBUTE_NAME(Fdb, Metadata)
 template <>
 struct IsSaiEntryStruct<SaiFdbTraits::FdbEntry> : public std::true_type {};
 
+// Dynamic FDB entries age out in hardware on their own, so an entry FBOSS
+// tracks - in the store, or in a warm boot state written moments earlier - may
+// already be gone from HW.
+template <>
+struct SaiObjectMayBeMissingInHw<SaiFdbTraits> : public std::true_type {};
+
 class FdbApi : public SaiApi<FdbApi> {
  public:
   static constexpr sai_api_t ApiType = SAI_API_FDB;

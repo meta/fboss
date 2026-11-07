@@ -52,14 +52,14 @@ void ManagedFdbEntry::createObject(PublisherObjects objects) {
   SaiFdbTraits::CreateAttributes attributes{type_, bridgePortId, metadata_};
 
   auto fdbEntry = manager_->createSaiObject(entry, attributes, intfIDAndMac_);
-  // For FDB entry, on delete, Ignore error if entry was already removed from
-  // HW. One scenario where this can occur is the following
+  // Missing in HW is tolerated for FDB entries on delete and on warm boot
+  // reload - see SaiObjectMayBeMissingInHw<SaiFdbTraits>. One scenario where
+  // this can occur is the following
   // - We learn a MAC and install it in HW
   // - Later we get a state update to transform this into a STATIC FDB entry
   // - Meanwhile the dynamic MAC ages out and gets deleted
   // - While processing the state delta for changed MAC entry, we try to
   // delete the dynamic entry before adding static entry
-  fdbEntry->setIgnoreMissingInHwOnDelete(true);
   // If pending_L2_entry is not supported, dynamic l2 entry is already deleted
   // from HW table upon receiving the l2 age event. Therefore, no need to make
   // the remove call down to SDK layer.

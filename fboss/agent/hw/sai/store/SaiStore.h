@@ -232,10 +232,13 @@ class SaiObjectStore {
           keys.end());
     }
     for (const auto& k : keys) {
-      ObjectType obj = getObject(k, adapterKeys2AdapterHostKey);
-      auto adapterHostKey = obj.adapterHostKey();
-      XLOGF(DBG5, "SaiStore reloaded {}", obj);
-      auto ins = objects_.refOrInsert(adapterHostKey, std::move(obj));
+      auto obj = getObjectIfInHw(k, adapterKeys2AdapterHostKey);
+      if (!obj) {
+        continue;
+      }
+      auto adapterHostKey = obj->adapterHostKey();
+      XLOGF(DBG5, "SaiStore reloaded {}", *obj);
+      auto ins = objects_.refOrInsert(adapterHostKey, std::move(*obj));
       if (!ins.second) {
         XLOG(FATAL) << "[" << saiObjectTypeToString(SaiObjectTraits::ObjectType)
                     << "]" << " Unexpected duplicate adapterHostKey";
@@ -541,6 +544,37 @@ class SaiObjectStore {
         [includeAdapterOwned](const auto& handle) {
           return includeAdapterOwned || !handle.second->isOwnedByAdapter();
         });
+  }
+
+  /*
+   * Warm boot reloads objects from adapter keys saved at graceful exit. For
+   * object types hardware can delete on its own, that snapshot is only a best
+   * effort: e.g. a dynamic FDB entry can age out after the keys are written, or
+   * after an age event the agent never got to process. Skip such keys instead
+   * of letting the missing object abort warm boot - switch state replays
+   * whatever is still needed, and removeUnclaimedDynanicEntries() cleans up the
+   * rest.
+   */
+  std::optional<ObjectType> getObjectIfInHw(
+      const typename SaiObjectTraits::AdapterKey& key,
+      const folly::dynamic* adapterKeys2AdapterHostKey) {
+    if constexpr (SaiObjectMayBeMissingInHw<SaiObjectTraits>::value) {
+      try {
+        return getObject(key, adapterKeys2AdapterHostKey);
+      } catch (const SaiApiError& e) {
+        if (e.getSaiStatus() != SAI_STATUS_ITEM_NOT_FOUND) {
+          throw;
+        }
+        XLOGF(
+            WARN,
+            "[{}] skipping {} on reload, no longer present in hardware",
+            objectTypeName().str(),
+            key);
+        return std::nullopt;
+      }
+    } else {
+      return getObject(key, adapterKeys2AdapterHostKey);
+    }
   }
 
   ObjectType getObject(
