@@ -1316,6 +1316,8 @@ SaiPortTraits::CreateAttributes SaiPortManager::attributesFromSwPort(
       cbfcSenderPacketOverhead;
   std::optional<SaiPortTraits::Attributes::CbfcSenderCreditLimit>
       cbfcSenderCreditLimit;
+  std::optional<SaiPortTraits::Attributes::CbfcReceiverCreditLimit>
+      cbfcReceiverCreditLimit;
   if (platform_->getAsic()->isSupported(HwAsic::Feature::CBFC) &&
       swPort->getVirtualChannels()) {
     if (auto creditSize = swPort->getCbfcSenderCreditSize()) {
@@ -1326,6 +1328,9 @@ SaiPortTraits::CreateAttributes SaiPortManager::attributesFromSwPort(
     }
     if (auto creditLimit = swPort->getCbfcSenderCreditLimit()) {
       cbfcSenderCreditLimit = static_cast<sai_uint32_t>(*creditLimit);
+    }
+    if (auto receiverLimit = swPort->getCbfcReceiverCreditLimit()) {
+      cbfcReceiverCreditLimit = static_cast<sai_uint32_t>(*receiverLimit);
     }
   }
 #endif
@@ -1387,7 +1392,7 @@ SaiPortTraits::CreateAttributes SaiPortManager::attributesFromSwPort(
       cbfcSenderCreditSize,
       cbfcSenderPacketOverhead,
       cbfcSenderCreditLimit,
-      std::nullopt, // CBFC receiver credit limit
+      cbfcReceiverCreditLimit,
 #endif
 #if SAI_API_VERSION >= SAI_VERSION(1, 9, 0)
       interFrameGap, // Inter Frame Gap
