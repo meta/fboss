@@ -57,7 +57,7 @@
         {
           "busName": "ROOK_SMBUS_0@1",
           "address": "0x4e",
-          "kernelDeviceName": "ucd90160",
+          "kernelDeviceName": "darwin_aucd90160",
           "pmUnitScopedName": "CPU_POS_UCD90160"
         },
         {
@@ -89,7 +89,7 @@
         {
           "busName": "ROOK_SMBUS_2@2",
           "address": "0x11",
-          "kernelDeviceName": "ucd90320",
+          "kernelDeviceName": "darwin_aucd90320",
           "pmUnitScopedName": "SC_POS_UCD90320"
         },
         {
