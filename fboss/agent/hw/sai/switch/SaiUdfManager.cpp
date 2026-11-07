@@ -10,8 +10,10 @@
 
 #include "fboss/agent/hw/sai/switch/SaiUdfManager.h"
 #include "fboss/agent/hw/sai/store/SaiStore.h"
+#include "fboss/agent/hw/switch_asics/HwAsic.h"
 #include "fboss/agent/packet/Ethertype.h"
 #include "fboss/agent/packet/IPProto.h"
+#include "fboss/agent/platforms/sai/SaiPlatform.h"
 
 namespace facebook::fboss {
 
@@ -181,6 +183,10 @@ std::pair<uint16_t, uint16_t> SaiUdfManager::cfgL3MatchTypeToSai(
     cfg::UdfMatchL3Type cfgType) const {
   switch (cfgType) {
     case cfg::UdfMatchL3Type::UDF_L3_PKT_TYPE_ANY:
+      if (platform_->getAsic()->useAllOnesForUdfL2TypeAny()) {
+        return std::make_pair(
+            static_cast<uint16_t>(kMaskAny), static_cast<uint16_t>(kMaskAny));
+      }
       return std::make_pair(0, kMaskDontCare);
     case cfg::UdfMatchL3Type::UDF_L3_PKT_TYPE_IPV4:
       return std::make_pair(
