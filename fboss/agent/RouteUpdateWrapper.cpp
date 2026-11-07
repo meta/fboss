@@ -26,7 +26,8 @@ void RouteUpdateWrapper::addRoute(
     uint8_t mask,
     ClientID clientId,
     const RouteNextHopEntry& nhop,
-    std::optional<RouteNextHopSet> nhops) {
+    std::optional<RouteNextHopSet> nhops,
+    std::optional<int32_t> level) {
   UnicastRoute tempRoute;
   tempRoute.dest()->ip() = network::toBinaryAddress(network);
   tempRoute.dest()->prefixLength() = mask;
@@ -45,6 +46,9 @@ void RouteUpdateWrapper::addRoute(
   }
   if (nhop.getClassID().has_value()) {
     tempRoute.classID() = *nhop.getClassID();
+  }
+  if (level.has_value()) {
+    tempRoute.level() = *level;
   }
   addRoute(vrf, clientId, std::move(tempRoute));
 }

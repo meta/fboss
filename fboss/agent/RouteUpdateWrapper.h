@@ -84,7 +84,8 @@ class RouteUpdateWrapper {
       uint8_t mask,
       ClientID clientId,
       const RouteNextHopEntry& entry,
-      std::optional<RouteNextHopSet> nhops = std::nullopt);
+      std::optional<RouteNextHopSet> nhops = std::nullopt,
+      std::optional<int32_t> level = std::nullopt);
 
   void addRoute(RouterID id, ClientID clientId, const UnicastRoute& route);
   void addRoute(ClientID clientId, const MplsRoute& route);
