@@ -48,6 +48,14 @@ class CmdConfigInterfaceTestFixture : public CmdConfigTestBase {
         "description": "original description of eth1/2/1"
       }
     ],
+    "mirrors": [
+      {
+        "name": "span0",
+        "destination": {"egressPort": {"name": "eth1/2/1"}},
+        "dscp": 0,
+        "truncate": false
+      }
+    ],
     "vlanPorts": [
       {
         "vlanID": 1,
@@ -278,6 +286,19 @@ TEST_F(CmdConfigInterfaceTestFixture, interfaceConfigCaseInsensitiveAttrs) {
   EXPECT_EQ(config.getAttributes()[1].first, "mtu");
 }
 
+TEST_F(CmdConfigInterfaceTestFixture, interfaceConfigMirrorAttributes) {
+  setupTestableConfigSession();
+  InterfacesConfig config(
+      {"eth1/1/1", "MIRROR-INGRESS", "span0", "mirror-egress", "span0"});
+  ASSERT_EQ(config.getAttributes().size(), 2);
+  EXPECT_EQ(
+      config.getAttributes()[0],
+      std::make_pair(std::string("mirror-ingress"), std::string("span0")));
+  EXPECT_EQ(
+      config.getAttributes()[1],
+      std::make_pair(std::string("mirror-egress"), std::string("span0")));
+}
+
 // Test empty input throws
 TEST_F(CmdConfigInterfaceTestFixture, interfaceConfigEmptyThrows) {
   setupTestableConfigSession();
@@ -348,6 +369,49 @@ TEST_F(CmdConfigInterfaceTestFixture, interfaceConfigNonExistentPortThrows) {
 // ============================================================================
 // CmdConfigInterface::queryClient Tests
 // ============================================================================
+
+TEST_F(CmdConfigInterfaceTestFixture, queryClientAppliesMirrorsToPorts) {
+  setupTestableConfigSession(
+      cmdPrefix_, "eth1/1/1 eth1/2/1 mirror-ingress span0 mirror-egress span0");
+  auto cmd = CmdConfigInterface();
+  InterfacesConfig config(
+      {"eth1/1/1",
+       "eth1/2/1",
+       "mirror-ingress",
+       "span0",
+       "mirror-egress",
+       "span0"});
+
+  auto result = cmd.queryClient(localhost(), config);
+
+  EXPECT_THAT(result, HasSubstr("mirror-ingress=span0"));
+  EXPECT_THAT(result, HasSubstr("mirror-egress=span0"));
+  const auto& ports =
+      *ConfigSession::getInstance().getAgentConfig().sw()->ports();
+  for (const auto& port : ports) {
+    ASSERT_TRUE(port.ingressMirror().has_value());
+    EXPECT_EQ(*port.ingressMirror(), "span0");
+    ASSERT_TRUE(port.egressMirror().has_value());
+    EXPECT_EQ(*port.egressMirror(), "span0");
+  }
+}
+
+TEST_F(
+    CmdConfigInterfaceTestFixture,
+    queryClientRejectsUnknownMirrorAtomically) {
+  setupTestableConfigSession(
+      cmdPrefix_, "eth1/1/1 description changed mirror-ingress missing");
+  auto cmd = CmdConfigInterface();
+  InterfacesConfig config(
+      {"eth1/1/1", "description", "changed", "mirror-ingress", "missing"});
+
+  EXPECT_THROW(cmd.queryClient(localhost(), config), std::invalid_argument);
+
+  const auto& ports =
+      *ConfigSession::getInstance().getAgentConfig().sw()->ports();
+  EXPECT_EQ(*ports[0].description(), "original description of eth1/1/1");
+  EXPECT_FALSE(ports[0].ingressMirror().has_value());
+}
 
 // Test setting description on a single interface
 TEST_F(CmdConfigInterfaceTestFixture, queryClientSetsDescription) {

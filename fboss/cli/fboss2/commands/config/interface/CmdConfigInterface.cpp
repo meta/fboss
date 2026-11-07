@@ -68,6 +68,8 @@ const std::unordered_set<std::string> kKnownAttributes = [] {
       "no-shutdown",
       "lookup-class",
       "queue-config",
+      "mirror-ingress",
+      "mirror-egress",
   };
   for (const auto& name : lldpAttrNames()) {
     attrs.insert(name);
@@ -84,7 +86,7 @@ const std::unordered_set<std::string> kValuelessAttributes = {
 constexpr auto kValidConfigAttrs =
     "description, name, mtu, ip-address, ipv6-address, profile, loopback-mode, "
     "flow-control-rx, flow-control-tx, lldp-expected-*, type, shutdown, "
-    "no-shutdown, lookup-class, queue-config";
+    "no-shutdown, lookup-class, queue-config, mirror-ingress, mirror-egress";
 
 // The value of the `profile` attribute if the parsed attribute list configures
 // one, else nullopt. Centralized (single scan) so the InterfacesConfig
@@ -529,6 +531,25 @@ bool applyQueueConfig(
   return changed;
 }
 
+void validateMirrorAttributes(
+    const std::vector<std::pair<std::string, std::string>>& attributes,
+    const cfg::SwitchConfig& swConfig) {
+  for (const auto& [attr, value] : attributes) {
+    if (attr != "mirror-ingress" && attr != "mirror-egress") {
+      continue;
+    }
+    const auto& mirrors = *swConfig.mirrors();
+    const auto mirror = std::find_if(
+        mirrors.begin(), mirrors.end(), [&](const cfg::Mirror& candidate) {
+          return *candidate.name() == value;
+        });
+    if (mirror == mirrors.end()) {
+      throw std::invalid_argument(
+          fmt::format("Mirror '{}' does not exist", value));
+    }
+  }
+}
+
 CmdConfigInterfaceTraits::RetType CmdConfigInterface::queryClient(
     const HostInfo& hostInfo,
     const ObjectArgType& interfaceConfig) {
@@ -549,6 +570,11 @@ CmdConfigInterfaceTraits::RetType CmdConfigInterface::queryClient(
 
   std::vector<std::string> results;
   bool changed = false;
+
+  // Validate every mirror reference before applying any attribute so a bad
+  // name cannot leave earlier attributes partially staged.
+  const auto& swConfig = *ConfigSession::getInstance().getAgentConfig().sw();
+  validateMirrorAttributes(attributes, swConfig);
 
   // The `profile` attribute mutates the port set (adjusts/removes existing
   // ports and creates absent ones), so it must be applied first, over the
@@ -678,6 +704,26 @@ CmdConfigInterfaceTraits::RetType CmdConfigInterface::queryClient(
     } else if (attr == "queue-config") {
       changed |= applyQueueConfig(value, effectiveInterfaces);
       results.push_back(fmt::format("queue-config={}", value));
+    } else if (attr == "mirror-ingress" || attr == "mirror-egress") {
+      for (const utils::Intf& intf : effectiveInterfaces) {
+        cfg::Port* port = intf.getPort();
+        if (!port) {
+          continue;
+        }
+        if (attr == "mirror-ingress") {
+          if (!port->ingressMirror().has_value() ||
+              *port->ingressMirror() != value) {
+            port->ingressMirror() = value;
+            changed = true;
+          }
+        } else if (
+            !port->egressMirror().has_value() ||
+            *port->egressMirror() != value) {
+          port->egressMirror() = value;
+          changed = true;
+        }
+      }
+      results.push_back(fmt::format("{}={}", attr, value));
     }
   }
 
