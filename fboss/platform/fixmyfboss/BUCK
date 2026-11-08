@@ -148,10 +148,14 @@ cpp_binary(
 
 fbpkg.builder(
     name = "fboss.fixmyfboss",
-    architectures = ["x86_64"],
+    architectures = [
+        "x86_64",
+        "aarch64",
+    ],
     path_actions = {
         "fixmyfboss": "//fboss/platform/fixmyfboss:fixmyfboss",
     },
+    variant_distribution = "combined",
 )
 
 cpp_unittest(
