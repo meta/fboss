@@ -5973,9 +5973,6 @@
           "test_name_regex": "AgentSrv6MidpointTest.*$"
         },
         {
-          "test_name_regex": "AgentSrv6EncapTest/[01].sendPacketToEncapRouteUnresolvedDropped$"
-        },
-        {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentRouteStatTest.V4V6SeparateCounters$"
         },
         {
@@ -11981,9 +11978,6 @@
           "test_name_regex": "AgentSrv6MidpointTest.*$"
         },
         {
-          "test_name_regex": "AgentSrv6EncapTest/[01].sendPacketToEncapRouteUnresolvedDropped$"
-        },
-        {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentRouteStatTest.V4V6SeparateCounters$"
         },
         {
@@ -17909,9 +17903,6 @@
           "test_name_regex": "AgentHwSflowMirrorTest/1.SflowMirrorWithErspanMirrorOnePortSflow$"
         },
         {
-          "test_name_regex": "AgentSrv6EncapTest/[01].sendPacketToEncapRouteUnresolvedDropped$"
-        },
-        {
           "test_name_regex": "AgentPfcConfigTest.PfcWatchdogProgrammingSequence$"
         },
         {
@@ -20047,9 +20038,6 @@
           "test_name_regex": "AgentSrv6MidpointTest.*$"
         },
         {
-          "test_name_regex": "AgentSrv6EncapTest/[01].sendPacketToEncapRouteUnresolvedDropped$"
-        },
-        {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentRouteStatTest.V4V6SeparateCounters$"
         },
         {
@@ -20629,9 +20617,6 @@
         },
         {
           "test_name_regex": "AgentSrv6MidpointTest.*$"
-        },
-        {
-          "test_name_regex": "AgentSrv6EncapTest/[01].sendPacketToEncapRouteUnresolvedDropped$"
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentRouteStatTest.V4V6SeparateCounters$"
@@ -22545,9 +22530,6 @@
           "test_name_regex": "AgentHwSflowMirrorTest/1.SflowMirrorWithErspanMirrorOnePortSflow$"
         },
         {
-          "test_name_regex": "AgentSrv6EncapTest/[01].sendPacketToEncapRouteUnresolvedDropped$"
-        },
-        {
           "test_name_regex": "AgentPfcConfigTest.PfcWatchdogProgrammingSequence$"
         },
         {
@@ -23061,9 +23043,6 @@
         },
         {
           "test_name_regex": "AgentHwSflowMirrorTest/1.SflowMirrorWithErspanMirrorOnePortSflow$"
-        },
-        {
-          "test_name_regex": "AgentSrv6EncapTest/[01].sendPacketToEncapRouteUnresolvedDropped$"
         },
         {
           "test_name_regex": "AgentPfcConfigTest.PfcWatchdogProgrammingSequence$"
@@ -23615,9 +23594,6 @@
         },
         {
           "test_name_regex": "AgentSrv6MidpointTest.*$"
-        },
-        {
-          "test_name_regex": "AgentSrv6EncapTest/[01].sendPacketToEncapRouteUnresolvedDropped$"
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentRouteStatTest.V4V6SeparateCounters$"
