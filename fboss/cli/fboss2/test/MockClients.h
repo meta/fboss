@@ -3,12 +3,8 @@
 #pragma once
 
 #include <gmock/gmock.h>
-#include <gtest/gtest.h>
 #include <cstdint>
 
-#include <folly/io/async/AsyncSocket.h>
-
-#include <fboss/cli/fboss2/options/SSLPolicy.h>
 #include "fboss/agent/gen-cpp2/switch_state_types.h"
 #include "fboss/agent/if/gen-cpp2/FbossCtrl.h"
 #include "fboss/agent/if/gen-cpp2/FbossHwCtrl.h"

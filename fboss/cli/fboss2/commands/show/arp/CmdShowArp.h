@@ -10,7 +10,6 @@
 
 #pragma once
 
-#include <fboss/agent/if/gen-cpp2/ctrl_constants.h>
 #include <fboss/agent/if/gen-cpp2/ctrl_types.h>
 #include <string>
 #include <string_view>

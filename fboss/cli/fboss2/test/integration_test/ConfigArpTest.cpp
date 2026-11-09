@@ -43,7 +43,7 @@ class ConfigArpTest : public Fboss2IntegrationTest {
     XLOG(INFO) << "  arp " << attr << " -> " << newValue;
     XLOG(INFO) << "========================================";
 
-    int64_t originalValue = getSwConfigField<int64_t>(swField);
+    auto originalValue = getSwConfigField<int64_t>(swField);
     XLOG(INFO) << "[Step 1] Original " << swField << " = " << originalValue;
     ASSERT_NE(originalValue, newValue)
         << "Test value " << newValue << " must differ from original "
@@ -59,7 +59,7 @@ class ConfigArpTest : public Fboss2IntegrationTest {
     commitConfig();
 
     XLOG(INFO) << "[Step 4] Verifying running config...";
-    int64_t observed = getSwConfigField<int64_t>(swField);
+    auto observed = getSwConfigField<int64_t>(swField);
     EXPECT_EQ(observed, newValue) << "Expected running config " << swField
                                   << "=" << newValue << ", got " << observed;
 
