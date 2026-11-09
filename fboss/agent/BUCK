@@ -2587,6 +2587,18 @@ cpp_unittest(
     ],
 )
 
+cpp_unittest(
+    name = "split_agent_thrift_client_test",
+    srcs = [
+        "mnpu/test/SplitAgentThriftClientTest.cpp",
+    ],
+    network_access = network_access_utils.none(),
+    deps = [
+        "fbsource//xplat/folly/io/async:async_base",
+        ":split_agent_thrift_syncer",
+    ],
+)
+
 # Build FBOSS fbpkg targets on every fboss/agent change, independent of BTD.
 # Sharded (one ci_sandcastle per shard) to avoid OOMing the worker.
 # See fbpkg/fbpkg_ci_builds.bzl.
