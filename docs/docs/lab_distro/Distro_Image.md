@@ -144,7 +144,7 @@ The HW Agent SAI build script must output a tarball containing the following fil
 ```
 sai_build.env   -- FBOSS SAI build environment variables
 include/        -- SAI headers
-lib/            -- SAI library (libsai_impl.a)
+lib/            -- SAI library (libsai_impl.a or libsai_impl.so)
 sai-runtime.rpm -- SAI runtime package
 ```
 

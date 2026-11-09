@@ -49,6 +49,7 @@ NPU_SDK_UTILS_SCRIPT = SCRIPTS_DIR / "npu_sdk_utils.py"
 # Maps getdeps package name to library name when they differ.
 LIB_NAME_OVERRIDES = {
     "fmt-python": "fmt",
+    "sai_impl_staging": "sai_impl",
 }
 
 # Global definitions describing what we package for each target.
@@ -97,7 +98,8 @@ FORWARDING_EXTRA = {
     RUN_CONFIGS_DIR / "th5": "share/th5",
 }
 
-FORWARDING_LIBS = []
+# run-getdeps.py stages the SAI as installed/sai_impl_staging-<hash>/lib.
+FORWARDING_LIBS = ["sai_impl_staging"]
 
 # BGP and Open/R install rather than leaving binaries in the build tree
 # (`install(TARGETS bgp_bin DESTINATION sbin)`), so their binaries come from
