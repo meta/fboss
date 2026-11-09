@@ -240,7 +240,8 @@ TEST_F(AgentDropBitmapTest, pipelineIpv4Ipv6Drops) {
         PipelineIpDropBit::kDipIsLoopback,
         "IPv4 loopback DIP");
     verifyDropReasonLogged(
-        "DROP reasons pipelineIpv4", "IPv4 loopback DIP log");
+        "DROP reasons pipelineIpv4: (0x8) PIPELINE_IPV4_DIP_IS_LOOPBACK",
+        "IPv4 loopback DIP log");
 
     // Drain residual drops before the IPv6 phase so the IPv4 drop doesn't
     // leak into IPv6's exclusivity check.
@@ -261,7 +262,8 @@ TEST_F(AgentDropBitmapTest, pipelineIpv4Ipv6Drops) {
         PipelineIpDropBit::kDipIsLoopback,
         "IPv6 loopback DIP");
     verifyDropReasonLogged(
-        "DROP reasons pipelineIpv6", "IPv6 loopback DIP log");
+        "DROP reasons pipelineIpv6: (0x8) PIPELINE_IPV6_DIP_IS_LOOPBACK",
+        "IPv6 loopback DIP log");
   };
   verifyAcrossWarmBoots([]() {}, verify);
 }
@@ -289,7 +291,9 @@ TEST_F(AgentDropBitmapTest, pipelineMacAndIngressMacDrops) {
         DropBitmapField::PIPELINE_MAC,
         PipelineMacDropBit::kSmacIsMulticast,
         "Pipeline MAC SMAC multicast");
-    verifyDropReasonLogged("DROP reasons pipelineMac", "Pipeline MAC SMAC log");
+    verifyDropReasonLogged(
+        "DROP reasons pipelineMac: (0x800) PIPELINE_MAC_SMAC_IS_MC",
+        "Pipeline MAC SMAC log");
 
     // Drain residual drops before the ingress MAC phase.
     waitForDropBitmapsToClear();
@@ -309,7 +313,8 @@ TEST_F(AgentDropBitmapTest, pipelineMacAndIngressMacDrops) {
           (1LL << IngressMacDropBit::kTypeOutOfRange));
     });
     verifyDropReasonLogged(
-        "DROP reasons ingressMac", "Ingress MAC type OOR log");
+        "DROP reasons ingressMac: (0x10) INGRESS_MAC_TYPE_OUT_OF_RANGE",
+        "Ingress MAC type OOR log");
   };
   verifyAcrossWarmBoots([]() {}, verify);
 }
@@ -336,7 +341,9 @@ TEST_F(AgentDropBitmapTest, egressMacMtuDrop) {
           stats.egressMacDropBitmap().value_or(0) &
           (1LL << EgressMacDropBit::kEgressMtuError));
     });
-    verifyDropReasonLogged("DROP reasons egressMac", "Egress MTU log");
+    verifyDropReasonLogged(
+        "DROP reasons egressMac: (0x1) EGRESS_MAC_EGRESS_MTU_ERROR",
+        "Egress MTU log");
   };
   verifyAcrossWarmBoots(setup, verify);
 }

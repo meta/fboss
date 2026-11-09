@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- FBOSS control-plane thrift ports. Without this the default public zone
+     rejects every one of them, since it allows only ssh/dhcpv6-client/cockpit. -->
+<service>
+  <short>FBOSS</short>
+  <description>FBOSS control-plane thrift services (agent, hw_agent, fsdb, qsfp, led, platform).</description>
+  <!-- fsdb 5908, qsfp_service 5910, agent 5909 -->
+  <port protocol="tcp" port="5908-5910"/>
+  <!-- led_service 5930, hw_agent 5931-5932 -->
+  <port protocol="tcp" port="5930-5932"/>
+  <!-- migrated thrift ports: fsdb 5957-5958, swswitch 5959, qsfp 5960 -->
+  <port protocol="tcp" port="5957-5960"/>
+  <!-- platform services: sensor 5970, data_corral 5971, fan 5972, rackmon 5973, platform_manager 5975 -->
+  <port protocol="tcp" port="5970-5975"/>
+</service>

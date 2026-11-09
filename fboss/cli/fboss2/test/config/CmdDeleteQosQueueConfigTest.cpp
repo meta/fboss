@@ -174,19 +174,22 @@ TEST_F(CmdDeleteQosQueueConfigTestFixture, deleteMiddleDefaultQueue) {
   EXPECT_NE(findDefaultQueue(5), nullptr);
 }
 
-TEST_F(CmdDeleteQosQueueConfigTestFixture, deleteNonExistentQueueFails) {
+TEST_F(CmdDeleteQosQueueConfigTestFixture, deleteNonExistentQueueIsNoop) {
   setupTestableConfigSession("delete qos queue-config default queue-id", "15");
+  const auto sessionBefore = sessionConfigText();
 
   auto cmd = CmdDeleteQosQueueConfigQueueId();
-  EXPECT_THROW(
+  EXPECT_THAT(
       cmd.queryClient(
           localhost(), defaultName(), DeleteQueueId(getCmdArgsList())),
-      std::runtime_error);
+      ::testing::HasSubstr("nothing to delete"));
 
   EXPECT_EQ(switchConfig().defaultPortQueues()->size(), 9);
+  EXPECT_EQ(sessionConfigText(), sessionBefore)
+      << "a no-op delete must not save the config";
 }
 
-TEST_F(CmdDeleteQosQueueConfigTestFixture, doubleDeleteFails) {
+TEST_F(CmdDeleteQosQueueConfigTestFixture, doubleDeleteIsNoop) {
   setupTestableConfigSession("delete qos queue-config default queue-id", "7");
 
   auto cmd = CmdDeleteQosQueueConfigQueueId();
@@ -195,8 +198,12 @@ TEST_F(CmdDeleteQosQueueConfigTestFixture, doubleDeleteFails) {
   cmd.queryClient(localhost(), defaultName(), queueId);
   EXPECT_EQ(findDefaultQueue(7), nullptr);
 
-  EXPECT_THROW(
-      cmd.queryClient(localhost(), defaultName(), queueId), std::runtime_error);
+  const auto sessionBefore = sessionConfigText();
+  EXPECT_THAT(
+      cmd.queryClient(localhost(), defaultName(), queueId),
+      ::testing::HasSubstr("nothing to delete"));
+  EXPECT_EQ(sessionConfigText(), sessionBefore)
+      << "a no-op delete must not save the config";
 }
 
 // The same command reaches a named config, leaving defaultPortQueues alone.
@@ -219,24 +226,24 @@ TEST_F(CmdDeleteQosQueueConfigTestFixture, deleteNamedQueue) {
   EXPECT_EQ(switchConfig().defaultPortQueues()->size(), 9);
 }
 
-// A typo'd config name must fail rather than default-construct an entry --
+// A missing config name is a no-op that must not default-construct an entry --
 // this is why the command resolves through findQueueConfigList().
-TEST_F(CmdDeleteQosQueueConfigTestFixture, deleteQueueInUnknownConfigFails) {
+TEST_F(CmdDeleteQosQueueConfigTestFixture, deleteQueueInUnknownConfigIsNoop) {
   setupTestableConfigSession(
       "delete qos queue-config no_such_qc queue-id", "0");
+  const auto sessionBefore = sessionConfigText();
 
   auto cmd = CmdDeleteQosQueueConfigQueueId();
-  try {
-    cmd.queryClient(
-        localhost(),
-        utils::QueueConfigName({"no_such_qc"}),
-        DeleteQueueId(getCmdArgsList()));
-    FAIL() << "expected std::runtime_error";
-  } catch (const std::runtime_error& e) {
-    EXPECT_THAT(e.what(), ::testing::HasSubstr("no_such_qc"));
-  }
+  auto result = cmd.queryClient(
+      localhost(),
+      utils::QueueConfigName({"no_such_qc"}),
+      DeleteQueueId(getCmdArgsList()));
+  EXPECT_THAT(result, ::testing::HasSubstr("no_such_qc"));
+  EXPECT_THAT(result, ::testing::HasSubstr("nothing to delete"));
   EXPECT_EQ(namedQueues("no_such_qc"), nullptr)
-      << "a failed delete must not create the entry";
+      << "a no-op delete must not create the entry";
+  EXPECT_EQ(sessionConfigText(), sessionBefore)
+      << "a no-op delete must not save the config";
 }
 
 // Removing the last queue leaves the entry in place (empty), so per-queue
@@ -291,14 +298,19 @@ TEST_F(CmdDeleteQosQueueConfigTestFixture, clearsWholeDefaultList) {
   EXPECT_TRUE(switchConfig().defaultPortQueues()->empty());
 }
 
-TEST_F(CmdDeleteQosQueueConfigTestFixture, clearingEmptyDefaultListFails) {
+TEST_F(CmdDeleteQosQueueConfigTestFixture, clearingEmptyDefaultListIsNoop) {
   setupTestableConfigSession("delete qos queue-config", "default");
 
   auto cmd = CmdDeleteQosQueueConfig();
   cmd.queryClient(localhost(), defaultName());
   ASSERT_TRUE(switchConfig().defaultPortQueues()->empty());
 
-  EXPECT_THROW(cmd.queryClient(localhost(), defaultName()), std::runtime_error);
+  const auto sessionBefore = sessionConfigText();
+  EXPECT_THAT(
+      cmd.queryClient(localhost(), defaultName()),
+      ::testing::HasSubstr("nothing to delete"));
+  EXPECT_EQ(sessionConfigText(), sessionBefore)
+      << "a no-op delete must not save the config";
 }
 
 TEST_F(CmdDeleteQosQueueConfigTestFixture, deletesWholeUnboundNamedConfig) {
@@ -336,16 +348,19 @@ TEST_F(CmdDeleteQosQueueConfigTestFixture, refusesToDeleteBoundNamedConfig) {
       << "a refused delete must leave the config in place";
 }
 
-TEST_F(CmdDeleteQosQueueConfigTestFixture, deleteUnknownNamedConfigFails) {
+TEST_F(CmdDeleteQosQueueConfigTestFixture, deleteUnknownNamedConfigIsNoop) {
   setupTestableConfigSession("delete qos queue-config", "no_such_qc");
+  const auto sessionBefore = sessionConfigText();
 
   auto cmd = CmdDeleteQosQueueConfig();
-  try {
-    cmd.queryClient(localhost(), utils::QueueConfigName(getCmdArgsList()));
-    FAIL() << "expected std::runtime_error";
-  } catch (const std::runtime_error& e) {
-    EXPECT_THAT(e.what(), ::testing::HasSubstr("no_such_qc"));
-  }
+  auto result =
+      cmd.queryClient(localhost(), utils::QueueConfigName(getCmdArgsList()));
+  EXPECT_THAT(result, ::testing::HasSubstr("no_such_qc"));
+  EXPECT_THAT(result, ::testing::HasSubstr("nothing to delete"));
+  EXPECT_EQ(namedQueues("no_such_qc"), nullptr)
+      << "a no-op delete must not create the entry";
+  EXPECT_EQ(sessionConfigText(), sessionBefore)
+      << "a no-op delete must not save the config";
 }
 
 // ---------------------------------------------------------------------------

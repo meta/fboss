@@ -192,13 +192,19 @@ TEST_F(
   EXPECT_NE(findQueue(6), nullptr);
 }
 
-TEST_F(CmdDeleteCoppQueueTestFixture, deleteQueueNotFound) {
+TEST_F(CmdDeleteCoppQueueTestFixture, deleteQueueNotFoundIsNoop) {
   setupTestableConfigSession(cmdPrefix_, "5");
+  const auto sessionBefore = sessionConfigText();
   CmdDeleteCoppQueue cmd;
   HostInfo hostInfo("testhost");
   CoppQueueDeleteArgs args({"5"});
 
-  EXPECT_THROW(cmd.queryClient(hostInfo, args), std::runtime_error);
+  EXPECT_THAT(cmd.queryClient(hostInfo, args), HasSubstr("nothing to delete"));
+  // The seeded queues are untouched.
+  EXPECT_NE(findQueue(9), nullptr);
+  EXPECT_NE(findQueue(0), nullptr);
+  EXPECT_EQ(sessionConfigText(), sessionBefore)
+      << "a no-op delete must not save the config";
 }
 
 } // namespace facebook::fboss

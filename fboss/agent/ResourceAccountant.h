@@ -39,6 +39,7 @@ class ResourceAccountant {
       const RouteNextHopEntry& fwd,
       const std::shared_ptr<SwitchState>& state) const;
   bool checkEcmpResource(bool intermediateState) const;
+  size_t getEcmpGroupUsage() const;
   bool checkArsResource(bool intermediateState) const;
   bool wouldExceedSuperGroupLimit(
       const RouteNextHopEntry::NextHopSet& nhSet) const;
@@ -90,7 +91,11 @@ class ResourceAccountant {
   void mySidStateChangedImpl(const StateDelta& delta);
   bool checkMySidResource(bool intermediateState);
 
+  void vrfStateChangedImpl(const StateDelta& delta);
+  bool checkVrfResource() const;
+
   size_t countSrv6NextHops(const RouteNextHopSet& nhSet) const;
+  bool checkSrv6UcmpDistinctWeights(const RouteNextHopSet& nhSet) const;
 
   template <typename AddrT>
   bool checkAndUpdateSrv6NextHopResource(
@@ -147,12 +152,23 @@ class ResourceAccountant {
   const SwitchIdScopeResolver* scopeResolver_;
 
   bool nativeWeightedEcmp_{true};
+  // Yuba (G200) and G202x program protection backup next hops as ordinary
+  // group members. Other asics keep them in hw reserved space, so they are not
+  // charged as members.
+  bool countBackupNextHopMembers_{false};
+  std::optional<uint32_t> maxSrv6UcmpDistinctWeights_;
   bool checkRouteUpdate_;
   uint32_t l2Entries_{0};
   uint32_t ecmpMemberUsage_{0};
+  // Split horizon gives every dynamic ARS group a secondary plain ECMP group.
+  // It shares the next hop set of its DLB group, so it cannot be a separate
+  // entry in ecmpGroupRefMap_ and is derived from arsEcmpGroupRefMap_ instead.
+  bool arsSplitHorizon_{false};
   uint32_t virtualArsGroupCount_{0};
   uint32_t routeUsage_{0};
   uint32_t mySidUsage_{0};
+  // Configured VRFs, excluding the default VRF
+  uint32_t vrfUsage_{0};
   // SRv6 next hop tracking: keyed by NextHopSetID for efficient lookup.
   // Stores {refCount, srv6Count} per unique NextHopSet.
   struct Srv6NextHopSetInfo {
@@ -176,10 +192,17 @@ class ResourceAccountant {
   FRIEND_TEST(ResourceAccountantTest, checkAndUpdateEcmpResource);
   FRIEND_TEST(ResourceAccountantTest, checkEcmpResourceForUcmpWeights);
   FRIEND_TEST(ResourceAccountantTest, checkAndUpdateGenericEcmpResource);
+  FRIEND_TEST(ResourceAccountantTest, protectionEcmpResourceAccounting);
+  FRIEND_TEST(ResourceAccountantTest, protectionEcmpResourceSharing);
+  FRIEND_TEST(ResourceAccountantTest, protectionEcmpResourceEdgeCases);
+  FRIEND_TEST(ResourceAccountantTest, protectionEcmpResourceLimits);
+  FRIEND_TEST(ResourceAccountantTest, protectionEcmpResourceLifecycle);
+  FRIEND_TEST(ResourceAccountantTest, protectionEcmpResourceArsExcluded);
   FRIEND_TEST(
       ResourceAccountantTest,
       checkAndUpdateGenericEcmpResourceForUcmpWeights);
   FRIEND_TEST(ResourceAccountantTest, checkAndUpdateArsEcmpResource);
+  FRIEND_TEST(ResourceAccountantTest, arsEcmpResourceSourcePortPrune);
   FRIEND_TEST(ResourceAccountantTest, virtualArsGroups);
   FRIEND_TEST(ResourceAccountantTest, virtualArsSuperGroupMemberLimit);
   FRIEND_TEST(ResourceAccountantTest, virtualArsGroupOverrideExcluded);
@@ -194,10 +217,14 @@ class ResourceAccountant {
   FRIEND_TEST(ResourceAccountantTest, checkMySidResource);
   FRIEND_TEST(ResourceAccountantTest, mySidStateChanged);
   FRIEND_TEST(ResourceAccountantTest, mySidResourceExceeded);
+  FRIEND_TEST(ResourceAccountantTest, vrfResourceExceeded);
   FRIEND_TEST(ResourceAccountantTest, checkAndUpdateSrv6NextHopResource);
   FRIEND_TEST(ResourceAccountantTest, srv6NextHopResourceExceeded);
+  FRIEND_TEST(ResourceAccountantTest, srv6UcmpDistinctWeights);
   FRIEND_TEST(ResourceAccountantTest, checkAndUpdateRouteCounterResource);
   FRIEND_TEST(ResourceAccountantTest, routeCounterResourceExceeded);
   FRIEND_TEST(MacTableManagerTest, MacLearnedBulkCb);
+  FRIEND_TEST(StaticMacConfigTest, ApplyConfigAccountsStaticMacsOnce);
+  FRIEND_TEST(StaticMacConfigTest, IsValidStateUpdateDryRun);
 };
 } // namespace facebook::fboss

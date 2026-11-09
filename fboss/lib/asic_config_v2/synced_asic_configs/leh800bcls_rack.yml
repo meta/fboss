@@ -346,9 +346,9 @@ device:
         RX_LANE_MAP_AUTO: 0
         TX_LANE_MAP: 0x75136402
         TX_LANE_MAP_AUTO: 0
-        RX_POLARITY_FLIP: 0xF2
+        RX_POLARITY_FLIP: 0x0D
         RX_POLARITY_FLIP_AUTO: 0
-        TX_POLARITY_FLIP: 0x11
+        TX_POLARITY_FLIP: 0xEE
         TX_POLARITY_FLIP_AUTO: 0
       ?
         PC_PM_ID: 30
@@ -370,9 +370,9 @@ device:
         RX_LANE_MAP_AUTO: 0
         TX_LANE_MAP: 0x75136402
         TX_LANE_MAP_AUTO: 0
-        RX_POLARITY_FLIP: 0xF2
+        RX_POLARITY_FLIP: 0x0D
         RX_POLARITY_FLIP_AUTO: 0
-        TX_POLARITY_FLIP: 0x11
+        TX_POLARITY_FLIP: 0xEE
         TX_POLARITY_FLIP_AUTO: 0
       ?
         PC_PM_ID: 32
@@ -382,9 +382,9 @@ device:
         RX_LANE_MAP_AUTO: 0
         TX_LANE_MAP: 0x75136402
         TX_LANE_MAP_AUTO: 0
-        RX_POLARITY_FLIP: 0xF2
+        RX_POLARITY_FLIP: 0x0D
         RX_POLARITY_FLIP_AUTO: 0
-        TX_POLARITY_FLIP: 0x31
+        TX_POLARITY_FLIP: 0xCE
         TX_POLARITY_FLIP_AUTO: 0
       ?
         PC_PM_ID: 33
@@ -394,9 +394,9 @@ device:
         RX_LANE_MAP_AUTO: 0
         TX_LANE_MAP: 0x31572046
         TX_LANE_MAP_AUTO: 0
-        RX_POLARITY_FLIP: 0x0B
+        RX_POLARITY_FLIP: 0xF4
         RX_POLARITY_FLIP_AUTO: 0
-        TX_POLARITY_FLIP: 0x77
+        TX_POLARITY_FLIP: 0x88
         TX_POLARITY_FLIP_AUTO: 0
       ?
         PC_PM_ID: 34
@@ -406,9 +406,9 @@ device:
         RX_LANE_MAP_AUTO: 0
         TX_LANE_MAP: 0x31572046
         TX_LANE_MAP_AUTO: 0
-        RX_POLARITY_FLIP: 0x0B
+        RX_POLARITY_FLIP: 0xF4
         RX_POLARITY_FLIP_AUTO: 0
-        TX_POLARITY_FLIP: 0x77
+        TX_POLARITY_FLIP: 0x88
         TX_POLARITY_FLIP_AUTO: 0
       ?
         PC_PM_ID: 35
@@ -418,9 +418,9 @@ device:
         RX_LANE_MAP_AUTO: 0
         TX_LANE_MAP: 0x31572046
         TX_LANE_MAP_AUTO: 0
-        RX_POLARITY_FLIP: 0x0B
+        RX_POLARITY_FLIP: 0xF4
         RX_POLARITY_FLIP_AUTO: 0
-        TX_POLARITY_FLIP: 0x77
+        TX_POLARITY_FLIP: 0x88
         TX_POLARITY_FLIP_AUTO: 0
       ?
         PC_PM_ID: 36
@@ -430,9 +430,9 @@ device:
         RX_LANE_MAP_AUTO: 0
         TX_LANE_MAP: 0x31572046
         TX_LANE_MAP_AUTO: 0
-        RX_POLARITY_FLIP: 0x0B
+        RX_POLARITY_FLIP: 0xF4
         RX_POLARITY_FLIP_AUTO: 0
-        TX_POLARITY_FLIP: 0x37
+        TX_POLARITY_FLIP: 0xC8
         TX_POLARITY_FLIP_AUTO: 0
       ?
         PC_PM_ID: 37

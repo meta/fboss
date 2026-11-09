@@ -10,9 +10,62 @@
 
 #include "fboss/cli/fboss2/commands/show/bgp/table/CmdShowBgpTablePrefix.h"
 
+#include <optional>
+
+#include <folly/IPAddress.h>
+
+#include "fboss/agent/FbossError.h"
 #include "fboss/cli/fboss2/commands/show/bgp/CanonicalRibResolver.h"
 
 namespace facebook::fboss {
+namespace {
+
+TIpPrefix normalizePrefix(const std::string& prefix) {
+  const auto network = folly::IPAddress::tryCreateNetwork(
+      prefix, -1 /* defaultCidr */, true /* applyMask */);
+  if (!network) {
+    throw FbossError("Invalid BGP prefix: ", prefix);
+  }
+
+  TIpPrefix normalized;
+  normalized.afi() = network->first.isV4()
+      ? neteng::fboss::bgp_attr::TBgpAfi::AFI_IPV4
+      : neteng::fboss::bgp_attr::TBgpAfi::AFI_IPV6;
+  normalized.prefix_bin() = std::string(
+      reinterpret_cast<const char*>(network->first.bytes()),
+      network->first.byteCount());
+  normalized.num_bits() = network->second;
+  return normalized;
+}
+
+/** Replace FIB-out state for every RIB row matching one requested prefix. */
+void attachFibOut(
+    std::vector<TRibEntry>& ribEntries,
+    const TIpPrefix& queriedPrefix,
+    TFibOutTable fibOutTable) {
+  if (!*fibOutTable.enabled()) {
+    return;
+  }
+  for (auto& ribEntry : ribEntries) {
+    if (*ribEntry.prefix() == queriedPrefix) {
+      ribEntry.fib_out().reset();
+    }
+  }
+  for (const auto& fibOutEntry : *fibOutTable.entries()) {
+    for (auto& ribEntry : ribEntries) {
+      if (*ribEntry.prefix() != *fibOutEntry.prefix()) {
+        continue;
+      }
+      if (fibOutEntry.fib_out()) {
+        ribEntry.fib_out() = *fibOutEntry.fib_out();
+      } else {
+        ribEntry.fib_out().reset();
+      }
+    }
+  }
+}
+
+} // namespace
 
 CmdShowBgpTablePrefix::RetType CmdShowBgpTablePrefix::queryClient(
     const HostInfo& hostInfo,
@@ -26,6 +79,12 @@ CmdShowBgpTablePrefix::RetType CmdShowBgpTablePrefix::queryClient(
         << "No prefixes entered. Usage: fboss2 show bgp table prefix <prefix>"
         << std::endl;
     return result;
+  }
+
+  std::vector<TIpPrefix> normalizedPrefixes;
+  normalizedPrefixes.reserve(prefixes.size());
+  for (const auto& prefix : prefixes) {
+    normalizedPrefixes.push_back(normalizePrefix(prefix));
   }
 
   auto allEntries = runMethodWithLegacyFallback(
@@ -48,6 +107,23 @@ CmdShowBgpTablePrefix::RetType CmdShowBgpTablePrefix::queryClient(
         }
         return entries;
       });
+
+  std::optional<bool> trackingEnabled;
+  for (size_t i = 0; i < prefixes.size(); ++i) {
+    auto fibOut = queryFibOutPrefixIfSupported(*client, prefixes[i]);
+    if (!fibOut) {
+      break;
+    }
+    if (trackingEnabled && *trackingEnabled != *fibOut->enabled()) {
+      throw FbossError(
+          "BGP returned inconsistent FIB-out tracking state across prefix "
+          "queries");
+    }
+    trackingEnabled = *fibOut->enabled();
+    if (*trackingEnabled) {
+      attachFibOut(allEntries, normalizedPrefixes[i], std::move(*fibOut));
+    }
+  }
 
   result.tRibEntries() = std::move(allEntries);
   result.host() = hostInfo.getName();

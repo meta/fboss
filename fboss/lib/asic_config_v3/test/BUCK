@@ -13,6 +13,7 @@ python_unittest(
     deps = [
         "fbsource//third-party/pypi/pyyaml:pyyaml",
         "//fboss/lib/asic_config_v3:base_generator",
+        "//fboss/lib/asic_config_v3:broadcom_xgs_generator",
         "//fboss/lib/asic_config_v3:gen-library",
         "//fboss/lib/asic_config_v3:paths",
     ],
@@ -25,6 +26,18 @@ python_unittest(
     network_access = network_access_utils.none(),
     deps = [
         "fbsource//third-party/pypi/jsonschema:jsonschema",
+        "fbsource//third-party/pypi/referencing:referencing",
+        "//fboss/lib/asic_config_v3:paths",
+    ],
+)
+
+python_unittest(
+    name = "test_conditional_settings",
+    srcs = ["test_conditional_settings.py"],
+    labels = ["autodeps2_generated"],
+    network_access = network_access_utils.none(),
+    deps = [
+        "//fboss/lib/asic_config_v3:base_generator",
         "//fboss/lib/asic_config_v3:paths",
     ],
 )

@@ -31,12 +31,17 @@ using facebook::neteng::fboss::bgp::thrift::TUpdateGroupPeerInfo;
 using facebook::neteng::fboss::bgp::thrift::TUpdateGroupStats;
 using facebook::neteng::fboss::bgp::thrift::TUpdateGroupSummary;
 
-struct CmdShowBgpUpdateGroupTraits : public ReadCommandTraits,
-                                     public CliDocsExempt {
+struct CmdShowBgpUpdateGroupTraits : public ReadCommandTraits {
   static constexpr utils::ObjectArgTypeId ObjectArgTypeId =
       utils::ObjectArgTypeId::OBJECT_ARG_TYPE_ID_MESSAGE;
   using ObjectArgType = std::vector<std::string>;
   using RetType = cli::ShowBgpUpdateGroupModel;
+
+  // Human-authored guide prose for the CLI reference wiki. Superset of the
+  // one-line help string registered in the command tree.
+  static std::string_view description() {
+    return "Displays BGP update groups - the sets of peers that negotiated identical outbound parameters and therefore share one encoded copy of every update, which is what keeps advertisement cost proportional to distinct peer configurations rather than to peer count. With no argument it lists every group: ID, egress policy, state, how many members it has and how many of those are in sync or detached, the post-policy prefix count split v4/v6, and the RIB version the group last encoded. Pass a group ID for the detail view, which adds the full group key (the negotiated parameters that define the group - session type, peer group, egress policy and route filter, AFIs, add-path, RR-client and confederation status, out-delay, link bandwidth, private-ASN removal, 4-byte-AS and extended-next-hop capability, local AS), the cumulative message and queueing counters, and a per-peer table. Read the member counts first: members far above in-sync, or a non-zero detached count, means one slow peer is holding the group's encoding back, and the per-peer table's OutQ and DRV identify which. Per-peer table abbreviations (also printed as a legend above the table): LDR = last detach reason and LDT = last detach time (both '--' if the peer was never detached by the group, which excludes peers that came up detached), LRV = last RIB version the peer has seen, DRV = RIB version at which the peer detached, OutQ = depth of the peer's outbound (AdjRibOut) queue, SOE = self-owned entries (Adj-RIB-Out entries the peer holds under its own key while detached; 0 for in-sync peers, which share the group's entries), LSC = last update-group state change. Two results are not errors - 'Update group: DISABLED' means the feature is off on this switch, and 'No active update groups.' means it is on but nothing has grouped yet. An unknown group ID reports 'Update group not found.'; a non-numeric one is rejected outright.";
+  }
 };
 
 class CmdShowBgpUpdateGroup
@@ -82,6 +87,51 @@ class CmdShowBgpUpdateGroup
     model.update_groups() = std::move(*response.update_groups());
     model.detail_mode() = true;
 
+    return model;
+  }
+
+  /*
+   * Canned, synthetic model (no real switch data) used to render a
+   * deterministic example for the CLI reference wiki. This is the no-argument
+   * summary view, which is what the bare command does; the detail view is
+   * reached by passing a group ID and is described in the prose.
+   */
+  static RetType sampleModel() {
+    auto summary = [](int64_t groupId,
+                      const std::string& policyName,
+                      const std::string& state,
+                      int64_t members,
+                      int64_t inSync,
+                      int64_t detached,
+                      int64_t prefixesV4,
+                      int64_t prefixesV6,
+                      int64_t ribVersion) {
+      TUpdateGroupSummary group;
+      group.group_id() = groupId;
+      group.egress_policy_name() = policyName;
+      group.group_state() = state;
+      group.member_count() = members;
+      group.in_sync_peer_count() = inSync;
+      group.detached_peer_count() = detached;
+      group.post_out_prefix_count() = prefixesV4 + prefixesV6;
+      group.post_out_prefix_count_ipv4() = prefixesV4;
+      group.post_out_prefix_count_ipv6() = prefixesV6;
+      group.last_seen_rib_version() = ribVersion;
+      return group;
+    };
+
+    RetType model;
+    model.enable_update_group() = true;
+    model.detail_mode() = false;
+    /*
+     * Two groups: a healthy one whose members are all in sync, and one where
+     * in-sync trails the member count and a peer has detached - the shape the
+     * prose says to read the member counts for. The second also has a RIB
+     * version of 0, which renders "N/A" rather than 0.
+     */
+    model.update_group_summaries() = {
+        summary(1, "SAMPLE_UPLINK_OUT", "READY", 8, 8, 0, 5000, 3000, 123456),
+        summary(2, "SAMPLE_SPINE_OUT", "WAITING", 11, 7, 4, 5000, 3000, 0)};
     return model;
   }
 
@@ -312,19 +362,38 @@ class CmdShowBgpUpdateGroup
     if (!peers.empty()) {
       out << std::endl;
       out << "Peers:" << std::endl;
+      out << "Legend:" << std::endl;
+      out << "  LDR  Last detach reason ('--' if never detached by group, "
+             "excludes peers that came up detached)"
+          << std::endl;
+      out << "  LDT  Last detach time ('--' if never detached by group, "
+             "excludes peers that came up detached)"
+          << std::endl;
+      out << "  LRV  Last RIB version the peer has seen" << std::endl;
+      out << "  DRV  RIB version at which the peer detached" << std::endl;
+      out << "  OutQ Depth of the peer's outbound (AdjRibOut) queue"
+          << std::endl;
+      out << "  SOE  Self-owned entries: Adj-RIB-Out entries the peer holds "
+             "under its own key while detached (0 for in-sync peers)"
+          << std::endl;
+      out << "  LSC  Last update-group state change" << std::endl;
+      out << std::endl;
 
       Table table;
       table.setHeader(
-          {"Peer Address",
+          {"Peer",
            "State",
            "Sync",
            "Blocked",
            "Detached",
+           "LDR",
+           "LDT",
            "Type",
-           "LastRibVer",
-           "DetachRibVer",
-           "QueueSize",
-           "EntryCount"});
+           "LRV",
+           "DRV",
+           "OutQ",
+           "SOE",
+           "LSC"});
 
       for (const auto& peer : peers) {
         table.addRow(
@@ -333,6 +402,12 @@ class CmdShowBgpUpdateGroup
              boolStr(peer.is_in_sync().value()),
              boolStr(peer.is_blocked().value()),
              boolStr(peer.is_detached().value()),
+             peer.last_detach_reason().has_value()
+                 ? peer.last_detach_reason().value()
+                 : std::string("--"),
+             peer.last_detach_time_ms().has_value()
+                 ? epochMsToString(peer.last_detach_time_ms().value())
+                 : std::string("--"),
              peer.detach_type().has_value() ? peer.detach_type().value()
                                             : std::string("-"),
              std::to_string(peer.last_seen_rib_version().value()),
@@ -340,7 +415,11 @@ class CmdShowBgpUpdateGroup
                  ? std::to_string(peer.detached_rib_version().value())
                  : std::string("-"),
              std::to_string(peer.queue_size().value()),
-             std::to_string(peer.entry_count().value())});
+             std::to_string(peer.entry_count().value()),
+             peer.last_modified_peer_update_state_time_ms().has_value()
+                 ? epochMsToString(
+                       peer.last_modified_peer_update_state_time_ms().value())
+                 : std::string("-")});
       }
       out << table << std::endl;
     }

@@ -8,12 +8,14 @@
  *
  */
 
+#include "fboss/agent/AgentFeatures.h"
 #include "fboss/agent/ApplyThriftConfig.h"
 #include "fboss/agent/FbossError.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
 #include "fboss/agent/hw/mock/MockPlatform.h"
 #include "fboss/agent/state/AclEntry.h"
 #include "fboss/agent/state/AclMap.h"
+#include "fboss/agent/state/MatchAction.h"
 #include "fboss/agent/state/SwitchState.h"
 #include "fboss/agent/test/TestUtils.h"
 #include "folly/IPAddress.h"
@@ -613,21 +615,6 @@ TEST(Acl, AclGeneration) {
       ->ecmpHashAction()
       ->switchingMode() = cfg::SwitchingMode::FIXED_ASSIGNMENT;
 
-  // Add ACL with enableAlternateArsMembers action
-  config.acls()->resize(8);
-  *config.acls()[7].name() = "acl8";
-  config.acls()[7].proto() = kUdpProto;
-  config.acls()[7].l4DstPort() = 2048;
-
-  config.dataPlaneTrafficPolicy()->matchToAction()->resize(6);
-  *config.dataPlaneTrafficPolicy()->matchToAction()[5].matcher() = "acl8";
-  *config.dataPlaneTrafficPolicy()->matchToAction()[5].action() =
-      cfg::MatchAction();
-  config.dataPlaneTrafficPolicy()
-      ->matchToAction()[5]
-      .action()
-      ->enableAlternateArsMembers() = true;
-
   auto stateV1 = publishAndApplyConfig(stateV0, &config, platform.get());
   EXPECT_NE(stateV1, nullptr);
   auto acls = stateV1->getAcls();
@@ -683,13 +670,6 @@ TEST(Acl, AclGeneration) {
           ->getAclAction()
           ->cref<switch_state_tags::ecmpHashAction>()
           ->cref<switch_config_tags::switchingMode>()
-          ->cref());
-  EXPECT_TRUE(acls->getNodeIf("acl8")->getAclAction() != nullptr);
-  EXPECT_EQ(
-      true,
-      acls->getNodeIf("acl8")
-          ->getAclAction()
-          ->cref<switch_state_tags::enableAlternateArsMembers>()
           ->cref());
 }
 
@@ -1555,6 +1535,91 @@ TEST(Acl, L4DstPortRangeValidation) {
   }
 }
 
+TEST(Acl, TcpFlagsMaskValidation) {
+  FLAGS_enable_acl_table_group = false;
+  auto platform = createMockPlatform();
+  auto stateV0 = make_shared<SwitchState>();
+  registerPort(stateV0, PortID(1), "port1", scope());
+
+  auto makeConfig = [](std::optional<int16_t> tcpFlagsBitMap,
+                       std::optional<int16_t> tcpFlagsMask) {
+    cfg::SwitchConfig config;
+    config.ports()->resize(1);
+    preparedMockPortConfig(config.ports()[0], 1);
+    config.acls()->resize(1);
+    *config.acls()[0].name() = "acl0";
+    *config.acls()[0].actionType() = cfg::AclActionType::DENY;
+    config.acls()[0].proto() = 6;
+    if (tcpFlagsBitMap) {
+      config.acls()[0].tcpFlagsBitMap() = *tcpFlagsBitMap;
+    }
+    if (tcpFlagsMask) {
+      config.acls()[0].tcpFlagsMask() = *tcpFlagsMask;
+    }
+    return config;
+  };
+  auto expectRejected = [&](std::optional<int16_t> tcpFlagsBitMap,
+                            std::optional<int16_t> tcpFlagsMask) {
+    auto config = makeConfig(tcpFlagsBitMap, tcpFlagsMask);
+    EXPECT_THROW(
+        publishAndApplyConfig(stateV0, &config, platform.get()), FbossError);
+  };
+
+  // The bitmap must fit in the 8-bit TCP flags field.
+  expectRejected(256, std::nullopt);
+  // A negative bitmap is not a valid set of flags.
+  expectRejected(-1, std::nullopt);
+  // A mask has nothing to apply to without a bitmap.
+  expectRejected(std::nullopt, 0x12);
+  // A zero mask compares no flags, so the rule would match all TCP.
+  expectRejected(0x02, 0);
+  // A negative mask is not a valid set of flags.
+  expectRejected(0x02, -1);
+  // 0x40 (ECE) is past the six flags a mask may cover.
+  expectRejected(0x02, 0x40);
+  // The state field is a byte, so this must not be truncated to 0x12.
+  expectRejected(0x02, 0x112);
+  // 0x08 (PSH) is outside the mask, so it would never be compared.
+  expectRejected(0x0A, 0x12);
+
+  auto config = makeConfig(0x02, 0x12);
+  auto stateV1 = publishAndApplyConfig(stateV0, &config, platform.get());
+  auto acl = stateV1->getAcl("acl0");
+  ASSERT_NE(nullptr, acl);
+  EXPECT_EQ(acl->getTcpFlagsBitMap(), 0x02);
+  EXPECT_EQ(acl->getTcpFlagsMask(), 0x12);
+}
+
+TEST(Acl, TcpFlagsMaskChange) {
+  FLAGS_enable_acl_table_group = false;
+  auto platform = createMockPlatform();
+  auto stateV0 = make_shared<SwitchState>();
+  registerPort(stateV0, PortID(1), "port1", scope());
+
+  cfg::SwitchConfig config;
+  config.ports()->resize(1);
+  preparedMockPortConfig(config.ports()[0], 1);
+  config.acls()->resize(1);
+  *config.acls()[0].name() = "acl0";
+  *config.acls()[0].actionType() = cfg::AclActionType::DENY;
+  config.acls()[0].proto() = 6;
+  config.acls()[0].tcpFlagsBitMap() = 0x02;
+
+  auto stateV1 = publishAndApplyConfig(stateV0, &config, platform.get());
+  ASSERT_NE(nullptr, stateV1);
+  EXPECT_EQ(stateV1->getAcl("acl0")->getTcpFlagsMask(), std::nullopt);
+
+  config.acls()[0].tcpFlagsMask() = 0x12;
+  auto stateV2 = publishAndApplyConfig(stateV1, &config, platform.get());
+  ASSERT_NE(nullptr, stateV2);
+  EXPECT_EQ(stateV2->getAcl("acl0")->getTcpFlagsMask(), 0x12);
+
+  config.acls()[0].tcpFlagsMask().reset();
+  auto stateV3 = publishAndApplyConfig(stateV2, &config, platform.get());
+  ASSERT_NE(nullptr, stateV3);
+  EXPECT_EQ(stateV3->getAcl("acl0")->getTcpFlagsMask(), std::nullopt);
+}
+
 TEST(Acl, DstIpV6WordValidation) {
   FLAGS_enable_acl_table_group = false;
   auto platform = createMockPlatform();
@@ -1649,4 +1714,298 @@ TEST(Acl, DstIpV6WordValidation) {
     config.acls()[0].dstIpV6Word3() = 0x12345678;
     EXPECT_THROW(applyConfig(&config), FbossError);
   }
+}
+
+TEST(Acl, DstIpWithMaskValidation) {
+  FLAGS_enable_acl_table_group = false;
+  auto platform = createMockPlatform();
+  auto stateV0 = make_shared<SwitchState>();
+  registerPort(stateV0, PortID(1), "port1", scope());
+
+  auto makeConfig = [](const std::string& ip, const std::string& mask) {
+    cfg::SwitchConfig config;
+    config.ports()->resize(1);
+    preparedMockPortConfig(config.ports()[0], 1);
+    config.acls()->resize(1);
+    config.acls()[0].name() = "acl0";
+    config.acls()[0].actionType() = cfg::AclActionType::DENY;
+    cfg::AclIpMatch match;
+    match.ip() = ip;
+    match.mask() = mask;
+    config.acls()[0].dstIpWithMask() = match;
+    return config;
+  };
+
+  auto applyConfig = [&](cfg::SwitchConfig* config) {
+    return publishAndApplyConfig(stateV0, config, platform.get());
+  };
+
+  auto expectValid = [&](const std::string& ip,
+                         const std::string& mask,
+                         cfg::AclTableQualifier qualifier) {
+    SCOPED_TRACE(ip + " " + mask);
+    auto config = makeConfig(ip, mask);
+    auto stateV1 = applyConfig(&config);
+    auto acl = stateV1->getAcl("acl0");
+    ASSERT_NE(nullptr, acl);
+    auto expected =
+        std::make_pair(folly::IPAddress(ip), folly::IPAddress(mask));
+    EXPECT_EQ(acl->getDstIpWithMask(), expected);
+    EXPECT_FALSE(acl->getDstIp().first);
+    EXPECT_TRUE(acl->hasMatcher());
+    EXPECT_EQ(
+        acl->getRequiredAclTableQualifiers(),
+        std::set<cfg::AclTableQualifier>{qualifier});
+  };
+
+  // Non-contiguous masks are valid.
+  expectValid(
+      "::4a1c:1230:0:0", "::efff:fffc:0:0", cfg::AclTableQualifier::DST_IPV6);
+  expectValid("10.32.5.0", "255.240.15.0", cfg::AclTableQualifier::DST_IPV4);
+
+  auto expectInvalid = [&](cfg::SwitchConfig config) {
+    EXPECT_THROW(applyConfig(&config), FbossError);
+  };
+
+  // ip sets bits outside mask.
+  expectInvalid(makeConfig("::5a1c:1230:0:0", "::efff:fffc:0:0"));
+  expectInvalid(makeConfig("10.32.5.1", "255.240.15.0"));
+  // Address family mismatch.
+  expectInvalid(makeConfig("10.32.5.0", "::efff:fffc:0:0"));
+  // Zero mask.
+  expectInvalid(makeConfig("::", "::"));
+  // Unparsable address.
+  expectInvalid(makeConfig("10.32.5.0/24", "255.240.15.0"));
+  // Cannot be combined with dstIp or DST IPv6 word qualifiers.
+  {
+    auto config = makeConfig("::4a1c:1230:0:0", "::efff:fffc:0:0");
+    config.acls()[0].dstIp() = "1234:5678:9abc:def0::1/128";
+    expectInvalid(config);
+  }
+  {
+    auto config = makeConfig("::4a1c:1230:0:0", "::efff:fffc:0:0");
+    config.acls()[0].dstIpV6Word3() = 0x12345678;
+    expectInvalid(config);
+  }
+  {
+    auto config = makeConfig("::4a1c:1230:0:0", "::efff:fffc:0:0");
+    config.acls()[0].dstIpV6Word2() = 0x9abcdef0;
+    expectInvalid(config);
+  }
+}
+TEST(Acl, DstIpV6WordWithMaskValidation) {
+  FLAGS_enable_acl_table_group = false;
+  auto platform = createMockPlatform();
+  auto stateV0 = make_shared<SwitchState>();
+  registerPort(stateV0, PortID(1), "port1", scope());
+
+  auto makeWordMatch = [](int64_t value, int64_t mask) {
+    cfg::AclIpV6WordMatch match;
+    match.value() = value;
+    match.mask() = mask;
+    return match;
+  };
+
+  auto makeConfig = [](std::optional<cfg::AclIpV6WordMatch> word1,
+                       std::optional<cfg::AclIpV6WordMatch> word0) {
+    cfg::SwitchConfig config;
+    config.ports()->resize(1);
+    preparedMockPortConfig(config.ports()[0], 1);
+    config.acls()->resize(1);
+    config.acls()[0].name() = "acl0";
+    config.acls()[0].actionType() = cfg::AclActionType::DENY;
+    if (word1) {
+      config.acls()[0].dstIpV6Word1WithMask() = *word1;
+    }
+    if (word0) {
+      config.acls()[0].dstIpV6Word0WithMask() = *word0;
+    }
+    return config;
+  };
+
+  auto applyConfig = [&](cfg::SwitchConfig* config) {
+    return publishAndApplyConfig(stateV0, config, platform.get());
+  };
+
+  {
+    // Mask ::efff:fffc:0:0 lies entirely in word1. word3/word2 may be
+    // combined with word1/word0 since they match disjoint bits.
+    auto config = makeConfig(
+        makeWordMatch(0x4a1c1230, 0xeffffffc), makeWordMatch(0x1, 0xffff));
+    config.acls()[0].dstIpV6Word3() = 0x12345678;
+    auto stateV1 = applyConfig(&config);
+    auto acl = stateV1->getAcl("acl0");
+    ASSERT_NE(nullptr, acl);
+    EXPECT_EQ(
+        acl->getDstIpV6Word1WithMask(),
+        std::make_pair(uint32_t{0x4a1c1230}, uint32_t{0xeffffffc}));
+    EXPECT_EQ(
+        acl->getDstIpV6Word0WithMask(),
+        std::make_pair(uint32_t{0x1}, uint32_t{0xffff}));
+    EXPECT_EQ(acl->getDstIpV6Word3(), 0x12345678);
+    EXPECT_TRUE(acl->hasMatcher());
+    EXPECT_EQ(
+        acl->getRequiredAclTableQualifiers(),
+        (std::set<cfg::AclTableQualifier>{
+            cfg::AclTableQualifier::DST_IPV6_WORD3,
+            cfg::AclTableQualifier::DST_IPV6_WORD1,
+            cfg::AclTableQualifier::DST_IPV6_WORD0}));
+  }
+
+  auto expectInvalid = [&](cfg::SwitchConfig config) {
+    EXPECT_THROW(applyConfig(&config), FbossError);
+  };
+
+  // value sets bits outside mask.
+  expectInvalid(
+      makeConfig(makeWordMatch(0x5a1c1230, 0xeffffffc), std::nullopt));
+  expectInvalid(makeConfig(std::nullopt, makeWordMatch(0x10001, 0xffff)));
+  // Zero mask.
+  expectInvalid(makeConfig(makeWordMatch(0, 0), std::nullopt));
+  // Not 32-bit.
+  expectInvalid(makeConfig(makeWordMatch(0, 0x1ffffffff), std::nullopt));
+  expectInvalid(makeConfig(std::nullopt, makeWordMatch(-1, 0xffffffff)));
+  // Cannot be combined with dstIp or dstIpWithMask.
+  {
+    auto config =
+        makeConfig(makeWordMatch(0x4a1c1230, 0xeffffffc), std::nullopt);
+    config.acls()[0].dstIp() = "1234:5678:9abc:def0::1/128";
+    expectInvalid(config);
+  }
+  {
+    auto config = makeConfig(std::nullopt, makeWordMatch(0x1, 0xffff));
+    cfg::AclIpMatch match;
+    match.ip() = "::4a1c:1230:0:0";
+    match.mask() = "::efff:fffc:0:0";
+    config.acls()[0].dstIpWithMask() = match;
+    expectInvalid(config);
+  }
+}
+
+namespace {
+
+std::shared_ptr<AclEntry> makeAclEntryWithCounter(
+    const std::optional<std::string>& counterName,
+    uint8_t dscp = 0x24) {
+  auto entry = std::make_shared<AclEntry>(1, std::string("acl0"));
+  entry->setDscp(dscp);
+  entry->setActionType(cfg::AclActionType::PERMIT);
+  if (counterName.has_value()) {
+    MatchAction action;
+    cfg::TrafficCounter counter;
+    counter.name() = *counterName;
+    counter.types() = {cfg::CounterType::PACKETS};
+    action.setTrafficCounter(counter);
+    entry->setAclAction(action);
+  }
+  return entry;
+}
+
+} // namespace
+
+TEST(Acl, onlyCounterChangedCounterRenamed) {
+  EXPECT_TRUE(onlyCounterChanged(
+      makeAclEntryWithCounter("counter1"),
+      makeAclEntryWithCounter("counter2")));
+}
+
+TEST(Acl, onlyCounterChangedCounterAdded) {
+  EXPECT_TRUE(onlyCounterChanged(
+      makeAclEntryWithCounter(std::nullopt),
+      makeAclEntryWithCounter("counter1")));
+}
+
+TEST(Acl, onlyCounterChangedCounterRemoved) {
+  EXPECT_TRUE(onlyCounterChanged(
+      makeAclEntryWithCounter("counter1"),
+      makeAclEntryWithCounter(std::nullopt)));
+}
+
+TEST(Acl, onlyCounterChangedCounterTypesChanged) {
+  auto oldEntry = makeAclEntryWithCounter("counter1");
+  auto newEntry = makeAclEntryWithCounter("counter1");
+  MatchAction action;
+  cfg::TrafficCounter counter;
+  counter.name() = "counter1";
+  counter.types() = {cfg::CounterType::PACKETS, cfg::CounterType::BYTES};
+  action.setTrafficCounter(counter);
+  newEntry->setAclAction(action);
+
+  EXPECT_TRUE(onlyCounterChanged(oldEntry, newEntry));
+}
+
+TEST(Acl, onlyCounterChangedNothingChanged) {
+  EXPECT_FALSE(onlyCounterChanged(
+      makeAclEntryWithCounter("counter1"),
+      makeAclEntryWithCounter("counter1")));
+}
+
+TEST(Acl, onlyCounterChangedNothingChangedNoCounter) {
+  EXPECT_FALSE(onlyCounterChanged(
+      makeAclEntryWithCounter(std::nullopt),
+      makeAclEntryWithCounter(std::nullopt)));
+}
+
+TEST(Acl, onlyCounterChangedQualifierChangedToo) {
+  EXPECT_FALSE(onlyCounterChanged(
+      makeAclEntryWithCounter("counter1", 0x24),
+      makeAclEntryWithCounter("counter2", 0x30)));
+}
+
+TEST(Acl, onlyCounterChangedOnlyQualifierChanged) {
+  EXPECT_FALSE(onlyCounterChanged(
+      makeAclEntryWithCounter("counter1", 0x24),
+      makeAclEntryWithCounter("counter1", 0x30)));
+}
+
+TEST(Acl, onlyCounterChangedNonCounterActionChangedToo) {
+  auto oldEntry = makeAclEntryWithCounter("counter1");
+  auto newEntry = makeAclEntryWithCounter(std::nullopt);
+  MatchAction action;
+  cfg::TrafficCounter counter;
+  counter.name() = "counter2";
+  counter.types() = {cfg::CounterType::PACKETS};
+  action.setTrafficCounter(counter);
+  action.setIngressMirror("mirror0");
+  newEntry->setAclAction(action);
+
+  EXPECT_FALSE(onlyCounterChanged(oldEntry, newEntry));
+}
+
+TEST(Acl, PrioAclMapHoldsSharedPbrPriority) {
+  // 1. Two PBR entries at the one shared priority, told apart only by name.
+  auto acls = std::make_shared<AclMap>();
+  acls->addNode(
+      std::make_shared<AclEntry>(
+          FLAGS_pbr_acl_priority, std::string("policyA_tc1")));
+  acls->addNode(
+      std::make_shared<AclEntry>(
+          FLAGS_pbr_acl_priority, std::string("policyA_tc2")));
+
+  // 2. Both survive: before the name joined the key this threw duplicate node
+  // ID, which reaches XLOG(FATAL) via getAclsDelta on every state update.
+  PrioAclMap prioAcls;
+  prioAcls.addAcls(acls);
+  EXPECT_EQ(prioAcls.size(), 2);
+}
+
+TEST(Acl, PrioAclMapRenameIsAddAndRemove) {
+  // 1. Same priority, different name -- a config ACL rename.
+  auto makePrioAcls = [](const std::string& name) {
+    auto acls = std::make_shared<AclMap>();
+    acls->addNode(std::make_shared<AclEntry>(1, name));
+    auto prioAcls = std::make_unique<PrioAclMap>();
+    prioAcls->addAcls(acls);
+    return prioAcls;
+  };
+
+  // 2. The name is always part of the key, so a rename is a distinct add and
+  // remove rather than one changed event.
+  AclMapDelta delta(makePrioAcls("zzz"), makePrioAcls("aaa"));
+  int changed = 0, addedOrRemoved = 0;
+  for (const auto& entry : delta) {
+    (entry.getOld() && entry.getNew()) ? ++changed : ++addedOrRemoved;
+  }
+  EXPECT_EQ(changed, 0);
+  EXPECT_EQ(addedOrRemoved, 2);
 }

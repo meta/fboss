@@ -1,7 +1,10 @@
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbcode_macros//build_defs:export_files.bzl", "export_file")
 load("@fbcode_macros//build_defs:thrift_library.bzl", "thrift_library")
 
 oncall("fboss_agent_push")
+
+export_file(name = "hardware_stats.thrift")
 
 thrift_library(
     name = "hardware_stats",
@@ -60,12 +63,15 @@ cpp_library(
     srcs = [
         "HwResourceStatsPublisher.cpp",
     ],
+    headers = [
+        "HwResourceStatsPublisher.h",
+    ],
     deps = [
         ":hardware_stats-cpp2-types",
         "//fb303:service_data",
     ],
     exported_deps = [
-        "//folly:range",
+        "fbsource//xplat/folly:range",
     ],
 )
 
@@ -74,9 +80,12 @@ cpp_library(
     srcs = [
         "BufferStatsLogger.cpp",
     ],
-    deps = ["//folly/logging:logging"],
+    headers = [
+        "BufferStatsLogger.h",
+    ],
+    deps = ["fbsource//xplat/folly/logging:logging"],
     exported_deps = [
-        "//folly:string",
+        "fbsource//xplat/folly:string",
     ],
 )
 
@@ -96,9 +105,9 @@ cpp_library(
         "//fboss/lib:common_utils",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:thread_local",
         ":hardware_stats-cpp2-types",
         "//fb303:thread_cached_service_data",
-        "//folly:thread_local",
     ],
 )
 
@@ -106,6 +115,9 @@ cpp_library(
     name = "hw_trunk_counters",
     srcs = [
         "HwTrunkCounters.cpp",
+    ],
+    headers = [
+        "HwTrunkCounters.h",
     ],
     deps = [
         ":counter_utils",
@@ -123,7 +135,12 @@ cpp_library(
     srcs = [
         "HwSwitchWarmBootHelper.cpp",
     ],
+    headers = [
+        "HwSwitchWarmBootHelper.h",
+    ],
     deps = [
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly/logging:logging",
         "//fboss/agent:agent_dir_util",
         "//fboss/agent:async_logger",
         "//fboss/agent:fboss-error",
@@ -131,13 +148,11 @@ cpp_library(
         "//fboss/agent/state:state",
         "//fboss/lib:common_file_utils",
         "//fboss/lib:warm_boot_file_utils",
-        "//folly:file_util",
-        "//folly/logging:logging",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/json:dynamic",
         "//fboss/agent:agent_features",
         "//fboss/agent:switch_state-cpp2-types",
-        "//folly/json:dynamic",
     ],
 )
 
@@ -146,16 +161,19 @@ cpp_library(
     srcs = [
         "CounterUtils.cpp",
     ],
+    headers = [
+        "CounterUtils.h",
+    ],
     deps = [
+        "fbsource//xplat/folly/logging:logging",
         ":hardware_stats-cpp2-types",
         "//fb303:service_data",
-        "//folly/logging:logging",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:range",
         "//fb303:export_type",
         "//fb303:exported_stat_map_impl",
         "//fboss/agent:switch_config-cpp2-types",
-        "//folly:range",
     ],
 )
 
@@ -164,14 +182,17 @@ cpp_library(
     srcs = [
         "DiagCmdFilter.cpp",
     ],
+    headers = [
+        "DiagCmdFilter.h",
+    ],
     deps = [
-        "//folly:file_util",
-        "//folly:string",
-        "//folly/logging:logging",
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/logging:logging",
     ],
     exported_deps = [
         "fbsource//third-party/re2:re2",
-        "//folly:fbstring",
+        "fbsource//xplat/folly:fbstring",
     ],
 )
 
@@ -180,14 +201,17 @@ cpp_library(
     srcs = [
         "HwFb303Stats.cpp",
     ],
+    headers = [
+        "HwFb303Stats.h",
+    ],
     deps = [
+        "fbsource//xplat/folly/logging:logging",
         ":counter_utils",
-        "//folly/logging:logging",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/container:f14_hash",
         "//common/stats:monotonic_counter",
         "//fboss/agent:fboss-error",
-        "//folly/container:f14_hash",
     ],
 )
 
@@ -198,21 +222,26 @@ cpp_library(
         "HwPortFb303Stats.cpp",
         "HwSysPortFb303Stats.cpp",
     ],
+    headers = [
+        "HwBasePortFb303Stats.h",
+        "HwPortFb303Stats.h",
+        "HwSysPortFb303Stats.h",
+    ],
     deps = [
+        "fbsource//xplat/folly/logging:logging",
         ":counter_utils",
         ":stats_constants",
         "//common/stats:macros",
         "//fb303:service_data",
         "//fb303:thread_cached_service_data",
         "//fboss/agent:switch_config-cpp2-types",
-        "//folly/logging:logging",
         "//thrift/lib/cpp2/protocol:protocol",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/container:f14_hash",
         ":hardware_stats-cpp2-types",
         ":hw_fb303_stats",
         "//fboss/agent:fboss-types",
-        "//folly/container:f14_hash",
     ],
 )
 
@@ -220,6 +249,9 @@ cpp_library(
     name = "hw_rif_fb303_stats",
     srcs = [
         "HwRouterInterfaceFb303Stats.cpp",
+    ],
+    headers = [
+        "HwRouterInterfaceFb303Stats.h",
     ],
     exported_deps = [
         ":hardware_stats-cpp2-types",
@@ -232,15 +264,18 @@ cpp_library(
     srcs = [
         "HwCpuFb303Stats.cpp",
     ],
+    headers = [
+        "HwCpuFb303Stats.h",
+    ],
     deps = [
+        "fbsource//xplat/folly/logging:logging",
         ":stats_constants",
-        "//folly/logging:logging",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/container:f14_hash",
         ":counter_utils",
         ":hardware_stats-cpp2-types",
         ":hw_fb303_stats",
-        "//folly/container:f14_hash",
     ],
 )
 
@@ -250,7 +285,7 @@ cpp_library(
         "StatsConstants.h",
     ],
     exported_deps = [
-        "//folly:range",
+        "fbsource//xplat/folly:range",
     ],
 )
 

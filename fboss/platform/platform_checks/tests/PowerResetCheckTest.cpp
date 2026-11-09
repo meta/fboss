@@ -17,8 +17,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "fboss/platform/helpers/PlatformFsUtils.h"
-#include "fboss/platform/helpers/PlatformUtils.h"
+#include "fboss/platform/platform_checks/tests/MockHost.h"
 
 using namespace ::testing;
 using namespace facebook::fboss::platform;
@@ -41,9 +40,8 @@ class RecentKernelPanicCheckTest : public ::testing::Test {
     tmpDir_ = std::filesystem::temp_directory_path() / uniqueName;
     std::filesystem::create_directories(tmpDir_);
 
-    // Use real PlatformFsUtils with the temp directory
-    fsUtils_ = std::make_shared<PlatformFsUtils>(tmpDir_);
-    check_ = std::make_unique<RecentKernelPanicCheck>(fsUtils_);
+    check_ = std::make_unique<RecentKernelPanicCheck>(
+        CheckTarget{.host = std::make_shared<LocalHost>(tmpDir_)});
   }
 
   void TearDown() override {
@@ -51,7 +49,6 @@ class RecentKernelPanicCheckTest : public ::testing::Test {
   }
 
   std::filesystem::path tmpDir_;
-  std::shared_ptr<PlatformFsUtils> fsUtils_;
   std::unique_ptr<RecentKernelPanicCheck> check_;
 };
 
@@ -129,29 +126,26 @@ TEST_F(RecentKernelPanicCheckTest, OldPanicsIgnored) {
 // WatchdogDidNotStopCheck Tests
 // ============================================================================
 
-class MockPlatformUtils : public PlatformUtils {
- public:
-  MOCK_METHOD(
-      (std::pair<int, std::string>),
-      execCommand,
-      (const std::string& cmd),
-      (const, override));
-};
-
 class WatchdogDidNotStopCheckTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    mockPlatformUtils_ = std::make_shared<MockPlatformUtils>();
-    check_ = std::make_unique<WatchdogDidNotStopCheck>(mockPlatformUtils_);
+    host_ = std::make_shared<MockHost>();
+    check_ =
+        std::make_unique<WatchdogDidNotStopCheck>(CheckTarget{.host = host_});
   }
 
-  std::shared_ptr<MockPlatformUtils> mockPlatformUtils_;
+  void expectDmesg(int exitCode, const std::string& output) {
+    EXPECT_CALL(*host_, run("dmesg -T", _))
+        .WillOnce(
+            Return(CommandResult{.exitCode = exitCode, .standardOut = output}));
+  }
+
+  std::shared_ptr<MockHost> host_;
   std::unique_ptr<WatchdogDidNotStopCheck> check_;
 };
 
 TEST_F(WatchdogDidNotStopCheckTest, DmesgCommandFails) {
-  EXPECT_CALL(*mockPlatformUtils_, execCommand("dmesg -T"))
-      .WillOnce(Return(std::make_pair(1, "")));
+  expectDmesg(1, "");
 
   auto result = check_->run();
 
@@ -164,8 +158,7 @@ TEST_F(WatchdogDidNotStopCheckTest, NoWatchdogLogs) {
       "[Mon Oct 21 10:00:00 2024] Normal log entry\n"
       "[Mon Oct 21 10:01:00 2024] Another normal entry\n";
 
-  EXPECT_CALL(*mockPlatformUtils_, execCommand("dmesg -T"))
-      .WillOnce(Return(std::make_pair(0, dmesgOutput)));
+  expectDmesg(0, dmesgOutput);
 
   auto result = check_->run();
 
@@ -185,8 +178,7 @@ TEST_F(WatchdogDidNotStopCheckTest, FewWatchdogLogsWarning) {
   std::string dmesgOutput = std::string(buffer) + " watchdog did not stop\n" +
       std::string(buffer) + " watchdog did not stop\n";
 
-  EXPECT_CALL(*mockPlatformUtils_, execCommand("dmesg -T"))
-      .WillOnce(Return(std::make_pair(0, dmesgOutput)));
+  expectDmesg(0, dmesgOutput);
 
   auto result = check_->run();
 
@@ -210,8 +202,7 @@ TEST_F(WatchdogDidNotStopCheckTest, ManyWatchdogLogsError) {
     dmesgOutput += std::string(buffer) + " watchdog did not stop\n";
   }
 
-  EXPECT_CALL(*mockPlatformUtils_, execCommand("dmesg -T"))
-      .WillOnce(Return(std::make_pair(0, dmesgOutput)));
+  expectDmesg(0, dmesgOutput);
 
   auto result = check_->run();
 
@@ -236,11 +227,91 @@ TEST_F(WatchdogDidNotStopCheckTest, OldWatchdogLogsIgnored) {
     dmesgOutput += std::string(buffer) + " watchdog did not stop\n";
   }
 
-  EXPECT_CALL(*mockPlatformUtils_, execCommand("dmesg -T"))
-      .WillOnce(Return(std::make_pair(0, dmesgOutput)));
+  expectDmesg(0, dmesgOutput);
 
   auto result = check_->run();
 
   EXPECT_EQ(*result.status(), CheckStatus::OK);
   EXPECT_EQ(*result.checkType(), CheckType::WATCHDOG_DID_NOT_STOP_CHECK);
+}
+
+// ============================================================================
+// RecentManualRebootCheck Tests
+// ============================================================================
+
+TEST(RecentManualRebootCheckTest, UnreadableLogFileIsError) {
+  auto host = std::make_shared<MockHost>();
+  EXPECT_CALL(*host, readFile(std::filesystem::path("/var/log/secure")))
+      .WillOnce(Return(std::nullopt));
+  EXPECT_CALL(*host, exists(std::filesystem::path("/var/log/secure")))
+      .WillOnce(Return(true));
+  RecentManualRebootCheck check(CheckTarget{.host = host});
+
+  auto result = check.run();
+
+  EXPECT_EQ(*result.status(), CheckStatus::ERROR);
+}
+
+TEST(RecentManualRebootCheckTest, MissingLogFileIsOk) {
+  auto host = std::make_shared<MockHost>();
+  EXPECT_CALL(*host, readFile(std::filesystem::path("/var/log/secure")))
+      .WillOnce(Return(std::nullopt));
+  EXPECT_CALL(*host, exists(std::filesystem::path("/var/log/secure")))
+      .WillOnce(Return(false));
+  RecentManualRebootCheck check(CheckTarget{.host = host});
+
+  auto result = check.run();
+
+  EXPECT_EQ(*result.status(), CheckStatus::OK);
+}
+
+namespace {
+
+std::string secureLogTimestamp(std::chrono::system_clock::time_point time) {
+  auto timeT = std::chrono::system_clock::to_time_t(time);
+  struct tm tmStorage{};
+  gmtime_r(&timeT, &tmStorage);
+  char buffer[64];
+  std::strftime(buffer, sizeof(buffer), "%b %d %H:%M:%S", &tmStorage);
+  return buffer;
+}
+
+CheckResult runManualRebootCheck(const std::string& secureLog) {
+  auto host = std::make_shared<MockHost>();
+  EXPECT_CALL(*host, readFile(std::filesystem::path("/var/log/secure")))
+      .WillOnce(Return(secureLog));
+  return RecentManualRebootCheck(CheckTarget{.host = host}).run();
+}
+
+} // namespace
+
+TEST(RecentManualRebootCheckTest, RecentRebootIsReported) {
+  auto line = secureLogTimestamp(
+                  std::chrono::system_clock::now() - std::chrono::hours(1)) +
+      " rsw1 systemd-logind[1]: System is rebooting.\n";
+
+  auto result = runManualRebootCheck(line);
+
+  EXPECT_EQ(*result.status(), CheckStatus::PROBLEM);
+}
+
+TEST(RecentManualRebootCheckTest, OldRebootIsIgnored) {
+  auto line = secureLogTimestamp(
+                  std::chrono::system_clock::now() - std::chrono::hours(72)) +
+      " rsw1 systemd-logind[1]: System is rebooting.\n";
+
+  auto result = runManualRebootCheck(line);
+
+  EXPECT_EQ(*result.status(), CheckStatus::OK);
+}
+
+TEST(PowerResetUtilsTest, YearlessTimestampAfterNowIsLastYear) {
+  // A yearless timestamp two days ahead can only be from last year.
+  auto future = std::chrono::system_clock::now() + std::chrono::hours(48);
+
+  auto parsed = power_reset_utils::parseDateTime(
+      secureLogTimestamp(future), "%b %d %H:%M:%S");
+
+  ASSERT_TRUE(parsed.has_value());
+  EXPECT_LT(*parsed, std::chrono::system_clock::now());
 }

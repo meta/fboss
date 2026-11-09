@@ -24,13 +24,18 @@ namespace facebook::fboss {
 using namespace neteng::fboss::bgp::thrift;
 using facebook::fboss::utils::Table;
 
-struct CmdShowBgpStreamSubscriberPostPolicyTraits : public ReadCommandTraits,
-                                                    public CliDocsExempt {
+struct CmdShowBgpStreamSubscriberPostPolicyTraits : public ReadCommandTraits {
   using ParentCmd = CmdShowBgpStreamSubscriber;
   static constexpr utils::ObjectArgTypeId ObjectArgTypeId =
       utils::ObjectArgTypeId::OBJECT_ARG_TYPE_ID_IP_LIST;
   using ObjectArgType = std::vector<std::string>;
   using RetType = NetworkPathWithHost;
+
+  // Human-authored guide prose for the CLI reference wiki. Superset of the
+  // one-line help string registered in the command tree.
+  static std::string_view description() {
+    return "Displays the routes the switch actually streams to a subscriber, after the export policy has run, with a Policy line on each naming the policy and term that accepted it and any attributes that term rewrote. A subscriber is an external client - a controller or collector - subscribed to the switch's route stream rather than peered over BGP, and its numeric id comes from 'show bgp stream summary'. Diffing this against 'pre-policy' is how you see what the export policy changed; anything present there and absent here was dropped by it. An optional list of prefixes after the subcommand narrows the result to those prefixes. The subscriber id is required; without one the command fails with a usage hint.";
+  }
 };
 
 class CmdShowBgpStreamSubscriberPostPolicy
@@ -69,6 +74,15 @@ class CmdShowBgpStreamSubscriberPostPolicy
     result.ip() = hostInfo.getIpStr();
 
     return result;
+  }
+
+  // Canned, synthetic model (no real switch data). Streamed routes are the
+  // switch's own advertisements, so this reuses the shared advertised-route
+  // sample; post-policy renders it with the Policy line.
+  static RetType sampleModel() {
+    return sampleNetworkPaths(
+        SampleRouteDirection::Advertised,
+        "Accepted/Modified by STREAM_EXPORT term SAMPLE_ACCEPT_TERM");
   }
 
   void printOutput(RetType& routesWithHost, std::ostream& out = std::cout) {

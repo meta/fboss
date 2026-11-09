@@ -11,18 +11,24 @@ cpp_library(
         "MockTestHandle.cpp",
     ],
     headers = [
+        "MockHwSwitch.h",
+        "MockPlatform.h",
         "MockPlatformMapping.h",
         "MockPlatformPort.h",
+        "MockTestHandle.h",
     ],
     deps = [
+        "fbsource//xplat/folly:memory",
+        "fbsource//xplat/folly/json:dynamic",
         ":pkt",
         "//fboss/agent:fboss-error",
         "//fboss/lib/platforms:product-info",
-        "//folly:memory",
-        "//folly/json:dynamic",
     ],
     exported_deps = [
         "fbsource//third-party/googletest:gmock",
+        "fbsource//xplat/folly:network_address",
+        "fbsource//xplat/folly/io:iobuf",
+        "fbsource//xplat/folly/testing:test_util",
         "//fboss/agent:agent_features",
         "//fboss/agent:constants",
         "//fboss/agent:core",
@@ -35,9 +41,6 @@ cpp_library(
         "//fboss/agent/platforms/common/wedge100:wedge100_platform_mapping",
         "//fboss/agent/state:state",
         "//fboss/agent/test:hw_test_handle",
-        "//folly:network_address",
-        "//folly/io:iobuf",
-        "//folly/testing:test_util",
     ],
 )
 
@@ -47,12 +50,16 @@ cpp_library(
         "MockRxPacket.cpp",
         "MockTxPacket.cpp",
     ],
+    headers = [
+        "MockRxPacket.h",
+        "MockTxPacket.h",
+    ],
     deps = [
+        "fbsource//xplat/folly/io:iobuf",
         "//fboss/agent/packet:packet",
-        "//folly/io:iobuf",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:range",
         "//fboss/agent:packet",
-        "//folly:range",
     ],
 )

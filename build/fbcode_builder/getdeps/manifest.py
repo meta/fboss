@@ -12,11 +12,11 @@ import io
 import os
 import sys
 import typing
+from pathlib import Path
 from typing import overload
 
 from .builder import (
     AutoconfBuilder,
-    Boost,
     CMakeBootStrapBuilder,
     CMakeBuilder,
     Iproute2Builder,
@@ -33,6 +33,7 @@ from .expr import ExprNode, parse_expr
 from .fetcher import (
     ArchiveFetcher,
     GitFetcher,
+    LocalDirFetcher,
     PreinstalledNopFetcher,
     ShipitTransformerFetcher,
     SimpleShipitTransformerFetcher,
@@ -50,6 +51,15 @@ if typing.TYPE_CHECKING:
 REQUIRED: str = "REQUIRED"
 OPTIONAL: str = "OPTIONAL"
 
+# Where ShipIt puts fbcode_builder in a project's repo, by the manifest's
+# shipit_fbcode_builder_layout. Pinned revisions sit in ../deps/github_hashes
+# from there, where BuildOptions finds them. "tool" keeps build/ free for build
+# output, as in `cmake -B build`.
+FBCODE_BUILDER_LAYOUT_DIRS: dict[str, str] = {
+    "build": "build/fbcode_builder",
+    "tool": "tool/fbcode_builder",
+}
+
 SCHEMA: dict[str, dict[str, object]] = {
     "manifest": {
         "optional_section": False,
@@ -58,6 +68,7 @@ SCHEMA: dict[str, dict[str, object]] = {
             "fbsource_path": OPTIONAL,
             "shipit_project": OPTIONAL,
             "shipit_fbcode_builder": OPTIONAL,
+            "shipit_fbcode_builder_layout": OPTIONAL,
             "use_shipit": OPTIONAL,
             "shipit_external_branch": OPTIONAL,
             "shipit_strip_marker": OPTIONAL,
@@ -124,8 +135,6 @@ SCHEMA: dict[str, dict[str, object]] = {
     "homebrew": {"optional_section": True},
     "pps": {"optional_section": True},
     "preinstalled.env": {"optional_section": True},
-    "bootstrap.args": {"optional_section": True},
-    "b2.args": {"optional_section": True},
     "make.build_args": {"optional_section": True},
     "make.install_args": {"optional_section": True},
     "make.test_args": {"optional_section": True},
@@ -151,8 +160,6 @@ ALLOWED_EXPR_SECTIONS: list[str] = [
     "dependencies",
     "make.build_args",
     "make.install_args",
-    "bootstrap.args",
-    "b2.args",
     "download",
     "git",
     "install.files",
@@ -332,12 +339,19 @@ class ManifestParser:
         self.shipit_fbcode_builder: str | None = self.get(
             "manifest", "shipit_fbcode_builder"
         )
+        layout = self.get("manifest", "shipit_fbcode_builder_layout") or "build"
+        if layout not in FBCODE_BUILDER_LAYOUT_DIRS:
+            raise Exception(
+                "manifest %s has shipit_fbcode_builder_layout=%s; use one of %s"
+                % (file_name, layout, ", ".join(sorted(FBCODE_BUILDER_LAYOUT_DIRS)))
+            )
+        self.shipit_fbcode_builder_dir: str = FBCODE_BUILDER_LAYOUT_DIRS[layout]
         self.resolved_system_packages: dict[str, str] = {}
         self.shipit_strip_marker: str | None = self.get(
             "manifest", "shipit_strip_marker", defval="@fb-only"
         )
 
-        if self.name != os.path.basename(file_name):
+        if self.name != Path(file_name).name:
             raise Exception(
                 "filename of the manifest '%s' does not match the manifest name '%s'"
                 % (file_name, self.name)
@@ -568,7 +582,7 @@ class ManifestParser:
     def get_repo_url(self, ctx: ManifestContext) -> str | None:
         return self.get("git", "repo_url", ctx=ctx)
 
-    def _create_fetcher(
+    def _create_fetcher(  # noqa: C901
         self, build_options: BuildOptions, ctx: ManifestContext
     ) -> Fetcher:
         real_shipit_available = ShipitTransformerFetcher.available(build_options)
@@ -616,6 +630,22 @@ class ManifestParser:
                 if package_fetcher.packages_are_installed():
                     # pyre-fixme[7]: Expected `Fetcher` but got `SystemPackageFetcher`.
                     return package_fetcher
+
+        # Only enforce the vendor dir when a network fetcher would otherwise
+        # be chosen: projects with no fetch configuration are meant to come
+        # from the preinstalled environment or system packages, and `vendor`
+        # skips those too, so failing here would point at a dir that can
+        # never contain them.
+        if build_options.vendor_dir and (repo_url is not None or url is not None):
+            vendored = os.path.join(build_options.vendor_dir, self.name)
+            if not os.path.isdir(vendored):
+                raise Exception(
+                    f"project {self.name} is not present in "
+                    f"{build_options.vendor_dir}; populate it with "
+                    "`getdeps.py vendor` using the same options"
+                )
+            # pyre-fixme[7]: Expected `Fetcher` but got `LocalDirFetcher`.
+            return LocalDirFetcher(vendored)
 
         if repo_url:
             rev = self.get("git", "rev")
@@ -694,7 +724,6 @@ class ManifestParser:
         final_install_prefix: str | None = None,
         extra_cmake_defines: dict[str, str] | None = None,
         cmake_targets: list[str] | None = None,
-        extra_b2_args: list[str] | None = None,
     ) -> BuilderBase:
         builder = self.get_builder_name(ctx)
         build_in_src_dir = self.get("build", "build_in_src_dir", "false", ctx=ctx)
@@ -705,7 +734,7 @@ class ManifestParser:
             build_dir = src_dir
             subdir = self.get("build", "subdir", None, ctx=ctx)
             if subdir is not None:
-                build_dir = os.path.join(build_dir, subdir)
+                build_dir = os.fspath(Path(build_dir, subdir))
             print("build_dir is %s" % build_dir)  # just to quiet lint
 
         if builder == "make" or builder == "cmakebootstrap":
@@ -760,22 +789,6 @@ class ManifestParser:
                 inst_dir,
                 args,
                 conf_env_args,
-            )
-
-        if builder == "boost":
-            args = self.get_section_as_args("b2.args", ctx)
-            if extra_b2_args is not None:
-                args += extra_b2_args
-            return Boost(
-                loader,
-                dep_manifests,
-                build_options,
-                ctx,
-                self,
-                src_dir,
-                build_dir,
-                inst_dir,
-                args,
             )
 
         if builder == "cmake":
@@ -968,6 +981,7 @@ class ManifestContext:
         "os",
         "distro",
         "distro_vers",
+        "distro_family",
         "fb",
         "fbsource",
         "test",

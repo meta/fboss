@@ -1,0 +1,35 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fboss_oss")
+
+cpp_library(
+    name = "config_generation_utils",
+    srcs = [
+        "ConfigGenerationSpecUtils.cpp",
+        "FeatureDefaultCommandArgsUtils.cpp",
+        "LinkTopologyUtils.cpp",
+        "ThriftConfigUtils.cpp",
+    ],
+    headers = [
+        "ConfigGenerationSpecUtils.h",
+        "FeatureDefaultCommandArgsUtils.h",
+        "LinkTopologyUtils.h",
+        "ThriftConfigUtils.h",
+    ],
+    visibility = ["PUBLIC"],
+    deps = [
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly:small_vector",
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/json:dynamic",
+    ],
+    exported_deps = [
+        "//fboss/agent:fboss-error",
+        "//fboss/agent:switch_config-cpp2-types",
+        "//fboss/configs/platforms/generic/forwarding_stack:config_generation-cpp2-types",
+        "//fboss/configs/platforms/generic/forwarding_stack:feature_default_command_args-cpp2-types",
+        "//fboss/lib/if:fboss_common-cpp2-types",
+        "//thrift/lib/cpp/util:enum_utils",
+        "//thrift/lib/cpp2/protocol:protocol",
+    ],
+)

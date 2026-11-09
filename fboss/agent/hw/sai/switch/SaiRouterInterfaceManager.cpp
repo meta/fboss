@@ -118,6 +118,8 @@ RouterInterfaceSaiId SaiRouterInterfaceManager::addOrUpdateVlanRouterInterface(
   std::optional<SaiVlanRouterInterfaceTraits::Attributes::AdminMplsState>
       adminMplsStateAttribute{std::nullopt};
   if (platform_->getAsic()->getAsicType() == cfg::AsicType::ASIC_TYPE_EBRO ||
+      platform_->getAsic()->getAsicType() ==
+          cfg::AsicType::ASIC_TYPE_TOMAHAWK6 ||
       platform_->getAsic()->getAsicType() == cfg::AsicType::ASIC_TYPE_P200) {
     adminMplsStateAttribute =
         SaiVlanRouterInterfaceTraits::Attributes::AdminMplsState{true};
@@ -199,13 +201,33 @@ RouterInterfaceSaiId SaiRouterInterfaceManager::addOrUpdatePortRouterInterface(
       ? getSystemPortId(swInterface)
       : (swInterface->getAggregatePortIDf() ? getAggregatePortId(swInterface)
                                             : getPortId(swInterface));
+
+#if SAI_API_VERSION >= SAI_VERSION(1, 9, 0)
+  // SAI_ROUTER_INTERFACE_ATTR_ADMIN_MPLS_STATE defaults to false, so MPLS must
+  // be enabled explicitly on a RIF that routes MPLS.
+  //
+  // TODO: Evaluate whether enabling MPLS routing has any overhead or downside
+  // on an interface that will never carry MPLS traffic.
+  std::optional<SaiPortRouterInterfaceTraits::Attributes::AdminMplsState>
+      adminMplsStateAttribute{std::nullopt};
+  if (platform_->getAsic()->getAsicType() == cfg::AsicType::ASIC_TYPE_P200) {
+    adminMplsStateAttribute =
+        SaiPortRouterInterfaceTraits::Attributes::AdminMplsState{true};
+  }
+#endif
+
   // create the router interface
   SaiPortRouterInterfaceTraits::CreateAttributes attributes{
       virtualRouterIdAttribute,
       typeAttribute,
       portIdAttribute,
       srcMacAttribute,
-      mtuAttribute};
+      mtuAttribute
+#if SAI_API_VERSION >= SAI_VERSION(1, 9, 0)
+      ,
+      adminMplsStateAttribute
+#endif
+  };
   SaiPortRouterInterfaceTraits::AdapterHostKey k{
       virtualRouterIdAttribute,
       portIdAttribute,
@@ -287,6 +309,36 @@ void SaiRouterInterfaceManager::changeRouterInterface(
     throw FbossError(
         "Attempted to change non existent router interface with InterfaceID ",
         swId);
+  }
+  if (oldInterface->getRouterID() != newInterface->getRouterID()) {
+    // The virtual router is create only. Remove the old router interface
+    // first, since a VLAN can have only one router interface.
+    removeRouterInterface(oldInterface);
+    try {
+      addOrUpdateRouterInterface(newInterface, isLocal);
+    } catch (const std::exception& addEx) {
+      try {
+        addOrUpdateRouterInterface(oldInterface, isLocal);
+      } catch (const std::exception& restoreEx) {
+        throw FbossError(
+            "Failed to move router interface ",
+            swId,
+            " to VRF ",
+            newInterface->getRouterID(),
+            ": ",
+            addEx.what(),
+            "; restoring it also failed, leaving no router interface: ",
+            restoreEx.what());
+      }
+      throw FbossError(
+          "Failed to move router interface ",
+          swId,
+          " to VRF ",
+          newInterface->getRouterID(),
+          ": ",
+          addEx.what());
+    }
+    return;
   }
   addOrUpdateRouterInterface(newInterface, isLocal);
 }

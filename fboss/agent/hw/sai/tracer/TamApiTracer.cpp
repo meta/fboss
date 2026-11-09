@@ -54,6 +54,9 @@ std::map<int32_t, std::pair<std::string, std::size_t>> _TamTransportMap{
     SAI_ATTR_MAP(TamTransport, SrcPort),
     SAI_ATTR_MAP(TamTransport, DstPort),
     SAI_ATTR_MAP(TamTransport, Mtu),
+#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
+    SAI_ATTR_MAP(TamTransport, GreProtocolType),
+#endif
 };
 
 std::map<int32_t, std::pair<std::string, std::size_t>> _TamCollectorMap{
@@ -62,6 +65,14 @@ std::map<int32_t, std::pair<std::string, std::size_t>> _TamCollectorMap{
     SAI_ATTR_MAP(TamCollector, TruncateSize),
     SAI_ATTR_MAP(TamCollector, Transport),
     SAI_ATTR_MAP(TamCollector, DscpValue),
+#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
+    SAI_ATTR_MAP(TamCollector, SrcMacAddress),
+    SAI_ATTR_MAP(TamCollector, DstMacAddress),
+    SAI_ATTR_MAP(TamCollector, Destination),
+#endif
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 0)
+    SAI_ATTR_MAP(TamCollector, Localhost),
+#endif
 };
 
 void handleExtensionAttributes() {

@@ -2,6 +2,7 @@
 
 #include "fboss/agent/SwitchIdScopeResolver.h"
 #include "fboss/agent/rib/NetworkToRouteMap.h"
+#include "fboss/agent/rib/NextHopIDManager.h"
 #include "fboss/agent/rib/RibToSwitchStateUpdater.h"
 #include "fboss/agent/rib/RouteUpdater.h"
 #include "fboss/agent/state/MySid.h"
@@ -94,6 +95,7 @@ TEST(RibToSwitchStateUpdater, EmptyRoutesAndEmptyMySidTable) {
   IPv6NetworkToRouteMap v6Map;
   LabelToRouteMap labelMap;
   MySidTable mySidTable;
+  NextHopIDManager nhopIdManager;
 
   RibToSwitchStateUpdater updater(
       scopeResolver(),
@@ -101,7 +103,7 @@ TEST(RibToSwitchStateUpdater, EmptyRoutesAndEmptyMySidTable) {
       v4Map,
       v6Map,
       labelMap,
-      nullptr,
+      &nhopIdManager,
       mySidTable);
   auto newState = updater(state);
 
@@ -118,6 +120,7 @@ TEST(RibToSwitchStateUpdater, RoutesOnlyNoMySid) {
   IPv6NetworkToRouteMap v6Map;
   LabelToRouteMap labelMap;
   MySidTable mySidTable;
+  NextHopIDManager nhopIdManager;
 
   addResolvedV4Route(v4Map, "10.0.0.0", 24);
   addResolvedV6Route(v6Map, "2001:db8::", 32);
@@ -128,7 +131,7 @@ TEST(RibToSwitchStateUpdater, RoutesOnlyNoMySid) {
       v4Map,
       v6Map,
       labelMap,
-      nullptr,
+      &nhopIdManager,
       mySidTable);
   auto newState = updater(state);
 
@@ -159,6 +162,7 @@ TEST(RibToSwitchStateUpdater, MySidOnlyNoRoutes) {
 
   auto mySid0 = makeMySid(makeSidPrefix("fc00:100::1", 48));
   MySidTable mySidTable;
+  NextHopIDManager nhopIdManager;
   mySidTable[makeSidPrefix("fc00:100::1", 48)] = mySid0;
 
   RibToSwitchStateUpdater updater(
@@ -167,7 +171,7 @@ TEST(RibToSwitchStateUpdater, MySidOnlyNoRoutes) {
       v4Map,
       v6Map,
       labelMap,
-      nullptr,
+      &nhopIdManager,
       mySidTable);
   auto newState = updater(state);
 
@@ -202,6 +206,7 @@ TEST(RibToSwitchStateUpdater, BothRoutesAndMySid) {
   auto mySid0 = makeMySid(makeSidPrefix("fc00:100::1", 48));
   auto mySid1 = makeMySid(makeSidPrefix("fc00:200::1", 64));
   MySidTable mySidTable;
+  NextHopIDManager nhopIdManager;
   mySidTable[makeSidPrefix("fc00:100::1", 48)] = mySid0;
   mySidTable[makeSidPrefix("fc00:200::1", 64)] = mySid1;
 
@@ -211,7 +216,7 @@ TEST(RibToSwitchStateUpdater, BothRoutesAndMySid) {
       v4Map,
       v6Map,
       labelMap,
-      nullptr,
+      &nhopIdManager,
       mySidTable);
   auto newState = updater(state);
 
@@ -249,6 +254,7 @@ TEST(RibToSwitchStateUpdater, LastDeltaSpansBothUpdaters) {
 
   auto mySid0 = makeMySid(makeSidPrefix("fc00:100::1", 48));
   MySidTable mySidTable;
+  NextHopIDManager nhopIdManager;
   mySidTable[makeSidPrefix("fc00:100::1", 48)] = mySid0;
 
   RibToSwitchStateUpdater updater(
@@ -257,7 +263,7 @@ TEST(RibToSwitchStateUpdater, LastDeltaSpansBothUpdaters) {
       v4Map,
       v6Map,
       labelMap,
-      nullptr,
+      &nhopIdManager,
       mySidTable);
   auto newState = updater(state);
 
@@ -290,6 +296,7 @@ TEST(RibToSwitchStateUpdater, NoChangeOnSecondCallWithSameData) {
 
   auto mySid0 = makeMySid(makeSidPrefix("fc00:100::1", 48));
   MySidTable mySidTable;
+  NextHopIDManager nhopIdManager;
   mySidTable[makeSidPrefix("fc00:100::1", 48)] = mySid0;
 
   // First call: populates FIB and MySid
@@ -299,7 +306,7 @@ TEST(RibToSwitchStateUpdater, NoChangeOnSecondCallWithSameData) {
       v4Map,
       v6Map,
       labelMap,
-      nullptr,
+      &nhopIdManager,
       mySidTable);
   auto state1 = updater1(state);
   state1->publish();
@@ -311,7 +318,7 @@ TEST(RibToSwitchStateUpdater, NoChangeOnSecondCallWithSameData) {
       v4Map,
       v6Map,
       labelMap,
-      nullptr,
+      &nhopIdManager,
       mySidTable);
   auto state2 = updater2(state1);
 

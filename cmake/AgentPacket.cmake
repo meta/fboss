@@ -54,6 +54,7 @@ add_library(xgs_psamp_mod
 target_link_libraries(xgs_psamp_mod
   fmt::fmt
   ipfix_header
+  switch_config_cpp2
   Folly::folly
 )
 
@@ -62,6 +63,14 @@ add_library(tajo_punt_header
 )
 
 target_link_libraries(tajo_punt_header
+  Folly::folly
+)
+
+add_library(chenab_mod_header
+  fboss/agent/packet/chenab/oss/ChenabModHeader.cpp
+)
+
+target_link_libraries(chenab_mod_header
   Folly::folly
 )
 
@@ -99,6 +108,7 @@ add_executable(xgs_psamp_mod_test
 )
 
 target_link_libraries(xgs_psamp_mod_test
+  fmt::fmt
   ipfix_header
   xgs_psamp_mod
   ${GTEST}
@@ -119,3 +129,4 @@ target_link_libraries(tajo_punt_header_test
 )
 
 gtest_discover_tests(tajo_punt_header_test)
+

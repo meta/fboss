@@ -111,10 +111,10 @@ def test_run_level_failure_writes_setup_failure(
     monkeypatch.setattr(runner, "_get_tests_to_run", lambda: ["HwFooTest.Bar"])
     monkeypatch.setattr(runner, "_filter_tests", lambda tests: tests)
 
-    def fail_setup(_config):
+    def fail_setup():
         raise RuntimeError("service failed to start")
 
-    monkeypatch.setattr(runner, "_backup_and_modify_config", fail_setup)
+    monkeypatch.setattr(runner, "_prepare_config_for_run", fail_setup)
 
     assert runner.run_test(mock_args) == os.EX_TEMPFAIL
     assert json.loads(output.read_text()) == [
@@ -131,7 +131,7 @@ def test_execution_failure_is_not_reported_as_setup_failure(
     monkeypatch.setattr(runner, "_initialize_test_lists", lambda _args: None)
     monkeypatch.setattr(runner, "_get_tests_to_run", lambda: ["HwFooTest.Bar"])
     monkeypatch.setattr(runner, "_filter_tests", lambda tests: tests)
-    monkeypatch.setattr(runner, "_backup_and_modify_config", lambda config: config)
+    monkeypatch.setattr(runner, "_prepare_config_for_run", lambda: None)
 
     def fail_execution(_tests, _config, _args):
         raise RuntimeError("test runner crashed")

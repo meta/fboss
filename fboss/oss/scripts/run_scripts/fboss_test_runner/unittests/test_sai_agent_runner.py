@@ -10,7 +10,10 @@ import json
 from unittest.mock import MagicMock, patch
 
 import pytest
-from fboss_test_runner.runners.sai_agent_test_runner import SaiAgentTestRunner
+from fboss_test_runner.runners.sai_agent_test_runner import (
+    SaiAgentTestRunner,
+    sdk_version_key,
+)
 
 
 @pytest.fixture
@@ -27,6 +30,7 @@ def _make_args(**overrides):
     args.enable_production_features = None
     args.list_tests_for_features = None
     args.production_features = None
+    args.test_config_options = None
     args.known_bad_tests_file = None
     args.unsupported_tests_file = None
     for k, v in overrides.items():
@@ -197,3 +201,106 @@ class TestFilterTestsProductionFeatures:
         ):
             tests = ["AgentA.t", "AgentB.t"]
             assert sai_agent_runner._filter_tests(tests) == tests
+
+
+class TestSdkGatedProductionFeatures:
+    # Feature ids mirror production_features.thrift: MIRROR_ON_DROP=49, SRV6_ENCAP=100
+    FEATURES = {
+        "asicToFeatures": {"yuba": [3, 49], "tomahawk5": [3, 100]},
+        "asicToFeatureNames": {
+            "yuba": ["L3_FORWARDING", "MIRROR_ON_DROP"],
+            "tomahawk5": ["L3_FORWARDING", "SRV6_ENCAP"],
+        },
+        "featureSupportSpecs": [
+            {
+                "feature": 49,
+                "supportedFrom": [
+                    {"asics": ["yuba"], "sdk": 2, "minSdkVersion": "26.2.4210"}
+                ],
+            },
+            {
+                "feature": 100,
+                "supportedFrom": [
+                    {
+                        "asics": ["tomahawk5"],
+                        "sdk": 1,
+                        "minSdkVersion": "15.4_ea_odp",
+                        "requiredTestConfigOptions": ["rbb"],
+                    }
+                ],
+            },
+        ],
+    }
+
+    @pytest.mark.parametrize(
+        "asic,sai_sdk,options,gated_feature",
+        [
+            ("yuba", "25.11.4210-2", None, "MIRROR_ON_DROP"),
+            ("yuba", "26.2.4210-1", None, None),
+            ("tomahawk5", "15.4.0.0_odp", None, "SRV6_ENCAP"),
+            ("tomahawk5", "15.4.0.0_odp", "rbb", None),
+            ("tomahawk5", "14.2.0.0_odp", "rbb", "SRV6_ENCAP"),
+            # Unknown running SDK: no gating
+            ("yuba", "unknown", None, None),
+            ("yuba", None, None, None),
+        ],
+    )
+    def test_sdk_gating(
+        self,
+        sai_agent_runner,
+        tmp_path,
+        monkeypatch,
+        asic,
+        sai_sdk,
+        options,
+        gated_feature,
+    ):
+        monkeypatch.setenv("FBOSS_DATA", str(tmp_path))
+        if sai_sdk:
+            (tmp_path / "npu_sdk_metadata.json").write_text(
+                json.dumps(
+                    {
+                        "fboss_hw_agent-sai_impl": {
+                            "sdkVersion": {"asicSdk": sai_sdk, "saiSdk": sai_sdk}
+                        }
+                    }
+                )
+            )
+        with patch.object(
+            sai_agent_runner, "args", new=_make_args(test_config_options=options)
+        ):
+            supported = sai_agent_runner._get_sdk_gated_production_features(
+                asic, self.FEATURES
+            )
+        expected = set(self.FEATURES["asicToFeatureNames"][asic]) - {gated_feature}
+        assert supported == expected
+
+
+@pytest.mark.parametrize(
+    "vendor_sdk,running,minimum,expected",
+    [
+        # BRCM SAI: EA and GA of the same release compare equal, as in netcastle
+        (1, "15.4_ea_odp", "15.4.0.0_odp", True),
+        (1, "14.2.0.0_odp", "15.4_ea_odp", False),
+        (1, "16.0_ea_dnx_odp", "16.0", True),
+        # Leaba: OSS records a "-N" packaging revision
+        (2, "26.2.4210-1", "26.2.4210", True),
+        (2, "25.11.4210-2", "26.2.4210", False),
+        # Nvidia: "_" separated components count
+        (3, "2511.36_0_20", "2511.36_0_21", False),
+        (3, "2605.37", "2511.36", True),
+    ],
+)
+def test_sdk_version_key(vendor_sdk, running, minimum, expected):
+    assert (
+        sdk_version_key(vendor_sdk, running) >= sdk_version_key(vendor_sdk, minimum)
+    ) is expected
+
+
+@pytest.mark.parametrize(
+    "vendor_sdk,version",
+    [(1, "16"), (1, "15.4-1"), (2, "26.2"), (2, "unknown"), (3, "unknown"), (4, "1.0")],
+)
+def test_sdk_version_key_rejects_malformed(vendor_sdk, version):
+    with pytest.raises(ValueError):
+        sdk_version_key(vendor_sdk, version)

@@ -6,24 +6,23 @@
 #include <range/v3/range/conversion.hpp>
 #include <range/v3/view/transform.hpp>
 
+#include "fboss/platform/fan_service/FanServiceConfigTypes.h"
 #include "fboss/platform/fan_service/if/gen-cpp2/fan_service_config_constants.h"
 #include "fboss/platform/fan_service/if/gen-cpp2/fan_service_config_types.h"
 
 namespace {
 namespace constants =
     facebook::fboss::platform::fan_service::fan_service_config_constants;
+using facebook::fboss::platform::fan_service::allOpticTypes;
 
 std::unordered_set<std::string> zoneTypes = {
     constants::ZONE_TYPE_MAX(),
     constants::ZONE_TYPE_MIN(),
     constants::ZONE_TYPE_AVG()};
 
-std::unordered_set<std::string> opticTypes = {
-    constants::OPTIC_TYPE_100_GENERIC(),
-    constants::OPTIC_TYPE_200_GENERIC(),
-    constants::OPTIC_TYPE_400_GENERIC(),
-    constants::OPTIC_TYPE_800_GENERIC(),
-    constants::OPTIC_TYPE_800_ZR()};
+std::unordered_set<std::string> opticTypes(
+    allOpticTypes().begin(),
+    allOpticTypes().end());
 
 std::unordered_set<std::string> opticAggregationTypes = {
     constants::OPTIC_AGGREGATION_TYPE_MAX(),

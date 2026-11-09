@@ -134,6 +134,20 @@ RouteNextHopSet getNormalizedNextHops(
     const std::shared_ptr<SwitchState>& state,
     const RouteNextHopEntry& entry);
 
+// MPLS variants: no nexthop IDs when FLAGS_mpls_rib is off. Delete with it.
+RouteNextHopSet getMplsNextHops(
+    const std::shared_ptr<SwitchState>& state,
+    const RouteNextHopEntry& entry);
+
+RouteNextHopSet getMplsClientNextHops(
+    const std::shared_ptr<SwitchState>& state,
+    const RouteNextHopEntry& entry);
+
+// Override-aware: wraps getNormalizedNextHops.
+RouteNextHopSet getMplsNormalizedNextHops(
+    const std::shared_ptr<SwitchState>& state,
+    const RouteNextHopEntry& entry);
+
 template <typename Func>
 void forAllRoutes(const std::shared_ptr<SwitchState>& state, Func func) {
   for (const auto& [_, fibInfo] : std::as_const(*state->getFibsInfoMap())) {

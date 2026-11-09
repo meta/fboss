@@ -1,5 +1,51 @@
 {
   "fwConfigs": {
+    "bios": {
+      "upgrade": [
+        {
+          "commandType": "flashrom",
+          "flashromArgs": {
+            "programmer_type": "internal"
+          }
+        }
+      ],
+      "verify": {
+        "commandType": "flashrom",
+        "flashromArgs": {
+          "programmer_type": "internal"
+        }
+      },
+      "read": {
+        "commandType": "flashrom",
+        "flashromArgs": {
+          "programmer_type": "internal"
+        }
+      },
+      "version": {
+        "versionType": "sysfs",
+        "path": "/sys/devices/virtual/dmi/id/bios_version"
+      },
+      "priority": 3
+    },
+    "scm_cpld": {
+      "upgrade": [
+        {
+          "commandType": "jam",
+          "jamArgs": {
+            "jamExtraArgs": [
+              "-aprogram",
+              "-fmarconi_cpu_cpld",
+              "-v"
+            ]
+          }
+        }
+      ],
+      "version": {
+        "versionType": "sysfs",
+        "path": "/run/devmap/inforoms/SCM_FPGA_INFO_ROM/fw_ver"
+      },
+      "priority": 2
+    },
     "smb_fpga": {
       "upgrade": [
         {
@@ -21,7 +67,7 @@
       ],
       "version": {
         "versionType": "sysfs",
-        "path": "/run/devmap/inforoms/ICECUBE800BANW_SMB_FPGA_INFO_ROM/fw_ver"
+        "path": "/run/devmap/inforoms/SMB_FPGA_INFO_ROM/fw_ver"
       },
       "priority": 1
     }

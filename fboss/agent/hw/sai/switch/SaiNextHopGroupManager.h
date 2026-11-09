@@ -12,6 +12,7 @@
 
 #include "fboss/agent/hw/sai/api/NextHopGroupApi.h"
 
+#include "fboss/agent/hw/gen-cpp2/hardware_stats_types.h"
 #include "fboss/agent/hw/sai/api/ArsApi.h"
 #include "fboss/agent/hw/sai/api/NextHopApi.h"
 #include "fboss/agent/hw/sai/store/SaiObject.h"
@@ -50,6 +51,11 @@ using SaiNextHop = ConditionSaiObjectType<SaiNextHopTraits>::type;
 using SaiNextHopGroupMemberInfo = std::pair<
     SaiNextHopGroupMemberTraits::AdapterHostKey,
     SaiNextHopGroupMemberTraits::Attributes::Weight>;
+
+sai_next_hop_group_type_t getNextHopGroupType(
+    const RouteNextHopEntry::NextHopSet& nextHops);
+
+bool isProtectionNextHopGroupType(sai_next_hop_group_type_t nextHopGroupType);
 
 struct SaiNextHopGroupKey {
   SaiNextHopGroupKey(
@@ -177,6 +183,52 @@ class SaiNextHopGroupChildGroupMember {
   std::shared_ptr<SaiNextHopGroupMember> nextHopGroupMember_;
 };
 
+// Group member over a VXLAN tunnel next hop. The tunnel next hop
+// is created eagerly and has no neighbor to wait for, so the
+// member object is created directly, as with a child group member.
+// When the group bulk creates its members, creation is deferred
+// to that bulk create instead.
+class SaiVxlanNextHopGroupMember {
+ public:
+  using NextHopWeight =
+      std::optional<SaiNextHopGroupMemberTraits::Attributes::Weight>;
+
+  SaiVxlanNextHopGroupMember(
+      SaiNextHopGroupManager* manager,
+      SaiNextHopGroupHandle* nhgroup,
+      std::shared_ptr<SaiVxlanNextHopHandle> vxlanNextHopHandle,
+      SaiNextHopGroupTraits::AdapterKey nexthopGroupId,
+      NextHopWeight weight);
+
+  bool isAlive() const {
+    return nextHopGroupMember_ != nullptr;
+  }
+
+  std::pair<
+      std::optional<SaiNextHopGroupMemberTraits::AdapterHostKey>,
+      std::optional<SaiNextHopGroupMemberTraits::CreateAttributes>>
+  getAdapterHostKeyAndCreateAttributes();
+
+  void setObjectOwnership(
+      const std::shared_ptr<SaiNextHopGroupMember>& object) {
+    nextHopGroupMember_ = object;
+  }
+
+  std::shared_ptr<SaiObject<SaiNextHopGroupMemberTraits>>
+  getNhopGroupMemberObject() {
+    return nextHopGroupMember_;
+  }
+
+  std::string toString() const;
+
+ private:
+  std::shared_ptr<SaiVxlanNextHopHandle> vxlanNextHopHandle_;
+  std::optional<SaiNextHopGroupMemberTraits::AdapterHostKey> adapterHostKey_;
+  std::optional<SaiNextHopGroupMemberTraits::CreateAttributes>
+      createAttributes_;
+  std::shared_ptr<SaiNextHopGroupMember> nextHopGroupMember_;
+};
+
 class NextHopGroupMember {
  public:
   using NextHopWeight =
@@ -198,6 +250,13 @@ class NextHopGroupMember {
       ManagedSaiNextHop managedSaiNextHop,
       NextHopWeight nextHopWeight,
       bool fixedWidthMode);
+
+  NextHopGroupMember(
+      SaiNextHopGroupManager* manager,
+      SaiNextHopGroupHandle* nhgroup,
+      SaiNextHopGroupTraits::AdapterKey nexthopGroupId,
+      std::shared_ptr<SaiVxlanNextHopHandle> vxlanNextHopHandle,
+      NextHopWeight nextHopWeight);
 
   bool isProgrammed() const {
     return std::visit(
@@ -258,7 +317,8 @@ class NextHopGroupMember {
  private:
   std::variant<
       std::shared_ptr<ManagedIpNextHopGroupMember>,
-      std::shared_ptr<ManagedMplsNextHopGroupMember>
+      std::shared_ptr<ManagedMplsNextHopGroupMember>,
+      std::shared_ptr<SaiVxlanNextHopGroupMember>
 #if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)
       ,
       std::shared_ptr<ManagedSrv6NextHopGroupMember>
@@ -266,6 +326,15 @@ class NextHopGroupMember {
       >
       managedNextHopGroupMember_;
 };
+
+struct ArsHwCounter {
+  uint64_t failPackets{0};
+  uint64_t portReassignments{0};
+};
+
+// What a group counted between two sweeps, as opposed to what its counters
+// read. Same shape, different meaning, so the distinction is in the name.
+using ArsCounterDelta = ArsHwCounter;
 
 struct SaiNextHopGroupHandle {
   std::shared_ptr<SaiNextHopGroup> nextHopGroup;
@@ -275,9 +344,11 @@ struct SaiNextHopGroupHandle {
   std::shared_ptr<SaiNextHopGroupChildGroupMember> childGroupMember_;
   bool fixedWidthMode{false};
   bool bulkCreate{false};
+  bool bulkRemoveEcmpMembers_{false};
   std::set<SaiNextHopGroupMemberInfo> fixedWidthNextHopGroupMembers_;
   uint32_t maxVariableWidthEcmpSize{0};
   std::optional<cfg::SwitchingMode> desiredEcmpSwitchingMode_;
+  ArsHwCounter arsHwCounter_;
   SaiStore* saiStore_{nullptr};
   const SaiPlatform* platform_{nullptr};
   sai_object_id_t adapterKey() const {
@@ -287,6 +358,11 @@ struct SaiNextHopGroupHandle {
     return nextHopGroup->adapterKey();
   }
   size_t nextHopGroupSize() const;
+  // Reads this group's ARS counters off the hardware, stores them in
+  // arsHwCounter_ for the next sweep to compare against, and returns how much
+  // they moved since the previous sweep. Zero for a group with no ARS object
+  // attached, whose counters cannot move.
+  ArsCounterDelta updateStats();
   void memberAdded(
       SaiNextHopGroupMemberInfo memberInfo,
       bool updateHardware = true);
@@ -346,10 +422,17 @@ class SaiNextHopGroupManager {
 
   void setEcmpGroupSettings(const EcmpGroupSettingsMap& ecmpGroupSettings);
 
+  // Absent key means the feature was not configured for that group type, which
+  // is not the same as configured off. Callers outside this manager want the
+  // combined answer, so the lookup is not exposed raw.
+  bool isSplitHorizonEnabled(cfg::EcmpGroupType groupType) const;
+
   cfg::SwitchingMode getNextHopGroupSwitchingMode(
       const RouteNextHopEntry::NextHopSet& swNextHops);
 
   std::vector<EcmpDetails> getAllEcmpDetails() const;
+  void updateStats();
+  HwFlowletStats getHwFlowletStats() const;
 
  private:
   bool isFixedWidthNextHopGroup(
@@ -373,6 +456,7 @@ class SaiNextHopGroupManager {
   std::optional<cfg::SwitchingMode> primaryArsMode_;
   std::optional<int32_t> minWidthForArsVirtualGroup_;
   EcmpGroupSettingsMap ecmpGroupSettings_;
+  HwFlowletStats arsStats_;
 };
 
 } // namespace facebook::fboss

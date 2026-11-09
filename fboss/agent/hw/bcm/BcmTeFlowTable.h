@@ -78,7 +78,6 @@ class BcmTeFlowTable {
   // return nullptr if not found
   BcmTeFlowEntry* getTeFlowIf(const std::shared_ptr<TeFlowEntry>& teFlow) const;
   void processChangedTeFlow(
-      const int groupId,
       const std::shared_ptr<TeFlowEntry>& oldTeFlow,
       const std::shared_ptr<TeFlowEntry>& newTeFlow);
 

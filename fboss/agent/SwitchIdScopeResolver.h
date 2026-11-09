@@ -15,6 +15,8 @@ class MirrorOnDropReport;
 class DsfNode;
 class IpInIpTunnel;
 class Srv6Tunnel;
+class VxLanTunnel;
+class VrfConfig;
 class AclEntry;
 class SystemPort;
 class Port;
@@ -28,6 +30,8 @@ class MirrorOnDropReport;
 class DsfNode;
 class IpTunnel;
 class Srv6Tunnel;
+class VxlanTunnel;
+class Vrf;
 class AclEntry;
 class SystemPort;
 class Vlan;
@@ -94,6 +98,12 @@ class SwitchIdScopeResolver {
   const HwSwitchMatcher& scope(const std::shared_ptr<IpTunnel>& /*m*/) const {
     return l3SwitchMatcher();
   }
+  const HwSwitchMatcher& scope(const cfg::VrfConfig& /*vrf*/) const {
+    return l3SwitchMatcher();
+  }
+  const HwSwitchMatcher& scope(const std::shared_ptr<Vrf>& /*vrf*/) const {
+    return l3SwitchMatcher();
+  }
   HwSwitchMatcher scope(
       const cfg::Srv6Tunnel& tunnel,
       const cfg::SwitchConfig& cfg) const;
@@ -102,6 +112,15 @@ class SwitchIdScopeResolver {
       const std::shared_ptr<SwitchState>& state) const;
   HwSwitchMatcher scope(
       const std::shared_ptr<Srv6Tunnel>& tunnel,
+      const cfg::SwitchConfig& cfg) const;
+  HwSwitchMatcher scope(
+      const cfg::VxLanTunnel& tunnel,
+      const cfg::SwitchConfig& cfg) const;
+  HwSwitchMatcher scope(
+      const std::shared_ptr<VxlanTunnel>& tunnel,
+      const std::shared_ptr<SwitchState>& state) const;
+  HwSwitchMatcher scope(
+      const std::shared_ptr<VxlanTunnel>& tunnel,
       const cfg::SwitchConfig& cfg) const;
   HwSwitchMatcher scope(const cfg::AclEntry& acl) const;
   HwSwitchMatcher scope(const std::shared_ptr<AclEntry>& acl) const;

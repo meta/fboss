@@ -186,6 +186,9 @@ class HwLoadBalancerTestRunner {
     return false;
   }
 
+  // Called before traffic is looped through frontPanelPort.
+  virtual void learnFrontPanelSrcMac(PortID /* frontPanelPort */) {}
+
   bool isFeatureSupported(HwAsic::Feature feature) const {
     return getEnsemble()->getHwAsicTable()->isFeatureSupportedOnAnyAsic(
         feature);
@@ -214,6 +217,11 @@ class HwLoadBalancerTestRunner {
       helper_->programRoutesAndLoadBalancer(ecmpWidth, weights, loadBalancer);
     };
     auto verify = [=, this]() {
+      if (loopThroughFrontPanel) {
+        learnFrontPanelSrcMac(helper_->ecmpSetupHelper()
+                                  ->ecmpPortDescriptorAt(ecmpWidth)
+                                  .phyPortID());
+      }
       helper_->pumpTrafficPortAndVerifyLoadBalanced(
           ecmpWidth,
           loopThroughFrontPanel,

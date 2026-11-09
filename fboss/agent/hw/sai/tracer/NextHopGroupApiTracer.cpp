@@ -43,6 +43,8 @@ std::map<int32_t, std::pair<std::string, std::size_t>> _NextHopGroupMemberMap{
 void handleExtensionAttributes() {
 #if defined(BRCM_SAI_SDK_GTE_13_0) && defined(BRCM_SAI_SDK_XGS)
   SAI_EXT_ATTR_MAP(NextHopGroup, ArsNextHopGroupMetaData);
+  SAI_EXT_ATTR_MAP(NextHopGroup, ArsFailPktCount);
+  SAI_EXT_ATTR_MAP(NextHopGroup, ArsPortReassignCount);
 #endif
   SAI_EXT_ATTR_MAP(NextHopGroup, SplitHorizonEnable);
 }

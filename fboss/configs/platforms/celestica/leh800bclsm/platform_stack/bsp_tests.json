@@ -1,0 +1,1430 @@
+{
+  "platformName": "LEH800BCLSM",
+  "testData": {
+    "LEH800BCLSM_MCB.MCB_CPLD": {
+      "i2cTestData": {
+        "i2cGetData": [
+          {
+            "reg": "0x04",
+            "expected": "0xde"
+          }
+        ],
+        "i2cSetData": [
+          {
+            "reg": "0x04",
+            "value": "0xde"
+          }
+        ]
+      }
+    },
+    "PDB.PDB_FAN_CPLD": {
+      "i2cTestData": {
+        "i2cSetData": [
+          {
+            "reg": "0x32",
+            "value": "0x16"
+          },
+          {
+            "reg": "0x42",
+            "value": "0x16"
+          },
+          {
+            "reg": "0x52",
+            "value": "0x16"
+          },
+          {
+            "reg": "0x62",
+            "value": "0x16"
+          },
+          {
+            "reg": "0x72",
+            "value": "0x16"
+          },
+          {
+            "reg": "0x82",
+            "value": "0x16"
+          },
+          {
+            "reg": "0x92",
+            "value": "0x16"
+          },
+          {
+            "reg": "0xa2",
+            "value": "0x16"
+          }
+        ]
+      },
+      "hwmonTestData": {
+        "expectedFeatures": [
+          "fan1",
+          "fan2",
+          "fan3",
+          "fan4",
+          "fan5",
+          "fan6",
+          "fan7",
+          "fan8"
+        ]
+      },
+      "watchdogTestData": {
+        "numWatchdogs": 2
+      }
+    },
+    "LEH800BCLSM_MCB.48V_HSC_MONITOR": {
+      "hwmonTestData": {
+        "expectedFeatures": [
+          "vin",
+          "vout1",
+          "pin",
+          "iout1"
+        ]
+      }
+    },
+    "RTM_L_MDIO_BUS_1": {
+      "mdioTestData": {
+        "mdioWriteData": [
+          {
+            "phyAddress": 0,
+            "regAddress": 32768,
+            "__comment__": "0x8000 is the retimer initialization register. ",
+            "setValue": 0
+          },
+          {
+            "phyAddress": 2,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 4,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 8,
+            "regAddress": 32768,
+            "setValue": 0
+          }
+        ],
+        "mdioReadData": [
+          {
+            "phyAddress": 0,
+            "regAddress": 35584,
+            "__comment__": "0x8B00 is the retimer chip ID register low word. 0x8B01 is the retimer chip ID register high word and it includes the retimer revision number. So only the low word is checked here. ",
+            "expected": 13153
+          },
+          {
+            "phyAddress": 2,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 4,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 8,
+            "regAddress": 35584,
+            "expected": 13153
+          }
+        ]
+      }
+    },
+    "RTM_L_MDIO_BUS_2": {
+      "mdioTestData": {
+        "mdioWriteData": [
+          {
+            "phyAddress": 0,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 2,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 4,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 8,
+            "regAddress": 32768,
+            "setValue": 0
+          }
+        ],
+        "mdioReadData": [
+          {
+            "phyAddress": 0,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 2,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 4,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 8,
+            "regAddress": 35584,
+            "expected": 13153
+          }
+        ]
+      }
+    },
+    "RTM_L_MDIO_BUS_3": {
+      "mdioTestData": {
+        "mdioWriteData": [
+          {
+            "phyAddress": 0,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 2,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 4,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 8,
+            "regAddress": 32768,
+            "setValue": 0
+          }
+        ],
+        "mdioReadData": [
+          {
+            "phyAddress": 0,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 2,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 4,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 8,
+            "regAddress": 35584,
+            "expected": 13153
+          }
+        ]
+      }
+    },
+    "RTM_L_MDIO_BUS_4": {
+      "mdioTestData": {
+        "mdioWriteData": [
+          {
+            "phyAddress": 0,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 2,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 4,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 8,
+            "regAddress": 32768,
+            "setValue": 0
+          }
+        ],
+        "mdioReadData": [
+          {
+            "phyAddress": 0,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 2,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 4,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 8,
+            "regAddress": 35584,
+            "expected": 13153
+          }
+        ]
+      }
+    },
+    "RTM_L_MDIO_BUS_5": {
+      "mdioTestData": {
+        "mdioWriteData": [
+          {
+            "phyAddress": 0,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 2,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 4,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 8,
+            "regAddress": 32768,
+            "setValue": 0
+          }
+        ],
+        "mdioReadData": [
+          {
+            "phyAddress": 0,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 2,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 4,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 8,
+            "regAddress": 35584,
+            "expected": 13153
+          }
+        ]
+      }
+    },
+    "RTM_L_MDIO_BUS_6": {
+      "mdioTestData": {
+        "mdioWriteData": [
+          {
+            "phyAddress": 0,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 2,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 4,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 8,
+            "regAddress": 32768,
+            "setValue": 0
+          }
+        ],
+        "mdioReadData": [
+          {
+            "phyAddress": 0,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 2,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 4,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 8,
+            "regAddress": 35584,
+            "expected": 13153
+          }
+        ]
+      }
+    },
+    "RTM_L_MDIO_BUS_7": {
+      "mdioTestData": {
+        "mdioWriteData": [
+          {
+            "phyAddress": 0,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 2,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 4,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 8,
+            "regAddress": 32768,
+            "setValue": 0
+          }
+        ],
+        "mdioReadData": [
+          {
+            "phyAddress": 0,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 2,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 4,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 8,
+            "regAddress": 35584,
+            "expected": 13153
+          }
+        ]
+      }
+    },
+    "RTM_L_MDIO_BUS_8": {
+      "mdioTestData": {
+        "mdioWriteData": [
+          {
+            "phyAddress": 0,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 2,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 4,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 8,
+            "regAddress": 32768,
+            "setValue": 0
+          }
+        ],
+        "mdioReadData": [
+          {
+            "phyAddress": 0,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 2,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 4,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 8,
+            "regAddress": 35584,
+            "expected": 13153
+          }
+        ]
+      }
+    },
+    "RTM_L_MDIO_BUS_9": {
+      "mdioTestData": {
+        "mdioWriteData": [
+          {
+            "phyAddress": 0,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 2,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 4,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 8,
+            "regAddress": 32768,
+            "setValue": 0
+          }
+        ],
+        "mdioReadData": [
+          {
+            "phyAddress": 0,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 2,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 4,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 8,
+            "regAddress": 35584,
+            "expected": 13153
+          }
+        ]
+      }
+    },
+    "RTM_L_MDIO_BUS_10": {
+      "mdioTestData": {
+        "mdioWriteData": [
+          {
+            "phyAddress": 0,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 2,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 4,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 8,
+            "regAddress": 32768,
+            "setValue": 0
+          }
+        ],
+        "mdioReadData": [
+          {
+            "phyAddress": 0,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 2,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 4,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 8,
+            "regAddress": 35584,
+            "expected": 13153
+          }
+        ]
+      }
+    },
+    "RTM_L_MDIO_BUS_11": {
+      "mdioTestData": {
+        "mdioWriteData": [
+          {
+            "phyAddress": 0,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 2,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 4,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 8,
+            "regAddress": 32768,
+            "setValue": 0
+          }
+        ],
+        "mdioReadData": [
+          {
+            "phyAddress": 0,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 2,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 4,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 8,
+            "regAddress": 35584,
+            "expected": 13153
+          }
+        ]
+      }
+    },
+    "RTM_L_MDIO_BUS_12": {
+      "mdioTestData": {
+        "mdioWriteData": [
+          {
+            "phyAddress": 0,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 2,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 4,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 8,
+            "regAddress": 32768,
+            "setValue": 0
+          }
+        ],
+        "mdioReadData": [
+          {
+            "phyAddress": 0,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 2,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 4,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 8,
+            "regAddress": 35584,
+            "expected": 13153
+          }
+        ]
+      }
+    },
+    "RTM_L_MDIO_BUS_13": {
+      "mdioTestData": {
+        "mdioWriteData": [
+          {
+            "phyAddress": 0,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 2,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 4,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 8,
+            "regAddress": 32768,
+            "setValue": 0
+          }
+        ],
+        "mdioReadData": [
+          {
+            "phyAddress": 0,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 2,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 4,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 8,
+            "regAddress": 35584,
+            "expected": 13153
+          }
+        ]
+      }
+    },
+    "RTM_L_MDIO_BUS_14": {
+      "mdioTestData": {
+        "mdioWriteData": [
+          {
+            "phyAddress": 0,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 2,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 4,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 8,
+            "regAddress": 32768,
+            "setValue": 0
+          }
+        ],
+        "mdioReadData": [
+          {
+            "phyAddress": 0,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 2,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 4,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 8,
+            "regAddress": 35584,
+            "expected": 13153
+          }
+        ]
+      }
+    },
+    "RTM_R_MDIO_BUS_1": {
+      "mdioTestData": {
+        "mdioWriteData": [
+          {
+            "phyAddress": 0,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 2,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 4,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 8,
+            "regAddress": 32768,
+            "setValue": 0
+          }
+        ],
+        "mdioReadData": [
+          {
+            "phyAddress": 0,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 2,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 4,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 8,
+            "regAddress": 35584,
+            "expected": 13153
+          }
+        ]
+      }
+    },
+    "RTM_R_MDIO_BUS_2": {
+      "mdioTestData": {
+        "mdioWriteData": [
+          {
+            "phyAddress": 0,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 2,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 4,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 8,
+            "regAddress": 32768,
+            "setValue": 0
+          }
+        ],
+        "mdioReadData": [
+          {
+            "phyAddress": 0,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 2,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 4,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 8,
+            "regAddress": 35584,
+            "expected": 13153
+          }
+        ]
+      }
+    },
+    "RTM_R_MDIO_BUS_3": {
+      "mdioTestData": {
+        "mdioWriteData": [
+          {
+            "phyAddress": 0,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 2,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 4,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 8,
+            "regAddress": 32768,
+            "setValue": 0
+          }
+        ],
+        "mdioReadData": [
+          {
+            "phyAddress": 0,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 2,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 4,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 8,
+            "regAddress": 35584,
+            "expected": 13153
+          }
+        ]
+      }
+    },
+    "RTM_R_MDIO_BUS_4": {
+      "mdioTestData": {
+        "mdioWriteData": [
+          {
+            "phyAddress": 0,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 2,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 4,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 8,
+            "regAddress": 32768,
+            "setValue": 0
+          }
+        ],
+        "mdioReadData": [
+          {
+            "phyAddress": 0,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 2,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 4,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 8,
+            "regAddress": 35584,
+            "expected": 13153
+          }
+        ]
+      }
+    },
+    "RTM_R_MDIO_BUS_5": {
+      "mdioTestData": {
+        "mdioWriteData": [
+          {
+            "phyAddress": 0,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 2,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 4,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 8,
+            "regAddress": 32768,
+            "setValue": 0
+          }
+        ],
+        "mdioReadData": [
+          {
+            "phyAddress": 0,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 2,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 4,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 8,
+            "regAddress": 35584,
+            "expected": 13153
+          }
+        ]
+      }
+    },
+    "RTM_R_MDIO_BUS_6": {
+      "mdioTestData": {
+        "mdioWriteData": [
+          {
+            "phyAddress": 0,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 2,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 4,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 8,
+            "regAddress": 32768,
+            "setValue": 0
+          }
+        ],
+        "mdioReadData": [
+          {
+            "phyAddress": 0,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 2,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 4,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 8,
+            "regAddress": 35584,
+            "expected": 13153
+          }
+        ]
+      }
+    },
+    "RTM_R_MDIO_BUS_7": {
+      "mdioTestData": {
+        "mdioWriteData": [
+          {
+            "phyAddress": 0,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 2,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 4,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 8,
+            "regAddress": 32768,
+            "setValue": 0
+          }
+        ],
+        "mdioReadData": [
+          {
+            "phyAddress": 0,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 2,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 4,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 8,
+            "regAddress": 35584,
+            "expected": 13153
+          }
+        ]
+      }
+    },
+    "RTM_R_MDIO_BUS_8": {
+      "mdioTestData": {
+        "mdioWriteData": [
+          {
+            "phyAddress": 0,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 2,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 4,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 8,
+            "regAddress": 32768,
+            "setValue": 0
+          }
+        ],
+        "mdioReadData": [
+          {
+            "phyAddress": 0,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 2,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 4,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 8,
+            "regAddress": 35584,
+            "expected": 13153
+          }
+        ]
+      }
+    },
+    "RTM_R_MDIO_BUS_9": {
+      "mdioTestData": {
+        "mdioWriteData": [
+          {
+            "phyAddress": 0,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 2,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 4,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 8,
+            "regAddress": 32768,
+            "setValue": 0
+          }
+        ],
+        "mdioReadData": [
+          {
+            "phyAddress": 0,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 2,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 4,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 8,
+            "regAddress": 35584,
+            "expected": 13153
+          }
+        ]
+      }
+    },
+    "RTM_R_MDIO_BUS_10": {
+      "mdioTestData": {
+        "mdioWriteData": [
+          {
+            "phyAddress": 0,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 2,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 4,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 8,
+            "regAddress": 32768,
+            "setValue": 0
+          }
+        ],
+        "mdioReadData": [
+          {
+            "phyAddress": 0,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 2,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 4,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 8,
+            "regAddress": 35584,
+            "expected": 13153
+          }
+        ]
+      }
+    },
+    "RTM_R_MDIO_BUS_11": {
+      "mdioTestData": {
+        "mdioWriteData": [
+          {
+            "phyAddress": 0,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 2,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 4,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 8,
+            "regAddress": 32768,
+            "setValue": 0
+          }
+        ],
+        "mdioReadData": [
+          {
+            "phyAddress": 0,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 2,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 4,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 8,
+            "regAddress": 35584,
+            "expected": 13153
+          }
+        ]
+      }
+    },
+    "RTM_R_MDIO_BUS_12": {
+      "mdioTestData": {
+        "mdioWriteData": [
+          {
+            "phyAddress": 0,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 2,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 4,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 8,
+            "regAddress": 32768,
+            "setValue": 0
+          }
+        ],
+        "mdioReadData": [
+          {
+            "phyAddress": 0,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 2,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 4,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 8,
+            "regAddress": 35584,
+            "expected": 13153
+          }
+        ]
+      }
+    },
+    "RTM_R_MDIO_BUS_13": {
+      "mdioTestData": {
+        "mdioWriteData": [
+          {
+            "phyAddress": 0,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 2,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 4,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 8,
+            "regAddress": 32768,
+            "setValue": 0
+          }
+        ],
+        "mdioReadData": [
+          {
+            "phyAddress": 0,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 2,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 4,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 8,
+            "regAddress": 35584,
+            "expected": 13153
+          }
+        ]
+      }
+    },
+    "RTM_R_MDIO_BUS_14": {
+      "mdioTestData": {
+        "mdioWriteData": [
+          {
+            "phyAddress": 0,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 2,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 4,
+            "regAddress": 32768,
+            "setValue": 0
+          },
+          {
+            "phyAddress": 8,
+            "regAddress": 32768,
+            "setValue": 0
+          }
+        ],
+        "mdioReadData": [
+          {
+            "phyAddress": 0,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 2,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 4,
+            "regAddress": 35584,
+            "expected": 13153
+          },
+          {
+            "phyAddress": 8,
+            "regAddress": 35584,
+            "expected": 13153
+          }
+        ]
+      }
+    }
+  }
+}

@@ -25,6 +25,14 @@ struct VlanInfo {
   2: bool priorityTagged;
 }
 
+struct PortVcFields {
+  1: i16 id;
+  2: optional string name;
+  3: bool senderEnable = false;
+  4: bool receiverEnable = false;
+  5: optional i64 reservedCreditSize;
+}
+
 struct PortPgFields {
   1: i16 id;
   2: i32 minLimitBytes;
@@ -196,6 +204,19 @@ struct PortFields {
   74: optional string ingressAclTableName;
   // Lookup class assigned to packets arriving on this port.
   75: optional switch_config.AclLookupClassPort userMetaData;
+  76: optional string cbfcConfigName;
+  77: optional list<PortVcFields> virtualChannels;
+  78: optional i64 cbfcSenderCreditLimit;
+  // Name of the isolation group whose members traffic ingressing this port is
+  // not forwarded to. Only the name is stored: a change to the group's
+  // membership does not change the port, and is handled off the isolation
+  // group map delta instead.
+  79: optional string isolationGroup;
+  80: optional i16 cbfcSenderCreditSize;
+  81: optional i16 cbfcSenderPacketOverhead;
+  82: optional switch_config.CsigTagAction csigTagAction;
+  83: optional i16 csigLinkLocator;
+  84: optional i64 cbfcReceiverCreditLimit;
 }
 
 typedef ctrl.SystemPortThrift SystemPortFields
@@ -206,6 +227,7 @@ struct TransceiverSpecFields {
   3: optional transceiver.MediaInterfaceCode mediaInterface;
   4: optional transceiver.TransceiverManagementInterface managementInterface;
   5: optional transceiver.Vendor vendor;
+  6: optional list<transceiver.TransceiverVendorOverride> vendorOverrides;
 }
 
 struct AclTtl {
@@ -241,7 +263,6 @@ struct MatchAction {
   10: optional switch_config.UserDefinedTrapAction userDefinedTrap;
   11: optional switch_config.FlowletAction flowletAction;
   12: optional switch_config.SetEcmpHashAction ecmpHashAction;
-  13: optional bool enableAlternateArsMembers;
   14: optional i64 redirectNextHopGroupId;
 }
 
@@ -292,6 +313,11 @@ struct AclEntryFields {
   36: optional i64 dstIpV6Word3;
   37: optional i64 dstIpV6Word2;
   38: optional switch_config.AclLookupClassPort lookupClassPort;
+  39: optional AclTtl mplsLabel0Ttl;
+  40: optional byte tcpFlagsMask;
+  41: optional switch_config.AclIpMatch dstIpWithMask;
+  42: optional switch_config.AclIpV6WordMatch dstIpV6Word1WithMask;
+  43: optional switch_config.AclIpV6WordMatch dstIpV6Word0WithMask;
 }
 
 struct NamedNextHopGroupAndID {
@@ -303,6 +329,7 @@ struct ClassBasedPolicyFields {
   1: string name;
   2: NamedNextHopGroupAndID defaultNextHopGroup;
   3: map<common.ForwardingClass, NamedNextHopGroupAndID> class2NextHopGroup;
+  4: bool referenced;
 }
 
 enum NeighborState {
@@ -409,7 +436,9 @@ struct MirrorFields {
 
 struct MirrorOnDropReportFields {
   1: string name;
-  2: i32 mirrorPortId;
+  // Unset on ASICs with no recirculation port (XGS); TamManager resolves
+  // an egress port per ASIC at runtime instead.
+  2: optional i32 mirrorPortId;
   3: Address.BinaryAddress localSrcIp; // Populated at runtime
   4: i16 localSrcPort;
   5: Address.BinaryAddress collectorIp;
@@ -435,8 +464,10 @@ struct MirrorOnDropReportFields {
   18: optional switch_config.PortDescriptor resolvedEgressPort;
   // Optional sampling rate for MOD packets
   19: optional i32 samplingRate;
-  // Optional packets-per-second rate cap for drop report generation
+  // Optional packets-per-second rate cap for drop report generation per drop reason
   20: optional i32 dropPacketRateThreshold;
+  // Optional packets-per-second cap on combined MoD reports across drop reasons
+  21: optional i32 aggregateDropPacketRateThreshold;
 }
 
 struct ControlPlaneFields {
@@ -466,6 +497,13 @@ struct LlrFields {
   9: switch_config.LlrFrameAction flushFrameAction;
   10: bool reInitOnFlush;
   11: i32 ctlosTargetSpacing;
+}
+
+struct IsolationGroupFields {
+  1: string id;
+  2: switch_config.IsolationGroupType type;
+  // cfg::Port.logicalID of each isolated member.
+  3: set<i32> memberPorts;
 }
 
 struct BlockedNeighbor {
@@ -563,6 +601,7 @@ struct SwitchSettingsFields {
     switch_config.EcmpGroupType,
     switch_config.EcmpGroupSettings
   > ecmpGroupSettings;
+  64: list<switch_config.MacAndVlan> myMacs;
 }
 
 struct RoutePrefix {
@@ -589,6 +628,9 @@ struct RouteNextHopEntry {
   9: optional i64 resolvedNextHopSetID;
   10: optional string namedNextHopGroup;
   11: optional i64 clientNextHopSetID;
+  12: optional i64 overrideNextHopSetID;
+  // Level of the route, from UnicastRoute.level
+  13: optional i32 level;
 }
 
 struct RouteNextHopsMulti {
@@ -596,6 +638,7 @@ struct RouteNextHopsMulti {
   2: map<ctrl.ClientID, RouteNextHopEntry> client2NextHopEntry;
 }
 
+@fboss_common.AllowSkipThriftCow
 struct RouteFields {
   1: RoutePrefix prefix;
   2: RouteNextHopsMulti nexthopsmulti;
@@ -618,9 +661,7 @@ struct LabelForwardingEntryFields {
 
 struct FibContainerFields {
   1: i16 vrf;
-  @fboss_common.AllowSkipThriftCow
   2: map<string, RouteFields> fibV4;
-  @fboss_common.AllowSkipThriftCow
   3: map<string, RouteFields> fibV6;
 }
 
@@ -637,6 +678,8 @@ struct FibInfoFields {
   3: map<NextHopSetIdType, set<NextHopIdType>> idToNextHopIdSet;
   // Map from named next-hop group name to NextHopSetID
   4: map<string, NextHopSetIdType> nameToNextHopSetId;
+  // ERM override set ids
+  5: map<NextHopSetIdType, set<NextHopIdType>> overrideIdToNextHopIdSet;
 }
 
 struct TrafficClassToQosAttributeEntry {
@@ -674,6 +717,25 @@ struct Srv6TunnelFields {
   7: optional switch_config.TunnelMode ecnMode;
   8: optional switch_config.TunnelTerminationType tunnelTermType;
   9: common.TunnelType tunnelType;
+}
+
+struct VxLanTunnelFields {
+  1: string vxlanTunnelId;
+  2: i32 underlayIntfId;
+  3: optional string srcIp;
+  4: optional string dstIp;
+  5: optional switch_config.TunnelMode ttlMode;
+  6: optional switch_config.TunnelMode dscpMode;
+  7: optional switch_config.TunnelMode ecnMode;
+  8: optional switch_config.TunnelTerminationType tunnelTermType;
+  9: common.TunnelType tunnelType;
+  10: optional map<i64, i64> vrf2Vni;
+  11: optional map<i64, i64> vniToVrf;
+}
+
+struct VrfFields {
+  1: i32 vrfId;
+  2: optional string name;
 }
 
 struct MySidFields {
@@ -719,6 +781,8 @@ struct QosPolicyFields {
   7: optional map<i16, i16> pfcPriorityToPgId;
   8: optional map<i16, i16> trafficClassToVoqId;
   9: optional TrafficClassToQosAttributeMap pcpMap;
+  10: optional map<i16, i16> trafficClassToVcId;
+  11: optional map<i16, i16> queueToVcId;
 }
 
 struct SocketAddress {
@@ -834,6 +898,7 @@ struct AggregatePortFields {
   13: optional i64 configuredCapacityMbps;
   14: optional i64 activeCapacityMbps;
   15: optional AggregatePortStatus status;
+  16: optional bool disableTTLDecrement;
 }
 
 struct TeFlowEntryFields {
@@ -925,6 +990,10 @@ struct SwitchState {
   125: map<SwitchIdList, map<string, Srv6TunnelFields>> srv6TunnelMaps;
   126: map<SwitchIdList, map<string, MySidFields>> mySidMaps;
   127: map<SwitchIdList, map<string, LlrFields>> llrCfgMaps;
+  130: map<
+    SwitchIdList,
+    map<string, IsolationGroupFields>
+  > isolationGroupMaps;
   128: map<
     SwitchIdList,
     map<string, ClassBasedPolicyFields>
@@ -933,6 +1002,8 @@ struct SwitchState {
     SwitchIdList,
     map<switch_config.AclStage, AclTableGroupFields>
   > portAclTableGroupMaps;
+  131: map<SwitchIdList, map<string, VxLanTunnelFields>> vxlanTunnelMaps;
+  132: map<SwitchIdList, map<i32, VrfFields>> vrfMaps;
   // Remote object maps
   600: map<SwitchIdList, map<i64, SystemPortFields>> remoteSystemPortMaps;
   601: map<SwitchIdList, map<i32, InterfaceFields>> remoteInterfaceMaps;

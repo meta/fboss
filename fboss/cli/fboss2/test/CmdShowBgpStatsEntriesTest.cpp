@@ -86,4 +86,18 @@ TEST_F(CmdShowBgpStatsEntriesTestFixture, printOutput) {
 
   EXPECT_EQ(expectedOutput, output);
 }
+
+TEST_F(CmdShowBgpStatsEntriesTestFixture, wikiDocHooks) {
+  EXPECT_FALSE(CmdShowBgpStatsEntriesTraits::description().empty());
+  std::stringstream ss;
+  CmdShowBgpStatsEntries().printOutput(
+      CmdShowBgpStatsEntries::sampleModel(), ss);
+  const std::string output = ss.str();
+
+  EXPECT_THAT(output, HasSubstr("Total number of unicast routes: 1515"));
+  // The description tells readers these two should track each other, so the
+  // sample must not contradict it.
+  EXPECT_THAT(output, HasSubstr("Total number of shadow rib entries: 1515"));
+}
+
 } // namespace facebook::fboss

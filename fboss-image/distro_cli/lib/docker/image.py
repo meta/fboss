@@ -65,6 +65,27 @@ def _hash_directory_tree(
     return hasher.hexdigest()
 
 
+def _find_build_dir(root_dir: Path) -> Path:
+    """Locate the getdeps build tree, which differs between checkouts.
+
+    An OSS fboss checkout has it at the repo root as `build/`. In fbsource the
+    same tree lives at `fbcode/opensource/fbcode_builder/`, which shipit maps
+    to `build/fbcode_builder` on export. `getdeps.sh` already probes both
+    layouts for the same reason.
+    """
+    candidates = [
+        root_dir / "build",
+        root_dir.parent.parent / "opensource" / "fbcode_builder",
+    ]
+    for candidate in candidates:
+        if candidate.is_dir():
+            return candidate
+    raise RuntimeError(
+        "getdeps build tree not found; looked for "
+        + ", ".join(str(c) for c in candidates)
+    )
+
+
 def _compute_dependency_checksum(root_dir: Path) -> str:
     """Compute checksum of Dockerfile and all its dependencies.
 
@@ -87,9 +108,7 @@ def _compute_dependency_checksum(root_dir: Path) -> str:
     hasher.update(dockerfile.read_bytes())
 
     # Hash entire build/ directory (excluding ephemeral files)
-    build_dir = root_dir / "build"
-    if not build_dir.exists():
-        raise RuntimeError(f"build/ directory not found: {build_dir}")
+    build_dir = _find_build_dir(root_dir)
 
     # Exclude Python bytecode and cache files
     exclude_patterns = ["__pycache__", ".pyc", ".pyo"]

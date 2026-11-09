@@ -22,6 +22,7 @@
 #include "fboss/agent/test/EcmpSetupHelper.h"
 #include "fboss/agent/test/TestUtils.h"
 #include "fboss/agent/test/TrunkUtils.h"
+#include "fboss/agent/test/utils/ConfigUtils.h"
 #include "fboss/agent/test/utils/LoadBalancerTestUtils.h"
 #include "fboss/agent/test/utils/Srv6TestUtils.h"
 #include "folly/IPAddressV4.h"
@@ -73,15 +74,17 @@ class AgentTrunkLoadBalancerTest : public AgentHwTest {
     return 13;
   }
 
-  void addAggregatePorts(cfg::SwitchConfig* config, AggPortInfo aggInfo) const {
-    AggregatePortID curAggId{1};
+  std::vector<utility::AggregatePortInfo> getAggregatePortInfos(
+      AggPortInfo aggInfo) const {
+    std::vector<utility::AggregatePortInfo> aggPorts;
     for (auto i = 0; i < aggInfo.numAggPorts; ++i) {
-      std::vector<int32_t> members(aggInfo.aggPortWidth);
+      std::vector<PortID> members;
       for (auto j = 0; j < aggInfo.aggPortWidth; ++j) {
-        members[j] = masterLogicalPortIds()[i * aggInfo.aggPortWidth + j];
+        members.push_back(masterLogicalPortIds()[i * aggInfo.aggPortWidth + j]);
       }
-      utility::addAggPort(curAggId++, members, config);
+      aggPorts.push_back({AggregatePortID(i + 1), members});
     }
+    return aggPorts;
   }
   std::vector<PortDescriptor> getPhysicalPorts(AggPortInfo aggInfo) const {
     std::vector<PortDescriptor> physicalPorts;
@@ -106,6 +109,42 @@ class AgentTrunkLoadBalancerTest : public AgentHwTest {
           return utility::enableTrunkPorts(state);
         },
         "enable trunk ports");
+  }
+
+  // On ASICs with directly-bound aggregate-port RIFs the SDK rejects
+  // lag-member create while a PORT RIF is still bound to the member, and a
+  // single config delta programs member creates before the RIF rebind. Tear
+  // the RIFs down from the live config in a separate apply first, so that
+  // the subsequent setup() creates members on RIF-less ports, mirroring
+  // boot-time programming. No-op on all other ASICs.
+  void unlinkPortsForLagIfNeeded() {
+    if (!isSupportedOnAllAsics(
+            HwAsic::Feature::AGGREGATE_PORT_ROUTER_INTERFACE)) {
+      return;
+    }
+    auto unlinked = getSw()->getConfig();
+    unlinked.interfaces() = {};
+    unlinked.aggregatePorts() = {};
+    unlinked.srv6Tunnels() = {};
+    // With no interfaces left, the config validator requires every port to
+    // be admin-disabled ("VLAN has no interface, even when corresp port is
+    // enabled"). Re-enable happens in setup()'s full config apply.
+    for (auto& portCfg : *unlinked.ports()) {
+      if (*portCfg.state() == cfg::PortState::ENABLED) {
+        portCfg.state() = cfg::PortState::DISABLED;
+      }
+    }
+    applyNewConfig(unlinked);
+  }
+
+  template <typename SETUP_FN, typename VERIFY_FN>
+  void verifyAcrossWarmBootsImpl(SETUP_FN setup, VERIFY_FN verify) {
+    verifyAcrossWarmBoots(
+        [=, this]() {
+          unlinkPortsForLagIfNeeded();
+          setup();
+        },
+        verify);
   }
 
   template <typename ECMP_HELPER>
@@ -206,9 +245,12 @@ class AgentTrunkLoadBalancerTest : public AgentHwTest {
   }
 
   cfg::SwitchConfig configureAggregatePorts(AggPortInfo aggInfo) {
-    auto config = initialConfig(*getAgentEnsemble());
-    addAggregatePorts(&config, aggInfo);
-    return config;
+    auto& ensemble = *getAgentEnsemble();
+    return utility::oneAggregatePortPerInterfaceConfig(
+        ensemble.getSw(),
+        ensemble.masterLogicalPortIds(),
+        getAggregatePortInfos(aggInfo),
+        true /*interfaceHasSubnet*/);
   }
 
   void setupIPECMP(AggPortInfo aggInfo) {
@@ -265,18 +307,32 @@ class AgentTrunkLoadBalancerTest : public AgentHwTest {
     getSw()->clearPortStats(ports);
   }
 
+  // A trunk of weight w spreads w evenly across its members, so with a constant
+  // trunk width the relative per-physical-port expectation is just the owning
+  // trunk's weight. Empty in means empty out, i.e. plain ECMP.
+  std::vector<NextHopWeight> perPortWeights(
+      AggPortInfo aggInfo,
+      const std::vector<NextHopWeight>& trunkWeights) const {
+    std::vector<NextHopWeight> portWeights;
+    for (auto weight : trunkWeights) {
+      portWeights.insert(portWeights.end(), aggInfo.aggPortWidth, weight);
+    }
+    return portWeights;
+  }
+
   void pumpIPTrafficAndVerifyLoadBalanced(
       bool isV6,
       bool loopThroughFrontPanel,
       AggPortInfo aggInfo,
-      int deviation) {
+      int deviation,
+      const std::vector<NextHopWeight>& trunkWeights = {}) {
     utility::pumpTrafficAndVerifyLoadBalanced(
         [=, this]() { pumpIPTraffic(isV6, loopThroughFrontPanel, aggInfo); },
         [=, this]() { clearPortStats(aggInfo); },
         [=, this]() {
           return utility::isLoadBalanced<PortID, HwPortStats>(
               getPhysicalPorts(aggInfo),
-              std::vector<NextHopWeight>(),
+              perPortWeights(aggInfo, trunkWeights),
               [=, this](const std::vector<PortID>& portIds) {
                 return this->getLatestPortStats(portIds);
               },
@@ -446,7 +502,7 @@ class AgentTrunkLoadBalancerTest : public AgentHwTest {
             deviation);
       }
     };
-    verifyAcrossWarmBoots(setup, verify);
+    verifyAcrossWarmBootsImpl(setup, verify);
   }
 };
 
@@ -466,6 +522,7 @@ class AgentMplsTrunkLoadBalancerTest : public AgentTrunkLoadBalancerTest {
 class AgentSrv6TrunkLoadBalancerTest : public AgentTrunkLoadBalancerTest {
  protected:
   static constexpr AggPortInfo kSrv6AggInfo{1, 2};
+  static constexpr auto kSrv6TunnelId = "srv6Tunnel0";
 
   std::vector<ProductionFeature> getProductionFeaturesVerified()
       const override {
@@ -475,19 +532,19 @@ class AgentSrv6TrunkLoadBalancerTest : public AgentTrunkLoadBalancerTest {
         ProductionFeature::LAG_LOAD_BALANCER};
   }
 
-  void setupSrv6TrunkECMP() {
-    auto config = configureAggregatePorts(kSrv6AggInfo);
-    // Add SRv6 tunnels
-    std::vector<cfg::Srv6Tunnel> tunnelList;
-    for (int i = 0; i < kSrv6AggInfo.numAggPorts; ++i) {
-      tunnelList.push_back(
-          utility::makeSrv6TunnelConfig(
-              fmt::format("srv6Tunnel{}", i),
-              InterfaceID(config.interfaces()[i * kSrv6AggInfo.aggPortWidth]
-                              .intfID()
-                              .value())));
-    }
-    config.srv6Tunnels() = tunnelList;
+  // weights empty programs an equal-cost group; otherwise weights[i] is the
+  // weight of the i'th trunk, forming a UCMP group over the trunks.
+  void setupSrv6TrunkECMP(
+      AggPortInfo aggInfo,
+      const std::vector<NextHopWeight>& weights = {}) {
+    auto config = configureAggregatePorts(aggInfo);
+    // A single encap tunnel, whatever the trunk count. makeSrv6TunnelConfig
+    // hardcodes srcIp, so a tunnel per trunk differs only in name and underlay
+    // interface; SAI keys tunnels on their attributes and rejects the second
+    // with ITEM ALREADY EXISTS (fatal on Broadcom, tolerated on Leaba). Every
+    // next hop below references srv6Tunnel0 anyway.
+    config.srv6Tunnels() = {utility::makeSrv6TunnelConfig(
+        kSrv6TunnelId, InterfaceID(config.interfaces()[0].intfID().value()))};
     config.loadBalancers() =
         getEcmpFullWithFlowLabelTrunkFullWithFlowLabelHashConfig(
             getAgentEnsemble()->getL3Asics());
@@ -496,14 +553,14 @@ class AgentSrv6TrunkLoadBalancerTest : public AgentTrunkLoadBalancerTest {
     // Resolve neighbors on aggregate ports and program SRv6 routes
     utility::EcmpSetupTargetedPorts6 ecmpHelper{
         getProgrammedState(), getSw()->needL2EntryForNeighbor()};
-    auto aggPorts = getAggregatePorts(kSrv6AggInfo);
+    auto aggPorts = getAggregatePorts(aggInfo);
 
     applyNewState([&](const std::shared_ptr<SwitchState>& in) {
       return ecmpHelper.resolveNextHops(in, aggPorts);
     });
 
     RouteNextHopSet nhops;
-    for (int i = 0; i < kSrv6AggInfo.numAggPorts; ++i) {
+    for (int i = 0; i < aggInfo.numAggPorts; ++i) {
       auto aggPortDesc = PortDescriptor(AggregatePortID(i + 1));
       auto nhop = ecmpHelper.nhop(aggPortDesc);
       std::vector<folly::IPAddressV6> sidList{
@@ -511,14 +568,14 @@ class AgentSrv6TrunkLoadBalancerTest : public AgentTrunkLoadBalancerTest {
       nhops.insert(ResolvedNextHop(
           nhop.ip,
           nhop.intf,
-          ECMP_WEIGHT,
+          weights.empty() ? ECMP_WEIGHT : weights[i],
           std::nullopt,
           std::nullopt,
           std::nullopt,
           std::nullopt,
           sidList,
           TunnelType::SRV6_ENCAP,
-          std::string("srv6Tunnel0")));
+          std::string(kSrv6TunnelId)));
     }
     auto routeUpdater = getSw()->getRouteUpdater();
     routeUpdater.addRoute(
@@ -528,6 +585,42 @@ class AgentSrv6TrunkLoadBalancerTest : public AgentTrunkLoadBalancerTest {
         ClientID::BGPD,
         RouteNextHopEntry(nhops, AdminDistance::EBGP));
     routeUpdater.program();
+  }
+};
+
+// SRv6 Trunk + UCMP load balancing. Needs >= 2 trunks for the weights to mean
+// anything, so it does not reuse the single-trunk kSrv6AggInfo above.
+class AgentSrv6UcmpTrunkLoadBalancerTest
+    : public AgentSrv6TrunkLoadBalancerTest {
+ protected:
+  static constexpr AggPortInfo kSrv6UcmpAggInfo{2, 2};
+
+  std::vector<ProductionFeature> getProductionFeaturesVerified()
+      const override {
+    return {
+        ProductionFeature::SRV6_ENCAP,
+        ProductionFeature::LAG,
+        ProductionFeature::LAG_LOAD_BALANCER,
+        ProductionFeature::UCMP};
+  }
+
+  static std::vector<NextHopWeight> kSrv6TrunkUcmpWeights() {
+    return {10, 20};
+  }
+
+  void runSrv6TrunkUcmpTest(bool loopThroughFrontPanel) {
+    auto setup = [this]() {
+      setupSrv6TrunkECMP(kSrv6UcmpAggInfo, kSrv6TrunkUcmpWeights());
+    };
+    auto verify = [=, this]() {
+      pumpIPTrafficAndVerifyLoadBalanced(
+          true /* isV6 */,
+          loopThroughFrontPanel,
+          kSrv6UcmpAggInfo,
+          25 /* deviation */,
+          kSrv6TrunkUcmpWeights());
+    };
+    verifyAcrossWarmBootsImpl(setup, verify);
   }
 };
 
@@ -770,7 +863,7 @@ TEST_F(
 }
 
 TEST_F(AgentSrv6TrunkLoadBalancerTest, Srv6TrunkEcmpLoadBalance) {
-  auto setup = [this]() { setupSrv6TrunkECMP(); };
+  auto setup = [this]() { setupSrv6TrunkECMP(kSrv6AggInfo); };
   auto verify = [this]() {
     pumpIPTrafficAndVerifyLoadBalanced(
         true /* isV6 */,
@@ -778,7 +871,17 @@ TEST_F(AgentSrv6TrunkLoadBalancerTest, Srv6TrunkEcmpLoadBalance) {
         kSrv6AggInfo,
         25 /* deviation */);
   };
-  verifyAcrossWarmBoots(setup, verify);
+  verifyAcrossWarmBootsImpl(setup, verify);
+}
+
+TEST_F(AgentSrv6UcmpTrunkLoadBalancerTest, Srv6TrunkUcmpLoadBalanceCpuTraffic) {
+  runSrv6TrunkUcmpTest(false /* loopThroughFrontPanel */);
+}
+
+TEST_F(
+    AgentSrv6UcmpTrunkLoadBalancerTest,
+    Srv6TrunkUcmpLoadBalanceFrontPanelTraffic) {
+  runSrv6TrunkUcmpTest(true /* loopThroughFrontPanel */);
 }
 
 TEST_F(
@@ -789,7 +892,7 @@ TEST_F(
     pumpIPv6FlowLabelTrafficAndVerifyLoadBalanced(
         false /* loopThroughFrontPanel */, k4X3WideAggs, 25 /* deviation */);
   };
-  verifyAcrossWarmBoots(setup, verify);
+  verifyAcrossWarmBootsImpl(setup, verify);
 }
 
 TEST_F(
@@ -800,7 +903,7 @@ TEST_F(
     pumpIPv6FlowLabelTrafficAndVerifyLoadBalanced(
         true /* loopThroughFrontPanel */, k4X3WideAggs, 25 /* deviation */);
   };
-  verifyAcrossWarmBoots(setup, verify);
+  verifyAcrossWarmBootsImpl(setup, verify);
 }
 
 // Regression test for S698336: the agent crashed when a config change altered
@@ -889,7 +992,7 @@ TEST_F(AgentTrunkLoadBalancerTest, TrunkV6HashFieldsChangedViaConfigChange) {
     applyLoadBalancers(trunkWithoutFlowLabel());
     verifyTrunkFlowLabel(false);
   };
-  verifyAcrossWarmBoots(setup, verify);
+  verifyAcrossWarmBootsImpl(setup, verify);
 }
 
 } // namespace facebook::fboss

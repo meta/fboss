@@ -314,7 +314,7 @@ void syncFib(
 void configureMaxRouteEntries(
     AgentEnsemble* ensemble,
     const RouteDistributionGenerator& routeGenerator) {
-  auto switchIds = ensemble->getHwAsicTable()->getSwitchIDs();
+  std::set<SwitchID> switchIds = {SwitchID(FLAGS_switch_id_for_testing)};
   CHECK_EQ(switchIds.size(), 1);
   auto asic = checkSameAndGetAsic(
       ensemble->getHwAsicTable()->getL3Asics(), FLAGS_switch_id_for_testing);
@@ -510,7 +510,12 @@ cfg::SwitchConfig getSystemScaleTestSwitchConfiguration(
       asic,
       ensemble.masterLogicalPortIds(),
       ensemble.getSw()->getPlatformSupportsAddRemovePort(),
-      asic->desiredLoopbackModes());
+      asic->desiredLoopbackModes(),
+      true, /* interfaceHasSubnet */
+      kBaseVlanId, /* baseVlanId */
+      true, /* optimizePortProfile */
+      true, /* setInterfaceMac */
+      ensemble.getSw()->getPlatformType());
 
   utility::setupDefaultAclTableGroups(config);
   // We don't want to set queue rate that limits the number of rx pkts
@@ -576,7 +581,10 @@ std::pair<uint64_t, uint64_t> startRxMeasure(AgentEnsemble* ensemble) {
   constexpr uint8_t kCpuQueue = 0;
   std::map<int, CpuPortStats> cpuStatsBefore;
   ensemble->getSw()->getAllCpuPortStats(cpuStatsBefore);
-  auto statsBefore = cpuStatsBefore[0];
+  auto switchIndex =
+      ensemble->getSw()->getSwitchInfoTable().getSwitchIndexFromSwitchId(
+          SwitchID(FLAGS_switch_id_for_testing));
+  auto statsBefore = cpuStatsBefore.at(switchIndex);
   auto [pktsBefore, bytesBefore] = utility::getCpuQueueOutPacketsAndBytes(
       *statsBefore.portStats_(), kCpuQueue);
 
@@ -600,7 +608,9 @@ std::pair<uint64_t, uint64_t> startRxMeasure(AgentEnsemble* ensemble) {
         folly::IPAddressV6(kRxMeasureDstIp),
         47231,
         kBgpPort);
-    ensemble->getSw()->sendPacketSwitchedAsync(std::move(txPacket));
+    ensemble->getSw()->sendPacketSwitchedAsync(
+        std::move(txPacket),
+        LocalSwitchIDs{SwitchID(FLAGS_switch_id_for_testing)});
   }
   return std::make_pair(pktsBefore, bytesBefore);
 }
@@ -613,7 +623,10 @@ std::pair<uint64_t, uint64_t> stopRxMeasure(AgentEnsemble* ensemble) {
   constexpr uint8_t kCpuQueue = 0;
   std::map<int, CpuPortStats> cpuStatsAfter;
   ensemble->getSw()->getAllCpuPortStats(cpuStatsAfter);
-  auto statsAfter = cpuStatsAfter[0];
+  auto switchIndex =
+      ensemble->getSw()->getSwitchInfoTable().getSwitchIndexFromSwitchId(
+          SwitchID(FLAGS_switch_id_for_testing));
+  auto statsAfter = cpuStatsAfter.at(switchIndex);
   auto [pktsAfter, bytesAfter] = utility::getCpuQueueOutPacketsAndBytes(
       *statsAfter.portStats_(), kCpuQueue);
   return std::make_pair(pktsAfter, bytesAfter);

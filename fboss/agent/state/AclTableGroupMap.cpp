@@ -40,6 +40,11 @@ std::shared_ptr<AclMap> AclTableGroupMap::getDefaultAclTableGroupMap(
   }
 }
 
+MultiSwitchAclTableGroupMap* MultiSwitchAclTableGroupMap::modify(
+    std::shared_ptr<SwitchState>* state) {
+  return SwitchState::modify<switch_state_tags::aclTableGroupMaps>(state);
+}
+
 template struct ThriftMapNode<AclTableGroupMap, AclTableGroupMapTraits>;
 
 } // namespace facebook::fboss

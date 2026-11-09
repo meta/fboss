@@ -1,0 +1,67 @@
+{
+  "platform_name": "tahansb800bc",
+  "vendor": "broadcom",
+  "asic": "tomahawk5",
+  "num_ports_per_core": 4,
+  "defaults": {
+    "asic_config_params": {
+      "config_type": "YAML_CONFIG",
+      "exact_match": false,
+      "mmu_lossless": false,
+      "config_gen_type": "DEFAULT"
+    },
+    "port_config": {
+      "default_speed": 400000,
+      "speed_to_fec": {
+        "100000": "PC_FEC_RS544_2XN",
+        "200000": "PC_FEC_RS544_2XN_IEEE",
+        "400000": "PC_FEC_RS544_2XN_IEEE",
+        "800000": "PC_FEC_RS544_2XN_IEEE"
+      }
+    },
+    "cpu_port": {
+      "speed": 10000,
+      "num_lanes": 1
+    },
+    "mgmt_port": {
+      "enabled": true
+    },
+    "mgmt_port_overrides": {
+      "logical_id": 268,
+      "physical_id": 514
+    },
+    "port_mapping_overrides": {
+      "num_logical_ports_per_datapath": 18,
+      "lp_start_step_offset": 0,
+      "lp_offset_simple": true,
+      "core_range": "0-8,10-52,54-63",
+      "exclude_logical_ports": [
+        36,
+        38,
+        54,
+        56,
+        504,
+        506,
+        522,
+        524
+      ]
+    },
+    "platform_sai_overrides": {
+      "sai_port_phy_time_sync_en": "0",
+      "sai_eapol_trap_use_bcast_mac": "1",
+      "l3_ecmp_member_secondary_mem_size": "24576",
+      "l3_ecmp_member_first_lkup_mem_size": "8192",
+      "dlb_quality_adjustment_default_value_select": "1"
+    },
+    "features": {
+      "generate_autoload_board_settings": true,
+      "generate_dlb_ecmp_config": true
+    }
+  },
+  "variants": {
+    "default": {},
+    "test_fixture": {
+      "platform_mapping_name": "tahansb800bc_test_fixture"
+    }
+  }
+}

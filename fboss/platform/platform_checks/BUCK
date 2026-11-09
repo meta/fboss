@@ -11,58 +11,157 @@ thrift_library(
     languages = [
         "cpp2",
     ],
+    thrift_cpp2_options = ["json"],
     thrift_srcs = {"check_types.thrift": []},
 )
 
 cpp_library(
     name = "platform_check",
     srcs = [
+        "CommandLog.cpp",
         "PlatformCheck.cpp",
     ],
     headers = [
+        "CommandLog.h",
         "PlatformCheck.h",
     ],
     deps = [
+        "fbsource//third-party/fmt:fmt",
+        "fbsource//xplat/folly/logging:logging",
         "//fboss/platform/config_lib:config_lib",
-        "//folly/logging:logging",
         "//thrift/lib/cpp2/protocol:protocol",
     ],
     exported_deps = [
         ":check_types-cpp2-types",
+        ":host",
         "//fboss/platform/platform_manager:platform_manager_config-cpp2-types",
+    ],
+)
+
+cpp_library(
+    name = "host",
+    srcs = [
+        "Host.cpp",
+        "LocalHost.cpp",
+    ],
+    headers = [
+        "Host.h",
+        "LocalHost.h",
+    ],
+    deps = [
+        "fbsource//xplat/folly:conv",
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly:subprocess",
+        "fbsource//xplat/folly/logging:logging",
+        "fbsource//xplat/folly/system:shell",
+        "//fboss/platform/helpers:expect_session",
+    ],
+)
+
+cpp_library(
+    name = "remote_host",
+    srcs = [
+        "RemoteHost.cpp",
+        "SshAskPass.cpp",
+    ],
+    headers = [
+        "RemoteHost.h",
+        "SshAskPass.h",
+    ],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/logging:logging",
+        "fbsource//xplat/folly/system:shell",
+        "//fboss/platform/helpers:expect_session",
+    ],
+    exported_deps = [
+        ":host",
+    ],
+)
+
+cpp_library(
+    name = "platform_name",
+    srcs = [
+        "PlatformName.cpp",
+    ],
+    headers = [
+        "PlatformName.h",
+    ],
+    deps = [
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/logging:logging",
+        "//fboss/platform/helpers:platform_name_lib",
+    ],
+    exported_deps = [
+        ":host",
+    ],
+)
+
+cpp_library(
+    name = "mock_host",
+    headers = [
+        "tests/MockHost.h",
+    ],
+    exported_deps = [
+        "fbsource//third-party/googletest:gmock",
+        ":host",
+        "//fboss/platform/helpers:expect_session",
     ],
 )
 
 cpp_library(
     name = "platform_checks",
     srcs = [
+        "HostEeprom.cpp",
+        "checks/BmcChecks.cpp",
+        "checks/CommandCheck.cpp",
+        "checks/HwTestChecks.cpp",
         "checks/KernelVersionCheck.cpp",
         "checks/MacAddressCheck.cpp",
+        "checks/ManagementPlaneChecks.cpp",
         "checks/PciDeviceCheck.cpp",
+        "checks/PowerCycleChecks.cpp",
         "checks/PowerResetCheck.cpp",
+        "checks/SolConsoleCheck.cpp",
         "checks/i801SmbusTimeoutCheck.cpp",
     ],
     headers = [
+        "HostEeprom.h",
+        "checks/BmcChecks.h",
+        "checks/BmcReachableCheck.h",
+        "checks/CommandCheck.h",
+        "checks/HwTestChecks.h",
         "checks/KernelVersionCheck.h",
         "checks/MacAddressCheck.h",
+        "checks/ManagementPlaneChecks.h",
         "checks/PciDeviceCheck.h",
+        "checks/PowerCycleChecks.h",
         "checks/PowerResetCheck.h",
+        "checks/SolConsoleCheck.h",
         "checks/i801SmbusTimeoutCheck.h",
     ],
     deps = [
+        "fbsource//third-party/fmt:fmt",
         "fbsource//third-party/re2:re2",
+        "fbsource//xplat/folly:conv",
+        "fbsource//xplat/folly:scope_guard",
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/json:dynamic",
+        "fbsource//xplat/folly/logging:logging",
+        "fbsource//xplat/folly/system:shell",
         "//common/config:configerator",
         "//configerator/structs/fboss/fboss_platform:kernel_versions-cpp2-types",
+        "//fboss/platform/helpers:expect_session",
         "//fboss/platform/weutil:config_utils_lib",
-        "//folly/logging:logging",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:network_address",
+        ":host",
         ":platform_check",
-        "//fboss/platform/helpers:platform_fs_utils",
-        "//fboss/platform/helpers:platform_utils",
         "//fboss/platform/platform_manager:platform_manager_config-cpp2-types",
-        "//fboss/platform/weutil:fboss_eeprom_lib",
-        "//folly:network_address",
     ],
 )
 
@@ -74,6 +173,7 @@ cpp_unittest(
     network_access = network_access_utils.none(),
     deps = [
         "fbsource//third-party/googletest:gmock",
+        ":mock_host",
         ":platform_checks",
     ],
 )
@@ -86,8 +186,8 @@ cpp_unittest(
     network_access = network_access_utils.none(),
     deps = [
         "fbsource//third-party/googletest:gmock",
+        ":mock_host",
         ":platform_checks",
-        "//fboss/platform/helpers:mock_platform_fs_utils",
     ],
 )
 
@@ -99,9 +199,8 @@ cpp_unittest(
     network_access = network_access_utils.none(),
     deps = [
         "fbsource//third-party/googletest:gmock",
+        ":mock_host",
         ":platform_checks",
-        "//fboss/platform/helpers:platform_fs_utils",
-        "//fboss/platform/helpers:platform_utils",
     ],
 )
 
@@ -125,8 +224,127 @@ cpp_unittest(
     network_access = network_access_utils.none(),
     deps = [
         "fbsource//third-party/googletest:gmock",
+        ":mock_host",
         ":platform_checks",
-        "//fboss/platform/helpers:mock_platform_fs_utils",
-        "//fboss/platform/helpers:mock_platform_utils",
+    ],
+)
+
+cpp_unittest(
+    name = "local_host_test",
+    srcs = [
+        "tests/LocalHostTest.cpp",
+    ],
+    network_access = network_access_utils.none(),
+    deps = [
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly/testing:test_util",
+        ":host",
+        "//fboss/platform/helpers:expect_session",
+    ],
+)
+
+cpp_unittest(
+    name = "remote_host_test",
+    srcs = [
+        "tests/RemoteHostTest.cpp",
+    ],
+    network_access = network_access_utils.none(),
+    deps = [
+        "fbsource//third-party/googletest:gmock",
+        "fbsource//xplat/folly/testing:test_util",
+        ":remote_host",
+    ],
+)
+
+cpp_unittest(
+    name = "platform_name_test",
+    srcs = [
+        "tests/PlatformNameTest.cpp",
+    ],
+    network_access = network_access_utils.none(),
+    deps = [
+        ":mock_host",
+        ":platform_name",
+    ],
+)
+
+cpp_unittest(
+    name = "bmc_reachable_check_test",
+    srcs = [
+        "tests/BmcReachableCheckTest.cpp",
+    ],
+    network_access = network_access_utils.none(),
+    deps = [
+        ":mock_host",
+        ":platform_checks",
+    ],
+)
+
+cpp_unittest(
+    name = "management_plane_checks_test",
+    srcs = [
+        "tests/ManagementPlaneChecksTest.cpp",
+    ],
+    network_access = network_access_utils.none(),
+    deps = [
+        "fbsource//third-party/googletest:gmock",
+        ":mock_host",
+        ":platform_checks",
+    ],
+)
+
+cpp_unittest(
+    name = "bmc_checks_test",
+    srcs = [
+        "tests/BmcChecksTest.cpp",
+    ],
+    network_access = network_access_utils.none(),
+    deps = [
+        "fbsource//third-party/googletest:gmock",
+        ":mock_host",
+        ":platform_checks",
+    ],
+)
+
+cpp_unittest(
+    name = "sol_console_check_test",
+    srcs = [
+        "tests/SolConsoleCheckTest.cpp",
+    ],
+    network_access = network_access_utils.none(),
+    deps = [
+        "fbsource//third-party/googletest:gmock",
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly/testing:test_util",
+        ":mock_host",
+        ":platform_checks",
+    ],
+)
+
+cpp_unittest(
+    name = "power_cycle_checks_test",
+    srcs = [
+        "tests/PowerCycleChecksTest.cpp",
+    ],
+    network_access = network_access_utils.none(),
+    deps = [
+        "fbsource//third-party/googletest:gmock",
+        ":mock_host",
+        ":platform_checks",
+    ],
+)
+
+cpp_unittest(
+    name = "hw_test_checks_test",
+    srcs = [
+        "tests/HwTestChecksTest.cpp",
+    ],
+    network_access = network_access_utils.none(),
+    deps = [
+        "fbsource//third-party/googletest:gmock",
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly/testing:test_util",
+        ":mock_host",
+        ":platform_checks",
     ],
 )

@@ -38,6 +38,11 @@ common_overrides: |
   CONFIG_SERIAL_8250_DWLIB=m
   CONFIG_SERIAL_8250_PNP=y
 
+  # AQtion management NIC (fboss eth0)
+  CONFIG_NET_VENDOR_AQUANTIA=y
+  CONFIG_AQTION=y
+  CONFIG_AQUANTIA_PHY=m
+
 
 # Kernel version overrides
 # Add kernel version as key, then add config lines in the value

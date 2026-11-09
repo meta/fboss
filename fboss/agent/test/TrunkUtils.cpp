@@ -141,6 +141,53 @@ void addAggPort(
   }
 }
 
+void addAggPortWithRouterInterface(
+    int key,
+    const std::vector<int32_t>& ports,
+    cfg::SwitchConfig* config,
+    cfg::LacpPortRate rate,
+    double minLinkPercentage) {
+  static constexpr auto kAggPortName = "AGG";
+  cfg::AggregatePort aggPort;
+  aggPort.key() = key;
+  aggPort.name() = folly::to<std::string>(kAggPortName, "-", key);
+  aggPort.description() = kAggPortName;
+  aggPort.minimumCapacity()->set_linkPercentage(minLinkPercentage);
+  aggPort.aggregatePortType() = cfg::AggregatePortType::LAG_PORT;
+  for (auto port : ports) {
+    aggPort.memberPorts()->push_back(makePortMember(port, rate));
+  }
+  config->aggregatePorts()->push_back(aggPort);
+
+  std::set<int32_t> memberPorts(ports.begin(), ports.end());
+  auto& interfaces = *config->interfaces();
+  auto isMemberIntf = [&memberPorts](const auto& intf) {
+    return intf.portID().has_value() && memberPorts.contains(*intf.portID());
+  };
+
+  auto firstMemberIntf =
+      std::find_if(interfaces.begin(), interfaces.end(), isMemberIntf);
+  if (firstMemberIntf == interfaces.end()) {
+    throw FbossError(
+        "No port router interface found for members of aggregate port ", key);
+  }
+  // Rebind the first member's interface to the aggregate, keeping its id, mac
+  // and addresses, then drop the rest. Both in one pass, so no member port is
+  // ever left holding a router interface of its own.
+  firstMemberIntf->portID().reset();
+  firstMemberIntf->aggregatePortID() = key;
+  auto aggIntfID = *firstMemberIntf->intfID();
+
+  interfaces.erase(
+      std::remove_if(
+          interfaces.begin(),
+          interfaces.end(),
+          [&isMemberIntf, aggIntfID](const auto& intf) {
+            return *intf.intfID() != aggIntfID && isMemberIntf(intf);
+          }),
+      interfaces.end());
+}
+
 std::shared_ptr<SwitchState> enableTrunkPorts(
     std::shared_ptr<SwitchState> curState) {
   auto newState{curState};

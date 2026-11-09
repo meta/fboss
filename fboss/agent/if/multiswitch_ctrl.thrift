@@ -86,6 +86,7 @@ struct RxPacket {
   4: optional i16 vlan;
   5: i32 length;
   6: optional ctrl.CpuCosQueueId cosQueue;
+  7: optional common.PacketType packetType;
 }
 
 struct StateOperDelta {

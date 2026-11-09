@@ -1,0 +1,4213 @@
+{
+  "defaultCommandLineArgs": {
+    "check_wb_handles": "true",
+    "counter_refresh_interval": "0",
+    "enable_nexthop_id_manager": "true",
+    "intf_nbr_tables": "true",
+    "log_variable_name": "true",
+    "sai_configure_six_tap": "true",
+    "skip_transceiver_programming": "true",
+    "use_full_dlb_scale": "true",
+    "platform_descriptor_config_path": "/opt/fboss/PMCG/descriptor_config",
+    "verify_fib_nexthop_id_consistency": "true",
+    "enable_1to1_intf_route_table_mapping": "true",
+    "remediation_enabled": "true",
+    "enable_replayer": "true",
+    "ecmp_width": "66"
+  },
+  "sw": {
+    "version": 0,
+    "ports": [
+      {
+        "logicalID": 1,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2001,
+        "speed": 800000,
+        "name": "eth1/2/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/1/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 9,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2000,
+        "speed": 800000,
+        "name": "eth1/1/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/2/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 17,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2002,
+        "speed": 800000,
+        "name": "eth1/3/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/4/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 25,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2003,
+        "speed": 800000,
+        "name": "eth1/4/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/3/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 34,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2005,
+        "speed": 800000,
+        "name": "eth1/6/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/5/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 42,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2004,
+        "speed": 800000,
+        "name": "eth1/5/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/6/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 51,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2006,
+        "speed": 800000,
+        "name": "eth1/7/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/8/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 59,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2007,
+        "speed": 800000,
+        "name": "eth1/8/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/7/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 68,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2009,
+        "speed": 800000,
+        "name": "eth1/10/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/9/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 76,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2008,
+        "speed": 800000,
+        "name": "eth1/9/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/10/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 85,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2010,
+        "speed": 800000,
+        "name": "eth1/11/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/12/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 93,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2011,
+        "speed": 800000,
+        "name": "eth1/12/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/11/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 102,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2013,
+        "speed": 800000,
+        "name": "eth1/14/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/13/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 110,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2012,
+        "speed": 800000,
+        "name": "eth1/13/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/14/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 119,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2014,
+        "speed": 800000,
+        "name": "eth1/15/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/16/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 127,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2015,
+        "speed": 800000,
+        "name": "eth1/16/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/15/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 136,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2017,
+        "speed": 800000,
+        "name": "eth1/18/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/17/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 144,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2016,
+        "speed": 800000,
+        "name": "eth1/17/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/18/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 153,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2018,
+        "speed": 800000,
+        "name": "eth1/19/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/20/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 161,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2019,
+        "speed": 800000,
+        "name": "eth1/20/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/19/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 170,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2021,
+        "speed": 800000,
+        "name": "eth1/22/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/21/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 178,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2020,
+        "speed": 800000,
+        "name": "eth1/21/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/22/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 187,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2022,
+        "speed": 800000,
+        "name": "eth1/23/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/24/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 195,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2023,
+        "speed": 800000,
+        "name": "eth1/24/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/23/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 204,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2025,
+        "speed": 800000,
+        "name": "eth1/26/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/25/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 212,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2024,
+        "speed": 800000,
+        "name": "eth1/25/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/26/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 221,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2026,
+        "speed": 800000,
+        "name": "eth1/27/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/28/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 229,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2027,
+        "speed": 800000,
+        "name": "eth1/28/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/27/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 238,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2029,
+        "speed": 800000,
+        "name": "eth1/30/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/29/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 246,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2028,
+        "speed": 800000,
+        "name": "eth1/29/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/30/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 255,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2030,
+        "speed": 800000,
+        "name": "eth1/31/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/32/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 263,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2031,
+        "speed": 800000,
+        "name": "eth1/32/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/31/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 272,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2033,
+        "speed": 800000,
+        "name": "eth1/34/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/33/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 280,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2032,
+        "speed": 800000,
+        "name": "eth1/33/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/34/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 289,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2034,
+        "speed": 800000,
+        "name": "eth1/35/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/36/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 297,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2035,
+        "speed": 800000,
+        "name": "eth1/36/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/35/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 306,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2037,
+        "speed": 800000,
+        "name": "eth1/38/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/37/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 314,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2036,
+        "speed": 800000,
+        "name": "eth1/37/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/38/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 323,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2038,
+        "speed": 800000,
+        "name": "eth1/39/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/40/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 331,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2039,
+        "speed": 800000,
+        "name": "eth1/40/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/39/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 340,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2041,
+        "speed": 800000,
+        "name": "eth1/42/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/41/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 348,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2040,
+        "speed": 800000,
+        "name": "eth1/41/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/42/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 357,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2042,
+        "speed": 800000,
+        "name": "eth1/43/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/44/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 365,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2043,
+        "speed": 800000,
+        "name": "eth1/44/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/43/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 374,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2045,
+        "speed": 800000,
+        "name": "eth1/46/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/45/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 382,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2044,
+        "speed": 800000,
+        "name": "eth1/45/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/46/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 391,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2046,
+        "speed": 800000,
+        "name": "eth1/47/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/48/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 399,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2047,
+        "speed": 800000,
+        "name": "eth1/48/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/47/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 408,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2049,
+        "speed": 800000,
+        "name": "eth1/50/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/49/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 416,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2048,
+        "speed": 800000,
+        "name": "eth1/49/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/50/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 425,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2050,
+        "speed": 800000,
+        "name": "eth1/51/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/52/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 433,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2051,
+        "speed": 800000,
+        "name": "eth1/52/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/51/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 442,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2053,
+        "speed": 800000,
+        "name": "eth1/54/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/53/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 450,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2052,
+        "speed": 800000,
+        "name": "eth1/53/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/54/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 459,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2054,
+        "speed": 800000,
+        "name": "eth1/55/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/56/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 467,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2055,
+        "speed": 800000,
+        "name": "eth1/56/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/55/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 476,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2057,
+        "speed": 800000,
+        "name": "eth1/58/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/57/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 484,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2056,
+        "speed": 800000,
+        "name": "eth1/57/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/58/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 493,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2058,
+        "speed": 800000,
+        "name": "eth1/59/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/60/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 501,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2059,
+        "speed": 800000,
+        "name": "eth1/60/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/59/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 510,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2061,
+        "speed": 800000,
+        "name": "eth1/62/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/61/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 518,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2060,
+        "speed": 800000,
+        "name": "eth1/61/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/62/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 527,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2062,
+        "speed": 800000,
+        "name": "eth1/63/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/64/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 535,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2063,
+        "speed": 800000,
+        "name": "eth1/64/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/63/1"
+        },
+        "lookupClasses": [],
+        "profileID": 39,
+        "portType": 0,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      },
+      {
+        "logicalID": 544,
+        "state": 2,
+        "minFrameSize": 64,
+        "maxFrameSize": 9412,
+        "parserType": 1,
+        "routable": true,
+        "ingressVlan": 2064,
+        "speed": 100000,
+        "name": "eth1/65/1",
+        "description": "",
+        "queues_DEPRECATED": [],
+        "pause": {
+          "tx": false,
+          "rx": false
+        },
+        "sFlowIngressRate": 0,
+        "sFlowEgressRate": 0,
+        "loopbackMode": 0,
+        "expectedLLDPValues": {
+          "2": "eth1/65/1"
+        },
+        "lookupClasses": [],
+        "profileID": 23,
+        "portType": 4,
+        "expectedNeighborReachability": [],
+        "drainState": 0,
+        "scope": 0,
+        "conditionalEntropyRehash": false
+      }
+    ],
+    "vlans": [
+      {
+        "name": "fbossLoopback0",
+        "id": 10,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2000",
+        "id": 2000,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2001",
+        "id": 2001,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2002",
+        "id": 2002,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2003",
+        "id": 2003,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2004",
+        "id": 2004,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2005",
+        "id": 2005,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2006",
+        "id": 2006,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2007",
+        "id": 2007,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2008",
+        "id": 2008,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2009",
+        "id": 2009,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2010",
+        "id": 2010,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2011",
+        "id": 2011,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2012",
+        "id": 2012,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2013",
+        "id": 2013,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2014",
+        "id": 2014,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2015",
+        "id": 2015,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2016",
+        "id": 2016,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2017",
+        "id": 2017,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2018",
+        "id": 2018,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2019",
+        "id": 2019,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2020",
+        "id": 2020,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2021",
+        "id": 2021,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2022",
+        "id": 2022,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2023",
+        "id": 2023,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2024",
+        "id": 2024,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2025",
+        "id": 2025,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2026",
+        "id": 2026,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2027",
+        "id": 2027,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2028",
+        "id": 2028,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2029",
+        "id": 2029,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2030",
+        "id": 2030,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2031",
+        "id": 2031,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2032",
+        "id": 2032,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2033",
+        "id": 2033,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2034",
+        "id": 2034,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2035",
+        "id": 2035,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2036",
+        "id": 2036,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2037",
+        "id": 2037,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2038",
+        "id": 2038,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2039",
+        "id": 2039,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2040",
+        "id": 2040,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2041",
+        "id": 2041,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2042",
+        "id": 2042,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2043",
+        "id": 2043,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2044",
+        "id": 2044,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2045",
+        "id": 2045,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2046",
+        "id": 2046,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2047",
+        "id": 2047,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2048",
+        "id": 2048,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2049",
+        "id": 2049,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2050",
+        "id": 2050,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2051",
+        "id": 2051,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2052",
+        "id": 2052,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2053",
+        "id": 2053,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2054",
+        "id": 2054,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2055",
+        "id": 2055,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2056",
+        "id": 2056,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2057",
+        "id": 2057,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2058",
+        "id": 2058,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2059",
+        "id": 2059,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2060",
+        "id": 2060,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2061",
+        "id": 2061,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2062",
+        "id": 2062,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2063",
+        "id": 2063,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      },
+      {
+        "name": "vlan2064",
+        "id": 2064,
+        "recordStats": true,
+        "routable": true,
+        "ipAddresses": []
+      }
+    ],
+    "vlanPorts": [
+      {
+        "vlanID": 2000,
+        "logicalPort": 9,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2001,
+        "logicalPort": 1,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2002,
+        "logicalPort": 17,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2003,
+        "logicalPort": 25,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2004,
+        "logicalPort": 42,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2005,
+        "logicalPort": 34,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2006,
+        "logicalPort": 51,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2007,
+        "logicalPort": 59,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2008,
+        "logicalPort": 76,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2009,
+        "logicalPort": 68,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2010,
+        "logicalPort": 85,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2011,
+        "logicalPort": 93,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2012,
+        "logicalPort": 110,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2013,
+        "logicalPort": 102,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2014,
+        "logicalPort": 119,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2015,
+        "logicalPort": 127,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2016,
+        "logicalPort": 144,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2017,
+        "logicalPort": 136,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2018,
+        "logicalPort": 153,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2019,
+        "logicalPort": 161,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2020,
+        "logicalPort": 178,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2021,
+        "logicalPort": 170,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2022,
+        "logicalPort": 187,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2023,
+        "logicalPort": 195,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2024,
+        "logicalPort": 212,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2025,
+        "logicalPort": 204,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2026,
+        "logicalPort": 221,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2027,
+        "logicalPort": 229,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2028,
+        "logicalPort": 246,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2029,
+        "logicalPort": 238,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2030,
+        "logicalPort": 255,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2031,
+        "logicalPort": 263,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2032,
+        "logicalPort": 280,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2033,
+        "logicalPort": 272,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2034,
+        "logicalPort": 289,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2035,
+        "logicalPort": 297,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2036,
+        "logicalPort": 314,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2037,
+        "logicalPort": 306,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2038,
+        "logicalPort": 323,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2039,
+        "logicalPort": 331,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2040,
+        "logicalPort": 348,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2041,
+        "logicalPort": 340,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2042,
+        "logicalPort": 357,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2043,
+        "logicalPort": 365,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2044,
+        "logicalPort": 382,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2045,
+        "logicalPort": 374,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2046,
+        "logicalPort": 391,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2047,
+        "logicalPort": 399,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2048,
+        "logicalPort": 416,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2049,
+        "logicalPort": 408,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2050,
+        "logicalPort": 425,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2051,
+        "logicalPort": 433,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2052,
+        "logicalPort": 450,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2053,
+        "logicalPort": 442,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2054,
+        "logicalPort": 459,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2055,
+        "logicalPort": 467,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2056,
+        "logicalPort": 484,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2057,
+        "logicalPort": 476,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2058,
+        "logicalPort": 493,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2059,
+        "logicalPort": 501,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2060,
+        "logicalPort": 518,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2061,
+        "logicalPort": 510,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2062,
+        "logicalPort": 527,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2063,
+        "logicalPort": 535,
+        "spanningTreeState": 2,
+        "emitTags": false
+      },
+      {
+        "vlanID": 2064,
+        "logicalPort": 544,
+        "spanningTreeState": 2,
+        "emitTags": false
+      }
+    ],
+    "defaultVlan": 0,
+    "interfaces": [
+      {
+        "intfID": 10,
+        "routerID": 0,
+        "vlanID": 10,
+        "ipAddresses": [
+          "2531::/64",
+          "140.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": false,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2000,
+        "routerID": 0,
+        "vlanID": 2000,
+        "ipAddresses": [
+          "2401::/64",
+          "10.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2001,
+        "routerID": 0,
+        "vlanID": 2001,
+        "ipAddresses": [
+          "2402::/64",
+          "11.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2002,
+        "routerID": 0,
+        "vlanID": 2002,
+        "ipAddresses": [
+          "2403::/64",
+          "12.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2003,
+        "routerID": 0,
+        "vlanID": 2003,
+        "ipAddresses": [
+          "2404::/64",
+          "13.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2004,
+        "routerID": 0,
+        "vlanID": 2004,
+        "ipAddresses": [
+          "2405::/64",
+          "14.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2005,
+        "routerID": 0,
+        "vlanID": 2005,
+        "ipAddresses": [
+          "2406::/64",
+          "15.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2006,
+        "routerID": 0,
+        "vlanID": 2006,
+        "ipAddresses": [
+          "2407::/64",
+          "16.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2007,
+        "routerID": 0,
+        "vlanID": 2007,
+        "ipAddresses": [
+          "2408::/64",
+          "17.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2008,
+        "routerID": 0,
+        "vlanID": 2008,
+        "ipAddresses": [
+          "2409::/64",
+          "18.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2009,
+        "routerID": 0,
+        "vlanID": 2009,
+        "ipAddresses": [
+          "2410::/64",
+          "19.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2010,
+        "routerID": 0,
+        "vlanID": 2010,
+        "ipAddresses": [
+          "2411::/64",
+          "20.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2011,
+        "routerID": 0,
+        "vlanID": 2011,
+        "ipAddresses": [
+          "2412::/64",
+          "21.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2012,
+        "routerID": 0,
+        "vlanID": 2012,
+        "ipAddresses": [
+          "2413::/64",
+          "22.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2013,
+        "routerID": 0,
+        "vlanID": 2013,
+        "ipAddresses": [
+          "2414::/64",
+          "23.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2014,
+        "routerID": 0,
+        "vlanID": 2014,
+        "ipAddresses": [
+          "2415::/64",
+          "24.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2015,
+        "routerID": 0,
+        "vlanID": 2015,
+        "ipAddresses": [
+          "2416::/64",
+          "25.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2016,
+        "routerID": 0,
+        "vlanID": 2016,
+        "ipAddresses": [
+          "2417::/64",
+          "26.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2017,
+        "routerID": 0,
+        "vlanID": 2017,
+        "ipAddresses": [
+          "2418::/64",
+          "27.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2018,
+        "routerID": 0,
+        "vlanID": 2018,
+        "ipAddresses": [
+          "2419::/64",
+          "28.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2019,
+        "routerID": 0,
+        "vlanID": 2019,
+        "ipAddresses": [
+          "2420::/64",
+          "29.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2020,
+        "routerID": 0,
+        "vlanID": 2020,
+        "ipAddresses": [
+          "2421::/64",
+          "30.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2021,
+        "routerID": 0,
+        "vlanID": 2021,
+        "ipAddresses": [
+          "2422::/64",
+          "31.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2022,
+        "routerID": 0,
+        "vlanID": 2022,
+        "ipAddresses": [
+          "2423::/64",
+          "32.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2023,
+        "routerID": 0,
+        "vlanID": 2023,
+        "ipAddresses": [
+          "2424::/64",
+          "33.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2024,
+        "routerID": 0,
+        "vlanID": 2024,
+        "ipAddresses": [
+          "2425::/64",
+          "34.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2025,
+        "routerID": 0,
+        "vlanID": 2025,
+        "ipAddresses": [
+          "2426::/64",
+          "35.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2026,
+        "routerID": 0,
+        "vlanID": 2026,
+        "ipAddresses": [
+          "2427::/64",
+          "36.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2027,
+        "routerID": 0,
+        "vlanID": 2027,
+        "ipAddresses": [
+          "2428::/64",
+          "37.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2028,
+        "routerID": 0,
+        "vlanID": 2028,
+        "ipAddresses": [
+          "2429::/64",
+          "38.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2029,
+        "routerID": 0,
+        "vlanID": 2029,
+        "ipAddresses": [
+          "2430::/64",
+          "39.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2030,
+        "routerID": 0,
+        "vlanID": 2030,
+        "ipAddresses": [
+          "2431::/64",
+          "40.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2031,
+        "routerID": 0,
+        "vlanID": 2031,
+        "ipAddresses": [
+          "2432::/64",
+          "41.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2032,
+        "routerID": 0,
+        "vlanID": 2032,
+        "ipAddresses": [
+          "2433::/64",
+          "42.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2033,
+        "routerID": 0,
+        "vlanID": 2033,
+        "ipAddresses": [
+          "2434::/64",
+          "43.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2034,
+        "routerID": 0,
+        "vlanID": 2034,
+        "ipAddresses": [
+          "2435::/64",
+          "44.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2035,
+        "routerID": 0,
+        "vlanID": 2035,
+        "ipAddresses": [
+          "2436::/64",
+          "45.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2036,
+        "routerID": 0,
+        "vlanID": 2036,
+        "ipAddresses": [
+          "2437::/64",
+          "46.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2037,
+        "routerID": 0,
+        "vlanID": 2037,
+        "ipAddresses": [
+          "2438::/64",
+          "47.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2038,
+        "routerID": 0,
+        "vlanID": 2038,
+        "ipAddresses": [
+          "2439::/64",
+          "48.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2039,
+        "routerID": 0,
+        "vlanID": 2039,
+        "ipAddresses": [
+          "2440::/64",
+          "49.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2040,
+        "routerID": 0,
+        "vlanID": 2040,
+        "ipAddresses": [
+          "2441::/64",
+          "50.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2041,
+        "routerID": 0,
+        "vlanID": 2041,
+        "ipAddresses": [
+          "2442::/64",
+          "51.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2042,
+        "routerID": 0,
+        "vlanID": 2042,
+        "ipAddresses": [
+          "2443::/64",
+          "52.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2043,
+        "routerID": 0,
+        "vlanID": 2043,
+        "ipAddresses": [
+          "2444::/64",
+          "53.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2044,
+        "routerID": 0,
+        "vlanID": 2044,
+        "ipAddresses": [
+          "2445::/64",
+          "54.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2045,
+        "routerID": 0,
+        "vlanID": 2045,
+        "ipAddresses": [
+          "2446::/64",
+          "55.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2046,
+        "routerID": 0,
+        "vlanID": 2046,
+        "ipAddresses": [
+          "2447::/64",
+          "56.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2047,
+        "routerID": 0,
+        "vlanID": 2047,
+        "ipAddresses": [
+          "2448::/64",
+          "57.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2048,
+        "routerID": 0,
+        "vlanID": 2048,
+        "ipAddresses": [
+          "2449::/64",
+          "58.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2049,
+        "routerID": 0,
+        "vlanID": 2049,
+        "ipAddresses": [
+          "2450::/64",
+          "59.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2050,
+        "routerID": 0,
+        "vlanID": 2050,
+        "ipAddresses": [
+          "2451::/64",
+          "60.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2051,
+        "routerID": 0,
+        "vlanID": 2051,
+        "ipAddresses": [
+          "2452::/64",
+          "61.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2052,
+        "routerID": 0,
+        "vlanID": 2052,
+        "ipAddresses": [
+          "2453::/64",
+          "62.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2053,
+        "routerID": 0,
+        "vlanID": 2053,
+        "ipAddresses": [
+          "2454::/64",
+          "63.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2054,
+        "routerID": 0,
+        "vlanID": 2054,
+        "ipAddresses": [
+          "2455::/64",
+          "64.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2055,
+        "routerID": 0,
+        "vlanID": 2055,
+        "ipAddresses": [
+          "2456::/64",
+          "65.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2056,
+        "routerID": 0,
+        "vlanID": 2056,
+        "ipAddresses": [
+          "2457::/64",
+          "66.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2057,
+        "routerID": 0,
+        "vlanID": 2057,
+        "ipAddresses": [
+          "2458::/64",
+          "67.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2058,
+        "routerID": 0,
+        "vlanID": 2058,
+        "ipAddresses": [
+          "2459::/64",
+          "68.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2059,
+        "routerID": 0,
+        "vlanID": 2059,
+        "ipAddresses": [
+          "2460::/64",
+          "69.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2060,
+        "routerID": 0,
+        "vlanID": 2060,
+        "ipAddresses": [
+          "2461::/64",
+          "70.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2061,
+        "routerID": 0,
+        "vlanID": 2061,
+        "ipAddresses": [
+          "2462::/64",
+          "71.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2062,
+        "routerID": 0,
+        "vlanID": 2062,
+        "ipAddresses": [
+          "2463::/64",
+          "72.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2063,
+        "routerID": 0,
+        "vlanID": 2063,
+        "ipAddresses": [
+          "2464::/64",
+          "73.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      },
+      {
+        "intfID": 2064,
+        "routerID": 0,
+        "vlanID": 2064,
+        "ipAddresses": [
+          "2465::/64",
+          "74.0.0.0/24"
+        ],
+        "mtu": 9000,
+        "isVirtual": true,
+        "isStateSyncDisabled": true,
+        "type": 1,
+        "scope": 0
+      }
+    ],
+    "arpTimeoutSeconds": 60,
+    "arpRefreshSeconds": 20,
+    "arpAgerInterval": 5,
+    "proactiveArp": false,
+    "staticRoutesWithNhops": [],
+    "staticRoutesToNull": [],
+    "staticRoutesToCPU": [],
+    "acls": [],
+    "maxNeighborProbes": 300,
+    "staleEntryInterval": 10,
+    "aggregatePorts": [],
+    "clientIdToAdminDistance": {
+      "0": 20,
+      "1": 1,
+      "2": 0,
+      "3": 0,
+      "4": 0,
+      "700": 255,
+      "786": 10,
+      "800": 2
+    },
+    "sFlowCollectors": [],
+    "cpuQueues": [
+      {
+        "id": 9,
+        "streamType": 1,
+        "scheduling": 1,
+        "name": "cpuQueue-high"
+      },
+      {
+        "id": 2,
+        "streamType": 1,
+        "scheduling": 1,
+        "name": "cpuQueue-mid"
+      },
+      {
+        "id": 1,
+        "streamType": 1,
+        "scheduling": 1,
+        "name": "cpuQueue-default",
+        "portQueueRate": {
+          "pktsPerSec": {
+            "minimum": 0,
+            "maximum": 1000
+          }
+        }
+      },
+      {
+        "id": 0,
+        "streamType": 1,
+        "scheduling": 1,
+        "name": "cpuQueue-low",
+        "portQueueRate": {
+          "pktsPerSec": {
+            "minimum": 0,
+            "maximum": 500
+          }
+        }
+      }
+    ],
+    "cpuTrafficPolicy": {
+      "trafficPolicy": {
+        "matchToAction": [
+          {
+            "matcher": "cpuPolicing-CPU-Port-linkLocal-v6",
+            "action": {}
+          },
+          {
+            "matcher": "cpuPolicing-CPU-Port-Mcast-v6",
+            "action": {}
+          },
+          {
+            "matcher": "cpuPolicing-high-NetworkControl-linkLocal-v6",
+            "action": {
+              "sendToQueue": {
+                "queueId": 9
+              },
+              "toCpuAction": 0,
+              "setTc": {
+                "tcValue": 9
+              },
+              "userDefinedTrap": {
+                "queueId": 9
+              }
+            }
+          },
+          {
+            "matcher": "cpuPolicing-high-NetworkControl-ff02::/16",
+            "action": {
+              "sendToQueue": {
+                "queueId": 9
+              },
+              "toCpuAction": 0,
+              "setTc": {
+                "tcValue": 9
+              },
+              "userDefinedTrap": {
+                "queueId": 9
+              }
+            }
+          },
+          {
+            "matcher": "cpuPolicing-mid-linkLocal-v6",
+            "action": {
+              "sendToQueue": {
+                "queueId": 2
+              },
+              "toCpuAction": 0,
+              "setTc": {
+                "tcValue": 2
+              },
+              "userDefinedTrap": {
+                "queueId": 2
+              }
+            }
+          },
+          {
+            "matcher": "cpuPolicing-mid-ff02::/16",
+            "action": {
+              "sendToQueue": {
+                "queueId": 2
+              },
+              "toCpuAction": 0,
+              "setTc": {
+                "tcValue": 2
+              },
+              "userDefinedTrap": {
+                "queueId": 2
+              }
+            }
+          }
+        ]
+      },
+      "rxReasonToQueueOrderedList": [
+        {
+          "rxReason": 8,
+          "queueId": 9
+        },
+        {
+          "rxReason": 1,
+          "queueId": 9
+        },
+        {
+          "rxReason": 10,
+          "queueId": 9
+        },
+        {
+          "rxReason": 11,
+          "queueId": 9
+        },
+        {
+          "rxReason": 12,
+          "queueId": 9
+        },
+        {
+          "rxReason": 13,
+          "queueId": 9
+        },
+        {
+          "rxReason": 9,
+          "queueId": 2
+        },
+        {
+          "rxReason": 7,
+          "queueId": 2
+        },
+        {
+          "rxReason": 2,
+          "queueId": 2
+        },
+        {
+          "rxReason": 17,
+          "queueId": 2
+        },
+        {
+          "rxReason": 6,
+          "queueId": 0
+        },
+        {
+          "rxReason": 14,
+          "queueId": 0
+        },
+        {
+          "rxReason": 0,
+          "queueId": 1
+        }
+      ]
+    },
+    "loadBalancers": [
+      {
+        "id": 1,
+        "fieldSelection": {
+          "ipv4Fields": [
+            1,
+            2
+          ],
+          "ipv6Fields": [
+            1,
+            2
+          ],
+          "transportFields": [
+            1,
+            2
+          ],
+          "mplsFields": [],
+          "udfGroups": []
+        },
+        "algorithm": 1
+      },
+      {
+        "id": 2,
+        "fieldSelection": {
+          "ipv4Fields": [
+            1,
+            2
+          ],
+          "ipv6Fields": [
+            1,
+            2
+          ],
+          "transportFields": [],
+          "mplsFields": [],
+          "udfGroups": []
+        },
+        "algorithm": 1
+      }
+    ],
+    "dataPlaneTrafficPolicy": {
+      "matchToAction": [
+        {
+          "matcher": "ttld-prod-private",
+          "action": {
+            "counter": "ttld-prod-private"
+          }
+        },
+        {
+          "matcher": "ttld-prod-public",
+          "action": {
+            "counter": "ttld-prod-public"
+          }
+        },
+        {
+          "matcher": "ttld-ip-per-task",
+          "action": {
+            "counter": "ttld-ip-per-task"
+          }
+        },
+        {
+          "matcher": "ttld-onavo-infra",
+          "action": {
+            "counter": "ttld-onavo-infra"
+          }
+        },
+        {
+          "matcher": "ttld-interconnect",
+          "action": {
+            "counter": "ttld-interconnect"
+          }
+        }
+      ]
+    },
+    "mirrors": [],
+    "trafficCounters": [
+      {
+        "name": "ttld-prod-private",
+        "types": [
+          0,
+          1
+        ]
+      },
+      {
+        "name": "ttld-prod-public",
+        "types": [
+          0,
+          1
+        ]
+      },
+      {
+        "name": "ttld-ip-per-task",
+        "types": [
+          0,
+          1
+        ]
+      },
+      {
+        "name": "ttld-onavo-infra",
+        "types": [
+          0,
+          1
+        ]
+      },
+      {
+        "name": "ttld-interconnect",
+        "types": [
+          0,
+          1
+        ]
+      }
+    ],
+    "qosPolicies": [],
+    "defaultPortQueues": [],
+    "staticMplsRoutesWithNhops": [],
+    "staticMplsRoutesToNull": [],
+    "staticMplsRoutesToCPU": [],
+    "staticIp2MplsRoutes": [],
+    "portQueueConfigs": {},
+    "switchSettings": {
+      "l2LearningMode": 0,
+      "qcmEnable": false,
+      "ptpTcEnable": false,
+      "l2AgeTimerSeconds": 300,
+      "maxRouteCounterIDs_DEPRECATED": 0,
+      "blockNeighbors": [],
+      "macAddrsToBlock": [],
+      "switchType": 0,
+      "exactMatchTableConfigs": [],
+      "switchIdToSwitchType_DEPRECATED": {},
+      "switchDrainState": 0,
+      "switchIdToSwitchInfo": {
+        "0": {
+          "switchType": 0,
+          "asicType": 13,
+          "switchIndex": 0,
+          "portIdRange": {
+            "minimum": 0,
+            "maximum": 2047
+          },
+          "firmwareNameToFirmwareInfo": {}
+        }
+      },
+      "vendorMacOuis": [],
+      "metaMacOuis": []
+    },
+    "sdkVersion": {
+      "asicSdk": "sdk",
+      "saiSdk": "sai"
+    },
+    "dsfNodes": {},
+    "defaultVoqConfig": [],
+    "aclTableGroups": [
+      {
+        "name": "acl-table-group-ingress",
+        "aclTables": [
+          {
+            "name": "AclTable1",
+            "priority": 0,
+            "aclEntries": [
+              {
+                "dstIp": "fe80::/10",
+                "srcPort": 0,
+                "name": "cpuPolicing-CPU-Port-linkLocal-v6",
+                "actionType": 1
+              },
+              {
+                "dstIp": "ff02::/16",
+                "srcPort": 0,
+                "name": "cpuPolicing-CPU-Port-Mcast-v6",
+                "actionType": 1
+              },
+              {
+                "dstIp": "fe80::/10",
+                "dscp": 48,
+                "name": "cpuPolicing-high-NetworkControl-linkLocal-v6",
+                "actionType": 1
+              },
+              {
+                "dstIp": "ff02::/16",
+                "dscp": 48,
+                "name": "cpuPolicing-high-NetworkControl-ff02::/16",
+                "actionType": 1
+              },
+              {
+                "dstIp": "fe80::/10",
+                "name": "cpuPolicing-mid-linkLocal-v6",
+                "actionType": 1
+              },
+              {
+                "dstIp": "ff02::/16",
+                "name": "cpuPolicing-mid-ff02::/16",
+                "actionType": 1
+              },
+              {
+                "srcIp": "2401:db00::/32",
+                "proto": 6,
+                "name": "ttld-prod-private",
+                "actionType": 1,
+                "ttl": {
+                  "value": 128,
+                  "mask": 128
+                },
+                "ipType": 3
+              },
+              {
+                "srcIp": "2a03:2880::/32",
+                "proto": 6,
+                "name": "ttld-prod-public",
+                "actionType": 1,
+                "ttl": {
+                  "value": 128,
+                  "mask": 128
+                },
+                "ipType": 3
+              },
+              {
+                "srcIp": "2803:6080::/29",
+                "proto": 6,
+                "name": "ttld-ip-per-task",
+                "actionType": 1,
+                "ttl": {
+                  "value": 128,
+                  "mask": 128
+                },
+                "ipType": 3
+              },
+              {
+                "srcIp": "2a03:83e0::/32",
+                "proto": 6,
+                "name": "ttld-onavo-infra",
+                "actionType": 1,
+                "ttl": {
+                  "value": 128,
+                  "mask": 128
+                },
+                "ipType": 3
+              },
+              {
+                "srcIp": "2620:0000:1c00::/40",
+                "proto": 6,
+                "name": "ttld-interconnect",
+                "actionType": 1,
+                "ttl": {
+                  "value": 128,
+                  "mask": 128
+                },
+                "ipType": 3
+              }
+            ],
+            "actionTypes": [],
+            "qualifiers": [],
+            "udfGroups": []
+          }
+        ],
+        "stage": 0,
+        "bindPoint": 0
+      }
+    ],
+    "mirrorOnDropReports": []
+  },
+  "platform": {
+    "chip": {
+      "asicConfig": {
+        "common": {
+          "yamlConfig": "---\ndevice:\n  0:\n    PC_PM_CORE:\n      ?\n        PC_PM_ID: 1\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x54761032\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x32107654\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0x8C\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0xFF\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 2\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x54761032\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x32107654\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0x55\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0xCC\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 3\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x23016745\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x54761032\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0x33\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0x00\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 4\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x52701634\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x54761032\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0xAA\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0xCC\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 5\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x74305612\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x21640357\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0xF7\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0x59\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 6\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x03562147\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x30742165\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0x48\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0x29\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 7\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x14567302\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x56712430\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0xAF\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0xFC\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 8\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x67315024\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x56217034\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0xDD\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0x53\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 9\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x21403765\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x20543176\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0xDD\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0x48\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 10\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x53062147\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x30742165\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0x48\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0x69\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 11\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x54067312\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x56712430\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0xAF\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0xFC\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 12\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x65304721\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x56217430\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0xDD\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0x56\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 13\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x21403765\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x20543176\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0xDD\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0x48\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 14\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x53062147\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x30742165\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0x48\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0x69\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 15\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x54067312\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x56712430\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0xAF\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0xFC\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 16\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x65304721\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x56217430\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0xDD\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0x56\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 17\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x65274130\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x56207431\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0x87\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0xA7\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 18\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x47306521\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x76305412\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0x6C\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0x86\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 19\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x02731456\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x21345076\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0x99\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0x07\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 20\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x30472165\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x21543076\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0x6C\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0xAD\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 21\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x45376120\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x56207431\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0x2D\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0xA7\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 22\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x40376521\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x76305412\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0x3C\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0x86\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 23\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x02731456\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x21345076\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0x99\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0x07\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 24\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x30472165\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x21543076\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0x6C\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0xAD\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 25\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x45376120\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x56207431\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0x2D\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0xA7\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 26\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x40376521\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x76305412\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0x3C\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0x86\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 27\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x03762514\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x21345076\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0xDE\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0x03\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 28\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x67125403\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x12470356\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0x63\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0xB2\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 29\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x32107654\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x54761032\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0x22\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0x66\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 30\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x32107654\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x54761032\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0xCC\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0x00\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 31\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x05371426\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x32107654\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0x65\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0x66\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 32\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x56741032\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x23016745\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0x9C\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0xFF\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 33\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x46751032\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x32106754\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0xC9\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0x55\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 34\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x54721036\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x32107654\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0x22\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0xCC\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 35\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x63410725\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x54761032\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0x93\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0xAA\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 36\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x32107645\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x54761032\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0x77\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0xCC\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 37\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x74260351\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x13064257\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0xD8\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0x21\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 38\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x10573246\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x30762145\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0xC6\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0x99\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 39\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x47356120\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x56702431\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0x2D\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0x8F\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 40\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x75016423\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x54217630\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0xC9\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0x58\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 41\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x01736524\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x20365174\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0x96\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0x52\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 42\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x10573246\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x30762145\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0xC6\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0xD9\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 43\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x47356120\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x56702431\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0x2D\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0x8F\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 44\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x75016423\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x54217630\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0xC9\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0x58\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 45\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x01746523\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x20365174\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0x86\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0x52\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 46\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x10576423\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x30762145\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0xC6\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0xD9\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 47\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x46357102\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x56702431\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0x2D\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0x8F\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 48\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x75016423\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x54216703\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0xC9\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0x54\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 49\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x57032146\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x54702631\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0xB3\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0xED\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 50\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x75102346\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x74305612\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0xF3\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0x66\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 51\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x32610754\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x20345176\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0x95\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0x60\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 52\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x01572346\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x21560347\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0x0C\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0xA9\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 53\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x57032146\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x54702631\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0xB3\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0xED\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 54\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x75102346\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x74305612\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0xF3\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0x66\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 55\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x32610754\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x20345176\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0x95\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0x60\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 56\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x01572346\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x21560347\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0x0C\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0xA9\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 57\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x57032146\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x54702631\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0xB3\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0xED\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 58\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x75102346\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x74305612\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0xF3\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0x66\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 59\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x32610754\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x20345176\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0x95\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0x20\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 60\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x64207531\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x23671045\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0x0B\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0xBB\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 61\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x51740362\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x54761032\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0xB1\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0x66\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 62\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x23016745\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x54761032\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0x66\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0xAA\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 63\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x54761032\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x32107654\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0x00\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0x66\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 64\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x54761032\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x23016745\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0xD9\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0xAA\n        TX_POLARITY_FLIP_AUTO: 0\n      ?\n        PC_PM_ID: 65\n        CORE_INDEX: 0\n      :\n        RX_LANE_MAP: 0x3210\n        RX_LANE_MAP_AUTO: 0\n        TX_LANE_MAP: 0x3210\n        TX_LANE_MAP_AUTO: 0\n        RX_POLARITY_FLIP: 0x00\n        RX_POLARITY_FLIP_AUTO: 0\n        TX_POLARITY_FLIP: 0x0F\n        TX_POLARITY_FLIP_AUTO: 0\n...\n---\ndevice:\n    0:\n        PC_PORT_PHYS_MAP:\n            ?\n                PORT_ID: 1\n            :\n                PC_PHYS_PORT_ID: 9\n            ?\n                PORT_ID: 2\n            :\n                PC_PHYS_PORT_ID: 13\n            ?\n                PORT_ID: 3\n            :\n                PC_PHYS_PORT_ID: 1\n            ?\n                PORT_ID: 4\n            :\n                PC_PHYS_PORT_ID: 5\n            ?\n                PORT_ID: 17\n            :\n                PC_PHYS_PORT_ID: 17\n            ?\n                PORT_ID: 18\n            :\n                PC_PHYS_PORT_ID: 21\n            ?\n                PORT_ID: 19\n            :\n                PC_PHYS_PORT_ID: 25\n            ?\n                PORT_ID: 20\n            :\n                PC_PHYS_PORT_ID: 29\n            ?\n                PORT_ID: 34\n            :\n                PC_PHYS_PORT_ID: 41\n            ?\n                PORT_ID: 35\n            :\n                PC_PHYS_PORT_ID: 45\n            ?\n                PORT_ID: 36\n            :\n                PC_PHYS_PORT_ID: 33\n            ?\n                PORT_ID: 37\n            :\n                PC_PHYS_PORT_ID: 37\n            ?\n                PORT_ID: 51\n            :\n                PC_PHYS_PORT_ID: 49\n            ?\n                PORT_ID: 52\n            :\n                PC_PHYS_PORT_ID: 53\n            ?\n                PORT_ID: 53\n            :\n                PC_PHYS_PORT_ID: 57\n            ?\n                PORT_ID: 54\n            :\n                PC_PHYS_PORT_ID: 61\n            ?\n                PORT_ID: 68\n            :\n                PC_PHYS_PORT_ID: 73\n            ?\n                PORT_ID: 69\n            :\n                PC_PHYS_PORT_ID: 77\n            ?\n                PORT_ID: 70\n            :\n                PC_PHYS_PORT_ID: 65\n            ?\n                PORT_ID: 71\n            :\n                PC_PHYS_PORT_ID: 69\n            ?\n                PORT_ID: 85\n            :\n                PC_PHYS_PORT_ID: 81\n            ?\n                PORT_ID: 86\n            :\n                PC_PHYS_PORT_ID: 85\n            ?\n                PORT_ID: 87\n            :\n                PC_PHYS_PORT_ID: 89\n            ?\n                PORT_ID: 88\n            :\n                PC_PHYS_PORT_ID: 93\n            ?\n                PORT_ID: 102\n            :\n                PC_PHYS_PORT_ID: 105\n            ?\n                PORT_ID: 103\n            :\n                PC_PHYS_PORT_ID: 109\n            ?\n                PORT_ID: 104\n            :\n                PC_PHYS_PORT_ID: 97\n            ?\n                PORT_ID: 105\n            :\n                PC_PHYS_PORT_ID: 101\n            ?\n                PORT_ID: 119\n            :\n                PC_PHYS_PORT_ID: 113\n            ?\n                PORT_ID: 120\n            :\n                PC_PHYS_PORT_ID: 117\n            ?\n                PORT_ID: 121\n            :\n                PC_PHYS_PORT_ID: 121\n            ?\n                PORT_ID: 122\n            :\n                PC_PHYS_PORT_ID: 125\n            ?\n                PORT_ID: 136\n            :\n                PC_PHYS_PORT_ID: 137\n            ?\n                PORT_ID: 137\n            :\n                PC_PHYS_PORT_ID: 141\n            ?\n                PORT_ID: 138\n            :\n                PC_PHYS_PORT_ID: 129\n            ?\n                PORT_ID: 139\n            :\n                PC_PHYS_PORT_ID: 133\n            ?\n                PORT_ID: 153\n            :\n                PC_PHYS_PORT_ID: 145\n            ?\n                PORT_ID: 154\n            :\n                PC_PHYS_PORT_ID: 149\n            ?\n                PORT_ID: 155\n            :\n                PC_PHYS_PORT_ID: 153\n            ?\n                PORT_ID: 156\n            :\n                PC_PHYS_PORT_ID: 157\n            ?\n                PORT_ID: 170\n            :\n                PC_PHYS_PORT_ID: 169\n            ?\n                PORT_ID: 171\n            :\n                PC_PHYS_PORT_ID: 173\n            ?\n                PORT_ID: 172\n            :\n                PC_PHYS_PORT_ID: 161\n            ?\n                PORT_ID: 173\n            :\n                PC_PHYS_PORT_ID: 165\n            ?\n                PORT_ID: 187\n            :\n                PC_PHYS_PORT_ID: 177\n            ?\n                PORT_ID: 188\n            :\n                PC_PHYS_PORT_ID: 181\n            ?\n                PORT_ID: 189\n            :\n                PC_PHYS_PORT_ID: 185\n            ?\n                PORT_ID: 190\n            :\n                PC_PHYS_PORT_ID: 189\n            ?\n                PORT_ID: 204\n            :\n                PC_PHYS_PORT_ID: 201\n            ?\n                PORT_ID: 205\n            :\n                PC_PHYS_PORT_ID: 205\n            ?\n                PORT_ID: 206\n            :\n                PC_PHYS_PORT_ID: 193\n            ?\n                PORT_ID: 207\n            :\n                PC_PHYS_PORT_ID: 197\n            ?\n                PORT_ID: 221\n            :\n                PC_PHYS_PORT_ID: 209\n            ?\n                PORT_ID: 222\n            :\n                PC_PHYS_PORT_ID: 213\n            ?\n                PORT_ID: 223\n            :\n                PC_PHYS_PORT_ID: 217\n            ?\n                PORT_ID: 224\n            :\n                PC_PHYS_PORT_ID: 221\n            ?\n                PORT_ID: 238\n            :\n                PC_PHYS_PORT_ID: 233\n            ?\n                PORT_ID: 239\n            :\n                PC_PHYS_PORT_ID: 237\n            ?\n                PORT_ID: 240\n            :\n                PC_PHYS_PORT_ID: 225\n            ?\n                PORT_ID: 241\n            :\n                PC_PHYS_PORT_ID: 229\n            ?\n                PORT_ID: 255\n            :\n                PC_PHYS_PORT_ID: 241\n            ?\n                PORT_ID: 256\n            :\n                PC_PHYS_PORT_ID: 245\n            ?\n                PORT_ID: 257\n            :\n                PC_PHYS_PORT_ID: 249\n            ?\n                PORT_ID: 258\n            :\n                PC_PHYS_PORT_ID: 253\n            ?\n                PORT_ID: 272\n            :\n                PC_PHYS_PORT_ID: 265\n            ?\n                PORT_ID: 273\n            :\n                PC_PHYS_PORT_ID: 269\n            ?\n                PORT_ID: 274\n            :\n                PC_PHYS_PORT_ID: 257\n            ?\n                PORT_ID: 275\n            :\n                PC_PHYS_PORT_ID: 261\n            ?\n                PORT_ID: 289\n            :\n                PC_PHYS_PORT_ID: 273\n            ?\n                PORT_ID: 290\n            :\n                PC_PHYS_PORT_ID: 277\n            ?\n                PORT_ID: 291\n            :\n                PC_PHYS_PORT_ID: 281\n            ?\n                PORT_ID: 292\n            :\n                PC_PHYS_PORT_ID: 285\n            ?\n                PORT_ID: 306\n            :\n                PC_PHYS_PORT_ID: 297\n            ?\n                PORT_ID: 307\n            :\n                PC_PHYS_PORT_ID: 301\n            ?\n                PORT_ID: 308\n            :\n                PC_PHYS_PORT_ID: 289\n            ?\n                PORT_ID: 309\n            :\n                PC_PHYS_PORT_ID: 293\n            ?\n                PORT_ID: 323\n            :\n                PC_PHYS_PORT_ID: 305\n            ?\n                PORT_ID: 324\n            :\n                PC_PHYS_PORT_ID: 309\n            ?\n                PORT_ID: 325\n            :\n                PC_PHYS_PORT_ID: 313\n            ?\n                PORT_ID: 326\n            :\n                PC_PHYS_PORT_ID: 317\n            ?\n                PORT_ID: 340\n            :\n                PC_PHYS_PORT_ID: 329\n            ?\n                PORT_ID: 341\n            :\n                PC_PHYS_PORT_ID: 333\n            ?\n                PORT_ID: 342\n            :\n                PC_PHYS_PORT_ID: 321\n            ?\n                PORT_ID: 343\n            :\n                PC_PHYS_PORT_ID: 325\n            ?\n                PORT_ID: 357\n            :\n                PC_PHYS_PORT_ID: 337\n            ?\n                PORT_ID: 358\n            :\n                PC_PHYS_PORT_ID: 341\n            ?\n                PORT_ID: 359\n            :\n                PC_PHYS_PORT_ID: 345\n            ?\n                PORT_ID: 360\n            :\n                PC_PHYS_PORT_ID: 349\n            ?\n                PORT_ID: 374\n            :\n                PC_PHYS_PORT_ID: 361\n            ?\n                PORT_ID: 375\n            :\n                PC_PHYS_PORT_ID: 365\n            ?\n                PORT_ID: 376\n            :\n                PC_PHYS_PORT_ID: 353\n            ?\n                PORT_ID: 377\n            :\n                PC_PHYS_PORT_ID: 357\n            ?\n                PORT_ID: 391\n            :\n                PC_PHYS_PORT_ID: 369\n            ?\n                PORT_ID: 392\n            :\n                PC_PHYS_PORT_ID: 373\n            ?\n                PORT_ID: 393\n            :\n                PC_PHYS_PORT_ID: 377\n            ?\n                PORT_ID: 394\n            :\n                PC_PHYS_PORT_ID: 381\n            ?\n                PORT_ID: 408\n            :\n                PC_PHYS_PORT_ID: 393\n            ?\n                PORT_ID: 409\n            :\n                PC_PHYS_PORT_ID: 397\n            ?\n                PORT_ID: 410\n            :\n                PC_PHYS_PORT_ID: 385\n            ?\n                PORT_ID: 411\n            :\n                PC_PHYS_PORT_ID: 389\n            ?\n                PORT_ID: 425\n            :\n                PC_PHYS_PORT_ID: 401\n            ?\n                PORT_ID: 426\n            :\n                PC_PHYS_PORT_ID: 405\n            ?\n                PORT_ID: 427\n            :\n                PC_PHYS_PORT_ID: 409\n            ?\n                PORT_ID: 428\n            :\n                PC_PHYS_PORT_ID: 413\n            ?\n                PORT_ID: 442\n            :\n                PC_PHYS_PORT_ID: 425\n            ?\n                PORT_ID: 443\n            :\n                PC_PHYS_PORT_ID: 429\n            ?\n                PORT_ID: 444\n            :\n                PC_PHYS_PORT_ID: 417\n            ?\n                PORT_ID: 445\n            :\n                PC_PHYS_PORT_ID: 421\n            ?\n                PORT_ID: 459\n            :\n                PC_PHYS_PORT_ID: 433\n            ?\n                PORT_ID: 460\n            :\n                PC_PHYS_PORT_ID: 437\n            ?\n                PORT_ID: 461\n            :\n                PC_PHYS_PORT_ID: 441\n            ?\n                PORT_ID: 462\n            :\n                PC_PHYS_PORT_ID: 445\n            ?\n                PORT_ID: 476\n            :\n                PC_PHYS_PORT_ID: 457\n            ?\n                PORT_ID: 477\n            :\n                PC_PHYS_PORT_ID: 461\n            ?\n                PORT_ID: 478\n            :\n                PC_PHYS_PORT_ID: 449\n            ?\n                PORT_ID: 479\n            :\n                PC_PHYS_PORT_ID: 453\n            ?\n                PORT_ID: 493\n            :\n                PC_PHYS_PORT_ID: 465\n            ?\n                PORT_ID: 494\n            :\n                PC_PHYS_PORT_ID: 469\n            ?\n                PORT_ID: 495\n            :\n                PC_PHYS_PORT_ID: 473\n            ?\n                PORT_ID: 496\n            :\n                PC_PHYS_PORT_ID: 477\n            ?\n                PORT_ID: 510\n            :\n                PC_PHYS_PORT_ID: 489\n            ?\n                PORT_ID: 511\n            :\n                PC_PHYS_PORT_ID: 493\n            ?\n                PORT_ID: 512\n            :\n                PC_PHYS_PORT_ID: 481\n            ?\n                PORT_ID: 513\n            :\n                PC_PHYS_PORT_ID: 485\n            ?\n                PORT_ID: 527\n            :\n                PC_PHYS_PORT_ID: 497\n            ?\n                PORT_ID: 528\n            :\n                PC_PHYS_PORT_ID: 501\n            ?\n                PORT_ID: 529\n            :\n                PC_PHYS_PORT_ID: 505\n            ?\n                PORT_ID: 530\n            :\n                PC_PHYS_PORT_ID: 509\n...\n---\ndevice:\n    0:\n        PC_PORT:\n            ?\n                PORT_ID: [[1, 4],\n                          [17, 20],\n                          [34, 37],\n                          [51, 54],\n                          [68, 71],\n                          [85, 88],\n                          [102, 105],\n                          [119, 122],\n                          [136, 139],\n                          [153, 156],\n                          [170, 173],\n                          [187, 190],\n                          [204, 207],\n                          [221, 224],\n                          [238, 241],\n                          [255, 258],\n                          [272, 275],\n                          [289, 292],\n                          [306, 309],\n                          [323, 326],\n                          [340, 343],\n                          [357, 360],\n                          [374, 377],\n                          [391, 394],\n                          [408, 411],\n                          [425, 428],\n                          [442, 445],\n                          [459, 462],\n                          [476, 479],\n                          [493, 496],\n                          [510, 513],\n                          [527, 530]]\n            :\n                ENABLE: 1\n                SPEED: 400000\n                NUM_LANES: 4\n                FEC_MODE: PC_FEC_RS544_2XN\n                MAX_FRAME_SIZE: 9416\n                LINK_TRAINING: 0\n...\n---\ndevice:\n    0:\n        PC_PORT_PHYS_MAP:\n            ?\n                PORT_ID: 118\n            :\n                PC_PHYS_PORT_ID: 513\n...\n---\ndevice:\n    0:\n        PC_PORT:\n            ?\n                PORT_ID: 118\n            :\n                ENABLE: 1\n                SPEED: 100000\n                NUM_LANES: 4\n                FEC_MODE: PC_FEC_RS528\n                MAX_FRAME_SIZE: 9416\n...\n---\ndevice:\n    0:\n        PC_PMD_FIRMWARE:\n            ?\n                PORT_ID: [[1, 4],\n                          [17, 20],\n                          [34, 37],\n                          [51, 54],\n                          [68, 71],\n                          [85, 88],\n                          [102, 105],\n                          [119, 122],\n                          [136, 139],\n                          [153, 156],\n                          [170, 173],\n                          [187, 190],\n                          [204, 207],\n                          [221, 224],\n                          [238, 241],\n                          [255, 258],\n                          [272, 275],\n                          [289, 292],\n                          [306, 309],\n                          [323, 326],\n                          [340, 343],\n                          [357, 360],\n                          [374, 377],\n                          [391, 394],\n                          [408, 411],\n                          [425, 428],\n                          [442, 445],\n                          [459, 462],\n                          [476, 479],\n                          [493, 496],\n                          [510, 513],\n                          [527, 530],\n                          118]\n            :\n                MEDIUM_TYPE_AUTO: 0\n                MEDIUM_TYPE: PC_PHY_MEDIUM_BACKPLANE\n...\n---\nbcm_device:\n    0:\n        port:\n            1:\n                dport_map_port: 1\n            2:\n                dport_map_port: 2\n            3:\n                dport_map_port: 3\n            4:\n                dport_map_port: 4\n            17:\n                dport_map_port: 5 \n            18:\n                dport_map_port: 6 \n            19:\n                dport_map_port: 7 \n            20:\n                dport_map_port: 8 \n            34:\n                dport_map_port: 9 \n            35:\n                dport_map_port: 10\n            36:\n                dport_map_port: 11\n            37:\n                dport_map_port: 12\n            51:\n                dport_map_port: 13\n            52:\n                dport_map_port: 14\n            53:\n                dport_map_port: 15\n            54:\n                dport_map_port: 16\n            68:\n                dport_map_port: 17\n            69:\n                dport_map_port: 18\n            70:\n                dport_map_port: 19\n            71:\n                dport_map_port: 20\n            85:\n                dport_map_port: 21\n            86:\n                dport_map_port: 22\n            87:\n                dport_map_port: 23\n            88:\n                dport_map_port: 24\n            102:\n                dport_map_port: 25\n            103:\n                dport_map_port: 26\n            104:\n                dport_map_port: 27\n            105:\n                dport_map_port: 28\n            119:\n                dport_map_port: 29\n            120:\n                dport_map_port: 30\n            121:\n                dport_map_port: 31\n            122:\n                dport_map_port: 32\n            136:\n                dport_map_port: 33\n            137:\n                dport_map_port: 34\n            138:\n                dport_map_port: 35\n            139:\n                dport_map_port: 36\n            153:\n                dport_map_port: 37\n            154:\n                dport_map_port: 38\n            155:\n                dport_map_port: 39\n            156:\n                dport_map_port: 40\n            170:\n                dport_map_port: 41\n            171:\n                dport_map_port: 42\n            172:\n                dport_map_port: 43\n            173:\n                dport_map_port: 44\n            187:\n                dport_map_port: 45\n            188:\n                dport_map_port: 46\n            189:\n                dport_map_port: 47\n            190:\n                dport_map_port: 48\n            204:\n                dport_map_port: 49\n            205:\n                dport_map_port: 50\n            206:\n                dport_map_port: 51\n            207:\n                dport_map_port: 52\n            221:\n                dport_map_port: 53\n            222:\n                dport_map_port: 54\n            223:\n                dport_map_port: 55\n            224:\n                dport_map_port: 56\n            238:\n                dport_map_port: 57\n            239:\n                dport_map_port: 58\n            240:\n                dport_map_port: 59\n            241:\n                dport_map_port: 60\n            255:\n                dport_map_port: 61\n            256:\n                dport_map_port: 62\n            257:\n                dport_map_port: 63\n            258:\n                dport_map_port: 64\n            272:\n                dport_map_port: 65\n            273:\n                dport_map_port: 66\n            274:\n                dport_map_port: 67\n            275:\n                dport_map_port: 68\n            289:\n                dport_map_port: 69\n            290:\n                dport_map_port: 70\n            291:\n                dport_map_port: 71\n            292:\n                dport_map_port: 72\n            306:\n                dport_map_port: 73\n            307:\n                dport_map_port: 74\n            308:\n                dport_map_port: 75\n            309:\n                dport_map_port: 76\n            323:\n                dport_map_port: 77\n            324:\n                dport_map_port: 78\n            325:\n                dport_map_port: 79\n            326:\n                dport_map_port: 80\n            340:\n                dport_map_port: 81\n            341:\n                dport_map_port: 82\n            342:\n                dport_map_port: 83\n            343:\n                dport_map_port: 84\n            357:\n                dport_map_port: 85\n            358:\n                dport_map_port: 86\n            359:\n                dport_map_port: 87\n            360:\n                dport_map_port: 88\n            374:\n                dport_map_port: 89\n            375:\n                dport_map_port: 90\n            376:\n                dport_map_port: 91\n            377:\n                dport_map_port: 92\n            391:\n                dport_map_port: 93\n            392:\n                dport_map_port: 94\n            393:\n                dport_map_port: 95\n            394:\n                dport_map_port: 96\n            408:\n                dport_map_port: 97\n            409:\n                dport_map_port: 98\n            410:\n                dport_map_port: 99\n            411:\n                dport_map_port: 100\n            425:\n                dport_map_port: 101\n            426:\n                dport_map_port: 102\n            427:\n                dport_map_port: 103\n            428:\n                dport_map_port: 104\n            442:\n                dport_map_port: 105\n            443:\n                dport_map_port: 106\n            444:\n                dport_map_port: 107\n            445:\n                dport_map_port: 108\n            459:\n                dport_map_port: 109\n            460:\n                dport_map_port: 110\n            461:\n                dport_map_port: 111\n            462:\n                dport_map_port: 112\n            476:\n                dport_map_port: 113\n            477:\n                dport_map_port: 114\n            478:\n                dport_map_port: 115\n            479:\n                dport_map_port: 116\n            493:\n                dport_map_port: 117\n            494:\n                dport_map_port: 118\n            495:\n                dport_map_port: 119\n            496:\n                dport_map_port: 120\n            510:\n                dport_map_port: 121\n            511:\n                dport_map_port: 122\n            512:\n                dport_map_port: 123\n            513:\n                dport_map_port: 124\n            527:\n                dport_map_port: 125\n            528:\n                dport_map_port: 126\n            529:\n                dport_map_port: 127\n            530:\n                dport_map_port: 128\n            118:\n                dport_map_port: 129\n...\n---\nbcm_device:\n    0:\n        global:\n            pktio_mode: 1\n            vlan_flooding_l2mc_num_reserved: 0\n            ipv6_lpm_128b_enable: 1\n            shared_block_mask_section: uc_bc\n            skip_protocol_default_entries: 1\n            # LTSW uses value 1 for ALPM combined mode\n            l3_alpm_template: 1\n            l3_alpm_hit_skip: 1\n            sai_feat_tail_timestamp : 1\n            sai_common_hash_crc: 0x1\n            sai_disable_srcmacqedstmac_ctrl: 0x1\n            sai_acl_qset_optimization: 0x1\n            sai_optimized_mmu: 0x1\n            sai_pkt_rx_custom_cfg: 1\n            sai_pkt_rx_pkt_size: 16512\n            sai_pkt_rx_cfg_ppc: 16\n            sai_async_fdb_nbr_enable: 0x1\n            sai_pfc_defaults_disable: 0x1\n            sai_ifp_enable_on_cpu_tx: 0x1\n            sai_vfp_smac_drop_filter_disable: 1\n            sai_macro_flow_based_hash: 1\n            sai_mmu_qgroups_default: 1\n            sai_dis_ctr_incr_on_port_ln_dn: 0\n            sai_ecmp_group_members_increment: 1\n            sai_field_group_auto_prioritize: 1\n            sai_l2_cpu_fdb_event_suppress: 1\n            sai_port_phy_time_sync_en: 1\n            sai_stats_support_mask: 0x802\n            sai_disable_internal_port_serdes: 1\n            sai_stats_disable_mask: 0x800\n            sai_uncached_port_stats: 0x1\n            sai_rdma_udf_disable: 1\n            sai_l3_byte1_udf_disable: 1\n            #l3_intf_vlan_split_egress for MTU at L3IF\n            l3_intf_vlan_split_egress : 1\n            #srv6: 0x10 #ipinip:0x2\n            sai_tunnel_support: 0x12\n            bcm_tunnel_term_compatible_mode: 1\n            l3_ecmp_member_first_lkup_mem_size: 12288\n            #enable port queue drop stats, mysid:0x80\n            #HSFT ingr:0x100 egr:0x200m mysid:0x80\n            #disable vxlan tunnel stats\n            #only 2 counters using pipe mode using 1 pool each, rest are goven for global\n            global_flexctr_ing_action_num_reserved: 20\n            global_flexctr_ing_pool_num_reserved: 6\n            global_flexctr_ing_op_profile_num_reserved: 20\n            global_flexctr_ing_group_num_reserved: 2\n            global_flexctr_egr_action_num_reserved: 8\n            global_flexctr_egr_pool_num_reserved: 4\n            global_flexctr_egr_op_profile_num_reserved: 10\n            global_flexctr_egr_group_num_reserved: 1\n            l3_alpm_large_vrf_mode: 1\n            l3_ecmp_member_secondary_mem_size: 4096\n            ecmp_dlb_port_speeds: 1\n            stat_custom_receive0_management_mode: 1\n            shared_srv6_tunnel: 1\n...\n---\nbcm_device:\n    0:\n        global:\n            ftem_mem_entries: 65536\n...\n---\nbcm_device:\n    0:\n        global:\n            flowtracker_enable: 1\n            flowtracker_hardware_learn_enable: 2\n            flowtracker_flexctr_alloc_enable: 1\n            flowtracker_max_flows: 131064\n...\n---\ndevice:\n  0:\n    # Per pipe flex counter configuration\n    CTR_EFLEX_CONFIG:\n      CTR_ING_EFLEX_OPERMODE_PIPEUNIQUE: 1\n      CTR_ING_EFLEX_OPERMODE_PIPE_INSTANCE_UNIQUE: 1\n      CTR_EGR_EFLEX_OPERMODE_PIPEUNIQUE: 1\n      CTR_EGR_EFLEX_OPERMODE_PIPE_INSTANCE_UNIQUE: 1\n\n    TM_THD_CONFIG:\n      SKIP_BUFFER_RESERVATION: 0\n      THRESHOLD_MODE: LOSSY\n\n    TM_SCHEDULER_CONFIG:\n      NUM_MC_Q: NUM_MC_Q_4\n\n    # IFP mode\n    FP_CONFIG:\n      FP_ING_OPERMODE: GLOBAL_PIPE_AWARE\n...\n---\ndevice:\n    0:\n        TM_SMART_STORE_AND_FORWARD_CONFIG:\n            SMART_STORE_AND_FORWARD: 1\n...\n---\ndevice: \n    0: \n        DEVICE_CONFIG: \n            AUTOLOAD_BOARD_SETTINGS: 0 \n\n"
+        }
+      }
+    }
+  },
+  "thriftApiToRateLimitInQps": {}
+}

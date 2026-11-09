@@ -4,7 +4,10 @@ oncall("fboss_optics_phy")
 
 fbpkg.builder(
     name = "neteng.fboss.led_service",
-    architectures = ["x86_64"],
+    architectures = [
+        "x86_64",
+        "aarch64",
+    ],
     expire_days = 28,
     path_actions = {
         "led_service": "//fboss/led_service:led_service",
@@ -12,9 +15,10 @@ fbpkg.builder(
         # Descriptor-backed platform mappings, loaded at runtime via
         # --platform_descriptor_config_path for platforms whose mapping is no
         # longer compiled into the binary (e.g. wedge800bact).
-        "platform_descriptors": fbpkg.copy("//fboss/lib/platform_mapping_v2/generated_platform_mappings:vendor_platform_descriptors"),
+        "platform_descriptors": fbpkg.copy("//fboss/configs:vendor_platform_descriptors"),
     },
     split_debuginfo = True,
+    variant_distribution = "combined",
 )
 
 fbpkg.builder(
@@ -23,7 +27,7 @@ fbpkg.builder(
     expire_days = 28,
     path_actions = {
         "led_service_hw_test": "//fboss/led_service/hw_test:led_service_hw_test",
-        "platform_descriptors": fbpkg.copy("//fboss/lib/platform_mapping_v2/generated_platform_mappings:vendor_platform_descriptors"),
+        "platform_descriptors": fbpkg.copy("//fboss/configs:vendor_platform_descriptors"),
     },
     split_debuginfo = True,
 )

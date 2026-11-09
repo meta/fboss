@@ -106,8 +106,8 @@ struct RouteFields
 
   RouteDetails toRouteDetails(
       const RouteNextHopSet& nhopSet,
-      const std::optional<RouteNextHopSet>& normalizedNhopSet =
-          std::nullopt) const;
+      const std::optional<RouteNextHopSet>& normalizedNhopSet,
+      const ClientNextHopsResolver& resolveClientNextHops) const;
   bool isHostRoute() const {
     if constexpr (
         std::is_same_v<folly::IPAddressV6, AddrT> ||
@@ -336,8 +336,8 @@ class Route : public ThriftStructNode<Route<AddrT>, ThriftFieldsT<AddrT>> {
   // THRIFT_COPY
   RouteDetails toRouteDetails(
       const RouteNextHopSet& nhopSet,
-      const std::optional<RouteNextHopSet>& normalizedNhopSet =
-          std::nullopt) const;
+      const std::optional<RouteNextHopSet>& normalizedNhopSet,
+      const ClientNextHopsResolver& resolveClientNextHops) const;
 
   /*
    * clone and clear all forwarding info. Forwarding info will be recomputed
@@ -531,9 +531,8 @@ class Route : public ThriftStructNode<Route<AddrT>, ThriftFieldsT<AddrT>> {
     return count;
   }
 
-  bool isPopAndLookup() const {
-    auto fwd = this->template safe_cref<switch_state_tags::fwd>();
-    const auto nexthops = fwd->getNextHopSet();
+  // Takes resolved nexthops; this node cannot resolve a nexthop set ID.
+  static bool isPopAndLookup(const RouteNextHopSet& nexthops) {
     if (nexthops.size() == 1) {
       // there must be exactly one next hop for POP_AND_LOOKUP action
       return nexthops.begin()->isPopAndLookup();

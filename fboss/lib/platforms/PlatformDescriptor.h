@@ -20,14 +20,15 @@
 #include "fboss/lib/platforms/gen-cpp2/platform_descriptor_types.h"
 
 DECLARE_string(platform_descriptor_config_path);
+DECLARE_bool(hwrev_state1_substate1_respin0);
 
 namespace facebook::fboss {
 
 class PlatformDescriptorRegistry {
  public:
   // Returns a cached singleton loaded from
-  // FLAGS_platform_descriptor_config_path. All vendor directories are scanned
-  // once on first access.
+  // FLAGS_platform_descriptor_config_path. Descriptor files are discovered
+  // recursively once on first access.
   static const PlatformDescriptorRegistry& get();
 
   const PlatformDescriptor* FOLLY_NULLABLE
@@ -36,16 +37,21 @@ class PlatformDescriptorRegistry {
       std::string_view productName,
       std::string_view mode) const;
   std::optional<std::string> loadPlatformMapping(PlatformType type) const;
+  // Returns the SDK yaml shipped beside the selected descriptor's
+  // platform_mapping.json (asic_config_idx<switchIndex>.yaml if present,
+  // else asic_config.yaml); nullopt when the directory carries no yaml.
+  std::optional<std::string> loadAsicConfigYaml(
+      PlatformType type,
+      std::optional<int16_t> switchIndex = std::nullopt) const;
   cfg::PlatformMapping loadPlatformMappingFromRaw(
       PlatformType type,
       const cfg::PlatformConfig& platformConfig) const;
 
   static PlatformDescriptor loadPlatformDescriptorFromFile(
       const std::string& path);
-  // Loads descriptors from:
-  // <path>/<system_vendor>/<platform_name>/platform_descriptor.json
-  // and records each sibling platform_mapping.json for lazy mapping load.
-  // systemVendor optionally narrows the scan to a single vendor directory.
+  // Recursively loads platform_descriptor.json files and records each sibling
+  // platform_mapping.json for lazy mapping load. systemVendor optionally
+  // narrows the scan to one vendor subtree.
   static PlatformDescriptorRegistry loadPlatformDescriptorRegistryFromDirectory(
       const std::string& path,
       std::string_view systemVendor = "");

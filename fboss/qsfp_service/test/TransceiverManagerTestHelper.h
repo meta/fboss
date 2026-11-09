@@ -36,6 +36,10 @@ class TransceiverManagerTestHelper : public ::testing::Test {
     return "FAKE";
   }
 
+  std::string getFakeFwStorageHandle() const {
+    return "FAKE_FW_HANDLE";
+  }
+
   std::string getFakeAppFwVersion() const {
     return "1.2";
   }

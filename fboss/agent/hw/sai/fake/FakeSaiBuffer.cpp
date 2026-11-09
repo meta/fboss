@@ -157,7 +157,7 @@ sai_status_t get_buffer_pool_stats_ext_fn(
  *  no need to clear them
  */
 sai_status_t clear_buffer_pool_stats_fn(
-    sai_object_id_t buffer_pool_id,
+    sai_object_id_t /* buffer_pool_id */,
     uint32_t number_of_counters,
     const sai_stat_id_t* counter_ids) {
   return SAI_STATUS_SUCCESS;

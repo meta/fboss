@@ -92,4 +92,29 @@ TEST_F(CmdShowBgpTableCommunityTestFixture, filterEntriesByCommunities) {
   EXPECT_EQ(communities->at(0).asn().value(), asnA);
   EXPECT_EQ(communities->at(0).value().value(), valueA);
 }
+TEST_F(CmdShowBgpTableCommunityTestFixture, wikiDocHooks) {
+  EXPECT_FALSE(CmdShowBgpTableCommunityTraits::description().empty());
+
+  setupMockedBgpServer();
+  resetBgpMnemonicCaches();
+  EXPECT_CALL(getMockBgp(), getRunningConfig(_))
+      .WillRepeatedly([](std::string& config) { config = "{}"; });
+
+  auto model = CmdShowBgpTableCommunity::sampleModel();
+  EXPECT_FALSE(model.tRibEntries()->empty());
+  model.host() = localhost().getName();
+  model.oobName() = localhost().getOobName();
+  model.ip() = localhost().getIpStr();
+
+  std::stringstream ss;
+  CmdShowBgpTableCommunity().printOutput(model, ss);
+  const std::string output = ss.str();
+
+  EXPECT_THAT(output, HasSubstr("> 0.0.0.0/0, Selected 2/3 paths"));
+  // The sample is the answer to a query for AS65108.DEFAULT, so every
+  // rendered path must carry it. printOutput hard-codes detail=true, which is
+  // what surfaces the community line at all.
+  EXPECT_THAT(output, HasSubstr("Communities: (NA)/65108:337"));
+}
+
 } // namespace facebook::fboss

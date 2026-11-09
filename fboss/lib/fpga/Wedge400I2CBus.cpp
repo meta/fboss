@@ -78,7 +78,7 @@ void Wedge400I2CBus::moduleRead(
     throw I2cError("Too long to read");
   }
 
-  XLOG(DBG3) << fmt::format(
+  XLOG(DBG5) << fmt::format(
       "I2C read to module {:d} at offset {:#x} for {:d} bytes",
       module - 1,
       offset,
@@ -106,7 +106,7 @@ void Wedge400I2CBus::moduleWrite(
     throw I2cError("Too long to write");
   }
 
-  XLOG(DBG3) << fmt::format(
+  XLOG(DBG5) << fmt::format(
       "I2C write to module {:d} at offset {:#x} for {:d} bytes",
       module - 1,
       offset,

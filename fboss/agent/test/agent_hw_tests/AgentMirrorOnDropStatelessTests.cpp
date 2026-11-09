@@ -7,6 +7,7 @@
 #include "fboss/agent/TxPacket.h"
 #include "fboss/agent/Utils.h"
 #include "fboss/agent/test/TestUtils.h"
+#include "fboss/agent/test/utils/ConfigUtils.h"
 #include "fboss/agent/test/utils/PortTestUtils.h"
 #include "fboss/lib/CommonUtils.h"
 
@@ -200,6 +201,164 @@ TEST_F(AgentMirrorOnDropStatelessTest, MirrorOnDropWithSampling) {
 
     EXPECT_GE(modPacketsReceived, minExpected) << "Below expected range";
     EXPECT_LE(modPacketsReceived, maxExpected) << "Above expected range";
+  };
+
+  verifyAcrossWarmBoots(setup, verify);
+}
+
+// MirrorOnDropAggregateRateLimit verifies aggregateDropPacketRateThreshold
+// caps the combined MoD rate across two drop reasons. Like
+// MirrorOnDropWithSampling, line-rate traffic loops with ERSPAN mirrors
+// generate the drops. Tajo has no egress mirroring, so each drop case uses
+// its own traffic port:
+// 1. Mirror 1 copies egress mirrorEgressPort1 with a non-local dest MAC and
+//    are L2-dropped on loopback.
+// 2. Mirror 2 copies egress mirrorEgressPort2 and are dropped on loopback by
+//    a deny ACL.
+// Both are ingress-pipeline drops with no per-reason MoD rate limit, so the
+// MoD rate on the collector port should sit at kAggregateRate. Each drop case
+// alone exceeds the cap.
+class AgentMirrorOnDropAggregateRateLimitTest
+    : public AgentMirrorOnDropStatelessTest {
+ protected:
+  std::vector<ProductionFeature> getProductionFeaturesVerified()
+      const override {
+    auto features =
+        AgentMirrorOnDropStatelessTest::getProductionFeaturesVerified();
+    features.push_back(ProductionFeature::MIRROR_ON_DROP_AGGREGATE_RATE_LIMIT);
+    return features;
+  }
+};
+
+TEST_F(
+    AgentMirrorOnDropAggregateRateLimitTest,
+    MirrorOnDropAggregateRateLimit) {
+  const auto ports = masterLogicalInterfacePortIds();
+  const PortID trafficPort1 = ports[0];
+  const PortID mirrorEgressPort1 = ports[1];
+  const PortID trafficPort2 = ports[2];
+  const PortID mirrorEgressPort2 = ports[3];
+  const PortID collectorPortId = ports[4];
+
+  const std::string kReportName = "mod-aggregate-rate-test";
+  constexpr int32_t kAggregateRate = 1000;
+  constexpr int kModIncreases = 10;
+  constexpr double kRateTolerance = 0.1;
+
+  const auto kRouterMac =
+      getMacForFirstInterfaceWithPortsForTesting(getProgrammedState());
+  const auto kNonLocalMac =
+      folly::MacAddress::fromHBO(kRouterMac.u64HBO() + 10);
+  const folly::IPAddressV6 kTrafficLoopIp1{"2401:7777::1"};
+  const folly::IPAddressV6 kTrafficLoopIp2{"2401:7777::2"};
+  const folly::IPAddressV6 kMirrorTunnelDstIp1{"2401:6666::1"};
+  const folly::IPAddressV6 kMirrorTunnelDstIp2{"2401:6666::2"};
+
+  auto addErspanMirror = [&](cfg::SwitchConfig& config,
+                             const std::string& name,
+                             const folly::IPAddressV6& tunnelDstIp,
+                             const PortID& srcPortId) {
+    cfg::Mirror mirror;
+    mirror.name() = name;
+    mirror.destination().ensure().tunnel().ensure().greTunnel().ensure().ip() =
+        tunnelDstIp.str();
+    mirror.destination()->tunnel()->srcIp() = kSwitchIp_.str();
+    mirror.truncate() = true;
+    config.mirrors()->push_back(mirror);
+    utility::findCfgPort(config, srcPortId)->ingressMirror() = name;
+  };
+
+  auto setup = [&]() {
+    auto config = getAgentEnsemble()->getCurrentConfig();
+    auto report = makeMirrorOnDropReport(kReportName);
+    report.aggregateDropPacketRateThreshold() = kAggregateRate;
+    config.mirrorOnDropReports()->push_back(report);
+    addErspanMirror(
+        config, "mirror-l2-drop", kMirrorTunnelDstIp1, trafficPort1);
+    addErspanMirror(
+        config, "mirror-acl-drop", kMirrorTunnelDstIp2, trafficPort2);
+    addDropPacketAcl(&config, mirrorEgressPort2);
+    applyNewConfig(config);
+
+    setupEcmpTraffic(
+        trafficPort1,
+        kTrafficLoopIp1,
+        kRouterMac,
+        true /*disableTtlDecrement*/);
+    setupEcmpTraffic(
+        trafficPort2,
+        kTrafficLoopIp2,
+        kRouterMac,
+        true /*disableTtlDecrement*/);
+    setupEcmpTraffic(mirrorEgressPort1, kMirrorTunnelDstIp1, kNonLocalMac);
+    setupEcmpTraffic(mirrorEgressPort2, kMirrorTunnelDstIp2, kRouterMac);
+    setupEcmpTraffic(collectorPortId, kCollectorIp_, kCollectorNextHopMac_);
+    waitForStateUpdates(getSw());
+  };
+
+  auto verify = [&]() {
+    for (const auto& [port, loopIp] :
+         {std::pair{trafficPort1, kTrafficLoopIp1},
+          std::pair{trafficPort2, kTrafficLoopIp2}}) {
+      sendPackets(
+          static_cast<int>(getAgentEnsemble()->getMinPktsForLineRate(port)),
+          port,
+          loopIp,
+          0 /*priority*/,
+          64 /*payloadSize*/);
+    }
+    const std::vector<PortID> measuredPorts = {
+        mirrorEgressPort1, mirrorEgressPort2, collectorPortId};
+    auto modPkts = [&](const std::map<PortID, HwPortStats>& stats) {
+      return *stats.at(collectorPortId).outUnicastPkts_();
+    };
+    auto statsTime = [&](const std::map<PortID, HwPortStats>& stats) {
+      return *stats.at(collectorPortId).timestamp_();
+    };
+
+    // The window opens at the first poll that shows MoD packets, so both drop
+    // cases are flowing and the initial meter burst is excluded. It closes
+    // once MoD packets have increased kModIncreases more times.
+    auto last = getLatestPortStats(measuredPorts);
+    std::optional<decltype(last)> first;
+    int modIncreases = 0;
+    WITH_RETRIES({
+      auto cur = getLatestPortStats(measuredPorts);
+      if (modPkts(cur) > modPkts(last)) {
+        if (first.has_value()) {
+          ++modIncreases;
+        } else {
+          first = cur;
+        }
+      }
+      last = std::move(cur);
+      EXPECT_EVENTUALLY_EQ(modIncreases, kModIncreases);
+    });
+    ASSERT_TRUE(first.has_value());
+
+    getAgentEnsemble()->getLinkToggler()->bringDownPorts(
+        {trafficPort1, trafficPort2});
+    getAgentEnsemble()->getLinkToggler()->bringUpPorts(
+        {trafficPort1, trafficPort2});
+    getAgentEnsemble()->waitForSpecificRateOnPort(trafficPort1, 0);
+    getAgentEnsemble()->waitForSpecificRateOnPort(trafficPort2, 0);
+
+    auto outPkts = [&](const PortID& port) {
+      return *last.at(port).outUnicastPkts_() -
+          *first->at(port).outUnicastPkts_();
+    };
+    const int64_t windowSecs = statsTime(last) - statsTime(*first);
+    const double expected = static_cast<double>(kAggregateRate) * windowSecs;
+    const int64_t modPackets = outPkts(collectorPortId);
+    XLOG(INFO) << "windowSecs=" << windowSecs
+               << " l2Drops=" << outPkts(mirrorEgressPort1)
+               << " aclDrops=" << outPkts(mirrorEgressPort2)
+               << " modPackets=" << modPackets << " expected=" << expected;
+
+    ASSERT_GT(outPkts(mirrorEgressPort1), expected);
+    ASSERT_GT(outPkts(mirrorEgressPort2), expected);
+    EXPECT_GE(modPackets, expected * (1.0 - kRateTolerance));
+    EXPECT_LE(modPackets, expected * (1.0 + kRateTolerance));
   };
 
   verifyAcrossWarmBoots(setup, verify);

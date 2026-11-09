@@ -27,6 +27,13 @@
 
 #include <thread>
 
+// The python_repl library is not built against Leaba SDKs >= 24.8.3001, whose
+// Python bindings still require Python 3.10. Keep every PythonRepl call site
+// out of those builds so they do not link against the missing library.
+#if !defined(TAJO_SDK) || defined(TAJO_SDK_VERSION_1_42_8)
+#define FBOSS_HAS_PYTHON_REPL
+#endif
+
 DEFINE_bool(
     sai_log_to_scribe,
     true,
@@ -148,7 +155,11 @@ std::unique_ptr<Repl> DiagShell::makeRepl() const {
           "for this SDK version. Please use the fboss_leaba_shell tool instead.");
 #endif
     case HwAsic::AsicVendor::ASIC_VENDOR_CHENAB:
+#if defined(FBOSS_HAS_PYTHON_REPL)
       return std::make_unique<PythonRepl>(ptys_->file.fd());
+#else
+      throw FbossError("The Python REPL shell is not built for this SDK");
+#endif
     default:
       throw FbossError("Shell not supported for fake platforms");
   }

@@ -1,0 +1,16 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fboss_optics_phy")
+
+cpp_library(
+    name = "CmdShowInterfaceTransceiver",
+    srcs = ["CmdShowInterfaceTransceiver.cpp"],
+    headers = [
+        "CmdShowInterfaceTransceiver.h",
+    ],
+    labels = ["autodeps2_generated"],
+    exported_deps = [
+        "//fboss/cli/fboss2:cmd-handler",
+        "//fboss/cli/fboss2:fboss2-lib",
+    ],
+)

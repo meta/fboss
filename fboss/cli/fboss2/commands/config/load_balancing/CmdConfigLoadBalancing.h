@@ -41,6 +41,10 @@ class LoadBalancingConfigArgs : public utils::BaseObjectArgType<std::string> {
   std::string value_;
 };
 
+// CLI display name ("ecmp"/"lag") for a LoadBalancerID, shared by the
+// config and delete load-balancing command trees.
+std::string lbIdToString(cfg::LoadBalancerID id);
+
 // Mutate `swConfig`'s load-balancer entry matching `id` to apply
 // `<attr> <value>`, inserting a new entry if none exists. Throws
 // std::invalid_argument for unknown attrs or malformed values.

@@ -1,6 +1,6 @@
 load("@fbcode_macros//build_defs:python_library.bzl", "python_library")
 
-oncall("fboss_distro")
+oncall("fboss_oss")
 
 python_library(
     name = "builder",
@@ -14,6 +14,7 @@ python_library(
         "//fboss/github/fboss-image/distro_cli/lib:exceptions",
         "//fboss/github/fboss-image/distro_cli/lib:execute",
         "//fboss/github/fboss-image/distro_cli/lib:paths",
+        "//fboss/github/fboss-image/distro_cli/lib:version_file",
         "//fboss/github/fboss-image/distro_cli/lib/docker:docker",
     ],
 )

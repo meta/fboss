@@ -395,7 +395,9 @@ class TestEndRun(unittest.TestCase):
         self.runner._end_run()
 
         mock_sw_cleanup.assert_called_once_with("fboss_sw_agent")
-        mock_hw_cleanup.assert_called_once_with([0])
+        mock_hw_cleanup.assert_called_once_with(
+            [0], hw_agent_service_name="fboss_hw_agent@"
+        )
 
 
 class TestSetupRunHook(unittest.TestCase):

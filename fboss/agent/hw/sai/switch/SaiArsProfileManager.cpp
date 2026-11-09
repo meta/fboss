@@ -39,8 +39,7 @@ void SaiArsProfileManager::addArsProfile(
       maxArsVirtualGroups.has_value() && maxArsVirtualGroups.value() != 0;
 }
 
-void SaiArsProfileManager::removeArsProfile(
-    const std::shared_ptr<FlowletSwitchingConfig>& flowletSwitchConfig) {
+void SaiArsProfileManager::removeArsProfile() {
   if (arsProfileHandle_->arsProfile) {
     arsProfileHandle_->arsProfile.reset();
   }

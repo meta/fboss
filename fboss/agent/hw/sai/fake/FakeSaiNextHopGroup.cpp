@@ -79,6 +79,9 @@ sai_status_t get_next_hop_group_attribute_fn(
     sai_object_id_t next_hop_group_id,
     uint32_t attr_count,
     sai_attribute_t* attr) {
+  if (!attr) {
+    return SAI_STATUS_INVALID_PARAMETER;
+  }
   auto fs = FakeSai::getInstance();
   const auto& nextHopGroup = fs->nextHopGroupManager.get(next_hop_group_id);
   for (int i = 0; i < attr_count; ++i) {
@@ -98,6 +101,12 @@ sai_status_t get_next_hop_group_attribute_fn(
       case SAI_NEXT_HOP_GROUP_ATTR_SPLIT_HORIZON_ENABLE:
         attr[i].value.booldata =
             nextHopGroup.split_horizon_enable.value_or(false);
+        break;
+      case SAI_NEXT_HOP_GROUP_ATTR_ARS_FAIL_PKT_COUNT:
+        attr[i].value.u64 = nextHopGroup.ars_fail_pkt_count;
+        break;
+      case SAI_NEXT_HOP_GROUP_ATTR_ARS_PORT_REASSIGN_COUNT:
+        attr[i].value.u64 = nextHopGroup.ars_port_reassign_count;
         break;
       case SAI_NEXT_HOP_GROUP_ATTR_NEXT_HOP_MEMBER_LIST: {
         const auto& nextHopGroupMemberMap =

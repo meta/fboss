@@ -13,6 +13,7 @@
 #include <fmt/core.h>
 #include <iostream>
 #include <stdexcept>
+#include <string_view>
 
 #include "fboss/cli/fboss2/CmdHandler.h"
 #include "fboss/cli/fboss2/commands/show/bgp/CanonicalRibResolver.h"
@@ -59,12 +60,17 @@ TAttributeStats queryBgpStatsAttrsWithFallback(Client& client) {
       });
 }
 
-struct CmdShowBgpStatsAttrsTraits : public ReadCommandTraits,
-                                    public CliDocsExempt {
+struct CmdShowBgpStatsAttrsTraits : public ReadCommandTraits {
   static constexpr utils::ObjectArgTypeId ObjectArgTypeId =
       utils::ObjectArgTypeId::OBJECT_ARG_TYPE_ID_NONE;
   using ObjectArgType = std::monostate;
   using RetType = TAttributeStats;
+
+  // Human-authored guide prose for the CLI reference wiki. Superset of the
+  // one-line help string registered in the command tree.
+  static std::string_view description() {
+    return "Displays how many DISTINCT path-attribute values the daemon currently stores, one row per deduplicator, laid out by nesting level rather than as a flat list. L1 is bgp_path (a BgpPathC: a pointer to an attribute bundle, plus next hop and topology info). L2 is bgp_attributes, the bundle each L1 path points at, which also carries the scalar attributes. L3 is the four sub-attributes the bundle in turn holds as deduplicated pointers: as_path, communities, cluster_list and ext_communities. The levels are a containment hierarchy, not a partition - L2 is not the sum of the L3 rows, and each count is simply the live size of that deduplicator. Rising L2 or L3 counts against a flat prefix count mean attribute churn (peers re-advertising the same prefixes with varying attributes), which costs memory. Against a bgpd that predates the deduplicator, the command falls back to the older attribute statistics and prints averages instead of this table.";
+  }
 };
 
 class CmdShowBgpStatsAttrs
@@ -76,6 +82,21 @@ class CmdShowBgpStatsAttrs
     auto client = utils::createClient<apache::thrift::Client<
         facebook::neteng::fboss::bgp::thrift::TBgpService>>(hostInfo);
     return queryBgpStatsAttrsWithFallback(*client);
+  }
+
+  // Canned, synthetic model (no real switch data) used to render a
+  // deterministic example for the CLI reference wiki. Deduplicator counts from
+  // a live RSW capture, so the level relationships are realistic.
+  static RetType sampleModel() {
+    RetType stats;
+    stats.payload_kind() = TAttributeStatsPayloadKind::DEDUPLICATOR_STATS;
+    stats.dedup_bgp_path() = 12182;
+    stats.dedup_bgp_attributes() = 10297;
+    stats.dedup_as_path() = 1828;
+    stats.dedup_communities() = 58;
+    stats.dedup_cluster_list() = 1;
+    stats.dedup_ext_communities() = 0;
+    return stats;
   }
 
   void printOutput(const RetType& stats, std::ostream& out = std::cout) {

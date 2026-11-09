@@ -59,8 +59,8 @@ class CpoMockCmisModule : public CmisModule {
 // front-panel name eth1/<bank+1>/<lane-in-bank>; the platform mapping resolves
 // them to global transceiver lanes (bank N -> lanes 8N..8N+7).
 constexpr auto kExampleCpoMappingPath =
-    "fboss/lib/platform_mapping_v2/generated_platform_mappings/"
-    "example_integrated_optics_platform_mapping.json";
+    "fboss/configs/platforms/generic/example_integrated_optics/"
+    "platform_mapping/generated/platform_mapping.json";
 
 constexpr int kNumCpoModules = 2;
 constexpr int kLanesPerModule = 32;

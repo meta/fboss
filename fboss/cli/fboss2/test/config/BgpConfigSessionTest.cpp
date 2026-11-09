@@ -2,11 +2,11 @@
 
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
 
-#include <gmock/gmock.h> // NOLINT(misc-include-cleaner)
 #include <gtest/gtest.h>
 
 #include <folly/json/dynamic.h>
 #include <folly/json/json.h>
+#include <string>
 
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/BgpConfigSession.h"
 
@@ -73,14 +73,6 @@ TEST_F(BgpConfigSessionTest, setConfedAsn) {
 
   auto& config = session_->getBgpConfig();
   EXPECT_EQ(config["local_confed_as_4_byte"].asInt(), 65100);
-}
-
-TEST_F(BgpConfigSessionTest, setClusterId) {
-  session_->setClusterId("1.2.3.4");
-  EXPECT_EQ(session_->getClusterId(), "1.2.3.4");
-
-  auto& config = session_->getBgpConfig();
-  EXPECT_EQ(config["cluster_id"].asString(), "1.2.3.4");
 }
 
 TEST_F(BgpConfigSessionTest, setListenAddress) {
@@ -205,160 +197,6 @@ TEST_F(BgpConfigSessionTest, addMultipleNetworks6) {
 
   // Verify second network has install_to_fib: false
   EXPECT_FALSE(config["networks6"][1]["install_to_fib"].asBool());
-}
-
-// ==================== Peer Configuration Tests ====================
-
-TEST_F(BgpConfigSessionTest, createPeerAndSetRemoteAsn) {
-  session_->createPeer("2001:db8::1");
-  session_->setPeerRemoteAsn("2001:db8::1", 65001);
-
-  auto& config = session_->getBgpConfig();
-  ASSERT_TRUE(config.count("peers"));
-  ASSERT_EQ(config["peers"].size(), 1);
-
-  auto& peer = config["peers"][0];
-  EXPECT_EQ(peer["peer_addr"].asString(), "2001:db8::1");
-  EXPECT_EQ(peer["remote_as_4_byte"].asInt(), 65001);
-}
-
-TEST_F(BgpConfigSessionTest, setPeerDescription) {
-  session_->createPeer("10.0.0.1");
-  session_->setPeerDescription("10.0.0.1", "Test peer description");
-
-  auto& config = session_->getBgpConfig();
-  EXPECT_EQ(
-      config["peers"][0]["description"].asString(), "Test peer description");
-}
-
-TEST_F(BgpConfigSessionTest, setPeerPeerGroupName) {
-  session_->createPeer("2001:db8::1");
-  session_->setPeerGroupName("2001:db8::1", "RSW-FSW-V6");
-
-  auto& config = session_->getBgpConfig();
-  EXPECT_EQ(config["peers"][0]["peer_group_name"].asString(), "RSW-FSW-V6");
-}
-
-TEST_F(BgpConfigSessionTest, setPeerDisableIpv4AfiTrue) {
-  session_->createPeer("2001:db8::1");
-  session_->setPeerDisableIpv4Afi("2001:db8::1", true);
-
-  auto& config = session_->getBgpConfig();
-  EXPECT_TRUE(config["peers"][0]["disable_ipv4_afi"].asBool());
-}
-
-TEST_F(BgpConfigSessionTest, setPeerDisableIpv4AfiFalse) {
-  // Critical test: Verify that disable_ipv4_afi: false is preserved
-  session_->createPeer("2001:db8::1");
-  session_->setPeerDisableIpv4Afi("2001:db8::1", false);
-
-  auto& config = session_->getBgpConfig();
-  // Must be explicitly set to false, not omitted
-  ASSERT_TRUE(config["peers"][0].count("disable_ipv4_afi"));
-  EXPECT_FALSE(config["peers"][0]["disable_ipv4_afi"].asBool());
-}
-
-TEST_F(BgpConfigSessionTest, setPeerNextHopSelf) {
-  session_->createPeer("2001:db8::1");
-  session_->setPeerNextHopSelf("2001:db8::1", true);
-
-  auto& config = session_->getBgpConfig();
-  EXPECT_TRUE(config["peers"][0]["next_hop_self"].asBool());
-}
-
-TEST_F(BgpConfigSessionTest, setPeerConfedPeer) {
-  session_->createPeer("2001:db8::1");
-  session_->setPeerConfedPeer("2001:db8::1", true);
-
-  auto& config = session_->getBgpConfig();
-  EXPECT_TRUE(config["peers"][0]["is_confed_peer"].asBool());
-}
-
-TEST_F(BgpConfigSessionTest, setPeerPassive) {
-  session_->createPeer("2001:db8::1");
-  session_->setPeerPassive("2001:db8::1", true);
-
-  auto& config = session_->getBgpConfig();
-  EXPECT_TRUE(config["peers"][0]["is_passive"].asBool());
-}
-
-TEST_F(BgpConfigSessionTest, setPeerRrClient) {
-  session_->createPeer("2001:db8::1");
-  session_->setPeerRrClient("2001:db8::1", true);
-
-  auto& config = session_->getBgpConfig();
-  EXPECT_TRUE(config["peers"][0]["is_rr_client"].asBool());
-}
-
-TEST_F(BgpConfigSessionTest, setPeerTimers) {
-  session_->createPeer("2001:db8::1");
-  session_->setPeerHoldTime("2001:db8::1", 90);
-  session_->setPeerKeepalive("2001:db8::1", 30);
-  session_->setPeerOutDelay("2001:db8::1", 5);
-
-  auto& config = session_->getBgpConfig();
-  ASSERT_TRUE(config["peers"][0].count("bgp_peer_timers"));
-
-  auto& timers = config["peers"][0]["bgp_peer_timers"];
-  EXPECT_EQ(timers["hold_time_seconds"].asInt(), 90);
-  EXPECT_EQ(timers["keep_alive_seconds"].asInt(), 30);
-  EXPECT_EQ(timers["out_delay_seconds"].asInt(), 5);
-}
-
-TEST_F(BgpConfigSessionTest, setPeerPolicies) {
-  session_->createPeer("2001:db8::1");
-  session_->setPeerIngressPolicy("2001:db8::1", "INGRESS_POLICY");
-  session_->setPeerEgressPolicy("2001:db8::1", "EGRESS_POLICY");
-
-  auto& config = session_->getBgpConfig();
-  EXPECT_EQ(
-      config["peers"][0]["ingress_policy_name"].asString(), "INGRESS_POLICY");
-  EXPECT_EQ(
-      config["peers"][0]["egress_policy_name"].asString(), "EGRESS_POLICY");
-}
-
-TEST_F(BgpConfigSessionTest, setPeerPreFilterMaxRoutes) {
-  session_->createPeer("2001:db8::1");
-  session_->setPeerPreFilterMaxRoutes("2001:db8::1", 1000);
-
-  auto& config = session_->getBgpConfig();
-  ASSERT_TRUE(config["peers"][0].count("pre_filter"));
-  EXPECT_EQ(config["peers"][0]["pre_filter"]["max_routes"].asInt(), 1000);
-}
-
-TEST_F(BgpConfigSessionTest, setPeerLinkBandwidth) {
-  session_->createPeer("2001:db8::1");
-  session_->setPeerAdvertiseLbw("2001:db8::1", true);
-  session_->setPeerLbwValue("2001:db8::1", 10000000000);
-
-  auto& config = session_->getBgpConfig();
-  EXPECT_TRUE(config["peers"][0]["advertise_link_bandwidth"].asBool());
-  EXPECT_EQ(config["peers"][0]["link_bandwidth_bps"].asInt(), 10000000000);
-}
-
-TEST_F(BgpConfigSessionTest, setPeerIpv4OverIpv6Nh) {
-  session_->createPeer("2001:db8::1");
-  session_->setPeerIpv4OverIpv6Nh("2001:db8::1", true);
-
-  auto& config = session_->getBgpConfig();
-  EXPECT_TRUE(config["peers"][0]["v4_over_v6_nexthop"].asBool());
-}
-
-TEST_F(BgpConfigSessionTest, setPeerPeerId) {
-  session_->createPeer("2001:db8::1");
-  session_->setPeerPeerId("2001:db8::1", "fsw001.p001.f01.qzd1:v6:1");
-
-  auto& config = session_->getBgpConfig();
-  EXPECT_EQ(
-      config["peers"][0]["peer_id"].asString(), "fsw001.p001.f01.qzd1:v6:1");
-}
-
-TEST_F(BgpConfigSessionTest, setPeerType) {
-  session_->createPeer("2001:db8::1");
-  session_->setPeerType("2001:db8::1", "FSW");
-
-  auto& config = session_->getBgpConfig();
-  EXPECT_EQ(config["peers"][0]["type"].asString(), "FSW");
 }
 
 // ==================== Peer Group Configuration Tests ====================
@@ -488,14 +326,6 @@ TEST_F(BgpConfigSessionTest, fullRswConfigurationWorkflow) {
   session_->createPeerGroup("RSW-RTSW-V6");
   session_->setPeerGroupDisableIpv4Afi("RSW-RTSW-V6", true);
 
-  // Create peer with peer_group_name
-  session_->createPeer("2401:db00:e50e:1300::20");
-  session_->setPeerRemoteAsn("2401:db00:e50e:1300::20", 65000);
-  session_->setPeerGroupName("2401:db00:e50e:1300::20", "RSW-FSW-V6");
-  session_->setPeerDisableIpv4Afi("2401:db00:e50e:1300::20", false);
-  session_->setPeerPeerId(
-      "2401:db00:e50e:1300::20", "fsw001.p001.f01.qzd1:v6:1");
-
   // Verify the complete configuration
   auto& config = session_->getBgpConfig();
 
@@ -541,17 +371,6 @@ TEST_F(BgpConfigSessionTest, fullRswConfigurationWorkflow) {
   }
   EXPECT_TRUE(foundFswGroup);
   EXPECT_TRUE(foundRtswGroup);
-
-  // Verify peer
-  ASSERT_EQ(config["peers"].size(), 1);
-  auto& peer = config["peers"][0];
-  EXPECT_EQ(peer["peer_addr"].asString(), "2401:db00:e50e:1300::20");
-  EXPECT_EQ(peer["remote_as_4_byte"].asInt(), 65000);
-  EXPECT_EQ(peer["peer_group_name"].asString(), "RSW-FSW-V6");
-  // Critical: disable_ipv4_afi: false must be preserved
-  ASSERT_TRUE(peer.count("disable_ipv4_afi"));
-  EXPECT_FALSE(peer["disable_ipv4_afi"].asBool());
-  EXPECT_EQ(peer["peer_id"].asString(), "fsw001.p001.f01.qzd1:v6:1");
 }
 
 TEST_F(BgpConfigSessionTest, exportConfigProducesValidJson) {
@@ -559,8 +378,6 @@ TEST_F(BgpConfigSessionTest, exportConfigProducesValidJson) {
   session_->setLocalAsn(65000);
   session_->addNetwork6("2001:db8::/32", "TEST_POLICY", true, 0);
   session_->createPeerGroup("TEST-GROUP");
-  session_->createPeer("2001:db8::1");
-  session_->setPeerRemoteAsn("2001:db8::1", 65001);
 
   std::string jsonStr = session_->exportConfig();
 
@@ -571,41 +388,6 @@ TEST_F(BgpConfigSessionTest, exportConfigProducesValidJson) {
   EXPECT_EQ(parsed["local_as_4_byte"].asInt(), 65000);
   EXPECT_EQ(parsed["networks6"].size(), 1);
   EXPECT_EQ(parsed["peer_groups"].size(), 1);
-  EXPECT_EQ(parsed["peers"].size(), 1);
-}
-
-TEST_F(BgpConfigSessionTest, multiplePeersWithDifferentConfigs) {
-  // Create multiple peers with different configurations
-  session_->createPeer("2001:db8::1");
-  session_->setPeerRemoteAsn("2001:db8::1", 65001);
-  session_->setPeerDisableIpv4Afi("2001:db8::1", true);
-  session_->setPeerNextHopSelf("2001:db8::1", true);
-
-  session_->createPeer("2001:db8::2");
-  session_->setPeerRemoteAsn("2001:db8::2", 65002);
-  session_->setPeerDisableIpv4Afi("2001:db8::2", false);
-  session_->setPeerPassive("2001:db8::2", true);
-
-  session_->createPeer("10.0.0.1");
-  session_->setPeerRemoteAsn("10.0.0.1", 65003);
-  session_->setPeerRrClient("10.0.0.1", true);
-
-  auto& config = session_->getBgpConfig();
-  ASSERT_EQ(config["peers"].size(), 3);
-
-  // Find each peer and verify its config
-  for (const auto& peer : config["peers"]) {
-    std::string addr = peer["peer_addr"].asString();
-    if (addr == "2001:db8::1") {
-      EXPECT_TRUE(peer["disable_ipv4_afi"].asBool());
-      EXPECT_TRUE(peer["next_hop_self"].asBool());
-    } else if (addr == "2001:db8::2") {
-      EXPECT_FALSE(peer["disable_ipv4_afi"].asBool());
-      EXPECT_TRUE(peer["is_passive"].asBool());
-    } else if (addr == "10.0.0.1") {
-      EXPECT_TRUE(peer["is_rr_client"].asBool());
-    }
-  }
 }
 
 TEST_F(BgpConfigSessionTest, stubModePreventsSave) {
@@ -623,7 +405,6 @@ TEST_F(BgpConfigSessionTest, stubModeCanClearSession) {
   // In stub mode, clearSession() should not throw
   // The actual clearing behavior depends on implementation details
   session_->setRouterId("10.0.0.1");
-  session_->createPeer("2001:db8::1");
 
   EXPECT_EQ(session_->getRouterId(), "10.0.0.1");
 
@@ -632,24 +413,6 @@ TEST_F(BgpConfigSessionTest, stubModeCanClearSession) {
 }
 
 // ==================== Edge Case Tests ====================
-
-TEST_F(BgpConfigSessionTest, updateExistingPeer) {
-  // Create peer and set initial values
-  session_->createPeer("2001:db8::1");
-  session_->setPeerRemoteAsn("2001:db8::1", 65001);
-  session_->setPeerDescription("2001:db8::1", "Initial description");
-
-  // Update the same peer
-  session_->setPeerRemoteAsn("2001:db8::1", 65002);
-  session_->setPeerDescription("2001:db8::1", "Updated description");
-
-  auto& config = session_->getBgpConfig();
-  // Should still only have one peer
-  ASSERT_EQ(config["peers"].size(), 1);
-  EXPECT_EQ(config["peers"][0]["remote_as_4_byte"].asInt(), 65002);
-  EXPECT_EQ(
-      config["peers"][0]["description"].asString(), "Updated description");
-}
 
 TEST_F(BgpConfigSessionTest, updateExistingPeerGroup) {
   session_->createPeerGroup("TEST-GROUP");
@@ -662,39 +425,10 @@ TEST_F(BgpConfigSessionTest, updateExistingPeerGroup) {
   EXPECT_EQ(config["peer_groups"][0]["description"].asString(), "Updated");
 }
 
-TEST_F(BgpConfigSessionTest, ipv4PeerAddress) {
-  // Test with IPv4 peer address
-  session_->createPeer("192.168.1.1");
-  session_->setPeerRemoteAsn("192.168.1.1", 65000);
-
-  auto& config = session_->getBgpConfig();
-  EXPECT_EQ(config["peers"][0]["peer_addr"].asString(), "192.168.1.1");
-}
-
-TEST_F(BgpConfigSessionTest, specialCharactersInDescription) {
-  session_->createPeer("2001:db8::1");
-  session_->setPeerDescription(
-      "2001:db8::1", "Test \"quotes\" and 'apostrophes' and special: !@#$%");
-
-  auto& config = session_->getBgpConfig();
-  EXPECT_EQ(
-      config["peers"][0]["description"].asString(),
-      "Test \"quotes\" and 'apostrophes' and special: !@#$%");
-}
-
 TEST_F(BgpConfigSessionTest, largeAsnNumber) {
   // Test with 4-byte ASN
   session_->setLocalAsn(4200000000);
   EXPECT_EQ(session_->getLocalAsn(), 4200000000);
-}
-
-TEST_F(BgpConfigSessionTest, largeLinkBandwidth) {
-  // Test with 100G bandwidth
-  session_->createPeer("2001:db8::1");
-  session_->setPeerLbwValue("2001:db8::1", 100000000000);
-
-  auto& config = session_->getBgpConfig();
-  EXPECT_EQ(config["peers"][0]["link_bandwidth_bps"].asInt(), 100000000000);
 }
 
 } // namespace facebook::fboss

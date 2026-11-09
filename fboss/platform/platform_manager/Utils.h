@@ -4,6 +4,7 @@
 
 #include <chrono>
 #include <functional>
+#include <map>
 #include <optional>
 #include <string>
 #include "fboss/platform/platform_manager/gen-cpp2/platform_manager_config_types.h"
@@ -91,6 +92,22 @@ class Utils {
   // on failure.
   static std::vector<RtmCtrlConfig> createRtmCtrlConfigs(
       const PciDeviceConfig& pciDeviceConfig);
+
+  // Resolve the PmUnitConfig to use for `pmUnitName` on a PmUnit reporting
+  // `version`. Returns the matching entry from `versionedPmUnitConfigs` when
+  // one applies, otherwise the default entry from `pmUnitConfigs`. Throws
+  // std::out_of_range if `pmUnitName` has no default PmUnitConfig.
+  static PmUnitConfig resolvePmUnitConfig(
+      const PlatformConfig& platformConfig,
+      const std::string& pmUnitName,
+      const std::optional<PmUnitVersion>& version);
+
+  // Resolve every PmUnit in `platformConfig` against `pmUnitVersions`, a map
+  // of PmUnit name to the version detected on this system. PmUnits absent from
+  // the map resolve to their default PmUnitConfig.
+  static std::map<std::string, PmUnitConfig> resolvePmUnitConfigs(
+      const PlatformConfig& platformConfig,
+      const std::map<std::string, PmUnitVersion>& pmUnitVersions);
 };
 
 } // namespace facebook::fboss::platform::platform_manager

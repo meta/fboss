@@ -9,15 +9,19 @@
 #include "fboss/agent/hw/sai/switch/SaiSwitchManager.h"
 
 #include "fboss/agent/FbossError.h"
+#include "fboss/agent/FibHelpers.h"
 #include "fboss/agent/state/LabelForwardingAction.h"
+#include "fboss/agent/state/SwitchState.h"
 
 namespace {
 using namespace facebook::fboss;
 RouterID kDefaultRouterID = RouterID(0);
 SaiInSegEntryHandle::NextHopHandle getNextHopHandle(
     SaiManagerTable* managerTable,
-    const std::shared_ptr<LabelForwardingEntry>& swLabelFibEntry) {
-  const auto& nexthops = swLabelFibEntry->getForwardInfo().getNextHopSet();
+    const std::shared_ptr<LabelForwardingEntry>& swLabelFibEntry,
+    const std::shared_ptr<SwitchState>& newState) {
+  const auto nexthops =
+      getMplsNextHops(newState, swLabelFibEntry->getForwardInfo());
   if (nexthops.size() > 0 &&
       nexthops.begin()->labelForwardingAction()->type() ==
           LabelForwardingAction::LabelForwardingType::POP_AND_LOOKUP) {
@@ -67,7 +71,8 @@ SaiInSegEntryHandle::NextHopHandle getNextHopHandle(
 namespace facebook::fboss {
 
 void SaiInSegEntryManager::processAddedInSegEntry(
-    const std::shared_ptr<LabelForwardingEntry>& addedEntry) {
+    const std::shared_ptr<LabelForwardingEntry>& addedEntry,
+    const std::shared_ptr<SwitchState>& newState) {
   SaiInSegTraits::InSegEntry inSegEntry{
       managerTable_->switchManager().getSwitchSaiId(),
       static_cast<sai_label_id_t>(addedEntry->getID())};
@@ -77,7 +82,7 @@ void SaiInSegEntryManager::processAddedInSegEntry(
   }
   auto iter = saiInSegEntryTable_.emplace(inSegEntry, SaiInSegEntryHandle{});
   auto& handle = iter.first->second;
-  handle.nexthopHandle = getNextHopHandle(managerTable_, addedEntry);
+  handle.nexthopHandle = getNextHopHandle(managerTable_, addedEntry, newState);
   SaiInSegTraits::CreateAttributes createAttributes{
       SAI_PACKET_ACTION_FORWARD, // not supporting any other action now except
                                  // forward
@@ -90,7 +95,8 @@ void SaiInSegEntryManager::processAddedInSegEntry(
 
 void SaiInSegEntryManager::processChangedInSegEntry(
     const std::shared_ptr<LabelForwardingEntry>& /*oldEntry*/,
-    const std::shared_ptr<LabelForwardingEntry>& newEntry) {
+    const std::shared_ptr<LabelForwardingEntry>& newEntry,
+    const std::shared_ptr<SwitchState>& newState) {
   SaiInSegTraits::InSegEntry inSegEntry{
       managerTable_->switchManager().getSwitchSaiId(),
       static_cast<sai_label_id_t>(newEntry->getID())};
@@ -100,7 +106,8 @@ void SaiInSegEntryManager::processChangedInSegEntry(
         "label fib entry already does not exist for ", newEntry->getID());
   }
 
-  itr->second.nexthopHandle = getNextHopHandle(managerTable_, newEntry);
+  itr->second.nexthopHandle =
+      getNextHopHandle(managerTable_, newEntry, newState);
 
   SaiInSegTraits::CreateAttributes newAttributes{
       SAI_PACKET_ACTION_FORWARD, 1, itr->second.nextHopAdapterKey()};

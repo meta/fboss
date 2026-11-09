@@ -115,6 +115,7 @@ class ResourceAccountant;
 class RemoteNeighborUpdater;
 class EcmpResourceManager;
 class ShelManager;
+class PbrAclManager;
 class FabricLinkMonitoringManager;
 class CpuLatencyManager;
 class StateUpdateValidator;
@@ -285,6 +286,8 @@ class SwSwitch : public HwSwitchCallback {
   void updateLldpStats();
 
   void publishStatsToFsdb();
+
+  void publishIPhyStatesToFsdb(const std::map<PortID, phy::PhyInfo>& phyInfo);
 
   AgentStats fillFsdbStats();
 
@@ -484,6 +487,14 @@ class SwSwitch : public HwSwitchCallback {
    */
   bool isValidStateUpdate(const StateDelta& delta, SwitchStats* stats = nullptr)
       const;
+
+  /*
+   * Same check, but leaves the resource accounting untouched. For callers that
+   * validate inside an update function, since applyUpdate validates again.
+   */
+  bool isValidStateUpdateDryRun(
+      const StateDelta& delta,
+      SwitchStats* stats = nullptr) const;
 
   /*
    * Get the PortStats for the specified port.
@@ -1098,6 +1109,10 @@ class SwSwitch : public HwSwitchCallback {
   PortDescriptor getPortFromPkt(const RxPacket* pkt) const;
 
   void handlePacket(std::unique_ptr<RxPacket> pkt);
+
+  bool isFabricLinkMonitoringPacket(
+      const RxPacket& pkt,
+      const std::shared_ptr<SwitchState>& state) const;
   template <typename VlanOrIntfT>
   void handlePacketImpl(
       std::unique_ptr<RxPacket> pkt,
@@ -1142,9 +1157,16 @@ class SwSwitch : public HwSwitchCallback {
   /*
    * Reconstruct state modifier from initial switch state.
    */
-  std::vector<StateDelta> reconstructStateFromErmAndShelManager(
+  std::vector<StateDelta> reconstructStateFromManagers(
       const std::shared_ptr<SwitchState>& emptyState,
       const std::shared_ptr<SwitchState>& initialState);
+
+  // On warm boot, applies the RIB to the state if RIB reconstruct merged or
+  // backfilled NextHop ids, so the state carries the RIB's ids.
+  std::shared_ptr<SwitchState> syncNextHopIDsToFIB(
+      const std::shared_ptr<SwitchState>& state);
+  // Copies ECMP overrides that manager reconstruct changed into the RIB.
+  void syncRibEcmpOverrides(const StateDelta& delta);
 
   void logLinkStateEvent(PortID port, bool up);
 
@@ -1182,6 +1204,9 @@ class SwSwitch : public HwSwitchCallback {
   std::unique_ptr<AgentConfig> loadConfig();
 
   void applyConfigImpl(
+      const std::string& reason,
+      const cfg::SwitchConfig& newConfig);
+  void applyDeferredVrfChanges(
       const std::string& reason,
       const cfg::SwitchConfig& newConfig);
 
@@ -1419,13 +1444,20 @@ class SwSwitch : public HwSwitchCallback {
   std::unique_ptr<SwitchStatsObserver> switchStatsObserver_;
   std::unique_ptr<EcmpResourceManager> ecmpResourceManager_;
   std::unique_ptr<ShelManager> shelManager_;
+  std::unique_ptr<PbrAclManager> pbrAclManager_;
   std::unique_ptr<FabricLinkMonitoringManager> fabricLinkMonitoringManager_;
+  bool rxPacketTypeSupported_{false};
   std::unique_ptr<CpuLatencyManager> cpuLatencyManager_;
   std::unique_ptr<StateUpdateValidator> stateUpdateValidator_;
 
   folly::Synchronized<ConfigAppliedInfo> configAppliedInfo_;
   std::optional<std::chrono::time_point<std::chrono::steady_clock>>
       publishedStatsToFsdbAt_;
+  // updateStats() runs every FLAGS_update_stats_interval_s (1s) but phy info is
+  // only recollected every FLAGS_update_phy_info_interval_s (10s), so iphy
+  // PhyState is published at the collection interval instead of every tick.
+  std::optional<std::chrono::time_point<std::chrono::steady_clock>>
+      publishedIPhyStatesToFsdbAt_;
   std::unique_ptr<MultiSwitchPacketStreamMap> packetStreamMap_;
   std::unique_ptr<SwSwitchWarmBootHelper> swSwitchWarmbootHelper_;
   std::unique_ptr<HwSwitchThriftClientTable> hwSwitchThriftClientTable_;

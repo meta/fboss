@@ -63,7 +63,11 @@ void HwQsfpEnsemble::setupForWarmboot() {
   // warm boot files.
   qsfpServiceHandler_->gracefulExit();
   if (isSaiPlatform()) {
-    getWedgeManager()->releasePhyManager();
+    if (auto* portManager = qsfpServiceHandler_->getPortManager()) {
+      portManager->releasePhyManager();
+    } else {
+      getWedgeManager()->releasePhyManager();
+    }
   }
 }
 

@@ -36,7 +36,8 @@ PlatformConfigDirectory findPlatformConfigDirectory(
 
   std::optional<PlatformConfigDirectory> match;
   for (const auto& vendorEntry : fs::directory_iterator(platformsDirectory)) {
-    if (!vendorEntry.is_directory()) {
+    if (!vendorEntry.is_directory() ||
+        vendorEntry.path().filename() == "generic") {
       continue;
     }
     for (const auto& platformEntry :

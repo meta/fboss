@@ -104,6 +104,11 @@ class SaiPhyRetimer : public ExternalPhy, public HwSwitchCallback {
       cfg::PortProfileID profileID,
       bool readFromHw = false) override;
 
+  PhyInfo getPortInfo(
+      const std::vector<LaneID>& sysLanes,
+      const std::vector<LaneID>& lineLanes,
+      PhyInfo& lastPhyInfo) override;
+
   void dump() override {
     dumpImpl();
   }
@@ -162,6 +167,12 @@ class SaiPhyRetimer : public ExternalPhy, public HwSwitchCallback {
     return xphyIO_;
   }
 
+  // Surface the MDIO IO counters the MdioController already records on each
+  // register read/write.
+  IOStats getIOStats() override {
+    return getXphyIO()->getMdioController()->getIOStats();
+  }
+
   phy::PhyAddress getPhyAddr() const {
     return phyAddr_;
   }
@@ -172,7 +183,7 @@ class SaiPhyRetimer : public ExternalPhy, public HwSwitchCallback {
 
   void* getRegisterReadFuncPtr();
   void* getRegisterWriteFuncPtr();
-  SaiSwitchTraits::CreateAttributes getSwitchAttributes();
+  SaiSwitchTraits::CreateAttributes getSwitchAttributes(bool warmboot);
 
   std::mutex& getPaiMutex() {
     return paiMutex_;

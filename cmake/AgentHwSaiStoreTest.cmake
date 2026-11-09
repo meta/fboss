@@ -16,6 +16,7 @@ add_executable(store_test
     fboss/agent/hw/sai/store/tests/HashStoreTest.cpp
     fboss/agent/hw/sai/store/tests/HostifTrapStoreTest.cpp
     fboss/agent/hw/sai/store/tests/InSegStoreTest.cpp
+    fboss/agent/hw/sai/store/tests/IsolationGroupStoreTest.cpp
     fboss/agent/hw/sai/store/tests/LagStoreTest.cpp
     fboss/agent/hw/sai/store/tests/MirrorStoreTest.cpp
     fboss/agent/hw/sai/store/tests/NeighborStoreTest.cpp
@@ -27,15 +28,18 @@ add_executable(store_test
     fboss/agent/hw/sai/store/tests/RouteStoreTest.cpp
     fboss/agent/hw/sai/store/tests/RouterInterfaceStoreTest.cpp
     fboss/agent/hw/sai/store/tests/SaiEmptyStoreTest.cpp
+    fboss/agent/hw/sai/store/tests/MyMacStoreTest.cpp
     fboss/agent/hw/sai/store/tests/SamplePacketStoreTest.cpp
     fboss/agent/hw/sai/store/tests/SchedulerStoreTest.cpp
     fboss/agent/hw/sai/store/tests/TamStoreTest.cpp
     fboss/agent/hw/sai/store/tests/Srv6StoreTest.cpp
     fboss/agent/hw/sai/store/tests/TunnelStoreTest.cpp
+    fboss/agent/hw/sai/store/tests/TunnelMapStoreTest.cpp
     fboss/agent/hw/sai/store/tests/UdfStoreTest.cpp
+    fboss/agent/hw/sai/store/tests/VirtualChannelStoreTest.cpp
+    fboss/agent/hw/sai/store/tests/VirtualRouterStoreTest.cpp
     fboss/agent/hw/sai/store/tests/VlanStoreTest.cpp
     fboss/agent/hw/sai/store/tests/WredStoreTest.cpp
-    fboss/agent/hw/sai/store/tests/UdfStoreTest.cpp
 )
 
 target_link_libraries(store_test

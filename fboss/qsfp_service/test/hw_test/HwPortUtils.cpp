@@ -244,6 +244,26 @@ std::vector<std::pair<std::string, std::string>> getCabledPairs(
   return cabledPairs;
 }
 
+// Cabled pairs where both ports have a transceiver.
+std::vector<std::pair<std::string, std::string>> getCabledPairsWithTransceivers(
+    const HwQsfpEnsemble* ensemble) {
+  std::vector<std::pair<std::string, std::string>> pairs;
+  const auto& handler = ensemble->getQsfpServiceHandler();
+  for (const auto& [aPortName, zPortName] : getCabledPairs(ensemble)) {
+    auto aPortId = handler->getPortIdByPortName(aPortName);
+    auto zPortId = handler->getPortIdByPortName(zPortName);
+    if (!aPortId.has_value() || !zPortId.has_value()) {
+      continue;
+    }
+    if (!getTranscieverIdx(*aPortId, ensemble).has_value() ||
+        !getTranscieverIdx(*zPortId, ensemble).has_value()) {
+      continue;
+    }
+    pairs.emplace_back(aPortName, zPortName);
+  }
+  return pairs;
+}
+
 std::vector<TransceiverID> getCabledPortTranceivers(
     const HwQsfpEnsemble* ensemble) {
   std::unordered_set<TransceiverID> transceivers;

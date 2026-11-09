@@ -21,7 +21,8 @@ std::shared_ptr<SwitchState> MySidMapUpdater::operator()(
     return state;
   }
 
-  auto nextState = state->clone();
+  auto nextState = state;
+  SwitchState::modify(&nextState);
   nextState->resetMySids(newMySids);
   return nextState;
 }

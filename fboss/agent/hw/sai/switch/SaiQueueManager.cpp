@@ -359,8 +359,14 @@ void SaiQueueManager::changeQueue(
     }
   }
   changeQueueEcnWred(queueHandle, newPortQueue);
+  // TU1 SDK rejects SAI_QUEUE_ATTR_BUFFER_PROFILE_ID with NOT_SUPPORTED on
+  // all queues (verified: data-port queues abort init the same as CPU), so
+  // never attach egress queue buffer profiles. Ingress (PG) programming is
+  // unaffected.
   if (platform_->getAsic()->isSupported(HwAsic::Feature::BUFFER_POOL) &&
-      (queueType != SAI_QUEUE_TYPE_FABRIC_TX)) {
+      (queueType != SAI_QUEUE_TYPE_FABRIC_TX) &&
+      (platform_->getAsic()->getAsicType() !=
+       cfg::AsicType::ASIC_TYPE_TOMAHAWKULTRA1)) {
     if (portType && (*portType == cfg::PortType::CPU_PORT) &&
         (platform_->getAsic()->isSupported(
              HwAsic::Feature::DEDICATED_CPU_BUFFER_POOL)

@@ -42,6 +42,9 @@ void programRoutes(
     const utility::EcmpSetupTargetedPorts<folly::IPAddressV6>* ecmpHelper) {
   auto constexpr kClientID(ClientID::BGPD);
   const AdminDistance kDefaultAdminDistance = AdminDistance::EBGP;
+  CHECK_EQ(portDescs.size(), prefixes.size())
+      << "nhop-group/route count mismatch: have " << portDescs.size()
+      << " groups for " << prefixes.size() << " routes";
   for (auto i = 0; i < prefixes.size(); ++i) {
     RouteNextHopSet nhopSet;
     for (const auto& portDesc : portDescs[i]) {
@@ -69,28 +72,11 @@ void ecmpGroupScaleBenchmark(
         FLAGS_ecmp_resource_percentage = 100;
         FLAGS_flowletSwitchingEnable = true;
         FLAGS_dlbResourceCheckEnable = false;
-        FLAGS_enable_th5_ars_scale_mode = false;
         auto cfg = utility::onePortPerInterfaceConfig(
             ensemble.getSw(), ensemble.masterLogicalPortIds());
 
-        // If the switch ASIC is TH5 and max desired ECMP group members is
-        // 256, enable TH5 ARS scale mode
-        auto switchIds = ensemble.getSw()->getHwAsicTable()->getSwitchIDs();
-        CHECK_GE(switchIds.size(), 1);
-        auto asicType = ensemble.getSw()
-                            ->getHwAsicTable()
-                            ->getHwAsic(*switchIds.cbegin())
-                            ->getAsicType();
-        /* if (ecmpGroups == 256) {
-          CHECK_EQ(asicType, cfg::AsicType::ASIC_TYPE_TOMAHAWK5);
-        } */
-        if ((asicType == cfg::AsicType::ASIC_TYPE_TOMAHAWK5) &&
-            (ecmpGroups == 256)) {
-          FLAGS_enable_th5_ars_scale_mode = true;
-        }
         XLOG(DBG2) << "EcmpGroupWidth: " << ecmpGroupWidth
-                   << ", EcmpGroups: " << ecmpGroups << ", th5_ars_scale_mode: "
-                   << FLAGS_enable_th5_ars_scale_mode;
+                   << ", EcmpGroups: " << ecmpGroups;
 
         utility::addFlowletConfigs(
             cfg,
@@ -113,11 +99,29 @@ void ecmpGroupScaleBenchmark(
     return ecmpHelper.resolveNextHops(in, portDescs);
   });
 
+  // Narrow width to the widest C(N, w) >= groups.
+  uint32_t effectiveWidth = ecmpGroupWidth;
+  while (effectiveWidth > 2 &&
+         utility::numDistinctEcmpGroups(portDescs.size(), effectiveWidth) <
+             ecmpGroups) {
+    --effectiveWidth;
+  }
+  CHECK_GE(
+      utility::numDistinctEcmpGroups(portDescs.size(), effectiveWidth),
+      ecmpGroups)
+      << "Cannot build " << ecmpGroups << " distinct groups from "
+      << portDescs.size() << " ports even at width 2";
+  if (effectiveWidth != ecmpGroupWidth) {
+    XLOG(WARNING) << "Narrowing ECMP group width " << ecmpGroupWidth << " -> "
+                  << effectiveWidth << " to fit " << ecmpGroups
+                  << " distinct groups on " << portDescs.size() << " ports";
+  }
+
   auto nhopSets = utility::generateEcmpGroupScale(
       std::vector<PortDescriptor>(portDescs.begin(), portDescs.end()),
       ecmpGroups,
-      ecmpGroupWidth /*max ecmp width*/,
-      ecmpGroupWidth /*min ecmp width*/);
+      effectiveWidth /*max ecmp width*/,
+      effectiveWidth /*min ecmp width*/);
   std::vector<RoutePrefixV6> prefixes;
   prefixes.reserve(ecmpGroups);
   for (auto i = 0; i < ecmpGroups; ++i) {
@@ -127,8 +131,7 @@ void ecmpGroupScaleBenchmark(
 
   auto updater = ensemble->getSw()->getRouteUpdater();
   XLOG(DBG2) << "Operation: " << add << ", EcmpGroupWidth: " << ecmpGroupWidth
-             << ", EcmpGroups: " << ecmpGroups
-             << ", th5_ars_scale_mode: " << FLAGS_enable_th5_ars_scale_mode;
+             << ", EcmpGroups: " << ecmpGroups;
 
   programRoutes(&updater, nhopSets, prefixes, &ecmpHelper);
   if (add) {

@@ -10,12 +10,8 @@
 
 #pragma once
 
-#include <memory>
 #include <string_view>
-#include "fboss/platform/helpers/PlatformFsUtils.h"
-#include "fboss/platform/helpers/PlatformUtils.h"
 #include "fboss/platform/platform_checks/PlatformCheck.h"
-#include "fboss/platform/weutil/FbossEepromInterface.h"
 
 namespace facebook::fboss::platform::platform_checks {
 
@@ -31,11 +27,8 @@ inline constexpr std::string_view kMcbEepromPath =
  */
 class i801SmbusTimeoutCheck : public PlatformCheck {
  public:
-  explicit i801SmbusTimeoutCheck(
-      std::shared_ptr<PlatformFsUtils> platformFsUtils =
-          std::make_shared<PlatformFsUtils>(),
-      std::shared_ptr<PlatformUtils> platformUtils =
-          std::make_shared<PlatformUtils>());
+  explicit i801SmbusTimeoutCheck(CheckTarget target = {})
+      : PlatformCheck(std::move(target)) {}
 
   CheckResult run() override;
 
@@ -50,16 +43,6 @@ class i801SmbusTimeoutCheck : public PlatformCheck {
   std::string getDescription() const override {
     return "Checks if if i801_smbus driver has timeout issue which can cause MCB EEPROM read failures.";
   }
-
- protected:
-  // Virtual methods for testing
-  virtual std::unique_ptr<FbossEepromInterface> createEepromInterface(
-      const std::string& path,
-      uint16_t offset);
-
- private:
-  std::shared_ptr<PlatformFsUtils> fsUtils_;
-  std::shared_ptr<PlatformUtils> platformUtils_;
 };
 
 } // namespace facebook::fboss::platform::platform_checks

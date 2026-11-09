@@ -2,12 +2,32 @@
 
 #pragma once
 
+#include <set>
+#include <string>
+
+#include "fboss/agent/AddressUtil.h"
 #include "fboss/agent/HwSwitchMatcher.h"
 #include "fboss/agent/rib/NextHopIDManager.h"
 #include "fboss/agent/state/RouteNextHopEntry.h"
 #include "fboss/agent/state/SwitchState.h"
 
 namespace facebook::fboss {
+
+// Nexthop addresses one client contributed to a RouteDetails or
+// MplsRouteDetails.
+template <typename Details, typename Client>
+std::set<std::string> clientNextHops(const Details& details, Client client) {
+  std::set<std::string> nhops;
+  for (const auto& clientNhops : *details.nextHopMulti()) {
+    if (*clientNhops.clientId() != static_cast<int32_t>(client)) {
+      continue;
+    }
+    for (const auto& nh : *clientNhops.nextHops()) {
+      nhops.insert(facebook::network::toIPAddress(*nh.address()).str());
+    }
+  }
+  return nhops;
+}
 
 // Allocate resolvedNextHopSetID and normalizedResolvedNextHopSetID on a single
 // RouteNextHopEntry. No-op if idManager is null or action is not NEXTHOPS.

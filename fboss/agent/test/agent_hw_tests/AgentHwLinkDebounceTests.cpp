@@ -148,6 +148,14 @@ class AgentHwLinkDebounceTest : public AgentHwTest {
     auto retriggerCount = [&]() {
       return getDebounceRetriggerCount(port, upDebounce);
     };
+    // The SDK counts survive warm boot, so baselining before the first read
+    // that follows the debounce config charges them to this run.
+    WITH_RETRIES({
+      auto stats = getLatestPortStats(port);
+      EXPECT_EVENTUALLY_TRUE(
+          stats.linkDownDebounceRetriggerCount_().has_value() &&
+          stats.linkUpDebounceRetriggerCount_().has_value());
+    });
     auto before = retriggerCount();
     auto flapsBefore = getLinkStateFlapCount(port);
     auto faultBefore = getLinkFaultCount(port);

@@ -198,6 +198,16 @@ void CmdShowInterfacePhy::printSideStateAndStat(
   for (auto it : *sideStats.pmd()->lanes()) {
     pmdLanes.insert(it.first);
   }
+  if (auto loopback = sideState.loopback()) {
+    out << prefix
+        << "Loopback: " << apache::thrift::util::enumNameSafe(*loopback)
+        << std::endl;
+  }
+  if (auto intfType = sideState.interfaceType()) {
+    out << prefix
+        << "Interface Type: " << apache::thrift::util::enumNameSafe(*intfType)
+        << std::endl;
+  }
   printLinkTrainingInfo(out, *sideState.pmd(), prefix);
   if (!pmdLanes.empty()) {
     printPmdLaneRxInfo(out, sideState, sideStats, pmdLanes, prefix);

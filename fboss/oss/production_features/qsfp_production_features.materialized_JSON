@@ -68,6 +68,18 @@
         6,
         8
     ],
+    "ladakh800bcls_evt": [
+        1,
+        4,
+        6,
+        8
+    ],
+    "ladakh800bcls_postevt": [
+        1,
+        4,
+        6,
+        8
+    ],
     "leh800bcls": [
         1,
         4,
@@ -227,6 +239,18 @@
         "BMC_LITE"
     ],
     "ladakh800bcls": [
+        "EXTERNAL_PHY",
+        "XPHY_SYSTEM_PAM4_PROFILE",
+        "XPHY_LINE_PAM4_PROFILE",
+        "BMC_LITE"
+    ],
+    "ladakh800bcls_evt": [
+        "EXTERNAL_PHY",
+        "XPHY_SYSTEM_PAM4_PROFILE",
+        "XPHY_LINE_PAM4_PROFILE",
+        "BMC_LITE"
+    ],
+    "ladakh800bcls_postevt": [
         "EXTERNAL_PHY",
         "XPHY_SYSTEM_PAM4_PROFILE",
         "XPHY_LINE_PAM4_PROFILE",

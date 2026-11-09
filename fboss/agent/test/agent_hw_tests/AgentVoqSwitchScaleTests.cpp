@@ -238,6 +238,11 @@ TEST_F(AgentVoqSwitchScaleTest, stressProgramEcmpRoutes) {
 class AgentVoqSwitchScaleWithFabricPortsTest
     : public AgentVoqSwitchFullScaleDsfNodesTest {
  private:
+  std::vector<ProductionFeature> getProductionFeaturesVerified()
+      const override {
+    return {ProductionFeature::VOQ_SWITCH_WITH_FABRIC_PORTS};
+  }
+
   void setCmdLineFlagOverrides() const override {
     AgentVoqSwitchFullScaleDsfNodesTest::setCmdLineFlagOverrides();
     // Unhide fabric ports

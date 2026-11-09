@@ -31,6 +31,10 @@
 #include "fboss/qsfp_service/test/hw_test/HwPortUtils.h"
 #include "fboss/qsfp_service/test/hw_test/HwQsfpEnsemble.h"
 
+#ifndef IS_OSS
+#include "common/base/Proc.h"
+#endif
+
 DEFINE_bool(
     setup_for_warmboot,
     false,
@@ -236,10 +240,36 @@ void HwTest::TearDown() {
         ensemble_->getWedgeManager()
             ->getStateMachineThreadHeartbeatMissedCount(),
         0);
+    EXPECT_NO_THROW(checkQsfpMemoryInBounds());
     ensemble_.reset();
   }
   // We expect that any coldboot flag set during the test should be cleared
   EXPECT_FALSE(checkFileExists(TransceiverManager::forceColdBootFileName()));
+}
+
+void HwTest::checkQsfpMemoryInBounds() const {
+#ifndef IS_OSS
+  const auto* qsfpConfig = ensemble_->getWedgeManager()->getQsfpConfig();
+  if (qsfpConfig == nullptr) {
+    throw FbossError("QSFP config is not loaded, cannot check memory bounds");
+  }
+  auto qsfpTestConfig = qsfpConfig->thrift.qsfpTestConfig();
+  if (!qsfpTestConfig.has_value() ||
+      !qsfpTestConfig->qsfpServiceMemLimitBytes().has_value()) {
+    XLOG(INFO) << "qsfpServiceMemLimitBytes not set in qsfp test config, "
+               << "skipping memory check";
+    return;
+  }
+  int64_t memUsage = facebook::Proc::getMemoryUsage();
+  auto memUsageThreshold = *qsfpTestConfig->qsfpServiceMemLimitBytes();
+  if (memUsage > memUsageThreshold) {
+    throw FbossError(
+        "QSFP service RSS memory ",
+        memUsage,
+        " above expected ",
+        memUsageThreshold);
+  }
+#endif
 }
 
 bool HwTest::didWarmBoot() const {

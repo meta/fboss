@@ -130,6 +130,29 @@ void CmdShowBgpInitializationEvents::printOutput(
   out << table << std::endl;
 }
 
+std::string_view CmdShowBgpInitializationEventsTraits::description() {
+  return "Displays the BGP++ daemon's startup timeline: every initialization milestone in enum order, whether it completed, and how long after process start it happened. The header line says whether initialization converged, which is true once the INITIALIZED milestone is reached. An event shows 'Complete' when the daemon recorded a timestamp for it, 'Skipped' when the daemon took a path that bypasses it (for example EOR_TIMER_EXPIRED on a switch that received all end-of-RIB markers naturally, or FSDB_SUBSCRIBED where nexthop tracking is not in use), and 'Pending' when initialization is still in flight and has not reached that milestone yet. Skipped milestones have no timestamp and render '-'. Use this to answer how long a start took and which phase dominated it - the gaps between consecutive timestamps are the per-phase costs. This is the timeline of whatever initialization the daemon last performed; it is not specific to a cold start.";
+}
+
+CmdShowBgpInitializationEvents::RetType
+CmdShowBgpInitializationEvents::sampleModel() {
+  using neteng::fboss::bgp::thrift::BgpInitializationEvent;
+
+  // Milliseconds since process start. FSDB_SUBSCRIBED and EOR_TIMER_EXPIRED are
+  // deliberately absent: this switch received all end-of-RIB markers naturally,
+  // so printOutput renders them as "Skipped".
+  RetType events;
+  events[BgpInitializationEvent::INITIALIZING] = 1;
+  events[BgpInitializationEvent::AGENT_CONFIGURED] = 2;
+  events[BgpInitializationEvent::PEER_INFO_LOADED] = 400;
+  events[BgpInitializationEvent::ALL_EOR_RECEIVED] = 1571;
+  events[BgpInitializationEvent::RIB_COMPUTED] = 1766;
+  events[BgpInitializationEvent::FIB_SYNCED] = 1908;
+  events[BgpInitializationEvent::EOR_SENT] = 1910;
+  events[BgpInitializationEvent::INITIALIZED] = 2127;
+  return events;
+}
+
 template void CmdHandler<
     CmdShowBgpInitializationEvents,
     CmdShowBgpInitializationEventsTraits>::run();

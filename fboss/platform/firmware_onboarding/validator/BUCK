@@ -54,7 +54,9 @@ python_unittest(
     srcs = ["tests/test_canonical_examples.py"],
     network_access = network_access_utils.none(),
     resources = {
+        "//fboss/platform/firmware_onboarding/configs/icecube800banw:spec": "tests/icecube800banw.json",
         "//fboss/platform/firmware_onboarding/configs/icecube800bc:spec": "tests/icecube800bc.json",
+        "//fboss/platform/firmware_onboarding/configs/m4062nhp:spec": "tests/m4062nhp.json",
     },
     deps = [":preflight"],
 )

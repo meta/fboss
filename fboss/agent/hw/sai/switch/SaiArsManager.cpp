@@ -26,7 +26,6 @@ SaiArsManager::SaiArsManager(
     : saiStore_(saiStore), managerTable_(managerTable), platform_(platform) {
 #if SAI_API_VERSION >= SAI_VERSION(1, 14, 0)
   arsHandle_ = std::make_unique<SaiArsHandle>();
-  alternateMemberArsHandle_ = std::make_unique<SaiArsHandle>();
   virtualArsGroupHandle_ = std::make_unique<SaiArsHandle>();
   standbyArsHandle_ = std::make_unique<SaiArsHandle>();
 #endif
@@ -63,7 +62,13 @@ SaiArsTraits::CreateAttributes SaiArsManager::makeArsAttributes(
     std::optional<SaiArsTraits::Attributes::NextHopGroupType> nextHopGroupType,
     std::optional<SaiArsTraits::Attributes::SourcePortPrune> sourcePortPrune,
     const std::optional<SaiArsTraits::Attributes::EcmpMemberCount>&
-        ecmpMemberCount) const {
+        ecmpMemberCount,
+    const std::optional<SaiArsTraits::Attributes::MaxAltMembersPerGroup>&
+        maxAltMembersPerGroup,
+    const std::optional<SaiArsTraits::Attributes::MaxPrimaryMembersPerGroup>&
+        maxPrimaryMembersPerGroup,
+    const std::optional<SaiArsTraits::Attributes::CommonMembersThresholdCount>&
+        commonMembersThresholdCount) const {
   std::optional<SaiArsTraits::Attributes::IdleTime> idleTimeAttr = std::nullopt;
   if (idleTime) {
     idleTimeAttr = SaiArsTraits::Attributes::IdleTime{*idleTime};
@@ -81,7 +86,10 @@ SaiArsTraits::CreateAttributes SaiArsManager::makeArsAttributes(
       alternatePathBias,
       nextHopGroupType,
       sourcePortPrune,
-      ecmpMemberCount};
+      ecmpMemberCount,
+      maxAltMembersPerGroup,
+      maxPrimaryMembersPerGroup,
+      commonMembersThresholdCount};
 }
 
 void SaiArsManager::setArsObject(
@@ -105,9 +113,6 @@ void SaiArsManager::removeArs(
   if (arsHandle_->ars) {
     arsHandle_->ars.reset();
   }
-  if (alternateMemberArsHandle_->ars) {
-    alternateMemberArsHandle_->ars.reset();
-  }
   if (virtualArsGroupHandle_->ars) {
     virtualArsGroupHandle_->ars.reset();
   }
@@ -125,10 +130,6 @@ void SaiArsManager::changeArs(
 
 SaiArsHandle* SaiArsManager::getArsHandle() const {
   return arsHandle_.get();
-}
-
-SaiArsHandle* SaiArsManager::getAlternateMemberArsHandle() const {
-  return alternateMemberArsHandle_.get();
 }
 
 SaiArsHandle* SaiArsManager::getVirtualArsGroupHandle() const {

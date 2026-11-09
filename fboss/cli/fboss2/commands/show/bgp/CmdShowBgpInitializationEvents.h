@@ -10,18 +10,23 @@
 
 #pragma once
 
+#include <string_view>
+
 #include "fboss/cli/fboss2/CmdHandler.h"
 #include "neteng/fboss/bgp/if/gen-cpp2/bgp_thrift_types.h"
 
 namespace facebook::fboss {
 
-struct CmdShowBgpInitializationEventsTraits : public ReadCommandTraits,
-                                              public CliDocsExempt {
+struct CmdShowBgpInitializationEventsTraits : public ReadCommandTraits {
   static constexpr utils::ObjectArgTypeId ObjectArgTypeId =
       utils::ObjectArgTypeId::OBJECT_ARG_TYPE_ID_NONE;
   using ObjectArgType = std::monostate;
   using RetType = ::facebook::neteng::fboss::bgp::thrift::
       map_bgp_thriftBgpInitializationEvent_i64_cpptemplate_stdunordered_map_895;
+
+  // Human-authored guide prose for the CLI reference wiki. Superset of the
+  // one-line help string registered in the command tree.
+  static std::string_view description();
 };
 
 class CmdShowBgpInitializationEvents
@@ -33,6 +38,10 @@ class CmdShowBgpInitializationEvents
 
   RetType queryClient(const HostInfo& hostInfo);
   void printOutput(const RetType& events, std::ostream& out = std::cout);
+
+  // Canned, synthetic model (no real switch data) used to render a
+  // deterministic example for the CLI reference wiki. No live switch.
+  static RetType sampleModel();
 };
 
 } // namespace facebook::fboss

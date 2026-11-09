@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -9,6 +10,7 @@
 #include <gtest/gtest.h>
 #include <thrift/lib/cpp2/protocol/Serializer.h>
 
+#include "fboss/platform/bsp_tests/RuntimeConfigBuilder.h"
 #include "fboss/platform/bsp_tests/gen-cpp2/bsp_tests_config_types.h"
 #include "fboss/platform/bsp_tests/gen-cpp2/bsp_tests_runtime_config_types.h"
 #include "fboss/platform/platform_manager/PkgManager.h"
@@ -44,6 +46,14 @@ class BspTestEnvironment : public ::testing::Environment {
   const RuntimeConfig& getRuntimeConfig() const;
   const platform_manager::BspKmodsFile& getKmodsJson() const;
 
+  // Reads PmUnit versions off the hardware, given the runtime config built
+  // against default PmUnitConfigs. Injected because the utils that bring up
+  // adapters depend on this library.
+  using PmUnitVersionDetector = std::function<PmUnitVersionMap(
+      const platform_manager::PlatformConfig&,
+      const RuntimeConfig&)>;
+  void setPmUnitVersionDetector(PmUnitVersionDetector detector);
+
   void recordExpectedError(
       const std::string& testName,
       const std::string& deviceName,
@@ -78,6 +88,7 @@ class BspTestEnvironment : public ::testing::Environment {
   std::optional<BspTestsConfig> testConfig_;
   std::optional<platform_manager::PlatformConfig> platformManagerConfig_;
   std::optional<RuntimeConfig> runtimeConfig_;
+  PmUnitVersionDetector pmUnitVersionDetector_;
   platform_manager::BspKmodsFile kmods_;
   std::unique_ptr<platform_manager::PkgManager> pkgManager_;
   std::vector<RecordedError> recordedErrors_;

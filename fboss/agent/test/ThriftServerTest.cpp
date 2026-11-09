@@ -66,6 +66,18 @@ class ThriftServerTest : public ::testing::Test {
     sw_->setConfig(std::make_unique<AgentConfig>(std::move(agentConfig)));
   }
 
+  void TearDown() override {
+    // Stream/sink teardown runs completion callbacks on server threads that
+    // reach back into SwSwitch, so the clients and the server have to be gone
+    // before handle_ destroys it.
+    multiSwitchClient_.reset();
+    fbossCtlClient_.reset();
+    evbThread1_.reset();
+    evbThread2_.reset();
+    swSwitchTestServer_.reset();
+    mockMultiSwitchHandler_.reset();
+  }
+
   void setupServerAndClients() {
     XLOG(DBG2) << "Initializing thrift server";
 
@@ -442,6 +454,34 @@ CO_TEST_F(ThriftServerTest, fdbEventTest) {
             createFdbEntry(L2EntryUpdateType::L2_ENTRY_UPDATE_TYPE_DELETE);
         co_yield std::move(fdbEvent2);
         verifyMacState(VlanID(1), "00:01:02:03:04:05", false);
+      }());
+  EXPECT_TRUE(ret);
+}
+
+CO_TEST_F(ThriftServerTest, switchReachabilityChangeEventReceivedCounter) {
+  setupServerAndClients();
+
+  auto result =
+      co_await multiSwitchClient_->co_notifySwitchReachabilityChangeEvent(0);
+  const auto kReceivedCounter = SwitchStats::kCounterPrefix +
+      "switch.0.switch_reachability_change_event_received.sum";
+  CounterCache counters(sw_);
+  auto ret = co_await result.sink(
+      [&]() -> folly::coro::AsyncGenerator<
+                multiswitch::SwitchReachabilityChangeEvent&&> {
+        WITH_RETRIES({
+          counters.update();
+          EXPECT_EVENTUALLY_EQ(
+              counters.value(
+                  "switch.0.switch_reachability_change_event_sync_active"),
+              1);
+        });
+        co_yield multiswitch::SwitchReachabilityChangeEvent{};
+        co_yield multiswitch::SwitchReachabilityChangeEvent{};
+        WITH_RETRIES({
+          counters.update();
+          EXPECT_EVENTUALLY_EQ(counters.value(kReceivedCounter), 2);
+        });
       }());
   EXPECT_TRUE(ret);
 }

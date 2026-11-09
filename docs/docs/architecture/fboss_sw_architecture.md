@@ -7,7 +7,7 @@ FBOSS (Facebook Open Switching System) is a software stack that runs on the x86 
 ## Components
 
 1. **Platform Manager**
-   Manages the low-level device setup and management. More info [here](https://facebook.github.io/fboss/docs/platform/platform_manager/).
+   Manages the low-level device setup and management. More info [here](https://meta.github.io/fboss/docs/platform/platform_manager/).
 
 2. **Agent**
    Responsible for managing the forwarding switch ASIC / NPU.

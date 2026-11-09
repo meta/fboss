@@ -8,9 +8,9 @@ cpp_library(
         "Storage.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:expected",
         "//fboss/fsdb/if:fsdb_oper-cpp2-types",
         "//fboss/thrift_cow:patch-cpp2-types",
-        "//folly:expected",
     ],
 )
 
@@ -23,11 +23,11 @@ cpp_library(
         "CowStorage.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/logging:logging",
         ":storage",
         "//fboss/thrift_cow/nodes:nodes",
         "//fboss/thrift_cow/nodes:serializer",
         "//fboss/thrift_cow/visitors:visitors",
-        "//folly/logging:logging",
     ],
 )
 
@@ -39,14 +39,14 @@ cpp_library(
     ],
     exported_deps = [
         "fbsource//third-party/fmt:fmt",
+        "fbsource//xplat/folly:fbstring",
+        "fbsource//xplat/folly:intrusive_list",
+        "fbsource//xplat/folly:synchronized",
+        "fbsource//xplat/folly/io/async:scoped_event_base_thread",
+        "fbsource//xplat/folly/logging:logging",
         ":cow_storage",
         "//fb303:export_type",
         "//fb303:thread_cached_service_data",
         "//fb303/detail:quantile_stat_wrappers",
-        "//folly:fbstring",
-        "//folly:intrusive_list",
-        "//folly:synchronized",
-        "//folly/io/async:scoped_event_base_thread",
-        "//folly/logging:logging",
     ],
 )

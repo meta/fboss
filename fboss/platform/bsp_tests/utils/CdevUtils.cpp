@@ -14,7 +14,6 @@
 #include <vector>
 
 #include <fmt/format.h>
-#include <folly/Format.h>
 #include <folly/logging/xlog.h>
 
 #include "fboss/platform/bsp_tests/gen-cpp2/bsp_tests_runtime_config_types.h"

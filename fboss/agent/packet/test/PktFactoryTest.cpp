@@ -15,6 +15,7 @@
 #include "fboss/agent/packet/IPv4Hdr.h"
 #include "fboss/agent/packet/IPv6Hdr.h"
 #include "fboss/agent/packet/PTPHeader.h"
+#include "fboss/agent/packet/UDPHeader.h"
 
 using namespace facebook::fboss;
 using namespace facebook::fboss::utility;
@@ -701,6 +702,284 @@ TEST(PktFactoryTest, makeIpInIpTxPacketWithInnerV4) {
   ASSERT_TRUE(udp.has_value());
   EXPECT_EQ(udp->header().srcPort, 7000);
   EXPECT_EQ(udp->header().dstPort, 7001);
+}
+
+// --- makeIpInIpInIpPacket tests ---
+
+namespace {
+struct NestedIpPacketParams {
+  bool tagged;
+  std::optional<std::vector<uint8_t>> payload;
+  bool innerV4 = false;
+};
+void verifyNestedIpPacket(const NestedIpPacketParams& params) {
+  const auto expectedPayload =
+      params.payload.value_or(std::vector<uint8_t>(256, 0xff));
+  const std::optional<VlanID> vlan =
+      params.tagged ? std::optional<VlanID>(kTestVlan) : std::nullopt;
+  const auto outerSrc = folly::IPAddressV6("2001:db8:1::1");
+  const auto outerDst = folly::IPAddressV6("2001:db8:1::2");
+  const auto middleSrc = folly::IPAddressV6("2001:db8:2::1");
+  const auto middleDst = folly::IPAddressV6("2001:db8:2::2");
+  const auto innerSrc = folly::IPAddressV6("2001:db8:3::1");
+  const auto innerDst = folly::IPAddressV6("2001:db8:3::2");
+  constexpr uint32_t kFlowLabel = 0x12345;
+  auto makePacket = [&](const auto& src, const auto& dst) {
+    return makeIpInIpInIpPacket(
+        &TxPacket::allocateTxPacket,
+        vlan,
+        kSrcMac,
+        kDstMac,
+        outerSrc,
+        outerDst,
+        middleSrc,
+        middleDst,
+        src,
+        dst,
+        6000,
+        6001,
+        /*outerTrafficClass=*/0x20,
+        /*middleTrafficClass=*/0x10,
+        /*innerTrafficClass=*/0x08,
+        /*outerHopLimit=*/64,
+        /*middleHopLimit=*/32,
+        /*innerHopLimit=*/16,
+        kFlowLabel,
+        params.payload);
+  };
+  auto pkt = params.innerV4 ? makePacket(kSrcIpV4, kDstIpV4)
+                            : makePacket(innerSrc, innerDst);
+  const auto innerHeaderSize =
+      params.innerV4 ? IPv4Hdr::minSize() : IPv6Hdr::size();
+  ASSERT_NE(pkt, nullptr);
+  const auto ethernetSize = params.tagged ? 18 : 14;
+  EXPECT_EQ(
+      pkt->buf()->computeChainDataLength(),
+      ethernetSize + 2 * IPv6Hdr::size() + innerHeaderSize + UDPHeader::size() +
+          expectedPayload.size());
+  folly::io::Cursor cursor(pkt->buf());
+  verifyEthHeader(
+      cursor,
+      kDstMac,
+      kSrcMac,
+      static_cast<uint16_t>(ETHERTYPE::ETHERTYPE_IPV6),
+      params.tagged,
+      vlan);
+  IPv6Hdr outer(cursor);
+  EXPECT_EQ(outer.srcAddr, outerSrc);
+  EXPECT_EQ(outer.dstAddr, outerDst);
+  EXPECT_EQ(outer.trafficClass, 0x20);
+  EXPECT_EQ(outer.hopLimit, 64);
+  EXPECT_EQ(outer.flowLabel, kFlowLabel);
+  EXPECT_EQ(outer.nextHeader, static_cast<uint8_t>(IP_PROTO::IP_PROTO_IPV6));
+  EXPECT_EQ(
+      outer.payloadLength,
+      IPv6Hdr::size() + innerHeaderSize + UDPHeader::size() +
+          expectedPayload.size());
+
+  IPv6Hdr middle(cursor);
+  EXPECT_EQ(middle.srcAddr, middleSrc);
+  EXPECT_EQ(middle.dstAddr, middleDst);
+  EXPECT_EQ(middle.trafficClass, 0x10);
+  EXPECT_EQ(middle.hopLimit, 32);
+  EXPECT_EQ(middle.flowLabel, 0);
+  EXPECT_EQ(
+      middle.nextHeader,
+      static_cast<uint8_t>(
+          params.innerV4 ? IP_PROTO::IP_PROTO_IPV4 : IP_PROTO::IP_PROTO_IPV6));
+  EXPECT_EQ(
+      middle.payloadLength,
+      innerHeaderSize + UDPHeader::size() + expectedPayload.size());
+
+  auto verifyUdp = [&](const auto& inner) {
+    UDPHeader udp;
+    udp.parse(&cursor);
+    EXPECT_EQ(udp.srcPort, 6000);
+    EXPECT_EQ(udp.dstPort, 6001);
+    EXPECT_EQ(udp.length, UDPHeader::size() + expectedPayload.size());
+    EXPECT_EQ(udp.csum, udp.computeChecksum(inner, cursor));
+    std::vector<uint8_t> actualPayload(expectedPayload.size());
+    cursor.pull(actualPayload.data(), actualPayload.size());
+    EXPECT_EQ(actualPayload, expectedPayload);
+    EXPECT_TRUE(cursor.isAtEnd());
+  };
+  if (params.innerV4) {
+    IPv4Hdr inner(cursor);
+    EXPECT_EQ(inner.srcAddr, kSrcIpV4);
+    EXPECT_EQ(inner.dstAddr, kDstIpV4);
+    EXPECT_EQ(inner.dscp, 0x08);
+    EXPECT_EQ(inner.ttl, 16);
+    EXPECT_EQ(inner.protocol, static_cast<uint8_t>(IP_PROTO::IP_PROTO_UDP));
+    EXPECT_EQ(
+        inner.length,
+        innerHeaderSize + UDPHeader::size() + expectedPayload.size());
+    const auto checksum = inner.csum;
+    inner.computeChecksum();
+    EXPECT_EQ(inner.csum, checksum);
+    verifyUdp(inner);
+  } else {
+    IPv6Hdr inner(cursor);
+    EXPECT_EQ(inner.srcAddr, innerSrc);
+    EXPECT_EQ(inner.dstAddr, innerDst);
+    EXPECT_EQ(inner.trafficClass, 0x08);
+    EXPECT_EQ(inner.hopLimit, 16);
+    EXPECT_EQ(inner.flowLabel, 0);
+    EXPECT_EQ(inner.nextHeader, static_cast<uint8_t>(IP_PROTO::IP_PROTO_UDP));
+    EXPECT_EQ(inner.payloadLength, UDPHeader::size() + expectedPayload.size());
+
+    verifyUdp(inner);
+  }
+}
+
+} // namespace
+
+TEST(PktFactoryTest, makeIpInIpInIpPacketTagged) {
+  verifyNestedIpPacket({true, std::vector<uint8_t>{0, 1, 2, 0xff, 4}});
+}
+
+TEST(PktFactoryTest, makeIpInIpInIpPacketUntagged) {
+  verifyNestedIpPacket({false, std::vector<uint8_t>{0, 1, 2, 0xff, 4}});
+}
+
+TEST(PktFactoryTest, makeIpInIpInIpPacketDefaultPayload) {
+  verifyNestedIpPacket({true, std::nullopt});
+}
+
+TEST(PktFactoryTest, makeIpInIpInIpPacketEmptyPayload) {
+  verifyNestedIpPacket({false, std::vector<uint8_t>{}});
+}
+
+TEST(PktFactoryTest, makeIpInIpInIpPacketMaximumPayload) {
+  verifyNestedIpPacket({false, std::vector<uint8_t>(65447, 0x5a)});
+}
+
+TEST(PktFactoryTest, makeIpInIpInIpPacketInnerV4Tagged) {
+  verifyNestedIpPacket({true, std::vector<uint8_t>{0, 1, 2, 0xff, 4}, true});
+}
+
+TEST(PktFactoryTest, makeIpInIpInIpPacketInnerV4Untagged) {
+  verifyNestedIpPacket({false, std::vector<uint8_t>{0, 1, 2, 0xff, 4}, true});
+}
+
+TEST(PktFactoryTest, makeIpInIpInIpPacketInnerV4EmptyPayload) {
+  verifyNestedIpPacket({false, std::vector<uint8_t>{}, true});
+}
+
+TEST(PktFactoryTest, makeIpInIpInIpPacketInnerV4MaximumPayload) {
+  verifyNestedIpPacket({false, std::vector<uint8_t>(65467, 0x5a), true});
+}
+
+TEST(PktFactoryTest, makeIpInIpInIpPacketDefaultHeaderFields) {
+  auto pkt = makeIpInIpInIpPacket(
+      &TxPacket::allocateTxPacket,
+      std::nullopt,
+      kSrcMac,
+      kDstMac,
+      kSrcIpV6,
+      kDstIpV6,
+      kSrcIpV6,
+      kDstIpV6,
+      kSrcIpV6,
+      kDstIpV6,
+      6000,
+      6001);
+  folly::io::Cursor cursor(pkt->buf());
+  cursor.skip(14);
+  for (int i = 0; i < 3; ++i) {
+    IPv6Hdr header(cursor);
+    EXPECT_EQ(header.trafficClass, 0);
+    EXPECT_EQ(header.hopLimit, 255);
+    EXPECT_EQ(header.flowLabel, 0);
+  }
+}
+
+TEST(PktFactoryTest, makeIpInIpInIpPacketHopLimitInheritance) {
+  struct Allocator {
+    std::unique_ptr<TxPacket> allocatePacket(uint32_t size) const {
+      return TxPacket::allocateTxPacket(size);
+    }
+  } allocator;
+  for (const auto middleHopLimit :
+       {std::optional<uint8_t>{}, std::optional<uint8_t>{32}}) {
+    auto pkt = makeIpInIpInIpPacket(
+        &allocator,
+        std::nullopt,
+        kSrcMac,
+        kDstMac,
+        kSrcIpV6,
+        kDstIpV6,
+        kSrcIpV6,
+        kDstIpV6,
+        kSrcIpV6,
+        kDstIpV6,
+        6000,
+        6001,
+        0,
+        0,
+        0,
+        /*outerHopLimit=*/64,
+        middleHopLimit);
+    folly::io::Cursor cursor(pkt->buf());
+    cursor.skip(14);
+    IPv6Hdr outer(cursor);
+    IPv6Hdr middle(cursor);
+    IPv6Hdr inner(cursor);
+    EXPECT_EQ(outer.hopLimit, 64);
+    EXPECT_EQ(middle.hopLimit, middleHopLimit.value_or(64));
+    EXPECT_EQ(inner.hopLimit, 64);
+  }
+}
+
+TEST(PktFactoryTest, makeIpInIpInIpPacketRejectsOversizedPayload) {
+  EXPECT_DEATH(
+      makeIpInIpInIpPacket(
+          &TxPacket::allocateTxPacket,
+          std::nullopt,
+          kSrcMac,
+          kDstMac,
+          kSrcIpV6,
+          kDstIpV6,
+          kSrcIpV6,
+          kDstIpV6,
+          kSrcIpV6,
+          kDstIpV6,
+          6000,
+          6001,
+          0,
+          0,
+          0,
+          255,
+          std::nullopt,
+          std::nullopt,
+          0,
+          std::vector<uint8_t>(65448, 0)),
+      "Check failed");
+}
+
+TEST(PktFactoryTest, makeIpInIpInIpPacketInnerV4RejectsOversizedPayload) {
+  EXPECT_DEATH(
+      makeIpInIpInIpPacket(
+          &TxPacket::allocateTxPacket,
+          std::nullopt,
+          kSrcMac,
+          kDstMac,
+          kSrcIpV6,
+          kDstIpV6,
+          kSrcIpV6,
+          kDstIpV6,
+          kSrcIpV4,
+          kDstIpV4,
+          6000,
+          6001,
+          0,
+          0,
+          0,
+          255,
+          std::nullopt,
+          std::nullopt,
+          0,
+          std::vector<uint8_t>(65468, 0)),
+      "Check failed");
 }
 
 // --- makeARPTxPacket tests ---

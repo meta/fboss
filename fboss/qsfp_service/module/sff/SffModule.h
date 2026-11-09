@@ -294,7 +294,8 @@ class SffModule : public QsfpModule {
   virtual void setTransceiverLoopbackLocked(
       const std::string& portName,
       phy::Side side,
-      bool setLoopback) override;
+      bool setLoopback,
+      phy::LoopbackMode mode) override;
 
  private:
   // no copy or assignment
@@ -510,8 +511,6 @@ class SffModule : public QsfpModule {
    */
   folly::Synchronized<PrbsBitCount> systemPrbsSnapshot_;
   folly::Synchronized<PrbsBitCount> linePrbsSnapshot_;
-
-  const std::shared_ptr<const TransceiverConfig> tcvrConfig_;
 
   cfg::PortSpeed currentConfiguredSpeed_{cfg::PortSpeed::DEFAULT};
 };

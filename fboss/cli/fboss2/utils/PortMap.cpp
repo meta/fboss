@@ -142,16 +142,15 @@ void PortMap::mapInterfaceToPort(const cfg::Interface& interface) {
       const std::string& portName = portNameIt->second;
 
       // Check if this port is already mapped to a different interface.
-      // This can happen with trunk ports where a single port is associated
-      // with multiple VLANs (and thus multiple interfaces). In this case,
-      // we keep the first mapping and skip subsequent ones. The agent
-      // supports trunk ports (Port::VlanMembership is a map of VLANs),
-      // so this is a valid configuration.
+      // This can happen when a single port is associated with multiple
+      // VLANs (and thus multiple interfaces), which the config schema
+      // allows (Port::VlanMembership is a map of VLANs). In this case, we
+      // keep the first mapping and skip subsequent ones.
       auto existingMapping = portNameToInterfaceId_.find(portName);
       if (existingMapping != portNameToInterfaceId_.end()) {
         if (interface.portID().has_value()) {
-          // The trunk case above only arises from the VLAN-based fallback;
-          // two interfaces explicitly claiming the same port is a
+          // The multi-VLAN case above only arises from the VLAN-based
+          // fallback; two interfaces explicitly claiming the same port is a
           // misconfiguration, so keep it visible at default verbosity.
           LOG(WARNING) << "Port " << portName << " (logical ID "
                        << *portLogicalId
@@ -163,7 +162,7 @@ void PortMap::mapInterfaceToPort(const cfg::Interface& interface) {
                   << ") is already mapped to interface "
                   << existingMapping->second
                   << ". Skipping mapping to interface " << intfId
-                  << " (trunk port with multiple VLANs).";
+                  << " (port with multiple VLANs).";
         }
         return;
       }

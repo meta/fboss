@@ -11,23 +11,32 @@
 #include <gtest/gtest.h>
 
 #include "fboss/agent/AddressUtil.h"
+#include "fboss/agent/AgentFeatures.h"
 #include "fboss/agent/FibHelpers.h"
 #include "fboss/agent/LookupClassRouteUpdater.h"
 #include "fboss/agent/NeighborUpdater.h"
 #include "fboss/agent/SwSwitchRouteUpdateWrapper.h"
+#include "fboss/agent/ThriftHandler.h"
 #include "fboss/agent/state/FibInfo.h"
 #include "fboss/agent/state/FibInfoMap.h"
+#include "fboss/agent/state/LabelForwardingEntry.h"
 #include "fboss/agent/state/NextHopIdMaps.h"
 #include "fboss/agent/state/RouteNextHopEntry.h"
+#include "fboss/agent/state/StateUtils.h"
+#include "fboss/agent/state/SwitchSettings.h"
+#include "fboss/agent/state/SwitchState.h"
+#include "fboss/agent/test/LabelForwardingUtils.h"
 
 #include "fboss/agent/test/HwTestHandle.h"
 #include "fboss/agent/test/TestUtils.h"
 
+#include <folly/IPAddress.h>
 #include <folly/IPAddressV4.h>
 #include <folly/IPAddressV6.h>
 
 DECLARE_bool(enable_nexthop_id_manager);
 DECLARE_bool(resolve_nexthops_from_id);
+DECLARE_bool(mpls_rib);
 
 using folly::IPAddressV4;
 using folly::IPAddressV6;
@@ -643,6 +652,35 @@ TYPED_TEST(FibHelperTest, getNormalizedNextHopsFromEntry) {
   }
 }
 
+TEST(FibHelperEcmpWidthTest, getNormalizedNextHopsUsesStateEcmpWidth) {
+  gflags::FlagSaver flagSaver;
+  FLAGS_resolve_nexthops_from_id = false;
+  FLAGS_wide_ecmp = false;
+  FLAGS_optimized_ucmp = false;
+  FLAGS_ecmp_width = 64;
+
+  // State carrying a narrow ECMP width in SwitchSettings.
+  auto state = std::make_shared<SwitchState>();
+  addSwitchInfo(state, cfg::SwitchType::NPU, 0 /* switchId */);
+  constexpr uint32_t kNarrowEcmpWidth = 1;
+  utility::getFirstNodeIf(state->getSwitchSettings())
+      ->modify(&state)
+      ->setEcmpWidth(kNarrowEcmpWidth);
+  state->publish();
+
+  RouteNextHopSet nhops{
+      ResolvedNextHop(folly::IPAddress("1::1"), InterfaceID(1), 1),
+      ResolvedNextHop(folly::IPAddress("1::2"), InterfaceID(2), 1)};
+  RouteNextHopEntry entry(nhops, AdminDistance::EBGP);
+
+  // getNormalizedNextHops must normalize to the state's width (collapsing to a
+  // single nexthop), not to FLAGS_ecmp_width (64 would keep both).
+  auto result = getNormalizedNextHops(state, entry);
+  EXPECT_EQ(
+      result, RouteNextHopEntry::normalizeNextHops(nhops, kNarrowEcmpWidth));
+  EXPECT_NE(result, RouteNextHopEntry::normalizeNextHops(nhops));
+}
+
 TYPED_TEST(FibHelperTest, getNormalizedNextHopsWithOverrides) {
   this->programRouteWithNexthops(
       this->kPrefix2(), {this->kIpAddressA().str(), this->kIpAddressB().str()});
@@ -812,6 +850,97 @@ TEST_F(MergeNextHopIdMapsTest, MergeWithBothIdMapsFilled) {
   EXPECT_EQ(primarySetMap->size(), 2);
   EXPECT_EQ(primaryNhMap->size(), 3);
   EXPECT_EQ(primarySetMap->getNextHopIdSetIf(300), nullptr);
+}
+
+// MPLS resolver variants, driven by real label routes.
+class MplsFibHelperTest : public ::testing::Test {
+ public:
+  void SetUp() override {
+    savedEnableIdMgr_ = FLAGS_enable_nexthop_id_manager;
+    savedResolve_ = FLAGS_resolve_nexthops_from_id;
+    savedMplsRib_ = FLAGS_mpls_rib;
+    FLAGS_enable_nexthop_id_manager = true;
+  }
+
+  void TearDown() override {
+    FLAGS_enable_nexthop_id_manager = savedEnableIdMgr_;
+    FLAGS_resolve_nexthops_from_id = savedResolve_;
+    FLAGS_mpls_rib = savedMplsRib_;
+  }
+
+  // Switch must be created after FLAGS_mpls_rib is set.
+  void startSwitchAndAddLabelRoute() {
+    auto config = testConfigA();
+    handle_ = createTestHandle(&config);
+    sw_ = handle_->getSw();
+    // addMplsRoutes goes through ensureConfigured().
+    sw_->initialConfigApplied(std::chrono::steady_clock::now());
+    ThriftHandler thriftHandler(sw_);
+    thriftHandler.addMplsRoutes(
+        static_cast<int>(ClientID::OPENR),
+        std::make_unique<std::vector<MplsRoute>>(util::getTestRoutes(0, 1)));
+  }
+
+  std::shared_ptr<LabelForwardingEntry> labelEntry() {
+    auto label = *util::getTestRoutes(0, 1).front().topLabel();
+    return sw_->getState()->getLabelForwardingInformationBase()->getNodeIf(
+        label);
+  }
+
+  std::unique_ptr<HwTestHandle> handle_;
+  SwSwitch* sw_;
+  bool savedEnableIdMgr_;
+  bool savedResolve_;
+  bool savedMplsRib_;
+};
+
+// Regression: mpls_rib off means no IDs, which the plain resolvers abort on.
+TEST_F(MplsFibHelperTest, MplsRibOffReadsInlineFromLabelRoute) {
+  FLAGS_mpls_rib = false;
+  FLAGS_resolve_nexthops_from_id = true;
+  startSwitchAndAddLabelRoute();
+
+  auto entry = labelEntry();
+  ASSERT_NE(entry, nullptr);
+  const auto& fwd = entry->getForwardInfo();
+  auto clientEntry = entry->getEntryForClient(ClientID::OPENR);
+  ASSERT_NE(clientEntry, nullptr);
+
+  // Premise of the whole gate: no IDs on a label route in this mode.
+  EXPECT_FALSE(fwd.getResolvedNextHopSetID().has_value());
+  EXPECT_FALSE(clientEntry->getClientNextHopSetID().has_value());
+
+  auto state = sw_->getState();
+  EXPECT_EQ(getMplsNextHops(state, fwd), fwd.getNextHopSet());
+  EXPECT_EQ(
+      getMplsClientNextHops(state, *clientEntry), clientEntry->getNextHopSet());
+  EXPECT_EQ(getMplsNormalizedNextHops(state, fwd), fwd.normalizedNextHops());
+}
+
+// With mpls_rib on the route gets IDs and the variants are pass-throughs.
+TEST_F(MplsFibHelperTest, MplsRibOnDelegatesToPlainResolvers) {
+  FLAGS_mpls_rib = true;
+  FLAGS_resolve_nexthops_from_id = false;
+  startSwitchAndAddLabelRoute();
+
+  auto entry = labelEntry();
+  ASSERT_NE(entry, nullptr);
+  const auto& fwd = entry->getForwardInfo();
+  auto clientEntry = entry->getEntryForClient(ClientID::OPENR);
+  ASSERT_NE(clientEntry, nullptr);
+  EXPECT_TRUE(clientEntry->getClientNextHopSetID().has_value());
+
+  auto state = sw_->getState();
+  for (bool resolveFromId : {false, true}) {
+    FLAGS_resolve_nexthops_from_id = resolveFromId;
+    EXPECT_EQ(getMplsNextHops(state, fwd), getNextHops(state, fwd));
+    EXPECT_EQ(
+        getMplsNormalizedNextHops(state, fwd),
+        getNormalizedNextHops(state, fwd));
+    EXPECT_EQ(
+        getMplsClientNextHops(state, *clientEntry),
+        getClientNextHops(state, *clientEntry));
+  }
 }
 
 } // namespace facebook::fboss

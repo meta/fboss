@@ -85,7 +85,8 @@ CmdConfigL2LearningModeTraits::RetType CmdConfigL2LearningMode::queryClient(
   // Save the updated config - L2 learning mode changes require agent cold boot
   // to clear ASIC state
   session.saveConfig(
-      cli::ServiceType::AGENT, cli::ConfigActionLevel::AGENT_COLDBOOT);
+      cli::ServiceType::AGENT,
+      cli::ConfigActionLevel::DISRUPTIVE_SERVICE_RESTART);
 
   return fmt::format(
       "Successfully set L2 learning mode to '{}'",

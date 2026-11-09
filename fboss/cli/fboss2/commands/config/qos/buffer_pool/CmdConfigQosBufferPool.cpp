@@ -146,7 +146,7 @@ CmdConfigQosBufferPoolTraits::RetType CmdConfigQosBufferPool::queryClient(
 
   // Save the updated config - buffer pool changes require agent restart
   session.saveConfig(
-      cli::ServiceType::AGENT, cli::ConfigActionLevel::AGENT_WARMBOOT);
+      cli::ServiceType::AGENT, cli::ConfigActionLevel::SERVICE_RESTART);
 
   return fmt::format("Successfully configured buffer-pool '{}'", poolName);
 }

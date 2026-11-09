@@ -9,6 +9,8 @@
  */
 #pragma once
 
+#include <functional>
+
 #include <folly/FBString.h>
 #include <folly/IPAddress.h>
 #include <folly/json/dynamic.h>
@@ -53,6 +55,14 @@ struct thrift_cow::ThriftStructResolver<state::RouteNextHopsMulti> {
 /**
  * Map form clientId -> RouteNextHopEntry
  */
+// Resolves a per-client entry's nexthops. RouteNextHopsMulti is a state-layer
+// node with no access to SwitchState or NextHopIDManager, so callers that have
+// one supply an ID-aware resolver (getClientNextHops /
+// getClientNextHopsFromRib). Required, not defaulted: a caller that silently
+// fell back to inline storage would emit empty nexthops once inline is removed.
+using ClientNextHopsResolver =
+    std::function<RouteNextHopSet(const RouteNextHopEntry&)>;
+
 class RouteNextHopsMulti
     : public thrift_cow::ThriftStructNode<state::RouteNextHopsMulti> {
  private:
@@ -72,7 +82,8 @@ class RouteNextHopsMulti
   using Base::Base;
 
   std::vector<ClientAndNextHops> toThriftLegacy(
-      std::optional<ClientID> preferredClient = std::nullopt) const;
+      std::optional<ClientID> preferredClient,
+      const ClientNextHopsResolver& resolveNextHops) const;
 
   std::string strLegacy() const;
   void update(ClientID clientid, const RouteNextHopEntry& nhe);

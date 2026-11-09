@@ -45,7 +45,9 @@ BENCHMARK(RibSyncFibBenchmark) {
       ensemble->getSw()->getRib()->toThrift(),
       ensemble->getProgrammedState()->getFibsInfoMap(),
       nullptr,
-      nullptr);
+      nullptr,
+      getEcmpWidth(ensemble->getProgrammedState()),
+      ensemble->getProgrammedState()->getClassBasedPolicies());
   auto switchState = ensemble->getProgrammedState();
   rib->update(
       ensemble->getSw()->getScopeResolver(),

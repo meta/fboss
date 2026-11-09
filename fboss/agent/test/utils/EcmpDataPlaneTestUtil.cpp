@@ -4,6 +4,7 @@
 
 #include "fboss/agent/test/utils/EcmpDataPlaneTestUtil.h"
 
+#include "fboss/agent/FbossError.h"
 #include "fboss/agent/RouteUpdateWrapper.h"
 #include "fboss/agent/state/RouteNextHop.h"
 #include "fboss/agent/test/EcmpSetupHelper.h"
@@ -444,9 +445,14 @@ HwSrv6EcmpDataPlaneTestUtil::HwSrv6EcmpDataPlaneTestUtil(
 
 void HwSrv6EcmpDataPlaneTestUtil::programRoutes(
     int ecmpWidth,
-    const std::vector<NextHopWeight>& /*weights*/) {
+    const std::vector<NextHopWeight>& weights) {
   auto* helper = ecmpSetupHelper();
   auto* ensemble = getEnsemble();
+
+  if (!weights.empty() && weights.size() != static_cast<size_t>(ecmpWidth)) {
+    throw FbossError(
+        "Srv6 weights size ", weights.size(), " != ecmpWidth ", ecmpWidth);
+  }
 
   ensemble->applyNewState(
       [=](const std::shared_ptr<SwitchState>& state) {
@@ -462,7 +468,7 @@ void HwSrv6EcmpDataPlaneTestUtil::programRoutes(
     nhops.insert(ResolvedNextHop(
         nhop.ip,
         nhop.intf,
-        ECMP_WEIGHT,
+        weights.empty() ? ECMP_WEIGHT : weights[i],
         std::nullopt,
         std::nullopt,
         std::nullopt,

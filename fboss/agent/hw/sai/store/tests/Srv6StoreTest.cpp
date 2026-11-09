@@ -112,10 +112,20 @@ class MySidEntryStoreTest : public SaiStoreTest {
         SAI_MY_SID_ENTRY_ENDPOINT_BEHAVIOR_FLAVOR_PSP_AND_USP,
         SAI_NULL_OBJECT_ID,
         0,
-        SAI_PACKET_ACTION_FORWARD,
-        std::nullopt};
+        SAI_PACKET_ACTION_FORWARD};
   }
 };
+
+TEST_F(MySidEntryStoreTest, reloadMySidWithoutTunnelId) {
+  auto& srv6Api = saiApiTable->srv6Api();
+  auto entry = makeMySidEntryKey();
+  auto attrs = makeMySidEntryAttrs(SAI_MY_SID_ENTRY_ENDPOINT_BEHAVIOR_UA);
+  srv6Api.create<SaiMySidEntryTraits>(entry, attrs);
+
+  saiStore->reload();
+
+  EXPECT_NE(saiStore->get<SaiMySidEntryTraits>().get(entry), nullptr);
+}
 
 TEST_F(MySidEntryStoreTest, createMySidEntry) {
   auto& srv6Api = saiApiTable->srv6Api();

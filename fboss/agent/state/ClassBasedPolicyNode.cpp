@@ -20,10 +20,12 @@ ClassBasedPolicyNode::ClassBasedPolicyNode(
     const std::string& name,
     const state::NamedNextHopGroupAndID& defaultNextHopGroup,
     const std::map<ForwardingClass, state::NamedNextHopGroupAndID>&
-        class2NextHopGroup) {
+        class2NextHopGroup,
+    bool referenced) {
   set<switch_state_tags::name>(name);
   set<switch_state_tags::defaultNextHopGroup>(defaultNextHopGroup);
   set<switch_state_tags::class2NextHopGroup>(class2NextHopGroup);
+  set<switch_state_tags::referenced>(referenced);
 }
 
 template struct ThriftStructNode<

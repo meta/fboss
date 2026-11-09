@@ -13,6 +13,7 @@ add_executable(fboss2_framework_test
   # fboss/cli/fboss2/test/AggregationValidationTest.cpp - excluded (requires bundled schema)
   fboss/cli/fboss2/test/CmdArgsTest.cpp
   # fboss/cli/fboss2/test/CmdHelpTest.cpp - excluded (requires bundled schema)
+  fboss/cli/fboss2/test/CmdReadWriteModeTest.cpp
   fboss/cli/fboss2/test/CmdSubCommandsTest.cpp
   # fboss/cli/fboss2/test/FilterTest.cpp - excluded (requires bundled schema)
   # fboss/cli/fboss2/test/FilterValidationTest.cpp - excluded (requires bundled schema)
@@ -41,6 +42,7 @@ add_executable(fboss2_cmd_test
   fboss/cli/fboss2/test/CmdGetPcapTest.cpp
   fboss/cli/fboss2/test/CmdListConfigTest.cpp
   fboss/cli/fboss2/commands/config/gen/agent/tests/CmdConfigGenAgentTest.cpp
+  fboss/cli/fboss2/test/CmdSetInterfaceAdminStateTest.cpp
   fboss/cli/fboss2/test/CmdSetPortStateTest.cpp
   fboss/cli/fboss2/test/CmdShowAclTest.cpp
   fboss/cli/fboss2/test/CmdShowAgentBootTypeTest.cpp
@@ -77,9 +79,11 @@ add_executable(fboss2_cmd_test
   fboss/cli/fboss2/test/CmdShowInterfaceErrorsTest.cpp
   # fboss/cli/fboss2/test/CmdShowInterfaceFlapsTest.cpp - excluded (depends on hardware model not built in CMake)
   fboss/cli/fboss2/test/CmdShowInterfacePhyTest.cpp
+  fboss/cli/fboss2/test/CmdShowInterfacePhymapTest.cpp
   fboss/cli/fboss2/test/CmdShowInterfacePrbsTest.cpp
   fboss/cli/fboss2/test/CmdShowMacDetailsTest.cpp
   fboss/cli/fboss2/test/CmdShowMirrorTest.cpp
+  fboss/cli/fboss2/test/CmdShowMyMacTest.cpp
   fboss/cli/fboss2/test/CmdShowMySidTest.cpp
   fboss/cli/fboss2/test/CmdShowNextHopGroupsTest.cpp
   fboss/cli/fboss2/test/CmdShowPortTest.cpp
@@ -95,19 +99,31 @@ add_executable(fboss2_cmd_test
   fboss/cli/fboss2/test/CmdShowRouteTest.cpp
   fboss/cli/fboss2/test/CmdShowSystemPortTest.cpp
   fboss/cli/fboss2/test/CmdShowTeFlowTest.cpp
-  fboss/cli/fboss2/test/CmdShowTransceiverEepromTest.cpp
+  fboss/cli/fboss2/test/CmdShowInterfaceTransceiverEepromTest.cpp
   fboss/cli/fboss2/test/CmdShowTransceiverLoopbackTest.cpp
   # fboss/cli/fboss2/test/CmdShowTransceiverTest.cpp - excluded (depends on configerator bgp namespace)
+  fboss/cli/fboss2/test/CmdShowVersionDistroTest.cpp
+  # fboss/cli/fboss2/test/CmdShowVersionAgentTest.cpp - excluded (facebook-only command; depends on configerator)
   fboss/cli/fboss2/test/CmdBgpTestUtils.cpp
   fboss/cli/fboss2/test/CanonicalRibResolverTest.cpp
   fboss/cli/fboss2/test/CmdShowBgpChangelistTest.cpp
+  fboss/cli/fboss2/test/CmdShowBgpConfigTest.cpp
+  fboss/cli/fboss2/test/CmdShowBgpFibNexthopsTest.cpp
+  fboss/cli/fboss2/test/CmdShowBgpHealthTest.cpp
+  fboss/cli/fboss2/test/CmdShowBgpHoldTimersWikiDocsTest.cpp
+  fboss/cli/fboss2/test/CmdShowBgpInitializationEventsTest.cpp
   fboss/cli/fboss2/test/CmdShowBgpNeighborsAdvertisedPostPolicyTest.cpp
   fboss/cli/fboss2/test/CmdShowBgpNeighborsAdvertisedPrePolicyTest.cpp
   fboss/cli/fboss2/test/CmdShowBgpNeighborsAdvertisedRejectedTest.cpp
   fboss/cli/fboss2/test/CmdShowBgpNeighborsReceivedPostPolicyTest.cpp
   fboss/cli/fboss2/test/CmdShowBgpNeighborsReceivedPrePolicyTest.cpp
   fboss/cli/fboss2/test/CmdShowBgpNeighborsReceivedRejectedTest.cpp
+  fboss/cli/fboss2/test/CmdShowBgpNeighborsByNameTest.cpp
+  fboss/cli/fboss2/test/CmdShowBgpPolicyTest.cpp
+  fboss/cli/fboss2/test/CmdShowBgpPolicyQueryTest.cpp
+  fboss/cli/fboss2/test/CmdShowBgpProfilerTest.cpp
   fboss/cli/fboss2/test/CmdShowBgpNeighborsTest.cpp
+  fboss/cli/fboss2/test/CmdShowBgpNexthopInfoWikiDocsTest.cpp
   fboss/cli/fboss2/test/CmdShowBgpOriginatedRoutesTest.cpp
   fboss/cli/fboss2/test/CmdShowBgpPolicyConfigTest.cpp
   fboss/cli/fboss2/test/CmdShowBgpShadowRibTest.cpp
@@ -145,6 +161,7 @@ target_link_libraries(fboss2_cmd_test
   Folly::follybenchmark
   Folly::folly_test_util
   FBThrift::thriftcpp2
+  Boost::filesystem
 )
 
 gtest_discover_tests(fboss2_cmd_test)

@@ -5,6 +5,8 @@
 #include <fmt/format.h>
 #include <folly/logging/xlog.h>
 
+#include "fboss/platform/platform_manager/Utils.h"
+
 namespace facebook::fboss::platform::platform_manager {
 
 DataStore::DataStore(const PlatformConfig& config) : platformConfig_(config) {}
@@ -154,56 +156,10 @@ PmUnitConfig DataStore::resolvePmUnitConfig(const std::string& slotPath) const {
   }
   const auto& pmUnitInfo = slotPathToPmUnitInfo.at(slotPath);
   const auto& pmUnitName = *pmUnitInfo.name();
-  auto version = pmUnitInfo.version();
-  if (!version) {
-    XLOG(INFO) << fmt::format(
-        "Resolved {} to default PmUnitConfig of {}. No RespinVariantIndicator "
-        "was read from IDPROM at the slotPath.",
-        slotPath,
-        pmUnitName);
-    return platformConfig_.pmUnitConfigs()->at(pmUnitName);
-  }
-  if (platformConfig_.versionedPmUnitConfigs()->contains(pmUnitName)) {
-    for (const auto& versionedPmUnitConfig :
-         platformConfig_.versionedPmUnitConfigs()->at(pmUnitName)) {
-      bool matches = false;
-      if (const auto& pmUvs = versionedPmUnitConfig.pmUnitVersions();
-          pmUvs && !pmUvs->empty()) {
-        for (const auto& pmUv : *pmUvs) {
-          if (*pmUv.productionState() == *version->productionState() &&
-              *pmUv.productionSubState() == *version->productionSubState() &&
-              *pmUv.respinVariantIndicator() ==
-                  *version->respinVariantIndicator()) {
-            matches = true;
-            break;
-          }
-        }
-      } else {
-        matches = versionedPmUnitConfig.productSubVersion() &&
-            *versionedPmUnitConfig.productSubVersion() ==
-                *version->respinVariantIndicator();
-      }
-      if (matches) {
-        XLOG(INFO) << fmt::format(
-            "Resolved {} to versioned PmUnitConfig of {} with version {}.{}.{}",
-            slotPath,
-            pmUnitName,
-            *version->productionState(),
-            *version->productionSubState(),
-            *version->respinVariantIndicator());
-        return *versionedPmUnitConfig.pmUnitConfig();
-      }
-    }
-  }
   XLOG(INFO) << fmt::format(
-      "Resolved {} to default PmUnitConfig of {}. No versioned config matches "
-      "version {}.{}.{}",
-      slotPath,
-      pmUnitName,
-      *version->productionState(),
-      *version->productionSubState(),
-      *version->respinVariantIndicator());
-  return platformConfig_.pmUnitConfigs()->at(pmUnitName);
+      "Resolving PmUnitConfig of {} at {}", pmUnitName, slotPath);
+  return Utils::resolvePmUnitConfig(
+      platformConfig_, pmUnitName, pmUnitInfo.version().to_optional());
 }
 
 void DataStore::updateEepromContents(

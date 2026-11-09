@@ -8,6 +8,7 @@
  *
  */
 
+#include "fboss/agent/FibHelpers.h"
 #include "fboss/agent/test/BaseEcmpResourceManagerTest.h"
 
 namespace facebook::fboss {
@@ -84,7 +85,9 @@ TEST_F(NextHopIdAllocatorTest, protectionGroupIsNotTracked) {
       nullptr);
   const auto route = cfib(state_)->getRouteIf(prefix);
   ASSERT_NE(route, nullptr);
-  EXPECT_EQ(route->getForwardInfo().getNextHopSet(), protectionNhops);
+  EXPECT_EQ(
+      facebook::fboss::getNextHops(state_, route->getForwardInfo()),
+      protectionNhops);
   EXPECT_FALSE(route->getForwardInfo().hasOverrideSwitchingModeOrNhops());
 
   rmRoute(prefix);
@@ -110,7 +113,9 @@ TEST_F(NextHopIdAllocatorTest, singleNextHopToProtectionGroup) {
       nullptr);
   const auto route = cfib(state_)->getRouteIf(prefix);
   ASSERT_NE(route, nullptr);
-  EXPECT_EQ(route->getForwardInfo().getNextHopSet(), protectionNhops);
+  EXPECT_EQ(
+      facebook::fboss::getNextHops(state_, route->getForwardInfo()),
+      protectionNhops);
 }
 
 TEST_F(NextHopIdAllocatorTest, protectionGroupUnresolveAndRestore) {
@@ -142,7 +147,9 @@ TEST_F(NextHopIdAllocatorTest, protectionGroupUnresolveAndRestore) {
   const auto restoredRoute = cfib(state_)->getRouteIf(prefix);
   ASSERT_NE(restoredRoute, nullptr);
   EXPECT_TRUE(restoredRoute->isResolved());
-  EXPECT_EQ(restoredRoute->getForwardInfo().getNextHopSet(), protectionNhops);
+  EXPECT_EQ(
+      facebook::fboss::getNextHops(state_, restoredRoute->getForwardInfo()),
+      protectionNhops);
   EXPECT_FALSE(
       restoredRoute->getForwardInfo().hasOverrideSwitchingModeOrNhops());
 }

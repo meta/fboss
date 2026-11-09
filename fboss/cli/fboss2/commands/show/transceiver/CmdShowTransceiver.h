@@ -60,6 +60,10 @@ class CmdShowTransceiver
   const double LOW_POWER_WARN = -7.00;
   const double LOW_SNR_ERR = 19.00;
   const double LOW_SNR_WARN = 20.00;
+  // ZR media_snr_min_db from configerator
+  // neteng/ngt/link/link_parameter_thresholds
+  const double ZR_LOW_SNR_ERR = 12.00;
+  const double ZR_LOW_SNR_WARN = 13.00;
 
   std::map<int, PortInfoThrift> queryPortInfo(
       apache::thrift::Client<FbossCtrl>* agent) const;

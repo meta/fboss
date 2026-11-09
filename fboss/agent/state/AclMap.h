@@ -16,6 +16,10 @@
 #include "fboss/agent/state/Thrifty.h"
 #include "fboss/agent/types.h"
 
+#include <folly/Conv.h>
+
+#include <compare>
+
 namespace facebook::fboss {
 
 using AclMapLegacyTraits = NodeMapTraits<std::string, AclEntry>;
@@ -109,15 +113,31 @@ class AclMap : public ThriftMapNode<AclMap, AclMapTraits> {
  * order. i.e. old acls: [D, C, B] and new acls: [D, A, C, B], we will create
  * A because A is the smallest string in the acl list. But since old C hasn't
  * removed yet, it will try to add A with the same priority with the existing C.
+ *
+ * PBR programs every entry at one shared priority and distinguishes them by
+ * name, so priority alone is not a unique key. The key is therefore the
+ * (priority, name) pair: a rename at a fixed priority is an add plus a remove
+ * rather than a change.
  */
+struct PrioAclKey {
+  int priority{0};
+  std::string name;
+
+  auto operator<=>(const PrioAclKey&) const = default;
+};
+
+inline void toAppend(const PrioAclKey& key, std::string* result) {
+  folly::toAppend(key.priority, " (", key.name, ")", result);
+}
+
 struct PrioAclMapTraits {
-  using KeyType = int;
+  using KeyType = PrioAclKey;
   using Node = AclEntry;
   using ExtraFields = NodeMapNoExtraFields;
   using NodeContainer = std::map<KeyType, std::shared_ptr<Node>>;
 
   static KeyType getKey(const std::shared_ptr<Node>& entry) {
-    return entry->getPriority();
+    return PrioAclKey{entry->getPriority(), entry->getID()};
   }
 };
 

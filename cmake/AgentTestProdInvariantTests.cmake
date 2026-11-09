@@ -32,7 +32,8 @@ function(BUILD_SAI_INVARIANT_AGENT_TEST SAI_IMPL_NAME SAI_IMPL_ARG)
     fboss/agent/test/prod_invariant_tests/SaiProdInvariantTests.cpp
   )
 
-  add_sai_sdk_dependencies(sai_invariant_agent_test-${SAI_IMPL_NAME})
+  add_sai_sdk_dependencies(
+    sai_invariant_agent_test-${SAI_IMPL_NAME} "${SAI_IMPL_ARG}")
 
   target_link_libraries(sai_invariant_agent_test-${SAI_IMPL_NAME}
     -Wl,--whole-archive

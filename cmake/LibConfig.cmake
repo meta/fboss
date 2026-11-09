@@ -15,13 +15,19 @@ target_link_libraries(fboss_config_utils
 	external_phy
 )
 
-add_library(agent_config_utils
-  fboss/lib/config/AgentConfigUtils.cpp
+add_library(fboss_agent_config_utils
+  fboss/lib/config/agent/AclConfigUtils.cpp
+  fboss/lib/config/agent/CoppConfigUtils.cpp
+  fboss/lib/config/agent/InterfaceConfigUtils.cpp
+  fboss/lib/config/agent/PortConfigUtils.cpp
+  fboss/lib/config/agent/VlanConfigUtils.cpp
 )
 
-target_link_libraries(agent_config_utils
+target_link_libraries(fboss_agent_config_utils
+	Folly::folly
 	fboss_error
 	fboss_types
 	switch_config_cpp2
 	platform_mapping
+	switch_asics
 )

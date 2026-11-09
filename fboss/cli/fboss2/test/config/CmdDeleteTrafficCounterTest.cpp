@@ -149,12 +149,15 @@ TEST_F(
   EXPECT_TRUE(hasCounter("ttld-prod-public"));
 }
 
-TEST_F(CmdDeleteTrafficCounterTestFixture, deleteAbsentCounterRefused) {
+TEST_F(CmdDeleteTrafficCounterTestFixture, deleteAbsentCounterIsNoop) {
+  const auto sessionBefore = sessionConfigText();
   auto cmd = CmdDeleteTrafficCounter();
-  EXPECT_THROW(
-      cmd.queryClient(localhost(), TrafficCounterNameArg({"no-such-counter"})),
-      FbossError);
+  auto result =
+      cmd.queryClient(localhost(), TrafficCounterNameArg({"no-such-counter"}));
+  EXPECT_THAT(result, HasSubstr("not found, nothing to delete"));
   EXPECT_EQ(counterCount(), 3);
+  EXPECT_EQ(sessionConfigText(), sessionBefore)
+      << "a no-op delete must not save the config";
 }
 
 } // namespace facebook::fboss

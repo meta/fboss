@@ -58,7 +58,7 @@ This character device supports the following IOCTL commands:
 
 </TestCase>
 
-More details can be found in the [fbiob-ioctl.h](https://github.com/facebook/fboss/blob/main/fboss/platform/platform_manager/uapi/fbiob-ioctl.h)
+More details can be found in the [fbiob-ioctl.h](https://github.com/meta/fboss/blob/main/fboss/platform/platform_manager/uapi/fbiob-ioctl.h)
 header file.
 
 ### 2.2 Supported Controller Interfaces
@@ -294,3 +294,29 @@ System-level LEDs (e.g. `sys_led`, `fan_led`) have no numeric id in the name.
     ```
 
 </TestCase>
+
+**Blinking:**
+
+- FBOSS services blink LEDs using the kernel `timer` LED trigger. Each LED
+  must accept `timer` and `none` written to
+  `/sys/class/leds/<LED_NAME>/trigger`.
+- When the `timer` trigger is active, the LED must expose `delay_on` and
+  `delay_off` files (in milliseconds) under `/sys/class/leds/<LED_NAME>/`.
+  FBOSS uses two blink rates, with equal on and off times:
+  - Fast blink: `500` ms
+  - Slow blink: `2000` ms
+- To start blinking, FBOSS writes `timer` to `trigger`, the blink rate to
+  `delay_on` and `delay_off`, and then `max_brightness` to `brightness`. To
+  stop blinking, FBOSS writes `none` to `trigger`.
+  - The configured blink rate must be reflected in the `delay_on` and
+    `delay_off` files. For example,
+    ```bash
+    $ echo timer > /sys/class/leds/port1_led1:blue:status/trigger
+    $ echo 500 > /sys/class/leds/port1_led1:blue:status/delay_on
+    $ echo 500 > /sys/class/leds/port1_led1:blue:status/delay_off
+    $ echo 1 > /sys/class/leds/port1_led1:blue:status/brightness
+    $ cat /sys/class/leds/port1_led1:blue:status/delay_on
+    500
+    $ cat /sys/class/leds/port1_led1:blue:status/delay_off
+    500
+    ```

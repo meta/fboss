@@ -89,8 +89,13 @@ class XcvrLib {
   void validateXcvrInfos();
   void buildPerTransceiverLedCounts();
 
-  // Uncached computation backing getResetHoldHi(); may shell out for Arista.
+  // Uncached computation backing getResetHoldHi(); reads sysfs for Arista.
   int computeResetHoldHi() const;
+
+  // Version of the BSP driver bound to the xcvr_ctrl devices, or std::nullopt
+  // if none is bound or reports a parseable version.
+  std::optional<platform::platform_manager::package_manager::BspVersion>
+  getLoadedBspVersion() const;
 
   struct XcvrInfo {
     std::optional<int> numLeds;
@@ -100,8 +105,8 @@ class XcvrLib {
   platform::platform_manager::PlatformConfig pmConfig_;
   std::shared_ptr<platform::platform_manager::package_manager::SystemInterface>
       systemInterface_;
-  // Platform-wide value; computed lazily once (getInstalledBspVersion() shells
-  // out) and reused across the per-transceiver mapping-build loop.
+  // Platform-wide value; computed lazily once (getLoadedBspVersion() reads
+  // sysfs) and reused across the per-transceiver mapping-build loop.
   mutable std::optional<int> resetHoldHiCache_;
   int numXcvrs_{0};
   // Indexed by xcvrId (1-based; index 0 unused)

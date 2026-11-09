@@ -22,24 +22,42 @@ cpp_library(
         "TCPHeader.cpp",
         "UDPHeader.cpp",
     ],
+    headers = [
+        "ArpHdr.h",
+        "DHCPv4Packet.h",
+        "DHCPv6Packet.h",
+        "EthHdr.h",
+        "ICMPExtHdr.h",
+        "ICMPHdr.h",
+        "IPv4Hdr.h",
+        "IPv6Hdr.h",
+        "LlcHdr.h",
+        "MPLSHdr.h",
+        "NDP.h",
+        "NDPRouterAdvertisement.h",
+        "PTPHeader.h",
+        "PktUtil.h",
+        "TCPHeader.h",
+        "UDPHeader.h",
+    ],
     deps = [
         "fbsource//third-party/fmt:fmt",
+        "fbsource//xplat/folly/lang:bits",
+        "fbsource//xplat/folly/logging:logging",
         "//fboss/agent:dhcpv4_options_of_interest",
         "//fboss/agent:fboss-error",
         "//fboss/agent:stats",
-        "//folly/lang:bits",
-        "//folly/logging:logging",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:conv",
+        "fbsource//xplat/folly:network_address",
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/io:iobuf",
         ":ether_type",
         ":hdr_parse_error",
         ":ipproto",
         "//fboss/agent:fboss-types",
         "//fboss/agent:utils",
-        "//folly:conv",
-        "//folly:network_address",
-        "//folly:string",
-        "//folly/io:iobuf",
     ],
 )
 
@@ -48,10 +66,13 @@ cpp_library(
     srcs = [
         "SflowStructs.cpp",
     ],
+    headers = [
+        "SflowStructs.h",
+    ],
     exported_deps = [
-        "//folly:exception_string",
-        "//folly:network_address",
-        "//folly/io:iobuf",
+        "fbsource//xplat/folly:exception_string",
+        "fbsource//xplat/folly:network_address",
+        "fbsource//xplat/folly/io:iobuf",
     ],
 )
 
@@ -60,9 +81,12 @@ cpp_library(
     srcs = [
         "IpfixHeader.cpp",
     ],
+    headers = [
+        "IpfixHeader.h",
+    ],
     deps = [":hdr_parse_error"],
     exported_deps = [
-        "//folly/io:iobuf",
+        "fbsource//xplat/folly/io:iobuf",
     ],
 )
 
@@ -71,13 +95,16 @@ cpp_library(
     srcs = [
         "PktUtil.cpp",
     ],
+    headers = [
+        "PktUtil.h",
+    ],
     deps = [
         "fbsource//third-party/fmt:fmt",
+        "fbsource//xplat/folly/io:iobuf",
         "//fboss/agent:fboss-error",
-        "//folly/io:iobuf",
     ],
     exported_deps = [
-        "//folly:network_address",
+        "fbsource//xplat/folly:network_address",
     ],
 )
 
@@ -91,20 +118,28 @@ cpp_library(
         "TCPPacket.cpp",
         "UDPDatagram.cpp",
     ],
+    headers = [
+        "EthFrame.h",
+        "IPPacket.h",
+        "MPLSPacket.h",
+        "PktFactory.h",
+        "TCPPacket.h",
+        "UDPDatagram.h",
+    ],
     deps = [
+        "fbsource//xplat/folly:network_address",
         ":ipproto",
         "//common/logging:logging",
         "//fboss/agent:fboss-error",
         "//fboss/agent:hw_switch",
-        "//folly:network_address",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/io:iobuf",
         ":ether_type",
         ":packet",
         ":sflow_structs",
         "//fboss/agent:fboss-types",
         "//fboss/agent:packet",
-        "//folly/io:iobuf",
     ],
 )
 

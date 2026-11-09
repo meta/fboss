@@ -36,6 +36,7 @@ list(APPEND SAI_BENCHMARKS rib_sync_fib_speed)
 list(APPEND SAI_BENCHMARKS ucmp_scale_benchmark)
 list(APPEND SAI_BENCHMARKS srv6_scale_benchmark)
 list(APPEND SAI_BENCHMARKS srv6_mysid_scale_benchmark)
+list(APPEND SAI_BENCHMARKS pbr_scale_benchmark)
 list(APPEND SAI_BENCHMARKS cpu_latency_benchmark)
 list(APPEND SAI_BENCHMARKS system_scale_churn_memory_benchmark)
 list(APPEND SAI_BENCHMARKS tun_manager_probe_and_cleanup_speed)
@@ -71,7 +72,8 @@ function(BUILD_ALL_SAI_BENCHMARKS SAI_IMPL_NAME SAI_IMPL_ARG)
 
   # Mono benchmark binary
   add_executable(sai_all_benchmarks-${SAI_IMPL_NAME} /dev/null)
-  add_sai_sdk_dependencies(sai_all_benchmarks-${SAI_IMPL_NAME})
+  add_sai_sdk_dependencies(
+    sai_all_benchmarks-${SAI_IMPL_NAME} "${SAI_IMPL_ARG}")
   target_link_libraries(sai_all_benchmarks-${SAI_IMPL_NAME}
     -Wl,--whole-archive
     mono_sai_agent_benchmarks_main
@@ -90,7 +92,8 @@ function(BUILD_ALL_SAI_BENCHMARKS SAI_IMPL_NAME SAI_IMPL_ARG)
 
   # Multi-switch benchmark binary
   add_executable(sai_multi_switch_all_benchmarks-${SAI_IMPL_NAME} /dev/null)
-  add_sai_sdk_dependencies(sai_multi_switch_all_benchmarks-${SAI_IMPL_NAME})
+  add_sai_sdk_dependencies(
+    sai_multi_switch_all_benchmarks-${SAI_IMPL_NAME} "${SAI_IMPL_ARG}")
   target_link_libraries(sai_multi_switch_all_benchmarks-${SAI_IMPL_NAME}
     -Wl,--whole-archive
     multi_switch_sai_agent_benchmarks_main

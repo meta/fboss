@@ -10,6 +10,7 @@ from fboss_test_runner.constants import (
     OPT_ARG_PLATFORM_MAPPING_OVERRIDE_PATH,
 )
 from fboss_test_runner.runners.test_runner import TestRunner
+from fboss_test_runner.tier_selection import TestCapability
 
 QSFP_KNOWN_BAD_TESTS = (
     "./share/qsfp_known_bad_tests/fboss_qsfp_known_bad_tests.materialized_JSON"
@@ -19,9 +20,21 @@ QSFP_UNSUPPORTED_TESTS = (
 )
 QSFP_SERVICE_DIR = "/dev/shm/fboss/qsfp_service"  # noqa: S108
 QSFP_WARMBOOT_CHECK_FILE = f"{QSFP_SERVICE_DIR}/can_warm_boot"
+QSFP_TEST_METADATA = "./share/hw_sanity_tests/qsfp_test_metadata.json"
+OPT_ARG_WITHOUT_TRANSCEIVERS = "--without-transceivers"
 
 
 class QsfpTestRunner(TestRunner):
+    def _get_tier_metadata_file(self) -> str:
+        return QSFP_TEST_METADATA
+
+    def _get_available_test_capabilities(self) -> tuple[TestCapability, ...]:
+        return (
+            (TestCapability.EXTERNAL_PHY,)
+            if self.args.without_transceivers
+            else (TestCapability.TRANSCEIVER,)
+        )
+
     def add_subcommand_arguments(self, sub_parser: ArgumentParser) -> None:
         super().add_subcommand_arguments(sub_parser)
         self._add_service_arguments(sub_parser)
@@ -39,6 +52,14 @@ class QsfpTestRunner(TestRunner):
             type=str,
             help="A file path to a BSP platform mapping JSON file to be used.",
             default=None,
+        )
+        sub_parser.add_argument(
+            OPT_ARG_WITHOUT_TRANSCEIVERS,
+            action="store_true",
+            help=(
+                "Select tier rules for platforms without pluggable transceivers "
+                "and with external PHYs."
+            ),
         )
 
     def _get_known_bad_tests_file(self) -> str:

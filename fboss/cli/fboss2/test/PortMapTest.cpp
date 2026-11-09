@@ -309,9 +309,9 @@ TEST_F(PortMapTest, DuplicatePortMappingKeepsFirst) {
       interfaces[1].portID() = *firstInterfacePortId;
 
       // Building the PortMap should succeed (no exception thrown).
-      // This supports trunk ports where a single port is associated with
-      // multiple VLANs (and thus multiple interfaces). The first mapping
-      // is kept and subsequent ones are skipped.
+      // A single port may be associated with multiple VLANs (and thus
+      // multiple interfaces). The first mapping is kept and subsequent
+      // ones are skipped.
       PortMap portMap(config);
 
       // The first interface mapping should be kept

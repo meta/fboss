@@ -14,12 +14,17 @@
 #include <thrift/lib/cpp2/async/RocketClientChannel.h>
 #include <thrift/lib/cpp2/protocol/Serializer.h>
 #include "fboss/agent/EnumUtils.h"
+#include "fboss/agent/FbossError.h"
 #include "fboss/led_service/BspLedManager.h"
 #include "fboss/led_service/LedManager.h"
 #include "fboss/led_service/LedUtils.h"
 #include "fboss/led_service/hw_test/LedServiceTest.h"
 #include "fboss/lib/bsp/BspSystemContainer.h"
 #include "fboss/lib/led/LedIO.h"
+
+#ifndef IS_OSS
+#include "common/base/Proc.h"
+#endif
 
 namespace facebook::fboss {
 
@@ -45,10 +50,38 @@ void LedServiceTest::SetUp() {
 }
 
 void LedServiceTest::TearDown() {
+  if (ensemble_ != nullptr) {
+    EXPECT_NO_THROW(checkLedMemoryInBounds());
+  }
   // Remove ensemble and objects contained there
   ensemble_.reset();
   ledManager_ = nullptr;
   platformMap_ = nullptr;
+}
+
+void LedServiceTest::checkLedMemoryInBounds() const {
+#ifndef IS_OSS
+  const auto* ledConfig = ledManager_->getLedConfig();
+  if (ledConfig == nullptr) {
+    throw FbossError("LED config is not loaded, cannot check memory bounds");
+  }
+  auto ledTestConfig = ledConfig->thriftConfig_.ledTestConfig();
+  if (!ledTestConfig.has_value() ||
+      !ledTestConfig->ledServiceMemLimitBytes().has_value()) {
+    XLOG(INFO) << "ledServiceMemLimitBytes not set in led config, "
+               << "skipping memory check";
+    return;
+  }
+  int64_t memUsage = facebook::Proc::getMemoryUsage();
+  auto memUsageThreshold = *ledTestConfig->ledServiceMemLimitBytes();
+  if (memUsage > memUsageThreshold) {
+    throw FbossError(
+        "LED service RSS memory ",
+        memUsage,
+        " above expected ",
+        memUsageThreshold);
+  }
+#endif
 }
 
 std::vector<TransceiverID> LedServiceTest::getAllTransceivers(
@@ -416,6 +449,34 @@ TEST_F(LedServiceTest, checkLedBlinking) {
   }
 }
 
+// Lane IDs that BspLedManager::setLedBasedOnLOS looks up for this port's LEDs.
+std::vector<int> getPortLedBackedLanes(
+    BspLedManager* bspMgr,
+    TransceiverID tcvr,
+    PortID swPort,
+    cfg::PortProfileID profile) {
+  std::vector<int> lanes;
+  if (bspMgr == nullptr) {
+    return lanes;
+  }
+  try {
+    auto ledCtrls = bspMgr->getBspSystemContainer()->getLedController(tcvr + 1);
+    auto portLedIds = bspMgr->getLedIdFromSwPort(swPort, profile);
+    for (const auto& [ledId, ctrlPair] : ledCtrls) {
+      if (portLedIds.count(ledId) != 0) {
+        for (auto lane : ctrlPair.second) {
+          lanes.push_back(lane);
+        }
+      }
+    }
+  } catch (const std::exception& ex) {
+    XLOG(ERR) << "Failed to get LED backed lanes for port " << swPort << ": "
+              << ex.what();
+    lanes.clear();
+  }
+  return lanes;
+}
+
 TEST_F(LedServiceTest, testTcvrLos) {
   auto transceivers = getAllTransceivers(platformMap_);
   auto blinkSupported = ledManager_->blinkingSupported();
@@ -544,11 +605,46 @@ TEST_F(LedServiceTest, testTcvrLos) {
         return ret;
       };
 
+      auto* bspMgrForLos = dynamic_cast<BspLedManager*>(ledManager_);
+      auto portLanes =
+          getPortLedBackedLanes(bspMgrForLos, tcvr, swPort, profile);
+      const bool useRealLanes = bspMgrForLos != nullptr && !portLanes.empty();
+      int maxLane = 1;
+      if (useRealLanes) {
+        maxLane = *std::max_element(portLanes.begin(), portLanes.end());
+      }
+      auto createPortSignals = [&](uint16_t losCount) {
+        if (!useRealLanes) {
+          return createSignals(2, std::min<uint16_t>(losCount, 2));
+        }
+        std::vector<MediaLaneSignals> signals(maxLane + 1);
+        for (uint16_t i = 0; i < losCount && i < portLanes.size(); i++) {
+          signals[portLanes[i]].rxLos() = true;
+        }
+        return signals;
+      };
+      auto getPortLanes = [&]() {
+        if (!useRealLanes) {
+          return std::vector<int>{1, 2};
+        }
+        return portLanes;
+      };
+
       LedManager::LedTransceiverStateUpdate tcvrUpdate;
       tcvrUpdate.present = true;
-      tcvrUpdate.mediaLaneSignals = createSignals(2, 0);
-      tcvrUpdate.portNameToMediaLanes[swPortName.value()] = {1, 2};
+      tcvrUpdate.mediaLaneSignals = createPortSignals(0);
+      tcvrUpdate.portNameToMediaLanes[swPortName.value()] = getPortLanes();
       std::map<int, LedManager::LedTransceiverStateUpdate> xcvrLosMap;
+      // Siblings sharing an LED need LOS too, or the aggregate color (BLUE)
+      // and the per-LED color (YELLOW) disagree.
+      for (auto& sibling : swPorts) {
+        if (sibling == swPort) {
+          continue;
+        }
+        auto siblingName = platformMap_->getPortNameByPortId(sibling);
+        CHECK(siblingName.has_value());
+        tcvrUpdate.portNameToMediaLanes[siblingName.value()] = getPortLanes();
+      }
       xcvrLosMap[tcvr] = tcvrUpdate;
       ledManager_->updateLedStatus(xcvrLosMap);
 
@@ -559,7 +655,7 @@ TEST_F(LedServiceTest, testTcvrLos) {
           swPort, blinkSupported ? led::Blink::FAST : led::Blink::OFF, testNum);
 
       // 12- set 1 lanes with LOS
-      tcvrUpdate.mediaLaneSignals = createSignals(2, 1);
+      tcvrUpdate.mediaLaneSignals = createPortSignals(1);
       xcvrLosMap[tcvr] = tcvrUpdate;
       ledManager_->updateLedStatus(xcvrLosMap);
       // Led color/blink remains same if all RX LOS are cleared in port, as long
@@ -569,7 +665,8 @@ TEST_F(LedServiceTest, testTcvrLos) {
           swPort, blinkSupported ? led::Blink::FAST : led::Blink::OFF, testNum);
 
       // 13- set all lanes with LOS
-      tcvrUpdate.mediaLaneSignals = createSignals(2, 2);
+      tcvrUpdate.mediaLaneSignals =
+          createPortSignals(useRealLanes ? portLanes.size() : 2);
       xcvrLosMap[tcvr] = tcvrUpdate;
       ledManager_->updateLedStatus(xcvrLosMap);
       // Led color/blink remains same if all RX LOS are cleared in port, as long

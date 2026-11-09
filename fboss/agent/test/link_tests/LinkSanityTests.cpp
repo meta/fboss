@@ -443,11 +443,15 @@ TEST_F(LinkTest, testOpticsRemediation) {
             platform()->getPlatformPort(port)->getTransceiverID().value();
         auto txInfoItr = transceiverInfos.find(tcvrId);
         if ((txInfoItr != transceiverInfos.end()) &&
-            (txInfoItr->second.tcvrState().has_value() &&
+            (apache::thrift::
+                 is_non_optional_field_set_manually_or_by_serializer(
+                     txInfoItr->second.tcvrState()) &&
              txInfoItr->second.tcvrState()->identifier().has_value() &&
              txInfoItr->second.tcvrState()->identifier().value() !=
                  TransceiverModuleIdentifier::MINIPHOTON_OBO) &&
-            (txInfoItr->second.tcvrStats().has_value() &&
+            (apache::thrift::
+                 is_non_optional_field_set_manually_or_by_serializer(
+                     txInfoItr->second.tcvrStats()) &&
              txInfoItr->second.tcvrStats()->remediationCounter().has_value())) {
           XLOG(DBG2)
               << "Tcvr Id " << tcvrId << " remediation counter "

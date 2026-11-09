@@ -39,12 +39,10 @@ std::string aclRuleConfigHelpText();
 // <attr>       must be one of the supported attributes (see AclRuleAttrs.h).
 // <value>      attribute-dependent — see attribute-specific parsing in the
 //              constructor. For `action`, this is the action sub-attribute
-//              (permit/deny/send-to-queue/...).
+//              (permit/deny/deny-data-and-control-plane), all of which set
+//              AclEntry.actionType.
 // <extra>      attribute-dependent trailing token. Only valid for
-//              `ttl <value> [<mask>]` (mask, defaults 0xFF), the no-arg
-//              actions (omit), or `action redirect nexthop <ip>` (where
-//              <extra> is the `nexthop` keyword and a sixth token carries
-//              the IP).
+//              `ttl <value> [<mask>]` (mask, defaults 0xFF).
 class AclRuleConfigArgs : public utils::BaseObjectArgType<std::string> {
  public:
   /* implicit */ AclRuleConfigArgs( // NOLINT(google-explicit-constructor)
@@ -69,22 +67,7 @@ class AclRuleConfigArgs : public utils::BaseObjectArgType<std::string> {
   // Apply the parsed attribute value to the given AclEntry. Throws if the
   // rule's existing state is incompatible with the change (none of the
   // current attributes carry such a constraint, but kept as a hook).
-  // Only handles match-field attributes plus `action permit | deny`
-  // (which lives on AclEntry.actionType). The remaining `action`
-  // sub-attrs live on a MatchAction attached via
-  // dataPlaneTrafficPolicy.matchToAction — see applyActionTo().
   void applyTo(cfg::AclEntry& rule) const;
-
-  // True if attribute_ == "action" and the sub-attribute targets a
-  // MatchAction field (everything other than the actionType actions). The
-  // handler
-  // routes these through applyActionTo() instead of applyTo().
-  bool isMatchAction() const;
-
-  // Apply the parsed action to the given MatchAction. Caller is
-  // responsible for locating/creating the MatchToAction entry keyed by
-  // rule name on dataPlaneTrafficPolicy.matchToAction.
-  void applyActionTo(cfg::MatchAction& ma) const;
 
  private:
   std::string tableName_;
@@ -92,15 +75,11 @@ class AclRuleConfigArgs : public utils::BaseObjectArgType<std::string> {
   std::string attribute_;
   std::string rawValue_;
 
-  // The parsed mutation, captured at parse time and replayed by applyTo() /
-  // applyActionTo(). Keeping parse-and-apply together (one lambda per
-  // attribute) means each attribute lives in exactly one place instead of a
-  // parse chain plus a parallel apply chain. At most one is set: match-field
-  // attrs and the actionType actions set applyEntryFn_; MatchAction-typed
-  // actions set
-  // applyActionFn_.
+  // The parsed mutation, captured at parse time and replayed by applyTo().
+  // Keeping parse-and-apply together (one lambda per attribute) means each
+  // attribute lives in exactly one place instead of a parse chain plus a
+  // parallel apply chain.
   std::function<void(cfg::AclEntry&)> applyEntryFn_;
-  std::function<void(cfg::MatchAction&)> applyActionFn_;
 };
 
 struct CmdConfigAclRuleTraits : public WriteCommandTraits {
@@ -113,16 +92,14 @@ struct CmdConfigAclRuleTraits : public WriteCommandTraits {
     // subcommand-name anywhere up the tree (e.g. `protocol`, `vlan` —
     // siblings of `acl` under `config`) to that subcommand instead of the
     // positional, which strands the attribute value as an extra and
-    // teleports the parser into the wrong subtree. expected_max=6
-    // accommodates the optional ttl mask, the no-arg actions
-    // (permit/deny/deny-data-and-control-plane/trap-to-cpu/copy-to-cpu — 4
-    // tokens), and the `action redirect nexthop <ip>` form (6 tokens).
-    // allow_extra_args() is needed so CLI11's positional consume loop keeps
-    // eating past expected_min. AclRuleConfigArgs validates exact arity per
-    // attr.
+    // teleports the parser into the wrong subtree. expected_max=5
+    // accommodates the optional ttl mask; every action form is exactly 4
+    // tokens (<table> <rule> action <sub>). allow_extra_args() is needed so
+    // CLI11's positional consume loop keeps eating past expected_min.
+    // AclRuleConfigArgs validates exact arity per attr.
     cmd.add_option("acl_rule_config", args, aclRuleConfigHelpText())
         ->required()
-        ->expected(4, 6)
+        ->expected(4, 5)
         ->allow_extra_args();
   }
   using ObjectArgType = AclRuleConfigArgs;

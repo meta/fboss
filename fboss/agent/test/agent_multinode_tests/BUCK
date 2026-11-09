@@ -12,6 +12,7 @@ cpp_library(
         "AgentMultiNodeDsfTest.cpp",
         "AgentMultiNodeDsfUtils.cpp",
         "AgentMultiNodeFabricLinkMonitoringTest.cpp",
+        "AgentMultiNodePortOperStatusLatchTest.cpp",
         "AgentMultiNodeProcessRestartTest.cpp",
         "AgentMultiNodeTest.cpp",
         "AgentMultiNodeUtils.cpp",
@@ -30,7 +31,9 @@ cpp_library(
         "AgentMultiNodeVoqSwitchNeighborTests.h",
         "AgentMultiNodeVoqSwitchTrafficTests.h",
         "DsfTopologyInfo.h",
+        "TopologyInfo.h",
     ],
+    # @lint-ignore BUCKLINT link_whole is required for gtest registration
     link_whole = True,
     deps = [
         "fbsource//third-party/fmt:fmt",
@@ -39,6 +42,7 @@ cpp_library(
         "//fboss/agent:asic_utils",
         "//fboss/agent:fboss-error",
         "//fboss/agent:switchinfo_utils",
+        "//fboss/agent/hw:stats_constants",
         "//fboss/agent/packet:packet_factory",
         "//fboss/agent/test:utils",
         "//fboss/agent/test/thrift_client_utils:thrift_client_utils",
@@ -47,6 +51,7 @@ cpp_library(
         "//fboss/lib:common_utils",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:network_address",
         "//fboss/agent:agent_features",
         "//fboss/agent:core",
         "//fboss/agent:fboss-types",
@@ -55,7 +60,48 @@ cpp_library(
         "//fboss/agent/if:hw_ctrl-cpp2-services",
         "//fboss/agent/state:state",
         "//fboss/agent/test:agent_hw_test",
-        "//folly:network_address",
+    ],
+)
+
+cpp_library(
+    name = "agent_te_srv6_multinode_test_src",
+    srcs = [
+        "AgentMultiNodeTeSrv6Test.cpp",
+    ],
+    # @lint-ignore BUCKLINT link_whole is required for gtest registration
+    link_whole = True,
+    deps = [
+        "fbsource//third-party/googletest:gtest",
+        "fbsource//xplat/folly:network_address",
+        "fbsource//xplat/folly:scope_guard",
+        ":agent_multinode_test_src",
+        "//fboss/agent:address_utils",
+        "//fboss/agent:load_agent_config",
+        "//fboss/agent/if:fboss-cpp2-types",
+        "//fboss/agent/packet:packet_factory",
+        "//fboss/agent/test:agent_hw_test",
+        "//fboss/agent/test:utils",
+        "//fboss/agent/test/thrift_client_utils:thrift_client_utils",
+        "//fboss/lib:common_utils",
+        "//fboss/lib/thrift_service_client:thrift-service-client",
+        "//nettools/ebb/platform/if:TeSrv6Agent-cpp2-clients",
+        "//nettools/ebb/platform/if:TeSrv6Agent-cpp2-types",
+    ],
+)
+
+cpp_binary(
+    name = "multi_switch_agent_multinode_test",
+    srcs = [
+        "MultiSwitchAgentMultiNodeMain.cpp",
+    ],
+    deps = [
+        "fbsource//third-party/googletest:gtest",
+        "fbsource//xplat/folly/logging:init",
+        ":agent_multinode_test_src",
+        ":agent_te_srv6_multinode_test_src",
+        "//fboss/agent:setup_thrift_test",  # @manual
+        "//fboss/agent/test:agent_hw_test",
+        "//fboss/agent/test:multi_switch_agent_ensemble",
     ],
 )
 
@@ -83,6 +129,10 @@ _sai_agent_multinode_test_configs = [
             sai_impl,
         ),
         linker_flags = [],
+        # FIXME(arm-ci): SAI brcm-dnx vendor SDK is an x86-only prebuilt (no
+        # aarch64 variant); FBOSS switches are x86 hosts. Gate x86-only so arm CI
+        # skips these instead of failing to link the x86 vendor archive.
+        target_compatible_with = ["ovr_config//cpu:x86_64"],
         versions = to_versions(sai_impl),
         deps = [
             "fbsource//third-party/googletest:gtest",

@@ -46,6 +46,9 @@ class SaiTestRunner(TestRunner):
     def _get_test_binary_name(self) -> str:
         return "sai_test-sai_impl"
 
+    def _get_npu_sdk_metadata_binary_name(self) -> str:
+        return self._get_test_binary_name()
+
     def _get_sai_replayer_logging_flags(
         self, sai_replayer_log_path: str | None
     ) -> list[str]:

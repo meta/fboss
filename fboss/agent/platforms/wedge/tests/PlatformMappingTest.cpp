@@ -1078,8 +1078,8 @@ TEST_F(PlatformMappingTest, VerifyWedge100DownlinkPortIphyPinConfigs) {
     const auto& chipName =
         apache::thrift::get_pointer(
             port.second.mapping().value().pins().value()[0].z())
-            ->get_end()
-            .chip()
+            ->end()
+            ->chip()
             .value();
     const auto& chip = mapping->getChips().at(chipName);
     auto transID = folly::copy(chip.physicalID().value());
@@ -1134,8 +1134,8 @@ TEST_F(PlatformMappingTest, VerifyWedge100YV3T1DownlinkPortIphyPinConfigs) {
     const auto& chipName =
         apache::thrift::get_pointer(
             port.second.mapping().value().pins().value()[0].z())
-            ->get_end()
-            .chip()
+            ->end()
+            ->chip()
             .value();
     const auto& chip = mapping->getChips().at(chipName);
     auto transID = folly::copy(chip.physicalID().value());
@@ -1215,6 +1215,80 @@ TEST_F(PlatformMappingTest, VerifyMeru800bfaPlatformPortConfigOverrideFactor) {
   }
 }
 
+namespace {
+Vendor makeVendor(const std::string& name, const std::string& partNumber) {
+  Vendor vendor;
+  vendor.name() = name;
+  vendor.partNumber() = partNumber;
+  return vendor;
+}
+
+TransceiverVendorPartNumber makeVendorPartNumber(
+    const std::string& vendor,
+    const std::string& partNumber) {
+  TransceiverVendorPartNumber vendorPartNumber;
+  vendorPartNumber.vendor() = vendor;
+  vendorPartNumber.partNumber() = partNumber;
+  return vendorPartNumber;
+}
+
+std::vector<TransceiverVendorOverride> makeVendorOverrides() {
+  TransceiverVendorOverride vendorOverride;
+  vendorOverride.placeholder() = makeVendorPartNumber("Vendor_1", "PartNum_1");
+  vendorOverride.transceivers() = {
+      makeVendorPartNumber("FBOSSONE", "PN_1"),
+      makeVendorPartNumber("FBOSSONE", "PN_2")};
+  return {vendorOverride};
+}
+
+cfg::PlatformPortConfigOverrideFactor makeVendorOverrideFactor() {
+  cfg::PlatformPortConfigOverrideFactor overrideFactor;
+  overrideFactor.vendor() = makeVendor("Vendor_1", "PartNum_1");
+  return overrideFactor;
+}
+
+PlatformPortProfileConfigMatcher makeVendorMatcher(
+    const Vendor& currentVendor,
+    const std::optional<std::vector<TransceiverVendorOverride>>&
+        vendorOverrides) {
+  cfg::PlatformPortConfigOverrideFactor currentFactor;
+  currentFactor.vendor() = currentVendor;
+  currentFactor.vendorOverrides().from_optional(vendorOverrides);
+  return PlatformPortProfileConfigMatcher(
+      cfg::PortProfileID::PROFILE_106POINT25G_1_PAM4_RS544_OPTICAL,
+      PortID(1),
+      currentFactor);
+}
+} // namespace
+
+TEST_F(PlatformMappingTest, VendorOverridesMatchListedTransceiver) {
+  auto matcher =
+      makeVendorMatcher(makeVendor("FBOSSONE", "PN_2"), makeVendorOverrides());
+  EXPECT_TRUE(matcher.matchOverrideWithFactor(makeVendorOverrideFactor()));
+}
+
+TEST_F(PlatformMappingTest, VendorOverridesSkipUnlistedTransceiver) {
+  auto matcher =
+      makeVendorMatcher(makeVendor("FBOSSONE", "PN_3"), makeVendorOverrides());
+  EXPECT_FALSE(matcher.matchOverrideWithFactor(makeVendorOverrideFactor()));
+}
+
+TEST_F(PlatformMappingTest, VendorOverridesSkipUnknownPlaceholder) {
+  auto matcher =
+      makeVendorMatcher(makeVendor("FBOSSONE", "PN_1"), makeVendorOverrides());
+  cfg::PlatformPortConfigOverrideFactor overrideFactor;
+  overrideFactor.vendor() = makeVendor("Vendor_2", "PartNum_2");
+  EXPECT_FALSE(matcher.matchOverrideWithFactor(overrideFactor));
+}
+
+TEST_F(PlatformMappingTest, VendorOverrideWithoutOverridesUsesBuiltInMatch) {
+  // FBOSSONE isn't in the built in map, so without the qsfp_service
+  // provided overrides the placeholder doesn't resolve.
+  auto matcher =
+      makeVendorMatcher(makeVendor("FBOSSONE", "PN_2"), std::nullopt);
+  EXPECT_FALSE(matcher.matchOverrideWithFactor(makeVendorOverrideFactor()));
+}
+
 // Array of expected tx settings for wedge100 uplinks for 100G Optical
 // Index is transciever Id - 24 (i.e first element is tcvr 24, the first
 // uplink) value is {driveCurrent, pre, main, post}
@@ -1235,8 +1309,8 @@ TEST_F(PlatformMappingTest, VerifyWedge100UplinkPortIphyPinConfigs) {
     const auto& chipName =
         apache::thrift::get_pointer(
             port.second.mapping().value().pins().value()[0].z())
-            ->get_end()
-            .chip()
+            ->end()
+            ->chip()
             .value();
     const auto& chip = mapping->getChips().at(chipName);
     auto transID = folly::copy(chip.physicalID().value());

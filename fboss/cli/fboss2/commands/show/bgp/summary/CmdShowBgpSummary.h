@@ -14,15 +14,24 @@
 #include <sys/socket.h>
 #include <ratio> // NOLINT(misc-include-cleaner)
 
+#include <algorithm>
+#include <cctype>
 #include <chrono>
 #include <exception> // NOLINT(misc-include-cleaner)
 #include <iostream>
+#include <map>
 #include <optional>
+#include <stdexcept>
 #include <string>
+#include <string_view>
+#include <vector>
 
+#include <folly/IPAddress.h>
+#include <folly/String.h>
 #include <folly/logging/xlog.h>
 
 #include "fboss/cli/fboss2/CmdHandler.h"
+#include "fboss/cli/fboss2/CmdLocalOptions.h"
 #include "fboss/cli/fboss2/commands/show/bgp/summary/gen-cpp2/bgp_summary_types.h"
 #include "fboss/cli/fboss2/utils/CmdClientUtilsCommon.h"
 #include "fboss/cli/fboss2/utils/Table.h"
@@ -40,12 +49,30 @@ using neteng::fboss::bgp::thrift::TBgpPeerState;
 using std::chrono::duration_cast;
 using std::chrono::system_clock;
 
-struct CmdShowBgpSummaryTraits : public ReadCommandTraits,
-                                 public CliDocsExempt {
+// Local option name, and the command's key in the CmdLocalOptions registry
+// (the subcommand path joined with underscores; see
+// CmdSubcommands::addCommand).
+inline constexpr auto kBgpSummarySortBy = "--sort-by";
+inline constexpr auto kBgpSummaryCmdName = "show_bgp_summary";
+
+struct CmdShowBgpSummaryTraits : public ReadCommandTraits {
   static constexpr utils::ObjectArgTypeId ObjectArgTypeId =
       utils::ObjectArgTypeId::OBJECT_ARG_TYPE_ID_NONE;
   using ObjectArgType = std::monostate;
   using RetType = cli::ShowBgpSummaryModel;
+
+  std::vector<utils::LocalOption> LocalOptions = {
+      {kBgpSummarySortBy,
+       "Comma-separated column keys to sort peers by, applied in the order "
+       "given: peer, as, state, gr, pr, pa, ps, prd, ug, ugps, uptime, "
+       "downtime, description, session-id, flaps. Append "
+       "':desc' to a key to reverse it, e.g. --sort-by pr:desc,peer"}};
+
+  // Human-authored guide prose for the CLI reference wiki. Superset of the
+  // one-line help string registered in the command tree.
+  static std::string_view description() {
+    return "Displays a one-line-per-peer overview of every BGP session, under a global header carrying the daemon uptime, router ID, local and confederation ASNs, switch drain state, UCMP and update-group settings, aggregate path counts, loc-RIB prefix count and RIB version. EOR sent and EORs received report completed directions out of established peers, or N/A against a bgpd too old to report EoR status. For per-peer timestamps and pending status use 'show bgp neighbors <peer>'. Dynamic listen ranges render as IDLE rows but are not peers: the Peers total excludes them and a Peer Groups Configured line counts them separately. The 'BGP is up for' and 'Loc-RIB Prefix Count' header lines are omitted entirely against a bgpd too old to report them. Rows show peer address, remote AS, session state, graceful-restart support, prefixes received/accepted/sent, uptime, description, peer BGP identifier and flap count. PRD appears only when prefixes were dropped, UG/UGPS only when update-group is enabled, and Downtime only for a peer that is IDLE or admin-down and has reset at least once. Listen-range entries with no active session render as IDLE with zero counters. Rows are ordered by peer address by default; '--sort-by' accepts comma-separated keys (peer, as, state, gr, pr, pa, ps, prd, ug, ugps, uptime, downtime, description, session-id, flaps), each optionally suffixed with ':desc'. Numeric columns sort numerically, and peers that tie on every requested key stay in peer-address order.";
+  }
 };
 
 class CmdShowBgpSummary
@@ -53,7 +80,109 @@ class CmdShowBgpSummary
  public:
   using RetType = CmdShowBgpSummaryTraits::RetType;
 
+  // Columns the table can be sorted on, named after the header they render
+  // under. Includes the conditional columns (PRD/UG/UGPS/Downtime): sorting on
+  // one that is currently hidden is harmless.
+  enum class SortColumn {
+    PEER,
+    AS,
+    STATE,
+    GR,
+    PR,
+    PA,
+    PS,
+    PRD,
+    UG,
+    UGPS,
+    UPTIME,
+    DOWNTIME,
+    DESCRIPTION,
+    SESSION_ID,
+    FLAPS,
+  };
+
+  struct SortKey {
+    SortColumn column;
+    bool descending{false};
+  };
+
+  /*
+   * Parse the --sort-by value: a comma-separated list of column keys in
+   * priority order, each optionally suffixed with ':asc' or ':desc'. Direction
+   * is a suffix rather than a '-' prefix because CLI11 would parse a leading
+   * dash as the start of another option. Throws std::invalid_argument on an
+   * unknown key or direction, which CmdHandler surfaces as "Invalid argument".
+   */
+  static std::vector<SortKey> parseSortKeys(const std::string& spec) {
+    static const std::map<std::string, SortColumn> kColumnsByKey = {
+        {"as", SortColumn::AS},
+        {"description", SortColumn::DESCRIPTION},
+        {"downtime", SortColumn::DOWNTIME},
+        {"flaps", SortColumn::FLAPS},
+        {"gr", SortColumn::GR},
+        {"pa", SortColumn::PA},
+        {"peer", SortColumn::PEER},
+        {"pr", SortColumn::PR},
+        {"prd", SortColumn::PRD},
+        {"ps", SortColumn::PS},
+        {"session-id", SortColumn::SESSION_ID},
+        {"state", SortColumn::STATE},
+        {"ug", SortColumn::UG},
+        {"ugps", SortColumn::UGPS},
+        {"uptime", SortColumn::UPTIME},
+    };
+
+    std::vector<SortKey> keys;
+    std::vector<std::string> tokens;
+    folly::split(',', spec, tokens);
+    for (const auto& token : tokens) {
+      std::string key = folly::trimWhitespace(token).str();
+      if (key.empty()) {
+        continue;
+      }
+      bool descending = false;
+      if (const auto colon = key.find(':'); colon != std::string::npos) {
+        const std::string direction = key.substr(colon + 1);
+        if (direction == "desc") {
+          descending = true;
+        } else if (direction != "asc") {
+          throw std::invalid_argument(
+              fmt::format(
+                  "{}: unknown sort direction '{}', expected 'asc' or 'desc'",
+                  kBgpSummarySortBy,
+                  direction));
+        }
+        key = key.substr(0, colon);
+      }
+      std::transform(key.begin(), key.end(), key.begin(), [](unsigned char c) {
+        return static_cast<char>(std::tolower(c));
+      });
+      const auto column = kColumnsByKey.find(key);
+      if (column == kColumnsByKey.end()) {
+        std::vector<std::string> validKeys;
+        validKeys.reserve(kColumnsByKey.size());
+        for (const auto& [name, _] : kColumnsByKey) {
+          validKeys.emplace_back(name);
+        }
+        throw std::invalid_argument(
+            fmt::format(
+                "{}: unknown column '{}', expected one of: {}",
+                kBgpSummarySortBy,
+                key,
+                folly::join(", ", validKeys)));
+      }
+      keys.push_back({column->second, descending});
+    }
+    return keys;
+  }
+
   RetType queryClient(const HostInfo& hostInfo) {
+    // Parsed before any thrift call so a bad --sort-by fails immediately
+    // rather than after querying the daemon.
+    const auto sortKeys = parseSortKeys(
+        CmdLocalOptions::getInstance()->getLocalOption(
+            kBgpSummaryCmdName, kBgpSummarySortBy));
+
     std::vector<TBgpSession> sessions;
     TBgpLocalConfig config;
     TBgpDrainState drain_state;
@@ -92,7 +221,8 @@ class CmdShowBgpSummary
         drain_state,
         processUptimeSeconds,
         totalPrefixCount,
-        ribVersion);
+        ribVersion,
+        sortKeys);
   }
 
   // Format process uptime, omitting leading zero units so a short uptime reads
@@ -195,6 +325,11 @@ class CmdShowBgpSummary
     const uint64_t total_neighbors = sessions.size();
     uint64_t up_neighbors = 0, paths_rcvd = 0, paths_accepted = 0,
              paths_sent = 0;
+    // Dynamic listen ranges ("peer groups", e.g. 10.127.240.0/23) render as
+    // IDLE rows but are not peers: they never establish and never send EoR.
+    // The server renders their address as a prefix, which is how they are
+    // told apart here.
+    uint64_t peer_group_count = 0;
 
     // First pass: collect row data and detect whether any peer has downtime, so
     // the Downtime column can be omitted entirely when no peer is down.
@@ -218,12 +353,21 @@ class CmdShowBgpSummary
     std::vector<PeerRowData> rows;
     bool hasAnyDowntime = false;
     bool hasAnyPreDrops = false;
+    // Optional status is present even when no EoR has completed. Older
+    // daemons do not populate it at all.
+    bool hasEoRReceivedStatus = false;
+    bool hasEoRSentStatus = false;
+    size_t eorReceivedCount = 0;
+    size_t eorSentCount = 0;
 
     for (const auto& bgpSession : sessions) {
       const auto& peer = bgpSession.peer().value();
       up_neighbors +=
           (folly::copy(peer.peer_state().value()) ==
            TBgpPeerState::ESTABLISHED);
+      if (bgpSession.peer_addr().value().find('/') != std::string::npos) {
+        ++peer_group_count;
+      }
 
       auto rcvd_prefix = *bgpSession.prepolicy_rcvd_prefix_count();
       auto accepted_prefix = *bgpSession.postpolicy_rcvd_prefix_count();
@@ -268,6 +412,21 @@ class CmdShowBgpSummary
       }
       if (!downtimeDurationString.empty()) {
         hasAnyDowntime = true;
+      }
+
+      if (bgpSession.eor_received().has_value()) {
+        hasEoRReceivedStatus = true;
+        if (*peer.peer_state() == TBgpPeerState::ESTABLISHED &&
+            *bgpSession.eor_received()) {
+          ++eorReceivedCount;
+        }
+      }
+      if (bgpSession.eor_sent().has_value()) {
+        hasEoRSentStatus = true;
+        if (*peer.peer_state() == TBgpPeerState::ESTABLISHED &&
+            *bgpSession.eor_sent()) {
+          ++eorSentCount;
+        }
       }
 
       // Update-group ID: show value or "-" if not set.
@@ -360,8 +519,27 @@ class CmdShowBgpSummary
       table.addRow({fields.begin(), fields.end()});
     }
 
-    out << "Peers: UP - " << up_neighbors << ", TOTAL - " << total_neighbors
+    // Peer prefix groups (dynamic listen ranges) are listed but are not peers.
+    const uint64_t peer_total = total_neighbors - peer_group_count;
+    out << "Peers: UP - " << up_neighbors << ", TOTAL - " << peer_total
         << std::endl;
+    out << "Peer Groups Configured - " << peer_group_count << std::endl;
+    // Count only established peers; pending EoRs are false, not absent.
+    // Absence signals an old daemon without EoR status support.
+    out << "EOR sent (UP peers) - ";
+    if (hasEoRSentStatus) {
+      out << eorSentCount << "/" << up_neighbors;
+    } else {
+      out << "N/A";
+    }
+    out << std::endl;
+    out << "EORs received (UP peers) - ";
+    if (hasEoRReceivedStatus) {
+      out << eorReceivedCount << "/" << up_neighbors;
+    } else {
+      out << "N/A";
+    }
+    out << std::endl;
     out << "Paths: Received - " << paths_rcvd << ", Accepted - "
         << paths_accepted << ", Sent - " << paths_sent << std::endl;
     /*
@@ -388,6 +566,104 @@ class CmdShowBgpSummary
     out << table << std::endl;
   }
 
+  // Three-way compare of two sessions on a single column. Numeric columns are
+  // compared as numbers rather than as their rendered strings, so e.g. sorting
+  // on PR does not order 100 before 9.
+  static int compareOnColumn(
+      const TBgpSession& a,
+      const TBgpSession& b,
+      SortColumn column) {
+    auto cmp = [](const auto& lhs, const auto& rhs) {
+      if (lhs < rhs) {
+        return -1;
+      }
+      return rhs < lhs ? 1 : 0;
+    };
+    // TODO(michaeluw): T113736668 deprecate i32 asns field
+    auto remoteAs = [](const TBgpSession& session) -> uint32_t {
+      const auto& peer = session.peer().value();
+      return folly::copy(peer.remote_as_4_byte().value())
+          ? folly::copy(peer.remote_as_4_byte().value())
+          : folly::copy(peer.remote_as().value());
+    };
+    /*
+     * uptime and reset_time are durations, and are only rendered for the peer
+     * states printOutput renders them for. Sessions with a blank cell compare
+     * as -1 so they group together at one end rather than interleaving with
+     * real durations.
+     */
+    auto uptime = [](const TBgpSession& session) -> int64_t {
+      const auto& peer = session.peer().value();
+      return folly::copy(peer.peer_state().value()) ==
+              TBgpPeerState::ESTABLISHED
+          ? folly::copy(session.uptime().value())
+          : -1;
+    };
+    auto downtime = [](const TBgpSession& session) -> int64_t {
+      const auto& peer = session.peer().value();
+      const auto state = folly::copy(peer.peer_state().value());
+      const bool down = (state == TBgpPeerState::IDLE ||
+                         state == TBgpPeerState::IDLE_ADMIN) &&
+          folly::copy(session.num_resets().value()) > 0;
+      return down ? folly::copy(session.reset_time().value()) : -1;
+    };
+
+    switch (column) {
+      case SortColumn::PEER:
+        return cmp(a.peer_addr().value(), b.peer_addr().value());
+      case SortColumn::AS:
+        return cmp(remoteAs(a), remoteAs(b));
+      case SortColumn::STATE:
+        // Compared on the rendered abbreviation so the column reads as sorted.
+        return cmp(
+            enumNameSafe(folly::copy(a.peer().value().peer_state().value()))
+                .substr(0, 4),
+            enumNameSafe(folly::copy(b.peer().value().peer_state().value()))
+                .substr(0, 4));
+      case SortColumn::GR:
+        return cmp(
+            folly::copy(a.peer().value().graceful().value()),
+            folly::copy(b.peer().value().graceful().value()));
+      case SortColumn::PR:
+        return cmp(
+            folly::copy(a.prepolicy_rcvd_prefix_count().value()),
+            folly::copy(b.prepolicy_rcvd_prefix_count().value()));
+      case SortColumn::PA:
+        return cmp(
+            folly::copy(a.postpolicy_rcvd_prefix_count().value()),
+            folly::copy(b.postpolicy_rcvd_prefix_count().value()));
+      case SortColumn::PS:
+        return cmp(
+            folly::copy(a.postpolicy_sent_prefix_count().value()),
+            folly::copy(b.postpolicy_sent_prefix_count().value()));
+      case SortColumn::PRD:
+        return cmp(
+            a.prepolicy_rcvd_dropped_prefix_count().value_or(0),
+            b.prepolicy_rcvd_dropped_prefix_count().value_or(0));
+      case SortColumn::UG:
+        // Unset renders as "-"; -1 keeps those rows together.
+        return cmp(
+            a.update_group_id().value_or(-1), b.update_group_id().value_or(-1));
+      case SortColumn::UGPS:
+        return cmp(
+            a.peer_state_update_group().value_or("-"),
+            b.peer_state_update_group().value_or("-"));
+      case SortColumn::UPTIME:
+        return cmp(uptime(a), uptime(b));
+      case SortColumn::DOWNTIME:
+        return cmp(downtime(a), downtime(b));
+      case SortColumn::DESCRIPTION:
+        return cmp(a.description().value(), b.description().value());
+      case SortColumn::SESSION_ID:
+        return cmp(a.peer_bgp_id().value(), b.peer_bgp_id().value());
+      case SortColumn::FLAPS:
+        return cmp(
+            folly::copy(a.num_resets().value()),
+            folly::copy(b.num_resets().value()));
+    }
+    return 0;
+  }
+
   // Move the data from bgp_thrift:TBgpSession to
   // bgp_summary_thrift:TBgpSummary
   RetType createModel(
@@ -396,13 +672,34 @@ class CmdShowBgpSummary
       TBgpDrainState& drain_state,
       std::optional<int64_t> processUptimeSeconds,
       std::optional<int64_t> totalPrefixCount,
-      int64_t ribVersion) {
+      int64_t ribVersion,
+      const std::vector<SortKey>& sortKeys = {}) {
     std::sort(
         sessions.begin(),
         sessions.end(),
         [](const TBgpSession& a, const TBgpSession& b) {
           return a.peer_addr().value() < b.peer_addr().value();
         });
+
+    /*
+     * Layered on top of the peer-address sort above rather than replacing it,
+     * so the stable sort leaves peers that tie on every requested column in
+     * peer-address order instead of in whatever order the daemon returned.
+     */
+    if (!sortKeys.empty()) {
+      std::stable_sort(
+          sessions.begin(),
+          sessions.end(),
+          [&sortKeys](const TBgpSession& a, const TBgpSession& b) {
+            for (const auto& key : sortKeys) {
+              const int order = compareOnColumn(a, b, key.column);
+              if (order != 0) {
+                return key.descending ? order > 0 : order < 0;
+              }
+            }
+            return false;
+          });
+    }
 
     RetType model;
     model.sessions() = sessions;
@@ -417,6 +714,121 @@ class CmdShowBgpSummary
       model.total_prefix_count() = *totalPrefixCount;
     }
     model.rib_version() = ribVersion;
+    return model;
+  }
+
+  // Canned, synthetic model (no real switch data) used to render an example
+  // for the CLI reference wiki. Shaped after an RSW with two upstream FSWs
+  // peered over both address families plus one idle listen-range, trimmed down
+  // from a real fleet capture. Everything renders identically run to run except
+  // the Uptime column, which is derived from the wall clock (see below).
+  static RetType sampleModel() {
+    // printOutput hands my_router_id's raw in-memory bytes to inet_ntop, so the
+    // value has to be in network byte order. Derive it rather than hardcoding
+    // the byte-swapped literal, which would render differently on a big-endian
+    // host.
+    TBgpLocalConfig config;
+    config.my_router_id() =
+        static_cast<int32_t>(folly::IPAddressV4("192.0.2.1").toLong());
+    // Sample ASNs (RFC 6996 private-use range): this sample renders onto the
+    // CLI reference wiki and ships in the open-source tree.
+    config.local_as_4_byte() = 65108;
+    config.local_confed_as_4_byte() = 64873;
+    config.program_ucmp_weights() = false;
+    config.enable_update_group() = false;
+
+    TBgpDrainState drainState;
+    drainState.drain_state() = facebook::bgp::bgp_policy::DrainState::UNDRAINED;
+
+    auto establishedSession = [](const std::string& peerAddr,
+                                 uint32_t remoteAs,
+                                 int64_t rcvd,
+                                 int64_t sent,
+                                 const std::string& description,
+                                 const std::string& sessionId) {
+      /*
+       * uptime is a duration in milliseconds. printOutput converts it to an
+       * epoch and then back to an elapsed time, reading the wall clock once
+       * for each, so 39654000ms renders as "11h 0m 54s" give or take a second
+       * between runs rather than as a fixed string.
+       */
+      static constexpr int64_t kSessionUptimeMs = 39654000;
+      TBgpSession session;
+      session.peer()->peer_state() = TBgpPeerState::ESTABLISHED;
+      session.peer()->remote_as_4_byte() = remoteAs;
+      session.peer()->graceful() = true;
+      session.peer_addr() = peerAddr;
+      session.prepolicy_rcvd_prefix_count() = rcvd;
+      session.postpolicy_rcvd_prefix_count() = rcvd;
+      session.postpolicy_sent_prefix_count() = sent;
+      session.uptime() = kSessionUptimeMs;
+      session.eor_received() = true;
+      session.eor_sent() = true;
+      session.reset_time() = 0;
+      session.num_resets() = 0;
+      session.description() = description;
+      session.peer_bgp_id() = sessionId;
+      return session;
+    };
+
+    // A configured listen range that no peer has connected on yet: IDLE with
+    // no resets, so printOutput leaves its uptime and downtime blank. Kept
+    // disjoint from the established peers above, so the example does not read
+    // as a range that already has sessions inside it.
+    TBgpSession listenRange;
+    listenRange.peer()->peer_state() = TBgpPeerState::IDLE;
+    listenRange.peer()->remote_as_4_byte() = 65390;
+    listenRange.peer()->graceful() = false;
+    listenRange.peer_addr() = "198.51.100.0/24";
+    listenRange.prepolicy_rcvd_prefix_count() = 0;
+    listenRange.postpolicy_rcvd_prefix_count() = 0;
+    listenRange.postpolicy_sent_prefix_count() = 0;
+    listenRange.uptime() = 0;
+    listenRange.reset_time() = 0;
+    listenRange.num_resets() = 0;
+    listenRange.description() = "";
+    listenRange.peer_bgp_id() = "0.0.0.0";
+    listenRange.eor_received() = false;
+    listenRange.eor_sent() = false;
+
+    RetType model;
+    // Ordered the way createModel() sorts live sessions: by peer address
+    // string.
+    model.sessions() = {
+        establishedSession(
+            "192.0.2.11",
+            65221,
+            121,
+            43,
+            "fsw001.p001.f01.abc1",
+            "192.0.2.101"),
+        establishedSession(
+            "192.0.2.12",
+            64650,
+            121,
+            43,
+            "fsw002.p001.f01.abc1",
+            "192.0.2.102"),
+        listenRange,
+        establishedSession(
+            "2001:db8:e11e:1062::4e",
+            65221,
+            1343,
+            108,
+            "fsw001.p001.f01.abc1",
+            "192.0.2.101"),
+        establishedSession(
+            "2001:db8:e11e:1162::4e",
+            64650,
+            1343,
+            108,
+            "fsw002.p001.f01.abc1",
+            "192.0.2.102")};
+    model.config() = config;
+    model.drain_state() = drainState;
+    model.process_uptime_seconds() = 39655;
+    model.total_prefix_count() = 1464;
+    model.rib_version() = 2013;
     return model;
   }
 };

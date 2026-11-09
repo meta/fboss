@@ -26,7 +26,8 @@ void RouteUpdateWrapper::addRoute(
     uint8_t mask,
     ClientID clientId,
     const RouteNextHopEntry& nhop,
-    std::optional<RouteNextHopSet> nhops) {
+    std::optional<RouteNextHopSet> nhops,
+    std::optional<int32_t> level) {
   UnicastRoute tempRoute;
   tempRoute.dest()->ip() = network::toBinaryAddress(network);
   tempRoute.dest()->prefixLength() = mask;
@@ -45,6 +46,9 @@ void RouteUpdateWrapper::addRoute(
   }
   if (nhop.getClassID().has_value()) {
     tempRoute.classID() = *nhop.getClassID();
+  }
+  if (level.has_value()) {
+    tempRoute.level() = *level;
   }
   addRoute(vrf, clientId, std::move(tempRoute));
 }
@@ -82,10 +86,10 @@ void RouteUpdateWrapper::addRoute(ClientID clientId, const MplsRoute& route) {
 void RouteUpdateWrapper::addRoute(
     ClientID clientId,
     MplsLabel label,
-    const RouteNextHopEntry& entry) {
+    const RouteNextHopSet& nhops) {
   MplsRoute tempRoute;
   tempRoute.topLabel() = label;
-  tempRoute.nextHops() = util::fromRouteNextHopSet(entry.getNextHopSet());
+  tempRoute.nextHops() = util::fromRouteNextHopSet(nhops);
   addRoute(clientId, std::move(tempRoute));
 }
 
@@ -162,7 +166,9 @@ void RouteUpdateWrapper::programStandAloneRib(const SyncFibFor& syncFibFor) {
         configRoutes_->staticMplsRoutesToCpu,
         configRoutes_->staticMySids,
         *ribToSwitchStateFunc_,
-        ribToSwitchStateCookie_);
+        ribToSwitchStateCookie_,
+        configRoutes_->ecmpOverrideModeChanged,
+        configRoutes_->interfaceToVrf);
   }
   if (!remoteLoopbackIntfRouteToAdd_.empty() ||
       !remoteLoopbackIntfRouteToDel_.empty()) {
@@ -239,7 +245,9 @@ void RouteUpdateWrapper::setRoutesToConfig(
         _staticMplsRoutesWithNextHops,
     const std::vector<cfg::StaticMplsRouteNoNextHops>& _staticMplsRoutesToNull,
     const std::vector<cfg::StaticMplsRouteNoNextHops>& _staticMplsRoutesToCpu,
-    std::vector<MySidWithNextHops> _staticMySids) {
+    std::vector<MySidWithNextHops> _staticMySids,
+    bool _ecmpOverrideModeChanged,
+    std::optional<RibRouteTables::InterfaceToVrf> _interfaceToVrf) {
   configRoutes_ = std::make_unique<ConfigRoutes>(ConfigRoutes{
       _configRouterIDToInterfaceRoutes,
       _staticRoutesWithNextHops,
@@ -249,7 +257,9 @@ void RouteUpdateWrapper::setRoutesToConfig(
       _staticMplsRoutesWithNextHops,
       _staticMplsRoutesToNull,
       _staticMplsRoutesToCpu,
-      std::move(_staticMySids)});
+      std::move(_staticMySids),
+      _ecmpOverrideModeChanged,
+      std::move(_interfaceToVrf)});
 }
 
 void RouteUpdateWrapper::setRemoteLoopbackInterfaceRoutesToConfig(

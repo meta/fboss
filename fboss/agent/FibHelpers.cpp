@@ -189,7 +189,8 @@ RouteNextHopSet getNonOverrideNormalizedNextHops(
         getNextHops(state, static_cast<NextHopSetId>(*normalizedSetId));
     return RouteNextHopSet(nhops.begin(), nhops.end());
   }
-  return RouteNextHopEntry::normalizeNextHops(entry.getNextHopSet());
+  return RouteNextHopEntry::normalizeNextHops(
+      entry.getNextHopSet(), getEcmpWidth(state));
 }
 
 RouteNextHopSet getClientNextHops(
@@ -380,10 +381,37 @@ RouteNextHopSet getNormalizedNextHops(
   if (entry.getOverrideNextHops().has_value()) {
     // Override nexthops are inline for now
     // normalizedNextHops() handles the override normalization path correctly.
-    return entry.normalizedNextHops();
+    return entry.normalizedNextHops(getEcmpWidth(state));
   }
   // No overrides, delegate to ID-aware non-override path.
   return getNonOverrideNormalizedNextHops(state, entry);
+}
+
+RouteNextHopSet getMplsNextHops(
+    const std::shared_ptr<SwitchState>& state,
+    const RouteNextHopEntry& entry) {
+  if (!FLAGS_mpls_rib) {
+    return entry.getNextHopSet();
+  }
+  return getNextHops(state, entry);
+}
+
+RouteNextHopSet getMplsClientNextHops(
+    const std::shared_ptr<SwitchState>& state,
+    const RouteNextHopEntry& entry) {
+  if (!FLAGS_mpls_rib) {
+    return entry.getNextHopSet();
+  }
+  return getClientNextHops(state, entry);
+}
+
+RouteNextHopSet getMplsNormalizedNextHops(
+    const std::shared_ptr<SwitchState>& state,
+    const RouteNextHopEntry& entry) {
+  if (!FLAGS_mpls_rib) {
+    return entry.normalizedNextHops();
+  }
+  return getNormalizedNextHops(state, entry);
 }
 
 } // namespace facebook::fboss

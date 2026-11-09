@@ -77,6 +77,24 @@ void setupPfcBuffers(
     PfcBufferParams buffer,
     const PfcQosMapParams& qosMapParams = {});
 
+// Prod PG profile names. getRtswUplinkDownlinkPorts() classifies ports by
+// searching these for "uplink" / "downlink", so the substrings are
+// load-bearing.
+inline constexpr auto kUplinkPgConfigName = "uplink_pg_config";
+inline constexpr auto kDownlinkPgConfigName = "downlink_pg_config";
+
+// Two-profile uplink/downlink PFC, as prod RTSW-family configs carry. Unlike
+// setupPfcBuffers() this adds no QoS policy of its own and leaves
+// dataPlaneTrafficPolicy alone, so it composes with an existing policy.
+void setupUplinkDownlinkPfc(
+    const TestEnsembleIf* ensemble,
+    cfg::SwitchConfig& cfg,
+    const std::vector<PortID>& uplinkPorts,
+    const std::vector<PortID>& downlinkPorts,
+    const std::vector<int>& losslessPgIds,
+    const std::vector<int>& lossyPgIds,
+    const PfcQosMapParams& qosMapParams = {});
+
 void addPuntPfcPacketAcl(cfg::SwitchConfig& cfg, uint16_t queueId);
 
 std::string pfcStatsString(const HwPortStats& stats);

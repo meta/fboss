@@ -1,6 +1,7 @@
 // Copyright 2004-present Facebook. All Rights Reserved.
 
 #include "fboss/agent/state/Srv6Tunnel.h" // must precede SwSwitch.h to avoid template conflicts
+#include "fboss/agent/state/VxlanTunnel.h" // must precede SwSwitch.h to avoid template conflicts
 
 #include "fboss/agent/HwSwitchMatcher.h"
 #include "fboss/agent/SwSwitch.h"
@@ -11,6 +12,7 @@
 #include "fboss/agent/state/MySidMap.h"
 #include "fboss/agent/state/PortFlowletConfig.h"
 #include "fboss/agent/state/Vlan.h"
+#include "fboss/agent/state/Vrf.h"
 #include "fboss/agent/test/HwTestHandle.h"
 #include "fboss/agent/test/TestUtils.h"
 
@@ -220,6 +222,19 @@ TYPED_TEST(SwitchIdScopeResolverTest, fibContainerScope) {
   }
 }
 
+TYPED_TEST(SwitchIdScopeResolverTest, vrfScope) {
+  cfg::VrfConfig vrfCfg;
+  vrfCfg.vrfId() = 1001;
+  auto vrf = std::make_shared<Vrf>(RouterID(1001));
+  if (this->isFabric()) {
+    this->expectThrow(vrfCfg);
+    this->expectThrow(vrf);
+  } else {
+    this->expectL3(vrfCfg);
+    this->expectL3(vrf);
+  }
+}
+
 TYPED_TEST(SwitchIdScopeResolverTest, labelFibEntry) {
   auto entry = std::make_shared<LabelForwardingEntry>();
   if (this->isFabric()) {
@@ -310,6 +325,291 @@ TYPED_TEST(SwitchIdScopeResolverTest, SwitchTypeScope) {
   auto switchTypeMatcher = resolver.scope(this->switchType);
   EXPECT_EQ(switchTypeMatcher.size(), 4);
   EXPECT_THROW(resolver.scope(cfg::SwitchType::PHY), FbossError);
+}
+
+namespace {
+// Multi-switch resolver with one loopback interface bound to each switch:
+// switch i owns interface (kLoopbackIntfBase + i).
+constexpr int32_t kLoopbackIntfBase = 10;
+constexpr int kNumSwitches = 4;
+
+std::map<int64_t, cfg::SwitchInfo> makeMultiSwitchInfos(
+    cfg::SwitchType switchType,
+    bool bindLoopbackIntfs) {
+  std::map<int64_t, cfg::SwitchInfo> infos{};
+  for (auto i = 0; i < kNumSwitches; i++) {
+    cfg::SwitchInfo info{};
+    info.switchType() = switchType;
+    info.asicType() = cfg::AsicType::ASIC_TYPE_FAKE;
+    info.switchIndex() = i;
+    cfg::Range64 range{};
+    range.minimum() = i * 100;
+    range.maximum() = i * 100 + 64;
+    info.portIdRange() = range;
+    if (bindLoopbackIntfs) {
+      info.loopbackIntfId() = kLoopbackIntfBase + i;
+    }
+    infos[i] = info;
+  }
+  return infos;
+}
+
+std::shared_ptr<Vlan> makePortlessVlan(int32_t vlanId, int32_t intfId) {
+  auto vlan = std::make_shared<Vlan>(
+      VlanID(vlanId), folly::to<std::string>("Vlan", vlanId));
+  vlan->setInterfaceID(InterfaceID(intfId));
+  return vlan;
+}
+
+// A config in the shape coop emits: portless loopback VLANs carrying no
+// intfID, with the interface->vlan mapping held on the cfg::Interface.
+cfg::SwitchConfig makeLoopbackCfg() {
+  cfg::SwitchConfig cfg{};
+  cfg.defaultVlan() = 4094;
+  for (auto i = 0; i < kNumSwitches; i++) {
+    const auto intfId = kLoopbackIntfBase + i;
+
+    cfg::Vlan vlan;
+    vlan.id() = intfId;
+    vlan.name() = fmt::format("fbossLoopback{}", i);
+    vlan.routable() = true;
+    // Deliberately no intfID.
+    cfg.vlans()->push_back(vlan);
+
+    cfg::Interface intf;
+    intf.type() = cfg::InterfaceType::VLAN;
+    intf.intfID() = intfId;
+    intf.vlanID() = intfId;
+    intf.isVirtual() = true;
+    cfg.interfaces()->push_back(intf);
+  }
+  return cfg;
+}
+} // namespace
+
+// A portless VLAN whose interface is named by loopbackIntfId resolves to that
+// switch, not an arbitrary one.
+TYPED_TEST(SwitchIdScopeResolverTest, portlessVlanScopeBoundToOwningSwitch) {
+  SwitchIdScopeResolver resolver(
+      makeMultiSwitchInfos(this->switchType, /*bindLoopbackIntfs=*/true));
+
+  for (auto i = 0; i < kNumSwitches; i++) {
+    EXPECT_EQ(
+        resolver.scope(
+            makePortlessVlan(kLoopbackIntfBase + i, kLoopbackIntfBase + i)),
+        HwSwitchMatcher(std::unordered_set<SwitchID>({SwitchID(i)})));
+  }
+}
+
+// A RIF on a multi-l3 platform with nothing naming its owner is a
+// misconfiguration: the platform must set SwitchInfo::loopbackIntfId. Fabric
+// has no l3 switch, so its pseudo VLANs keep the legacy pick.
+TYPED_TEST(SwitchIdScopeResolverTest, portlessVlanScopeUnboundRifIsFatal) {
+  const bool isFabric = this->switchType == cfg::SwitchType::FABRIC;
+
+  // Interface id that no switch claims, on a resolver that does bind others.
+  SwitchIdScopeResolver boundResolver(
+      makeMultiSwitchInfos(this->switchType, /*bindLoopbackIntfs=*/true));
+  // No switch binds anything at all.
+  SwitchIdScopeResolver unboundResolver(
+      makeMultiSwitchInfos(this->switchType, /*bindLoopbackIntfs=*/false));
+
+  if (isFabric) {
+    auto expectSingleKnownSwitch = [](const HwSwitchMatcher& matcher) {
+      EXPECT_EQ(matcher.size(), 1);
+      EXPECT_LT(
+          static_cast<int64_t>(*matcher.switchIds().begin()), kNumSwitches);
+    };
+    expectSingleKnownSwitch(boundResolver.scope(makePortlessVlan(99, 99)));
+    expectSingleKnownSwitch(unboundResolver.scope(
+        makePortlessVlan(kLoopbackIntfBase, kLoopbackIntfBase)));
+    return;
+  }
+
+  EXPECT_DEATH(
+      boundResolver.scope(makePortlessVlan(99, 99)),
+      "has no SwitchInfo::loopbackIntfId");
+  EXPECT_DEATH(
+      unboundResolver.scope(
+          makePortlessVlan(kLoopbackIntfBase, kLoopbackIntfBase)),
+      "has no SwitchInfo::loopbackIntfId");
+}
+
+// Ladakh/Leh carry a default VLAN 4094 with no vlanPorts and no interface, so
+// no loopbackIntfId could ever name it. Rejecting that would stop the agent
+// applying config, and it is never programmed as a RIF anyway.
+TYPED_TEST(SwitchIdScopeResolverTest, portlessVlanWithoutRifIsNotRejected) {
+  SwitchIdScopeResolver resolver(
+      makeMultiSwitchInfos(this->switchType, /*bindLoopbackIntfs=*/true));
+
+  auto defaultVlan =
+      std::make_shared<Vlan>(VlanID(4094), std::string("default"));
+  // No setInterfaceID: there is no cfg::Interface for this VLAN.
+  auto matcher = resolver.scope(defaultVlan);
+  EXPECT_EQ(matcher.size(), 1);
+  EXPECT_LT(static_cast<int64_t>(*matcher.switchIds().begin()), kNumSwitches);
+}
+
+// One l3 switch is unambiguous with nothing bound - the pre-existing
+// single-NPU loopback case.
+TYPED_TEST(SwitchIdScopeResolverTest, portlessVlanScopeUnboundSingleL3Switch) {
+  auto infos = makeMultiSwitchInfos(
+      this->switchType, /*bindLoopbackIntfs=*/
+      false);
+  std::map<int64_t, cfg::SwitchInfo> single{{0, infos[0]}};
+  SwitchIdScopeResolver resolver(single);
+
+  EXPECT_EQ(
+      resolver.scope(makePortlessVlan(kLoopbackIntfBase, kLoopbackIntfBase)),
+      HwSwitchMatcher(std::unordered_set<SwitchID>({SwitchID(0)})));
+}
+
+// A portless VLAN with no interface at all must still prefer the l3 switch.
+// allSwitchMatcher() also holds the fabric switches, which never own a RIF,
+// so picking from it could hand the VLAN to one of those.
+TYPED_TEST(SwitchIdScopeResolverTest, portlessVlanWithoutRifPrefersL3Switch) {
+  if (this->switchType == cfg::SwitchType::FABRIC) {
+    // No l3 switch to prefer; covered by portlessVlanWithoutRifIsNotRejected.
+    return;
+  }
+  auto infos =
+      makeMultiSwitchInfos(this->switchType, /*bindLoopbackIntfs=*/false);
+  std::map<int64_t, cfg::SwitchInfo> mixed{{0, infos[0]}};
+  // A fabric switch alongside the single l3 switch.
+  cfg::SwitchInfo fabric{};
+  fabric.switchType() = cfg::SwitchType::FABRIC;
+  fabric.asicType() = cfg::AsicType::ASIC_TYPE_FAKE;
+  fabric.switchIndex() = 1;
+  cfg::Range64 range{};
+  range.minimum() = 500;
+  range.maximum() = 564;
+  fabric.portIdRange() = range;
+  mixed[1] = fabric;
+  SwitchIdScopeResolver resolver(mixed);
+
+  auto noRifVlan = std::make_shared<Vlan>(VlanID(4094), std::string("default"));
+  EXPECT_EQ(
+      resolver.scope(noRifVlan),
+      HwSwitchMatcher(std::unordered_set<SwitchID>({SwitchID(0)})));
+}
+
+// Interface id 0 is the thrift default for cfg::Interface::intfID, so a
+// loopbackIntfId left at 0 must not capture interfaces that never set an id.
+TYPED_TEST(
+    SwitchIdScopeResolverTest,
+    portlessVlanWithNoInterfaceIgnoresBinding) {
+  auto infosBindingZero =
+      makeMultiSwitchInfos(this->switchType, /*bindLoopbackIntfs=*/true);
+  infosBindingZero[2].loopbackIntfId() = 0;
+  SwitchIdScopeResolver resolver(infosBindingZero);
+
+  auto cfg = makeLoopbackCfg();
+  // An interface that never set its id reads back as 0.
+  cfg::Vlan vlan;
+  vlan.id() = 4094;
+  vlan.name() = "vlan4094";
+  vlan.routable() = true;
+  cfg.vlans()->push_back(vlan);
+  cfg::Interface intf;
+  intf.type() = cfg::InterfaceType::VLAN;
+  intf.vlanID() = 4094;
+  cfg.interfaces()->push_back(intf);
+  cfg.defaultVlan() = 1;
+
+  // Switch 2 names interface 0, but interface 0 must not resolve to it. With
+  // the binding correctly ignored the VLAN has no RIF, so it takes the legacy
+  // fallback rather than switch 2.
+  auto matcher = resolver.scope(cfg::InterfaceType::VLAN, InterfaceID(0), cfg);
+  EXPECT_EQ(matcher.size(), 1);
+  EXPECT_NE(
+      matcher, HwSwitchMatcher(std::unordered_set<SwitchID>({SwitchID(2)})));
+
+  // A real binding still resolves, so the guard has not disabled matching.
+  EXPECT_EQ(
+      resolver.scope(
+          cfg::InterfaceType::VLAN, InterfaceID(kLoopbackIntfBase + 1), cfg),
+      HwSwitchMatcher(std::unordered_set<SwitchID>({SwitchID(1)})));
+}
+
+// A VLAN with member ports still derives its scope from those ports, even when
+// its interface id happens to be bound to a different switch.
+TYPED_TEST(SwitchIdScopeResolverTest, portedVlanScopeIgnoresLoopbackIntfId) {
+  SwitchIdScopeResolver resolver(
+      makeMultiSwitchInfos(this->switchType, /*bindLoopbackIntfs=*/true));
+
+  // Interface id is bound to switch 3, but the member port lives on switch 1.
+  auto vlan = makePortlessVlan(kLoopbackIntfBase + 3, kLoopbackIntfBase + 3);
+  Vlan::MemberPorts ports;
+  state::VlanInfo vlanInfo;
+  *vlanInfo.tagged() = true;
+  *vlanInfo.priorityTagged() = false;
+  ports.insert(std::make_pair(100, vlanInfo));
+  vlan->setPortsInfo(ports);
+
+  EXPECT_EQ(
+      resolver.scope(vlan),
+      HwSwitchMatcher(std::unordered_set<SwitchID>({SwitchID(1)})));
+}
+
+// The cfg path builds a Vlan from cfg::Vlan, which carries no intfID because
+// coop never sets it. The resolver populates it from the id it is handed.
+TYPED_TEST(
+    SwitchIdScopeResolverTest,
+    portlessIntfScopeFromCfgWithoutVlanIntfId) {
+  SwitchIdScopeResolver resolver(
+      makeMultiSwitchInfos(this->switchType, /*bindLoopbackIntfs=*/true));
+
+  auto cfg = makeLoopbackCfg();
+
+  // No vlanPorts: every one of these VLANs is portless.
+  for (auto i = 0; i < kNumSwitches; i++) {
+    EXPECT_EQ(
+        resolver.scope(
+            cfg::InterfaceType::VLAN, InterfaceID(kLoopbackIntfBase + i), cfg),
+        HwSwitchMatcher(std::unordered_set<SwitchID>({SwitchID(i)})))
+        << "interface " << (kLoopbackIntfBase + i)
+        << " did not resolve to its bound switch from cfg";
+  }
+}
+
+// The state path resolves through the Vlan that ApplyThriftConfig back-filled
+// from the cfg::Interface claiming it.
+TYPED_TEST(
+    SwitchIdScopeResolverTest,
+    portlessIntfScopeFromStateWithoutVlanIntfId) {
+  SwitchIdScopeResolver resolver(
+      makeMultiSwitchInfos(this->switchType, /*bindLoopbackIntfs=*/true));
+
+  auto state = std::make_shared<SwitchState>();
+  HwSwitchMatcher anyScope(std::unordered_set<SwitchID>({SwitchID(0)}));
+
+  for (auto i = 0; i < kNumSwitches; i++) {
+    const auto intfId = kLoopbackIntfBase + i;
+    auto vlan = std::make_shared<Vlan>(
+        VlanID(intfId), folly::to<std::string>("fbossLoopback", i));
+    // As ApplyThriftConfig's back-fill leaves it: cfg::Vlan carried no intfID,
+    // so the id came from the cfg::Interface claiming this VLAN.
+    vlan->setInterfaceID(InterfaceID(intfId));
+    state->getVlans()->addNode(vlan, anyScope);
+
+    auto intf = std::make_shared<Interface>(
+        InterfaceID(intfId),
+        RouterID(0),
+        std::optional<VlanID>(VlanID(intfId)),
+        folly::StringPiece(folly::to<std::string>("fbossLoopback", i)),
+        folly::MacAddress("00:02:00:00:00:55"),
+        9000,
+        true /*isVirtual*/,
+        false,
+        cfg::InterfaceType::VLAN);
+    state->getInterfaces()->modify(&state)->addNode(intf, anyScope);
+
+    EXPECT_EQ(
+        resolver.scope(intf, state),
+        HwSwitchMatcher(std::unordered_set<SwitchID>({SwitchID(i)})))
+        << "interface " << intfId
+        << " did not resolve to its bound switch from state";
+  }
 }
 
 TYPED_TEST(SwitchIdScopeResolverTest, portIntfScope) {
@@ -513,6 +813,105 @@ TYPED_TEST(SwitchIdScopeResolverTest, srv6TunnelStateScopeCfg) {
   tunnelFields.srv6TunnelId() = "tunnel0";
   tunnelFields.underlayIntfId() = static_cast<int>(intf->getID());
   auto tunnel = std::make_shared<Srv6Tunnel>(std::move(tunnelFields));
+
+  auto config = this->sw_->getConfig();
+  const auto& resolver = this->scopeResolver();
+  auto tunnelMatcher = resolver.scope(tunnel, config);
+  auto intfMatcher = resolver.scope(intf, config);
+  EXPECT_EQ(tunnelMatcher, intfMatcher);
+}
+
+TYPED_TEST(SwitchIdScopeResolverTest, vxlanTunnelCfgScope) {
+  if (this->isFabric()) {
+    return;
+  }
+  // Create a cfg::VxLanTunnel referencing a valid interface
+  cfg::VxLanTunnel tunnel;
+  tunnel.vxlanTunnelId() = "tunnel0";
+  tunnel.underlayIntfID() = 1;
+  tunnel.tunnelType() = TunnelType::VXLAN;
+
+  auto config = this->sw_->getConfig();
+  const auto& resolver = this->scopeResolver();
+  auto tunnelMatcher = resolver.scope(tunnel, config);
+
+  // The scope should match that of the underlay interface
+  for (const auto& intf : *config.interfaces()) {
+    if (*intf.intfID() == 1) {
+      auto intfMatcher = resolver.scope(*intf.type(), InterfaceID(1), config);
+      EXPECT_EQ(tunnelMatcher, intfMatcher);
+      break;
+    }
+  }
+}
+
+TYPED_TEST(SwitchIdScopeResolverTest, vxlanTunnelCfgScopePortIntf) {
+  if (this->switchType != cfg::SwitchType::NPU) {
+    return;
+  }
+  auto config = testConfigAWithPortInterfaces();
+  this->addMirrorConfig(&config);
+  this->sw_->applyConfig("applyConfig", config);
+
+  cfg::VxLanTunnel tunnel;
+  tunnel.vxlanTunnelId() = "tunnel0";
+  tunnel.underlayIntfID() = 6001;
+  tunnel.tunnelType() = TunnelType::VXLAN;
+
+  const auto& resolver = this->scopeResolver();
+  auto tunnelMatcher = resolver.scope(tunnel, config);
+  auto portMatcher = resolver.scope(PortID(1));
+  EXPECT_EQ(tunnelMatcher, portMatcher);
+}
+
+TYPED_TEST(SwitchIdScopeResolverTest, vxlanTunnelStateScope) {
+  if (this->isFabric()) {
+    return;
+  }
+  auto state = this->sw_->getState();
+  auto allIntfs = state->getInterfaces();
+  auto intf = allIntfs->getAllNodes()->cbegin()->second;
+
+  // Create VxlanTunnel with underlay pointing to existing interface
+  state::VxLanTunnelFields tunnelFields;
+  tunnelFields.vxlanTunnelId() = "tunnel0";
+  tunnelFields.underlayIntfId() = static_cast<int>(intf->getID());
+  tunnelFields.tunnelType() = TunnelType::VXLAN;
+  auto tunnel = std::make_shared<VxlanTunnel>(std::move(tunnelFields));
+
+  const auto& resolver = this->scopeResolver();
+  auto tunnelMatcher = resolver.scope(tunnel, state);
+  auto intfMatcher = resolver.scope(intf, state);
+  EXPECT_EQ(tunnelMatcher, intfMatcher);
+}
+
+TYPED_TEST(SwitchIdScopeResolverTest, vxlanTunnelCfgScopeInvalidIntf) {
+  if (this->isFabric()) {
+    return;
+  }
+  cfg::VxLanTunnel tunnel;
+  tunnel.vxlanTunnelId() = "tunnel0";
+  tunnel.underlayIntfID() = 99999;
+  tunnel.tunnelType() = TunnelType::VXLAN;
+
+  auto config = this->sw_->getConfig();
+  const auto& resolver = this->scopeResolver();
+  EXPECT_THROW(resolver.scope(tunnel, config), FbossError);
+}
+
+TYPED_TEST(SwitchIdScopeResolverTest, vxlanTunnelStateScopeCfg) {
+  if (this->isFabric()) {
+    return;
+  }
+  auto state = this->sw_->getState();
+  auto allIntfs = state->getInterfaces();
+  auto intf = allIntfs->getAllNodes()->cbegin()->second;
+
+  state::VxLanTunnelFields tunnelFields;
+  tunnelFields.vxlanTunnelId() = "tunnel0";
+  tunnelFields.underlayIntfId() = static_cast<int>(intf->getID());
+  tunnelFields.tunnelType() = TunnelType::VXLAN;
+  auto tunnel = std::make_shared<VxlanTunnel>(std::move(tunnelFields));
 
   auto config = this->sw_->getConfig();
   const auto& resolver = this->scopeResolver();

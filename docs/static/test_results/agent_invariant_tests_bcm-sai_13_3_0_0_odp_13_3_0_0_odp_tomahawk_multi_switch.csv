@@ -1,0 +1,2 @@
+"Test Case","Hardware","Vendor","SDK Version","ASIC","Switch Mode","Role","Status"
+"cold_boot.ProdInvariantTest.verifyInvariants","wedge100s","Broadcom","13.3.0.0_odp","tomahawk","multi switch","","FAILED"

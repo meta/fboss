@@ -67,6 +67,8 @@ std::map<PortID, cfg::PortProfileID> getCabledPortsAndProfiles(
 std::set<PortID> getCabledPorts(const HwQsfpEnsemble* ensemble);
 std::vector<std::pair<std::string, std::string>> getCabledPairs(
     const HwQsfpEnsemble* ensemble);
+std::vector<std::pair<std::string, std::string>> getCabledPairsWithTransceivers(
+    const HwQsfpEnsemble* ensemble);
 std::vector<TransceiverID> getCabledPortTranceivers(
     const HwQsfpEnsemble* ensemble);
 bool match(std::vector<TransceiverID> l, std::vector<TransceiverID> r);

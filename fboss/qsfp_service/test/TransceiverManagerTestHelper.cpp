@@ -26,6 +26,7 @@ void TransceiverManagerTestHelper::SetUp() {
   fwVersionDsp.fwType() = cfg::FirmwareType::DSP;
   fw.versions() = {fwVersionApp, fwVersionDsp};
   fwVersions.versionsMap()[getFakePartNumber()] = fw;
+  fwVersions.fwHandleMap()[getFakePartNumber()] = getFakeFwStorageHandle();
   qsfpCfg.transceiverFirmwareVersions() = fwVersions;
 
   auto createTransceiverAttributes =

@@ -30,8 +30,12 @@ CmdDeleteVlanTraits::RetType CmdDeleteVlan::queryClient(
   auto& swConfig = *session.getAgentConfig().sw();
   VlanID vlanId(vlanIdArg.getVlanId());
 
-  // Throws FbossError naming the referrers when the VLAN is still in use, or
-  // when it does not exist.
+  if (VlanManager::findVlan(swConfig, vlanId) == nullptr) {
+    return fmt::format(
+        "Warning: VLAN {} not found, nothing to delete",
+        static_cast<uint16_t>(vlanId));
+  }
+  // Throws FbossError naming the referrers when the VLAN is still in use.
   VlanManager::deleteVlan(swConfig, vlanId);
 
   // VLAN membership/creation is applied hitlessly, matching the config vlan

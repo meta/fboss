@@ -30,6 +30,15 @@ using FsdbNaivePeriodicSubscribableStorage = NaivePeriodicSubscribableStorage<
     CowSubscriptionManager<thrift_cow::FsdbCowStateRoot>>;
 
 extern template class NaivePeriodicSubscribableStorage<
+    CowStorage<FsdbOperStateRoot, thrift_cow::FsdbHybridCowStateRoot>,
+    CowSubscriptionManager<thrift_cow::FsdbHybridCowStateRoot>>;
+
+using FsdbHybridNaivePeriodicSubscribableStorage =
+    NaivePeriodicSubscribableStorage<
+        CowStorage<FsdbOperStateRoot, thrift_cow::FsdbHybridCowStateRoot>,
+        CowSubscriptionManager<thrift_cow::FsdbHybridCowStateRoot>>;
+
+extern template class NaivePeriodicSubscribableStorage<
     CowStorage<FsdbOperStatsRoot>,
     CowSubscriptionManager<thrift_cow::FsdbCowStatsRoot>>;
 

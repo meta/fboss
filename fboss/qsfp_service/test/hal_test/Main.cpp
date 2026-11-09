@@ -14,7 +14,7 @@ DEFINE_string(
 
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
-  folly::init(&argc, &argv);
+  const folly::Init init(&argc, &argv);
 
   if (!FLAGS_hal_test_transceiver_properties_config.empty()) {
     facebook::fboss::TransceiverPropertiesManager::init(

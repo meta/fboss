@@ -52,9 +52,8 @@ class VlanManager {
   // objects that cannot outlive it:
   //   - interfaces bound to it (Interface.vlanID), including routed SVIs with
   //     IP addresses — an interface's vlanID must reference an existing VLAN
-  //   - switchport membership rows naming it (VlanPort.vlanID), same effect as
-  //     config interface <port> switchport trunk allowed vlan remove <id> on
-  //     every member port
+  //   - switchport membership rows naming it (VlanPort.vlanID), dropping the
+  //     VLAN from every member port
   //   - static MAC entries scoped to it (StaticMacEntry.vlanID)
   //
   // Refuses (throws FbossError) rather than silently orphaning references or

@@ -348,7 +348,11 @@ class AgentAclTableGroupTest : public AgentHwTest {
     counterAcl.name() = aclEntryName;
     counterAcl.actionType() = cfg::AclActionType::PERMIT;
     counterAcl.dscp() = dscp;
-    if (addVlan) {
+    // P200 drops OUTER_VLAN from the ACL key profile, so an entry cannot match
+    // on it
+    if (addVlan &&
+        checkSameAndGetAsicForTesting(getAgentEnsemble()->getL3Asics())
+                ->getAsicType() != cfg::AsicType::ASIC_TYPE_P200) {
       counterAcl.vlanID() = 2000;
     }
     utility::addAclEntry(cfg, counterAcl, aclTableName);

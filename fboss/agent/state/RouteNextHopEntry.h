@@ -52,7 +52,8 @@ class RouteNextHopEntry
       std::optional<NextHopSet> overrideNextHops = std::nullopt,
       std::optional<NextHopSetID> normalizedResolvedNextHopSetID = std::nullopt,
       std::optional<NextHopSetID> resolvedNextHopSetID = std::nullopt,
-      std::optional<NextHopSetID> clientNextHopSetID = std::nullopt);
+      std::optional<NextHopSetID> clientNextHopSetID = std::nullopt,
+      std::optional<NextHopSetID> overrideNextHopSetID = std::nullopt);
   RouteNextHopEntry(
       NextHopSet nhopSet,
       AdminDistance distance,
@@ -63,7 +64,8 @@ class RouteNextHopEntry
       std::optional<NextHopSet> overrideNextHops = std::nullopt,
       std::optional<NextHopSetID> normalizedResolvedNextHopSetID = std::nullopt,
       std::optional<NextHopSetID> resolvedNextHopSetID = std::nullopt,
-      std::optional<NextHopSetID> clientNextHopSetID = std::nullopt);
+      std::optional<NextHopSetID> clientNextHopSetID = std::nullopt,
+      std::optional<NextHopSetID> overrideNextHopSetID = std::nullopt);
 
   RouteNextHopEntry(
       NextHop nhop,
@@ -75,7 +77,8 @@ class RouteNextHopEntry
       std::optional<NextHopSet> overrideNextHops = std::nullopt,
       std::optional<NextHopSetID> normalizedResolvedNextHopSetID = std::nullopt,
       std::optional<NextHopSetID> resolvedNextHopSetID = std::nullopt,
-      std::optional<NextHopSetID> clientNextHopSetID = std::nullopt);
+      std::optional<NextHopSetID> clientNextHopSetID = std::nullopt,
+      std::optional<NextHopSetID> overrideNextHopSetID = std::nullopt);
 
   RouteNextHopEntry(RouteNextHopEntry&& other) noexcept {
     this->fromThrift(other.toThrift());
@@ -98,6 +101,9 @@ class RouteNextHopEntry
   // nexthops will be removeed in the future
   NextHopSet getNextHopSet() const;
   void setNextHops(const NextHopSet& nhops);
+  // Drops the inline nexthops, keeping the action and the set IDs. Readers
+  // must already resolve via the IDs.
+  void clearInlineNextHops();
 
   const std::optional<RouteCounterID> getCounterID() const {
     if (auto counter = safe_cref<switch_state_tags::counterID>()) {
@@ -156,6 +162,22 @@ class RouteNextHopEntry
     }
   }
 
+  const std::optional<NextHopSetID> getOverrideNextHopSetID() const {
+    if (auto nhopSetID = safe_cref<switch_state_tags::overrideNextHopSetID>()) {
+      return NextHopSetID(nhopSetID->cref());
+    }
+    return std::nullopt;
+  }
+
+  void setOverrideNextHopSetID(const std::optional<NextHopSetID>& nhopSetID) {
+    if (nhopSetID) {
+      ref<switch_state_tags::overrideNextHopSetID>() =
+          static_cast<int64_t>(*nhopSetID);
+    } else {
+      ref<switch_state_tags::overrideNextHopSetID>().reset();
+    }
+  }
+
   std::optional<std::string> getNamedNextHopGroup() const {
     if (auto name = safe_cref<switch_state_tags::namedNextHopGroup>()) {
       return name->cref();
@@ -177,6 +199,22 @@ class RouteNextHopEntry
       ref<switch_state_tags::namedNextHopGroup>() = *name;
     } else {
       ref<switch_state_tags::namedNextHopGroup>().reset();
+    }
+  }
+
+  // Unset means level 0
+  int32_t getLevel() const {
+    if (auto level = safe_cref<switch_state_tags::level>()) {
+      return level->cref();
+    }
+    return 0;
+  }
+
+  void setLevel(int32_t level) {
+    if (level) {
+      ref<switch_state_tags::level>() = level;
+    } else {
+      ref<switch_state_tags::level>().reset();
     }
   }
 
@@ -204,18 +242,23 @@ class RouteNextHopEntry
   bool hasOverrideSwitchingModeOrNhops() const;
   bool hasOverrideSwitchingMode() const;
   bool hasOverrideNextHops() const;
-  NextHopSet normalizedNextHops() const {
-    return normalizedNextHopsImpl(false /*ignoreOverride*/);
+  // ecmpWidth defaults to FLAGS_ecmp_width while the flag is being retired;
+  // callers with a SwitchState (e.g. FibHelpers) pass the config-sourced value.
+  NextHopSet normalizedNextHops(uint32_t ecmpWidth = FLAGS_ecmp_width) const {
+    return normalizedNextHopsImpl(false /*ignoreOverride*/, ecmpWidth);
   }
   // Deprecated: do not add new callers; will be removed. Use the static
   // normalizeNextHops(NextHopSet) instead.
-  NextHopSet nonOverrideNormalizedNextHops() const {
-    return normalizedNextHopsImpl(true /*ignoreOverride*/);
+  NextHopSet nonOverrideNormalizedNextHops(
+      uint32_t ecmpWidth = FLAGS_ecmp_width) const {
+    return normalizedNextHopsImpl(true /*ignoreOverride*/, ecmpWidth);
   }
   // Weight-normalize an arbitrary nexthop set to ECMP width. Pure: depends
   // only on the input set (no `this`), so callers that resolve the set via an
   // ID can normalize without an inline getNextHopSet() read.
-  static NextHopSet normalizeNextHops(const NextHopSet& nhopSet);
+  static NextHopSet normalizeNextHops(
+      const NextHopSet& nhopSet,
+      uint32_t ecmpWidth = FLAGS_ecmp_width);
 
   std::string str() const;
 
@@ -267,7 +310,8 @@ class RouteNextHopEntry
       uint64_t normalizedPathCount);
 
  private:
-  NextHopSet normalizedNextHopsImpl(bool ignoreOverride) const;
+  NextHopSet normalizedNextHopsImpl(bool ignoreOverride, uint32_t ecmpWidth)
+      const;
   static state::RouteNextHopEntry getRouteNextHopEntryThrift(
       Action action,
       AdminDistance distance,
@@ -278,10 +322,12 @@ class RouteNextHopEntry
       const std::optional<NextHopSet>& overridNextHops,
       const std::optional<NextHopSetID>& normalizedResolvedNextHopSetID,
       const std::optional<NextHopSetID>& resolvedNextHopSetID,
-      const std::optional<NextHopSetID>& clientNextHopSetID);
+      const std::optional<NextHopSetID>& clientNextHopSetID,
+      const std::optional<NextHopSetID>& overrideNextHopSetID);
   static void normalize(
       std::vector<NextHopWeight>& scaledWeights,
-      NextHopWeight totalWeight);
+      NextHopWeight totalWeight,
+      uint32_t ecmpWidth);
 };
 
 /**
@@ -301,19 +347,46 @@ NextHopWeight totalWeight(const RouteNextHopEntry::NextHopSet& nhops);
 
 using RouteNextHopSet = RouteNextHopEntry::NextHopSet;
 
+bool hasSrv6AndNonSrv6NextHops(const RouteNextHopSet& nextHops);
+
 namespace util {
 
 /**
  * Convert thrift representation of nexthops to RouteNextHops.
+ *
+ * With combineDuplicateWeights, next hops naming the same forwarding
+ * destination are collapsed into one whose weight is the sum of theirs, rather
+ * than the set silently keeping a single arbitrary one. Once anything has been
+ * collapsed the next hops appearing once are given an explicit weight of 1
+ * (or their own weight, if they carried one), so the resulting set explicitly
+ * represents the requested split. An all-distinct group has nothing to
+ * collapse and so stays ECMP, verbatim.
+ * Throws FbossError if a combined weight overflows the thrift i32 weight.
  */
 RouteNextHopSet toRouteNextHopSet(
     std::vector<NextHopThrift> const& nhts,
-    bool allowV6NonLinkLocal = false);
+    bool allowV6NonLinkLocal = false,
+    bool combineDuplicateWeights = false);
 
 /**
  * Convert RouteNextHops to thrift representaion of nexthops
+ *
+ * With replicateWeightedNexthops, a next hop of weight w > 1 is expanded back
+ * into w next hops of ECMP_WEIGHT, undoing the combining toRouteNextHopSet
+ * does for combineDuplicateWeights. Next hops at ECMP_WEIGHT or
+ * UCMP_DEFAULT_WEIGHT are emitted once, verbatim.
  */
-std::vector<NextHopThrift> fromRouteNextHopSet(RouteNextHopSet const& nhs);
+std::vector<NextHopThrift> fromRouteNextHopSet(
+    RouteNextHopSet const& nhs,
+    bool replicateWeightedNexthops = false);
+
+/**
+ * Same conversion for nexthops held in a vector, e.g. as resolved from a
+ * next hop set id.
+ */
+std::vector<NextHopThrift> fromNextHops(
+    std::vector<NextHop> const& nhs,
+    bool replicateWeightedNexthops = false);
 
 UnicastRoute toUnicastRoute(
     const folly::CIDRNetwork& nw,

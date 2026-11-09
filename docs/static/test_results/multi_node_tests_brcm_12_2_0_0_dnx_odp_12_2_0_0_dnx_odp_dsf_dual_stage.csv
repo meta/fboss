@@ -1,6 +1,4 @@
 "Test Case","Vendor","SDK Version","Topology","Status"
-"cold_boot.AgentMultiNodeFabricLinkMonitoringTest.verifyFabricLinkMonitoring","Broadcom","12.2.0.0_dnx_odp","dsf dual stage","FAILED"
-"cold_boot.AgentMultiNodeDsfTest.verifySelfHealingECMPLag","Broadcom","12.2.0.0_dnx_odp","dsf dual stage","FAILED"
 "cold_boot.AgentMultiNodeVoqSwitchTest.verifyGracefulFabricLinkDownUp","Broadcom","12.2.0.0_dnx_odp","dsf dual stage","PASSED"
 "cold_boot.AgentMultiNodeVoqSwitchTest.verifyFabricLinkDrainUndrain","Broadcom","12.2.0.0_dnx_odp","dsf dual stage","PASSED"
 "cold_boot.AgentMultiNodeVoqSwitchHyperPortTest.verifyNoControlPlaneFlapOnRemoteWarmboot","Broadcom","12.2.0.0_dnx_odp","dsf dual stage","SKIPPED"
@@ -10,3 +8,4 @@
 "cold_boot.AgentMultiNodeTest.verifyCluster","Broadcom","12.2.0.0_dnx_odp","dsf dual stage","PASSED"
 "cold_boot.AgentMultiNodeProcessRestartTest.verifyUngracefulQsfpRestart","Broadcom","12.2.0.0_dnx_odp","dsf dual stage","PASSED"
 "cold_boot.AgentMultiNodeProcessRestartTest.verifyGracefulQsfpRestart","Broadcom","12.2.0.0_dnx_odp","dsf dual stage","PASSED"
+"cold_boot.AgentMultiNodeDsfTest.verifySelfHealingECMPLag","Broadcom","12.2.0.0_dnx_odp","dsf dual stage","PASSED"

@@ -527,7 +527,7 @@
     },
     {
       "slotPath": "/SCM_SLOT@0/COMESE_SLOT@0",
-      "pmUnitName": "NETLAKE",
+      "pmUnitName": "NETLAKE20",
       "sensors": [
         {
           "name": "COME_PU1_PVDDCR_VOUT",

@@ -32,6 +32,7 @@ set(SAI_SWITCH_SRC
   fboss/agent/hw/sai/switch/SaiRouteManager.cpp
   fboss/agent/hw/sai/switch/SaiRouterInterfaceManager.cpp
   fboss/agent/hw/sai/switch/SaiRxPacket.cpp
+  fboss/agent/hw/sai/switch/SaiMyMacManager.cpp
   fboss/agent/hw/sai/switch/SaiSamplePacketManager.cpp
   fboss/agent/hw/sai/switch/SaiSchedulerManager.cpp
   fboss/agent/hw/sai/switch/SaiSwitch.cpp
@@ -42,9 +43,11 @@ set(SAI_SWITCH_SRC
   fboss/agent/hw/sai/switch/SaiSrv6SidListManager.cpp
   fboss/agent/hw/sai/switch/SaiSrv6TunnelManager.cpp
   fboss/agent/hw/sai/switch/SaiTunnelUtils.cpp
+  fboss/agent/hw/sai/switch/SaiVxlanTunnelManager.cpp
   fboss/agent/hw/sai/switch/SaiUdfManager.cpp
   fboss/agent/hw/sai/switch/SaiVlanManager.cpp
   fboss/agent/hw/sai/switch/SaiVirtualRouterManager.cpp
+  fboss/agent/hw/sai/switch/SaiVirtualChannelManager.cpp
   fboss/agent/hw/sai/switch/SaiWredManager.cpp
 )
 
@@ -80,13 +83,12 @@ elseif (SAI_BRCM_IMPL)
     fboss/agent/hw/sai/switch/npu/bcm/SaiSwitchManager.cpp
     fboss/agent/hw/sai/switch/npu/bcm/SaiBufferManager.cpp
     fboss/agent/hw/sai/switch/npu/bcm/oss/SaiSwitchManager.cpp
+    fboss/agent/hw/sai/switch/npu/bcm/SaiFirmwareManager.cpp
     fboss/agent/hw/sai/switch/oss/SaiAclTableManager.cpp
     fboss/agent/hw/sai/switch/oss/SaiArsProfileManager.cpp
     fboss/agent/hw/sai/switch/oss/SaiVendorSwitchManager.cpp
-    fboss/agent/hw/sai/switch/oss/SaiFirmwareManager.cpp
   )
 elseif (CHENAB_SAI_SDK)
-# Chenab-TODO: Use non-default files here
   list(APPEND SAI_SWITCH_SRC
     fboss/agent/hw/sai/switch/npu/SaiAclTableManager.cpp
     fboss/agent/hw/sai/switch/npu/SaiPortManager.cpp
@@ -95,11 +97,11 @@ elseif (CHENAB_SAI_SDK)
     fboss/agent/hw/sai/switch/npu/chenab/SaiArsManager.cpp
     fboss/agent/hw/sai/switch/npu/chenab/SaiPortManager.cpp
     fboss/agent/hw/sai/switch/npu/chenab/SaiBufferManager.cpp
+    fboss/agent/hw/sai/switch/npu/chenab/SaiSwitchManager.cpp
+    fboss/agent/hw/sai/switch/npu/chenab/oss/SaiSwitchManager.cpp
     fboss/agent/hw/sai/switch/oss/SaiSwitch.cpp
-    fboss/agent/hw/sai/switch/oss/SaiTamManager.cpp
-    fboss/agent/hw/sai/switch/oss/SaiPortManager.cpp
+    fboss/agent/hw/sai/switch/npu/chenab/SaiTamManager.cpp
     fboss/agent/hw/sai/switch/oss/SaiAclTableManager.cpp
-    fboss/agent/hw/sai/switch/oss/SaiSwitchManager.cpp
     fboss/agent/hw/sai/switch/oss/SaiQueueManager.cpp
     fboss/agent/hw/sai/switch/oss/SaiVendorSwitchManager.cpp
     fboss/agent/hw/sai/switch/oss/SaiFirmwareManager.cpp

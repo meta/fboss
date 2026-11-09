@@ -33,7 +33,8 @@ class ClassBasedPolicyNode : public ThriftStructNode<
       const std::string& name,
       const state::NamedNextHopGroupAndID& defaultNextHopGroup,
       const std::map<ForwardingClass, state::NamedNextHopGroupAndID>&
-          class2NextHopGroup);
+          class2NextHopGroup,
+      bool referenced);
 
   const std::string& getID() const {
     return cref<switch_state_tags::name>()->cref();
@@ -57,6 +58,14 @@ class ClassBasedPolicyNode : public ThriftStructNode<
       const std::map<ForwardingClass, state::NamedNextHopGroupAndID>&
           class2NextHopGroup) {
     set<switch_state_tags::class2NextHopGroup>(class2NextHopGroup);
+  }
+
+  bool isReferenced() const {
+    return cref<switch_state_tags::referenced>()->cref();
+  }
+
+  void setReferenced(bool referenced) {
+    set<switch_state_tags::referenced>(referenced);
   }
 
  private:

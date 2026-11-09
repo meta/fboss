@@ -42,6 +42,9 @@ class AgentWrapperTest : public ::testing::Test {
   std::vector<std::string> getDrainFiles() const;
   std::vector<int> getHwSwitchIndices() const;
 
+  std::vector<std::string> getAgentUnits() const;
+  void stopHwAgents();
+
   bool isSai() const;
   bool skipTest() const;
   std::unique_ptr<AgentConfig> config_;

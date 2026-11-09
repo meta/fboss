@@ -57,6 +57,19 @@ target_link_libraries(platform_manager_utils_test
 
 gtest_discover_tests(platform_manager_utils_test)
 
+add_executable(platform_manager_pm_unit_identity_test
+  fboss/platform/platform_manager/tests/PmUnitIdentityTest.cpp
+)
+
+target_link_libraries(platform_manager_pm_unit_identity_test
+  platform_manager_pm_unit_identity
+  Folly::folly
+  ${GTEST}
+  ${LIBGMOCK_LIBRARIES}
+)
+
+gtest_discover_tests(platform_manager_pm_unit_identity_test)
+
 add_executable(platform_manager_data_store_test
   fboss/platform/platform_manager/tests/DataStoreTest.cpp
 )

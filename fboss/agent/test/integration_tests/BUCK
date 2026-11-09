@@ -1,6 +1,7 @@
 load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("//fboss:THIRD-PARTY-VERSIONS.bzl", "BCM_SDKS", "to_impl_suffix", "to_versions")
+# @oss-disable[end= ]: load("//fboss/agent/hw/sai/impl:impl.bzl", "sai_impl_target_compatible_with")
 load(
     "//fboss/agent/test/integration_tests:integration_tests.bzl",
     "all_sai_integration_test_binaries",
@@ -17,8 +18,12 @@ cpp_library(
         "AgentBgpIntegrationTests.cpp",
         "AgentIntegrationTest.cpp",
     ],
+    headers = [
+        "AgentIntegrationTest.h",
+    ],
     link_whole = True,  # Required for gtest to find tests in other files.
     exported_deps = [
+        "fbsource//xplat/folly:subprocess",
         "//configerator/structs/neteng/fboss/bgp/if:bgp_attr-cpp2-types",
         "//fb303:service_data",
         "//fboss/agent:core",
@@ -38,7 +43,6 @@ cpp_library(
         "//fboss/fsdb/common:flags",
         "//fboss/lib:common_utils",
         "//fboss/lib/config:fboss_config_utils",
-        "//folly:subprocess",
         "//neteng/fboss/bgp/cpp:bgp_service_lib",
         "//neteng/fboss/bgp/if:bgp_thrift-cpp2-services",
         "//neteng/fboss/bgp/if:bgp_thrift-cpp2-types",
@@ -56,6 +60,7 @@ cpp_library(
         srcs = [
             "BcmAgentIntegrationTests.cpp",
         ],
+        # @oss-disable[end= ]: target_compatible_with = sai_impl_target_compatible_with(sdk),
         versions = to_versions(sdk),
         deps = [
             "fbsource//third-party/glog:glog",

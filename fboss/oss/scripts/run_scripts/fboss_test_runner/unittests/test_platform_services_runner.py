@@ -17,6 +17,7 @@ from fboss_test_runner.runners.platform_services_test_runner import (
     PlatformServicesTestRunner,
 )
 from fboss_test_runner.runners.test_runner import TestRunner
+from fboss_test_runner.tier_selection import TestTier
 
 
 @pytest.fixture
@@ -29,6 +30,7 @@ def _make_args(**overrides):
         "type": None,
         "config": None,
         "list_tests": False,
+        "tier": None,
         "skip_known_bad_tests": None,
         "sai_logging": "WARN",
         "fboss_logging": "WARN",
@@ -69,6 +71,10 @@ class TestBinaryNameByType:
             assert platform_runner._get_test_binary_name() == "platform_hw_test"
 
 
+def test_all_platform_tests_are_t0(platform_runner):
+    assert platform_runner._get_uniform_test_tier() is TestTier.T0
+
+
 class TestRunTestMultiTypeIteration:
     """When --type is omitted, run_test iterates over all 7 TEST_TYPE_CHOICES,
     using a per-type argument copy for each pass. This is the unique runner-level
@@ -92,7 +98,9 @@ class TestRunTestMultiTypeIteration:
             ),
             patch.object(platform_runner, "_filter_tests", side_effect=lambda t: t),
             patch.object(
-                platform_runner, "_backup_and_modify_config", side_effect=lambda c: c
+                platform_runner,
+                "_prepare_config_for_run",
+                side_effect=lambda: None,
             ),
             patch.object(platform_runner, "_run_tests", return_value=[]),
             patch.object(platform_runner, "_print_output_summary"),

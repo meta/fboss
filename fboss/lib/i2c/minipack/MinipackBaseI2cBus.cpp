@@ -20,7 +20,7 @@ void MinipackBaseI2cBus::moduleRead(
   auto pim = getPim(module);
   auto port = getQsfpPimPort(module);
 
-  XLOG(DBG3) << fmt::format(
+  XLOG(DBG5) << fmt::format(
       "I2C read to pim {:d}, port {:d} at offset {:#x} for {:d} bytes",
       pim,
       port,
@@ -52,7 +52,7 @@ void MinipackBaseI2cBus::moduleWrite(
   auto pim = getPim(module);
   auto port = getQsfpPimPort(module);
 
-  XLOG(DBG3) << fmt::format(
+  XLOG(DBG5) << fmt::format(
       "I2C write to pim {:d}, port {:d} at offset {:#x} for {:d} bytes",
       pim,
       port,

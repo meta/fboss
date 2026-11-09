@@ -947,7 +947,7 @@ void SaiMacsecManager::setMacsecState(
     setupMacsecState(linePort, dropUnencrypted, SAI_MACSEC_DIRECTION_EGRESS);
   }
   XLOG(DBG2) << "For Port " << linePort << "Basic Macsec state "
-             << (macsecDesired ? "Setup" : "Deletion") << " Successfull";
+             << (macsecDesired ? "Setup" : "Deletion") << " Successful";
 }
 
 /*
@@ -1383,7 +1383,8 @@ void SaiMacsecManager::removeMacsecState(
     portHandle->port->setOptionalAttribute(
         SaiPortTraits::Attributes::EgressMacSecAcl{SAI_NULL_OBJECT_ID});
   }
-  XLOG(DBG2) << "removeScAcls: Unbound ACL table from line port " << linePort;
+  XLOG(DBG2) << "removeMacsecState: Unbound ACL table from line port "
+             << linePort;
 
   // Remove the ACL related to SC (if any)
   removeScAcls(linePort, direction);

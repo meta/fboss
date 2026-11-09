@@ -1,6 +1,6 @@
 # pyre-strict
 from collections import defaultdict
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Callable, Dict, List, Optional, Set, Tuple
 
 import neteng.fboss.platform_mapping_config.thrift_types as pm_types
 from neteng.fboss.platform_mapping_config.thrift_types import ChipType, CoreType
@@ -195,10 +195,16 @@ class StaticMapping:
         )
 
     def _get_phy_lane_map_by_core(
-        self, core_id: int, direction: str, sort_lanes: bool = True
+        self,
+        core_id: int,
+        direction: str,
+        sort_lanes: bool = True,
+        chip_id: Optional[int] = None,
     ) -> List[int]:
         lane_dict = {}
         for a in self._a_values:
+            if chip_id is not None and a.chip.chip_id != chip_id:
+                continue
             if (
                 a.chip.chip_type == ChipType.NPU
                 and a.chip.core_id == core_id
@@ -240,10 +246,16 @@ class StaticMapping:
         return lane_map
 
     def _get_pn_swap_map_by_core(
-        self, core_id: int, direction: str, sort_lanes: bool = True
+        self,
+        core_id: int,
+        direction: str,
+        sort_lanes: bool = True,
+        chip_id: Optional[int] = None,
     ) -> List[int]:
         pn_swap_dict = {}
         for a in self._a_values:
+            if chip_id is not None and a.chip.chip_id != chip_id:
+                continue
             if (
                 a.chip.chip_type == ChipType.NPU
                 and a.chip.core_id == core_id
@@ -285,9 +297,64 @@ class StaticMapping:
     def get_az_connections(self) -> List[pm_types.ConnectionPair]:
         return self._az_connections
 
+    def _npu_chip_ids(self) -> List[int]:
+        return sorted(
+            {a.chip.chip_id for a in self._a_values if a.chip.chip_type == ChipType.NPU}
+        )
+
+    def _npu_core_ids(self, chip_id: int) -> List[int]:
+        return sorted(
+            {
+                a.chip.core_id
+                for a in self._a_values
+                if a.chip.chip_type == ChipType.NPU and a.chip.chip_id == chip_id
+            }
+        )
+
+    def _gen_map_by_chip(
+        self, per_core: Callable[[int, int], pm_types.TxRxLaneInfo]
+    ) -> Dict[int, Dict[int, pm_types.TxRxLaneInfo]]:
+        return {
+            chip_id: {
+                core_id: per_core(chip_id, core_id)
+                for core_id in self._npu_core_ids(chip_id)
+            }
+            for chip_id in self._npu_chip_ids()
+        }
+
+    def gen_phy_lane_map_by_chip(
+        self, sort_lanes: bool = True
+    ) -> Dict[int, Dict[int, pm_types.TxRxLaneInfo]]:
+        return self._gen_map_by_chip(
+            lambda chip_id, core_id: pm_types.TxRxLaneInfo(
+                tx_lane_info=self._get_phy_lane_map_by_core(
+                    core_id, TX, sort_lanes, chip_id
+                ),
+                rx_lane_info=self._get_phy_lane_map_by_core(
+                    core_id, RX, sort_lanes, chip_id
+                ),
+            )
+        )
+
+    def gen_polarity_swap_map_by_chip(
+        self, sort_lanes: bool = True
+    ) -> Dict[int, Dict[int, pm_types.TxRxLaneInfo]]:
+        return self._gen_map_by_chip(
+            lambda chip_id, core_id: pm_types.TxRxLaneInfo(
+                tx_lane_info=self._get_pn_swap_map_by_core(
+                    core_id, TX, sort_lanes, chip_id
+                ),
+                rx_lane_info=self._get_pn_swap_map_by_core(
+                    core_id, RX, sort_lanes, chip_id
+                ),
+            )
+        )
+
     def get_static_mapping(self) -> pm_types.StaticMapping:
         return pm_types.StaticMapping(
             phy_lane_map=self.gen_phy_lane_map(),
             polarity_swap_map=self.gen_polarity_swap_map(),
             az_connections=self.get_az_connections(),
+            phy_lane_map_by_chip=self.gen_phy_lane_map_by_chip(),
+            polarity_swap_map_by_chip=self.gen_polarity_swap_map_by_chip(),
         )

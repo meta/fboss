@@ -10,6 +10,7 @@
 
 #include "fboss/cli/fboss2/commands/config/load_balancing/CmdConfigLoadBalancing.h"
 
+#include "fboss/agent/gen-cpp2/switch_config_types.h"
 #include "fboss/cli/fboss2/CmdHandler.cpp"
 
 #include <fmt/format.h>
@@ -21,10 +22,12 @@
 #include <set>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 #include "fboss/cli/fboss2/gen-cpp2/cli_metadata_types.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
+#include "fboss/cli/fboss2/utils/HostInfo.h"
 
 namespace facebook::fboss {
 
@@ -86,16 +89,6 @@ const std::set<std::string_view> kValidAlgorithms = {
     kAlgoCrc32KoopmanHi,
     kAlgoCrc,
 };
-
-std::string lbIdToString(cfg::LoadBalancerID id) {
-  switch (id) {
-    case cfg::LoadBalancerID::ECMP:
-      return std::string(kLbIdEcmp);
-    case cfg::LoadBalancerID::AGGREGATE_PORT:
-      return std::string(kLbIdLag);
-  }
-  folly::assume_unreachable();
-}
 
 std::string algorithmToString(cfg::HashingAlgorithm a) {
   switch (a) {
@@ -266,6 +259,16 @@ cfg::LoadBalancer& findOrCreateLoadBalancer(
 }
 
 } // namespace
+
+std::string lbIdToString(cfg::LoadBalancerID id) {
+  switch (id) {
+    case cfg::LoadBalancerID::ECMP:
+      return std::string(kLbIdEcmp);
+    case cfg::LoadBalancerID::AGGREGATE_PORT:
+      return std::string(kLbIdLag);
+  }
+  folly::assume_unreachable();
+}
 
 LoadBalancingConfigArgs::LoadBalancingConfigArgs(std::vector<std::string> v) {
   if (v.size() != 2) {

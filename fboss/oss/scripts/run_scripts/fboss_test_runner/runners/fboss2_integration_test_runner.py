@@ -23,6 +23,7 @@ from fboss_test_runner.services.fboss_agent_utils import (
     setup_and_start_sw_agent_service,
     SW_AGENT_SERVICE_PROD,
 )
+from npu_sdk_utils import NPU_HW_AGENT_BINARY
 
 # fboss2 integration known-bad and unsupported tests are published as two
 # separate materialized JSONs (mirroring sai_agent_test): one carrying the
@@ -127,6 +128,11 @@ class Fboss2IntegrationTestRunner(TestRunner):
 
     def _get_test_binary_name(self) -> str:
         return "fboss2_integration_test"
+
+    def _get_npu_sdk_metadata_binary_name(self) -> str:
+        # The integration test drives split agents and does not link the NPU
+        # SDK; the hardware-agent process links it.
+        return NPU_HW_AGENT_BINARY
 
     def _get_warmboot_check_file(self) -> str:
         return ""
@@ -366,4 +372,7 @@ class Fboss2IntegrationTestRunner(TestRunner):
         else:
             print("Cleaning up agent services.")
             cleanup_sw_agent_service(SW_AGENT_SERVICE_PROD)
-            cleanup_hw_agent_service(self._switch_indexes)
+            cleanup_hw_agent_service(
+                self._switch_indexes,
+                hw_agent_service_name=HW_AGENT_SERVICE_PROD,
+            )

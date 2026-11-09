@@ -64,6 +64,36 @@ void verifyMediaInterfaceCodes(
             apache::thrift::util::enumNameSafe(expectedCodes[i]),
             apache::thrift::util::enumNameSafe(*mediaInterfaces[i].code())));
   }
+
+  // Several raw media codes can map to the same MediaInterfaceCode (e.g. the
+  // 800G ZR applications), so also check the raw code of the active
+  // application on each media lane.
+  for (const auto& port : *combo.ports()) {
+    if (port.mediaLaneCode()->getType() != MediaInterfaceUnion::Type::smfCode) {
+      continue;
+    }
+    const auto expectedRaw = *port.mediaLaneCode()->smfCode();
+    const auto start = *port.mediaLanes()->start();
+    for (int lane = start; lane < start + *port.mediaLanes()->count(); lane++) {
+      if (lane >= static_cast<int>(mediaInterfaces.size())) {
+        break;
+      }
+      const auto& media = *mediaInterfaces[lane].media();
+      HAL_CHECK(
+          result,
+          media.getType() == MediaInterfaceUnion::Type::smfCode &&
+              *media.smfCode() == expectedRaw,
+          fmt::format(
+              "Transceiver {} media lane {} raw media code mismatch for mode {}: expected {} got {}",
+              tcvrId,
+              lane,
+              comboDescription,
+              apache::thrift::util::enumNameSafe(expectedRaw),
+              media.getType() == MediaInterfaceUnion::Type::smfCode
+                  ? apache::thrift::util::enumNameSafe(*media.smfCode())
+                  : std::string("non-SMF")));
+    }
+  }
 }
 
 void bringModuleToReady(
@@ -143,15 +173,25 @@ class T1HalTestProgramMode : public T1HalTest {
           }
           const auto& props =
               TransceiverPropertiesManager::getProperties(mediaInterface);
-          bool found = false;
+          const SpeedCombination* found = nullptr;
           for (const auto& combo : *props.supportedSpeedCombinations()) {
             if (*combo.combinationName() == comboDescription_) {
-              found = true;
+              found = &combo;
               break;
             }
           }
-          if (!found) {
+          if (found == nullptr) {
             XLOG(INFO) << "Transceiver " << tcvrId << " does not support mode "
+                       << comboDescription_ << ", skipping";
+            return false;
+          }
+          // ZR modes are programmed with the AppSel the module advertises for
+          // the mode's media interface code; vendor-specific codes may be
+          // absent on some modules
+          if (hal_test::isZrModule(module) &&
+              !hal_test::moduleAdvertisesCombo(module, *found)) {
+            XLOG(INFO) << "Transceiver " << tcvrId
+                       << " does not advertise an application for mode "
                        << comboDescription_ << ", skipping";
             return false;
           }

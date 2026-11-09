@@ -28,6 +28,11 @@ class MockSystemdInterface : public SystemdInterface {
       isServiceEnabled,
       (const std::string& serviceName),
       (override));
+  MOCK_METHOD(
+      std::vector<std::string>,
+      getMatchingServices,
+      (const std::string& pattern),
+      (override));
   MOCK_METHOD(void, stopService, (const std::string& serviceName), (override));
   MOCK_METHOD(void, startService, (const std::string& serviceName), (override));
   MOCK_METHOD(

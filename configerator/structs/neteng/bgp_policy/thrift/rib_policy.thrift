@@ -73,6 +73,11 @@ struct TBgpPathMatcher {
 
   // match paths with link_bandwidth (bits/s) >= min_lbw_bps
   6: optional i64 min_lbw_bps;
+
+  // Only valid with at least one match field above. Among paths satisfying
+  // those matches, retain the lowest IGP cost; ties are retained and unknown
+  // costs rank last. Unset or false leaves path matching unchanged.
+  7: optional bool prefer_lowest_igp_cost;
 }
 
 // TPathSelectionCriteria maps to one type of route

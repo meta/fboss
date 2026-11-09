@@ -12,7 +12,6 @@
 
 namespace facebook::fboss {
 
-using utility::addAggPort;
 using utility::disableTrunkPort;
 using utility::EcmpSetupTargetedPorts6;
 using utility::enableTrunkPorts;
@@ -21,14 +20,12 @@ class AgentEcmpTrunkTest : public AgentHwTest {
  protected:
   cfg::SwitchConfig initialConfig(
       const AgentEnsemble& ensemble) const override {
-    auto config = utility::oneL3IntfNPortConfig(
-        ensemble.getPlatformMapping(),
-        ensemble.getL3Asics().front(),
-        ensemble.masterLogicalPortIds(),
-        ensemble.getSw()->getPlatformSupportsAddRemovePort(),
-        ensemble.getL3Asics().front()->desiredLoopbackModes());
-    addAggPort(kAggId, getTrunkMemberPorts(ensemble), &config);
-    return config;
+    std::vector<PortID> members;
+    for (auto port : getTrunkMemberPorts(ensemble)) {
+      members.emplace_back(port);
+    }
+    return utility::oneAggregatePortPerInterfaceConfig(
+        ensemble.getSw(), ensemble.masterLogicalPortIds(), {{kAggId, members}});
   }
 
   std::vector<ProductionFeature> getProductionFeaturesVerified()

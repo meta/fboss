@@ -12,6 +12,9 @@ function(BUILD_SAI_REPLAYER SAI_IMPL_NAME SAI_IMPL_ARG)
     fboss/agent/hw/sai/tracer/run/SaiLog.cpp
   )
 
+  register_npu_sdk_metadata_post_build(
+    sai_replayer-${SAI_IMPL_NAME} "${SAI_IMPL_ARG}")
+
   target_link_libraries(sai_replayer-${SAI_IMPL_NAME}
     # This is needed for 'dlsym', 'dlopen' etc.
     -Wl,--no-as-needed -ldl

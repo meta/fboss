@@ -23,6 +23,47 @@ std::string getActualAclTableName(
       : facebook::fboss::cfg::switch_config_constants::
             DEFAULT_INGRESS_ACL_TABLE();
 }
+
+folly::IPAddressV6 ipV6WordToAddress(uint32_t word, int wordIndex) {
+  folly::ByteArray16 bytes{{0}};
+  // SAI word3 is the most-significant IPv6 word; word0 is least-significant.
+  auto byteOffset = (3 - wordIndex) * sizeof(uint32_t);
+  bytes[byteOffset] = static_cast<uint8_t>(word >> 24);
+  bytes[byteOffset + 1] = static_cast<uint8_t>(word >> 16);
+  bytes[byteOffset + 2] = static_cast<uint8_t>(word >> 8);
+  bytes[byteOffset + 3] = static_cast<uint8_t>(word);
+  return folly::IPAddressV6(bytes);
+}
+
+#if (defined(TAJO_SDK_GTE_26_5) && !defined(TAJO_SDK_P200)) || \
+    defined(BRCM_SAI_SDK_XGS_GTE_15_4_1)
+bool isAclEntryLabelSame(
+    const facebook::fboss::SaiAclEntryHandle* aclEntryHandle,
+    const std::string& aclEntryName) {
+  using facebook::fboss::SaiAclEntryTraits;
+  auto labelGot =
+      facebook::fboss::SaiApiTable::getInstance()->aclApi().getAttribute(
+          aclEntryHandle->aclEntry->adapterKey(),
+          SaiAclEntryTraits::Attributes::Label());
+  std::string labelGotStr(labelGot.begin(), labelGot.end());
+  labelGotStr.erase(labelGotStr.find_last_not_of('\0') + 1);
+  if (labelGotStr != aclEntryName) {
+    XLOG(ERR) << "ACL entry label mismatch: " << aclEntryName << " vs "
+              << labelGotStr;
+    return false;
+  }
+  // Raw bytes: warm boot rebuilds the AdapterHostKey from this GET.
+  const auto& labelInKey =
+      std::get<std::optional<SaiAclEntryTraits::Attributes::Label>>(
+          aclEntryHandle->aclEntry->adapterHostKey());
+  if (!labelInKey || labelInKey->value() != labelGot) {
+    XLOG(ERR) << "ACL entry " << aclEntryName
+              << " label read from HW differs from its AdapterHostKey";
+    return false;
+  }
+  return true;
+}
+#endif
 } // namespace
 
 namespace facebook {
@@ -354,6 +395,13 @@ bool HwTestThriftHandler::isAclEntrySame(
     return false;
   }
 
+#if (defined(TAJO_SDK_GTE_26_5) && !defined(TAJO_SDK_P200)) || \
+    defined(BRCM_SAI_SDK_XGS_GTE_15_4_1)
+  if (!isAclEntryLabelSame(aclEntryHandle, swAcl->getID())) {
+    return false;
+  }
+#endif
+
   if (swAcl->getSrcIp().first) {
     if (swAcl->getSrcIp().first.isV6()) {
       auto aclFieldSrcIpV6Got =
@@ -411,6 +459,59 @@ bool HwTestThriftHandler::isAclEntrySame(
           dstIpV4MaskGot != dstIpV4MaskExpected) {
         return false;
       }
+    }
+  }
+
+  if (auto dstIpWithMask = swAcl->getDstIpWithMask()) {
+    const auto& [dstIp, dstIpMask] = *dstIpWithMask;
+    if (dstIp.isV6()) {
+      auto [dstIpV6DataGot, dstIpV6MaskGot] =
+          SaiApiTable::getInstance()
+              ->aclApi()
+              .getAttribute(
+                  aclEntryId, SaiAclEntryTraits::Attributes::FieldDstIpV6())
+              .getDataAndMask();
+      if (dstIpV6DataGot != dstIp.asV6() ||
+          dstIpV6MaskGot != dstIpMask.asV6()) {
+        return false;
+      }
+    } else {
+      auto [dstIpV4DataGot, dstIpV4MaskGot] =
+          SaiApiTable::getInstance()
+              ->aclApi()
+              .getAttribute(
+                  aclEntryId, SaiAclEntryTraits::Attributes::FieldDstIpV4())
+              .getDataAndMask();
+      if (dstIpV4DataGot != dstIp.asV4() ||
+          dstIpV4MaskGot != dstIpMask.asV4()) {
+        return false;
+      }
+    }
+  }
+
+  if (auto word1 = swAcl->getDstIpV6Word1WithMask()) {
+    auto [dataGot, maskGot] =
+        SaiApiTable::getInstance()
+            ->aclApi()
+            .getAttribute(
+                aclEntryId, SaiAclEntryTraits::Attributes::FieldDstIpV6Word1())
+            .getDataAndMask();
+    if (dataGot != ipV6WordToAddress(word1->first, 1) ||
+        maskGot != ipV6WordToAddress(word1->second, 1)) {
+      return false;
+    }
+  }
+
+  if (auto word0 = swAcl->getDstIpV6Word0WithMask()) {
+    auto [dataGot, maskGot] =
+        SaiApiTable::getInstance()
+            ->aclApi()
+            .getAttribute(
+                aclEntryId, SaiAclEntryTraits::Attributes::FieldDstIpV6Word0())
+            .getDataAndMask();
+    if (dataGot != ipV6WordToAddress(word0->first, 0) ||
+        maskGot != ipV6WordToAddress(word0->second, 0)) {
+      return false;
     }
   }
 
@@ -494,7 +595,9 @@ bool HwTestThriftHandler::isAclEntrySame(
         aclFieldTcpFlagsGot.getDataAndMask();
 
     if (tcpFlagsDataGot != swAcl->getTcpFlagsBitMap().value() ||
-        tcpFlagsMaskGot != SaiAclTableManager::kTcpFlagsMask) {
+        tcpFlagsMaskGot !=
+            swAcl->getTcpFlagsMask().value_or(
+                SaiAclTableManager::kTcpFlagsMask)) {
       return false;
     }
   }

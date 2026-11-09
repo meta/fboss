@@ -49,7 +49,8 @@
         "zPortName": "eth1/31/1",
         "profileID": 22
       }
-    ]
+    ],
+    "qsfpServiceMemLimitBytes": 2000000000
   },
   "transceiverFirmwareVersions": {
     "versionsMap": {
@@ -121,7 +122,7 @@
           "versions": [
             {
               "fwType": 1,
-              "version": "10.40.13"
+              "version": "10.40.15"
             }
           ]
       },
@@ -129,7 +130,7 @@
           "versions": [
             {
               "fwType": 1,
-              "version": "10.40.13"
+              "version": "10.40.15"
             }
           ]
       },
@@ -137,7 +138,7 @@
           "versions": [
             {
               "fwType": 1,
-              "version": "10.40.13"
+              "version": "10.40.15"
             }
           ]
       },
@@ -145,7 +146,7 @@
           "versions": [
             {
               "fwType": 1,
-              "version": "10.40.13"
+              "version": "10.40.15"
             }
           ]
       },
@@ -153,7 +154,7 @@
           "versions": [
             {
               "fwType": 1,
-              "version": "10.40.13"
+              "version": "10.40.15"
             }
           ]
       },
@@ -161,7 +162,7 @@
           "versions": [
             {
               "fwType": 1,
-              "version": "10.40.13"
+              "version": "10.40.15"
             }
           ]
       },
@@ -197,15 +198,71 @@
             }
           ]
       },
+      "EOLO-138HG-5H-6B": {
+          "versions": [
+            {
+              "fwType": 1,
+              "version": "3.5"
+            }
+          ]
+      },
+      "EOLO-138HG-5H-6T": {
+          "versions": [
+            {
+              "fwType": 1,
+              "version": "3.5"
+            }
+          ]
+      },
+      "EOLO-138HG-5H-6W": {
+          "versions": [
+            {
+              "fwType": 1,
+              "version": "3.5"
+            }
+          ]
+      },
       "EOLO-138HG-5H-7B": {
           "versions": [
             {
               "fwType": 1,
-              "version": "3.6"
+              "version": "3.7"
+            }
+          ]
+      },
+      "EOLO-138HG-5H-9B": {
+          "versions": [
+            {
+              "fwType": 1,
+              "version": "3.5"
+            }
+          ]
+      },
+      "EOLO-138HG-5H-AB": {
+          "versions": [
+            {
+              "fwType": 1,
+              "version": "3.5"
             }
           ]
       },
       "EOLO-138HG-5H-B": {
+          "versions": [
+            {
+              "fwType": 1,
+              "version": "3.5"
+            }
+          ]
+      },
+      "EOLO-138HG-5H-BB": {
+          "versions": [
+            {
+              "fwType": 1,
+              "version": "3.5"
+            }
+          ]
+      },
+      "EOLO-138HG-5H-GB": {
           "versions": [
             {
               "fwType": 1,
@@ -225,7 +282,7 @@
           "versions": [
             {
               "fwType": 1,
-              "version": "3.6"
+              "version": "3.7"
             }
           ]
       },
@@ -421,6 +478,30 @@
             }
           ]
       },
+      "FTCF2519E3PCAFB1": {
+          "versions": [
+            {
+              "fwType": 1,
+              "version": "2.6"
+            }
+          ]
+      },
+      "FTCF2519E3PCAFB2": {
+          "versions": [
+            {
+              "fwType": 1,
+              "version": "2.6"
+            }
+          ]
+      },
+      "FTCF2519E3PCAFB3": {
+          "versions": [
+            {
+              "fwType": 1,
+              "version": "2.6"
+            }
+          ]
+      },
       "FTCF4719E6PCB-FB": {
           "versions": [
             {
@@ -446,6 +527,22 @@
             {
               "fwType": 1,
               "version": "0.11"
+            }
+          ]
+      },
+      "SPQ8E44DOCOA": {
+          "versions": [
+            {
+              "fwType": 1,
+              "version": "0.1"
+            }
+          ]
+      },
+      "SPTSHP3CLCK2": {
+          "versions": [
+            {
+              "fwType": 1,
+              "version": "1.3"
             }
           ]
       },
@@ -538,6 +635,14 @@
           ]
       },
       "T-OH8CNH-NFM": {
+          "versions": [
+            {
+              "fwType": 1,
+              "version": "36.197"
+            }
+          ]
+      },
+      "T-OH8CNH-NFY": {
           "versions": [
             {
               "fwType": 1,
@@ -1635,5 +1740,8 @@
         }
       }
     }
-  ]
+  ],
+  "thriftApiToRateLimitInQps": {
+    
+  }
 }

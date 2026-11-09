@@ -156,8 +156,8 @@ TEST_F(ConfigQosDefaultPolicyTest, SetAndDeleteDefaultPolicy) {
   EXPECT_THAT(delResult.stdout, ::testing::HasSubstr("Successfully removed"));
   commitConfig();
 
-  // delete commits at AGENT_COLDBOOT; waitForRunningConfig tolerates the
-  // restart window (thrift errors count as condition-not-met).
+  // delete commits at DISRUPTIVE_SERVICE_RESTART; waitForRunningConfig
+  // tolerates the restart window (thrift errors count as condition-not-met).
   auto afterDelete = waitForRunningConfig(
       [](const folly::dynamic& config) {
         return !readDefaultPolicy(config).has_value();

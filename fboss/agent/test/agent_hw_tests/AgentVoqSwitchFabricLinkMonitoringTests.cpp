@@ -195,8 +195,6 @@ TEST_F(AgentVoqSwitchFabricLinkMonitoringTest, validateFabricLinkMonitoring) {
     size_t numPortsToCheck =
         std::min(fabricPorts.size(), static_cast<size_t>(kTotalFabricPorts));
 
-    // Collect initial stats from PortStats fb303 counters
-    // (fabric_link_monitoring_tx_packets and fabric_link_monitoring_rx_packets)
     auto* fabricLinkMonMgr = getSw()->getFabricLinkMonitoringManager();
     auto initialStats = utility::collectFabricLinkMonitoringStats(
         fabricLinkMonMgr, fabricPorts, numPortsToCheck);
@@ -210,6 +208,10 @@ TEST_F(AgentVoqSwitchFabricLinkMonitoringTest, validateFabricLinkMonitoring) {
           << "counters to increment by at least "
           << utility::kFabricLinkMonitoringMinCounterIncrement << " on all "
           << numPortsToCheck << " fabric ports";
+      EXPECT_EVENTUALLY_TRUE(
+          utility::allPortsHaveFabricLinkMonitoringFsdbStats(
+              getSw(), fabricPorts, initialStats, numPortsToCheck))
+          << "Waiting for all fabric link monitoring stats in hwPortStats and TX/RX progress";
     });
   };
   verifyAcrossWarmBoots(setup, verify);

@@ -13,6 +13,7 @@
 #include <gtest/gtest.h>
 #include <sstream>
 #include <string>
+#include "fboss/cli/fboss2/commands/show/bgp/CmdShowUtils.h"
 #include "fboss/cli/fboss2/test/CmdHandlerTestBase.h"
 
 #include "common/network/if/gen-cpp2/Address_types.h"
@@ -36,7 +37,7 @@ const auto kIpVersion = TBgpAfi::AFI_IPV4;
 const auto kBinaryAddress =
     facebook::network::toBinaryAddress(folly::IPAddress("8.0.0.0"));
 const auto kAddressMask = 32;
-const auto kCommunityNumber = 4294390177;
+const auto kCommunityNumber = 4274352190;
 const auto kSupportingRoutes = 0;
 
 class CmdShowBgpOriginatedRoutesTestFixture : public CmdHandlerTestBase {
@@ -96,9 +97,9 @@ TEST_F(CmdShowBgpOriginatedRoutesTestFixture, printOutput) {
         folly::dynamic value = folly::dynamic::object
           ("communities",
           folly::dynamic::array(
-          folly::dynamic::object("name", "FABRIC_POD_RSW_LOOP")
+          folly::dynamic::object("name", "SAMPLE_LOOPBACK_COM")
           ("description", "rsw loopback")
-          ("communities", folly::dynamic::array("65527:12705"))
+          ("communities", folly::dynamic::array("65221:28734"))
           )
         );
         // clang-format on
@@ -116,8 +117,54 @@ TEST_F(CmdShowBgpOriginatedRoutesTestFixture, printOutput) {
   std::string expectedOutput =
       " Prefix      Communities                      Supporting Route Cnt  Minimum supporting route  Require Nexthop Resolution \n"
       "-------------------------------------------------------------------------------------------------------------------------------\n"
-      " 8.0.0.0/32  FABRIC_POD_RSW_LOOP/65527:12705  0                     0                         N/A                        \n\n";
+      " 8.0.0.0/32  SAMPLE_LOOPBACK_COM/65221:28734  0                     0                         N/A                        \n\n";
 
   EXPECT_EQ(output, expectedOutput);
 }
+
+TEST_F(CmdShowBgpOriginatedRoutesTestFixture, wikiDocHooks) {
+  EXPECT_FALSE(CmdShowBgpOriginatedRoutesTraits::description().empty());
+
+  /*
+   * printOutput reaches getCommunitySet -> getLocalBgpConfig through the
+   * MODEL's own host/ip, so point the copy under test at the mocked server;
+   * otherwise this is a real connect to an unroutable documentation address
+   * that only ends on timeout. The mock returns an empty config, the same "no
+   * mnemonics" state the offline wiki generator renders under, so the expected
+   * (NA)/asn:value output below is unchanged.
+   */
+  setupMockedBgpServer();
+  resetBgpMnemonicCaches();
+  EXPECT_CALL(getMockBgp(), getRunningConfig(_))
+      .WillRepeatedly(Invoke([](std::string& config) { config = "{}"; }));
+
+  auto model = CmdShowBgpOriginatedRoutes::sampleModel();
+  EXPECT_EQ(model.tOriginatedRoutes()->size(), 3);
+  model.host() = localhost().getName();
+  model.oobName() = localhost().getOobName();
+  model.ip() = localhost().getIpStr();
+
+  std::stringstream ss;
+  CmdShowBgpOriginatedRoutes().printOutput(model, ss);
+
+  /*
+   * Pin the whole render rather than probing for substrings: the columns are
+   * mostly small integers, so a substring check cannot tell the supporting
+   * count from the minimum from the next-hop-resolution flag. Communities show
+   * as "(NA)/asn:value" because no bgpd is reachable to resolve the mnemonics.
+   */
+  const std::string expectedOutput =
+      " Prefix                       Communities     Supporting Route Cnt  Minimum supporting route  Require Nexthop Resolution \n"
+      "-------------------------------------------------------------------------------------------------------------------------------\n"
+      " 192.0.2.1/32                 (NA)/64873:521  0                     0                         0                          \n"
+      "                              (NA)/65221:291                                                                             \n"
+      " 2001:db8:e111:f162:27::/128  (NA)/64873:521  0                     0                         0                          \n"
+      "                              (NA)/65221:291                                                                             \n"
+      " 2001:db8:111c:6227::/64      (NA)/64873:521  12                    8                         1                          \n"
+      "                              (NA)/65108:725                                                                             \n"
+      "\n";
+
+  EXPECT_EQ(ss.str(), expectedOutput);
+}
+
 } // namespace facebook::fboss

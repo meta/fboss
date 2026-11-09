@@ -57,6 +57,14 @@ class PortStoreTest : public SaiStoreTest {
         std::nullopt, // TC to Priority Group map
         std::nullopt, // PFC Priority to Queue map
         std::nullopt, // PFC Priority to Priority Group map
+#if defined(SAI_CBFC_SUPPORTED)
+        std::nullopt, // TC to VC map
+        std::nullopt, // Queue to VC map
+        std::nullopt, // CBFC sender credit size
+        std::nullopt, // CBFC sender packet overhead
+        std::nullopt, // CBFC sender credit limit
+        std::nullopt, // CBFC receiver credit limit
+#endif
 #if SAI_API_VERSION >= SAI_VERSION(1, 9, 0)
         std::nullopt, // Inter Frame Gap
 #endif
@@ -98,7 +106,10 @@ class PortStoreTest : public SaiStoreTest {
 #endif
         std::nullopt, // PfcPauseDurationOverride
         std::nullopt, // Ingress ACL
+        std::nullopt, // IsolationGroup
         std::nullopt, // Metadata
+        std::nullopt, // CsigTagAction
+        std::nullopt, // CsigLinkLocator
     };
   }
 
@@ -175,6 +186,20 @@ TEST_F(PortStoreTest, portCreateCtor) {
       obj.adapterKey(), SaiPortTraits::Attributes::Speed{});
   EXPECT_EQ(apiSpeed, 100000);
 }
+
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 3)
+TEST_F(PortStoreTest, reloadDoesNotConsumeClearOnReadOperStatusLatch) {
+  auto portId = createPort(0);
+  auto& fakePort = FakeSai::getInstance()->portManager.get(portId);
+  fakePort.portExtOperStatusLatch.current_status = true;
+  fakePort.portExtOperStatusLatch.changed = true;
+
+  SaiStore s(0);
+  s.reload();
+
+  EXPECT_TRUE(fakePort.portExtOperStatusLatch.changed);
+}
+#endif
 
 TEST_F(PortStoreTest, portSetSpeed) {
   auto portId = createPort(0);
@@ -522,6 +547,51 @@ TEST_F(PortStoreTest, portSetPfcMonitorDirection) {
   EXPECT_EQ(apiPfcMonitorDirection, 1);
 }
 
+#if defined(SAI_CBFC_SUPPORTED)
+TEST_F(PortStoreTest, portCreateWithCbfcReceiverCreditLimit) {
+  auto attrs = makeAttrs(0, 100000);
+  std::get<std::optional<SaiPortTraits::Attributes::CbfcReceiverCreditLimit>>(
+      attrs) = SaiPortTraits::Attributes::CbfcReceiverCreditLimit{4096};
+  SaiPortTraits::AdapterHostKey adapterHostKey =
+      std::get<SaiPortTraits::Attributes::HwLaneList>(attrs);
+  auto obj = createObj<SaiPortTraits>(adapterHostKey, attrs, 0);
+  EXPECT_EQ(
+      saiApiTable->portApi().getAttribute(
+          obj.adapterKey(),
+          SaiPortTraits::Attributes::CbfcReceiverCreditLimit{}),
+      4096);
+}
+
+TEST_F(PortStoreTest, portLoadCbfcReceiverCreditLimit) {
+  auto attrs = makeAttrs(0, 100000);
+  std::get<std::optional<SaiPortTraits::Attributes::CbfcReceiverCreditLimit>>(
+      attrs) = SaiPortTraits::Attributes::CbfcReceiverCreditLimit{4096};
+  auto portId = saiApiTable->portApi().create<SaiPortTraits>(attrs, 0);
+
+  auto portObj = createObj<SaiPortTraits>(portId);
+  EXPECT_EQ(
+      GET_OPT_ATTR(Port, CbfcReceiverCreditLimit, portObj.attributes()), 4096);
+}
+
+TEST_F(PortStoreTest, portSetCbfcReceiverCreditLimit) {
+  auto portId = createPort(0);
+  SaiObject<SaiPortTraits> portObj = createObj<SaiPortTraits>(portId);
+  EXPECT_EQ(
+      saiApiTable->portApi().getAttribute(
+          portId, SaiPortTraits::Attributes::CbfcReceiverCreditLimit{}),
+      0);
+
+  portObj.setOptionalAttribute(
+      SaiPortTraits::Attributes::CbfcReceiverCreditLimit{4096});
+  EXPECT_EQ(
+      GET_OPT_ATTR(Port, CbfcReceiverCreditLimit, portObj.attributes()), 4096);
+  EXPECT_EQ(
+      saiApiTable->portApi().getAttribute(
+          portId, SaiPortTraits::Attributes::CbfcReceiverCreditLimit{}),
+      4096);
+}
+#endif
+
 #if SAI_API_VERSION >= SAI_VERSION(1, 18, 0)
 // A port bound to an LLR profile is reclaimed on warm-boot reload with its
 // LlrProfile binding intact, and the referenced profile object is reclaimed
@@ -529,7 +599,11 @@ TEST_F(PortStoreTest, portSetPfcMonitorDirection) {
 TEST_F(PortStoreTest, loadPortBoundToLlrProfile) {
   auto profileId = saiApiTable->portApi().create<SaiPortLlrProfileTraits>(
       makeLlrProfileAttrs(), 0);
-  auto portId = createPort(0);
+  // Admin disabled: the fake refuses a profile attach on an enabled port, as
+  // the SDK does (CS00012478409). This passed before only because the profile
+  // was given id 0, making the attach below a write of SAI_NULL_OBJECT_ID.
+  auto portId = saiApiTable->portApi().create<SaiPortTraits>(
+      makeAttrs(0, 100000, /*adminStateOpt*/ false), 0);
   saiApiTable->portApi().setAttribute(
       portId,
       SaiPortTraits::Attributes::LlrProfile{

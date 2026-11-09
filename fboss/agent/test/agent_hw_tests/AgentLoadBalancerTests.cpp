@@ -107,6 +107,15 @@ class AgentLoadBalancerTest
     // isFeatureSupported();
     return getAgentEnsemble();
   }
+
+  void learnFrontPanelSrcMac(PortID frontPanelPort) override {
+    // pumpTraffic's default SA.
+    auto intfMac =
+        getMacForFirstInterfaceWithPortsForTesting(getProgrammedState());
+    learnL2EntryIfPending(
+        utility::MacAddressGenerator().get(intfMac.u64HBO() + 1),
+        frontPanelPort);
+  }
 };
 
 template <typename EcmpDataPlateUtils, bool kWideEcmp = false>
@@ -379,6 +388,18 @@ class AgentSrv6EcmpLoadBalancerTest : public AgentLoadBalancerTest<
   }
 };
 
+// SRv6 next hops programmed with unequal weights, forming a UCMP group
+class AgentSrv6UcmpLoadBalancerTest : public AgentSrv6EcmpLoadBalancerTest {
+ public:
+  std::vector<ProductionFeature> getProductionFeaturesVerified()
+      const override {
+    return {
+        ProductionFeature::SRV6_ENCAP,
+        ProductionFeature::ECMP_LOAD_BALANCER,
+        ProductionFeature::UCMP};
+  }
+};
+
 // SRv6 ECMP load balancing driven purely by the IPv6 flow label (fixed 5-tuple)
 class AgentSrv6FlowLabelEcmpLoadBalancerTest
     : public AgentLoadBalancerTest<
@@ -559,6 +580,16 @@ TEST_F(
 RUN_HW_LOAD_BALANCER_TEST_CPU(
     AgentSrv6EcmpLoadBalancerTest,
     Ecmp,
+    FullWithFlowLabel)
+
+RUN_HW_LOAD_BALANCER_TEST_CPU(
+    AgentSrv6UcmpLoadBalancerTest,
+    Ucmp,
+    FullWithFlowLabel)
+
+RUN_HW_LOAD_BALANCER_TEST_FRONT_PANEL(
+    AgentSrv6UcmpLoadBalancerTest,
+    Ucmp,
     FullWithFlowLabel)
 
 RUN_HW_LOAD_BALANCER_TEST_CPU(
@@ -897,16 +928,27 @@ class AgentHashPolarizationTest : public AgentHwTest {
   }
 
   void configureAggregatePorts() {
-    auto cfg = initialConfig(*getAgentEnsemble());
+    auto& ensemble = *getAgentEnsemble();
     auto interfacePorts = masterLogicalInterfacePortIds();
+    std::vector<utility::AggregatePortInfo> aggPorts;
     for (int i = 0; i < kPolarizationNumAggPorts; ++i) {
-      std::vector<int32_t> members(kPolarizationAggPortWidth);
+      std::vector<PortID> members;
       for (int j = 0; j < kPolarizationAggPortWidth; ++j) {
-        members[j] = static_cast<int32_t>(
-            interfacePorts[i * kPolarizationAggPortWidth + j]);
+        members.push_back(interfacePorts[i * kPolarizationAggPortWidth + j]);
       }
-      utility::addAggPort(i + 1, members, &cfg);
+      aggPorts.push_back({AggregatePortID(i + 1), members});
     }
+    auto cfg = utility::oneAggregatePortPerInterfaceConfig(
+        ensemble.getSw(),
+        ensemble.masterLogicalPortIds(),
+        aggPorts,
+        true /*interfaceHasSubnet*/);
+    auto asic = checkSameAndGetAsicForTesting(ensemble.getL3Asics());
+    utility::setDefaultCpuTrafficPolicyConfig(
+        cfg, ensemble.getL3Asics(), ensemble.isSai());
+    utility::addCpuQueueConfig(
+        cfg, ensemble.getL3Asics(), ensemble.isSai(), false /*setQueueRate*/);
+    utility::addTrapPacketAcl(asic, &cfg, capturePorts(ensemble));
     applyNewConfig(cfg);
     applyNewState(
         [](const std::shared_ptr<SwitchState>& state) {

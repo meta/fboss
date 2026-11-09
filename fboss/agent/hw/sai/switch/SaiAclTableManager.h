@@ -146,6 +146,7 @@ class SaiAclTableManager {
   static auto constexpr kL4PortMask = 0xFFFF;
 
   static auto constexpr kIpProtocolMask = 0xFF;
+  // Used when the ACL entry does not set tcpFlagsMask.
   static auto constexpr kTcpFlagsMask = 0x3F;
   // Mask is not applicable for given field
   static auto constexpr kMaskDontCare = 0;
@@ -176,6 +177,9 @@ class SaiAclTableManager {
       const std::shared_ptr<SwitchState>& state,
       cfg::AclTableGroupBindPoint bindPoint =
           cfg::AclTableGroupBindPoint::SWITCH);
+  void removeObsoletePortBoundAclTables(
+      const std::shared_ptr<SwitchState>& oldState,
+      const std::shared_ptr<SwitchState>& newState);
   void changedAclTable(
       const std::shared_ptr<AclTable>& oldAclTable,
       const std::shared_ptr<AclTable>& newAclTable,
@@ -192,7 +196,8 @@ class SaiAclTableManager {
       int priority) const;
   bool needsAclTableRecreate(
       const std::shared_ptr<AclTable>& oldAclTable,
-      const std::shared_ptr<AclTable>& newAclTable);
+      const std::shared_ptr<AclTable>& newAclTable,
+      cfg::AclStage aclStage);
   void removeAclEntriesFromTable(const std::shared_ptr<AclTable>& aclTable);
   void addAclEntriesToTable(
       const std::shared_ptr<AclTable>& aclTable,

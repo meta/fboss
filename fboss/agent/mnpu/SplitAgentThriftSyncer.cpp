@@ -118,6 +118,9 @@ void SplitAgentThriftSyncer::packetReceived(
         hwSwitch_->getPlatform()->getAsic(),
         hwSwitch_->getSwitchStats());
   }
+  if (pkt->packetType()) {
+    rxPkt.packetType() = *pkt->packetType();
+  }
   // coalesce the IOBuf before copy
   pkt->buf()->coalesce();
   rxPkt.data() = IOBuf::copyBuffer(pkt->buf()->data(), pkt->buf()->length());

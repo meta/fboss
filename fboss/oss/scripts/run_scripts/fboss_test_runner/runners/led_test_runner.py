@@ -5,6 +5,7 @@
 from argparse import Namespace
 
 from fboss_test_runner.runners.test_runner import TestRunner
+from fboss_test_runner.tier_selection import TestTier
 
 LED_TEST_BINARY = "led_service_hw_test"
 
@@ -25,6 +26,9 @@ class LedTestRunner(TestRunner):
 
     def _get_test_binary_name(self) -> str:
         return LED_TEST_BINARY
+
+    def _get_uniform_test_tier(self) -> TestTier:
+        return TestTier.T0
 
     def _get_warmboot_check_file(self) -> str:
         return ""

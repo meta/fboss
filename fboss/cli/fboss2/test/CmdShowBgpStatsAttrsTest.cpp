@@ -259,4 +259,15 @@ TEST_F(
       CmdShowBgpStatsAttrs().printOutput(stats, output), std::runtime_error);
 }
 
+TEST_F(CmdShowBgpStatsAttrsTestFixture, wikiDocHooks) {
+  EXPECT_FALSE(CmdShowBgpStatsAttrsTraits::description().empty());
+  std::stringstream ss;
+  CmdShowBgpStatsAttrs().printOutput(CmdShowBgpStatsAttrs::sampleModel(), ss);
+  const std::string output = ss.str();
+
+  EXPECT_THAT(output, HasSubstr("L1     bgp_path"));
+  EXPECT_THAT(output, HasSubstr("L2     bgp_attributes"));
+  EXPECT_THAT(output, HasSubstr("L3     ext_communities"));
+}
+
 } // namespace facebook::fboss

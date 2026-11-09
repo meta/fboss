@@ -36,7 +36,7 @@ std::shared_ptr<MultiSwitchClassBasedPolicyMap> makePolicies(
   auto policyMap = std::make_shared<ClassBasedPolicyMap>();
   policyMap->addPolicy(
       std::make_shared<ClassBasedPolicyNode>(
-          kName, kDefault, class2NextHopGroup));
+          kName, kDefault, class2NextHopGroup, true /*referenced*/));
   auto multi = std::make_shared<MultiSwitchClassBasedPolicyMap>();
   multi->addMapNode(policyMap, matcher);
   return multi;

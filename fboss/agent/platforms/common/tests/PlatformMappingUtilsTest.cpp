@@ -10,6 +10,7 @@
 
 #include "fboss/agent/platforms/common/PlatformMappingUtils.h"
 
+#include <array>
 #include <filesystem>
 
 #include <folly/Conv.h>
@@ -87,6 +88,71 @@ TEST(TestPlatformMappingUtils, initPlatformMappingSupportsFakeWedge) {
 
   EXPECT_FALSE(platformMapping->getPlatformPorts().empty());
 }
+
+TEST(TestPlatformMappingUtils, initPlatformMappingUsesOverrideForNewPlatforms) {
+  const auto savedMappingOverridePath = FLAGS_platform_mapping_override_path;
+  const auto savedDescriptorConfigPath = FLAGS_platform_descriptor_config_path;
+  SCOPE_EXIT {
+    FLAGS_platform_mapping_override_path = savedMappingOverridePath;
+    FLAGS_platform_descriptor_config_path = savedDescriptorConfigPath;
+  };
+
+  auto tmpDir = folly::test::TemporaryDirectory();
+  auto mappingPath = fs::path(tmpDir.path().string()) / "platform_mapping.json";
+  ASSERT_TRUE(
+      folly::writeFile(createPlatformMappingJson(), mappingPath.c_str()));
+  FLAGS_platform_mapping_override_path = mappingPath.string();
+  FLAGS_platform_descriptor_config_path = "";
+
+  const auto platformMapping =
+      utility::initPlatformMapping(PlatformType::PLATFORM_WEDGE800CACT);
+
+  EXPECT_TRUE(platformMapping->getPlatformPorts().empty());
+  EXPECT_TRUE(platformMapping->getChips().empty());
+}
+
+TEST(
+    TestPlatformMappingUtils,
+    initPlatformMappingRequiresExternalMappingForNewPlatforms) {
+  const auto savedMappingOverridePath = FLAGS_platform_mapping_override_path;
+  const auto savedDescriptorConfigPath = FLAGS_platform_descriptor_config_path;
+  SCOPE_EXIT {
+    FLAGS_platform_mapping_override_path = savedMappingOverridePath;
+    FLAGS_platform_descriptor_config_path = savedDescriptorConfigPath;
+  };
+
+  FLAGS_platform_mapping_override_path = "";
+  FLAGS_platform_descriptor_config_path = "";
+
+  constexpr auto expectedError =
+      "all newer platforms than wedge800 no longer ship a compiled-in "
+      "platform mapping. The mapping must be provided externally via "
+      "--platform_descriptor_config_path or "
+      "--platform_mapping_override_path.";
+  constexpr auto futurePlatformType = static_cast<PlatformType>(9999);
+  constexpr std::array platformTypes{
+      PlatformType::PLATFORM_WEDGE800BACT,
+      PlatformType::PLATFORM_WEDGE800BNHP,
+      PlatformType::PLATFORM_WEDGE800CACT,
+      PlatformType::PLATFORM_WEDGE800CNHP,
+      PlatformType::PLATFORM_ICECUBE800BANW,
+      PlatformType::PLATFORM_M4062NHP,
+      PlatformType::PLATFORM_M4061CLSC,
+      PlatformType::PLATFORM_M5120CSC,
+      PlatformType::PLATFORM_M4340NHP,
+      PlatformType::PLATFORM_M4061NHP,
+      futurePlatformType,
+  };
+  for (const auto type : platformTypes) {
+    try {
+      utility::initPlatformMapping(type);
+      FAIL() << "Expected platform mapping initialization to fail";
+    } catch (const FbossError& error) {
+      EXPECT_STREQ(error.what(), expectedError);
+    }
+  }
+}
+
 TEST(
     TestPlatformMappingUtils,
     initPlatformMapping_RawFlagDisabled_UsesLegacyMapping) {

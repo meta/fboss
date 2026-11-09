@@ -13,7 +13,32 @@ RadixTreeNode<IPADDRTYPE, T>::searchDirection(
   if (masklen_ < toSearchMasklen) {
     // My masklen is less than what is being searched, we are searching
     // a more specific address.
-    if (toSearch.mask(masklen_) == ipAddress_) {
+    //
+    // Node addresses are always stored pre-masked to their masklen_, so
+    // comparing the first masklen_ bits of toSearch against ipAddress_ is
+    // equivalent to toSearch.mask(masklen_) == ipAddress_.
+    //
+    // masklen_ comes from public constructors that accept any uint8_t, so it
+    // may exceed the address width. In that case fall back to the checked
+    // mask() path (which throws, as the original code did) rather than reading
+    // past the byte buffer.
+    bool prefixMatches;
+    if (masklen_ <= IPADDRTYPE::bitCount()) {
+      const auto* toSearchBytes = toSearch.bytes();
+      const auto* myBytes = ipAddress_.bytes();
+      const uint8_t fullBytes = masklen_ >> 3;
+      const uint8_t remBits = masklen_ & 0x7;
+      prefixMatches = std::memcmp(toSearchBytes, myBytes, fullBytes) == 0;
+      if (prefixMatches && remBits) {
+        const uint8_t partialMask = static_cast<uint8_t>(0xFF << (8 - remBits));
+        prefixMatches =
+            static_cast<uint8_t>(toSearchBytes[fullBytes] & partialMask) ==
+            myBytes[fullBytes];
+      }
+    } else {
+      prefixMatches = toSearch.mask(masklen_) == ipAddress_;
+    }
+    if (prefixMatches) {
       // All the bits up to my bit length match, check the next bit
       // Note that bit lookup is 0 indexed.
       return toSearch.getNthMSBit(masklen_) == 1 ? TreeDirection::RIGHT

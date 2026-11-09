@@ -41,7 +41,7 @@ class CmdConfigSessionCommitTestFixture : public CmdConfigTestBase {
 })") {}
 };
 
-TEST_F(CmdConfigSessionCommitTestFixture, commitWithNoChanges) {
+TEST_F(CmdConfigSessionCommitTestFixture, commitWithoutStagedSession) {
   fs::path sessionDir = getTestHomeDir() / ".fboss2";
 
   // Setup mock agent server (should not be called for empty commit)
@@ -56,8 +56,7 @@ TEST_F(CmdConfigSessionCommitTestFixture, commitWithNoChanges) {
   auto cmd = CmdConfigSessionCommit();
   auto result = cmd.queryClient(localhost());
 
-  // Verify the message indicates nothing to commit
-  EXPECT_EQ(result, "Nothing to commit. Config session is clean.");
+  EXPECT_EQ(result, "No config session exists. Make a config change first.");
 }
 
 TEST_F(CmdConfigSessionCommitTestFixture, commitWithChanges) {
@@ -90,9 +89,7 @@ TEST_F(CmdConfigSessionCommitTestFixture, commitWithChanges) {
   EXPECT_THAT(result, ::testing::HasSubstr("config reloaded for wedge_agent"));
 }
 
-TEST_F(
-    CmdConfigSessionCommitTestFixture,
-    commitTwiceSecondShowsNothingToCommit) {
+TEST_F(CmdConfigSessionCommitTestFixture, commitTwiceSecondReportsNoSession) {
   fs::path sessionDir = getTestHomeDir() / ".fboss2";
 
   // Setup mock agent server (should only be called once for the first commit)
@@ -131,8 +128,7 @@ TEST_F(
     auto cmd = CmdConfigSessionCommit();
     auto result = cmd.queryClient(localhost());
 
-    // Verify the message indicates nothing to commit
-    EXPECT_EQ(result, "Nothing to commit. Config session is clean.");
+    EXPECT_EQ(result, "No config session exists. Make a config change first.");
   }
 }
 

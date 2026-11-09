@@ -28,4 +28,10 @@ bool isDsfRole(Role role) {
       role == Role::RDSW;
 }
 
+bool isNetosNative(const HostInfo& hostInfo) {
+  const auto whoami = getNetWhoAmI(hostInfo);
+  return whoami && whoami->current().has_value() &&
+      whoami->current()->os_variant() == netwhoami::OsVariant::NETOS;
+}
+
 } // namespace facebook::fboss

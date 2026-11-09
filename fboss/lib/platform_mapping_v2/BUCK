@@ -1,103 +1,8 @@
-load("@fbcode_macros//build_defs:export_files.bzl", "export_file")
 load("@fbcode_macros//build_defs:python_binary.bzl", "python_binary")
 load("@fbcode_macros//build_defs:python_library.bzl", "python_library")
 load("@fbcode_macros//build_defs:thrift_library.bzl", "thrift_library")
-load("@fbsource//tools/target_determinator/macros:ci.bzl", "ci")
-load("@fbsource//tools/target_determinator/macros:ci_sandcastle.bzl", "ci_sandcastle")
 
 oncall("fboss_optics_phy")
-
-# Exposes the generated example integrated-optics (CPO) platform mapping JSON so
-# C++ tests can load it as a resource.
-export_file(
-    name = "example_integrated_optics_platform_mapping.json",
-    src = "generated_platform_mappings/example_integrated_optics_platform_mapping.json",
-    visibility = ["PUBLIC"],
-)
-
-[
-    export_file(
-        name = "icecube800bc_" + artifact,
-        src = "generated_platform_mappings/celestica/icecube800bc/" + artifact,
-    )
-    for artifact in [
-        "platform_mapping.json",
-        "port_id_to_port_assignment.json",
-        "raw_platform_mapping.json",
-    ]
-]
-
-[
-    export_file(
-        name = "montblanc_" + artifact,
-        src = "generated_platform_mappings/celestica/montblanc/" + artifact,
-    )
-    for artifact in [
-        "platform_mapping.json",
-        "port_id_to_port_assignment.json",
-        "raw_platform_mapping.json",
-    ]
-]
-
-[
-    export_file(
-        name = "montblanc_odd_ports_8x100G_" + artifact,
-        src = "generated_platform_mappings/celestica/montblanc_odd_ports_8x100G/" + artifact,
-    )
-    for artifact in [
-        "platform_mapping.json",
-        "port_id_to_port_assignment.json",
-        "raw_platform_mapping.json",
-    ]
-]
-
-[
-    export_file(
-        name = "tahansb800bc_" + artifact,
-        src = "generated_platform_mappings/celestica/tahansb800bc/" + artifact,
-    )
-    for artifact in [
-        "platform_mapping.json",
-        "port_id_to_port_assignment.json",
-        "raw_platform_mapping.json",
-    ]
-]
-
-[
-    export_file(
-        name = "tahansb800bc_test_fixture_" + artifact,
-        src = "generated_platform_mappings/celestica/tahansb800bc_test_fixture/" + artifact,
-    )
-    for artifact in [
-        "platform_mapping.json",
-        "port_id_to_port_assignment.json",
-        "raw_platform_mapping.json",
-    ]
-]
-
-[
-    export_file(
-        name = "wedge800bact_" + artifact,
-        src = "generated_platform_mappings/accton/wedge800bact/" + artifact,
-    )
-    for artifact in [
-        "platform_mapping.json",
-        "port_id_to_port_assignment.json",
-        "raw_platform_mapping.json",
-    ]
-]
-
-[
-    export_file(
-        name = "wedge800cact_" + artifact,
-        src = "generated_platform_mappings/accton/wedge800cact/" + artifact,
-    )
-    for artifact in [
-        "platform_mapping.json",
-        "port_id_to_port_assignment.json",
-        "raw_platform_mapping.json",
-    ]
-]
 
 python_library(
     name = "helpers",
@@ -239,38 +144,6 @@ python_binary(
         ":read_files_utils",
         "//fboss/agent:platform_config-python-types",
         "//thrift/lib/python:types",
-    ],
-)
-
-# @ci-signal-ack
-ci_sandcastle(
-    name = "platform_mapping_v2_verify_and_configo_sync",
-    alias = "platform-mapping-v2-verify-and-configo-sync-citadel",
-    args = {
-        "skip_if_error_exists_on_base_revision": True,
-        "steps": [
-            {
-                "name": "Verify /generated_platform_mappings Is Populated Correctly",
-                "shell": "buck2 test --flagfile fbcode//mode/opt fbcode//fboss/lib/platform_mapping_v2/test:verify_generated_files",
-            },
-            {
-                "name": "Run Configo Sync Command",
-                "shell": "buck2 run --flagfile fbcode//mode/opt fbcode//fboss/lib/platform_mapping_v2/facebook:gen -- --make-configerator-changes --add-fbcode-dependency",
-            },
-        ],
-    },
-    capabilities = {
-        "tenant": "default-tenant",
-        "type": "fbcode",
-        "vcs": "full-fbsource",
-    },
-    ci_srcs = [
-        "fbcode/fboss/lib/platform_mapping_v2/**",
-    ],
-    command = "SandcastleUniversalCommand",
-    oncall = "fboss_optics_phy",
-    schedules = [
-        ci.diff,
     ],
 )
 

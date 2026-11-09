@@ -2,6 +2,7 @@
 
 #include "fboss/agent/MPLSHandler.h"
 
+#include "fboss/agent/FibHelpers.h"
 #include "fboss/agent/RxPacket.h"
 #include "fboss/agent/SwSwitch.h"
 #include "fboss/agent/SwitchStats.h"
@@ -39,14 +40,15 @@ void MPLSHandler::handleKnownLabel(
   auto topLabel = header.getLookupLabel();
   XLOG(WARNING) << "Received Mpls packet with known label:"
                 << topLabel.getLabelValue();
-  auto entry = sw_->getState()->getLabelForwardingInformationBase()->getNode(
+  auto state = sw_->getState();
+  auto entry = state->getLabelForwardingInformationBase()->getNode(
       topLabel.getLabelValue());
   const auto& fwd = entry->getForwardInfo();
 
   if (fwd.getAction() == LabelNextHopEntry::Action::TO_CPU) {
     return handleLabel2Me(std::move(pkt), header, cursor);
   }
-  if (entry->isPopAndLookup()) {
+  if (LabelForwardingEntry::isPopAndLookup(getMplsNextHops(state, fwd))) {
     return popLabelAndLookup(std::move(pkt), header, cursor);
   }
   // ignore any packet which is not pop and look up

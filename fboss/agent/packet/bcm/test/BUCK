@@ -7,10 +7,12 @@ cpp_unittest(
     name = "xgs_psamp_mod_test",
     srcs = ["XgsPsampModTest.cpp"],
     network_access = network_access_utils.none(),
+    supports_static_listing = False,
     deps = [
+        "fbsource//third-party/fmt:fmt",
+        "//fboss/agent:switch_config-cpp2-types",
         "//fboss/agent/packet:hdr_parse_error",
         "//fboss/agent/packet:ipfix_header",
         "//fboss/agent/packet/bcm:xgs_psamp_mod",
-        "//folly/container:array",
     ],
 )

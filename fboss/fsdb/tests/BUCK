@@ -6,7 +6,7 @@ oncall("fboss_agent_push")
 thrift_library(
     name = "thriftpath_test_thrift",
     cpp2_deps = [
-        "//folly/container:f14_hash",
+        "fbsource//xplat/folly/container:f14_hash",
     ],
     languages = ["cpp2"],
     plugins = [

@@ -83,6 +83,27 @@ enum RouteForwardAction {
   NEXTHOPS = 2,
 }
 
+enum L3TrafficLoopState {
+  // Setup is in progress.
+  CONFIGURING = 0,
+  // The loop is configured and active.
+  READY = 1,
+  // Teardown is in progress.
+  CLEARING = 2,
+  // No loop is configured on this port.
+  NOT_CONFIGURED = 3,
+  // Cleanup failed; partial configuration may remain.
+  CLEANUP_FAILED = 4,
+  // This switch or port does not support L3 traffic loops.
+  UNSUPPORTED = 5,
+}
+
+struct L3TrafficLoopStatus {
+  1: L3TrafficLoopState state;
+  // Unix time in milliseconds.
+  2: optional i64 expirationTimeMs;
+}
+
 typedef string RouteCounterID
 
 struct UnicastRoute {
@@ -102,6 +123,9 @@ struct UnicastRoute {
   8: optional switch_config.AclLookupClass classID;
   9: optional switch_config.SwitchingMode overrideEcmpSwitchingMode;
   10: optional list<common.NextHopThrift> overrideNextHops;
+  // Next hops are resolved recursively through routes of the same level, and
+  // in the next level through routes of another level. Unset means level 0.
+  11: optional i32 level;
 }
 
 struct MplsRoute {
@@ -124,6 +148,16 @@ struct MySidEntry {
   # Must not be set in addMySidEntries. These are populated
   # when reporting nexthops back to the client
   5: list<common.NextHopThrift> resolvedNextHops;
+  # Backup next hops for SRv6 midpoint FRR, as requested via
+  # addAdjacencyFrr. Symmetric to nextHops (field 3).
+  # Must not be set in addMySidEntries. These are populated
+  # when reporting nexthops back to the client
+  6: list<common.NextHopThrift> backupUnresolvedNextHops;
+  # Backup next hops post resolution. Symmetric to
+  # resolvedNextHops (field 5). Must not be set in
+  # addMySidEntries. These are populated when reporting
+  # nexthops back to the client
+  7: list<common.NextHopThrift> backupResolvedNextHops;
 }
 
 struct ClientAndNextHops {
@@ -144,6 +178,10 @@ struct ClientAndNextHops {
 struct IfAndIP {
   1: i32 interfaceID;
   2: Address.BinaryAddress ip;
+  // VRF the next hop is resolved in; unset means the route's VRF
+  3: optional i32 vrf;
+  // Set on next hops resolved in the next level, which have no interface
+  4: optional bool resolvedInNextLevel;
 }
 
 struct RouteDetails {
@@ -163,6 +201,9 @@ struct RouteDetails {
   12: optional list<common.NextHopThrift> overridenNextHops;
   13: optional i64 resolvedNextHopSetID;
   14: optional i64 normalizedResolvedNextHopSetID;
+  // Resolved next hops before hardware normalization.
+  15: optional list<common.NextHopThrift> resolvedNextHops;
+  16: optional i32 vrf;
 }
 
 struct MplsRouteDetails {
@@ -292,6 +333,12 @@ struct InterfaceDetail {
   // AggregatePortId populated only for interfaces of type PORT that are bound
   // to an aggregate port rather than a physical port
   15: optional i32 aggregatePortId;
+}
+
+struct VrfInfo {
+  1: i32 vrfId;
+  2: optional string name;
+  3: list<i32> interfaceIds;
 }
 
 /*
@@ -431,6 +478,17 @@ struct PfcConfig {
   3: bool watchdog;
 }
 
+// CBFC profile bound to a port. The sender values are the configured ones;
+// on Tomahawk Ultra 1 the hardware credit limit differs (CS00012481990).
+struct CbfcInfo {
+  1: string configName;
+  2: list<i16> virtualChannels;
+  3: optional i16 senderCreditSize;
+  4: optional i16 senderPacketOverhead;
+  5: optional i64 senderCreditLimit;
+  6: optional i64 receiverCreditLimit;
+}
+
 struct PortInfoThrift {
   1: i32 portId;
   2: i64 speedMbps;
@@ -476,6 +534,9 @@ struct PortInfoThrift {
   // Ingress ACL table bound directly to this port. Mirrors
   // switch_config.Port.ingressAclTableName. Unset when no table is bound.
   38: optional string ingressAclTableName;
+
+  // Unset when the port has no cbfcConfigName.
+  39: optional CbfcInfo cbfc;
 }
 
 // Port queueing configuration
@@ -715,7 +776,7 @@ enum ClientID {
   /**
    * Routes and MySid entries programmed via Thrift RPC by the TE agent /
    * controller (e.g. addUnicastRoutes, addMySidEntries).
-   */
+  */
   TE_AGENT = 800,
 }
 
@@ -785,6 +846,8 @@ enum HwObjectType {
   SRV6 = 27,
   NEXT_HOP_GROUP_MEMBER = 28,
   SAMPLE_PACKET = 29,
+  MY_MAC = 30,
+  VXLAN = 31,
 }
 
 exception FbossFibUpdateError {
@@ -1137,9 +1200,13 @@ service FbossCtrl extends phy.FbossCommonPhyCtrl {
   list<RouteDetails> getRouteTableDetailsByClients(
     1: list<i16> clientId,
   ) throws (1: fboss.FbossBaseError error);
+  list<RouteDetails> getRouteTableDetailsByVrf(1: i32 vrfId) throws (
+    1: fboss.FbossBaseError error,
+  );
   InterfaceDetail getInterfaceDetail(1: i32 interfaceId) throws (
     1: fboss.FbossBaseError error,
   );
+  list<VrfInfo> getVrfs() throws (1: fboss.FbossBaseError error);
 
   /* MPLS route API */
   void addMplsRoutes(1: i16 clientId, 2: list<MplsRoute> routes) throws (
@@ -1467,17 +1534,23 @@ service FbossCtrl extends phy.FbossCommonPhyCtrl {
 
   /*
    * API to add named next hop groups, named next hop group with same name will be replaced
+   * With combineDuplicatedNextHops, next hops repeated within a group are collapsed into a
+   * single weighted next hop instead of the repeats being dropped.
    */
   void addNamedNextHopGroups(
     1: list<common.NextHopGroup> nextHopGroups,
+    2: bool combineDuplicatedNextHops = false,
   ) throws (1: fboss.FbossBaseError error);
 
   /*
    * API to add named next hop groups, named next hop group with same name will be replaced
+   * With combineDuplicatedNextHops, next hops repeated within a group are collapsed into a
+   * single weighted next hop instead of the repeats being dropped.
    * Deprecated. Use addNamedNextHopGroups.
    */
   void addOrUpdateNamedNextHopGroups(
     1: list<common.NextHopGroup> nextHopGroups,
+    2: bool combineDuplicatedNextHops = false,
   ) throws (1: fboss.FbossBaseError error);
 
   /*
@@ -1489,16 +1562,21 @@ service FbossCtrl extends phy.FbossCommonPhyCtrl {
 
   /*
    * API to get next hop groups
+   * With replicateWeightedNexthops, a next hop carrying weight w > 1 is
+   * expanded back into w next hops, undoing combineDuplicatedNextHops.
    */
-  list<common.NextHopGroup> getNextHopGroups() throws (
-    1: fboss.FbossBaseError error,
-  );
+  list<common.NextHopGroup> getNextHopGroups(
+    1: bool replicateWeightedNexthops = false,
+  ) throws (1: fboss.FbossBaseError error);
 
   /*
    * API to get named next hop groups, optionally filtered by name
+   * With replicateWeightedNexthops, a next hop carrying weight w > 1 is
+   * expanded back into w next hops, undoing combineDuplicatedNextHops.
    */
   list<common.NextHopGroup> getNamedNextHopGroups(
     1: list<string> names,
+    2: bool replicateWeightedNexthops = false,
   ) throws (1: fboss.FbossBaseError error);
 
   /*
@@ -1611,6 +1689,15 @@ service FbossCtrl extends phy.FbossCommonPhyCtrl {
     1: list<switch_config.MacAndVlan> macAddrsToblock,
   ) throws (1: fboss.FbossBaseError error);
 
+  /*
+   * Get the list of additional router MACs (MY_MAC). Packets to these MACs on
+   * the given VLAN are routed, in addition to packets to the interface MAC.
+   * Empty if none are configured.
+   */
+  list<switch_config.MacAndVlan> getMyMacs() throws (
+    1: fboss.FbossBaseError error,
+  );
+
   # Deprecated
   list<TeFlowDetails> getTeFlowTableDetails() throws (
     1: fboss.FbossBaseError error,
@@ -1703,6 +1790,51 @@ service FbossCtrl extends phy.FbossCommonPhyCtrl {
   ) throws (1: fboss.FbossBaseError error);
 
   /*
+   * Configure this switch as one endpoint of each L3 traffic loop. Each list
+   * is indexed by loop and must have the same length. qualificationAddresses
+   * contains the unique IPv6 /128 destinations reserved for qualification
+   * traffic. An empty expectedPeerMacs entry means no peer MAC is supplied.
+   * This call returns only after all local loops are READY. The traffic-
+   * injection RPC does not check loop readiness, so callers must use
+   * getL3TrafficLoopStatus to wait for successful setup on both endpoints
+   * before injecting traffic.
+   * timeoutSeconds is the lease duration for the corresponding loop.
+   */
+  void setupL3TrafficLoops(
+    1: list<Address.BinaryAddress> qualificationAddresses,
+    2: list<string> portNames,
+    3: list<Address.BinaryAddress> peerNextHops,
+    4: list<string> expectedPeerMacs,
+    5: list<i32> timeoutSeconds,
+  ) throws (1: fboss.FbossBaseError error);
+
+  /*
+   * Extend the expiry of each READY loop. If any requested loop is not READY,
+   * throws fboss.FbossBaseError with a message indicating the loop is not
+   * ready yet; no loop is extended.
+   */
+  void extendL3TrafficLoops(
+    1: list<string> portNames,
+    2: i32 timeoutSeconds = 60,
+  ) throws (1: fboss.FbossBaseError error);
+
+  /*
+   * Safely stop each loop and restore the switch's pre-test state. Attempts
+   * cleanup for every requested port before throwing if any cleanup fails.
+   */
+  void teardownL3TrafficLoops(1: list<string> portNames) throws (
+    1: fboss.FbossBaseError error,
+  );
+
+  /*
+   * Return support and local setup/cleanup status for the requested ports, or
+   * all ports if portNames is empty. Results are keyed by port name.
+   */
+  map<string, L3TrafficLoopStatus> getL3TrafficLoopStatus(
+    1: list<string> portNames,
+  ) throws (1: fboss.FbossBaseError error);
+
+  /*
    * Add Adjacency FRR to protect an object with given backup nexthops.
    * If the protected object already exists, replaces its backup nexthops.
    *
@@ -1723,8 +1855,9 @@ service FbossCtrl extends phy.FbossCommonPhyCtrl {
    * Delete Adjacency FRR.
    *
    * protectedObject:
-   *  non-existing (never added by addAdjacencyFrr): throws error
-   *  existing: removes FRR protection
+   *  non-existing MySID: throws error
+   *  existing MySID without FRR protection: no-op
+   *  existing MySID with FRR protection: removes FRR protection
    *
    * FrrProtectedObject is a union. Fill either protected uA mySID or MPLS
    * label.

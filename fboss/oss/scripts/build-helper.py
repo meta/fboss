@@ -49,6 +49,7 @@ def _get_url(version):
         "1.16.3": "https://github.com/opencomputeproject/SAI/archive/v1.16.3.tar.gz",
         "1.17.1": "https://github.com/opencomputeproject/SAI/archive/v1.17.1.tar.gz",
         "1.18.1": "https://github.com/opencomputeproject/SAI/archive/v1.18.1.tar.gz",
+        "1.19.0": "https://github.com/opencomputeproject/SAI/archive/v1.19.0.tar.gz",
     }[version]
 
 
@@ -63,6 +64,7 @@ def _get_sha256(version):
         "1.16.3": "5c89cdb6b2e4f1b42ced6b78d43d06d22434ddbf423cdc551f7c2001f12e63d9",
         "1.17.1": "05411b13b32abcc50f2f2b78e491e503b2b05e5a1503699abd4cc1b81f90d1ae",
         "1.18.1": "84f2fbd6bf672abaefddfd78a28fec794e37477bf9702fbb56d7bd53ff930ba3",
+        "1.19.0": "199d2cd32408b6470ce0c43beee660cc468e29e72921f1e93e64d4a8eb80246a",
     }[version]
 
 
@@ -91,11 +93,12 @@ def parse_args():
             "1.16.3",
             "1.17.1",
             "1.18.1",
+            "1.19.0",
         ],
-        const="1.18.1",
+        const="1.19.0",
         nargs="?",
-        default="1.18.1",
-        help="sai SDK Version eg: 1.18.1",
+        default="1.19.0",
+        help="sai SDK Version eg: 1.19.0",
     )
     return parser.parse_args()
 

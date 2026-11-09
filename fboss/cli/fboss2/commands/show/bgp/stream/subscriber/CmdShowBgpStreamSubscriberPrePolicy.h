@@ -24,13 +24,18 @@ namespace facebook::fboss {
 using namespace neteng::fboss::bgp::thrift;
 using facebook::fboss::utils::Table;
 
-struct CmdShowBgpStreamSubscriberPrePolicyTraits : public ReadCommandTraits,
-                                                   public CliDocsExempt {
+struct CmdShowBgpStreamSubscriberPrePolicyTraits : public ReadCommandTraits {
   using ParentCmd = CmdShowBgpStreamSubscriber;
   static constexpr utils::ObjectArgTypeId ObjectArgTypeId =
       utils::ObjectArgTypeId::OBJECT_ARG_TYPE_ID_IP_LIST;
   using ObjectArgType = std::vector<std::string>;
   using RetType = NetworkPathWithHost;
+
+  // Human-authored guide prose for the CLI reference wiki. Superset of the
+  // one-line help string registered in the command tree.
+  static std::string_view description() {
+    return "Displays the routes the switch has selected to stream to a subscriber, before the export policy runs. A subscriber is an external client - a controller or collector - that has subscribed to the switch's route stream rather than peered with it over BGP, and its numeric id comes from 'show bgp stream summary'. Each entry renders like a BGP path: the prefix, next hop, originator and cluster list, communities, AS path, local preference, origin and MED. These are candidates, not what the subscriber received: diff against 'post-policy' to see what the export policy let through and how it rewrote the attributes. An optional list of prefixes after the subcommand narrows the result to those prefixes. The subscriber id is required; without one the command fails with a usage hint rather than streaming everything.";
+  }
 };
 
 class CmdShowBgpStreamSubscriberPrePolicy
@@ -68,6 +73,15 @@ class CmdShowBgpStreamSubscriberPrePolicy
     result.ip() = hostInfo.getIpStr();
 
     return result;
+  }
+
+  // Canned, synthetic model (no real switch data). Streamed routes are the
+  // switch's own advertisements, so this reuses the shared advertised-route
+  // sample; pre-policy renders it without the Policy line.
+  static RetType sampleModel() {
+    // pre-policy renders with showPolicy=false, so the policy name is never
+    // displayed; pass an empty one to match every sibling pre-policy view.
+    return sampleNetworkPaths(SampleRouteDirection::Advertised, "");
   }
 
   void printOutput(RetType& routesWithHost, std::ostream& out = std::cout) {

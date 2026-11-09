@@ -8,10 +8,10 @@ cpp_library(
         "HwBenchmarkMain.cpp",
     ],
     deps = [
-        "//folly:benchmark",
-        "//folly/init:init",
-        "//folly/json:dynamic",
-        "//folly/logging:init",
+        "fbsource//xplat/folly:benchmark",
+        "fbsource//xplat/folly/init:init",
+        "fbsource//xplat/folly/json:dynamic",
+        "fbsource//xplat/folly/logging:init",
     ],
     exported_deps = [],
 )

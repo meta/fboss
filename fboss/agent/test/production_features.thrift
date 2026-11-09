@@ -10,6 +10,11 @@ namespace py.asyncio neteng.fboss.test.asyncio.production_features
 namespace cpp2 facebook.fboss.test.production_features
 namespace go neteng.fboss.test.production_features
 
+# This enum is mirrored by hand in the configerator copy of this file,
+# configerator/source/fboss/agent/test/production_features.thrift, which
+# also holds the FeatureSupportSpec entries. Netcastle matches the two, so
+# an id must mean the same thing in both. The copies have drifted: pick an
+# id that is free in BOTH before adding a feature here.
 enum ProductionFeature {
   VOQ = 0,
   FABRIC = 1,
@@ -135,7 +140,28 @@ enum ProductionFeature {
   DST_IPV6_WORD_ACL_QUALIFIERS = 121,
   ARS_SOURCE_PORT_PRUNE = 122,
   DROP_REASON_LIST_SUPPORT = 123,
+  EMPTY_ACL_MATCHER = 124,
+  PORT_BOUND_INGRESS_ACL = 125,
   ACL_DENY_DATA_AND_CONTROL_PLANE = 126,
+  PORT_USER_METADATA = 127,
+  MYSID_ADJACENCY_FRR = 128,
+  BUFFER_MIN_GUARANTEE_WITH_DELAY_DROPS = 129,
+  CREDIT_BASED_FLOW_CONTROL = 130,
+  MPLS_TTL_ACL = 131,
+  ACCESS_POLICY_CLASS_ID_ACL = 132,
+  MY_MAC = 133,
+  MIRROR_ON_DROP_AGGREGATE_RATE_LIMIT = 134,
+  PBR_ACL = 135,
+  VXLAN_ENCAP = 136,
+  VXLAN_DECAP = 137,
+  MIRROR_ON_DROP_STATEFUL = 138,
+  MULTI_VRF = 139,
+  ROUTE_COUNTERS_EXTENDED_LABEL = 140,
+  DST_IP_WITH_MASK_ACL = 141,
+  VOQ_SWITCH_WITH_FABRIC_PORTS = 142,
+  DROP_REASON_REPORTING = 143,
+  MIXED_IP_SRV6_NEXT_HOP_GROUPS = 144,
+  DST_IPV6_WORD_WITH_MASK_ACL = 145,
   # production feature which is present on all platforms, keep it at the end
   HW_SWITCH = 65536,
 }
@@ -153,6 +179,8 @@ struct FeatureSdkSupport {
   2: VendorSdk sdk;
   3: string minSdkVersion;
   4: optional string note;
+  // Exact components required in the normalized Netcastle test config.
+  5: optional list<string> requiredTestConfigOptions;
 }
 
 struct FeatureSupportSpec {

@@ -62,7 +62,7 @@ CmdConfigInterfaceSwitchportAccessVlan::queryClient(
   // Save the updated config
   // VLAN changes require agent warmboot as reloadConfig() doesn't apply them
   ConfigSession::getInstance().saveConfig(
-      cli::ServiceType::AGENT, cli::ConfigActionLevel::AGENT_WARMBOOT);
+      cli::ServiceType::AGENT, cli::ConfigActionLevel::SERVICE_RESTART);
 
   std::string interfaceList = folly::join(", ", interfaces.getNames());
   std::string message = "Successfully set access VLAN for interface(s) " +

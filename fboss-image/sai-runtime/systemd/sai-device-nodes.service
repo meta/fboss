@@ -1,0 +1,15 @@
+[Unit]
+Description=Load SAI kernel modules and create their device nodes
+# Runs before sysinit.target so the BDE modules and /dev nodes are in place
+# before platform_manager and the agents start.
+DefaultDependencies=no
+After=local-fs.target
+Before=sysinit.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/sai-load-modules.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=sysinit.target

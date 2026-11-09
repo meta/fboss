@@ -55,6 +55,11 @@ void printSubscriberDetail(
              fsdb_cli_format::optFieldToString<int64_t>(
                  subscriber.subscriptionUid()))
       << std::endl;
+  out << fmt::format(
+             "Serve Interval:                 {}",
+             fsdb_cli_format::serveIntervalToString(
+                 subscriber.serveIntervalSec()))
+      << std::endl;
 
   std::string subscribedSince = "--";
   if (apache::thrift::get_pointer(subscriber.subscribedSince())) {
@@ -173,6 +178,7 @@ CmdShowFsdbSubscribers::RetType CmdShowFsdbSubscribers::sampleModel() {
   sub3.isStats() = true;
   sub3.subscribedSince() = 1700000000;
   sub3.subscriptionQueueWatermark() = 0;
+  sub3.serveIntervalSec() = 2;
   result["netstate"] = {sub3};
 
   return result;
@@ -213,6 +219,7 @@ void CmdShowFsdbSubscribers::printOutput(
        "Type",
        "Raw Path",
        "isStats",
+       "Serve Interval",
        "Subscribed Since",
        "QueueWatermark"});
   for (const auto& subscriberInfo : result) {
@@ -241,6 +248,8 @@ void CmdShowFsdbSubscribers::printOutput(
            subscriberType,
            subscriberPath,
            subscriberIsStats,
+           fsdb_cli_format::serveIntervalToString(
+               subscriber.serveIntervalSec()),
            subscribedSince,
            queueWatermark});
     }

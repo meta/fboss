@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include <utility>
+
 #include "fboss/agent/hw/sai/api/TamApi.h"
 #include "fboss/agent/hw/sai/api/TamEventAgingGroupApi.h"
 #include "fboss/agent/hw/sai/store/SaiObject.h"
@@ -12,6 +14,7 @@ namespace facebook::fboss {
 
 class SaiManagerTable;
 class SaiPlatform;
+struct SaiPortHandle;
 class SaiStore;
 
 using SaiTamCollector = SaiObject<SaiTamCollectorTraits>;
@@ -33,6 +36,7 @@ constexpr uint32_t kModDeviceId{0};
 } // namespace tam
 
 struct SaiTamHandle {
+  // Reverse declaration order is the SAI dependency destruction order.
   std::shared_ptr<SaiTamReport> report;
   std::shared_ptr<SaiTamEventAction> action;
   std::shared_ptr<SaiTamTransport> transport;
@@ -48,7 +52,7 @@ struct SaiTamHandle {
   std::vector<std::shared_ptr<SaiTamEvent>> events;
   std::shared_ptr<SaiTam> tam;
   PortID portId;
-  SaiManagerTable* managerTable;
+  SaiManagerTable* managerTable{nullptr};
 };
 class SaiTamManager {
  public:
@@ -64,6 +68,9 @@ class SaiTamManager {
       const std::shared_ptr<MirrorOnDropReport>& oldReport,
       const std::shared_ptr<MirrorOnDropReport>& newReport);
   std::vector<PortID> getAllMirrorOnDropPortIds();
+#if defined(CHENAB_SAI_SDK)
+  void removeMirrorOnDropReportsForPort(PortID portId);
+#endif
 
   const SaiTamHandle* getTamHandle(const std::string& name) const {
     return tamHandles_.contains(name) ? tamHandles_.at(name).get() : nullptr;
@@ -129,6 +136,22 @@ class SaiTamManager {
 #if defined(BRCM_SAI_SDK_XGS_GTE_13_0)
   void addXgsMirrorOnDropReport(
       const std::shared_ptr<MirrorOnDropReport>& report);
+#endif
+#if defined(CHENAB_SAI_SDK)
+  void programMirrorOnDropReport(
+      const std::shared_ptr<MirrorOnDropReport>& report,
+      PortID portId,
+      const SaiPortHandle* portHandle);
+  std::shared_ptr<SaiTamTransport> createTamTransport();
+  std::shared_ptr<SaiTamCollector> createTamCollector(
+      const std::shared_ptr<MirrorOnDropReport>& report,
+      sai_object_id_t transportId,
+      sai_object_id_t destinationId);
+  std::shared_ptr<SaiTamEvent> createTamEvent(
+      sai_object_id_t actionId,
+      sai_object_id_t collectorId);
+  std::optional<std::pair<PortID, const SaiPortHandle*>>
+  getMirrorOnDropPortHandle(const MirrorOnDropReport& report) const;
 #endif
 };
 

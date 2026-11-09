@@ -44,6 +44,8 @@ target_link_libraries(platform_utils
   FBThrift::thriftcpp2
   ${RE2}
   thrift_service_utils
+  fb303::fb303
+  fb303_cpp2
 )
 
 add_library(structured_logger

@@ -125,6 +125,7 @@ TEST_F(AgentDeepPacketInspectionTest, l3ForwardedPkt) {
   };
   auto verify = [this]() {
     std::optional<PortID> frontPanelPort = getTestPortId(1);
+    learnL2EntryIfPending(utility::kLocalCpuMac(), *frontPanelPort);
     for (bool isTcp : {true, false}) {
       for (bool isFrontPanel : {true, false}) {
         std::optional<PortID> outOfPort =

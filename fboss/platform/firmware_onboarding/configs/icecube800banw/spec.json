@@ -1,0 +1,46 @@
+{
+  "spec_version": "1.0",
+
+  "platform": {
+    "name": "icecube800banw",
+    "silicon": [
+      { "name": "TH6" }
+    ]
+  },
+
+  "components": [
+    {
+      "name": "smb_fpga",
+      "platform_identifier": "icecube800banw",
+      "location": "Switch Main Board",
+      "display_location": "smb",
+      "field_replaceable": false,
+      "firmware": {
+        "priority": 1,
+        "shared_with_platforms": []
+      }
+    },
+    {
+      "name": "scm_cpld",
+      "platform_identifier": "icecube800banw",
+      "location": "System Control Module",
+      "display_location": "scm",
+      "field_replaceable": true,
+      "firmware": {
+        "priority": 2,
+        "shared_with_platforms": []
+      }
+    },
+    {
+      "name": "bios",
+      "platform_identifier": "icecube800banw",
+      "location": "System Control Module",
+      "display_location": "scm",
+      "field_replaceable": true,
+      "firmware": {
+        "priority": 3,
+        "shared_with_platforms": []
+      }
+    }
+  ]
+}

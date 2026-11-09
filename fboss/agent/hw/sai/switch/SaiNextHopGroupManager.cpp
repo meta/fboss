@@ -76,15 +76,6 @@ bool isEcmpModeARS(std::optional<cfg::SwitchingMode> switchingMode) {
        switchingMode.value() == cfg::SwitchingMode::FLOWLET_QUALITY));
 }
 
-bool isProtectionNextHopGroupType(
-    [[maybe_unused]] sai_next_hop_group_type_t nextHopGroupType) {
-#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
-  return nextHopGroupType == SAI_NEXT_HOP_GROUP_TYPE_PROTECTION;
-#else
-  return false;
-#endif
-}
-
 bool isHwProtectionNextHopGroupType(
     [[maybe_unused]] sai_next_hop_group_type_t nextHopGroupType) {
 #if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
@@ -190,6 +181,27 @@ splitHorizonEnableFor(
 }
 } // namespace
 
+bool isProtectionNextHopGroupType(
+    [[maybe_unused]] sai_next_hop_group_type_t nextHopGroupType) {
+#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
+  return nextHopGroupType == SAI_NEXT_HOP_GROUP_TYPE_PROTECTION;
+#else
+  return false;
+#endif
+}
+
+sai_next_hop_group_type_t getNextHopGroupType(
+    const RouteNextHopEntry::NextHopSet& nextHops) {
+#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
+  if (std::any_of(nextHops.begin(), nextHops.end(), [](const auto& nextHop) {
+        return nextHop.role() == NextHopRole::BACKUP;
+      })) {
+    return SAI_NEXT_HOP_GROUP_TYPE_PROTECTION;
+  }
+#endif
+  return SAI_NEXT_HOP_GROUP_TYPE_ECMP;
+}
+
 SaiNextHopGroupManager::SaiNextHopGroupManager(
     SaiStore* saiStore,
     SaiManagerTable* managerTable,
@@ -251,6 +263,23 @@ SaiNextHopGroupManager::incRefOrAddNextHopGroup(const SaiNextHopGroupKey& key) {
       srv6SidListMap;
 #endif
   for (const auto& swNextHop : memberNhops) {
+    if (swNextHop.resolvedInNextLevel()) {
+      auto resolvedNextHop = folly::poly_cast<ResolvedNextHop>(swNextHop);
+      if (isVxlanNextHop(resolvedNextHop)) {
+        // No interface: the adapter host key is keyed on the tunnel.
+        resolvedNextHops.emplace_back(std::move(resolvedNextHop));
+        auto nhk = managerTable_->nextHopManager().getAdapterHostKey(
+            resolvedNextHops.back());
+        nextHopGroupAdapterHostKey.nhopMemberSet.insert(
+            std::make_pair(nhk, swNextHop.weight()));
+        continue;
+      } else {
+        // TODO: program next hops resolved in the next level
+        throw FbossError(
+            "Next hops resolved in the next level are not supported: ",
+            swNextHop.addr().str());
+      }
+    }
     // Compute the sai id of the next hop's router interface
     const InterfaceID interfaceId = swNextHop.intf();
     auto routerInterfaceHandle =
@@ -393,6 +422,13 @@ SaiNextHopGroupManager::incRefOrAddNextHopGroup(const SaiNextHopGroupKey& key) {
   nextHopGroupHandle->maxVariableWidthEcmpSize =
       platform_->getAsic()->getMaxVariableWidthEcmpSize();
   nextHopGroupHandle->platform_ = platform_;
+  // The handle can be destroyed while the platform itself is being
+  // destroyed, when virtual calls on it are no longer valid. Resolve
+  // the bulk remove decision now, while the platform is fully alive.
+  nextHopGroupHandle->bulkRemoveEcmpMembers_ =
+      FLAGS_enable_bulk_create_ecmp_members &&
+      platform_->getAsic()->isSupported(
+          HwAsic::Feature::BULK_CREATE_ECMP_MEMBER);
 
   XLOG(DBG2) << "Created NexthopGroup OID: " << nextHopGroupId;
 
@@ -422,6 +458,28 @@ SaiNextHopGroupManager::incRefOrAddNextHopGroup(const SaiNextHopGroupKey& key) {
 #endif
 
   for (auto& resolvedNextHop : resolvedNextHops) {
+    auto memberKey = std::make_pair(nextHopGroupId, resolvedNextHop);
+    NextHopGroupMember::NextHopWeight weight;
+    if (nextHopGroupType == SAI_NEXT_HOP_GROUP_TYPE_ECMP) {
+      weight = SaiNextHopGroupMemberTraits::Attributes::Weight{
+          static_cast<sai_uint32_t>(
+              resolvedNextHop.weight() == ECMP_WEIGHT
+                  ? 1
+                  : resolvedNextHop.weight())};
+    }
+    if (isVxlanNextHop(resolvedNextHop)) {
+      auto vxlanNextHopHandle =
+          managerTable_->nextHopManager().addVxlanNextHop(resolvedNextHop);
+      auto result = nextHopGroupMembers_.refOrEmplace(
+          memberKey,
+          this,
+          nextHopGroupHandle.get(),
+          nextHopGroupId,
+          vxlanNextHopHandle,
+          weight);
+      nextHopGroupHandle->members_.push_back(result.first);
+      continue;
+    }
 #if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)
     std::shared_ptr<SaiSrv6SidListHandle> sidListHandle;
     auto it = srv6SidListMap.find(&resolvedNextHop);
@@ -434,15 +492,6 @@ SaiNextHopGroupManager::incRefOrAddNextHopGroup(const SaiNextHopGroupKey& key) {
     auto managedNextHop =
         managerTable_->nextHopManager().addManagedSaiNextHop(resolvedNextHop);
 #endif
-    auto memberKey = std::make_pair(nextHopGroupId, resolvedNextHop);
-    NextHopGroupMember::NextHopWeight weight;
-    if (nextHopGroupType == SAI_NEXT_HOP_GROUP_TYPE_ECMP) {
-      weight = SaiNextHopGroupMemberTraits::Attributes::Weight{
-          static_cast<sai_uint32_t>(
-              resolvedNextHop.weight() == ECMP_WEIGHT
-                  ? 1
-                  : resolvedNextHop.weight())};
-    }
     auto result = nextHopGroupMembers_.refOrEmplace(
         memberKey,
         this,
@@ -620,6 +669,12 @@ void SaiNextHopGroupManager::setEcmpGroupSettings(
   ecmpGroupSettings_ = ecmpGroupSettings;
 }
 
+bool SaiNextHopGroupManager::isSplitHorizonEnabled(
+    cfg::EcmpGroupType groupType) const {
+  auto it = ecmpGroupSettings_.find(groupType);
+  return it != ecmpGroupSettings_.end() && *it->second.enableSplitHorizon();
+}
+
 std::string SaiNextHopGroupManager::listManagedObjects() const {
   std::set<std::string> outputs{};
   for (auto entry : handles_) {
@@ -665,6 +720,41 @@ cfg::SwitchingMode SaiNextHopGroupManager::getNextHopGroupSwitchingMode(
     return nextHopGroupHandle->desiredEcmpSwitchingMode_.value();
   }
   return cfg::SwitchingMode::FIXED_ASSIGNMENT;
+}
+
+// Reads the ARS specific counters on every next hop group with an ARS object
+// attached and adds them to the switch wide totals.
+//
+// The hardware counters are free running and per group, so each sweep adds a
+// group's delta against its previous reading into an accumulator, and the
+// accumulator is published. Summing the groups live instead would let the
+// total move backwards when a group is deleted. Because the previous reading
+// is kept on the handle:
+//  1. A deleted group leaves what it already contributed in the total, and
+//     its reading goes with it. What it counted since the last sweep is lost,
+//     at most one interval.
+//  2. A new group, or the first sweep after a warm boot, has nothing to
+//     compare against, so its whole reading is taken.
+void SaiNextHopGroupManager::updateStats() {
+  uint64_t failPackets = 0;
+  uint64_t portReassignments = 0;
+  for (const auto& entry : handles_) {
+    auto handle = entry.second.lock();
+    if (!handle) {
+      continue;
+    }
+    auto sinceLastSweep = handle->updateStats();
+    failPackets += sinceLastSweep.failPackets;
+    portReassignments += sinceLastSweep.portReassignments;
+  }
+  arsStats_.l3EcmpDlbFailPackets() =
+      *arsStats_.l3EcmpDlbFailPackets() + failPackets;
+  arsStats_.l3EcmpDlbPortReassignmentCount() =
+      *arsStats_.l3EcmpDlbPortReassignmentCount() + portReassignments;
+}
+
+HwFlowletStats SaiNextHopGroupManager::getHwFlowletStats() const {
+  return arsStats_;
 }
 
 std::vector<EcmpDetails> SaiNextHopGroupManager::getAllEcmpDetails() const {
@@ -739,6 +829,72 @@ NextHopGroupMember::NextHopGroupMember(
         managedNextHopGroupMember_ = managedMember;
       },
       managedSaiNextHop);
+}
+
+NextHopGroupMember::NextHopGroupMember(
+    SaiNextHopGroupManager* manager,
+    SaiNextHopGroupHandle* nhgroup,
+    SaiNextHopGroupTraits::AdapterKey nexthopGroupId,
+    std::shared_ptr<SaiVxlanNextHopHandle> vxlanNextHopHandle,
+    NextHopWeight nextHopWeight)
+    : managedNextHopGroupMember_(
+          std::make_shared<SaiVxlanNextHopGroupMember>(
+              manager,
+              nhgroup,
+              std::move(vxlanNextHopHandle),
+              nexthopGroupId,
+              nextHopWeight)) {}
+
+SaiVxlanNextHopGroupMember::SaiVxlanNextHopGroupMember(
+    SaiNextHopGroupManager* manager,
+    SaiNextHopGroupHandle* nhgroup,
+    std::shared_ptr<SaiVxlanNextHopHandle> vxlanNextHopHandle,
+    SaiNextHopGroupTraits::AdapterKey nexthopGroupId,
+    NextHopWeight weight)
+    : vxlanNextHopHandle_(std::move(vxlanNextHopHandle)) {
+  auto nexthopId = vxlanNextHopHandle_->adapterKey();
+  adapterHostKey_.emplace(nexthopGroupId, nexthopId);
+  createAttributes_.emplace(
+      nexthopGroupId,
+      nexthopId,
+      weight
+#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
+      ,
+      std::nullopt,
+      std::nullopt
+#endif
+  );
+#if defined(BRCM_SAI_SDK_DNX_GTE_12_0) || defined(BRCM_SAI_SDK_XGS_GTE_13_0)
+  if (FLAGS_enable_bulk_create_ecmp_members && nhgroup && nhgroup->bulkCreate) {
+    // The group bulk creates its members; getAdapterHostKeyAndCreateAttributes
+    // hands this member to that bulk create.
+    return;
+  }
+#endif
+  nextHopGroupMember_ =
+      manager->createSaiObject(*adapterHostKey_, *createAttributes_);
+}
+
+std::pair<
+    std::optional<SaiNextHopGroupMemberTraits::AdapterHostKey>,
+    std::optional<SaiNextHopGroupMemberTraits::CreateAttributes>>
+SaiVxlanNextHopGroupMember::getAdapterHostKeyAndCreateAttributes() {
+  if (nextHopGroupMember_) {
+    return std::make_pair(std::nullopt, std::nullopt);
+  }
+  return std::make_pair(adapterHostKey_, createAttributes_);
+}
+
+std::string SaiVxlanNextHopGroupMember::toString() const {
+  auto nextHopGroupMemberIdStr = nextHopGroupMember_
+      ? std::to_string(nextHopGroupMember_->adapterKey())
+      : "none";
+  return folly::to<std::string>(
+      nextHopGroupMember_ ? "active " : "inactive ",
+      "sai vxlan nhg member: ",
+      vxlanNextHopHandle_->toString(),
+      " NextHopGroupMemberId: ",
+      nextHopGroupMemberIdStr);
 }
 
 SaiNextHopGroupChildGroupMember::SaiNextHopGroupChildGroupMember(
@@ -891,6 +1047,53 @@ size_t SaiNextHopGroupHandle::nextHopGroupSize() const {
       });
 }
 
+ArsCounterDelta SaiNextHopGroupHandle::updateStats() {
+#if SAI_API_VERSION >= SAI_VERSION(1, 14, 0)
+  // Computed once rather than on every poll.
+  static const bool haveFailPktCount =
+      SaiNextHopGroupTraits::Attributes::ArsFailPktCount::
+          optionalExtensionAttributeId()
+              .has_value();
+  static const bool havePortReassignCount =
+      SaiNextHopGroupTraits::Attributes::ArsPortReassignCount::
+          optionalExtensionAttributeId()
+              .has_value();
+  if (!nextHopGroup || (!haveFailPktCount && !havePortReassignCount)) {
+    return ArsCounterDelta{};
+  }
+  // The counters are ARS attributes, so only read them when an ARS object is
+  // attached. Leaving arsHwCounter_ alone while detached is what lets a
+  // reattach carry on rather than count the whole history a second time.
+  auto arsObjectId =
+      std::get<std::optional<SaiNextHopGroupTraits::Attributes::ArsObjectId>>(
+          nextHopGroup->attributes());
+  if (!arsObjectId.has_value() || arsObjectId->value() == SAI_NULL_OBJECT_ID) {
+    return ArsCounterDelta{};
+  }
+  auto delta = [](uint64_t now, uint64_t before) {
+    return now >= before ? now - before : now;
+  };
+  auto& nextHopGroupApi = SaiApiTable::getInstance()->nextHopGroupApi();
+  auto adapterKey = nextHopGroup->adapterKey();
+  ArsHwCounter current;
+  if (haveFailPktCount) {
+    current.failPackets = nextHopGroupApi.getAttribute(
+        adapterKey, SaiNextHopGroupTraits::Attributes::ArsFailPktCount{});
+  }
+  if (havePortReassignCount) {
+    current.portReassignments = nextHopGroupApi.getAttribute(
+        adapterKey, SaiNextHopGroupTraits::Attributes::ArsPortReassignCount{});
+  }
+  ArsCounterDelta sinceLastSweep{
+      delta(current.failPackets, arsHwCounter_.failPackets),
+      delta(current.portReassignments, arsHwCounter_.portReassignments)};
+  arsHwCounter_ = current;
+  return sinceLastSweep;
+#else
+  return ArsCounterDelta{};
+#endif
+}
+
 void SaiNextHopGroupHandle::memberAdded(
     SaiNextHopGroupMemberInfo memberInfo,
     bool updateHardware) {
@@ -989,9 +1192,7 @@ SaiNextHopGroupHandle::~SaiNextHopGroupHandle() {
 
 #if defined(BRCM_SAI_SDK_DNX_GTE_12_0) || \
     defined(BRCM_SAI_SDK_XGS_GTE_13_0) || defined(CHENAB_SAI_SDK)
-  if (FLAGS_enable_bulk_create_ecmp_members && platform_ &&
-      platform_->getAsic()->isSupported(
-          HwAsic::Feature::BULK_CREATE_ECMP_MEMBER)) {
+  if (bulkRemoveEcmpMembers_) {
     std::vector<SaiNextHopGroupMemberTraits::AdapterKey> adapterKeys;
     for (const auto& member : members_) {
       auto obj = member->getObject();

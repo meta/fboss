@@ -1,0 +1,9 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fboss_oss")
+
+cpp_library(
+    name = "jemalloc_config",
+    srcs = ["JemallocConfig.cpp"],
+    visibility = [],
+)

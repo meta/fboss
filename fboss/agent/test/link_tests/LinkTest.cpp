@@ -215,7 +215,9 @@ void LinkTest::initializeCabledPorts() {
 }
 
 std::tuple<std::vector<PortID>, std::string>
-LinkTest::getOpticalAndActiveCabledPortsAndNames(bool pluggableOnly) const {
+LinkTest::getOpticalAndActiveCabledPortsAndNames(
+    bool pluggableOnly,
+    bool opticalOnly) const {
   std::string portNames;
   std::vector<PortID> ports;
   std::vector<int32_t> transceiverIds;
@@ -248,8 +250,13 @@ LinkTest::getOpticalAndActiveCabledPortsAndNames(bool pluggableOnly) const {
       } else if (
           tcvrState.cable().value_or({}).mediaTypeEncoding() ==
           MediaTypeEncodings::ACTIVE_CABLES) {
-        ports.push_back(port);
-        portNames += portName + " ";
+        if (opticalOnly) {
+          XLOG(DBG2) << "Transceiver: " << tcvrId + 1 << ", " << portName
+                     << ", is an active cable, skip it (opticalOnly)";
+        } else {
+          ports.push_back(port);
+          portNames += portName + " ";
+        }
       } else {
         XLOG(DBG2) << "Transceiver: " << tcvrId + 1 << ", " << portName
                    << ", is not optics, skip it";
@@ -438,14 +445,19 @@ std::set<std::pair<PortID, PortID>> LinkTest::getConnectedPairs() const {
  * Returns the set of connected port pairs with optical link and the optics
  * supporting the given feature. For feature==None, this will return set of
  * connected port pairs using optical links
+ *
+ * opticalModulesOnly restricts the candidate ports to optical transceivers,
+ * excluding active electrical cables.
  */
 std::set<std::pair<PortID, PortID>>
 LinkTest::getConnectedOpticalAndActivePortPairWithFeature(
     TransceiverFeature feature,
     phy::Side side,
-    bool skipLoopback) const {
+    bool skipLoopback,
+    bool opticalModulesOnly) const {
   auto connectedPairs = getConnectedPairs();
-  auto ports = std::get<0>(getOpticalAndActiveCabledPortsAndNames(false));
+  auto ports = std::get<0>(
+      getOpticalAndActiveCabledPortsAndNames(false, opticalModulesOnly));
 
   std::set<std::pair<PortID, PortID>> connectedOpticalPortPairs;
   for (auto connectedPair : connectedPairs) {

@@ -8,7 +8,7 @@
  *
  */
 #include "fboss/lib/led/LedIO.h"
-#include <folly/Format.h>
+#include <folly/Conv.h>
 #include <folly/logging/xlog.h>
 #include <fstream>
 #include <string>
@@ -149,7 +149,7 @@ void LedIO::setDelay(const std::string& ledBasePath, const std::string& delay) {
     // Not throwing an exception here until all existing BSPs support
     // blinking
     XLOG(ERR) << fmt::format(
-        "setBlink() failed to open {} or {} for ID {:d} (0 base)",
+        "setDelay() failed to open {} or {} for ID {:d} (0 base)",
         ledPathOn,
         ledPathOff,
         id_);

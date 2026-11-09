@@ -6,7 +6,9 @@ import neteng.fboss.platform_mapping_config.thrift_types as pm_types
 from fboss.lib.asic_config_v2.tomahawk6 import Tomahawk6AsicConfig
 from fboss.lib.platform_mapping_v2.asic_vendor_config import AsicVendorConfig
 from fboss.lib.platform_mapping_v2.platform_mapping_v2 import PlatformMappingParser
-from fboss.lib.platform_mapping_v2.read_files_utils import read_all_vendor_data
+from fboss.lib.platform_mapping_v2.read_files_utils import (
+    discover_platform_mapping_inputs,
+)
 
 SAI_CFG = {
     "l3_ecmp_member_secondary_mem_size": "8192",
@@ -27,7 +29,8 @@ class Icecube800banwConfig(Tomahawk6AsicConfig):
     ) -> None:
         super(Icecube800banwConfig, self).__init__(asic_config_params)
         self.parser = PlatformMappingParser(
-            read_all_vendor_data(platform_mapping_input_dir), "icecube800banw"
+            discover_platform_mapping_inputs(platform_mapping_input_dir),
+            "icecube800banw",
         )
         self.num_ports_per_core = 2
 

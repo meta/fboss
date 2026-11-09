@@ -9,6 +9,13 @@ source /opt/fboss/bin/setup_fboss_env
 FBOSS_SHARE="/opt/fboss/share"
 COOP_DIR="/etc/coop"
 FRUID_FILE="/var/facebook/fboss/fruid.json"
+NPU_SDK_UTILS_TOOL="/opt/fboss/bin/npu_sdk_utils.py"
+NPU_SDK_METADATA="${FBOSS_SHARE}/npu_sdk_metadata.json"
+NPU_HW_AGENT_BINARY="fboss_hw_agent-sai_impl"
+CHASSIS_EEPROM_PARSED="/run/devmap/eeproms/CHASSIS_EEPROM_PARSED"
+# Passed as --flagfile by the fboss_sw_agent, fboss_hw_agent@ and qsfp_service
+# units; on tmpfs so it cannot go stale across boots.
+VARIANT_FLAGFILE="/run/fboss/variant_flags"
 
 log() {
   echo "[fboss_init] $1" >&2
@@ -56,6 +63,35 @@ copy_config() {
   fi
 }
 
+setup_agent_config() {
+  local src="$1"
+  local dst="${COOP_DIR}/agent.conf"
+
+  if [[ -e $dst ]]; then
+    log "agent.conf already exists at $dst (skipping)"
+    return
+  fi
+
+  if [[ ! -f $src ]]; then
+    log "No agent.conf found at $src (skipping)"
+    return
+  fi
+
+  # Fake-SAI artifacts intentionally do not carry NPU SDK metadata.
+  if [[ ! -f $NPU_SDK_METADATA ]]; then
+    log "No NPU SDK metadata found; keeping the configured SDK version"
+    copy_config "$src" "$dst" "agent.conf"
+    return
+  fi
+
+  python3 "$NPU_SDK_UTILS_TOOL" materialize-agent-config \
+    --config-path "$src" \
+    --metadata-path "$NPU_SDK_METADATA" \
+    --binary-name "$NPU_HW_AGENT_BINARY" \
+    --output-directory "$COOP_DIR"
+  log "Created agent.conf with SDK versions for $NPU_HW_AGENT_BINARY"
+}
+
 generate_fruid() {
   if [[ -s $FRUID_FILE ]]; then
     log "Non-empty fruid.json already exists at $FRUID_FILE (skipping)"
@@ -86,8 +122,35 @@ setup_coop_configs() {
   chmod 2775 "$COOP_DIR"
   setfacl -m g:switching:rwx "$COOP_DIR"
   setfacl -d -m g:switching:rwx -m o::rx "$COOP_DIR"
-  copy_config "${platform_dir}/agent.conf" "${COOP_DIR}/agent.conf" "agent.conf"
+  setup_agent_config "${platform_dir}/agent.conf"
   copy_config "${platform_dir}/qsfp.conf" "${COOP_DIR}/qsfp.conf" "qsfp.conf"
+  copy_config "${platform_dir}/led.conf" "${COOP_DIR}/led.conf" "led.conf"
+}
+
+get_eeprom_field() {
+  if [[ -r $CHASSIS_EEPROM_PARSED ]]; then
+    sed -n "s|^$1: *||p" "$CHASSIS_EEPROM_PARSED" | head -1
+  fi
+}
+
+# Derive the platform-descriptor variant gflag (variantAttributes) from the
+# chassis hardware revision, so agents never read the EEPROM themselves. A box
+# missing any field gets no flag and falls back to the default descriptor.
+set_variant_flags() {
+  local state substate respin
+  state=$(get_eeprom_field "Production State")
+  substate=$(get_eeprom_field "Production Sub-State")
+  respin=$(get_eeprom_field "Re-Spin/Variant Indicator")
+  log "Chassis hardware revision: state=${state:-none} substate=${substate:-none} respin=${respin:-none}"
+
+  if [[ -z $state || -z $substate || -z $respin ]]; then
+    rm -f "$VARIANT_FLAGFILE"
+    return
+  fi
+
+  mkdir -p "$(dirname "$VARIANT_FLAGFILE")"
+  echo "--hwrev_state${state}_substate${substate}_respin${respin}=true" >"$VARIANT_FLAGFILE"
+  log "Wrote $VARIANT_FLAGFILE"
 }
 
 enable_hw_agents() {
@@ -139,6 +202,7 @@ main() {
 
   create_distro_base_snapshot
   setup_coop_configs "$platform_dir"
+  set_variant_flags
   if ! generate_fruid; then
     exit 1
   fi

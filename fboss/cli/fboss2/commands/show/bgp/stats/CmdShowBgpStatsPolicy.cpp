@@ -74,4 +74,47 @@ void CmdShowBgpStatsPolicy::printOutput(
   }
 }
 
+std::string_view CmdShowBgpStatsPolicyTraits::description() {
+  return "Displays per-policy execution statistics: for each configured policy statement, how many times it ran, how many prefixes it matched, and its average and maximum execution time in microseconds, followed by a per-term breakdown of hits and misses. Terms are numbered in evaluation order, and the misses column for a term is the prefixes that reached the policy but had already been consumed by an earlier term or fell through past this one - so hits accumulate down the list rather than each row being independent. A trailing 'Default deny (Implicit)' row accounts for everything no explicit term matched; a large count there usually means the policy is not matching what its author intended. A policy with zero executions is configured but never invoked on this switch. Use the timing columns to find a policy that is expensive enough to slow convergence.";
+}
+
+CmdShowBgpStatsPolicy::RetType CmdShowBgpStatsPolicy::sampleModel() {
+  using facebook::neteng::routing::policy::thrift::TPolicyStatementStats;
+  using facebook::neteng::routing::policy::thrift::TPolicyTermStats;
+
+  auto term = [](const std::string& description, int64_t prefixHits) {
+    TPolicyTermStats stats;
+    stats.description() = description;
+    stats.prefix_hit_count() = prefixHits;
+    return stats;
+  };
+
+  // An origination policy that has matched nothing on this switch, showing the
+  // implicit default-deny row printOutput appends.
+  TPolicyStatementStats originate;
+  originate.name() = "SAMPLE_ORIGINATE_LOCAL";
+  originate.num_of_runs() = 0;
+  originate.prefix_hit_count() = 0;
+  originate.avg_time() = 0;
+  originate.max_time() = 0;
+  originate.term_stats() = {term(
+      "(TYPE-1) Unconditionally originate the route and attach IBN tags", 0)};
+
+  // An ingress policy that is actively matching, so the per-term hits and the
+  // running miss count are both non-trivial.
+  TPolicyStatementStats propagate;
+  propagate.name() = "SAMPLE_UPLINK_IN";
+  propagate.num_of_runs() = 1464;
+  propagate.prefix_hit_count() = 1464;
+  propagate.avg_time() = 3;
+  propagate.max_time() = 41;
+  propagate.term_stats() = {
+      term("Accept default route", 1),
+      term("Accept rack private prefixes", 1341)};
+
+  RetType stats;
+  stats.policy_statement_stats() = {originate, propagate};
+  return stats;
+}
+
 } // namespace facebook::fboss

@@ -777,48 +777,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core0",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core0",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core0",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core0",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core0",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core0",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core0",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core0",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -881,48 +993,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core0",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core0",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core0",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core0",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core0",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core0",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core0",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core0",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -1097,48 +1321,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core1",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core1",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core1",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core1",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core1",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core1",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core1",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core1",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -1201,48 +1537,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core1",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core1",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core1",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core1",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core1",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core1",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core1",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core1",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -1417,48 +1865,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core2",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core2",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core2",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core2",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core2",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core2",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core2",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core2",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -1521,48 +2081,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core2",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core2",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core2",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core2",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core2",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core2",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core2",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core2",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -1737,48 +2409,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core3",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core3",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core3",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core3",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core3",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core3",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core3",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core3",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -1841,48 +2625,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core3",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core3",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core3",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core3",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core3",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core3",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core3",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core3",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -2057,48 +2953,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core4",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core4",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core4",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core4",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core4",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core4",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core4",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core4",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -2161,48 +3169,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core4",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core4",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core4",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core4",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core4",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core4",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core4",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core4",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -2377,48 +3497,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core5",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core5",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core5",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core5",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core5",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core5",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core5",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core5",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -2481,48 +3713,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core5",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core5",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core5",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core5",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core5",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core5",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core5",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core5",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -2697,48 +4041,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core6",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core6",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core6",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core6",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core6",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core6",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core6",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core6",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -2801,48 +4257,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core6",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core6",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core6",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core6",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core6",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core6",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core6",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core6",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -3017,48 +4585,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core7",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core7",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core7",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core7",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core7",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core7",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core7",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core7",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -3121,48 +4801,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core7",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core7",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core7",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core7",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core7",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core7",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core7",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core7",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -3337,48 +5129,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core8",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core8",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core8",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core8",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core8",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core8",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core8",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core8",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -3441,48 +5345,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core8",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core8",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core8",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core8",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core8",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core8",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core8",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core8",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -3657,48 +5673,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core9",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core9",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core9",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core9",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core9",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core9",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core9",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core9",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -3761,48 +5889,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core9",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core9",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core9",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core9",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core9",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core9",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core9",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core9",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -3977,48 +6217,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core10",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core10",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core10",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core10",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core10",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core10",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core10",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core10",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -4081,48 +6433,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core10",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core10",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core10",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core10",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core10",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core10",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core10",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core10",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -4297,48 +6761,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core11",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core11",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core11",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core11",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core11",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core11",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core11",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core11",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -4401,48 +6977,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core11",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core11",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core11",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core11",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core11",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core11",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core11",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core11",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -4617,48 +7305,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core12",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core12",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core12",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core12",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core12",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core12",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core12",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core12",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -4721,48 +7521,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core12",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core12",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core12",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core12",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core12",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core12",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core12",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core12",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -4937,48 +7849,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core13",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core13",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core13",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core13",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core13",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core13",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core13",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core13",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -5041,48 +8065,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core13",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core13",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core13",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core13",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core13",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core13",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core13",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core13",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -5257,48 +8393,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core14",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core14",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core14",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core14",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core14",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core14",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core14",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core14",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -5361,48 +8609,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core14",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core14",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core14",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core14",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core14",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core14",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core14",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core14",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -5577,48 +8937,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core15",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core15",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core15",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core15",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core15",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core15",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core15",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core15",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -5681,48 +9153,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core15",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core15",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core15",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core15",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core15",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core15",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core15",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core15",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -5897,48 +9481,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core16",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core16",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core16",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core16",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core16",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core16",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core16",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core16",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -6001,48 +9697,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core16",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core16",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core16",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core16",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core16",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core16",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core16",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core16",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -6217,48 +10025,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core17",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core17",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core17",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core17",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core17",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core17",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core17",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core17",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -6321,48 +10241,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core17",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core17",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core17",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core17",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core17",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core17",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core17",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core17",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -6537,48 +10569,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core18",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core18",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core18",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core18",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core18",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core18",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core18",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core18",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -6641,48 +10785,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core18",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core18",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core18",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core18",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core18",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core18",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core18",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core18",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -6857,48 +11113,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core19",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core19",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core19",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core19",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core19",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core19",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core19",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core19",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -6961,48 +11329,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core19",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core19",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core19",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core19",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core19",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core19",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core19",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core19",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -7177,48 +11657,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core20",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core20",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core20",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core20",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core20",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core20",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core20",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core20",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -7281,48 +11873,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core20",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core20",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core20",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core20",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core20",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core20",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core20",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core20",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -7497,48 +12201,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core21",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core21",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core21",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core21",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core21",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core21",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core21",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core21",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -7601,48 +12417,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core21",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core21",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core21",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core21",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core21",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core21",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core21",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core21",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -7817,48 +12745,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core22",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core22",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core22",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core22",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core22",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core22",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core22",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core22",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -7921,48 +12961,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core22",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core22",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core22",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core22",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core22",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core22",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core22",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core22",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -8137,48 +13289,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core23",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core23",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core23",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core23",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core23",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core23",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core23",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core23",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -8241,48 +13505,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core23",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core23",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core23",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core23",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core23",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core23",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core23",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core23",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -8457,48 +13833,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core24",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core24",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core24",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core24",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core24",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core24",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core24",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core24",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -8561,48 +14049,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core24",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core24",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core24",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core24",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core24",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core24",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core24",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core24",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -8777,48 +14377,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core25",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core25",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core25",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core25",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core25",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core25",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core25",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core25",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -8881,48 +14593,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core25",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core25",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core25",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core25",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core25",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core25",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core25",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core25",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -9097,48 +14921,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core26",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core26",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core26",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core26",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core26",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core26",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core26",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core26",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -9201,48 +15137,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core26",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core26",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core26",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core26",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core26",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core26",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core26",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core26",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -9417,48 +15465,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core27",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core27",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core27",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core27",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core27",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core27",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core27",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core27",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -9521,48 +15681,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core27",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core27",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core27",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core27",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core27",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core27",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core27",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core27",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -9737,48 +16009,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core28",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core28",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core28",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core28",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core28",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core28",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core28",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core28",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -9841,48 +16225,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core28",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core28",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core28",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core28",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core28",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core28",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core28",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core28",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -10057,48 +16553,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core29",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core29",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core29",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core29",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core29",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core29",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core29",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core29",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -10161,48 +16769,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core29",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core29",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core29",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core29",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core29",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core29",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core29",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core29",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -10377,48 +17097,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core30",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core30",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core30",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core30",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core30",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core30",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core30",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core30",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -10481,48 +17313,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core30",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core30",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core30",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core30",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core30",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core30",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core30",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core30",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -10697,48 +17641,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core31",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core31",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core31",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core31",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core31",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core31",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core31",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core31",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -10801,48 +17857,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core31",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core31",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core31",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core31",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core31",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core31",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core31",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core31",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -11017,48 +18185,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core32",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core32",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core32",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core32",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core32",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core32",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core32",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core32",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -11121,48 +18401,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core32",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core32",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core32",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core32",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core32",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core32",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core32",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core32",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -11337,48 +18729,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core33",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core33",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core33",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core33",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core33",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core33",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core33",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core33",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -11441,48 +18945,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core33",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core33",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core33",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core33",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core33",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core33",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core33",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core33",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -11657,48 +19273,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core34",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core34",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core34",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core34",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core34",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core34",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core34",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core34",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -11761,48 +19489,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core34",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core34",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core34",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core34",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core34",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core34",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core34",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core34",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -11977,48 +19817,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core35",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core35",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core35",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core35",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core35",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core35",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core35",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core35",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -12081,48 +20033,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core35",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core35",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core35",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core35",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core35",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core35",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core35",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core35",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -12297,48 +20361,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core36",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core36",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core36",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core36",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core36",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core36",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core36",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core36",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -12401,48 +20577,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core36",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core36",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core36",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core36",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core36",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core36",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core36",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core36",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -12617,48 +20905,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core37",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core37",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core37",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core37",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core37",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core37",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core37",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core37",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -12721,48 +21121,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core37",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core37",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core37",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core37",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core37",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core37",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core37",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core37",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -12937,48 +21449,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core38",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core38",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core38",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core38",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core38",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core38",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core38",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core38",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -13041,48 +21665,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core38",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core38",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core38",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core38",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core38",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core38",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core38",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core38",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -13257,48 +21993,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core39",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core39",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core39",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core39",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core39",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core39",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core39",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core39",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -13361,48 +22209,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core39",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core39",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core39",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core39",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core39",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core39",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core39",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core39",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -13577,48 +22537,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core40",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core40",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core40",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core40",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core40",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core40",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core40",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core40",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -13681,48 +22753,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core40",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core40",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core40",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core40",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core40",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core40",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core40",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core40",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -13897,48 +23081,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core41",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core41",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core41",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core41",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core41",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core41",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core41",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core41",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -14001,48 +23297,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core41",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core41",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core41",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core41",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core41",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core41",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core41",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core41",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -14217,48 +23625,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core42",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core42",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core42",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core42",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core42",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core42",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core42",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core42",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -14321,48 +23841,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core42",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core42",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core42",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core42",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core42",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core42",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core42",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core42",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -14537,48 +24169,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core43",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core43",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core43",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core43",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core43",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core43",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core43",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core43",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -14641,48 +24385,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core43",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core43",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core43",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core43",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core43",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core43",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core43",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core43",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -14857,48 +24713,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core44",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core44",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core44",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core44",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core44",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core44",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core44",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core44",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -14961,48 +24929,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core44",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core44",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core44",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core44",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core44",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core44",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core44",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core44",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -15177,48 +25257,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core45",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core45",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core45",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core45",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core45",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core45",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core45",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core45",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -15281,48 +25473,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core45",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core45",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core45",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core45",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core45",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core45",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core45",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core45",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -15497,48 +25801,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core46",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core46",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core46",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core46",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core46",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core46",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core46",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core46",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -15601,48 +26017,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core46",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core46",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core46",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core46",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core46",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core46",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core46",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core46",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -15817,48 +26345,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core47",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core47",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core47",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core47",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core47",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core47",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core47",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core47",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -15921,48 +26561,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core47",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core47",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core47",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core47",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core47",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core47",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core47",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core47",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -16137,48 +26889,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core48",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core48",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core48",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core48",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core48",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core48",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core48",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core48",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -16241,48 +27105,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core48",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core48",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core48",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core48",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core48",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core48",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core48",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core48",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -16457,48 +27433,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core49",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core49",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core49",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core49",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core49",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core49",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core49",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core49",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -16561,48 +27649,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core49",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core49",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core49",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core49",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core49",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core49",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core49",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core49",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -16777,48 +27977,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core50",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core50",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core50",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core50",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core50",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core50",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core50",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core50",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -16881,48 +28193,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core50",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core50",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core50",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core50",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core50",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core50",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core50",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core50",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -17097,48 +28521,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core51",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core51",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core51",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core51",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core51",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core51",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core51",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core51",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -17201,48 +28737,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core51",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core51",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core51",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core51",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core51",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core51",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core51",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core51",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -17417,48 +29065,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core52",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core52",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core52",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core52",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core52",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core52",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core52",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core52",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -17521,48 +29281,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core52",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core52",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core52",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core52",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core52",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core52",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core52",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core52",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -17737,48 +29609,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core53",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core53",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core53",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core53",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core53",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core53",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core53",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core53",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -17841,48 +29825,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core53",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core53",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core53",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core53",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core53",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core53",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core53",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core53",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -18057,48 +30153,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core54",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core54",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core54",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core54",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core54",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core54",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core54",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core54",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -18161,48 +30369,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core54",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core54",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core54",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core54",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core54",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core54",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core54",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core54",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -18377,48 +30697,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core55",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core55",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core55",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core55",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core55",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core55",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core55",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core55",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -18481,48 +30913,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core55",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core55",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core55",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core55",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core55",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core55",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core55",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core55",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -18697,48 +31241,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core56",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core56",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core56",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core56",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core56",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core56",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core56",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core56",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -18801,48 +31457,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core56",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core56",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core56",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core56",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core56",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core56",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core56",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core56",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -19017,48 +31785,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core57",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core57",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core57",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core57",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core57",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core57",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core57",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core57",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -19121,48 +32001,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core57",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core57",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core57",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core57",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core57",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core57",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core57",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core57",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -19337,48 +32329,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core58",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core58",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core58",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core58",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core58",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core58",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core58",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core58",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -19441,48 +32545,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core58",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core58",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core58",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core58",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core58",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core58",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core58",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core58",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -19657,48 +32873,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core59",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core59",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core59",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core59",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core59",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core59",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core59",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core59",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -19761,48 +33089,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core59",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core59",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core59",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core59",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core59",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core59",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core59",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core59",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -19977,48 +33417,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core60",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core60",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core60",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core60",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core60",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core60",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core60",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core60",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -20081,48 +33633,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core60",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core60",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core60",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core60",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core60",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core60",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core60",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core60",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -20297,48 +33961,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core61",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core61",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core61",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core61",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core61",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core61",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core61",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core61",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -20401,48 +34177,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core61",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core61",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core61",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core61",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core61",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core61",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core61",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core61",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -20617,48 +34505,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core62",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core62",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core62",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core62",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core62",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core62",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core62",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core62",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -20721,48 +34721,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core62",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core62",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core62",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core62",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core62",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core62",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core62",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core62",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -20937,48 +35049,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core63",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core63",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core63",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core63",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core63",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core63",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core63",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core63",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],
@@ -21041,48 +35265,160 @@ constexpr auto kJsonPlatformMappingStr = R"(
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core63",
                       "lane": 0
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core63",
                       "lane": 1
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core63",
                       "lane": 2
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core63",
                       "lane": 3
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core63",
                       "lane": 4
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core63",
                       "lane": 5
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core63",
                       "lane": 6
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   },
                   {
                     "id": {
                       "chip": "NPU-Q4D_NIF-slot1/chip1/core63",
                       "lane": 7
+                    },
+                    "tx": {
+                      "pre": 0,
+                      "pre2": 0,
+                      "main": 0,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    },
+                    "rx": {
+                      "ctlCode": 0,
+                      "dspMode": 0,
+                      "afeTrim": 0
                     }
                   }
                 ],

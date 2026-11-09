@@ -24,6 +24,7 @@ from fboss_test_runner.log_capture import (
     _OutputTee,
     build_command_file_contents,
     build_run_dir_name,
+    collect_generated_configs,
     collect_result_csvs,
     collect_service_logs,
     collect_system_logs,
@@ -235,6 +236,29 @@ class CollectResultCsvsTest(unittest.TestCase):
             self.assertEqual(os.listdir(run_dir), [])
 
 
+class CollectGeneratedConfigsTest(unittest.TestCase):
+    def test_copies_current_runner_configs_modified_during_run(self):
+        with (
+            tempfile.TemporaryDirectory() as source_root,
+            tempfile.TemporaryDirectory() as run_dir,
+        ):
+            source_dir = os.path.join(source_root, "sai")
+            os.makedirs(source_dir)
+            stale = os.path.join(source_dir, "stale.conf")
+            current = os.path.join(source_dir, "current.conf")
+            for path, mtime in ((stale, 1000.0), (current, 5000.0)):
+                with open(path, "w") as config:
+                    config.write("{}\n")
+                os.utime(path, (mtime, mtime))
+
+            collect_generated_configs(
+                run_dir, "sai", since=2000.0, source_root=source_root
+            )
+
+            destination = os.path.join(run_dir, "generated_configs", "sai")
+            self.assertEqual(["current.conf"], os.listdir(destination))
+
+
 class LogCaptureOrchestrationTest(unittest.TestCase):
     """LogCapture (the bundler) creates the per-run dir, records the command, and
     tees output on enter; on exit it collects the logs/CSVs and zips. The tee and
@@ -247,6 +271,9 @@ class LogCaptureOrchestrationTest(unittest.TestCase):
             patch("fboss_test_runner.log_capture._OutputTee") as tee,
             patch("fboss_test_runner.log_capture.collect_service_logs") as collect_svc,
             patch("fboss_test_runner.log_capture.collect_result_csvs") as collect_csv,
+            patch(
+                "fboss_test_runner.log_capture.collect_generated_configs"
+            ) as collect_configs,
             patch("fboss_test_runner.log_capture.collect_system_logs") as collect_sys,
             patch("fboss_test_runner.log_capture.create_log_bundle") as create_bundle,
         ):
@@ -270,6 +297,10 @@ class LogCaptureOrchestrationTest(unittest.TestCase):
             collect_csv.assert_called_once()
             self.assertEqual(collect_csv.call_args.args[0], run_dir)
             self.assertIsInstance(collect_csv.call_args.args[1], float)
+            collect_configs.assert_called_once()
+            self.assertEqual(collect_configs.call_args.args[0], run_dir)
+            self.assertEqual(collect_configs.call_args.args[1], "sai")
+            self.assertIsInstance(collect_configs.call_args.args[2], float)
             collect_sys.assert_called_once_with(run_dir)
             create_bundle.assert_called_once_with(run_dir)
 

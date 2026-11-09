@@ -9,13 +9,12 @@ on:
       - '.github/workflows/fsdb.yml'
   # Allow manually triggering the workflow
   workflow_dispatch:
-  # Also schedule the workflow to run every 3 hours during day only
+  # Also schedule the workflow to run twice daily
   # ShipIt job will sync hourly around HH:21, so schedule the run with 15 minute offset
   schedule:
     # Run daily at 1:36AM UTC = 6:36PM PDT
     # Run daily at 1:36PM UTC = 6:36AM PDT
-    # Run daily at 7:36PM UTC = 12:36PM PDT
-    - cron: '36 1,13,19 * * *'
+    - cron: '36 1,13 * * *'
 jobs:
   FSDB-Build:
     runs-on: 32-core-ubuntu

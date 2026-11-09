@@ -90,7 +90,6 @@ constexpr auto kWarmBootFlag = "can_warm_boot";
 constexpr auto kWarmbootStateFileName = "qsfp_service_state";
 static constexpr auto kStateMachineThreadHeartbeatMissed =
     "state_machine_thread_heartbeat_missed";
-constexpr int kSecAfterModuleOutOfReset = 2;
 // A CPO module presents up to (max CMIS banks) x (host lanes per bank) global
 // host lanes. Expressed as a product so the cap tracks a future change to the
 // bank capacity or per-bank lane count instead of a magic 32. (This is the
@@ -573,15 +572,20 @@ TransceiverManager::getPortsRequiringOpticsFwUpgrade() const {
 }
 
 void TransceiverManager::ensureFwUpgradeAllowed() const {
+  std::string reason;
   if (!isFullyInitialized()) {
-    throw FbossError("Service is still initializing...");
+    reason = "Service is still initializing...";
+  } else if (isUpgradingFirmware()) {
+    reason = "Service is already upgrading firmware...";
+  } else if (!FLAGS_firmware_upgrade_supported) {
+    reason =
+        "Firmware upgrade is not supported, --firmware_upgrade_supported is false";
   }
-  if (isUpgradingFirmware()) {
-    throw FbossError("Service is already upgrading firmware...");
+  if (reason.empty()) {
+    return;
   }
-  if (!FLAGS_firmware_upgrade_supported) {
-    throw FbossError("Firmware upgrade is not supported...");
-  }
+  XLOG(ERR) << "Rejecting optics firmware upgrade request: " << reason;
+  throw FbossError(reason);
 }
 
 std::map<std::string, FirmwareUpgradeData>
@@ -983,7 +987,8 @@ void TransceiverManager::triggerTransceiverEventsForAgentConfigChangeEvent(
     }
   }
   waitForAllBlockingStateUpdateDone(results);
-  XLOG(INFO) << "triggerAgentConfigChangeEvent has " << numResetToDiscovered
+  XLOG(INFO) << "triggerTransceiverEventsForAgentConfigChangeEvent has "
+             << numResetToDiscovered
              << " transceivers state machines set back to discovered, "
              << numResetToNotPresent << " set back to not_present";
   configAppliedInfo_ = newConfigAppliedInfo;
@@ -1736,7 +1741,7 @@ TransceiverManager::getOpticalChannelConfig(TransceiverID id) const {
       const auto& centerFreq = freqConfig->centerFrequencyConfig();
       if (centerFreq->getType() ==
           facebook::fboss::cfg::CenterFrequencyConfig::Type::frequencyMhz) {
-        int freqMhz = centerFreq->get_frequencyMhz();
+        int freqMhz = centerFreq.as_const()->frequencyMhz().value();
         MODULE_LOG(DBG2, "", id) << "The frequency is " << freqMhz
                             << " port_name " << portName;
       }
@@ -2523,7 +2528,7 @@ void TransceiverManager::completeRefresh() {
     /* We don't want to set warm boot flag here for platforms with external
      * PHYs The reason is SAI based external PHYs platforms needs to
      * gracefully shutdown to store the warmboot state */
-    if (!phyManager_) {
+    if (!hasExternalPhy()) {
       setCanWarmBoot();
     }
 
@@ -2733,10 +2738,24 @@ std::pair<bool, std::vector<std::string>> TransceiverManager::areAllPortsDown(
 }
 
 bool TransceiverManager::isRunningAsicPrbs(TransceiverID tcvr) const {
+  if (FLAGS_port_manager_mode) {
+    // npuPortStatusCache_ is only populated in legacy mode
+    for (const auto& [_, portInfo] : getProgrammedIphyPortToPortInfo(tcvr)) {
+      if (portInfo.status.has_value() && portInfo.status->asicPrbsEnabled) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   auto ports = getAllPlatformPorts(tcvr);
+  // Hold a single locked view for the whole scan so the cache can't be
+  // wholesale-swapped out (see updateNpuPortStatusCache()) between the
+  // find() and the end()-check/dereference below.
+  auto lockedNpuPortStatusCache = npuPortStatusCache_.rlock();
   for (const auto& port : ports) {
-    auto npuPortStatusCacheItr = npuPortStatusCache_.rlock()->find(port);
-    if (npuPortStatusCacheItr == npuPortStatusCache_.rlock()->end()) {
+    auto npuPortStatusCacheItr = lockedNpuPortStatusCache->find(port);
+    if (npuPortStatusCacheItr == lockedNpuPortStatusCache->end()) {
       continue;
     }
     if (npuPortStatusCacheItr->second.asicPrbsEnabled) {
@@ -2958,9 +2977,15 @@ bool TransceiverManager::checkWarmBootFlags() {
     return false;
   }
 
-  // Instead of removing the can_warm_boot file, we keep it unless it's a
-  // coldboot, so that qsfp_service crash can still use warm boot.
+  // The can_warm_boot file is kept, so a qsfp_service crash can still warm
+  // boot. On SAI xphy platforms the xphy warm boot state is only valid right
+  // after a graceful exit, and each xphy consumes its own flag on startup, so
+  // consume this one too: if this start fails or qsfp_service crashes, the next
+  // start is a cold boot instead of another warm boot.
   bool canWarmBoot = checkFileExists(warmBootFile);
+  if (canWarmBoot && hasSaiExternalPhy()) {
+    removeWarmBootFlag();
+  }
   XLOG(INFO) << "Warm Boot flag: " << warmBootFile << " is "
              << (canWarmBoot ? "set" : "missing");
   return canWarmBoot;
@@ -3538,7 +3563,8 @@ void TransceiverManager::getPauseRemediationUntil(
 void TransceiverManager::setPortLoopbackState(
     std::string portName,
     phy::PortComponent component,
-    bool setLoopback) {
+    bool setLoopback,
+    phy::LoopbackMode mode) {
   auto swPort = getPortIDByPortName(portName);
   if (!swPort.has_value()) {
     throw FbossError(
@@ -3559,11 +3585,22 @@ void TransceiverManager::setPortLoopbackState(
 
   if (component == phy::PortComponent::GB_SYSTEM ||
       component == phy::PortComponent::GB_LINE) {
+    if (mode != phy::LoopbackMode::INPUT) {
+      throw FbossError(
+          fmt::format(
+              "Loopback mode {} is not supported on {}",
+              apache::thrift::util::enumNameSafe(mode),
+              apache::thrift::util::enumNameSafe(component)));
+    }
+    if (!getPhyManager()) {
+      throw FbossError(
+          "Unable to set xphy loopback state when PhyManager is not set");
+    }
     getPhyManager()->setPortLoopbackState(
         PortID(swPort.value()), component, setLoopback);
   } else {
     setPortLoopbackStateTransceiver(
-        swPort.value(), portName, component, setLoopback);
+        swPort.value(), portName, component, setLoopback, mode);
   }
 }
 
@@ -3571,13 +3608,15 @@ void TransceiverManager::setPortLoopbackStateTransceiver(
     PortID portId,
     std::string portName,
     phy::PortComponent component,
-    bool setLoopback) {
+    bool setLoopback,
+    phy::LoopbackMode mode) {
   // Get the Transceiver ID
   auto tcvrId = getTransceiverID(portId);
   if (!tcvrId.has_value()) {
     throw FbossError(
         fmt::format(
-            "setInterfaceTxRx: Transceiver not found for port {}", portName));
+            "setPortLoopbackStateTransceiver: Transceiver not found for port {}",
+            portName));
   }
 
   auto lockedTransceivers = transceivers_.rlock();
@@ -3585,10 +3624,10 @@ void TransceiverManager::setPortLoopbackStateTransceiver(
       it != lockedTransceivers->end()) {
     if (component == phy::PortComponent::TRANSCEIVER_LINE) {
       it->second->setTransceiverLoopback(
-          portName, phy::Side::LINE, setLoopback);
+          portName, phy::Side::LINE, setLoopback, mode);
     } else {
       it->second->setTransceiverLoopback(
-          portName, phy::Side::SYSTEM, setLoopback);
+          portName, phy::Side::SYSTEM, setLoopback, mode);
     }
   }
 }
@@ -3612,6 +3651,10 @@ void TransceiverManager::setPortAdminState(
 
   XLOG(INFO) << " TransceiverManager::setPortAdminState Port "
              << static_cast<int>(swPort.value());
+  if (!getPhyManager()) {
+    throw FbossError(
+        "Unable to set xphy admin state when PhyManager is not set");
+  }
   getPhyManager()->setPortAdminState(
       PortID(swPort.value()), component, setAdminUp);
 }

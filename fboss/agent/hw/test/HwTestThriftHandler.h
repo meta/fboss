@@ -98,13 +98,16 @@ class HwTestThriftHandler : public AgentHwTestCtrlSvIf {
       bool injectCorrectable) override;
 
   void injectSwitchReachabilityChangeNotification() override;
-  void getRouteInfo(RouteInfo& routeInfo, std::unique_ptr<IpPrefix> prefix)
-      override;
+  void getRouteInfo(
+      RouteInfo& routeInfo,
+      std::unique_ptr<IpPrefix> prefix,
+      int32_t routerID) override;
   bool isRouteHit(std::unique_ptr<IpPrefix> prefix) override;
   void clearRouteHit(std::unique_ptr<IpPrefix> prefix) override;
   bool isRouteToNexthop(
       std::unique_ptr<IpPrefix> prefix,
-      std::unique_ptr<network::thrift::BinaryAddress> nexthop) override;
+      std::unique_ptr<network::thrift::BinaryAddress> nexthop,
+      int32_t routerID) override;
   bool isProgrammedInHw(
       int intfID,
       std::unique_ptr<IpPrefix> prefix,
@@ -117,6 +120,10 @@ class HwTestThriftHandler : public AgentHwTestCtrlSvIf {
 
   void getPortLlrInfo(
       ::facebook::fboss::utility::PortLlrInfo& portLlrInfo,
+      int32_t port) override;
+
+  void getPortVcInfo(
+      ::facebook::fboss::utility::PortVcInfo& portVcInfo,
       int32_t port) override;
 
   bool verifyPortLedStatus(int portId, bool status) override;
@@ -132,8 +139,6 @@ class HwTestThriftHandler : public AgentHwTestCtrlSvIf {
   int32_t getEgressSharedPoolLimitBytes() override;
 
   void printDiagCmd(std::unique_ptr<::std::string>) override;
-
-  void updateFlowletStats() override;
 
   cfg::SwitchingMode getFwdSwitchingMode(
       std::unique_ptr<state::RouteNextHopEntry> routeNextHopEntry) override;

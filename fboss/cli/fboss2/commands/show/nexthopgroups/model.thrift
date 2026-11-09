@@ -11,4 +11,5 @@ struct NextHopGroupEntry {
   2: bool isNamed;
   3: string programmed;
   4: list<string> nextHops;
+  5: optional i64 id;
 }

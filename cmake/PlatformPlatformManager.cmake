@@ -80,6 +80,17 @@ target_link_libraries(platform_manager_i2c_explorer
   ${RE2}
 )
 
+add_library(platform_manager_pm_unit_identity
+  fboss/platform/platform_manager/PmUnitIdentity.cpp
+)
+
+target_link_libraries(platform_manager_pm_unit_identity
+  fmt::fmt
+  platform_manager_config_cpp2
+  weutil_eeprom_contents_cpp2
+  Folly::folly
+)
+
 add_library(platform_manager_data_store
   fboss/platform/platform_manager/DataStore.cpp
 )
@@ -87,6 +98,7 @@ add_library(platform_manager_data_store
 target_link_libraries(platform_manager_data_store
   fmt::fmt
   platform_manager_config_cpp2
+  platform_manager_utils
   weutil_eeprom_contents_cpp2
   weutil_fboss_eeprom_interface
   Folly::folly

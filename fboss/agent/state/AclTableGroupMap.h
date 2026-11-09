@@ -113,6 +113,8 @@ class MultiSwitchAclTableGroupMap : public ThriftMultiSwitchMapNode<
   MultiSwitchAclTableGroupMap() = default;
   virtual ~MultiSwitchAclTableGroupMap() = default;
 
+  MultiSwitchAclTableGroupMap* modify(std::shared_ptr<SwitchState>* state);
+
  private:
   // Inherit the constructors required for clone()
   using BaseT::BaseT;

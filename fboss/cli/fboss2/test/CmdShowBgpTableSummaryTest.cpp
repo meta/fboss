@@ -194,4 +194,24 @@ TEST_F(CmdShowBgpTableSummaryTestFixture, printOutputClampsNegativeTotal) {
   EXPECT_EQ(1, model.summaries()->front().inactive_paths().value());
 }
 
+TEST_F(CmdShowBgpTableSummaryTestFixture, wikiDocHooks) {
+  EXPECT_FALSE(CmdShowBgpTableSummaryTraits::description().empty());
+  auto model = CmdShowBgpTableSummary::sampleModel();
+  EXPECT_FALSE(model.summaries()->empty());
+  std::stringstream ss;
+  CmdShowBgpTableSummary().printOutput(model, ss);
+  const std::string output = ss.str();
+
+  EXPECT_THAT(output, HasSubstr("Address Family: AFI_IPV4"));
+  EXPECT_THAT(output, HasSubstr("Address Family: AFI_IPV6"));
+  EXPECT_THAT(
+      output,
+      HasSubstr(
+          "Total Prefixes: 171  Total Paths: 969 (Active: 969, Inactive: 0)"));
+  // The RIB-wide count is printed once, not once per address family.
+  EXPECT_EQ(
+      output.find("Unresolvable next-hops:"),
+      output.rfind("Unresolvable next-hops:"));
+}
+
 } // namespace facebook::fboss

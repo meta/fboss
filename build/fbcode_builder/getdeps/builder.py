@@ -56,7 +56,7 @@ class BuilderBase:
 
         subdir: str | None = manifest.get("build", "subdir", ctx=ctx)
         if subdir:
-            src_dir = os.path.join(src_dir, subdir)
+            src_dir = os.fspath(pathlib.Path(src_dir, subdir))
 
         self.patchfile: str | None = manifest.get("build", "patchfile", ctx=ctx)
         self.patchfile_opts: str = (
@@ -88,7 +88,7 @@ class BuilderBase:
                 # even when succeeding. This occurs when an extension is not present.
                 # To continue, we must ignore the ERRORLEVEL returned. We do this by
                 # wrapping the call in a batch file that always succeeds.
-                wrapper = os.path.join(self.build_dir, "succeed.bat")
+                wrapper = os.fspath(pathlib.Path(self.build_dir, "succeed.bat"))
                 with open(wrapper, "w") as f:
                     f.write("@echo off\n")
                     f.write(f'call "{vcvarsall}" amd64\n')
@@ -128,7 +128,7 @@ class BuilderBase:
             if cmd_prefix:
                 cmd = cmd_prefix + cmd
 
-        log_file = os.path.join(self.build_dir, "getdeps_build.log")
+        log_file = os.fspath(pathlib.Path(self.build_dir, "getdeps_build.log"))
         return run_cmd(
             cmd=cmd,
             env=env,
@@ -140,8 +140,8 @@ class BuilderBase:
 
     def _reconfigure(self, reconfigure: bool) -> bool:
         if self.build_dir is not None:
-            if not os.path.isdir(self.build_dir):
-                os.makedirs(self.build_dir)
+            if not pathlib.Path(self.build_dir).is_dir():
+                pathlib.Path(self.build_dir).mkdir(parents=True, exist_ok=True)
                 reconfigure = True
         return reconfigure
 
@@ -163,11 +163,13 @@ class BuilderBase:
         except subprocess.CalledProcessError:
             pass  # not a git repo, stay in src_dir
         print(f"Patching {self.manifest.name} with {self.patchfile} in {os.getcwd()}")
-        patchfile = os.path.join(
-            self.build_opts.fbcode_builder_dir,
-            "patches",
-            #  but got `Optional[str]`.
-            self.patchfile,
+        patchfile = os.fspath(
+            pathlib.Path(
+                self.build_opts.fbcode_builder_dir,
+                "patches",
+                #  but got `Optional[str]`.
+                self.patchfile,
+            )
         )
         patchcmd = ["git", "apply", "--ignore-space-change"]
         if self.patchfile_opts:
@@ -226,10 +228,18 @@ class BuilderBase:
         self._build(reconfigure=reconfigure)
 
         if self.build_opts.free_up_disk:
-            # don't clean --src-dir=. case as user may want to build again or run tests on the build
-            if self.src_dir.startswith(self.build_opts.scratch_dir) and os.path.isdir(
-                self.build_dir
-            ):
+            # don't clean --src-dir=. case as user may want to build again or
+            # run tests on the build; vendored sources are ours to clean up after.
+            managed = [self.build_opts.scratch_dir]
+            if self.build_opts.vendor_dir:
+                managed.append(self.build_opts.vendor_dir)
+            # Compare by path component so a sibling directory that merely
+            # shares a name prefix (e.g. /tmp/vendor-copy vs /tmp/vendor)
+            # is not mistaken for a managed source tree.
+            if any(
+                self.src_dir == d or self.src_dir.startswith(d + os.sep)
+                for d in managed
+            ) and os.path.isdir(self.build_dir):
                 if os.path.islink(self.build_dir):
                     os.remove(self.build_dir)
                 else:
@@ -324,7 +334,7 @@ class BuilderBase:
 
     def get_dev_run_script_path(self) -> str:
         assert self.build_opts.is_windows()
-        return os.path.join(self.build_dir, "run.ps1")
+        return os.fspath(pathlib.Path(self.build_dir, "run.ps1"))
 
     def get_dev_run_extra_path_dirs(
         self, dep_munger: DepBase | None = None
@@ -397,8 +407,8 @@ class MakeBuilder(BuilderBase):
 
         # bz2's Makefile doesn't install its .so properly
         if self.manifest and self.manifest.name == "bz2":
-            libdir = os.path.join(self.inst_dir, "lib")
-            srcpattern = os.path.join(self.src_dir, "lib*.so.*")
+            libdir = os.fspath(pathlib.Path(self.inst_dir, "lib"))
+            srcpattern = os.fspath(pathlib.Path(self.src_dir, "lib*.so.*"))
             print(f"copying to {libdir} from {srcpattern}")
             for file in glob.glob(srcpattern):
                 shutil.copy(file, libdir)
@@ -489,8 +499,8 @@ class AutoconfBuilder(BuilderBase):
         return self.manifest.get("build", "make_binary", "make", ctx=self.ctx)
 
     def _build(self, reconfigure: bool) -> None:
-        configure_path = os.path.join(self.src_dir, "configure")
-        autogen_path = os.path.join(self.src_dir, "autogen.sh")
+        configure_path = os.fspath(pathlib.Path(self.src_dir, "configure"))
+        autogen_path = os.fspath(pathlib.Path(self.src_dir, "autogen.sh"))
 
         env = self._compute_env()
 
@@ -504,7 +514,7 @@ class AutoconfBuilder(BuilderBase):
             if out:
                 env.set(k, out)
 
-        if not os.path.exists(configure_path):
+        if not pathlib.Path(configure_path).exists():
             print("%s doesn't exist, so reconfiguring" % configure_path)
             # This libtoolize call is a bit gross; the issue is that
             # `autoreconf` as invoked by libsodium's `autogen.sh` doesn't
@@ -516,7 +526,7 @@ class AutoconfBuilder(BuilderBase):
             # We generally prefer to call the `autogen.sh` script provided
             # by the project on the basis that it may know more than plain
             # autoreconf does.
-            if os.path.exists(autogen_path):
+            if pathlib.Path(autogen_path).exists():
                 self._check_cmd(["bash", autogen_path], cwd=self.src_dir, env=env)
             else:
                 self._check_cmd(["autoreconf", "-ivf"], cwd=self.src_dir, env=env)
@@ -560,7 +570,7 @@ class Iproute2Builder(BuilderBase):
         )
 
     def _build(self, reconfigure: bool) -> None:
-        configure_path = os.path.join(self.src_dir, "configure")
+        configure_path = os.fspath(pathlib.Path(self.src_dir, "configure"))
         env = self.env.copy()
         self._check_cmd([configure_path], env=env)
         shutil.rmtree(self.build_dir)
@@ -569,9 +579,9 @@ class Iproute2Builder(BuilderBase):
         install_cmd = ["make", "install", "DESTDIR=" + self.inst_dir]
 
         for d in ["include", "lib"]:
-            if not os.path.isdir(os.path.join(self.inst_dir, d)):
+            if not pathlib.Path(self.inst_dir, d).is_dir():
                 shutil.copytree(
-                    os.path.join(self.build_dir, d), os.path.join(self.inst_dir, d)
+                    pathlib.Path(self.build_dir, d), pathlib.Path(self.inst_dir, d)
                 )
 
         self._check_cmd(install_cmd, env=env)
@@ -802,16 +812,15 @@ if __name__ == "__main__":
             "CMakeFiles/CMakeError.log",
             "CMakeFiles/CMakeOutput.log",
         ]:
-            name = os.path.join(self.build_dir, name)
-            if os.path.isdir(name):
-                shutil.rmtree(name)
-            elif os.path.exists(name):
-                os.unlink(name)
+            entry = pathlib.Path(self.build_dir, name)
+            if entry.is_dir():
+                shutil.rmtree(entry)
+            elif entry.exists():
+                entry.unlink()
 
     def _needs_reconfigure(self) -> bool:
         for name in ["CMakeCache.txt", "build.ninja"]:
-            name = os.path.join(self.build_dir, name)
-            if not os.path.exists(name):
+            if not pathlib.Path(self.build_dir, name).exists():
                 return True
         return False
 
@@ -845,7 +854,7 @@ if __name__ == "__main__":
         # In order to make it easier for developers to manually run builds for
         # CMake-based projects, write out some build scripts that can be used to invoke
         # CMake manually.
-        build_script_path = os.path.join(self.build_dir, "run_cmake.py")
+        build_script_path = pathlib.Path(self.build_dir, "run_cmake.py")
         script_contents = self.MANUAL_BUILD_SCRIPT.format(**kwargs)
         with open(build_script_path, "wb") as f:
             f.write(script_contents.encode())
@@ -939,6 +948,20 @@ if __name__ == "__main__":
             defines["CMAKE_POLICY_DEFAULT_CMP0141"] = "NEW"
 
         defines.update(self.defines)
+
+        if self.build_opts.is_darwin() and not self.build_opts.allow_system_packages:
+            # CMake searches Homebrew's prefix on Apple Silicon. A library found
+            # there brings -I/opt/homebrew/include, which puts every Homebrew
+            # header ahead of the copies getdeps built.
+            ignored = [
+                p
+                for p in (defines.get("CMAKE_IGNORE_PREFIX_PATH") or "").split(";")
+                if p
+            ]
+            if "/opt/homebrew" not in ignored:
+                ignored.append("/opt/homebrew")
+            defines["CMAKE_IGNORE_PREFIX_PATH"] = ";".join(ignored)
+
         define_args = ["-D%s=%s" % (k, v) for (k, v) in defines.items()]
 
         # if self.build_opts.is_windows():
@@ -985,9 +1008,9 @@ if __name__ == "__main__":
             raise Exception("Failed to find CMake")
 
         if self.build_opts.is_windows():
-            checkdir = self.src_dir
-            if os.path.exists(checkdir):
-                children = os.listdir(checkdir)
+            checkdir = pathlib.Path(self.src_dir)
+            if checkdir.exists():
+                children = [p.name for p in checkdir.iterdir()]
                 print(f"Building from source {checkdir} contents: {children}")
             else:
                 print(f"Source {checkdir} not found")
@@ -1011,6 +1034,8 @@ if __name__ == "__main__":
             self._invalidate_cache()
             self._check_cmd([cmake, self.src_dir] + define_args, env=env)
 
+        preexec_fn = self.memory_limit_preexec_fn
+        self._restart_sccache_server(env, preexec_fn)
         self._check_cmd(
             # pyre-fixme[6]: For 1st argument expected `List[str]` but got
             #  `List[Optional[str]]`.
@@ -1029,7 +1054,7 @@ if __name__ == "__main__":
                 "0",
             ],
             env=env,
-            preexec_fn=self.memory_limit_preexec_fn,
+            preexec_fn=preexec_fn,
         )
 
     def _build_targets(self, targets: Sequence[str]) -> None:
@@ -1074,7 +1099,28 @@ if __name__ == "__main__":
             ]
         )
 
-        self._check_cmd(cmd, env=env, preexec_fn=self.memory_limit_preexec_fn)
+        preexec_fn = self.memory_limit_preexec_fn
+        self._restart_sccache_server(env, preexec_fn)
+        self._check_cmd(cmd, env=env, preexec_fn=preexec_fn)
+
+    def _restart_sccache_server(
+        self, env: Env, preexec_fn: Callable[[], None] | None
+    ) -> None:
+        """Restart sccache under the memory cap before a capped build.
+
+        Compiles run inside the long-lived sccache server, not under ninja, so
+        they inherit the RLIMIT_AS of whichever earlier build spawned it (15 GiB
+        from a default-weight dependency) rather than this manifest's cap.
+
+        Start the replacement serially so parallel compiler processes do not all
+        try to spawn it at once and exhaust the build container's PID limit.
+        """
+        if "SANDCASTLE" in os.environ or preexec_fn is None:
+            return
+        sccache = path_search(env, "sccache")
+        if sccache:
+            self._run_cmd([sccache, "--stop-server"], env=env, allow_fail=True)
+            self._check_cmd([sccache, "--start-server"], env=env, preexec_fn=preexec_fn)
 
     def _get_missing_test_executables(
         self, test_filter: str | None, env: Env, ctest: str | None
@@ -1109,7 +1155,7 @@ if __name__ == "__main__":
             match = re.search(r"Could not find executable (.+)", line)
             if match:
                 exe_path = match.group(1)
-                exe_name = os.path.basename(exe_path)
+                exe_name = pathlib.Path(exe_path).name
                 missing_executables.add(exe_name)
 
         return missing_executables
@@ -1251,11 +1297,11 @@ if __name__ == "__main__":
             pass
 
         if tpx and not no_testpilot:
-            import os
-
             buck_test_info = list_tests()
 
-            buck_test_info_name = os.path.join(self.build_dir, ".buck-test-info.json")
+            buck_test_info_name = os.fspath(
+                pathlib.Path(self.build_dir, ".buck-test-info.json")
+            )
             with open(buck_test_info_name, "w") as f:
                 json.dump(buck_test_info, f)
 
@@ -1399,11 +1445,11 @@ class NinjaBootstrap(BuilderBase):
         self._check_cmd(
             [sys.executable, "configure.py", "--bootstrap"], cwd=self.src_dir
         )
-        src_ninja = os.path.join(self.src_dir, "ninja")
-        dest_ninja = os.path.join(self.inst_dir, "bin/ninja")
-        bin_dir = os.path.dirname(dest_ninja)
-        if not os.path.exists(bin_dir):
-            os.makedirs(bin_dir)
+        src_ninja = pathlib.Path(self.src_dir, "ninja")
+        dest_ninja = pathlib.Path(self.inst_dir, "bin/ninja")
+        bin_dir = dest_ninja.parent
+        if not bin_dir.exists():
+            bin_dir.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(src_ninja, dest_ninja)
         shutil.copymode(src_ninja, dest_ninja)
 
@@ -1432,14 +1478,16 @@ class OpenSSLBuilder(BuilderBase):
         )
 
     def _build(self, reconfigure: bool) -> None:
-        configure = os.path.join(self.src_dir, "Configure")
+        configure = os.fspath(pathlib.Path(self.src_dir, "Configure"))
 
         # prefer to resolve the perl that we installed from
         # our manifest on windows, but fall back to the system
         # path on eg: darwin
         env = self.env.copy()
         for m in self.dep_manifests:
-            bindir = os.path.join(self.loader.get_project_install_dir(m), "bin")
+            bindir = os.fspath(
+                pathlib.Path(self.loader.get_project_install_dir(m), "bin")
+            )
             add_path_entry(env, "PATH", bindir, append=False)
 
         perl = typing.cast(str, path_search(env, "perl", "perl"))
@@ -1495,95 +1543,6 @@ class OpenSSLBuilder(BuilderBase):
         self._check_cmd(make_install, env=env)
 
 
-class Boost(BuilderBase):
-    def __init__(
-        self,
-        loader: ManifestLoader,
-        dep_manifests: list[ManifestParser],
-        build_opts: BuildOptions,
-        ctx: ManifestContext,
-        manifest: ManifestParser,
-        src_dir: str,
-        build_dir: str,
-        inst_dir: str,
-        b2_args: list[str],
-    ) -> None:
-        children = os.listdir(src_dir)
-        assert len(children) == 1, "expected a single directory entry: %r" % (children,)
-        boost_src = children[0]
-        assert boost_src.startswith("boost")
-        src_dir = os.path.join(src_dir, children[0])
-        super(Boost, self).__init__(
-            loader,
-            dep_manifests,
-            build_opts,
-            ctx,
-            manifest,
-            src_dir,
-            build_dir,
-            inst_dir,
-        )
-        self.b2_args: list[str] = b2_args
-
-    def _build(self, reconfigure: bool) -> None:
-        env = self._compute_env()
-        linkage: list[str] = ["static"]
-        if self.build_opts.is_windows():
-            linkage.append("shared")
-
-        args = []
-        if self.build_opts.is_darwin():
-            clang = subprocess.check_output(["xcrun", "--find", "clang"])
-            user_config = os.path.join(self.build_dir, "project-config.jam")
-            with open(user_config, "w") as jamfile:
-                jamfile.write("using clang : : %s ;\n" % clang.decode().strip())
-            args.append("--user-config=%s" % user_config)
-
-        for link in linkage:
-            bootstrap_args = self.manifest.get_section_as_args(
-                "bootstrap.args", self.ctx
-            )
-            if self.build_opts.is_windows():
-                bootstrap = os.path.join(self.src_dir, "bootstrap.bat")
-                self._check_cmd([bootstrap] + bootstrap_args, cwd=self.src_dir, env=env)
-                args += ["address-model=64"]
-            else:
-                bootstrap = os.path.join(self.src_dir, "bootstrap.sh")
-                self._check_cmd(
-                    [bootstrap, "--prefix=%s" % self.inst_dir] + bootstrap_args,
-                    cwd=self.src_dir,
-                    env=env,
-                )
-
-            pic_args: list[str] = []
-            if self.build_opts.shared_lib and not self.build_opts.is_windows():
-                pic_args = ["cxxflags=-fPIC", "cflags=-fPIC"]
-            b2 = os.path.join(self.src_dir, "b2")
-            self._check_cmd(
-                [
-                    b2,
-                    "-j%s" % self.num_jobs,
-                    "--prefix=%s" % self.inst_dir,
-                    "--builddir=%s" % self.build_dir,
-                ]
-                + args
-                + self.b2_args
-                + pic_args
-                + [
-                    "link=%s" % link,
-                    "runtime-link=shared",
-                    "variant=release",
-                    "threading=multi",
-                    "debug-symbols=on",
-                    "visibility=global",
-                    "-d2",
-                    "install",
-                ],
-                cwd=self.src_dir,
-                env=env,
-            )
-
-
 class NopBuilder(BuilderBase):
     def __init__(
         self,
@@ -1601,9 +1560,9 @@ class NopBuilder(BuilderBase):
 
     def build(self, reconfigure: bool) -> None:
         print("Installing %s -> %s" % (self.src_dir, self.inst_dir))
-        parent = os.path.dirname(self.inst_dir)
-        if not os.path.exists(parent):
-            os.makedirs(parent)
+        parent = pathlib.Path(self.inst_dir).parent
+        if not parent.exists():
+            parent.mkdir(parents=True, exist_ok=True)
 
         install_files = self.manifest.get_section_as_ordered_pairs(
             "install.files", self.ctx
@@ -1614,14 +1573,14 @@ class NopBuilder(BuilderBase):
             ):
                 # pyre-fixme[6]: For 2nd argument expected `Union[PathLike[str],
                 #  str]` but got `Optional[str]`.
-                full_dest = os.path.join(self.inst_dir, dest_name)
-                full_src = os.path.join(self.src_dir, src_name)
+                full_dest = pathlib.Path(self.inst_dir, dest_name)
+                full_src = pathlib.Path(self.src_dir, src_name)
 
-                dest_parent = os.path.dirname(full_dest)
-                if not os.path.exists(dest_parent):
-                    os.makedirs(dest_parent)
-                if os.path.isdir(full_src):
-                    if not os.path.exists(full_dest):
+                dest_parent = full_dest.parent
+                if not dest_parent.exists():
+                    dest_parent.mkdir(parents=True, exist_ok=True)
+                if full_src.is_dir():
+                    if not full_dest.exists():
                         simple_copytree(full_src, full_dest)
                 else:
                     shutil.copyfile(full_src, full_dest)
@@ -1631,11 +1590,11 @@ class NopBuilder(BuilderBase):
                     # for things that look like they live in a bin dir
                     # pyre-fixme[6]: For 1st argument expected `PathLike[AnyStr]`
                     #  but got `Optional[str]`.
-                    if os.path.dirname(dest_name) == "bin":
+                    if os.fspath(pathlib.Path(dest_name).parent) == "bin":
                         st = os.lstat(full_dest)
                         os.chmod(full_dest, st.st_mode | stat.S_IXUSR)
         else:
-            if not os.path.exists(self.inst_dir):
+            if not pathlib.Path(self.inst_dir).exists():
                 simple_copytree(self.src_dir, self.inst_dir)
 
 
@@ -1665,10 +1624,10 @@ class SetupPyBuilder(BuilderBase):
         )
 
         # Create the installation directory if it doesn't exist
-        os.makedirs(self.inst_dir, exist_ok=True)
+        pathlib.Path(self.inst_dir).mkdir(parents=True, exist_ok=True)
 
         # Mark the project as built
-        with open(os.path.join(self.inst_dir, ".built-by-getdeps"), "w") as f:
+        with open(pathlib.Path(self.inst_dir, ".built-by-getdeps"), "w") as f:
             f.write("built")
 
     def run_tests(
@@ -1723,8 +1682,8 @@ class SqliteBuilder(BuilderBase):
 
     def _build(self, reconfigure: bool) -> None:
         for f in ["sqlite3.c", "sqlite3.h", "sqlite3ext.h"]:
-            src = os.path.join(self.src_dir, f)
-            dest = os.path.join(self.build_dir, f)
+            src = pathlib.Path(self.src_dir, f)
+            dest = pathlib.Path(self.build_dir, f)
             copy_if_different(src, dest)
 
         cmake_lists = """
@@ -1749,7 +1708,7 @@ install(TARGETS sqlite3)
 install(FILES sqlite3.h sqlite3ext.h DESTINATION include)
             """
 
-        with open(os.path.join(self.build_dir, "CMakeLists.txt"), "w") as f:
+        with open(pathlib.Path(self.build_dir, "CMakeLists.txt"), "w") as f:
             f.write(cmake_lists)
 
         defines = {

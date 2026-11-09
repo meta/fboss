@@ -64,10 +64,11 @@ class PacketStreamHandlerTest : public testing::Test {
     sw_->initialConfigApplied(steady_clock::now());
 
     for (const auto& portMap : std::as_const(*(sw_->getState()->getPorts()))) {
-      for (const auto& port : std::as_const(*portMap.second)) {
+      const auto& ports = std::as_const(*portMap.second);
+      if (!ports.empty()) {
+        const auto& port = *ports.begin();
         activePort_ = port.second->getID();
         activePortName_ = port.second->getName();
-        break;
       }
     }
 
@@ -109,13 +110,18 @@ class PacketStreamHandlerThriftTest : public testing::Test {
     sw_ = handle_->getSw();
     sw_->initialConfigApplied(steady_clock::now());
 
-    for (const auto& portMap : std::as_const(*(sw_->getState()->getPorts()))) {
-      for (const auto& port : std::as_const(*portMap.second)) {
-        activePort_ = port.second->getID();
-        activePortName_ = port.second->getName();
-        break;
+    {
+      const auto state = sw_->getState();
+      const auto& portMaps = std::as_const(*state->getPorts());
+      if (!portMaps.empty()) {
+        const auto& portMap = *portMaps.begin();
+        const auto& ports = std::as_const(*portMap.second);
+        if (!ports.empty()) {
+          const auto& port = *ports.begin();
+          activePort_ = port.second->getID();
+          activePortName_ = port.second->getName();
+        }
       }
-      break;
     }
 
     handler_ = std::make_shared<PacketStreamHandler>(

@@ -65,7 +65,7 @@ CmdConfigQosQueueConfigQueueId::queryClient(
   }
 
   session.saveConfig(
-      cli::ServiceType::AGENT, cli::ConfigActionLevel::AGENT_WARMBOOT);
+      cli::ServiceType::AGENT, cli::ConfigActionLevel::SERVICE_RESTART);
 
   return fmt::format(
       "Successfully configured queue-config '{}' queue-id {}",

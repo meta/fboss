@@ -33,6 +33,7 @@
 #include "fboss/agent/state/RouteTypes.h"
 #include "fboss/agent/test/HwTestHandle.h"
 #include "fboss/agent/test/TestUtils.h"
+#include "fboss/agent/test/utils/NextHopIdTestUtils.h"
 #include "fboss/agent/types.h"
 
 #include <folly/IPAddress.h>
@@ -50,6 +51,16 @@ const ClientID kClientA = ClientID(1001);
 
 HwSwitchMatcher scope() {
   return HwSwitchMatcher{std::unordered_set<SwitchID>{SwitchID(0)}};
+}
+
+// {1.1.1.10, 2.2.2.10} as they land in a FIB route's fwd entry: recursive
+// resolution stamps the egress interface onto each nexthop.
+RouteNextHopSet resolvedNextHopsVia1And2() {
+  return RouteNextHopSet{
+      ResolvedNextHop(
+          folly::IPAddress("1.1.1.10"), InterfaceID(1), ECMP_WEIGHT),
+      ResolvedNextHop(
+          folly::IPAddress("2.2.2.10"), InterfaceID(2), ECMP_WEIGHT)};
 }
 
 } // namespace
@@ -1061,11 +1072,15 @@ TEST_F(
   auto fibV4 = fibContainer->getFibV4();
 
   auto runChecks = [&]() {
+    // The RIB width must track the config-sourced width on SwitchState.
+    auto ecmpWidth = getEcmpWidth(sw_->getState());
+    EXPECT_EQ(ecmpWidth, sw_->getRib()->getEcmpWidth());
     for (const auto& [_, route] : std::as_const(*fibV4)) {
       const auto& fwd = route->getForwardInfo();
       EXPECT_EQ(
-          getNonOverrideNormalizedNextHopsFromRib(manager.get(), fwd),
-          fwd.nonOverrideNormalizedNextHops());
+          getNonOverrideNormalizedNextHopsFromRib(
+              manager.get(), fwd, ecmpWidth),
+          fwd.nonOverrideNormalizedNextHops(ecmpWidth));
     }
   };
 
@@ -1102,26 +1117,58 @@ TEST_F(NextHopMapPopulationTest, getNormalizedNextHopsFromRibOverrideAware) {
 
   // Override branch short-circuits before the flag/manager logic, so it holds
   // for both flag states.
+  // The RIB width must track the config-sourced width on SwitchState.
+  auto ecmpWidth = getEcmpWidth(sw_->getState());
+  EXPECT_EQ(ecmpWidth, sw_->getRib()->getEcmpWidth());
   for (bool flag : {false, true}) {
     FLAGS_resolve_nexthops_from_id = flag;
     EXPECT_EQ(
-        getNormalizedNextHopsFromRib(manager.get(), overrideEntry),
-        overrideEntry.normalizedNextHops());
+        getNormalizedNextHopsFromRib(manager.get(), overrideEntry, ecmpWidth),
+        overrideEntry.normalizedNextHops(ecmpWidth));
   }
   FLAGS_resolve_nexthops_from_id = false;
   // The override actually changes the result vs. ignoring it, so honoring it
   // is meaningful.
   EXPECT_NE(
-      overrideEntry.normalizedNextHops(),
-      overrideEntry.nonOverrideNormalizedNextHops());
+      overrideEntry.normalizedNextHops(ecmpWidth),
+      overrideEntry.nonOverrideNormalizedNextHops(ecmpWidth));
 
   // No overrides: delegates to the non-override helper. Flag off => inline
   // path, so the directly-built entry needs no manager lookup.
   RouteNextHopEntry plainEntry(overrideNhops, DISTANCE);
   ASSERT_FALSE(plainEntry.getOverrideNextHops().has_value());
   EXPECT_EQ(
-      getNormalizedNextHopsFromRib(manager.get(), plainEntry),
-      getNonOverrideNormalizedNextHopsFromRib(manager.get(), plainEntry));
+      getNormalizedNextHopsFromRib(manager.get(), plainEntry, ecmpWidth),
+      getNonOverrideNormalizedNextHopsFromRib(
+          manager.get(), plainEntry, ecmpWidth));
+}
+
+// Verifies getNormalizedNextHopsFromRib sources the ECMP width from the
+// RibRouteTables width (config-sourced via cfg.SwitchSettings.ecmpWidth), not
+// from FLAGS_ecmp_width.
+TEST_F(NextHopMapPopulationTest, getNormalizedNextHopsFromRibUsesRibWidth) {
+  gflags::FlagSaver flagSaver;
+  FLAGS_resolve_nexthops_from_id = false; // exercise the inline normalize path
+  FLAGS_ecmp_width = 64;
+
+  auto manager = sw_->getRib()->getNextHopIDManagerCopy();
+  ASSERT_NE(manager, nullptr);
+  constexpr uint32_t kNarrowEcmpWidth = 1;
+  sw_->getRib()->setEcmpWidth(kNarrowEcmpWidth);
+
+  RouteNextHopSet nhops{
+      ResolvedNextHop(folly::IPAddress("1.1.1.1"), InterfaceID(1), ECMP_WEIGHT),
+      ResolvedNextHop(
+          folly::IPAddress("2.2.2.2"), InterfaceID(2), ECMP_WEIGHT)};
+  RouteNextHopEntry entry(nhops, DISTANCE);
+
+  // Must normalize to the RIB width (collapsing to one nexthop), not to
+  // FLAGS_ecmp_width (64 would keep both).
+  auto result = getNormalizedNextHopsFromRib(
+      manager.get(), entry, sw_->getRib()->getEcmpWidth());
+  EXPECT_EQ(
+      result, RouteNextHopEntry::normalizeNextHops(nhops, kNarrowEcmpWidth));
+  EXPECT_NE(result, RouteNextHopEntry::normalizeNextHops(nhops));
 }
 
 // Verifies getResolvedNextHopsFromRib: returns inline fwd nexthops when
@@ -1189,6 +1236,65 @@ TEST_F(NextHopMapPopulationTest, getClientNextHopsFromRibWrapper) {
   FLAGS_resolve_nexthops_from_id = false;
 }
 
+// Covers the resolver being threaded through getRouteTableDetails. Two
+// clients, so resolving one through another's entry would be caught.
+TEST_F(NextHopMapPopulationTest, getRouteTableDetailsResolvesClientNextHops) {
+  // Pinned: preceding tests leave the flag false without restoring it.
+  auto savedResolve = FLAGS_resolve_nexthops_from_id;
+  SCOPE_EXIT {
+    FLAGS_resolve_nexthops_from_id = savedResolve;
+  };
+  FLAGS_resolve_nexthops_from_id = true;
+
+  const ClientID kClientB = ClientID(1002);
+  auto updater = sw_->getRouteUpdater();
+  addV4RouteForClient(
+      updater, kClientA, "10.0.0.0/24", {"1.1.1.10", "2.2.2.10"});
+  addV4RouteForClient(updater, kClientB, "10.0.0.0/24", {"3.3.3.10"});
+  updater.program();
+
+  for (const auto& rd : sw_->getRib()->getRouteTableDetails(kRid0)) {
+    if (*rd.dest()->prefixLength() != 24 ||
+        facebook::network::toIPAddress(*rd.dest()->ip()).str() != "10.0.0.0") {
+      continue;
+    }
+    EXPECT_EQ(
+        clientNextHops(rd, kClientA),
+        (std::set<std::string>{"1.1.1.10", "2.2.2.10"}));
+    EXPECT_EQ(
+        clientNextHops(rd, kClientB), (std::set<std::string>{"3.3.3.10"}));
+    return;
+  }
+  ADD_FAILURE() << "10.0.0.0/24 missing from route table details";
+}
+
+// Label routes carry clientNextHopSetID like v4/v6 and go through the same
+// toThriftLegacy path.
+TEST_F(NextHopMapPopulationTest, getMplsRouteTableDetailsResolvesClientNhops) {
+  // Pinned: preceding tests leave the flag false without restoring it.
+  auto savedMplsRib = FLAGS_mpls_rib;
+  auto savedResolve = FLAGS_resolve_nexthops_from_id;
+  SCOPE_EXIT {
+    FLAGS_mpls_rib = savedMplsRib;
+    FLAGS_resolve_nexthops_from_id = savedResolve;
+  };
+  FLAGS_mpls_rib = true;
+  FLAGS_resolve_nexthops_from_id = true;
+
+  auto updater = sw_->getRouteUpdater();
+  addMplsSwapRoute(updater, 100, 101, folly::IPAddress("1::10"));
+  updater.program();
+
+  for (const auto& rd : sw_->getRib()->getMplsRouteTableDetails()) {
+    if (*rd.topLabel() != 100) {
+      continue;
+    }
+    EXPECT_EQ(clientNextHops(rd, kClientA), (std::set<std::string>{"1::10"}));
+    return;
+  }
+  ADD_FAILURE() << "label 100 missing from MPLS route table details";
+}
+
 // Full mix: resolved + DROP + TO_CPU + unresolved + multi-client routes,
 // all in a single state. Exercises the unified verifier end-to-end.
 TEST_F(NextHopMapPopulationTest, MixedResolvedAndUnresolvedRoutes) {
@@ -1254,7 +1360,9 @@ TEST_F(NextHopMapPopulationTest, BackfillsMissingIdsFromWarmBoot) {
       ribThrift,
       nullptr,
       std::make_shared<MultiLabelForwardingInformationBase>(),
-      std::make_shared<MultiSwitchMySidMap>());
+      std::make_shared<MultiSwitchMySidMap>(),
+      getEcmpWidth(sw_->getState()),
+      sw_->getState()->getClassBasedPolicies());
 
   // Every NEXTHOPS route must have all three IDs populated.
   auto reThrift = reconstructedRib->toThrift();
@@ -1338,7 +1446,9 @@ TEST_F(NextHopMapPopulationTest, BackfillsMissingMplsIdsFromWarmBoot) {
       ribThrift,
       nullptr,
       std::make_shared<MultiLabelForwardingInformationBase>(),
-      std::make_shared<MultiSwitchMySidMap>());
+      std::make_shared<MultiSwitchMySidMap>(),
+      getEcmpWidth(sw_->getState()),
+      sw_->getState()->getClassBasedPolicies());
   auto reThrift = reconstructedRib->toThrift();
   ASSERT_FALSE(reThrift.empty());
   const auto& labelToRoute = *reThrift.begin()->second.labelToRoute();
@@ -1622,7 +1732,9 @@ TEST_F(NextHopMapPopulationTest, WarmbootRoundTripPreservesManagerState) {
       ribThrift,
       sw_->getState()->getFibsInfoMap(),
       sw_->getState()->getLabelForwardingInformationBase(),
-      std::make_shared<MultiSwitchMySidMap>());
+      std::make_shared<MultiSwitchMySidMap>(),
+      getEcmpWidth(sw_->getState()),
+      sw_->getState()->getClassBasedPolicies());
   auto postManager = reconstructedRib->getNextHopIDManagerCopy();
   ASSERT_NE(postManager, nullptr);
 
@@ -2175,6 +2287,211 @@ TEST_F(NextHopMapPopulationTest, IdempotentReprogramSameRoutes) {
 
   verifyIDMapsConsistency();
   verifyIdMapsMatchIdManager();
+}
+
+// setEcmpWidth/getEcmpWidth on the RIB round-trip through RibRouteTables.
+TEST_F(NextHopMapPopulationTest, SetEcmpWidthRoundTrips) {
+  // A value distinct from any FLAGS_ecmp_width default so the round-trip is
+  // unambiguous.
+  sw_->getRib()->setEcmpWidth(123);
+  EXPECT_EQ(sw_->getRib()->getEcmpWidth(), 123u);
+}
+
+// ApplyThriftConfig sources the RIB ecmpWidth from cfg.SwitchSettings.ecmpWidth
+// when set; the config value must win over the gflag. Uses a fresh (cold-boot)
+// handle so the width is a first-time add, not a change (which
+// StateUpdateValidator would reject).
+TEST_F(NextHopMapPopulationTest, EcmpWidthSourcedFromConfigOverridesFlag) {
+  auto savedWidth = FLAGS_ecmp_width;
+  SCOPE_EXIT {
+    FLAGS_ecmp_width = savedWidth;
+  };
+  handle_.reset();
+  FLAGS_ecmp_width = 64;
+  auto config = initialConfig();
+  config.switchSettings()->ecmpWidth() = 200;
+  handle_ = createTestHandle(&config);
+  sw_ = handle_->getSw();
+
+  EXPECT_EQ(sw_->getRib()->getEcmpWidth(), 200u);
+}
+
+// The direct-RIB ApplyThriftConfig path resolves routes during config apply,
+// so it must synchronize the processed state's width before reconfigure.
+TEST_F(NextHopMapPopulationTest, EcmpWidthSourcedFromConfigOnDirectRibPath) {
+  auto savedWidth = FLAGS_ecmp_width;
+  SCOPE_EXIT {
+    FLAGS_ecmp_width = savedWidth;
+  };
+  FLAGS_ecmp_width = 64;
+  auto config = initialConfig();
+  config.switchSettings()->ecmpWidth() = 200;
+  auto platform = createMockPlatform();
+  RoutingInformationBase rib;
+
+  auto state = publishAndApplyConfig(
+      std::make_shared<SwitchState>(), &config, platform.get(), &rib);
+
+  ASSERT_NE(state, nullptr);
+  EXPECT_EQ(getEcmpWidth(state), 200u);
+  EXPECT_EQ(rib.getEcmpWidth(), 200u);
+}
+
+// A no-op config still synchronizes the independently reconstructed RIB from
+// the accepted SwitchState.
+TEST_F(NextHopMapPopulationTest, NoOpConfigResynchronizesRibEcmpWidth) {
+  auto savedWidth = FLAGS_ecmp_width;
+  SCOPE_EXIT {
+    FLAGS_ecmp_width = savedWidth;
+  };
+  handle_.reset();
+  FLAGS_ecmp_width = 64;
+  auto config = initialConfig();
+  config.switchSettings()->ecmpWidth() = 200;
+  handle_ = createTestHandle(&config);
+  sw_ = handle_->getSw();
+  auto stateBefore = sw_->getState();
+
+  sw_->getRib()->setEcmpWidth(64);
+  sw_->applyConfig("reapply identical ecmpWidth config", config);
+
+  EXPECT_EQ(sw_->getState(), stateBefore);
+  EXPECT_EQ(getEcmpWidth(sw_->getState()), 200u);
+  EXPECT_EQ(sw_->getRib()->getEcmpWidth(), 200u);
+}
+
+// When cfg.SwitchSettings.ecmpWidth is unset, the RIB falls back to
+// FLAGS_ecmp_width during the flag->config migration.
+TEST_F(NextHopMapPopulationTest, EcmpWidthFallsBackToFlagWhenConfigUnset) {
+  auto savedWidth = FLAGS_ecmp_width;
+  SCOPE_EXIT {
+    FLAGS_ecmp_width = savedWidth;
+  };
+  handle_.reset();
+  FLAGS_ecmp_width = 99;
+  auto config = initialConfig(); // leaves ecmpWidth unset
+  handle_ = createTestHandle(&config);
+  sw_ = handle_->getSw();
+
+  EXPECT_EQ(sw_->getRib()->getEcmpWidth(), 99u);
+}
+
+// The RIB ecmpWidth lives on RibRouteTables, not the NextHopIDManager, so the
+// config value must reach the RIB even when enable_nexthop_id_manager is off
+// (the manager is null).
+TEST_F(
+    NextHopMapPopulationTest,
+    EcmpWidthSourcedFromConfigWithManagerDisabled) {
+  auto savedWidth = FLAGS_ecmp_width;
+  auto savedEnable = FLAGS_enable_nexthop_id_manager;
+  auto savedResolve = FLAGS_resolve_nexthops_from_id;
+  SCOPE_EXIT {
+    FLAGS_ecmp_width = savedWidth;
+    FLAGS_enable_nexthop_id_manager = savedEnable;
+    FLAGS_resolve_nexthops_from_id = savedResolve;
+  };
+  handle_.reset();
+  FLAGS_ecmp_width = 64;
+  // resolve_nexthops_from_id requires enable_nexthop_id_manager, so the
+  // manager-off world must turn both off.
+  FLAGS_enable_nexthop_id_manager = false;
+  FLAGS_resolve_nexthops_from_id = false;
+  auto config = initialConfig();
+  config.switchSettings()->ecmpWidth() = 200;
+  handle_ = createTestHandle(&config);
+  sw_ = handle_->getSw();
+
+  // No manager exists, but the RIB still carries the config width.
+  ASSERT_EQ(sw_->getRib()->getNextHopIDManagerCopy(), nullptr);
+  EXPECT_EQ(sw_->getRib()->getEcmpWidth(), 200u);
+}
+
+// A width change on a running agent is rejected by ValidateStateUpdate. The RIB
+// must NOT be left holding the rejected width -- it is sourced from the
+// accepted SwitchState after validation, so a rejected config leaves both the
+// RIB and SwitchState on the original width (no desync).
+TEST_F(NextHopMapPopulationTest, RejectedEcmpWidthChangeDoesNotDesyncRib) {
+  auto savedWidth = FLAGS_ecmp_width;
+  SCOPE_EXIT {
+    FLAGS_ecmp_width = savedWidth;
+  };
+  handle_.reset();
+  FLAGS_ecmp_width = 64;
+  auto config = initialConfig();
+  config.switchSettings()->ecmpWidth() = 200;
+  handle_ = createTestHandle(&config);
+  sw_ = handle_->getSw();
+  ASSERT_EQ(sw_->getRib()->getEcmpWidth(), 200u);
+
+  // Attempt to change the width on the running agent; ValidateStateUpdate
+  // rejects it (a coldboot is required to change ECMP width).
+  auto changed = initialConfig();
+  changed.switchSettings()->ecmpWidth() = 400;
+  EXPECT_THROW(sw_->applyConfig("change ecmpWidth", changed), FbossError);
+
+  // The RIB must still hold the original width, not the rejected 400.
+  EXPECT_EQ(getEcmpWidth(sw_->getState()), 200u);
+  EXPECT_EQ(sw_->getRib()->getEcmpWidth(), 200u);
+}
+
+// drop_inline_nexthops_with_id strips the inline nexthops off both the
+// resolved fwd entry and the per-client entries. The set IDs survive, so
+// ID-aware readers still see the full sets.
+TEST_F(NextHopMapPopulationTest, DropInlineNextHopsOffFwdAndClientEntries) {
+  gflags::FlagSaver flagSaver;
+  FLAGS_resolve_nexthops_from_id = true;
+  FLAGS_drop_inline_nexthops_with_id = true;
+
+  auto updater = sw_->getRouteUpdater();
+  addV4RouteForClient(
+      updater, kClientA, "10.0.0.0/24", {"1.1.1.10", "2.2.2.10"});
+  updater.program();
+
+  auto manager = sw_->getRib()->getNextHopIDManagerCopy();
+  ASSERT_NE(manager, nullptr);
+  auto fibContainer = getFibInfo()->getFibContainerIf(kRid0);
+  ASSERT_NE(fibContainer, nullptr);
+  auto route =
+      fibContainer->getFibV4()->exactMatch(makePrefixV4("10.0.0.0/24"));
+  ASSERT_NE(route, nullptr);
+  ASSERT_TRUE(route->isResolved());
+
+  const auto& fwd = route->getForwardInfo();
+  EXPECT_EQ(fwd.getAction(), RouteForwardAction::NEXTHOPS);
+  EXPECT_TRUE(fwd.getNextHopSet().empty());
+  ASSERT_TRUE(fwd.getResolvedNextHopSetID().has_value());
+  EXPECT_EQ(
+      getResolvedNextHopsFromRib(manager.get(), fwd),
+      resolvedNextHopsVia1And2());
+
+  // The per-client entry is dropped too, and recovered via its own ID.
+  auto entry = route->getEntryForClient(kClientA);
+  ASSERT_NE(entry, nullptr);
+  EXPECT_TRUE(entry->getNextHopSet().empty());
+  ASSERT_TRUE(entry->getClientNextHopSetID().has_value());
+  EXPECT_EQ(
+      getClientNextHopsFromRib(manager.get(), *entry),
+      makeNextHops({"1.1.1.10", "2.2.2.10"}));
+}
+
+// With the flag off the fwd entry keeps its inline nexthops, so the drop is
+// opt-in rather than implied by the ID manager being on.
+TEST_F(NextHopMapPopulationTest, InlineNextHopsRetainedWithoutDropFlag) {
+  gflags::FlagSaver flagSaver;
+  FLAGS_resolve_nexthops_from_id = true;
+
+  auto updater = sw_->getRouteUpdater();
+  addV4RouteForClient(
+      updater, kClientA, "10.0.0.0/24", {"1.1.1.10", "2.2.2.10"});
+  updater.program();
+
+  auto fibContainer = getFibInfo()->getFibContainerIf(kRid0);
+  ASSERT_NE(fibContainer, nullptr);
+  auto route =
+      fibContainer->getFibV4()->exactMatch(makePrefixV4("10.0.0.0/24"));
+  ASSERT_NE(route, nullptr);
+  EXPECT_EQ(
+      route->getForwardInfo().getNextHopSet(), resolvedNextHopsVia1And2());
 }
 
 } // namespace facebook::fboss

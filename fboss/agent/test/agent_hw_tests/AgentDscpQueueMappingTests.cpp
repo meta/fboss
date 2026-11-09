@@ -15,9 +15,9 @@
 #include "fboss/agent/test/EcmpSetupHelper.h"
 #include "fboss/agent/test/ResourceLibUtil.h"
 #include "fboss/agent/test/TestUtils.h"
-#include "fboss/agent/test/agent_hw_tests/AgentTestAddressConstants.h"
-#include "fboss/agent/test/agent_hw_tests/AgentTestEcmpConstants.h"
 #include "fboss/agent/test/utils/AclTestUtils.h"
+#include "fboss/agent/test/utils/AgentTestAddressConstants.h"
+#include "fboss/agent/test/utils/AgentTestEcmpConstants.h"
 #include "fboss/agent/test/utils/ConfigUtils.h"
 #include "fboss/agent/test/utils/OlympicTestUtils.h"
 #include "fboss/agent/test/utils/PacketTestUtils.h"
@@ -137,6 +137,9 @@ class AgentDscpQueueMappingTest : public AgentDscpQueueMappingTestBase {
 
   void dscpMappingVerifyHelper(int kQueueId, int16_t kDscp) {
     for (bool frontPanel : {false, true}) {
+      if (frontPanel) {
+        learnSrcMacOnEcmpTxPortIfPending(kDefaultEcmpWidth);
+      }
       auto beforeQueueOutPkts =
           folly::copy(getLatestPortStats(this->portIdToTest())
                           .queueOutPackets_()
@@ -267,6 +270,9 @@ class AgentAclAndDscpQueueMappingTest : public AgentDscpQueueMappingTestBase {
       for (bool frontPanel : {false, true}) {
         XLOG(DBG2) << "verify send packets "
                    << (frontPanel ? "out of port" : "switched");
+        if (frontPanel) {
+          learnSrcMacOnEcmpTxPortIfPending(kDefaultEcmpWidth);
+        }
         auto beforeQueueOutPkts =
             folly::copy(getLatestPortStats(this->portIdToTest())
                             .queueOutPackets_()
@@ -339,6 +345,9 @@ class AgentAclConflictAndDscpQueueMappingTest
       for (bool frontPanel : {false, true}) {
         XLOG(DBG2) << "verify send packets "
                    << (frontPanel ? "out of port" : "switched");
+        if (frontPanel) {
+          learnSrcMacOnEcmpTxPortIfPending(kDefaultEcmpWidth);
+        }
         auto beforeQueueOutPktsAcl =
             folly::copy(getLatestPortStats(this->portIdToTest())
                             .queueOutPackets_()

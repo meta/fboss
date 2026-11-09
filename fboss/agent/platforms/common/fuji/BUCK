@@ -9,11 +9,12 @@ cpp_library(
         "facebook/FujiPlatformMapping.cpp",
     ],
     headers = [
+        "Fuji16QPimPlatformMapping.h",
         "FujiPlatformMapping.h",
     ],
     deps = [
+        "fbsource//xplat/folly/logging:logging",
         "//fboss/lib/fpga/facebook/fuji:fuji_container",
-        "//folly/logging:logging",
     ],
     exported_deps = [
         "//fboss/agent/platforms/common:platform_mapping",

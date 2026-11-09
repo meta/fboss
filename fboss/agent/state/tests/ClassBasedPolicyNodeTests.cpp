@@ -36,6 +36,14 @@ TEST(ClassBasedPolicyNodeTest, GettersAndSetters) {
           {ForwardingClass::CLASS_2, makeNhg("qzk1-silver-nhg", 202)}};
   policy.setClass2NextHopGroup(class2NextHopGroup);
   EXPECT_EQ(policy.getClass2NextHopGroup(), class2NextHopGroup);
+
+  EXPECT_FALSE(policy.isReferenced());
+  policy.setReferenced(true);
+  EXPECT_TRUE(policy.isReferenced());
+  EXPECT_TRUE(*policy.toThrift().referenced());
+  policy.setReferenced(false);
+  EXPECT_FALSE(policy.isReferenced());
+  EXPECT_FALSE(*policy.toThrift().referenced());
 }
 
 TEST(ClassBasedPolicyNodeTest, ConstructWithAllFields) {
@@ -44,11 +52,13 @@ TEST(ClassBasedPolicyNodeTest, ConstructWithAllFields) {
   const std::map<ForwardingClass, state::NamedNextHopGroupAndID>
       class2NextHopGroup{
           {ForwardingClass::CLASS_1, makeNhg("qzk1-gold-nhg", 201)}};
-  ClassBasedPolicyNode policy(kName, kDefault, class2NextHopGroup);
+  ClassBasedPolicyNode policy(
+      kName, kDefault, class2NextHopGroup, true /*referenced*/);
 
   EXPECT_EQ(policy.getID(), kName);
   EXPECT_EQ(policy.getDefaultNextHopGroup(), kDefault);
   EXPECT_EQ(policy.getClass2NextHopGroup(), class2NextHopGroup);
+  EXPECT_TRUE(policy.isReferenced());
 
   auto thrift = policy.toThrift();
   EXPECT_EQ(*thrift.name(), kName);
@@ -59,6 +69,7 @@ TEST(ClassBasedPolicyNodeTest, ConstructWithAllFields) {
   EXPECT_EQ(
       *thrift.class2NextHopGroup()->at(ForwardingClass::CLASS_1).name(),
       "qzk1-gold-nhg");
+  EXPECT_TRUE(*thrift.referenced());
 }
 
 } // namespace facebook::fboss

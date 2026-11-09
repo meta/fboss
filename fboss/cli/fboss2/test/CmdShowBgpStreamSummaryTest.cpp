@@ -67,4 +67,19 @@ TEST_F(CmdShowBgpStreamSummaryTestFixture, printOutput) {
 
   EXPECT_EQ(output, expectedOutput);
 }
+
+TEST_F(CmdShowBgpStreamSummaryTestFixture, wikiDocHooks) {
+  EXPECT_FALSE(CmdShowBgpStreamSummaryTraits::description().empty());
+  auto model = CmdShowBgpStreamSummary::sampleModel();
+  EXPECT_FALSE(model.empty());
+  std::stringstream ss;
+  CmdShowBgpStreamSummary().printOutput(model, ss);
+  const std::string output = ss.str();
+
+  EXPECT_THAT(
+      output, HasSubstr("BGP stream summary information for subscribers"));
+  EXPECT_THAT(output, HasSubstr("tsp_cco/netsystems/BgpMonitor_abc1/1"));
+  EXPECT_THAT(output, HasSubstr("10214"));
+}
+
 } // namespace facebook::fboss

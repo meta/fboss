@@ -14,6 +14,60 @@
 #
 # FBOSS  binaries link with  above libraries which libsai_impl.a
 # needs
+function(register_npu_sdk_metadata_post_build name sai_impl_arg)
+  get_target_property(TARGET_TYPE ${name} TYPE)
+  if(NOT TARGET_TYPE STREQUAL "EXECUTABLE")
+    return()
+  endif()
+
+  set(NPU_SDK_METADATA_PATH "${CMAKE_BINARY_DIR}/npu_sdk_metadata.json")
+  set(NPU_SDK_METADATA_SCRIPT
+    "${CMAKE_CURRENT_SOURCE_DIR}/fboss/oss/scripts/npu_sdk_utils.py")
+
+  if("${sai_impl_arg}" STREQUAL "fake_sai")
+    add_custom_command(
+      TARGET ${name}
+      POST_BUILD
+      COMMAND "${_py3_exe}" "${NPU_SDK_METADATA_SCRIPT}" remove
+        --metadata-path "${NPU_SDK_METADATA_PATH}"
+        --binary-name "$<TARGET_FILE_NAME:${name}>"
+      VERBATIM
+    )
+    return()
+  endif()
+
+  if(SAI_BRCM_IMPL)
+    set(NPU_SAI_IMPL "SAI_BRCM_IMPL")
+  elseif(SAI_TAJO_IMPL)
+    set(NPU_SAI_IMPL "SAI_TAJO_IMPL")
+  elseif(CHENAB_SAI_SDK)
+    set(NPU_SAI_IMPL "CHENAB_SAI_SDK")
+  else()
+    return()
+  endif()
+
+  if("$ENV{SAI_SDK_VERSION}" STREQUAL "" OR
+     "$ENV{NPU_ASIC_SDK_VERSION}" STREQUAL "" OR
+     "$ENV{NPU_SAI_SDK_VERSION}" STREQUAL "")
+    message(WARNING
+      "Skipping NPU SDK metadata for ${name}: detailed SDK environment is incomplete")
+    return()
+  endif()
+
+  add_custom_command(
+    TARGET ${name}
+    POST_BUILD
+    COMMAND "${_py3_exe}" "${NPU_SDK_METADATA_SCRIPT}" record
+      --metadata-path "${NPU_SDK_METADATA_PATH}"
+      --binary-name "$<TARGET_FILE_NAME:${name}>"
+      --npu-sai-impl "${NPU_SAI_IMPL}"
+      --npu-sai-sdk-selector "$ENV{SAI_SDK_VERSION}"
+      --asic-sdk-version "$ENV{NPU_ASIC_SDK_VERSION}"
+      --sai-sdk-version "$ENV{NPU_SAI_SDK_VERSION}"
+    VERBATIM
+  )
+endfunction()
+
 function (add_sai_sdk_dependencies name)
   file(READ sdk_dependencies.txt DEPENDENCIES_TEXT)
   string(REPLACE "\n" ";" DEPENDENCIES "${DEPENDENCIES_TEXT}")
@@ -26,7 +80,12 @@ function (add_sai_sdk_dependencies name)
   # link those too so binaries can resolve the SDK's undefined symbols.
   # Entries may be bare filenames (libfoo.so) that resolve against the
   # SDK's lib dir, -lfoo flags, or absolute paths.
-  if (DEFINED SAI_IMPL_DIR AND EXISTS "${SAI_IMPL_DIR}/lib/sai_dependencies.txt")
+  # cmake/*.cmake are included alphabetically, and some callers sort before
+  # AgentHwSaiApi.cmake, which otherwise finds SAI_IMPL_DIR first.
+  if (NOT SAI_IMPL_DIR)
+    find_path(SAI_IMPL_DIR NAMES lib/libsai_impl.a lib/libsai_impl.so)
+  endif ()
+  if (SAI_IMPL_DIR AND EXISTS "${SAI_IMPL_DIR}/lib/sai_dependencies.txt")
     file(READ "${SAI_IMPL_DIR}/lib/sai_dependencies.txt" SAI_DEPENDENCIES_TEXT)
     string(REPLACE "\n" ";" SAI_DEPENDENCIES "${SAI_DEPENDENCIES_TEXT}")
     target_link_directories(${name} PRIVATE "${SAI_IMPL_DIR}/lib")
@@ -36,6 +95,10 @@ function (add_sai_sdk_dependencies name)
       endif ()
     endforeach ()
   endif ()
+
+  if(ARGC GREATER 1)
+    register_npu_sdk_metadata_post_build(${name} "${ARGV1}")
+  endif()
 endfunction ()
 
 function (strtok str delim out_list)

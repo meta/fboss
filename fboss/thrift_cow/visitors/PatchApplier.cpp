@@ -2,6 +2,7 @@
 
 #include "fboss/thrift_cow/visitors/PatchApplier.h"
 
+#include <folly/String.h>
 #include <folly/logging/xlog.h>
 
 namespace facebook::fboss::thrift_cow {

@@ -89,3 +89,52 @@ TEST_F(ConfigInterfaceDescriptionTest, SetAndVerifyDescription) {
 
   XLOG(INFO) << "TEST PASSED";
 }
+
+// Setting an interface description to the value it already has must produce a
+// no-op commit: the staged agent.conf is byte-identical to what is running, so
+// `config session commit` reports "Nothing to commit" and does NOT reload the
+// agent (skip-when-unchanged). Regression test for the agent-side unification.
+TEST_F(ConfigInterfaceDescriptionTest, SetSameDescriptionIsNoOpCommit) {
+  XLOG(INFO) << "[Step 1] Finding an interface to test...";
+  Interface interface = getInterfaceInfo(getRandomInterfacePortName());
+  const std::string originalDescription = interface.description;
+  XLOG(INFO) << "  Using interface: " << interface.name << " (description: '"
+             << originalDescription << "')";
+
+  // Set a deterministic description and commit so cli/agent.conf is in the
+  // canonical serialized form.
+  std::string testDescription = "CLI_E2E_NOOP_DESCRIPTION";
+  XLOG(INFO) << "[Step 2] Setting description to '" << testDescription
+             << "' and committing...";
+  setInterfaceDescription(interface.name, testDescription);
+  waitForInterfaceInfo(interface.name, [&](const auto& info) {
+    return info.description == testDescription;
+  });
+
+  // Stage the SAME description again, then commit directly so we can inspect
+  // the output. The staged config equals what is running -> the commit is a
+  // no-op.
+  XLOG(INFO) << "[Step 3] Re-setting the SAME description and committing...";
+  auto setResult = runCli(
+      {"config", "interface", interface.name, "description", testDescription});
+  ASSERT_EQ(setResult.exitCode, 0) << setResult.stderr;
+  auto commitResult = runCli({"config", "session", "commit"});
+  ASSERT_EQ(commitResult.exitCode, 0) << commitResult.stderr;
+  XLOG(INFO) << "  Commit output: " << commitResult.stdout;
+  EXPECT_NE(commitResult.stdout.find("Nothing to commit"), std::string::npos)
+      << "Re-committing an unchanged description must be a no-op, got: "
+      << commitResult.stdout;
+  EXPECT_EQ(commitResult.stdout.find("reloaded"), std::string::npos)
+      << "A no-op commit must not reload the agent, got: "
+      << commitResult.stdout;
+
+  // Restore the original description.
+  XLOG(INFO) << "[Step 4] Restoring original description ('"
+             << originalDescription << "')...";
+  setInterfaceDescription(interface.name, originalDescription);
+  waitForInterfaceInfo(interface.name, [&](const auto& info) {
+    return info.description == originalDescription;
+  });
+
+  XLOG(INFO) << "TEST PASSED";
+}

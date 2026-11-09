@@ -75,6 +75,18 @@ SaiPhyManager::PlatformInfo::PlatformInfo(std::unique_ptr<SaiPlatform> platform)
 
 SaiPhyManager::PlatformInfo::~PlatformInfo() {}
 
+void SaiPhyManager::PlatformInfo::seedStateFromHwSwitch() {
+  std::lock_guard<std::mutex> g(updateMutex_);
+  setState(getHwSwitch()->getProgrammedState());
+}
+
+// PlatformInfo starts with an empty SwitchState in every process. Without
+// seeding it after warm boot, the next applyUpdate computes {} -> {port N}
+// against the restored HwSwitch state and removes every other port.
+void SaiPhyManager::seedPlatformStateAfterWarmBoot(GlobalXphyID xphyID) {
+  getPlatformInfo(xphyID)->seedStateFromHwSwitch();
+}
+
 SaiPhyManager::PlatformInfo* SaiPhyManager::getPlatformInfo(
     GlobalXphyID xphyID) {
   const auto& phyIDInfo = getPhyIDInfo(xphyID);
@@ -121,7 +133,30 @@ void SaiPhyManager::collectXphyStats(
     platformInfo->getHwSwitch()->updateStats();
     platformInfo->getHwSwitch()->updateAllPhyInfo();
     auto phyInfos = platformInfo->getHwSwitch()->getAllPhyInfo();
+
+    // IOStats are per-xphy, so read once here (all ports in phyInfos belong to
+    // this xphy). getExternalPhy() takes a GlobalXphyID, not a PortID.
+    IOStats xphyIOStats;
+    try {
+      xphyIOStats = getExternalPhy(xphyID)->getIOStats();
+    } catch (const std::exception& e) {
+      XLOG(ERR) << "getIOStats failed for xphy " << xphyID << ": " << e.what();
+    }
+
     for (auto& [portId, phyInfo] : phyInfos) {
+      // Publish FEC + per-lane stats to fb303, reusing the base helpers
+      // (fromPhyInfo + updateXphyStats). No-op until
+      // createExternalPhyPortStats() returns a real ExternalPhyPortStatsUtils
+      // (NullPortStats does nothing).
+      phyInfo.stats()->ioStats() = xphyIOStats;
+      const auto externalPhyStats =
+          phy::ExternalPhyPortStats::fromPhyInfo(phyInfo);
+      {
+        const auto& wLockedStats = getWLockedStats(portId);
+        if (wLockedStats->stats) {
+          wLockedStats->stats->updateXphyStats(externalPhyStats);
+        }
+      }
       updateXphyInfo(portId, std::move(phyInfo));
     }
   } catch (const std::exception& e) {
@@ -137,21 +172,37 @@ void SaiPhyManager::updateAllXphyPortsStats() {
 
     // For XPHY_LEVEL threading, we spawn a task per xphy instead of per pim
     if (getXphyThreadingModel() == XphyThreadingModel::XPHY_LEVEL) {
-      for (auto& [xphy, platformInfo] : pimAndXphyToPlatforms.second) {
-        // Spawn a task for each xphy in this pim
-        auto evb = getXphyEventBase(xphy);
-        folly::via(evb).thenValue([xphy,
-                                   platformInfoPtr = platformInfo.get(),
-                                   this](auto&&) {
-          steady_clock::time_point begin = steady_clock::now();
-          collectXphyStats(xphy, platformInfoPtr);
-          XLOG(DBG3) << "Xphy " << static_cast<int>(xphy)
-                     << " stat collection took "
-                     << duration_cast<milliseconds>(steady_clock::now() - begin)
-                            .count()
-                     << "ms";
-        });
+      auto wLockedStatsCollection = pim2OngoingStatsCollection_.wlock();
+      auto& ongoingStatsCollection = (*wLockedStatsCollection)[pimId];
+      if (ongoingStatsCollection && !ongoingStatsCollection->isReady()) {
+        XLOG(DBG4) << " Sai stats collection for PIM : " << pimId
+                   << " is still ongoing";
+        continue;
       }
+      // Spawn one task per xphy and track them together via folly::collectAll
+      // in pim2OngoingStatsCollection_[pimId], so isXphyStatsCollectionDone()
+      // reports completion. Previously these were fire-and-forget, so the
+      // done-check never became true on XPHY_LEVEL platforms (e.g. Ladakh/Leh).
+      std::vector<folly::Future<folly::Unit>> xphyFutures;
+      xphyFutures.reserve(pimAndXphyToPlatforms.second.size());
+      for (auto& [xphy, platformInfo] : pimAndXphyToPlatforms.second) {
+        auto evb = getXphyEventBase(xphy);
+        xphyFutures.emplace_back(
+            folly::via(evb).thenValue(
+                [xphy, platformInfoPtr = platformInfo.get(), this](auto&&) {
+                  steady_clock::time_point begin = steady_clock::now();
+                  collectXphyStats(xphy, platformInfoPtr);
+                  XLOG(DBG3) << "Xphy " << static_cast<int>(xphy)
+                             << " stat collection took "
+                             << duration_cast<milliseconds>(
+                                    steady_clock::now() - begin)
+                                    .count()
+                             << "ms";
+                }));
+      }
+      ongoingStatsCollection = folly::collectAll(std::move(xphyFutures))
+                                   .toUnsafeFuture()
+                                   .thenValue([](auto&&) {});
       continue;
     }
 
@@ -435,7 +486,7 @@ void SaiPhyManager::removeOnePort(PortID portId) {
 void SaiPhyManager::programOnePort(
     PortID portId,
     cfg::PortProfileID portProfileId,
-    std::optional<TransceiverInfo> transceiverInfo,
+    const std::optional<TransceiverInfo>& transceiverInfo,
     bool needResetDataPath) {
   bool isChanged{false};
   {
@@ -463,8 +514,13 @@ void SaiPhyManager::programOnePort(
     // Before actually calling sai sdk to program the port again, we should
     // check whether the port has been programmed in HW with the same config.
     // We avoid reprogramming the port if the config matches with what we have
-    // already programmed before, unless the needResetDataPath flag is set
+    // already programmed before, unless the needResetDataPath flag is set.
+    // Only Elbert (Credo) still does this; other xphys rely on the SwitchState
+    // delta in applyUpdate (as the agent does): an unchanged port yields an
+    // empty delta and no SAI calls.
+    // TODO: drop this for Elbert after Credo  validation.
     if (!needResetDataPath &&
+        getPhyAsicType() == cfg::AsicType::ASIC_TYPE_ELBERT_8DD &&
         !(wLockedCache->systemLanes.empty() ||
           wLockedCache->lineLanes.empty())) {
       const auto& actualPhyPortConfig =
@@ -516,7 +572,11 @@ void SaiPhyManager::programOnePort(
 
     // Once the port is programmed successfully, update the portToCacheInfo_
     isChanged = setPortToPortCacheInfoLocked(
-        wLockedCache, portId, portProfileId, desiredPhyPortConfig);
+        wLockedCache,
+        portId,
+        portProfileId,
+        transceiverInfo,
+        desiredPhyPortConfig);
     // Only reset phy port stats when there're changes on the xphy ports
     if (isChanged &&
         (getExternalPhyLocked(wLockedCache)
@@ -717,8 +777,9 @@ void SaiPhyManager::setSaiPortAdminState(
       saiSwitch->managerTable()->portManager().getPortHandle(swPort);
 
   if (portHandle == nullptr) {
-    XLOG(INFO) << "Port Handle is null";
-    return;
+    throw FbossError(
+        "setSaiPortAdminState: no xphy port handle for port ",
+        static_cast<int>(swPort));
   }
 
   auto portAdapterKey = (component == phy::PortComponent::GB_LINE)
@@ -736,8 +797,8 @@ void SaiPhyManager::setSaiPortAdminState(
 
 std::unique_ptr<ExternalPhyPortStatsUtils>
 SaiPhyManager::createExternalPhyPortStats(PortID portID) {
-  // TODO(joseph5wu) Need to check what kinda stas we can get from
-  // SaiPhyManager here
+  // Base default: no-op stats so Credo/Elbert behavior is unchanged.
+  // BspSaiPhyManager (Agera3) overrides this with a real stats object.
   return std::make_unique<NullPortStats>(getPortName(portID));
 }
 
@@ -998,13 +1059,13 @@ bool SaiPhyManager::getSdkState(const std::string& fileName) {
 
   auto pimPlatformItr = saiPlatforms_.begin();
   if (pimPlatformItr == saiPlatforms_.end()) {
-    return false;
+    throw FbossError("getSdkState: no external PHY has been initialized");
   }
   auto& pimPlatform = pimPlatformItr->second;
 
   auto platformItr = pimPlatform.begin();
   if (platformItr == pimPlatform.end()) {
-    return false;
+    throw FbossError("getSdkState: no external PHY has been initialized");
   }
 
   GlobalXphyID xphyID = platformItr->first;
@@ -1192,6 +1253,24 @@ void SaiPhyManager::xphyPortStateToggle(PortID swPort, phy::Side side) {
  * also let the SAI SDK store its state in a file
  */
 void SaiPhyManager::gracefulExit() {
+  // Drain in-flight XPHY stats collection before teardown: the async
+  // collectXphyStats() callbacks capture `this`, so letting them outlive the
+  // manager would be a use-after-free / pure-virtual call. Move futures out of
+  // the lock before waiting so a callback can't deadlock re-locking the map.
+  std::vector<folly::Future<folly::Unit>> ongoingStatsCollections;
+  {
+    auto wLockedStatsCollection = pim2OngoingStatsCollection_.wlock();
+    for (auto& [pimId, ongoing] : *wLockedStatsCollection) {
+      if (ongoing.has_value()) {
+        ongoingStatsCollections.push_back(std::move(*ongoing));
+        ongoing.reset();
+      }
+    }
+  }
+  for (auto& ongoing : ongoingStatsCollections) {
+    ongoing.wait();
+  }
+
   // Loop through all pim platforms
   for (auto& pimPlatformItr : saiPlatforms_) {
     auto& pimPlatform = pimPlatformItr.second;

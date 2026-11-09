@@ -46,6 +46,7 @@ folly::IPAddressV6 ip6_128("8000::");
 folly::IPAddressV6 ip6_160("A000::");
 
 const auto kRid0 = RouterID(0);
+constexpr uint32_t kEcmpWidth = 64;
 
 template <typename AddressT>
 void addRoute(
@@ -182,7 +183,7 @@ TEST_F(V4LpmTest, IncreasingLPMSequence) {
     addRoute(rib, makeDropUnicastRoute({addressWithCurrentMask, mask}));
     CHECK_LPM(longestMatch(address), addressWithCurrentMask, mask);
   }
-  auto ribBack = RoutingInformationBase::fromThrift(rib.toThrift());
+  auto ribBack = RoutingInformationBase::fromThrift(rib.toThrift(), kEcmpWidth);
   EXPECT_EQ(ribBack->toThrift(), rib.toThrift());
 }
 
@@ -193,7 +194,7 @@ TEST_F(V6LpmTest, IncreasingLPMSequence) {
     addRoute(rib, makeDropUnicastRoute({addressWithCurrentMask, mask}));
     CHECK_LPM(longestMatch(address), addressWithCurrentMask, mask);
   }
-  auto ribBack = RoutingInformationBase::fromThrift(rib.toThrift());
+  auto ribBack = RoutingInformationBase::fromThrift(rib.toThrift(), kEcmpWidth);
   EXPECT_EQ(ribBack->toThrift(), rib.toThrift());
 }
 
@@ -204,7 +205,7 @@ TEST_F(V4LpmTest, DecreasingLPMSequence) {
     addRoute(rib, makeDropUnicastRoute({addressWithCurrentMask, mask}));
     CHECK_LPM(longestMatch(address), address, address.bitCount());
   }
-  auto ribBack = RoutingInformationBase::fromThrift(rib.toThrift());
+  auto ribBack = RoutingInformationBase::fromThrift(rib.toThrift(), kEcmpWidth);
   EXPECT_EQ(ribBack->toThrift(), rib.toThrift());
 }
 
@@ -215,7 +216,7 @@ TEST_F(V6LpmTest, DecreasingLPMSequence) {
     addRoute(rib, makeDropUnicastRoute({addressWithCurrentMask, mask}));
     CHECK_LPM(longestMatch(address), address, address.bitCount());
   }
-  auto ribBack = RoutingInformationBase::fromThrift(rib.toThrift());
+  auto ribBack = RoutingInformationBase::fromThrift(rib.toThrift(), kEcmpWidth);
   EXPECT_EQ(ribBack->toThrift(), rib.toThrift());
 }
 

@@ -5,8 +5,10 @@
 #include <thrift/lib/cpp2/protocol/Serializer.h>
 #include <ranges>
 
+#include "fboss/platform/bsp_tests/BspTestEnvironment.h"
 #include "fboss/platform/bsp_tests/RuntimeConfigBuilder.h"
 #include "fboss/platform/config_lib/ConfigLib.h"
+#include "fboss/platform/platform_manager/Utils.h"
 
 namespace facebook::fboss::platform::bsp_tests {
 
@@ -50,7 +52,11 @@ class RuntimeConfigBuilderTest : public ::testing::Test {
 
     std::tie(actualUnitName, actualBusName, actualChannel) =
         builder_->getActualAdapter(
-            pmConfig_, sourceUnitName, sourceBusName, slotType);
+            pmConfig_,
+            platform_manager::Utils::resolvePmUnitConfigs(pmConfig_, {}),
+            sourceUnitName,
+            sourceBusName,
+            slotType);
 
     EXPECT_EQ(actualUnitName, expectedUnitName)
         << "Expected unit name: " << expectedUnitName
@@ -65,9 +71,268 @@ class RuntimeConfigBuilderTest : public ::testing::Test {
         << ", got: " << actualChannel;
   }
 
+  // Makes the versioned config distinguishable from the default one.
+  void makeVersionedPsuConfigDistinct() {
+    auto& versioned = pmConfig_.versionedPmUnitConfigs()->at(kPsuPmUnit).at(0);
+    auto& device = versioned.pmUnitConfig()->i2cDeviceConfigs()->at(0);
+    device.address() = kVersionedAddress;
+    device.kernelDeviceName() = kVersionedDriver;
+  }
+
+  RuntimeConfig buildWithVersions(const PmUnitVersionMap& pmUnitVersions) {
+    bsp_tests::BspTestsConfig testConfig;
+    testConfig.testData() = std::map<std::string, DeviceTestData>();
+    BspKmodsFile kmods;
+    return builder_->buildRuntimeConfig(
+        testConfig, pmConfig_, kmods, "sample", pmUnitVersions);
+  }
+
+  // The device named `pmName` and the adapter it ended up attached to, after
+  // INCOMING bus resolution.
+  std::optional<std::pair<std::string, I2CDevice>> findAttachedI2cDevice(
+      const RuntimeConfig& runtimeConfig,
+      const std::string& pmName) {
+    for (const auto& [adapterName, adapter] : *runtimeConfig.i2cAdapters()) {
+      for (const auto& device : *adapter.i2cDevices()) {
+        if (*device.pmName() == pmName) {
+          return std::make_pair(adapterName, device);
+        }
+      }
+    }
+    return std::nullopt;
+  }
+
+  std::optional<I2CDevice> findI2cDeviceIf(
+      const RuntimeConfig& runtimeConfig,
+      const std::string& pmName) {
+    auto attached = findAttachedI2cDevice(runtimeConfig, pmName);
+    if (!attached) {
+      return std::nullopt;
+    }
+    return attached->second;
+  }
+
+  I2CDevice findI2cDevice(
+      const RuntimeConfig& runtimeConfig,
+      const std::string& pmName) {
+    auto attached = findAttachedI2cDevice(runtimeConfig, pmName);
+    if (!attached) {
+      throw std::runtime_error("No I2CDevice named " + pmName);
+    }
+    return attached->second;
+  }
+
+  std::string findAdapterOf(
+      const RuntimeConfig& runtimeConfig,
+      const std::string& pmName) {
+    auto attached = findAttachedI2cDevice(runtimeConfig, pmName);
+    if (!attached) {
+      throw std::runtime_error("No I2CDevice named " + pmName);
+    }
+    return attached->first;
+  }
+
+  // Respin of `pmUnitName` = its default config with `mutate` applied.
+  void addRespin(
+      const std::string& pmUnitName,
+      int16_t subVersion,
+      const std::function<void(platform_manager::PmUnitConfig&)>& mutate) {
+    platform_manager::VersionedPmUnitConfig versioned;
+    versioned.productSubVersion() = subVersion;
+    versioned.pmUnitConfig() = pmConfig_.pmUnitConfigs()->at(pmUnitName);
+    mutate(*versioned.pmUnitConfig());
+    pmConfig_.versionedPmUnitConfigs()[pmUnitName] = {versioned};
+  }
+
+  static platform_manager::PmUnitVersion respin(int16_t subVersion) {
+    platform_manager::PmUnitVersion version;
+    version.productionState() = 3;
+    version.productionSubState() = 1;
+    version.respinVariantIndicator() = subVersion;
+    return version;
+  }
+
+  // Versions that would select `versionedConfig`.
+  static std::vector<platform_manager::PmUnitVersion> declaredVersions(
+      const platform_manager::VersionedPmUnitConfig& versionedConfig) {
+    if (auto pmUnitVersions = versionedConfig.pmUnitVersions();
+        pmUnitVersions && !pmUnitVersions->empty()) {
+      return *pmUnitVersions;
+    }
+    if (!versionedConfig.productSubVersion()) {
+      return {};
+    }
+    platform_manager::PmUnitVersion version;
+    version.productionState() = 0;
+    version.productionSubState() = 0;
+    version.respinVariantIndicator() = *versionedConfig.productSubVersion();
+    return {version};
+  }
+
+  static constexpr auto kPsuPmUnit = "PSU_2GH";
+  static constexpr auto kPsuSensor = "PSU_2GH.PSU_2GH_SENSOR";
+  static constexpr auto kDefaultAddress = "0x12";
+  static constexpr auto kDefaultDriver = "lm75";
+  static constexpr auto kVersionedAddress = "0x21";
+  static constexpr auto kVersionedDriver = "mp2891";
+  static constexpr int16_t kVersionedProductSubVersion = 4;
+
   std::unique_ptr<TestableRuntimeConfigBuilder> builder_;
   platform_manager::PlatformConfig pmConfig_;
 };
+
+TEST_F(RuntimeConfigBuilderTest, ProductSubVersionMatchAppliesVersionedConfig) {
+  makeVersionedPsuConfigDistinct();
+
+  platform_manager::PmUnitVersion version;
+  version.productionState() = 3;
+  version.productionSubState() = 1;
+  version.respinVariantIndicator() = kVersionedProductSubVersion;
+
+  auto device =
+      findI2cDevice(buildWithVersions({{kPsuPmUnit, version}}), kPsuSensor);
+
+  EXPECT_EQ(*device.address(), kVersionedAddress);
+  EXPECT_EQ(*device.deviceName(), kVersionedDriver);
+}
+
+// productSubVersion constrains RespinVariantIndicator alone.
+TEST_F(RuntimeConfigBuilderTest, ProductSubVersionIgnoresProductionStates) {
+  makeVersionedPsuConfigDistinct();
+
+  platform_manager::PmUnitVersion version;
+  version.productionState() = 9;
+  version.productionSubState() = 9;
+  version.respinVariantIndicator() = kVersionedProductSubVersion;
+
+  auto device =
+      findI2cDevice(buildWithVersions({{kPsuPmUnit, version}}), kPsuSensor);
+
+  EXPECT_EQ(*device.address(), kVersionedAddress);
+}
+
+// pmUnitVersions wins over productSubVersion and needs all three components.
+TEST_F(RuntimeConfigBuilderTest, PmUnitVersionsMatchAppliesVersionedConfig) {
+  makeVersionedPsuConfigDistinct();
+
+  platform_manager::PmUnitVersion version;
+  version.productionState() = 4;
+  version.productionSubState() = 1;
+  version.respinVariantIndicator() = 10;
+  pmConfig_.versionedPmUnitConfigs()->at(kPsuPmUnit).at(0).pmUnitVersions() = {
+      version};
+
+  auto device =
+      findI2cDevice(buildWithVersions({{kPsuPmUnit, version}}), kPsuSensor);
+
+  EXPECT_EQ(*device.address(), kVersionedAddress);
+  EXPECT_EQ(*device.deviceName(), kVersionedDriver);
+}
+
+TEST_F(RuntimeConfigBuilderTest, PmUnitVersionsRequiresFullTripleMatch) {
+  makeVersionedPsuConfigDistinct();
+
+  platform_manager::PmUnitVersion configured;
+  configured.productionState() = 4;
+  configured.productionSubState() = 1;
+  configured.respinVariantIndicator() = 10;
+  pmConfig_.versionedPmUnitConfigs()->at(kPsuPmUnit).at(0).pmUnitVersions() = {
+      configured};
+
+  platform_manager::PmUnitVersion detected = configured;
+  detected.productionSubState() = 2;
+
+  auto device =
+      findI2cDevice(buildWithVersions({{kPsuPmUnit, detected}}), kPsuSensor);
+
+  EXPECT_EQ(*device.address(), kDefaultAddress);
+  EXPECT_EQ(*device.deviceName(), kDefaultDriver);
+}
+
+TEST_F(RuntimeConfigBuilderTest, UnmatchedVersionUsesDefaultConfig) {
+  makeVersionedPsuConfigDistinct();
+
+  platform_manager::PmUnitVersion version;
+  version.productionState() = 3;
+  version.productionSubState() = 1;
+  version.respinVariantIndicator() = kVersionedProductSubVersion + 1;
+
+  auto device =
+      findI2cDevice(buildWithVersions({{kPsuPmUnit, version}}), kPsuSensor);
+
+  EXPECT_EQ(*device.address(), kDefaultAddress);
+  EXPECT_EQ(*device.deviceName(), kDefaultDriver);
+}
+
+// An unprogrammed IDPROM reports no version at all.
+TEST_F(RuntimeConfigBuilderTest, NoVersionUsesDefaultConfig) {
+  makeVersionedPsuConfigDistinct();
+
+  auto device = findI2cDevice(buildWithVersions({}), kPsuSensor);
+
+  EXPECT_EQ(*device.address(), kDefaultAddress);
+  EXPECT_EQ(*device.deviceName(), kDefaultDriver);
+}
+
+// Dropping it silently would validate that PmUnit against its default config.
+TEST_F(RuntimeConfigBuilderTest, RejectsVersionForUnknownPmUnit) {
+  platform_manager::PmUnitVersion version;
+  version.productionState() = 3;
+  version.productionSubState() = 1;
+  version.respinVariantIndicator() = 10;
+
+  EXPECT_THROW(
+      buildWithVersions({{"NOT_A_PM_UNIT", version}}), std::invalid_argument);
+}
+
+// A respin can move a child slot onto a different upstream bus, so bus
+// resolution has to walk the resolved slot tree, not the default one.
+TEST_F(RuntimeConfigBuilderTest, VersionedOutgoingSlotConfigRetargetsAdapter) {
+  EXPECT_EQ(
+      findAdapterOf(buildWithVersions({}), kPsuSensor),
+      "YOLO_MAX.YOLO_DOM_I2C_0");
+
+  addRespin("YOLO_MAX", 7, [](platform_manager::PmUnitConfig& pmUnitConfig) {
+    auto& busNames = *pmUnitConfig.outgoingSlotConfigs()
+                          ->at("PSU_SLOT@0")
+                          .outgoingI2cBusNames();
+    std::swap(busNames.at(0), busNames.at(1));
+  });
+
+  EXPECT_EQ(
+      findAdapterOf(buildWithVersions({{"YOLO_MAX", respin(7)}}), kPsuSensor),
+      "YOLO_MAX.YOLO_MUX1");
+}
+
+TEST_F(RuntimeConfigBuilderTest, VersionedMuxIsHonored) {
+  addRespin("YOLO_MAX", 8, [](platform_manager::PmUnitConfig& pmUnitConfig) {
+    for (auto& i2cDevice : *pmUnitConfig.i2cDeviceConfigs()) {
+      if (*i2cDevice.pmUnitScopedName() == "YOLO_MUX1") {
+        i2cDevice.numOutgoingChannels() = 8;
+      }
+    }
+  });
+
+  auto runtimeConfig = buildWithVersions({{"YOLO_MAX", respin(8)}});
+  const auto& mux = runtimeConfig.i2cAdapters()->at("YOLO_MAX.YOLO_MUX1");
+
+  EXPECT_EQ(*mux.muxAdapterInfo()->numOutgoingChannels(), 8);
+}
+
+TEST_F(RuntimeConfigBuilderTest, VersionedPciDeviceIsHonored) {
+  addRespin("SMB", 6, [](platform_manager::PmUnitConfig& pmUnitConfig) {
+    pmUnitConfig.pciDeviceConfigs()->at(0).deviceId() = "0xbeef";
+  });
+
+  auto runtimeConfig = buildWithVersions({{"SMB", respin(6)}});
+  auto smbIob = std::ranges::find_if(
+      *runtimeConfig.devices(), [](const PciDevice& device) {
+        return *device.pmName() == "SMB.SMB_IOB";
+      });
+
+  ASSERT_NE(smbIob, runtimeConfig.devices()->end());
+  EXPECT_EQ(*smbIob->pciInfo()->deviceId(), "0xbeef");
+}
 
 // Test that getActualAdapter correctly resolves a direct bus (non-INCOMING)
 TEST_F(RuntimeConfigBuilderTest, DirectBusResolution) {
@@ -85,7 +350,12 @@ TEST_F(RuntimeConfigBuilderTest, InvalidIncomingBus) {
   // The getActualAdapter method should throw an exception for an invalid
   // INCOMING bus
   EXPECT_THROW(
-      builder_->getActualAdapter(pmConfig_, "SMB", "INCOMING@99", "SMB_SLOT"),
+      builder_->getActualAdapter(
+          pmConfig_,
+          platform_manager::Utils::resolvePmUnitConfigs(pmConfig_, {}),
+          "SMB",
+          "INCOMING@99",
+          "SMB_SLOT"),
       std::runtime_error)
       << "Expected exception when resolving invalid INCOMING bus";
 }
@@ -254,6 +524,7 @@ TEST_F(RuntimeConfigBuilderTest, BuildConfigsForAllRealPlatforms) {
       "darwin",
       "minipack3n",
       "minipack3ba",
+      "minipack3bam",
       "icecube",
       "darwin48v",
   };
@@ -286,6 +557,63 @@ TEST_F(RuntimeConfigBuilderTest, BuildConfigsForAllRealPlatforms) {
           testConfig, platformConfig, kmods, platformName);
     }) << "Failed to build runtime config for platform: "
        << platformName;
+
+    // Resolution must be inert when no versions are detected.
+    const std::map<std::string, platform_manager::PmUnitConfig> defaults(
+        platformConfig.pmUnitConfigs()->begin(),
+        platformConfig.pmUnitConfigs()->end());
+    EXPECT_EQ(
+        platform_manager::Utils::resolvePmUnitConfigs(platformConfig, {}),
+        defaults);
+
+    // Expectations come from the config, so this keeps covering platforms as
+    // they add respins and survives a config author changing an address.
+    for (const auto& [pmUnitName, versionedConfigs] :
+         *platformConfig.versionedPmUnitConfigs()) {
+      for (const auto& versionedConfig : versionedConfigs) {
+        const auto versions = declaredVersions(versionedConfig);
+        // An entry with neither pmUnitVersions nor productSubVersion can never
+        // be selected, so it would be silently skipped below and counted as
+        // covered.
+        ASSERT_FALSE(versions.empty())
+            << platformName << " PmUnit " << pmUnitName
+            << " declares a versionedPmUnitConfig with no selectable version";
+        for (const auto& version : versions) {
+          SCOPED_TRACE(
+              fmt::format(
+                  "PmUnit {} version {}.{}.{}",
+                  pmUnitName,
+                  *version.productionState(),
+                  *version.productionSubState(),
+                  *version.respinVariantIndicator()));
+
+          RuntimeConfig respinConfig;
+          ASSERT_NO_THROW({
+            respinConfig = builder_->buildRuntimeConfig(
+                testConfig,
+                platformConfig,
+                kmods,
+                platformName,
+                {{pmUnitName, version}});
+          });
+
+          for (const auto& i2cDevice :
+               *versionedConfig.pmUnitConfig()->i2cDeviceConfigs()) {
+            // Muxes become I2CAdapters, not I2CDevices.
+            if (i2cDevice.numOutgoingChannels().has_value()) {
+              continue;
+            }
+            const auto pmName =
+                fmt::format("{}.{}", pmUnitName, *i2cDevice.pmUnitScopedName());
+            SCOPED_TRACE(pmName);
+            auto resolved = findI2cDeviceIf(respinConfig, pmName);
+            ASSERT_TRUE(resolved.has_value());
+            EXPECT_EQ(*resolved->address(), *i2cDevice.address());
+            EXPECT_EQ(*resolved->deviceName(), *i2cDevice.kernelDeviceName());
+          }
+        }
+      }
+    }
   }
 }
 

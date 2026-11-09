@@ -14,6 +14,7 @@
 #include <thrift/lib/cpp2/reflection/testing.h> // NOLINT(misc-include-cleaner)
 #include <sstream>
 #include <vector>
+#include "fboss/cli/fboss2/commands/show/bgp/CmdShowUtils.h"
 #include "fboss/cli/fboss2/test/CmdHandlerTestBase.h"
 
 #include "configerator/structs/neteng/fboss/bgp/if/gen-cpp2/bgp_attr_types.h"
@@ -91,18 +92,18 @@ TEST_F(NeighborsReceivedPostPolicyTestFixture, printOutput) {
         folly::dynamic value = folly::dynamic::object
           ("communities",
           folly::dynamic::array(
-          folly::dynamic::object("name", "FABRIC_POD_RSW_LOOP")
+          folly::dynamic::object("name", "SAMPLE_LOOPBACK_COM")
           ("description", "rsw loopback")
-          ("communities", folly::dynamic::array("65527:12705"))
+          ("communities", folly::dynamic::array("65221:28734"))
           )
         )
         ("localprefs",
         folly::dynamic::array(
           folly::dynamic::object("localpref", 20)
-          ("name", "LOCALPREF_CTRL_BACKUP")
+          ("name", "LOCALPREF_SAMPLE_BKUP")
           ("description", "low-priority supplementary/backup routes from bgp controller"),
           folly::dynamic::object("localpref", 25)
-          ("name", "LOCALPREF_DEPRIO")
+          ("name", "LOCALPREF_SAMPL1")
           ("description", "deprioritized local preference value"))
         );
         // clang-format on
@@ -123,14 +124,14 @@ TEST_F(NeighborsReceivedPostPolicyTestFixture, printOutput) {
       "Nexthop: 8.0.0.1\n"
       "Router/OriginatorId:   --  \n"
       "ClusterList: []\n"
-      "Communities: FABRIC_POD_RSW_LOOP/65527:12705\n"
+      "Communities: SAMPLE_LOOPBACK_COM/65221:28734\n"
       "ExtCommunities: \n"
-      "AsPath: 65301\n"
-      "LocalPref: DEPRIO/25\n"
+      "AsPath: 64712\n"
+      "LocalPref: SAMPL1/25\n"
       "Origin: INCOMPLETE\n"
       "MED: 10\n"
       "LastModified: 2021-10-26 13:07:40.724 PDT\n"
-      "Policy: Accepted/Modified by PROPAGATE_RSW_FSW_IN term N/A\n";
+      "Policy: Accepted/Modified by SAMPLE_UPLINK_POLICY term N/A\n";
   EXPECT_EQ(output, expectedOutput);
 }
 
@@ -142,18 +143,18 @@ TEST_F(NeighborsReceivedPostPolicyTestFixtureWithoutMed, printOutput) {
         folly::dynamic value = folly::dynamic::object
           ("communities",
           folly::dynamic::array(
-          folly::dynamic::object("name", "FABRIC_POD_RSW_LOOP")
+          folly::dynamic::object("name", "SAMPLE_LOOPBACK_COM")
           ("description", "rsw loopback")
-          ("communities", folly::dynamic::array("65527:12705"))
+          ("communities", folly::dynamic::array("65221:28734"))
           )
         )
         ("localprefs",
         folly::dynamic::array(
           folly::dynamic::object("localpref", 20)
-          ("name", "LOCALPREF_CTRL_BACKUP")
+          ("name", "LOCALPREF_SAMPLE_BKUP")
           ("description", "low-priority supplementary/backup routes from bgp controller"),
           folly::dynamic::object("localpref", 25)
-          ("name", "LOCALPREF_DEPRIO")
+          ("name", "LOCALPREF_SAMPL1")
           ("description", "deprioritized local preference value"))
         );
         // clang-format on
@@ -174,14 +175,47 @@ TEST_F(NeighborsReceivedPostPolicyTestFixtureWithoutMed, printOutput) {
       "Nexthop: 8.0.0.1\n"
       "Router/OriginatorId:   --  \n"
       "ClusterList: []\n"
-      "Communities: FABRIC_POD_RSW_LOOP/65527:12705\n"
+      "Communities: SAMPLE_LOOPBACK_COM/65221:28734\n"
       "ExtCommunities: \n"
-      "AsPath: 65301\n"
-      "LocalPref: DEPRIO/25\n"
+      "AsPath: 64712\n"
+      "LocalPref: SAMPL1/25\n"
       "Origin: INCOMPLETE\n"
       "MED: Not set\n"
       "LastModified: 2021-10-26 13:07:40.724 PDT\n"
-      "Policy: Accepted/Modified by PROPAGATE_RSW_FSW_IN term N/A\n";
+      "Policy: Accepted/Modified by SAMPLE_UPLINK_POLICY term N/A\n";
   EXPECT_EQ(output, expectedOutput);
 }
+
+TEST_F(NeighborsReceivedPostPolicyTestFixture, wikiDocHooks) {
+  EXPECT_FALSE(BgpNeighborsReceivedPostPolicyTraits::description().empty());
+
+  /*
+   * printRoutesInformation resolves community and local-pref mnemonics
+   * through the MODEL's own host/ip, so point the copy under test at the
+   * mocked server rather than the canned documentation host.
+   */
+  setupMockedBgpServer();
+  resetBgpMnemonicCaches();
+  EXPECT_CALL(getMockBgp(), getRunningConfig(_))
+      .WillRepeatedly([](std::string& config) { config = "{}"; });
+
+  auto model = BgpNeighborsReceivedPostPolicy::sampleModel();
+  EXPECT_EQ(model.networkPath()->size(), 2);
+  model.host() = localhost().getName();
+  model.oobName() = localhost().getOobName();
+  model.ip() = localhost().getIpStr();
+
+  std::stringstream ss;
+  BgpNeighborsReceivedPostPolicy().printOutput(model, ss);
+  const std::string output = ss.str();
+
+  EXPECT_THAT(output, HasSubstr("Network: 0.0.0.0/0"));
+  // The received direction must render the UPSTREAM confed ASN (65221), not
+  // the downstream one (64650) the advertised views use - sampleNetworkPaths()
+  // once ignored its ASN argument and rendered the wrong one here.
+  EXPECT_THAT(output, HasSubstr("AsPath: (65221)"));
+  EXPECT_THAT(
+      output, HasSubstr("Policy: Accepted/Modified by SAMPLE_UPLINK_IN"));
+}
+
 } // namespace facebook::fboss

@@ -4,6 +4,7 @@
 #include <folly/Conv.h>
 #include <folly/IPAddressV4.h>
 #include <folly/IPAddressV6.h>
+#include <folly/MacAddress.h>
 #include <folly/String.h>
 #include <folly/logging/xlog.h>
 
@@ -22,7 +23,7 @@
 #include "fboss/agent/test/TestUtils.h"
 #include "fboss/agent/test/TrunkUtils.h"
 #include "fboss/agent/test/agent_hw_tests/AgentMPLSDataplaneTest.h"
-#include "fboss/agent/test/agent_hw_tests/AgentMPLSDataplaneTestUtils.h"
+#include "fboss/agent/test/utils/AgentMPLSDataplaneTestUtils.h"
 #include "fboss/agent/test/utils/PacketSnooper.h"
 #include "fboss/agent/test/utils/PortStatsTestUtils.h"
 #include "fboss/agent/test/utils/TrapPacketUtils.h"
@@ -41,7 +42,8 @@ const facebook::fboss::LabelForwardingAction::Label kSwapLabel{201};
 constexpr uint32_t kSinglePushedLabelBase = 101;
 constexpr uint32_t kMaxPushedLabelBase = 1001;
 constexpr uint32_t kPopAndForwardInnerLabelBase = 2202;
-constexpr uint8_t kDefaultPopAndForwardLabelTtl = 128;
+constexpr uint8_t kDefaultPopAndForwardLabelTtlForTtlExpiryTrap = 2;
+constexpr uint8_t kDefaultPopAndForwardLabelTtlForSrcPortAclTrap = 128;
 constexpr std::array<size_t, 5> kPopAndForwardLabelStackDepths{
     2,
     11,
@@ -178,7 +180,7 @@ class AgentMPLSMidpointTest : public AgentMPLSDataplaneTest<PortType> {
   void configureTrapPacketMechanism(
       cfg::SwitchConfig& config,
       MplsTrapPacketMechanism mechanism,
-      const LabelForwardingAction::LabelStack& pushStack) const {
+      Label secondPassIngressLabel) {
     switch (mechanism) {
       case MplsTrapPacketMechanism::SrcPortAcl: {
         auto asic =
@@ -187,9 +189,13 @@ class AgentMPLSMidpointTest : public AgentMPLSDataplaneTest<PortType> {
         break;
       }
       case MplsTrapPacketMechanism::TtlExpiry:
+        resolveNextHopForPort(
+            PortDescriptor(secondPassEgressPort()),
+            secondPassIngressLabel,
+            LabelForwardingAction::LabelForwardingType::SWAP);
         configureStaticMplsSwapRoute(
             config,
-            pushedTopLabel(pushStack),
+            secondPassIngressLabel,
             kSwapLabel,
             PortDescriptor(secondPassEgressPort()));
         break;
@@ -276,8 +282,8 @@ class AgentMPLSMidpointTest : public AgentMPLSDataplaneTest<PortType> {
 
   std::unique_ptr<TxPacket>
   makeMplsIngressPacket(Label label, uint8_t ttl, bool isV4) const {
+    // nullopt on port based router interface platforms; frame goes out untagged
     auto vlan = getVlanIDForTx();
-    CHECK(vlan.has_value());
 
     MPLSHdr::Label mplsLabel{
         static_cast<uint32_t>(label.value()), 0, true, ttl};
@@ -285,25 +291,25 @@ class AgentMPLSMidpointTest : public AgentMPLSDataplaneTest<PortType> {
     if (isV4) {
       auto frame = utility::getEthFrame(
           utility::kLocalCpuMac(),
-          utility::kLocalCpuMac(),
+          folly::MacAddress{"02:00:00:00:00:02"},
           {mplsLabel},
           folly::IPAddressV4{"100.1.1.1"},
           folly::IPAddressV4{"200.1.1.1"},
           10000,
           20000,
-          *vlan);
+          vlan);
       pkt = frame.getTxPacket(
           [sw = getSw()](uint32_t size) { return sw->allocatePacket(size); });
     } else {
       auto frame = utility::getEthFrame(
           utility::kLocalCpuMac(),
-          utility::kLocalCpuMac(),
+          folly::MacAddress{"02:00:00:00:00:02"},
           {mplsLabel},
           folly::IPAddressV6{"1001::1"},
           folly::IPAddressV6{"2001::1"},
           10000,
           20000,
-          *vlan);
+          vlan);
       pkt = frame.getTxPacket(
           [sw = getSw()](uint32_t size) { return sw->allocatePacket(size); });
     }
@@ -313,8 +319,8 @@ class AgentMPLSMidpointTest : public AgentMPLSDataplaneTest<PortType> {
   std::unique_ptr<TxPacket> makeMplsLabelStackIngressPacket(
       size_t labelStackDepth,
       uint8_t ttl) const {
+    // nullopt on port based router interface platforms; frame goes out untagged
     auto vlan = getVlanIDForTx();
-    CHECK(vlan.has_value());
 
     std::vector<MPLSHdr::Label> labels;
     labels.reserve(labelStackDepth);
@@ -336,7 +342,7 @@ class AgentMPLSMidpointTest : public AgentMPLSDataplaneTest<PortType> {
         folly::IPAddressV6{"2001::1"},
         10000,
         20000,
-        *vlan);
+        vlan);
     return frame.getTxPacket(
         [sw = getSw()](uint32_t size) { return sw->allocatePacket(size); });
   }
@@ -404,15 +410,8 @@ class AgentMPLSMidpointTest : public AgentMPLSDataplaneTest<PortType> {
     // - The second pass matches the pushed-label SWAP route and expires TTL.
     // - The MPLS TTL trap sends the packet to CPU for packet snooper
     // inspection.
-    if (mechanism == MplsTrapPacketMechanism::TtlExpiry) {
-      resolveNextHopForPort(
-          PortDescriptor(secondPassEgressPort()),
-          pushedTopLabel(pushStack),
-          LabelForwardingAction::LabelForwardingType::SWAP);
-    }
-
     configureStaticMplsPushRoute(config, pushStack);
-    configureTrapPacketMechanism(config, mechanism, pushStack);
+    configureTrapPacketMechanism(config, mechanism, pushedTopLabel(pushStack));
     applyConfigAndEnableTrunks(config);
   }
 
@@ -423,8 +422,10 @@ class AgentMPLSMidpointTest : public AgentMPLSDataplaneTest<PortType> {
     resolveNextHopForPortWithMac(egressPortDescriptor(), routerMac());
 
     configureStaticMplsPopAndForwardRoute(config);
-    auto asic = checkSameAndGetAsicForTesting(getAgentEnsemble()->getL3Asics());
-    utility::addTrapPacketAcl(asic, &config, egressPort());
+    // The pop exposes the inner label, so that is what the second pass
+    // matches.
+    configureTrapPacketMechanism(
+        config, trapPacketMechanism(), Label(kPopAndForwardInnerLabelBase));
     applyConfigAndEnableTrunks(config);
   }
 
@@ -464,8 +465,10 @@ class AgentMPLSMidpointTest : public AgentMPLSDataplaneTest<PortType> {
     auto outPktsBefore =
         utility::getPortOutPkts(this->getLatestPortStats(egressPort()));
 
-    sendMplsLabelStackIngressPacket(
-        labelStackDepth, kDefaultPopAndForwardLabelTtl, ingressPort());
+    const auto ttl = trapPacketMechanism() == MplsTrapPacketMechanism::TtlExpiry
+        ? kDefaultPopAndForwardLabelTtlForTtlExpiryTrap
+        : kDefaultPopAndForwardLabelTtlForSrcPortAclTrap;
+    sendMplsLabelStackIngressPacket(labelStackDepth, ttl, ingressPort());
 
     WITH_RETRIES({
       auto outPktsAfter =

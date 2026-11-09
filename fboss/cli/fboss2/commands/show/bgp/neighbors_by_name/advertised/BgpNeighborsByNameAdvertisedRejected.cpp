@@ -131,6 +131,44 @@ void BgpNeighborsByNameAdvertisedRejected::printOutput(
   printRejectedResult(result, out);
 }
 
+BgpNeighborsByNameAdvertisedRejected::RetType
+BgpNeighborsByNameAdvertisedRejected::sampleRejectedPrefixes(
+    SampleRouteDirection direction,
+    bool crfOnly) {
+  const std::string fsw001 = "192.0.2.11 (fsw001.p001.f01.abc1)";
+  const std::string fsw002 = "192.0.2.12 (fsw002.p001.f01.abc1)";
+
+  // Real policy_name values carry the "Denied by " prefix, and the egress and
+  // ingress paths name different policies, so the two directions must not
+  // share one string.
+  const std::string namedTerm = direction == SampleRouteDirection::Advertised
+      ? "Denied by SAMPLE_UPLINK_OUT term DENY_RFC1918"
+      : "Denied by SAMPLE_UPLINK_IN term DENY_RFC1918";
+
+  /*
+   * Three groups covering what the prose describes: one named-term rejection
+   * that both matched uplinks share, one CRF rejection they also share, and
+   * one CRF rejection only fsw001 makes - the asymmetric case a reader is
+   * looking for. Keys are built with makeKey() and screened with
+   * isCrfRejection() so the example cannot drift from the real encoding.
+   */
+  const std::vector<
+      std::tuple<std::string, std::string, std::vector<std::string>>>
+      groups = {
+          {"10.0.0.0/8", namedTerm, {fsw001, fsw002}},
+          {"203.0.113.0/24", kCrfPolicyName, {fsw001, fsw002}},
+          {"2001:db8:1c00::/40", kCrfPolicyName, {fsw001}}};
+
+  RetType result;
+  for (const auto& [prefix, policyName, neighbors] : groups) {
+    if (crfOnly && !isCrfRejection(policyName)) {
+      continue;
+    }
+    result[makeKey(prefix, policyName)] = neighbors;
+  }
+  return result;
+}
+
 template void CmdHandler<
     BgpNeighborsByNameAdvertisedRejected,
     BgpNeighborsByNameAdvertisedRejectedTraits>::run();

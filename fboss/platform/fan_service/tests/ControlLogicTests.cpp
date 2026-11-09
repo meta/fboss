@@ -19,6 +19,10 @@ namespace {
 
 float kDefaultRpm = 31;
 
+// An optic type the sample platform config has no thermal profile for.
+const std::string kUnprofiledOpticType = "OPTIC_TYPE_800_ZR";
+const std::string kProfiledOpticType = "OPTIC_TYPE_400_GENERIC";
+
 std::array<int, 5> kExpectedPwms = std::array<int, 5>{49, 49, 48, 48, 47};
 std::array<int, 5> kExpectedBoostModePwms =
     std::array<int, 5>{51, 51, 52, 52, 53};
@@ -41,6 +45,10 @@ class MockBsp : public Bsp {
 class ControlLogicTests : public testing::Test {
  public:
   void SetUp() override {
+    // fb303 counters are process-global. Without this, a counter set by an
+    // earlier test satisfies assertions in a later one.
+    fb303::fbData->resetAllData();
+
     auto fanServiceConfJson = ConfigLib().getFanServiceConfig("sample");
 
     apache::thrift::SimpleJSONSerializer::deserialize<FanServiceConfig>(
@@ -69,6 +77,54 @@ class ControlLogicTests : public testing::Test {
     }
 
     ASSERT_TRUE(kExpectedPwms.size() == fanServiceConfig_.fans()->size());
+  }
+
+  // Sets up the fan sysfs expectations shared by the updateControl() tests.
+  void expectFanAccess() {
+    EXPECT_CALL(*mockBsp_, checkIfInitialSensorDataRead())
+        .WillRepeatedly(Return(true));
+    for (const auto& fan : *fanServiceConfig_.fans()) {
+      EXPECT_CALL(*mockBsp_, setFanPwmSysfs(*fan.pwmSysfsPath(), _))
+          .WillRepeatedly(Return(true));
+      EXPECT_CALL(*mockBsp_, turnOnLedSysfs(*fan.goodLedSysfsPath()))
+          .WillRepeatedly(Return(true));
+      EXPECT_CALL(*mockBsp_, readSysfs(*fan.rpmSysfsPath()))
+          .WillRepeatedly(Return(kDefaultRpm));
+      EXPECT_CALL(*mockBsp_, readSysfs(*fan.presenceSysfsPath()))
+          .WillRepeatedly(Return(1 /* fan exists */));
+    }
+  }
+
+  // Removes an optic type from every optic group's cached data, as if the
+  // transceiver had been unplugged.
+  void removeOpticTypeFromSensorData(const std::string& opticType) {
+    for (const auto& optic : *fanServiceConfig_.optics()) {
+      auto opticEntry = sensorData_->getOpticEntry(*optic.opticName());
+      auto opticData = opticEntry->data;
+      opticData.erase(opticType);
+      sensorData_->updateOpticEntry(
+          *optic.opticName(), opticData, mockBsp_->getCurrentTime());
+    }
+  }
+
+  // Empties every optic group's cached data, as if qsfp_service had stopped
+  // publishing.
+  void clearOpticDataForAllGroups() {
+    for (const auto& optic : *fanServiceConfig_.optics()) {
+      sensorData_->updateOpticEntry(
+          *optic.opticName(), {}, mockBsp_->getCurrentTime());
+    }
+  }
+
+  // Adds an extra optic type to every optic group's cached data.
+  void addOpticTypeToSensorData(const std::string& opticType, float temp) {
+    for (const auto& optic : *fanServiceConfig_.optics()) {
+      auto opticEntry = sensorData_->getOpticEntry(*optic.opticName());
+      auto opticData = opticEntry->data;
+      opticData[opticType].push_back(OpticData{99, temp});
+      sensorData_->updateOpticEntry(
+          *optic.opticName(), opticData, mockBsp_->getCurrentTime());
+    }
   }
 
   FanServiceConfig fanServiceConfig_;
@@ -355,6 +411,160 @@ TEST_F(ControlLogicTests, OpticsFb303CountersAreSet) {
 
   // Verify aggregate optics PWM counter is max(24, 26, 36) = 36.
   EXPECT_EQ(fb303::fbData->getCounter("agg.optics_pwm.value"), 36);
+
+  // Every configured optic type has a profile.
+  for (const auto& [opticType, _] : expectedOpticValues) {
+    EXPECT_EQ(
+        fb303::fbData->getCounter(
+            fmt::format("{}.optics_no_profile", opticType)),
+        0);
+  }
+}
+
+TEST_F(ControlLogicTests, UnprofiledOpticTypeIsReportedExcludedAndBoosts) {
+  expectFanAccess();
+  addOpticTypeToSensorData(kUnprofiledOpticType, 70.0);
+
+  controlLogic_->setTransitionValue();
+  controlLogic_->updateControl(sensorData_);
+
+  // The temperature is still published so the optic stays visible, and the
+  // no-profile counter flags it.
+  EXPECT_EQ(
+      fb303::fbData->getCounter(
+          fmt::format("{}.optics_read.max.value", kUnprofiledOpticType)),
+      70);
+  EXPECT_EQ(
+      fb303::fbData->getCounter(
+          fmt::format("{}.optics_no_profile", kUnprofiledOpticType)),
+      1);
+
+  // It contributes nothing to the optics aggregate, which stays at the
+  // max over the profiled types (24, 26, 36).
+  EXPECT_EQ(fb303::fbData->getCounter("agg.optics_pwm.value"), 36);
+
+  // An optic we cannot control must fail toward more cooling, not less.
+  const auto fanStatuses = controlLogic_->getFanStatuses();
+  int i = 0;
+  EXPECT_EQ(fanStatuses.size(), fanServiceConfig_.fans()->size());
+  for (const auto& [fanName, fanStatus] : fanStatuses) {
+    EXPECT_EQ(*fanStatus.pwmToProgram(), kExpectedBoostModePwms[i++]);
+  }
+}
+
+TEST_F(
+    ControlLogicTests,
+    UnprofiledOpticTypeUnderPidAggregationIsReportedAndBoosts) {
+  // Same contract as the MAX case above, under PID aggregation: an optic type
+  // with no profile is reported and boosts, and must never abort the control
+  // loop. PID is the branch where getting it wrong throws rather than
+  // degrading, because a profile miss must not reach pidLogics_.
+  PidSetting pidSetting;
+  pidSetting.kp() = -4;
+  pidSetting.ki() = -0.06;
+  pidSetting.kd() = 0;
+  pidSetting.setPoint() = 67.0;
+  pidSetting.posHysteresis() = 0.0;
+  pidSetting.negHysteresis() = 3.0;
+  for (auto& optic : *fanServiceConfig_.optics()) {
+    for (const auto& [opticType, _] : *optic.tempToPwmMaps()) {
+      optic.pidSettings()->emplace(opticType, pidSetting);
+    }
+    optic.tempToPwmMaps()->clear();
+    optic.aggregationType() = "OPTIC_AGGREGATION_TYPE_PID";
+  }
+
+  // Before constructing ControlLogic: its constructor programs the fans.
+  expectFanAccess();
+  auto pidControlLogic =
+      std::make_shared<ControlLogic>(fanServiceConfig_, mockBsp_);
+  addOpticTypeToSensorData(kUnprofiledOpticType, 70.0);
+
+  EXPECT_NO_THROW(pidControlLogic->updateControl(sensorData_));
+
+  EXPECT_EQ(
+      fb303::fbData->getCounter(
+          fmt::format("{}.optics_no_profile", kUnprofiledOpticType)),
+      1);
+  // No PWM was computed for it, so no pwm counter should exist.
+  EXPECT_FALSE(
+      fb303::fbData->hasCounter(
+          fmt::format("{}.optics_pwm.value", kUnprofiledOpticType)));
+
+  // An optic we cannot control must fail toward more cooling, not less.
+  const auto fanStatuses = pidControlLogic->getFanStatuses();
+  int i = 0;
+  EXPECT_EQ(fanStatuses.size(), fanServiceConfig_.fans()->size());
+  for (const auto& [fanName, fanStatus] : fanStatuses) {
+    EXPECT_EQ(*fanStatus.pwmToProgram(), kExpectedBoostModePwms[i++]);
+  }
+}
+
+TEST_F(ControlLogicTests, OpticCountersAreClearedWhenOpticTypeDisappears) {
+  expectFanAccess();
+  addOpticTypeToSensorData(kUnprofiledOpticType, 70.0);
+
+  controlLogic_->setTransitionValue();
+  controlLogic_->updateControl(sensorData_);
+
+  EXPECT_TRUE(
+      fb303::fbData->hasCounter(
+          fmt::format("{}.optics_read.max.value", kUnprofiledOpticType)));
+  EXPECT_EQ(
+      fb303::fbData->getCounter(
+          fmt::format("{}.optics_no_profile", kUnprofiledOpticType)),
+      1);
+  // A profiled type is the only one that ever gets a pwm counter, so it has
+  // to be part of this test for the pwm counter's clearing to be covered.
+  EXPECT_TRUE(
+      fb303::fbData->hasCounter(
+          fmt::format("{}.optics_pwm.value", kProfiledOpticType)));
+
+  // Unplug both. The counters must stop reporting rather than latch their last
+  // value, otherwise an alert on optics_no_profile fires forever.
+  removeOpticTypeFromSensorData(kUnprofiledOpticType);
+  removeOpticTypeFromSensorData(kProfiledOpticType);
+  controlLogic_->updateControl(sensorData_);
+
+  for (const auto& opticType : {kUnprofiledOpticType, kProfiledOpticType}) {
+    EXPECT_FALSE(
+        fb303::fbData->hasCounter(
+            fmt::format("{}.optics_read.max.value", opticType)));
+    EXPECT_FALSE(
+        fb303::fbData->hasCounter(
+            fmt::format("{}.optics_pwm.value", opticType)));
+    EXPECT_FALSE(
+        fb303::fbData->hasCounter(
+            fmt::format("{}.optics_no_profile", opticType)));
+  }
+}
+
+TEST_F(ControlLogicTests, OpticCountersSurviveEmptyOpticData) {
+  expectFanAccess();
+
+  controlLogic_->setTransitionValue();
+  controlLogic_->updateControl(sensorData_);
+
+  EXPECT_TRUE(
+      fb303::fbData->hasCounter(
+          fmt::format("{}.optics_read.max.value", kProfiledOpticType)));
+  EXPECT_TRUE(
+      fb303::fbData->hasCounter(
+          fmt::format("{}.optics_pwm.value", kProfiledOpticType)));
+
+  // An empty optic group means qsfp_service is unreachable or its data has
+  // gone stale, not that the optics were unplugged. Fan control keeps running
+  // off the cached pwm, so the counters must keep reporting instead of
+  // disappearing from monitoring at exactly that moment.
+  clearOpticDataForAllGroups();
+  controlLogic_->updateControl(sensorData_);
+
+  EXPECT_TRUE(
+      fb303::fbData->hasCounter(
+          fmt::format("{}.optics_read.max.value", kProfiledOpticType)));
+  EXPECT_TRUE(
+      fb303::fbData->hasCounter(
+          fmt::format("{}.optics_pwm.value", kProfiledOpticType)));
 }
 
 } // namespace facebook::fboss::platform

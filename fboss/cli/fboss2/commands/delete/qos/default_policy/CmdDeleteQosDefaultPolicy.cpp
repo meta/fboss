@@ -39,7 +39,8 @@ CmdDeleteQosDefaultPolicyTraits::RetType CmdDeleteQosDefaultPolicy::queryClient(
   // handle bookkeeping in the hw agent and the next qos policy change aborts
   // it. Relax to HITLESS once the agent handle-ownership bug is fixed.
   session.saveConfig(
-      cli::ServiceType::AGENT, cli::ConfigActionLevel::AGENT_COLDBOOT);
+      cli::ServiceType::AGENT,
+      cli::ConfigActionLevel::DISRUPTIVE_SERVICE_RESTART);
 
   return fmt::format(
       "Successfully removed default QoS policy '{}'", removedName);

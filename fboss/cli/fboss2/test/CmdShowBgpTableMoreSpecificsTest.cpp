@@ -65,18 +65,18 @@ TEST_F(CmdShowBgpTableMoreSpecificsTestFixture, printOutput) {
         folly::dynamic value = folly::dynamic::object
           ("communities",
           folly::dynamic::array(
-          folly::dynamic::object("name", "FABRIC_POD_RSW_LOOP")
+          folly::dynamic::object("name", "SAMPLE_LOOPBACK_COM")
           ("description", "rsw loopback")
-          ("communities", folly::dynamic::array("65527:12705"))
+          ("communities", folly::dynamic::array("65221:28734"))
           )
         )
         ("localprefs",
         folly::dynamic::array(
           folly::dynamic::object("localpref", 20)
-          ("name", "LOCALPREF_CTRL_BACKUP")
+          ("name", "LOCALPREF_SAMPLE_BKUP")
           ("description", "low-priority supplementary/backup routes from bgp controller"),
           folly::dynamic::object("localpref", 25)
-          ("name", "LOCALPREF_DEPRIO")
+          ("name", "LOCALPREF_SAMPL1")
           ("description", "deprioritized local preference value"))
         );
         // clang-format on
@@ -93,13 +93,45 @@ TEST_F(CmdShowBgpTableMoreSpecificsTestFixture, printOutput) {
 
   std::string expectedOutput = kRibEntryMarkersHeader +
       "\n> 8.0.0.0/32, Selected 1/1 paths (1 active, 0 inactive)\n"
-      "*@  from 1.2.3.4 (one.two.three.four) via 8.0.0.1 | LBW: None | Origin: INCOMPLETE | LP: DEPRIO/25 | ASP: 65301 | LM: # | NH Weight: N/A | MED: 10 | ID: 5 (rcvd) 6 (sent) | Weight: 20 | IgpCost: 100"
+      "*@  from 1.2.3.4 (one.two.three.four) via 8.0.0.1 | LBW: None | Origin: INCOMPLETE | LP: SAMPL1/25 | ASP: 64712 | LM: # | NH Weight: N/A | MED: 10 | ID: 5 (rcvd) 6 (sent) | Weight: 20 | IgpCost: 100"
       "\n    Router/Originator: 2.2.2.3 | ClusterList: [1.1.1.2]\n"
-      "    Communities: FABRIC_POD_RSW_LOOP/65527:12705\n"
+      "    Communities: SAMPLE_LOOPBACK_COM/65221:28734\n"
       "    ExtCommunities: Type(64):SubType(2):AS(3):Value(4)\n"
       "    BestPath Rejection Reason: Router-Id, Filter Criterion: Choose Lowest Value\n";
 
   maskDateInOutput(output);
   EXPECT_EQ(output, expectedOutput);
 }
+TEST_F(CmdShowBgpTableMoreSpecificsTestFixture, wikiDocHooks) {
+  EXPECT_FALSE(CmdShowBgpTableMoreSpecificsTraits::description().empty());
+
+  setupMockedBgpServer();
+  resetBgpMnemonicCaches();
+  EXPECT_CALL(getMockBgp(), getRunningConfig(_))
+      .WillRepeatedly([](std::string& config) { config = "{}"; });
+
+  auto model = CmdShowBgpTableMoreSpecifics::sampleModel();
+  ASSERT_EQ(model.tRibEntries()->size(), 3);
+  model.host() = localhost().getName();
+  model.oobName() = localhost().getOobName();
+  model.ip() = localhost().getIpStr();
+
+  std::stringstream ss;
+  CmdShowBgpTableMoreSpecifics().printOutput(model, ss);
+  const std::string output = ss.str();
+
+  // The covering prefix is part of the result, which is what the description
+  // says and what isSubnet() on the server actually does.
+  EXPECT_THAT(output, HasSubstr("> 2001:db8:1c00::/40"));
+  EXPECT_THAT(output, HasSubstr("> 2001:db8:1c00::/44"));
+  EXPECT_THAT(output, HasSubstr("> 2001:db8:1c10::/44"));
+  // Each more-specific names the peer contributing it, which is the question
+  // the description says this command answers.
+  EXPECT_THAT(
+      output, HasSubstr("from 2001:db8:e11e:1062::5f (fsw002.p001.f01.abc1)"));
+  // The originator moves with the peer, so the second /44 must not report
+  // fsw001's router ID.
+  EXPECT_THAT(output, HasSubstr("Router/Originator: 192.0.2.102"));
+}
+
 } // namespace facebook::fboss

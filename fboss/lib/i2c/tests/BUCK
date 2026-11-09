@@ -10,9 +10,9 @@ cpp_unittest(
     ],
     network_access = network_access_utils.none(),
     deps = [
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly/logging:logging",
+        "fbsource//xplat/folly/testing:test_util",
         "//fboss/lib/i2c:i2c_ctrl",
-        "//folly:file_util",
-        "//folly/logging:logging",
-        "//folly/testing:test_util",
     ],
 )

@@ -25,6 +25,8 @@ namespace {
 using namespace facebook::fboss;
 using namespace facebook::fboss::utility;
 
+const std::string kMplsDestNoMatchAcl{"mpls-dest-nomatch"};
+
 void addAclEntry(cfg::SwitchConfig& cfg, cfg::AclEntry* acl) {
   if (FLAGS_enable_acl_table_group) {
     auto aclTableGroup = utility::getAclTableGroup(cfg);
@@ -87,6 +89,34 @@ class AgentAclPriorityTest : public AgentHwTest {
     acl.dscp() = 0x24;
     utility::addEtherTypeToAcl(asic, &acl, cfg::EtherType::IPv6);
     addAclEntry(cfg, &acl);
+  }
+
+  // Add an ACL whose only matcher is PACKET_LOOKUP_RESULT_MPLS_NO_MATCH, a
+  // matcher SaiSwitch does not support.
+  void addMplsDestNoMatchAcl(cfg::SwitchConfig& cfg) {
+    auto acl = cfg::AclEntry();
+    *acl.name() = kMplsDestNoMatchAcl;
+    *acl.actionType() = cfg::AclActionType::PERMIT;
+    acl.packetLookupResult() =
+        cfg::PacketLookupResultType::PACKET_LOOKUP_RESULT_MPLS_NO_MATCH;
+    addAclEntry(cfg, &acl);
+  }
+
+  int numConfiguredAcls(cfg::SwitchConfig& cfg) const {
+    if (FLAGS_enable_acl_table_group) {
+      auto* aclTableGroup = utility::getAclTableGroup(cfg);
+      auto tableNumber =
+          utility::getAclTableIndex(aclTableGroup, utility::kDefaultAclTable());
+      return aclTableGroup->aclTables()[tableNumber].aclEntries()->size();
+    }
+    return cfg.acls()->size();
+  }
+
+  int numHwAclEntries() {
+    auto& ensemble = *getAgentEnsemble();
+    auto switchId = scopeResolver().scope(masterLogicalPortIds()[0]).switchId();
+    auto client = ensemble.getHwAgentTestClient(switchId);
+    return client->sync_getAclTableNumAclEntries(utility::kDefaultAclTable());
   }
 };
 
@@ -258,5 +288,82 @@ TEST_F(AgentAclPriorityTest, Reprioritize) {
   };
 
   this->verifyAcrossWarmBoots(setup, []() {}, setupPostWb, []() {});
+}
+
+// An ACL entry whose only matcher is unsupported by SaiSwitch must not be
+// programmed: programming it with no matchers would make it a match-all entry
+// that shadows every entry below it in the table. Today SaiSwitch omits such
+// an entry silently.
+//
+// PACKET_LOOKUP_RESULT_MPLS_NO_MATCH is not implemented by SaiSwitch but an
+// ACL entry with that matcher is erroneously configured on some switches
+// running SAI. We plan to remove that entry over warmboot. This test mimics
+// that workflow to verify it is safe.
+//
+// TODO(skhare): retire once SaiSwitch throws on an unsupported matcher and the
+// mpls-dest-nomatch ACL is removed from the config.
+TEST_F(AgentAclPriorityTest, MplsDestNoMatchAclNotProgrammed) {
+  // Build from initialConfig() rather than getSw()->getConfig(): the latter
+  // returns the config already applied, so the post-warmboot side would append
+  // a second copy of the CoPP entries and never drop mpls-dest-nomatch.
+  auto coppOnlyConfig = [this]() {
+    auto cfg = this->initialConfig(*this->getAgentEnsemble());
+    utility::setDefaultCpuTrafficPolicyConfig(
+        cfg,
+        this->getAgentEnsemble()->getL3Asics(),
+        this->getAgentEnsemble()->isSai());
+    return cfg;
+  };
+
+  auto configWithMplsAcl = [this, coppOnlyConfig]() {
+    auto cfg = coppOnlyConfig();
+    // The erroneous entry is last, as in the affected config.
+    this->addMplsDestNoMatchAcl(cfg);
+    return cfg;
+  };
+
+  auto setup = [this, configWithMplsAcl]() {
+    auto newCfg = configWithMplsAcl();
+    this->applyNewConfig(newCfg);
+  };
+
+  auto verify = [this, configWithMplsAcl]() {
+    auto newCfg = configWithMplsAcl();
+    // The entry must reach SwitchState. Without this the count assertion below
+    // would also hold if the entry had been dropped before SwitchState, which
+    // is a different bug and not the one under test.
+    EXPECT_NE(
+        utility::getAclEntry(
+            this->getProgrammedState(),
+            kMplsDestNoMatchAcl,
+            FLAGS_enable_acl_table_group),
+        nullptr);
+    // Every configured ACL is programmed except mpls-dest-nomatch.
+    EXPECT_EQ(this->numHwAclEntries(), this->numConfiguredAcls(newCfg) - 1);
+  };
+
+  // Mimic the config change that drops the ACL in prod.
+  auto setupPostWarmboot = [this, coppOnlyConfig]() {
+    auto newCfg = coppOnlyConfig();
+    this->applyNewConfig(newCfg); // no mpls-dest-nomatch this time
+  };
+
+  auto verifyPostWarmboot = [this, coppOnlyConfig]() {
+    auto newCfg = coppOnlyConfig();
+    // The config change dropped it from SwitchState too, so the removal path
+    // ran rather than the entry simply never having existed.
+    EXPECT_EQ(
+        utility::getAclEntry(
+            this->getProgrammedState(),
+            kMplsDestNoMatchAcl,
+            FLAGS_enable_acl_table_group),
+        nullptr);
+    // Removing an entry that was never programmed changes nothing. This is the
+    // same absolute count verify() asserted.
+    EXPECT_EQ(this->numHwAclEntries(), this->numConfiguredAcls(newCfg));
+  };
+
+  this->verifyAcrossWarmBoots(
+      setup, verify, setupPostWarmboot, verifyPostWarmboot);
 }
 } // namespace facebook::fboss

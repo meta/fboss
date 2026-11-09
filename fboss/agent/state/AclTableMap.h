@@ -77,8 +77,6 @@ class AclTableMap : public ThriftMapNode<AclTableMap, AclTableMapTraits> {
     return size();
   }
 
-  AclTableMap* modify(std::shared_ptr<SwitchState>* state);
-
   /*
    * The following functions modify the static state.
    * These should only be called on unpublished objects which are only visible

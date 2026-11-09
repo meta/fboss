@@ -34,37 +34,7 @@ namespace facebook::fboss {
 
 namespace {
 
-// Git-relative paths of the two config files tracked in the /etc/coop repo.
-constexpr auto kAgentGitRelPath = "cli/agent.conf";
-constexpr auto kBgpGitRelPath = "bgpcpp/bgpcpp.conf";
-
-// A diffable config domain. The agent config and the BGP config are tracked in
-// the same /etc/coop git repo but live in different files; `config session
-// diff` shows whichever domain(s) are staged/relevant.
-struct DiffDomain {
-  std::string name; // "Agent" / "BGP" (section header when >1 domain shown)
-  std::string gitRelPath; // path in the git repo (e.g. cli/agent.conf)
-  std::string systemPath; // current live file
-  std::string sessionPath; // staged session file (~/.fboss2/...)
-  bool staged; // a session edit is staged for this domain
-};
-
-std::vector<DiffDomain> allDomains(ConfigSession& session) {
-  return {
-      DiffDomain{
-          "Agent",
-          kAgentGitRelPath,
-          session.getSystemConfigPath(),
-          session.getSessionConfigPath(),
-          session.sessionExists()},
-      DiffDomain{
-          "BGP",
-          kBgpGitRelPath,
-          session.getBgpSystemConfigPath(),
-          session.getBgpSessionConfigPath(),
-          session.bgpSessionExists()},
-  };
-}
+using ConfigDomain = ConfigSession::ConfigDomain;
 
 // Read a file, returning empty content (not an error) when it doesn't exist.
 std::string readFileOrEmpty(const std::string& path) {
@@ -76,20 +46,24 @@ std::string readFileOrEmpty(const std::string& path) {
 // Get config content from a revision specifier for a specific domain file.
 // "current" reads the live system file. A path absent at the given revision
 // (e.g. a commit predating BGP config) is treated as empty content.
+// validationPath is a file present in every commit, used to distinguish a
+// genuinely invalid revision from a domain simply absent there.
 std::pair<std::string, std::string> getRevisionContent(
     const std::string& revision,
-    const DiffDomain& domain,
+    const ConfigDomain& domain,
+    const std::string& validationPath,
+    ConfigSession& session,
     Git& git) {
   if (revision == "current") {
-    return {readFileOrEmpty(domain.systemPath), "current live config"};
+    return {
+        readFileOrEmpty(session.getCurrentConfigPath(domain.service)),
+        "current live config"};
   }
   std::string resolvedSha = git.resolveRef(revision);
   // Verify the revision is real before treating a missing domain path as empty.
-  // cli/agent.conf is present in every commit (including the initial one), so a
-  // genuinely invalid revision throws here and propagates; only a path absent
-  // at an otherwise-valid revision (e.g. bgpcpp.conf before BGP existed) is
-  // treated as empty.
-  git.fileAtRevision(resolvedSha, kAgentGitRelPath);
+  // A genuinely invalid revision throws here and propagates; only a path absent
+  // at an otherwise-valid revision is treated as empty.
+  git.fileAtRevision(resolvedSha, validationPath);
   std::string content;
   try {
     content = git.fileAtRevision(resolvedSha, domain.gitRelPath);
@@ -186,35 +160,34 @@ CmdConfigSessionDiffTraits::RetType CmdConfigSessionDiff::queryClient(
   auto& session =
       ConfigSession::getInstance(ConfigSession::SessionInit::ReadOnly);
   auto& git = session.getGit();
-  auto domains = allDomains(session);
+  auto domains = session.configDomains();
+
+  // Metadata is present even before either service establishes its baseline.
+  const std::string validationPath = "cli/cli_metadata.json";
 
   // Modes 1 and 2 both diff each staged domain's session file against some
   // "base" (current live config for mode 1; a revision for mode 2). The only
   // difference is how the base content+label is obtained, so share the loop.
   auto diffStagedDomains =
       [&](const std::function<std::pair<std::string, std::string>(
-              const DiffDomain&)>& getBase) {
-        int stagedCount = 0;
+              const ConfigDomain&)>& getBase) {
+        // Read each domain's staged content once via the shared primitive
+        // (nullopt == not staged), so we neither re-stat nor re-read files.
+        std::vector<std::pair<ConfigDomain, std::string>> staged;
         for (const auto& d : domains) {
-          stagedCount += d.staged ? 1 : 0;
+          if (auto content = session.readStagedContent(d)) {
+            staged.emplace_back(d, std::move(*content));
+          }
         }
         std::string out;
-        for (const auto& d : domains) {
-          if (!d.staged) {
-            continue;
-          }
+        for (const auto& [d, sessionContent] : staged) {
           auto [baseContent, baseLabel] = getBase(d);
-          std::string sessionContent;
-          if (!folly::readFile(d.sessionPath.c_str(), sessionContent)) {
-            throw std::runtime_error(
-                "Failed to read session config from " + d.sessionPath);
-          }
           appendSection(
               out,
               d.name,
               executeDiff(
                   baseContent, sessionContent, baseLabel, "session config"),
-              stagedCount > 1);
+              staged.size() > 1);
         }
         return out;
       };
@@ -224,9 +197,10 @@ CmdConfigSessionDiffTraits::RetType CmdConfigSessionDiff::queryClient(
     if (!session.hasActiveSession()) {
       return "No config session exists. Make a config change first.";
     }
-    return diffStagedDomains([&](const DiffDomain& d) {
+    return diffStagedDomains([&](const ConfigDomain& d) {
       return std::make_pair(
-          readFileOrEmpty(d.systemPath), std::string("current live config"));
+          readFileOrEmpty(session.getCurrentConfigPath(d.service)),
+          std::string("current live config"));
     });
   }
 
@@ -235,8 +209,8 @@ CmdConfigSessionDiffTraits::RetType CmdConfigSessionDiff::queryClient(
     if (!session.hasActiveSession()) {
       return "No config session exists. Make a config change first.";
     }
-    return diffStagedDomains([&](const DiffDomain& d) {
-      return getRevisionContent(revisions[0], d, git);
+    return diffStagedDomains([&](const ConfigDomain& d) {
+      return getRevisionContent(revisions[0], d, validationPath, session, git);
     });
   }
 
@@ -247,8 +221,10 @@ CmdConfigSessionDiffTraits::RetType CmdConfigSessionDiff::queryClient(
     // when more than one domain is shown.
     std::vector<std::pair<std::string, std::string>> sections; // {name, body}
     for (const auto& d : domains) {
-      auto [c1, l1] = getRevisionContent(revisions[0], d, git);
-      auto [c2, l2] = getRevisionContent(revisions[1], d, git);
+      auto [c1, l1] =
+          getRevisionContent(revisions[0], d, validationPath, session, git);
+      auto [c2, l2] =
+          getRevisionContent(revisions[1], d, validationPath, session, git);
       if (c1.empty() && c2.empty()) {
         continue; // domain absent at both revisions
       }

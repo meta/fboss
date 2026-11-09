@@ -8,14 +8,30 @@ The main entry point is the `getdeps.py` script.  This script has several
 subcommands, but the most notable is the `build` command.  This will download
 and build all dependencies for a project, and then build the project itself.
 
+`getdeps.py` requires Python 3.6 or newer and enforces this at startup.
+
 ## Deployment
 
 This directory is copied literally into a number of different Facebook open
 source repositories.  Any change made to code in this directory will be
 automatically be replicated by our open source tooling into all GitHub hosted
 repositories that use `fbcode_builder`.  Typically this directory is copied
-into the open source repositories as `build/fbcode_builder/`.
+into the open source repositories as `build/fbcode_builder/`, or as
+`tool/fbcode_builder/` for a project whose manifest sets
+`shipit_fbcode_builder_layout = tool`.
 
+
+## Vendoring dependencies for offline builds
+
+Distributions typically require builds to run without network access and to
+ship third-party sources alongside the project.  `getdeps.py vendor
+--output-dir DIR project` copies the source tree of every dependency that is
+not satisfied by system packages to `DIR/<project>` and records what it
+vendored in `DIR/getdeps-vendor.txt`.  A later `getdeps.py --vendor-dir DIR
+build project` then takes those trees instead of fetching, and fails if a
+dependency is missing from `DIR` rather than downloading it.  Pass the same
+`--allow-system-packages` and `--no-tests` options to both commands so they
+agree on the dependency set.
 
 # Project Configuration Files
 

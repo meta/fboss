@@ -140,13 +140,15 @@ struct SaiMySidEntryTraits {
 
   using AdapterKey = MySidEntry;
   using AdapterHostKey = MySidEntry;
+  // TunnelId is intentionally excluded because some SDKs return
+  // SAI_STATUS_ITEM_NOT_FOUND when it is queried for non-decap behaviors.
+  // Decap entries program it explicitly after creation.
   using CreateAttributes = std::tuple<
       Attributes::EndpointBehavior,
       Attributes::EndpointBehaviorFlavor,
       Attributes::NextHopId,
       std::optional<Attributes::Vrf>,
-      Attributes::PacketAction,
-      std::optional<Attributes::TunnelId>>;
+      Attributes::PacketAction>;
 };
 template <>
 struct IsSaiEntryStruct<SaiMySidEntryTraits::MySidEntry>

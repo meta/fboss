@@ -1,0 +1,13 @@
+{
+  "_provenance": "MinSizeRel-only budgets from in-house OSS CMake/clang isolated-TU runs (SAI_BRCM_IMPL 15.4.0.0_odp + sai 1.18.1). VmPeak here is VSZ, capped by a 30 GiB RLIMIT_AS on the measuring job. measured_gib is the worst observed peak; vmpeak_gib adds 10% headroom for first sightings, existing ceilings never move. Budgets do not cover other build types: ServiceHandler RelWithDebInfo measured 17.13 GiB, sized instead by the 22 GiB per-TU assumption feeding pool depth in fsdb_pool.py. Add TUs only with measured peaks via check --update-budgets; never invent numbers. TODO: extend coverage to the remaining heavy_fsdb_pool TUs (FsdbCowStateStorage, thrift-struct instantiations, subscription managers) once isolated-TU peaks are measured.",
+  "tus": {
+    "FsdbNaivePeriodicSubscribableStateStorage": {
+      "vmpeak_gib": 16.0,
+      "measured_gib": 15.03
+    },
+    "ServiceHandler": {
+      "vmpeak_gib": 14.5,
+      "measured_gib": 13.4
+    }
+  }
+}

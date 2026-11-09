@@ -12,6 +12,7 @@
 #include "fboss/lib/ThriftMethodRateLimitSetup.h"
 
 #include <folly/io/async/EventBase.h>
+#include <folly/logging/xlog.h>
 #include <gflags/gflags.h>
 #include <thrift/lib/cpp2/async/MultiplexAsyncProcessor.h>
 #include <thrift/lib/cpp2/server/ThriftServer.h>
@@ -20,6 +21,8 @@
 #include <variant>
 
 #include "fboss/lib/ThriftServiceUtils.h"
+#include "fboss/platform/helpers/PlatformThriftAcceptor.h"
+#include "fboss/platform/helpers/PlatformThriftAcceptorUtil.h"
 
 DEFINE_int32(thrift_idle_timeout, 60, "Thrift idle timeout in seconds.");
 // Programming 16K routes can take 20+ seconds
@@ -45,6 +48,20 @@ DEFINE_bool(
     thrift_rate_limit_shadow_mode,
     true,
     "Run thrift rate limit in shadow mode");
+
+DEFINE_bool(
+    agent_enable_thrift_acceptor,
+    false,
+    "If set, install a connection-level acceptor that admits Thrift "
+    "connections only from loopback or --agent_trusted_subnets and rejects all "
+    "others. Off by default to preserve existing behavior.");
+
+DEFINE_string(
+    agent_trusted_subnets,
+    "",
+    "Comma-separated CIDR subnets, in addition to loopback (which is always "
+    "permitted), allowed to connect when --agent_enable_thrift_acceptor is "
+    "set. FBOSS control traffic is IPv6-only; e.g. \"2001:db8::/32\".");
 
 namespace {
 // The worst performance of programming acceptable route scale is 28s across
@@ -130,6 +147,21 @@ std::unique_ptr<apache::thrift::ThriftServer> setupThriftServer(
     addresses.push_back(address);
   }
   server->setAddresses(addresses);
+
+  // The agent FbossCtrl Thrift server binds all interfaces. Internal builds
+  // authenticate connections via SSL + ThriftAclCheckerModule; the OSS build
+  // has no such auth. When enabled, admit only loopback plus configured
+  // trusted subnets, rejecting off-box peers at accept time before any RPC
+  // dispatches.
+  if (FLAGS_agent_enable_thrift_acceptor) {
+    auto trustedSubnets =
+        platform::helpers::parseTrustedSubnets(FLAGS_agent_trusted_subnets);
+    XLOG(INFO) << "Thrift connection acceptor enabled: admitting loopback + "
+               << trustedSubnets.size() << " trusted subnet(s)";
+    server->setAcceptorFactory(
+        std::make_shared<platform::helpers::PlatformThriftAcceptorFactory>(
+            server.get(), std::move(trustedSubnets)));
+  }
   server->setIdleTimeout(std::chrono::seconds(FLAGS_thrift_idle_timeout));
 
   std::map<std::string, double> method2QpsLimit = {};

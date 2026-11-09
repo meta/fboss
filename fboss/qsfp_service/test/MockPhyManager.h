@@ -24,7 +24,11 @@ class MockPhyManager : public PhyManager {
   // Mock the programOnePort method that was requested
   MOCK_METHOD4(
       programOnePort,
-      void(PortID, cfg::PortProfileID, std::optional<TransceiverInfo>, bool));
+      void(
+          PortID,
+          cfg::PortProfileID,
+          const std::optional<TransceiverInfo>&,
+          bool));
 
   // Mock the pure virtual methods from PhyManager
   MOCK_CONST_METHOD1(getPhyIDInfo, phy::PhyIDInfo(GlobalXphyID));
@@ -43,7 +47,17 @@ class MockPhyManager : public PhyManager {
     wLocked->lineLanes = std::move(lineLanes);
   }
 
+  bool isSaiPhyManager() const override {
+    return isSaiPhyManager_;
+  }
+
+  void setIsSaiPhyManager(bool isSaiPhyManager) {
+    isSaiPhyManager_ = isSaiPhyManager;
+  }
+
  private:
+  bool isSaiPhyManager_{false};
+
   // Mock the pure virtual private methods
   MOCK_METHOD2(
       createExternalPhy,

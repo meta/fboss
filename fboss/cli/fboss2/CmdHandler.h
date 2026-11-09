@@ -10,6 +10,7 @@
 #pragma once
 
 #include "fboss/cli/fboss2/CmdArgsLists.h"
+#include "fboss/cli/fboss2/CmdList.h"
 #include "fboss/cli/fboss2/utils/AggregateUtils.h"
 #include "fboss/cli/fboss2/utils/CmdUtilsCommon.h"
 #include "fboss/cli/fboss2/utils/FilterUtils.h"
@@ -67,11 +68,6 @@ struct resolve_arg_types<void> {
   using unfiltered_type = std::tuple<>;
 };
 
-enum class CliReadWriteMode {
-  CLI_MODE_WRITE,
-  CLI_MODE_READ,
-};
-
 struct BaseCommandTraits {
   // Only for top level commands, nested subcommands will override this
   using ParentCmd = void;
@@ -80,8 +76,10 @@ struct BaseCommandTraits {
       utils::ObjectArgTypeId::OBJECT_ARG_TYPE_ID_NONE;
   static constexpr bool ALLOW_FILTERING = false;
   static constexpr bool ALLOW_AGGREGATION = false;
+  static constexpr bool IS_LOCAL_COMMAND = false;
   static constexpr CliReadWriteMode CLI_READ_WRITE_MODE =
       CliReadWriteMode::CLI_MODE_WRITE;
+  static constexpr bool ALLOW_MULTI_HOST = false;
   std::vector<utils::LocalOption> LocalOptions = {};
 
   // Default: no positional argument. Config commands override this.
@@ -92,6 +90,7 @@ struct BaseCommandTraits {
 struct ReadCommandTraits : public BaseCommandTraits {
   static constexpr CliReadWriteMode CLI_READ_WRITE_MODE =
       CliReadWriteMode::CLI_MODE_READ;
+  static constexpr bool ALLOW_MULTI_HOST = true;
 };
 
 struct WriteCommandTraits : public BaseCommandTraits {
@@ -134,10 +133,9 @@ inline constexpr bool kHasCliDocs =
      detail::HasClassCliDescription<Cmd>::value) &&
     detail::HasCliSampleModel<Cmd>::value;
 
-// Enforced at the commandHandler<T>() bind point (forward-declared in
-// CmdList.h): every read ("show") command must carry the CLI reference-wiki
-// hooks unless explicitly grandfathered with CliDocsExempt. No-op for write
-// commands.
+// Enforced at the commandHandler<T> bind point: every read ("show") command
+// must carry the CLI reference-wiki hooks unless explicitly grandfathered with
+// CliDocsExempt. No-op for write commands.
 template <typename T>
 void assertReadCommandDocumented() {
   if constexpr (
@@ -149,6 +147,18 @@ void assertReadCommandDocumented() {
         "class, or tag its Traits with CliDocsExempt to defer.");
   }
 }
+
+template <typename T>
+void runCommand() {
+  assertReadCommandDocumented<T>();
+  T().run();
+}
+
+template <typename T>
+inline constexpr CommandRunner commandHandler{
+    &runCommand<T>,
+    T::Traits::CLI_READ_WRITE_MODE,
+    kHasCliDocs<T>};
 
 template <typename CmdTypeT, typename CmdTypeTraits>
 class CmdHandler {
@@ -227,7 +237,12 @@ class CmdHandler {
     } catch (std::invalid_argument const& err) {
       errStr = folly::to<std::string>("Invalid argument: ", err.what());
     } catch (std::exception const& err) {
-      errStr = folly::to<std::string>("Thrift call failed: '", err.what(), "'");
+      if constexpr (CmdTypeTraits::IS_LOCAL_COMMAND) {
+        errStr = err.what();
+      } else {
+        errStr =
+            folly::to<std::string>("Thrift call failed: '", err.what(), "'");
+      }
     }
     if (!parsedFilters.empty()) {
       result = filterOutput<CmdTypeT>(result, parsedFilters, validFilterMap);

@@ -333,3 +333,153 @@ TEST(UtilsTest, CreateRtmCtrlConfigs) {
   EXPECT_TRUE(configs[0].fpgaIpBlockConfig()->iobufOffset()->empty());
   EXPECT_TRUE(configs[1].fpgaIpBlockConfig()->iobufOffset()->empty());
 }
+
+namespace {
+PmUnitVersion makeVersion(
+    int16_t productionState,
+    int16_t productionSubState,
+    int16_t respinVariantIndicator) {
+  PmUnitVersion version;
+  version.productionState() = productionState;
+  version.productionSubState() = productionSubState;
+  version.respinVariantIndicator() = respinVariantIndicator;
+  return version;
+}
+
+// A PlatformConfig with one PmUnit "SMB" whose default config has no I2C
+// devices and whose versioned config has one.
+PlatformConfig makeVersionedPlatformConfig(
+    const VersionedPmUnitConfig& versionedPmUnitConfig) {
+  PlatformConfig config;
+  config.pmUnitConfigs() = {{"SMB", PmUnitConfig()}};
+  config.versionedPmUnitConfigs() = {{"SMB", {versionedPmUnitConfig}}};
+  return config;
+}
+
+VersionedPmUnitConfig makeVersionedPmUnitConfig() {
+  VersionedPmUnitConfig versionedPmUnitConfig;
+  versionedPmUnitConfig.pmUnitConfig()->i2cDeviceConfigs() = {
+      I2cDeviceConfig()};
+  return versionedPmUnitConfig;
+}
+
+bool isVersionedConfig(const PmUnitConfig& pmUnitConfig) {
+  return pmUnitConfig.i2cDeviceConfigs()->size() == 1;
+}
+} // namespace
+
+TEST(UtilsTest, ResolvePmUnitConfigMatchesProductSubVersion) {
+  auto versioned = makeVersionedPmUnitConfig();
+  versioned.productSubVersion() = 10;
+  auto config = makeVersionedPlatformConfig(versioned);
+
+  // productSubVersion is matched against RespinVariantIndicator alone.
+  EXPECT_TRUE(isVersionedConfig(
+      Utils::resolvePmUnitConfig(config, "SMB", makeVersion(3, 1, 10))));
+  EXPECT_TRUE(isVersionedConfig(
+      Utils::resolvePmUnitConfig(config, "SMB", makeVersion(9, 9, 10))));
+  EXPECT_FALSE(isVersionedConfig(
+      Utils::resolvePmUnitConfig(config, "SMB", makeVersion(3, 1, 11))));
+}
+
+TEST(UtilsTest, ResolvePmUnitConfigMatchesPmUnitVersions) {
+  auto versioned = makeVersionedPmUnitConfig();
+  // productSubVersion is ignored when pmUnitVersions is present.
+  versioned.productSubVersion() = 10;
+  versioned.pmUnitVersions() = {makeVersion(4, 1, 10)};
+  auto config = makeVersionedPlatformConfig(versioned);
+
+  EXPECT_TRUE(isVersionedConfig(
+      Utils::resolvePmUnitConfig(config, "SMB", makeVersion(4, 1, 10))));
+  EXPECT_FALSE(isVersionedConfig(
+      Utils::resolvePmUnitConfig(config, "SMB", makeVersion(3, 1, 10))));
+}
+
+TEST(UtilsTest, ResolvePmUnitConfigWithoutVersion) {
+  auto versioned = makeVersionedPmUnitConfig();
+  versioned.productSubVersion() = 10;
+  auto config = makeVersionedPlatformConfig(versioned);
+
+  EXPECT_FALSE(isVersionedConfig(
+      Utils::resolvePmUnitConfig(config, "SMB", std::nullopt)));
+}
+
+// A version supplied for a PmUnit that does not exist -- eg. a typo in
+// --pm_unit_version -- must fail loudly rather than silently resolving that
+// PmUnit to its default config.
+TEST(UtilsTest, ResolvePmUnitConfigsRejectsUnknownPmUnit) {
+  auto versioned = makeVersionedPmUnitConfig();
+  versioned.productSubVersion() = 10;
+  auto config = makeVersionedPlatformConfig(versioned);
+  config.platformName() = "sample";
+
+  EXPECT_THROW(
+      Utils::resolvePmUnitConfigs(config, {{"SBM", makeVersion(3, 1, 10)}}),
+      std::invalid_argument);
+}
+
+TEST(UtilsTest, ResolvePmUnitConfigsAppliesVersionsPerPmUnit) {
+  auto versioned = makeVersionedPmUnitConfig();
+  versioned.productSubVersion() = 10;
+  auto config = makeVersionedPlatformConfig(versioned);
+  config.pmUnitConfigs()["SCM"] = PmUnitConfig();
+
+  auto resolved =
+      Utils::resolvePmUnitConfigs(config, {{"SMB", makeVersion(3, 1, 10)}});
+
+  EXPECT_EQ(resolved.size(), config.pmUnitConfigs()->size());
+  EXPECT_TRUE(isVersionedConfig(resolved.at("SMB")));
+  // SCM has no detected version, so it keeps its default config.
+  EXPECT_FALSE(isVersionedConfig(resolved.at("SCM")));
+}
+
+// Callers that detect no versions must observe exactly the pre-versioning
+// behaviour, so that adding version resolution cannot alter any existing
+// caller or platform.
+TEST(UtilsTest, ResolvePmUnitConfigsWithoutVersionsReturnsDefaults) {
+  auto versioned = makeVersionedPmUnitConfig();
+  versioned.productSubVersion() = 10;
+  auto config = makeVersionedPlatformConfig(versioned);
+  config.pmUnitConfigs()["SCM"] = PmUnitConfig();
+
+  const std::map<std::string, PmUnitConfig> expected(
+      config.pmUnitConfigs()->begin(), config.pmUnitConfigs()->end());
+  EXPECT_EQ(Utils::resolvePmUnitConfigs(config, {}), expected);
+}
+
+TEST(UtilsTest, ResolvePmUnitConfigSelectsMatchingVersionedEntry) {
+  auto unmatched = makeVersionedPmUnitConfig();
+  unmatched.productSubVersion() = 9;
+  unmatched.pmUnitConfig()->i2cDeviceConfigs() = {};
+  auto matched = makeVersionedPmUnitConfig();
+  matched.productSubVersion() = 11;
+
+  auto config = makeVersionedPlatformConfig(unmatched);
+  config.versionedPmUnitConfigs()->at("SMB").push_back(matched);
+
+  EXPECT_TRUE(isVersionedConfig(
+      Utils::resolvePmUnitConfig(config, "SMB", makeVersion(3, 1, 11))));
+}
+
+TEST(UtilsTest, ResolvePmUnitConfigMatchesAnyDeclaredPmUnitVersion) {
+  auto versioned = makeVersionedPmUnitConfig();
+  versioned.pmUnitVersions() = {makeVersion(4, 1, 10), makeVersion(5, 0, 2)};
+  auto config = makeVersionedPlatformConfig(versioned);
+
+  EXPECT_TRUE(isVersionedConfig(
+      Utils::resolvePmUnitConfig(config, "SMB", makeVersion(5, 0, 2))));
+  EXPECT_FALSE(isVersionedConfig(
+      Utils::resolvePmUnitConfig(config, "SMB", makeVersion(5, 0, 3))));
+}
+
+// An empty pmUnitVersions list is not a declaration of "matches nothing"; the
+// entry falls back to the legacy productSubVersion form.
+TEST(UtilsTest, ResolvePmUnitConfigEmptyPmUnitVersionsUsesProductSubVersion) {
+  auto versioned = makeVersionedPmUnitConfig();
+  versioned.productSubVersion() = 10;
+  versioned.pmUnitVersions() = {};
+  auto config = makeVersionedPlatformConfig(versioned);
+
+  EXPECT_TRUE(isVersionedConfig(
+      Utils::resolvePmUnitConfig(config, "SMB", makeVersion(3, 1, 10))));
+}

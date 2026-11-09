@@ -527,7 +527,7 @@
     },
     {
       "slotPath": "/SCM_SLOT@0/COMESE_SLOT@0",
-      "pmUnitName": "NETLAKE",
+      "pmUnitName": "NETLAKE20",
       "sensors": [
         {
           "name": "COME_PU1_PVDDCR_VOUT",
@@ -738,9 +738,9 @@
               "compute": "@/1000"
             }
           ],
-          "productProductionState": 1,
-          "productVersion": 2,
-          "productSubVersion": 1
+          "productionState": 1,
+          "productionSubState": 2,
+          "respinVariantIndicator": 1
         },
         {
           "sensors": [
@@ -805,9 +805,9 @@
               "compute": "@/1000"
             }
           ],
-          "productProductionState": 1,
-          "productVersion": 2,
-          "productSubVersion": 2
+          "productionState": 1,
+          "productionSubState": 2,
+          "respinVariantIndicator": 2
         },
         {
           "sensors": [
@@ -872,9 +872,9 @@
               "compute": "@/1000"
             }
           ],
-          "productProductionState": 1,
-          "productVersion": 3,
-          "productSubVersion": 1
+          "productionState": 1,
+          "productionSubState": 3,
+          "respinVariantIndicator": 1
         },
         {
           "sensors": [
@@ -939,9 +939,9 @@
               "compute": "@/1000"
             }
           ],
-          "productProductionState": 1,
-          "productVersion": 3,
-          "productSubVersion": 2
+          "productionState": 1,
+          "productionSubState": 3,
+          "respinVariantIndicator": 2
         }
       ]
     },

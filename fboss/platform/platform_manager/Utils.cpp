@@ -427,4 +427,95 @@ std::vector<RtmCtrlConfig> Utils::createRtmCtrlConfigs(
   }
   return rtmCtrlConfigs;
 }
+
+namespace {
+bool versionMatches(
+    const VersionedPmUnitConfig& versionedPmUnitConfig,
+    const PmUnitVersion& version) {
+  auto pmUnitVersions = versionedPmUnitConfig.pmUnitVersions();
+  if (pmUnitVersions && !pmUnitVersions->empty()) {
+    for (const auto& pmUnitVersion : *pmUnitVersions) {
+      if (*pmUnitVersion.productionState() == *version.productionState() &&
+          *pmUnitVersion.productionSubState() ==
+              *version.productionSubState() &&
+          *pmUnitVersion.respinVariantIndicator() ==
+              *version.respinVariantIndicator()) {
+        return true;
+      }
+    }
+    return false;
+  }
+  // Legacy form: productSubVersion is matched against the
+  // RespinVariantIndicator (EEPROM Type 10), not the ProductionSubState (Type
+  // 9).
+  return versionedPmUnitConfig.productSubVersion() &&
+      *versionedPmUnitConfig.productSubVersion() ==
+      *version.respinVariantIndicator();
+}
+} // namespace
+
+PmUnitConfig Utils::resolvePmUnitConfig(
+    const PlatformConfig& platformConfig,
+    const std::string& pmUnitName,
+    const std::optional<PmUnitVersion>& version) {
+  if (!version) {
+    XLOG(INFO) << fmt::format(
+        "Resolved {} to its default PmUnitConfig. No version was provided.",
+        pmUnitName);
+    return platformConfig.pmUnitConfigs()->at(pmUnitName);
+  }
+  if (platformConfig.versionedPmUnitConfigs()->contains(pmUnitName)) {
+    for (const auto& versionedPmUnitConfig :
+         platformConfig.versionedPmUnitConfigs()->at(pmUnitName)) {
+      if (versionMatches(versionedPmUnitConfig, *version)) {
+        XLOG(INFO) << fmt::format(
+            "Resolved {} to a versioned PmUnitConfig for version {}.{}.{}",
+            pmUnitName,
+            *version->productionState(),
+            *version->productionSubState(),
+            *version->respinVariantIndicator());
+        return *versionedPmUnitConfig.pmUnitConfig();
+      }
+    }
+  }
+  XLOG(INFO) << fmt::format(
+      "Resolved {} to its default PmUnitConfig. "
+      "No versioned config matches version {}.{}.{}",
+      pmUnitName,
+      *version->productionState(),
+      *version->productionSubState(),
+      *version->respinVariantIndicator());
+  return platformConfig.pmUnitConfigs()->at(pmUnitName);
+}
+
+std::map<std::string, PmUnitConfig> Utils::resolvePmUnitConfigs(
+    const PlatformConfig& platformConfig,
+    const std::map<std::string, PmUnitVersion>& pmUnitVersions) {
+  // A version supplied for an unknown PmUnit would otherwise be dropped
+  // silently, leaving that PmUnit resolved to its default config -- exactly the
+  // mismatch callers pass versions to avoid.
+  for (const auto& [pmUnitName, version] : pmUnitVersions) {
+    if (!platformConfig.pmUnitConfigs()->contains(pmUnitName)) {
+      throw std::invalid_argument(
+          fmt::format(
+              "Cannot apply version {}.{}.{}. No PmUnit named {} in {}",
+              *version.productionState(),
+              *version.productionSubState(),
+              *version.respinVariantIndicator(),
+              pmUnitName,
+              *platformConfig.platformName()));
+    }
+  }
+  std::map<std::string, PmUnitConfig> resolved;
+  for (const auto& [pmUnitName, pmUnitConfig] :
+       *platformConfig.pmUnitConfigs()) {
+    std::optional<PmUnitVersion> version;
+    if (auto it = pmUnitVersions.find(pmUnitName); it != pmUnitVersions.end()) {
+      version = it->second;
+    }
+    resolved[pmUnitName] =
+        resolvePmUnitConfig(platformConfig, pmUnitName, version);
+  }
+  return resolved;
+}
 } // namespace facebook::fboss::platform::platform_manager

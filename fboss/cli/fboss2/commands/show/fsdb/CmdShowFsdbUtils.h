@@ -67,6 +67,15 @@ inline std::string optFieldToString(
   return folly::to<std::string>(field.value());
 }
 
+// An absent interval is the server's default cadence, not missing data.
+inline std::string serveIntervalToString(
+    apache::thrift::optional_field_ref<const int32_t&> field) {
+  if (!field.has_value()) {
+    return "default";
+  }
+  return fmt::format("{}s", *field);
+}
+
 } // namespace fsdb_cli_format
 
 } // namespace facebook::fboss

@@ -33,6 +33,10 @@ void getNextHopInfoThrift(
     const NextHopThrift& nextHop,
     cli::NextHopInfo& nextHopInfo);
 
+// " SRv6 SID List [sid,sid]", or empty when the nexthop carries no list.
+// Shared so SRv6 nexthops render the same in every command that shows them.
+std::string getSrv6SidListStr(const cli::NextHopInfo& nextHopInfo);
+
 std::string getNextHopInfoStr(
     const cli::NextHopInfo& nextHopInfo,
     const std::optional<facebook::bgp::nsf_policy::NsfTeWeightEncoding>&

@@ -128,15 +128,21 @@ class AgentMPLSTest : public AgentHwTest {
     auto l3Asics = ensemble.getL3Asics();
     auto asic = checkSameAndGetAsicForTesting(l3Asics);
     auto masterLogicalPorts = ensemble.masterLogicalPortIds();
-    auto config = utility::onePortPerInterfaceConfig(
-        ensemble.getSw(),
-        ensemble.masterLogicalPortIds(),
-        true /*interfaceHasSubnet*/);
-
+    cfg::SwitchConfig config;
     if constexpr (std::is_same_v<PortType, AggregatePortID>) {
-      utility::addAggPort(1, {masterLogicalPorts[0]}, &config);
-      utility::addAggPort(2, {masterLogicalPorts[1]}, &config);
-      utility::addAggPort(3, {masterLogicalPorts[2]}, &config);
+      config = utility::oneAggregatePortPerInterfaceConfig(
+          ensemble.getSw(),
+          masterLogicalPorts,
+          {utility::AggregatePortInfo(
+               AggregatePortID(1), {masterLogicalPorts[0]}),
+           utility::AggregatePortInfo(
+               AggregatePortID(2), {masterLogicalPorts[1]}),
+           utility::AggregatePortInfo(
+               AggregatePortID(3), {masterLogicalPorts[2]})},
+          true /*interfaceHasSubnet*/);
+    } else {
+      config = utility::onePortPerInterfaceConfig(
+          ensemble.getSw(), masterLogicalPorts, true /*interfaceHasSubnet*/);
     }
     cfg::QosMap qosMap;
     for (auto tc = 0; tc < 8; tc++) {
@@ -223,11 +229,12 @@ class AgentMPLSTest : public AgentHwTest {
     }
   }
 
-  void addRoute(LabelID label, LabelNextHopEntry& nexthop) {
+  // Takes nexthops directly; the entry was only read for its inline set.
+  void addRoute(LabelID label, const RouteNextHopSet& nhops) {
     auto updater = getAgentEnsemble()->getRouteUpdaterWrapper();
     MplsRoute route;
     route.topLabel() = label;
-    route.nextHops() = util::fromRouteNextHopSet(nexthop.getNextHopSet());
+    route.nextHops() = util::fromRouteNextHopSet(nhops);
     updater->addRoute(ClientID::BGPD, route);
     updater->program();
   }
@@ -583,9 +590,8 @@ TYPED_TEST(AgentMPLSTest, Pop2Cpu) {
 TYPED_TEST(AgentMPLSTest, punt2Cpu) {
   auto setup = [=, this]() {
     this->setup();
-    LabelNextHopEntry nexthop{
-        LabelNextHopEntry::Action::TO_CPU, AdminDistance::MAX_ADMIN_DISTANCE};
-    this->addRoute(LabelID(1101), nexthop);
+    // An empty set is the TO_CPU case, all the old entry argument conveyed.
+    this->addRoute(LabelID(1101), RouteNextHopSet{});
   };
   auto verify = [=, this]() {
     utility::SwSwitchPacketSnooper snooper(this->getSw(), "punt2cpu-verifier");

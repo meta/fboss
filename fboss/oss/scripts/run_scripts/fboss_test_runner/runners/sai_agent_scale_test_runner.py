@@ -20,6 +20,7 @@ from fboss_test_runner.services.fboss_agent_utils import (
     cleanup_hw_agent_service,
     setup_and_start_hw_agent_service,
 )
+from npu_sdk_utils import NPU_HW_AGENT_BINARY
 
 
 class SaiAgentScaleTestRunner(TestRunner):
@@ -74,6 +75,14 @@ class SaiAgentScaleTestRunner(TestRunner):
             return "sai_agent_scale_test-sai_impl"
 
         return "multi_switch_agent_scale_test"
+
+    def _get_npu_sdk_metadata_binary_name(self) -> str:
+        # In multi-switch mode the test binary drives the software agent and
+        # does not link the NPU SDK; the separate hardware agent does. The
+        # monolithic test binary links the SDK itself.
+        if self.args.agent_run_mode == SUB_ARG_AGENT_RUN_MODE_MULTI:
+            return NPU_HW_AGENT_BINARY
+        return self._get_test_binary_name()
 
     def _get_sai_replayer_logging_flags(
         self, sai_replayer_log_path: str | None

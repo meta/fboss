@@ -306,6 +306,12 @@ DEFINE_bool(
     "(sai_stats_support); leave off otherwise.");
 
 DEFINE_bool(
+    allow_mixed_ip_srv6_nhop_groups,
+    false,
+    "Allow routes whose next-hop group mixes SRv6 next hops with plain IP "
+    "next hops. When false, RibToSwitchStateUpdater rejects such routes.");
+
+DEFINE_bool(
     enable_srv6_nexthop_resource_protection,
     true,
     "Enable SRv6 next hop resource protection in ResourceAccountant");
@@ -397,6 +403,13 @@ DEFINE_bool(
     false,
     "Resolve nexthops from NextHopSetID in FibInfo maps instead of inline nexthops");
 
+DEFINE_bool(
+    drop_inline_nexthops_with_id,
+    false,
+    "Drop inline nexthops from route entries that carry a NextHopSetID. SAI "
+    "only; requires resolve_nexthops_from_id and enable_nexthop_id_manager, "
+    "and turning either of those off afterwards needs a cold boot");
+
 DEFINE_int32(
     ecmp_resource_manager_make_before_break_buffer,
     2,
@@ -455,8 +468,6 @@ DEFINE_uint32(
     ecmp_width,
     64,
     "Max ecmp width. Also implies ucmp normalization factor");
-
-DEFINE_bool(enable_th5_ars_scale_mode, false, "Enable ARS scale mode");
 
 DEFINE_bool(
     check_wb_handles,
@@ -551,6 +562,11 @@ DEFINE_int32(
     fsdbStatsStreamIntervalSeconds,
     5,
     "Interval at which stats subscriptions are served");
+
+DEFINE_int32(
+    update_phy_info_interval_s,
+    10,
+    "Update phy info interval in seconds");
 
 DEFINE_bool(
     recover_from_hw_switch,

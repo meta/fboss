@@ -25,6 +25,10 @@ namespace facebook::fboss::utility {
 // Max ECMP width used by RUN_HW_LOAD_BALANCER_TEST macros
 inline constexpr int kSrv6MaxEcmpWidth = 8;
 
+inline constexpr auto kSrv6LegacyLocatorPrefix = "fdad:ffff::/32";
+inline constexpr auto kSrv6PlaneLocatorPrefix = "fdad:20d::/32";
+inline constexpr int16_t kSrv6DecapFunctionId = 0x7fff;
+
 cfg::Srv6Tunnel makeSrv6TunnelConfig(
     const std::string& name,
     InterfaceID interfaceId);
@@ -54,6 +58,9 @@ cfg::MySidConfig makeAdjacencyMySidConfig(
     const std::string& portName,
     const std::string& locatorPrefix,
     int functionId);
+
+cfg::MySidConfig makeDecapMySidConfig(
+    const std::vector<std::string>& locatorPrefixes);
 
 // Poll until a MySid entry with the given prefix reaches the expected
 // resolved/unresolved state. Must be called from within a test context

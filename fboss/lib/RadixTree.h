@@ -5,6 +5,7 @@
 
 #include <sys/socket.h>
 #include <algorithm>
+#include <cstring>
 #include <exception>
 #include <functional>
 #include <memory>

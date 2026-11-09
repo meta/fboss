@@ -119,15 +119,13 @@ int XcvrLib::computeResetHoldHi() const {
       return 0;
     case BspVendor::Arista: {
       // Arista flipped the xcvr reset line to active-high starting at this BSP
-      // version. Gate on the version actually installed for the running kernel
-      // rather than the config-declared version, since install order is not
-      // monotonic. Fail safe to active-low (0) when it can't be resolved.
+      // version. Gate on the version of the loaded driver rather than the
+      // config-declared one, since install order is not monotonic. Fail safe
+      // to active-low (0) when it can't be resolved.
       static constexpr platform::platform_manager::package_manager::BspVersion
           kAristaActiveHighThreshold{0, 7, 23};
-      auto installedVersion =
-          systemInterface_->getInstalledBspVersion(bspKmodsRpmName);
-      return (installedVersion &&
-              *installedVersion >= kAristaActiveHighThreshold)
+      auto loadedVersion = getLoadedBspVersion();
+      return (loadedVersion && *loadedVersion >= kAristaActiveHighThreshold)
           ? 1
           : 0;
     }
@@ -136,6 +134,40 @@ int XcvrLib::computeResetHoldHi() const {
       return 1;
   }
   return 1;
+}
+
+std::optional<platform::platform_manager::package_manager::BspVersion>
+XcvrLib::getLoadedBspVersion() const {
+  // Every Arista BSP kmod declares MODULE_VERSION(BSP_VERSION), so any
+  // xcvr_ctrl whose bound driver reports a parseable version identifies the
+  // loaded BSP.
+  std::optional<std::string> firstUnparseable;
+  for (int xcvrId = 1; xcvrId <= numXcvrs_; ++xcvrId) {
+    const auto ctrlPath = fmt::format("/run/devmap/xcvrs/xcvr_ctrl_{}", xcvrId);
+    auto version = systemInterface_->getBoundDriverVersion(ctrlPath);
+    if (!version) {
+      continue;
+    }
+    auto bspVersion =
+        platform::platform_manager::package_manager::BspVersion::fromString(
+            *version);
+    if (!bspVersion) {
+      if (!firstUnparseable) {
+        firstUnparseable = fmt::format("'{}' from {}", *version, ctrlPath);
+      }
+      continue;
+    }
+    XLOG(INFO) << fmt::format(
+        "Resolved loaded BSP version {} from the driver bound to {}",
+        *version,
+        ctrlPath);
+    return bspVersion;
+  }
+  XLOG(ERR) << fmt::format(
+      "No xcvr_ctrl device has a bound driver reporting a parseable BSP "
+      "version (first unparseable: {})",
+      firstUnparseable.value_or("none"));
+  return std::nullopt;
 }
 
 // --- Transceiver path queries ---

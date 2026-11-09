@@ -31,19 +31,24 @@
 #include <vector>
 #include "fboss/agent/FbossError.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
+#include "fboss/agent/if/gen-cpp2/FbossCtrl.h"
 #include "fboss/agent/platforms/common/PlatformMapping.h"
 #include "fboss/cli/fboss2/commands/config/QueueConfigUtils.h"
 #include "fboss/cli/fboss2/commands/config/interface/InterfaceIpUtils.h"
-#include "fboss/cli/fboss2/commands/config/interface/ProfileValidation.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
+#include "fboss/cli/fboss2/utils/CmdClientUtilsCommon.h"
 #include "fboss/cli/fboss2/utils/CmdUtilsCommon.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
 #include "fboss/cli/fboss2/utils/InterfaceList.h"
-#include "fboss/lib/config/AgentConfigUtils.h"
+#include "fboss/cli/fboss2/utils/LookupClassUtils.h"
+#include "fboss/lib/config/agent/PortConfigUtils.h"
+#include "fboss/qsfp_service/if/gen-cpp2/QsfpService.h"
 
 namespace facebook::fboss {
 
 namespace {
+
+using lookup_class::parseLookupClassId;
 // Set of known attribute names (lowercase for case-insensitive comparison).
 // The lldp-expected-* names come from the shared lldpAttrToTag() list so the
 // config and delete commands cannot drift apart.
@@ -96,6 +101,22 @@ std::optional<std::string> findProfileValue(
 
 } // namespace
 
+cfg::PortProfileID parsePortProfile(const std::string& profile) {
+  cfg::PortProfileID result{};
+  if (!apache::thrift::TEnumTraits<cfg::PortProfileID>::findValue(
+          profile, &result)) {
+    throw std::invalid_argument(
+        fmt::format(
+            "Invalid profile value '{}': not a valid PortProfileID. "
+            "Valid values include: PROFILE_10G_1_NRZ_NOFEC, "
+            "PROFILE_100G_4_NRZ_RS528_COPPER, "
+            "PROFILE_400G_8_PAM4_RS544X2N_OPTICAL, ... (see PortProfileID "
+            "enum in switch_config.thrift)",
+            profile));
+  }
+  return result;
+}
+
 InterfacesConfig::InterfacesConfig(const std::vector<std::string>& v)
     : InterfaceAttrArgsBase(
           kKnownAttributes,
@@ -103,6 +124,18 @@ InterfacesConfig::InterfacesConfig(const std::vector<std::string>& v)
           "attribute",
           kValidConfigAttrs) {
   auto portNames = parseTokens(v);
+
+  // Treat repeated names as one target so each interface is configured once,
+  // while retaining the command-line order for output and diagnostics.
+  std::unordered_set<std::string> seenPortNames;
+  portNames.erase(
+      std::remove_if(
+          portNames.begin(),
+          portNames.end(),
+          [&seenPortNames](const auto& portName) {
+            return !seenPortNames.insert(portName).second;
+          }),
+      portNames.end());
 
   // A `profile` attribute can CREATE an absent-but-valid INTERFACE_PORT, so its
   // names are allowed to be missing from the running config at resolution time
@@ -115,126 +148,83 @@ InterfacesConfig::InterfacesConfig(const std::vector<std::string>& v)
   interfaces_ = utils::InterfaceList(std::move(portNames), allowMissing);
 }
 
-namespace {
-// Resolve a port name by logical id within the config (for output/messages).
-// Callers pass ids known to be present in the config, so a missing port is a
-// broken invariant and is surfaced rather than silently masked. Unnamed ports
-// fall back to the agent's default naming convention ("port" + logicalID, see
-// ThriftHandlerUtils.h).
-std::string portNameForId(const cfg::SwitchConfig& cfg, PortID id) {
-  for (const auto& p : *cfg.ports()) {
-    if (PortID(*p.logicalID()) == id) {
-      return p.name().has_value()
-          ? *p.name()
-          : folly::to<std::string>("port", *p.logicalID());
-    }
-  }
-  throw std::runtime_error(
-      fmt::format(
-          "Port with logical ID {} not found in config",
-          static_cast<uint32_t>(id)));
-}
-} // namespace
-
 std::string applyProfileImpl(
-    ProfileValidator& validator,
     cfg::SwitchConfig& swConfig,
+    const PlatformMapping& platformMapping,
+    const utility::PortProfileSupportMap& qsfpSupportedProfiles,
     const utils::InterfaceList& interfaces,
     const std::string& value,
     cli::ConfigActionLevel* actionLevel) {
   // Parse once (throws std::invalid_argument on a bad string) and thread the
   // enum through the rest of the flow.
-  const cfg::PortProfileID requestedProfile =
-      ProfileValidator::parseProfile(value);
-
-  // 1) Pre-check absent (getPort()==nullptr) requested ports without mutating:
-  //    each must resolve to a creatable INTERFACE_PORT.
-  const PlatformMapping& pm = validator.getPlatformMapping();
-  std::vector<std::pair<std::string, PortID>> pending;
-  for (const utils::Intf& intf : interfaces) {
+  const cfg::PortProfileID requestedProfile = parsePortProfile(value);
+  for (const auto& intf : interfaces) {
     if (intf.getPort() != nullptr) {
       continue;
     }
-    const std::string& name = intf.name();
-
-    PortID id;
+    PortID portID;
     try {
-      id = pm.getPortID(name);
-    } catch (const FbossError& e) {
+      portID = platformMapping.getPortID(intf.name());
+    } catch (const FbossError& error) {
       throw std::invalid_argument(
-          fmt::format("{} is not a valid platform port: {}", name, e.what()));
+          fmt::format(
+              "{} is not a valid platform port: {}",
+              intf.name(),
+              error.what()));
     }
-
-    if (*pm.getPlatformPort(static_cast<int32_t>(id)).mapping()->portType() !=
+    if (*platformMapping.getPlatformPort(portID).mapping()->portType() !=
         cfg::PortType::INTERFACE_PORT) {
       throw std::invalid_argument(
-          fmt::format("Only interface ports can be created: {}", name));
+          fmt::format("Only interface ports can be created: {}", intf.name()));
     }
-
-    pending.emplace_back(name, id);
   }
 
-  // 2) Validate the whole change (present + absent ports) at the new profile.
-  //    Non-mutating: throws before any port is adjusted, removed, or created.
-  auto result = validator.validateProfileChange(
-      swConfig, interfaces.getNames(), requestedProfile);
-
-  // 3) Adjust EXISTING ports first (before any removal/creation), capturing the
-  //    speed here from a resolved PortID so the report never needs a name
-  //    lookup (which could throw) after mutation.
-  cfg::PortSpeed profileSpeed = cfg::PortSpeed::DEFAULT;
-  bool speedResolved = false;
-  for (const utils::Intf& intf : interfaces) {
-    cfg::Port* port = intf.getPort();
-    if (!port) {
-      continue;
-    }
-    PortID portId(static_cast<uint32_t>(*port->logicalID()));
-    profileSpeed = validator.getProfileSpeed(portId, requestedProfile);
-    speedResolved = true;
-    port->profileID() = requestedProfile;
-    port->speed() = profileSpeed;
-  }
-  // A pending-only request has no existing port above; derive the speed from an
-  // already-resolved pending PortID.
-  if (!speedResolved && !pending.empty()) {
-    profileSpeed =
-        validator.getProfileSpeed(pending.front().second, requestedProfile);
+  std::vector<utility::PortProfileRequest> requests;
+  requests.reserve(interfaces.size());
+  for (const auto& portName : interfaces.getNames()) {
+    requests.push_back({.portName = portName, .profileID = requestedProfile});
   }
 
-  // 4) Remove the subsumed ports (+ dependents); capture their names first.
+  utility::PortProfileChangeResult result;
+  try {
+    result = utility::applyPortProfileChanges(
+        swConfig, platformMapping, requests, qsfpSupportedProfiles);
+  } catch (const FbossError& error) {
+    throw std::invalid_argument(error.what());
+  }
+
+  const auto profileSpeed = result.requestedPorts.empty()
+      ? cfg::PortSpeed::DEFAULT
+      : result.requestedPorts.front().speed;
   std::vector<std::string> removedNames;
-  if (!result.portsToRemove.empty()) {
-    for (PortID id : result.portsToRemove) {
-      removedNames.push_back(portNameForId(swConfig, id));
+  removedNames.reserve(result.subsumedPorts.size());
+  for (const auto& [_, portName] : result.subsumedPorts) {
+    removedNames.push_back(portName);
+  }
+  if (!removedNames.empty()) {
+    std::set<PortID> subsumedPortIDs;
+    for (const auto& [portID, _] : result.subsumedPorts) {
+      subsumedPortIDs.insert(portID);
     }
-    utility::removePortsFromConfig(
-        swConfig,
-        std::set<PortID>(
-            result.portsToRemove.begin(), result.portsToRemove.end()));
+    utility::removePortsFromConfig(swConfig, subsumedPortIDs);
+
     // Removing a port must not be applied on a live agent (crashes the SwAgent
     // -- see T281221621); escalate the commit to a coldboot.
     if (actionLevel != nullptr) {
-      *actionLevel =
-          std::max(*actionLevel, cli::ConfigActionLevel::AGENT_COLDBOOT);
+      *actionLevel = std::max(
+          *actionLevel, cli::ConfigActionLevel::DISRUPTIVE_SERVICE_RESTART);
     }
   }
 
-  // 5) Create absent ports now that the config reflects the adjusted/removed
-  //    existing ports.
   std::vector<std::string> createdNames;
-  for (const auto& [name, id] : pending) {
-    utility::addInterfacePortToConfig(swConfig, &pm, id, requestedProfile);
-    createdNames.push_back(name);
+  for (const auto& request : result.requestedPorts) {
+    if (!request.wasPresent) {
+      createdNames.push_back(request.portName);
+    }
   }
 
-  // 6) Report.
-  // Normalize to uppercase for display
-  std::string upperValue = value;
-  std::transform(
-      upperValue.begin(), upperValue.end(), upperValue.begin(), ::toupper);
   std::string out = fmt::format(
-      "profile={}, speed={}", upperValue, static_cast<int64_t>(profileSpeed));
+      "profile={}, speed={}", value, static_cast<int64_t>(profileSpeed));
   if (!removedNames.empty()) {
     out += fmt::format(
         "; auto-removed subsumed port(s): {}", folly::join(", ", removedNames));
@@ -251,12 +241,26 @@ std::string applyProfile(
     const utils::InterfaceList& interfaces,
     const std::string& value,
     cli::ConfigActionLevel* actionLevel = nullptr) {
-  // Build validator once (queries Agent + QSFP), then delegate to the testable
-  // core operating on the session's config.
-  ProfileValidator validator(hostInfo);
+  cfg::PlatformMapping platformMappingConfig;
+  auto agentClient =
+      utils::createClient<apache::thrift::Client<FbossCtrl>>(hostInfo);
+  agentClient->sync_getPlatformMapping(platformMappingConfig);
+
+  utility::PortProfileSupportMap qsfpSupportedProfiles;
+  try {
+    auto qsfpClient =
+        utils::createClient<apache::thrift::Client<QsfpService>>(hostInfo);
+    qsfpClient->sync_getAllPortSupportedProfiles(qsfpSupportedProfiles, true);
+  } catch (const std::exception&) {
+    // QsfpService unavailable; applyPortProfileChanges falls back to platform
+    // mapping support.
+  }
+
+  const PlatformMapping platformMapping(platformMappingConfig);
   return applyProfileImpl(
-      validator,
       *ConfigSession::getInstance().getAgentConfig().sw(),
+      platformMapping,
+      qsfpSupportedProfiles,
       interfaces,
       value,
       actionLevel);
@@ -382,81 +386,6 @@ bool applyLoopbackMode(
     }
   }
   return changed;
-}
-
-// Port.lookupClasses drives queue-per-host (MH-NIC) neighbor classification,
-// so only the CLASS_QUEUE_PER_HOST_QUEUE_* classes are configurable here.
-// The other AclLookupClass members (CLASS_DROP, DST_CLASS_L3_LOCAL_*, ...)
-// are assigned by the agent itself; putting one of them in a port's list
-// would make LookupClassUpdater tag neighbors with an agent-reserved class.
-bool isQueuePerHostClass(cfg::AclLookupClass lookupClass) {
-  return lookupClass >= cfg::AclLookupClass::CLASS_QUEUE_PER_HOST_QUEUE_0 &&
-      lookupClass <= cfg::AclLookupClass::CLASS_QUEUE_PER_HOST_QUEUE_9;
-}
-
-// Human-readable list of every configurable lookup class as "<id> (<name>)".
-std::string validLookupClasses() {
-  std::vector<std::string> entries;
-  for (const auto value :
-       apache::thrift::TEnumTraits<cfg::AclLookupClass>::values) {
-    if (!isQueuePerHostClass(value)) {
-      continue;
-    }
-    entries.push_back(
-        fmt::format(
-            "{} ({})",
-            static_cast<int>(value),
-            apache::thrift::util::enumNameSafe(value)));
-  }
-  return folly::join(", ", entries);
-}
-
-// Parses a single lookup-class token: a numeric id (e.g. "10") or an enum
-// name (e.g. "CLASS_QUEUE_PER_HOST_QUEUE_0", case-insensitive). Only
-// queue-per-host classes are accepted.
-cfg::AclLookupClass parseLookupClassId(const std::string& token) {
-  cfg::AclLookupClass lookupClass{
-      cfg::AclLookupClass::CLASS_QUEUE_PER_HOST_QUEUE_0};
-  int32_t classId = 0;
-  if (folly::tryTo<int32_t>(token).hasValue()) {
-    classId = folly::to<int32_t>(token);
-    lookupClass = static_cast<cfg::AclLookupClass>(classId);
-    if (apache::thrift::TEnumTraits<cfg::AclLookupClass>::findName(
-            lookupClass) == nullptr) {
-      throw std::invalid_argument(
-          fmt::format(
-              "Invalid lookup-class value '{}'. Valid values: {}",
-              token,
-              validLookupClasses()));
-    }
-  } else {
-    std::string tokenUpper = token;
-    std::transform(
-        tokenUpper.begin(),
-        tokenUpper.end(),
-        tokenUpper.begin(),
-        [](unsigned char c) { return static_cast<char>(std::toupper(c)); });
-    if (!apache::thrift::TEnumTraits<cfg::AclLookupClass>::findValue(
-            tokenUpper, &lookupClass)) {
-      throw std::invalid_argument(
-          fmt::format(
-              "Invalid lookup-class value '{}': must be a numeric id or class "
-              "name. Valid values: {}",
-              token,
-              validLookupClasses()));
-    }
-  }
-
-  if (!isQueuePerHostClass(lookupClass)) {
-    throw std::invalid_argument(
-        fmt::format(
-            "Invalid lookup-class value '{}': {} is reserved for agent use. "
-            "Valid values: {}",
-            token,
-            apache::thrift::util::enumNameSafe(lookupClass),
-            validLookupClasses()));
-  }
-  return lookupClass;
 }
 
 // Parses a comma-separated list of lookup classes
@@ -631,9 +560,10 @@ CmdConfigInterfaceTraits::RetType CmdConfigInterface::queryClient(
   utils::InterfaceList resolved(std::vector<std::string>{});
   // The commit action level required by this command, escalated by attribute
   // handlers as needed. Starts HITLESS (reloadConfig); a profile change that
-  // removes a port escalates it to AGENT_COLDBOOT, because applying a port
-  // removal on a live agent can crash the SwAgent (LookupClassRouteUpdater
-  // dereferences the removed port's now-absent interface). See T281221621.
+  // removes a port escalates it to DISRUPTIVE_SERVICE_RESTART, because applying
+  // a port removal on a live agent can crash the SwAgent
+  // (LookupClassRouteUpdater dereferences the removed port's now-absent
+  // interface). See T281221621.
   cli::ConfigActionLevel actionLevel = cli::ConfigActionLevel::HITLESS;
   if (profileValue.has_value()) {
     results.push_back(

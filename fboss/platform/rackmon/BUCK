@@ -134,10 +134,10 @@ cpp_binary(
         "configs/register_map/orv3_psu.json",
     ],
     deps = [
+        "fbsource//xplat/folly/logging:init",
         ":handler",
         "//fb303:logging",
         "//fboss/platform/helpers:init",
-        "//folly/logging:init",
     ],
 )
 

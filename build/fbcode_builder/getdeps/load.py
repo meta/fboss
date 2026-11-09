@@ -11,6 +11,7 @@ import hashlib
 import os
 import typing
 from collections.abc import Iterator
+from pathlib import Path
 
 from . import fetcher
 from .envfuncs import path_search
@@ -33,7 +34,7 @@ class Loader:
                 if name.startswith("."):
                     continue
 
-                yield os.path.join(path, name)
+                yield os.fspath(Path(path, name))
 
     def _load_manifest(self, path: str) -> ManifestParser:
         return ManifestParser(path)
@@ -46,7 +47,7 @@ class Loader:
             return ManifestParser(project_name)
 
         for manifest in self._list_manifests(build_opts):
-            if os.path.basename(manifest) == project_name:
+            if Path(manifest).name == project_name:
                 return ManifestParser(manifest)
 
         raise ManifestNotFound(project_name)
@@ -171,6 +172,46 @@ class ManifestLoader:
             self._loaded_all = True
 
         return self.manifests_by_name
+
+    def resolve_features_from(self, root_name: str, project_name: str) -> None:
+        """Resolve features from root_name's dependency graph, with tests off.
+
+        Building a dependency on its own resolves its features as if it were
+        the root, which can differ from what the projects above it request.
+        Resolving from the project that needs the dependency, in a context
+        that does not depend on what a step builds, gives every build of it
+        the same features and hash. A separate loader walks the root's graph,
+        so the projects this loader builds stay those of project_name.
+        """
+        names = self._resolve_graph_features(root_name, self.ctx_gen)
+        if project_name not in names:
+            raise ValueError(f"{project_name} is not a dependency of {root_name}")
+
+        # Feature requests made only for test builds would be ignored here, so
+        # reject any difference from a resolution with tests on.
+        test_ctx_gen = copy.deepcopy(self.ctx_gen)
+        test_ctx_gen.set_value_for_all_projects("test", "on")
+        test_names = self._resolve_graph_features(root_name, test_ctx_gen)
+        for name in sorted(names | test_names):
+            off = self.ctx_gen.get_context(name).features()
+            on = test_ctx_gen.get_context(name).features()
+            if off != on:
+                raise ValueError(
+                    f"{name} gets features {sorted(on)} in {root_name}'s graph "
+                    f"with tests on but {sorted(off)} with tests off; "
+                    "--features-from does not support feature requests made "
+                    "only for test builds"
+                )
+        self._features_resolved = True
+
+    def _resolve_graph_features(
+        self, root_name: str, ctx_gen: ContextGenerator
+    ) -> set[str]:
+        graph = ManifestLoader(self.build_opts, ctx_gen)
+        graph._loader = self._loader
+        root = graph.load_manifest(root_name)
+        graph.resolve_features([root])
+        return {m.name for m in graph.manifests_in_dependency_order(root)}
 
     def dependencies_of(self, manifest: ManifestParser) -> list[ManifestParser]:
         """Returns the dependencies of the given project, not including the project itself, in topological order."""
@@ -447,10 +488,10 @@ class ManifestLoader:
         # If a patchfile is specified, include its contents in the hash
         patchfile: str | None = manifest.get("build", "patchfile", ctx=ctx)
         if patchfile:
-            patchfile_path: str = os.path.join(
-                self.build_opts.fbcode_builder_dir, "patches", patchfile
+            patchfile_path: str = os.fspath(
+                Path(self.build_opts.fbcode_builder_dir, "patches", patchfile)
             )
-            if not os.path.exists(patchfile_path):
+            if not Path(patchfile_path).exists():
                 raise RuntimeError(
                     f"Patchfile '{patchfile}' is listed in the '{manifest.name}' manifest "
                     f"but was not found at '{patchfile_path}'. "
@@ -492,7 +533,7 @@ class ManifestLoader:
             return override
 
         project_dir_name: str = self._get_project_dir_name(manifest)
-        return os.path.join(self.build_opts.install_dir, project_dir_name)
+        return os.fspath(Path(self.build_opts.install_dir, project_dir_name))
 
     def get_project_build_dir(self, manifest: ManifestParser) -> str:
         override = self._build_dir_overrides.get(manifest.name)
@@ -500,7 +541,7 @@ class ManifestLoader:
             return override
 
         project_dir_name: str = self._get_project_dir_name(manifest)
-        return os.path.join(self.build_opts.scratch_dir, "build", project_dir_name)
+        return os.fspath(Path(self.build_opts.scratch_dir, "build", project_dir_name))
 
     def get_project_install_prefix(self, manifest: ManifestParser) -> str | None:
         return self._install_prefix_overrides.get(manifest.name)

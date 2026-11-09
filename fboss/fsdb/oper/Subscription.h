@@ -137,6 +137,16 @@ class BaseSubscription {
     return heartbeatInterval_;
   }
 
+  // Granted interval (already rounded/clamped by the storage); nullopt means
+  // this subscription is served at the storage's default interval.
+  std::optional<uint32_t> serveIntervalMs() const {
+    return serveIntervalMs_;
+  }
+
+  void setServeIntervalMs(std::optional<uint32_t> serveIntervalMs) {
+    serveIntervalMs_ = serveIntervalMs;
+  }
+
   uint32_t getQueueWatermark() const {
     return *queueWatermark_.rlock();
   }
@@ -186,7 +196,8 @@ class BaseSubscription {
       OperProtocol protocol,
       std::optional<std::string> publisherRoot,
       folly::EventBase* heartbeatEvb,
-      std::chrono::milliseconds heartbeatInterval);
+      std::chrono::milliseconds heartbeatInterval,
+      std::optional<uint32_t> serveIntervalMs = std::nullopt);
 
   template <typename T, typename V>
   std::optional<FsdbErrorCode> tryWrite(
@@ -293,6 +304,7 @@ class BaseSubscription {
   folly::EventBase* heartbeatEvb_;
   folly::coro::CancellableAsyncScope backgroundScope_;
   std::chrono::milliseconds heartbeatInterval_;
+  std::optional<uint32_t> serveIntervalMs_;
   folly::Synchronized<uint32_t> queueWatermark_{0};
   folly::Synchronized<uint32_t> chunksCoalesced_{0};
   std::optional<FsdbErrorCode> pruneReason_{std::nullopt};

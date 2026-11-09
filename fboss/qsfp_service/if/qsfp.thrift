@@ -185,10 +185,12 @@ service QsfpService extends phy.FbossCommonPhyCtrl {
 
   string getPortInfo(1: string portName) throws (1: fboss.FbossBaseError error);
 
+  // OUTPUT is only supported for TRANSCEIVER_SYSTEM and TRANSCEIVER_LINE.
   void setPortLoopbackState(
     1: string portName,
     2: phy.PortComponent component,
     3: bool setLoopback = false,
+    4: phy.LoopbackMode mode = phy.LoopbackMode.INPUT,
   ) throws (1: fboss.FbossBaseError error);
 
   void setPortAdminState(

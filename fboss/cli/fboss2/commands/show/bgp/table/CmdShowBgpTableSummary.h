@@ -14,6 +14,7 @@
 #include <cstdint>
 #include <iostream>
 #include <string>
+#include <string_view>
 
 #include "fboss/cli/fboss2/CmdHandler.h"
 #include "fboss/cli/fboss2/commands/show/bgp/table/gen-cpp2/bgp_table_summary_types.h"
@@ -31,13 +32,18 @@ using facebook::fboss::utils::Table;
 using neteng::fboss::bgp::thrift::TRibSummary;
 using neteng::fboss::bgp_attr::TBgpAfi;
 
-struct CmdShowBgpTableSummaryTraits : public ReadCommandTraits,
-                                      public CliDocsExempt {
+struct CmdShowBgpTableSummaryTraits : public ReadCommandTraits {
   using ParentCmd = void;
   static constexpr utils::ObjectArgTypeId ObjectArgTypeId =
       utils::ObjectArgTypeId::OBJECT_ARG_TYPE_ID_NONE;
   using ObjectArgType = std::monostate;
   using RetType = cli::ShowBgpTableSummaryModel;
+
+  // Human-authored guide prose for the CLI reference wiki. Superset of the
+  // one-line help string registered in the command tree.
+  static std::string_view description() {
+    return "Displays per-address-family totals for the BGP loc-RIB, one block for IPv4 and one for IPv6: how many prefixes and paths the table holds and how those paths split into active and inactive, how the prefixes break down by where they were learned (eBGP, iBGP, confederation eBGP, locally originated), how many carry a next hop the daemon could not resolve, and a histogram of prefix counts by mask length. A single RIB-wide unresolvable-next-hop count is printed once at the end rather than per family. The active/inactive split is omitted entirely against an older bgpd that does not report inactive paths, rather than being guessed. Use the mask-length histogram to spot an unexpected flood of more-specifics, and the eBGP/iBGP/confed split to confirm a switch is learning routes from the sessions you expect.";
+  }
 };
 
 class CmdShowBgpTableSummary
@@ -111,6 +117,43 @@ class CmdShowBgpTableSummary
           << model.summaries()->front().unresolvable_nexthops_count().value()
           << std::endl;
     }
+  }
+
+  // Canned, synthetic model (no real switch data) used to render a
+  // deterministic example for the CLI reference wiki. Totals are an RSW-shaped
+  // capture: everything learned over confederation eBGP from the upstream
+  // FSWs, plus the switch's own originated prefixes.
+  static RetType sampleModel() {
+    TRibSummary v4;
+    v4.afi() = TBgpAfi::AFI_IPV4;
+    v4.total_prefixes() = 171;
+    v4.total_paths() = 969;
+    v4.inactive_paths() = 0;
+    v4.ebgp_prefixes() = 0;
+    v4.ibgp_prefixes() = 0;
+    v4.confed_ebgp_prefixes() = 170;
+    v4.local_prefixes() = 1;
+    v4.routes_with_unresolved_nexthops() = 0;
+    v4.prefix_length_counts() = {{0, 1}, {19, 48}, {24, 8}, {32, 114}};
+    v4.unresolvable_nexthops_count() = 0;
+
+    TRibSummary v6;
+    v6.afi() = TBgpAfi::AFI_IPV6;
+    v6.total_prefixes() = 1344;
+    v6.total_paths() = 10731;
+    v6.inactive_paths() = 0;
+    v6.ebgp_prefixes() = 0;
+    v6.ibgp_prefixes() = 0;
+    v6.confed_ebgp_prefixes() = 1341;
+    v6.local_prefixes() = 3;
+    v6.routes_with_unresolved_nexthops() = 0;
+    v6.prefix_length_counts() = {
+        {0, 1}, {46, 93}, {54, 36}, {56, 93}, {64, 867}, {68, 190}, {128, 64}};
+    v6.unresolvable_nexthops_count() = 0;
+
+    RetType model;
+    model.summaries() = {v4, v6};
+    return model;
   }
 };
 } // namespace facebook::fboss

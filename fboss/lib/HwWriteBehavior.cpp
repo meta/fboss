@@ -11,17 +11,23 @@
 #include "fboss/lib/HwWriteBehavior.h"
 
 #include <atomic>
+#include <optional>
 
 namespace facebook::fboss {
 namespace {
-std::atomic<HwWriteBehavior> curBehavior{HwWriteBehavior::WRITE};
+// Process-wide default observed by threads that never install a scope.
+std::atomic<HwWriteBehavior> defaultBehavior{HwWriteBehavior::WRITE};
+// Per-thread override installed by HwWriteBehaviorRAII. nullopt means
+// "no override on this thread, fall back to the process-wide default".
+thread_local std::optional<HwWriteBehavior> threadBehavior{std::nullopt};
 
 void setHwWriteBehavior(HwWriteBehavior behavior) {
-  curBehavior = behavior;
+  threadBehavior = behavior;
 }
+
 } // namespace
 HwWriteBehavior getHwWriteBehavior() {
-  return curBehavior;
+  return threadBehavior.value_or(defaultBehavior.load());
 }
 
 HwWriteBehaviorRAII::HwWriteBehaviorRAII(HwWriteBehavior behavior) {

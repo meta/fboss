@@ -209,6 +209,57 @@ struct HwPortStats {
   109: optional i64 llrTxNackReplayEvent_;
   110: optional i64 llrTxTimerReplayEvent_;
   111: optional i64 llrTxError_;
+
+  // UEC Credit-Based Flow Control counters (UE Spec 1.0.2 section 5.2).
+  // Populated only on CBFC-capable ASICs (Tomahawk Ultra). Three of the six
+  // SAI_PORT_STAT_CBFC_* counters are absent because nothing backs them on
+  // TU1: SENDER_CREDITS_USED is B0-stepping only, and
+  // SENDER_CREDITS_USED_WATERMARK / NUM_CC_UPDATE_MESSAGES_RX have no BCM
+  // counter on any stepping.
+  112: optional i64 cbfcCcUpdateTx_;
+  113: optional i64 cbfcCfUpdateTx_;
+  114: optional i64 cbfcCfUpdateRx_;
+
+  // Per-virtual-channel CBFC counters, keyed by VC index the way the queue
+  // maps above are keyed by queue. Availability differs per counter on
+  // Tomahawk Ultra 1, so they do not form a coherent set:
+  //
+  //   SenderCreditsConsumed   bcmCosqStatCbfcTxPortVcCreditConsumed
+  //   SenderCreditsFreed      bcmCosqStatCbfcTxPortVcCRCyclicCount
+  //   ReceiverCreditsFreed    bcmCosqStatCbfcRxPortVcCFCyclicCount
+  //     -- all three are TU1 B0 stepping only, NOT_SUPPORTED on A0.
+  //
+  //   ReceiverCreditsConsumed bcmCosqStatIngressCbfcPortVcHeadroomBytesCurrent
+  //     -- present on A0 and B0, but despite the SAI name it is a current
+  //        headroom gauge in BYTES, not a cumulative credit count. Do not
+  //        difference it against ReceiverCreditsFreed.
+  //
+  // So only the sender pair supports a consumed-minus-freed reading of credit
+  // outstanding, and only on B0. SENDER_CREDITS_USED and
+  // SENDER_CREDITS_USED_WATERMARK would report outstanding credit directly but
+  // the SDK implements neither, which is why that reading has to be derived.
+  //
+  // Kept in the FSDB stats tree only; not exported to fb303/ODS, matching the
+  // LLR handshake counters above. Exporting a counter that is NOT_SUPPORTED on
+  // the stepping we run would be worse than not charting it.
+  115: map<i16, i64> cbfcVcSenderCreditsConsumed_ = {};
+  116: map<i16, i64> cbfcVcSenderCreditsFreed_ = {};
+  117: map<i16, i64> cbfcVcReceiverCreditsConsumed_ = {};
+  118: map<i16, i64> cbfcVcReceiverCreditsFreed_ = {};
+
+  // HW protection (FRR) switchover counters, populated only on Broadcom
+  // Tomahawk 5/6 with XGS SDK 13.3+. Events counts primary to backup
+  // transitions; drop packets counts packets lost during switchover.
+  119: optional i64 hwProtectionSwitchoverEvents_;
+  120: optional i64 hwProtectionSwitchoverDropPkts_;
+
+  // Software Fabric Link Monitoring counters, populated by SwSwitch only for
+  // monitored ports.
+  121: optional i64 fabricLinkMonitoringTxPackets_;
+  122: optional i64 fabricLinkMonitoringRxPackets_;
+  123: optional i64 fabricLinkMonitoringDroppedPackets_;
+  124: optional i64 fabricLinkMonitoringInvalidPayloadPackets_;
+  125: optional i64 fabricLinkMonitoringNoPendingSeqNumPackets_;
 }
 
 struct HwSysPortStats {

@@ -307,6 +307,17 @@ SaiNeighborEntry::SaiNeighborEntry(
       neighbor_ = subscriber;
     } break;
     case cfg::InterfaceType::PORT:
+      // isLocal=true is unsupported on XGS
+      neighbor_ = std::make_shared<PortRifNeighbor>(
+          manager,
+          saiPortAndIntf,
+          intfIDAndIpAndMac,
+          metadata,
+          encapIndex,
+          std::nullopt,
+          noHostRoute,
+          intfType);
+      break;
     case cfg::InterfaceType::SYSTEM_PORT:
       neighbor_ = std::make_shared<PortRifNeighbor>(
           manager,
@@ -341,7 +352,7 @@ PortRifNeighbor::PortRifNeighbor(
         intfIDAndIpAndMac,
     std::optional<sai_uint32_t> metadata,
     std::optional<sai_uint32_t> encapIndex,
-    bool isLocal,
+    std::optional<bool> isLocal,
     std::optional<bool> noHostRoute,
     cfg::InterfaceType intfType)
     : manager_(manager),
@@ -352,11 +363,15 @@ PortRifNeighbor::PortRifNeighbor(
   auto rifSaiId = std::get<RouterInterfaceSaiId>(saiPortAndIntf_);
   auto adapterHostKey = SaiNeighborTraits::NeighborEntry(
       manager_->getSwitchSaiId(), rifSaiId, ip);
+  std::optional<SaiNeighborTraits::Attributes::IsLocal> saiIsLocal;
+  if (isLocal.has_value()) {
+    saiIsLocal = SaiNeighborTraits::Attributes::IsLocal(isLocal.value());
+  }
   createAttributes_ = SaiNeighborTraits::CreateAttributes{
       std::get<folly::MacAddress>(intfIDAndIpAndMac),
       metadata,
       encapIndex,
-      isLocal,
+      saiIsLocal,
       noHostRoute};
   adapterHostKey_ = adapterHostKey;
 }

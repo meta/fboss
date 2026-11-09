@@ -2575,12 +2575,12 @@ void BcmSwitch::processQosChanges(const StateDelta& delta) {
 }
 
 void BcmSwitch::processAclChanges(const StateDelta& delta) {
-  forEachChanged(
-      delta.getAclsDelta(),
-      &BcmSwitch::processChangedAcl,
-      &BcmSwitch::processAddedAcl,
-      &BcmSwitch::processRemovedAcl,
-      this);
+  // Removals first: processAddedAcl rejects a priority that is still occupied,
+  // so an entry taking over a priority another entry is vacating must not be
+  // added before the old one is gone.
+  forEachRemoved(delta.getAclsDelta(), &BcmSwitch::processRemovedAcl, this);
+  forEachChanged(delta.getAclsDelta(), &BcmSwitch::processChangedAcl, this);
+  forEachAdded(delta.getAclsDelta(), &BcmSwitch::processAddedAcl, this);
 }
 
 void BcmSwitch::processTeFlowChanges(
@@ -4088,8 +4088,7 @@ void BcmSwitch::processChangedTeFlow(
     const std::shared_ptr<TeFlowEntry>& newTeFlow) {
   XLOG(DBG3) << "processChangedTeFlow, oldTeFlow=" << oldTeFlow->str()
              << " newTeFlow=" << newTeFlow->str();
-  teFlowTable_->processChangedTeFlow(
-      platform_->getAsic()->getDefaultTeFlowGroupID(), oldTeFlow, newTeFlow);
+  teFlowTable_->processChangedTeFlow(oldTeFlow, newTeFlow);
 }
 
 void BcmSwitch::processRemovedTeFlow(
@@ -4113,6 +4112,15 @@ bool BcmSwitch::hasValidAclMatcher(const std::shared_ptr<AclEntry>& acl) const {
   if ((acl->getLookupClassNeighbor() && acl->getLookupClassRoute()) &&
       acl->getLookupClassNeighbor().value() !=
           acl->getLookupClassRoute().value()) {
+    return false;
+  }
+  if (acl->getTcpFlagsMask()) {
+    return false;
+  }
+  if (acl->getDstIpWithMask()) {
+    return false;
+  }
+  if (acl->getDstIpV6Word1WithMask() || acl->getDstIpV6Word0WithMask()) {
     return false;
   }
 

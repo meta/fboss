@@ -234,6 +234,8 @@ MultiSwitchThriftHandler::co_notifySwitchReachabilityChangeEvent(
                      gen.next())) {
             XLOG(DBG2) << "Got switch reachability change event from switch "
                        << switchId;
+            sw_->stats()->hwAgentSwitchReachabilityChangeEventReceived(
+                switchIndex);
             processSwitchReachabilityChangeEvent(SwitchID(switchId), *item);
           }
         } catch (const std::exception& e) {
@@ -312,6 +314,9 @@ MultiSwitchThriftHandler::co_notifyRxPacket(int64_t switchId) {
             }
             if (item->cosQueue()) {
               pkt->setCosQueue(static_cast<uint8_t>(*item->cosQueue()));
+            }
+            if (item->packetType()) {
+              pkt->setPacketType(*item->packetType());
             }
             // Agent pkt handling code assumes single buffer, so coalesce
             pkt->buf()->coalesce();

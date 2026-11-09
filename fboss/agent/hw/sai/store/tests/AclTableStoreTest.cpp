@@ -58,6 +58,15 @@ class AclTableStoreTest : public SaiStoreTest {
         folly::IPAddressV6("0:0:9abc:def0::"),
         folly::IPAddressV6("0:0:ffff:ffff::"));
   }
+  std::pair<folly::IPAddressV6, folly::IPAddressV6> kDstIpV6Word1() const {
+    return std::make_pair(
+        folly::IPAddressV6("::4a1c:1230:0:0"),
+        folly::IPAddressV6("::efff:fffc:0:0"));
+  }
+  std::pair<folly::IPAddressV6, folly::IPAddressV6> kDstIpV6Word0() const {
+    return std::make_pair(
+        folly::IPAddressV6("::1"), folly::IPAddressV6("::ffff"));
+  }
 
   std::pair<folly::IPAddressV4, folly::IPAddressV4> kSrcIpV4() const {
     return std::make_pair(
@@ -136,6 +145,10 @@ class AclTableStoreTest : public SaiStoreTest {
     return std::make_pair(128, 128);
   }
 
+  std::pair<sai_uint8_t, sai_uint8_t> kMplsLabel0Ttl() const {
+    return std::make_pair(1, 0xFF);
+  }
+
   std::pair<sai_uint32_t, sai_uint32_t> kFdbDstUserMeta() const {
     return std::make_pair(11, 0xFFFFFFFF);
   }
@@ -204,11 +217,6 @@ class AclTableStoreTest : public SaiStoreTest {
     return std::make_pair(81, 0);
   }
 
-  std::vector<int8_t> kLabelExtended() const {
-    static const std::string kLabel{"acl-entry-label"};
-    return std::vector<int8_t>(kLabel.begin(), kLabel.end());
-  }
-
   sai_uint8_t kSetTC() const {
     return 1;
   }
@@ -269,6 +277,8 @@ class AclTableStoreTest : public SaiStoreTest {
             true, // dstIpv6
             true, // dstIpv6Word3
             true, // dstIpv6Word2
+            true, // dstIpv6Word1
+            true, // dstIpv6Word0
             true, // srcIpv4
             true, // dstIpv4
             true, // l4SrcPort
@@ -287,6 +297,7 @@ class AclTableStoreTest : public SaiStoreTest {
             true, // dstMac
             true, // ipType
             true, // ttl
+            true, // mpls label0 ttl
             true, // fdb meta
             true, // route meta
             true, // neighbor meta
@@ -300,6 +311,9 @@ class AclTableStoreTest : public SaiStoreTest {
             kUdfGroupId() + 2, // udf group 2
             kUdfGroupId() + 3, // udf group 3
             kUdfGroupId() + 4, // udf group 4
+#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
+            true, // route destination
+#endif
             true, // port meta
         },
         0);
@@ -316,6 +330,8 @@ class AclTableStoreTest : public SaiStoreTest {
             AclEntryFieldIpV6(this->kDstIpV6()),
             AclEntryFieldIpV6(this->kDstIpV6Word3()),
             AclEntryFieldIpV6(this->kDstIpV6Word2()),
+            AclEntryFieldIpV6(this->kDstIpV6Word1()),
+            AclEntryFieldIpV6(this->kDstIpV6Word0()),
             AclEntryFieldIpV4(this->kSrcIpV4()),
             AclEntryFieldIpV4(this->kDstIpV4()),
             AclEntryFieldSaiObjectIdT(this->kSrcPort()),
@@ -334,6 +350,7 @@ class AclTableStoreTest : public SaiStoreTest {
             AclEntryFieldMac(this->kDstMac()),
             AclEntryFieldU32(this->kIpType()),
             AclEntryFieldU8(this->kTtl()),
+            AclEntryFieldU8(this->kMplsLabel0Ttl()),
             AclEntryFieldU32(this->kFdbDstUserMeta()),
             AclEntryFieldU32(this->kRouteDstUserMeta()),
             AclEntryFieldU32(this->kNeighborDstUserMeta()),
@@ -361,7 +378,6 @@ class AclTableStoreTest : public SaiStoreTest {
             AclEntryActionU32(this->kHashAlgorithm()),
             AclEntryActionBool(this->kL3SwitchCancel()),
             AclEntryFieldSaiObjectIdT(this->kRouteDestination()),
-            this->kLabelExtended(),
             AclEntryFieldU32(this->kPortUserMeta()),
         },
         0);
@@ -416,8 +432,7 @@ TEST_P(AclTableStoreParamTest, loadAclEntry) {
   s.reload();
   auto& store = s.get<SaiAclEntryTraits>();
 
-  SaiAclEntryTraits::AdapterHostKey k{
-      aclTableId, this->kPriority(), this->kLabelExtended()};
+  SaiAclEntryTraits::AdapterHostKey k{aclTableId, this->kPriority()};
   auto got = store.get(k);
   EXPECT_NE(got, nullptr);
   EXPECT_EQ(got->adapterKey(), aclEntryId);
@@ -476,6 +491,8 @@ TEST_P(AclTableStoreParamTest, aclTableCtorCreate) {
       true, // dstIpv6
       true, // dstIpv6Word3
       true, // dstIpv6Word2
+      true, // dstIpv6Word1
+      true, // dstIpv6Word0
       true, // srcIpv4
       true, // dstIpv4
       true, // l4SrcPort
@@ -494,6 +511,7 @@ TEST_P(AclTableStoreParamTest, aclTableCtorCreate) {
       true, // dstMac
       true, // ipType
       true, // ttl
+      true, // mpls label0 ttl
       true, // fdb meta
       true, // route meta
       true, // neighbor meta
@@ -507,6 +525,9 @@ TEST_P(AclTableStoreParamTest, aclTableCtorCreate) {
       kUdfGroupId() + 2, // udf group 2
       kUdfGroupId() + 3, // udf group 3
       kUdfGroupId() + 4, // udf group 4
+#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
+      true, // route destination
+#endif
       true, // port meta
   };
 
@@ -521,8 +542,7 @@ TEST_P(AclTableStoreParamTest, aclTableCtorCreate) {
 TEST_P(AclTableStoreParamTest, AclEntryCreateCtor) {
   auto aclTableId = createAclTable(GetParam());
 
-  SaiAclEntryTraits::AdapterHostKey k{
-      aclTableId, this->kPriority(), this->kLabelExtended()};
+  SaiAclEntryTraits::AdapterHostKey k{aclTableId, this->kPriority()};
 
   SaiAclEntryTraits::CreateAttributes c{
       aclTableId,
@@ -532,6 +552,8 @@ TEST_P(AclTableStoreParamTest, AclEntryCreateCtor) {
       this->kDstIpV6(),
       this->kDstIpV6Word3(),
       this->kDstIpV6Word2(),
+      this->kDstIpV6Word1(),
+      this->kDstIpV6Word0(),
       this->kSrcIpV4(),
       this->kDstIpV4(),
       this->kSrcPort(),
@@ -550,6 +572,7 @@ TEST_P(AclTableStoreParamTest, AclEntryCreateCtor) {
       this->kDstMac(),
       this->kIpType(),
       this->kTtl(),
+      this->kMplsLabel0Ttl(),
       this->kFdbDstUserMeta(),
       this->kRouteDstUserMeta(),
       this->kNeighborDstUserMeta(),
@@ -577,7 +600,6 @@ TEST_P(AclTableStoreParamTest, AclEntryCreateCtor) {
       this->kHashAlgorithm(),
       this->kL3SwitchCancel(),
       this->kRouteDestination(),
-      this->kLabelExtended(),
       this->kPortUserMeta()};
 
   SaiObject<SaiAclEntryTraits> obj = createObj<SaiAclEntryTraits>(k, c, 0);

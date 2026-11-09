@@ -103,6 +103,13 @@ store_unittest(
 )
 
 store_unittest(
+    name = "isolation_group_store_test",
+    srcs = [
+        "IsolationGroupStoreTest.cpp",
+    ],
+)
+
+store_unittest(
     name = "lag_store_test",
     srcs = [
         "LagStoreTest.cpp",
@@ -173,6 +180,13 @@ store_unittest(
 )
 
 store_unittest(
+    name = "my_mac_store_test",
+    srcs = [
+        "MyMacStoreTest.cpp",
+    ],
+)
+
+store_unittest(
     name = "samplepacket_store_test",
     srcs = [
         "SamplePacketStoreTest.cpp",
@@ -201,9 +215,23 @@ store_unittest(
 )
 
 store_unittest(
+    name = "tunnel_map_store_test",
+    srcs = [
+        "TunnelMapStoreTest.cpp",
+    ],
+)
+
+store_unittest(
     name = "srv6_store_test",
     srcs = [
         "Srv6StoreTest.cpp",
+    ],
+)
+
+store_unittest(
+    name = "virtual_router_store_test",
+    srcs = [
+        "VirtualRouterStoreTest.cpp",
     ],
 )
 
@@ -218,6 +246,13 @@ store_unittest(
     name = "wred_store_test",
     srcs = [
         "WredStoreTest.cpp",
+    ],
+)
+
+store_unittest(
+    name = "virtual_channel_store_test",
+    srcs = [
+        "VirtualChannelStoreTest.cpp",
     ],
 )
 

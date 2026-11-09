@@ -32,4 +32,5 @@ python_library(
     # base_module = "" is required for pyre to resolve them.
     # @lint-ignore BUCKLINT no_base_module_usage_python
     base_module = "",
+    deps = ["//fboss/oss/scripts:npu_sdk_utils_lib"],
 )

@@ -21,6 +21,9 @@
 
 namespace facebook::fboss {
 
+class HwSwitchMatcher;
+class SwitchState;
+
 USE_THRIFT_COW(AclTable);
 RESOLVE_STRUCT_MEMBER(AclTable, switch_state_tags::aclMap, AclMap)
 
@@ -31,6 +34,8 @@ RESOLVE_STRUCT_MEMBER(AclTable, switch_state_tags::aclMap, AclMap)
 class AclTable : public ThriftStructNode<AclTable, state::AclTableFields> {
  public:
   using Base = ThriftStructNode<AclTable, state::AclTableFields>;
+  using Base::modify;
+
   explicit AclTable(int priority, const std::string& name);
 
   static std::shared_ptr<AclTable> createDefaultAclTableFromThrift(
@@ -91,6 +96,11 @@ class AclTable : public ThriftStructNode<AclTable, state::AclTableFields> {
   void setUdfGroups(const std::vector<std::string>& udfGroups) {
     set<switch_state_tags::udfGroups>(udfGroups);
   }
+
+  AclTable* modify(
+      std::shared_ptr<SwitchState>* state,
+      const HwSwitchMatcher& matcher,
+      cfg::AclStage stage);
 
   // Offset applied to dataplane ACL priority. Dataplane ACL
   // entries are given priorites >= 100K and CPU ACL entries

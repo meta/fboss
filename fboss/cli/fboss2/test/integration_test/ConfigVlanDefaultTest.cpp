@@ -307,6 +307,34 @@ TEST_F(ConfigVlanDefaultTest, ChangeDefaultVlanWithPortInNonDefaultVlan) {
       << "Failed to move " << ifName << " to side VLAN " << sideVlan;
   XLOG(INFO) << "[Step 1] Moved " << ifName << " to VLAN " << sideVlan;
 
+  // Vacate every other eth port still parked on the current default VLAN
+  // (baselines generated before the per-port ingress VLAN change park all
+  // ports there). The change-default guard refuses while ANY port uses the
+  // old default VLAN and it has no interface, not just the test port.
+  std::vector<std::string> movedPorts;
+  for (const auto& port : initialConfig["sw"]["ports"]) {
+    auto name = port.getDefault("name", "").asString();
+    if (name.rfind("eth", 0) != 0 || name == ifName) {
+      continue;
+    }
+    if (port.getDefault("ingressVlan", -1).asInt() != currentDefault) {
+      continue;
+    }
+    auto r = runCli(
+        {"config",
+         "interface",
+         name,
+         "switchport",
+         "access",
+         "vlan",
+         std::to_string(sideVlan)});
+    if (r.exitCode == 0) {
+      movedPorts.push_back(name);
+    }
+  }
+  XLOG(INFO) << "[Step 1b] Vacated " << movedPorts.size()
+             << " other ports off default VLAN " << currentDefault;
+
   // Set a new default VLAN — the command must succeed even when no ports
   // remain on the old default VLAN. The target is auto-created, so it must be
   // an ID the agent can back with a route table (T284228086).
@@ -329,7 +357,7 @@ TEST_F(ConfigVlanDefaultTest, ChangeDefaultVlanWithPortInNonDefaultVlan) {
   waitForAgentReady();
   EXPECT_EQ(getSwConfigField<int>("defaultVlan"), newDefault);
 
-  // Restore: move the port back and reset defaultVlan.
+  // Restore: move the ports back and reset defaultVlan.
   XLOG(INFO) << "[Restore] Moving " << ifName << " back to VLAN "
              << originalPortVlan;
   runCli(
@@ -340,6 +368,16 @@ TEST_F(ConfigVlanDefaultTest, ChangeDefaultVlanWithPortInNonDefaultVlan) {
        "access",
        "vlan",
        std::to_string(originalPortVlan)});
+  for (const auto& name : movedPorts) {
+    runCli(
+        {"config",
+         "interface",
+         name,
+         "switchport",
+         "access",
+         "vlan",
+         std::to_string(currentDefault)});
+  }
 
   auto restoreDefault =
       runCli({"config", "vlan", "default", std::to_string(currentDefault)});

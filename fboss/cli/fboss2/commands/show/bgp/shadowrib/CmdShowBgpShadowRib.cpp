@@ -43,4 +43,8 @@ void CmdShowBgpShadowRib::printOutput(RetType& entries, std::ostream& out) {
   printRIBEntries(out, entries);
 }
 
+std::string_view CmdShowBgpShadowRibTraits::description() {
+  return "Displays the shadow RIB - the daemon's own record of the routes it has handed to the FIB - using the same prefix/path listing and markers as 'show bgp table'. Because it is written as routes are programmed rather than as they are selected, comparing it against 'show bgp table' is the way to spot drift between what BGP chose and what actually reached the forwarding plane: a prefix present in one and missing from the other, or a different best path between the two, points at a programming failure rather than a policy or selection problem. The shadow RIB is also what the daemon reconciles against on restart. Path counts here reflect what was programmed, so a prefix that shows several ECMP members in 'show bgp table' can legitimately show fewer selected paths in this view. Entry counts for both tables are in 'show bgp stats entries'.";
+}
+
 } // namespace facebook::fboss

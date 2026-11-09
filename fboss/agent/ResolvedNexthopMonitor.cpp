@@ -84,10 +84,15 @@ void ResolvedNexthopMonitor::stateUpdated(const StateDelta& delta) {
       });
   forEachChanged(
       delta.getLabelForwardingInformationBaseDelta(),
-      &ResolvedNexthopMonitor::processChangedLabelFibEntry,
-      &ResolvedNexthopMonitor::processAddedLabelFibEntry,
-      &ResolvedNexthopMonitor::processRemovedLabelFibEntry,
-      this);
+      [this, &oldState, &newState](const auto& oldEntry, const auto& newEntry) {
+        processChangedLabelFibEntry(oldEntry, newEntry, oldState, newState);
+      },
+      [this, &newState](const auto& addedEntry) {
+        processAddedLabelFibEntry(addedEntry, newState);
+      },
+      [this, &oldState](const auto& removedEntry) {
+        processRemovedLabelFibEntry(removedEntry, oldState);
+      });
 
   if (processNeighborDelta(delta.getIntfsDelta())) {
     scheduleProbes_ = true;
@@ -105,14 +110,15 @@ void ResolvedNexthopMonitor::stateUpdated(const StateDelta& delta) {
 }
 
 bool ResolvedNexthopMonitor::skipLabelFibEntry(
-    const std::shared_ptr<LabelForwardingEntry>& entry) const {
+    const std::shared_ptr<LabelForwardingEntry>& entry,
+    const std::shared_ptr<SwitchState>& state) const {
   if (entry->getForwardInfo().getAction() !=
       LabelNextHopEntry::Action::NEXTHOPS) {
     return true;
   }
   auto bestEntry = entry->getBestEntry();
   auto bestRouteNextHopEntry = bestEntry.second;
-  for (auto nhop : bestRouteNextHopEntry->getNextHopSet()) {
+  for (auto nhop : getMplsClientNextHops(state, *bestRouteNextHopEntry)) {
     if (nhop.labelForwardingAction().has_value() &&
         nhop.labelForwardingAction()->type() ==
             LabelForwardingAction::LabelForwardingType::POP_AND_LOOKUP) {
@@ -124,29 +130,33 @@ bool ResolvedNexthopMonitor::skipLabelFibEntry(
 
 void ResolvedNexthopMonitor::processChangedLabelFibEntry(
     const std::shared_ptr<LabelForwardingEntry>& oldEntry,
-    const std::shared_ptr<LabelForwardingEntry>& newEntry) {
-  processRemovedLabelFibEntry(oldEntry);
-  processAddedLabelFibEntry(newEntry);
+    const std::shared_ptr<LabelForwardingEntry>& newEntry,
+    const std::shared_ptr<SwitchState>& oldState,
+    const std::shared_ptr<SwitchState>& newState) {
+  processRemovedLabelFibEntry(oldEntry, oldState);
+  processAddedLabelFibEntry(newEntry, newState);
 }
 
 void ResolvedNexthopMonitor::processAddedLabelFibEntry(
-    const std::shared_ptr<LabelForwardingEntry>& addedEntry) {
-  if (skipLabelFibEntry(addedEntry)) {
+    const std::shared_ptr<LabelForwardingEntry>& addedEntry,
+    const std::shared_ptr<SwitchState>& newState) {
+  if (skipLabelFibEntry(addedEntry, newState)) {
     return;
   }
   const auto& fwd = addedEntry->getForwardInfo();
-  for (auto nhop : fwd.normalizedNextHops()) {
+  for (const auto& nhop : getMplsNormalizedNextHops(newState, fwd)) {
     added_.emplace_back(nhop.addr(), nhop.intf(), 0);
   }
 }
 
 void ResolvedNexthopMonitor::processRemovedLabelFibEntry(
-    const std::shared_ptr<LabelForwardingEntry>& removedEntry) {
-  if (skipLabelFibEntry(removedEntry)) {
+    const std::shared_ptr<LabelForwardingEntry>& removedEntry,
+    const std::shared_ptr<SwitchState>& oldState) {
+  if (skipLabelFibEntry(removedEntry, oldState)) {
     return;
   }
   const auto& fwd = removedEntry->getForwardInfo();
-  for (auto nhop : fwd.normalizedNextHops()) {
+  for (const auto& nhop : getMplsNormalizedNextHops(oldState, fwd)) {
     removed_.emplace_back(nhop.addr(), nhop.intf(), 0);
   }
 }

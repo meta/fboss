@@ -14,10 +14,10 @@ cpp_library(
     ],
     compiler_flags = QSFP_COMMON_COMPILER_FLAGS,
     deps = [
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly/json:dynamic",
+        "fbsource//xplat/folly/logging:logging",
         "//fboss/agent:fboss-error",
-        "//folly:file_util",
-        "//folly/json:dynamic",
-        "//folly/logging:logging",
         "//thrift/lib/cpp2/folly_dynamic:folly_dynamic",
     ],
     exported_deps = [

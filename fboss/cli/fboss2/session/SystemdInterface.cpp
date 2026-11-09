@@ -14,8 +14,10 @@
 #include <thread>
 
 #include <fmt/format.h>
+#include <folly/String.h>
 #include <folly/Subprocess.h>
 #include <folly/logging/xlog.h>
+#include <folly/small_vector.h>
 #include <unistd.h>
 
 namespace facebook::fboss {
@@ -56,6 +58,43 @@ void runSystemctlAction(
 
 bool SystemdInterface::isServiceEnabled(const std::string& serviceName) {
   return runSystemctlCheck("is-enabled", serviceName);
+}
+
+std::vector<std::string> SystemdInterface::getMatchingServices(
+    const std::string& pattern) {
+  folly::Subprocess proc(
+      {"/usr/bin/systemctl",
+       "list-units",
+       "--all",
+       "--type=service",
+       "--state=loaded",
+       "--plain",
+       "--no-legend",
+       "--no-pager",
+       pattern},
+      folly::Subprocess::Options().pipeStdout().pipeStderr());
+  const auto [standardOut, standardErr] = proc.communicate();
+  const auto returnCode = proc.wait();
+  if (!returnCode.exited() || returnCode.exitStatus() != 0) {
+    throw std::runtime_error(
+        fmt::format(
+            "Failed to query systemd services matching {}: {}",
+            pattern,
+            folly::trimWhitespace(standardErr)));
+  }
+
+  std::vector<std::string> services;
+  folly::small_vector<folly::StringPiece, 8> lines;
+  folly::split('\n', folly::StringPiece(standardOut), lines, true);
+  for (const auto& line : lines) {
+    const auto trimmedLine = folly::trimWhitespace(line).str();
+    if (trimmedLine.empty()) {
+      continue;
+    }
+    services.emplace_back(
+        trimmedLine.substr(0, trimmedLine.find_first_of(" \t")));
+  }
+  return services;
 }
 
 void SystemdInterface::stopService(const std::string& serviceName) {

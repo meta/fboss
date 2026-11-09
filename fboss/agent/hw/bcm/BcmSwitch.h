@@ -659,7 +659,8 @@ class BcmSwitch : public BcmSwitchIf {
     static const std::map<PortID, FabricEndpoint> kEmpty;
     return kEmpty;
   }
-  std::vector<PortID> getSwitchReachability(SwitchID switchId) const override {
+  std::vector<PortID> getSwitchReachability(
+      SwitchID /* switchId */) const override {
     return {};
   }
 

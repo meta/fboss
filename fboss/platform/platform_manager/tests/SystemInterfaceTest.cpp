@@ -1,6 +1,10 @@
 // (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
 
+#include <filesystem>
+
 #include <fmt/args.h>
+#include <folly/FileUtil.h>
+#include <folly/testing/TestUtil.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -45,22 +49,38 @@ TEST(SystemInterfaceTest, lsmod) {
   }
 }
 
-// Fake overriding only the low-level host-state reads, so
-// getInstalledBspVersion (the logic under test) runs for real off canned
-// kernel/rpm fixtures.
-class FakeBspSystemInterface : public package_manager::SystemInterface {
- public:
-  std::string kernelVersion;
-  std::vector<std::string> rpms;
+TEST(SystemInterfaceTest, GetBoundDriverVersionReadsModuleVersion) {
+  folly::test::TemporaryDirectory tmpDir;
+  const auto devicePath =
+      std::filesystem::path(tmpDir.path().string()) / "scd.xcvr_ctrl.1";
+  std::filesystem::create_directories(devicePath / "driver" / "module");
+  ASSERT_TRUE(
+      folly::writeFile(
+          std::string("0.7.26\n"),
+          (devicePath / "driver" / "module" / "version").c_str()));
+  package_manager::SystemInterface interface;
+  EXPECT_EQ(interface.getBoundDriverVersion(devicePath.string()), "0.7.26");
+}
 
-  std::string getHostKernelVersion() const override {
-    return kernelVersion;
-  }
-  std::vector<std::string> getInstalledRpms(
-      const std::string& /* rpmBaseName */) const override {
-    return rpms;
-  }
-};
+TEST(SystemInterfaceTest, GetBoundDriverVersionNoBoundDriver) {
+  folly::test::TemporaryDirectory tmpDir;
+  package_manager::SystemInterface interface;
+  EXPECT_EQ(
+      interface.getBoundDriverVersion(tmpDir.path().string()), std::nullopt);
+}
+
+TEST(SystemInterfaceTest, GetBoundDriverVersionEmptyVersionFile) {
+  folly::test::TemporaryDirectory tmpDir;
+  const auto devicePath =
+      std::filesystem::path(tmpDir.path().string()) / "scd.xcvr_ctrl.1";
+  std::filesystem::create_directories(devicePath / "driver" / "module");
+  ASSERT_TRUE(
+      folly::writeFile(
+          std::string(" \n"),
+          (devicePath / "driver" / "module" / "version").c_str()));
+  package_manager::SystemInterface interface;
+  EXPECT_EQ(interface.getBoundDriverVersion(devicePath.string()), std::nullopt);
+}
 
 TEST(BspVersionTest, FromStringParsesTriple) {
   auto v = package_manager::BspVersion::fromString("0.7.23");
@@ -90,48 +110,6 @@ TEST(BspVersionTest, Ordering) {
   EXPECT_LT((BspVersion{0, 6, 99}), (BspVersion{0, 7, 0}));
   EXPECT_GE((BspVersion{1, 0, 0}), (BspVersion{0, 7, 23}));
   EXPECT_EQ((BspVersion{0, 7, 23}), (BspVersion{0, 7, 23}));
-}
-
-TEST(SystemInterfaceTest, GetInstalledBspVersionMatchesRunningKernel) {
-  FakeBspSystemInterface fake;
-  fake.kernelVersion = "6.4.3-mock";
-  fake.rpms = {"arista_bsp_kmods-6.4.3-mock-0.7.25-1.x86_64"};
-  auto v = fake.getInstalledBspVersion("arista_bsp_kmods");
-  ASSERT_TRUE(v.has_value());
-  EXPECT_EQ((*v), (package_manager::BspVersion{0, 7, 25}));
-}
-
-TEST(SystemInterfaceTest, GetInstalledBspVersionPicksRunningKernel) {
-  // Two kernel-variant RPMs installed; the running kernel's version is chosen.
-  FakeBspSystemInterface fake;
-  fake.kernelVersion = "6.4.3-mock";
-  fake.rpms = {
-      "arista_bsp_kmods-6.9.9-other-9.9.9-1.x86_64",
-      "arista_bsp_kmods-6.4.3-mock-0.7.25-1.x86_64"};
-  auto v = fake.getInstalledBspVersion("arista_bsp_kmods");
-  ASSERT_TRUE(v.has_value());
-  EXPECT_EQ((*v), (package_manager::BspVersion{0, 7, 25}));
-}
-
-TEST(SystemInterfaceTest, GetInstalledBspVersionNoKernelMatch) {
-  FakeBspSystemInterface fake;
-  fake.kernelVersion = "6.4.3-mock";
-  fake.rpms = {"arista_bsp_kmods-6.9.9-other-9.9.9-1.x86_64"};
-  EXPECT_FALSE(fake.getInstalledBspVersion("arista_bsp_kmods").has_value());
-}
-
-TEST(SystemInterfaceTest, GetInstalledBspVersionEmptyKernel) {
-  FakeBspSystemInterface fake;
-  fake.kernelVersion = "";
-  fake.rpms = {"arista_bsp_kmods-6.4.3-mock-0.7.25-1.x86_64"};
-  EXPECT_FALSE(fake.getInstalledBspVersion("arista_bsp_kmods").has_value());
-}
-
-TEST(SystemInterfaceTest, GetInstalledBspVersionUnparseableVersion) {
-  FakeBspSystemInterface fake;
-  fake.kernelVersion = "6.4.3-mock";
-  fake.rpms = {"arista_bsp_kmods-6.4.3-mock-notaversion-1.x86_64"};
-  EXPECT_FALSE(fake.getInstalledBspVersion("arista_bsp_kmods").has_value());
 }
 
 }; // namespace facebook::fboss::platform::platform_manager

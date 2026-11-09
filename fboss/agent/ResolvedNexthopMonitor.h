@@ -60,6 +60,9 @@ class ResolvedNexthopMonitor : public StateObserver {
     }
     const auto& fwd = route->getForwardInfo();
     for (auto nhop : getNormalizedNextHops(state, fwd)) {
+      if (nhop.resolvedInNextLevel()) {
+        continue;
+      }
       added_.emplace_back(nhop.addr(), nhop.intf(), 0);
     }
   }
@@ -73,6 +76,9 @@ class ResolvedNexthopMonitor : public StateObserver {
     }
     const auto& fwd = route->getForwardInfo();
     for (auto nhop : getNormalizedNextHops(state, fwd)) {
+      if (nhop.resolvedInNextLevel()) {
+        continue;
+      }
       removed_.emplace_back(nhop.addr(), nhop.intf(), 0);
     }
   }
@@ -116,15 +122,21 @@ class ResolvedNexthopMonitor : public StateObserver {
   template <typename MapDeltaT>
   bool processNeighborDelta(const MapDeltaT& mapDelta);
 
+  // added resolves against newState, removed against oldState.
   bool skipLabelFibEntry(
-      const std::shared_ptr<LabelForwardingEntry>& entry) const;
+      const std::shared_ptr<LabelForwardingEntry>& entry,
+      const std::shared_ptr<SwitchState>& state) const;
   void processChangedLabelFibEntry(
       const std::shared_ptr<LabelForwardingEntry>& oldEntry,
-      const std::shared_ptr<LabelForwardingEntry>& newEntry);
+      const std::shared_ptr<LabelForwardingEntry>& newEntry,
+      const std::shared_ptr<SwitchState>& oldState,
+      const std::shared_ptr<SwitchState>& newState);
   void processAddedLabelFibEntry(
-      const std::shared_ptr<LabelForwardingEntry>& addedEntry);
+      const std::shared_ptr<LabelForwardingEntry>& addedEntry,
+      const std::shared_ptr<SwitchState>& newState);
   void processRemovedLabelFibEntry(
-      const std::shared_ptr<LabelForwardingEntry>& removedEntry);
+      const std::shared_ptr<LabelForwardingEntry>& removedEntry,
+      const std::shared_ptr<SwitchState>& oldState);
 
   SwSwitch* sw_{nullptr};
   std::vector<ResolvedNextHop> added_;

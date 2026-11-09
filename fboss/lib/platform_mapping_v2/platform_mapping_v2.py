@@ -28,6 +28,7 @@ from fboss.lib.platform_mapping_v2.integrated_transceiver_mapping import (
 from fboss.lib.platform_mapping_v2.port_profile_mapping import PortProfileMapping
 from fboss.lib.platform_mapping_v2.profile_settings import ProfileSettings
 from fboss.lib.platform_mapping_v2.read_files_utils import (
+    PlatformMappingInputs,
     read_asic_vendor_config,
     read_integrated_transceiver_mapping,
     read_port_profile_mapping,
@@ -56,79 +57,11 @@ from neteng.fboss.platform_config.platform_config.thrift_types import (
 from neteng.fboss.platform_mapping_config.thrift_types import ChipType, CoreType
 from neteng.fboss.switch_config.thrift_types import PortProfileID, PortType
 
-# If you want to generate multiple platform mapping variants for a single platform,
-# define a base platform that includes common files (e.g. si_settings.csv) and
-# create variant folders with specialized files (e.g. port_profile_mapping.csv).
-_PLATFORM_VARIANTS_MAP: Dict[str, List[str]] = {
-    "janga800bic": [
-        "janga800bic_dctype1_prod",
-        "janga800bic_dctype1_prod_fabric_uniform_local_offset",
-        "janga800bic_dctype1_test_fixture",
-        "janga800bic_dctypef_prod",
-        "janga800bic_dctypef_test_fixture",
-    ],
-    "meru800bia": [
-        "meru800bia_100g_nif_port_breakout",
-        "meru800bia_800g",
-        "meru800bia_800g_hyperport",
-        "meru800bia_800g_uniform_local_offset",
-        "meru800bia_dual_stage_edsw",
-        "meru800bia_dual_stage_edsw_fabric_uniform_local_offset",
-        "meru800bia_dual_stage_rdsw",
-        "meru800bia_dual_stage_rdsw_fabric_uniform_local_offset",
-        "meru800bia_single_stage_192_rdsw_40_fdsw_32_edsw",
-        "meru800bia_single_stage_192_rdsw_40_fdsw_32_edsw_800g",
-        "meru800bia_uniform_local_offset",
-        "meru800bia_fabric_uniform_local_offset",
-        "meru800bia_800g_fabric_uniform_local_offset",
-        "meru800bia_hyperport_fabric_uniform_local_offset",
-    ],
-    "tahan800bc": [
-        "tahan800bc_chassis",
-        "tahan800bc_test_fixture",
-    ],
-    "tahansb800bc": [
-        "tahansb800bc_test_fixture",
-    ],
-    "ladakh800bcls": [
-        "ladakh800bcls_rack",
-        "ladakh800bcls_test_fixture",
-        "ladakh800bcls_osfp_tray",
-        "ladakh800bcls_rack_postevt",
-        "ladakh800bcls_test_fixture_postevt",
-    ],
-    "leh800bcls": [
-        "leh800bcls_rack",
-        "leh800bcls_test_fixture",
-    ],
-    "montblanc": [
-        "montblanc_odd_ports_8x100G",
-        "montblanc_gtsw_yolo",
-        "montblanc_precoding",
-        "montblanc",
-    ],
-    "minipack3bta": [
-        "minipack3bta_16rifs",
-    ],
-    # Wedge800BNHP shares the exact same board / platform mapping as
-    # Wedge800BACT; it only needs its own platform descriptor (distinct
-    # PlatformType / detection), inheriting all mapping CSVs from the base.
-    "wedge800bact": [
-        "wedge800bnhp",
-    ],
-}
-
-_PLATFORM_TO_BASE_PLATFORM: Dict[str, str] = {
-    variant: base
-    for base, variants in _PLATFORM_VARIANTS_MAP.items()
-    for variant in variants
-}
-
 
 class PlatformMappingParser:
     def __init__(
         self,
-        directory_map: Dict[str, Dict[str, str]],
+        directory_map: PlatformMappingInputs,
         platform: str,
         multi_npu: bool = False,
         version: Optional[str] = None,
@@ -146,18 +79,14 @@ class PlatformMappingParser:
         self._read_csvs()
 
     def get_directory(self, use_base_platform: bool = False) -> Dict[str, str]:
-        return (
-            self._directory_map[_PLATFORM_TO_BASE_PLATFORM[self.platform]]
-            if use_base_platform
-            else self._directory_map[self.platform]
-        )
+        platform = self.get_base_platform() if use_base_platform else self.platform
+        return self._directory_map[platform].data
+
+    def get_base_platform(self) -> str:
+        return self._directory_map[self.platform].base_platform
 
     def get_mapping_prefix(self) -> str:
-        return (
-            _PLATFORM_TO_BASE_PLATFORM[self.platform]
-            if self.platform in _PLATFORM_TO_BASE_PLATFORM
-            else self.platform
-        )
+        return self.get_base_platform()
 
     def _read_csvs_with_base_platform_fallback(
         self, reader_func: Callable[..., Any], *args: Any, **kwargs: Any
@@ -252,7 +181,7 @@ class PlatformMappingParser:
 class PlatformMappingV2:
     def __init__(
         self,
-        directory_map: Dict[str, Dict[str, str]],
+        directory_map: PlatformMappingInputs,
         platform: str,
         multi_npu: bool = False,
         version: Optional[str] = None,
@@ -268,7 +197,7 @@ class PlatformMappingV2:
     def _uses_root_port_controlling(self) -> bool:
         """For TH6+ platforms, all subsumed ports use ethX/Y/1 as controlling port."""
         # TODO: will add tahansb800bc once the test passed on tahansb800bc
-        base_platform = _PLATFORM_TO_BASE_PLATFORM.get(self.platform, self.platform)
+        base_platform = self.pm_parser.get_base_platform()
         if base_platform in ("ladakh800bcls", "leh800bcls", "tahansb800bc"):
             return False
         for chip in self.pm_parser.get_static_mapping().get_chips():

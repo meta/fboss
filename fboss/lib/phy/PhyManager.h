@@ -117,7 +117,7 @@ class PhyManager {
   virtual void programOnePort(
       PortID portId,
       cfg::PortProfileID portProfileId,
-      std::optional<TransceiverInfo> transceiverInfo,
+      const std::optional<TransceiverInfo>& transceiverInfo,
       bool needResetDataPath);
 
   // Return programmed profile id for a specific port
@@ -288,6 +288,12 @@ class PhyManager {
 
   virtual void gracefulExit() {}
 
+  // True for SAI-based xphys (SaiPhyManager), where each xphy keeps its own
+  // warm boot state and flag, written only on gracefulExit().
+  virtual bool isSaiPhyManager() const {
+    return false;
+  }
+
   void setPublishPhyCb(PublishPhyCb publishPhyCb) {
     publishPhyCb_ = publishPhyCb;
   }
@@ -344,6 +350,7 @@ class PhyManager {
       const PortCacheWLockedPtr& lockedCache,
       PortID portID,
       cfg::PortProfileID profileID,
+      const std::optional<TransceiverInfo>& transceiverInfo,
       const phy::PhyPortConfig& portConfig);
 
   void setPortToExternalPhyPortStats(

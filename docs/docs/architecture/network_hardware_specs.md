@@ -2,7 +2,7 @@
 
 This document captures the unified hardware requirements for network switches to be seamlessly integrated into Meta's data center infrastructure.
 
-Note: These requirements are complementary to the [Meta Switch Architecture](https://facebook.github.io/fboss/docs/architecture/meta_switch_architecture) (a.k.a. BMC Lite Requirements), which covers internal switch hardware and software design. This RFC focuses on how the switch integrates into Meta's data center infrastructure.
+Note: These requirements are complementary to the [Meta Switch Architecture](https://meta.github.io/fboss/docs/architecture/meta_switch_architecture) (a.k.a. BMC Lite Requirements), which covers internal switch hardware and software design. This RFC focuses on how the switch integrates into Meta's data center infrastructure.
 
 
 #### **Versioning:**
@@ -354,7 +354,7 @@ RMCv2 supports 2 types of leakage sensing cable (LSC) interface: Legacy interfac
 
 ### **7.1 BMC Architecture**
 
-- Refer to [Meta Switch Architecture](https://facebook.github.io/fboss/docs/architecture/meta_switch_architecture/)
+- Refer to [Meta Switch Architecture](https://meta.github.io/fboss/docs/architecture/meta_switch_architecture/)
 
 ### **7.2 Rack Management Controller (RMC)**
 
@@ -362,7 +362,7 @@ RMCv2 supports 2 types of leakage sensing cable (LSC) interface: Legacy interfac
 
 ## **8. CPU / Microserver**
 
-- Refer to [Meta Switch Architecture](https://facebook.github.io/fboss/docs/architecture/meta_switch_architecture/) for detailed specification
+- Refer to [Meta Switch Architecture](https://meta.github.io/fboss/docs/architecture/meta_switch_architecture/) for detailed specification
 - R-CPU-040: CPU heat sink shall be optimized to minimize airflow while maintaining adequate margin under TDP conditions.
 - R-CPU-050: Front panel SCM/RPU shall have OAR (Open Air Ratio) optimized to prevent bypass relative to SMB airflow.
 - R-CPU-210: SCM/COMe shall support PCIe link to FPGA on SMB. Additional PCIe links should be implemented if connector pin count allows.
@@ -471,18 +471,18 @@ Note: Detailed security requirements (secure boot, attestation, anti-rollback, e
 
 ## **13. EEPROM / FRU Identification**
 
-- R-EEPROM-010: All FRUs (except fan trays) shall contain an ID EEPROM accessible via I2C serial bus. EEPROM format shall align with [Meta EEPROM v6 definition](https://facebook.github.io/fboss/docs/platform/meta_eeprom_format_v6).
+- R-EEPROM-010: All FRUs (except fan trays) shall contain an ID EEPROM accessible via I2C serial bus. EEPROM format shall align with [Meta EEPROM v6 definition](https://meta.github.io/fboss/docs/platform/meta_eeprom_format_v6).
 - R-EEPROM-020: PSU EEPROM shall contain model number, input power rating, output power rating, airflow direction. Accessible even if AC power is lost.
 
 ## **14. Software Requirements**
 
 ### **14.1 Architecture Compliance**
 
-- R-SW-010: Vendor shall design HW and SW according to [Meta Network Switch System Requirements](https://facebook.github.io/fboss/docs/architecture/meta_switch_architecture) (Meta Switch Architecture / BMC Lite).
-- R-SW-020: Vendor shall follow [OpenBMC software requirements](https://facebook.github.io/fboss/docs/openbmc/openbmc_software_requirements) and PR guidelines.
-- R-SW-030: Vendor shall develop/test BSP codes meeting [BSP development requirements](https://facebook.github.io/fboss/docs/platform/bsp_development_requirements) and [API specifications](https://facebook.github.io/fboss/docs/platform/bsp_api_specification).
-- R-SW-040: Vendor shall develop platform service config files per [PlatformManager](https://facebook.github.io/fboss/docs/platform/platform_manager), [platform SW requirements](https://facebook.github.io/fboss/docs/platform/platform_sw_requirements), and [services support requirements](https://facebook.github.io/fboss/docs/platform/services_support_requirements).
-- R-SW-050: System design shall implement [PlatformManager](https://facebook.github.io/fboss/docs/platform/platform_manager) for flexible BSP driver management.
+- R-SW-010: Vendor shall design HW and SW according to [Meta Network Switch System Requirements](https://meta.github.io/fboss/docs/architecture/meta_switch_architecture) (Meta Switch Architecture / BMC Lite).
+- R-SW-020: Vendor shall follow [OpenBMC software requirements](https://meta.github.io/fboss/docs/openbmc/openbmc_software_requirements) and PR guidelines.
+- R-SW-030: Vendor shall develop/test BSP codes meeting [BSP development requirements](https://meta.github.io/fboss/docs/platform/bsp_development_requirements) and [API specifications](https://meta.github.io/fboss/docs/platform/bsp_api_specification).
+- R-SW-040: Vendor shall develop platform service config files per [PlatformManager](https://meta.github.io/fboss/docs/platform/platform_manager), [platform SW requirements](https://meta.github.io/fboss/docs/platform/platform_sw_requirements), and [services support requirements](https://meta.github.io/fboss/docs/platform/services_support_requirements).
+- R-SW-050: System design shall implement [PlatformManager](https://meta.github.io/fboss/docs/platform/platform_manager) for flexible BSP driver management.
 
 ### **14.2 FBOSS Integration**
 

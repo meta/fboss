@@ -29,6 +29,8 @@ class SensorServiceThriftHandler : public SensorServiceThriftSvIf {
       SensorReadResponse& response,
       std::unique_ptr<std::vector<std::string>> request) override;
 
+  void getRebootHistory(RebootHistoryResponse& response) override;
+
   SensorServiceImpl* getServiceImpl() {
     return sensorServiceImpl_.get();
   }

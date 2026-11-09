@@ -22,7 +22,8 @@
 #include "fboss/agent/test/AgentHwTest.h"
 #include "fboss/agent/test/TestUtils.h"
 #include "fboss/agent/test/TrunkUtils.h"
-#include "fboss/agent/test/agent_hw_tests/AgentMPLSDataplaneTestUtils.h"
+#include "fboss/agent/test/utils/AgentMPLSDataplaneTestUtils.h"
+#include "fboss/agent/test/utils/ConfigUtils.h"
 #include "fboss/agent/test/utils/CoppTestUtils.h"
 #include "fboss/agent/test/utils/PacketSnooper.h"
 #include "fboss/agent/test/utils/PortStatsTestUtils.h"
@@ -45,13 +46,18 @@ class AgentMPLSDataplaneTest : public AgentHwTest {
 
   cfg::SwitchConfig initialConfig(
       const AgentEnsemble& ensemble) const override {
-    auto config = utility::onePortPerInterfaceConfig(
-        ensemble.getSw(),
-        ensemble.masterLogicalPortIds(),
-        true /* interfaceHasSubnet */);
-
+    auto masterLogicalPorts = ensemble.masterLogicalPortIds();
+    cfg::SwitchConfig config;
     if constexpr (kIsTrunk) {
-      utility::addAggPort(1, {ensemble.masterLogicalPortIds()[0]}, &config);
+      config = utility::oneAggregatePortPerInterfaceConfig(
+          ensemble.getSw(),
+          masterLogicalPorts,
+          {utility::AggregatePortInfo(
+              AggregatePortID(1), {masterLogicalPorts[0]})},
+          true /* interfaceHasSubnet */);
+    } else {
+      config = utility::onePortPerInterfaceConfig(
+          ensemble.getSw(), masterLogicalPorts, true /* interfaceHasSubnet */);
     }
 
     utility::setDefaultCpuTrafficPolicyConfig(

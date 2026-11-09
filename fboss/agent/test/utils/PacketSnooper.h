@@ -37,6 +37,9 @@ enum class packetSnooperReceivePacketType {
   // Keep only Tajo Mirror-on-Drop export packets; drop unrelated CPU-punted
   // traffic that shares the punt path on Tajo.
   PACKET_TYPE_TAJO_MOD,
+  // Keep only frames validated by the Chenab TAC parser, excluding unrelated
+  // CPU-punted traffic.
+  PACKET_TYPE_CHENAB_MOD,
 };
 
 class PacketSnooper : public PacketObserverIf {
@@ -58,6 +61,8 @@ class PacketSnooper : public PacketObserverIf {
   }
   // Wait until timeout (seconds), If timeout = 0, wait forever.
   std::optional<utility::EthFrame> waitForPacket(uint32_t timeout_s = 0);
+  // Whether a matching packet has arrived, without waiting for one.
+  bool receivedPacket();
   void ignoreUnclaimedRxPkts() {
     ignoreUnclaimedRxPkts_ = true;
   }

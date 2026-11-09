@@ -252,7 +252,8 @@
             ]
           }
         ],
-        "stage": 0
+        "stage": 0,
+        "bindPoint": 0
       }
     ],
     "mirrorOnDropReports": [

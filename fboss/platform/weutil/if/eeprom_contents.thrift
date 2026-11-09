@@ -9,7 +9,7 @@ include "thrift/annotation/thrift.thrift"
 package;
 
 // This is a common thrift struct for both V5 and V6 EEPROMs
-// See https://facebook.github.io/fboss/docs/platform/meta_eeprom_format_v6/ for details.
+// See https://meta.github.io/fboss/docs/platform/meta_eeprom_format_v6/ for details.
 struct EepromContents {
   1: i16 version;
   2: string productName;

@@ -8,6 +8,10 @@
  *
  */
 
+#include <algorithm>
+#include <exception>
+#include <stdexcept>
+#include <string_view>
 #include <utility>
 
 #include "configerator/structs/neteng/fboss/bgp/if/gen-cpp2/bgp_attr_types.h"
@@ -30,6 +34,7 @@
 #include "folly/IPAddress.h"
 #include "folly/Range.h"
 #include "folly/String.h"
+#include "folly/Unicode.h"
 #include "folly/json.h"
 #include "folly/json/dynamic.h"
 #include "neteng/fboss/bgp/if/gen-cpp2/TBgpService.h"
@@ -67,6 +72,31 @@ using facebook::neteng::fboss::bgp::thrift::TBgpService;
 using facebook::neteng::fboss::bgp::thrift::TBgpSessionDetail;
 using neteng::fboss::bgp::thrift::TBgpPeerState;
 
+LoadedBgpPolicy getLoadedBgpPolicy(const HostInfo& hostInfo) {
+  auto client = utils::createClient<Client<TBgpService>>(hostInfo);
+  if (client->sync_hasPolicySymlink()) {
+    std::string policyConfigJson;
+    client->sync_getPolicyConfig(policyConfigJson);
+    if (policyConfigJson.empty()) {
+      throw std::runtime_error(
+          "BGP reports a standalone policy artifact, but getPolicyConfig returned empty");
+    }
+    return {
+        BgpPolicySource::POLICY_ARTIFACT,
+        apache::thrift::SimpleJSONSerializer::deserialize<
+            facebook::bgp::thrift::BgpPolicyConfig>(policyConfigJson)};
+  }
+
+  facebook::bgp::thrift::BgpConfig bgpConfig;
+  client->sync_getRunningConfigStruct(bgpConfig);
+  facebook::bgp::thrift::BgpPolicyConfig policyConfig;
+  policyConfig.communities().copy_from(bgpConfig.communities());
+  policyConfig.localprefs().copy_from(bgpConfig.localprefs());
+  policyConfig.policies().copy_from(bgpConfig.policies());
+  return {BgpPolicySource::BGP_CONFIG, std::move(policyConfig)};
+}
+
+// Route-detail views remain best-effort when the artifact RPC is unavailable.
 std::optional<facebook::bgp::bgp_policy::BgpPolicies> getRunningBgpPolicies(
     const HostInfo& hostInfo) {
   auto client = utils::createClient<Client<TBgpService>>(hostInfo);
@@ -154,6 +184,205 @@ const std::string printCommunities(
   }
 
   return isMultiLine ? folly::join("\n", output) : folly::join(", ", output);
+}
+
+namespace {
+
+using nettools::bgplib::BgpNotifCeaseErrSubCode;
+using nettools::bgplib::BgpNotifErrCode;
+using nettools::bgplib::BgpNotificationRouteRefreshErrSubCode;
+using nettools::bgplib::BgpNotifMsgHdrErrSubCode;
+using nettools::bgplib::BgpNotifOpenMsgErrSubCode;
+
+/* Unsigned big-endian integer of at most 4 bytes. */
+uint32_t readBigEndian(std::string_view bytes) {
+  uint32_t value = 0;
+  for (const unsigned char byte : bytes) {
+    value = (value << 8) | byte;
+  }
+  return value;
+}
+
+/* Unicode control characters (general category Cc): C0, DEL and C1. */
+bool isControlCodePoint(char32_t codePoint) {
+  constexpr char32_t kC0End = 0x1F;
+  constexpr char32_t kDelete = 0x7F;
+  constexpr char32_t kC1End = 0x9F;
+  return codePoint <= kC0End || (codePoint >= kDelete && codePoint <= kC1End);
+}
+
+/* Valid UTF-8 (RFC 9003) with no control characters. */
+bool isPrintableUtf8(std::string_view text) {
+  const auto* p = reinterpret_cast<const unsigned char*>(text.data());
+  const auto* const end = p + text.size();
+  try {
+    while (p < end) {
+      if (isControlCodePoint(
+              folly::utf8ToCodePoint(p, end, /*skipOnError=*/false))) {
+        return false;
+      }
+    }
+  } catch (const std::runtime_error&) {
+    return false;
+  }
+  return true;
+}
+
+template <typename SubCode>
+bool hasSubCode(
+    const nettools::bgplib::BgpNotification& notification,
+    SubCode subCode) {
+  return *notification.errSubCode() == static_cast<int16_t>(subCode);
+}
+
+/*
+ * Decode a NOTIFICATION's Data field for the code/subcode pairs whose RFCs give
+ * it a fixed layout. Anything else, or Data that does not match its layout, is
+ * shown as hex.
+ */
+std::string decodeBgpNotificationData(
+    const nettools::bgplib::BgpNotification& notification) {
+  const std::string_view data = *notification.data();
+  switch (*notification.errCode()) {
+    case BgpNotifErrCode::BN_MSG_HDR_ERR:
+      if (hasSubCode(
+              notification, BgpNotifMsgHdrErrSubCode::BN_MH_BAD_MSG_LEN) &&
+          data.size() == 2) {
+        return fmt::format("length {}", readBigEndian(data));
+      }
+      if (hasSubCode(
+              notification, BgpNotifMsgHdrErrSubCode::BN_MH_BAD_MSG_TYPE) &&
+          data.size() == 1) {
+        return fmt::format("type {}", readBigEndian(data));
+      }
+      break;
+    case BgpNotifErrCode::BN_OPEN_MSG_ERR:
+      /* RFC 4271 specifies 2 octets, but BGP++ itself sends 1. */
+      if (hasSubCode(
+              notification,
+              BgpNotifOpenMsgErrSubCode::BN_OM_UNSUPPORTED_VERSION_NUMBER) &&
+          (data.size() == 1 || data.size() == 2)) {
+        return fmt::format("version {}", readBigEndian(data));
+      }
+      break;
+    case BgpNotifErrCode::BN_ROUTE_REFRESH_MSG_ERR:
+      if (hasSubCode(
+              notification,
+              BgpNotificationRouteRefreshErrSubCode::BN_INVALID_MSG_LEN) &&
+          data.size() == 2) {
+        return fmt::format("length {}", readBigEndian(data));
+      }
+      break;
+    case BgpNotifErrCode::BN_CEASE:
+#ifndef IS_OSS
+      /*
+       * RFC 8538 Hard Reset: Data is the NOTIFICATION it carries. The decoder
+       * lives in BgpUtil, which is not open source; OSS prints the hex below.
+       */
+      if (nettools::bgplib::isBgpHardResetNotification(notification)) {
+        return fmt::format(
+            "[{}]",
+            formatBgpNotification(
+                nettools::bgplib::decodeBgpHardResetNotification(
+                    std::string(data))));
+      }
+#endif
+      /* RFC 9003 shutdown communication: 1-byte length, then UTF-8 text. */
+      if ((hasSubCode(
+               notification,
+               BgpNotifCeaseErrSubCode::BN_CEASE_ADMIN_SHUTDOWN) ||
+           hasSubCode(
+               notification, BgpNotifCeaseErrSubCode::BN_CEASE_ADMIN_RESET)) &&
+          !data.empty() &&
+          static_cast<unsigned char>(data[0]) == data.size() - 1 &&
+          isPrintableUtf8(data.substr(1))) {
+        // Length 0 means the shutdown carries no message
+        if (data.size() == 1) {
+          return "(empty)";
+        }
+        return fmt::format("\"{}\"", data.substr(1));
+      }
+      /* RFC 4486: AFI (2 bytes), SAFI (1), prefix limit (4). */
+      if (hasSubCode(
+              notification,
+              BgpNotifCeaseErrSubCode::BN_CEASE_MAX_PREFIX_LIMIT) &&
+          data.size() == 7) {
+        return fmt::format(
+            "AFI {} SAFI {}, limit {}",
+            readBigEndian(data.substr(0, 2)),
+            readBigEndian(data.substr(2, 1)),
+            readBigEndian(data.substr(3, 4)));
+      }
+      break;
+    default:
+      break;
+  }
+  return fmt::format("0x{}", folly::hexlify(data));
+}
+
+std::string formatBgpNotificationCodes(
+    const nettools::bgplib::BgpNotification& notification) {
+  const auto result = fmt::format(
+      "{} ({})",
+      apache::thrift::util::enumNameSafe(*notification.errCode()),
+      static_cast<uint16_t>(*notification.errCode()));
+
+  /*
+   * The parser seeds errSubCodeStr with the sentinel "NA" and overwrites it
+   * only when the code family names that subcode, so an unnamed subcode
+   * arrives as "NA" rather than empty (BgpMessageParser.cpp). Codes with no
+   * subcode namespace at all (BN_HOLD_TIMER_EXPIRED, BN_FSM_ERROR) and
+   * subcode 0 of the families whose enums start at 1 (message-header, cease)
+   * both land here. Empty is also treated as unnamed for hand-built structs.
+   */
+  const auto& subCodeStr = *notification.errSubCodeStr();
+  if (subCodeStr.empty() || subCodeStr == "NA") {
+    return fmt::format(
+        "{}, subcode {}", result, folly::copy(*notification.errSubCode()));
+  }
+  return fmt::format(
+      "{}, subcode {} ({})",
+      result,
+      subCodeStr,
+      folly::copy(*notification.errSubCode()));
+}
+
+} // namespace
+
+std::string formatBgpNotification(
+    const facebook::nettools::bgplib::BgpNotification& notification) {
+  auto result = formatBgpNotificationCodes(notification);
+  if (!notification.data()->empty()) {
+    std::string decodedData;
+    try {
+      decodedData = decodeBgpNotificationData(notification);
+    } catch (const std::exception&) {
+      decodedData = "[failed to decode raw data]";
+    }
+    result += fmt::format(", data: {}", decodedData);
+  }
+  return result;
+}
+
+void printLastBgpNotifications(const TBgpSession& neighbor, std::ostream& out) {
+  if (neighbor.last_notification_sent().has_value()) {
+    out << "  Last notification sent:     "
+        << formatBgpNotification(*neighbor.last_notification_sent())
+        << std::endl;
+    if (neighbor.last_notification_sent_time().has_value()) {
+      printTimestamp(
+          *neighbor.last_notification_sent_time(), "    Sent at", out);
+    }
+  }
+  if (neighbor.last_notification_received().has_value()) {
+    out << "  Last notification received: "
+        << formatBgpNotification(*neighbor.last_notification_received())
+        << std::endl;
+    if (neighbor.last_notification_received_time().has_value()) {
+      printTimestamp(
+          *neighbor.last_notification_received_time(), "    Received at", out);
+    }
+  }
 }
 
 float translateLinkBandwidthValue(const uint32_t linkBandwidthValue) {
@@ -319,6 +548,313 @@ void resetBgpMnemonicCaches() {
   cache.communitySetMap.clear();
 }
 
+TIpPrefix sampleIpPrefix(const std::string& cidr) {
+  const auto slash = cidr.find_last_of('/');
+  const auto address = (slash == std::string::npos)
+      ? IPAddress(cidr)
+      : IPAddress(cidr.substr(0, slash));
+
+  TIpPrefix prefix;
+  prefix.prefix_bin() =
+      facebook::network::toBinaryAddress(address).addr().value().toStdString();
+  prefix.num_bits() = (slash != std::string::npos)
+      ? folly::to<int>(cidr.substr(slash + 1))
+      : (address.isV4() ? 32 : 128);
+  prefix.afi() = address.isV4() ? TBgpAfi::AFI_IPV4 : TBgpAfi::AFI_IPV6;
+  return prefix;
+}
+
+TBgpCommunity sampleCommunity(const SampleCommunity& community) {
+  return sampleCommunity(community.asn, community.value);
+}
+
+TBgpCommunity sampleCommunity(uint16_t asn, uint16_t value) {
+  TBgpCommunity community;
+  community.asn() = asn;
+  community.value() = value;
+  community.community() =
+      static_cast<int64_t>((static_cast<uint32_t>(asn) << 16) | value);
+  return community;
+}
+
+std::string formatBgpIpAddress(const TIpPrefix& prefix) {
+  const auto address = IPAddress::tryFromBinary(
+      folly::ByteRange(folly::StringPiece(*prefix.prefix_bin())));
+  return address.hasValue() ? address->str() : "<invalid>";
+}
+
+void printFibOut(std::ostream& out, const TRibEntry& entry) {
+  if (!entry.fib_out().has_value()) {
+    return;
+  }
+
+  const auto& fibOut = *entry.fib_out();
+  out << fmt::format(
+      "  FIB-out: {}", apache::thrift::util::enumNameSafe(*fibOut.operation()));
+  if (fibOut.nexthop_set_ref_count().has_value()) {
+    out << fmt::format(
+        " | Route References: {}", *fibOut.nexthop_set_ref_count());
+  }
+  if (fibOut.admin_distance().has_value()) {
+    out << fmt::format(" | Admin Distance: {}", *fibOut.admin_distance());
+  }
+  if (fibOut.class_id().has_value()) {
+    out << fmt::format(" | Class ID: {}", *fibOut.class_id());
+  }
+  out << '\n';
+
+  for (const auto& nextHop : *fibOut.next_hops()) {
+    out << fmt::format(
+        "    {} | Weight: {} | Role: {}",
+        formatBgpIpAddress(*nextHop.next_hop()),
+        *nextHop.weight(),
+        apache::thrift::util::enumNameSafe(*nextHop.role()));
+    if (nextHop.is_connected().has_value()) {
+      out << fmt::format(
+          " | Connected: {}", *nextHop.is_connected() ? "true" : "false");
+    }
+    if (nextHop.interface_name().has_value()) {
+      out << fmt::format(" | Interface: {}", *nextHop.interface_name());
+    }
+    if (nextHop.topology_info().has_value()) {
+      std::vector<std::pair<std::string, int64_t>> topology(
+          nextHop.topology_info()->begin(), nextHop.topology_info()->end());
+      std::sort(topology.begin(), topology.end());
+      out << " | Topology:";
+      for (const auto& [name, value] : topology) {
+        out << fmt::format(" {}={}", name, value);
+      }
+    }
+    out << '\n';
+  }
+}
+
+namespace {
+
+struct SamplePathSpec {
+  std::string nextHop;
+  std::string peer;
+  std::string peerDescription;
+  int32_t localPref;
+  // The advertising router, rendered as the Router/Originator line by
+  // 'table detail'. Must be IPv4: router IDs are 32-bit, and sampleBgpPath
+  // throws on anything else.
+  std::string routerAddress;
+  bool isBestPath;
+  // Only the rejected ECMP path carries one; 'table detail' prints it as the
+  // BestPath Rejection Reason.
+  std::string bestPathFilterDescription;
+};
+
+TBgpPath sampleBgpPath(const SamplePathSpec& spec) {
+  TBgpPath path;
+  path.next_hop() = sampleIpPrefix(spec.nextHop);
+  path.peer_id() = sampleIpPrefix(spec.peer);
+  path.peer_description() = spec.peerDescription;
+  path.local_pref() = spec.localPref;
+  // printRIBEntries reads router_id back with IPAddress::fromLongHBO, so store
+  // host byte order.
+  path.router_id() =
+      static_cast<int32_t>(IPAddress(spec.routerAddress).asV4().toLongHBO());
+  // BGP_ORIGIN_IGP; printRIBEntries trims the enum prefix and renders "IGP".
+  path.origin() = 0;
+  path.is_best_path() = spec.isBestPath;
+  if (!spec.bestPathFilterDescription.empty()) {
+    path.bestpath_filter_descr() = spec.bestPathFilterDescription;
+  }
+  // Microseconds; printRIBEntries renders LM as the time elapsed since then,
+  // so this drifts with wall clock rather than being a fixed string.
+  path.last_modified_time() = 1788455780000000;
+  path.next_hop_weight() = 0;
+  path.med() = 0;
+  path.path_id() = 0;
+  path.path_id_to_send() = 4;
+  path.weight() = 0;
+
+  neteng::fboss::bgp_attr::TAsPathSeg segment;
+  segment.seg_type() = TAsPathSegType::AS_SEQUENCE;
+  // Sample ASNs (RFC 6996 private-use range). These samples are published to
+  // the CLI reference wiki and ship in the open-source tree, so they must not
+  // carry real AS numbers or community assignments.
+  segment.asns() = {64712, 65017, 64961, 65108};
+  path.as_path() = TAsPath{segment};
+
+  // The community a default route carries; the 'show bgp config' sample
+  // defines the matching AS65108.DEFAULT mnemonic for it.
+  path.communities() = {sampleCommunity(kSampleDefaultCommunity)};
+
+  return path;
+}
+
+} // namespace
+
+TRibEntryWithHost sampleRibEntriesWithHost() {
+  TRibEntry defaultRoute;
+  defaultRoute.prefix() = sampleIpPrefix("0.0.0.0/0");
+  defaultRoute.best_group() = "best";
+  defaultRoute.best_next_hop() = sampleIpPrefix("192.0.2.11");
+  defaultRoute.paths() = {
+      {"best",
+       {sampleBgpPath(
+            {.nextHop = "192.0.2.11",
+             .peer = "192.0.2.11",
+             .peerDescription = "fsw001.p001.f01.abc1",
+             .localPref = 100,
+             .routerAddress = "192.0.2.101",
+             .isBestPath = true,
+             .bestPathFilterDescription = ""}),
+        sampleBgpPath(
+            {.nextHop = "192.0.2.12",
+             .peer = "192.0.2.12",
+             .peerDescription = "fsw002.p001.f01.abc1",
+             .localPref = 100,
+             .routerAddress = "192.0.2.102",
+             .isBestPath = false,
+             .bestPathFilterDescription =
+                 "Router-Id, Filter Criterion: Choose Lowest Value"})}},
+      // A drained peer advertises the same prefix at a lower local-pref, so it
+      // lands outside the best group and renders without the ECMP marker.
+      {"warm",
+       {sampleBgpPath(
+           {.nextHop = "192.0.2.13",
+            .peer = "192.0.2.13",
+            .peerDescription = "fsw003.p001.f01.abc1",
+            .localPref = 20,
+            .routerAddress = "192.0.2.103",
+            .isBestPath = false,
+            .bestPathFilterDescription = ""})}}};
+  TRibEntry v6Prefix;
+  v6Prefix.prefix() = sampleIpPrefix("2001:db8:1c00::/40");
+  v6Prefix.best_group() = "best";
+  v6Prefix.best_next_hop() = sampleIpPrefix("2001:db8:e11e:1062::4e");
+  v6Prefix.paths() = {
+      {"best",
+       {sampleBgpPath(
+           {.nextHop = "2001:db8:e11e:1062::4e",
+            .peer = "2001:db8:e11e:1062::4e",
+            .peerDescription = "fsw001.p001.f01.abc1",
+            .localPref = 100,
+            .routerAddress = "192.0.2.101",
+            .isBestPath = true,
+            .bestPathFilterDescription = ""})}}};
+  TRibEntryWithHost data;
+  data.tRibEntries() = {defaultRoute, v6Prefix};
+  data.host() = "rsw001.p001.f01.abc1";
+  data.oobName() = "rsw001.p001.f01.abc1.oob";
+  data.ip() = "192.0.2.1";
+  return data;
+}
+
+TFibOutTable sampleFibOutTable() {
+  TFibOutRoute defaultRoute;
+  defaultRoute.operation() = TFibOutOperation::PROGRAM;
+  defaultRoute.admin_distance() = 20;
+  for (const auto& address : {"192.0.2.11", "192.0.2.12"}) {
+    TFibOutNextHop nextHop;
+    nextHop.next_hop() = sampleIpPrefix(address);
+    nextHop.weight() = 0;
+    nextHop.role() = TFibOutNextHopRole::PRIMARY;
+    defaultRoute.next_hops()->emplace_back(std::move(nextHop));
+  }
+  defaultRoute.nexthop_set_ref_count() = 1;
+  TFibOutEntry defaultEntry;
+  defaultEntry.prefix() = sampleIpPrefix("0.0.0.0/0");
+  defaultEntry.fib_out() = std::move(defaultRoute);
+
+  TFibOutNextHop v6NextHop;
+  v6NextHop.next_hop() = sampleIpPrefix("2001:db8:e11e:1062::4e");
+  v6NextHop.weight() = 0;
+  v6NextHop.role() = TFibOutNextHopRole::PRIMARY;
+  TFibOutRoute v6Route;
+  v6Route.operation() = TFibOutOperation::PROGRAM;
+  v6Route.next_hops() = {std::move(v6NextHop)};
+  v6Route.admin_distance() = 20;
+  v6Route.nexthop_set_ref_count() = 1;
+  TFibOutEntry v6Entry;
+  v6Entry.prefix() = sampleIpPrefix("2001:db8:1c00::/40");
+  v6Entry.fib_out() = std::move(v6Route);
+
+  TFibOutTable table;
+  table.enabled() = true;
+  table.entries() = {std::move(defaultEntry), std::move(v6Entry)};
+  return table;
+}
+
+NetworkPathWithHost sampleNetworkPaths(
+    SampleRouteDirection direction,
+    const std::string& policyName) {
+  const bool received = direction == SampleRouteDirection::Received;
+
+  auto path = [&](const std::string& nextHop,
+                  int64_t peerAsn,
+                  int32_t localPref,
+                  const std::vector<TBgpCommunity>& communities) {
+    TBgpPath bgpPath;
+    bgpPath.next_hop() = sampleIpPrefix(nextHop);
+    bgpPath.local_pref() = localPref;
+    // BGP_ORIGIN_IGP; the renderer trims the enum prefix and prints "IGP".
+    bgpPath.origin() = 0;
+    bgpPath.med() = 0;
+    bgpPath.communities() = communities;
+    if (!policyName.empty()) {
+      bgpPath.policy_name() = policyName;
+    }
+    /*
+     * Microseconds. Advertised routes are rendered straight out of the
+     * AdjRibOut and carry no last-modified time, so the view prints
+     * "LastModified: Not set"; received ones carry the time the path arrived.
+     */
+    if (received) {
+      bgpPath.last_modified_time() = 1788455780000000;
+    }
+
+    neteng::fboss::bgp_attr::TAsPathSeg segment;
+    segment.seg_type() = TAsPathSegType::AS_CONFED_SEQUENCE;
+    // printAsPath() prefers asns_4_byte and only falls back to the legacy
+    // asns field, so populate the one the renderer actually reads.
+    segment.asns_4_byte() = {peerAsn};
+    bgpPath.as_path() = TAsPath{segment};
+    return bgpPath;
+  };
+
+  /*
+   * The confederation ASNs either side of the session: the peer we receive
+   * from and the peer we advertise to are in different sub-ASes, which is
+   * what makes the two directions distinguishable in the rendered AS path.
+   */
+  constexpr int64_t kUpstreamAsn = 65221;
+  constexpr int64_t kDownstreamAsn = 64650;
+
+  // LIVE, plus the community that identifies the prefix class.
+  const std::vector<TBgpCommunity> aggregateCommunities = {
+      sampleCommunity(kSampleLiveCommunity),
+      sampleCommunity(kSampleAggregateCommunity)};
+  const std::vector<TBgpCommunity> defaultRouteCommunities = {
+      sampleCommunity(kSampleLiveCommunity),
+      sampleCommunity(kSampleDefaultCommunity)};
+
+  NetworkPathWithHost result;
+  if (received) {
+    // What the peer sends us: a default route and a more specific.
+    result.networkPath() = {
+        {sampleIpPrefix("0.0.0.0/0"),
+         {path("192.0.2.11", kUpstreamAsn, 100, defaultRouteCommunities)}},
+        {sampleIpPrefix("203.0.113.7/32"),
+         {path("192.0.2.11", kUpstreamAsn, 90, aggregateCommunities)}}};
+  } else {
+    // What we send the peer: two rack aggregates.
+    result.networkPath() = {
+        {sampleIpPrefix("198.51.100.0/24"),
+         {path("192.0.2.12", kDownstreamAsn, 100, aggregateCommunities)}},
+        {sampleIpPrefix("203.0.113.0/24"),
+         {path("192.0.2.12", kDownstreamAsn, 100, aggregateCommunities)}}};
+  }
+  result.host() = "rsw001.p001.f01.abc1";
+  result.oobName() = "rsw001.p001.f01.abc1.oob";
+  result.ip() = "192.0.2.1";
+  return result;
+}
+
 const std::vector<std::string> printRoutesInformation(
     const std::map<TIpPrefix, std::vector<TBgpPath>>& networks,
     const HostInfo& hostInfo,
@@ -455,6 +991,9 @@ void printBgpCapabilities(const TBgpSessionDetail& details, std::ostream& out) {
         << "s" << std::endl;
   } else {
     out << "    Graceful Restart: NOT sent" << std::endl;
+  }
+  if (folly::copy(details.gr_notification_negotiated().value())) {
+    out << "    Graceful Notification: negotiated" << std::endl;
   }
 }
 
@@ -718,7 +1257,7 @@ float getLinkBandwidthFromExtCommunities(
       // not a two-byte ASN
       continue;
     }
-    const auto& asn = commUnion.get_two_byte_asn();
+    const auto& asn = commUnion.two_byte_asn().value();
 
     if (folly::copy(asn.type().value()) !=
         static_cast<int>(TBgpTwoByteAsnExtCommType::LINK_BANDWIDTH_TYPE)) {

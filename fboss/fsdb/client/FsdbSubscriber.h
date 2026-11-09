@@ -97,7 +97,8 @@ struct SubscriptionOptions {
       bool requireInitialSyncToMarkConnect = false,
       bool forceSubscribe = false,
       std::optional<int64_t> heartbeatInterval = std::nullopt,
-      bool exportPerSubscriptionMetrics = false)
+      bool exportPerSubscriptionMetrics = false,
+      std::optional<uint32_t> serveIntervalSec = std::nullopt)
       : clientId_(clientId),
         subscribeStats_(subscribeStats),
         grHoldTimeSec_(grHoldTimeSec),
@@ -106,6 +107,9 @@ struct SubscriptionOptions {
         exportPerSubscriptionMetrics_(exportPerSubscriptionMetrics) {
     if (heartbeatInterval.has_value()) {
       heartbeatInterval_ = heartbeatInterval.value();
+    }
+    if (serveIntervalSec.has_value()) {
+      serveIntervalSec_ = serveIntervalSec.value();
     }
   }
 
@@ -116,6 +120,7 @@ struct SubscriptionOptions {
   bool forceSubscribe_{false};
   bool exportPerSubscriptionMetrics_{false};
   std::optional<int32_t> heartbeatInterval_{std::nullopt};
+  std::optional<uint32_t> serveIntervalSec_{std::nullopt};
 };
 
 struct SubscriptionInfo {
@@ -282,6 +287,10 @@ class FsdbSubscriber : public FsdbSubscriberBase {
         request.heartbeatInterval() =
             subscriptionOptions_.heartbeatInterval_.value();
       }
+      if (subscriptionOptions_.serveIntervalSec_.has_value()) {
+        request.serveIntervalSec() =
+            subscriptionOptions_.serveIntervalSec_.value();
+      }
       return request;
     } else if constexpr (std::is_same_v<Paths, std::vector<ExtendedOperPath>>) {
       OperSubRequestExtended request;
@@ -291,6 +300,10 @@ class FsdbSubscriber : public FsdbSubscriberBase {
       if (subscriptionOptions_.heartbeatInterval_.has_value()) {
         request.heartbeatInterval() =
             subscriptionOptions_.heartbeatInterval_.value();
+      }
+      if (subscriptionOptions_.serveIntervalSec_.has_value()) {
+        request.serveIntervalSec() =
+            subscriptionOptions_.serveIntervalSec_.value();
       }
       return request;
     }

@@ -7,8 +7,10 @@
  *  of patent rights can be found in the PATENTS file in the same directory.
  *
  */
+#include "fboss/agent/AgentFeatures.h"
 #include "fboss/agent/ApplyThriftConfig.h"
 #include "fboss/agent/FbossError.h"
+#include "fboss/agent/FbossHwUpdateError.h"
 #include "fboss/agent/FibHelpers.h"
 #include "fboss/agent/SwSwitchRouteUpdateWrapper.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
@@ -22,6 +24,7 @@
 #include "fboss/agent/if/gen-cpp2/common_types.h"
 
 #include <fmt/format.h>
+#include <folly/portability/GFlags.h>
 #include <gtest/gtest.h>
 #include <optional>
 #include <set>
@@ -238,6 +241,51 @@ class RouteTest : public ::testing::Test {
   std::unique_ptr<HwTestHandle> handle_;
 };
 
+TEST_F(RouteTest, routeDetailsOfNextHopResolvedInNextLevel) {
+  RoutePrefixV6 pfx6{folly::IPAddressV6("2001::"), 64};
+  RouteV6 route(
+      RouteV6::makeThrift(
+          pfx6,
+          kClientA,
+          RouteNextHopEntry(makeNextHops({"2::10"}), DISTANCE)));
+  RouteNextHopSet nhops{
+      ResolvedNextHop(
+          folly::IPAddress("2::10"), InterfaceID(1), UCMP_DEFAULT_WEIGHT),
+      ResolvedNextHop(
+          folly::IPAddress("2001:db8:500::1"),
+          std::nullopt,
+          UCMP_DEFAULT_WEIGHT,
+          std::nullopt,
+          std::nullopt,
+          std::nullopt,
+          std::nullopt,
+          {},
+          TunnelType::VXLAN,
+          "vx0",
+          std::nullopt,
+          NextHopRole::PRIMARY,
+          RouterID(0),
+          true /* resolvedInNextLevel */)};
+  ClientNextHopsResolver readInline = [](const RouteNextHopEntry& entry) {
+    return entry.getNextHopSet();
+  };
+
+  auto fwdInfo =
+      *route.toRouteDetails(nhops, std::nullopt, readInline).fwdInfo();
+
+  IfAndIP viaInterface;
+  viaInterface.interfaceID() = 1;
+  viaInterface.ip() = toBinaryAddress(folly::IPAddress("2::10"));
+  IfAndIP inNextLevel;
+  inNextLevel.ip() = toBinaryAddress(folly::IPAddress("2001:db8:500::1"));
+  inNextLevel.vrf() = 0;
+  inNextLevel.resolvedInNextLevel() = true;
+  std::vector<IfAndIP> expected{viaInterface, inNextLevel};
+  std::sort(fwdInfo.begin(), fwdInfo.end());
+  std::sort(expected.begin(), expected.end());
+  EXPECT_EQ(fwdInfo, expected);
+}
+
 TEST_F(RouteTest, routeApi) {
   RoutePrefixV6 pfx6{folly::IPAddressV6("2001::"), 64};
   RouteNextHopSet nhops = makeNextHops({"2::10"});
@@ -245,9 +293,15 @@ TEST_F(RouteTest, routeApi) {
   auto testRouteApi = [&](auto route) {
     EXPECT_TRUE(std::make_shared<RouteV6>(route.toThrift())->isSame(&route));
     EXPECT_EQ(pfx6, route.prefix());
+    // Locally built route with no IDs allocated, so read inline explicitly.
+    ClientNextHopsResolver readInline = [](const RouteNextHopEntry& entry) {
+      return entry.getNextHopSet();
+    };
     EXPECT_EQ(
-        route.toRouteDetails(route.getForwardInfo().getNextHopSet()),
-        route.toRouteDetails(route.getForwardInfo().getNextHopSet()));
+        route.toRouteDetails(
+            route.getForwardInfo().getNextHopSet(), std::nullopt, readInline),
+        route.toRouteDetails(
+            route.getForwardInfo().getNextHopSet(), std::nullopt, readInline));
     EXPECT_EQ(route.str(), route.str());
     EXPECT_EQ(route.flags(), 0);
     EXPECT_FALSE(route.isResolved());
@@ -1117,6 +1171,7 @@ TEST_F(RouteTest, applyNewConfig) {
   config.interfaces()[5].intfID() = 6;
   config.interfaces()[5].vlanID() = 6;
   config.interfaces()[5].routerID() = 1;
+  config.vrfs().ensure().emplace_back().vrfId() = 1;
   config.interfaces()[5].mac() = "00:00:00:00:00:66";
   config.interfaces()[5].ipAddresses()->resize(2);
   config.interfaces()[5].ipAddresses()[0] = "5.1.1.1/24";
@@ -1164,6 +1219,7 @@ TEST_F(RouteTest, applyNewConfig) {
   config.interfaces()[6].intfID() = 7;
   config.interfaces()[6].vlanID() = 7;
   config.interfaces()[6].routerID() = 2;
+  config.vrfs().ensure().emplace_back().vrfId() = 2;
   config.interfaces()[6].mac() = "00:00:00:00:00:77";
   config.interfaces()[6].ipAddresses()->resize(2);
   config.interfaces()[6].ipAddresses()[0] = "1.1.1.1/24";
@@ -2531,13 +2587,19 @@ TEST_F(UcmpTest, recursiveEcmpDuplicateIntf) {
  * Two interfaces: I1, I2
  * One route which requires resolution: R1
  * R1 has I1 and I2 as next hops with weights 0 (ECMP) and 1
- * expect R1 to resolve to ECMP between I1, I2
+ * expect R1 to resolve to I1:1, I2:1
+ *
+ * R1 states a weighting, so it is resolved by combineWeights rather than
+ * flattened. ECMP_WEIGHT counts as the single share normalizeNextHops would
+ * settle it at anyway, so I1 asks for exactly what I2 does and the two come
+ * out equal. The traffic split was already 1:1 before this; only the
+ * representation changed.
  */
-TEST_F(UcmpTest, mixedUcmpVsEcmp_EcmpWins) {
+TEST_F(UcmpTest, mixedUcmpAndEcmpKeepTheirWeights) {
   this->runRecursiveTest(
       {{UnresolvedNextHop(this->intfIp1, ECMP_WEIGHT),
         UnresolvedNextHop(this->intfIp2, 1)}},
-      {ECMP_WEIGHT, ECMP_WEIGHT});
+      {1, 1});
 }
 
 /*
@@ -2546,10 +2608,19 @@ TEST_F(UcmpTest, mixedUcmpVsEcmp_EcmpWins) {
  * R1 has R2 and R3 as next hops with weights 3 and 2
  * R2 has I1 and I2 as next hops with weights 5 and 4
  * R3 has I3 and I4 as next hops with ECMP
- * expect R1 to resolve to ECMP between I1, I2, I3, I4
+ * expect R1 to resolve to I1:5, I2:4, I3:3, I4:3
+ *
+ * R3 states no weighting, but that no longer discards R1's. Its two next
+ * hops take a share each, so R3's total is 2 rather than 0 and the LCM it
+ * feeds is no longer driven to zero. R2 and R3 end up with 9 and 6 shares,
+ * holding R1's 3:2, while R2's 5:4 and R3's even split both survive.
+ *
+ * Deliberately near-identical to recursiveMixedEcmpKeepsParentWeights, which
+ * differs only in R3 being {ECMP, 1} rather than {ECMP, ECMP}. Both describe
+ * an even split within R3, so both must resolve the same way.
  */
-TEST_F(UcmpTest, recursiveEcmpPropagatesUp) {
-  this->runTwoDeepRecursiveTest({{3, 2}, {5, 4}, {0, 0}}, {0, 0, 0, 0});
+TEST_F(UcmpTest, recursiveEcmpChildKeepsParentWeights) {
+  this->runTwoDeepRecursiveTest({{3, 2}, {5, 4}, {0, 0}}, {5, 4, 3, 3});
 }
 
 /*
@@ -2558,10 +2629,19 @@ TEST_F(UcmpTest, recursiveEcmpPropagatesUp) {
  * R1 has R2 and R3 as next hops with weights 3 and 2
  * R2 has I1 and I2 as next hops with weights 5 and 4
  * R3 has I3 and I4 as next hops with weights 0 (ECMP) and 1
- * expect R1 to resolve to ECMP between I1, I2, I3, I4
+ * expect R1 to resolve to I1:5, I2:4, I3:3, I4:3
+ *
+ * I3 at ECMP_WEIGHT asks for the same single share I4 does, so R3 splits
+ * evenly and reaches R1 with a total of 2 rather than 0. R1's 3:2 survives
+ * as 9:6, R2's 5:4 survives, and R3's even split survives both when R3 is
+ * resolved directly and when it is reached through R1.
+ *
+ * Deliberately near-identical to recursiveEcmpChildKeepsParentWeights: R3
+ * being {ECMP, 1} rather than {ECMP, ECMP} describes the same even split, so
+ * the two must agree.
  */
-TEST_F(UcmpTest, recursiveMixedEcmpPropagatesUp) {
-  this->runTwoDeepRecursiveTest({{3, 2}, {5, 4}, {0, 1}}, {0, 0, 0, 0});
+TEST_F(UcmpTest, recursiveMixedEcmpKeepsParentWeights) {
+  this->runTwoDeepRecursiveTest({{3, 2}, {5, 4}, {0, 1}}, {5, 4, 3, 3});
 }
 
 /*
@@ -2570,10 +2650,19 @@ TEST_F(UcmpTest, recursiveMixedEcmpPropagatesUp) {
  * R1 has R2 and R3 as next hops with ECMP
  * R2 has I1 and I2 as next hops with weights 5 and 4
  * R3 has I3 and I4 as next hops with weights 3 and 2
- * expect R1 to resolve to ECMP between I1, I2, I3, I4
+ * expect R1 to resolve to I1:25, I2:20, I3:27, I4:18
+ *
+ * R1 states no weighting of its own, which is not the same as asking for an
+ * even one across everything below it. R2 and R3 are weighted, so their
+ * splits are kept and scaled against each other: both end up with 45 shares,
+ * giving R2 and R3 the equal share R1 does imply, while 5:4 holds within R2
+ * as 25:20 and 3:2 within R3 as 27:18.
+ *
+ * Flattening these to ECMP would have served all four interfaces equally,
+ * which is neither split anyone asked for.
  */
-TEST_F(UcmpTest, recursiveEcmpPropagatesDown) {
-  this->runTwoDeepRecursiveTest({{0, 0}, {5, 4}, {3, 2}}, {0, 0, 0, 0});
+TEST_F(UcmpTest, recursiveEcmpKeepsChildWeights) {
+  this->runTwoDeepRecursiveTest({{0, 0}, {5, 4}, {3, 2}}, {25, 20, 27, 18});
 }
 
 /*
@@ -3045,7 +3134,47 @@ TEST_F(RouteTest, addRouteWithMultipleSrv6NextHops) {
   }
 }
 
-TEST_F(RouteTest, addRouteWithMixedSrv6AndPlainNextHops) {
+TEST_F(RouteTest, allowMixedSrv6AndPlainNextHopsWhenSrv6IsDisabled) {
+  folly::FlagSaver flagSaver;
+  FLAGS_srv6 = false;
+
+  auto rid = RouterID(0);
+  const std::vector<folly::IPAddressV6> sidList{
+      folly::IPAddressV6("3001:db8:1::")};
+  RouteNextHopSet nhops{
+      UnresolvedNextHop(
+          folly::IPAddress("1::10"),
+          ECMP_WEIGHT,
+          std::nullopt,
+          std::nullopt,
+          std::nullopt,
+          std::nullopt,
+          sidList,
+          TunnelType::SRV6_ENCAP,
+          kSrv6Tunnel0),
+      UnresolvedNextHop(folly::IPAddress("2::10"), ECMP_WEIGHT)};
+
+  auto updater = this->sw_->getRouteUpdater();
+  updater.addRoute(
+      rid,
+      IPAddress("2800:3::"),
+      64,
+      kClientA,
+      RouteNextHopEntry(nhops, EBGP_DISTANCE));
+  updater.program();
+
+  auto route = this->findRoute6(this->sw_->getState(), rid, "2800:3::/64");
+  ASSERT_NE(nullptr, route);
+  ASSERT_TRUE(route->isResolved());
+  const auto fwdNhops =
+      getClientNextHops(this->sw_->getState(), *route->getBestEntry().second);
+  EXPECT_EQ(2, fwdNhops.size());
+}
+
+TEST_F(RouteTest, rejectRouteWithMixedSrv6AndPlainNextHopsAndRollback) {
+  folly::FlagSaver flagSaver;
+  FLAGS_srv6 = true;
+
   auto rid = RouterID(0);
   const std::vector<folly::IPAddressV6> sidList1{
       folly::IPAddressV6("3001:db8:1::"), folly::IPAddressV6("3001:db8:2::")};
@@ -3096,7 +3225,89 @@ TEST_F(RouteTest, addRouteWithMixedSrv6AndPlainNextHops) {
     }
   }
 
+  auto stateBeforeUpdate = this->sw_->getState();
+  const auto fibPrefixesBeforeUpdate =
+      routePrefixesFromState(stateBeforeUpdate, rid);
+  const auto ribPrefixesBeforeUpdate = routePrefixesFromRouteDetails(
+      this->sw_->getRib()->getRouteTableDetails(rid));
+
   auto updater = this->sw_->getRouteUpdater();
+  updater.addRoute(
+      rid,
+      IPAddress("2700:3::"),
+      64,
+      kClientA,
+      RouteNextHopEntry(
+          RouteNextHopSet{
+              UnresolvedNextHop(folly::IPAddress("1::20"), ECMP_WEIGHT)},
+          EBGP_DISTANCE));
+  updater.addRoute(
+      rid,
+      IPAddress("2800:3::"),
+      64,
+      kClientA,
+      RouteNextHopEntry(nhops, EBGP_DISTANCE));
+  EXPECT_THROW(updater.program(), FbossHwUpdateError);
+
+  EXPECT_EQ(stateBeforeUpdate, this->sw_->getState());
+  EXPECT_EQ(
+      fibPrefixesBeforeUpdate,
+      routePrefixesFromState(this->sw_->getState(), rid));
+  EXPECT_EQ(
+      ribPrefixesBeforeUpdate,
+      routePrefixesFromRouteDetails(
+          this->sw_->getRib()->getRouteTableDetails(rid)));
+  EXPECT_EQ(
+      this->findRoute6(this->sw_->getState(), rid, "2800:3::/64"), nullptr);
+  EXPECT_EQ(
+      this->findRoute6(this->sw_->getState(), rid, "2700:3::/64"), nullptr);
+}
+
+TEST_F(RouteTest, allowMixedSrv6AndPlainNextHopsWhenFlagEnabled) {
+  folly::FlagSaver flagSaver;
+  FLAGS_srv6 = true;
+  FLAGS_allow_mixed_ip_srv6_nhop_groups = true;
+
+  auto rid = RouterID(0);
+  const std::vector<folly::IPAddressV6> sidList1{
+      folly::IPAddressV6("3001:db8:1::"), folly::IPAddressV6("3001:db8:2::")};
+  const std::vector<folly::IPAddressV6> sidList2{
+      folly::IPAddressV6("3001:db8:3::"), folly::IPAddressV6("3001:db8:4::")};
+
+  RouteNextHopSet nhops;
+  nhops.emplace(UnresolvedNextHop(
+      folly::IPAddress("1::10"),
+      ECMP_WEIGHT,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      sidList1,
+      TunnelType::SRV6_ENCAP,
+      kSrv6Tunnel0));
+  nhops.emplace(UnresolvedNextHop(
+      folly::IPAddress("2::10"),
+      ECMP_WEIGHT,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      sidList2,
+      TunnelType::SRV6_ENCAP,
+      kSrv6Tunnel0));
+  nhops.emplace(UnresolvedNextHop(folly::IPAddress("3::10"), ECMP_WEIGHT));
+  nhops.emplace(UnresolvedNextHop(folly::IPAddress("4::10"), ECMP_WEIGHT));
+
+  auto updater = this->sw_->getRouteUpdater();
+  updater.addRoute(
+      rid,
+      IPAddress("2700:3::"),
+      64,
+      kClientA,
+      RouteNextHopEntry(
+          RouteNextHopSet{
+              UnresolvedNextHop(folly::IPAddress("1::20"), ECMP_WEIGHT)},
+          EBGP_DISTANCE));
   updater.addRoute(
       rid,
       IPAddress("2800:3::"),
@@ -3105,34 +3316,86 @@ TEST_F(RouteTest, addRouteWithMixedSrv6AndPlainNextHops) {
       RouteNextHopEntry(nhops, EBGP_DISTANCE));
   updater.program();
 
-  auto rt = this->findRoute6(this->sw_->getState(), rid, "2800:3::/64");
-  ASSERT_NE(nullptr, rt);
-
-  auto fwdNhops =
-      getClientNextHops(this->sw_->getState(), *rt->getBestEntry().second);
-  ASSERT_EQ(fwdNhops.size(), 4);
-
+  auto route = this->findRoute6(this->sw_->getState(), rid, "2800:3::/64");
+  ASSERT_NE(nullptr, route);
+  ASSERT_TRUE(route->isResolved());
+  const auto fwdNhops =
+      getClientNextHops(this->sw_->getState(), *route->getBestEntry().second);
+  ASSERT_EQ(4, fwdNhops.size());
+  size_t srv6Count = 0;
   for (const auto& nh : fwdNhops) {
-    if (nh.addr() == folly::IPAddress("1::10")) {
-      // SRv6 next hop 1: fields must match input
-      EXPECT_EQ(nh.srv6SegmentList(), sidList1);
-      EXPECT_EQ(nh.tunnelType(), TunnelType::SRV6_ENCAP);
-      EXPECT_EQ(nh.tunnelId(), kSrv6Tunnel0);
-    } else if (nh.addr() == folly::IPAddress("2::10")) {
-      // SRv6 next hop 2: fields must match input
-      EXPECT_EQ(nh.srv6SegmentList(), sidList2);
-      EXPECT_EQ(nh.tunnelType(), TunnelType::SRV6_ENCAP);
-      EXPECT_EQ(nh.tunnelId(), kSrv6Tunnel0);
-    } else {
-      // Plain next hops (3::10 or 4::10): no SRv6 fields
-      EXPECT_TRUE(
-          nh.addr() == folly::IPAddress("3::10") ||
-          nh.addr() == folly::IPAddress("4::10"));
-      EXPECT_TRUE(nh.srv6SegmentList().empty());
-      EXPECT_EQ(nh.tunnelType(), std::nullopt);
-      EXPECT_EQ(nh.tunnelId(), std::nullopt);
-    }
+    srv6Count += !nh.srv6SegmentList().empty();
   }
+  EXPECT_EQ(2, srv6Count);
+  EXPECT_NE(
+      nullptr, this->findRoute6(this->sw_->getState(), rid, "2700:3::/64"));
+}
+
+TEST_F(RouteTest, rejectRouteThatBecomesMixedAfterRecursiveResolution) {
+  folly::FlagSaver flagSaver;
+  FLAGS_srv6 = true;
+
+  auto rid = RouterID(0);
+  const std::vector<folly::IPAddressV6> sidList{
+      folly::IPAddressV6("3001:db8:1::")};
+
+  RouteNextHopSet srv6ChildNextHops{UnresolvedNextHop(
+      folly::IPAddress("1::10"),
+      ECMP_WEIGHT,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      sidList,
+      TunnelType::SRV6_ENCAP,
+      kSrv6Tunnel0)};
+  RouteNextHopSet plainChildNextHops{
+      UnresolvedNextHop(folly::IPAddress("2::10"), ECMP_WEIGHT)};
+
+  auto childUpdater = this->sw_->getRouteUpdater();
+  childUpdater.addRoute(
+      rid,
+      IPAddress("100::"),
+      64,
+      kClientA,
+      RouteNextHopEntry(srv6ChildNextHops, EBGP_DISTANCE));
+  childUpdater.addRoute(
+      rid,
+      IPAddress("200::"),
+      64,
+      kClientA,
+      RouteNextHopEntry(plainChildNextHops, EBGP_DISTANCE));
+  childUpdater.program();
+
+  RouteNextHopSet parentNextHops{
+      UnresolvedNextHop(folly::IPAddress("100::10"), ECMP_WEIGHT),
+      UnresolvedNextHop(folly::IPAddress("200::10"), ECMP_WEIGHT)};
+  ASSERT_FALSE(hasSrv6AndNonSrv6NextHops(parentNextHops));
+
+  auto stateBeforeUpdate = this->sw_->getState();
+  const auto fibPrefixesBeforeUpdate =
+      routePrefixesFromState(stateBeforeUpdate, rid);
+  const auto ribPrefixesBeforeUpdate = routePrefixesFromRouteDetails(
+      this->sw_->getRib()->getRouteTableDetails(rid));
+
+  auto parentUpdater = this->sw_->getRouteUpdater();
+  parentUpdater.addRoute(
+      rid,
+      IPAddress("300::"),
+      64,
+      kClientA,
+      RouteNextHopEntry(parentNextHops, EBGP_DISTANCE));
+  EXPECT_THROW(parentUpdater.program(), FbossHwUpdateError);
+
+  EXPECT_EQ(stateBeforeUpdate, this->sw_->getState());
+  EXPECT_EQ(
+      fibPrefixesBeforeUpdate,
+      routePrefixesFromState(this->sw_->getState(), rid));
+  EXPECT_EQ(
+      ribPrefixesBeforeUpdate,
+      routePrefixesFromRouteDetails(
+          this->sw_->getRib()->getRouteTableDetails(rid)));
+  EXPECT_EQ(this->findRoute6(this->sw_->getState(), rid, "300::/64"), nullptr);
 }
 
 TEST_F(RouteTest, resolveRouteWithSrv6NextHopToMultipleResolvedNextHops) {

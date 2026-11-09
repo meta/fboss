@@ -10,8 +10,7 @@
 
 #include "fboss/platform/platform_checks/checks/KernelVersionCheck.h"
 
-#include <sys/utsname.h>
-
+#include <folly/String.h>
 #include <folly/logging/xlog.h>
 
 #include "common/config/ConfigeratorConfig.h"
@@ -25,11 +24,11 @@ CheckResult KernelVersionCheck::run() {
     return makeError("Failed to get supported kernel versions");
   }
 
-  struct utsname unameData{};
-  if (uname(&unameData) != 0) {
+  auto uname = host().run("uname -r");
+  if (!uname.ok()) {
     return makeError("Failed to get kernel version information");
   }
-  std::string kernelRelease(unameData.release);
+  std::string kernelRelease = folly::trimWhitespace(uname.standardOut).str();
 
   if (std::find(
           supportedKernelVersions->begin(),

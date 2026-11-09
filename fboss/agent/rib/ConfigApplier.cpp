@@ -24,23 +24,12 @@ namespace facebook::fboss {
 
 namespace {
 
-// True if `existing` and `incoming` MySid entries describe the same
-// programming intent. Used by applyStaticMySids() to skip a no-op replace
-// and avoid unnecessary HW deltas + nhop-id churn.
-//
-// The comparison covers every MySid field that affects HW programming:
-//   - mySid (the prefix)            : implicit (callers key by prefix).
-//   - clientId                      : implicit (callers gate on STATIC_ROUTE).
-//   - resolvedNextHopsId            : derived later by
-//   RibMySidUpdater::resolve().
-//   - type / adjacencyInterfaceId / isV6 / unresolveNextHopsId-set : checked
-//   here.
-//
-// **Maintenance hazard**: any new field added to state::MySidFields that
-// affects HW programming must be added to this comparison. Otherwise the
-// smart diff will silently treat new and old entries as identical and
-// skip the update — stale HW programming with no error. See the field
-// list in `fbcode/fboss/agent/switch_state.thrift::MySidFields`.
+// True if config entry `incoming` needs no replace of `existing`: type,
+// adjacencyInterfaceId, isV6 and the unresolved next-hop set match. The
+// caller matches prefix and clientId. A config uA has no next hops, so the
+// existing uA's next hops and FRR backup (owned by MySidNeighborObserver and
+// the FRR API) are kept. Add any new config-set MySidFields field here, or
+// changes to it are silently skipped.
 bool mySidEntryUnchanged(
     const MySid& existing,
     const MySid& incoming,
@@ -51,6 +40,10 @@ bool mySidEntryUnchanged(
           incoming.getAdjacencyInterfaceId() ||
       existing.getIsV6() != incoming.getIsV6()) {
     return false;
+  }
+  if (incoming.getType() == MySidType::ADJACENCY_MICRO_SID &&
+      incomingUnresolvedNhops.empty()) {
+    return true;
   }
   // Compare unresolved next-hop sets. Existing carries an id into the
   // manager; incoming carries the raw set.
@@ -87,7 +80,10 @@ ConfigApplier::ConfigApplier(
     folly::Range<StaticMplsRouteNoNextHopsIterator> staticMplsCpuRouteRange,
     folly::Range<StaticMySidIterator> staticMySidRange,
     NextHopIDManager* nextHopIDManager,
-    MySidTable* mySidTable)
+    MySidTable* mySidTable,
+    uint32_t ecmpWidth,
+    const std::unordered_set<InterfaceID>* vrfInterfaces,
+    RibRouteUpdater::RouterIDToRouteTable* crossVrfRouteTables)
     : vrf_(vrf),
       v4NetworkToRoute_(v4NetworkToRoute),
       v6NetworkToRoute_(v6NetworkToRoute),
@@ -102,7 +98,10 @@ ConfigApplier::ConfigApplier(
       staticMplsCpuRouteRange_(staticMplsCpuRouteRange),
       staticMySidRange_(staticMySidRange),
       nextHopIDManager_(nextHopIDManager),
-      mySidTable_(mySidTable) {
+      mySidTable_(mySidTable),
+      ecmpWidth_(ecmpWidth),
+      vrfInterfaces_(vrfInterfaces),
+      crossVrfRouteTables_(crossVrfRouteTables) {
   CHECK_NOTNULL(v4NetworkToRoute_);
   CHECK_NOTNULL(v6NetworkToRoute_);
   CHECK_NOTNULL(labelToRoute_);
@@ -114,7 +113,11 @@ void ConfigApplier::apply() {
       v6NetworkToRoute_,
       labelToRoute_,
       nextHopIDManager_,
-      mySidTable_);
+      mySidTable_,
+      ecmpWidth_,
+      vrf_,
+      vrfInterfaces_,
+      crossVrfRouteTables_);
 
   // Update static routes
   std::vector<RibRouteUpdater::RouteEntry> staticRoutes;
@@ -206,9 +209,10 @@ void ConfigApplier::applyStaticMySids() {
   if (!mySidTable_) {
     return;
   }
-  // Helper: release both unresolved and resolved next-hop IDs held by an
-  // entry. Both are independently ref-counted in NextHopIDManager.
-  auto releaseEntryNextHopIds = [&](const std::shared_ptr<MySid>& entry) {
+  // Helper: release the primary next-hop IDs and, unless their ownership is
+  // being transferred to a replacement adjacency MySid, the FRR backup IDs.
+  auto releaseEntryNextHopIds = [&](const std::shared_ptr<MySid>& entry,
+                                    bool releaseFrrProtection) {
     if (!nextHopIDManager_) {
       return;
     }
@@ -217,6 +221,14 @@ void ConfigApplier::applyStaticMySids() {
     }
     if (const auto id = entry->getResolvedNextHopsId()) {
       nextHopIDManager_->decrOrDeallocRouteNextHopSetID(*id);
+    }
+    if (releaseFrrProtection) {
+      if (const auto id = entry->getBackupUnresolveNextHopsId()) {
+        nextHopIDManager_->decrOrDeallocRouteNextHopSetID(*id);
+      }
+      if (const auto id = entry->getBackupResolvedNextHopsId()) {
+        nextHopIDManager_->decrOrDeallocRouteNextHopSetID(*id);
+      }
     }
   };
   // Helper: build a fresh MySid from the incoming pair and allocate its
@@ -255,7 +267,7 @@ void ConfigApplier::applyStaticMySids() {
     }
     auto incomingIt = incoming.find(it->first);
     if (incomingIt == incoming.end()) {
-      releaseEntryNextHopIds(it->second);
+      releaseEntryNextHopIds(it->second, true /* releaseFrrProtection */);
       it = mySidTable_->erase(it);
       continue;
     }
@@ -267,7 +279,16 @@ void ConfigApplier::applyStaticMySids() {
       continue;
     }
     auto newEntry = buildAndAllocateEntry(entry.mySid, entry.nextHopSet);
-    releaseEntryNextHopIds(it->second);
+    const bool preserveFrrProtection =
+        it->second->getType() == MySidType::ADJACENCY_MICRO_SID &&
+        newEntry->getType() == MySidType::ADJACENCY_MICRO_SID;
+    if (preserveFrrProtection) {
+      newEntry->setBackupUnresolveNextHopsId(
+          it->second->getBackupUnresolveNextHopsId());
+      newEntry->setBackupResolvedNextHopsId(
+          it->second->getBackupResolvedNextHopsId());
+    }
+    releaseEntryNextHopIds(it->second, !preserveFrrProtection);
     it->second = std::move(newEntry);
     handledIncomingCidrs.insert(it->first);
     ++it;
@@ -294,7 +315,7 @@ void ConfigApplier::applyStaticMySids() {
                                folly::IPAddress(cidrV6.first), cidrV6.second))
                     << " is overwriting existing entry with clientId="
                     << static_cast<int>(it->second->getClientId());
-      releaseEntryNextHopIds(it->second);
+      releaseEntryNextHopIds(it->second, true /* releaseFrrProtection */);
       it->second = std::move(newEntry);
     } else {
       mySidTable_->emplace(cidrV6, std::move(newEntry));

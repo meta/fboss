@@ -25,7 +25,9 @@
 #include "fboss/agent/state/PortDescriptor.h"
 #include "fboss/agent/state/PortMap.h"
 #include "fboss/agent/types.h"
-#include "fboss/lib/config/AgentConfigUtils.h"
+#include "fboss/lib/config/agent/InterfaceConfigUtils.h"
+#include "fboss/lib/config/agent/PortConfigUtils.h"
+#include "fboss/lib/config/agent/VlanConfigUtils.h"
 
 #include <folly/MacAddress.h>
 #include <vector>
@@ -55,6 +57,24 @@ bool isEnabledPortWithSubnet(
     const cfg::SwitchConfig& config);
 
 std::vector<std::string> getLoopbackIps(SwitchID switchId);
+
+/*
+ * Correct Tomahawk6 connection handles that were written for a different COM-E
+ * variant. Keeps the configured assignment when every configured handle is
+ * already on the bus, so a config whose switch id order does not follow BDF
+ * order is left alone. Throws when nothing was discovered, or when the count
+ * disagrees with the config and the addresses therefore cannot be mapped to
+ * switch ids. Takes the addresses as an argument so it is testable off-box.
+ */
+void applyTomahawk6PciAddrs(
+    const std::vector<std::string>& pciAddrs,
+    std::map<SwitchID, cfg::SwitchInfo>& switchIdToSwitchInfo);
+
+/*
+ * applyTomahawk6PciAddrs() against the addresses on this box's PCI bus.
+ */
+void applyTomahawk6PciAddrsFromBus(
+    std::map<SwitchID, cfg::SwitchInfo>& switchIdToSwitchInfo);
 
 int getMaxRdsw(std::optional<PlatformType> platformType = std::nullopt);
 int getMaxEdsw();
@@ -159,6 +179,46 @@ cfg::SwitchConfig onePortPerInterfaceConfig(
     bool enableFabricPorts = false,
     const std::optional<cfg::InterfaceType>& intfType = std::nullopt);
 
+// Describes one aggregate port to build an L3 interface over. How the
+// aggregate's L3 interface is bound (PORT binds it to the aggregate port
+// itself, VLAN to a vlan the members share) is a property of the ASIC, passed
+// once per config via intfType below, not per aggregate.
+struct AggregatePortInfo {
+  AggregatePortID id;
+  std::vector<PortID> memberPorts;
+  cfg::LacpPortRate rate{cfg::LacpPortRate::FAST};
+  double minLinkPercentage{1.0};
+};
+
+// One L3 interface per aggregate port, plus one per port that is not an
+// aggregate member. The aggregate port analogue of onePortPerInterfaceConfig.
+cfg::SwitchConfig oneAggregatePortPerInterfaceConfig(
+    const SwSwitch* swSwitch,
+    const std::vector<PortID>& ports,
+    const std::vector<AggregatePortInfo>& aggregatePorts,
+    bool interfaceHasSubnet = true,
+    bool setInterfaceMac = true,
+    int baseIntfId = kBaseVlanId,
+    bool enableFabricPorts = false);
+
+cfg::SwitchConfig oneAggregatePortPerInterfaceConfig(
+    const PlatformMapping* platformMapping,
+    const HwAsic* asic,
+    const std::vector<PortID>& ports,
+    bool supportsAddRemovePort,
+    const std::map<cfg::PortType, cfg::PortLoopbackMode>& lbModeMap,
+    const std::vector<AggregatePortInfo>& aggregatePorts,
+    cfg::InterfaceType intfType,
+    bool interfaceHasSubnet = true,
+    bool setInterfaceMac = true,
+    int baseIntfId = kBaseVlanId,
+    bool enableFabricPorts = false,
+    const std::optional<std::map<SwitchID, cfg::SwitchInfo>>&
+        switchIdToSwitchInfo = std::nullopt,
+    const std::optional<std::map<SwitchID, const HwAsic*>>& hwAsicTable =
+        std::nullopt,
+    const std::optional<PlatformType> platformType = std::nullopt);
+
 cfg::SwitchConfig
 oneL3IntfTwoPortConfig(const SwSwitch* sw, PortID port1, PortID port2);
 
@@ -231,6 +291,12 @@ cfg::SwitchInfo generateSwitchInfo(
     const cfg::Range64& portIdRange,
     const std::string& connectionHandle,
     const HwAsic* asic);
+
+// Adds VRF vrf to config if missing and puts the interfaces of ports in it
+void addVrfForPorts(
+    cfg::SwitchConfig& config,
+    RouterID vrf,
+    const std::vector<PortID>& ports);
 
 cfg::SwitchConfig twoL3IntfConfig(
     SwSwitch* swSwitch,

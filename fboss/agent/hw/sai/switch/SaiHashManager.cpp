@@ -42,11 +42,11 @@ SaiHashTraits::Attributes::NativeHashFieldList toNativeHashFieldList(
       case cfg::IPv6Field::FLOW_LABEL:
 #if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)
         nativeHashFields.emplace_back(SAI_NATIVE_HASH_FIELD_IPV6_FLOW_LABEL);
+        break;
 #else
         throw FbossError(
             "Hashing on IPv6 Flow Label requires SAI version >= 1.12.0");
 #endif
-        break;
     }
   }
   for (auto field : *hashFields.transportFields()) {

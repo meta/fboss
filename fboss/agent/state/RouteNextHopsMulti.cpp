@@ -22,13 +22,15 @@ namespace facebook::fboss {
 //
 
 std::vector<ClientAndNextHops> RouteNextHopsMulti::toThriftLegacy(
-    std::optional<ClientID> preferredClient) const {
+    std::optional<ClientID> preferredClient,
+    const ClientNextHopsResolver& resolveNextHops) const {
   std::vector<ClientAndNextHops> list;
   auto mapRef = map();
   for (const auto& srcPair : *mapRef) {
     ClientAndNextHops destPair;
     *destPair.clientId() = static_cast<int>(srcPair.first);
-    for (const auto& nh : srcPair.second->getNextHopSet()) {
+    const auto nhops = resolveNextHops(*srcPair.second);
+    for (const auto& nh : nhops) {
       destPair.nextHops()->push_back(nh.toThrift());
     }
     auto nhgName = srcPair.second->getNamedNextHopGroup();

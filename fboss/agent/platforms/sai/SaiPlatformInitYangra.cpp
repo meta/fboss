@@ -25,8 +25,12 @@ namespace facebook::fboss {
 namespace {
 
 bool useGenericSaiYangraPlatform(PlatformType type) {
-  return type == PlatformType::PLATFORM_YANGRA ||
-      type == PlatformType::PLATFORM_YANGRA2;
+  switch (type) {
+    case PlatformType::PLATFORM_MINIPACK3N:
+      return false;
+    default:
+      return true;
+  }
 }
 
 std::unique_ptr<PlatformMapping> createGenericSaiYangraPlatformMapping(

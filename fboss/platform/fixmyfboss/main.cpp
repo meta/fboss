@@ -11,97 +11,39 @@
 #include <cstdlib>
 #include <iostream>
 #include <memory>
+#include <optional>
+#include <stdexcept>
 
 #include <CLI/CLI.hpp>
+#include <folly/String.h>
 #include <folly/logging/LoggerDB.h>
 #include <folly/logging/xlog.h>
+#include <thrift/lib/cpp2/protocol/Serializer.h>
 
+#include "fboss/platform/fixmyfboss/CheckRegistry.h"
+#include "fboss/platform/fixmyfboss/CheckRunner.h"
+#include "fboss/platform/fixmyfboss/CliOptions.h"
+#include "fboss/platform/fixmyfboss/Extensions.h"
+#include "fboss/platform/fixmyfboss/PasswordPrompt.h"
 #include "fboss/platform/fixmyfboss/ResultPrinter.h"
-#include "fboss/platform/helpers/PlatformNameLib.h"
-#include "fboss/platform/platform_checks/PlatformCheck.h"
-#include "fboss/platform/platform_checks/checks/MacAddressCheck.h"
-#include "fboss/platform/platform_checks/checks/PciDeviceCheck.h"
-#include "fboss/platform/platform_checks/checks/PowerResetCheck.h"
-#include "fboss/platform/platform_checks/checks/i801SmbusTimeoutCheck.h"
 
 using namespace facebook::fboss::platform;
 
 namespace {
 
-// Create all platform checks
-std::vector<std::unique_ptr<platform_checks::PlatformCheck>> createAllChecks() {
-  std::vector<std::unique_ptr<platform_checks::PlatformCheck>> checks;
-  checks.push_back(std::make_unique<platform_checks::MacAddressCheck>());
-  checks.push_back(std::make_unique<platform_checks::PciDeviceCheck>());
-  checks.push_back(
-      std::make_unique<platform_checks::RecentManualRebootCheck>());
-  checks.push_back(std::make_unique<platform_checks::RecentKernelPanicCheck>());
-  checks.push_back(
-      std::make_unique<platform_checks::WatchdogDidNotStopCheck>());
-  checks.push_back(std::make_unique<platform_checks::i801SmbusTimeoutCheck>());
-  return checks;
-}
-
-// Filter checks by platform
-std::vector<platform_checks::PlatformCheck*> getChecksForPlatform(
-    const std::vector<std::unique_ptr<platform_checks::PlatformCheck>>& checks,
-    const std::string& platformName) {
-  std::vector<platform_checks::PlatformCheck*> filteredChecks;
-  for (const auto& check : checks) {
-    auto supportedPlatforms = check->getSupportedPlatforms();
-    // Empty set means all platforms are supported
-    if (supportedPlatforms.empty() ||
-        supportedPlatforms.count(platformName) > 0) {
-      filteredChecks.push_back(check.get());
-    }
-  }
-  return filteredChecks;
-}
-
-std::vector<platform_checks::CheckResult> runAllChecks(
-    const std::vector<platform_checks::PlatformCheck*>& checks) {
-  std::vector<platform_checks::CheckResult> results;
-
-  for (auto* check : checks) {
-    XLOG(DBG2) << "Running check: " << check->getDescription();
-    try {
-      auto result = check->run();
-      XLOG(DBG2) << "Check " << check->getDescription()
-                 << " completed with status: "
-                 << static_cast<int>(*result.status());
-      results.push_back(std::move(result));
-    } catch (const std::exception& e) {
-      // Convert exceptions to ERROR results
-      XLOG(ERR) << "Exception in check " << check->getDescription() << ": "
-                << e.what();
-      platform_checks::CheckResult errorResult;
-      errorResult.checkType() = check->getType();
-      errorResult.checkName() = check->getName();
-      errorResult.status() = platform_checks::CheckStatus::ERROR;
-      errorResult.errorMessage() =
-          std::string("Exception during check execution: ") + e.what();
-      results.push_back(std::move(errorResult));
-    }
-  }
-  return results;
-}
-
-void listChecks(const std::string& platformName) {
-  auto allChecks = createAllChecks();
-  auto checksForPlatform = getChecksForPlatform(allChecks, platformName);
-
+void listChecks(const std::vector<fixmyfboss::PlannedCheck>& plan) {
   std::cout << "List of checks:\n";
   int index = 1;
-
-  for (const auto& check : allChecks) {
-    bool willRun =
-        std::find_if(
-            checksForPlatform.begin(), checksForPlatform.end(), [&](auto* c) {
-              return c == check.get();
-            }) != checksForPlatform.end();
-    std::string runIndicator = willRun ? "" : " (skipped)";
-    std::cout << index++ << ". " << check->getName() << ": "
-              << check->getDescription() << runIndicator << "\n";
+  for (const auto& planned : plan) {
+    std::string runIndicator;
+    if (planned.skipReason) {
+      runIndicator = " (skipped: " + *planned.skipReason + ")";
+    } else if (planned.skipReasonError) {
+      runIndicator = " (error: " + *planned.skipReasonError + ")";
+    }
+    const auto& check = planned.check.get();
+    std::cout << index++ << ". " << check.getName() << ": "
+              << check.getDescription() << runIndicator << "\n";
   }
 }
 
@@ -117,22 +59,53 @@ void configureLogging(bool debugFlag, bool verboseFlag) {
   }
 }
 
+platform_checks::CheckReport makeReport(
+    std::vector<platform_checks::CheckResult> results,
+    const fixmyfboss::CheckEnvironment& env) {
+  // Cannot happen: createEnvironment() always sets x86.
+  if (!env.x86) {
+    throw std::logic_error("CheckEnvironment has no x86 host");
+  }
+  platform_checks::CheckReport report;
+  report.results() = std::move(results);
+  report.platformName() = env.platformName;
+  report.target() = env.x86->name();
+  return report;
+}
+
+// Makes it obvious, before anything happens, that the switch will be power
+// cycled or rebooted.
+void warnAboutDisruptiveChecks(
+    const std::vector<fixmyfboss::PlannedCheck>& plan,
+    const fixmyfboss::CheckEnvironment& env) {
+  std::vector<std::string> names;
+  for (const auto& planned : plan) {
+    if (planned.check.get().isDisruptive() && planned.appliesToPlatform &&
+        !planned.skipReason && !planned.skipReasonError) {
+      names.push_back(planned.check.get().getName());
+    }
+  }
+  if (!names.empty()) {
+    XLOG(WARN) << "Running disruptive checks on " << env.x86->name() << ": "
+               << folly::join(", ", names);
+  }
+}
+
 std::vector<platform_checks::CheckResult> runChecks(
-    const std::string& platformName) {
+    const std::vector<fixmyfboss::PlannedCheck>& plan,
+    const fixmyfboss::CheckRunner& runner,
+    const std::string& platformName,
+    bool showProgress) {
   XLOG(INFO) << "Starting fixmyfboss checks for platform: " << platformName;
-
-  auto allChecks = createAllChecks();
-  auto checks = getChecksForPlatform(allChecks, platformName);
-
-  XLOG(INFO) << "Found " << checks.size()
-             << " applicable checks for this platform";
-
+  if (!showProgress) {
+    return runner.run(plan);
+  }
   fixmyfboss::ResultPrinter printer;
-  printer.printProgress(
-      "Platform: " + platformName + " - Running " +
-      std::to_string(checks.size()) + " checks");
-
-  auto results = runAllChecks(checks);
+  auto results = runner.run(plan, [&](int index, int total, const auto& check) {
+    printer.printProgress(
+        "Platform: " + platformName + " - Running " + std::to_string(index) +
+        "/" + std::to_string(total) + ": " + check.getName());
+  });
   printer.clearLine();
   return results;
 }
@@ -142,55 +115,67 @@ std::vector<platform_checks::CheckResult> runChecks(
 int main(int argc, char* argv[]) {
   CLI::App app{
       "fixmyfboss - Diagnose and fix FBOSS device issues", "fixmyfboss"};
-
-  // Add command line options
-  bool listChecksFlag = false;
-  app.add_flag(
-         "--list-checks",
-         listChecksFlag,
-         "Show list of available checks and exit")
-      ->group("Information");
-
-  bool verboseFlag = false;
-  app.add_flag(
-         "-v,--verbose", verboseFlag, "Enable verbose logging (INFO level)")
-      ->group("Logging");
-
-  bool debugFlag = false;
-  app.add_flag("-d,--debug", debugFlag, "Enable debug logging (DBG level)")
-      ->group("Logging");
-
-  // Parse command line
+  fixmyfboss::CliOptions options;
+  fixmyfboss::addOptions(app, options);
+  const auto reportHooks = fixmyfboss::addExtensionOptions(app);
   try {
     app.parse(argc, argv);
   } catch (const CLI::ParseError& e) {
     return app.exit(e);
   }
+  configureLogging(options.debug, options.verbose);
+  fixmyfboss::resolveTransport(options);
 
-  configureLogging(debugFlag, verboseFlag);
+  // Never taken from the command line, which is logged.
+  options.connect.askPassword = fixmyfboss::readPasswordFromTerminal;
 
-  auto platformNameOpt = helpers::PlatformNameLib().getPlatformName();
-  if (!platformNameOpt.has_value()) {
-    XLOG(ERR) << "Failed to determine platform name";
+  fixmyfboss::CheckEnvironment env;
+  try {
+    env = fixmyfboss::createEnvironment(options.connect);
+  } catch (const std::exception& ex) {
+    XLOG(ERR) << ex.what();
     return EXIT_FAILURE;
   }
-  const std::string& platformName = platformNameOpt.value();
+  fixmyfboss::applyToEnvironment(options, env);
+  auto checks = fixmyfboss::createAllChecks(env);
 
-  // Handle --list-checks mode
-  if (listChecksFlag) {
-    listChecks(platformName);
+  std::optional<fixmyfboss::CheckRunner> runner;
+  try {
+    runner.emplace(env.platformName, options.run);
+  } catch (const std::invalid_argument& ex) {
+    XLOG(ERR) << "Invalid --checks regex '"
+              << options.run.nameFilter.value_or("") << "': " << ex.what();
+    return EXIT_FAILURE;
+  }
+  const auto plan = runner->plan(checks);
+
+  if (options.listChecks) {
+    listChecks(plan);
     return EXIT_SUCCESS;
   }
 
-  // Run checks and print results
-  auto results = runChecks(platformName);
-  fixmyfboss::ResultPrinter printer;
-  printer.printSummary(results);
-  printer.printDetails(results);
+  warnAboutDisruptiveChecks(plan, env);
+  const auto report = makeReport(
+      runChecks(plan, *runner, env.platformName, !options.json), env);
+  const auto& results = *report.results();
+  if (options.json) {
+    std::cout << apache::thrift::SimpleJSONSerializer::serialize<std::string>(
+                     report)
+              << "\n";
+  } else {
+    fixmyfboss::ResultPrinter printer(
+        std::cout, options.verbose || options.debug);
+    printer.printSummary(results);
+    printer.printDetails(results);
+  }
+  for (const auto& hook : reportHooks) {
+    hook(report);
+  }
 
   bool allPassed =
       std::all_of(results.begin(), results.end(), [](const auto& result) {
-        return *result.status() == platform_checks::CheckStatus::OK;
+        return *result.status() == platform_checks::CheckStatus::OK ||
+            *result.status() == platform_checks::CheckStatus::SKIPPED;
       });
 
   return allPassed ? EXIT_SUCCESS : EXIT_FAILURE;

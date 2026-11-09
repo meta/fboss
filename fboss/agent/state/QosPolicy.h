@@ -166,6 +166,14 @@ class QosPolicy : public ThriftStructNode<QosPolicy, state::QosPolicyFields> {
     return cref<switch_state_tags::pfcPriorityToPgId>();
   }
 
+  const auto& getTrafficClassToVcId() {
+    return cref<switch_state_tags::trafficClassToVcId>();
+  }
+
+  const auto& getQueueToVcId() {
+    return cref<switch_state_tags::queueToVcId>();
+  }
+
   const auto& getTrafficClassToVoqId() {
     return cref<switch_state_tags::trafficClassToVoqId>();
   }
@@ -194,6 +202,15 @@ class QosPolicy : public ThriftStructNode<QosPolicy, state::QosPolicyFields> {
   void setTrafficClassToPgIdMap(
       const std::map<int16_t, int16_t>& trafficClass2PgId) {
     set<switch_state_tags::trafficClassToPgId>(trafficClass2PgId);
+  }
+
+  void setTrafficClassToVcIdMap(
+      const std::map<int16_t, int16_t>& trafficClass2VcId) {
+    set<switch_state_tags::trafficClassToVcId>(trafficClass2VcId);
+  }
+
+  void setQueueToVcIdMap(const std::map<int16_t, int16_t>& queue2VcId) {
+    set<switch_state_tags::queueToVcId>(queue2VcId);
   }
 
   void setPfcPriorityToPgIdMap(

@@ -1,7 +1,14 @@
 load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
 load("//fboss:THIRD-PARTY-VERSIONS.bzl", "BCM_SDKS", "to_impl_suffix", "to_versions")
 load(
-    "//fboss/agent/hw/sai/impl:impl.bzl", "SAI_BRCM_IMPLS", "SAI_LEABA_IMPLS", "SAI_NVIDIA_IMPLS", "get_link_group_map", "to_impl_bin_name", "to_impl_lib_name"
+    "//fboss/agent/hw/sai/impl:impl.bzl",
+    "SAI_BRCM_IMPLS",
+    "SAI_LEABA_IMPLS",
+    "SAI_NVIDIA_IMPLS",
+    "get_link_group_map",
+    # @oss-disable[end= ]: "sai_impl_target_compatible_with",
+    "to_impl_bin_name",
+    "to_impl_lib_name",
 )
 load("//fboss/agent/hw/sai/switch:switch.bzl", "sai_switch_dependent_name")
 
@@ -13,6 +20,7 @@ oncall("fboss_agent_push")
         srcs = [
             "BcmProdInvariantTests.cpp",
         ],
+        # @oss-disable[end= ]: target_compatible_with = sai_impl_target_compatible_with(sdk),
         versions = to_versions(sdk),
         deps = [
             "fbsource//third-party/glog:glog",
@@ -59,6 +67,7 @@ _sai_invariant_mono_agent_test_prefix = "sai_invariant_agent_test_mono"
             "15.0_ea_odp",
         ]
         else [],
+        # @oss-disable[end= ]: target_compatible_with = sai_impl_target_compatible_with(sai_impl),
         versions = to_versions(sai_impl),
         deps = [
             "//fboss/agent/test:mono_agent_ensemble",
@@ -100,6 +109,7 @@ _sai_invariant_multi_agent_test_prefix = "sai_invariant_agent_test_multi_switch"
             "15.0_ea_odp",
         ]
         else [],
+        # @oss-disable[end= ]: target_compatible_with = sai_impl_target_compatible_with(sai_impl),
         versions = to_versions(sai_impl),
         deps = [
             "//fboss/agent/test:multi_switch_agent_ensemble",

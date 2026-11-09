@@ -22,7 +22,6 @@ std::vector<int> kLosslessPgs(const HwSwitch* hwSwitch) {
     case PlatformType::PLATFORM_FUJI:
       return {2};
     default:
-      //  this is for fake bcm
       return {6, 7};
   }
 }
@@ -33,7 +32,6 @@ std::vector<int> kLossyPgs(const HwSwitch* hwSwitch) {
     case PlatformType::PLATFORM_FUJI:
       return {0, 6, 7};
     default:
-      //  this is for fake bcm
       return {};
   }
 }
@@ -54,7 +52,6 @@ int kGlobalSharedBufferCells(const HwSwitch* hwSwitch) {
     case PlatformType::PLATFORM_FUJI:
       return 203834;
     default:
-      //  this is for fake bcm
       return 115196;
   }
 }
@@ -64,7 +61,6 @@ int kGlobalHeadroomBufferCells(const HwSwitch* hwSwitch) {
     case PlatformType::PLATFORM_FUJI:
       return 25383;
     default:
-      //  this is for fake bcm
       return 12432;
   }
 }
@@ -74,7 +70,6 @@ int kDownlinkPgHeadroomLimitCells(const HwSwitch* hwSwitch) {
     case PlatformType::PLATFORM_FUJI:
       return 2160;
     default:
-      //  this is for fake bcm
       return 1156;
   }
 }
@@ -84,7 +79,6 @@ int kUplinkPgHeadroomLimitCells(const HwSwitch* hwSwitch) {
     case PlatformType::PLATFORM_FUJI:
       return 3184;
     default:
-      //  this is for fake bcm
       return 1668;
   }
 }
@@ -121,7 +115,9 @@ void enablePfcMapsConfig(cfg::SwitchConfig& cfg) {
     pfcPri2QueueId.emplace(i, i);
   }
 
-  if (cfg.qosPolicies().is_set() && cfg.qosPolicies()[0].qosMap().has_value()) {
+  if (apache::thrift::is_non_optional_field_set_manually_or_by_serializer(
+          cfg.qosPolicies()) &&
+      cfg.qosPolicies()[0].qosMap().has_value()) {
     cfg.qosPolicies()[0].qosMap()->trafficClassToPgId() = std::move(tc2PgId);
     cfg.qosPolicies()[0].qosMap()->pfcPriorityToPgId() = std::move(pfcPri2PgId);
     cfg.qosPolicies()[0].qosMap()->pfcPriorityToQueueId() =

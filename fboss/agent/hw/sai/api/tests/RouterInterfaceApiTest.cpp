@@ -73,7 +73,12 @@ class RouterInterfaceApiTest : public ::testing::Test {
          typeAttribute,
          portIdAttribute,
          std::nullopt,
-         std::nullopt},
+         std::nullopt
+#if SAI_API_VERSION >= SAI_VERSION(1, 9, 0)
+         ,
+         std::nullopt
+#endif
+        },
         0);
     EXPECT_EQ(rifId, fs->routeInterfaceManager.get(rifId).id);
     EXPECT_EQ(vr, fs->routeInterfaceManager.get(rifId).virtualRouterId);

@@ -20,7 +20,6 @@
 #include <fmt/format.h>
 #include <folly/Exception.h>
 #include <folly/FileUtil.h>
-#include <folly/Format.h>
 #include <folly/logging/xlog.h>
 
 #include <poll.h>

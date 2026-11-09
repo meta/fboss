@@ -36,6 +36,11 @@ class PlatformNameLib {
   // exceptions.
   virtual std::optional<std::string> getPlatformName() const;
 
+  // Some platforms do not have the standardized platform-names in dmidecode
+  // yet. Maps dmidecode output to the standardized platform-name.
+  static std::string sanitizePlatformName(
+      const std::string& platformNameFromBios);
+
  private:
   const std::shared_ptr<PlatformUtils> platformUtils_;
   const std::shared_ptr<PlatformFsUtils> platformFsUtils_;

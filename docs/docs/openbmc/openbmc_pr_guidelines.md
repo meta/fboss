@@ -21,6 +21,41 @@ Below is the latest copyright:
 * Always adopt the latest yocto for OpenBMC development. The latest yocto
   version is “lf-dunfell” as of May 2022.
 
+## Repository Layout: Which Layer Contains What
+
+The openbmc tree is a collection of Yocto/bitbake layers, ordered from the most
+generic (shared by every platform) to the most specific (a single machine).
+Knowing which layer owns a file tells you where your change belongs, and it
+also determines the `<platform/layer>` prefix of your patch title.
+
+| Path | Scope | Typical contents |
+| --- | --- | --- |
+| `common/recipes-*` | All Meta OpenBMC platforms | Shared libraries, services and utilities: `recipes-lib` (libpal, libkv, libipmi, ...), `recipes-core`, `recipes-utils`, and etc. |
+| `meta-aspeed` | ASPEED SoC | Everything tied to the ASPEED SoC family and nothing above it: `linux-aspeed` kernel, ASPEED u-boot, `soc-utils`, and etc. |
+| `meta-nuvoton` | Nuvoton SoC | Same role as `meta-aspeed`, for the Nuvoton NPCM BMC SoC family: `recipes-kernel`, `recipes-bsp` (u-boot), and etc. Not used by any FBOSS platform as of today. |
+| `meta-facebook/meta-fboss-lite` | Shared by all FBOSS BMC-Lite platforms | The BMC-Lite baseline: `conf/machine/fboss-lite.inc`, the `fblite` u-boot and kernel recipes, `ipmi-lite`, and etc. |
+| `meta-facebook/meta-<platform>` | One machine | Machine-specific code only: `conf/machine/<platform>.conf`, device tree selection, platform `openbmc-utils` overrides, and etc. |
+| `tests2/` | OpenBMC CIT test suite | CIT test suite for all the Meta OpenBMC platforms. |
+
+Layer priority matters when the same recipe exists in several layers: a higher
+`BBFILE_PRIORITY` wins. Today it is `6` for the top-level `openbmc` collection
+(`common/`), `15` for `meta-facebook`, and `25` for the individual platform
+layers — so a platform `.bbappend` always overrides the common recipe.
+
+### Choosing the Right Layer
+
+Put code in the *most shared* layer that all of its consumers can reach, and no
+higher:
+
+* Only one machine needs it → `meta-facebook/meta-<platform>`.
+* Two or more FBOSS BMC-Lite platforms need it → `meta-facebook/meta-fboss-lite`.
+* It is tied to the BMC SoC rather than the board → `meta-aspeed` or
+  `meta-nuvoton`.
+* Both switch and server platforms need it → `common`.
+
+Copying a file from `common` into a platform layer just to tweak it is almost
+always the wrong answer: extend the common recipe, or add a `.bbappend`.
+
 ## Prepare Your Patches
 
 ### Patch Title

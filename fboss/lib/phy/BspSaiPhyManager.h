@@ -56,6 +56,11 @@ class BspSaiPhyManager : public SaiPhyManager {
       const phy::PhyIDInfo& phyIDInfo,
       MultiPimPlatformPimContainer* pimContainer) override;
 
+  // Agera3 publishes real XPHY FEC/lane counters to fb303. The SaiPhyManager
+  // base keeps NullPortStats so Credo/Elbert is unaffected.
+  std::unique_ptr<ExternalPhyPortStatsUtils> createExternalPhyPortStats(
+      PortID portID) override;
+
   // Store BSP platform mapping for quick lookups
   std::unique_ptr<BspPlatformMapping> bspMapping_;
 

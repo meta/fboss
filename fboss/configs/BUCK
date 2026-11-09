@@ -1,3 +1,4 @@
+load("@fbcode_macros//build_defs:export_files.bzl", "export_file")
 load("@fbcode_macros//build_defs:native_rules.bzl", "buck_filegroup")
 
 oncall("fboss_platform")
@@ -10,4 +11,31 @@ buck_filegroup(
 buck_filegroup(
     name = "platform_manager_configs",
     srcs = glob(["platforms/*/*/platform_stack/platform_manager.json"]),
+)
+
+export_file(
+    name = "example_integrated_optics_platform_mapping.json",
+    src = "platforms/generic/example_integrated_optics/platform_mapping/generated/platform_mapping.json",
+    visibility = ["PUBLIC"],
+)
+
+_GENERATED_PLATFORM_MAPPING_FILES = glob([
+    "platforms/**/platform_mapping/generated/*.json",
+])
+_PLATFORM_DESCRIPTOR_DIRS = {"/".join(src.split("/")[:-1]): True for src in _GENERATED_PLATFORM_MAPPING_FILES if src.endswith("/platform_descriptor.json")}
+
+buck_filegroup(
+    name = "vendor_platform_descriptors",
+    srcs = [src for src in _GENERATED_PLATFORM_MAPPING_FILES if "/".join(src.split("/")[:-1]) in _PLATFORM_DESCRIPTOR_DIRS],
+    visibility = [
+        "//fboss/agent/fbpkg/...",
+        "//fboss/agent/sim/facebook/nplsim/...",
+        "//fboss/led_service/fbpkg/...",
+        "//fboss/lib/platforms/facebook/tests/...",
+        "//neteng/fboss/tools/provision_test/...",
+        "//netos/services/fboss_led_service/...",
+        "//netos/services/fboss_qsfp_service/...",
+        "//netos/services/fboss_sw_agent/...",
+        "//netos/services/fboss_wedge_agent/...",
+    ],
 )

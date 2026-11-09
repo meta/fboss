@@ -326,6 +326,7 @@ std::shared_ptr<SwitchState> HwSwitchEnsemble::applyNewConfig(
         getPlatform()->getPlatformMapping(),
         hwAsicTable_.get(),
         &routeUpdater));
+    routingInformationBase_->setEcmpWidth(getEcmpWidth(getProgrammedState()));
     currentConfig_ = config;
     routeUpdater.program();
     return getProgrammedState();

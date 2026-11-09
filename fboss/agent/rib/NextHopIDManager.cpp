@@ -3,12 +3,14 @@
 #include "fboss/agent/rib/NextHopIDManager.h"
 #include "fboss/agent/FbossError.h"
 #include "fboss/agent/rib/RoutingInformationBase.h"
+#include "fboss/agent/state/ClassBasedPolicyMap.h"
 #include "fboss/agent/state/FibInfo.h"
 #include "fboss/agent/state/ForwardingInformationBase.h"
 #include "fboss/agent/state/Route.h"
 #include "fboss/agent/state/RouteNextHopEntry.h"
 
 #include <boost/functional/hash.hpp>
+#include <thrift/lib/cpp/util/EnumUtils.h>
 
 #include <limits>
 
@@ -38,8 +40,8 @@ NextHopIDManager::NextHopToIDIter NextHopIDManager::getOrAllocateNextHopID(
   NextHopID newID = nextAvailableNextHopID_;
   nextAvailableNextHopID_ = NextHopID(nextAvailableNextHopID_ + 1);
 
-  CHECK(static_cast<int64_t>(newID) > 0 && newID < kNextHopSetIDStart)
-      << "Next Hop ID is in the range of [0, 2^62 - 1], the id space has been exhausted! It does not support wrap around!";
+  CHECK(isNextHopID(newID))
+      << "NextHopID space [1, 2^60) exhausted, no wrap around: " << newID;
 
   auto [nhItr, nhInserted] = nextHopToID_.emplace(nextHop, newID);
   CHECK(nhInserted);
@@ -64,10 +66,9 @@ NextHopIDManager::NextHopIdSetIter NextHopIDManager::getOrAllocateNextHopSetID(
   NextHopSetID newID = nextAvailableNextHopSetID_;
   nextAvailableNextHopSetID_ = NextHopSetID(nextAvailableNextHopSetID_ + 1);
 
-  CHECK(
-      static_cast<int64_t>(newID) >= kNextHopSetIDStart &&
-      static_cast<int64_t>(newID) < std::numeric_limits<int64_t>::max())
-      << "Next Hop Set ID is in the range of [2^62, 2^64-1], the id space has been exhausted! It does not support wrap around!";
+  CHECK(isNextHopSetID(newID))
+      << "NextHopSetID space [2^62, 2^62 + 2^60) exhausted, no wrap around: "
+      << newID;
   auto [idSetInfoItr, idSetInfoInserted] =
       nextHopIdSetToIDInfo_.emplace(nextHopIDSet, NextHopSetIDInfo(newID, 1));
   CHECK(idSetInfoInserted);
@@ -267,6 +268,8 @@ void NextHopIDManager::clearNhopIdManagerState() {
   nameToNextHopSetID_.clear();
   nameToRoutes_.clear();
   nameToMySids_.clear();
+  pbrPolicyToNamedNhg_.clear();
+  namedNhgToPbrPolicies_.clear();
 }
 
 // Allocate or update a named next-hop group.
@@ -325,7 +328,6 @@ NextHopIDManager::updateNamedNextHopGroup(
       << "Named next-hop group " << name
       << " exists in nameToNextHopSet_ but not in nameToNextHopSetID_";
 
-  // Deallocate old nexthops
   result.deallocation = decrOrDeallocRouteNextHopSetID(oldSetIdIt->second);
 
   // Allocate new nexthops
@@ -336,6 +338,62 @@ NextHopIDManager::updateNamedNextHopGroup(
   nameToNextHopSetID_[name] = result.allocation.nextHopIdSetIter->second.id;
 
   return result;
+}
+
+NextHopSetID NextHopIDManager::updatePolicyNormalizedId(
+    const std::string& policyName,
+    const std::string& nhgName,
+    const RouteNextHopSet& normalized) {
+  auto& ids = pbrPolicyToNamedNhg_.at(policyName).normalizedIds;
+  auto it = ids.find(nhgName);
+  const std::optional<NextHopSetID> oldId =
+      it != ids.end() ? std::optional<NextHopSetID>(it->second) : std::nullopt;
+
+  // Take this policy's reference before releasing the one it holds below:
+  // when both name the same set, releasing first would free it and the id
+  // would not survive the call.
+  const auto newId =
+      getOrAllocRouteNextHopSetID(normalized).nextHopIdSetIter->second.id;
+
+  if (it != ids.end()) {
+    decrOrDeallocRouteNextHopSetID(it->second);
+    it->second = newId;
+  } else {
+    ids.emplace(nhgName, newId);
+  }
+
+  if (oldId == newId) {
+    return newId;
+  }
+  XLOG(DBG3) << "[NextHop ID Manager] normalized named NHG '" << nhgName
+             << "' for policy '" << policyName << "' id "
+             << (oldId ? folly::to<std::string>(*oldId) : "none") << " -> "
+             << newId;
+  return newId;
+}
+
+void NextHopIDManager::updateNormalizedNamedNhgId(
+    const std::string& name,
+    const RouteNextHopSet& resolvedNextHopSet,
+    uint32_t ecmpWidth) {
+  const auto& owners = getPoliciesForNamedNhg(name);
+  if (owners.empty()) {
+    return;
+  }
+
+  // A group resolving to nothing still gets an id: dropping the name instead
+  // leaves policies naming it unresolvable and fails the whole RIB update.
+  const auto normalized =
+      RouteNextHopEntry::normalizeNextHops(resolvedNextHopSet, ecmpWidth);
+
+  std::optional<NextHopSetID> setId;
+  for (const auto& policyName : owners) {
+    const auto newId = updatePolicyNormalizedId(policyName, name, normalized);
+    CHECK(!setId.has_value() || newId == setId)
+        << "named NHG '" << name
+        << "' took different normalized ids across its policies";
+    setId = newId;
+  }
 }
 
 NextHopIDManager::NextHopDeallocationResult
@@ -359,13 +417,18 @@ NextHopIDManager::deallocateNamedNextHopGroup(const std::string& name) {
         name,
         "' because it is referenced by MySids");
   }
+  if (hasPoliciesForNamedNhg(name)) {
+    throw FbossError(
+        "Cannot delete named next-hop group '",
+        name,
+        "' because it is referenced by class-based policies");
+  }
 
   auto setIdIt = nameToNextHopSetID_.find(name);
   CHECK(setIdIt != nameToNextHopSetID_.end())
       << "Named next-hop group " << name
       << " exists in nameToNextHopSet_ but not in nameToNextHopSetID_";
 
-  // Deallocate the nexthops
   auto result = decrOrDeallocRouteNextHopSetID(setIdIt->second);
 
   // Remove the name mappings
@@ -380,6 +443,19 @@ std::optional<NextHopSetID> NextHopIDManager::getNextHopSetIDForName(
   auto it = nameToNextHopSetID_.find(name);
   if (it != nameToNextHopSetID_.end()) {
     return it->second;
+  }
+  return std::nullopt;
+}
+
+std::optional<NextHopSetID>
+NextHopIDManager::getNormalizedNextHopSetIDForPolicyNhg(
+    const std::string& name) const {
+  for (const auto& policyName : getPoliciesForNamedNhg(name)) {
+    const auto& ids = pbrPolicyToNamedNhg_.at(policyName).normalizedIds;
+    auto it = ids.find(name);
+    if (it != ids.end()) {
+      return it->second;
+    }
   }
   return std::nullopt;
 }
@@ -499,6 +575,10 @@ void NextHopIDManager::processNextHopSetIdForReconstruction(
     const std::shared_ptr<IdToNextHopMap>& id2NhopMap,
     const std::shared_ptr<IdToNextHopIdSetMap>& id2NhopIdSetMap,
     ReconstructionContext& ctx) {
+  if (!isNextHopSetID(setId)) {
+    throw FbossError(
+        "Persisted NextHopSetID ", setId, " is outside the NextHopSetID range");
+  }
   // Lookup NextHopIDSet from FibInfo's idToNextHopIdSetMap
   auto nextHopIdSetNode = id2NhopIdSetMap->getNextHopIdSet(
       static_cast<state::NextHopSetIdType>(setId));
@@ -512,6 +592,14 @@ void NextHopIDManager::processNextHopSetIdForReconstruction(
   bool membersRemapped = false;
   for (const auto& elem : std::as_const(*nextHopIdSetNode)) {
     NextHopID persistedNextHopID((*elem).toThrift());
+    if (!isNextHopID(persistedNextHopID)) {
+      throw FbossError(
+          "Persisted NextHopID ",
+          persistedNextHopID,
+          " in SetID ",
+          setId,
+          " is outside the NextHopID range");
+    }
 
     // Lookup NextHop from FibInfo's idToNextHopMap
     auto nhNode = id2NhopMap->getNextHopIf(
@@ -736,6 +824,14 @@ void NextHopIDManager::reconstructMySidPass(
         processNextHopSetIdForReconstruction(
             *setIdOpt, ctx.fibId2NhopMap, ctx.fibId2NhopIdSetMap, ctx);
       }
+      if (auto setIdOpt = mySid->getBackupResolvedNextHopsId()) {
+        processNextHopSetIdForReconstruction(
+            *setIdOpt, ctx.fibId2NhopMap, ctx.fibId2NhopIdSetMap, ctx);
+      }
+      if (auto setIdOpt = mySid->getBackupUnresolveNextHopsId()) {
+        processNextHopSetIdForReconstruction(
+            *setIdOpt, ctx.fibId2NhopMap, ctx.fibId2NhopIdSetMap, ctx);
+      }
       if (auto nhgName = mySid->getNamedNextHopGroup()) {
         const auto cidr = mySid->getMySid();
         nameToMySids_[*nhgName].emplace(cidr.first.asV6(), cidr.second);
@@ -856,6 +952,7 @@ void NextHopIDManager::reconstructFromSwitchStateMaps(
     const std::shared_ptr<MultiSwitchMySidMap>& mySidMap,
     const std::shared_ptr<MultiLabelForwardingInformationBase>& labelFib,
     const RibRouteTables* ribTables,
+    const std::shared_ptr<MultiSwitchClassBasedPolicyMap>& classBasedPolicyMaps,
     std::unordered_map<NextHopSetID, NextHopSetID>* setIdRemapOut) {
   DCHECK(assertNextHopIdMapsSame(fibsInfoMap));
   clearNhopIdManagerState();
@@ -873,6 +970,7 @@ void NextHopIDManager::reconstructFromSwitchStateMaps(
   reconstructMySidPass(mySidMap, ctx);
   reconstructMplsFibPass(labelFib, ctx);
   reconstructUnresolvedRibPass(ribTables, ctx);
+  reconstructClassBasedPolicyPass(classBasedPolicyMaps, ctx);
 
   // Set next available IDs. The SetID watermark must clear both the highest
   // persisted SetID and any fresh SetIDs minted for deduped member sets.
@@ -907,6 +1005,45 @@ void NextHopIDManager::reconstructFromSwitchStateMaps(
       }
       XLOG(DBG3) << "[NextHop ID Manager] reconstructed setId=" << setId
                  << " nhIds={" << ids << "}";
+    }
+  }
+}
+
+void NextHopIDManager::reconstructClassBasedPolicyPass(
+    const std::shared_ptr<MultiSwitchClassBasedPolicyMap>& classBasedPolicyMaps,
+    ReconstructionContext& ctx) {
+  if (!classBasedPolicyMaps) {
+    return;
+  }
+  auto registerNormalizedId =
+      [&](ClassBasedPolicyNhgs& policy,
+          const state::NamedNextHopGroupAndID& namedNhg) {
+        const auto& name = *namedNhg.name();
+        if (policy.normalizedIds.count(name) || !ctx.fibId2NhopMap ||
+            !ctx.fibId2NhopIdSetMap) {
+          return;
+        }
+        NextHopSetID setId(*namedNhg.id());
+        processNextHopSetIdForReconstruction(
+            setId, ctx.fibId2NhopMap, ctx.fibId2NhopIdSetMap, ctx);
+        policy.normalizedIds[name] =
+            ctx.setIdRemap.contains(setId) ? ctx.setIdRemap.at(setId) : setId;
+      };
+  for (const auto& [matcher, policyMap] :
+       std::as_const(*classBasedPolicyMaps)) {
+    for (const auto& [policyName, policyNode] : std::as_const(*policyMap)) {
+      if (pbrPolicyToNamedNhg_.count(policyName)) {
+        continue;
+      }
+      ClassBasedPolicyNhgs policy;
+      policy.defaultNexthopGroup = *policyNode->getDefaultNextHopGroup().name();
+      registerNormalizedId(policy, policyNode->getDefaultNextHopGroup());
+      for (const auto& [fc, named] : policyNode->getClass2NextHopGroup()) {
+        policy.class2NextHopGroup[fc] = *named.name();
+        registerNormalizedId(policy, named);
+      }
+      addPolicy2NamedNhgMap(policyName, policy);
+      pbrPolicyToNamedNhg_[policyName] = std::move(policy);
     }
   }
 }
@@ -989,6 +1126,109 @@ const NextHopIDManager::MySidSet& NextHopIDManager::getMySidsForNamedNhg(
 bool NextHopIDManager::hasMySidsForNamedNhg(const std::string& name) const {
   auto it = nameToMySids_.find(name);
   return it != nameToMySids_.end() && !it->second.empty();
+}
+
+void NextHopIDManager::addPolicy2NamedNhgMap(
+    const std::string& policyName,
+    const ClassBasedPolicyNhgs& nhgs) {
+  namedNhgToPbrPolicies_[nhgs.defaultNexthopGroup].insert(policyName);
+  for (const auto& [_fc, nhgName] : nhgs.class2NextHopGroup) {
+    namedNhgToPbrPolicies_[nhgName].insert(policyName);
+  }
+}
+
+void NextHopIDManager::delPolicy2NamedNhgMap(const std::string& policyName) {
+  auto policyIt = pbrPolicyToNamedNhg_.find(policyName);
+  if (policyIt == pbrPolicyToNamedNhg_.end()) {
+    return;
+  }
+  auto dropRef = [&](const std::string& nhgName) {
+    auto nhgIt = namedNhgToPbrPolicies_.find(nhgName);
+    if (nhgIt == namedNhgToPbrPolicies_.end()) {
+      return;
+    }
+    nhgIt->second.erase(policyName);
+    if (nhgIt->second.empty()) {
+      namedNhgToPbrPolicies_.erase(nhgIt);
+    }
+  };
+  dropRef(policyIt->second.defaultNexthopGroup);
+  for (const auto& [_fc, nhgName] : policyIt->second.class2NextHopGroup) {
+    dropRef(nhgName);
+  }
+}
+
+void NextHopIDManager::addOrUpdatePolicy(const ClassBasedPolicy& policy) {
+  CHECK(!policy.name()->empty()) << "ClassBasedPolicy must have a name";
+  ClassBasedPolicyNhgs nhgs;
+  nhgs.defaultNexthopGroup = *policy.defaultNexthopGroup();
+  for (const auto& [fc, nhg] : *policy.class2NextHopGroup()) {
+    if (!nhg.name().has_value() || nhg.name()->empty()) {
+      throw FbossError(
+          "Class-based policy '",
+          *policy.name(),
+          "' has no next-hop group name for traffic class ",
+          apache::thrift::util::enumNameSafe(fc));
+    }
+    nhgs.class2NextHopGroup[fc] = *nhg.name();
+  }
+
+  // Claim before releasing: dropping the last reference first would free the id
+  // and allocate a new one, which moves the ACL's match or redirect target.
+  auto oldIt = pbrPolicyToNamedNhg_.find(*policy.name());
+  if (oldIt != pbrPolicyToNamedNhg_.end()) {
+    auto& oldIds = oldIt->second.normalizedIds;
+    auto claim = [&](const std::string& nhgName) {
+      auto it = oldIds.find(nhgName);
+      if (it != oldIds.end()) {
+        nhgs.normalizedIds.emplace(nhgName, it->second);
+        oldIds.erase(it);
+      }
+    };
+    claim(nhgs.defaultNexthopGroup);
+    for (const auto& [_fc, nhgName] : nhgs.class2NextHopGroup) {
+      claim(nhgName);
+    }
+    for (const auto& [_name, id] : oldIds) {
+      decrOrDeallocRouteNextHopSetID(id);
+    }
+  }
+
+  // Drop the old references first and then track new references
+  delPolicy2NamedNhgMap(*policy.name());
+  addPolicy2NamedNhgMap(*policy.name(), nhgs);
+  pbrPolicyToNamedNhg_[*policy.name()] = std::move(nhgs);
+}
+
+void NextHopIDManager::removePolicy(const std::string& name) {
+  auto it = pbrPolicyToNamedNhg_.find(name);
+  if (it != pbrPolicyToNamedNhg_.end()) {
+    for (const auto& [_name, id] : it->second.normalizedIds) {
+      decrOrDeallocRouteNextHopSetID(id);
+    }
+    delPolicy2NamedNhgMap(name);
+    pbrPolicyToNamedNhg_.erase(it);
+  }
+}
+
+const ClassBasedPolicyNhgs* NextHopIDManager::getPolicy(
+    const std::string& name) const {
+  auto it = pbrPolicyToNamedNhg_.find(name);
+  return it != pbrPolicyToNamedNhg_.end() ? &it->second : nullptr;
+}
+
+const PolicySet& NextHopIDManager::getPoliciesForNamedNhg(
+    const std::string& name) const {
+  static const PolicySet kEmpty;
+  auto it = namedNhgToPbrPolicies_.find(name);
+  if (it != namedNhgToPbrPolicies_.end()) {
+    return it->second;
+  }
+  return kEmpty;
+}
+
+bool NextHopIDManager::hasPoliciesForNamedNhg(const std::string& name) const {
+  return namedNhgToPbrPolicies_.count(name) != 0;
 }
 
 } // namespace facebook::fboss

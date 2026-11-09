@@ -5,6 +5,7 @@ oncall("fboss_agent_push")
 cpp_library(
     name = "fsdb_cow_root_path_visitor",
     srcs = [
+        "FsdbCowHybridStateRootPathVisitor.cpp",
         "FsdbCowStateRootPathVisitor.cpp",
         "FsdbCowStatsRootPathVisitor.cpp",
     ],
@@ -21,6 +22,7 @@ cpp_library(
 cpp_library(
     name = "fsdb_cow_root",
     srcs = [
+        "FsdbHybridStateCowRoot.cpp",
         "FsdbStatCowRoot.cpp",
         "FsdbStateCowRoot.cpp",
     ],
@@ -36,7 +38,10 @@ cpp_library(
 cpp_library(
     name = "fsdb_cow_storage",
     srcs = [
+        "FsdbCowHybridStateStorage.cpp",
+        "FsdbCowHybridStateStoragePatch.cpp",
         "FsdbCowStateStorage.cpp",
+        "FsdbCowStateStoragePatch.cpp",
         "FsdbCowStatsStorage.cpp",
     ],
     headers = ["FsdbCowStorage.h"],
@@ -54,8 +59,15 @@ cpp_library(
 cpp_library(
     name = "fsdb_cow_subscription_manager",
     srcs = [
-        "FsdbCowStateSubscriptionManager.cpp",
-        "FsdbCowStatsSubscriptionManager.cpp",
+        "FsdbCowHybridStateSubscriptionManagerPrune.cpp",
+        "FsdbCowHybridStateSubscriptionManagerServe.cpp",
+        "FsdbCowHybridStateSubscriptionManagerSync.cpp",
+        "FsdbCowStateSubscriptionManagerPrune.cpp",
+        "FsdbCowStateSubscriptionManagerServe.cpp",
+        "FsdbCowStateSubscriptionManagerSync.cpp",
+        "FsdbCowStatsSubscriptionManagerPrune.cpp",
+        "FsdbCowStatsSubscriptionManagerServe.cpp",
+        "FsdbCowStatsSubscriptionManagerSync.cpp",
     ],
     headers = ["FsdbCowSubscriptionManager.h"],
     exported_deps = [
@@ -81,18 +93,26 @@ cpp_library(
 cpp_library(
     name = "fsdb_naive_periodic_subscribable_storage",
     srcs = [
+        "FsdbHybridNaivePeriodicSubscribableStateStorage.cpp",
         "FsdbNaivePeriodicSubscribableStateStorage.cpp",
         "FsdbNaivePeriodicSubscribableStatsStorage.cpp",
+        "FsdbStateStorage.cpp",
     ],
-    headers = ["FsdbNaivePeriodicSubscribableStorage.h"],
+    headers = [
+        "FsdbNaivePeriodicSubscribableStorage.h",
+        "FsdbStateStorage.h",
+    ],
     exported_deps = [
+        "fbsource//xplat/folly:expected",
         ":fsdb_cow_root",
         ":fsdb_cow_storage",
         ":fsdb_cow_subscription_manager",
         ":fsdb_path_converter",
         "//fboss/fsdb/if:fsdb_model",
+        "//fboss/fsdb/if:fsdb_oper-cpp2-types",
         "//fboss/fsdb/oper:subscribable_storage",
         "//fboss/fsdb/oper/instantiations/templates:fsdb_state_sub_mgr_instantiations",
         "//fboss/fsdb/oper/instantiations/templates:fsdb_thrift_struct_std_functions_instantiations",
+        "//fboss/thrift_cow/storage:storage",
     ],
 )

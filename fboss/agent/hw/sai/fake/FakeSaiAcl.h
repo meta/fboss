@@ -86,6 +86,12 @@ class FakeAclEntry {
   bool fieldDstIpV6Word2Enable{false};
   folly::IPAddressV6 fieldDstIpV6Word2Data;
   folly::IPAddressV6 fieldDstIpV6Word2Mask;
+  bool fieldDstIpV6Word1Enable{false};
+  folly::IPAddressV6 fieldDstIpV6Word1Data;
+  folly::IPAddressV6 fieldDstIpV6Word1Mask;
+  bool fieldDstIpV6Word0Enable{false};
+  folly::IPAddressV6 fieldDstIpV6Word0Data;
+  folly::IPAddressV6 fieldDstIpV6Word0Mask;
 
   bool fieldSrcIpV4Enable{false};
   folly::IPAddressV4 fieldSrcIpV4Data;
@@ -170,6 +176,10 @@ class FakeAclEntry {
   bool fieldTtlEnable{false};
   sai_uint8_t fieldTtlData;
   sai_uint8_t fieldTtlMask;
+
+  bool fieldMplsLabel0TtlEnable{false};
+  sai_uint8_t fieldMplsLabel0TtlData{};
+  sai_uint8_t fieldMplsLabel0TtlMask{};
 
   bool fieldFdbDstUserMetaEnable{false};
   sai_uint32_t fieldFdbDstUserMetaData;
@@ -264,11 +274,6 @@ class FakeAclEntry {
   bool actionL3SwitchCancelEnable{false};
   bool actionL3SwitchCancelData{false};
 
-  void setLabelExtended(const sai_attribute_t* attr);
-  sai_status_t getLabelExtended(sai_attribute_t* attr) const;
-
-  std::vector<int8_t> labelExtended;
-
   sai_object_id_t id;
 };
 
@@ -282,6 +287,8 @@ class FakeAclTable {
       bool fieldDstIpV6,
       bool fieldDstIpV6Word3,
       bool fieldDstIpV6Word2,
+      bool fieldDstIpV6Word1,
+      bool fieldDstIpV6Word0,
       bool fieldSrcIpV4,
       bool fieldDstIpV4,
       bool fieldL4SrcPort,
@@ -300,6 +307,7 @@ class FakeAclTable {
       bool fieldDstMac,
       bool fieldIpType,
       bool fieldTtl,
+      bool fieldMplsLabel0Ttl,
       bool fieldFdbDstUserMeta,
       bool fieldRouteDstUserMeta,
       bool fieldNeighborDstUserMeta,
@@ -321,6 +329,8 @@ class FakeAclTable {
         fieldDstIpV6(fieldDstIpV6),
         fieldDstIpV6Word3(fieldDstIpV6Word3),
         fieldDstIpV6Word2(fieldDstIpV6Word2),
+        fieldDstIpV6Word1(fieldDstIpV6Word1),
+        fieldDstIpV6Word0(fieldDstIpV6Word0),
         fieldSrcIpV4(fieldSrcIpV4),
         fieldDstIpV4(fieldDstIpV4),
         fieldL4SrcPort(fieldL4SrcPort),
@@ -339,6 +349,7 @@ class FakeAclTable {
         fieldDstMac(fieldDstMac),
         fieldIpType(fieldIpType),
         fieldTtl(fieldTtl),
+        fieldMplsLabel0Ttl(fieldMplsLabel0Ttl),
         fieldFdbDstUserMeta(fieldFdbDstUserMeta),
         fieldRouteDstUserMeta(fieldRouteDstUserMeta),
         fieldNeighborDstUserMeta(fieldNeighborDstUserMeta),
@@ -366,6 +377,8 @@ class FakeAclTable {
   bool fieldDstIpV6;
   bool fieldDstIpV6Word3;
   bool fieldDstIpV6Word2;
+  bool fieldDstIpV6Word1;
+  bool fieldDstIpV6Word0;
   bool fieldSrcIpV4;
   bool fieldDstIpV4;
   bool fieldL4SrcPort;
@@ -384,6 +397,7 @@ class FakeAclTable {
   bool fieldDstMac;
   bool fieldIpType;
   bool fieldTtl;
+  bool fieldMplsLabel0Ttl;
   bool fieldFdbDstUserMeta;
   bool fieldRouteDstUserMeta;
   bool fieldNeighborDstUserMeta;
@@ -398,6 +412,7 @@ class FakeAclTable {
   sai_object_id_t userDefinedFieldGroupMin2;
   sai_object_id_t userDefinedFieldGroupMin3;
   sai_object_id_t userDefinedFieldGroupMin4;
+  bool fieldRouteDestination{false};
 };
 
 class FakeAclCounter {

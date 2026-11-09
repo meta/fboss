@@ -129,11 +129,14 @@ reconstructStateAndRib(
   if (warmBootState.has_value()) {
     /* warm boot: reconstruct from warm boot state */
     state = SwitchState::fromThrift(*(warmBootState->swSwitchState()));
+    state->publish();
     rib = RoutingInformationBase::fromThrift(
         *(warmBootState->routeTables()),
         state->getFibsInfoMap(),
         state->getLabelForwardingInformationBase(),
-        state->getMySids());
+        state->getMySids(),
+        getEcmpWidth(state),
+        state->getClassBasedPolicies());
   } else {
     state = SwitchState::fromThrift(state::SwitchState{});
     /* cold boot, setup default rib */
@@ -142,7 +145,13 @@ reconstructStateAndRib(
       /* at least one switch supports route programming, setup default vrf */
       routeTables.emplace(kDefaultVrf, state::RouteTableFields{});
     }
-    rib = RoutingInformationBase::fromThrift(routeTables);
+    rib = RoutingInformationBase::fromThrift(
+        routeTables,
+        nullptr,
+        nullptr,
+        nullptr,
+        getEcmpWidth(state),
+        state->getClassBasedPolicies());
   }
   return std::make_pair(state, std::move(rib));
 }

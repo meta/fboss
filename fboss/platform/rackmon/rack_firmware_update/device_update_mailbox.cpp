@@ -166,7 +166,7 @@ DEFINE_bool(list_devices, false, "List all discovered Modbus devices and exit");
 using namespace facebook::fboss::platform::rackmon;
 
 int main(int argc, char** argv) {
-  folly::init(&argc, &argv);
+  const folly::Init init(&argc, &argv);
 
   // Handle --list-devices flag
   if (FLAGS_list_devices) {

@@ -7,8 +7,10 @@ OPT_ARG_COLDBOOT = "--coldboot_only"
 OPT_ARG_FILTER = "--filter"
 OPT_ARG_FILTER_FILE = "--filter_file"
 OPT_ARG_PROFILE = "--profile"
+OPT_ARG_TIER = "--tier"
 OPT_ARG_LIST_TESTS = "--list_tests"
 OPT_ARG_CONFIG_FILE = "--config"
+OPT_ARG_AGENT_CONFIG_FILE = "--agent-config"
 OPT_ARG_QSFP_CONFIG_FILE = "--qsfp-config"
 OPT_ARG_PLATFORM_MAPPING_OVERRIDE_PATH = "--platform_mapping_override_path"
 OPT_ARG_BSP_PLATFORM_MAPPING_OVERRIDE_PATH = "--bsp_platform_mapping_override_path"
@@ -43,6 +45,7 @@ SUB_CMD_PLATFORM = "platform"
 SUB_CMD_LED = "led"
 SUB_CMD_FBOSS2_INTEGRATION = "fboss2_integration"
 SUB_CMD_BENCHMARK = "benchmark"
+SUB_CMD_SERVICES = "services"
 
 # Subcommand args shared across multiple runners
 SUB_ARG_AGENT_RUN_MODE = "--agent-run-mode"
@@ -90,6 +93,7 @@ DNX_SIMULATOR_ENV: dict[str, str] = {
 }
 
 DEFAULT_TEST_RUN_TIMEOUT_IN_SECOND = 1200
+GENERATED_CONFIG_ROOT = "/opt/fboss/logs/run_test/generated_configs"
 
 # Shared known-bad / unsupported SAI-agent test list paths (relative to /opt/fboss CWD)
 SAI_AGENT_TEST_KNOWN_BAD_TESTS = (

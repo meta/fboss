@@ -11,6 +11,7 @@
 #pragma once
 
 #include <folly/IPAddress.h>
+#include <string_view>
 
 #include "fboss/cli/fboss2/CmdHandler.h"
 #include "fboss/cli/fboss2/utils/CmdClientUtilsCommon.h"
@@ -23,8 +24,7 @@ namespace facebook::fboss {
 using facebook::neteng::fboss::bgp::thrift::TNexthopInfo;
 using facebook::neteng::fboss::bgp::thrift::TNexthopInfoQueryResult;
 
-struct CmdShowBgpNexthopInfoTraits : public ReadCommandTraits,
-                                     public CliDocsExempt {
+struct CmdShowBgpNexthopInfoTraits : public ReadCommandTraits {
   using ParentCmd = void;
   static constexpr utils::ObjectArgTypeId ObjectArgTypeId =
       utils::ObjectArgTypeId::OBJECT_ARG_TYPE_ID_IP_LIST;
@@ -33,6 +33,10 @@ struct CmdShowBgpNexthopInfoTraits : public ReadCommandTraits,
   // carried in the result itself, so printOutput is a pure function of its
   // input rather than depending on out-of-band state on the command object.
   using RetType = TNexthopInfoQueryResult;
+
+  // Human-authored guide prose for the CLI reference wiki. Superset of the
+  // one-line help string registered in the command tree.
+  static std::string_view description();
 };
 
 class CmdShowBgpNexthopInfo
@@ -45,6 +49,10 @@ class CmdShowBgpNexthopInfo
       const ObjectArgType& queriedIps);
 
   void printOutput(const RetType& data, std::ostream& out = std::cout);
+
+  // Canned, synthetic model (no real switch data) used to render a
+  // deterministic example for the CLI reference wiki. No live switch.
+  static RetType sampleModel();
 };
 
 } // namespace facebook::fboss

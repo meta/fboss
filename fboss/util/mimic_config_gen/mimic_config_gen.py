@@ -41,6 +41,7 @@ from fboss.util.mimic_config_gen.defs import (
     emit,
     MimicError,
     section,
+    SelectionCtx,
 )
 
 logger: logging.Logger = logging.getLogger(__name__)
@@ -184,6 +185,52 @@ def run(args: argparse.Namespace) -> int:
         for warning in asic_warnings:
             emit(f"  WARNING {warning}")
 
+    # Pin the source switch's feature states before forging: multi-selection
+    # artifacts resolve their selector against these states, so selection must
+    # see the final (post-override) pins.
+    section("Features")
+    pins = forge.capture_feature_pins(baseline_dir)
+    on = sum(1 for v in pins.values() if v == "on")
+    emit(
+        f"  features pinned to source switch: {len(pins)} ({on} on, {len(pins) - on} off)"
+    )
+    for name, before, after in forge.apply_feature_overrides(pins, feature_overrides):
+        origin = before if before is not None else "unpinned"
+        emit(f"  feature override {name}: {origin} -> {after}")
+    if feature_overrides:
+        # Say what coop actually receives: an override for an unpinned feature
+        # adds an entry, and a no-op override prints nothing above.
+        emit(f"  {len(feature_overrides)} override(s) applied, {len(pins)} to coop")
+    forge.write_json(pins, work / "feature_pins.json")
+
+    # Identities for selection resolution: the role donor (whose template we
+    # clone) and the hw donor (whose platform artifacts we borrow), each with
+    # the donor's pinned feature states. Same construction as the scan
+    # corners, so selection sees exactly what PolicyDB matching saw.
+    enabled = frozenset(n for n, s in pins.items() if s == "on")
+    role_ctx = SelectionCtx(
+        forge.to_thrift(
+            forge.respin_json(
+                base_whoami,
+                donors.role,
+                donors.source_hw,
+                *profiles[donors.source_hw],
+            )
+        ),
+        enabled,
+    )
+    hw_ctx = SelectionCtx(
+        forge.to_thrift(
+            forge.respin_json(
+                base_whoami,
+                donors.bridge_role,
+                donors.target_hw,
+                *profiles[donors.target_hw],
+            )
+        ),
+        enabled,
+    )
+
     # Which inputs does the target pair not resolve, and where can each come from?
     section("Scanning PolicyDB")
     scanner = policydb.Scanner(donors, base_whoami, profiles)
@@ -222,21 +269,23 @@ def run(args: argparse.Namespace) -> int:
             )
         pmap = json.loads(overrides["platform_mapping"].read_text())
         template = json.loads(overrides["agent_sw_template"].read_text())
-        remapped = forge.remap_port_ids(template, forge.port_name_to_id(pmap))
+        remapped = forge.remap_port_ids(
+            template, forge.port_name_to_id(pmap, role_ctx), role_ctx
+        )
         emit(f"  port ids remapped by name: {len(remapped)}")
 
         hw_template_path = template_blocker.hw_path
         if hw_template_path:
             hw_template = json.loads(scanner.fetch(hw_template_path))
-            target_rif = verify.template_rif_model(hw_template)
-            cloned_rif = verify.template_rif_model(template)
+            target_rif = verify.template_rif_model(hw_template, hw_ctx)
+            cloned_rif = verify.template_rif_model(template, role_ctx)
             if target_rif != cloned_rif:
                 emit(
                     f"  WARNING RIF model differs: cloned={cloned_rif} "
                     f"target_hw_uses={target_rif}"
                 )
             for name, before, after in forge.reconcile_management_ports(
-                template, hw_template
+                template, hw_template, role_ctx, hw_ctx
             ):
                 emit(f"  mgmt port {name}: speed/profile {before} -> {after}")
         else:
@@ -254,20 +303,6 @@ def run(args: argparse.Namespace) -> int:
         work / "netwhoami.json",
     )
     emit(f"  netwhoami: hw={donors.target_hw} asic={asic} asic_vendor={vendor}")
-
-    pins = forge.capture_feature_pins(baseline_dir)
-    on = sum(1 for v in pins.values() if v == "on")
-    emit(
-        f"  features pinned to source switch: {len(pins)} ({on} on, {len(pins) - on} off)"
-    )
-    for name, before, after in forge.apply_feature_overrides(pins, feature_overrides):
-        origin = before if before is not None else "unpinned"
-        emit(f"  feature override {name}: {origin} -> {after}")
-    if feature_overrides:
-        # Say what coop actually receives: an override for an unpinned feature
-        # adds an entry, and a no-op override prints nothing above.
-        emit(f"  {len(feature_overrides)} override(s) applied, {len(pins)} to coop")
-    forge.write_json(pins, work / "feature_pins.json")
 
     section("Generating")
     ok, log = generate.mimic(whoami_path, mimic_dir, overrides, pins)

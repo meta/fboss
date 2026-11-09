@@ -1134,3 +1134,208 @@ TEST(AclGroup, ApplyConfigWarmbootMultipleAclTable) {
   EXPECT_EQ(
       *(stateV8->getAclTableGroups()->getNodeIf(kAclStage1)), *tableGroup1);
 }
+
+TEST(AclGroup, ModifyClonesTheAclTableChain) {
+  auto tableAt = [](const std::shared_ptr<SwitchState>& state) {
+    return state->getAclTableGroups()
+        ->getMapNodeIf(scope())
+        ->getAclTableGroup(kAclStage1)
+        ->getAclTableMap()
+        ->getTable(kTable1);
+  };
+
+  // 1. A published state holding a single INGRESS ACL table.
+  auto tableMap = std::make_shared<AclTableMap>();
+  tableMap->addTable(std::make_shared<AclTable>(0, kTable1));
+  auto tableGroup = std::make_shared<AclTableGroup>(kAclStage1);
+  tableGroup->setAclTableMap(tableMap);
+  auto tableGroups = std::make_shared<MultiSwitchAclTableGroupMap>();
+  tableGroups->addNode(tableGroup, scope());
+
+  auto state = std::make_shared<SwitchState>();
+  state->resetAclTableGroups(tableGroups);
+  state->publish();
+
+  auto publishedState = state;
+  auto publishedTable = tableAt(state);
+
+  // 2. modify() reseats the state and hands back an unpublished table.
+  auto* modified = publishedTable->modify(&state, scope(), kAclStage1);
+  EXPECT_NE(state, publishedState);
+  EXPECT_NE(modified, publishedTable.get());
+  EXPECT_FALSE(modified->isPublished());
+
+  // 3. The clone sits at the same coordinates in the new state, and the
+  // published state still holds the original.
+  EXPECT_EQ(tableAt(state).get(), modified);
+  EXPECT_EQ(tableAt(publishedState).get(), publishedTable.get());
+
+  // 4. Modifying the already-unpublished table clones nothing further.
+  auto unpublishedState = state;
+  EXPECT_EQ(modified->modify(&state, scope(), kAclStage1), modified);
+  EXPECT_EQ(state, unpublishedState);
+}
+
+TEST(AclGroup, ModifyLeavesOtherMatchersUntouched) {
+  auto matcher0 = HwSwitchMatcher(std::unordered_set<SwitchID>{SwitchID(0)});
+  auto matcher1 = HwSwitchMatcher(std::unordered_set<SwitchID>{SwitchID(1)});
+  auto groupAt = [](const std::shared_ptr<SwitchState>& state,
+                    const HwSwitchMatcher& matcher) {
+    return state->getAclTableGroups()->getMapNodeIf(matcher)->getAclTableGroup(
+        kAclStage1);
+  };
+
+  // 1. Both switches carry a same-named ACL table, as config scoping produces.
+  auto tableGroups = std::make_shared<MultiSwitchAclTableGroupMap>();
+  for (const auto& matcher : {matcher0, matcher1}) {
+    auto tableMap = std::make_shared<AclTableMap>();
+    tableMap->addTable(std::make_shared<AclTable>(0, kTable1));
+    auto tableGroup = std::make_shared<AclTableGroup>(kAclStage1);
+    tableGroup->setAclTableMap(tableMap);
+    tableGroups->addNode(tableGroup, matcher);
+  }
+
+  auto state = std::make_shared<SwitchState>();
+  state->resetAclTableGroups(tableGroups);
+  state->publish();
+  auto switch1Group = groupAt(state, matcher1);
+
+  // 2. Modifying switch 0's table rewires only switch 0.
+  auto table0 = groupAt(state, matcher0)->getAclTableMap()->getTable(kTable1);
+  auto* modified = table0->modify(&state, matcher0, kAclStage1);
+
+  EXPECT_EQ(
+      groupAt(state, matcher0)->getAclTableMap()->getTable(kTable1).get(),
+      modified);
+  EXPECT_EQ(groupAt(state, matcher1), switch1Group);
+}
+
+TEST(AclGroup, ModifyRejectsCoordinatesTheTableIsNotAt) {
+  auto matcher0 = HwSwitchMatcher(std::unordered_set<SwitchID>{SwitchID(0)});
+  auto matcher1 = HwSwitchMatcher(std::unordered_set<SwitchID>{SwitchID(1)});
+
+  // Both switches hold a table of the same name, so only an identity check
+  // can tell the caller they named the wrong one.
+  auto tableGroups = std::make_shared<MultiSwitchAclTableGroupMap>();
+  for (const auto& matcher : {matcher0, matcher1}) {
+    auto tableMap = std::make_shared<AclTableMap>();
+    tableMap->addTable(std::make_shared<AclTable>(0, kTable1));
+    auto tableGroup = std::make_shared<AclTableGroup>(kAclStage1);
+    tableGroup->setAclTableMap(tableMap);
+    tableGroups->addNode(tableGroup, matcher);
+  }
+
+  auto state = std::make_shared<SwitchState>();
+  state->resetAclTableGroups(tableGroups);
+  state->publish();
+
+  auto table = state->getAclTableGroups()
+                   ->getMapNodeIf(matcher0)
+                   ->getAclTableGroup(kAclStage1)
+                   ->getAclTableMap()
+                   ->getTable(kTable1);
+
+  EXPECT_THROW(table->modify(&state, matcher1, kAclStage1), FbossError);
+  EXPECT_THROW(table->modify(&state, matcher0, kAclStage2), FbossError);
+}
+
+namespace {
+
+const std::string kPbrTable =
+    cfg::switch_config_constants::DEFAULT_PBR_ACL_TABLE();
+
+cfg::SwitchConfig makePbrTableConfig() {
+  cfg::SwitchConfig config;
+  config.aclTableGroup() = cfg::AclTableGroup();
+  config.aclTableGroup()->name() = kGroup1;
+  config.aclTableGroup()->stage() = kAclStage1;
+  config.aclTableGroup()->aclTables()->resize(2);
+
+  auto& cfgTable1 = config.aclTableGroup()->aclTables()[0];
+  cfgTable1.name() = kTable1;
+  cfgTable1.priority() = 1;
+  cfgTable1.aclEntries()->resize(1);
+  cfgTable1.aclEntries()[0].name() = kAcl1a;
+  cfgTable1.aclEntries()[0].actionType() = cfg::AclActionType::DENY;
+
+  auto& cfgPbr = config.aclTableGroup()->aclTables()[1];
+  cfgPbr.name() = kPbrTable;
+  cfgPbr.priority() = 2;
+  return config;
+}
+
+std::shared_ptr<SwitchState> addPbrEntry(
+    const std::shared_ptr<SwitchState>& base,
+    const std::string& name,
+    int priority) {
+  auto state = base->clone();
+  auto groups = state->getAclTableGroups()->clone();
+  const auto matcherStr = groups->cbegin()->first;
+  auto groupMap = groups->getMapNodeIf(HwSwitchMatcher(matcherStr));
+  auto group = groupMap->getAclTableGroupIf(kAclStage1);
+  auto table = group->getAclTableMap()->getTableIf(kPbrTable)->clone();
+  auto aclMap = table->getAclMap()->clone();
+  auto entry = std::make_shared<AclEntry>(priority, name);
+  entry->setActionType(cfg::AclActionType::PERMIT);
+  aclMap->addNode(entry);
+  table->setAclMap(aclMap);
+  auto newTableMap = group->getAclTableMap()->clone();
+  newTableMap->updateNode(table);
+  auto newGroup = group->clone();
+  newGroup->setAclTableMap(newTableMap);
+  auto newGroupMap = groupMap->clone();
+  newGroupMap->updateNode(newGroup);
+  groups->updateMapNode(newGroupMap, HwSwitchMatcher(matcherStr));
+  state->resetAclTableGroups(groups);
+  state->publish();
+  return state;
+}
+
+} // namespace
+
+TEST(AclGroup, ApplyConfigPreservesComputedPbrEntries) {
+  FLAGS_enable_acl_table_group = true;
+  auto platform = createMockPlatform();
+  auto config = makePbrTableConfig();
+
+  auto stateV1 = publishAndApplyConfig(
+      std::make_shared<SwitchState>(), &config, platform.get());
+  ASSERT_NE(nullptr, stateV1);
+  EXPECT_EQ(0, stateV1->getAclsForTable(kAclStage1, kPbrTable)->numEntries());
+
+  auto stateV2 = addPbrEntry(stateV1, "pbrPolicy_tc1", 3505);
+  ASSERT_EQ(1, stateV2->getAclsForTable(kAclStage1, kPbrTable)->numEntries());
+
+  // Re-applying the same config is a no-op: the PBR table's empty config
+  // entry list no longer reads as "the computed entry was removed".
+  EXPECT_EQ(nullptr, publishAndApplyConfig(stateV2, &config, platform.get()));
+
+  // A PBR table attribute change rebuilds the table, but its entries are
+  // carried over rather than taken from config.
+  config.aclTableGroup()->aclTables()[1].qualifiers() = kQualifiers;
+  auto stateV3 = publishAndApplyConfig(stateV2, &config, platform.get());
+  ASSERT_NE(nullptr, stateV3);
+  auto pbrAcls = stateV3->getAclsForTable(kAclStage1, kPbrTable);
+  ASSERT_EQ(1, pbrAcls->numEntries());
+  auto entry = pbrAcls->getEntryIf("pbrPolicy_tc1");
+  ASSERT_NE(nullptr, entry);
+  EXPECT_EQ(3505, entry->getPriority());
+  // Other tables are still rebuilt from config as usual.
+  EXPECT_EQ(1, stateV3->getAclsForTable(kAclStage1, kTable1)->numEntries());
+}
+
+TEST(AclGroup, ApplyConfigRejectsConfiguredPbrEntries) {
+  FLAGS_enable_acl_table_group = true;
+  auto platform = createMockPlatform();
+  auto config = makePbrTableConfig();
+
+  auto& cfgPbr = config.aclTableGroup()->aclTables()[1];
+  cfgPbr.aclEntries()->resize(1);
+  cfgPbr.aclEntries()[0].name() = kAcl2a;
+  cfgPbr.aclEntries()[0].actionType() = cfg::AclActionType::DENY;
+
+  EXPECT_THROW(
+      publishAndApplyConfig(
+          std::make_shared<SwitchState>(), &config, platform.get()),
+      FbossError);
+}

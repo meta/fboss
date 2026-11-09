@@ -307,10 +307,7 @@ TEST_F(BcmHostTest, DeleteV4AndV6L3Host) {
 
 TEST_F(BcmHostTest, HostRouteLookupClassNotSet) {
   if (!getPlatform()->canUseHostTableForHostRoutes()) {
-#if defined(GTEST_SKIP)
     GTEST_SKIP();
-#endif
-    return;
   }
   std::array<std::pair<CIDRNetwork, IPAddress>, 2> networkAndNexthops = {
       std::make_pair(

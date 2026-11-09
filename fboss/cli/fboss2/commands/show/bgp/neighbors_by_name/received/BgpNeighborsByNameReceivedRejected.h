@@ -32,13 +32,18 @@ using neteng::fboss::bgp_attr::TIpPrefix;
 
 // RetType key: "prefix | policy_name" -> list of "peer_addr (description)".
 // Using primitive containers so that CmdHandler's JSON serialization works.
-struct BgpNeighborsByNameReceivedRejectedTraits : public ReadCommandTraits,
-                                                  public CliDocsExempt {
+struct BgpNeighborsByNameReceivedRejectedTraits : public ReadCommandTraits {
   using ParentCmd = CmdShowBgpNeighborsByName;
   static constexpr utils::ObjectArgTypeId ObjectArgTypeId =
       utils::ObjectArgTypeId::OBJECT_ARG_TYPE_ID_IP_LIST;
   using ObjectArgType = std::vector<std::string>;
   using RetType = std::map<std::string, std::vector<std::string>>;
+
+  // Human-authored guide prose for the CLI reference wiki. Superset of the
+  // one-line help string registered in the command tree.
+  static std::string_view description() {
+    return "Displays the prefixes the ingress policy discarded, aggregated across every neighbor whose description matches the name pattern, rather than one peer at a time. Output is grouped by prefix and rejection reason - the policy term that denied it, or 'Unknown' when the switch did not record one - and each group lists the peers it applies to as 'address (description)'. This is the fleet-wide version of the 'a peer swears it is advertising this prefix but it never reaches the RIB' question: if the prefix appears here for every matched peer the drop is policy-wide, and if it appears for only some of them the drop is peer-specific. An optional list of prefixes after the subcommand narrows the result to those prefixes. Empty output prints 'No rejected prefixes found.'. The name pattern is required. See 'show bgp neighbors <peer> received rejected' for the per-path detail behind any one of these rows.";
+  }
 };
 
 class BgpNeighborsByNameReceivedRejected
@@ -62,5 +67,12 @@ class BgpNeighborsByNameReceivedRejected
       const ObjectArgType& prefixes);
 
   void printOutput(const RetType& result, std::ostream& out = std::cout);
+
+  // Canned, synthetic model (no real switch data). Received and advertised
+  // rejections share a RetType and a renderer, so they share one sample.
+  static RetType sampleModel() {
+    return BgpNeighborsByNameAdvertisedRejected::sampleRejectedPrefixes(
+        SampleRouteDirection::Received, /*crfOnly=*/false);
+  }
 };
 } // namespace facebook::fboss

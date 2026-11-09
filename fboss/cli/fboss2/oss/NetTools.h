@@ -16,15 +16,25 @@
 #include <string>
 #include <vector>
 
+/*
+ * Only compiled in OSS: callers include this in place of the non-open-sourced
+ * neteng/fboss/bgp/cpp/lib headers (see the IS_OSS switch in
+ * commands/show/bgp/CmdShowUtils.cpp).
+ *
+ * Mirrors the internal library's namespace, facebook::nettools::bgplib. It
+ * cannot sit at global scope: callers are inside facebook::fboss and spell
+ * these unqualified as nettools::bgplib::X, which only reached a global stub
+ * while facebook::nettools did not exist in the translation unit. Any header
+ * pulling in the generated BgpStructs types now introduces it, and unqualified
+ * lookup stops at facebook::nettools without ever reaching global scope.
+ *
+ * BgpAttrOrigin is deliberately absent: BgpStructs.thrift declares it in this
+ * same namespace, so a stub copy would be a redefinition. OSS gets the real
+ * generated enum.
+ */
+namespace facebook {
 namespace nettools {
 namespace bgplib {
-
-// Stub for BGP origin attribute enum
-enum class BgpAttrOrigin {
-  IGP = 0,
-  EGP = 1,
-  INCOMPLETE = 2,
-};
 
 // Stub for BGP community attribute
 class BgpAttrCommunityC {
@@ -55,8 +65,8 @@ class BgpAttrCommunityC {
   std::string commStr_;
 };
 
-// Constant for null/empty message
-constexpr const char* kNullMessage = "";
+// Keep unresolved aliases consistent with the internal BGP utility.
+constexpr const char* kNullMessage = "(NA)";
 
 // Well-known BGP communities (subset)
 // Format: "asn:value" -> "ALIAS"
@@ -114,3 +124,4 @@ inline bool isAristaDevice() {
 
 } // namespace bgplib
 } // namespace nettools
+} // namespace facebook

@@ -47,6 +47,9 @@ class SwRxPacket : public RxPacket {
   void setCosQueue(uint8_t cosQueue) {
     cosQueue_ = cosQueue;
   }
+  void setPacketType(std::optional<PacketType> packetType) {
+    packetType_ = packetType;
+  }
 
  private:
   // Forbidden copy constructor and assignment operator

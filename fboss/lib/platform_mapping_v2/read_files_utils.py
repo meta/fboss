@@ -3,8 +3,9 @@ import copy
 import json
 import os
 import sys
+from dataclasses import dataclass
 from enum import IntEnum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from fboss.lib.platform_mapping_v2.asic_vendor_config import AsicVendorConfig
 from fboss.lib.platform_mapping_v2.integrated_transceiver_mapping import (
@@ -50,6 +51,17 @@ from neteng.fboss.switch_config.thrift_types import (
 from neteng.fboss.transceiver.thrift_types import TransmitterTechnology, Vendor
 
 
+@dataclass(frozen=True)
+class PlatformMappingInput:
+    base_platform: str
+    input_dir: str
+    vendor: str
+    data: Dict[str, str]
+
+
+PlatformMappingInputs = Dict[str, PlatformMappingInput]
+
+
 def read_vendor_data(input_file_path: str) -> Dict[str, str]:
     vendor_data = {}
     if not os.path.exists(input_file_path):
@@ -67,20 +79,90 @@ def read_vendor_data(input_file_path: str) -> Dict[str, str]:
     return vendor_data
 
 
-def read_all_vendor_data(input_dir: str) -> Dict[str, Dict[str, str]]:
-    all_vendor_data = {}
-    data_path = input_dir
-    print(
-        f"Reading all vendor data in {data_path}...",
-        file=sys.stderr,
-    )
-    for filename in sorted(os.listdir(data_path)):
-        filepath = os.path.join(data_path, filename)
-        if not os.path.isdir(filepath):
-            continue
-        all_vendor_data[filename] = read_vendor_data(filepath)
+def _add_platform_mapping_input(
+    inputs: PlatformMappingInputs,
+    name: str,
+    platform_input: PlatformMappingInput,
+) -> None:
+    # Platform names are globally unique
+    if name in inputs:
+        raise ValueError(
+            f"Duplicate platform mapping input '{name}' in "
+            f"'{inputs[name].input_dir}' and "
+            f"'{platform_input.input_dir}'"
+        )
+    inputs[name] = platform_input
 
-    return all_vendor_data
+
+def _find_variant_inputs(
+    variants_dir: str,
+    mapping_subdir: str,
+) -> List[Tuple[str, str]]:
+    if not os.path.isdir(variants_dir):
+        return []
+
+    variant_inputs = []
+    for variant in sorted(os.listdir(variants_dir)):
+        variant_input_dir = os.path.join(variants_dir, variant, mapping_subdir)
+        if os.path.isdir(variant_input_dir):
+            variant_inputs.append((variant, variant_input_dir))
+    return variant_inputs
+
+
+def discover_platform_mapping_inputs(
+    platforms_dir: str,
+    mapping_subdir: str = "platform_mapping",
+) -> PlatformMappingInputs:
+    inputs: PlatformMappingInputs = {}
+
+    print(f"Reading platform mapping inputs in {platforms_dir}...", file=sys.stderr)
+
+    for vendor in sorted(os.listdir(platforms_dir)):
+        vendor_dir = os.path.join(platforms_dir, vendor)
+        if not os.path.isdir(vendor_dir):
+            continue
+        for platform in sorted(os.listdir(vendor_dir)):
+            platform_dir = os.path.join(vendor_dir, platform)
+            if not os.path.isdir(platform_dir):
+                continue
+
+            input_dir = os.path.join(platform_dir, mapping_subdir)
+            variants_dir = os.path.join(platform_dir, "variants")
+            has_input = os.path.isdir(input_dir)
+            variant_inputs = _find_variant_inputs(variants_dir, mapping_subdir)
+
+            if not has_input and not variant_inputs:
+                continue
+            if variant_inputs and not has_input:
+                raise ValueError(
+                    f"Platform '{platform}' has platform mapping variants but no "
+                    f"base input directory at '{input_dir}'"
+                )
+
+            _add_platform_mapping_input(
+                inputs,
+                platform,
+                PlatformMappingInput(
+                    base_platform=platform,
+                    input_dir=input_dir,
+                    vendor=vendor,
+                    data=read_vendor_data(input_dir),
+                ),
+            )
+
+            for variant, variant_input_dir in variant_inputs:
+                _add_platform_mapping_input(
+                    inputs,
+                    variant,
+                    PlatformMappingInput(
+                        base_platform=platform,
+                        input_dir=variant_input_dir,
+                        vendor=vendor,
+                        data=read_vendor_data(variant_input_dir),
+                    ),
+                )
+
+    return inputs
 
 
 def get_content(directory: Dict[str, str], filename: str) -> str:

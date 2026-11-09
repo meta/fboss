@@ -4,9 +4,10 @@
 # LICENSE file in the root directory of this source tree.
 
 
-import sys
 import unittest
+from unittest.mock import MagicMock
 
+from ..buildopts import BuildOptions
 from ..load import load_all_manifests, patch_loader
 from ..manifest import ManifestParser
 
@@ -224,6 +225,49 @@ foo = bar
         manifests = load_all_manifests(None)
         self.assertNotEqual(0, len(manifests), msg="parsed some number of manifests")
 
+    def test_shipit_project_has_one_fbcode_builder_layout(self) -> None:
+        # ShipIt exports fbcode_builder once per GitHub repo, so the manifests
+        # of one shipit_project must agree on where it goes.
+        patch_loader(__name__)
+        manifests = load_all_manifests(MagicMock(spec=BuildOptions))
+        dirs_by_project: dict[str, set[str]] = {}
+        for m in manifests.values():
+            if m.shipit_project and m.shipit_fbcode_builder:
+                dirs_by_project.setdefault(m.shipit_project, set()).add(
+                    m.shipit_fbcode_builder_dir
+                )
+        self.assertEqual(dirs_by_project["folly"], {"tool/fbcode_builder"})
+        self.assertEqual({p: d for p, d in dirs_by_project.items() if len(d) > 1}, {})
+
+    def test_shared_folly_link_inputs(self) -> None:
+        # Shared libfolly.so links third-party static archives. Those archives
+        # must be position-independent, and libaio must install a shared
+        # library, or the no-system-packages builds fail in the folly link.
+        patch_loader(__name__)
+        # The resource loader ignores build options; a mock only satisfies
+        # the type signature.
+        manifests = load_all_manifests(MagicMock(spec=BuildOptions))
+        for name in ("zlib", "libevent", "libaio"):
+            self.assertIn(name, manifests, msg="manifest still exists")
+        for name in ("zlib", "libevent"):
+            defines = manifests[name].get_section_as_dict("cmake.defines", {})
+            self.assertEqual(
+                defines.get("CMAKE_POSITION_INDEPENDENT_CODE"),
+                "ON",
+                msg=name + " archives stay linkable into shared libfolly.so",
+            )
+        libaio = manifests["libaio"]
+        self.assertIn(
+            "ENABLE_SHARED=1",
+            libaio.get_section_as_args("make.build_args", {}),
+            msg="source-built libaio provides libaio.so with version nodes",
+        )
+        self.assertIn(
+            "ENABLE_SHARED=1",
+            libaio.get_section_as_args("make.install_args", {}),
+            msg="source-built libaio installs libaio.so with version nodes",
+        )
+
     def test_mismatch_name(self) -> None:
         with self.assertRaisesRegex(
             Exception,
@@ -243,8 +287,3 @@ name = bar
         with self.assertRaisesRegex(Exception, "found duplicate manifest 'foo'"):
             # pyre-fixme[6]: For 1st argument expected `BuildOptions` but got `None`.
             load_all_manifests(None)
-
-    if sys.version_info < (3, 2):
-
-        def assertRaisesRegex(self, *args, **kwargs):
-            return self.assertRaisesRegex(*args, **kwargs)

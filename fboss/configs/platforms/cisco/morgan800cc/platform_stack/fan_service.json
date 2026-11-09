@@ -23,6 +23,14 @@
           "posHysteresis": 0,
           "negHysteresis": 0.5
         },
+        "OPTIC_TYPE_800_ZR": {
+          "kp": -1,
+          "ki": 0,
+          "kd": -17,
+          "setPoint": 70,
+          "posHysteresis": 0,
+          "negHysteresis": 0.5
+        },
         "OPTIC_TYPE_400_GENERIC": {
           "kp": -1,
           "ki": 0,

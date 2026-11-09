@@ -10,7 +10,6 @@
 
 #include <folly/FileUtil.h>
 #include <folly/logging/xlog.h>
-#include <thrift/lib/cpp/util/EnumUtils.h>
 
 #include "fboss/agent/AgentConfig.h"
 #include "fboss/agent/FbossError.h"
@@ -23,14 +22,11 @@
 #include "fboss/agent/platforms/common/fuji/FujiPlatformMapping.h"
 #include "fboss/agent/platforms/common/galaxy/GalaxyFCPlatformMapping.h"
 #include "fboss/agent/platforms/common/galaxy/GalaxyLCPlatformMapping.h"
-#include "fboss/agent/platforms/common/icecube800banw/Icecube800banwPlatformMapping.h"
 #include "fboss/agent/platforms/common/icecube800bc/Icecube800bcPlatformMapping.h"
 #include "fboss/agent/platforms/common/icetea800bc/Icetea800bcPlatformMapping.h"
-#include "fboss/agent/platforms/common/j4sim/J4SimPlatformMapping.h"
 #include "fboss/agent/platforms/common/janga800bic/Janga800bicPlatformMapping.h"
 #include "fboss/agent/platforms/common/ladakh800bcls/Ladakh800bclsPlatformMapping.h"
 #include "fboss/agent/platforms/common/leh800bcls/Leh800bclsPlatformMapping.h"
-#include "fboss/agent/platforms/common/m5120csc/M5120CSCPlatformMapping.h"
 #include "fboss/agent/platforms/common/meru800bfa/Meru800bfaP1PlatformMapping.h"
 #include "fboss/agent/platforms/common/meru800bfa/Meru800bfaPlatformMapping.h"
 #include "fboss/agent/platforms/common/meru800bia/Meru800biaPlatformMapping.h"
@@ -39,7 +35,6 @@
 #include "fboss/agent/platforms/common/minipack3n/Minipack3NPlatformMapping.h"
 #include "fboss/agent/platforms/common/montblanc/MontblancPlatformMapping.h"
 #include "fboss/agent/platforms/common/morgan800cc/Morgan800ccPlatformMapping.h"
-#include "fboss/agent/platforms/common/saintpaul/SaintpaulPlatformMapping.h"
 #include "fboss/agent/platforms/common/tahan800bc/Tahan800bcPlatformMapping.h"
 #include "fboss/agent/platforms/common/tahansb800bc/Tahansb800bcPlatformMapping.h"
 #include "fboss/agent/platforms/common/wedge100/Wedge100PlatformMapping.h"
@@ -49,7 +44,6 @@
 #include "fboss/agent/platforms/common/wedge400c/Wedge400CGrandTetonPlatformMapping.h"
 #include "fboss/agent/platforms/common/wedge400c/Wedge400CPlatformMapping.h"
 #include "fboss/agent/platforms/common/wedge400c/Wedge400CPlatformUtil.h"
-#include "fboss/agent/platforms/common/wedge800cact/Wedge800CACTPlatformMapping.h"
 #include "fboss/agent/platforms/common/yamp/YampPlatformMapping.h"
 #include "fboss/agent/platforms/common/yangra/YangraPlatformMapping.h"
 #include "fboss/agent/platforms/common/yangra2/Yangra2PlatformMapping.h"
@@ -206,22 +200,6 @@ std::unique_ptr<PlatformMapping> initPlatformMapping(PlatformType type) {
       return platformMappingStr.empty()
           ? std::make_unique<Icecube800bcPlatformMapping>()
           : std::make_unique<Icecube800bcPlatformMapping>(platformMappingStr);
-    case PlatformType::PLATFORM_ICECUBE800BANW:
-      return platformMappingStr.empty()
-          ? std::make_unique<Icecube800banwPlatformMapping>()
-          : std::make_unique<Icecube800banwPlatformMapping>(platformMappingStr);
-    case PlatformType::PLATFORM_M4062NHP:
-    case PlatformType::PLATFORM_WEDGE800BACT:
-    case PlatformType::PLATFORM_WEDGE800BNHP:
-      // These platforms ship no compiled-in platform mapping. The mapping
-      // must be provided externally via --platform_descriptor_config_path or
-      // --platform_mapping_override_path.
-      throw FbossError(
-          "Platform ",
-          apache::thrift::util::enumNameSafe(type),
-          " requires an external platform mapping; ",
-          "set --platform_descriptor_config_path or ",
-          "--platform_mapping_override_path");
     case PlatformType::PLATFORM_ICETEA800BC:
       return platformMappingStr.empty()
           ? std::make_unique<Icetea800bcPlatformMapping>()
@@ -230,15 +208,6 @@ std::unique_ptr<PlatformMapping> initPlatformMapping(PlatformType type) {
       return platformMappingStr.empty()
           ? std::make_unique<Tahansb800bcPlatformMapping>()
           : std::make_unique<Tahansb800bcPlatformMapping>(platformMappingStr);
-    case PlatformType::PLATFORM_WEDGE800CACT:
-    case PlatformType::PLATFORM_WEDGE800CNHP:
-      return platformMappingStr.empty()
-          ? std::make_unique<Wedge800CACTPlatformMapping>()
-          : std::make_unique<Wedge800CACTPlatformMapping>(platformMappingStr);
-    case PlatformType::PLATFORM_M5120CSC:
-      return platformMappingStr.empty()
-          ? std::make_unique<M5120CSCPlatformMapping>()
-          : std::make_unique<M5120CSCPlatformMapping>(platformMappingStr);
     case PlatformType::PLATFORM_LADAKH800BCLS:
       return platformMappingStr.empty()
           ? std::make_unique<Ladakh800bclsPlatformMapping>()
@@ -247,14 +216,6 @@ std::unique_ptr<PlatformMapping> initPlatformMapping(PlatformType type) {
       return platformMappingStr.empty()
           ? std::make_unique<Leh800bclsPlatformMapping>()
           : std::make_unique<Leh800bclsPlatformMapping>(platformMappingStr);
-    case PlatformType::PLATFORM_J4SIM:
-      return platformMappingStr.empty()
-          ? std::make_unique<J4SimPlatformMapping>()
-          : std::make_unique<J4SimPlatformMapping>(platformMappingStr);
-    case PlatformType::PLATFORM_SAINTPAUL:
-      return platformMappingStr.empty()
-          ? std::make_unique<SaintpaulPlatformMapping>()
-          : std::make_unique<SaintpaulPlatformMapping>(platformMappingStr);
     case PlatformType::PLATFORM_BLACKWOLF800BANW:
       return platformMappingStr.empty()
           ? std::make_unique<Blackwolf800banwPlatformMapping>()
@@ -280,10 +241,17 @@ std::unique_ptr<PlatformMapping> initPlatformMapping(PlatformType type) {
     case PlatformType::PLATFORM_MERU400BIU_DEPRECATED:
     case PlatformType::PLATFORM_MERU400BFU_DEPRECATED:
     case PlatformType::PLATFORM_MERU400BIA_DEPRECATED:
-    case PlatformType::PLATFORM_M4061CLSC:
     case PlatformType::PLATFORM_UNKNOWN:
       throw FbossError("Unsupported platform type");
+    default:
+      if (!platformMappingStr.empty()) {
+        return std::make_unique<PlatformMapping>(platformMappingStr);
+      }
+      throw FbossError(
+          "all newer platforms than wedge800 no longer ship a compiled-in "
+          "platform mapping. The mapping must be provided externally via "
+          "--platform_descriptor_config_path or "
+          "--platform_mapping_override_path.");
   }
-  return nullptr;
 }
 } // namespace facebook::fboss::utility

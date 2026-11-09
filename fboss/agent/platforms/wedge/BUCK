@@ -3,7 +3,6 @@ load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:custom_unittest.bzl", "custom_unittest")
 load("//fboss:THIRD-PARTY-VERSIONS.bzl", "BCM_SDKS", "to_versions")
 load("//fboss/build:build_info.bzl", "gen_sdk_build_info_src")
-load("//fbpkg:fbpkg.bzl", "fbpkg")
 
 oncall("fboss_agent_push")
 
@@ -49,23 +48,6 @@ oncall("fboss_agent_push")
     for sdk in BCM_SDKS
 ]
 
-#
-# Wedge agent compiled with FakeSdk
-#
-cpp_binary(
-    name = "fake_wedge_agent",
-    srcs = [
-        "wedge_agent.cpp",
-    ],
-    deps = [
-        ":fake_platform",  # @manual
-        "//fboss/agent:fake_main",  # @manual
-        "//fboss/agent:hw_switch",
-        "//fboss/agent:monolithic_agent_initializer",
-        "//fboss/agent:setup_thrift_prod",  # @manual
-    ],
-)
-
 wedge_platform_src = [
     "WedgePlatform.cpp",
     "WedgePort.cpp",
@@ -97,6 +79,29 @@ wedge_platform_src = [
 
 wedge_platform_headers = [
     "WedgePortMapping.h",
+    "WedgePlatform.h",
+    "WedgePlatformInit.h",
+    "WedgePort.h",
+    "WedgeTomahawkPlatform.h",
+    "facebook/Tomahawk4Platform.h",
+    "facebook/Tomahawk4Port.h",
+    "facebook/WedgePlatformUtils.h",
+    "facebook/WedgeTomahawk3Platform.h",
+    "facebook/WedgeTomahawk3Port.h",
+    "facebook/darwin/DarwinPlatform.h",
+    "facebook/darwin/DarwinPort.h",
+    "facebook/elbert/ElbertPlatform.h",
+    "facebook/elbert/ElbertPort.h",
+    "facebook/fuji/FujiPlatform.h",
+    "facebook/fuji/FujiPort.h",
+    "facebook/minipack/MinipackPlatform.h",
+    "facebook/minipack/MinipackPort.h",
+    "facebook/wedge400/Wedge400Platform.h",
+    "facebook/wedge400/Wedge400Port.h",
+    "facebook/yamp/YampPlatform.h",
+    "facebook/yamp/YampPort.h",
+    "wedge100/Wedge100Platform.h",
+    "wedge100/Wedge100Port.h",
 ]
 
 cpp_library(
@@ -104,6 +109,16 @@ cpp_library(
     srcs = wedge_platform_src,
     headers = wedge_platform_headers,
     exported_deps = [
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly:memory",
+        "fbsource//xplat/folly:network_address",
+        "fbsource//xplat/folly:optional",
+        "fbsource//xplat/folly:range",
+        "fbsource//xplat/folly:synchronized",
+        "fbsource//xplat/folly/futures:core",
+        "fbsource//xplat/folly/gen:base",
+        "fbsource//xplat/folly/io/async:async_base",
+        "fbsource//xplat/folly/logging:logging",
         "//common/fbwhoami:fb_who_am_i",
         "//configerator/structs/neteng/netwhoami:netwhoami-cpp2-types",
         "//fboss/agent:fboss-error",
@@ -150,16 +165,6 @@ cpp_library(
         "//fboss/qsfp_service/lib:qsfp-service-client",
         "//fboss/qsfp_service/platforms/wedge:wedge-i2c-bus-lock",
         "//fboss/qsfp_service/platforms/wedge:wedge-transceiver",
-        "//folly:file_util",
-        "//folly:memory",
-        "//folly:network_address",
-        "//folly:optional",
-        "//folly:range",
-        "//folly:synchronized",
-        "//folly/futures:core",
-        "//folly/gen:base",
-        "//folly/io/async:async_base",
-        "//folly/logging:logging",
         "//thrift/lib/cpp/util:enum_utils",
     ],
     external_deps = [
@@ -170,110 +175,4 @@ cpp_library(
         ("boost", None, "boost_container"),
         "gflags",
     ],
-)
-
-cpp_library(
-    name = "fake_platform",
-    srcs = wedge_platform_src,
-    headers = wedge_platform_headers,
-    compiler_flags = [
-        # this is to debolloxify BCM's attempts to inline soc_pci_XXX functions >:\
-        "-DSOC_PCI_DEBUG",
-    ],
-    deps = ["//fboss/agent/platforms/wedge/utils:bcm-led-utils"],
-    exported_deps = [
-        "//common/fbwhoami:fb_who_am_i",
-        "//configerator/structs/neteng/netwhoami:netwhoami-cpp2-types",
-        "//fboss/agent:fboss-error",
-        "//fboss/agent:fboss-types",
-        "//fboss/agent:hw_switch",
-        "//fboss/agent:load_agent_config",
-        "//fboss/agent:platform_base",
-        "//fboss/agent:platform_config-cpp2-types",
-        "//fboss/agent:state_observer",
-        "//fboss/agent:switch_config-cpp2-types",
-        "//fboss/agent:utils",
-        "//fboss/agent/facebook/test:fake_sdk",  # @manual
-        "//fboss/agent/hw/bcm:bcm",
-        "//fboss/agent/hw/bcm:bcm_sdk_ver",
-        "//fboss/agent/hw/bcm:config",
-        "//fboss/agent/hw/bcm:fake_bcm",  # @manual
-        "//fboss/agent/hw/switch_asics:switch_asics",
-        "//fboss/agent/if:ctrl-cpp2-types",
-        "//fboss/agent/platforms/common:platform_mapping",
-        "//fboss/agent/platforms/common/darwin:darwin_platform_mapping",
-        "//fboss/agent/platforms/common/elbert:elbert_platform_mapping",
-        "//fboss/agent/platforms/common/fuji:fuji_platform_mapping",
-        "//fboss/agent/platforms/common/minipack:minipack_platform_mapping",
-        "//fboss/agent/platforms/common/utils:wedge-led-utils",
-        "//fboss/agent/platforms/common/wedge100:wedge100_platform_mapping",
-        "//fboss/agent/platforms/common/wedge400:wedge400_platform_mapping",
-        "//fboss/agent/platforms/common/wedge400:wedge400_platform_utils",
-        "//fboss/agent/platforms/common/yamp:yamp_platform_mapping",
-        "//fboss/agent/platforms/wedge/utils:bcm-led-utils-oss",
-        "//fboss/agent/state:state",
-        "//fboss/lib/config:fboss_config_utils",
-        "//fboss/lib/fpga:minipack_base_container",
-        "//fboss/lib/fpga:minipack_container",
-        "//fboss/lib/fpga:wedge400_fpga",
-        "//fboss/lib/fpga/facebook/darwin:darwin_fpga",
-        "//fboss/lib/fpga/facebook/elbert:elbert_fpga",
-        "//fboss/lib/fpga/facebook/fuji:fuji_container",
-        "//fboss/lib/fpga/facebook/yamp:yamp_base_fpga",
-        "//fboss/lib/fpga/facebook/yamp:yamp_fpga",
-        "//fboss/lib/phy:external_phy",
-        "//fboss/lib/phy:phy-management",
-        "//fboss/lib/platforms:product-info",
-        "//fboss/lib/usb:usb-api",
-        "//fboss/lib/usb:wedge_i2c",
-        "//fboss/qsfp_service/if:transceiver-cpp2-types",
-        "//fboss/qsfp_service/lib:qsfp-service-client",
-        "//fboss/qsfp_service/platforms/wedge:wedge-i2c-bus-lock",
-        "//fboss/qsfp_service/platforms/wedge:wedge-transceiver",
-        "//folly:file_util",
-        "//folly:memory",
-        "//folly:network_address",
-        "//folly:optional",
-        "//folly:range",
-        "//folly:synchronized",
-        "//folly/futures:core",
-        "//folly/gen:base",
-        "//folly/io/async:async_base",
-        "//folly/logging:logging",
-        "//thrift/lib/cpp/util:enum_utils",
-    ],
-    external_deps = [
-        ("boost", None, "boost_regex"),
-        "gflags",
-    ],
-    exported_external_deps = [
-        ("boost", None, "boost_container"),
-        "gflags",
-    ],
-)
-
-fbpkg.builder(
-    name = "fboss.emulation.fake_wedge_agent",
-    architectures = ["x86_64"],
-    path_actions = {
-        "fake_wedge_agent": ":fake_wedge_agent",
-    },
-)
-
-fbpkg.builder(
-    name = "neteng.fboss.fake_wedge_agent",
-    architectures = ["x86_64"],
-    buck_opts = fbpkg.buck_opts(
-        mode = "opt",
-    ),
-    expire_days = 5,
-    fail_on_redundant_configerator_fbpkg = False,
-    override_log_paths = [
-        "fboss/agent/",
-        "fboss/lib/",
-    ],
-    path_actions = {
-        "fake_wedge_agent": ":fake_wedge_agent",
-    },
-    split_debuginfo = True,
 )

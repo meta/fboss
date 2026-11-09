@@ -40,6 +40,7 @@ void FakeSai::clear() {
   fs->hostIfUserDefinedTrapManager.clear();
   fs->hostifTrapGroupManager.clear();
   fs->inSegEntryManager.clear();
+  fs->isolationGroupManager.clearWithMembers();
   fs->neighborManager.clear();
   fs->mirrorManager.clear();
   fs->nextHopManager.clear();
@@ -49,6 +50,7 @@ void FakeSai::clear() {
   fs->queueManager.clear();
   fs->routeManager.clear();
   fs->routeInterfaceManager.clear();
+  fs->myMacManager.clear();
   fs->samplePacketManager.clear();
   fs->scheduleManager.clear();
   fs->switchManager.clear();
@@ -66,6 +68,8 @@ void FakeSai::clear() {
   fs->tamCollectorManager.clear();
   fs->tunnelManager.clear();
   fs->tunnelTermManager.clear();
+  fs->tunnelMapManager.clear();
+  fs->tunnelMapEntryManager.clear();
 #if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)
   fs->srv6SidListManager.clear();
   fs->mySidEntryManager.clear();
@@ -185,6 +189,11 @@ sai_status_t sai_api_query(sai_api_t sai_api_id, void** api_method_table) {
           (sai_hostif_api_t**)api_method_table);
       res = SAI_STATUS_SUCCESS;
       break;
+    case SAI_API_ISOLATION_GROUP:
+      facebook::fboss::populate_isolation_group_api(
+          (sai_isolation_group_api_t**)api_method_table);
+      res = SAI_STATUS_SUCCESS;
+      break;
     case SAI_API_LAG:
       facebook::fboss::populate_lag_api((sai_lag_api_t**)api_method_table);
       res = SAI_STATUS_SUCCESS;
@@ -235,6 +244,11 @@ sai_status_t sai_api_query(sai_api_t sai_api_id, void** api_method_table) {
           (sai_router_interface_api_t**)api_method_table);
       res = SAI_STATUS_SUCCESS;
       break;
+    case SAI_API_MY_MAC:
+      facebook::fboss::populate_my_mac_api(
+          (sai_my_mac_api_t**)api_method_table);
+      res = SAI_STATUS_SUCCESS;
+      break;
     case SAI_API_SAMPLEPACKET:
       facebook::fboss::populate_samplepacket_api(
           (sai_samplepacket_api_t**)api_method_table);
@@ -270,6 +284,11 @@ sai_status_t sai_api_query(sai_api_t sai_api_id, void** api_method_table) {
       break;
     case SAI_API_WRED:
       facebook::fboss::populate_wred_api((sai_wred_api_t**)api_method_table);
+      res = SAI_STATUS_SUCCESS;
+      break;
+    case SAI_API_VIRTUAL_CHANNEL:
+      facebook::fboss::populate_virtual_channel_api(
+          (sai_virtual_channel_api_t**)api_method_table);
       res = SAI_STATUS_SUCCESS;
       break;
     case SAI_API_TAM:

@@ -16,6 +16,7 @@ cpp_unittest(
     name = "drop_reason_utils_test",
     srcs = ["DropReasonUtilsTest.cpp"],
     network_access = network_access_utils.none(),
+    supports_static_listing = False,
     deps = [
         "//fboss/agent/hw/sai/switch:drop_reason_utils",
     ],
@@ -71,6 +72,13 @@ switch_manager_unittest(
     name = "ars_profile_manager_test",
     srcs = [
         "ArsProfileManagerTest.cpp",
+    ],
+)
+
+switch_manager_unittest(
+    name = "virtual_channel_manager_test",
+    srcs = [
+        "VirtualChannelManagerTest.cpp",
     ],
 )
 
@@ -191,6 +199,9 @@ switch_manager_unittest(
     srcs = [
         "SwitchManagerTest.cpp",
     ],
+    extra_deps = [
+        "//fboss/lib:warm_boot_file_utils",
+    ],
 )
 
 switch_manager_unittest(
@@ -211,6 +222,13 @@ switch_manager_unittest(
     name = "srv6_tunnel_manager_test",
     srcs = [
         "Srv6TunnelManagerTest.cpp",
+    ],
+)
+
+switch_manager_unittest(
+    name = "vxlan_tunnel_manager_test",
+    srcs = [
+        "VxlanTunnelManagerTest.cpp",
     ],
 )
 

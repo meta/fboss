@@ -9,12 +9,15 @@
 
 import json
 import logging
+import os
 import shutil
+import subprocess
 import urllib.request
 from http import HTTPStatus
 from pathlib import Path
 
 from .artifact import ArtifactStore
+from .constants import DEFAULT_MANIFOLD_CLI, MANIFOLD_CLI_VAR, MANIFOLD_URL_PREFIX
 from .exceptions import ArtifactError
 
 logger = logging.getLogger(__name__)
@@ -31,7 +34,7 @@ def download_artifact(
 ) -> tuple[bool, list[Path], list[Path]]:
     """Download artifact from URL.
 
-    Supports http://, https://, and file:// URLs.
+    Supports http://, https://, file:// and manifold: URLs.
     HTTP(S) downloads use ETag and Last-Modified headers for conditional requests.
 
     For downloads, we expect exactly one data file and one metadata file.
@@ -101,7 +104,50 @@ def download_artifact(
         logger.info(f"Using local file: {source_path}")
         return (False, [temp_data_path], [metadata_path])
 
+    if url.startswith(MANIFOLD_URL_PREFIX):
+        return _download_manifold(url)
+
     return _download_http_with_cache(url, cached_data_files, cached_metadata_files)
+
+
+def _download_manifold(url: str) -> tuple[bool, list[Path], list[Path]]:
+    """Fetch a Manifold-hosted artifact by shelling out to the manifold CLI.
+
+    Manifold has no HTTP endpoint reachable from the build container, so there is
+    no ETag/mtime to compare against; every call re-fetches.
+
+    Args:
+        url: manifold:<bucket>/<path> URL
+
+    Returns:
+        Tuple of (cache_hit, data_files, metadata_files)
+
+    Raises:
+        ArtifactError: If the CLI is missing or the fetch fails
+    """
+    blob_path = url.removeprefix(MANIFOLD_URL_PREFIX)
+    cli = os.environ.get(MANIFOLD_CLI_VAR, DEFAULT_MANIFOLD_CLI)
+
+    temp_download_dir = ArtifactStore.create_temp_dir(prefix="download-")
+    temp_data_path = temp_download_dir / Path(blob_path).name
+    try:
+        subprocess.run(
+            [cli, "get", blob_path, str(temp_data_path)],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except FileNotFoundError as e:
+        ArtifactStore.delete_temp_dir(temp_download_dir)
+        raise ArtifactError(
+            f"manifold CLI not found at {cli!r}; set {MANIFOLD_CLI_VAR}"
+        ) from e
+    except subprocess.CalledProcessError as e:
+        ArtifactStore.delete_temp_dir(temp_download_dir)
+        raise ArtifactError(f"Failed to fetch {url}: {e.stderr}") from e
+
+    logger.info(f"Fetched from Manifold: {blob_path}")
+    return (False, [temp_data_path], [])
 
 
 def _load_http_metadata(metadata_path: Path) -> dict:

@@ -19,6 +19,7 @@
 #include "fboss/agent/hw/sai/switch/SaiFirmwareManager.h"
 #include "fboss/agent/hw/sai/switch/SaiHostifManager.h"
 #include "fboss/agent/hw/sai/switch/SaiLagManager.h"
+#include "fboss/agent/hw/sai/switch/SaiNextHopGroupManager.h"
 #include "fboss/agent/hw/sai/switch/SaiPortManager.h"
 #include "fboss/agent/hw/sai/switch/SaiRouterInterfaceManager.h"
 #include "fboss/agent/hw/sai/switch/SaiSwitchManager.h"
@@ -195,6 +196,10 @@ void SaiSwitch::updateStatsImpl() {
   {
     std::lock_guard<std::mutex> locked(saiSwitchMutex_);
     managerTable_->routerInterfaceManager().updateStats();
+  }
+  if (FLAGS_flowletSwitchingEnable && FLAGS_flowletStatsEnable) {
+    std::lock_guard<std::mutex> locked(saiSwitchMutex_);
+    managerTable_->nextHopGroupManager().updateStats();
   }
   if (updateWatermarks &&
       platform_->getAsic()->isSupported(

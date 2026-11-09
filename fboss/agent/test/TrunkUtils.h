@@ -32,6 +32,34 @@ void addAggPort(
     double minLinkPercentage = 1.0,
     cfg::AggregatePortType aggregatePortType = cfg::AggregatePortType::LAG_PORT,
     std::optional<std::string> aggPortName = std::nullopt);
+
+/*
+ * addAggPort for platforms whose router interfaces are bound to a port rather
+ * than to a vlan, i.e. Chenab. Meant to be called from initialConfig, so the
+ * aggregate port and its router interface exist from cold boot.
+ *
+ * Rather than re-homing the members onto a shared vlan, the aggregate takes a
+ * router interface of its own: the first member's port router interface is
+ * rebound to the aggregate, keeping its interface id, mac and addresses, and
+ * the other members' interfaces are dropped. The members stay in no vlan.
+ *
+ * Building the trunk as part of the initial config, rather than layering it
+ * onto an already applied port config, is what makes this work on Chenab. A
+ * member port cannot hold a router interface of its own when it joins a LAG,
+ * and the adapter defers router interface teardown, so there is no single
+ * delta that can take a port from having its own interface to being a LAG
+ * member.
+ *
+ * Expects one port router interface per member port, as
+ * onePortPerInterfaceConfig produces on such platforms.
+ */
+void addAggPortWithRouterInterface(
+    int key,
+    const std::vector<int32_t>& ports,
+    cfg::SwitchConfig* config,
+    cfg::LacpPortRate rate = cfg::LacpPortRate::FAST,
+    double minLinkPercentage = 1.0);
+
 std::shared_ptr<SwitchState> enableTrunkPorts(
     std::shared_ptr<SwitchState> curState);
 std::shared_ptr<SwitchState> disableTrunkPorts(

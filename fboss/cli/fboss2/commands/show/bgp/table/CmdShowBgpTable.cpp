@@ -43,4 +43,8 @@ void CmdShowBgpTable::printOutput(RetType& entries, std::ostream& out) {
   printRIBEntries(out, entries);
 }
 
+std::string_view CmdShowBgpTableTraits::description() {
+  return "Displays the BGP loc-RIB: every prefix the daemon holds, with all paths received for it. Each prefix header gives the prefix and how many of its paths were selected, active and inactive; each path line then shows the peer it came from and that peer's hostname, the next hop, link bandwidth, origin, local preference, AS path, time since the path last changed, next-hop weight, MED, the received and sent path IDs, weight and IGP cost. Leading markers classify each path: '*' means it is in the best (ECMP) group, '@' marks the single best entry, and '!' a path excluded from selection before comparison. '%' is not one of them - it is printed on the prefix header line immediately after the '>' and means selection is still pending for that whole prefix, so look for it there rather than in the per-path marker column. Paths at a lower local preference - for example from a drained peer - stay in the table but sit outside the best group and carry no marker. Where a rib-policy path-selection statement overrode normal best-path selection for a prefix, the matching criteria are printed under the prefix header. Add 'detail' for per-path communities, originator and cluster list, and the reason each non-best path lost.";
+}
+
 } // namespace facebook::fboss

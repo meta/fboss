@@ -3,6 +3,7 @@
 #pragma once
 
 #include "fboss/fsdb/oper/SubscribableStorage.h"
+#include "fboss/fsdb/oper/SubscriptionCommon.h"
 #include "fboss/fsdb/oper/SubscriptionManager.h"
 #include "fboss/fsdb/oper/SubscriptionMetadataServer.h"
 #include "fboss/fsdb/server/FsdbOperTreeMetadataTracker.h"
@@ -23,8 +24,11 @@ namespace facebook::fboss::fsdb {
 
 inline constexpr std::string_view kServeSubMs{"storage.serve_sub_ms"};
 inline constexpr std::string_view kServeSubNum{"storage.serve_sub_num"};
+inline constexpr int64_t kServeHistogramBins{20};
 inline constexpr std::string_view kRss{"rss"};
 inline constexpr std::string_view kRegisteredSubs{"subscriptions.registered"};
+inline constexpr std::string_view kServeIntervalSubs{
+    "storage.serve.interval.subscriptions.registered"};
 inline constexpr std::string_view kPathStoreNum{"object.count.pathStores"};
 inline constexpr std::string_view kPathStoreAllocs{"object.allocs.pathStores"};
 inline constexpr std::string_view kPublishTimePrefix{"publish_time_ms"};
@@ -46,7 +50,7 @@ class NaivePeriodicSubscribableStorageBase {
   using ExtPathIter = typename OperPathToPublisherRoot::ExtPathIter;
 
   struct StorageParams {
-    StorageParams(
+    explicit StorageParams(
         std::chrono::milliseconds subscriptionServeInterval =
             std::chrono::milliseconds(50),
         std::chrono::milliseconds subscriptionHeartbeatInterval =
@@ -62,6 +66,7 @@ class NaivePeriodicSubscribableStorageBase {
         int32_t defaultSubscriptionServeQueueSize =
             FLAGS_subscriptionServeQueueSize)
         : subscriptionServeInterval_(subscriptionServeInterval),
+          serveTickInterval_(subscriptionServeInterval),
           subscriptionHeartbeatInterval_(subscriptionHeartbeatInterval),
           trackMetadata_(trackMetadata),
           metricPrefix_(metricPrefix),
@@ -72,10 +77,27 @@ class NaivePeriodicSubscribableStorageBase {
               serveGetRequestsWithLastPublishedState),
           pathSubscriptionServeQueueSize_(pathSubscriptionServeQueueSize),
           defaultSubscriptionServeQueueSize_(
-              defaultSubscriptionServeQueueSize) {}
+              defaultSubscriptionServeQueueSize) {
+      validateServeIntervals();
+    }
+
+    // Tick granularity for the serve loop. Subscribers may request any
+    // interval; it is rounded up to a whole tick and clamped to
+    // subscriptionServeInterval_, which bounds the bucket count.
+    StorageParams& setServeTickInterval(std::chrono::milliseconds tick) {
+      serveTickInterval_ = tick;
+      validateServeIntervals();
+      return *this;
+    }
 
     StorageParams& setServeGetRequestsWithLastPublishedState(bool val) {
       serveGetRequestsWithLastPublishedState_ = val;
+      return *this;
+    }
+
+    // Off by default: up to kMaxServeBuckets * 4 ODS series per switch.
+    StorageParams& setExportPerBucketServeMetrics(bool val) {
+      exportPerBucketServeMetrics_ = val;
       return *this;
     }
 
@@ -99,7 +121,8 @@ class NaivePeriodicSubscribableStorageBase {
       return *this;
     }
 
-    const std::chrono::milliseconds subscriptionServeInterval_;
+    std::chrono::milliseconds subscriptionServeInterval_;
+    std::chrono::milliseconds serveTickInterval_;
     const std::chrono::milliseconds subscriptionHeartbeatInterval_;
     const bool trackMetadata_;
     const std::string& metricPrefix_;
@@ -107,10 +130,29 @@ class NaivePeriodicSubscribableStorageBase {
     const bool requireResponseOnInitialSync_;
     const bool exportPerSubscriberMetrics_;
     bool serveGetRequestsWithLastPublishedState_;
+    bool exportPerBucketServeMetrics_{false};
     const int32_t pathSubscriptionServeQueueSize_;
     const int32_t defaultSubscriptionServeQueueSize_;
     size_t deltaSubscriptionQueueMemoryLimit_{0};
     size_t deltaSubscriptionQueueFullMinSize_{0};
+
+   private:
+    void validateServeIntervals() const {
+      CHECK_GT(subscriptionServeInterval_.count(), 0)
+          << "default serve interval must be positive";
+      CHECK_GT(serveTickInterval_.count(), 0)
+          << "serve tick interval must be positive";
+      CHECK_LE(serveTickInterval_.count(), subscriptionServeInterval_.count())
+          << "serve tick must not exceed the default serve interval";
+      // Every occupied bucket retains its own tree baseline, so an unbounded
+      // count turns a bad interval pair into unbounded memory.
+      CHECK_LE(
+          serveBucketCount(
+              static_cast<uint32_t>(serveTickInterval_.count()),
+              static_cast<uint32_t>(subscriptionServeInterval_.count())),
+          kMaxServeBuckets)
+          << "serve interval / tick yields too many buckets";
+    }
   };
 
   explicit NaivePeriodicSubscribableStorageBase(
@@ -240,6 +282,9 @@ class NaivePeriodicSubscribableStorageBase {
   size_t numSubscriptions() const {
     return subMgr().numSubscriptions();
   }
+  size_t numIntervalSubscriptions() const {
+    return subMgr().numIntervalSubscriptions();
+  }
   std::vector<OperSubscriberInfo> getSubscriptions() const {
     return subMgr().getSubscriptions();
   }
@@ -261,18 +306,35 @@ class NaivePeriodicSubscribableStorageBase {
     subMgr().useIdPaths(convertToIDPaths);
   }
 
+  // Normalizes a requested interval onto the tick grid. Unsupported or absent
+  // requests fall back to the default interval rather than failing the
+  // subscribe.
+  std::optional<uint32_t> resolveServeIntervalMs(
+      const std::optional<SubscriptionStorageParams>& subscriptionParams,
+      const SubscriptionIdentifier& subscriber) const;
+
  protected:
-  virtual folly::coro::Task<void> serveSubscriptions() = 0;
+  std::chrono::milliseconds serveTickInterval() const {
+    return params_.serveTickInterval_;
+  }
+
+  virtual folly::coro::Task<void> serveSubscriptionsTick() = 0;
   virtual ConcretePath convertPath(ConcretePath&& path) const = 0;
   virtual ExtPath convertPath(const ExtPath& path) const = 0;
   virtual const SubscriptionManagerBase& subMgr() const = 0;
   virtual SubscriptionManagerBase& subMgr() = 0;
 
   SubscriptionMetadataServer getCurrentMetadataServer();
+  // bucketInterval is the bucket's own cadence, not the tick: a slow bucket
+  // legitimately takes longer than a tick and must not be called slow for it.
   void exportServeMetrics(
       std::chrono::steady_clock::time_point serveStartTime,
       SubscriptionMetadataServer& metadata,
-      std::map<std::string, uint64_t>& lastServedPublisherRootUpdates);
+      std::map<std::string, uint64_t>& lastServedPublisherRootUpdates,
+      std::chrono::milliseconds bucketInterval,
+      size_t bucket);
+  // RSS alone is a /proc read; don't repeat it once per due bucket.
+  void exportTickMetrics();
 
   std::optional<std::string> getPublisherRoot(PathIter begin, PathIter end)
       const;
@@ -328,10 +390,14 @@ class NaivePeriodicSubscribableStorageBase {
   // metric names
   const std::string rss_;
   const std::string registeredSubs_;
+  const std::string registeredIntervalSubs_;
   const std::string nPathStores_;
   const std::string nPathStoreAllocs_;
   const std::string serveSubMs_;
   const std::string serveSubNum_;
+  // Empty when there is only one bucket; the aggregates already say everything.
+  std::vector<std::string> serveSubMsByBucket_;
+  std::vector<std::string> serveSubNumByBucket_;
   // per-PublisherRoot metrics
   const std::string publishTimePrefix_;
   const std::string subscribeTimePrefix_;

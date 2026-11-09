@@ -1,3 +1,4 @@
 "Test Case","Hardware","Vendor","SDK Version","ASIC","Switch Mode","Role","Status"
-"warm_boot.ProdInvariantTest.verifyInvariants","wedge400","Broadcom","10.2.0.0_odp","tomahawk3","multi switch","","PASSED"
-"cold_boot.ProdInvariantTest.verifyInvariants","wedge400","Broadcom","10.2.0.0_odp","tomahawk3","multi switch","","PASSED"
+"warm_boot.ProdInvariantTest.verifyInvariants","yamp","Broadcom","10.2.0.0_odp","tomahawk3","multi switch","","PASSED"
+"cold_boot.ProdInvariantTest.verifyInvariants","yamp","Broadcom","10.2.0.0_odp","tomahawk3","multi switch","","PASSED"
+"cold_boot.ProdInvariantRtswTest.verifyInvariants","wedge400","Broadcom","10.2.0.0_odp","tomahawk3","multi switch","","FAILED"

@@ -1,0 +1,53 @@
+{
+  "spec_version": "1.0",
+  "platform": {
+    "name": "m4062nhp",
+    "silicon": [
+      {
+        "name": "TH6",
+        "pcie_address": "06:00.0"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "bios",
+      "location": "Main Board",
+      "display_location": "mb",
+      "field_replaceable": false,
+      "firmware": {
+        "priority": 1,
+        "shared_with_platforms": []
+      }
+    },
+    {
+      "name": "scm_cpld",
+      "location": "System Control Module",
+      "display_location": "scm",
+      "field_replaceable": false,
+      "pcie_address": "03:00.0",
+      "firmware": {
+        "priority": 2,
+        "shared_with_platforms": []
+      }
+    },
+    {
+      "name": "smb_fpga",
+      "location": "Switch Main Board",
+      "display_location": "smb",
+      "field_replaceable": false,
+      "instances": {
+        "range": "1-2",
+        "position": "before_first_underscore"
+      },
+      "pcie_address": ["04:00.0", "05:00.0"],
+      "firmware": {
+        "priority": 3,
+        "shared_with_platforms": []
+      }
+    }
+  ],
+  "_review_notes": [
+    "PSU firmware versions are report-only through fw_util."
+  ]
+}

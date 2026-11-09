@@ -17,16 +17,64 @@
 #include "fboss/agent/hw/test/ConfigFactory.h"
 #include "fboss/agent/hw/test/HwTestCoppUtils.h"
 #include "fboss/agent/hw/test/dataplane_tests/HwTestPfcUtils.h"
+#include "fboss/agent/test/utils/AclTestUtils.h"
+#include "fboss/agent/test/utils/ConfigUtils.h"
 #include "fboss/agent/test/utils/DscpMarkingUtils.h"
 #include "fboss/agent/test/utils/NetworkAITestUtils.h"
 #include "fboss/agent/test/utils/OlympicTestUtils.h"
+#include "fboss/agent/test/utils/PfcTestUtils.h"
 #include "fboss/agent/test/utils/QueuePerHostTestUtils.h"
+#include "fboss/agent/test/utils/UdfTestUtils.h"
 
 namespace {
 auto constexpr kTopLabel = 5000;
-}
+} // namespace
 
 namespace facebook::fboss::utility {
+
+namespace {
+// Prod RTSW-family PGs: PG2/PG6 lossless, PG7 lossy.
+const std::vector<int>& kLosslessPgIds() {
+  static const std::vector<int> pgIds{2, 6};
+  return pgIds;
+}
+const std::vector<int>& kLossyPgIds() {
+  static const std::vector<int> pgIds{7};
+  return pgIds;
+}
+// Prod masks the BTH opcode to its low 7 bits, unlike the 0xFF
+// utility::kUdfRoceOpcodeMask used elsewhere. Same result for opcode 17.
+constexpr int8_t kProdRoceOpcodeMask = 0x7F;
+
+// verifyFlowletAcls() looks this up by name, and on SAI reads the counter back
+// under the ACL's own name.
+void addUdfRoceOpcodeAcl(cfg::SwitchConfig& config, bool isSai) {
+  cfg::AclEntry acl;
+  acl.name() = utility::kUdfAclRoceOpcodeName;
+  acl.actionType() = cfg::AclActionType::PERMIT;
+  auto asicType = checkSameAndGetAsicType(config);
+  if (asicType == cfg::AsicType::ASIC_TYPE_CHENAB ||
+      asicType == cfg::AsicType::ASIC_TYPE_CHENAB2) {
+    acl.etherType() = cfg::EtherType::IPv6;
+  }
+  if (isSai) {
+    utility::addUdfTableToAcl(
+        &acl,
+        utility::kUdfAclRoceOpcodeGroupName,
+        {utility::kUdfRoceOpcodeAck},
+        {kProdRoceOpcodeMask});
+  } else {
+    acl.udfGroups() = {utility::kUdfAclRoceOpcodeGroupName};
+    acl.roceOpcode() = utility::kUdfRoceOpcodeAck;
+  }
+  utility::addAcl(&config, acl, cfg::AclStage::INGRESS);
+  utility::addAclStat(
+      &config,
+      utility::kUdfAclRoceOpcodeName,
+      isSai ? utility::kUdfAclRoceOpcodeName : utility::kUdfAclRoceOpcodeStats,
+      {cfg::CounterType::PACKETS, cfg::CounterType::BYTES});
+}
+} // namespace
 
 /*
  * Setup and enable Olympic QoS on the given config. Common among all platforms;
@@ -118,6 +166,7 @@ uint16_t uplinksCountFromSwitch(PlatformType mode) {
     case PM::PLATFORM_ICECUBE800BC:
     case PM::PLATFORM_ICETEA800BC:
     case PM::PLATFORM_MONTBLANC:
+    case PM::PLATFORM_M4061NHP:
     case PM::PLATFORM_M4062NHP:
     case PM::PLATFORM_M5120CSC:
       return 4;
@@ -147,7 +196,12 @@ cfg::PortSpeed getPortSpeed(PlatformType platformType) {
       portSpeed = cfg::PortSpeed::TWOHUNDREDG;
       break;
     case PlatformType::PLATFORM_MONTBLANC:
+    case PlatformType::PLATFORM_M4061NHP:
       portSpeed = cfg::PortSpeed::FOURHUNDREDG;
+      break;
+    case PlatformType::PLATFORM_MINIPACK3N:
+      // Spectrum4, 64 x 800G; every interface controlling port supports 800G.
+      portSpeed = cfg::PortSpeed::EIGHTHUNDREDG;
       break;
     case PlatformType::PLATFORM_TAHAN800BC:
     case PlatformType::PLATFORM_TAHANSB800BC:
@@ -397,4 +451,111 @@ cfg::SwitchConfig createProdRswMhnicConfig(
       masterLogicalPortIds,
       isSai);
 }
+cfg::SwitchConfig createProdMmuLosslessRoleConfig(
+    const std::vector<const HwAsic*>& asics,
+    PlatformType platformType,
+    const PlatformMapping* platformMapping,
+    bool supportsAddRemovePort,
+    const std::vector<PortID>& masterLogicalPortIds,
+    const TestEnsembleIf* ensemble,
+    ProdMmuLosslessRole role,
+    bool isSai) {
+  auto hwAsic = checkSameAndGetAsicForTesting(asics);
+  auto portSpeed = getPortSpeed(platformType);
+
+  auto config = createUplinkDownlinkConfig(
+      platformMapping,
+      hwAsic,
+      platformType,
+      supportsAddRemovePort,
+      masterLogicalPortIds,
+      uplinksCountFromSwitch(platformType),
+      portSpeed,
+      portSpeed,
+      hwAsic->desiredLoopbackModes());
+
+  const bool addArsConfig = hwAsic->isSupported(HwAsic::Feature::ARS);
+  // Append to the table createUplinkDownlinkConfig() already made rather than
+  // re-adding the group: addAclTableGroup() overwrites an existing group,
+  // dropping its tables.
+  if (addArsConfig && FLAGS_enable_acl_table_group) {
+    if (auto* aclTableGroup =
+            utility::getAclTableGroup(config, cfg::AclStage::INGRESS)) {
+      for (auto& aclTable : *aclTableGroup->aclTables()) {
+        aclTable.udfGroups()->push_back(utility::kUdfAclRoceOpcodeGroupName);
+        aclTable.udfGroups()->push_back(utility::kRoceUdfFlowletGroupName);
+      }
+    }
+  }
+
+  // STSW/SUSW sit at the top of the hierarchy and have no uplinks.
+  std::vector<PortID> uplinks, downlinks;
+  for (const auto& portId : masterLogicalPortIds) {
+    // May have been dropped as subsumed by a prior speed update.
+    if (utility::findCfgPortIf(config, portId) == config.ports()->end()) {
+      continue;
+    }
+    downlinks.push_back(portId);
+  }
+  if (role == ProdMmuLosslessRole::RTSW || role == ProdMmuLosslessRole::FTSW) {
+    auto splitAt = downlinks.begin() + downlinks.size() / 2;
+    uplinks.assign(downlinks.begin(), splitAt);
+    downlinks.erase(downlinks.begin(), splitAt);
+  }
+
+  addCpuQueueConfig(config, asics, isSai);
+  if (hwAsic->isSupported(HwAsic::Feature::L3_QOS)) {
+    addNetworkAIQosToConfig(config, hwAsic);
+  }
+  setDefaultCpuTrafficPolicyConfig(
+      config, std::vector<const HwAsic*>({hwAsic}), isSai);
+  if (hwAsic->isSupported(HwAsic::Feature::HASH_FIELDS_CUSTOMIZATION)) {
+    addLoadBalancerToConfig(config, hwAsic, LBHash::FULL_HASH);
+  }
+
+  // Gated on L3_QOS as well as PFC: setupUplinkDownlinkPfc() merges into the
+  // QoS policy added above, which only exists when L3_QOS is supported.
+  if (hwAsic->isSupported(HwAsic::Feature::PFC) &&
+      hwAsic->isSupported(HwAsic::Feature::L3_QOS)) {
+    utility::PfcQosMapParams qosMapParams;
+    qosMapParams.tcToPg = {{0, kLossyPgIds().front()}};
+    utility::setupUplinkDownlinkPfc(
+        ensemble,
+        config,
+        uplinks,
+        downlinks,
+        kLosslessPgIds(),
+        kLossyPgIds(),
+        qosMapParams);
+  }
+
+  if (addArsConfig) {
+    std::vector<PortID> allLinks(uplinks);
+    allLinks.insert(allLinks.end(), downlinks.begin(), downlinks.end());
+    // Prod runs per-packet spray with flowlet disabled, i.e. FIXED_ASSIGNMENT,
+    // as the backup mode. Chenab does not support future port load, so gate it
+    // on the ASIC.
+    utility::addFlowletConfigs(
+        config,
+        allLinks,
+        isSai,
+        cfg::SwitchingMode::PER_PACKET_QUALITY,
+        cfg::SwitchingMode::FIXED_ASSIGNMENT,
+        hwAsic->isSupported(HwAsic::Feature::ARS_FUTURE_PORT_LOAD));
+    config.udfConfig() =
+        utility::addUdfAclConfig(kUdfOffsetBthOpcode | kUdfOffsetBthReserved);
+    addUdfRoceOpcodeAcl(config, isSai);
+    // Name must match prod for verifyFlowletAcls() to find it.
+    const std::string kSelectiveEnableAclName{"flowlet-selective-enable"};
+    const std::string kSelectiveEnableStatsName{"flowlet-selective-stats"};
+    utility::addFlowletAcl(
+        config,
+        isSai,
+        kSelectiveEnableAclName,
+        isSai ? kSelectiveEnableAclName : kSelectiveEnableStatsName);
+  }
+
+  return config;
+}
+
 } // namespace facebook::fboss::utility

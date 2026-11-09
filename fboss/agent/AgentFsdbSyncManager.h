@@ -12,6 +12,7 @@
 #include "fboss/agent/gen-cpp2/switch_reachability_types.h"
 #include "fboss/agent/state/StateDelta.h"
 #include "fboss/agent/state/SwitchState.h"
+#include "fboss/lib/phy/gen-cpp2/phy_types.h"
 
 DECLARE_bool(fsdb_sync_full_state);
 DECLARE_bool(agent_fsdb_sync);
@@ -77,6 +78,7 @@ class AgentFsdbSyncManager
       int64_t switchId,
       switch_reachability::SwitchReachability newReachability);
   void agentInfoChanged(agent_info::AgentInfo newAgentInfo);
+  void updateIPhyStates(std::map<std::string, phy::PhyState>&& iPhyStates);
 
  private:
   void stateUpdatedDelta(const StateDelta& delta);

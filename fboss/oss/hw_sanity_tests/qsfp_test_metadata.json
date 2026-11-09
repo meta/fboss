@@ -1,0 +1,70 @@
+{
+    "RepoSyncHeader": [
+        "(c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.",
+        "This file is generated. Do not modify it manually!",
+        "@codegen-source : configerator\/raw_configs\/fboss\/test\/qsfp_test_metadata\/metadata.json",
+        "@generated SignedSource<<4149ace01fc90fe828655b92beffc83b>>"
+    ],
+    "rules": [
+        {
+            "testNamePattern": "EmptyHwTest.CheckInit",
+            "tier": "T0",
+            "requiredCapabilities": [],
+            "profiles": []
+        },
+        {
+            "testNamePattern": "HwTest.i2cStressRead",
+            "tier": "T0",
+            "requiredCapabilities": [
+                "TRANSCEIVER"
+            ],
+            "profiles": []
+        },
+        {
+            "testNamePattern": "HwTest.i2cStressWrite",
+            "tier": "T0",
+            "requiredCapabilities": [
+                "TRANSCEIVER"
+            ],
+            "profiles": []
+        },
+        {
+            "testNamePattern": "HwTransceiverResetBmcLiteTest.verifyResetControl",
+            "tier": "T0",
+            "requiredCapabilities": [
+                "TRANSCEIVER"
+            ],
+            "profiles": []
+        },
+        {
+            "testNamePattern": "HwTransceiverResetTest.resetTranscieverAndDetectPresence",
+            "tier": "T0",
+            "requiredCapabilities": [
+                "TRANSCEIVER"
+            ],
+            "profiles": []
+        },
+        {
+            "testNamePattern": "HwStateMachineTest.CheckPortsProgrammed",
+            "tier": "T0",
+            "requiredCapabilities": [],
+            "profiles": []
+        },
+        {
+            "testNamePattern": "HwTest.cmisPageChange",
+            "tier": "T0",
+            "requiredCapabilities": [
+                "TRANSCEIVER"
+            ],
+            "profiles": []
+        },
+        {
+            "testNamePattern": "HwXphyFirmwareTest.CheckDefaultXphyFirmwareVersion",
+            "tier": "T0",
+            "requiredCapabilities": [
+                "EXTERNAL_PHY"
+            ],
+            "profiles": []
+        }
+    ]
+}

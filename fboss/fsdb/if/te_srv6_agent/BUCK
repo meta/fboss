@@ -1,0 +1,22 @@
+load("@fbcode_macros//build_defs:thrift_library.bzl", "thrift_library")
+
+oncall("fboss_agent_push")
+
+thrift_library(
+    name = "stats",
+    go_thrift_namespaces = {
+        "te_srv6_agent_stats.thrift": "neteng.fboss.te_srv6_agent",
+    },
+    languages = [
+        "cpp2",
+        "go",
+        "py3-deprecated",
+        "python",
+        "rust",
+    ],
+    py3_namespace = "neteng.fboss",
+    thrift_cpp2_options = "json",
+    thrift_srcs = {
+        "te_srv6_agent_stats.thrift": [],
+    },
+)

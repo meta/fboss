@@ -11,6 +11,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 namespace facebook::fboss {
 
@@ -31,6 +32,10 @@ class SystemdInterface {
    * @return true if the service is enabled, false otherwise
    */
   virtual bool isServiceEnabled(const std::string& serviceName);
+
+  /** Return loaded systemd service units matching a systemd glob. */
+  virtual std::vector<std::string> getMatchingServices(
+      const std::string& pattern);
 
   /**
    * Stop a systemd service.

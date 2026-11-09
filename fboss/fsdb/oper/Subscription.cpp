@@ -42,12 +42,14 @@ BaseSubscription::BaseSubscription(
     OperProtocol protocol,
     std::optional<std::string> publisherRoot,
     folly::EventBase* heartbeatEvb,
-    std::chrono::milliseconds heartbeatInterval)
+    std::chrono::milliseconds heartbeatInterval,
+    std::optional<uint32_t> serveIntervalMs)
     : subId_(std::move(subId)),
       protocol_(protocol),
       publisherTreeRoot_(std::move(publisherRoot)),
       heartbeatEvb_(heartbeatEvb),
       heartbeatInterval_(heartbeatInterval),
+      serveIntervalMs_(serveIntervalMs),
       streamInfo_(std::make_shared<SubscriptionStreamInfo>()),
       numSubscriptionServesCoalescedCounter_(
           fb303::ThreadCachedServiceData::get()->getThreadStats(),
@@ -223,7 +225,9 @@ FullyResolvedExtendedPathSubscription::FullyResolvedExtendedPathSubscription(
           subscription.publisherTreeRoot(),
           subscription.heartbeatEvb(),
           subscription.heartbeatInterval()),
-      subscription_(subscription) {}
+      subscription_(subscription) {
+  setServeIntervalMs(subscription.serveIntervalMs());
+}
 
 bool FullyResolvedExtendedPathSubscription::isActive() const {
   return subscription_.isActive();
@@ -291,7 +295,9 @@ FullyResolvedExtendedDeltaSubscription::FullyResolvedExtendedDeltaSubscription(
           subscription.publisherTreeRoot(),
           subscription.heartbeatEvb(),
           subscription.heartbeatInterval()),
-      subscription_(subscription) {}
+      subscription_(subscription) {
+  setServeIntervalMs(subscription.serveIntervalMs());
+}
 
 std::optional<FsdbErrorCode> FullyResolvedExtendedDeltaSubscription::flush(
     const SubscriptionMetadataServer& metadataServer) {
@@ -509,7 +515,9 @@ PatchSubscription::PatchSubscription(
           subscription.heartbeatEvb(),
           subscription.heartbeatInterval()),
       key_(key),
-      subscription_(subscription) {}
+      subscription_(subscription) {
+  setServeIntervalMs(subscription.serveIntervalMs());
+}
 
 void PatchSubscription::allPublishersGone(
     FsdbErrorCode disconnectReason,

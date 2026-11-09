@@ -16,6 +16,7 @@
 #include "fboss/agent/state/AclEntry.h"
 #include "fboss/agent/state/StateUtils.h"
 #include "fboss/agent/state/SwitchState.h"
+#include "fboss/lib/config/agent/AclConfigUtils.h"
 
 class SwSwitch;
 
@@ -61,12 +62,6 @@ void addUdfTableToAcl(
     const std::string& udfGroups,
     const std::vector<int8_t>& roceBytes,
     const std::vector<int8_t>& roceMask);
-
-std::vector<cfg::AclTableQualifier> genAclQualifiersConfig(
-    cfg::AsicType asicType);
-
-std::vector<cfg::AclTableActionType> genAclActionTypesConfig(
-    cfg::AsicType asicType);
 
 int getAclTableIndex(
     cfg::AclTableGroup* aclTableGroup,
@@ -187,6 +182,11 @@ std::vector<cfg::CounterType> getAclCounterTypes(
 uint64_t getAclInOutPackets(
     const SwSwitch* sw,
     const std::string& statName,
+    bool bytes = false);
+
+std::map<std::string, uint64_t> getAclInOutPacketsMap(
+    const SwSwitch* sw,
+    const std::vector<std::string>& statNames,
     bool bytes = false);
 
 uint64_t getAclInOutPackets(

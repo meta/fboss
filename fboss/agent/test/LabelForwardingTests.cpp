@@ -3,6 +3,7 @@
 #include <gflags/gflags.h>
 #include <gtest/gtest.h>
 
+#include "fboss/agent/FibHelpers.h"
 #include "fboss/agent/ThriftHandler.h"
 #include "fboss/agent/state/SwitchState.h"
 #include "fboss/agent/test/HwTestHandle.h"
@@ -38,9 +39,10 @@ class LabelForwardingTest : public ::testing::TestWithParam<bool> {
   void TearDown() override {
     waitForStateUpdates(this->sw);
   }
-  std::unique_ptr<ThriftHandler> thriftHandler{nullptr};
-  SwSwitch* sw{nullptr};
+  // Members are destroyed in reverse order: the handler must go before sw.
   std::unique_ptr<HwTestHandle> handle{nullptr};
+  SwSwitch* sw{nullptr};
+  std::unique_ptr<ThriftHandler> thriftHandler{nullptr};
 };
 
 TEST_P(LabelForwardingTest, addMplsRoutes) {
@@ -61,7 +63,8 @@ TEST_P(LabelForwardingTest, addMplsRoutes) {
   }
 
   waitForStateUpdates(this->sw);
-  auto labelFib = this->sw->getState()->getLabelForwardingInformationBase();
+  auto state = this->sw->getState();
+  auto labelFib = state->getLabelForwardingInformationBase();
 
   for (auto i = 0; i < 2; i++) {
     for (const auto& route : routes[i]) {
@@ -72,7 +75,7 @@ TEST_P(LabelForwardingTest, addMplsRoutes) {
       EXPECT_NE(nullptr, labelFibEntryForClient);
       EXPECT_EQ(
           util::toRouteNextHopSet(*route.nextHops()),
-          labelFibEntryForClient->getNextHopSet());
+          getMplsClientNextHops(state, *labelFibEntryForClient));
     }
   }
 }
@@ -96,7 +99,8 @@ TEST_P(LabelForwardingTest, modifyMplsRoutes) {
 
   auto verifyMplsRoutes = [&]() {
     waitForStateUpdates(this->sw);
-    auto labelFib = this->sw->getState()->getLabelForwardingInformationBase();
+    auto state = this->sw->getState();
+    auto labelFib = state->getLabelForwardingInformationBase();
 
     for (auto i = 0; i < 2; i++) {
       for (const auto& route : routes[i]) {
@@ -107,7 +111,7 @@ TEST_P(LabelForwardingTest, modifyMplsRoutes) {
         EXPECT_NE(nullptr, labelFibEntryForClient);
         EXPECT_EQ(
             util::toRouteNextHopSet(*route.nextHops()),
-            labelFibEntryForClient->getNextHopSet());
+            getMplsClientNextHops(state, *labelFibEntryForClient));
       }
     }
   };
@@ -173,10 +177,11 @@ TEST_F(LabelForwardingTest, addMplsRecursiveRoutes) {
   this->thriftHandler->addMplsRoutes(
       static_cast<int>(ClientID::OPENR), std::move(routes));
   waitForStateUpdates(this->sw);
-  auto labelFib = this->sw->getState()->getLabelForwardingInformationBase();
+  auto state = this->sw->getState();
+  auto labelFib = state->getLabelForwardingInformationBase();
   const auto& labelFibEntry = labelFib->getNode(*mplsRoute.topLabel());
   EXPECT_NE(nullptr, labelFibEntry);
-  auto nexthops = labelFibEntry->getForwardInfo().getNextHopSet();
+  auto nexthops = getMplsNextHops(state, labelFibEntry->getForwardInfo());
   EXPECT_EQ(nexthops.size(), 2);
   auto idx = 0;
   for (const auto& nhop : nexthops) {
@@ -220,7 +225,8 @@ TEST_P(LabelForwardingTest, deleteMplsRoutes) {
         std::make_unique<std::vector<MplsLabel>>(routesToRemove[i]));
   }
 
-  auto labelFib = this->sw->getState()->getLabelForwardingInformationBase();
+  auto state = this->sw->getState();
+  auto labelFib = state->getLabelForwardingInformationBase();
 
   for (auto i = 0; i < 2; i++) {
     for (const auto& label : routesToRemove[i]) {
@@ -234,7 +240,7 @@ TEST_P(LabelForwardingTest, deleteMplsRoutes) {
       EXPECT_NE(nullptr, labelFibEntryForClient);
       EXPECT_EQ(
           util::toRouteNextHopSet(*route.nextHops()),
-          labelFibEntryForClient->getNextHopSet());
+          getMplsClientNextHops(state, *labelFibEntryForClient));
     }
   }
 }
@@ -270,7 +276,8 @@ TEST_P(LabelForwardingTest, syncMplsFib) {
       std::begin(moreOpenrRoutes),
       std::end(moreOpenrRoutes));
 
-  auto labelFib = this->sw->getState()->getLabelForwardingInformationBase();
+  auto state = this->sw->getState();
+  auto labelFib = state->getLabelForwardingInformationBase();
 
   for (auto i = 0; i < 2; i++) {
     for (const auto& route : routes[i]) {
@@ -281,7 +288,7 @@ TEST_P(LabelForwardingTest, syncMplsFib) {
       EXPECT_NE(nullptr, labelFibEntryForClient);
       EXPECT_EQ(
           util::toRouteNextHopSet(*route.nextHops()),
-          labelFibEntryForClient->getNextHopSet());
+          getMplsClientNextHops(state, *labelFibEntryForClient));
     }
   }
 
@@ -292,7 +299,8 @@ TEST_P(LabelForwardingTest, syncMplsFib) {
 
   waitForStateUpdates(this->sw);
 
-  labelFib = this->sw->getState()->getLabelForwardingInformationBase();
+  state = this->sw->getState();
+  labelFib = state->getLabelForwardingInformationBase();
 
   for (auto i = 0; i < 8; i++) {
     if (i < 4) {
@@ -303,7 +311,7 @@ TEST_P(LabelForwardingTest, syncMplsFib) {
       EXPECT_NE(nullptr, labelFibEntryForClient);
       EXPECT_EQ(
           util::toRouteNextHopSet(*routes[0][i].nextHops()),
-          labelFibEntryForClient->getNextHopSet());
+          getMplsClientNextHops(state, *labelFibEntryForClient));
     } else {
       auto labelFibEntry = labelFib->getNodeIf(*routes[0][i].topLabel());
       EXPECT_EQ(nullptr, labelFibEntry);
@@ -356,6 +364,36 @@ TEST_P(LabelForwardingTest, getMplsRouteTableByClient) {
   }
 }
 
+// Aborted under mpls_rib=false before the MPLS resolvers were gated.
+TEST_P(LabelForwardingTest, getMplsRouteDetails) {
+  FLAGS_mpls_rib = GetParam();
+  auto inRoutes = util::getTestRoutes(0, 1);
+  const auto& inRoute = inRoutes.front();
+  this->thriftHandler->addMplsRoutes(
+      static_cast<int>(ClientID::OPENR),
+      std::make_unique<std::vector<MplsRoute>>(inRoutes));
+
+  MplsRouteDetails details;
+  this->thriftHandler->getMplsRouteDetails(details, *inRoute.topLabel());
+
+  EXPECT_EQ(*details.topLabel(), *inRoute.topLabel());
+  EXPECT_EQ(
+      util::toRouteNextHopSet(*details.nextHops()),
+      util::toRouteNextHopSet(*inRoute.nextHops()));
+
+  bool foundClient = false;
+  for (const auto& clientNhops : *details.nextHopMulti()) {
+    if (*clientNhops.clientId() != static_cast<int>(ClientID::OPENR)) {
+      continue;
+    }
+    EXPECT_EQ(
+        util::toRouteNextHopSet(*clientNhops.nextHops()),
+        util::toRouteNextHopSet(*inRoute.nextHops()));
+    foundClient = true;
+  }
+  EXPECT_TRUE(foundClient) << "OPENR entry missing from nextHopMulti";
+}
+
 TEST_P(LabelForwardingTest, unresolvedNextHops) {
   FLAGS_mpls_rib = GetParam();
   std::vector<MplsRoute> mplsRoutes;
@@ -397,7 +435,8 @@ TEST_P(LabelForwardingTest, unresolvedNextHops) {
       std::make_unique<std::vector<MplsRoute>>(mplsRoutes));
 
   waitForStateUpdates(this->sw);
-  auto labelFib = this->sw->getState()->getLabelForwardingInformationBase();
+  auto state = this->sw->getState();
+  auto labelFib = state->getLabelForwardingInformationBase();
 
   for (auto i = 0; i < 3; i++) {
     const auto& labelFibEntry = labelFib->getNode(labels[i]);
@@ -405,9 +444,9 @@ TEST_P(LabelForwardingTest, unresolvedNextHops) {
         labelFibEntry->getEntryForClient(ClientID::OPENR);
 
     EXPECT_NE(nullptr, labelFibEntryForClient);
-    auto clientNexthops = labelFibEntryForClient->getNextHopSet();
+    auto clientNexthops = getMplsClientNextHops(state, *labelFibEntryForClient);
     EXPECT_EQ(clientNexthops.size(), 4);
-    auto nexthops = labelFibEntry->getForwardInfo().getNextHopSet();
+    auto nexthops = getMplsNextHops(state, labelFibEntry->getForwardInfo());
     for (auto nexthop : nexthops) {
       // no unresolved next hops , all are resolved
       EXPECT_TRUE(nexthop.isResolved());
@@ -466,10 +505,11 @@ TEST_P(LabelForwardingTest, invalidUnresolvedNextHops) {
     this->thriftHandler->addMplsRoutes(
         static_cast<int>(ClientID::OPENR), std::move(routes));
     waitForStateUpdates(this->sw);
-    auto labelFib = this->sw->getState()->getLabelForwardingInformationBase();
+    auto state = this->sw->getState();
+    auto labelFib = state->getLabelForwardingInformationBase();
     const auto& labelFibEntry = labelFib->getNode(*mplsRoute.topLabel());
     EXPECT_NE(nullptr, labelFibEntry);
-    auto nexthops = labelFibEntry->getForwardInfo().getNextHopSet();
+    auto nexthops = getMplsNextHops(state, labelFibEntry->getForwardInfo());
     EXPECT_EQ(nexthops.size(), 2);
   } else {
     EXPECT_THROW(

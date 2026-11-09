@@ -13,10 +13,8 @@
 #include "fboss/agent/FbossError.h"
 #include "fboss/agent/platforms/common/PlatformMapping.h"
 #include "fboss/agent/platforms/common/blackwolf800banw/Blackwolf800banwPlatformMapping.h"
-#include "fboss/agent/platforms/common/icecube800banw/Icecube800banwPlatformMapping.h"
 #include "fboss/agent/platforms/common/icecube800bc/Icecube800bcPlatformMapping.h"
 #include "fboss/agent/platforms/common/icetea800bc/Icetea800bcPlatformMapping.h"
-#include "fboss/agent/platforms/common/j4sim/J4SimPlatformMapping.h"
 #include "fboss/agent/platforms/common/janga800bic/Janga800bicPlatformMapping.h"
 #include "fboss/agent/platforms/common/ladakh800bcls/Ladakh800bclsPlatformMapping.h"
 #include "fboss/agent/platforms/common/leh800bcls/Leh800bclsPlatformMapping.h"
@@ -25,7 +23,6 @@
 #include "fboss/agent/platforms/common/meru800bia/Meru800biaPlatformMapping.h"
 #include "fboss/agent/platforms/common/minipack3bta/Minipack3BTAPlatformMapping.h"
 #include "fboss/agent/platforms/common/montblanc/MontblancPlatformMapping.h"
-#include "fboss/agent/platforms/common/saintpaul/SaintpaulPlatformMapping.h"
 #include "fboss/agent/platforms/common/tahan800bc/Tahan800bcPlatformMapping.h"
 #include "fboss/agent/platforms/common/tahansb800bc/Tahansb800bcPlatformMapping.h"
 #include "fboss/agent/platforms/sai/GenericSaiBcmPlatform.h"
@@ -53,27 +50,20 @@ namespace facebook::fboss {
 namespace {
 
 bool useGenericSaiBcmPlatform(PlatformType type) {
-  return type == PlatformType::PLATFORM_BLACKWOLF800BANW ||
-      type == PlatformType::PLATFORM_J4SIM ||
-      type == PlatformType::PLATFORM_JANGA800BIC ||
-      type == PlatformType::PLATFORM_MERU800BIA ||
-      type == PlatformType::PLATFORM_MERU800BIAB ||
-      type == PlatformType::PLATFORM_MERU800BIAC ||
-      type == PlatformType::PLATFORM_MERU800BFA ||
-      type == PlatformType::PLATFORM_MERU800BFA_P1 ||
-      type == PlatformType::PLATFORM_SAINTPAUL ||
-      type == PlatformType::PLATFORM_WEDGE800BACT ||
-      type == PlatformType::PLATFORM_WEDGE800BNHP ||
-      type == PlatformType::PLATFORM_ICECUBE800BC ||
-      type == PlatformType::PLATFORM_ICECUBE800BANW ||
-      type == PlatformType::PLATFORM_ICETEA800BC ||
-      type == PlatformType::PLATFORM_LADAKH800BCLS ||
-      type == PlatformType::PLATFORM_LEH800BCLS ||
-      type == PlatformType::PLATFORM_MINIPACK3BTA ||
-      type == PlatformType::PLATFORM_MONTBLANC ||
-      type == PlatformType::PLATFORM_TAHAN800BC ||
-      type == PlatformType::PLATFORM_TAHANSB800BC ||
-      type == PlatformType::PLATFORM_M4061CLSC;
+  switch (type) {
+    case PlatformType::PLATFORM_WEDGE100:
+    case PlatformType::PLATFORM_WEDGE400:
+    case PlatformType::PLATFORM_WEDGE400_GRANDTETON:
+    case PlatformType::PLATFORM_DARWIN:
+    case PlatformType::PLATFORM_DARWIN48V:
+    case PlatformType::PLATFORM_MINIPACK:
+    case PlatformType::PLATFORM_YAMP:
+    case PlatformType::PLATFORM_FUJI:
+    case PlatformType::PLATFORM_ELBERT:
+      return false;
+    default:
+      return true;
+  }
 }
 
 std::unique_ptr<PlatformMapping> createGenericSaiBcmPlatformMapping(
@@ -92,12 +82,8 @@ std::unique_ptr<PlatformMapping> createGenericSaiBcmPlatformMapping(
       return std::make_unique<Blackwolf800banwPlatformMapping>();
     case PlatformType::PLATFORM_ICECUBE800BC:
       return std::make_unique<Icecube800bcPlatformMapping>();
-    case PlatformType::PLATFORM_ICECUBE800BANW:
-      return std::make_unique<Icecube800banwPlatformMapping>();
     case PlatformType::PLATFORM_ICETEA800BC:
       return std::make_unique<Icetea800bcPlatformMapping>();
-    case PlatformType::PLATFORM_J4SIM:
-      return std::make_unique<J4SimPlatformMapping>();
     case PlatformType::PLATFORM_JANGA800BIC:
       return std::make_unique<Janga800bicPlatformMapping>();
     case PlatformType::PLATFORM_LADAKH800BCLS:
@@ -116,8 +102,6 @@ std::unique_ptr<PlatformMapping> createGenericSaiBcmPlatformMapping(
       return std::make_unique<Minipack3BTAPlatformMapping>();
     case PlatformType::PLATFORM_MONTBLANC:
       return std::make_unique<MontblancPlatformMapping>();
-    case PlatformType::PLATFORM_SAINTPAUL:
-      return std::make_unique<SaintpaulPlatformMapping>();
     case PlatformType::PLATFORM_TAHAN800BC:
       return std::make_unique<Tahan800bcPlatformMapping>();
     case PlatformType::PLATFORM_TAHANSB800BC:

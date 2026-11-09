@@ -50,6 +50,8 @@
 #
 # Filter by production features (sai_agent only):
 #   ./run_test.py sai_agent --config $CONFIG --enable-production-features $ASIC
+#   Features below their minSdkVersion for the built SDK are skipped; for RBB:
+#   ./run_test.py sai_agent --config $CONFIG --enable-production-features $ASIC --test-config-options rbb
 #
 # List tests without running:
 #   ./run_test.py sai --config $CONFIG --list_tests
@@ -60,6 +62,12 @@
 #
 # Enable FBOSS logging:
 #   ./run_test.py sai --config $CONFIG --fboss_logging DBG5
+#
+# Start FBOSS services without running tests, then stop them when done:
+#   ./run_test.py services start --agent-config $AGENT_CONFIG --qsfp-config $QSFP_CONFIG
+#   ./run_test.py services start agent --agent-config $AGENT_CONFIG
+#   ./run_test.py services start agent qsfp fsdb --agent-config $AGENT_CONFIG --qsfp-config $QSFP_CONFIG
+#   ./run_test.py services stop --num-npus 1
 #
 # KNOWN BAD TESTS AND UNSUPPORTED TESTS:
 #

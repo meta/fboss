@@ -195,11 +195,8 @@ class RouteUpdateLoggerTest : public ::testing::Test {
 
   void addLabel(Label label, ClientID client = ClientID::OPENR) {
     SwSwitchRouteUpdateWrapper updater = sw->getRouteUpdater();
-    updater.addRoute(
-        client,
-        label.value(),
-        RouteNextHopEntry(
-            RouteForwardAction::DROP, AdminDistance::MAX_ADMIN_DISTANCE));
+    // An empty set is the DROP case, all the old entry argument conveyed.
+    updater.addRoute(client, label.value(), RouteNextHopSet{});
     updater.program();
   }
 
@@ -499,5 +496,17 @@ TEST_F(RouteUpdateLoggerTest, TrackAllLabelsManySubscribers) {
   waitForStateUpdates(sw);
   EXPECT_EQ(1, mockMplsRouteLogger->changed.size());
   EXPECT_EQ(1, mockMplsRouteLogger->changedFor.size());
+}
+
+TEST(RouteUpdateLoggerStopTest, LoggingCallsAfterStopAreNoops) {
+  auto handle = createTestHandle(nullptr);
+  auto* sw = handle->getSw();
+  sw->logRouteUpdates("::", 0, "fboss-agent-warmboot-BGPD");
+
+  sw->stop();
+
+  EXPECT_EQ(nullptr, sw->getRouteUpdateLogger());
+  sw->stopLoggingRouteUpdates("fboss-agent-warmboot-BGPD");
+  sw->logRouteUpdates("0.0.0.0", 0, "fboss-agent-warmboot-BGPD");
 }
 } // namespace

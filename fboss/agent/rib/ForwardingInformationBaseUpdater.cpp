@@ -32,12 +32,16 @@ ForwardingInformationBaseUpdater::ForwardingInformationBaseUpdater(
     RouterID vrf,
     const IPv4NetworkToRouteMap& v4NetworkToRoute,
     const IPv6NetworkToRouteMap& v6NetworkToRoute,
-    const LabelToRouteMap& labelToRoute)
+    const LabelToRouteMap& labelToRoute,
+    const NextHopIDManager* nextHopIDManager,
+    bool vrfDeleted)
     : resolver_(resolver),
       vrf_(vrf),
+      vrfDeleted_(vrfDeleted),
       v4NetworkToRoute_(v4NetworkToRoute),
       v6NetworkToRoute_(v6NetworkToRoute),
-      labelToRoute_(labelToRoute) {}
+      labelToRoute_(labelToRoute),
+      nextHopIDManager_(nextHopIDManager) {}
 
 std::shared_ptr<SwitchState> ForwardingInformationBaseUpdater::operator()(
     const std::shared_ptr<SwitchState>& state) {
@@ -53,6 +57,16 @@ std::shared_ptr<SwitchState> ForwardingInformationBaseUpdater::operator()(
 
   auto previousFibContainer =
       nextState->getFibsInfoMap()->getFibContainerIf(vrf_);
+  if (vrfDeleted_) {
+    if (previousFibContainer) {
+      auto fibInfoMap = nextState->getFibsInfoMap()->modify(&nextState);
+      auto fibInfo =
+          fibInfoMap->getFibInfo(resolver_->scope(previousFibContainer));
+      CHECK(fibInfo);
+      fibInfo->removeFibContainer(vrf_, &nextState);
+    }
+    return nextState;
+  }
   if (!previousFibContainer) {
     auto fibInfoMap = nextState->getFibsInfoMap()->modify(&nextState);
 
@@ -77,8 +91,11 @@ std::shared_ptr<SwitchState> ForwardingInformationBaseUpdater::operator()(
   auto newFibV6 = createUpdatedFib(
       v6NetworkToRoute_, previousFibContainer->getFibV6(), nextState);
 
-  auto newLabelFib = createUpdatedLabelFib(
-      labelToRoute_, state->getLabelForwardingInformationBase());
+  // The label FIB is global and belongs to the default VRF
+  auto newLabelFib = vrf_ == RouterID(0)
+      ? createUpdatedLabelFib(
+            labelToRoute_, state->getLabelForwardingInformationBase())
+      : nullptr;
 
   if (!newFibV4 && !newFibV6 && !newLabelFib) {
     // return nextState in case we modified state above to insert new VRF
@@ -198,8 +215,10 @@ ForwardingInformationBaseUpdater::createUpdatedLabelFib(
       fibRoute = ribRoute;
       updated = true;
     }
+    // Resolve, not inline: an empty set makes isValidNextHopSet pass vacuously.
     if (!facebook::fboss::MultiLabelForwardingInformationBase::
-            isValidNextHopSet(ribRoute->getForwardInfo().getNextHopSet())) {
+            isValidNextHopSet(getResolvedNextHopsFromRib(
+                nextHopIDManager_, ribRoute->getForwardInfo()))) {
       throw FbossError("invalid label next hop");
     }
     CHECK(fibRoute->isPublished());

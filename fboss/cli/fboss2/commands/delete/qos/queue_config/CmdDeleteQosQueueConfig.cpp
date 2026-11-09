@@ -39,21 +39,21 @@ CmdDeleteQosQueueConfigTraits::RetType CmdDeleteQosQueueConfig::queryClient(
     // dangling the way a named config can.
     auto& defaultPortQueues = *switchConfig.defaultPortQueues();
     if (defaultPortQueues.empty()) {
-      throw std::runtime_error(
-          "No default queue config to delete: defaultPortQueues is empty");
+      return "Warning: default queue config is empty, nothing to delete";
     }
     defaultPortQueues.clear();
 
     session.saveConfig(
-        cli::ServiceType::AGENT, cli::ConfigActionLevel::AGENT_WARMBOOT);
+        cli::ServiceType::AGENT, cli::ConfigActionLevel::SERVICE_RESTART);
     return "Successfully deleted the default queue config";
   }
 
   auto& portQueueConfigs = *switchConfig.portQueueConfigs();
   auto it = portQueueConfigs.find(name.getName());
   if (it == portQueueConfigs.end()) {
-    throw std::runtime_error(
-        fmt::format("No queue config '{}' exists", name.getName()));
+    return fmt::format(
+        "Warning: queue config '{}' not found, nothing to delete",
+        name.getName());
   }
 
   // Port::portQueueConfigName is a plain string with no referential integrity
@@ -77,7 +77,7 @@ CmdDeleteQosQueueConfigTraits::RetType CmdDeleteQosQueueConfig::queryClient(
   portQueueConfigs.erase(it);
 
   session.saveConfig(
-      cli::ServiceType::AGENT, cli::ConfigActionLevel::AGENT_WARMBOOT);
+      cli::ServiceType::AGENT, cli::ConfigActionLevel::SERVICE_RESTART);
 
   return fmt::format("Successfully deleted queue config '{}'", name.getName());
 }

@@ -15,7 +15,7 @@ set stub_name FBOSS-Distro-Image.x86_64-1.0
 
 initrd ${hbase}/pxeboot.${stub_name}.initrd
 
-kernel ${hbase}/pxeboot.${stub_name}.kernel console=ttyS4,57600n8 nomodeset rd.neednet=1 rd.kiwi.install.pxe ip=eno1:dhcp rd.kiwi.install.image=${hbase}/${stub_name}.xz rd.kiwi.install.target=/dev/nvme0n1
+kernel ${hbase}/pxeboot.${stub_name}.kernel console=ttyS0,57600n8 8250.nr_uarts=1 nomodeset rd.neednet=1 rd.kiwi.install.pxe ip=eno1:dhcp rd.kiwi.install.image=${hbase}/${stub_name}.xz rd.kiwi.install.target=/dev/nvme0n1
 
 # Download a marker file via TFTP so we can use it as a signal to remove the dnsmasq configuration
 imgfetch ${tbase}/pxeboot_complete /pxeboot_complete

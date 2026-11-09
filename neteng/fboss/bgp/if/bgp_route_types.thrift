@@ -151,6 +151,79 @@ struct TRibEntryWithHost {
   4: string oobName;
 }
 
+/** Operation in the last platform FIB request staged by BGP. */
+enum TFibOutOperation {
+  /** Zero intentionally represents a submitted route with no FIB contents. */
+  NONE = 0,
+  PROGRAM = 1,
+}
+
+/** Role assigned to a next hop in the platform FIB request. */
+enum TFibOutNextHopRole {
+  UNKNOWN = 0,
+  PRIMARY = 1,
+  BACKUP = 2,
+}
+
+/** Platform-normalized next hop in a FIB request staged by BGP. */
+struct TFibOutNextHop {
+  1: bgp_attr.TIpPrefix next_hop;
+  2: i64 weight;
+  3: TFibOutNextHopRole role;
+  4: optional bool is_connected;
+  5: optional string interface_name;
+  /** Topology fields included in the FBOSS next-hop payload. */
+  @cpp.Type{template = "std::unordered_map"}
+  6: optional map<string, i64> topology_info;
+}
+
+/** Last platform-normalized FIB request staged by BGP for one prefix. */
+struct TFibOutRoute {
+  1: TFibOutOperation operation;
+  2: list<TFibOutNextHop> next_hops;
+  3: optional i32 admin_distance;
+  4: optional i32 class_id;
+  /** Number of live FIB-out routes that share this complete nexthop set. */
+  5: optional i64 nexthop_set_ref_count;
+}
+
+/** Compact FIB-out state for one RIB prefix. */
+struct TFibOutEntry {
+  1: bgp_attr.TIpPrefix prefix;
+  /** Absent until the prefix has entered a platform-adapter batch. */
+  2: optional TFibOutRoute fib_out;
+  /** Reserved for future FIB staging-status reporting. */
+  3: optional bool fib_out_pending;
+}
+
+/** Compact response for a dedicated exact-prefix FIB-out query. */
+struct TFibOutTable {
+  /** True when FIB-out tracking is enabled in the running BGP configuration. */
+  1: bool enabled;
+  /** Zero or one compact row for the requested RIB prefix. */
+  2: list<TFibOutEntry> entries;
+}
+
+/** Request for one exact-prefix FIB-out lookup. */
+struct TFibOutPrefixRequest {
+  /** Exact IPv4 or IPv6 prefix to query. */
+  1: string prefix;
+}
+
+/** One canonical complete nexthop set referenced by current FIB-out state. */
+struct TFibNexthopSet {
+  /** All normalized members that define this canonical set. */
+  1: list<TFibOutNextHop> next_hops;
+  /** Number of live FIB-out routes that share this complete set. */
+  2: i64 ref_count;
+}
+
+/** Knob state and contents of the BGP FIB nexthop database. */
+struct TFibNexthopDatabase {
+  1: bool enabled;
+  2: list<TFibNexthopSet> nexthop_sets;
+}
+
 /**
  * RIB entry binds a prefix to multiple ECMP Bgp paths
  * Afi is inferred from prefix.afi
@@ -205,6 +278,13 @@ struct TRibEntry {
    * The `is_best_path` flag on this copy is always set to true.
    */
   9: optional TBgpPath best_path;
+  /**
+   * Submitted FIB-out state for this entry. Populated only by the exact-prefix
+   * CLI path when FIB-out tracking is enabled.
+   */
+  10: optional TFibOutRoute fib_out;
+  /** Reserved for future FIB staging-status reporting. */
+  11: optional bool fib_out_pending;
 }
 
 /**

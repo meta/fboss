@@ -190,9 +190,10 @@ std::string Git::commit(
   std::string lockPath = repoPath_ + "/.git/fboss2-commit.lock";
   ScopedFileLock lock(lockPath);
 
-  // First, add the files to the index
-  // This handles both tracked and untracked files
-  std::vector<std::string> addArgs = {"add", "--"};
+  // COOP ignores generated files by default, including CLI metadata. Force is
+  // safe here because callers provide the exact paths to stage; this command
+  // never expands a directory or wildcard.
+  std::vector<std::string> addArgs = {"add", "--force", "--"};
   for (const auto& file : files) {
     addArgs.push_back(file);
   }

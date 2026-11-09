@@ -65,10 +65,6 @@ SaiArsProfileTraits::CreateAttributes SaiArsProfileManager::createAttributes(
   std::optional<SaiArsProfileTraits::Attributes::ArsMaxGroups> arsMaxGroups{
       std::nullopt};
 
-  if (FLAGS_enable_th5_ars_scale_mode) {
-    arsMaxGroups = std::optional<SaiArsProfileTraits::Attributes::ArsMaxGroups>(
-        platform_->getAsic()->getMaxArsGroups());
-  }
   if (flowletSwitchConfig->getMaxArsVirtualGroups().has_value()) {
     arsMaxGroups = std::optional<SaiArsProfileTraits::Attributes::ArsMaxGroups>(
         flowletSwitchConfig->getMaxArsVirtualGroups().value());
@@ -79,18 +75,6 @@ SaiArsProfileTraits::CreateAttributes SaiArsProfileManager::createAttributes(
       ? std::optional<SaiArsProfileTraits::Attributes::ArsBaseIndex>(
             platform_->getAsic()->getArsBaseIndex().value())
       : std::nullopt;
-
-  std::optional<
-      SaiArsProfileTraits::Attributes::ArsAlternateMembersRouteMetaData>
-      arsAlternateMembersRouteMetaData = static_cast<sai_uint32_t>(
-          cfg::AclLookupClass::ARS_ALTERNATE_MEMBERS_CLASS);
-
-  std::optional<SaiArsProfileTraits::Attributes::ArsRouteMetaDataMask>
-      arsRouteMetaDataMask = static_cast<sai_uint32_t>(
-          cfg::AclLookupClass::ARS_ALTERNATE_MEMBERS_CLASS);
-
-  std::optional<SaiArsProfileTraits::Attributes::ArsPrimaryMembersRouteMetaData>
-      arsPrimaryMembersRouteMetaData = 0;
 
 #if defined(BRCM_SAI_SDK_GTE_14_0)
   std::optional<SaiArsProfileTraits::Attributes::EcmpMemberCount>
@@ -127,10 +111,7 @@ SaiArsProfileTraits::CreateAttributes SaiArsProfileManager::createAttributes(
 #if SAI_API_VERSION >= SAI_VERSION(1, 16, 0) && defined(BRCM_SAI_SDK_XGS)
       ,
       arsMaxGroups,
-      arsBaseIndex,
-      arsAlternateMembersRouteMetaData,
-      arsRouteMetaDataMask,
-      arsPrimaryMembersRouteMetaData
+      arsBaseIndex
 #if defined(BRCM_SAI_SDK_GTE_14_0)
       ,
       ecmpMemberCount

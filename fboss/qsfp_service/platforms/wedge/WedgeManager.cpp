@@ -23,7 +23,9 @@
 #include <folly/gen/Base.h>
 #include <folly/logging/xlog.h>
 #include <thrift/lib/cpp/util/EnumUtils.h>
+#include <unistd.h>
 #include <chrono>
+#include <numeric>
 
 DEFINE_bool(
     optics_data_post_to_rest,
@@ -88,8 +90,14 @@ void WedgeManager::loadConfig() {
   // Process QSFP config here
   qsfpConfig_ = QsfpConfig::fromDefaultFile();
   const auto& qsfpCfg = qsfpConfig_->thrift;
+  std::map<std::string, std::string> partNumberToFwHandle;
+  if (const auto& tcvrFw = qsfpCfg.transceiverFirmwareVersions()) {
+    partNumberToFwHandle = *tcvrFw->fwHandleMap();
+  }
   tcvrConfig_ = std::make_shared<TransceiverConfig>(
-      *qsfpCfg.transceiverConfigOverrides());
+      *qsfpCfg.transceiverConfigOverrides(),
+      partNumberToFwHandle,
+      qsfpCfg.transceiverVendorOverrides().to_optional());
 
   qsfpConfig_->writePhyConfigToFile();
 
@@ -103,6 +111,24 @@ void WedgeManager::loadConfig() {
       fsdbSyncManager_->start();
     }
   }
+}
+
+void WedgeManager::hardResetTransceivers(const std::vector<int>& tcvrs) {
+  if (tcvrs.empty()) {
+    return;
+  }
+  for (auto idx : tcvrs) {
+    try {
+      triggerQsfpHardReset(idx);
+    } catch (const std::exception& ex) {
+      MODULE_LOG(ERR, "", idx)
+          << "Failed to triggerQsfpHardReset: " << ex.what();
+    }
+  }
+  // Required delay time between a transceiver getting out of reset and fully
+  // functional.
+  // @lint-ignore CLANGTIDY facebook-hte-BadCall-sleep
+  sleep(kSecAfterModuleOutOfReset);
 }
 
 void WedgeManager::initTransceiverMap() {
@@ -120,16 +146,11 @@ void WedgeManager::initTransceiverMap() {
   if (!canWarmBoot()) {
     XLOG(INFO) << "[COLD Boot] Will trigger all " << getNumQsfpModules()
                << " qsfps hard reset";
-    for (int idx = 0; idx < getNumQsfpModules(); idx++) {
-      try {
-        // Force hard resets on the transceivers which forces a cold boot of the
-        // modules.
-        triggerQsfpHardReset(idx);
-      } catch (const std::exception& ex) {
-        MODULE_LOG(ERR, "", idx)
-            << "failed to triggerQsfpHardReset: " << ex.what();
-      }
-    }
+    // Force hard resets on the transceivers which forces a cold boot of the
+    // modules.
+    std::vector<int> allTcvrs(getNumQsfpModules());
+    std::iota(allTcvrs.begin(), allTcvrs.end(), 0);
+    hardResetTransceivers(allTcvrs);
   }
 
   // Also try to load the config file here so that we have transceiver to port
@@ -226,7 +247,8 @@ void WedgeManager::getTransceiversInfo(
       auto currentState = getCurrentStateSnapshot(tcvrID);
       info[i].tcvrState()->stateMachineState() = currentState;
     } catch (const std::exception& ex) {
-      MODULE_LOG(ERR, "", i) << "Error calling getTransceiverInfo(): " << ex.what();
+      MODULE_LOG(ERR, "", i)
+          << "Error calling getTransceiverInfo(): " << ex.what();
     }
   }
 }
@@ -292,7 +314,8 @@ void WedgeManager::getTransceiversRawDOMData(
       try {
         data = it->second->getRawDOMData();
       } catch (const std::exception& ex) {
-        MODULE_LOG(ERR, "", i) << "Error calling getRawDOMData(): " << ex.what();
+        MODULE_LOG(ERR, "", i)
+            << "Error calling getRawDOMData(): " << ex.what();
       }
       info[i] = data;
     }
@@ -320,7 +343,8 @@ void WedgeManager::getTransceiversDOMDataUnion(
       try {
         data = it->second->getDOMDataUnion();
       } catch (const std::exception& ex) {
-        MODULE_LOG(ERR, "", i) << "Error calling getDOMDataUnion(): " << ex.what();
+        MODULE_LOG(ERR, "", i)
+            << "Error calling getDOMDataUnion(): " << ex.what();
       }
       info[i] = data;
     }
@@ -469,8 +493,7 @@ void WedgeManager::updateTransceiverLogInfo(
     try {
       tcvrInfo = getTransceiverInfo(tcvrID);
     } catch (const QsfpModuleError&) {
-      MODULE_LOG(INFO, "", tcvrID)
-          << "Failed to update tcvr log info";
+      MODULE_LOG(INFO, "", tcvrID) << "Failed to update tcvr log info";
       continue;
     }
     const auto& state = tcvrInfo.tcvrState();
@@ -682,7 +705,8 @@ std::vector<TransceiverID> WedgeManager::updateTransceiverMap() {
       // Also only create transceivers that are defined in platform mapping
       // (have non empty port list)
       if (transceiversInReset->count(idx) != 0) {
-        MODULE_LOG(INFO, "", idx) << "is held in reset. Not creating transceiver";
+        MODULE_LOG(INFO, "", idx)
+            << "is held in reset. Not creating transceiver";
       } else if (getPortNames(static_cast<TransceiverID>(idx)).empty()) {
         MODULE_LOG(INFO, "", idx)
             << "is not in platform mapping. Not creating transceiver";
@@ -776,15 +800,10 @@ std::vector<TransceiverID> WedgeManager::updateTransceiverMap() {
   } // end of scope for transceivers_.wlock
 
   for (auto idx : tcvrsToHardReset) {
-    try {
-      MODULE_LOG(INFO, "", idx)
-          << "Try hard reset a present transceiver with unknown interface";
-      triggerQsfpHardReset(idx);
-    } catch (const std::exception& ex) {
-      MODULE_LOG(ERR, "", idx)
-          << "Failed to triggerQsfpHardReset: " << ex.what();
-    }
+    MODULE_LOG(INFO, "", idx)
+        << "Try hard reset a present transceiver with unknown interface";
   }
+  hardResetTransceivers({tcvrsToHardReset.begin(), tcvrsToHardReset.end()});
   return retVal;
 }
 
@@ -998,7 +1017,8 @@ bool WedgeManager::initExternalPhyMap(
     return true;
   }
 
-  // For platforms that require PHY config, fail hard if the phy config file doesn't exist.
+  // For platforms that require PHY config, fail hard if the phy config file
+  // doesn't exist.
   if (requiresPhyConfig()) {
     auto phyConfigPath = folly::to<std::string>(
         FLAGS_qsfp_service_volatile_dir, "/", kPhyHwConfigFileName);
@@ -1181,7 +1201,7 @@ std::string WedgeManager::listHwObjects(
 
 bool WedgeManager::getSdkState(std::string filename) const {
   if (!phyManager_) {
-    return false;
+    throw FbossError("getSdkState: no external PHY on this platform");
   }
   return phyManager_->getSdkState(filename);
 }

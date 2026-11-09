@@ -164,8 +164,10 @@ TEST_F(AgentPfcCaptureTest, verifyPfcLoopback) {
     applyNewConfig(cfg);
 
     for (const auto& switchId : getSw()->getHwAsicTable()->getSwitchIDs()) {
-      // TODO: Investigate spurious diag command failures.
       std::string out;
+      // Start with a blank command first. This is because, sometimes first
+      // diag command doesn't work in some SDK versions and in FBOSS OSS
+      getAgentEnsemble()->runDiagCommand("\n", out, switchId);
       // The registers that disable reserved-MAC filtering and flow-control
       // packet dropping (so a PFC frame can loop back) live in different
       // hardware blocks on Q4D than on the other (XGS / legacy DNX) ASICs, so

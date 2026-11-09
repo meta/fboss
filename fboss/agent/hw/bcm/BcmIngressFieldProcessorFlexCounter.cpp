@@ -100,7 +100,7 @@ void setActionValue(bcm_flexctr_action_t* action) {
 }
 
 int getNumAclStatsCounterCallback(
-    int unit,
+    int /* unit */,
     uint32 stat_counter_id,
     bcm_flexctr_action_t* action,
     void* user_data) {

@@ -26,6 +26,18 @@ std::vector<std::string> transceiverStatesToNames(
   }
   return stateNames;
 }
+
+// firmwareForUpgradeTest only overrides the versions. Its fwHandleMap is empty,
+// so swapping it in wholesale would leave the modules under test with no
+// firmware storage handles.
+cfg::TransceiverFirmware upgradeTestFirmware(
+    const cfg::QsfpServiceConfig& qsfpCfg) {
+  auto firmware = *qsfpCfg.qsfpTestConfig()->firmwareForUpgradeTest();
+  if (const auto& tcvrFw = qsfpCfg.transceiverFirmwareVersions()) {
+    firmware.fwHandleMap() = *tcvrFw->fwHandleMap();
+  }
+  return firmware;
+}
 } // namespace
 
 class OpticsFwUpgradeTest : public HwTest {
@@ -383,8 +395,7 @@ TEST_F(OpticsFwUpgradeTestNoIPhySetup, noUpgradeOnWarmboot) {
 
     // Update the firmware versions in the config
     auto qsfpCfg = wedgeMgr->getQsfpConfig()->thrift;
-    qsfpCfg.transceiverFirmwareVersions() =
-        *qsfpCfg.qsfpTestConfig()->firmwareForUpgradeTest();
+    qsfpCfg.transceiverFirmwareVersions() = upgradeTestFirmware(qsfpCfg);
     std::string newCfgStr =
         apache::thrift::SimpleJSONSerializer::serialize<std::string>(qsfpCfg);
     auto newQsfpCfg = QsfpConfig::fromRawConfig(newCfgStr);
@@ -469,8 +480,7 @@ TEST_F(OpticsFwUpgradeTest, triggerOpticsFwUpgradeTest) {
     qsfpServiceHandler->refreshStateMachines();
 
     auto qsfpCfg = wedgeMgr->getQsfpConfig()->thrift;
-    qsfpCfg.transceiverFirmwareVersions() =
-        *qsfpCfg.qsfpTestConfig()->firmwareForUpgradeTest();
+    qsfpCfg.transceiverFirmwareVersions() = upgradeTestFirmware(qsfpCfg);
     std::string newCfgStr =
         apache::thrift::SimpleJSONSerializer::serialize<std::string>(qsfpCfg);
     auto newQsfpCfg = QsfpConfig::fromRawConfig(newCfgStr);

@@ -16,6 +16,9 @@
 #include "fboss/agent/hw/sai/api/SaiApiTable.h"
 #include "fboss/agent/hw/sai/api/SwitchApi.h"
 #include "fboss/agent/hw/sai/store/SaiStore.h"
+#include "fboss/agent/hw/sai/switch/ConcurrentIndices.h"
+#include "fboss/agent/hw/sai/switch/SaiManagerTable.h"
+#include "fboss/agent/hw/sai/switch/SaiPortManager.h"
 #include "fboss/agent/hw/sai/switch/SaiPortUtils.h"
 #include "fboss/agent/hw/sai/switch/SaiSwitch.h"
 #include "fboss/agent/platforms/sai/SaiPlatform.h"
@@ -31,7 +34,7 @@ namespace facebook::fboss::phy {
 
 namespace {
 
-#if defined(SAI_BRCM_PAI_IMPL)
+#if defined(BRCM_PAI_SDK)
 // Global mutex fallback, used when the enable_xphy_global_lock gflag is set.
 std::mutex gPaiGlobalMutex;
 
@@ -168,9 +171,17 @@ bool SaiPhyRetimer::isSupported(Feature feature) const {
   switch (feature) {
     case Feature::PRBS:
     case Feature::PRBS_STATS:
-    case Feature::LOOPBACK:
+      return false;
     case Feature::PORT_STATS:
+      // Stats come from SaiPhyManager's getAllPhyInfo() path, not
+      // ExternalPhy::getPortStats(); this flag gates the stats test infra.
+      return true;
     case Feature::PORT_INFO:
+      // getPortInfo() returns real PhyInfo by delegating to
+      // SaiSwitch::getAllPhyInfo() (the same builder
+      // SaiPhyManager::getPhyInfo() uses), so PORT_INFO is supported.
+      return true;
+    case Feature::LOOPBACK:
     case Feature::MACSEC:
       return false;
     default:
@@ -217,7 +228,8 @@ void* SaiPhyRetimer::getRegisterWriteFuncPtr() {
   return reinterpret_cast<void*>(saiPhyRetimerSwitchRegisterWrite);
 }
 
-SaiSwitchTraits::CreateAttributes SaiPhyRetimer::getSwitchAttributes() {
+SaiSwitchTraits::CreateAttributes SaiPhyRetimer::getSwitchAttributes(
+    bool warmboot) {
   XLOG(DBG5) << __func__ << ": Starting for xphyID=" << xphyID_;
 
   SaiSwitchTraits::Attributes::InitSwitch initSwitch(true);
@@ -250,7 +262,12 @@ SaiSwitchTraits::CreateAttributes SaiPhyRetimer::getSwitchAttributes() {
       SAI_SWITCH_FIRMWARE_LOAD_METHOD_INTERNAL);
 
   std::optional<SaiSwitchTraits::Attributes::FirmwareLoadType> fwLoadType(
-      SAI_SWITCH_FIRMWARE_LOAD_TYPE_AUTO);
+      warmboot ? SAI_SWITCH_FIRMWARE_LOAD_TYPE_SKIP
+               : SAI_SWITCH_FIRMWARE_LOAD_TYPE_AUTO);
+  std::optional<SaiSwitchTraits::Attributes::WarmRecover> warmRecover;
+  if (warmboot) {
+    warmRecover = true;
+  }
 
   // Phy is accessible on MDIO
   std::optional<SaiSwitchTraits::Attributes::HardwareAccessBus> hwAccessBus(
@@ -278,15 +295,15 @@ SaiSwitchTraits::CreateAttributes SaiPhyRetimer::getSwitchAttributes() {
   std::optional<SaiSwitchTraits::Attributes::SysPortConfigList>
       sysPortConfigList(sysPortConfigVec);
 
-#if defined(SAI_BRCM_PAI_IMPL)
-  XLOG(INFO) << "[PAI-SYNC] SAI_BRCM_PAI_IMPL is COMPILED IN. Installing PAI "
+#if defined(BRCM_PAI_SDK)
+  XLOG(INFO) << "[PAI-SYNC] BRCM_PAI_SDK is COMPILED IN. Installing PAI "
              << "sync lock/unlock callbacks for xphy:" << getPhyAddr()
              << " (xphyID=" << xphyID_ << "), mode="
              << (FLAGS_enable_xphy_global_lock ? "GLOBAL" : "PER-XPHY")
              << ", platform_context(this)=" << static_cast<const void*>(this)
              << ", paiMutex=" << static_cast<void*>(&paiMutex_);
 #else
-  XLOG(WARNING) << "[PAI-SYNC] SAI_BRCM_PAI_IMPL is NOT compiled in; PAI sync "
+  XLOG(WARNING) << "[PAI-SYNC] BRCM_PAI_SDK is NOT compiled in; PAI sync "
                 << "lock/unlock callbacks will NOT be passed to PAI for xphy:"
                 << getPhyAddr() << " (xphyID=" << xphyID_
                 << "). PAI access is UNPROTECTED.";
@@ -392,11 +409,17 @@ SaiSwitchTraits::CreateAttributes SaiPhyRetimer::getSwitchAttributes() {
       std::nullopt, // enable PFC monitoring for the switch
       std::nullopt, // enable cable propagation delay measurement
       std::nullopt, // enable CL72 link training retry
+      std::nullopt, // disable snoop on ingress ACL drop
       std::nullopt, // switching mode
-#if defined(SAI_BRCM_PAI_IMPL)
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 0)
+      std::nullopt, // link up debounce timeout
+#endif
+#if defined(BRCM_PAI_SDK)
       reinterpret_cast<sai_pointer_t>(pai_lock_callback), // user sync_lock
       reinterpret_cast<sai_pointer_t>(pai_unlock_callback), // user sync_unlock
+      warmRecover, // Warm recover
 #endif
+      std::nullopt, // VXLAN default port
   };
 }
 
@@ -593,8 +616,10 @@ PhyPortConfig SaiPhyRetimer::getConfigOnePort(
   config.profile.speed = sysSpeed;
 
   // Helper to build PhySideConfig (lane configs with TX settings)
+  const bool post3Supported = platform_->getAsic()->isSupported(
+      HwAsic::Feature::XPHY_SERDES_TX_FIR_POST3);
   auto buildPhySideConfig =
-      [&serdesStore, readFromHw](
+      [&serdesStore, readFromHw, post3Supported](
           std::shared_ptr<SaiObject<SaiPortTraits>> portObj,
           const std::vector<uint32_t>& lanes) -> PhySideConfig {
     PhySideConfig side;
@@ -620,8 +645,10 @@ PhyPortConfig SaiPhyRetimer::getConfigOnePort(
             serdesSaiId, SAI_PORT_SERDES_ATTR_TX_FIR_POST1, numLanes);
         txPost2 = getSerdesAttrFromHw(
             serdesSaiId, SAI_PORT_SERDES_ATTR_TX_FIR_POST2, numLanes);
-        txPost3 = getSerdesAttrFromHw(
-            serdesSaiId, SAI_PORT_SERDES_ATTR_TX_FIR_POST3, numLanes);
+        if (post3Supported) {
+          txPost3 = getSerdesAttrFromHw(
+              serdesSaiId, SAI_PORT_SERDES_ATTR_TX_FIR_POST3, numLanes);
+        }
       } else {
         const auto& attrs = serdes->attributes();
         txPre1 = extractSerdesAttr<SaiPortSerdesTraits::Attributes::TxFirPre1>(
@@ -638,9 +665,11 @@ PhyPortConfig SaiPhyRetimer::getConfigOnePort(
         txPost2 =
             extractSerdesAttr<SaiPortSerdesTraits::Attributes::TxFirPost2>(
                 attrs);
-        txPost3 =
-            extractSerdesAttr<SaiPortSerdesTraits::Attributes::TxFirPost3>(
-                attrs);
+        if (post3Supported) {
+          txPost3 =
+              extractSerdesAttr<SaiPortSerdesTraits::Attributes::TxFirPost3>(
+                  attrs);
+        }
       }
     }
 
@@ -701,6 +730,73 @@ PhyPortConfig SaiPhyRetimer::getConfigOnePort(
              << ", line.lanes=" << config.profile.line.numLanes().value();
 
   return config;
+}
+
+PhyInfo SaiPhyRetimer::getPortInfo(
+    const std::vector<LaneID>& /* sysLanes */,
+    const std::vector<LaneID>& lineLanes,
+    PhyInfo& /* lastPhyInfo */) {
+  if (!platform_) {
+    throw FbossError("Platform is null for xphyID=", xphyID_);
+  }
+  auto* saiSwitch = static_cast<SaiSwitch*>(platform_->getHwSwitch());
+  if (!saiSwitch) {
+    throw FbossError("SaiSwitch is null for xphyID=", xphyID_);
+  }
+
+  // Reuse SaiSwitch's PhyInfo (updateAllPhyInfo/getAllPhyInfo), like
+  // SaiPhyManager::getPhyInfo(). It's keyed by SwitchState PortID, so map this
+  // xphy's line lanes -> SAI port (by AdapterHostKey) -> owning PortID.
+  auto& portStore = saiSwitch->getSaiStore()->get<SaiPortTraits>();
+  const auto lineSaiLanes = toLaneVector(lineLanes);
+  auto linePort = portStore.get(SaiPortTraits::AdapterHostKey{lineSaiLanes});
+  if (!linePort) {
+    throw FbossError(
+        "Line port not found for xphyID=",
+        xphyID_,
+        ", lanes=[",
+        formatLanes(lineSaiLanes),
+        "]");
+  }
+  const auto linePortSaiId = linePort->adapterKey();
+
+  // SaiSwitch already indexes SAI port id -> PortID; use it instead of scanning
+  // every port handle.
+  const auto& portSaiId2PortInfo =
+      saiSwitch->concurrentIndices().portSaiId2PortInfo;
+  const auto portInfoIt = portSaiId2PortInfo.find(linePortSaiId);
+  if (portInfoIt == portSaiId2PortInfo.end()) {
+    throw FbossError(
+        "No PortID found for xphyID=",
+        xphyID_,
+        " line lanes=[",
+        formatLanes(lineSaiLanes),
+        "]");
+  }
+  const auto portID = portInfoIt->second.portID;
+
+  saiSwitch->updateAllPhyInfo();
+  auto allPhyInfo = saiSwitch->getAllPhyInfo();
+  auto it = allPhyInfo.find(portID);
+  if (it == allPhyInfo.end()) {
+    throw FbossError(
+        "PhyInfo not found for xphyID=", xphyID_, " portID=", portID);
+  }
+  auto phyInfo = std::move(it->second);
+
+  // SaiSwitch sets phyChip.type() but not phyChip.name(); fill the name from
+  // the platform mapping (XPHY chip whose physicalID == xphyID_).
+  auto& phyChip = *phyInfo.state()->phyChip();
+  if (phyChip.name()->empty()) {
+    for (const auto& [chipName, dpChip] : platformMapping_->getChips()) {
+      if (dpChip.type().value() == DataPlanePhyChipType::XPHY &&
+          dpChip.physicalID().value() == static_cast<int32_t>(xphyID_)) {
+        phyChip.name() = dpChip.name().value();
+        break;
+      }
+    }
+  }
+  return phyInfo;
 }
 
 } // namespace facebook::fboss::phy

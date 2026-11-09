@@ -22,6 +22,7 @@ namespace facebook::fboss {
 
 class SwitchState;
 class SwitchIdScopeResolver;
+class NextHopIDManager;
 
 class ForwardingInformationBaseUpdater {
  public:
@@ -30,7 +31,9 @@ class ForwardingInformationBaseUpdater {
       RouterID vrf,
       const IPv4NetworkToRouteMap& v4NetworkToRoute,
       const IPv6NetworkToRouteMap& v6NetworkToRoute,
-      const LabelToRouteMap& labelToRoute);
+      const LabelToRouteMap& labelToRoute,
+      const NextHopIDManager* nextHopIDManager,
+      bool vrfDeleted = false);
 
   std::shared_ptr<SwitchState> operator()(
       const std::shared_ptr<SwitchState>& state);
@@ -54,9 +57,11 @@ class ForwardingInformationBaseUpdater {
 
   const SwitchIdScopeResolver* resolver_;
   RouterID vrf_;
+  bool vrfDeleted_;
   const IPv4NetworkToRouteMap& v4NetworkToRoute_;
   const IPv6NetworkToRouteMap& v6NetworkToRoute_;
   const LabelToRouteMap& labelToRoute_;
+  const NextHopIDManager* nextHopIDManager_;
 };
 
 } // namespace facebook::fboss

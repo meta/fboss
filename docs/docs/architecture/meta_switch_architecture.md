@@ -423,7 +423,7 @@ A few notes:
     * BMC to external interface shall not be changed (from fboss_lite layer)
       * `weutil` capable of reading chassis EEPROM.
     * BMC SW need to meet all the requirements in this document
-      * [https://github.com/facebook/fboss/blob/main/fboss/docs/openbmc_software_requirements.md](https://github.com/facebook/fboss/blob/main/fboss/docs/openbmc_software_requirements.md)
+      * [Meta/OpenBMC Software Requirements](/docs/openbmc/openbmc_software_requirements)
       * While most of the requirements in this document are already implemented
         in fboss_lite BMC layer, vendors and partners are required to verify
         these features.
@@ -533,6 +533,10 @@ Below table shows the supported IPMI transports:
 
 * There should be dedicated I2C bus / MDIO bus to optics, through FPGA.
 * There shall NEVER be any I2C mux in between optics and FPGA.
+* For the I2C buses to OSFP ports, both 100KHz and 400KHz I2C clock frequencies
+  must be verified during the NPI phase.
+  * 400KHz shall be configured as the default bus speed, either in the
+    FPGA/CPLD firmware, or in the platform's `platform_manager.json`.
 
 ## 7. Rack Monitoring
 

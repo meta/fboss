@@ -8,6 +8,7 @@
  *
  */
 #include "fboss/agent/hw/sai/api/SwitchApi.h"
+#include "fboss/agent/gen-cpp2/switch_config_constants.h"
 #include "fboss/agent/hw/sai/fake/FakeSai.h"
 
 #include <folly/logging/xlog.h>
@@ -524,6 +525,15 @@ TEST_F(SwitchApiTest, testFwLoadType) {
   EXPECT_EQ(loadType, gotLoadType);
 }
 
+TEST_F(SwitchApiTest, testWarmRecover) {
+  SaiSwitchTraits::Attributes::WarmRecover warmRecover{true};
+  switchApi->setAttribute(switchId, warmRecover);
+
+  auto gotWarmRecover = switchApi->getAttribute(
+      switchId, SaiSwitchTraits::Attributes::WarmRecover{});
+  EXPECT_EQ(warmRecover, gotWarmRecover);
+}
+
 TEST_F(SwitchApiTest, testAccessBus) {
   SaiSwitchTraits::Attributes::HardwareAccessBus bus{
       SAI_SWITCH_HARDWARE_ACCESS_BUS_MDIO};
@@ -673,6 +683,19 @@ TEST_F(SwitchApiTest, setGetPfcDlrPacketAction) {
       SAI_PACKET_ACTION_FORWARD);
 }
 
+TEST_F(SwitchApiTest, setGetVxlanDefaultPort) {
+  EXPECT_EQ(
+      switchApi->getAttribute(
+          switchId, SaiSwitchTraits::Attributes::VxlanDefaultPort{}),
+      cfg::switch_config_constants::kVxlanDefaultPort());
+  SaiSwitchTraits::Attributes::VxlanDefaultPort vxlanPort{8472};
+  switchApi->setAttribute(switchId, vxlanPort);
+  EXPECT_EQ(
+      switchApi->getAttribute(
+          switchId, SaiSwitchTraits::Attributes::VxlanDefaultPort{}),
+      8472);
+}
+
 TEST_F(SwitchApiTest, testPfcMonitorEnable) {
   // Test default value
   EXPECT_EQ(
@@ -750,6 +773,21 @@ TEST_F(SwitchApiTest, testPortCl72RetryEnable) {
       false);
 }
 
+TEST_F(SwitchApiTest, testAclDropSnoopDisabled) {
+  EXPECT_FALSE(switchApi->getAttribute(
+      switchId, SaiSwitchTraits::Attributes::AclDropSnoopDisabled{}));
+
+  switchApi->setAttribute(
+      switchId, SaiSwitchTraits::Attributes::AclDropSnoopDisabled{true});
+  EXPECT_TRUE(switchApi->getAttribute(
+      switchId, SaiSwitchTraits::Attributes::AclDropSnoopDisabled{}));
+
+  switchApi->setAttribute(
+      switchId, SaiSwitchTraits::Attributes::AclDropSnoopDisabled{false});
+  EXPECT_FALSE(switchApi->getAttribute(
+      switchId, SaiSwitchTraits::Attributes::AclDropSnoopDisabled{}));
+}
+
 TEST_F(SwitchApiTest, getPacketDropTypeIngressList) {
   const std::vector<sai_int32_t> dropTypes{1, 7, 42};
   fs->switchManager.get(switchId).setPacketDropTypeIngressList(dropTypes);
@@ -797,6 +835,32 @@ TEST_F(SwitchApiTest, setPacketDropTypeEgressList) {
       std::vector<sai_int32_t>{2}};
   EXPECT_THROW(switchApi->setAttribute(switchId, dropTypes), SaiApiError);
 }
+
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 0)
+TEST_F(SwitchApiTest, testLinkUpDebounceTimeout) {
+  // Defaults to no debounce
+  EXPECT_EQ(
+      switchApi->getAttribute(
+          switchId, SaiSwitchTraits::Attributes::LinkUpDebounceTimeout{}),
+      0);
+
+  constexpr sai_uint32_t kTimeoutUs = 50000;
+  switchApi->setAttribute(
+      switchId, SaiSwitchTraits::Attributes::LinkUpDebounceTimeout{kTimeoutUs});
+  EXPECT_EQ(
+      switchApi->getAttribute(
+          switchId, SaiSwitchTraits::Attributes::LinkUpDebounceTimeout{}),
+      kTimeoutUs);
+
+  // Back to no debounce
+  switchApi->setAttribute(
+      switchId, SaiSwitchTraits::Attributes::LinkUpDebounceTimeout{0});
+  EXPECT_EQ(
+      switchApi->getAttribute(
+          switchId, SaiSwitchTraits::Attributes::LinkUpDebounceTimeout{}),
+      0);
+}
+#endif
 
 TEST_F(SwitchApiTest, testSwitchingMode) {
   // Test default value (STORE_AND_FORWARD)

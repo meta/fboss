@@ -20,6 +20,11 @@ from typing import Any, NamedTuple
 import jsonschema
 from fboss.lib.asic_config_v3.paths import AsicConfigPaths
 
+try:
+    from referencing import Registry, Resource
+except ImportError:  # jsonschema releases before the referencing package
+    Registry = Resource = None
+
 
 class ValidationTarget(NamedTuple):
     description: str
@@ -48,41 +53,61 @@ def get_validation_targets(paths: AsicConfigPaths) -> list[ValidationTarget]:
             "Broadcom XGS ASIC configs",
             "broadcom_xgs_asic_config.schema.json",
             os.path.join(
-                paths.asic_vendors_dir,
-                "broadcom",
-                "xgs",
-                "asics",
-                "tomahawk*.json",
+                paths.asic_vendors_dir, "broadcom", "xgs", "asics", "tomahawk*.json"
             ),
+        ),
+        ValidationTarget(
+            "Broadcom DNX ASIC configs",
+            "broadcom_dnx_asic_config.schema.json",
+            os.path.join(paths.asic_vendors_dir, "broadcom", "dnx", "asics", "*.json"),
         ),
         ValidationTarget(
             "Platform configs",
             "platform_config.schema.json",
             os.path.join(
-                paths.platforms_dir,
-                "*",
-                "*",
-                "asic_config",
-                "asic_config.json",
+                paths.platforms_dir, "*", "*", "asic_config", "asic_config.json"
             ),
         ),
     ]
 
 
-def validate(schema: dict[str, Any], config_path: str) -> None:
+def load_schemas(paths: AsicConfigPaths) -> dict[str, dict[str, Any]]:
+    """Load every schema in the schemas directory, keyed by file name."""
+    schemas: dict[str, dict[str, Any]] = {}
+    for path in sorted(glob.glob(os.path.join(paths.schemas_dir, "*.schema.json"))):
+        with open(path) as f:
+            schemas[os.path.basename(path)] = json.load(f)
+    return schemas
+
+
+def make_validator(schema: dict[str, Any], schemas: dict[str, dict[str, Any]]) -> Any:
+    """Build a validator that resolves references between the schema files."""
+    validator_cls = jsonschema.validators.validator_for(schema)
+    validator_cls.check_schema(schema)
+    if Registry is None or Resource is None:
+        resolver = jsonschema.RefResolver.from_schema(
+            schema, store={s["$id"]: s for s in schemas.values() if "$id" in s}
+        )
+        return validator_cls(schema, resolver=resolver)
+    registry = Registry().with_resources(
+        (s["$id"], Resource.from_contents(s)) for s in schemas.values() if "$id" in s
+    )
+    return validator_cls(schema, registry=registry)
+
+
+def validate(validator: Any, config_path: str) -> None:
     with open(config_path) as f:
         config: dict[str, Any] = json.load(f)
-    jsonschema.validate(config, schema)
+    validator.validate(config)
 
 
 def validate_asic_config_schemas(paths: AsicConfigPaths) -> ValidationResults:
     passed = 0
     failures = []
+    schemas = load_schemas(paths)
 
     for target in get_validation_targets(paths):
-        schema_path = os.path.join(paths.schemas_dir, target.schema)
-        with open(schema_path) as f:
-            schema: dict[str, Any] = json.load(f)
+        validator = make_validator(schemas[target.schema], schemas)
 
         files = sorted(glob.glob(target.files_glob, recursive=True))
         print(f"{target.description} ({target.schema}):")
@@ -94,7 +119,7 @@ def validate_asic_config_schemas(paths: AsicConfigPaths) -> ValidationResults:
         for path in files:
             name = os.path.relpath(path, paths.configs_dir)
             try:
-                validate(schema, path)
+                validate(validator, path)
                 print(f"  {name}: PASSED")
                 passed += 1
             except jsonschema.ValidationError as error:

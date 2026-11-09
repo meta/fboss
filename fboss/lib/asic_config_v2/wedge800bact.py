@@ -7,7 +7,9 @@ import neteng.fboss.platform_mapping_config.thrift_types as pm_types
 from fboss.lib.asic_config_v2.tomahawk5 import Tomahawk5AsicConfig
 from fboss.lib.platform_mapping_v2.asic_vendor_config import AsicVendorConfig
 from fboss.lib.platform_mapping_v2.platform_mapping_v2 import PlatformMappingParser
-from fboss.lib.platform_mapping_v2.read_files_utils import read_all_vendor_data
+from fboss.lib.platform_mapping_v2.read_files_utils import (
+    discover_platform_mapping_inputs,
+)
 
 
 class Wedge800bActAsicConfig(Tomahawk5AsicConfig):
@@ -20,7 +22,7 @@ class Wedge800bActAsicConfig(Tomahawk5AsicConfig):
         super(Wedge800bActAsicConfig, self).__init__(asic_config_params)
 
         self.parser = PlatformMappingParser(
-            read_all_vendor_data(platform_mapping_input_dir), "wedge800bact"
+            discover_platform_mapping_inputs(platform_mapping_input_dir), "wedge800bact"
         )
         self.num_ports_per_core = 1
         if mgmt_port_speed == 10000:

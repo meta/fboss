@@ -21,7 +21,11 @@
 #include "fboss/agent/test/TestUtils.h"
 #include "fboss/lib/CommonUtils.h"
 
+#include <gflags/gflags.h>
+
 #include <algorithm>
+#include <atomic>
+#include <chrono>
 
 using facebook::fboss::HwSwitchMatcher;
 using facebook::fboss::SwitchID;
@@ -150,6 +154,7 @@ TEST_F(SwSwitchHandlerTest, GetOperDelta) {
   std::vector<StateDelta> deltas;
   deltas.emplace_back(stateV0, stateV1);
   auto delta = StateDelta(stateV0, stateV1);
+  auto deltaOperDelta = delta.getOperDelta();
   std::thread stateUpdateThread([this, &deltas, &addRandomDelay, &stateV1]() {
     getHwSwitchHandler()->waitUntilAllHwSwitchesConnected();
     addRandomDelay();
@@ -161,28 +166,29 @@ TEST_F(SwSwitchHandlerTest, GetOperDelta) {
     getHwSwitchHandler()->stop();
   });
 
-  auto clientThreadBody = [this, &delta, &addRandomDelay](int64_t switchId) {
-    int64_t ackNum{0};
-    OperDeltaFilter filter((SwitchID(switchId)));
-    // connect and get next state delta
-    addRandomDelay();
-    auto getEmptyOper = []() {
-      auto operDelta = std::make_unique<multiswitch::StateOperDelta>();
-      operDelta->operDeltas() = {fsdb::OperDelta()};
-      return operDelta;
-    };
-    auto operDelta = getHwSwitchHandler()->getNextStateOperDelta(
-        switchId, getEmptyOper(), ackNum++);
-    EXPECT_EQ(
-        operDelta.operDeltas()->back(),
-        *filter.filterWithSwitchStateRootPath(delta.getOperDelta()));
-    // request next state delta. the empty oper passed serves as success
-    // indicator for previous delta
-    operDelta = getHwSwitchHandler()->getNextStateOperDelta(
-        switchId, getEmptyOper(), ackNum++);
-    // this request will be cancelled
-    EXPECT_EQ(operDelta.operDeltas()->size(), 0);
-  };
+  auto clientThreadBody =
+      [this, &deltaOperDelta, &addRandomDelay](int64_t switchId) {
+        int64_t ackNum{0};
+        OperDeltaFilter filter((SwitchID(switchId)));
+        // connect and get next state delta
+        addRandomDelay();
+        auto getEmptyOper = []() {
+          auto operDelta = std::make_unique<multiswitch::StateOperDelta>();
+          operDelta->operDeltas() = {fsdb::OperDelta()};
+          return operDelta;
+        };
+        auto operDelta = getHwSwitchHandler()->getNextStateOperDelta(
+            switchId, getEmptyOper(), ackNum++);
+        EXPECT_EQ(
+            operDelta.operDeltas()->back(),
+            *filter.filterWithSwitchStateRootPath(deltaOperDelta));
+        // request next state delta. the empty oper passed serves as success
+        // indicator for previous delta
+        operDelta = getHwSwitchHandler()->getNextStateOperDelta(
+            switchId, getEmptyOper(), ackNum++);
+        // this request will be cancelled
+        EXPECT_EQ(operDelta.operDeltas()->size(), 0);
+      };
 
   std::thread clientRequestThread1([&]() { clientThreadBody(1); });
   std::thread clientRequestThread2([&]() { clientThreadBody(2); });
@@ -952,6 +958,61 @@ TEST_F(SwSwitchHandlerTest, operAckTimeoutCount) {
   stateUpdateThread.join();
   clientRequestThread1.join();
   clientRequestThread2.join();
+}
+
+// HwSwitch 1 dies holding an unacked delta; its replacement is full-synced with
+// the seqnum the dead session last reported.
+TEST_F(SwSwitchHandlerTest, restartedHwSwitchAckAfterStaleSeqNum) {
+  gflags::FlagSaver flagSaver;
+  FLAGS_oper_delta_ack_timeout = 5;
+  auto stateV0 = std::make_shared<SwitchState>();
+  auto stateV1 = getInitialTestState();
+  std::vector<StateDelta> deltas;
+  deltas.emplace_back(stateV0, stateV1);
+
+  auto getEmptyOper = []() {
+    auto operDelta = std::make_unique<multiswitch::StateOperDelta>();
+    operDelta->operDeltas() = {fsdb::OperDelta()};
+    return operDelta;
+  };
+  folly::Baton<> deadSessionGotDelta;
+  std::atomic<bool> done{false};
+
+  std::thread deadSession([&]() {
+    constexpr int64_t kStaleSeqNum = 2;
+    auto operDelta = getHwSwitchHandler()->getNextStateOperDelta(
+        1, getEmptyOper(), kStaleSeqNum);
+    EXPECT_FALSE(operDelta.operDeltas()->empty());
+    deadSessionGotDelta.post();
+  });
+
+  auto ackEverything = [&](int64_t switchId) {
+    int64_t lastSeqNum{0};
+    while (!done.load()) {
+      auto operDelta = getNextDeltaTolerateStop(
+          getHwSwitchHandler(), switchId, getEmptyOper(), lastSeqNum);
+      lastSeqNum = *operDelta.seqNum();
+    }
+  };
+  std::thread switch2Session([&]() { ackEverything(2); });
+  std::thread restartedSession([&]() {
+    deadSessionGotDelta.wait();
+    ackEverything(1);
+  });
+
+  getHwSwitchHandler()->waitUntilAllHwSwitchesConnected();
+  const auto start = std::chrono::steady_clock::now();
+  auto stateReturned = getHwSwitchHandler()->stateChanged(deltas, false);
+  const auto elapsed = std::chrono::steady_clock::now() - start;
+
+  done = true;
+  getHwSwitchHandler()->stop();
+  deadSession.join();
+  switch2Session.join();
+  restartedSession.join();
+
+  EXPECT_EQ(stateReturned, stateV1);
+  EXPECT_LT(elapsed, std::chrono::seconds(FLAGS_oper_delta_ack_timeout));
 }
 
 /*

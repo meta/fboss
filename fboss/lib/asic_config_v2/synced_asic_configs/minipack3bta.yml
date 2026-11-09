@@ -893,6 +893,7 @@ bcm_device:
       pfc_deadlock_seq_control: 1
       sai_vfp_smac_drop_filter_disable: 1
       sai_eapol_trap_use_bcast_mac: 1
+      sai_disable_srcmacqedstmac_ctrl: 0x1
       global_flexctr_ing_action_num_reserved: 20
       global_flexctr_ing_pool_num_reserved: 8
       global_flexctr_ing_op_profile_num_reserved: 20
@@ -906,7 +907,7 @@ bcm_device:
 device:
   0:
     TM_LL_THD_CONFIG:
-      THRESHOLD_MODE: LOSSLESS
+      THRESHOLD_MODE: LOSSY_AND_LOSSLESS
       LLR: 1
 ...
 ---

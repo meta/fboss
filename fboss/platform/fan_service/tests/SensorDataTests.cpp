@@ -82,9 +82,9 @@ TEST_F(SensorDataTest, GetSensorEntries) {
 
   auto entries = sensorData_->getSensorEntries();
   EXPECT_EQ(entries.size(), 3);
-  EXPECT_TRUE(entries.find("sensor1") != entries.end());
-  EXPECT_TRUE(entries.find("sensor2") != entries.end());
-  EXPECT_TRUE(entries.find("sensor3") != entries.end());
+  EXPECT_TRUE(entries.contains("sensor1"));
+  EXPECT_TRUE(entries.contains("sensor2"));
+  EXPECT_TRUE(entries.contains("sensor3"));
 }
 
 // Test getOpticEntry with non-existent optic
@@ -105,13 +105,13 @@ TEST_F(SensorDataTest, UpdateAndGetOpticEntry) {
   auto entry = sensorData_->getOpticEntry(opticName);
   ASSERT_TRUE(entry.has_value());
   EXPECT_EQ(entry->data.size(), 2);
-  EXPECT_TRUE(entry->data.find("temp_type_1") != entry->data.end());
+  EXPECT_TRUE(entry->data.contains("temp_type_1"));
   EXPECT_EQ(entry->data.at("temp_type_1").size(), 2);
   EXPECT_EQ(entry->data.at("temp_type_1")[0].txvrId, 1);
   EXPECT_FLOAT_EQ(entry->data.at("temp_type_1")[0].temp, 35.0);
   EXPECT_EQ(entry->data.at("temp_type_1")[1].txvrId, 2);
   EXPECT_FLOAT_EQ(entry->data.at("temp_type_1")[1].temp, 36.0);
-  EXPECT_TRUE(entry->data.find("temp_type_2") != entry->data.end());
+  EXPECT_TRUE(entry->data.contains("temp_type_2"));
   EXPECT_EQ(entry->data.at("temp_type_2").size(), 1);
   EXPECT_EQ(entry->data.at("temp_type_2")[0].txvrId, 3);
   EXPECT_FLOAT_EQ(entry->data.at("temp_type_2")[0].temp, 40.0);
@@ -198,8 +198,8 @@ TEST_F(SensorDataTest, GetOpticEntries) {
 
   const auto& entries = sensorData_->getOpticEntries();
   EXPECT_EQ(entries.size(), 2);
-  EXPECT_TRUE(entries.find("optic1") != entries.end());
-  EXPECT_TRUE(entries.find("optic2") != entries.end());
+  EXPECT_TRUE(entries.contains("optic1"));
+  EXPECT_TRUE(entries.contains("optic2"));
 }
 
 // Test getLastQsfpSvcTime

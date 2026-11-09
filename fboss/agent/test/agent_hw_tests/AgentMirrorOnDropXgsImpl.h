@@ -12,9 +12,11 @@ namespace facebook::fboss {
 //   - Tunnel-based MirrorDestination with srcIp.
 //   - IPFIX/PSAMP wire format for the captured packet.
 //   - Drop reason codes defined in BCM SDK (e.g. 0x1A = L3 destination
-//     discard, 0x10 = ingress FP/ACL drop, 0x03 = egress port drop).
+//     discard, 0x10 = ingress FP/ACL drop). MMU codes vary by ASIC.
 class XgsMirrorOnDropImpl : public MirrorOnDropImpl {
  public:
+  explicit XgsMirrorOnDropImpl(cfg::AsicType asicType) : asicType_(asicType) {}
+
   cfg::MirrorOnDropReport makeReport(
       const std::string& name,
       const folly::IPAddressV6& collectorIp,
@@ -44,6 +46,9 @@ class XgsMirrorOnDropImpl : public MirrorOnDropImpl {
       const PortID& srcPortId) const override;
 
   ProductionFeature getProductionFeature() const override;
+
+ private:
+  cfg::AsicType asicType_;
 };
 
 } // namespace facebook::fboss

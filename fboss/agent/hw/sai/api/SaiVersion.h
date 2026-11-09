@@ -55,7 +55,8 @@
     defined(SAI_VERSION_12_2_0_0_ODP) || defined(SAI_VERSION_13_0_EA_ODP) ||   \
     defined(SAI_VERSION_13_3_0_0_ODP) || defined(SAI_VERSION_14_0_EA_ODP) ||   \
     defined(SAI_VERSION_14_2_0_0_ODP) || defined(SAI_VERSION_15_0_EA_ODP) ||   \
-    defined(SAI_VERSION_15_4_EA_ODP) || defined(SAI_VERSION_15_4_0_0_ODP)
+    defined(SAI_VERSION_15_4_EA_ODP) || defined(SAI_VERSION_15_4_0_0_ODP) ||   \
+    defined(SAI_VERSION_16_0_EA_ODP)
 #define BRCM_SAI_SDK_XGS
 #endif
 
@@ -80,7 +81,7 @@
 #define BRCM_SAI_SDK_XGS_AND_DNX
 #endif
 
-#if defined(SAI_VERSION_16_0_EA_DNX_ODP)
+#if defined(SAI_VERSION_16_0_EA_DNX_ODP) || defined(SAI_VERSION_16_0_EA_ODP)
 #define BRCM_SAI_SDK_GTE_16_0
 #endif
 
@@ -131,8 +132,39 @@
 #define BRCM_SAI_SDK_DNX_GTE_13_0
 #endif
 
-#if defined(SAI_VERSION_15_0_EA_ODP) || defined(SAI_VERSION_15_4_EA_ODP) || \
-    defined(SAI_VERSION_15_4_0_0_ODP)
+#if defined(SAI_VERSION_16_0_EA_ODP)
+#define BRCM_SAI_SDK_XGS_GTE_16_0
+#endif
+
+// brcm-sai 15.4.0.0_odp is Broadcom's 15.4.1 GA drop.
+#if defined(BRCM_SAI_SDK_XGS_GTE_16_0) || defined(SAI_VERSION_15_4_0_0_ODP)
+#define BRCM_SAI_SDK_XGS_GTE_15_4_1
+#endif
+
+// CBFC (saivirtualchannel.h, the CBFC port attributes, the VC qos map types)
+// is upstream as of SAI 1.19.0. brcm-sai 16.0_ea_odp carries the same
+// declarations via its cbfc.patch while still reporting 1.18.1, so neither
+// check alone covers both.
+//
+// TODO(agrewal): delete SAI_CBFC_SUPPORTED once Broadcom's 16.0 drop is
+// rebased onto the 1.19 tag and reports it. Every CBFC use can then gate on
+// the spec version alone, as other upstream features do. Note the endpoint is
+// the version check, not BRCM_SAI_SDK_XGS_GTE_16_0 on its own: fake SAI
+// compiles the same files and never defines that macro.
+//
+// Compared on SAI_VER_MAJOR/MINOR rather than SAI_API_VERSION: those are plain
+// -D values supplied by both the Buck config and the OSS cmake, whereas
+// SAI_VERSION is only defined above under #ifndef IS_OSS, so using it here
+// breaks the OSS build.
+#if defined(BRCM_SAI_SDK_XGS_GTE_16_0)
+#define SAI_CBFC_SUPPORTED
+#elif defined(SAI_VER_MAJOR) && defined(SAI_VER_MINOR) && \
+    (SAI_VER_MAJOR > 1 || (SAI_VER_MAJOR == 1 && SAI_VER_MINOR >= 19))
+#define SAI_CBFC_SUPPORTED
+#endif
+
+#if defined(BRCM_SAI_SDK_XGS_GTE_16_0) || defined(SAI_VERSION_15_0_EA_ODP) || \
+    defined(SAI_VERSION_15_4_EA_ODP) || defined(SAI_VERSION_15_4_0_0_ODP)
 #define BRCM_SAI_SDK_XGS_GTE_15_0
 #endif
 
@@ -154,6 +186,16 @@
     defined(SAI_VERSION_12_0_EA_DNX_ODP) || \
     defined(SAI_VERSION_12_2_0_0_DNX_ODP)
 #define BRCM_SAI_SDK_DNX_GTE_12_0
+#endif
+
+// SDK dump rate limiting (CS00012465650). The OSS 14.2 DNX SDK artifact is
+// built from an older drop than tp2 and lacks the SAI attribute ids.
+//
+// TODO: drop the IS_OSS clause once the OSS 14.2 DNX SDK artifact is rebuilt
+// from current tp2.
+#if defined(SAI_VERSION_12_2_0_0_DNX_ODP) || \
+    (defined(BRCM_SAI_SDK_DNX_GTE_12_0) && !defined(IS_OSS))
+#define SAI_SDK_DUMP_RATE_LIMIT_SUPPORTED
 #endif
 
 #if defined BRCM_SAI_SDK_GTE_12_0 || defined(SAI_VERSION_11_0_EA_ODP) || \
@@ -209,17 +251,17 @@
     defined(TAJO_SDK_VERSION_25_5_4210) ||                                     \
     defined(TAJO_SDK_VERSION_25_11_4210) ||                                    \
     defined(TAJO_SDK_VERSION_26_2_4210) ||                                     \
-    defined(TAJO_SDK_VERSION_26_2_5210) ||                                     \
-    defined(TAJO_SDK_VERSION_26_5_5211) || defined(TAJO_SDK_VERSION_26_5_5210)
+    defined(TAJO_SDK_VERSION_26_5_4210) ||                                     \
+    defined(TAJO_SDK_VERSION_26_5_5210) || defined(TAJO_SDK_VERSION_26_7_5211)
 #define TAJO_SDK_EBRO
 #endif
 
-#if defined(TAJO_SDK_VERSION_26_5_5211) || defined(TAJO_SDK_VERSION_26_5_5210)
+#if defined(TAJO_SDK_VERSION_26_5_4210) || \
+    defined(TAJO_SDK_VERSION_26_5_5210) || defined(TAJO_SDK_VERSION_26_7_5211)
 #define TAJO_SDK_GTE_26_5
 #endif
 
-#if defined(TAJO_SDK_VERSION_26_2_4210) || \
-    defined(TAJO_SDK_VERSION_26_2_5210) || defined(TAJO_SDK_GTE_26_5)
+#if defined(TAJO_SDK_VERSION_26_2_4210) || defined(TAJO_SDK_GTE_26_5)
 #define TAJO_SDK_GTE_26_2
 #endif
 
@@ -236,17 +278,28 @@
 #define TAJO_SAI_SDK
 #endif
 
+#if defined(TAJO_SDK_VERSION_26_7_5211)
+#define TAJO_SDK_P200
+#endif
+
 /*
  *  High-level Chenab (NVIDIA) flags:
  *   - CHENAB_SAI_SDK: Flags for all Chenab SDK (set in tp2 BUCK)
  *   - CHENAB_SAI_SDK_GTE_2511_36: Flags for SDK >= 2511.36
  *   - CHENAB_SAI_SDK_GTE_2605_37: Flags for SDK >= 2605.37
+ *   - CHENAB_SAI_SDK_GTE_2605_38: Flags for SDK >= 2605.38
  */
-#if defined(CHENAB_SAI_SDK_VERSION_2605_37_0_20)
+#if defined(CHENAB_SAI_SDK_VERSION_2605_38_251_4)
+#define CHENAB_SAI_SDK_GTE_2605_38
+#endif
+
+#if defined(CHENAB_SAI_SDK_VERSION_2605_37_0_20) || \
+    defined(CHENAB_SAI_SDK_GTE_2605_38)
 #define CHENAB_SAI_SDK_GTE_2605_37
 #endif
 
-#if defined(CHENAB_SAI_SDK_VERSION_2511_36_0_20) || \
+#if defined(CHENAB_SAI_SDK_VERSION_2511_36_0_20) ||   \
+    defined(CHENAB_SAI_SDK_VERSION_2511_36_251_10) || \
     defined(CHENAB_SAI_SDK_GTE_2605_37)
 #define CHENAB_SAI_SDK_GTE_2511_36
 #endif

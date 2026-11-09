@@ -6,12 +6,6 @@
 
 namespace facebook::fboss::utility {
 
-void HwTestThriftHandler::updateFlowletStats() {
-  auto bcmSwitch = static_cast<const BcmSwitch*>(hwSwitch_);
-  bcmSwitch->getHwFlowletStats();
-  return;
-}
-
 cfg::SwitchingMode HwTestThriftHandler::getFwdSwitchingMode(
     std::unique_ptr<state::RouteNextHopEntry> routeNextHopEntry) {
   auto bcmSwitch = static_cast<BcmSwitch*>(hwSwitch_);

@@ -160,7 +160,12 @@ TEST_F(RibSerializationTest, fullRibSerDeser) {
     FLAGS_resolve_nexthops_from_id = savedResolve;
   };
   auto deserializedRib = RoutingInformationBase::fromThrift(
-      rib.toThrift(), nullptr, nullptr, nullptr);
+      rib.toThrift(),
+      nullptr,
+      nullptr,
+      nullptr,
+      getEcmpWidth(curState),
+      nullptr);
 
   EXPECT_TRUE(ribEqual(rib, *deserializedRib));
 }
@@ -170,7 +175,9 @@ TEST_F(RibSerializationTest, serializeOnlyUnresolvedRoutes) {
       rib.warmBootState(),
       curState->getFibsInfoMap(),
       curState->getLabelForwardingInformationBase(),
-      curState->getMySids());
+      curState->getMySids(),
+      getEcmpWidth(curState),
+      curState->getClassBasedPolicies());
   // Use ribThriftEqual to compare excluding resolvedNextHopSetID
   EXPECT_TRUE(ribThriftEqual(rib, *deserializedRibThrift));
 }
@@ -187,10 +194,17 @@ TEST_F(RibSerializationTest, deserializeOnlyUnresolvedRoutes) {
       rib.warmBootState(),
       std::make_shared<MultiSwitchFibInfoMap>(),
       std::make_shared<MultiLabelForwardingInformationBase>(),
+      nullptr,
+      getEcmpWidth(curState),
       nullptr);
 
   auto deserializedRibNoFibThrift = RoutingInformationBase::fromThrift(
-      rib.warmBootState(), nullptr, nullptr, nullptr);
+      rib.warmBootState(),
+      nullptr,
+      nullptr,
+      nullptr,
+      getEcmpWidth(curState),
+      nullptr);
 
   EXPECT_FALSE(ribEqual(rib, *deserializedRibEmptyFibThrift));
 
@@ -208,7 +222,9 @@ TEST_F(RibSerializationTest, deserializeOnlyUnresolvedRoutes) {
       rib.warmBootState(),
       curState->getFibsInfoMap(),
       curState->getLabelForwardingInformationBase(),
-      curState->getMySids());
+      curState->getMySids(),
+      getEcmpWidth(curState),
+      curState->getClassBasedPolicies());
   EXPECT_TRUE(ribEqual(rib, *deserializedRibWithFibThrift));
   EXPECT_EQ(
       8, deserializedRibWithFibThrift->getRouteTableDetails(kRid0).size());
@@ -243,7 +259,12 @@ TEST_F(RibSerializationTest, fromThriftWipesClientIdsWhenFlagOff) {
 
   FLAGS_enable_nexthop_id_manager = false;
   auto deserialized = RoutingInformationBase::fromThrift(
-      warmBootThrift, nullptr, nullptr, nullptr);
+      warmBootThrift,
+      nullptr,
+      nullptr,
+      nullptr,
+      getEcmpWidth(curState),
+      nullptr);
 
   auto reThrift = deserialized->toThrift();
   size_t verified = 0;

@@ -6891,7 +6891,8 @@
             ]
           }
         ],
-        "stage": 0
+        "stage": 0,
+        "bindPoint": 0
       },
       {
         "name": "post-lookup-ingress-ACL-Table-Group",
@@ -6943,7 +6944,8 @@
             ]
           }
         ],
-        "stage": 3
+        "stage": 3,
+        "bindPoint": 0
       }
     ],
     "mirrorOnDropReports": [

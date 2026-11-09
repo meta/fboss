@@ -467,9 +467,35 @@ QSFP 113: done setting module loopback mode opticalLoopback
 
 
 
-## 2.9 wedge_qsfp_util "interface_name" --clear_loopback
+## 2.9 wedge_qsfp_util "interface_name" --host_output_loopback
 
-This command clears all the loopback mode settings
+This command enables the CMIS Host Side Output loopback (page 13h byte 182). Signal received from the fiber is turned back at the host side of the module and sent back out to the fiber. CMIS modules only.
+
+
+```
+# wedge_qsfp_util eth9/1/1 --host_output_loopback
+QSFP port eth9/1/1 loopback mode setting done
+QSFP 113: done setting module loopback mode hostOutputLoopback
+```
+
+
+
+## 2.10 wedge_qsfp_util "interface_name" --media_output_loopback
+
+This command enables the CMIS Media Side Output loopback (page 13h byte 180). Signal from the host is turned back at the media side of the module and sent back to the host. CMIS modules only.
+
+
+```
+# wedge_qsfp_util eth9/1/1 --media_output_loopback
+QSFP port eth9/1/1 loopback mode setting done
+QSFP 113: done setting module loopback mode mediaOutputLoopback
+```
+
+
+
+## 2.11 wedge_qsfp_util "interface_name" --clear_loopback
+
+This command clears all the loopback mode settings, including all four CMIS loopbacks
 
 
 ```

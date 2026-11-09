@@ -10,7 +10,9 @@
 
 #pragma once
 
+#include <string_view>
 #include "configerator/structs/neteng/fboss/bgp/if/gen-cpp2/bgp_attr_types.h"
+
 #include "fboss/cli/fboss2/CmdHandler.h"
 #include "fboss/cli/fboss2/commands/show/bgp/CmdShowUtils.h"
 #include "fboss/cli/fboss2/commands/show/bgp/neighbors/CmdShowBgpNeighbors.h"
@@ -24,13 +26,18 @@ namespace facebook::fboss {
 using neteng::fboss::bgp::thrift::TBgpPath;
 using neteng::fboss::bgp_attr::TIpPrefix;
 
-struct BgpNeighborsReceivedPrePolicyTraits : public ReadCommandTraits,
-                                             public CliDocsExempt {
+struct BgpNeighborsReceivedPrePolicyTraits : public ReadCommandTraits {
   using ParentCmd = CmdShowBgpNeighbors;
   static constexpr utils::ObjectArgTypeId ObjectArgTypeId =
       utils::ObjectArgTypeId::OBJECT_ARG_TYPE_ID_IP_LIST;
   using ObjectArgType = std::vector<std::string>;
   using RetType = NetworkPathWithHost;
+
+  // Human-authored guide prose for the CLI reference wiki. Superset of the
+  // one-line help string registered in the command tree.
+  static std::string_view description() {
+    return "Displays the routes a peer sent this switch exactly as they arrived, before the ingress policy runs. Each entry shows the prefix, next hop, originator or router ID and cluster list, communities, AS path, local preference, origin, MED and when the path was last modified. This is the on-the-wire view: compare it against 'show bgp neighbors <peer> received post-policy' to see what the ingress policy accepted and how it rewrote the attributes - a local preference that differs between the two views was set by policy, not by the peer. The peer address is required.";
+  }
 };
 
 class BgpNeighborsReceivedPrePolicy : public CmdHandler<
@@ -81,6 +88,13 @@ class BgpNeighborsReceivedPrePolicy : public CmdHandler<
     result.oobName() = hostInfo.getOobName();
     result.ip() = hostInfo.getIpStr();
     return result;
+  }
+
+  // Canned, synthetic model (no real switch data) used to render a
+  // deterministic example for the CLI reference wiki. Shares one builder with
+  // the other five advertised/received views so they document the same routes.
+  static RetType sampleModel() {
+    return sampleNetworkPaths(SampleRouteDirection::Received, "");
   }
 
   void printOutput(

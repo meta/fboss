@@ -10,6 +10,7 @@
 
 import http.server
 import json
+import os
 import shutil
 import socketserver
 import tempfile
@@ -17,9 +18,12 @@ import threading
 import time
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from distro_cli.lib.artifact import ArtifactStore
+from distro_cli.lib.constants import MANIFOLD_CLI_VAR
 from distro_cli.lib.download import download_artifact, HTTP_METADATA_FILENAME
+from distro_cli.lib.exceptions import ArtifactError
 from distro_cli.tests.test_helpers import enter_tempdir, override_artifact_store_dir
 
 
@@ -289,6 +293,67 @@ class TestDownloadHTTP(unittest.TestCase):
         self.assertTrue(cache_hit2)
         self.assertEqual(data_files2, data_files1)
         self.assertEqual(meta_files2, meta_files1)
+
+
+class ManifoldDownloadTest(unittest.TestCase):
+    """Test the manifold: scheme in download_artifact."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self._tempdir_ctx = enter_tempdir("manifold_download_test_")
+        self.temp_dir = self._tempdir_ctx.__enter__()
+
+        self._artifact_store_ctx = override_artifact_store_dir(
+            self.temp_dir / ".artifacts"
+        )
+        self._artifact_store_ctx.__enter__()
+
+    def tearDown(self):
+        """Clean up test directory."""
+        self._artifact_store_ctx.__exit__(None, None, None)
+        self._tempdir_ctx.__exit__(None, None, None)
+
+    def test_fetches_blob_via_cli(self):
+        """A manifold: URL shells out to the CLI and returns the fetched file."""
+        fake_cli = self.temp_dir / "fake_manifold"
+        fake_cli.write_text(
+            "#!/bin/bash\nprintf 'payload' > \"$3\"\n", encoding="utf-8"
+        )
+        fake_cli.chmod(0o755)
+
+        with mock.patch.dict(os.environ, {MANIFOLD_CLI_VAR: str(fake_cli)}):
+            cache_hit, data_files, meta_files = download_artifact(
+                "manifold:bucket/tree/led/fboss_bins.tar.zst"
+            )
+
+        self.assertFalse(cache_hit)
+        self.assertEqual(len(data_files), 1)
+        self.assertEqual(data_files[0].name, "fboss_bins.tar.zst")
+        self.assertEqual(data_files[0].read_text(), "payload")
+        # Manifold exposes no ETag/mtime, so nothing is cached between runs.
+        self.assertEqual(meta_files, [])
+
+    def test_raises_when_cli_missing(self):
+        """A missing CLI names the override variable rather than failing opaquely."""
+        with mock.patch.dict(os.environ, {MANIFOLD_CLI_VAR: "/nonexistent/manifold"}):
+            with self.assertRaises(ArtifactError) as ctx:
+                download_artifact("manifold:bucket/tree/led/fboss_bins.tar.zst")
+
+        self.assertIn(MANIFOLD_CLI_VAR, str(ctx.exception))
+
+    def test_raises_when_fetch_fails(self):
+        """A non-zero CLI exit surfaces the CLI's stderr."""
+        fake_cli = self.temp_dir / "failing_manifold"
+        fake_cli.write_text(
+            "#!/bin/bash\necho 'Path not found' >&2\nexit 1\n", encoding="utf-8"
+        )
+        fake_cli.chmod(0o755)
+
+        with mock.patch.dict(os.environ, {MANIFOLD_CLI_VAR: str(fake_cli)}):
+            with self.assertRaises(ArtifactError) as ctx:
+                download_artifact("manifold:bucket/tree/nope.tar")
+
+        self.assertIn("Path not found", str(ctx.exception))
 
 
 if __name__ == "__main__":

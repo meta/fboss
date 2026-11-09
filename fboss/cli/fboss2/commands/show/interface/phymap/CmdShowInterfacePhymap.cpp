@@ -31,9 +31,13 @@ CmdShowInterfacePhymapTraits::RetType CmdShowInterfacePhymap::queryClient(
   auto client =
       utils::createClient<apache::thrift::Client<QsfpService>>(hostInfo);
 
-  facebook::fboss::mka::MacsecPortPhyMap portsPhyMap;
+  std::vector<int32_t> macsecCapablePorts;
+  client->sync_getMacsecCapablePorts(macsecCapablePorts);
 
-  client->sync_macsecGetPhyPortInfo(portsPhyMap, queriedIfs);
+  facebook::fboss::mka::MacsecPortPhyMap portsPhyMap;
+  if (!macsecCapablePorts.empty()) {
+    client->sync_macsecGetPhyPortInfo(portsPhyMap, queriedIfs);
+  }
 
   return createModel(portsPhyMap);
 }
@@ -66,7 +70,8 @@ void CmdShowInterfacePhymap::printOutput(
   };
 
   auto& portsPhyMap = model.portsPhyMap().value();
-  if (!portsPhyMap.macsecPortPhyMap().has_value()) {
+  if (!apache::thrift::is_non_optional_field_set_manually_or_by_serializer(
+          portsPhyMap.macsecPortPhyMap())) {
     out << "No Phy port map for this platform" << std::endl;
     return;
   }

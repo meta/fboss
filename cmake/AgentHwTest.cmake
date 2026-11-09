@@ -293,6 +293,8 @@ target_link_libraries(prod_config_factory
   load_balancer_utils
   load_balancer_test_utils
   hw_pfc_utils
+  pfc_test_utils
+  udf_test_utils
   ${GTEST}
   ${LIBGMOCK_LIBRARIES}
 )

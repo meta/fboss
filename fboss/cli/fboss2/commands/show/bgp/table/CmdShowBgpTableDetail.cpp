@@ -36,4 +36,8 @@ CmdShowBgpTableDetail::RetType CmdShowBgpTableDetail::queryClient(
   return result;
 }
 
+std::string_view CmdShowBgpTableDetailTraits::description() {
+  return "Same loc-RIB listing as 'show bgp table', with extra indented lines under each path. Two are always present: the originator (or router) ID with the cluster list, and the full community set - resolved to their configured mnemonic names where the switch knows them. Two more are conditional: an extended-community line for a path that carries any, and, for a path that lost best-path selection, the tie-break step that rejected it. Use it when you need to know why a particular path was not chosen, or which communities a peer attached to a prefix; use the plain 'show bgp table' when you only need the one-line-per-path view.";
+}
+
 } // namespace facebook::fboss

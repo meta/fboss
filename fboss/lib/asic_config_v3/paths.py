@@ -34,10 +34,6 @@ class AsicConfigPaths:
     def platforms_dir(self) -> str:
         return os.path.join(self.configs_dir, "platforms")
 
-    @property
-    def platform_mapping_dir(self) -> str:
-        return os.path.join(self.fboss_root, "lib", "platform_mapping_v2", "platforms")
-
 
 def discover_platforms(
     paths: AsicConfigPaths,

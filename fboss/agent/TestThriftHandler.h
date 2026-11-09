@@ -23,7 +23,8 @@ class TestThriftHandler : public ThriftHandler,
   ~TestThriftHandler() override = default;
 
   void gracefullyRestartService(
-      std::unique_ptr<std::string> serviceName) override;
+      std::unique_ptr<std::string> serviceName,
+      int32_t delayInSeconds) override;
   void ungracefullyRestartService(
       std::unique_ptr<std::string> serviceName) override;
   void gracefullyRestartServiceWithDelay(

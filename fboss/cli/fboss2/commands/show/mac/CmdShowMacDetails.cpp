@@ -43,14 +43,14 @@ void CmdShowMacDetails::printOutput(const RetType& model, std::ostream& out) {
   out << fmt::format(
       fmtString, "MAC Address", "Port/Trunk", "VLAN", "TYPE", "CLASSID");
 
-  for (const auto& entry : model.get_l2Entries()) {
+  for (const auto& entry : model.l2Entries().value()) {
     out << fmt::format(
         fmtString,
-        entry.get_mac(),
-        entry.get_ifName(),
-        entry.get_vlanID(),
-        entry.get_l2EntryType(),
-        entry.get_classID());
+        entry.mac().value(),
+        entry.ifName().value(),
+        folly::copy(entry.vlanID().value()),
+        entry.l2EntryType().value(),
+        entry.classID().value());
   }
   out << std::endl;
 }
@@ -64,28 +64,30 @@ RetType CmdShowMacDetails::createModel(
   for (const auto& entry : l2Entries) {
     cli::L2Entry l2Details;
 
-    l2Details.mac() = entry.get_mac();
-    l2Details.port() = entry.get_port();
-    l2Details.vlanID() = entry.get_vlanID();
-    l2Details.l2EntryType() = utils::getl2EntryTypeStr(entry.get_l2EntryType());
-    auto trunkPtr = entry.get_trunk();
+    l2Details.mac() = entry.mac().value();
+    l2Details.port() = folly::copy(entry.port().value());
+    l2Details.vlanID() = folly::copy(entry.vlanID().value());
+    l2Details.l2EntryType() =
+        utils::getl2EntryTypeStr(entry.l2EntryType().value());
+    auto trunkPtr = apache::thrift::get_pointer(entry.trunk());
     if (trunkPtr != nullptr) {
       l2Details.trunk() = *trunkPtr;
       std::vector<facebook::fboss::AggregatePortThrift> aggPortEntries;
       for (const auto& agg_port : aggregatePortEntries) {
-        if (agg_port.get_key() == *trunkPtr) {
+        if (agg_port.key().value() == *trunkPtr) {
           aggPortEntries.push_back(agg_port);
         }
       }
       if (aggPortEntries.size() == 1) {
-        l2Details.ifName() = aggPortEntries[0].get_name();
+        l2Details.ifName() = aggPortEntries[0].name().value();
       } else {
         l2Details.ifName() = std::to_string(*trunkPtr) + " (Trunk)";
       }
     } else {
-      l2Details.ifName() = portEntries[entry.get_port()].get_name();
+      l2Details.ifName() =
+          portEntries[folly::copy(entry.port().value())].name().value();
     }
-    auto classIdPtr = entry.get_classID();
+    auto classIdPtr = apache::thrift::get_pointer(entry.classID());
     l2Details.classID() =
         (classIdPtr != nullptr) ? std::to_string(*classIdPtr) : "-";
 

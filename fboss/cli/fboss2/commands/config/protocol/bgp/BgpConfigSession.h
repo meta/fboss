@@ -11,6 +11,7 @@
 #pragma once
 
 #include <folly/json/dynamic.h>
+#include <cstdint>
 #include <optional>
 #include <string>
 
@@ -42,7 +43,6 @@ namespace facebook::fboss {
  *   - local_as_4_byte: i64 - Local AS number (RFC 6793)
  *   - hold_time: i32 - Hold time in seconds (default 30)
  *   - local_confed_as_4_byte: i64 - Confederation AS number
- *   - cluster_id: string - Route reflector cluster ID
  *   - peers: list<BgpPeer> - List of BGP peers
  *   - peer_groups: list<PeerGroup> - List of peer groups
  *
@@ -102,10 +102,6 @@ class BgpConfigSession {
   // local_confed_as_4_byte: i64 - Confederation ASN
   void setConfedAsn(uint64_t asn);
   std::optional<uint64_t> getConfedAsn() const;
-
-  // cluster_id: string - Route reflector cluster ID
-  void setClusterId(const std::string& clusterId);
-  std::optional<std::string> getClusterId() const;
 
   // listen_addr: string - Listen address for BGP sessions
   void setListenAddress(const std::string& listenAddr);
@@ -181,125 +177,6 @@ class BgpConfigSession {
   // ucmp_width: i32
   void setUcmpWidth(int32_t width);
   std::optional<int32_t> getUcmpWidth() const;
-
-  // ==================== Peer Configuration (Level: P) ====================
-  // These map to BgpPeer thrift struct fields
-
-  // Create/get peer by peer_addr
-  void createPeer(const std::string& peerAddr);
-
-  // remote_as_4_byte: i64 - Peer's ASN
-  void setPeerRemoteAsn(const std::string& peerAddr, uint64_t remoteAsn);
-
-  // local_as: i64 - Local ASN override for this peer
-  void setPeerLocalAsn(const std::string& peerAddr, uint64_t localAsn);
-
-  // description: string - Peer description
-  void setPeerDescription(
-      const std::string& peerAddr,
-      const std::string& description);
-
-  // local_addr: string - Local address to connect/listen on
-  void setPeerLocalAddr(
-      const std::string& peerAddr,
-      const std::string& localAddr);
-
-  // next_hop4: string - IPv4 next-hop for outgoing updates
-  void setPeerNextHop4(
-      const std::string& peerAddr,
-      const std::string& nextHop4);
-
-  // next_hop6: string - IPv6 next-hop for outgoing updates
-  void setPeerNextHop6(
-      const std::string& peerAddr,
-      const std::string& nextHop6);
-
-  // peer_group_name: string - Reference to peer group
-  void setPeerGroupName(
-      const std::string& peerAddr,
-      const std::string& peerGroupName);
-
-  // is_passive: bool - Listen for incoming connections
-  void setPeerPassive(const std::string& peerAddr, bool isPassive);
-
-  // is_rr_client: bool - Route reflector client
-  void setPeerRrClient(const std::string& peerAddr, bool isRrClient);
-
-  // next_hop_self: bool - Set next-hop to self
-  void setPeerNextHopSelf(const std::string& peerAddr, bool nextHopSelf);
-
-  // is_confed_peer: bool - Confederation peer
-  void setPeerConfedPeer(const std::string& peerAddr, bool isConfedPeer);
-
-  // peer_port: i32 - Remote peer port
-  void setPeerPort(const std::string& peerAddr, int32_t port);
-
-  // local_port: i32 - Local source port
-  void setPeerLocalPort(const std::string& peerAddr, int32_t port);
-
-  // connect_mode: string - PASSIVE_ACTIVE, PASSIVE_ONLY, ACTIVE_ONLY
-  void setPeerConnectMode(
-      const std::string& peerAddr,
-      const std::string& connectMode);
-
-  // Peer timers
-  void setPeerHoldTime(const std::string& peerAddr, int32_t holdTime);
-  void setPeerKeepalive(const std::string& peerAddr, int32_t keepalive);
-  void setPeerOutDelay(const std::string& peerAddr, int32_t outDelay);
-
-  // Peer graceful restart
-  void setPeerGracefulRestartTime(const std::string& peerAddr, int32_t seconds);
-  void setPeerStatefulHa(const std::string& peerAddr, bool enable);
-
-  // Peer AFI/SAFI
-  void setPeerDisableIpv4Afi(const std::string& peerAddr, bool disable);
-  void setPeerDisableIpv6Afi(const std::string& peerAddr, bool disable);
-  void setPeerIpv4LabeledUnicast(const std::string& peerAddr, bool enable);
-  void setPeerIpv6LabeledUnicast(const std::string& peerAddr, bool enable);
-  void setPeerIpv4OverIpv6Nh(const std::string& peerAddr, bool enable);
-
-  // Peer add-path
-  void setPeerAddPathSend(const std::string& peerAddr, bool enable);
-  void setPeerAddPathReceive(const std::string& peerAddr, bool enable);
-
-  // Peer AS-path settings
-  void setPeerRemovePrivateAs(const std::string& peerAddr, bool remove);
-  void setPeerEnforceFirstAs(const std::string& peerAddr, bool enforce);
-
-  // Peer policies
-  void setPeerIngressPolicy(
-      const std::string& peerAddr,
-      const std::string& policy);
-  void setPeerEgressPolicy(
-      const std::string& peerAddr,
-      const std::string& policy);
-
-  // Peer route limits
-  void setPeerPreFilterMaxRoutes(
-      const std::string& peerAddr,
-      int64_t maxRoutes);
-  void setPeerPostFilterMaxRoutes(
-      const std::string& peerAddr,
-      int64_t maxRoutes);
-
-  // Peer link bandwidth
-  void setPeerAdvertiseLbw(const std::string& peerAddr, bool advertise);
-  void setPeerReceiveLbw(const std::string& peerAddr, bool receive);
-  void setPeerLbwValue(const std::string& peerAddr, int64_t bps);
-
-  // Peer identification (for RSW config compatibility)
-  void setPeerPeerId(const std::string& peerAddr, const std::string& peerId);
-  void setPeerType(const std::string& peerAddr, const std::string& type);
-  void setPeerPeerTag(const std::string& peerAddr, const std::string& peerTag);
-
-  // Peer pre_filter warning settings
-  void setPeerPreFilterWarningLimit(const std::string& peerAddr, int64_t limit);
-  void setPeerPreFilterWarningOnly(
-      const std::string& peerAddr,
-      bool warningOnly);
-
-  // Peer timer: withdraw_unprog_delay_seconds
-  void setPeerWithdrawUnprogDelay(const std::string& peerAddr, int32_t seconds);
 
   // ==================== Peer Group Configuration (Level: PG)
   // ==================== These map to PeerGroup thrift struct fields
@@ -468,23 +345,16 @@ class BgpConfigSession {
   void loadConfig();
   void ensureConfigLoaded();
 
-  // Helper to find or create a peer in the peers list
-  folly::dynamic& findOrCreatePeer(const std::string& peerAddr);
-
   // Helper to find or create a peer group in the peer_groups list
   folly::dynamic& findOrCreatePeerGroup(const std::string& groupName);
 
-  // Helper to ensure peer timers exist
-  folly::dynamic& ensurePeerTimers(const std::string& peerAddr);
+  // Helper to ensure peer group timers exist
   folly::dynamic& ensurePeerGroupTimers(const std::string& groupName);
 
   // Helper to ensure add_path config exists
-  folly::dynamic& ensurePeerAddPath(const std::string& peerAddr);
   folly::dynamic& ensurePeerGroupAddPath(const std::string& groupName);
 
   // Helper to ensure pre_filter/post_filter config exists
-  folly::dynamic& ensurePeerPreFilter(const std::string& peerAddr);
-  folly::dynamic& ensurePeerPostFilter(const std::string& peerAddr);
   folly::dynamic& ensurePeerGroupPreFilter(const std::string& groupName);
   folly::dynamic& ensurePeerGroupPostFilter(const std::string& groupName);
 };

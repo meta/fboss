@@ -38,6 +38,8 @@ thrift_library(
         "//fboss/agent:switch_reachability",
         "//fboss/agent:switch_state",
         "//fboss/fsdb/if:fsdb_common",
+        "//fboss/fsdb/if/te_srv6_agent:stats",
+        "//fboss/lib/phy:phy",
         "//fboss/platform/sensor_service:sensor_service_stats",
         "//fboss/qsfp_service/if:state",
         "//fboss/qsfp_service/if:stats",
@@ -51,6 +53,7 @@ cpp_library(
     name = "fsdb_model_thriftpath",
     headers = ["fsdb_model_thriftpath.h"],
     exported_deps = [
+        "fbsource//xplat/folly:unit",
         ":fsdb_model-cpp2-types",
         "//configerator/structs/neteng/bgp_policy/thrift:rib_policy-cpp2-types",
         "//fboss/agent:agent_config-cpp2-types",
@@ -59,11 +62,12 @@ cpp_library(
         "//fboss/agent:switch_reachability-cpp2-types",
         "//fboss/agent:switch_state-cpp2-types",
         "//fboss/fsdb/if:fsdb_common-cpp2-types",
+        "//fboss/fsdb/if/te_srv6_agent:stats-cpp2-types",
+        "//fboss/lib/phy:phy-cpp2-types",
         "//fboss/platform/sensor_service:sensor_service_stats-cpp2-types",
         "//fboss/qsfp_service/if:state-cpp2-types",
         "//fboss/qsfp_service/if:stats-cpp2-types",
         "//fboss/thriftpath_plugin:path",
-        "//folly:unit",
         "//neteng/fboss/bgp/if:bgp_route_types-cpp2-types",
         "//neteng/fboss/bgp/public_tld/configerator/structs/neteng/fboss/bgp:bgp_config_oss-cpp2-types",
     ],
@@ -102,11 +106,10 @@ custom_unittest(
     ],
 )
 
-# Land-blocking diff signal: runs verify_oss_thriftpath whenever any thrift file
-# in the fsdb_model dependency closure changes. Uses explicit ci_srcs glob
-# patterns since ci_deps with thrift_library targets does not resolve transitive
-# thrift includes to source files for Citadel triggering.
-# Modeled after neteng/fboss/bgp/tools/oss:verify_oss_thrift_signal.
+# Runs verify_oss_thriftpath whenever any thrift file in the fsdb_model
+# dependency closure changes. Uses explicit ci_srcs glob patterns since ci_deps
+# with thrift_library targets does not resolve transitive thrift includes to
+# source files for Citadel triggering.
 # @ci-signal-ack
 ci_sandcastle(
     name = "verify_oss_thriftpath_signal",
@@ -121,7 +124,9 @@ ci_sandcastle(
         ],
     },
     capabilities = {
-        "tenant": "default-tenant",
+        # default-tenant has no guaranteed quota, and CI force-downgrades
+        # unfunded diff-time workflows to non-land-blocking.
+        "tenant": "fboss-oss",
         "type": "fbcode",
         "vcs": "full-fbsource",
     },
@@ -129,12 +134,15 @@ ci_sandcastle(
         # The FSDB model thrift, header, and sync script
         "fbcode/fboss/fsdb/if/oss/**",
         "fbcode/fboss/fsdb/if/fsdb_common.thrift",
+        "fbcode/fboss/fsdb/if/te_srv6_agent/**",
         # Agent thrift files included by fsdb_model.thrift
         "fbcode/fboss/agent/if/agent_config.thrift",
         "fbcode/fboss/agent/if/agent_info.thrift",
         "fbcode/fboss/agent/if/agent_stats.thrift",
         "fbcode/fboss/agent/if/switch_state.thrift",
         "fbcode/fboss/agent/if/switch_reachability.thrift",
+        # PHY thrift, included for iPhyStates
+        "fbcode/fboss/lib/phy/phy.thrift",
         # QSFP thrift files
         "fbcode/fboss/qsfp_service/if/qsfp_state.thrift",
         "fbcode/fboss/qsfp_service/if/qsfp_stats.thrift",
@@ -150,5 +158,6 @@ ci_sandcastle(
     oncall = "fboss_agent_push",
     schedules = [
         ci.diff,
+        ci.land,
     ],
 )

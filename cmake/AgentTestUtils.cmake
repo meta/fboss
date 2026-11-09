@@ -16,6 +16,7 @@ add_library(acl_test_utils
 )
 
 target_link_libraries(acl_test_utils
+  fboss_agent_config_utils
   fboss_error
   hw_switch
   switch_config_cpp2
@@ -30,6 +31,7 @@ add_library(copp_test_utils
 target_link_libraries(copp_test_utils
   asic_test_utils
   Folly::folly
+  fboss_agent_config_utils
   hw_switch
   load_balancer_test_utils
   packet
@@ -46,6 +48,7 @@ target_link_libraries(copp_test_utils
 add_library(pkt_test_utils
   fboss/agent/test/utils/PacketSendUtils.cpp
   fboss/agent/test/utils/PacketTestUtils.cpp
+  fboss/agent/test/utils/oss/ChenabPacketTestUtils.cpp
 )
 
 target_link_libraries(pkt_test_utils
@@ -154,11 +157,11 @@ add_library(config_utils
 )
 
 target_link_libraries(config_utils
-  agent_config_utils
   agent_features
   asic_test_utils
   voq_test_utils
   fboss_types
+  fboss_agent_config_utils
   Folly::folly
   platform_mapping
   switch_config_cpp2
@@ -459,6 +462,7 @@ target_link_libraries(queue_test_utils
   agent_features
   switch_asics
   switch_config_cpp2
+  fboss_agent_config_utils
 )
 
 add_library(mirror_test_utils

@@ -35,7 +35,11 @@ T deserializeStruct(PatchNode&& node) {
 StructPatch patchRoot(const TestStruct& s1, const TestStruct& s2) {
   auto nodeA = std::make_shared<ThriftStructNode<TestStruct>>(s1);
   auto nodeB = std::make_shared<ThriftStructNode<TestStruct>>(s2);
-  return PatchBuilder::build(nodeA, nodeB, {}).patch()->get_struct_node();
+  return PatchBuilder::build(nodeA, nodeB, {})
+      .patch()
+      ->struct_node()
+      .as_const()
+      .value();
 }
 
 } // namespace
@@ -71,7 +75,9 @@ TEST(PatchBuilderTests, NestedStructVals) {
 
   auto inlineStruct = patch.children()
                           ->at(fieldId<TestStruct, k::inlineStruct>())
-                          .get_struct_node();
+                          .struct_node()
+                          .as_const()
+                          .value();
 
   EXPECT_EQ(inlineStruct.children()->size(), 2);
   auto value = deserializeInt(
@@ -132,7 +138,9 @@ TEST(PatchBuilderTests, ModifyVariant) {
 
   auto inlineVariant = patch.children()
                            ->at(fieldId<TestStruct, k::inlineVariant>())
-                           .get_variant_node();
+                           .variant_node()
+                           .as_const()
+                           .value();
 
   EXPECT_EQ(*inlineVariant.id(), (fieldId<TestUnion, k::inlineInt>()));
   auto val = deserializeInt(std::move(*inlineVariant.child()));
@@ -155,11 +163,13 @@ TEST(PatchBuilderTests, ModifyVariantType) {
 
   auto inlineVariant = patch.children()
                            ->at(fieldId<TestStruct, k::inlineVariant>())
-                           .get_variant_node();
+                           .variant_node()
+                           .as_const()
+                           .value();
   EXPECT_EQ(*inlineVariant.id(), (fieldId<TestUnion, k::inlineStruct>()));
   auto pr =
       deserializeStruct<cfg::L4PortRange>(std::move(*inlineVariant.child()));
-  EXPECT_EQ(pr, structB.inlineVariant()->get_inlineStruct());
+  EXPECT_EQ(pr, structB.inlineVariant()->inlineStruct().as_const().value());
 
   // reverse
   patch = patchRoot(structB, structA);
@@ -167,7 +177,9 @@ TEST(PatchBuilderTests, ModifyVariantType) {
 
   inlineVariant = patch.children()
                       ->at(fieldId<TestStruct, k::inlineVariant>())
-                      .get_variant_node();
+                      .variant_node()
+                      .as_const()
+                      .value();
   EXPECT_EQ(*inlineVariant.id(), (fieldId<TestUnion, k::inlineInt>()));
   auto val = deserializeInt(std::move(*inlineVariant.child()));
   EXPECT_EQ(val, 123);
@@ -188,10 +200,12 @@ TEST(PatchBuilderTests, ModifyVariantStructVal) {
 
   auto inlineVariant = patch.children()
                            ->at(fieldId<TestStruct, k::inlineVariant>())
-                           .get_variant_node();
+                           .variant_node()
+                           .as_const()
+                           .value();
 
   EXPECT_EQ(*inlineVariant.id(), (fieldId<TestUnion, k::inlineStruct>()));
-  auto inlineStruct = inlineVariant.child()->get_struct_node();
+  auto inlineStruct = inlineVariant.child()->struct_node().as_const().value();
   EXPECT_EQ(inlineStruct.children()->size(), 1);
   auto valuePatch =
       inlineStruct.children()->at(fieldId<cfg::L4PortRange, k::min>());
@@ -211,7 +225,9 @@ TEST(PatchBuilderTests, ListOfPrimitives) {
 
   auto listOfPrimitives = patch.children()
                               ->at(fieldId<TestStruct, k::listOfPrimitives>())
-                              .get_list_node();
+                              .list_node()
+                              .as_const()
+                              .value();
   ASSERT_EQ(listOfPrimitives.children()->size(), 2);
   // modified
   auto val = deserializeInt(std::move(listOfPrimitives.children()->at(1)));
@@ -226,7 +242,9 @@ TEST(PatchBuilderTests, ListOfPrimitives) {
 
   listOfPrimitives = patch.children()
                          ->at(fieldId<TestStruct, k::listOfPrimitives>())
-                         .get_list_node();
+                         .list_node()
+                         .as_const()
+                         .value();
 
   ASSERT_EQ(listOfPrimitives.children()->size(), 2);
   val = deserializeInt(std::move(listOfPrimitives.children()->at(1)));
@@ -253,10 +271,13 @@ TEST(PatchBuilderTests, ListOfStructs) {
   // listOfPrimitives
   auto listOfStructs = patch.children()
                            ->at(fieldId<TestStruct, k::listOfStructs>())
-                           .get_list_node();
+                           .list_node()
+                           .as_const()
+                           .value();
   ASSERT_EQ(listOfStructs.children()->size(), 2);
 
-  auto structPatch = listOfStructs.children()->at(1).get_struct_node();
+  auto structPatch =
+      listOfStructs.children()->at(1).struct_node().as_const().value();
   // modified
   EXPECT_EQ(structPatch.children()->size(), 1);
   auto modifiedVal = deserializeInt(
@@ -275,10 +296,13 @@ TEST(PatchBuilderTests, ListOfStructs) {
 
   listOfStructs = patch.children()
                       ->at(fieldId<TestStruct, k::listOfStructs>())
-                      .get_list_node();
+                      .list_node()
+                      .as_const()
+                      .value();
 
   ASSERT_EQ(listOfStructs.children()->size(), 2);
-  structPatch = listOfStructs.children()->at(1).get_struct_node();
+  structPatch =
+      listOfStructs.children()->at(1).struct_node().as_const().value();
   EXPECT_EQ(structPatch.children()->size(), 1);
   modifiedVal = deserializeInt(
       std::move(
@@ -301,10 +325,13 @@ TEST(PatchBuilderTests, ListOfLists) {
   auto listOfListOfPrimitives =
       patch.children()
           ->at(fieldId<TestStruct, k::listOfListOfPrimitives>())
-          .get_list_node();
+          .list_node()
+          .as_const()
+          .value();
   ASSERT_EQ(listOfListOfPrimitives.children()->size(), 2);
 
-  auto listPatch = listOfListOfPrimitives.children()->at(1).get_list_node();
+  auto listPatch =
+      listOfListOfPrimitives.children()->at(1).list_node().as_const().value();
   EXPECT_EQ(listPatch.children()->size(), 2);
   // modified
   auto val = deserializeInt(std::move(listPatch.children()->at(0)));
@@ -327,9 +354,12 @@ TEST(PatchBuilderTests, ListOfLists) {
   listOfListOfPrimitives =
       patch.children()
           ->at(fieldId<TestStruct, k::listOfListOfPrimitives>())
-          .get_list_node();
+          .list_node()
+          .as_const()
+          .value();
 
-  listPatch = listOfListOfPrimitives.children()->at(1).get_list_node();
+  listPatch =
+      listOfListOfPrimitives.children()->at(1).list_node().as_const().value();
   EXPECT_EQ(listPatch.children()->size(), 2);
   val = deserializeInt(std::move(listPatch.children()->at(0)));
   EXPECT_EQ(val, 3);
@@ -352,7 +382,9 @@ TEST(PatchBuilderTests, MapOfEnumToI32) {
 
   auto mapOfEnumToI32 = patch.children()
                             ->at(fieldId<TestStruct, k::mapOfEnumToI32>())
-                            .get_map_node();
+                            .map_node()
+                            .as_const()
+                            .value();
   ASSERT_EQ(mapOfEnumToI32.children()->size(), 2);
 
   // modified
@@ -368,7 +400,9 @@ TEST(PatchBuilderTests, MapOfEnumToI32) {
 
   mapOfEnumToI32 = patch.children()
                        ->at(fieldId<TestStruct, k::mapOfEnumToI32>())
-                       .get_map_node();
+                       .map_node()
+                       .as_const()
+                       .value();
 
   ASSERT_EQ(mapOfEnumToI32.children()->size(), 2);
   val = deserializeInt(std::move(mapOfEnumToI32.children()->at("2")));
@@ -394,10 +428,13 @@ TEST(PatchBuilderTests, MapOfI32ToStruct) {
 
   auto mapOfI32ToStruct = patch.children()
                               ->at(fieldId<TestStruct, k::mapOfI32ToStruct>())
-                              .get_map_node();
+                              .map_node()
+                              .as_const()
+                              .value();
   ASSERT_EQ(mapOfI32ToStruct.children()->size(), 2);
 
-  auto structPatch = mapOfI32ToStruct.children()->at("2").get_struct_node();
+  auto structPatch =
+      mapOfI32ToStruct.children()->at("2").struct_node().as_const().value();
   // modified
   EXPECT_EQ(structPatch.children()->size(), 1);
   auto modifiedVal = deserializeInt(
@@ -416,10 +453,13 @@ TEST(PatchBuilderTests, MapOfI32ToStruct) {
 
   mapOfI32ToStruct = patch.children()
                          ->at(fieldId<TestStruct, k::mapOfI32ToStruct>())
-                         .get_map_node();
+                         .map_node()
+                         .as_const()
+                         .value();
 
   ASSERT_EQ(mapOfI32ToStruct.children()->size(), 2);
-  structPatch = mapOfI32ToStruct.children()->at("2").get_struct_node();
+  structPatch =
+      mapOfI32ToStruct.children()->at("2").struct_node().as_const().value();
   EXPECT_EQ(structPatch.children()->size(), 1);
   modifiedVal = deserializeInt(
       std::move(
@@ -439,8 +479,11 @@ TEST(PatchBuilderTests, SetOfI32) {
   auto patch = patchRoot(structA, structB);
   EXPECT_EQ(patch.children()->size(), 1);
 
-  auto setOfI32 =
-      patch.children()->at(fieldId<TestStruct, k::setOfI32>()).get_set_node();
+  auto setOfI32 = patch.children()
+                      ->at(fieldId<TestStruct, k::setOfI32>())
+                      .set_node()
+                      .as_const()
+                      .value();
   ASSERT_EQ(setOfI32.children()->size(), 2);
 
   // deleted
@@ -469,7 +512,7 @@ TEST(PatchBuilderTests, PatchNonStruct) {
 
   EXPECT_EQ(*patch.basePath(), path);
   EXPECT_EQ(patch.patch()->getType(), PatchNode::Type::list_node);
-  auto patchRoot = patch.patch()->get_list_node();
+  auto patchRoot = patch.patch()->list_node().as_const().value();
   EXPECT_EQ(patchRoot.children()->size(), 2);
 }
 } // namespace facebook::fboss::thrift_cow

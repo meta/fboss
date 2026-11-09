@@ -46,8 +46,7 @@ class SaiArsProfileManager {
 #if SAI_API_VERSION >= SAI_VERSION(1, 14, 0)
   void addArsProfile(
       const std::shared_ptr<FlowletSwitchingConfig>& flowletSwitchingConfig);
-  void removeArsProfile(
-      const std::shared_ptr<FlowletSwitchingConfig>& flowletSwitchingConfig);
+  void removeArsProfile();
   void changeArsProfile(
       const std::shared_ptr<FlowletSwitchingConfig>& oldFlowletSwitchingConfig,
       const std::shared_ptr<FlowletSwitchingConfig>& newFlowletSwitchingConfig);

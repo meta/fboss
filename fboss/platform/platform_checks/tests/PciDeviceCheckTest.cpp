@@ -14,7 +14,7 @@
 #include <gtest/gtest.h>
 #include <filesystem>
 
-#include "fboss/platform/helpers/MockPlatformFsUtils.h"
+#include "fboss/platform/platform_checks/tests/MockHost.h"
 
 using namespace ::testing;
 using namespace facebook::fboss::platform;
@@ -24,9 +24,8 @@ namespace {
 
 class MockPciDeviceCheck : public PciDeviceCheck {
  public:
-  explicit MockPciDeviceCheck(
-      std::shared_ptr<MockPlatformFsUtils> platformFsUtils)
-      : PciDeviceCheck(platformFsUtils) {}
+  explicit MockPciDeviceCheck(std::shared_ptr<MockHost> host)
+      : PciDeviceCheck(CheckTarget{.host = std::move(host)}) {}
 
   MOCK_METHOD(
       std::vector<std::filesystem::path>,
@@ -71,11 +70,11 @@ platform_manager::PlatformConfig createTestPlatformConfig(
 class PciDeviceCheckTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    platformFsUtils_ = std::make_shared<MockPlatformFsUtils>();
-    check_ = std::make_unique<MockPciDeviceCheck>(platformFsUtils_);
+    host_ = std::make_shared<MockHost>();
+    check_ = std::make_unique<MockPciDeviceCheck>(host_);
   }
 
-  std::shared_ptr<MockPlatformFsUtils> platformFsUtils_;
+  std::shared_ptr<MockHost> host_;
   std::unique_ptr<MockPciDeviceCheck> check_;
 };
 
@@ -98,51 +97,51 @@ TEST_F(PciDeviceCheckTest, AllDevicesPresent) {
 
   // Mock file reads for first device (matches first config device)
   EXPECT_CALL(
-      *platformFsUtils_,
-      getStringFileContent(
+      *host_,
+      readFile(
           std::filesystem::path("/sys/bus/pci/devices/0000:01:00.0/vendor")))
-      .WillRepeatedly(Return(std::make_optional("0x1234")));
+      .WillRepeatedly(Return(std::make_optional<std::string>("0x1234\n")));
   EXPECT_CALL(
-      *platformFsUtils_,
-      getStringFileContent(
+      *host_,
+      readFile(
           std::filesystem::path("/sys/bus/pci/devices/0000:01:00.0/device")))
-      .WillRepeatedly(Return(std::make_optional("0x5678")));
+      .WillRepeatedly(Return(std::make_optional<std::string>("0x5678\n")));
   EXPECT_CALL(
-      *platformFsUtils_,
-      getStringFileContent(
+      *host_,
+      readFile(
           std::filesystem::path(
               "/sys/bus/pci/devices/0000:01:00.0/subsystem_vendor")))
-      .WillRepeatedly(Return(std::make_optional("0xabcd")));
+      .WillRepeatedly(Return(std::make_optional<std::string>("0xabcd\n")));
   EXPECT_CALL(
-      *platformFsUtils_,
-      getStringFileContent(
+      *host_,
+      readFile(
           std::filesystem::path(
               "/sys/bus/pci/devices/0000:01:00.0/subsystem_device")))
-      .WillRepeatedly(Return(std::make_optional("0xef01")));
+      .WillRepeatedly(Return(std::make_optional<std::string>("0xef01\n")));
 
   // Mock file reads for second device (matches second config device)
   EXPECT_CALL(
-      *platformFsUtils_,
-      getStringFileContent(
+      *host_,
+      readFile(
           std::filesystem::path("/sys/bus/pci/devices/0000:02:00.0/vendor")))
-      .WillRepeatedly(Return(std::make_optional("0x8086")));
+      .WillRepeatedly(Return(std::make_optional<std::string>("0x8086\n")));
   EXPECT_CALL(
-      *platformFsUtils_,
-      getStringFileContent(
+      *host_,
+      readFile(
           std::filesystem::path("/sys/bus/pci/devices/0000:02:00.0/device")))
-      .WillRepeatedly(Return(std::make_optional("0x1234")));
+      .WillRepeatedly(Return(std::make_optional<std::string>("0x1234\n")));
   EXPECT_CALL(
-      *platformFsUtils_,
-      getStringFileContent(
+      *host_,
+      readFile(
           std::filesystem::path(
               "/sys/bus/pci/devices/0000:02:00.0/subsystem_vendor")))
-      .WillRepeatedly(Return(std::make_optional("0x1111")));
+      .WillRepeatedly(Return(std::make_optional<std::string>("0x1111\n")));
   EXPECT_CALL(
-      *platformFsUtils_,
-      getStringFileContent(
+      *host_,
+      readFile(
           std::filesystem::path(
               "/sys/bus/pci/devices/0000:02:00.0/subsystem_device")))
-      .WillRepeatedly(Return(std::make_optional("0x2222")));
+      .WillRepeatedly(Return(std::make_optional<std::string>("0x2222\n")));
 
   // Run check - should pass since all expected devices are present
   auto result = check_->run();
@@ -166,27 +165,27 @@ TEST_F(PciDeviceCheckTest, MissingDevice) {
   EXPECT_CALL(*check_, getPciDevicePaths()).WillRepeatedly(Return(mockPaths));
 
   EXPECT_CALL(
-      *platformFsUtils_,
-      getStringFileContent(
+      *host_,
+      readFile(
           std::filesystem::path("/sys/bus/pci/devices/0000:01:00.0/vendor")))
-      .WillRepeatedly(Return(std::make_optional("0x1234")));
+      .WillRepeatedly(Return(std::make_optional<std::string>("0x1234\n")));
   EXPECT_CALL(
-      *platformFsUtils_,
-      getStringFileContent(
+      *host_,
+      readFile(
           std::filesystem::path("/sys/bus/pci/devices/0000:01:00.0/device")))
-      .WillRepeatedly(Return(std::make_optional("0x5678")));
+      .WillRepeatedly(Return(std::make_optional<std::string>("0x5678\n")));
   EXPECT_CALL(
-      *platformFsUtils_,
-      getStringFileContent(
+      *host_,
+      readFile(
           std::filesystem::path(
               "/sys/bus/pci/devices/0000:01:00.0/subsystem_vendor")))
-      .WillRepeatedly(Return(std::make_optional("0xabcd")));
+      .WillRepeatedly(Return(std::make_optional<std::string>("0xabcd\n")));
   EXPECT_CALL(
-      *platformFsUtils_,
-      getStringFileContent(
+      *host_,
+      readFile(
           std::filesystem::path(
               "/sys/bus/pci/devices/0000:01:00.0/subsystem_device")))
-      .WillRepeatedly(Return(std::make_optional("0xef01")));
+      .WillRepeatedly(Return(std::make_optional<std::string>("0xef01\n")));
 
   // Run check - should fail with PROBLEM status (one device missing)
   auto result = check_->run();
@@ -202,4 +201,29 @@ TEST_F(PciDeviceCheckTest, MissingDevice) {
       std::string::npos);
   EXPECT_TRUE(result.remediationMessage().has_value());
   EXPECT_EQ(result.remediation().value(), RemediationType::REBOOT_REQUIRED);
+}
+
+TEST_F(PciDeviceCheckTest, EmptyAttributeIsNotAPresentDevice) {
+  auto testConfig = createTestPlatformConfig({
+      {"0x1234", "0x5678", "0xabcd", "0xef01"},
+  });
+  EXPECT_CALL(*check_, getPlatformConfig()).WillRepeatedly(Return(testConfig));
+  const std::filesystem::path device("/sys/bus/pci/devices/0000:01:00.0");
+  EXPECT_CALL(*check_, getPciDevicePaths())
+      .WillRepeatedly(Return(std::vector<std::filesystem::path>{device}));
+  EXPECT_CALL(*host_, readFile(device / "vendor"))
+      .WillRepeatedly(Return(std::make_optional<std::string>("\n")));
+  EXPECT_CALL(*host_, readFile(device / "device"))
+      .WillRepeatedly(Return(std::make_optional<std::string>("0x5678\n")));
+  EXPECT_CALL(*host_, readFile(device / "subsystem_vendor"))
+      .WillRepeatedly(Return(std::make_optional<std::string>("0xabcd\n")));
+  EXPECT_CALL(*host_, readFile(device / "subsystem_device"))
+      .WillRepeatedly(Return(std::make_optional<std::string>("0xef01\n")));
+
+  auto result = check_->run();
+
+  EXPECT_EQ(result.status(), CheckStatus::PROBLEM);
+  EXPECT_NE(
+      result.errorMessage()->find("Missing 1 PCI device(s)"),
+      std::string::npos);
 }

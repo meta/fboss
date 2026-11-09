@@ -8,6 +8,7 @@
  *
  */
 #include "fboss/agent/FbossError.h"
+#include "fboss/agent/FibHelpers.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
 #include "fboss/agent/hw/mock/MockPlatform.h"
 #include "fboss/agent/if/gen-cpp2/mpls_types.h"
@@ -136,7 +137,8 @@ class StaticRouteTest : public ::testing::TestWithParam<bool> {
             config.staticMplsRoutesToCPU()->end()),
         folly::Range<ConfigApplier::StaticMySidIterator>{},
         &nextHopIDManager_,
-        nullptr);
+        nullptr,
+        getEcmpWidth(sw_->getState()));
   }
 
  protected:
@@ -274,6 +276,26 @@ TEST_F(StaticRouteTest, configureUnconfigure) {
   EXPECT_EQ(1, v6Routes);
 }
 
+TEST_P(StaticRouteTest, NextHopResolvedInNextLevelRejected) {
+  FLAGS_mpls_rib = GetParam();
+  auto config = this->sw_->getConfig();
+  config.staticIp2MplsRoutes()[0].nexthops()[0].resolvedInNextLevel() = true;
+  EXPECT_THROW(this->sw_->applyConfig("ip2mpls", config), FbossError);
+
+  config = this->sw_->getConfig();
+  NextHopThrift nhop;
+  nhop.address() = toBinaryAddress(folly::IPAddress("2001::1"));
+  MplsAction swap;
+  swap.action() = MplsActionCode::SWAP;
+  swap.swapLabel() = 101;
+  nhop.mplsAction() = swap;
+  nhop.resolvedInNextLevel() = true;
+  config.staticMplsRoutesWithNhops()->resize(1);
+  config.staticMplsRoutesWithNhops()[0].ingressLabel() = 100;
+  config.staticMplsRoutesWithNhops()[0].nexthops() = {nhop};
+  EXPECT_THROW(this->sw_->applyConfig("mpls", config), FbossError);
+}
+
 TEST_P(StaticRouteTest, MplsStaticRoutes) {
   FLAGS_mpls_rib = GetParam();
   auto platform = createMockPlatform();
@@ -347,7 +369,7 @@ TEST_P(StaticRouteTest, MplsStaticRoutes) {
   auto stateV1 = publishAndApplyConfig(stateV0, &config0, platform.get(), &rib);
   auto entry = stateV1->getLabelForwardingInformationBase()->getNodeIf(100);
   EXPECT_NE(entry, nullptr);
-  EXPECT_EQ(entry->getForwardInfo().getNextHopSet().size(), 2);
+  EXPECT_EQ(getMplsNextHops(stateV1, entry->getForwardInfo()).size(), 2);
 
   // setup non-link local with interface, still valid
   nexthops.resize(3);
@@ -359,7 +381,7 @@ TEST_P(StaticRouteTest, MplsStaticRoutes) {
   auto stateV2 = publishAndApplyConfig(stateV1, &config0, platform.get(), &rib);
   entry = stateV2->getLabelForwardingInformationBase()->getNodeIf(100);
   EXPECT_NE(entry, nullptr);
-  EXPECT_EQ(entry->getForwardInfo().getNextHopSet().size(), 3);
+  EXPECT_EQ(getMplsNextHops(stateV2, entry->getForwardInfo()).size(), 3);
 }
 
 INSTANTIATE_TEST_CASE_P(StaticRouteTest, StaticRouteTest, ::testing::Bool());

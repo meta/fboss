@@ -22,6 +22,10 @@ RibToSwitchStateFunction createRibToSwitchStateFunction(
     const std::optional<StateDeltaApplication>& deltaApplicationBehavior =
         std::nullopt);
 
+std::function<void(const NextHopIDManager*)> createNextHopIdStateUpdate(
+    SwSwitch* sw,
+    std::string name);
+
 class SwSwitchRouteUpdateWrapper : public RouteUpdateWrapper {
  public:
   explicit SwSwitchRouteUpdateWrapper(

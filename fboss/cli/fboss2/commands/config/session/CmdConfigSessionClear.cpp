@@ -24,61 +24,27 @@ namespace facebook::fboss {
 
 CmdConfigSessionClearTraits::RetType CmdConfigSessionClear::queryClient(
     const HostInfo& /* hostInfo */) {
-  // Use static path getters to check for session files without calling
-  // getInstance(), which would create a session if one doesn't exist
-  std::string sessionConfigPath = ConfigSession::getSessionConfigPathStatic();
-  std::string metadataPath = ConfigSession::getSessionMetadataPathStatic();
-  std::string bgpConfigPath = ConfigSession::getBgpSessionConfigPathStatic();
-
-  std::error_code ec;
-  bool removedConfig = false;
-  bool removedMetadata = false;
-  bool removedBgpConfig = false;
-
-  // Remove session config file (~/.fboss2/agent.conf)
-  if (fs::exists(sessionConfigPath)) {
-    fs::remove(sessionConfigPath, ec);
+  // Remove each staged session file (agent + BGP configs and the metadata).
+  // stagedSessionFilePaths() is the single source of truth, so this handles
+  // every config domain uniformly -- including a BGP-only session -- without
+  // calling getInstance() (which would create a session we are trying to
+  // clear). Only individual files are removed; the ~/.fboss2 directory stays.
+  bool removedAny = false;
+  for (const auto& path : ConfigSession::stagedSessionFilePaths()) {
+    if (!fs::exists(path)) {
+      continue;
+    }
+    std::error_code ec;
+    fs::remove(path, ec);
     if (ec) {
       throw std::runtime_error(
           fmt::format(
-              "Failed to remove session config file {}: {}",
-              sessionConfigPath,
-              ec.message()));
+              "Failed to remove session file {}: {}", path, ec.message()));
     }
-    removedConfig = true;
+    removedAny = true;
   }
 
-  // Remove metadata file (~/.fboss2/cli_metadata.json)
-  if (fs::exists(metadataPath)) {
-    ec.clear();
-    fs::remove(metadataPath, ec);
-    if (ec) {
-      throw std::runtime_error(
-          fmt::format(
-              "Failed to remove metadata file {}: {}",
-              metadataPath,
-              ec.message()));
-    }
-    removedMetadata = true;
-  }
-
-  // Remove staged BGP config file (~/.fboss2/bgp_config.json). BGP global edits
-  // are staged here (alongside any peer edits from BgpConfigSession), so a
-  // BGP-only session must be cleared too.
-  if (fs::exists(bgpConfigPath)) {
-    ec.clear();
-    fs::remove(bgpConfigPath, ec);
-    if (ec) {
-      throw std::runtime_error(
-          fmt::format(
-              "Failed to remove BGP session config file {}: {}",
-              bgpConfigPath,
-              ec.message()));
-    }
-    removedBgpConfig = true;
-  }
-
-  if (removedConfig || removedMetadata || removedBgpConfig) {
+  if (removedAny) {
     return "Config session cleared successfully.";
   }
   return "No config session exists. Nothing to clear.";

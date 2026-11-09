@@ -108,5 +108,21 @@ TEST_F(CmdShowBgpStatsPolicyTestFixture, printOutput) {
 
   EXPECT_EQ(expectedOutput, output);
 }
+
+TEST_F(CmdShowBgpStatsPolicyTestFixture, wikiDocHooks) {
+  EXPECT_FALSE(CmdShowBgpStatsPolicyTraits::description().empty());
+  EXPECT_FALSE(
+      CmdShowBgpStatsPolicy::sampleModel().policy_statement_stats()->empty());
+  std::stringstream ss;
+  CmdShowBgpStatsPolicy().printOutput(CmdShowBgpStatsPolicy::sampleModel(), ss);
+  const std::string output = ss.str();
+
+  // Misses accumulate down the term list, which the description calls out as
+  // the easy thing to misread; pin it so the example keeps demonstrating it.
+  EXPECT_THAT(output, HasSubstr("1     Accept default route"));
+  EXPECT_THAT(output, HasSubstr("1/1463"));
+  EXPECT_THAT(output, HasSubstr("1341/122"));
+  EXPECT_THAT(output, HasSubstr("Default deny (Implicit)"));
+}
 } // namespace facebook::fboss
 #endif // IS_OSS

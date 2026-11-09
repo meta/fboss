@@ -14,11 +14,11 @@ cpp_library(
         "//thrift/lib/cpp2/async:rocket_client_channel",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:network_address",
         "//fboss/agent:load_agent_config",
         "//fboss/agent/if:hw_ctrl-cpp2-services",
         "//fboss/agent/if:test_ctrl-cpp2-clients",
         "//fboss/fsdb/if:fsdb-cpp2-services",
         "//fboss/qsfp_service/if:qsfp-cpp2-clients",
-        "//folly:network_address",
     ],
 )

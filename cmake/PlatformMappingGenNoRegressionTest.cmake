@@ -20,11 +20,8 @@ set(
     "fboss/lib/platform_mapping_v2/static_mapping.py"
 )
 
-file(COPY "fboss/lib/platform_mapping_v2/platforms" DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/fboss/lib/platform_mapping_v2")
-message(STATUS "Copying source files to: ${CMAKE_CURRENT_BINARY_DIR}/fboss/lib/platform_mapping_v2")
-
-file(COPY "fboss/lib/platform_mapping_v2/generated_platform_mappings" DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/fboss/lib/platform_mapping_v2")
-message(STATUS "Copying generated files to: ${CMAKE_CURRENT_BINARY_DIR}/fboss/lib/platform_mapping_v2")
+file(COPY "fboss/configs/platforms" DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/fboss/configs")
+message(STATUS "Copying platform configs to: ${CMAKE_CURRENT_BINARY_DIR}/fboss/configs")
 
 add_fb_thrift_python_executable(
     platform_mapping_gen_no_regression_test

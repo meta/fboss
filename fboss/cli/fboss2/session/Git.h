@@ -74,9 +74,9 @@ class Git {
 
   /**
    * Commit the specified files with the given message.
-   * This uses git commit --include to add files without using git add.
+   * Explicitly stages every path, including paths matched by .gitignore.
    *
-   * @param files List of file paths (relative to repo root) to commit
+   * @param files List of file paths within the repository to commit
    * @param message Commit message
    * @param authorName Author name (optional, uses system default if empty)
    * @param authorEmail Author email (optional, uses system default if empty)

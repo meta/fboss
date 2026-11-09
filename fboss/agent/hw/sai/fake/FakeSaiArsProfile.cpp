@@ -39,9 +39,6 @@ sai_status_t create_ars_profile_fn(
   sai_uint32_t quant_band_2_min_threshold = 0;
   sai_uint32_t ars_max_groups = 0;
   sai_uint32_t ars_base_index = 0;
-  sai_uint32_t ars_alternate_members_route_meta_data = 0;
-  sai_uint32_t ars_route_meta_data_mask = 0;
-  sai_uint32_t ars_primary_members_route_meta_data = 0;
   sai_uint32_t ecmp_member_count = 0;
   for (int i = 0; i < attr_count; ++i) {
     switch (attr_list[i].id) {
@@ -111,15 +108,6 @@ sai_status_t create_ars_profile_fn(
       case SAI_ARS_PROFILE_ATTR_EXTENSION_ECMP_ARS_BASE_INDEX:
         ars_base_index = attr_list[i].value.u32;
         break;
-      case SAI_ARS_PROFILE_ATTR_ROUTE_ARS_ALTERNATE_MEMBERS_META_DATA:
-        ars_alternate_members_route_meta_data = attr_list[i].value.u32;
-        break;
-      case SAI_ARS_PROFILE_ATTR_ROUTE_ARS_META_DATA_MASK:
-        ars_route_meta_data_mask = attr_list[i].value.u32;
-        break;
-      case SAI_ARS_PROFILE_ATTR_ROUTE_ARS_PRIMARY_MEMBERS_META_DATA:
-        ars_primary_members_route_meta_data = attr_list[i].value.u32;
-        break;
       case SAI_ARS_PROFILE_ATTR_EXTENSION_ECMP_MEMBER_COUNT:
         ecmp_member_count = attr_list[i].value.u32;
         break;
@@ -150,9 +138,6 @@ sai_status_t create_ars_profile_fn(
       quant_band_2_min_threshold,
       ars_max_groups,
       ars_base_index,
-      ars_alternate_members_route_meta_data,
-      ars_route_meta_data_mask,
-      ars_primary_members_route_meta_data,
       ecmp_member_count);
 
   return SAI_STATUS_SUCCESS;
@@ -235,15 +220,6 @@ sai_status_t set_ars_profile_attribute_fn(
       break;
     case SAI_ARS_PROFILE_ATTR_EXTENSION_ECMP_ARS_BASE_INDEX:
       arsProfile.ars_base_index = attr->value.u32;
-      break;
-    case SAI_ARS_PROFILE_ATTR_ROUTE_ARS_ALTERNATE_MEMBERS_META_DATA:
-      arsProfile.ars_alternate_members_route_meta_data = attr->value.u32;
-      break;
-    case SAI_ARS_PROFILE_ATTR_ROUTE_ARS_META_DATA_MASK:
-      arsProfile.ars_route_meta_data_mask = attr->value.u32;
-      break;
-    case SAI_ARS_PROFILE_ATTR_ROUTE_ARS_PRIMARY_MEMBERS_META_DATA:
-      arsProfile.ars_primary_members_route_meta_data = attr->value.u32;
       break;
     case SAI_ARS_PROFILE_ATTR_EXTENSION_ECMP_MEMBER_COUNT:
       arsProfile.ecmp_member_count = attr->value.u32;
@@ -330,15 +306,6 @@ sai_status_t get_ars_profile_attribute_fn(
         break;
       case SAI_ARS_PROFILE_ATTR_EXTENSION_ECMP_ARS_BASE_INDEX:
         attr[i].value.u32 = arsProfile.ars_base_index;
-        break;
-      case SAI_ARS_PROFILE_ATTR_ROUTE_ARS_ALTERNATE_MEMBERS_META_DATA:
-        attr[i].value.u32 = arsProfile.ars_alternate_members_route_meta_data;
-        break;
-      case SAI_ARS_PROFILE_ATTR_ROUTE_ARS_META_DATA_MASK:
-        attr[i].value.u32 = arsProfile.ars_route_meta_data_mask;
-        break;
-      case SAI_ARS_PROFILE_ATTR_ROUTE_ARS_PRIMARY_MEMBERS_META_DATA:
-        attr[i].value.u32 = arsProfile.ars_primary_members_route_meta_data;
         break;
       case SAI_ARS_PROFILE_ATTR_EXTENSION_ECMP_MEMBER_COUNT:
         attr[i].value.u32 = arsProfile.ecmp_member_count;

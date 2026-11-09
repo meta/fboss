@@ -9,6 +9,7 @@
  */
 #include "fboss/agent/HwSwitch.h"
 #include "fboss/agent/hw/sai/api/AddressUtil.h"
+#include "fboss/agent/hw/sai/switch/SaiCounterManager.h"
 #include "fboss/agent/hw/sai/switch/SaiFdbManager.h"
 #include "fboss/agent/hw/sai/switch/SaiManagerTable.h"
 #include "fboss/agent/hw/sai/switch/SaiNeighborManager.h"
@@ -21,16 +22,17 @@
 #include "fboss/agent/hw/sai/switch/SaiSwitch.h"
 #include "fboss/agent/hw/sai/switch/SaiSwitchManager.h"
 #include "fboss/agent/hw/sai/switch/SaiVirtualRouterManager.h"
+#include "fboss/agent/hw/sai/switch/SaiVxlanTunnelManager.h"
 #include "fboss/agent/hw/sai/switch/tests/ManagerTestBase.h"
 #include "fboss/agent/state/NdpEntry.h"
 #include "fboss/agent/state/Route.h"
 #include "fboss/agent/state/RouteNextHop.h"
 #include "fboss/agent/state/Srv6Tunnel.h"
+#include "fboss/agent/state/VxlanTunnel.h"
 #include "fboss/agent/test/utils/NextHopIdTestUtils.h"
 #include "fboss/agent/types.h"
 
 #include <fmt/format.h>
-#include <gflags/gflags.h>
 #include <optional>
 #include <set>
 
@@ -89,6 +91,22 @@ class RouteManagerTest : public ManagerTestBase {
     return route;
   }
 
+  // Protected route whose primary has been pruned by resolution, leaving only
+  // backup next hops.
+  std::shared_ptr<Route<folly::IPAddressV4>> makeBackupOnlyRoute(
+      const folly::CIDRNetwork& destination,
+      const RouteNextHopEntry::NextHopSet& backupNextHops) {
+    RouteNextHopEntry entry(backupNextHops, AdminDistance::STATIC_ROUTE);
+    RouteFields<folly::IPAddressV4>::Prefix prefix(
+        destination.first.asV4(), destination.second);
+    auto route = std::make_shared<Route<folly::IPAddressV4>>(
+        RouteV4::makeThrift(prefix));
+    route->update(ClientID{42}, entry);
+    allocateRouteNextHopIds(nextHopIDManager_.get(), entry);
+    route->setResolved(entry);
+    return route;
+  }
+
   SaiRouteHandle* programRoute(
       const std::shared_ptr<Route<folly::IPAddressV4>>& route) {
     saiManagerTable->routeManager().addRoute<folly::IPAddressV4>(
@@ -111,6 +129,68 @@ class RouteManagerTest : public ManagerTestBase {
     return saiApiTable->nextHopGroupApi().getAttribute(
         childMember->adapterKey(),
         SaiNextHopGroupMemberTraits::Attributes::NextHopId{});
+  }
+
+  std::shared_ptr<Route<folly::IPAddressV4>> makeRouteWithEntry(
+      const folly::CIDRNetwork& destination,
+      RouteNextHopEntry entry) {
+    RouteFields<folly::IPAddressV4>::Prefix prefix(
+        destination.first.asV4(), destination.second);
+    auto route = std::make_shared<Route<folly::IPAddressV4>>(
+        Route<folly::IPAddressV4>::makeThrift(prefix));
+    route->update(ClientID{42}, entry);
+    allocateRouteNextHopIds(nextHopIDManager_.get(), entry);
+    route->setResolved(entry);
+    return route;
+  }
+
+  // A forwarding route over `intf`, optionally counted.
+  std::shared_ptr<Route<folly::IPAddressV4>> makeCountedNextHopRoute(
+      const folly::CIDRNetwork& destination,
+      const TestInterface& intf,
+      const std::optional<RouteCounterID>& counterID) {
+    RouteNextHopEntry::NextHopSet nextHops{makeNextHop(intf)};
+    return makeRouteWithEntry(
+        destination,
+        RouteNextHopEntry(
+            std::move(nextHops), AdminDistance::STATIC_ROUTE, counterID));
+  }
+
+  // A route with no next hops -- DROP or TO_CPU -- optionally counted.
+  std::shared_ptr<Route<folly::IPAddressV4>> makeCountedActionRoute(
+      const folly::CIDRNetwork& destination,
+      RouteForwardAction action,
+      const std::optional<RouteCounterID>& counterID) {
+    return makeRouteWithEntry(
+        destination,
+        RouteNextHopEntry(action, AdminDistance::STATIC_ROUTE, counterID));
+  }
+
+  SaiRouteHandle* changeRoute(
+      const std::shared_ptr<Route<folly::IPAddressV4>>& oldRoute,
+      const std::shared_ptr<Route<folly::IPAddressV4>>& newRoute) {
+    saiManagerTable->routeManager().changeRoute<folly::IPAddressV4>(
+        oldRoute, newRoute, RouterID(0), getProgrammedState());
+    auto routeEntry = saiManagerTable->routeManager().routeEntryFromSwRoute(
+        RouterID(0), newRoute);
+    return saiManagerTable->routeManager().getRouteHandle(routeEntry);
+  }
+
+  // Fake SAI allocates object ids from zero, so the first counter created
+  // would have adapter key 0 -- indistinguishable from SAI_NULL_OBJECT_ID,
+  // which makes every assertion below vacuously true. Hold one throwaway
+  // counter so the counter under test gets a non-zero id.
+  std::shared_ptr<SaiCounterHandle> reserveCounterIdZero() {
+    return saiManagerTable->counterManager().incRefOrAddRouteCounter(
+        "reserved.counter.zero");
+  }
+
+  // The SAI_ROUTE_ENTRY_ATTR_COUNTER_ID actually programmed on the route,
+  // as opposed to what the manager thinks it set.
+  sai_object_id_t programmedCounterId(const SaiRouteHandle* routeHandle) {
+    return saiApiTable->routeApi().getAttribute(
+        routeHandle->route->adapterKey(),
+        SaiRouteTraits::Attributes::CounterID{});
   }
 
   folly::CIDRNetwork d1;
@@ -218,6 +298,49 @@ TEST_F(
   EXPECT_EQ(childGroupType, SAI_NEXT_HOP_GROUP_TYPE_HW_PROTECTION);
 }
 
+TEST_F(RouteManagerTest, backupOnlyRouteCreatesProtectionGroup) {
+  // Losing the primary is exactly when protection matters, so a route left
+  // with a single backup next hop must still be a protection group. Branching
+  // on next hop count alone would program it as a plain next hop and forward
+  // over the backup as though it were the primary path.
+  RouteNextHopEntry::NextHopSet backupNextHops{
+      makeResolvedNextHop(testInterfaces.at(1), NextHopRole::BACKUP),
+  };
+  auto route = makeBackupOnlyRoute(d1, backupNextHops);
+  auto routeHandle = programRoute(route);
+  ASSERT_NE(routeHandle, nullptr);
+
+  auto groupHandle = routeHandle->nextHopGroupHandle();
+  ASSERT_NE(groupHandle, nullptr);
+  ASSERT_NE(groupHandle->nextHopGroup, nullptr);
+  auto& nextHopGroupApi = saiApiTable->nextHopGroupApi();
+  EXPECT_EQ(
+      nextHopGroupApi.getAttribute(
+          groupHandle->nextHopGroup->adapterKey(),
+          SaiNextHopGroupTraits::Attributes::Type{}),
+      SAI_NEXT_HOP_GROUP_TYPE_PROTECTION);
+
+  auto childGroupId = getChildGroupId(groupHandle);
+  ASSERT_TRUE(childGroupId.has_value());
+  EXPECT_EQ(
+      nextHopGroupApi.getAttribute(
+          NextHopGroupSaiId(childGroupId.value()),
+          SaiNextHopGroupTraits::Attributes::Type{}),
+      SAI_NEXT_HOP_GROUP_TYPE_HW_PROTECTION);
+}
+
+TEST_F(RouteManagerTest, singlePrimaryRouteDoesNotCreateProtectionGroup) {
+  // The counterpart guard: an ordinary single next hop route must keep taking
+  // the plain next hop path rather than being promoted to a group.
+  TestRoute singleNextHopRoute;
+  singleNextHopRoute.destination = d2;
+  singleNextHopRoute.nextHopInterfaces.push_back(testInterfaces.at(0));
+  auto route = makeRoute(singleNextHopRoute);
+  auto routeHandle = programRoute(route);
+  ASSERT_NE(routeHandle, nullptr);
+  EXPECT_EQ(routeHandle->nextHopGroupHandle(), nullptr);
+}
+
 TEST_F(RouteManagerTest, protectionRoutesWithSameBackupsShareChildGroup) {
   RouteNextHopEntry::NextHopSet backupNextHops{
       makeResolvedNextHop(testInterfaces.at(2), NextHopRole::BACKUP),
@@ -295,6 +418,40 @@ TEST_F(RouteManagerTest, updatingBackupsStopsChildGroupSharing) {
   ASSERT_TRUE(firstChildGroupId.has_value());
   ASSERT_TRUE(secondChildGroupId.has_value());
   EXPECT_NE(firstChildGroupId, secondChildGroupId);
+}
+
+TEST_F(RouteManagerTest, nextHopResolvedInNextLevelRejected) {
+  ResolvedNextHop nextLevel(
+      folly::IPAddress("10.10.10.10"),
+      std::nullopt,
+      ECMP_WEIGHT,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      {},
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      NextHopRole::PRIMARY,
+      std::nullopt,
+      true /* resolvedInNextLevel */);
+
+  auto singleNextHop = makeRouteWithEntry(
+      d1,
+      RouteNextHopEntry(
+          RouteNextHopEntry::NextHopSet{nextLevel},
+          AdminDistance::STATIC_ROUTE));
+  EXPECT_THROW(programRoute(singleNextHop), FbossError);
+
+  auto ecmp = makeRouteWithEntry(
+      d2,
+      RouteNextHopEntry(
+          RouteNextHopEntry::NextHopSet{
+              nextLevel,
+              makeResolvedNextHop(testInterfaces.at(0), NextHopRole::PRIMARY)},
+          AdminDistance::STATIC_ROUTE));
+  EXPECT_THROW(programRoute(ecmp), FbossError);
 }
 
 TEST_F(RouteManagerTest, addRouteOneNextHop) {
@@ -1485,4 +1642,329 @@ TEST_F(Srv6RouteTest, createSrv6SidListThrowsOnEmptySegmentList) {
       saiManagerTable->nextHopManager().createSrv6SidList(nhNoSrv6),
       FbossError);
 }
+
+class VxlanRouteTest : public ManagerTestBase {
+ public:
+  void SetUp() override {
+    setupStage = SetupStage::PORT | SetupStage::VLAN | SetupStage::INTERFACE;
+    ManagerTestBase::SetUp();
+    intf0 = testInterfaces[0];
+    intf1 = testInterfaces[1];
+  }
+
+  std::shared_ptr<VxlanTunnel> makeVxlanTunnel(
+      const std::string& tunnelId,
+      uint32_t intfID,
+      bool withMapping = true,
+      int64_t vni = 10001) {
+    auto tunnel = std::make_shared<VxlanTunnel>(tunnelId);
+    tunnel->setType(TunnelType::VXLAN);
+    tunnel->setUnderlayIntfId(InterfaceID(intfID));
+    tunnel->setSrcIP(folly::IPAddressV4("10.0.0.1"));
+    tunnel->setDstIP(folly::IPAddressV4("10.0.0.2"));
+    tunnel->setTTLMode(cfg::TunnelMode::UNIFORM);
+    tunnel->setDscpMode(cfg::TunnelMode::UNIFORM);
+    tunnel->setEcnMode(cfg::TunnelMode::UNIFORM);
+    tunnel->setTunnelTermType(cfg::TunnelTerminationType::P2MP);
+    if (withMapping) {
+      tunnel->setVrf2Vni(std::map<int64_t, int64_t>{{0, vni}});
+      tunnel->setVniToVrf(std::map<int64_t, int64_t>{{vni, 0}});
+    }
+    return tunnel;
+  }
+
+  ResolvedNextHop makeVxlanNextHop(
+      const std::string& tunnelId,
+      folly::MacAddress mac = folly::MacAddress("02:00:00:00:00:01"),
+      bool resolvedInNextLevel = false) const {
+    return ResolvedNextHop{
+        folly::IPAddressV4("10.0.0.2"),
+        // A next hop resolved in the next level has no interface.
+        resolvedInNextLevel ? std::nullopt
+                            : std::optional<InterfaceID>(InterfaceID(intf0.id)),
+        ECMP_WEIGHT,
+        std::nullopt,
+        std::nullopt,
+        std::nullopt,
+        std::nullopt,
+        {},
+        TunnelType::VXLAN,
+        tunnelId,
+        std::nullopt,
+        NextHopRole::PRIMARY,
+        std::nullopt,
+        resolvedInNextLevel,
+        mac};
+  }
+
+  ResolvedNextHop makeNextLevelNextHop(
+      folly::IPAddressV4 ip = folly::IPAddressV4("10.0.0.2")) const {
+    return ResolvedNextHop{
+        ip,
+        std::nullopt,
+        ECMP_WEIGHT,
+        std::nullopt,
+        std::nullopt,
+        std::nullopt,
+        std::nullopt,
+        {},
+        std::nullopt,
+        std::nullopt,
+        std::nullopt,
+        NextHopRole::PRIMARY,
+        std::nullopt,
+        true /* resolvedInNextLevel */};
+  }
+
+  std::shared_ptr<Route<folly::IPAddressV4>> makeVxlanRoute(
+      const folly::CIDRNetwork& destination,
+      const RouteNextHopEntry::NextHopSet& nextHops) {
+    RouteNextHopEntry entry(nextHops, AdminDistance::STATIC_ROUTE);
+    RouteFields<folly::IPAddressV4>::Prefix prefix(
+        destination.first.asV4(), destination.second);
+    auto route = std::make_shared<Route<folly::IPAddressV4>>(
+        Route<folly::IPAddressV4>::makeThrift(prefix));
+    route->update(ClientID{42}, entry);
+    allocateRouteNextHopIds(nextHopIDManager_.get(), entry);
+    route->setResolved(entry);
+    return route;
+  }
+
+  TestInterface intf0;
+  TestInterface intf1;
+};
+
+TEST_F(VxlanRouteTest, addRouteWithVxlanNextHop) {
+  auto swTunnel = makeVxlanTunnel("vxlantunnel0", intf0.id);
+  saiManagerTable->vxlanTunnelManager().addVxlanTunnel(swTunnel);
+  folly::CIDRNetwork destination{folly::IPAddress("42.42.42.42"), 24};
+  auto swNextHop = makeVxlanNextHop("vxlantunnel0");
+  auto route = makeVxlanRoute(destination, {swNextHop});
+  saiManagerTable->routeManager().addRoute<folly::IPAddressV4>(
+      route, RouterID(0), getProgrammedState());
+  auto saiEntry =
+      saiManagerTable->routeManager().routeEntryFromSwRoute(RouterID(0), route);
+  auto* handle = saiManagerTable->routeManager().getRouteHandle(saiEntry);
+  ASSERT_NE(handle, nullptr);
+  auto* vxlanHandle = std::get_if<std::shared_ptr<SaiVxlanNextHopHandle>>(
+      &handle->nexthopHandle_);
+  ASSERT_NE(vxlanHandle, nullptr);
+  ASSERT_NE(*vxlanHandle, nullptr);
+  EXPECT_EQ(
+      GET_ATTR(Route, PacketAction, handle->route->attributes()),
+      SAI_PACKET_ACTION_FORWARD);
+  EXPECT_EQ(handle->nextHopAdapterKey(), (*vxlanHandle)->adapterKey());
+  // Removing the route releases the tunnel next hop.
+  saiManagerTable->routeManager().removeRoute<folly::IPAddressV4>(
+      route, RouterID(0));
+  EXPECT_EQ(saiManagerTable->routeManager().getRouteHandle(saiEntry), nullptr);
+}
+
+TEST_F(VxlanRouteTest, vxlanEcmpRoute) {
+  auto swTunnel = makeVxlanTunnel("vxlantunnel0", intf0.id);
+  saiManagerTable->vxlanTunnelManager().addVxlanTunnel(swTunnel);
+  folly::CIDRNetwork destination{folly::IPAddress("42.42.42.42"), 24};
+  // Two remote MACs on one tunnel give two distinct next hops.
+  auto ecmpRoute = makeVxlanRoute(
+      destination,
+      {makeVxlanNextHop("vxlantunnel0"),
+       makeVxlanNextHop(
+           "vxlantunnel0", folly::MacAddress("02:00:00:00:00:02"))});
+  saiManagerTable->routeManager().addRoute<folly::IPAddressV4>(
+      ecmpRoute, RouterID(0), getProgrammedState());
+  auto saiEntry = saiManagerTable->routeManager().routeEntryFromSwRoute(
+      RouterID(0), ecmpRoute);
+  auto* handle = saiManagerTable->routeManager().getRouteHandle(saiEntry);
+  ASSERT_NE(handle, nullptr);
+  auto* groupHandle = std::get_if<std::shared_ptr<SaiNextHopGroupHandle>>(
+      &handle->nexthopHandle_);
+  ASSERT_NE(groupHandle, nullptr);
+  ASSERT_NE(*groupHandle, nullptr);
+  EXPECT_EQ((*groupHandle)->members_.size(), 2);
+  EXPECT_EQ(
+      handle->nextHopAdapterKey(), (*groupHandle)->nextHopGroup->adapterKey());
+  EXPECT_EQ(
+      GET_ATTR(Route, PacketAction, handle->route->attributes()),
+      SAI_PACKET_ACTION_FORWARD);
+  // Removing the route releases the group.
+  saiManagerTable->routeManager().removeRoute<folly::IPAddressV4>(
+      ecmpRoute, RouterID(0));
+  EXPECT_EQ(saiManagerTable->routeManager().getRouteHandle(saiEntry), nullptr);
+}
+
+TEST_F(VxlanRouteTest, addRouteWithVxlanNextHopResolvedInNextLevel) {
+  auto swTunnel = makeVxlanTunnel("vxlantunnel0", intf0.id);
+  saiManagerTable->vxlanTunnelManager().addVxlanTunnel(swTunnel);
+  folly::CIDRNetwork destination{folly::IPAddress("42.42.42.42"), 24};
+  auto swNextHop = makeVxlanNextHop(
+      "vxlantunnel0",
+      folly::MacAddress("02:00:00:00:00:01"),
+      true /* resolvedInNextLevel */);
+  auto route = makeVxlanRoute(destination, {swNextHop});
+  saiManagerTable->routeManager().addRoute<folly::IPAddressV4>(
+      route, RouterID(0), getProgrammedState());
+  auto saiEntry =
+      saiManagerTable->routeManager().routeEntryFromSwRoute(RouterID(0), route);
+  auto* handle = saiManagerTable->routeManager().getRouteHandle(saiEntry);
+  ASSERT_NE(handle, nullptr);
+  auto* vxlanHandle = std::get_if<std::shared_ptr<SaiVxlanNextHopHandle>>(
+      &handle->nexthopHandle_);
+  ASSERT_NE(vxlanHandle, nullptr);
+  ASSERT_NE(*vxlanHandle, nullptr);
+  EXPECT_EQ(handle->nextHopAdapterKey(), (*vxlanHandle)->adapterKey());
+  saiManagerTable->routeManager().removeRoute<folly::IPAddressV4>(
+      route, RouterID(0));
+  EXPECT_EQ(saiManagerTable->routeManager().getRouteHandle(saiEntry), nullptr);
+}
+
+TEST_F(VxlanRouteTest, vxlanEcmpRouteResolvedInNextLevel) {
+  auto swTunnel = makeVxlanTunnel("vxlantunnel0", intf0.id);
+  saiManagerTable->vxlanTunnelManager().addVxlanTunnel(swTunnel);
+  folly::CIDRNetwork destination{folly::IPAddress("42.42.42.42"), 24};
+  auto ecmpRoute = makeVxlanRoute(
+      destination,
+      {makeVxlanNextHop(
+           "vxlantunnel0",
+           folly::MacAddress("02:00:00:00:00:01"),
+           true /* resolvedInNextLevel */),
+       makeVxlanNextHop(
+           "vxlantunnel0",
+           folly::MacAddress("02:00:00:00:00:02"),
+           true /* resolvedInNextLevel */)});
+  saiManagerTable->routeManager().addRoute<folly::IPAddressV4>(
+      ecmpRoute, RouterID(0), getProgrammedState());
+  auto saiEntry = saiManagerTable->routeManager().routeEntryFromSwRoute(
+      RouterID(0), ecmpRoute);
+  auto* handle = saiManagerTable->routeManager().getRouteHandle(saiEntry);
+  ASSERT_NE(handle, nullptr);
+  auto* groupHandle = std::get_if<std::shared_ptr<SaiNextHopGroupHandle>>(
+      &handle->nexthopHandle_);
+  ASSERT_NE(groupHandle, nullptr);
+  ASSERT_NE(*groupHandle, nullptr);
+  EXPECT_EQ((*groupHandle)->members_.size(), 2);
+  EXPECT_EQ(
+      handle->nextHopAdapterKey(), (*groupHandle)->nextHopGroup->adapterKey());
+  saiManagerTable->routeManager().removeRoute<folly::IPAddressV4>(
+      ecmpRoute, RouterID(0));
+  EXPECT_EQ(saiManagerTable->routeManager().getRouteHandle(saiEntry), nullptr);
+}
+
+TEST_F(VxlanRouteTest, nonVxlanNextHopResolvedInNextLevelThrows) {
+  folly::CIDRNetwork destination{folly::IPAddress("42.42.42.42"), 24};
+  auto route = makeVxlanRoute(destination, {makeNextLevelNextHop()});
+  EXPECT_THROW(
+      saiManagerTable->routeManager().addRoute<folly::IPAddressV4>(
+          route, RouterID(0), getProgrammedState()),
+      FbossError);
+}
+
+TEST_F(VxlanRouteTest, nonVxlanEcmpResolvedInNextLevelThrows) {
+  folly::CIDRNetwork destination{folly::IPAddress("42.42.42.42"), 24};
+  auto route = makeVxlanRoute(
+      destination,
+      {makeNextLevelNextHop(folly::IPAddressV4("10.0.0.2")),
+       makeNextLevelNextHop(folly::IPAddressV4("10.0.0.3"))});
+  EXPECT_THROW(
+      saiManagerTable->routeManager().addRoute<folly::IPAddressV4>(
+          route, RouterID(0), getProgrammedState()),
+      FbossError);
+}
+
 #endif
+
+// A route's SAI_ROUTE_ENTRY_ATTR_COUNTER_ID must follow its counterID for
+// every forwarding action, not just the next-hop ones. These assert on the
+// attribute programmed in hardware rather than on counter removal, because
+// fake SAI does not reference count counters and so will happily remove one
+// a route still points at.
+TEST_F(RouteManagerTest, counterDetachedWhenRouteBecomesDrop) {
+  const RouteCounterID kCounterID{"route.counter.drop"};
+  auto padCounter = reserveCounterIdZero();
+  auto counted = makeCountedNextHopRoute(d1, testInterfaces.at(0), kCounterID);
+  auto* countedHandle = programRoute(counted);
+  ASSERT_NE(countedHandle, nullptr);
+  ASSERT_NE(countedHandle->counterHandle_, nullptr);
+  ASSERT_NE(
+      countedHandle->counterHandle_->adapterKey(),
+      CounterSaiId(SAI_NULL_OBJECT_ID));
+  EXPECT_EQ(
+      programmedCounterId(countedHandle),
+      countedHandle->counterHandle_->adapterKey());
+
+  auto dropped = makeCountedActionRoute(
+      d1, RouteForwardAction::DROP, std::nullopt /*counterID*/);
+  auto* droppedHandle = changeRoute(counted, dropped);
+  ASSERT_NE(droppedHandle, nullptr);
+  EXPECT_EQ(droppedHandle->counterHandle_, nullptr);
+  EXPECT_EQ(programmedCounterId(droppedHandle), SAI_NULL_OBJECT_ID);
+}
+
+TEST_F(RouteManagerTest, counterDetachedWhenRouteBecomesToCpu) {
+  const RouteCounterID kCounterID{"route.counter.tocpu"};
+  auto padCounter = reserveCounterIdZero();
+  auto counted = makeCountedNextHopRoute(d1, testInterfaces.at(0), kCounterID);
+  auto* countedHandle = programRoute(counted);
+  ASSERT_NE(countedHandle, nullptr);
+  ASSERT_NE(countedHandle->counterHandle_, nullptr);
+  ASSERT_NE(
+      countedHandle->counterHandle_->adapterKey(),
+      CounterSaiId(SAI_NULL_OBJECT_ID));
+  ASSERT_EQ(
+      programmedCounterId(countedHandle),
+      countedHandle->counterHandle_->adapterKey());
+
+  auto toCpu = makeCountedActionRoute(
+      d1, RouteForwardAction::TO_CPU, std::nullopt /*counterID*/);
+  auto* toCpuHandle = changeRoute(counted, toCpu);
+  ASSERT_NE(toCpuHandle, nullptr);
+  EXPECT_EQ(toCpuHandle->counterHandle_, nullptr);
+  EXPECT_EQ(programmedCounterId(toCpuHandle), SAI_NULL_OBJECT_ID);
+}
+
+// A counted route is still counted when it drops: the handle the manager
+// holds has to be attached in hardware, not just reference counted.
+TEST_F(RouteManagerTest, counterAttachedToDropRoute) {
+  const RouteCounterID kCounterID{"route.counter.ondrop"};
+  auto padCounter = reserveCounterIdZero();
+  auto dropped =
+      makeCountedActionRoute(d1, RouteForwardAction::DROP, kCounterID);
+  auto* droppedHandle = programRoute(dropped);
+  ASSERT_NE(droppedHandle, nullptr);
+  ASSERT_NE(droppedHandle->counterHandle_, nullptr);
+  ASSERT_NE(
+      droppedHandle->counterHandle_->adapterKey(),
+      CounterSaiId(SAI_NULL_OBJECT_ID));
+  EXPECT_EQ(
+      programmedCounterId(droppedHandle),
+      droppedHandle->counterHandle_->adapterKey());
+}
+
+// Moving a route from one counter to another repoints it in hardware and
+// releases the counter it no longer uses.
+TEST_F(RouteManagerTest, routeCounterIdUpdated) {
+  const RouteCounterID kOldCounterID{"route.counter.old"};
+  const RouteCounterID kNewCounterID{"route.counter.new"};
+  auto padCounter = reserveCounterIdZero();
+
+  auto withOldCounter =
+      makeCountedNextHopRoute(d1, testInterfaces.at(0), kOldCounterID);
+  auto* oldHandle = programRoute(withOldCounter);
+  ASSERT_NE(oldHandle, nullptr);
+  ASSERT_NE(oldHandle->counterHandle_, nullptr);
+  auto oldCounterId = oldHandle->counterHandle_->adapterKey();
+  ASSERT_NE(oldCounterId, CounterSaiId(SAI_NULL_OBJECT_ID));
+  ASSERT_EQ(programmedCounterId(oldHandle), oldCounterId);
+  // The route handle is the only owner, so this expires once the route stops
+  // referencing the counter.
+  std::weak_ptr<SaiCounterHandle> oldCounter = oldHandle->counterHandle_;
+
+  auto withNewCounter =
+      makeCountedNextHopRoute(d1, testInterfaces.at(0), kNewCounterID);
+  auto* newHandle = changeRoute(withOldCounter, withNewCounter);
+  ASSERT_NE(newHandle, nullptr);
+  ASSERT_NE(newHandle->counterHandle_, nullptr);
+  auto newCounterId = newHandle->counterHandle_->adapterKey();
+  EXPECT_NE(newCounterId, oldCounterId);
+  EXPECT_EQ(programmedCounterId(newHandle), newCounterId);
+  EXPECT_TRUE(oldCounter.expired());
+}

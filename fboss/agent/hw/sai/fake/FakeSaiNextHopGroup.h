@@ -59,6 +59,8 @@ class FakeNextHopGroup {
   sai_int32_t hash_algorithm;
   bool hierarchical_nexthop;
   std::optional<bool> split_horizon_enable;
+  sai_uint64_t ars_fail_pkt_count{0};
+  sai_uint64_t ars_port_reassign_count{0};
   sai_object_id_t id;
   FakeManager<sai_object_id_t, FakeNextHopGroupMember>& fm() {
     return fm_;

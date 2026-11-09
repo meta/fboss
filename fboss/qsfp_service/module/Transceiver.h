@@ -25,6 +25,11 @@
 namespace facebook {
 namespace fboss {
 
+// CMIS 5.2 tMgmtInit (Table 10-2): a module may ignore management transactions
+// for up to 2s after Reset is deasserted, so wait this long before any I2C
+// access that follows a reset.
+constexpr int kSecAfterModuleOutOfReset = 2;
+
 struct TransceiverPortState {
   std::string portName;
   uint8_t startHostLane;
@@ -264,7 +269,8 @@ class Transceiver {
   virtual void setTransceiverLoopback(
       const std::string& /* portName */,
       phy::Side /* side */,
-      bool /* setLoopback */) = 0;
+      bool /* setLoopback */,
+      phy::LoopbackMode /* mode */) = 0;
 
   time_t modulePauseRemediationUntil_{0};
   virtual void setModulePauseRemediation(int32_t timeout) = 0;

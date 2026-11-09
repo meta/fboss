@@ -9,7 +9,6 @@
  */
 
 #include "fboss/agent/platforms/common/montblanc/MontblancPlatformMapping.h"
-#include "fboss/agent/platforms/common/montblanc/MontblancPrecodingPlatformMapping.h"
 
 #include <set>
 
@@ -68,23 +67,42 @@ std::set<int> extendedReachTransceivers(const PlatformMapping& mapping) {
 
 } // namespace
 
-// The base montblanc mapping must construct with the default flags
-// (FLAGS_montblanc_precoding defaults to false) and must not enable precoding
-// anywhere.
-TEST(MontblancPlatformMappingTest, defaultConstructsWithoutPrecoding) {
+TEST(MontblancPlatformMappingTest, defaultPrecodesDownlinksOnly) {
   MontblancPlatformMapping mapping;
-  EXPECT_FALSE(mapping.getPlatformPorts().empty());
-  EXPECT_TRUE(precodedTransceivers(mapping).empty());
-  EXPECT_TRUE(extendedReachTransceivers(mapping).empty());
-}
-
-// The precoding variant blob must parse and enable precoding and RX_REACH on
-// exactly the downlink transceivers, never on uplink ports.
-TEST(MontblancPlatformMappingTest, precodingVariantPrecodesDownlinksOnly) {
-  MontblancPlatformMapping mapping(kJsonPrecodingPlatformMappingStr);
   EXPECT_FALSE(mapping.getPlatformPorts().empty());
   EXPECT_EQ(precodedTransceivers(mapping), downlinkTransceivers());
   EXPECT_EQ(extendedReachTransceivers(mapping), downlinkTransceivers());
+}
+
+TEST(MontblancPlatformMappingTest, mgmtPortBreaksOutInto4x25G) {
+  MontblancPlatformMapping mapping;
+  const std::vector<PortID> expectedMgmtPorts{
+      PortID(351), PortID(352), PortID(353), PortID(354)};
+  EXPECT_EQ(
+      mapping.getPlatformPorts(cfg::PortType::MANAGEMENT_PORT),
+      expectedMgmtPorts);
+
+  const auto& ports = mapping.getPlatformPorts();
+  for (const auto& portId : expectedMgmtPorts) {
+    const auto& entry = ports.at(portId);
+    EXPECT_EQ(*entry.mapping()->controllingPort(), 351);
+    for (auto profile :
+         {cfg::PortProfileID::PROFILE_25G_1_NRZ_RS528_COPPER,
+          cfg::PortProfileID::PROFILE_25G_1_NRZ_RS528_OPTICAL}) {
+      EXPECT_TRUE(entry.supportedProfiles()->contains(profile))
+          << "port " << portId << " missing 25G profile";
+    }
+  }
+
+  // 100G on eth1/65/1 uses all four lanes, so it subsumes the 25G subports
+  const std::vector<int32_t> expectedSubsumedPorts{352, 353, 354};
+  for (auto profile :
+       {cfg::PortProfileID::PROFILE_100G_4_NRZ_RS528_COPPER,
+        cfg::PortProfileID::PROFILE_100G_4_NRZ_RS528_OPTICAL}) {
+    EXPECT_EQ(
+        ports.at(351).supportedProfiles()->at(profile).subsumedPorts().value(),
+        expectedSubsumedPorts);
+  }
 }
 
 } // namespace facebook::fboss

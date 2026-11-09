@@ -34,17 +34,23 @@ cfg::SwitchConfig AgentMultiNodeTest::initialConfig(
   // INTERFACE_PORT we expect UP. Otherwise the test driver brings nothing up
   // and downstream tests fail with confusing "link down" / "first UP port has
   // no IP" errors.
-  size_t numLoopedInterfacePorts = 0;
-  for (const auto& port : *config.ports()) {
-    if (port.portType() == cfg::PortType::INTERFACE_PORT &&
-        port.loopbackMode() != cfg::PortLoopbackMode::NONE) {
-      ++numLoopedInterfacePorts;
+  //
+  // Hyper port topologies are exempt: there the L3 ports are HYPER_PORT and
+  // HYPER_PORT_MEMBER, LinkStateToggler skips both, and the two EDSWs are
+  // cabled to each other, so no INTERFACE_PORT is ever looped back.
+  if (!FLAGS_hyper_port) {
+    size_t numLoopedInterfacePorts = 0;
+    for (const auto& port : *config.ports()) {
+      if (port.portType() == cfg::PortType::INTERFACE_PORT &&
+          port.loopbackMode() != cfg::PortLoopbackMode::NONE) {
+        ++numLoopedInterfacePorts;
+      }
     }
-  }
-  if (numLoopedInterfacePorts == 0) {
-    throw FbossError(
-        "Deployed config has no INTERFACE_PORT with loopbackMode set; ",
-        "test driver cannot bring any port UP. Check configerator config.");
+    if (numLoopedInterfacePorts == 0) {
+      throw FbossError(
+          "Deployed config has no INTERFACE_PORT with loopbackMode set; ",
+          "test driver cannot bring any port UP. Check configerator config.");
+    }
   }
 
   return config;

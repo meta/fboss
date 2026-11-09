@@ -1,0 +1,15 @@
+{
+  "platformType": 52,
+  "productNamePrefixes": [
+    "LEH800BCLS"
+  ],
+  "modeNames": [
+    "leh800bcls"
+  ],
+  "asicType": 18,
+  "variantAttributes": {
+    "test_fixture": false,
+    "osfp_tray": false
+  },
+  "numSwitchAsics": 2
+}

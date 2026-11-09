@@ -778,9 +778,9 @@ device:
         RX_LANE_MAP_AUTO: 0
         TX_LANE_MAP: 0x3210
         TX_LANE_MAP_AUTO: 0
-        RX_POLARITY_FLIP: 0x09
+        RX_POLARITY_FLIP: 0x03
         RX_POLARITY_FLIP_AUTO: 0
-        TX_POLARITY_FLIP: 0x09
+        TX_POLARITY_FLIP: 0x03
         TX_POLARITY_FLIP_AUTO: 0
 ...
 ---

@@ -129,6 +129,18 @@ enum Loopback {
   OFF = 2,
 }
 
+// Loopback point, relative to the side named by the PortComponent it is
+// applied to. For a CMIS transceiver, the SYSTEM side is the host side and the
+// LINE side is the media side.
+enum LoopbackMode {
+  // Signal entering this side from outside the component is returned back out
+  // of this side.
+  INPUT = 1,
+  // Signal arriving at this side from inside the component is turned back
+  // inward.
+  OUTPUT = 2,
+}
+
 enum RxReach {
   RX_NORMAL_REACH = 0,
   RX_EXTENDED_REACH = 1,
@@ -440,6 +452,7 @@ struct PhySideState {
   4: optional RsInfo rs; // Reconciliation sub-layer
   5: optional InterfaceType interfaceType;
   6: transceiver.TransmitterTechnology medium;
+  7: optional Loopback loopback; // Current loopback state for this side
 }
 
 struct PhySideStats {

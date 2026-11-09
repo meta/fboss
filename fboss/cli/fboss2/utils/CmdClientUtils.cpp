@@ -8,6 +8,7 @@
  *
  */
 #include "fboss/cli/fboss2/utils/CmdClientUtils.h"
+#include <folly/logging/xlog.h>
 
 namespace facebook::fboss::utils {
 
@@ -92,6 +93,49 @@ int getNumHwSwitches(const HostInfo& hostInfo) {
 bool isMultiSwitchEnabled(const HostInfo& hostInfo) {
   return *getMultiSwitchRunState(hostInfo).multiSwitchEnabled();
 }
+
+#ifndef IS_OSS
+HwAgentExportedValues getHwAgentExportedValues(
+    const HostInfo& hostInfo,
+    const std::string& regex) {
+  MultiSwitchRunState runState;
+  try {
+    runState = getMultiSwitchRunState(hostInfo);
+  } catch (const std::exception& e) {
+    XLOG(WARN) << "Failed to get multi-switch run state: " << e.what();
+    return {};
+  }
+  return getHwAgentExportedValues(hostInfo, runState, regex);
+}
+
+HwAgentExportedValues getHwAgentExportedValues(
+    const HostInfo& hostInfo,
+    const MultiSwitchRunState& runState,
+    const std::string& regex) {
+  HwAgentExportedValues hwAgentValues;
+  if (!*runState.multiSwitchEnabled()) {
+    return hwAgentValues;
+  }
+  // hwIndexToRunState is keyed by switch id, not switch index.
+  const auto numHwSwitches =
+      static_cast<int>(runState.hwIndexToRunState()->size());
+  for (int switchIndex = 0; switchIndex < numHwSwitches; switchIndex++) {
+    std::map<std::string, std::string> values;
+    try {
+      utils::createClient<apache::thrift::Client<FbossCtrl>>(
+          hostInfo, switchIndex)
+          ->sync_getRegexExportedValues(values, regex);
+    } catch (const std::exception& e) {
+      XLOG(WARN) << "Failed to get hw_agent " << switchIndex
+                 << " exported values: " << e.what();
+      hwAgentValues[switchIndex] = std::nullopt;
+      continue;
+    }
+    hwAgentValues[switchIndex] = std::move(values);
+  }
+  return hwAgentValues;
+}
+#endif
 
 void runOnAllHwAgents(const HostInfo& hostInfo, RunForHwAgentFn fn) {
   auto numHwSwitches = getNumHwSwitches(hostInfo);

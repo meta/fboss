@@ -2,7 +2,6 @@
 
 #include "fboss/lib/bsp/BspTransceiverIO.h"
 
-#include <folly/Format.h>
 #include <folly/Range.h>
 #include <folly/logging/xlog.h>
 #include <stdint.h>
@@ -39,7 +38,7 @@ void BspTransceiverIO::write(
 
   try {
     i2cDev_->write(addr, offset, buf, len);
-    XLOG(DBG4) << fmt::format(
+    XLOG(DBG5) << fmt::format(
         "BspTransceiverIOTrace: write() successfully wrote to tcvr {:d}",
         tcvrID_);
 
@@ -76,7 +75,7 @@ void BspTransceiverIO::read(
 
   try {
     i2cDev_->read(addr, offset, buf, len);
-    XLOG(DBG4) << fmt::format(
+    XLOG(DBG5) << fmt::format(
         "BspTransceiverIOTrace: read() successfully read from tcvr {:d}",
         tcvrID_);
     // Increment the number of I2c bytes read successfully

@@ -8,13 +8,16 @@ import shutil
 import subprocess
 import time
 from argparse import ArgumentParser, Namespace
+from collections.abc import Collection
 from datetime import datetime
+from pathlib import Path
 
 from fboss_test_runner.constants import (
     ALL_SIMUALTOR_ASICS_STR,
     DEFAULT_TEST_RUN_TIMEOUT_IN_SECOND,
     DNX_SIMULATOR_ASICS,
     DNX_SIMULATOR_ENV,
+    GENERATED_CONFIG_ROOT,
     OPT_ARG_COLDBOOT,
     OPT_ARG_CONFIG_FILE,
     OPT_ARG_DISABLE_FSDB,
@@ -38,11 +41,19 @@ from fboss_test_runner.constants import (
     OPT_ARG_SKIP_KNOWN_BAD_TESTS,
     OPT_ARG_SWITCH_ID_FOR_TESTING,
     OPT_ARG_TEST_RUN_TIMEOUT,
+    OPT_ARG_TIER,
     OPT_KNOWN_BAD_TESTS_FILE,
     OPT_UNSUPPORTED_TESTS_FILE,
     XGS_SIMULATOR_ASICS,
     XGS_SIMULATOR_ENV,
 )
+from fboss_test_runner.crash_detection import (
+    core_is_from,
+    describe_core_dump,
+    find_unclean_unit_exits,
+    list_core_dumps,
+)
+from fboss_test_runner.errors import TestRunnerUsageError
 from fboss_test_runner.reporters.console_reporter import ConsoleReporter
 from fboss_test_runner.reporters.csv_reporter import CsvReporter
 from fboss_test_runner.reporters.json_reporter import JsonReporter
@@ -58,6 +69,15 @@ from fboss_test_runner.runners.utils import (
     load_from_file,
     test_matches_any_regex,
 )
+from fboss_test_runner.tier_selection import (
+    load_test_metadata_rules,
+    parse_test_tier,
+    select_test_patterns_for_tier,
+    TestCapability,
+    TestMetadataError,
+    TestTier,
+)
+from npu_sdk_utils import materialize_agent_config, NPU_SDK_METADATA_FILENAME
 
 _YELLOW = "\033[1;33m"
 _RED = "\033[1;31m"
@@ -108,6 +128,10 @@ class TestRunner(abc.ABC):
 
     def _get_config_path(self) -> str:
         return ""
+
+    def _get_npu_sdk_metadata_binary_name(self) -> str | None:
+        """Executable whose linked NPU SDK must be reflected in the agent config."""
+        return None
 
     def _resolve_tests_file(
         self, user_file: str | None, default_file: str, label: str
@@ -193,7 +217,13 @@ class TestRunner(abc.ABC):
         sub_parser.add_argument(
             OPT_ARG_PROFILE,
             type=str,
-            help="only include patterns tagged with this profile (requires --filter_file)",
+            help="only include patterns tagged with this profile",
+        )
+        sub_parser.add_argument(
+            OPT_ARG_TIER,
+            choices=("0", "1", "2"),
+            default=None,
+            help="only run tests classified in this certification tier",
         )
         sub_parser.add_argument(
             OPT_ARG_LIST_TESTS,
@@ -345,6 +375,45 @@ class TestRunner(abc.ABC):
 
     def _filter_tests(self, tests: list[str]) -> list[str]:
         return tests
+
+    def _get_tier_metadata_file(self) -> str | None:
+        return None
+
+    def _get_uniform_test_tier(self) -> TestTier | None:
+        """Return the tier shared by every test exposed by this runner."""
+        return None
+
+    def _get_available_test_capabilities(self) -> Collection[TestCapability]:
+        return ()
+
+    def _get_test_patterns_for_tier(self, tier: TestTier) -> list[str]:
+        metadata_file = self._get_tier_metadata_file()
+        if metadata_file is None:
+            command = self.args.command
+            raise TestRunnerUsageError(f"--tier is not supported for {command}")
+
+        try:
+            rules = load_test_metadata_rules(metadata_file)
+        except TestMetadataError as error:
+            raise TestRunnerUsageError(str(error)) from error
+
+        return select_test_patterns_for_tier(
+            rules,
+            tier,
+            available_capabilities=self._get_available_test_capabilities(),
+        )
+
+    def _filter_tests_for_tier(self, tests: list[str], tier: TestTier) -> list[str]:
+        uniform_tier = self._get_uniform_test_tier()
+        if uniform_tier is not None:
+            return tests if tier is uniform_tier else []
+
+        patterns = self._get_test_patterns_for_tier(tier)
+        if not patterns:
+            return []
+
+        tier_tests = set(self._list_tests_to_run(":".join(patterns)))
+        return [test for test in tests if test in tier_tests]
 
     def _get_sai_replayer_log_path(
         self,
@@ -605,6 +674,102 @@ class TestRunner(abc.ABC):
             )
             return RunOutcome(result.as_log_line(), [result])
 
+    def _run_test_guarded(
+        self,
+        conf_file: str,
+        test_prefix: str,
+        test_to_run: str,
+        setup_warmboot: bool,
+        sai_replayer_logging_path: str | None = None,
+    ) -> RunOutcome:
+        """_run_test, then fail the test if a unit it left running crashed.
+
+        Every runner leaves some production units running while its binary
+        executes: sai_test keeps fsdb and the platform services up, sai_agent
+        keeps qsfp_service up, the CLI suite runs against the production
+        agents themselves. Those units run with `Restart=always`, so a crash
+        caused by the test is invisible to gtest: systemd brings the unit
+        back, the binary's own readiness wait rides through it, and the test
+        reports OK while a core sits on disk and the hardware may never have
+        got the config. Two signals, both read after the binary exits:
+          * A unit's main process died uncleanly during the window, as
+            recorded by PID 1 in the journal. Clean exits and SIGTERM deaths
+            are ignored, so the stop/restart the CLI or a warm-boot phase
+            performs on purpose does not register, and a console logout
+            bouncing serial-getty (Restart=always, exit 0) does not either.
+            Units the runner stopped beforehand are inactive and produce
+            nothing.
+          * A core file appeared that was not there before the binary
+            started, from anything but the test binary itself (that one
+            already failed on its own). Deliberately not limited to agent
+            cores: any process dumping core on a production image while a
+            test runs makes that result untrustworthy.
+        """
+        cores_before = list_core_dumps()
+        start_time = time.time()
+        run_outcome = self._run_test(
+            conf_file,
+            test_prefix,
+            test_to_run,
+            setup_warmboot,
+            sai_replayer_logging_path,
+        )
+        reasons = find_unclean_unit_exits(start_time)
+        own_binary = os.path.basename(self._get_test_binary_name())
+        cores = sorted(
+            core
+            for core in list_core_dumps() - cores_before
+            if not core_is_from(core, own_binary)
+        )
+        core_reasons = [describe_core_dump(core) for core in cores]
+        # A core summary names the unit and the crash; the journal's
+        # "<unit> main process dumped core" line for the same unit only
+        # repeats the first half, so drop it to stay within the reason cap.
+        reasons = [
+            r
+            for r in reasons
+            if not any(c.startswith(r.split()[0]) for c in core_reasons)
+        ]
+        reasons.extend(core_reasons)
+        if reasons:
+            self._apply_agent_crash(
+                run_outcome, test_prefix, test_to_run, "; ".join(reasons), cores
+            )
+        return run_outcome
+
+    def _apply_agent_crash(
+        self,
+        run_outcome: RunOutcome,
+        test_prefix: str,
+        test_to_run: str,
+        reason: str,
+        cores: list[str] | None = None,
+    ) -> None:
+        """Downgrade a test to FAILED because a unit crashed while it ran.
+
+        The gtest binary reported its own verdict (often OK: the CLI suite's
+        readiness wait rides through a crash + `RestartSec` retry), so the
+        in-memory results are rewritten. A SKIPPED test is downgraded too: a
+        crash in its window is a real failure regardless of what it did. The
+        binary's own output is kept -- it is the only transcript of the run
+        -- with the verdict appended. Core paths go to the banner only: the
+        failure reason is what result databases classify failures on, and
+        they cap it at a few hundred characters.
+        """
+        core_note = f" (core dump(s): {', '.join(cores)})" if cores else ""
+        banner = (
+            f"########## CRASH detected during {test_prefix}{test_to_run}: "
+            f"{reason}{core_note} -- marking test FAILED"
+        )
+        print(banner, flush=True)
+        for result in run_outcome.results:
+            if result.status in (GtestStatus.OK, GtestStatus.SKIPPED):
+                result.status = GtestStatus.FAILED
+        run_outcome.console_output = "\n".join(
+            [run_outcome.console_output.rstrip("\n"), banner]
+            + [result.as_log_line() for result in run_outcome.results]
+        )
+
     def _string_in_file(self, file_path: str, string: str) -> bool | None:
         try:
             with open(file_path) as file:
@@ -616,47 +781,66 @@ class TestRunner(abc.ABC):
     def _replace_string_in_file(
         self, file_path: str, old_str: str, new_str: str
     ) -> None:
-        try:
-            with open(file_path) as file:
-                file_contents = file.read()
+        with open(file_path) as file:
+            file_contents = file.read()
 
-            new_file_contents = file_contents.replace(old_str, new_str)
+        new_file_contents = file_contents.replace(old_str, new_str)
+        if new_file_contents != file_contents:
+            with open(file_path, "w") as file:
+                file.write(new_file_contents)
+            print(f"Replaced {old_str} by {new_str} in file {file_path}")
 
-            if new_file_contents != file_contents:
-                with open(file_path, "w") as file:
-                    file.write(new_file_contents)
-                print(f"Replaced {old_str} by {new_str} in file {file_path}")
-        except FileNotFoundError:
-            print(f"File not found when replacing string: {file_path}")
-        except Exception as e:
-            print(f"Error when replacing string in {file_path}: {e!s}")
-
-    def _backup_and_modify_config(self, conf_file: str) -> str:
-        """Create a copy of the config and modify settings"""
+    def _prepare_config_for_run(self) -> str:
+        """Create and retain a config containing all runner-required changes."""
         args = self.args
-        if getattr(args, "run_on_reference_board", False):
-            # Create a copy of the config file for modification
-            try:
-                # Create a modified copy in /tmp with standard name
-                config_filename = os.path.basename(conf_file)
-                _config_file_modified = f"/tmp/modified-{config_filename}"
-                shutil.copy2(conf_file, _config_file_modified)
+        original_config = (
+            args.config if args.config is not None else self._get_config_path()
+        )
+        binary_name = self._get_npu_sdk_metadata_binary_name()
+        run_on_reference_board = getattr(args, "run_on_reference_board", False)
+        if not original_config or (binary_name is None and not run_on_reference_board):
+            return original_config
 
-                print(
-                    f"Using a modified config file {_config_file_modified} for test runs"
-                )
+        runner_type = getattr(args, "command", None)
+        if not runner_type:
+            raise RuntimeError("Test runner type is unavailable")
+
+        output_directory = Path(GENERATED_CONFIG_ROOT) / runner_type
+        output_directory.mkdir(parents=True, exist_ok=True)
+        prepared_config = output_directory / Path(original_config).name
+        staging_config = output_directory / f".{prepared_config.name}.tmp"
+
+        try:
+            staging_config.unlink(missing_ok=True)
+            shutil.copyfile(original_config, staging_config)
+            if run_on_reference_board:
                 # Some platforms, like TH5 SVK, need to set
-                # AUTOLOAD_BOARD_SETTINGS=1 to autodetect reference board
+                # AUTOLOAD_BOARD_SETTINGS=1 to autodetect reference board.
                 self._replace_string_in_file(
-                    _config_file_modified,
+                    str(staging_config),
                     "AUTOLOAD_BOARD_SETTINGS: 0",
                     "AUTOLOAD_BOARD_SETTINGS: 1",
                 )
-                return _config_file_modified
-            except Exception as e:
-                print(f"Error creating config copy {conf_file}: {e!s}")
-                return conf_file
-        return conf_file
+
+            if binary_name is not None:
+                fboss_data = os.environ.get("FBOSS_DATA")
+                if not fboss_data:
+                    raise RuntimeError(
+                        "FBOSS_DATA is not set; cannot locate NPU SDK metadata"
+                    )
+                materialize_agent_config(
+                    config_path=staging_config,
+                    metadata_path=Path(fboss_data) / NPU_SDK_METADATA_FILENAME,
+                    binary_name=binary_name,
+                    output_directory=output_directory,
+                )
+            os.replace(staging_config, prepared_config)
+        except Exception:
+            staging_config.unlink(missing_ok=True)
+            raise
+
+        print(f"Using generated test config {prepared_config}")
+        return str(prepared_config)
 
     def _apply_simulator_env(self, simulator: str | None) -> None:
         """Overlay simulator-specific env vars onto this run's environment."""
@@ -720,7 +904,7 @@ class TestRunner(abc.ABC):
                 print("########## Running test: " + test_to_run, flush=True)
                 if simulator:
                     self._restart_bcmsim(simulator)
-                run_outcome = self._run_test(
+                run_outcome = self._run_test_guarded(
                     conf_file,
                     test_prefix,
                     test_to_run,
@@ -771,7 +955,7 @@ class TestRunner(abc.ABC):
                         f"({wb_iter + 1}/{num_wb_iterations}): {test_to_run}",
                         flush=True,
                     )
-                    run_outcome = self._run_test(
+                    run_outcome = self._run_test_guarded(
                         conf_file,
                         test_prefix,
                         test_to_run,
@@ -830,6 +1014,11 @@ class TestRunner(abc.ABC):
             )
         tests_to_run = self._get_tests_to_run()
         tests_to_run = self._filter_tests(tests_to_run)
+        tier_value = args.tier
+        if tier_value is not None:
+            tests_to_run = self._filter_tests_for_tier(
+                tests_to_run, parse_test_tier(tier_value)
+            )
         # Sort the tests to run to match internal test infra behavior
         return sorted(tests_to_run)
 
@@ -846,10 +1035,7 @@ class TestRunner(abc.ABC):
     def _execute_test(self, args: Namespace) -> TestExecutionResult:
         try:
             tests_to_run = self._prepare_tests(args)
-            original_conf_file = (
-                args.config if (args.config is not None) else self._get_config_path()
-            )
-            conf_file = self._backup_and_modify_config(original_conf_file)
+            conf_file = self._prepare_config_for_run()
         except _TestBinaryNotFoundError as error:
             return TestExecutionResult(
                 exit_code=os.EX_TEMPFAIL, setup_failure=str(error)
@@ -859,11 +1045,15 @@ class TestRunner(abc.ABC):
                 exit_code=os.EX_TEMPFAIL, setup_failure=str(error), error=error
             )
 
-        # Test execution failures are not setup failures. Let them propagate so
-        # callers do not report a runner crash as SETUP_FAILED.
-        start_time = datetime.now()
-        results = self._run_tests(tests_to_run, conf_file, args)
-        end_time = datetime.now()
+        original_arg_config = args.config
+        if conf_file:
+            args.config = conf_file
+        try:
+            start_time = datetime.now()
+            results = self._run_tests(tests_to_run, conf_file, args)
+            end_time = datetime.now()
+        finally:
+            args.config = original_arg_config
         delta_time = end_time - start_time
         print(
             f"Running all tests took {delta_time} between {start_time} and {end_time}",

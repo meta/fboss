@@ -112,6 +112,7 @@ class HwTest : public ::testing::Test {
 
  private:
   void setupForWarmboot() const;
+  void checkQsfpMemoryInBounds() const;
   // Dump per-transceiver metadata for registered transceivers to the
   // Scuba-ingestion file. Called from TearDown(). Best effort: never fails the
   // test.

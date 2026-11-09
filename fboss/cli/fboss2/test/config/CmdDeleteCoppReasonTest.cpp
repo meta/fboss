@@ -118,18 +118,21 @@ TEST_F(CmdDeleteCoppReasonTestFixture, deleteMappedReason) {
   EXPECT_NE(findReason(cfg::PacketRxReason::LACP), nullptr);
 }
 
-TEST_F(CmdDeleteCoppReasonTestFixture, deleteUnmappedReasonThrows) {
+TEST_F(CmdDeleteCoppReasonTestFixture, deleteUnmappedReasonIsNoop) {
   setupTestableConfigSession(cmdPrefix_, "lldp");
+  const auto sessionBefore = sessionConfigText();
   CmdDeleteCoppReason cmd;
   HostInfo hostInfo("testhost");
   CoppReasonDeleteArgs args({"lldp"});
 
-  EXPECT_THROW(cmd.queryClient(hostInfo, args), std::runtime_error);
+  EXPECT_THAT(cmd.queryClient(hostInfo, args), HasSubstr("nothing to delete"));
   EXPECT_EQ(reasonListSize(), 5);
+  EXPECT_EQ(sessionConfigText(), sessionBefore)
+      << "a no-op delete must not save the config";
 }
 
-// Deleting when the device has no cpuTrafficPolicy at all must throw rather
-// than dereference an empty optional.
+// Deleting when the device has no cpuTrafficPolicy at all must be a no-op
+// rather than dereference an empty optional.
 class CmdDeleteCoppReasonNoPolicyFixture : public CmdConfigTestBase {
  public:
   CmdDeleteCoppReasonNoPolicyFixture()
@@ -141,17 +144,27 @@ class CmdDeleteCoppReasonNoPolicyFixture : public CmdConfigTestBase {
   const std::string cmdPrefix_ = "delete copp reason";
 };
 
-TEST_F(CmdDeleteCoppReasonNoPolicyFixture, noCpuTrafficPolicyThrows) {
+TEST_F(CmdDeleteCoppReasonNoPolicyFixture, noCpuTrafficPolicyIsNoop) {
   setupTestableConfigSession(cmdPrefix_, "arp");
+  const auto sessionBefore = sessionConfigText();
   CmdDeleteCoppReason cmd;
   HostInfo hostInfo("testhost");
   CoppReasonDeleteArgs args({"arp"});
 
-  EXPECT_THROW(cmd.queryClient(hostInfo, args), std::runtime_error);
+  EXPECT_THAT(cmd.queryClient(hostInfo, args), HasSubstr("nothing to delete"));
+  // The no-op must not create the policy.
+  EXPECT_FALSE(
+      ConfigSession::getInstance()
+          .getAgentConfig()
+          .sw()
+          ->cpuTrafficPolicy()
+          .has_value());
+  EXPECT_EQ(sessionConfigText(), sessionBefore)
+      << "a no-op delete must not save the config";
 }
 
-// cpuTrafficPolicy present but rxReasonToQueueOrderedList absent must also
-// throw.
+// cpuTrafficPolicy present but rxReasonToQueueOrderedList absent is also a
+// no-op.
 class CmdDeleteCoppReasonNoListFixture : public CmdConfigTestBase {
  public:
   CmdDeleteCoppReasonNoListFixture()
@@ -163,13 +176,24 @@ class CmdDeleteCoppReasonNoListFixture : public CmdConfigTestBase {
   const std::string cmdPrefix_ = "delete copp reason";
 };
 
-TEST_F(CmdDeleteCoppReasonNoListFixture, noReasonListThrows) {
+TEST_F(CmdDeleteCoppReasonNoListFixture, noReasonListIsNoop) {
   setupTestableConfigSession(cmdPrefix_, "arp");
+  const auto sessionBefore = sessionConfigText();
   CmdDeleteCoppReason cmd;
   HostInfo hostInfo("testhost");
   CoppReasonDeleteArgs args({"arp"});
 
-  EXPECT_THROW(cmd.queryClient(hostInfo, args), std::runtime_error);
+  EXPECT_THAT(cmd.queryClient(hostInfo, args), HasSubstr("nothing to delete"));
+  // The no-op must not create the reason list.
+  EXPECT_FALSE(
+      ConfigSession::getInstance()
+          .getAgentConfig()
+          .sw()
+          ->cpuTrafficPolicy()
+          ->rxReasonToQueueOrderedList()
+          .has_value());
+  EXPECT_EQ(sessionConfigText(), sessionBefore)
+      << "a no-op delete must not save the config";
 }
 
 } // namespace facebook::fboss

@@ -323,7 +323,7 @@
             "maxAlarmVal": 115,
             "upperCriticalVal": 120
           },
-          "compute": "2.4*@/1000.0"
+          "compute": "3*@/1000.0"
         },
         {
           "name": "HSCB_UP1_XP48R0V_HOTSWAP_TEMP",
@@ -2980,8 +2980,8 @@
           "compute": "@/1000000.0"
         },
         {
-          "name": "SMB_L_U7_LM75B_SMB_OUTLET",
-          "sysfsPath": "/run/devmap/sensors/SMB_L_INLET_TSENSOR/temp1_input",
+          "name": "SMB_L_U7_LM75B_OUTLET2",
+          "sysfsPath": "/run/devmap/sensors/SMB_L_OUTLET_TSENSOR2/temp1_input",
           "type": 3,
           "thresholds": {
             "maxAlarmVal": 85,
@@ -2992,8 +2992,8 @@
           "compute": "@/1000.0"
         },
         {
-          "name": "SMB_L_U17_LM75B_SMB_INLET",
-          "sysfsPath": "/run/devmap/sensors/SMB_L_INLET_SMB_TSENSOR/temp1_input",
+          "name": "SMB_L_U17_LM75B_INLET3",
+          "sysfsPath": "/run/devmap/sensors/SMB_L_INLET_TSENSOR3/temp1_input",
           "type": 3,
           "thresholds": {
             "maxAlarmVal": 85,
@@ -3004,8 +3004,8 @@
           "compute": "@/1000.0"
         },
         {
-          "name": "SMB_L_U8_LM75B_TH6_INLET",
-          "sysfsPath": "/run/devmap/sensors/SMB_L_OUTLET_TH6_TSENSOR/temp1_input",
+          "name": "SMB_L_U8_LM75B_INLET1",
+          "sysfsPath": "/run/devmap/sensors/SMB_L_INLET_TSENSOR1/temp1_input",
           "type": 3,
           "thresholds": {
             "maxAlarmVal": 85,
@@ -7093,8 +7093,8 @@
           "compute": "@/1000000.0"
         },
         {
-          "name": "SMB_R_U7_LM75B_SMB_OUTLET",
-          "sysfsPath": "/run/devmap/sensors/SMB_R_INLET_TSENSOR/temp1_input",
+          "name": "SMB_R_U7_LM75B_OUTLET2",
+          "sysfsPath": "/run/devmap/sensors/SMB_R_OUTLET_TSENSOR2/temp1_input",
           "type": 3,
           "thresholds": {
             "maxAlarmVal": 90,
@@ -7105,8 +7105,20 @@
           "compute": "@/1000.0"
         },
         {
-          "name": "SMB_R_U8_LM75B_TH6_INLET",
-          "sysfsPath": "/run/devmap/sensors/SMB_R_OUTLET_TH6_TSENSOR/temp1_input",
+          "name": "SMB_R_U17_LM75B_INLET3",
+          "sysfsPath": "/run/devmap/sensors/SMB_R_INLET_TSENSOR3/temp1_input",
+          "type": 3,
+          "thresholds": {
+            "maxAlarmVal": 85,
+            "minAlarmVal": -20,
+            "upperCriticalVal": 90,
+            "lowerCriticalVal": -25
+          },
+          "compute": "@/1000.0"
+        },
+        {
+          "name": "SMB_R_U8_LM75B_INLET1",
+          "sysfsPath": "/run/devmap/sensors/SMB_R_INLET_TSENSOR1/temp1_input",
           "type": 3,
           "thresholds": {
             "maxAlarmVal": 90,
@@ -7353,18 +7365,6 @@
             "minAlarmVal": 1.62,
             "upperCriticalVal": 2.07,
             "lowerCriticalVal": 1.53
-          },
-          "compute": "@/1000.0"
-        },
-        {
-          "name": "SMB_R_U17_LM75B_SMB_INLET",
-          "sysfsPath": "/run/devmap/sensors/SMB_R_INLET_SMB_TSENSOR/temp1_input",
-          "type": 3,
-          "thresholds": {
-            "maxAlarmVal": 85,
-            "minAlarmVal": -20,
-            "upperCriticalVal": 90,
-            "lowerCriticalVal": -25
           },
           "compute": "@/1000.0"
         },

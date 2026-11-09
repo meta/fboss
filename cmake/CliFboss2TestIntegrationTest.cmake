@@ -7,12 +7,23 @@
 # binary.
 add_executable(fboss2_integration_test
   fboss/cli/fboss2/oss/config/CmdListImpl.cpp
+  fboss/cli/fboss2/test/integration_test/AgentMemoryReclamationTest.cpp
   fboss/cli/fboss2/test/integration_test/Fboss2IntegrationTest.cpp
   fboss/cli/fboss2/test/integration_test/ConfigAdminDistanceTest.cpp
   fboss/cli/fboss2/test/integration_test/ConfigAclRuleTest.cpp
+  fboss/cli/fboss2/test/integration_test/ConfigAclTest.cpp
   fboss/cli/fboss2/test/integration_test/ConfigArpTest.cpp
   fboss/cli/fboss2/test/integration_test/ConfigSflowRateTest.cpp
   fboss/cli/fboss2/test/integration_test/ConfigSflowSampleDestTest.cpp
+  fboss/cli/fboss2/test/integration_test/ConfigBgpGlobalTest.cpp
+  fboss/cli/fboss2/test/integration_test/ConfigBgpNeighborTest.cpp
+  fboss/cli/fboss2/test/integration_test/ConfigBgpPeerGroupTest.cpp
+  fboss/cli/fboss2/test/integration_test/ConfigBgpPolicyAsPathListTest.cpp
+  fboss/cli/fboss2/test/integration_test/ConfigBgpPolicyCommunityListTest.cpp
+  fboss/cli/fboss2/test/integration_test/ConfigBgpPolicyPrefixListTest.cpp
+  fboss/cli/fboss2/test/integration_test/ConfigBgpPolicyPrefixListEntryTest.cpp
+  fboss/cli/fboss2/test/integration_test/ConfigBgpPolicyRoutingPolicyTest.cpp
+  fboss/cli/fboss2/test/integration_test/ConfigBgpSessionTest.cpp
   fboss/cli/fboss2/test/integration_test/ConfigConcurrentSessionsTest.cpp
   fboss/cli/fboss2/test/integration_test/ConfigHostnameTest.cpp
   fboss/cli/fboss2/test/integration_test/ConfigIcmpV4UnavailableSrcAddrTest.cpp
@@ -41,7 +52,6 @@ add_executable(fboss2_integration_test
   fboss/cli/fboss2/test/integration_test/ConfigSessionClearTest.cpp
   fboss/cli/fboss2/test/integration_test/ConfigTrafficCounterTest.cpp
   fboss/cli/fboss2/test/integration_test/ConfigVlanCreateTest.cpp
-  fboss/cli/fboss2/test/integration_test/ConfigInterfaceSwitchportTrunkAllowedVlanTest.cpp
   fboss/cli/fboss2/test/integration_test/ConfigVlanDefaultTest.cpp
   fboss/cli/fboss2/test/integration_test/ConfigVlanPortTaggingModeTest.cpp
   fboss/cli/fboss2/test/integration_test/ConfigVlanStaticMacTest.cpp
@@ -49,12 +59,14 @@ add_executable(fboss2_integration_test
   fboss/cli/fboss2/test/integration_test/DeleteArpTest.cpp
   fboss/cli/fboss2/test/integration_test/DeleteDhcpSourceOverrideTest.cpp
   fboss/cli/fboss2/test/integration_test/DeleteInterfaceIpv6NdpTest.cpp
+  fboss/cli/fboss2/test/integration_test/DeleteLoadBalancingTest.cpp
   fboss/cli/fboss2/test/integration_test/DeleteQosPolicyTest.cpp
   fboss/cli/fboss2/test/integration_test/DeleteVlanTest.cpp
   fboss/cli/fboss2/test/integration_test/TunnelIpInIpTest.cpp
   fboss/cli/fboss2/utils/CmdInitUtils.cpp
   fboss/cli/fboss2/utils/oss/CmdInitUtils.cpp
   fboss/cli/fboss2/test/integration_test/ConfigIpRouteTest.cpp
+  fboss/cli/fboss2/test/integration_test/ConfigCoppTrafficPolicyTest.cpp
   fboss/cli/fboss2/test/integration_test/ShowRouteFilterTest.cpp
 )
 

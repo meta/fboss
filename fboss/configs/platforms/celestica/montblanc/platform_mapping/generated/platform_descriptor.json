@@ -1,0 +1,24 @@
+{
+  "platformType": 25,
+  "productNamePrefixes": [
+    "Montblanc",
+    "MONTBLANC",
+    "Montblancm",
+    "MONTBLANCM",
+    "MINIPACK3_CHASSIS_BUNDLE",
+    "MINIPACK3",
+    "MINIPACK3M",
+    "MINIPACK3BAM"
+  ],
+  "modeNames": [
+    "montblanc",
+    "montblancm",
+    "minipack3ba",
+    "minipack3bam"
+  ],
+  "asicType": 13,
+  "variantAttributes": {
+    "montblanc_odd_ports_8x100G": false
+  },
+  "numSwitchAsics": 1
+}

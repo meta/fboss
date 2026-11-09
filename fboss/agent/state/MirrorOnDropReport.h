@@ -25,7 +25,7 @@ class MirrorOnDropReport : public ThriftStructNode<
 
   MirrorOnDropReport(
       const std::string& name,
-      PortID mirrorPortId,
+      std::optional<PortID> mirrorPortId,
       folly::IPAddress localSrcIp,
       int16_t localSrcPort,
       folly::IPAddress collectorIp,
@@ -39,10 +39,11 @@ class MirrorOnDropReport : public ThriftStructNode<
       std::map<cfg::MirrorOnDropAgingGroup, int32_t>
           agingGroupAgingIntervalUsecs,
       std::optional<int32_t> samplingRate = std::nullopt,
-      std::optional<int32_t> dropPacketRateThreshold = std::nullopt);
+      std::optional<int32_t> dropPacketRateThreshold = std::nullopt,
+      std::optional<int32_t> aggregateDropPacketRateThreshold = std::nullopt);
 
   std::string getID() const;
-  PortID getMirrorPortId() const;
+  std::optional<PortID> getMirrorPortId() const;
   void setMirrorPortId(PortID portId);
   folly::IPAddress getLocalSrcIp() const;
   int16_t getLocalSrcPort() const;
@@ -58,6 +59,7 @@ class MirrorOnDropReport : public ThriftStructNode<
   getAgingGroupAgingIntervalUsecs() const;
   std::optional<int32_t> getSamplingRate() const;
   std::optional<int32_t> getDropPacketRateThreshold() const;
+  std::optional<int32_t> getAggregateDropPacketRateThreshold() const;
 
   // Resolved fields accessors
   bool isResolved() const;

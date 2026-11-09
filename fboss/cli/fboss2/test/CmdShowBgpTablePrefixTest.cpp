@@ -17,6 +17,7 @@
 #include <initializer_list>
 #include <memory>
 #include <vector>
+#include "fboss/agent/FbossError.h"
 #include "fboss/cli/fboss2/test/CmdHandlerTestBase.h"
 
 #include "fboss/cli/fboss2/commands/show/bgp/CanonicalRibResolver.h"
@@ -50,18 +51,18 @@ class CmdShowBgpTablePrefixTestFixture : public CmdHandlerTestBase {
         folly::dynamic value = folly::dynamic::object
           ("communities",
           folly::dynamic::array(
-          folly::dynamic::object("name", "FABRIC_POD_RSW_LOOP")
+          folly::dynamic::object("name", "SAMPLE_LOOPBACK_COM")
           ("description", "rsw loopback")
-          ("communities", folly::dynamic::array("65527:12705"))
+          ("communities", folly::dynamic::array("65221:28734"))
           )
         )
         ("localprefs",
         folly::dynamic::array(
           folly::dynamic::object("localpref", 20)
-          ("name", "LOCALPREF_CTRL_BACKUP")
+          ("name", "LOCALPREF_SAMPLE_BKUP")
           ("description", "low-priority supplementary/backup routes from bgp controller"),
           folly::dynamic::object("localpref", 25)
-          ("name", "LOCALPREF_DEPRIO")
+          ("name", "LOCALPREF_SAMPL1")
           ("description", "deprioritized local preference value"))
         );
           // clang-format on
@@ -95,12 +96,33 @@ class CmdShowBgpTablePrefixTestFixture : public CmdHandlerTestBase {
   }
 };
 
+/** Build one compact programmed FIB-out row for prefix command tests. */
+TFibOutEntry makeFibOutEntryForPrefixTest(
+    const std::string& prefix,
+    const std::string& nextHop) {
+  TFibOutNextHop thriftNextHop;
+  thriftNextHop.next_hop() = getPrefix(nextHop);
+  thriftNextHop.weight() = 17;
+  thriftNextHop.role() = TFibOutNextHopRole::PRIMARY;
+  TFibOutRoute route;
+  route.operation() = TFibOutOperation::PROGRAM;
+  route.next_hops() = {std::move(thriftNextHop)};
+  TFibOutEntry entry;
+  entry.prefix() = getPrefix(prefix);
+  entry.fib_out() = std::move(route);
+  return entry;
+}
+
 TEST_F(CmdShowBgpTablePrefixTestFixture, queryClient) {
   setupMockedBgpServer();
   auto canonical = buildCanonicalRibState(kPrefixToQuery);
   EXPECT_CALL(getMockBgp(), getRibPrefixCanonical(_, _))
       .WillOnce([&](TCanonicalRibState& state, std::unique_ptr<std::string>) {
         state = canonical;
+      });
+  EXPECT_CALL(getMockBgp(), getFibOutPrefix(_, _))
+      .WillOnce([](TFibOutTable& table, std::unique_ptr<TFibOutPrefixRequest>) {
+        table.enabled() = false;
       });
 
   auto result =
@@ -109,17 +131,165 @@ TEST_F(CmdShowBgpTablePrefixTestFixture, queryClient) {
       *result.tRibEntries(), resolveCanonicalRibState(canonical));
 }
 
-TEST_F(CmdShowBgpTablePrefixTestFixture, queryClientWithInvalidPrefix) {
-  const std::string invalidPrefix = "1.1.1.1/32";
+TEST_F(CmdShowBgpTablePrefixTestFixture, QueryIncludesFibOutWhenEnabled) {
+  setupMockedBgpServer();
+  auto canonical = buildCanonicalRibState(kPrefixToQuery);
+  EXPECT_CALL(getMockBgp(), getRibPrefixCanonical(_, _))
+      .WillOnce([&](TCanonicalRibState& state, std::unique_ptr<std::string>) {
+        state = canonical;
+      });
+  const auto expectedFibOut =
+      makeFibOutEntryForPrefixTest(kPrefixToQuery, kNextHop);
+  EXPECT_CALL(getMockBgp(), getFibOutPrefix(_, _))
+      .WillOnce([&](TFibOutTable& table,
+                    std::unique_ptr<TFibOutPrefixRequest> request) {
+        EXPECT_EQ(*request->prefix(), kPrefixToQuery);
+        table.enabled() = true;
+        table.entries() = {expectedFibOut};
+      });
+
+  const auto result =
+      CmdShowBgpTablePrefix().queryClient(localhost(), {kPrefixToQuery});
+
+  ASSERT_EQ(result.tRibEntries()->size(), 1);
+  const auto& entry = result.tRibEntries()->front();
+  ASSERT_TRUE(entry.fib_out().has_value());
+  EXPECT_EQ(entry.fib_out(), expectedFibOut.fib_out());
+  EXPECT_FALSE(entry.fib_out_pending().has_value());
+}
+
+TEST_F(CmdShowBgpTablePrefixTestFixture, QueryAttachesFibOutToDuplicateRows) {
+  setupMockedBgpServer();
+  const auto canonical = buildCanonicalRibState(kPrefixToQuery);
+  EXPECT_CALL(getMockBgp(), getRibPrefixCanonical(_, _))
+      .Times(2)
+      .WillRepeatedly([&](TCanonicalRibState& state,
+                          std::unique_ptr<std::string>) { state = canonical; });
+  const auto expectedFibOut =
+      makeFibOutEntryForPrefixTest(kPrefixToQuery, kNextHop);
+  EXPECT_CALL(getMockBgp(), getFibOutPrefix(_, _))
+      .Times(2)
+      .WillRepeatedly(
+          [&](TFibOutTable& table, std::unique_ptr<TFibOutPrefixRequest>) {
+            table.enabled() = true;
+            table.entries() = {expectedFibOut};
+          });
+
+  const auto result = CmdShowBgpTablePrefix().queryClient(
+      localhost(), {kPrefixToQuery, kPrefixToQuery});
+
+  ASSERT_EQ(result.tRibEntries()->size(), 2);
+  for (const auto& entry : *result.tRibEntries()) {
+    ASSERT_TRUE(entry.fib_out().has_value());
+    EXPECT_EQ(entry.fib_out(), expectedFibOut.fib_out());
+    EXPECT_FALSE(entry.fib_out_pending().has_value());
+  }
+}
+
+TEST_F(
+    CmdShowBgpTablePrefixTestFixture,
+    QueryDuplicatePrefixUsesLatestFibOutState) {
+  setupMockedBgpServer();
+  const std::string normalizedPrefix = "8.0.0.0/24";
+  const std::string equivalentPrefix = "8.0.0.42/24";
+  const auto canonical = buildCanonicalRibState(normalizedPrefix);
+  EXPECT_CALL(getMockBgp(), getRibPrefixCanonical(_, _))
+      .Times(2)
+      .WillRepeatedly([&](TCanonicalRibState& state,
+                          std::unique_ptr<std::string>) { state = canonical; });
+  const auto submitted =
+      makeFibOutEntryForPrefixTest(normalizedPrefix, kNextHop);
+  EXPECT_CALL(getMockBgp(), getFibOutPrefix(_, _))
+      .WillOnce(
+          [&](TFibOutTable& table, std::unique_ptr<TFibOutPrefixRequest>) {
+            table.enabled() = true;
+            table.entries() = {submitted};
+          })
+      .WillOnce(
+          [&](TFibOutTable& table, std::unique_ptr<TFibOutPrefixRequest>) {
+            table.enabled() = true;
+            table.entries()->clear();
+          });
+
+  const auto result = CmdShowBgpTablePrefix().queryClient(
+      localhost(), {normalizedPrefix, equivalentPrefix});
+
+  ASSERT_EQ(result.tRibEntries()->size(), 2);
+  for (const auto& entry : *result.tRibEntries()) {
+    EXPECT_FALSE(entry.fib_out().has_value());
+    EXPECT_FALSE(entry.fib_out_pending().has_value());
+  }
+}
+
+TEST_F(CmdShowBgpTablePrefixTestFixture, QueryHidesFibOutWhenDisabled) {
+  setupMockedBgpServer();
+  auto canonical = buildCanonicalRibState(kPrefixToQuery);
+  EXPECT_CALL(getMockBgp(), getRibPrefixCanonical(_, _))
+      .WillOnce([&](TCanonicalRibState& state, std::unique_ptr<std::string>) {
+        state = canonical;
+      });
+  EXPECT_CALL(getMockBgp(), getFibOutPrefix(_, _))
+      .WillOnce([](TFibOutTable& table, std::unique_ptr<TFibOutPrefixRequest>) {
+        table.enabled() = false;
+      });
+
+  const auto result =
+      CmdShowBgpTablePrefix().queryClient(localhost(), {kPrefixToQuery});
+
+  ASSERT_EQ(result.tRibEntries()->size(), 1);
+  EXPECT_FALSE(result.tRibEntries()->front().fib_out().has_value());
+  EXPECT_FALSE(result.tRibEntries()->front().fib_out_pending().has_value());
+}
+
+TEST_F(CmdShowBgpTablePrefixTestFixture, QueryHidesFibOutForOlderBinary) {
+  MockBgpClient client;
+  EXPECT_CALL(client, getFibOutPrefix(_, _))
+      .WillOnce(Throw(
+          apache::thrift::TApplicationException(
+              apache::thrift::TApplicationException::UNKNOWN_METHOD,
+              "Method name getFibOutPrefix not found")));
+
+  EXPECT_FALSE(
+      queryFibOutPrefixIfSupported(client, kPrefixToQuery).has_value());
+}
+
+TEST_F(CmdShowBgpTablePrefixTestFixture, QueryPreservesRealFibOutFailure) {
+  MockBgpClient client;
+  EXPECT_CALL(client, getFibOutPrefix(_, _))
+      .WillOnce(Throw(
+          apache::thrift::TApplicationException(
+              apache::thrift::TApplicationException::INTERNAL_ERROR,
+              "RIB event base is unresponsive")));
+
+  EXPECT_THROW(
+      queryFibOutPrefixIfSupported(client, kPrefixToQuery),
+      apache::thrift::TApplicationException);
+}
+
+TEST_F(CmdShowBgpTablePrefixTestFixture, QueryClientWithAbsentPrefix) {
+  const std::string absentPrefix = "1.1.1.1/32";
   setupMockedBgpServer();
   EXPECT_CALL(getMockBgp(), getRibPrefixCanonical(_, _))
       .WillOnce([&](TCanonicalRibState& state, std::unique_ptr<std::string>) {
         state = TCanonicalRibState();
       });
+  EXPECT_CALL(getMockBgp(), getFibOutPrefix(_, _))
+      .WillOnce([](TFibOutTable& table, std::unique_ptr<TFibOutPrefixRequest>) {
+        table.enabled() = true;
+      });
 
   auto result =
-      CmdShowBgpTablePrefix().queryClient(localhost(), {invalidPrefix});
+      CmdShowBgpTablePrefix().queryClient(localhost(), {absentPrefix});
   EXPECT_THAT(*result.tRibEntries(), IsEmpty());
+}
+
+TEST_F(CmdShowBgpTablePrefixTestFixture, QueryClientRejectsMalformedPrefix) {
+  setupMockedBgpServer();
+
+  EXPECT_THROW(
+      CmdShowBgpTablePrefix().queryClient(
+          localhost(), {kPrefixToQuery, "invalid"}),
+      FbossError);
 }
 
 TEST_F(CmdShowBgpTablePrefixTestFixture, printOutput) {
@@ -140,14 +310,87 @@ TEST_F(CmdShowBgpTablePrefixTestFixture, printOutput) {
   // Expect one selected path.
   std::string expectedOutput = kRibEntryMarkersHeader +
       "\n> 8.0.0.0/32, Selected 1/1 paths (1 active, 0 inactive)\n"
-      "*@  from 1.2.3.4 (one.two.three.four) via 8.0.0.1 | LBW: None | Origin: INCOMPLETE | LP: DEPRIO/25 | ASP: 65301 | LM: # | NH Weight: N/A | MED: 10 | ID: 5 (rcvd) 6 (sent) | Weight: 20 | IgpCost: 100"
+      "*@  from 1.2.3.4 (one.two.three.four) via 8.0.0.1 | LBW: None | Origin: INCOMPLETE | LP: SAMPL1/25 | ASP: 64712 | LM: # | NH Weight: N/A | MED: 10 | ID: 5 (rcvd) 6 (sent) | Weight: 20 | IgpCost: 100"
       "\n    Router/Originator: 2.2.2.3 | ClusterList: [1.1.1.2]\n"
-      "    Communities: FABRIC_POD_RSW_LOOP/65527:12705\n"
+      "    Communities: SAMPLE_LOOPBACK_COM/65221:28734\n"
       "    ExtCommunities: Type(64):SubType(2):AS(3):Value(4)\n"
       "    BestPath Rejection Reason: Router-Id, Filter Criterion: Choose Lowest Value\n";
 
   maskDateInOutput(output);
   EXPECT_EQ(output, expectedOutput);
+}
+
+TEST_F(CmdShowBgpTablePrefixTestFixture, PrintOutputIncludesFibOutWhenPresent) {
+  setupMockedBgpServer();
+  setupConfig();
+  auto fibOutEntry = makeFibOutEntryForPrefixTest(kPrefixToQuery, kNextHop);
+  fibOutEntry.fib_out()->admin_distance() = 20;
+  fibOutEntry.fib_out()->class_id() = 9;
+  fibOutEntry.fib_out()->nexthop_set_ref_count() = 3;
+  queriedEntry_.front().fib_out() = std::move(*fibOutEntry.fib_out());
+  TRibEntryWithHost data;
+  data.tRibEntries() = queriedEntry_;
+  data.host() = localhost().getName();
+  data.oobName() = localhost().getOobName();
+  data.ip() = localhost().getIpStr();
+  std::stringstream output;
+
+  CmdShowBgpTablePrefix().printOutput(data, output);
+
+  EXPECT_THAT(
+      output.str(),
+      HasSubstr(
+          "  FIB-out: PROGRAM | Route References: 3 | Admin Distance: 20 | Class ID: 9\n"
+          "    8.0.0.1 | Weight: 17 | Role: PRIMARY"));
+  EXPECT_THAT(output.str(), Not(HasSubstr(" | Pending: true")));
+}
+
+TEST_F(CmdShowBgpTablePrefixTestFixture, PrintOutputHidesAbsentFibOutState) {
+  setupMockedBgpServer();
+  setupConfig();
+  TRibEntryWithHost data;
+  data.tRibEntries() = queriedEntry_;
+  data.host() = localhost().getName();
+  data.oobName() = localhost().getOobName();
+  data.ip() = localhost().getIpStr();
+  std::stringstream output;
+
+  CmdShowBgpTablePrefix().printOutput(data, output);
+
+  EXPECT_THAT(output.str(), Not(HasSubstr("FIB-out:")));
+}
+
+TEST_F(CmdShowBgpTablePrefixTestFixture, PrintOutputShowsEmptyFibOutState) {
+  setupMockedBgpServer();
+  setupConfig();
+  TFibOutRoute fibOut;
+  fibOut.operation() = TFibOutOperation::NONE;
+  queriedEntry_.front().fib_out() = std::move(fibOut);
+  TRibEntryWithHost data;
+  data.tRibEntries() = queriedEntry_;
+  data.host() = localhost().getName();
+  data.oobName() = localhost().getOobName();
+  data.ip() = localhost().getIpStr();
+  std::stringstream output;
+
+  CmdShowBgpTablePrefix().printOutput(data, output);
+
+  EXPECT_THAT(output.str(), HasSubstr("  FIB-out: NONE\n"));
+}
+
+TEST_F(CmdShowBgpTablePrefixTestFixture, PrintOutputHidesFibOutWhenDisabled) {
+  setupMockedBgpServer();
+  setupConfig();
+  TRibEntryWithHost data;
+  data.tRibEntries() = queriedEntry_;
+  data.host() = localhost().getName();
+  data.oobName() = localhost().getOobName();
+  data.ip() = localhost().getIpStr();
+  std::stringstream output;
+
+  CmdShowBgpTablePrefix().printOutput(data, output);
+
+  EXPECT_THAT(output.str(), Not(HasSubstr("FIB-out:")));
 }
 
 TEST_F(CmdShowBgpTablePrefixTestFixture, PrintOutput_OnlyDefaultPaths) {
@@ -186,15 +429,15 @@ TEST_F(CmdShowBgpTablePrefixTestFixture, PrintOutput_OnlyDefaultPaths) {
   std::string expectedOutput = kRibEntryMarkersHeader +
       "\n> 8.0.0.0/32, Selected 0/2 paths (2 active, 0 inactive)\n"
       // path 1
-      "    from 1.2.3.2 (1.2.3.2) via 8.0.0.1 | LBW: None | Origin: INCOMPLETE | LP: DEPRIO/25 | ASP: 65301 | LM: # | NH Weight: N/A | MED: 10 | ID: 5 (rcvd) 6 (sent) | Weight: 20 | IgpCost: 100"
+      "    from 1.2.3.2 (1.2.3.2) via 8.0.0.1 | LBW: None | Origin: INCOMPLETE | LP: SAMPL1/25 | ASP: 64712 | LM: # | NH Weight: N/A | MED: 10 | ID: 5 (rcvd) 6 (sent) | Weight: 20 | IgpCost: 100"
       "\n    Router/Originator: 2.2.2.3 | ClusterList: []\n"
-      "    Communities: FABRIC_POD_RSW_LOOP/65527:12705\n"
+      "    Communities: SAMPLE_LOOPBACK_COM/65221:28734\n"
       "    ExtCommunities: Type(64):SubType(2):AS(3):Value(4)\n"
       "    BestPath Rejection Reason: Router-Id, Filter Criterion: Choose Lowest Value\n"
       // path 2
-      "    from 1.2.3.3 (1.2.3.3) via 8.0.0.1 | LBW: None | Origin: INCOMPLETE | LP: DEPRIO/25 | ASP: 65301 | LM: # | NH Weight: N/A | MED: 10 | ID: 5 (rcvd) 6 (sent) | Weight: 20 | IgpCost: 100"
+      "    from 1.2.3.3 (1.2.3.3) via 8.0.0.1 | LBW: None | Origin: INCOMPLETE | LP: SAMPL1/25 | ASP: 64712 | LM: # | NH Weight: N/A | MED: 10 | ID: 5 (rcvd) 6 (sent) | Weight: 20 | IgpCost: 100"
       "\n    Router/Originator: 2.2.2.3 | ClusterList: []\n"
-      "    Communities: FABRIC_POD_RSW_LOOP/65527:12705\n"
+      "    Communities: SAMPLE_LOOPBACK_COM/65221:28734\n"
       "    ExtCommunities: Type(64):SubType(2):AS(3):Value(4)\n"
       "    BestPath Rejection Reason: Router-Id, Filter Criterion: Choose Lowest Value\n";
 
@@ -244,21 +487,21 @@ TEST_F(
   std::string expectedOutput = kRibEntryMarkersHeader +
       "\n> 8.0.0.0/32, Selected 2/3 paths (3 active, 0 inactive)\n"
       // SELECTED path 1 (best path group)
-      "*@  from 1.2.3.2 (1.2.3.2) via 8.0.0.1 | LBW: None | Origin: INCOMPLETE | LP: DEPRIO/25 | ASP: 65301 | LM: # | NH Weight: N/A | MED: 10 | ID: 5 (rcvd) 6 (sent) | Weight: 20 | IgpCost: 100"
+      "*@  from 1.2.3.2 (1.2.3.2) via 8.0.0.1 | LBW: None | Origin: INCOMPLETE | LP: SAMPL1/25 | ASP: 64712 | LM: # | NH Weight: N/A | MED: 10 | ID: 5 (rcvd) 6 (sent) | Weight: 20 | IgpCost: 100"
       "\n    Router/Originator: 2.2.2.3 | ClusterList: []\n"
-      "    Communities: FABRIC_POD_RSW_LOOP/65527:12705\n"
+      "    Communities: SAMPLE_LOOPBACK_COM/65221:28734\n"
       "    ExtCommunities: Type(64):SubType(2):AS(3):Value(4)\n"
       "    BestPath Rejection Reason: Router-Id, Filter Criterion: Choose Lowest Value\n"
       // path 2 (best path group)
-      "*   from 1.2.3.3 (1.2.3.3) via 8.0.0.1 | LBW: None | Origin: INCOMPLETE | LP: DEPRIO/25 | ASP: 65301 | LM: # | NH Weight: N/A | MED: 10 | ID: 5 (rcvd) 6 (sent) | Weight: 20 | IgpCost: 100"
+      "*   from 1.2.3.3 (1.2.3.3) via 8.0.0.1 | LBW: None | Origin: INCOMPLETE | LP: SAMPL1/25 | ASP: 64712 | LM: # | NH Weight: N/A | MED: 10 | ID: 5 (rcvd) 6 (sent) | Weight: 20 | IgpCost: 100"
       "\n    Router/Originator: 2.2.2.3 | ClusterList: []\n"
-      "    Communities: FABRIC_POD_RSW_LOOP/65527:12705\n"
+      "    Communities: SAMPLE_LOOPBACK_COM/65221:28734\n"
       "    ExtCommunities: Type(64):SubType(2):AS(3):Value(4)\n"
       "    BestPath Rejection Reason: Router-Id, Filter Criterion: Choose Lowest Value\n"
       // path 3 (default path group)
-      "    from 1.2.3.4 (1.2.3.4) via 8.0.0.1 | LBW: None | Origin: INCOMPLETE | LP: DEPRIO/25 | ASP: 65301 | LM: # | NH Weight: N/A | MED: 10 | ID: 5 (rcvd) 6 (sent) | Weight: 20 | IgpCost: 100"
+      "    from 1.2.3.4 (1.2.3.4) via 8.0.0.1 | LBW: None | Origin: INCOMPLETE | LP: SAMPL1/25 | ASP: 64712 | LM: # | NH Weight: N/A | MED: 10 | ID: 5 (rcvd) 6 (sent) | Weight: 20 | IgpCost: 100"
       "\n    Router/Originator: 2.2.2.3 | ClusterList: []\n"
-      "    Communities: FABRIC_POD_RSW_LOOP/65527:12705\n"
+      "    Communities: SAMPLE_LOOPBACK_COM/65221:28734\n"
       "    ExtCommunities: Type(64):SubType(2):AS(3):Value(4)\n"
       "    BestPath Rejection Reason: Router-Id, Filter Criterion: Choose Lowest Value\n";
 
@@ -308,15 +551,15 @@ TEST_F(CmdShowBgpTablePrefixTestFixture, PrintOutput_InactivePath) {
       // 2 total paths, but only 1 was a candidate, so 1 active / 1 inactive.
       "\n> 8.0.0.0/32, Selected 1/2 paths (1 active, 1 inactive)\n"
       // Selected best path: no "!" in the third marker column.
-      "*@  from 1.2.3.2 (1.2.3.2) via 8.0.0.1 | LBW: None | Origin: INCOMPLETE | LP: DEPRIO/25 | ASP: 65301 | LM: # | NH Weight: N/A | MED: 10 | ID: 5 (rcvd) 6 (sent) | Weight: 20 | IgpCost: 100"
+      "*@  from 1.2.3.2 (1.2.3.2) via 8.0.0.1 | LBW: None | Origin: INCOMPLETE | LP: SAMPL1/25 | ASP: 64712 | LM: # | NH Weight: N/A | MED: 10 | ID: 5 (rcvd) 6 (sent) | Weight: 20 | IgpCost: 100"
       "\n    Router/Originator: 2.2.2.3 | ClusterList: []\n"
-      "    Communities: FABRIC_POD_RSW_LOOP/65527:12705\n"
+      "    Communities: SAMPLE_LOOPBACK_COM/65221:28734\n"
       "    ExtCommunities: Type(64):SubType(2):AS(3):Value(4)\n"
       "    BestPath Rejection Reason: Router-Id, Filter Criterion: Choose Lowest Value\n"
       // Inactive path: "!" marker.
-      "  ! from 1.2.3.3 (1.2.3.3) via 8.0.0.1 | LBW: None | Origin: INCOMPLETE | LP: DEPRIO/25 | ASP: 65301 | LM: # | NH Weight: N/A | MED: 10 | ID: 5 (rcvd) 6 (sent) | Weight: 20 | IgpCost: 100"
+      "  ! from 1.2.3.3 (1.2.3.3) via 8.0.0.1 | LBW: None | Origin: INCOMPLETE | LP: SAMPL1/25 | ASP: 64712 | LM: # | NH Weight: N/A | MED: 10 | ID: 5 (rcvd) 6 (sent) | Weight: 20 | IgpCost: 100"
       "\n    Router/Originator: 2.2.2.3 | ClusterList: []\n"
-      "    Communities: FABRIC_POD_RSW_LOOP/65527:12705\n"
+      "    Communities: SAMPLE_LOOPBACK_COM/65221:28734\n"
       "    ExtCommunities: Type(64):SubType(2):AS(3):Value(4)\n"
       "    BestPath Rejection Reason: Router-Id, Filter Criterion: Choose Lowest Value\n";
 
@@ -348,14 +591,45 @@ TEST_F(CmdShowBgpTablePrefixTestFixture, PrintOutput_PathSelectionPending) {
   // state - wait for the final result after the marker is cleared.
   std::string expectedOutput = kRibEntryMarkersHeader +
       "\n>% 8.0.0.0/32, Selected 1/1 paths (1 active, 0 inactive)\n"
-      "*@  from 1.2.3.4 (one.two.three.four) via 8.0.0.1 | LBW: None | Origin: INCOMPLETE | LP: DEPRIO/25 | ASP: 65301 | LM: # | NH Weight: N/A | MED: 10 | ID: 5 (rcvd) 6 (sent) | Weight: 20 | IgpCost: 100"
+      "*@  from 1.2.3.4 (one.two.three.four) via 8.0.0.1 | LBW: None | Origin: INCOMPLETE | LP: SAMPL1/25 | ASP: 64712 | LM: # | NH Weight: N/A | MED: 10 | ID: 5 (rcvd) 6 (sent) | Weight: 20 | IgpCost: 100"
       "\n    Router/Originator: 2.2.2.3 | ClusterList: [1.1.1.2]\n"
-      "    Communities: FABRIC_POD_RSW_LOOP/65527:12705\n"
+      "    Communities: SAMPLE_LOOPBACK_COM/65221:28734\n"
       "    ExtCommunities: Type(64):SubType(2):AS(3):Value(4)\n"
       "    BestPath Rejection Reason: Router-Id, Filter Criterion: Choose Lowest Value\n";
 
   maskDateInOutput(output);
   EXPECT_EQ(output, expectedOutput);
+}
+
+TEST_F(CmdShowBgpTablePrefixTestFixture, wikiDocHooks) {
+  EXPECT_FALSE(CmdShowBgpTablePrefixTraits::description().empty());
+
+  /*
+   * printRIBEntries reaches getLocalBgpConfig for the community/local-pref
+   * mnemonics and builds the HostInfo it connects to from the MODEL's own
+   * host/ip fields, so point the copy under test at the mocked server rather
+   * than at the canned documentation host.
+   */
+  setupMockedBgpServer();
+  resetBgpMnemonicCaches();
+  EXPECT_CALL(getMockBgp(), getRunningConfig(_))
+      .WillRepeatedly([](std::string& config) { config = "{}"; });
+
+  // Exact match returns the one prefix, never a covering or covered one.
+  auto model = CmdShowBgpTablePrefix::sampleModel();
+  ASSERT_EQ(model.tRibEntries()->size(), 1);
+  model.host() = localhost().getName();
+  model.oobName() = localhost().getOobName();
+  model.ip() = localhost().getIpStr();
+
+  std::stringstream ss;
+  CmdShowBgpTablePrefix().printOutput(model, ss);
+  const std::string output = ss.str();
+
+  EXPECT_THAT(output, HasSubstr("> 0.0.0.0/0, Selected 2/3 paths"));
+  // printOutput hard-codes detail=true, so the detail-only lines are present.
+  EXPECT_THAT(output, HasSubstr("Router/Originator:"));
+  EXPECT_THAT(output, HasSubstr("Communities:"));
 }
 
 } // namespace facebook::fboss

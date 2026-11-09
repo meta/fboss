@@ -243,14 +243,32 @@ class AgentMirroringTest : public AgentHwTest {
     PortID trafficPort = getTrafficPort<AddrT>(*getAgentEnsemble());
     PortID mirrorToPort = getMirrorToPort<AddrT>(
         *getAgentEnsemble(), baseMirrorToPortIndex, isUpdate);
-    EXPECT_EQ(
-        trafficPort,
-        ecmpHelper.nhop(trafficPortIndex<AddrT>()).portDesc.phyPortID());
-    EXPECT_EQ(
-        mirrorToPort,
-        ecmpHelper
-            .nhop(mirrorToPortIndex<AddrT>(baseMirrorToPortIndex, isUpdate))
-            .portDesc.phyPortID());
+    // These ports are chosen by index into masterLogicalPortIds(), which
+    // AgentEnsemble interleaves across dies on multi-die ASICs, while the ECMP
+    // helper orders its nexthops from a sorted SwitchState map. The two lists
+    // hold the same ports in different orders, so the index only lines up on
+    // single-die ASICs, which keep the index assertion unchanged. Where it does
+    // not line up, assert the precondition the rest of this function relies on
+    // instead: two distinct ports, each usable as a nexthop. ip() looks the
+    // port up via nhop(PortDescriptor), which throws when the port has no
+    // nexthop.
+    if (checkSameAndGetAsicForTesting(getAgentEnsemble()->getL3Asics())
+            ->getNumDies() > 1) {
+      ASSERT_NE(trafficPort, mirrorToPort);
+      ASSERT_NO_THROW(ecmpHelper.ip(PortDescriptor(trafficPort)))
+          << "no ECMP nexthop for traffic port " << trafficPort;
+      ASSERT_NO_THROW(ecmpHelper.ip(PortDescriptor(mirrorToPort)))
+          << "no ECMP nexthop for mirror-to port " << mirrorToPort;
+    } else {
+      EXPECT_EQ(
+          trafficPort,
+          ecmpHelper.nhop(trafficPortIndex<AddrT>()).portDesc.phyPortID());
+      EXPECT_EQ(
+          mirrorToPort,
+          ecmpHelper
+              .nhop(mirrorToPortIndex<AddrT>(baseMirrorToPortIndex, isUpdate))
+              .portDesc.phyPortID());
+    }
     // Route this family's injected traffic out its OWN traffic port. The
     // packets from sendPackets<AddrT>() have dst == receiverIp from
     // getMirrorTestParams<AddrT>(), which matches the family's default route.

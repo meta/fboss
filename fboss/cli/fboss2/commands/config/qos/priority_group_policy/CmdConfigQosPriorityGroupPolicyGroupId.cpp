@@ -182,7 +182,7 @@ CmdConfigQosPriorityGroupPolicyGroupId::queryClient(
 
   // Save the updated config
   session.saveConfig(
-      cli::ServiceType::AGENT, cli::ConfigActionLevel::AGENT_WARMBOOT);
+      cli::ServiceType::AGENT, cli::ConfigActionLevel::SERVICE_RESTART);
 
   return fmt::format(
       "Successfully configured priority-group-policy '{}' group-id {}",

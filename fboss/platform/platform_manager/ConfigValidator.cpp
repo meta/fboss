@@ -607,6 +607,12 @@ bool ConfigValidator::isValidPciDeviceConfig(
     }
   }
 
+  for (const auto& config : *pciDeviceConfig.mdioBusBlockConfigs()) {
+    if (!isValidMdioBusBlockConfig(config)) {
+      return false;
+    }
+  }
+
   std::vector<std::pair<int16_t, int16_t>> rtmPortRanges;
   for (const auto& config : *pciDeviceConfig.rtmCtrlBlockConfigs()) {
     rtmPortRanges.emplace_back(*config.startPort(), *config.numPorts());
@@ -1756,9 +1762,16 @@ void ConfigValidator::buildDeviceNameCache(
        *platformConfig.pmUnitConfigs()) {
     const auto& slotType = *pmUnitConfig.pluggedInSlotType();
 
-    // Add device names from i2cDeviceConfigs
+    // Add device names from i2cDeviceConfigs, plus one bus name per mux
+    // channel ("<name>@<channel>"), as registered by PlatformExplorer.
     for (const auto& i2cConfig : *pmUnitConfig.i2cDeviceConfigs()) {
       cache[slotType].insert(*i2cConfig.pmUnitScopedName());
+      if (i2cConfig.numOutgoingChannels()) {
+        for (int i = 0; i < *i2cConfig.numOutgoingChannels(); ++i) {
+          cache[slotType].insert(
+              fmt::format("{}@{}", *i2cConfig.pmUnitScopedName(), i));
+        }
+      }
     }
 
     // Add device names from embeddedSensorConfigs
@@ -2022,6 +2035,62 @@ bool ConfigValidator::isValidRtmCtrlBlockConfig(
     }
   }
 
+  return true;
+}
+
+bool ConfigValidator::isValidMdioBusBlockConfig(
+    const MdioBusBlockConfig& mdioBusBlockConfig) {
+  if (mdioBusBlockConfig.pmUnitScopedNamePrefix()->empty()) {
+    XLOG(ERR) << "PmUnitScopedNamePrefix must be a non-empty string";
+    return false;
+  }
+  if (mdioBusBlockConfig.pmUnitScopedNamePrefix()->ends_with('_')) {
+    XLOG(ERR) << "PmUnitScopedNamePrefix must not end with an underscore";
+    return false;
+  }
+  if (mdioBusBlockConfig.deviceName()->empty()) {
+    XLOG(ERR) << "deviceName must be a non-empty string";
+    return false;
+  }
+  if (mdioBusBlockConfig.csrOffsetCalc()->empty()) {
+    XLOG(ERR) << "csrOffsetCalc must be a non-empty string";
+    return false;
+  }
+  if (*mdioBusBlockConfig.numBuses() <= 0) {
+    XLOG(ERR) << "numBuses must be a value greater than 0";
+    return false;
+  }
+  for (int busIndex = 0; busIndex < *mdioBusBlockConfig.numBuses();
+       ++busIndex) {
+    try {
+      Utils().evaluateExpression(
+          fmt::format(
+              fmt::runtime(*mdioBusBlockConfig.csrOffsetCalc()),
+              fmt::arg("busIndex", busIndex)));
+    } catch (const std::exception& e) {
+      XLOG(ERR) << fmt::format(
+          "Invalid csrOffsetCalc expression: {} with busIndex={}: {}",
+          *mdioBusBlockConfig.csrOffsetCalc(),
+          busIndex,
+          e.what());
+      return false;
+    }
+    if (!mdioBusBlockConfig.iobufOffsetCalc()->empty()) {
+      try {
+        Utils().evaluateExpression(
+            fmt::format(
+                fmt::runtime(*mdioBusBlockConfig.iobufOffsetCalc()),
+                fmt::arg("busIndex", busIndex)));
+      } catch (const std::exception& e) {
+        XLOG(ERR) << fmt::format(
+            "Invalid iobufOffsetCalc expression: {} with busIndex={}: {}",
+            *mdioBusBlockConfig.iobufOffsetCalc(),
+            busIndex,
+            e.what());
+        return false;
+      }
+    }
+  }
   return true;
 }
 

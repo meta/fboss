@@ -10,9 +10,9 @@
 
 #pragma once
 
-#include <fboss/fsdb/oper/CowSubscriptionManager.h>
 #include <fboss/fsdb/oper/SubscriptionManager.h>
 #include <fboss/fsdb/oper/instantiations/FsdbCowRoot.h>
+#include <fboss/fsdb/oper/instantiations/FsdbCowSubscriptionManager.h>
 #include <fboss/thrift_cow/nodes/ThriftStructNode-inl.h>
 
 namespace facebook::fboss::fsdb {

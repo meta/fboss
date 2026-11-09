@@ -29,10 +29,7 @@ from fboss.platform.firmware_onboarding.validator.preflight import (
     run_preflight,
 )
 
-
-_CANONICAL_PLATFORMS: list[str] = [
-    "icecube800bc",
-]
+_CANONICAL_PLATFORMS: list[str] = ["icecube800bc", "icecube800banw", "m4062nhp"]
 
 
 class CanonicalExamplesTest(unittest.TestCase):
@@ -73,7 +70,5 @@ class CanonicalExamplesTest(unittest.TestCase):
                     # stays in sync if new tiers (e.g. `[depcheck]`) are added.
                     hard = [e for e in errors if _is_hard_failure(e)]
                     self.assertEqual(
-                        hard,
-                        [],
-                        f"{platform}/spec.json failed preflight: {errors}",
+                        hard, [], f"{platform}/spec.json failed preflight: {errors}"
                     )

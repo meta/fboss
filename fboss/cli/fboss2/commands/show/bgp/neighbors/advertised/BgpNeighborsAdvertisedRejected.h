@@ -10,7 +10,9 @@
 
 #pragma once
 
+#include <string_view>
 #include "configerator/structs/neteng/fboss/bgp/if/gen-cpp2/bgp_attr_types.h"
+
 #include "fboss/cli/fboss2/CmdHandler.h"
 #include "fboss/cli/fboss2/commands/show/bgp/CmdShowUtils.h"
 #include "fboss/cli/fboss2/commands/show/bgp/neighbors/CmdShowBgpNeighbors.h"
@@ -24,13 +26,18 @@ namespace facebook::fboss {
 using neteng::fboss::bgp::thrift::TBgpPath;
 using neteng::fboss::bgp_attr::TIpPrefix;
 
-struct BgpNeighborsAdvertisedRejectedTraits : public ReadCommandTraits,
-                                              public CliDocsExempt {
+struct BgpNeighborsAdvertisedRejectedTraits : public ReadCommandTraits {
   using ParentCmd = CmdShowBgpNeighbors;
   static constexpr utils::ObjectArgTypeId ObjectArgTypeId =
       utils::ObjectArgTypeId::OBJECT_ARG_TYPE_ID_IP_LIST;
   using ObjectArgType = std::vector<std::string>;
   using RetType = NetworkPathWithHost;
+
+  // Human-authored guide prose for the CLI reference wiki. Superset of the
+  // one-line help string registered in the command tree.
+  static std::string_view description() {
+    return "Displays the routes this switch chose not to send to a peer, each with the egress policy and term that denied it. This is the direct answer to 'why is my peer not seeing this prefix' when the prefix is present in 'show bgp table' and in 'advertised pre-policy' but missing from 'advertised post-policy'. Empty output means the egress policy dropped nothing for that peer, which is the normal state on a healthy session. The peer address is required.";
+  }
 };
 
 class BgpNeighborsAdvertisedRejected
@@ -74,6 +81,15 @@ class BgpNeighborsAdvertisedRejected
     result.oobName() = hostInfo.getOobName();
     result.ip() = hostInfo.getIpStr();
     return result;
+  }
+
+  // Canned, synthetic model (no real switch data) used to render a
+  // deterministic example for the CLI reference wiki. Shares one builder with
+  // the other five advertised/received views so they document the same routes.
+  static RetType sampleModel() {
+    return sampleNetworkPaths(
+        SampleRouteDirection::Advertised,
+        "Denied by SAMPLE_UPLINK_OUT term SAMPLE_DENY_LONG_PATH");
   }
 
   void printOutput(

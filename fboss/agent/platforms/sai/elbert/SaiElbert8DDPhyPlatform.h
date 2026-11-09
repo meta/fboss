@@ -51,7 +51,7 @@ class SaiElbert8DDPhyPlatform : public SaiPlatform {
 
   SaiSwitchTraits::CreateAttributes getSwitchAttributes(
       bool /*mandatoryOnly*/,
-      cfg::SwitchType switchType,
+      cfg::SwitchType /* switchType */,
       std::optional<int64_t> switchId,
       BootType /*bootType*/) override {
     CHECK(switchCreateAttrs_);

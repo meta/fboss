@@ -28,9 +28,7 @@ def generate_all_asic_configs(fboss_root: str) -> None:
     output_dir = os.path.join(
         fboss_root, "lib", "asic_config_v2", "generated_asic_configs"
     )
-    platform_mapping_input_dir = os.path.join(
-        fboss_root, "lib", "platform_mapping_v2", "platforms"
-    )
+    platform_mapping_input_dir = os.path.join(fboss_root, "configs", "platforms")
 
     # Clear out all configs in the output directory
     os.makedirs(output_dir, exist_ok=True)

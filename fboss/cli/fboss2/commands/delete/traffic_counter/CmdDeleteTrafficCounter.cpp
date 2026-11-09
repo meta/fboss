@@ -66,7 +66,8 @@ CmdDeleteTrafficCounterTraits::RetType CmdDeleteTrafficCounter::queryClient(
         return *counter.name() == name;
       });
   if (it == counters.end()) {
-    throw FbossError("No traffic counter named '", name, "'");
+    return fmt::format(
+        "Warning: traffic counter '{}' not found, nothing to delete", name);
   }
 
   // Refuse while a traffic-policy match action still attaches this counter:

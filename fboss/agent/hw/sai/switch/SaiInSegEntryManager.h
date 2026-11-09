@@ -20,6 +20,7 @@ class SaiManagerTable;
 class SaiPlatform;
 class SaiStore;
 class SaiInSegEntryManager;
+class SwitchState;
 struct SaiNextHopGroupHandle;
 
 using SaiInSegEntry = SaiObject<SaiInSegTraits>;
@@ -74,11 +75,14 @@ class SaiInSegEntryManager {
 
   SaiInSegEntryHandle* getInSegEntryHandle(Label label);
 
+  // newState resolves label nexthops from their IDs.
   void processAddedInSegEntry(
-      const std::shared_ptr<Route<LabelID>>& addedEntry);
+      const std::shared_ptr<Route<LabelID>>& addedEntry,
+      const std::shared_ptr<SwitchState>& newState);
   void processChangedInSegEntry(
       const std::shared_ptr<Route<LabelID>>& oldEntry,
-      const std::shared_ptr<Route<LabelID>>& newEntry);
+      const std::shared_ptr<Route<LabelID>>& newEntry,
+      const std::shared_ptr<SwitchState>& newState);
   void processRemovedInSegEntry(
       const std::shared_ptr<Route<LabelID>>& removedEntry);
 

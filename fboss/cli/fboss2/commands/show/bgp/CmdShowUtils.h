@@ -13,6 +13,7 @@
 #include "folly/json/dynamic.h"
 
 #include "configerator/structs/neteng/bgp_policy/thrift/gen-cpp2/bgp_policy_types.h"
+#include "configerator/structs/neteng/fboss/bgp/gen-cpp2/bgp_config_types.h"
 #include "configerator/structs/neteng/fboss/bgp/if/gen-cpp2/bgp_attr_types.h"
 #include "fboss/cli/fboss2/CmdHandler.h"
 #include "fboss/cli/fboss2/utils/CmdUtilsCommon.h"
@@ -23,6 +24,15 @@ inline constexpr auto kGar = "--decode-gar-lbw-ext-comm";
 }
 
 namespace facebook::fboss {
+
+enum class BgpPolicySource { POLICY_ARTIFACT, BGP_CONFIG };
+
+struct LoadedBgpPolicy {
+  BgpPolicySource source;
+  facebook::bgp::thrift::BgpPolicyConfig config;
+};
+
+LoadedBgpPolicy getLoadedBgpPolicy(const HostInfo& hostInfo);
 std::optional<facebook::bgp::bgp_policy::BgpPolicies> getRunningBgpPolicies(
     const HostInfo& hostInfo);
 std::optional<facebook::bgp::nsf_policy::NsfTeWeightEncoding>
@@ -161,6 +171,86 @@ inline constexpr auto kRibEntryMarkersLegend =
     "Markers: * - One of the best entries, @ - Best entry, "
     "% - Pending selection, ! - Inactive path";
 
+/*
+ * Build a TIpPrefix from CIDR text ("0.0.0.0/0", "2001:db8::/32") or a bare
+ * address. Only used to construct the canned data behind the CLI
+ * reference-wiki sampleModel() hooks; live paths get their prefixes from the
+ * daemon already in this form.
+ *
+ * Throws on input it cannot parse (folly::IPAddressFormatException for a
+ * malformed address, folly::ConversionError for a non-numeric prefix length).
+ * Callers pass literals, so a throw here means the literal is wrong and the
+ * unit tests will catch it; do not feed this untrusted input.
+ */
+TIpPrefix sampleIpPrefix(const std::string& cidr);
+
+/*
+ * A two-byte-ASN community for canned sample data. community() carries the
+ * packed 32-bit form printCommunities() reads; asn()/value() carry the halves.
+ * uint16_t inputs so the pack cannot silently overflow.
+ */
+TBgpCommunity sampleCommunity(uint16_t asn, uint16_t value);
+
+/*
+ * The community values every BGP wiki sample uses, in one place. The
+ * 'show bgp config' sample defines mnemonics for these exact pairs
+ * (AS65108.DEFAULT and AS65108.AGGREGATE.GLOBAL), so a reader can
+ * cross-reference a rendered community against that config; keeping them here
+ * is what stops the two samples drifting apart. Sample ASNs, RFC 6996
+ * private-use range.
+ */
+struct SampleCommunity {
+  uint16_t asn;
+  uint16_t value;
+};
+inline constexpr SampleCommunity kSampleLiveCommunity{64873, 521};
+inline constexpr SampleCommunity kSampleDefaultCommunity{65108, 337};
+inline constexpr SampleCommunity kSampleAggregateCommunity{65108, 814};
+inline constexpr SampleCommunity kSampleLoopbackCommunity{65221, 291};
+inline constexpr SampleCommunity kSampleRackCommunity{65108, 725};
+TBgpCommunity sampleCommunity(const SampleCommunity& community);
+
+/*
+ * Canned RIB data (no real switch data, addresses in documentation ranges)
+ * backing the CLI reference-wiki sampleModel() hooks of the commands that
+ * render a RIB listing. Shared so 'show bgp table' and 'show bgp table detail'
+ * document the same rows, since detail only adds lines to the same paths.
+ *
+ * Two prefixes: an IPv4 default route with two ECMP paths (one selected as
+ * best, one rejected on router-id) plus a third path outside the best group,
+ * and an IPv6 prefix with a single best path.
+ */
+TRibEntryWithHost sampleRibEntriesWithHost();
+
+/** Format a wire-format BGP address without aborting on malformed data. */
+std::string formatBgpIpAddress(const TIpPrefix& prefix);
+
+/** Print submitted FIB-out state attached to one exact RIB entry. */
+void printFibOut(std::ostream& out, const TRibEntry& entry);
+
+/** Return synthetic FIB-out data for CLI documentation and tests. */
+TFibOutTable sampleFibOutTable();
+
+// Which side of a peering the canned paths represent. Advertised routes have
+// not been installed anywhere, so they carry no last-modified time; received
+// ones do.
+enum class SampleRouteDirection { Advertised, Received };
+
+/*
+ * Canned per-peer route data (no real switch data) backing the CLI
+ * reference-wiki sampleModel() hooks of the six
+ * 'show bgp neighbors <peer> advertised|received ...' views, which all render
+ * through printRoutesInformation(). Shared so the six entries describe the
+ * same routes rather than drifting apart.
+ *
+ * policyName is rendered only by the post-policy and rejected views (the
+ * pre-policy views pass showPolicy=false), so pass the accept or deny string
+ * the view is meant to illustrate.
+ */
+NetworkPathWithHost sampleNetworkPaths(
+    SampleRouteDirection direction,
+    const std::string& policyName);
+
 // Prints entries for bgp table commands
 void printRIBEntries(
     std::ostream& out,
@@ -178,6 +268,33 @@ const std::map<TIpPrefix, std::vector<TBgpPath>> getRejectedNetworks(
 // Searches for link bandwidth in a list of ext-communities.
 float getLinkBandwidthFromExtCommunities(
     const std::vector<TBgpExtCommunity>& extCommunities);
+/*
+ * Render a BGP NOTIFICATION's RFC 4271 error code and subcode for the
+ * neighbors output, e.g.
+ * "BN_CEASE (6), subcode BN_CEASE_ADMIN_SHUTDOWN (2)".
+ *
+ * Both the name and the number are shown: the name is what an operator reads,
+ * the number is what RFC 4271 and packet captures use. Names are the thrift
+ * enum names, so they carry the BN_ prefix. errSubCodeStr is resolved by the
+ * parser per code family and arrives as the sentinel "NA" for codes that
+ * define no subcodes (BN_HOLD_TIMER_EXPIRED, BN_FSM_ERROR), in which case only
+ * the number is printed.
+ *
+ * A non-empty Data field is appended as ", data: ...", decoded where the RFC
+ * defines its layout (message length or type, unsupported version, Cease
+ * shutdown communication, Cease max-prefix, Cease Hard Reset) and shown as hex
+ * otherwise.
+ *
+ * Shared by the OSS and internal printBgpNeighbors copies so the two cannot
+ * drift; defined in commands/show/bgp/CmdShowUtils.cpp.
+ */
+std::string formatBgpNotification(
+    const facebook::nettools::bgplib::BgpNotification& notification);
+/*
+ * Print the last NOTIFICATION sent and received on a session, each with the
+ * time it was sent or received. Directions without one are omitted.
+ */
+void printLastBgpNotifications(const TBgpSession& neighbor, std::ostream& out);
 // Shared helpers used by both the OSS (oss/CmdShowUtils.cpp) and internal
 // (facebook/CmdShowUtils.cpp) implementations of the diverging show-util
 // functions. Defined once in commands/show/bgp/CmdShowUtils.cpp.

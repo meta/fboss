@@ -31,6 +31,7 @@ namespace {
 using namespace facebook::fboss;
 const ClientID kClientA = ClientID(1001);
 const ClientID kClientB = ClientID(1002);
+constexpr uint32_t kEcmpWidth = 64;
 const std::string kSrv6Tunnel0{"srv6Tunnel0"};
 } // namespace
 
@@ -88,7 +89,7 @@ TEST(Route, removeRoutesForClient) {
   RouteV6::Prefix r4{IPAddressV6("2001::0"), 48};
 
   NextHopIDManager nhopIds;
-  RibRouteUpdater u2(&v4Routes, &v6Routes, &nhopIds, nullptr);
+  RibRouteUpdater u2(&v4Routes, &v6Routes, &nhopIds, nullptr, kEcmpWidth);
   u2.update<RibRouteUpdater::RouteEntry, folly::CIDRNetwork>(
       kClientA,
       {
@@ -127,7 +128,8 @@ TEST(Route, serializeRouteTable) {
       cfg::AclLookupClass::DST_CLASS_L3_DPR);
 
   NextHopIDManager nhopIds;
-  RibRouteUpdater u2(&v4Routes, &v6Routes, &mplsRoutes, &nhopIds, nullptr);
+  RibRouteUpdater u2(
+      &v4Routes, &v6Routes, &mplsRoutes, &nhopIds, nullptr, kEcmpWidth);
   u2.update<RibRouteUpdater::RouteEntry, folly::CIDRNetwork>(
       kClientA,
       {
@@ -190,7 +192,7 @@ TEST(Route, addRouteWithSrv6NextHops) {
   RouteV6::Prefix r2{IPAddressV6("3001::0"), 48};
 
   NextHopIDManager nhopIds;
-  RibRouteUpdater u(&v4Routes, &v6Routes, &nhopIds, nullptr);
+  RibRouteUpdater u(&v4Routes, &v6Routes, &nhopIds, nullptr, kEcmpWidth);
   u.update<RibRouteUpdater::RouteEntry, folly::CIDRNetwork>(
       kClientA,
       {
@@ -244,7 +246,8 @@ TEST(Route, serializeRouteTableWithSrv6) {
   RouteV4::Prefix r2{IPAddressV4("20.1.1.0"), 24};
 
   NextHopIDManager nhopIds;
-  RibRouteUpdater u(&v4Routes, &v6Routes, &mplsRoutes, &nhopIds, nullptr);
+  RibRouteUpdater u(
+      &v4Routes, &v6Routes, &mplsRoutes, &nhopIds, nullptr, kEcmpWidth);
   u.update<RibRouteUpdater::RouteEntry, folly::CIDRNetwork>(
       kClientA,
       {
@@ -305,7 +308,7 @@ TEST(Route, resolveEcmpRouteWithSrv6NextHops) {
       IPAddress("2.2.2.2"), InterfaceID(2), UCMP_DEFAULT_WEIGHT));
 
   NextHopIDManager nhopIds;
-  RibRouteUpdater u(&v4Routes, &v6Routes, &nhopIds, nullptr);
+  RibRouteUpdater u(&v4Routes, &v6Routes, &nhopIds, nullptr, kEcmpWidth);
   u.update<RibRouteUpdater::RouteEntry, folly::CIDRNetwork>(
       ClientID::INTERFACE_ROUTE,
       {
@@ -392,7 +395,7 @@ TEST(Route, resolveUcmpRouteWithSrv6NextHops) {
       IPAddress("2.2.2.2"), InterfaceID(2), UCMP_DEFAULT_WEIGHT));
 
   NextHopIDManager nhopIds;
-  RibRouteUpdater u(&v4Routes, &v6Routes, &nhopIds, nullptr);
+  RibRouteUpdater u(&v4Routes, &v6Routes, &nhopIds, nullptr, kEcmpWidth);
   u.update<RibRouteUpdater::RouteEntry, folly::CIDRNetwork>(
       ClientID::INTERFACE_ROUTE,
       {
@@ -480,7 +483,7 @@ TEST(Route, resolveV6RouteWithSrv6NextHops) {
       IPAddress("fc00::1"), InterfaceID(1), UCMP_DEFAULT_WEIGHT));
 
   NextHopIDManager nhopIds;
-  RibRouteUpdater u(&v4Routes, &v6Routes, &nhopIds, nullptr);
+  RibRouteUpdater u(&v4Routes, &v6Routes, &nhopIds, nullptr, kEcmpWidth);
   u.update<RibRouteUpdater::RouteEntry, folly::CIDRNetwork>(
       ClientID::INTERFACE_ROUTE,
       {
@@ -548,7 +551,7 @@ TEST(Route, resolveEcmpMixedSrv6AndPlainNextHops) {
       IPAddress("2.2.2.2"), InterfaceID(2), UCMP_DEFAULT_WEIGHT));
 
   NextHopIDManager nhopIds;
-  RibRouteUpdater u(&v4Routes, &v6Routes, &nhopIds, nullptr);
+  RibRouteUpdater u(&v4Routes, &v6Routes, &nhopIds, nullptr, kEcmpWidth);
   u.update<RibRouteUpdater::RouteEntry, folly::CIDRNetwork>(
       ClientID::INTERFACE_ROUTE,
       {
@@ -635,7 +638,7 @@ TEST(Route, resolveUcmpDistinctSrv6SegmentLists) {
       IPAddress("1.1.1.1"), InterfaceID(1), UCMP_DEFAULT_WEIGHT));
 
   NextHopIDManager nhopIds;
-  RibRouteUpdater u(&v4Routes, &v6Routes, &nhopIds, nullptr);
+  RibRouteUpdater u(&v4Routes, &v6Routes, &nhopIds, nullptr, kEcmpWidth);
   u.update<RibRouteUpdater::RouteEntry, folly::CIDRNetwork>(
       ClientID::INTERFACE_ROUTE,
       {
@@ -720,7 +723,7 @@ TEST(Route, resolveEcmpRouteWithCost) {
       IPAddress("fc00:2::1"), InterfaceID(2), UCMP_DEFAULT_WEIGHT));
 
   NextHopIDManager nhopIds;
-  RibRouteUpdater u(&v4Routes, &v6Routes, &nhopIds, nullptr);
+  RibRouteUpdater u(&v4Routes, &v6Routes, &nhopIds, nullptr, kEcmpWidth);
   u.update<RibRouteUpdater::RouteEntry, folly::CIDRNetwork>(
       ClientID::INTERFACE_ROUTE,
       {
@@ -798,7 +801,7 @@ TEST(Route, resolveUcmpRouteWithCost) {
       IPAddress("fc00:2::1"), InterfaceID(2), UCMP_DEFAULT_WEIGHT));
 
   NextHopIDManager nhopIds;
-  RibRouteUpdater u(&v4Routes, &v6Routes, &nhopIds, nullptr);
+  RibRouteUpdater u(&v4Routes, &v6Routes, &nhopIds, nullptr, kEcmpWidth);
   u.update<RibRouteUpdater::RouteEntry, folly::CIDRNetwork>(
       ClientID::INTERFACE_ROUTE,
       {
@@ -873,7 +876,7 @@ TEST(Route, resolveUcmpDistinctCosts) {
       IPAddress("fc00:1::1"), InterfaceID(1), UCMP_DEFAULT_WEIGHT));
 
   NextHopIDManager nhopIds;
-  RibRouteUpdater u(&v4Routes, &v6Routes, &nhopIds, nullptr);
+  RibRouteUpdater u(&v4Routes, &v6Routes, &nhopIds, nullptr, kEcmpWidth);
   u.update<RibRouteUpdater::RouteEntry, folly::CIDRNetwork>(
       ClientID::INTERFACE_ROUTE,
       {
@@ -953,7 +956,7 @@ TEST(Route, resolveMixedCostAndNoCost) {
       IPAddress("fc00:2::1"), InterfaceID(2), UCMP_DEFAULT_WEIGHT));
 
   NextHopIDManager nhopIds;
-  RibRouteUpdater u(&v4Routes, &v6Routes, &nhopIds, nullptr);
+  RibRouteUpdater u(&v4Routes, &v6Routes, &nhopIds, nullptr, kEcmpWidth);
   u.update<RibRouteUpdater::RouteEntry, folly::CIDRNetwork>(
       ClientID::INTERFACE_ROUTE,
       {
@@ -1017,7 +1020,7 @@ TEST(Route, resolveRecursiveRouteWithCost) {
       IPAddress("fc00:1::1"), InterfaceID(1), UCMP_DEFAULT_WEIGHT));
 
   NextHopIDManager nhopIds;
-  RibRouteUpdater u(&v4Routes, &v6Routes, &nhopIds, nullptr);
+  RibRouteUpdater u(&v4Routes, &v6Routes, &nhopIds, nullptr, kEcmpWidth);
   u.update<RibRouteUpdater::RouteEntry, folly::CIDRNetwork>(
       ClientID::INTERFACE_ROUTE,
       {
@@ -1093,7 +1096,7 @@ TEST(Route, resolveRecursiveUcmpRouteWithCost) {
       IPAddress("fc00:2::1"), InterfaceID(2), UCMP_DEFAULT_WEIGHT));
 
   NextHopIDManager nhopIds;
-  RibRouteUpdater u(&v4Routes, &v6Routes, &nhopIds, nullptr);
+  RibRouteUpdater u(&v4Routes, &v6Routes, &nhopIds, nullptr, kEcmpWidth);
   u.update<RibRouteUpdater::RouteEntry, folly::CIDRNetwork>(
       ClientID::INTERFACE_ROUTE,
       {
@@ -1162,6 +1165,295 @@ TEST(Route, resolveRecursiveUcmpRouteWithCost) {
   }
 }
 
+// A route that states a weighting is resolved by combineWeights, where its
+// ECMP_WEIGHT next hop counts as the single share it means rather than as no
+// share at all. Counting it as none would zero that next hop's contribution,
+// and the gcd of that zero and the weight beside it would then divide the
+// weighting away entirely.
+TEST(Route, resolveEcmpRouteAppliesParentWeightsOverUnweightedChildren) {
+  IPv4NetworkToRouteMap v4Routes;
+  IPv6NetworkToRouteMap v6Routes;
+
+  RouteNextHopSet intfNhop1;
+  intfNhop1.emplace(ResolvedNextHop(
+      IPAddress("fc00:1::1"), InterfaceID(1), UCMP_DEFAULT_WEIGHT));
+  RouteNextHopSet intfNhop2;
+  intfNhop2.emplace(ResolvedNextHop(
+      IPAddress("fc00:2::1"), InterfaceID(2), UCMP_DEFAULT_WEIGHT));
+
+  NextHopIDManager nhopIds;
+  RibRouteUpdater u(&v4Routes, &v6Routes, &nhopIds, nullptr, kEcmpWidth);
+  u.update<RibRouteUpdater::RouteEntry, folly::CIDRNetwork>(
+      ClientID::INTERFACE_ROUTE,
+      {
+          {{IPAddress("fc00:1::"), 64},
+           RouteNextHopEntry(intfNhop1, AdminDistance::DIRECTLY_CONNECTED)},
+          {{IPAddress("fc00:2::"), 64},
+           RouteNextHopEntry(intfNhop2, AdminDistance::DIRECTLY_CONNECTED)},
+      },
+      {},
+      false);
+
+  // Both next hops resolve straight through connected routes, so neither
+  // child states a weight of its own.
+  RouteNextHopSet nhops;
+  nhops.emplace(UnresolvedNextHop(IPAddress("fc00:1::10"), 3));
+  nhops.emplace(UnresolvedNextHop(IPAddress("fc00:2::10"), ECMP_WEIGHT));
+
+  RouteV6::Prefix r1{IPAddressV6("2800:2::"), 64};
+  u.update<RibRouteUpdater::RouteEntry, folly::CIDRNetwork>(
+      kClientA,
+      {
+          {{r1.network(), r1.mask()}, RouteNextHopEntry(nhops, kDistance)},
+      },
+      {},
+      false);
+
+  auto it = v6Routes.exactMatch(r1.network(), r1.mask());
+  ASSERT_NE(v6Routes.end(), it);
+  auto route = it->value();
+  EXPECT_TRUE(route->isResolved());
+
+  std::map<folly::IPAddress, NextHopWeight> weights;
+  for (const auto& nh :
+       getResolvedNextHopsFromRib(&nhopIds, route->getForwardInfo())) {
+    weights[nh.addr()] = nh.weight();
+  }
+
+  // Three shares against the one the ECMP_WEIGHT next hop is read as taking.
+  const std::map<folly::IPAddress, NextHopWeight> expectedWeights{
+      {IPAddress("fc00:1::10"), 3},
+      {IPAddress("fc00:2::10"), 1},
+  };
+  EXPECT_EQ(weights, expectedWeights);
+}
+
+// When the next hop being resolved and the next hops it resolves onto both
+// state a weight, its share is divided among them in their own ratio rather
+// than handed to each of them in full. Both weightings survive: the route's
+// split across its own next hops, and the intermediate route's across its.
+TEST(Route, resolveEcmpRouteDividesParentWeightAmongWeightedChildren) {
+  IPv4NetworkToRouteMap v4Routes;
+  IPv6NetworkToRouteMap v6Routes;
+
+  RouteNextHopSet intfNhop1;
+  intfNhop1.emplace(ResolvedNextHop(
+      IPAddress("fc00:1::1"), InterfaceID(1), UCMP_DEFAULT_WEIGHT));
+  RouteNextHopSet intfNhop2;
+  intfNhop2.emplace(ResolvedNextHop(
+      IPAddress("fc00:2::1"), InterfaceID(2), UCMP_DEFAULT_WEIGHT));
+
+  NextHopIDManager nhopIds;
+  RibRouteUpdater u(&v4Routes, &v6Routes, &nhopIds, nullptr, kEcmpWidth);
+  u.update<RibRouteUpdater::RouteEntry, folly::CIDRNetwork>(
+      ClientID::INTERFACE_ROUTE,
+      {
+          {{IPAddress("fc00:1::"), 64},
+           RouteNextHopEntry(intfNhop1, AdminDistance::DIRECTLY_CONNECTED)},
+          {{IPAddress("fc00:2::"), 64},
+           RouteNextHopEntry(intfNhop2, AdminDistance::DIRECTLY_CONNECTED)},
+      },
+      {},
+      false);
+
+  // Intermediate route splits 3:1, so the children below do state weights.
+  RouteNextHopSet intermediateNhops;
+  intermediateNhops.emplace(UnresolvedNextHop(IPAddress("fc00:1::10"), 3));
+  intermediateNhops.emplace(UnresolvedNextHop(IPAddress("fc00:2::10"), 1));
+
+  RouteV6::Prefix intermediate{IPAddressV6("fc00:10::"), 32};
+  u.update<RibRouteUpdater::RouteEntry, folly::CIDRNetwork>(
+      kClientA,
+      {
+          {{intermediate.network(), intermediate.mask()},
+           RouteNextHopEntry(intermediateNhops, kDistance)},
+      },
+      {},
+      false);
+
+  auto weightsOf = [&nhopIds, &v6Routes](const RouteV6::Prefix& prefix) {
+    auto it = v6Routes.exactMatch(prefix.network(), prefix.mask());
+    EXPECT_NE(v6Routes.end(), it);
+    auto route = it->value();
+    EXPECT_TRUE(route->isResolved());
+    std::map<folly::IPAddress, NextHopWeight> weights;
+    for (const auto& nh :
+         getResolvedNextHopsFromRib(&nhopIds, route->getForwardInfo())) {
+      weights[nh.addr()] = nh.weight();
+    }
+    return weights;
+  };
+
+  const std::map<folly::IPAddress, NextHopWeight> expectedIntermediate{
+      {IPAddress("fc00:1::10"), 3},
+      {IPAddress("fc00:2::10"), 1},
+  };
+  EXPECT_EQ(weightsOf(intermediate), expectedIntermediate);
+
+  // The top level route reaches that weighted set through a next hop of its
+  // own stating weight 5, alongside one at ECMP_WEIGHT resolving elsewhere so
+  // that the resolution lands in this merge.
+  RouteNextHopSet nhops;
+  nhops.emplace(UnresolvedNextHop(IPAddress("fc00:10::10"), 5));
+  nhops.emplace(UnresolvedNextHop(IPAddress("fc00:2::20"), ECMP_WEIGHT));
+
+  RouteV6::Prefix r1{IPAddressV6("2800:2::"), 64};
+  u.update<RibRouteUpdater::RouteEntry, folly::CIDRNetwork>(
+      kClientA,
+      {
+          {{r1.network(), r1.mask()}, RouteNextHopEntry(nhops, kDistance)},
+      },
+      {},
+      false);
+
+  // Scaled to the LCM of the two resolved sets' totals, 4: the weight 5 next
+  // hop takes 5 * 4 = 20 shares, split 3:1 by the intermediate route into 15
+  // and 5, and the ECMP_WEIGHT one takes 1 * 4 = 4. So the route's own 5:1
+  // holds as 20:4, and the intermediate's 3:1 holds as 15:5.
+  const std::map<folly::IPAddress, NextHopWeight> expectedWeights{
+      {IPAddress("fc00:1::10"), 15},
+      {IPAddress("fc00:2::10"), 5},
+      {IPAddress("fc00:2::20"), 4},
+  };
+  EXPECT_EQ(weightsOf(r1), expectedWeights);
+}
+// A next hop at ECMP_WEIGHT states no weighting of its own, so it should not
+// flatten a weighting the route it resolves through was programmed with.
+// Without inheritance the recursive route comes out plain ECMP and the split
+// the intermediate route expressed is silently lost.
+TEST(Route, resolveEcmpRouteInheritsWeightsOfRecursiveNextHops) {
+  IPv4NetworkToRouteMap v4Routes;
+  IPv6NetworkToRouteMap v6Routes;
+
+  RouteNextHopSet intfNhop1;
+  intfNhop1.emplace(ResolvedNextHop(
+      IPAddress("fc00:1::1"), InterfaceID(1), UCMP_DEFAULT_WEIGHT));
+  RouteNextHopSet intfNhop2;
+  intfNhop2.emplace(ResolvedNextHop(
+      IPAddress("fc00:2::1"), InterfaceID(2), UCMP_DEFAULT_WEIGHT));
+
+  NextHopIDManager nhopIds;
+  RibRouteUpdater u(&v4Routes, &v6Routes, &nhopIds, nullptr, kEcmpWidth);
+  u.update<RibRouteUpdater::RouteEntry, folly::CIDRNetwork>(
+      ClientID::INTERFACE_ROUTE,
+      {
+          {{IPAddress("fc00:1::"), 64},
+           RouteNextHopEntry(intfNhop1, AdminDistance::DIRECTLY_CONNECTED)},
+          {{IPAddress("fc00:2::"), 64},
+           RouteNextHopEntry(intfNhop2, AdminDistance::DIRECTLY_CONNECTED)},
+      },
+      {},
+      false);
+
+  // Intermediate route splits 3:1 across its two next hops. Neither is at
+  // ECMP_WEIGHT, so it resolves down the weighted path.
+  RouteNextHopSet intermediateNhops;
+  intermediateNhops.emplace(UnresolvedNextHop(IPAddress("fc00:1::10"), 3));
+  intermediateNhops.emplace(UnresolvedNextHop(IPAddress("fc00:2::10"), 1));
+
+  RouteV6::Prefix intermediate{IPAddressV6("fc00:10::"), 32};
+  u.update<RibRouteUpdater::RouteEntry, folly::CIDRNetwork>(
+      kClientA,
+      {
+          {{intermediate.network(), intermediate.mask()},
+           RouteNextHopEntry(intermediateNhops, kDistance)},
+      },
+      {},
+      false);
+
+  const std::map<folly::IPAddress, NextHopWeight> expectedWeights{
+      {IPAddress("fc00:1::10"), 3},
+      {IPAddress("fc00:2::10"), 1},
+  };
+
+  auto weightsOf = [&nhopIds, &v6Routes](const RouteV6::Prefix& prefix) {
+    auto it = v6Routes.exactMatch(prefix.network(), prefix.mask());
+    EXPECT_NE(v6Routes.end(), it);
+    auto route = it->value();
+    EXPECT_TRUE(route->isResolved());
+    std::map<folly::IPAddress, NextHopWeight> weights;
+    for (const auto& nh :
+         getResolvedNextHopsFromRib(&nhopIds, route->getForwardInfo())) {
+      weights[nh.addr()] = nh.weight();
+    }
+    return weights;
+  };
+
+  EXPECT_EQ(weightsOf(intermediate), expectedWeights);
+
+  // The recursive route's own next hop is at ECMP_WEIGHT, so the split above
+  // is carried through rather than collapsed.
+  RouteNextHopSet finalNhops;
+  finalNhops.emplace(UnresolvedNextHop(IPAddress("fc00:10::10"), ECMP_WEIGHT));
+
+  RouteV6::Prefix r1{IPAddressV6("2800:2::"), 64};
+  u.update<RibRouteUpdater::RouteEntry, folly::CIDRNetwork>(
+      kClientA,
+      {
+          {{r1.network(), r1.mask()}, RouteNextHopEntry(finalNhops, kDistance)},
+      },
+      {},
+      false);
+
+  EXPECT_EQ(weightsOf(r1), expectedWeights);
+}
+
+// With neither the next hop being resolved nor the one it resolves onto
+// stating a weight, the result stays unweighted. Resolution floors
+// ECMP_WEIGHT at one share, so a plain ECMP child arrives here weighted 1;
+// counting that as a weighting would rewrite the next hops of every
+// recursively resolved ECMP route from ECMP_WEIGHT to 1. Hardware programs
+// the two the same, since normalizeNextHops applies that floor again above
+// the SAI and BCM layers, but NextHop::operator< orders on weight, so the
+// rewrite would change next hop group identity for routes that carry no
+// weighting at all.
+TEST(Route, resolveEcmpRouteRemainsUnweightedIfParentAndChildUnweighted) {
+  IPv4NetworkToRouteMap v4Routes;
+  IPv6NetworkToRouteMap v6Routes;
+
+  RouteNextHopSet intfNhop;
+  intfNhop.emplace(ResolvedNextHop(
+      IPAddress("fc00:1::1"), InterfaceID(1), UCMP_DEFAULT_WEIGHT));
+
+  NextHopIDManager nhopIds;
+  RibRouteUpdater u(&v4Routes, &v6Routes, &nhopIds, nullptr, kEcmpWidth);
+  u.update<RibRouteUpdater::RouteEntry, folly::CIDRNetwork>(
+      ClientID::INTERFACE_ROUTE,
+      {
+          {{IPAddress("fc00:1::"), 64},
+           RouteNextHopEntry(intfNhop, AdminDistance::DIRECTLY_CONNECTED)},
+      },
+      {},
+      false);
+
+  // Resolving fc00:1::10 through the connected route above mints a resolved
+  // next hop at UCMP_DEFAULT_WEIGHT, which is the value that must not read as
+  // a weighting. One level is enough to show it: an un-thresholded inheritance
+  // turns this route's next hop into a one-share UCMP one, and from there
+  // every route recursing onto it inherits the same.
+  RouteNextHopSet nhops;
+  nhops.emplace(UnresolvedNextHop(IPAddress("fc00:1::10"), ECMP_WEIGHT));
+
+  RouteV6::Prefix r1{IPAddressV6("fc00:10::"), 32};
+  u.update<RibRouteUpdater::RouteEntry, folly::CIDRNetwork>(
+      kClientA,
+      {
+          {{r1.network(), r1.mask()}, RouteNextHopEntry(nhops, kDistance)},
+      },
+      {},
+      false);
+
+  auto it = v6Routes.exactMatch(r1.network(), r1.mask());
+  ASSERT_NE(v6Routes.end(), it);
+  auto route = it->value();
+  EXPECT_TRUE(route->isResolved());
+
+  auto resolvedNhops =
+      getResolvedNextHopsFromRib(&nhopIds, route->getForwardInfo());
+  ASSERT_EQ(resolvedNhops.size(), 1);
+  EXPECT_EQ(resolvedNhops.begin()->weight(), ECMP_WEIGHT);
+}
+
 // Intermediate route's next hops carry cost, but the final (immediate) route's
 // next hop has no cost. The final resolved next hops should have no cost
 // because getFwdInfoFromNhop uses the caller's cost, not the intermediate's.
@@ -1177,7 +1469,7 @@ TEST(Route, resolveRecursiveEcmpIntermediateCostDropped) {
       IPAddress("fc00:2::1"), InterfaceID(2), UCMP_DEFAULT_WEIGHT));
 
   NextHopIDManager nhopIds;
-  RibRouteUpdater u(&v4Routes, &v6Routes, &nhopIds, nullptr);
+  RibRouteUpdater u(&v4Routes, &v6Routes, &nhopIds, nullptr, kEcmpWidth);
   u.update<RibRouteUpdater::RouteEntry, folly::CIDRNetwork>(
       ClientID::INTERFACE_ROUTE,
       {
@@ -1276,7 +1568,7 @@ TEST(Route, resolveRecursiveUcmpIntermediateCostDropped) {
       IPAddress("fc00:2::1"), InterfaceID(2), UCMP_DEFAULT_WEIGHT));
 
   NextHopIDManager nhopIds;
-  RibRouteUpdater u(&v4Routes, &v6Routes, &nhopIds, nullptr);
+  RibRouteUpdater u(&v4Routes, &v6Routes, &nhopIds, nullptr, kEcmpWidth);
   u.update<RibRouteUpdater::RouteEntry, folly::CIDRNetwork>(
       ClientID::INTERFACE_ROUTE,
       {
@@ -1373,7 +1665,7 @@ TEST(Route, resolveRecursiveSrv6WithIntermediateLinkLocalCost) {
       folly::IPAddressV6("2001:db8::3"), folly::IPAddressV6("2001:db8::4")};
 
   NextHopIDManager nhopIds;
-  RibRouteUpdater u(&v4Routes, &v6Routes, &nhopIds, nullptr);
+  RibRouteUpdater u(&v4Routes, &v6Routes, &nhopIds, nullptr, kEcmpWidth);
 
   // Covering route for fdad:ff02:10b::d:0 with 2 link-local next hops
   // that carry cost
@@ -1536,7 +1828,7 @@ TEST(Route, resolveRecursiveSrv6OpenrRouteChange) {
       folly::IPAddressV6("2001:db8::1"), folly::IPAddressV6("2001:db8::2")};
 
   NextHopIDManager nhopIds;
-  RibRouteUpdater u(&v4Routes, &v6Routes, &nhopIds, nullptr);
+  RibRouteUpdater u(&v4Routes, &v6Routes, &nhopIds, nullptr, kEcmpWidth);
 
   // OpenR covering route with link-local nexthops on interfaces 1 and 2.
   RouteNextHopSet openrNhops{
@@ -1635,7 +1927,7 @@ std::optional<RouteCounterID> resolveRecursiveCounterID(
   IPv4NetworkToRouteMap v4Routes;
   IPv6NetworkToRouteMap v6Routes;
   NextHopIDManager nhopIds;
-  RibRouteUpdater u(&v4Routes, &v6Routes, &nhopIds, nullptr);
+  RibRouteUpdater u(&v4Routes, &v6Routes, &nhopIds, nullptr, kEcmpWidth);
 
   const IPAddressV6 childPrefix{"fdad:feff:202::d:0"};
   const RouteNextHopSet childNhops{
@@ -1703,7 +1995,7 @@ TEST(Route, resolveRecursiveSrv6InnerSidListThroughSingleOpenrRoute) {
       folly::IPAddressV6("fdad:ffff:0003:0004::")};
 
   NextHopIDManager nhopIds;
-  RibRouteUpdater u(&v4Routes, &v6Routes, &nhopIds, nullptr);
+  RibRouteUpdater u(&v4Routes, &v6Routes, &nhopIds, nullptr, kEcmpWidth);
 
   // 1. OpenR route R2 with link-local next hops that carry their own SID lists.
   RouteNextHopSet openrNhops;
@@ -1788,7 +2080,7 @@ TEST(Route, resolveRecursiveSrv6OuterSidListThroughSingleOpenrRoute) {
       folly::IPAddressV6("fdad:ffff:0005:0006::")};
 
   NextHopIDManager nhopIds;
-  RibRouteUpdater u(&v4Routes, &v6Routes, &nhopIds, nullptr);
+  RibRouteUpdater u(&v4Routes, &v6Routes, &nhopIds, nullptr, kEcmpWidth);
 
   // 1. OpenR route R2 with link-local next hops carrying their own SID lists.
   RouteNextHopSet openrNhops;
@@ -1872,7 +2164,7 @@ TEST(Route, resolveRecursiveSrv6InnerSidListThroughTwoOpenrRoutes) {
       folly::IPAddressV6("fdad:ffff:0003:0004::")};
 
   NextHopIDManager nhopIds;
-  RibRouteUpdater u(&v4Routes, &v6Routes, &nhopIds, nullptr);
+  RibRouteUpdater u(&v4Routes, &v6Routes, &nhopIds, nullptr, kEcmpWidth);
 
   // 1. OpenR routes R2 (d:0) and R3 (c:0), each with one link-local next hop
   //    carrying its own SID list.
@@ -1960,7 +2252,7 @@ TEST(Route, resolveRecursiveSrv6OuterSidListThroughTwoOpenrRoutes) {
       folly::IPAddressV6("fdad:ffff:0005:0006::")};
 
   NextHopIDManager nhopIds;
-  RibRouteUpdater u(&v4Routes, &v6Routes, &nhopIds, nullptr);
+  RibRouteUpdater u(&v4Routes, &v6Routes, &nhopIds, nullptr, kEcmpWidth);
 
   // 1. OpenR routes R2 (d:0) and R3 (c:0), each with one link-local next hop
   //    carrying its own SID list.
@@ -2080,7 +2372,7 @@ TEST(Route, resolveConnectedSrv6ParentNoneInheritsChild) {
       kSrv6Tunnel0));
 
   NextHopIDManager nhopIds;
-  RibRouteUpdater u(&v4Routes, &v6Routes, &nhopIds, nullptr);
+  RibRouteUpdater u(&v4Routes, &v6Routes, &nhopIds, nullptr, kEcmpWidth);
   u.update<RibRouteUpdater::RouteEntry, folly::CIDRNetwork>(
       ClientID::INTERFACE_ROUTE,
       {
@@ -2143,7 +2435,7 @@ TEST(Route, resolveConnectedSrv6BothPrefersParent) {
       kSrv6Tunnel0));
 
   NextHopIDManager nhopIds;
-  RibRouteUpdater u(&v4Routes, &v6Routes, &nhopIds, nullptr);
+  RibRouteUpdater u(&v4Routes, &v6Routes, &nhopIds, nullptr, kEcmpWidth);
   u.update<RibRouteUpdater::RouteEntry, folly::CIDRNetwork>(
       ClientID::INTERFACE_ROUTE,
       {
@@ -2202,7 +2494,7 @@ TEST(Route, resolveRecursiveSrv6ParentOnlyKeepsParent) {
       IPAddress("fc00:1::1"), InterfaceID(1), UCMP_DEFAULT_WEIGHT));
 
   NextHopIDManager nhopIds;
-  RibRouteUpdater u(&v4Routes, &v6Routes, &nhopIds, nullptr);
+  RibRouteUpdater u(&v4Routes, &v6Routes, &nhopIds, nullptr, kEcmpWidth);
   u.update<RibRouteUpdater::RouteEntry, folly::CIDRNetwork>(
       ClientID::INTERFACE_ROUTE,
       {
@@ -2264,7 +2556,7 @@ TEST(Route, RecursiveResolutionInheritsRoleFromTopLevelNextHop) {
   IPv4NetworkToRouteMap v4Routes;
   IPv6NetworkToRouteMap v6Routes;
   NextHopIDManager nhopIds;
-  RibRouteUpdater updater(&v4Routes, &v6Routes, &nhopIds, nullptr);
+  RibRouteUpdater updater(&v4Routes, &v6Routes, &nhopIds, nullptr, kEcmpWidth);
 
   RouteNextHopSet interfaceNhops1{ResolvedNextHop(
       IPAddress("2001:db8:1::1"), InterfaceID(1), UCMP_DEFAULT_WEIGHT)};
@@ -2341,7 +2633,7 @@ TEST(Route, RecursiveResolutionAppliesBackupRoleToAllResolvedNextHops) {
   IPv4NetworkToRouteMap v4Routes;
   IPv6NetworkToRouteMap v6Routes;
   NextHopIDManager nhopIds;
-  RibRouteUpdater updater(&v4Routes, &v6Routes, &nhopIds, nullptr);
+  RibRouteUpdater updater(&v4Routes, &v6Routes, &nhopIds, nullptr, kEcmpWidth);
 
   updater.update<RibRouteUpdater::RouteEntry, folly::CIDRNetwork>(
       ClientID::INTERFACE_ROUTE,
@@ -2464,7 +2756,7 @@ TEST(Route, RecursiveBgpRoutePreservesTopLevelNextHopRoles) {
   IPv4NetworkToRouteMap v4Routes;
   IPv6NetworkToRouteMap v6Routes;
   NextHopIDManager nhopIds;
-  RibRouteUpdater updater(&v4Routes, &v6Routes, &nhopIds, nullptr);
+  RibRouteUpdater updater(&v4Routes, &v6Routes, &nhopIds, nullptr, kEcmpWidth);
 
   updater.update<RibRouteUpdater::RouteEntry, folly::CIDRNetwork>(
       ClientID::INTERFACE_ROUTE,
@@ -2713,7 +3005,12 @@ class PrimaryBackupDedupTest : public ::testing::Test {
   IPv4NetworkToRouteMap v4Routes_;
   IPv6NetworkToRouteMap v6Routes_;
   NextHopIDManager nhopIds_;
-  RibRouteUpdater updater_{&v4Routes_, &v6Routes_, &nhopIds_, nullptr};
+  RibRouteUpdater updater_{
+      &v4Routes_,
+      &v6Routes_,
+      &nhopIds_,
+      nullptr,
+      kEcmpWidth};
 };
 
 TEST_F(PrimaryBackupDedupTest, BackupNextHopsWithoutAnyPrimaryAreNotPruned) {
@@ -2799,7 +3096,7 @@ void verifyBgpNextHopRolesOverrideOpenrNextHopRoles(
   IPv4NetworkToRouteMap v4Routes;
   IPv6NetworkToRouteMap v6Routes;
   NextHopIDManager nhopIds;
-  RibRouteUpdater updater(&v4Routes, &v6Routes, &nhopIds, nullptr);
+  RibRouteUpdater updater(&v4Routes, &v6Routes, &nhopIds, nullptr, kEcmpWidth);
 
   updater.update<RibRouteUpdater::RouteEntry, folly::CIDRNetwork>(
       ClientID::INTERFACE_ROUTE,
@@ -2913,7 +3210,7 @@ TEST(Route, srv6TeAgentRoutePreferredOverOpenrByAdminDistance) {
       folly::IPAddressV6("fdad:ffff:0003:0004::")};
 
   NextHopIDManager nhopIds;
-  RibRouteUpdater u(&v4Routes, &v6Routes, &nhopIds, nullptr);
+  RibRouteUpdater u(&v4Routes, &v6Routes, &nhopIds, nullptr, kEcmpWidth);
 
   RouteV6::Prefix prefix{IPAddressV6("2001::"), 64};
 
@@ -3090,7 +3387,7 @@ TEST(Route, clientIdReleasedOnDelete) {
   RouteNextHopEntry entry(nhop, kDistance);
   RouteV4::Prefix prefix{IPAddressV4("10.1.1.0"), 24};
 
-  RibRouteUpdater u(&v4Routes, &v6Routes, &nhopIds, nullptr);
+  RibRouteUpdater u(&v4Routes, &v6Routes, &nhopIds, nullptr, kEcmpWidth);
   u.update<RibRouteUpdater::RouteEntry, folly::CIDRNetwork>(
       kClientA, {{{prefix.network(), prefix.mask()}, entry}}, {}, false);
 
@@ -3116,7 +3413,7 @@ TEST(Route, clientIdReleasedOnResetAllRoutes) {
   RouteNextHopEntry entry(nhop, kDistance);
   RouteV4::Prefix prefix{IPAddressV4("30.1.1.0"), 24};
 
-  RibRouteUpdater u(&v4Routes, &v6Routes, &nhopIds, nullptr);
+  RibRouteUpdater u(&v4Routes, &v6Routes, &nhopIds, nullptr, kEcmpWidth);
   u.update<RibRouteUpdater::RouteEntry, folly::CIDRNetwork>(
       kClientA, {{{prefix.network(), prefix.mask()}, entry}}, {}, false);
 

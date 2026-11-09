@@ -10,13 +10,17 @@
 
 #pragma once
 
+#include <optional>
+#include <unordered_set>
 #include "fboss/agent/if/gen-cpp2/common_types.h"
 #include "fboss/agent/types.h"
 
 #include "fboss/agent/rib/NetworkToRouteMap.h"
 #include "fboss/agent/rib/RibRouteWeightNormalizer.h"
+#include "fboss/agent/rib/VrfRouteTable.h"
 #include "fboss/agent/state/MySid.h"
 
+#include <boost/container/flat_map.hpp>
 #include <folly/IPAddress.h>
 
 DECLARE_bool(enable_capacity_pruning);
@@ -53,12 +57,18 @@ using MySidTable =
  */
 class RibRouteUpdater {
  public:
+  using RouterIDToRouteTable =
+      boost::container::flat_map<RouterID, VrfRouteTable>;
+
   RibRouteUpdater(
       IPv4NetworkToRouteMap* v4Routes,
       IPv6NetworkToRouteMap* v6Routes,
       NextHopIDManager* nextHopIDManager,
       MySidTable* mySidTable,
-      RouterID routerID = RouterID(0));
+      uint32_t ecmpWidth,
+      RouterID routerID = RouterID(0),
+      const std::unordered_set<InterfaceID>* vrfInterfaces = nullptr,
+      RouterIDToRouteTable* crossVrfRouteTables = nullptr);
 
   RibRouteUpdater(
       IPv4NetworkToRouteMap* v4Routes,
@@ -66,7 +76,10 @@ class RibRouteUpdater {
       LabelToRouteMap* mplsRoutes,
       NextHopIDManager* nextHopIDManager,
       MySidTable* mySidTable,
-      RouterID routerID = RouterID(0));
+      uint32_t ecmpWidth,
+      RouterID routerID = RouterID(0),
+      const std::unordered_set<InterfaceID>* vrfInterfaces = nullptr,
+      RouterIDToRouteTable* crossVrfRouteTables = nullptr);
 
   struct RouteEntry {
     folly::CIDRNetwork prefix;
@@ -196,7 +209,7 @@ class RibRouteUpdater {
 
   template <typename AddressT>
   void getFwdInfoFromNhop(
-      NetworkToRouteMap<AddressT>* routes,
+      typename NetworkToRouteMap<AddressT>::Iterator it,
       const AddressT& nh,
       const std::optional<LabelForwardingAction>& labelAction,
       bool* hasToCpu,
@@ -208,7 +221,14 @@ class RibRouteUpdater {
       const std::optional<std::string>& tunnelId,
       const std::optional<int64_t>& cost,
       NextHopRole role,
+      const std::optional<folly::MacAddress>& overlayDstMac,
       std::optional<RouteCounterID>* inheritedCounterID,
+      RouteNextHopSet& fwd);
+
+  template <typename AddressT>
+  void resolveInNextLevel(
+      typename NetworkToRouteMap<AddressT>::Iterator it,
+      const NextHop& nh,
       RouteNextHopSet& fwd);
 
   template <typename AddressT>
@@ -218,6 +238,11 @@ class RibRouteUpdater {
 
   template <typename AddressT>
   bool needResolve(const std::shared_ptr<Route<AddressT>>& route) const;
+  // Whether intf is in this VRF; always true when interfaces are not
+  // restricted to VRFs
+  bool isInterfaceInVrf(InterfaceID intf) const {
+    return !vrfInterfaces_ || vrfInterfaces_->contains(intf);
+  }
 
   using NextHopIpToForwardInfo =
       std::unordered_map<folly::IPAddress, RouteNextHopSet>;
@@ -227,7 +252,12 @@ class RibRouteUpdater {
   LabelToRouteMap* mplsRoutes_{nullptr};
   NextHopIDManager* nextHopIDManager_{nullptr};
   MySidTable* mySidTable_{nullptr};
+  uint32_t ecmpWidth_;
   RouterID routerID_{0};
+  // Interface-scoped next hops of client routes resolve only through these.
+  // Null means no restriction.
+  const std::unordered_set<InterfaceID>* vrfInterfaces_{nullptr};
+  RouterIDToRouteTable* crossVrfRouteTables_{nullptr};
   std::unordered_set<void*> needsResolution_;
   std::unordered_set<void*> resolving_;
   std::size_t cyclesDetected_{0};
@@ -240,7 +270,9 @@ class RibRouteUpdater {
     RouteNextHopSet nextHops;
     std::optional<RouteCounterID> counterID;
   };
-  std::map<RouteNextHopSet, ResolvedForwardInfo> unresolvedToResolvedNhops_;
+  // Keyed by route level too, since next hops resolve differently per level
+  std::map<std::pair<int32_t, RouteNextHopSet>, ResolvedForwardInfo>
+      unresolvedToResolvedNhops_;
   RibRouteWeightNormalizer weightNormalizer_;
 };
 

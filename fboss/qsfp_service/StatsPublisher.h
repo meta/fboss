@@ -41,6 +41,7 @@ class StatsPublisher {
   static void bumpReadFailure();
   static void bumpWriteFailure();
   static void bumpModuleErrors();
+  static void bumpFwStorageHandleMissingFromConfig();
   static void missingPorts(TransceiverID module);
   static void bumpAOIOverride();
   static void bumpHighTemp();
@@ -50,6 +51,8 @@ class StatsPublisher {
   static void initPerPortFb303Stats(std::set<std::string>& portNames);
 
  private:
+  void publishBootType();
+
   TransceiverManager* transceiverManager_{nullptr};
   // Owned by either TransceiverManager or, in Port Manager mode, PortManager.
   // Created once during initialization and never replaced, so caching the raw
