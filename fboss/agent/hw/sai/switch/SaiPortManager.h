@@ -640,4 +640,11 @@ class SaiPortManager {
   FRIEND_TEST(PortManagerTest, updatePrbsStatsEntryRate);
 };
 
+#if defined(BRCM_PAI_SDK)
+void enableXphyLtRestartOnTimeout(
+    PortSaiId portSaiId,
+    const std::string& desc,
+    bool writeAllowed);
+#endif
+
 } // namespace facebook::fboss

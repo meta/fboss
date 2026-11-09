@@ -111,6 +111,7 @@ elseif (SAI_BRCM_PAI_IMPL)
     fboss/agent/hw/sai/switch/phy/SaiAclTableManager.cpp
     fboss/agent/hw/sai/switch/phy/SaiPortManager.cpp
     fboss/agent/hw/sai/switch/phy/SaiSwitch.cpp
+    fboss/agent/hw/sai/switch/phy/oss/SaiPortManager.cpp
     fboss/agent/hw/sai/switch/oss/SaiArsProfileManager.cpp
     fboss/agent/hw/sai/switch/oss/SaiArsManager.cpp
     fboss/agent/hw/sai/switch/oss/SaiSwitch.cpp
