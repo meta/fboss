@@ -44,6 +44,10 @@ struct ConfigOption {
   // forwarding_stack/link_topology/. When set, the topology determines the
   // enabled port graph, port profiles, and expected LLDP peers.
   4: optional string linkTopologyVariant;
+
+  // Selects a directory under variants/ whose generated platform mapping
+  // artifacts should be used for this output.
+  5: optional string platformMappingVariant;
 }
 
 struct ConfigGenerationSpec {
