@@ -131,7 +131,7 @@ pull requests to Meta for review.
 
 Please refer to below link for logging best practices:
 
-[openbmc_logging.rst](https://github.com/facebook/openbmc/blob/helium/Documentation/openbmc_logging.rst)
+[openbmc_logging.rst](https://github.com/meta/openbmc/blob/helium/Documentation/openbmc_logging.rst)
 
 ## Dealing with Kernel Patches
 

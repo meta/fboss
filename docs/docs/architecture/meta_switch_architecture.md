@@ -419,7 +419,7 @@ A few notes:
       selected/deselected by the ASPEED GPIO controller.
 * BMC SW
   * fboss_lite BMC layer shall be used:
-    * [https://github.com/facebook/openbmc/tree/helium/meta-facebook/meta-fboss-lite](https://github.com/facebook/openbmc/tree/helium/meta-facebook/meta-fboss-lite)
+    * [https://github.com/meta/openbmc/tree/helium/meta-facebook/meta-fboss-lite](https://github.com/meta/openbmc/tree/helium/meta-facebook/meta-fboss-lite)
     * BMC to external interface shall not be changed (from fboss_lite layer)
       * `weutil` capable of reading chassis EEPROM.
     * BMC SW need to meet all the requirements in this document
