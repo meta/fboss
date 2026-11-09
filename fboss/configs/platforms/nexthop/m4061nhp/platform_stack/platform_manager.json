@@ -306,7 +306,7 @@
           "address": "0x71",
           "kernelDeviceName": "fpga-mux",
           "pmUnitScopedName": "SMB_MUX_2",
-          "numOutgoingChannels": 4
+          "numOutgoingChannels": 2
         },
         {
           "busName": "SMB_IOB_I2C_4",
