@@ -53,7 +53,7 @@ class ListDropReasonReportingImpl {
       const DropReasons& reasons,
       DropStage dropStage,
       const std::string& expected,
-      const char* desc);
+      const char* desc) const;
 
  private:
   DropReasonReportingContext context_;

@@ -6,9 +6,11 @@
 add_library(drop_reason_reporting_test_utils
   fboss/agent/test/utils/AgentDropReasonBitmapReporting.cpp
   fboss/agent/test/utils/AgentDropReasonListReporting.cpp
+  fboss/agent/test/utils/AgentDropReasonReporting.cpp
 )
 
 target_link_libraries(drop_reason_reporting_test_utils
+  fboss_error
   common_utils
   switch_config_cpp2
   multiswitch_ctrl_cpp2

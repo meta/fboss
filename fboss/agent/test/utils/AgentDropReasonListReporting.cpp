@@ -111,7 +111,7 @@ void ListDropReasonReportingImpl::verifyOnlyExpectedReason(
     const DropReasons& reasons,
     DropStage dropStage,
     const std::string& expected,
-    const char* desc) {
+    const char* desc) const {
   const auto& reported =
       dropStage == DropStage::Ingress ? reasons.ingress : reasons.egress;
   const auto& other =

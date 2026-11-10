@@ -9,6 +9,7 @@ cpp_library(
     srcs = [
         "AgentDropReasonBitmapReporting.cpp",
         "AgentDropReasonListReporting.cpp",
+        "AgentDropReasonReporting.cpp",
     ],
     headers = [
         "AgentDropReasonBitmapReporting.h",
@@ -18,6 +19,7 @@ cpp_library(
     deps = [
         "fbsource//third-party/googletest:gtest",
         "fbsource//xplat/folly:string",
+        "//fboss/agent:fboss-error",
         "//fboss/lib:common_utils",
     ],
     exported_deps = [

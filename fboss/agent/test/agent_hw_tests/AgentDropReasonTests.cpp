@@ -4,7 +4,7 @@
 #include "fboss/agent/test/gen-cpp2/production_features_types.h"
 #include "fboss/agent/test/utils/AclTestUtils.h"
 #include "fboss/agent/test/utils/AgentDropReasonBitmapReporting.h"
-#include "fboss/agent/test/utils/AgentDropReasonListReporting.h"
+#include "fboss/agent/test/utils/AgentDropReasonReporting.h"
 #include "fboss/lib/CommonUtils.h"
 
 #include <folly/logging/xlog.h>
@@ -32,40 +32,15 @@ class AgentDropReasonTest : public AgentDropTestBase {
   }
 
  protected:
-  using DropReasons = ListDropReasonReportingImpl::DropReasons;
-  using DropStage = ListDropReasonReportingImpl::DropStage;
-
-  static void accumulate(DropReasons& dst, const DropReasons& src) {
-    ListDropReasonReportingImpl::accumulate(dst, src);
-  }
-
-  DropReasons getAggregatedDropReasons() {
-    return dropReasonReporting().getAggregatedDropReasons();
-  }
-
-  static std::string toString(const DropReasons& reasons) {
-    return ListDropReasonReportingImpl::toString(reasons);
-  }
-
   // Log the drop reasons after every collection, not just the final state.
   // If an expectation is wrong, the run shows what the ASIC reported, which is
   // what it takes to correct the expected name without another round trip.
-  void logObserved(const char* desc, const DropReasons& reasons) {
+  void logObserved(const char* desc, const DropReasonReportingImpl& reasons) {
     XLOG(INFO) << "Drop reason test [" << desc
-               << "] observed: " << toString(reasons);
+               << "] observed: " << reasons.dropReasonToString();
   }
 
-  void verifyOnlyExpectedReason(
-      const DropReasons& reasons,
-      DropStage dropStage,
-      const std::string& expected,
-      const char* desc) {
-    dropReasonReporting().verifyOnlyExpectedReason(
-        reasons, dropStage, expected, desc);
-  }
-
- private:
-  ListDropReasonReportingImpl& dropReasonReporting() {
+  DropReasonReportingImpl& dropReasonReporting() {
     if (!reporting_) {
       DropReasonReportingContext context;
       context.readLogMessages = [this]() {
@@ -80,13 +55,13 @@ class AgentDropReasonTest : public AgentDropTestBase {
         }
         return messages;
       };
-      reporting_ =
-          std::make_unique<ListDropReasonReportingImpl>(std::move(context));
+      reporting_ = createListDropReasonReportingImpl(std::move(context));
     }
     return *reporting_;
   }
 
-  std::unique_ptr<ListDropReasonReportingImpl> reporting_;
+ private:
+  std::unique_ptr<DropReasonReportingImpl> reporting_;
 };
 
 // A packet to an address with no matching route is discarded at L3
@@ -96,19 +71,22 @@ TEST_F(AgentDropReasonTest, ingressL3DstDiscardDrop) {
   auto verify = [&]() {
     installLogCapture();
 
-    DropReasons reasons;
+    auto& reasons = dropReasonReporting();
+    reasons.prepareDropObservation();
     WITH_RETRIES({
       sendPacketToUnroutedDst();
-      accumulate(reasons, getAggregatedDropReasons());
+      reasons.collectDropObservation();
       logObserved("L3 DST discard", reasons);
-      EXPECT_EVENTUALLY_TRUE(reasons.ingress.contains(kL3DstDiscard));
+      EXPECT_EVENTUALLY_TRUE(
+          reasons.expectedDropReasonObserved(DropScenario::L3DstDiscard));
     });
     logPortDropCounters("L3 DST discard");
     XLOG(INFO) << "Drop reason test [L3 DST discard] final: "
-               << toString(reasons);
-    verifyOnlyExpectedReason(
-        reasons, DropStage::Ingress, kL3DstDiscard, "L3 DST discard");
-    verifyDropReasonLogged("DROP reasons ingress", "L3 DST discard log");
+               << reasons.dropReasonToString();
+    reasons.verifyOnlyExpectedDropReasonReported(DropScenario::L3DstDiscard);
+    verifyDropReasonLogged(
+        reasons.expectedDropLog(DropScenario::L3DstDiscard),
+        "L3 DST discard log");
   };
   verifyAcrossWarmBoots([]() {}, verify);
 }
@@ -125,17 +103,20 @@ TEST_F(AgentDropReasonTest, ingressTtlErrorDrop) {
   auto verify = [&]() {
     installLogCapture();
 
-    DropReasons reasons;
+    auto& reasons = dropReasonReporting();
+    reasons.prepareDropObservation();
     WITH_RETRIES({
       sendTtlExpiredPacket();
-      accumulate(reasons, getAggregatedDropReasons());
+      reasons.collectDropObservation();
       logObserved("L3 TTL error", reasons);
-      EXPECT_EVENTUALLY_TRUE(reasons.ingress.contains(kL3TtlError));
+      EXPECT_EVENTUALLY_TRUE(
+          reasons.expectedDropReasonObserved(DropScenario::TtlError));
     });
     logPortDropCounters("L3 TTL error");
     XLOG(INFO) << "Drop reason test [L3 TTL error] final: "
-               << toString(reasons);
-    verifyDropReasonLogged("DROP reasons ingress", "L3 TTL error log");
+               << reasons.dropReasonToString();
+    verifyDropReasonLogged(
+        reasons.expectedDropLog(DropScenario::TtlError), "L3 TTL error log");
   };
   verifyAcrossWarmBoots(setup, verify);
 }
@@ -146,19 +127,22 @@ TEST_F(AgentDropReasonTest, ingressMacSaMulticastDrop) {
   auto verify = [&]() {
     installLogCapture();
 
-    DropReasons reasons;
+    auto& reasons = dropReasonReporting();
+    reasons.prepareDropObservation();
     WITH_RETRIES({
       sendMulticastSmacPacket();
-      accumulate(reasons, getAggregatedDropReasons());
+      reasons.collectDropObservation();
       logObserved("MACSA multicast", reasons);
-      EXPECT_EVENTUALLY_TRUE(reasons.ingress.contains(kSrcRouteDrop));
+      EXPECT_EVENTUALLY_TRUE(
+          reasons.expectedDropReasonObserved(DropScenario::MacSaMulticast));
     });
     logPortDropCounters("MACSA multicast");
     XLOG(INFO) << "Drop reason test [MACSA multicast] final: "
-               << toString(reasons);
-    verifyOnlyExpectedReason(
-        reasons, DropStage::Ingress, kSrcRouteDrop, "MACSA multicast");
-    verifyDropReasonLogged("DROP reasons ingress", "MACSA multicast log");
+               << reasons.dropReasonToString();
+    reasons.verifyOnlyExpectedDropReasonReported(DropScenario::MacSaMulticast);
+    verifyDropReasonLogged(
+        reasons.expectedDropLog(DropScenario::MacSaMulticast),
+        "MACSA multicast log");
   };
   verifyAcrossWarmBoots([]() {}, verify);
 }
@@ -192,16 +176,20 @@ TEST_F(AgentDropReasonAclTest, ingressAclDenyDrop) {
   auto verify = [&]() {
     installLogCapture();
 
-    DropReasons reasons;
+    auto& reasons = dropReasonReporting();
+    reasons.prepareDropObservation();
     WITH_RETRIES({
       sendPacketToRoutedDst();
-      accumulate(reasons, getAggregatedDropReasons());
+      reasons.collectDropObservation();
       logObserved("ACL deny", reasons);
-      EXPECT_EVENTUALLY_TRUE(reasons.ingress.contains(kRxFilterDrop));
+      EXPECT_EVENTUALLY_TRUE(
+          reasons.expectedDropReasonObserved(DropScenario::AclDeny));
     });
     logPortDropCounters("ACL deny");
-    XLOG(INFO) << "Drop reason test [ACL deny] final: " << toString(reasons);
-    verifyDropReasonLogged("DROP reasons ingress", "ACL deny log");
+    XLOG(INFO) << "Drop reason test [ACL deny] final: "
+               << reasons.dropReasonToString();
+    verifyDropReasonLogged(
+        reasons.expectedDropLog(DropScenario::AclDeny), "ACL deny log");
   };
   verifyAcrossWarmBoots(setup, verify);
 }
@@ -214,17 +202,21 @@ TEST_F(AgentDropReasonTest, egressMtuDrop) {
   auto verify = [&]() {
     installLogCapture();
 
-    DropReasons reasons;
+    auto& reasons = dropReasonReporting();
+    reasons.prepareDropObservation();
     WITH_RETRIES({
       sendOversizedPacketToRoutedDst();
-      accumulate(reasons, getAggregatedDropReasons());
+      reasons.collectDropObservation();
       logObserved("egress MTU", reasons);
-      EXPECT_EVENTUALLY_TRUE(reasons.egress.contains(kEgrMtu));
+      EXPECT_EVENTUALLY_TRUE(
+          reasons.expectedDropReasonObserved(DropScenario::EgressMtu));
     });
     logPortDropCounters("egress MTU");
-    XLOG(INFO) << "Drop reason test [egress MTU] final: " << toString(reasons);
-    verifyOnlyExpectedReason(reasons, DropStage::Egress, kEgrMtu, "egress MTU");
-    verifyDropReasonLogged("DROP reasons egress", "egress MTU log");
+    XLOG(INFO) << "Drop reason test [egress MTU] final: "
+               << reasons.dropReasonToString();
+    reasons.verifyOnlyExpectedDropReasonReported(DropScenario::EgressMtu);
+    verifyDropReasonLogged(
+        reasons.expectedDropLog(DropScenario::EgressMtu), "egress MTU log");
   };
   verifyAcrossWarmBoots(setup, verify);
 }
@@ -241,19 +233,22 @@ TEST_F(AgentDropReasonTest, ingressSrcPortKnockoutDrop) {
 
     setEgressPortTx(false);
 
-    DropReasons reasons;
+    auto& reasons = dropReasonReporting();
+    reasons.prepareDropObservation();
     WITH_RETRIES({
       sendPacketToRoutedDst();
-      accumulate(reasons, getAggregatedDropReasons());
+      reasons.collectDropObservation();
       logObserved("src port knockout", reasons);
-      EXPECT_EVENTUALLY_TRUE(reasons.ingress.contains(kSrcPortKnockout));
+      EXPECT_EVENTUALLY_TRUE(
+          reasons.expectedDropReasonObserved(DropScenario::SrcPortKnockout));
     });
     logPortDropCounters("src port knockout");
     XLOG(INFO) << "Drop reason test [src port knockout] final: "
-               << toString(reasons);
-    verifyOnlyExpectedReason(
-        reasons, DropStage::Ingress, kSrcPortKnockout, "src port knockout");
-    verifyDropReasonLogged("DROP reasons ingress", "src port knockout log");
+               << reasons.dropReasonToString();
+    reasons.verifyOnlyExpectedDropReasonReported(DropScenario::SrcPortKnockout);
+    verifyDropReasonLogged(
+        reasons.expectedDropLog(DropScenario::SrcPortKnockout),
+        "src port knockout log");
     // Re-enabled only once every check above is done. Bringing TX back up
     // flushes the held packets and can log fresh drop reasons of its own,
     // which would otherwise land in the still-open capture window that
