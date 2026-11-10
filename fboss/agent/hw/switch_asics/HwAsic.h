@@ -660,6 +660,7 @@ class HwAsic {
     CSIG,
     // TTL control on the aggregate's shared forwarding service.
     LAG_TTL_DECREMENT_DISABLE,
+    ACL_COUNTER_LABEL_EXTENDED,
   };
 
   enum class AsicMode {

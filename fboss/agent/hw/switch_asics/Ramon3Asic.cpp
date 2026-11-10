@@ -77,6 +77,7 @@ bool Ramon3Asic::isSupported(Feature feature) const {
     // production.
     case HwAsic::Feature::RX_PACKET_TYPE:
     case HwAsic::Feature::LAG_TTL_DECREMENT_DISABLE:
+    case HwAsic::Feature::ACL_COUNTER_LABEL_EXTENDED:
     case HwAsic::Feature::PORT_LATCH_STATUS:
     default:
       return false;
