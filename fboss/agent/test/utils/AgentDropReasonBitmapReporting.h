@@ -14,6 +14,7 @@ namespace facebook::fboss {
 // These map to sx_tele_drop_cause_*_reason_e enums in sx_tele_auto.h.
 enum PipelineIpDropBit : int {
   kDipIsLoopback = 3,
+  kUcTtl = 20,
 };
 
 enum PipelineMacDropBit : int {

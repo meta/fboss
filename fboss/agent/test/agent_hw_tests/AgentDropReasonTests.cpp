@@ -126,10 +126,11 @@ class AgentDropReasonTest : public AgentDropTestBase {
     };
     auto verify = [&]() {
       for (const auto scenario : scenarios) {
-        installLogCapture();
         // Reset between phases as well as across warm boots, so the previous
         // packet's drop cannot satisfy the next scenario's assertion.
         ASSERT_NO_FATAL_FAILURE(reporting.prepareDropObservation());
+        // Start capture after draining so old drops cannot satisfy this packet.
+        installLogCapture();
         if (scenario == DropScenario::SrcPortKnockout) {
           setEgressPortTx(false);
         }

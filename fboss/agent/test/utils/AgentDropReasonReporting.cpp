@@ -148,6 +148,9 @@ class BitmapDropReasonReportingAdapter : public DropReasonReportingImpl {
   bool expectedDropReasonObserved(DropScenario scenario) const override {
     // NOLINTNEXTLINE(clang-diagnostic-switch-enum): unsupported scenarios.
     switch (scenario) {
+      case DropScenario::TtlError:
+        return observed_.pipelineIpv6DropBitmap().value_or(0) &
+            (1LL << PipelineIpDropBit::kUcTtl);
       case DropScenario::Ipv4LoopbackDip:
         return observed_.pipelineIpv4DropBitmap().value_or(0) &
             (1LL << PipelineIpDropBit::kDipIsLoopback);
@@ -172,6 +175,13 @@ class BitmapDropReasonReportingAdapter : public DropReasonReportingImpl {
       DropScenario scenario) const override {
     // NOLINTNEXTLINE(clang-diagnostic-switch-enum): unsupported scenarios.
     switch (scenario) {
+      case DropScenario::TtlError:
+        reporting_.verifyOnlyExpectedDrop(
+            observed_,
+            DropBitmapField::PIPELINE_IPV6,
+            PipelineIpDropBit::kUcTtl,
+            "L3 TTL error");
+        return;
       case DropScenario::Ipv4LoopbackDip:
         reporting_.verifyOnlyExpectedDrop(
             observed_,
@@ -214,6 +224,8 @@ class BitmapDropReasonReportingAdapter : public DropReasonReportingImpl {
   std::string expectedDropLog(DropScenario scenario) const override {
     // NOLINTNEXTLINE(clang-diagnostic-switch-enum): unsupported scenarios.
     switch (scenario) {
+      case DropScenario::TtlError:
+        return "DROP reasons pipelineIpv6: (0x100000) PIPELINE_IPV6_UC_TTL";
       case DropScenario::Ipv4LoopbackDip:
         return "DROP reasons pipelineIpv4: (0x8) PIPELINE_IPV4_DIP_IS_LOOPBACK";
       case DropScenario::Ipv6LoopbackDip:

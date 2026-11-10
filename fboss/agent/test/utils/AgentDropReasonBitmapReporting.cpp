@@ -114,7 +114,7 @@ void BitmapDropReasonReportingImpl::waitForDropBitmapsToClear() {
     }
     prevStats = curStats;
     consecutiveClearReads = freshAndClear ? consecutiveClearReads + 1 : 0;
-    EXPECT_EVENTUALLY_TRUE(
+    ASSERT_EVENTUALLY_TRUE(
         consecutiveClearReads >= kRequiredConsecutiveClearReads);
   });
 }
