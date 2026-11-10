@@ -22,6 +22,7 @@
 #include <vector>
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/BgpCliAttrHandlers.h"
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/BgpCliValueParsers.h"
+#include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/routing-policy/BgpRoutingPolicyCliUtils.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/utils/CmdUtilsCommon.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
@@ -85,37 +86,6 @@ std::string validAttrList() {
   return out;
 }
 
-// Find the routing-policy statement keyed by name, creating it if absent.
-// Setting an attribute on a not-yet-created policy implicitly creates it, so
-// command ordering stays forgiving; a bare `routing-policy <name>` creates one
-// explicitly. BgpPolicyStatement's only key field is `name`.
-BgpPolicyStatement& findOrCreatePolicy(
-    bgp::thrift::BgpConfig& cfg,
-    const std::string& name) {
-  auto& policies = *cfg.policies().ensure().bgp_policy_statements();
-  for (auto& policy : policies) {
-    if (*policy.name() == name) {
-      return policy;
-    }
-  }
-  policies.emplace_back();
-  auto& policy = policies.back();
-  policy.name() = name;
-  return policy;
-}
-
-bool policyExists(const bgp::thrift::BgpConfig& cfg, const std::string& name) {
-  if (!cfg.policies().has_value()) {
-    return false;
-  }
-  for (const auto& policy : *cfg.policies()->bgp_policy_statements()) {
-    if (*policy.name() == name) {
-      return true;
-    }
-  }
-  return false;
-}
-
 } // namespace
 
 // Parse + validate at construction so queryClient stays a thin dispatch.
@@ -156,8 +126,9 @@ CmdConfigProtocolBgpPolicyRoutingPolicy::queryClient(
     const ObjectArgType& args) {
   auto& session = ConfigSession::getInstance();
   auto& cfg = session.getBgpConfig();
-  const bool policyCreated = !policyExists(cfg, args.policyName());
-  auto& policy = findOrCreatePolicy(cfg, args.policyName());
+  const bool policyCreated =
+      !bgpcli::routingPolicyExists(cfg, args.policyName());
+  auto& policy = bgpcli::findOrCreateRoutingPolicy(cfg, args.policyName());
 
   Result result = args.attr().empty()
       ? ok(policyCreated
