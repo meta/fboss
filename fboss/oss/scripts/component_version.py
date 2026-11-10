@@ -447,6 +447,44 @@ def capture_kernel_build(output_dir: Path, scripts_dir: Path) -> None:
     (output_dir / KERNEL_BUILD_INFO_PATH).unlink(missing_ok=True)
 
 
+def capture_bsp_build(output_dir: Path, source_dir: Path) -> None:
+    rpms = [
+        rpm for rpm in output_dir.glob("*.rpm") if not rpm.name.endswith(".src.rpm")
+    ]
+    rpm = _one_rpm(rpms, "fboss_bsp_kmods-", ".rpm")
+    name, version, arch = _query_rpm(
+        rpm, "%{NAME}\n%{VERSION}-%{RELEASE}\n%{ARCH}"
+    ).splitlines()
+    prefix = "fboss_bsp_kmods-"
+    if not name.startswith(prefix) or name == prefix:
+        raise ValueError("BSP RPM does not name its target kernel release")
+    kernel_release = name.removeprefix(prefix)
+    identity = get_source_build_info(source_dir)
+    identity.pop("build_version")
+    build: dict[str, object] = {
+        **identity,
+        "kernel_release": kernel_release,
+        "rpm_sha256": {rpm.name: checksum(rpm)},
+    }
+    fboss = get_source_build_info_from_environment(Path(__file__).parent)
+    fboss.pop("build_version")
+    if fboss:
+        build["fboss"] = fboss
+    build_version = os.environ.get("FBOSS_BUILD_VERSION")
+    if build_version:
+        build["build_version"] = build_version
+    write_declaration(
+        output_dir / "share/bsp-version.json",
+        {},
+        "component_version.py",
+        build=build,
+        versions={
+            "bsp": version,
+            "kernel": kernel_release.removesuffix("." + arch),
+        },
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
@@ -468,6 +506,9 @@ def main() -> None:
     kernel.add_argument("--output-dir", type=Path, required=True)
     kernel.add_argument("--scripts-dir", type=Path, required=True)
     kernel.add_argument("--prepare", action="store_true")
+    bsp = commands.add_parser("bsp", help="Capture BSP producer and RPM identity")
+    bsp.add_argument("--output-dir", type=Path, required=True)
+    bsp.add_argument("--source-dir", type=Path, required=True)
     args = parser.parse_args()
     if args.command == "generate":
         try:
@@ -491,6 +532,8 @@ def main() -> None:
             prepare_kernel_build(args.output_dir, args.scripts_dir)
         else:
             capture_kernel_build(args.output_dir, args.scripts_dir)
+    elif args.command == "bsp":
+        capture_bsp_build(args.output_dir, args.source_dir)
     else:
         write_binary_build_info(args.binary, args.objcopy)
 
