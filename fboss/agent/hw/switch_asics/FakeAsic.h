@@ -50,7 +50,6 @@ class FakeAsic : public HwAsic {
       case HwAsic::Feature::LINK_ACTIVE_INACTIVE_NOTIFY:
       case HwAsic::Feature::PORT_MTU_ERROR_TRAP:
       case HwAsic::Feature::NO_RX_REASON_TRAP:
-      case HwAsic::Feature::ACL_COUNTER_LABEL_EXTENDED:
       case HwAsic::Feature::SDK_REGISTER_DUMP:
       case HwAsic::Feature::ECMP_RANDOM_SPRAY_HIERARCHICAL_LEVEL:
       case HwAsic::Feature::TEMPERATURE_MONITORING:

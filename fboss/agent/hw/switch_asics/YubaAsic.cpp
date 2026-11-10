@@ -32,6 +32,7 @@ bool YubaAsic::isSupportedNonFabric(Feature feature) const {
     case HwAsic::Feature::SMAC_EQUALS_DMAC_CHECK_ENABLED:
     case HwAsic::Feature::PORT_TTL_DECREMENT_DISABLE:
     case HwAsic::Feature::LAG_TTL_DECREMENT_DISABLE:
+    case HwAsic::Feature::ACL_COUNTER_LABEL_EXTENDED:
     case HwAsic::Feature::WEIGHTED_NEXTHOPGROUP_MEMBER:
     case HwAsic::Feature::SAI_WEIGHTED_NEXTHOPGROUP_MEMBER:
     case HwAsic::Feature::BUFFER_POOL:
@@ -123,7 +124,6 @@ bool YubaAsic::isSupportedNonFabric(Feature feature) const {
     case HwAsic::Feature::SRV6_BINDING_USID_UA_USD:
     case HwAsic::Feature::SRV6_DECAP_TUNNEL:
     case HwAsic::Feature::ACL_BYTE_COUNTER:
-    case HwAsic::Feature::ACL_COUNTER_LABEL_EXTENDED:
     case HwAsic::Feature::SAI_MPLS_LABEL_LOOKUP_FAIL_COUNTER:
     case HwAsic::Feature::SAI_MPLS_TTL_1_TRAP:
     case HwAsic::Feature::SAI_ACL_MPLS_LABEL0_TTL:
