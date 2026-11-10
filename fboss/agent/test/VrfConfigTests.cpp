@@ -224,6 +224,20 @@ UnicastRoute makeRoute(const std::string& prefix, const std::string& nhop) {
 }
 } // namespace
 
+TEST(InterfaceVrfs, SetAndRemove) {
+  auto config = vrfConfig();
+  auto handle = createTestHandle(&config);
+  auto sw = handle->getSw();
+  const auto& resolver = *sw->getScopeResolver();
+
+  auto state =
+      setInterfaceVrfs(sw->getState(), {{InterfaceID(55), kTestVrf}}, resolver);
+  EXPECT_EQ(state->getInterfaceVrfs()->getVrf(InterfaceID(55)), kTestVrf);
+
+  state = setInterfaceVrfs(state, {{InterfaceID(55), RouterID(0)}}, resolver);
+  EXPECT_EQ(state->getInterfaceVrfs()->numNodes(), 0);
+}
+
 TEST(VrfDelete, RemovesVrfAndFibWithInterfaceMove) {
   auto config = vrfConfig();
   auto handle = createTestHandle(&config);

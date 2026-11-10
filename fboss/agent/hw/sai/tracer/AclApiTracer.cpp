@@ -189,6 +189,9 @@ void handleExtensionAttributes() {
 #endif
   SAI_EXT_ATTR_MAP(AclEntry, FieldRouteDestination);
   SAI_EXT_ATTR_MAP(AclTable, FieldRouteDestination);
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 2)
+  SAI_EXT_ATTR_MAP(AclCounter, LabelExtended);
+#endif
 }
 
 } // namespace

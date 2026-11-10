@@ -329,6 +329,10 @@ class SaiPortManager {
       const ExtOperStatusLatchWarmBootState& baseline);
 #endif
 #endif
+  // Current {errored blocks, BER count} hardware counter values. Read without
+  // clearing, so the SDK and vendor diagnostics see the same counts.
+  std::optional<std::pair<uint64_t, uint64_t>> getPcsErrorCounters(
+      PortSaiId saiPortId) const;
 
 #if defined(BRCM_PAI_SDK) && SAI_API_VERSION >= SAI_VERSION(1, 10, 0)
   phy::Loopback getLoopbackMode(PortSaiId saiPortId) const;
@@ -639,5 +643,12 @@ class SaiPortManager {
   FRIEND_TEST(PortManagerTest, calculateRate);
   FRIEND_TEST(PortManagerTest, updatePrbsStatsEntryRate);
 };
+
+#if defined(BRCM_PAI_SDK)
+void enableXphyLtRestartOnTimeout(
+    PortSaiId portSaiId,
+    const std::string& desc,
+    bool writeAllowed);
+#endif
 
 } // namespace facebook::fboss

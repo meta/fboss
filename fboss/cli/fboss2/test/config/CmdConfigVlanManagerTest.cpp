@@ -73,7 +73,7 @@ TEST_F(VlanManagerTestFixture, createVlanAlsoCreatesInterface) {
       [](const auto& intf) { return *intf.vlanID() == 400; });
   ASSERT_NE(intfIt, swConfig.interfaces()->cend());
   EXPECT_EQ(*intfIt->intfID(), 400);
-  EXPECT_EQ(*intfIt->routerID(), 0);
+  EXPECT_EQ(intfIt->routerID().value_or(0), 0);
   EXPECT_EQ(*intfIt->name(), "fboss400");
 }
 

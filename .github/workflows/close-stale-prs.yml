@@ -61,7 +61,7 @@ jobs:
       - name: Check inactive PRs
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          APPLY: ${{ vars.FBOSS_STALE_PR_CLOSURE_ENABLED == 'true' && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.apply)) }}
+          APPLY: ${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.apply) }}
         run: |
           if [ "$APPLY" = "true" ]; then
             python3 .github/scripts/close-stale-prs.py --apply --confirm-repo meta/fboss

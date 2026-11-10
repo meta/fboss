@@ -250,7 +250,7 @@ target_link_libraries(agent_ensemble
   pkt_test_utils
   agent_hw_test_ctrl_cpp2
   hw_switch_thrift_client_table
-  FBThrift::thriftcpp2
+  thrift::rpc
   ${GTEST}
 )
 

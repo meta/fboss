@@ -15,7 +15,7 @@ target_link_libraries(watchdog_util_core
   platform_config_lib
   platform_manager_config_cpp2
   Folly::folly
-  FBThrift::thriftcpp2
+  thrift::rpc
   ${RE2}
 )
 

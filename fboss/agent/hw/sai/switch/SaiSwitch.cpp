@@ -2851,8 +2851,9 @@ void SaiSwitch::updatePcsInfo(
   }
 #endif
 
+  phy::PcsStats pcsStats;
+  bool havePcsStats = false;
   if (utility::isReedSolomonFec(fecMode)) {
-    phy::PcsStats pcsStats;
     phy::RsFecInfo rsFec;
 
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 3) || defined(TAJO_SDK_VERSION_1_42_8)
@@ -2927,9 +2928,19 @@ void SaiSwitch::updatePcsInfo(
         lastRsFec, /* previous RsFecInfo */
         fecMode);
     pcsStats.rsFec() = rsFec;
-    sideStats.pcs() = pcsStats;
+    havePcsStats = true;
   }
 
+  if (auto pcsErrors = managerTable_->portManager().getPcsErrorCounters(
+          port->adapterKey())) {
+    pcsStats.erroredBlocks() = static_cast<int64_t>(pcsErrors->first);
+    pcsStats.berCount() = static_cast<int64_t>(pcsErrors->second);
+    havePcsStats = true;
+  }
+
+  if (havePcsStats) {
+    sideStats.pcs() = pcsStats;
+  }
   sideState.pcs() = pcsState;
 }
 

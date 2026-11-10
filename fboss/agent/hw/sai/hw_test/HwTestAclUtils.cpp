@@ -36,6 +36,27 @@ folly::IPAddressV6 ipV6WordToAddress(uint32_t word, int wordIndex) {
   bytes[byteOffset + 3] = static_cast<uint8_t>(word);
   return folly::IPAddressV6(bytes);
 }
+
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 2)
+std::string getAclCounterLabel(
+    const SaiAclTableManager& aclTableManager,
+    sai_object_id_t aclCounterId) {
+  auto& aclApi = SaiApiTable::getInstance()->aclApi();
+  if (aclTableManager.aclCounterLabelExtendedSupported()) {
+    auto label = aclApi.getAttribute(
+        AclCounterSaiId(aclCounterId),
+        SaiAclCounterTraits::Attributes::LabelExtended());
+    std::string labelStr(label.begin(), label.end());
+    labelStr.erase(labelStr.find_last_not_of('\0') + 1);
+    return labelStr;
+  }
+  return aclApi
+      .getAttribute(
+          AclCounterSaiId(aclCounterId),
+          SaiAclCounterTraits::Attributes::Label())
+      .data();
+}
+#endif
 } // namespace
 
 std::string getActualAclTableName(
@@ -541,12 +562,8 @@ void checkAclEntryAndStatCount(
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 2)
     if (hwSwitch->getPlatform()->getAsic()->isSupported(
             HwAsic::Feature::ACL_COUNTER_LABEL)) {
-      auto aclCounterNameGot =
-          SaiApiTable::getInstance()->aclApi().getAttribute(
-              AclCounterSaiId(aclCounterIdGot),
-              SaiAclCounterTraits::Attributes::Label());
       XLOG(DBG2) << "checkAclEntryAndStatCount:: aclCounterNameGot: "
-                 << aclCounterNameGot.data();
+                 << getAclCounterLabel(aclTableManager, aclCounterIdGot);
     }
 #endif
 
@@ -590,26 +607,24 @@ void checkAclStat(
     EXPECT_NE(aclCounterIdGot, SAI_NULL_OBJECT_ID);
 
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 2)
-    SaiCharArray32 aclCounterNameGot{};
+    std::string aclCounterNameGotStr;
     // Counter name must match what was previously configured
     if (hw->getPlatform()->getAsic()->isSupported(
             HwAsic::Feature::ACL_COUNTER_LABEL)) {
       if constexpr (AdapterHostKeyWarmbootRecoverable<
                         SaiAclCounterTraits>::value) {
-        aclCounterNameGot = SaiApiTable::getInstance()->aclApi().getAttribute(
-            AclCounterSaiId(aclCounterIdGot),
-            SaiAclCounterTraits::Attributes::Label());
+        aclCounterNameGotStr =
+            getAclCounterLabel(aclTableManager, aclCounterIdGot);
       } else {
         auto saiSwitch = static_cast<const SaiSwitch*>(hw);
         auto saiObject =
             saiSwitch->getSaiStore()->get<SaiAclCounterTraits>().find(
                 AclCounterSaiId(aclCounterIdGot));
         EXPECT_NE(saiObject, nullptr);
-        aclCounterNameGot =
-            GET_OPT_ATTR(AclCounter, Label, (saiObject->attributes()));
+        aclCounterNameGotStr =
+            GET_OPT_ATTR(AclCounter, Label, (saiObject->attributes())).data();
       }
     }
-    std::string aclCounterNameGotStr(aclCounterNameGot.data());
     EXPECT_EQ(statName, aclCounterNameGotStr);
 
     // Verify that only the configured 'types' (byte/packet) of counters are
@@ -696,11 +711,7 @@ void checkAclStatDeleted(
             HwAsic::Feature::ACL_COUNTER_LABEL)) {
       continue;
     }
-    auto aclCounterNameGot = SaiApiTable::getInstance()->aclApi().getAttribute(
-        AclCounterSaiId(aclCounterIdGot),
-        SaiAclCounterTraits::Attributes::Label());
-    std::string aclCounterNameGotStr(aclCounterNameGot.data());
-    EXPECT_NE(statName, aclCounterNameGotStr);
+    EXPECT_NE(statName, getAclCounterLabel(aclTableManager, aclCounterIdGot));
   }
 #else
   // On earlier SAI versions, we cannot test since there is no ACL counter

@@ -557,3 +557,25 @@ TEST_F(CrossVrfResolutionTest, RecursiveOverlayOverTwoVteps) {
   expectVteps(nextHops(kTenantVrf, "2001:db8:200::1"), bothVteps);
   expectVteps(nextHops(kTenantVrf, "2001:db8:300::1"), bothVteps);
 }
+
+TEST_F(CrossVrfResolutionTest, ReconfigureProgramsVrfsInOneUpdate) {
+  fibUpdates_.clear();
+  interfaceRoutes_[kTenantVrf]
+                  [folly::IPAddress::createNetwork("2001:db8:56::/64")] = {
+                      InterfaceID(56), folly::IPAddress("2001:db8:56::1")};
+  reconfigure();
+
+  ASSERT_EQ(fibUpdates_.size(), 1);
+  EXPECT_EQ(fibUpdates_[0], (std::vector<RouterID>{kVrf0, kTenantVrf}));
+}
+
+TEST_F(CrossVrfResolutionTest, ReconfigureRemovesVrfInSameUpdate) {
+  fibUpdates_.clear();
+  interfaceRoutes_.erase(kTenantVrf);
+  reconfigure();
+
+  // The removed VRF's FIB is removed in the same update
+  ASSERT_EQ(fibUpdates_.size(), 1);
+  EXPECT_EQ(fibUpdates_[0], (std::vector<RouterID>{kTenantVrf, kVrf0}));
+  EXPECT_EQ(rib_.getVrfList(), std::vector<RouterID>{kVrf0});
+}

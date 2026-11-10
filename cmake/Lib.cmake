@@ -20,7 +20,7 @@ add_library(log_thrift_call
 
 target_link_libraries(log_thrift_call
   Folly::folly
-  FBThrift::thriftcpp2
+  thrift::rpc
 )
 
 add_library(alert_logger
@@ -102,7 +102,7 @@ add_library(thrift_method_rate_limit
 
 target_link_libraries(thrift_method_rate_limit
   Folly::folly
-  FBThrift::thriftcpp2
+  thrift::rpc
 )
 
 add_library(thrift_method_rate_limit_setup
@@ -113,7 +113,7 @@ target_link_libraries(thrift_method_rate_limit_setup
   thrift_method_rate_limit
   fb303::fb303
   Folly::folly
-  FBThrift::thriftcpp2
+  thrift::rpc
 )
 
 find_library(PCIACCESS pciaccess)
@@ -214,5 +214,5 @@ add_library(thrift_service_utils
 
 target_link_libraries(thrift_service_utils
   Folly::folly
-  FBThrift::thriftcpp2
+  thrift::rpc
 )

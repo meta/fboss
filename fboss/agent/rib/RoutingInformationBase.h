@@ -422,11 +422,6 @@ class RibRouteTables {
       const RibMySidToSwitchStateFunction& ribMySidToSwitchStateFunc,
       void* cookie);
 
-  RouterIDToRouteTable constructRouteTables(
-      const SynchronizedRouteTables::WLockedPtr& lockedRouteTables,
-      const RouterIDAndNetworkToInterfaceRoutes&
-          configRouterIDToInterfaceRoutes) const;
-
   // Stamps missing clientNextHopSetID, resolvedNextHopSetID, and
   // normalizedResolvedNextHopSetID on routes from a pre-feature warmboot
   // snapshot. No-op when manager is null or IDs are already set. Returns

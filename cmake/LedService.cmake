@@ -3,17 +3,19 @@
 # In general, libraries and binaries in fboss/foo/bar are built by
 # cmake/FooBar.cmake
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   led_structs_types_cpp2
   fboss/led_service/if/led_structs.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
 )
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   led_service_types_cpp2
   fboss/led_service/if/led_service.thrift
+  LANGUAGE cpp2
   SERVICES
     LedService
   OPTIONS
@@ -42,7 +44,7 @@ target_link_libraries(led_config
   fboss_error
   led_config_cpp2
   Folly::folly
-  FBThrift::thriftcpp2
+  thrift::rpc
 )
 
 add_library(led_manager_lib
@@ -129,7 +131,7 @@ target_link_libraries(led_manager_lib
   platform_mapping_utils
   product_info
   Folly::folly
-  FBThrift::thriftcpp2
+  thrift::rpc
   fsdb_stream_client
   fsdb_pub_sub
   fsdb_flags

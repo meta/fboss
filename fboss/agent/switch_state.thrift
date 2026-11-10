@@ -738,6 +738,11 @@ struct VrfFields {
   2: optional string name;
 }
 
+struct InterfaceVrfFields {
+  1: i32 interfaceId;
+  2: i32 vrfId;
+}
+
 struct MySidFields {
   1: common.MySidType type;
   # MySid entry in ip/mask format. 32 bits of this are
@@ -1004,6 +1009,8 @@ struct SwitchState {
   > portAclTableGroupMaps;
   131: map<SwitchIdList, map<string, VxLanTunnelFields>> vxlanTunnelMaps;
   132: map<SwitchIdList, map<i32, VrfFields>> vrfMaps;
+  // Interface to VRF bindings. An interface without an entry is in VRF 0.
+  133: map<SwitchIdList, map<i32, InterfaceVrfFields>> interfaceVrfMaps;
   // Remote object maps
   600: map<SwitchIdList, map<i64, SystemPortFields>> remoteSystemPortMaps;
   601: map<SwitchIdList, map<i32, InterfaceFields>> remoteInterfaceMaps;

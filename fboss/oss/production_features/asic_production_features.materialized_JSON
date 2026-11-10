@@ -213,7 +213,8 @@
         102,
         104,
         112,
-        113
+        113,
+        128
     ],
     "jericho3": [
         2,
@@ -860,6 +861,7 @@
         33,
         112,
         113,
+        128,
         49,
         111,
         134,
@@ -1080,7 +1082,8 @@
         "SRV6_DECAP",
         "SRV6_MIDPOINT",
         "PORT_DEBOUNCE",
-        "SRV6_BINDING_SID"
+        "SRV6_BINDING_SID",
+        "MYSID_ADJACENCY_FRR"
     ],
     "jericho3": [
         "CPU_RX_TX",
@@ -1727,6 +1730,7 @@
         "INTERFACE_NEIGHBOR_TABLE",
         "PORT_DEBOUNCE",
         "SRV6_BINDING_SID",
+        "MYSID_ADJACENCY_FRR",
         "MIRROR_ON_DROP",
         "MIRROR_ON_DROP_STATELESS",
         "MIRROR_ON_DROP_AGGREGATE_RATE_LIMIT",
@@ -2243,7 +2247,7 @@
             "chenab2"
           ],
           "sdk": 3,
-          "minSdkVersion": "2511.36"
+          "minSdkVersion": "2605.38"
         }
       ]
     },

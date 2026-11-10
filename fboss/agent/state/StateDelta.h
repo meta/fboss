@@ -25,6 +25,7 @@
 #include "fboss/agent/state/FlowletSwitchingConfig.h"
 #include "fboss/agent/state/InterfaceMap.h"
 #include "fboss/agent/state/InterfaceMapDelta.h"
+#include "fboss/agent/state/InterfaceVrfMap.h"
 #include "fboss/agent/state/IpTunnelMap.h"
 #include "fboss/agent/state/LabelForwardingInformationBase.h"
 #include "fboss/agent/state/LoadBalancerMap.h"
@@ -119,6 +120,7 @@ class StateDelta {
   ThriftMapDelta<VxlanTunnelMap> getVxlanTunnelsDelta() const;
   ThriftMapDelta<MySidMap> getMySidsDelta() const;
   ThriftMapDelta<VrfMap> getVrfsDelta() const;
+  MultiSwitchMapDelta<MultiSwitchInterfaceVrfMap> getInterfaceVrfsDelta() const;
   MultiSwitchMapDelta<MultiTeFlowTable> getTeFlowEntriesDelta() const;
   // Remote object deltas
   MultiSwitchMapDelta<MultiSwitchSystemPortMap> getRemoteSystemPortsDelta()

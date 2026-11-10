@@ -13,7 +13,7 @@ target_link_libraries(setup_thrift
   thrift_method_rate_limit_setup
   thrift_service_utils
   Folly::folly
-  FBThrift::thriftcpp2
+  thrift::rpc
 )
 
 add_library(fboss_init
@@ -206,7 +206,7 @@ add_library(stat_printers
 )
 
 target_link_libraries(stat_printers
-  FBThrift::thriftcpp2
+  thrift::rpc
   hardware_stats_cpp2
   phy_cpp2
   Folly::folly
@@ -303,7 +303,7 @@ target_link_libraries(hw_switch_thrift_client_table
   fboss_types
   hw_ctrl_cpp2
   Folly::folly
-  FBThrift::thriftcpp2
+  thrift::rpc
 )
 
 add_library(core
@@ -629,7 +629,7 @@ target_link_libraries(switch_state_delta_logger
   fsdb_oper_cpp2
   thrift_cow_serializer
   fb303::fb303
-  FBThrift::thriftprotocol
+  thrift::protocol
   Folly::folly
 )
 
@@ -891,7 +891,7 @@ target_link_libraries(sw_agent_initializer
   agent_features
   core
   Folly::folly
-  FBThrift::thriftcpp2
+  thrift::rpc
   handler
   setup_thrift
   utils

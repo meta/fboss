@@ -687,6 +687,34 @@ class AgentSrv6EncapTest : public AgentHwTest {
     return aggPort->sortedSubports().front().portID;
   }
 
+  bool verifyEncapOuterHeader(
+      const utility::EthFrame& frame,
+      const std::vector<folly::IPAddressV6>& expectedSids,
+      bool ecnMarked,
+      uint8_t dscp,
+      uint8_t ttl) {
+    auto ethHdr = frame.header();
+    EXPECT_EQ(
+        ethHdr.etherType, static_cast<uint16_t>(ETHERTYPE::ETHERTYPE_IPV6));
+    auto v6Payload = frame.v6PayLoad();
+    EXPECT_TRUE(v6Payload.has_value());
+    if (!v6Payload.has_value()) {
+      return false;
+    }
+    auto v6Hdr = v6Payload->header();
+    bool sidMatch = std::any_of(
+        expectedSids.begin(), expectedSids.end(), [&](const auto& sid) {
+          return v6Hdr.dstAddr == sid;
+        });
+    if (sidMatch) {
+      EXPECT_NE(v6Hdr.flowLabel, 0);
+      EXPECT_EQ(v6Hdr.trafficClass & 0x3, ecnMarked ? 0x3 : 0);
+      EXPECT_EQ(v6Hdr.trafficClass >> 2, dscp);
+      EXPECT_EQ(v6Hdr.hopLimit, ttl - 1);
+    }
+    return sidMatch;
+  }
+
   void verifyEncapPacket(
       const std::vector<PortID>& egressPorts,
       bool ecnMarked,
@@ -782,25 +810,11 @@ class AgentSrv6EncapTest : public AgentHwTest {
     ASSERT_TRUE(frameRx.has_value());
     folly::io::Cursor cursor((*frameRx).get());
     utility::EthFrame frame(cursor);
-    auto ethHdr = frame.header();
-    // Outer header is always IPv6 (SRv6 encap)
-    EXPECT_EQ(
-        ethHdr.etherType, static_cast<uint16_t>(ETHERTYPE::ETHERTYPE_IPV6));
     auto v6Payload = frame.v6PayLoad();
-    EXPECT_TRUE(v6Payload.has_value());
-    auto v6Hdr = v6Payload->header();
-    // Outer header dst addr should match one of the expected SIDs
-    bool sidMatch = std::any_of(sids.begin(), sids.end(), [&](const auto& sid) {
-      return v6Hdr.dstAddr == sid;
-    });
-    EXPECT_TRUE(sidMatch) << "Outer DA " << v6Hdr.dstAddr
+    ASSERT_TRUE(v6Payload.has_value());
+    bool sidMatch = verifyEncapOuterHeader(frame, sids, ecnMarked, kTc, kTtl);
+    EXPECT_TRUE(sidMatch) << "Outer DA " << v6Payload->header().dstAddr
                           << " does not match any expected SID";
-    // Flow label must be non 0
-    EXPECT_NE(v6Hdr.flowLabel, 0);
-    EXPECT_EQ(v6Hdr.trafficClass & 0x3, ecnMarked ? 0x3 : 0);
-    EXPECT_EQ(v6Hdr.trafficClass >> 2, kTc);
-    // TTL is decremented
-    EXPECT_EQ(v6Hdr.hopLimit, kTtl - 1);
     // Compare origPacket against inner packet
     if (isV4) {
       auto origPacket = origFrame.v4PayLoad();
@@ -1572,6 +1586,194 @@ TYPED_TEST(AgentSrv6EncapTest, openRAndTeAgentRoutesChurn) {
       std::nullopt /*injectPort*/,
       this->kEncapRouteDstIp,
       this->kChildRouteCounter);
+}
+
+template <typename PortType>
+class AgentMixedIpSrv6EncapTest : public AgentSrv6EncapTest<PortType> {
+ protected:
+  std::vector<ProductionFeature> getProductionFeaturesVerified()
+      const override {
+    auto features =
+        AgentSrv6EncapTest<PortType>::getProductionFeaturesVerified();
+    features.push_back(ProductionFeature::MIXED_IP_SRV6_NEXT_HOP_GROUPS);
+    return features;
+  }
+
+  void setCmdLineFlagOverrides() const override {
+    AgentSrv6EncapTest<PortType>::setCmdLineFlagOverrides();
+    FLAGS_allow_mixed_ip_srv6_nhop_groups = true;
+  }
+
+  void addMixedEncapRoute(
+      const folly::CIDRNetwork& prefix,
+      const std::vector<folly::IPAddressV6>& sidList,
+      const std::string& nhgName) {
+    auto ecmpHelper = this->template makeEcmpHelper<folly::IPAddressV6>();
+    auto srv6Nhop = ecmpHelper.nhop(0);
+    auto ipNhop = ecmpHelper.nhop(1);
+    CHECK(srv6Nhop.linkLocalNhopIp.has_value());
+    CHECK(ipNhop.linkLocalNhopIp.has_value());
+    RouteNextHopSet nhops;
+    nhops.insert(ResolvedNextHop(
+        folly::IPAddress(*srv6Nhop.linkLocalNhopIp),
+        srv6Nhop.intf,
+        ECMP_WEIGHT,
+        std::nullopt,
+        std::nullopt,
+        std::nullopt,
+        std::nullopt,
+        sidList,
+        TunnelType::SRV6_ENCAP,
+        std::string("srv6Tunnel0")));
+    nhops.insert(ResolvedNextHop(
+        folly::IPAddress(*ipNhop.linkLocalNhopIp),
+        ipNhop.intf,
+        ECMP_WEIGHT,
+        std::nullopt,
+        std::nullopt,
+        std::nullopt,
+        std::nullopt,
+        std::vector<folly::IPAddressV6>{},
+        std::nullopt,
+        std::nullopt));
+
+    auto rib = this->getSw()->getRib();
+    std::vector<std::pair<std::string, RouteNextHopSet>> groups;
+    groups.emplace_back(nhgName, nhops);
+    rib->addOrUpdateNamedNextHopGroups(
+        this->getSw()->getScopeResolver(),
+        groups,
+        createRibToSwitchStateFunction(),
+        this->getSw());
+
+    UnicastRoute route;
+    route.dest()->ip() =
+        facebook::network::toBinaryAddress(folly::IPAddress(prefix.first));
+    route.dest()->prefixLength() = prefix.second;
+    NamedRouteDestination namedDest;
+    namedDest.nextHopGroup_ref() = nhgName;
+    route.namedRouteDestination() = namedDest;
+    route.counterID() = nhgName;
+
+    auto routeUpdater = this->getSw()->getRouteUpdater();
+    routeUpdater.addRoute(RouterID(0), ClientID::TE_AGENT, route);
+    routeUpdater.program();
+  }
+
+  std::vector<PortID> memberEgressPorts(const PortDescriptor& portDesc) const {
+    if (portDesc.isPhysicalPort()) {
+      return {portDesc.phyPortID()};
+    }
+    auto aggPort = this->getProgrammedState()->getAggregatePorts()->getNodeIf(
+        portDesc.aggPortID());
+    std::vector<PortID> ports;
+    for (const auto& subport : aggPort->sortedSubports()) {
+      ports.push_back(subport.portID);
+    }
+    return ports;
+  }
+
+  std::map<PortID, std::pair<int64_t, int64_t>> portCounters(
+      const std::vector<PortID>& ports) {
+    std::map<PortID, std::pair<int64_t, int64_t>> counters;
+    for (const auto& port : ports) {
+      auto stats = this->getLatestPortStats(port);
+      counters[port] = {*stats.outBytes_(), *stats.outUnicastPkts_()};
+    }
+    return counters;
+  }
+
+  std::pair<int64_t, int64_t> portCounterDelta(
+      const std::vector<PortID>& ports,
+      const std::map<PortID, std::pair<int64_t, int64_t>>& before) {
+    int64_t bytesDelta = 0;
+    int64_t pktsDelta = 0;
+    for (const auto& port : ports) {
+      auto stats = this->getLatestPortStats(port);
+      bytesDelta += *stats.outBytes_() - before.at(port).first;
+      pktsDelta += *stats.outUnicastPkts_() - before.at(port).second;
+    }
+    return {bytesDelta, pktsDelta};
+  }
+
+  void sendMixedFlow(const folly::IPAddress& dstIp, uint16_t srcPort) {
+    auto intfMac =
+        getMacForFirstInterfaceWithPortsForTesting(this->getProgrammedState());
+    auto txPacket = utility::makeUDPTxPacket(
+        this->getSw(),
+        this->getVlanIDForTx(),
+        intfMac,
+        intfMac,
+        folly::IPAddress("1::10"),
+        dstIp,
+        srcPort,
+        8001,
+        static_cast<uint8_t>(42 << 2),
+        64);
+    this->sendPacketSwitchedAsync(std::move(txPacket));
+  }
+
+  void verifyMixedEcmpForwarding(
+      const folly::IPAddress& dstIp,
+      const std::vector<folly::IPAddressV6>& sidList) {
+    auto ecmpHelper = this->template makeEcmpHelper<folly::IPAddressV6>();
+    const auto srv6Ports = this->memberEgressPorts(ecmpHelper.nhop(0).portDesc);
+    const auto ipPorts = this->memberEgressPorts(ecmpHelper.nhop(1).portDesc);
+    ASSERT_FALSE(srv6Ports.empty());
+    ASSERT_FALSE(ipPorts.empty());
+
+    std::vector<PortID> allPorts = srv6Ports;
+    allPorts.insert(allPorts.end(), ipPorts.begin(), ipPorts.end());
+    const auto before = this->portCounters(allPorts);
+    constexpr int kNumFlows = 100;
+    for (int flow = 0; flow < kNumFlows; ++flow) {
+      this->sendMixedFlow(dstIp, 8000 + flow);
+    }
+    WITH_RETRIES({
+      const auto srv6Delta = this->portCounterDelta(srv6Ports, before);
+      const auto ipDelta = this->portCounterDelta(ipPorts, before);
+      EXPECT_EVENTUALLY_TRUE(srv6Delta.first > 0);
+      EXPECT_EVENTUALLY_TRUE(srv6Delta.second > 0);
+      EXPECT_EVENTUALLY_TRUE(ipDelta.first > 0);
+      EXPECT_EVENTUALLY_TRUE(ipDelta.second > 0);
+    });
+
+    utility::SwSwitchPacketSnooper snooper(
+        this->getSw(), "srv6MixedEncapSnooper");
+    bool foundSrv6Packet = false;
+    for (int flow = 0; flow < 20 && !foundSrv6Packet; ++flow) {
+      this->sendMixedFlow(dstIp, 9000 + flow);
+      auto frameRx = snooper.waitForPacket(1);
+      ASSERT_TRUE(frameRx.has_value())
+          << "No egress packet captured for flow " << flow;
+      folly::io::Cursor cursor((*frameRx).get());
+      utility::EthFrame frame(cursor);
+      bool sidMatch =
+          this->verifyEncapOuterHeader(frame, sidList, false, 42, 64);
+      if (!sidMatch) {
+        continue;
+      }
+      foundSrv6Packet = true;
+    }
+    EXPECT_TRUE(foundSrv6Packet) << "No SRv6-encap packet captured in 20 flows";
+  }
+};
+
+TYPED_TEST_SUITE(AgentMixedIpSrv6EncapTest, Srv6EncapPortTypes);
+
+TYPED_TEST(AgentMixedIpSrv6EncapTest, mixedSrv6AndIpEcmpGroup) {
+  const folly::CIDRNetwork kMixedPrefix{"2800:5::", 64};
+  const folly::IPAddress kMixedDst{"2800:5::1"};
+  const std::vector<folly::IPAddressV6> kSidList{this->kSid0};
+  const std::string kMixedNhg = "mixedSrv6Nhg";
+  auto setup = [this, kMixedPrefix, kSidList, kMixedNhg]() {
+    this->setupHelper(true /*resolveNeighbors*/, false /*programRoutes*/);
+    this->addMixedEncapRoute(kMixedPrefix, kSidList, kMixedNhg);
+  };
+  auto verify = [this, kMixedDst, kSidList]() {
+    this->verifyMixedEcmpForwarding(kMixedDst, kSidList);
+  };
+  this->verifyAcrossWarmBoots(setup, verify);
 }
 
 } // namespace facebook::fboss

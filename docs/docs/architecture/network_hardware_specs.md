@@ -324,7 +324,7 @@ RMCv2 supports 2 types of leakage sensing cable (LSC) interface: Legacy interfac
 
 ### **6.1 Field Replaceable Units (FRUs)**
 
-- R-FRU-010: All FRUs shall allow tool-less installation and extraction. Finger pressure shall not exceed 7 lbs; hand pressure shall not exceed 10 lbs.
+- R-FRU-010: All FRUs shall allow tool-less installation and extraction. Peak actuation force for both insertion and removal shall not exceed 7 lbf (31 N) at any single-finger touchpoint and 16 lbf (71 N) per hand, applied at the handle grip, at maximum system operating pressure. Exceptions may be granted by Meta on a case-by-case basis with written approval, supported by measured data.
 - R-FRU-020: All FRU insertion/removal shall be directly detectable by x86 CPU.
 - R-FRU-030: FRU interface design shall minimize potential mechanical damage during insertion/removal.
 - R-FRU-040: All FRUs shall have keying feature to prevent wrong-orientation and/or offset insertion.

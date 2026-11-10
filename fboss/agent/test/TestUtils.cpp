@@ -21,6 +21,8 @@
 #include "fboss/agent/hw/mock/MockPlatformMapping.h"
 #include "fboss/agent/hw/mock/MockTestHandle.h"
 #include "fboss/agent/state/Interface.h"
+#include "fboss/agent/state/InterfaceVrf.h"
+#include "fboss/agent/state/InterfaceVrfMap.h"
 #include "fboss/agent/state/Port.h"
 #include "fboss/agent/state/RouteNextHop.h"
 
@@ -827,6 +829,25 @@ shared_ptr<SwitchState> publishAndApplyConfig(
       platformMapping,
       &hwAsicTable,
       rib);
+}
+
+shared_ptr<SwitchState> setInterfaceVrfs(
+    const shared_ptr<SwitchState>& state,
+    const std::map<InterfaceID, RouterID>& interfaceVrfs,
+    const SwitchIdScopeResolver& scopeResolver) {
+  auto newState = state->clone();
+  auto map = newState->getInterfaceVrfs()->modify(&newState);
+  for (const auto& [intf, vrf] : interfaceVrfs) {
+    if (map->getNodeIf(intf)) {
+      map->removeNode(intf);
+    }
+    if (vrf == RouterID(0)) {
+      continue;
+    }
+    auto entry = std::make_shared<InterfaceVrf>(intf, vrf);
+    map->addNode(entry, scopeResolver.scope(entry, newState));
+  }
+  return newState;
 }
 
 std::unique_ptr<SwSwitch> setupMockSwitchWithoutHW(

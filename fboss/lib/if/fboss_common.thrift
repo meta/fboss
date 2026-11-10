@@ -76,6 +76,11 @@ enum PlatformType {
   PLATFORM_UNKNOWN = 1000, # Placeholder for unknown platform type
 }
 
+enum PlatformCPUType {
+  INTEL = 1,
+  AMD = 2,
+}
+
 enum SdkVersionRolloutType {
   PRODUCTION = 1,
   RELEASE_CANDIDATE = 2,

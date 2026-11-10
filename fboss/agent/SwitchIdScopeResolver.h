@@ -39,6 +39,7 @@ class LoadBalancer;
 class TeFlowEntry;
 class SwitchState;
 class Interface;
+class InterfaceVrf;
 class Port;
 class PortDescriptor;
 class AclTableGroup;
@@ -135,6 +136,10 @@ class SwitchIdScopeResolver {
   HwSwitchMatcher scope(
       const std::shared_ptr<Interface>& intf,
       const cfg::SwitchConfig& cfg) const;
+  // Same scope as the interface
+  HwSwitchMatcher scope(
+      const std::shared_ptr<InterfaceVrf>& interfaceVrf,
+      const std::shared_ptr<SwitchState>& state) const;
   HwSwitchMatcher scope(
       const cfg::InterfaceType& type,
       const InterfaceID& interfaceId,

@@ -109,6 +109,7 @@ bool P200Asic::isSupportedNonFabric(Feature feature) const {
     case HwAsic::Feature::SAI_SET_TC_WITH_USER_DEFINED_TRAP_CPU_ACTION:
     case HwAsic::Feature::SAI_MPLS_NEXTHOP_OUTSEG_TYPE:
     case HwAsic::Feature::CPU_TX_PACKET_REQUIRES_VLAN_TAG:
+    case HwAsic::Feature::PCS_ERROR_COUNTERS:
       return true;
     case HwAsic::Feature::ACL_BYTE_COUNTER:
     case HwAsic::Feature::RESERVED_ENCAP_INDEX_RANGE:
@@ -286,6 +287,7 @@ bool P200Asic::isSupportedNonFabric(Feature feature) const {
     case HwAsic::Feature::ACL_ENTRY_OUT_PORT_QUALIFIER:
     case HwAsic::Feature::XPHY_SERDES_TX_FIR_POST3:
     case HwAsic::Feature::LAG_TTL_DECREMENT_DISABLE:
+    case HwAsic::Feature::ACL_COUNTER_LABEL_EXTENDED:
     case HwAsic::Feature::PORT_LATCH_STATUS:
       return false;
     case HwAsic::Feature::SAI_ACL_MPLS_LABEL0_TTL:

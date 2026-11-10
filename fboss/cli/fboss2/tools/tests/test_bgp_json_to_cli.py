@@ -32,6 +32,7 @@ from fboss.cli.fboss2.tools.bgp_json_to_cli import (
     generate_prefix_list_commands,
     generate_prefix_list_entry_commands,
     generate_routing_policy_commands,
+    generate_routing_policy_term_commands,
     json_to_cli,
 )
 
@@ -1479,6 +1480,45 @@ class GenerateRoutingPolicyCommandsTest(unittest.TestCase):
                 "config protocol bgp policy as-path-list A",
                 "config protocol bgp policy prefix-list PL",
                 self.PREFIX,
+            ],
+        )
+
+
+class GenerateRoutingPolicyTermCommandsTest(unittest.TestCase):
+    """Tests for generate_routing_policy_term_commands (term grammar)."""
+
+    PREFIX = "config protocol bgp policy routing-policy RM term 10"
+
+    def test_bare_term_is_recreated(self) -> None:
+        commands = generate_routing_policy_term_commands("RM", {"sequence_number": 10})
+        self.assertEqual(commands, [self.PREFIX])
+
+    def test_description(self) -> None:
+        commands = generate_routing_policy_term_commands(
+            "RM", {"sequence_number": 10, "description": "deny bogons"}
+        )
+        self.assertEqual(commands, [f"{self.PREFIX} description 'deny bogons'"])
+
+    def test_missing_sequence_number_warns(self) -> None:
+        commands = generate_routing_policy_term_commands("RM", {"name": "t1"})
+        self.assertEqual(len(commands), 1)
+        self.assertTrue(commands[0].startswith("# WARNING:"))
+        self.assertIn("t1", commands[0])
+
+    def test_terms_emitted_inside_policy(self) -> None:
+        commands = generate_routing_policy_commands(
+            {
+                "name": "RM",
+                "description": "d",
+                "policy_entries": [{"sequence_number": 10}, {"sequence_number": 20}],
+            }
+        )
+        self.assertEqual(
+            commands,
+            [
+                "config protocol bgp policy routing-policy RM description d",
+                self.PREFIX,
+                "config protocol bgp policy routing-policy RM term 20",
             ],
         )
 

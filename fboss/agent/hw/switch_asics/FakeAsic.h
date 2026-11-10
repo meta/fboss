@@ -57,6 +57,7 @@ class FakeAsic : public HwAsic {
       case HwAsic::Feature::SRV6_BINDING_USID_UA_USD:
       case HwAsic::Feature::SRV6_DECAP_TUNNEL:
       case HwAsic::Feature::PORT_LATCH_STATUS:
+      case HwAsic::Feature::PCS_ERROR_COUNTERS:
         return false;
 
       default:

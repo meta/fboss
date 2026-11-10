@@ -3,17 +3,26 @@
 # In general, libraries and binaries in fboss/foo/bar are built by
 # cmake/FooBar.cmake
 
-add_fbthrift_cpp_library(
+add_library(fan_service_config_types_cpp2)
+thrift_generate(
   fan_service_config_types_cpp2
   fboss/platform/fan_service/if/fan_service_config.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
+  INCLUDE_DIRECTORIES
+    ${PROJECT_SOURCE_DIR}
+    ${THRIFT_INCLUDE_DIR}
+)
+target_include_directories(fan_service_config_types_cpp2
+  PUBLIC ${PROJECT_BINARY_DIR}
 )
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   fan_service_cpp2
   fboss/platform/fan_service/if/fan_service.thrift
+  LANGUAGE cpp2
   SERVICES
     FanService
   DEPENDS
@@ -58,7 +67,7 @@ target_link_libraries(fan_service_lib
   qsfp_service_client
   qsfp_state_cpp2
   qsfp_stats_cpp2
-  FBThrift::thriftcpp2
+  thrift::rpc
   fsdb_stream_client
   fsdb_pub_sub
   fsdb_flags
