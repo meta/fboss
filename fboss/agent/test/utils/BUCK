@@ -5,6 +5,15 @@ load("@fbsource//tools/build_defs/testinfra:network_access_utils.bzl", "network_
 oncall("fboss_agent_push")
 
 cpp_library(
+    name = "drop_reason_reporting_test_utils",
+    headers = ["AgentDropReasonReporting.h"],
+    exported_deps = [
+        "//fboss/agent:switch_config-cpp2-serialization",
+        "//fboss/agent/if:multiswitch_ctrl-cpp2-serialization",
+    ],
+)
+
+cpp_library(
     name = "erspan_parser",
     srcs = [
         "facebook/ErspanParser.cpp",

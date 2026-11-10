@@ -130,9 +130,9 @@ class AgentDropReasonTest : public AgentDropTestBase {
         "]");
   }
 
-  // Log every observation, not just the final state. If an expectation is
-  // wrong the run then shows exactly what the ASIC did report, which is what
-  // it takes to correct the expected name without another round trip.
+  // Log the drop reasons after every collection, not just the final state.
+  // If an expectation is wrong, the run shows what the ASIC reported, which is
+  // what it takes to correct the expected name without another round trip.
   void logObserved(const char* desc, const DropReasons& reasons) {
     XLOG(INFO) << "Drop reason test [" << desc
                << "] observed: " << toString(reasons);
