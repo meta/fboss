@@ -281,6 +281,10 @@
                         "enable_large_ecmp_member_capacity": {
                             "type": "boolean",
                             "description": "When true, enables a platform-defined conditional setting that increases ECMP member capacity."
+                        },
+                        "enable_uncached_port_stats": {
+                            "type": "boolean",
+                            "description": "When true, enables uncached port statistics."
                         }
                     }
                 },
