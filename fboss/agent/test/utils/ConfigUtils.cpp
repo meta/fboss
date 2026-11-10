@@ -1275,7 +1275,7 @@ cfg::SwitchConfig oneL3IntfNPortConfig(
   config.interfaces()[0].intfID() = baseVlanId;
   config.interfaces()[0].vlanID() = baseVlanId;
   config.interfaces()[0].type() = cfg::InterfaceType::VLAN;
-  *config.interfaces()[0].routerID() = 0;
+  config.interfaces()[0].routerID() = 0;
   if (setInterfaceMac) {
     config.interfaces()[0].mac() = getLocalCpuMacStr();
   }
@@ -1400,7 +1400,7 @@ cfg::SwitchConfig twoL3IntfConfig(
     cfg::Interface intf;
     *intf.intfID() = computeIntfId(i);
     *intf.vlanID() = switchType == cfg::SwitchType::NPU ? vlans[i] : 0;
-    *intf.routerID() = 0;
+    intf.routerID() = 0;
     intf.ipAddresses()->resize(2);
     auto ipOctet = i + 1;
     intf.ipAddresses()[0] =

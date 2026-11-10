@@ -110,7 +110,7 @@ TEST(AddVrfForPorts, MovesInterfacesOfPorts) {
   EXPECT_EQ(*config.vrfs()->at(0).vrfId(), 1001);
   std::vector<int32_t> routerIds;
   for (const auto& intf : *config.interfaces()) {
-    routerIds.push_back(*intf.routerID());
+    routerIds.push_back(intf.routerID().value_or(0));
   }
   EXPECT_EQ(routerIds, (std::vector<int32_t>{1001, 1001, 0, 1001}));
 }

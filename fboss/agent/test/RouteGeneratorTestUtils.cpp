@@ -58,7 +58,7 @@ cfg::SwitchConfig getTestConfig() {
     *cfg.vlanPorts()[i].vlanID() = id;
     // interfaces
     *cfg.interfaces()[i].intfID() = id;
-    *cfg.interfaces()[i].routerID() = 0;
+    cfg.interfaces()[i].routerID() = 0;
     *cfg.interfaces()[i].vlanID() = id;
     cfg.interfaces()[i].name() = folly::to<string>("interface", id);
     cfg.interfaces()[i].mac() = fmt::format("00:02:00:00:00:{:x}", i);
