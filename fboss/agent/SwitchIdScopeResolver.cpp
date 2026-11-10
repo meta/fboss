@@ -10,6 +10,7 @@
 #include "fboss/agent/state/AggregatePort.h"
 #include "fboss/agent/state/FibInfo.h"
 #include "fboss/agent/state/Interface.h"
+#include "fboss/agent/state/InterfaceVrf.h"
 #include "fboss/agent/state/LabelForwardingEntry.h"
 #include "fboss/agent/state/MirrorOnDropReport.h"
 #include "fboss/agent/state/Port.h"
@@ -314,6 +315,12 @@ HwSwitchMatcher SwitchIdScopeResolver::scope(
     const std::shared_ptr<Interface>& intf,
     const cfg::SwitchConfig& cfg) const {
   return scope(intf->getType(), intf->getID(), cfg);
+}
+
+HwSwitchMatcher SwitchIdScopeResolver::scope(
+    const std::shared_ptr<InterfaceVrf>& interfaceVrf,
+    const std::shared_ptr<SwitchState>& state) const {
+  return scope(state->getInterfaces()->getNode(interfaceVrf->getID()), state);
 }
 
 HwSwitchMatcher SwitchIdScopeResolver::scope(
