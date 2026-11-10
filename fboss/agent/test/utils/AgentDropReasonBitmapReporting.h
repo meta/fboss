@@ -61,7 +61,7 @@ class BitmapDropReasonReportingImpl {
       const HwSwitchDropBitmapStats& stats,
       DropBitmapField expectedField,
       int expectedBit,
-      const char* desc);
+      const char* desc) const;
 
  private:
   DropReasonReportingContext context_;

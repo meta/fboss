@@ -124,7 +124,7 @@ void BitmapDropReasonReportingImpl::verifyOnlyExpectedDrop(
     const HwSwitchDropBitmapStats& stats,
     DropBitmapField expectedField,
     int expectedBit,
-    const char* desc) {
+    const char* desc) const {
   auto getBitmap = [&](DropBitmapField f) -> int64_t {
     switch (f) {
       case DropBitmapField::INGRESS_MAC:

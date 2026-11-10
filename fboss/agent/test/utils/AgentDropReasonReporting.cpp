@@ -7,7 +7,10 @@
 #include "fboss/agent/test/utils/AgentDropReasonReporting.h"
 
 #include "fboss/agent/FbossError.h"
+#include "fboss/agent/test/utils/AgentDropReasonBitmapReporting.h"
 #include "fboss/agent/test/utils/AgentDropReasonListReporting.h"
+
+#include <fmt/format.h>
 
 namespace facebook::fboss {
 namespace {
@@ -120,11 +123,149 @@ class ListDropReasonReportingAdapter : public DropReasonReportingImpl {
   ListDropReasonReportingImpl::DropReasons reasons_;
 };
 
+// Drop bitmaps are READ_AND_CLEAR: each HwAgent stats-collection cycle reads
+// and clears the HW bitmap and pushes that one snapshot to the SwSwitch cache
+// these tests read, so a single drop is easy to miss — especially post-warmboot
+// while the HwAgent->SwSwitch stats sink is re-establishing. Each verify loop
+// below re-sends the drop-triggering traffic on every WITH_RETRIES iteration
+// (the ~1s collection interval) and OR-accumulates: a miss in one collection
+// window is covered by the next, and the first observed drop is latched.
+class BitmapDropReasonReportingAdapter : public DropReasonReportingImpl {
+ public:
+  explicit BitmapDropReasonReportingAdapter(DropReasonReportingContext context)
+      : reporting_(std::move(context)) {}
+
+  void prepareDropObservation() override {
+    observed_ = {};
+    reporting_.waitForDropBitmapsToClear();
+  }
+
+  void collectDropObservation() override {
+    BitmapDropReasonReportingImpl::orBitmapStats(
+        observed_, reporting_.getAggregatedSwitchDropBitmapStats());
+  }
+
+  bool expectedDropReasonObserved(DropScenario scenario) const override {
+    // NOLINTNEXTLINE(clang-diagnostic-switch-enum): unsupported scenarios.
+    switch (scenario) {
+      case DropScenario::Ipv4LoopbackDip:
+        return observed_.pipelineIpv4DropBitmap().value_or(0) &
+            (1LL << PipelineIpDropBit::kDipIsLoopback);
+      case DropScenario::Ipv6LoopbackDip:
+        return observed_.pipelineIpv6DropBitmap().value_or(0) &
+            (1LL << PipelineIpDropBit::kDipIsLoopback);
+      case DropScenario::MacSaMulticast:
+        return observed_.pipelineMacDropBitmap().value_or(0) &
+            (1LL << PipelineMacDropBit::kSmacIsMulticast);
+      case DropScenario::InvalidEtherType:
+        return observed_.ingressMacDropBitmap().value_or(0) &
+            (1LL << IngressMacDropBit::kTypeOutOfRange);
+      case DropScenario::EgressMtu:
+        return observed_.egressMacDropBitmap().value_or(0) &
+            (1LL << EgressMacDropBit::kEgressMtuError);
+      default:
+        throw FbossError("Unsupported bitmap drop scenario");
+    }
+  }
+
+  void verifyOnlyExpectedDropReasonReported(
+      DropScenario scenario) const override {
+    // NOLINTNEXTLINE(clang-diagnostic-switch-enum): unsupported scenarios.
+    switch (scenario) {
+      case DropScenario::Ipv4LoopbackDip:
+        reporting_.verifyOnlyExpectedDrop(
+            observed_,
+            DropBitmapField::PIPELINE_IPV4,
+            PipelineIpDropBit::kDipIsLoopback,
+            "IPv4 loopback DIP");
+        return;
+      case DropScenario::Ipv6LoopbackDip:
+        reporting_.verifyOnlyExpectedDrop(
+            observed_,
+            DropBitmapField::PIPELINE_IPV6,
+            PipelineIpDropBit::kDipIsLoopback,
+            "IPv6 loopback DIP");
+        return;
+      case DropScenario::MacSaMulticast:
+        reporting_.verifyOnlyExpectedDrop(
+            observed_,
+            DropBitmapField::PIPELINE_MAC,
+            PipelineMacDropBit::kSmacIsMulticast,
+            "Pipeline MAC SMAC multicast");
+        return;
+      case DropScenario::InvalidEtherType:
+        // Ingress MAC: type out of range drop
+        // EtherType 0x05E0 is in the reserved range 0x05DD..0x05FF
+        // This also triggers PIPELINE_MAC_INVALID_ETHERTYPE — the packet
+        // traverses multiple pipeline stages that each flag it independently.
+        // We verify the primary drop (ingressMac) without cross-contamination
+        // checks since multi-stage drops are expected.
+        return;
+      case DropScenario::EgressMtu:
+        // Assert only the egress MAC MTU bit (not verifyOnlyExpectedDrop): the
+        // oversized routed packet can also trigger collateral drops in the
+        // loopback test topology, so an exclusivity check would be flaky.
+        return;
+      default:
+        throw FbossError("Unsupported bitmap drop scenario");
+    }
+  }
+
+  std::string expectedDropLog(DropScenario scenario) const override {
+    // NOLINTNEXTLINE(clang-diagnostic-switch-enum): unsupported scenarios.
+    switch (scenario) {
+      case DropScenario::Ipv4LoopbackDip:
+        return "DROP reasons pipelineIpv4: (0x8) PIPELINE_IPV4_DIP_IS_LOOPBACK";
+      case DropScenario::Ipv6LoopbackDip:
+        return "DROP reasons pipelineIpv6: (0x8) PIPELINE_IPV6_DIP_IS_LOOPBACK";
+      case DropScenario::MacSaMulticast:
+        return "DROP reasons pipelineMac: (0x800) PIPELINE_MAC_SMAC_IS_MC";
+      case DropScenario::InvalidEtherType:
+        return "DROP reasons ingressMac: (0x10) INGRESS_MAC_TYPE_OUT_OF_RANGE";
+      case DropScenario::EgressMtu:
+        return "DROP reasons egressMac: (0x1) EGRESS_MAC_EGRESS_MTU_ERROR";
+      default:
+        throw FbossError("Unsupported bitmap drop scenario");
+    }
+  }
+
+  std::string dropReasonToString() const override {
+    return fmt::format(
+        "buffer=0x{:x} egressMac=0x{:x} egressPipe=0x{:x} host=0x{:x} "
+        "ingressMac=0x{:x} pipelineGeneral=0x{:x} pipelineIpv4=0x{:x} "
+        "pipelineIpv6=0x{:x} pipelineMac=0x{:x} pipelineMpls=0x{:x} "
+        "pipelineTunnel=0x{:x} queue=0x{:x}",
+        observed_.bufferDropBitmap().value_or(0),
+        observed_.egressMacDropBitmap().value_or(0),
+        observed_.egressPipeDropBitmap().value_or(0),
+        observed_.hostDropBitmap().value_or(0),
+        observed_.ingressMacDropBitmap().value_or(0),
+        observed_.pipelineGeneralDropBitmap().value_or(0),
+        observed_.pipelineIpv4DropBitmap().value_or(0),
+        observed_.pipelineIpv6DropBitmap().value_or(0),
+        observed_.pipelineMacDropBitmap().value_or(0),
+        observed_.pipelineMplsDropBitmap().value_or(0),
+        observed_.pipelineTunnelDropBitmap().value_or(0),
+        observed_.queueDropBitmap().value_or(0));
+  }
+
+ private:
+  using DropBitmapField = BitmapDropReasonReportingImpl::DropBitmapField;
+
+  BitmapDropReasonReportingImpl reporting_;
+  HwSwitchDropBitmapStats observed_;
+};
+
 } // namespace
 
 std::unique_ptr<DropReasonReportingImpl> createListDropReasonReportingImpl(
     DropReasonReportingContext context) {
   return std::make_unique<ListDropReasonReportingAdapter>(std::move(context));
+}
+
+std::unique_ptr<DropReasonReportingImpl> createBitmapDropReasonReportingImpl(
+    DropReasonReportingContext context) {
+  return std::make_unique<BitmapDropReasonReportingAdapter>(std::move(context));
 }
 
 } // namespace facebook::fboss

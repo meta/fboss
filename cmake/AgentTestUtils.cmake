@@ -10,6 +10,7 @@ add_library(drop_reason_reporting_test_utils
 )
 
 target_link_libraries(drop_reason_reporting_test_utils
+  fmt::fmt
   fboss_error
   common_utils
   switch_config_cpp2

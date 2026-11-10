@@ -3,7 +3,6 @@
 #include "fboss/agent/test/agent_hw_tests/AgentDropTestBase.h"
 #include "fboss/agent/test/gen-cpp2/production_features_types.h"
 #include "fboss/agent/test/utils/AclTestUtils.h"
-#include "fboss/agent/test/utils/AgentDropReasonBitmapReporting.h"
 #include "fboss/agent/test/utils/AgentDropReasonReporting.h"
 #include "fboss/lib/CommonUtils.h"
 
@@ -274,33 +273,11 @@ class AgentDropBitmapTest : public AgentDropTestBase {
   }
 
  protected:
-  using DropBitmapField = BitmapDropReasonReportingImpl::DropBitmapField;
-
-  static void orBitmapStats(
-      HwSwitchDropBitmapStats& dst,
-      const HwSwitchDropBitmapStats& src) {
-    BitmapDropReasonReportingImpl::orBitmapStats(dst, src);
-  }
-
-  HwSwitchDropBitmapStats getAggregatedSwitchDropBitmapStats() {
-    return dropReasonReporting().getAggregatedSwitchDropBitmapStats();
-  }
-
   void waitForDropBitmapsToClear() {
-    dropReasonReporting().waitForDropBitmapsToClear();
+    dropReasonReporting().prepareDropObservation();
   }
 
-  void verifyOnlyExpectedDrop(
-      const HwSwitchDropBitmapStats& stats,
-      DropBitmapField expectedField,
-      int expectedBit,
-      const char* desc) {
-    dropReasonReporting().verifyOnlyExpectedDrop(
-        stats, expectedField, expectedBit, desc);
-  }
-
- private:
-  BitmapDropReasonReportingImpl& dropReasonReporting() {
+  DropReasonReportingImpl& dropReasonReporting() {
     if (!reporting_) {
       DropReasonReportingContext context;
       context.readSwitchStats = [this]() { return getAllHwSwitchStats(); };
@@ -308,13 +285,13 @@ class AgentDropBitmapTest : public AgentDropTestBase {
            getSw()->getSwitchInfoTable().getSwitchIndices()) {
         context.switchIndices.push_back(switchIndex);
       }
-      reporting_ =
-          std::make_unique<BitmapDropReasonReportingImpl>(std::move(context));
+      reporting_ = createBitmapDropReasonReportingImpl(std::move(context));
     }
     return *reporting_;
   }
 
-  std::unique_ptr<BitmapDropReasonReportingImpl> reporting_;
+ private:
+  std::unique_ptr<DropReasonReportingImpl> reporting_;
 };
 
 TEST_F(AgentDropBitmapTest, pipelineIpv4Ipv6Drops) {
@@ -328,21 +305,17 @@ TEST_F(AgentDropBitmapTest, pipelineIpv4Ipv6Drops) {
     waitForDropBitmapsToClear();
 
     // IPv4 loopback DIP drop
-    HwSwitchDropBitmapStats ipv4Stats;
+    auto& ipv4Stats = dropReasonReporting();
     WITH_RETRIES({
       sendLoopbackDipPacket<folly::IPAddressV4>();
-      orBitmapStats(ipv4Stats, getAggregatedSwitchDropBitmapStats());
+      ipv4Stats.collectDropObservation();
       EXPECT_EVENTUALLY_TRUE(
-          ipv4Stats.pipelineIpv4DropBitmap().value_or(0) &
-          (1LL << PipelineIpDropBit::kDipIsLoopback));
+          ipv4Stats.expectedDropReasonObserved(DropScenario::Ipv4LoopbackDip));
     });
-    verifyOnlyExpectedDrop(
-        ipv4Stats,
-        DropBitmapField::PIPELINE_IPV4,
-        PipelineIpDropBit::kDipIsLoopback,
-        "IPv4 loopback DIP");
+    ipv4Stats.verifyOnlyExpectedDropReasonReported(
+        DropScenario::Ipv4LoopbackDip);
     verifyDropReasonLogged(
-        "DROP reasons pipelineIpv4: (0x8) PIPELINE_IPV4_DIP_IS_LOOPBACK",
+        ipv4Stats.expectedDropLog(DropScenario::Ipv4LoopbackDip),
         "IPv4 loopback DIP log");
 
     // Drain residual drops before the IPv6 phase so the IPv4 drop doesn't
@@ -350,21 +323,17 @@ TEST_F(AgentDropBitmapTest, pipelineIpv4Ipv6Drops) {
     waitForDropBitmapsToClear();
 
     // IPv6 loopback DIP drop
-    HwSwitchDropBitmapStats ipv6Stats;
+    auto& ipv6Stats = dropReasonReporting();
     WITH_RETRIES({
       sendLoopbackDipPacket<folly::IPAddressV6>();
-      orBitmapStats(ipv6Stats, getAggregatedSwitchDropBitmapStats());
+      ipv6Stats.collectDropObservation();
       EXPECT_EVENTUALLY_TRUE(
-          ipv6Stats.pipelineIpv6DropBitmap().value_or(0) &
-          (1LL << PipelineIpDropBit::kDipIsLoopback));
+          ipv6Stats.expectedDropReasonObserved(DropScenario::Ipv6LoopbackDip));
     });
-    verifyOnlyExpectedDrop(
-        ipv6Stats,
-        DropBitmapField::PIPELINE_IPV6,
-        PipelineIpDropBit::kDipIsLoopback,
-        "IPv6 loopback DIP");
+    ipv6Stats.verifyOnlyExpectedDropReasonReported(
+        DropScenario::Ipv6LoopbackDip);
     verifyDropReasonLogged(
-        "DROP reasons pipelineIpv6: (0x8) PIPELINE_IPV6_DIP_IS_LOOPBACK",
+        ipv6Stats.expectedDropLog(DropScenario::Ipv6LoopbackDip),
         "IPv6 loopback DIP log");
   };
   verifyAcrossWarmBoots([]() {}, verify);
@@ -380,21 +349,16 @@ TEST_F(AgentDropBitmapTest, pipelineMacAndIngressMacDrops) {
     waitForDropBitmapsToClear();
 
     // Pipeline MAC: SMAC multicast drop
-    HwSwitchDropBitmapStats macStats;
+    auto& macStats = dropReasonReporting();
     WITH_RETRIES({
       sendMulticastSmacPacket();
-      orBitmapStats(macStats, getAggregatedSwitchDropBitmapStats());
+      macStats.collectDropObservation();
       EXPECT_EVENTUALLY_TRUE(
-          macStats.pipelineMacDropBitmap().value_or(0) &
-          (1LL << PipelineMacDropBit::kSmacIsMulticast));
+          macStats.expectedDropReasonObserved(DropScenario::MacSaMulticast));
     });
-    verifyOnlyExpectedDrop(
-        macStats,
-        DropBitmapField::PIPELINE_MAC,
-        PipelineMacDropBit::kSmacIsMulticast,
-        "Pipeline MAC SMAC multicast");
+    macStats.verifyOnlyExpectedDropReasonReported(DropScenario::MacSaMulticast);
     verifyDropReasonLogged(
-        "DROP reasons pipelineMac: (0x800) PIPELINE_MAC_SMAC_IS_MC",
+        macStats.expectedDropLog(DropScenario::MacSaMulticast),
         "Pipeline MAC SMAC log");
 
     // Drain residual drops before the ingress MAC phase.
@@ -406,16 +370,15 @@ TEST_F(AgentDropBitmapTest, pipelineMacAndIngressMacDrops) {
     // traverses multiple pipeline stages that each flag it independently.
     // We verify the primary drop (ingressMac) without cross-contamination
     // checks since multi-stage drops are expected.
-    HwSwitchDropBitmapStats ingressMacStats;
+    auto& ingressMacStats = dropReasonReporting();
     WITH_RETRIES({
       sendOutOfRangeEtherTypePacket();
-      orBitmapStats(ingressMacStats, getAggregatedSwitchDropBitmapStats());
-      EXPECT_EVENTUALLY_TRUE(
-          ingressMacStats.ingressMacDropBitmap().value_or(0) &
-          (1LL << IngressMacDropBit::kTypeOutOfRange));
+      ingressMacStats.collectDropObservation();
+      EXPECT_EVENTUALLY_TRUE(ingressMacStats.expectedDropReasonObserved(
+          DropScenario::InvalidEtherType));
     });
     verifyDropReasonLogged(
-        "DROP reasons ingressMac: (0x10) INGRESS_MAC_TYPE_OUT_OF_RANGE",
+        ingressMacStats.expectedDropLog(DropScenario::InvalidEtherType),
         "Ingress MAC type OOR log");
   };
   verifyAcrossWarmBoots([]() {}, verify);
@@ -435,17 +398,15 @@ TEST_F(AgentDropBitmapTest, egressMacMtuDrop) {
     // Assert only the egress MAC MTU bit (not verifyOnlyExpectedDrop): the
     // oversized routed packet can also trigger collateral drops in the
     // loopback test topology, so an exclusivity check would be flaky.
-    HwSwitchDropBitmapStats stats;
+    auto& stats = dropReasonReporting();
     WITH_RETRIES({
       sendOversizedPacketToRoutedDst();
-      orBitmapStats(stats, getAggregatedSwitchDropBitmapStats());
+      stats.collectDropObservation();
       EXPECT_EVENTUALLY_TRUE(
-          stats.egressMacDropBitmap().value_or(0) &
-          (1LL << EgressMacDropBit::kEgressMtuError));
+          stats.expectedDropReasonObserved(DropScenario::EgressMtu));
     });
     verifyDropReasonLogged(
-        "DROP reasons egressMac: (0x1) EGRESS_MAC_EGRESS_MTU_ERROR",
-        "Egress MTU log");
+        stats.expectedDropLog(DropScenario::EgressMtu), "Egress MTU log");
   };
   verifyAcrossWarmBoots(setup, verify);
 }

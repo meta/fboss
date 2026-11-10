@@ -17,6 +17,7 @@ cpp_library(
         "AgentDropReasonReporting.h",
     ],
     deps = [
+        "fbsource//third-party/fmt:fmt",
         "fbsource//third-party/googletest:gtest",
         "fbsource//xplat/folly:string",
         "//fboss/agent:fboss-error",
