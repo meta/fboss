@@ -408,6 +408,7 @@ cpp_library(
         "//fboss/agent/test/utils:aqm_test_utils",
         "//fboss/agent/test/utils:asic_test_utils",
         "//fboss/agent/test/utils:config_utils",
+        "//fboss/agent/test/utils:drop_reason_reporting_test_utils",
         "//fboss/agent/test/utils:dscp_marking_utils",
         "//fboss/agent/test/utils:dsf_config_utils",
         "//fboss/agent/test/utils:ecmp_dataplane_test_util",

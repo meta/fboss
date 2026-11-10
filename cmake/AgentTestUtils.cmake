@@ -3,6 +3,19 @@
 # In general, libraries and binaries in fboss/foo/bar are built by
 # cmake/FooBar.cmake
 
+add_library(drop_reason_reporting_test_utils
+  fboss/agent/test/utils/AgentDropReasonBitmapReporting.cpp
+  fboss/agent/test/utils/AgentDropReasonListReporting.cpp
+)
+
+target_link_libraries(drop_reason_reporting_test_utils
+  common_utils
+  switch_config_cpp2
+  multiswitch_ctrl_cpp2
+  Folly::folly
+  ${GTEST}
+)
+
 add_library(erspan_parser
   fboss/agent/test/utils/oss/ErspanParser.cpp
 )

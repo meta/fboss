@@ -3,14 +3,10 @@
 #include "fboss/agent/test/agent_hw_tests/AgentDropTestBase.h"
 #include "fboss/agent/test/gen-cpp2/production_features_types.h"
 #include "fboss/agent/test/utils/AclTestUtils.h"
+#include "fboss/agent/test/utils/AgentDropReasonListReporting.h"
 #include "fboss/lib/CommonUtils.h"
 
-#include <folly/String.h>
 #include <folly/logging/xlog.h>
-
-#include <algorithm>
-#include <iterator>
-#include <set>
 
 namespace facebook::fboss {
 
@@ -26,42 +22,6 @@ namespace facebook::fboss {
 // reported. The lists are cleared on read, so each verify loop below re-sends
 // the drop triggering traffic on every WITH_RETRIES iteration -- a drop missed
 // in one collection window is covered by the next.
-namespace {
-// Reason names as they appear in the log: the
-// SAI_PACKET_DROP_TYPE_{INGRESS,EGRESS}_ prefix is stripped at decode.
-constexpr auto kL3DstDiscard = "L3_DST_DISCARD";
-constexpr auto kL3TtlError = "L3_TTL_ERROR";
-// A multicast source MAC reports SRC_ROUTE_DROP, not the MACSA_MULTICAST the
-// name suggests. Both enumerators exist; this is the one the ASIC raises.
-constexpr auto kSrcRouteDrop = "SRC_ROUTE_DROP";
-// An ACL deny reports RFILDR, the filtered-on-receive reason, not the IFP one
-// that the ingress field processor's name suggests. Both enumerators exist;
-// this is the one the ASIC raises.
-constexpr auto kRxFilterDrop = "RFILDR";
-constexpr auto kEgrMtu = "EGR_MTU";
-constexpr auto kSrcPortKnockout = "SRC_PORT_KNOCKOUT_DROP";
-
-// Reasons the ASIC reports alongside a specific one rather than instead of
-// it. RDROP is "Port bitmap zero drop condition", which comes up for
-// essentially any dropped packet. It is deliberately still reported and
-// logged, since it is a genuine drop indicator, but a test checking that
-// nothing unexpected also fired has to discount it.
-const std::set<std::string>& genericReasons() {
-  static const std::set<std::string> reasons{"RDROP"};
-  return reasons;
-}
-
-std::set<std::string> specificOnly(const std::set<std::string>& reasons) {
-  std::set<std::string> out;
-  std::set_difference(
-      reasons.begin(),
-      reasons.end(),
-      genericReasons().begin(),
-      genericReasons().end(),
-      std::inserter(out, out.end()));
-  return out;
-}
-} // namespace
 
 class AgentDropReasonTest : public AgentDropTestBase {
  public:
@@ -71,63 +31,19 @@ class AgentDropReasonTest : public AgentDropTestBase {
   }
 
  protected:
-  struct DropReasons {
-    std::set<std::string> ingress;
-    std::set<std::string> egress;
-  };
+  using DropReasons = ListDropReasonReportingImpl::DropReasons;
+  using DropStage = ListDropReasonReportingImpl::DropStage;
 
-  // Union src into dst. Reason lists are cleared on read, so reasons observed
-  // in an earlier collection must be preserved across retries.
   static void accumulate(DropReasons& dst, const DropReasons& src) {
-    dst.ingress.insert(src.ingress.begin(), src.ingress.end());
-    dst.egress.insert(src.egress.begin(), src.egress.end());
-  }
-
-  // Pull the reason names out of a "DROP reasons <stage>: A, B, C" line.
-  static void parseReasons(
-      const std::string& message,
-      std::string_view marker,
-      std::set<std::string>& out) {
-    auto pos = message.find(marker);
-    if (pos == std::string::npos) {
-      return;
-    }
-    // View into message rather than a substr() temporary: the pieces below
-    // point back into whatever is split, so a temporary would dangle.
-    std::string_view tail(message);
-    tail.remove_prefix(pos + marker.size());
-    std::vector<std::string_view> names;
-    folly::split(", ", tail, names);
-    for (auto name : names) {
-      auto trimmed = folly::trimWhitespace(name);
-      if (!trimmed.empty()) {
-        out.emplace(trimmed);
-      }
-    }
+    ListDropReasonReportingImpl::accumulate(dst, src);
   }
 
   DropReasons getAggregatedDropReasons() {
-    DropReasons result;
-    for (const auto& switchId : getSw()->getSwitchInfoTable().getSwitchIDs()) {
-      std::vector<std::string> matches;
-      getAgentEnsemble()
-          ->getHwAgentTestClient(switchId)
-          ->sync_getMatchingLogMessages(matches, "DROP reasons ");
-      for (const auto& match : matches) {
-        parseReasons(match, "DROP reasons ingress: ", result.ingress);
-        parseReasons(match, "DROP reasons egress: ", result.egress);
-      }
-    }
-    return result;
+    return dropReasonReporting().getAggregatedDropReasons();
   }
 
   static std::string toString(const DropReasons& reasons) {
-    return folly::to<std::string>(
-        "ingress=[",
-        folly::join(", ", reasons.ingress),
-        "] egress=[",
-        folly::join(", ", reasons.egress),
-        "]");
+    return ListDropReasonReportingImpl::toString(reasons);
   }
 
   // Log the drop reasons after every collection, not just the final state.
@@ -138,32 +54,38 @@ class AgentDropReasonTest : public AgentDropTestBase {
                << "] observed: " << toString(reasons);
   }
 
-  enum class Direction { Ingress, Egress };
-
-  // Assert the expected reason fired on the named direction and that nothing
-  // unexpected fired, on either direction. Generic reasons are discounted:
-  // they accompany any drop and say nothing about which one.
   void verifyOnlyExpectedReason(
       const DropReasons& reasons,
-      Direction direction,
+      DropStage dropStage,
       const std::string& expected,
       const char* desc) {
-    const auto& reported =
-        direction == Direction::Ingress ? reasons.ingress : reasons.egress;
-    const auto& other =
-        direction == Direction::Ingress ? reasons.egress : reasons.ingress;
-    EXPECT_TRUE(reported.contains(expected))
-        << desc << ": expected reason " << expected << " not reported";
-    auto unexpected = specificOnly(reported);
-    unexpected.erase(expected);
-    EXPECT_TRUE(unexpected.empty())
-        << desc << ": unexpected drop reasons also reported: "
-        << folly::join(", ", unexpected);
-    auto otherDirection = specificOnly(other);
-    EXPECT_TRUE(otherDirection.empty())
-        << desc << ": unexpected drop reasons in the other direction: "
-        << folly::join(", ", otherDirection);
+    dropReasonReporting().verifyOnlyExpectedReason(
+        reasons, dropStage, expected, desc);
   }
+
+ private:
+  ListDropReasonReportingImpl& dropReasonReporting() {
+    if (!reporting_) {
+      DropReasonReportingContext context;
+      context.readLogMessages = [this]() {
+        std::vector<std::string> messages;
+        for (const auto& switchId :
+             getSw()->getSwitchInfoTable().getSwitchIDs()) {
+          std::vector<std::string> matches;
+          getAgentEnsemble()
+              ->getHwAgentTestClient(switchId)
+              ->sync_getMatchingLogMessages(matches, "DROP reasons ");
+          messages.insert(messages.end(), matches.begin(), matches.end());
+        }
+        return messages;
+      };
+      reporting_ =
+          std::make_unique<ListDropReasonReportingImpl>(std::move(context));
+    }
+    return *reporting_;
+  }
+
+  std::unique_ptr<ListDropReasonReportingImpl> reporting_;
 };
 
 // A packet to an address with no matching route is discarded at L3
@@ -184,7 +106,7 @@ TEST_F(AgentDropReasonTest, ingressL3DstDiscardDrop) {
     XLOG(INFO) << "Drop reason test [L3 DST discard] final: "
                << toString(reasons);
     verifyOnlyExpectedReason(
-        reasons, Direction::Ingress, kL3DstDiscard, "L3 DST discard");
+        reasons, DropStage::Ingress, kL3DstDiscard, "L3 DST discard");
     verifyDropReasonLogged("DROP reasons ingress", "L3 DST discard log");
   };
   verifyAcrossWarmBoots([]() {}, verify);
@@ -234,7 +156,7 @@ TEST_F(AgentDropReasonTest, ingressMacSaMulticastDrop) {
     XLOG(INFO) << "Drop reason test [MACSA multicast] final: "
                << toString(reasons);
     verifyOnlyExpectedReason(
-        reasons, Direction::Ingress, kSrcRouteDrop, "MACSA multicast");
+        reasons, DropStage::Ingress, kSrcRouteDrop, "MACSA multicast");
     verifyDropReasonLogged("DROP reasons ingress", "MACSA multicast log");
   };
   verifyAcrossWarmBoots([]() {}, verify);
@@ -300,7 +222,7 @@ TEST_F(AgentDropReasonTest, egressMtuDrop) {
     });
     logPortDropCounters("egress MTU");
     XLOG(INFO) << "Drop reason test [egress MTU] final: " << toString(reasons);
-    verifyOnlyExpectedReason(reasons, Direction::Egress, kEgrMtu, "egress MTU");
+    verifyOnlyExpectedReason(reasons, DropStage::Egress, kEgrMtu, "egress MTU");
     verifyDropReasonLogged("DROP reasons egress", "egress MTU log");
   };
   verifyAcrossWarmBoots(setup, verify);
@@ -329,7 +251,7 @@ TEST_F(AgentDropReasonTest, ingressSrcPortKnockoutDrop) {
     XLOG(INFO) << "Drop reason test [src port knockout] final: "
                << toString(reasons);
     verifyOnlyExpectedReason(
-        reasons, Direction::Ingress, kSrcPortKnockout, "src port knockout");
+        reasons, DropStage::Ingress, kSrcPortKnockout, "src port knockout");
     verifyDropReasonLogged("DROP reasons ingress", "src port knockout log");
     // Re-enabled only once every check above is done. Bringing TX back up
     // flushes the held packets and can log fresh drop reasons of its own,

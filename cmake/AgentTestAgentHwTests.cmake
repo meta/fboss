@@ -231,6 +231,7 @@ add_library(agent_hw_test_src
 )
 
 target_link_libraries(agent_hw_test_src
+  drop_reason_reporting_test_utils
   erspan_parser
   fpga_multi_pim_container
   agent_ars_test_src

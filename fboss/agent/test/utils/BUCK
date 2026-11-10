@@ -6,7 +6,20 @@ oncall("fboss_agent_push")
 
 cpp_library(
     name = "drop_reason_reporting_test_utils",
-    headers = ["AgentDropReasonReporting.h"],
+    srcs = [
+        "AgentDropReasonBitmapReporting.cpp",
+        "AgentDropReasonListReporting.cpp",
+    ],
+    headers = [
+        "AgentDropReasonBitmapReporting.h",
+        "AgentDropReasonListReporting.h",
+        "AgentDropReasonReporting.h",
+    ],
+    deps = [
+        "fbsource//third-party/googletest:gtest",
+        "fbsource//xplat/folly:string",
+        "//fboss/lib:common_utils",
+    ],
     exported_deps = [
         "//fboss/agent:switch_config-cpp2-serialization",
         "//fboss/agent/if:multiswitch_ctrl-cpp2-serialization",
