@@ -33,7 +33,9 @@ struct FakeSamplePacket {
   sai_samplepacket_mode_t mode;
 };
 
-using FakeSamplePacketManager = FakeManager<sai_object_id_t, FakeSamplePacket>;
+// Start at 1 so a port's sample packet OID is never SAI_NULL_OBJECT_ID
+using FakeSamplePacketManager =
+    FakeManager<sai_object_id_t, FakeSamplePacket, 1>;
 
 void populate_samplepacket_api(sai_samplepacket_api_t** samplepacket_api);
 

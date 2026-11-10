@@ -484,7 +484,8 @@ class SaiPortManager {
   void removeSamplePacket(const std::shared_ptr<Port>& swPort);
   void changeMirror(
       const std::shared_ptr<Port>& oldPort,
-      const std::shared_ptr<Port>& newPort);
+      const std::shared_ptr<Port>& newPort,
+      MirrorAction action);
   void changeSamplePacket(
       const std::shared_ptr<Port>& oldPort,
       const std::shared_ptr<Port>& newPort);
