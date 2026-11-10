@@ -13,6 +13,10 @@
 #include "fboss/agent/hw/sai/api/AddressUtil.h"
 #include "fboss/agent/hw/sai/fake/FakeSai.h"
 
+extern "C" {
+#include "fboss/agent/hw/sai/api/fake/saifakeextensions.h"
+}
+
 using facebook::fboss::FakeSai;
 
 namespace facebook::fboss {
@@ -1462,6 +1466,12 @@ sai_status_t set_acl_counter_attribute_fn(
           std::begin(aclCounter.label));
       res = SAI_STATUS_SUCCESS;
       break;
+    case SAI_ACL_COUNTER_ATTR_EXT_LABEL_EXTENDED:
+      aclCounter.labelExtended.assign(
+          attr->value.s8list.list,
+          attr->value.s8list.list + attr->value.s8list.count);
+      res = SAI_STATUS_SUCCESS;
+      break;
 #endif
     case SAI_ACL_COUNTER_ATTR_PACKETS:
       aclCounter.counterPackets = attr->value.u64;
@@ -1497,6 +1507,21 @@ sai_status_t get_acl_counter_attribute_fn(
             std::end(aclCounter.label),
             attr_list[i].value.chardata);
         break;
+      case SAI_ACL_COUNTER_ATTR_EXT_LABEL_EXTENDED: {
+        auto& labelList = attr_list[i].value.s8list;
+        if (labelList.count < aclCounter.labelExtended.size()) {
+          labelList.count =
+              static_cast<uint32_t>(aclCounter.labelExtended.size());
+          return SAI_STATUS_BUFFER_OVERFLOW;
+        }
+        labelList.count =
+            static_cast<uint32_t>(aclCounter.labelExtended.size());
+        std::copy(
+            aclCounter.labelExtended.begin(),
+            aclCounter.labelExtended.end(),
+            labelList.list);
+        break;
+      }
 #endif
       case SAI_ACL_COUNTER_ATTR_ENABLE_PACKET_COUNT:
         attr_list[i].value.booldata = aclCounter.enablePacketCount;

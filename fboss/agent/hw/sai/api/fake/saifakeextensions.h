@@ -187,6 +187,11 @@ typedef enum _sai_counter_extensions_attr_t {
   SAI_COUNTER_ATTR_EXT_LABEL_EXTENDED = SAI_COUNTER_ATTR_CUSTOM_RANGE_START,
 } sai_counter_extensions_attr_t;
 
+typedef enum _sai_acl_counter_extensions_attr_t {
+  SAI_ACL_COUNTER_ATTR_EXT_LABEL_EXTENDED =
+      SAI_ACL_COUNTER_ATTR_CUSTOM_RANGE_START,
+} sai_acl_counter_extensions_attr_t;
+
 typedef enum _sai_next_hop_group_extensions_attr_t {
   SAI_NEXT_HOP_GROUP_ATTR_ARS_NEXT_HOP_GROUP_META_DATA =
       SAI_NEXT_HOP_GROUP_ATTR_CUSTOM_RANGE_START,
