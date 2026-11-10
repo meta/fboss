@@ -268,19 +268,3 @@ TEST(CheckRunnerTest, ProgressCountsOnlyChecksThatRun) {
 
   EXPECT_EQ(progress, (std::vector<std::string>{"1/2 first", "2/2 second"}));
 }
-
-TEST(CheckRunnerTest, AllChecksPassedIgnoresSkipped) {
-  auto result = [](CheckStatus status) {
-    CheckResult r;
-    r.status() = status;
-    return r;
-  };
-
-  EXPECT_TRUE(
-      fixmyfboss::allChecksPassed(
-          {result(CheckStatus::OK), result(CheckStatus::SKIPPED)}));
-  EXPECT_FALSE(
-      fixmyfboss::allChecksPassed(
-          {result(CheckStatus::OK), result(CheckStatus::PROBLEM)}));
-  EXPECT_FALSE(fixmyfboss::allChecksPassed({result(CheckStatus::ERROR)}));
-}

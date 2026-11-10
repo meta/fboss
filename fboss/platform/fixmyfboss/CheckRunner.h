@@ -84,7 +84,4 @@ class CheckRunner {
   std::shared_ptr<const re2::RE2> nameFilter_;
 };
 
-// Whether no check reported a PROBLEM or ERROR.
-bool allChecksPassed(const std::vector<platform_checks::CheckResult>& results);
-
 } // namespace facebook::fboss::platform::fixmyfboss

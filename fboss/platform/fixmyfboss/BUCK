@@ -130,7 +130,6 @@ cpp_binary(
     ],
     deps = [
         "fbsource//xplat/folly:string",
-        "fbsource//xplat/folly/init:init",
         "fbsource//xplat/folly/logging:logging",
         ":check_environment",
         ":check_registry",
