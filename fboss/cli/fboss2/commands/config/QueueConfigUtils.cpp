@@ -36,6 +36,11 @@ constexpr std::string_view kAttrRateLimit = "rate-limit";
 constexpr std::string_view kRateUnitKbps = "kbps";
 constexpr std::string_view kRateUnitPps = "pps";
 
+// SAI_SCHEDULER_ATTR_SCHEDULING_WEIGHT is a uint8 and SAI documents 0 as an
+// invalid weight.
+constexpr int32_t kMinQueueWeight = 1;
+constexpr int32_t kMaxQueueWeight = 255;
+
 // Uppercase and turn dashes into underscores so users can type
 // "strict-priority" for the thrift enum STRICT_PRIORITY.
 std::string toUpper(const std::string& value) {
@@ -428,12 +433,21 @@ void applyPortQueueConfig(
       queue.maxDynamicSharedBytes() = parseNonNegativeInt(attr, value);
     } else if (attr == "weight") {
       auto weight = parseNonNegativeInt(attr, value);
-      // The SAI scheduler profile stores the WRR weight as a uint8
-      // (SAI_SCHEDULER_ATTR_SCHEDULING_WEIGHT), so anything above 255 would
-      // silently truncate at apply time.
-      if (weight > 255) {
+      // Above kMaxQueueWeight the value would silently truncate at apply time,
+      // and a weight of 0 makes vendor SAIs fail scheduler creation, which
+      // crashes the agent. The hardware range can be narrower (e.g. Broadcom
+      // TH5 rejects weights above 100) but the CLI stays free of per-platform
+      // knowledge, so values in range here can still be refused by the agent.
+      // Ideally the agent's state validation (SwSwitch::isValidStateUpdate,
+      // hasValidPortQueues in ValidateStateUpdate.cpp) would reject those
+      // instead of crashing.
+      if (weight < kMinQueueWeight || weight > kMaxQueueWeight) {
         throw std::invalid_argument(
-            fmt::format("weight must be in [0, 255], got {}", weight));
+            fmt::format(
+                "weight must be in [{}, {}], got {}",
+                kMinQueueWeight,
+                kMaxQueueWeight,
+                weight));
       }
       queue.weight() = weight;
     } else if (attr == "scaling-factor") {
