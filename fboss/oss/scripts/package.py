@@ -47,21 +47,11 @@ NPU_SDK_UTILS_SCRIPT = SCRIPTS_DIR / "npu_sdk_utils.py"
 
 
 # Maps getdeps package name to library name when they differ.
-LIB_NAME_OVERRIDES = {
-    "fmt-python": "fmt",
-}
+LIB_NAME_OVERRIDES = {"fmt-python": "fmt"}
 
 # Global definitions describing what we package for each target.
 
-COMMON_LIBS = [
-    "gflags",
-    "glog",
-    "folly",
-    "fmt-python",
-    "wangle",
-    "fizz",
-    "mvfst",
-]
+COMMON_LIBS = ["gflags", "glog", "folly", "fmt-python", "wangle", "fizz", "mvfst"]
 
 FORWARDING_BINARIES = [
     "diag_shell_client",
@@ -79,7 +69,7 @@ FORWARDING_BINARIES = [
 
 FORWARDING_EXTRA = {
     OSS_DIR / "hw_sanity_tests": "share/hw_sanity_tests",
-    RUN_SCRIPTS_DIR / "fboss_agent_utils.py": "bin/fboss_agent_utils.py",
+    RUN_SCRIPTS_DIR / "fboss_test_runner": "bin/fboss_test_runner",
     RUN_SCRIPTS_DIR / "qsfp_service_utils.py": "bin/qsfp_service_utils.py",
     RUN_SCRIPTS_DIR / "run_test.py": "bin/run_test.py",
     NPU_SDK_UTILS_SCRIPT: "bin/npu_sdk_utils.py",
@@ -102,9 +92,7 @@ FORWARDING_LIBS = []
 # BGP and Open/R install rather than leaving binaries in the build tree
 # (`install(TARGETS bgp_bin DESTINATION sbin)`), so their binaries come from
 # the getdeps install tree instead of build/fboss.
-BGP_BINARIES = [
-    "bgp",
-]
+BGP_BINARIES = ["bgp"]
 
 # Deps from the getdeps manifests that COMMON_LIBS does not already cover.
 BGP_LIBS = [
@@ -117,16 +105,9 @@ BGP_LIBS = [
     "zstd",
 ]
 
-OPENR_BINARIES = [
-    "openr",
-]
+OPENR_BINARIES = ["openr"]
 
-OPENR_LIBS = [
-    "openr",
-    "fb303",
-    "fbthrift",
-    "re2",
-]
+OPENR_LIBS = ["openr", "fb303", "fbthrift", "re2"]
 
 FORWARDING_TEST_BINARIES = [
     "fboss-platform-mapping-gen",
@@ -179,7 +160,7 @@ PLATFORM_BINARIES = [
 
 PLATFORM_EXTRA = {
     OSS_DIR
-    / "hw_sanity_tests/bsp_sanity_tests.conf": "share/hw_sanity_tests/bsp_sanity_tests.conf",
+    / "hw_sanity_tests/bsp_sanity_tests.conf": "share/hw_sanity_tests/bsp_sanity_tests.conf"
 }
 
 PLATFORM_LIBS = []
@@ -204,6 +185,7 @@ PLATFORM_TEST_BINARIES = [
 ]
 
 PLATFORM_TEST_EXTRA = {
+    RUN_SCRIPTS_DIR / "fboss_test_runner": "bin/fboss_test_runner",
     RUN_SCRIPTS_DIR / "run_test.py": "bin/run_test.py",
     RUN_SCRIPTS_DIR / "setup_fboss_env": "bin/setup_fboss_env",
 }
@@ -455,9 +437,7 @@ def parse_args(argv):
         ),
     )
     parser.add_argument(
-        "target",
-        choices=list(TARGET_NAMES),
-        help="Packaging target to create.",
+        "target", choices=list(TARGET_NAMES), help="Packaging target to create."
     )
     return parser.parse_args(argv)
 
