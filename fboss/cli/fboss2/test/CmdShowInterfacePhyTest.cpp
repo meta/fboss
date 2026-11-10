@@ -170,4 +170,57 @@ TEST_F(
   EXPECT_EQ(parseTable(ss.str()), expected);
 }
 
+TEST_F(CmdShowInterfacePhyTestFixture, printSideStateAndStatShowsPcsCounters) {
+  phy::PhySideState sideState;
+  phy::PcsState pcsState;
+  pcsState.pcsRxStatusLive() = true;
+  pcsState.pcsRxStatusLatched() = false;
+  sideState.pcs() = pcsState;
+
+  phy::PhySideStats sideStats;
+  phy::PcsStats pcsStats;
+  pcsStats.erroredBlocks() = 12;
+  pcsStats.berCount() = 34;
+  sideStats.pcs() = pcsStats;
+
+  std::stringstream ss;
+  CmdShowInterfacePhy().printSideStateAndStat(
+      ss, sideState, sideStats, "Line ");
+
+  // The PCS table is printed first; its empty header cell is trimmed.
+  const TableCells expected = {
+      {"Line PCS"},
+      {"Line PCS RX Link Status Live", "True"},
+      {"Line PCS RX Link Status Changed", "0"},
+      {"Line PCS Errored Blocks", "12"},
+      {"Line PCS BER Count", "34"},
+  };
+  auto rows = parseTable(ss.str());
+  ASSERT_GE(rows.size(), expected.size());
+  EXPECT_EQ(TableCells(rows.begin(), rows.begin() + expected.size()), expected);
+}
+
+TEST_F(
+    CmdShowInterfacePhyTestFixture,
+    printSideStateAndStatShowsPcsCountersWithoutRxStatus) {
+  phy::PhySideState sideState;
+  phy::PhySideStats sideStats;
+  phy::PcsStats pcsStats;
+  pcsStats.erroredBlocks() = 5;
+  sideStats.pcs() = pcsStats;
+
+  std::stringstream ss;
+  CmdShowInterfacePhy().printSideStateAndStat(
+      ss, sideState, sideStats, "Line ");
+
+  const TableCells expected = {
+      {"Line PCS"},
+      {"Line PCS Errored Blocks", "5"},
+  };
+  auto rows = parseTable(ss.str());
+  ASSERT_GE(rows.size(), expected.size());
+  EXPECT_EQ(TableCells(rows.begin(), rows.begin() + expected.size()), expected);
+  EXPECT_THAT(rows, Not(Contains(ElementsAre("Line PCS BER Count", _))));
+}
+
 } // namespace facebook::fboss
