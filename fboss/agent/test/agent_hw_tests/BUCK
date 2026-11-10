@@ -231,7 +231,6 @@ cpp_library(
         "AgentDeepPacketInspectionTests.cpp",
         "AgentDiagShellStressTests.cpp",
         "AgentDot1qMappingTest.cpp",
-        "AgentDropBitmapTests.cpp",
         "AgentDropReasonTests.cpp",
         "AgentDropTestBase.cpp",
         "AgentDscpMarkingTests.cpp",
