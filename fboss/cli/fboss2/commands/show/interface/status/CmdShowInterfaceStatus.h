@@ -11,11 +11,12 @@
 #pragma once
 
 #include <string_view>
-#include "fboss/cli/fboss2/CmdGlobalOptions.h"
+#include "fboss/agent/if/gen-cpp2/ctrl_types_fwd.h"
 #include "fboss/cli/fboss2/CmdHandler.h"
 #include "fboss/cli/fboss2/commands/show/interface/CmdShowInterface.h"
 #include "fboss/cli/fboss2/commands/show/interface/status/gen-cpp2/model_types.h"
 #include "fboss/cli/fboss2/utils/Table.h"
+#include "fboss/qsfp_service/if/gen-cpp2/transceiver_types_fwd.h"
 
 namespace facebook::fboss {
 

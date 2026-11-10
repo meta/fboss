@@ -274,6 +274,13 @@ add_fbthrift_cpp_library(
 )
 
 add_fbthrift_cpp_library(
+  show_interface_counters_queue
+  fboss/cli/fboss2/commands/show/interface/counters/queue/model.thrift
+  OPTIONS
+    json
+)
+
+add_fbthrift_cpp_library(
   show_interface_status
   fboss/cli/fboss2/commands/show/interface/status/model.thrift
   OPTIONS
@@ -644,6 +651,8 @@ add_library(fboss2_lib
   fboss/cli/fboss2/commands/show/interface/counters/fec/histogram/CmdShowInterfaceCountersFecHistogram.cpp
   fboss/cli/fboss2/commands/show/interface/counters/mka/CmdShowInterfaceCountersMKA.h
   fboss/cli/fboss2/commands/show/interface/counters/mka/CmdShowInterfaceCountersMKA.cpp
+  fboss/cli/fboss2/commands/show/interface/counters/queue/CmdShowInterfaceCountersQueue.h
+  fboss/cli/fboss2/commands/show/interface/counters/queue/CmdShowInterfaceCountersQueue.cpp
   fboss/cli/fboss2/commands/show/interface/transceiver/CmdShowInterfaceTransceiver.h
   fboss/cli/fboss2/commands/show/interface/transceiver/CmdShowInterfaceTransceiver.cpp
   fboss/cli/fboss2/commands/show/interface/transceiver/eeprom/CmdShowInterfaceTransceiverEeprom.h
@@ -854,6 +863,7 @@ target_link_libraries(fboss2_lib
   show_interface_errors
   show_interface_counters
   show_interface_counters_mka
+  show_interface_counters_queue
   show_interface_traffic
   show_interface_status
   show_interface_phy

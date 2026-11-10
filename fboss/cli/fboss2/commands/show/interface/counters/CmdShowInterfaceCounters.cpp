@@ -13,6 +13,8 @@
 
 #include <limits>
 
+#include "fboss/agent/hw/gen-cpp2/hardware_stats_constants.h"
+#include "fboss/cli/fboss2/utils/CmdUtils.h"
 #include "fboss/cli/fboss2/utils/Table.h"
 
 namespace {
@@ -96,39 +98,34 @@ CmdShowInterfaceCounters::RetType CmdShowInterfaceCounters::createModel(
     const std::vector<std::string>& queriedIfs) {
   RetType ret;
 
-  std::unordered_set<std::string> queriedSet(
-      queriedIfs.begin(), queriedIfs.end());
+  for (const auto* port : utils::getQueriedPorts(portCounters, queriedIfs)) {
+    const auto& portInfo = *port;
+    cli::InterfaceCounters counter;
 
-  for (const auto& port : portCounters) {
-    auto portInfo = port.second;
-    if (queriedIfs.size() == 0 || queriedSet.count(portInfo.name().value())) {
-      cli::InterfaceCounters counter;
+    counter.interfaceName() = portInfo.name().value();
+    counter.inputBytes() =
+        folly::copy(portInfo.input().value().bytes().value());
+    counter.inputUcastPkts() =
+        folly::copy(portInfo.input().value().ucastPkts().value());
+    counter.inputMulticastPkts() =
+        folly::copy(portInfo.input().value().multicastPkts().value());
+    counter.inputBroadcastPkts() =
+        folly::copy(portInfo.input().value().broadcastPkts().value());
+    counter.outputBytes() =
+        folly::copy(portInfo.output().value().bytes().value());
+    counter.outputUcastPkts() =
+        folly::copy(portInfo.output().value().ucastPkts().value());
+    counter.outputMulticastPkts() =
+        folly::copy(portInfo.output().value().multicastPkts().value());
+    counter.outputBroadcastPkts() =
+        folly::copy(portInfo.output().value().broadcastPkts().value());
 
-      counter.interfaceName() = portInfo.name().value();
-      counter.inputBytes() =
-          folly::copy(portInfo.input().value().bytes().value());
-      counter.inputUcastPkts() =
-          folly::copy(portInfo.input().value().ucastPkts().value());
-      counter.inputMulticastPkts() =
-          folly::copy(portInfo.input().value().multicastPkts().value());
-      counter.inputBroadcastPkts() =
-          folly::copy(portInfo.input().value().broadcastPkts().value());
-      counter.outputBytes() =
-          folly::copy(portInfo.output().value().bytes().value());
-      counter.outputUcastPkts() =
-          folly::copy(portInfo.output().value().ucastPkts().value());
-      counter.outputMulticastPkts() =
-          folly::copy(portInfo.output().value().multicastPkts().value());
-      counter.outputBroadcastPkts() =
-          folly::copy(portInfo.output().value().broadcastPkts().value());
-
-      ret.int_counters()->push_back(counter);
-    }
+    ret.int_counters()->push_back(counter);
   }
 
   for (const auto& aggregatePort : aggregatePorts) {
     const auto& aggregatePortName = *aggregatePort.name();
-    if (!queriedIfs.empty() && !queriedSet.count(aggregatePortName)) {
+    if (!utils::isQueriedInterface(aggregatePortName, queriedIfs)) {
       continue;
     }
 
@@ -144,13 +141,6 @@ CmdShowInterfaceCounters::RetType CmdShowInterfaceCounters::createModel(
     }
     ret.int_counters()->push_back(std::move(counter));
   }
-
-  std::sort(
-      ret.int_counters()->begin(),
-      ret.int_counters()->end(),
-      [](cli::InterfaceCounters& a, cli::InterfaceCounters b) {
-        return a.interfaceName().value() < b.interfaceName().value();
-      });
 
   return ret;
 }

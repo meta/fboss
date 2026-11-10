@@ -15,19 +15,24 @@
 #include <folly/String.h>
 #include <folly/gen/Base.h>
 #include <re2/re2.h>
+#include <map>
+#include <optional>
 #include <stdexcept>
 #include <string>
-#include <variant>
+#include <tuple>
+#include <variant> // NOLINT(misc-include-cleaner)
+#include <vector>
 
 #include "fboss/agent/if/gen-cpp2/FbossCtrlAsyncClient.h"
-#include "fboss/cli/fboss2/CmdGlobalOptions.h"
-#include "fboss/cli/fboss2/gen-cpp2/cli_types.h"
-#include "fboss/cli/fboss2/utils/CmdClientUtils.h"
+#include "fboss/agent/if/gen-cpp2/ctrl_types.h"
+#include "fboss/cli/fboss2/CmdGlobalOptions.h" // NOLINT(misc-include-cleaner)
+#include "fboss/cli/fboss2/gen-cpp2/cli_types.h" // NOLINT(misc-include-cleaner)
+#include "fboss/cli/fboss2/utils/CmdClientUtils.h" // NOLINT(misc-include-cleaner)
 #include "fboss/cli/fboss2/utils/CmdUtilsCommon.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
 #include "fboss/cli/fboss2/utils/PrbsUtils.h"
 #include "fboss/cli/fboss2/utils/Table.h"
-#include "fboss/fsdb/if/gen-cpp2/FsdbService.h"
+#include "fboss/fsdb/if/gen-cpp2/FsdbService.h" // NOLINT(misc-include-cleaner)
 #include "fboss/lib/phy/gen-cpp2/phy_types.h"
 #include "fboss/lib/phy/gen-cpp2/prbs_types.h"
 
@@ -462,6 +467,71 @@ std::string getAclLookupClassPortStr(
 bool comparePortName(
     const std::basic_string<char>& nameA,
     const std::basic_string<char>& nameB);
+
+struct PortNameParts {
+  std::string moduleName;
+  int moduleNum{0};
+  int portNum{0};
+  int subportNum{0};
+
+  auto tie() const {
+    return std::tie(moduleName, moduleNum, portNum, subportNum);
+  }
+  bool operator<(const PortNameParts& other) const {
+    return tie() < other.tie();
+  }
+};
+
+/*
+ * Parses a "moduleNum/port/subport" interface name (e.g. eth1/5/3). Returns
+ * std::nullopt for names that don't follow the pattern, rather than throwing
+ * the way comparePortName does.
+ */
+std::optional<PortNameParts> parsePortName(const std::string& name);
+
+/*
+ * Orders interfaces for display. Interface names are free-form -- SVIs are
+ * named arbitrary things like "downlinks" and may be unset -- so names that
+ * parse are ordered by their numeric module/port/subport components (front
+ * panel order) and anything else falls back to the numeric port/interface ID.
+ * Never throws.
+ */
+bool comparePortNameOrId(
+    const std::string& nameA,
+    int32_t idA,
+    const std::string& nameB,
+    int32_t idB);
+
+/*
+ * Same ordering as comparePortNameOrId for callers that only have interface
+ * names: names that don't parse fall back to plain string order.
+ */
+bool compareInterfaceName(const std::string& nameA, const std::string& nameB);
+
+/*
+ * Whether a "show interface [<ports>]" command should report the interface
+ * named `name`: every interface when no port was given on the command line,
+ * otherwise only the ones listed.
+ */
+bool isQueriedInterface(
+    const std::string& name,
+    const std::vector<std::string>& queriedIfs);
+
+/*
+ * Returns the ports of portEntries selected by isQueriedInterface(), in front
+ * panel order (comparePortNameOrId). The pointers point into portEntries.
+ */
+std::vector<const PortInfoThrift*> getQueriedPorts(
+    const std::map<int32_t, PortInfoThrift>& portEntries,
+    const std::vector<std::string>& queriedIfs);
+
+/*
+ * Same as getQueriedPorts() for commands that only know interface names,
+ * e.g. ones extracted from fb303 counter names.
+ */
+std::vector<std::string> getQueriedInterfaceNames(
+    const std::vector<std::string>& ifNames,
+    const std::vector<std::string>& queriedIfs);
 
 bool compareSystemPortName(
     const std::basic_string<char>& nameA,

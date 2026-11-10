@@ -11,11 +11,10 @@
 #pragma once
 
 #include <string_view>
-#include "fboss/cli/fboss2/CmdGlobalOptions.h"
+#include "fboss/agent/gen-cpp2/switch_config_types_fwd.h"
+#include "fboss/agent/if/gen-cpp2/ctrl_types_fwd.h"
 #include "fboss/cli/fboss2/CmdHandler.h"
-#include "fboss/cli/fboss2/commands/show/interface/gen-cpp2/model_types.h"
-#include "fboss/cli/fboss2/utils/CmdClientUtils.h"
-#include "fboss/cli/fboss2/utils/CmdUtils.h"
+#include "fboss/cli/fboss2/commands/show/interface/gen-cpp2/model_types_fwd.h"
 #include "fboss/cli/fboss2/utils/Table.h"
 
 namespace facebook::fboss {
@@ -44,15 +43,6 @@ class CmdShowInterface
   using ObjectArgType = CmdShowInterfaceTraits::ObjectArgType;
   using RetType = CmdShowInterfaceTraits::RetType;
 
-  // PortPosition stores physical port location based on ethernet
-  // port name, e.g. eth1/2/1 means ethernet port in linecard 1,
-  // module 2, port 1. This will be used to sort the output.
-  struct PortPosition {
-    int32_t linecard;
-    int32_t mod;
-    int32_t port;
-  };
-
   RetType queryClient(
       const HostInfo& hostInfo,
       const ObjectArgType& queriedIfs);
@@ -68,10 +58,6 @@ class CmdShowInterface
   void populateVlanToPrefixes(
       std::unordered_map<int32_t, std::vector<cli::IpPrefix>>& vlanToPrefixes,
       const std::map<int32_t, facebook::fboss::InterfaceDetail>& intfDetails);
-  void sortByInterfaceName(RetType& model);
-  void populateNameToPortPositionMap(
-      std::unordered_map<std::string, PortPosition>& nameToPortPosition,
-      const std::vector<std::string>& names);
   void printOutput(const RetType& model, std::ostream& out = std::cout);
   Table::StyledCell colorStatusCell(const std::string& status);
 

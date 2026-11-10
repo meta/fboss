@@ -29,4 +29,7 @@ struct TransceiverDetail {
   17: transceiver.FlagLevels tempFlags;
   18: transceiver.FlagLevels vccFlags;
   19: transceiver.MediaInterfaceCode mediaInterface;
+  20: i32 transceiverID;
+  /* Logical port ID of the agent port; unset for bypass modules */
+  21: optional i32 portID;
 }

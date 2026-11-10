@@ -11,7 +11,7 @@
 #pragma once
 
 #include <string_view>
-#include "fboss/agent/hw/gen-cpp2/hardware_stats_constants.h"
+#include "fboss/agent/if/gen-cpp2/ctrl_types_fwd.h"
 #include "fboss/cli/fboss2/CmdHandler.h"
 #include "fboss/cli/fboss2/commands/show/interface/CmdShowInterface.h"
 #include "fboss/cli/fboss2/commands/show/interface/counters/gen-cpp2/model_types.h"
