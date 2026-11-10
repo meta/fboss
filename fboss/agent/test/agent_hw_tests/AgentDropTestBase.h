@@ -23,19 +23,24 @@ class AgentDropTestBase : public AgentHwTest {
   cfg::SwitchConfig initialConfig(const AgentEnsemble& ensemble) const override;
 
  protected:
+  virtual std::optional<cfg::InterfaceType> interfaceType() const {
+    return std::nullopt;
+  }
+
   // Program a route to kRoutedDstIp out of egressPort. Call from setup().
   void setupRouteToEgressPort();
   // As above, and additionally shrink the egress port MTU so that a large
   // routed packet is dropped on egress. Call from setup().
   void setupEgressMtuDropScenario();
+  // Resolve a bridged destination back to the ingress port.
+  void setupSrcPortKnockoutDropScenario();
 
   // Each of these sends one packet that should induce the named drop.
   void sendPacketToUnroutedDst();
   void sendTtlExpiredPacket();
   void sendPacketToRoutedDst();
   void sendOversizedPacketToRoutedDst();
-  // Disable TX on the egress port so a routed packet is discarded there.
-  void setEgressPortTx(bool enable);
+  void sendSrcPortKnockoutPacket();
   template <typename AddrT>
   void sendInvalidIpVersionPacket();
   void sendMulticastSmacPacket();

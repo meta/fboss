@@ -170,6 +170,9 @@ class BitmapDropReasonReportingAdapter : public DropReasonReportingImpl {
       case DropScenario::MacSaMulticast:
         return observed_.pipelineMacDropBitmap().value_or(0) &
             (1LL << PipelineMacDropBit::kSmacIsMulticast);
+      case DropScenario::SrcPortKnockout:
+        return observed_.pipelineMacDropBitmap().value_or(0) &
+            (1LL << PipelineMacDropBit::kUcLoopbackFilter);
       case DropScenario::InvalidEtherType:
         return observed_.ingressMacDropBitmap().value_or(0) &
             (1LL << IngressMacDropBit::kTypeOutOfRange);
@@ -221,6 +224,13 @@ class BitmapDropReasonReportingAdapter : public DropReasonReportingImpl {
         // We verify the primary drop (ingressMac) without cross-contamination
         // checks since multi-stage drops are expected.
         return;
+      case DropScenario::SrcPortKnockout:
+        reporting_.verifyOnlyExpectedDrop(
+            observed_,
+            DropBitmapField::PIPELINE_MAC,
+            PipelineMacDropBit::kUcLoopbackFilter,
+            "src port knockout");
+        return;
       case DropScenario::EgressMtu:
         // Assert only the egress MAC MTU bit (not verifyOnlyExpectedDrop): the
         // oversized routed packet can also trigger collateral drops in the
@@ -242,6 +252,8 @@ class BitmapDropReasonReportingAdapter : public DropReasonReportingImpl {
         return "DROP reasons pipelineIpv6: (0x80) PIPELINE_IPV6_NOT_IP_HEADER_OK";
       case DropScenario::MacSaMulticast:
         return "DROP reasons pipelineMac: (0x800) PIPELINE_MAC_SMAC_IS_MC";
+      case DropScenario::SrcPortKnockout:
+        return "DROP reasons pipelineMac: (0x100) PIPELINE_MAC_UC_LOOPBCK_FILTER";
       case DropScenario::InvalidEtherType:
         return "DROP reasons ingressMac: (0x10) INGRESS_MAC_TYPE_OUT_OF_RANGE";
       case DropScenario::EgressMtu:

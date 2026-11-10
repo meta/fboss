@@ -25,6 +25,7 @@ enum PipelineIpv6DropBit : int {
 };
 
 enum PipelineMacDropBit : int {
+  kUcLoopbackFilter = 8,
   kSmacIsMulticast = 11,
 };
 

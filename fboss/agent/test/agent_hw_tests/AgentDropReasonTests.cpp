@@ -62,8 +62,10 @@ class AgentDropReasonTest : public AgentDropTestBase {
         setupEgressMtuDropScenario();
         return;
       case DropScenario::TtlError:
-      case DropScenario::SrcPortKnockout:
         setupRouteToEgressPort();
+        return;
+      case DropScenario::SrcPortKnockout:
+        setupSrcPortKnockoutDropScenario();
         return;
       case DropScenario::AclDeny: {
         setupRouteToEgressPort();
@@ -97,8 +99,10 @@ class AgentDropReasonTest : public AgentDropTestBase {
         sendMulticastSmacPacket();
         return;
       case DropScenario::AclDeny:
-      case DropScenario::SrcPortKnockout:
         sendPacketToRoutedDst();
+        return;
+      case DropScenario::SrcPortKnockout:
+        sendSrcPortKnockoutPacket();
         return;
       case DropScenario::EgressMtu:
         sendOversizedPacketToRoutedDst();
@@ -131,9 +135,6 @@ class AgentDropReasonTest : public AgentDropTestBase {
         ASSERT_NO_FATAL_FAILURE(reporting.prepareDropObservation());
         // Start capture after draining so old drops cannot satisfy this packet.
         installLogCapture();
-        if (scenario == DropScenario::SrcPortKnockout) {
-          setEgressPortTx(false);
-        }
         WITH_RETRIES({
           triggerDropScenario(scenario);
           reporting.collectDropObservation();
@@ -146,13 +147,6 @@ class AgentDropReasonTest : public AgentDropTestBase {
                    << "] final: " << reporting.dropReasonToString();
         reporting.verifyOnlyExpectedDropReasonReported(scenario);
         verifyDropReasonLogged(reporting.expectedDropLog(scenario), name);
-        if (scenario == DropScenario::SrcPortKnockout) {
-          // Re-enabled only once every check above is done. Bringing TX back up
-          // flushes the held packets and can log fresh drop reasons of its own,
-          // which would otherwise land in the still-open capture window that
-          // verifyDropReasonLogged() reads, and would move the port counters.
-          setEgressPortTx(true);
-        }
       }
     };
     verifyAcrossWarmBoots(setup, verify);
@@ -205,11 +199,16 @@ TEST_F(AgentDropReasonTest, egressMtuDrop) {
   runDropScenarios({DropScenario::EgressMtu}, "egress MTU");
 }
 
-// A routed packet whose egress port has TX disabled. This is reported on the
-// *ingress* list as SRC_PORT_KNOCKOUT_DROP, not as an egress reason -- the
-// pipeline drops it before the egress stage once the destination port is
-// knocked out of the port bitmap.
-TEST_F(AgentDropReasonTest, ingressSrcPortKnockoutDrop) {
+class AgentDropReasonSrcPortKnockoutTest : public AgentDropReasonTest {
+ protected:
+  std::optional<cfg::InterfaceType> interfaceType() const override {
+    return cfg::InterfaceType::VLAN;
+  }
+};
+
+// A bridged packet whose destination resolves to its ingress port is dropped
+// by source-port filtering before transmission.
+TEST_F(AgentDropReasonSrcPortKnockoutTest, ingressSrcPortKnockoutDrop) {
   runDropScenarios({DropScenario::SrcPortKnockout}, "src port knockout");
 }
 
