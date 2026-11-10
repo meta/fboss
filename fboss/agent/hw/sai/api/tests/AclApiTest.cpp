@@ -1303,6 +1303,35 @@ TEST_F(AclApiTest, getAclCounterAttribute) {
   EXPECT_EQ(aclCounterBytes, kCounterBytes());
 }
 
+TEST_F(AclApiTest, aclCounterLabelExtended) {
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 2)
+  auto aclTableId = createAclTable();
+  std::vector<int8_t> labelExtended(60, 'a');
+  auto aclCounterId = aclApi->create<SaiAclCounterTraits>(
+      {SaiAclCounterTraits::Attributes::TableId{aclTableId},
+       SaiCharArray32{},
+       SaiAclCounterTraits::Attributes::LabelExtended{labelExtended},
+       std::nullopt,
+       std::nullopt,
+       std::nullopt,
+       std::nullopt},
+      0);
+  EXPECT_EQ(
+      labelExtended,
+      aclApi->getAttribute(
+          aclCounterId, SaiAclCounterTraits::Attributes::LabelExtended{}));
+
+  std::vector<int8_t> labelExtended2(100, 'b');
+  aclApi->setAttribute(
+      aclCounterId,
+      SaiAclCounterTraits::Attributes::LabelExtended{labelExtended2});
+  EXPECT_EQ(
+      labelExtended2,
+      aclApi->getAttribute(
+          aclCounterId, SaiAclCounterTraits::Attributes::LabelExtended{}));
+#endif
+}
+
 TEST_F(AclApiTest, setAclTableAttribute) {
   auto aclTableId = createAclTable();
   checkAclTable(aclTableId);

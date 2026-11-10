@@ -460,6 +460,34 @@ TEST_P(AclTableStoreParamTest, loadAclCounter) {
   EXPECT_EQ(got->adapterKey(), aclCounterId);
 }
 
+TEST_P(AclTableStoreParamTest, loadAclCounterLabelExtended) {
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 2)
+  auto aclTableId = createAclTable(GetParam());
+  std::vector<int8_t> labelExtended(60, 'a');
+  SaiAclCounterTraits::CreateAttributes c{
+      aclTableId,
+      SaiCharArray32{},
+      labelExtended,
+      this->kEnablePacketCount(),
+      this->kEnableByteCount(),
+      std::nullopt,
+      std::nullopt};
+  auto aclCounterId = saiApiTable->aclApi().create<SaiAclCounterTraits>(c, 0);
+
+  SaiStore s(0);
+  s.reload();
+  SaiAclCounterTraits::AdapterHostKey k{
+      aclTableId,
+      SaiCharArray32{},
+      labelExtended,
+      this->kEnablePacketCount(),
+      this->kEnableByteCount()};
+  auto got = s.get<SaiAclCounterTraits>().get(k);
+  ASSERT_NE(got, nullptr);
+  EXPECT_EQ(got->adapterKey(), aclCounterId);
+#endif
+}
+
 TEST_P(AclTableStoreParamTest, aclTableCtorLoad) {
   auto aclTableId = createAclTable(GetParam());
   auto obj = createObj<SaiAclTableTraits>(
