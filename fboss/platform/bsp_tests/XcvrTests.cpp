@@ -1,4 +1,6 @@
 #include <filesystem>
+
+#include <folly/String.h>
 #include <string>
 #include <unordered_map>
 #include <vector>
