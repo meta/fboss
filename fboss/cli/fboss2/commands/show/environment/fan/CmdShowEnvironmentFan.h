@@ -12,6 +12,7 @@
 
 #include <map>
 #include <string>
+#include <string_view>
 
 #include "fboss/cli/fboss2/CmdHandler.h"
 #include "fboss/platform/fan_service/if/gen-cpp2/fan_service_types.h"
@@ -27,6 +28,14 @@ struct CmdShowEnvironmentFanTraits : public ReadCommandTraits {
       utils::ObjectArgTypeId::OBJECT_ARG_TYPE_ID_NONE;
   using ObjectArgType = std::monostate;
   using RetType = std::map<std::string, platform::fan_service::FanStatus>;
+
+  static std::string_view description() {
+    return "Displays the per-fan status reported by the fan service: whether "
+           "each fan has failed, the target PWM percentage to program, the "
+           "measured RPM (when available), and the last time the fan was "
+           "successfully accessed. Use it to inspect fan health and the "
+           "cooling state of the system.";
+  }
 };
 
 class CmdShowEnvironmentFan
@@ -38,6 +47,8 @@ class CmdShowEnvironmentFan
   RetType queryClient(const HostInfo& hostInfo);
 
   void printOutput(const RetType& fanStatuses, std::ostream& out = std::cout);
+
+  static RetType sampleModel();
 };
 
 } // namespace facebook::fboss
