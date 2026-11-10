@@ -37,7 +37,7 @@ class AgentDropTestBase : public AgentHwTest {
   // Disable TX on the egress port so a routed packet is discarded there.
   void setEgressPortTx(bool enable);
   template <typename AddrT>
-  void sendLoopbackDipPacket();
+  void sendInvalidIpVersionPacket();
   void sendMulticastSmacPacket();
   void sendOutOfRangeEtherTypePacket();
 

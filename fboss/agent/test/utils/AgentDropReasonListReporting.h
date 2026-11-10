@@ -17,6 +17,10 @@ namespace facebook::fboss {
 // SAI_PACKET_DROP_TYPE_{INGRESS,EGRESS}_ prefix is stripped at decode.
 constexpr auto kL3DstDiscard = "L3_DST_DISCARD";
 constexpr auto kL3TtlError = "L3_TTL_ERROR";
+// Invalid IP versions report L3_HDR_ERROR with the matching IP discard counter.
+constexpr auto kL3HdrError = "L3_HDR_ERROR";
+constexpr auto kIpv4Discards = "RIPD4";
+constexpr auto kIpv6Discards = "RIPD6";
 // A multicast source MAC reports SRC_ROUTE_DROP, not the MACSA_MULTICAST the
 // name suggests. Both enumerators exist; this is the one the ASIC raises.
 constexpr auto kSrcRouteDrop = "SRC_ROUTE_DROP";

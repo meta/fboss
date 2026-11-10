@@ -43,6 +43,12 @@ class ListDropReasonReportingAdapter : public DropReasonReportingImpl {
         return reasons_.ingress.contains(kL3DstDiscard);
       case DropScenario::TtlError:
         return reasons_.ingress.contains(kL3TtlError);
+      case DropScenario::Ipv4HeaderError:
+        return reasons_.ingress.contains(kL3HdrError) &&
+            reasons_.ingress.contains(kIpv4Discards);
+      case DropScenario::Ipv6HeaderError:
+        return reasons_.ingress.contains(kL3HdrError) &&
+            reasons_.ingress.contains(kIpv6Discards);
       case DropScenario::MacSaMulticast:
         return reasons_.ingress.contains(kSrcRouteDrop);
       case DropScenario::AclDeny:
@@ -84,6 +90,10 @@ class ListDropReasonReportingAdapter : public DropReasonReportingImpl {
       // specific reason rather than a generic one, so an exclusivity check
       // would always fail.
       case DropScenario::TtlError:
+        return;
+      // Header errors also report the family-wide IP discard counters.
+      case DropScenario::Ipv4HeaderError:
+      case DropScenario::Ipv6HeaderError:
       case DropScenario::AclDeny:
         return;
       default:
@@ -101,11 +111,11 @@ class ListDropReasonReportingAdapter : public DropReasonReportingImpl {
       case DropScenario::MacSaMulticast:
       case DropScenario::AclDeny:
       case DropScenario::SrcPortKnockout:
+      case DropScenario::Ipv4HeaderError:
+      case DropScenario::Ipv6HeaderError:
         return "DROP reasons ingress";
       case DropScenario::EgressMtu:
         return "DROP reasons egress";
-      case DropScenario::Ipv4LoopbackDip:
-      case DropScenario::Ipv6LoopbackDip:
       case DropScenario::InvalidEtherType:
         break;
     }
@@ -151,12 +161,12 @@ class BitmapDropReasonReportingAdapter : public DropReasonReportingImpl {
       case DropScenario::TtlError:
         return observed_.pipelineIpv6DropBitmap().value_or(0) &
             (1LL << PipelineIpDropBit::kUcTtl);
-      case DropScenario::Ipv4LoopbackDip:
+      case DropScenario::Ipv4HeaderError:
         return observed_.pipelineIpv4DropBitmap().value_or(0) &
-            (1LL << PipelineIpDropBit::kDipIsLoopback);
-      case DropScenario::Ipv6LoopbackDip:
+            (1LL << PipelineIpv4DropBit::kIpv4NotIpHeaderOk);
+      case DropScenario::Ipv6HeaderError:
         return observed_.pipelineIpv6DropBitmap().value_or(0) &
-            (1LL << PipelineIpDropBit::kDipIsLoopback);
+            (1LL << PipelineIpv6DropBit::kIpv6NotIpHeaderOk);
       case DropScenario::MacSaMulticast:
         return observed_.pipelineMacDropBitmap().value_or(0) &
             (1LL << PipelineMacDropBit::kSmacIsMulticast);
@@ -182,19 +192,19 @@ class BitmapDropReasonReportingAdapter : public DropReasonReportingImpl {
             PipelineIpDropBit::kUcTtl,
             "L3 TTL error");
         return;
-      case DropScenario::Ipv4LoopbackDip:
+      case DropScenario::Ipv4HeaderError:
         reporting_.verifyOnlyExpectedDrop(
             observed_,
             DropBitmapField::PIPELINE_IPV4,
-            PipelineIpDropBit::kDipIsLoopback,
-            "IPv4 loopback DIP");
+            PipelineIpv4DropBit::kIpv4NotIpHeaderOk,
+            "IPv4 header error");
         return;
-      case DropScenario::Ipv6LoopbackDip:
+      case DropScenario::Ipv6HeaderError:
         reporting_.verifyOnlyExpectedDrop(
             observed_,
             DropBitmapField::PIPELINE_IPV6,
-            PipelineIpDropBit::kDipIsLoopback,
-            "IPv6 loopback DIP");
+            PipelineIpv6DropBit::kIpv6NotIpHeaderOk,
+            "IPv6 header error");
         return;
       case DropScenario::MacSaMulticast:
         reporting_.verifyOnlyExpectedDrop(
@@ -226,10 +236,10 @@ class BitmapDropReasonReportingAdapter : public DropReasonReportingImpl {
     switch (scenario) {
       case DropScenario::TtlError:
         return "DROP reasons pipelineIpv6: (0x100000) PIPELINE_IPV6_UC_TTL";
-      case DropScenario::Ipv4LoopbackDip:
-        return "DROP reasons pipelineIpv4: (0x8) PIPELINE_IPV4_DIP_IS_LOOPBACK";
-      case DropScenario::Ipv6LoopbackDip:
-        return "DROP reasons pipelineIpv6: (0x8) PIPELINE_IPV6_DIP_IS_LOOPBACK";
+      case DropScenario::Ipv4HeaderError:
+        return "DROP reasons pipelineIpv4: (0x100) PIPELINE_IPV4_NOT_IP_HEADER_OK";
+      case DropScenario::Ipv6HeaderError:
+        return "DROP reasons pipelineIpv6: (0x80) PIPELINE_IPV6_NOT_IP_HEADER_OK";
       case DropScenario::MacSaMulticast:
         return "DROP reasons pipelineMac: (0x800) PIPELINE_MAC_SMAC_IS_MC";
       case DropScenario::InvalidEtherType:

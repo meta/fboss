@@ -13,8 +13,15 @@ namespace facebook::fboss {
 // Drop cause bit positions from the Chenab SDK telemetry pipeline.
 // These map to sx_tele_drop_cause_*_reason_e enums in sx_tele_auto.h.
 enum PipelineIpDropBit : int {
-  kDipIsLoopback = 3,
   kUcTtl = 20,
+};
+
+enum PipelineIpv4DropBit : int {
+  kIpv4NotIpHeaderOk = 8,
+};
+
+enum PipelineIpv6DropBit : int {
+  kIpv6NotIpHeaderOk = 7,
 };
 
 enum PipelineMacDropBit : int {

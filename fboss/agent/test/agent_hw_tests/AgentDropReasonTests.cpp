@@ -78,8 +78,8 @@ class AgentDropReasonTest : public AgentDropTestBase {
       }
       case DropScenario::L3DstDiscard:
       case DropScenario::MacSaMulticast:
-      case DropScenario::Ipv4LoopbackDip:
-      case DropScenario::Ipv6LoopbackDip:
+      case DropScenario::Ipv4HeaderError:
+      case DropScenario::Ipv6HeaderError:
       case DropScenario::InvalidEtherType:
         return;
     }
@@ -103,11 +103,11 @@ class AgentDropReasonTest : public AgentDropTestBase {
       case DropScenario::EgressMtu:
         sendOversizedPacketToRoutedDst();
         return;
-      case DropScenario::Ipv4LoopbackDip:
-        sendLoopbackDipPacket<folly::IPAddressV4>();
+      case DropScenario::Ipv4HeaderError:
+        sendInvalidIpVersionPacket<folly::IPAddressV4>();
         return;
-      case DropScenario::Ipv6LoopbackDip:
-        sendLoopbackDipPacket<folly::IPAddressV6>();
+      case DropScenario::Ipv6HeaderError:
+        sendInvalidIpVersionPacket<folly::IPAddressV6>();
         return;
       case DropScenario::InvalidEtherType:
         sendOutOfRangeEtherTypePacket();
@@ -213,10 +213,11 @@ TEST_F(AgentDropReasonTest, ingressSrcPortKnockoutDrop) {
   runDropScenarios({DropScenario::SrcPortKnockout}, "src port knockout");
 }
 
-TEST_F(AgentDropReasonTest, pipelineIpv4Ipv6Drops) {
+// Invalid IP versions are rejected before route lookup, independently of TTL.
+TEST_F(AgentDropReasonTest, ingressIpHeaderErrorDrop) {
   runDropScenarios(
-      {DropScenario::Ipv4LoopbackDip, DropScenario::Ipv6LoopbackDip},
-      "pipelineIpv4Ipv6Drops");
+      {DropScenario::Ipv4HeaderError, DropScenario::Ipv6HeaderError},
+      "IP header error");
 }
 
 } // namespace facebook::fboss

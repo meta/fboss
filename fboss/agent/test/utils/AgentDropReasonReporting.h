@@ -24,8 +24,8 @@ enum class DropScenario {
   AclDeny,
   EgressMtu,
   SrcPortKnockout,
-  Ipv4LoopbackDip,
-  Ipv6LoopbackDip,
+  Ipv4HeaderError,
+  Ipv6HeaderError,
   InvalidEtherType,
 };
 

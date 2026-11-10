@@ -5,6 +5,8 @@
 #include "fboss/agent/TxPacket.h"
 #include "fboss/agent/hw/test/ConfigFactory.h"
 #include "fboss/agent/packet/EthHdr.h"
+#include "fboss/agent/packet/IPv4Hdr.h"
+#include "fboss/agent/packet/IPv6Hdr.h"
 #include "fboss/agent/packet/PktFactory.h"
 #include "fboss/agent/test/EcmpSetupHelper.h"
 #include "fboss/agent/test/utils/PortTestUtils.h"
@@ -119,13 +121,14 @@ void AgentDropTestBase::sendOversizedPacketToRoutedDst() {
 }
 
 template <typename AddrT>
-void AgentDropTestBase::sendLoopbackDipPacket() {
+void AgentDropTestBase::sendInvalidIpVersionPacket() {
   auto dstIp =
-      AddrT(std::is_same_v<AddrT, folly::IPAddressV4> ? "127.0.0.1" : "::1");
+      AddrT(std::is_same_v<AddrT, folly::IPAddressV4> ? "20.0.0.1" : "2001::1");
   auto srcIp =
       AddrT(std::is_same_v<AddrT, folly::IPAddressV4> ? "10.0.0.1" : "1001::1");
   auto intfMac = getMacForFirstInterfaceWithPorts(getProgrammedState());
-  XLOG(DBG2) << "Drop test: sending loopback DIP packet to " << dstIp.str();
+  XLOG(DBG2) << "Drop test: sending invalid IP version packet to "
+             << dstIp.str();
   auto pkt = utility::makeUDPTxPacket(
       getSw(),
       getVlanIDForTx(),
@@ -137,12 +140,30 @@ void AgentDropTestBase::sendLoopbackDipPacket() {
       10001,
       0,
       64);
+  folly::io::Cursor cursor(pkt->buf());
+  EthHdr ethHdr(cursor);
+  folly::io::RWPrivateCursor rwCursor(pkt->buf());
+  rwCursor.skip(ethHdr.size());
+  // Keep the EtherType and header layout intact, but use an invalid IP version.
+  // Recompute the IPv4 checksum so checksum failure is not a second cause.
+  if constexpr (std::is_same_v<AddrT, folly::IPAddressV4>) {
+    IPv4Hdr ipHdr(cursor);
+    ipHdr.version = 5;
+    ipHdr.computeChecksum();
+    ipHdr.serialize(&rwCursor);
+  } else {
+    IPv6Hdr ipHdr(cursor);
+    ipHdr.version = 5;
+    ipHdr.serialize(&rwCursor);
+  }
   getSw()->sendPacketOutOfPortAsync(
       std::move(pkt), PortID(masterLogicalInterfaceOrHyperPortIds()[0]));
 }
 
-template void AgentDropTestBase::sendLoopbackDipPacket<folly::IPAddressV4>();
-template void AgentDropTestBase::sendLoopbackDipPacket<folly::IPAddressV6>();
+template void
+AgentDropTestBase::sendInvalidIpVersionPacket<folly::IPAddressV4>();
+template void
+AgentDropTestBase::sendInvalidIpVersionPacket<folly::IPAddressV6>();
 
 void AgentDropTestBase::sendMulticastSmacPacket() {
   const folly::MacAddress kMulticastSmac("01:00:5e:aa:aa:aa");
