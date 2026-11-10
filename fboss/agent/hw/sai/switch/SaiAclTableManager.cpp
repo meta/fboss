@@ -648,12 +648,28 @@ bool SaiAclTableManager::isSameAclCounterAttributes(
 
   if (platform_->getAsic()->isSupported(HwAsic::Feature::ACL_COUNTER_LABEL)) {
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 2)
+    using LabelExtended =
+        std::optional<SaiAclCounterTraits::Attributes::LabelExtended>;
     result = result &&
         GET_OPT_ATTR(AclCounter, Label, fromStore) ==
-            GET_OPT_ATTR(AclCounter, Label, fromSw);
+            GET_OPT_ATTR(AclCounter, Label, fromSw) &&
+        std::get<LabelExtended>(fromStore) == std::get<LabelExtended>(fromSw);
 #endif
   }
   return result;
+}
+
+bool SaiAclTableManager::aclCounterLabelExtendedSupported() const {
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 2)
+  return platform_->getAsic()->isSupported(
+             HwAsic::Feature::ACL_COUNTER_LABEL) &&
+      platform_->getAsic()->isSupported(
+          HwAsic::Feature::ACL_COUNTER_LABEL_EXTENDED) &&
+      SaiAclCounterTraits::Attributes::AttributeLabelExtendedWrapper()()
+          .has_value();
+#else
+  return false;
+#endif
 }
 
 std::pair<
