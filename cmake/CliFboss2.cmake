@@ -427,6 +427,7 @@ add_library(fboss2_config_file_utils
 )
 
 target_link_libraries(fboss2_config_file_utils
+  common_file_utils
   Folly::folly
   FBThrift::thriftcpp2
 )
