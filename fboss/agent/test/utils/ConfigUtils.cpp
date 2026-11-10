@@ -1290,7 +1290,7 @@ cfg::SwitchConfig oneL3IntfNPortConfig(
   return config;
 }
 
-void addVrfForPorts(
+std::map<InterfaceID, RouterID> addVrfForPorts(
     cfg::SwitchConfig& config,
     RouterID vrf,
     const std::vector<PortID>& ports) {
@@ -1310,13 +1310,16 @@ void addVrfForPorts(
       }
     }
   }
+  std::map<InterfaceID, RouterID> interfaceVrfs;
   for (auto& intf : *config.interfaces()) {
     if ((intf.portID() && portIds.contains(*intf.portID())) ||
         (*intf.type() == cfg::InterfaceType::VLAN &&
          vlans.contains(*intf.vlanID()))) {
       intf.routerID() = vrf;
+      interfaceVrfs.emplace(InterfaceID(*intf.intfID()), vrf);
     }
   }
+  return interfaceVrfs;
 }
 
 cfg::SwitchConfig twoL3IntfConfig(
