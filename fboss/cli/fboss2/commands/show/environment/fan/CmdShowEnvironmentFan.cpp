@@ -65,6 +65,26 @@ void CmdShowEnvironmentFan::printOutput(
   out << table << std::endl;
 }
 
+CmdShowEnvironmentFan::RetType CmdShowEnvironmentFan::sampleModel() {
+  RetType model;
+
+  platform::fan_service::FanStatus okFan;
+  okFan.fanFailed() = false;
+  okFan.pwmToProgram() = 37.5f;
+  okFan.lastSuccessfulAccessTime() = 1786213549;
+  okFan.rpm() = 11200;
+
+  platform::fan_service::FanStatus failedFan;
+  failedFan.fanFailed() = true;
+  failedFan.pwmToProgram() = 100.0f;
+  failedFan.lastSuccessfulAccessTime() = 1786213548;
+
+  model.emplace("fan0", okFan);
+  model.emplace("fan1", failedFan);
+
+  return model;
+}
+
 // Explicit template instantiation
 template void
 CmdHandler<CmdShowEnvironmentFan, CmdShowEnvironmentFanTraits>::run();
