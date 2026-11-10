@@ -15,9 +15,9 @@ namespace facebook::fboss {
 // How a drop is created is ASIC independent, so it lives here and is written
 // once. How the drop is *reported* is not: Chenab reports per pipeline stage
 // bitmaps and Broadcom XGS reports lists of drop reasons, through different
-// SAI mechanisms into different thrift fields. Each derived fixture therefore
-// owns its own assertions and its own ProductionFeature, and only the
-// scenario creation and log verification are shared.
+// SAI mechanisms into different thrift fields. The common test delegates
+// collection and assertions to a reporting adapter while retaining the same
+// packet scenarios and HwAgent log verification.
 class AgentDropTestBase : public AgentHwTest {
  public:
   cfg::SwitchConfig initialConfig(const AgentEnsemble& ensemble) const override;

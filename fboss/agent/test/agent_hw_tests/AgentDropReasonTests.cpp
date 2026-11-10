@@ -1,46 +1,28 @@
 // (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
 
 #include "fboss/agent/test/agent_hw_tests/AgentDropTestBase.h"
-#include "fboss/agent/test/gen-cpp2/production_features_types.h"
-#include "fboss/agent/test/utils/AclTestUtils.h"
 #include "fboss/agent/test/utils/AgentDropReasonReporting.h"
+
+#include "fboss/agent/test/TestUtils.h"
+#include "fboss/agent/test/utils/AclTestUtils.h"
 #include "fboss/lib/CommonUtils.h"
 
 #include <folly/logging/xlog.h>
 
 namespace facebook::fboss {
 
-// Tests for the drop reason list form of drop reporting. Scenario creation
-// lives in AgentDropTestBase and is shared with AgentDropBitmapTests; only the
-// assertions are here, since the two forms report drops differently and an
-// ASIC supports only one of them.
-//
-// Reasons are read back from the HwAgent log rather than from stats: they are
-// decoded and logged in the process that owns the ASIC and never cross into
-// SwSwitch. installLogCapture() resets the capture window, so each test starts
-// from a clean slate, and the window then accumulates every reason the ASIC
-// reported. The lists are cleared on read, so each verify loop below re-sends
-// the drop triggering traffic on every WITH_RETRIES iteration -- a drop missed
-// in one collection window is covered by the next.
-
 class AgentDropReasonTest : public AgentDropTestBase {
  public:
   std::vector<ProductionFeature> getProductionFeaturesVerified()
       const override {
-    return {ProductionFeature::DROP_REASON_LIST_SUPPORT};
+    // Discovery runs without an ensemble. This common gate covers either
+    // reporting mechanism; the adapter is chosen once hardware is available.
+    return {ProductionFeature::DROP_REASON_REPORTING};
   }
 
  protected:
-  // Log the drop reasons after every collection, not just the final state.
-  // If an expectation is wrong, the run shows what the ASIC reported, which is
-  // what it takes to correct the expected name without another round trip.
-  void logObserved(const char* desc, const DropReasonReportingImpl& reasons) {
-    XLOG(INFO) << "Drop reason test [" << desc
-               << "] observed: " << reasons.dropReasonToString();
-  }
-
   DropReasonReportingImpl& dropReasonReporting() {
-    if (!reporting_) {
+    if (!dropReasonReportingImpl_) {
       DropReasonReportingContext context;
       context.readLogMessages = [this]() {
         std::vector<std::string> messages;
@@ -54,96 +36,152 @@ class AgentDropReasonTest : public AgentDropTestBase {
         }
         return messages;
       };
-      reporting_ = createListDropReasonReportingImpl(std::move(context));
+      context.readSwitchStats = [this]() { return getAllHwSwitchStats(); };
+      for (const auto& switchIndex :
+           getSw()->getSwitchInfoTable().getSwitchIndices()) {
+        context.switchIndices.push_back(switchIndex);
+      }
+      const auto* asic = checkSameAndGetAsicForTesting(getL3Asics());
+      dropReasonReportingImpl_ = createDropReasonReportingImpl(
+          asic->getAsicType(), std::move(context));
     }
-    return *reporting_;
+    return *dropReasonReportingImpl_;
+  }
+
+  // Log the drop reasons after every collection, not just the final state.
+  // If an expectation is wrong, the run shows what the ASIC reported, which is
+  // what it takes to correct the expected name without another round trip.
+  void logObserved(const char* desc, const DropReasonReportingImpl& reporting) {
+    XLOG(INFO) << "Drop reason test [" << desc
+               << "] observed: " << reporting.dropReasonToString();
+  }
+
+  void setupDropScenario(DropScenario scenario) {
+    switch (scenario) {
+      case DropScenario::EgressMtu:
+        setupEgressMtuDropScenario();
+        return;
+      case DropScenario::TtlError:
+      case DropScenario::SrcPortKnockout:
+        setupRouteToEgressPort();
+        return;
+      case DropScenario::AclDeny: {
+        setupRouteToEgressPort();
+        auto config = getAgentEnsemble()->getCurrentConfig();
+        cfg::AclEntry acl;
+        acl.name() = "drop-reason-deny-v6";
+        acl.actionType() = cfg::AclActionType::DENY;
+        acl.dstIp() = kRoutedDstIp().str() + "/128";
+        utility::addAcl(&config, acl, cfg::AclStage::INGRESS);
+        applyNewConfig(config);
+        return;
+      }
+      case DropScenario::L3DstDiscard:
+      case DropScenario::MacSaMulticast:
+      case DropScenario::Ipv4LoopbackDip:
+      case DropScenario::Ipv6LoopbackDip:
+      case DropScenario::InvalidEtherType:
+        return;
+    }
+  }
+
+  void triggerDropScenario(DropScenario scenario) {
+    switch (scenario) {
+      case DropScenario::L3DstDiscard:
+        sendPacketToUnroutedDst();
+        return;
+      case DropScenario::TtlError:
+        sendTtlExpiredPacket();
+        return;
+      case DropScenario::MacSaMulticast:
+        sendMulticastSmacPacket();
+        return;
+      case DropScenario::AclDeny:
+      case DropScenario::SrcPortKnockout:
+        sendPacketToRoutedDst();
+        return;
+      case DropScenario::EgressMtu:
+        sendOversizedPacketToRoutedDst();
+        return;
+      case DropScenario::Ipv4LoopbackDip:
+        sendLoopbackDipPacket<folly::IPAddressV4>();
+        return;
+      case DropScenario::Ipv6LoopbackDip:
+        sendLoopbackDipPacket<folly::IPAddressV6>();
+        return;
+      case DropScenario::InvalidEtherType:
+        sendOutOfRangeEtherTypePacket();
+        return;
+    }
+  }
+
+  void runDropScenarios(
+      std::initializer_list<DropScenario> scenarios,
+      const char* name) {
+    auto& reporting = dropReasonReporting();
+    auto setup = [&]() {
+      for (const auto scenario : scenarios) {
+        setupDropScenario(scenario);
+      }
+    };
+    auto verify = [&]() {
+      for (const auto scenario : scenarios) {
+        installLogCapture();
+        // Reset between phases as well as across warm boots, so the previous
+        // packet's drop cannot satisfy the next scenario's assertion.
+        ASSERT_NO_FATAL_FAILURE(reporting.prepareDropObservation());
+        if (scenario == DropScenario::SrcPortKnockout) {
+          setEgressPortTx(false);
+        }
+        WITH_RETRIES({
+          triggerDropScenario(scenario);
+          reporting.collectDropObservation();
+          logObserved(name, reporting);
+          EXPECT_EVENTUALLY_TRUE(
+              reporting.expectedDropReasonObserved(scenario));
+        });
+        logPortDropCounters(name);
+        XLOG(INFO) << "Drop reason test [" << name
+                   << "] final: " << reporting.dropReasonToString();
+        reporting.verifyOnlyExpectedDropReasonReported(scenario);
+        verifyDropReasonLogged(reporting.expectedDropLog(scenario), name);
+        if (scenario == DropScenario::SrcPortKnockout) {
+          // Re-enabled only once every check above is done. Bringing TX back up
+          // flushes the held packets and can log fresh drop reasons of its own,
+          // which would otherwise land in the still-open capture window that
+          // verifyDropReasonLogged() reads, and would move the port counters.
+          setEgressPortTx(true);
+        }
+      }
+    };
+    verifyAcrossWarmBoots(setup, verify);
   }
 
  private:
-  std::unique_ptr<DropReasonReportingImpl> reporting_;
+  std::unique_ptr<DropReasonReportingImpl> dropReasonReportingImpl_;
 };
 
 // A packet to an address with no matching route is discarded at L3
 // destination resolution. The ASIC reports L3_DST_DISCARD, not
 // L3_DST_LOOKUP_MISS, accompanied by the generic RDROP.
 TEST_F(AgentDropReasonTest, ingressL3DstDiscardDrop) {
-  auto verify = [&]() {
-    installLogCapture();
-
-    auto& reasons = dropReasonReporting();
-    reasons.prepareDropObservation();
-    WITH_RETRIES({
-      sendPacketToUnroutedDst();
-      reasons.collectDropObservation();
-      logObserved("L3 DST discard", reasons);
-      EXPECT_EVENTUALLY_TRUE(
-          reasons.expectedDropReasonObserved(DropScenario::L3DstDiscard));
-    });
-    logPortDropCounters("L3 DST discard");
-    XLOG(INFO) << "Drop reason test [L3 DST discard] final: "
-               << reasons.dropReasonToString();
-    reasons.verifyOnlyExpectedDropReasonReported(DropScenario::L3DstDiscard);
-    verifyDropReasonLogged(
-        reasons.expectedDropLog(DropScenario::L3DstDiscard),
-        "L3 DST discard log");
-  };
-  verifyAcrossWarmBoots([]() {}, verify);
+  runDropScenarios({DropScenario::L3DstDiscard}, "L3 DST discard");
 }
 
 // A routed packet arriving with hop limit 1 decrements to 0 and is dropped.
-//
-// Deliberately no verifyOnlyExpectedReason() here, unlike its siblings: the
-// ASIC reports RIPD6 alongside L3_TTL_ERROR, and RIPD6 is a real specific
-// reason rather than a generic one, so an exclusivity check would always
-// fail.
 TEST_F(AgentDropReasonTest, ingressTtlErrorDrop) {
-  auto setup = [&]() { setupRouteToEgressPort(); };
-
-  auto verify = [&]() {
-    installLogCapture();
-
-    auto& reasons = dropReasonReporting();
-    reasons.prepareDropObservation();
-    WITH_RETRIES({
-      sendTtlExpiredPacket();
-      reasons.collectDropObservation();
-      logObserved("L3 TTL error", reasons);
-      EXPECT_EVENTUALLY_TRUE(
-          reasons.expectedDropReasonObserved(DropScenario::TtlError));
-    });
-    logPortDropCounters("L3 TTL error");
-    XLOG(INFO) << "Drop reason test [L3 TTL error] final: "
-               << reasons.dropReasonToString();
-    verifyDropReasonLogged(
-        reasons.expectedDropLog(DropScenario::TtlError), "L3 TTL error log");
-  };
-  verifyAcrossWarmBoots(setup, verify);
+  runDropScenarios({DropScenario::TtlError}, "L3 TTL error");
 }
 
 // A packet with a multicast source MAC. The ASIC reports SRC_ROUTE_DROP,
 // accompanied only by the generic RDROP.
 TEST_F(AgentDropReasonTest, ingressMacSaMulticastDrop) {
-  auto verify = [&]() {
-    installLogCapture();
+  runDropScenarios({DropScenario::MacSaMulticast}, "MACSA multicast");
+}
 
-    auto& reasons = dropReasonReporting();
-    reasons.prepareDropObservation();
-    WITH_RETRIES({
-      sendMulticastSmacPacket();
-      reasons.collectDropObservation();
-      logObserved("MACSA multicast", reasons);
-      EXPECT_EVENTUALLY_TRUE(
-          reasons.expectedDropReasonObserved(DropScenario::MacSaMulticast));
-    });
-    logPortDropCounters("MACSA multicast");
-    XLOG(INFO) << "Drop reason test [MACSA multicast] final: "
-               << reasons.dropReasonToString();
-    reasons.verifyOnlyExpectedDropReasonReported(DropScenario::MacSaMulticast);
-    verifyDropReasonLogged(
-        reasons.expectedDropLog(DropScenario::MacSaMulticast),
-        "MACSA multicast log");
-  };
-  verifyAcrossWarmBoots([]() {}, verify);
+// A packet with EtherType 0x05E0, in the reserved range 0x05DD..0x05FF.
+TEST_F(AgentDropReasonTest, ingressInvalidEtherTypeDrop) {
+  runDropScenarios({DropScenario::InvalidEtherType}, "invalid EtherType");
 }
 
 // A packet denied by an ingress ACL.
@@ -156,68 +194,14 @@ TEST_F(AgentDropReasonTest, ingressMacSaMulticastDrop) {
 // the injected packet contributing to it; and sending to an unrouted
 // destination adds an L3_DST_DISCARD that competes with the deny for
 // attribution.
-class AgentDropReasonAclTest : public AgentDropReasonTest {
- protected:
-  cfg::SwitchConfig initialConfig(
-      const AgentEnsemble& ensemble) const override {
-    auto cfg = AgentDropReasonTest::initialConfig(ensemble);
-    cfg::AclEntry acl;
-    acl.name() = "drop-reason-deny-v6";
-    acl.actionType() = cfg::AclActionType::DENY;
-    acl.dstIp() = kRoutedDstIp().str() + "/128";
-    utility::addAcl(&cfg, acl, cfg::AclStage::INGRESS);
-    return cfg;
-  }
-};
-
-TEST_F(AgentDropReasonAclTest, ingressAclDenyDrop) {
-  auto setup = [&]() { setupRouteToEgressPort(); };
-  auto verify = [&]() {
-    installLogCapture();
-
-    auto& reasons = dropReasonReporting();
-    reasons.prepareDropObservation();
-    WITH_RETRIES({
-      sendPacketToRoutedDst();
-      reasons.collectDropObservation();
-      logObserved("ACL deny", reasons);
-      EXPECT_EVENTUALLY_TRUE(
-          reasons.expectedDropReasonObserved(DropScenario::AclDeny));
-    });
-    logPortDropCounters("ACL deny");
-    XLOG(INFO) << "Drop reason test [ACL deny] final: "
-               << reasons.dropReasonToString();
-    verifyDropReasonLogged(
-        reasons.expectedDropLog(DropScenario::AclDeny), "ACL deny log");
-  };
-  verifyAcrossWarmBoots(setup, verify);
+TEST_F(AgentDropReasonTest, ingressAclDenyDrop) {
+  runDropScenarios({DropScenario::AclDeny}, "ACL deny");
 }
 
 // A routed packet larger than the egress port MTU reports EGR_MTU on the
 // egress list and nothing on ingress.
 TEST_F(AgentDropReasonTest, egressMtuDrop) {
-  auto setup = [&]() { setupEgressMtuDropScenario(); };
-
-  auto verify = [&]() {
-    installLogCapture();
-
-    auto& reasons = dropReasonReporting();
-    reasons.prepareDropObservation();
-    WITH_RETRIES({
-      sendOversizedPacketToRoutedDst();
-      reasons.collectDropObservation();
-      logObserved("egress MTU", reasons);
-      EXPECT_EVENTUALLY_TRUE(
-          reasons.expectedDropReasonObserved(DropScenario::EgressMtu));
-    });
-    logPortDropCounters("egress MTU");
-    XLOG(INFO) << "Drop reason test [egress MTU] final: "
-               << reasons.dropReasonToString();
-    reasons.verifyOnlyExpectedDropReasonReported(DropScenario::EgressMtu);
-    verifyDropReasonLogged(
-        reasons.expectedDropLog(DropScenario::EgressMtu), "egress MTU log");
-  };
-  verifyAcrossWarmBoots(setup, verify);
+  runDropScenarios({DropScenario::EgressMtu}, "egress MTU");
 }
 
 // A routed packet whose egress port has TX disabled. This is reported on the
@@ -225,190 +209,13 @@ TEST_F(AgentDropReasonTest, egressMtuDrop) {
 // pipeline drops it before the egress stage once the destination port is
 // knocked out of the port bitmap.
 TEST_F(AgentDropReasonTest, ingressSrcPortKnockoutDrop) {
-  auto setup = [&]() { setupRouteToEgressPort(); };
-
-  auto verify = [&]() {
-    installLogCapture();
-
-    setEgressPortTx(false);
-
-    auto& reasons = dropReasonReporting();
-    reasons.prepareDropObservation();
-    WITH_RETRIES({
-      sendPacketToRoutedDst();
-      reasons.collectDropObservation();
-      logObserved("src port knockout", reasons);
-      EXPECT_EVENTUALLY_TRUE(
-          reasons.expectedDropReasonObserved(DropScenario::SrcPortKnockout));
-    });
-    logPortDropCounters("src port knockout");
-    XLOG(INFO) << "Drop reason test [src port knockout] final: "
-               << reasons.dropReasonToString();
-    reasons.verifyOnlyExpectedDropReasonReported(DropScenario::SrcPortKnockout);
-    verifyDropReasonLogged(
-        reasons.expectedDropLog(DropScenario::SrcPortKnockout),
-        "src port knockout log");
-    // Re-enabled only once every check above is done. Bringing TX back up
-    // flushes the held packets and can log fresh drop reasons of its own,
-    // which would otherwise land in the still-open capture window that
-    // verifyDropReasonLogged() reads, and would move the port counters.
-    setEgressPortTx(true);
-  };
-  verifyAcrossWarmBoots(setup, verify);
+  runDropScenarios({DropScenario::SrcPortKnockout}, "src port knockout");
 }
 
-// Drop bitmaps are READ_AND_CLEAR: each HwAgent stats-collection cycle reads
-// and clears the HW bitmap and pushes that one snapshot to the SwSwitch cache
-// these tests read, so a single drop is easy to miss — especially post-warmboot
-// while the HwAgent->SwSwitch stats sink is re-establishing. Each verify loop
-// below re-sends the drop-triggering traffic on every WITH_RETRIES iteration
-// (the ~1s collection interval) and OR-accumulates: a miss in one collection
-// window is covered by the next, and the first observed drop is latched.
-
-class AgentDropBitmapTest : public AgentDropTestBase {
- public:
-  std::vector<ProductionFeature> getProductionFeaturesVerified()
-      const override {
-    return {ProductionFeature::CUSTOM_DROP_BITMAP_SUPPORT};
-  }
-
- protected:
-  void waitForDropBitmapsToClear() {
-    dropReasonReporting().prepareDropObservation();
-  }
-
-  DropReasonReportingImpl& dropReasonReporting() {
-    if (!reporting_) {
-      DropReasonReportingContext context;
-      context.readSwitchStats = [this]() { return getAllHwSwitchStats(); };
-      for (const auto& switchIndex :
-           getSw()->getSwitchInfoTable().getSwitchIndices()) {
-        context.switchIndices.push_back(switchIndex);
-      }
-      reporting_ = createBitmapDropReasonReportingImpl(std::move(context));
-    }
-    return *reporting_;
-  }
-
- private:
-  std::unique_ptr<DropReasonReportingImpl> reporting_;
-};
-
-TEST_F(AgentDropBitmapTest, pipelineIpv4Ipv6Drops) {
-  auto verify = [&]() {
-    // Install log capture (in the HwAgent process) before triggering drops.
-    installLogCapture();
-
-    // Confirm all drop bitmaps are clear before we start — especially on the
-    // warm-boot iteration, where residual drops from the cold-boot run can
-    // linger and contaminate the OR-accumulated stats below.
-    waitForDropBitmapsToClear();
-
-    // IPv4 loopback DIP drop
-    auto& ipv4Stats = dropReasonReporting();
-    WITH_RETRIES({
-      sendLoopbackDipPacket<folly::IPAddressV4>();
-      ipv4Stats.collectDropObservation();
-      EXPECT_EVENTUALLY_TRUE(
-          ipv4Stats.expectedDropReasonObserved(DropScenario::Ipv4LoopbackDip));
-    });
-    ipv4Stats.verifyOnlyExpectedDropReasonReported(
-        DropScenario::Ipv4LoopbackDip);
-    verifyDropReasonLogged(
-        ipv4Stats.expectedDropLog(DropScenario::Ipv4LoopbackDip),
-        "IPv4 loopback DIP log");
-
-    // Drain residual drops before the IPv6 phase so the IPv4 drop doesn't
-    // leak into IPv6's exclusivity check.
-    waitForDropBitmapsToClear();
-
-    // IPv6 loopback DIP drop
-    auto& ipv6Stats = dropReasonReporting();
-    WITH_RETRIES({
-      sendLoopbackDipPacket<folly::IPAddressV6>();
-      ipv6Stats.collectDropObservation();
-      EXPECT_EVENTUALLY_TRUE(
-          ipv6Stats.expectedDropReasonObserved(DropScenario::Ipv6LoopbackDip));
-    });
-    ipv6Stats.verifyOnlyExpectedDropReasonReported(
-        DropScenario::Ipv6LoopbackDip);
-    verifyDropReasonLogged(
-        ipv6Stats.expectedDropLog(DropScenario::Ipv6LoopbackDip),
-        "IPv6 loopback DIP log");
-  };
-  verifyAcrossWarmBoots([]() {}, verify);
-}
-
-TEST_F(AgentDropBitmapTest, pipelineMacAndIngressMacDrops) {
-  auto verify = [&]() {
-    // Install log capture (in the HwAgent process) before triggering drops.
-    installLogCapture();
-
-    // Confirm all drop bitmaps are clear (and stats are flowing) before we
-    // start — handles residuals from the previous warm-boot iteration.
-    waitForDropBitmapsToClear();
-
-    // Pipeline MAC: SMAC multicast drop
-    auto& macStats = dropReasonReporting();
-    WITH_RETRIES({
-      sendMulticastSmacPacket();
-      macStats.collectDropObservation();
-      EXPECT_EVENTUALLY_TRUE(
-          macStats.expectedDropReasonObserved(DropScenario::MacSaMulticast));
-    });
-    macStats.verifyOnlyExpectedDropReasonReported(DropScenario::MacSaMulticast);
-    verifyDropReasonLogged(
-        macStats.expectedDropLog(DropScenario::MacSaMulticast),
-        "Pipeline MAC SMAC log");
-
-    // Drain residual drops before the ingress MAC phase.
-    waitForDropBitmapsToClear();
-
-    // Ingress MAC: type out of range drop
-    // EtherType 0x05E0 is in the reserved range 0x05DD..0x05FF
-    // This also triggers PIPELINE_MAC_INVALID_ETHERTYPE — the packet
-    // traverses multiple pipeline stages that each flag it independently.
-    // We verify the primary drop (ingressMac) without cross-contamination
-    // checks since multi-stage drops are expected.
-    auto& ingressMacStats = dropReasonReporting();
-    WITH_RETRIES({
-      sendOutOfRangeEtherTypePacket();
-      ingressMacStats.collectDropObservation();
-      EXPECT_EVENTUALLY_TRUE(ingressMacStats.expectedDropReasonObserved(
-          DropScenario::InvalidEtherType));
-    });
-    verifyDropReasonLogged(
-        ingressMacStats.expectedDropLog(DropScenario::InvalidEtherType),
-        "Ingress MAC type OOR log");
-  };
-  verifyAcrossWarmBoots([]() {}, verify);
-}
-
-TEST_F(AgentDropBitmapTest, egressMacMtuDrop) {
-  auto setup = [&]() { setupEgressMtuDropScenario(); };
-
-  auto verify = [&]() {
-    // Install log capture (in the HwAgent process) before triggering drops.
-    installLogCapture();
-
-    // Confirm all drop bitmaps are clear (and stats are flowing) before we
-    // start — handles residuals from the previous warm-boot iteration.
-    waitForDropBitmapsToClear();
-
-    // Assert only the egress MAC MTU bit (not verifyOnlyExpectedDrop): the
-    // oversized routed packet can also trigger collateral drops in the
-    // loopback test topology, so an exclusivity check would be flaky.
-    auto& stats = dropReasonReporting();
-    WITH_RETRIES({
-      sendOversizedPacketToRoutedDst();
-      stats.collectDropObservation();
-      EXPECT_EVENTUALLY_TRUE(
-          stats.expectedDropReasonObserved(DropScenario::EgressMtu));
-    });
-    verifyDropReasonLogged(
-        stats.expectedDropLog(DropScenario::EgressMtu), "Egress MTU log");
-  };
-  verifyAcrossWarmBoots(setup, verify);
+TEST_F(AgentDropReasonTest, pipelineIpv4Ipv6Drops) {
+  runDropScenarios(
+      {DropScenario::Ipv4LoopbackDip, DropScenario::Ipv6LoopbackDip},
+      "pipelineIpv4Ipv6Drops");
 }
 
 } // namespace facebook::fboss
