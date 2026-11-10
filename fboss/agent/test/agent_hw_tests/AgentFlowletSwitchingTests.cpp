@@ -2090,17 +2090,7 @@ class AgentFlowletWideArsAlternateMemberTest
     this->setup(kFirstGroupWidth);
     generateApplyConfig(AclType::FLOWLET);
     generatePrefixes();
-
-    boost::container::flat_set<PortDescriptor> secondGroup;
-    for (int i = kSecondGroupStart; i < kPortsUsed; ++i) {
-      secondGroup.insert(helper_->ecmpPortDescriptorAt(i));
-    }
-    std::vector<boost::container::flat_set<PortDescriptor>> nhopSets = {
-        secondGroup};
-    std::vector<RoutePrefixV6> testPrefixes = {prefixes[0]};
-
-    auto wrapper = getSw()->getRouteUpdater();
-    helper_->programRoutes(&wrapper, nhopSets, testPrefixes);
+    programSecondGroup(memberRange(kSecondGroupStart, kPortsUsed));
 
     XLOG(DBG2) << "Virtual ARS groups of " << kFirstGroupWidth << " and "
                << kSecondGroupWidth << " members sharing " << kCommonMembers
@@ -2120,11 +2110,14 @@ class AgentFlowletWideArsAlternateMemberTest
 
   // Reprograms the second virtual group over the given first group member
   // indices. A member is common only while it sits in every group, so moving
-  // this set is how members are made to gain or lose common status.
+  // this set is how members are made to gain or lose common status. Indices
+  // are into getTestPorts(), the order setup() built the first group in, which
+  // is not ecmpPortDescriptorAt() order on every platform.
   void programSecondGroup(const std::vector<int>& memberIndices) {
+    const auto testPorts = getTestPorts();
     boost::container::flat_set<PortDescriptor> secondGroup;
     for (auto i : memberIndices) {
-      secondGroup.insert(helper_->ecmpPortDescriptorAt(i));
+      secondGroup.insert(PortDescriptor(testPorts[i]));
     }
     std::vector<boost::container::flat_set<PortDescriptor>> nhopSets = {
         secondGroup};
@@ -2213,15 +2206,13 @@ class AgentFlowletWideArsAlternateMemberTest
   }
 
   // Sends DLB traffic once and returns the per member packet counts for the
-  // first group, indexed the way ecmpPortDescriptorAt is. Every member is
-  // counted rather than sampled: only a handful end up as alternates, so
-  // sampling would miss them.
+  // first group, indexed the way getTestPorts() is. Every member is counted
+  // rather than sampled: only a handful end up as alternates, so sampling
+  // would miss them.
   std::vector<int64_t> sendDlbTrafficAndCountPerMember() {
-    std::vector<PortID> ports;
-    ports.reserve(kFirstGroupWidth);
-    for (int i = 0; i < kFirstGroupWidth; ++i) {
-      ports.push_back(helper_->ecmpPortDescriptorAt(i).phyPortID());
-    }
+    const auto testPorts = getTestPorts();
+    std::vector<PortID> ports(
+        testPorts.begin(), testPorts.begin() + kFirstGroupWidth);
     auto before = getNextUpdatedPortStats(ports);
     auto aclBefore =
         utility::getAclInOutPackets(getSw(), getCounterName(AclType::FLOWLET));
@@ -2229,7 +2220,7 @@ class AgentFlowletWideArsAlternateMemberTest
     std::vector<uint8_t> rethHdr(16);
     rethHdr[15] = 0xFF;
     sendRoceTraffic(
-        helper_->ecmpPortDescriptorAt(kFrontPanelPortForTest).phyPortID(),
+        testPorts[kFrontPanelPortForTest],
         utility::kUdfRoceOpcodeWriteImmediate,
         rethHdr,
         kTrafficPacketCount,
