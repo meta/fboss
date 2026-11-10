@@ -51,7 +51,7 @@ class BspVersionTest(unittest.TestCase):
         mock.patch.object(
             component_version,
             "_query_rpm",
-            return_value="fboss_bsp_kmods-6.11.1-1.fboss.el9.x86_64\n4.4.2-1\nx86_64",
+            return_value="fboss_bsp_kmods-6.11.1-1.fboss.el9.x86_64\n4.4.2\n1\nx86_64",
         ).start()
 
     def capture(self, dirty: bool = False) -> dict:
@@ -136,10 +136,124 @@ class BspVersionTest(unittest.TestCase):
         with mock.patch.object(
             component_version,
             "_query_rpm",
-            return_value="fboss_bsp_kmods\n4.4.2-1\nx86_64",
+            return_value="fboss_bsp_kmods\n4.4.2\n1\nx86_64",
         ):
             with self.assertRaisesRegex(ValueError, "target kernel"):
                 component_version.capture_bsp_build(self.output, self.source)
+
+
+class VendorBSPVersionTest(unittest.TestCase):
+    def setUp(self) -> None:
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name)
+        self.rpm = (
+            self.root / "vendor_bsp_kmods-6.11.1-1.fboss.el9.x86_64-3.0.4-1.x86_64.rpm"
+        )
+        self.rpm.write_bytes(b"vendor binary rpm")
+        self.source_rpm = self.root / "vendor_bsp_kmods-3.0.4-1.src.rpm"
+        self.source_rpm.write_bytes(b"vendor source rpm")
+
+    def test_source_rpm_identity_and_fboss_tooling_are_preserved(self) -> None:
+        with (
+            mock.patch.dict(
+                component_version.os.environ,
+                {
+                    "FBOSS_SOURCE_REVISION": "a" * 40,
+                    "FBOSS_SOURCE_DIRTY": "false",
+                },
+                clear=True,
+            ),
+            mock.patch.object(
+                component_version,
+                "_query_rpm",
+                side_effect=[
+                    "vendor_bsp_kmods-6.11.1-1.fboss.el9.x86_64\n3.0.4\n1\nx86_64",
+                    "vendor_bsp_kmods\n3.0.4",
+                ],
+            ),
+            mock.patch.object(
+                sys,
+                "argv",
+                [
+                    "component_version.py",
+                    "bsp",
+                    "--output-dir",
+                    str(self.root),
+                    "--kmod-name",
+                    "vendor_bsp_kmods",
+                    "--source-rpm",
+                    str(self.source_rpm),
+                ],
+            ),
+        ):
+            component_version.main()
+        declaration = json.loads((self.root / "share/bsp-version.json").read_text())
+        self.assertEqual(
+            declaration["versions"],
+            {
+                "bsp": "3.0.4-1",
+                "kernel": "6.11.1-1.fboss.el9",
+            },
+        )
+        self.assertEqual(
+            declaration["build"]["source_rpm"],
+            {
+                "name": self.source_rpm.name,
+                "sha256": hashlib.sha256(b"vendor source rpm").hexdigest(),
+            },
+        )
+        self.assertEqual(
+            declaration["build"]["rpm_sha256"],
+            {
+                self.rpm.name: hashlib.sha256(b"vendor binary rpm").hexdigest(),
+            },
+        )
+        self.assertEqual(declaration["build"]["fboss"]["source_revision"], "a" * 40)
+        self.assertNotIn("source_revision", declaration["build"])
+
+    def test_source_rpm_filename_and_release_macros_do_not_define_identity(
+        self,
+    ) -> None:
+        self.source_rpm = self.source_rpm.rename(self.root / "download.src.rpm")
+        with mock.patch.object(
+            component_version,
+            "_query_rpm",
+            side_effect=[
+                "vendor_bsp_kmods-6.11.1-1.fboss.el9.x86_64\n3.0.4\n1.el9\nx86_64",
+                "vendor_bsp_kmods\n3.0.4",
+            ],
+        ):
+            component_version.capture_bsp_build(
+                self.root, None, "vendor_bsp_kmods", self.source_rpm
+            )
+        declaration = json.loads((self.root / "share/bsp-version.json").read_text())
+        self.assertEqual(declaration["versions"]["bsp"], "3.0.4-1.el9")
+        self.assertEqual(
+            declaration["build"]["source_rpm"],
+            {
+                "name": "download.src.rpm",
+                "sha256": hashlib.sha256(b"vendor source rpm").hexdigest(),
+            },
+        )
+
+    def test_mismatched_source_rpm_is_rejected(self) -> None:
+        for source_identity in ("vendor_bsp_kmods\n3.0.3", "other_bsp_kmods\n3.0.4"):
+            with (
+                self.subTest(source_identity=source_identity),
+                mock.patch.object(
+                    component_version,
+                    "_query_rpm",
+                    side_effect=[
+                        "vendor_bsp_kmods-6.11.1-1.fboss.el9.x86_64\n3.0.4\n1\nx86_64",
+                        source_identity,
+                    ],
+                ),
+                self.assertRaisesRegex(ValueError, "does not match"),
+            ):
+                component_version.capture_bsp_build(
+                    self.root, None, "vendor_bsp_kmods", self.source_rpm
+                )
 
 
 if __name__ == "__main__":
