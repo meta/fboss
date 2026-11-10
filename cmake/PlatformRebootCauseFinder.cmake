@@ -1,8 +1,9 @@
 # Make to build libraries and binaries in fboss/platform/reboot_cause_finder
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   reboot_cause_config_cpp2
   fboss/platform/reboot_cause_finder/if/reboot_cause_config.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
@@ -26,7 +27,7 @@ target_link_libraries(reboot_history_lib
   fmt::fmt
   reboot_cause_config_cpp2
   Folly::folly
-  FBThrift::thriftcpp2
+  thrift::rpc
 )
 
 add_library(reboot_cause_finder_lib
@@ -43,7 +44,7 @@ target_link_libraries(reboot_cause_finder_lib
   reboot_history_lib
   rest_client
   Folly::folly
-  FBThrift::thriftcpp2
+  thrift::rpc
 )
 
 add_executable(reboot_cause_finder
