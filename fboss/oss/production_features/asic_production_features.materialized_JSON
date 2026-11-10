@@ -748,7 +748,8 @@
         133,
         106,
         107,
-        139
+        139,
+        146
     ],
     "tomahawkultra1": [
         2,
@@ -865,7 +866,8 @@
         49,
         111,
         134,
-        139
+        139,
+        146
     ]
   },
   "asicToFeatureNames": {
@@ -1617,7 +1619,8 @@
         "MY_MAC",
         "MPLS_HEADEND",
         "MPLS_MIDPOINT",
-        "MULTI_VRF"
+        "MULTI_VRF",
+        "ACL_COUNTERS_EXTENDED_LABEL"
     ],
     "tomahawkultra1": [
         "CPU_RX_TX",
@@ -1734,7 +1737,8 @@
         "MIRROR_ON_DROP",
         "MIRROR_ON_DROP_STATELESS",
         "MIRROR_ON_DROP_AGGREGATE_RATE_LIMIT",
-        "MULTI_VRF"
+        "MULTI_VRF",
+        "ACL_COUNTERS_EXTENDED_LABEL"
     ]
   },
   "featureSupportSpecs": [
@@ -2375,6 +2379,27 @@
           "sdk": 1,
           "minSdkVersion": "12.0.0.0_dnx_odp",
           "note": "DNX mirror-on-drop is supported from 12.x onwards"
+        }
+      ]
+    },
+    {
+      "feature": 146,
+      "supportedFrom": [
+        {
+          "asics": [
+            "yuba"
+          ],
+          "sdk": 2,
+          "minSdkVersion": "26.5.4210",
+          "note": "ACL counter labels over 31 characters use SAI_ACL_COUNTER_ATTR_EXT_LABEL_EXTENDED from Leaba 26.5.4210"
+        },
+        {
+          "asics": [
+            "tomahawk6"
+          ],
+          "sdk": 1,
+          "minSdkVersion": "16.0_ea_odp",
+          "note": "ACL counter labels over 31 characters use SAI_ACL_COUNTER_ATTR_LABEL_WIDE from brcm-sai 16.0"
         }
       ]
     }
