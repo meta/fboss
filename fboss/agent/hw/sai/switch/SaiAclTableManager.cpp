@@ -109,6 +109,16 @@ std::vector<sai_int8_t> aclEntryLabel(const std::string& aclEntryName) {
 }
 #endif
 
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 2)
+std::vector<int8_t> extendedAclCounterLabel(const std::string& counterName) {
+  std::vector<int8_t> label(counterName.begin(), counterName.end());
+#if defined(BRCM_SAI_SDK_XGS)
+  label.push_back('\0');
+#endif
+  return label;
+}
+#endif
+
 } // namespace
 
 sai_u32_range_t SaiAclTableManager::getFdbDstUserMetaDataRange() const {
@@ -685,25 +695,32 @@ SaiAclTableManager::addAclCounter(
       aclTableHandle->aclTable->adapterKey()};
 
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 2)
-  SaiCharArray32 counterLabel{};
-  if ((*trafficCount.name()).size() > 31) {
-    throw FbossError(
-        "ACL Counter Label:",
-        *trafficCount.name(),
-        " size ",
-        (*trafficCount.name()).size(),
-        " exceeds max(31)");
-  }
-
-  std::copy(
-      (*trafficCount.name()).begin(),
-      (*trafficCount.name()).end(),
-      counterLabel.begin());
-
   std::optional<SaiAclCounterTraits::Attributes::Label> aclCounterLabel{
       std::nullopt};
-  if (platform_->getAsic()->isSupported(HwAsic::Feature::ACL_COUNTER_LABEL)) {
-    aclCounterLabel = counterLabel;
+  std::optional<SaiAclCounterTraits::Attributes::LabelExtended>
+      aclCounterLabelExtended{std::nullopt};
+  if (aclCounterLabelExtendedSupported()) {
+    aclCounterLabel = SaiCharArray32{};
+    aclCounterLabelExtended = extendedAclCounterLabel(*trafficCount.name());
+  } else {
+    SaiCharArray32 counterLabel{};
+    if ((*trafficCount.name()).size() > 31) {
+      throw FbossError(
+          "ACL Counter Label:",
+          *trafficCount.name(),
+          " size ",
+          (*trafficCount.name()).size(),
+          " exceeds max(31)");
+    }
+
+    std::copy(
+        (*trafficCount.name()).begin(),
+        (*trafficCount.name()).end(),
+        counterLabel.begin());
+
+    if (platform_->getAsic()->isSupported(HwAsic::Feature::ACL_COUNTER_LABEL)) {
+      aclCounterLabel = counterLabel;
+    }
   }
 #endif
 
@@ -750,7 +767,7 @@ SaiAclTableManager::addAclCounter(
       aclTableId,
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 2)
       aclCounterLabel,
-      std::nullopt, // labelExtended
+      aclCounterLabelExtended,
 #endif
       enablePacketCount,
       enableByteCount,
@@ -760,7 +777,7 @@ SaiAclTableManager::addAclCounter(
       aclTableId,
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 2)
       aclCounterLabel,
-      std::nullopt, // labelExtended
+      aclCounterLabelExtended,
 #endif
       enablePacketCount,
       enableByteCount,
