@@ -4069,10 +4069,10 @@ bool CmisModule::tcvrPortStateSupported(TransceiverPortState& portState) const {
       currTransmitterTechnology == TransmitterTechnology::COPPER &&
       !activeElectricalCable) {
     // For Active cables, the tcvr is configrable, so we need to check.
-    // For passive copper cables, return true irrespective of speed as the
-    // copper cables are mostly flexible with all speeds. We can change this
-    // later when we know of any limitations.
-    return true;
+    // For passive copper cables, any speed is accepted as the copper cables
+    // are mostly flexible with all speeds, but optical media profiles are not.
+    return portState.transmitterTech != TransmitterTechnology::OPTICAL &&
+        portState.transmitterTech != TransmitterTechnology::BACKPLANE;
   }
 
   auto speed = portState.speed;
