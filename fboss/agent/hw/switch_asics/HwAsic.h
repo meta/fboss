@@ -635,6 +635,11 @@ class HwAsic {
     // Each attribute returns the drop reasons seen since the last read, which
     // is cleared on read. Counterpart to SWITCH_CUSTOM_DROP_BITMAP_SUPPORT.
     SWITCH_DROP_REASON_LIST_SUPPORT,
+    // Read-back of Cisco SiliconOne (Tajo/G202X) native serdes parameters via
+    // the SAI_PORT_SERDES_ATTR_EXT_* attributes (TX FFE/driver-swing and RX
+    // instg/ctle/dsp/afe). Distinct from the Broadcom RX_SERDES_PARAMETERS
+    // feature, which reads a different (BCM-only) attribute set.
+    TAJO_RX_SERDES_PARAMETERS,
     // SDK reports the type of a received packet, so the application does
     // not have to classify the packet itself to identify specific types.
     RX_PACKET_TYPE,
