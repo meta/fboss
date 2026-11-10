@@ -126,6 +126,18 @@ TEST_F(CmdConfigQosQueueConfigTestFixture, setWeightAboveUint8Throws) {
       std::invalid_argument);
 }
 
+// SAI documents weight 0 as invalid, and the agent crashes on it.
+TEST_F(CmdConfigQosQueueConfigTestFixture, setWeightZeroThrows) {
+  setupTestableConfigSession(cmdPrefix_, "1 weight 0");
+
+  auto cmd = CmdConfigQosQueueConfigQueueId();
+  utils::QueueIdAndAttributes config(getCmdArgsList());
+
+  EXPECT_THROW(
+      cmd.queryClient(localhost(), kDefaultName(), config),
+      std::invalid_argument);
+}
+
 TEST_F(CmdConfigQosQueueConfigTestFixture, setWeightExistingQueue) {
   setupTestableConfigSession(cmdPrefix_, "1 weight 20");
 
