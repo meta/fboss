@@ -53,10 +53,12 @@ BitmapDropReasonReportingImpl::getAggregatedSwitchDropBitmapStats() {
   HwSwitchDropBitmapStats result;
   checkWithRetry([&result, this]() {
     auto switchIndex2Stats = context_.readSwitchStats();
+    bool complete = true;
     for (const auto& switchIndex : context_.switchIndices) {
       auto it = switchIndex2Stats.find(switchIndex);
       if (it == switchIndex2Stats.end()) {
-        return false;
+        complete = false;
+        continue;
       }
       // OR into the persistent result (not a per-iteration local): a
       // concurrent READ_AND_CLEAR collection may consume a switch's drops
@@ -64,7 +66,7 @@ BitmapDropReasonReportingImpl::getAggregatedSwitchDropBitmapStats() {
       // must not be discarded or those drops are lost permanently.
       orBitmapStats(result, *it->second.switchDropBitmapStats());
     }
-    return true;
+    return complete;
   });
   return result;
 }

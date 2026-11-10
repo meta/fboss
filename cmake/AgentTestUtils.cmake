@@ -19,6 +19,19 @@ target_link_libraries(drop_reason_reporting_test_utils
   ${GTEST}
 )
 
+add_executable(drop_reason_reporting_test
+  fboss/util/oss/TestMain.cpp
+  fboss/agent/test/utils/tests/AgentDropReasonReportingTest.cpp
+)
+
+target_link_libraries(drop_reason_reporting_test
+  drop_reason_reporting_test_utils
+  ${GTEST}
+  ${LIBGMOCK_LIBRARIES}
+)
+
+gtest_discover_tests(drop_reason_reporting_test)
+
 add_library(erspan_parser
   fboss/agent/test/utils/oss/ErspanParser.cpp
 )
