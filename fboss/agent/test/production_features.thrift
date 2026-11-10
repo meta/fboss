@@ -160,6 +160,7 @@ enum ProductionFeature {
   DROP_REASON_REPORTING = 143,
   MIXED_IP_SRV6_NEXT_HOP_GROUPS = 144,
   DST_IPV6_WORD_WITH_MASK_ACL = 145,
+  ACL_COUNTERS_EXTENDED_LABEL = 146,
   # production feature which is present on all platforms, keep it at the end
   HW_SWITCH = 65536,
 }
