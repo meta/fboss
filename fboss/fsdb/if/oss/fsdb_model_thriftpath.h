@@ -13821,6 +13821,8 @@ class ChildThriftPath<::facebook::fboss::phy::PcsStats, ::facebook::fboss::fsdb:
   using Self::Self;
   
     STRUCT_CHILD_GETTERS(rsFec, 1);
+    STRUCT_CHILD_GETTERS(erroredBlocks, 2);
+    STRUCT_CHILD_GETTERS(berCount, 3);
 };
 
 

@@ -4522,6 +4522,28 @@ void SaiPortManager::updateExtOperStatusLatchAfterWarmBoot(
 
 #endif
 
+std::optional<std::pair<uint64_t, uint64_t>>
+SaiPortManager::getPcsErrorCounters(PortSaiId saiPortId) const {
+  const auto& statIds = SaiPortTraits::pcsErrorStats();
+  if (!platform_->getAsic()->isSupported(HwAsic::Feature::PCS_ERROR_COUNTERS) ||
+      statIds.size() != 2) {
+    return std::nullopt;
+  }
+  std::vector<uint64_t> values;
+  try {
+    values = SaiApiTable::getInstance()->portApi().getStats<SaiPortTraits>(
+        saiPortId, statIds, SAI_STATS_MODE_READ);
+  } catch (const SaiApiError& e) {
+    XLOG(ERR) << "Failed to get PCS error counters for port " << saiPortId
+              << ": " << e.what();
+    return std::nullopt;
+  }
+  if (values.size() != statIds.size()) {
+    return std::nullopt;
+  }
+  return std::make_pair(values[0], values[1]);
+}
+
 #if defined(BRCM_PAI_SDK) && SAI_API_VERSION >= SAI_VERSION(1, 10, 0)
 phy::Loopback SaiPortManager::getLoopbackMode(PortSaiId saiPortId) const {
   auto mode = SaiApiTable::getInstance()->portApi().getAttribute(

@@ -41,6 +41,7 @@ class MockAsic : public HwAsic {
       case HwAsic::Feature::SWITCH_ASIC_SDK_HEALTH_NOTIFY:
       case HwAsic::Feature::ROUTER_INTERFACE_STATISTICS:
       case HwAsic::Feature::PORT_LATCH_STATUS:
+      case HwAsic::Feature::PCS_ERROR_COUNTERS:
         return false;
       case HwAsic::Feature::CPU_TX_PACKET_REQUIRES_VLAN_TAG:
         return getSwitchType() == cfg::SwitchType::NPU;

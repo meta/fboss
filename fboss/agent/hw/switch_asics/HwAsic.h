@@ -661,6 +661,10 @@ class HwAsic {
     // TTL control on the aggregate's shared forwarding service.
     LAG_TTL_DECREMENT_DISABLE,
     ACL_COUNTER_LABEL_EXTENDED,
+    // Per-port PCS errored block and BER (sync header bit error) counters,
+    // read via Cisco SAI port stat extensions and reported in PhyInfo
+    // PcsStats.
+    PCS_ERROR_COUNTERS,
   };
 
   enum class AsicMode {
