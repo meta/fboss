@@ -114,7 +114,7 @@ cpp_library(
         "//fboss/agent:fib_helpers",
         "//fboss/agent:packet",
         "//fboss/agent:remote_intf_route_auditor",
-        "//fboss/agent:switch_config-cpp2-types",
+        "//fboss/agent:switch_config-cpp2-serialization",
         "//fboss/agent:switchid_scope_resolver",
         "//fboss/agent:utils",
         "//fboss/agent/hw:hw_resource_stats_publisher",
