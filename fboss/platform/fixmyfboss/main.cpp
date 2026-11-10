@@ -16,6 +16,7 @@
 
 #include <CLI/CLI.hpp>
 #include <folly/String.h>
+#include <folly/init/Init.h>
 #include <folly/logging/LoggerDB.h>
 #include <folly/logging/xlog.h>
 #include <thrift/lib/cpp2/protocol/Serializer.h>
@@ -113,6 +114,8 @@ std::vector<platform_checks::CheckResult> runChecks(
 } // namespace
 
 int main(int argc, char* argv[]) {
+  // CLI11 parses the command line; extensions may need folly singletons.
+  folly::Init init(&argc, &argv, folly::InitOptions().useGFlags(false));
   CLI::App app{
       "fixmyfboss - Diagnose and fix FBOSS device issues", "fixmyfboss"};
   fixmyfboss::CliOptions options;
@@ -172,11 +175,5 @@ int main(int argc, char* argv[]) {
     hook(report);
   }
 
-  bool allPassed =
-      std::all_of(results.begin(), results.end(), [](const auto& result) {
-        return *result.status() == platform_checks::CheckStatus::OK ||
-            *result.status() == platform_checks::CheckStatus::SKIPPED;
-      });
-
-  return allPassed ? EXIT_SUCCESS : EXIT_FAILURE;
+  return fixmyfboss::allChecksPassed(results) ? EXIT_SUCCESS : EXIT_FAILURE;
 }

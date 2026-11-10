@@ -149,4 +149,11 @@ CheckResult CheckRunner::runOne(const PlannedCheck& planned) const {
   }
 }
 
+bool allChecksPassed(const std::vector<CheckResult>& results) {
+  return std::all_of(results.begin(), results.end(), [](const auto& result) {
+    return *result.status() == CheckStatus::OK ||
+        *result.status() == CheckStatus::SKIPPED;
+  });
+}
+
 } // namespace facebook::fboss::platform::fixmyfboss
