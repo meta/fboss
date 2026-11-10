@@ -361,7 +361,7 @@ target_link_libraries(port_stats_test_utils
   stats
   Folly::folly
   switch_config_cpp2
-  FBThrift::thriftcpp2
+  thrift::rpc
 )
 
 add_library(packet_snooper

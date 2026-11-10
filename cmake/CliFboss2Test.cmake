@@ -29,7 +29,7 @@ target_link_libraries(fboss2_framework_test
   Folly::folly
   Folly::follybenchmark
   Folly::folly_test_util
-  FBThrift::thriftcpp2
+  thrift::rpc
 )
 
 gtest_discover_tests(fboss2_framework_test)
@@ -160,7 +160,7 @@ target_link_libraries(fboss2_cmd_test
   Folly::folly
   Folly::follybenchmark
   Folly::folly_test_util
-  FBThrift::thriftcpp2
+  thrift::rpc
   Boost::filesystem
 )
 
@@ -179,5 +179,5 @@ target_link_libraries(thrift_latency_test
   ctrl_cpp2
   thrift_service_utils
   Folly::folly
-  FBThrift::thriftcpp2
+  thrift::rpc
 )

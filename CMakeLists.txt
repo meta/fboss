@@ -413,7 +413,6 @@ foreach(_fboss_prefix IN LISTS CMAKE_PREFIX_PATH _fboss_prefixes)
 endforeach()
 
 # Generate thrift deps and libraries
-include(FBThriftCppLibrary)
 include(FBThriftPythonLibrary)
 
 # Thrift libraries

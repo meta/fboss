@@ -89,7 +89,7 @@ target_link_libraries(fboss2_cmd_config_test
   Folly::folly
   Folly::follybenchmark
   Folly::folly_test_util
-  FBThrift::thriftcpp2
+  thrift::rpc
 )
 
 gtest_discover_tests(fboss2_cmd_config_test)

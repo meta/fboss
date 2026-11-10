@@ -80,7 +80,7 @@ target_link_libraries(fboss2_integration_test
   ${LIBGMOCK_LIBRARIES}
   Folly::folly
   Folly::folly_test_util
-  FBThrift::thriftcpp2
+  thrift::rpc
   gflags
   fmt::fmt
 )
