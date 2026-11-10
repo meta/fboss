@@ -710,6 +710,7 @@ class AclApiTest : public ::testing::Test {
         {aclTableIdAttribute,
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 2)
          label,
+         std::nullopt,
 #endif
          enablePacketCountAttribute,
          enableByteCountAttribute,

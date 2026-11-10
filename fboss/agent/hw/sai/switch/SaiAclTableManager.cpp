@@ -734,6 +734,7 @@ SaiAclTableManager::addAclCounter(
       aclTableId,
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 2)
       aclCounterLabel,
+      std::nullopt, // labelExtended
 #endif
       enablePacketCount,
       enableByteCount,
@@ -743,6 +744,7 @@ SaiAclTableManager::addAclCounter(
       aclTableId,
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 2)
       aclCounterLabel,
+      std::nullopt, // labelExtended
 #endif
       enablePacketCount,
       enableByteCount,

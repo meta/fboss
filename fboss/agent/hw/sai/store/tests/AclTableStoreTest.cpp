@@ -390,6 +390,7 @@ class AclTableStoreTest : public SaiStoreTest {
             aclTableIdAttribute,
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 2)
             this->kCounterLabel(),
+            std::nullopt,
 #endif
             this->kEnablePacketCount(),
             this->kEnableByteCount(),
@@ -449,6 +450,7 @@ TEST_P(AclTableStoreParamTest, loadAclCounter) {
       aclTableId,
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 2)
       this->kCounterLabel(),
+      std::nullopt,
 #endif
       this->kEnablePacketCount(),
       this->kEnableByteCount()};
@@ -617,6 +619,7 @@ TEST_P(AclTableStoreParamTest, AclCounterCreateCtor) {
       aclTableId,
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 2)
       this->kCounterLabel(),
+      std::nullopt,
 #endif
       this->kEnablePacketCount(),
       this->kEnableByteCount(),
@@ -627,6 +630,7 @@ TEST_P(AclTableStoreParamTest, AclCounterCreateCtor) {
       aclTableId,
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 2)
       this->kCounterLabel(),
+      std::nullopt,
 #endif
       this->kEnablePacketCount(),
       this->kEnableByteCount()};
