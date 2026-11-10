@@ -346,6 +346,8 @@ const std::string getPrettyElapsedTime(const int64_t& start_time);
 std::string getUserInfo();
 std::string getUnixname();
 
+std::string formatUsageLine(const CmdLogInfo& cmdLogInfo);
+
 void setLogLevel(const std::string& logLevelStr);
 void logUsage(const CmdLogInfo& cmdLogInfo);
 
