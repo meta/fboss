@@ -48,9 +48,8 @@ LldpValidationResult checkTag(
     const std::string& val) {
   auto res = lldpmap.find(tag);
   if (res == lldpmap.end()) {
-    XLOG(WARNING) << "Port " << id << ": "
-                  << std::to_string(static_cast<int>(tag))
-                  << ": Not present in config";
+    XLOG(DBG4) << "Port " << id << ": " << std::to_string(static_cast<int>(tag))
+               << ": Not present in config";
     return LldpValidationResult::MISSING;
   }
 
