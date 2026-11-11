@@ -144,8 +144,9 @@ void runOnAllHwAgents(const HostInfo& hostInfo, RunForHwAgentFn fn) {
         utils::createClient<apache::thrift::Client<FbossHwCtrl>>(hostInfo, i);
     try {
       fn(*client);
-    } catch (const std::exception&) {
-      // skip switches that cannot be reached
+    } catch (const std::exception& e) {
+      XLOG(WARN) << "hw_agent " << i << " on " << hostInfo.getName()
+                 << " failed: " << e.what();
     }
   }
 }
@@ -157,8 +158,9 @@ void runOnAllHwAgents(const HostInfo& hostInfo, RunForAgentFn fn) {
         utils::createClient<apache::thrift::Client<FbossCtrl>>(hostInfo, i);
     try {
       fn(*client);
-    } catch (const std::exception&) {
-      // skip switches that cannot be reached
+    } catch (const std::exception& e) {
+      XLOG(WARN) << "hw_agent " << i << " on " << hostInfo.getName()
+                 << " failed: " << e.what();
     }
   }
 }
