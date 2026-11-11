@@ -459,7 +459,7 @@ bool IPv4Handler::resolveMac(
           continue;
         }
 
-        sent = sw_->sendNdpSolicitationHelper(intf, state, target);
+        sent = sw_->resolveNdpHelper(intf, target);
       }
     }
   }

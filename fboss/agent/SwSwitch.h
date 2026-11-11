@@ -946,6 +946,10 @@ class SwSwitch : public HwSwitchCallback {
       std::shared_ptr<SwitchState> state,
       const folly::IPAddressV6& target);
 
+  bool resolveNdpHelper(
+      const std::shared_ptr<Interface>& intf,
+      const folly::IPAddressV6& target);
+
   TeFlowStats getTeFlowStats();
 
   VlanID getVlanIDHelper(

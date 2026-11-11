@@ -4146,6 +4146,16 @@ bool SwSwitch::sendNdpSolicitationHelper(
   return sent;
 }
 
+bool SwSwitch::resolveNdpHelper(
+    const std::shared_ptr<Interface>& intf,
+    const folly::IPAddressV6& target) {
+  if (getNeighborEntryForIPAndIntf<NdpEntry>(intf, target)) {
+    return false;
+  }
+  getNeighborUpdater()->resolveNdpForIntf(intf->getID(), target);
+  return true;
+}
+
 VlanID SwSwitch::getVlanIDHelper(
     std::optional<VlanID> vlanID,
     cfg::InterfaceType type) const {

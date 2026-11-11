@@ -1165,20 +1165,7 @@ void IPv6Handler::resolveDestAndHandlePacket(
         sw_->portStats(ingressPort)->pktDropped();
         return;
       } else {
-        // Check if destination is unknown, in which case trigger NDP
-        auto entry = getNeighborEntryForIP<NdpEntry>(state, intf, target);
-
-        if (nullptr == entry) {
-          // No entry in NDP table, create a neighbor solicitation packet
-          sendMulticastNeighborSolicitation(
-              sw_, target, intf->getMac(), sw_->getVlanIDForTx(intf));
-          // Notify the updater that we sent a solicitation out
-          sw_->sentNeighborSolicitation(intf, target);
-        } else {
-          XLOG(DBG5) << "not sending neighbor solicitation for " << target.str()
-                     << ", " << ((entry->isPending()) ? "pending" : "")
-                     << " entry already exists";
-        }
+        sw_->resolveNdpHelper(intf, target);
       }
     }
   }
@@ -1227,7 +1214,7 @@ void IPv6Handler::sendMulticastNeighborSolicitations(
           continue;
         }
 
-        sw_->sendNdpSolicitationHelper(intf, state, target);
+        sw_->resolveNdpHelper(intf, target);
 
       } else if (nh.addr().isV4() && !route->isConnected()) {
         auto source = intf->getAddressToReach(nh.addr())->first.asV4();
