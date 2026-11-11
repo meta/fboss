@@ -280,6 +280,12 @@ bool NeighborCacheImpl<NTable>::programPendingEntry(
     Entry* entry,
     PortDescriptor port,
     bool force) {
+  if (port.isPhysicalPort() && port.phyPortID() == PortID(0)) {
+    // If the entry is pointing to the CPU port, it is not programmed in the
+    // hardware, thus no-op.
+    return true;
+  }
+
   SwSwitch::StateUpdateFn updateFn;
 
   auto switchType = sw_->getSwitchInfoTable().l3SwitchType();
@@ -331,12 +337,6 @@ NeighborCacheImpl<NTable>::getUpdateFnToProgramPendingEntry(
   auto updateFn = [this, fields, port, force, switchType](
                       const std::shared_ptr<SwitchState>& state)
       -> std::shared_ptr<SwitchState> {
-    if (port.isPhysicalPort() && port.phyPortID() == PortID(0)) {
-      // If the entry is pointing to the CPU port, it is not programmed in the
-      // hardware, thus no-op.
-      return nullptr;
-    }
-
     if (!ncachehelpers::checkVlanAndIntf<NTable>(
             state, fields, std::nullopt /* vlanID */)) {
       // intf is no longer valid.
