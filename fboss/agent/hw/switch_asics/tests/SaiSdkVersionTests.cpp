@@ -13,6 +13,7 @@
 #include "fboss/agent/hw/switch_asics/FakeAsic.h"
 #include "fboss/agent/hw/switch_asics/MockAsic.h"
 #include "fboss/agent/hw/switch_asics/P200Asic.h"
+#include "fboss/agent/hw/switch_asics/Tomahawk5Asic.h"
 #include "fboss/agent/hw/switch_asics/Tomahawk6Asic.h"
 #include "fboss/agent/hw/switch_asics/YubaAsic.h"
 
@@ -130,6 +131,19 @@ TEST(SaiSdkVersionTest, yubaUsesPortTtlDecrementDisableOnMorganSdk) {
       yuba.isSupported(HwAsic::Feature::SAI_TTL0_PACKET_FORWARD_ENABLE));
   EXPECT_TRUE(yuba.isSupported(HwAsic::Feature::PORT_TTL_DECREMENT_DISABLE));
   EXPECT_TRUE(yuba.isSupported(HwAsic::Feature::LAG_TTL_DECREMENT_DISABLE));
+}
+
+TEST(HwAsicFeatureTest, hwProtectionCountersDisabledOnTomahawk6Only) {
+  Tomahawk6Asic tomahawk6{0, npuSwitchInfo()};
+  EXPECT_FALSE(tomahawk6.isSupported(
+      HwAsic::Feature::HW_PROTECTION_SWITCHOVER_COUNTERS));
+  for (const auto* version : {"14.2.0.0_odp", "15.4.0.0_odp"}) {
+    EXPECT_FALSE(asicWithSaiSdk(version).isSupported(
+        HwAsic::Feature::HW_PROTECTION_SWITCHOVER_COUNTERS));
+  }
+  Tomahawk5Asic tomahawk5{0, npuSwitchInfo()};
+  EXPECT_TRUE(tomahawk5.isSupported(
+      HwAsic::Feature::HW_PROTECTION_SWITCHOVER_COUNTERS));
 }
 
 TEST(HwAsicFeatureTest, portLatchStatusIsLimitedToYuba) {

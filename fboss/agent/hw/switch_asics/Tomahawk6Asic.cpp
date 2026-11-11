@@ -133,7 +133,6 @@ bool Tomahawk6Asic::isSupported(Feature feature) const {
     case HwAsic::Feature::SAI_MPLS_INSEGMENT:
     case HwAsic::Feature::MANAGEMENT_PORT_MULTICAST_QUEUE_ALPHA:
     case HwAsic::Feature::MY_MAC:
-    case HwAsic::Feature::HW_PROTECTION_SWITCHOVER_COUNTERS:
       return true;
     case HwAsic::Feature::SAI_MPLS_TTL_1_TRAP:
       // The hostif trap is only implemented from 15.4 GA onwards; the 15.4
@@ -275,6 +274,7 @@ bool Tomahawk6Asic::isSupported(Feature feature) const {
     case HwAsic::Feature::PCS_ERROR_COUNTERS:
     case HwAsic::Feature::ACL_DST_IP_WITH_MASK:
     case HwAsic::Feature::ACL_DST_IPV6_WORD_WITH_MASK:
+    case HwAsic::Feature::HW_PROTECTION_SWITCHOVER_COUNTERS:
       return false;
   }
   return false;
