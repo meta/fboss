@@ -670,7 +670,8 @@
         123,
         143,
         133,
-        139
+        139,
+        146
     ],
     "tomahawk6": [
         2,
@@ -1541,7 +1542,8 @@
         "DROP_REASON_LIST_SUPPORT",
         "DROP_REASON_REPORTING",
         "MY_MAC",
-        "MULTI_VRF"
+        "MULTI_VRF",
+        "ACL_COUNTERS_EXTENDED_LABEL"
     ],
     "tomahawk6": [
         "CPU_RX_TX",
@@ -2395,6 +2397,7 @@
         },
         {
           "asics": [
+            "tomahawk5",
             "tomahawk6"
           ],
           "sdk": 1,
