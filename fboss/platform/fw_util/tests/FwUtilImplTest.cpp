@@ -6,6 +6,8 @@
 #include <chrono>
 #include <filesystem>
 #include <fstream>
+#include <iostream>
+#include <sstream>
 #include <string>
 
 namespace facebook::fboss::platform::fw_util {
@@ -229,6 +231,19 @@ TEST_F(FwUtilImplTest, PrintVersionInvalidFpd) {
 
   // printVersion for invalid FPD should throw
   EXPECT_THROW(fwUtil.printVersion("INVALID_FPD"), std::runtime_error);
+}
+
+TEST_F(FwUtilImplTest, PrintVersionAllIsCaseInsensitive) {
+  FwUtilImpl fwUtil(binaryFilePath_.string(), configFilePath_, false, false);
+
+  std::stringstream out;
+  auto* oldBuf = std::cout.rdbuf(out.rdbuf());
+  EXPECT_NO_THROW(fwUtil.printVersion("ALL"));
+  std::cout.rdbuf(oldBuf);
+
+  EXPECT_EQ(
+      out.str(),
+      "BIOS : Not Applicable\nBMC : Not Applicable\nFPGA : Not Applicable\n");
 }
 
 // ============================================================================

@@ -86,8 +86,9 @@ std::tuple<std::string, FwConfig> FwUtilImpl::getFpd(
   }
   throw std::runtime_error(
       fmt::format(
-          "Invalid firmware target name: {}\nUse fw_util --fw_action=list to see available firmware targets",
-          searchFpdName));
+          "Invalid firmware target name: {}\n{}",
+          searchFpdName,
+          kFwTargetListHint));
 }
 
 void FwUtilImpl::doFirmwareAction(
@@ -168,7 +169,7 @@ void FwUtilImpl::printVersion(const std::string& fpd) {
   if (toLower(platformName_) == "darwin") {
     fwUtilVersionHandler_->printDarwinVersion(fpdName);
   } else {
-    if (fpd == "all") {
+    if (fpdName == "all") {
       fwUtilVersionHandler_->printAllVersions();
     } else {
       std::string version = fwUtilVersionHandler_->getSingleVersion(fpdName);

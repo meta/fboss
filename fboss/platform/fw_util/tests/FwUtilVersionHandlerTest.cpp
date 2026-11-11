@@ -131,8 +131,10 @@ TEST_F(FwUtilVersionHandlerTest, GetSingleVersionDeviceNotFound) {
   FwUtilVersionHandler handler(devicesByPrio_, config_);
 
   // Should throw for non-existent device
-  EXPECT_THROW(
-      handler.getSingleVersion("nonexistent_device"), std::runtime_error);
+  EXPECT_THAT(
+      [&] { handler.getSingleVersion("nonexistent_device"); },
+      ::testing::ThrowsMessage<std::runtime_error>(
+          ::testing::HasSubstr("--fw_action=list")));
 }
 
 TEST_F(FwUtilVersionHandlerTest, GetSingleVersionSysfsPathMissing) {
