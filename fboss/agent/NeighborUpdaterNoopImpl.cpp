@@ -91,6 +91,10 @@ void NeighborUpdaterNoopImpl::sentNeighborSolicitationForIntf(
     InterfaceID /*intfID*/,
     IPAddressV6 /*ip*/) {}
 
+void NeighborUpdaterNoopImpl::resolveNdpForIntf(
+    InterfaceID /*intfID*/,
+    IPAddressV6 /*ip*/) {}
+
 void NeighborUpdaterNoopImpl::receivedNdpMineForIntf(
     InterfaceID /*intfID*/,
     IPAddressV6 /*ip*/,

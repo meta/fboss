@@ -581,14 +581,14 @@ NeighborCacheEntry<NTable>* NeighborCacheImpl<NTable>::addOrUpdateEntryInternal(
 }
 
 template <typename NTable>
-void NeighborCacheImpl<NTable>::setPendingEntry(
+bool NeighborCacheImpl<NTable>::setPendingEntry(
     AddressType ip,
     PortDescriptor port,
     bool force) {
   if (!force && getCacheEntry(ip)) {
     // only overwrite an existing entry with a pending entry if we say it is
     // ok with the 'force' parameter
-    return;
+    return false;
   }
   auto entry = addOrUpdateEntryInternal(
       EntryFields(ip, intfID_, NeighborState::PENDING),
@@ -598,7 +598,9 @@ void NeighborCacheImpl<NTable>::setPendingEntry(
   if (entry && !programPendingEntry(entry, port, force)) {
     XLOG(ERR) << "Failed to program pending entry: " << ip.str();
     removeEntry(ip);
+    return false;
   }
+  return entry != nullptr;
 }
 
 template <typename NTable>

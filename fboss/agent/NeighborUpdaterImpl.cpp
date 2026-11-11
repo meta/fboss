@@ -204,6 +204,13 @@ void NeighborUpdaterImpl::sentNeighborSolicitationForIntf(
   cache->sentNeighborSolicitation(ip);
 }
 
+void NeighborUpdaterImpl::resolveNdpForIntf(
+    InterfaceID intfID,
+    IPAddressV6 ip) {
+  auto cache = getNdpCacheForIntf(intfID);
+  cache->resolve(ip);
+}
+
 void NeighborUpdaterImpl::receivedNdpMineForIntf(
     InterfaceID intfID,
     IPAddressV6 ip,
