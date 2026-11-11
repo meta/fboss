@@ -44,7 +44,8 @@
       "sai_eapol_trap_use_bcast_mac": "1"
     },
     "features": {
-      "generate_autoload_board_settings": true
+      "generate_autoload_board_settings": true,
+      "generate_phb_control": true
     }
   },
   "variants": {

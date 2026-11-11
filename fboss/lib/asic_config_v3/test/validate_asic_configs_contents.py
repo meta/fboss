@@ -628,6 +628,27 @@ class TestValidateAsicConfigV3Contents(unittest.TestCase):
                 GeneratedVariant(common=None, npu_entries={0: "npu0", 2: "npu2"}),
             )
 
+    def test_leh800bcls_phb_control_in_all_outputs(self) -> None:
+        paths = AsicConfigPaths.from_root(self._FBOSS_ROOT)
+        platform_config, _ = discover_platforms(paths)["leh800bcls"]
+        expected_document = self._canonicalize_yaml(
+            yaml.safe_dump(
+                {"device": {0: {"PHB_CONTROL": {"INT_PRI_TAGGED_TO_INPUT_PRI": 1}}}}
+            )
+        )[0]
+
+        for variant in platform_config["variants"]:
+            generator = get_generator("leh800bcls", variant, platform_config, paths)
+            generated = generator.generate()
+            outputs = get_output_files(variant, generator.output_extension, generated)
+            for filename, contents in outputs.items():
+                with self.subTest(variant=variant, output=filename):
+                    self.assertIn(
+                        expected_document,
+                        self._canonicalize_yaml(contents),
+                        "Missing tagged-priority PHB mapping",
+                    )
+
     def test_leh800bcls_rack_npu_pm_core_differences(self) -> None:
         paths = AsicConfigPaths.from_root(self._FBOSS_ROOT)
         platform_config, _ = discover_platforms(paths)["leh800bcls"]
