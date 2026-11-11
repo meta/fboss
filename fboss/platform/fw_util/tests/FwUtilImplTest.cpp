@@ -56,19 +56,6 @@ class FwUtilImplTest : public ::testing::Test {
              std::chrono::system_clock::now().time_since_epoch().count()));
     std::filesystem::create_directories(tempDir_);
 
-    // Try to create platform name cache file for testing
-    try {
-      std::filesystem::create_directories("/var/facebook/fboss");
-      std::ofstream platformFile("/var/facebook/fboss/platform_name");
-      if (platformFile.is_open()) {
-        platformFile << "TEST_PLATFORM\n";
-        platformFile.close();
-        createdPlatformFile_ = true;
-      }
-    } catch (...) {
-      createdPlatformFile_ = false;
-    }
-
     // Create test config and binary files
     configFilePath_ = createTestConfigFile(tempDir_.string());
     binaryFilePath_ = tempDir_ / "test_binary.bin";
@@ -84,21 +71,11 @@ class FwUtilImplTest : public ::testing::Test {
     if (std::filesystem::exists(tempDir_)) {
       std::filesystem::remove_all(tempDir_);
     }
-
-    // Clean up platform file if we created it
-    if (createdPlatformFile_) {
-      try {
-        std::filesystem::remove("/var/facebook/fboss/platform_name");
-      } catch (...) {
-        // Ignore cleanup errors
-      }
-    }
   }
 
   std::filesystem::path tempDir_;
   std::filesystem::path binaryFilePath_;
   std::string configFilePath_;
-  bool createdPlatformFile_ = false;
 };
 
 // ============================================================================
@@ -106,10 +83,6 @@ class FwUtilImplTest : public ::testing::Test {
 // ============================================================================
 
 TEST_F(FwUtilImplTest, GetFpdNameListReturnsAll) {
-  if (!createdPlatformFile_) {
-    GTEST_SKIP() << "Skipping test: unable to create platform name file";
-  }
-
   FwUtilImpl fwUtil(binaryFilePath_.string(), configFilePath_, false, false);
 
   std::vector<std::string> fpdList = fwUtil.getFpdNameList();
@@ -131,10 +104,6 @@ TEST_F(FwUtilImplTest, GetFpdNameListReturnsAll) {
 // ============================================================================
 
 TEST_F(FwUtilImplTest, GetFpdCaseInsensitive) {
-  if (!createdPlatformFile_) {
-    GTEST_SKIP() << "Skipping test: unable to create platform name file";
-  }
-
   FwUtilImpl fwUtil(binaryFilePath_.string(), configFilePath_, false, false);
 
   // Test case-insensitive matching
@@ -149,10 +118,6 @@ TEST_F(FwUtilImplTest, GetFpdCaseInsensitive) {
 }
 
 TEST_F(FwUtilImplTest, GetFpdReturnsAll) {
-  if (!createdPlatformFile_) {
-    GTEST_SKIP() << "Skipping test: unable to create platform name file";
-  }
-
   FwUtilImpl fwUtil(binaryFilePath_.string(), configFilePath_, false, false);
 
   // Test "all" returns special tuple
@@ -165,10 +130,6 @@ TEST_F(FwUtilImplTest, GetFpdReturnsAll) {
 }
 
 TEST_F(FwUtilImplTest, GetFpdInvalidThrows) {
-  if (!createdPlatformFile_) {
-    GTEST_SKIP() << "Skipping test: unable to create platform name file";
-  }
-
   FwUtilImpl fwUtil(binaryFilePath_.string(), configFilePath_, false, false);
 
   // Test invalid FPD name throws exception
@@ -181,10 +142,6 @@ TEST_F(FwUtilImplTest, GetFpdInvalidThrows) {
 // ============================================================================
 
 TEST_F(FwUtilImplTest, DoVersionAuditVersionMismatch) {
-  if (!createdPlatformFile_) {
-    GTEST_SKIP() << "Skipping test: unable to create platform name file";
-  }
-
   // doVersionAudit calls exit(1) when version mismatch is found
   // BIOS and BMC have desiredVersion that won't match actual version
   // FPGA has no desiredVersion and will be skipped
@@ -203,10 +160,6 @@ TEST_F(FwUtilImplTest, DoVersionAuditVersionMismatch) {
 // ============================================================================
 
 TEST_F(FwUtilImplTest, DoFirmwareActionInvalidAction) {
-  if (!createdPlatformFile_) {
-    GTEST_SKIP() << "Skipping test: unable to create platform name file";
-  }
-
   FwUtilImpl fwUtil(binaryFilePath_.string(), configFilePath_, false, false);
 
   // Invalid action should log error and exit(1)
@@ -221,10 +174,6 @@ TEST_F(FwUtilImplTest, DoFirmwareActionInvalidAction) {
 // ============================================================================
 
 TEST_F(FwUtilImplTest, PrintVersionInvalidFpd) {
-  if (!createdPlatformFile_) {
-    GTEST_SKIP() << "Skipping test: unable to create platform name file";
-  }
-
   FwUtilImpl fwUtil(binaryFilePath_.string(), configFilePath_, false, false);
 
   // printVersion for invalid FPD should throw
@@ -236,10 +185,6 @@ TEST_F(FwUtilImplTest, PrintVersionInvalidFpd) {
 // ============================================================================
 
 TEST_F(FwUtilImplTest, FpdListSortedByPriority) {
-  if (!createdPlatformFile_) {
-    GTEST_SKIP() << "Skipping test: unable to create platform name file";
-  }
-
   // Create a config with known priorities to test sorting behavior
   std::string sortTestConfig = tempDir_.string() + "/sort_test.json";
   std::ofstream configFile(sortTestConfig);
