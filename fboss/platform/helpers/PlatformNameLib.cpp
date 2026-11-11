@@ -33,6 +33,10 @@ std::string PlatformNameLib::sanitizePlatformName(
   if (platformNameUpper == "TAHAN") {
     return "TAHAN800BC";
   }
+  if (platformNameUpper == "M4052CLSI" ||
+      platformNameUpper == "M4052CLSI_MCB") {
+    return "M4052CLSI";
+  }
   return platformNameUpper;
 }
 
