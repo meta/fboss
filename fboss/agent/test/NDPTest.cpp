@@ -11,6 +11,7 @@
 #include <algorithm>
 
 #include "fboss/agent/AddressUtil.h"
+#include "fboss/agent/AgentFeatures.h"
 #include "fboss/agent/FbossError.h"
 #include "fboss/agent/HwAsicTable.h"
 #include "fboss/agent/LinkAggregationManager.h"
@@ -20,6 +21,7 @@
 #include "fboss/agent/ThriftHandler.h"
 #include "fboss/agent/TxPacket.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
+#include "fboss/agent/hw/switch_asics/HwAsic.h"
 #include "fboss/agent/ndp/IPv6RouteAdvertiser.h"
 #include "fboss/agent/packet/EthHdr.h"
 #include "fboss/agent/packet/Ethertype.h"
@@ -38,9 +40,11 @@
 #include "fboss/agent/test/TestUtils.h"
 #include "fboss/lib/CommonUtils.h"
 
+#include <fb303/ThreadCachedServiceData.h>
 #include <folly/IPAddressV6.h>
 #include <folly/MacAddress.h>
 #include <folly/io/Cursor.h>
+#include <gflags/gflags.h>
 #include <netinet/icmp6.h>
 #include <future>
 #include <thread>
@@ -480,7 +484,8 @@ void sendNeighborAdvertisement(
   ipv6.nextHeader = static_cast<uint8_t>(IP_PROTO::IP_PROTO_IPV6_ICMP);
   ipv6.hopLimit = 255;
 
-  size_t totalLen = EthHdr::SIZE + IPv6Hdr::SIZE + ipv6.payloadLength;
+  size_t totalLen =
+      static_cast<size_t>(EthHdr::SIZE) + IPv6Hdr::SIZE + ipv6.payloadLength;
   auto buf = IOBuf::create(totalLen);
   buf->append(totalLen);
   folly::io::RWPrivateCursor cursor(buf.get());
@@ -1456,6 +1461,143 @@ TEST_F(NdpTest, receiveNeighborAdvertisementUnsolicited) {
   auto numFlushed =
       thriftHandler.flushNeighborEntry(make_unique<BinaryAddress>(binAddr), 5);
   EXPECT_EQ(numFlushed, 1);
+}
+
+TEST_F(NdpTest, SkipLearnWhenNeighborTableFull) {
+  gflags::FlagSaver flagSaver;
+  FLAGS_enable_hw_update_protection = true;
+  auto handle = this->setupTestHandle();
+  auto sw = handle->getSw();
+  auto intfID =
+      sw->getState()->getInterfaceIDForPort(PortDescriptor(PortID(1)));
+  auto getNdpTable = [&]() {
+    return sw->getState()->getInterfaces()->getNodeIf(intfID)->getNdpTable();
+  };
+  auto ndpLimit =
+      *sw->getHwAsicTable()->getHwAsic(SwitchID(0))->getMaxNdpTableSize();
+  auto learn = [&](const std::string& host, const std::string& mac) {
+    sendNeighborAdvertisement(
+        handle.get(), host, mac, PortDescriptor(PortID(1)), 5, false);
+    sw->getNeighborUpdater()->waitForPendingUpdates();
+    waitForStateUpdates(sw);
+  };
+
+  ASSERT_LT(ndpLimit, 90u);
+  for (uint32_t i = 0; i < ndpLimit; i++) {
+    learn(
+        folly::to<std::string>("2401:db00:2110:3004::", 10 + i),
+        folly::to<std::string>("02:05:73:f9:46:", 10 + i));
+  }
+  ASSERT_EQ(ndpLimit, getNdpTable()->size());
+
+  // The counters are thread local, so publish them before each read.
+  auto failures = [&]() {
+    facebook::fb303::ThreadCachedServiceData::get()->publishStats();
+    return sw->stats()->getNeighborTableUpdateFailure();
+  };
+  auto skips = [&]() {
+    facebook::fb303::ThreadCachedServiceData::get()->publishStats();
+    return sw->stats()->getNeighborLearnSkippedTableFull();
+  };
+  auto failuresBefore = failures();
+  auto skipsBefore = skips();
+  IPAddressV6 unknownHost("2401:db00:2110:3004::100");
+  learn(unknownHost.str(), "02:05:73:f9:46:64");
+  EXPECT_EQ(skipsBefore + 1, skips());
+  EXPECT_EQ(failuresBefore, failures());
+  EXPECT_EQ(ndpLimit, getNdpTable()->size());
+  EXPECT_EQ(nullptr, getNdpTable()->getEntryIf(unknownHost));
+
+  IPAddressV6 knownHost("2401:db00:2110:3004::10");
+  learn(knownHost.str(), "02:05:73:f9:46:aa");
+  auto known = getNdpTable()->getEntryIf(knownHost);
+  ASSERT_NE(nullptr, known);
+  EXPECT_EQ(MacAddress("02:05:73:f9:46:aa"), known->getMac());
+  EXPECT_EQ(skipsBefore + 1, skips());
+  EXPECT_EQ(ndpLimit, getNdpTable()->size());
+}
+
+TEST_F(NdpTest, SkipReplyForPendingEntryWhenNeighborTableFull) {
+  gflags::FlagSaver flagSaver;
+  FLAGS_enable_hw_update_protection = true;
+  auto handle = this->setupTestHandle();
+  auto sw = handle->getSw();
+  auto intfID =
+      sw->getState()->getInterfaceIDForPort(PortDescriptor(PortID(1)));
+  auto getNdpTable = [&]() {
+    return sw->getState()->getInterfaces()->getNodeIf(intfID)->getNdpTable();
+  };
+  auto ndpLimit =
+      *sw->getHwAsicTable()->getHwAsic(SwitchID(0))->getMaxNdpTableSize();
+  auto learn = [&](const std::string& host, const std::string& mac) {
+    sendNeighborAdvertisement(
+        handle.get(), host, mac, PortDescriptor(PortID(1)), 5, false);
+    sw->getNeighborUpdater()->waitForPendingUpdates();
+    waitForStateUpdates(sw);
+  };
+
+  // A pending entry is in the neighbor cache, not in the switch state.
+  IPAddressV6 pendingHost("2401:db00:2110:3004::100");
+  sw->getNeighborUpdater()->sentNeighborSolicitationForIntf(
+      intfID, pendingHost);
+  sw->getNeighborUpdater()->waitForPendingUpdates();
+
+  ASSERT_LT(ndpLimit, 90u);
+  for (uint32_t i = 0; i < ndpLimit; i++) {
+    learn(
+        folly::to<std::string>("2401:db00:2110:3004::", 10 + i),
+        folly::to<std::string>("02:05:73:f9:46:", 10 + i));
+  }
+  ASSERT_EQ(ndpLimit, getNdpTable()->size());
+
+  auto failures = [&]() {
+    facebook::fb303::ThreadCachedServiceData::get()->publishStats();
+    return sw->stats()->getNeighborTableUpdateFailure();
+  };
+  auto skips = [&]() {
+    facebook::fb303::ThreadCachedServiceData::get()->publishStats();
+    return sw->stats()->getNeighborLearnSkippedTableFull();
+  };
+  auto failuresBefore = failures();
+  auto skipsBefore = skips();
+  learn(pendingHost.str(), "02:05:73:f9:46:64");
+  EXPECT_EQ(skipsBefore + 1, skips());
+  EXPECT_EQ(failuresBefore, failures());
+  EXPECT_EQ(ndpLimit, getNdpTable()->size());
+}
+
+TEST_F(NdpTest, NoSkipWhenHwUpdateProtectionIsOff) {
+  gflags::FlagSaver flagSaver;
+  FLAGS_enable_hw_update_protection = false;
+  auto handle = this->setupTestHandle();
+  auto sw = handle->getSw();
+  auto intfID =
+      sw->getState()->getInterfaceIDForPort(PortDescriptor(PortID(1)));
+  auto getNdpTable = [&]() {
+    return sw->getState()->getInterfaces()->getNodeIf(intfID)->getNdpTable();
+  };
+  auto ndpLimit =
+      *sw->getHwAsicTable()->getHwAsic(SwitchID(0))->getMaxNdpTableSize();
+  auto learn = [&](const std::string& host, const std::string& mac) {
+    sendNeighborAdvertisement(
+        handle.get(), host, mac, PortDescriptor(PortID(1)), 5, false);
+    sw->getNeighborUpdater()->waitForPendingUpdates();
+    waitForStateUpdates(sw);
+  };
+
+  ASSERT_LT(ndpLimit, 90u);
+  for (uint32_t i = 0; i < ndpLimit; i++) {
+    learn(
+        folly::to<std::string>("2401:db00:2110:3004::", 10 + i),
+        folly::to<std::string>("02:05:73:f9:46:", 10 + i));
+  }
+
+  facebook::fb303::ThreadCachedServiceData::get()->publishStats();
+  auto skipsBefore = sw->stats()->getNeighborLearnSkippedTableFull();
+  learn("2401:db00:2110:3004::100", "02:05:73:f9:46:64");
+  facebook::fb303::ThreadCachedServiceData::get()->publishStats();
+  EXPECT_EQ(skipsBefore, sw->stats()->getNeighborLearnSkippedTableFull());
+  EXPECT_EQ(ndpLimit + 1, getNdpTable()->size());
 }
 
 TEST_F(NdpTest, FlushEntry) {

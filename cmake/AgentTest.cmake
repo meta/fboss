@@ -89,6 +89,41 @@ target_link_libraries(async_logger_test
 
 gtest_discover_tests(async_logger_test)
 
+add_executable(neighbor_learn_test
+  fboss/util/oss/TestMain.cpp
+  fboss/agent/test/ArpTest.cpp
+  fboss/agent/test/NDPTest.cpp
+)
+
+target_link_libraries(neighbor_learn_test
+  agent_test_utils
+  core
+  handler
+  common_utils
+  neighbor_test_utils
+  ${GTEST}
+  ${LIBGMOCK_LIBRARIES}
+)
+
+gtest_discover_tests(neighbor_learn_test)
+
+add_executable(resource_accountant_test
+  fboss/util/oss/TestMain.cpp
+  fboss/agent/test/ResourceAccountantTest.cpp
+)
+
+target_link_libraries(resource_accountant_test
+  agent_test_utils
+  core
+  validate_state_update
+  hw_asic_table
+  nexthop_id_manager
+  ${GTEST}
+  ${LIBGMOCK_LIBRARIES}
+)
+
+gtest_discover_tests(resource_accountant_test)
+
 add_executable(mpls_handler_test
   fboss/util/oss/TestMain.cpp
   fboss/agent/test/MPLSHandlerTest.cpp

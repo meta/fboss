@@ -530,6 +530,14 @@ class SwitchStats : public boost::noncopyable, public ThriftCallDurationLogger {
     return getCumulativeValue(neighborTableUpdateFailure_);
   }
 
+  void neighborLearnSkippedTableFull() {
+    neighborLearnSkippedTableFull_.addValue(1);
+  }
+
+  int getNeighborLearnSkippedTableFull() const {
+    return getCumulativeValue(neighborLearnSkippedTableFull_);
+  }
+
   void hiPriPktsReceived() {
     hiPriPktsReceived_.addValue(1);
   }
@@ -1235,6 +1243,7 @@ class SwitchStats : public boost::noncopyable, public ThriftCallDurationLogger {
   // TODO: delete this once multi_switch becomes default
   TLTimeseries multiSwitchStatus_;
   TLTimeseries neighborTableUpdateFailure_;
+  TLTimeseries neighborLearnSkippedTableFull_;
 
   TLTimeseries macTableUpdateFailure_;
 

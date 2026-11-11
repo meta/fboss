@@ -7,19 +7,20 @@
  *  of patent rights can be found in the PATENTS file in the same directory.
  *
  */
-#include <fb303/ServiceData.h>
-#include <folly/Memory.h>
+#include <fb303/ThreadCachedServiceData.h>
 #include <folly/io/Cursor.h>
 #include <folly/io/IOBuf.h>
 #include "fboss/agent/AddressUtil.h"
+#include "fboss/agent/AgentFeatures.h"
 #include "fboss/agent/ArpHandler.h"
 #include "fboss/agent/FbossError.h"
+#include "fboss/agent/HwAsicTable.h"
 #include "fboss/agent/NeighborUpdater.h"
 #include "fboss/agent/SwSwitch.h"
 #include "fboss/agent/SwitchStats.h"
 #include "fboss/agent/ThriftHandler.h"
 #include "fboss/agent/TxPacket.h"
-#include "fboss/agent/hw/mock/MockHwSwitch.h"
+#include "fboss/agent/hw/switch_asics/HwAsic.h"
 #include "fboss/agent/packet/PktUtil.h"
 #include "fboss/agent/state/ArpEntry.h"
 #include "fboss/agent/state/ArpTable.h"
@@ -34,6 +35,7 @@
 #include "fboss/agent/test/TestUtils.h"
 
 #include <boost/range/combine.hpp>
+#include <gflags/gflags.h>
 #include <gtest/gtest.h>
 #include <array>
 #include <future>
@@ -866,6 +868,187 @@ TEST_F(ArpTest, FlushEntry) {
   auto binAddrPtr = make_unique<BinaryAddress>(binAddr);
   EXPECT_THROW(
       thriftHandler.flushNeighborEntry(std::move(binAddrPtr), 123), FbossError);
+}
+
+TEST_F(ArpTest, SkipLearnWhenNeighborTableFull) {
+  gflags::FlagSaver flagSaver;
+  FLAGS_enable_hw_update_protection = true;
+  auto handle = setupTestHandle();
+  auto sw = handle->getSw();
+  VlanID vlanID(1);
+  InterfaceID intfID(1);
+  auto arpLimit =
+      *sw->getHwAsicTable()->getHwAsic(SwitchID(0))->getMaxArpTableSize();
+
+  ASSERT_LT(arpLimit, 90u);
+  for (uint32_t i = 0; i < arpLimit; i++) {
+    sendArpReply(
+        handle.get(),
+        folly::to<string>("10.0.0.", 10 + i),
+        folly::to<string>("02:10:20:30:40:", 10 + i),
+        1);
+  }
+  waitForStateUpdates(sw);
+  ASSERT_EQ(arpLimit, getArpTable(sw, vlanID, intfID)->size());
+
+  // The counters are thread local, so publish them before each read.
+  auto failures = [&]() {
+    facebook::fb303::ThreadCachedServiceData::get()->publishStats();
+    return sw->stats()->getNeighborTableUpdateFailure();
+  };
+  auto skips = [&]() {
+    facebook::fb303::ThreadCachedServiceData::get()->publishStats();
+    return sw->stats()->getNeighborLearnSkippedTableFull();
+  };
+  auto failuresBefore = failures();
+  auto skipsBefore = skips();
+  sendArpReply(handle.get(), "10.0.0.100", "02:10:20:30:40:64", 1);
+  waitForStateUpdates(sw);
+  EXPECT_EQ(skipsBefore + 1, skips());
+  EXPECT_EQ(failuresBefore, failures());
+  EXPECT_EQ(arpLimit, getArpTable(sw, vlanID, intfID)->size());
+  EXPECT_EQ(nullptr, getArpEntry(sw, IPAddressV4("10.0.0.100")));
+
+  sendArpReply(handle.get(), "10.0.0.10", "02:10:20:30:40:aa", 1);
+  waitForStateUpdates(sw);
+  auto known = getArpEntry(sw, IPAddressV4("10.0.0.10"));
+  ASSERT_NE(nullptr, known);
+  EXPECT_EQ(MacAddress("02:10:20:30:40:aa"), known->getMac());
+  EXPECT_EQ(skipsBefore + 1, skips());
+  EXPECT_EQ(arpLimit, getArpTable(sw, vlanID, intfID)->size());
+}
+
+TEST_F(ArpTest, SkipReplyForPendingEntryWhenNeighborTableFull) {
+  gflags::FlagSaver flagSaver;
+  FLAGS_enable_hw_update_protection = true;
+  auto handle = setupTestHandle();
+  auto sw = handle->getSw();
+  VlanID vlanID(1);
+  InterfaceID intfID(1);
+  auto arpLimit =
+      *sw->getHwAsicTable()->getHwAsic(SwitchID(0))->getMaxArpTableSize();
+
+  // A pending entry is in the neighbor cache, not in the switch state.
+  sw->getNeighborUpdater()->sentArpRequestForIntf(
+      intfID, IPAddressV4("10.0.0.100"));
+  sw->getNeighborUpdater()->waitForPendingUpdates();
+
+  ASSERT_LT(arpLimit, 90u);
+  for (uint32_t i = 0; i < arpLimit; i++) {
+    sendArpReply(
+        handle.get(),
+        folly::to<string>("10.0.0.", 10 + i),
+        folly::to<string>("02:10:20:30:40:", 10 + i),
+        1);
+  }
+  waitForStateUpdates(sw);
+  ASSERT_EQ(arpLimit, getArpTable(sw, vlanID, intfID)->size());
+
+  auto failures = [&]() {
+    facebook::fb303::ThreadCachedServiceData::get()->publishStats();
+    return sw->stats()->getNeighborTableUpdateFailure();
+  };
+  auto skips = [&]() {
+    facebook::fb303::ThreadCachedServiceData::get()->publishStats();
+    return sw->stats()->getNeighborLearnSkippedTableFull();
+  };
+  auto failuresBefore = failures();
+  auto skipsBefore = skips();
+  sendArpReply(handle.get(), "10.0.0.100", "02:10:20:30:40:64", 1);
+  waitForStateUpdates(sw);
+  EXPECT_EQ(skipsBefore + 1, skips());
+  EXPECT_EQ(failuresBefore, failures());
+  EXPECT_EQ(arpLimit, getArpTable(sw, vlanID, intfID)->size());
+}
+
+TEST_F(ArpTest, SkipNotMineArpForPendingEntryWhenNeighborTableFull) {
+  gflags::FlagSaver flagSaver;
+  FLAGS_enable_hw_update_protection = true;
+  auto handle = setupTestHandle();
+  auto sw = handle->getSw();
+  VlanID vlanID(1);
+  InterfaceID intfID(1);
+  auto arpLimit =
+      *sw->getHwAsicTable()->getHwAsic(SwitchID(0))->getMaxArpTableSize();
+
+  // A pending entry is in the neighbor cache, not in the switch state.
+  sw->getNeighborUpdater()->sentArpRequestForIntf(
+      intfID, IPAddressV4("10.0.0.100"));
+  sw->getNeighborUpdater()->waitForPendingUpdates();
+
+  ASSERT_LT(arpLimit, 90u);
+  for (uint32_t i = 0; i < arpLimit; i++) {
+    sendArpReply(
+        handle.get(),
+        folly::to<string>("10.0.0.", 10 + i),
+        folly::to<string>("02:10:20:30:40:", 10 + i),
+        1);
+  }
+  waitForStateUpdates(sw);
+  ASSERT_EQ(arpLimit, getArpTable(sw, vlanID, intfID)->size());
+
+  auto failures = [&]() {
+    facebook::fb303::ThreadCachedServiceData::get()->publishStats();
+    return sw->stats()->getNeighborTableUpdateFailure();
+  };
+  auto skips = [&]() {
+    facebook::fb303::ThreadCachedServiceData::get()->publishStats();
+    return sw->stats()->getNeighborLearnSkippedTableFull();
+  };
+  auto failuresBefore = failures();
+  auto skipsBefore = skips();
+  sw->getNeighborUpdater()->receivedArpNotMineForIntf(
+      intfID,
+      IPAddressV4("10.0.0.100"),
+      MacAddress("02:10:20:30:40:64"),
+      PortDescriptor(PortID(1)),
+      ARP_OP_REQUEST);
+  sw->getNeighborUpdater()->waitForPendingUpdates();
+  waitForStateUpdates(sw);
+  EXPECT_EQ(skipsBefore + 1, skips());
+  EXPECT_EQ(failuresBefore, failures());
+  EXPECT_EQ(arpLimit, getArpTable(sw, vlanID, intfID)->size());
+
+  sw->getNeighborUpdater()->receivedArpNotMineForIntf(
+      intfID,
+      IPAddressV4("10.0.0.10"),
+      MacAddress("02:10:20:30:40:aa"),
+      PortDescriptor(PortID(1)),
+      ARP_OP_REQUEST);
+  sw->getNeighborUpdater()->waitForPendingUpdates();
+  waitForStateUpdates(sw);
+  auto known = getArpEntry(sw, IPAddressV4("10.0.0.10"));
+  ASSERT_NE(nullptr, known);
+  EXPECT_EQ(MacAddress("02:10:20:30:40:aa"), known->getMac());
+  EXPECT_EQ(skipsBefore + 1, skips());
+  EXPECT_EQ(failuresBefore, failures());
+}
+
+TEST_F(ArpTest, NoSkipWhenHwUpdateProtectionIsOff) {
+  gflags::FlagSaver flagSaver;
+  FLAGS_enable_hw_update_protection = false;
+  auto handle = setupTestHandle();
+  auto sw = handle->getSw();
+  auto arpLimit =
+      *sw->getHwAsicTable()->getHwAsic(SwitchID(0))->getMaxArpTableSize();
+
+  ASSERT_LT(arpLimit, 90u);
+  for (uint32_t i = 0; i < arpLimit; i++) {
+    sendArpReply(
+        handle.get(),
+        folly::to<string>("10.0.0.", 10 + i),
+        folly::to<string>("02:10:20:30:40:", 10 + i),
+        1);
+  }
+  waitForStateUpdates(sw);
+
+  facebook::fb303::ThreadCachedServiceData::get()->publishStats();
+  auto skipsBefore = sw->stats()->getNeighborLearnSkippedTableFull();
+  sendArpReply(handle.get(), "10.0.0.100", "02:10:20:30:40:64", 1);
+  waitForStateUpdates(sw);
+  facebook::fb303::ThreadCachedServiceData::get()->publishStats();
+  EXPECT_EQ(skipsBefore, sw->stats()->getNeighborLearnSkippedTableFull());
+  EXPECT_NE(nullptr, getArpEntry(sw, IPAddressV4("10.0.0.100")));
 }
 
 TEST_F(ArpTest, PendingArp) {
