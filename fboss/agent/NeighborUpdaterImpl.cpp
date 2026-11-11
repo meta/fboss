@@ -265,6 +265,13 @@ void NeighborUpdaterImpl::sentArpRequestForIntf(
   cache->sentArpRequest(ip);
 }
 
+void NeighborUpdaterImpl::resolveArpForIntf(
+    InterfaceID intfID,
+    IPAddressV4 ip) {
+  auto cache = getArpCacheForIntf(intfID);
+  cache->resolve(ip);
+}
+
 void NeighborUpdaterImpl::receivedArpMineForIntf(
     InterfaceID intfID,
     IPAddressV4 ip,

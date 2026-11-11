@@ -133,6 +133,10 @@ void NeighborUpdaterNoopImpl::sentArpRequestForIntf(
     InterfaceID /*intfID*/,
     IPAddressV4 /*ip*/) {}
 
+void NeighborUpdaterNoopImpl::resolveArpForIntf(
+    InterfaceID /*intfID*/,
+    IPAddressV4 /*ip*/) {}
+
 void NeighborUpdaterNoopImpl::receivedArpMineForIntf(
     InterfaceID /*intfID*/,
     IPAddressV4 /*ip*/,
