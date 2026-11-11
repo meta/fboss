@@ -128,6 +128,7 @@ cpp_unittest(
     name = "cmd_test",
     srcs = [
         "CanonicalRibResolverTest.cpp",
+        "CmdClearArpNdpTest.cpp",
         "CmdConfigSessionClearTest.cpp",
         "CmdGetPcapTest.cpp",
         "CmdListConfigTest.cpp",
