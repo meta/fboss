@@ -1224,7 +1224,7 @@ void IPv6Handler::sendMulticastNeighborSolicitations(
           continue;
         }
 
-        sw_->sendArpRequestHelper(intf, state, source, target);
+        sw_->resolveArpHelper(intf, target);
       }
     }
   }

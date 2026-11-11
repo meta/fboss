@@ -928,20 +928,6 @@ TEST_F(ArpTest, PendingArp) {
   counters.checkDelta(SwitchStats::kCounterPrefix + "ipv4.nexthop.sum", 1);
   counters.checkDelta(SwitchStats::kCounterPrefix + "ipv4.no_arp.sum", 0);
 
-  // Receiving this duplicate packet triggers another ARP request because
-  // the pending entry is not in SwitchState for the interface path (CPU port).
-  // The packet handler checks SwitchState (not the internal neighbor cache),
-  // so it follows the same code path as the first packet.
-  EXPECT_SWITCHED_PKT(
-      sw,
-      "ARP request (dup)",
-      checkArpRequest(
-          senderIP,
-          MacAddress("00:02:00:00:00:01"),
-          IPAddressV4("10.0.0.10"),
-          vlanID))
-      .RetiresOnSaturation();
-
   handle->rxPacket(make_unique<IOBuf>(hex), PortDescriptor(PortID(1)), vlanID);
   sw->getNeighborUpdater()->waitForPendingUpdates();
   waitForStateUpdates(sw);
@@ -949,7 +935,7 @@ TEST_F(ArpTest, PendingArp) {
   counters.update();
   counters.checkDelta(SwitchStats::kCounterPrefix + "trapped.pkts.sum", 1);
   counters.checkDelta(SwitchStats::kCounterPrefix + "trapped.arp.sum", 0);
-  counters.checkDelta(SwitchStats::kCounterPrefix + "arp.request.tx.sum", 1);
+  counters.checkDelta(SwitchStats::kCounterPrefix + "arp.request.tx.sum", 0);
   counters.checkDelta(SwitchStats::kCounterPrefix + "arp.request.rx.sum", 0);
   counters.checkDelta(SwitchStats::kCounterPrefix + "arp.reply.tx.sum", 0);
   counters.checkDelta(SwitchStats::kCounterPrefix + "arp.reply.rx.sum", 0);
