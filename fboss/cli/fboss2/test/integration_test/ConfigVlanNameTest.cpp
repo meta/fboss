@@ -185,7 +185,13 @@ class ConfigVlanNameTest : public Fboss2IntegrationTest {
 TEST_F(ConfigVlanNameTest, SetNameOnExistingVlan) {
   // Step 1: Find an eth interface and its VLAN
   XLOG(INFO) << "[Step 1] Finding an eth interface...";
-  Interface iface = findFirstEthInterface();
+  auto maybeIface = findFirstEthInterfaceWithMtu();
+  if (!maybeIface.has_value()) {
+    GTEST_SKIP() << "No ethernet interface with a configured VLAN found — "
+                    "skipping VLAN name test (no L3 cfg::Interface present "
+                    "on this switch)";
+  }
+  const Interface& iface = *maybeIface;
   ASSERT_TRUE(iface.vlan.has_value());
   int vlanId = *iface.vlan;
   XLOG(INFO) << "  Using interface " << iface.name << " (VLAN " << vlanId
