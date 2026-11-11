@@ -69,7 +69,8 @@
         "config_gen_type": "HW_TEST"
       },
       "features": {
-        "enable_sai_managed_udf_groups": true
+        "enable_sai_managed_udf_groups": true,
+        "enable_uncached_port_stats": true
       }
     }
   }

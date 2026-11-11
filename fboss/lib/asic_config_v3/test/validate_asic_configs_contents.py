@@ -24,7 +24,7 @@ import os
 import sys
 import unittest
 from enum import Enum
-from typing import Any, cast, NamedTuple, Optional
+from typing import Any, cast, ClassVar, NamedTuple, Optional
 from unittest.mock import patch
 
 import yaml
@@ -97,18 +97,14 @@ class TestValidateAsicConfigV3Contents(unittest.TestCase):
     # truth is the YAML embedded in a materialized agent config. Keyed by the
     # variant's effective ``config_gen_type`` so that any platform declaring
     # one of these gen types is picked up without editing this table.
-    _MATERIALIZED_REFERENCE_DIRS = {
+    _MATERIALIZED_REFERENCE_DIRS: ClassVar[dict[str, str]] = {
         "BENCHMARK": os.path.join("oss", "hw_bench_configs"),
         "HW_TEST": os.path.join("oss", "hw_test_configs"),
+        "LINK_TEST": os.path.join("oss", "link_test_configs"),
     }
     _MATERIALIZED_REFERENCE_SUFFIX = ".agent.materialized_JSON"
-    _MATERIALIZED_YAML_PATH = (
-        "platform",
-        "chip",
-        "asicConfig",
-        "common",
-        "yamlConfig",
-    )
+    _MATERIALIZED_REFERENCE_LINK_TEST_SUFFIX = ".materialized_JSON"
+    _MATERIALIZED_YAML_PATH = ("platform", "chip", "asicConfig", "common", "yamlConfig")
     _MAX_DIFF_LINES = 200
 
     def _reference_filename(self, platform: str, variant: str, extension: str) -> str:
@@ -145,9 +141,12 @@ class TestValidateAsicConfigV3Contents(unittest.TestCase):
         reference_dir = self._MATERIALIZED_REFERENCE_DIRS.get(config_gen_type)
         if reference_dir is None:
             return None
-        return os.path.join(
-            reference_dir, f"{platform}{self._MATERIALIZED_REFERENCE_SUFFIX}"
+        suffix = (
+            self._MATERIALIZED_REFERENCE_LINK_TEST_SUFFIX
+            if config_gen_type == "LINK_TEST"
+            else self._MATERIALIZED_REFERENCE_SUFFIX
         )
+        return os.path.join(reference_dir, f"{platform}{suffix}")
 
     def _read_reference(
         self,
@@ -190,10 +189,7 @@ class TestValidateAsicConfigV3Contents(unittest.TestCase):
             )
         if isinstance(node, MappingNode):
             entries = [
-                (
-                    self._canonicalize_yaml_node(key),
-                    self._canonicalize_yaml_node(value),
-                )
+                (self._canonicalize_yaml_node(key), self._canonicalize_yaml_node(value))
                 for key, value in node.value
             ]
             return ("mapping", node.tag, tuple(sorted(entries, key=repr)))
@@ -235,10 +231,7 @@ class TestValidateAsicConfigV3Contents(unittest.TestCase):
             ),
             file=sys.stderr,
         )
-        print(
-            "  ".join("-" * width for width in widths),
-            file=sys.stderr,
-        )
+        print("  ".join("-" * width for width in widths), file=sys.stderr)
         for row in rows:
             print(
                 "  ".join(
@@ -360,10 +353,7 @@ class TestValidateAsicConfigV3Contents(unittest.TestCase):
             for filename in sorted(generated.keys() | checked_in.keys())
             if generated.get(filename) != checked_in.get(filename)
         )
-        return (
-            GeneratedOutput(generated, stale_generated_files),
-            None,
-        )
+        return (GeneratedOutput(generated, stale_generated_files), None)
 
     def _read_checked_in_outputs(
         self, output_dir: str, variant: str, extension: str
@@ -381,9 +371,7 @@ class TestValidateAsicConfigV3Contents(unittest.TestCase):
         section_prefix = f"{variant}_"
         outputs = {}
         for filename in sorted(os.listdir(output_dir)):
-            if filename == common_filename:
-                pass
-            elif filename == f"{variant}_common{extension}":
+            if filename in {common_filename, f"{variant}_common{extension}"}:
                 pass
             elif filename.startswith(section_prefix) and filename.endswith(extension):
                 index = filename[len(section_prefix) : -len(extension)]
@@ -407,12 +395,7 @@ class TestValidateAsicConfigV3Contents(unittest.TestCase):
     ) -> VariantVerification:
         display_variant = variant or "<default>"
         generated_output, generation_error = self._get_generated_output(
-            paths,
-            platform,
-            variant,
-            platform_config,
-            output_dir,
-            generated_variant,
+            paths, platform, variant, platform_config, output_dir, generated_variant
         )
         if generation_error:
             return generation_error
@@ -423,8 +406,7 @@ class TestValidateAsicConfigV3Contents(unittest.TestCase):
         stale_generated_files = generated_output.stale_generated_files
 
         common_filename = get_output_filename(
-            variant,
-            os.path.splitext(next(iter(generated_files)))[1],
+            variant, os.path.splitext(next(iter(generated_files)))[1]
         )
         if set(generated_files) != {common_filename}:
             return VariantVerification(
@@ -445,11 +427,7 @@ class TestValidateAsicConfigV3Contents(unittest.TestCase):
         )
         try:
             reference_path, reference = self._read_reference(
-                paths,
-                materialized_relative_path,
-                platform,
-                variant,
-                output_filename,
+                paths, materialized_relative_path, platform, variant, output_filename
             )
         except FileNotFoundError as error:
             missing_reference = str(error.filename)
@@ -580,8 +558,7 @@ class TestValidateAsicConfigV3Contents(unittest.TestCase):
 
     def test_comparison_result_classification(self) -> None:
         self.assertEqual(
-            self._compare("key: value\n", "key: value\n"),
-            ComparisonResult.BYTE_MATCH,
+            self._compare("key: value\n", "key: value\n"), ComparisonResult.BYTE_MATCH
         )
         self.assertEqual(
             self._compare("first: 1\nsecond: 2\n", "second: 2\nfirst: 1\n"),
@@ -688,12 +665,13 @@ class TestValidateAsicConfigV3Contents(unittest.TestCase):
         )
         stderr = io.StringIO()
 
-        with patch("sys.stderr", stderr):
-            with self.assertRaisesRegex(
-                AssertionError,
-                "1 ASIC config v3 variant.*test_platform/test_variant",
-            ):
-                self._assert_verification_success(results)
+        with (
+            patch("sys.stderr", stderr),
+            self.assertRaisesRegex(
+                AssertionError, "1 ASIC config v3 variant.*test_platform/test_variant"
+            ),
+        ):
+            self._assert_verification_success(results)
 
         output = stderr.getvalue()
         self.assertIn("CONTENT_MISMATCH platform variants:", output)
@@ -706,9 +684,7 @@ class TestValidateAsicConfigV3Contents(unittest.TestCase):
 
         with (
             patch.object(
-                self,
-                "_get_generated_output",
-                return_value=(generated_output, None),
+                self, "_get_generated_output", return_value=(generated_output, None)
             ),
             patch.object(
                 self,
@@ -764,14 +740,15 @@ class TestValidateAsicConfigV3Contents(unittest.TestCase):
             ComparisonResult.GENERATED_ONLY.value,
         )
 
-        with patch("sys.stderr", io.StringIO()):
-            with self.assertRaisesRegex(
-                AssertionError,
-                "1 checked-in generated file.*stale",
-            ):
-                self._assert_verification_success(
-                    VerificationResults([record], [], [stale_path], [])
-                )
+        with (
+            patch("sys.stderr", io.StringIO()),
+            self.assertRaisesRegex(
+                AssertionError, "1 checked-in generated file.*stale"
+            ),
+        ):
+            self._assert_verification_success(
+                VerificationResults([record], [], [stale_path], [])
+            )
 
 
 def main() -> None:

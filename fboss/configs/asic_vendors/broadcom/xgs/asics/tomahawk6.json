@@ -122,9 +122,9 @@
       }
     },
     {
-      "name": "hw_test_uncached_port_stats",
-      "description": "Enables uncached port statistics for hardware tests.",
-      "condition": {"source": "asic_config_params", "param": "config_gen_type", "equals": "HW_TEST"},
+      "name": "uncached_port_stats",
+      "description": "Enables uncached port statistics.",
+      "condition": {"source": "features", "param": "enable_uncached_port_stats", "equals": true},
       "apply": {
         "global": {"sai_uncached_port_stats": "0x1"}
       }

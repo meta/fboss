@@ -88,6 +88,9 @@
       "platform_mapping_name": "ladakh800bcls_test_fixture",
       "asic_config_params": {
         "config_gen_type": "HW_TEST"
+      },
+      "features": {
+        "enable_uncached_port_stats": true
       }
     },
     "test_fixture_postevt": {
