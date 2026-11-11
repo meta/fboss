@@ -53,6 +53,7 @@ target_link_libraries(fw_util
 
 add_executable(fw_util_sw_test
   fboss/platform/fw_util/tests/ConfigValidatorTest.cpp
+  fboss/platform/fw_util/tests/FwUtilImplTest.cpp
 )
 
 target_link_libraries(fw_util_sw_test
