@@ -129,6 +129,19 @@ target_link_libraries(vrf_config_test
 
 gtest_discover_tests(vrf_config_test)
 
+add_executable(mac_table_utils_test
+  fboss/util/oss/TestMain.cpp
+  fboss/agent/test/MacTableUtilsTests.cpp
+)
+
+target_link_libraries(mac_table_utils_test
+  agent_test_utils
+  ${GTEST}
+  ${LIBGMOCK_LIBRARIES}
+)
+
+gtest_discover_tests(mac_table_utils_test)
+
 add_library(agent_test_lib
   fboss/agent/test/AgentTest.cpp
 )
