@@ -3,5 +3,906 @@
   "psus": [
     "/run/devmap/sensors/PDB_L_PMBUS",
     "/run/devmap/sensors/PDB_R_PMBUS"
+  ],
+  "i2cDumpDeviceRegs": [
+    {
+      "devicePath": "/run/devmap/cplds/MCB_CPLD",
+      "regSet": [
+        {
+          "regList": [
+            {
+              "regName": "MCB SYSTEM INT Status",
+              "regAddr": "0x09"
+            }
+          ],
+          "parseRule": {
+            "mask": "0b00011111",
+            "parameterList": [
+              "LM75_ADC_INT_STA",
+              "MCB_HS_Alert_INT_STA",
+              "MCB_HS_SMBA_INT_STA",
+              "MCB_HS_PWR_INT_STA",
+              "MCB_FAN_MOD_INT_STA"
+            ],
+            "expectedValue": "0b00011111"
+          }
+        },
+        {
+          "regList": [
+            {
+              "regName": "MCB LM75 and ADC Alert Status",
+              "regAddr": "0x0C"
+            }
+          ],
+          "parseRule": {
+            "mask": "0b00000011",
+            "parameterList": [
+              "LM75_INT_STA",
+              "ADC_INT_STA"
+            ],
+            "expectedValue": "0b00000011"
+          }
+        },
+        {
+          "regList": [
+            {
+              "regName": "PSU PWR Status",
+              "regAddr": "0x11"
+            }
+          ],
+          "parseRule": {
+            "mask": "0b11111111",
+            "parameterList": [
+              "PDB_PSU_L_ALERT",
+              "PDB_PSU_R_ALERT",
+              "CPLD_PSU_L_PG",
+              "CPLD_PSU_R_PG",
+              "PSU_L_AC_OK",
+              "PSU_R_AC_OK",
+              "PDB_L_SENSOR_INT",
+              "PDB_R_SENSOR_INT"
+            ],
+            "expectedValue": "0b11111111"
+          }
+        },
+        {
+          "regList": [
+            {
+              "regName": "FAN HS Alert Status",
+              "regAddr": "0x14"
+            }
+          ],
+          "parseRule": {
+            "mask": "0b11111111",
+            "parameterList": [
+              "FAN1_HSC_STA",
+              "FAN2_HSC_STA",
+              "FAN3_HSC_STA",
+              "FAN4_HSC_STA",
+              "FAN5_HSC_STA",
+              "FAN6_HSC_STA",
+              "FAN7_HSC_STA",
+              "FAN8_HSC_STA"
+            ],
+            "expectedValue": "0b11111111"
+          }
+        },
+        {
+          "regList": [
+            {
+              "regName": "FAN HS SMBA Interrupt Status",
+              "regAddr": "0x17"
+            }
+          ],
+          "parseRule": {
+            "mask": "0b11111111",
+            "parameterList": [
+              "FAN1_HS_SMBA_STA",
+              "FAN2_HS_SMBA_STA",
+              "FAN3_HS_SMBA_STA",
+              "FAN4_HS_SMBA_STA",
+              "FAN5_HS_SMBA_STA",
+              "FAN6_HS_SMBA_STA",
+              "FAN7_HS_SMBA_STA",
+              "FAN8_HS_SMBA_STA"
+            ],
+            "expectedValue": "0b11111111"
+          }
+        },
+        {
+          "regList": [
+            {
+              "regName": "FAN HS PG Interrupt Status",
+              "regAddr": "0x1A"
+            }
+          ],
+          "parseRule": {
+            "mask": "0b11111111",
+            "parameterList": [
+              "FAN1_HSC_PWR_STA",
+              "FAN2_HSC_PWR_STA",
+              "FAN3_HSC_PWR_STA",
+              "FAN4_HSC_PWR_STA",
+              "FAN5_HSC_PWR_STA",
+              "FAN6_HSC_PWR_STA",
+              "FAN7_HSC_PWR_STA",
+              "FAN8_HSC_PWR_STA"
+            ],
+            "expectedValue": "0b11111111"
+          }
+        },
+        {
+          "regList": [
+            {
+              "regName": "FAN Module Interrupt Status",
+              "regAddr": "0x1D"
+            }
+          ],
+          "parseRule": {
+            "mask": "0b11111111",
+            "parameterList": [
+              "FAN1_STATUS",
+              "FAN2_STATUS",
+              "FAN3_STATUS",
+              "FAN4_STATUS",
+              "FAN5_STATUS",
+              "FAN6_STATUS",
+              "FAN7_STATUS",
+              "FAN8_STATUS"
+            ],
+            "expectedValue": "0b11111111"
+          }
+        },
+        {
+          "regList": [
+            {
+              "regName": "PSU PWR Cycle TIMER COUNTER STATE",
+              "regAddr": "0x22"
+            }
+          ]
+        },
+        {
+          "regList": [
+            {
+              "regName": "MCB On-board PWR Status",
+              "regAddr": "0xB1"
+            }
+          ],
+          "parseRule": {
+            "mask": "0b01111111",
+            "parameterList": [
+              "XP3R3V_FCB_PG",
+              "XP3R3V_MCB_PG",
+              "XP1R0V_IOB_PG",
+              "XP1R2V_IOB_PG",
+              "XP1R8V_IOB_PG",
+              "XP3R3V_IOB_PG",
+              "XP3R3V_BMC_PG"
+            ],
+            "expectedValue": "0b01111111"
+          }
+        },
+        {
+          "regList": [
+            {
+              "regName": "MCB On-Board Clock Status",
+              "regAddr": "0xB2"
+            }
+          ],
+          "parseRule": {
+            "mask": "0b00000010",
+            "parameterList": [
+              "PCIE_CLK_EN_L"
+            ],
+            "expectedValue": "0b00000000"
+          }
+        },
+        {
+          "regList": [
+            {
+              "regName": "SYSTEM Sub-Design Status",
+              "regAddr": "0xB5"
+            }
+          ],
+          "parseRule": {
+            "mask": "0b00011111",
+            "parameterList": [
+              "COM_PWROK",
+              "PCH_PWROK",
+              "IOB_PWROK",
+              "SMB_PWROK",
+              "SCM_PRS_N"
+            ],
+            "expectedValue": "0b00001111"
+          }
+        },
+        {
+          "regList": [
+            {
+              "regName": "FAN Present Status",
+              "regAddr": "0xB7"
+            }
+          ],
+          "parseRule": {
+            "mask": "0b11111111",
+            "parameterList": [
+              "FAN1_PRESENT_L",
+              "FAN2_PRESENT_L",
+              "FAN3_PRESENT_L",
+              "FAN4_PRESENT_L",
+              "FAN5_PRESENT_L",
+              "FAN6_PRESENT_L",
+              "FAN7_PRESENT_L",
+              "FAN8_PRESENT_L"
+            ],
+            "expectedValue": "0b00000000"
+          }
+        }
+      ]
+    },
+    {
+      "devicePath": "/run/devmap/sensors/MCB_FAN_CPLD",
+      "regSet": [
+        {
+          "regList": [
+            {
+              "regName": "FAN WDT STA",
+              "regAddr": "0x21"
+            }
+          ]
+        },
+        {
+          "regList": [
+            {
+              "regName": "FAN1 STATUS",
+              "regAddr": "0x38"
+            },
+            {
+              "regName": "FAN2 STATUS",
+              "regAddr": "0x48"
+            },
+            {
+              "regName": "FAN3 STATUS",
+              "regAddr": "0x58"
+            },
+            {
+              "regName": "FAN4 STATUS",
+              "regAddr": "0x68"
+            },
+            {
+              "regName": "FAN5 STATUS",
+              "regAddr": "0x78"
+            },
+            {
+              "regName": "FAN6 STATUS",
+              "regAddr": "0x88"
+            },
+            {
+              "regName": "FAN7 STATUS",
+              "regAddr": "0x98"
+            },
+            {
+              "regName": "FAN8 STATUS",
+              "regAddr": "0xA8"
+            }
+          ],
+          "parseRule": {
+            "mask": "0b00001111",
+            "parameterList": [
+              "FAN_PRESENT",
+              "FAN_ALIVE",
+              "RFAN_ALIVE",
+              "FFAN_ALIVE"
+            ],
+            "expectedValue": "0b00000000"
+          }
+        }
+      ]
+    },
+    {
+      "devicePath": "/run/devmap/cplds/SMB_CPLD",
+      "regSet": [
+        {
+          "regList": [
+            {
+              "regName": "System PWR Status 1",
+              "regAddr": "0x09"
+            }
+          ],
+          "parseRule": {
+            "mask": "0b11111111",
+            "parameterList": [
+              "TH5_XP0P75_TRVDD0_PG",
+              "TH5_XP0P75_TRVDD1_PG",
+              "TH5_XP0P90_PLL_0_PG",
+              "TH5_XP0P90_PLL_1_PG",
+              "TH5_XP0P90_PLL_2_PG",
+              "TH5_XP0P90_PLL_3_PG",
+              "TH5_XP0P90_TRVDD_0_PG",
+              "TH5_XP0P90_TRVDD_1_PG"
+            ],
+            "expectedValue": "0b11111111"
+          }
+        },
+        {
+          "regList": [
+            {
+              "regName": "System PWR Status 2",
+              "regAddr": "0x0A"
+            }
+          ],
+          "parseRule": {
+            "mask": "0b00011111",
+            "parameterList": [
+              "XP0R8V_TH5_VDD_CORE_PG",
+              "TH5_XP1P50_VDDH_PG",
+              "TH5_XP1P50_ANLG_PG",
+              "TH5_XP1P20_PG",
+              "TH5_XP1P80_PG"
+            ],
+            "expectedValue": "0b00011111"
+          }
+        },
+        {
+          "regList": [
+            {
+              "regName": "System PWR Status 3",
+              "regAddr": "0x0B"
+            }
+          ],
+          "parseRule": {
+            "mask": "0b00111111",
+            "parameterList": [
+              "DOM1_XP3P3_PG",
+              "DOM1_XP2P5_PG",
+              "DOM1_XP1P1_PG",
+              "DOM2_XP3P3_PG",
+              "DOM2_XP2P5_PG",
+              "DOM2_XP1P1_PG"
+            ],
+            "expectedValue": "0b00111111"
+          }
+        },
+        {
+          "regList": [
+            {
+              "regName": "System PWR Status 4",
+              "regAddr": "0x0C"
+            }
+          ],
+          "parseRule": {
+            "mask": "0b11111111",
+            "parameterList": [
+              "XP1P2_PG",
+              "XP1P8_PG",
+              "XP1P8_CLK_PG",
+              "XP3P3_R_OSFP_PG",
+              "XP3P3_L_OSFP_PG",
+              "XP3P3_CLK_PG",
+              "XP3P3_SMB_PG",
+              "XP3P3_PG"
+            ],
+            "expectedValue": "0b11111111"
+          }
+        },
+        {
+          "regList": [
+            {
+              "regName": "System Clock Status",
+              "regAddr": "0x0D"
+            }
+          ],
+          "parseRule": {
+            "mask": "0b00010111",
+            "parameterList": [
+              "RC32308_LOCK",
+              "TH5_SYS_PLL_GPIO_0",
+              "TH5_SYS_PLL_GPIO_1",
+              "rc32308_lock_int"
+            ],
+            "expectedValue": "0b00000011"
+          }
+        },
+        {
+          "regList": [
+            {
+              "regName": "SMB System Interrupt Status",
+              "regAddr": "0x11"
+            }
+          ],
+          "parseRule": {
+            "mask": "0b01111111",
+            "parameterList": [
+              "LM75_ADC_STA",
+              "SMB_VR_Alert_STA",
+              "SMB_VR_PG_STA",
+              "SMB_CLK_DEV_STA",
+              "SMB_SUB_MOD_STA",
+              "SMB_OSFP_STA",
+              "SMB_OSFP_PRS_STA"
+            ],
+            "expectedValue": "0b01111111"
+          }
+        },
+        {
+          "regList": [
+            {
+              "regName": "SMB LM75 and ADC Alert Status",
+              "regAddr": "0x14"
+            }
+          ],
+          "parseRule": {
+            "mask": "0b00011111",
+            "parameterList": [
+              "LM75_INT_STA",
+              "ADC_1_INT_STA",
+              "ADC_2_INT_STA",
+              "ADC_3_INT_STA",
+              "LM57_TOVER_STA"
+            ],
+            "expectedValue": "0b00011111"
+          }
+        },
+        {
+          "regList": [
+            {
+              "regName": "SMB VR Alert Status",
+              "regAddr": "0x17"
+            }
+          ],
+          "parseRule": {
+            "mask": "0b00111111",
+            "parameterList": [
+              "XP0R8V_TH5_VDD_CORE_ALERT_STA",
+              "XP0R9V_TH5_TRVDD_0_ALERT_STA",
+              "XP0R9V_TH5_TRVDD_1_ALERT_STA",
+              "XP3R3V_RIGHT_ALERT_STA",
+              "XP3R3V_LEFT_ALERT_STA",
+              "XP12R0V_SCM_ALERT_STA"
+            ],
+            "expectedValue": "0b00111111"
+          }
+        },
+        {
+          "regList": [
+            {
+              "regName": "SMB VR PG Status",
+              "regAddr": "0x1A"
+            }
+          ],
+          "parseRule": {
+            "mask": "0b00011111",
+            "parameterList": [
+              "TH5_PWR_STA",
+              "DOM_PWR_STA",
+              "XP3P3_PWR_STA",
+              "XP5P0_PWR_STA",
+              "XP3R3V_PH_PG_STA"
+            ],
+            "expectedValue": "0b00011111"
+          }
+        },
+        {
+          "regList": [
+            {
+              "regName": "SMB Clock and Devices Misc Status",
+              "regAddr": "0x1D"
+            }
+          ],
+          "parseRule": {
+            "mask": "0b00001111",
+            "parameterList": [
+              "TH5_SYS_PLL_CLK_STA",
+              "TH5_PCIE_LINK_STA",
+              "TH5_PCIE_WAKE_STA",
+              "TH5_PCIE_INTR_STA"
+            ],
+            "expectedValue": "0b00001111"
+          }
+        },
+        {
+          "regList": [
+            {
+              "regName": "Sub-design Present and PWR Status",
+              "regAddr": "0x20"
+            }
+          ],
+          "parseRule": {
+            "mask": "0b00001111",
+            "parameterList": [
+              "SMB_PG_STA",
+              "SCB_PG_STA",
+              "IOB_PG_STA",
+              "SCM_PRSn_STA"
+            ],
+            "expectedValue": "0b00001111"
+          }
+        },
+        {
+          "regList": [
+            {
+              "regName": "OSFP Port GroupInterrupt Status",
+              "regAddr": "0x23"
+            }
+          ],
+          "parseRule": {
+            "mask": "0b11111111",
+            "parameterList": [
+              "OSFP_GROUP_00_INT_STA",
+              "OSFP_GROUP_01_INT_STA",
+              "OSFP_GROUP_02_INT_STA",
+              "OSFP_GROUP_03_INT_STA",
+              "OSFP_GROUP_04_INT_STA",
+              "OSFP_GROUP_05_INT_STA",
+              "OSFP_GROUP_06_INT_STA",
+              "OSFP_GROUP_07_INT_STA"
+            ],
+            "expectedValue": "0b11111111"
+          }
+        },
+        {
+          "regList": [
+            {
+              "regName": "OSFP Port GroupPresent Status",
+              "regAddr": "0x26"
+            }
+          ],
+          "parseRule": {
+            "mask": "0b11111111",
+            "parameterList": [
+              "OSFP_GROUP_00_PRSN_STA",
+              "OSFP_GROUP_01_PRSN_STA",
+              "OSFP_GROUP_02_PRSN_STA",
+              "OSFP_GROUP_03_PRSN_STA",
+              "OSFP_GROUP_04_PRSN_STA",
+              "OSFP_GROUP_05_PRSN_STA",
+              "OSFP_GROUP_06_PRSN_STA",
+              "OSFP_GROUP_07_PRSN_STA"
+            ],
+            "expectedValue": "0b11111111"
+          }
+        },
+        {
+          "regList": [
+            {
+              "regName": "OSFP Port Group0(1~7) Interrupt Status",
+              "regAddr": "0x31"
+            },
+            {
+              "regName": "OSFP Port Group1(8~15) Interrupt Status",
+              "regAddr": "0x41"
+            },
+            {
+              "regName": "OSFP Port Group2(16~23) Interrupt Status",
+              "regAddr": "0x51"
+            },
+            {
+              "regName": "OSFP Port Group3(24~31) Interrupt Status",
+              "regAddr": "0x61"
+            },
+            {
+              "regName": "OSFP Port Group4(32~39) Interrupt Status",
+              "regAddr": "0x71"
+            },
+            {
+              "regName": "OSFP Port Group5(40~47) Interrupt Status",
+              "regAddr": "0x81"
+            },
+            {
+              "regName": "OSFP Port Group6(48~55) Interrupt Status",
+              "regAddr": "0x91"
+            },
+            {
+              "regName": "OSFP Port Group7(56~63) Interrupt Status",
+              "regAddr": "0xA1"
+            }
+          ],
+          "parseRule": {
+            "mask": "0b11111111",
+            "parameterList": [
+              "OSFP_00_INT_N_STA",
+              "OSFP_01_INT_N_STA",
+              "OSFP_02_INT_N_STA",
+              "OSFP_03_INT_N_STA",
+              "OSFP_04_INT_N_STA",
+              "OSFP_05_INT_N_STA",
+              "OSFP_06_INT_N_STA",
+              "OSFP_07_INT_N_STA"
+            ],
+            "expectedValue": "0b11111111"
+          }
+        },
+        {
+          "regList": [
+            {
+              "regName": "OSFP Port Group0(1~7) Present Status",
+              "regAddr": "0x34"
+            },
+            {
+              "regName": "OSFP Port Group1(8~15) Present Status",
+              "regAddr": "0x44"
+            },
+            {
+              "regName": "OSFP Port Group2(16~23) Present Status",
+              "regAddr": "0x54"
+            },
+            {
+              "regName": "OSFP Port Group3(24~31) Present Status",
+              "regAddr": "0x64"
+            },
+            {
+              "regName": "OSFP Port Group4(32~39) Present Status",
+              "regAddr": "0x74"
+            },
+            {
+              "regName": "OSFP Port Group5(40~47) Present Status",
+              "regAddr": "0x84"
+            },
+            {
+              "regName": "OSFP Port Group6(48~55) Present Status",
+              "regAddr": "0x94"
+            },
+            {
+              "regName": "OSFP Port Group7(56~63) Present Status",
+              "regAddr": "0xA4"
+            }
+          ],
+          "parseRule": {
+            "mask": "0b11111111",
+            "parameterList": [
+              "OSFP_00_PRSN_STA",
+              "OSFP_01_PRSN_STA",
+              "OSFP_02_PRSN_STA",
+              "OSFP_03_PRSN_STA",
+              "OSFP_04_PRSN_STA",
+              "OSFP_05_PRSN_STA",
+              "OSFP_06_PRSN_STA",
+              "OSFP_07_PRSN_STA"
+            ],
+            "expectedValue": "0b00000000"
+          }
+        },
+        {
+          "regList": [
+            {
+              "regName": "TH5 MAX_TEMP_CLK_H_BYTE",
+              "regAddr": "0xB8"
+            }
+          ]
+        },
+        {
+          "regList": [
+            {
+              "regName": "TH5 MAX_TEMP_CLK_L_BYTE",
+              "regAddr": "0xB9"
+            }
+          ]
+        },
+        {
+          "regList": [
+            {
+              "regName": "TH5 MIN_TEMP_CLK_H_BYTE",
+              "regAddr": "0xBA"
+            }
+          ]
+        },
+        {
+          "regList": [
+            {
+              "regName": "TH5 MIN_TEMP_CLK_L_BYTE",
+              "regAddr": "0xBB"
+            }
+          ]
+        },
+        {
+          "regList": [
+            {
+              "regName": "RC32308 NO LOCK COUNT",
+              "regAddr": "0xC0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "devicePath": "/run/devmap/cplds/SCM_CPLD",
+      "regSet": [
+        {
+          "regList": [
+            {
+              "regName": "COMe Status Misc 1",
+              "regAddr": "0x11"
+            }
+          ],
+          "parseRule": {
+            "mask": "0b11111111",
+            "parameterList": [
+              "ISO_COM_SUS_S3_N",
+              "ISO_COM_SUS_S4_N",
+              "ISO_COM_SUS_S5_N",
+              "ISO_COM_SUS_STAT_N",
+              "FM_CPU_ERR0_LVT3_L",
+              "FM_CPU_ERR1_LVT3_L",
+              "FM_CPU_ERR2_LVT3_L",
+              "PWRGD_P3V3_STBY"
+            ],
+            "expectedValue": "0b11111111"
+          }
+        },
+        {
+          "regList": [
+            {
+              "regName": "COMe Status Misc 2",
+              "regAddr": "0x12"
+            }
+          ],
+          "parseRule": {
+            "mask": "0b11111111",
+            "parameterList": [
+              "FM_CPU_MSMI_CAT ERR_N",
+              "FM_MEMTRIP_BUF N",
+              "FM_CPU_PROCHOT LATCH_L",
+              "FM_PCHHOT_L",
+              "FM_PVCCIN_CPU_PWR_IN_ALERT_L",
+              "FM_USB_OC0_L",
+              "M_BIOS_POST_CMPLT_L",
+              "FM_CPU_DIMM_EV EN_N"
+            ],
+            "expectedValue": "0b00111111"
+          }
+        },
+        {
+          "regList": [
+            {
+              "regName": "COMe Status Misc 3",
+              "regAddr": "0x13"
+            }
+          ],
+          "parseRule": {
+            "mask": "0b00111111",
+            "parameterList": [
+              "FPGA_CRC_ERROR_PLD",
+              "IRQ_PWRGD_CPU_PLD LVC",
+              "IRQ_COME_THERM TRIP L",
+              "IRQ MEMHOT OUT FET_L",
+              "IRQ PVCCIN CPU VRHOT_LVC3_L",
+              "IRQ_LVC3_WAKE_L"
+            ],
+            "expectedValue": "0b00111110"
+          }
+        },
+        {
+          "regList": [
+            {
+              "regName": "SCM System Interrupt Status",
+              "regAddr": "0x21"
+            }
+          ],
+          "parseRule": {
+            "mask": "0b01101011",
+            "parameterList": [
+              "LM75_ADC_STA",
+              "SCM_HS_Alert_STA",
+              "SCM_HS_PWR_STA",
+              "SCM_COMe_MOD_STA",
+              "SCM_BMC_MOD_STA"
+            ],
+            "expectedValue": "0b01101011"
+          }
+        },
+        {
+          "regList": [
+            {
+              "regName": "LM75 and ADC Alert Status",
+              "regAddr": "0x23"
+            }
+          ],
+          "parseRule": {
+            "mask": "0b00000101",
+            "parameterList": [
+              "LM75B_INT_L_STA",
+              "ADC_INT_STA"
+            ],
+            "expectedValue": "0b00000101"
+          }
+        },
+        {
+          "regList": [
+            {
+              "regName": "SCM VR Alert Status",
+              "regAddr": "0x27"
+            }
+          ],
+          "parseRule": {
+            "mask": "0b00001111",
+            "parameterList": [
+              "HS_ALERT1_STA",
+              "HS_ALERT2_STA",
+              "HS_FAULT_STA",
+              "USB_XP5P0_STA"
+            ],
+            "expectedValue": "0b00001111"
+          }
+        },
+        {
+          "regList": [
+            {
+              "regName": "SCM VR PG Status",
+              "regAddr": "0x2A"
+            }
+          ],
+          "parseRule": {
+            "mask": "0b11111111",
+            "parameterList": [
+              "HS_PG_STA",
+              "XP3R3V_BMC_PG_STA",
+              "XP3P3_SCM_PG_STA",
+              "XP3P3_I210_PG_STA",
+              "XP3P3_SSD_PG_STA",
+              "XP5P0_COME_PG_STA",
+              "XP12P0_COME_PG_STA",
+              "XP1P1_OOB_PG_STA"
+            ],
+            "expectedValue": "0b11111111"
+          }
+        },
+        {
+          "regList": [
+            {
+              "regName": "SCM Clock and Devices Misc",
+              "regAddr": "0x2D"
+            }
+          ],
+          "parseRule": {
+            "mask": "0b11110011",
+            "parameterList": [
+              "PCIe_Gen3_LOS_STA",
+              "PCIe_Gen4_LOS_STA",
+              "OOB_PHY_STA",
+              "IOB_I2C_RDY_STA",
+              "BMC_I2C_RDY_STA",
+              "I210_LAN_WAKE_STA"
+            ],
+            "expectedValue": "0b11110011"
+          }
+        },
+        {
+          "regList": [
+            {
+              "regName": "Sub-design Present and PWR Status",
+              "regAddr": "0x30"
+            }
+          ],
+          "parseRule": {
+            "mask": "0b00000111",
+            "parameterList": [
+              "SMB_PG_STA",
+              "SCM_PG_STA",
+              "MCB_PG_STA"
+            ],
+            "expectedValue": "0b00000111"
+          }
+        },
+        {
+          "regList": [
+            {
+              "regName": "SCM BMC MOD Status",
+              "regAddr": "0xB3"
+            }
+          ],
+          "parseRule": {
+            "mask": "0b00011111",
+            "parameterList": [
+              "XP3R3V_BMC_PG",
+              "OOB_BMC_PHY_INT",
+              "FM_BMC_READY",
+              "BMC_PWRGD",
+              "BMC_I2C_OUT_READY"
+            ],
+            "expectedValue": "0b00011111"
+          }
+        }
+      ]
+    }
   ]
 }
