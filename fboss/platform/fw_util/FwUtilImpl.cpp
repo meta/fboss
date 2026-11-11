@@ -179,6 +179,7 @@ void FwUtilImpl::printVersion(const std::string& fpd) {
 
 void FwUtilImpl::doVersionAudit() {
   bool mismatch = false;
+  int auditedTargets = 0;
   for (const auto& [fpdName, fwConfig] : *fwUtilConfig_.fwConfigs()) {
     std::string desiredVersion = fwConfig.desiredVersion().value_or("");
     if (desiredVersion.empty()) {
@@ -188,11 +189,13 @@ void FwUtilImpl::doVersionAudit() {
           fpdName);
       continue;
     }
+    ++auditedTargets;
     std::string actualVersion;
     try {
       actualVersion = fwUtilVersionHandler_->getSingleVersion(fpdName);
     } catch (const std::exception& e) {
       XLOG(ERR) << "Failed to get version for " << fpdName << ": " << e.what();
+      mismatch = true;
       continue;
     }
 
@@ -205,6 +208,12 @@ void FwUtilImpl::doVersionAudit() {
           desiredVersion);
       mismatch = true;
     }
+  }
+  if (auditedTargets == 0) {
+    XLOG(
+        ERR,
+        "No firmware target has a desired version in the config. The audit did not compare a version.");
+    exit(2);
   }
   if (mismatch) {
     XLOG(INFO, "Firmware version mismatch found.");
