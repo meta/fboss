@@ -34,7 +34,7 @@ for filename in ipxev4.efi ipxev6.efi autoexec.ipxe; do
   ln "$SRC" "$DST"
 done
 
-touch "$MAC_DIR/pxeboot_complete"
+echo 1 >"$MAC_DIR/pxeboot_complete"
 
 INTERFACE_FILE="/distro_infra/persistent/interface_name.txt"
 if [ ! -f "$INTERFACE_FILE" ]; then
