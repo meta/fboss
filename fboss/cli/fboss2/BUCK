@@ -1107,6 +1107,7 @@ cpp_library(
         "fbsource//third-party/fmt:fmt",
         "fbsource//xplat/folly:file",
         "fbsource//xplat/folly:file_util",
+        "//fboss/lib:common_file_utils",
     ],
     exported_deps = [
         "fbsource//xplat/folly/json:dynamic",
