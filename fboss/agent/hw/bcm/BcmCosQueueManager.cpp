@@ -109,7 +109,7 @@ int64_t getCumulativeCounter(
     facebook::fb303::ExportedStatMapImpl* statsMap,
     const std::string& statName) {
   auto statPtr = statsMap->getStatPtrNoExport(statName);
-  auto lockedStatPtr = statPtr->wlock();
+  auto lockedStatPtr = statPtr->contextualLock();
   lockedStatPtr->update(
       std::chrono::seconds(facebook::fb303::get_legacy_stats_time()));
   auto numLevels = lockedStatPtr->numLevels();

@@ -316,7 +316,7 @@ TeFlowStats BcmTeFlowTable::getFlowStats() const {
     auto statName = folly::to<std::string>(counterId, ".bytes");
     // returns default stat if statName does not exists
     auto statPtr = statMap->getStatPtrNoExport(statName);
-    auto lockedStatPtr = statPtr->wlock();
+    auto lockedStatPtr = statPtr->contextualLock();
     lockedStatPtr->update(
         std::chrono::seconds(facebook::fb303::get_legacy_stats_time()));
     auto numLevels = lockedStatPtr->numLevels();
