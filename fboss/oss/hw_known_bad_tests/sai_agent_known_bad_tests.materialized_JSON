@@ -26126,9 +26126,6 @@
           "test_name_regex": "AgentTrafficPauseTest.verifyPauseRxTx$"
         },
         {
-          "test_name_regex": "AgentDeviceBufferGuaranteeTest.VerifyDeviceBufferCappedUnderCongestion$"
-        },
-        {
           "test_name_regex": "AgentMPLSTest/[01].MplsMatchPktsNottrapped$"
         },
         {
