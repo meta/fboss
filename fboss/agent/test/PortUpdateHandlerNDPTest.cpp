@@ -240,6 +240,30 @@ TEST_F(PortUpdateHandlerNDPTest, VlanInterfacePortUp) {
       cfg::InterfaceType::VLAN);
 }
 
+TEST_F(PortUpdateHandlerNDPTest, SlowRetriesOnlyForDesiredPeer) {
+  auto config = createVlanInterfaceConfig();
+  *config.maxNeighborProbes() = 2;
+  auto handle = setupTestHandle(config);
+  sw_->linkStateChanged(PortID(PORT_ID), true, cfg::PortType::INTERFACE_PORT);
+  waitForStateUpdates(sw_);
+  auto peer = folly::IPAddressV6("2001:db8:100::2");
+  auto nonPeer = folly::IPAddressV6("2001:db8:100::3");
+  auto inCache = [&](const folly::IPAddressV6& ip) {
+    auto entries = sw_->getNeighborUpdater()->getNdpCacheDataForIntf().get();
+    return std::any_of(entries.begin(), entries.end(), [&](const auto& entry) {
+      return entry.ip() == facebook::network::toBinaryAddress(ip);
+    });
+  };
+
+  sw_->getNeighborUpdater()
+      ->resolveNdpForIntf(InterfaceID(INTERFACE_ID), nonPeer)
+      .get();
+  EXPECT_TRUE(inCache(nonPeer));
+
+  WITH_RETRIES_N(10, { EXPECT_EVENTUALLY_FALSE(inCache(nonPeer)); });
+  EXPECT_TRUE(inCache(peer));
+}
+
 // Test port UP but interface operationally DOWN
 TEST_F(PortUpdateHandlerNDPTest, VlanUpInterfaceDown) {
   auto config = createVlanInterfaceConfig();
