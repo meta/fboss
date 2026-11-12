@@ -13,33 +13,38 @@
 
 #include <fmt/core.h>
 #include <thrift/lib/cpp/util/EnumUtils.h>
+#include <array>
+#include <vector>
 
 namespace facebook::fboss {
 
 namespace {
 
-std::string formatAqm(const ActiveQueueManagement& aqm) {
+// Behavior, min length, max length, probability.
+using AqmRow = std::array<std::string, 4>;
+
+AqmRow formatAqm(const ActiveQueueManagement& aqm) {
   auto behavior = apache::thrift::util::enumNameSafe(aqm.behavior().value());
   if (const auto& linear = aqm.detection()->linear()) {
-    return fmt::format(
-        "{}  minLength={}  maxLength={}  probability={}%",
+    return {
         behavior,
-        linear->minimumLength().value(),
-        linear->maximumLength().value(),
-        linear->probability().value());
+        std::to_string(linear->minimumLength().value()),
+        std::to_string(linear->maximumLength().value()),
+        fmt::format("{}%", linear->probability().value())};
   }
-  return fmt::format("{}  detection=unknown", behavior);
+  return {behavior, "unknown", "unknown", "unknown"};
 }
 
-void printQueueDetails(const PortQueueThrift& queue, std::ostream& out) {
-  constexpr auto kIndent = "       ";
+// One row per AQM entry; a queue with ECN and EARLY_DROP yields two rows.
+std::vector<AqmRow> aqmRows(const PortQueueThrift& queue) {
   if (!queue.aqms() || queue.aqms()->empty()) {
-    out << kIndent << "AQM: none\n";
-    return;
+    return {{"none", "-", "-", "-"}};
   }
+  std::vector<AqmRow> rows;
   for (const auto& aqm : *queue.aqms()) {
-    out << kIndent << "AQM: " << formatAqm(aqm) << "\n";
+    rows.push_back(formatAqm(aqm));
   }
+  return rows;
 }
 
 } // namespace
@@ -73,7 +78,8 @@ CmdShowPortQueue::RetType CmdShowPortQueue::queryClient(
 void CmdShowPortQueue::printOutput(
     const RetType& portId2PortInfoThrift,
     std::ostream& out) {
-  constexpr auto fmtString = "{:<7}{:<20}{:<25}{:<10}{:<15}{:<15}\n";
+  constexpr auto fmtString = "{:<7}{:<20}{:<25}{:<10}{:<15}{:<15}";
+  constexpr auto aqmFmtString = "{:<12}{:<11}{:<11}{}";
   const bool detailed = CmdGlobalOptions::getInstance()->isDetailed();
 
   for (auto const& [portId, portInfo] : portId2PortInfoThrift) {
@@ -90,7 +96,12 @@ void CmdShowPortQueue::printOutput(
         "Weight",
         "ReservedBytes",
         "ScalingFactor");
-    out << std::string(90, '-') << std::endl;
+    if (detailed) {
+      out << fmt::format(
+          aqmFmtString, "AQM", "MinLength", "MaxLength", "Probability");
+    }
+    out << "\n";
+    out << std::string(detailed ? 135 : 90, '-') << std::endl;
 
     for (auto const& queue : portInfo.portQueues().value()) {
       out << fmt::format(
@@ -102,8 +113,16 @@ void CmdShowPortQueue::printOutput(
           queue.reservedBytes() ? std::to_string(*queue.reservedBytes()) : "",
           queue.scalingFactor() ? *queue.scalingFactor() : "");
       if (detailed) {
-        printQueueDetails(queue, out);
+        bool first = true;
+        for (const auto& aqm : aqmRows(queue)) {
+          if (!first) {
+            out << "\n" << fmt::format(fmtString, "", "", "", "", "", "");
+          }
+          first = false;
+          out << fmt::format(aqmFmtString, aqm[0], aqm[1], aqm[2], aqm[3]);
+        }
       }
+      out << "\n";
     }
 
     out << "\n";
@@ -111,7 +130,7 @@ void CmdShowPortQueue::printOutput(
 }
 
 std::string_view CmdShowPortQueueTraits::description() {
-  return "Displays the egress queue configuration of each port: per queue, its ID, traffic class name, scheduling mode, weight, reserved bytes and dynamic threshold scaling factor. Weighted round robin queues report a weight while strict priority queues leave it blank. With --detail, each queue also lists its active queue management (AQM) entries: the congestion behavior (ECN or EARLY_DROP) and the linear detection thresholds (minimum length, maximum length, probability), or 'none' when no AQM is configured. Use it to verify QoS queue, scheduler and ECN/WRED configuration on the ports.";
+  return "Displays the egress queue configuration of each port: per queue, its ID, traffic class name, scheduling mode, weight, reserved bytes and dynamic threshold scaling factor. Weighted round robin queues report a weight while strict priority queues leave it blank. With --detail, four more columns show each queue's active queue management (AQM): the congestion behavior (ECN or EARLY_DROP) and its linear detection thresholds (minimum length, maximum length, probability), one row per AQM entry, or 'none' when no AQM is configured. Use it to verify QoS queue, scheduler and ECN/WRED configuration on the ports.";
 }
 
 CmdShowPortQueue::RetType CmdShowPortQueue::sampleModel() {

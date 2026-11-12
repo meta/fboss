@@ -856,38 +856,49 @@ TEST_F(CmdShowPortTestFixture, queueOutputOmitsAqmWithoutDetail) {
   EXPECT_THAT(
       output,
       HasSubstr(
+          "ID     Name                Mode                     "
+          "Weight    ReservedBytes  ScalingFactor  \n"));
+  EXPECT_THAT(
+      output,
+      HasSubstr(
           "3      q3                  WEIGHTED_ROUND_ROBIN     "
           "8         0              TWO            \n"));
   EXPECT_THAT(output, Not(HasSubstr("AQM")));
   EXPECT_THAT(output, Not(HasSubstr("ECN")));
 }
 
-TEST_F(CmdShowPortTestFixture, queueDetailShowsAqmPerQueue) {
+TEST_F(CmdShowPortTestFixture, queueDetailShowsAqmColumns) {
   setDetailFlag(true);
   std::stringstream ss;
   CmdShowPortQueue().printOutput(createPortQueueEntries(), ss);
   setDetailFlag(false);
 
   std::string output = ss.str();
+  EXPECT_THAT(
+      output,
+      HasSubstr(
+          "ID     Name                Mode                     "
+          "Weight    ReservedBytes  ScalingFactor  "
+          "AQM         MinLength  MaxLength  Probability\n"));
   // Queues without AQM say so explicitly, so an operator can tell a
   // missing ECN config apart from one that applied.
   EXPECT_THAT(
       output,
       HasSubstr(
           "0      q0                  WEIGHTED_ROUND_ROBIN     "
-          "1         0              TWO            \n"
-          "       AQM: none\n"
+          "1         0              TWO            "
+          "none        -          -          -\n"
           "1      q1                  WEIGHTED_ROUND_ROBIN     "
-          "2         0              TWO            \n"
-          "       AQM: none\n"));
+          "2         0              TWO            "
+          "none        -          -          -\n"));
   EXPECT_THAT(
       output,
       HasSubstr(
           "3      q3                  WEIGHTED_ROUND_ROBIN     "
-          "8         0              TWO            \n"
-          "       AQM: ECN  minLength=1000000  maxLength=5000000  "
-          "probability=100%\n"));
-  // A queue carrying both ECN and WRED lists one line per entry.
+          "8         0              TWO            "
+          "ECN         1000000    5000000    100%\n"));
+  // A queue carrying both ECN and WRED puts the second entry on a
+  // continuation row with the queue columns left blank.
   EXPECT_THAT(
       output,
       HasSubstr(
@@ -896,10 +907,10 @@ TEST_F(CmdShowPortTestFixture, queueDetailShowsAqmPerQueue) {
   EXPECT_THAT(
       output,
       HasSubstr(
-          "       AQM: ECN  minLength=100000  maxLength=200000  "
-          "probability=100%\n"
-          "       AQM: EARLY_DROP  minLength=300000  maxLength=400000  "
-          "probability=50%\n"));
+          "0      q0                  WEIGHTED_ROUND_ROBIN     "
+          "1         0              TWO            "
+          "ECN         100000     200000     100%\n" +
+          std::string(92, ' ') + "EARLY_DROP  300000     400000     50%\n"));
   // The same profile is printed under both ports that use it.
   EXPECT_EQ(
       std::count(output.begin(), output.end(), '%'),
@@ -918,7 +929,7 @@ TEST_F(CmdShowPortTestFixture, queueDetailHandlesUnknownDetection) {
   setDetailFlag(false);
 
   EXPECT_THAT(
-      ss.str(), HasSubstr("       AQM: EARLY_DROP  detection=unknown\n"));
+      ss.str(), HasSubstr("EARLY_DROP  unknown    unknown    unknown\n"));
 }
 
 TEST_F(CmdShowPortTestFixture, queueSampleModelCarriesAqm) {
