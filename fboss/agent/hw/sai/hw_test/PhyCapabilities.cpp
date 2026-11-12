@@ -13,15 +13,17 @@ namespace facebook::fboss {
 bool rxSignalDetectSupportedInSdk() {
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 3) || defined(TAJO_SDK_VERSION_1_42_8)
   return true;
-#endif
+#else
   return false;
+#endif
 }
 
 bool rxLockStatusSupportedInSdk() {
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 3) || defined(TAJO_SDK_VERSION_1_42_8)
   return true;
-#endif
+#else
   return false;
+#endif
 }
 
 bool pcsRxLinkStatusSupportedInSdk() {

@@ -901,8 +901,9 @@ void SaiSwitchManager::setSwitchingMode(cfg::PacketForwardingMode mode) {
 bool SaiSwitchManager::isGlobalQoSMapSupported() const {
 #if defined(BRCM_SAI_SDK_XGS_AND_DNX)
   return false;
-#endif
+#else
   return platform_->getAsic()->isSupported(HwAsic::Feature::QOS_MAP_GLOBAL);
+#endif
 }
 
 bool SaiSwitchManager::isMplsQoSMapSupported() const {
