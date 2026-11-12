@@ -33,6 +33,10 @@ INSTANTIATE_TEST_SUITE_P(
     testing::Values(
         DropReasonLogParams{"ingress", std::nullopt, "DROP reasons ingress: "},
         DropReasonLogParams{"egress", std::nullopt, "DROP reasons egress: "},
+        DropReasonLogParams{
+            "NPU_INGRESS",
+            std::nullopt,
+            "DROP reasons NPU_INGRESS: "},
         DropReasonLogParams{"CGM", 0x80001, "DROP reasons CGM: (0x80001) "},
         DropReasonLogParams{
             "pipelineIpv4",
