@@ -30,6 +30,11 @@
 #include "fboss/agent/platforms/sai/SaiPlatform.h"
 #include "fboss/agent/state/LoadBalancer.h"
 
+// TODO: Relax the P200 exclusion once its SDK supports drop-reason collection.
+#if defined(TAJO_SDK_GTE_26_5) && !defined(TAJO_SDK_P200)
+#include "fboss/agent/hw/sai/switch/npu/tajo/facebook/DropReasonUtils.h"
+#endif
+
 #include <folly/logging/xlog.h>
 
 #include <re2/re2.h>
@@ -979,11 +984,11 @@ SaiSwitchManager::supportedCustomDropBitmapStats() const {
 }
 
 void SaiSwitchManager::updateDropReasonStats() {
-#if defined(BRCM_SAI_SDK_XGS_GTE_15_0)
   if (!platform_->getAsic()->isSupported(
           HwAsic::Feature::SWITCH_DROP_REASON_LIST_SUPPORT)) {
     return;
   }
+#if defined(BRCM_SAI_SDK_XGS_GTE_15_0)
   auto& switchApi = SaiApiTable::getInstance()->switchApi();
   auto ingressDropReasons = switchApi.getAttribute(
       switch_->adapterKey(),
@@ -995,6 +1000,19 @@ void SaiSwitchManager::updateDropReasonStats() {
           std::vector<sai_int32_t>{}});
 
   logDropReasons(ingressDropReasons, egressDropReasons);
+#elif defined(TAJO_SDK_GTE_26_5) && !defined(TAJO_SDK_P200)
+  // TODO: Relax the P200 exclusion once its SDK supports drop-reason
+  // collection.
+
+  // Successful reads consume the SDK snapshot. Keep this as its only reader.
+  // IDs describe SDK-observed counter changes, not packet counts. Subread
+  // failures and counter resets inside the SDK are not visible in this list.
+  const auto reasons = SaiApiTable::getInstance()->switchApi().getAttribute(
+      switch_->adapterKey(),
+      SaiSwitchTraits::Attributes::DropReasonList{std::vector<sai_uint32_t>{}});
+  for (const auto& line : formatDropReasonLogLines(reasons)) {
+    XLOG(WARNING) << line;
+  }
 #endif
 }
 
