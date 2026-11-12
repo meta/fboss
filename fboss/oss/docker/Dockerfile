@@ -105,8 +105,7 @@ RUN if [ "$USE_CLANG" = "true" ]; then \
     rm -rf build
 
 # The following libraries are needed for building SDK
-RUN dnf install -y doxygen aspell aspell-en libyaml-devel vim-common libnsl libnsl2-devel glibc-static libstdc++-static hostname \
-    grpc-devel grpc-plugins protobuf-devel protobuf-compiler abseil-cpp-devel
+RUN dnf install -y doxygen aspell aspell-en libyaml-devel vim-common libnsl libnsl2-devel glibc-static libstdc++-static hostname
 
 # Install gRPC for SDK purposes
 RUN git clone --depth 1 --branch v1.42.0 https://github.com/grpc/grpc.git && \
