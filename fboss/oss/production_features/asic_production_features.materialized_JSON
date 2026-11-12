@@ -868,7 +868,8 @@
         111,
         134,
         139,
-        146
+        146,
+        143
     ]
   },
   "asicToFeatureNames": {
@@ -1740,7 +1741,8 @@
         "MIRROR_ON_DROP_STATELESS",
         "MIRROR_ON_DROP_AGGREGATE_RATE_LIMIT",
         "MULTI_VRF",
-        "ACL_COUNTERS_EXTENDED_LABEL"
+        "ACL_COUNTERS_EXTENDED_LABEL",
+        "DROP_REASON_REPORTING"
     ]
   },
   "featureSupportSpecs": [
@@ -2254,6 +2256,13 @@
           ],
           "sdk": 3,
           "minSdkVersion": "2605.38"
+        },
+        {
+          "asics": [
+            "yuba"
+          ],
+          "sdk": 2,
+          "minSdkVersion": "26.5.4210"
         }
       ]
     },
