@@ -21,23 +21,32 @@ Below is an example of running fw_util on darwin
 Firmware Target name (aka fw entities such as bios, cpld... etc) will varies based on the platform and will be part of the provided json
 
 ```
-[root@fboss315069332.snc1 ~]# /tmp/fw_util --helpon=Flags
-fw_util: Warning: SetUsageMessage() never called
+$ fw_util --help
+Firmware utility for FBOSS platforms
+Usage: fw_util [OPTIONS]
 
-  Flags from fbcode/dataflow_tracing/sdk/cpp/Flags.cpp:
-    -df_test_mode (At dev time, builds and displays the trace by inserting
-      placeholders. Generates a link to view the built trace.) type: bool
-      default: false
+Options:
+  -h,--help                   Print this help message and exit
+  --version                   Display program version information and exit
+[Option Group: Firmware Options]
+  Specify firmware action, target, and optional binary file
+  Options:
+    --fw_target_name TEXT=all   Firmware target name, to see list of targets, run fw_util --fw_action=list
+    --fw_action TEXT:{program,verify,read,version,list,audit}=version
+                                Firmware action (program, verify, read, version, list, audit)
+    --fw_binary_file TEXT       Firmware binary file path to be programmed
+    --config_file TEXT          Path to the fw_util config file
+[Option Group: Flags]
+  Additional flags
+  Options:
+    --verify_sha1sum            Verify SHA1 sum of the firmware
+    --dry_run                   Dry run without actually programming firmware
 
-
-
-  Flags from fbcode/fboss/platform/fw_util/Flags.cpp:
-    -config_file (Optional platform fw_util configuration file. If empty we
-      pick the platform default config) type: string default: ""
-    -fw_action (The firmware action (program, verify, read, version, list) that
-      must be taken for a specific fpd) type: string default: ""
-    -fw_binary_file (The binary file that needs to be programmed to the fpd)
-      type: string default: ""
-    -fw_target_name (The fpd name that needs to be programmed) type: string default: ""
-[root@fboss315069332.snc1 ~]#
+Examples:
+  fw_util  (defaults to --fw_action=version --fw_target_name=all)
+  fw_util --fw_action=program --fw_target_name=bios --fw_binary_file=/path/to/firmware.bin
+  fw_util --fw_action=verify --fw_target_name=FPGA --fw_binary_file=/path/to/firmware.bin
+  fw_util --fw_action=version --fw_target_name=CPLD
+  fw_util --fw_action=list
+  fw_util --fw_action=audit
 ```
