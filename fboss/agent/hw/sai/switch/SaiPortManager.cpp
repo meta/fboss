@@ -3027,8 +3027,15 @@ void SaiPortManager::updateStats(
     // The Broadcom extension counters are a different SAI enum family and get
     // their own read for the same reason: an SDK can implement one family and
     // not the other, and get_port_stats is all-or-nothing.
+    //
+    // Tomahawk Ultra 1 is the only ASIC that serves them today. On Tomahawk6
+    // (B1, brcm-sai 15.4.0.0_odp) the read returns NOT_SUPPORTED for every id,
+    // so skip a call that cannot succeed. Remove this gate once Broadcom
+    // implements the extension counters on TH6 (CS00012472055).
     const auto& llrExtensionStats = SaiPortTraits::llrExtensionStats();
-    if (!llrExtensionStats.empty()) {
+    if (!llrExtensionStats.empty() &&
+        platform_->getAsic()->getAsicType() ==
+            cfg::AsicType::ASIC_TYPE_TOMAHAWKULTRA1) {
       updateLlrExtensionStats = collectStats(
           llrExtensionStats,
           SAI_STATS_MODE_READ,
