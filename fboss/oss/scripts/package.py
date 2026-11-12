@@ -76,6 +76,10 @@ FORWARDING_EXTRA = {
     RUN_SCRIPTS_DIR / "setup.py": "bin/setup.py",
     RUN_SCRIPTS_DIR / "setup_fboss_env": "bin/setup_fboss_env",
     RUN_SCRIPTS_DIR / "topology.cdf": "bin/topology.cdf",
+    # bash-completion loads the file named after the command; fboss2-dev is
+    # registered by the same script.
+    OSS_DIR
+    / "scripts/fboss2_completion.bash": "share/bash-completion/completions/fboss2",
     RUN_CONFIGS_DIR / "default_configs": "share/default_configs",
     RUN_CONFIGS_DIR / "j3b": "share/j3b",
     RUN_CONFIGS_DIR / "janga800bic": "share/janga800bic",

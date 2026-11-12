@@ -94,6 +94,7 @@ cpp_unittest(
         "AggregationParsingTest.cpp",
         "AggregationTest.cpp",
         "AggregationValidationTest.cpp",
+        "ArgCompletionTest.cpp",
         "CmdArgsTest.cpp",
         "CmdHelpTest.cpp",
         "CmdReadWriteModeTest.cpp",
@@ -129,6 +130,7 @@ cpp_unittest(
     srcs = [
         "CanonicalRibResolverTest.cpp",
         "CmdClearArpNdpTest.cpp",
+        "CmdCompletionTest.cpp",
         "CmdConfigSessionClearTest.cpp",
         "CmdGetPcapTest.cpp",
         "CmdListConfigTest.cpp",

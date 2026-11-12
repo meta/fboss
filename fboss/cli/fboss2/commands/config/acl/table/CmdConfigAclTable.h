@@ -53,6 +53,8 @@ class AclTableConfigArgs : public utils::BaseObjectArgType<std::string> {
 };
 
 struct CmdConfigAclTableTraits : public WriteCommandTraits {
+  static std::vector<std::string> completeArgs(
+      const std::vector<std::string>& typed);
   using ParentCmd = CmdConfigAcl;
   using ObjectArgType = AclTableConfigArgs;
   using RetType = std::string;

@@ -19,6 +19,8 @@
 namespace facebook::fboss {
 
 struct CmdDeleteCoppTrafficPolicyMatchActionTraits : public WriteCommandTraits {
+  static std::vector<std::string> completeArgs(
+      const std::vector<std::string>& typed);
   using ParentCmd = CmdDeleteCoppTrafficPolicyMatch;
   static void addCliArg(CLI::App& cmd, std::vector<std::string>& args) {
     cmd.add_option(

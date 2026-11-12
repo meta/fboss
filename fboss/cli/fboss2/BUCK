@@ -84,10 +84,12 @@ cpp_library(
     name = "cmd-subcommands",
     srcs = [
         "CmdArgsLists.cpp",
+        "CmdCompletion.cpp",
         "CmdSubcommands.cpp",
     ],
     headers = [
         "CmdArgsLists.h",
+        "CmdCompletion.h",
         "CmdSubcommands.h",
     ],
     exported_deps = [
@@ -209,11 +211,13 @@ cpp_library(
     # since fboss2-lib already depends on cmd-common-utils.
     name = "cmd-common-utils",
     srcs = [
+        "utils/ArgCompletion.cpp",
         "utils/CmdUtilsCommon.cpp",
     ],
     headers = [
         "commands/clear/CmdClearUtils.h",
         "utils/AggregateUtils.h",
+        "utils/ArgCompletion.h",
         "utils/CmdClientUtilsCommon.h",
         "utils/CmdUtilsCommon.h",
         "utils/FilterUtils.h",
@@ -230,6 +234,7 @@ cpp_library(
         ":cmd-global-options",
         "//common/time:time_core",
         "//fboss/agent/if:ctrl-cpp2-services",
+        "//thrift/lib/cpp/util:enum_utils",
         "//thrift/lib/cpp2/async:pooled_request_channel",
         "//thrift/lib/cpp2/async:rocket_client_channel",
         "//thrift/lib/cpp2/op:get",

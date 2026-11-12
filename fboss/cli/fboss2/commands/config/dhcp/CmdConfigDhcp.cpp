@@ -57,6 +57,12 @@ DhcpSourceOverrideArgs::DhcpSourceOverrideArgs(std::vector<std::string> v) {
   data_ = std::move(v);
 }
 
+std::vector<std::string> dhcpFamilies() {
+  return {
+      std::string(DhcpSourceOverrideArgs::kFamilyIpv4),
+      std::string(DhcpSourceOverrideArgs::kFamilyIpv6)};
+}
+
 std::string normalizeDhcpFamily(std::string family) {
   // Lower-case so "IPv4" / "IPV4" are accepted alongside the canonical
   // "ipv4", then reject anything that is not ipv4/ipv6.
