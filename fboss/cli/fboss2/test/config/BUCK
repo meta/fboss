@@ -42,6 +42,7 @@ cpp_unittest(
         "CmdConfigPtpTransparentClockTest.cpp",
         "CmdConfigQosBufferPoolTest.cpp",
         "CmdConfigQosDefaultPolicyTest.cpp",
+        "CmdConfigQosPolicyMapTest.cpp",
         "CmdConfigQosQueueConfigTest.cpp",
         "CmdConfigReloadTest.cpp",
         "CmdConfigSessionCommitTest.cpp",
