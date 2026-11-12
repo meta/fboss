@@ -58,6 +58,7 @@ struct ShowtechConfig {
   7: optional SwitchCardPowerGoodStatus scPowerGood;
   8: optional list<I2CDeviceRegDic> i2cDumpDeviceRegs;
   9: optional list<string> regDumpDevices;
+  10: bool hasPsuBlackbox;
 }
 
 // GPIO (General Purpose Input/Output) configuration.
