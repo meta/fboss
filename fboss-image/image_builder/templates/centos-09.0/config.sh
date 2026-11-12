@@ -571,7 +571,7 @@ fi
 
 # Fix NetworkManager connection profile permissions
 # NM ignores profiles that are world-readable
-chmod 600 /etc/NetworkManager/system-connections/eth0.nmconnection
+chmod 600 /etc/NetworkManager/system-connections/*.nmconnection
 
 # Done! Cleanup and install additional packages
 echo "Cleaning up /repos directory..."

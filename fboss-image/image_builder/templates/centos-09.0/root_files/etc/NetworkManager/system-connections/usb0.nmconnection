@@ -1,0 +1,12 @@
+[connection]
+id=usb0
+type=ethernet
+interface-name=usb0
+autoconnect=true
+
+[ipv4]
+method=disabled
+
+[ipv6]
+method=manual
+addresses=fe80::2/64
