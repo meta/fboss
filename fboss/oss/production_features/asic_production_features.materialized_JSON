@@ -214,7 +214,8 @@
         104,
         112,
         113,
-        128
+        128,
+        133
     ],
     "jericho3": [
         2,
@@ -1087,7 +1088,8 @@
         "SRV6_MIDPOINT",
         "PORT_DEBOUNCE",
         "SRV6_BINDING_SID",
-        "MYSID_ADJACENCY_FRR"
+        "MYSID_ADJACENCY_FRR",
+        "MY_MAC"
     ],
     "jericho3": [
         "CPU_RX_TX",
@@ -1794,6 +1796,14 @@
           "sdk": 1,
           "minSdkVersion": "16.0_ea_odp",
           "note": "MY_MAC verified by AgentMyMacTest"
+        },
+        {
+          "asics": [
+            "g202x"
+          ],
+          "sdk": 2,
+          "minSdkVersion": "25.11.4210",
+          "note": "VLAN-qualified MY_MAC (MT-992) needs Leaba 25.11.4210.12; patch level is not expressible here"
         }
       ]
     },
