@@ -122,11 +122,12 @@ cpp_library(
     # Different binaries (fboss2, fboss2-routing-protocol) provide their
     # own CmdList.cpp with different command trees.
     preferred_linkage = "static",
-    deps = [":fboss2-lib"],
+    deps = [],
     exported_deps = [
         ":cmd-global-options",
         ":cmd-list-header",  # @manual
         ":cmd-subcommands",
+        ":fboss2-lib",
         "//fastcli:utils-cpp",
     ],
     exported_external_deps = [
@@ -1272,6 +1273,7 @@ cpp_library(
         "commands/config/protocol/bgp/policy/prefix-list/entry/CmdConfigProtocolBgpPolicyPrefixListEntry.cpp",
         "commands/config/protocol/bgp/policy/routing-policy/CmdConfigProtocolBgpPolicyRoutingPolicy.cpp",
         "commands/config/protocol/bgp/policy/routing-policy/term/CmdConfigProtocolBgpPolicyRoutingPolicyTerm.cpp",
+        "commands/config/protocol/bgp/policy/routing-policy/term/action/CmdConfigProtocolBgpPolicyRoutingPolicyTermAction.cpp",
         "commands/config/protocol/static/CmdConfigProtocolStatic.cpp",
         "commands/config/protocol/static/route/add/CmdConfigProtocolStaticRouteAdd.cpp",
         "commands/config/ptp/CmdConfigPtp.cpp",
@@ -1434,6 +1436,7 @@ cpp_library(
         "commands/config/protocol/bgp/policy/routing-policy/BgpRoutingPolicyCliUtils.h",
         "commands/config/protocol/bgp/policy/routing-policy/CmdConfigProtocolBgpPolicyRoutingPolicy.h",
         "commands/config/protocol/bgp/policy/routing-policy/term/CmdConfigProtocolBgpPolicyRoutingPolicyTerm.h",
+        "commands/config/protocol/bgp/policy/routing-policy/term/action/CmdConfigProtocolBgpPolicyRoutingPolicyTermAction.h",
         "commands/config/protocol/static/CmdConfigProtocolStatic.h",
         "commands/config/protocol/static/route/StaticRouteUtils.h",
         "commands/config/protocol/static/route/add/CmdConfigProtocolStaticRouteAdd.h",
