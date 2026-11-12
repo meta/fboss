@@ -720,6 +720,18 @@ target_link_libraries(fboss2_config_gen_lib
 )
 
 
+# Sole definition of getUserInfo for OSS builds; the internal build
+# compiles utils/facebook/UserInfo.cpp instead (see BUCK target
+# get_cmd_user_info). Kept in its own TU so linking it never pulls in
+# CmdUtils.cpp.
+add_library(get_cmd_user_info
+  fboss/cli/fboss2/utils/oss/UserInfo.cpp
+)
+
+target_link_libraries(get_cmd_user_info
+  Folly::folly
+)
+
 add_library(fboss2_lib
   fboss/cli/fboss2/commands/bounce/interface/CmdBounceInterface.h
   fboss/cli/fboss2/commands/bounce/interface/CmdBounceInterface.cpp
@@ -1060,6 +1072,7 @@ add_library(fboss2_lib
 
 target_link_libraries(fboss2_lib
   CLI11::CLI11
+  get_cmd_user_info
   reboot_history_lib
   fboss2_config_gen_lib
   tabulate::tabulate

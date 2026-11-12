@@ -12,9 +12,7 @@
 #include "fboss/cli/fboss2/CmdGlobalOptions.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
 
-#include <pwd.h>
 #include <syslog.h>
-#include <unistd.h>
 
 namespace facebook::fboss::utils {
 
@@ -25,19 +23,6 @@ std::vector<std::string> getHostsInSmcTier(
 
 const std::string getOobNameFromHost(const std::string& /* host */) {
   return "";
-}
-
-std::string getUserInfo() {
-  // Effective uid mapped through passwd: the environment ($USER) is
-  // caller-controlled and must not attest identity. Numeric fallback
-  // keeps a failed lookup truthful instead of empty.
-  uid_t uid = geteuid();
-  if (auto* entry = getpwuid(uid)) {
-    if (entry->pw_name) {
-      return entry->pw_name;
-    }
-  }
-  return "uid" + std::to_string(uid);
 }
 
 void logUsage(const CmdLogInfo& cmdLogInfo) {

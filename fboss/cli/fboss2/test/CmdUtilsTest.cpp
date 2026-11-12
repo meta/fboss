@@ -52,14 +52,24 @@ TEST(CmdUtilsTest, FormatUsageLineEscapesHostileArgs) {
 
 #ifndef IS_OSS
 TEST(CmdUtilsTest, InternalUserInfoKeepsEnvBehavior) {
-  // The internal build still attests FB_UID + USER from the environment;
-  // this pins the verbatim move out of CmdUtilsCommon.cpp. OSS builds map
-  // the effective uid through passwd instead, so this runs internal-only.
+  // The internal build still attests FB_UID + USER from the environment.
+  // OSS builds map the effective uid through passwd instead, so this
+  // runs internal-only.
   setenv("FB_UID", "424242", 1);
   setenv("USER", "bob", 1);
   EXPECT_EQ(utils::getUserInfo(), "424242 | bob");
+  setenv("USER", "", 1);
+  EXPECT_EQ(utils::getUserInfo(), "424242");
+  unsetenv("USER");
+  EXPECT_EQ(utils::getUserInfo(), "424242");
+  unsetenv("FB_UID");
+  setenv("USER", "bob", 1);
+  EXPECT_EQ(utils::getUserInfo(), "bob");
+  setenv("FB_UID", "", 1);
+  EXPECT_EQ(utils::getUserInfo(), "bob");
   unsetenv("FB_UID");
   unsetenv("USER");
+  EXPECT_EQ(utils::getUserInfo(), "");
 }
 #endif
 

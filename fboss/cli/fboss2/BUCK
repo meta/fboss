@@ -246,6 +246,20 @@ cpp_library(
 )
 
 cpp_library(
+    # Sole definition of getUserInfo for internal builds; the OSS build
+    # compiles utils/oss/UserInfo.cpp instead (see CliFboss2.cmake).
+    # Kept in its own TU so linking it never pulls in CmdUtils.cpp.
+    name = "get_cmd_user_info",
+    srcs = [
+        "utils/facebook/UserInfo.cpp",
+    ],
+    deps = [
+        "fbsource//xplat/folly:string",
+        ":cmd-common-utils",
+    ],
+)
+
+cpp_library(
     name = "safety-prompt-utils",
     srcs = [
         "utils/SafetyPromptUtils.cpp",
@@ -923,6 +937,7 @@ cpp_library(
         ":cmd-show-utils",
         ":cmd-subcommands",
         ":commands-show-bgp",
+        ":get_cmd_user_info",
         ":safety-prompt-utils",
         ":table-utils",
         "//common/base:build_info",
@@ -1657,6 +1672,44 @@ ci_sandcastle(
     ],
 )
 
+# @ci-signal-ack
+ci_sandcastle(
+    name = "verify_bgpcli_build",
+    alias = "fboss2-bgpcli-build-citadel",
+    args = {
+        "skip_if_error_exists_on_base_revision": True,
+        "steps": [
+            {
+                "name": "Build bgpcli (fboss2-routing-protocol)",
+                "shell": "buck2 build --flagfile fbcode//mode/opt fbcode//fboss/cli/fboss2:fboss2-routing-protocol",
+            },
+        ],
+    },
+    capabilities = {
+        "tenant": "fboss-oss",
+        "type": "fbcode",
+        "vcs": "full-fbsource",
+    },
+    # Tracks the routing binary and every fboss2 source it compiles directly,
+    # so a duplicate-symbol link break is caught on the diff that causes it.
+    ci_deps = [
+        "fbcode//fboss/cli/fboss2:fboss2-routing-protocol",
+    ],
+    ci_srcs = [
+        "fbcode/fboss/cli/fboss2/**",
+    ],
+    command = "SandcastleUniversalCommand",
+    metadata = {
+        "infra_errors_should_block_lands": False,
+        "landblocking": True,
+        "timeout_should_block_lands": False,
+    },
+    oncall = "routing_protocol",
+    schedules = [
+        ci.diff,
+    ],
+)
+
 cpp_binary(
     # @autodeps-skip: This routing binary intentionally compiles shared fboss2
     # sources directly; inferring their provider targets creates duplicate deps.
@@ -1775,6 +1828,7 @@ cpp_binary(
         ":cmd-list-header",
         ":cmd-local-options",
         ":commands-show-bgp",  # @manual
+        ":get_cmd_user_info",
         ":safety-prompt-utils",
         ":table-utils",
         "//common/config:configerator",
