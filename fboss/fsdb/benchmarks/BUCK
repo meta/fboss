@@ -11,13 +11,13 @@ cpp_library(
         "StateGenerator.h",
     ],
     deps = [
-        "//fboss/agent/hw:hardware_stats-cpp2-types",
+        "//fboss/agent/hw:hardware_stats-cpp2-serialization",
         "//fboss/agent/if:ctrl-cpp2-services",
     ],
     exported_deps = [
-        "//fboss/agent:agent_stats-cpp2-types",
-        "//fboss/agent:switch_config-cpp2-types",
-        "//fboss/agent:switch_state-cpp2-types",
+        "//fboss/agent:agent_stats-cpp2-serialization",
+        "//fboss/agent:switch_config-cpp2-serialization",
+        "//fboss/agent:switch_state-cpp2-serialization",
     ],
 )
 
@@ -86,12 +86,11 @@ cpp_benchmark(
         "fbsource//xplat/folly/init:init",
         "fbsource//xplat/folly/json:dynamic",
         "fbsource//xplat/folly/logging:init",
-        "fbsource//xplat/folly/logging:logging",
         "fbsource//xplat/folly/synchronization:baton",
         "fbsource//xplat/folly/synchronization:latch",
         ":fsdb_benchmark_helper",
         ":state_generator",
-        "//fboss/agent:switch_state-cpp2-types",
+        "//fboss/agent:switch_state-cpp2-serialization",
         "//fboss/fsdb/client:fsdb_cow_state_sub_manager",
         "//fboss/fsdb/oper:extended_path_builder",
         "//fboss/fsdb/tests/utils:fsdb_test_server",
