@@ -15,6 +15,12 @@ bool YubaAsic::isCsigSupported() const {
   return currentSdkVersion_.has_value() && currentSdkVersion_ >= csigMinSdk;
 }
 
+bool YubaAsic::isDropReasonListSupported() const {
+  auto dropReasonListMinSdk = getAsicSdkVersion(kDropReasonListMinSdkRequired);
+  return currentSdkVersion_.has_value() &&
+      currentSdkVersion_ >= dropReasonListMinSdk;
+}
+
 bool YubaAsic::isSupportedNonFabric(Feature feature) const {
   switch (feature) {
     /*
@@ -122,6 +128,8 @@ bool YubaAsic::isSupportedNonFabric(Feature feature) const {
       return isSrv6Supported();
     case HwAsic::Feature::CSIG:
       return isCsigSupported();
+    case HwAsic::Feature::SWITCH_DROP_REASON_LIST_SUPPORT:
+      return isDropReasonListSupported();
     case HwAsic::Feature::SRV6_BINDING_USID_UA_USD:
     case HwAsic::Feature::SRV6_DECAP_TUNNEL:
     case HwAsic::Feature::ACL_BYTE_COUNTER:
@@ -271,7 +279,6 @@ bool YubaAsic::isSupportedNonFabric(Feature feature) const {
     case HwAsic::Feature::CUT_THROUGH_FORWARDING:
     case HwAsic::Feature::ECN_PROBABILISTIC_MARKING:
     case HwAsic::Feature::SWITCH_CUSTOM_DROP_BITMAP_SUPPORT:
-    case HwAsic::Feature::SWITCH_DROP_REASON_LIST_SUPPORT:
     case HwAsic::Feature::ECMP_RANDOM_SPRAY_HIERARCHICAL_LEVEL:
     case HwAsic::Feature::CBFC:
     case HwAsic::Feature::LINK_LAYER_RETRANSMISSION:

@@ -185,3 +185,28 @@ TEST(HwAsicFeatureTest, pcsErrorCountersAreLimitedToYubaAndP200) {
   Tomahawk6Asic tomahawk6{0, npuSwitchInfo()};
   EXPECT_FALSE(tomahawk6.isSupported(HwAsic::Feature::PCS_ERROR_COUNTERS));
 }
+
+TEST(HwAsicFeatureTest, yubaDropReasonListRequiresMinimumSdk) {
+  const auto feature = HwAsic::Feature::SWITCH_DROP_REASON_LIST_SUPPORT;
+  EXPECT_FALSE(YubaAsic(0, npuSwitchInfo()).isSupported(feature));
+  EXPECT_FALSE(
+      YubaAsic(0, npuSwitchInfo(), saiSdk("26.5.5210")).isSupported(feature));
+  cfg::SdkVersion sdkVersion;
+  sdkVersion.asicSdk() = "26.2.4210";
+  EXPECT_FALSE(YubaAsic(0, npuSwitchInfo(), sdkVersion).isSupported(feature));
+  sdkVersion.asicSdk() = "26.5.4210";
+  EXPECT_TRUE(YubaAsic(0, npuSwitchInfo(), sdkVersion).isSupported(feature));
+  sdkVersion.asicSdk() = "26.5.5210";
+  EXPECT_TRUE(YubaAsic(0, npuSwitchInfo(), sdkVersion).isSupported(feature));
+  sdkVersion.asicSdk() = "26.6.5210";
+  EXPECT_TRUE(YubaAsic(0, npuSwitchInfo(), sdkVersion).isSupported(feature));
+  sdkVersion.asicSdk() = "26.5.5210-5";
+  EXPECT_TRUE(YubaAsic(0, npuSwitchInfo(), sdkVersion).isSupported(feature));
+}
+
+TEST(HwAsicFeatureTest, p200DropReasonListUnsupported) {
+  const auto feature = HwAsic::Feature::SWITCH_DROP_REASON_LIST_SUPPORT;
+  cfg::SdkVersion sdkVersion;
+  sdkVersion.asicSdk() = "26.7.5211";
+  EXPECT_FALSE(P200Asic(0, npuSwitchInfo(), sdkVersion).isSupported(feature));
+}
