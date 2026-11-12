@@ -144,6 +144,10 @@ struct FakePort {
   sai_uint16_t pfcPauseDurationOverride{0};
   bool cablePropagationDelayMeasure{false};
   sai_int32_t linkScanMode{0};
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+  bool intDelete{false};
+  sai_uint16_t intMetadata{0};
+#endif
   std::function<void()> onGetAttribute; // test-only hook
 };
 

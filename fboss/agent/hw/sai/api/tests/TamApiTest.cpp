@@ -339,4 +339,72 @@ TEST_F(TamApiTest, CsigIntApiOperations) {
   EXPECT_EQ(api->remove_tam_int(id), SAI_STATUS_SUCCESS);
 }
 
+TEST_F(TamApiTest, CsigCompactQuantization) {
+  using A = SaiTamIntTraits::Attributes;
+  const std::vector<sai_u64_range_t> ranges{
+      {0, 1ULL << 32}, {(1ULL << 32) + 1, 1ULL << 40}};
+  SaiTamIntTraits::CreateAttributes attrs{
+      SAI_TAM_INT_TYPE_CSIG_COMPACT,
+      0,
+      SAI_TAM_INT_PRESENCE_TYPE_ETH_TYPE,
+      true,
+      0x9900,
+      SAI_CSIG_SIGNAL_TYPE_ABW,
+      256,
+      2,
+      std::vector<sai_uint16_t>{7, 3},
+      ranges,
+      std::nullopt,
+      std::nullopt,
+      false};
+  const auto id = tamApi->create<SaiTamIntTraits>(attrs, switchId);
+  EXPECT_EQ(tamApi->getAttribute(id, A::QuantBandUint64RangeList{}), ranges);
+  EXPECT_EQ(
+      tamApi->getAttribute(id, A::QuantBandId{}),
+      (std::vector<sai_uint16_t>{7, 3}));
+  EXPECT_EQ(tamApi->getAttribute(id, A::QuantBands{}), 2);
+  EXPECT_EQ(tamApi->getAttribute(id, A::BwTimeInterval{}), 256);
+
+  A::QuantBandUint64RangeList original{ranges};
+  auto copy = original;
+  ASSERT_NE(
+      original.saiAttr()->value.u64rangelist.list,
+      copy.saiAttr()->value.u64rangelist.list);
+  const std::vector<sai_u64_range_t> updated{{1ULL << 33, 1ULL << 34}};
+  tamApi->setAttribute(id, A::QuantBandUint64RangeList{updated});
+  EXPECT_EQ(tamApi->getAttribute(id, A::QuantBandUint64RangeList{}), updated);
+  EXPECT_EQ(copy.value(), ranges);
+  tamApi->remove(id);
+}
+
+TEST_F(TamApiTest, CsigWideQuantization) {
+  using A = SaiTamIntTraits::Attributes;
+  SaiTamIntTraits::CreateAttributes attrs{
+      SAI_TAM_INT_TYPE_CSIG_WIDE,
+      0,
+      SAI_TAM_INT_PRESENCE_TYPE_ETH_TYPE,
+      true,
+      0x9901,
+      SAI_CSIG_SIGNAL_TYPE_DELAY,
+      std::nullopt,
+      1048576,
+      std::nullopt,
+      std::nullopt,
+      1024,
+      32,
+      true};
+  const auto id = tamApi->create<SaiTamIntTraits>(attrs, switchId);
+  EXPECT_EQ(tamApi->getAttribute(id, A::QuantBands{}), 1048576);
+  EXPECT_EQ(tamApi->getAttribute(id, A::WideQuantBaseValue{}), 1024);
+  EXPECT_EQ(tamApi->getAttribute(id, A::WideQuantStepValue{}), 32);
+  EXPECT_TRUE(tamApi->getAttribute(id, A::CsigDBit{}));
+  std::optional<A::BwTimeInterval> interval;
+  EXPECT_FALSE(tamApi->getAttribute(id, interval).has_value());
+  tamApi->setAttribute(id, A::WideQuantStepValue{64});
+  EXPECT_EQ(tamApi->getAttribute(id, A::WideQuantStepValue{}), 64);
+  EXPECT_THROW(
+      tamApi->setAttribute(id, A::EthTypeCodePoint{0x9902}), SaiApiError);
+  tamApi->remove(id);
+}
+
 #endif

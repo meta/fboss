@@ -110,6 +110,10 @@ class PortStoreTest : public SaiStoreTest {
         std::nullopt, // Metadata
         std::nullopt, // CsigTagAction
         std::nullopt, // CsigLinkLocator
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+        std::nullopt, // IntDelete
+        std::nullopt, // IntMetadata
+#endif
     };
   }
 
@@ -628,5 +632,33 @@ TEST_F(PortStoreTest, loadPortBoundToLlrProfile) {
   auto gotProfile = s.get<SaiPortLlrProfileTraits>().get(profileKey);
   ASSERT_NE(gotProfile, nullptr);
   EXPECT_EQ(gotProfile->adapterKey(), profileId);
+}
+#endif
+
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+TEST_F(PortStoreTest, ReloadCsigIntMetadata) {
+  auto attrs = makeAttrs(1, 25000);
+  std::get<std::optional<SaiPortTraits::Attributes::IntDelete>>(attrs) = true;
+  std::get<std::optional<SaiPortTraits::Attributes::IntMetadata>>(attrs) =
+      65535;
+  const auto id = saiApiTable->portApi().create<SaiPortTraits>(attrs, 0);
+  SaiStore store(0);
+  store.reload();
+  auto object = store.get<SaiPortTraits>().get(
+      tupleProjection<
+          SaiPortTraits::CreateAttributes,
+          SaiPortTraits::AdapterHostKey>(attrs));
+  ASSERT_NE(object, nullptr);
+  EXPECT_EQ(object->adapterKey(), id);
+  const auto& metadata =
+      std::get<std::optional<SaiPortTraits::Attributes::IntMetadata>>(
+          object->attributes());
+  ASSERT_TRUE(metadata.has_value());
+  EXPECT_EQ(metadata->value(), 65535);
+  const auto& deletion =
+      std::get<std::optional<SaiPortTraits::Attributes::IntDelete>>(
+          object->attributes());
+  ASSERT_TRUE(deletion.has_value());
+  EXPECT_TRUE(deletion->value());
 }
 #endif

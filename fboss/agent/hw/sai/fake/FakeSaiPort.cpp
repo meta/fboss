@@ -82,6 +82,10 @@ sai_status_t create_port_fn(
   std::optional<sai_uint32_t> interFrameGap;
 #endif
   std::optional<bool> linkTrainingEnable;
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+  bool intDelete{false};
+  sai_uint16_t intMetadata{0};
+#endif
   std::optional<bool> fdrEnable;
   std::optional<bool> rxLaneSquelchEnable;
   std::vector<sai_map_t> pfcTcDldInterval;
@@ -286,6 +290,14 @@ sai_status_t create_port_fn(
       case SAI_PORT_ATTR_LINK_TRAINING_ENABLE:
         linkTrainingEnable = attr_list[i].value.booldata;
         break;
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+      case SAI_PORT_ATTR_INT_DELETE:
+        intDelete = attr_list[i].value.booldata;
+        break;
+      case SAI_PORT_ATTR_INT_METADATA:
+        intMetadata = attr_list[i].value.u16;
+        break;
+#endif
       case SAI_PORT_ATTR_FDR_ENABLE:
         fdrEnable = attr_list[i].value.booldata;
         break;
@@ -333,6 +345,10 @@ sai_status_t create_port_fn(
   }
   *port_id = fs->portManager.create(lanes, speed.value());
   auto& port = fs->portManager.get(*port_id);
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+  port.intDelete = intDelete;
+  port.intMetadata = intMetadata;
+#endif
   if (adminState) {
     port.adminState = adminState.value();
   }
@@ -891,6 +907,14 @@ sai_status_t set_port_attribute_fn(
     case SAI_PORT_ATTR_LINK_TRAINING_ENABLE:
       port.linkTrainingEnable = attr->value.booldata;
       break;
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+    case SAI_PORT_ATTR_INT_DELETE:
+      port.intDelete = attr->value.booldata;
+      break;
+    case SAI_PORT_ATTR_INT_METADATA:
+      port.intMetadata = attr->value.u16;
+      break;
+#endif
     case SAI_PORT_ATTR_FDR_ENABLE:
       port.fdrEnable = attr->value.booldata;
       break;
@@ -1322,6 +1346,14 @@ sai_status_t get_port_attribute_fn(
       case SAI_PORT_ATTR_LINK_TRAINING_ENABLE:
         attr->value.booldata = port.linkTrainingEnable;
         break;
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+      case SAI_PORT_ATTR_INT_DELETE:
+        attr[i].value.booldata = port.intDelete;
+        break;
+      case SAI_PORT_ATTR_INT_METADATA:
+        attr[i].value.u16 = port.intMetadata;
+        break;
+#endif
       case SAI_PORT_ATTR_LINK_TRAINING_RX_STATUS:
         attr->value.s32 = port.linkTrainingRxStatus;
         break;

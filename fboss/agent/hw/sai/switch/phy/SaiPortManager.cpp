@@ -417,6 +417,10 @@ SaiPortTraits::CreateAttributes SaiPortManager::attributesFromSwPort(
       std::nullopt, // Metadata
       std::nullopt, // CsigTagAction
       std::nullopt, // CsigLinkLocator
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+      std::nullopt, // IntDelete
+      std::nullopt, // IntMetadata
+#endif
   };
 }
 

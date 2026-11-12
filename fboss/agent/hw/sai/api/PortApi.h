@@ -714,6 +714,18 @@ struct SaiPortTraits {
         sai_uint8_t,
         AttributeCsigLinkLocatorWrapper,
         SaiIntDefault<sai_uint8_t>>;
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+    using IntDelete = SaiAttribute<
+        EnumType,
+        SAI_PORT_ATTR_INT_DELETE,
+        bool,
+        SaiBoolDefaultFalse>;
+    using IntMetadata = SaiAttribute<
+        EnumType,
+        SAI_PORT_ATTR_INT_METADATA,
+        sai_uint16_t,
+        SaiIntDefault<sai_uint16_t>>;
+#endif
     // Read-only counts of how many times a link up/down debounce was
     // retriggered by an additional flap while a debounce timeout was already
     // active.
@@ -938,7 +950,13 @@ struct SaiPortTraits {
       std::optional<Attributes::IsolationGroup>,
       std::optional<Attributes::Metadata>,
       std::optional<Attributes::CsigTagAction>,
-      std::optional<Attributes::CsigLinkLocator>>;
+      std::optional<Attributes::CsigLinkLocator>
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+      ,
+      std::optional<Attributes::IntDelete>,
+      std::optional<Attributes::IntMetadata>
+#endif
+      >;
   static constexpr std::array<sai_stat_id_t, 16> CounterIdsToRead = {
       SAI_PORT_STAT_IF_IN_OCTETS,
       SAI_PORT_STAT_IF_IN_UCAST_PKTS,
@@ -1162,6 +1180,10 @@ SAI_ATTRIBUTE_NAME(Port, RxLaneSquelchEnable);
 SAI_ATTRIBUTE_NAME(Port, LinkScanMode);
 SAI_ATTRIBUTE_NAME(Port, CsigTagAction);
 SAI_ATTRIBUTE_NAME(Port, CsigLinkLocator);
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+SAI_ATTRIBUTE_NAME(Port, IntDelete);
+SAI_ATTRIBUTE_NAME(Port, IntMetadata);
+#endif
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 2)
 SAI_ATTRIBUTE_NAME(Port, PfcTcDldInterval);
 SAI_ATTRIBUTE_NAME(Port, PfcTcDlrInterval);

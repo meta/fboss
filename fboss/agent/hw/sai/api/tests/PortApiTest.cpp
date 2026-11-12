@@ -118,6 +118,10 @@ class PortApiTest : public ::testing::Test {
         std::nullopt, // Metadata
         std::nullopt, // CsigTagAction
         std::nullopt, // CsigLinkLocator
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+        std::nullopt, // IntDelete
+        std::nullopt, // IntMetadata
+#endif
     };
     return portApi->create<SaiPortTraits>(a, 0);
   }
@@ -231,6 +235,30 @@ class PortApiTest : public ::testing::Test {
   std::shared_ptr<FakeSai> fs;
   std::unique_ptr<PortApi> portApi;
 };
+
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+TEST_F(PortApiTest, CsigIntMetadata) {
+  const auto id = createPort(25000, {1}, true);
+  EXPECT_FALSE(
+      portApi->getAttribute(id, SaiPortTraits::Attributes::IntDelete{}));
+  EXPECT_EQ(
+      portApi->getAttribute(id, SaiPortTraits::Attributes::IntMetadata{}), 0);
+  portApi->setAttribute(id, SaiPortTraits::Attributes::IntDelete{true});
+  portApi->setAttribute(id, SaiPortTraits::Attributes::IntMetadata{65535});
+  EXPECT_TRUE(
+      portApi->getAttribute(id, SaiPortTraits::Attributes::IntDelete{}));
+  EXPECT_EQ(
+      portApi->getAttribute(id, SaiPortTraits::Attributes::IntMetadata{}),
+      65535);
+  portApi->setAttribute(id, SaiPortTraits::Attributes::IntDelete{false});
+  portApi->setAttribute(id, SaiPortTraits::Attributes::IntMetadata{0});
+  EXPECT_FALSE(
+      portApi->getAttribute(id, SaiPortTraits::Attributes::IntDelete{}));
+  EXPECT_EQ(
+      portApi->getAttribute(id, SaiPortTraits::Attributes::IntMetadata{}), 0);
+  portApi->remove(id);
+}
+#endif
 
 TEST_F(PortApiTest, onePort) {
   auto id = createPort(100000, {42}, true);
