@@ -35,7 +35,11 @@ class AgentVrfTest : public AgentHwTest {
       const AgentEnsemble& ensemble) const override {
     auto config = AgentHwTest::initialConfig(ensemble);
     auto ports = ensemble.masterLogicalInterfacePortIds();
-    utility::addVrfForPorts(config, kTestVrf, {ports[0], ports[1]});
+    std::vector<PortID> vrfPorts{ports[0], ports[1]};
+    if (ports.size() > 3) {
+      vrfPorts.push_back(ports[3]);
+    }
+    utility::addVrfForPorts(config, kTestVrf, vrfPorts);
     return config;
   }
 
@@ -48,6 +52,10 @@ class AgentVrfTest : public AgentHwTest {
   PortID defaultVrfEgressPort() const {
     return masterLogicalInterfacePortIds()[2];
   }
+  // Second kTestVrf egress port, when there are enough ports
+  PortID vrfSecondEgressPort() const {
+    return masterLogicalInterfacePortIds()[3];
+  }
 
   utility::EcmpSetupTargetedPorts6 ecmpHelper(RouterID vrf) const {
     return utility::EcmpSetupTargetedPorts6(
@@ -55,14 +63,29 @@ class AgentVrfTest : public AgentHwTest {
   }
 
   void programRoute(RouterID vrf, PortID egressPort) {
+    programRoute(vrf, {PortDescriptor(egressPort)});
+  }
+
+  void programRoute(
+      RouterID vrf,
+      const boost::container::flat_set<PortDescriptor>& nhops) {
+    resolveNeighbors(vrf, nhops);
     auto helper = ecmpHelper(vrf);
-    boost::container::flat_set<PortDescriptor> nhops{
-        PortDescriptor(egressPort)};
+    auto wrapper = getSw()->getRouteUpdater();
+    helper.programRoutes(&wrapper, nhops, {kTestPrefix});
+  }
+
+  void resolveNeighbors(
+      RouterID vrf,
+      const boost::container::flat_set<PortDescriptor>& nhops) {
+    auto helper = ecmpHelper(vrf);
     applyNewState([&](const std::shared_ptr<SwitchState>& in) {
       return helper.resolveNextHops(in, nhops);
     });
-    auto wrapper = getSw()->getRouteUpdater();
-    helper.programRoutes(&wrapper, nhops, {kTestPrefix});
+  }
+
+  InterfaceID interfaceOf(PortID port) const {
+    return getProgrammedState()->getInterfaceIDForPort(PortDescriptor(port));
   }
 
   // Sent out of port and looped back, so routed in port's VRF
@@ -253,6 +276,58 @@ TEST_F(AgentVrfTest, DeleteVrfAndInterface) {
           utility::getPortOutPkts(getLatestPortStats(defaultVrfEgressPort())),
           defaultBefore + 1);
     });
+  };
+
+  verifyAcrossWarmBoots(setup, verify);
+}
+
+TEST_F(AgentVrfTest, MoveInterfaceAtRuntime) {
+  if (masterLogicalInterfacePortIds().size() < 4) {
+    GTEST_SKIP() << "Needs 4 interface ports";
+  }
+  auto setup = [this]() {
+    programRoute(
+        kTestVrf,
+        {PortDescriptor(vrfEgressPort()),
+         PortDescriptor(vrfSecondEgressPort())});
+    programRoute(RouterID(0), defaultVrfEgressPort());
+  };
+
+  auto verify = [this]() {
+    auto outPkts = [this](PortID port) {
+      return utility::getPortOutPkts(getLatestPortStats(port));
+    };
+    auto movingIntf = interfaceOf(vrfSecondEgressPort());
+
+    // The kTestVrf ECMP route keeps its next hop on the other interface
+    getSw()->updateInterfaceVrfs({{movingIntf, RouterID(0)}});
+    auto vrfBefore = outPkts(vrfEgressPort());
+    auto movedBefore = outPkts(vrfSecondEgressPort());
+    for (int i = 0; i < 10; ++i) {
+      getSw()->sendPacketOutOfPortAsync(
+          makePacket(ingressPort()), ingressPort());
+    }
+    WITH_RETRIES(
+        { EXPECT_EVENTUALLY_EQ(outPkts(vrfEgressPort()), vrfBefore + 10); });
+    EXPECT_EQ(outPkts(vrfSecondEgressPort()), movedBefore);
+
+    // The moved interface routes in the default VRF
+    auto defaultBefore = outPkts(defaultVrfEgressPort());
+    getSw()->sendPacketOutOfPortAsync(
+        makePacket(vrfSecondEgressPort()), vrfSecondEgressPort());
+    WITH_RETRIES({
+      EXPECT_EVENTUALLY_EQ(outPkts(defaultVrfEgressPort()), defaultBefore + 1);
+    });
+
+    // Move it back, so the state matches config across warm boot
+    getSw()->updateInterfaceVrfs({{movingIntf, kTestVrf}});
+    resolveNeighbors(kTestVrf, {PortDescriptor(vrfSecondEgressPort())});
+    EXPECT_EQ(
+        getProgrammedState()
+            ->getInterfaces()
+            ->getNode(movingIntf)
+            ->getRouterID(),
+        kTestVrf);
   };
 
   verifyAcrossWarmBoots(setup, verify);
