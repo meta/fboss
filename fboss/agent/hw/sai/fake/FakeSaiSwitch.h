@@ -15,6 +15,7 @@
 #include <folly/MacAddress.h>
 
 #include <map>
+#include <utility>
 
 extern "C" {
 #include <sai.h>
@@ -297,11 +298,11 @@ class FakeSwitch {
     return vxlanDefaultPort_;
   }
 
-  void setTamObjectId(sai_object_id_t objectId) {
-    tamObjectId_ = objectId;
+  void setTamObjectId(std::vector<sai_object_id_t> objectId) {
+    tamObjectId_ = std::move(objectId);
   }
 
-  sai_object_id_t getTamObjectId() const {
+  const std::vector<sai_object_id_t>& getTamObjectId() const {
     return tamObjectId_;
   }
 
@@ -382,6 +383,11 @@ class FakeSwitch {
   sai_status_t setLed(const sai_attribute_t* attr);
   sai_status_t getLed(sai_attribute_t* attr) const;
 
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+  sai_uint8_t maxCsigTimers{2};
+  std::vector<sai_uint32_t> csigBwIntervals{128, 256, 512};
+#endif
+
  private:
   folly::MacAddress srcMac_;
   bool inited_{false};
@@ -432,7 +438,7 @@ class FakeSwitch {
   sai_packet_action_t pfcDlrPacketAction_{SAI_PACKET_ACTION_DROP};
   sai_uint16_t vxlanDefaultPort_ = static_cast<sai_uint16_t>(
       cfg::switch_config_constants::kVxlanDefaultPort());
-  sai_object_id_t tamObjectId_{SAI_NULL_OBJECT_ID};
+  std::vector<sai_object_id_t> tamObjectId_;
   bool pfcMonitorEnable_{false};
   bool cablePropagationDelayMeasurement_{false};
   bool portCl72RetryEnable_{false};

@@ -283,6 +283,14 @@ struct SaiSwitchTraits {
         SAI_SWITCH_ATTR_TAM_OBJECT_ID,
         std::vector<sai_object_id_t>,
         SaiObjectIdListDefault>;
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+    using MaxCsigTimers =
+        SaiAttribute<EnumType, SAI_SWITCH_ATTR_MAX_CSIG_TIMERS, sai_uint8_t>;
+    using CsigBwTimeIntervalInUsec = SaiAttribute<
+        EnumType,
+        SAI_SWITCH_ATTR_CSIG_BW_TIME_INTERVAL_IN_USEC,
+        std::vector<sai_uint32_t>>;
+#endif
     using NumberOfFabricPorts = SaiAttribute<
         EnumType,
         SAI_SWITCH_ATTR_NUMBER_OF_FABRIC_PORTS,
@@ -1170,6 +1178,10 @@ SAI_ATTRIBUTE_NAME(Switch, EgressAcl)
 
 SAI_ATTRIBUTE_NAME(Switch, AclFieldList)
 SAI_ATTRIBUTE_NAME(Switch, TamObject)
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+SAI_ATTRIBUTE_NAME(Switch, MaxCsigTimers)
+SAI_ATTRIBUTE_NAME(Switch, CsigBwTimeIntervalInUsec)
+#endif
 SAI_ATTRIBUTE_NAME(Switch, NumberOfFabricPorts)
 SAI_ATTRIBUTE_NAME(Switch, FabricPortList)
 SAI_ATTRIBUTE_NAME(Switch, UseEcnThresholds)

@@ -30,6 +30,41 @@ class SwitchApiTest : public ::testing::Test {
   SwitchSaiId switchId;
 };
 
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+TEST_F(SwitchApiTest, CsigBandwidthTimers) {
+  EXPECT_EQ(
+      switchApi->getAttribute(
+          switchId, SaiSwitchTraits::Attributes::MaxCsigTimers{}),
+      2);
+  EXPECT_EQ(
+      switchApi->getAttribute(
+          switchId, SaiSwitchTraits::Attributes::CsigBwTimeIntervalInUsec{}),
+      (std::vector<sai_uint32_t>{128, 256, 512}));
+  EXPECT_THROW(
+      switchApi->setAttribute(
+          switchId, SaiSwitchTraits::Attributes::MaxCsigTimers{3}),
+      SaiApiError);
+}
+#endif
+
+TEST_F(SwitchApiTest, TamObjectList) {
+  switchApi->setAttribute(
+      switchId,
+      SaiSwitchTraits::Attributes::TamObject{
+          std::vector<sai_object_id_t>{100, 101}});
+  EXPECT_EQ(
+      switchApi->getAttribute(
+          switchId, SaiSwitchTraits::Attributes::TamObject{}),
+      (std::vector<sai_object_id_t>{100, 101}));
+  switchApi->setAttribute(
+      switchId,
+      SaiSwitchTraits::Attributes::TamObject{std::vector<sai_object_id_t>{}});
+  EXPECT_TRUE(
+      switchApi
+          ->getAttribute(switchId, SaiSwitchTraits::Attributes::TamObject{})
+          .empty());
+}
+
 TEST_F(SwitchApiTest, setGetInit) {
   SaiSwitchTraits::Attributes::InitSwitch init{true};
   switchApi->setAttribute(switchId, init);

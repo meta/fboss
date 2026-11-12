@@ -337,7 +337,12 @@ sai_status_t set_switch_attribute_fn(
       sw.setVxlanDefaultPort(attr->value.u16);
       break;
     case SAI_SWITCH_ATTR_TAM_OBJECT_ID:
-      sw.setTamObjectId(attr->value.oid);
+      sw.setTamObjectId(
+          attr->value.objlist.count == 0
+              ? std::vector<sai_object_id_t>{}
+              : std::vector<sai_object_id_t>(
+                    attr->value.objlist.list,
+                    attr->value.objlist.list + attr->value.objlist.count));
       break;
     case SAI_SWITCH_ATTR_PORT_PTP_MODE:
       // TODO: implement if required
@@ -633,9 +638,36 @@ sai_status_t get_switch_attribute_fn(
       case SAI_SWITCH_ATTR_PFC_DLR_PACKET_ACTION:
         attr[i].value.s32 = sw.getPfcDlrPacketAction();
         break;
-      case SAI_SWITCH_ATTR_TAM_OBJECT_ID:
-        attr[i].value.oid = sw.getTamObjectId();
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+      case SAI_SWITCH_ATTR_MAX_CSIG_TIMERS:
+        attr[i].value.u8 = sw.maxCsigTimers;
         break;
+      case SAI_SWITCH_ATTR_CSIG_BW_TIME_INTERVAL_IN_USEC: {
+        const auto count = static_cast<uint32_t>(sw.csigBwIntervals.size());
+        if (attr[i].value.u32list.count < count) {
+          attr[i].value.u32list.count = count;
+          return SAI_STATUS_BUFFER_OVERFLOW;
+        }
+        std::copy(
+            sw.csigBwIntervals.begin(),
+            sw.csigBwIntervals.end(),
+            attr[i].value.u32list.list);
+        attr[i].value.u32list.count = count;
+        break;
+      }
+#endif
+      case SAI_SWITCH_ATTR_TAM_OBJECT_ID: {
+        const auto& tamObjects = sw.getTamObjectId();
+        const auto count = static_cast<uint32_t>(tamObjects.size());
+        if (attr[i].value.objlist.count < count) {
+          attr[i].value.objlist.count = count;
+          return SAI_STATUS_BUFFER_OVERFLOW;
+        }
+        std::copy(
+            tamObjects.begin(), tamObjects.end(), attr[i].value.objlist.list);
+        attr[i].value.objlist.count = count;
+        break;
+      }
       case SAI_SWITCH_ATTR_PORT_PTP_MODE:
         attr[i].value.s32 = 0;
         break;
