@@ -232,6 +232,8 @@ folly::StringPiece saiObjectTypeToString(sai_object_type_t objectType) {
       return "vlan";
     case SAI_OBJECT_TYPE_VLAN_MEMBER:
       return "vlan-member";
+    case SAI_OBJECT_TYPE_POLICER:
+      return "policer";
     case SAI_OBJECT_TYPE_ISOLATION_GROUP:
       return "isolation-group";
     case SAI_OBJECT_TYPE_ISOLATION_GROUP_MEMBER:

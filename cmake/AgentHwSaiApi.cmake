@@ -62,6 +62,7 @@ set(SAI_API_SRC
   fboss/agent/hw/sai/api/MyMacApi.h
   fboss/agent/hw/sai/api/NextHopApi.h
   fboss/agent/hw/sai/api/NextHopGroupApi.h
+  fboss/agent/hw/sai/api/PolicerApi.h
   fboss/agent/hw/sai/api/PortApi.h
   fboss/agent/hw/sai/api/QueueApi.h
   fboss/agent/hw/sai/api/RouteApi.h

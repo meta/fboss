@@ -303,3 +303,10 @@ api_unittest(
         "MacsecApiTest.cpp",
     ],
 )
+
+api_unittest(
+    name = "policer_api_test",
+    srcs = [
+        "PolicerApiTest.cpp",
+    ],
+)

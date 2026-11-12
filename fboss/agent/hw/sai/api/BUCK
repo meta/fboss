@@ -85,6 +85,7 @@ cpp_library(
         "NeighborApi.h",
         "NextHopApi.h",
         "NextHopGroupApi.h",
+        "PolicerApi.h",
         "PortApi.h",
         "QosMapApi.h",
         "QueueApi.h",

@@ -84,6 +84,9 @@ sai_status_t sai_get_object_count(
       }
       break;
     }
+    case SAI_OBJECT_TYPE_POLICER:
+      *count = static_cast<uint32_t>(fs->policerManager.map().size());
+      break;
     case SAI_OBJECT_TYPE_ISOLATION_GROUP:
       *count = fs->isolationGroupManager.map().size();
       break;
@@ -411,6 +414,12 @@ sai_status_t sai_get_object_key(
         for (const auto& vlanManager : v.second.fm().map()) {
           object_list[i++].key.object_id = vlanManager.second.id;
         }
+      }
+      break;
+    }
+    case SAI_OBJECT_TYPE_POLICER: {
+      for (const auto& [id, policer] : fs->policerManager.map()) {
+        object_list[i++].key.object_id = id;
       }
       break;
     }

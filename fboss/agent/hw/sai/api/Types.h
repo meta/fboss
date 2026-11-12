@@ -43,6 +43,7 @@ FBOSS_STRONG_TYPE(sai_object_id_t, IsolationGroupMemberSaiId);
 FBOSS_STRONG_TYPE(sai_object_id_t, LagSaiId);
 FBOSS_STRONG_TYPE(sai_object_id_t, LagMemberSaiId);
 FBOSS_STRONG_TYPE(sai_object_id_t, MirrorSaiId);
+FBOSS_STRONG_TYPE(sai_object_id_t, PolicerSaiId);
 FBOSS_STRONG_TYPE(sai_object_id_t, NextHopSaiId);
 FBOSS_STRONG_TYPE(sai_object_id_t, NextHopGroupSaiId);
 FBOSS_STRONG_TYPE(sai_object_id_t, NextHopGroupMemberSaiId);

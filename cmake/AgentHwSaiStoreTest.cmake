@@ -22,6 +22,7 @@ add_executable(store_test
     fboss/agent/hw/sai/store/tests/NeighborStoreTest.cpp
     fboss/agent/hw/sai/store/tests/NextHopStoreTest.cpp
     fboss/agent/hw/sai/store/tests/NextHopGroupStoreTest.cpp
+    fboss/agent/hw/sai/store/tests/PolicerStoreTest.cpp
     fboss/agent/hw/sai/store/tests/PortStoreTest.cpp
     fboss/agent/hw/sai/store/tests/QosMapStoreTest.cpp
     fboss/agent/hw/sai/store/tests/QueueStoreTest.cpp

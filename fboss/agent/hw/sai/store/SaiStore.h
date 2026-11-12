@@ -55,6 +55,9 @@ template <>
 struct AdapterHostKeyWarmbootRecoverable<SaiUdfGroupTraits> : std::false_type {
 };
 
+template <>
+struct AdapterHostKeyWarmbootRecoverable<SaiPolicerTraits> : std::false_type {};
+
 // Keyed by the FBOSS isolation group name, which the adapter knows nothing
 // about, so it must be serialized into warm boot state.
 template <>
@@ -744,6 +747,7 @@ class SaiStore {
       SaiObjectStore<SaiLocalMirrorTraits>,
       SaiObjectStore<SaiEnhancedRemoteMirrorTraits>,
       SaiObjectStore<SaiSflowMirrorTraits>,
+      SaiObjectStore<SaiPolicerTraits>,
       SaiObjectStore<SaiMplsNextHopTraits>,
       SaiObjectStore<SaiTunnelEncapNextHopTraits>,
 #if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)
