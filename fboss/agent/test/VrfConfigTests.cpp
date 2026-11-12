@@ -208,6 +208,13 @@ cfg::SwitchConfig vrfConfig() {
   return config;
 }
 
+// testConfigA with kTestVrf configured; all interfaces in VRF 0
+cfg::SwitchConfig emptyVrfConfig() {
+  auto config = testConfigA();
+  config.vrfs().ensure().emplace_back().vrfId() = kTestVrf;
+  return config;
+}
+
 cfg::SwitchConfig vrfRemovedConfig() {
   auto config = testConfigA();
   return config;
@@ -543,9 +550,10 @@ TEST(VrfNextHop, ResolvesInNextHopVrf) {
 }
 
 TEST(VrfNextHop, ReresolvesOnDefaultVrfChange) {
-  auto config = vrfConfig();
+  auto config = emptyVrfConfig();
   auto handle = createTestHandle(&config);
   auto sw = handle->getSw();
+  sw->updateInterfaceVrfs({{InterfaceID(55), kTestVrf}});
   auto vrfRoute = makeRoute("2001:db8:200::/64", "2001:db8:500::1");
   NextHopThrift nhop;
   nhop.address() =
@@ -608,9 +616,10 @@ UnicastRoute makeVxlanRoute(
 } // namespace
 
 TEST(VrfNextHop, VxlanNextHopKeepsVtep) {
-  auto config = vrfConfig();
+  auto config = emptyVrfConfig();
   auto handle = createTestHandle(&config);
   auto sw = handle->getSw();
+  sw->updateInterfaceVrfs({{InterfaceID(55), kTestVrf}});
 
   {
     auto updater = sw->getRouteUpdater();
@@ -692,15 +701,6 @@ TEST(RibToSwitchStateFunction, PreFibUpdateInSameStateUpdate) {
   EXPECT_EQ(bothIndex, recorder.firstIndex(routeAdded));
   EXPECT_EQ(bothIndex, recorder.firstIndex(intfBound));
 }
-
-namespace {
-// testConfigA with kTestVrf configured; all interfaces in VRF 0
-cfg::SwitchConfig emptyVrfConfig() {
-  auto config = testConfigA();
-  config.vrfs().ensure().emplace_back().vrfId() = kTestVrf;
-  return config;
-}
-} // namespace
 
 TEST(UpdateInterfaceVrfs, RoutesFollowInterface) {
   auto config = emptyVrfConfig();
