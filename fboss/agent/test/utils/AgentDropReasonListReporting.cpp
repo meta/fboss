@@ -8,46 +8,14 @@
 
 #include "fboss/lib/CommonUtils.h"
 
+#include <fmt/format.h>
 #include <folly/String.h>
 #include <gtest/gtest.h>
 
 #include <algorithm>
-#include <iterator>
 #include <set>
 
 namespace facebook::fboss {
-
-// Reasons are read back from the HwAgent log rather than from stats: they are
-// decoded and logged in the process that owns the ASIC and never cross into
-// SwSwitch. installLogCapture() resets the capture window, so each test starts
-// from a clean slate, and the window then accumulates every reason the ASIC
-// reported. The lists are cleared on read, so each verify loop below re-sends
-// the drop triggering traffic on every WITH_RETRIES iteration -- a drop missed
-// in one collection window is covered by the next.
-namespace {
-
-// Reasons the ASIC reports alongside a specific one rather than instead of
-// it. RDROP is "Port bitmap zero drop condition", which comes up for
-// essentially any dropped packet. It is deliberately still reported and
-// logged, since it is a genuine drop indicator, but a test checking that
-// nothing unexpected also fired has to discount it.
-const std::set<std::string>& genericReasons() {
-  static const std::set<std::string> reasons{"RDROP"};
-  return reasons;
-}
-
-std::set<std::string> specificOnly(const std::set<std::string>& reasons) {
-  std::set<std::string> out;
-  std::set_difference(
-      reasons.begin(),
-      reasons.end(),
-      genericReasons().begin(),
-      genericReasons().end(),
-      std::inserter(out, out.end()));
-  return out;
-}
-
-} // namespace
 
 ListDropReasonReportingImpl::ListDropReasonReportingImpl(
     DropReasonReportingContext context)
@@ -58,8 +26,9 @@ ListDropReasonReportingImpl::ListDropReasonReportingImpl(
 void ListDropReasonReportingImpl::accumulate(
     DropReasons& dst,
     const DropReasons& src) {
-  dst.ingress.insert(src.ingress.begin(), src.ingress.end());
-  dst.egress.insert(src.egress.begin(), src.egress.end());
+  for (const auto& [stage, reasons] : src) {
+    dst[stage].insert(reasons.begin(), reasons.end());
+  }
 }
 
 // Pull the reason names out of a "DROP reasons <stage>: A, B, C" line.
@@ -88,45 +57,63 @@ void ListDropReasonReportingImpl::parseReasons(
 ListDropReasonReportingImpl::DropReasons
 ListDropReasonReportingImpl::getAggregatedDropReasons() {
   DropReasons result;
-  for (const auto& match : context_.readLogMessages()) {
-    parseReasons(match, "DROP reasons ingress: ", result.ingress);
-    parseReasons(match, "DROP reasons egress: ", result.egress);
+  const std::string marker = "DROP reasons ";
+  for (const auto& message : context_.readLogMessages()) {
+    const auto start = message.find(marker);
+    if (start == std::string::npos) {
+      continue;
+    }
+    const auto end = message.find(": ", start + marker.size());
+    if (end == std::string::npos) {
+      continue;
+    }
+    const auto stage =
+        message.substr(start + marker.size(), end - start - marker.size());
+    parseReasons(message, marker + stage + ": ", result[stage]);
   }
   return result;
 }
 
-std::string ListDropReasonReportingImpl::toString(const DropReasons& reasons) {
-  return folly::to<std::string>(
-      "ingress=[",
-      folly::join(", ", reasons.ingress),
-      "] egress=[",
-      folly::join(", ", reasons.egress),
-      "]");
+bool ListDropReasonReportingImpl::expectedDropReasonsObserved(
+    const DropReasons& reasons,
+    const DropReasons& expected) {
+  for (const auto& [stage, names] : expected) {
+    const auto it = reasons.find(stage);
+    if (it == reasons.end() ||
+        !std::includes(
+            it->second.begin(), it->second.end(), names.begin(), names.end())) {
+      return false;
+    }
+  }
+  return true;
 }
 
-// Assert the expected reason fired on the named stage and that nothing
-// unexpected fired, on either stage. Generic reasons are discounted:
-// they accompany any drop and say nothing about which one.
+std::string ListDropReasonReportingImpl::toString(const DropReasons& reasons) {
+  std::vector<std::string> stages;
+  stages.reserve(reasons.size());
+  for (const auto& [stage, names] : reasons) {
+    stages.push_back(fmt::format("{}=[{}]", stage, folly::join(", ", names)));
+  }
+  return folly::join(" ", stages);
+}
+
+// Assert every expected reason fired. Allow optional reasons and reject all
+// other reasons across every stage.
 void ListDropReasonReportingImpl::verifyOnlyExpectedReason(
     const DropReasons& reasons,
-    DropStage dropStage,
-    const std::string& expected,
+    const DropReasons& expected,
+    const DropReasons& optional,
     const char* desc) const {
-  const auto& reported =
-      dropStage == DropStage::Ingress ? reasons.ingress : reasons.egress;
-  const auto& other =
-      dropStage == DropStage::Ingress ? reasons.egress : reasons.ingress;
-  EXPECT_TRUE(reported.contains(expected))
-      << desc << ": expected reason " << expected << " not reported";
-  auto unexpected = specificOnly(reported);
-  unexpected.erase(expected);
-  EXPECT_TRUE(unexpected.empty())
-      << desc << ": unexpected drop reasons also reported: "
-      << folly::join(", ", unexpected);
-  auto otherStage = specificOnly(other);
-  EXPECT_TRUE(otherStage.empty())
-      << desc << ": unexpected drop reasons in the other stage: "
-      << folly::join(", ", otherStage);
+  auto observed = reasons;
+  for (const auto& [stage, names] : optional) {
+    for (const auto& name : names) {
+      observed[stage].erase(name);
+    }
+  }
+  std::erase_if(
+      observed, [](const auto& entry) { return entry.second.empty(); });
+  EXPECT_EQ(observed, expected)
+      << desc << ": unexpected drop reasons: " << toString(reasons);
 }
 
 } // namespace facebook::fboss
