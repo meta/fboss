@@ -111,6 +111,8 @@ enum BgpNotifCeaseErrSubCode {
   BN_CEASE_CONFIG_CHANGE = 6,
   BN_CEASE_CONN_COLLISION_RES = 7,
   BN_CEASE_OUT_OF_RESOURCES = 8,
+  /* RFC 8538 */
+  BN_CEASE_HARD_RESET = 9,
 }
 
 enum BgpNotificationRouteRefreshErrSubCode {
@@ -265,6 +267,7 @@ struct BgpCapabilities {
   14: list<BgpExtNHEncodingCapability> extNHEncodingCapabilities; // RFC 5549
   15: bool enhancedRouteRefresh; // RFC 7313
   16: bool routeRefresh; // RFC 2918
+  17: bool grNotification; // GR Notification (N) bit, RFC 8538
 }
 
 // Structure to hold the parsed BgpUpdate

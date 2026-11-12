@@ -23,6 +23,7 @@
 #include "fboss/platform/fixmyfboss/CheckRegistry.h"
 #include "fboss/platform/fixmyfboss/CheckRunner.h"
 #include "fboss/platform/fixmyfboss/CliOptions.h"
+#include "fboss/platform/fixmyfboss/Extensions.h"
 #include "fboss/platform/fixmyfboss/PasswordPrompt.h"
 #include "fboss/platform/fixmyfboss/ResultPrinter.h"
 
@@ -58,7 +59,7 @@ void configureLogging(bool debugFlag, bool verboseFlag) {
   }
 }
 
-void printJson(
+platform_checks::CheckReport makeReport(
     std::vector<platform_checks::CheckResult> results,
     const fixmyfboss::CheckEnvironment& env) {
   // Cannot happen: createEnvironment() always sets x86.
@@ -69,9 +70,7 @@ void printJson(
   report.results() = std::move(results);
   report.platformName() = env.platformName;
   report.target() = env.x86->name();
-  std::cout << apache::thrift::SimpleJSONSerializer::serialize<std::string>(
-                   report)
-            << "\n";
+  return report;
 }
 
 // Makes it obvious, before anything happens, that the switch will be power
@@ -118,6 +117,7 @@ int main(int argc, char* argv[]) {
       "fixmyfboss - Diagnose and fix FBOSS device issues", "fixmyfboss"};
   fixmyfboss::CliOptions options;
   fixmyfboss::addOptions(app, options);
+  const auto reportHooks = fixmyfboss::addExtensionOptions(app);
   try {
     app.parse(argc, argv);
   } catch (const CLI::ParseError& e) {
@@ -155,14 +155,21 @@ int main(int argc, char* argv[]) {
   }
 
   warnAboutDisruptiveChecks(plan, env);
-  auto results = runChecks(plan, *runner, env.platformName, !options.json);
+  const auto report = makeReport(
+      runChecks(plan, *runner, env.platformName, !options.json), env);
+  const auto& results = *report.results();
   if (options.json) {
-    printJson(results, env);
+    std::cout << apache::thrift::SimpleJSONSerializer::serialize<std::string>(
+                     report)
+              << "\n";
   } else {
     fixmyfboss::ResultPrinter printer(
         std::cout, options.verbose || options.debug);
     printer.printSummary(results);
     printer.printDetails(results);
+  }
+  for (const auto& hook : reportHooks) {
+    hook(report);
   }
 
   bool allPassed =

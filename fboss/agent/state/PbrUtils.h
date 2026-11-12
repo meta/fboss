@@ -36,6 +36,11 @@ std::string makePbrCounterName(
     ForwardingClass trafficClass,
     const std::string& redirectNhgName);
 
+std::shared_ptr<AclEntry> makePbrAclEntry(
+    const std::shared_ptr<ClassBasedPolicyNode>& policy,
+    ForwardingClass trafficClass,
+    bool temporary = false);
+
 std::vector<std::shared_ptr<AclEntry>> createAclEntriesFromPolicy(
     const std::shared_ptr<ClassBasedPolicyNode>& policy,
     bool temporary = false);

@@ -43,8 +43,10 @@ class HwBasePortFb303Stats {
       bool mplsLabelLookupFailCounterSupported = false,
       bool linkDebounceRetriggerCounterSupported = false,
       bool sllHllDiscardCounterSupported = false,
+      bool portLatchStatusSupported = false,
       std::optional<std::string> multiSwitchStatsPrefix = std::nullopt)
       : queueId2Name_(std::move(queueId2Name)),
+        portLatchStatusSupported_(portLatchStatusSupported),
         portName_(portName),
         srv6MysidDiscardCounterSupported_(srv6MysidDiscardCounterSupported),
         mplsLabelLookupFailCounterSupported_(
@@ -209,6 +211,12 @@ class HwBasePortFb303Stats {
   const std::vector<PfcPriority>& getEnabledPfcPriorities() const {
     return pfcInfo_.enabledPfcPriorities;
   }
+  bool isRxPfcDurationEnabled() const {
+    return pfcInfo_.rxPfcDurationEnabled;
+  }
+  bool isTxPfcDurationEnabled() const {
+    return pfcInfo_.txPfcDurationEnabled;
+  }
   bool isSrv6MysidDiscardCounterSupported() const {
     return srv6MysidDiscardCounterSupported_;
   }
@@ -229,6 +237,7 @@ class HwBasePortFb303Stats {
 
  protected:
   QueueId2Name queueId2Name_;
+  bool portLatchStatusSupported_{false};
 
  private:
   /*

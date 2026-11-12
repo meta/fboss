@@ -107,6 +107,22 @@ cpp_library(
     ],
 )
 
+cpp_library(
+    name = "extensions",
+    srcs = [
+        "Extensions.cpp",
+    ],
+    headers = [
+        "Extensions.h",
+    ],
+    exported_deps = [
+        "//fboss/platform/platform_checks:check_types-cpp2-types",
+    ],
+    exported_external_deps = [
+        "CLI11",
+    ],
+)
+
 cpp_binary(
     name = "fixmyfboss",
     srcs = [
@@ -119,8 +135,10 @@ cpp_binary(
         ":check_registry",
         ":check_runner",
         ":cli_options",
+        ":extensions",
         ":password_prompt",
         ":result_printer",
+        "//fboss/platform/fixmyfboss/facebook:report_paste",
         "//thrift/lib/cpp2/protocol:protocol",
     ],
     external_deps = [
@@ -130,10 +148,14 @@ cpp_binary(
 
 fbpkg.builder(
     name = "fboss.fixmyfboss",
-    architectures = ["x86_64"],
+    architectures = [
+        "x86_64",
+        "aarch64",
+    ],
     path_actions = {
         "fixmyfboss": "//fboss/platform/fixmyfboss:fixmyfboss",
     },
+    variant_distribution = "combined",
 )
 
 cpp_unittest(
@@ -167,6 +189,17 @@ cpp_unittest(
     network_access = network_access_utils.none(),
     deps = [
         ":check_environment",
+    ],
+)
+
+cpp_unittest(
+    name = "extensions_test",
+    srcs = [
+        "tests/ExtensionsTest.cpp",
+    ],
+    network_access = network_access_utils.none(),
+    deps = [
+        ":extensions",
     ],
 )
 

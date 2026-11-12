@@ -220,8 +220,11 @@ void SaiTamManager::changeMirrorOnDropReport(
           HwAsic::Feature::TELEMETRY_AND_MONITORING)) {
     return;
   }
-  const auto resolvedPort = newReport->isResolved() &&
-          newReport->getResolvedCollectorMac().has_value()
+  if (!newReport->isResolved()) {
+    removeMirrorOnDropReport(oldReport);
+    return;
+  }
+  const auto resolvedPort = newReport->getResolvedCollectorMac().has_value()
       ? getMirrorOnDropPortHandle(*newReport)
       : std::nullopt;
   if (!resolvedPort) {

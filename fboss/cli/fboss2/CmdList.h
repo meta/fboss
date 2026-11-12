@@ -10,8 +10,11 @@
 #pragma once
 
 #include <algorithm>
+#include <concepts>
 #include <functional>
 #include <string>
+#include <type_traits>
+#include <utility>
 #include <vector>
 
 #include <CLI/App.hpp>
@@ -24,11 +27,72 @@ namespace facebook::fboss {
 using ValidFilterMapType = std::unordered_map<
     std::string_view,
     std::shared_ptr<CmdGlobalOptions::BaseTypeVerifier>>;
-using CommandHandlerFn = std::function<void()>;
+
+enum class CliReadWriteMode {
+  CLI_MODE_WRITE,
+  CLI_MODE_READ,
+};
+
+struct CommandRunner {
+  void (*run)();
+  CliReadWriteMode mode;
+  bool documented;
+};
+
+class CommandHandlerFn {
+ public:
+  /* implicit */ CommandHandlerFn(const CommandRunner& runner)
+      : fn_{runner.run}, mode_{runner.mode}, documented_{runner.documented} {}
+
+  template <typename F>
+    requires(
+        !std::is_same_v<std::remove_cvref_t<F>, CommandHandlerFn> &&
+        std::is_invocable_v<F&>)
+  /* implicit */ CommandHandlerFn(F&& fn) : fn_{std::forward<F>(fn)} {}
+
+  void operator()() const {
+    fn_();
+  }
+  CliReadWriteMode mode() const {
+    return mode_;
+  }
+  bool documented() const {
+    return documented_;
+  }
+
+ private:
+  std::function<void()> fn_;
+  CliReadWriteMode mode_{CliReadWriteMode::CLI_MODE_WRITE};
+  bool documented_{false};
+};
+
 using ValidFilterHandlerFn = std::function<ValidFilterMapType()>;
 using ArgTypeHandlerFn = std::function<utils::ObjectArgTypeId()>;
-using ArgRegistrarFn =
-    std::function<void(CLI::App&, std::vector<std::string>&)>;
+// Returns the tokens that may follow the positional args typed so far after
+// a command (see utils/ArgCompletion.h).
+using ArgCompleterFn =
+    std::function<std::vector<std::string>(const std::vector<std::string>&)>;
+
+// How a command registers its positional argument with CLI11, plus (when the
+// command's Traits provide completeArgs) how it completes that argument.
+// Built by argRegistrar<Traits> below; constructible from a bare registrar
+// for commands without completion.
+struct ArgRegistrarFn {
+  using RegisterFn = std::function<void(CLI::App&, std::vector<std::string>&)>;
+
+  /* implicit */ ArgRegistrarFn( // NOLINT(google-explicit-constructor)
+      RegisterFn registerArgs,
+      ArgCompleterFn completeArgs = nullptr)
+      : registerArgs(std::move(registerArgs)),
+        completeArgs(std::move(completeArgs)) {}
+
+  void operator()(CLI::App& cmd, std::vector<std::string>& args) const {
+    registerArgs(cmd, args);
+  }
+
+  RegisterFn registerArgs;
+  ArgCompleterFn completeArgs; // empty when the command has no completion
+};
 using LocalOptionsHandlerFn = std::function<std::vector<utils::LocalOption>()>;
 
 using CmdVerb = std::string;
@@ -372,20 +436,12 @@ const CommandTree& kBaseAdditionalCommandTree();
 const CommandTree& kAdditionalCommandTree();
 const std::vector<Command>& kSpecialCommands();
 
-// Defined in CmdHandler.h. For a read ("show") command this static_asserts that
-// the command carries the CLI reference-wiki hooks (or a CliDocsExempt tag); a
-// no-op for write commands. Instantiated only at the command-tree registration
-// sites (CmdList.cpp variants), which include CmdHandler.h via command headers.
-template <typename T>
-void assertReadCommandDocumented();
-
-template <typename T>
-void commandHandler() {
-  assertReadCommandDocumented<T>();
-  T().run();
-}
-
 void helpCommandHandler();
+
+inline constexpr CommandRunner kHelpCommandRunner{
+    &helpCommandHandler,
+    CliReadWriteMode::CLI_MODE_READ,
+    false /*documented*/};
 
 template <typename T>
 ValidFilterMapType validFilterHandler() {
@@ -398,9 +454,26 @@ utils::ObjectArgTypeId argTypeHandler() {
 }
 
 template <typename Traits>
-void argRegistrar(CLI::App& cmd, std::vector<std::string>& args) {
-  Traits::addCliArg(cmd, args);
+concept HasArgCompleter = requires(const std::vector<std::string>& typed) {
+  { Traits::completeArgs(typed) } -> std::same_as<std::vector<std::string>>;
+};
+
+template <typename Traits>
+ArgCompleterFn argCompleterOf() {
+  if constexpr (HasArgCompleter<Traits>) {
+    return &Traits::completeArgs;
+  } else {
+    return nullptr;
+  }
 }
+
+// Usable wherever a command tree entry expects an ArgRegistrarFn:
+// `argRegistrar<CmdConfigFooTraits>` registers the positional via the
+// Traits' addCliArg and, if the Traits declare completeArgs, completes it.
+template <typename Traits>
+inline const ArgRegistrarFn argRegistrar{
+    &Traits::addCliArg,
+    argCompleterOf<Traits>()};
 
 template <typename T>
 std::vector<utils::LocalOption> localOptionsHandler() {

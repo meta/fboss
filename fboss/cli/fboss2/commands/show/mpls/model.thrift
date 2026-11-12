@@ -11,7 +11,7 @@ struct ShowMplsRouteModel {
 struct MplsEntry {
   1: i32 topLabel;
   2: string action;
-  3: list<ClientAndNextHops> nextHopMulti;
+  3: list<model.ClientAndNextHops> nextHopMulti;
   4: i32 adminDistance;
-  5: list<NextHopInfo> nextHops;
+  5: list<model.NextHopInfo> nextHops;
 }

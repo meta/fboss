@@ -111,6 +111,7 @@ struct FakePort {
   sai_uint32_t cbfcSenderCreditLimit{0};
   sai_uint16_t cbfcSenderCreditSize{128};
   sai_int16_t cbfcSenderPacketOverhead{0};
+  sai_uint32_t cbfcReceiverCreditLimit{0};
   sai_object_id_t qosQueueToVcMap{SAI_NULL_OBJECT_ID};
   // READ_ONLY on real hardware, derived from the MMU carving. Fake has no
   // MMU, so these are canned. The negative overhead is deliberate: it is a

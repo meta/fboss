@@ -54,7 +54,7 @@ following fields.
 | `port_config` | XGS. Front-panel port settings: `default_speed` (in Mbps), `speed_to_fec` (mapping from speed to FEC mode), `enable` (the value emitted for `PC_PORT.ENABLE`), and `pc_port_overrides` (extra `PC_PORT` key/value lines emitted verbatim, for example `LINK_TRAINING`). This object is distinct from the DNX `port_config` string inside `asic_config_params`. |
 | `cpu_port` | XGS. CPU port settings: `speed` (in Mbps) and `num_lanes`. |
 | `mgmt_port` | XGS. Management port settings: `enabled` (whether the port is emitted at all), `enable` (the `PC_PORT.ENABLE` value), `in_port_block` (include the port in the `PORT` MTU range), and `speed_variants` (per-speed settings keyed by speed). |
-| `mgmt_port_overrides` | XGS. Platform overrides of the ASIC-level management port defaults: `logical_id`, `physical_id`, `speed`, `num_lanes`, and `fec`. |
+| `mgmt_port_overrides` | XGS. Platform overrides of the ASIC-level management port defaults: `logical_id`, `physical_id`, `speed`, `num_lanes`, and `fec`. `num_ports` (default 1) breaks the management port out into that many ports, taken from the ASIC's `breakout_ports`, each using this override's `speed`, `num_lanes`, and `fec`. |
 | `port_mapping_overrides` | XGS. Adjustments to the logical-to-physical port mapping formula: `core_range` (which cores participate, for example `"0-15,48-63"`), `num_lp_ports_on_even_core`, `num_logical_ports_per_datapath`, `lp_start_step_offset`, `lp_offset_simple`, `special_core_offset_apply_all`, and `exclude_logical_ports` (logical port IDs omitted from `PC_PORT_PHYS_MAP`, `PC_PORT`, and `PORT`, for front-panel ports that are not populated on the platform). |
 | `platform_sai_overrides` | XGS. Platform-level SAI settings. These take precedence within the layered `global` sources and override the ASIC-level SAI overrides. |
 | `platform_sdk_overrides` | DNX. Platform-level SOC properties applied on top of the ASIC `base_sdk_settings` and declarative tables. Keys carry their SOC suffix inline. |
@@ -70,7 +70,7 @@ following fields.
 | Parameter | Description |
 |---|---|
 | `config_type` | Output configuration format: `YAML_CONFIG` (XGS), `KEY_VALUE_CONFIG` (DNX), or `JSON_CONFIG`. |
-| `config_gen_type` | Generation profile, `DEFAULT` or `HW_TEST`. Conditional settings in both ASIC families may select on it. |
+| `config_gen_type` | Generation profile, e.g. `DEFAULT` or `HW_TEST`, matching the `AsicConfigGenType` enum. Conditional settings in both ASIC families may select on it. |
 | `exact_match` | XGS. Enables exact-match forwarding table entries. |
 | `mmu_lossless` | XGS. Enables MMU lossless mode for PFC and RDMA workloads. |
 | `port_config` | DNX. Port-map profile name, for example `default` or `18*400G-4`. Conditional settings select the profile by exact name and the topology family by prefix, for example `dual_stage`. |
@@ -101,7 +101,7 @@ files under `fboss/configs/asic_vendors/broadcom/xgs/asics/`.
 | `port_architecture` | Core, lane, and datapath layout consumed by the port mapping logic: `num_cores`, `num_lanes_per_core`, `num_logical_ports_per_datapath`, `num_physical_ports_per_datapath`, and `num_lp_ports_on_even_core_default`. |
 | `mmu_size` | MMU buffer size in bytes. Also used as the `MAX_FRAME_SIZE` and port MTU values. |
 | `table_names` | Ordered list of output YAML table names. Controls which tables appear in the output and their order. |
-| `mgmt_port_defaults` | Default management port settings: `logical_id`, `physical_id`, `speed`, `num_lanes`, and `fec`. Platforms may override these per variant. |
+| `mgmt_port_defaults` | Default management port settings: `logical_id`, `physical_id`, `speed`, `num_lanes`, and `fec`. Platforms may override these per variant. The optional `breakout_ports` list gives the ordered `logical_id` / `physical_id` pairs used when a variant sets `mgmt_port_overrides.num_ports` above 1. |
 | `preamble_support` | Whether the ASIC supports a preamble section prepended to the output YAML. When `false`, any `preamble_file` declared by a platform is ignored. |
 | `global_defaults` | ASIC-specific SDK settings copied into the `global` output table. |
 | `sai_overrides` | ASIC-specific SAI settings layered on top of the vendor SAI common values. |

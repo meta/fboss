@@ -3,7 +3,7 @@
 #include <filesystem>
 #include <set>
 
-#include <folly/Format.h>
+#include <folly/String.h>
 #include <folly/logging/xlog.h>
 #include <gtest/gtest.h>
 #include <re2/re2.h>

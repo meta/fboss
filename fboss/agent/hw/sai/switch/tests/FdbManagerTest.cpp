@@ -30,11 +30,12 @@ class FdbManagerTest : public ManagerTestBase {
   }
 
   void checkFdbEntry(sai_uint32_t metadata = 0) {
-    auto vlanHandle = saiManagerTable->vlanManager().getVlanHandle(VlanID(0));
+    auto vlanHandle =
+        saiManagerTable->vlanManager().getVlanHandle(VlanID(intf0.id));
     auto vlanId = vlanHandle->vlan->adapterKey();
     SaiFdbTraits::FdbEntry entry{1, vlanId, kMac()};
     auto portHandle = saiManagerTable->portManager().getPortHandle(
-        PortID(intf0.remoteHosts[0].id));
+        PortID(intf0.remoteHosts[0].port.id));
     auto expectedBridgePortId = portHandle->bridgePort->adapterKey();
     auto bridgePortId = saiApiTable->fdbApi().getAttribute(
         entry, SaiFdbTraits::Attributes::BridgePortId{});
@@ -79,7 +80,7 @@ class FdbManagerTest : public ManagerTestBase {
     }
     return std::make_shared<MacEntry>(
         mac,
-        PortDescriptor(PortID(intf0.remoteHosts[0].id)),
+        PortDescriptor(PortID(intf0.remoteHosts[0].port.id)),
         std::optional<cfg::AclLookupClass>(metadata));
   }
   void updateOraAddMacEntry(
@@ -131,6 +132,20 @@ TEST_F(FdbManagerTest, doubleRemoveFdbEntry) {
   removeMacEntry();
   EXPECT_THROW(removeMacEntry(), FbossError);
 }
+
+TEST_F(FdbManagerTest, removeFdbEntryAfterPortVlanChange) {
+  addMacEntry();
+  auto newState = programmedState->clone();
+  newState->getPorts()
+      ->getNode(PortID(intf0.remoteHosts[0].port.id))
+      ->modify(&newState)
+      ->setIngressVlan(VlanID(testInterfaces[2].id));
+  applyNewState(newState);
+
+  removeMacEntry();
+  EXPECT_TRUE(FakeSai::getInstance()->fdbManager.map().empty());
+}
+
 TEST_F(FdbManagerTest, getL2EntriesTest) {
   addMacEntry();
   auto* fdbManager = &saiManagerTable->fdbManager();

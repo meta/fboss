@@ -1,6 +1,6 @@
 load("@fbcode_macros//build_defs:python_library.bzl", "python_library")
 
-oncall("fboss_distro")
+oncall("fboss_oss")
 
 python_library(
     name = "docker",

@@ -426,6 +426,12 @@ void HwTransceiverUtils::verifyMediaInterfaceCompliance(
       verifyCopper400gProfile(tcvrState, mediaInterfaces);
       break;
 
+    case cfg::PortProfileID::PROFILE_25G_1_NRZ_NOFEC_COPPER:
+    case cfg::PortProfileID::PROFILE_25G_1_NRZ_CL74_COPPER:
+    case cfg::PortProfileID::PROFILE_25G_1_NRZ_RS528_COPPER:
+      verifyCopper25gProfile(tcvrState, mediaInterfaces);
+      break;
+
     case cfg::PortProfileID::PROFILE_100G_1_PAM4_RS544X2N_COPPER:
     case cfg::PortProfileID::PROFILE_100G_4_NRZ_RS528_COPPER:
     case cfg::PortProfileID::PROFILE_100G_4_NRZ_CL91_COPPER:
@@ -450,6 +456,9 @@ void HwTransceiverUtils::verifyMediaInterfaceCompliance(
       break;
     case cfg::PortProfileID::PROFILE_800G_8_PAM4_RS544X2N_COPPER:
       verifyCopper800gProfile(tcvrState, mediaInterfaces);
+      break;
+    case cfg::PortProfileID::PROFILE_1600G_8_PAM4_RS544X2N_COPPER:
+      verifyCopper1600gProfile(tcvrState, mediaInterfaces);
       break;
     default:
       throw FbossError(
@@ -599,6 +608,19 @@ void HwTransceiverUtils::verifyCopper400gProfile(
   }
 }
 
+void HwTransceiverUtils::verifyCopper25gProfile(
+    const TcvrState& tcvrState,
+    const std::vector<MediaInterfaceId>& mediaInterfaces) {
+  EXPECT_EQ(
+      TransmitterTechnology::COPPER,
+      *(tcvrState.cable().value_or({}).transmitterTech()));
+
+  // 25G copper ports are lanes of a 100G-CR4 DAC broken out as 4x25G
+  for (const auto& mediaId : mediaInterfaces) {
+    EXPECT_EQ(*mediaId.code(), MediaInterfaceCode::CR4_100G);
+  }
+}
+
 void HwTransceiverUtils::verifyCopper100gProfile(
     const TcvrState& tcvrState,
     const std::vector<MediaInterfaceId>& mediaInterfaces) {
@@ -722,6 +744,28 @@ void HwTransceiverUtils::verifyActiveOpticalCableProfile(
     auto mediaCodeIt = activeMediaMap.find(activeCuCode);
     ASSERT_TRUE(mediaCodeIt != activeMediaMap.end());
     EXPECT_EQ(*mediaId.code(), mediaCodeIt->second);
+  }
+}
+
+void HwTransceiverUtils::verifyCopper1600gProfile(
+    const TcvrState& tcvrState,
+    const std::vector<MediaInterfaceId>& mediaInterfaces) {
+  const auto& cable = *tcvrState.cable();
+  const auto& transmitterTech = *cable.transmitterTech();
+  auto mgmtInterface =
+      apache::thrift::can_throw(*tcvrState.transceiverManagementInterface());
+
+  EXPECT_EQ(mgmtInterface, TransceiverManagementInterface::CMIS);
+  EXPECT_EQ(TransmitterTechnology::COPPER, transmitterTech);
+  // 1.6T over copper only exists as an active cable: a passive DAC carries no
+  // 200G/lane SerDes on any of our platforms.
+  EXPECT_TRUE(TransceiverManager::activeCable(tcvrState));
+
+  for (const auto& mediaId : mediaInterfaces) {
+    EXPECT_EQ(*mediaId.code(), MediaInterfaceCode::CR8_1600G);
+    EXPECT_EQ(
+        *mediaId.media()->activeCuCode(),
+        ActiveCuHostInterfaceCode::AUI_PAM4_8_1600G);
   }
 }
 

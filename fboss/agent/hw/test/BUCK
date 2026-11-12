@@ -102,9 +102,11 @@ cpp_unittest(
     network_access = network_access_utils.none(),
     deps = [
         "fbsource//xplat/folly/logging:logging",
+        "//common/stats:monotonic_counter",
         "//fb303:service_data",
+        "//fboss/agent/hw:counter_utils",
         "//fboss/agent/hw:hw_cpu_fb303_stats",
-        "//fboss/agent/hw:stats_constants",
+        "//fboss/agent/hw:hw_fb303_stats",
     ],
 )
 

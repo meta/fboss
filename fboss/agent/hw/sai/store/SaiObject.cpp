@@ -395,6 +395,19 @@ SaiObject<SaiIsolationGroupTraits>::follyDynamicToAdapterHostKey(
   return json.asString();
 }
 
+template <>
+folly::dynamic
+SaiObject<SaiVirtualRouterTraits>::adapterHostKeyToFollyDynamic() {
+  return static_cast<uint32_t>(adapterHostKey_);
+}
+
+template <>
+typename SaiVirtualRouterTraits::AdapterHostKey
+SaiObject<SaiVirtualRouterTraits>::follyDynamicToAdapterHostKey(
+    const folly::dynamic& json) {
+  return RouterID(static_cast<uint32_t>(json.asInt()));
+}
+
 #if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)
 template <>
 folly::dynamic SaiObject<SaiSrv6SidListTraits>::adapterHostKeyToFollyDynamic() {

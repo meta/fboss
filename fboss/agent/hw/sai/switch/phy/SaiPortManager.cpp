@@ -10,6 +10,7 @@
 
 #include "fboss/agent/hw/sai/switch/SaiPortManager.h"
 
+#include "fboss/agent/AgentFeatures.h"
 #include "fboss/agent/FbossError.h"
 #include "fboss/agent/hw/CounterUtils.h"
 #include "fboss/agent/hw/HwPortFb303Stats.h"
@@ -26,7 +27,7 @@
 #include <fmt/core.h>
 #include <folly/logging/xlog.h>
 
-#if defined(SAI_BRCM_PAI_IMPL)
+#if defined(BRCM_PAI_SDK)
 extern "C" {
 #include <brcm_pai_extensions.h>
 }
@@ -113,9 +114,42 @@ PortSaiId SaiPortManager::addPortImpl(const std::shared_ptr<Port>& swPort) {
       static_cast<uint64_t>(saiLinePort->adapterKey()),
       static_cast<uint64_t>(saiSysPort->adapterKey()));
 
+#if defined(BRCM_PAI_SDK)
+  if (FLAGS_enable_port_cl72_retry) {
+    const auto* hwSwitch = platform_->getHwSwitch();
+    const bool isWarmBootInit =
+        hwSwitch->getBootType() == BootType::WARM_BOOT &&
+        hwSwitch->getRunState() < SwitchRunState::CONFIGURED;
+    if (FLAGS_enable_xphy_link_training_sys_side) {
+      enableXphyLtRestartOnTimeout(
+          saiSysPort->adapterKey(),
+          swPort->getName() + " sys",
+          !isWarmBootInit);
+    }
+    if (FLAGS_enable_xphy_link_training_line_side) {
+      enableXphyLtRestartOnTimeout(
+          saiLinePort->adapterKey(),
+          swPort->getName() + " line",
+          !isWarmBootInit);
+    }
+  }
+#endif
+
   if (swPort->isEnabled()) {
     portStats_.emplace(
-        swPort->getID(), std::make_unique<HwPortFb303Stats>(swPort->getName()));
+        swPort->getID(),
+        std::make_unique<HwPortFb303Stats>(
+            swPort->getName(),
+            HwBasePortFb303Stats::QueueId2Name{} /*queueId2Name*/,
+            std::vector<PfcPriority>{} /*enabledPfcPriorities*/,
+            std::nullopt /*pfcCfg*/,
+            false /*inCongestionDiscardCountSupported*/,
+            false /*inCongestionDiscardSeenSupported*/,
+            false /*srv6MysidDiscardCounterSupported*/,
+            false /*mplsLabelLookupFailCounterSupported*/,
+            false /*linkDebounceRetriggerCounterSupported*/,
+            false /*sllHllDiscardCounterSupported*/,
+            false));
   }
 
   // set platform port's speed
@@ -189,7 +223,7 @@ SaiPortTraits::CreateAttributes SaiPortManager::attributesFromSwPort(
   }
 
 // Extended FEC is not used on PAI and is not modeled in its port attributes.
-#if SAI_API_VERSION >= SAI_VERSION(1, 10, 0) && !defined(SAI_BRCM_PAI_IMPL)
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 0) && !defined(BRCM_PAI_SDK)
   std::optional<SaiPortTraits::Attributes::UseExtendedFec> useExtendedFec(
       std::nullopt);
   std::optional<SaiPortTraits::Attributes::ExtendedFecMode> extendedFecMode(
@@ -281,7 +315,7 @@ SaiPortTraits::CreateAttributes SaiPortManager::attributesFromSwPort(
       static_cast<uint32_t>(speed),
       enabled,
       fecMode,
-#if SAI_API_VERSION >= SAI_VERSION(1, 10, 0) && !defined(SAI_BRCM_PAI_IMPL)
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 0) && !defined(BRCM_PAI_SDK)
       useExtendedFec,
       extendedFecMode,
 #endif
@@ -326,6 +360,7 @@ SaiPortTraits::CreateAttributes SaiPortManager::attributesFromSwPort(
       std::nullopt, // CBFC sender credit size
       std::nullopt, // CBFC sender packet overhead
       std::nullopt, // CBFC sender credit limit
+      std::nullopt, // CBFC receiver credit limit
 #endif
 #if SAI_API_VERSION >= SAI_VERSION(1, 9, 0)
       std::nullopt,
@@ -555,7 +590,7 @@ SaiPortManager::serdesAttributesFromSwPinConfigs(
         attrs, SaiPortSerdesTraits::Attributes::RxPrecodingAttr{}, rxPrecoding);
   }
 #endif
-#if defined(SAI_BRCM_PAI_IMPL)
+#if defined(BRCM_PAI_SDK)
   // Same as NPU: per-lane NR/ER from the pin config. PAI requires a value for
   // every lane, so a partial list is not sent.
   if (platform_->getAsic()->isSupported(HwAsic::Feature::SAI_SERDES_RX_REACH)) {

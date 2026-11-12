@@ -15578,7 +15578,7 @@
         "maxFrameSize": 9412,
         "parserType": 1,
         "routable": true,
-        "ingressVlan": 2513,
+        "ingressVlan": 3000,
         "speed": 100000,
         "name": "eth1/65/1",
         "description": "",
@@ -19516,8 +19516,8 @@
         ]
       },
       {
-        "name": "vlan2513",
-        "id": 2513,
+        "name": "vlan3000",
+        "id": 3000,
         "recordStats": true,
         "routable": true,
         "ipAddresses": [
@@ -22119,7 +22119,7 @@
         "emitTags": false
       },
       {
-        "vlanID": 2513,
+        "vlanID": 3000,
         "logicalPort": 513,
         "spanningTreeState": 2,
         "emitTags": false
@@ -28176,9 +28176,9 @@
         "scope": 0
       },
       {
-        "intfID": 2513,
+        "intfID": 3000,
         "routerID": 0,
-        "vlanID": 2513,
+        "vlanID": 3000,
         "ipAddresses": [
           "2832::/64",
           "14.2.0.0/24"

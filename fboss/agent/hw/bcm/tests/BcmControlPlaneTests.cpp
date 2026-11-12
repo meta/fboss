@@ -208,8 +208,8 @@ TEST_F(BcmControlPlaneTest, ChangeCPULowQueueSettings) {
 
     auto portQueueRate = lowQ->getPortQueueRate()->toThrift();
     EXPECT_EQ(portQueueRate.getType(), cfg::PortQueueRate::Type::pktsPerSec);
-    EXPECT_EQ(portQueueRate.get_pktsPerSec().minimum(), 0);
-    EXPECT_EQ(portQueueRate.get_pktsPerSec().maximum(), 1000);
+    EXPECT_EQ(portQueueRate.pktsPerSec().as_const().value().minimum(), 0);
+    EXPECT_EQ(portQueueRate.pktsPerSec().as_const().value().maximum(), 1000);
 
     EXPECT_EQ(lowQ->getScalingFactor(), cfg::MMUScalingFactor::ONE_8TH);
 

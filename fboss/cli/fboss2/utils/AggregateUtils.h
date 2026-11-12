@@ -28,7 +28,7 @@ void aggregationHelper(
     const auto& aggOp = parsedAggs->aggOp;
     // this is the colum being aggregated
     if (field_name == aggColumn) {
-      using FieldType = folly::remove_cvref_t<decltype(*field_ref)>;
+      using FieldType = std::remove_cvref_t<decltype(*field_ref)>;
       if constexpr (std::is_fundamental<FieldType>::value) {
         auto it = validAggMap.find(aggColumn);
         // todo(surabih236): separate handling for string and numeric types
@@ -72,9 +72,9 @@ double performAggregation(
       if constexpr (apache::thrift::is_thrift_struct_v<folly::detected_or_t<
                         void,
                         get_value_type_t,
-                        folly::remove_cvref_t<decltype(*outer_field_ref)>>>) {
+                        std::remove_cvref_t<decltype(*outer_field_ref)>>>) {
         using NestedType =
-            get_value_type_t<folly::remove_cvref_t<decltype(*outer_field_ref)>>;
+            get_value_type_t<std::remove_cvref_t<decltype(*outer_field_ref)>>;
         if constexpr (apache::thrift::is_thrift_struct_v<NestedType>) {
           auto innerEntryVector = *outer_field_ref;
           for (int rowNumber = 0; rowNumber < innerEntryVector.size();

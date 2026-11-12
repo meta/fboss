@@ -3,12 +3,20 @@
 # In general, libraries and binaries in fboss/foo/bar are built by
 # cmake/FooBar.cmake
 
-add_fbthrift_cpp_library(
+add_library(fw_util_config-cpp2-types)
+thrift_generate(
   fw_util_config-cpp2-types
   fboss/platform/fw_util/if/fw_util_config.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
+  INCLUDE_DIRECTORIES
+    ${PROJECT_SOURCE_DIR}
+    ${THRIFT_INCLUDE_DIR}
+)
+target_include_directories(fw_util_config-cpp2-types
+  PUBLIC ${PROJECT_BINARY_DIR}
 )
 
 add_library(fw_util_libs
@@ -31,7 +39,7 @@ target_link_libraries(fw_util_libs
   platform_config_lib
   platform_name_lib
   platform_utils
-  FBThrift::thriftcpp2
+  thrift::rpc
   fw_util_config-cpp2-types
 )
 

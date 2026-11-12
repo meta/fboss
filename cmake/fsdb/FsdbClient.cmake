@@ -15,7 +15,7 @@ add_library(fsdb_stream_client
 set(fsdb_stream_client_libs
   fsdb_utils
   Folly::folly
-  FBThrift::thriftcpp2
+  thrift::rpc
   common_thrift_utils
   fsdb_oper_cpp2
   fsdb_cpp2
@@ -47,7 +47,7 @@ set(fsdb_pub_sub_libs
   patch_cpp2
   fsdb_stream_client
   Folly::folly
-  FBThrift::thriftcpp2
+  thrift::rpc
   fb303::fb303
   fsdb_cpp2
   fsdb_utils
@@ -80,6 +80,6 @@ target_link_libraries(fsdb_syncer
   fsdb_stream_client
   fsdb_pub_sub
   Folly::folly
-  FBThrift::thriftcpp2
+  thrift::rpc
   fb303::fb303
 )

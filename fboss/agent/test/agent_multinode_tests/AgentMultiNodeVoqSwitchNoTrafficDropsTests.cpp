@@ -109,8 +109,13 @@ class AgentMultiNodeVoqSwitchNoTrafficDropTest
         utility::forEachExcluding(
             switches,
             {myHostname}, // exclude self, as running this test binary
-            gracefulRestart ? utility::triggerGracefulAgentRestart
-                            : utility::triggerUngracefulAgentRestart);
+            [gracefulRestart](const std::string& switchName) {
+              if (gracefulRestart) {
+                utility::triggerGracefulAgentRestart(switchName);
+              } else {
+                utility::triggerUngracefulAgentRestart(switchName);
+              }
+            });
 
         // Wait for Agent to come up on all switches
         auto restart = utility::checkForEachExcluding(

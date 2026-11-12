@@ -18,9 +18,13 @@ namespace facebook::fboss {
 class SwSwitch;
 class SwitchIdScopeResolver;
 
+// preFibUpdate, if set, changes the switch state before the FIBs are written,
+// in the same state update
 RibToSwitchStateFunction createRibToSwitchStateFunction(
     const std::optional<StateDeltaApplication>& deltaApplicationBehavior =
-        std::nullopt);
+        std::nullopt,
+    std::function<std::shared_ptr<SwitchState>(
+        const std::shared_ptr<SwitchState>&)> preFibUpdate = nullptr);
 
 std::function<void(const NextHopIDManager*)> createNextHopIdStateUpdate(
     SwSwitch* sw,

@@ -115,7 +115,7 @@ option(SAI_BRCM_PAI_IMPL "Build SAI api with BRCOM_PAI-SAI extensions" OFF)
 if ($ENV{SAI_BRCM_PAI_IMPL})
   message(STATUS "ENV SAI_BRCM_PAI_IMPL is set")
   set(SAI_BRCM_PAI_IMPL ON)
-  add_definitions(-DSAI_BRCM_PAI_IMPL)
+  add_definitions(-DBRCM_PAI_SDK)
   # NOTE: Unlike agent that we use sai_impl, we directly use pre-built SDK from
   # local directory
   # Header files for libpai.a, the whole inc directory from SDK
@@ -265,7 +265,9 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fuse-ld=lld")
 endif()
 if (WITH_ASAN)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -g -static-libasan")
+  # -g1 (line tables only) keeps file:line in sanitizer reports. Full -g is
+  # over 80% of each ASAN binary, too large for a full build to fit on disk.
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g1 -static-libasan")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-sanitize-recover=all")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-omit-frame-pointer")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-common")
@@ -386,14 +388,38 @@ message(STATUS "Found YAML_INCLUDE_DIR: ${YAML_INCLUDE_DIR}")
 
 find_package(python-pyyaml REQUIRED)
 
+# FBOSS's packaged Python tools link the thrift-python runtime from this
+# Python's site-packages, where the images that run them install the same
+# fbthrift-python wheel.
+file(TO_CMAKE_PATH "$ENV{CMAKE_PREFIX_PATH}" _fboss_prefixes)
+foreach(_fboss_prefix IN LISTS CMAKE_PREFIX_PATH _fboss_prefixes)
+  set(_fboss_wheel_dir "${_fboss_prefix}/share/thrift/wheels")
+  file(GLOB _fboss_thrift_python_wheels "${_fboss_wheel_dir}/thrift-*.whl")
+  if(_fboss_thrift_python_wheels)
+    # Every build's wheel is version 0.0.1, so pip replaces an installed one
+    # only when forced. pip also picks the wheel that matches this Python.
+    execute_process(
+      COMMAND "${Python3_EXECUTABLE}" -m pip install --no-deps --no-index
+        --force-reinstall --find-links "${_fboss_wheel_dir}" thrift
+      RESULT_VARIABLE _fboss_pip_result
+    )
+    if(NOT _fboss_pip_result EQUAL 0)
+      message(FATAL_ERROR
+        "Can't install thrift-python from ${_fboss_wheel_dir} into "
+        "${Python3_EXECUTABLE}")
+    endif()
+    break()
+  endif()
+endforeach()
+
 # Generate thrift deps and libraries
-include(FBThriftCppLibrary)
 include(FBThriftPythonLibrary)
 
 # Thrift libraries
-add_fbthrift_cpp_library(
+thrift_add_library(
   fb303_cpp2
   common/fb303/if/fb303.thrift
+  LANGUAGE cpp2
   SERVICES
     FacebookService
   OPTIONS
@@ -408,9 +434,10 @@ add_fbthrift_python_library(
   OPTIONS
     json
 )
-add_fbthrift_cpp_library(
+thrift_add_library(
   network_address_cpp2
   common/network/if/Address.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
@@ -422,9 +449,10 @@ add_fbthrift_python_library(
   OPTIONS
     json
 )
-add_fbthrift_cpp_library(
+thrift_add_library(
   mpls_cpp2
   fboss/agent/if/mpls.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
@@ -436,16 +464,18 @@ add_fbthrift_python_library(
   OPTIONS
     json
 )
-add_fbthrift_cpp_library(
+thrift_add_library(
   cfgr_fboss_common_cpp2
   configerator/structs/neteng/fboss/thrift/common.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
 )
-add_fbthrift_cpp_library(
+thrift_add_library(
   fboss_common_cpp2
   fboss/lib/if/fboss_common.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
@@ -457,9 +487,10 @@ add_fbthrift_python_library(
   OPTIONS
     json
 )
-add_fbthrift_cpp_library(
+thrift_add_library(
   switch_config_cpp2
   fboss/agent/switch_config.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
@@ -479,9 +510,10 @@ add_fbthrift_python_library(
     mpls_python
     fboss_common_python
 )
-add_fbthrift_cpp_library(
+thrift_add_library(
   agent_config_cpp2
   fboss/agent/agent_config.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
@@ -489,16 +521,18 @@ add_fbthrift_cpp_library(
     platform_config_cpp2
     switch_config_cpp2
 )
-add_fbthrift_cpp_library(
+thrift_add_library(
   agent_info_cpp2
   fboss/agent/agent_info.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
 )
-add_fbthrift_cpp_library(
+thrift_add_library(
   platform_config_cpp2
   fboss/agent/platform_config.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
@@ -508,9 +542,10 @@ add_fbthrift_cpp_library(
     asic_config_v2_cpp2
     phy_cpp2
 )
-add_fbthrift_cpp_library(
+thrift_add_library(
   platform_descriptor_cpp2
   fboss/lib/platforms/platform_descriptor.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
@@ -532,16 +567,18 @@ add_fbthrift_python_library(
     switch_config_python
     transceiver_python
 )
-add_fbthrift_cpp_library(
+thrift_add_library(
   switch_reachability_cpp2
   fboss/agent/switch_reachability.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
 )
-add_fbthrift_cpp_library(
+thrift_add_library(
   switch_state_cpp2
   fboss/agent/switch_state.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
@@ -551,17 +588,19 @@ add_fbthrift_cpp_library(
     phy_cpp2
     ctrl_cpp2
 )
-add_fbthrift_cpp_library(
+thrift_add_library(
   state_delta_log_cpp2
   fboss/agent/state_delta_log.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
   DEPENDS
     fsdb_oper_cpp2
 )
-add_fbthrift_cpp_library(
+thrift_add_library(
   prbs_cpp2
   fboss/lib/phy/prbs.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
@@ -573,9 +612,10 @@ add_fbthrift_python_library(
   OPTIONS
     json
 )
-add_fbthrift_cpp_library(
+thrift_add_library(
   link_cpp2
   fboss/lib/phy/link.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
@@ -587,9 +627,10 @@ add_fbthrift_python_library(
   OPTIONS
     json
 )
-add_fbthrift_cpp_library(
+thrift_add_library(
   transceiver_cpp2
   fboss/qsfp_service/if/transceiver.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
@@ -607,9 +648,10 @@ add_fbthrift_python_library(
     link_python
     prbs_python
 )
-add_fbthrift_cpp_library(
+thrift_add_library(
   transceiver_properties_cpp2
   fboss/qsfp_service/if/transceiver_properties.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
@@ -617,16 +659,18 @@ add_fbthrift_cpp_library(
     switch_config_cpp2
     transceiver_cpp2
 )
-add_fbthrift_cpp_library(
+thrift_add_library(
   pim_state_cpp2
   fboss/lib/if/pim_state.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
 )
-add_fbthrift_cpp_library(
+thrift_add_library(
   transceiver_validation_cpp2
   fboss/qsfp_service/if/transceiver_validation.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
@@ -635,9 +679,10 @@ add_fbthrift_cpp_library(
     switch_config_cpp2
     fboss_common_cpp2
 )
-add_fbthrift_cpp_library(
+thrift_add_library(
   qsfp_config_cpp2
   fboss/qsfp_service/if/qsfp_service_config.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
@@ -646,9 +691,10 @@ add_fbthrift_cpp_library(
     transceiver_validation_cpp2
     switch_config_cpp2
 )
-add_fbthrift_cpp_library(
+thrift_add_library(
   qsfp_state_cpp2
   fboss/qsfp_service/if/qsfp_state.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
@@ -659,16 +705,18 @@ add_fbthrift_cpp_library(
     pim_state_cpp2
     port_state_cpp2
 )
-add_fbthrift_cpp_library(
+thrift_add_library(
   port_state_cpp2
   fboss/qsfp_service/if/port_state.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
 )
-add_fbthrift_cpp_library(
+thrift_add_library(
   qsfp_stats_cpp2
   fboss/qsfp_service/if/qsfp_stats.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
@@ -677,46 +725,67 @@ add_fbthrift_cpp_library(
     phy_cpp2
     transceiver_cpp2
 )
-add_fbthrift_cpp_library(
+add_library(cmis_cpp2)
+thrift_generate(
   cmis_cpp2
   fboss/qsfp_service/module/cmis/cmis.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
+  INCLUDE_DIRECTORIES
+    ${PROJECT_SOURCE_DIR}
+    ${THRIFT_INCLUDE_DIR}
 )
-add_fbthrift_cpp_library(
+target_include_directories(cmis_cpp2 PUBLIC ${PROJECT_BINARY_DIR})
+add_library(sff_cpp2)
+thrift_generate(
   sff_cpp2
   fboss/qsfp_service/module/sff/sff.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
+  INCLUDE_DIRECTORIES
+    ${PROJECT_SOURCE_DIR}
+    ${THRIFT_INCLUDE_DIR}
 )
-add_fbthrift_cpp_library(
+target_include_directories(sff_cpp2 PUBLIC ${PROJECT_BINARY_DIR})
+add_library(sff8472_cpp2)
+thrift_generate(
   sff8472_cpp2
   fboss/qsfp_service/module/sff/sff8472.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
+  INCLUDE_DIRECTORIES
+    ${PROJECT_SOURCE_DIR}
+    ${THRIFT_INCLUDE_DIR}
 )
-add_fbthrift_cpp_library(
+target_include_directories(sff8472_cpp2 PUBLIC ${PROJECT_BINARY_DIR})
+thrift_add_library(
   sensor_service_stats_cpp2
   fboss/platform/sensor_service/sensor_service_stats.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
   DEPENDS
     sensor_service_cpp2
 )
-add_fbthrift_cpp_library(
+thrift_add_library(
   te_srv6_agent_stats_cpp2
   fboss/fsdb/if/te_srv6_agent/te_srv6_agent_stats.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
 )
-add_fbthrift_cpp_library(
+thrift_add_library(
   phy_cpp2
   fboss/lib/phy/phy.thrift
+  LANGUAGE cpp2
   SERVICES
     FbossCommonPhyCtrl
   OPTIONS
@@ -745,18 +814,20 @@ add_fbthrift_python_library(
     prbs_python
     io_stats_python
 )
-add_fbthrift_cpp_library(
+thrift_add_library(
   optic_cpp2
   fboss/agent/if/optic.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
   DEPENDS
     transceiver_cpp2
 )
-add_fbthrift_cpp_library(
+thrift_add_library(
   fboss_cpp2
   fboss/agent/if/fboss.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
@@ -768,15 +839,22 @@ add_fbthrift_python_library(
   OPTIONS
     json
 )
-add_fbthrift_cpp_library(
+add_library(sflow_cpp2)
+thrift_generate(
   sflow_cpp2
   fboss/agent/if/sflow.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
+  INCLUDE_DIRECTORIES
+    ${PROJECT_SOURCE_DIR}
+    ${THRIFT_INCLUDE_DIR}
 )
-add_fbthrift_cpp_library(
+target_include_directories(sflow_cpp2 PUBLIC ${PROJECT_BINARY_DIR})
+thrift_add_library(
   common_cpp2
   fboss/agent/if/common.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
@@ -794,16 +872,18 @@ add_fbthrift_python_library(
     mpls_python
     network_address_python
 )
-add_fbthrift_cpp_library(
+thrift_add_library(
   product_info_cpp2
   fboss/agent/if/product_info.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
 )
-add_fbthrift_cpp_library(
+thrift_add_library(
   hardware_stats_cpp2
   fboss/agent/hw/hardware_stats.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     visitation
@@ -811,9 +891,10 @@ add_fbthrift_cpp_library(
   DEPENDS
     mka_structs_cpp2
 )
-add_fbthrift_cpp_library(
+thrift_add_library(
   ctrl_cpp2
   fboss/agent/if/ctrl.thrift
+  LANGUAGE cpp2
   SERVICES
     FbossCtrl
     NeighborListenerClient
@@ -837,17 +918,19 @@ add_fbthrift_cpp_library(
   OPTIONS
     json
 )
-add_fbthrift_cpp_library(
+thrift_add_library(
   packet_stream_cpp2
   fboss/agent/if/packet_stream.thrift
+  LANGUAGE cpp2
   SERVICES
     PacketStream
   DEPENDS
     fb303_cpp2
 )
-add_fbthrift_cpp_library(
-    bcm_config_cpp2
+thrift_add_library(
+  bcm_config_cpp2
   fboss/agent/hw/bcm/bcm_config.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
@@ -859,9 +942,10 @@ add_fbthrift_python_library(
   OPTIONS
     json
 )
-add_fbthrift_cpp_library(
+thrift_add_library(
   asic_config_cpp2
   fboss/agent/hw/sai/config/asic_config.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
@@ -873,9 +957,10 @@ add_fbthrift_python_library(
   OPTIONS
     json
 )
-add_fbthrift_cpp_library(
+thrift_add_library(
   asic_config_v2_cpp2
   fboss/agent/hw/config/asic_config_v2.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
@@ -887,22 +972,25 @@ add_fbthrift_python_library(
   OPTIONS
     json
 )
-add_fbthrift_cpp_library(
+thrift_add_library(
   mka_structs_cpp2
   fboss/mka_service/if/mka_structs.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
 )
-add_fbthrift_cpp_library(
+thrift_add_library(
   highfreq_cpp2
   fboss/agent/if/highfreq.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
 )
-add_fbthrift_cpp_library(
+thrift_add_library(
   asic_temp_cpp2
   fboss/agent/if/asic_temp.thrift
+  LANGUAGE cpp2
   SERVICES
     AsicTempThrift
   OPTIONS
@@ -911,9 +999,10 @@ add_fbthrift_cpp_library(
   DEPENDS
     fboss_cpp2
 )
-add_fbthrift_cpp_library(
+thrift_add_library(
   agent_stats_cpp2
   fboss/agent/agent_stats.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
@@ -922,30 +1011,55 @@ add_fbthrift_cpp_library(
     hardware_stats_cpp2
     phy_cpp2
 )
-add_fbthrift_cpp_library(
+add_library(production_features_cpp2)
+thrift_generate(
   production_features_cpp2
   fboss/agent/test/production_features.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
+  INCLUDE_DIRECTORIES
+    ${PROJECT_SOURCE_DIR}
+    ${THRIFT_INCLUDE_DIR}
 )
-add_fbthrift_cpp_library(
+target_include_directories(production_features_cpp2
+  PUBLIC ${PROJECT_BINARY_DIR}
+)
+add_library(qsfp_production_features_cpp2)
+thrift_generate(
   qsfp_production_features_cpp2
   fboss/qsfp_service/test/hw_test/qsfp_production_features.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
+  INCLUDE_DIRECTORIES
+    ${PROJECT_SOURCE_DIR}
+    ${THRIFT_INCLUDE_DIR}
 )
-add_fbthrift_cpp_library(
+target_include_directories(qsfp_production_features_cpp2
+  PUBLIC ${PROJECT_BINARY_DIR}
+)
+add_library(link_test_production_features_cpp2)
+thrift_generate(
   link_test_production_features_cpp2
   fboss/agent/test/link_tests/link_test_production_features.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
+  INCLUDE_DIRECTORIES
+    ${PROJECT_SOURCE_DIR}
+    ${THRIFT_INCLUDE_DIR}
 )
-add_fbthrift_cpp_library(
+target_include_directories(link_test_production_features_cpp2
+  PUBLIC ${PROJECT_BINARY_DIR}
+)
+thrift_add_library(
   link_qsfp_test_port_info_cpp2
   fboss/lib/if/link_qsfp_test_port_info.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
   DEPENDS
@@ -962,15 +1076,24 @@ target_link_libraries(link_qsfp_test_port_info_utils
   link_qsfp_test_port_info_cpp2
   transceiver_cpp2
 )
-add_fbthrift_cpp_library(
+add_library(i2c_controller_stats_cpp2)
+thrift_generate(
   i2c_controller_stats_cpp2
   fboss/lib/i2c/i2c_controller_stats.thrift
+  LANGUAGE cpp2
+  INCLUDE_DIRECTORIES
+    ${PROJECT_SOURCE_DIR}
+    ${THRIFT_INCLUDE_DIR}
+)
+target_include_directories(i2c_controller_stats_cpp2
+  PUBLIC ${PROJECT_BINARY_DIR}
 )
 
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   bgp_summary_cpp2
   fboss/cli/fboss2/commands/show/bgp/summary/bgp_summary.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
@@ -978,27 +1101,30 @@ add_fbthrift_cpp_library(
     bgp_thrift_cpp2
 )
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   bgp_table_summary_cpp2
   fboss/cli/fboss2/commands/show/bgp/table/bgp_table_summary.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
   DEPENDS
     bgp_thrift_cpp2
 )
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   bgp_update_group_cpp2
   fboss/cli/fboss2/commands/show/bgp/updategroup/bgp_update_group.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
   DEPENDS
     bgp_thrift_cpp2
 )
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   io_stats_cpp2
   fboss/lib/if/io_stats.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
@@ -1011,17 +1137,19 @@ add_fbthrift_python_library(
     json
 )
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   led_mapping_cpp2
   fboss/lib/led/led_mapping.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
 )
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   bsp_platform_mapping_cpp2
   fboss/lib/bsp/bsp_platform_mapping.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
@@ -1029,17 +1157,24 @@ add_fbthrift_cpp_library(
     led_mapping_cpp2
 )
 
-add_fbthrift_cpp_library(
+add_library(led_config_cpp2)
+thrift_generate(
   led_config_cpp2
   fboss/led_service/if/led_service_config.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
+  INCLUDE_DIRECTORIES
+    ${PROJECT_SOURCE_DIR}
+    ${THRIFT_INCLUDE_DIR}
 )
+target_include_directories(led_config_cpp2 PUBLIC ${PROJECT_BINARY_DIR})
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   qsfp_cpp2
   fboss/qsfp_service/if/qsfp.thrift
+  LANGUAGE cpp2
   SERVICES
     QsfpService
   OPTIONS
@@ -1055,9 +1190,10 @@ add_fbthrift_cpp_library(
     hardware_stats_cpp2
 )
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   hw_ctrl_cpp2
   fboss/agent/if/hw_ctrl.thrift
+  LANGUAGE cpp2
   SERVICES
     FbossHwCtrl
   DEPENDS
@@ -1066,9 +1202,10 @@ add_fbthrift_cpp_library(
     switch_state_cpp2
 )
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   sai_ctrl_cpp2
   fboss/agent/hw/sai/switch/sai_ctrl.thrift
+  LANGUAGE cpp2
   SERVICES
     SaiCtrl
   DEPENDS
@@ -1076,18 +1213,20 @@ add_fbthrift_cpp_library(
     hw_ctrl_cpp2
 )
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   hw_test_ctrl_cpp2
   fboss/agent/hw/hw_test_ctrl.thrift
+  LANGUAGE cpp2
   SERVICES
     HwTestCtrl
   DEPENDS
     ctrl_cpp2
 )
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   sai_test_ctrl_cpp2
   fboss/agent/hw/sai/hw_test/sai_test_ctrl.thrift
+  LANGUAGE cpp2
   SERVICES
     SaiTestCtrl
   DEPENDS
@@ -1095,9 +1234,10 @@ add_fbthrift_cpp_library(
     hw_test_ctrl_cpp2
 )
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   multiswitch_ctrl_cpp2
   fboss/agent/if/multiswitch_ctrl.thrift
+  LANGUAGE cpp2
   SERVICES
     MultiSwitchCtrl
   DEPENDS
@@ -1108,9 +1248,10 @@ add_fbthrift_cpp_library(
     phy_cpp2
 )
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   agent_hw_test_ctrl_cpp2
   fboss/agent/if/agent_hw_test_ctrl.thrift
+  LANGUAGE cpp2
   SERVICES
     AgentHwTestCtrl
   OPTIONS
@@ -1311,9 +1452,10 @@ add_fbthrift_python_library(
     fsdb_oper_python
 )
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   hal_test_config_cpp2
   fboss/qsfp_service/test/hal_test/hal_test_config.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
   DEPENDS
@@ -1659,6 +1801,7 @@ add_dependencies(fboss2_targets
   fboss2_cmd_config_test
   fboss2_framework_test
   fboss2-dev
+  fboss2-readonly
   fboss2_integration_test
   feature_default_command_args_config_test
 )
@@ -1670,6 +1813,7 @@ if (SAI_IMPL OR BUILD_SAI_FAKE)
     diag_shell_client
     fboss2
     fboss2-dev
+    fboss2-readonly
     fsdb
     qsfp_service
     wedge_qsfp_util
@@ -1817,3 +1961,5 @@ if (NOT WITH_ASAN)
     endif()
   endforeach()
 endif()
+
+fboss_register_build_info()

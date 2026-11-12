@@ -2,10 +2,10 @@
 
 #include "fboss/agent/hw/sai/switch/DropReasonUtils.h"
 
-#include <algorithm>
-#include <climits>
+#include <bit>
 #include <span>
 
+#include <fmt/format.h>
 #include <folly/logging/xlog.h>
 
 namespace facebook::fboss {
@@ -75,6 +75,20 @@ std::vector<std::string> formatDropReasonLines(
   return formatLines(names);
 }
 
+std::vector<std::string> formatDropReasonLogLines(
+    std::string_view stage,
+    const std::vector<std::string>& names,
+    std::optional<uint64_t> bitmap) {
+  const auto header = bitmap.has_value()
+      ? fmt::format("DROP reasons {}: ({:#x}) ", stage, *bitmap)
+      : fmt::format("DROP reasons {}: ", stage);
+  auto lines = formatDropReasonLines(names);
+  for (auto& line : lines) {
+    line.insert(0, header);
+  }
+  return lines;
+}
+
 std::vector<std::string> decodeDropBitmap(
     int64_t bitmap,
     std::span<const char* const> enumNames,
@@ -88,22 +102,22 @@ std::vector<std::string> decodeDropBitmap(
         << "decodeDropBitmap called with an empty enum table";
     return {};
   }
-  // Views into enumNames, which is a static table of stringified enumerators
-  // and so outlives this call.
-  std::vector<std::string_view> names;
+  std::vector<std::string> names;
   auto bits = static_cast<uint64_t>(bitmap);
-  constexpr size_t kBitmapWidth = sizeof(uint64_t) * CHAR_BIT;
-  size_t limit = std::min(enumNames.size(), kBitmapWidth);
-  for (size_t i = 0; i < limit; i++) {
-    if (!(bits & (1ULL << i))) {
-      continue;
+  while (bits != 0) {
+    // Brian Kernighan's algorithm to find set bits in the bitmap.
+    uint64_t rightmostSetBit = bits & -bits;
+    const auto i = static_cast<size_t>(std::countr_zero(rightmostSetBit));
+    bits -= rightmostSetBit;
+    if (i >= enumNames.size()) {
+      break;
     }
     auto name = extractDropReasonName(enumNames[i], prefix, suffix);
     if (!name.empty()) {
       names.emplace_back(name);
     }
   }
-  return formatDropReasonLines(names);
+  return names;
 }
 
 } // namespace facebook::fboss

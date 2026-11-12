@@ -122,7 +122,6 @@ add_library(agent_hw_test_src
   fboss/agent/test/agent_hw_tests/AgentConfigVerifyQosTests.cpp
   fboss/agent/test/agent_hw_tests/AgentCoppTests.cpp
   fboss/agent/test/agent_hw_tests/AgentDot1qMappingTest.cpp
-  fboss/agent/test/agent_hw_tests/AgentDropBitmapTests.cpp
   fboss/agent/test/agent_hw_tests/AgentDropReasonTests.cpp
   fboss/agent/test/agent_hw_tests/AgentDropTestBase.cpp
   fboss/agent/test/agent_hw_tests/AgentDscpMarkingTests.cpp
@@ -198,6 +197,7 @@ add_library(agent_hw_test_src
   fboss/agent/test/agent_hw_tests/AgentTrunkLoadBalancerTests.cpp
   fboss/agent/test/agent_hw_tests/AgentTrunkTests.cpp
   fboss/agent/test/agent_hw_tests/AgentTunnelMgrTests.cpp
+  fboss/agent/test/agent_hw_tests/AgentVrfTests.cpp
   fboss/agent/test/agent_hw_tests/AgentRxReasonTests.cpp
   fboss/agent/test/agent_hw_tests/AgentRouteScaleTests.cpp
   fboss/agent/test/agent_hw_tests/AgentHwAclMatchActionsTest.cpp
@@ -230,7 +230,9 @@ add_library(agent_hw_test_src
 )
 
 target_link_libraries(agent_hw_test_src
+  drop_reason_reporting_test_utils
   erspan_parser
+  fpga_multi_pim_container
   agent_ars_test_src
   agent_qos_test_src
   agent_voq_test_src

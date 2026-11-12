@@ -50,6 +50,8 @@ class BgpPeerGroupConfig : public utils::BaseObjectArgType<std::string> {
 // dispatch and per-attribute parsing live in the .cpp so a new tunable is a
 // one-entry change. Mirrors CmdConfigProtocolBgpNeighbor.
 struct CmdConfigProtocolBgpPeerGroupTraits : public WriteCommandTraits {
+  static std::vector<std::string> completeArgs(
+      const std::vector<std::string>& typed);
   using ParentCmd = CmdConfigProtocolBgp;
   static void addCliArg(CLI::App& cmd, std::vector<std::string>& args) {
     // Stops CLI11 from classifying attribute tokens as subcommands once the

@@ -34,7 +34,7 @@ namespace facebook::fboss::phy {
 
 namespace {
 
-#if defined(SAI_BRCM_PAI_IMPL)
+#if defined(BRCM_PAI_SDK)
 // Global mutex fallback, used when the enable_xphy_global_lock gflag is set.
 std::mutex gPaiGlobalMutex;
 
@@ -295,15 +295,15 @@ SaiSwitchTraits::CreateAttributes SaiPhyRetimer::getSwitchAttributes(
   std::optional<SaiSwitchTraits::Attributes::SysPortConfigList>
       sysPortConfigList(sysPortConfigVec);
 
-#if defined(SAI_BRCM_PAI_IMPL)
-  XLOG(INFO) << "[PAI-SYNC] SAI_BRCM_PAI_IMPL is COMPILED IN. Installing PAI "
+#if defined(BRCM_PAI_SDK)
+  XLOG(INFO) << "[PAI-SYNC] BRCM_PAI_SDK is COMPILED IN. Installing PAI "
              << "sync lock/unlock callbacks for xphy:" << getPhyAddr()
              << " (xphyID=" << xphyID_ << "), mode="
              << (FLAGS_enable_xphy_global_lock ? "GLOBAL" : "PER-XPHY")
              << ", platform_context(this)=" << static_cast<const void*>(this)
              << ", paiMutex=" << static_cast<void*>(&paiMutex_);
 #else
-  XLOG(WARNING) << "[PAI-SYNC] SAI_BRCM_PAI_IMPL is NOT compiled in; PAI sync "
+  XLOG(WARNING) << "[PAI-SYNC] BRCM_PAI_SDK is NOT compiled in; PAI sync "
                 << "lock/unlock callbacks will NOT be passed to PAI for xphy:"
                 << getPhyAddr() << " (xphyID=" << xphyID_
                 << "). PAI access is UNPROTECTED.";
@@ -414,11 +414,12 @@ SaiSwitchTraits::CreateAttributes SaiPhyRetimer::getSwitchAttributes(
 #if SAI_API_VERSION >= SAI_VERSION(1, 18, 0)
       std::nullopt, // link up debounce timeout
 #endif
-#if defined(SAI_BRCM_PAI_IMPL)
+#if defined(BRCM_PAI_SDK)
       reinterpret_cast<sai_pointer_t>(pai_lock_callback), // user sync_lock
       reinterpret_cast<sai_pointer_t>(pai_unlock_callback), // user sync_unlock
       warmRecover, // Warm recover
 #endif
+      std::nullopt, // VXLAN default port
   };
 }
 

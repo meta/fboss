@@ -9,8 +9,10 @@ namespace go facebook.fboss.fsdb_oper
 include "fboss/fsdb/if/fsdb_common.thrift"
 include "fboss/thrift_cow/patch.thrift"
 include "thrift/annotation/cpp.thrift"
+include "thrift/annotation/python.thrift"
 
-@cpp.Type{name = "::folly::fbstring"}
+@python.Py3EnableCppAdapter
+@cpp.Adapter{name = "::apache::thrift::StringTypeAdapter<::folly::fbstring>"}
 typedef binary fbbinary
 
 /*

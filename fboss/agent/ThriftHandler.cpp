@@ -67,6 +67,8 @@
 #include "fboss/agent/state/Transceiver.h"
 #include "fboss/agent/state/Vlan.h"
 #include "fboss/agent/state/VlanMap.h"
+#include "fboss/agent/state/Vrf.h"
+#include "fboss/agent/state/VrfMap.h"
 #include "fboss/lib/LogThriftCall.h"
 #include "fboss/lib/config/PlatformConfigUtils.h"
 #include "fboss/lib/phy/gen-cpp2/phy_types.h"
@@ -77,13 +79,18 @@
 #include <folly/IPAddressV4.h>
 #include <folly/IPAddressV6.h>
 #include <folly/Range.h>
+#include <folly/ScopeGuard.h>
 #include <folly/container/F14Map.h>
 #include <folly/io/Cursor.h>
 #include <folly/io/IOBuf.h>
+#include <folly/io/async/AsyncTimeout.h>
 #include <folly/logging/xlog.h>
 #include <thrift/lib/cpp/util/EnumUtils.h>
 #include <algorithm>
+#include <atomic>
 #include <memory>
+#include <mutex>
+#include <optional>
 #include <thread>
 
 #include <limits>
@@ -136,7 +143,9 @@ std::vector<network::thrift::BinaryAddress> fromFwdNextHops(
   nhs.reserve(nexthops.size());
   for (auto const& nexthop : nexthops) {
     auto addr = network::toBinaryAddress(nexthop.addr());
-    addr.ifName() = utility::createTunIntfName(nexthop.intf());
+    if (nexthop.intfID().has_value()) {
+      addr.ifName() = utility::createTunIntfName(nexthop.intf());
+    }
     nhs.emplace_back(std::move(addr));
   }
   return nhs;
@@ -147,6 +156,14 @@ std::vector<network::thrift::BinaryAddress> fromFwdNextHops(
 } // namespace facebook::fboss
 
 namespace {
+
+void ensureVrfConfigured(
+    const std::shared_ptr<SwitchState>& state,
+    int32_t vrfId) {
+  if (!state->getFibsInfoMap()->getFibContainerIf(RouterID(vrfId))) {
+    throw FbossError("VRF ", vrfId, " not configured");
+  }
+}
 
 template <typename RouteT>
 UnicastRoute toUnicastRoute(
@@ -167,6 +184,9 @@ UnicastRoute toUnicastRoute(
   if (auto classID = entry.getClassID()) {
     tempRoute.classID() = *classID;
   }
+  if (auto level = entry.getLevel()) {
+    tempRoute.level() = level;
+  }
   if (auto overrideEcmpSwitchingMode = entry.getOverrideEcmpSwitchingMode()) {
     tempRoute.overrideEcmpSwitchingMode() = *overrideEcmpSwitchingMode;
   }
@@ -182,12 +202,14 @@ UnicastRoute toUnicastRoute(
 template <typename RouteT>
 RouteDetails toRouteDetails(
     const std::shared_ptr<SwitchState>& state,
+    RouterID rid,
     const std::shared_ptr<RouteT>& route,
     const ClientNextHopsResolver& resolveClient) {
   auto details = route->toRouteDetails(
       getNonOverrideNormalizedNextHops(state, route->getForwardInfo()),
       getNormalizedNextHops(state, route->getForwardInfo()),
       resolveClient);
+  details.vrf() = rid;
   details.resolvedNextHops() = std::vector<NextHopThrift>();
   auto preNormalizationNextHops = getNextHops(state, route->getForwardInfo());
   const auto& bestEntry = route->getBestEntry().second;
@@ -501,6 +523,8 @@ void getPortInfoHelper(
     cbfc.senderPacketOverhead().from_optional(
         port->getCbfcSenderPacketOverhead());
     cbfc.senderCreditLimit().from_optional(port->getCbfcSenderCreditLimit());
+    cbfc.receiverCreditLimit().from_optional(
+        port->getCbfcReceiverCreditLimit());
     portInfo.cbfc() = std::move(cbfc);
   }
   try {
@@ -813,6 +837,17 @@ void validateAndDefaultSrv6NextHops(
   }
 }
 
+// Only the agent resolves next hops in the next level
+void validateNextHops(const std::vector<NextHopThrift>& nextHops) {
+  for (const auto& nhop : nextHops) {
+    if (nhop.resolvedInNextLevel().has_value()) {
+      throw FbossError(
+          "resolvedInNextLevel cannot be set by clients, next hop ",
+          toIPAddress(*nhop.address()).str());
+    }
+  }
+}
+
 void validateLinkLocalNextHopInterfaces(
     const std::vector<NextHopThrift>& nextHops,
     const std::shared_ptr<SwitchState>& state) {
@@ -836,6 +871,47 @@ void validateLinkLocalNextHopInterfaces(
           intfID,
           " does not exist for link-local next hop ",
           address.str());
+    }
+  }
+}
+
+// A next hop resolves in its route's VRF, or a non-default VRF route's next
+// hop in the default VRF
+void validateNextHopVrfs(
+    const std::vector<NextHopThrift>& nextHops,
+    const std::shared_ptr<SwitchState>& state,
+    RouterID routeVrf) {
+  for (const auto& nhop : nextHops) {
+    if (!nhop.vrf()) {
+      continue;
+    }
+    const auto address = toIPAddress(*nhop.address()).str();
+    if (*nhop.vrf() < 0) {
+      throw FbossError("Invalid VRF ", *nhop.vrf(), " of next hop ", address);
+    }
+    const RouterID nhopVrf(*nhop.vrf());
+    if (nhopVrf != RouterID(0) && !state->getVrfs()->getNodeIf(nhopVrf)) {
+      throw FbossError(
+          "VRF ", nhopVrf, " of next hop ", address, " not configured");
+    }
+    if (nhopVrf == routeVrf) {
+      continue;
+    }
+    if (apache::thrift::get_pointer(nhop.address()->ifName())) {
+      throw FbossError(
+          "Interface scoped next hop ",
+          address,
+          " must be in its route's VRF ",
+          routeVrf);
+    }
+    if (nhopVrf != RouterID(0) || routeVrf == RouterID(0)) {
+      throw FbossError(
+          "Next hop ",
+          address,
+          " in VRF ",
+          nhopVrf,
+          " not allowed for a route in VRF ",
+          routeVrf);
     }
   }
 }
@@ -887,6 +963,32 @@ Policy toThriftPolicy(const std::shared_ptr<ClassBasedPolicyNode>& node) {
   return policy;
 }
 
+// NHGs referenced by a live PBR policy. Not counting the policy's default NHG,
+// since that is counted through its route when the PBR policy is live.
+std::unordered_set<NextHopSetId> nhgIdsReferencedByPbr(
+    const std::shared_ptr<SwitchState>& state,
+    const std::map<std::string, NextHopSetId>& nameToSetId) {
+  std::unordered_set<NextHopSetId> ids;
+  for (const auto& [_matcher, policyMap] :
+       std::as_const(*state->getClassBasedPolicies())) {
+    for (const auto& [_name, policy] : std::as_const(*policyMap)) {
+      if (!policy->isReferenced()) {
+        continue;
+      }
+      const auto defaultName = *policy->getDefaultNextHopGroup().name();
+      for (const auto& [_fc, nhg] : policy->getClass2NextHopGroup()) {
+        if (*nhg.name() == defaultName) {
+          continue;
+        }
+        if (auto it = nameToSetId.find(*nhg.name()); it != nameToSetId.end()) {
+          ids.insert(it->second);
+        }
+      }
+    }
+  }
+  return ids;
+}
+
 void validateClassBasedPolicies(
     const SwSwitch* sw,
     const std::vector<ClassBasedPolicy>& policies) {
@@ -924,7 +1026,722 @@ void validateClassBasedPolicies(
 
 namespace facebook::fboss {
 
-ThriftHandler::ThriftHandler(SwSwitch* sw) : FacebookBase2("FBOSS"), sw_(sw) {}
+struct ThriftHandler::L3TrafficLoopStateStore {
+  struct Loop {
+    L3TrafficLoopStatus status;
+    PortID portId;
+    std::optional<AggregatePortID> aggregatePortId;
+    InterfaceID interfaceId;
+    IPAddressV6 qualificationAddress;
+    IPAddressV6 peerNextHop;
+    std::optional<MacAddress> peerMac;
+    std::chrono::steady_clock::time_point expiresAt;
+    bool removeNeighborOnCleanup{false};
+    bool portTtlChanged{false};
+    bool aggregateTtlChanged{false};
+    bool neighborTtlChanged{false};
+  };
+
+  std::mutex operationMutex;
+  folly::Synchronized<std::map<std::string, Loop>> loops;
+  // Only the background EventBase changes the timer while it is running.
+  std::unique_ptr<folly::AsyncTimeout> expiryTimer;
+  std::atomic<bool> expiryStopped{false};
+};
+
+namespace {
+
+constexpr int32_t kL3TrafficLoopMinTimeoutSeconds{1};
+constexpr int32_t kL3TrafficLoopMaxTimeoutSeconds{3600};
+constexpr int16_t kL3TrafficLoopClientId =
+    static_cast<int16_t>(ClientID::TE_AGENT);
+constexpr auto kL3TrafficLoopNeighborUpdateTimeout = std::chrono::seconds(5);
+
+void validateL3TrafficLoopTimeout(int32_t timeoutSeconds) {
+  if (timeoutSeconds < kL3TrafficLoopMinTimeoutSeconds ||
+      timeoutSeconds > kL3TrafficLoopMaxTimeoutSeconds) {
+    throw FbossError(
+        "L3 traffic loop timeout must be between ",
+        kL3TrafficLoopMinTimeoutSeconds,
+        " and ",
+        kL3TrafficLoopMaxTimeoutSeconds,
+        " seconds");
+  }
+}
+
+std::shared_ptr<Port> findL3TrafficLoopPort(
+    const std::shared_ptr<SwitchState>& state,
+    const std::string& portName) {
+  return state->getPorts()->getPortIf(portName);
+}
+
+std::shared_ptr<AggregatePort> findL3TrafficLoopAggregate(
+    const std::shared_ptr<SwitchState>& state,
+    PortID portId) {
+  for (const auto& switchAndAggregatePorts :
+       std::as_const(*state->getAggregatePorts())) {
+    for (const auto& aggregatePortEntry :
+         std::as_const(*switchAndAggregatePorts.second)) {
+      if (aggregatePortEntry.second->isMemberPort(portId)) {
+        return aggregatePortEntry.second;
+      }
+    }
+  }
+  return nullptr;
+}
+
+std::optional<HwAsic::Feature> getL3TrafficLoopTtlFeature(
+    SwSwitch* sw,
+    const std::shared_ptr<AggregatePort>& aggregatePort) {
+  const auto asicTable = sw->getHwAsicTable();
+  const auto feature = aggregatePort
+      ? HwAsic::Feature::LAG_TTL_DECREMENT_DISABLE
+      : HwAsic::Feature::PORT_TTL_DECREMENT_DISABLE;
+  if (asicTable->isFeatureSupportedOnAnyAsic(feature)) {
+    return feature;
+  }
+  if (asicTable->isFeatureSupportedOnAnyAsic(
+          HwAsic::Feature::NEXTHOP_TTL_DECREMENT_DISABLE)) {
+    return HwAsic::Feature::NEXTHOP_TTL_DECREMENT_DISABLE;
+  }
+  return std::nullopt;
+}
+
+std::optional<std::string> getL3TrafficLoopUnsupportedReason(
+    const std::shared_ptr<Port>& port,
+    const std::shared_ptr<AggregatePort>& aggregatePort,
+    std::optional<HwAsic::Feature> ttlFeature) {
+  if (port->getPortType() != cfg::PortType::INTERFACE_PORT) {
+    return "L3 traffic loops require an interface port";
+  }
+  if (ttlFeature) {
+    return std::nullopt;
+  }
+  return aggregatePort
+      ? "Aggregate member loops require LAG or next-hop TTL control"
+      : "Port loops require port or next-hop TTL control";
+}
+
+IpPrefix makeL3TrafficLoopPrefix(const IPAddressV6& address) {
+  IpPrefix prefix;
+  prefix.ip() = toBinaryAddress(address);
+  prefix.prefixLength() = 128;
+  return prefix;
+}
+
+UnicastRoute makeL3TrafficLoopRoute(
+    const IPAddressV6& qualificationAddress,
+    const std::optional<IPAddressV6>& peerNextHop,
+    bool disableTtlDecrement) {
+  UnicastRoute route;
+  route.dest() = makeL3TrafficLoopPrefix(qualificationAddress);
+  route.adminDistance() = AdminDistance::TE_AGENT;
+  if (!peerNextHop) {
+    // Teardown uses a DROP route to stop traffic before restoring TTL.
+    route.action() = RouteForwardAction::DROP;
+    return route;
+  }
+
+  route.action() = RouteForwardAction::NEXTHOPS;
+  NextHopThrift nextHop;
+  nextHop.address() = toBinaryAddress(*peerNextHop);
+  if (disableTtlDecrement) {
+    nextHop.disableTTLDecrement() = true;
+  }
+  route.nextHops()->push_back(std::move(nextHop));
+  return route;
+}
+
+std::shared_ptr<NdpEntry> getL3TrafficLoopNeighbor(
+    SwSwitch* sw,
+    InterfaceID interfaceId,
+    const IPAddressV6& peerNextHop) {
+  const auto interface =
+      sw->getState()->getInterfaces()->getNodeIf(interfaceId);
+  if (!interface) {
+    return nullptr;
+  }
+  return interface->getNdpTable()->getEntryIf(peerNextHop);
+}
+
+void setL3TrafficLoopNeighborTtl(
+    SwSwitch* sw,
+    InterfaceID interfaceId,
+    const IPAddressV6& peerNextHop,
+    std::optional<bool> disableTtlDecrement) {
+  sw->updateStateBlocking(
+      "update L3 traffic loop neighbor TTL decrement",
+      [interfaceId, peerNextHop, disableTtlDecrement](
+          const std::shared_ptr<SwitchState>& state) {
+        auto newState = state;
+        auto oldInterface = newState->getInterfaces()->getNodeIf(interfaceId);
+        if (!oldInterface) {
+          throw FbossError("No interface ", interfaceId, " for neighbor");
+        }
+        auto interface = oldInterface->modify(&newState);
+        auto ndpTable =
+            interface->getNdpTable()->modify(interfaceId, &newState);
+        auto oldEntry = ndpTable->getEntryIf(peerNextHop);
+        if (!oldEntry) {
+          throw FbossError(
+              "No NDP neighbor ", peerNextHop, " on interface ", interfaceId);
+        }
+        auto newEntry = oldEntry->clone();
+        newEntry->setDisableTTLDecrement(disableTtlDecrement);
+        ndpTable->updateNode(newEntry);
+        return newState;
+      });
+}
+
+} // namespace
+
+ThriftHandler::ThriftHandler(SwSwitch* sw)
+    : FacebookBase2("FBOSS"),
+      sw_(sw),
+      l3TrafficLoopState_(std::make_shared<L3TrafficLoopStateStore>()) {}
+
+ThriftHandler::~ThriftHandler() {
+  stopL3TrafficLoopExpiry();
+}
+
+void ThriftHandler::setupL3TrafficLoopImpl(
+    const BinaryAddress& qualificationAddressArg,
+    const std::string& portName,
+    const BinaryAddress& peerNextHopArg,
+    const std::string& expectedPeerMac,
+    int32_t timeoutSeconds) {
+  const auto qualificationAddress = toIPAddress(qualificationAddressArg);
+  if (!qualificationAddress.isV6()) {
+    throw FbossError("L3 traffic loop qualification address must be IPv6");
+  }
+  const auto peerNextHop = toIPAddress(peerNextHopArg);
+  if (!peerNextHop.isV6() || peerNextHop == qualificationAddress) {
+    throw FbossError(
+        "L3 traffic loop peer next hop must be a distinct IPv6 address");
+  }
+  validateL3TrafficLoopTimeout(timeoutSeconds);
+
+  const auto state = sw_->getState();
+  const auto port = findL3TrafficLoopPort(state, portName);
+  if (!port) {
+    throw FbossError("no such port ", portName);
+  }
+  const auto portId = port->getID();
+  const auto aggregatePort = findL3TrafficLoopAggregate(state, portId);
+  const auto ttlFeature = getL3TrafficLoopTtlFeature(sw_, aggregatePort);
+  const auto unsupportedReason =
+      getL3TrafficLoopUnsupportedReason(port, aggregatePort, ttlFeature);
+  if (unsupportedReason) {
+    throw FbossError(*unsupportedReason);
+  }
+  const auto interfaceId = port->getInterfaceID();
+  const auto interface = state->getInterfaces()->getNodeIf(interfaceId);
+  if (!interface) {
+    throw FbossError("No routed interface found for port ", portName);
+  }
+  // Use LAG control for members, port control for standalone ports, then
+  // next-hop control if the selected LAG or port has no TTL control.
+  // The LAG strategy is selected only when aggregatePort is present.
+  const bool useLagTtlDisable =
+      ttlFeature == HwAsic::Feature::LAG_TTL_DECREMENT_DISABLE;
+  const bool usePortTtlDisable =
+      ttlFeature == HwAsic::Feature::PORT_TTL_DECREMENT_DISABLE;
+  const bool useNextHopTtlDisable =
+      ttlFeature == HwAsic::Feature::NEXTHOP_TTL_DECREMENT_DISABLE;
+  XLOG(INFO) << "L3 traffic loop TTL strategy on " << portName
+             << ": aggregateMember=" << static_cast<bool>(aggregatePort)
+             << ", lagTtlDisable=" << useLagTtlDisable
+             << ", nextHopTtlDisable=" << useNextHopTtlDisable
+             << ", portTtlDisable=" << usePortTtlDisable;
+
+  auto peerMac = std::optional<MacAddress>{};
+  if (!expectedPeerMac.empty()) {
+    auto parsedMac = MacAddress::tryFromString(expectedPeerMac);
+    if (!parsedMac.hasValue()) {
+      throw FbossError("Invalid expected peer MAC ", expectedPeerMac);
+    }
+    peerMac = parsedMac.value();
+  }
+  auto neighbor = interface->getNdpTable()->getEntryIf(peerNextHop.asV6());
+  if (neighbor && !neighbor->isPending()) {
+    if (peerMac && neighbor->getMac() != *peerMac) {
+      throw FbossError(
+          "Existing NDP neighbor MAC does not match expected peer MAC for ",
+          peerNextHop);
+    }
+    if (!peerMac) {
+      peerMac = neighbor->getMac();
+    }
+  } else if (!peerMac) {
+    throw FbossError(
+        "L3 traffic loop requires a resolved peer neighbor; supply expectedPeerMac");
+  }
+
+  // A pending neighbor still has a configured TTL setting to preserve.
+  if ((useLagTtlDisable &&
+       aggregatePort->getTTLDisableDecrement().value_or(false)) ||
+      (usePortTtlDisable && port->getTTLDisableDecrement().value_or(false)) ||
+      (useNextHopTtlDisable && neighbor &&
+       neighbor->getDisableTTLDecrement().value_or(false))) {
+    throw FbossError("TTL decrement is already disabled on ", portName);
+  }
+
+  L3TrafficLoopStateStore::Loop loop;
+  loop.portId = portId;
+  if (aggregatePort) {
+    loop.aggregatePortId = aggregatePort->getID();
+  }
+  loop.interfaceId = interfaceId;
+  loop.qualificationAddress = qualificationAddress.asV6();
+  loop.peerNextHop = peerNextHop.asV6();
+  loop.peerMac = peerMac;
+  loop.expiresAt =
+      std::chrono::steady_clock::now() + std::chrono::seconds(timeoutSeconds);
+  loop.status.state() = L3TrafficLoopState::CONFIGURING;
+  loop.status.expirationTimeMs() =
+      duration_cast<std::chrono::milliseconds>(
+          std::chrono::system_clock::now().time_since_epoch() +
+          std::chrono::seconds(timeoutSeconds))
+          .count();
+
+  {
+    auto loops = l3TrafficLoopState_->loops.wlock();
+    auto existing = loops->find(portName);
+    if (existing != loops->end() &&
+        existing->second.status.state() != L3TrafficLoopState::NOT_CONFIGURED) {
+      throw FbossError("L3 traffic loop already exists on port ", portName);
+    }
+    for (const auto& [existingPort, existingLoop] : *loops) {
+      if (existingLoop.status.state() == L3TrafficLoopState::NOT_CONFIGURED) {
+        continue;
+      }
+      // A port can be renamed while its loop is active, so also compare IDs.
+      if (existingLoop.portId == loop.portId) {
+        throw FbossError(
+            "L3 traffic loop already exists on port ", existingPort);
+      }
+      if (loop.aggregatePortId &&
+          existingLoop.aggregatePortId == loop.aggregatePortId) {
+        throw FbossError("L3 traffic loop already exists on this aggregate");
+      }
+      if (existingLoop.qualificationAddress == loop.qualificationAddress) {
+        throw FbossError(
+            "Qualification address is already used by L3 traffic loop on ",
+            existingPort);
+      }
+    }
+    loops->insert_or_assign(portName, loop);
+  }
+
+  auto saveLoop =
+      [this, &portName](const L3TrafficLoopStateStore::Loop& updatedLoop) {
+        auto loops = l3TrafficLoopState_->loops.wlock();
+        loops->insert_or_assign(portName, updatedLoop);
+      };
+
+  try {
+    if (!neighbor || neighbor->isPending()) {
+      auto install = sw_->getNeighborUpdater()->receivedNdpMineForIntf(
+          interfaceId,
+          peerNextHop.asV6(),
+          *peerMac,
+          aggregatePort ? PortDescriptor(aggregatePort->getID())
+                        : PortDescriptor(portId),
+          ICMPv6Type::ICMPV6_TYPE_NDP_NEIGHBOR_ADVERTISEMENT,
+          0 /* flags */);
+      // Keep neighbors that existed before setup, including pending ones.
+      loop.removeNeighborOnCleanup = !neighbor;
+      saveLoop(loop);
+      std::move(install).get(kL3TrafficLoopNeighborUpdateTimeout);
+      // The cache update queues a separate asynchronous SwitchState update.
+      sw_->updateStateBlocking(
+          "complete L3 traffic loop neighbor installation",
+          [](const std::shared_ptr<SwitchState>&)
+              -> std::shared_ptr<SwitchState> { return nullptr; });
+    }
+
+    // Record the change before applying it so rollback covers partial updates.
+    if (useLagTtlDisable) {
+      loop.aggregateTtlChanged = true;
+      saveLoop(loop);
+      const auto aggregatePortId = *loop.aggregatePortId;
+      sw_->updateStateBlocking(
+          "disable LAG TTL decrement for L3 traffic loop",
+          [aggregatePortId, portId](const std::shared_ptr<SwitchState>& state) {
+            auto newState = state;
+            auto aggregate =
+                state->getAggregatePorts()->getNodeIf(aggregatePortId);
+            if (!aggregate || !aggregate->isMemberPort(portId)) {
+              throw FbossError(
+                  "L3 traffic loop aggregate changed during setup");
+            }
+            aggregate->modify(&newState)->setTTLDisableDecrement(true);
+            return newState;
+          });
+    } else if (usePortTtlDisable) {
+      loop.portTtlChanged = true;
+      saveLoop(loop);
+      sw_->updateStateBlocking(
+          "disable TTL decrement for L3 traffic loop",
+          [portId](const std::shared_ptr<SwitchState>& oldState) {
+            auto newState = oldState;
+            auto oldPort = newState->getPorts()->getNodeIf(portId);
+            if (!oldPort) {
+              throw FbossError("No port ", portId, " for L3 traffic loop");
+            }
+            auto newPort = oldPort->modify(&newState);
+            newPort->setTTLDisableDecrement(true);
+            return newState;
+          });
+    } else if (useNextHopTtlDisable) {
+      neighbor = getL3TrafficLoopNeighbor(sw_, interfaceId, peerNextHop.asV6());
+      if (!neighbor) {
+        throw FbossError(
+            "Peer NDP neighbor was not installed for ", peerNextHop);
+      }
+      loop.neighborTtlChanged = true;
+      saveLoop(loop);
+      setL3TrafficLoopNeighborTtl(sw_, interfaceId, peerNextHop.asV6(), true);
+    } else {
+      throw FbossError("No supported TTL control for L3 traffic loop");
+    }
+
+    auto route = makeL3TrafficLoopRoute(
+        loop.qualificationAddress, loop.peerNextHop, useNextHopTtlDisable);
+    addUnicastRoute(
+        kL3TrafficLoopClientId,
+        std::make_unique<UnicastRoute>(std::move(route)));
+    loop.status.state() = L3TrafficLoopState::READY;
+    saveLoop(loop);
+  } catch (const std::exception& ex) {
+    XLOG(ERR) << "L3 traffic loop setup failed on " << portName << ": "
+              << ex.what();
+    teardownL3TrafficLoopImpl(portName);
+    throw FbossError(
+        "L3 traffic loop setup failed on ", portName, ": ", ex.what());
+  }
+}
+
+void ThriftHandler::setupL3TrafficLoops(
+    std::unique_ptr<std::vector<BinaryAddress>> qualificationAddresses,
+    std::unique_ptr<std::vector<std::string>> portNames,
+    std::unique_ptr<std::vector<BinaryAddress>> peerNextHops,
+    std::unique_ptr<std::vector<std::string>> expectedPeerMacs,
+    std::unique_ptr<std::vector<int32_t>> timeoutSeconds) {
+  if (!qualificationAddresses || !portNames || !peerNextHops ||
+      !expectedPeerMacs || !timeoutSeconds) {
+    throw FbossError("L3 traffic loop setup lists are required");
+  }
+  const auto numLoops = portNames->size();
+  if (qualificationAddresses->size() != numLoops ||
+      peerNextHops->size() != numLoops ||
+      expectedPeerMacs->size() != numLoops ||
+      timeoutSeconds->size() != numLoops) {
+    throw FbossError("L3 traffic loop setup lists must have equal lengths");
+  }
+  const auto portNamesForLog = folly::join(",", *portNames);
+  auto log = LOG_THRIFT_CALL_WITH_STATS(DBG1, sw_->stats(), portNamesForLog);
+  ensureConfigured(__func__);
+
+  std::lock_guard operationLock(l3TrafficLoopState_->operationMutex);
+  if (l3TrafficLoopState_->expiryStopped.load()) {
+    throw FbossError("L3 traffic loop setup is stopping");
+  }
+  size_t numConfigured = 0;
+  try {
+    for (; numConfigured < numLoops; ++numConfigured) {
+      setupL3TrafficLoopImpl(
+          qualificationAddresses->at(numConfigured),
+          portNames->at(numConfigured),
+          peerNextHops->at(numConfigured),
+          expectedPeerMacs->at(numConfigured),
+          timeoutSeconds->at(numConfigured));
+    }
+  } catch (const std::exception& ex) {
+    for (size_t i = 0; i < numConfigured; ++i) {
+      teardownL3TrafficLoopImpl(portNames->at(i));
+    }
+    throw FbossError("Bulk L3 traffic loop setup failed: ", ex.what());
+  }
+  scheduleL3TrafficLoopExpiry();
+}
+
+void ThriftHandler::extendL3TrafficLoops(
+    std::unique_ptr<std::vector<std::string>> portNames,
+    int32_t timeoutSeconds) {
+  if (!portNames) {
+    throw FbossError("L3 traffic loop port list is required");
+  }
+  const auto portNamesForLog = folly::join(",", *portNames);
+  auto log = LOG_THRIFT_CALL_WITH_STATS(DBG1, sw_->stats(), portNamesForLog);
+  ensureConfigured(__func__);
+  validateL3TrafficLoopTimeout(timeoutSeconds);
+
+  std::lock_guard operationLock(l3TrafficLoopState_->operationMutex);
+  {
+    auto loops = l3TrafficLoopState_->loops.wlock();
+    const auto now = std::chrono::steady_clock::now();
+    std::vector<std::pair<std::string, std::chrono::steady_clock::time_point>>
+        expirations;
+    expirations.reserve(portNames->size());
+    for (const auto& portName : *portNames) {
+      auto it = loops->find(portName);
+      if (it == loops->end() ||
+          it->second.status.state() != L3TrafficLoopState::READY) {
+        throw FbossError("L3 traffic loop is not ready yet on port ", portName);
+      }
+      const auto base = std::max(it->second.expiresAt, now);
+      const auto extended = base + std::chrono::seconds(timeoutSeconds);
+      if (extended - now >
+          std::chrono::seconds(kL3TrafficLoopMaxTimeoutSeconds)) {
+        throw FbossError(
+            "L3 traffic loop extension exceeds maximum remaining lease");
+      }
+      expirations.emplace_back(portName, extended);
+    }
+
+    const auto systemNow = std::chrono::system_clock::now();
+    for (const auto& [portName, extended] : expirations) {
+      auto& loop = loops->at(portName);
+      loop.expiresAt = extended;
+      loop.status.expirationTimeMs() =
+          duration_cast<std::chrono::milliseconds>(
+              systemNow.time_since_epoch() + (extended - now))
+              .count();
+    }
+  }
+  scheduleL3TrafficLoopExpiry();
+}
+
+void ThriftHandler::teardownL3TrafficLoopImpl(const std::string& portName) {
+  L3TrafficLoopStateStore::Loop loop;
+  {
+    auto loops = l3TrafficLoopState_->loops.wlock();
+    auto it = loops->find(portName);
+    if (it == loops->end()) {
+      throw FbossError("No L3 traffic loop on port ", portName);
+    }
+    if (it->second.status.state() == L3TrafficLoopState::NOT_CONFIGURED) {
+      return;
+    }
+    if (it->second.status.state() == L3TrafficLoopState::CLEARING) {
+      throw FbossError(
+          "L3 traffic loop cleanup is already in progress on ", portName);
+    }
+    it->second.status.state() = L3TrafficLoopState::CLEARING;
+    loop = it->second;
+  }
+
+  try {
+    // Keep the destination safely blackholed while restoring TTL and neighbor
+    // state. Removing the route is the final cleanup operation.
+    auto dropRoute =
+        makeL3TrafficLoopRoute(loop.qualificationAddress, std::nullopt, false);
+    addUnicastRoute(
+        kL3TrafficLoopClientId,
+        std::make_unique<UnicastRoute>(std::move(dropRoute)));
+
+    if (loop.aggregateTtlChanged) {
+      sw_->updateStateBlocking(
+          "restore LAG TTL decrement after L3 traffic loop",
+          [&](const std::shared_ptr<SwitchState>& state) {
+            auto newState = state;
+            auto aggregate =
+                state->getAggregatePorts()->getNodeIf(*loop.aggregatePortId);
+            if (!aggregate) {
+              throw FbossError("No aggregate while restoring loop TTL");
+            }
+            aggregate->modify(&newState)->setTTLDisableDecrement(false);
+            return newState;
+          });
+    }
+    if (loop.portTtlChanged) {
+      const auto portId = loop.portId;
+      sw_->updateStateBlocking(
+          "restore TTL decrement after L3 traffic loop",
+          [portId](const std::shared_ptr<SwitchState>& oldState) {
+            auto newState = oldState;
+            auto oldPort = newState->getPorts()->getNodeIf(portId);
+            if (!oldPort) {
+              throw FbossError("No port ", portId, " while restoring TTL");
+            }
+            auto newPort = oldPort->modify(&newState);
+            newPort->setTTLDisableDecrement(false);
+            return newState;
+          });
+    }
+    if (loop.neighborTtlChanged) {
+      setL3TrafficLoopNeighborTtl(
+          sw_, loop.interfaceId, loop.peerNextHop, false);
+    }
+    if (loop.removeNeighborOnCleanup) {
+      sw_->getNeighborUpdater()
+          ->flushEntryForIntf(loop.interfaceId, IPAddress(loop.peerNextHop))
+          .get(kL3TrafficLoopNeighborUpdateTimeout);
+    }
+
+    auto prefix = makeL3TrafficLoopPrefix(loop.qualificationAddress);
+    deleteUnicastRoute(
+        kL3TrafficLoopClientId, std::make_unique<IpPrefix>(prefix));
+    loop.status.state() = L3TrafficLoopState::NOT_CONFIGURED;
+    loop.status.expirationTimeMs().reset();
+    loop.aggregateTtlChanged = false;
+    loop.portTtlChanged = false;
+    loop.neighborTtlChanged = false;
+    loop.removeNeighborOnCleanup = false;
+    {
+      auto loops = l3TrafficLoopState_->loops.wlock();
+      loops->at(portName) = loop;
+    }
+    XLOG(DBG2) << "Cleaned up L3 traffic loop on " << portName;
+  } catch (const std::exception& ex) {
+    XLOG(FATAL) << "L3 traffic loop cleanup failed on " << portName << ": "
+                << ex.what();
+  } catch (...) {
+    XLOG(FATAL) << "L3 traffic loop cleanup failed on " << portName
+                << ": unknown exception";
+  }
+}
+
+void ThriftHandler::teardownL3TrafficLoops(
+    std::unique_ptr<std::vector<std::string>> portNames) {
+  if (!portNames) {
+    throw FbossError("L3 traffic loop port list is required");
+  }
+  const auto portNamesForLog = folly::join(",", *portNames);
+  auto log = LOG_THRIFT_CALL_WITH_STATS(DBG1, sw_->stats(), portNamesForLog);
+  ensureConfigured(__func__);
+  std::lock_guard operationLock(l3TrafficLoopState_->operationMutex);
+  std::vector<std::string> failures;
+  for (const auto& portName : *portNames) {
+    try {
+      teardownL3TrafficLoopImpl(portName);
+    } catch (const std::exception& ex) {
+      failures.push_back(folly::to<std::string>(portName, ": ", ex.what()));
+    }
+  }
+  scheduleL3TrafficLoopExpiry();
+  if (!failures.empty()) {
+    throw FbossError(
+        "Bulk L3 traffic loop cleanup failed: ", folly::join("; ", failures));
+  }
+}
+
+void ThriftHandler::getL3TrafficLoopStatus(
+    std::map<std::string, L3TrafficLoopStatus>& statuses,
+    std::unique_ptr<std::vector<std::string>> portNamesArg) {
+  if (!portNamesArg) {
+    throw FbossError("L3 traffic loop port list is required");
+  }
+  const auto portNamesForLog = folly::join(",", *portNamesArg);
+  auto log = LOG_THRIFT_CALL_WITH_STATS(DBG1, sw_->stats(), portNamesForLog);
+  ensureConfigured(__func__);
+
+  std::map<std::string, L3TrafficLoopStatus> loopStatuses;
+  {
+    auto loops = l3TrafficLoopState_->loops.rlock();
+    if (portNamesArg->empty()) {
+      for (const auto& [portName, loop] : *loops) {
+        loopStatuses.emplace(portName, loop.status);
+      }
+    } else {
+      for (const auto& portName : *portNamesArg) {
+        auto it = loops->find(portName);
+        if (it != loops->end()) {
+          loopStatuses.emplace(portName, it->second.status);
+        }
+      }
+    }
+  }
+
+  statuses = std::move(loopStatuses);
+}
+
+std::optional<std::chrono::steady_clock::time_point>
+ThriftHandler::getNextL3TrafficLoopExpiration() const {
+  std::optional<std::chrono::steady_clock::time_point> next;
+  auto loops = l3TrafficLoopState_->loops.rlock();
+  for (const auto& [_, loop] : *loops) {
+    if (loop.status.state() == L3TrafficLoopState::READY &&
+        (!next || loop.expiresAt < *next)) {
+      next = loop.expiresAt;
+    }
+  }
+  return next;
+}
+
+void ThriftHandler::scheduleL3TrafficLoopExpiry() {
+  if (l3TrafficLoopState_->expiryStopped.load()) {
+    return;
+  }
+  // A queued callback must not keep using a deleted handler.
+  std::weak_ptr<L3TrafficLoopStateStore> weakState = l3TrafficLoopState_;
+  sw_->getBackgroundEvb()->runInEventBaseThread([this, weakState] {
+    auto state = weakState.lock();
+    if (!state || state->expiryStopped.load()) {
+      return;
+    }
+    if (state->expiryTimer) {
+      state->expiryTimer->cancelTimeout();
+    }
+    const auto next = getNextL3TrafficLoopExpiration();
+    if (!next) {
+      return; // No READY loops: leave the timer canceled.
+    }
+    if (!state->expiryTimer) {
+      state->expiryTimer = folly::AsyncTimeout::make(
+          *sw_->getBackgroundEvb(), [this, weakState]() noexcept {
+            auto state = weakState.lock();
+            if (state && !state->expiryStopped.load()) {
+              expireL3TrafficLoops();
+            }
+          });
+    }
+    const auto delay = std::max(
+        std::chrono::milliseconds(0),
+        std::chrono::ceil<std::chrono::milliseconds>(
+            *next - steady_clock::now()));
+    CHECK(state->expiryTimer->scheduleTimeout(delay, {}));
+  });
+}
+
+void ThriftHandler::stopL3TrafficLoopExpiry() {
+  {
+    // Finish any RPC's rearm request before canceling the timer.
+    std::lock_guard operationLock(l3TrafficLoopState_->operationMutex);
+    l3TrafficLoopState_->expiryStopped.store(true);
+  }
+  auto resetTimer = [this] { l3TrafficLoopState_->expiryTimer.reset(); };
+  auto* evb = sw_->getBackgroundEvb();
+  if (evb->isRunning()) {
+    // Finish any expiry callback before destroying its handler.
+    evb->runInEventBaseThreadAndWait(std::move(resetTimer));
+  } else {
+    resetTimer();
+  }
+}
+
+void ThriftHandler::expireL3TrafficLoops() noexcept {
+  std::lock_guard operationLock(l3TrafficLoopState_->operationMutex);
+  if (l3TrafficLoopState_->expiryStopped.load() || sw_->isExiting()) {
+    return;
+  }
+  const auto now = std::chrono::steady_clock::now();
+  std::vector<std::string> expired;
+  {
+    auto loops = l3TrafficLoopState_->loops.rlock();
+    for (const auto& [portName, loop] : *loops) {
+      if (loop.status.state() == L3TrafficLoopState::READY &&
+          loop.expiresAt <= now) {
+        expired.push_back(portName);
+      }
+    }
+  }
+  for (const auto& portName : expired) {
+    teardownL3TrafficLoopImpl(portName);
+  }
+  scheduleL3TrafficLoopExpiry();
+}
 
 fb_status ThriftHandler::getStatus() {
   if (sw_->isExiting()) {
@@ -1119,8 +1936,10 @@ void ThriftHandler::updateUnicastRoutesImpl(
       throw FbossError(
           "Override nhops or switching mode cannot be set by clients");
     }
+    validateNextHops(*route.nextHops());
     validateAndDefaultSrv6NextHops(*route.nextHops(), defaultSrv6TunnelId);
     validateLinkLocalNextHopInterfaces(*route.nextHops(), state);
+    validateNextHopVrfs(*route.nextHops(), state, routerID);
     if (FLAGS_enable_route_counters_for_named_nhg &&
         route.namedRouteDestination()->getType() ==
             NamedRouteDestination::Type::nextHopGroup) {
@@ -1150,6 +1969,7 @@ void ThriftHandler::addMySidEntries(
   auto log = LOG_THRIFT_CALL_WITH_STATS(DBG1, sw_->stats());
   ensureConfigured(__func__);
   for (const auto& entry : *mySidEntries) {
+    validateNextHops(*entry.nextHops());
     switch (*entry.type()) {
       case MySidType::BINDING_MICRO_SID:
         break;
@@ -1377,6 +2197,34 @@ void ThriftHandler::getInterfaceList(std::vector<std::string>& interfaceList) {
       auto intf = iter.second;
       interfaceList.push_back(intf->getName());
     }
+  }
+}
+
+void ThriftHandler::getVrfs(std::vector<VrfInfo>& vrfs) {
+  auto log = LOG_THRIFT_CALL_WITH_STATS(DBG1, sw_->stats());
+  ensureConfigured(__func__);
+
+  auto state = sw_->getState();
+  std::map<int32_t, VrfInfo> vrfInfos;
+  vrfInfos[0].vrfId() = 0;
+  for (const auto& [_, vrfMap] : std::as_const(*state->getVrfs())) {
+    for (const auto& iter : std::as_const(*vrfMap)) {
+      const auto& vrf = iter.second;
+      auto& vrfInfo = vrfInfos[vrf->getID()];
+      vrfInfo.vrfId() = vrf->getID();
+      vrfInfo.name().from_optional(vrf->getName());
+    }
+  }
+  for (const auto& [_, intfs] : std::as_const(*state->getInterfaces())) {
+    for (const auto& iter : std::as_const(*intfs)) {
+      const auto& intf = iter.second;
+      auto& vrfInfo = vrfInfos[intf->getRouterID()];
+      vrfInfo.vrfId() = intf->getRouterID();
+      vrfInfo.interfaceIds()->push_back(intf->getID());
+    }
+  }
+  for (auto& [_, vrfInfo] : vrfInfos) {
+    vrfs.push_back(std::move(vrfInfo));
   }
 }
 
@@ -1931,6 +2779,7 @@ void ThriftHandler::addAdjacencyFrr(
   for (auto& nextHop : *backupNextHops) {
     nextHop.role() = NextHopRole::BACKUP;
   }
+  validateNextHops(*backupNextHops);
   validateAndDefaultSrv6NextHops(*backupNextHops, defaultSrv6TunnelId);
   validateLinkLocalNextHopInterfaces(*backupNextHops, state);
   std::vector<MySidFrrProtectionUpdate> toAddOrUpdate{MySidFrrProtectionUpdate{
@@ -2049,7 +2898,7 @@ void ThriftHandler::setPortPrbs(
       }
       return newState;
     };
-    sw_->updateStateBlocking("set port asic prbs", updateFn);
+    sw_->updateStateWithHwFailureProtection("set port asic prbs", updateFn);
   } else if (component == phy::PortComponent::GB_SYSTEM) {
     auto updateFn = [=](const shared_ptr<SwitchState>& state) {
       shared_ptr<SwitchState> newState{state};
@@ -2060,7 +2909,8 @@ void ThriftHandler::setPortPrbs(
       }
       return newState;
     };
-    sw_->updateStateBlocking("set port gearbox system side prbs", updateFn);
+    sw_->updateStateWithHwFailureProtection(
+        "set port gearbox system side prbs", updateFn);
   } else if (component == phy::PortComponent::GB_LINE) {
     auto updateFn = [=](const shared_ptr<SwitchState>& state) {
       shared_ptr<SwitchState> newState{state};
@@ -2071,7 +2921,8 @@ void ThriftHandler::setPortPrbs(
       }
       return newState;
     };
-    sw_->updateStateBlocking("set port gearbox line side prbs", updateFn);
+    sw_->updateStateWithHwFailureProtection(
+        "set port gearbox line side prbs", updateFn);
   } else {
     XLOG(DBG2) << "Unrecognized component to setPortPrbs: "
                << apache::thrift::util::enumNameSafe(component);
@@ -2374,8 +3225,29 @@ void ThriftHandler::getRouteTableDetails(std::vector<RouteDetails>& routes) {
   forAllRoutes(
       state,
       [&routes, &state, &resolveClient](
-          const RouterID& /*rid*/, const auto& route) {
-        routes.emplace_back(toRouteDetails(state, route, resolveClient));
+          const RouterID& rid, const auto& route) {
+        routes.emplace_back(toRouteDetails(state, rid, route, resolveClient));
+      });
+}
+
+void ThriftHandler::getRouteTableDetailsByVrf(
+    std::vector<RouteDetails>& routes,
+    int32_t vrfId) {
+  auto log = LOG_THRIFT_CALL_WITH_STATS(DBG1, sw_->stats());
+  ensureConfigured(__func__);
+  auto state = sw_->getState();
+  ensureVrfConfigured(state, vrfId);
+  ClientNextHopsResolver resolveClient =
+      [&state](const RouteNextHopEntry& entry) {
+        return getClientNextHops(state, entry);
+      };
+  forAllRoutes(
+      state,
+      [&routes, &state, &resolveClient, vrfId](
+          const RouterID& rid, const auto& route) {
+        if (rid == RouterID(vrfId)) {
+          routes.emplace_back(toRouteDetails(state, rid, route, resolveClient));
+        }
       });
 }
 
@@ -2397,6 +3269,7 @@ void ThriftHandler::getIpRoute(
   folly::IPAddress ipAddr = toIPAddress(*addr);
 
   auto state = sw_->getState();
+  ensureVrfConfigured(state, vrfId);
   if (ipAddr.isV4()) {
     auto match = sw_->longestMatch(state, ipAddr.asV4(), RouterID(vrfId));
     if (!match || !match->isResolved()) {
@@ -2436,6 +3309,7 @@ void ThriftHandler::getIpRouteDetails(
   ensureConfigured(__func__);
   folly::IPAddress ipAddr = toIPAddress(*addr);
   auto state = sw_->getState();
+  ensureVrfConfigured(state, vrfId);
   ClientNextHopsResolver resolveClient =
       [&state](const RouteNextHopEntry& entry) {
         return getClientNextHops(state, entry);
@@ -2444,12 +3318,12 @@ void ThriftHandler::getIpRouteDetails(
   if (ipAddr.isV4()) {
     auto match = sw_->longestMatch(state, ipAddr.asV4(), RouterID(vrfId));
     if (match && match->isResolved()) {
-      route = toRouteDetails(state, match, resolveClient);
+      route = toRouteDetails(state, RouterID(vrfId), match, resolveClient);
     }
   } else {
     auto match = sw_->longestMatch(state, ipAddr.asV6(), RouterID(vrfId));
     if (match && match->isResolved()) {
-      route = toRouteDetails(state, match, resolveClient);
+      route = toRouteDetails(state, RouterID(vrfId), match, resolveClient);
     }
   }
 }
@@ -2470,7 +3344,7 @@ void ThriftHandler::getRouteCounterBytes(
   for (const auto& statName : *counters) {
     // returns default stat if statName does not exists
     auto statPtr = statMap->getStatPtrNoExport(statName);
-    auto lockedStatPtr = statPtr->wlock();
+    auto lockedStatPtr = statPtr->contextualLock();
     lockedStatPtr->update(seconds(facebook::fb303::get_legacy_stats_time()));
     auto numLevels = lockedStatPtr->numLevels();
     // Cumulative (ALLTIME) counters are at (numLevels - 1)
@@ -2757,8 +3631,10 @@ void ThriftHandler::txPktL3(
   cfg::InterfaceType type{cfg::InterfaceType::VLAN};
   for (const auto& [_, intfs] : std::as_const(*interfaceMap)) {
     if (!intfs->empty()) {
-      intfID = intfs->at(0)->getID();
-      type = intfs->at(0)->getType();
+      // Map keys are interface IDs, not positions.
+      const auto& interface = intfs->cbegin()->second;
+      intfID = interface->getID();
+      type = interface->getType();
       break;
     }
   }
@@ -2775,6 +3651,8 @@ void ThriftHandler::txPktL3(
     unique_ptr<TxPacket> pkt = sw_->allocateL3TxPacket(
         static_cast<uint32_t>(payload->size()),
         (type == cfg::InterfaceType::VLAN));
+    // The allocated buffer has headroom but no payload data yet.
+    pkt->buf()->append(payload->size());
     RWPrivateCursor cursor(pkt->buf());
     cursor.push(StringPiece(*payload));
     sw_->sendL3Packet(std::move(pkt), *intfID);
@@ -3098,6 +3976,7 @@ void ThriftHandler::addMplsRoutesImpl(
         throw FbossError("MPLS route next hop cannot have srv6SegmentList");
       }
     }
+    validateNextHops(*mplsRoute.nextHops());
     auto adminDistance = mplsRoute.adminDistance().has_value()
         ? mplsRoute.adminDistance().value()
         : sw_->clientIdToAdminDistance(static_cast<int>(clientId));
@@ -3189,6 +4068,7 @@ void ThriftHandler::addMplsRibRoutes(
         throw FbossError("MPLS route next hop cannot have srv6SegmentList");
       }
     }
+    validateNextHops(*route.nextHops());
     updater.addRoute(clientID, route);
   }
   RouteUpdateWrapper::SyncFibFor syncFibs;
@@ -3607,6 +4487,7 @@ void ThriftHandler::addNamedNextHopGroupsImpl(
           " characters: ",
           *group.name());
     }
+    validateNextHops(*group.nexthops());
     validateAndDefaultSrv6NextHops(*group.nexthops(), defaultSrv6TunnelId);
     validateLinkLocalNextHopInterfaces(*group.nexthops(), state);
     auto nextHops = util::toRouteNextHopSet(
@@ -3772,6 +4653,7 @@ void ThriftHandler::getNextHopGroups(
   }
   auto refCounts = ctx->fibInfo->getNextHopSetIdRefCountsFromRoutes();
   FibInfo::getNextHopSetIdRefCountsFromMySid(state, refCounts);
+  auto pbrHeldIds = nhgIdsReferencedByPbr(state, ctx->nameToSetId);
 
   auto idSetMapThrift = idToNextHopIdSetMap->toThrift();
   for (const auto& [setId, nhIds] : idSetMapThrift) {
@@ -3787,7 +4669,8 @@ void ThriftHandler::getNextHopGroups(
       thriftGroup.name() = nameIter->second;
       auto refCountIter = refCounts.find(NextHopSetID(setId));
       thriftGroup.isProgrammed() =
-          refCountIter != refCounts.end() && refCountIter->second > 0;
+          (refCountIter != refCounts.end() && refCountIter->second > 0) ||
+          pbrHeldIds.count(setId) > 0;
     } else {
       thriftGroup.isProgrammed() = true;
     }
@@ -3824,6 +4707,7 @@ void ThriftHandler::getNamedNextHopGroups(
 
   auto refCounts = ctx->fibInfo->getNextHopSetIdRefCountsFromRoutes();
   FibInfo::getNextHopSetIdRefCountsFromMySid(state, refCounts);
+  auto pbrHeldIds = nhgIdsReferencedByPbr(state, ctx->nameToSetId);
 
   std::unordered_set<std::string> foundNames;
   for (const auto& [name, nextHopSetId] : ctx->nameToSetId) {
@@ -3835,7 +4719,8 @@ void ThriftHandler::getNamedNextHopGroups(
     thriftGroup.name() = name;
     thriftGroup.id() = nextHopSetId;
     thriftGroup.isProgrammed() =
-        refCounts.count(NextHopSetID(nextHopSetId)) > 0;
+        refCounts.count(NextHopSetID(nextHopSetId)) > 0 ||
+        pbrHeldIds.count(nextHopSetId) > 0;
     try {
       auto nextHops = ctx->fibInfo->resolveNextHopSetFromId(nextHopSetId);
       thriftGroup.nexthops() =

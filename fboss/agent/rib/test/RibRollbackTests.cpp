@@ -90,10 +90,7 @@ class FailSomeUpdates {
       : toFail_(std::move(toFail)) {}
   StateDelta operator()(
       const SwitchIdScopeResolver* resolver,
-      RouterID vrf,
-      const IPv4NetworkToRouteMap& v4NetworkToRoute,
-      const IPv6NetworkToRouteMap& v6NetworkToRoute,
-      const LabelToRouteMap& labelToRoute,
+      const std::vector<RibVrfFib>& vrfFibs,
       const NextHopIDManager* nextHopIDManager,
       const MySidTable& mySidTable,
       void* cookie) {
@@ -104,24 +101,14 @@ class FailSomeUpdates {
       auto desiredState = *curSwitchStatePtr;
       ribToSwitchStateUpdate(
           resolver,
-          vrf,
-          v4NetworkToRoute,
-          v6NetworkToRoute,
-          labelToRoute,
+          vrfFibs,
           nextHopIDManager,
           mySidTable,
           static_cast<void*>(&desiredState));
       throw FbossHwUpdateError(desiredState, *curSwitchStatePtr);
     }
     return ribToSwitchStateUpdate(
-        resolver,
-        vrf,
-        v4NetworkToRoute,
-        v6NetworkToRoute,
-        labelToRoute,
-        nextHopIDManager,
-        mySidTable,
-        cookie);
+        resolver, vrfFibs, nextHopIDManager, mySidTable, cookie);
   }
 
  private:
@@ -479,6 +466,149 @@ TEST_F(RibRollbackTest, rollbackMpls) {
   EXPECT_EQ(routeTableBeforeFailedUpdate, rib_.getRouteTableDetails(kRid));
 }
 
+TEST_F(RibRollbackTest, rollbackAcrossVrfs) {
+  // A route in another VRF whose next hop resolves in the default VRF
+  const RouterID kOtherVrf(1001);
+  const auto kVtepPrefix = IPAddress::createNetwork("2001:db8:500::/64");
+  rib_.ensureVrf(kOtherVrf);
+  NextHopThrift nhop;
+  nhop.address() = toBinaryAddress(IPAddress("2001:db8:500::1"));
+  nhop.vrf() = 0;
+  UnicastRoute otherVrfRoute;
+  otherVrfRoute.dest()->ip() = toBinaryAddress(IPAddress("2001:db8:200::"));
+  otherVrfRoute.dest()->prefixLength() = 64;
+  otherVrfRoute.nextHops() = {nhop};
+  rib_.update(
+      scopeResolver(),
+      kOtherVrf,
+      kBgpClient,
+      kBgpDistance,
+      {otherVrfRoute},
+      {},
+      false,
+      "add route in other vrf",
+      ribToSwitchStateUpdate,
+      &switchState_);
+
+  // A default VRF route that resolves the other VRF's route fails to program.
+  // Both VRFs are in the failed update and must be rolled back.
+  auto stateBeforeFailedUpdate = switchState_;
+  auto defaultVrfRoutes = rib_.getRouteTableDetails(kRid);
+  auto otherVrfRoutes = rib_.getRouteTableDetails(kOtherVrf);
+  FailSomeUpdates failFirstUpdate({1});
+  EXPECT_THROW(
+      rib_.update(
+          scopeResolver(),
+          kRid,
+          kBgpClient,
+          kBgpDistance,
+          {makeDropUnicastRoute(kVtepPrefix)},
+          {},
+          false,
+          "fail add",
+          failFirstUpdate,
+          &switchState_),
+      FbossHwUpdateError);
+  EXPECT_EQ(stateBeforeFailedUpdate, switchState_);
+  EXPECT_EQ(defaultVrfRoutes, rib_.getRouteTableDetails(kRid));
+  EXPECT_EQ(otherVrfRoutes, rib_.getRouteTableDetails(kOtherVrf));
+
+  // The rebuilt RIB resolves the other VRF's route once the update succeeds
+  rib_.update(
+      scopeResolver(),
+      kRid,
+      kBgpClient,
+      kBgpDistance,
+      {makeDropUnicastRoute(kVtepPrefix)},
+      {},
+      false,
+      "add",
+      ribToSwitchStateUpdate,
+      &switchState_);
+  auto otherVrfFib =
+      switchState_->getFibsInfoMap()->getFibContainer(kOtherVrf)->getFibV6();
+  auto route =
+      otherVrfFib->exactMatch({folly::IPAddressV6("2001:db8:200::"), 64});
+  ASSERT_NE(route, nullptr);
+  EXPECT_TRUE(route->getForwardInfo().isDrop());
+}
+
+TEST_F(RibRollbackTest, rollbackInterfaceVrfMove) {
+  // A route through an interface-scoped next hop on interface 1
+  NextHopThrift nhop;
+  nhop.address() = toBinaryAddress(IPAddress("fe80::1"));
+  nhop.address()->ifName() = "fboss1";
+  UnicastRoute route;
+  route.dest()->ip() = toBinaryAddress(IPAddress("2001:db8:300::"));
+  route.dest()->prefixLength() = 64;
+  route.nextHops() = {nhop};
+  rib_.update(
+      scopeResolver(),
+      kRid,
+      kBgpClient,
+      kBgpDistance,
+      {route},
+      {},
+      false,
+      "add",
+      ribToSwitchStateUpdate,
+      &switchState_);
+  auto hasRoute = [this]() {
+    return switchState_->getFibsInfoMap()
+               ->getFibContainer(kRid)
+               ->getFibV6()
+               ->exactMatch({folly::IPAddressV6("2001:db8:300::"), 64}) !=
+        nullptr;
+  };
+  ASSERT_TRUE(hasRoute());
+
+  // Config adds another VRF and puts interface 1 in the default VRF
+  const RouterID kOtherVrf(1001);
+  rib_.reconfigure(
+      scopeResolver(),
+      {{kRid, {}}, {kOtherVrf, {}}},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      ribToSwitchStateUpdate,
+      &switchState_,
+      false,
+      RoutingInformationBase::InterfaceToVrf{{InterfaceID(1), kRid}});
+  ASSERT_TRUE(hasRoute());
+
+  // Moving interface 1 to the other VRF fails to program
+  auto routesBeforeFailedUpdate = rib_.getRouteTableDetails(kRid);
+  FailSomeUpdates failFirstUpdate({1});
+  EXPECT_THROW(
+      rib_.updateInterfaceVrfs(
+          scopeResolver(),
+          {{InterfaceID(1), kOtherVrf}},
+          failFirstUpdate,
+          &switchState_),
+      FbossHwUpdateError);
+  EXPECT_EQ(routesBeforeFailedUpdate, rib_.getRouteTableDetails(kRid));
+
+  // Interface 1 is still usable in the default VRF, so the route stays
+  // resolved when the default VRF is resolved again
+  rib_.update(
+      scopeResolver(),
+      kRid,
+      kBgpClient,
+      kBgpDistance,
+      std::vector<UnicastRoute>{},
+      {},
+      false,
+      "empty update",
+      ribToSwitchStateUpdate,
+      &switchState_);
+  EXPECT_TRUE(hasRoute());
+}
+
 // Callback that injects MySid entries into the applied state on failure.
 class FailWithMySidInAppliedState {
  public:
@@ -487,10 +617,7 @@ class FailWithMySidInAppliedState {
 
   StateDelta operator()(
       const SwitchIdScopeResolver* resolver,
-      RouterID vrf,
-      const IPv4NetworkToRouteMap& v4NetworkToRoute,
-      const IPv6NetworkToRouteMap& v6NetworkToRoute,
-      const LabelToRouteMap& labelToRoute,
+      const std::vector<RibVrfFib>& vrfFibs,
       const NextHopIDManager* nextHopIDManager,
       const MySidTable& mySidTable,
       void* cookie) {
@@ -501,10 +628,7 @@ class FailWithMySidInAppliedState {
     auto desiredState = *curSwitchStatePtr;
     ribToSwitchStateUpdate(
         resolver,
-        vrf,
-        v4NetworkToRoute,
-        v6NetworkToRoute,
-        labelToRoute,
+        vrfFibs,
         nextHopIDManager,
         mySidTable,
         static_cast<void*>(&desiredState));

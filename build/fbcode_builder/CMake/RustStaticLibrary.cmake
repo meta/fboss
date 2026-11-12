@@ -81,7 +81,8 @@ set_property(GLOBAL APPEND PROPERTY JOB_POOLS rust_job_pool=1)
 #
 # ```cmake
 # rust_static_library(<TARGET> [CRATE <CRATE_NAME>] [PACKAGE <PACKAGE_NAME>]
-#   [FEATURES <FEATURE_NAME>] [USE_CXX_INCLUDE] [ENV <NAME=VALUE>...])
+#   [FEATURES <FEATURE_NAME>] [USE_CXX_INCLUDE] [ENV <NAME=VALUE>...]
+#   [LINK_LIBRARIES <library>...])
 # ```
 #
 # Parameters:
@@ -101,18 +102,25 @@ set_property(GLOBAL APPEND PROPERTY JOB_POOLS rust_job_pool=1)
 #   Include cxx.rs include path in `${TARGET}` INTERFACE.
 # - ENV:
 #   A list of `NAME=VALUE` pairs to set in the environment of `cargo build`.
+# - LINK_LIBRARIES:
+#   Libraries that have to come after the static library on a link line, such
+#   as the C++ side of its cxx bridges.
 #
-# This function creates two targets:
+# This function creates three targets:
 # - "${TARGET}": an interface library target contains the static library built
 #   from Cargo.
 # - "${TARGET}.cargo": an internal custom target that invokes Cargo.
+# - "${TARGET}.archive": an internal imported target for the static library,
+#   which orders LINK_LIBRARIES after it.
 #
 # If you are going to use this static library from C/C++, you will need to
 # write header files for the library (or generate with cbindgen) and bind these
 # headers with the interface library.
 #
 function(rust_static_library TARGET)
-  fb_cmake_parse_args(ARG "USE_CXX_INCLUDE" "CRATE;PACKAGE;FEATURES" "ENV" "${ARGN}")
+  fb_cmake_parse_args(
+    ARG "USE_CXX_INCLUDE" "CRATE;PACKAGE;FEATURES" "ENV;LINK_LIBRARIES" "${ARGN}"
+  )
 
   if(DEFINED ARG_CRATE)
     set(crate_name "${ARG_CRATE}")
@@ -181,9 +189,18 @@ function(rust_static_library TARGET)
     )
   endif()
 
+  # CMake orders a target's link dependencies after it, but not a plain path's.
+  add_library(${TARGET}.archive STATIC IMPORTED GLOBAL)
+  set_target_properties(
+    ${TARGET}.archive
+    PROPERTIES
+      IMPORTED_LOCATION "${CMAKE_CURRENT_BINARY_DIR}/release/${staticlib_name}"
+      IMPORTED_LOCATION_DEBUG "${CMAKE_CURRENT_BINARY_DIR}/debug/${staticlib_name}"
+  )
+  target_link_libraries(${TARGET}.archive INTERFACE ${ARG_LINK_LIBRARIES})
   target_link_libraries(
     ${TARGET}
-    INTERFACE "$<BUILD_INTERFACE:${rust_staticlib}>"
+    INTERFACE "$<BUILD_INTERFACE:${TARGET}.archive>"
   )
 endfunction()
 
@@ -378,7 +395,8 @@ endfunction()
 #   `${TARGET}` CMake library target.
 #
 # ```cmake
-# rust_cxx_bridge(<TARGET> <CXX_BRIDGE_FILE> [CRATE <CRATE_NAME>] [LIBS <LIBNAMES>])
+# rust_cxx_bridge(<TARGET> <CXX_BRIDGE_FILE> [CRATE <CRATE_NAME>] [LIBS <LIBNAMES>]
+#                 [CXX_VERSION_DIR <DIR>])
 # ```
 #
 # Parameters:
@@ -391,9 +409,14 @@ endfunction()
 #   fallback to `${TARGET}`.
 # - LIBS <lib1> [<lib2> ...]:
 #   A list of libraries that this library depends on.
+# - CXX_VERSION_DIR:
+#   Directory of the crate whose version of cxx to match. This parameter is
+#   optional, and defaults to the current source directory. A crate built into
+#   the static library of another Cargo workspace links that workspace's cxx,
+#   which can be another version.
 #
 function(rust_cxx_bridge TARGET CXX_BRIDGE_FILE)
-  fb_cmake_parse_args(ARG "" "CRATE" "LIBS" "${ARGN}")
+  fb_cmake_parse_args(ARG "" "CRATE;CXX_VERSION_DIR" "LIBS" "${ARGN}")
 
   if(DEFINED ARG_CRATE)
     set(crate_name "${ARG_CRATE}")
@@ -401,6 +424,108 @@ function(rust_cxx_bridge TARGET CXX_BRIDGE_FILE)
     set(crate_name "${TARGET}")
   endif()
 
+  _rust_cxxbridge(cxxbridge cxxbridge_target "${ARG_CXX_VERSION_DIR}")
+
+  add_library(${crate_name} STATIC)
+  target_include_directories(
+    ${crate_name}
+    PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
+    $<INSTALL_INTERFACE:include>
+  )
+  target_link_libraries(
+    ${crate_name}
+    PUBLIC
+    ${ARG_LIBS}
+  )
+
+  get_filename_component(filename_component ${CXX_BRIDGE_FILE} NAME)
+  get_filename_component(directory_component ${CXX_BRIDGE_FILE} DIRECTORY)
+  set(directory "")
+  if(directory_component)
+    set(directory "${directory_component}")
+  endif()
+
+  set(cxx_header ${directory}/${filename_component}.h)
+  set(cxx_source ${directory}/${filename_component}.cc)
+  set(rust_source_path "${CMAKE_CURRENT_SOURCE_DIR}/${CXX_BRIDGE_FILE}")
+
+  file(
+    MAKE_DIRECTORY
+    "${CMAKE_CURRENT_BINARY_DIR}/${directory_component}"
+  )
+
+  add_custom_command(
+    OUTPUT
+      "${CMAKE_CURRENT_BINARY_DIR}/${cxx_header}"
+      "${CMAKE_CURRENT_BINARY_DIR}/${cxx_source}"
+    COMMAND
+      ${cxxbridge} ${rust_source_path}
+        --cfg fbcode_build=false
+        --header
+        --output "${CMAKE_CURRENT_BINARY_DIR}/${cxx_header}"
+    COMMAND
+      ${cxxbridge} ${rust_source_path}
+        --cfg fbcode_build=false
+        --output "${CMAKE_CURRENT_BINARY_DIR}/${cxx_source}"
+        --include "${cxx_header}"
+    DEPENDS "${cxxbridge_target}" "${rust_source_path}"
+    COMMENT "Generating cxx bindings for crate ${crate_name}"
+  )
+
+  target_sources(
+    ${crate_name}
+    PRIVATE
+    "${CMAKE_CURRENT_BINARY_DIR}/${cxx_header}"
+    "${CMAKE_CURRENT_BINARY_DIR}/rust/cxx.h"
+    "${CMAKE_CURRENT_BINARY_DIR}/${cxx_source}"
+  )
+endfunction()
+
+# This function generates the `rust/cxx.h` header of the [cxx] crate for C++
+# code that uses cxx types, such as `rust::String`, without a bridge of its
+# own. The header matches the version of cxx that the crate in the current
+# source directory, or in CXX_VERSION_DIR, depends on.
+#
+# ```cmake
+# rust_cxx_header(<TARGET> [LIBS <LIBNAMES>] [CXX_VERSION_DIR <DIR>])
+# ```
+#
+# Parameters:
+# - TARGET:
+#   Name of the interface library target to create, which puts the header on
+#   the include path. An internal custom target, `${TARGET}.header`, generates
+#   it.
+# - LIBS <lib1> [<lib2> ...]:
+#   A list of libraries that this library depends on, such as the Rust static
+#   library that contains the cxx runtime.
+# - CXX_VERSION_DIR:
+#   As for rust_cxx_bridge().
+#
+function(rust_cxx_header TARGET)
+  fb_cmake_parse_args(ARG "" "CXX_VERSION_DIR" "LIBS" "${ARGN}")
+
+  _rust_cxxbridge(cxxbridge cxxbridge_target "${ARG_CXX_VERSION_DIR}")
+  add_custom_target(
+    ${TARGET}.header
+    DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/rust/cxx.h"
+  )
+  add_library(${TARGET} INTERFACE)
+  target_include_directories(${TARGET} INTERFACE "${CMAKE_CURRENT_BINARY_DIR}")
+  target_link_libraries(${TARGET} INTERFACE ${ARG_LIBS})
+  add_dependencies(${TARGET} ${TARGET}.header)
+endfunction()
+
+# Sets <CXXBRIDGE_VAR> to a cxxbridge with the version of cxx that the crate in
+# <CXX_VERSION_DIR>, or else the current source directory, depends on, and
+# <DEPENDS_VAR> to the target that commands running it depend on, which runs
+# `cargo install cxxbridge-cmd` when no installed cxxbridge has that version.
+# Also adds the rule that generates `rust/cxx.h` in the current binary
+# directory.
+function(_rust_cxxbridge CXXBRIDGE_VAR DEPENDS_VAR CXX_VERSION_DIR)
+  if(NOT CXX_VERSION_DIR)
+    set(CXX_VERSION_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
+  endif()
   if(USE_CARGO_VENDOR)
     set(extra_cargo_env "CARGO_HOME=${RUST_CARGO_HOME}")
   endif()
@@ -410,13 +535,23 @@ function(rust_cxx_bridge TARGET CXX_BRIDGE_FILE)
       "${CMAKE_COMMAND}" -E env
       ${extra_cargo_env}
       "${CARGO_COMMAND}" tree -i cxx --depth=0
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    WORKING_DIRECTORY "${CXX_VERSION_DIR}"
     RESULT_VARIABLE cxx_version_result
     OUTPUT_VARIABLE cxx_version_output
+    ERROR_VARIABLE cxx_version_error
   )
 
   if(NOT "${cxx_version_result}" EQUAL "0")
-    message(FATAL_ERROR "Crate ${crate_name} does not depend on cxx.")
+    if(cxx_version_error MATCHES "did not match any packages")
+      message(
+        FATAL_ERROR
+        "The crate in ${CXX_VERSION_DIR} does not depend on cxx."
+      )
+    endif()
+    message(
+      FATAL_ERROR
+      "`cargo tree -i cxx` failed in ${CXX_VERSION_DIR}:\n${cxx_version_error}"
+    )
   endif()
   if(cxx_version_output MATCHES "cxx v([0-9]+.[0-9]+.[0-9]+)")
     set(cxx_required_version "${CMAKE_MATCH_1}")
@@ -486,19 +621,6 @@ function(rust_cxx_bridge TARGET CXX_BRIDGE_FILE)
     )
   endif()
 
-  add_library(${crate_name} STATIC)
-  target_include_directories(
-    ${crate_name}
-    PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
-    $<INSTALL_INTERFACE:include>
-  )
-  target_link_libraries(
-    ${crate_name}
-    PUBLIC
-    ${ARG_LIBS}
-  )
-
   file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/rust")
   add_custom_command(
     OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/rust/cxx.h"
@@ -508,45 +630,6 @@ function(rust_cxx_bridge TARGET CXX_BRIDGE_FILE)
     COMMENT "Generating rust/cxx.h header"
   )
 
-  get_filename_component(filename_component ${CXX_BRIDGE_FILE} NAME)
-  get_filename_component(directory_component ${CXX_BRIDGE_FILE} DIRECTORY)
-  set(directory "")
-  if(directory_component)
-    set(directory "${directory_component}")
-  endif()
-
-  set(cxx_header ${directory}/${filename_component}.h)
-  set(cxx_source ${directory}/${filename_component}.cc)
-  set(rust_source_path "${CMAKE_CURRENT_SOURCE_DIR}/${CXX_BRIDGE_FILE}")
-
-  file(
-    MAKE_DIRECTORY
-    "${CMAKE_CURRENT_BINARY_DIR}/${directory_component}"
-  )
-
-  add_custom_command(
-    OUTPUT
-      "${CMAKE_CURRENT_BINARY_DIR}/${cxx_header}"
-      "${CMAKE_CURRENT_BINARY_DIR}/${cxx_source}"
-    COMMAND
-      ${cxxbridge} ${rust_source_path}
-        --cfg fbcode_build=false
-        --header
-        --output "${CMAKE_CURRENT_BINARY_DIR}/${cxx_header}"
-    COMMAND
-      ${cxxbridge} ${rust_source_path}
-        --cfg fbcode_build=false
-        --output "${CMAKE_CURRENT_BINARY_DIR}/${cxx_source}"
-        --include "${cxx_header}"
-    DEPENDS "cxxbridge_v${cxx_required_version}" "${rust_source_path}"
-    COMMENT "Generating cxx bindings for crate ${crate_name}"
-  )
-
-  target_sources(
-    ${crate_name}
-    PRIVATE
-    "${CMAKE_CURRENT_BINARY_DIR}/${cxx_header}"
-    "${CMAKE_CURRENT_BINARY_DIR}/rust/cxx.h"
-    "${CMAKE_CURRENT_BINARY_DIR}/${cxx_source}"
-  )
+  set("${CXXBRIDGE_VAR}" "${cxxbridge}" PARENT_SCOPE)
+  set("${DEPENDS_VAR}" "cxxbridge_v${cxx_required_version}" PARENT_SCOPE)
 endfunction()

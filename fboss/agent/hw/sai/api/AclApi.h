@@ -156,6 +156,16 @@ struct SaiAclTableTraits {
         SAI_ACL_TABLE_ATTR_FIELD_DST_IPV6_WORD2,
         bool,
         SaiBoolDefaultFalse>;
+    using FieldDstIpV6Word1 = SaiAttribute<
+        EnumType,
+        SAI_ACL_TABLE_ATTR_FIELD_DST_IPV6_WORD1,
+        bool,
+        SaiBoolDefaultFalse>;
+    using FieldDstIpV6Word0 = SaiAttribute<
+        EnumType,
+        SAI_ACL_TABLE_ATTR_FIELD_DST_IPV6_WORD0,
+        bool,
+        SaiBoolDefaultFalse>;
     using FieldSrcIpV4 =
         SaiAttribute<EnumType, SAI_ACL_TABLE_ATTR_FIELD_SRC_IP, bool>;
     using FieldDstIpV4 =
@@ -289,6 +299,8 @@ struct SaiAclTableTraits {
       std::optional<Attributes::FieldDstIpV6>,
       std::optional<Attributes::FieldDstIpV6Word3>,
       std::optional<Attributes::FieldDstIpV6Word2>,
+      std::optional<Attributes::FieldDstIpV6Word1>,
+      std::optional<Attributes::FieldDstIpV6Word0>,
       std::optional<Attributes::FieldSrcIpV4>,
       std::optional<Attributes::FieldDstIpV4>,
       std::optional<Attributes::FieldL4SrcPort>,
@@ -351,6 +363,8 @@ SAI_ATTRIBUTE_NAME(AclTable, FieldSrcIpV6);
 SAI_ATTRIBUTE_NAME(AclTable, FieldDstIpV6);
 SAI_ATTRIBUTE_NAME(AclTable, FieldDstIpV6Word3);
 SAI_ATTRIBUTE_NAME(AclTable, FieldDstIpV6Word2);
+SAI_ATTRIBUTE_NAME(AclTable, FieldDstIpV6Word1);
+SAI_ATTRIBUTE_NAME(AclTable, FieldDstIpV6Word0);
 SAI_ATTRIBUTE_NAME(AclTable, FieldSrcIpV4);
 SAI_ATTRIBUTE_NAME(AclTable, FieldDstIpV4);
 SAI_ATTRIBUTE_NAME(AclTable, FieldL4SrcPort);
@@ -432,6 +446,16 @@ struct SaiAclEntryTraits {
     using FieldDstIpV6Word2 = SaiAttribute<
         EnumType,
         SAI_ACL_ENTRY_ATTR_FIELD_DST_IPV6_WORD2,
+        AclEntryFieldIpV6,
+        StdNullOptDefault<AclEntryFieldIpV6>>;
+    using FieldDstIpV6Word1 = SaiAttribute<
+        EnumType,
+        SAI_ACL_ENTRY_ATTR_FIELD_DST_IPV6_WORD1,
+        AclEntryFieldIpV6,
+        StdNullOptDefault<AclEntryFieldIpV6>>;
+    using FieldDstIpV6Word0 = SaiAttribute<
+        EnumType,
+        SAI_ACL_ENTRY_ATTR_FIELD_DST_IPV6_WORD0,
         AclEntryFieldIpV6,
         StdNullOptDefault<AclEntryFieldIpV6>>;
     using FieldSrcIpV4 = SaiAttribute<
@@ -696,6 +720,8 @@ struct SaiAclEntryTraits {
       std::optional<Attributes::FieldDstIpV6>,
       std::optional<Attributes::FieldDstIpV6Word3>,
       std::optional<Attributes::FieldDstIpV6Word2>,
+      std::optional<Attributes::FieldDstIpV6Word1>,
+      std::optional<Attributes::FieldDstIpV6Word0>,
       std::optional<Attributes::FieldSrcIpV4>,
       std::optional<Attributes::FieldDstIpV4>,
       std::optional<Attributes::FieldSrcPort>,
@@ -779,6 +805,8 @@ SAI_ATTRIBUTE_NAME(AclEntry, FieldSrcIpV6);
 SAI_ATTRIBUTE_NAME(AclEntry, FieldDstIpV6);
 SAI_ATTRIBUTE_NAME(AclEntry, FieldDstIpV6Word3);
 SAI_ATTRIBUTE_NAME(AclEntry, FieldDstIpV6Word2);
+SAI_ATTRIBUTE_NAME(AclEntry, FieldDstIpV6Word1);
+SAI_ATTRIBUTE_NAME(AclEntry, FieldDstIpV6Word0);
 SAI_ATTRIBUTE_NAME(AclEntry, FieldSrcIpV4);
 SAI_ATTRIBUTE_NAME(AclEntry, FieldDstIpV4);
 SAI_ATTRIBUTE_NAME(AclEntry, FieldSrcPort);
@@ -860,6 +888,13 @@ struct SaiAclCounterTraits {
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 2)
     using Label =
         SaiAttribute<EnumType, SAI_ACL_COUNTER_ATTR_LABEL, SaiCharArray32>;
+    struct AttributeLabelExtendedWrapper {
+      std::optional<sai_attr_id_t> operator()();
+    };
+    using LabelExtended = SaiExtensionAttribute<
+        std::vector<int8_t>,
+        AttributeLabelExtendedWrapper,
+        SaiS8ListDefault>;
 #endif
 
     using EnablePacketCount =
@@ -881,6 +916,7 @@ struct SaiAclCounterTraits {
       Attributes::TableId,
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 2)
       std::optional<Attributes::Label>,
+      std::optional<Attributes::LabelExtended>,
 #endif
       std::optional<Attributes::EnablePacketCount>,
       std::optional<Attributes::EnableByteCount>>;
@@ -889,6 +925,7 @@ struct SaiAclCounterTraits {
       Attributes::TableId,
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 2)
       std::optional<Attributes::Label>,
+      std::optional<Attributes::LabelExtended>,
 #endif
       std::optional<Attributes::EnablePacketCount>,
       std::optional<Attributes::EnableByteCount>,
@@ -899,6 +936,7 @@ struct SaiAclCounterTraits {
 SAI_ATTRIBUTE_NAME(AclCounter, TableId);
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 2)
 SAI_ATTRIBUTE_NAME(AclCounter, Label);
+SAI_ATTRIBUTE_NAME(AclCounter, LabelExtended);
 #endif
 SAI_ATTRIBUTE_NAME(AclCounter, EnablePacketCount);
 SAI_ATTRIBUTE_NAME(AclCounter, EnableByteCount);

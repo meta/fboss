@@ -42,18 +42,24 @@ struct NextHopAttributesTypes<SAI_NEXT_HOP_TYPE_MPLS> {
       SAI_NEXT_HOP_ATTR_OUTSEG_TYPE,
       sai_int32_t,
       SaiIntValueDefault<sai_int32_t, SAI_OUTSEG_TYPE_SWAP>>;
+  using OverlayDstMac = void;
 };
 
 template <>
 struct NextHopAttributesTypes<SAI_NEXT_HOP_TYPE_IP> {
   using LabelStack = void;
   using OutsegType = void;
+  using OverlayDstMac = void;
 };
 
 template <>
 struct NextHopAttributesTypes<SAI_NEXT_HOP_TYPE_TUNNEL_ENCAP> {
   using LabelStack = void;
   using OutsegType = void;
+  using OverlayDstMac = facebook::fboss::SaiAttribute<
+      sai_next_hop_attr_t,
+      SAI_NEXT_HOP_ATTR_TUNNEL_MAC,
+      folly::MacAddress>;
 };
 
 #if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)
@@ -61,6 +67,7 @@ template <>
 struct NextHopAttributesTypes<SAI_NEXT_HOP_TYPE_SRV6_SIDLIST> {
   using LabelStack = void;
   using OutsegType = void;
+  using OverlayDstMac = void;
 };
 #endif
 
@@ -102,6 +109,7 @@ struct NextHopTraitsAttributes<Attributes, SAI_NEXT_HOP_TYPE_TUNNEL_ENCAP> {
       typename Attributes::Type,
       typename Attributes::TunnelId,
       typename Attributes::Ip,
+      std::optional<typename Attributes::OverlayDstMac>,
       std::optional<typename Attributes::DisableTtlDecrement>>;
 };
 
@@ -221,6 +229,8 @@ struct SaiNextHopTraitsT {
         typename detail::NextHopAttributesTypes<type>::OutsegType;
     using TunnelId =
         SaiAttribute<EnumType, SAI_NEXT_HOP_ATTR_TUNNEL_ID, SaiObjectIdT>;
+    using OverlayDstMac =
+        typename detail::NextHopAttributesTypes<type>::OverlayDstMac;
 #if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)
     using Srv6SidlistId =
         SaiAttribute<EnumType, SAI_NEXT_HOP_ATTR_SRV6_SIDLIST_ID, SaiObjectIdT>;
@@ -284,6 +294,7 @@ SAI_ATTRIBUTE_NAME(MplsNextHop, LabelStack)
 SAI_ATTRIBUTE_NAME(MplsNextHop, OutsegType)
 SAI_ATTRIBUTE_NAME(IpNextHop, DisableTtlDecrement);
 SAI_ATTRIBUTE_NAME(TunnelEncapNextHop, TunnelId)
+SAI_ATTRIBUTE_NAME(TunnelEncapNextHop, OverlayDstMac)
 #if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)
 SAI_ATTRIBUTE_NAME(Srv6SidlistNextHop, Srv6SidlistId)
 #endif

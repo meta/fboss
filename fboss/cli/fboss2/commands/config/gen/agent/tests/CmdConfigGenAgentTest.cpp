@@ -316,10 +316,7 @@ void writeFeatureDefaultCommandArgsConfig(const fs::path& fbossRoot) {
       {"ASIC_TYPE_EBRO", "ASIC_TYPE_RAMON3"});
   config.features()["platform_descriptor_registry"] = makeAutoFeature(
       {{"platform_descriptor_config_path", "/tmp/platform_descriptors/"}},
-      testProfiles,
-      {},
-      {},
-      {"PLATFORM_WEDGE800BACT"});
+      testProfiles);
   config.features()["use_raw_platform_mapping"] = makeAutoFeature(
       {{"use_raw_platform_mapping", "true"}},
       testProfiles,
@@ -341,6 +338,20 @@ std::map<int32_t, cfg::PortAssignment> makePortAssignments(
   assignment.portType() = cfg::PortType::INTERFACE_PORT;
   assignment.scope() = cfg::Scope::LOCAL;
   return {{portId, std::move(assignment)}};
+}
+
+fs::path getGeneratedPlatformMappingDirectory(
+    const fs::path& fbossRoot,
+    std::string_view vendor,
+    std::string_view platform = kPlatform,
+    std::optional<std::string_view> variant = std::nullopt) {
+  auto platformDirectory =
+      fbossRoot / "configs" / "platforms" / vendor / platform;
+  if (variant) {
+    platformDirectory /= "variants";
+    platformDirectory /= *variant;
+  }
+  return platformDirectory / "platform_mapping" / "generated";
 }
 
 fs::path createTestPlatform(
@@ -365,8 +376,8 @@ fs::path createTestPlatform(
   writeTestFile(
       asicConfigDirectory / "generated" / ("hw_test" + std::string(extension)),
       generatedConfig);
-  const auto generatedMappingDirectory = fbossRoot / "lib" /
-      "platform_mapping_v2" / "generated_platform_mappings" / vendor / platform;
+  const auto generatedMappingDirectory =
+      getGeneratedPlatformMappingDirectory(fbossRoot, vendor, platform);
   writePortAssignments(
       generatedMappingDirectory / "port_id_to_port_assignment.json",
       1,
@@ -629,21 +640,20 @@ TEST(AgentConfigGenTest, SelectsGeneratedPlatformArtifacts) {
       platformDirectory / "asic_config" / "generated" / "default.yml");
   EXPECT_EQ(
       findPortIdToPortAssignmentConfig(fbossRoot, kPlatform),
-      fbossRoot / "lib" / "platform_mapping_v2" /
-          "generated_platform_mappings" / "test_vendor" / kPlatform /
+      getGeneratedPlatformMappingDirectory(fbossRoot, "test_vendor") /
           "port_id_to_port_assignment.json");
   const auto [descriptorPath, descriptor] =
       findPlatformDescriptorConfigWithDescriptor(fbossRoot, kPlatform);
   EXPECT_EQ(
       descriptorPath,
-      fbossRoot / "lib" / "platform_mapping_v2" /
-          "generated_platform_mappings" / "test_vendor" / kPlatform /
+      getGeneratedPlatformMappingDirectory(fbossRoot, "test_vendor") /
           "platform_descriptor.json");
   EXPECT_EQ(*descriptor.asicType(), cfg::AsicType::ASIC_TYPE_TOMAHAWK5);
 }
 
 TEST(AgentConfigGenTest, GeneratesSingleNpuSwitchSettings) {
   PlatformDescriptor descriptor;
+  descriptor.platformType() = PlatformType::PLATFORM_WEDGE800BACT;
   descriptor.asicType() = cfg::AsicType::ASIC_TYPE_TOMAHAWK5;
   descriptor.numSwitchAsics() = 1;
 
@@ -662,6 +672,15 @@ TEST(AgentConfigGenTest, GeneratesSingleNpuSwitchSettings) {
   EXPECT_EQ(
       *switchInfo.portIdRange()->maximum(),
       cfg::switch_config_constants::DEFAULT_PORT_ID_RANGE_MAX());
+}
+
+TEST(AgentConfigGenTest, RejectsUnsupportedMultiNpuSwitchSettings) {
+  PlatformDescriptor descriptor;
+  descriptor.platformType() = PlatformType::PLATFORM_WEDGE800BACT;
+  descriptor.asicType() = cfg::AsicType::ASIC_TYPE_TOMAHAWK5;
+  descriptor.numSwitchAsics() = 2;
+
+  EXPECT_THROW(generateSwitchSettings(descriptor), FbossError);
 }
 
 TEST(AgentConfigGenTest, GeneratesDefaultAclTableGroup) {
@@ -693,13 +712,53 @@ TEST(AgentConfigGenTest, GeneratesDefaultAclTableGroup) {
   EXPECT_TRUE(switchConfig.interfaces()->empty());
 }
 
+TEST(AgentConfigGenTest, UsesSaiUserDefinedTrapCommandLineArgumentForCopp) {
+  folly::test::TemporaryDirectory temporaryDirectory;
+  const auto fbossRoot = fs::path(temporaryDirectory.path().string()) / "fboss";
+  createTestPlatform(fbossRoot, "test_vendor");
+  const auto inputs = resolveAgentConfigInputs(fbossRoot, kPlatform, "default");
+
+  const auto enabledConfig =
+      generateSwitchConfig(inputs, {{"sai_user_defined_trap", "true"}});
+  const auto disabledConfig =
+      generateSwitchConfig(inputs, {{"sai_user_defined_trap", "false"}});
+  const auto unsetConfig = generateSwitchConfig(inputs);
+
+  const auto& enabledAction = *enabledConfig.cpuTrafficPolicy()
+                                   ->trafficPolicy()
+                                   ->matchToAction()
+                                   ->at(2)
+                                   .action();
+  EXPECT_FALSE(enabledAction.sendToQueue().has_value());
+  EXPECT_TRUE(enabledAction.setTc().has_value());
+  EXPECT_TRUE(enabledAction.userDefinedTrap().has_value());
+  EXPECT_EQ(*enabledAction.toCpuAction(), cfg::ToCpuAction::COPY);
+
+  const auto& disabledAction = *disabledConfig.cpuTrafficPolicy()
+                                    ->trafficPolicy()
+                                    ->matchToAction()
+                                    ->at(2)
+                                    .action();
+  ASSERT_TRUE(disabledAction.sendToQueue().has_value());
+  EXPECT_FALSE(disabledAction.setTc().has_value());
+  EXPECT_FALSE(disabledAction.userDefinedTrap().has_value());
+  EXPECT_EQ(*disabledAction.toCpuAction(), cfg::ToCpuAction::COPY);
+
+  EXPECT_EQ(
+      *unsetConfig.cpuTrafficPolicy()
+           ->trafficPolicy()
+           ->matchToAction()
+           ->at(2)
+           .action(),
+      disabledAction);
+}
+
 TEST(AgentConfigGenTest, GeneratesDefaultProfilePortGraph) {
   folly::test::TemporaryDirectory temporaryDirectory;
   const auto fbossRoot = fs::path(temporaryDirectory.path().string()) / "fboss";
   createTestPlatform(fbossRoot, "test_vendor");
   writeTwoPortGroupMapping(
-      fbossRoot / "lib" / "platform_mapping_v2" /
-      "generated_platform_mappings" / "test_vendor" / kPlatform);
+      getGeneratedPlatformMappingDirectory(fbossRoot, "test_vendor"));
   const auto inputs = resolveAgentConfigInputs(fbossRoot, kPlatform, "default");
 
   const auto switchConfig = generateSwitchConfig(inputs);
@@ -742,8 +801,7 @@ TEST(AgentConfigGenTest, AllocatesManagementPortsDownward) {
   const auto fbossRoot = fs::path(temporaryDirectory.path().string()) / "fboss";
   createTestPlatform(fbossRoot, "test_vendor");
   writeInterfaceAndManagementPortMapping(
-      fbossRoot / "lib" / "platform_mapping_v2" /
-      "generated_platform_mappings" / "test_vendor" / kPlatform);
+      getGeneratedPlatformMappingDirectory(fbossRoot, "test_vendor"));
   const auto inputs = resolveAgentConfigInputs(fbossRoot, kPlatform, "default");
 
   const auto switchConfig = generateSwitchConfig(inputs);
@@ -826,8 +884,8 @@ TEST(AgentConfigGenTest, SkipsNonInterfacePortForDefaultProfile) {
   folly::test::TemporaryDirectory temporaryDirectory;
   const auto fbossRoot = fs::path(temporaryDirectory.path().string()) / "fboss";
   createTestPlatform(fbossRoot, "test_vendor");
-  const auto assignmentPath = fbossRoot / "lib" / "platform_mapping_v2" /
-      "generated_platform_mappings" / "test_vendor" / kPlatform /
+  const auto assignmentPath =
+      getGeneratedPlatformMappingDirectory(fbossRoot, "test_vendor") /
       "port_id_to_port_assignment.json";
   writePortAssignments(
       assignmentPath, 1, kPortName, cfg::PortType::FABRIC_PORT);
@@ -846,17 +904,15 @@ TEST(AgentConfigGenTest, SkipsNonInterfacePortForDefaultProfile) {
   EXPECT_EQ(*switchConfig.vlans(), expectedVlans);
 }
 
-TEST(AgentConfigGenTest, ResolvesVariantDescriptorAndRejectsMultiAsicPlatform) {
+TEST(AgentConfigGenTest, ResolvesSelectedPlatformMappingVariant) {
   folly::test::TemporaryDirectory temporaryDirectory;
   const auto fbossRoot = fs::path(temporaryDirectory.path().string()) / "fboss";
   createTestPlatform(fbossRoot, "test_vendor");
-  const auto generatedMappingDirectory = fbossRoot / "lib" /
-      "platform_mapping_v2" / "generated_platform_mappings" / "test_vendor";
-  fs::remove(
-      generatedMappingDirectory / kPlatform / "platform_descriptor.json");
-  const auto variantDescriptor = generatedMappingDirectory /
-      "test_platform_variant" / "platform_descriptor.json";
-  writePlatformDescriptor(variantDescriptor, 2);
+  const auto variantDescriptor =
+      getGeneratedPlatformMappingDirectory(
+          fbossRoot, "test_vendor", kPlatform, "test_platform_variant") /
+      "platform_descriptor.json";
+  writePlatformDescriptor(variantDescriptor, 1);
   writePortAssignments(
       variantDescriptor.parent_path() / "port_id_to_port_assignment.json",
       2,
@@ -866,15 +922,24 @@ TEST(AgentConfigGenTest, ResolvesVariantDescriptorAndRejectsMultiAsicPlatform) {
       "eth1/1/2");
 
   const auto [descriptorPath, descriptor] =
-      findPlatformDescriptorConfigWithDescriptor(fbossRoot, kPlatform);
+      findPlatformDescriptorConfigWithDescriptor(
+          fbossRoot, kPlatform, "test_platform_variant");
   EXPECT_EQ(descriptorPath, variantDescriptor);
-  EXPECT_EQ(*descriptor.numSwitchAsics(), 2);
-  const auto inputs = resolveAgentConfigInputs(fbossRoot, kPlatform, kProfile);
+  EXPECT_EQ(*descriptor.numSwitchAsics(), 1);
+  const auto inputs = resolveAgentConfigInputs(
+      fbossRoot,
+      kPlatform,
+      kProfile,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      "test_platform_variant");
   ASSERT_EQ(inputs.platformMapping->getPlatformPorts().size(), 1);
   EXPECT_EQ(
       *inputs.platformMapping->getPlatformPort(2).mapping()->name(),
       "eth1/1/2");
-  EXPECT_THROW(generateSwitchConfig(inputs), FbossError);
+  EXPECT_NO_THROW(generateSwitchConfig(inputs));
 }
 
 TEST(AgentConfigGenTest, GeneratesPlatformConfig) {
@@ -888,7 +953,12 @@ TEST(AgentConfigGenTest, GeneratesPlatformConfig) {
   ASSERT_EQ(
       platformConfig.chip()->getType(), cfg::ChipConfig::Type::asicConfig);
   EXPECT_EQ(
-      platformConfig.chip()->get_asicConfig().common()->get_yamlConfig(),
+      platformConfig.chip()
+          ->asicConfig()
+          .value()
+          .common()
+          ->yamlConfig()
+          .value(),
       kAsicYaml);
   EXPECT_EQ(
       *platformConfig.portIdToPortAssignment(),
@@ -903,23 +973,12 @@ TEST(AgentConfigGenTest, GeneratesPlatformConfig) {
   EXPECT_FALSE(inputs.platformMapping->toThrift().rawPlatformPorts());
 }
 
-TEST(AgentConfigGenTest, NormalizesOmittedProfileToDefault) {
+TEST(AgentConfigGenTest, RejectsEmptyProfile) {
   folly::test::TemporaryDirectory temporaryDirectory;
   const auto fbossRoot = fs::path(temporaryDirectory.path().string()) / "fboss";
   createTestPlatform(fbossRoot, "test_vendor");
 
-  const auto omitted = resolveAgentConfigInputs(fbossRoot, kPlatform, "");
-  const auto explicitDefault =
-      resolveAgentConfigInputs(fbossRoot, kPlatform, "default");
-
-  EXPECT_EQ(omitted.profile, "default");
-  EXPECT_EQ(explicitDefault.profile, "default");
-  EXPECT_EQ(omitted.platformDescriptor, explicitDefault.platformDescriptor);
-  EXPECT_EQ(
-      omitted.platformMapping->toThrift(),
-      explicitDefault.platformMapping->toThrift());
-  EXPECT_EQ(omitted.chipConfig, explicitDefault.chipConfig);
-  EXPECT_EQ(omitted.portAssignments, explicitDefault.portAssignments);
+  EXPECT_THROW(resolveAgentConfigInputs(fbossRoot, kPlatform, ""), FbossError);
 }
 
 TEST(AgentConfigGenTest, UsesExplicitAsicConfigFile) {
@@ -939,7 +998,12 @@ TEST(AgentConfigGenTest, UsesExplicitAsicConfigFile) {
   const auto platformConfig = generatePlatformConfig(inputs);
 
   EXPECT_EQ(
-      platformConfig.chip()->get_asicConfig().common()->get_yamlConfig(),
+      platformConfig.chip()
+          ->asicConfig()
+          .value()
+          .common()
+          ->yamlConfig()
+          .value(),
       kVendorAsicYaml);
 }
 
@@ -962,7 +1026,12 @@ TEST(AgentConfigGenTest, UsesExplicitAsicConfigTypeWithoutMetadata) {
   const auto platformConfig = generatePlatformConfig(inputs);
 
   EXPECT_EQ(
-      platformConfig.chip()->get_asicConfig().common()->get_yamlConfig(),
+      platformConfig.chip()
+          ->asicConfig()
+          .value()
+          .common()
+          ->yamlConfig()
+          .value(),
       kVendorAsicYaml);
 }
 
@@ -1030,8 +1099,8 @@ TEST(AgentConfigGenTest, ReportsMissingRawPlatformMappingPath) {
   folly::test::TemporaryDirectory temporaryDirectory;
   const auto fbossRoot = fs::path(temporaryDirectory.path().string()) / "fboss";
   createTestPlatform(fbossRoot, "test_vendor");
-  const auto rawMappingPath = fbossRoot / "lib" / "platform_mapping_v2" /
-      "generated_platform_mappings" / "test_vendor" / kPlatform /
+  const auto rawMappingPath =
+      getGeneratedPlatformMappingDirectory(fbossRoot, "test_vendor") /
       "raw_platform_mapping.json";
   fs::remove(rawMappingPath);
 
@@ -1049,8 +1118,8 @@ TEST(AgentConfigGenTest, ReportsMalformedPortAssignmentPath) {
   folly::test::TemporaryDirectory temporaryDirectory;
   const auto fbossRoot = fs::path(temporaryDirectory.path().string()) / "fboss";
   createTestPlatform(fbossRoot, "test_vendor");
-  const auto assignmentPath = fbossRoot / "lib" / "platform_mapping_v2" /
-      "generated_platform_mappings" / "test_vendor" / kPlatform /
+  const auto assignmentPath =
+      getGeneratedPlatformMappingDirectory(fbossRoot, "test_vendor") /
       "port_id_to_port_assignment.json";
   writeTestFile(assignmentPath, "not JSON");
 
@@ -1072,10 +1141,10 @@ TEST(AgentConfigGenTest, GeneratesJsonAsicConfig) {
 
   const auto inputs = resolveAgentConfigInputs(fbossRoot, kPlatform, kProfile);
   const auto platformConfig = generatePlatformConfig(inputs);
-  const auto& common = *platformConfig.chip()->get_asicConfig().common();
+  const auto& common = *platformConfig.chip()->asicConfig()->common();
 
   ASSERT_EQ(common.getType(), cfg::AsicConfigEntry::Type::jsonConfig);
-  EXPECT_EQ(common.get_jsonConfig(), kAsicJson);
+  EXPECT_EQ(common.jsonConfig().value(), kAsicJson);
 }
 
 TEST(AgentConfigGenTest, GeneratesKeyValueAsicConfig) {
@@ -1091,12 +1160,12 @@ TEST(AgentConfigGenTest, GeneratesKeyValueAsicConfig) {
 
   const auto inputs = resolveAgentConfigInputs(fbossRoot, kPlatform, kProfile);
   const auto platformConfig = generatePlatformConfig(inputs);
-  const auto& common = *platformConfig.chip()->get_asicConfig().common();
+  const auto& common = *platformConfig.chip()->asicConfig()->common();
   const std::map<std::string, std::string> expected{
       {"answer", "42"}, {"foo", "bar"}};
 
   ASSERT_EQ(common.getType(), cfg::AsicConfigEntry::Type::config);
-  EXPECT_EQ(common.get_config(), expected);
+  EXPECT_EQ(common.config().value(), expected);
 }
 
 TEST(AgentConfigGenTest, RejectsUnsupportedAsicConfigType) {
@@ -1157,7 +1226,14 @@ TEST(AgentConfigGenTest, GeneratesBenchmarkWithDefaultAsicConfigVariant) {
   EXPECT_EQ(
       *config.defaultCommandLineArgs(), expectedBenchmarkCommandLineArgs());
   EXPECT_EQ(
-      config.platform()->chip()->get_asicConfig().common()->get_yamlConfig(),
+      config.platform()
+          ->chip()
+          ->asicConfig()
+          .as_const()
+          .value()
+          .common()
+          ->yamlConfig()
+          .value(),
       kDefaultAsicYaml);
   EXPECT_EQ(
       *config.platform()->portIdToPortAssignment(),
@@ -1339,32 +1415,39 @@ TEST(AgentConfigGenTest, GeneratesAndRefreshesManifestOutputs) {
   EXPECT_FALSE(fs::exists(obsoletePath));
 }
 
-TEST(AgentConfigGenTest, AppliesDeclaredLinkTopologyToDefaultPortGraph) {
+TEST(AgentConfigGenTest, GeneratesAddressedLinkTestVariants) {
   folly::test::TemporaryDirectory sourceDirectory;
   const auto fbossRoot = fs::path(sourceDirectory.path().string()) / "fboss";
   const auto platformDirectory =
       createTestPlatform(fbossRoot, "test_vendor", "wedge800bact");
-  const auto mappingDirectory = fbossRoot / "lib" / "platform_mapping_v2" /
-      "generated_platform_mappings" / "test_vendor" / "wedge800bact";
+  const auto mappingDirectory = getGeneratedPlatformMappingDirectory(
+      fbossRoot, "test_vendor", "wedge800bact");
   writeTwoPortGroupMapping(mappingDirectory);
   writeTestFile(
       platformDirectory / "forwarding_stack" / "link_topology" /
           "paired_ports.csv",
       "portA,portB,profile,hasTransceiver\n"
       "eth1/1/1,eth1/1/2,PROFILE_100G_4_NRZ_NOFEC,true\n");
+  writeTestFile(
+      platformDirectory / "forwarding_stack" / "link_topology" /
+          "single_port.csv",
+      "portA,portB,profile,hasTransceiver\n"
+      "eth1/1/1,,PROFILE_100G_4_NRZ_NOFEC,true\n");
   writeConfigGenerationTarget(
       platformDirectory,
-      R"({"serviceToOptions":{"AGENT":[{"profile":"DEFAULT","linkTopologyVariant":"paired_ports"}]}})");
+      R"({"serviceToOptions":{"AGENT":[{"profile":"LINK_TEST","asicConfigVariant":"default","linkTopologyVariant":"paired_ports"},{"profile":"LINK_TEST","variant":"stress","asicConfigVariant":"default","linkTopologyVariant":"single_port"}]}})");
 
   const auto outputPath = platformDirectory / "forwarding_stack" / "generated" /
-      "agent" / "default.conf";
+      "agent" / "link_test.conf";
+  const auto stressOutputPath = platformDirectory / "forwarding_stack" /
+      "generated" / "agent" / "link_test_stress.conf";
   EXPECT_EQ(
       generateConfigsFromManifest(
           fbossRoot,
           ServiceType::AGENT,
           generateAgentConfigForManifest,
           "wedge800bact"),
-      std::vector<fs::path>{outputPath});
+      (std::vector<fs::path>{outputPath, stressOutputPath}));
 
   cfg::AgentConfig config;
   apache::thrift::SimpleJSONSerializer::deserialize(
@@ -1382,6 +1465,24 @@ TEST(AgentConfigGenTest, AppliesDeclaredLinkTopologyToDefaultPortGraph) {
   EXPECT_EQ(*topologyPort.state(), cfg::PortState::ENABLED);
   EXPECT_EQ(
       topologyPort.expectedLLDPValues()->at(cfg::LLDPTag::PORT), kPortName);
+  EXPECT_FALSE(config.sw()->cpuQueues()->empty());
+  EXPECT_TRUE(config.sw()->cpuTrafficPolicy());
+  ASSERT_EQ(config.sw()->interfaces()->size(), 3);
+  for (size_t index = 0; index < config.sw()->interfaces()->size(); ++index) {
+    EXPECT_EQ(
+        *config.sw()->interfaces()[index].ipAddresses(),
+        (std::vector<std::string>{
+            std::to_string(2400 + index) + "::/64",
+            std::to_string(10 + index) + ".0.0.0/24"}));
+  }
+
+  cfg::AgentConfig stressConfig;
+  apache::thrift::SimpleJSONSerializer::deserialize(
+      readFile(stressOutputPath), stressConfig);
+  ASSERT_EQ(stressConfig.sw()->ports()->size(), 1);
+  EXPECT_EQ(*stressConfig.sw()->ports()->front().name(), kPortName);
+  EXPECT_TRUE(
+      stressConfig.sw()->ports()->front().expectedLLDPValues()->empty());
 }
 
 TEST(AgentConfigGenTest, AppliesTopologyWithoutModeledPeer) {
@@ -1389,8 +1490,8 @@ TEST(AgentConfigGenTest, AppliesTopologyWithoutModeledPeer) {
   const auto fbossRoot = fs::path(sourceDirectory.path().string()) / "fboss";
   const auto platformDirectory =
       createTestPlatform(fbossRoot, "test_vendor", "wedge800bact");
-  const auto mappingDirectory = fbossRoot / "lib" / "platform_mapping_v2" /
-      "generated_platform_mappings" / "test_vendor" / "wedge800bact";
+  const auto mappingDirectory = getGeneratedPlatformMappingDirectory(
+      fbossRoot, "test_vendor", "wedge800bact");
   writeTwoPortGroupMapping(mappingDirectory);
   writeTestFile(
       platformDirectory / "forwarding_stack" / "link_topology" /
@@ -1420,6 +1521,26 @@ TEST(AgentConfigGenTest, AppliesTopologyWithoutModeledPeer) {
   EXPECT_EQ(*topologyPort.profileID(), kPortProfile);
   EXPECT_EQ(*topologyPort.state(), cfg::PortState::ENABLED);
   EXPECT_TRUE(topologyPort.expectedLLDPValues()->empty());
+  for (const auto& interface : *config.sw()->interfaces()) {
+    EXPECT_TRUE(interface.ipAddresses()->empty());
+  }
+}
+
+TEST(AgentConfigGenTest, AssignsLinkTestAddressesBeyondFirstIpv4Octet) {
+  cfg::SwitchConfig switchConfig;
+  switchConfig.interfaces()->resize(251);
+
+  assignLinkTestInterfaceIpAddresses(switchConfig);
+
+  EXPECT_EQ(
+      *switchConfig.interfaces()[213].ipAddresses(),
+      (std::vector<std::string>{"2613::/64", "223.0.0.0/24"}));
+  EXPECT_EQ(
+      *switchConfig.interfaces()[214].ipAddresses(),
+      (std::vector<std::string>{"2614::/64", "10.1.0.0/24"}));
+  EXPECT_EQ(
+      *switchConfig.interfaces()[250].ipAddresses(),
+      (std::vector<std::string>{"2650::/64", "46.1.0.0/24"}));
 }
 
 TEST(AgentConfigGenTest, DisablesPortsOutsideLinkTopology) {
@@ -1427,8 +1548,7 @@ TEST(AgentConfigGenTest, DisablesPortsOutsideLinkTopology) {
   const auto fbossRoot = fs::path(sourceDirectory.path().string()) / "fboss";
   createTestPlatform(fbossRoot, "test_vendor");
   writeTwoPortGroupMapping(
-      fbossRoot / "lib" / "platform_mapping_v2" /
-      "generated_platform_mappings" / "test_vendor" / kPlatform);
+      getGeneratedPlatformMappingDirectory(fbossRoot, "test_vendor"));
   const auto inputs = resolveAgentConfigInputs(fbossRoot, kPlatform, "default");
 
   cfg::SwitchConfig switchConfig;
@@ -1472,8 +1592,7 @@ TEST(AgentConfigGenTest, RemovesPortsSubsumedByLinkTopologyProfile) {
   const auto fbossRoot = fs::path(sourceDirectory.path().string()) / "fboss";
   createTestPlatform(fbossRoot, "test_vendor");
   writeTwoPortGroupMapping(
-      fbossRoot / "lib" / "platform_mapping_v2" /
-      "generated_platform_mappings" / "test_vendor" / kPlatform);
+      getGeneratedPlatformMappingDirectory(fbossRoot, "test_vendor"));
   const auto inputs = resolveAgentConfigInputs(fbossRoot, kPlatform, "default");
 
   cfg::SwitchConfig switchConfig;
@@ -1716,7 +1835,14 @@ TEST(CmdConfigGenAgentTest, UsesExplicitAsicConfigVariant) {
       readFile(fs::path(outputDirectory.path().string()) / "agent.conf"),
       config);
   EXPECT_EQ(
-      config.platform()->chip()->get_asicConfig().common()->get_yamlConfig(),
+      config.platform()
+          ->chip()
+          ->asicConfig()
+          .as_const()
+          .value()
+          .common()
+          ->yamlConfig()
+          .value(),
       kDefaultAsicYaml);
 }
 

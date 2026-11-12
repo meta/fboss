@@ -1,6 +1,6 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "$id": "https://github.com/facebook/fboss/blob/main/fboss/lib/asic_config_v3/schemas/broadcom_xgs_asic_config.schema.json",
+    "$id": "https://github.com/meta/fboss/blob/main/fboss/lib/asic_config_v3/schemas/broadcom_xgs_asic_config.schema.json",
     "title": "Broadcom XGS ASIC Config",
     "description": "Per-ASIC configuration defining the chip's port architecture, output table layout, and SDK / SAI default settings used by the asic_config_v3 generator.",
     "type": "object",
@@ -105,6 +105,19 @@
                 "fec": {
                     "type": "string",
                     "description": "Forward Error Correction (FEC) mode (e.g. \"PC_FEC_RS528\")."
+                },
+                "breakout_ports": {
+                    "type": "array",
+                    "description": "Optional. Ordered logical/physical port pairs of the management port lanes, used when a platform variant breaks the management port out into several ports (mgmt_port_overrides.num_ports > 1).",
+                    "items": {
+                        "type": "object",
+                        "required": ["logical_id", "physical_id"],
+                        "additionalProperties": false,
+                        "properties": {
+                            "logical_id": {"type": "integer"},
+                            "physical_id": {"type": "integer"}
+                        }
+                    }
                 }
             }
         },
@@ -205,7 +218,7 @@
             "type": "array",
             "description": "Declarative conditional settings. Each entry is evaluated against the variant config; matching entries are applied to the named output tables.",
             "items": {
-                "$ref": "https://github.com/facebook/fboss/blob/main/fboss/lib/asic_config_v3/schemas/conditional_setting.schema.json#/$defs/conditional_setting"
+                "$ref": "https://github.com/meta/fboss/blob/main/fboss/lib/asic_config_v3/schemas/conditional_setting.schema.json#/$defs/conditional_setting"
             }
         }
     }

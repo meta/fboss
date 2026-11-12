@@ -39,9 +39,10 @@ static constexpr uint32_t kDefaultNeighborDstUserMetaDataRangeMax =
 static constexpr uint32_t kDefaultPortUserMetaDataRangeMin = 0;
 static constexpr uint32_t kDefaultPortUserMetaDataRangeMax = 63;
 
+template <typename ValueT, typename ListT>
 sai_status_t fillDropTypeList(
-    const std::vector<sai_int32_t>& dropTypes,
-    sai_s32_list_t* list) {
+    const std::vector<ValueT>& dropTypes,
+    ListT* list) {
   if (dropTypes.size() > list->count) {
     list->count = static_cast<uint32_t>(dropTypes.size());
     return SAI_STATUS_BUFFER_OVERFLOW;
@@ -331,6 +332,9 @@ sai_status_t set_switch_attribute_fn(
     case SAI_SWITCH_ATTR_PFC_DLR_PACKET_ACTION:
       sw.setPfcDlrPacketAction(
           static_cast<sai_packet_action_t>(attr->value.s32));
+      break;
+    case SAI_SWITCH_ATTR_VXLAN_DEFAULT_PORT:
+      sw.setVxlanDefaultPort(attr->value.u16);
       break;
     case SAI_SWITCH_ATTR_TAM_OBJECT_ID:
       sw.setTamObjectId(attr->value.oid);
@@ -639,6 +643,9 @@ sai_status_t get_switch_attribute_fn(
       case SAI_SWITCH_ATTR_REG_NOTICE_SWITCH_ASIC_SDK_HEALTH_CATEGORY:
         attr[i].value.s32list.count = 0;
         break;
+      case SAI_SWITCH_ATTR_VXLAN_DEFAULT_PORT:
+        attr[i].value.u16 = sw.getVxlanDefaultPort();
+        break;
       case SAI_SWITCH_ATTR_PFC_MONITOR_ENABLE:
         attr[i].value.booldata = sw.getPfcMonitorEnable();
         break;
@@ -672,6 +679,14 @@ sai_status_t get_switch_attribute_fn(
         if (status != SAI_STATUS_SUCCESS) {
           return status;
         }
+      } break;
+      case SAI_SWITCH_ATTR_EXT_DROP_REASON_LIST: {
+        auto status =
+            fillDropTypeList(sw.getDropReasonList(), &attr[i].value.u32list);
+        if (status != SAI_STATUS_SUCCESS) {
+          return status;
+        }
+        sw.setDropReasonList({});
       } break;
       default:
         return SAI_STATUS_INVALID_PARAMETER;

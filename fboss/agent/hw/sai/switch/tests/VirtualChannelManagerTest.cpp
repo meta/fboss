@@ -371,4 +371,70 @@ TEST_F(VirtualChannelManagerTest, firstBindWritesZeroPacketOverhead) {
       0);
 }
 
+TEST_F(VirtualChannelManagerTest, portCreateWithCbfcProgramsReceiverLimit) {
+  auto swPort = makePortWithVcs(p0, {makeVc(2, 36)});
+  swPort->setCbfcReceiverCreditLimit(4096);
+  saiManagerTable->portManager().addPort(swPort);
+
+  EXPECT_EQ(
+      getPortAttr(swPort, SaiPortTraits::Attributes::CbfcReceiverCreditLimit{}),
+      4096);
+  // Hardware applies the port limit when the receiver turns on, so it has to
+  // be there by then.
+  EXPECT_EQ(getVc(2).getPortReceiverCreditLimitAtReceiverEnable(), 4096);
+}
+
+TEST_F(VirtualChannelManagerTest, firstBindProgramsReceiverLimit) {
+  auto swPort = makePort(p0);
+  saiManagerTable->portManager().addPort(swPort);
+  auto cbfcPort = swPort->clone();
+  cbfcPort->setVirtualChannels(std::vector<state::PortVcFields>{makeVc(2, 36)});
+  cbfcPort->setCbfcReceiverCreditLimit(4096);
+  saiManagerTable->portManager().changePort(swPort, cbfcPort);
+
+  EXPECT_EQ(
+      getPortAttr(
+          cbfcPort, SaiPortTraits::Attributes::CbfcReceiverCreditLimit{}),
+      4096);
+  EXPECT_EQ(getVc(2).getPortReceiverCreditLimitAtReceiverEnable(), 4096);
+}
+
+TEST_F(VirtualChannelManagerTest, recreateProgramsReceiverLimit) {
+  auto swPort = makePortWithVcs(p0, {makeVc(2, 36)});
+  swPort->setCbfcReceiverCreditLimit(4096);
+  saiManagerTable->portManager().addPort(swPort);
+  auto originalKey = saiManagerTable->portManager()
+                         .getPortHandle(swPort->getID())
+                         ->port->adapterKey();
+
+  // A different lane count makes changePort delete and recreate the port.
+  auto recreatedPort = makePort(p0, cfg::PortSpeed::FIFTYG);
+  recreatedPort->setVirtualChannels(
+      std::vector<state::PortVcFields>{makeVc(2, 36)});
+  recreatedPort->setCbfcReceiverCreditLimit(4096);
+  saiManagerTable->portManager().changePort(swPort, recreatedPort);
+
+  ASSERT_NE(
+      saiManagerTable->portManager()
+          .getPortHandle(recreatedPort->getID())
+          ->port->adapterKey(),
+      originalKey);
+  EXPECT_EQ(
+      getPortAttr(
+          recreatedPort, SaiPortTraits::Attributes::CbfcReceiverCreditLimit{}),
+      4096);
+  EXPECT_EQ(getVc(2).getPortReceiverCreditLimitAtReceiverEnable(), 4096);
+}
+
+TEST_F(VirtualChannelManagerTest, portWithoutCbfcLeavesReceiverLimit) {
+  auto swPort = makePort(p0);
+  swPort->setCbfcReceiverCreditLimit(4096);
+  saiManagerTable->portManager().addPort(swPort);
+
+  // Fake's default; nothing was written.
+  EXPECT_EQ(
+      getPortAttr(swPort, SaiPortTraits::Attributes::CbfcReceiverCreditLimit{}),
+      0);
+}
+
 #endif

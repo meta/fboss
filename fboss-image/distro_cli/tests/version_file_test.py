@@ -14,6 +14,7 @@ import tarfile
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from distro_cli.lib import artifact_versions, version_file
 from distro_cli.lib.artifact_versions import READERS, SDK_METADATA_MEMBER
@@ -75,18 +76,9 @@ class SchemaTest(unittest.TestCase):
                     f"{component} claims {claims.version} but never reports it",
                 )
 
-    def test_documents_which_components_can_report_nothing(self):
-        """A component with no readers states its own gap.
-
-        fboss-platform-stack carries no version information of any kind, so it
-        declares no readers rather than appearing to support one.
-        """
-        silent = sorted(
-            component
-            for component, schema in version_file.MODULE_SCHEMAS.items()
-            if not schema.readers
-        )
-        self.assertEqual(silent, ["fboss-platform-stack"])
+    def test_service_components_read_packaged_build_info(self):
+        for component in ("fboss-forwarding-stack", "fboss-platform-stack"):
+            self.assertIn("build_info", version_file.schema_for(component).readers)
 
     def test_a_component_absent_from_the_schema_reads_nothing(self):
         schema = version_file.schema_for("other_dependencies")
@@ -666,10 +658,213 @@ class ReadArtifactTest(VersionFileTestCase):
         artifact = make_tar(self.root / "k.tar", {SDK_METADATA_MEMBER: sdk_metadata()})
         self.assertNotIn("sdk", version_file.read_artifact("kernel", artifact))
 
-    def test_a_component_with_no_schema_reads_nothing(self):
+    def test_platform_stack_without_a_declaration_reports_nothing(self):
         self.assertEqual(
             version_file.read_artifact("fboss-platform-stack", self.agent()), {}
         )
+
+    def test_service_build_records_are_preserved_in_the_distro_record(self):
+        declaration = {
+            "declaration_schema": 1,
+            "producer": "package.py",
+            "binaries": {
+                "fsdb": {
+                    "schema": 1,
+                    "build_target": "fsdb",
+                    "source_revision": "a" * 40,
+                    "sha256": "b" * 64,
+                },
+                "fan_service": {
+                    "schema": 1,
+                    "build_target": "fan_service",
+                    "source_revision": "c" * 40,
+                    "source_dirty": True,
+                    "sha256": "d" * 64,
+                },
+            },
+        }
+        artifact = make_tar(
+            self.root / "services.tar",
+            {artifact_versions.BUILD_INFO_MEMBER: json.dumps(declaration).encode()},
+        )
+        for label in (
+            "fboss-forwarding-stack[agent]",
+            "fboss-forwarding-stack[fsdb]",
+            "fboss-forwarding-stack[qsfp]",
+            "fboss-forwarding-stack[fboss2]",
+            "fboss-forwarding-stack[led]",
+            "fboss-platform-stack",
+        ):
+            with self.subTest(component=label):
+                record, conflicts = version_file.build(
+                    manifest_path=self.manifest(),
+                    manifest_data={},
+                    component_artifacts={label: artifact},
+                    source_revision="image-revision",
+                )
+                self.assertEqual(
+                    record["components"][label]["provenance"]["build_info"],
+                    declaration,
+                )
+                self.assertEqual(record["image"]["source_revision"], "image-revision")
+                self.assertEqual(conflicts, [])
+
+    def test_kernel_build_evidence_is_collected_without_replacing_rpm_release(self):
+        declaration = {
+            "declaration_schema": 1,
+            "producer": "build_kernel.sh",
+            "build": {
+                "upstream": {
+                    "version": "6.11.1",
+                    "source_archive": {"sha256": "a" * 64},
+                },
+                "build_version": "kernel-42",
+                "inputs": {"kernel.spec": "b" * 64},
+                "config_sha256": "c" * 64,
+            },
+        }
+        artifact = make_tar(
+            self.root / "kernel.tar",
+            {
+                artifact_versions.KERNEL_BUILD_INFO_MEMBER: json.dumps(
+                    declaration
+                ).encode(),
+            },
+        )
+        packages = [{"nevra": "kernel-core-6.11.1-1.fboss.el9.x86_64"}]
+        with mock.patch.dict(READERS, {"packages": lambda artifact, members: packages}):
+            record, conflicts = version_file.build(
+                manifest_path=self.manifest(),
+                manifest_data={},
+                component_artifacts={"kernel": artifact},
+                source_revision="assembler",
+            )
+        self.assertEqual(
+            record["components"]["kernel"]["provenance"]["build_info"], declaration
+        )
+        self.assertEqual(
+            record["components"]["kernel"]["provenance"]["packages"], packages
+        )
+        self.assertEqual(record["versions"]["kernel"], "6.11.1-1.fboss.el9")
+        self.assertEqual(record["image"]["source_revision"], "assembler")
+        self.assertEqual(conflicts, [])
+
+    def test_legacy_kernel_artifact_keeps_rpm_evidence_without_build_info(self):
+        artifact = make_tar(
+            self.root / "legacy-kernel.tar", {"kernel-core.rpm": b"fixture"}
+        )
+        packages = [{"nevra": "kernel-core-6.11.1-1.fboss.el9.x86_64"}]
+        with mock.patch.dict(READERS, {"packages": lambda artifact, members: packages}):
+            self.assertEqual(
+                version_file.read_artifact("kernel", artifact), {"packages": packages}
+            )
+
+    def test_bsp_build_evidence_is_preserved_with_rpm_versions(self):
+        declaration = {
+            "declaration_schema": 1,
+            "producer": "component_version.py",
+            "build": {
+                "source_revision": "a" * 40,
+                "source_dirty": False,
+                "fboss": {"source_revision": "b" * 40, "source_dirty": True},
+                "kernel_release": "6.11.1-1.fboss.el9.x86_64",
+                "rpm_sha256": {"fboss_bsp_kmods.rpm": "c" * 64},
+            },
+            "versions": {"bsp": "4.4.2-1", "kernel": "6.11.1-1.fboss.el9"},
+        }
+        packages = [
+            {"nevra": "fboss_bsp_kmods-6.11.1-1.fboss.el9.x86_64-4.4.2-1.x86_64"}
+        ]
+        for rpm_member in (
+            "fboss_bsp_kmods.rpm",
+            "usr/local/share/local_rpm_repo/fboss_bsp_kmods.rpm",
+        ):
+            for label in ("bsps", "bsps[fboss]"):
+                with self.subTest(rpm_member=rpm_member, component=label):
+                    artifact = make_tar(
+                        self.root / "bsp.tar",
+                        {
+                            rpm_member: b"fixture",
+                            artifact_versions.BSP_BUILD_INFO_MEMBER: json.dumps(
+                                declaration
+                            ).encode(),
+                        },
+                    )
+                    with mock.patch.dict(
+                        READERS, {"packages": lambda artifact, members: packages}
+                    ):
+                        record, conflicts = version_file.build(
+                            manifest_path=self.manifest(),
+                            manifest_data={},
+                            component_artifacts={label: artifact},
+                            source_revision="assembler",
+                        )
+                    self.assertEqual(
+                        record["components"][label]["provenance"],
+                        {"packages": packages, "build_info": declaration},
+                    )
+                    self.assertEqual(record["versions"], declaration["versions"])
+                    self.assertEqual(record["image"]["source_revision"], "assembler")
+                    self.assertEqual(conflicts, [])
+
+    def test_legacy_bsp_artifact_keeps_rpm_evidence_without_build_info(self):
+        artifact = make_tar(
+            self.root / "legacy-bsp.tar", {"fboss_bsp_kmods.rpm": b"fixture"}
+        )
+        packages = [{"nevra": "fboss_bsp_kmods-4.4.2-1.x86_64"}]
+        with mock.patch.dict(READERS, {"packages": lambda artifact, members: packages}):
+            self.assertEqual(
+                version_file.read_artifact("bsps", artifact), {"packages": packages}
+            )
+
+    def test_invalid_or_ambiguous_bsp_declarations_keep_rpm_evidence(self):
+        declaration = b'{"declaration_schema":1,"build":{}}'
+        packages = [{"nevra": "fboss_bsp_kmods-4.4.2-1.x86_64"}]
+        for metadata in (
+            {artifact_versions.BSP_BUILD_INFO_MEMBER: b"not json"},
+            {
+                artifact_versions.BSP_BUILD_INFO_MEMBER: b'{"declaration_schema":2,"build":{}}'
+            },
+            {
+                artifact_versions.BSP_BUILD_INFO_MEMBER: declaration,
+                artifact_versions.KERNEL_BUILD_INFO_MEMBER: declaration,
+            },
+        ):
+            with self.subTest(metadata=metadata):
+                artifact = make_tar(
+                    self.root / "invalid-bsp.tar",
+                    {"fboss_bsp_kmods.rpm": b"fixture", **metadata},
+                )
+                with (
+                    mock.patch.dict(
+                        READERS, {"packages": lambda artifact, members: packages}
+                    ),
+                    self.assertLogs("distro_cli.lib.artifact_versions", "WARNING"),
+                ):
+                    self.assertEqual(
+                        version_file.read_artifact("bsps", artifact),
+                        {"packages": packages},
+                    )
+
+    def test_invalid_build_declarations_are_ignored(self):
+        for content in (
+            b"not json",
+            b'{"declaration_schema":2,"binaries":{}}',
+            b'{"declaration_schema":1,"binaries":[]}',
+            b'{"declaration_schema":1,"build":[]}',
+            b'{"declaration_schema":1,"build":{},"binaries":[]}',
+            b'{"declaration_schema":1}',
+        ):
+            with self.subTest(content=content):
+                artifact = make_tar(
+                    self.root / "invalid.tar",
+                    {artifact_versions.BUILD_INFO_MEMBER: content},
+                )
+                with self.assertLogs("distro_cli.lib.artifact_versions", "WARNING"):
+                    self.assertEqual(
+                        version_file.read_artifact("fboss-platform-stack", artifact),
+                        {},
+                    )
 
 
 class LocatorTest(VersionFileTestCase):

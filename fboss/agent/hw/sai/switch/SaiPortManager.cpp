@@ -405,7 +405,7 @@ void fillHwPortStats(
         if (updateFecStats) {
           // SDK provides clear-on-read counter but we store it as a monotonic
           // counter
-#if defined(BRCM_SAI_SDK_XGS_GTE_13_0) || defined(SAI_BRCM_PAI_IMPL)
+#if defined(BRCM_SAI_SDK_XGS_GTE_13_0) || defined(BRCM_PAI_SDK)
           // XGS GTE 13 and Broadcom PAI report cumulative FEC counters
           hwPortStats.fecCorrectableErrors() = value;
 #else
@@ -418,7 +418,7 @@ void fillHwPortStats(
         if (updateFecStats) {
           // SDK provides clear-on-read counter but we store it as a monotonic
           // counter
-#if defined(BRCM_SAI_SDK_XGS_GTE_13_0) || defined(SAI_BRCM_PAI_IMPL)
+#if defined(BRCM_SAI_SDK_XGS_GTE_13_0) || defined(BRCM_PAI_SDK)
           // XGS GTE 13 and Broadcom PAI report cumulative FEC counters
           hwPortStats.fecUncorrectableErrors() = value;
 #else
@@ -2605,7 +2605,7 @@ bool SaiPortManager::rxSerdesParametersSupported() const {
 
 bool SaiPortManager::rxSNRSupported() const {
 #if defined(BRCM_SAI_SDK_GTE_10_0) || \
-    (defined(SAI_BRCM_PAI_IMPL) && SAI_API_VERSION >= SAI_VERSION(1, 18, 1))
+    (defined(BRCM_PAI_SDK) && SAI_API_VERSION >= SAI_VERSION(1, 18, 1))
   return platform_->getAsic()->isSupported(HwAsic::Feature::RX_SNR);
 #else
   return false;
@@ -2614,7 +2614,7 @@ bool SaiPortManager::rxSNRSupported() const {
 
 bool SaiPortManager::fecCodewordsStatsSupported(PortID portId) const {
 #if defined(BRCM_SAI_SDK_GTE_10_0) || defined(BRCM_SAI_SDK_DNX_GTE_11_0) || \
-    defined(TAJO_SDK_GTE_24_8_3001) || defined(SAI_BRCM_PAI_IMPL)
+    defined(TAJO_SDK_GTE_24_8_3001) || defined(BRCM_PAI_SDK)
   return platform_->getAsic()->isSupported(
              HwAsic::Feature::SAI_FEC_CODEWORDS_STATS) &&
       utility::isReedSolomonFec(getFECMode(portId)) &&
@@ -2856,9 +2856,10 @@ const std::vector<sai_stat_id_t>& SaiPortManager::getSupportedPfcDurationStats(
 
 bool SaiPortManager::isLinkDebounceRetriggerCounterSupported(
     [[maybe_unused]] const HwAsic* asic) {
-#if defined(TAJO_SDK_VERSION_25_5_4210) || \
-    defined(TAJO_SDK_VERSION_26_2_4210) || \
-    (defined(TAJO_SDK_GTE_26_5) && !defined(TAJO_SDK_P200))
+#if defined(TAJO_SDK_VERSION_25_5_4210) ||                     \
+    defined(TAJO_SDK_VERSION_26_2_4210) ||                     \
+    (defined(TAJO_SDK_GTE_26_5) && !defined(TAJO_SDK_P200)) || \
+    (defined(BRCM_SAI_SDK_GTE_15_4) && !defined(SAI_VERSION_15_4_EA_ODP))
   return asic->isSupported(HwAsic::Feature::PORT_DEBOUNCE);
 #else
   return false;
@@ -2993,7 +2994,7 @@ void SaiPortManager::updateStats(
       // PAI (Agera3 retimer) has no get_port_stats_ext and reports cumulative
       // FEC frames; read (don't clear) so the call goes through get_port_stats,
       // and store the value as absolute below.
-#if defined(SAI_BRCM_PAI_IMPL)
+#if defined(BRCM_PAI_SDK)
       constexpr auto kFecStatsMode = SAI_STATS_MODE_READ;
 #else
       constexpr auto kFecStatsMode = SAI_STATS_MODE_READ_AND_CLEAR;
@@ -3026,8 +3027,15 @@ void SaiPortManager::updateStats(
     // The Broadcom extension counters are a different SAI enum family and get
     // their own read for the same reason: an SDK can implement one family and
     // not the other, and get_port_stats is all-or-nothing.
+    //
+    // Tomahawk Ultra 1 is the only ASIC that serves them today. On Tomahawk6
+    // (B1, brcm-sai 15.4.0.0_odp) the read returns NOT_SUPPORTED for every id,
+    // so skip a call that cannot succeed. Remove this gate once Broadcom
+    // implements the extension counters on TH6 (CS00012472055).
     const auto& llrExtensionStats = SaiPortTraits::llrExtensionStats();
-    if (!llrExtensionStats.empty()) {
+    if (!llrExtensionStats.empty() &&
+        platform_->getAsic()->getAsicType() ==
+            cfg::AsicType::ASIC_TYPE_TOMAHAWKULTRA1) {
       updateLlrExtensionStats = collectStats(
           llrExtensionStats,
           SAI_STATS_MODE_READ,
@@ -3047,6 +3055,14 @@ void SaiPortManager::updateStats(
         SaiPortTraits::cbfcStats(), SAI_STATS_MODE_READ, "CBFC port counters");
   }
 #endif
+  // curPortStats starts as a copy of the previous collection and nothing
+  // refills these maps once PFC duration collection is disabled.
+  if (!handle->rxPfcDurationStatsEnabled) {
+    curPortStats.rxPfcDurationUsec_()->clear();
+  }
+  if (!handle->txPfcDurationStatsEnabled) {
+    curPortStats.txPfcDurationUsec_()->clear();
+  }
   const auto& counters = handle->port->getStats();
   fillHwPortStats(
       counters,
@@ -3091,13 +3107,16 @@ void SaiPortManager::updateStats(
     curPortStats.logicalPortId() = *logicalPortId;
   }
 
-#if defined(TAJO_SDK_VERSION_25_5_4210) || \
-    defined(TAJO_SDK_VERSION_26_2_4210) || \
-    (defined(TAJO_SDK_GTE_26_5) && !defined(TAJO_SDK_P200))
+#if defined(TAJO_SDK_VERSION_25_5_4210) ||                     \
+    defined(TAJO_SDK_VERSION_26_2_4210) ||                     \
+    (defined(TAJO_SDK_GTE_26_5) && !defined(TAJO_SDK_P200)) || \
+    (defined(BRCM_SAI_SDK_GTE_15_4) && !defined(SAI_VERSION_15_4_EA_ODP))
   if (isLinkDebounceRetriggerCounterSupported(platform_->getAsic())) {
     auto& portApi = SaiApiTable::getInstance()->portApi();
     auto adapterKey = handle->port->adapterKey();
     const auto& portAttrs = handle->port->attributes();
+    // Some ASICs clear the retrigger counters on read. Accumulate those so
+    // HwPortStats always reports a monotonic count, as we do for FEC errors.
     auto asicClearsRetriggerCountOnRead =
         platform_->getAsic()->isPortDebounceRetriggerCountClearOnRead();
     auto updateRetriggerCount = [&](auto&& stat,
@@ -3123,16 +3142,15 @@ void SaiPortManager::updateStats(
       if (!value.has_value()) {
         return;
       }
-      // The stats are read and cleared, the attributes report a running total;
-      // accumulate the former so HwPortStats stays monotonic, as we do for FEC.
+      // Accumulate counts that were cleared on read so HwPortStats stays
+      // monotonic, as we do for FEC; a running total is stored as is.
       auto clearOnRead = !statIds.empty() || asicClearsRetriggerCountOnRead;
       stat = clearOnRead && stat.has_value() ? *stat + *value : *value;
     };
+    // Only read a retrigger count for ports that actually have that direction's
+    // debounce hold timer configured.
     auto downPeriod = std::get<
         std::optional<SaiPortTraits::Attributes::LinkDownDebouncePeriodMs>>(
-        portAttrs);
-    auto upPeriod = std::get<
-        std::optional<SaiPortTraits::Attributes::LinkUpDebouncePeriodMs>>(
         portAttrs);
     if (downPeriod.has_value() && downPeriod->value() > 0) {
       updateRetriggerCount(
@@ -3145,7 +3163,21 @@ void SaiPortManager::updateStats(
           },
           "link down debounce retrigger count");
     }
-    if (upPeriod.has_value() && upPeriod->value() > 0) {
+
+    bool upHoldConfigured = false;
+    if (platform_->getAsic()->isSupported(
+            HwAsic::Feature::SWITCH_WIDE_LINK_UP_DEBOUNCE)) {
+      upHoldConfigured =
+          managerTable_->switchManager().getLinkUpDebounceTimeout() > 0;
+    } else {
+#if defined(FBOSS_SAI_PORT_LINK_UP_DEBOUNCE_PERIOD)
+      auto upPeriod = std::get<
+          std::optional<SaiPortTraits::Attributes::LinkUpDebouncePeriodMs>>(
+          portAttrs);
+      upHoldConfigured = upPeriod.has_value() && upPeriod->value() > 0;
+#endif
+    }
+    if (upHoldConfigured) {
       updateRetriggerCount(
           curPortStats.linkUpDebounceRetriggerCount_(),
           SaiPortTraits::linkUpDebounceRetriggerStats(),
@@ -4462,11 +4494,72 @@ std::optional<sai_latch_status_t> SaiPortManager::getExtOperStatusLatch(
   std::optional<SaiPortTraits::Attributes::ExtOperStatusLatch> latch;
   return SaiApiTable::getInstance()->portApi().getAttribute(saiPortId, latch);
 }
+
+SaiPortManager::ExtOperStatusLatchWarmBootState
+SaiPortManager::snapshotExtOperStatusLatch() {
+  ExtOperStatusLatchWarmBootState baseline;
+  for (const auto& [portId, portHandle] : handles_) {
+    if (!portHandle || !portHandle->port) {
+      continue;
+    }
+    auto status = getExtOperStatusLatch(portHandle->port->adapterKey());
+    if (status.has_value()) {
+      baseline.emplace(portId, *status);
+    }
+  }
+  return baseline;
+}
+
+void SaiPortManager::updateExtOperStatusLatchAfterWarmBoot(
+    const ExtOperStatusLatchWarmBootState& baseline) {
+  for (auto& portStat : portStats_) {
+    portStat.second->updateLinkDownDuringWarmBootCounter(false);
+  }
+
+  for (const auto& [portId, preWarmBootStatus] : baseline) {
+    const auto* portHandle = getPortHandle(portId);
+    if (!portHandle || !portHandle->port) {
+      continue;
+    }
+    const auto postWarmBootStatus =
+        getExtOperStatusLatch(portHandle->port->adapterKey());
+    if (postWarmBootStatus.has_value()) {
+      const auto portStatItr = portStats_.find(portId);
+      if (portStatItr == portStats_.end()) {
+        continue;
+      }
+      portStatItr->second->updateLinkDownDuringWarmBootCounter(
+          preWarmBootStatus.current_status && postWarmBootStatus->changed);
+    }
+  }
+}
 #endif
 
 #endif
 
-#if defined(SAI_BRCM_PAI_IMPL) && SAI_API_VERSION >= SAI_VERSION(1, 10, 0)
+std::optional<std::pair<uint64_t, uint64_t>>
+SaiPortManager::getPcsErrorCounters(PortSaiId saiPortId) const {
+  const auto& statIds = SaiPortTraits::pcsErrorStats();
+  if (!platform_->getAsic()->isSupported(HwAsic::Feature::PCS_ERROR_COUNTERS) ||
+      statIds.size() != 2) {
+    return std::nullopt;
+  }
+  std::vector<uint64_t> values;
+  try {
+    values = SaiApiTable::getInstance()->portApi().getStats<SaiPortTraits>(
+        saiPortId, statIds, SAI_STATS_MODE_READ);
+  } catch (const SaiApiError& e) {
+    XLOG(ERR) << "Failed to get PCS error counters for port " << saiPortId
+              << ": " << e.what();
+    return std::nullopt;
+  }
+  if (values.size() != statIds.size()) {
+    return std::nullopt;
+  }
+  return std::make_pair(values[0], values[1]);
+}
+
+#if defined(BRCM_PAI_SDK) && SAI_API_VERSION >= SAI_VERSION(1, 10, 0)
 phy::Loopback SaiPortManager::getLoopbackMode(PortSaiId saiPortId) const {
   auto mode = SaiApiTable::getInstance()->portApi().getAttribute(
       saiPortId, SaiPortTraits::Attributes::PortLoopbackMode{});

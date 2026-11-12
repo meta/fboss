@@ -469,7 +469,7 @@ auto CowSubscriptionManager<_Root>::publishAndAddPaths(
   // that we tell SubscriptionPathStore of any new paths.
   auto processPath = [&](CowPublishAndAddTraverseHelper& /*traverser*/,
                          auto&& node) mutable {
-    if constexpr (is_shared_ptr_v<folly::remove_cvref_t<decltype(node)>>) {
+    if constexpr (is_shared_ptr_v<std::remove_cvref_t<decltype(node)>>) {
       // We only want to publish the node itself, not recurse to
       // children.  This invokes the base version of publish to
       // avoid recursing automatically.

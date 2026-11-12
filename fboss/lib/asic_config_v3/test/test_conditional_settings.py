@@ -5,7 +5,10 @@
 import unittest
 from typing import Any
 
-from fboss.lib.asic_config_v3.base_generator import BaseAsicConfigGenerator
+from fboss.lib.asic_config_v3.base_generator import (
+    BaseAsicConfigGenerator,
+    GeneratedVariant,
+)
 from fboss.lib.asic_config_v3.paths import AsicConfigPaths
 
 
@@ -41,9 +44,9 @@ class RecordingGenerator(BaseAsicConfigGenerator):
     def output_extension(self) -> str:
         return ".txt"
 
-    def generate(self) -> str:
+    def generate(self) -> GeneratedVariant:
         self._execute_apply_effects()
-        return ""
+        return GeneratedVariant(common="")
 
     def _apply_settings(self, target: str, settings: dict[str, Any]) -> None:
         self.applied.append((target, dict(settings)))

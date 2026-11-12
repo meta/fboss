@@ -846,7 +846,7 @@ TEST(
   auto element = folly::coro::blockingWait(
       folly::coro::timeout(consumeOne(generator), std::chrono::seconds(5)));
   auto msg = std::move(element.val);
-  auto patchGroups = *msg.get_chunk().patchGroups();
+  auto patchGroups = *msg.chunk().as_const()->patchGroups();
 
   // Each subscribed key resolves exactly once (both are served in one chunk).
   EXPECT_EQ(patchGroups.size(), 2);
@@ -3002,7 +3002,7 @@ TEST(SubscribableStorageServeInterval, AddedPathsReachEveryBucket) {
         folly::coro::timeout(consumeOne(extGen), std::chrono::seconds(5)));
     auto msg = std::move(element.val);
     const bool hasKey = msg.getType() == SubscriberMessage::Type::chunk &&
-        msg.get_chunk().patchGroups()->count(1);
+        msg.chunk().as_const().value().patchGroups()->count(1);
     ASSERT_EVENTUALLY_TRUE(hasKey);
   });
 }

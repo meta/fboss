@@ -8,6 +8,7 @@ cpp_library(
         "Leh800bclsPlatformMapping.cpp",
     ],
     headers = [
+        "Leh800bclsOsfpTrayPlatformMapping.h",
         "Leh800bclsPlatformMapping.h",
         "Leh800bclsProdPlatformMapping.h",
         "Leh800bclsTestPlatformMapping.h",

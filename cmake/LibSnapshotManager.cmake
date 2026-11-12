@@ -9,6 +9,7 @@ add_library(async_filewriter_factory
 
 target_link_libraries(async_filewriter_factory
   Folly::folly
+  Boost::filesystem
 )
 
 
@@ -17,7 +18,7 @@ add_library(snapshot_manager
 )
 
 target_link_libraries(snapshot_manager
-  FBThrift::thriftcpp2
+  thrift::rpc
   fboss_cpp2
   phy_cpp2
   alert_logger

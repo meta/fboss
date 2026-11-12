@@ -21,6 +21,19 @@ cpp_unittest(
 )
 
 cpp_unittest(
+    name = "thrift_handler_test",
+    srcs = [
+        "DataCorralServiceThriftHandlerTest.cpp",
+    ],
+    network_access = network_access_utils.none(),
+    deps = [
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly/testing:test_util",
+        "//fboss/platform/data_corral_service:core",
+    ],
+)
+
+cpp_unittest(
     name = "config_validator_test",
     srcs = [
         "ConfigValidatorTest.cpp",

@@ -165,6 +165,7 @@ class PortManagerTest : public ManagerTestBase {
         std::nullopt, // CBFC sender credit size
         std::nullopt, // CBFC sender packet overhead
         std::nullopt, // CBFC sender credit limit
+        std::nullopt, // CBFC receiver credit limit
 #endif
 #if SAI_API_VERSION >= SAI_VERSION(1, 9, 0)
         std::nullopt, // Inter Frame Gap
@@ -259,6 +260,120 @@ TEST_F(PortManagerTest, getExtOperStatusLatch) {
   ASSERT_TRUE(status.has_value());
   EXPECT_TRUE(status->current_status);
   EXPECT_TRUE(status->changed);
+
+  const auto* portStats =
+      saiManagerTable->portManager().getLastPortStat(swPort->getID());
+  ASSERT_NE(portStats, nullptr);
+  EXPECT_FALSE(
+      fb303::fbData
+          ->getCounterIfExists(
+              HwPortFb303Stats::statName(
+                  "oper_status_latch.current_status", portStats->portName()))
+          .has_value());
+  EXPECT_FALSE(
+      fb303::fbData
+          ->getCounterIfExists(
+              HwPortFb303Stats::statName(
+                  "oper_status_latch.changed", portStats->portName()))
+          .has_value());
+}
+
+TEST_F(PortManagerTest, snapshotExtOperStatusLatchCapturesPreWarmBootState) {
+  auto swPort = makePort(p0);
+  auto& portManager = saiManagerTable->portManager();
+  portManager.addPort(swPort);
+
+  const auto* handle = portManager.getPortHandle(swPort->getID());
+  ASSERT_NE(handle, nullptr);
+  auto& fakePort =
+      FakeSai::getInstance()->portManager.get(handle->port->adapterKey());
+  fakePort.portExtOperStatusLatch = {true, true};
+
+  const auto baseline = portManager.snapshotExtOperStatusLatch();
+  ASSERT_EQ(baseline.size(), 1);
+  EXPECT_TRUE(baseline.at(swPort->getID()).current_status);
+  EXPECT_TRUE(baseline.at(swPort->getID()).changed);
+  EXPECT_FALSE(fakePort.portExtOperStatusLatch.changed);
+}
+
+TEST_F(
+    PortManagerTest,
+    warmBootFlapCounterNotCreatedWhenPortLatchStatusUnsupported) {
+  auto upPort = makePort(p0);
+  auto downPort = makePort(p1);
+  auto& portManager = saiManagerTable->portManager();
+  portManager.addPort(upPort);
+  portManager.addPort(downPort);
+
+  auto* upHandle = portManager.getPortHandle(upPort->getID());
+  auto* downHandle = portManager.getPortHandle(downPort->getID());
+  ASSERT_NE(upHandle, nullptr);
+  ASSERT_NE(downHandle, nullptr);
+  auto& fakeSaiPortManager = FakeSai::getInstance()->portManager;
+  auto& fakeUpPort = fakeSaiPortManager.get(upHandle->port->adapterKey());
+  auto& fakeDownPort = fakeSaiPortManager.get(downHandle->port->adapterKey());
+  fakeUpPort.portExtOperStatusLatch = {false, true};
+  fakeDownPort.portExtOperStatusLatch = {true, true};
+
+  portManager.updateExtOperStatusLatchAfterWarmBoot(
+      {{upPort->getID(), {true, false}}, {downPort->getID(), {false, false}}});
+
+  const auto* upStats = portManager.getLastPortStat(upPort->getID());
+  const auto* downStats = portManager.getLastPortStat(downPort->getID());
+  ASSERT_NE(upStats, nullptr);
+  ASSERT_NE(downStats, nullptr);
+  EXPECT_FALSE(
+      fb303::fbData
+          ->getCounterIfExists(
+              HwPortFb303Stats::statName(
+                  kLinkDownDuringWarmBoot(), upStats->portName()))
+          .has_value());
+  EXPECT_FALSE(
+      fb303::fbData
+          ->getCounterIfExists(
+              HwPortFb303Stats::statName(
+                  kLinkDownDuringWarmBoot(), downStats->portName()))
+          .has_value());
+  EXPECT_FALSE(fakeUpPort.portExtOperStatusLatch.changed);
+  EXPECT_FALSE(fakeDownPort.portExtOperStatusLatch.changed);
+
+  portManager.updateExtOperStatusLatchAfterWarmBoot({});
+  EXPECT_FALSE(
+      fb303::fbData
+          ->getCounterIfExists(
+              HwPortFb303Stats::statName(
+                  kLinkDownDuringWarmBoot(), upStats->portName()))
+          .has_value());
+  EXPECT_FALSE(
+      fb303::fbData
+          ->getCounterIfExists(
+              HwPortFb303Stats::statName(
+                  kLinkDownDuringWarmBoot(), downStats->portName()))
+          .has_value());
+}
+
+TEST_F(PortManagerTest, warmBootFlapCounterNotCreatedOnUnsupportedAsic) {
+  auto swPort = makePort(p0);
+  auto& portManager = saiManagerTable->portManager();
+  portManager.addPort(swPort);
+
+  auto* handle = portManager.getPortHandle(swPort->getID());
+  ASSERT_NE(handle, nullptr);
+  auto& fakePort =
+      FakeSai::getInstance()->portManager.get(handle->port->adapterKey());
+  fakePort.portExtOperStatusLatch = {true, true};
+
+  portManager.updateExtOperStatusLatchAfterWarmBoot(
+      {{swPort->getID(), {true, false}}});
+
+  const auto* portStats = portManager.getLastPortStat(swPort->getID());
+  ASSERT_NE(portStats, nullptr);
+  EXPECT_FALSE(
+      fb303::fbData
+          ->getCounterIfExists(
+              HwPortFb303Stats::statName(
+                  kLinkDownDuringWarmBoot(), portStats->portName()))
+          .has_value());
 }
 #endif
 
@@ -509,8 +624,7 @@ TEST_F(PortManagerTest, iterator) {
   addedPorts.insert(portMgr.addPort(port2));
   for (const auto& portIdAnHandle : portMgr) {
     auto& handle = portIdAnHandle.second;
-    EXPECT_TRUE(
-        addedPorts.find(handle->port->adapterKey()) != addedPorts.end());
+    EXPECT_TRUE(addedPorts.contains(handle->port->adapterKey()));
     addedPorts.erase(handle->port->adapterKey());
   }
   EXPECT_EQ(0, addedPorts.size());

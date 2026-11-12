@@ -1,8 +1,11 @@
 // (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
 
+#include <chrono>
 #include <filesystem>
 #include <fstream>
+#include <thread>
 
+#include <folly/ScopeGuard.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -28,7 +31,10 @@ class DevicePathResolverTest : public testing::Test {
 
     config_ = PlatformConfig();
     dataStore_ = std::make_unique<DataStore>(config_);
-    resolver_ = std::make_unique<DevicePathResolver>(*dataStore_);
+    // Zero retry budget: negative cases resolve immediately instead of waiting
+    // out the production sensor path timeout.
+    resolver_ = std::make_unique<DevicePathResolver>(
+        *dataStore_, std::chrono::seconds(0));
   }
 
   void TearDown() override {
@@ -74,6 +80,34 @@ TEST_F(DevicePathResolverTest, ResolveSensorPath) {
   fs::remove_all(iioDevice);
   EXPECT_THROW(
       resolver_->resolveSensorPath(kTestDevicePath), std::runtime_error);
+}
+
+TEST_F(DevicePathResolverTest, ResolveSensorPathWaitsForLateDriverProbe) {
+  auto sysfsPath = createSubDir("device/sysfs");
+  dataStore_->updateSysfsPath(kTestDevicePath, sysfsPath.string());
+
+  auto hwmon0 = sysfsPath / "hwmon" / "hwmon0";
+  std::thread lateProbe([&]() {
+    /* sleep override */
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    fs::create_directories(hwmon0);
+  });
+  SCOPE_EXIT {
+    lateProbe.join();
+  };
+
+  DevicePathResolver resolver(*dataStore_, std::chrono::seconds(5));
+  EXPECT_EQ(resolver.resolveSensorPath(kTestDevicePath), hwmon0.string());
+}
+
+TEST_F(DevicePathResolverTest, ResolveSensorPathReportsFilesystemError) {
+  dataStore_->updateSysfsPath(
+      kTestDevicePath, (tmpDir_ / "missing/sysfs").string());
+
+  EXPECT_THAT(
+      [&]() { resolver_->resolveSensorPath(kTestDevicePath); },
+      ThrowsMessage<std::runtime_error>(
+          HasSubstr("A filesystem error was encountered while polling")));
 }
 
 TEST_F(DevicePathResolverTest, ResolveEepromPath) {

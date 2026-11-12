@@ -69,7 +69,7 @@ AgentEnsembleSwitchConfigFn makeSrv6ConfigFn() {
         asic,
         portIds,
         ensemble.supportsAddRemovePort(),
-        utility::kDefaultLoopbackMap(),
+        asic->desiredLoopbackModes(),
         true /*interfaceHasSubnet*/,
         true /*setInterfaceMac*/,
         utility::kBaseVlanId,
@@ -576,8 +576,8 @@ void srv6FullScaleWarmbootBenchmark(
     int numV6Routes,
     int numMySidEntries) {
   folly::BenchmarkSuspender suspender;
-  constexpr int kNumSharedSrv6Nhops = 8;
   FLAGS_ecmp_resource_percentage = 100;
+  FLAGS_srv6_nexthop_resource_percentage = 100;
   // Don't cap MySID usage at the default percentage (match the MySID
   // benchmark).
   FLAGS_enable_mysid_resource_protection = true;
@@ -611,11 +611,11 @@ void srv6FullScaleWarmbootBenchmark(
     addSrv6EcmpGroupRoutes(
         routeUpdater, ecmpHelper, numNhops, numGroups, membersPerGroup);
 
-    // numV6Routes routes sharing one SRv6 nhop set. SIDs start after the group
-    // SIDs; base under 2a00:: to avoid colliding with the 2800::/48 group
-    // routes above.
-    auto sharedV6Nhops = makeSharedSrv6Nhops(
-        ecmpHelper, numNhops, kNumSharedSrv6Nhops, numGroups * membersPerGroup);
+    // numV6Routes routes reuse group 0's nhop set, so they add no SRv6 nhops
+    // past numGroups * membersPerGroup (the ASIC limit). Base under 2a00:: to
+    // avoid colliding with the 2800::/48 group routes above.
+    auto sharedV6Nhops =
+        makeSharedSrv6Nhops(ecmpHelper, numNhops, membersPerGroup);
     auto v6Prefixes = genDistributedPrefixes<folly::IPAddressV6>(
         scaleDistribution(kSrv6V6PrefixDistribution, numV6Routes),
         folly::IPAddressV6("2a00::"));

@@ -34,6 +34,7 @@ cpp_unittest(
     ],
     network_access = network_access_utils.none(),
     deps = [
+        "fbsource//third-party/fmt:fmt",
         "fbsource//xplat/folly:conv",
         "fbsource//xplat/folly:memory",
         "fbsource//xplat/folly:network_address",

@@ -260,6 +260,36 @@ TEST_F(TamStoreTest, loadTamTransportAndCollectorWithUnsetOptionals) {
           .has_value());
 }
 
+#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
+TEST_F(TamStoreTest, CollectorDefaultReadbackKeepsMacProgrammingUnset) {
+  using Attributes = SaiTamCollectorTraits::Attributes;
+  auto attributes = tamCollectorTraits(createTransport(), true /* ipV4 */);
+  const auto collector =
+      saiApiTable->tamApi().create<SaiTamCollectorTraits>(attributes, 0);
+  auto& sdkCollector =
+      FakeSai::getInstance()->tamCollectorManager.get(collector);
+  sdkCollector.srcMac_ = folly::MacAddress{};
+  sdkCollector.dstMac_ = folly::MacAddress{};
+  sdkCollector.localhost_ = false;
+  auto key = attributes;
+  std::get<std::optional<Attributes::SrcMacAddress>>(key) = folly::MacAddress{};
+  std::get<std::optional<Attributes::DstMacAddress>>(key) = folly::MacAddress{};
+  std::get<std::optional<Attributes::Localhost>>(key) = false;
+
+  SaiStore store{0};
+  store.reload();
+  auto& collectorStore = store.get<SaiTamCollectorTraits>();
+  const auto loaded = collectorStore.get(key);
+  ASSERT_NE(loaded, nullptr);
+  EXPECT_EQ(loaded->adapterKey(), collector);
+  EXPECT_EQ(collectorStore.setObject(key, attributes)->adapterKey(), collector);
+  EXPECT_EQ(loaded->attributes(), attributes);
+  EXPECT_EQ(sdkCollector.srcMac_, folly::MacAddress{});
+  EXPECT_EQ(sdkCollector.dstMac_, folly::MacAddress{});
+  EXPECT_EQ(sdkCollector.localhost_, false);
+}
+#endif
+
 TEST_F(TamStoreTest, tamCtors) {
   auto transport = createTransport();
   auto collectorV4 = createCollector(transport, true /* ipV4 */);

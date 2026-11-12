@@ -13,6 +13,7 @@
 
 #include <fboss/agent/if/gen-cpp2/ctrl_types.h>
 #include <fmt/format.h>
+#include <folly/String.h>
 #include <re2/re2.h>
 #include <map>
 #include <string>
@@ -21,7 +22,6 @@
 #include "fboss/cli/fboss2/utils/HostInfo.h"
 #include "fboss/cli/fboss2/utils/Table.h"
 #include "folly/Conv.h"
-#include "folly/Format.h"
 
 namespace facebook::fboss {
 

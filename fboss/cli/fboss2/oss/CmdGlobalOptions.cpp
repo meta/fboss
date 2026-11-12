@@ -14,6 +14,12 @@ namespace facebook::fboss {
 
 void CmdGlobalOptions::initAdditional(CLI::App& app) {
   app.add_flag("--detail", detail_, "Print detailed output");
+  // OSS default is local syslog; "none" disables. (The shared header
+  // default stays "scuba" for the internal build.)
+  logUsage_ = "syslog";
+  app.add_option(
+         "--log-usage", logUsage_, "Log usage (syslog, none to disable)")
+      ->check(CLI::IsMember({"syslog", "none"}));
 }
 
 } // namespace facebook::fboss

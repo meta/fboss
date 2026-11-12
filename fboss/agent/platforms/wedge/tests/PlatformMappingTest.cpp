@@ -1078,8 +1078,8 @@ TEST_F(PlatformMappingTest, VerifyWedge100DownlinkPortIphyPinConfigs) {
     const auto& chipName =
         apache::thrift::get_pointer(
             port.second.mapping().value().pins().value()[0].z())
-            ->get_end()
-            .chip()
+            ->end()
+            ->chip()
             .value();
     const auto& chip = mapping->getChips().at(chipName);
     auto transID = folly::copy(chip.physicalID().value());
@@ -1134,8 +1134,8 @@ TEST_F(PlatformMappingTest, VerifyWedge100YV3T1DownlinkPortIphyPinConfigs) {
     const auto& chipName =
         apache::thrift::get_pointer(
             port.second.mapping().value().pins().value()[0].z())
-            ->get_end()
-            .chip()
+            ->end()
+            ->chip()
             .value();
     const auto& chip = mapping->getChips().at(chipName);
     auto transID = folly::copy(chip.physicalID().value());
@@ -1309,8 +1309,8 @@ TEST_F(PlatformMappingTest, VerifyWedge100UplinkPortIphyPinConfigs) {
     const auto& chipName =
         apache::thrift::get_pointer(
             port.second.mapping().value().pins().value()[0].z())
-            ->get_end()
-            .chip()
+            ->end()
+            ->chip()
             .value();
     const auto& chip = mapping->getChips().at(chipName);
     auto transID = folly::copy(chip.physicalID().value());

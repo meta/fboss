@@ -61,6 +61,10 @@ template <>
 struct AdapterHostKeyWarmbootRecoverable<SaiIsolationGroupTraits>
     : std::false_type {};
 
+template <>
+struct AdapterHostKeyWarmbootRecoverable<SaiVirtualRouterTraits>
+    : std::false_type {};
+
 #if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)
 template <>
 struct AdapterHostKeyWarmbootRecoverable<SaiSrv6SidListTraits>
@@ -134,6 +138,32 @@ class SaiObjectStore {
       const typename SaiObjectTraits::AdapterKey& adapterKey,
       bool addToWarmbootHandles = false) {
     auto object = reloadObject(adapterKey, addToWarmbootHandles);
+    object->setOwnedByAdapter(true);
+    XLOGF(DBG5, "SaiStore reload by adapter {}", *object.get());
+    return object;
+  }
+
+  // For objects whose adapter host key cannot be derived from the adapter
+  std::shared_ptr<ObjectType> loadObjectOwnedByAdapter(
+      const typename SaiObjectTraits::AdapterKey& adapterKey,
+      const typename SaiObjectTraits::AdapterHostKey& adapterHostKey) {
+    auto object = objects_.ref(adapterHostKey);
+    if (!object) {
+      object = objects_
+                   .refOrInsert(
+                       adapterHostKey,
+                       ObjectType(adapterKey, adapterHostKey),
+                       true /*force*/)
+                   .first;
+    }
+    if (object->adapterKey() != adapterKey) {
+      throw FbossError(
+          "Adapter key mismatch loading object owned by adapter: stored ",
+          object->adapterKey(),
+          ", adapter ",
+          adapterKey);
+    }
+    warmBootHandles_.erase(adapterHostKey);
     object->setOwnedByAdapter(true);
     XLOGF(DBG5, "SaiStore reload by adapter {}", *object.get());
     return object;
@@ -540,6 +570,11 @@ class SaiObjectStore {
           // a string. This if condition is strictly not required and here only
           // to allow build
           return ObjectType(key, SaiUdfGroupTraits::AdapterHostKey{"udfGroup"});
+        }
+        if constexpr (std::is_same_v<ObjectTraits, SaiVirtualRouterTraits>) {
+          // Warm boot state from before virtual routers were keyed by RouterID
+          // has only the default virtual router
+          return ObjectType(key, RouterID(0));
         }
         throw FbossError(
             "attempting to load an object whose adapter host key is not found.");

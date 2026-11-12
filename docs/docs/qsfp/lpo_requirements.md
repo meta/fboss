@@ -53,7 +53,7 @@ mapping, and `qsfp_service` programs the module's driver peaking.
   support 100G, 400G and 800G. If a new LPO supports a different set of host
   interfaces than the ones defined here, the vendor shall update the expected
   set (`expectedLpoInterfaces` in `CmisModule::isLpoModule()`, in
-  [`CmisModule.cpp`](https://github.com/facebook/fboss/blob/main/fboss/qsfp_service/module/cmis/CmisModule.cpp))
+  [`CmisModule.cpp`](https://github.com/meta/fboss/blob/main/fboss/qsfp_service/module/cmis/CmisModule.cpp))
   to match.
 - The module must support host-controlled TX input equalization through CMIS
   Explicit Control, using the fixed TX input equalization target
@@ -65,7 +65,7 @@ mapping, and `qsfp_service` programs the module's driver peaking.
 
 LPO SI settings live in the platform's SI settings CSV, alongside the
 non-LPO settings. See
-[`montblanc_si_settings.csv`](https://github.com/facebook/fboss/blob/main/fboss/configs/platforms/celestica/montblanc/platform_mapping/montblanc_si_settings.csv)
+[`montblanc_si_settings.csv`](https://github.com/meta/fboss/blob/main/fboss/configs/platforms/celestica/montblanc/platform_mapping/montblanc_si_settings.csv)
 for an example, and [Platform Mapping Config Generation](../developing/platform_mapping.md)
 for the full file format.
 

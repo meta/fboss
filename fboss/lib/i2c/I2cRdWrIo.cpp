@@ -2,7 +2,7 @@
 
 #include "fboss/lib/i2c/I2cRdWrIo.h"
 #include <errno.h>
-#include <folly/Format.h>
+#include <folly/String.h>
 #include <linux/i2c-dev.h>
 #include <linux/i2c.h>
 #include <stdint.h>

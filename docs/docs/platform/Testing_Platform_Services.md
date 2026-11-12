@@ -18,7 +18,7 @@ hardware.
 - Any test which is not inside a `hw_test` directory is a hardware independent
   test.
 - The tests are listed under cmake target `fboss_platform_services` in
-  [CMakeLists.txt](https://github.com/facebook/fboss/blob/main/CMakeLists.txt)
+  [CMakeLists.txt](https://github.com/meta/fboss/blob/main/CMakeLists.txt)
 - These tests run as part of github actions on PRs.
 
 ## Hardware Dependent Tests:

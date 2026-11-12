@@ -106,10 +106,10 @@ class CowStorage : public Storage<Root, CowStorage<Root, Node>> {
   std::optional<StorageError>
   set_impl(PathIter begin, PathIter end, T&& value) {
     StorageImpl::modifyPath(&root_, begin, end);
-    using ValueT = typename folly::remove_cvref_t<decltype(value)>;
+    using ValueT = typename std::remove_cvref_t<decltype(value)>;
     auto op =
         thrift_cow::pvlambda([&](auto& node, auto /*begin*/, auto /*end*/) {
-          using NodeT = typename folly::remove_cvref_t<decltype(node)>;
+          using NodeT = typename std::remove_cvref_t<decltype(node)>;
           using TType = typename NodeT::ThriftType;
           if constexpr (std::is_same_v<ValueT, TType>) {
             node.fromThrift(std::forward<T>(value));
@@ -192,7 +192,7 @@ auto CowStorage<Root, Node>::get_encoded_extended_impl(
   thrift_cow::ExtPathVisitorOptions options;
   thrift_cow::RootExtendedPathVisitor::visit(
       rootNode, begin, end, options, [&](auto& path, auto& node) {
-        using NodeT = typename folly::remove_cvref_t<decltype(node)>;
+        using NodeT = typename std::remove_cvref_t<decltype(node)>;
         if constexpr (!thrift_cow::is_cow_type_v<NodeT>) {
           throw std::runtime_error(
               fmt::format(
@@ -262,7 +262,7 @@ auto CowStorage<Root, Node>::patch_impl(Patch&& patch)
       patchResult = this->remove_impl(basePath_begin, v_begin + 1);
       return;
     }
-    using NodeT = typename folly::remove_cvref_t<decltype(node)>;
+    using NodeT = typename std::remove_cvref_t<decltype(node)>;
     using TC = typename NodeT::TC;
     thrift_cow::PatchApplyResult patchApplyResult;
     if constexpr (std::is_same_v<

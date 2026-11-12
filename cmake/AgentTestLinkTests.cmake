@@ -55,4 +55,5 @@ target_link_libraries(agent_ensemble_link_tests
   qsfp_stats_cpp2
   ${GTEST}
   ${LIBGMOCK_LIBRARIES}
+  Boost::filesystem
 )

@@ -9,7 +9,7 @@
       },
       {
         "profile": "BENCHMARK",
-        "asicConfigVariant": "default"
+        "asicConfigVariant": "benchmark"
       },
       {
         "profile": "LINK_TEST",

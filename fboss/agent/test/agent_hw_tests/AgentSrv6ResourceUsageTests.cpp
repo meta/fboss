@@ -33,6 +33,8 @@ class AgentSrv6ResourceUsageTest : public AgentHwTest {
   // single-endpoint path. Each endpoint is one tunnel_attributes_ipv6_table
   // entry = one slot.
   static constexpr int32_t kDecapMySidSlotCost{2};
+
+  // TH5/TH6 decap and adjacency entries each consume one slot.
   static constexpr int32_t kAdjacencyMySidSlotCost{1};
 
   std::vector<ProductionFeature> getProductionFeaturesVerified()
@@ -87,13 +89,32 @@ TEST_F(AgentSrv6ResourceUsageTest, verifyMySidResourceUsage) {
   auto setup = []() {};
 
   auto verify = [this]() {
+    const auto switchId = getCurrentSwitchIdForTesting();
+    const auto asicType =
+        getSw()->getHwAsicTable()->getHwAsic(switchId)->getAsicType();
+    std::optional<int32_t> expectedDecapMySidSlotCost;
+    if (asicType == cfg::AsicType::ASIC_TYPE_YUBA) {
+      expectedDecapMySidSlotCost = kDecapMySidSlotCost;
+    } else if (
+        asicType == cfg::AsicType::ASIC_TYPE_TOMAHAWK5 ||
+        asicType == cfg::AsicType::ASIC_TYPE_TOMAHAWK6) {
+      expectedDecapMySidSlotCost = 1;
+    }
+
     const auto mySidFreeBaseline = getMySidEntriesFree();
-    const auto mySidFreeWithDecap = mySidFreeBaseline - kDecapMySidSlotCost;
 
     // Add decap mySid.
     utility::addDecapMySidEntry(getSw(), kDecapMySidAddr, kDecapMySidPrefixLen);
-    WITH_RETRIES(
-        { EXPECT_EVENTUALLY_EQ(getMySidEntriesFree(), mySidFreeWithDecap); });
+    int32_t decapMySidSlotCost{0};
+    WITH_RETRIES({
+      decapMySidSlotCost = mySidFreeBaseline - getMySidEntriesFree();
+      if (expectedDecapMySidSlotCost.has_value()) {
+        EXPECT_EVENTUALLY_EQ(decapMySidSlotCost, *expectedDecapMySidSlotCost);
+      } else {
+        EXPECT_EVENTUALLY_GT(decapMySidSlotCost, 0);
+      }
+    });
+    const auto mySidFreeWithDecap = mySidFreeBaseline - decapMySidSlotCost;
 
     // Add adjacency (uA) mySid. The interface is baked into the resolved next
     // hop so the unresolved/resolved next-hop-set IDs coincide.

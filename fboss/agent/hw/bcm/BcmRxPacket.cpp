@@ -15,7 +15,6 @@
 #include "fboss/agent/hw/bcm/RxUtils.h"
 
 #include <fmt/format.h>
-#include <folly/Format.h>
 #include <tuple>
 
 extern "C" {

@@ -1,0 +1,1467 @@
+---
+device:
+  0:
+    PC_PM_CORE:
+      ?
+        PC_PM_ID: 1
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x54761032
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x32107654
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0x8C
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0xFF
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 2
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x54761032
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x32107654
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0x55
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0xCC
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 3
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x23016745
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x54761032
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0x33
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0x00
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 4
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x52701634
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x54761032
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0xAA
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0xCC
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 5
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x74305612
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x21640357
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0xF7
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0x59
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 6
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x03562147
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x30742165
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0x48
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0x29
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 7
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x14567302
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x56712430
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0xAF
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0xFC
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 8
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x67315024
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x56217034
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0xDD
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0x53
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 9
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x21403765
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x20543176
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0xDD
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0x48
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 10
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x53062147
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x30742165
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0x48
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0x69
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 11
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x54067312
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x56712430
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0xAF
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0xFC
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 12
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x65304721
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x56217430
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0xDD
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0x56
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 13
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x21403765
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x20543176
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0xDD
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0x48
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 14
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x53062147
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x30742165
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0x48
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0x69
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 15
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x54067312
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x56712430
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0xAF
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0xFC
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 16
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x65304721
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x56217430
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0xDD
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0x56
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 17
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x65274130
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x56207431
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0x87
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0xA7
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 18
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x47306521
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x76305412
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0x6C
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0x86
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 19
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x02731456
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x21345076
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0x99
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0x07
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 20
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x30472165
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x21543076
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0x6C
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0xAD
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 21
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x45376120
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x56207431
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0x2D
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0xA7
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 22
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x40376521
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x76305412
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0x3C
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0x86
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 23
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x02731456
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x21345076
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0x99
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0x07
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 24
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x30472165
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x21543076
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0x6C
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0xAD
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 25
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x45376120
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x56207431
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0x2D
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0xA7
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 26
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x40376521
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x76305412
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0x3C
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0x86
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 27
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x03762514
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x21345076
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0xDE
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0x03
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 28
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x67125403
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x12470356
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0x63
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0xB2
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 29
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x32107654
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x54761032
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0x22
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0x66
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 30
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x32107654
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x54761032
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0xCC
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0x00
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 31
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x05371426
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x32107654
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0x65
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0x66
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 32
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x56741032
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x23016745
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0x9C
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0xFF
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 33
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x46751032
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x32106754
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0xC9
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0x55
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 34
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x54721036
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x32107654
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0x22
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0xCC
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 35
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x63410725
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x54761032
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0x93
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0xAA
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 36
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x32107645
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x54761032
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0x77
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0xCC
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 37
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x74260351
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x13064257
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0xD8
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0x21
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 38
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x10573246
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x30762145
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0xC6
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0x99
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 39
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x47356120
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x56702431
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0x2D
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0x8F
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 40
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x75016423
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x54217630
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0xC9
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0x58
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 41
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x01736524
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x20365174
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0x96
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0x52
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 42
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x10573246
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x30762145
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0xC6
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0xD9
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 43
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x47356120
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x56702431
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0x2D
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0x8F
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 44
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x75016423
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x54217630
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0xC9
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0x58
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 45
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x01746523
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x20365174
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0x86
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0x52
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 46
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x10576423
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x30762145
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0xC6
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0xD9
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 47
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x46357102
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x56702431
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0x2D
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0x8F
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 48
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x75016423
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x54216703
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0xC9
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0x54
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 49
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x57032146
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x54702631
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0xB3
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0xED
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 50
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x75102346
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x74305612
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0xF3
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0x66
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 51
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x32610754
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x20345176
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0x95
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0x60
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 52
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x01572346
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x21560347
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0x0C
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0xA9
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 53
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x57032146
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x54702631
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0xB3
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0xED
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 54
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x75102346
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x74305612
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0xF3
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0x66
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 55
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x32610754
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x20345176
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0x95
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0x60
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 56
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x01572346
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x21560347
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0x0C
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0xA9
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 57
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x57032146
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x54702631
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0xB3
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0xED
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 58
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x75102346
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x74305612
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0xF3
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0x66
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 59
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x32610754
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x20345176
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0x95
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0x20
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 60
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x64207531
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x23671045
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0x0B
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0xBB
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 61
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x51740362
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x54761032
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0xB1
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0x66
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 62
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x23016745
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x54761032
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0x66
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0xAA
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 63
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x54761032
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x32107654
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0x00
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0x66
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 64
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x54761032
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x23016745
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0xD9
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0xAA
+        TX_POLARITY_FLIP_AUTO: 0
+      ?
+        PC_PM_ID: 65
+        CORE_INDEX: 0
+      :
+        RX_LANE_MAP: 0x3210
+        RX_LANE_MAP_AUTO: 0
+        TX_LANE_MAP: 0x3210
+        TX_LANE_MAP_AUTO: 0
+        RX_POLARITY_FLIP: 0x00
+        RX_POLARITY_FLIP_AUTO: 0
+        TX_POLARITY_FLIP: 0x0F
+        TX_POLARITY_FLIP_AUTO: 0
+...
+---
+device:
+  0:
+    PC_PORT_PHYS_MAP:
+      ?
+        PORT_ID: 1
+      :
+        PC_PHYS_PORT_ID: 1
+      ?
+        PORT_ID: 5
+      :
+        PC_PHYS_PORT_ID: 5
+      ?
+        PORT_ID: 9
+      :
+        PC_PHYS_PORT_ID: 9
+      ?
+        PORT_ID: 10
+      :
+        PC_PHYS_PORT_ID: 13
+      ?
+        PORT_ID: 11
+      :
+        PC_PHYS_PORT_ID: 17
+      ?
+        PORT_ID: 15
+      :
+        PC_PHYS_PORT_ID: 21
+      ?
+        PORT_ID: 19
+      :
+        PC_PHYS_PORT_ID: 25
+      ?
+        PORT_ID: 20
+      :
+        PC_PHYS_PORT_ID: 29
+      ?
+        PORT_ID: 22
+      :
+        PC_PHYS_PORT_ID: 33
+      ?
+        PORT_ID: 26
+      :
+        PC_PHYS_PORT_ID: 37
+      ?
+        PORT_ID: 30
+      :
+        PC_PHYS_PORT_ID: 41
+      ?
+        PORT_ID: 31
+      :
+        PC_PHYS_PORT_ID: 45
+      ?
+        PORT_ID: 33
+      :
+        PC_PHYS_PORT_ID: 49
+      ?
+        PORT_ID: 37
+      :
+        PC_PHYS_PORT_ID: 53
+      ?
+        PORT_ID: 41
+      :
+        PC_PHYS_PORT_ID: 57
+      ?
+        PORT_ID: 42
+      :
+        PC_PHYS_PORT_ID: 61
+      ?
+        PORT_ID: 44
+      :
+        PC_PHYS_PORT_ID: 65
+      ?
+        PORT_ID: 48
+      :
+        PC_PHYS_PORT_ID: 69
+      ?
+        PORT_ID: 52
+      :
+        PC_PHYS_PORT_ID: 73
+      ?
+        PORT_ID: 53
+      :
+        PC_PHYS_PORT_ID: 77
+      ?
+        PORT_ID: 55
+      :
+        PC_PHYS_PORT_ID: 81
+      ?
+        PORT_ID: 59
+      :
+        PC_PHYS_PORT_ID: 85
+      ?
+        PORT_ID: 63
+      :
+        PC_PHYS_PORT_ID: 89
+      ?
+        PORT_ID: 64
+      :
+        PC_PHYS_PORT_ID: 93
+      ?
+        PORT_ID: 66
+      :
+        PC_PHYS_PORT_ID: 97
+      ?
+        PORT_ID: 70
+      :
+        PC_PHYS_PORT_ID: 101
+      ?
+        PORT_ID: 74
+      :
+        PC_PHYS_PORT_ID: 105
+      ?
+        PORT_ID: 75
+      :
+        PC_PHYS_PORT_ID: 109
+      ?
+        PORT_ID: 77
+      :
+        PC_PHYS_PORT_ID: 113
+      ?
+        PORT_ID: 81
+      :
+        PC_PHYS_PORT_ID: 117
+      ?
+        PORT_ID: 85
+      :
+        PC_PHYS_PORT_ID: 121
+      ?
+        PORT_ID: 86
+      :
+        PC_PHYS_PORT_ID: 125
+      ?
+        PORT_ID: 88
+      :
+        PC_PHYS_PORT_ID: 129
+      ?
+        PORT_ID: 92
+      :
+        PC_PHYS_PORT_ID: 133
+      ?
+        PORT_ID: 96
+      :
+        PC_PHYS_PORT_ID: 137
+      ?
+        PORT_ID: 97
+      :
+        PC_PHYS_PORT_ID: 141
+      ?
+        PORT_ID: 99
+      :
+        PC_PHYS_PORT_ID: 145
+      ?
+        PORT_ID: 103
+      :
+        PC_PHYS_PORT_ID: 149
+      ?
+        PORT_ID: 107
+      :
+        PC_PHYS_PORT_ID: 153
+      ?
+        PORT_ID: 108
+      :
+        PC_PHYS_PORT_ID: 157
+      ?
+        PORT_ID: 110
+      :
+        PC_PHYS_PORT_ID: 161
+      ?
+        PORT_ID: 114
+      :
+        PC_PHYS_PORT_ID: 165
+      ?
+        PORT_ID: 118
+      :
+        PC_PHYS_PORT_ID: 169
+      ?
+        PORT_ID: 119
+      :
+        PC_PHYS_PORT_ID: 173
+      ?
+        PORT_ID: 121
+      :
+        PC_PHYS_PORT_ID: 177
+      ?
+        PORT_ID: 125
+      :
+        PC_PHYS_PORT_ID: 181
+      ?
+        PORT_ID: 129
+      :
+        PC_PHYS_PORT_ID: 185
+      ?
+        PORT_ID: 130
+      :
+        PC_PHYS_PORT_ID: 189
+      ?
+        PORT_ID: 132
+      :
+        PC_PHYS_PORT_ID: 193
+      ?
+        PORT_ID: 136
+      :
+        PC_PHYS_PORT_ID: 197
+      ?
+        PORT_ID: 140
+      :
+        PC_PHYS_PORT_ID: 201
+      ?
+        PORT_ID: 141
+      :
+        PC_PHYS_PORT_ID: 205
+      ?
+        PORT_ID: 143
+      :
+        PC_PHYS_PORT_ID: 209
+      ?
+        PORT_ID: 147
+      :
+        PC_PHYS_PORT_ID: 213
+      ?
+        PORT_ID: 151
+      :
+        PC_PHYS_PORT_ID: 217
+      ?
+        PORT_ID: 152
+      :
+        PC_PHYS_PORT_ID: 221
+      ?
+        PORT_ID: 154
+      :
+        PC_PHYS_PORT_ID: 225
+      ?
+        PORT_ID: 158
+      :
+        PC_PHYS_PORT_ID: 229
+      ?
+        PORT_ID: 162
+      :
+        PC_PHYS_PORT_ID: 233
+      ?
+        PORT_ID: 163
+      :
+        PC_PHYS_PORT_ID: 237
+      ?
+        PORT_ID: 165
+      :
+        PC_PHYS_PORT_ID: 241
+      ?
+        PORT_ID: 169
+      :
+        PC_PHYS_PORT_ID: 245
+      ?
+        PORT_ID: 173
+      :
+        PC_PHYS_PORT_ID: 249
+      ?
+        PORT_ID: 174
+      :
+        PC_PHYS_PORT_ID: 253
+      ?
+        PORT_ID: 176
+      :
+        PC_PHYS_PORT_ID: 257
+      ?
+        PORT_ID: 180
+      :
+        PC_PHYS_PORT_ID: 261
+      ?
+        PORT_ID: 184
+      :
+        PC_PHYS_PORT_ID: 265
+      ?
+        PORT_ID: 185
+      :
+        PC_PHYS_PORT_ID: 269
+      ?
+        PORT_ID: 187
+      :
+        PC_PHYS_PORT_ID: 273
+      ?
+        PORT_ID: 191
+      :
+        PC_PHYS_PORT_ID: 277
+      ?
+        PORT_ID: 195
+      :
+        PC_PHYS_PORT_ID: 281
+      ?
+        PORT_ID: 196
+      :
+        PC_PHYS_PORT_ID: 285
+      ?
+        PORT_ID: 198
+      :
+        PC_PHYS_PORT_ID: 289
+      ?
+        PORT_ID: 202
+      :
+        PC_PHYS_PORT_ID: 293
+      ?
+        PORT_ID: 206
+      :
+        PC_PHYS_PORT_ID: 297
+      ?
+        PORT_ID: 207
+      :
+        PC_PHYS_PORT_ID: 301
+      ?
+        PORT_ID: 209
+      :
+        PC_PHYS_PORT_ID: 305
+      ?
+        PORT_ID: 213
+      :
+        PC_PHYS_PORT_ID: 309
+      ?
+        PORT_ID: 217
+      :
+        PC_PHYS_PORT_ID: 313
+      ?
+        PORT_ID: 218
+      :
+        PC_PHYS_PORT_ID: 317
+      ?
+        PORT_ID: 220
+      :
+        PC_PHYS_PORT_ID: 321
+      ?
+        PORT_ID: 224
+      :
+        PC_PHYS_PORT_ID: 325
+      ?
+        PORT_ID: 228
+      :
+        PC_PHYS_PORT_ID: 329
+      ?
+        PORT_ID: 229
+      :
+        PC_PHYS_PORT_ID: 333
+      ?
+        PORT_ID: 231
+      :
+        PC_PHYS_PORT_ID: 337
+      ?
+        PORT_ID: 235
+      :
+        PC_PHYS_PORT_ID: 341
+      ?
+        PORT_ID: 239
+      :
+        PC_PHYS_PORT_ID: 345
+      ?
+        PORT_ID: 240
+      :
+        PC_PHYS_PORT_ID: 349
+      ?
+        PORT_ID: 242
+      :
+        PC_PHYS_PORT_ID: 353
+      ?
+        PORT_ID: 246
+      :
+        PC_PHYS_PORT_ID: 357
+      ?
+        PORT_ID: 250
+      :
+        PC_PHYS_PORT_ID: 361
+      ?
+        PORT_ID: 251
+      :
+        PC_PHYS_PORT_ID: 365
+      ?
+        PORT_ID: 253
+      :
+        PC_PHYS_PORT_ID: 369
+      ?
+        PORT_ID: 257
+      :
+        PC_PHYS_PORT_ID: 373
+      ?
+        PORT_ID: 261
+      :
+        PC_PHYS_PORT_ID: 377
+      ?
+        PORT_ID: 262
+      :
+        PC_PHYS_PORT_ID: 381
+      ?
+        PORT_ID: 264
+      :
+        PC_PHYS_PORT_ID: 385
+      ?
+        PORT_ID: 268
+      :
+        PC_PHYS_PORT_ID: 389
+      ?
+        PORT_ID: 272
+      :
+        PC_PHYS_PORT_ID: 393
+      ?
+        PORT_ID: 273
+      :
+        PC_PHYS_PORT_ID: 397
+      ?
+        PORT_ID: 275
+      :
+        PC_PHYS_PORT_ID: 401
+      ?
+        PORT_ID: 279
+      :
+        PC_PHYS_PORT_ID: 405
+      ?
+        PORT_ID: 283
+      :
+        PC_PHYS_PORT_ID: 409
+      ?
+        PORT_ID: 284
+      :
+        PC_PHYS_PORT_ID: 413
+      ?
+        PORT_ID: 286
+      :
+        PC_PHYS_PORT_ID: 417
+      ?
+        PORT_ID: 290
+      :
+        PC_PHYS_PORT_ID: 421
+      ?
+        PORT_ID: 294
+      :
+        PC_PHYS_PORT_ID: 425
+      ?
+        PORT_ID: 295
+      :
+        PC_PHYS_PORT_ID: 429
+      ?
+        PORT_ID: 297
+      :
+        PC_PHYS_PORT_ID: 433
+      ?
+        PORT_ID: 301
+      :
+        PC_PHYS_PORT_ID: 437
+      ?
+        PORT_ID: 305
+      :
+        PC_PHYS_PORT_ID: 441
+      ?
+        PORT_ID: 306
+      :
+        PC_PHYS_PORT_ID: 445
+      ?
+        PORT_ID: 308
+      :
+        PC_PHYS_PORT_ID: 449
+      ?
+        PORT_ID: 312
+      :
+        PC_PHYS_PORT_ID: 453
+      ?
+        PORT_ID: 316
+      :
+        PC_PHYS_PORT_ID: 457
+      ?
+        PORT_ID: 317
+      :
+        PC_PHYS_PORT_ID: 461
+      ?
+        PORT_ID: 319
+      :
+        PC_PHYS_PORT_ID: 465
+      ?
+        PORT_ID: 323
+      :
+        PC_PHYS_PORT_ID: 469
+      ?
+        PORT_ID: 327
+      :
+        PC_PHYS_PORT_ID: 473
+      ?
+        PORT_ID: 328
+      :
+        PC_PHYS_PORT_ID: 477
+      ?
+        PORT_ID: 330
+      :
+        PC_PHYS_PORT_ID: 481
+      ?
+        PORT_ID: 334
+      :
+        PC_PHYS_PORT_ID: 485
+      ?
+        PORT_ID: 338
+      :
+        PC_PHYS_PORT_ID: 489
+      ?
+        PORT_ID: 339
+      :
+        PC_PHYS_PORT_ID: 493
+      ?
+        PORT_ID: 341
+      :
+        PC_PHYS_PORT_ID: 497
+      ?
+        PORT_ID: 345
+      :
+        PC_PHYS_PORT_ID: 501
+      ?
+        PORT_ID: 349
+      :
+        PC_PHYS_PORT_ID: 505
+      ?
+        PORT_ID: 350
+      :
+        PC_PHYS_PORT_ID: 509
+      ?
+        PORT_ID: 0
+      :
+        PC_PHYS_PORT_ID: 0
+      ?
+        PORT_ID: 76
+      :
+        PC_PHYS_PORT_ID: 513
+...
+---
+device:
+  0:
+    PC_PORT:
+      ?
+        PORT_ID: 0
+      :
+        ENABLE: 1
+        SPEED: 10000
+        NUM_LANES: 1
+      ?
+        PORT_ID: [[1, 1], [5, 5], [9, 9], [10, 10], [11, 11], [15, 15], [19, 19],
+        [20, 20], [22, 22], [26, 26], [30, 30], [31, 31], [33, 33], [37, 37], [41,
+        41], [42, 42], [44, 44], [48, 48], [52, 52], [53, 53], [55, 55], [59, 59],
+        [63, 63], [64, 64], [66, 66], [70, 70], [74, 74], [75, 75], [77, 77], [81,
+        81], [85, 85], [86, 86], [88, 88], [92, 92], [96, 96], [97, 97], [99, 99],
+        [103, 103], [107, 107], [108, 108], [110, 110], [114, 114], [118, 118], [119,
+        119], [121, 121], [125, 125], [129, 129], [130, 130], [132, 132], [136, 136],
+        [140, 140], [141, 141], [143, 143], [147, 147], [151, 151], [152, 152], [154,
+        154], [158, 158], [162, 162], [163, 163], [165, 165], [169, 169], [173, 173],
+        [174, 174], [176, 176], [180, 180], [184, 184], [185, 185], [187, 187], [191,
+        191], [195, 195], [196, 196], [198, 198], [202, 202], [206, 206], [207, 207],
+        [209, 209], [213, 213], [217, 217], [218, 218], [220, 220], [224, 224], [228,
+        228], [229, 229], [231, 231], [235, 235], [239, 239], [240, 240], [242, 242],
+        [246, 246], [250, 250], [251, 251], [253, 253], [257, 257], [261, 261], [262,
+        262], [264, 264], [268, 268], [272, 272], [273, 273], [275, 275], [279, 279],
+        [283, 283], [284, 284], [286, 286], [290, 290], [294, 294], [295, 295], [297,
+        297], [301, 301], [305, 305], [306, 306], [308, 308], [312, 312], [316, 316],
+        [317, 317], [319, 319], [323, 323], [327, 327], [328, 328], [330, 330], [334,
+        334], [338, 338], [339, 339], [341, 341], [345, 345], [349, 349], [350, 350]]
+      :
+        ENABLE: 0
+        SPEED: 400000
+        NUM_LANES: 4
+        FEC_MODE: PC_FEC_RS544_2XN
+        MAX_FRAME_SIZE: 9416
+      ?
+        PORT_ID: 76
+      :
+        ENABLE: 0
+        SPEED: 100000
+        NUM_LANES: 4
+        FEC_MODE: PC_FEC_RS528
+        MAX_FRAME_SIZE: 9416
+...
+---
+device:
+  0:
+    PORT_CONFIG:
+      PORT_SYSTEM_PROFILE_OPERMODE_PIPEUNIQUE: 1
+...
+---
+bcm_device:
+  0:
+    global:
+      l3_alpm_template: 1
+      l3_alpm_hit_mode: 1
+      ipv6_lpm_128b_enable: 1
+      pktio_driver_type: 1
+      qos_map_multi_get_mode: 1
+      rx_cosq_mapping_management_mode: 0
+      l3_iif_reservation_skip: 0
+      pcie_host_intf_timeout_purge_enable: 0
+      macro_flow_hash_shuffle_random_seed: 34345645
+      bcm_linkscan_interval: 25000
+      sai_common_hash_crc: 0x1
+      sai_disable_srcmacqedstmac_ctrl: 0x1
+      sai_acl_qset_optimization: 0x1
+      sai_optimized_mmu: 0x1
+      sai_pkt_rx_custom_cfg: 1
+      sai_pkt_rx_pkt_size: 16512
+      sai_pkt_rx_cfg_ppc: 16
+      sai_async_fdb_nbr_enable: 0x1
+      sai_pfc_defaults_disable: 0x1
+      sai_ifp_enable_on_cpu_tx: 0x1
+      sai_vfp_smac_drop_filter_disable: 1
+      sai_macro_flow_based_hash: 1
+      sai_mmu_qgroups_default: 1
+      sai_dis_ctr_incr_on_port_ln_dn: 0
+      custom_feature_mesh_topology_sync_mode: 1
+      sai_ecmp_group_members_increment: 1
+      sai_field_group_auto_prioritize: 1
+      bcm_tunnel_term_compatible_mode: 1
+      sai_l2_cpu_fdb_event_suppress: 1
+      sai_port_phy_time_sync_en: 1
+      sai_stats_support_mask: 0x802
+      sai_disable_internal_port_serdes: 1
+      stat_custom_receive0_management_mode: 1
+      sai_stats_disable_mask: 0x800
+      global_flexctr_ing_action_num_reserved: 20
+      global_flexctr_ing_pool_num_reserved: 8
+      global_flexctr_ing_op_profile_num_reserved: 20
+      global_flexctr_ing_group_num_reserved: 2
+      global_flexctr_egr_action_num_reserved: 8
+      global_flexctr_egr_pool_num_reserved: 5
+      global_flexctr_egr_op_profile_num_reserved: 10
+      global_flexctr_egr_group_num_reserved: 1
+      ecmp_dlb_port_speeds: 1
+      l3_ecmp_member_secondary_mem_size: 4096
+...
+---
+device:
+  0:
+    TM_THD_CONFIG:
+      THRESHOLD_MODE: LOSSY
+...
+---
+device:
+  0:
+    PORT:
+      ?
+        PORT_ID: [[1, 1], [5, 5], [9, 9], [10, 10], [11, 11], [15, 15], [19, 19],
+        [20, 20], [22, 22], [26, 26], [30, 30], [31, 31], [33, 33], [37, 37], [41,
+        41], [42, 42], [44, 44], [48, 48], [52, 52], [53, 53], [55, 55], [59, 59],
+        [63, 63], [64, 64], [66, 66], [70, 70], [74, 74], [75, 75], [77, 77], [81,
+        81], [85, 85], [86, 86], [88, 88], [92, 92], [96, 96], [97, 97], [99, 99],
+        [103, 103], [107, 107], [108, 108], [110, 110], [114, 114], [118, 118], [119,
+        119], [121, 121], [125, 125], [129, 129], [130, 130], [132, 132], [136, 136],
+        [140, 140], [141, 141], [143, 143], [147, 147], [151, 151], [152, 152], [154,
+        154], [158, 158], [162, 162], [163, 163], [165, 165], [169, 169], [173, 173],
+        [174, 174], [176, 176], [180, 180], [184, 184], [185, 185], [187, 187], [191,
+        191], [195, 195], [196, 196], [198, 198], [202, 202], [206, 206], [207, 207],
+        [209, 209], [213, 213], [217, 217], [218, 218], [220, 220], [224, 224], [228,
+        228], [229, 229], [231, 231], [235, 235], [239, 239], [240, 240], [242, 242],
+        [246, 246], [250, 250], [251, 251], [253, 253], [257, 257], [261, 261], [262,
+        262], [264, 264], [268, 268], [272, 272], [273, 273], [275, 275], [279, 279],
+        [283, 283], [284, 284], [286, 286], [290, 290], [294, 294], [295, 295], [297,
+        297], [301, 301], [305, 305], [306, 306], [308, 308], [312, 312], [316, 316],
+        [317, 317], [319, 319], [323, 323], [327, 327], [328, 328], [330, 330], [334,
+        334], [338, 338], [339, 339], [341, 341], [345, 345], [349, 349], [350, 350]]
+      :
+        MTU: 9416
+        MTU_CHECK: 1
+...
+---
+device:
+  0:
+    DEVICE_CONFIG:
+      AUTOLOAD_BOARD_SETTINGS: 0
+      CORE_CLK_FREQ: CLK_1125MHZ
+      PP_CLK_FREQ: CLK_675MHZ
+...
+---
+device:
+  0:
+    FP_CONFIG:
+      FP_ING_OPERMODE: GLOBAL_PIPE_AWARE
+...
+---
+device:
+  0:
+    CTR_EFLEX_CONFIG:
+      CTR_ING_EFLEX_OPERMODE_PIPEUNIQUE: 1
+      CTR_ING_EFLEX_OPERMODE_PIPE_INSTANCE_UNIQUE: 1
+      CTR_EGR_EFLEX_OPERMODE_PIPEUNIQUE: 1
+      CTR_EGR_EFLEX_OPERMODE_PIPE_INSTANCE_UNIQUE: 1
+...

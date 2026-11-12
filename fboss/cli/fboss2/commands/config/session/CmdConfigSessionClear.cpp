@@ -12,13 +12,10 @@
 
 #include "fboss/cli/fboss2/CmdHandler.cpp"
 
-#include <fmt/format.h>
-#include <filesystem>
 #include <iostream>
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
-
-namespace fs = std::filesystem;
+#include "fboss/lib/CommonFileUtils.h"
 
 namespace facebook::fboss {
 
@@ -31,17 +28,7 @@ CmdConfigSessionClearTraits::RetType CmdConfigSessionClear::queryClient(
   // clear). Only individual files are removed; the ~/.fboss2 directory stays.
   bool removedAny = false;
   for (const auto& path : ConfigSession::stagedSessionFilePaths()) {
-    if (!fs::exists(path)) {
-      continue;
-    }
-    std::error_code ec;
-    fs::remove(path, ec);
-    if (ec) {
-      throw std::runtime_error(
-          fmt::format(
-              "Failed to remove session file {}: {}", path, ec.message()));
-    }
-    removedAny = true;
+    removedAny |= removeFile(path);
   }
 
   if (removedAny) {

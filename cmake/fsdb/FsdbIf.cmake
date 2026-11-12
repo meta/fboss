@@ -3,17 +3,19 @@
 # In general, libraries and binaries in fboss/foo/bar are built by
 # cmake/FooBar.cmake
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   fsdb_common_cpp2
   fboss/fsdb/if/fsdb_common.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
 )
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   fsdb_config_cpp2
   fboss/fsdb/if/fsdb_config.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
@@ -21,9 +23,10 @@ add_fbthrift_cpp_library(
     fsdb_oper_cpp2
 )
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   fsdb_oper_cpp2
   fboss/fsdb/if/fsdb_oper.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
@@ -32,9 +35,10 @@ add_fbthrift_cpp_library(
     patch_cpp2
 )
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   fsdb_cpp2
   fboss/fsdb/if/fsdb.thrift
+  LANGUAGE cpp2
   SERVICES
     FsdbService
   OPTIONS
@@ -46,33 +50,37 @@ add_fbthrift_cpp_library(
     fb303_cpp2
 )
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   bgp_attr_cpp2
   configerator/structs/neteng/fboss/bgp/if/bgp_attr.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
 )
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   nsf_policy_cpp2
   configerator/structs/neteng/bgp_policy/thrift/nsf_policy.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
 )
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   routing_policy_cpp2
   configerator/structs/neteng/bgp_policy/thrift/routing_policy.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
 )
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   bgp_policy_cpp2
   configerator/structs/neteng/bgp_policy/thrift/bgp_policy.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
@@ -81,9 +89,10 @@ add_fbthrift_cpp_library(
     routing_policy_cpp2
 )
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   rib_policy_cpp2
   configerator/structs/neteng/bgp_policy/thrift/rib_policy.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
@@ -93,9 +102,10 @@ add_fbthrift_cpp_library(
     routing_policy_cpp2
 )
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   bgp_config_cpp2
   neteng/fboss/bgp/public_tld/configerator/structs/neteng/fboss/bgp/bgp_config.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
@@ -113,9 +123,10 @@ target_include_directories(bgp_config_cpp2
   SYSTEM PUBLIC ${CMAKE_BINARY_DIR}/neteng/fboss/bgp/public_tld
 )
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   bgp_structs_cpp2
   neteng/fboss/bgp/if/BgpStructs.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
@@ -123,9 +134,10 @@ add_fbthrift_cpp_library(
     network_address_cpp2
 )
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   bmp_structs_cpp2
   neteng/fboss/bgp/if/BmpStructs.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
@@ -134,25 +146,33 @@ add_fbthrift_cpp_library(
     network_address_cpp2
 )
 
-add_fbthrift_cpp_library(
+add_library(bgp_cpp2)
+thrift_generate(
   bgp_cpp2
   neteng/fboss/bgp/if/bgp.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
+  INCLUDE_DIRECTORIES
+    ${PROJECT_SOURCE_DIR}
+    ${THRIFT_INCLUDE_DIR}
 )
+target_include_directories(bgp_cpp2 PUBLIC ${PROJECT_BINARY_DIR})
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   policy_thrift_cpp2
   neteng/fboss/bgp/if/policy_thrift.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
 )
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   bgp_route_types_cpp2
   neteng/fboss/bgp/if/bgp_route_types.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
@@ -161,9 +181,10 @@ add_fbthrift_cpp_library(
     rib_policy_cpp2
 )
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   bgp_thrift_cpp2
   neteng/fboss/bgp/if/bgp_thrift.thrift
+  LANGUAGE cpp2
   SERVICES
     TBgpService
   OPTIONS
@@ -174,14 +195,16 @@ add_fbthrift_cpp_library(
     bgp_config_cpp2
     bgp_policy_cpp2
     bgp_route_types_cpp2
+    bgp_structs_cpp2
     fb303_cpp2
     policy_thrift_cpp2
     rib_policy_cpp2
 )
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   fsdb_model_cpp2
   fboss/fsdb/if/oss/fsdb_model.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
@@ -209,7 +232,7 @@ target_link_libraries(thriftpath_lib
   fsdb_utils
   switch_config_cpp2
   fsdb_oper_cpp2
-  FBThrift::thriftcpp2
+  thrift::rpc
   Folly::folly
   ${RE2}
 )

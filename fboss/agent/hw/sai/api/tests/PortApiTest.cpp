@@ -71,6 +71,7 @@ class PortApiTest : public ::testing::Test {
         std::nullopt, // CBFC sender credit size
         std::nullopt, // CBFC sender packet overhead
         std::nullopt, // CBFC sender credit limit
+        std::nullopt, // CBFC receiver credit limit
 #endif
 #if SAI_API_VERSION >= SAI_VERSION(1, 9, 0)
         std::nullopt, // Inter frame gap
@@ -315,6 +316,21 @@ TEST_F(PortApiTest, setCbfcSenderPacketOverhead) {
       portApi->getAttribute(
           id, SaiPortTraits::Attributes::CbfcSenderPacketOverhead{}),
       -16);
+}
+
+TEST_F(PortApiTest, setCbfcReceiverCreditLimit) {
+  auto id = createPort(100000, {42}, true);
+  EXPECT_EQ(
+      portApi->getAttribute(
+          id, SaiPortTraits::Attributes::CbfcReceiverCreditLimit{}),
+      0);
+
+  portApi->setAttribute(
+      id, SaiPortTraits::Attributes::CbfcReceiverCreditLimit{4096});
+  EXPECT_EQ(
+      portApi->getAttribute(
+          id, SaiPortTraits::Attributes::CbfcReceiverCreditLimit{}),
+      4096);
 }
 #endif
 

@@ -1,8 +1,6 @@
 load("@fbcode_macros//build_defs:python_binary.bzl", "python_binary")
 load("@fbcode_macros//build_defs:python_library.bzl", "python_library")
 load("@fbcode_macros//build_defs:thrift_library.bzl", "thrift_library")
-load("@fbsource//tools/target_determinator/macros:ci.bzl", "ci")
-load("@fbsource//tools/target_determinator/macros:ci_sandcastle.bzl", "ci_sandcastle")
 
 oncall("fboss_optics_phy")
 
@@ -146,39 +144,6 @@ python_binary(
         ":read_files_utils",
         "//fboss/agent:platform_config-python-types",
         "//thrift/lib/python:types",
-    ],
-)
-
-# @ci-signal-ack
-ci_sandcastle(
-    name = "platform_mapping_v2_verify_and_configo_sync",
-    alias = "platform-mapping-v2-verify-and-configo-sync-citadel",
-    args = {
-        "skip_if_error_exists_on_base_revision": True,
-        "steps": [
-            {
-                "name": "Verify Colocated Generated Platform Mappings",
-                "shell": "buck2 test --flagfile fbcode//mode/opt fbcode//fboss/lib/platform_mapping_v2/test:verify_generated_files",
-            },
-            {
-                "name": "Run Configo Sync Command",
-                "shell": "buck2 run --flagfile fbcode//mode/opt fbcode//fboss/lib/platform_mapping_v2/facebook:gen -- --make-configerator-changes --add-fbcode-dependency",
-            },
-        ],
-    },
-    capabilities = {
-        "tenant": "default-tenant",
-        "type": "fbcode",
-        "vcs": "full-fbsource",
-    },
-    ci_srcs = [
-        "fbcode/fboss/configs/platforms/**/platform_mapping/**",
-        "fbcode/fboss/lib/platform_mapping_v2/**",
-    ],
-    command = "SandcastleUniversalCommand",
-    oncall = "fboss_optics_phy",
-    schedules = [
-        ci.diff,
     ],
 )
 

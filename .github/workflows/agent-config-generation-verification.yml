@@ -34,7 +34,7 @@ permissions:
 
 jobs:
   verify-generated-agent-configs:
-    if: github.repository_owner == 'facebook'
+    if: github.repository_owner == 'meta'
     runs-on: 32-core-ubuntu
     timeout-minutes: 120
     steps:

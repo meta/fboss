@@ -731,6 +731,16 @@ struct SaiPortTraits {
         sai_uint64_t,
         AttributeLinkDownDebounceRetriggerCount,
         SaiIntDefault<sai_uint64_t>>;
+    // CBFC receiver credit limit: the input buffer headroom pool shared by
+    // every lossless VC on the port. Hardware applies it when the first VC on
+    // the port enables CBFC_RECEIVER_ENABLE, so it must be written before that.
+    struct AttributeCbfcReceiverCreditLimit {
+      std::optional<sai_attr_id_t> operator()();
+    };
+    using CbfcReceiverCreditLimit = SaiExtensionAttribute<
+        sai_uint32_t,
+        AttributeCbfcReceiverCreditLimit,
+        SaiIntDefault<sai_uint32_t>>;
 #if SAI_API_VERSION >= SAI_VERSION(1, 18, 0)
     // UEC Link Layer Retry per-port controls (UE Spec 1.0.2 section 5.1).
     // Mode local/remote enable LLR receive/transmit (section 5.1.3); the
@@ -815,7 +825,7 @@ struct SaiPortTraits {
       Attributes::Speed,
       std::optional<Attributes::AdminState>,
       std::optional<Attributes::FecMode>,
-#if SAI_API_VERSION >= SAI_VERSION(1, 10, 0) && !defined(SAI_BRCM_PAI_IMPL)
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 0) && !defined(BRCM_PAI_SDK)
       std::optional<Attributes::UseExtendedFec>,
       std::optional<Attributes::ExtendedFecMode>,
 #endif
@@ -866,6 +876,7 @@ struct SaiPortTraits {
       std::optional<Attributes::CbfcSenderCreditSize>,
       std::optional<Attributes::CbfcSenderPacketOverhead>,
       std::optional<Attributes::CbfcSenderCreditLimit>,
+      std::optional<Attributes::CbfcReceiverCreditLimit>,
 #endif
 #if SAI_API_VERSION >= SAI_VERSION(1, 9, 0)
       std::optional<Attributes::InterFrameGap>,
@@ -1030,6 +1041,9 @@ struct SaiPortTraits {
   static const std::vector<sai_stat_id_t>& pfcXoffTotalDurationStats();
   static const std::vector<sai_stat_id_t>& linkDownDebounceRetriggerStats();
   static const std::vector<sai_stat_id_t>& linkUpDebounceRetriggerStats();
+  // PCS errored blocks followed by PCS BER, in that order. Vendor extension;
+  // empty unless the SDK declares both.
+  static const std::vector<sai_stat_id_t>& pcsErrorStats();
   // Broadcom LLR stat extensions. Unlike llrStats() above these are not
   // standard SAI 1.18 enums, so the list is vendor-defined and empty everywhere
   // except a Broadcom SDK new enough to declare them.
@@ -1190,6 +1204,7 @@ SAI_ATTRIBUTE_NAME(Port, LinkUpDebouncePeriodMs)
 SAI_ATTRIBUTE_NAME(Port, LinkDownDebouncePeriodMs)
 SAI_ATTRIBUTE_NAME(Port, LinkUpDebounceRetriggerCount)
 SAI_ATTRIBUTE_NAME(Port, LinkDownDebounceRetriggerCount)
+SAI_ATTRIBUTE_NAME(Port, CbfcReceiverCreditLimit)
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 3)
 SAI_ATTRIBUTE_NAME(Port, ExtOperStatusLatch)
 #endif
@@ -1699,7 +1714,7 @@ struct SaiPortSerdesTraits {
       ,
       std::optional<Attributes::CustomCollection>
 #endif
-#if defined(BRCM_SAI_SDK_GTE_13_0) || defined(SAI_BRCM_PAI_IMPL)
+#if defined(BRCM_SAI_SDK_GTE_13_0) || defined(BRCM_PAI_SDK)
       ,
       std::optional<Attributes::RxReach>
 #endif

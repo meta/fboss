@@ -13,11 +13,13 @@ import tempfile
 from typing import ClassVar, TYPE_CHECKING
 
 if TYPE_CHECKING or __package__:
+    from . import component_version
     from .platform_configs_utils import (
         copy_forwarding_stack_configs,
         copy_platform_descriptors,
     )
 else:
+    import component_version
     from platform_configs_utils import (
         copy_forwarding_stack_configs,
         copy_platform_descriptors,
@@ -322,6 +324,7 @@ class PackageFboss:
         print("Copying binaries...")
 
         self._update_ld_library_path()
+        build_records = {}
 
         for name, binaries in PackageFboss.NAME_TO_BINARIES.items():
             bin_pkg_path = os.path.join(tmp_dir_name, PackageFboss.BIN)
@@ -331,6 +334,7 @@ class PackageFboss:
             project_dirs = self._get_dir_for(name, PackageFboss.BUILD)
             for project_dir in project_dirs:
                 effective_binaries = binaries if binaries else os.listdir(project_dir)
+                copied_binaries = {}
 
                 for binary in effective_binaries:
                     if (
@@ -354,6 +358,11 @@ class PackageFboss:
                         print(f"Skipping binary {bin_abs_path}")
                         continue
 
+                    build_records.pop(binary, None)
+                    copied_binaries[pathlib.Path(bin_pkg_path) / binary] = (
+                        f"bin/{binary}"
+                    )
+
                     # retrieve dependencies using ldd
                     dependencies = self._get_dependency_paths(bin_abs_path)
                     dependencies |= self._sdk_sibling_libs(dependencies)
@@ -366,6 +375,19 @@ class PackageFboss:
 
                 if name == PackageFboss.FBOSS:
                     self._copy_npu_sdk_metadata(project_dir, tmp_dir_name)
+                    build_records.update(
+                        component_version.collect_binary_records(
+                            copied_binaries,
+                            pathlib.Path(project_dir)
+                            / component_version.RECORD_DIRECTORY,
+                        )
+                    )
+
+        component_version.write_declaration(
+            pathlib.Path(tmp_dir_name) / component_version.DECLARATION_PATH,
+            build_records,
+            "package-fboss.py",
+        )
 
         self._copy_run_scripts(tmp_dir_name)
         self._copy_run_configs(tmp_dir_name)
@@ -450,7 +472,7 @@ class PackageFboss:
             siblings |= self._get_dependency_paths(sibling)
         return siblings
 
-    def _get_dependency_paths(self, path_to_binary: str) -> {str}:
+    def _get_dependency_paths(self, path_to_binary: str) -> set[str]:
         """
         Get full paths to dependencies identified by ldd for a given binary.
         """

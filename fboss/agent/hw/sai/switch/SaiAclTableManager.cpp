@@ -63,8 +63,8 @@ int normalizeAclTablePriority(int priority) {
 }
 
 folly::IPAddressV6 ipV6WordToAddress(uint32_t word, int wordIndex) {
-  CHECK(wordIndex == 2 || wordIndex == 3)
-      << "Only DST IPv6 word2 and word3 are supported";
+  CHECK(wordIndex >= 0 && wordIndex <= 3)
+      << "DST IPv6 word index must be between 0 and 3";
 
   folly::ByteArray16 bytes{{0}};
   // SAI word3 is the most-significant IPv6 word; word0 is least-significant.
@@ -76,11 +76,14 @@ folly::IPAddressV6 ipV6WordToAddress(uint32_t word, int wordIndex) {
   return folly::IPAddressV6(bytes);
 }
 
-AclEntryFieldIpV6 ipV6WordField(uint32_t word, int wordIndex) {
+AclEntryFieldIpV6 ipV6WordField(
+    uint32_t word,
+    int wordIndex,
+    uint32_t mask = kIpV6WordExactMatchMask) {
   return AclEntryFieldIpV6(
       std::make_pair(
           ipV6WordToAddress(word, wordIndex),
-          ipV6WordToAddress(kIpV6WordExactMatchMask, wordIndex)));
+          ipV6WordToAddress(mask, wordIndex)));
 }
 
 #if (defined(TAJO_SDK_GTE_26_5) && !defined(TAJO_SDK_P200)) || \
@@ -100,6 +103,16 @@ std::vector<sai_int8_t> aclEntryLabel(const std::string& aclEntryName) {
         ")");
   }
   // Broadcom overwrites the last label byte with NUL and returns it on GET.
+  label.push_back('\0');
+#endif
+  return label;
+}
+#endif
+
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 2)
+std::vector<int8_t> extendedAclCounterLabel(const std::string& counterName) {
+  std::vector<int8_t> label(counterName.begin(), counterName.end());
+#if defined(BRCM_SAI_SDK_XGS)
   label.push_back('\0');
 #endif
   return label;
@@ -645,12 +658,28 @@ bool SaiAclTableManager::isSameAclCounterAttributes(
 
   if (platform_->getAsic()->isSupported(HwAsic::Feature::ACL_COUNTER_LABEL)) {
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 2)
+    using LabelExtended =
+        std::optional<SaiAclCounterTraits::Attributes::LabelExtended>;
     result = result &&
         GET_OPT_ATTR(AclCounter, Label, fromStore) ==
-            GET_OPT_ATTR(AclCounter, Label, fromSw);
+            GET_OPT_ATTR(AclCounter, Label, fromSw) &&
+        std::get<LabelExtended>(fromStore) == std::get<LabelExtended>(fromSw);
 #endif
   }
   return result;
+}
+
+bool SaiAclTableManager::aclCounterLabelExtendedSupported() const {
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 2)
+  return platform_->getAsic()->isSupported(
+             HwAsic::Feature::ACL_COUNTER_LABEL) &&
+      platform_->getAsic()->isSupported(
+          HwAsic::Feature::ACL_COUNTER_LABEL_EXTENDED) &&
+      SaiAclCounterTraits::Attributes::AttributeLabelExtendedWrapper()()
+          .has_value();
+#else
+  return false;
+#endif
 }
 
 std::pair<
@@ -666,25 +695,32 @@ SaiAclTableManager::addAclCounter(
       aclTableHandle->aclTable->adapterKey()};
 
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 2)
-  SaiCharArray32 counterLabel{};
-  if ((*trafficCount.name()).size() > 31) {
-    throw FbossError(
-        "ACL Counter Label:",
-        *trafficCount.name(),
-        " size ",
-        (*trafficCount.name()).size(),
-        " exceeds max(31)");
-  }
-
-  std::copy(
-      (*trafficCount.name()).begin(),
-      (*trafficCount.name()).end(),
-      counterLabel.begin());
-
   std::optional<SaiAclCounterTraits::Attributes::Label> aclCounterLabel{
       std::nullopt};
-  if (platform_->getAsic()->isSupported(HwAsic::Feature::ACL_COUNTER_LABEL)) {
-    aclCounterLabel = counterLabel;
+  std::optional<SaiAclCounterTraits::Attributes::LabelExtended>
+      aclCounterLabelExtended{std::nullopt};
+  if (aclCounterLabelExtendedSupported()) {
+    aclCounterLabel = SaiCharArray32{};
+    aclCounterLabelExtended = extendedAclCounterLabel(*trafficCount.name());
+  } else {
+    SaiCharArray32 counterLabel{};
+    if ((*trafficCount.name()).size() > 31) {
+      throw FbossError(
+          "ACL Counter Label:",
+          *trafficCount.name(),
+          " size ",
+          (*trafficCount.name()).size(),
+          " exceeds max(31)");
+    }
+
+    std::copy(
+        (*trafficCount.name()).begin(),
+        (*trafficCount.name()).end(),
+        counterLabel.begin());
+
+    if (platform_->getAsic()->isSupported(HwAsic::Feature::ACL_COUNTER_LABEL)) {
+      aclCounterLabel = counterLabel;
+    }
   }
 #endif
 
@@ -731,6 +767,7 @@ SaiAclTableManager::addAclCounter(
       aclTableId,
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 2)
       aclCounterLabel,
+      aclCounterLabelExtended,
 #endif
       enablePacketCount,
       enableByteCount,
@@ -740,6 +777,7 @@ SaiAclTableManager::addAclCounter(
       aclTableId,
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 2)
       aclCounterLabel,
+      aclCounterLabelExtended,
 #endif
       enablePacketCount,
       enableByteCount,
@@ -949,6 +987,8 @@ AclEntrySaiId SaiAclTableManager::addAclEntry(
 
   auto& aclEntryStore = saiStore_->get<SaiAclEntryTraits>();
 
+  const bool aclEnabled = addedAclEntry->isEnabled().value_or(true);
+
   SaiAclEntryTraits::Attributes::TableId aclTableId{
       aclTableHandle->aclTable->adapterKey()};
   SaiAclEntryTraits::Attributes::Priority priority{
@@ -992,6 +1032,10 @@ AclEntrySaiId SaiAclTableManager::addAclEntry(
       fieldDstIpV6Word3{std::nullopt};
   std::optional<SaiAclEntryTraits::Attributes::FieldDstIpV6Word2>
       fieldDstIpV6Word2{std::nullopt};
+  std::optional<SaiAclEntryTraits::Attributes::FieldDstIpV6Word1>
+      fieldDstIpV6Word1{std::nullopt};
+  std::optional<SaiAclEntryTraits::Attributes::FieldDstIpV6Word0>
+      fieldDstIpV6Word0{std::nullopt};
   std::optional<SaiAclEntryTraits::Attributes::FieldDstIpV4> fieldDstIpV4{
       std::nullopt};
   if (addedAclEntry->getDstIp().first) {
@@ -1011,6 +1055,25 @@ AclEntrySaiId SaiAclTableManager::addAclEntry(
                   addedAclEntry->getDstIp().first.asV4(), dstIpV4Mask))};
     }
   }
+  if (auto dstIpWithMask = addedAclEntry->getDstIpWithMask()) {
+    if (!platform_->getAsic()->isSupported(
+            HwAsic::Feature::ACL_DST_IP_WITH_MASK)) {
+      throw FbossError(
+          "ACL entry ",
+          addedAclEntry->getID(),
+          " uses dstIpWithMask, but ASIC ",
+          platform_->getAsic()->getAsicTypeStr(),
+          " does not support ACL_DST_IP_WITH_MASK");
+    }
+    const auto& [dstIp, dstIpMask] = *dstIpWithMask;
+    if (dstIp.isV6()) {
+      fieldDstIpV6 = SaiAclEntryTraits::Attributes::FieldDstIpV6{
+          AclEntryFieldIpV6(std::make_pair(dstIp.asV6(), dstIpMask.asV6()))};
+    } else {
+      fieldDstIpV4 = SaiAclEntryTraits::Attributes::FieldDstIpV4{
+          AclEntryFieldIpV4(std::make_pair(dstIp.asV4(), dstIpMask.asV4()))};
+    }
+  }
   const auto dstIpV6Word3 = addedAclEntry->getDstIpV6Word3();
   const auto dstIpV6Word2 = addedAclEntry->getDstIpV6Word2();
   const auto dstIpV6WordQualifiersSupported = platform_->getAsic()->isSupported(
@@ -1022,6 +1085,20 @@ AclEntrySaiId SaiAclTableManager::addAclEntry(
   if (dstIpV6Word2 && dstIpV6WordQualifiersSupported) {
     fieldDstIpV6Word2 = SaiAclEntryTraits::Attributes::FieldDstIpV6Word2{
         ipV6WordField(*dstIpV6Word2, 2 /* wordIndex */)};
+  }
+  const auto dstIpV6Word1 = addedAclEntry->getDstIpV6Word1WithMask();
+  const auto dstIpV6Word0 = addedAclEntry->getDstIpV6Word0WithMask();
+  const auto dstIpV6WordWithMaskSupported = platform_->getAsic()->isSupported(
+      HwAsic::Feature::ACL_DST_IPV6_WORD_WITH_MASK);
+  if (dstIpV6Word1 && dstIpV6WordWithMaskSupported) {
+    fieldDstIpV6Word1 =
+        SaiAclEntryTraits::Attributes::FieldDstIpV6Word1{ipV6WordField(
+            dstIpV6Word1->first, 1 /* wordIndex */, dstIpV6Word1->second)};
+  }
+  if (dstIpV6Word0 && dstIpV6WordWithMaskSupported) {
+    fieldDstIpV6Word0 =
+        SaiAclEntryTraits::Attributes::FieldDstIpV6Word0{ipV6WordField(
+            dstIpV6Word0->first, 0 /* wordIndex */, dstIpV6Word0->second)};
   }
 
   std::optional<SaiAclEntryTraits::Attributes::FieldSrcPort> fieldSrcPort{
@@ -1757,7 +1834,11 @@ AclEntrySaiId SaiAclTableManager::addAclEntry(
           auto nhIp = folly::IPAddress(*nhStruct.ip());
           SaiTunnelEncapNextHopTraits::AdapterHostKey nhKey{tunnelSaiId, nhIp};
           SaiTunnelEncapNextHopTraits::CreateAttributes nhAttrs{
-              SAI_NEXT_HOP_TYPE_TUNNEL_ENCAP, tunnelSaiId, nhIp, std::nullopt};
+              SAI_NEXT_HOP_TYPE_TUNNEL_ENCAP,
+              tunnelSaiId,
+              nhIp,
+              std::nullopt,
+              std::nullopt};
           auto& nhStore = saiStore_->get<SaiTunnelEncapNextHopTraits>();
           tunnelEncapNextHop = nhStore.setObject(nhKey, nhAttrs);
           aclActionRedirect = SaiAclEntryTraits::Attributes::ActionRedirect{
@@ -1775,6 +1856,7 @@ AclEntrySaiId SaiAclTableManager::addAclEntry(
   auto matcherIsValid =
       (fieldSrcIpV6.has_value() || fieldDstIpV6.has_value() ||
        fieldDstIpV6Word3.has_value() || fieldDstIpV6Word2.has_value() ||
+       fieldDstIpV6Word1.has_value() || fieldDstIpV6Word0.has_value() ||
        fieldSrcIpV4.has_value() || fieldDstIpV4.has_value() ||
        fieldSrcPort.has_value() || fieldOutPort.has_value() ||
        fieldL4SrcPort.has_value() || fieldL4DstPort.has_value() ||
@@ -1821,6 +1903,14 @@ AclEntrySaiId SaiAclTableManager::addAclEntry(
        // an ACL with matcher(s) not supported by SaiSwitch.
        (platform_->getAsic()->isSupported(HwAsic::Feature::EMPTY_ACL_MATCHER) &&
         !addedAclEntry->hasMatcher()));
+  if ((dstIpV6Word1 || dstIpV6Word0) && !dstIpV6WordWithMaskSupported) {
+    throw FbossError(
+        "ACL entry ",
+        addedAclEntry->getID(),
+        " uses masked DST IPv6 word qualifiers, but ASIC ",
+        platform_->getAsic()->getAsicTypeStr(),
+        " does not support ACL_DST_IPV6_WORD_WITH_MASK");
+  }
   if ((dstIpV6Word3 || dstIpV6Word2) && !dstIpV6WordQualifiersSupported) {
     throw FbossError(
         "ACL entry ",
@@ -1867,11 +1957,13 @@ AclEntrySaiId SaiAclTableManager::addAclEntry(
   SaiAclEntryTraits::CreateAttributes attributes{
       aclTableId,
       priority,
-      true,
+      aclEnabled,
       fieldSrcIpV6,
       fieldDstIpV6,
       fieldDstIpV6Word3,
       fieldDstIpV6Word2,
+      fieldDstIpV6Word1,
+      fieldDstIpV6Word0,
       fieldSrcIpV4,
       fieldDstIpV4,
       fieldSrcPort,
@@ -1969,7 +2061,8 @@ AclEntrySaiId SaiAclTableManager::addAclEntry(
   auto enabled = SaiApiTable::getInstance()->aclApi().getAttribute(
       it->second->aclEntry->adapterKey(),
       SaiAclEntryTraits::Attributes::Enabled{});
-  CHECK(enabled) << "Acl entry: " << addedAclEntry->getID() << " not enabled";
+  CHECK_EQ(enabled, aclEnabled)
+      << "Acl entry: " << addedAclEntry->getID() << " enabled state mismatch";
   return it->second->aclEntry->adapterKey();
 }
 
@@ -2420,6 +2513,16 @@ bool SaiAclTableManager::isQualifierSupported(
       return hasField(
           std::get<
               std::optional<SaiAclTableTraits::Attributes::FieldDstIpV6Word2>>(
+              attributes));
+    case cfg::AclTableQualifier::DST_IPV6_WORD1:
+      return hasField(
+          std::get<
+              std::optional<SaiAclTableTraits::Attributes::FieldDstIpV6Word1>>(
+              attributes));
+    case cfg::AclTableQualifier::DST_IPV6_WORD0:
+      return hasField(
+          std::get<
+              std::optional<SaiAclTableTraits::Attributes::FieldDstIpV6Word0>>(
               attributes));
     case cfg::AclTableQualifier::SRC_IPV4:
       return hasField(

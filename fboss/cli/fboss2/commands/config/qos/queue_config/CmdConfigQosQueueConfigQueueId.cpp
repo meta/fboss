@@ -82,4 +82,9 @@ template void CmdHandler<
     CmdConfigQosQueueConfigQueueId,
     CmdConfigQosQueueConfigQueueIdTraits>::run();
 
+std::vector<std::string> CmdConfigQosQueueConfigQueueIdTraits::completeArgs(
+    const std::vector<std::string>& typed) {
+  return utils::completeQueueAttrs(typed, /* minObjects */ 1);
+}
+
 } // namespace facebook::fboss

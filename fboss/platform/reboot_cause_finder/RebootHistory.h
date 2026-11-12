@@ -13,7 +13,9 @@ namespace facebook::fboss::platform::reboot_cause_finder {
 // What could be read of the per-boot records reboot_cause_finder writes under
 // REBOOT_HISTORY_DIR.
 struct RebootHistory {
-  // Newest boot first, by bootTimeMs; a record with no boot time sorts last.
+  // Newest boot first, by bootTimeSec; a record with no boot time sorts last.
+  // The *Sec fields are filled from *Ms / 1000 for records written before
+  // they existed.
   std::vector<reboot_cause_config::RebootCauseRecord> records;
   // Records that exist but were not returned: unreadable, oversized,
   // unparseable, or beyond the cap on how many are read.

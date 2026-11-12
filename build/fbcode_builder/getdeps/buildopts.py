@@ -274,6 +274,7 @@ class BuildOptions:
                 "distro_family": host_type.distro_family,
                 "fb": "on" if self.facebook_internal else "off",
                 "fbsource": "on" if self.fbsource_dir else "off",
+                "shared_lib": "on" if self.shared_lib else "off",
                 "test": "off",
             }
         )
@@ -448,6 +449,22 @@ class BuildOptions:
             found = True
             has_pkgconfig = True
             add_path_entry(env, "PKG_CONFIG_PATH", pkgconfig, append=append)
+
+        # For a library installed only as a static archive, like getdeps'
+        # libcurl, tell Rust's pkg-config crate to also link the private
+        # libraries in its .pc file, such as libcurl's nghttp2. A name that
+        # isn't an identifier, like libusb-1.0's, can't be exported by a shell.
+        for lib in ["lib", "lib64"]:
+            for pc in Path(d, lib, "pkgconfig").glob("*.pc"):
+                name = pc.stem[3:] if pc.stem.startswith("lib") else pc.stem
+                files = [f.name for f in Path(d, lib).glob(f"lib{name}.*")]
+                var = pc.stem.upper().replace("-", "_") + "_STATIC"
+                if (
+                    var.isidentifier()
+                    and f"lib{name}.a" in files
+                    and not any(".so" in f or f.endswith(".dylib") for f in files)
+                ):
+                    env[var] = "1"
 
         add_path_entry(env, "CMAKE_PREFIX_PATH", d, append=append)
 

@@ -79,10 +79,10 @@ int main(int argc, char** argv) {
   helpers::init(&argc, &argv);
 
   // One structured event per run, which netstate streams to Scuba so runs can
-  // be counted across the fleet: outcome, whether a cause was determined, and
-  // which providers could not be read.
+  // be counted across the fleet: outcome, the record's cause status, and which
+  // providers could not be read.
   // One line on every way out, so the log file shows each run ended and how.
-  // An exception exits 1 instead of crashing; the run's incomplete record is
+  // An exception exits 1 instead of crashing; the run's INTERRUPTED record is
   // already on disk.
   try {
     reboot_cause_config::RebootCauseConfig config;

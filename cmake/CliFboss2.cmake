@@ -3,304 +3,536 @@
 # In general, libraries and binaries in fboss/foo/bar are built by
 # cmake/FooBar.cmake
 
-add_fbthrift_cpp_library(
+add_library(cli_metadata)
+thrift_generate(
   cli_metadata
   fboss/cli/fboss2/cli_metadata.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
+  INCLUDE_DIRECTORIES
+    ${PROJECT_SOURCE_DIR}
+    ${THRIFT_INCLUDE_DIR}
 )
+target_include_directories(cli_metadata PUBLIC ${PROJECT_BINARY_DIR})
 
-add_fbthrift_cpp_library(
+add_library(cli_model)
+thrift_generate(
   cli_model
   fboss/cli/fboss2/cli.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
+  INCLUDE_DIRECTORIES
+    ${PROJECT_SOURCE_DIR}
+    ${THRIFT_INCLUDE_DIR}
 )
+target_include_directories(cli_model PUBLIC ${PROJECT_BINARY_DIR})
 
-add_fbthrift_cpp_library(
+add_library(show_acl_model)
+thrift_generate(
   show_acl_model
   fboss/cli/fboss2/commands/show/acl/model.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
+  INCLUDE_DIRECTORIES
+    ${PROJECT_SOURCE_DIR}
+    ${THRIFT_INCLUDE_DIR}
 )
+target_include_directories(show_acl_model PUBLIC ${PROJECT_BINARY_DIR})
 
-add_fbthrift_cpp_library(
+add_library(show_agent_model)
+thrift_generate(
   show_agent_model
   fboss/cli/fboss2/commands/show/agent/model.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
+  INCLUDE_DIRECTORIES
+    ${PROJECT_SOURCE_DIR}
+    ${THRIFT_INCLUDE_DIR}
 )
+target_include_directories(show_agent_model PUBLIC ${PROJECT_BINARY_DIR})
 
-add_fbthrift_cpp_library(
+add_library(show_arp_model)
+thrift_generate(
   show_arp_model
   fboss/cli/fboss2/commands/show/arp/model.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
+  INCLUDE_DIRECTORIES
+    ${PROJECT_SOURCE_DIR}
+    ${THRIFT_INCLUDE_DIR}
 )
+target_include_directories(show_arp_model PUBLIC ${PROJECT_BINARY_DIR})
 
-add_fbthrift_cpp_library(
+add_library(show_example_model)
+thrift_generate(
   show_example_model
   fboss/cli/fboss2/commands/show/example/model.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
+  INCLUDE_DIRECTORIES
+    ${PROJECT_SOURCE_DIR}
+    ${THRIFT_INCLUDE_DIR}
 )
+target_include_directories(show_example_model PUBLIC ${PROJECT_BINARY_DIR})
 
-add_fbthrift_cpp_library(
+add_library(show_flowlet_model)
+thrift_generate(
   show_flowlet_model
   fboss/cli/fboss2/commands/show/flowlet/model.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
+  INCLUDE_DIRECTORIES
+    ${PROJECT_SOURCE_DIR}
+    ${THRIFT_INCLUDE_DIR}
 )
+target_include_directories(show_flowlet_model PUBLIC ${PROJECT_BINARY_DIR})
 
-add_fbthrift_cpp_library(
+add_library(show_dsf_subcription_model)
+thrift_generate(
   show_dsf_subcription_model
   fboss/cli/fboss2/commands/show/dsf/subscription/model.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
+  INCLUDE_DIRECTORIES
+    ${PROJECT_SOURCE_DIR}
+    ${THRIFT_INCLUDE_DIR}
+)
+target_include_directories(show_dsf_subcription_model
+  PUBLIC ${PROJECT_BINARY_DIR}
 )
 
-add_fbthrift_cpp_library(
+add_library(show_dsfnodes_model)
+thrift_generate(
   show_dsfnodes_model
   fboss/cli/fboss2/commands/show/dsfnodes/model.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
+  INCLUDE_DIRECTORIES
+    ${PROJECT_SOURCE_DIR}
+    ${THRIFT_INCLUDE_DIR}
 )
+target_include_directories(show_dsfnodes_model PUBLIC ${PROJECT_BINARY_DIR})
 
-add_fbthrift_cpp_library(
+add_library(show_fabric_model)
+thrift_generate(
   show_fabric_model
   fboss/cli/fboss2/commands/show/fabric/model.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
+  INCLUDE_DIRECTORIES
+    ${PROJECT_SOURCE_DIR}
+    ${THRIFT_INCLUDE_DIR}
 )
+target_include_directories(show_fabric_model PUBLIC ${PROJECT_BINARY_DIR})
 
-add_fbthrift_cpp_library(
+add_library(show_fabric_reachability_model)
+thrift_generate(
   show_fabric_reachability_model
   fboss/cli/fboss2/commands/show/fabric/reachability/model.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
+  INCLUDE_DIRECTORIES
+    ${PROJECT_SOURCE_DIR}
+    ${THRIFT_INCLUDE_DIR}
+)
+target_include_directories(show_fabric_reachability_model
+  PUBLIC ${PROJECT_BINARY_DIR}
 )
 
 
-add_fbthrift_cpp_library(
+add_library(show_fabric_inputbalance_model)
+thrift_generate(
   show_fabric_inputbalance_model
   fboss/cli/fboss2/commands/show/fabric/inputbalance/model.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
+  INCLUDE_DIRECTORIES
+    ${PROJECT_SOURCE_DIR}
+    ${THRIFT_INCLUDE_DIR}
+)
+target_include_directories(show_fabric_inputbalance_model
+  PUBLIC ${PROJECT_BINARY_DIR}
 )
 
-add_fbthrift_cpp_library(
+add_library(show_fabric_monitoring_model)
+thrift_generate(
   show_fabric_monitoring_model
   fboss/cli/fboss2/commands/show/fabric/monitoring/model.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
+  INCLUDE_DIRECTORIES
+    ${PROJECT_SOURCE_DIR}
+    ${THRIFT_INCLUDE_DIR}
+)
+target_include_directories(show_fabric_monitoring_model
+  PUBLIC ${PROJECT_BINARY_DIR}
 )
 
-add_fbthrift_cpp_library(
+add_library(show_hardware_model)
+thrift_generate(
   show_hardware_model
   fboss/cli/fboss2/commands/show/hardware/model.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
+  INCLUDE_DIRECTORIES
+    ${PROJECT_SOURCE_DIR}
+    ${THRIFT_INCLUDE_DIR}
 )
+target_include_directories(show_hardware_model PUBLIC ${PROJECT_BINARY_DIR})
 
-add_fbthrift_cpp_library(
+add_library(show_host_model)
+thrift_generate(
   show_host_model
   fboss/cli/fboss2/commands/show/host/model.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
+  INCLUDE_DIRECTORIES
+    ${PROJECT_SOURCE_DIR}
+    ${THRIFT_INCLUDE_DIR}
 )
+target_include_directories(show_host_model PUBLIC ${PROJECT_BINARY_DIR})
 
-add_fbthrift_cpp_library(
+add_library(show_lldp_model)
+thrift_generate(
   show_lldp_model
   fboss/cli/fboss2/commands/show/lldp/model.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
+  INCLUDE_DIRECTORIES
+    ${PROJECT_SOURCE_DIR}
+    ${THRIFT_INCLUDE_DIR}
 )
+target_include_directories(show_lldp_model PUBLIC ${PROJECT_BINARY_DIR})
 
-add_fbthrift_cpp_library(
+add_library(show_mirror_model)
+thrift_generate(
   show_mirror_model
   fboss/cli/fboss2/commands/show/mirror/model.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
+  INCLUDE_DIRECTORIES
+    ${PROJECT_SOURCE_DIR}
+    ${THRIFT_INCLUDE_DIR}
 )
+target_include_directories(show_mirror_model PUBLIC ${PROJECT_BINARY_DIR})
 
-add_fbthrift_cpp_library(
+add_library(show_mymac_model)
+thrift_generate(
   show_mymac_model
   fboss/cli/fboss2/commands/show/mymac/model.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
+  INCLUDE_DIRECTORIES
+    ${PROJECT_SOURCE_DIR}
+    ${THRIFT_INCLUDE_DIR}
 )
+target_include_directories(show_mymac_model PUBLIC ${PROJECT_BINARY_DIR})
 
-add_fbthrift_cpp_library(
+add_library(show_mysid_model)
+thrift_generate(
   show_mysid_model
   fboss/cli/fboss2/commands/show/mysid/model.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
+  INCLUDE_DIRECTORIES
+    ${PROJECT_SOURCE_DIR}
+    ${THRIFT_INCLUDE_DIR}
 )
+target_include_directories(show_mysid_model PUBLIC ${PROJECT_BINARY_DIR})
 
-add_fbthrift_cpp_library(
+add_library(show_nexthopgroups_model)
+thrift_generate(
   show_nexthopgroups_model
   fboss/cli/fboss2/commands/show/nexthopgroups/model.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
+  INCLUDE_DIRECTORIES
+    ${PROJECT_SOURCE_DIR}
+    ${THRIFT_INCLUDE_DIR}
+)
+target_include_directories(show_nexthopgroups_model
+  PUBLIC ${PROJECT_BINARY_DIR}
 )
 
-add_fbthrift_cpp_library(
+add_library(show_ndp_model)
+thrift_generate(
   show_ndp_model
   fboss/cli/fboss2/commands/show/ndp/model.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
+  INCLUDE_DIRECTORIES
+    ${PROJECT_SOURCE_DIR}
+    ${THRIFT_INCLUDE_DIR}
 )
+target_include_directories(show_ndp_model PUBLIC ${PROJECT_BINARY_DIR})
 
-add_fbthrift_cpp_library(
+add_library(show_port_model)
+thrift_generate(
   show_port_model
   fboss/cli/fboss2/commands/show/port/model.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
+  INCLUDE_DIRECTORIES
+    ${PROJECT_SOURCE_DIR}
+    ${THRIFT_INCLUDE_DIR}
 )
+target_include_directories(show_port_model PUBLIC ${PROJECT_BINARY_DIR})
 
-add_fbthrift_cpp_library(
+add_library(show_product_model)
+thrift_generate(
   show_product_model
   fboss/cli/fboss2/commands/show/product/model.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
+  INCLUDE_DIRECTORIES
+    ${PROJECT_SOURCE_DIR}
+    ${THRIFT_INCLUDE_DIR}
+)
+target_include_directories(show_product_model PUBLIC ${PROJECT_BINARY_DIR})
+
+thrift_add_library(
+  show_reboot_history_model
+  fboss/cli/fboss2/commands/show/reboot_history/model.thrift
+  LANGUAGE cpp2
+  OPTIONS
+    json
+  DEPENDS
+    reboot_cause_config_cpp2
 )
 
-add_fbthrift_cpp_library(
+add_library(show_aggregateport_model)
+thrift_generate(
   show_aggregateport_model
   fboss/cli/fboss2/commands/show/aggregateport/model.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
+  INCLUDE_DIRECTORIES
+    ${PROJECT_SOURCE_DIR}
+    ${THRIFT_INCLUDE_DIR}
+)
+target_include_directories(show_aggregateport_model
+  PUBLIC ${PROJECT_BINARY_DIR}
 )
 
-add_fbthrift_cpp_library(
+add_library(show_systemport_model)
+thrift_generate(
   show_systemport_model
   fboss/cli/fboss2/commands/show/systemport/model.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
+  INCLUDE_DIRECTORIES
+    ${PROJECT_SOURCE_DIR}
+    ${THRIFT_INCLUDE_DIR}
 )
+target_include_directories(show_systemport_model PUBLIC ${PROJECT_BINARY_DIR})
 
-add_fbthrift_cpp_library(
+add_library(show_cpuport_model)
+thrift_generate(
   show_cpuport_model
   fboss/cli/fboss2/commands/show/cpuport/model.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
+  INCLUDE_DIRECTORIES
+    ${PROJECT_SOURCE_DIR}
+    ${THRIFT_INCLUDE_DIR}
 )
+target_include_directories(show_cpuport_model PUBLIC ${PROJECT_BINARY_DIR})
 
-add_fbthrift_cpp_library(
+add_library(show_fb303counters_model)
+thrift_generate(
   show_fb303counters_model
   fboss/cli/fboss2/commands/show/fb303counters/model.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
+  INCLUDE_DIRECTORIES
+    ${PROJECT_SOURCE_DIR}
+    ${THRIFT_INCLUDE_DIR}
+)
+target_include_directories(show_fb303counters_model
+  PUBLIC ${PROJECT_BINARY_DIR}
 )
 
-add_fbthrift_cpp_library(
+add_library(show_hwagent_status_model)
+thrift_generate(
   show_hwagent_status_model
   fboss/cli/fboss2/commands/show/hwagent/model.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
+  INCLUDE_DIRECTORIES
+    ${PROJECT_SOURCE_DIR}
+    ${THRIFT_INCLUDE_DIR}
+)
+target_include_directories(show_hwagent_status_model
+  PUBLIC ${PROJECT_BINARY_DIR}
 )
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   show_transceiver_model
   fboss/cli/fboss2/commands/show/transceiver/model.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
   DEPENDS
     transceiver_cpp2
 )
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   show_teflow_model
   fboss/cli/fboss2/commands/show/teflow/model.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
   DEPENDS
     show_route_model
 )
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   show_interface_model
   fboss/cli/fboss2/commands/show/interface/model.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
   DEPENDS
     switch_config_cpp2
 )
 
-add_fbthrift_cpp_library(
+add_library(show_interface_flaps)
+thrift_generate(
   show_interface_flaps
   fboss/cli/fboss2/commands/show/interface/flaps/model.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
+  INCLUDE_DIRECTORIES
+    ${PROJECT_SOURCE_DIR}
+    ${THRIFT_INCLUDE_DIR}
 )
+target_include_directories(show_interface_flaps PUBLIC ${PROJECT_BINARY_DIR})
 
-add_fbthrift_cpp_library(
+add_library(show_interface_errors)
+thrift_generate(
   show_interface_errors
   fboss/cli/fboss2/commands/show/interface/errors/model.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
+  INCLUDE_DIRECTORIES
+    ${PROJECT_SOURCE_DIR}
+    ${THRIFT_INCLUDE_DIR}
 )
+target_include_directories(show_interface_errors PUBLIC ${PROJECT_BINARY_DIR})
 
-add_fbthrift_cpp_library(
+add_library(show_interface_counters)
+thrift_generate(
   show_interface_counters
   fboss/cli/fboss2/commands/show/interface/counters/model.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
+  INCLUDE_DIRECTORIES
+    ${PROJECT_SOURCE_DIR}
+    ${THRIFT_INCLUDE_DIR}
 )
+target_include_directories(show_interface_counters PUBLIC ${PROJECT_BINARY_DIR})
 
-add_fbthrift_cpp_library(
+add_library(show_interface_traffic)
+thrift_generate(
   show_interface_traffic
   fboss/cli/fboss2/commands/show/interface/traffic/model.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
+  INCLUDE_DIRECTORIES
+    ${PROJECT_SOURCE_DIR}
+    ${THRIFT_INCLUDE_DIR}
 )
+target_include_directories(show_interface_traffic PUBLIC ${PROJECT_BINARY_DIR})
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   show_interface_counters_mka
   fboss/cli/fboss2/commands/show/interface/counters/mka/model.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
   DEPENDS
     hardware_stats_cpp2
 )
 
-add_fbthrift_cpp_library(
+add_library(show_interface_status)
+thrift_generate(
   show_interface_status
   fboss/cli/fboss2/commands/show/interface/status/model.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
+  INCLUDE_DIRECTORIES
+    ${PROJECT_SOURCE_DIR}
+    ${THRIFT_INCLUDE_DIR}
 )
+target_include_directories(show_interface_status PUBLIC ${PROJECT_BINARY_DIR})
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   show_interface_phy
   fboss/cli/fboss2/commands/show/interface/phy/model.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
   DEPENDS
     phy_cpp2
 )
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   show_interface_phymap
   fboss/cli/fboss2/commands/show/interface/phymap/model.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
   DEPENDS
     mka_structs_cpp2
 )
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   show_interface_capabilities
   fboss/cli/fboss2/commands/show/interface/capabilities/model.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
   DEPENDS
     switch_config_cpp2
 )
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   show_route_model
   fboss/cli/fboss2/commands/show/route/model.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
   DEPENDS
@@ -308,25 +540,33 @@ add_fbthrift_cpp_library(
     nsf_policy_cpp2
 )
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   show_mpls_route_model
   fboss/cli/fboss2/commands/show/mpls/model.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
   DEPENDS
     show_route_model
 )
 
-add_fbthrift_cpp_library(
+add_library(show_mac_model)
+thrift_generate(
   show_mac_model
   fboss/cli/fboss2/commands/show/mac/model.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
+  INCLUDE_DIRECTORIES
+    ${PROJECT_SOURCE_DIR}
+    ${THRIFT_INCLUDE_DIR}
 )
+target_include_directories(show_mac_model PUBLIC ${PROJECT_BINARY_DIR})
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   show_interface_prbs_capabilities
   fboss/cli/fboss2/commands/show/interface/prbs/capabilities/model.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
   DEPENDS
@@ -334,18 +574,20 @@ add_fbthrift_cpp_library(
     prbs_cpp2
 )
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   show_interface_prbs_stats
   fboss/cli/fboss2/commands/show/interface/prbs/stats/model.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
   DEPENDS
     phy_cpp2
 )
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   show_interface_prbs_state
   fboss/cli/fboss2/commands/show/interface/prbs/state/model.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
   DEPENDS
@@ -353,61 +595,87 @@ add_fbthrift_cpp_library(
     prbs_cpp2
 )
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   show_interface_counters_fec_ber
   fboss/cli/fboss2/commands/show/interface/counters/fec/ber/model.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
   DEPENDS
     phy_cpp2
 )
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   show_interface_counters_fec_tail
   fboss/cli/fboss2/commands/show/interface/counters/fec/tail/model.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
   DEPENDS
     phy_cpp2
 )
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   show_interface_counters_fec_histogram
   fboss/cli/fboss2/commands/show/interface/counters/fec/histogram/model.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
   DEPENDS
     phy_cpp2
 )
 
-add_fbthrift_cpp_library(
+add_library(show_fabric_topology_model)
+thrift_generate(
   show_fabric_topology_model
   fboss/cli/fboss2/commands/show/fabric/topology/model.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
+  INCLUDE_DIRECTORIES
+    ${PROJECT_SOURCE_DIR}
+    ${THRIFT_INCLUDE_DIR}
+)
+target_include_directories(show_fabric_topology_model
+  PUBLIC ${PROJECT_BINARY_DIR}
 )
 
-add_fbthrift_cpp_library(
+add_library(show_rif)
+thrift_generate(
   show_rif
   fboss/cli/fboss2/commands/show/rif/model.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
+  INCLUDE_DIRECTORIES
+    ${PROJECT_SOURCE_DIR}
+    ${THRIFT_INCLUDE_DIR}
 )
+target_include_directories(show_rif PUBLIC ${PROJECT_BINARY_DIR})
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   show_interface_counters_fec_uncorrectable
   fboss/cli/fboss2/commands/show/interface/counters/fec/uncorrectable/model.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
   DEPENDS
     phy_cpp2
 )
 
-add_fbthrift_cpp_library(
+add_library(show_interface_transceiver_performancemonitoring)
+thrift_generate(
   show_interface_transceiver_performancemonitoring
   fboss/cli/fboss2/commands/show/interface/transceiver/performancemonitoring/model.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
+  INCLUDE_DIRECTORIES
+    ${PROJECT_SOURCE_DIR}
+    ${THRIFT_INCLUDE_DIR}
+)
+target_include_directories(show_interface_transceiver_performancemonitoring
+  PUBLIC ${PROJECT_BINARY_DIR}
 )
 
 find_package(CLI11 CONFIG REQUIRED)
@@ -418,8 +686,9 @@ add_library(fboss2_config_file_utils
 )
 
 target_link_libraries(fboss2_config_file_utils
+  common_file_utils
   Folly::folly
-  FBThrift::thriftcpp2
+  thrift::rpc
 )
 
 add_library(fboss2_config_gen_lib
@@ -450,6 +719,18 @@ target_link_libraries(fboss2_config_gen_lib
   switch_asics
 )
 
+
+# Sole definition of getUserInfo for OSS builds; the internal build
+# compiles utils/facebook/UserInfo.cpp instead (see BUCK target
+# get_cmd_user_info). Kept in its own TU so linking it never pulls in
+# CmdUtils.cpp.
+add_library(get_cmd_user_info
+  fboss/cli/fboss2/utils/oss/UserInfo.cpp
+)
+
+target_link_libraries(get_cmd_user_info
+  Folly::folly
+)
 
 add_library(fboss2_lib
   fboss/cli/fboss2/commands/bounce/interface/CmdBounceInterface.h
@@ -484,8 +765,8 @@ add_library(fboss2_lib
   fboss/cli/fboss2/commands/delete/config/CmdDeleteConfig.h
   fboss/cli/fboss2/commands/get/pcap/CmdGetPcap.h
   fboss/cli/fboss2/commands/get/pcap/CmdGetPcap.cpp
-  fboss/cli/fboss2/commands/set/fanhold/CmdSetFanHold.h
-  fboss/cli/fboss2/commands/set/fanhold/CmdSetFanHold.cpp
+  fboss/cli/fboss2/commands/reload/CmdReloadConfigAgent.h
+  fboss/cli/fboss2/commands/reload/CmdReloadConfigAgent.cpp
   fboss/cli/fboss2/commands/set/interface/CmdSetInterface.h
   fboss/cli/fboss2/commands/set/interface/CmdSetInterface.cpp
   fboss/cli/fboss2/commands/set/interface/prbs/CmdSetInterfacePrbs.h
@@ -494,6 +775,8 @@ add_library(fboss2_lib
   fboss/cli/fboss2/commands/set/interface/prbs/state/CmdSetInterfacePrbsState.cpp
   fboss/cli/fboss2/commands/set/interface/loopback/CmdSetInterfaceLoopback.h
   fboss/cli/fboss2/commands/set/interface/loopback/CmdSetInterfaceLoopback.cpp
+  fboss/cli/fboss2/commands/set/interface/admin_state/CmdSetInterfaceAdminState.h
+  fboss/cli/fboss2/commands/set/interface/admin_state/CmdSetInterfaceAdminState.cpp
   fboss/cli/fboss2/commands/set/port/CmdSetPort.h
   fboss/cli/fboss2/commands/set/port/CmdSetPort.cpp
   fboss/cli/fboss2/commands/set/port/state/CmdSetPortState.h
@@ -587,6 +870,8 @@ add_library(fboss2_lib
   fboss/cli/fboss2/commands/show/product/CmdShowProduct.cpp
   fboss/cli/fboss2/commands/show/product/CmdShowProductDetails.h
   fboss/cli/fboss2/commands/show/product/CmdShowProductDetails.cpp
+  fboss/cli/fboss2/commands/show/reboot_history/CmdShowRebootHistory.h
+  fboss/cli/fboss2/commands/show/reboot_history/CmdShowRebootHistory.cpp
   fboss/cli/fboss2/commands/show/route/utils.cpp
   fboss/cli/fboss2/commands/show/route/CmdShowRouteDetails.h
   fboss/cli/fboss2/commands/show/route/CmdShowRouteDetails.cpp
@@ -675,6 +960,8 @@ add_library(fboss2_lib
   fboss/cli/fboss2/commands/show/bgp/CanonicalRibResolver.cpp
   fboss/cli/fboss2/commands/show/bgp/CmdShowVersionBgp.h
   fboss/cli/fboss2/commands/show/bgp/CmdShowVersionBgp.cpp
+  fboss/cli/fboss2/commands/show/version/CmdShowVersionDistro.h
+  fboss/cli/fboss2/commands/show/version/CmdShowVersionDistro.cpp
   fboss/cli/fboss2/commands/show/bgp/CmdShowBgpOriginatedRoutes.h
   fboss/cli/fboss2/commands/show/bgp/CmdShowBgpOriginatedRoutes.cpp
   fboss/cli/fboss2/commands/show/bgp/CmdShowBgpInitializationEvents.h
@@ -749,11 +1036,15 @@ add_library(fboss2_lib
   fboss/cli/fboss2/commands/start/port/cable_length_measurement/CmdStartPortCableLengthMeasurement.cpp
   fboss/cli/fboss2/commands/stop/pcap/CmdStopPcap.h
   fboss/cli/fboss2/commands/stop/pcap/CmdStopPcap.cpp
+  fboss/cli/fboss2/CmdCompletion.cpp
+  fboss/cli/fboss2/CmdCompletion.h
   fboss/cli/fboss2/CmdSubcommands.cpp
   fboss/cli/fboss2/oss/CmdGlobalOptions.cpp
   fboss/cli/fboss2/oss/CmdList.cpp
   fboss/cli/fboss2/oss/CmdShowUtils.cpp
   fboss/cli/fboss2/utils/CmdUtils.cpp
+  fboss/cli/fboss2/utils/ArgCompletion.cpp
+  fboss/cli/fboss2/utils/ArgCompletion.h
   fboss/cli/fboss2/utils/CLIParserUtils.cpp
   fboss/cli/fboss2/utils/CmdClientUtils.cpp
   fboss/cli/fboss2/utils/CmdUtilsCommon.cpp
@@ -781,6 +1072,8 @@ add_library(fboss2_lib
 
 target_link_libraries(fboss2_lib
   CLI11::CLI11
+  get_cmd_user_info
+  reboot_history_lib
   fboss2_config_gen_lib
   tabulate::tabulate
   data_corral_service_cpp2
@@ -800,7 +1093,7 @@ target_link_libraries(fboss2_lib
   fsdb_path_converter
   thrift_visitors
   Folly::folly
-  FBThrift::thriftcpp2
+  thrift::rpc
   input_balance_util
   cli_model
   bgp_thrift_cpp2
@@ -831,6 +1124,7 @@ target_link_libraries(fboss2_lib
   show_ndp_model
   show_port_model
   show_product_model
+  show_reboot_history_model
   show_transceiver_model
   show_interface_model
   show_interface_flaps
@@ -882,6 +1176,22 @@ target_link_libraries(fboss2
 )
 
 install(TARGETS fboss2)
+
+add_executable(fboss2-readonly
+  fboss/cli/fboss2/Main.cpp
+  fboss/cli/fboss2/readonly/CmdListImpl.cpp
+  fboss/cli/fboss2/utils/CmdInitUtils.cpp
+  fboss/cli/fboss2/utils/oss/CmdInitUtils.cpp
+)
+
+target_compile_definitions(fboss2-readonly PRIVATE FBOSS2_READ_ONLY)
+
+target_link_libraries(fboss2-readonly
+  fboss2_lib
+  Folly::folly
+)
+
+install(TARGETS fboss2-readonly)
 
 # Config commands library for fboss2-dev
 add_library(fboss2_config_lib
@@ -986,6 +1296,9 @@ add_library(fboss2_config_lib
   fboss/cli/fboss2/commands/config/protocol/bgp/policy/prefix-list/entry/CmdConfigProtocolBgpPolicyPrefixListEntry.h
   fboss/cli/fboss2/commands/config/protocol/bgp/policy/routing-policy/CmdConfigProtocolBgpPolicyRoutingPolicy.cpp
   fboss/cli/fboss2/commands/config/protocol/bgp/policy/routing-policy/CmdConfigProtocolBgpPolicyRoutingPolicy.h
+  fboss/cli/fboss2/commands/config/protocol/bgp/policy/routing-policy/BgpRoutingPolicyCliUtils.h
+  fboss/cli/fboss2/commands/config/protocol/bgp/policy/routing-policy/term/CmdConfigProtocolBgpPolicyRoutingPolicyTerm.cpp
+  fboss/cli/fboss2/commands/config/protocol/bgp/policy/routing-policy/term/CmdConfigProtocolBgpPolicyRoutingPolicyTerm.h
   fboss/cli/fboss2/commands/config/ptp/CmdConfigPtp.cpp
   fboss/cli/fboss2/commands/config/ptp/CmdConfigPtp.h
   fboss/cli/fboss2/commands/config/ptp/transparent_clock/CmdConfigPtpTransparentClock.cpp
@@ -1002,6 +1315,8 @@ add_library(fboss2_config_lib
   fboss/cli/fboss2/commands/config/qos/QosPolicyUtils.h
   fboss/cli/fboss2/commands/delete/qos/CmdDeleteQos.cpp
   fboss/cli/fboss2/commands/delete/qos/CmdDeleteQos.h
+  fboss/cli/fboss2/commands/delete/qos/buffer_pool/CmdDeleteQosBufferPool.cpp
+  fboss/cli/fboss2/commands/delete/qos/buffer_pool/CmdDeleteQosBufferPool.h
   fboss/cli/fboss2/commands/delete/qos/default_policy/CmdDeleteQosDefaultPolicy.cpp
   fboss/cli/fboss2/commands/delete/qos/default_policy/CmdDeleteQosDefaultPolicy.h
   fboss/cli/fboss2/commands/delete/qos/queue_config/CmdDeleteQosQueueConfig.cpp
@@ -1051,6 +1366,8 @@ add_library(fboss2_config_lib
   fboss/cli/fboss2/commands/config/session/CmdConfigSessionDiff.cpp
   fboss/cli/fboss2/commands/config/session/CmdConfigSessionRebase.h
   fboss/cli/fboss2/commands/config/session/CmdConfigSessionRebase.cpp
+  fboss/cli/fboss2/commands/config/mirror/CmdConfigMirror.cpp
+  fboss/cli/fboss2/commands/config/mirror/CmdConfigMirror.h
   fboss/cli/fboss2/commands/config/traffic_counter/CmdConfigTrafficCounter.cpp
   fboss/cli/fboss2/commands/config/traffic_counter/CmdConfigTrafficCounter.h
   fboss/cli/fboss2/commands/config/tunnel/CmdConfigTunnel.cpp
@@ -1111,6 +1428,8 @@ add_library(fboss2_config_lib
   fboss/cli/fboss2/commands/delete/interface/ipv6/CmdDeleteInterfaceIpv6.h
   fboss/cli/fboss2/commands/delete/interface/ipv6/ndp/CmdDeleteInterfaceIpv6Ndp.cpp
   fboss/cli/fboss2/commands/delete/interface/ipv6/ndp/CmdDeleteInterfaceIpv6Ndp.h
+  fboss/cli/fboss2/commands/delete/interface/pfc_config/CmdDeleteInterfacePfcConfig.cpp
+  fboss/cli/fboss2/commands/delete/interface/pfc_config/CmdDeleteInterfacePfcConfig.h
   fboss/cli/fboss2/commands/delete/interface/sflow/CmdDeleteInterfaceSflow.cpp
   fboss/cli/fboss2/commands/delete/interface/sflow/CmdDeleteInterfaceSflow.h
   fboss/cli/fboss2/commands/delete/load_balancing/CmdDeleteLoadBalancing.cpp
@@ -1132,6 +1451,8 @@ add_library(fboss2_config_lib
   fboss/cli/fboss2/commands/delete/protocol/bgp/policy/prefix-list/CmdDeleteProtocolBgpPolicyPrefixList.h
   fboss/cli/fboss2/commands/delete/protocol/bgp/policy/routing-policy/CmdDeleteProtocolBgpPolicyRoutingPolicy.cpp
   fboss/cli/fboss2/commands/delete/protocol/bgp/policy/routing-policy/CmdDeleteProtocolBgpPolicyRoutingPolicy.h
+  fboss/cli/fboss2/commands/delete/protocol/bgp/policy/routing-policy/term/CmdDeleteProtocolBgpPolicyRoutingPolicyTerm.cpp
+  fboss/cli/fboss2/commands/delete/protocol/bgp/policy/routing-policy/term/CmdDeleteProtocolBgpPolicyRoutingPolicyTerm.h
   fboss/cli/fboss2/commands/delete/protocol/CmdDeleteProtocol.h
   fboss/cli/fboss2/commands/delete/protocol/static/CmdDeleteProtocolStatic.cpp
   fboss/cli/fboss2/commands/delete/protocol/static/CmdDeleteProtocolStatic.h
@@ -1149,6 +1470,10 @@ add_library(fboss2_config_lib
   fboss/cli/fboss2/commands/delete/qos/policy/CmdDeleteQosPolicy.h
   fboss/cli/fboss2/commands/delete/qos/policy/CmdDeleteQosPolicyMap.cpp
   fboss/cli/fboss2/commands/delete/qos/policy/CmdDeleteQosPolicyMap.h
+  fboss/cli/fboss2/commands/delete/qos/priority_group_policy/CmdDeleteQosPriorityGroupPolicy.cpp
+  fboss/cli/fboss2/commands/delete/qos/priority_group_policy/CmdDeleteQosPriorityGroupPolicy.h
+  fboss/cli/fboss2/commands/delete/mirror/CmdDeleteMirror.cpp
+  fboss/cli/fboss2/commands/delete/mirror/CmdDeleteMirror.h
   fboss/cli/fboss2/commands/delete/switch/CmdDeleteSwitch.cpp
   fboss/cli/fboss2/commands/delete/switch/CmdDeleteSwitch.h
   fboss/cli/fboss2/commands/delete/switch/admin_distance/CmdDeleteAdminDistance.cpp

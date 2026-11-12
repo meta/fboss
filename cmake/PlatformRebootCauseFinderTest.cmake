@@ -8,7 +8,7 @@ target_link_libraries(reboot_cause_finder_impl_test
   reboot_cause_finder_lib
   fmt::fmt
   Folly::folly
-  FBThrift::thriftcpp2
+  thrift::rpc
   ${GTEST}
   ${LIBGMOCK_LIBRARIES}
 )

@@ -197,6 +197,7 @@ void printBgpNeighborsOutput(
             << " ago" << std::endl;
         out << "  Last reset reason: " << *neighbor.last_reset_reason()
             << std::endl;
+        printLastBgpNotifications(neighbor, out);
       }
     } else {
       out << "  BGP state is " << enumNameSafe(peerState) << std::endl;
@@ -218,6 +219,7 @@ void printBgpNeighborsOutput(
         out << std::endl;
         out << "  Last reset reason: " << *neighbor.last_reset_reason()
             << std::endl;
+        printLastBgpNotifications(neighbor, out);
       }
     }
 

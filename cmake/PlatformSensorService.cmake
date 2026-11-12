@@ -3,9 +3,10 @@
 # In general, libraries and binaries in fboss/foo/bar are built by
 # cmake/FooBar.cmake
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   sensor_service_cpp2
   fboss/platform/sensor_service/if/sensor_service.thrift
+  LANGUAGE cpp2
   SERVICES
     SensorServiceThrift
   OPTIONS
@@ -17,9 +18,10 @@ add_fbthrift_cpp_library(
     sensor_config_cpp2
 )
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   sensor_config_cpp2
   fboss/platform/sensor_service/if/sensor_config.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
@@ -89,7 +91,7 @@ target_link_libraries(sensor_service_lib
   reboot_cause_config_cpp2
   reboot_history_lib
   Folly::folly
-  FBThrift::thriftcpp2
+  thrift::rpc
   fsdb_stream_client
   fsdb_pub_sub
   fsdb_flags
@@ -113,7 +115,7 @@ target_link_libraries(sensor_service_client
   platform_utils
   tabulate::tabulate
   Folly::folly
-  FBThrift::thriftcpp2
+  thrift::rpc
   CLI11::CLI11
 )
 

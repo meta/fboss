@@ -83,6 +83,27 @@ enum RouteForwardAction {
   NEXTHOPS = 2,
 }
 
+enum L3TrafficLoopState {
+  // Setup is in progress.
+  CONFIGURING = 0,
+  // The loop is configured and active.
+  READY = 1,
+  // Teardown is in progress.
+  CLEARING = 2,
+  // No loop is configured on this port.
+  NOT_CONFIGURED = 3,
+  // Cleanup failed; partial configuration may remain.
+  CLEANUP_FAILED = 4,
+  // This switch or port does not support L3 traffic loops.
+  UNSUPPORTED = 5,
+}
+
+struct L3TrafficLoopStatus {
+  1: L3TrafficLoopState state;
+  // Unix time in milliseconds.
+  2: optional i64 expirationTimeMs;
+}
+
 typedef string RouteCounterID
 
 struct UnicastRoute {
@@ -102,6 +123,9 @@ struct UnicastRoute {
   8: optional switch_config.AclLookupClass classID;
   9: optional switch_config.SwitchingMode overrideEcmpSwitchingMode;
   10: optional list<common.NextHopThrift> overrideNextHops;
+  // Next hops are resolved recursively through routes of the same level, and
+  // in the next level through routes of another level. Unset means level 0.
+  11: optional i32 level;
 }
 
 struct MplsRoute {
@@ -154,6 +178,10 @@ struct ClientAndNextHops {
 struct IfAndIP {
   1: i32 interfaceID;
   2: Address.BinaryAddress ip;
+  // VRF the next hop is resolved in; unset means the route's VRF
+  3: optional i32 vrf;
+  // Set on next hops resolved in the next level, which have no interface
+  4: optional bool resolvedInNextLevel;
 }
 
 struct RouteDetails {
@@ -175,6 +203,7 @@ struct RouteDetails {
   14: optional i64 normalizedResolvedNextHopSetID;
   // Resolved next hops before hardware normalization.
   15: optional list<common.NextHopThrift> resolvedNextHops;
+  16: optional i32 vrf;
 }
 
 struct MplsRouteDetails {
@@ -304,6 +333,12 @@ struct InterfaceDetail {
   // AggregatePortId populated only for interfaces of type PORT that are bound
   // to an aggregate port rather than a physical port
   15: optional i32 aggregatePortId;
+}
+
+struct VrfInfo {
+  1: i32 vrfId;
+  2: optional string name;
+  3: list<i32> interfaceIds;
 }
 
 /*
@@ -451,6 +486,7 @@ struct CbfcInfo {
   3: optional i16 senderCreditSize;
   4: optional i16 senderPacketOverhead;
   5: optional i64 senderCreditLimit;
+  6: optional i64 receiverCreditLimit;
 }
 
 struct PortInfoThrift {
@@ -740,7 +776,7 @@ enum ClientID {
   /**
    * Routes and MySid entries programmed via Thrift RPC by the TE agent /
    * controller (e.g. addUnicastRoutes, addMySidEntries).
-   */
+  */
   TE_AGENT = 800,
 }
 
@@ -1164,9 +1200,13 @@ service FbossCtrl extends phy.FbossCommonPhyCtrl {
   list<RouteDetails> getRouteTableDetailsByClients(
     1: list<i16> clientId,
   ) throws (1: fboss.FbossBaseError error);
+  list<RouteDetails> getRouteTableDetailsByVrf(1: i32 vrfId) throws (
+    1: fboss.FbossBaseError error,
+  );
   InterfaceDetail getInterfaceDetail(1: i32 interfaceId) throws (
     1: fboss.FbossBaseError error,
   );
+  list<VrfInfo> getVrfs() throws (1: fboss.FbossBaseError error);
 
   /* MPLS route API */
   void addMplsRoutes(1: i16 clientId, 2: list<MplsRoute> routes) throws (
@@ -1747,6 +1787,51 @@ service FbossCtrl extends phy.FbossCommonPhyCtrl {
     1: list<string> portNames,
     2: phy.PortComponent component,
     3: prbs.InterfacePrbsState state,
+  ) throws (1: fboss.FbossBaseError error);
+
+  /*
+   * Configure this switch as one endpoint of each L3 traffic loop. Each list
+   * is indexed by loop and must have the same length. qualificationAddresses
+   * contains the unique IPv6 /128 destinations reserved for qualification
+   * traffic. An empty expectedPeerMacs entry means no peer MAC is supplied.
+   * This call returns only after all local loops are READY. The traffic-
+   * injection RPC does not check loop readiness, so callers must use
+   * getL3TrafficLoopStatus to wait for successful setup on both endpoints
+   * before injecting traffic.
+   * timeoutSeconds is the lease duration for the corresponding loop.
+   */
+  void setupL3TrafficLoops(
+    1: list<Address.BinaryAddress> qualificationAddresses,
+    2: list<string> portNames,
+    3: list<Address.BinaryAddress> peerNextHops,
+    4: list<string> expectedPeerMacs,
+    5: list<i32> timeoutSeconds,
+  ) throws (1: fboss.FbossBaseError error);
+
+  /*
+   * Extend the expiry of each READY loop. If any requested loop is not READY,
+   * throws fboss.FbossBaseError with a message indicating the loop is not
+   * ready yet; no loop is extended.
+   */
+  void extendL3TrafficLoops(
+    1: list<string> portNames,
+    2: i32 timeoutSeconds = 60,
+  ) throws (1: fboss.FbossBaseError error);
+
+  /*
+   * Safely stop each loop and restore the switch's pre-test state. Attempts
+   * cleanup for every requested port before throwing if any cleanup fails.
+   */
+  void teardownL3TrafficLoops(1: list<string> portNames) throws (
+    1: fboss.FbossBaseError error,
+  );
+
+  /*
+   * Return support and local setup/cleanup status for the requested ports, or
+   * all ports if portNames is empty. Results are keyed by port name.
+   */
+  map<string, L3TrafficLoopStatus> getL3TrafficLoopStatus(
+    1: list<string> portNames,
   ) throws (1: fboss.FbossBaseError error);
 
   /*

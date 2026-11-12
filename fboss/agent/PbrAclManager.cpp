@@ -22,7 +22,6 @@
 
 #include <folly/logging/xlog.h>
 
-#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -40,6 +39,41 @@ namespace {
       "' missing from SwitchState but ",
       numPolicies,
       " PBR policies are configured");
+}
+
+struct TemporaryRule {
+  std::shared_ptr<ClassBasedPolicyNode> policy;
+  ForwardingClass trafficClass;
+};
+
+struct PolicyAclUpdate {
+  bool changed{false};
+  std::vector<TemporaryRule> temporaries;
+};
+
+struct ChangedPolicy {
+  std::shared_ptr<ClassBasedPolicyNode> old;
+  std::shared_ptr<ClassBasedPolicyNode> updated;
+};
+
+enum class PolicyAction { Add, Remove, Change, None };
+
+PolicyAction classifyPolicy(
+    const std::shared_ptr<ClassBasedPolicyNode>& old,
+    const std::shared_ptr<ClassBasedPolicyNode>& newPolicy) {
+  if (!old->isReferenced()) {
+    return newPolicy->isReferenced() ? PolicyAction::Add : PolicyAction::None;
+  }
+  return newPolicy->isReferenced() ? PolicyAction::Change
+                                   : PolicyAction::Remove;
+}
+
+std::shared_ptr<AclTable> pbrTableIn(const AclTableGroupMap& groupMap) {
+  auto group = groupMap.getAclTableGroupIf(cfg::AclStage::INGRESS);
+  auto tableMap = group ? group->getAclTableMap() : nullptr;
+  return tableMap ? tableMap->getTableIf(
+                        cfg::switch_config_constants::DEFAULT_PBR_ACL_TABLE())
+                  : nullptr;
 }
 
 void removeRuleEntry(
@@ -84,67 +118,67 @@ bool addPolicyEntries(
   return changed;
 }
 
-bool applyChangedPolicy(
+PolicyAclUpdate applyChangedPolicy(
     AclMap& aclMap,
     const std::shared_ptr<ClassBasedPolicyNode>& old,
     const std::shared_ptr<ClassBasedPolicyNode>& newPolicy) {
   const bool defaultChanged = *old->getDefaultNextHopGroup().id() !=
       *newPolicy->getDefaultNextHopGroup().id();
-  auto oldTc2Nhg = old->getClass2NextHopGroup();
-  auto newTc2Nhg = newPolicy->getClass2NextHopGroup();
-  std::map<std::string, std::shared_ptr<AclEntry>> newEntries;
-  for (const auto& entry : createAclEntriesFromPolicy(newPolicy)) {
-    newEntries.emplace(entry->getID(), entry);
-  }
-  bool changed = false;
+  const auto& oldTc2Nhg = old->getClass2NextHopGroup();
+  const auto& newTc2Nhg = newPolicy->getClass2NextHopGroup();
+  const auto& policyName = newPolicy->getID();
+  PolicyAclUpdate update;
   for (const auto& [tc, newNhg] : newTc2Nhg) {
-    auto name =
-        makePbrAclEntryName(newPolicy->getID(), tc, false /*temporary*/);
     auto oldIt = oldTc2Nhg.find(tc);
     if (oldIt == oldTc2Nhg.end()) {
-      aclMap.addNode(newEntries.at(name));
-      changed = true;
-    } else if (defaultChanged || oldIt->second != newNhg) {
-      if (!aclMap.getEntryIf(name)) {
-        throw FbossError(
-            "changed PBR policy '",
-            newPolicy->getID(),
-            "' has no programmed ACL entry '",
-            name,
-            "' to update");
-      }
-      // TODO(zecheng): implement hitless (make-before-break) update here.
-      aclMap.updateNode(newEntries.at(name));
-      changed = true;
+      aclMap.addNode(makePbrAclEntry(newPolicy, tc));
+      update.changed = true;
+      continue;
     }
+    if (!defaultChanged && oldIt->second == newNhg) {
+      continue;
+    }
+    auto original = makePbrAclEntryName(policyName, tc, false /*temporary*/);
+    if (!aclMap.getEntryIf(original)) {
+      throw FbossError(
+          "changed PBR policy '",
+          policyName,
+          "' has no programmed ACL entry '",
+          original,
+          "' to update");
+    }
+    // TODO(zecheng): implement hitless (make-before-break) update here.
+    aclMap.updateNode(makePbrAclEntry(newPolicy, tc));
+    update.changed = true;
   }
   for (const auto& [tc, _] : oldTc2Nhg) {
-    if (!newTc2Nhg.count(tc)) {
-      removeRuleEntry(aclMap, newPolicy->getID(), tc, false /*temporary*/);
-      changed = true;
+    if (newTc2Nhg.count(tc)) {
+      continue;
     }
+    removeRuleEntry(aclMap, policyName, tc, false /*temporary*/);
+    update.changed = true;
   }
-  return changed;
+  return update;
 }
 
-bool applyPolicyDelta(AclMap& newAclMap, const StateDelta& delta) {
+bool applyAddsAndRemoves(AclMap& newAclMap, const StateDelta& delta) {
   bool changed = false;
   DeltaFunctions::forEachChanged(
       delta.getClassBasedPoliciesDelta(),
       [&](const std::shared_ptr<ClassBasedPolicyNode>& old,
           const std::shared_ptr<ClassBasedPolicyNode>& newPolicy) {
-        if (!old->isReferenced()) {
-          if (newPolicy->isReferenced()) {
+        switch (classifyPolicy(old, newPolicy)) {
+          case PolicyAction::Add:
             changed |= addPolicyEntries(newAclMap, newPolicy);
-          }
-          return;
+            break;
+          case PolicyAction::Remove:
+            removePolicyEntries(newAclMap, old, false /*temporary*/);
+            changed = true;
+            break;
+          case PolicyAction::Change:
+          case PolicyAction::None:
+            break;
         }
-        if (!newPolicy->isReferenced()) {
-          removePolicyEntries(newAclMap, old, false /*temporary*/);
-          changed = true;
-          return;
-        }
-        changed |= applyChangedPolicy(newAclMap, old, newPolicy);
       },
       [&](const std::shared_ptr<ClassBasedPolicyNode>& newPolicy) {
         if (!newPolicy->isReferenced()) {
@@ -160,6 +194,61 @@ bool applyPolicyDelta(AclMap& newAclMap, const StateDelta& delta) {
         changed = true;
       });
   return changed;
+}
+
+std::vector<ChangedPolicy> changedPolicies(const StateDelta& delta) {
+  std::vector<ChangedPolicy> changed;
+  DeltaFunctions::forEachChanged(
+      delta.getClassBasedPoliciesDelta(),
+      [&](const std::shared_ptr<ClassBasedPolicyNode>& old,
+          const std::shared_ptr<ClassBasedPolicyNode>& newPolicy) {
+        if (classifyPolicy(old, newPolicy) == PolicyAction::Change) {
+          changed.push_back(ChangedPolicy{old, newPolicy});
+        }
+      },
+      [](const std::shared_ptr<ClassBasedPolicyNode>&) {},
+      [](const std::shared_ptr<ClassBasedPolicyNode>&) {});
+  return changed;
+}
+
+// Returns nullptr, not the input state, when no matcher's map changed.
+template <typename Mutate>
+std::shared_ptr<SwitchState> updatePbrTables(
+    const std::shared_ptr<SwitchState>& state,
+    Mutate&& mutate) {
+  auto newState = state;
+  bool changed = false;
+  for (const auto& [matcherStr, groupMap] :
+       std::as_const(*state->getAclTableGroups())) {
+    auto table = pbrTableIn(*groupMap);
+    if (!table) {
+      continue;
+    }
+    auto oldAclMap = table->getAclMap();
+    auto newAclMap =
+        oldAclMap ? oldAclMap->clone() : std::make_shared<AclMap>();
+    if (!mutate(*newAclMap)) {
+      continue;
+    }
+    table
+        ->modify(&newState, HwSwitchMatcher(matcherStr), cfg::AclStage::INGRESS)
+        ->setAclMap(std::move(newAclMap));
+    changed = true;
+  }
+  return changed ? newState : nullptr;
+}
+
+bool hasPbrTable(const std::shared_ptr<SwitchState>& state) {
+  auto groups = state->getAclTableGroups();
+  if (!groups) {
+    return false;
+  }
+  for (const auto& [_, groupMap] : std::as_const(*groups)) {
+    if (pbrTableIn(*groupMap)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 } // namespace
@@ -273,50 +362,44 @@ void PbrAclManager::processDelta(
   auto policies = newState->getClassBasedPolicies();
   size_t numPolicies = policies ? policies->numNodes() : 0;
 
-  const auto& kPbrTableId =
-      cfg::switch_config_constants::DEFAULT_PBR_ACL_TABLE();
-  auto aclTableGroups = newState->getAclTableGroups();
-  if (!aclTableGroups) {
+  if (!hasPbrTable(newState)) {
     if (numPolicies > 0) {
-      throwPbrTableMissing(kPbrTableId, numPolicies);
+      throwPbrTableMissing(
+          cfg::switch_config_constants::DEFAULT_PBR_ACL_TABLE(), numPolicies);
     }
     return;
   }
 
-  bool foundTable = false;
-  bool changed = false;
-  for (const auto& [matcherStr, groupMap] : std::as_const(*aclTableGroups)) {
-    auto group = groupMap->getAclTableGroupIf(cfg::AclStage::INGRESS);
-    auto tableMap = group ? group->getAclTableMap() : nullptr;
-    auto table = tableMap ? tableMap->getTableIf(kPbrTableId) : nullptr;
-    if (!table) {
-      continue;
+  bool first = true;
+  auto emit = [&](const std::shared_ptr<SwitchState>& state) {
+    state->publish();
+    if (first) {
+      inOutState->replaceLastDelta(StateDelta(delta.oldState(), state));
+      first = false;
+    } else {
+      inOutState->appendDelta(
+          StateDelta(inOutState->getCurrentStateDelta().newState(), state));
     }
-    foundTable = true;
-    auto oldAclMap = table->getAclMap();
-    auto newAclMap =
-        oldAclMap ? oldAclMap->clone() : std::make_shared<AclMap>();
-    if (!applyPolicyDelta(*newAclMap, delta)) {
-      continue;
-    }
-    table
-        ->modify(&newState, HwSwitchMatcher(matcherStr), cfg::AclStage::INGRESS)
-        ->setAclMap(std::move(newAclMap));
-    changed = true;
+    inOutState->updated = true;
+  };
+
+  if (auto addedAndRemoved = updatePbrTables(newState, [&](AclMap& aclMap) {
+        return applyAddsAndRemoves(aclMap, delta);
+      })) {
+    newState = addedAndRemoved;
+    emit(newState);
   }
 
-  if (!foundTable) {
-    if (numPolicies > 0) {
-      throwPbrTableMissing(kPbrTableId, numPolicies);
+  for (const auto& policy : changedPolicies(delta)) {
+    auto made = updatePbrTables(newState, [&](AclMap& aclMap) {
+      return applyChangedPolicy(aclMap, policy.old, policy.updated).changed;
+    });
+    if (!made) {
+      continue;
     }
-    return;
+    newState = made;
+    emit(newState);
   }
-  if (!changed) {
-    return;
-  }
-  newState->publish();
-  inOutState->replaceLastDelta(StateDelta(delta.oldState(), newState));
-  inOutState->updated = true;
 }
 
 std::vector<StateDelta> PbrAclManager::modifyStateImpl(

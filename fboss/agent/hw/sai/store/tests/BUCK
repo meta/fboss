@@ -229,6 +229,13 @@ store_unittest(
 )
 
 store_unittest(
+    name = "virtual_router_store_test",
+    srcs = [
+        "VirtualRouterStoreTest.cpp",
+    ],
+)
+
+store_unittest(
     name = "vlan_store_test",
     srcs = [
         "VlanStoreTest.cpp",

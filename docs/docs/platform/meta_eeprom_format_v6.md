@@ -84,7 +84,7 @@ CRC16 Type field is located at offset 63, CRC16 calculation will include bytes
 from offset 0 to offset 62, inclusively.
 
 Check
-[https://github.com/facebook/fboss/blob/main/fboss/platform/weutil/Crc16CcittAug.cpp](https://github.com/facebook/fboss/blob/main/fboss/platform/weutil/Crc16CcittAug.cpp)
+[https://github.com/meta/fboss/blob/main/fboss/platform/weutil/Crc16CcittAug.cpp](https://github.com/meta/fboss/blob/main/fboss/platform/weutil/Crc16CcittAug.cpp)
 for CRC16 CCITT AUG implementation.
 
 The below list shows the CRC16 output values for corner cases of byte streams

@@ -42,9 +42,12 @@ class AgentQueuePerHostRouteTest : public AgentHwTest {
     utility::addQueuePerHostQueueConfig(&cfg);
     utility::addQueuePerHostAcls(&cfg, ensemble.isSai());
     // Disabled so warm boot doesn't bring up an L2 loop with the first port.
+    // Also unlooped: a disabled port in MAC loopback can read oper UP at the
+    // initial link sync (seen on TH3), and no link down event follows.
     for (auto& port : *cfg.ports()) {
       if (PortID(*port.logicalID()) == ensemble.masterLogicalPortIds()[1]) {
         port.state() = cfg::PortState::DISABLED;
+        port.loopbackMode() = cfg::PortLoopbackMode::NONE;
       }
     }
     return cfg;
