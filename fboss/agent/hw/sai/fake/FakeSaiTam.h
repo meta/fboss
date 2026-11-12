@@ -25,6 +25,27 @@ class FakeSaiTam {
   std::vector<sai_int32_t> bindpoints_;
 };
 
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+class FakeSaiTamInt {
+ public:
+  sai_object_id_t id{};
+  sai_int32_t type{};
+  sai_uint32_t deviceId{};
+  sai_int32_t presenceType{};
+  bool inlineMode{true};
+  sai_uint16_t etherType{};
+  sai_int32_t signalType{SAI_CSIG_SIGNAL_TYPE_ABW};
+  sai_uint32_t bandwidthInterval{128};
+  sai_uint32_t bandCount{32};
+  std::vector<sai_uint16_t> bandIds;
+  std::vector<sai_u64_range_t> ranges;
+  sai_uint32_t wideBase{};
+  sai_uint32_t wideStep{1};
+  bool dBit{false};
+};
+using FakeTamIntManager = FakeManager<sai_object_id_t, FakeSaiTamInt>;
+#endif
+
 class FakeSaiTamEvent {
  public:
   FakeSaiTamEvent(

@@ -75,6 +75,7 @@ FBOSS_STRONG_TYPE(sai_object_id_t, TamEventSaiId);
 // NOLINTNEXTLINE(cppcoreguidelines-special-member-functions)
 FBOSS_STRONG_TYPE(sai_object_id_t, TamEventThresholdSaiId);
 FBOSS_STRONG_TYPE(sai_object_id_t, TamSaiId);
+FBOSS_STRONG_TYPE(sai_object_id_t, TamIntSaiId);
 // NOLINTNEXTLINE(cppcoreguidelines-special-member-functions)
 FBOSS_STRONG_TYPE(sai_object_id_t, Srv6SidListSaiId);
 FBOSS_STRONG_TYPE(sai_object_id_t, TunnelSaiId);

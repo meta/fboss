@@ -292,6 +292,8 @@ folly::StringPiece saiObjectTypeToString(sai_object_type_t objectType) {
       return "tam-event-action";
     case SAI_OBJECT_TYPE_TAM_EVENT:
       return "tam-event";
+    case SAI_OBJECT_TYPE_TAM_INT:
+      return "tam-int";
     case SAI_OBJECT_TYPE_TAM:
       return "tam";
     case SAI_OBJECT_TYPE_TAM_EVENT_THRESHOLD:

@@ -107,6 +107,9 @@ struct FakeSai {
   FakeCbfcCreditProfileManager cbfcCreditProfileManager;
   FakeWredManager wredManager;
   FakeTamManager tamManager;
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+  FakeTamIntManager tamIntManager;
+#endif
   FakeTamEventManager tamEventManager;
   FakeTamEventActionManager tamEventActionManager;
   FakeTamReportManager tamReportManager;
