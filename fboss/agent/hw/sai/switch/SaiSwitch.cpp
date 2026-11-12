@@ -6248,7 +6248,7 @@ void SaiSwitch::switchAsicSdkHealthNotificationTopHalf(
     SaiHealthNotification saiHealthNotification) {
   switchAsicSdkHealthNotificationBHEventBase_.runInFbossEventBaseThread(
       [this, notification = std::move(saiHealthNotification)]() {
-        switchAsicSdkHealthNotificationBottomHalf(std::move(notification));
+        switchAsicSdkHealthNotificationBottomHalf(notification);
       });
 }
 
