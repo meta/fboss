@@ -144,6 +144,12 @@ bool Tomahawk6Asic::isSupported(Feature feature) const {
       return saiSdkAtLeast("16.0_ea_odp");
     case HwAsic::Feature::SAI_MPLS_NEXTHOP_OUTSEG_TYPE:
       return saiSdkAtLeast("16.0_ea_odp");
+    case HwAsic::Feature::LINK_LAYER_RETRANSMISSION:
+      // UEC Link Layer Retry (UE Spec 1.0.2 section 5.1) via SAI
+      // PORT_LLR_PROFILE. Experimental on TH6 from the 16.0 early access drop
+      // onwards (baking on the Ladakh non-blocking conveyor node); 14.2 keeps
+      // reporting unsupported so those runs skip via SDK gating.
+      return saiSdkAtLeast("16.0_ea_odp");
     // features not working well with bcmsim
     case HwAsic::Feature::MIRROR_PACKET_TRUNCATION:
     case HwAsic::Feature::SFLOW_SAMPLING:
@@ -261,7 +267,6 @@ bool Tomahawk6Asic::isSupported(Feature feature) const {
     case HwAsic::Feature::PBR_ACL:
     case HwAsic::Feature::PBR_ACL_BYTE_COUNTER:
     case HwAsic::Feature::CBFC:
-    case HwAsic::Feature::LINK_LAYER_RETRANSMISSION:
     case HwAsic::Feature::SLL_HLL_DISCARD_COUNTERS:
     case HwAsic::Feature::NEXT_HOP_GROUP_MEMBER_MONITORED_OBJECT:
     case HwAsic::Feature::RX_PACKET_TYPE:

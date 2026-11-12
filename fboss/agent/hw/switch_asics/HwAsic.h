@@ -615,8 +615,9 @@ class HwAsic {
     // group and traffic class, redirecting to a per-TC next hop group.
     PBR_ACL,
     // UEC Link Layer Retry (UE Spec 1.0.2 section 5.1): hop-by-hop link-layer
-    // retransmission of LLR-eligible frames between link partners. Currently
-    // supported only on Tomahawk Ultra.
+    // retransmission of LLR-eligible frames between link partners. Supported
+    // on Tomahawk Ultra, and experimentally on Tomahawk6 from the 16.0 early
+    // access drop (see Tomahawk6Asic::isSupported).
     LINK_LAYER_RETRANSMISSION,
     CBFC,
     // Per-port link up/down debounce (hold-off timers) and the associated
