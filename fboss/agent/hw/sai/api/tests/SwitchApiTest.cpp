@@ -826,6 +826,41 @@ TEST_F(SwitchApiTest, setDropReasonListIsReadOnly) {
       SaiApiError);
 }
 
+TEST_F(SwitchApiTest, getEmptyDropReasonList) {
+  EXPECT_TRUE(switchApi
+                  ->getAttribute(
+                      switchId, SaiSwitchTraits::Attributes::DropReasonList{})
+                  .empty());
+}
+
+TEST_F(SwitchApiTest, dropReasonListOverflowRetainsSnapshot) {
+  const std::vector<sai_uint32_t> reasons{0x00050001, 0xffffffff};
+  auto& sw = fs->switchManager.get(switchId);
+  sw.setDropReasonList(reasons);
+  sai_attribute_t attr{};
+  attr.id = *SaiSwitchTraits::Attributes::AttributeDropReasonList{}();
+  const auto* api = switchApi->api();
+  EXPECT_EQ(
+      api->get_switch_attribute(switchId, 1, &attr),
+      SAI_STATUS_BUFFER_OVERFLOW);
+  EXPECT_EQ(attr.value.u32list.count, reasons.size());
+  EXPECT_EQ(sw.getDropReasonList(), reasons);
+
+  sai_uint32_t undersized{};
+  attr.value.u32list = {1, &undersized};
+  EXPECT_EQ(
+      api->get_switch_attribute(switchId, 1, &attr),
+      SAI_STATUS_BUFFER_OVERFLOW);
+  EXPECT_EQ(attr.value.u32list.count, reasons.size());
+  EXPECT_EQ(sw.getDropReasonList(), reasons);
+
+  std::vector<sai_uint32_t> buffer(reasons.size());
+  attr.value.u32list = {static_cast<uint32_t>(buffer.size()), buffer.data()};
+  EXPECT_EQ(api->get_switch_attribute(switchId, 1, &attr), SAI_STATUS_SUCCESS);
+  EXPECT_EQ(buffer, reasons);
+  EXPECT_TRUE(sw.getDropReasonList().empty());
+}
+
 TEST_F(SwitchApiTest, getEmptyPacketDropTypeIngressList) {
   EXPECT_TRUE(switchApi
                   ->getAttribute(
