@@ -251,6 +251,7 @@ target_link_libraries(agent_ensemble
   agent_hw_test_ctrl_cpp2
   hw_switch_thrift_client_table
   thrift::rpc
+  hw_test_lifecycle_event
   ${GTEST}
 )
 

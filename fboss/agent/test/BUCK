@@ -939,6 +939,7 @@ cpp_library(
         "//fboss/agent/hw:hardware_stats-cpp2-types",
         "//fboss/agent/hw/bcm:bcm_config-cpp2-types",
         "//fboss/agent/hw/test:config_factory",
+        "//fboss/agent/hw/test:hw_test_lifecycle_event",
         "//fboss/agent/if:agent_hw_test_ctrl-cpp2-services",
         "//fboss/agent/test/utils:config_utils",
         "//fboss/agent/test/utils:pkt_test_utils",

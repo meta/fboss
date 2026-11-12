@@ -852,21 +852,24 @@ cpp_library(
     ],
 )
 
-# Platform-agnostic HwTestThriftHandler method bodies (log capture), shared by
-# every ASIC's agent_hw_test_thrift_handler so the implementation is not
-# duplicated per platform.
+# Platform-agnostic HwTestThriftHandler method bodies, shared by every ASIC's
+# agent_hw_test_thrift_handler so the implementation is not duplicated per
+# platform.
 cpp_library(
     name = "hw_test_thrift_handler",
     srcs = [
+        "HwTestLifecycleThriftHandler.cpp",
         "HwTestLogCaptureThriftHandler.cpp",
     ],
     deps = [
         "fbsource//xplat/folly:synchronized",
         "fbsource//xplat/folly/logging:log_handler",
         "fbsource//xplat/folly/logging:logging",
+        ":hw_test_lifecycle_event",
         ":hw_test_thrift_handler_h",
         "//fb303:service_data",
         "//fb303:thread_cached_service_data",
+        "//fboss/agent:agent_features",
     ],
     exported_deps = [],
 )

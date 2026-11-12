@@ -17,6 +17,7 @@
 #include "fboss/agent/hw/gen-cpp2/hardware_stats_constants.h"
 #include "fboss/agent/hw/gen-cpp2/hardware_stats_types.h"
 #include "fboss/agent/hw/test/ConfigFactory.h"
+#include "fboss/agent/hw/test/HwTestLifecycleEvent.h"
 #include "fboss/agent/test/TestUtils.h"
 #include "fboss/agent/test/utils/ConfigUtils.h"
 #include "fboss/agent/test/utils/PacketSendUtils.h"
@@ -53,6 +54,9 @@ static const int kMsWaitForStatsRetry = 2000;
 constexpr auto kConfig = "config";
 constexpr auto kMultiSwitch = "multi_switch";
 constexpr auto kOverriddenAgentConfigFile = "overridden_agent.conf";
+// A retry after a timeout could deliver the event twice to a slow observer.
+constexpr int kTestLifecycleNotificationRetries = 0;
+constexpr std::chrono::seconds kTestLifecycleNotificationTimeout{30};
 } // namespace
 
 namespace facebook::fboss {
@@ -867,7 +871,10 @@ bool AgentEnsemble::ensureSendPacketOutOfPort(
 }
 
 std::unique_ptr<apache::thrift::Client<utility::AgentHwTestCtrl>>
-AgentEnsemble::getHwAgentTestClient(SwitchID switchId) {
+AgentEnsemble::getHwAgentTestClient(
+    SwitchID switchId,
+    int retries,
+    std::optional<std::chrono::milliseconds> timeout) {
   auto switchIndex =
       getSw()->getSwitchInfoTable().getSwitchIndexFromSwitchId(switchId);
   uint16_t port = FLAGS_hwagent_port_base + switchIndex;
@@ -875,12 +882,16 @@ AgentEnsemble::getHwAgentTestClient(SwitchID switchId) {
 
   auto reconnectingChannel =
       apache::thrift::PooledRequestChannel::newSyncChannel(
-          evbThread, [port, evbThread](folly::EventBase& evb) {
+          evbThread,
+          [port, retries, timeout, evbThread](folly::EventBase& evb) {
             return apache::thrift::RetryingRequestChannel::newChannel(
                 evb,
-                2, /*retries before error*/
+                retries,
                 apache::thrift::ReconnectingRequestChannel::newChannel(
-                    *evbThread->getEventBase(), [port](folly::EventBase& evb) {
+                    *evbThread->getEventBase(),
+                    [port, timeout](folly::EventBase& evb) {
+                      const auto requestTimeout = timeout.value_or(
+                          std::chrono::seconds(FLAGS_hwswitch_query_timeout));
                       auto socket = folly::AsyncSocket::UniquePtr(
                           new folly::AsyncSocket(&evb));
                       socket->connect(
@@ -888,12 +899,42 @@ AgentEnsemble::getHwAgentTestClient(SwitchID switchId) {
                       auto channel =
                           apache::thrift::RocketClientChannel::newChannel(
                               std::move(socket));
-                      channel->setTimeout(FLAGS_hwswitch_query_timeout * 1000);
+                      channel->setTimeout(
+                          static_cast<uint32_t>(requestTimeout.count()));
                       return channel;
                     }));
           });
   return std::make_unique<apache::thrift::Client<utility::AgentHwTestCtrl>>(
       std::move(reconnectingChannel));
+}
+
+bool AgentEnsemble::notifyTestLifecycleEvent(
+    const std::string& attemptUuid,
+    utility::TestLifecycleEvent event) {
+  const SwitchID switchId(FLAGS_switch_id_for_testing);
+  utility::TestLifecycleEventResult result;
+  try {
+    if (!getSw()->isRunModeMultiSwitch()) {
+      result = utility::testLifecycleObservers().notify(
+          attemptUuid,
+          event,
+          getSw()->getSwitchInfoTable().getSwitchIndexFromSwitchId(switchId));
+    } else {
+      getHwAgentTestClient(
+          switchId,
+          kTestLifecycleNotificationRetries,
+          kTestLifecycleNotificationTimeout)
+          ->sync_notifyTestLifecycleEvent(result, attemptUuid, event);
+    }
+  } catch (const std::exception& ex) {
+    result.error() = ex.what();
+  }
+  if (!*result.success()) {
+    XLOG(ERR) << "Test-lifecycle notification to switch "
+              << static_cast<int64_t>(switchId)
+              << " failed: " << result.error().value_or("unknown error");
+  }
+  return *result.success();
 }
 
 /**

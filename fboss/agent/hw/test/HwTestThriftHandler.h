@@ -273,6 +273,12 @@ class HwTestThriftHandler : public AgentHwTestCtrlSvIf {
 
   int64_t getFb303Counter(std::unique_ptr<std::string> key) override;
 
+  // Platform-agnostic; defined once in HwTestLifecycleThriftHandler.cpp.
+  void notifyTestLifecycleEvent(
+      TestLifecycleEventResult& result,
+      std::unique_ptr<std::string> attemptUuid,
+      TestLifecycleEvent event) override;
+
  private:
   HwSwitch* hwSwitch_;
   // Captures log messages in this process for tests to read over RPC.
