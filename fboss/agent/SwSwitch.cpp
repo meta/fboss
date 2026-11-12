@@ -96,6 +96,7 @@
 #include "fboss/agent/state/AggregatePort.h"
 #include "fboss/agent/state/DeltaFunctions.h"
 #include "fboss/agent/state/Interface.h"
+#include "fboss/agent/state/InterfaceVrf.h"
 #include "fboss/agent/state/StateDelta.h"
 #include "fboss/agent/state/StateUpdateHelpers.h"
 #include "fboss/agent/state/SwitchState.h"
@@ -3826,6 +3827,53 @@ bool SwSwitch::sendPacketToHost(
     InterfaceID dstIfID,
     std::unique_ptr<RxPacket> pkt) {
   return tunMgr_ && tunMgr_->sendPacketToHost(dstIfID, std::move(pkt));
+}
+
+void SwSwitch::updateInterfaceVrfs(
+    const std::map<InterfaceID, RouterID>& interfaceVrfs) {
+  if (interfaceVrfs.empty()) {
+    return;
+  }
+  // Runs in the update thread on the latest state, in the same update as the
+  // routes moved by the RIB. A rejected move fails the update and the RIB
+  // rolls back.
+  auto moveInterfaces =
+      [this, interfaceVrfs](const std::shared_ptr<SwitchState>& in) {
+        auto newState = in->clone();
+        auto interfaceVrfMap = newState->getInterfaceVrfs()->modify(&newState);
+        for (const auto& [intfId, vrf] : interfaceVrfs) {
+          auto intf = newState->getInterfaces()->getNodeIf(intfId);
+          if (!intf) {
+            throw FbossHwUpdateError(in, in, "Unknown interface ", intfId);
+          }
+          if (vrf != RouterID(0) && !newState->getVrfs()->getNodeIf(vrf)) {
+            throw FbossHwUpdateError(in, in, "VRF ", vrf, " not configured");
+          }
+          if (intf->getRouterID() == vrf) {
+            continue;
+          }
+          auto newIntf = intf->modify(&newState);
+          newIntf->setRouterID(vrf);
+          // Neighbors are relearned in the new VRF
+          newIntf->setArpTable(state::NeighborEntries{});
+          newIntf->setNdpTable(state::NeighborEntries{});
+          if (interfaceVrfMap->getNodeIf(intfId)) {
+            interfaceVrfMap->removeNode(intfId);
+          }
+          if (vrf != RouterID(0)) {
+            auto entry = std::make_shared<InterfaceVrf>(intfId, vrf);
+            interfaceVrfMap->addNode(
+                entry, getScopeResolver()->scope(entry, newState));
+          }
+        }
+        return newState;
+      };
+  getRib()->updateInterfaceVrfs(
+      getScopeResolver(),
+      RoutingInformationBase::InterfaceToVrf(
+          interfaceVrfs.begin(), interfaceVrfs.end()),
+      createRibToSwitchStateFunction(std::nullopt, std::move(moveInterfaces)),
+      this);
 }
 
 void SwSwitch::applyConfig(const std::string& reason, bool reload) {

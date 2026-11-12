@@ -692,3 +692,110 @@ TEST(RibToSwitchStateFunction, PreFibUpdateInSameStateUpdate) {
   EXPECT_EQ(bothIndex, recorder.firstIndex(routeAdded));
   EXPECT_EQ(bothIndex, recorder.firstIndex(intfBound));
 }
+
+namespace {
+// testConfigA with kTestVrf configured; all interfaces in VRF 0
+cfg::SwitchConfig emptyVrfConfig() {
+  auto config = testConfigA();
+  config.vrfs().ensure().emplace_back().vrfId() = kTestVrf;
+  return config;
+}
+} // namespace
+
+TEST(UpdateInterfaceVrfs, RoutesFollowInterface) {
+  auto config = emptyVrfConfig();
+  auto handle = createTestHandle(&config);
+  auto sw = handle->getSw();
+  {
+    auto updater = sw->getRouteUpdater();
+    updater.addRoute(
+        RouterID(0),
+        ClientID::BGPD,
+        makeRoute("2001:db8:100::/64", "10.0.55.10"));
+    updater.addRoute(
+        kTestVrf, ClientID::BGPD, makeRoute("2001:db8:200::/64", "10.0.55.10"));
+    updater.program();
+  }
+  ASSERT_EQ(
+      egressIntf(sw->getState(), RouterID(0), "2001:db8:100::/64"),
+      InterfaceID(55));
+  StateRecorder recorder(sw);
+
+  sw->updateInterfaceVrfs({{InterfaceID(55), kTestVrf}});
+
+  auto state = sw->getState();
+  EXPECT_EQ(intf55Vrf(state), kTestVrf);
+  EXPECT_EQ(state->getInterfaceVrfs()->getVrf(InterfaceID(55)), kTestVrf);
+  EXPECT_FALSE(hasRoute(state, RouterID(0), "10.0.55.0/24"));
+  // VRF 0 no longer reaches the next hop through interface 55
+  EXPECT_EQ(egressIntf(state, RouterID(0), "2001:db8:100::/64"), std::nullopt);
+  EXPECT_TRUE(hasRoute(state, kTestVrf, "10.0.55.0/24"));
+  EXPECT_EQ(egressIntf(state, kTestVrf, "2001:db8:200::/64"), InterfaceID(55));
+  // The interface moves with its routes in one state update
+  auto moved = [](const auto& state) { return intf55Vrf(state) == kTestVrf; };
+  auto routed = [](const auto& state) {
+    return hasRoute(state, kTestVrf, "2001:db8:200::/64");
+  };
+  EXPECT_EQ(recorder.firstIndex(moved), recorder.firstIndex(routed));
+}
+
+TEST(UpdateInterfaceVrfs, FlushesNeighbors) {
+  auto config = emptyVrfConfig();
+  auto handle = createTestHandle(&config);
+  auto sw = handle->getSw();
+  sw->updateStateBlocking(
+      "add neighbor", [](const std::shared_ptr<SwitchState>& in) {
+        auto state = in->clone();
+        auto intf = state->getInterfaces()->getNode(InterfaceID(55));
+        intf->getArpTable()
+            ->modify(InterfaceID(55), &state)
+            ->addEntry(
+                folly::IPAddressV4("10.0.55.10"),
+                folly::MacAddress("02:00:00:00:00:01"),
+                PortDescriptor(PortID(11)),
+                InterfaceID(55));
+        return state;
+      });
+  ASSERT_EQ(
+      sw->getState()
+          ->getInterfaces()
+          ->getNode(InterfaceID(55))
+          ->getArpTable()
+          ->size(),
+      1);
+
+  sw->updateInterfaceVrfs({{InterfaceID(55), kTestVrf}});
+
+  EXPECT_EQ(
+      sw->getState()
+          ->getInterfaces()
+          ->getNode(InterfaceID(55))
+          ->getArpTable()
+          ->size(),
+      0);
+}
+
+TEST(UpdateInterfaceVrfs, MoveBackToDefaultVrf) {
+  auto config = emptyVrfConfig();
+  auto handle = createTestHandle(&config);
+  auto sw = handle->getSw();
+  sw->updateInterfaceVrfs({{InterfaceID(55), kTestVrf}});
+  sw->updateInterfaceVrfs({{InterfaceID(55), RouterID(0)}});
+
+  auto state = sw->getState();
+  EXPECT_EQ(intf55Vrf(state), RouterID(0));
+  EXPECT_EQ(state->getInterfaceVrfs()->numNodes(), 0);
+  EXPECT_TRUE(hasRoute(state, RouterID(0), "10.0.55.0/24"));
+  EXPECT_FALSE(hasRoute(state, kTestVrf, "10.0.55.0/24"));
+}
+
+TEST(UpdateInterfaceVrfs, Rejected) {
+  auto config = emptyVrfConfig();
+  auto handle = createTestHandle(&config);
+  auto sw = handle->getSw();
+  EXPECT_THROW(
+      sw->updateInterfaceVrfs({{InterfaceID(1234), kTestVrf}}), FbossError);
+  EXPECT_THROW(
+      sw->updateInterfaceVrfs({{InterfaceID(55), RouterID(2002)}}), FbossError);
+  EXPECT_EQ(intf55Vrf(sw->getState()), RouterID(0));
+}

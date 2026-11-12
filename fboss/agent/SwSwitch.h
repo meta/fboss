@@ -410,6 +410,14 @@ class SwSwitch : public HwSwitchCallback {
       const cfg::SwitchConfig& newConfig);
 
   /*
+   * Moves interfaces to other VRFs in one switch state update: the interface
+   * VRFs, the interface to VRF map, the flushed neighbors of moved interfaces
+   * and the routes of the changed VRFs. VRF 0 is the default VRF.
+   */
+  void updateInterfaceVrfs(
+      const std::map<InterfaceID, RouterID>& interfaceVrfs);
+
+  /*
    * Get config applied information which include last config applied time(ms).
    * NOTE: If no config has ever been applied, the default timestamp is 0.
    */
