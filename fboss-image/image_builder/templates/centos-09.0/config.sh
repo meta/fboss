@@ -120,7 +120,10 @@ restorecon -Rv /var/facebook/logs/fboss
 # default ACL forces group rwx on every new file/dir regardless of umask, and
 # is itself inherited by new subdirectories, so it cascades indefinitely.
 echo "Creating coop user/group and /etc/coop directory..."
-groupadd -f -r switching
+# Pin gid 1001: without -g the gid floats with creation order (kiwi
+# pre-created it at 1001 when netops listed it; alone, -r yields a
+# system gid instead), and the netadmin container matches it by number.
+groupadd -f -r -g 1001 switching
 useradd -r -g switching -s /sbin/nologin -M -d /nonexistent coop
 mkdir -p /etc/coop
 chown -R coop:switching /etc/coop
@@ -470,6 +473,21 @@ install() {
   # Install the hook script to run BEFORE mounting (pre-mount priority 00)
   # $moddir resolves to the directory where this script sits
   inst_hook pre-mount 00 "$moddir/fix-nvme.sh"
+
+  # Raw disk partition LBAs use the device's logical sector size. KIWI checks
+  # the physical size instead, rejecting 512e NVMe drives after fix-nvme.sh
+  # successfully switches them to 512-byte LBAs.
+  local kiwi_dump_hook="$initdir/lib/dracut/hooks/pre-mount/30-kiwi-dump-image.sh"
+  if [ -f "$kiwi_dump_hook" ]; then
+    if grep -q 'queue/physical_block_size' "$kiwi_dump_hook"; then
+      sed -i \
+        's|queue/physical_block_size|queue/logical_block_size|' \
+        "$kiwi_dump_hook"
+    elif ! grep -q 'queue/logical_block_size' "$kiwi_dump_hook"; then
+      dfatal "NVMe-Fix: KIWI target block-size check has an unknown form"
+      return 1
+    fi
+  fi
 }
 EOF
 
@@ -553,7 +571,7 @@ fi
 
 # Fix NetworkManager connection profile permissions
 # NM ignores profiles that are world-readable
-chmod 600 /etc/NetworkManager/system-connections/eth0.nmconnection
+chmod 600 /etc/NetworkManager/system-connections/*.nmconnection
 
 # Done! Cleanup and install additional packages
 echo "Cleaning up /repos directory..."

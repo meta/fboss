@@ -15,8 +15,8 @@ cpp_library(
         "facebook/Minipack16OPimPlatformMapping.h",
     ],
     deps = [
+        "fbsource//xplat/folly/logging:logging",
         "//fboss/lib/fpga:minipack_container",
-        "//folly/logging:logging",
     ],
     exported_deps = [
         "//fboss/agent/platforms/common:platform_mapping",

@@ -30,6 +30,10 @@
           "num_lanes": 4,
           "fec": "PC_FEC_RS528"
         },
+        "25000": {
+          "num_lanes": 1,
+          "fec": "PC_FEC_RS528"
+        },
         "10000": {
           "num_lanes": 1,
           "fec": "PC_FEC_NONE",
@@ -67,14 +71,26 @@
     ]
   },
   "variants": {
-    "": {},
+    "default": {},
+    "benchmark": {
+      "asic_config_params": {
+        "config_gen_type": "BENCHMARK"
+      }
+    },
     "hw_test": {
       "asic_config_params": {
         "config_gen_type": "HW_TEST"
       },
       "features": {
         "enable_sai_managed_udf_groups": true,
-        "enable_large_ecmp_member_capacity": true
+        "enable_large_ecmp_member_capacity": true,
+        "enable_uncached_port_stats": true
+      }
+    },
+    "mgmt_4x25g": {
+      "mgmt_port_overrides": {
+        "num_ports": 4,
+        "speed": 25000
       }
     }
   }

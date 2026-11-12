@@ -9,11 +9,11 @@ cpp_binary(
     ],
     deps = [
         "fbsource//third-party/googletest:gtest",
+        "fbsource//xplat/folly:subprocess",
         "//fb303:service_data",
         "//fboss/lib:common_utils",
         "//fboss/platform/config_lib:config_lib",
         "//fboss/platform/fan_service:core",
         "//fboss/platform/helpers:init",
-        "//folly:subprocess",
     ],
 )

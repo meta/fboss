@@ -42,22 +42,22 @@ cpp_library(
     ],
     deps = [
         "fbsource//third-party/fmt:fmt",
+        "fbsource//xplat/folly/lang:bits",
+        "fbsource//xplat/folly/logging:logging",
         "//fboss/agent:dhcpv4_options_of_interest",
         "//fboss/agent:fboss-error",
         "//fboss/agent:stats",
-        "//folly/lang:bits",
-        "//folly/logging:logging",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:conv",
+        "fbsource//xplat/folly:network_address",
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/io:iobuf",
         ":ether_type",
         ":hdr_parse_error",
         ":ipproto",
         "//fboss/agent:fboss-types",
         "//fboss/agent:utils",
-        "//folly:conv",
-        "//folly:network_address",
-        "//folly:string",
-        "//folly/io:iobuf",
     ],
 )
 
@@ -70,9 +70,9 @@ cpp_library(
         "SflowStructs.h",
     ],
     exported_deps = [
-        "//folly:exception_string",
-        "//folly:network_address",
-        "//folly/io:iobuf",
+        "fbsource//xplat/folly:exception_string",
+        "fbsource//xplat/folly:network_address",
+        "fbsource//xplat/folly/io:iobuf",
     ],
 )
 
@@ -86,7 +86,7 @@ cpp_library(
     ],
     deps = [":hdr_parse_error"],
     exported_deps = [
-        "//folly/io:iobuf",
+        "fbsource//xplat/folly/io:iobuf",
     ],
 )
 
@@ -100,11 +100,11 @@ cpp_library(
     ],
     deps = [
         "fbsource//third-party/fmt:fmt",
+        "fbsource//xplat/folly/io:iobuf",
         "//fboss/agent:fboss-error",
-        "//folly/io:iobuf",
     ],
     exported_deps = [
-        "//folly:network_address",
+        "fbsource//xplat/folly:network_address",
     ],
 )
 
@@ -127,19 +127,19 @@ cpp_library(
         "UDPDatagram.h",
     ],
     deps = [
+        "fbsource//xplat/folly:network_address",
         ":ipproto",
         "//common/logging:logging",
         "//fboss/agent:fboss-error",
         "//fboss/agent:hw_switch",
-        "//folly:network_address",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/io:iobuf",
         ":ether_type",
         ":packet",
         ":sflow_structs",
         "//fboss/agent:fboss-types",
         "//fboss/agent:packet",
-        "//folly/io:iobuf",
     ],
 )
 

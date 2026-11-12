@@ -12,6 +12,7 @@
 
 #include <gmock/gmock.h>
 
+#include "fboss/platform/helpers/ExpectSession.h"
 #include "fboss/platform/platform_checks/Host.h"
 
 namespace facebook::fboss::platform::platform_checks {
@@ -42,6 +43,11 @@ class MockHost : public Host {
        std::chrono::seconds),
       (const, override));
   MOCK_METHOD(
+      std::unique_ptr<ExpectSession>,
+      spawnInteractive,
+      (),
+      (const, override));
+  MOCK_METHOD(
       std::optional<std::string>,
       readFile,
       (const std::filesystem::path&),
@@ -52,6 +58,17 @@ class MockHost : public Host {
       listDirectory,
       (const std::filesystem::path&),
       (const, override));
+
+  // Reads through the readFile() mock, so tests set up files one by one.
+  std::vector<std::optional<std::string>> readFiles(
+      const std::vector<std::filesystem::path>& paths) const override {
+    std::vector<std::optional<std::string>> contents;
+    contents.reserve(paths.size());
+    for (const auto& path : paths) {
+      contents.push_back(readFile(path));
+    }
+    return contents;
+  }
 
  private:
   std::string name_;

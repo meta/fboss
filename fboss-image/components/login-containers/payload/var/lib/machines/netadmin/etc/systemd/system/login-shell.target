@@ -1,5 +1,0 @@
-[Unit]
-Description=Minimal login machine target
-Requires=systemd-journald.service systemd-tmpfiles-setup.service dbus-broker.service
-After=systemd-journald.service systemd-tmpfiles-setup.service dbus-broker.service
-AllowIsolate=yes

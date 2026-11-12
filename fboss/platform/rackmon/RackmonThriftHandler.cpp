@@ -274,12 +274,12 @@ void ThriftHandler::transformMonitorDataFilter(
   if (reqDevFilter) {
     if (reqDevFilter->addressFilter().has_value()) {
       std::set<uint16_t> unsignedDevs;
-      for (const auto& value : reqDevFilter->get_addressFilter()) {
+      for (const auto& value : reqDevFilter->addressFilter().value()) {
         unsignedDevs.insert(static_cast<uint16_t>(value));
       }
       devFilter.locationFilter = rackmon::DeviceLocationFilter(unsignedDevs);
     } else if (reqDevFilter->typeFilter().has_value()) {
-      std::set<ModbusDeviceType> types = reqDevFilter->get_typeFilter();
+      std::set<ModbusDeviceType> types = reqDevFilter->typeFilter().value();
       devFilter.typeFilter.emplace();
       for (auto& type : types) {
         devFilter.typeFilter->insert(typeToString(type));
@@ -290,13 +290,13 @@ void ThriftHandler::transformMonitorDataFilter(
   }
   if (reqRegFilter) {
     if (reqRegFilter->addressFilter().has_value()) {
-      std::set<int32_t> regs = reqRegFilter->get_addressFilter();
+      std::set<int32_t> regs = reqRegFilter->addressFilter().value();
       regFilter.addrFilter.emplace();
       for (auto& addr : regs) {
         regFilter.addrFilter->insert(uint16_t(addr));
       }
     } else if (reqRegFilter->nameFilter().has_value()) {
-      regFilter.nameFilter = reqRegFilter->get_nameFilter();
+      regFilter.nameFilter = reqRegFilter->nameFilter().value();
     } else {
       LOG(ERROR) << "Unsupported empty reg filter" << std::endl;
     }

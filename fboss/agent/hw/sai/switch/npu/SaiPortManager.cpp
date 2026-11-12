@@ -5,7 +5,6 @@
 #include "fboss/agent/AgentFeatures.h"
 #include "fboss/agent/FbossError.h"
 #include "fboss/agent/hw/HwPortFb303Stats.h"
-#include "fboss/agent/hw/gen-cpp2/hardware_stats_constants.h"
 #include "fboss/agent/hw/sai/store/SaiStore.h"
 #include "fboss/agent/hw/sai/switch/ConcurrentIndices.h"
 #include "fboss/agent/hw/sai/switch/SaiAclTableManager.h"
@@ -327,6 +326,17 @@ void SaiPortManager::fillInSupportedStats(PortID port) {
       counterIds.emplace_back(
           SAI_PORT_STAT_OUT_CONFIGURED_DROP_REASONS_0_DROPPED_PKTS);
     }
+// 13.3+: the 13.3 tp2 package propagates SAI_VERSION_13_0_EA_ODP and 13.0 EA
+// is retired from the build matrix, so GTE_13_0 is the operative gate.
+#if defined(BRCM_SAI_SDK_XGS_GTE_13_0)
+    if (platform_->getAsic()->isSupported(
+            HwAsic::Feature::HW_PROTECTION_SWITCHOVER_COUNTERS)) {
+      counterIds.emplace_back(
+          SAI_PORT_STAT_IF_IN_HW_PROTECTION_SWITCHOVER_EVENTS);
+      counterIds.emplace_back(
+          SAI_PORT_STAT_IF_IN_HW_PROTECTION_SWITCHOVER_DROP_PKTS);
+    }
+#endif
     if (platform_->getAsic()->isSupported(
             HwAsic::Feature::SAI_PORT_IN_CONGESTION_DISCARDS)) {
       counterIds.emplace_back(SAI_PORT_STAT_IN_DROPPED_PKTS);
@@ -414,7 +424,9 @@ PortSaiId SaiPortManager::addPortImpl(const std::shared_ptr<Port>& swPort) {
             SaiPortManager::isLinkDebounceRetriggerCounterSupported(
                 platform_->getAsic()),
             platform_->getAsic()->isSupported(
-                HwAsic::Feature::SLL_HLL_DISCARD_COUNTERS)));
+                HwAsic::Feature::SLL_HLL_DISCARD_COUNTERS),
+            platform_->getAsic()->isSupported(
+                HwAsic::Feature::PORT_LATCH_STATUS)));
   }
 
   bool samplingMirror = swPort->getSampleDestination().has_value() &&
@@ -435,9 +447,13 @@ PortSaiId SaiPortManager::addPortImpl(const std::shared_ptr<Port>& swPort) {
   auto platformPort = platform_->getPort(swPort->getID());
   platformPort->setCurrentProfile(swPort->getProfileID());
 
-  // set the lower 32-bit of SaiId as Hardware logical port ID
   auto portSaiId = saiPort->adapterKey();
   uint32_t hwLogicalPortId = static_cast<uint32_t>(portSaiId);
+  if (platform_->getAsic()->getAsicType() == cfg::AsicType::ASIC_TYPE_CHENAB) {
+    // Chenab stores the SDK logical port ID in the upper 32 bits of the OID.
+    hwLogicalPortId =
+        static_cast<uint32_t>(static_cast<uint64_t>(portSaiId) >> 32);
+  }
   XLOG(DBG2) << "swPort ID: " << swPort->getID()
              << " hwLogicalPort ID: " << hwLogicalPortId;
   platformPort->setHwLogicalPortId(hwLogicalPortId);
@@ -552,7 +568,9 @@ void SaiPortManager::changePortImpl(
               SaiPortManager::isLinkDebounceRetriggerCounterSupported(
                   platform_->getAsic()),
               platform_->getAsic()->isSupported(
-                  HwAsic::Feature::SLL_HLL_DISCARD_COUNTERS)));
+                  HwAsic::Feature::SLL_HLL_DISCARD_COUNTERS),
+              platform_->getAsic()->isSupported(
+                  HwAsic::Feature::PORT_LATCH_STATUS)));
     } else if (oldPort->getName() != newPort->getName()) {
       // Port was already enabled, but Port name changed - update stats
       portStats_.find(newPort->getID())
@@ -567,6 +585,10 @@ void SaiPortManager::changePortImpl(
     // Port transitioned from enabled to disabled, remove stats
     portStats_.erase(newPort->getID());
   }
+  // Before the qos policy: on TU1, VC create on a second port of an input
+  // buffer fails with INVALID PARAMETER once QUEUE_TO_VC is bound to it.
+  managerTable_->virtualChannelManager().programVirtualChannels(
+      newPort, saiPort->adapterKey());
   changeQueue(
       newPort,
       oldPort->getPortQueues()->impl(),
@@ -595,8 +617,6 @@ void SaiPortManager::changePortImpl(
     resetCableLength(newPort->getID());
   }
   changePortFlowletConfig(oldPort, newPort);
-  managerTable_->virtualChannelManager().programVirtualChannels(
-      newPort, saiPort->adapterKey());
   if (programLlrForPort) {
     programLlr(newPort, existingPort);
     if (deferAdminEnable) {
@@ -1120,6 +1140,22 @@ SaiPortTraits::CreateAttributes SaiPortManager::attributesFromSwPort(
     linkScanMode = linkScanModeAttribute(*mode);
   }
 
+  if ((swPort->getCsigTagAction() || swPort->getCsigLinkLocator()) &&
+      !platform_->getAsic()->isSupported(HwAsic::Feature::CSIG)) {
+    throw FbossError(
+        "CSIG is not supported on this ASIC/SDK; cannot apply to port ",
+        swPort->getID());
+  }
+  // cfg::CsigTagAction values match sai_port_csig_tag_action_t.
+  std::optional<SaiPortTraits::Attributes::CsigTagAction> csigTagAction;
+  if (const auto action = swPort->getCsigTagAction()) {
+    csigTagAction = static_cast<sai_int32_t>(*action);
+  }
+  std::optional<SaiPortTraits::Attributes::CsigLinkLocator> csigLinkLocator;
+  if (const auto linkLocator = swPort->getCsigLinkLocator()) {
+    csigLinkLocator = static_cast<sai_uint8_t>(*linkLocator);
+  }
+
   if (basicAttributeOnly) {
     return SaiPortTraits::CreateAttributes{
 #if defined(BRCM_SAI_SDK_DNX)
@@ -1171,6 +1207,10 @@ SaiPortTraits::CreateAttributes SaiPortManager::attributesFromSwPort(
 #if defined(SAI_CBFC_SUPPORTED)
         std::nullopt, // TC to VC map
         std::nullopt, // Queue to VC map
+        std::nullopt, // CBFC sender credit size
+        std::nullopt, // CBFC sender packet overhead
+        std::nullopt, // CBFC sender credit limit
+        std::nullopt, // CBFC receiver credit limit
 #endif
 #if SAI_API_VERSION >= SAI_VERSION(1, 9, 0)
         std::nullopt,
@@ -1227,6 +1267,12 @@ SaiPortTraits::CreateAttributes SaiPortManager::attributesFromSwPort(
         std::nullopt, // Ingress ACL
         std::nullopt, // IsolationGroup
         std::nullopt, // Metadata
+        std::nullopt, // CsigTagAction
+        std::nullopt, // CsigLinkLocator
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+        std::nullopt, // IntDelete
+        std::nullopt, // IntMetadata
+#endif
     };
   }
   std::optional<SaiPortTraits::Attributes::PortVlanId> vlanIdAttr{vlanId};
@@ -1264,6 +1310,34 @@ SaiPortTraits::CreateAttributes SaiPortManager::attributesFromSwPort(
       swPort->getID(),
       swPort->getIngressAclTableName().value_or("none"),
       ingressAcl);
+
+#if defined(SAI_CBFC_SUPPORTED)
+  // Only on a port with virtual channels: brcm-sai rejects a sender set on a
+  // port with no CBFC.
+  std::optional<SaiPortTraits::Attributes::CbfcSenderCreditSize>
+      cbfcSenderCreditSize;
+  std::optional<SaiPortTraits::Attributes::CbfcSenderPacketOverhead>
+      cbfcSenderPacketOverhead;
+  std::optional<SaiPortTraits::Attributes::CbfcSenderCreditLimit>
+      cbfcSenderCreditLimit;
+  std::optional<SaiPortTraits::Attributes::CbfcReceiverCreditLimit>
+      cbfcReceiverCreditLimit;
+  if (platform_->getAsic()->isSupported(HwAsic::Feature::CBFC) &&
+      swPort->getVirtualChannels()) {
+    if (auto creditSize = swPort->getCbfcSenderCreditSize()) {
+      cbfcSenderCreditSize = static_cast<sai_uint16_t>(*creditSize);
+    }
+    if (auto packetOverhead = swPort->getCbfcSenderPacketOverhead()) {
+      cbfcSenderPacketOverhead = *packetOverhead;
+    }
+    if (auto creditLimit = swPort->getCbfcSenderCreditLimit()) {
+      cbfcSenderCreditLimit = static_cast<sai_uint32_t>(*creditLimit);
+    }
+    if (auto receiverLimit = swPort->getCbfcReceiverCreditLimit()) {
+      cbfcReceiverCreditLimit = static_cast<sai_uint32_t>(*receiverLimit);
+    }
+  }
+#endif
 
   return SaiPortTraits::CreateAttributes{
 #if defined(BRCM_SAI_SDK_DNX)
@@ -1319,6 +1393,10 @@ SaiPortTraits::CreateAttributes SaiPortManager::attributesFromSwPort(
 #if defined(SAI_CBFC_SUPPORTED)
       std::nullopt, // TC to VC map
       std::nullopt, // Queue to VC map
+      cbfcSenderCreditSize,
+      cbfcSenderPacketOverhead,
+      cbfcSenderCreditLimit,
+      cbfcReceiverCreditLimit,
 #endif
 #if SAI_API_VERSION >= SAI_VERSION(1, 9, 0)
       interFrameGap, // Inter Frame Gap
@@ -1379,6 +1457,12 @@ SaiPortTraits::CreateAttributes SaiPortManager::attributesFromSwPort(
       ingressAcl,
       std::nullopt, // IsolationGroup
       metadata,
+      csigTagAction,
+      csigLinkLocator,
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+      std::nullopt, // IntDelete
+      std::nullopt, // IntMetadata
+#endif
   };
 }
 
@@ -1760,7 +1844,7 @@ SaiPortManager::serdesAttributesFromSwPinConfigs(
     const std::vector<phy::PinConfig>& pinConfigs,
     const std::shared_ptr<SaiPortSerdes>& serdes,
     bool zeroPreemphasis,
-    const std::optional<std::string>& customCollection,
+    [[maybe_unused]] const std::optional<std::string>& customCollection,
     bool skipSerdesProgramming,
     [[maybe_unused]] bool txPrecodingEnabled,
     [[maybe_unused]] bool rxPrecodingEnabled) {
@@ -1867,7 +1951,9 @@ SaiPortManager::serdesAttributesFromSwPinConfigs(
       if (platform_->getAsic()->getAsicType() ==
               cfg::AsicType::ASIC_TYPE_YUBA ||
           platform_->getAsic()->getAsicType() ==
-              cfg::AsicType::ASIC_TYPE_G202X) {
+              cfg::AsicType::ASIC_TYPE_G202X ||
+          platform_->getAsic()->getAsicType() ==
+              cfg::AsicType::ASIC_TYPE_P200) {
         if (auto firPre1 = tx->firPre1()) {
           txPre1.push_back(zeroPreemphasis ? 0 : *firPre1);
         }

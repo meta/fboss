@@ -246,6 +246,20 @@ struct HwPortStats {
   116: map<i16, i64> cbfcVcSenderCreditsFreed_ = {};
   117: map<i16, i64> cbfcVcReceiverCreditsConsumed_ = {};
   118: map<i16, i64> cbfcVcReceiverCreditsFreed_ = {};
+
+  // HW protection (FRR) switchover counters, populated only on Broadcom
+  // Tomahawk 5/6 with XGS SDK 13.3+. Events counts primary to backup
+  // transitions; drop packets counts packets lost during switchover.
+  119: optional i64 hwProtectionSwitchoverEvents_;
+  120: optional i64 hwProtectionSwitchoverDropPkts_;
+
+  // Software Fabric Link Monitoring counters, populated by SwSwitch only for
+  // monitored ports.
+  121: optional i64 fabricLinkMonitoringTxPackets_;
+  122: optional i64 fabricLinkMonitoringRxPackets_;
+  123: optional i64 fabricLinkMonitoringDroppedPackets_;
+  124: optional i64 fabricLinkMonitoringInvalidPayloadPackets_;
+  125: optional i64 fabricLinkMonitoringNoPendingSeqNumPackets_;
 }
 
 struct HwSysPortStats {

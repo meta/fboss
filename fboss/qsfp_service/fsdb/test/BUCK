@@ -7,11 +7,11 @@ cpp_library(
     headers = ["QsfpFsdbTestUtils.h"],
     exported_deps = [
         "fbsource//third-party/googletest:gtest",
+        "fbsource//xplat/folly/logging:logging",
         "//fboss/fsdb/client:fsdb_pub_sub",
         "//fboss/qsfp_service/if:config-cpp2-types",
         "//fboss/qsfp_service/if:state-cpp2-types",
         "//fboss/qsfp_service/if:stats-cpp2-types",
-        "//folly/logging:logging",
         "//thrift/lib/cpp2/protocol:protocol",
     ],
 )

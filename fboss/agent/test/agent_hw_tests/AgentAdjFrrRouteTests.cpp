@@ -668,8 +668,26 @@ TEST_F(AgentAdjFrrRouteTest, routeWithPrimaryAndBackupNhops) {
         injectionPort, primaryPorts, kPacketCount, "Primary");
 
     bringDownPort(primaryPort);
+
+    // While the primary is down, every failover packet must count a
+    // switchover event on the ingress port. Only asserted where supported.
+    const bool checkSwitchoverEvents = isSupportedOnAllAsics(
+        HwAsic::Feature::HW_PROTECTION_SWITCHOVER_COUNTERS);
+    const auto eventsBefore = checkSwitchoverEvents
+        ? std::optional(getLatestPortStats(injectionPort))
+        : std::nullopt;
     sendTrafficAndVerifyOutPackets(
         injectionPort, backupPorts, kPacketCount, "Backup");
+    if (checkSwitchoverEvents) {
+      WITH_RETRIES({
+        const auto eventsAfter = getLatestPortStats(injectionPort);
+        EXPECT_EVENTUALLY_TRUE(
+            eventsAfter.hwProtectionSwitchoverEvents_().has_value());
+        EXPECT_EVENTUALLY_GT(
+            eventsAfter.hwProtectionSwitchoverEvents_().value_or(0),
+            eventsBefore->hwProtectionSwitchoverEvents_().value_or(0));
+      });
+    }
 
     restoreNextHop(primaryPort);
 

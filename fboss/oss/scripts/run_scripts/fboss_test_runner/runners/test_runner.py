@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import time
 from argparse import ArgumentParser, Namespace
+from collections.abc import Collection
 from datetime import datetime
 from pathlib import Path
 
@@ -40,6 +41,7 @@ from fboss_test_runner.constants import (
     OPT_ARG_SKIP_KNOWN_BAD_TESTS,
     OPT_ARG_SWITCH_ID_FOR_TESTING,
     OPT_ARG_TEST_RUN_TIMEOUT,
+    OPT_ARG_TIER,
     OPT_KNOWN_BAD_TESTS_FILE,
     OPT_UNSUPPORTED_TESTS_FILE,
     XGS_SIMULATOR_ASICS,
@@ -51,6 +53,7 @@ from fboss_test_runner.crash_detection import (
     find_unclean_unit_exits,
     list_core_dumps,
 )
+from fboss_test_runner.errors import TestRunnerUsageError
 from fboss_test_runner.reporters.console_reporter import ConsoleReporter
 from fboss_test_runner.reporters.csv_reporter import CsvReporter
 from fboss_test_runner.reporters.json_reporter import JsonReporter
@@ -65,6 +68,14 @@ from fboss_test_runner.runners.utils import (
     get_test_regexes_from_file,
     load_from_file,
     test_matches_any_regex,
+)
+from fboss_test_runner.tier_selection import (
+    load_test_metadata_rules,
+    parse_test_tier,
+    select_test_patterns_for_tier,
+    TestCapability,
+    TestMetadataError,
+    TestTier,
 )
 from npu_sdk_utils import materialize_agent_config, NPU_SDK_METADATA_FILENAME
 
@@ -206,7 +217,13 @@ class TestRunner(abc.ABC):
         sub_parser.add_argument(
             OPT_ARG_PROFILE,
             type=str,
-            help="only include patterns tagged with this profile (requires --filter_file)",
+            help="only include patterns tagged with this profile",
+        )
+        sub_parser.add_argument(
+            OPT_ARG_TIER,
+            choices=("0", "1", "2"),
+            default=None,
+            help="only run tests classified in this certification tier",
         )
         sub_parser.add_argument(
             OPT_ARG_LIST_TESTS,
@@ -358,6 +375,45 @@ class TestRunner(abc.ABC):
 
     def _filter_tests(self, tests: list[str]) -> list[str]:
         return tests
+
+    def _get_tier_metadata_file(self) -> str | None:
+        return None
+
+    def _get_uniform_test_tier(self) -> TestTier | None:
+        """Return the tier shared by every test exposed by this runner."""
+        return None
+
+    def _get_available_test_capabilities(self) -> Collection[TestCapability]:
+        return ()
+
+    def _get_test_patterns_for_tier(self, tier: TestTier) -> list[str]:
+        metadata_file = self._get_tier_metadata_file()
+        if metadata_file is None:
+            command = self.args.command
+            raise TestRunnerUsageError(f"--tier is not supported for {command}")
+
+        try:
+            rules = load_test_metadata_rules(metadata_file)
+        except TestMetadataError as error:
+            raise TestRunnerUsageError(str(error)) from error
+
+        return select_test_patterns_for_tier(
+            rules,
+            tier,
+            available_capabilities=self._get_available_test_capabilities(),
+        )
+
+    def _filter_tests_for_tier(self, tests: list[str], tier: TestTier) -> list[str]:
+        uniform_tier = self._get_uniform_test_tier()
+        if uniform_tier is not None:
+            return tests if tier is uniform_tier else []
+
+        patterns = self._get_test_patterns_for_tier(tier)
+        if not patterns:
+            return []
+
+        tier_tests = set(self._list_tests_to_run(":".join(patterns)))
+        return [test for test in tests if test in tier_tests]
 
     def _get_sai_replayer_log_path(
         self,
@@ -839,6 +895,15 @@ class TestRunner(abc.ABC):
                         self._on_suite_end(current_suite)
                     current_suite = suite
                     self._on_suite_start(suite)
+                warmboot_test_name = self.WARMBOOT_PREFIX + test_to_run
+                run_warmboot = warmboot
+                if run_warmboot:
+                    if self._is_known_bad_test(warmboot_test_name):
+                        print(f"  >> SKIPPING (known bad)  : {warmboot_test_name}")
+                        run_warmboot = False
+                    elif self._is_unsupported_test(warmboot_test_name):
+                        print(f"  >> SKIPPING (unsupported): {warmboot_test_name}")
+                        run_warmboot = False
                 test_prefix = self.COLDBOOT_PREFIX
                 sai_replayer_log_path = self._get_sai_replayer_log_path(
                     test_prefix, test_to_run, sai_replayer_logging
@@ -852,7 +917,7 @@ class TestRunner(abc.ABC):
                     conf_file,
                     test_prefix,
                     test_to_run,
-                    warmboot,  # setup_warmboot
+                    run_warmboot,  # setup_warmboot
                     sai_replayer_log_path,
                 )
                 print(
@@ -879,7 +944,7 @@ class TestRunner(abc.ABC):
                 num_wb_iterations = max(1, num_wb_iterations)
                 for wb_iter in range(num_wb_iterations):
                     if not (
-                        warmboot and os.path.isfile(self._get_warmboot_check_file())
+                        run_warmboot and os.path.isfile(self._get_warmboot_check_file())
                     ):
                         break
                     # Re-arm warmboot for every iteration except the last so the next
@@ -958,6 +1023,11 @@ class TestRunner(abc.ABC):
             )
         tests_to_run = self._get_tests_to_run()
         tests_to_run = self._filter_tests(tests_to_run)
+        tier_value = args.tier
+        if tier_value is not None:
+            tests_to_run = self._filter_tests_for_tier(
+                tests_to_run, parse_test_tier(tier_value)
+            )
         # Sort the tests to run to match internal test infra behavior
         return sorted(tests_to_run)
 

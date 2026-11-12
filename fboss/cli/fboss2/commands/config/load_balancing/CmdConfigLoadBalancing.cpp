@@ -9,6 +9,7 @@
  */
 
 #include "fboss/cli/fboss2/commands/config/load_balancing/CmdConfigLoadBalancing.h"
+#include "fboss/cli/fboss2/utils/ArgCompletion.h"
 
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
 #include "fboss/cli/fboss2/CmdHandler.cpp"
@@ -390,5 +391,36 @@ template void
 CmdHandler<CmdConfigLoadBalancingEcmp, CmdConfigLoadBalancingEcmpTraits>::run();
 template void
 CmdHandler<CmdConfigLoadBalancingLag, CmdConfigLoadBalancingLagTraits>::run();
+
+namespace {
+std::vector<std::string> completeLoadBalancingArgs(
+    const std::vector<std::string>& typed) {
+  return utils::completion::completeAttrGrammar(
+      typed,
+      {.attrs = utils::completion::toWords(kLoadBalancingValidAttrs),
+       .values =
+           {
+               {std::string(kAttrHashAlgorithm),
+                utils::completion::toWords(kValidAlgorithms)},
+               {std::string(kAttrHashSeed), {std::string(kValueDefault)}},
+               {std::string(kAttrHashFieldsIpv4), {std::string(kValueNone)}},
+               {std::string(kAttrHashFieldsIpv6), {std::string(kValueNone)}},
+               {std::string(kAttrHashFieldsTransport),
+                {std::string(kValueNone)}},
+               {std::string(kAttrHashFieldsMpls), {std::string(kValueNone)}},
+           },
+       .repeat = false});
+}
+} // namespace
+
+std::vector<std::string> CmdConfigLoadBalancingEcmpTraits::completeArgs(
+    const std::vector<std::string>& typed) {
+  return completeLoadBalancingArgs(typed);
+}
+
+std::vector<std::string> CmdConfigLoadBalancingLagTraits::completeArgs(
+    const std::vector<std::string>& typed) {
+  return completeLoadBalancingArgs(typed);
+}
 
 } // namespace facebook::fboss

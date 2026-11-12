@@ -50,6 +50,8 @@ class AclTableGroupStoreTest : public SaiStoreTest {
             true, // dstIpv6
             std::nullopt, // dstIpv6Word3
             std::nullopt, // dstIpv6Word2
+            std::nullopt, // dstIpv6Word1
+            std::nullopt, // dstIpv6Word0
             true, // srcIpv4
             true, // dstIpv4
             true, // l4SrcPort
@@ -82,6 +84,9 @@ class AclTableGroupStoreTest : public SaiStoreTest {
             2, // udf group 2
             3, // udf group 3
             4, // udf group 4
+#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
+            true, // route destination
+#endif
             true, // port meta
         },
         0);

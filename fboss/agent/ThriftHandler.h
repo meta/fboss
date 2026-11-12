@@ -9,8 +9,10 @@
  */
 #pragma once
 
+#include <chrono>
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -53,6 +55,7 @@ class ThriftHandler : virtual public FbossCtrlSvIf,
   using BinaryAddresses = std::vector<BinaryAddress>;
 
   explicit ThriftHandler(SwSwitch* sw);
+  ~ThriftHandler() override;
 
   fb303::cpp2::fb_status getStatus() override;
 
@@ -142,6 +145,14 @@ class ThriftHandler : virtual public FbossCtrlSvIf,
       std::unique_ptr<std::vector<std::string>> names,
       bool replicateWeightedNexthops = false) override;
 
+  void addPolicies(std::unique_ptr<std::vector<Policy>> policies) override;
+  void deletePolicies(
+      std::unique_ptr<std::vector<std::string>> policyNames) override;
+  void getPolicies(
+      std::vector<Policy>& result,
+      std::unique_ptr<std::vector<std::string>> policyNames) override;
+  void getAllPolicies(std::vector<Policy>& result) override;
+
   SwSwitch* getSw() const {
     return sw_;
   }
@@ -168,6 +179,22 @@ class ThriftHandler : virtual public FbossCtrlSvIf,
       std::unique_ptr<fbstring> data,
       int32_t numOfPkts,
       int32_t intervalInMs) override;
+  void setupL3TrafficLoops(
+      std::unique_ptr<std::vector<BinaryAddress>> qualificationAddresses,
+      std::unique_ptr<std::vector<std::string>> portNames,
+      std::unique_ptr<std::vector<BinaryAddress>> peerNextHops,
+      std::unique_ptr<std::vector<std::string>> expectedPeerMacs,
+      std::unique_ptr<std::vector<int32_t>> timeoutSeconds) override;
+  void extendL3TrafficLoops(
+      std::unique_ptr<std::vector<std::string>> portNames,
+      int32_t timeoutSeconds) override;
+  void teardownL3TrafficLoops(
+      std::unique_ptr<std::vector<std::string>> portNames) override;
+  // Return only saved loop records; an empty filter selects all saved records.
+  // Names without a record are omitted, including ports never configured.
+  void getL3TrafficLoopStatus(
+      std::map<std::string, L3TrafficLoopStatus>& statuses,
+      std::unique_ptr<std::vector<std::string>> portNames) override;
   void txPktL3(
       std::unique_ptr<fbstring> payload,
       int32_t numOfPkts,
@@ -205,6 +232,9 @@ class ThriftHandler : virtual public FbossCtrlSvIf,
       std::vector<UnicastRoute>& routeTable,
       int16_t clientId) override;
   void getRouteTableDetails(std::vector<RouteDetails>& routeTable) override;
+  void getRouteTableDetailsByVrf(
+      std::vector<RouteDetails>& routeTable,
+      int32_t vrfId) override;
 
   void getRouteTableSize(RouteCount& routeCount) override;
 
@@ -268,6 +298,7 @@ class ThriftHandler : virtual public FbossCtrlSvIf,
   void getInterfaceDetail(
       InterfaceDetail& interfaceDetails,
       int32_t interfaceId) override;
+  void getVrfs(std::vector<VrfInfo>& vrfs) override;
   void getPortInfo(PortInfoThrift& portInfo, int32_t portId) override;
   void getAllPortInfo(std::map<int32_t, PortInfoThrift>& portInfo) override;
   void clearPortStats(std::unique_ptr<std::vector<int32_t>> ports) override;
@@ -508,6 +539,20 @@ class ThriftHandler : virtual public FbossCtrlSvIf,
   void ensureVoqOrFabric(folly::StringPiece function) const;
 
  private:
+  struct L3TrafficLoopStateStore;
+  void expireL3TrafficLoops() noexcept;
+  std::optional<std::chrono::steady_clock::time_point>
+  getNextL3TrafficLoopExpiration() const;
+  void scheduleL3TrafficLoopExpiry();
+  void stopL3TrafficLoopExpiry();
+  void setupL3TrafficLoopImpl(
+      const BinaryAddress& qualificationAddress,
+      const std::string& portName,
+      const BinaryAddress& peerNextHop,
+      const std::string& expectedPeerMac,
+      int32_t timeoutSeconds);
+  void teardownL3TrafficLoopImpl(const std::string& portName);
+
   void ensureNPU(folly::StringPiece function) const;
   void ensureNotFabric(folly::StringPiece function) const;
   void updateUnicastRoutesImpl(
@@ -555,6 +600,8 @@ class ThriftHandler : virtual public FbossCtrlSvIf,
   // Forbidden copy constructor and assignment operator
   ThriftHandler(ThriftHandler const&) = delete;
   ThriftHandler& operator=(ThriftHandler const&) = delete;
+  ThriftHandler(ThriftHandler&&) = delete;
+  ThriftHandler& operator=(ThriftHandler&&) = delete;
 
   template <typename Result>
   void fail(const ThriftCallback<Result>& callback, const std::exception& ex) {
@@ -575,11 +622,12 @@ class ThriftHandler : virtual public FbossCtrlSvIf,
    * for the lifetime of the ThriftHandler.
    */
   SwSwitch* sw_;
+  std::shared_ptr<L3TrafficLoopStateStore> l3TrafficLoopState_;
 
   int thriftIdleTimeout_{};
   std::vector<const TConnectionContext*> brokenClients_;
 
-  apache::thrift::SSLPolicy sslPolicy_;
+  apache::thrift::SSLPolicy sslPolicy_{apache::thrift::SSLPolicy::DISABLED};
 
   std::unordered_set<uint16_t> syncedFibClients_;
 };

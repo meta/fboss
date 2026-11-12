@@ -16,6 +16,7 @@
 #include "fboss/agent/state/StateDelta.h"
 
 #include <memory>
+#include <vector>
 
 namespace facebook::fboss {
 
@@ -24,20 +25,14 @@ class SwitchIdScopeResolver;
 
 StateDelta ribToSwitchStateUpdate(
     const SwitchIdScopeResolver* resolver,
-    RouterID vrf,
-    const IPv4NetworkToRouteMap& v4NetworkToRoute,
-    const IPv6NetworkToRouteMap& v6NetworkToRoute,
-    const LabelToRouteMap& labelToRoute,
+    const std::vector<RibVrfFib>& vrfFibs,
     const NextHopIDManager* nextHopIDManager,
     const MySidTable& mySidTable,
     void* cookie);
 
 StateDelta noopFibUpdate(
     const SwitchIdScopeResolver* resolver,
-    RouterID vrf,
-    const IPv4NetworkToRouteMap& v4NetworkToRoute,
-    const IPv6NetworkToRouteMap& v6NetworkToRoute,
-    const LabelToRouteMap& labelToRoute,
+    const std::vector<RibVrfFib>& vrfFibs,
     const NextHopIDManager* nextHopIDManager,
     const MySidTable& mySidTable,
     void* cookie);

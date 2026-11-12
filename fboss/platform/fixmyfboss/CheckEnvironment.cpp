@@ -25,13 +25,31 @@ using namespace platform_checks;
 namespace {
 
 constexpr std::chrono::seconds kConnectTimeout{30};
+constexpr int kPasswordAttempts = 3;
 
 std::shared_ptr<const Host> connect(
     const std::string& hostname,
-    RemoteHost::Transport transport) {
-  auto host = std::make_shared<RemoteHost>(hostname, transport);
+    const ConnectOptions& options) {
+  auto host = std::make_shared<RemoteHost>(hostname, options.transport);
   XLOG(INFO) << "Connecting to " << hostname;
   auto result = host->run("true", kConnectTimeout);
+  // Asked here, at startup, rather than when a check first needs the host.
+  if (!result.ok() && options.askPassword &&
+      host->acceptsPassword(kConnectTimeout)) {
+    auto prompt = hostname + " does not accept key login.\nPassword for root@" +
+        hostname + ": ";
+    for (int attempt = 0; attempt < kPasswordAttempts && !result.ok();
+         ++attempt) {
+      auto password = options.askPassword(prompt);
+      if (!password) {
+        break;
+      }
+      host = std::make_shared<RemoteHost>(
+          hostname, options.transport, "root", *password);
+      result = host->run("true", kConnectTimeout);
+      prompt = "Login failed. Password for root@" + hostname + ": ";
+    }
+  }
   if (!result.ok()) {
     throw std::runtime_error(
         "Cannot connect to " + hostname + ": " +
@@ -48,7 +66,7 @@ void connectBmc(const ConnectOptions& options, CheckEnvironment& env) {
   }
   if (options.bmcHostname) {
     // Explicitly requested, so failing to connect is fatal.
-    env.bmc = connect(*options.bmcHostname, options.transport);
+    env.bmc = connect(*options.bmcHostname, options);
     return;
   }
   if (!options.hostname) {
@@ -61,7 +79,7 @@ void connectBmc(const ConnectOptions& options, CheckEnvironment& env) {
   // x86 is still checked. Switches without a BMC need --no-bmc.
   auto oobHostname = deriveOobHostname(*options.hostname);
   try {
-    env.bmc = connect(oobHostname, options.transport);
+    env.bmc = connect(oobHostname, options);
   } catch (const std::exception& ex) {
     XLOG(WARN) << ex.what();
     env.bmcConnectError = ex.what();
@@ -82,7 +100,7 @@ std::string deriveOobHostname(const std::string& hostname) {
 
 CheckEnvironment createEnvironment(const ConnectOptions& options) {
   CheckEnvironment env;
-  env.x86 = options.hostname ? connect(*options.hostname, options.transport)
+  env.x86 = options.hostname ? connect(*options.hostname, options)
                              : std::make_shared<LocalHost>();
   auto platformName = getPlatformName(*env.x86);
   if (!platformName) {

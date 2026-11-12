@@ -34,6 +34,34 @@ DEFINE_int32(platform_mapping_profile, 0, "Platform mapping profile");
 namespace {
 constexpr auto kFbossPortNameRegex = "eth(\\d+)/(\\d+)/(\\d+)";
 const re2::RE2 portNameRegex(kFbossPortNameRegex);
+
+bool isSameVendorPartNumber(
+    const facebook::fboss::TransceiverVendorPartNumber& vendorPartNumber,
+    const facebook::fboss::Vendor& vendor) {
+  return *vendorPartNumber.vendor() == *vendor.name() &&
+      *vendorPartNumber.partNumber() == *vendor.partNumber();
+}
+
+bool isVendorOverridesMatch(
+    const std::vector<facebook::fboss::TransceiverVendorOverride>&
+        vendorOverrides,
+    const facebook::fboss::Vendor& overrideVendor,
+    const facebook::fboss::Vendor& currentVendor) {
+  return std::any_of(
+      vendorOverrides.begin(),
+      vendorOverrides.end(),
+      [&](const auto& vendorOverride) {
+        const auto& transceivers = *vendorOverride.transceivers();
+        return isSameVendorPartNumber(
+                   *vendorOverride.placeholder(), overrideVendor) &&
+            std::any_of(
+                   transceivers.begin(),
+                   transceivers.end(),
+                   [&](const auto& transceiver) {
+                     return isSameVendorPartNumber(transceiver, currentVendor);
+                   });
+      });
+}
 } // namespace
 
 namespace facebook::fboss {
@@ -57,6 +85,9 @@ cfg::PlatformPortConfigOverrideFactor buildPlatformPortConfigOverrideFactor(
   }
   if (auto vendor = state->vendor(); vendor.has_value()) {
     factor.vendor() = vendor.value();
+  }
+  if (auto vendorOverrides = transceiverInfo.tcvrState()->vendorOverrides()) {
+    factor.vendorOverrides() = *vendorOverrides;
   }
   return factor;
 }
@@ -123,13 +154,23 @@ bool PlatformPortProfileConfigMatcher::matchOverrideWithFactor(
     if (!portConfigOverrideFactor_ || !portConfigOverrideFactor_->vendor()) {
       return false;
     }
+    const auto& currentVendor = *portConfigOverrideFactor_->vendor();
     // compare only the name and part number of the current optics to the
-    // override factor.
-    if (!isTransceiverVendorOverrideMatch(
-            overrideVendor->name().value(),
-            overrideVendor->partNumber().value(),
-            portConfigOverrideFactor_->vendor()->name().value(),
-            portConfigOverrideFactor_->vendor()->partNumber().value())) {
+    // override factor. The vendor overrides from qsfp_service config are
+    // authoritative when non-empty. Otherwise fall back to the built in map,
+    // for qsfp_service versions or configs that don't populate them.
+    // TODO: remove the fallback once all qsfp_service versions populate them.
+    if (auto vendorOverrides = portConfigOverrideFactor_->vendorOverrides();
+        vendorOverrides && !vendorOverrides->empty()) {
+      if (!isVendorOverridesMatch(
+              *vendorOverrides, *overrideVendor, currentVendor)) {
+        return false;
+      }
+    } else if (!isTransceiverVendorOverrideMatch(
+                   overrideVendor->name().value(),
+                   overrideVendor->partNumber().value(),
+                   currentVendor.name().value(),
+                   currentVendor.partNumber().value())) {
       return false;
     }
   }

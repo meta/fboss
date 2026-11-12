@@ -8,7 +8,7 @@
  *
  */
 #include "fboss/lib/led/LedIO.h"
-#include <folly/Format.h>
+#include <folly/Conv.h>
 #include <folly/logging/xlog.h>
 #include <fstream>
 #include <string>

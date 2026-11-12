@@ -8,9 +8,11 @@
  *
  */
 #include <gtest/gtest.h>
+#include <algorithm>
 
 #include "fboss/agent/AddressUtil.h"
 #include "fboss/agent/FbossError.h"
+#include "fboss/agent/HwAsicTable.h"
 #include "fboss/agent/LinkAggregationManager.h"
 #include "fboss/agent/SwSwitch.h"
 #include "fboss/agent/SwSwitchRouteUpdateWrapper.h"
@@ -18,6 +20,7 @@
 #include "fboss/agent/ThriftHandler.h"
 #include "fboss/agent/TxPacket.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
+#include "fboss/agent/ndp/IPv6RouteAdvertiser.h"
 #include "fboss/agent/packet/EthHdr.h"
 #include "fboss/agent/packet/Ethertype.h"
 #include "fboss/agent/packet/ICMPHdr.h"
@@ -26,17 +29,22 @@
 #include "fboss/agent/state/AggregatePort.h"
 #include "fboss/agent/state/Interface.h"
 #include "fboss/agent/state/InterfaceMap.h"
+#include "fboss/agent/state/NdpTable.h"
+#include "fboss/agent/state/Port.h"
 #include "fboss/agent/state/SwitchState.h"
 #include "fboss/agent/test/CounterCache.h"
 #include "fboss/agent/test/HwTestHandle.h"
 #include "fboss/agent/test/NeighborEntryTest.h"
 #include "fboss/agent/test/TestUtils.h"
+#include "fboss/lib/CommonUtils.h"
 
 #include <folly/IPAddressV6.h>
 #include <folly/MacAddress.h>
 #include <folly/io/Cursor.h>
 #include <netinet/icmp6.h>
 #include <future>
+#include <thread>
+#include <utility>
 
 using namespace facebook::fboss;
 using facebook::network::toBinaryAddress;
@@ -1334,6 +1342,96 @@ TEST_F(NdpTest, RouterAdvConfigWithRouterAddressPortRif) {
   this->validateRouterAdvForPortRif("fe80::face:b00c");
 }
 
+TEST_F(NdpTest, RouterAdvertiserMoveAssignStopsReplacedAdvertiser) {
+  // A long RA interval keeps periodic advertisements from firing, so the only
+  // RAs counted are the final ones sent when an advertiser is stopped.
+  auto config = createSwitchConfig(seconds(3600), seconds(0));
+  auto handle = createTestHandle(&config);
+  auto sw = handle->getSw();
+  sw->initialConfigApplied(std::chrono::steady_clock::now());
+  EXPECT_MANY_SWITCHED_PKTS(sw, "router advertisement", [](const TxPacket*) {});
+
+  auto state = sw->getState();
+  auto intf = state->getInterfaces()->getNode(InterfaceID(5));
+  const std::string kRaCounter = "PrimaryInterface.router_advertisements.sum";
+
+  IPv6RouteAdvertiser replaced(sw, state.get(), intf.get());
+  IPv6RouteAdvertiser replacement(sw, state.get(), intf.get());
+  waitForBackgroundThread(sw);
+  CounterCache counters(sw);
+
+  // flat_map::erase() shifts entries with move assignment, so the advertiser
+  // being overwritten must be stopped rather than left running.
+  replaced = std::move(replacement);
+  waitForBackgroundThread(sw);
+  counters.update();
+  counters.checkDelta(kRaCounter, 1);
+}
+
+TEST_F(
+    NdpTest,
+    RouterAdvertiserTimerDoesNotContinueAfterInterfaceNdpEntryChange) {
+  constexpr auto kOriginalRaIntervalSeconds = 1;
+  constexpr auto kReplacementRaIntervalSeconds = 3600;
+  auto config = createSwitchConfig(
+      seconds(kOriginalRaIntervalSeconds), seconds(0), false, std::nullopt, 3);
+  config.interfaces()[2].ndp() = cfg::NdpConfig();
+  *config.interfaces()[2].ndp()->routerAdvertisementSeconds() =
+      kReplacementRaIntervalSeconds;
+
+  auto handle = createTestHandle(&config);
+  auto sw = handle->getSw();
+  sw->initialConfigApplied(std::chrono::steady_clock::now());
+  EXPECT_MANY_SWITCHED_PKTS(sw, "router advertisement", [](const TxPacket*) {});
+  waitForBackgroundThread(sw);
+
+  const InterfaceID intfID(5);
+  const IPAddressV6 neighborIP("2401:db00:2110:3004::b");
+  // On production VOQ switches, local NDP entries are children of Interface.
+  // Updating this table makes IPv6Handler::stateUpdated() erase and recreate
+  // interface 5's advertiser. The later RA-enabled interface forces erase()
+  // to shift a flat_map entry over the advertiser being torn down. Give the
+  // replacement a long interval so any subsequent RA during this test can only
+  // come from the leaked pre-update advertiser, which retains its 1s interval.
+  sw->updateStateBlocking(
+      "Add NDP neighbor under interface",
+      [intfID, neighborIP, kReplacementRaIntervalSeconds](
+          const std::shared_ptr<SwitchState> state) {
+        auto newState = state->clone();
+        auto ndpTable = std::make_shared<NdpTable>();
+        ndpTable->addEntry(
+            neighborIP,
+            MacAddress("02:05:73:f9:46:fb"),
+            PortDescriptor(PortID(1)),
+            intfID);
+        auto oldIntf = state->getInterfaces()->getNode(intfID);
+        auto newIntf = oldIntf->modify(&newState);
+        auto ndpConfig = oldIntf->getNdpConfig()->toThrift();
+        *ndpConfig.routerAdvertisementSeconds() = kReplacementRaIntervalSeconds;
+        newIntf->setNdpConfig(std::move(ndpConfig));
+        newIntf->setNdpTable(std::move(ndpTable));
+        return newState;
+      });
+  waitForBackgroundThread(sw);
+
+  ASSERT_NE(
+      sw->getState()
+          ->getInterfaces()
+          ->getNode(intfID)
+          ->getNdpTable()
+          ->getEntryIf(neighborIP),
+      nullptr);
+
+  // Take the baseline after the state update has completed. The replacement
+  // and the later interface both have long intervals. With the move-assignment
+  // fix, no RA should follow; without it, the leaked advertiser keeps firing.
+  CounterCache counters(sw);
+  std::this_thread::sleep_for(seconds(kOriginalRaIntervalSeconds + 1));
+  waitForBackgroundThread(sw);
+  counters.update();
+  counters.checkDelta("PrimaryInterface.router_advertisements.sum", 0);
+}
+
 TEST_F(NdpTest, receiveNeighborAdvertisementUnsolicited) {
   auto handle = this->setupTestHandle();
   auto sw = handle->getSw();
@@ -1512,6 +1610,57 @@ TEST_F(NdpTest, FlushOnAggPortTransition) {
       entry->getPort(), PortDescriptor(AggregatePortID(kAggregatePortID)));
 }
 
+TEST_F(NdpTest, UpdateNeighborEntryToAggregatePort) {
+  auto handle = this->setupTestHandle();
+  auto sw = handle->getSw();
+  const auto neighborAddr = IPAddressV6("2401:db00:2110:3004::b");
+  const auto neighborMac = MacAddress("02:05:73:f9:46:fb");
+  const auto intfID =
+      sw->getState()->getInterfaceIDForPort(PortDescriptor(PortID(1)));
+
+  // Configure the aggregate descriptor. The L3 traffic-loop setup seeds this
+  // neighbor with a physical descriptor, but NDP learning can update it with
+  // an aggregate descriptor.
+  auto config = createSwitchConfig(seconds(0), seconds(0), true);
+  sw->applyConfig("Add aggports", config);
+
+  sw->getNeighborUpdater()->receivedNdpMineForIntf(
+      intfID,
+      neighborAddr,
+      neighborMac,
+      PortDescriptor(PortID(1)),
+      ICMPv6Type::ICMPV6_TYPE_NDP_NEIGHBOR_ADVERTISEMENT,
+      0);
+  sw->getNeighborUpdater()->waitForPendingUpdates();
+  waitForStateUpdates(sw);
+  auto entry = sw->getState()
+                   ->getInterfaces()
+                   ->getNodeIf(intfID)
+                   ->getNdpTable()
+                   ->getEntryIf(neighborAddr);
+  ASSERT_NE(entry, nullptr);
+  ASSERT_EQ(entry->getPort(), PortDescriptor(PortID(1)));
+
+  sw->getNeighborUpdater()->receivedNdpMineForIntf(
+      intfID,
+      neighborAddr,
+      neighborMac,
+      PortDescriptor(AggregatePortID(kAggregatePortID)),
+      ICMPv6Type::ICMPV6_TYPE_NDP_NEIGHBOR_ADVERTISEMENT,
+      ND_NA_FLAG_OVERRIDE);
+  sw->getNeighborUpdater()->waitForPendingUpdates();
+  waitForStateUpdates(sw);
+
+  entry = sw->getState()
+              ->getInterfaces()
+              ->getNodeIf(intfID)
+              ->getNdpTable()
+              ->getEntryIf(neighborAddr);
+  ASSERT_NE(entry, nullptr);
+  EXPECT_EQ(
+      entry->getPort(), PortDescriptor(AggregatePortID(kAggregatePortID)));
+}
+
 TEST_F(NdpTest, PendingNdp) {
   auto handle = this->setupTestHandleWithPortRif();
   auto sw = handle->getSw();
@@ -1606,6 +1755,58 @@ TEST_F(NdpTest, PendingNdp) {
   EXPECT_EQ(entry->isPending(), false);
 };
 
+TEST_F(NdpTest, DuplicatePuntsToPendingTargetSendOneSolicitation) {
+  auto handle = this->setupTestHandleWithPortRif();
+  auto sw = handle->getSw();
+  auto pkt = PktUtil::parseHexData(
+      // dst mac, src mac
+      "00 02 00 00 00 55  02 05 73 f9 46 fc"
+      // IPv6
+      "86 dd"
+      // Version 6, traffic class, flow label
+      "6e 00 00 00"
+      // Payload length: 8
+      "00 08"
+      // Next Header: 17 (UDP), Hop Limit (255)
+      "11 ff"
+      // src addr (2401:db00:2110:1234::1:0)
+      "24 01 db 00 21 10 12 34 00 00 00 00 00 01 00 00"
+      // dst addr (2401:db00:2110:3004::1:0)
+      "24 01 db 00 21 10 30 04 00 00 00 00 00 01 00 00"
+      // source port (53 - DNS)
+      "00 35"
+      // destination port (53 - DNS)
+      "00 35"
+      // length
+      "00 00"
+      // checksum (not valid)
+      "2a 7e");
+
+  CounterCache counters(sw);
+
+  EXPECT_OUT_OF_PORT_PKT(
+      sw,
+      "neighbor solicitation",
+      checkNeighborSolicitation(
+          MacAddress("00:02:00:00:00:55"),
+          MockPlatform::getLinkLocalIp6(MacAddress("00:02:00:00:00:55")),
+          MacAddress("33:33:ff:01:00:00"),
+          IPAddressV6("ff02::1:ff01:0"),
+          IPAddressV6("2401:db00:2110:3004::1:0"),
+          VlanID(1)),
+      PortID(1),
+      std::optional<uint8_t>(kNCStrictPriorityQueue));
+
+  for (int i = 0; i < 3; ++i) {
+    handle->rxPacket(
+        make_unique<IOBuf>(pkt), PortDescriptor(PortID(1)), std::nullopt);
+  }
+  waitForNeighborCacheThread(sw);
+
+  counters.update();
+  counters.checkDelta(SwitchStats::kCounterPrefix + "trapped.pkts.sum", 3);
+}
+
 // Note: With interface-based neighbor tables, pending entries are not in
 // SwitchState (they exist only in the internal neighbor cache). Therefore,
 // this test creates pending entries but must resolve them to REACHABLE state
@@ -1670,6 +1871,22 @@ TEST_F(NdpTest, PendingNdpCleanup) {
   counters.update();
   counters.checkDelta(SwitchStats::kCounterPrefix + "trapped.pkts.sum", 1);
   counters.checkDelta(SwitchStats::kCounterPrefix + "trapped.ndp.sum", 0);
+
+  // ndpTimeout=1 lets this entry reach PROBE and send a unicast probe while
+  // the rest of the test is still running, so expect it before resolving.
+  EXPECT_OUT_OF_PORT_PKT(
+      sw,
+      "neighbor solicitation",
+      checkNeighborSolicitation(
+          MacAddress("00:02:00:00:00:55"),
+          IPAddressV6("2401:db00:2110:3004::"),
+          MacAddress("02:10:20:30:40:22"),
+          IPAddressV6("2401:db00:2110:3004::1:0"),
+          IPAddressV6("2401:db00:2110:3004::1:0"),
+          VlanID(1),
+          false),
+      PortID(1),
+      std::optional<uint8_t>(kNCStrictPriorityQueue));
 
   // Resolve the pending entry by injecting a Neighbor Advertisement
   WaitForNdpEntryReachable neighborEntryReachable(
@@ -1749,20 +1966,6 @@ TEST_F(NdpTest, PendingNdpCleanup) {
   // Set up unicast probe expectations BEFORE resolving entries, since with
   // ndpTimeout=1 entries can advance through REACHABLE -> STALE -> PROBE
   // before we get a chance to register expectations after NA injection.
-  EXPECT_OUT_OF_PORT_PKT(
-      sw,
-      "neighbor solicitation",
-      checkNeighborSolicitation(
-          MacAddress("00:02:00:00:00:55"),
-          IPAddressV6("2401:db00:2110:3004::"),
-          MacAddress("02:10:20:30:40:22"),
-          IPAddressV6("2401:db00:2110:3004::1:0"),
-          IPAddressV6("2401:db00:2110:3004::1:0"),
-          VlanID(1),
-          false),
-      PortID(1),
-      std::optional<uint8_t>(kNCStrictPriorityQueue));
-
   EXPECT_OUT_OF_PORT_PKT(
       sw,
       "neighbor solicitation",
@@ -2448,4 +2651,754 @@ TEST_F(NdpTest, stressSendMulticastNeighborSoclicitsDuringStateUpdate) {
       vlanID);
 
   EXPECT_TRUE(neighborReachable.value().wait());
+}
+
+class L3TrafficLoopApiTest : public NdpTest {
+ protected:
+  unique_ptr<HwTestHandle> createLoopHandle(
+      cfg::AsicType asicType,
+      bool aggregateMember = false) {
+    auto config = createSwitchConfig(seconds(0), seconds(0), aggregateMember);
+    config.switchSettings()->switchIdToSwitchInfo()->at(0).asicType() =
+        asicType;
+    config.ports()[0].name() = "loop1";
+    config.ports()[1].name() = "loop2";
+    config.maxNeighborProbes() = 300;
+    config.staleEntryInterval() = 300;
+    auto handle = createTestHandle(&config);
+    auto sw = handle->getSw();
+    sw->initialConfigApplied(std::chrono::steady_clock::now());
+    sw->updateStateBlocking("initial loop TTL flag", [](const auto& state) {
+      auto newState = state;
+      auto port = state->getPorts()->getNode(PortID(1))->modify(&newState);
+      port->setTTLDisableDecrement(false);
+      return newState;
+    });
+    return handle;
+  }
+
+  void setupLoop(
+      ThriftHandler& handler,
+      int32_t timeout = 30,
+      const std::string& expectedPeerMac = "02:00:00:00:00:02") {
+    handler.setupL3TrafficLoops(
+        make_unique<std::vector<BinaryAddress>>(std::vector<BinaryAddress>{
+            toBinaryAddress(IPAddressV6("100::ffff"))}),
+        make_unique<std::vector<std::string>>(
+            std::vector<std::string>{"loop1"}),
+        make_unique<std::vector<BinaryAddress>>(std::vector<BinaryAddress>{
+            toBinaryAddress(IPAddressV6("2401:db00:2110:3004::1"))}),
+        make_unique<std::vector<std::string>>(
+            std::vector<std::string>{expectedPeerMac}),
+        make_unique<std::vector<int32_t>>(std::vector<int32_t>{timeout}));
+  }
+
+  std::map<std::string, L3TrafficLoopStatus> savedStatuses(
+      ThriftHandler& handler) {
+    std::map<std::string, L3TrafficLoopStatus> statuses;
+    handler.getL3TrafficLoopStatus(
+        statuses, make_unique<std::vector<std::string>>());
+    return statuses;
+  }
+
+  L3TrafficLoopStatus status(ThriftHandler& handler) {
+    return savedStatuses(handler).at("loop1");
+  }
+
+  void teardownLoop(ThriftHandler& handler) {
+    handler.teardownL3TrafficLoops(
+        make_unique<std::vector<std::string>>(
+            std::vector<std::string>{"loop1"}));
+  }
+
+  bool hasLoopRoute(ThriftHandler& handler) {
+    std::vector<UnicastRoute> routes;
+    handler.getRouteTable(routes);
+    return std::any_of(routes.begin(), routes.end(), [](const auto& route) {
+      return toIPAddress(*route.dest()->ip()) == IPAddressV6("100::ffff") &&
+          *route.dest()->prefixLength() == 128;
+    });
+  }
+
+  bool loopRouteDisablesNextHopTtl(ThriftHandler& handler) {
+    std::vector<UnicastRoute> routes;
+    handler.getRouteTable(routes);
+    for (const auto& route : routes) {
+      if (toIPAddress(*route.dest()->ip()) == IPAddressV6("100::ffff") &&
+          *route.dest()->prefixLength() == 128) {
+        return route.nextHops()->at(0).disableTTLDecrement().value_or(false);
+      }
+    }
+    return false;
+  }
+
+  void installLoopNeighbor(SwSwitch* sw) {
+    sw->getNeighborUpdater()
+        ->receivedNdpMineForIntf(
+            InterfaceID(5),
+            IPAddressV6("2401:db00:2110:3004::1"),
+            MacAddress("02:00:00:00:00:02"),
+            PortDescriptor(PortID(1)),
+            ICMPv6Type::ICMPV6_TYPE_NDP_NEIGHBOR_ADVERTISEMENT,
+            0)
+        .get(std::chrono::seconds(5));
+    waitForStateUpdates(sw);
+  }
+
+  void installPendingLoopNeighbor(SwSwitch* sw) {
+    const InterfaceID interfaceId(5);
+    const IPAddressV6 peerNextHop("2401:db00:2110:3004::1");
+    sw->updateStateBlocking("pending loop neighbor", [=](const auto& state) {
+      auto newState = state;
+      auto interface =
+          state->getInterfaces()->getNode(interfaceId)->modify(&newState);
+      interface->getNdpTable()
+          ->modify(interfaceId, &newState)
+          ->addPendingEntry(peerNextHop, interfaceId);
+      return newState;
+    });
+  }
+};
+
+// Reject a port whose TTL decrement was already disabled before setup.
+TEST_F(L3TrafficLoopApiTest, RejectPreexistingPortTtlDisable) {
+  auto handle = createLoopHandle(cfg::AsicType::ASIC_TYPE_YUBA);
+  auto sw = handle->getSw();
+  sw->updateStateBlocking(
+      "preexisting port TTL disable", [](const auto& state) {
+        auto newState = state;
+        state->getPorts()
+            ->getNode(PortID(1))
+            ->modify(&newState)
+            ->setTTLDisableDecrement(true);
+        return newState;
+      });
+  ThriftHandler handler(sw);
+  EXPECT_THROW(setupLoop(handler), FbossError);
+  EXPECT_TRUE(savedStatuses(handler).empty());
+  EXPECT_FALSE(hasLoopRoute(handler));
+  EXPECT_EQ(
+      sw->getState()->getPorts()->getNode(PortID(1))->getTTLDisableDecrement(),
+      std::optional<bool>(true));
+}
+
+// Reject a LAG whose TTL decrement was already disabled before setup.
+TEST_F(L3TrafficLoopApiTest, RejectPreexistingLagTtlDisable) {
+  auto handle = createLoopHandle(cfg::AsicType::ASIC_TYPE_YUBA, true);
+  auto sw = handle->getSw();
+  sw->updateStateBlocking("preexisting LAG TTL disable", [](const auto& state) {
+    auto newState = state;
+    state->getAggregatePorts()
+        ->getNode(kAggregatePortID)
+        ->modify(&newState)
+        ->setTTLDisableDecrement(true);
+    return newState;
+  });
+  ThriftHandler handler(sw);
+  EXPECT_THROW(setupLoop(handler), FbossError);
+  EXPECT_TRUE(savedStatuses(handler).empty());
+  EXPECT_FALSE(hasLoopRoute(handler));
+  EXPECT_EQ(
+      sw->getState()
+          ->getAggregatePorts()
+          ->getNode(kAggregatePortID)
+          ->getTTLDisableDecrement(),
+      std::optional<bool>(true));
+}
+
+// Reject a peer neighbor whose TTL decrement was already disabled.
+TEST_F(L3TrafficLoopApiTest, RejectPreexistingNeighborTtlDisable) {
+  auto handle = createLoopHandle(cfg::AsicType::ASIC_TYPE_TOMAHAWK3);
+  auto sw = handle->getSw();
+  installLoopNeighbor(sw);
+  sw->updateStateBlocking(
+      "preexisting neighbor TTL disable", [](const auto& state) {
+        auto newState = state;
+        auto interface =
+            state->getInterfaces()->getNode(InterfaceID(5))->modify(&newState);
+        auto table =
+            interface->getNdpTable()->modify(InterfaceID(5), &newState);
+        auto entry =
+            table->getEntry(IPAddressV6("2401:db00:2110:3004::1"))->clone();
+        entry->setDisableTTLDecrement(true);
+        table->updateNode(entry);
+        return newState;
+      });
+  ThriftHandler handler(sw);
+  EXPECT_THROW(setupLoop(handler), FbossError);
+  EXPECT_TRUE(savedStatuses(handler).empty());
+  EXPECT_FALSE(hasLoopRoute(handler));
+  EXPECT_EQ(
+      sw->getState()
+          ->getInterfaces()
+          ->getNode(InterfaceID(5))
+          ->getNdpTable()
+          ->getEntry(IPAddressV6("2401:db00:2110:3004::1"))
+          ->getDisableTTLDecrement(),
+      std::optional<bool>(true));
+}
+
+// A pending peer's existing TTL setting must not be cleared by a new loop.
+TEST_F(L3TrafficLoopApiTest, RejectPreexistingPendingNeighborTtlDisable) {
+  auto handle = createLoopHandle(cfg::AsicType::ASIC_TYPE_TOMAHAWK3);
+  auto sw = handle->getSw();
+  installPendingLoopNeighbor(sw);
+  sw->updateStateBlocking(
+      "preexisting pending neighbor TTL disable", [](const auto& state) {
+        auto newState = state;
+        auto interface =
+            state->getInterfaces()->getNode(InterfaceID(5))->modify(&newState);
+        auto table =
+            interface->getNdpTable()->modify(InterfaceID(5), &newState);
+        auto entry =
+            table->getEntry(IPAddressV6("2401:db00:2110:3004::1"))->clone();
+        entry->setDisableTTLDecrement(true);
+        table->updateNode(entry);
+        return newState;
+      });
+  ThriftHandler handler(sw);
+  EXPECT_THROW(setupLoop(handler), FbossError);
+  EXPECT_TRUE(savedStatuses(handler).empty());
+  EXPECT_FALSE(hasLoopRoute(handler));
+  const auto neighbor = sw->getState()
+                            ->getInterfaces()
+                            ->getNode(InterfaceID(5))
+                            ->getNdpTable()
+                            ->getEntry(IPAddressV6("2401:db00:2110:3004::1"));
+  EXPECT_TRUE(neighbor->isPending());
+  EXPECT_EQ(neighbor->getDisableTTLDecrement(), std::optional<bool>(true));
+}
+
+// Cleanup keeps an existing neighbor and explicitly clears its TTL flag.
+TEST_F(L3TrafficLoopApiTest, PreserveExistingNeighborOnCleanup) {
+  auto handle = createLoopHandle(cfg::AsicType::ASIC_TYPE_TOMAHAWK3);
+  auto sw = handle->getSw();
+  installLoopNeighbor(sw);
+  ThriftHandler handler(sw);
+  setupLoop(handler);
+  teardownLoop(handler);
+  auto neighbor = sw->getState()
+                      ->getInterfaces()
+                      ->getNode(InterfaceID(5))
+                      ->getNdpTable()
+                      ->getEntryIf(IPAddressV6("2401:db00:2110:3004::1"));
+  ASSERT_TRUE(neighbor);
+  EXPECT_EQ(neighbor->getMac(), MacAddress("02:00:00:00:00:02"));
+  EXPECT_EQ(neighbor->getDisableTTLDecrement(), std::optional<bool>(false));
+  EXPECT_FALSE(hasLoopRoute(handler));
+}
+
+using L3TrafficLoopApiDeathTest = L3TrafficLoopApiTest;
+
+// Remove the LAG before cleanup: the cleanup error must log and abort.
+TEST_F(L3TrafficLoopApiDeathTest, CleanupFailureTerminatesAgent) {
+  ::testing::FLAGS_gtest_death_test_style = "threadsafe";
+  EXPECT_DEATH(
+      {
+        auto handle = createLoopHandle(cfg::AsicType::ASIC_TYPE_YUBA, true);
+        auto sw = handle->getSw();
+        ThriftHandler handler(sw);
+        setupLoop(handler);
+        sw->updateStateBlocking("remove loop LAG", [](const auto& state) {
+          auto newState = state;
+          state->getAggregatePorts()->modify(&newState)->removeNode(
+              kAggregatePortID);
+          return newState;
+        });
+        try {
+          teardownLoop(handler);
+        } catch (const std::exception&) {
+          // An exception is not termination; the old retry policy fails here.
+        }
+      },
+      "L3 traffic loop cleanup failed on loop1");
+}
+
+// Yuba selects port TTL disable; teardown restores the flag and removes the
+// route/neighbor, while repeated teardown is harmless.
+TEST_F(L3TrafficLoopApiTest, PortTtlRoundTrip) {
+  auto handle = createLoopHandle(cfg::AsicType::ASIC_TYPE_YUBA);
+  auto sw = handle->getSw();
+  ThriftHandler handler(sw);
+  EXPECT_TRUE(savedStatuses(handler).empty());
+  setupLoop(handler);
+  EXPECT_EQ(*status(handler).state(), L3TrafficLoopState::READY);
+  EXPECT_EQ(
+      sw->getState()->getPorts()->getNode(PortID(1))->getTTLDisableDecrement(),
+      std::optional<bool>(true));
+  EXPECT_TRUE(hasLoopRoute(handler));
+  teardownLoop(handler);
+  EXPECT_EQ(*status(handler).state(), L3TrafficLoopState::NOT_CONFIGURED);
+  EXPECT_EQ(
+      sw->getState()->getPorts()->getNode(PortID(1))->getTTLDisableDecrement(),
+      std::optional<bool>(false));
+  EXPECT_FALSE(hasLoopRoute(handler));
+  EXPECT_FALSE(sw->getState()
+                   ->getInterfaces()
+                   ->getNode(InterfaceID(5))
+                   ->getNdpTable()
+                   ->getEntryIf(IPAddressV6("2401:db00:2110:3004::1")));
+  EXPECT_NO_THROW(teardownLoop(handler));
+}
+
+// Tomahawk3 has next-hop TTL control but no physical-port TTL control.
+TEST_F(L3TrafficLoopApiTest, NextHopTtlRoundTrip) {
+  auto handle = createLoopHandle(cfg::AsicType::ASIC_TYPE_TOMAHAWK3);
+  auto sw = handle->getSw();
+  ThriftHandler handler(sw);
+  setupLoop(handler);
+  auto neighbor = sw->getState()
+                      ->getInterfaces()
+                      ->getNode(InterfaceID(5))
+                      ->getNdpTable()
+                      ->getEntryIf(IPAddressV6("2401:db00:2110:3004::1"));
+  ASSERT_TRUE(neighbor);
+  EXPECT_EQ(neighbor->getDisableTTLDecrement(), std::optional<bool>(true));
+  EXPECT_EQ(
+      sw->getState()->getPorts()->getNode(PortID(1))->getTTLDisableDecrement(),
+      std::optional<bool>(false));
+  EXPECT_TRUE(hasLoopRoute(handler));
+  EXPECT_TRUE(loopRouteDisablesNextHopTtl(handler));
+  teardownLoop(handler);
+  EXPECT_FALSE(hasLoopRoute(handler));
+}
+
+// With all TTL controls supported, a standalone port must use port control.
+TEST_F(L3TrafficLoopApiTest, PortTtlPreferredOverNextHop) {
+  auto handle = createLoopHandle(cfg::AsicType::ASIC_TYPE_MOCK);
+  auto sw = handle->getSw();
+  ThriftHandler handler(sw);
+  setupLoop(handler);
+  EXPECT_EQ(*status(handler).state(), L3TrafficLoopState::READY);
+  EXPECT_EQ(
+      sw->getState()->getPorts()->getNode(PortID(1))->getTTLDisableDecrement(),
+      std::optional<bool>(true));
+  auto neighbor = sw->getState()
+                      ->getInterfaces()
+                      ->getNode(InterfaceID(5))
+                      ->getNdpTable()
+                      ->getEntryIf(IPAddressV6("2401:db00:2110:3004::1"));
+  ASSERT_TRUE(neighbor);
+  EXPECT_FALSE(neighbor->getDisableTTLDecrement().value_or(false));
+  EXPECT_TRUE(hasLoopRoute(handler));
+  EXPECT_FALSE(loopRouteDisablesNextHopTtl(handler));
+  teardownLoop(handler);
+  EXPECT_EQ(
+      sw->getState()->getPorts()->getNode(PortID(1))->getTTLDisableDecrement(),
+      std::optional<bool>(false));
+}
+
+// With all TTL controls supported, a LAG member must use aggregate control.
+TEST_F(L3TrafficLoopApiTest, LagTtlPreferredOverNextHop) {
+  auto handle = createLoopHandle(cfg::AsicType::ASIC_TYPE_MOCK, true);
+  auto sw = handle->getSw();
+  ThriftHandler handler(sw);
+  setupLoop(handler);
+  EXPECT_EQ(*status(handler).state(), L3TrafficLoopState::READY);
+  EXPECT_EQ(
+      sw->getState()
+          ->getAggregatePorts()
+          ->getNode(kAggregatePortID)
+          ->getTTLDisableDecrement(),
+      std::optional<bool>(true));
+  EXPECT_EQ(
+      sw->getState()->getPorts()->getNode(PortID(1))->getTTLDisableDecrement(),
+      std::optional<bool>(false));
+  auto neighbor = sw->getState()
+                      ->getInterfaces()
+                      ->getNode(InterfaceID(5))
+                      ->getNdpTable()
+                      ->getEntryIf(IPAddressV6("2401:db00:2110:3004::1"));
+  ASSERT_TRUE(neighbor);
+  EXPECT_FALSE(neighbor->getDisableTTLDecrement().value_or(false));
+  EXPECT_TRUE(hasLoopRoute(handler));
+  EXPECT_FALSE(loopRouteDisablesNextHopTtl(handler));
+  teardownLoop(handler);
+  EXPECT_EQ(
+      sw->getState()
+          ->getAggregatePorts()
+          ->getNode(kAggregatePortID)
+          ->getTTLDisableDecrement(),
+      std::optional<bool>(false));
+}
+
+// A LAG without aggregate TTL control falls back to next-hop control.
+TEST_F(L3TrafficLoopApiTest, LagUsesNextHopTtlFallback) {
+  auto handle = createLoopHandle(cfg::AsicType::ASIC_TYPE_TOMAHAWK3, true);
+  auto sw = handle->getSw();
+  ThriftHandler handler(sw);
+  setupLoop(handler);
+  EXPECT_EQ(*status(handler).state(), L3TrafficLoopState::READY);
+  EXPECT_FALSE(sw->getState()
+                   ->getAggregatePorts()
+                   ->getNode(kAggregatePortID)
+                   ->getTTLDisableDecrement()
+                   .has_value());
+  EXPECT_EQ(
+      sw->getState()->getPorts()->getNode(PortID(1))->getTTLDisableDecrement(),
+      std::optional<bool>(false));
+  EXPECT_TRUE(hasLoopRoute(handler));
+  EXPECT_TRUE(loopRouteDisablesNextHopTtl(handler));
+  teardownLoop(handler);
+  EXPECT_FALSE(hasLoopRoute(handler));
+}
+
+// Two members cannot create independent loops on one LAG, even with next-hop
+// TTL.
+TEST_F(L3TrafficLoopApiTest, RejectDuplicateLagWithNextHopTtl) {
+  auto handle = createLoopHandle(cfg::AsicType::ASIC_TYPE_TOMAHAWK3, true);
+  auto sw = handle->getSw();
+  ASSERT_TRUE(sw->getState()
+                  ->getAggregatePorts()
+                  ->getNode(kAggregatePortID)
+                  ->isMemberPort(PortID(2)));
+  ThriftHandler handler(sw);
+  setupLoop(handler);
+  EXPECT_THROW(
+      handler.setupL3TrafficLoops(
+          make_unique<std::vector<BinaryAddress>>(std::vector<BinaryAddress>{
+              toBinaryAddress(IPAddressV6("100::fffe"))}),
+          make_unique<std::vector<std::string>>(
+              std::vector<std::string>{"loop2"}),
+          make_unique<std::vector<BinaryAddress>>(std::vector<BinaryAddress>{
+              toBinaryAddress(IPAddressV6("2401:db00:2110:3004::2"))}),
+          make_unique<std::vector<std::string>>(
+              std::vector<std::string>{"02:00:00:00:00:03"}),
+          make_unique<std::vector<int32_t>>(std::vector<int32_t>{30})),
+      FbossError);
+  std::map<std::string, L3TrafficLoopStatus> statuses;
+  handler.getL3TrafficLoopStatus(
+      statuses, make_unique<std::vector<std::string>>());
+  EXPECT_EQ(*statuses.at("loop1").state(), L3TrafficLoopState::READY);
+  EXPECT_EQ(statuses.count("loop2"), 0);
+  EXPECT_TRUE(hasLoopRoute(handler));
+}
+
+TEST_F(L3TrafficLoopApiTest, StatusReturnsSavedRecordsOnly) {
+  auto handle = createLoopHandle(cfg::AsicType::ASIC_TYPE_YUBA);
+  ThriftHandler handler(handle->getSw());
+  EXPECT_TRUE(savedStatuses(handler).empty());
+
+  std::map<std::string, L3TrafficLoopStatus> statuses;
+  ASSERT_NO_THROW(handler.getL3TrafficLoopStatus(
+      statuses,
+      make_unique<std::vector<std::string>>(
+          std::vector<std::string>{"loop1", "missing"})));
+  EXPECT_TRUE(statuses.empty());
+
+  setupLoop(handler);
+  statuses = savedStatuses(handler);
+  ASSERT_EQ(statuses.size(), 1);
+  EXPECT_EQ(*statuses.at("loop1").state(), L3TrafficLoopState::READY);
+  EXPECT_TRUE(statuses.at("loop1").expirationTimeMs().has_value());
+
+  ASSERT_NO_THROW(handler.getL3TrafficLoopStatus(
+      statuses,
+      make_unique<std::vector<std::string>>(
+          std::vector<std::string>{"loop2", "missing"})));
+  EXPECT_TRUE(statuses.empty());
+
+  ASSERT_NO_THROW(handler.getL3TrafficLoopStatus(
+      statuses,
+      make_unique<std::vector<std::string>>(
+          std::vector<std::string>{"loop1", "missing"})));
+  ASSERT_EQ(statuses.size(), 1);
+  EXPECT_EQ(*statuses.at("loop1").state(), L3TrafficLoopState::READY);
+
+  teardownLoop(handler);
+  EXPECT_EQ(*status(handler).state(), L3TrafficLoopState::NOT_CONFIGURED);
+  EXPECT_FALSE(status(handler).expirationTimeMs().has_value());
+}
+
+// ASICs without port, LAG or next-hop TTL control reject setup unchanged.
+TEST_F(L3TrafficLoopApiTest, UnsupportedTtlControl) {
+  auto handle = createLoopHandle(cfg::AsicType::ASIC_TYPE_CHENAB);
+  ThriftHandler handler(handle->getSw());
+  EXPECT_TRUE(savedStatuses(handler).empty());
+  EXPECT_THROW(setupLoop(handler), FbossError);
+  EXPECT_FALSE(hasLoopRoute(handler));
+  EXPECT_EQ(
+      handle->getSw()
+          ->getState()
+          ->getPorts()
+          ->getNode(PortID(1))
+          ->getTTLDisableDecrement(),
+      std::optional<bool>(false));
+}
+
+// Ebro supports port TTL control only; a LAG member must not use that setting.
+TEST_F(L3TrafficLoopApiTest, LagDoesNotUseMemberPortTtl) {
+  auto handle = createLoopHandle(cfg::AsicType::ASIC_TYPE_EBRO, true);
+  auto sw = handle->getSw();
+  ThriftHandler handler(sw);
+  EXPECT_TRUE(savedStatuses(handler).empty());
+  EXPECT_THROW(setupLoop(handler), FbossError);
+  EXPECT_FALSE(hasLoopRoute(handler));
+  EXPECT_EQ(
+      sw->getState()->getPorts()->getNode(PortID(1))->getTTLDisableDecrement(),
+      std::optional<bool>(false));
+  EXPECT_FALSE(sw->getState()
+                   ->getAggregatePorts()
+                   ->getNode(kAggregatePortID)
+                   ->getTTLDisableDecrement()
+                   .has_value());
+}
+
+// A bad second port rolls back the first loop, including TTL, route and NDP.
+TEST_F(L3TrafficLoopApiTest, BulkSetupRollback) {
+  auto handle = createLoopHandle(cfg::AsicType::ASIC_TYPE_YUBA);
+  auto sw = handle->getSw();
+  ThriftHandler handler(sw);
+  EXPECT_THROW(
+      handler.setupL3TrafficLoops(
+          make_unique<std::vector<BinaryAddress>>(std::vector<BinaryAddress>{
+              toBinaryAddress(IPAddressV6("100::ffff")),
+              toBinaryAddress(IPAddressV6("100::fffe"))}),
+          make_unique<std::vector<std::string>>(
+              std::vector<std::string>{"loop1", "missing"}),
+          make_unique<std::vector<BinaryAddress>>(std::vector<BinaryAddress>{
+              toBinaryAddress(IPAddressV6("2401:db00:2110:3004::1")),
+              toBinaryAddress(IPAddressV6("2401:db00:2110:3004::2"))}),
+          make_unique<std::vector<std::string>>(std::vector<std::string>{
+              "02:00:00:00:00:02", "02:00:00:00:00:03"}),
+          make_unique<std::vector<int32_t>>(std::vector<int32_t>{30, 30})),
+      FbossError);
+  EXPECT_EQ(*status(handler).state(), L3TrafficLoopState::NOT_CONFIGURED);
+  EXPECT_FALSE(hasLoopRoute(handler));
+  EXPECT_EQ(
+      sw->getState()->getPorts()->getNode(PortID(1))->getTTLDisableDecrement(),
+      std::optional<bool>(false));
+}
+
+// Invalid lifetimes are rejected before changing state.
+TEST_F(L3TrafficLoopApiTest, RejectInvalidInputs) {
+  auto handle = createLoopHandle(cfg::AsicType::ASIC_TYPE_YUBA);
+  ThriftHandler handler(handle->getSw());
+  EXPECT_THROW(setupLoop(handler, 0), FbossError);
+  EXPECT_THROW(setupLoop(handler, 3601), FbossError);
+  EXPECT_TRUE(savedStatuses(handler).empty());
+  EXPECT_FALSE(hasLoopRoute(handler));
+}
+
+// Yuba LAG loops change the aggregate TTL flag, never the member port flag.
+TEST_F(L3TrafficLoopApiTest, LagTtlRoundTrip) {
+  auto handle = createLoopHandle(cfg::AsicType::ASIC_TYPE_YUBA, true);
+  auto sw = handle->getSw();
+  ThriftHandler handler(sw);
+  EXPECT_TRUE(savedStatuses(handler).empty());
+  setupLoop(handler);
+  EXPECT_EQ(*status(handler).state(), L3TrafficLoopState::READY);
+  EXPECT_EQ(
+      sw->getState()
+          ->getAggregatePorts()
+          ->getNode(kAggregatePortID)
+          ->getTTLDisableDecrement(),
+      std::optional<bool>(true));
+  EXPECT_TRUE(hasLoopRoute(handler));
+  EXPECT_EQ(
+      sw->getState()->getPorts()->getNode(PortID(1))->getTTLDisableDecrement(),
+      std::optional<bool>(false));
+  auto neighbor = sw->getState()
+                      ->getInterfaces()
+                      ->getNode(InterfaceID(5))
+                      ->getNdpTable()
+                      ->getEntryIf(IPAddressV6("2401:db00:2110:3004::1"));
+  ASSERT_TRUE(neighbor);
+  EXPECT_EQ(neighbor->getPort(), PortDescriptor(kAggregatePortID));
+  teardownLoop(handler);
+  EXPECT_EQ(*status(handler).state(), L3TrafficLoopState::NOT_CONFIGURED);
+  EXPECT_EQ(
+      sw->getState()
+          ->getAggregatePorts()
+          ->getNode(kAggregatePortID)
+          ->getTTLDisableDecrement(),
+      std::optional<bool>(false));
+  EXPECT_FALSE(hasLoopRoute(handler));
+}
+
+// A cleaned-up LAG can reuse its port, aggregate, and qualification address.
+TEST_F(L3TrafficLoopApiTest, ReconfigureAfterTeardown) {
+  auto handle = createLoopHandle(cfg::AsicType::ASIC_TYPE_YUBA, true);
+  ThriftHandler handler(handle->getSw());
+  setupLoop(handler);
+  teardownLoop(handler);
+  EXPECT_EQ(*status(handler).state(), L3TrafficLoopState::NOT_CONFIGURED);
+  setupLoop(handler);
+  EXPECT_EQ(*status(handler).state(), L3TrafficLoopState::READY);
+  EXPECT_TRUE(hasLoopRoute(handler));
+  teardownLoop(handler);
+}
+
+// A port rename must not permit a second active loop on the same physical ID.
+TEST_F(L3TrafficLoopApiTest, RejectDuplicatePhysicalPortAfterRename) {
+  auto handle = createLoopHandle(cfg::AsicType::ASIC_TYPE_TOMAHAWK3);
+  auto sw = handle->getSw();
+  ThriftHandler handler(sw);
+  setupLoop(handler);
+  ASSERT_EQ(*status(handler).state(), L3TrafficLoopState::READY);
+  sw->updateStateBlocking("rename loop port", [](const auto& state) {
+    auto newState = state;
+    state->getPorts()->getNode(PortID(1))->modify(&newState)->setName(
+        "renamed-loop1");
+    return newState;
+  });
+  EXPECT_EQ(*status(handler).state(), L3TrafficLoopState::READY);
+  EXPECT_THROW(
+      handler.setupL3TrafficLoops(
+          make_unique<std::vector<BinaryAddress>>(std::vector<BinaryAddress>{
+              toBinaryAddress(IPAddressV6("100::fffe"))}),
+          make_unique<std::vector<std::string>>(
+              std::vector<std::string>{"renamed-loop1"}),
+          make_unique<std::vector<BinaryAddress>>(std::vector<BinaryAddress>{
+              toBinaryAddress(IPAddressV6("2401:db00:2110:3004::2"))}),
+          make_unique<std::vector<std::string>>(
+              std::vector<std::string>{"02:00:00:00:00:03"}),
+          make_unique<std::vector<int32_t>>(std::vector<int32_t>{30})),
+      FbossError);
+  EXPECT_TRUE(hasLoopRoute(handler));
+  std::vector<UnicastRoute> routes;
+  handler.getRouteTable(routes);
+  EXPECT_FALSE(std::any_of(routes.begin(), routes.end(), [](const auto& route) {
+    return toIPAddress(*route.dest()->ip()) == IPAddressV6("100::fffe") &&
+        *route.dest()->prefixLength() == 128;
+  }));
+}
+
+// Extension must not create a loop or a route on an unconfigured port.
+TEST_F(L3TrafficLoopApiTest, RejectExtensionBeforeSetup) {
+  auto handle = createLoopHandle(cfg::AsicType::ASIC_TYPE_YUBA);
+  ThriftHandler handler(handle->getSw());
+  EXPECT_THROW(
+      handler.extendL3TrafficLoops(
+          make_unique<std::vector<std::string>>(
+              std::vector<std::string>{"loop1"}),
+          10),
+      FbossError);
+  EXPECT_TRUE(savedStatuses(handler).empty());
+  EXPECT_FALSE(hasLoopRoute(handler));
+}
+
+// A missing second port must leave the first port's lease unchanged.
+TEST_F(L3TrafficLoopApiTest, BulkExtensionValidationIsAtomic) {
+  auto handle = createLoopHandle(cfg::AsicType::ASIC_TYPE_YUBA);
+  ThriftHandler handler(handle->getSw());
+  setupLoop(handler);
+  const auto originalStatus = status(handler);
+  EXPECT_THROW(
+      handler.extendL3TrafficLoops(
+          make_unique<std::vector<std::string>>(
+              std::vector<std::string>{"loop1", "missing"}),
+          10),
+      FbossError);
+  EXPECT_EQ(status(handler), originalStatus);
+  EXPECT_TRUE(hasLoopRoute(handler));
+}
+
+// Reject an extension that would leave more than one hour on the lease.
+TEST_F(L3TrafficLoopApiTest, RejectExtensionPastMaximumLease) {
+  auto handle = createLoopHandle(cfg::AsicType::ASIC_TYPE_YUBA);
+  ThriftHandler handler(handle->getSw());
+  setupLoop(handler, 3600);
+  const auto originalStatus = status(handler);
+  EXPECT_THROW(
+      handler.extendL3TrafficLoops(
+          make_unique<std::vector<std::string>>(
+              std::vector<std::string>{"loop1"}),
+          3600),
+      FbossError);
+  EXPECT_EQ(status(handler), originalStatus);
+  EXPECT_TRUE(hasLoopRoute(handler));
+}
+
+// Port, LAG, and next-hop TTL methods all need a usable peer MAC.
+TEST_F(L3TrafficLoopApiTest, MissingPeerMacRejectedForAllTtlControls) {
+  for (const auto& [asicType, aggregateMember] :
+       {std::pair{cfg::AsicType::ASIC_TYPE_YUBA, false},
+        std::pair{cfg::AsicType::ASIC_TYPE_YUBA, true},
+        std::pair{cfg::AsicType::ASIC_TYPE_TOMAHAWK3, false}}) {
+    SCOPED_TRACE(static_cast<int>(asicType));
+    SCOPED_TRACE(aggregateMember);
+    auto handle = createLoopHandle(asicType, aggregateMember);
+    ThriftHandler handler(handle->getSw());
+    EXPECT_THROW(setupLoop(handler, 30, ""), FbossError);
+    EXPECT_TRUE(savedStatuses(handler).empty());
+    EXPECT_FALSE(hasLoopRoute(handler));
+  }
+}
+
+// A pending NDP entry has no usable MAC and must not make setup READY.
+TEST_F(L3TrafficLoopApiTest, PendingNeighborNeedsPeerMac) {
+  auto handle = createLoopHandle(cfg::AsicType::ASIC_TYPE_YUBA);
+  installPendingLoopNeighbor(handle->getSw());
+  ThriftHandler handler(handle->getSw());
+  EXPECT_THROW(setupLoop(handler, 30, ""), FbossError);
+  EXPECT_TRUE(savedStatuses(handler).empty());
+  EXPECT_FALSE(hasLoopRoute(handler));
+}
+
+// The caller may omit the MAC when an existing resolved neighbor supplies it.
+TEST_F(L3TrafficLoopApiTest, ResolvedNeighborSuppliesPeerMac) {
+  auto handle = createLoopHandle(cfg::AsicType::ASIC_TYPE_TOMAHAWK3);
+  installLoopNeighbor(handle->getSw());
+  ThriftHandler handler(handle->getSw());
+  ASSERT_NO_THROW(setupLoop(handler, 30, ""));
+  EXPECT_EQ(*status(handler).state(), L3TrafficLoopState::READY);
+  EXPECT_TRUE(hasLoopRoute(handler));
+  teardownLoop(handler);
+}
+
+// A supplied MAC resolves an existing pending neighbor; cleanup keeps it.
+TEST_F(L3TrafficLoopApiTest, PendingNeighborUsesSuppliedPeerMac) {
+  auto handle = createLoopHandle(cfg::AsicType::ASIC_TYPE_YUBA);
+  auto sw = handle->getSw();
+  installPendingLoopNeighbor(sw);
+  ThriftHandler handler(sw);
+  ASSERT_NO_THROW(setupLoop(handler));
+  auto getPeerNeighbor = [sw] {
+    return sw->getState()
+        ->getInterfaces()
+        ->getNode(InterfaceID(5))
+        ->getNdpTable()
+        ->getEntryIf(IPAddressV6("2401:db00:2110:3004::1"));
+  };
+  auto neighbor = getPeerNeighbor();
+  ASSERT_TRUE(neighbor);
+  EXPECT_FALSE(neighbor->isPending());
+  EXPECT_EQ(neighbor->getMac(), MacAddress("02:00:00:00:00:02"));
+  EXPECT_EQ(*status(handler).state(), L3TrafficLoopState::READY);
+  teardownLoop(handler);
+  EXPECT_TRUE(getPeerNeighbor());
+}
+
+// An extension survives the original deadline; eventual expiry restores TTL.
+TEST_F(L3TrafficLoopApiTest, ExtensionAndExpiry) {
+  auto handle = createLoopHandle(cfg::AsicType::ASIC_TYPE_YUBA);
+  auto sw = handle->getSw();
+  ThriftHandler handler(sw);
+  setupLoop(handler, 1);
+  auto beforeExtension = status(handler);
+  ASSERT_TRUE(beforeExtension.expirationTimeMs().has_value());
+  const auto originalExpiration = *beforeExtension.expirationTimeMs();
+  handler.extendL3TrafficLoops(
+      make_unique<std::vector<std::string>>(std::vector<std::string>{"loop1"}),
+      2);
+  auto afterExtension = status(handler);
+  ASSERT_TRUE(afterExtension.expirationTimeMs().has_value());
+  EXPECT_NEAR(
+      *afterExtension.expirationTimeMs(), originalExpiration + 2000, 50);
+  // Observe the state after the original one-second lifetime has elapsed.
+  // NOLINTNEXTLINE(facebook-hte-BadCall-sleep_for)
+  std::this_thread::sleep_for(std::chrono::milliseconds(1500));
+  EXPECT_EQ(*status(handler).state(), L3TrafficLoopState::READY);
+  EXPECT_TRUE(checkWithRetryErrorReturn(
+      [&] {
+        return *status(handler).state() == L3TrafficLoopState::NOT_CONFIGURED;
+      },
+      30,
+      std::chrono::milliseconds(200),
+      true));
+  EXPECT_EQ(
+      sw->getState()->getPorts()->getNode(PortID(1))->getTTLDisableDecrement(),
+      std::optional<bool>(false));
+  EXPECT_FALSE(hasLoopRoute(handler));
 }

@@ -47,7 +47,7 @@ getdeps scratch tree as a generic fix.
 - Component succeeded but artifact was not found: compare `/output` with the
   component's `artifact` pattern and default pattern.
 - Forwarding-stack compile failure: inspect `sai_build.env`, headers,
-  `libsai_impl.a`, and SAI/SDK version flags as one unit.
+  `libsai_impl.a`/`libsai_impl.so`, and SAI/SDK version flags as one unit.
 - Kmod or first-boot failure: compare the image kernel release with BSP and SAI
   runtime module ABI before changing service configuration.
 - KIWI failure: use the complete image-builder log and preserve any partx trace

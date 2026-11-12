@@ -9,6 +9,7 @@
  */
 
 #include "fboss/cli/fboss2/commands/config/qos/buffer_pool/CmdConfigQosBufferPool.h"
+#include "fboss/cli/fboss2/utils/ArgCompletion.h"
 
 #include "fboss/cli/fboss2/CmdHandler.cpp"
 
@@ -158,5 +159,12 @@ void CmdConfigQosBufferPool::printOutput(const RetType& logMsg) {
 // Explicit template instantiation
 template void
 CmdHandler<CmdConfigQosBufferPool, CmdConfigQosBufferPoolTraits>::run();
+
+std::vector<std::string> CmdConfigQosBufferPoolTraits::completeArgs(
+    const std::vector<std::string>& typed) {
+  return utils::completion::completeAttrGrammar(
+      typed,
+      {.attrs = utils::completion::toWords(kValidAttrs), .minObjects = 1});
+}
 
 } // namespace facebook::fboss

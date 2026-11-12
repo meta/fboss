@@ -109,7 +109,7 @@ int64_t getCumulativeCounter(
     facebook::fb303::ExportedStatMapImpl* statsMap,
     const std::string& statName) {
   auto statPtr = statsMap->getStatPtrNoExport(statName);
-  auto lockedStatPtr = statPtr->wlock();
+  auto lockedStatPtr = statPtr->contextualLock();
   lockedStatPtr->update(
       std::chrono::seconds(facebook::fb303::get_legacy_stats_time()));
   auto numLevels = lockedStatPtr->numLevels();
@@ -673,12 +673,12 @@ void BcmCosQueueManager::programBandwidth(
   }
 
   if (portQueueRate.getType() == cfg::PortQueueRate::Type::pktsPerSec) {
-    rateMin = *portQueueRate.get_pktsPerSec().minimum();
-    rateMax = *portQueueRate.get_pktsPerSec().maximum();
+    rateMin = *portQueueRate.pktsPerSec().as_const()->minimum();
+    rateMax = *portQueueRate.pktsPerSec().as_const()->maximum();
     flags = BCM_COSQ_BW_PACKET_MODE;
   } else { // cfg::PortQueueRate::Type::pktsPerSec
-    rateMin = *portQueueRate.get_kbitsPerSec().minimum();
-    rateMax = *portQueueRate.get_kbitsPerSec().maximum();
+    rateMin = *portQueueRate.kbitsPerSec().as_const()->minimum();
+    rateMax = *portQueueRate.kbitsPerSec().as_const()->maximum();
     flags = 0;
   }
 

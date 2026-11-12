@@ -10,10 +10,10 @@ cpp_unittest(
     ],
     network_access = network_access_utils.none(),
     deps = [
+        "fbsource//xplat/folly/logging:init",
+        "fbsource//xplat/folly/logging:logging",
+        "fbsource//xplat/folly/logging/test:test_handler",
         "//fboss/lib/link_snapshots:ring_buffer",
         "//fboss/lib/link_snapshots:snapshot_manager",
-        "//folly/logging:init",
-        "//folly/logging:logging",
-        "//folly/logging/test:test_handler",
     ],
 )

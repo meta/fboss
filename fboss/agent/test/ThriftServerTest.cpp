@@ -458,6 +458,34 @@ CO_TEST_F(ThriftServerTest, fdbEventTest) {
   EXPECT_TRUE(ret);
 }
 
+CO_TEST_F(ThriftServerTest, switchReachabilityChangeEventReceivedCounter) {
+  setupServerAndClients();
+
+  auto result =
+      co_await multiSwitchClient_->co_notifySwitchReachabilityChangeEvent(0);
+  const auto kReceivedCounter = SwitchStats::kCounterPrefix +
+      "switch.0.switch_reachability_change_event_received.sum";
+  CounterCache counters(sw_);
+  auto ret = co_await result.sink(
+      [&]() -> folly::coro::AsyncGenerator<
+                multiswitch::SwitchReachabilityChangeEvent&&> {
+        WITH_RETRIES({
+          counters.update();
+          EXPECT_EVENTUALLY_EQ(
+              counters.value(
+                  "switch.0.switch_reachability_change_event_sync_active"),
+              1);
+        });
+        co_yield multiswitch::SwitchReachabilityChangeEvent{};
+        co_yield multiswitch::SwitchReachabilityChangeEvent{};
+        WITH_RETRIES({
+          counters.update();
+          EXPECT_EVENTUALLY_EQ(counters.value(kReceivedCounter), 2);
+        });
+      }());
+  EXPECT_TRUE(ret);
+}
+
 CO_TEST_F(ThriftServerTest, receivePktHandler) {
   // setup server and clients
   setupServerAndClients();

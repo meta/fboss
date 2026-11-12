@@ -10,12 +10,12 @@ cpp_unittest(
     ],
     network_access = network_access_utils.none(),
     deps = [
+        "fbsource//xplat/folly/testing:test_util",
         "//fb303:service_data",
         "//fboss/platform/helpers:mock_platform_fs_utils",
         "//fboss/platform/helpers:mock_platform_utils",
         "//fboss/platform/helpers:platform_fs_utils",
         "//fboss/platform/helpers:platform_name_lib",
-        "//folly/testing:test_util",
     ],
 )
 
@@ -26,9 +26,9 @@ cpp_unittest(
     ],
     network_access = network_access_utils.none(),
     deps = [
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly/testing:test_util",
         "//fboss/platform/helpers:platform_fs_utils",
-        "//folly:file_util",
-        "//folly/testing:test_util",
     ],
 )
 

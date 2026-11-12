@@ -4088,8 +4088,7 @@ void BcmSwitch::processChangedTeFlow(
     const std::shared_ptr<TeFlowEntry>& newTeFlow) {
   XLOG(DBG3) << "processChangedTeFlow, oldTeFlow=" << oldTeFlow->str()
              << " newTeFlow=" << newTeFlow->str();
-  teFlowTable_->processChangedTeFlow(
-      platform_->getAsic()->getDefaultTeFlowGroupID(), oldTeFlow, newTeFlow);
+  teFlowTable_->processChangedTeFlow(oldTeFlow, newTeFlow);
 }
 
 void BcmSwitch::processRemovedTeFlow(
@@ -4116,6 +4115,12 @@ bool BcmSwitch::hasValidAclMatcher(const std::shared_ptr<AclEntry>& acl) const {
     return false;
   }
   if (acl->getTcpFlagsMask()) {
+    return false;
+  }
+  if (acl->getDstIpWithMask()) {
+    return false;
+  }
+  if (acl->getDstIpV6Word1WithMask() || acl->getDstIpV6Word0WithMask()) {
     return false;
   }
 

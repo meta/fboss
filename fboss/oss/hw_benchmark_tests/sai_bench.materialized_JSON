@@ -2433,6 +2433,14 @@
         {
           "test_name_regex": "RxSlowPathArpBenchmark",
           "reason": "not able to generate linerate traffic on cisco asic"
+        },
+        {
+          "test_name_regex": "HwInitAndExit400Gx400GBenchmark",
+          "reason": "Times out on leaba 1.42.8 after D118563817 (MAC loopback storm)"
+        },
+        {
+          "test_name_regex": "HwInitAndExit40Gx10GBenchmark",
+          "reason": "Times out on leaba 1.42.8 after D118563817 (MAC loopback storm)"
         }
     ],
     "leaba/1.42.8/gibraltar/mono": [
@@ -2487,6 +2495,14 @@
         {
           "test_name_regex": "RxSlowPathArpBenchmark",
           "reason": "not able to generate linerate traffic on cisco asic"
+        },
+        {
+          "test_name_regex": "HwInitAndExit400Gx400GBenchmark",
+          "reason": "Times out on leaba 1.42.8 after D118563817 (MAC loopback storm)"
+        },
+        {
+          "test_name_regex": "HwInitAndExit40Gx10GBenchmark",
+          "reason": "Times out on leaba 1.42.8 after D118563817 (MAC loopback storm)"
         }
     ],
     "leaba/1.42.8/gibraltar/multi_switch": [
@@ -2541,6 +2557,14 @@
         {
           "test_name_regex": "RxSlowPathArpBenchmark",
           "reason": "not able to generate linerate traffic on cisco asic"
+        },
+        {
+          "test_name_regex": "HwInitAndExit400Gx400GBenchmark",
+          "reason": "Times out on leaba 1.42.8 after D118563817 (MAC loopback storm)"
+        },
+        {
+          "test_name_regex": "HwInitAndExit40Gx10GBenchmark",
+          "reason": "Times out on leaba 1.42.8 after D118563817 (MAC loopback storm)"
         }
     ],
     "leaba/24.8.3001/gibraltar": [
@@ -3755,22 +3779,6 @@
           "reason": "D100645979 CpuLatencyManager refactor fails on Spectrum4/chenab"
         },
         {
-          "test_name_regex": "RouteAddHwEcmpGroupScale128x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteDelHwEcmpGroupScale128x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteAddHwEcmpGroupScale256x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteDelHwEcmpGroupScale256x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
           "test_name_regex": "HwTunManagerProbeAndCleanup",
           "reason": "Produces no benchmark results on Spectrum4 (times out during pre-measurement kernel/state debug dump); blocking conveyor since release 7406, under investigation"
         },
@@ -3807,22 +3815,6 @@
         {
           "test_name_regex": "cpuLatencyBenchmark",
           "reason": "D100645979 CpuLatencyManager refactor fails on Spectrum4/chenab"
-        },
-        {
-          "test_name_regex": "RouteAddHwEcmpGroupScale128x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteDelHwEcmpGroupScale128x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteAddHwEcmpGroupScale256x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteDelHwEcmpGroupScale256x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
         },
         {
           "test_name_regex": "HwTunManagerProbeAndCleanup",
@@ -3863,22 +3855,6 @@
           "reason": "D100645979 CpuLatencyManager refactor fails on Spectrum4/chenab"
         },
         {
-          "test_name_regex": "RouteAddHwEcmpGroupScale128x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteDelHwEcmpGroupScale128x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteAddHwEcmpGroupScale256x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteDelHwEcmpGroupScale256x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
           "test_name_regex": "HwTunManagerProbeAndCleanup",
           "reason": "Produces no benchmark results on Spectrum4 (times out during pre-measurement kernel/state debug dump); blocking conveyor since release 7406, under investigation"
         },
@@ -3915,22 +3891,6 @@
         {
           "test_name_regex": "cpuLatencyBenchmark",
           "reason": "D100645979 CpuLatencyManager refactor fails on Spectrum4/chenab"
-        },
-        {
-          "test_name_regex": "RouteAddHwEcmpGroupScale128x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteDelHwEcmpGroupScale128x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteAddHwEcmpGroupScale256x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteDelHwEcmpGroupScale256x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
         },
         {
           "test_name_regex": "HwTunManagerProbeAndCleanup",
@@ -3971,22 +3931,6 @@
           "reason": "D100645979 CpuLatencyManager refactor fails on Spectrum4/chenab"
         },
         {
-          "test_name_regex": "RouteAddHwEcmpGroupScale128x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteDelHwEcmpGroupScale128x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteAddHwEcmpGroupScale256x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteDelHwEcmpGroupScale256x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
           "test_name_regex": "HwTunManagerProbeAndCleanup",
           "reason": "Produces no benchmark results on Spectrum4 (times out during pre-measurement kernel/state debug dump); blocking conveyor since release 7406, under investigation"
         },
@@ -4025,22 +3969,6 @@
           "reason": "D100645979 CpuLatencyManager refactor fails on Spectrum4/chenab"
         },
         {
-          "test_name_regex": "RouteAddHwEcmpGroupScale128x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteDelHwEcmpGroupScale128x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteAddHwEcmpGroupScale256x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteDelHwEcmpGroupScale256x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
           "test_name_regex": "HwTunManagerProbeAndCleanup",
           "reason": "Produces no benchmark results on Spectrum4 (times out during pre-measurement kernel/state debug dump); blocking conveyor since release 7406, under investigation"
         },
@@ -4049,7 +3977,7 @@
           "reason": "Flowlet stats benchmarking is unsupported on chenab"
         }
     ],
-    "nvda/2605.37/spectrum4": [
+    "nvda/2605.38/spectrum4": [
         {
           "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
           "reason": "PBR ACL support has not landed yet"
@@ -4079,22 +4007,6 @@
           "reason": "D100645979 CpuLatencyManager refactor fails on Spectrum4/chenab"
         },
         {
-          "test_name_regex": "RouteAddHwEcmpGroupScale128x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteDelHwEcmpGroupScale128x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteAddHwEcmpGroupScale256x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteDelHwEcmpGroupScale256x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
           "test_name_regex": "HwTunManagerProbeAndCleanup",
           "reason": "Produces no benchmark results on Spectrum4 (times out during pre-measurement kernel/state debug dump); blocking conveyor since release 7406, under investigation"
         },
@@ -4103,7 +4015,7 @@
           "reason": "Flowlet stats benchmarking is unsupported on chenab"
         }
     ],
-    "nvda/2605.37/spectrum4/mono": [
+    "nvda/2605.38/spectrum4/mono": [
         {
           "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
           "reason": "PBR ACL support has not landed yet"
@@ -4133,22 +4045,6 @@
           "reason": "D100645979 CpuLatencyManager refactor fails on Spectrum4/chenab"
         },
         {
-          "test_name_regex": "RouteAddHwEcmpGroupScale128x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteDelHwEcmpGroupScale128x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteAddHwEcmpGroupScale256x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteDelHwEcmpGroupScale256x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
           "test_name_regex": "HwTunManagerProbeAndCleanup",
           "reason": "Produces no benchmark results on Spectrum4 (times out during pre-measurement kernel/state debug dump); blocking conveyor since release 7406, under investigation"
         },
@@ -4157,7 +4053,7 @@
           "reason": "Flowlet stats benchmarking is unsupported on chenab"
         }
     ],
-    "nvda/2605.37/spectrum4/multi_switch": [
+    "nvda/2605.38/spectrum4/multi_switch": [
         {
           "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
           "reason": "PBR ACL support has not landed yet"
@@ -4185,22 +4081,6 @@
         {
           "test_name_regex": "cpuLatencyBenchmark",
           "reason": "D100645979 CpuLatencyManager refactor fails on Spectrum4/chenab"
-        },
-        {
-          "test_name_regex": "RouteAddHwEcmpGroupScale128x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteDelHwEcmpGroupScale128x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteAddHwEcmpGroupScale256x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteDelHwEcmpGroupScale256x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
         },
         {
           "test_name_regex": "HwTunManagerProbeAndCleanup",
@@ -6249,7 +6129,7 @@
           "thresholds": [
             {
               "metric_key_regex": "max_rss",
-              "upper_bound": 3707334
+              "upper_bound": 4507939
             },
             {
               "metric_key_regex": "program_routes_msecs",
@@ -6262,7 +6142,7 @@
           "thresholds": [
             {
               "metric_key_regex": "max_rss",
-              "upper_bound": 3707334
+              "upper_bound": 4597272
             },
             {
               "metric_key_regex": "program_routes_msecs",
@@ -6275,7 +6155,7 @@
           "thresholds": [
             {
               "metric_key_regex": "max_rss",
-              "upper_bound": 3251472
+              "upper_bound": 4071067
             },
             {
               "metric_key_regex": "program_routes_msecs",
@@ -6784,17 +6664,17 @@
           "test_name_regex": "HwSrv6.*$"
         }
     ],
-    "nvda/2605.37/spectrum4": [
+    "nvda/2605.38/spectrum4": [
         {
           "test_name_regex": "HwSrv6.*$"
         }
     ],
-    "nvda/2605.37/spectrum4/mono": [
+    "nvda/2605.38/spectrum4/mono": [
         {
           "test_name_regex": "HwSrv6.*$"
         }
     ],
-    "nvda/2605.37/spectrum4/multi_switch": [
+    "nvda/2605.38/spectrum4/multi_switch": [
         {
           "test_name_regex": "HwSrv6.*$"
         }

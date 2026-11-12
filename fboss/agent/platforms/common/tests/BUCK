@@ -10,13 +10,13 @@ cpp_unittest(
     ],
     network_access = network_access_utils.none(),
     deps = [
+        "fbsource//xplat/folly:conv",
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly:scope_guard",
+        "fbsource//xplat/folly/testing:test_util",
         "//fboss/agent:fboss-error",
         "//fboss/agent:load_agent_config",
         "//fboss/agent/platforms/common:platform_mapping_utils",
         "//fboss/lib/platforms:platform_descriptor",
-        "//folly:conv",
-        "//folly:file_util",
-        "//folly:scope_guard",
-        "//folly/testing:test_util",
     ],
 )

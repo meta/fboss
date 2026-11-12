@@ -39,7 +39,9 @@ cpp_library(
     name = "fsdb_cow_storage",
     srcs = [
         "FsdbCowHybridStateStorage.cpp",
+        "FsdbCowHybridStateStoragePatch.cpp",
         "FsdbCowStateStorage.cpp",
+        "FsdbCowStateStoragePatch.cpp",
         "FsdbCowStatsStorage.cpp",
     ],
     headers = ["FsdbCowStorage.h"],
@@ -101,6 +103,7 @@ cpp_library(
         "FsdbStateStorage.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:expected",
         ":fsdb_cow_root",
         ":fsdb_cow_storage",
         ":fsdb_cow_subscription_manager",
@@ -111,6 +114,5 @@ cpp_library(
         "//fboss/fsdb/oper/instantiations/templates:fsdb_state_sub_mgr_instantiations",
         "//fboss/fsdb/oper/instantiations/templates:fsdb_thrift_struct_std_functions_instantiations",
         "//fboss/thrift_cow/storage:storage",
-        "//folly:expected",
     ],
 )

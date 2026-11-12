@@ -144,8 +144,8 @@ std::pair<bool, cfg::Vlan*> VlanManager::createVlan(
   return {true, &(*insertedIt)};
 }
 
-void VlanManager::deleteVlan(
-    cfg::SwitchConfig& swConfig,
+void VlanManager::checkDeletable(
+    const cfg::SwitchConfig& swConfig,
     const VlanID& vlanId) {
   const auto id = static_cast<int32_t>(vlanId);
 
@@ -176,6 +176,13 @@ void VlanManager::deleteVlan(
         ": it is the ingress VLAN for port(s): ",
         folly::join(", ", ingressPorts));
   }
+}
+
+void VlanManager::deleteVlan(
+    cfg::SwitchConfig& swConfig,
+    const VlanID& vlanId) {
+  checkDeletable(swConfig, vlanId);
+  const auto id = static_cast<int32_t>(vlanId);
 
   // Safe to remove. Drop the VLAN entry, the interface(s) bound to it
   // (including routed SVIs with IP addresses — an interface's vlanID must

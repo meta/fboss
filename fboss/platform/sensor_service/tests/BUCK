@@ -13,8 +13,8 @@ cpp_library(
         "TestUtils.h",
     ],
     deps = [
-        "//folly:file_util",
-        "//folly/testing:test_util",
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly/testing:test_util",
     ],
     exported_deps = [
         "//fboss/platform/sensor_service:service",
@@ -29,14 +29,14 @@ cpp_unittest(
     ],
     network_access = network_access_utils.none(),
     deps = [
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly/logging:logging",
+        "fbsource//xplat/folly/testing:test_util",
         ":utils",
         "//fb303:service_data",
         "//fboss/platform/sensor_service:core",
         "//fboss/platform/sensor_service:service",
         "//fboss/platform/sensor_service:utils",
-        "//folly:file_util",
-        "//folly/logging:logging",
-        "//folly/testing:test_util",
         "//thrift/lib/cpp2/protocol:protocol",
     ],
 )
@@ -86,9 +86,9 @@ cpp_unittest(
     ],
     network_access = network_access_utils.none(),
     deps = [
+        "fbsource//xplat/folly:file_util",
         "//fb303:service_data",
         "//fboss/platform/sensor_service:service",
-        "//folly:file_util",
     ],
 )
 
@@ -99,9 +99,9 @@ cpp_unittest(
     ],
     network_access = network_access_utils.none(),
     deps = [
+        "fbsource//xplat/folly:file_util",
         "//fb303:service_data",
         "//fboss/platform/sensor_service:service",
-        "//folly:file_util",
     ],
 )
 
@@ -112,9 +112,9 @@ cpp_unittest(
     ],
     network_access = network_access_utils.none(),
     deps = [
+        "fbsource//xplat/folly:file_util",
         "//fb303:service_data",
         "//fboss/platform/sensor_service:service",
-        "//folly:file_util",
     ],
 )
 

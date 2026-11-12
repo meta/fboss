@@ -1,8 +1,0 @@
-# Role login containers: each role account may run exactly its
-# own login wrapper as root (bare for interactive login, with args for
-# `shell -c`); the wrapper enters only its own machine. Direct nsenter or
-# machinectl as root is not granted.
-netops ALL=(root) NOPASSWD: /usr/local/bin/netops-shell
-netops ALL=(root) NOPASSWD: /usr/local/bin/netops-shell *
-netadmin ALL=(root) NOPASSWD: /usr/local/bin/netadmin-shell
-netadmin ALL=(root) NOPASSWD: /usr/local/bin/netadmin-shell *

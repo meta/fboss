@@ -70,7 +70,8 @@ void CmdShowInterfacePhymap::printOutput(
   };
 
   auto& portsPhyMap = model.portsPhyMap().value();
-  if (!portsPhyMap.macsecPortPhyMap().has_value()) {
+  if (!apache::thrift::is_non_optional_field_set_manually_or_by_serializer(
+          portsPhyMap.macsecPortPhyMap())) {
     out << "No Phy port map for this platform" << std::endl;
     return;
   }

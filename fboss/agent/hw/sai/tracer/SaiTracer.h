@@ -288,6 +288,7 @@ class SaiTracer {
 #endif
   sai_hash_api_t* hashApi_;
   sai_hostif_api_t* hostifApi_;
+  sai_policer_api_t* policerApi_{};
   sai_isolation_group_api_t* isolationGroupApi_;
   sai_lag_api_t* lagApi_;
   sai_neighbor_api_t* neighborApi_;
@@ -540,6 +541,8 @@ class SaiTracer {
       {SAI_OBJECT_TYPE_TAM, "tam_"},
       {SAI_OBJECT_TYPE_TUNNEL, "tunnel_"},
       {SAI_OBJECT_TYPE_TUNNEL_TERM_TABLE_ENTRY, "tunnelTerm_"},
+      {SAI_OBJECT_TYPE_TUNNEL_MAP, "tunnelMap_"},
+      {SAI_OBJECT_TYPE_TUNNEL_MAP_ENTRY, "tunnelMapEntry_"},
 #if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)
       {SAI_OBJECT_TYPE_SRV6_SIDLIST, "srv6SidList_"},
 #endif
@@ -557,6 +560,7 @@ class SaiTracer {
       {SAI_OBJECT_TYPE_VIRTUAL_ROUTER, "virtualRouter_"},
       {SAI_OBJECT_TYPE_VLAN, "vlan_"},
       {SAI_OBJECT_TYPE_VLAN_MEMBER, "vlanMember_"},
+      {SAI_OBJECT_TYPE_POLICER, "policer_"},
       {SAI_OBJECT_TYPE_ISOLATION_GROUP, "isolationGroup_"},
       {SAI_OBJECT_TYPE_ISOLATION_GROUP_MEMBER, "isolationGroupMember_"},
       {SAI_OBJECT_TYPE_WRED, "wred_"},
@@ -633,6 +637,8 @@ class SaiTracer {
       {SAI_OBJECT_TYPE_TAM, "tam_api->"},
       {SAI_OBJECT_TYPE_TUNNEL, "tunnel_api->"},
       {SAI_OBJECT_TYPE_TUNNEL_TERM_TABLE_ENTRY, "tunnel_api->"},
+      {SAI_OBJECT_TYPE_TUNNEL_MAP, "tunnel_api->"},
+      {SAI_OBJECT_TYPE_TUNNEL_MAP_ENTRY, "tunnel_api->"},
 #if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)
       {SAI_OBJECT_TYPE_SRV6_SIDLIST, "srv6_api->"},
       {SAI_OBJECT_TYPE_MY_SID_ENTRY, "srv6_api->"},
@@ -653,6 +659,7 @@ class SaiTracer {
       {SAI_OBJECT_TYPE_VIRTUAL_ROUTER, "virtual_router_api->"},
       {SAI_OBJECT_TYPE_VLAN, "vlan_api->"},
       {SAI_OBJECT_TYPE_VLAN_MEMBER, "vlan_api->"},
+      {SAI_OBJECT_TYPE_POLICER, "policer_api->"},
       {SAI_OBJECT_TYPE_ISOLATION_GROUP, "isolation_group_api->"},
       {SAI_OBJECT_TYPE_ISOLATION_GROUP_MEMBER, "isolation_group_api->"},
       {SAI_OBJECT_TYPE_WRED, "wred_api->"}};

@@ -50,6 +50,11 @@ class PlatformCheck {
     return {}; // Empty set = all platforms supported
   }
 
+  // Disruptive checks reboot or power cycle parts of the switch.
+  virtual bool isDisruptive() const {
+    return false;
+  }
+
   // Why the check cannot run in this environment, if it cannot.
   virtual std::optional<std::string> getSkipReason() const {
     if (!target_.host) {

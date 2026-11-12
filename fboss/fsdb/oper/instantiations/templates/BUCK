@@ -72,6 +72,7 @@ cpp_library(
     exported_deps = [
         "//fboss/fsdb/oper:subscription_manager",
         "//fboss/fsdb/oper/instantiations:fsdb_cow_root",
+        "//fboss/fsdb/oper/instantiations:fsdb_cow_subscription_manager",
         "//fboss/thrift_cow/nodes:nodes",
     ],
 )

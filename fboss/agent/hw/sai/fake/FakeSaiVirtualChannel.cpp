@@ -11,6 +11,22 @@
 #include "fboss/agent/hw/sai/fake/FakeSai.h"
 
 using facebook::fboss::FakeSai;
+using facebook::fboss::FakeVirtualChannel;
+
+namespace {
+
+// API tests bind VCs to a port id that names no fake port; there is no limit
+// to record for those.
+void recordPortReceiverCreditLimit(
+    FakeSai& fs,
+    FakeVirtualChannel& virtualChannel) {
+  if (fs.portManager.exists(virtualChannel.getPort())) {
+    virtualChannel.setPortReceiverCreditLimitAtReceiverEnable(
+        fs.portManager.get(virtualChannel.getPort()).cbfcReceiverCreditLimit);
+  }
+}
+
+} // namespace
 
 sai_status_t create_virtual_channel_fn(
     sai_object_id_t* virtual_channel_id,
@@ -58,6 +74,9 @@ sai_status_t create_virtual_channel_fn(
     virtualChannel.setCbfcSenderCreditProfile(creditProfile.value());
   }
   if (receiverEnable) {
+    if (receiverEnable.value()) {
+      recordPortReceiverCreditLimit(*fs, virtualChannel);
+    }
     virtualChannel.setCbfcReceiverEnable(receiverEnable.value());
   }
   if (senderEnable) {
@@ -86,6 +105,9 @@ sai_status_t set_virtual_channel_attribute_fn(
       virtualChannel.setCbfcSenderCreditProfile(attr->value.oid);
       break;
     case SAI_VIRTUAL_CHANNEL_ATTR_CBFC_RECEIVER_ENABLE:
+      if (attr->value.booldata && !virtualChannel.getCbfcReceiverEnable()) {
+        recordPortReceiverCreditLimit(*fs, virtualChannel);
+      }
       virtualChannel.setCbfcReceiverEnable(attr->value.booldata);
       break;
     case SAI_VIRTUAL_CHANNEL_ATTR_CBFC_SENDER_ENABLE:

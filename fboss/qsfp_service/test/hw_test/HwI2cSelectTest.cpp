@@ -4,8 +4,8 @@
 
 #include "fboss/qsfp_service/test/hw_test/HwPortUtils.h"
 #include "fboss/qsfp_service/test/hw_test/HwQsfpEnsemble.h"
+#include "fboss/qsfp_service/test/hw_test/HwTransceiverUtils.h"
 
-#include <folly/gen/Base.h>
 #include <folly/logging/xlog.h>
 
 namespace facebook::fboss {
@@ -68,21 +68,23 @@ TEST_F(HwTest, i2cUniqueSerialNumbers) {
     if (snIds.find(sn) == snIds.end()) {
       snIds[sn] = tcvrId;
     } else {
-      // Found duplicated serial numbers, module must be DAC and connected to
-      // another DAC on the other end
+      // Found duplicated serial numbers, module must be a single cable
+      // assembly (DAC/AEC/AOC) connected back to itself on the other end
       auto neighborId = snIds[sn];
       CHECK(cabledNames.find(tcvrId) != cabledNames.end());
       CHECK(cabledNames.find(neighborId) != cabledNames.end());
       EXPECT_EQ(cabledNames[tcvrId].first, cabledNames[neighborId].second);
       EXPECT_EQ(cabledNames[tcvrId].second, cabledNames[neighborId].first);
 
-      auto transmitterTech =
-          *(transceiverInfo[tcvrId].tcvrState()->cable()->transmitterTech());
-      EXPECT_EQ(TransmitterTechnology::COPPER, transmitterTech);
-
-      transmitterTech = *(
-          transceiverInfo[neighborId].tcvrState()->cable()->transmitterTech());
-      EXPECT_EQ(TransmitterTechnology::COPPER, transmitterTech);
+      for (auto id : {tcvrId, neighborId}) {
+        const auto& tcvrState = *transceiverInfo[id].tcvrState();
+        auto transmitterTech = *(tcvrState.cable()->transmitterTech());
+        EXPECT_TRUE(
+            transmitterTech == TransmitterTechnology::COPPER ||
+            utility::HwTransceiverUtils::isAoc(tcvrState))
+            << "Transceiver " << id
+            << " shares a serial number but is neither copper nor AOC";
+      }
     }
   }
 }

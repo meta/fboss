@@ -11,11 +11,13 @@ fbpkg.builder(
     path_actions = {
         "data_corral_service": "//fboss/platform/data_corral_service:data_corral_service",
         "data_corral_service.service": "facebook/data_corral_service.service",
+        "device_update_mailbox": "//fboss/platform/rackmon/rack_firmware_update:device_update_mailbox",
         "fan_service": "//fboss/platform/fan_service:fan_service",
         "fan_service.service": "facebook/fan_service.service",
         "fw_util": "//fboss/platform/fw_util:fw_util",
         "platform_manager": "//fboss/platform/platform_manager:platform_manager",
         "platform_manager.service": "facebook/platform_manager.service",
+        "psu_update_delta_orv3": "//fboss/platform/rackmon/rack_firmware_update:psu_update_delta_orv3",
         "rackmon": "//fboss/platform/rackmon:rackmon",
         "rackmon.service": "facebook/rackmon.service",
         "reboot_cause_finder": "//fboss/platform/reboot_cause_finder:reboot_cause_finder",

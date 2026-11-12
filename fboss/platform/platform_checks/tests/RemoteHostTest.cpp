@@ -10,6 +10,8 @@
 
 #include "fboss/platform/platform_checks/RemoteHost.h"
 
+#include <sys/stat.h>
+
 #include <thread>
 
 #include <folly/testing/TestUtil.h>
@@ -238,4 +240,61 @@ TEST(RemoteHostSessionTest, ImplausibleOutputSizeIsMalformedReply) {
 
   EXPECT_EQ(result.exitCode, 255);
   EXPECT_THAT(result.standardErr, ::testing::HasSubstr("Malformed reply"));
+}
+
+TEST(RemoteHostTest, PasswordUsesAskPassAndSsh) {
+  RemoteHost host("rsw1", RemoteHost::Transport::SUSH2, "root", "s3cret");
+
+  auto argv = host.execArgv("uptime");
+
+  ASSERT_GE(argv.size(), 4);
+  EXPECT_EQ(argv[0], "env");
+  EXPECT_THAT(argv[1], ::testing::StartsWith("SSH_ASKPASS="));
+  EXPECT_EQ(argv[2], "SSH_ASKPASS_REQUIRE=force");
+  EXPECT_EQ(argv[3], "ssh");
+  EXPECT_THAT(argv, ::testing::Not(::testing::Contains("BatchMode=yes")));
+  EXPECT_THAT(argv, ::testing::Not(::testing::Contains("s3cret")));
+}
+
+TEST(RemoteHostTest, AuthMethodsProbeOffersNoKeysAndNeverPrompts) {
+  RemoteHost host("rsw1", RemoteHost::Transport::SUSH2);
+
+  auto argv = host.authMethodsArgv();
+
+  ASSERT_FALSE(argv.empty());
+  EXPECT_EQ(argv.front(), "ssh");
+  EXPECT_THAT(
+      argv,
+      IsSupersetOf({"BatchMode=yes", "PubkeyAuthentication=no", "root@rsw1"}));
+}
+
+TEST(RemoteHostTest, OffersPasswordAuth) {
+  EXPECT_TRUE(offersPasswordAuth(
+      "root@rsw1: Permission denied (publickey,password).\n"));
+  EXPECT_TRUE(offersPasswordAuth(
+      "root@rsw1: Permission denied (publickey,keyboard-interactive).\n"));
+  EXPECT_FALSE(
+      offersPasswordAuth("root@rsw1: Permission denied (publickey).\n"));
+  EXPECT_FALSE(offersPasswordAuth(
+      "ssh: Could not resolve hostname rsw1: Name or service not known\n"));
+  EXPECT_FALSE(offersPasswordAuth(""));
+}
+
+TEST(SshAskPassTest, ScriptPrintsPassword) {
+  SshAskPass askPass("pa ss'word");
+
+  auto result = runLocalCommand({askPass.script().string()}, kTimeout);
+
+  EXPECT_EQ(result.standardOut, "pa ss'word");
+}
+
+TEST(SshAskPassTest, WorksUnderARestrictiveUmask) {
+  // Would strip the owner execute bit from the helper's creation mode.
+  auto oldMask = ::umask(0177);
+  SshAskPass askPass("s3cret");
+  ::umask(oldMask);
+
+  auto result = runLocalCommand({askPass.script().string()}, kTimeout);
+
+  EXPECT_EQ(result.standardOut, "s3cret");
 }

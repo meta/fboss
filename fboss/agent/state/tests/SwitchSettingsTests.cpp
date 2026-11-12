@@ -965,14 +965,14 @@ TEST(SwitchSettingsTest, applyDefaultVoqConfig) {
         if (!voqConfig->getAqms() || voqConfig->getAqms()->empty()) {
           continue;
         }
-        for (const auto& aqm : std::as_const(*voqConfig->getAqms())) {
-          auto thresholds = aqm->cref<switch_config_tags::detection>()
-                                ->cref<switch_config_tags::linear>()
-                                ->toThrift();
-          EXPECT_EQ(*thresholds.minimumLength(), minLength);
-          EXPECT_EQ(*thresholds.maximumLength(), maxLength);
-          return;
-        }
+        const auto& aqms = std::as_const(*voqConfig->getAqms());
+        const auto& aqm = *aqms.begin();
+        auto thresholds = aqm->cref<switch_config_tags::detection>()
+                              ->cref<switch_config_tags::linear>()
+                              ->toThrift();
+        EXPECT_EQ(*thresholds.minimumLength(), minLength);
+        EXPECT_EQ(*thresholds.maximumLength(), maxLength);
+        return;
       }
     }
     throw FbossError("Could not find queueId ", kEcnQueueId, " in config!");

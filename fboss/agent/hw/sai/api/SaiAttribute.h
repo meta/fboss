@@ -32,6 +32,17 @@ extern "C" {
 #include <sai.h>
 }
 
+template <typename RangeT>
+  requires(
+      std::same_as<RangeT, sai_u32_range_t>
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+      || std::same_as<RangeT, sai_u64_range_t>
+#endif
+      )
+inline bool operator==(const RangeT& a, const RangeT& b) {
+  return a.min == b.min && a.max == b.max;
+}
+
 /*
  * The SaiAttribute template class facilitates pleasant and safe interaction
  * with the ubiquitous sai_attribute_t.
@@ -166,6 +177,9 @@ DEFINE_extract(std::vector<sai_qos_map_t>, qosmap);
 DEFINE_extract(std::vector<sai_map_t>, maplist);
 #if defined(BRCM_SAI_SDK_XGS_AND_DNX)
 DEFINE_extract(std::vector<sai_u16_range_t>, u16rangelist);
+#endif
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+DEFINE_extract(std::vector<sai_u64_range_t>, u64rangelist);
 #endif
 DEFINE_extract(std::vector<sai_port_lane_eye_values_t>, porteyevalues);
 DEFINE_extract(std::vector<sai_port_err_status_t>, porterror);

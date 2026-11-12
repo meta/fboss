@@ -5,7 +5,7 @@
 #include "fboss/agent/TxPacket.h"
 #include "fboss/agent/hw/test/ProdConfigFactory.h"
 #include "fboss/agent/test/TestUtils.h"
-#include "fboss/agent/test/agent_hw_tests/AgentTestEcmpConstants.h"
+#include "fboss/agent/test/utils/AgentTestEcmpConstants.h"
 #include "fboss/agent/test/utils/ConfigUtils.h"
 #include "fboss/agent/test/utils/CoppTestUtils.h"
 #include "fboss/agent/test/utils/EcmpDataPlaneTestUtil.h"

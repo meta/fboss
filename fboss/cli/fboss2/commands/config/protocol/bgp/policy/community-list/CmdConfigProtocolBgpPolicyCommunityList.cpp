@@ -9,6 +9,7 @@
  */
 
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/community-list/CmdConfigProtocolBgpPolicyCommunityList.h"
+#include "fboss/cli/fboss2/utils/ArgCompletion.h"
 
 #include "fboss/cli/fboss2/CmdHandler.cpp"
 
@@ -237,6 +238,23 @@ CmdConfigProtocolBgpPolicyCommunityList::queryClient(
     if (!args.attr().empty()) {
       result.message += fmt::format(" for community-list {}", args.listName());
     }
+    if (args.attr() == kBooleanOperator || args.attr() == kExactMatch) {
+      // bgpd requires a term's inline copy of the list to carry the same
+      // boolean_operator ("Conflicting boolean_operator from the reference")
+      // and reads exact_match only from that copy. Keep both fields
+      // synchronized on either update: besides applying the requested
+      // attribute, this repairs a stale inline copy that bgpd would reject.
+      for (auto& ref :
+           bgpcli::findTermsReferencingCommunityList(cfg, args.listName())) {
+        if (ref.filter == nullptr) {
+          continue;
+        }
+        ref.filter->boolean_operator() = *list.boolean_operator();
+        if (list.exact_match().has_value()) {
+          ref.filter->exact_match() = *list.exact_match();
+        }
+      }
+    }
     session.saveBgpConfig();
     result.message +=
         fmt::format("\nConfig saved to: {}", session.getBgpSessionConfigPath());
@@ -257,5 +275,23 @@ void CmdConfigProtocolBgpPolicyCommunityList::printOutput(
 template void CmdHandler<
     CmdConfigProtocolBgpPolicyCommunityList,
     CmdConfigProtocolBgpPolicyCommunityListTraits>::run();
+
+std::vector<std::string>
+CmdConfigProtocolBgpPolicyCommunityListTraits::completeArgs(
+    const std::vector<std::string>& typed) {
+  return utils::completion::completeAttrGrammar(
+      typed,
+      {.attrs =
+           {std::string(kBooleanOperator),
+            std::string(kCommunity),
+            std::string(kDescription),
+            std::string(kExactMatch)},
+       .values =
+           {{std::string(kBooleanOperator),
+             {std::string(kBooleanOperatorAnd),
+              std::string(kBooleanOperatorOr)}},
+            {std::string(kExactMatch), {"true", "false"}}},
+       .minObjects = 1});
+}
 
 } // namespace facebook::fboss

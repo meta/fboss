@@ -132,9 +132,13 @@ class AgentPortProfileTest : public AgentHwTest {
     bool expectPcsRxLinkStatus = client->sync_pcsRxLinkStatusSupportedInSdk();
     bool expectFecAMLock = client->sync_fecAlignmentLockSupportedInSdk();
 
-    ASSERT_TRUE(phyInfo.state().has_value());
+    ASSERT_TRUE(
+        apache::thrift::is_non_optional_field_set_manually_or_by_serializer(
+            phyInfo.state()));
     auto& state = *phyInfo.state();
-    ASSERT_TRUE(state.phyChip().has_value());
+    ASSERT_TRUE(
+        apache::thrift::is_non_optional_field_set_manually_or_by_serializer(
+            state.phyChip()));
     EXPECT_EQ(state.phyChip()->type(), phy::DataPlanePhyChipType::IPHY);
     EXPECT_TRUE(state.linkState().has_value());
     EXPECT_FALSE(state.system().has_value());
@@ -142,10 +146,14 @@ class AgentPortProfileTest : public AgentHwTest {
     EXPECT_EQ(state.speed(), port->getSpeed());
     EXPECT_EQ(state.name(), port->getName());
 
-    ASSERT_TRUE(state.line().has_value());
+    ASSERT_TRUE(
+        apache::thrift::is_non_optional_field_set_manually_or_by_serializer(
+            state.line()));
     auto& lineState = *state.line();
     EXPECT_EQ(lineState.side(), phy::Side::LINE);
-    ASSERT_TRUE(lineState.pmd().has_value());
+    ASSERT_TRUE(
+        apache::thrift::is_non_optional_field_set_manually_or_by_serializer(
+            lineState.pmd()));
     auto& pmdState = *lineState.pmd();
 
     if (expectPmdCdrLock || expectPmdSignalDetect) {
@@ -166,15 +174,23 @@ class AgentPortProfileTest : public AgentHwTest {
       }
     }
 
-    ASSERT_TRUE(phyInfo.stats().has_value());
-    ASSERT_TRUE(phyInfo.stats()->line().has_value());
+    ASSERT_TRUE(
+        apache::thrift::is_non_optional_field_set_manually_or_by_serializer(
+            phyInfo.stats()));
+    ASSERT_TRUE(
+        apache::thrift::is_non_optional_field_set_manually_or_by_serializer(
+            phyInfo.stats()->line()));
     auto& lineStats = *phyInfo.stats()->line();
 
     if (expectPmdCdrLock || expectPmdSignalDetect) {
-      ASSERT_TRUE(lineStats.pmd().has_value());
+      ASSERT_TRUE(
+          apache::thrift::is_non_optional_field_set_manually_or_by_serializer(
+              lineStats.pmd()));
       EXPECT_EQ(lineStats.pmd()->lanes()->size(), expectedNumPmdLanes);
     }
-    ASSERT_TRUE(lineStats.pmd().has_value());
+    ASSERT_TRUE(
+        apache::thrift::is_non_optional_field_set_manually_or_by_serializer(
+            lineStats.pmd()));
     auto& pmdStats = *lineStats.pmd();
     laneIds.clear();
     for (auto lane : *pmdStats.lanes()) {
@@ -277,10 +293,17 @@ class AgentPortProfileTest : public AgentHwTest {
             EXPECT_EVENTUALLY_TRUE(allPhyInfo.find(portID) != allPhyInfo.end());
             if (allPhyInfo.find(portID) != allPhyInfo.end()) {
               auto& phyInfo = allPhyInfo.at(portID);
-              EXPECT_EVENTUALLY_TRUE(phyInfo.state().has_value());
               EXPECT_EVENTUALLY_TRUE(
-                  phyInfo.state().has_value() &&
-                  phyInfo.state()->line().has_value());
+                  apache::thrift::
+                      is_non_optional_field_set_manually_or_by_serializer(
+                          phyInfo.state()));
+              EXPECT_EVENTUALLY_TRUE(
+                  apache::thrift::
+                      is_non_optional_field_set_manually_or_by_serializer(
+                          phyInfo.state()) &&
+                  apache::thrift::
+                      is_non_optional_field_set_manually_or_by_serializer(
+                          phyInfo.state()->line()));
             }
           }
         });

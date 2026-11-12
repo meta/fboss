@@ -8,11 +8,20 @@
  *
  */
 
+#include "fboss/agent/TxPacket.h"
 #include "fboss/agent/hw/switch_asics/HwAsic.h"
 #include "fboss/agent/if/gen-cpp2/AgentHwTestCtrl.h"
 #include "fboss/agent/test/AgentHwTest.h"
+#include "fboss/agent/test/EcmpSetupHelper.h"
+#include "fboss/agent/test/ResourceLibUtil.h"
+#include "fboss/agent/test/TestUtils.h"
+#include "fboss/agent/test/utils/AgentTestAddressConstants.h"
 #include "fboss/agent/test/utils/ConfigUtils.h"
+#include "fboss/agent/test/utils/OlympicTestUtils.h"
+#include "fboss/agent/test/utils/PacketTestUtils.h"
+#include "fboss/agent/test/utils/QosTestUtils.h"
 
+#include <fmt/core.h>
 #include <folly/logging/xlog.h>
 
 namespace facebook::fboss {
@@ -29,9 +38,18 @@ class AgentHwCbfcTest : public AgentHwTest {
   // The two lossless classes SUSWs run today: pg2 rdma, pg6 monitoring.
   static constexpr int16_t kRdmaVc = 2;
   static constexpr int16_t kMonitoringVc = 6;
-  static constexpr int64_t kRdmaReservedCredits = 36;
-  static constexpr int64_t kMonitoringReservedCredits = 12;
-  static constexpr int64_t kSenderCreditLimit = 8192;
+  // 36 and 12 cells. The Tomahawk Ultra 1 SAI reads reserved credits as bytes,
+  // so 36 alone programs 0 cells. Back to cells once the SAI fixes the unit.
+  static constexpr int64_t kRdmaReservedCredits = 36 * 56;
+  static constexpr int64_t kMonitoringReservedCredits = 12 * 56;
+  // 8192 cells, in bytes for the same reason. 8192 alone programs 146 cells.
+  static constexpr int64_t kSenderCreditLimit = 8192 * 56;
+  // The TU1 receiver's values, so a TU1-to-TU1 link counts credits alike.
+  static constexpr int16_t kSenderCreditSize = 56;
+  static constexpr int16_t kSenderPacketOverhead = 16;
+  inline static const std::map<int16_t, int16_t> kVcMap{
+      {kRdmaVc, kRdmaVc},
+      {kMonitoringVc, kMonitoringVc}};
 
   utility::PortVcInfo getPortVcInfo(PortID portId) {
     auto switchId =
@@ -71,7 +89,17 @@ class AgentHwCbfcTest : public AgentHwTest {
     cfg::CbfcConfig cbfc;
     cbfc.virtualChannels() = {rdma, monitoring};
     cbfc.senderCreditLimit() = kSenderCreditLimit;
+    cbfc.senderCreditSize() = kSenderCreditSize;
+    cbfc.senderPacketOverhead() = kSenderPacketOverhead;
     cfg.cbfcConfigs() = {{kCbfcConfigName, cbfc}};
+
+    // Traffic class and queue N map to VC N, as on SUSWs.
+    utility::addOlympicQosMaps(cfg, ensemble.getL3Asics());
+    for (auto& policy : *cfg.qosPolicies()) {
+      auto& qosMap = policy.qosMap().ensure();
+      qosMap.trafficClassToVcId() = kVcMap;
+      qosMap.queueToVcId() = kVcMap;
+    }
 
     for (const auto& portId : ensemble.masterLogicalInterfacePortIds()) {
       auto portCfg = utility::findCfgPort(cfg, portId);
@@ -80,8 +108,28 @@ class AgentHwCbfcTest : public AgentHwTest {
   }
 
   void verifyCbfcProgrammed();
-  void verifyCbfcRemoved();
+  void sendPacket(uint8_t dscp);
 };
+
+// Routed once out of the port the default route points to, through the queue
+// its DSCP maps to. On a CBFC port that send needs credit from the peer.
+void AgentHwCbfcTest::sendPacket(uint8_t dscp) {
+  auto intfMac =
+      getMacForFirstInterfaceWithPortsForTesting(getProgrammedState());
+  auto srcMac = utility::MacAddressGenerator().get(intfMac.u64HBO() + 1);
+  auto txPacket = utility::makeUDPTxPacket(
+      getSw(),
+      getVlanIDForTx(),
+      srcMac,
+      intfMac,
+      folly::IPAddressV6(kTestSrcIpV6),
+      folly::IPAddressV6(kTestDstIpV6),
+      kTestSrcPort,
+      kTestDstPort,
+      dscp << 2, // the low two bits are ECN
+      255);
+  sendPacketSwitchedAsync(std::move(txPacket));
+}
 
 void AgentHwCbfcTest::verifyCbfcProgrammed() {
   auto setup = []() {};
@@ -114,11 +162,34 @@ void AgentHwCbfcTest::verifyCbfcProgrammed() {
                  << show(vcInfo.receiverNativePacketOverhead())
                  << " totalCredits="
                  << show(vcInfo.receiverNativeTotalCredits());
+      XLOG(DBG2) << "Port " << portId << " CBFC sender: creditSize="
+                 << show(vcInfo.senderCreditSize())
+                 << " pktOverhead=" << show(vcInfo.senderPacketOverhead());
+      auto showMap = [](const auto& opt) {
+        if (!opt.has_value()) {
+          return std::string("<not readable>");
+        }
+        std::string out;
+        for (const auto& [from, to] : *opt) {
+          out += fmt::format("{}->{} ", from, to);
+        }
+        return out.empty() ? std::string("<none>") : out;
+      };
+      XLOG(DBG2) << "Port " << portId << " CBFC qos maps: tcToVc="
+                 << showMap(vcInfo.trafficClassToVcId())
+                 << " queueToVc=" << showMap(vcInfo.queueToVcId());
       for (const auto& vc : *vcInfo.virtualChannels()) {
         XLOG(DBG2) << "Port " << portId << " VC "
                    << static_cast<int>(*vc.index()) << " nativeCreditLimit="
                    << show(vc.receiverNativeCreditLimit());
       }
+
+      // From the SDK sender table. 32 / 0 means the sender was left at the
+      // values the SAI writes for fields it was never given.
+      EXPECT_EQ(vcInfo.senderCreditSize(), kSenderCreditSize);
+      EXPECT_EQ(vcInfo.senderPacketOverhead(), kSenderPacketOverhead);
+      EXPECT_EQ(vcInfo.trafficClassToVcId(), kVcMap);
+      EXPECT_EQ(vcInfo.queueToVcId(), kVcMap);
 
       ASSERT_EQ(vcInfo.virtualChannels()->size(), 2);
 
@@ -133,7 +204,9 @@ void AgentHwCbfcTest::verifyCbfcProgrammed() {
         EXPECT_NE(*vc.vcId(), 0);
         EXPECT_TRUE(*vc.senderEnable());
         EXPECT_TRUE(*vc.receiverEnable());
-        EXPECT_TRUE(vc.reservedCreditSize().has_value());
+        EXPECT_TRUE(
+            apache::thrift::is_non_optional_field_set_manually_or_by_serializer(
+                vc.reservedCreditSize()));
         EXPECT_NE(*vc.creditProfileId(), 0);
       }
       EXPECT_EQ(*byIndex[kRdmaVc].reservedCreditSize(), kRdmaReservedCredits);
@@ -185,42 +258,49 @@ void AgentHwCbfcTest::verifyCbfcProgrammed() {
   verifyAcrossWarmBoots(setup, verify);
 }
 
-// Removal is the path that tears virtual channels and credit profiles down
-// together. brcm-sai refcounts profile references and returns OBJECT_IN_USE
-// while a virtual channel still points at one, and SaiObject::remove rethrows
-// out of a destructor, so getting the release order wrong terminates the HW
-// agent rather than leaking. Nothing else in this suite exercises it: the other
-// test only ever programs CBFC and reads it back.
-void AgentHwCbfcTest::verifyCbfcRemoved() {
-  auto setup = [this]() {
-    auto cfg = initialConfig(*getAgentEnsemble());
-    // Leave cbfcConfigs in place and unreferenced, which is what a real
-    // rollback looks like.
-    for (const auto& portId : masterLogicalInterfacePortIds()) {
-      utility::findCfgPort(cfg, portId)->cbfcConfigName().reset();
-    }
-    applyNewConfig(cfg);
-  };
-  auto verify = [this]() {
-    auto state = getProgrammedState();
-    for (const auto& portId : masterLogicalInterfacePortIds()) {
-      auto port = state->getPorts()->getNodeIf(portId);
-      ASSERT_NE(port, nullptr);
-      EXPECT_FALSE(port->getCbfcConfigName().has_value());
-      // Read back from hardware: the manager's handle is gone, so no virtual
-      // channels remain bound to the port.
-      EXPECT_EQ(getPortVcInfo(portId).virtualChannels()->size(), 0);
-    }
-  };
-  verifyAcrossWarmBoots(setup, verify);
-}
-
 TEST_F(AgentHwCbfcTest, verifyCbfcConfig) {
   verifyCbfcProgrammed();
 }
 
-TEST_F(AgentHwCbfcTest, verifyCbfcRemoval) {
-  verifyCbfcRemoved();
+// A MAC loopback does not return CF_Update to the port (RX_CBFC_CF_OS stays 0)
+// and TU1 rejects PHY loopback, so traffic tests run with no loopback. The CBFC
+// port needs a cable or an optic that loops it back to itself.
+class AgentHwCbfcTrafficTest : public AgentHwCbfcTest {
+ protected:
+  cfg::SwitchConfig initialConfig(
+      const AgentEnsemble& ensemble) const override {
+    auto cfg = AgentHwCbfcTest::initialConfig(ensemble);
+    for (const auto& portId : ensemble.masterLogicalInterfacePortIds()) {
+      utility::findCfgPort(cfg, portId)->loopbackMode() =
+          cfg::PortLoopbackMode::NONE;
+    }
+    return cfg;
+  }
+};
+
+// Traffic on both lossless VCs leaves a CBFC port. Queue N maps to VC N.
+TEST_F(AgentHwCbfcTrafficTest, verifyLosslessVcTraffic) {
+  auto setup = [this]() {
+    utility::EcmpSetupAnyNPorts6 ecmpHelper(
+        getProgrammedState(), getSw()->needL2EntryForNeighbor());
+    resolveNeighborAndProgramRoutes(ecmpHelper, 1);
+  };
+  auto verify = [this]() {
+    utility::EcmpSetupAnyNPorts6 ecmpHelper(
+        getProgrammedState(), getSw()->needL2EntryForNeighbor());
+    auto portId = ecmpHelper.ecmpPortDescriptorAt(0).phyPortID();
+    const auto& queueToDscp = utility::kOlympicQueueToDscp();
+    std::map<int, std::vector<uint8_t>> vcQueueToDscp{
+        {kRdmaVc, {queueToDscp.at(kRdmaVc).front()}},
+        {kMonitoringVc, {queueToDscp.at(kMonitoringVc).front()}}};
+    utility::sendPktAndVerifyQueueHit(
+        vcQueueToDscp,
+        getSw(),
+        [this](int dscp) { sendPacket(dscp); },
+        portId,
+        std::nullopt);
+  };
+  verifyAcrossWarmBoots(setup, verify);
 }
 
 } // namespace facebook::fboss

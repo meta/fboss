@@ -178,28 +178,30 @@ double CmdShowInterfaceTraffic::calculateUtilizationPercent(
 
 std::string CmdShowInterfaceTraffic::extractExpectedPort(
     const std::string& portDescription) {
-  if (portDescription.length() == 0) {
+  if (portDescription.empty()) {
     return "--";
   }
   std::vector<std::string> results;
-  // First try splitting as if it's a minipack
+  // Minipack style: "<local>: <peer-host>.<peer-port> (<attrs>)"
   boost::split(results, portDescription, [](char c) { return c == ' '; });
-  // If we don't get results from the split then split on "." which is a
-  // different format
-  if (results.size() <= 1) {
-    boost::split(results, portDescription, [](char c) { return c == '.'; });
-
-    // Finally, if it's an RSW we need to handle that differently
-    const RE2 ssw_regex(".*ssw.*");
-    if (RE2::FullMatch(portDescription, ssw_regex)) {
-      return results[1] + "." + results[2];
-    }
-    const RE2 fsw_regex("^fsw.*");
-    if (RE2::FullMatch(portDescription, fsw_regex)) {
-      return results[0] + "." + results[1];
-    }
+  if (results.size() > 1) {
+    return results[1];
   }
-  return results[1];
+  // Hostname style, dot separated. Each branch names the tokens it needs; a
+  // description that lacks them is shown verbatim instead of indexed.
+  boost::split(results, portDescription, [](char c) { return c == '.'; });
+  static const RE2 sswRegex(".*ssw.*");
+  static const RE2 fswRegex("^fsw.*");
+  if (RE2::FullMatch(portDescription, sswRegex) && results.size() > 2) {
+    return results[1] + "." + results[2];
+  }
+  if (RE2::FullMatch(portDescription, fswRegex) && results.size() > 1) {
+    return results[0] + "." + results[1];
+  }
+  if (results.size() > 1) {
+    return results[1];
+  }
+  return portDescription;
 }
 
 bool CmdShowInterfaceTraffic::isInterestingTraffic(cli::TrafficCounters& tc) {

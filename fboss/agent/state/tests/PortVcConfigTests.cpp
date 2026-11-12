@@ -17,6 +17,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <limits>
+
 using namespace facebook::fboss;
 using std::make_shared;
 
@@ -41,6 +43,8 @@ cfg::CbfcConfig makeCbfcConfig() {
   cfg::CbfcConfig cbfcConfig;
   cbfcConfig.virtualChannels() = {rdma, monitoring};
   cbfcConfig.senderCreditLimit() = 8192;
+  cbfcConfig.senderCreditSize() = 56;
+  cbfcConfig.senderPacketOverhead() = 16;
   return cbfcConfig;
 }
 
@@ -68,6 +72,9 @@ TEST(PortVcConfig, ConfigApplied) {
 
   EXPECT_EQ(port->getCbfcConfigName(), "cbfc_foo");
   EXPECT_EQ(port->getCbfcSenderCreditLimit(), 8192);
+  EXPECT_EQ(port->getCbfcSenderCreditSize(), 56);
+  EXPECT_EQ(port->getCbfcSenderPacketOverhead(), 16);
+  EXPECT_FALSE(port->getCbfcReceiverCreditLimit().has_value());
 
   auto vcs = port->getVirtualChannels();
   ASSERT_TRUE(vcs);
@@ -186,6 +193,18 @@ TEST(PortVcConfig, VcIdOutOfRange) {
   auto cbfcConfig = makeCbfcConfig();
   // PORT_VC_VALUE_MAX is 31; 32 is one past the last valid index.
   cbfcConfig.virtualChannels()[0].id() = 32;
+  auto platform = createMockPlatform();
+  auto stateV0 = make_shared<SwitchState>();
+  auto config = makeConfigWithCbfc(cbfcConfig);
+
+  EXPECT_THROW(
+      publishAndApplyConfig(stateV0, &config, platform.get()), FbossError);
+}
+
+TEST(PortVcConfig, VcIdAboveAsicVcCount) {
+  auto cbfcConfig = makeCbfcConfig();
+  // Within PORT_VC_VALUE_MAX, but the mock ASIC has 16 VCs per port.
+  cbfcConfig.virtualChannels()[0].id() = 16;
   auto platform = createMockPlatform();
   auto stateV0 = make_shared<SwitchState>();
   auto config = makeConfigWithCbfc(cbfcConfig);
@@ -326,13 +345,21 @@ TEST(PortVcConfig, SenderCreditLimitChangeApplied) {
 TEST(PortVcConfig, RemovalClearsState) {
   auto platform = createMockPlatform();
   auto stateV0 = make_shared<SwitchState>();
-  auto config = makeConfigWithCbfc(makeCbfcConfig());
+  auto cbfcConfig = makeCbfcConfig();
+  cbfcConfig.senderCreditSize() = 56;
+  cbfcConfig.senderPacketOverhead() = 16;
+  cbfcConfig.receiverCreditLimit() = 4096;
+  auto config = makeConfigWithCbfc(cbfcConfig);
 
   auto stateV1 = publishAndApplyConfig(stateV0, &config, platform.get());
   ASSERT_NE(nullptr, stateV1);
   ASSERT_TRUE(stateV1->getPorts()
                   ->getNodeIf(PortID(1))
                   ->getCbfcConfigName()
+                  .has_value());
+  ASSERT_TRUE(stateV1->getPorts()
+                  ->getNodeIf(PortID(1))
+                  ->getCbfcReceiverCreditLimit()
                   .has_value());
 
   // Drop the CBFC config entirely. The new port is cloned from the old one, so
@@ -346,6 +373,9 @@ TEST(PortVcConfig, RemovalClearsState) {
   ASSERT_NE(nullptr, port);
   EXPECT_FALSE(port->getCbfcConfigName().has_value());
   EXPECT_FALSE(port->getCbfcSenderCreditLimit().has_value());
+  EXPECT_FALSE(port->getCbfcSenderCreditSize().has_value());
+  EXPECT_FALSE(port->getCbfcSenderPacketOverhead().has_value());
+  EXPECT_FALSE(port->getCbfcReceiverCreditLimit().has_value());
   EXPECT_FALSE(port->getVirtualChannels());
 }
 
@@ -366,4 +396,253 @@ TEST(PortVcConfig, AbsentWhenNotConfigured) {
   // Unset, not an empty list. The SAI layer skips a port on this test alone,
   // so a present-but-empty list would send it on to program hardware.
   EXPECT_FALSE(port->getVirtualChannels());
+}
+
+TEST(PortVcConfig, MissingSenderCreditSize) {
+  auto cbfcConfig = makeCbfcConfig();
+  cbfcConfig.senderCreditSize().reset();
+  auto platform = createMockPlatform();
+  auto stateV0 = make_shared<SwitchState>();
+  auto config = makeConfigWithCbfc(cbfcConfig);
+
+  EXPECT_THROW(
+      publishAndApplyConfig(stateV0, &config, platform.get()), FbossError);
+}
+
+TEST(PortVcConfig, SenderCreditSizeApplied) {
+  auto cbfcConfig = makeCbfcConfig();
+  cbfcConfig.senderCreditSize() = 32;
+  auto platform = createMockPlatform();
+  auto stateV0 = make_shared<SwitchState>();
+  auto config = makeConfigWithCbfc(cbfcConfig);
+
+  auto stateV1 = publishAndApplyConfig(stateV0, &config, platform.get());
+  ASSERT_NE(nullptr, stateV1);
+  auto port = stateV1->getPorts()->getNodeIf(PortID(1));
+  ASSERT_NE(nullptr, port);
+  EXPECT_EQ(port->getCbfcSenderCreditSize(), 32);
+}
+
+TEST(PortVcConfig, SenderCreditSizeChangeApplied) {
+  auto cbfcConfig = makeCbfcConfig();
+  cbfcConfig.senderCreditSize() = 32;
+  auto platform = createMockPlatform();
+  auto stateV0 = make_shared<SwitchState>();
+  auto config = makeConfigWithCbfc(cbfcConfig);
+  auto stateV1 = publishAndApplyConfig(stateV0, &config, platform.get());
+  ASSERT_NE(nullptr, stateV1);
+
+  // Change only the credit size. If the port-unchanged comparison ignores it,
+  // updatePort returns nullptr and the change is silently dropped.
+  cbfcConfig.senderCreditSize() = 56;
+  config.cbfcConfigs() = {{"cbfc_foo", cbfcConfig}};
+
+  auto stateV2 = publishAndApplyConfig(stateV1, &config, platform.get());
+  ASSERT_NE(nullptr, stateV2);
+  EXPECT_EQ(
+      stateV2->getPorts()->getNodeIf(PortID(1))->getCbfcSenderCreditSize(), 56);
+}
+
+TEST(PortVcConfig, UnsupportedSenderCreditSize) {
+  auto cbfcConfig = makeCbfcConfig();
+  cbfcConfig.senderCreditSize() = 128;
+  auto platform = createMockPlatform();
+  auto stateV0 = make_shared<SwitchState>();
+  auto config = makeConfigWithCbfc(cbfcConfig);
+
+  EXPECT_THROW(
+      publishAndApplyConfig(stateV0, &config, platform.get()), FbossError);
+}
+
+TEST(PortVcConfig, MissingSenderPacketOverhead) {
+  auto cbfcConfig = makeCbfcConfig();
+  cbfcConfig.senderPacketOverhead().reset();
+  auto platform = createMockPlatform();
+  auto stateV0 = make_shared<SwitchState>();
+  auto config = makeConfigWithCbfc(cbfcConfig);
+
+  EXPECT_THROW(
+      publishAndApplyConfig(stateV0, &config, platform.get()), FbossError);
+}
+
+TEST(PortVcConfig, SenderPacketOverheadApplied) {
+  auto cbfcConfig = makeCbfcConfig();
+  cbfcConfig.senderPacketOverhead() = 48;
+  auto platform = createMockPlatform();
+  auto stateV0 = make_shared<SwitchState>();
+  auto config = makeConfigWithCbfc(cbfcConfig);
+
+  auto stateV1 = publishAndApplyConfig(stateV0, &config, platform.get());
+  ASSERT_NE(nullptr, stateV1);
+  auto port = stateV1->getPorts()->getNodeIf(PortID(1));
+  ASSERT_NE(nullptr, port);
+  EXPECT_EQ(port->getCbfcSenderPacketOverhead(), 48);
+}
+
+TEST(PortVcConfig, SenderPacketOverheadChangeApplied) {
+  auto cbfcConfig = makeCbfcConfig();
+  cbfcConfig.senderPacketOverhead() = 0;
+  auto platform = createMockPlatform();
+  auto stateV0 = make_shared<SwitchState>();
+  auto config = makeConfigWithCbfc(cbfcConfig);
+  auto stateV1 = publishAndApplyConfig(stateV0, &config, platform.get());
+  ASSERT_NE(nullptr, stateV1);
+
+  cbfcConfig.senderPacketOverhead() = 16;
+  config.cbfcConfigs() = {{"cbfc_foo", cbfcConfig}};
+
+  auto stateV2 = publishAndApplyConfig(stateV1, &config, platform.get());
+  ASSERT_NE(nullptr, stateV2);
+  EXPECT_EQ(
+      stateV2->getPorts()->getNodeIf(PortID(1))->getCbfcSenderPacketOverhead(),
+      16);
+}
+
+TEST(PortVcConfig, UnsupportedSenderPacketOverhead) {
+  auto cbfcConfig = makeCbfcConfig();
+  cbfcConfig.senderPacketOverhead() = 8;
+  auto platform = createMockPlatform();
+  auto stateV0 = make_shared<SwitchState>();
+  auto config = makeConfigWithCbfc(cbfcConfig);
+
+  EXPECT_THROW(
+      publishAndApplyConfig(stateV0, &config, platform.get()), FbossError);
+}
+
+TEST(PortVcConfig, ReceiverCreditLimitApplied) {
+  auto cbfcConfig = makeCbfcConfig();
+  cbfcConfig.receiverCreditLimit() = 4096;
+  auto platform = createMockPlatform();
+  auto stateV0 = make_shared<SwitchState>();
+  auto config = makeConfigWithCbfc(cbfcConfig);
+
+  auto stateV1 = publishAndApplyConfig(stateV0, &config, platform.get());
+  ASSERT_NE(nullptr, stateV1);
+  EXPECT_EQ(
+      stateV1->getPorts()->getNodeIf(PortID(1))->getCbfcReceiverCreditLimit(),
+      4096);
+}
+
+TEST(PortVcConfig, ReceiverCreditLimitChangeApplied) {
+  auto cbfcConfig = makeCbfcConfig();
+  cbfcConfig.receiverCreditLimit() = 4096;
+  auto platform = createMockPlatform();
+  auto stateV0 = make_shared<SwitchState>();
+  auto config = makeConfigWithCbfc(cbfcConfig);
+  auto stateV1 = publishAndApplyConfig(stateV0, &config, platform.get());
+  ASSERT_NE(nullptr, stateV1);
+
+  // Change only the receiver limit. If the port-unchanged comparison ignores
+  // it, updatePort returns nullptr and the change is silently dropped.
+  cbfcConfig.receiverCreditLimit() = 8192;
+  config.cbfcConfigs() = {{"cbfc_foo", cbfcConfig}};
+
+  auto stateV2 = publishAndApplyConfig(stateV1, &config, platform.get());
+  ASSERT_NE(nullptr, stateV2);
+  EXPECT_EQ(
+      stateV2->getPorts()->getNodeIf(PortID(1))->getCbfcReceiverCreditLimit(),
+      8192);
+}
+
+TEST(PortVcConfig, ReceiverCreditLimitAtUint32Max) {
+  auto cbfcConfig = makeCbfcConfig();
+  cbfcConfig.receiverCreditLimit() = std::numeric_limits<uint32_t>::max();
+  auto platform = createMockPlatform();
+  auto stateV0 = make_shared<SwitchState>();
+  auto config = makeConfigWithCbfc(cbfcConfig);
+
+  auto stateV1 = publishAndApplyConfig(stateV0, &config, platform.get());
+  ASSERT_NE(nullptr, stateV1);
+  EXPECT_EQ(
+      stateV1->getPorts()->getNodeIf(PortID(1))->getCbfcReceiverCreditLimit(),
+      std::numeric_limits<uint32_t>::max());
+}
+
+TEST(PortVcConfig, ReceiverCreditLimitAboveUint32Max) {
+  auto cbfcConfig = makeCbfcConfig();
+  // Would wrap in the cast to sai_uint32_t.
+  cbfcConfig.receiverCreditLimit() =
+      static_cast<int64_t>(std::numeric_limits<uint32_t>::max()) + 1;
+  auto platform = createMockPlatform();
+  auto stateV0 = make_shared<SwitchState>();
+  auto config = makeConfigWithCbfc(cbfcConfig);
+
+  EXPECT_THROW(
+      publishAndApplyConfig(stateV0, &config, platform.get()), FbossError);
+}
+
+TEST(PortVcConfig, ReceiverCreditLimitZero) {
+  auto cbfcConfig = makeCbfcConfig();
+  cbfcConfig.receiverCreditLimit() = 0;
+  auto platform = createMockPlatform();
+  auto stateV0 = make_shared<SwitchState>();
+  auto config = makeConfigWithCbfc(cbfcConfig);
+
+  EXPECT_THROW(
+      publishAndApplyConfig(stateV0, &config, platform.get()), FbossError);
+}
+
+TEST(PortVcConfig, ReceiverCreditLimitNegative) {
+  auto cbfcConfig = makeCbfcConfig();
+  cbfcConfig.receiverCreditLimit() = -1;
+  auto platform = createMockPlatform();
+  auto stateV0 = make_shared<SwitchState>();
+  auto config = makeConfigWithCbfc(cbfcConfig);
+
+  EXPECT_THROW(
+      publishAndApplyConfig(stateV0, &config, platform.get()), FbossError);
+}
+
+TEST(PortVcConfig, ReceiverCreditLimitWithoutReceiverEnable) {
+  auto cbfcConfig = makeCbfcConfig();
+  for (auto& vc : *cbfcConfig.virtualChannels()) {
+    vc.receiverEnable() = false;
+  }
+  cbfcConfig.receiverCreditLimit() = 4096;
+  auto platform = createMockPlatform();
+  auto stateV0 = make_shared<SwitchState>();
+  auto config = makeConfigWithCbfc(cbfcConfig);
+
+  try {
+    publishAndApplyConfig(stateV0, &config, platform.get());
+    FAIL() << "a receiver limit with no receiving VC must be rejected";
+  } catch (const FbossError& e) {
+    EXPECT_THAT(e.what(), ::testing::HasSubstr("receiverEnable"));
+  }
+}
+
+TEST(PortVcConfig, ReceiverCreditLimitWithOneReceivingVc) {
+  auto cbfcConfig = makeCbfcConfig();
+  cbfcConfig.virtualChannels()[1].receiverEnable() = false;
+  cbfcConfig.receiverCreditLimit() = 4096;
+  auto platform = createMockPlatform();
+  auto stateV0 = make_shared<SwitchState>();
+  auto config = makeConfigWithCbfc(cbfcConfig);
+
+  auto stateV1 = publishAndApplyConfig(stateV0, &config, platform.get());
+  ASSERT_NE(nullptr, stateV1);
+  EXPECT_EQ(
+      stateV1->getPorts()->getNodeIf(PortID(1))->getCbfcReceiverCreditLimit(),
+      4096);
+}
+
+TEST(PortVcConfig, ReceiverCreditLimitUnsupportedByAsic) {
+  auto cbfcConfig = makeCbfcConfig();
+  cbfcConfig.receiverCreditLimit() = 4096;
+  auto platform = createMockPlatform();
+  auto stateV0 = make_shared<SwitchState>();
+  auto config = makeConfigWithCbfc(cbfcConfig);
+  // Takes the rest of this CBFC config, but not a receiver limit.
+  config.switchSettings()->switchIdToSwitchInfo() = {
+      {0,
+       createSwitchInfo(
+           cfg::SwitchType::NPU, cfg::AsicType::ASIC_TYPE_TOMAHAWKULTRA1)}};
+
+  try {
+    publishAndApplyConfig(stateV0, &config, platform.get());
+    FAIL() << "a receiver limit must be rejected on an ASIC without support";
+  } catch (const FbossError& e) {
+    EXPECT_THAT(
+        e.what(), ::testing::HasSubstr("receiverCreditLimit is not supported"));
+  }
 }

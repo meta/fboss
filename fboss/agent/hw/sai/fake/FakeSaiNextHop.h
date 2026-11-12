@@ -12,6 +12,9 @@
 #include "fboss/agent/hw/sai/fake/FakeManager.h"
 
 #include <folly/IPAddress.h>
+#include <folly/MacAddress.h>
+
+#include <optional>
 
 extern "C" {
 #include <sai.h>
@@ -44,6 +47,7 @@ struct FakeNextHop {
 #if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)
   sai_object_id_t tunnelId{SAI_NULL_OBJECT_ID};
   sai_object_id_t srv6SidlistId{SAI_NULL_OBJECT_ID};
+  std::optional<folly::MacAddress> overlayDstMac;
 #endif
 };
 

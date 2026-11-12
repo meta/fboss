@@ -8,8 +8,8 @@ cpp_library(
     headers = ["XcvrLib.h"],
     deps = [
         "fbsource//third-party/fmt:fmt",
+        "fbsource//xplat/folly/logging:logging",
         "//fboss/platform/config_lib:config_lib",
-        "//folly/logging:logging",
         "//thrift/lib/cpp2/protocol:protocol",
     ],
     exported_deps = [

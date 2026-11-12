@@ -9,14 +9,12 @@
  */
 #pragma once
 
-#include <folly/IPAddress.h>
 #include <folly/MacAddress.h>
-#include <folly/futures/Future.h>
-#include <folly/io/async/EventBase.h>
 #include <folly/logging/xlog.h>
 #include <list>
 #include "fboss/agent/ArpHandler.h"
 #include "fboss/agent/EncapIndexAllocator.h"
+#include "fboss/agent/FbossError.h"
 #include "fboss/agent/FbossHwUpdateError.h"
 #include "fboss/agent/HwAsicTable.h"
 #include "fboss/agent/IPv6Handler.h"
@@ -24,8 +22,6 @@
 #include "fboss/agent/StaticL2ForNeighborSwSwitchUpdater.h"
 #include "fboss/agent/SwitchIdScopeResolver.h"
 #include "fboss/agent/hw/switch_asics/HwAsic.h"
-#include "fboss/agent/state/ArpTable.h"
-#include "fboss/agent/state/NdpTable.h"
 #include "fboss/agent/state/NeighborEntry.h"
 #include "fboss/agent/state/SwitchState.h"
 #include "fboss/agent/state/Vlan.h"
@@ -160,88 +156,6 @@ bool NeighborCacheImpl<NTable>::programEntry(Entry* entry) {
 }
 
 template <typename NTable>
-SwSwitch::StateUpdateFn
-NeighborCacheImpl<NTable>::getUpdateFnToProgramEntryForVlan(Entry* entry) {
-  CHECK(!entry->isPending());
-
-  auto fields = entry->getFields();
-  auto vlanID = vlanID_;
-  auto updateFn =
-      [this, fields, vlanID](const std::shared_ptr<SwitchState>& state) mutable
-      -> std::shared_ptr<SwitchState> {
-    if (!ncachehelpers::checkVlanAndIntf<NTable>(state, fields, vlanID)) {
-      // Either the vlan or intf is no longer valid.
-      return nullptr;
-    }
-
-    auto vlan = state->getVlans()->getNodeIf(vlanID).get();
-    std::shared_ptr<SwitchState> newState{state};
-    auto* table = vlan->template getNeighborTable<NTable>().get();
-    auto node = table->getNodeIf(fields.ip.str());
-
-    auto isAggregatePort = fields.port.isAggregatePort();
-
-    if (isAggregatePort) {
-      auto aggregatePort =
-          state->getAggregatePorts()->getNodeIf(fields.port.aggPortID());
-
-      if (!aggregatePort) {
-        // if node is not found, it means the AggregatePort is down or deleted,
-        // we should not throw exception here for AggregatePort case
-        // log the error and return
-        XLOG(ERR) << "AggregatePort: " << fields.port.aggPortID()
-                  << " does not exist in current state";
-        return nullptr;
-      }
-    }
-
-    auto switchId = isAggregatePort
-        ? sw_->getScopeResolver()->scope(state, fields.port).switchId()
-        : sw_->getScopeResolver()->scope(fields.port.phyPortID()).switchId();
-    auto asic = sw_->getHwAsicTable()->getHwAsicIf(switchId);
-    if (asic->isSupported(HwAsic::Feature::RESERVED_ENCAP_INDEX_RANGE)) {
-      fields.encapIndex =
-          EncapIndexAllocator::getNextAvailableEncapIdx(state, *asic);
-    }
-    if (!node) {
-      table = table->modify(&vlan, &newState);
-      table->addEntry(fields);
-      XLOG(DBG2) << "Adding entry for " << fields.ip << " --> " << fields.mac
-                 << " on interface " << fields.interfaceID << " for vlan "
-                 << vlanID;
-      node = table->getNodeIf(fields.ip.str());
-
-      if (needL2EntryForNeighbor_ && ncachehelpers::isReachable(node)) {
-        // Also program static l2 entry in the same update
-        newState = StaticL2ForNeighborSwSwitchUpdater::ensureMacEntry(
-            newState, vlanID, node);
-      }
-    } else {
-      if (node->getMac() == fields.mac && node->getPort() == fields.port &&
-          node->getIntfID() == fields.interfaceID &&
-          node->getState() == fields.state && !node->isPending()) {
-        // This entry was already updated while we were waiting on the lock.
-        return nullptr;
-      }
-      table = table->modify(&vlan, &newState);
-      table->updateEntry(fields);
-      XLOG(DBG2) << "Converting pending entry for " << fields.ip << " --> "
-                 << fields.mac << " on interface " << fields.interfaceID
-                 << " port " << fields.port << " for vlan " << vlanID;
-
-      if (needL2EntryForNeighbor_) {
-        auto newNode = table->getNodeIf(fields.ip.str());
-        newState = ncachehelpers::processChangedNeighborEntry(
-            newState, node, newNode, vlanID);
-      }
-    }
-    return newState;
-  };
-
-  return updateFn;
-}
-
-template <typename NTable>
 SwSwitch::StateUpdateFn NeighborCacheImpl<NTable>::getUpdateFnToProgramEntry(
     Entry* entry,
     cfg::SwitchType switchType) {
@@ -319,7 +233,7 @@ SwSwitch::StateUpdateFn NeighborCacheImpl<NTable>::getUpdateFnToProgramEntry(
     } else {
       if (node->getMac() == fields.mac &&
           ((switchType != cfg::SwitchType::VOQ &&
-            node->getPort().phyPortID() == fields.port.phyPortID()) ||
+            node->getPort() == fields.port) ||
            (switchType == cfg::SwitchType::VOQ &&
             node->getPort().sysPortIDIf() == systemPortID)) &&
           node->getIntfID() == interfaceID &&
@@ -366,6 +280,12 @@ bool NeighborCacheImpl<NTable>::programPendingEntry(
     Entry* entry,
     PortDescriptor port,
     bool force) {
+  if (port.isPhysicalPort() && port.phyPortID() == PortID(0)) {
+    // If the entry is pointing to the CPU port, it is not programmed in the
+    // hardware, thus no-op.
+    return true;
+  }
+
   SwSwitch::StateUpdateFn updateFn;
 
   auto switchType = sw_->getSwitchInfoTable().l3SwitchType();
@@ -408,55 +328,6 @@ bool NeighborCacheImpl<NTable>::programPendingEntry(
 
 template <typename NTable>
 SwSwitch::StateUpdateFn
-NeighborCacheImpl<NTable>::getUpdateFnToProgramPendingEntryForVlan(
-    Entry* entry,
-    PortDescriptor /*port*/,
-    bool force) {
-  CHECK(entry->isPending());
-
-  auto fields = entry->getFields();
-  auto vlanID = vlanID_;
-  auto needL2EntryForNeighbor = needL2EntryForNeighbor_;
-  auto updateFn = [fields, vlanID, needL2EntryForNeighbor, force](
-                      const std::shared_ptr<SwitchState>& state)
-      -> std::shared_ptr<SwitchState> {
-    if (!ncachehelpers::checkVlanAndIntf<NTable>(state, fields, vlanID)) {
-      // Either the vlan or intf is no longer valid.
-      return nullptr;
-    }
-
-    auto vlan = state->getVlans()->getNodeIf(vlanID).get();
-    std::shared_ptr<SwitchState> newState{state};
-    auto* table = vlan->template getNeighborTable<NTable>().get();
-    auto node = table->getNodeIf(fields.ip.str());
-    table = table->modify(&vlan, &newState);
-
-    if (node) {
-      if (!force) {
-        // don't replace an existing entry with a pending one unless
-        // explicitly allowed
-        return nullptr;
-      }
-      table->removeEntry(fields.ip);
-    }
-    table->addPendingEntry(fields.ip, fields.interfaceID);
-
-    XLOG(DBG4) << "Adding pending entry for " << fields.ip << " on interface "
-               << fields.interfaceID << " for vlan " << vlanID;
-
-    if (needL2EntryForNeighbor && node && ncachehelpers::isReachable(node)) {
-      // Remove MAC for existing entry
-      newState = StaticL2ForNeighborSwSwitchUpdater::pruneMacEntry(
-          newState, vlanID, node);
-    }
-    return newState;
-  };
-
-  return updateFn;
-}
-
-template <typename NTable>
-SwSwitch::StateUpdateFn
 NeighborCacheImpl<NTable>::getUpdateFnToProgramPendingEntry(
     Entry* entry,
     PortDescriptor port,
@@ -466,12 +337,6 @@ NeighborCacheImpl<NTable>::getUpdateFnToProgramPendingEntry(
   auto updateFn = [this, fields, port, force, switchType](
                       const std::shared_ptr<SwitchState>& state)
       -> std::shared_ptr<SwitchState> {
-    if (port.isPhysicalPort() && port.phyPortID() == PortID(0)) {
-      // If the entry is pointing to the CPU port, it is not programmed in the
-      // hardware, thus no-op.
-      return nullptr;
-    }
-
     if (!ncachehelpers::checkVlanAndIntf<NTable>(
             state, fields, std::nullopt /* vlanID */)) {
       // intf is no longer valid.
@@ -716,14 +581,14 @@ NeighborCacheEntry<NTable>* NeighborCacheImpl<NTable>::addOrUpdateEntryInternal(
 }
 
 template <typename NTable>
-void NeighborCacheImpl<NTable>::setPendingEntry(
+bool NeighborCacheImpl<NTable>::setPendingEntry(
     AddressType ip,
     PortDescriptor port,
     bool force) {
   if (!force && getCacheEntry(ip)) {
     // only overwrite an existing entry with a pending entry if we say it is
     // ok with the 'force' parameter
-    return;
+    return false;
   }
   auto entry = addOrUpdateEntryInternal(
       EntryFields(ip, intfID_, NeighborState::PENDING),
@@ -733,7 +598,9 @@ void NeighborCacheImpl<NTable>::setPendingEntry(
   if (entry && !programPendingEntry(entry, port, force)) {
     XLOG(ERR) << "Failed to program pending entry: " << ip.str();
     removeEntry(ip);
+    return false;
   }
+  return entry != nullptr;
 }
 
 template <typename NTable>

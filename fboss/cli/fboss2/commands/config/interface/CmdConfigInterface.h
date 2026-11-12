@@ -17,9 +17,9 @@
 #include "fboss/agent/types.h"
 #include "fboss/cli/fboss2/CmdHandler.h"
 #include "fboss/cli/fboss2/commands/config/interface/InterfaceAttrArgsBase.h"
-#include "fboss/cli/fboss2/commands/config/interface/ProfileValidation.h"
 #include "fboss/cli/fboss2/gen-cpp2/cli_metadata_types.h"
 #include "fboss/cli/fboss2/utils/InterfaceList.h"
+#include "fboss/lib/config/agent/PortConfigUtils.h"
 
 namespace facebook::fboss {
 
@@ -42,12 +42,16 @@ class InterfacesConfig : public InterfaceAttrArgsBase {
 };
 
 struct CmdConfigInterfaceTraits : public WriteCommandTraits {
+  static std::vector<std::string> completeArgs(
+      const std::vector<std::string>& typed);
   static void addCliArg(CLI::App& cmd, std::vector<std::string>& args) {
     cmd.add_option(
         "interface_config",
         args,
         "<port-list> [<attr> <value> ...] where <attr> is one "
-        "of: description, mtu, ip-address, ipv6-address, ...");
+        "of: description, mtu, ip-address, ipv6-address, ... "
+        "A loopback name (loopback0, loopback1, ...) creates the virtual "
+        "loopback interface on first use.");
   }
   using ObjectArgType = InterfacesConfig;
   using RetType = std::string;
@@ -81,9 +85,12 @@ class CmdConfigInterface
 // T281221621). Callers thread one ConfigActionLevel through every attribute
 // handler and commit at the resulting level, so any future attribute needing
 // warmboot/coldboot can escalate it too.
+cfg::PortProfileID parsePortProfile(const std::string& profile);
+
 std::string applyProfileImpl(
-    ProfileValidator& validator,
     cfg::SwitchConfig& swConfig,
+    const PlatformMapping& platformMapping,
+    const utility::PortProfileSupportMap& qsfpSupportedProfiles,
     const utils::InterfaceList& interfaces,
     const std::string& value,
     cli::ConfigActionLevel* actionLevel = nullptr);

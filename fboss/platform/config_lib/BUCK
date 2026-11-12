@@ -12,6 +12,9 @@ cpp_binary(
         "ConfigGenerator.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly/init:init",
+        "fbsource//xplat/folly/logging:logging",
         ":cross_config_validator",
         "//fboss/platform/bsp_tests:bsp_tests_config-cpp2-types",
         "//fboss/platform/data_corral_service:config_validator",
@@ -28,9 +31,6 @@ cpp_binary(
         "//fboss/platform/sensor_service/if:sensor_config-cpp2-types",
         "//fboss/platform/weutil:config_validator",
         "//fboss/platform/weutil/if:weutil_config-cpp2-types",
-        "//folly:file_util",
-        "//folly/init:init",
-        "//folly/logging:logging",
         "//thrift/lib/cpp2/protocol:protocol",
     ],
 )
@@ -53,9 +53,9 @@ cpp_library(
     deps = [
         "fbsource//third-party/fmt:fmt",
         "fbsource//third-party/re2:re2",
+        "fbsource//xplat/folly/logging:logging",
         "//fboss/platform/platform_manager:config_validator",
         "//fboss/platform/sensor_service:config_validator",
-        "//folly/logging:logging",
     ],
     exported_deps = [
         "//fboss/platform/fan_service/if:fan_service-cpp2-types",
@@ -75,9 +75,9 @@ cpp_library(
         ":config_generator_h[GeneratedConfig.h]",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly/logging:logging",
         "//fboss/platform/helpers:platform_name_lib",
-        "//folly:file_util",
-        "//folly/logging:logging",
     ],
     exported_external_deps = [
         "gflags",
@@ -102,7 +102,7 @@ cpp_unittest(
     ],
     network_access = network_access_utils.none(),
     deps = [
+        "fbsource//xplat/folly/logging:logging",
         ":config_lib",
-        "//folly/logging:logging",
     ],
 )

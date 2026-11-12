@@ -15,8 +15,8 @@ cpp_library(
         "Meru800bfaProdPlatformMapping.h",
     ],
     deps = [
+        "fbsource//xplat/folly/logging:logging",
         "//fboss/agent:fboss-error",
-        "//folly/logging:logging",
     ],
     exported_deps = [
         "//fboss/agent/platforms/common:platform_mapping",

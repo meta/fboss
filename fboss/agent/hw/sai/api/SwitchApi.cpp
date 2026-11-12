@@ -200,15 +200,17 @@ SaiHealthNotification::SaiHealthNotification(
 bool SaiHealthNotification::corrParityError() const {
 #if defined(CHENAB_SAI_SDK)
   return (severity == SAI_SWITCH_ASIC_SDK_HEALTH_SEVERITY_NOTICE);
-#endif
+#else
   return false;
+#endif
 }
 
 bool SaiHealthNotification::uncorrParityError() const {
 #if defined(CHENAB_SAI_SDK)
   return (severity == SAI_SWITCH_ASIC_SDK_HEALTH_SEVERITY_FATAL);
-#endif
+#else
   return false;
+#endif
 }
 
 bool SaiHealthNotification::asicError() const {

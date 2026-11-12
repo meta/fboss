@@ -10,6 +10,7 @@ cpp_binary(
     deps = [
         "fbsource//third-party/fmt:fmt",
         "fbsource//third-party/googletest:gtest",
+        "fbsource//xplat/folly:file_util",
         "//fb303:service_data",
         "//fboss/lib:thrift_service_utils",
         "//fboss/platform/config_lib:config_lib",
@@ -18,7 +19,6 @@ cpp_binary(
         "//fboss/platform/data_corral_service/if:data_corral_service-cpp2-services",
         "//fboss/platform/data_corral_service/if:data_corral_service-cpp2-types",
         "//fboss/platform/helpers:init",
-        "//folly:file_util",
         "//thrift/lib/cpp2/util:util",
     ],
 )

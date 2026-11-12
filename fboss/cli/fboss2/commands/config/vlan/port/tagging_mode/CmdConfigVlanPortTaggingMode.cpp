@@ -9,6 +9,7 @@
  */
 
 #include "fboss/cli/fboss2/commands/config/vlan/port/tagging_mode/CmdConfigVlanPortTaggingMode.h"
+#include "fboss/cli/fboss2/utils/ArgCompletion.h"
 
 #include "fboss/agent/types.h"
 #include "fboss/cli/fboss2/CmdHandler.cpp"
@@ -129,5 +130,11 @@ void CmdConfigVlanPortTaggingMode::printOutput(const RetType& logMsg) {
 template void CmdHandler<
     CmdConfigVlanPortTaggingMode,
     CmdConfigVlanPortTaggingModeTraits>::run();
+
+std::vector<std::string> CmdConfigVlanPortTaggingModeTraits::completeArgs(
+    const std::vector<std::string>& typed) {
+  return utils::completion::completePositions(
+      typed, {{}, {"tagged", "untagged", "priority-tagged"}});
+}
 
 } // namespace facebook::fboss

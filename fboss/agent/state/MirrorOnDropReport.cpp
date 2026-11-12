@@ -14,7 +14,7 @@ namespace facebook::fboss {
 
 MirrorOnDropReport::MirrorOnDropReport(
     const std::string& name,
-    PortID mirrorPortId,
+    std::optional<PortID> mirrorPortId,
     folly::IPAddress localSrcIp,
     int16_t localSrcPort,
     folly::IPAddress collectorIp,
@@ -31,7 +31,9 @@ MirrorOnDropReport::MirrorOnDropReport(
     std::optional<int32_t> aggregateDropPacketRateThreshold)
     : ThriftStructNode<MirrorOnDropReport, state::MirrorOnDropReportFields>() {
   set<switch_state_tags::name>(name);
-  set<switch_state_tags::mirrorPortId>(mirrorPortId);
+  if (mirrorPortId.has_value()) {
+    set<switch_state_tags::mirrorPortId>(mirrorPortId.value());
+  }
   set<switch_state_tags::localSrcIp>(network::toBinaryAddress(localSrcIp));
   set<switch_state_tags::localSrcPort>(localSrcPort);
   set<switch_state_tags::collectorIp>(network::toBinaryAddress(collectorIp));
@@ -62,8 +64,11 @@ std::string MirrorOnDropReport::getID() const {
   return get<switch_state_tags::name>()->cref();
 }
 
-PortID MirrorOnDropReport::getMirrorPortId() const {
-  return PortID(get<switch_state_tags::mirrorPortId>()->cref());
+std::optional<PortID> MirrorOnDropReport::getMirrorPortId() const {
+  if (auto portId = get<switch_state_tags::mirrorPortId>()) {
+    return PortID(portId->cref());
+  }
+  return std::nullopt;
 }
 
 void MirrorOnDropReport::setMirrorPortId(PortID portId) {

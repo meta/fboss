@@ -10,8 +10,10 @@
 
 #include "fboss/platform/platform_checks/RemoteHost.h"
 
+#include <algorithm>
 #include <cstdio>
 #include <stdexcept>
+#include <string_view>
 
 #include <fmt/format.h>
 #include <folly/String.h>
@@ -29,8 +31,6 @@ constexpr auto kSushReason = "fixmyfboss";
 // Switches are reprovisioned often, so their host keys churn.
 const std::vector<std::string> kSshOptions{
     "-o",
-    "BatchMode=yes",
-    "-o",
     "ConnectTimeout=10",
     "-o",
     "StrictHostKeyChecking=no",
@@ -38,6 +38,20 @@ const std::vector<std::string> kSshOptions{
     "UserKnownHostsFile=/dev/null",
     "-o",
     "LogLevel=ERROR",
+    // Notice a dead connection (e.g. a reset switch) within ~15s.
+    "-o",
+    "ServerAliveInterval=5",
+    "-o",
+    "ServerAliveCountMax=3",
+};
+
+// Without a password, fail fast instead of prompting for one.
+const std::vector<std::string> kKeyOnlyOptions{"-o", "BatchMode=yes"};
+const std::vector<std::string> kPasswordOptions{
+    "-o",
+    "PreferredAuthentications=keyboard-interactive,password",
+    "-o",
+    "NumberOfPasswordPrompts=1",
 };
 
 // Makes the terminal pass bytes through unchanged (no echo, no CRLF
@@ -97,10 +111,12 @@ RemoteHost::Transport RemoteHost::detectTransport() {
 RemoteHost::RemoteHost(
     std::string hostname,
     Transport transport,
-    std::string user)
+    std::string user,
+    std::optional<std::string> password)
     : hostname_(std::move(hostname)),
-      transport_(transport),
-      user_(std::move(user)) {}
+      transport_(password ? Transport::SSH : transport),
+      user_(std::move(user)),
+      askPass_(password ? std::make_unique<SshAskPass>(*password) : nullptr) {}
 
 RemoteHost::~RemoteHost() = default;
 
@@ -223,22 +239,46 @@ void RemoteHost::copyTo(
   }
 }
 
-std::vector<std::string> RemoteHost::execArgv(const std::string& cmd) const {
-  switch (transport_) {
-    case Transport::SSH:
-      return concat(concat({"ssh"}, kSshOptions), {destination(), cmd});
-    case Transport::SUSH2:
-      return {"sush2", "-q", "--reason", kSushReason, destination(), "--", cmd};
-  }
-  throw std::logic_error("Unknown transport");
+std::vector<std::string> RemoteHost::authMethodsArgv() const {
+  // Fails at authentication, and ssh then prints the methods the server
+  // accepts.
+  return concat(
+      concat({"ssh"}, kSshOptions),
+      {"-o",
+       "BatchMode=yes",
+       "-o",
+       "PubkeyAuthentication=no",
+       "-o",
+       "GSSAPIAuthentication=no",
+       destination(),
+       "true"});
+}
+
+bool RemoteHost::acceptsPassword(std::chrono::seconds timeout) const {
+  return offersPasswordAuth(
+      runLocalCommand(authMethodsArgv(), timeout).standardErr);
+}
+
+std::unique_ptr<ExpectSession> RemoteHost::spawnInteractive() const {
+  return std::make_unique<ExpectSession>(shellJoin(interactiveArgv()));
 }
 
 std::vector<std::string> RemoteHost::interactiveArgv() const {
   switch (transport_) {
     case Transport::SSH:
-      return concat(concat({"ssh", "-tt"}, kSshOptions), {destination()});
+      return concat(sshPrefix("ssh"), {"-tt", destination()});
     case Transport::SUSH2:
       return {"sush2", "--reason", kSushReason, destination()};
+  }
+  throw std::logic_error("Unknown transport");
+}
+
+std::vector<std::string> RemoteHost::execArgv(const std::string& cmd) const {
+  switch (transport_) {
+    case Transport::SSH:
+      return concat(sshPrefix("ssh"), {destination(), cmd});
+    case Transport::SUSH2:
+      return {"sush2", "-q", "--reason", kSushReason, destination(), "--", cmd};
   }
   throw std::logic_error("Unknown transport");
 }
@@ -249,8 +289,7 @@ std::vector<std::string> RemoteHost::copyArgv(
   auto target = destination() + ":" + hostPath.string();
   switch (transport_) {
     case Transport::SSH:
-      return concat(
-          concat({"scp", "-r"}, kSshOptions), {localPath.string(), target});
+      return concat(sshPrefix("scp"), {"-r", localPath.string(), target});
     case Transport::SUSH2:
       return {
           "suscp2", "-r", "--reason", kSushReason, localPath.string(), target};
@@ -258,8 +297,36 @@ std::vector<std::string> RemoteHost::copyArgv(
   throw std::logic_error("Unknown transport");
 }
 
+std::vector<std::string> RemoteHost::sshPrefix(
+    const std::string& program) const {
+  auto prefix = askPass_ ? askPass_->envPrefix() : std::vector<std::string>{};
+  prefix.push_back(program);
+  prefix = concat(std::move(prefix), kSshOptions);
+  return concat(
+      std::move(prefix), askPass_ ? kPasswordOptions : kKeyOnlyOptions);
+}
+
 std::string RemoteHost::destination() const {
   return user_ + "@" + hostname_;
+}
+
+bool offersPasswordAuth(const std::string& sshStderr) {
+  constexpr std::string_view kDenied = "Permission denied (";
+  auto start = sshStderr.find(kDenied);
+  if (start == std::string::npos) {
+    return false;
+  }
+  start += kDenied.size();
+  auto end = sshStderr.find(')', start);
+  if (end == std::string::npos) {
+    return false;
+  }
+  std::vector<folly::StringPiece> methods;
+  folly::split(
+      ',', folly::StringPiece(sshStderr).subpiece(start, end - start), methods);
+  return std::any_of(methods.begin(), methods.end(), [](auto method) {
+    return method == "password" || method == "keyboard-interactive";
+  });
 }
 
 } // namespace facebook::fboss::platform::platform_checks

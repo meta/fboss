@@ -34,6 +34,7 @@ thrift_library(
     deps = [
         ":sensor_config",
         "//fboss/agent/if:fboss",
+        "//fboss/platform/reboot_cause_finder/if:reboot_cause_config",
     ],
 )
 

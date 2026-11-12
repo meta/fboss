@@ -37,6 +37,13 @@ struct SaiLagTraits {
         EnumType,
         SAI_LAG_ATTR_PORT_LIST,
         std::vector<sai_object_id_t>>;
+    struct AttributeDisableTtlDecrement {
+      std::optional<sai_attr_id_t> operator()();
+    };
+    using DisableTtlDecrement = SaiExtensionAttribute<
+        bool,
+        AttributeDisableTtlDecrement,
+        SaiBoolDefaultFalse>;
   };
   using AdapterKey = LagSaiId;
   using AdapterHostKey = Attributes::Label;
@@ -47,6 +54,7 @@ struct SaiLagTraits {
 SAI_ATTRIBUTE_NAME(Lag, PortList);
 SAI_ATTRIBUTE_NAME(Lag, Label);
 SAI_ATTRIBUTE_NAME(Lag, PortVlanId);
+SAI_ATTRIBUTE_NAME(Lag, DisableTtlDecrement);
 
 struct SaiLagMemberTraits {
   static constexpr sai_object_type_t ObjectType = SAI_OBJECT_TYPE_LAG_MEMBER;

@@ -21,7 +21,6 @@ fboss_fbpkg_builder(
     name = "neteng.fboss.wedge_agent_nvda",
     buck_opts = fbpkg.buck_opts(
         config = {
-            "fbcode.enable_distributed_thinlto": "true",
             "fbcode.split-dwarf": "true",
         },
         num_threads = 20,
@@ -43,7 +42,6 @@ fboss_fbpkg_builder(
     name = "neteng.fboss.wedge_agent",
     buck_opts = fbpkg.buck_opts(
         config = {
-            "fbcode.enable_distributed_thinlto": "true",
             "fbcode.split-dwarf": "true",
         },
         num_threads = 20,
@@ -62,7 +60,6 @@ fboss_fbpkg_builder(
     name = "neteng.fboss.wedge_agent_csco",
     buck_opts = fbpkg.buck_opts(
         config = {
-            "fbcode.enable_distributed_thinlto": "true",
             "fbcode.split-dwarf": "true",
         },
         num_threads = 20,
@@ -81,7 +78,6 @@ fboss_fbpkg_builder(
     name = "neteng.fboss.wedge_agent_dnx",
     buck_opts = fbpkg.buck_opts(
         config = {
-            "fbcode.enable_distributed_thinlto": "true",
             "fbcode.split-dwarf": "true",
         },
         num_threads = 20,

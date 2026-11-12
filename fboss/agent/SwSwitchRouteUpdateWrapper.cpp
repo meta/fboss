@@ -13,6 +13,7 @@
 #include "fboss/agent/SwSwitch.h"
 #include "fboss/agent/SwitchIdScopeResolver.h"
 #include "fboss/agent/SwitchStats.h"
+#include "fboss/agent/rib/ClassBasedPolicyUpdater.h"
 #include "fboss/agent/rib/NextHopIDManager.h"
 #include "fboss/agent/rib/RibToSwitchStateUpdater.h"
 #include "fboss/agent/rib/RouteUpdater.h"
@@ -25,34 +26,28 @@
 namespace facebook::fboss {
 
 RibToSwitchStateFunction createRibToSwitchStateFunction(
-    const std::optional<StateDeltaApplication>& deltaApplicationBehavior) {
-  return [deltaApplicationBehavior](
+    const std::optional<StateDeltaApplication>& deltaApplicationBehavior,
+    std::function<std::shared_ptr<SwitchState>(
+        const std::shared_ptr<SwitchState>&)> preFibUpdate) {
+  return [deltaApplicationBehavior, preFibUpdate = std::move(preFibUpdate)](
              const facebook::fboss::SwitchIdScopeResolver* resolver,
-             facebook::fboss::RouterID vrf,
-             const facebook::fboss::IPv4NetworkToRouteMap& v4NetworkToRoute,
-             const facebook::fboss::IPv6NetworkToRouteMap& v6NetworkToRoute,
-             const facebook::fboss::LabelToRouteMap& labelToRoute,
+             const std::vector<RibVrfFib>& vrfFibs,
              const NextHopIDManager* nextHopIDManager,
              const MySidTable& mySidTable,
              void* cookie) -> StateDelta {
     folly::Synchronized<facebook::fboss::RibToSwitchStateUpdater>
         ribToSwitchStateUpdater(
-            std::in_place,
-            resolver,
-            vrf,
-            v4NetworkToRoute,
-            v6NetworkToRoute,
-            labelToRoute,
-            nextHopIDManager,
-            mySidTable);
+            std::in_place, resolver, vrfFibs, nextHopIDManager, mySidTable);
 
     auto wRibToSwitchStateUpdater = ribToSwitchStateUpdater.wlock();
     auto sw = static_cast<facebook::fboss::SwSwitch*>(cookie);
 
     sw->updateStateWithHwFailureProtection(
         "update fib",
-        [&wRibToSwitchStateUpdater](const std::shared_ptr<SwitchState>& in) {
-          return (*wRibToSwitchStateUpdater)(in);
+        [&wRibToSwitchStateUpdater,
+         &preFibUpdate](const std::shared_ptr<SwitchState>& in) {
+          return (*wRibToSwitchStateUpdater)(
+              preFibUpdate ? preFibUpdate(in) : in);
         },
         deltaApplicationBehavior);
 
@@ -71,9 +66,10 @@ std::function<void(const NextHopIDManager*)> createNextHopIdStateUpdate(
   return
       [sw, name = std::move(name)](const NextHopIDManager* nextHopIDManager) {
         SwitchStateNextHopIdUpdater nhopUpdater(nextHopIDManager);
+        ClassBasedPolicyUpdater policyUpdater(nextHopIDManager);
         sw->updateStateWithHwFailureProtection(
-            name, [&nhopUpdater](const std::shared_ptr<SwitchState>& state) {
-              return nhopUpdater(state);
+            name, [&](const std::shared_ptr<SwitchState>& state) {
+              return policyUpdater(nhopUpdater(state));
             });
       };
 }

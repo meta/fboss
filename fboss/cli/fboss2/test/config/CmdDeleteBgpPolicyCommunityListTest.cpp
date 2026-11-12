@@ -3,7 +3,10 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <algorithm>
+#include <cstdint>
 #include <filesystem>
+#include <iterator>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -58,6 +61,64 @@ class CmdDeleteBgpPolicyCommunityListTestFixture : public CmdConfigTestBase {
                 .policies()
                 .ensure()
                 .community_lists();
+  }
+
+  // Seed a routing-policy term whose COMMUNITY match names `listName` (the
+  // term/match CLIs live in higher PRs), the way bgpd reads the reference:
+  // communities_filter.community_list_names.
+  void addPolicyTermMatching(
+      const std::string& policy,
+      int64_t seq,
+      const std::string& listName) {
+    auto& term = addTerm(policy, seq);
+    auto& matches = *term.policy_match_entries().ensure().match_entries();
+    matches.emplace_back();
+    matches.back().type() =
+        bgp::bgp_policy::BgpPolicyAtomicMatchType::COMMUNITY_LIST;
+    matches.back().communities_filter().ensure().community_list_names() = {
+        listName};
+    ConfigSession::getInstance().saveBgpConfig();
+  }
+
+  // Seed a term whose community action names `listName`
+  // (community_action.community_action_list_names).
+  void addPolicyTermAction(
+      const std::string& policy,
+      int64_t seq,
+      const std::string& listName) {
+    auto& term = addTerm(policy, seq);
+    auto& actions = *term.policy_action_entries();
+    actions.emplace_back();
+    actions.back().community_action().ensure().community_action_list_names() = {
+        listName};
+    ConfigSession::getInstance().saveBgpConfig();
+  }
+
+  bgp::bgp_policy::BgpPolicyTerm& addTerm(
+      const std::string& policy,
+      int64_t seq) {
+    auto& cfg = ConfigSession::getInstance().getBgpConfig();
+    auto& policies = *cfg.policies().ensure().bgp_policy_statements();
+    auto it = std::find_if(policies.begin(), policies.end(), [&](auto& p) {
+      return *p.name() == policy;
+    });
+    if (it == policies.end()) {
+      policies.emplace_back();
+      policies.back().name() = policy;
+      it = std::prev(policies.end());
+    }
+    auto& terms = *it->policy_entries();
+    auto term =
+        std::find_if(terms.begin(), terms.end(), [&](const auto& entry) {
+          return entry.sequence_number().has_value() &&
+              *entry.sequence_number() == seq;
+        });
+    if (term == terms.end()) {
+      terms.emplace_back();
+      terms.back().sequence_number() = seq;
+      term = std::prev(terms.end());
+    }
+    return *term;
   }
 
   bool sessionFileExists() {
@@ -249,6 +310,110 @@ TEST_F(
   EXPECT_THAT(result, Not(HasSubstr("Error:")));
   EXPECT_FALSE(sessionFileExists())
       << "session file should not exist after a no-op delete";
+}
+
+// ==============================================================================
+// Reference guard — a list a routing-policy term still names is not deletable
+// ==============================================================================
+
+TEST_F(
+    CmdDeleteBgpPolicyCommunityListTestFixture,
+    deleteReferencedListRejected) {
+  configure({"CL100", "description", "in-use"});
+  addPolicyTermMatching("RM100", 10, "CL100");
+
+  auto result = del({"CL100"});
+  EXPECT_THAT(result, HasSubstr("still referenced"));
+  EXPECT_THAT(result, HasSubstr("policy RM100 term 10"));
+  ASSERT_EQ(lists().size(), 1);
+  EXPECT_EQ(*lists()[0].description(), "in-use");
+}
+
+TEST_F(
+    CmdDeleteBgpPolicyCommunityListTestFixture,
+    deleteActionReferencedListRejected) {
+  configure({"CL100", "community", "65000:100"});
+  addPolicyTermAction("RM100", 10, "CL100");
+
+  auto result = del({"CL100"});
+  EXPECT_THAT(result, HasSubstr("still referenced"));
+  EXPECT_THAT(result, HasSubstr("policy RM100 term 10"));
+  ASSERT_EQ(lists().size(), 1);
+}
+
+TEST_F(
+    CmdDeleteBgpPolicyCommunityListTestFixture,
+    duplicateReferencesFromOneTermAreNamedOnce) {
+  configure({"CL100", "community", "65000:100"});
+  addPolicyTermMatching("RM100", 10, "CL100");
+  addPolicyTermMatching("RM100", 10, "CL100");
+  addPolicyTermAction("RM100", 10, "CL100");
+  addPolicyTermAction("RM100", 10, "CL100");
+
+  const auto result = del({"CL100"});
+  const std::string label = "policy RM100 term 10";
+  const auto first = result.find(label);
+  ASSERT_NE(first, std::string::npos);
+  EXPECT_EQ(result.find(label, first + label.size()), std::string::npos);
+}
+
+TEST_F(
+    CmdDeleteBgpPolicyCommunityListTestFixture,
+    duplicateActionReferencesFromOneTermAreNamedOnce) {
+  configure({"CL100", "community", "65000:100"});
+  addPolicyTermAction("RM100", 10, "CL100");
+  addPolicyTermAction("RM100", 10, "CL100");
+
+  const auto result = del({"CL100", "community", "65000:100"});
+  const std::string label = "policy RM100 term 10";
+  const auto first = result.find(label);
+  ASSERT_NE(first, std::string::npos);
+  EXPECT_EQ(result.find(label, first + label.size()), std::string::npos);
+}
+
+TEST_F(
+    CmdDeleteBgpPolicyCommunityListTestFixture,
+    deleteLastCommunityOnActionReferencedListRejected) {
+  // bgpd: "Missing communities in CommunityList" for an action reference
+  // to a valueless list.
+  configure({"CL100", "community", "65000:100"});
+  configure({"CL100", "community", "65000:200"});
+  addPolicyTermAction("RM100", 10, "CL100");
+
+  EXPECT_THAT(del({"CL100", "community", "65000:100"}), HasSubstr("Success"));
+  auto result = del({"CL100", "community", "65000:200"});
+  EXPECT_THAT(result, HasSubstr("is the last community"));
+  EXPECT_THAT(result, HasSubstr("policy RM100 term 10"));
+  ASSERT_EQ(lists().size(), 1);
+  EXPECT_EQ(*lists()[0].communities(), std::vector<std::string>({"65000:200"}));
+}
+
+TEST_F(
+    CmdDeleteBgpPolicyCommunityListTestFixture,
+    deleteLastCommunityOnMatchReferencedListAllowed) {
+  // A match reference tolerates a valueless list.
+  configure({"CL100", "community", "65000:100"});
+  addPolicyTermMatching("RM100", 10, "CL100");
+
+  auto result = del({"CL100", "community", "65000:100"});
+  EXPECT_THAT(result, HasSubstr("Successfully deleted"));
+  ASSERT_EQ(lists().size(), 1);
+  EXPECT_FALSE(lists()[0].communities().has_value());
+}
+
+TEST_F(
+    CmdDeleteBgpPolicyCommunityListTestFixture,
+    referenceToOtherListDoesNotBlockDelete) {
+  configure({"CL100"});
+  configure({"CL200"});
+  addPolicyTermMatching("RM100", 10, "CL100");
+  addPolicyTermAction("RM100", 20, "CL100");
+
+  auto result = del({"CL200"});
+  EXPECT_THAT(
+      result, HasSubstr("Successfully deleted BGP community-list CL200"));
+  ASSERT_EQ(lists().size(), 1);
+  EXPECT_EQ(*lists()[0].name(), "CL100");
 }
 
 } // namespace facebook::fboss

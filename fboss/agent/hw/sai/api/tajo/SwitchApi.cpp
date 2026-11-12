@@ -439,6 +439,16 @@ SaiSwitchTraits::Attributes::AttributePortCl72RetryEnable::operator()() {
 }
 
 std::optional<sai_attr_id_t>
+SaiSwitchTraits::Attributes::AttributeAclDropSnoopDisabled::operator()() {
+  // Added in 24.8.3001.40 and 25.11.4210.10
+#if defined(TAJO_SDK_VERSION_24_8_3001) || defined(TAJO_SDK_VERSION_25_11_4210)
+  return SAI_SWITCH_ATTR_ACL_DROP_SNOOP_DISABLED;
+#else
+  return std::nullopt;
+#endif
+}
+
+std::optional<sai_attr_id_t>
 SaiSwitchTraits::Attributes::AttributePacketDropTypeIngressList::operator()() {
   return std::nullopt;
 }
@@ -446,6 +456,16 @@ SaiSwitchTraits::Attributes::AttributePacketDropTypeIngressList::operator()() {
 std::optional<sai_attr_id_t>
 SaiSwitchTraits::Attributes::AttributePacketDropTypeEgressList::operator()() {
   return std::nullopt;
+}
+
+std::optional<sai_attr_id_t>
+SaiSwitchTraits::Attributes::AttributeDropReasonList::operator()() {
+// TODO: Relax the P200 exclusion once its SDK supports drop-reason collection.
+#if defined(TAJO_SDK_GTE_26_5) && !defined(TAJO_SDK_P200)
+  return SAI_SWITCH_ATTR_DROP_REASON_LIST;
+#else
+  return std::nullopt;
+#endif
 }
 
 const std::vector<sai_stat_id_t>& SaiSwitchTraits::customDropBitmapStats() {

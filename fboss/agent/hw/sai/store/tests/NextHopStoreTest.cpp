@@ -197,3 +197,43 @@ TEST_F(NextHopStoreTest, srv6SidlistNextHopToStr) {
   verifyToStr<SaiSrv6SidlistNextHopTraits>();
 }
 #endif
+
+TEST_F(NextHopStoreTest, loadTunnelEncapNextHopsWithOverlayDstMac) {
+  folly::IPAddress ip{"10.0.0.1"};
+  auto& nextHopApi = saiApiTable->nextHopApi();
+  SaiTunnelEncapNextHopTraits::CreateAttributes attrs{
+      SaiTunnelEncapNextHopTraits::Attributes::Type{
+          SAI_NEXT_HOP_TYPE_TUNNEL_ENCAP},
+      SaiTunnelEncapNextHopTraits::Attributes::TunnelId{42},
+      SaiTunnelEncapNextHopTraits::Attributes::Ip{ip},
+      SaiTunnelEncapNextHopTraits::Attributes::OverlayDstMac{
+          folly::MacAddress("02:00:00:00:00:01")},
+      std::nullopt};
+  auto nextHopSaiId = nextHopApi.create<SaiTunnelEncapNextHopTraits>(attrs, 0);
+
+  SaiStore s(0);
+  s.reload();
+  auto& store = s.get<SaiTunnelEncapNextHopTraits>();
+  SaiTunnelEncapNextHopTraits::AdapterHostKey k{42, ip};
+  auto got = store.get(k);
+  ASSERT_NE(got, nullptr);
+  EXPECT_EQ(got->adapterKey(), nextHopSaiId);
+  EXPECT_EQ(
+      GET_OPT_ATTR(TunnelEncapNextHop, OverlayDstMac, got->attributes()),
+      folly::MacAddress("02:00:00:00:00:01"));
+}
+
+TEST_F(NextHopStoreTest, tunnelEncapNextHopSerDeser) {
+  folly::IPAddress ip{"10.0.0.2"};
+  auto nextHopSaiId =
+      saiApiTable->nextHopApi().create<SaiTunnelEncapNextHopTraits>(
+          {SaiTunnelEncapNextHopTraits::Attributes::Type{
+               SAI_NEXT_HOP_TYPE_TUNNEL_ENCAP},
+           SaiTunnelEncapNextHopTraits::Attributes::TunnelId{43},
+           SaiTunnelEncapNextHopTraits::Attributes::Ip{ip},
+           SaiTunnelEncapNextHopTraits::Attributes::OverlayDstMac{
+               folly::MacAddress("02:00:00:00:00:03")},
+           std::nullopt},
+          0);
+  verifyAdapterKeySerDeser<SaiTunnelEncapNextHopTraits>({nextHopSaiId});
+}

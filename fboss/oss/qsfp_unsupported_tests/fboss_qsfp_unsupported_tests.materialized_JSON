@@ -20735,6 +20735,9 @@
           "test_name_regex": "HwTest_PROFILE_50G_2_NRZ_RS528_COPPER.TestProfile$"
         },
         {
+          "test_name_regex": "HwTest_PROFILE_50G_2_NRZ_RS528_OPTICAL.TestProfile$"
+        },
+        {
           "test_name_regex": "HwTest_PROFILE_53POINT125G_1_PAM4_RS545_COPPER.TestProfile$"
         },
         {
@@ -20944,6 +20947,9 @@
           "test_name_regex": "HwTest_PROFILE_50G_2_NRZ_RS528_COPPER.TestProfile$"
         },
         {
+          "test_name_regex": "HwTest_PROFILE_50G_2_NRZ_RS528_OPTICAL.TestProfile$"
+        },
+        {
           "test_name_regex": "HwTest_PROFILE_53POINT125G_1_PAM4_RS545_COPPER.TestProfile$"
         },
         {
@@ -21151,6 +21157,9 @@
         },
         {
           "test_name_regex": "HwTest_PROFILE_50G_2_NRZ_RS528_COPPER.TestProfile$"
+        },
+        {
+          "test_name_regex": "HwTest_PROFILE_50G_2_NRZ_RS528_OPTICAL.TestProfile$"
         },
         {
           "test_name_regex": "HwTest_PROFILE_53POINT125G_1_PAM4_RS545_COPPER.TestProfile$"

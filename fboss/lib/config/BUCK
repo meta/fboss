@@ -13,6 +13,7 @@ cpp_library(
         "PlatformConfigUtils.h",
     ],
     deps = [
+        "fbsource//xplat/folly:string",
         "//fboss/agent:fboss-error",
         "//thrift/lib/cpp/util:enum_utils",
     ],
@@ -44,6 +45,7 @@ cpp_library(
         "agent/CoppConfigUtils.cpp",
         "agent/InterfaceConfigUtils.cpp",
         "agent/PortConfigUtils.cpp",
+        "agent/SwitchSettingsConfigUtils.cpp",
         "agent/VlanConfigUtils.cpp",
     ],
     headers = [
@@ -51,18 +53,22 @@ cpp_library(
         "agent/CoppConfigUtils.h",
         "agent/InterfaceConfigUtils.h",
         "agent/PortConfigUtils.h",
+        "agent/SwitchSettingsConfigUtils.h",
         "agent/VlanConfigUtils.h",
     ],
     deps = [
+        "fbsource//xplat/folly:cpp_attributes",
         "//fboss/agent:fboss-error",
         "//fboss/agent/hw/switch_asics:switch_asics",
         "//fboss/agent/platforms/common:platform_mapping",
-        "//folly:cpp_attributes",
         "//thrift/lib/cpp/util:enum_utils",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:network_address",
         "//fboss/agent:fboss-types",
         "//fboss/agent:switch_config-cpp2-types",
+        "//fboss/lib/if:fboss_common-cpp2-serialization",
+        "//fboss/lib/if:fboss_common-cpp2-types",
     ],
 )
 
@@ -73,6 +79,7 @@ cpp_unittest(
         "agent/tests/CoppConfigUtilsTest.cpp",
         "agent/tests/InterfaceConfigUtilsTest.cpp",
         "agent/tests/PortConfigUtilsTest.cpp",
+        "agent/tests/SwitchSettingsConfigUtilsTest.cpp",
         "agent/tests/VlanConfigUtilsTest.cpp",
     ],
     network_access = network_access_utils.none(),

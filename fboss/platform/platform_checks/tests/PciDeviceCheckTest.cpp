@@ -202,3 +202,28 @@ TEST_F(PciDeviceCheckTest, MissingDevice) {
   EXPECT_TRUE(result.remediationMessage().has_value());
   EXPECT_EQ(result.remediation().value(), RemediationType::REBOOT_REQUIRED);
 }
+
+TEST_F(PciDeviceCheckTest, EmptyAttributeIsNotAPresentDevice) {
+  auto testConfig = createTestPlatformConfig({
+      {"0x1234", "0x5678", "0xabcd", "0xef01"},
+  });
+  EXPECT_CALL(*check_, getPlatformConfig()).WillRepeatedly(Return(testConfig));
+  const std::filesystem::path device("/sys/bus/pci/devices/0000:01:00.0");
+  EXPECT_CALL(*check_, getPciDevicePaths())
+      .WillRepeatedly(Return(std::vector<std::filesystem::path>{device}));
+  EXPECT_CALL(*host_, readFile(device / "vendor"))
+      .WillRepeatedly(Return(std::make_optional<std::string>("\n")));
+  EXPECT_CALL(*host_, readFile(device / "device"))
+      .WillRepeatedly(Return(std::make_optional<std::string>("0x5678\n")));
+  EXPECT_CALL(*host_, readFile(device / "subsystem_vendor"))
+      .WillRepeatedly(Return(std::make_optional<std::string>("0xabcd\n")));
+  EXPECT_CALL(*host_, readFile(device / "subsystem_device"))
+      .WillRepeatedly(Return(std::make_optional<std::string>("0xef01\n")));
+
+  auto result = check_->run();
+
+  EXPECT_EQ(result.status(), CheckStatus::PROBLEM);
+  EXPECT_NE(
+      result.errorMessage()->find("Missing 1 PCI device(s)"),
+      std::string::npos);
+}

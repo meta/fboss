@@ -13,6 +13,7 @@ python_unittest(
     deps = [
         "fbsource//third-party/pypi/pyyaml:pyyaml",
         "//fboss/lib/asic_config_v3:base_generator",
+        "//fboss/lib/asic_config_v3:broadcom_xgs_generator",
         "//fboss/lib/asic_config_v3:gen-library",
         "//fboss/lib/asic_config_v3:paths",
     ],

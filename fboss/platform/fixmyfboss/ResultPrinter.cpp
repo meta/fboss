@@ -10,6 +10,7 @@
 
 #include "fboss/platform/fixmyfboss/ResultPrinter.h"
 
+#include <functional>
 #include <sstream>
 
 namespace facebook::fboss::platform::fixmyfboss {
@@ -43,10 +44,10 @@ void ResultPrinter::printStatusGroup(
     platform_checks::CheckStatus status,
     const std::string& label,
     const char* color) {
-  std::vector<const platform_checks::CheckResult*> group;
+  std::vector<std::reference_wrapper<const platform_checks::CheckResult>> group;
   for (const auto& result : results) {
     if (*result.status() == status) {
-      group.push_back(&result);
+      group.emplace_back(result);
     }
   }
   if (group.empty()) {
@@ -55,11 +56,12 @@ void ResultPrinter::printStatusGroup(
   out_ << indent(colorize(
               label + ": " + std::to_string(group.size()), color, true))
        << "\n";
-  for (const auto* result : group) {
-    std::string line = result->checkName().value_or("Unknown");
+  for (const auto& resultRef : group) {
+    const auto& result = resultRef.get();
+    std::string line = result.checkName().value_or("Unknown");
     if (status == platform_checks::CheckStatus::SKIPPED &&
-        result->errorMessage()) {
-      line += " (" + *result->errorMessage() + ")";
+        result.errorMessage()) {
+      line += " (" + *result.errorMessage() + ")";
     }
     out_ << indent(line, 2) << "\n";
   }
@@ -92,6 +94,11 @@ void ResultPrinter::printDetails(
       }
     }
 
+    if (showDetails_ && result.durationMs()) {
+      out_ << indent("Took " + std::to_string(*result.durationMs()) + " ms")
+           << "\n";
+    }
+
     if (showDetails_ && result.details()) {
       out_ << indent("Details:") << "\n"
            << indent(*result.details(), 2) << "\n";
@@ -101,6 +108,9 @@ void ResultPrinter::printDetails(
 
 std::string
 ResultPrinter::colorize(const std::string& text, const char* color, bool bold) {
+  if (!color_) {
+    return text;
+  }
   std::string result;
   if (bold) {
     result += STYLE_BOLD;
@@ -114,6 +124,9 @@ ResultPrinter::colorize(const std::string& text, const char* color, bool bold) {
 std::string ResultPrinter::colorizeBackground(
     const std::string& text,
     const char* bgColor) {
+  if (!color_) {
+    return text;
+  }
   return std::string(bgColor) + STYLE_BOLD + text + COLOR_RESET;
 }
 

@@ -54,6 +54,28 @@ class AclTableManagerTest : public ManagerTestBase {
   cfg::AclActionType kActionType() {
     return cfg::AclActionType::DENY;
   }
+
+  AclCounterSaiId addAclEntryWithCounter(
+      int priority,
+      const std::string& entryName,
+      const std::string& counterName) {
+    cfg::TrafficCounter counter;
+    *counter.name() = counterName;
+    MatchAction action;
+    action.setTrafficCounter(counter);
+    auto aclEntry = std::make_shared<AclEntry>(priority, entryName);
+    aclEntry->setDscp(kDscp());
+    aclEntry->setAclAction(action);
+    auto aclEntryId = saiManagerTable->aclTableManager().addAclEntry(
+        aclEntry,
+        cfg::switch_config_constants::DEFAULT_INGRESS_ACL_TABLE(),
+        nullptr /*state*/);
+    return AclCounterSaiId(
+        saiApiTable->aclApi()
+            .getAttribute(
+                aclEntryId, SaiAclEntryTraits::Attributes::ActionCounter())
+            .getData());
+  }
 };
 
 TEST_F(AclTableManagerTest, addAclTable) {
@@ -345,6 +367,98 @@ TEST_F(AclTableManagerTest, addAclEntryWithTcpFlags) {
       DataAndMask(0x02, 0x12));
 }
 
+TEST_F(AclTableManagerTest, addAclEntryWithDstIpWithMask) {
+  auto addDstIpWithMaskEntry = [this](
+                                   int priority,
+                                   const std::string& name,
+                                   const std::string& ip,
+                                   const std::string& mask) {
+    auto aclEntry = std::make_shared<AclEntry>(priority, name);
+    cfg::AclIpMatch match;
+    match.ip() = ip;
+    match.mask() = mask;
+    aclEntry->setDstIpWithMask(match);
+    aclEntry->setActionType(kActionType());
+    return saiManagerTable->aclTableManager().addAclEntry(
+        aclEntry,
+        cfg::switch_config_constants::DEFAULT_INGRESS_ACL_TABLE(),
+        nullptr /*state*/);
+  };
+
+  auto v6EntryId = addDstIpWithMaskEntry(
+      kPriority(), "AclEntry1", "::4a1c:1230:0:0", "::efff:fffc:0:0");
+  EXPECT_EQ(
+      saiApiTable->aclApi()
+          .getAttribute(
+              v6EntryId, SaiAclEntryTraits::Attributes::FieldDstIpV6{})
+          .getDataAndMask(),
+      std::make_pair(
+          folly::IPAddressV6("::4a1c:1230:0:0"),
+          folly::IPAddressV6("::efff:fffc:0:0")));
+
+  auto v4EntryId = addDstIpWithMaskEntry(
+      kPriority2(), "AclEntry2", "10.32.5.0", "255.240.15.0");
+  EXPECT_EQ(
+      saiApiTable->aclApi()
+          .getAttribute(
+              v4EntryId, SaiAclEntryTraits::Attributes::FieldDstIpV4{})
+          .getDataAndMask(),
+      std::make_pair(
+          folly::IPAddressV4("10.32.5.0"), folly::IPAddressV4("255.240.15.0")));
+}
+
+TEST_F(AclTableManagerTest, addAclEntryWithDstIpV6WordWithMask) {
+  FLAGS_enable_acl_table_group = true;
+  SCOPE_EXIT {
+    FLAGS_enable_acl_table_group = false;
+  };
+
+  auto aclTable = std::make_shared<AclTable>(0, kAclTable2);
+  aclTable->setQualifiers(
+      {cfg::AclTableQualifier::DST_IPV6_WORD1,
+       cfg::AclTableQualifier::DST_IPV6_WORD0});
+  saiManagerTable->aclTableManager().addAclTable(
+      aclTable, cfg::AclStage::INGRESS, nullptr /*state*/);
+  auto* aclTableHandle =
+      saiManagerTable->aclTableManager().getAclTableHandle(kAclTable2);
+  ASSERT_NE(aclTableHandle, nullptr);
+  EXPECT_TRUE(saiApiTable->aclApi().getAttribute(
+      aclTableHandle->aclTable->adapterKey(),
+      SaiAclTableTraits::Attributes::FieldDstIpV6Word1{}));
+  EXPECT_TRUE(saiApiTable->aclApi().getAttribute(
+      aclTableHandle->aclTable->adapterKey(),
+      SaiAclTableTraits::Attributes::FieldDstIpV6Word0{}));
+
+  auto aclEntry =
+      std::make_shared<AclEntry>(kPriority(), std::string("AclEntry1"));
+  cfg::AclIpV6WordMatch word1;
+  word1.value() = 0x4a1c1230;
+  word1.mask() = 0xeffffffc;
+  aclEntry->setDstIpV6Word1WithMask(word1);
+  cfg::AclIpV6WordMatch word0;
+  word0.value() = 0x1;
+  word0.mask() = 0xffff;
+  aclEntry->setDstIpV6Word0WithMask(word0);
+  aclEntry->setActionType(kActionType());
+  auto entryId = saiManagerTable->aclTableManager().addAclEntry(
+      aclEntry, kAclTable2, nullptr /*state*/);
+
+  EXPECT_EQ(
+      saiApiTable->aclApi()
+          .getAttribute(
+              entryId, SaiAclEntryTraits::Attributes::FieldDstIpV6Word1{})
+          .getDataAndMask(),
+      std::make_pair(
+          folly::IPAddressV6("::4a1c:1230:0:0"),
+          folly::IPAddressV6("::efff:fffc:0:0")));
+  EXPECT_EQ(
+      saiApiTable->aclApi()
+          .getAttribute(
+              entryId, SaiAclEntryTraits::Attributes::FieldDstIpV6Word0{})
+          .getDataAndMask(),
+      std::make_pair(folly::IPAddressV6("::1"), folly::IPAddressV6("::ffff")));
+}
+
 TEST_F(AclTableManagerTest, defaultAclTableOmitsLookupClassPort) {
   auto* aclTableHandle = saiManagerTable->aclTableManager().getAclTableHandle(
       cfg::switch_config_constants::DEFAULT_INGRESS_ACL_TABLE());
@@ -522,6 +636,45 @@ TEST_F(AclTableManagerTest, addAclEntryWithCounter) {
       SaiAclCounterTraits::Attributes::TableId());
   EXPECT_EQ(tableIdGot2, aclTableId);
 }
+
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 2)
+TEST_F(AclTableManagerTest, aclCounterExtendedLabel) {
+  std::string counterName(60, 'a');
+  auto aclCounterId =
+      addAclEntryWithCounter(kPriority(), "AclEntry1", counterName);
+
+  auto labelGot = saiApiTable->aclApi().getAttribute(
+      aclCounterId, SaiAclCounterTraits::Attributes::LabelExtended());
+  EXPECT_EQ(std::string(labelGot.begin(), labelGot.end()), counterName);
+  EXPECT_EQ(
+      std::string(
+          saiApiTable->aclApi()
+              .getAttribute(
+                  aclCounterId, SaiAclCounterTraits::Attributes::Label())
+              .data()),
+      "");
+}
+
+TEST_F(AclTableManagerTest, aclCounterExtendedLabelsShareShortPrefix) {
+  std::string prefix(SaiCharArray32{}.size() - 1, 'a');
+  EXPECT_NE(
+      addAclEntryWithCounter(kPriority(), "AclEntry1", prefix + "-one"),
+      addAclEntryWithCounter(kPriority2(), "AclEntry2", prefix + "-two"));
+}
+
+TEST_F(AclTableManagerTest, aclCounterExtendedLabelShared) {
+  std::string counterName(60, 'a');
+  auto aclCounterId =
+      addAclEntryWithCounter(kPriority(), "AclEntry1", counterName);
+  EXPECT_EQ(
+      addAclEntryWithCounter(kPriority2(), "AclEntry2", counterName),
+      aclCounterId);
+
+  auto labelGot = saiApiTable->aclApi().getAttribute(
+      aclCounterId, SaiAclCounterTraits::Attributes::LabelExtended());
+  EXPECT_EQ(std::string(labelGot.begin(), labelGot.end()), counterName);
+}
+#endif
 
 TEST_F(AclTableManagerTest, addAclEntryWithLookupClassPort) {
   FLAGS_enable_acl_table_group = true;
@@ -937,6 +1090,62 @@ TEST_F(AclTableManagerPbrTest, pbrRedirectNhgUnknownIdThrows) {
           cfg::switch_config_constants::DEFAULT_INGRESS_ACL_TABLE(),
           getProgrammedState()),
       FbossError);
+}
+
+TEST_F(AclTableManagerPbrTest, pbrRedirectNhgEmptyProgramsDrop) {
+  // 1. A named NHG whose members all failed to resolve carries an id that maps
+  // to the empty set. Redirecting at it cannot forward, so the entry is
+  // programmed to drop instead of being rejected.
+  nextHopIDManager_->allocateNamedNextHopGroup("emptyNhg", RouteNextHopSet{});
+  auto emptyNhgIdOpt = nextHopIDManager_->getNextHopSetIDForName("emptyNhg");
+  ASSERT_TRUE(emptyNhgIdOpt.has_value());
+
+  auto aclEntry =
+      std::make_shared<AclEntry>(kPriority(), std::string("PbrEmptyRedirect"));
+  MatchAction action;
+  action.setRedirectNextHopGroupId(static_cast<int64_t>(*emptyNhgIdOpt));
+  aclEntry->setAclAction(action);
+
+  // 2. Programming succeeds and holds no redirect NHG.
+  AclEntrySaiId aclEntryId = saiManagerTable->aclTableManager().addAclEntry(
+      aclEntry,
+      cfg::switch_config_constants::DEFAULT_INGRESS_ACL_TABLE(),
+      getProgrammedState());
+  auto* aclTableHandle = saiManagerTable->aclTableManager().getAclTableHandle(
+      cfg::switch_config_constants::DEFAULT_INGRESS_ACL_TABLE());
+  auto* entryHandle = saiManagerTable->aclTableManager().getAclEntryHandle(
+      aclTableHandle, kPriority(), std::string("PbrEmptyRedirect"));
+  ASSERT_NE(entryHandle, nullptr);
+  EXPECT_EQ(entryHandle->redirectNhgHandle, nullptr);
+
+  // 3. The SAI entry drops rather than forwarding to a group it cannot use.
+  auto packetAction = saiApiTable->aclApi().getAttribute(
+      aclEntryId, SaiAclEntryTraits::Attributes::ActionPacketAction());
+  EXPECT_EQ(packetAction.getData(), SAI_PACKET_ACTION_DROP);
+}
+
+TEST_F(AclTableManagerPbrTest, pbrMatchNhgEmptySkipsEntry) {
+  nextHopIDManager_->allocateNamedNextHopGroup("emptyNhg", RouteNextHopSet{});
+  auto emptyNhgIdOpt = nextHopIDManager_->getNextHopSetIDForName("emptyNhg");
+  ASSERT_TRUE(emptyNhgIdOpt.has_value());
+
+  auto aclEntry =
+      std::make_shared<AclEntry>(kPriority(), std::string("PbrEmptyMatch"));
+  aclEntry->setNextHopGroupId(static_cast<int64_t>(*emptyNhgIdOpt));
+  aclEntry->setActionType(kActionType());
+
+  EXPECT_EQ(
+      saiManagerTable->aclTableManager().addAclEntry(
+          aclEntry,
+          cfg::switch_config_constants::DEFAULT_INGRESS_ACL_TABLE(),
+          getProgrammedState()),
+      AclEntrySaiId{0});
+  auto* aclTableHandle = saiManagerTable->aclTableManager().getAclTableHandle(
+      cfg::switch_config_constants::DEFAULT_INGRESS_ACL_TABLE());
+  EXPECT_EQ(
+      saiManagerTable->aclTableManager().getAclEntryHandle(
+          aclTableHandle, kPriority(), std::string("PbrEmptyMatch")),
+      nullptr);
 }
 
 TEST_F(AclTableManagerPbrTest, pbrMatchNhgNullStateThrows) {

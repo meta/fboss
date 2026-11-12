@@ -86,6 +86,12 @@ class FakeAclEntry {
   bool fieldDstIpV6Word2Enable{false};
   folly::IPAddressV6 fieldDstIpV6Word2Data;
   folly::IPAddressV6 fieldDstIpV6Word2Mask;
+  bool fieldDstIpV6Word1Enable{false};
+  folly::IPAddressV6 fieldDstIpV6Word1Data;
+  folly::IPAddressV6 fieldDstIpV6Word1Mask;
+  bool fieldDstIpV6Word0Enable{false};
+  folly::IPAddressV6 fieldDstIpV6Word0Data;
+  folly::IPAddressV6 fieldDstIpV6Word0Mask;
 
   bool fieldSrcIpV4Enable{false};
   folly::IPAddressV4 fieldSrcIpV4Data;
@@ -281,6 +287,8 @@ class FakeAclTable {
       bool fieldDstIpV6,
       bool fieldDstIpV6Word3,
       bool fieldDstIpV6Word2,
+      bool fieldDstIpV6Word1,
+      bool fieldDstIpV6Word0,
       bool fieldSrcIpV4,
       bool fieldDstIpV4,
       bool fieldL4SrcPort,
@@ -321,6 +329,8 @@ class FakeAclTable {
         fieldDstIpV6(fieldDstIpV6),
         fieldDstIpV6Word3(fieldDstIpV6Word3),
         fieldDstIpV6Word2(fieldDstIpV6Word2),
+        fieldDstIpV6Word1(fieldDstIpV6Word1),
+        fieldDstIpV6Word0(fieldDstIpV6Word0),
         fieldSrcIpV4(fieldSrcIpV4),
         fieldDstIpV4(fieldDstIpV4),
         fieldL4SrcPort(fieldL4SrcPort),
@@ -367,6 +377,8 @@ class FakeAclTable {
   bool fieldDstIpV6;
   bool fieldDstIpV6Word3;
   bool fieldDstIpV6Word2;
+  bool fieldDstIpV6Word1;
+  bool fieldDstIpV6Word0;
   bool fieldSrcIpV4;
   bool fieldDstIpV4;
   bool fieldL4SrcPort;
@@ -400,6 +412,7 @@ class FakeAclTable {
   sai_object_id_t userDefinedFieldGroupMin2;
   sai_object_id_t userDefinedFieldGroupMin3;
   sai_object_id_t userDefinedFieldGroupMin4;
+  bool fieldRouteDestination{false};
 };
 
 class FakeAclCounter {
@@ -409,7 +422,8 @@ class FakeAclCounter {
   sai_object_id_t tableId;
 
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 2)
-  std::array<char, 32> label;
+  std::array<char, 32> label{};
+  std::vector<int8_t> labelExtended;
 #endif
 
   bool enablePacketCount{false};

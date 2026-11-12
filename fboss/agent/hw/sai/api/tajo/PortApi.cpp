@@ -7,6 +7,7 @@ extern "C" {
 
 #if defined(TAJO_SDK_GTE_26_5)
 #include <saiextensions.h>
+#include <saiportcustom.h>
 #else
 #include <experimental/sai_attr_ext.h>
 #endif
@@ -436,7 +437,8 @@ const std::vector<sai_stat_id_t>& SaiPortTraits::pfcXoffTotalDurationStats() {
 // path below is used instead.
 const std::vector<sai_stat_id_t>&
 SaiPortTraits::linkDownDebounceRetriggerStats() {
-#if defined(TAJO_SDK_VERSION_26_2_4210) || defined(TAJO_SDK_VERSION_26_5_5210)
+#if defined(TAJO_SDK_VERSION_26_2_4210) || \
+    defined(TAJO_SDK_VERSION_26_5_4210) || defined(TAJO_SDK_VERSION_26_5_5210)
   static const std::vector<sai_stat_id_t> stats{
       SAI_PORT_STAT_EXT_LINK_DOWN_DEBOUNCE_RETRIGGER_COUNT};
 #else
@@ -447,9 +449,21 @@ SaiPortTraits::linkDownDebounceRetriggerStats() {
 
 const std::vector<sai_stat_id_t>&
 SaiPortTraits::linkUpDebounceRetriggerStats() {
-#if defined(TAJO_SDK_VERSION_26_2_4210) || defined(TAJO_SDK_VERSION_26_5_5210)
+#if defined(TAJO_SDK_VERSION_26_2_4210) || \
+    defined(TAJO_SDK_VERSION_26_5_4210) || defined(TAJO_SDK_VERSION_26_5_5210)
   static const std::vector<sai_stat_id_t> stats{
       SAI_PORT_STAT_EXT_LINK_UP_DEBOUNCE_RETRIGGER_COUNT};
+#else
+  static const std::vector<sai_stat_id_t> stats;
+#endif
+  return stats;
+}
+
+const std::vector<sai_stat_id_t>& SaiPortTraits::pcsErrorStats() {
+#if defined(TAJO_SDK_VERSION_26_5_4210)
+  static const std::vector<sai_stat_id_t> stats{
+      SAI_PORT_STAT_EXT_PCS_BLOCK_ERROR_COUNTER,
+      SAI_PORT_STAT_EXT_PCS_BER_COUNTER};
 #else
   static const std::vector<sai_stat_id_t> stats;
 #endif
@@ -536,6 +550,30 @@ const std::vector<sai_stat_id_t>& SaiPortTraits::llrExtensionStats() {
 
 std::optional<sai_attr_id_t>
 SaiPortTraits::Attributes::AttributeLinkScanMode::operator()() {
+  return std::nullopt;
+}
+
+// CSIG is delivered in Leaba SDK 26.5.5210.4.
+std::optional<sai_attr_id_t>
+SaiPortTraits::Attributes::AttributeCsigTagActionWrapper::operator()() {
+#if defined(TAJO_SDK_GTE_26_5)
+  return SAI_PORT_ATTR_CSIG_TAG_ACTION;
+#else
+  return std::nullopt;
+#endif
+}
+
+std::optional<sai_attr_id_t>
+SaiPortTraits::Attributes::AttributeCsigLinkLocatorWrapper::operator()() {
+#if defined(TAJO_SDK_GTE_26_5)
+  return SAI_PORT_ATTR_CSIG_LINK_LOCATOR;
+#else
+  return std::nullopt;
+#endif
+}
+
+std::optional<sai_attr_id_t>
+SaiPortTraits::Attributes::AttributeCbfcReceiverCreditLimit::operator()() {
   return std::nullopt;
 }
 

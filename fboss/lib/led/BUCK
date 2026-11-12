@@ -26,9 +26,9 @@ cpp_library(
         "LedIO.h",
     ],
     deps = [
+        "fbsource//xplat/folly:conv",
+        "fbsource//xplat/folly/logging:logging",
         "//fboss/led_service:led_utils",
-        "//folly:format",
-        "//folly/logging:logging",
     ],
     exported_deps = [
         ":led_mapping-cpp2-types",

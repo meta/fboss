@@ -54,6 +54,10 @@ class FakeAsic : public HwAsic {
       case HwAsic::Feature::ECMP_RANDOM_SPRAY_HIERARCHICAL_LEVEL:
       case HwAsic::Feature::TEMPERATURE_MONITORING:
       case HwAsic::Feature::SWITCH_WIDE_LINK_UP_DEBOUNCE:
+      case HwAsic::Feature::SRV6_BINDING_USID_UA_USD:
+      case HwAsic::Feature::SRV6_DECAP_TUNNEL:
+      case HwAsic::Feature::PORT_LATCH_STATUS:
+      case HwAsic::Feature::PCS_ERROR_COUNTERS:
         return false;
 
       default:
@@ -220,7 +224,6 @@ class FakeAsic : public HwAsic {
             apache::thrift::util::enumNameSafe(scalingFactor));
     }
     CHECK(0) << "Should never get here";
-    return -1;
   }
   uint32_t getStaticQueueLimitBytes() const override {
     return 0;
@@ -252,6 +255,18 @@ class FakeAsic : public HwAsic {
   }
   std::optional<uint32_t> getArsBaseIndex() const override {
     return std::nullopt;
+  }
+  std::vector<int16_t> getCbfcSenderCreditSizes() const override {
+    return {32, 56};
+  }
+  std::vector<int16_t> getCbfcSenderPacketOverheads() const override {
+    return {0, 16, 32, 48, 64, 80};
+  }
+  int16_t getCbfcNumVirtualChannels() const override {
+    return 16;
+  }
+  bool isCbfcReceiverCreditLimitSupported() const override {
+    return true;
   }
 };
 

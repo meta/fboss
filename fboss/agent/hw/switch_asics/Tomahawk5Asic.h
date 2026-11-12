@@ -96,6 +96,9 @@ class Tomahawk5Asic : public BroadcomXgsAsic {
   std::optional<uint32_t> getMaxEcmpGroups() const override {
     return 4096;
   }
+  std::optional<uint32_t> getMaxVrfs() const override {
+    return 8192;
+  }
   std::optional<uint32_t> getMaxEcmpMembers() const override {
     return 64000;
   }

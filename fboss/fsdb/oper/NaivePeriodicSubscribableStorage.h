@@ -43,29 +43,9 @@ class NaivePeriodicSubscribableStorage
 
   explicit NaivePeriodicSubscribableStorage(
       const RootT& initialState,
-      StorageParams params = StorageParams())
-      : NaivePeriodicSubscribableStorageBase(params),
-        currentState_(std::in_place, initialState),
-        lastPublishedState_(*currentState_.rlock()),
-        subscriptions_(
-            patchOperProtocol_,
-            params.requireResponseOnInitialSync_,
-            serveBucketCount(
-                static_cast<uint32_t>(params.serveTickInterval_.count()),
-                static_cast<uint32_t>(
-                    params.subscriptionServeInterval_.count())),
-            static_cast<uint32_t>(params.serveTickInterval_.count())) {
-    for (size_t i = 0; i < subscriptions_.numBuckets(); ++i) {
-      bucketPublishedState_.emplace_back();
-    }
-    subscriptions_.useIdPaths(params.convertSubsToIDPaths_);
-    auto currentState = currentState_.wlock();
-    currentState->publish();
-  }
+      StorageParams params = StorageParams());
 
-  ~NaivePeriodicSubscribableStorage() {
-    stop();
-  }
+  ~NaivePeriodicSubscribableStorage();
 
   using NaivePeriodicSubscribableStorageBase::start_impl;
   using NaivePeriodicSubscribableStorageBase::stop_impl;
@@ -89,12 +69,7 @@ class NaivePeriodicSubscribableStorage
     return lastPublishedState_;
   }
 
-  bool publishedStateCurrent() const {
-    auto& slot = lastPublishedState_;
-    auto lastState = slot.rlock();
-    auto currentState = currentState_.rlock();
-    return lastState->root() == currentState->root();
-  }
+  bool publishedStateCurrent() const;
 
   size_t numServeBuckets() const {
     return subscriptions_.numBuckets();
@@ -103,28 +78,11 @@ class NaivePeriodicSubscribableStorage
   // GET reads are served from lastPublishedState_, so it has to keep tracking
   // current state even on ticks where no bucket is due and even with zero
   // subscribers; otherwise reads would freeze at process start.
-  void refreshPublishedStateForReads() {
-    if (publishedStateCurrent()) {
-      return;
-    }
-    auto lastState = lastPublishedState_.wlock();
-    auto currentState = currentState_.wlock();
-    auto newRoot = currentState->root();
-    if (lastState->root() != newRoot) {
-      subscriptions_.publishAndAddPaths(newRoot);
-      *lastState = Storage(*currentState);
-    }
-  }
+  void refreshPublishedStateForReads();
 
   // A bucket nobody subscribes to has nothing to diff against, and a retained
   // baseline would pin that tree version for as long as the bucket stays empty.
-  void releaseBucketBaseline(size_t bucket) {
-    auto& slot = bucketPublishedState_[bucket];
-    if (!slot.rlock()->has_value()) {
-      return;
-    }
-    slot.wlock()->reset();
-  }
+  void releaseBucketBaseline(size_t bucket);
 
   template <typename T>
   Result<T> get_impl(PathIter begin, PathIter end) const {
@@ -139,73 +97,12 @@ class NaivePeriodicSubscribableStorage
   }
 
   Result<OperState>
-  get_encoded_impl(PathIter begin, PathIter end, OperProtocol protocol) const {
-    Result<OperState> result = folly::makeUnexpected(
-        StorageError(StorageError::Code::INVALID_PATH, "Unknown"));
-    if (params_.serveGetRequestsWithLastPublishedState_) {
-      auto state = Storage(*publishedStateForReads().rlock());
-      result = state.get_encoded(begin, end, protocol);
-    } else {
-      // hold rlock on current state to avoid racing with writers
-      auto currentState = currentState_.rlock();
-      result = currentState->get_encoded(begin, end, protocol);
-    }
-    if (result.hasValue() && params_.trackMetadata_) {
-      auto publisherRoot = getPublisherRoot(begin, end);
-      metadataTracker_.withRLock([&](auto& tracker) {
-        CHECK(tracker);
-        auto metadata = tracker->getPublisherRootMetadata(*publisherRoot);
-        if (metadata && *metadata->operMetadata.lastConfirmedAt() > 0) {
-          result.value().metadata() = metadata->operMetadata;
-          result.value().metadata()->lastServedAt() =
-              std::chrono::duration_cast<std::chrono::milliseconds>(
-                  std::chrono::system_clock::now().time_since_epoch())
-                  .count();
-        } else {
-          throw Utils::createFsdbException(
-              FsdbErrorCode::PUBLISHER_NOT_READY,
-              fmt::format("Publisher not ready for root: {}", *publisherRoot));
-        }
-      });
-    }
-    return result;
-  }
+  get_encoded_impl(PathIter begin, PathIter end, OperProtocol protocol) const;
 
   Result<std::vector<TaggedOperState>> get_encoded_extended_impl(
       ExtPathIter begin,
       ExtPathIter end,
-      OperProtocol protocol) const {
-    Result<std::vector<TaggedOperState>> result = folly::makeUnexpected(
-        StorageError(StorageError::Code::INVALID_PATH, "Unknown"));
-    if (params_.serveGetRequestsWithLastPublishedState_) {
-      auto state = Storage(*publishedStateForReads().rlock());
-      result = state.get_encoded_extended(begin, end, protocol);
-    } else {
-      auto currentState = currentState_.rlock();
-      result = currentState->get_encoded_extended(begin, end, protocol);
-    }
-    if (result.hasValue() && params_.trackMetadata_) {
-      auto publisherRoot = getPublisherRoot(begin, end);
-      metadataTracker_.withRLock([&](auto& tracker) {
-        CHECK(tracker);
-        auto metadata = tracker->getPublisherRootMetadata(*publisherRoot);
-        if (metadata && *metadata->operMetadata.lastConfirmedAt() > 0) {
-          auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
-                         std::chrono::system_clock::now().time_since_epoch())
-                         .count();
-          for (auto& state : result.value()) {
-            state.state()->metadata() = metadata->operMetadata;
-            state.state()->metadata()->lastServedAt() = now;
-          }
-        } else {
-          throw Utils::createFsdbException(
-              FsdbErrorCode::PUBLISHER_NOT_READY,
-              fmt::format("Publisher not ready for root: {}", *publisherRoot));
-        }
-      });
-    }
-    return result;
-  }
+      OperProtocol protocol) const;
 
   template <typename T>
   std::optional<StorageError>
@@ -216,12 +113,7 @@ class NaivePeriodicSubscribableStorage
   }
 
   std::optional<StorageError>
-  set_encoded_impl(PathIter begin, PathIter end, const OperState& value) {
-    auto state = currentState_.wlock();
-    auto metadata = value.metadata() ? *value.metadata() : OperMetadata();
-    updateMetadata(begin, end, metadata);
-    return state->set_encoded(begin, end, value);
-  }
+  set_encoded_impl(PathIter begin, PathIter end, const OperState& value);
 
   template <typename T>
   std::optional<StorageError>
@@ -231,50 +123,17 @@ class NaivePeriodicSubscribableStorage
     return state->add(begin, end, std::forward<T>(value));
   }
 
-  void remove_impl(PathIter begin, PathIter end) {
-    auto state = currentState_.wlock();
-    updateMetadata(begin, end);
-    state->remove(begin, end);
-  }
+  void remove_impl(PathIter begin, PathIter end);
 
-  std::optional<StorageError> patch_impl(Patch&& patch) {
-    if (patch.patch()->getType() == thrift_cow::PatchNode::Type::__EMPTY__) {
-      XLOG(DBG3) << "Patch is empty, nothing to do";
-      return StorageError(StorageError::Code::TYPE_ERROR, "Empty patch");
-    }
-    auto& path = *patch.basePath();
-    auto state = currentState_.wlock();
-    updateMetadata(path.begin(), path.end(), *patch.metadata());
-    return state->patch(std::move(patch));
-  }
+  std::optional<StorageError> patch_impl(Patch&& patch);
   using NaivePeriodicSubscribableStorageBase::add_patch_subscription_path_impl;
   using NaivePeriodicSubscribableStorageBase::subscribe_patch_extended_impl;
   using NaivePeriodicSubscribableStorageBase::subscribe_patch_impl;
 
-  std::optional<StorageError> patch_impl(const fsdb::OperDelta& delta) {
-    if (!delta.changes()->size()) {
-      return std::nullopt;
-    }
-    // Pick the publisher root path from first unit.
-    // TODO - have caller to patch send the path like
-    // we do for oper state
-    auto& path = *delta.changes()->begin()->path()->raw();
-    auto state = currentState_.wlock();
-    auto metadata = delta.metadata() ? *delta.metadata() : OperMetadata();
-    updateMetadata(path.begin(), path.end(), metadata);
-    return state->patch(delta);
-  }
+  std::optional<StorageError> patch_impl(const fsdb::OperDelta& delta);
 
   std::optional<StorageError> patch_impl(
-      const fsdb::TaggedOperState& operState) {
-    auto& path = *operState.path()->path();
-    auto state = currentState_.wlock();
-    auto metadata = operState.state()->metadata()
-        ? *operState.state()->metadata()
-        : OperMetadata();
-    updateMetadata(path.begin(), path.end(), metadata);
-    return state->patch(operState);
-  }
+      const fsdb::TaggedOperState& operState);
 
   using NaivePeriodicSubscribableStorageBase::subscribe_delta_extended_impl;
   using NaivePeriodicSubscribableStorageBase::subscribe_delta_impl;
@@ -289,88 +148,14 @@ class NaivePeriodicSubscribableStorage
       std::shared_ptr<RootNode>,
       std::shared_ptr<RootNode>,
       SubscriptionMetadataServer>
-  publishCurrentState(size_t bucket) {
-    auto lastState = bucketPublishedState_[bucket].wlock();
-    // wlock not rlock: the COW freeze walk mutates published_ on shared nodes
-    // and must exclude both concurrent freezes and the rlock GET readers.
-    auto currentState = currentState_.wlock();
+  publishCurrentState(size_t bucket);
 
-    auto newRoot = currentState->root();
-    // An empty slot means the bucket just gained its first subscriber, which
-    // gets the whole tree from initial sync rather than a delta.
-    auto oldRoot = lastState->has_value() ? (*lastState)->root() : newRoot;
-    // Read metadata under the lock so it matches currentState.
-    SubscriptionMetadataServer metadataServer = getCurrentMetadataServer();
-
-    // A first serve carries no delta, but the tree still has to be frozen
-    // before it is handed to initial sync.
-    if (oldRoot != newRoot || !newRoot->isPublished()) {
-      subscriptions_.publishAndAddPaths(newRoot);
-    }
-
-    lastState->emplace(*currentState);
-    return std::make_tuple(oldRoot, newRoot, metadataServer);
-  }
-
-  folly::coro::Task<void> serveSubscriptionsTick() override {
-    return serveSubscriptionsLoop(serveTickInterval());
-  }
+  folly::coro::Task<void> serveSubscriptionsTick() override;
 
   // A bucket is due on ticks its interval divides, so same-interval subscribers
   // stay phase-aligned and share a single publish.
   folly::coro::Task<void> serveSubscriptionsLoop(
-      std::chrono::milliseconds tick) {
-    std::map<std::string, uint64_t> lastServedPublisherRootUpdates;
-    uint64_t tickCount = 0;
-
-    while (true) {
-      if (auto runningLocked = running_.rlock(); !*runningLocked) {
-        break;
-      }
-
-      ++tickCount;
-      const auto numBuckets = subscriptions_.numBuckets();
-      std::vector<size_t> due;
-      for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
-        if (!subscriptions_.hasAny(bucket) &&
-            !subscriptions_.hasPending(bucket)) {
-          releaseBucketBaseline(bucket);
-          continue;
-        }
-        // Cadence alone decides. A pending subscription must NOT force the
-        // bucket due: a client that re-subscribes in a loop would otherwise
-        // drag every established subscriber in the bucket into an off-cadence
-        // full serve. The newcomer waits for its bucket's tick, which is the
-        // interval it asked for and matches the pre-bucketing behaviour.
-        if ((tickCount % (bucket + 1)) == 0) {
-          due.push_back(bucket);
-        }
-      }
-
-      if (due.empty()) {
-        // Keeps GET advancing with no subscribers, at the default cadence.
-        if (tickCount % numBuckets == 0) {
-          refreshPublishedStateForReads();
-        }
-        co_await folly::coro::sleep(tick);
-        continue;
-      }
-
-      for (auto bucket : due) {
-        // Timed per bucket: a shared tick-start would bill each bucket for
-        // every bucket served before it on the same tick.
-        auto start = std::chrono::steady_clock::now();
-        auto [oldRoot, newRoot, metadataServer] = publishCurrentState(bucket);
-        subscriptions_.serveSubscriptions(
-            oldRoot, newRoot, metadataServer, bucket);
-        exportServeMetrics(
-            start, metadataServer, lastServedPublisherRootUpdates, tick);
-      }
-      refreshPublishedStateForReads();
-
-      co_await folly::coro::sleep(tick);
-    }
-  }
+      std::chrono::milliseconds tick);
 
   using NaivePeriodicSubscribableStorageBase::getSubscriptions;
   using NaivePeriodicSubscribableStorageBase::numPathStores;
@@ -383,15 +168,9 @@ class NaivePeriodicSubscribableStorage
    * Expensive API to copy current root. To be used only
    * in tests
    */
-  RootT currentStateExpensive() const {
-    return currentState_.rlock()->root()->toThrift();
-  }
+  RootT currentStateExpensive() const;
 
-  OperState publishedStateEncoded(OperProtocol protocol) {
-    auto lastState = Storage(*publishedStateForReads().rlock());
-    std::vector<std::string> rootPath;
-    return *lastState.get_encoded(rootPath.begin(), rootPath.end(), protocol);
-  }
+  OperState publishedStateEncoded(OperProtocol protocol);
 
  protected:
   const SubscriptionManagerBase& subMgr() const override {
@@ -416,8 +195,317 @@ class NaivePeriodicSubscribableStorage
   SubscribeManager subscriptions_;
 };
 
-// To avoid compiler inlining these heavy functions and allow for caching
-// template instantiations, these need to be implemented outside the class body
+// Out of class with explicit return types so extern templates suppress them.
+template <typename Storage, typename SubscribeManager>
+NaivePeriodicSubscribableStorage<Storage, SubscribeManager>::
+    NaivePeriodicSubscribableStorage(
+        const RootT& initialState,
+        StorageParams params)
+    : NaivePeriodicSubscribableStorageBase(params),
+      currentState_(std::in_place, initialState),
+      lastPublishedState_(*currentState_.rlock()),
+      subscriptions_(
+          patchOperProtocol_,
+          params.requireResponseOnInitialSync_,
+          serveBucketCount(
+              static_cast<uint32_t>(params.serveTickInterval_.count()),
+              static_cast<uint32_t>(params.subscriptionServeInterval_.count())),
+          static_cast<uint32_t>(params.serveTickInterval_.count())) {
+  for (size_t i = 0; i < subscriptions_.numBuckets(); ++i) {
+    bucketPublishedState_.emplace_back();
+  }
+  subscriptions_.useIdPaths(params.convertSubsToIDPaths_);
+  auto currentState = currentState_.wlock();
+  currentState->publish();
+}
+
+template <typename Storage, typename SubscribeManager>
+NaivePeriodicSubscribableStorage<Storage, SubscribeManager>::
+    ~NaivePeriodicSubscribableStorage() {
+  stop();
+}
+
+template <typename Storage, typename SubscribeManager>
+auto NaivePeriodicSubscribableStorage<Storage, SubscribeManager>::
+    publishedStateCurrent() const -> bool {
+  auto& slot = lastPublishedState_;
+  auto lastState = slot.rlock();
+  auto currentState = currentState_.rlock();
+  return lastState->root() == currentState->root();
+}
+
+template <typename Storage, typename SubscribeManager>
+auto NaivePeriodicSubscribableStorage<Storage, SubscribeManager>::
+    refreshPublishedStateForReads() -> void {
+  if (publishedStateCurrent()) {
+    return;
+  }
+  auto lastState = lastPublishedState_.wlock();
+  auto currentState = currentState_.wlock();
+  auto newRoot = currentState->root();
+  if (lastState->root() != newRoot) {
+    subscriptions_.publishAndAddPaths(newRoot);
+    *lastState = Storage(*currentState);
+  }
+}
+
+template <typename Storage, typename SubscribeManager>
+auto NaivePeriodicSubscribableStorage<Storage, SubscribeManager>::
+    releaseBucketBaseline(size_t bucket) -> void {
+  auto& slot = bucketPublishedState_[bucket];
+  if (!slot.rlock()->has_value()) {
+    return;
+  }
+  slot.wlock()->reset();
+}
+
+template <typename Storage, typename SubscribeManager>
+auto NaivePeriodicSubscribableStorage<Storage, SubscribeManager>::
+    get_encoded_impl(PathIter begin, PathIter end, OperProtocol protocol) const
+    -> Result<OperState> {
+  Result<OperState> result = folly::makeUnexpected(
+      StorageError(StorageError::Code::INVALID_PATH, "Unknown"));
+  if (params_.serveGetRequestsWithLastPublishedState_) {
+    auto state = Storage(*publishedStateForReads().rlock());
+    result = state.get_encoded(begin, end, protocol);
+  } else {
+    // hold rlock on current state to avoid racing with writers
+    auto currentState = currentState_.rlock();
+    result = currentState->get_encoded(begin, end, protocol);
+  }
+  if (result.hasValue() && params_.trackMetadata_) {
+    auto publisherRoot = getPublisherRoot(begin, end);
+    metadataTracker_.withRLock([&](auto& tracker) {
+      CHECK(tracker);
+      auto metadata = tracker->getPublisherRootMetadata(*publisherRoot);
+      if (metadata && *metadata->operMetadata.lastConfirmedAt() > 0) {
+        result.value().metadata() = metadata->operMetadata;
+        result.value().metadata()->lastServedAt() =
+            std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::system_clock::now().time_since_epoch())
+                .count();
+      } else {
+        throw Utils::createFsdbException(
+            FsdbErrorCode::PUBLISHER_NOT_READY,
+            fmt::format("Publisher not ready for root: {}", *publisherRoot));
+      }
+    });
+  }
+  return result;
+}
+
+template <typename Storage, typename SubscribeManager>
+auto NaivePeriodicSubscribableStorage<Storage, SubscribeManager>::
+    get_encoded_extended_impl(
+        ExtPathIter begin,
+        ExtPathIter end,
+        OperProtocol protocol) const -> Result<std::vector<TaggedOperState>> {
+  Result<std::vector<TaggedOperState>> result = folly::makeUnexpected(
+      StorageError(StorageError::Code::INVALID_PATH, "Unknown"));
+  if (params_.serveGetRequestsWithLastPublishedState_) {
+    auto state = Storage(*publishedStateForReads().rlock());
+    result = state.get_encoded_extended(begin, end, protocol);
+  } else {
+    auto currentState = currentState_.rlock();
+    result = currentState->get_encoded_extended(begin, end, protocol);
+  }
+  if (result.hasValue() && params_.trackMetadata_) {
+    auto publisherRoot = getPublisherRoot(begin, end);
+    metadataTracker_.withRLock([&](auto& tracker) {
+      CHECK(tracker);
+      auto metadata = tracker->getPublisherRootMetadata(*publisherRoot);
+      if (metadata && *metadata->operMetadata.lastConfirmedAt() > 0) {
+        auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
+                       std::chrono::system_clock::now().time_since_epoch())
+                       .count();
+        for (auto& state : result.value()) {
+          state.state()->metadata() = metadata->operMetadata;
+          state.state()->metadata()->lastServedAt() = now;
+        }
+      } else {
+        throw Utils::createFsdbException(
+            FsdbErrorCode::PUBLISHER_NOT_READY,
+            fmt::format("Publisher not ready for root: {}", *publisherRoot));
+      }
+    });
+  }
+  return result;
+}
+
+template <typename Storage, typename SubscribeManager>
+auto NaivePeriodicSubscribableStorage<Storage, SubscribeManager>::
+    set_encoded_impl(PathIter begin, PathIter end, const OperState& value)
+        -> std::optional<StorageError> {
+  auto state = currentState_.wlock();
+  auto metadata = value.metadata() ? *value.metadata() : OperMetadata();
+  updateMetadata(begin, end, metadata);
+  return state->set_encoded(begin, end, value);
+}
+
+template <typename Storage, typename SubscribeManager>
+auto NaivePeriodicSubscribableStorage<Storage, SubscribeManager>::remove_impl(
+    PathIter begin,
+    PathIter end) -> void {
+  auto state = currentState_.wlock();
+  updateMetadata(begin, end);
+  state->remove(begin, end);
+}
+
+template <typename Storage, typename SubscribeManager>
+auto NaivePeriodicSubscribableStorage<Storage, SubscribeManager>::patch_impl(
+    Patch&& patch) -> std::optional<StorageError> {
+  if (patch.patch()->getType() == thrift_cow::PatchNode::Type::__EMPTY__) {
+    XLOG(DBG3) << "Patch is empty, nothing to do";
+    return StorageError(StorageError::Code::TYPE_ERROR, "Empty patch");
+  }
+  auto& path = *patch.basePath();
+  auto state = currentState_.wlock();
+  updateMetadata(path.begin(), path.end(), *patch.metadata());
+  return state->patch(std::move(patch));
+}
+
+template <typename Storage, typename SubscribeManager>
+auto NaivePeriodicSubscribableStorage<Storage, SubscribeManager>::patch_impl(
+    const fsdb::OperDelta& delta) -> std::optional<StorageError> {
+  if (!delta.changes()->size()) {
+    return std::nullopt;
+  }
+  // Pick the publisher root path from first unit.
+  // TODO - have caller to patch send the path like
+  // we do for oper state
+  auto& path = *delta.changes()->begin()->path()->raw();
+  auto state = currentState_.wlock();
+  auto metadata = delta.metadata() ? *delta.metadata() : OperMetadata();
+  updateMetadata(path.begin(), path.end(), metadata);
+  return state->patch(delta);
+}
+
+template <typename Storage, typename SubscribeManager>
+auto NaivePeriodicSubscribableStorage<Storage, SubscribeManager>::patch_impl(
+    const fsdb::TaggedOperState& operState) -> std::optional<StorageError> {
+  auto& path = *operState.path()->path();
+  auto state = currentState_.wlock();
+  auto metadata = operState.state()->metadata() ? *operState.state()->metadata()
+                                                : OperMetadata();
+  updateMetadata(path.begin(), path.end(), metadata);
+  return state->patch(operState);
+}
+
+template <typename Storage, typename SubscribeManager>
+auto NaivePeriodicSubscribableStorage<Storage, SubscribeManager>::
+    publishCurrentState(size_t bucket) -> std::tuple<
+        std::shared_ptr<RootNode>,
+        std::shared_ptr<RootNode>,
+        SubscriptionMetadataServer> {
+  auto lastState = bucketPublishedState_[bucket].wlock();
+  // wlock not rlock: the COW freeze walk mutates published_ on shared nodes
+  // and must exclude both concurrent freezes and the rlock GET readers.
+  auto currentState = currentState_.wlock();
+
+  auto newRoot = currentState->root();
+  // An empty slot means the bucket just gained its first subscriber, which
+  // gets the whole tree from initial sync rather than a delta.
+  auto oldRoot = lastState->has_value() ? (*lastState)->root() : newRoot;
+  // Read metadata under the lock so it matches currentState.
+  SubscriptionMetadataServer metadataServer = getCurrentMetadataServer();
+
+  // A first serve carries no delta, but the tree still has to be frozen
+  // before it is handed to initial sync.
+  if (oldRoot != newRoot || !newRoot->isPublished()) {
+    subscriptions_.publishAndAddPaths(newRoot);
+  }
+
+  lastState->emplace(*currentState);
+  return std::make_tuple(oldRoot, newRoot, metadataServer);
+}
+
+template <typename Storage, typename SubscribeManager>
+auto NaivePeriodicSubscribableStorage<Storage, SubscribeManager>::
+    serveSubscriptionsTick() -> folly::coro::Task<void> {
+  return serveSubscriptionsLoop(serveTickInterval());
+}
+
+template <typename Storage, typename SubscribeManager>
+auto NaivePeriodicSubscribableStorage<Storage, SubscribeManager>::
+    serveSubscriptionsLoop(std::chrono::milliseconds tick)
+        -> folly::coro::Task<void> {
+  // Per bucket: buckets serve different updates, so a shared map would let
+  // whichever bucket ran first on a tick suppress the others' latency export.
+  std::vector<std::map<std::string, uint64_t>> lastServedPublisherRootUpdates(
+      subscriptions_.numBuckets());
+  uint64_t tickCount = 0;
+
+  while (true) {
+    if (auto runningLocked = running_.rlock(); !*runningLocked) {
+      break;
+    }
+
+    ++tickCount;
+    const auto numBuckets = subscriptions_.numBuckets();
+    std::vector<size_t> due;
+    for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
+      if (!subscriptions_.hasAny(bucket) &&
+          !subscriptions_.hasPending(bucket)) {
+        releaseBucketBaseline(bucket);
+        continue;
+      }
+      // Cadence alone decides. A pending subscription must NOT force the
+      // bucket due: a client that re-subscribes in a loop would otherwise
+      // drag every established subscriber in the bucket into an off-cadence
+      // full serve. The newcomer waits for its bucket's tick, which is the
+      // interval it asked for and matches the pre-bucketing behaviour.
+      if ((tickCount % (bucket + 1)) == 0) {
+        due.push_back(bucket);
+      }
+    }
+
+    if (due.empty()) {
+      // Keeps GET advancing with no subscribers, at the default cadence.
+      if (tickCount % numBuckets == 0) {
+        refreshPublishedStateForReads();
+      }
+      co_await folly::coro::sleep(tick);
+      continue;
+    }
+
+    for (auto bucket : due) {
+      // Timed per bucket: a shared tick-start would bill each bucket for
+      // every bucket served before it on the same tick.
+      auto start = std::chrono::steady_clock::now();
+      auto [oldRoot, newRoot, metadataServer] = publishCurrentState(bucket);
+      subscriptions_.serveSubscriptions(
+          oldRoot, newRoot, metadataServer, bucket);
+      exportServeMetrics(
+          start,
+          metadataServer,
+          lastServedPublisherRootUpdates[bucket],
+          tick * (bucket + 1),
+          bucket);
+    }
+    // Default cadence only: these are process levels, and an idle storage must
+    // not pay a /proc read per tick (NSDB runs one loop per shard).
+    if (tickCount % numBuckets == 0) {
+      exportTickMetrics();
+    }
+    refreshPublishedStateForReads();
+
+    co_await folly::coro::sleep(tick);
+  }
+}
+
+template <typename Storage, typename SubscribeManager>
+auto NaivePeriodicSubscribableStorage<Storage, SubscribeManager>::
+    currentStateExpensive() const -> RootT {
+  return currentState_.rlock()->root()->toThrift();
+}
+
+template <typename Storage, typename SubscribeManager>
+auto NaivePeriodicSubscribableStorage<Storage, SubscribeManager>::
+    publishedStateEncoded(OperProtocol protocol) -> OperState {
+  auto lastState = Storage(*publishedStateForReads().rlock());
+  std::vector<std::string> rootPath;
+  return *lastState.get_encoded(rootPath.begin(), rootPath.end(), protocol);
+}
 
 template <typename Storage, typename SubscribeManager>
 typename Storage::ConcretePath

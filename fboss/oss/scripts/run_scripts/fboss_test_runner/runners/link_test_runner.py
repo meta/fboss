@@ -28,13 +28,22 @@ from fboss_test_runner.services.qsfp_service_utils import (
     cleanup_qsfp_service,
     setup_and_start_qsfp_service,
 )
+from fboss_test_runner.tier_selection import TestCapability
 
 LINK_KNOWN_BAD_TESTS = (
     "./share/link_known_bad_tests/fboss_link_known_bad_tests.materialized_JSON"
 )
+LINK_TEST_METADATA = "./share/hw_sanity_tests/link_test_metadata.json"
+OPT_ARG_WITHOUT_TRANSCEIVERS = "--without-transceivers"
 
 
 class LinkTestRunner(TestRunner):
+    def _get_tier_metadata_file(self) -> str:
+        return LINK_TEST_METADATA
+
+    def _get_available_test_capabilities(self) -> tuple[TestCapability, ...]:
+        return () if self.args.without_transceivers else (TestCapability.TRANSCEIVER,)
+
     def run_test(self, args: Namespace) -> int:
         self.args = args
         self._validate_run_args()
@@ -74,6 +83,11 @@ class LinkTestRunner(TestRunner):
             default=1,
             type=int,
             help="Specify number of npus to run in multi switch mode. Default is 1.",
+        )
+        sub_parser.add_argument(
+            OPT_ARG_WITHOUT_TRANSCEIVERS,
+            action="store_true",
+            help="Exclude tier tests that require platform transceiver support.",
         )
 
     def _get_config_path(self) -> str:

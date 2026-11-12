@@ -23,10 +23,6 @@ extern "C" {
 #include <sai.h>
 }
 
-inline bool operator==(const sai_u32_range_t& a, const sai_u32_range_t& b) {
-  return a.min == b.min && a.max == b.max;
-}
-
 inline std::size_t hash_value(const sai_u32_range_t& r) {
   std::size_t seed = 0;
   boost::hash_combine(seed, r.min);
@@ -156,6 +152,16 @@ struct SaiAclTableTraits {
         SAI_ACL_TABLE_ATTR_FIELD_DST_IPV6_WORD2,
         bool,
         SaiBoolDefaultFalse>;
+    using FieldDstIpV6Word1 = SaiAttribute<
+        EnumType,
+        SAI_ACL_TABLE_ATTR_FIELD_DST_IPV6_WORD1,
+        bool,
+        SaiBoolDefaultFalse>;
+    using FieldDstIpV6Word0 = SaiAttribute<
+        EnumType,
+        SAI_ACL_TABLE_ATTR_FIELD_DST_IPV6_WORD0,
+        bool,
+        SaiBoolDefaultFalse>;
     using FieldSrcIpV4 =
         SaiAttribute<EnumType, SAI_ACL_TABLE_ATTR_FIELD_SRC_IP, bool>;
     using FieldDstIpV4 =
@@ -271,6 +277,13 @@ struct SaiAclTableTraits {
         sai_object_id_t,
         SaiObjectIdDefault>;
 #endif
+    struct AttributeFieldRouteDestination {
+      std::optional<sai_attr_id_t> operator()();
+    };
+    using FieldRouteDestination = SaiExtensionAttribute<
+        bool,
+        AttributeFieldRouteDestination,
+        SaiBoolDefaultFalse>;
   };
 
   using AdapterKey = AclTableSaiId;
@@ -282,6 +295,8 @@ struct SaiAclTableTraits {
       std::optional<Attributes::FieldDstIpV6>,
       std::optional<Attributes::FieldDstIpV6Word3>,
       std::optional<Attributes::FieldDstIpV6Word2>,
+      std::optional<Attributes::FieldDstIpV6Word1>,
+      std::optional<Attributes::FieldDstIpV6Word0>,
       std::optional<Attributes::FieldSrcIpV4>,
       std::optional<Attributes::FieldDstIpV4>,
       std::optional<Attributes::FieldL4SrcPort>,
@@ -326,6 +341,10 @@ struct SaiAclTableTraits {
       std::optional<Attributes::UserDefinedFieldGroupMin3>,
       std::optional<Attributes::UserDefinedFieldGroupMin4>
 #endif
+#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
+      ,
+      std::optional<Attributes::FieldRouteDestination>
+#endif
       ,
       std::optional<Attributes::FieldPortUserMeta>>;
 
@@ -340,6 +359,8 @@ SAI_ATTRIBUTE_NAME(AclTable, FieldSrcIpV6);
 SAI_ATTRIBUTE_NAME(AclTable, FieldDstIpV6);
 SAI_ATTRIBUTE_NAME(AclTable, FieldDstIpV6Word3);
 SAI_ATTRIBUTE_NAME(AclTable, FieldDstIpV6Word2);
+SAI_ATTRIBUTE_NAME(AclTable, FieldDstIpV6Word1);
+SAI_ATTRIBUTE_NAME(AclTable, FieldDstIpV6Word0);
 SAI_ATTRIBUTE_NAME(AclTable, FieldSrcIpV4);
 SAI_ATTRIBUTE_NAME(AclTable, FieldDstIpV4);
 SAI_ATTRIBUTE_NAME(AclTable, FieldL4SrcPort);
@@ -384,6 +405,9 @@ SAI_ATTRIBUTE_NAME(AclTable, UserDefinedFieldGroupMin2);
 SAI_ATTRIBUTE_NAME(AclTable, UserDefinedFieldGroupMin3);
 SAI_ATTRIBUTE_NAME(AclTable, UserDefinedFieldGroupMin4);
 #endif
+#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
+SAI_ATTRIBUTE_NAME(AclTable, FieldRouteDestination);
+#endif
 
 struct SaiAclEntryTraits {
   static constexpr sai_object_type_t ObjectType = SAI_OBJECT_TYPE_ACL_ENTRY;
@@ -418,6 +442,16 @@ struct SaiAclEntryTraits {
     using FieldDstIpV6Word2 = SaiAttribute<
         EnumType,
         SAI_ACL_ENTRY_ATTR_FIELD_DST_IPV6_WORD2,
+        AclEntryFieldIpV6,
+        StdNullOptDefault<AclEntryFieldIpV6>>;
+    using FieldDstIpV6Word1 = SaiAttribute<
+        EnumType,
+        SAI_ACL_ENTRY_ATTR_FIELD_DST_IPV6_WORD1,
+        AclEntryFieldIpV6,
+        StdNullOptDefault<AclEntryFieldIpV6>>;
+    using FieldDstIpV6Word0 = SaiAttribute<
+        EnumType,
+        SAI_ACL_ENTRY_ATTR_FIELD_DST_IPV6_WORD0,
         AclEntryFieldIpV6,
         StdNullOptDefault<AclEntryFieldIpV6>>;
     using FieldSrcIpV4 = SaiAttribute<
@@ -654,9 +688,8 @@ struct SaiAclEntryTraits {
         AclEntryFieldSaiObjectIdT,
         AttributeFieldRouteDestination,
         SaiAclEntryFieldSaiObjectIdTDefault>;
-// SAI_ACL_ENTRY_ATTR_LABEL added in SAI 1.19, Cisco backport it to SDK_26_5
-// SAI 1.18.1 file
-#if defined(TAJO_SDK_GTE_26_5) && !defined(TAJO_SDK_P200)
+#if (defined(TAJO_SDK_GTE_26_5) && !defined(TAJO_SDK_P200)) || \
+    defined(BRCM_SAI_SDK_XGS_GTE_15_4_1)
     using Label = SaiAttribute<
         EnumType,
         SAI_ACL_ENTRY_ATTR_LABEL,
@@ -669,7 +702,8 @@ struct SaiAclEntryTraits {
   using AdapterHostKey = std::tuple<
       Attributes::TableId,
       std::optional<Attributes::Priority>
-#if defined(TAJO_SDK_GTE_26_5) && !defined(TAJO_SDK_P200)
+#if (defined(TAJO_SDK_GTE_26_5) && !defined(TAJO_SDK_P200)) || \
+    defined(BRCM_SAI_SDK_XGS_GTE_15_4_1)
       ,
       std::optional<Attributes::Label>
 #endif
@@ -682,6 +716,8 @@ struct SaiAclEntryTraits {
       std::optional<Attributes::FieldDstIpV6>,
       std::optional<Attributes::FieldDstIpV6Word3>,
       std::optional<Attributes::FieldDstIpV6Word2>,
+      std::optional<Attributes::FieldDstIpV6Word1>,
+      std::optional<Attributes::FieldDstIpV6Word0>,
       std::optional<Attributes::FieldSrcIpV4>,
       std::optional<Attributes::FieldDstIpV4>,
       std::optional<Attributes::FieldSrcPort>,
@@ -749,7 +785,8 @@ struct SaiAclEntryTraits {
       std::optional<Attributes::ActionL3SwitchCancel>,
       std::optional<Attributes::FieldRouteDestination>
 #endif
-#if defined(TAJO_SDK_GTE_26_5) && !defined(TAJO_SDK_P200)
+#if (defined(TAJO_SDK_GTE_26_5) && !defined(TAJO_SDK_P200)) || \
+    defined(BRCM_SAI_SDK_XGS_GTE_15_4_1)
       ,
       std::optional<Attributes::Label>
 #endif
@@ -764,6 +801,8 @@ SAI_ATTRIBUTE_NAME(AclEntry, FieldSrcIpV6);
 SAI_ATTRIBUTE_NAME(AclEntry, FieldDstIpV6);
 SAI_ATTRIBUTE_NAME(AclEntry, FieldDstIpV6Word3);
 SAI_ATTRIBUTE_NAME(AclEntry, FieldDstIpV6Word2);
+SAI_ATTRIBUTE_NAME(AclEntry, FieldDstIpV6Word1);
+SAI_ATTRIBUTE_NAME(AclEntry, FieldDstIpV6Word0);
 SAI_ATTRIBUTE_NAME(AclEntry, FieldSrcIpV4);
 SAI_ATTRIBUTE_NAME(AclEntry, FieldDstIpV4);
 SAI_ATTRIBUTE_NAME(AclEntry, FieldSrcPort);
@@ -828,7 +867,8 @@ SAI_ATTRIBUTE_NAME(AclEntry, ActionSetEcmpHashAlgorithm);
 SAI_ATTRIBUTE_NAME(AclEntry, ActionL3SwitchCancel);
 SAI_ATTRIBUTE_NAME(AclEntry, FieldRouteDestination);
 #endif
-#if defined(TAJO_SDK_GTE_26_5) && !defined(TAJO_SDK_P200)
+#if (defined(TAJO_SDK_GTE_26_5) && !defined(TAJO_SDK_P200)) || \
+    defined(BRCM_SAI_SDK_XGS_GTE_15_4_1)
 SAI_ATTRIBUTE_NAME(AclEntry, Label);
 #endif
 
@@ -844,6 +884,13 @@ struct SaiAclCounterTraits {
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 2)
     using Label =
         SaiAttribute<EnumType, SAI_ACL_COUNTER_ATTR_LABEL, SaiCharArray32>;
+    struct AttributeLabelExtendedWrapper {
+      std::optional<sai_attr_id_t> operator()();
+    };
+    using LabelExtended = SaiExtensionAttribute<
+        std::vector<int8_t>,
+        AttributeLabelExtendedWrapper,
+        SaiS8ListDefault>;
 #endif
 
     using EnablePacketCount =
@@ -865,6 +912,7 @@ struct SaiAclCounterTraits {
       Attributes::TableId,
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 2)
       std::optional<Attributes::Label>,
+      std::optional<Attributes::LabelExtended>,
 #endif
       std::optional<Attributes::EnablePacketCount>,
       std::optional<Attributes::EnableByteCount>>;
@@ -873,6 +921,7 @@ struct SaiAclCounterTraits {
       Attributes::TableId,
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 2)
       std::optional<Attributes::Label>,
+      std::optional<Attributes::LabelExtended>,
 #endif
       std::optional<Attributes::EnablePacketCount>,
       std::optional<Attributes::EnableByteCount>,
@@ -883,6 +932,7 @@ struct SaiAclCounterTraits {
 SAI_ATTRIBUTE_NAME(AclCounter, TableId);
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 2)
 SAI_ATTRIBUTE_NAME(AclCounter, Label);
+SAI_ATTRIBUTE_NAME(AclCounter, LabelExtended);
 #endif
 SAI_ATTRIBUTE_NAME(AclCounter, EnablePacketCount);
 SAI_ATTRIBUTE_NAME(AclCounter, EnableByteCount);

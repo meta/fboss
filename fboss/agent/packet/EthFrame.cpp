@@ -66,6 +66,11 @@ std::unique_ptr<facebook::fboss::TxPacket> EthFrame::getTxPacket(
       rwCursor.template writeBE<uint32_t>(vlanTag.value);
     }
   }
+  if (hdr_.csigTag) {
+    rwCursor.template writeBE<uint16_t>(
+        static_cast<uint16_t>(ETHERTYPE::ETHERTYPE_CSIG));
+    rwCursor.template writeBE<uint16_t>(hdr_.csigTag->value);
+  }
   if (v4PayLoad_) {
     rwCursor.template writeBE<uint16_t>(
         static_cast<uint16_t>(ETHERTYPE::ETHERTYPE_IPV4));
@@ -105,6 +110,11 @@ void EthFrame::serialize(folly::io::RWPrivateCursor& cursor) const {
     for (const auto& vlanTag : hdr_.vlanTags) {
       cursor.template writeBE<uint32_t>(vlanTag.value);
     }
+  }
+  if (hdr_.csigTag) {
+    cursor.template writeBE<uint16_t>(
+        static_cast<uint16_t>(ETHERTYPE::ETHERTYPE_CSIG));
+    cursor.template writeBE<uint16_t>(hdr_.csigTag->value);
   }
 
   if (v4PayLoad_) {
@@ -153,7 +163,7 @@ EthFrame getEthFrame(
       isV4 ? ETHERTYPE::ETHERTYPE_IPV4 : ETHERTYPE::ETHERTYPE_IPV6;
   EthHdr::VlanTags_t tags;
   if (vlanId.has_value()) {
-    tags.push_back(VlanTag(*vlanId, 0x8100));
+    tags.emplace_back(*vlanId, 0x8100);
   }
   EthHdr ethHdr{srcMac, dstMac, {tags}, static_cast<uint16_t>(etherType)};
   std::conditional_t<isV4, IPv4Hdr, IPv6Hdr> ipHdr;
@@ -192,7 +202,7 @@ EthFrame getEthFrame(
   constexpr auto isV4 = std::is_same_v<AddrT, folly::IPAddressV4>;
   EthHdr::VlanTags_t tags;
   if (vlanId.has_value()) {
-    tags.push_back(VlanTag(*vlanId, 0x8100));
+    tags.emplace_back(*vlanId, 0x8100);
   }
   EthHdr ethHdr{
       srcMac, dstMac, {tags}, static_cast<uint16_t>(ETHERTYPE::ETHERTYPE_MPLS)};
@@ -236,7 +246,9 @@ void EthFrame::stripVlans() {
   auto srcMac = hdr_.getSrcMac();
   auto dstMac = hdr_.getDstMac();
   auto etherType = hdr_.getEtherType();
+  auto csigTag = hdr_.getCsigTag();
   hdr_ = EthHdr(dstMac, srcMac, {}, etherType);
+  hdr_.setCsigTag(csigTag);
 }
 
 EthFrame makeEthFrame(const TxPacket& txPkt, bool skipTtlDecrement) {

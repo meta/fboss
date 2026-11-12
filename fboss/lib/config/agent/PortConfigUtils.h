@@ -12,6 +12,7 @@
 #include <map>
 #include <optional>
 #include <set>
+#include <string>
 #include <vector>
 
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
@@ -40,6 +41,21 @@ struct SafeProfileSelectionOptions {
 };
 
 using PortProfileMap = std::map<PortID, cfg::PortProfileID>;
+using PortProfileSupportMap =
+    std::map<std::string, std::vector<cfg::PortProfileID>>;
+
+struct PortProfileRequest {
+  std::string portName;
+  cfg::PortProfileID profileID;
+};
+
+struct ResolvedPortProfileRequest {
+  std::string portName;
+  PortID portID;
+  cfg::PortProfileID profileID;
+  cfg::PortSpeed speed;
+  bool wasPresent;
+};
 
 // Selects one compatible profile per controlling-port group and returns that
 // profile for every port which must be present in the resulting config. The
@@ -125,6 +141,24 @@ enum class PortRemovalMode {
   // do not support adding/removing ports at runtime.
   Disable,
 };
+
+struct PortProfileChangeResult {
+  std::vector<ResolvedPortProfileRequest> requestedPorts;
+  std::map<PortID, std::string> subsumedPorts;
+};
+
+// Applies a batch atomically. Existing ports have profile and speed updated,
+// missing routed ports are created with an allocated VLAN/interface, and
+// subsumed ports are returned for the caller to erase or disable as needed.
+// Every requested profile must be supported by the platform mapping. A
+// non-empty entry in qsfpSupportedProfiles additionally constrains that port
+// to profiles supported by its transceiver; absent or empty entries fall back
+// to platform-only validation.
+PortProfileChangeResult applyPortProfileChanges(
+    cfg::SwitchConfig& config,
+    const PlatformMapping& platformMapping,
+    const std::vector<PortProfileRequest>& requests,
+    const PortProfileSupportMap& qsfpSupportedProfiles = {});
 
 // Removes `portsToRemove` from `config`. In Erase mode each port and its
 // vlanPort are dropped; in Disable mode each port is kept but set to DISABLED

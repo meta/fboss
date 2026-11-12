@@ -23,6 +23,7 @@ PacketComparatorFn makePacketComparator(const PacketMatchFields& fields) {
     auto hdr2 = originFrame.header();
 
     if (hdr1.getVlanTags() != hdr2.getVlanTags() ||
+        hdr1.getCsigTag() != hdr2.getCsigTag() ||
         hdr1.getEtherType() != hdr2.getEtherType() ||
         hdr1.getDstMac() != hdr2.getDstMac()) {
       return false;
@@ -57,7 +58,7 @@ PacketSnooper::PacketSnooper(
       port_(std::move(port)),
       expectedFrame_(std::move(expectedFrame)),
       packetComparator_(std::move(packetComparator)) {
-  if (FLAGS_rx_vlan_untagged_packets) {
+  if (FLAGS_rx_vlan_untagged_packets && expectedFrame_.has_value()) {
     /* strip vlans as rx will always be untagged */
     expectedFrame_->stripVlans();
   }
@@ -66,6 +67,7 @@ PacketSnooper::PacketSnooper(
 // validate expected packet type for snooping
 // if receivePktType_ is PACKET_TYPE_PTP, validate PTP packets and drop others
 // if receivePktType_ is PACKET_TYPE_TAJO_MOD, keep only Tajo MoD export packets
+// PACKET_TYPE_CHENAB_MOD keeps only frames validated by the Chenab TAC parser
 // if receivePktType_ is PACKET_TYPE_ALL, no validation
 bool PacketSnooper::expectedReceivedPacketType(
     folly::io::Cursor& cursor) noexcept {
@@ -82,6 +84,11 @@ bool PacketSnooper::expectedReceivedPacketType(
     case packetSnooperReceivePacketType::PACKET_TYPE_TAJO_MOD:
       // keep only Tajo Mirror-on-Drop export packets
       if (!utility::isTajoMirrorOnDropPacket(cursor)) {
+        return false;
+      }
+      break;
+    case packetSnooperReceivePacketType::PACKET_TYPE_CHENAB_MOD:
+      if (!utility::isChenabMirrorOnDropPacket(cursor)) {
         return false;
       }
       break;

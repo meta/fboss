@@ -25,6 +25,8 @@ sai_tunnel_type_t getSaiTunnelType(TunnelType type) {
     case TunnelType::SRV6_DECAP:
       // SRv6 tunnels are handled by SaiSrv6TunnelManager, not here.
       break;
+    case TunnelType::VXLAN:
+      throw FbossError("VXLAN tunnel not implemented yet");
   }
   throw FbossError("Failed to convert tunnel type to SAI type: ", type);
 }

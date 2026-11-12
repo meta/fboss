@@ -12,6 +12,7 @@ cpp_binary(
     ],
     deps = [
         "fbsource//third-party/googletest:gtest",
+        "fbsource//xplat/folly/init:init",
         "//fboss/lib:thrift_service_utils",
         "//fboss/platform/helpers:init",
         "//fboss/platform/sensor_service:core",
@@ -19,7 +20,6 @@ cpp_binary(
         "//fboss/platform/sensor_service:utils",
         "//fboss/platform/sensor_service/if:sensor_service-cpp2-services",
         "//fboss/platform/sensor_service/utilities:power_config_utils",
-        "//folly/init:init",
         "//thrift/lib/cpp2/util:util",
     ],
 )

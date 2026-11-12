@@ -74,6 +74,30 @@ void validateEnumNames(
   validate(*values.excluded());
 }
 
+void validateEnableConditions(
+    const FeatureEnableConditions& conditions,
+    std::string_view featureName) {
+  if (!conditions.configProfiles() && !conditions.asicTypes() &&
+      !conditions.platforms()) {
+    throw FbossError(
+        "Feature '",
+        featureName,
+        "' has autoEnableWhen entry without any conditions");
+  }
+  if (conditions.configProfiles()) {
+    validateConditionValues(
+        *conditions.configProfiles(), "configProfiles condition");
+  }
+  if (conditions.asicTypes()) {
+    validateConditionValues(*conditions.asicTypes(), "asicTypes condition");
+    validateEnumNames<cfg::AsicType>(*conditions.asicTypes(), "ASIC type");
+  }
+  if (conditions.platforms()) {
+    validateConditionValues(*conditions.platforms(), "platforms condition");
+    validateEnumNames<PlatformType>(*conditions.platforms(), "platform type");
+  }
+}
+
 void validateConfig(const FeatureDefaultCommandArgsConfig& config) {
   for (const auto& profileAndArgs : *config.profileDefaultArgs()) {
     if (profileAndArgs.first.empty()) {
@@ -101,25 +125,12 @@ void validateConfig(const FeatureDefaultCommandArgsConfig& config) {
     if (!feature.autoEnableWhen()) {
       continue;
     }
-    const auto& conditions = *feature.autoEnableWhen();
-    if (!conditions.configProfiles() && !conditions.asicTypes() &&
-        !conditions.platforms()) {
-      throw FbossError(
-          "Feature '",
-          featureName,
-          "' has autoEnableWhen without any conditions");
+    const auto& conditionAlternatives = *feature.autoEnableWhen();
+    if (conditionAlternatives.empty()) {
+      throw FbossError("Feature '", featureName, "' has empty autoEnableWhen");
     }
-    if (conditions.configProfiles()) {
-      validateConditionValues(
-          *conditions.configProfiles(), "configProfiles condition");
-    }
-    if (conditions.asicTypes()) {
-      validateConditionValues(*conditions.asicTypes(), "asicTypes condition");
-      validateEnumNames<cfg::AsicType>(*conditions.asicTypes(), "ASIC type");
-    }
-    if (conditions.platforms()) {
-      validateConditionValues(*conditions.platforms(), "platforms condition");
-      validateEnumNames<PlatformType>(*conditions.platforms(), "platform type");
+    for (const auto& conditions : conditionAlternatives) {
+      validateEnableConditions(conditions, featureName);
     }
   }
 }
@@ -163,6 +174,16 @@ bool matches(
     return true;
   }
   return asicType && matchesEnum(condition, *asicType);
+}
+
+bool matchesAllConditions(
+    const FeatureEnableConditions& conditions,
+    std::string_view profile,
+    std::optional<cfg::AsicType> asicType,
+    PlatformType platformType) {
+  return matches(conditions.configProfiles().to_optional(), profile) &&
+      matches(conditions.asicTypes().to_optional(), asicType) &&
+      matchesEnum(conditions.platforms().to_optional(), platformType);
 }
 
 void mergeArgs(
@@ -238,10 +259,14 @@ std::map<std::string, std::string> resolveFeatureDefaultCommandArgs(
     if (!feature.autoEnableWhen()) {
       continue;
     }
-    const auto& conditions = *feature.autoEnableWhen();
-    if (matches(conditions.configProfiles().to_optional(), profile) &&
-        matches(conditions.asicTypes().to_optional(), asicType) &&
-        matchesEnum(conditions.platforms().to_optional(), platformType)) {
+    const auto& conditionAlternatives = *feature.autoEnableWhen();
+    if (std::any_of(
+            conditionAlternatives.begin(),
+            conditionAlternatives.end(),
+            [&](const auto& conditions) {
+              return matchesAllConditions(
+                  conditions, profile, asicType, platformType);
+            })) {
       mergeArgs(resolved, *feature.args(), featureName);
     }
   }

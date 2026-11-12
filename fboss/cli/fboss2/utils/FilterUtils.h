@@ -38,7 +38,7 @@ bool satisfiesFilterTerm(
     const auto& predicateValue = std::get<2>(filterTerm);
 
     if (field_name == filterKey) {
-      using FieldType = folly::remove_cvref_t<decltype(*field_ref)>;
+      using FieldType = std::remove_cvref_t<decltype(*field_ref)>;
       // Perform the comparison only if string or fundamental type
       if constexpr (std::is_fundamental<FieldType>::value) {
         auto it = validFilterMap.find(filterKey);
@@ -110,9 +110,9 @@ typename CmdTypeT::RetType filterOutput(
       if constexpr (apache::thrift::is_thrift_struct_v<folly::detected_or_t<
                         void,
                         get_value_type_t,
-                        folly::remove_cvref_t<decltype(*outer_field_ref)>>>) {
+                        std::remove_cvref_t<decltype(*outer_field_ref)>>>) {
         using NestedType =
-            get_value_type_t<folly::remove_cvref_t<decltype(*outer_field_ref)>>;
+            get_value_type_t<std::remove_cvref_t<decltype(*outer_field_ref)>>;
         if constexpr (apache::thrift::is_thrift_struct_v<NestedType>) {
           auto innerEntryVector = *outer_field_ref;
           auto removed = std::remove_if(

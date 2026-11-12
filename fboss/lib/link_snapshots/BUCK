@@ -21,8 +21,8 @@ cpp_library(
     ],
     headers = ["AsyncFileWriterFactory.h"],
     exported_deps = [
-        "//folly:singleton",
-        "//folly/logging:logging",
+        "fbsource//xplat/folly:singleton",
+        "fbsource//xplat/folly/logging:logging",
     ],
     external_deps = [("boost", None, "boost_filesystem")],
     exported_external_deps = [
@@ -40,10 +40,10 @@ cpp_library(
     ],
     deps = ["//fboss/lib:alert_logger"],
     exported_deps = [
+        "fbsource//xplat/folly/logging:logging",
         ":async_filewriter_factory",
         ":ring_buffer",
         "//fboss/lib/phy:phy-cpp2-types",
-        "//folly/logging:logging",
         "//thrift/lib/cpp2/protocol:protocol",
     ],
 )

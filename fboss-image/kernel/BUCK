@@ -1,1 +1,9 @@
-oncall("fboss_distro")
+load("@fbcode_macros//build_defs:export_files.bzl", "export_file")
+
+oncall("fboss_oss")
+
+export_file(
+    name = "build_kernel_script",
+    src = "scripts/build_kernel.sh",
+    visibility = ["//fboss/oss/scripts/tests/..."],
+)

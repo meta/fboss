@@ -1269,6 +1269,51 @@ TEST_F(NextHopIDManagerTest, reconstructMemberDedupMintsFreshSetId) {
   EXPECT_EQ(newSetIter->second.id, NextHopSetID(kSetIdOffset + 4));
 }
 
+TEST_F(NextHopIDManagerTest, idTypeRanges) {
+  // NextHopSetIDs predate the type nibble; persisted ids must stay in range.
+  EXPECT_EQ(nextHopIdTypeStart(NextHopIdType::NEXTHOP_SET), 1LL << 62);
+  EXPECT_EQ(nextHopIdTypeEnd(NextHopIdType::NEXTHOP), 1LL << 60);
+  EXPECT_EQ(
+      nextHopIdTypeEnd(NextHopIdType::NEXTHOP_SET), (1LL << 62) + (1LL << 60));
+
+  EXPECT_EQ(nextHopIdType(1), NextHopIdType::NEXTHOP);
+  EXPECT_EQ(nextHopIdType((1LL << 60) - 1), NextHopIdType::NEXTHOP);
+  EXPECT_NE(nextHopIdType(1LL << 60), NextHopIdType::NEXTHOP);
+
+  EXPECT_NE(nextHopIdType((1LL << 62) - 1), NextHopIdType::NEXTHOP_SET);
+  EXPECT_EQ(nextHopIdType(1LL << 62), NextHopIdType::NEXTHOP_SET);
+  EXPECT_EQ(
+      nextHopIdType((1LL << 62) + (1LL << 60) - 1), NextHopIdType::NEXTHOP_SET);
+  EXPECT_NE(
+      nextHopIdType((1LL << 62) + (1LL << 60)), NextHopIdType::NEXTHOP_SET);
+}
+
+TEST_F(NextHopIDManagerTest, reconstructRejectsOutOfRangeIds) {
+  NextHop nh1 =
+      makeResolvedNextHop(InterfaceID(1), "10.0.0.1", UCMP_DEFAULT_WEIGHT);
+  auto reconstruct = [&](int64_t nhId, int64_t setId) {
+    auto idToNextHopMap = std::make_shared<IdToNextHopMap>();
+    idToNextHopMap->addNextHop(nhId, nh1.toThrift());
+    auto idToNextHopIdSetMap = std::make_shared<IdToNextHopIdSetMap>();
+    idToNextHopIdSetMap->addNextHopIdSet(
+        setId, std::set<state::NextHopIdType>{nhId});
+    auto fibsMap = createFibsMap();
+    addV4RouteWithSetId(
+        getFibV4(fibsMap), "10.0.0.0/24", {nh1}, NextHopSetID(setId));
+    NextHopIDManager manager;
+    manager.reconstructFromSwitchStateMaps(
+        createMultiSwitchFibInfoMap(
+            fibsMap, idToNextHopMap, idToNextHopIdSetMap),
+        nullptr,
+        nullptr,
+        nullptr);
+  };
+
+  EXPECT_NO_THROW(reconstruct(1, 1LL << 62));
+  EXPECT_THROW(reconstruct(1, (1LL << 62) + (1LL << 60)), FbossError);
+  EXPECT_THROW(reconstruct(1LL << 60, 1LL << 62), FbossError);
+}
+
 // Verifies that reconstructFromSwitchStateMaps rebuilds per-client
 // clientNextHopSetID refcounts from BOTH sources of truth:
 //   (a) resolved routes carried in the FIB (the per-client entry walk
@@ -3294,6 +3339,78 @@ TEST_F(NextHopIDManagerTest, ClassBasedPolicyStore) {
   manager_->removePolicy("pol1");
   EXPECT_EQ(manager_->getPolicy("pol1"), nullptr);
   EXPECT_TRUE(manager_->getPbrPolicyToNamedNhg().empty());
+}
+
+TEST_F(NextHopIDManagerTest, policyUpdateRepointsNamedNhgIndex) {
+  ClassBasedPolicy policy;
+  policy.name() = "pol1";
+  policy.defaultNexthopGroup() = "defaultNhg";
+  NextHopGroup redirectNhg;
+  redirectNhg.name() = "redirectNhg";
+  policy.class2NextHopGroup()[ForwardingClass::CLASS_1] = redirectNhg;
+  manager_->addOrUpdatePolicy(policy);
+
+  EXPECT_EQ(manager_->getPoliciesForNamedNhg("defaultNhg").count("pol1"), 1);
+  EXPECT_EQ(manager_->getPoliciesForNamedNhg("redirectNhg").count("pol1"), 1);
+
+  // Repoint the default and drop the redirect entirely.
+  policy.defaultNexthopGroup() = "defaultNhg2";
+  policy.class2NextHopGroup()->clear();
+  manager_->addOrUpdatePolicy(policy);
+
+  EXPECT_FALSE(manager_->hasPoliciesForNamedNhg("defaultNhg"));
+  EXPECT_FALSE(manager_->hasPoliciesForNamedNhg("redirectNhg"));
+  EXPECT_TRUE(manager_->hasPoliciesForNamedNhg("defaultNhg2"));
+
+  // Two policies on one group: removing one must leave the other's reference.
+  ClassBasedPolicy other;
+  other.name() = "pol2";
+  other.defaultNexthopGroup() = "defaultNhg2";
+  manager_->addOrUpdatePolicy(other);
+  EXPECT_EQ(manager_->getPoliciesForNamedNhg("defaultNhg2").size(), 2);
+
+  manager_->removePolicy("pol1");
+  EXPECT_EQ(manager_->getPoliciesForNamedNhg("defaultNhg2").size(), 1);
+
+  manager_->removePolicy("pol2");
+  EXPECT_FALSE(manager_->hasPoliciesForNamedNhg("defaultNhg2"));
+  EXPECT_TRUE(manager_->getPoliciesForNamedNhg("defaultNhg2").empty());
+}
+
+// Each policy naming a group holds its own reference to the group's normalized
+// set, so repointing one of two must not free the id the other still matches
+// on.
+TEST_F(NextHopIDManagerTest, sharedNamedNhgIdSurvivesOnePolicyRepointing) {
+  RouteNextHopSet shared{
+      makeResolvedNextHop(InterfaceID(1), "10.0.0.1", UCMP_DEFAULT_WEIGHT)};
+  RouteNextHopSet other{
+      makeResolvedNextHop(InterfaceID(2), "10.0.0.2", UCMP_DEFAULT_WEIGHT)};
+  manager_->allocateNamedNextHopGroup("shared", shared);
+  manager_->allocateNamedNextHopGroup("other", other);
+
+  auto bindPolicy = [&](const std::string& name, const std::string& nhgName) {
+    ClassBasedPolicy policy;
+    policy.name() = name;
+    policy.defaultNexthopGroup() = nhgName;
+    manager_->addOrUpdatePolicy(policy);
+  };
+  bindPolicy("polA", "shared");
+  bindPolicy("polB", "shared");
+  manager_->updateNormalizedNamedNhgId("shared", shared, kEcmpWidth);
+
+  auto sharedId = manager_->getNormalizedNextHopSetIDForPolicyNhg("shared");
+  ASSERT_TRUE(sharedId.has_value());
+
+  // 1. Repoint polB away. polA still names the group, so its id must hold.
+  bindPolicy("polB", "other");
+  EXPECT_EQ(
+      manager_->getNormalizedNextHopSetIDForPolicyNhg("shared"), sharedId);
+  EXPECT_EQ(manager_->getIdToNextHopIdSet().count(*sharedId), 1);
+
+  // 2. With the last policy and the group itself gone, nothing holds the set.
+  manager_->removePolicy("polA");
+  manager_->deallocateNamedNextHopGroup("shared");
+  EXPECT_EQ(manager_->getIdToNextHopIdSet().count(*sharedId), 0);
 }
 
 // A policy's default NHG cannot be deleted out from under it. Without the

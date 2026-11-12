@@ -196,7 +196,9 @@ class AgentSrv6DecapTest : public AgentHwTest {
       PortID egressPort,
       bool ecnMarked,
       bool isV4,
-      std::optional<PortID> injectPort = std::nullopt) {
+      std::optional<PortID> injectPort = std::nullopt,
+      std::optional<folly::IPAddressV6> mySidAddr = std::nullopt) {
+    const auto outerDstIp = mySidAddr.value_or(kMySidAddr);
     auto portStatsBefore = this->getLatestPortStats(egressPort);
     auto bytesBefore = *portStatsBefore.outBytes_();
 
@@ -223,7 +225,7 @@ class AgentSrv6DecapTest : public AgentHwTest {
           intfMac,
           intfMac,
           outerSrcIp,
-          kMySidAddr,
+          outerDstIp,
           folly::IPAddressV4("10.0.0.1"),
           kV4RouteDstIp,
           kSrcPort,
@@ -239,7 +241,7 @@ class AgentSrv6DecapTest : public AgentHwTest {
           intfMac,
           intfMac,
           outerSrcIp,
-          kMySidAddr,
+          outerDstIp,
           folly::IPAddressV6("1::10"),
           kV6RouteDstIp,
           kSrcPort,
@@ -329,15 +331,17 @@ class AgentSrv6DecapTest : public AgentHwTest {
     EXPECT_EQ(*rxUdp, *expectedUdp);
   }
 
-  void verifyDecapCpuAndFrontPanel(PortID egressPort) {
+  void verifyDecapCpuAndFrontPanel(
+      PortID egressPort,
+      std::optional<folly::IPAddressV6> mySidAddr = std::nullopt) {
     auto injectPort = findInjectPort(egressPort);
     for (bool isV4 : {false, true}) {
       // ECN not marked
-      verifyDecapPacket(egressPort, false, isV4);
-      verifyDecapPacket(egressPort, false, isV4, injectPort);
+      verifyDecapPacket(egressPort, false, isV4, std::nullopt, mySidAddr);
+      verifyDecapPacket(egressPort, false, isV4, injectPort, mySidAddr);
       // ECN marked
-      verifyDecapPacket(egressPort, true, isV4);
-      verifyDecapPacket(egressPort, true, isV4, injectPort);
+      verifyDecapPacket(egressPort, true, isV4, std::nullopt, mySidAddr);
+      verifyDecapPacket(egressPort, true, isV4, injectPort, mySidAddr);
     }
   }
 
@@ -528,7 +532,7 @@ TYPED_TEST(AgentSrv6DecapTest, verifySrv6DecapEcnMarking) {
             std::optional<uint8_t>(64),
             0,
             std::vector<uint8_t>(7000, 0xff));
-        this->getSw()->sendPacketSwitchedAsync(std::move(txPacket));
+        this->sendPacketSwitchedAsync(std::move(txPacket));
       }
     };
 
@@ -580,7 +584,7 @@ TYPED_TEST(AgentSrv6DecapTest, VerifyDscpQueueMapping) {
       if (frontPanel) {
         this->getSw()->sendPacketOutOfPortAsync(std::move(txPacket), port);
       } else {
-        this->getSw()->sendPacketSwitchedAsync(std::move(txPacket));
+        this->sendPacketSwitchedAsync(std::move(txPacket));
       }
     };
 
@@ -787,6 +791,37 @@ TYPED_TEST(AgentSrv6DecapTest, decapMultiHopIsLoadBalanced) {
     this->pumpV4DecapTrafficAndVerifyLoadBalanced(egressPorts, injectPort);
   };
 
+  this->verifyAcrossWarmBoots(setup, verify);
+}
+
+template <typename PortType>
+class AgentSrv6DecapDualLocatorTest : public AgentSrv6DecapTest<PortType> {
+ protected:
+  const folly::IPAddressV6 kLegacyDecapSid{"fdad:ffff:7fff::"};
+  const folly::IPAddressV6 kPlaneDecapSid{"fdad:20d:7fff::"};
+
+  cfg::SwitchConfig initialConfig(
+      const AgentEnsemble& ensemble) const override {
+    auto cfg = AgentSrv6DecapTest<PortType>::initialConfig(ensemble);
+    cfg.mySidConfig() = utility::makeDecapMySidConfig(
+        {utility::kSrv6LegacyLocatorPrefix, utility::kSrv6PlaneLocatorPrefix});
+    return cfg;
+  }
+};
+
+TYPED_TEST_SUITE(AgentSrv6DecapDualLocatorTest, Srv6DecapPortTypes);
+
+TYPED_TEST(AgentSrv6DecapDualLocatorTest, sendPacketForDecapBothLocators) {
+  auto setup = [this]() {
+    this->setupHelper(true /* resolveNeighbors */, false /* addMySid */);
+  };
+
+  auto verify = [this]() {
+    auto ecmpHelper = this->makeEcmpHelper();
+    auto egressPort = this->getEgressPort(ecmpHelper.nhop(0).portDesc);
+    this->verifyDecapCpuAndFrontPanel(egressPort, this->kLegacyDecapSid);
+    this->verifyDecapCpuAndFrontPanel(egressPort, this->kPlaneDecapSid);
+  };
   this->verifyAcrossWarmBoots(setup, verify);
 }
 

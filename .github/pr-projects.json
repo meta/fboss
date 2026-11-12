@@ -1,4 +1,13 @@
 {
+  "companies": [
+    "accton",
+    "celestica",
+    "nexthop",
+    "arista",
+    "cisco",
+    "nvidia",
+    "meta"
+  ],
   "npiProjects": [
     "blackwolf800banw",
     "darwin",
@@ -9,8 +18,11 @@
     "icecube800bc",
     "janga800bic",
     "ladakh800bcls",
+    "leh800bcls",
+    "m4052clsi",
     "m4061nhp",
     "m4062nhp",
+    "m4340nhp",
     "meru800bfa",
     "meru800bia",
     "minipack",

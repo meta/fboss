@@ -9,16 +9,19 @@
  */
 
 #include "fboss/cli/fboss2/commands/delete/protocol/bgp/policy/community-list/CmdDeleteProtocolBgpPolicyCommunityList.h"
+#include "fboss/cli/fboss2/utils/ArgCompletion.h"
 
 #include "fboss/cli/fboss2/CmdHandler.cpp"
 
 #include <fmt/core.h>
+#include <folly/String.h>
 #include <algorithm>
 #include <iostream>
 #include <stdexcept>
 #include <string>
 #include <string_view>
 #include <vector>
+#include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/community-list/BgpCommunityListCliUtils.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/utils/CmdUtilsCommon.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
@@ -34,6 +37,12 @@ namespace facebook::fboss {
 
 namespace {
 constexpr std::string_view kCommunityKeyword = "community";
+
+void appendUnique(std::vector<std::string>& labels, const std::string& label) {
+  if (std::find(labels.begin(), labels.end(), label) == labels.end()) {
+    labels.push_back(label);
+  }
+}
 } // namespace
 
 // Parse + validate at construction so queryClient stays a thin dispatch.
@@ -100,6 +109,29 @@ CmdDeleteProtocolBgpPolicyCommunityList::queryClient(
       auto valueIt =
           std::find(communities.begin(), communities.end(), args.community());
       if (valueIt != communities.end()) {
+        if (communities.size() == 1) {
+          // A community action resolves the list's values at daemon load and
+          // fails on an empty one ("Missing communities in CommunityList");
+          // a match reference tolerates it.
+          const auto refs =
+              bgpcli::findTermsReferencingCommunityList(cfg, args.listName());
+          std::vector<std::string> actions;
+          actions.reserve(refs.size());
+          for (const auto& ref : refs) {
+            if (ref.isAction) {
+              appendUnique(actions, ref.label);
+            }
+          }
+          if (!actions.empty()) {
+            return fmt::format(
+                "Error: {} is the last community of BGP community-list {}, "
+                "which is still used by the community action of {}; remove "
+                "those actions first",
+                args.community(),
+                args.listName(),
+                folly::join(", ", actions));
+          }
+        }
         communities.erase(valueIt);
         if (communities.empty()) {
           // Leave the list looking like one that never had values, so a
@@ -121,6 +153,24 @@ CmdDeleteProtocolBgpPolicyCommunityList::queryClient(
         args.listName(),
         args.community());
   }
+  // A term's community_list_names / community_action_list_names resolve
+  // against this list by name at daemon load; erasing the list while a term
+  // still names it would commit a dangling reference and fail the load.
+  // Refuse and name the terms instead.
+  const auto refs =
+      bgpcli::findTermsReferencingCommunityList(cfg, args.listName());
+  if (!refs.empty()) {
+    std::vector<std::string> referrers;
+    referrers.reserve(refs.size());
+    for (const auto& ref : refs) {
+      appendUnique(referrers, ref.label);
+    }
+    return fmt::format(
+        "Error: BGP community-list {} is still referenced by {}; remove those "
+        "matches and actions first",
+        args.listName(),
+        folly::join(", ", referrers));
+  }
   lists.erase(it);
   session.saveBgpConfig();
   return fmt::format(
@@ -138,5 +188,12 @@ void CmdDeleteProtocolBgpPolicyCommunityList::printOutput(
 template void CmdHandler<
     CmdDeleteProtocolBgpPolicyCommunityList,
     CmdDeleteProtocolBgpPolicyCommunityListTraits>::run();
+
+std::vector<std::string>
+CmdDeleteProtocolBgpPolicyCommunityListTraits::completeArgs(
+    const std::vector<std::string>& typed) {
+  return utils::completion::completePositions(
+      typed, {{}, {std::string(kCommunityKeyword)}});
+}
 
 } // namespace facebook::fboss

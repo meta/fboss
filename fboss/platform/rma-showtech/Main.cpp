@@ -41,7 +41,10 @@ const std::vector<std::pair<std::string, FunctionWithDisruptiveFlag>>
          {[](Utils& util) { util.printWeutilDetails(); },
           Disruptiveness::NONDISRUPTIVE}},
         {"fwutil",
-         {[](Utils& util) { util.printFwutilDetails(); },
+         {[](Utils& util) {
+            util.printFwutilDetails();
+            util.printMfrVersionDetails();
+          },
           Disruptiveness::DISRUPTIVE}},
         {"lspci",
          {[](Utils& util) { util.printLspciDetails(); },
@@ -70,6 +73,9 @@ const std::vector<std::pair<std::string, FunctionWithDisruptiveFlag>>
         {"i2c",
          {[](Utils& util) { util.printI2cDetails(); },
           Disruptiveness::DISRUPTIVE}},
+        {"regdump",
+         {[](Utils& util) { util.printRegDumpDetails(); },
+          Disruptiveness::NONDISRUPTIVE}},
         {"i2cdump",
          {[](Utils& util) { util.printI2cDumpDetails(); },
           Disruptiveness::DISRUPTIVE}},

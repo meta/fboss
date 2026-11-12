@@ -11,12 +11,12 @@ cpp_library(
         "Phy.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:conv",
+        "fbsource//xplat/folly:file",
+        "fbsource//xplat/folly:scope_guard",
+        "fbsource//xplat/folly:synchronized",
+        "fbsource//xplat/folly/io/async:async_base",
         "//fboss/lib:io_stats_recorder",
-        "//folly:conv",
-        "//folly:file",
-        "//folly:scope_guard",
-        "//folly:synchronized",
-        "//folly/io/async:async_base",
     ],
 )
 
@@ -28,11 +28,11 @@ cpp_binary(
     ],
     headers = [],
     deps = [
+        "fbsource//xplat/folly/init:init",
+        "fbsource//xplat/folly/logging:init",
+        "fbsource//xplat/folly/logging:logging",
         ":mdio",
         "//fboss/lib/fpga/facebook/yamp:yamp_fpga",
-        "//folly/init:init",
-        "//folly/logging:init",
-        "//folly/logging:logging",
     ],
     external_deps = [
         "gflags",
@@ -49,7 +49,7 @@ cpp_library(
     ],
     deps = [
         "fbsource//third-party/fmt:fmt",
-        "//folly/logging:logging",
+        "fbsource//xplat/folly/logging:logging",
     ],
     exported_deps = [
         ":mdio",
@@ -67,9 +67,9 @@ cpp_library(
         "BspDeviceMdio.h",
     ],
     deps = [
-        "//folly:format",
-        "//folly:range",
-        "//folly/logging:logging",
+        "fbsource//xplat/folly:range",
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/logging:logging",
     ],
     exported_deps = [
         ":mdio",

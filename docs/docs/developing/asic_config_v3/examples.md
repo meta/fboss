@@ -75,7 +75,7 @@ python3 -m fboss.lib.asic_config_v3.test.validate_asic_configs_schemas \
 ```
 
 The output appears beside the input as
-`generated/newboard_newvariant.yml`.
+`generated/newvariant.yml`.
 
 If the platform needs a setting that no listed field covers, see
 [Overriding a setting outside these fields](./overview.md#overriding-a-setting-outside-these-fields).
@@ -138,7 +138,7 @@ The following steps complete the platform.
    on `multistage_role`, as applicable.
 4. Validate, generate, and compare the output against the platform's
    reference in `fboss/lib/asic_config_v2/synced_asic_configs/`. The output
-   appears beside the input as `generated/<name>_<variant>.json`.
+   appears beside the input as `generated/<variant>.json`.
 
 ## Adding a variant
 
@@ -160,8 +160,8 @@ while the `newvariant` variant keeps the defaults:
 }
 ```
 
-The next generator run produces two output files, `newboard_newvariant.yml`
-and `newboard_newvariant2.yml`. In the `newvariant2` output, `mmu_lossless`
+The next generator run produces two output files, `newvariant.yml` and
+`newvariant2.yml`. In the `newvariant2` output, `mmu_lossless`
 satisfies the Tomahawk5 conditional setting of the same name, so the lossless MMU settings are
 applied and the corresponding SAI common keys are suppressed; all other
 settings are identical to `newvariant` because the merge with `defaults` fills

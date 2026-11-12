@@ -403,6 +403,7 @@ class CmdShowRouteDetailsTestFixture : public CmdHandlerTestBase {
           .WillOnce([](std::string& config) {
             config = createStandaloneFpfPolicyConfig();
           });
+      EXPECT_CALL(getMockBgp(), getRunningConfigStruct(_)).Times(0);
       return;
     }
     EXPECT_CALL(getMockBgp(), getPolicyConfig(_))

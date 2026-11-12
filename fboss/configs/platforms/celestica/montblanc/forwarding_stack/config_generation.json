@@ -1,5 +1,4 @@
 {
-  "platform": "PLATFORM_MONTBLANC",
   "serviceToOptions": {
     "AGENT": [
       {
@@ -7,6 +6,15 @@
       },
       {
         "profile": "HW_TEST"
+      },
+      {
+        "profile": "BENCHMARK",
+        "asicConfigVariant": "benchmark"
+      },
+      {
+        "profile": "LINK_TEST",
+        "asicConfigVariant": "hw_test",
+        "linkTopologyVariant": "link_test_default"
       }
     ]
   }

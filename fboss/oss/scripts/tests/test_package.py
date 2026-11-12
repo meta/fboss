@@ -24,12 +24,14 @@ from fboss.oss.scripts import package
 
 
 class PackageTest(unittest.TestCase):
+    @mock.patch.object(package, "get_forwarding_stack_config_paths", return_value={})
     @mock.patch.object(package, "get_platform_descriptor_paths", return_value={})
     @mock.patch.object(package, "_find_getdeps_libs", return_value={})
     def test_forwarding_package_includes_npu_sdk_utils(
         self,
         _mock_find_getdeps_libs: mock.MagicMock,
         _mock_get_platform_descriptor_paths: mock.MagicMock,
+        _mock_get_forwarding_stack_config_paths: mock.MagicMock,
     ) -> None:
         production_files, _ = package._build_target(
             "forwarding-stack", pathlib.Path("/build")
@@ -40,10 +42,12 @@ class PackageTest(unittest.TestCase):
             production_files[package.NPU_SDK_UTILS_SCRIPT],
         )
 
+    @mock.patch.object(package, "get_forwarding_stack_config_paths", return_value={})
     @mock.patch.object(package, "_find_getdeps_libs", return_value={})
     def test_forwarding_package_includes_platform_descriptors(
         self,
         _mock_find_getdeps_libs: mock.MagicMock,
+        _mock_get_forwarding_stack_config_paths: mock.MagicMock,
     ) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             platforms_dir = pathlib.Path(temp_dir) / "platforms"
@@ -84,10 +88,63 @@ class PackageTest(unittest.TestCase):
 
     @mock.patch.object(package, "get_platform_descriptor_paths", return_value={})
     @mock.patch.object(package, "_find_getdeps_libs", return_value={})
+    def test_forwarding_test_package_includes_generated_platform_configs(
+        self,
+        _mock_find_getdeps_libs: mock.MagicMock,
+        _mock_get_platform_descriptor_paths: mock.MagicMock,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            platforms_dir = pathlib.Path(temp_dir) / "platforms"
+            config_path = (
+                platforms_dir
+                / "accton/wedge800bact/forwarding_stack/generated/agent/hw_test.conf"
+            )
+            config_path.parent.mkdir(parents=True)
+            config_path.write_text("{}")
+
+            with mock.patch.object(package, "PLATFORM_CONFIGS_DIR", platforms_dir):
+                production_files, test_files = package._build_target(
+                    "forwarding-stack", pathlib.Path("/build")
+                )
+
+            archive_path = (
+                "share/configs/platforms/accton/wedge800bact/"
+                "forwarding_stack/generated/agent/hw_test.conf"
+            )
+            self.assertNotIn(config_path, production_files)
+            self.assertEqual(archive_path, test_files[config_path])
+
+    def test_agent_benchmark_package_includes_generated_platform_configs(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            platforms_dir = pathlib.Path(temp_dir) / "platforms"
+            config_path = (
+                platforms_dir
+                / "celestica/montblanc/forwarding_stack/generated/agent/hw_test.conf"
+            )
+            config_path.parent.mkdir(parents=True)
+            config_path.write_text("{}")
+
+            with mock.patch.object(package, "PLATFORM_CONFIGS_DIR", platforms_dir):
+                production_files, _ = package._build_target(
+                    "agent-benchmarks", pathlib.Path("/build")
+                )
+
+            self.assertEqual(
+                "share/configs/platforms/celestica/montblanc/"
+                "forwarding_stack/generated/agent/hw_test.conf",
+                production_files[config_path],
+            )
+
+    @mock.patch.object(package, "get_forwarding_stack_config_paths", return_value={})
+    @mock.patch.object(package, "get_platform_descriptor_paths", return_value={})
+    @mock.patch.object(package, "_find_getdeps_libs", return_value={})
     def test_forwarding_packages_include_read_only_npu_sdk_metadata(
         self,
         _mock_find_getdeps_libs: mock.MagicMock,
         _mock_get_platform_descriptor_paths: mock.MagicMock,
+        _mock_get_forwarding_stack_config_paths: mock.MagicMock,
     ) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             build_dir = pathlib.Path(temp_dir)
@@ -122,12 +179,14 @@ class PackageTest(unittest.TestCase):
                     archive.getmember(package.NPU_SDK_METADATA_ARCHIVE_PATH).mode,
                 )
 
+    @mock.patch.object(package, "get_forwarding_stack_config_paths", return_value={})
     @mock.patch.object(package, "get_platform_descriptor_paths", return_value={})
     @mock.patch.object(package, "_find_getdeps_libs", return_value={})
     def test_forwarding_package_rejects_writable_npu_sdk_metadata(
         self,
         _mock_find_getdeps_libs: mock.MagicMock,
         _mock_get_platform_descriptor_paths: mock.MagicMock,
+        _mock_get_forwarding_stack_config_paths: mock.MagicMock,
     ) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             build_dir = pathlib.Path(temp_dir)

@@ -802,6 +802,11 @@ SaiSwitchTraits::Attributes::AttributePortCl72RetryEnable::operator()() {
 }
 
 std::optional<sai_attr_id_t>
+SaiSwitchTraits::Attributes::AttributeAclDropSnoopDisabled::operator()() {
+  return std::nullopt;
+}
+
+std::optional<sai_attr_id_t>
 SaiSwitchTraits::Attributes::AttributePacketDropTypeIngressList::operator()() {
 #if defined(BRCM_SAI_SDK_XGS_GTE_15_0)
   return SAI_SWITCH_ATTR_EXT_PACKET_DROP_TYPE_INGRESS_LIST;
@@ -814,6 +819,11 @@ SaiSwitchTraits::Attributes::AttributePacketDropTypeEgressList::operator()() {
 #if defined(BRCM_SAI_SDK_XGS_GTE_15_0)
   return SAI_SWITCH_ATTR_EXT_PACKET_DROP_TYPE_EGRESS_LIST;
 #endif
+  return std::nullopt;
+}
+
+std::optional<sai_attr_id_t>
+SaiSwitchTraits::Attributes::AttributeDropReasonList::operator()() {
   return std::nullopt;
 }
 

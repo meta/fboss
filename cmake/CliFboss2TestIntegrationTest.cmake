@@ -20,6 +20,11 @@ add_executable(fboss2_integration_test
   fboss/cli/fboss2/test/integration_test/ConfigBgpPeerGroupTest.cpp
   fboss/cli/fboss2/test/integration_test/ConfigBgpPolicyAsPathListTest.cpp
   fboss/cli/fboss2/test/integration_test/ConfigBgpPolicyCommunityListTest.cpp
+  fboss/cli/fboss2/test/integration_test/ConfigBgpPolicyPrefixListTest.cpp
+  fboss/cli/fboss2/test/integration_test/ConfigBgpPolicyPrefixListEntryTest.cpp
+  fboss/cli/fboss2/test/integration_test/ConfigBgpPolicyRoutingPolicyTest.cpp
+  fboss/cli/fboss2/test/integration_test/ConfigBgpPolicyRoutingPolicyTermTest.cpp
+  fboss/cli/fboss2/test/integration_test/ConfigBgpPolicyRoutingPolicyTermActionTest.cpp
   fboss/cli/fboss2/test/integration_test/ConfigBgpSessionTest.cpp
   fboss/cli/fboss2/test/integration_test/ConfigConcurrentSessionsTest.cpp
   fboss/cli/fboss2/test/integration_test/ConfigHostnameTest.cpp
@@ -27,6 +32,7 @@ add_executable(fboss2_integration_test
   fboss/cli/fboss2/test/integration_test/ConfigCoppTest.cpp
   fboss/cli/fboss2/test/integration_test/ConfigDhcpSourceOverrideTest.cpp
   fboss/cli/fboss2/test/integration_test/ConfigInterfaceDescriptionTest.cpp
+  fboss/cli/fboss2/test/integration_test/ConfigInterfaceDhcpRelayTest.cpp
   fboss/cli/fboss2/test/integration_test/ConfigInterfaceIpv6NdpTest.cpp
   fboss/cli/fboss2/test/integration_test/DeleteCoppTest.cpp
   fboss/cli/fboss2/test/integration_test/DeleteInterfaceTest.cpp
@@ -34,6 +40,7 @@ add_executable(fboss2_integration_test
   fboss/cli/fboss2/test/integration_test/ConfigInterfaceProfileTest.cpp
   fboss/cli/fboss2/test/integration_test/ConfigL2LearningModeTest.cpp
   fboss/cli/fboss2/test/integration_test/ConfigLoadBalancingTest.cpp
+  fboss/cli/fboss2/test/integration_test/ConfigLoopbackInterfaceTest.cpp
   fboss/cli/fboss2/test/integration_test/ConfigMacTest.cpp
   fboss/cli/fboss2/test/integration_test/ConfigPfcTest.cpp
   fboss/cli/fboss2/test/integration_test/ConfigPortQueueConfigTest.cpp
@@ -57,6 +64,7 @@ add_executable(fboss2_integration_test
   fboss/cli/fboss2/test/integration_test/DeleteDhcpSourceOverrideTest.cpp
   fboss/cli/fboss2/test/integration_test/DeleteInterfaceIpv6NdpTest.cpp
   fboss/cli/fboss2/test/integration_test/DeleteLoadBalancingTest.cpp
+  fboss/cli/fboss2/test/integration_test/DeletePfcTest.cpp
   fboss/cli/fboss2/test/integration_test/DeleteQosPolicyTest.cpp
   fboss/cli/fboss2/test/integration_test/DeleteVlanTest.cpp
   fboss/cli/fboss2/test/integration_test/TunnelIpInIpTest.cpp
@@ -76,7 +84,7 @@ target_link_libraries(fboss2_integration_test
   ${LIBGMOCK_LIBRARIES}
   Folly::folly
   Folly::folly_test_util
-  FBThrift::thriftcpp2
+  thrift::rpc
   gflags
   fmt::fmt
 )

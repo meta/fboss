@@ -156,10 +156,7 @@ struct TransceiverDelayConstants {
   2: map<string, TransceiverDspType> mpnToDspMap;
 }
 
-// Static per transceiver data that qsfp_service cannot read off the module.
-// Everything in here is keyed by part number, so the configerator to OSS sync
-// job strips the whole field. Add internal only transceiver data here rather
-// than as a new top level field, so it stays out of OSS by default.
+// Only used by the deprecated QsfpServiceConfig field 11.
 struct TransceiverProperties {
   1: optional TransceiverDelayConstants delayConstants;
 }
@@ -201,6 +198,13 @@ struct QsfpServiceConfig {
   // Methods not present in the map are not rate limited.
   10: map<string, double> thriftApiToRateLimitInQps = {};
 
-  // Absent in OSS, where the sync job strips it. Consumers must handle that.
-  11: optional TransceiverProperties transceiverProperties;
+  // [DEPRECATED] fboss2 reads the transceiver catalog from configerator directly.
+  11: optional TransceiverProperties transceiverProperties_DEPRECATED;
+
+  // Platform mapping placeholder vendors (used in
+  // PlatformPortConfigOverrideFactor.vendor) and the real transceivers each
+  // stands for.
+  12: optional list<
+    transceiver.TransceiverVendorOverride
+  > transceiverVendorOverrides;
 }

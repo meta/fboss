@@ -25,28 +25,56 @@ RibToSwitchStateUpdater::RibToSwitchStateUpdater(
     const LabelToRouteMap& labelToRoute,
     const NextHopIDManager* nextHopIDManager,
     const MySidTable& mySidTable,
+    int actions,
+    bool vrfDeleted)
+    : RibToSwitchStateUpdater(
+          resolver,
+          {RibVrfFib{
+              vrf,
+              &v4NetworkToRoute,
+              &v6NetworkToRoute,
+              &labelToRoute,
+              vrfDeleted}},
+          nextHopIDManager,
+          mySidTable,
+          actions) {}
+
+RibToSwitchStateUpdater::RibToSwitchStateUpdater(
+    const SwitchIdScopeResolver* resolver,
+    const std::vector<RibVrfFib>& vrfFibs,
+    const NextHopIDManager* nextHopIDManager,
+    const MySidTable& mySidTable,
     int actions)
     : actions_(actions),
-      fibUpdater_(
-          resolver,
-          vrf,
-          v4NetworkToRoute,
-          v6NetworkToRoute,
-          labelToRoute,
-          nextHopIDManager),
       mySidUpdater_(resolver, mySidTable),
-      nhopStateUpdater_(nextHopIDManager) {}
+      nhopStateUpdater_(nextHopIDManager),
+      classBasedPolicyUpdater_(nextHopIDManager) {
+  fibUpdaters_.reserve(vrfFibs.size());
+  for (const auto& vrfFib : vrfFibs) {
+    fibUpdaters_.emplace_back(
+        resolver,
+        vrfFib.vrf,
+        *vrfFib.v4NetworkToRoute,
+        *vrfFib.v6NetworkToRoute,
+        *vrfFib.labelToRoute,
+        nextHopIDManager,
+        vrfFib.vrfDeleted);
+  }
+}
 
 std::shared_ptr<SwitchState> RibToSwitchStateUpdater::operator()(
     const std::shared_ptr<SwitchState>& state) {
   auto nextState = state;
   if (actions_ & UPDATE_FIB) {
-    nextState = fibUpdater_(nextState);
+    for (auto& fibUpdater : fibUpdaters_) {
+      nextState = fibUpdater(nextState);
+    }
   }
   if (actions_ & UPDATE_MYSID) {
     nextState = mySidUpdater_(nextState);
   }
   nextState = nhopStateUpdater_(nextState);
+  nextState = classBasedPolicyUpdater_(nextState);
   StateDelta delta(state, nextState);
   /*
    * We validate nhops here and not in fibUpdater_ as
@@ -63,7 +91,8 @@ std::shared_ptr<SwitchState> RibToSwitchStateUpdater::operator()(
   // Reject through FbossHwUpdateError so updateFib() reconstructs the RIB and
   // NextHopIDManager from the previously applied switch state.
   auto validateRouteNextHops = [&](RouterID routeVrf, const auto& route) {
-    if (!FLAGS_srv6 || !route->isResolved()) {
+    if (!FLAGS_srv6 || !route->isResolved() ||
+        FLAGS_allow_mixed_ip_srv6_nhop_groups) {
       return;
     }
     const auto& forwarding = route->getForwardInfo();

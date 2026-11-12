@@ -18,11 +18,11 @@ cpp_library(
         "Wedge400LedUtils.h",
     ],
     deps = [
+        "fbsource//xplat/folly:range",
+        "fbsource//xplat/folly/logging:logging",
         "//fboss/agent:fboss-error",
         "//fboss/lib/usb:wedge_i2c",
         "//fboss/qsfp_service/platforms/wedge:wedge-i2c-bus-lock",
-        "//folly:range",
-        "//folly/logging:logging",
     ],
     exported_deps = [
         "//fboss/agent:fboss-types",
@@ -43,17 +43,17 @@ cpp_library(
         "BcmYamlConfig.h",
     ],
     deps = [
+        "fbsource//third-party/fmt:fmt",
+        "fbsource//xplat/folly/gen:string",
+        "fbsource//xplat/folly/logging:logging",
         "//fboss/agent:fboss-error",
-        "//folly:format",
-        "//folly/gen:string",
-        "//folly/logging:logging",
     ],
     exported_deps = [
         "fbsource//third-party/yaml-cpp:yaml-cpp",
+        "fbsource//xplat/folly:file_util",
         "//fboss/agent:fboss-types",
         "//fboss/agent:platform_config-cpp2-types",
         "//fboss/lib/phy:phy-cpp2-types",
-        "//folly:file_util",
     ],
     exported_external_deps = [
         "yaml-cpp",

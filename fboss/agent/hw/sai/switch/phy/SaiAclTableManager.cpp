@@ -90,6 +90,8 @@ std::
       std::nullopt, // dstIpv6
       std::nullopt, // dstIpv6Word3
       std::nullopt, // dstIpv6Word2
+      std::nullopt, // dstIpv6Word1
+      std::nullopt, // dstIpv6Word0
       std::nullopt, // srcIpV4
       std::nullopt, // dstIpV4
       std::nullopt, // fieldL4SrcPort
@@ -126,6 +128,9 @@ std::
       std::nullopt, // UserDefinedFieldGroupMin2
       std::nullopt, // UserDefinedFieldGroupMin3
       std::nullopt, // UserDefinedFieldGroupMin4
+#endif
+#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
+      std::nullopt, // FieldRouteDestination
 #endif
       std::nullopt, // port meta
   };

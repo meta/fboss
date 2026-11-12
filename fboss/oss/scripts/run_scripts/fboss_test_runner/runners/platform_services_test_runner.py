@@ -9,6 +9,7 @@ from typing import ClassVar
 from fboss_test_runner.reporters.json_reporter import JsonReporter
 from fboss_test_runner.result_types import GtestResult, TestExecutionResult
 from fboss_test_runner.runners.test_runner import TestRunner
+from fboss_test_runner.tier_selection import TestTier
 
 SUB_ARG_TEST_TYPE = "--type"
 SUB_ARG_PLATFORM_HW_TEST = "platform_hw_test"
@@ -40,6 +41,9 @@ class PlatformServicesTestRunner(TestRunner):
             default=None,
             help="Specify test type for platform services test.",
         )
+
+    def _get_uniform_test_tier(self) -> TestTier:
+        return TestTier.T0
 
     def _get_test_binary_name(self) -> str:
         args = self.args

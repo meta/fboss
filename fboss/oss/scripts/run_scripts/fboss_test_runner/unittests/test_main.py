@@ -44,6 +44,19 @@ class ParseArgsValidationTest(unittest.TestCase):
         self.assertEqual(args.profile, "p")
         self.assertEqual(args.filter_file, "f.conf")
 
+    def test_tier_is_parsed(self):
+        args = _parse_args(["sai", "--tier", "0"])
+        self.assertEqual(args.tier, "0")
+
+    def test_invalid_tier_is_rejected(self):
+        with self.assertRaises(SystemExit):
+            _parse_args(["sai", "--tier", "3"])
+
+    def test_profile_with_tier_is_valid(self):
+        args = _parse_args(["sai", "--tier", "0", "--profile", "s"])
+        self.assertEqual(args.tier, "0")
+        self.assertEqual(args.profile, "s")
+
     def test_results_json_is_parsed(self):
         args = _parse_args(["sai", "--results-json", "/tmp/results.json"])
         self.assertEqual(args.results_json, "/tmp/results.json")

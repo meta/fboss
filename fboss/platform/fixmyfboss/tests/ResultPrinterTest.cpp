@@ -69,3 +69,17 @@ TEST(ResultPrinterTest, DetailsOnlyWhenRequested) {
   EXPECT_THAT(terse.str(), Not(HasSubstr("command output")));
   EXPECT_THAT(verbose.str(), HasSubstr("command output"));
 }
+
+TEST(ResultPrinterTest, NoColorPrintsPlainText) {
+  const std::vector<CheckResult> results{
+      makeResult("A", CheckStatus::PROBLEM, "broken"),
+  };
+  std::ostringstream out;
+
+  fixmyfboss::ResultPrinter printer(out, false, /*color=*/false);
+  printer.printSummary(results);
+  printer.printDetails(results);
+
+  EXPECT_THAT(out.str(), HasSubstr("[  PROBLEM  ] A"));
+  EXPECT_THAT(out.str(), Not(HasSubstr("\033")));
+}

@@ -2,7 +2,7 @@
  * (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
  * This file is generated. Do not modify it manually!
  * @codegen-source : configerator/source/fboss/test/test_metadata.thrift
- * @generated SignedSource<<b007848f8df09f9f9d322ecf0376ea7c>>
+ * @generated SignedSource<<7a50ad49454d016011ca0a108d005da3>>
  */
 #
 # @oncall fboss_oss
@@ -19,7 +19,7 @@ namespace go neteng.fboss.test_metadata
 namespace php fboss_test_metadata
 
 // Definitions follow the FBOSS test-category documentation:
-// https://facebook.github.io/fboss/docs/testing/test_categories/#overview
+// https://meta.github.io/fboss/docs/testing/test_categories/#overview
 enum TestTier {
   UNSPECIFIED = 0,
   // Simple, critical functionality needed to enable other tests.

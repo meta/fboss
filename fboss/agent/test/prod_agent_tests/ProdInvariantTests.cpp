@@ -2,6 +2,7 @@
 
 #include "fboss/agent/test/prod_agent_tests/ProdInvariantTests.h"
 #include <folly/gen/Base.h>
+#include <thrift/lib/cpp/transport/TTransportException.h>
 #include <chrono>
 #include <thread>
 #include "fboss/agent/AgentConfig.h"
@@ -276,8 +277,22 @@ void ProdInvariantTest::verifyAcl() {
   const SwitchID switchId(FLAGS_switch_id_for_testing);
   auto client = ensemble->getHwAgentTestClient(switchId);
 
-  WITH_RETRIES(
-      { EXPECT_EVENTUALLY_TRUE(client->sync_isDefaultAclTableEnabled()); });
+  const auto pollHwAgent = [&](const auto& rpc) -> bool {
+    try {
+      return rpc();
+    } catch (const apache::thrift::transport::TTransportException& ex) {
+      if (ex.getType() !=
+          apache::thrift::transport::TTransportException::NOT_OPEN) {
+        throw;
+      }
+      XLOG(DBG2) << "HW agent thrift not ready: " << ex.what();
+      return false;
+    }
+  };
+  WITH_RETRIES({
+    EXPECT_EVENTUALLY_TRUE(
+        pollHwAgent([&]() { return client->sync_isDefaultAclTableEnabled(); }));
+  });
 
   for (const auto& aclTableGroup : *switchConfig.aclTableGroups()) {
     if (aclTableGroup.stage().value() != cfg::AclStage::INGRESS) {
@@ -287,8 +302,9 @@ void ProdInvariantTest::verifyAcl() {
     EXPECT_FALSE(aclTableGroup.aclTables()->empty());
     for (const auto& aclTable : *aclTableGroup.aclTables()) {
       WITH_RETRIES({
-        EXPECT_EVENTUALLY_TRUE(
-            client->sync_isAclTableEnabled(aclTable.name().value()));
+        EXPECT_EVENTUALLY_TRUE(pollHwAgent([&]() {
+          return client->sync_isAclTableEnabled(aclTable.name().value());
+        }));
       });
     }
   }

@@ -24,7 +24,7 @@ cpp_library(
     ],
     deps = [
         "fbsource//third-party/fmt:fmt",
-        "//folly/logging:logging",
+        "fbsource//xplat/folly/logging:logging",
         "//thrift/lib/cpp2/protocol:protocol",
     ],
     exported_deps = [
@@ -38,11 +38,11 @@ cpp_binary(
         "ConfigDiffTool.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly/init:init",
+        "fbsource//xplat/folly/logging:logging",
         ":config_differ",
         "//fboss/platform/config_lib:config_lib",
         "//fboss/platform/sensor_service/if:sensor_config-cpp2-types",
-        "//folly/init:init",
-        "//folly/logging:logging",
         "//thrift/lib/cpp2/protocol:protocol",
     ],
     external_deps = [

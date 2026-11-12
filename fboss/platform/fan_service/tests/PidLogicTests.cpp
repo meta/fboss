@@ -19,31 +19,31 @@ TEST(PIDLogicTest, Basic) {
   pidSetting.posHysteresis() = 0;
 
   // CASE 1: The read value is lower than setPoint, and the previous target PWM
-  //         is too high. PWM should go down. (60 -> 35)
+  //         is too high. PWM should go down. (60 -> 35.2)
   auto pidLogic1 = PidLogic(pidSetting, 5);
   pidLogic1.updateLastPwm(60);
-  EXPECT_EQ(pidLogic1.calculatePwm(50), 35);
-  EXPECT_EQ(pidLogic1.getLastError(), 8);
+  EXPECT_FLOAT_EQ(pidLogic1.calculatePwm(50), 35.2);
+  EXPECT_FLOAT_EQ(pidLogic1.getLastError(), 8);
 
   // CASE 2: The read value is within desired range.
   //         PWM should not change. (30 -> 30)
   auto pidLogic2 = PidLogic(pidSetting, 5);
   pidLogic2.updateLastPwm(30);
-  EXPECT_EQ(pidLogic2.calculatePwm(59), 30);
-  EXPECT_EQ(pidLogic2.getLastError(), 0);
+  EXPECT_FLOAT_EQ(pidLogic2.calculatePwm(59), 30);
+  EXPECT_FLOAT_EQ(pidLogic2.getLastError(), 0);
 
   // CASE 3: The read value is higher than setPoint, and the current target PWM
-  //         is too low. PWM should go up a bit. (30 -> 54)
+  //         is too low. PWM should go up a bit. (30 -> 54.8)
   auto pidLogic3 = PidLogic(pidSetting, 5);
   pidLogic3.updateLastPwm(30);
-  EXPECT_EQ(pidLogic3.calculatePwm(68), 54);
-  EXPECT_EQ(pidLogic3.getLastError(), -8);
+  EXPECT_FLOAT_EQ(pidLogic3.calculatePwm(68), 54.8);
+  EXPECT_FLOAT_EQ(pidLogic3.getLastError(), -8);
 
   // CASE 4: Read value is higher than setPoint, PWM should go up (99 -> 100)
   auto pidLogic4 = PidLogic(pidSetting, 5);
   pidLogic4.updateLastPwm(99);
-  EXPECT_EQ(pidLogic4.calculatePwm(68), 100);
-  EXPECT_EQ(pidLogic4.getLastError(), -8);
+  EXPECT_FLOAT_EQ(pidLogic4.calculatePwm(68), 100);
+  EXPECT_FLOAT_EQ(pidLogic4.getLastError(), -8);
 }
 
 TEST(PIDLogicTest, Convergence) {
@@ -92,13 +92,13 @@ TEST(PIDLogicTest, Basic2) {
   for (int measurement = 0; measurement < 100; measurement += 1) {
     auto newPwm = pidLogic1.calculatePwm(measurement);
     if (measurement < 40) {
-      ASSERT_EQ(newPwm, 0);
+      ASSERT_FLOAT_EQ(newPwm, 0);
     }
     if (measurement > 40) {
       ASSERT_GT(newPwm, 0);
     }
     if (measurement > 50) {
-      ASSERT_EQ(newPwm, 100);
+      ASSERT_FLOAT_EQ(newPwm, 100);
     }
     XLOG(DBG3) << fmt::format(
         "Measurement = {}, newPwm = {}", measurement, newPwm);

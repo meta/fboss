@@ -89,6 +89,7 @@ class MockBgpClient : public apache::thrift::ServiceHandler<TBgpService> {
       getRunningConfigStruct,
       (facebook::bgp::thrift::BgpConfig&));
   MOCK_METHOD(void, getPolicyConfig, (std::string&));
+  MOCK_METHOD(bool, hasPolicySymlink, ());
   MOCK_METHOD(
       void,
       getRibPrefix,

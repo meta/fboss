@@ -14,8 +14,8 @@ cpp_library(
     ],
     exported_deps = [
         "fbsource//third-party/glog:glog",
+        "fbsource//xplat/folly:scope_guard",
         ":usb-api",
-        "//folly:scope_guard",
     ],
     exported_external_deps = [
         "libusb",
@@ -32,14 +32,14 @@ cpp_library(
     ],
     exported_deps = [
         "fbsource//third-party/glog:glog",
+        "fbsource//xplat/folly:range",
+        "fbsource//xplat/folly:scope_guard",
+        "fbsource//xplat/folly/lang:bits",
+        "fbsource//xplat/folly/logging:logging",
         ":usb",
         ":usb-api",
         "//fboss/lib:bmc-rest-client",
         "//fboss/lib/i2c:i2c_ctrl",
-        "//folly:range",
-        "//folly:scope_guard",
-        "//folly/lang:bits",
-        "//folly/logging:logging",
     ],
     exported_external_deps = [
         "libusb",
@@ -61,9 +61,9 @@ cpp_library(
         "TransceiverPlatformI2cApi.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/io/async:async_base",
         ":transceiver_access_parameter",
         "//fboss/lib/i2c:i2c_controller_stats-cpp2-types",
-        "//folly/io/async:async_base",
     ],
 )
 
@@ -73,8 +73,8 @@ cpp_library(
         "UsbError.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:conv",
         ":i2-api",
-        "//folly:conv",
     ],
     exported_external_deps = [
         "libusb",
@@ -104,22 +104,22 @@ cpp_library(
         "WedgeI2CBus.h",
     ],
     deps = [
+        "fbsource//xplat/folly/container:enumerate",
+        "fbsource//xplat/folly/logging:logging",
         ":cp2112",
         ":usb-api",
         "//fboss/lib/fpga:minipack_container",
-        "//folly/container:enumerate",
-        "//folly/logging:logging",
     ],
     exported_deps = [
         "fbsource//third-party/fmt:fmt",
         "fbsource//third-party/glog:glog",
+        "fbsource//xplat/folly:string",
         ":base-i2c-dependencies",
         ":i2-api",
         "//fboss/lib/fpga:fb_fpga_i2c",
         "//fboss/lib/i2c:i2c_controller_stats-cpp2-types",
         "//fboss/lib/i2c:platform_i2c_api",
         "//fboss/lib/i2c/minipack:minipack_base_i2c",
-        "//folly:string",
     ],
 )
 
@@ -136,8 +136,8 @@ cpp_library(
         ":usb-api",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:range",
         ":cp2112",
         ":i2-api",
-        "//folly:range",
     ],
 )

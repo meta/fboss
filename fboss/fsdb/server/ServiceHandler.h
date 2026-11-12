@@ -228,6 +228,11 @@ class ServiceHandler : public FsdbServiceSvIf,
   // in tests.
   FsdbOperStatsRoot operStatsRootExpensive() const;
 
+  // To be used only in tests.
+  std::vector<OperSubscriberInfo> getStateStorageSubscriptions() const {
+    return stateStorageBase().getSubscriptions();
+  }
+
   FsdbOperTreeMetadataTracker getStatsPublisherMetadata() const {
     return operStatsStorage_.getMetadata();
   }

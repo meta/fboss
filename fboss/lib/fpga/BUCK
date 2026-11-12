@@ -14,11 +14,11 @@ cpp_library(
     ],
     exported_deps = [
         "fbsource//third-party/fmt:fmt",
+        "fbsource//xplat/folly:shared_mutex",
+        "fbsource//xplat/folly/logging:logging",
         "//fboss/agent:fboss-types",
         "//fboss/lib:pci_device",
         "//fboss/lib:physical_memory",
-        "//folly:shared_mutex",
-        "//folly/logging:logging",
     ],
 )
 
@@ -37,8 +37,8 @@ cpp_library(
         "//fboss/agent:fboss-error",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/logging:logging",
         ":fpga_device",
-        "//folly/logging:logging",
     ],
 )
 
@@ -52,17 +52,17 @@ cpp_library(
     ],
     deps = [
         "fbsource//third-party/fmt:fmt",
+        "fbsource//xplat/folly/futures:core",
+        "fbsource//xplat/folly/logging:logging",
         "//fboss/agent:utils",
-        "//folly/futures:core",
-        "//folly/logging:logging",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:range",
+        "fbsource//xplat/folly:synchronized",
+        "fbsource//xplat/folly/io/async:async_base",
         ":facebook_fpga",
         "//fboss/lib/i2c:i2c_ctrl",
         "//fboss/lib/usb:i2-api",
-        "//folly:range",
-        "//folly:synchronized",
-        "//folly/io/async:async_base",
     ],
 )
 
@@ -76,17 +76,17 @@ cpp_library(
     ],
     deps = [
         "fbsource//third-party/fmt:fmt",
+        "fbsource//xplat/folly/futures:core",
+        "fbsource//xplat/folly/logging:logging",
         "//fboss/agent:utils",
-        "//folly/futures:core",
-        "//folly/logging:logging",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:range",
+        "fbsource//xplat/folly:synchronized",
+        "fbsource//xplat/folly/io/async:async_base",
         ":facebook_fpga",
         "//fboss/lib/i2c:i2c_ctrl",
         "//fboss/lib/usb:i2-api",
-        "//folly:range",
-        "//folly:synchronized",
-        "//folly/io/async:async_base",
     ],
 )
 
@@ -101,15 +101,15 @@ cpp_library(
         "MultiPimPlatformSystemContainer.h",
     ],
     deps = [
+        "fbsource//xplat/folly:conv",
         ":fpga_device",
         "//fb303:thread_cached_service_data",
-        "//fboss/agent:fboss-error",
-        "//folly:conv",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:synchronized",
+        "//fboss/agent:fboss-error",
         "//fboss/agent:fboss-types",
         "//fboss/lib/if:pim_state-cpp2-types",
-        "//folly:synchronized",
     ],
 )
 
@@ -133,12 +133,12 @@ cpp_library(
         "//fboss/agent:fboss-error",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:shared_mutex",
+        "fbsource//xplat/folly/logging:logging",
         ":fb_fpga_i2c",
         ":fb_fpga_spi",
         ":fpga_device",
         ":multi_pim_container",
-        "//folly:shared_mutex",
-        "//folly/logging:logging",
     ],
 )
 
@@ -154,9 +154,9 @@ cpp_library(
     ],
     exported_deps = [
         "fbsource//third-party/fmt:fmt",
+        "fbsource//xplat/folly:singleton",
         ":minipack_base_container",
         "//fboss/agent:fboss-error",
-        "//folly:singleton",
     ],
     exported_external_deps = [
         ("libpciaccess", None, "pciaccess"),
@@ -175,9 +175,9 @@ cpp_library(
     ],
     deps = [
         "fbsource//third-party/fmt:fmt",
+        "fbsource//xplat/folly/logging:logging",
         ":wedge400_fpga",
         "//fboss/agent:utils",
-        "//folly/logging:logging",
     ],
     exported_deps = [
         ":fb_fpga_i2c",
@@ -194,13 +194,13 @@ cpp_library(
         "Wedge400Fpga.h",
     ],
     deps = [
+        "fbsource//xplat/folly/logging:logging",
         "//fboss/agent:fboss-error",
         "//fboss/lib:pci_access",
-        "//folly/logging:logging",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:singleton",
         "//fboss/agent:fboss-types",
         "//fboss/lib/fpga:facebook_fpga",
-        "//folly:singleton",
     ],
 )

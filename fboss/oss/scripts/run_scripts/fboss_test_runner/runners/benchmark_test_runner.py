@@ -16,11 +16,15 @@ from fboss_test_runner.constants import (
     SUB_ARG_AGENT_RUN_MODE_MULTI,
     SUB_ARG_NUM_NPUS,
 )
+from fboss_test_runner.errors import TestRunnerUsageError
 from fboss_test_runner.frameworks.benchmark_framework import BenchmarkFramework
 from fboss_test_runner.frameworks.benchmark_suite import BenchmarkSuite
 from fboss_test_runner.frameworks.qsfp_benchmark_suite import QsfpBenchmarkSuite
 from fboss_test_runner.frameworks.sai_benchmark_suite import SaiBenchmarkSuite
 from fboss_test_runner.runners.test_runner import TestRunner
+from fboss_test_runner.tier_selection import parse_test_tier
+
+SAI_BENCHMARK_TEST_METADATA = "./share/hw_sanity_tests/sai_benchmark_test_metadata.json"
 
 
 class BenchmarkTestRunner(TestRunner):
@@ -42,6 +46,16 @@ class BenchmarkTestRunner(TestRunner):
         if getattr(self.args, "qsfp", False):
             return None
         return self._get_test_binary_name()
+
+    def _get_tier_metadata_file(self) -> str:
+        return SAI_BENCHMARK_TEST_METADATA
+
+    def _get_tier_patterns(self, args: Namespace) -> list[str] | None:
+        if args.tier is None:
+            return None
+        if args.qsfp:
+            raise TestRunnerUsageError("--tier is not supported for QSFP benchmarks")
+        return self._get_test_patterns_for_tier(parse_test_tier(args.tier))
 
     def _get_warmboot_check_file(self) -> str:
         return ""
@@ -122,17 +136,18 @@ class BenchmarkTestRunner(TestRunner):
         return BenchmarkFramework(self._select_suite(args))
 
     def list_tests(self, args: Namespace) -> int:
-        self._framework_for_args(args).list_tests(args)
+        self._framework_for_args(args).list_tests(args, self._get_tier_patterns(args))
         return 0
 
     def run_test(self, args: Namespace) -> int:
         framework = self._framework_for_args(args)
+        tier_patterns = self._get_tier_patterns(args)
         original_arg_config = args.config
         try:
             prepared_config = self._prepare_config_for_run()
             if prepared_config:
                 args.config = prepared_config
-            framework.run(args)
+            framework.run(args, tier_patterns)
         finally:
             args.config = original_arg_config
         return 0

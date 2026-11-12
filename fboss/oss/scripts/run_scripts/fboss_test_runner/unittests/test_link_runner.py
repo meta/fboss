@@ -12,6 +12,7 @@ import pytest
 from fboss_test_runner.errors import TestRunnerUsageError as UsageError
 from fboss_test_runner.runners.link_test_runner import LinkTestRunner
 from fboss_test_runner.runners.test_runner import TestRunner
+from fboss_test_runner.tier_selection import TestCapability
 
 
 @pytest.fixture
@@ -32,7 +33,9 @@ def _make_args(**overrides):
     args.mgmt_if = "eth0"
     args.known_bad_tests_file = None
     args.list_tests = False
+    args.tier = None
     args.list_tests_for_features = None
+    args.without_transceivers = False
     args.sai_replayer_logging = None
     args.sai_replayer_sdk_log_level = None
     args.simulator = None
@@ -42,6 +45,30 @@ def _make_args(**overrides):
     for k, v in overrides.items():
         setattr(args, k, v)
     return args
+
+
+class TestTierCapabilities:
+    @pytest.mark.parametrize(
+        ("without_transceivers", "expected_capabilities"),
+        [
+            (False, (TestCapability.TRANSCEIVER,)),
+            (True, ()),
+        ],
+    )
+    def test_transceiver_capability_follows_cli_flag(
+        self,
+        link_runner,
+        without_transceivers,
+        expected_capabilities,
+    ):
+        with patch.object(
+            link_runner,
+            "args",
+            new=_make_args(without_transceivers=without_transceivers),
+        ):
+            assert (
+                link_runner._get_available_test_capabilities() == expected_capabilities
+            )
 
 
 class TestBinaryNameByMode:

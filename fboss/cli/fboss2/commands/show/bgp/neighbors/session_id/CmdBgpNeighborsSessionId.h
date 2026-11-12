@@ -77,7 +77,9 @@ class CmdBgpNeighborsSessionId : public CmdHandler<
     const auto sessions = CmdShowBgpNeighbors::sampleModel();
     const auto established = std::find_if(
         sessions.begin(), sessions.end(), [](const TBgpSession& session) {
-          return session.peer().has_value() &&
+          return apache::thrift::
+                     is_non_optional_field_set_manually_or_by_serializer(
+                         session.peer()) &&
               *session.peer()->peer_state() == TBgpPeerState::ESTABLISHED;
         });
     CHECK(established != sessions.end())

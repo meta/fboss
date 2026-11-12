@@ -8,6 +8,7 @@
  *
  */
 
+#include <sstream>
 #include <string>
 
 #include <folly/json/json.h>
@@ -24,21 +25,28 @@ TEST(CmdShowBgpPolicyTest, wikiDocHooks) {
   EXPECT_FALSE(CmdShowBgpPolicyTraits::description().empty());
 
   /*
-   * sampleModel() serializes a real BgpPolicyStatement, so what is worth
-   * pinning here is the PORTABLE encoding the wiki renders - the field names
-   * and enum spellings a switch would return - rather than the particular
-   * policy and term names the sample happens to choose.
+   * Pin the PORTABLE field names and enum values emitted for a complete
+   * Thrift policy, not the arbitrary names in this synthetic example.
    */
   const auto model = CmdShowBgpPolicy::sampleModel();
   ASSERT_TRUE(model.isObject());
+  EXPECT_EQ("BGP policy", model["source"].asString());
+  const auto& config = model["policy"];
+  for (const auto* field : {"communities", "localprefs", "policies"}) {
+    ASSERT_TRUE(config.count(field)) << "missing policy field " << field;
+  }
+
+  const auto& statements = config["policies"]["bgp_policy_statements"];
+  ASSERT_EQ(statements.size(), 1);
+  const auto& statement = statements[0];
   for (const auto* field :
        {"name", "policy_version", "policy_entries", "result"}) {
-    ASSERT_TRUE(model.count(field)) << "missing top-level field " << field;
+    ASSERT_TRUE(statement.count(field)) << "missing statement field " << field;
   }
-  EXPECT_EQ(model["result"].asString(), "DENY");
+  EXPECT_EQ(statement["result"].asString(), "DENY");
 
-  ASSERT_EQ(model["policy_entries"].size(), 1);
-  const auto& term = model["policy_entries"][0];
+  ASSERT_EQ(statement["policy_entries"].size(), 1);
+  const auto& term = statement["policy_entries"][0];
   for (const auto* field :
        {"name",
         "policy_matches",
@@ -58,14 +66,12 @@ TEST(CmdShowBgpPolicyTest, wikiDocHooks) {
   EXPECT_EQ(
       term["policy_action_entries"][0]["type"].asString(), "SET_LOCAL_PREF");
 
-  /*
-   * printOutput() is in the routing-protocol-only TU (see the profiler test
-   * above), so it cannot be called here and the command's own rendering path
-   * is NOT covered - neither the non-empty render nor the empty/lookup-failure
-   * early return description() documents. Recorded as a known gap rather than
-   * papered over by re-implementing folly::toPrettyJson here, which would only
-   * assert the sample against itself.
-   */
+  std::ostringstream output;
+  CmdShowBgpPolicy().printOutput(model, output);
+  EXPECT_THAT(output.str(), StartsWith("Policy source: BGP policy\n"));
+  const auto newline = output.str().find('\n');
+  ASSERT_NE(std::string::npos, newline);
+  EXPECT_EQ(config, folly::parseJson(output.str().substr(newline + 1)));
 }
 
 } // namespace facebook::fboss

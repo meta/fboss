@@ -244,7 +244,11 @@ std::shared_ptr<SaiTamTransport> SaiTamManager::createTamTransport(
       report->getCollectorPort(),
       report->getMtu(),
       std::nullopt, // srcMac unsupported on Tajo (SDK derives it from RIF)
-      std::nullopt, // dstMac unsupported on Tajo
+      std::nullopt // dstMac unsupported on Tajo
+#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
+      ,
+      std::nullopt // GreProtocolType
+#endif
   };
   return transportStore.setObject(transportTraits, transportTraits);
 }
@@ -259,9 +263,27 @@ std::shared_ptr<SaiTamCollector> SaiTamManager::createTamCollector(
       report->getCollectorIp(),
       truncateSize,
       transportId,
-      report->getDscp(),
+      report->getDscp()
+#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
+          ,
+      std::nullopt, // SrcMacAddress
+      std::nullopt, // DstMacAddress
+      std::nullopt // Destination
+#endif
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 0)
+      ,
+      std::nullopt // Localhost
+#endif
   };
-  return collectorStore.setObject(collectorTraits, collectorTraits);
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 0)
+  auto collectorKey = collectorTraits;
+  // Match SDK default readback without programming the omitted attribute.
+  std::get<std::optional<SaiTamCollectorTraits::Attributes::Localhost>>(
+      collectorKey) = false;
+#else
+  const auto& collectorKey = collectorTraits;
+#endif
+  return collectorStore.setObject(collectorKey, collectorTraits);
 }
 
 std::shared_ptr<SaiTam> SaiTamManager::createTam(

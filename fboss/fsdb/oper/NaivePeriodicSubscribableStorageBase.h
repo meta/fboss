@@ -24,6 +24,7 @@ namespace facebook::fboss::fsdb {
 
 inline constexpr std::string_view kServeSubMs{"storage.serve_sub_ms"};
 inline constexpr std::string_view kServeSubNum{"storage.serve_sub_num"};
+inline constexpr int64_t kServeHistogramBins{20};
 inline constexpr std::string_view kRss{"rss"};
 inline constexpr std::string_view kRegisteredSubs{"subscriptions.registered"};
 inline constexpr std::string_view kServeIntervalSubs{
@@ -94,6 +95,12 @@ class NaivePeriodicSubscribableStorageBase {
       return *this;
     }
 
+    // Off by default: up to kMaxServeBuckets * 4 ODS series per switch.
+    StorageParams& setExportPerBucketServeMetrics(bool val) {
+      exportPerBucketServeMetrics_ = val;
+      return *this;
+    }
+
     StorageParams& setDeltaSubscriptionQueueMemoryLimit(size_t val) {
       deltaSubscriptionQueueMemoryLimit_ = val;
       return *this;
@@ -123,6 +130,7 @@ class NaivePeriodicSubscribableStorageBase {
     const bool requireResponseOnInitialSync_;
     const bool exportPerSubscriberMetrics_;
     bool serveGetRequestsWithLastPublishedState_;
+    bool exportPerBucketServeMetrics_{false};
     const int32_t pathSubscriptionServeQueueSize_;
     const int32_t defaultSubscriptionServeQueueSize_;
     size_t deltaSubscriptionQueueMemoryLimit_{0};
@@ -317,11 +325,16 @@ class NaivePeriodicSubscribableStorageBase {
   virtual SubscriptionManagerBase& subMgr() = 0;
 
   SubscriptionMetadataServer getCurrentMetadataServer();
+  // bucketInterval is the bucket's own cadence, not the tick: a slow bucket
+  // legitimately takes longer than a tick and must not be called slow for it.
   void exportServeMetrics(
       std::chrono::steady_clock::time_point serveStartTime,
       SubscriptionMetadataServer& metadata,
       std::map<std::string, uint64_t>& lastServedPublisherRootUpdates,
-      std::chrono::milliseconds loopInterval);
+      std::chrono::milliseconds bucketInterval,
+      size_t bucket);
+  // RSS alone is a /proc read; don't repeat it once per due bucket.
+  void exportTickMetrics();
 
   std::optional<std::string> getPublisherRoot(PathIter begin, PathIter end)
       const;
@@ -382,6 +395,9 @@ class NaivePeriodicSubscribableStorageBase {
   const std::string nPathStoreAllocs_;
   const std::string serveSubMs_;
   const std::string serveSubNum_;
+  // Empty when there is only one bucket; the aggregates already say everything.
+  std::vector<std::string> serveSubMsByBucket_;
+  std::vector<std::string> serveSubNumByBucket_;
   // per-PublisherRoot metrics
   const std::string publishTimePrefix_;
   const std::string subscribeTimePrefix_;

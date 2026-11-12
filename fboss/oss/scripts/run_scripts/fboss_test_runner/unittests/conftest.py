@@ -42,6 +42,7 @@ def mock_args():
     args = Mock()
     args.filter_file = None
     args.list_tests = False
+    args.tier = None
     args.list_tests_for_features = None
     args.results_json = None
     args.config = None

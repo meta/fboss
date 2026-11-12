@@ -18,6 +18,7 @@ def run_container(  # noqa: PLR0913
     image: str,
     command: list[str],
     volumes: dict[Path, Path] | None = None,
+    read_only_volumes: dict[Path, Path] | None = None,
     env: dict[str, str] | None = None,
     privileged: bool = False,
     interactive: bool = False,
@@ -32,6 +33,8 @@ def run_container(  # noqa: PLR0913
         image: Docker image name to run
         command: Command to execute in container (as list)
         volumes: Dictionary mapping host paths to container paths
+        read_only_volumes: Dictionary mapping host paths to container paths,
+            mounted read-only
         env: Dictionary of environment variables
         privileged: Run container in privileged mode
         interactive: Run container in interactive mode (-it)
@@ -53,6 +56,11 @@ def run_container(  # noqa: PLR0913
 
     # Start with default flags
     cmd.append("--network=host")
+
+    # Podman caps container pids at 2048 by default (Docker does not cap);
+    # parallel dep builds routinely exceed that with compiler subprocess
+    # trees, failing spawns with EAGAIN. Remove the cap.
+    cmd.extend(["--pids-limit", "0"])
 
     # Add flags
     if ephemeral:
@@ -76,6 +84,10 @@ def run_container(  # noqa: PLR0913
     if volumes:
         for host_path, container_path in volumes.items():
             cmd.extend(["-v", f"{host_path}:{container_path}"])
+
+    if read_only_volumes:
+        for host_path, container_path in read_only_volumes.items():
+            cmd.extend(["-v", f"{host_path}:{container_path}:ro"])
 
     if env:
         for key, value in env.items():

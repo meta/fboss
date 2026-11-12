@@ -3,6 +3,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <algorithm>
+#include <cstdint>
 #include <filesystem>
 #include <stdexcept>
 #include <string>
@@ -52,6 +54,44 @@ class CmdConfigBgpPolicyCommunityListTestFixture : public CmdConfigTestBase {
                 .policies()
                 .ensure()
                 .community_lists();
+  }
+
+  // Seed a routing-policy term whose COMMUNITY match names `listName`, the
+  // way bgpd reads the reference. Read the inline filter back via filterOf():
+  // the vectors may reallocate on the next seed.
+  void addPolicyTermMatching(
+      const std::string& policy,
+      int64_t seq,
+      const std::string& listName) {
+    auto& cfg = ConfigSession::getInstance().getBgpConfig();
+    auto& policies = *cfg.policies().ensure().bgp_policy_statements();
+    policies.emplace_back();
+    policies.back().name() = policy;
+    auto& terms = *policies.back().policy_entries();
+    terms.emplace_back();
+    terms.back().sequence_number() = seq;
+    auto& matches =
+        *terms.back().policy_match_entries().ensure().match_entries();
+    matches.emplace_back();
+    matches.back().type() =
+        bgp::bgp_policy::BgpPolicyAtomicMatchType::COMMUNITY_LIST;
+    matches.back().communities_filter().ensure().community_list_names() = {
+        listName};
+    ConfigSession::getInstance().saveBgpConfig();
+  }
+
+  const bgp::bgp_policy::CommunityList& filterOf(const std::string& policy) {
+    auto& policies = *ConfigSession::getInstance()
+                          .getBgpConfig()
+                          .policies()
+                          ->bgp_policy_statements();
+    auto it = std::find_if(policies.begin(), policies.end(), [&](auto& p) {
+      return *p.name() == policy;
+    });
+    return *(*(*it->policy_entries())[0]
+                  .policy_match_entries()
+                  ->match_entries())[0]
+                .communities_filter();
   }
 
   bool sessionFileExists() {
@@ -261,6 +301,44 @@ TEST_F(
   EXPECT_THAT(
       run({"CL100", "community", "65000:100", "65000:200"}),
       HasSubstr("requires <community>"));
+}
+
+// ==============================================================================
+// Reference sync — bgpd reads the operator and exact_match from the term's
+// inline copy of the list
+// ==============================================================================
+
+TEST_F(
+    CmdConfigBgpPolicyCommunityListTestFixture,
+    setBooleanOperatorSyncsReferencingFilters) {
+  run({"CL100"});
+  run({"CL200"});
+  addPolicyTermMatching("RM100", 10, "CL100");
+  addPolicyTermMatching("RM200", 20, "CL200");
+
+  run({"CL100", "boolean-operator", "AND"});
+  EXPECT_EQ(*filterOf("RM100").boolean_operator(), BooleanOperator::AND);
+  // A filter naming another list is untouched.
+  EXPECT_EQ(*filterOf("RM200").boolean_operator(), BooleanOperator::OR);
+
+  run({"CL100", "boolean-operator", "OR"});
+  EXPECT_EQ(*filterOf("RM100").boolean_operator(), BooleanOperator::OR);
+}
+
+TEST_F(
+    CmdConfigBgpPolicyCommunityListTestFixture,
+    setExactMatchSyncsReferencingFilters) {
+  run({"CL100"});
+  addPolicyTermMatching("RM100", 10, "CL100");
+  EXPECT_FALSE(filterOf("RM100").exact_match().has_value());
+
+  run({"CL100", "exact-match", "true"});
+  EXPECT_EQ(*filterOf("RM100").boolean_operator(), BooleanOperator::OR);
+  ASSERT_TRUE(filterOf("RM100").exact_match().has_value());
+  EXPECT_TRUE(*filterOf("RM100").exact_match());
+
+  run({"CL100", "exact-match", "false"});
+  EXPECT_FALSE(*filterOf("RM100").exact_match());
 }
 
 } // namespace facebook::fboss

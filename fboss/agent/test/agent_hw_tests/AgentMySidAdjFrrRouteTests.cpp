@@ -118,6 +118,8 @@ class AgentMySidAdjFrrRouteTest : public AgentHwTest {
   cfg::MySidConfig makeAdjacencyMySidConfig() const {
     cfg::MySidConfig mySidConfig;
     mySidConfig.locatorPrefix() = kLocatorPrefix;
+    mySidConfig.locatorPrefixes() = {
+        kLocatorPrefix, utility::kSrv6PlaneLocatorPrefix};
     for (int i = 0; i < kNumLags; ++i) {
       cfg::MySidEntryConfig entry;
       cfg::AdjacencyMySidConfig adjacency;
@@ -729,6 +731,68 @@ TEST_F(AgentMySidAdjFrrRouteTest, ipNextHopsAsBackup) {
     addIpBackupProtection(kBackupLag);
   };
   auto verify = [this]() { verifyShiftedPacketOnLag(kBackupLag); };
+  verifyAcrossWarmBoots(setup, verify);
+}
+
+class AgentMixedIpSrv6AdjFrrRouteTest : public AgentMySidAdjFrrRouteTest {
+ protected:
+  std::vector<ProductionFeature> getProductionFeaturesVerified()
+      const override {
+    auto features = AgentMySidAdjFrrRouteTest::getProductionFeaturesVerified();
+    features.push_back(ProductionFeature::MIXED_IP_SRV6_NEXT_HOP_GROUPS);
+    return features;
+  }
+
+  void setCmdLineFlagOverrides() const override {
+    AgentMySidAdjFrrRouteTest::setCmdLineFlagOverrides();
+    FLAGS_allow_mixed_ip_srv6_nhop_groups = true;
+  }
+
+  void addMixedBackupProtection() {
+    programBackupRoutes();
+
+    auto backupNextHops = std::make_unique<std::vector<NextHopThrift>>();
+    backupNextHops->push_back(
+        utility::makeSrv6NextHopThrift(
+            backupNextHopAddress(1), repairSid(1), kSrv6TunnelId));
+    const auto nextHop = makeEcmpHelper().nhop(lagPortDesc(2));
+    const auto nextHopIp = nextHop.linkLocalNhopIp.has_value()
+        ? folly::IPAddress(*nextHop.linkLocalNhopIp)
+        : folly::IPAddress(nextHop.ip);
+    NextHopThrift plainBackupNextHop;
+    plainBackupNextHop.address() =
+        facebook::network::toBinaryAddress(nextHopIp);
+    plainBackupNextHop.address()->ifName() =
+        utility::createTunIntfName(nextHop.intf);
+    backupNextHops->push_back(std::move(plainBackupNextHop));
+
+    ThriftHandler(getSw()).addAdjacencyFrr(
+        makeFrrProtectedObject(), std::move(backupNextHops));
+  }
+};
+
+TEST_F(AgentMixedIpSrv6AdjFrrRouteTest, mixedSrv6AndIpFrrBackupGroup) {
+  auto setup = [this]() { unresolveLagNeighbor(kPrimaryLag); };
+  auto verify = [this]() {
+    // Reestablish the backup-only starting state after warm boot, when the
+    // primary link is left down by the prior run.
+    unresolveLagNeighbor(kPrimaryLag);
+    bringUpLagLink(kPrimaryLag);
+    addMixedBackupProtection();
+
+    // Only the SRv6 backup is resolvable: traffic takes the repair path.
+    unresolveLagNeighbor(2);
+    verifyForwardedViaSrv6Backup({1}, {kPrimaryLag, 2, 3});
+    resolveLagNeighbor(2);
+
+    // Only the plain-IP backup is resolvable: shifted packet on lag 2.
+    unresolveLagNeighbor(1);
+    verifyShiftedPacketOnLag(2);
+    resolveLagNeighbor(1);
+
+    // Both backups resolvable: load balanced across both.
+    pumpTrafficAndVerifyLoadBalancedAcrossLags({1, 2}, {kPrimaryLag, 3});
+  };
   verifyAcrossWarmBoots(setup, verify);
 }
 

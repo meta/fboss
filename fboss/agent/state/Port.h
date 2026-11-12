@@ -407,6 +407,51 @@ class Port : public ThriftStructNode<Port, state::PortFields> {
     set<switch_state_tags::cbfcSenderCreditLimit>(limit.value());
   }
 
+  std::optional<int16_t> getCbfcSenderCreditSize() const {
+    if (auto size = cref<switch_state_tags::cbfcSenderCreditSize>()) {
+      return size->toThrift();
+    }
+    return std::nullopt;
+  }
+
+  void setCbfcSenderCreditSize(const std::optional<int16_t>& size) {
+    if (!size) {
+      ref<switch_state_tags::cbfcSenderCreditSize>().reset();
+      return;
+    }
+    set<switch_state_tags::cbfcSenderCreditSize>(size.value());
+  }
+
+  std::optional<int16_t> getCbfcSenderPacketOverhead() const {
+    if (auto overhead = cref<switch_state_tags::cbfcSenderPacketOverhead>()) {
+      return overhead->toThrift();
+    }
+    return std::nullopt;
+  }
+
+  void setCbfcSenderPacketOverhead(const std::optional<int16_t>& overhead) {
+    if (!overhead) {
+      ref<switch_state_tags::cbfcSenderPacketOverhead>().reset();
+      return;
+    }
+    set<switch_state_tags::cbfcSenderPacketOverhead>(overhead.value());
+  }
+
+  std::optional<int64_t> getCbfcReceiverCreditLimit() const {
+    if (auto limit = cref<switch_state_tags::cbfcReceiverCreditLimit>()) {
+      return limit->toThrift();
+    }
+    return std::nullopt;
+  }
+
+  void setCbfcReceiverCreditLimit(const std::optional<int64_t>& limit) {
+    if (!limit) {
+      ref<switch_state_tags::cbfcReceiverCreditLimit>().reset();
+      return;
+    }
+    set<switch_state_tags::cbfcReceiverCreditLimit>(limit.value());
+  }
+
   VlanID getIngressVlan() const {
     return VlanID(cref<switch_config_tags::ingressVlan>()->cref());
   }
@@ -998,6 +1043,36 @@ class Port : public ThriftStructNode<Port, state::PortFields> {
       ref<switch_state_tags::linkScanMode>().reset();
     } else {
       set<switch_state_tags::linkScanMode>(linkScanMode.value());
+    }
+  }
+
+  std::optional<cfg::CsigTagAction> getCsigTagAction() const {
+    if (auto csigTagAction = cref<switch_state_tags::csigTagAction>()) {
+      return csigTagAction->toThrift();
+    }
+    return std::nullopt;
+  }
+
+  void setCsigTagAction(std::optional<cfg::CsigTagAction> csigTagAction) {
+    if (!csigTagAction.has_value()) {
+      ref<switch_state_tags::csigTagAction>().reset();
+    } else {
+      set<switch_state_tags::csigTagAction>(csigTagAction.value());
+    }
+  }
+
+  std::optional<int16_t> getCsigLinkLocator() const {
+    if (auto csigLinkLocator = cref<switch_state_tags::csigLinkLocator>()) {
+      return csigLinkLocator->toThrift();
+    }
+    return std::nullopt;
+  }
+
+  void setCsigLinkLocator(std::optional<int16_t> csigLinkLocator) {
+    if (!csigLinkLocator.has_value()) {
+      ref<switch_state_tags::csigLinkLocator>().reset();
+    } else {
+      set<switch_state_tags::csigLinkLocator>(csigLinkLocator.value());
     }
   }
 

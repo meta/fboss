@@ -9,6 +9,7 @@
  */
 
 #include "fboss/cli/fboss2/commands/delete/copp/traffic_policy/match/action/CmdDeleteCoppTrafficPolicyMatchAction.h"
+#include "fboss/cli/fboss2/utils/ArgCompletion.h"
 
 #include "fboss/cli/fboss2/CmdHandler.cpp"
 
@@ -45,5 +46,12 @@ void CmdDeleteCoppTrafficPolicyMatchAction::printOutput(const RetType& output) {
 template void CmdHandler<
     CmdDeleteCoppTrafficPolicyMatchAction,
     CmdDeleteCoppTrafficPolicyMatchActionTraits>::run();
+
+std::vector<std::string>
+CmdDeleteCoppTrafficPolicyMatchActionTraits::completeArgs(
+    const std::vector<std::string>& typed) {
+  return utils::completion::completePositions(
+      typed, {traffic_policy::actionKeys()});
+}
 
 } // namespace facebook::fboss

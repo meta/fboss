@@ -174,10 +174,7 @@ class BcmPortQueueManagerTest : public BcmCosQueueManagerTest {
 TEST_F(BcmPortQueueManagerTest, DefaultPortQueuesCheckWithoutConfig) {
   if (!isSupported(HwAsic::Feature::L3_QOS)) {
     XLOG(WARNING) << "Platform doesn't support port cos queue setting";
-#if defined(GTEST_SKIP)
     GTEST_SKIP();
-#endif
-    return;
   }
 
   auto setup = [=, this]() { applyNewConfig(initialConfig()); };
@@ -202,10 +199,7 @@ TEST_F(BcmPortQueueManagerTest, DefaultPortQueuesCheckWithoutConfig) {
 TEST_F(BcmPortQueueManagerTest, ConfigPortQueuesSetup) {
   if (!isSupported(HwAsic::Feature::L3_QOS)) {
     XLOG(WARNING) << "Platform doesn't support port cos queue setting";
-#if defined(GTEST_SKIP)
     GTEST_SKIP();
-#endif
-    return;
   }
 
   auto setup = [=, this]() {
@@ -225,10 +219,7 @@ TEST_F(BcmPortQueueManagerTest, ConfigPortQueuesSetup) {
 TEST_F(BcmPortQueueManagerTest, ChangeQueue0Settings) {
   if (!isSupported(HwAsic::Feature::L3_QOS)) {
     XLOG(WARNING) << "Platform doesn't support port cos queue setting";
-#if defined(GTEST_SKIP)
     GTEST_SKIP();
-#endif
-    return;
   }
 
   // prepare aqm
@@ -291,10 +282,7 @@ TEST_F(BcmPortQueueManagerTest, ChangeQueue0Settings) {
 TEST_F(BcmPortQueueManagerTest, ClearPortQueueSettings) {
   if (!isSupported(HwAsic::Feature::L3_QOS)) {
     XLOG(WARNING) << "Platform doesn't support port cos queue setting";
-#if defined(GTEST_SKIP)
     GTEST_SKIP();
-#endif
-    return;
   }
 
   auto setup = [=, this]() {
@@ -336,10 +324,7 @@ TEST_F(BcmPortQueueManagerTest, ClearPortQueueSettings) {
 TEST_F(BcmPortQueueManagerTest, ChangePortQueueAQM) {
   if (!isSupported(HwAsic::Feature::L3_QOS)) {
     XLOG(WARNING) << "Platform doesn't support port cos queue setting";
-#if defined(GTEST_SKIP)
     GTEST_SKIP();
-#endif
-    return;
   }
 
   auto cfg = initialConfig();
@@ -405,10 +390,7 @@ TEST_F(BcmPortQueueManagerTest, ChangePortQueueAQM) {
 TEST_F(BcmPortQueueManagerTest, InternalPriorityMappings) {
   if (!isSupported(HwAsic::Feature::L3_QOS)) {
     XLOG(WARNING) << "Platform doesn't support port cos queue setting";
-#if defined(GTEST_SKIP)
     GTEST_SKIP();
-#endif
-    return;
   }
 
   auto setup = [=, this]() {
@@ -458,10 +440,7 @@ TEST_F(BcmPortQueueManagerTest, InternalPriorityMappings) {
 TEST_F(BcmPortQueueManagerTest, InternalPriorityMappingsOverride) {
   if (!isSupported(HwAsic::Feature::L3_QOS)) {
     XLOG(WARNING) << "Platform doesn't support port cos queue setting";
-#if defined(GTEST_SKIP)
     GTEST_SKIP();
-#endif
-    return;
   }
 
   auto setup = [=, this]() {

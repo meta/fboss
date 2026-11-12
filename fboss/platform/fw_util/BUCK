@@ -8,11 +8,11 @@ cpp_binary(
     name = "fw_util",
     srcs = ["fw_util.cpp"],
     deps = [
+        "fbsource//xplat/folly/logging:file_handler_factory",
+        "fbsource//xplat/folly/logging:init",
+        "fbsource//xplat/folly/logging:logging",
         ":core",
         "//fboss/platform/helpers:init_cli",
-        "//folly/logging:file_handler_factory",
-        "//folly/logging:init",
-        "//folly/logging:logging",
     ],
     external_deps = [
         "CLI11",
@@ -43,23 +43,23 @@ cpp_library(
     deps = [
         "fbsource//third-party/fmt:fmt",
         "fbsource//third-party/re2:re2",
+        "fbsource//xplat/folly:file",
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly:scope_guard",
+        "fbsource//xplat/folly:string",
         "//fboss/platform/config_lib:config_lib",
         "//fboss/platform/helpers:platform_fs_utils",
         "//fboss/platform/helpers:platform_name_lib",
-        "//folly:file",
-        "//folly:file_util",
-        "//folly:format",
-        "//folly:scope_guard",
-        "//folly:string",
         "//thrift/lib/cpp2/protocol:protocol",
     ],
     exported_deps = [
-        "fbsource//third-party/googletest:gtest_headers",
+        "fbsource//third-party/googletest:gtest_headers",  # @manual
+        "fbsource//third-party/googletest:gtest_prod_headers",
+        "fbsource//xplat/folly:subprocess",
+        "fbsource//xplat/folly/logging:logging",
+        "fbsource//xplat/folly/system:shell",
         "//fboss/platform/fw_util/if:fw_util_config-cpp2-types",
         "//fboss/platform/helpers:platform_utils",
-        "//folly:subprocess",
-        "//folly/logging:logging",
-        "//folly/system:shell",
     ],
 )
 

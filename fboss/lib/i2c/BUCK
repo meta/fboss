@@ -24,7 +24,7 @@ cpp_library(
     headers = [
         "PCA9541.h",
     ],
-    deps = ["//folly/logging:logging"],
+    deps = ["fbsource//xplat/folly/logging:logging"],
     exported_deps = [
         "//fboss/lib/usb:base-i2c-dependencies",
     ],
@@ -47,14 +47,14 @@ cpp_library(
         "I2cSmbusIo.h",
     ],
     deps = [
-        "//folly:format",
-        "//folly/logging:logging",
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/logging:logging",
     ],
     exported_deps = [
         "fbsource//third-party/fmt:fmt",
+        "fbsource//xplat/folly:synchronized",
+        "fbsource//xplat/folly/io/async:async_base",
+        "fbsource//xplat/folly/system:thread_name",
         ":i2c_controller_stats-cpp2-types",
-        "//folly:synchronized",
-        "//folly/io/async:async_base",
-        "//folly/system:thread_name",
     ],
 )

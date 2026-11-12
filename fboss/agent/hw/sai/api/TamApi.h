@@ -19,6 +19,96 @@ namespace facebook::fboss {
 
 class TamApi;
 
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+struct SaiTamIntTraits {
+  static constexpr sai_object_type_t ObjectType = SAI_OBJECT_TYPE_TAM_INT;
+  using SaiApiT = TamApi;
+  struct Attributes {
+    using EnumType = sai_tam_int_attr_t;
+    using Type = SaiAttribute<EnumType, SAI_TAM_INT_ATTR_TYPE, sai_int32_t>;
+    using DeviceId =
+        SaiAttribute<EnumType, SAI_TAM_INT_ATTR_DEVICE_ID, sai_uint32_t>;
+    using IntPresenceType =
+        SaiAttribute<EnumType, SAI_TAM_INT_ATTR_INT_PRESENCE_TYPE, sai_int32_t>;
+    using Inline = SaiAttribute<EnumType, SAI_TAM_INT_ATTR_INLINE, bool>;
+    using EthTypeCodePoint = SaiAttribute<
+        EnumType,
+        SAI_TAM_INT_ATTR_ETH_TYPE_CODE_POINT,
+        sai_uint16_t>;
+    using CsigSignalType =
+        SaiAttribute<EnumType, SAI_TAM_INT_ATTR_CSIG_SIGNAL_TYPE, sai_int32_t>;
+    using BwTimeInterval = SaiAttribute<
+        EnumType,
+        SAI_TAM_INT_ATTR_BW_TIME_INTERVAL,
+        sai_uint32_t,
+        StdNullOptDefault<sai_uint32_t>>;
+    using QuantBands =
+        SaiAttribute<EnumType, SAI_TAM_INT_ATTR_QUANT_BANDS, sai_uint32_t>;
+    using QuantBandId = SaiAttribute<
+        EnumType,
+        SAI_TAM_INT_ATTR_QUANT_BAND_ID,
+        std::vector<sai_uint16_t>,
+        StdNullOptDefault<std::vector<sai_uint16_t>>>;
+    using QuantBandUint64RangeList = SaiAttribute<
+        EnumType,
+        SAI_TAM_INT_ATTR_QUANT_BAND_UINT64_RANGE_LIST,
+        std::vector<sai_u64_range_t>,
+        StdNullOptDefault<std::vector<sai_u64_range_t>>>;
+    using WideQuantBaseValue = SaiAttribute<
+        EnumType,
+        SAI_TAM_INT_ATTR_WIDE_QUANT_BASE_VALUE,
+        sai_uint32_t,
+        StdNullOptDefault<sai_uint32_t>>;
+    using WideQuantStepValue = SaiAttribute<
+        EnumType,
+        SAI_TAM_INT_ATTR_WIDE_QUANT_STEP_VALUE,
+        sai_uint32_t,
+        StdNullOptDefault<sai_uint32_t>>;
+    using CsigDBit = SaiAttribute<
+        EnumType,
+        SAI_TAM_INT_ATTR_CSIG_D_BIT,
+        bool,
+        SaiBoolDefaultFalse>;
+  };
+  using AdapterKey = TamIntSaiId;
+  using AdapterHostKey = std::tuple<
+      Attributes::Type,
+      Attributes::DeviceId,
+      Attributes::IntPresenceType,
+      Attributes::Inline,
+      Attributes::EthTypeCodePoint,
+      Attributes::CsigSignalType>;
+  using CreateAttributes = std::tuple<
+      Attributes::Type,
+      Attributes::DeviceId,
+      Attributes::IntPresenceType,
+      Attributes::Inline,
+      Attributes::EthTypeCodePoint,
+      Attributes::CsigSignalType,
+      std::optional<Attributes::BwTimeInterval>,
+      Attributes::QuantBands,
+      std::optional<Attributes::QuantBandId>,
+      std::optional<Attributes::QuantBandUint64RangeList>,
+      std::optional<Attributes::WideQuantBaseValue>,
+      std::optional<Attributes::WideQuantStepValue>,
+      std::optional<Attributes::CsigDBit>>;
+};
+
+SAI_ATTRIBUTE_NAME(TamInt, Type)
+SAI_ATTRIBUTE_NAME(TamInt, DeviceId)
+SAI_ATTRIBUTE_NAME(TamInt, IntPresenceType)
+SAI_ATTRIBUTE_NAME(TamInt, Inline)
+SAI_ATTRIBUTE_NAME(TamInt, EthTypeCodePoint)
+SAI_ATTRIBUTE_NAME(TamInt, CsigSignalType)
+SAI_ATTRIBUTE_NAME(TamInt, BwTimeInterval)
+SAI_ATTRIBUTE_NAME(TamInt, QuantBands)
+SAI_ATTRIBUTE_NAME(TamInt, QuantBandId)
+SAI_ATTRIBUTE_NAME(TamInt, QuantBandUint64RangeList)
+SAI_ATTRIBUTE_NAME(TamInt, WideQuantBaseValue)
+SAI_ATTRIBUTE_NAME(TamInt, WideQuantStepValue)
+SAI_ATTRIBUTE_NAME(TamInt, CsigDBit)
+#endif
+
 struct SaiTamCollectorTraits {
   static constexpr sai_object_type_t ObjectType = SAI_OBJECT_TYPE_TAM_COLLECTOR;
   using SaiApiT = TamApi;
@@ -37,8 +127,35 @@ struct SaiTamCollectorTraits {
         EnumType,
         SAI_TAM_COLLECTOR_ATTR_TRANSPORT,
         sai_object_id_t>;
-    using DscpValue =
-        SaiAttribute<EnumType, SAI_TAM_COLLECTOR_ATTR_DSCP_VALUE, sai_uint8_t>;
+    using DscpValue = SaiAttribute<
+        EnumType,
+        SAI_TAM_COLLECTOR_ATTR_DSCP_VALUE,
+        sai_uint8_t,
+        StdNullOptDefault<sai_uint8_t>>;
+#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
+    using SrcMacAddress = SaiAttribute<
+        EnumType,
+        SAI_TAM_COLLECTOR_ATTR_SRC_MAC,
+        folly::MacAddress,
+        StdNullOptDefault<folly::MacAddress>>;
+    using DstMacAddress = SaiAttribute<
+        EnumType,
+        SAI_TAM_COLLECTOR_ATTR_DST_MAC,
+        folly::MacAddress,
+        StdNullOptDefault<folly::MacAddress>>;
+    using Destination = SaiAttribute<
+        EnumType,
+        SAI_TAM_COLLECTOR_ATTR_DESTINATION,
+        sai_object_id_t,
+        StdNullOptDefault<sai_object_id_t>>;
+#endif
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 0)
+    using Localhost = SaiAttribute<
+        EnumType,
+        SAI_TAM_COLLECTOR_ATTR_LOCALHOST,
+        bool,
+        StdNullOptDefault<bool>>;
+#endif
   };
   using AdapterKey = TamCollectorSaiId;
   using AdapterHostKey = std::tuple<
@@ -46,7 +163,18 @@ struct SaiTamCollectorTraits {
       Attributes::DstIp,
       std::optional<Attributes::TruncateSize>,
       Attributes::Transport,
-      std::optional<Attributes::DscpValue>>;
+      std::optional<Attributes::DscpValue>
+#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
+      ,
+      std::optional<Attributes::SrcMacAddress>,
+      std::optional<Attributes::DstMacAddress>,
+      std::optional<Attributes::Destination>
+#endif
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 0)
+      ,
+      std::optional<Attributes::Localhost>
+#endif
+      >;
   using CreateAttributes = AdapterHostKey;
 };
 
@@ -55,6 +183,14 @@ SAI_ATTRIBUTE_NAME(TamCollector, DstIp)
 SAI_ATTRIBUTE_NAME(TamCollector, TruncateSize)
 SAI_ATTRIBUTE_NAME(TamCollector, Transport)
 SAI_ATTRIBUTE_NAME(TamCollector, DscpValue)
+#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
+SAI_ATTRIBUTE_NAME(TamCollector, SrcMacAddress)
+SAI_ATTRIBUTE_NAME(TamCollector, DstMacAddress)
+SAI_ATTRIBUTE_NAME(TamCollector, Destination)
+#endif
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 0)
+SAI_ATTRIBUTE_NAME(TamCollector, Localhost)
+#endif
 
 struct SaiTamTransportTraits {
   static constexpr sai_object_type_t ObjectType = SAI_OBJECT_TYPE_TAM_TRANSPORT;
@@ -65,32 +201,57 @@ struct SaiTamTransportTraits {
         EnumType,
         SAI_TAM_TRANSPORT_ATTR_TRANSPORT_TYPE,
         sai_int32_t>;
-    using SrcPort =
-        SaiAttribute<EnumType, SAI_TAM_TRANSPORT_ATTR_SRC_PORT, sai_uint32_t>;
-    using DstPort =
-        SaiAttribute<EnumType, SAI_TAM_TRANSPORT_ATTR_DST_PORT, sai_uint32_t>;
-    using Mtu =
-        SaiAttribute<EnumType, SAI_TAM_TRANSPORT_ATTR_MTU, sai_uint32_t>;
+    using SrcPort = SaiAttribute<
+        EnumType,
+        SAI_TAM_TRANSPORT_ATTR_SRC_PORT,
+        sai_uint32_t,
+        StdNullOptDefault<sai_uint32_t>>;
+    using DstPort = SaiAttribute<
+        EnumType,
+        SAI_TAM_TRANSPORT_ATTR_DST_PORT,
+        sai_uint32_t,
+        StdNullOptDefault<sai_uint32_t>>;
+    using Mtu = SaiAttribute<
+        EnumType,
+        SAI_TAM_TRANSPORT_ATTR_MTU,
+        sai_uint32_t,
+        StdNullOptDefault<sai_uint32_t>>;
+#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
+    using GreProtocolType = SaiAttribute<
+        EnumType,
+        SAI_TAM_TRANSPORT_ATTR_GRE_PROTOCOL_TYPE,
+        sai_uint16_t,
+        StdNullOptDefault<sai_uint16_t>>;
+#endif
     /* extension attributes */
     struct AttributeSrcMacAddress {
       std::optional<sai_attr_id_t> operator()();
     };
-    using SrcMacAddress =
-        SaiExtensionAttribute<folly::MacAddress, AttributeSrcMacAddress>;
+    using SrcMacAddress = SaiExtensionAttribute<
+        folly::MacAddress,
+        AttributeSrcMacAddress,
+        StdNullOptDefault<folly::MacAddress>>;
     struct AttributeDstMacAddress {
       std::optional<sai_attr_id_t> operator()();
     };
-    using DstMacAddress =
-        SaiExtensionAttribute<folly::MacAddress, AttributeDstMacAddress>;
+    using DstMacAddress = SaiExtensionAttribute<
+        folly::MacAddress,
+        AttributeDstMacAddress,
+        StdNullOptDefault<folly::MacAddress>>;
   };
   using AdapterKey = TamTransportSaiId;
   using AdapterHostKey = std::tuple<
       Attributes::Type,
-      Attributes::SrcPort,
-      Attributes::DstPort,
-      Attributes::Mtu,
+      std::optional<Attributes::SrcPort>,
+      std::optional<Attributes::DstPort>,
+      std::optional<Attributes::Mtu>,
       std::optional<Attributes::SrcMacAddress>,
-      std::optional<Attributes::DstMacAddress>>;
+      std::optional<Attributes::DstMacAddress>
+#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
+      ,
+      std::optional<Attributes::GreProtocolType>
+#endif
+      >;
   using CreateAttributes = AdapterHostKey;
 };
 
@@ -98,6 +259,9 @@ SAI_ATTRIBUTE_NAME(TamTransport, Type)
 SAI_ATTRIBUTE_NAME(TamTransport, SrcPort)
 SAI_ATTRIBUTE_NAME(TamTransport, DstPort)
 SAI_ATTRIBUTE_NAME(TamTransport, Mtu)
+#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
+SAI_ATTRIBUTE_NAME(TamTransport, GreProtocolType)
+#endif
 SAI_ATTRIBUTE_NAME(TamTransport, SrcMacAddress)
 SAI_ATTRIBUTE_NAME(TamTransport, DstMacAddress)
 
@@ -323,6 +487,26 @@ class TamApi : public SaiApi<TamApi> {
   }
 
  private:
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+  sai_status_t _create(
+      TamIntSaiId* id,
+      sai_object_id_t switch_id,
+      size_t count,
+      sai_attribute_t* attr_list) const {
+    return api_->create_tam_int(
+        rawSaiId(id), switch_id, static_cast<uint32_t>(count), attr_list);
+  }
+  sai_status_t _remove(TamIntSaiId id) const {
+    return api_->remove_tam_int(id);
+  }
+  sai_status_t _getAttribute(TamIntSaiId id, sai_attribute_t* attr) const {
+    return api_->get_tam_int_attribute(id, 1, attr);
+  }
+  sai_status_t _setAttribute(TamIntSaiId id, const sai_attribute_t* attr)
+      const {
+    return api_->set_tam_int_attribute(id, attr);
+  }
+#endif
   // TAM
   sai_status_t _create(
       TamSaiId* id,

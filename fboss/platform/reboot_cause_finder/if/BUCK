@@ -4,9 +4,25 @@ oncall("fboss_platform")
 
 thrift_library(
     name = "reboot_cause_config",
+    go_thrift_namespaces = {
+        "reboot_cause_config.thrift": "neteng.fboss.platform.reboot_cause_config",
+    },
+    # sensor_service.thrift includes this, so this must emit every language
+    # sensor_service does: a thrift dep has to cover its dependents'. The
+    # namespace settings below mirror the sibling sensor_config target; without
+    # them the generators derive namespaces from the directory path and
+    # disagree with what the thrift file declares.
     languages = [
         "cpp2",
+        "go",
+        "py-deprecated",
+        "py3-deprecated",
+        "python",
+        "rust",
     ],
+    py3_namespace = "neteng.fboss.platform.reboot_cause_config",
+    py_base_module = "neteng.fboss.platform",
     thrift_cpp2_options = "json",
+    thrift_rust_options = ["deprecated_default_enum_min_i32"],
     thrift_srcs = {"reboot_cause_config.thrift": []},
 )

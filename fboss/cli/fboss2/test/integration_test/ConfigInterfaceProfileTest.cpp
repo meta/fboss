@@ -58,6 +58,11 @@ class ConfigInterfaceProfileTest : public Fboss2IntegrationTest {
         subsumedPresent; // present ports the change removes
   };
 
+  struct MultiInterfaceCandidate {
+    Candidate first;
+    Candidate second;
+  };
+
   // A present controlling port C whose current profile subsumes an absent
   // subport S, plus a profile S supports. This scenario is stable (no mutation
   // needed): creating S is rejected because C still subsumes it.
@@ -176,6 +181,35 @@ class ConfigInterfaceProfileTest : public Fboss2IntegrationTest {
         }
         if (mapping.getSubsumedPorts(controlling, profileId).empty()) {
           return Candidate{pit->second.name, pit->second.profileId, name, {}};
+        }
+      }
+    }
+    return std::nullopt;
+  }
+
+  // Two distinct present controlling ports with a common supported profile
+  // that differs from both current profiles.
+  std::optional<MultiInterfaceCandidate> findMultiInterfaceCandidate() const {
+    auto mapping = fetchPlatformMapping();
+    auto present = fetchPresentPorts();
+    auto groups = utility::getSubsidiaryPortIDs(mapping.getPlatformPorts());
+    std::map<std::string, Candidate> candidateByTargetProfile;
+    for (const auto& [controlling, unused] : groups) {
+      int32_t cid = static_cast<int32_t>(controlling);
+      auto pit = present.find(cid);
+      if (pit == present.end()) {
+        continue;
+      }
+      const auto& entry = mapping.getPlatformPort(cid);
+      for (const auto& [profileId, unused2] : *entry.supportedProfiles()) {
+        auto name = apache::thrift::util::enumNameSafe(profileId);
+        if (name == pit->second.profileId) {
+          continue;
+        }
+        Candidate candidate{pit->second.name, pit->second.profileId, name, {}};
+        auto [it, inserted] = candidateByTargetProfile.emplace(name, candidate);
+        if (!inserted) {
+          return MultiInterfaceCandidate{it->second, std::move(candidate)};
         }
       }
     }
@@ -457,45 +491,37 @@ TEST_F(ConfigInterfaceProfileTest, CreateFreedPortWithMtuInOneCommand) {
   XLOG(INFO) << "TEST PASSED";
 }
 
-// The command accepts multiple space-separated port names.
+// A single command changes two distinct ports to a shared alternate profile.
 TEST_F(ConfigInterfaceProfileTest, SetProfileMultiInterface) {
-  XLOG(INFO) << "[Step 1] Finding an interface to test...";
-  auto port = findAnyPresentPort();
-  if (!port) {
-    GTEST_SKIP() << "No present port found";
+  auto cand = findMultiInterfaceCandidate();
+  if (!cand) {
+    GTEST_SKIP() << "No two controlling ports share an alternate profile";
   }
-  XLOG(INFO) << "  Using interface: " << port->name;
+  XLOG(INFO) << "Changing " << cand->first.portName << " ("
+             << cand->first.currentProfile << ") and " << cand->second.portName
+             << " (" << cand->second.currentProfile << ") to "
+             << cand->first.targetProfile;
 
-  XLOG(INFO) << "[Step 2] Reading current profile from agent...";
-  auto info = getPortRunningInfo(port->name);
-  XLOG(INFO) << "  Current profile: " << info.profileId;
-
-  if (info.profileId == "PROFILE_DEFAULT") {
-    GTEST_SKIP() << "Port has PROFILE_DEFAULT; no specific profile to set";
-  }
-
-  // Re-apply the current profile on a multi-port list (same port listed twice,
-  // passed as separate CLI tokens so InterfacesConfig resolves each one).
-  XLOG(INFO) << "[Step 3] Setting " << info.profileId
-             << " on two-port list: " << port->name << " " << port->name;
   auto result = runCli(
       {"config",
        "interface",
-       port->name,
-       port->name,
+       cand->first.portName,
+       cand->second.portName,
        "profile",
-       info.profileId});
+       cand->first.targetProfile});
   ASSERT_EQ(result.exitCode, 0) << result.stderr;
   commitConfig();
 
-  // Verify via direct thrift with wait-retry
-  XLOG(INFO) << "[Step 4] Verifying via agent thrift...";
-  auto after = waitForPortRunningInfo(port->name, [&info](const auto& i) {
-    return i.profileId == info.profileId;
-  });
-  EXPECT_EQ(after.profileId, info.profileId)
-      << "Agent should report " << info.profileId
-      << " after multi-interface set";
+  for (const auto& candidate : {cand->first, cand->second}) {
+    auto after = waitForPortRunningInfo(
+        candidate.portName, [&candidate](const auto& info) {
+          return info.profileId == candidate.targetProfile;
+        });
+    EXPECT_EQ(after.profileId, candidate.targetProfile);
+  }
 
+  // Restore each port independently because their original profiles may differ.
+  setInterfaceProfile(cand->first.portName, cand->first.currentProfile);
+  setInterfaceProfile(cand->second.portName, cand->second.currentProfile);
   XLOG(INFO) << "TEST PASSED";
 }

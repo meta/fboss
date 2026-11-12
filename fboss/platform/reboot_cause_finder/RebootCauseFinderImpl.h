@@ -2,9 +2,11 @@
 
 #pragma once
 
+#include <folly/CppAttributes.h>
 #include <folly/Range.h>
 #include <optional>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "fboss/platform/reboot_cause_finder/if/gen-cpp2/reboot_cause_config_types.h"
@@ -26,6 +28,17 @@ reboot_cause_config::RebootCauseProviderAttempt readProvider(
 // Boot start in epoch seconds. std::nullopt when it cannot be established or
 // is in the future, which disables both readers below.
 std::optional<int64_t> readBootTimeSec(const std::string& procStatPath);
+
+// The window to search before btimeSec, cut so it starts no earlier than the
+// previous boot did. Nothing that happened before the previous boot started
+// can have caused this one, yet a fixed window can still select it: an unclean
+// reset leaves no line of its own, so an older clean reboot's line is the only
+// one in range. std::nullopt, or a start at or after btimeSec, leaves
+// windowSec unchanged.
+int64_t boundWindowByPreviousBoot(
+    int64_t btimeSec,
+    int64_t windowSec,
+    std::optional<int64_t> previousBootStartSec);
 
 // Causes inside [btimeSec - windowSec, btimeSec). At most one each; the match
 // nearest btimeSec wins. Empty when the source is absent.
@@ -72,14 +85,31 @@ reboot_cause_config::RebootCauseProviderAttempt parseBmcWedgePower(
 // a PSU, or a rail all look the same from here.
 // Last resort only: it asserts a cause from the absence of evidence, so it
 // must not outrank a provider that found a positive signal.
+// previousBootAtSec is when the x86 booted before this boot, in seconds since
+// the epoch, or std::nullopt when the reboot history has no earlier record.
+// Nothing is reported if the BMC started before it.
 reboot_cause_config::RebootCauseProviderAttempt readSuddenPowerLoss(
     int64_t btimeSec,
-    int64_t nowSec);
+    int64_t nowSec,
+    std::optional<int64_t> previousBootAtSec);
 
 // Exposed separately from readSuddenPowerLoss so the inference can be tested
 // without an HTTP server.
-reboot_cause_config::RebootCauseProviderAttempt
-parseSuddenPowerLoss(const std::string& body, int64_t btimeSec, int64_t nowSec);
+reboot_cause_config::RebootCauseProviderAttempt parseSuddenPowerLoss(
+    const std::string& body,
+    int64_t btimeSec,
+    int64_t nowSec,
+    std::optional<int64_t> previousBootAtSec);
+
+// The first cause dated after the previous x86 boot and before this boot,
+// [previousBootAtSec, btimeSec), or nullptr. Times come from the provider's
+// timeTs only, so a cause without one is never chosen; nor is any cause when
+// btimeSec is unknown. With no previous boot only the upper bound applies.
+const reboot_cause_config::RebootCause* FOLLY_NULLABLE firstCauseInBootWindow(
+    const std::vector<reboot_cause_config::RebootCause>& causes,
+    const std::string& providerName,
+    std::optional<int64_t> btimeSec,
+    std::optional<int64_t> previousBootAtSec);
 
 // std::nullopt when the name is not a timestamp this code understands.
 std::optional<std::time_t> parseCrashDirName(const std::string& name);
@@ -105,7 +135,43 @@ std::optional<reboot_cause_config::DeterminedCause> selectNearestToBoot(
     const std::vector<reboot_cause_config::RebootCauseProviderAttempt>&
         attempts);
 
+// The record's cause status for a finished run. A cause wins even if other
+// providers failed; without one, any provider not read cleanly makes the
+// absence inconclusive.
+reboot_cause_config::RebootCauseStatus rebootCauseStatus(
+    bool causeDetermined,
+    const std::vector<reboot_cause_config::RebootCauseProviderAttempt>&
+        attempts);
+
 } // namespace detail
+
+// How a run ended, for the one structured event Main logs per run.
+enum class RunOutcome {
+  // Did nothing: the boot id or the history dir could not be read, or a redo
+  // could not remove the existing record.
+  NOT_RUN,
+  // This boot already has a record and no redo was asked for.
+  ALREADY_HANDLED,
+  // The finished record is on disk.
+  RECORDED,
+  // The providers were read but the finished record could not be written.
+  RECORD_FAILED,
+};
+
+struct RunResult {
+  RunOutcome outcome{RunOutcome::NOT_RUN};
+  // Empty when it could not be read.
+  std::string bootId;
+  // The finished record, for RECORDED and RECORD_FAILED.
+  std::optional<reboot_cause_config::RebootCauseRecord> record;
+};
+
+// Tags for the per-run structured event. Built here rather than in Main so the
+// event's contents can be tested without the logger, which reads the platform
+// name from the host.
+std::unordered_map<std::string, std::string> runEventTags(
+    const RunResult& result,
+    int exitStatus);
 
 class RebootCauseFinderImpl {
  public:
@@ -116,6 +182,7 @@ class RebootCauseFinderImpl {
     std::string historyDir;
     std::string procStat;
     std::string bootId;
+    std::string osRelease;
     std::vector<std::string> crashDirs;
     std::vector<std::string> logPaths;
   };
@@ -128,7 +195,7 @@ class RebootCauseFinderImpl {
   // Read all providers, determine the reboot cause, persist the record, and
   // optionally clear providers (when --clear_reboot_causes is set).
   // Invoked once when the one-shot binary runs.
-  void determineRebootCause();
+  RunResult determineRebootCause();
 
  private:
   const reboot_cause_config::RebootCauseConfig config_;
@@ -137,11 +204,13 @@ class RebootCauseFinderImpl {
   void clearProvider(
       const reboot_cause_config::RebootCauseProviderConfig& config);
 
-  // Persist the record as a pretty-printed JSON file under the history dir.
-  // The filename carries the boot id, so a successful write is also what arms
-  // the once-per-boot guard. Returns false if the record did not reach disk.
+  // Persist the record as a pretty-printed JSON file at filePath, replacing
+  // what is there atomically. The filename carries the boot id, so a
+  // successful write is also what arms the once-per-boot guard. Returns false
+  // if the record did not reach disk.
   [[nodiscard]] bool persistResult(
-      const reboot_cause_config::RebootCauseRecord& record);
+      const reboot_cause_config::RebootCauseRecord& record,
+      const std::string& filePath);
 };
 
 } // namespace facebook::fboss::platform::reboot_cause_finder

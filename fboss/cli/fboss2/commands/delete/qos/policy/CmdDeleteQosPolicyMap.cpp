@@ -9,6 +9,7 @@
  */
 
 #include "fboss/cli/fboss2/commands/delete/qos/policy/CmdDeleteQosPolicyMap.h"
+#include "fboss/cli/fboss2/utils/ArgCompletion.h"
 
 #include "fboss/cli/fboss2/CmdHandler.cpp"
 
@@ -332,5 +333,18 @@ void CmdDeleteQosPolicyMap::printOutput(const RetType& logMsg) {
 
 template void
 CmdHandler<CmdDeleteQosPolicyMap, CmdDeleteQosPolicyMapTraits>::run();
+
+std::vector<std::string> CmdDeleteQosPolicyMapTraits::completeArgs(
+    const std::vector<std::string>& typed) {
+  return utils::completion::completePositions(
+      typed,
+      {{"dscp",
+        "mpls-exp",
+        "dot1p",
+        "tc-to-queue",
+        "pfc-pri-to-queue",
+        "tc-to-pg",
+        "pfc-pri-to-pg"}});
+}
 
 } // namespace facebook::fboss

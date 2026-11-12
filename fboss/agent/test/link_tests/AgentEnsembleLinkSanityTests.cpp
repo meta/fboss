@@ -24,6 +24,7 @@ using namespace ::testing;
 using namespace facebook::fboss;
 
 namespace {
+constexpr auto kMaxEcmpWidthPerSwitchId = 512;
 bool isEqual(
     const TransceiverIdxThrift& left,
     const TransceiverIdxThrift& right) {
@@ -84,6 +85,9 @@ class AgentEnsembleLinkSanityTestDataPlaneFlood : public AgentEnsembleLinkTest {
 
   void setCmdLineFlagOverrides() const override {
     AgentEnsembleLinkTest::setCmdLineFlagOverrides();
+    // Default ecmp_width (64) is narrower than the cabled port count per NPU,
+    // which would cap the programmed group below what verify() expects.
+    FLAGS_ecmp_width = kMaxEcmpWidthPerSwitchId;
     FLAGS_enable_lldp = false;
     FLAGS_tun_intf = false;
     FLAGS_update_watermark_stats_interval_s = 0;
@@ -97,19 +101,28 @@ class AgentEnsembleLinkSanityTestDataPlaneFlood : public AgentEnsembleLinkTest {
     const std::string testName =
         testing::UnitTest::GetInstance()->current_test_info()->name();
 
+    std::vector<link_test_production_features::LinkTestProductionFeature>
+        features;
     if (std::find(l1LinkTestNames.begin(), l1LinkTestNames.end(), testName) !=
         l1LinkTestNames.end()) {
-      return {link_test_production_features::LinkTestProductionFeature::
-                  L1_LINK_TEST};
+      features.push_back(
+          link_test_production_features::LinkTestProductionFeature::
+              L1_LINK_TEST);
     } else if (
         std::find(l2LinkTestNames.begin(), l2LinkTestNames.end(), testName) !=
         l2LinkTestNames.end()) {
-      return {link_test_production_features::LinkTestProductionFeature::
-                  L2_LINK_TEST};
+      features.push_back(
+          link_test_production_features::LinkTestProductionFeature::
+              L2_LINK_TEST);
     } else {
       throw std::runtime_error(
           "Test type (L1/L2) not specified for this test case");
     }
+    if (testName == "ptpEnableIsHitless") {
+      features.push_back(
+          link_test_production_features::LinkTestProductionFeature::PTP);
+    }
+    return features;
   }
 };
 
@@ -201,14 +214,20 @@ TEST_F(AgentEnsembleLinkSanityTestDataPlaneFlood, warmbootIsHitLess) {
   // Create a L3 data plane flood and then assert that none of the
   // traffic bearing ports loss traffic.
   // TODO: Assert that all (non downlink) cabled ports get traffic.
+  const auto switchIdUnderTest = SwitchID(FLAGS_switch_id_for_testing);
   verifyAcrossWarmBoots(
-      [this]() { createL3DataplaneFlood(); },
-      [this]() {
+      [this, switchIdUnderTest]() {
+        createL3DataplaneFlood(
+            getSingleVlanOrRoutedCabledPorts(switchIdUnderTest));
+      },
+      [this, switchIdUnderTest]() {
         // Assert no traffic loss and no ecmp shrink. If ports flap
         // these conditions will not be true
         assertNoInDiscards();
-        auto ecmpSizeInSw = getSingleVlanOrRoutedCabledPorts().size();
-        auto client = getAgentEnsemble()->getHwAgentTestClient(SwitchID(0));
+        auto ecmpSizeInSw =
+            getSingleVlanOrRoutedCabledPorts(switchIdUnderTest).size();
+        auto client =
+            getAgentEnsemble()->getHwAgentTestClient(switchIdUnderTest);
         facebook::fboss::utility::CIDRNetwork cidr;
         cidr.IPAddress() = "::";
         cidr.mask() = 0;
@@ -229,9 +248,11 @@ TEST_F(AgentEnsembleLinkSanityTestDataPlaneFlood, qsfpWarmbootIsHitLess) {
   addTestedPorts(getCabledPorts());
   // Create a L3 data plane flood and then warmboot qsfp_service. Then assert
   // that none of the traffic bearing ports loss traffic.
+  const auto switchIdUnderTest = SwitchID(FLAGS_switch_id_for_testing);
   verifyAcrossWarmBoots(
-      [this]() {
-        createL3DataplaneFlood();
+      [this, switchIdUnderTest]() {
+        createL3DataplaneFlood(
+            getSingleVlanOrRoutedCabledPorts(switchIdUnderTest));
         utility::restartQsfpService(false /* coldboot */);
         // Wait for all transceivers to converge to Active state
         EXPECT_NO_THROW(
@@ -243,12 +264,14 @@ TEST_F(AgentEnsembleLinkSanityTestDataPlaneFlood, qsfpWarmbootIsHitLess) {
         EXPECT_NO_THROW(waitForPortStateMachineState(
             true, 60 /* retries */, 5s /* retry interval */));
       },
-      [this]() {
+      [this, switchIdUnderTest]() {
         // Assert no traffic loss and no ecmp shrink. If ports flap
         // these conditions will not be true
         assertNoInDiscards();
-        auto ecmpSizeInSw = getSingleVlanOrRoutedCabledPorts().size();
-        auto client = getAgentEnsemble()->getHwAgentTestClient(SwitchID(0));
+        auto ecmpSizeInSw =
+            getSingleVlanOrRoutedCabledPorts(switchIdUnderTest).size();
+        auto client =
+            getAgentEnsemble()->getHwAgentTestClient(switchIdUnderTest);
         facebook::fboss::utility::CIDRNetwork cidr;
         cidr.IPAddress() = "::";
         cidr.mask() = 0;
@@ -350,6 +373,56 @@ TEST_F(AgentEnsembleLinkTest, opticsTxDisableRandomPorts) {
 
       // Add the peer port to expectedDownPorts list
       expectedDownPorts.push_back(peerPort);
+    }
+  }
+
+  // Ports sharing media lanes with a disabled port (e.g. ZR 3x200G) lose TX
+  // too, so they and their peers are also expected Down
+  std::vector<int32_t> transceiverIds;
+  for (const auto& port : opticalPorts) {
+    transceiverIds.push_back(
+        getSw()->getPlatformMapping()->getTransceiverIdFromSwPort(port));
+  }
+  auto transceiverInfos = utility::waitForTransceiverInfo(transceiverIds);
+  auto getMediaLanes = [&](PortID port) -> std::set<int32_t> {
+    auto tcvrId =
+        getSw()->getPlatformMapping()->getTransceiverIdFromSwPort(port);
+    auto tcvrInfo = transceiverInfos.find(tcvrId);
+    if (tcvrInfo == transceiverInfos.end()) {
+      return {};
+    }
+    const auto& portNameToMediaLanes =
+        *tcvrInfo->second.tcvrState()->portNameToMediaLanes();
+    auto lanes = portNameToMediaLanes.find(getPortName(port));
+    if (lanes == portNameToMediaLanes.end()) {
+      return {};
+    }
+    return {lanes->second.begin(), lanes->second.end()};
+  };
+  for (const auto& disabledPort : disabledPorts) {
+    auto disabledTcvrId =
+        getSw()->getPlatformMapping()->getTransceiverIdFromSwPort(disabledPort);
+    auto disabledLanes = getMediaLanes(disabledPort);
+    for (const auto& port : opticalPorts) {
+      if (port == disabledPort ||
+          getSw()->getPlatformMapping()->getTransceiverIdFromSwPort(port) !=
+              disabledTcvrId) {
+        continue;
+      }
+      auto lanes = getMediaLanes(port);
+      if (std::none_of(lanes.begin(), lanes.end(), [&](int32_t lane) {
+            return disabledLanes.contains(lane);
+          })) {
+        continue;
+      }
+      XLOG(DBG2) << fmt::format(
+          "opticsTxDisableRandomPorts: {:s} shares media lanes with disabled port {:s}",
+          getPortName(port),
+          getPortName(disabledPort));
+      expectedDownPorts.push_back(port);
+      if (auto peerPort = getPeerPortID(port, connectedPairPortIds)) {
+        expectedDownPorts.push_back(*peerPort);
+      }
     }
   }
 
@@ -479,7 +552,9 @@ TEST_F(AgentEnsembleLinkTest, opticsRxOutputDisableEnable) {
       continue;
     }
     const auto& diagCapability = tcvrState.diagCapability().as_const();
-    if (diagCapability.has_value() && *diagCapability->rxOutputControl()) {
+    if (apache::thrift::is_non_optional_field_set_manually_or_by_serializer(
+            diagCapability) &&
+        *diagCapability->rxOutputControl()) {
       rxCtrlPorts.push_back(port);
       rxCtrlPortNames.push_back(getPortName(port));
     }
@@ -585,11 +660,15 @@ TEST_F(AgentEnsembleLinkTest, testOpticsRemediation) {
             getSw()->getPlatformMapping()->getTransceiverIdFromSwPort(port);
         auto txInfoItr = transceiverInfos.find(tcvrId);
         if ((txInfoItr != transceiverInfos.end()) &&
-            (txInfoItr->second.tcvrState().has_value() &&
+            (apache::thrift::
+                 is_non_optional_field_set_manually_or_by_serializer(
+                     txInfoItr->second.tcvrState()) &&
              txInfoItr->second.tcvrState()->identifier().has_value() &&
              txInfoItr->second.tcvrState()->identifier().value() !=
                  TransceiverModuleIdentifier::MINIPHOTON_OBO) &&
-            (txInfoItr->second.tcvrStats().has_value() &&
+            (apache::thrift::
+                 is_non_optional_field_set_manually_or_by_serializer(
+                     txInfoItr->second.tcvrStats()) &&
              txInfoItr->second.tcvrStats()->remediationCounter().has_value())) {
           XLOG(DBG2)
               << "Tcvr Id " << tcvrId << " remediation counter "

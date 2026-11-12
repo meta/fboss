@@ -239,13 +239,79 @@ TEST_F(WatchdogDidNotStopCheckTest, OldWatchdogLogsIgnored) {
 // RecentManualRebootCheck Tests
 // ============================================================================
 
+TEST(RecentManualRebootCheckTest, UnreadableLogFileIsError) {
+  auto host = std::make_shared<MockHost>();
+  EXPECT_CALL(*host, readFile(std::filesystem::path("/var/log/secure")))
+      .WillOnce(Return(std::nullopt));
+  EXPECT_CALL(*host, exists(std::filesystem::path("/var/log/secure")))
+      .WillOnce(Return(true));
+  RecentManualRebootCheck check(CheckTarget{.host = host});
+
+  auto result = check.run();
+
+  EXPECT_EQ(*result.status(), CheckStatus::ERROR);
+}
+
 TEST(RecentManualRebootCheckTest, MissingLogFileIsOk) {
   auto host = std::make_shared<MockHost>();
   EXPECT_CALL(*host, readFile(std::filesystem::path("/var/log/secure")))
       .WillOnce(Return(std::nullopt));
+  EXPECT_CALL(*host, exists(std::filesystem::path("/var/log/secure")))
+      .WillOnce(Return(false));
   RecentManualRebootCheck check(CheckTarget{.host = host});
 
   auto result = check.run();
 
   EXPECT_EQ(*result.status(), CheckStatus::OK);
+}
+
+namespace {
+
+std::string secureLogTimestamp(std::chrono::system_clock::time_point time) {
+  auto timeT = std::chrono::system_clock::to_time_t(time);
+  struct tm tmStorage{};
+  gmtime_r(&timeT, &tmStorage);
+  char buffer[64];
+  std::strftime(buffer, sizeof(buffer), "%b %d %H:%M:%S", &tmStorage);
+  return buffer;
+}
+
+CheckResult runManualRebootCheck(const std::string& secureLog) {
+  auto host = std::make_shared<MockHost>();
+  EXPECT_CALL(*host, readFile(std::filesystem::path("/var/log/secure")))
+      .WillOnce(Return(secureLog));
+  return RecentManualRebootCheck(CheckTarget{.host = host}).run();
+}
+
+} // namespace
+
+TEST(RecentManualRebootCheckTest, RecentRebootIsReported) {
+  auto line = secureLogTimestamp(
+                  std::chrono::system_clock::now() - std::chrono::hours(1)) +
+      " rsw1 systemd-logind[1]: System is rebooting.\n";
+
+  auto result = runManualRebootCheck(line);
+
+  EXPECT_EQ(*result.status(), CheckStatus::PROBLEM);
+}
+
+TEST(RecentManualRebootCheckTest, OldRebootIsIgnored) {
+  auto line = secureLogTimestamp(
+                  std::chrono::system_clock::now() - std::chrono::hours(72)) +
+      " rsw1 systemd-logind[1]: System is rebooting.\n";
+
+  auto result = runManualRebootCheck(line);
+
+  EXPECT_EQ(*result.status(), CheckStatus::OK);
+}
+
+TEST(PowerResetUtilsTest, YearlessTimestampAfterNowIsLastYear) {
+  // A yearless timestamp two days ahead can only be from last year.
+  auto future = std::chrono::system_clock::now() + std::chrono::hours(48);
+
+  auto parsed = power_reset_utils::parseDateTime(
+      secureLogTimestamp(future), "%b %d %H:%M:%S");
+
+  ASSERT_TRUE(parsed.has_value());
+  EXPECT_LT(*parsed, std::chrono::system_clock::now());
 }

@@ -46,7 +46,7 @@
     </preferences>
     <users>
         <user name="root" password="root" pwdformat="plain" groups="root" home="/root"/>
-        <user name="netops" password="netops" pwdformat="plain" groups="netops,wheel,switching" home="/home/netops"/>
+        <user name="netops" password="netops" pwdformat="plain" groups="netops" home="/home/netops"/>
     </users>
 
     <repository type="rpm-md" alias="CentOS9-ExtrasCommon" sourcetype="metalink">
@@ -115,6 +115,7 @@
         <package name="ipmitool"/>
         <package name="sudo"/>
         <package name="wget"/>
+        <package name="bash-completion"/>
         <package name="vim"/>
         <package name="flashrom"/>
         <package name="libgpiod-utils"/>

@@ -144,7 +144,8 @@ class PtpTests : public LinkTest {
   void verifyPtpTcOnPorts(
       boost::container::flat_set<PortDescriptor>& ecmpPorts,
       PTPMessageType ptpType) {
-    for (const auto& portDescriptor : ecmpPorts) {
+    if (!ecmpPorts.empty()) {
+      const auto& portDescriptor = *ecmpPorts.begin();
       // There are cases where a burst of other packets could occupy the CPU
       // queue (e.g. NDP etc.) and force PTP packets to be dropped. In this
       // case, retry 3 times on the same port.
@@ -157,7 +158,6 @@ class PtpTests : public LinkTest {
       EXPECT_FALSE(retryable)
           << "Failed to capture PTP packets on port "
           << portDescriptor.phyPortID() << " after multiple retries";
-      break;
     }
   }
 

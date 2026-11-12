@@ -22,4 +22,20 @@ SaiAclEntryTraits::Attributes::AttributeFieldRouteDestination::operator()() {
   return std::nullopt;
 }
 
+std::optional<sai_attr_id_t>
+SaiAclTableTraits::Attributes::AttributeFieldRouteDestination::operator()() {
+  return std::nullopt;
+}
+
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 2)
+std::optional<sai_attr_id_t>
+SaiAclCounterTraits::Attributes::AttributeLabelExtendedWrapper::operator()() {
+#if defined(BRCM_SAI_SDK_XGS_GTE_16_0)
+  return SAI_ACL_COUNTER_ATTR_LABEL_WIDE;
+#else
+  return std::nullopt;
+#endif
+}
+#endif
+
 } // namespace facebook::fboss

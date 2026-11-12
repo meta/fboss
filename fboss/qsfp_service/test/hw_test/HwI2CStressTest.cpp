@@ -280,7 +280,10 @@ TEST_F(HwTest, cmisPageChange) {
           // Expect the previous response and the new response to be the same
           EXPECT_EQ(
               *(previousResponses[page][tcvrId].data()->data() + i),
-              *(currentResponse[tcvrId].data()->data() + i));
+              *(currentResponse[tcvrId].data()->data() + i))
+              << "Transceiver " << tcvrId << " page 0x" << std::hex << page
+              << " byte " << std::dec << 128 + i << " changed on iteration "
+              << iteration;
         }
       }
     }

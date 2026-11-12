@@ -54,13 +54,23 @@
     }
   },
   "variants": {
-    "": {},
+    "default": {
+      "mgmt_port_overrides": {
+        "speed": 10000
+      }
+    },
+    "benchmark": {
+      "asic_config_params": {
+        "config_gen_type": "BENCHMARK"
+      }
+    },
     "hw_test": {
       "asic_config_params": {
         "config_gen_type": "HW_TEST"
       },
       "features": {
-        "enable_sai_managed_udf_groups": true
+        "enable_sai_managed_udf_groups": true,
+        "enable_uncached_port_stats": true
       }
     }
   }

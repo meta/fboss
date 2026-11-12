@@ -53,6 +53,7 @@ cpp_library(
     name = "fsdb_model_thriftpath",
     headers = ["fsdb_model_thriftpath.h"],
     exported_deps = [
+        "fbsource//xplat/folly:unit",
         ":fsdb_model-cpp2-types",
         "//configerator/structs/neteng/bgp_policy/thrift:rib_policy-cpp2-types",
         "//fboss/agent:agent_config-cpp2-types",
@@ -67,7 +68,6 @@ cpp_library(
         "//fboss/qsfp_service/if:state-cpp2-types",
         "//fboss/qsfp_service/if:stats-cpp2-types",
         "//fboss/thriftpath_plugin:path",
-        "//folly:unit",
         "//neteng/fboss/bgp/if:bgp_route_types-cpp2-types",
         "//neteng/fboss/bgp/public_tld/configerator/structs/neteng/fboss/bgp:bgp_config_oss-cpp2-types",
     ],

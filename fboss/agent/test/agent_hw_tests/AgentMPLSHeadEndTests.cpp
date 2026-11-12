@@ -20,7 +20,7 @@
 #include "fboss/agent/packet/EthFrame.h"
 #include "fboss/agent/test/EcmpSetupHelper.h"
 #include "fboss/agent/test/agent_hw_tests/AgentMPLSDataplaneTest.h"
-#include "fboss/agent/test/agent_hw_tests/AgentMPLSDataplaneTestUtils.h"
+#include "fboss/agent/test/utils/AgentMPLSDataplaneTestUtils.h"
 #include "fboss/agent/test/utils/TrapPacketUtils.h"
 #include "fboss/agent/types.h"
 

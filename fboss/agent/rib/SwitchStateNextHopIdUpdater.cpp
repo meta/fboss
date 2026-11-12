@@ -9,6 +9,7 @@
  */
 #include "fboss/agent/rib/SwitchStateNextHopIdUpdater.h"
 
+#include "fboss/agent/AgentFeatures.h"
 #include "fboss/agent/FibHelpers.h"
 #include "fboss/agent/state/FibInfo.h"
 #include "fboss/agent/state/FibInfoMap.h"
@@ -149,7 +150,9 @@ std::shared_ptr<SwitchState> SwitchStateNextHopIdUpdater::operator()(
 
 bool SwitchStateNextHopIdUpdater::verifyNextHopIdConsistency(
     const std::shared_ptr<SwitchState>& state) const {
-  if (!nextHopIDManager_) {
+  // With the inline nexthops dropped there is nothing to cross-check the IDs
+  // against.
+  if (!nextHopIDManager_ || FLAGS_drop_inline_nexthops_with_id) {
     return true;
   }
 

@@ -11,6 +11,7 @@ from fboss_test_runner.constants import (
     OPT_ARG_FILTER,
     OPT_ARG_FILTER_FILE,
     OPT_ARG_PROFILE,
+    OPT_ARG_TIER,
     SUB_CMD_BCM,
     SUB_CMD_BENCHMARK,
     SUB_CMD_FBOSS2_INTEGRATION,
@@ -125,9 +126,13 @@ def _parse_args(argv: list[str] | None = None) -> Namespace:
             f"Only one of the {OPT_ARG_FILTER} or {OPT_ARG_FILTER_FILE} can be specified at any time"
         )
 
-    if getattr(args, "profile", None) and not getattr(args, "filter_file", None):
+    if (
+        getattr(args, "profile", None)
+        and not getattr(args, "filter_file", None)
+        and not getattr(args, "tier", None)
+    ):
         raise TestRunnerUsageError(
-            f"{OPT_ARG_PROFILE} requires {OPT_ARG_FILTER_FILE} to be specified"
+            f"{OPT_ARG_PROFILE} requires {OPT_ARG_FILTER_FILE} or {OPT_ARG_TIER} to be specified"
         )
 
     return args

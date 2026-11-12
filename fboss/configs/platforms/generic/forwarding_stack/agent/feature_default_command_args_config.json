@@ -15,6 +15,27 @@
       "skip_transceiver_programming": "true",
       "use_full_dlb_scale": "true",
       "verify_fib_nexthop_id_consistency": "true"
+    },
+    "benchmark": {
+      "check_wb_handles": "true",
+      "counter_refresh_interval": "1",
+      "enable_nexthop_id_manager": "true",
+      "enable_route_resource_protection": "false",
+      "log_variable_name": "true",
+      "resolve_nexthops_from_id": "true",
+      "skip_transceiver_programming": "true",
+      "use_full_dlb_scale": "true"
+    },
+    "link_test": {
+      "check_wb_handles": "true",
+      "counter_refresh_interval": "0",
+      "disable_neighbor_updates": "true",
+      "enable_nexthop_id_manager": "true",
+      "enable_replayer": "true",
+      "intf_nbr_tables": "true",
+      "log_variable_name": "true",
+      "resolve_nexthops_from_id": "true",
+      "verify_fib_nexthop_id_consistency": "true"
     }
   },
   "features": {
@@ -22,125 +43,139 @@
       "args": {
         "sai_configure_six_tap": "true"
       },
-      "autoEnableWhen": {
-        "configProfiles": {
-          "included": [
-            "default",
-            "hw_test"
-          ]
-        },
-        "asicTypes": {
-          "included": [
-            "ASIC_TYPE_CHENAB",
-            "ASIC_TYPE_JERICHO3",
-            "ASIC_TYPE_JERICHO4",
-            "ASIC_TYPE_QUMRAN4D",
-            "ASIC_TYPE_RAMON3",
-            "ASIC_TYPE_TOMAHAWK5",
-            "ASIC_TYPE_TOMAHAWKULTRA1"
-          ]
+      "autoEnableWhen": [
+        {
+          "configProfiles": {
+            "included": [
+              "default",
+              "hw_test",
+              "benchmark",
+              "link_test"
+            ]
+          },
+          "asicTypes": {
+            "included": [
+              "ASIC_TYPE_CHENAB",
+              "ASIC_TYPE_JERICHO3",
+              "ASIC_TYPE_JERICHO4",
+              "ASIC_TYPE_QUMRAN4D",
+              "ASIC_TYPE_RAMON3",
+              "ASIC_TYPE_TOMAHAWK5",
+              "ASIC_TYPE_TOMAHAWKULTRA1"
+            ]
+          }
         }
-      }
+      ]
     },
     "set_classid_for_my_subnet_and_ip_routes": {
       "args": {
         "set_classid_for_my_subnet_and_ip_routes": "true"
       },
-      "autoEnableWhen": {
-        "configProfiles": {
-          "included": [
-            "hw_test"
-          ]
-        },
-        "asicTypes": {
-          "included": [
-            "ASIC_TYPE_CHENAB",
-            "ASIC_TYPE_JERICHO3",
-            "ASIC_TYPE_JERICHO4",
-            "ASIC_TYPE_QUMRAN4D"
-          ]
+      "autoEnableWhen": [
+        {
+          "configProfiles": {
+            "included": [
+              "hw_test"
+            ]
+          },
+          "asicTypes": {
+            "included": [
+              "ASIC_TYPE_CHENAB",
+              "ASIC_TYPE_JERICHO3",
+              "ASIC_TYPE_JERICHO4",
+              "ASIC_TYPE_QUMRAN4D"
+            ]
+          }
         }
-      }
+      ]
     },
     "unresolved_to_cpu_routes_acl": {
       "args": {
         "classid_for_unresolved_routes": "true"
       },
-      "autoEnableWhen": {
-        "configProfiles": {
-          "included": [
-            "hw_test"
-          ]
-        },
-        "asicTypes": {
-          "included": [
-            "ASIC_TYPE_EBRO",
-            "ASIC_TYPE_G202X",
-            "ASIC_TYPE_JERICHO3",
-            "ASIC_TYPE_JERICHO4",
-            "ASIC_TYPE_QUMRAN4D",
-            "ASIC_TYPE_YUBA"
-          ]
+      "autoEnableWhen": [
+        {
+          "configProfiles": {
+            "included": [
+              "hw_test"
+            ]
+          },
+          "asicTypes": {
+            "included": [
+              "ASIC_TYPE_EBRO",
+              "ASIC_TYPE_G202X",
+              "ASIC_TYPE_JERICHO3",
+              "ASIC_TYPE_JERICHO4",
+              "ASIC_TYPE_QUMRAN4D",
+              "ASIC_TYPE_YUBA"
+            ]
+          }
         }
-      }
+      ]
     },
     "enable_acl_table_group": {
       "args": {
         "enable_acl_table_group": "true"
       },
-      "autoEnableWhen": {
-        "configProfiles": {
-          "included": [
-            "default",
-            "hw_test"
-          ]
-        },
-        "asicTypes": {
-          "excluded": [
-            "ASIC_TYPE_EBRO",
-            "ASIC_TYPE_RAMON3"
-          ]
+      "autoEnableWhen": [
+        {
+          "configProfiles": {
+            "included": [
+              "default",
+              "hw_test",
+              "benchmark",
+              "link_test"
+            ]
+          },
+          "asicTypes": {
+            "excluded": [
+              "ASIC_TYPE_EBRO",
+              "ASIC_TYPE_RAMON3"
+            ]
+          }
         }
-      }
+      ]
     },
     "led_controlled_by_led_service": {
       "args": {
         "led_controlled_through_led_service": "true"
       },
-      "autoEnableWhen": {
-        "configProfiles": {
-          "included": [
-            "default"
-          ]
-        },
-        "platforms": {
-          "excluded": [
-            "PLATFORM_WEDGE",
-            "PLATFORM_WEDGE100",
-            "PLATFORM_GALAXY_LC",
-            "PLATFORM_GALAXY_FC",
-            "PLATFORM_MINIPACK",
-            "PLATFORM_YAMP",
-            "PLATFORM_WEDGE400",
-            "PLATFORM_WEDGE400_GRANDTETON",
-            "PLATFORM_WEDGE400C",
-            "PLATFORM_WEDGE400C_VOQ",
-            "PLATFORM_WEDGE400C_FABRIC",
-            "PLATFORM_WEDGE400C_GRANDTETON",
-            "PLATFORM_FUJI",
-            "PLATFORM_ELBERT",
-            "PLATFORM_CLOUDRIPPER_DEPRECATED",
-            "PLATFORM_CLOUDRIPPER_VOQ_DEPRECATED",
-            "PLATFORM_CLOUDRIPPER_FABRIC_DEPRECATED",
-            "PLATFORM_DARWIN",
-            "PLATFORM_DARWIN48V",
-            "PLATFORM_LASSEN_DEPRECATED",
-            "PLATFORM_SANDIA",
-            "PLATFORM_MERU400BFU_DEPRECATED",
-            "PLATFORM_MERU400BIU_DEPRECATED"
-          ]
+      "autoEnableWhen": [
+        {
+          "configProfiles": {
+            "included": [
+              "default"
+            ]
+          },
+          "platforms": {
+            "excluded": [
+              "PLATFORM_WEDGE",
+              "PLATFORM_WEDGE100",
+              "PLATFORM_GALAXY_LC",
+              "PLATFORM_GALAXY_FC",
+              "PLATFORM_MINIPACK",
+              "PLATFORM_YAMP",
+              "PLATFORM_WEDGE400",
+              "PLATFORM_WEDGE400_GRANDTETON",
+              "PLATFORM_WEDGE400C",
+              "PLATFORM_WEDGE400C_VOQ",
+              "PLATFORM_WEDGE400C_FABRIC",
+              "PLATFORM_WEDGE400C_GRANDTETON",
+              "PLATFORM_FUJI",
+              "PLATFORM_ELBERT",
+              "PLATFORM_CLOUDRIPPER_DEPRECATED",
+              "PLATFORM_CLOUDRIPPER_VOQ_DEPRECATED",
+              "PLATFORM_CLOUDRIPPER_FABRIC_DEPRECATED",
+              "PLATFORM_DARWIN",
+              "PLATFORM_DARWIN48V",
+              "PLATFORM_LASSEN_DEPRECATED",
+              "PLATFORM_SANDIA",
+              "PLATFORM_MERU400BFU_DEPRECATED",
+              "PLATFORM_MERU400BIU_DEPRECATED"
+            ]
+          }
         }
-      }
+      ]
     },
     "dual_stage_rdsw_3q_2q": {
       "args": {
@@ -181,71 +216,93 @@
       "args": {
         "enable_1to1_intf_route_table_mapping": "true"
       },
-      "autoEnableWhen": {
-        "configProfiles": {
-          "included": [
-            "hw_test"
-          ]
+      "autoEnableWhen": [
+        {
+          "configProfiles": {
+            "included": [
+              "hw_test"
+            ]
+          },
+          "asicTypes": {
+            "included": [
+              "ASIC_TYPE_TOMAHAWK6"
+            ]
+          },
+          "comment": "TH6 hardware tests require 1:1 interface route-table mapping."
         },
-        "asicTypes": {
-          "included": [
-            "ASIC_TYPE_TOMAHAWK6"
-          ]
+        {
+          "configProfiles": {
+            "included": [
+              "link_test"
+            ]
+          },
+          "platforms": {
+            "included": [
+              "PLATFORM_MONTBLANC"
+            ]
+          },
+          "comment": "Montblanc link tests can generate interface IDs above 2252, so direct mapping avoids overflowing the legacy 1-253 route-table range."
         }
-      }
+      ]
     },
     "egress_buffer_pool_size": {
       "args": {
         "egress_buffer_pool_size": "252000000"
       },
-      "autoEnableWhen": {
-        "configProfiles": {
-          "included": [
-            "hw_test"
-          ]
-        },
-        "asicTypes": {
-          "included": [
-            "ASIC_TYPE_TOMAHAWK6"
-          ]
+      "autoEnableWhen": [
+        {
+          "configProfiles": {
+            "included": [
+              "hw_test"
+            ]
+          },
+          "asicTypes": {
+            "included": [
+              "ASIC_TYPE_TOMAHAWK6"
+            ]
+          }
         }
-      }
+      ]
     },
     "test_fixture": {
       "args": {
         "test_fixture": "true"
       },
-      "autoEnableWhen": {
-        "configProfiles": {
-          "included": [
-            "hw_test"
-          ]
-        },
-        "platforms": {
-          "included": [
-            "PLATFORM_LADAKH800BCLS",
-            "PLATFORM_LEH800BCLS",
-            "PLATFORM_TAHANSB800BC"
-          ]
+      "autoEnableWhen": [
+        {
+          "configProfiles": {
+            "included": [
+              "hw_test"
+            ]
+          },
+          "platforms": {
+            "included": [
+              "PLATFORM_LADAKH800BCLS",
+              "PLATFORM_LEH800BCLS",
+              "PLATFORM_TAHANSB800BC"
+            ]
+          }
         }
-      }
+      ]
     },
     "minipack3bta_16rifs": {
       "args": {
         "minipack3bta_16rifs": "true"
       },
-      "autoEnableWhen": {
-        "configProfiles": {
-          "included": [
-            "hw_test"
-          ]
-        },
-        "platforms": {
-          "included": [
-            "PLATFORM_MINIPACK3BTA"
-          ]
+      "autoEnableWhen": [
+        {
+          "configProfiles": {
+            "included": [
+              "hw_test"
+            ]
+          },
+          "platforms": {
+            "included": [
+              "PLATFORM_MINIPACK3BTA"
+            ]
+          }
         }
-      }
+      ]
     },
     "srv6": {
       "args": {
@@ -256,151 +313,189 @@
       "args": {
         "platform_descriptor_config_path": "/tmp/platform_descriptors/"
       },
-      "autoEnableWhen": {
-        "configProfiles": {
-          "included": [
-            "hw_test"
-          ]
-        },
-        "platforms": {
-          "included": [
-            "PLATFORM_WEDGE800BACT",
-            "PLATFORM_WEDGE800CACT",
-            "PLATFORM_WEDGE800BNHP",
-            "PLATFORM_WEDGE800CNHP",
-            "PLATFORM_M5120CSC"
-          ]
+      "autoEnableWhen": [
+        {
+          "configProfiles": {
+            "included": [
+              "hw_test",
+              "benchmark",
+              "link_test"
+            ]
+          }
         }
-      }
+      ]
     },
     "platform_descriptor_registry": {
       "args": {
         "platform_descriptor_config_path": "/opt/fboss/share/platform_descriptors/"
       },
-      "autoEnableWhen": {
-        "configProfiles": {
-          "included": [
-            "default"
-          ]
-        },
-        "platforms": {
-          "included": [
-            "PLATFORM_WEDGE800BACT",
-            "PLATFORM_WEDGE800CACT",
-            "PLATFORM_WEDGE800BNHP",
-            "PLATFORM_WEDGE800CNHP",
-            "PLATFORM_M5120CSC"
-          ]
+      "autoEnableWhen": [
+        {
+          "configProfiles": {
+            "included": [
+              "default"
+            ]
+          }
         }
-      }
+      ]
     },
     "use_raw_platform_mapping": {
       "args": {
         "use_raw_platform_mapping": "true"
       },
-      "autoEnableWhen": {
-        "configProfiles": {
-          "included": [
-            "hw_test",
-            "default"
-          ]
-        },
-        "platforms": {
-          "included": [
-            "PLATFORM_WEDGE800BACT",
-            "PLATFORM_WEDGE800CACT"
-          ]
+      "autoEnableWhen": [
+        {
+          "configProfiles": {
+            "included": [
+              "hw_test",
+              "default",
+              "benchmark",
+              "link_test"
+            ]
+          },
+          "platforms": {
+            "included": [
+              "PLATFORM_WEDGE800BACT",
+              "PLATFORM_WEDGE800CACT"
+            ]
+          }
         }
-      }
+      ]
     },
     "sai_user_defined_trap_for_testing": {
       "args": {
         "sai_user_defined_trap": "true"
       },
-      "autoEnableWhen": {
-        "configProfiles": {
-          "included": [
-            "hw_test"
-          ]
-        },
-        "asicTypes": {
-          "included": [
-            "ASIC_TYPE_CHENAB"
-          ]
+      "autoEnableWhen": [
+        {
+          "configProfiles": {
+            "included": [
+              "hw_test"
+            ]
+          },
+          "asicTypes": {
+            "included": [
+              "ASIC_TYPE_CHENAB"
+            ]
+          }
         }
-      }
+      ]
     },
     "sai_user_defined_trap": {
       "args": {
         "sai_user_defined_trap": "true"
       },
-      "autoEnableWhen": {
-        "configProfiles": {
-          "included": [
-            "default"
-          ]
-        },
-        "asicTypes": {
-          "included": [
-            "ASIC_TYPE_TOMAHAWK",
-            "ASIC_TYPE_TOMAHAWK3",
-            "ASIC_TYPE_TOMAHAWK4",
-            "ASIC_TYPE_TOMAHAWK5",
-            "ASIC_TYPE_CHENAB"
-          ]
+      "autoEnableWhen": [
+        {
+          "configProfiles": {
+            "included": [
+              "default",
+              "link_test"
+            ]
+          },
+          "asicTypes": {
+            "included": [
+              "ASIC_TYPE_TOMAHAWK",
+              "ASIC_TYPE_TOMAHAWK3",
+              "ASIC_TYPE_TOMAHAWK4",
+              "ASIC_TYPE_TOMAHAWK5",
+              "ASIC_TYPE_CHENAB"
+            ]
+          }
         }
-      }
+      ]
     },
     "rx_vlan_untagged_packets": {
       "args": {
         "rx_vlan_untagged_packets": "true"
       },
-      "autoEnableWhen": {
-        "configProfiles": {
-          "included": [
-            "hw_test"
-          ]
-        },
-        "asicTypes": {
-          "included": [
-            "ASIC_TYPE_CHENAB"
-          ]
+      "autoEnableWhen": [
+        {
+          "configProfiles": {
+            "included": [
+              "hw_test"
+            ]
+          },
+          "asicTypes": {
+            "included": [
+              "ASIC_TYPE_CHENAB"
+            ]
+          }
         }
-      }
+      ]
     },
     "permitted_thrift_ssl_policy": {
       "args": {
         "thrift_ssl_policy": "permitted"
       },
-      "autoEnableWhen": {
-        "configProfiles": {
-          "included": [
-            "hw_test"
-          ]
-        },
-        "asicTypes": {
-          "included": [
-            "ASIC_TYPE_CHENAB"
-          ]
+      "autoEnableWhen": [
+        {
+          "configProfiles": {
+            "included": [
+              "hw_test"
+            ]
+          },
+          "asicTypes": {
+            "included": [
+              "ASIC_TYPE_CHENAB"
+            ]
+          }
         }
-      }
+      ]
     },
     "ecmp_width_128": {
       "args": {
         "ecmp_width": "128"
       },
-      "autoEnableWhen": {
-        "configProfiles": {
-          "included": [
-            "hw_test"
-          ]
+      "autoEnableWhen": [
+        {
+          "configProfiles": {
+            "included": [
+              "hw_test"
+            ]
+          },
+          "asicTypes": {
+            "included": [
+              "ASIC_TYPE_CHENAB"
+            ]
+          },
+          "comment": "CHENAB hardware tests require 128-way ECMP."
         },
-        "asicTypes": {
-          "included": [
-            "ASIC_TYPE_CHENAB"
-          ]
+        {
+          "configProfiles": {
+            "included": [
+              "link_test"
+            ]
+          },
+          "platforms": {
+            "included": [
+              "PLATFORM_WEDGE800BACT"
+            ]
+          },
+          "comment": "Wedge800BACT link tests can enable more than 64 ports, exceeding the default ECMP width of 64."
         }
-      }
+      ]
+    },
+    "ecmp_width_320": {
+      "args": {
+        "ecmp_width": "320"
+      },
+      "autoEnableWhen": [
+        {
+          "configProfiles": {
+            "included": [
+              "link_test"
+            ]
+          },
+          "platforms": {
+            "included": [
+              "PLATFORM_MONTBLANC",
+              "PLATFORM_MINIPACK3BTA"
+            ]
+          },
+          "comment": "Montblanc and Minipack3BTA link tests use the maximum 320-way port breakout (32 x 8 plus 32 x 2), which exceeds the default ECMP width of 64."
+        }
+      ]
     },
     "ecmp_width_2048": {
       "args": {
@@ -411,52 +506,58 @@
       "args": {
         "mode": "yangra"
       },
-      "autoEnableWhen": {
-        "configProfiles": {
-          "included": [
-            "hw_test"
-          ]
-        },
-        "platforms": {
-          "included": [
-            "PLATFORM_YANGRA"
-          ]
+      "autoEnableWhen": [
+        {
+          "configProfiles": {
+            "included": [
+              "hw_test"
+            ]
+          },
+          "platforms": {
+            "included": [
+              "PLATFORM_YANGRA"
+            ]
+          }
         }
-      }
+      ]
     },
     "yangra2_mode": {
       "args": {
         "mode": "yangra2"
       },
-      "autoEnableWhen": {
-        "configProfiles": {
-          "included": [
-            "hw_test"
-          ]
-        },
-        "platforms": {
-          "included": [
-            "PLATFORM_YANGRA2"
-          ]
+      "autoEnableWhen": [
+        {
+          "configProfiles": {
+            "included": [
+              "hw_test"
+            ]
+          },
+          "platforms": {
+            "included": [
+              "PLATFORM_YANGRA2"
+            ]
+          }
         }
-      }
+      ]
     },
     "delay_drop_congestion_threshold": {
       "args": {
         "enable_delay_drop_congestion_threshold": "true"
       },
-      "autoEnableWhen": {
-        "configProfiles": {
-          "included": [
-            "hw_test"
-          ]
-        },
-        "asicTypes": {
-          "included": [
-            "ASIC_TYPE_EBRO"
-          ]
+      "autoEnableWhen": [
+        {
+          "configProfiles": {
+            "included": [
+              "hw_test"
+            ]
+          },
+          "asicTypes": {
+            "included": [
+              "ASIC_TYPE_EBRO"
+            ]
+          }
         }
-      }
+      ]
     }
   }
 }

@@ -18,6 +18,7 @@
 #include <CLI/App.hpp>
 #include <fmt/format.h>
 #include <folly/Singleton.h>
+#include <algorithm>
 #include <map>
 #include <memory>
 #include <stdexcept>
@@ -50,6 +51,30 @@ const std::map<std::string, std::string>& kSupportedVerbs() {
 
   return supportedVerbs;
 };
+
+bool isWriteCommand(const facebook::fboss::Command& cmd) {
+  return cmd.commandHandler &&
+      cmd.commandHandler->mode() ==
+      facebook::fboss::CliReadWriteMode::CLI_MODE_WRITE;
+}
+
+bool usesVerb(
+    const facebook::fboss::CommandTree& cmdTree,
+    const std::string& verb) {
+  return std::ranges::any_of(
+      cmdTree, [&](const auto& cmd) { return cmd.verb == verb; });
+}
+
+template <typename CmdT>
+void pruneWriteCommands(std::vector<CmdT>& cmds) {
+  std::erase_if(cmds, [](const CmdT& cmd) { return isWriteCommand(cmd); });
+  for (auto& cmd : cmds) {
+    pruneWriteCommands(cmd.subcommands);
+  }
+  std::erase_if(cmds, [](const CmdT& cmd) {
+    return !cmd.commandHandler && cmd.subcommands.empty();
+  });
+}
 
 } // namespace
 
@@ -108,6 +133,9 @@ CLI::App* CmdSubcommands::addCommand(
       // Config commands: direct dispatch via addCliArg
       auto& args = CmdArgsLists::getInstance()->refAt(depth);
       (*argRegistrar)(*subCmd, args);
+      if (argRegistrar->completeArgs) {
+        argCompleters_[subCmd] = argRegistrar->completeArgs;
+      }
     } else if (auto& argTypeHandler = cmd.argTypeHandler) {
       // Non-config commands: enum-based dispatch via switch
       auto& args = CmdArgsLists::getInstance()->refAt(depth);
@@ -246,9 +274,6 @@ CLI::App* CmdSubcommands::addCommand(
         case utils::ObjectArgTypeId::OBJECT_ARG_TYPE_ID_SWITCH_NAME_LIST:
           subCmd->add_option("switch_name_list", args, "Switch Name(s)");
           break;
-        case utils::ObjectArgTypeId::OBJECT_ARG_TYPE_FAN_PWM:
-          subCmd->add_option("pwm", args, "Fan PWM (0..100) or 'disable'");
-          break;
         case utils::ObjectArgTypeId::OBJECT_ARG_TYPE_MTU:
           subCmd->add_option(
               "mtu",
@@ -269,6 +294,12 @@ CLI::App* CmdSubcommands::addCommand(
     subCmd->require_subcommand();
   }
   return subCmd;
+}
+
+const ArgCompleterFn* FOLLY_NULLABLE
+CmdSubcommands::getArgCompleter(const CLI::App* cmd) const {
+  auto it = argCompleters_.find(cmd);
+  return it == argCompleters_.end() ? nullptr : &it->second;
 }
 
 void CmdSubcommands::addCommandBranch(
@@ -329,8 +360,13 @@ void CmdSubcommands::init(
     CLI::App& app,
     const CommandTree& cmdTree,
     const CommandTree& additionalCmdTree,
-    const std::vector<Command>& specialCmds) {
+    const std::vector<Command>& specialCmds,
+    VerbRegistration verbRegistration) {
   for (const auto& [verb, helpMsg] : kSupportedVerbs()) {
+    if (verbRegistration == VerbRegistration::kOnlyUsed &&
+        !usesVerb(cmdTree, verb) && !usesVerb(additionalCmdTree, verb)) {
+      continue;
+    }
     app.add_subcommand(verb, helpMsg);
   }
 
@@ -340,6 +376,16 @@ void CmdSubcommands::init(
     std::string fullCmd;
     addCommand(app, cmd, fullCmd, 0);
   }
+}
+
+CommandTree filterReadCommands(CommandTree cmdTree) {
+  pruneWriteCommands(cmdTree);
+  return cmdTree;
+}
+
+std::vector<Command> filterReadCommands(std::vector<Command> cmds) {
+  pruneWriteCommands(cmds);
+  return cmds;
 }
 
 } // namespace facebook::fboss

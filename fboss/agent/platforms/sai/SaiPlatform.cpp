@@ -250,8 +250,8 @@ std::string SaiPlatform::getHwAsicConfig(
   if (chipConfigType != facebook::fboss::cfg::ChipConfig::Type::asicConfig) {
     throw FbossError("No asic config v2 found in agent config");
   }
-  auto asicConfig = config()->thrift.platform()->chip()->get_asicConfig();
-  auto& commonConfigs = asicConfig.common()->get_config();
+  auto asicConfig = config()->thrift.platform()->chip()->asicConfig().value();
+  auto& commonConfigs = asicConfig.common()->config().as_const().value();
   std::vector<std::string> nameValStrs;
   auto addNameValue = [&nameValStrs, &overrides](const auto& keyAndVal) {
     auto oitr = overrides.find(keyAndVal.first);
@@ -277,7 +277,7 @@ std::string SaiPlatform::getHwAsicConfig(
     CHECK_LT(FLAGS_switchIndex, npuEntries.size());
     const auto& npuEntry = npuEntries.find(FLAGS_switchIndex);
     if (npuEntry != npuEntries.end()) {
-      for (const auto& entry : npuEntry->second.get_config()) {
+      for (const auto& entry : npuEntry->second.config().as_const().value()) {
         addNameValue(entry);
       }
     }
@@ -531,6 +531,14 @@ SaiSwitchTraits::CreateAttributes SaiPlatform::getSwitchAttributes(
 #if defined(BRCM_SAI_SDK_XGS_GTE_14_2)
   if (FLAGS_enable_port_cl72_retry) {
     portCl72RetryEnable = true;
+  }
+#endif
+  std::optional<SaiSwitchTraits::Attributes::AclDropSnoopDisabled>
+      aclDropSnoopDisabled{std::nullopt};
+#if defined(TAJO_SDK_VERSION_24_8_3001) || defined(TAJO_SDK_VERSION_25_11_4210)
+  // Only the Gibraltar driver implements it (GR2/G2LL return NOT_IMPLEMENTED).
+  if (getAsic()->getAsicType() == cfg::AsicType::ASIC_TYPE_EBRO) {
+    aclDropSnoopDisabled = true;
   }
 #endif
   std::optional<SaiSwitchTraits::Attributes::DllPath> dllPath;
@@ -1006,6 +1014,7 @@ SaiSwitchTraits::CreateAttributes SaiPlatform::getSwitchAttributes(
       std::nullopt, // enable PFC monitoring for the switch
       measureCableLengths, // enable cable propagation delay measurement
       portCl72RetryEnable, // enable CL72 link training retry
+      aclDropSnoopDisabled, // disable snoop on ingress ACL drop
       std::nullopt, // switching mode (store-and-forward / cut-through)
 #if SAI_API_VERSION >= SAI_VERSION(1, 18, 0)
       // Link up debounce timeout. Derived from the per-port
@@ -1013,11 +1022,12 @@ SaiSwitchTraits::CreateAttributes SaiPlatform::getSwitchAttributes(
       // once the port config is known rather than at switch create.
       std::nullopt,
 #endif
-#if defined(SAI_BRCM_PAI_IMPL)
+#if defined(BRCM_PAI_SDK)
       std::nullopt, // SyncLock
       std::nullopt, // SyncUnlock
       std::nullopt, // WarmRecover
 #endif
+      std::nullopt, // VxlanDefaultPort
   };
 }
 

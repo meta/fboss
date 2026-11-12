@@ -30,16 +30,15 @@ cpp_library(
     srcs = ["HalTestUtils.cpp"],
     headers = ["HalTestUtils.h"],
     deps = [
+        "fbsource//xplat/folly:conv",
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly/logging:logging",
         "//fboss/agent:fboss-error",
         "//fboss/agent:switch_config-cpp2-types",
         "//fboss/lib/firmware_storage:firmware_storage",
         "//fboss/platform/helpers:platform_name_lib",
         "//fboss/qsfp_service/if:transceiver-cpp2-types",
         "//fboss/qsfp_service/module/properties:transceiver-properties-manager",
-        "//folly:conv",
-        "//folly:file_util",
-        "//folly:format",
-        "//folly/logging:logging",
         "//thrift/lib/cpp2/protocol:protocol",
     ],
     exported_deps = [
@@ -61,7 +60,7 @@ cpp_library(
     deps = [
         "fbsource//third-party/fmt:fmt",
         "fbsource//third-party/googletest:gtest",
-        "//folly/logging:logging",
+        "fbsource//xplat/folly/logging:logging",
     ],
     exported_deps = [],
 )
@@ -71,8 +70,8 @@ cpp_library(
     srcs = ["HalTest.cpp"],
     headers = ["HalTest.h"],
     deps = [
+        "fbsource//xplat/folly/logging:logging",
         "//fboss/agent:fboss-error",
-        "//folly/logging:logging",
     ],
     exported_deps = [
         "fbsource//third-party/googletest:gtest",
@@ -96,17 +95,17 @@ cpp_binary(
     deps = [
         "fbsource//third-party/fmt:fmt",
         "fbsource//third-party/googletest:gtest",
+        "fbsource//xplat/folly:random",
+        "fbsource//xplat/folly:scope_guard",
+        "fbsource//xplat/folly/init:init",
+        "fbsource//xplat/folly/io:iobuf",
+        "fbsource//xplat/folly/logging:logging",
         ":bsp_transceiver_impl",
         ":hal_test_base",
         ":hal_test_utils",
         "//fboss/qsfp_service/if:transceiver-cpp2-types",
         "//fboss/qsfp_service/module:qsfp-module",
         "//fboss/qsfp_service/module/properties:transceiver-properties-manager",
-        "//folly:random",
-        "//folly:scope_guard",
-        "//folly/init:init",
-        "//folly/io:iobuf",
-        "//folly/logging:logging",
         "//thrift/lib/cpp/util:enum_utils",
     ],
 )

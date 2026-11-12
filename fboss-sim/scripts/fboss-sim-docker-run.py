@@ -293,6 +293,35 @@ echo "✓ local setup complete"
 """
 
 
+_BGP_SETUP = r"""
+set -eo pipefail
+REPO=/var/FBOSS/fboss
+mkdir -p /opt/bgp /etc/coop/bgpcpp /var/facebook/logs/bgp
+tar --no-same-owner -xf /opt/bgp.tar -C /opt/bgp
+if [ ! -x /opt/bgp/bin/bgp ] && [ -x /opt/bgp/sbin/bgp ]; then
+  mkdir -p /opt/bgp/bin
+  ln -s ../sbin/bgp /opt/bgp/bin/bgp
+fi
+test -x /opt/bgp/bin/bgp
+cp "$REPO/fboss-sim/docker/runtime/bgpcpp.conf" /etc/coop/bgpcpp/bgpcpp.conf
+ln -sfn bgpcpp/bgpcpp.conf /etc/coop/bgpcpp.conf
+git -C /etc/coop add bgpcpp/bgpcpp.conf bgpcpp.conf
+git -C /etc/coop commit -qm 'Initial BGP simulator config'
+cp "$REPO/fboss-sim/docker/runtime/bgpd.service" /etc/systemd/system/bgpd.service
+systemctl daemon-reload
+systemctl start bgpd
+for attempt in $(seq 1 60); do
+  if timeout 5s /opt/fboss/bin/fboss2 show bgp config running 2>/dev/null |
+     jq -se 'length == 1 and .[0].router_id != null' >/dev/null 2>&1; then
+    exit 0
+  fi
+  sleep 1
+done
+echo "BGP did not become ready" >&2
+exit 1
+"""
+
+
 def _docker_exec(container: str, script: str) -> int:
     return subprocess.run(
         ["docker", "exec", container, "bash", "-c", script], check=False
@@ -323,6 +352,8 @@ def run_local(args: argparse.Namespace) -> int:
         print(f"  Volume:    {volume}")
     for environment in args.env:
         source_flags += ["--env", environment]
+    if args.bgp_tar:
+        source_flags += ["--volume", f"{Path(args.bgp_tar).resolve()}:/opt/bgp.tar:ro"]
     print(f"  Build:     {build_dir} -> {runpath}  (RUNPATH-matching)")
     print(f"  Mode:      {args.mode}")
 
@@ -521,7 +552,18 @@ def _parse_args() -> argparse.Namespace:
         action="store_true",
         help="Stop and remove the sim container and its IPv6 network, then exit.",
     )
-    return parser.parse_args()
+    parser.add_argument(
+        "--bgp-tar",
+        help="[--local] Host path to an OSS BGP++ tar archive containing "
+        "bin/bgp (or sbin/bgp) and lib/. Starts bgpd for the existing test suite.",
+    )
+    args = parser.parse_args()
+    if args.bgp_tar:
+        if not args.local:
+            parser.error("--bgp-tar requires --local")
+        if not Path(args.bgp_tar).is_file():
+            parser.error(f"BGP archive not found: {args.bgp_tar}")
+    return args
 
 
 def _print_usage_footer(is_mono: bool) -> None:
@@ -567,6 +609,12 @@ def main() -> int:
     if ret != 0:
         return ret
 
+    if args.bgp_tar:
+        print("\n▶ Starting BGP...")
+        rc = _docker_exec(DEFAULT_CONTAINER_NAME, _BGP_SETUP)
+        if rc != 0:
+            print("❌ Failed to start BGP")
+            return rc
     emit_github_output("container_name", DEFAULT_CONTAINER_NAME)
     _print_usage_footer(is_mono)
     return 0

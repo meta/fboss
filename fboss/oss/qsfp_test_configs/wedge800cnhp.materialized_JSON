@@ -70,7 +70,7 @@
       {
         "aPortName": "eth1/33/1",
         "zPortName": "eth1/33/1",
-        "profileID": 48
+        "profileID": 23
       }
     ],
     "qsfpServiceMemLimitBytes": 2500000000
@@ -550,6 +550,14 @@
             {
               "fwType": 1,
               "version": "0.11"
+            }
+          ]
+      },
+      "SPQ8E44DOCOA": {
+          "versions": [
+            {
+              "fwType": 1,
+              "version": "0.1"
             }
           ]
       },

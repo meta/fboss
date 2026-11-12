@@ -231,6 +231,211 @@ PortProfileMap getSafeProfileIDs(
   return portToProfileIDs;
 }
 
+namespace {
+
+void validateProfileSupport(
+    const PortProfileRequest& request,
+    const std::vector<cfg::PortProfileID>& supportedProfiles,
+    std::string_view supportSource = {}) {
+  if (std::find(
+          supportedProfiles.begin(),
+          supportedProfiles.end(),
+          request.profileID) != supportedProfiles.end()) {
+    return;
+  }
+
+  std::string supportedNames;
+  for (const auto profileID : supportedProfiles) {
+    if (!supportedNames.empty()) {
+      supportedNames += ", ";
+    }
+    supportedNames += apache::thrift::util::enumNameSafe(profileID);
+  }
+  throw FbossError(
+      "Invalid profile '",
+      apache::thrift::util::enumNameSafe(request.profileID),
+      "' for port ",
+      request.portName,
+      supportSource,
+      ". Supported profiles: [",
+      supportedNames,
+      "]");
+}
+
+PortProfileChangeResult planPortProfileChanges(
+    const cfg::SwitchConfig& config,
+    const PlatformMapping& platformMapping,
+    const std::vector<PortProfileRequest>& requests,
+    const PortProfileSupportMap& qsfpSupportedProfiles) {
+  // Build the complete batch plan without mutating the config. Per-port checks
+  // run first so the later cross-port checks can reason about every requested
+  // profile together.
+  std::map<PortID, const cfg::Port*> configuredPorts;
+  for (const auto& port : *config.ports()) {
+    configuredPorts.emplace(PortID(*port.logicalID()), &port);
+  }
+
+  // Resolve each request and validate its independent platform, transceiver,
+  // and port-creation constraints.
+  PortProfileChangeResult plan;
+  std::map<PortID, cfg::PortProfileID> requestedProfiles;
+  for (const auto& request : requests) {
+    PortID portID;
+    try {
+      portID = platformMapping.getPortID(request.portName);
+    } catch (const FbossError& error) {
+      throw FbossError(
+          request.portName, " is not a valid platform port: ", error.what());
+    }
+    if (!requestedProfiles.emplace(portID, request.profileID).second) {
+      throw FbossError(
+          "Port '", request.portName, "' appears more than once in the batch");
+    }
+
+    const auto& platformPort = platformMapping.getPlatformPort(portID);
+    const auto configuredPort = configuredPorts.find(portID);
+    const auto wasPresent = configuredPort != configuredPorts.end();
+    const auto portType = *platformPort.mapping()->portType();
+    if (!wasPresent && portType != cfg::PortType::INTERFACE_PORT &&
+        portType != cfg::PortType::MANAGEMENT_PORT) {
+      throw FbossError("Only routed ports can be created: ", request.portName);
+    }
+
+    std::vector<cfg::PortProfileID> supportedProfiles;
+    for (const auto& [profileID, _] : *platformPort.supportedProfiles()) {
+      supportedProfiles.push_back(profileID);
+    }
+    validateProfileSupport(request, supportedProfiles);
+
+    const auto qsfpProfiles = qsfpSupportedProfiles.find(request.portName);
+    if (qsfpProfiles != qsfpSupportedProfiles.end() &&
+        !qsfpProfiles->second.empty()) {
+      validateProfileSupport(
+          request, qsfpProfiles->second, " based on QSFP capabilities");
+    }
+
+    const auto speed =
+        getProfileSpeed(platformMapping, request.profileID, {portID})
+            .value_or(cfg::PortSpeed::DEFAULT);
+    plan.requestedPorts.push_back(
+        {.portName = request.portName,
+         .portID = portID,
+         .profileID = request.profileID,
+         .speed = speed,
+         .wasPresent = wasPresent});
+  }
+
+  const auto effectiveProfile =
+      [&](PortID portID) -> std::optional<cfg::PortProfileID> {
+    if (const auto requested = requestedProfiles.find(portID);
+        requested != requestedProfiles.end()) {
+      return requested->second;
+    }
+    if (const auto configured = configuredPorts.find(portID);
+        configured != configuredPorts.end()) {
+      return *configured->second->profileID();
+    }
+    return std::nullopt;
+  };
+
+  // Validate the batch-wide controlling-port relationships using requested
+  // profiles in preference to the currently configured profiles.
+  for (const auto& request : plan.requestedPorts) {
+    const auto& platformPort = platformMapping.getPlatformPort(request.portID);
+    const auto controllingPort =
+        PortID(*platformPort.mapping()->controllingPort());
+    if (controllingPort == request.portID) {
+      continue;
+    }
+    const auto controllingProfile = effectiveProfile(controllingPort);
+    if (!controllingProfile) {
+      continue;
+    }
+    const auto subsumedPorts =
+        platformMapping.getSubsumedPorts(controllingPort, *controllingProfile);
+    if (std::find(subsumedPorts.begin(), subsumedPorts.end(), request.portID) !=
+        subsumedPorts.end()) {
+      const auto controllingName =
+          platformMapping.getPortNameByPortId(controllingPort)
+              .value_or(std::to_string(static_cast<uint32_t>(controllingPort)));
+      throw FbossError(
+          "Cannot apply profile ",
+          apache::thrift::util::enumNameSafe(request.profileID),
+          " to port ",
+          request.portName,
+          ": its controlling port ",
+          controllingName,
+          " is at profile ",
+          apache::thrift::util::enumNameSafe(*controllingProfile),
+          " which subsumes ",
+          request.portName,
+          ". Change ",
+          controllingName,
+          " first or drop ",
+          request.portName,
+          " from the request.");
+    }
+  }
+
+  // Collect configured ports that the requested profiles will subsume. The
+  // caller decides whether its workflow should erase or disable them.
+  for (const auto& request : plan.requestedPorts) {
+    const auto& platformPort = platformMapping.getPlatformPort(request.portID);
+    if (*platformPort.mapping()->portType() == cfg::PortType::HYPER_PORT) {
+      continue;
+    }
+    for (const auto& subsumedPort :
+         platformMapping.getSubsumedPorts(request.portID, request.profileID)) {
+      const auto configured = configuredPorts.find(subsumedPort);
+      if (configured == configuredPorts.end()) {
+        continue;
+      }
+      const auto& port = *configured->second;
+      plan.subsumedPorts.emplace(
+          subsumedPort,
+          port.name().value_or("port" + std::to_string(*port.logicalID())));
+    }
+  }
+  return plan;
+}
+
+} // namespace
+
+PortProfileChangeResult applyPortProfileChanges(
+    cfg::SwitchConfig& config,
+    const PlatformMapping& platformMapping,
+    const std::vector<PortProfileRequest>& requests,
+    const PortProfileSupportMap& qsfpSupportedProfiles) {
+  auto plan = planPortProfileChanges(
+      config, platformMapping, requests, qsfpSupportedProfiles);
+
+  // Apply the prevalidated plan to a copy so config changes atomically.
+  auto updatedConfig = config;
+  for (const auto& request : plan.requestedPorts) {
+    if (request.wasPresent) {
+      const auto port = std::find_if(
+          updatedConfig.ports()->begin(),
+          updatedConfig.ports()->end(),
+          [&](const auto& candidate) {
+            return PortID(*candidate.logicalID()) == request.portID;
+          });
+      port->profileID() = request.profileID;
+      port->speed() = request.speed;
+      continue;
+    }
+
+    const auto vlanID = VlanID(allocateFreeVlanId(updatedConfig));
+    addRoutedPortToConfig(
+        updatedConfig,
+        &platformMapping,
+        request.portID,
+        request.profileID,
+        vlanID);
+  }
+  config = std::move(updatedConfig);
+  return plan;
+}
+
 cfg::Port createDefaultPortConfig(
     const PlatformMapping* platformMapping,
     PortID id,

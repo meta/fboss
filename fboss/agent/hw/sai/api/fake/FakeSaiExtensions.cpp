@@ -7,6 +7,7 @@
 #include "fboss/agent/hw/sai/api/CounterApi.h"
 #include "fboss/agent/hw/sai/api/DebugCounterApi.h"
 #include "fboss/agent/hw/sai/api/HostifApi.h"
+#include "fboss/agent/hw/sai/api/LagApi.h"
 #include "fboss/agent/hw/sai/api/MirrorApi.h"
 #include "fboss/agent/hw/sai/api/NextHopGroupApi.h"
 #include "fboss/agent/hw/sai/api/PortApi.h"
@@ -20,6 +21,11 @@ extern "C" {
 }
 
 namespace facebook::fboss {
+
+std::optional<sai_attr_id_t>
+SaiLagTraits::Attributes::AttributeDisableTtlDecrement::operator()() {
+  return std::nullopt;
+}
 
 namespace detail {
 std::optional<sai_int32_t> trapDrops() {
@@ -363,6 +369,21 @@ std::optional<sai_attr_id_t> SaiPortTraits::Attributes::
 std::optional<sai_attr_id_t>
 SaiPortTraits::Attributes::AttributeLinkScanMode::operator()() {
   return SAI_PORT_ATTR_EXT_LINKSCAN_MODE;
+}
+
+std::optional<sai_attr_id_t>
+SaiPortTraits::Attributes::AttributeCsigTagActionWrapper::operator()() {
+  return std::nullopt;
+}
+
+std::optional<sai_attr_id_t>
+SaiPortTraits::Attributes::AttributeCsigLinkLocatorWrapper::operator()() {
+  return std::nullopt;
+}
+
+std::optional<sai_attr_id_t>
+SaiPortTraits::Attributes::AttributeCbfcReceiverCreditLimit::operator()() {
+  return SAI_PORT_ATTR_EXT_CBFC_RECEIVER_CREDIT_LIMIT;
 }
 
 std::optional<sai_attr_id_t>
@@ -976,6 +997,11 @@ SaiPortTraits::linkUpDebounceRetriggerStats() {
   return stats;
 }
 
+const std::vector<sai_stat_id_t>& SaiPortTraits::pcsErrorStats() {
+  static const std::vector<sai_stat_id_t> stats;
+  return stats;
+}
+
 const std::vector<sai_stat_id_t>& SaiPortTraits::llrExtensionStats() {
   static const std::vector<sai_stat_id_t> stats;
   return stats;
@@ -1116,6 +1142,11 @@ SaiSwitchTraits::Attributes::AttributePortCl72RetryEnable::operator()() {
 }
 
 std::optional<sai_attr_id_t>
+SaiSwitchTraits::Attributes::AttributeAclDropSnoopDisabled::operator()() {
+  return SAI_SWITCH_ATTR_ACL_DROP_SNOOP_DISABLED;
+}
+
+std::optional<sai_attr_id_t>
 SaiSwitchTraits::Attributes::AttributePacketDropTypeIngressList::operator()() {
   return SAI_SWITCH_ATTR_EXT_PACKET_DROP_TYPE_INGRESS_LIST;
 }
@@ -1123,6 +1154,11 @@ SaiSwitchTraits::Attributes::AttributePacketDropTypeIngressList::operator()() {
 std::optional<sai_attr_id_t>
 SaiSwitchTraits::Attributes::AttributePacketDropTypeEgressList::operator()() {
   return SAI_SWITCH_ATTR_EXT_PACKET_DROP_TYPE_EGRESS_LIST;
+}
+
+std::optional<sai_attr_id_t>
+SaiSwitchTraits::Attributes::AttributeDropReasonList::operator()() {
+  return SAI_SWITCH_ATTR_EXT_DROP_REASON_LIST;
 }
 #if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
 std::optional<sai_attr_id_t>
@@ -1169,6 +1205,18 @@ std::optional<sai_attr_id_t>
 SaiAclEntryTraits::Attributes::AttributeFieldRouteDestination::operator()() {
   return SAI_ACL_ENTRY_ATTR_FIELD_ROUTE_DST;
 }
+
+std::optional<sai_attr_id_t>
+SaiAclTableTraits::Attributes::AttributeFieldRouteDestination::operator()() {
+  return SAI_ACL_TABLE_ATTR_FIELD_ROUTE_DST;
+}
+
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 2)
+std::optional<sai_attr_id_t>
+SaiAclCounterTraits::Attributes::AttributeLabelExtendedWrapper::operator()() {
+  return SAI_ACL_COUNTER_ATTR_EXT_LABEL_EXTENDED;
+}
+#endif
 
 std::optional<sai_attr_id_t>
 SaiArsTraits::Attributes::AttributeNextHopGroupType::operator()() {

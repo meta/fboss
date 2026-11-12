@@ -1,7 +1,7 @@
 # Building a Platform Binary
 
 Platform services build inside the FBOSS container. Full setup is in the build
-documentation at https://facebook.github.io/fboss/; the runnable snippets live
+documentation at https://meta.github.io/fboss/; the runnable snippets live
 in `docs/static/code_snips/`.
 
 For the build system itself (container setup, `run-getdeps.py` flags, build

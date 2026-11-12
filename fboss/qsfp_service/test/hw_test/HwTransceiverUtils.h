@@ -50,7 +50,16 @@ class HwTransceiverUtils {
       time_t timeReference,
       bool expectedReset);
 
+  // Active optical cable: reports ACTIVE_CABLES media type encoding like an
+  // AEC, but an optical transmitter. Its media interface union carries
+  // activeCuCode, not smfCode.
+  static bool isAoc(const TcvrState& tcvrState);
+
  private:
+  static void verifyActiveOpticalCableProfile(
+      TransceiverManagementInterface mgmtInterface,
+      const std::vector<MediaInterfaceId>& mediaInterfaces,
+      cfg::PortProfileID profile);
   static void verifyOpticsSettings(
       const TcvrState& tcvrState,
       const std::string& portName,
@@ -78,6 +87,9 @@ class HwTransceiverUtils {
   static void verify400gProfile(
       const TransceiverManagementInterface mgmtInterface,
       const std::vector<MediaInterfaceId>& mediaInterfaces);
+  static void verifyCopper25gProfile(
+      const TcvrState& tcvrState,
+      const std::vector<MediaInterfaceId>& mediaInterfaces);
   static void verifyCopper100gProfile(
       const TcvrState& tcvrState,
       const std::vector<MediaInterfaceId>& mediaInterfaces);
@@ -90,10 +102,14 @@ class HwTransceiverUtils {
   static void verifyCopper400gProfile(
       const TcvrState& tcvrState,
       const std::vector<MediaInterfaceId>& mediaInterfaces);
-  static void verifyOptical800gProfile(
+  static void verifyOpticalProfileForSpeed(
       const TransceiverManagementInterface mgmtInterface,
-      const std::vector<MediaInterfaceId>& mediaInterfaces);
+      const std::vector<MediaInterfaceId>& mediaInterfaces,
+      cfg::PortSpeed speed);
   static void verifyCopper800gProfile(
+      const TcvrState& tcvrState,
+      const std::vector<MediaInterfaceId>& mediaInterfaces);
+  static void verifyCopper1600gProfile(
       const TcvrState& tcvrState,
       const std::vector<MediaInterfaceId>& mediaInterfaces);
   static void verifyDataPathEnabled(

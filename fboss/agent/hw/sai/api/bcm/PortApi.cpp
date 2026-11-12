@@ -629,10 +629,8 @@ SaiPortTraits::Attributes::AttributeLinkUpDebouncePeriodMs::operator()() {
 
 std::optional<sai_attr_id_t>
 SaiPortTraits::Attributes::AttributeLinkDownDebouncePeriodMs::operator()() {
-// TODO ruinanhu once SDK can properly support linkdowndebouncingtimeout add
-// attribute back
 #if defined(BRCM_SAI_SDK_GTE_15_4)
-  return std::nullopt;
+  return SAI_PORT_ATTR_LINK_DOWN_DEBOUNCE_TIMEOUT;
 #else
   return std::nullopt;
 #endif
@@ -655,6 +653,23 @@ SaiPortTraits::Attributes::AttributeLinkScanMode::operator()() {
 #else
   return std::nullopt;
 #endif
+}
+
+std::optional<sai_attr_id_t>
+SaiPortTraits::Attributes::AttributeCsigTagActionWrapper::operator()() {
+  return std::nullopt;
+}
+
+std::optional<sai_attr_id_t>
+SaiPortTraits::Attributes::AttributeCsigLinkLocatorWrapper::operator()() {
+  return std::nullopt;
+}
+
+std::optional<sai_attr_id_t>
+SaiPortTraits::Attributes::AttributeCbfcReceiverCreditLimit::operator()() {
+  // TODO(agrewal): return the receiver credit limit extension once the
+  // Tomahawk Ultra 1 SAI defines it.
+  return std::nullopt;
 }
 
 const std::vector<sai_stat_id_t>&
@@ -718,12 +733,33 @@ const std::vector<sai_stat_id_t>& SaiPortTraits::pfcXoffTotalDurationStats() {
 
 const std::vector<sai_stat_id_t>&
 SaiPortTraits::linkDownDebounceRetriggerStats() {
+  // FLR_LINKUP_EVENT_COUNT in LM_HW_LINKSCAN_STATUS, snmpBcmFlrLinkUpCount in
+  // the SDK: a link up completed through Fast Link Recovery, which the per-port
+  // down hold, SAI_PORT_ATTR_LINK_DOWN_DEBOUNCE_TIMEOUT, arms.
+#if defined(BRCM_SAI_SDK_GTE_15_4) && !defined(SAI_VERSION_15_4_EA_ODP)
+  static const std::vector<sai_stat_id_t> stats{
+      SAI_PORT_STAT_EXT_FAST_LINKUP_COUNT};
+#else
   static const std::vector<sai_stat_id_t> stats;
+#endif
   return stats;
 }
 
 const std::vector<sai_stat_id_t>&
 SaiPortTraits::linkUpDebounceRetriggerStats() {
+  // LINKUP_DELAY_FAILED_COUNT in LM_HW_LINKSCAN_STATUS,
+  // snmpBcmDebounceLinkDownCount in the SDK: a link down that landed inside the
+  // up debounce window, SAI_SWITCH_ATTR_LINK_UP_DEBOUNCE_TIMEOUT.
+#if defined(BRCM_SAI_SDK_GTE_15_4) && !defined(SAI_VERSION_15_4_EA_ODP)
+  static const std::vector<sai_stat_id_t> stats{
+      SAI_PORT_STAT_EXT_LINK_UP_DEBOUNCE_DOWN_COUNT};
+#else
+  static const std::vector<sai_stat_id_t> stats;
+#endif
+  return stats;
+}
+
+const std::vector<sai_stat_id_t>& SaiPortTraits::pcsErrorStats() {
   static const std::vector<sai_stat_id_t> stats;
   return stats;
 }

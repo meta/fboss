@@ -10,7 +10,6 @@
 
 #include <memory>
 
-#include <folly/Format.h>
 #include <folly/Singleton.h>
 
 #include "fboss/agent/hw/bcm/BcmCinter.h"

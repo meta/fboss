@@ -14,7 +14,10 @@
 #include <folly/io/Cursor.h>
 #include <folly/io/IOBuf.h>
 #include <folly/logging/xlog.h>
+#include <folly/synchronization/Baton.h>
+#include <gflags/gflags.h>
 #include <gtest/gtest.h>
+#include <thread>
 #include "fboss/agent/RxPacket.h"
 #include "fboss/agent/SwSwitch.h"
 #include "fboss/agent/TxPacket.h"
@@ -34,6 +37,35 @@ using folly::io::RWPrivateCursor;
 using std::make_shared;
 using std::shared_ptr;
 using std::unique_ptr;
+
+namespace facebook::fboss {
+
+class FabricLinkMonitoringManagerTestPeer {
+ public:
+  static auto lockGroupStats(FabricLinkMonitoringManager& manager) {
+    return manager.portGroupStats_.wlock();
+  }
+
+  static bool canLockPendingQueue(
+      FabricLinkMonitoringManager& manager,
+      std::chrono::milliseconds timeout) {
+    return bool(manager.portPendingSequenceNumbers_.wlock(timeout));
+  }
+
+  static size_t outstandingPackets(
+      const FabricLinkMonitoringManager& manager,
+      PortID portId) {
+    return manager.getOutstandingPacketCountForGroup(
+        manager.getPortGroup(portId));
+  }
+
+  static void sendPackets(FabricLinkMonitoringManager& manager, SwSwitch* sw) {
+    sw->getBackgroundEvb()->runInFbossEventBaseThreadAndWait(
+        [&manager] { manager.sendPacketsOnAllFabricPorts(); });
+  }
+};
+
+} // namespace facebook::fboss
 
 namespace {
 
@@ -128,7 +160,8 @@ cfg::SwitchConfig createVoqConfig() {
 }
 
 // Setup for VOQ switch with fabric ports
-unique_ptr<HwTestHandle> setupTestHandle() {
+unique_ptr<HwTestHandle> setupTestHandle(
+    SwitchFlags flags = SwitchFlags::DEFAULT) {
   auto state = testStateAWithPortsUp();
   addSwitchInfo(
       state,
@@ -149,7 +182,7 @@ unique_ptr<HwTestHandle> setupTestHandle() {
     }
   }
 
-  return createTestHandle(state);
+  return createTestHandle(state, flags);
 }
 
 void setupL1FabricSwitch(
@@ -325,6 +358,35 @@ std::shared_ptr<SwitchState> setupVoqSwitchState(
   return state;
 }
 
+// VOQ switch state with the given fabric ports, each up or down as specified.
+std::shared_ptr<SwitchState> setupVoqSwitchStateWithFabricPorts(
+    const std::map<PortID, bool>& portsUp) {
+  auto state = std::make_shared<SwitchState>();
+  addSwitchInfo(
+      state,
+      cfg::SwitchType::VOQ,
+      0,
+      cfg::AsicType::ASIC_TYPE_MOCK,
+      cfg::switch_config_constants::DEFAULT_PORT_ID_RANGE_MIN(),
+      cfg::switch_config_constants::DEFAULT_PORT_ID_RANGE_MAX(),
+      0,
+      std::nullopt,
+      std::nullopt,
+      MockPlatform::getMockLocalMac().toString());
+  auto portMap = std::make_shared<MultiSwitchPortMap>();
+  for (const auto& [portId, up] : portsUp) {
+    const std::string name =
+        folly::to<std::string>("fab1/1/", static_cast<int>(portId));
+    auto port = std::make_shared<Port>(portId, name);
+    port->setPortType(cfg::PortType::FABRIC_PORT);
+    port->setOperState(up);
+    port->setAdminState(cfg::PortState::ENABLED);
+    portMap->addNode(port, HwSwitchMatcher());
+  }
+  state->resetPorts(portMap);
+  return state;
+}
+
 // Helper function to count fabric ports in state
 int countFabricPorts(SwSwitch* sw) {
   int numFabricPorts = 0;
@@ -391,6 +453,24 @@ TEST(FabricLinkMonitoringManagerTest, CreateManager) {
   EXPECT_NE(manager, nullptr);
 }
 
+TEST(FabricLinkMonitoringManagerTest, FsdbStatsWithoutMonitoring) {
+  auto handle = setupTestHandle();
+  auto sw = handle->getSw();
+  ASSERT_EQ(sw->getFabricLinkMonitoringManager(), nullptr);
+  multiswitch::HwSwitchStats hwStats;
+  hwStats.hwPortStats()["port1"] = HwPortStats{};
+  sw->updateHwSwitchStats(0, hwStats);
+  const auto agentStats = sw->fillFsdbStats();
+  const auto& portStats = agentStats.hwPortStats()->at("port1");
+  EXPECT_FALSE(portStats.fabricLinkMonitoringTxPackets_().has_value());
+  EXPECT_FALSE(portStats.fabricLinkMonitoringRxPackets_().has_value());
+  EXPECT_FALSE(portStats.fabricLinkMonitoringDroppedPackets_().has_value());
+  EXPECT_FALSE(
+      portStats.fabricLinkMonitoringInvalidPayloadPackets_().has_value());
+  EXPECT_FALSE(
+      portStats.fabricLinkMonitoringNoPendingSeqNumPackets_().has_value());
+}
+
 TEST(FabricLinkMonitoringManagerTest, SendPacketsOnFabricPorts) {
   auto handle = setupTestHandle();
   auto sw = handle->getSw();
@@ -414,10 +494,11 @@ TEST(FabricLinkMonitoringManagerTest, SendPacketsOnFabricPorts) {
 }
 
 TEST(FabricLinkMonitoringManagerTest, PacketPayloadValidation) {
-  auto handle = setupTestHandle();
+  auto handle = setupTestHandle(SwitchFlags::ENABLE_FABRIC_LINK_MONITORING);
   auto sw = handle->getSw();
 
-  auto manager = std::make_unique<FabricLinkMonitoringManager>(sw);
+  auto* manager = sw->getFabricLinkMonitoringManager();
+  ASSERT_NE(manager, nullptr);
   manager->start();
 
   waitForStateUpdates(sw);
@@ -440,6 +521,22 @@ TEST(FabricLinkMonitoringManagerTest, PacketPayloadValidation) {
       *statsAfter.invalidPayloadCount(), *statsBefore.invalidPayloadCount());
 
   manager->stop();
+
+  const auto& portName =
+      sw->getState()->getPorts()->getNode(testPort)->getName();
+  multiswitch::HwSwitchStats hwStats;
+  hwStats.hwPortStats()[portName] = HwPortStats{};
+  sw->updateHwSwitchStats(0, hwStats);
+  const auto agentStats = sw->fillFsdbStats();
+  const auto& portStats = agentStats.hwPortStats()->at(portName);
+  // Make sure the fabric link monitoring stats are populated in FSDB.
+  EXPECT_TRUE(portStats.fabricLinkMonitoringTxPackets_().has_value());
+  EXPECT_TRUE(portStats.fabricLinkMonitoringRxPackets_().has_value());
+  EXPECT_TRUE(portStats.fabricLinkMonitoringDroppedPackets_().has_value());
+  EXPECT_TRUE(
+      portStats.fabricLinkMonitoringInvalidPayloadPackets_().has_value());
+  EXPECT_TRUE(
+      portStats.fabricLinkMonitoringNoPendingSeqNumPackets_().has_value());
 }
 
 TEST(FabricLinkMonitoringManagerTest, PacketSizeValidation) {
@@ -1011,6 +1108,105 @@ TEST(
   FabricLinkMonitoringManager::setTestMode(false);
 }
 
+TEST(FabricLinkMonitoringManagerTest, EarlyRxDoesNotLeakOutstandingCredit) {
+  // 1. Use one port and a one-packet budget. Each received packet must clear
+  //    the pending count so the next packet can be sent.
+  gflags::FlagSaver flagSaver;
+  FabricLinkMonitoringManager::setTestMode(true);
+  FLAGS_fabric_link_monitoring_interval_ms = 60000;
+  FLAGS_fabric_link_monitoring_max_outstanding_packets = 1;
+  constexpr int kNumRounds = 2;
+
+  auto config = createVoqConfig();
+  config.ports()->resize(1);
+  const auto portId = PortID(*config.ports()->front().logicalID());
+  auto handle = createTestHandle(setupVoqSwitchState(config));
+  auto sw = handle->getSw();
+  FabricLinkMonitoringManager manager(sw);
+  folly::Baton<> txStarted;
+  folly::Baton<> resumeTx;
+  std::vector<std::thread> receivers;
+  auto joinReceivers = [&] {
+    for (auto& receiver : receivers) {
+      receiver.join();
+    }
+    receivers.clear();
+  };
+  // 2. Make the mock send start an RX thread for the same packet. On the first
+  //    send, pause TX until the main test thread resumes it. RX can validate
+  //    the packet, but must wait for TX's locks before updating the counts.
+  EXPECT_HW_CALL(sw, sendPacketOutOfPortSyncForPktType_(_, portId, _))
+      .Times(kNumRounds)
+      .WillRepeatedly([&](TxPacket* txPacket, PortID, PacketType) {
+        std::unique_ptr<TxPacket> ownedTxPacket(txPacket);
+        Cursor txCursor(ownedTxPacket->buf());
+        const auto sequenceNumber = txCursor.readBE<uint64_t>();
+        receivers.emplace_back([&, sequence = sequenceNumber] {
+          auto packet = createFabricMonitoringRxPacket(sw, portId, sequence);
+          Cursor cursor(packet->buf());
+          manager.handlePacket(std::move(packet), cursor);
+        });
+        if (sequenceNumber == 1) {
+          txStarted.post();
+          resumeTx.wait();
+        }
+        return true;
+      });
+
+  // 3. Start the real send loop and pause TX in the mock before it updates
+  //    the pending counts. RX tries to process the packet while TX's count
+  //    update is still pending.
+  manager.start();
+  const bool txStartedInTime = txStarted.try_wait_for(std::chrono::seconds(5));
+  if (txStartedInTime) {
+    // 4. In the main test thread, hold the group stats lock, then resume TX.
+    //    TX now waits for this lock before incrementing the group's pending
+    //    count. While holding the lock, check that TX still holds the pending
+    //    queue lock. This prevents RX from removing the packet's pending entry
+    //    before TX increments the count.
+    auto groupStats =
+        FabricLinkMonitoringManagerTestPeer::lockGroupStats(manager);
+    resumeTx.post();
+    EXPECT_FALSE(
+        FabricLinkMonitoringManagerTestPeer::canLockPendingQueue(
+            manager, std::chrono::milliseconds(200)));
+  } else {
+    resumeTx.post();
+  }
+  // 5. The group stats lock is now released, so TX can update the pending
+  //    count.
+  //    Stop periodic sends and wait for TX to finish and release its locks,
+  //    then join the RX thread. Do not join RX inside the mock send:
+  //    RX needs locks that TX still holds while executing the mock.
+  manager.stop();
+  joinReceivers();
+  if (!txStartedInTime) {
+    FabricLinkMonitoringManager::setTestMode(false);
+    FAIL() << "Monitoring TX did not start within five seconds";
+  }
+  // 6. Check the first round, then send one more packet to verify TX can use
+  //    the freed budget. stop() cancels the timer but keeps the initialized
+  //    state, so the test peer can run the send loop directly. After each
+  //    round, the pending queue must be empty and the outstanding count zero.
+  for (int round = 1; round <= kNumRounds; ++round) {
+    if (round > 1) {
+      FabricLinkMonitoringManagerTestPeer::sendPackets(manager, sw);
+      joinReceivers();
+    }
+    const auto stats = manager.getFabricLinkMonPortStats(portId);
+    EXPECT_EQ(*stats.txCount(), round);
+    EXPECT_EQ(*stats.rxCount(), round);
+    EXPECT_EQ(*stats.droppedCount(), 0);
+    EXPECT_EQ(*stats.noPendingSeqNumCount(), 0);
+    EXPECT_TRUE(manager.getPendingSequenceNumbers(portId).empty());
+    EXPECT_EQ(
+        FabricLinkMonitoringManagerTestPeer::outstandingPackets(
+            manager, portId),
+        0);
+  }
+  FabricLinkMonitoringManager::setTestMode(false);
+}
+
 TEST(FabricLinkMonitoringManagerTest, RxClassificationPrefersPacketType) {
   FabricLinkMonitoringManager::setTestMode(true);
 
@@ -1048,6 +1244,173 @@ TEST(FabricLinkMonitoringManagerTest, RxClassificationPrefersPacketType) {
   sw->packetReceived(
       createFabricMonitoringRxPacket(sw, portId, 3, std::nullopt));
   EXPECT_EQ(noPendingSeqNums(), 1);
+
+  manager->stop();
+  FabricLinkMonitoringManager::setTestMode(false);
+}
+
+TEST(
+    FabricLinkMonitoringManagerTest,
+    PendingPacketsOnDownPortsDoNotBlockUpPorts) {
+  gflags::FlagSaver flagSaver;
+  FabricLinkMonitoringManager::setTestMode(true);
+
+  // Test mode groups ports by portId % 4, so all four share group 0.
+  const std::vector<PortID> goingDown{PortID(4), PortID(8)};
+  const std::vector<PortID> comingUp{PortID(12), PortID(16)};
+  FLAGS_fabric_link_monitoring_max_outstanding_packets =
+      static_cast<int>(goingDown.size());
+  // Keep unanswered packets pending rather than aging them out, so the ports
+  // go down while still holding them.
+  FLAGS_fabric_link_monitoring_max_pending_seq_numbers = 1000;
+  FLAGS_fabric_link_monitoring_interval_ms = 100;
+
+  std::map<PortID, bool> portsUp;
+  for (const auto& portId : goingDown) {
+    portsUp[portId] = true;
+  }
+  for (const auto& portId : comingUp) {
+    portsUp[portId] = false;
+  }
+  auto handle = createTestHandle(setupVoqSwitchStateWithFabricPorts(portsUp));
+  auto sw = handle->getSw();
+  EXPECT_HW_CALL(sw, sendPacketOutOfPortSyncForPktType_(_, _, _))
+      .Times(AtLeast(static_cast<int>(goingDown.size())));
+
+  auto manager = std::make_unique<FabricLinkMonitoringManager>(sw);
+  manager->start();
+
+  // Nothing answers, so the group fills up with packets pending on the ports
+  // that are about to go down.
+  WITH_RETRIES({
+    for (auto portId : goingDown) {
+      EXPECT_EVENTUALLY_EQ(
+          manager->getPendingSequenceNumbers(portId).size(), 1);
+    }
+  });
+
+  sw->updateStateBlocking(
+      "Fabric ports go down and others come up", [&](const auto& in) {
+        auto newState = in->clone();
+        auto setUp = [&](PortID portId, bool up) {
+          auto port = newState->getPorts()->getNodeIf(portId);
+          port->modify(&newState)->setOperState(up);
+        };
+        for (const auto& portId : goingDown) {
+          setUp(portId, false);
+        }
+        for (const auto& portId : comingUp) {
+          setUp(portId, true);
+        }
+        return newState;
+      });
+
+  WITH_RETRIES_N_TIMED(20, std::chrono::milliseconds(200), {
+    for (auto portId : comingUp) {
+      EXPECT_EVENTUALLY_GT(
+          *manager->getFabricLinkMonPortStats(portId).txCount(), 0);
+    }
+  });
+
+  manager->stop();
+  FabricLinkMonitoringManager::setTestMode(false);
+}
+
+TEST(FabricLinkMonitoringManagerTest, RestartResetsOutstandingPackets) {
+  gflags::FlagSaver flagSaver;
+  FabricLinkMonitoringManager::setTestMode(true);
+
+  // Test mode groups ports by portId % 4, so both share group 0.
+  const std::vector<PortID> ports{PortID(4), PortID(8)};
+  FLAGS_fabric_link_monitoring_max_outstanding_packets =
+      static_cast<int>(ports.size());
+  FLAGS_fabric_link_monitoring_max_pending_seq_numbers = 1000;
+  FLAGS_fabric_link_monitoring_interval_ms = 100;
+
+  auto handle = createTestHandle(
+      setupVoqSwitchStateWithFabricPorts({{ports[0], true}, {ports[1], true}}));
+  auto sw = handle->getSw();
+  EXPECT_HW_CALL(sw, sendPacketOutOfPortSyncForPktType_(_, _, _))
+      .Times(AtLeast(static_cast<int>(2 * ports.size())));
+
+  auto manager = std::make_unique<FabricLinkMonitoringManager>(sw);
+  manager->start();
+  WITH_RETRIES({
+    for (auto portId : ports) {
+      EXPECT_EVENTUALLY_EQ(
+          manager->getPendingSequenceNumbers(portId).size(), 1);
+    }
+  });
+
+  // start() discards the pending sequence numbers, so it must also discard
+  // the outstanding count they made up.
+  manager->stop();
+  manager->start();
+  WITH_RETRIES_N_TIMED(20, std::chrono::milliseconds(200), {
+    for (auto portId : ports) {
+      EXPECT_EVENTUALLY_GT(
+          *manager->getFabricLinkMonPortStats(portId).txCount(), 0);
+    }
+  });
+
+  manager->stop();
+  FabricLinkMonitoringManager::setTestMode(false);
+}
+
+TEST(
+    FabricLinkMonitoringManagerTest,
+    OnePortDownReleasesOnlyItsPendingPackets) {
+  gflags::FlagSaver flagSaver;
+  FabricLinkMonitoringManager::setTestMode(true);
+
+  // Test mode groups ports by portId % 4, so both share group 0. The budget
+  // holds one unanswered packet per port, and none of them age out.
+  const PortID downPort(4);
+  const PortID upPort(8);
+  FLAGS_fabric_link_monitoring_max_outstanding_packets = 2;
+  FLAGS_fabric_link_monitoring_max_pending_seq_numbers = 1000;
+  FLAGS_fabric_link_monitoring_interval_ms = 100;
+
+  auto handle = createTestHandle(
+      setupVoqSwitchStateWithFabricPorts({{downPort, true}, {upPort, true}}));
+  auto sw = handle->getSw();
+  EXPECT_HW_CALL(sw, sendPacketOutOfPortSyncForPktType_(_, _, _))
+      .Times(AtLeast(3));
+
+  auto manager = std::make_unique<FabricLinkMonitoringManager>(sw);
+  manager->start();
+  WITH_RETRIES({
+    EXPECT_EVENTUALLY_EQ(
+        manager->getPendingSequenceNumbers(downPort).size(), 1);
+    EXPECT_EVENTUALLY_EQ(manager->getPendingSequenceNumbers(upPort).size(), 1);
+  });
+
+  sw->updateStateBlocking("One fabric port goes down", [&](const auto& in) {
+    auto newState = in->clone();
+    auto port = newState->getPorts()->getNodeIf(downPort);
+    port->modify(&newState)->setOperState(false);
+    return newState;
+  });
+
+  // Releasing the down port's one packet frees exactly one slot, which the up
+  // port takes while still holding its own pending packet.
+  WITH_RETRIES({
+    EXPECT_EVENTUALLY_TRUE(
+        manager->getPendingSequenceNumbers(downPort).empty());
+    EXPECT_EVENTUALLY_EQ(manager->getPendingSequenceNumbers(upPort).size(), 2);
+  });
+
+  // Had the up port's share been released too, it would keep sending. Let a
+  // few more intervals run (the sequence number advances every interval).
+  const auto seqNum =
+      *manager->getFabricLinkMonPortStats(upPort).sequenceNumber();
+  WITH_RETRIES({
+    EXPECT_EVENTUALLY_GE(
+        *manager->getFabricLinkMonPortStats(upPort).sequenceNumber(),
+        seqNum + 5);
+  });
+  EXPECT_EQ(manager->getPendingSequenceNumbers(upPort).size(), 2);
+  EXPECT_EQ(*manager->getFabricLinkMonPortStats(upPort).txCount(), 2);
 
   manager->stop();
   FabricLinkMonitoringManager::setTestMode(false);

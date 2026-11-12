@@ -25,6 +25,8 @@
 #include "fboss/cli/fboss2/commands/config/dhcp/reply_source_override/CmdConfigDhcpReplySourceOverride.h"
 #include "fboss/cli/fboss2/commands/config/history/CmdConfigHistory.h"
 #include "fboss/cli/fboss2/commands/config/interface/CmdConfigInterface.h"
+#include "fboss/cli/fboss2/commands/config/interface/dhcp/CmdConfigInterfaceDhcp.h"
+#include "fboss/cli/fboss2/commands/config/interface/dhcp/relay/CmdConfigInterfaceDhcpRelay.h"
 #include "fboss/cli/fboss2/commands/config/interface/ipv6/CmdConfigInterfaceIpv6.h"
 #include "fboss/cli/fboss2/commands/config/interface/ipv6/ndp/CmdConfigInterfaceIpv6Ndp.h"
 #include "fboss/cli/fboss2/commands/config/interface/pfc_config/CmdConfigInterfacePfcConfig.h"
@@ -37,6 +39,7 @@
 #include "fboss/cli/fboss2/commands/config/load_balancing/CmdConfigLoadBalancing.h"
 #include "fboss/cli/fboss2/commands/config/mac/CmdConfigMac.h"
 #include "fboss/cli/fboss2/commands/config/mac/aging_time/CmdConfigMacAgingTime.h"
+#include "fboss/cli/fboss2/commands/config/mirror/CmdConfigMirror.h"
 #include "fboss/cli/fboss2/commands/config/protocol/CmdConfigProtocol.h"
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/CmdConfigProtocolBgp.h"
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/global/CmdConfigProtocolBgpGlobal.h"
@@ -45,6 +48,11 @@
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/CmdConfigProtocolBgpPolicy.h"
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/as-path-list/CmdConfigProtocolBgpPolicyAsPathList.h"
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/community-list/CmdConfigProtocolBgpPolicyCommunityList.h"
+#include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/prefix-list/CmdConfigProtocolBgpPolicyPrefixList.h"
+#include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/prefix-list/entry/CmdConfigProtocolBgpPolicyPrefixListEntry.h"
+#include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/routing-policy/CmdConfigProtocolBgpPolicyRoutingPolicy.h"
+#include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/routing-policy/term/CmdConfigProtocolBgpPolicyRoutingPolicyTerm.h"
+#include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/routing-policy/term/action/CmdConfigProtocolBgpPolicyRoutingPolicyTermAction.h"
 #include "fboss/cli/fboss2/commands/config/protocol/static/CmdConfigProtocolStatic.h"
 #include "fboss/cli/fboss2/commands/config/protocol/static/route/add/CmdConfigProtocolStaticRouteAdd.h"
 #include "fboss/cli/fboss2/commands/config/ptp/CmdConfigPtp.h"
@@ -101,10 +109,14 @@
 #include "fboss/cli/fboss2/commands/delete/dhcp/relay_source_override/CmdDeleteDhcpRelaySourceOverride.h"
 #include "fboss/cli/fboss2/commands/delete/dhcp/reply_source_override/CmdDeleteDhcpReplySourceOverride.h"
 #include "fboss/cli/fboss2/commands/delete/interface/CmdDeleteInterface.h"
+#include "fboss/cli/fboss2/commands/delete/interface/dhcp/CmdDeleteInterfaceDhcp.h"
+#include "fboss/cli/fboss2/commands/delete/interface/dhcp/relay/CmdDeleteInterfaceDhcpRelay.h"
 #include "fboss/cli/fboss2/commands/delete/interface/ipv6/CmdDeleteInterfaceIpv6.h"
 #include "fboss/cli/fboss2/commands/delete/interface/ipv6/ndp/CmdDeleteInterfaceIpv6Ndp.h"
+#include "fboss/cli/fboss2/commands/delete/interface/pfc_config/CmdDeleteInterfacePfcConfig.h"
 #include "fboss/cli/fboss2/commands/delete/interface/sflow/CmdDeleteInterfaceSflow.h"
 #include "fboss/cli/fboss2/commands/delete/load_balancing/CmdDeleteLoadBalancing.h"
+#include "fboss/cli/fboss2/commands/delete/mirror/CmdDeleteMirror.h"
 #include "fboss/cli/fboss2/commands/delete/protocol/CmdDeleteProtocol.h"
 #include "fboss/cli/fboss2/commands/delete/protocol/bgp/CmdDeleteProtocolBgp.h"
 #include "fboss/cli/fboss2/commands/delete/protocol/bgp/neighbor/CmdDeleteProtocolBgpNeighbor.h"
@@ -112,12 +124,17 @@
 #include "fboss/cli/fboss2/commands/delete/protocol/bgp/policy/CmdDeleteProtocolBgpPolicy.h"
 #include "fboss/cli/fboss2/commands/delete/protocol/bgp/policy/as-path-list/CmdDeleteProtocolBgpPolicyAsPathList.h"
 #include "fboss/cli/fboss2/commands/delete/protocol/bgp/policy/community-list/CmdDeleteProtocolBgpPolicyCommunityList.h"
+#include "fboss/cli/fboss2/commands/delete/protocol/bgp/policy/prefix-list/CmdDeleteProtocolBgpPolicyPrefixList.h"
+#include "fboss/cli/fboss2/commands/delete/protocol/bgp/policy/routing-policy/CmdDeleteProtocolBgpPolicyRoutingPolicy.h"
+#include "fboss/cli/fboss2/commands/delete/protocol/bgp/policy/routing-policy/term/CmdDeleteProtocolBgpPolicyRoutingPolicyTerm.h"
 #include "fboss/cli/fboss2/commands/delete/protocol/static/CmdDeleteProtocolStatic.h"
 #include "fboss/cli/fboss2/commands/delete/protocol/static/route/CmdDeleteProtocolStaticRoute.h"
 #include "fboss/cli/fboss2/commands/delete/qos/CmdDeleteQos.h"
+#include "fboss/cli/fboss2/commands/delete/qos/buffer_pool/CmdDeleteQosBufferPool.h"
 #include "fboss/cli/fboss2/commands/delete/qos/default_policy/CmdDeleteQosDefaultPolicy.h"
 #include "fboss/cli/fboss2/commands/delete/qos/policy/CmdDeleteQosPolicy.h"
 #include "fboss/cli/fboss2/commands/delete/qos/policy/CmdDeleteQosPolicyMap.h"
+#include "fboss/cli/fboss2/commands/delete/qos/priority_group_policy/CmdDeleteQosPriorityGroupPolicy.h"
 #include "fboss/cli/fboss2/commands/delete/qos/queue_config/CmdDeleteQosQueueConfig.h"
 #include "fboss/cli/fboss2/commands/delete/qos/queue_config/CmdDeleteQosQueueConfigQueueId.h"
 #include "fboss/cli/fboss2/commands/delete/srv6/CmdDeleteSrv6.h"
@@ -278,6 +295,19 @@ const CommandTree& kConfigCommandTree() {
                "Configure PFC settings for interface",
                commandHandler<CmdConfigInterfacePfcConfig>,
                argRegistrar<CmdConfigInterfacePfcConfigTraits>,
+           },
+           {
+               "dhcp",
+               "Configure DHCP settings for interface",
+               commandHandler<CmdConfigInterfaceDhcp>,
+               argTypeHandler<CmdConfigInterfaceDhcpTraits>,
+               {{
+                   "relay",
+                   "Set the DHCP relay (helper) destination: "
+                   "<ip-address|ipv6-address> <address>",
+                   commandHandler<CmdConfigInterfaceDhcpRelay>,
+                   argRegistrar<CmdConfigInterfaceDhcpRelayTraits>,
+               }},
            },
            {
                "ipv6",
@@ -444,6 +474,73 @@ const CommandTree& kConfigCommandTree() {
                                    CmdConfigProtocolBgpPolicyCommunityList>,
                                argRegistrar<
                                    CmdConfigProtocolBgpPolicyCommunityListTraits>,
+                           },
+                           {
+                               "prefix-list",
+                               "Configure BGP prefix-list: <name> "
+                               "[<attribute> <value> ...] "
+                               "(boolean-operator, description, "
+                               "ip-version)",
+                               commandHandler<
+                                   CmdConfigProtocolBgpPolicyPrefixList>,
+                               argRegistrar<
+                                   CmdConfigProtocolBgpPolicyPrefixListTraits>,
+                               {{
+                                   "prefix",
+                                   "Configure a prefix-list entry: "
+                                   "<prefix/len> [<attribute> <value> ...] "
+                                   "(communities, description, match-logic, "
+                                   "max-allowed-subnet-count, "
+                                   "prefix-len-range, regex)",
+                                   commandHandler<
+                                       CmdConfigProtocolBgpPolicyPrefixListEntry>,
+                                   argRegistrar<
+                                       CmdConfigProtocolBgpPolicyPrefixListEntryTraits>,
+                               }},
+                           },
+                           {
+                               "routing-policy",
+                               "Configure BGP routing-policy: <name> "
+                               "[<attribute> <value> ...] "
+                               "(description)",
+                               commandHandler<
+                                   CmdConfigProtocolBgpPolicyRoutingPolicy>,
+                               argRegistrar<
+                                   CmdConfigProtocolBgpPolicyRoutingPolicyTraits>,
+                               {{
+                                   "term",
+                                   "Configure a routing-policy term: "
+                                   "<seq-num> [<attribute> <value> ...] "
+                                   "(description)",
+                                   commandHandler<
+                                       CmdConfigProtocolBgpPolicyRoutingPolicyTerm>,
+                                   argRegistrar<
+                                       CmdConfigProtocolBgpPolicyRoutingPolicyTermTraits>,
+                                   {{
+                                       "action",
+                                       "Configure a term action",
+                                       {{
+                                            "result",
+                                            "Set the term result: "
+                                            "<ACCEPT|REJECT|CONTINUE>",
+                                            commandHandler<
+                                                CmdConfigProtocolBgpPolicyRoutingPolicyTermActionResult>,
+                                            argRegistrar<
+                                                CmdConfigProtocolBgpPolicyRoutingPolicyTermActionResultTraits>,
+                                        },
+                                        {
+                                            "set",
+                                            "Set a route attribute: "
+                                            "as-path prepend|community|"
+                                            "local-pref|med|next-hop|"
+                                            "origin|weight <value> ...",
+                                            commandHandler<
+                                                CmdConfigProtocolBgpPolicyRoutingPolicyTermActionSet>,
+                                            argRegistrar<
+                                                CmdConfigProtocolBgpPolicyRoutingPolicyTermActionSetTraits>,
+                                        }},
+                                   }},
+                               }},
                            }},
                       },
                   },
@@ -589,6 +686,12 @@ const CommandTree& kConfigCommandTree() {
        commandHandler<CmdConfigRollback>,
        argRegistrar<CmdConfigRollbackTraits>},
 
+      {"config",
+       "mirror",
+       "Create or update a SPAN or sFlow mirror",
+       commandHandler<CmdConfigMirror>,
+       argRegistrar<CmdConfigMirrorTraits>},
+
       {
           "config",
           "srv6",
@@ -707,6 +810,19 @@ const CommandTree& kConfigCommandTree() {
           commandHandler<CmdDeleteInterface>,
           argRegistrar<CmdDeleteInterfaceTraits>,
           {{
+               "dhcp",
+               "Delete (reset to default) DHCP settings for interface",
+               commandHandler<CmdDeleteInterfaceDhcp>,
+               argTypeHandler<CmdDeleteInterfaceDhcpTraits>,
+               {{
+                   "relay",
+                   "Clear the DHCP relay (helper) destination: "
+                   "<ip-address|ipv6-address> [<address>]",
+                   commandHandler<CmdDeleteInterfaceDhcpRelay>,
+                   argRegistrar<CmdDeleteInterfaceDhcpRelayTraits>,
+               }},
+           },
+           {
                "ipv6",
                "Delete (reset to default) IPv6 settings for interface",
                commandHandler<CmdDeleteInterfaceIpv6>,
@@ -717,6 +833,13 @@ const CommandTree& kConfigCommandTree() {
                    commandHandler<CmdDeleteInterfaceIpv6Ndp>,
                    argRegistrar<CmdDeleteInterfaceIpv6NdpTraits>,
                }},
+           },
+           {
+               "pfc-config",
+               "Remove the interface's PFC config, or reset one of its "
+               "optional fields: watchdog, rx-duration, tx-duration",
+               commandHandler<CmdDeleteInterfacePfcConfig>,
+               argRegistrar<CmdDeleteInterfacePfcConfigTraits>,
            },
            {
                "sflow",
@@ -734,6 +857,12 @@ const CommandTree& kConfigCommandTree() {
           commandHandler<CmdDeleteQos>,
           argRegistrar<CmdDeleteQosTraits>,
           {{
+               "buffer-pool",
+               "Remove a buffer pool (refused while a queue or priority group still names it)",
+               commandHandler<CmdDeleteQosBufferPool>,
+               argRegistrar<CmdDeleteQosBufferPoolTraits>,
+           },
+           {
                "default-policy",
                "Clear the default data-plane QoS policy",
                commandHandler<CmdDeleteQosDefaultPolicy>,
@@ -762,6 +891,12 @@ const CommandTree& kConfigCommandTree() {
                    commandHandler<CmdDeleteQosPolicyMap>,
                    argRegistrar<CmdDeleteQosPolicyMapTraits>,
                }},
+           },
+           {
+               "priority-group-policy",
+               "Remove a priority group policy (refused while an interface's pfc-config still binds it)",
+               commandHandler<CmdDeleteQosPriorityGroupPolicy>,
+               argRegistrar<CmdDeleteQosPriorityGroupPolicyTraits>,
            }},
       },
 
@@ -808,6 +943,30 @@ const CommandTree& kConfigCommandTree() {
                              CmdDeleteProtocolBgpPolicyCommunityList>,
                          argRegistrar<
                              CmdDeleteProtocolBgpPolicyCommunityListTraits>,
+                     },
+                     {
+                         "prefix-list",
+                         "Delete a BGP prefix-list, or one of its "
+                         "entries: <name> [prefix <prefix/len>]",
+                         commandHandler<CmdDeleteProtocolBgpPolicyPrefixList>,
+                         argRegistrar<
+                             CmdDeleteProtocolBgpPolicyPrefixListTraits>,
+                     },
+                     {
+                         "routing-policy",
+                         "Delete a BGP routing-policy: <name>",
+                         commandHandler<
+                             CmdDeleteProtocolBgpPolicyRoutingPolicy>,
+                         argRegistrar<
+                             CmdDeleteProtocolBgpPolicyRoutingPolicyTraits>,
+                         {{
+                             "term",
+                             "Delete a routing-policy term: <seq-num>",
+                             commandHandler<
+                                 CmdDeleteProtocolBgpPolicyRoutingPolicyTerm>,
+                             argRegistrar<
+                                 CmdDeleteProtocolBgpPolicyRoutingPolicyTermTraits>,
+                         }},
                      }},
                 }},
            },
@@ -970,6 +1129,14 @@ const CommandTree& kConfigCommandTree() {
                commandHandler<CmdDeleteLoadBalancingLag>,
                argRegistrar<CmdDeleteLoadBalancingLagTraits>,
            }},
+      },
+
+      {
+          "delete",
+          "mirror",
+          "Delete an unreferenced mirror: <name>",
+          commandHandler<CmdDeleteMirror>,
+          argRegistrar<CmdDeleteMirrorTraits>,
       },
 
       {

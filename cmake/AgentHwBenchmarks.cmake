@@ -542,6 +542,16 @@ BUILD_HW_BENCHMARK_LIBS(srv6_scale_benchmark
     Folly::follybenchmark
 )
 
+BUILD_HW_BENCHMARK_LIBS(pbr_scale_benchmark
+  SRCS fboss/agent/hw/benchmarks/HwPbrScaleBenchmark.cpp
+  DEPS
+    acl_test_utils
+    config_factory
+    ecmp_helper
+    Folly::folly
+    Folly::follybenchmark
+)
+
 BUILD_HW_BENCHMARK_LIBS(srv6_mysid_scale_benchmark
   SRCS fboss/agent/hw/benchmarks/HwSrv6MySidScaleBenchmark.cpp
   DEPS

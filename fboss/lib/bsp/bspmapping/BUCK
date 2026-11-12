@@ -23,8 +23,8 @@ cpp_binary(
         "input/*.csv",
     ]),
     deps = [
+        "fbsource//xplat/folly:file_util",
         ":parser",
-        "//folly:file_util",
         "//thrift/lib/cpp2/protocol:protocol",
     ],
     external_deps = [
@@ -41,11 +41,11 @@ cpp_library(
         "Parser.h",
     ],
     deps = [
-        "//folly:file_util",
-        "//folly:string",
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly:string",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:range",
         "//fboss/lib/bsp:bsp_platform_mapping-cpp2-types",
-        "//folly:range",
     ],
 )

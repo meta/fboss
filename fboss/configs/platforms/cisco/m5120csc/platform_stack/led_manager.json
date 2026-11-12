@@ -1,0 +1,132 @@
+{
+  "systemLedConfig": {
+    "presentLedSysfsPath": "/sys/class/leds/sys_led:blue:status/brightness",
+    "absentLedSysfsPath": "/sys/class/leds/sys_led:amber:status/brightness"
+  },
+  "fruTypeLedConfigs": {
+    "FAN": {
+      "presentLedSysfsPath": "/sys/class/leds/fan_led:blue:status/brightness",
+      "absentLedSysfsPath": "/sys/class/leds/fan_led:amber:status/brightness"
+    },
+    "PSU": {
+      "presentLedSysfsPath": "/sys/class/leds/psu_led:blue:status/brightness",
+      "absentLedSysfsPath": "/sys/class/leds/psu_led:amber:status/brightness"
+    }
+  },
+  "fruConfigs": [
+    {
+      "fruName": "FAN0",
+      "fruType": "FAN",
+      "presenceDetection": {
+        "sysfsFileHandle": {
+          "presenceFilePath": "/run/devmap/sensors/SCM_FAN_PWM/fan1_presence",
+          "desiredValue": 1
+        }
+      }
+    },
+    {
+      "fruName": "FAN1",
+      "fruType": "FAN",
+      "presenceDetection": {
+        "sysfsFileHandle": {
+          "presenceFilePath": "/run/devmap/sensors/SCM_FAN_PWM/fan2_presence",
+          "desiredValue": 1
+        }
+      }
+    },
+    {
+      "fruName": "FAN2",
+      "fruType": "FAN",
+      "presenceDetection": {
+        "sysfsFileHandle": {
+          "presenceFilePath": "/run/devmap/sensors/SCM_FAN_PWM/fan3_presence",
+          "desiredValue": 1
+        }
+      }
+    },
+    {
+      "fruName": "FAN3",
+      "fruType": "FAN",
+      "presenceDetection": {
+        "sysfsFileHandle": {
+          "presenceFilePath": "/run/devmap/sensors/SCM_FAN_PWM/fan4_presence",
+          "desiredValue": 1
+        }
+      }
+    },
+    {
+      "fruName": "FAN4",
+      "fruType": "FAN",
+      "presenceDetection": {
+        "sysfsFileHandle": {
+          "presenceFilePath": "/run/devmap/sensors/SCM_FAN_PWM/fan5_presence",
+          "desiredValue": 1
+        }
+      }
+    },
+    {
+      "fruName": "FAN5",
+      "fruType": "FAN",
+      "presenceDetection": {
+        "sysfsFileHandle": {
+          "presenceFilePath": "/run/devmap/sensors/SCM_FAN_PWM/fan6_presence",
+          "desiredValue": 1
+        }
+      }
+    },
+    {
+      "fruName": "FAN6",
+      "fruType": "FAN",
+      "presenceDetection": {
+        "sysfsFileHandle": {
+          "presenceFilePath": "/run/devmap/sensors/SCM_FAN_PWM/fan7_presence",
+          "desiredValue": 1
+        }
+      }
+    },
+    {
+      "fruName": "PSU0",
+      "fruType": "PSU",
+      "presenceDetection": {
+        "gpioLineHandle": {
+          "charDevPath": "/run/devmap/gpiochips/SMB_PCA9539_0X74",
+          "lineIndex": 0,
+          "desiredValue": 0
+        }
+      }
+    },
+    {
+      "fruName": "PSU1",
+      "fruType": "PSU",
+      "presenceDetection": {
+        "gpioLineHandle": {
+          "charDevPath": "/run/devmap/gpiochips/SMB_PCA9539_0X74",
+          "lineIndex": 8,
+          "desiredValue": 0
+        }
+      }
+    },
+    {
+      "fruName": "PSU2",
+      "fruType": "PSU",
+      "presenceDetection": {
+        "gpioLineHandle": {
+          "charDevPath": "/run/devmap/gpiochips/SMB_PCA9539_0X78",
+          "lineIndex": 0,
+          "desiredValue": 0
+        }
+      }
+    },
+    {
+      "fruName": "PSU3",
+      "fruType": "PSU",
+      "presenceDetection": {
+        "gpioLineHandle": {
+          "charDevPath": "/run/devmap/gpiochips/SMB_PCA9539_0X78",
+          "lineIndex": 8,
+          "desiredValue": 0
+        }
+      }
+    }
+  ]
+}

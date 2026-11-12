@@ -75,6 +75,8 @@ HwPortFb303Stats::kPortMonotonicCounterStatKeys() const {
       kCbfcCcUpdateTx(),
       kCbfcCfUpdateTx(),
       kCbfcCfUpdateRx(),
+      kHwProtectionSwitchoverEvents(),
+      kHwProtectionSwitchoverDropPkts(),
   };
   return kPortKeys;
 }
@@ -450,6 +452,20 @@ void HwPortFb303Stats::updateStats(
         timeRetrieved_, kCbfcCfUpdateRx(), *curPortStats.cbfcCfUpdateRx_());
   }
 
+  // HW protection switchover counters, populated only on TH5/TH6.
+  if (curPortStats.hwProtectionSwitchoverEvents_().has_value()) {
+    updateStat(
+        timeRetrieved_,
+        kHwProtectionSwitchoverEvents(),
+        *curPortStats.hwProtectionSwitchoverEvents_());
+  }
+  if (curPortStats.hwProtectionSwitchoverDropPkts_().has_value()) {
+    updateStat(
+        timeRetrieved_,
+        kHwProtectionSwitchoverDropPkts(),
+        *curPortStats.hwProtectionSwitchoverDropPkts_());
+  }
+
   // Update queue stats
   auto updateQueueStat = [this](
                              folly::StringPiece statKey,
@@ -632,8 +648,8 @@ void HwPortFb303Stats::updateStats(
     }
   }
 
-  // PFC duration stats
-  if (curPortStats.rxPfcDurationUsec_()->size()) {
+  // PFC duration stats. The counters only exist while enabled in config.
+  if (isRxPfcDurationEnabled() && !curPortStats.rxPfcDurationUsec_()->empty()) {
     for (const auto& priority : getEnabledPfcPriorities()) {
       updatePfcStat(
           kRxPfcDurationUsec(),
@@ -642,7 +658,7 @@ void HwPortFb303Stats::updateStats(
           nullptr);
     }
   }
-  if (curPortStats.txPfcDurationUsec_()->size()) {
+  if (isTxPfcDurationEnabled() && !curPortStats.txPfcDurationUsec_()->empty()) {
     for (const auto& priority : getEnabledPfcPriorities()) {
       updatePfcStat(
           kTxPfcDurationUsec(),
@@ -676,6 +692,16 @@ void HwPortFb303Stats::updateStats(
   }
 
   portStats_ = curPortStats;
+}
+
+void HwPortFb303Stats::updateLinkDownDuringWarmBootCounter(
+    bool linkDownDuringWarmBoot) {
+  if (!portLatchStatusSupported_) {
+    return;
+  }
+  fb303::fbData->setCounter(
+      statName(kLinkDownDuringWarmBoot(), portName()),
+      linkDownDuringWarmBoot ? 1 : 0);
 }
 
 } // namespace facebook::fboss

@@ -12,11 +12,24 @@
 
 #include <chrono>
 #include <filesystem>
+#include <memory>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
+namespace facebook::fboss::platform {
+class ExpectSession;
+} // namespace facebook::fboss::platform
+
 namespace facebook::fboss::platform::platform_checks {
+
+// A command could not be executed on a host, as opposed to running and
+// failing.
+class HostCommandError : public std::runtime_error {
+ public:
+  using std::runtime_error::runtime_error;
+};
 
 struct CommandResult {
   int exitCode{-1};
@@ -55,7 +68,13 @@ class Host {
       const std::filesystem::path& hostPath,
       std::chrono::seconds timeout) const = 0;
 
+  // Starts an interactive login shell in a PTY, for flows that need a
+  // terminal (e.g. serial consoles).
+  virtual std::unique_ptr<ExpectSession> spawnInteractive() const = 0;
+
   // The defaults below are implemented with run(), which works on any host.
+  // They throw HostCommandError if the command itself could not be run (e.g.
+  // the connection dropped), so that this is not mistaken for a missing file.
 
   virtual std::optional<std::string> readFile(
       const std::filesystem::path& path) const;
@@ -66,9 +85,18 @@ class Host {
   virtual std::vector<std::filesystem::path> listDirectory(
       const std::filesystem::path& path) const;
 
+  // readFile() for many files in one round trip, which matters on remote
+  // hosts. Unreadable files are nullopt.
+  virtual std::vector<std::optional<std::string>> readFiles(
+      const std::vector<std::filesystem::path>& paths) const;
+
   // readFile() without surrounding whitespace, e.g. for sysfs attributes.
   std::optional<std::string> readTrimmedFile(
       const std::filesystem::path& path) const;
+
+ private:
+  // run(), throwing HostCommandError if `cmd` could not be executed.
+  CommandResult runQuery(const std::string& cmd) const;
 };
 
 // Runs `argv` locally, killing it after `timeout`. Shared by Host

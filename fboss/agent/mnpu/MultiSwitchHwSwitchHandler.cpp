@@ -284,12 +284,12 @@ multiswitch::StateOperDelta MultiSwitchHwSwitchHandler::getNextStateOperDelta(
         // operdelta will be a full sync delta. ie
         // StateDelta(std::make_shared<SwitchState>(), initialState). So it is
         // fine to send the first operdelta as a full sync delta.
-        setOperSyncStateLocked(HwSwitchOperDeltaSyncState::CONNECTED, lk);
+        setOperSyncStateLocked(HwSwitchOperDeltaSyncState::SYNC_CONNECTED, lk);
       }
     } else {
       if (checkOperSyncStateLocked(
               HwSwitchOperDeltaSyncState::INITIAL_SYNC_SENT, lk)) {
-        setOperSyncStateLocked(HwSwitchOperDeltaSyncState::CONNECTED, lk);
+        setOperSyncStateLocked(HwSwitchOperDeltaSyncState::SYNC_CONNECTED, lk);
       }
       prevOperDeltaResult_ = prevOperResult.get();
     }
@@ -360,7 +360,7 @@ SwitchRunState MultiSwitchHwSwitchHandler::getHwSwitchRunState() {
       return SwitchRunState::UNINITIALIZED;
     case HwSwitchOperDeltaSyncState::INITIAL_SYNC_SENT:
       return SwitchRunState::INITIALIZED;
-    case HwSwitchOperDeltaSyncState::CONNECTED:
+    case HwSwitchOperDeltaSyncState::SYNC_CONNECTED:
       return SwitchRunState::CONFIGURED;
     case HwSwitchOperDeltaSyncState::CANCELLED:
       return SwitchRunState::EXITING;

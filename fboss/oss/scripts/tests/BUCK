@@ -1,7 +1,40 @@
 load("@fbcode_macros//build_defs:python_unittest.bzl", "python_unittest")
 load("@fbsource//tools/build_defs/testinfra:network_access_utils.bzl", "network_access_utils")
 
-oncall("fboss_distro")
+oncall("fboss_oss")
+
+python_unittest(
+    name = "test_bsp_version",
+    srcs = ["test_bsp_version.py"],
+    network_access = network_access_utils.none(),
+    deps = ["//fboss/oss/scripts:component_version"],
+)
+
+python_unittest(
+    name = "test_kernel_version",
+    srcs = ["test_kernel_version.py"],
+    network_access = network_access_utils.none(),
+    resources = {"//fboss/github/fboss-image/kernel:build_kernel_script": "build_kernel.sh"},
+    deps = ["//fboss/oss/scripts:component_version"],
+)
+
+python_unittest(
+    name = "test_package_versions",
+    srcs = ["test_package_versions.py"],
+    network_access = network_access_utils.none(),
+    deps = [
+        "//fboss/oss/scripts:component_version",
+        "//fboss/oss/scripts:package_fboss_lib",
+        "//fboss/oss/scripts:package_lib",
+    ],
+)
+
+python_unittest(
+    name = "test_component_version",
+    srcs = ["test_component_version.py"],
+    network_access = network_access_utils.none(),
+    deps = ["//fboss/oss/scripts:component_version"],
+)
 
 python_unittest(
     name = "test_check_copyright_headers",
@@ -22,11 +55,11 @@ python_unittest(
 )
 
 python_unittest(
-    name = "test_platform_descriptor_utils",
-    srcs = ["test_platform_descriptor_utils.py"],
+    name = "test_platform_configs_utils",
+    srcs = ["test_platform_configs_utils.py"],
     network_access = network_access_utils.none(),
     deps = [
-        "//fboss/oss/scripts:platform_descriptor_utils",
+        "//fboss/oss/scripts:platform_configs_utils",
     ],
 )
 

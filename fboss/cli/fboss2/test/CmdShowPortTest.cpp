@@ -6,10 +6,14 @@
 #include <folly/IPAddressV4.h>
 #include <folly/synchronization/Baton.h>
 
+#include <algorithm>
 #include <thread>
+
+#include <fmt/core.h>
 
 #include "fboss/agent/AddressUtil.h"
 #include "fboss/agent/if/gen-cpp2/ctrl_types.h"
+#include "fboss/cli/fboss2/CmdGlobalOptions.h"
 #include "fboss/cli/fboss2/utils/CmdClientUtils.h"
 
 #include <thrift/lib/cpp2/reflection/testing.h>
@@ -512,6 +516,173 @@ TEST_F(CmdShowPortTestFixture, sortByName) {
   EXPECT_THRIFT_EQ(normalizedModel, model);
 }
 
+TEST_F(CmdShowPortTestFixture, cbfc) {
+  auto portEntries = mockPortEntries;
+  CbfcInfo cbfc;
+  cbfc.configName() = "cbfc";
+  cbfc.virtualChannels() = {2, 6};
+  cbfc.senderCreditSize() = 56;
+  cbfc.senderPacketOverhead() = 16;
+  cbfc.senderCreditLimit() = 8192;
+  cbfc.receiverCreditLimit() = 4096;
+  portEntries[3].cbfc() = cbfc;
+
+  HwPortStats stats;
+  stats.cbfcCfUpdateTx_() = 10;
+  stats.cbfcCfUpdateRx_() = 20;
+  stats.cbfcCcUpdateTx_() = 30;
+  std::map<std::string, HwPortStats> portStats{{"eth1/5/3", stats}};
+
+  auto model = CmdShowPort().createModel(
+      portEntries,
+      mockTransceiverEntries,
+      queriedEntries,
+      portStats,
+      mockPortToPeer,
+      mockPeerDrainStates,
+      mockPeerPortInfo,
+      mockDrainedInterfaces);
+
+  for (const auto& entry : *model.portEntries()) {
+    if (*entry.name() != "eth1/5/3") {
+      EXPECT_FALSE(entry.cbfc().has_value());
+      continue;
+    }
+    EXPECT_EQ(
+        entry.cbfc(),
+        "cbfc, VC 2 6, sender 56 B / 16 B, sender limit 8192, "
+        "receiver limit 4096");
+    EXPECT_EQ(entry.hwPortStats()->cbfcCfUpdateTx(), 10);
+    EXPECT_EQ(entry.hwPortStats()->cbfcCfUpdateRx(), 20);
+    EXPECT_EQ(entry.hwPortStats()->cbfcCcUpdateTx(), 30);
+  }
+}
+
+TEST_F(CmdShowPortTestFixture, cbfcWithoutReceiverLimit) {
+  auto portEntries = mockPortEntries;
+  CbfcInfo cbfc;
+  cbfc.configName() = "cbfc";
+  cbfc.virtualChannels() = {2};
+  cbfc.senderCreditSize() = 56;
+  cbfc.senderPacketOverhead() = 16;
+  cbfc.senderCreditLimit() = 8192;
+  portEntries[3].cbfc() = cbfc;
+
+  auto model = CmdShowPort().createModel(
+      portEntries,
+      mockTransceiverEntries,
+      queriedEntries,
+      mockPortStats,
+      mockPortToPeer,
+      mockPeerDrainStates,
+      mockPeerPortInfo,
+      mockDrainedInterfaces);
+
+  auto entry = std::find_if(
+      model.portEntries()->begin(),
+      model.portEntries()->end(),
+      [](const auto& portEntry) { return *portEntry.name() == "eth1/5/3"; });
+  ASSERT_NE(entry, model.portEntries()->end());
+  EXPECT_EQ(entry->cbfc(), "cbfc, VC 2, sender 56 B / 16 B, sender limit 8192");
+}
+
+TEST_F(CmdShowPortTestFixture, cumulativeAndWindowedStats) {
+  PortQueueThrift namedQueue;
+  namedQueue.id() = 2;
+  namedQueue.name() = "silver";
+  PortQueueThrift unnamedQueue;
+  unnamedQueue.id() = 4;
+  mockPortEntries.at(1).portQueues() = {namedQueue, unnamedQueue};
+
+  HwPortStats hwPortStats;
+  hwPortStats.inUnicastPkts_() = 10001;
+  hwPortStats.inMulticastPkts_() = 10002;
+  hwPortStats.inBroadcastPkts_() = 10003;
+  hwPortStats.outUnicastPkts_() = 20001;
+  hwPortStats.outMulticastPkts_() = 20002;
+  hwPortStats.outBroadcastPkts_() = 20003;
+  hwPortStats.outErrors_() = 42;
+  hwPortStats.inIpv4HdrErrors_() = 43;
+  hwPortStats.inIpv6HdrErrors_() = 44;
+  hwPortStats.queueOutBytes_() = {{2, 1234}, {4, 0}};
+  hwPortStats.queueOutDiscardBytes_() = {{2, 0}, {4, 0}};
+  hwPortStats.queueOutDiscardPackets_() = {{2, 55}, {4, 0}};
+  mockPortStats["eth1/5/1"] = hwPortStats;
+  const std::map<std::string, int64_t> counters = {
+      {"eth1/5/1.in_bytes.sum.60", 15000},
+      {"eth1/5/1.in_bytes.sum.600", 150000},
+      {"eth1/5/1.in_bytes.sum.3600", 900000},
+      {"eth1/5/1.out_bytes.sum.60", 7500},
+      {"eth1/5/1.out_bytes.sum.600", 75000},
+      {"eth1/5/1.out_bytes.sum.3600", 450000},
+      {"eth1/5/1.in_unicast_pkts.sum.60", 109},
+      {"eth1/5/1.in_unicast_pkts.sum.600", 1100},
+      {"eth1/5/1.in_unicast_pkts.sum.3600", 6647},
+      {"eth1/5/1.in_errors.sum.60", 1},
+      {"eth1/5/1.in_errors.sum.600", 2},
+      {"eth1/5/1.in_errors.sum.3600", 3},
+      {"eth1/5/1.queue2.silver.out_bytes.sum.60", 7500},
+      {"eth1/5/1.queue2.silver.out_bytes.sum.600", 75000},
+      {"eth1/5/1.queue2.silver.out_bytes.sum.3600", 450000},
+      {"eth1/5/1.queue2.silver.out_congestion_discards.sum.60", 120},
+      {"eth1/5/1.queue2.silver.out_congestion_discards.sum.600", 600},
+      {"eth1/5/1.queue2.silver.out_congestion_discards.sum.3600", 3600},
+      {"eth1/5/1.queue4.queue4.out_bytes.sum.60", 1000},
+      {"eth1/5/1.queue4.queue4.out_congestion_discards.sum.60", 10},
+      {"eth1/5/2.in_bytes.sum.60", 9999},
+  };
+
+  CmdShowPortTraits::ObjectArgType queriedPorts(
+      std::vector<std::string>{"eth1/5/1"});
+  auto model = CmdShowPort().createModel(
+      mockPortEntries,
+      mockTransceiverEntries,
+      queriedPorts,
+      mockPortStats,
+      mockPortToPeer,
+      mockPeerDrainStates,
+      mockPeerPortInfo,
+      mockDrainedInterfaces,
+      counters);
+
+  ASSERT_EQ(model.portEntries()->size(), 1);
+  const auto& stats = model.portEntries()->front().hwPortStats().value();
+  EXPECT_EQ(stats.inMulticastPkts(), 10002);
+  EXPECT_EQ(stats.inBroadcastPkts(), 10003);
+  EXPECT_EQ(stats.outUnicastPkts(), 20001);
+  EXPECT_EQ(stats.outMulticastPkts(), 20002);
+  EXPECT_EQ(stats.outBroadcastPkts(), 20003);
+  EXPECT_EQ(stats.outErrorPkts(), 42);
+  EXPECT_EQ(stats.inIpv4HeaderErrorPkts(), 43);
+  EXPECT_EQ(stats.inIpv6HeaderErrorPkts(), 44);
+  EXPECT_EQ(stats.queueOutDiscardPackets()->at(2), 55);
+
+  const auto& windowed = stats.windowedStats().value();
+  EXPECT_EQ(windowed.ingressBitsPerSecond()->oneMinute(), 2000);
+  EXPECT_EQ(windowed.ingressBitsPerSecond()->tenMinutes(), 2000);
+  EXPECT_EQ(windowed.ingressBitsPerSecond()->oneHour(), 2000);
+  EXPECT_EQ(windowed.egressBitsPerSecond()->oneMinute(), 1000);
+  EXPECT_EQ(windowed.inUnicastPkts()->oneMinute(), 109);
+  EXPECT_EQ(windowed.inUnicastPkts()->tenMinutes(), 1100);
+  EXPECT_EQ(windowed.inUnicastPkts()->oneHour(), 6647);
+  EXPECT_EQ(windowed.inErrorPkts()->oneMinute(), 1);
+  EXPECT_EQ(windowed.inErrorPkts()->tenMinutes(), 2);
+  EXPECT_EQ(windowed.inErrorPkts()->oneHour(), 3);
+
+  const auto& namedRates = stats.queueOutBitsPerSecond()->at(2);
+  EXPECT_EQ(namedRates.oneMinute(), 1000);
+  EXPECT_EQ(namedRates.tenMinutes(), 1000);
+  EXPECT_EQ(namedRates.oneHour(), 1000);
+  const auto& discardRates =
+      stats.queueOutCongestionDiscardPacketsPerSecond()->at(2);
+  EXPECT_EQ(discardRates.oneMinute(), 2);
+  EXPECT_EQ(discardRates.tenMinutes(), 1);
+  EXPECT_EQ(discardRates.oneHour(), 1);
+
+  EXPECT_FALSE(stats.queueOutBitsPerSecond()->contains(4));
+  EXPECT_FALSE(stats.queueOutCongestionDiscardPacketsPerSecond()->contains(4));
+}
+
 TEST_F(CmdShowPortTestFixture, invalidPortName) {
   auto invalidPortEntries = createInvalidPortEntries();
 
@@ -572,6 +743,204 @@ TEST_F(CmdShowPortTestFixture, wikiDocHooks) {
 TEST_F(CmdShowPortTestFixture, wikiDocHooksQueue) {
   EXPECT_FALSE(CmdShowPortQueueTraits::description().empty());
   EXPECT_FALSE(CmdShowPortQueue::sampleModel().empty());
+}
+
+namespace {
+// Sets the global --detail option by parsing it through CLI11, the same path
+// the fboss2 binary uses.
+void setDetailFlag(bool detail) {
+  CLI::App app;
+  CmdGlobalOptions::getInstance()->init(app);
+  app.parse(std::vector<std::string>{detail ? "--detail" : "--detail=false"});
+}
+
+ActiveQueueManagement makeLinearAqm(
+    QueueCongestionBehavior behavior,
+    int32_t minLength,
+    int32_t maxLength,
+    int32_t probability) {
+  ActiveQueueManagement aqm;
+  aqm.behavior() = behavior;
+  LinearQueueCongestionDetection linear;
+  linear.minimumLength() = minLength;
+  linear.maximumLength() = maxLength;
+  linear.probability() = probability;
+  aqm.detection()->linear() = linear;
+  return aqm;
+}
+
+PortQueueThrift makeWrrQueue(int32_t id, int32_t weight) {
+  PortQueueThrift queue;
+  queue.id() = id;
+  queue.name() = fmt::format("q{}", id);
+  queue.mode() = "WEIGHTED_ROUND_ROBIN";
+  queue.weight() = weight;
+  queue.reservedBytes() = 0;
+  queue.scalingFactor() = "TWO";
+  return queue;
+}
+
+// Two ports sharing a queue profile where only q3 carries AQM, and one
+// port with a queue that has both ECN and WRED entries.
+std::map<int32_t, PortInfoThrift> createPortQueueEntries() {
+  std::vector<PortQueueThrift> queues = {
+      makeWrrQueue(0, 1),
+      makeWrrQueue(1, 2),
+      makeWrrQueue(2, 4),
+      makeWrrQueue(3, 8),
+  };
+  queues[3].aqms() = {
+      makeLinearAqm(QueueCongestionBehavior::ECN, 1000000, 5000000, 100)};
+
+  std::map<int32_t, PortInfoThrift> entries;
+  for (const auto& [portId, name] :
+       std::vector<std::pair<int32_t, std::string>>{
+           {1, "eth1/1/1"}, {5, "eth1/2/1"}}) {
+    PortInfoThrift port;
+    port.portId() = portId;
+    port.name() = name;
+    port.portQueues() = queues;
+    entries[portId] = port;
+  }
+
+  PortInfoThrift mixed;
+  mixed.portId() = 9;
+  mixed.name() = "eth1/3/1";
+  auto both = makeWrrQueue(0, 1);
+  both.aqms() = {
+      makeLinearAqm(QueueCongestionBehavior::ECN, 100000, 200000, 100),
+      makeLinearAqm(QueueCongestionBehavior::EARLY_DROP, 300000, 400000, 50)};
+  mixed.portQueues() = {both};
+  entries[9] = mixed;
+  return entries;
+}
+} // namespace
+
+TEST_F(CmdShowPortTestFixture, queueQueryClientFiltersPorts) {
+  setupMockedAgentServer();
+  auto entries = createPortQueueEntries();
+  EXPECT_CALL(getMockAgent(), getAllPortInfo(_))
+      .WillOnce(Invoke([&](auto& out) { out = entries; }));
+
+  utils::PortList queried(std::vector<std::string>{"eth1/2/1"});
+  auto result = CmdShowPortQueue().queryClient(localhost(), queried);
+
+  ASSERT_EQ(result.size(), 1);
+  ASSERT_EQ(result.count(5), 1);
+  const auto& queues = *result.at(5).portQueues();
+  ASSERT_EQ(queues.size(), 4);
+  EXPECT_FALSE(queues[0].aqms().has_value());
+  ASSERT_TRUE(queues[3].aqms().has_value());
+  EXPECT_EQ(*queues[3].aqms(), *entries.at(5).portQueues()[3].aqms());
+}
+
+TEST_F(CmdShowPortTestFixture, queueQueryClientReturnsAllPortsWhenUnfiltered) {
+  setupMockedAgentServer();
+  auto entries = createPortQueueEntries();
+  EXPECT_CALL(getMockAgent(), getAllPortInfo(_))
+      .WillOnce(Invoke([&](auto& out) { out = entries; }));
+
+  utils::PortList queried(std::vector<std::string>{});
+  auto result = CmdShowPortQueue().queryClient(localhost(), queried);
+
+  EXPECT_EQ(result, entries);
+}
+
+TEST_F(CmdShowPortTestFixture, queueOutputOmitsAqmWithoutDetail) {
+  setDetailFlag(false);
+  std::stringstream ss;
+  CmdShowPortQueue().printOutput(createPortQueueEntries(), ss);
+
+  std::string output = ss.str();
+  EXPECT_THAT(output, HasSubstr("eth1/1/1\n"));
+  EXPECT_THAT(
+      output,
+      HasSubstr(
+          "ID     Name                Mode                     "
+          "Weight    ReservedBytes  ScalingFactor  \n"));
+  EXPECT_THAT(
+      output,
+      HasSubstr(
+          "3      q3                  WEIGHTED_ROUND_ROBIN     "
+          "8         0              TWO            \n"));
+  EXPECT_THAT(output, Not(HasSubstr("AQM")));
+  EXPECT_THAT(output, Not(HasSubstr("ECN")));
+}
+
+TEST_F(CmdShowPortTestFixture, queueDetailShowsAqmColumns) {
+  setDetailFlag(true);
+  std::stringstream ss;
+  CmdShowPortQueue().printOutput(createPortQueueEntries(), ss);
+  setDetailFlag(false);
+
+  std::string output = ss.str();
+  EXPECT_THAT(
+      output,
+      HasSubstr(
+          "ID     Name                Mode                     "
+          "Weight    ReservedBytes  ScalingFactor  "
+          "AQM         MinLength  MaxLength  Probability\n"));
+  // Queues without AQM say so explicitly, so an operator can tell a
+  // missing ECN config apart from one that applied.
+  EXPECT_THAT(
+      output,
+      HasSubstr(
+          "0      q0                  WEIGHTED_ROUND_ROBIN     "
+          "1         0              TWO            "
+          "none        -          -          -\n"
+          "1      q1                  WEIGHTED_ROUND_ROBIN     "
+          "2         0              TWO            "
+          "none        -          -          -\n"));
+  EXPECT_THAT(
+      output,
+      HasSubstr(
+          "3      q3                  WEIGHTED_ROUND_ROBIN     "
+          "8         0              TWO            "
+          "ECN         1000000    5000000    100%\n"));
+  // A queue carrying both ECN and WRED puts the second entry on a
+  // continuation row with the queue columns left blank.
+  EXPECT_THAT(
+      output,
+      HasSubstr(
+          "eth1/3/1\n"
+          "==========\n"));
+  EXPECT_THAT(
+      output,
+      HasSubstr(
+          "0      q0                  WEIGHTED_ROUND_ROBIN     "
+          "1         0              TWO            "
+          "ECN         100000     200000     100%\n" +
+          std::string(92, ' ') + "EARLY_DROP  300000     400000     50%\n"));
+  // The same profile is printed under both ports that use it.
+  EXPECT_EQ(
+      std::count(output.begin(), output.end(), '%'),
+      4 /* 2 ports x q3 ECN + eth1/3/1 ECN + EARLY_DROP */);
+}
+
+TEST_F(CmdShowPortTestFixture, queueDetailHandlesUnknownDetection) {
+  auto entries = createPortQueueEntries();
+  ActiveQueueManagement noDetection;
+  noDetection.behavior() = QueueCongestionBehavior::EARLY_DROP;
+  entries.at(9).portQueues()[0].aqms() = {noDetection};
+
+  setDetailFlag(true);
+  std::stringstream ss;
+  CmdShowPortQueue().printOutput(entries, ss);
+  setDetailFlag(false);
+
+  EXPECT_THAT(
+      ss.str(), HasSubstr("EARLY_DROP  unknown    unknown    unknown\n"));
+}
+
+TEST_F(CmdShowPortTestFixture, queueSampleModelCarriesAqm) {
+  auto model = CmdShowPortQueue::sampleModel();
+  bool sawAqm = false;
+  for (const auto& [portId, port] : model) {
+    for (const auto& queue : *port.portQueues()) {
+      sawAqm |= queue.aqms().has_value() && !queue.aqms()->empty();
+    }
+  }
+  EXPECT_TRUE(sawAqm);
 }
 
 } // namespace facebook::fboss

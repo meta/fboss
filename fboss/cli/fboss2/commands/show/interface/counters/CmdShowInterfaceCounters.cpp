@@ -11,7 +11,66 @@
 #include "fboss/cli/fboss2/commands/show/interface/counters/CmdShowInterfaceCounters.h"
 #include "fboss/cli/fboss2/CmdHandler.cpp"
 
+#include <limits>
+
 #include "fboss/cli/fboss2/utils/Table.h"
+
+namespace {
+
+int64_t accumulateCounter(int64_t total, int64_t value) {
+  const auto uninitialized =
+      facebook::fboss::hardware_stats_constants::STAT_UNINITIALIZED();
+  if (total == uninitialized || value == uninitialized) {
+    return uninitialized;
+  }
+  if (value > 0 && total > std::numeric_limits<int64_t>::max() - value) {
+    return std::numeric_limits<int64_t>::max();
+  }
+  return total + value;
+}
+
+void addPortCounters(
+    facebook::fboss::cli::InterfaceCounters& aggregateCounters,
+    const facebook::fboss::PortInfoThrift& portInfo) {
+  aggregateCounters.inputBytes() = accumulateCounter(
+      *aggregateCounters.inputBytes(), *portInfo.input()->bytes());
+  aggregateCounters.inputUcastPkts() = accumulateCounter(
+      *aggregateCounters.inputUcastPkts(), *portInfo.input()->ucastPkts());
+  aggregateCounters.inputMulticastPkts() = accumulateCounter(
+      *aggregateCounters.inputMulticastPkts(),
+      *portInfo.input()->multicastPkts());
+  aggregateCounters.inputBroadcastPkts() = accumulateCounter(
+      *aggregateCounters.inputBroadcastPkts(),
+      *portInfo.input()->broadcastPkts());
+  aggregateCounters.outputBytes() = accumulateCounter(
+      *aggregateCounters.outputBytes(), *portInfo.output()->bytes());
+  aggregateCounters.outputUcastPkts() = accumulateCounter(
+      *aggregateCounters.outputUcastPkts(), *portInfo.output()->ucastPkts());
+  aggregateCounters.outputMulticastPkts() = accumulateCounter(
+      *aggregateCounters.outputMulticastPkts(),
+      *portInfo.output()->multicastPkts());
+  aggregateCounters.outputBroadcastPkts() = accumulateCounter(
+      *aggregateCounters.outputBroadcastPkts(),
+      *portInfo.output()->broadcastPkts());
+}
+
+facebook::fboss::cli::InterfaceCounters makeCounters(
+    const std::string& interfaceName,
+    int64_t value) {
+  facebook::fboss::cli::InterfaceCounters counter;
+  counter.interfaceName() = interfaceName;
+  counter.inputBytes() = value;
+  counter.inputUcastPkts() = value;
+  counter.inputMulticastPkts() = value;
+  counter.inputBroadcastPkts() = value;
+  counter.outputBytes() = value;
+  counter.outputUcastPkts() = value;
+  counter.outputMulticastPkts() = value;
+  counter.outputBroadcastPkts() = value;
+  return counter;
+}
+
+} // namespace
 
 namespace facebook::fboss {
 
@@ -24,13 +83,16 @@ CmdShowInterfaceCounters::RetType CmdShowInterfaceCounters::queryClient(
       utils::createClient<apache::thrift::Client<FbossCtrl>>(hostInfo);
 
   std::map<int32_t, facebook::fboss::PortInfoThrift> portCounters;
+  std::vector<facebook::fboss::AggregatePortThrift> aggregatePorts;
   client->sync_getAllPortInfo(portCounters);
+  client->sync_getAggregatePortTable(aggregatePorts);
 
-  return createModel(portCounters, queriedIfs);
+  return createModel(portCounters, aggregatePorts, queriedIfs);
 }
 
 CmdShowInterfaceCounters::RetType CmdShowInterfaceCounters::createModel(
     const std::map<int32_t, facebook::fboss::PortInfoThrift>& portCounters,
+    const std::vector<facebook::fboss::AggregatePortThrift>& aggregatePorts,
     const std::vector<std::string>& queriedIfs) {
   RetType ret;
 
@@ -62,6 +124,25 @@ CmdShowInterfaceCounters::RetType CmdShowInterfaceCounters::createModel(
 
       ret.int_counters()->push_back(counter);
     }
+  }
+
+  for (const auto& aggregatePort : aggregatePorts) {
+    const auto& aggregatePortName = *aggregatePort.name();
+    if (!queriedIfs.empty() && !queriedSet.count(aggregatePortName)) {
+      continue;
+    }
+
+    auto counter = makeCounters(aggregatePortName, 0);
+    for (const auto& memberPort : *aggregatePort.memberPorts()) {
+      const auto portIt = portCounters.find(*memberPort.memberPortID());
+      if (portIt == portCounters.end()) {
+        counter = makeCounters(
+            aggregatePortName, hardware_stats_constants::STAT_UNINITIALIZED());
+        break;
+      }
+      addPortCounters(counter, portIt->second);
+    }
+    ret.int_counters()->push_back(std::move(counter));
   }
 
   std::sort(

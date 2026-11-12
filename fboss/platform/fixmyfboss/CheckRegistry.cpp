@@ -10,12 +10,16 @@
 
 #include "fboss/platform/fixmyfboss/CheckRegistry.h"
 
+#include "fboss/platform/platform_checks/LocalHost.h"
 #include "fboss/platform/platform_checks/checks/BmcChecks.h"
 #include "fboss/platform/platform_checks/checks/BmcReachableCheck.h"
+#include "fboss/platform/platform_checks/checks/HwTestChecks.h"
 #include "fboss/platform/platform_checks/checks/MacAddressCheck.h"
 #include "fboss/platform/platform_checks/checks/ManagementPlaneChecks.h"
 #include "fboss/platform/platform_checks/checks/PciDeviceCheck.h"
+#include "fboss/platform/platform_checks/checks/PowerCycleChecks.h"
 #include "fboss/platform/platform_checks/checks/PowerResetCheck.h"
+#include "fboss/platform/platform_checks/checks/SolConsoleCheck.h"
 #include "fboss/platform/platform_checks/checks/i801SmbusTimeoutCheck.h"
 
 namespace facebook::fboss::platform::fixmyfboss {
@@ -28,9 +32,10 @@ std::vector<std::unique_ptr<PlatformCheck>> createAllChecks(
   const CheckTarget bmc{
       .host = env.bmc, .unavailableReason = env.bmcUnavailableReason};
   // The x86 side of the management plane only exists on switches with a BMC.
-  const CheckTarget x86WithBmc = env.noBmcReason
-      ? CheckTarget{.host = nullptr, .unavailableReason = *env.noBmcReason}
-      : x86;
+  CheckTarget x86WithBmc = x86;
+  if (env.noBmcReason) {
+    x86WithBmc = {.host = nullptr, .unavailableReason = *env.noBmcReason};
+  }
 
   std::vector<std::unique_ptr<PlatformCheck>> checks;
   checks.push_back(
@@ -55,7 +60,20 @@ std::vector<std::unique_ptr<PlatformCheck>> createAllChecks(
   checks.push_back(makeBmcRestApiCheck(bmc));
   checks.push_back(std::make_unique<BmcMacAddressCheck>(bmc));
   checks.push_back(std::make_unique<BmcEepromCheck>(bmc));
+  checks.push_back(std::make_unique<SolConsoleCheck>(bmc));
   checks.push_back(std::make_unique<X86MacConsistencyCheck>(x86, bmc));
+
+  checks.push_back(std::make_unique<SecondaryBmcBootCheck>(bmc));
+  checks.push_back(
+      std::make_unique<WedgePowerCheck>(
+          x86, bmc, std::make_shared<LocalHost>()));
+  for (auto& spec : platformHwTestSpecs()) {
+    checks.push_back(
+        std::make_unique<HwTestCheck>(x86, std::move(spec), env.hwTestsDir));
+  }
+  checks.push_back(
+      std::make_unique<BmcCitTestCheck>(
+          bmc, x86, env.hwTestsDir, env.bmcPlatform));
   return checks;
 }
 

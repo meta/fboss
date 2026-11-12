@@ -87,6 +87,7 @@ BENCHMARK(RxSlowPathArpBenchmark) {
         /* setQueueRate */ false);
     utility::setDefaultCpuTrafficPolicyConfig(
         config, ensemble.getL3Asics(), ensemble.isSai());
+    config.switchSettings()->l2LearningMode() = cfg::L2LearningMode::HARDWARE;
     return config;
   };
 

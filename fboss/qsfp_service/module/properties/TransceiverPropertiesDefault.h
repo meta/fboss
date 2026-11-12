@@ -226,6 +226,25 @@ constexpr auto kDefaultTransceiverPropertiesJson = R"({
         ["2x400G-FR4", "4x200G-FR4"],
       ]
     },
+    "44": {
+      "firstApplicationAdvertisement": {
+        "mediaInterfaceCode": {"smfCode": 0x1D},
+        "hostStartLanes": [0, 4],
+        "hostInterfaceCode": 0x32
+      },
+      "numHostLanes": 8,
+      "numMediaLanes": 8,
+      "displayName": "FR4_2x400G_IB",
+      "supportedSpeedCombinations": [
+        {
+          "combinationName": "2x400G-FR4",
+          "ports": [
+            {"speed": 400000, "hostLanes": {"start": 0, "count": 4}, "mediaLanes": {"start": 0, "count": 4}, "mediaLaneCode": {"smfCode": 0x1D}, "mediaInterfaceCode": 5},
+            {"speed": 400000, "hostLanes": {"start": 4, "count": 4}, "mediaLanes": {"start": 4, "count": 4}, "mediaLaneCode": {"smfCode": 0x1D}, "mediaInterfaceCode": 5}
+          ]
+        }
+      ]
+    },
     "13": {
       "firstApplicationAdvertisement": {
         "mediaInterfaceCode": {"smfCode": 0x1C},
@@ -754,6 +773,54 @@ constexpr auto kDefaultTransceiverPropertiesJson = R"({
       "speedChangeTransitions": [
         ["1x800G-DR8", "2x400G-DR4"],
         ["2x400G-DR4", "4x200G-DR2"]
+      ]
+    },
+    "39": {
+      "firstApplicationAdvertisement": {
+        "mediaInterfaceCode": {"smfCode": 0x73},
+        "hostStartLanes": [0, 1, 2, 3, 4, 5, 6, 7],
+        "hostInterfaceCode": 0x80
+      },
+      "smfLength": 500,
+      "numHostLanes": 8,
+      "numMediaLanes": 8,
+      "displayName": "DR8_1600G",
+      "supportedSpeedCombinations": [
+        {
+          "combinationName": "1x1600G-DR8",
+          "ports": [
+            {"speed": 1600000, "hostLanes": {"start": 0, "count": 8}, "mediaLanes": {"start": 0, "count": 8}, "mediaLaneCode": {"smfCode": 0x7F}, "mediaInterfaceCode": 39}
+          ]
+        },
+        {
+          "combinationName": "2x800G-DR4",
+          "ports": [
+            {"speed": 800000, "hostLanes": {"start": 0, "count": 4}, "mediaLanes": {"start": 0, "count": 4}, "mediaLaneCode": {"smfCode": 0x77}, "mediaInterfaceCode": 22},
+            {"speed": 800000, "hostLanes": {"start": 4, "count": 4}, "mediaLanes": {"start": 4, "count": 4}, "mediaLaneCode": {"smfCode": 0x77}, "mediaInterfaceCode": 22}
+          ]
+        },
+        {
+          "combinationName": "4x400G-DR2",
+          "ports": [
+            {"speed": 400000, "hostLanes": {"start": 0, "count": 2}, "mediaLanes": {"start": 0, "count": 2}, "mediaLaneCode": {"smfCode": 0x75}, "mediaInterfaceCode": 27},
+            {"speed": 400000, "hostLanes": {"start": 2, "count": 2}, "mediaLanes": {"start": 2, "count": 2}, "mediaLaneCode": {"smfCode": 0x75}, "mediaInterfaceCode": 27},
+            {"speed": 400000, "hostLanes": {"start": 4, "count": 2}, "mediaLanes": {"start": 4, "count": 2}, "mediaLaneCode": {"smfCode": 0x75}, "mediaInterfaceCode": 27},
+            {"speed": 400000, "hostLanes": {"start": 6, "count": 2}, "mediaLanes": {"start": 6, "count": 2}, "mediaLaneCode": {"smfCode": 0x75}, "mediaInterfaceCode": 27}
+          ]
+        },
+        {
+          "combinationName": "8x200G-DR1",
+          "ports": [
+            {"speed": 200000, "hostLanes": {"start": 0, "count": 1}, "mediaLanes": {"start": 0, "count": 1}, "mediaLaneCode": {"smfCode": 0x73}, "mediaInterfaceCode": 24},
+            {"speed": 200000, "hostLanes": {"start": 1, "count": 1}, "mediaLanes": {"start": 1, "count": 1}, "mediaLaneCode": {"smfCode": 0x73}, "mediaInterfaceCode": 24},
+            {"speed": 200000, "hostLanes": {"start": 2, "count": 1}, "mediaLanes": {"start": 2, "count": 1}, "mediaLaneCode": {"smfCode": 0x73}, "mediaInterfaceCode": 24},
+            {"speed": 200000, "hostLanes": {"start": 3, "count": 1}, "mediaLanes": {"start": 3, "count": 1}, "mediaLaneCode": {"smfCode": 0x73}, "mediaInterfaceCode": 24},
+            {"speed": 200000, "hostLanes": {"start": 4, "count": 1}, "mediaLanes": {"start": 4, "count": 1}, "mediaLaneCode": {"smfCode": 0x73}, "mediaInterfaceCode": 24},
+            {"speed": 200000, "hostLanes": {"start": 5, "count": 1}, "mediaLanes": {"start": 5, "count": 1}, "mediaLaneCode": {"smfCode": 0x73}, "mediaInterfaceCode": 24},
+            {"speed": 200000, "hostLanes": {"start": 6, "count": 1}, "mediaLanes": {"start": 6, "count": 1}, "mediaLaneCode": {"smfCode": 0x73}, "mediaInterfaceCode": 24},
+            {"speed": 200000, "hostLanes": {"start": 7, "count": 1}, "mediaLanes": {"start": 7, "count": 1}, "mediaLaneCode": {"smfCode": 0x73}, "mediaInterfaceCode": 24}
+          ]
+        }
       ]
     }
   }

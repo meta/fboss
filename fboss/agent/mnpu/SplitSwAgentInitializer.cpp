@@ -1,6 +1,7 @@
 // (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
 
 #include "fboss/agent/mnpu/SplitSwAgentInitializer.h"
+#include "fboss/agent/InstrumentationHooks.h"
 #include "fboss/agent/MultiSwitchThriftHandler.h"
 #include "fboss/agent/PacketStreamHandler.h"
 #include "fboss/agent/TunManager.h"
@@ -106,6 +107,7 @@ void SplitSwAgentInitializer::handleExitSignal(bool gracefulExit) {
 #endif
   initializer_.reset();
   this->waitForServerStopped();
+  stopCoverageCollection();
   if (gracefulExit) {
     exit(0);
   } else {

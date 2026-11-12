@@ -14,6 +14,8 @@ cpp_binary(
     ],
     deps = [
         "fbsource//third-party/googletest:gtest",
+        "fbsource//xplat/folly/init:init",
+        "fbsource//xplat/folly/logging:logging",
         "//common/base:proc",
         "//fboss/agent:enum_utils",
         "//fboss/agent:fboss-error",
@@ -23,8 +25,6 @@ cpp_binary(
         "//fboss/lib:common_file_utils",
         "//fboss/lib/bsp:bsp_core",
         "//fboss/lib/led:led_lib",
-        "//folly/init:init",
-        "//folly/logging:logging",
         "//thrift/lib/cpp2/async:rocket_client_channel",
         "//thrift/lib/cpp2/protocol:protocol",
     ],

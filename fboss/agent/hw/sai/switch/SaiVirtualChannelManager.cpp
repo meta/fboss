@@ -10,14 +10,10 @@
 
 #include "fboss/agent/hw/sai/switch/SaiVirtualChannelManager.h"
 
-#include "fboss/agent/hw/sai/api/PortApi.h"
-#include "fboss/agent/hw/sai/api/SaiApiError.h"
 #include "fboss/agent/hw/sai/store/SaiStore.h"
 #include "fboss/agent/hw/switch_asics/HwAsic.h"
 #include "fboss/agent/platforms/sai/SaiPlatform.h"
 #include "fboss/agent/state/Port.h"
-
-#include <folly/logging/xlog.h>
 
 namespace facebook::fboss {
 
@@ -59,25 +55,6 @@ void SaiVirtualChannelManager::programVirtualChannels(
   if (!virtualChannels) {
     handles_.erase(swPort->getID());
     return;
-  }
-
-  // Below the guard because brcm-sai 16.0_ea_odp answers INVALID PARAMETER for
-  // this set on a port with no CBFC, and the throw unwinds through
-  // ~SaiPortHandle, whose own remove is NOT SUPPORTED for a port -- so it
-  // terminates the agent rather than failing the port.
-  //
-  // Nothing is written to clear a dropped limit: SAI documents the default as
-  // 0, while brcm-sai writes the value into BUFFER_CREDITS, where 0 is a port
-  // holding no credit. A CBFC change needs a cold boot, which restores the
-  // default anyway.
-  //
-  // Not in the port's CreateAttributes: SaiStore reads every attribute in that
-  // tuple back at init, and this one's GET is rejected.
-  if (auto senderCreditLimit = swPort->getCbfcSenderCreditLimit()) {
-    SaiApiTable::getInstance()->portApi().setAttribute(
-        portSaiId,
-        SaiPortTraits::Attributes::CbfcSenderCreditLimit{
-            static_cast<sai_uint32_t>(*senderCreditLimit)});
   }
 
   for (const auto& virtualChannel : *virtualChannels) {

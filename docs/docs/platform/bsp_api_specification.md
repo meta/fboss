@@ -58,7 +58,7 @@ This character device supports the following IOCTL commands:
 
 </TestCase>
 
-More details can be found in the [fbiob-ioctl.h](https://github.com/facebook/fboss/blob/main/fboss/platform/platform_manager/uapi/fbiob-ioctl.h)
+More details can be found in the [fbiob-ioctl.h](https://github.com/meta/fboss/blob/main/fboss/platform/platform_manager/uapi/fbiob-ioctl.h)
 header file.
 
 ### 2.2 Supported Controller Interfaces

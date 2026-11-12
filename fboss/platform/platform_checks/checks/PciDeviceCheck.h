@@ -11,6 +11,7 @@
 #pragma once
 
 #include <filesystem>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -54,7 +55,9 @@ class PciDeviceCheck : public PlatformCheck {
     }
   };
 
-  bool pciDeviceExists(const PciDevice& expectedDevice);
+  // Devices present on the host, as PciDevice::toString(). All attributes
+  // are read in one batch: over SSH every read is a round trip.
+  std::set<std::string> readPresentDevices() const;
 };
 
 } // namespace facebook::fboss::platform::platform_checks

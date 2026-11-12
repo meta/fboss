@@ -110,6 +110,9 @@ class AgentMyMacTest : public AgentHwTest {
   }
 
   void verifyRouted(const folly::MacAddress& dstMac) {
+    learnL2EntryIfPending(
+        utility::MacAddressGenerator().get(routerMac().u64HBO() + 1),
+        ingressPort());
     for (bool isV6 : {true, false}) {
       auto before = getLatestPortStats(egressPort());
       sendPkts(dstMac, isV6);
@@ -125,6 +128,9 @@ class AgentMyMacTest : public AgentHwTest {
   // a non router MAC are dropped. Check they went out of (and so looped back
   // into) A, then wait before checking that none were routed out of B.
   void verifyNotRouted(const folly::MacAddress& dstMac) {
+    learnL2EntryIfPending(
+        utility::MacAddressGenerator().get(routerMac().u64HBO() + 1),
+        ingressPort());
     for (bool isV6 : {true, false}) {
       auto before = getLatestPortStats({ingressPort(), egressPort()});
       sendPkts(dstMac, isV6);

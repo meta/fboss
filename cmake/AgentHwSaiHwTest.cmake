@@ -204,6 +204,7 @@ set_target_properties(sai_packet_trap_helper PROPERTIES COMPILE_FLAGS
 
 add_library(agent_hw_test_thrift_handler
   fboss/agent/hw/test/HwTestThriftHandler.h
+  fboss/agent/hw/test/HwTestLifecycleThriftHandler.cpp
   fboss/agent/hw/test/HwTestLogCaptureThriftHandler.cpp
   fboss/agent/hw/sai/hw_test/HwTestThriftHandler.cpp
   fboss/agent/hw/sai/hw_test/HwTestAclUtilsThriftHandler.cpp
@@ -226,7 +227,9 @@ add_library(agent_hw_test_thrift_handler
 )
 
 target_link_libraries(agent_hw_test_thrift_handler
+  agent_features
   hw_switch
+  hw_test_lifecycle_event
   sai_switch # //fboss/agent/hw/sai/switch:sai_switch
   acl_test_utils
   agent_hw_test_ctrl_cpp2

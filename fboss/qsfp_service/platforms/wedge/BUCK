@@ -10,6 +10,8 @@ oncall("fboss_optics_phy")
 cpp_library(
     name = "wedge-platform-default",
     compiler_flags = QSFP_COMMON_COMPILER_FLAGS,
+    # Links the x86-64-only vendor SAI SDK.
+    target_compatible_with = ["ovr_config//cpu:x86_64"],
     exported_deps = [
         "//fboss/qsfp_service/platforms/wedge:wedge-platform-credo-0.7.2",  # @manual
     ],
@@ -29,9 +31,9 @@ cpp_library(
         "//fboss/qsfp_service:stats",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:range",
         "//fboss/lib/usb:base-i2c-dependencies",
         "//fboss/lib/usb:i2-api",
-        "//folly:range",
     ],
 )
 
@@ -46,23 +48,23 @@ cpp_library(
     compiler_flags = QSFP_COMMON_COMPILER_FLAGS,
     deps = [
         "fbsource//third-party/fmt:fmt",
+        "fbsource//xplat/folly:conv",
+        "fbsource//xplat/folly:random",
+        "fbsource//xplat/folly:scope_guard",
+        "fbsource//xplat/folly/logging:logging",
         "//fboss/qsfp_service:stats",
         "//fboss/qsfp_service/module:qsfp-module",
         "//fboss/qsfp_service/module/cmis:cmis-cpp2-types",
-        "//folly:conv",
-        "//folly:random",
-        "//folly:scope_guard",
-        "//folly/logging:logging",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:range",  # @manual
+        "fbsource//xplat/folly/futures:core",
+        "fbsource//xplat/folly/io/async:async_base",
         ":wedge-i2c-bus-lock",  # @manual
         "//fboss/lib:io_stats_recorder",
         "//fboss/qsfp_service:transceiver-manager",
         "//fboss/qsfp_service/module:firmware_upgrader",  # @manual
         "//fboss/qsfp_service/module:i2c_log_buffer",
-        "//folly:range",  # @manual
-        "//folly/futures:core",
-        "//folly/io/async:async_base",
     ],
 )
 

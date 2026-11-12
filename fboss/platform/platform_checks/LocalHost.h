@@ -43,8 +43,13 @@ class LocalHost : public Host {
       const std::filesystem::path& hostPath,
       std::chrono::seconds timeout) const override;
 
+  std::unique_ptr<ExpectSession> spawnInteractive() const override;
+
   std::optional<std::string> readFile(
       const std::filesystem::path& path) const override;
+
+  std::vector<std::optional<std::string>> readFiles(
+      const std::vector<std::filesystem::path>& paths) const override;
 
   bool exists(const std::filesystem::path& path) const override;
 

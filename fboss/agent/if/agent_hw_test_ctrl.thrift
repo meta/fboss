@@ -81,6 +81,14 @@ struct PortVcInfo {
   2: optional i64 receiverNativeCreditSize;
   3: optional i64 receiverNativePacketOverhead;
   4: optional i64 receiverNativeTotalCredits;
+  // Read from the SDK sender table, so they show what hardware holds.
+  5: optional i64 senderCreditSize;
+  6: optional i64 senderPacketOverhead;
+  // The port's TC_TO_VC map read back from hardware; empty when no map is
+  // bound, unset when the SDK refuses the read.
+  7: optional map<i16, i16> trafficClassToVcId;
+  // The port's QUEUE_TO_VC map read back from hardware; same conventions.
+  8: optional map<i16, i16> queueToVcId;
 }
 
 struct AggPortInfo {
@@ -93,6 +101,19 @@ struct AclStatCountInfo {
   1: i32 aclEntryCount;
   2: i32 aclStatCount;
   3: i32 counterCount;
+}
+
+enum TestLifecycleEvent {
+  UNKNOWN = 0,
+  AGENT_TEARDOWN_START = 1,
+  AGENT_SETUP_COMPLETE = 2,
+}
+
+struct TestLifecycleEventResult {
+  1: bool handled;
+  2: bool success;
+  3: i32 switchIndex;
+  4: optional string error;
 }
 
 service AgentHwTestCtrl {
@@ -163,12 +184,13 @@ service AgentHwTestCtrl {
   void injectSwitchReachabilityChangeNotification();
 
   // route utils
-  RouteInfo getRouteInfo(1: ctrl.IpPrefix prefix);
+  RouteInfo getRouteInfo(1: ctrl.IpPrefix prefix, 2: i32 routerID);
   bool isRouteHit(1: ctrl.IpPrefix prefix);
   void clearRouteHit(1: ctrl.IpPrefix prefix);
   bool isRouteToNexthop(
     1: ctrl.IpPrefix prefix,
     2: Address.BinaryAddress address,
+    3: i32 routerID,
   );
   bool isProgrammedInHw(
     1: i32 intfID,
@@ -284,4 +306,14 @@ service AgentHwTestCtrl {
   // fb303 cross-process utils for multi-switch testing
   map<string, i64> getFb303RegexCounters(1: string regex);
   i64 getFb303Counter(1: string key);
+
+  // Notify optional instrumentation in a test-only hardware agent before the
+  // test fixture advances through a lifecycle boundary. The caller generates
+  // attemptUuid once per attempt of the test process and reuses it for every
+  // notification and retry of that attempt. Observers may deduplicate on
+  // (attemptUuid, event) and ignore notifications from a stale attempt.
+  TestLifecycleEventResult notifyTestLifecycleEvent(
+    1: string attemptUuid,
+    2: TestLifecycleEvent event,
+  );
 }

@@ -212,12 +212,22 @@ api_unittest(
     srcs = [
         "TamApiTest.cpp",
     ],
+    deps = [
+        "fbsource//xplat/folly/container:f14_hash",
+    ],
 )
 
 api_unittest(
     name = "tunnel_api_test",
     srcs = [
         "TunnelApiTest.cpp",
+    ],
+)
+
+api_unittest(
+    name = "tunnel_map_api_test",
+    srcs = [
+        "TunnelMapApiTest.cpp",
     ],
 )
 
@@ -291,5 +301,12 @@ api_unittest(
     name = "macsec_api_test",
     srcs = [
         "MacsecApiTest.cpp",
+    ],
+)
+
+api_unittest(
+    name = "policer_api_test",
+    srcs = [
+        "PolicerApiTest.cpp",
     ],
 )

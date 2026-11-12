@@ -135,6 +135,23 @@ PlatformMapping makeSpecialPolicyMapping() {
   return PlatformMapping(mapping);
 }
 
+PlatformMapping makeIndependentProfileMapping() {
+  cfg::PlatformMapping mapping;
+  mapping.ports()[1] = makePortGroupEntry(
+      1, 1, {{cfg::PortProfileID::PROFILE_100G_4_NRZ_CL91, {}}});
+  mapping.ports()[2] = makePortGroupEntry(
+      2, 2, {{cfg::PortProfileID::PROFILE_400G_8_PAM4_RS544X2N, {}}});
+  addProfile(
+      mapping,
+      cfg::PortProfileID::PROFILE_100G_4_NRZ_CL91,
+      cfg::PortSpeed::HUNDREDG);
+  addProfile(
+      mapping,
+      cfg::PortProfileID::PROFILE_400G_8_PAM4_RS544X2N,
+      cfg::PortSpeed::FOURHUNDREDG);
+  return PlatformMapping(mapping);
+}
+
 PlatformMapping makeMediumPreferenceMapping(
     cfg::PortType portType,
     bool includeOptical = true) {
@@ -326,6 +343,130 @@ TEST(PortConfigUtilsTest, safeProfilesRejectUnresolvedProfileSpeed) {
         std::string(error.what()).find("controlling-port group 1"),
         std::string::npos);
   }
+}
+
+TEST(PortConfigUtilsTest, applyPortProfilesSupportsHeterogeneousBatch) {
+  const auto mapping = makeIndependentProfileMapping();
+  cfg::SwitchConfig config;
+  config.ports() = {
+      utility::createRoutedPortConfig(
+          mapping,
+          PortID(1),
+          cfg::PortProfileID::PROFILE_100G_4_NRZ_CL91,
+          VlanID(2001)),
+      utility::createRoutedPortConfig(
+          mapping,
+          PortID(2),
+          cfg::PortProfileID::PROFILE_400G_8_PAM4_RS544X2N,
+          VlanID(2002)),
+  };
+
+  const auto result = utility::applyPortProfileChanges(
+      config,
+      mapping,
+      {
+          {.portName = "eth1/1/1",
+           .profileID = cfg::PortProfileID::PROFILE_100G_4_NRZ_CL91},
+          {.portName = "eth1/2/1",
+           .profileID = cfg::PortProfileID::PROFILE_400G_8_PAM4_RS544X2N},
+      });
+
+  ASSERT_EQ(result.requestedPorts.size(), 2);
+  EXPECT_EQ(result.requestedPorts.at(0).speed, cfg::PortSpeed::HUNDREDG);
+  EXPECT_EQ(result.requestedPorts.at(1).speed, cfg::PortSpeed::FOURHUNDREDG);
+  EXPECT_EQ(
+      *config.ports()->at(0).profileID(),
+      cfg::PortProfileID::PROFILE_100G_4_NRZ_CL91);
+  EXPECT_EQ(
+      *config.ports()->at(1).profileID(),
+      cfg::PortProfileID::PROFILE_400G_8_PAM4_RS544X2N);
+}
+
+TEST(PortConfigUtilsTest, applyPortProfilesReturnsSubsumedPorts) {
+  const auto mapping = makeTwoPortGroupMapping(true);
+  cfg::SwitchConfig config;
+  config.ports() = {
+      utility::createRoutedPortConfig(
+          mapping,
+          PortID(1),
+          cfg::PortProfileID::PROFILE_100G_4_NRZ_CL91,
+          VlanID(2001)),
+      utility::createRoutedPortConfig(
+          mapping,
+          PortID(2),
+          cfg::PortProfileID::PROFILE_100G_4_NRZ_CL91,
+          VlanID(2002)),
+  };
+  for (auto& port : *config.ports()) {
+    port.state() = cfg::PortState::ENABLED;
+  }
+
+  const auto result = utility::applyPortProfileChanges(
+      config,
+      mapping,
+      {{.portName = "eth1/1/1",
+        .profileID = cfg::PortProfileID::PROFILE_400G_8_PAM4_RS544X2N}},
+      {{"eth1/1/1", {}}});
+
+  EXPECT_EQ(
+      result.subsumedPorts,
+      (std::map<PortID, std::string>{{PortID(2), "eth1/2/1"}}));
+  ASSERT_EQ(config.ports()->size(), 2);
+  EXPECT_EQ(
+      *config.ports()->at(0).profileID(),
+      cfg::PortProfileID::PROFILE_400G_8_PAM4_RS544X2N);
+  EXPECT_EQ(*config.ports()->at(0).speed(), cfg::PortSpeed::FOURHUNDREDG);
+  EXPECT_EQ(*config.ports()->at(1).state(), cfg::PortState::ENABLED);
+}
+
+TEST(PortConfigUtilsTest, applyPortProfilesEnforcesQsfpSupportAtomically) {
+  const auto mapping = makeMapping();
+  cfg::SwitchConfig config;
+  config.ports() = {
+      utility::createRoutedPortConfig(
+          mapping,
+          kPortId,
+          cfg::PortProfileID::PROFILE_100G_4_NRZ_CL91,
+          VlanID(2001)),
+  };
+  const auto originalConfig = config;
+  const utility::PortProfileSupportMap qsfpSupportedProfiles{
+      {kPortName, {cfg::PortProfileID::PROFILE_100G_4_NRZ_CL91}}};
+
+  EXPECT_THROW(
+      utility::applyPortProfileChanges(
+          config,
+          mapping,
+          {{.portName = kPortName,
+            .profileID = cfg::PortProfileID::PROFILE_400G_8_PAM4_RS544X2N}},
+          qsfpSupportedProfiles),
+      FbossError);
+  EXPECT_EQ(config, originalConfig);
+}
+
+TEST(PortConfigUtilsTest, applyPortProfilesAlwaysRequiresPlatformSupport) {
+  const auto mapping = makeTwoPortGroupMapping(true);
+  cfg::SwitchConfig config;
+  config.ports() = {
+      utility::createRoutedPortConfig(
+          mapping,
+          PortID(2),
+          cfg::PortProfileID::PROFILE_100G_4_NRZ_CL91,
+          VlanID(2002)),
+  };
+  const auto originalConfig = config;
+  const utility::PortProfileSupportMap qsfpSupportedProfiles{
+      {"eth1/2/1", {cfg::PortProfileID::PROFILE_400G_8_PAM4_RS544X2N}}};
+
+  EXPECT_THROW(
+      utility::applyPortProfileChanges(
+          config,
+          mapping,
+          {{.portName = "eth1/2/1",
+            .profileID = cfg::PortProfileID::PROFILE_400G_8_PAM4_RS544X2N}},
+          qsfpSupportedProfiles),
+      FbossError);
+  EXPECT_EQ(config, originalConfig);
 }
 
 TEST(PortConfigUtilsTest, createDefaultPortConfigSetsAllFields) {

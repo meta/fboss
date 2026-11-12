@@ -2557,7 +2557,7 @@
             "upperCriticalVal": 290,
             "maxAlarmVal": 250
           },
-          "compute": "0.35*@/1000000"
+          "compute": "0.402*@/1000000"
         },
         {
           "name": "SCM_12V_HSC_PIN",

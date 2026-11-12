@@ -240,6 +240,9 @@ void PortUpdateHandler::stateUpdated(const StateDelta& delta) {
               portStats = switchStats.updatePortName(
                   newPort->getID(), newPort->getName());
               portStats->setPortStatus(newPort->isUp());
+              if (auto isActive = newPort->isActive()) {
+                portStats->setPortActiveStatus(*isActive);
+              }
               portStats->setAccessPolicyState(accessPolicyState(newPort));
             }
           }
@@ -269,6 +272,11 @@ void PortUpdateHandler::stateUpdated(const StateDelta& delta) {
       },
       [&](const std::shared_ptr<Port>& newPort) {
         sw_->portStats(newPort->getID())->setPortStatus(newPort->isUp());
+        // Active state restored on warm boot is never reported as an active
+        // state change, so the counter must be published here.
+        if (auto isActive = newPort->isActive()) {
+          sw_->portStats(newPort->getID())->setPortActiveStatus(*isActive);
+        }
         sw_->portStats(newPort->getID())
             ->setAccessPolicyState(accessPolicyState(newPort));
         disableIfLooped(newPort, delta.newState());

@@ -232,6 +232,8 @@ folly::StringPiece saiObjectTypeToString(sai_object_type_t objectType) {
       return "vlan";
     case SAI_OBJECT_TYPE_VLAN_MEMBER:
       return "vlan-member";
+    case SAI_OBJECT_TYPE_POLICER:
+      return "policer";
     case SAI_OBJECT_TYPE_ISOLATION_GROUP:
       return "isolation-group";
     case SAI_OBJECT_TYPE_ISOLATION_GROUP_MEMBER:
@@ -292,6 +294,8 @@ folly::StringPiece saiObjectTypeToString(sai_object_type_t objectType) {
       return "tam-event-action";
     case SAI_OBJECT_TYPE_TAM_EVENT:
       return "tam-event";
+    case SAI_OBJECT_TYPE_TAM_INT:
+      return "tam-int";
     case SAI_OBJECT_TYPE_TAM:
       return "tam";
     case SAI_OBJECT_TYPE_TAM_EVENT_THRESHOLD:
@@ -300,6 +304,10 @@ folly::StringPiece saiObjectTypeToString(sai_object_type_t objectType) {
       return "tunnel";
     case SAI_OBJECT_TYPE_TUNNEL_TERM_TABLE_ENTRY:
       return "tunnel-term";
+    case SAI_OBJECT_TYPE_TUNNEL_MAP:
+      return "tunnel-map";
+    case SAI_OBJECT_TYPE_TUNNEL_MAP_ENTRY:
+      return "tunnel-map-entry";
 #if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)
     case SAI_OBJECT_TYPE_SRV6_SIDLIST:
       return "srv6-sidlist";

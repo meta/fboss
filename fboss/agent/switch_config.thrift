@@ -199,6 +199,7 @@ enum PortProfileID {
   PROFILE_1600G_8_PAM4_RS544X2N_OPTICAL = 63,
   PROFILE_212POINT5G_1_PAM4_RS544X2N_OPTICAL = 64,
   PROFILE_212POINT5G_1_PAM4_RS544X2N_COPPER = 65,
+  PROFILE_1600G_8_PAM4_RS544X2N_COPPER = 66,
 }
 
 enum Scope {
@@ -586,6 +587,29 @@ struct AclUdfEntry {
 }
 
 /**
+ * IP address match with an arbitrary, possibly non-contiguous, mask. Both ip
+ * and mask are in address notation and must be of the same family, e.g.
+ * ip "::4a1c:1230:0:0" with mask "::efff:fffc:0:0", or ip "10.32.5.0" with
+ * mask "255.240.15.0". A packet matches when
+ * (packet address & mask) == (ip & mask). ip must not set bits outside mask.
+ */
+struct AclIpMatch {
+  1: string ip;
+  2: string mask;
+}
+
+/**
+ * Destination IPv6 word match with an arbitrary mask. value and mask are 32-bit
+ * words carried in i64, since Thrift has no unsigned 32-bit integer type. A
+ * packet matches when (packet word & mask) == value. value must not set bits
+ * outside mask, and mask must not be 0.
+ */
+struct AclIpV6WordMatch {
+  1: i64 value;
+  2: i64 mask;
+}
+
+/**
  * An access control entry
  */
 struct AclEntry {
@@ -727,6 +751,21 @@ struct AclEntry {
    * Valid values [1-63], and valid only when tcpFlagsBitMap is set.
    */
   41: optional i16 tcpFlagsMask;
+
+  /*
+   * Match destination IP with an arbitrary mask. Cannot be combined with
+   * dstIp, dstIpV6Word3 or dstIpV6Word2.
+   */
+  42: optional AclIpMatch dstIpWithMask;
+
+  /*
+   * dstIpV6Word1WithMask matches destination IPv6 bits 63:32, and
+   * dstIpV6Word0WithMask matches bits 31:0. For
+   * AAAA:BBBB:CCCC:DDDD:EEEE:FFFF:1111:2222, word1 is EEEE:FFFF and word0 is
+   * 1111:2222. Cannot be combined with dstIp or dstIpWithMask.
+   */
+  43: optional AclIpV6WordMatch dstIpV6Word1WithMask;
+  44: optional AclIpV6WordMatch dstIpV6Word0WithMask;
 }
 
 enum AclTableActionType {
@@ -778,6 +817,8 @@ enum AclTableQualifier {
   DST_IPV6_WORD2 = 31,
   LOOKUP_CLASS_PORT = 32,
   MPLS_LABEL0_TTL = 33,
+  DST_IPV6_WORD1 = 34,
+  DST_IPV6_WORD0 = 35,
 }
 
 enum AclTableGroupBindPoint {
@@ -1262,6 +1303,21 @@ enum LinkScanMode {
   HARDWARE = 2,
 }
 
+/*
+ * What a port does with the CSIG (Congestion Signaling) tag on routed packets
+ * egressing it. Values match sai_port_csig_tag_action_t.
+ *
+ * PASSTHROUGH: keep the tag unchanged (SDK default).
+ * STRIP: remove the tag.
+ * UPDATE: keep the tag and rewrite its signal with this port's measured
+ *         available bandwidth, stamping the port's CSIG link locator.
+ */
+enum CsigTagAction {
+  PASSTHROUGH = 0,
+  STRIP = 1,
+  UPDATE = 2,
+}
+
 /**
  * Configuration for a single logical port
  */
@@ -1485,7 +1541,8 @@ struct Port {
    */
   41: optional i32 portUpHoldoffTimeMs;
   // UEC Link Layer Retry: name of the LlrConfig profile to apply to this port.
-  // Presence enables LLR on the port (UE Spec 1.0.2 section 5.1).
+  // Presence enables LLR on the port (UE Spec 1.0.2 section 5.1). Changing or
+  // removing it on a running switch needs a coldboot.
   42: optional LlrConfigName llrConfigName;
 
   // Controls whether TX precoding settings from the platform mapping are
@@ -1514,6 +1571,13 @@ struct Port {
   // Traffic ingressing this port is not forwarded to the members of this
   // isolation group. Names a key of SwitchConfig.isolationGroups.
   49: optional IsolationGroupName isolationGroup;
+  // CSIG tag action for routed packets egressing this port. The SDK enables
+  // CSIG parsing (TPID 0x9900) at init on supporting ASICs.
+  // Unset = leave SDK default (PASSTHROUGH) untouched.
+  50: optional CsigTagAction csigTagAction;
+  // CSIG link locator metadata (7 bits, 0-127) stamped into the tag by an
+  // UPDATE port. Unset = leave SDK default untouched.
+  51: optional i16 csigLinkLocator;
 }
 
 enum LacpPortRate {
@@ -1748,13 +1812,18 @@ enum AsicType {
   ASIC_TYPE_CHENAB2 = 25,
   ASIC_TYPE_P200 = 26,
 }
+struct VrfConfig {
+  1: i32 vrfId;
+  2: optional string name;
+}
+
 /**
  * The configuration for an interface
  */
 struct Interface {
   1: i32 intfID;
-  /** The VRF where the interface belongs to */
-  2: i32 routerID = 0;
+  /** The VRF where the interface belongs to. Unset means VRF 0 */
+  2: optional i32 routerID;
   /**
    * The VLAN where the interface sits. Valid only
    * for interface of type VLAN. When present
@@ -2319,6 +2388,9 @@ struct PortVcConfig {
   // does not cap the VC. The ceiling is CbfcConfig.senderCreditLimit, shared by
   // every VC on the port.
   //
+  // SAI and UE Spec define this in credits, but the Tomahawk Ultra 1 SAI reads
+  // it in bytes: give credits x senderCreditSize, or the VC gets 0 credits.
+  //
   // There is deliberately no shared-threshold field. SAI defines
   // THRESHOLD_MODE / SHARED_{DYNAMIC,STATIC}_TH on the credit profile, the
   // analogue of PortPgConfig.scalingFactor, but brcm-sai 16.0_ea_odp rejects
@@ -2332,8 +2404,28 @@ struct CbfcConfig {
   // Total credits the port may have outstanding across all its VCs
   // (SAI_PORT_ATTR_CBFC_SENDER_CREDIT_LIMIT). Port-scoped rather than per-VC,
   // and the closest analogue of the ingress buffer pool shared by every PG.
-  // Optional: the SDK treats an unset limit as no port ceiling configured.
+  // Optional: unset leaves the SDK default limit, not an unlimited one.
+  //
+  // SAI and UE Spec define this in credits, but the Tomahawk Ultra 1 SAI reads
+  // it in bytes: give credits x senderCreditSize. The SAI maximum for the
+  // field then caps the port at about 18.7k credits.
   2: optional i64 senderCreditLimit;
+  // Bytes per credit the sender charges (SAI_PORT_ATTR_CBFC_SENDER_CREDIT_SIZE).
+  // Must match the peer's receiver, or the two ends count different credits for
+  // the same packet and the link stalls. Required on a port that uses this
+  // config. Against another TU1, use 56: the TU1 receiver's credit size is
+  // hardcoded in the SDK and is not SAI writable.
+  3: optional i16 senderCreditSize;
+  // Per-packet overhead in bytes the sender charges
+  // (SAI_PORT_ATTR_CBFC_SENDER_PACKET_OVERHEAD). Same rules as
+  // senderCreditSize; against another TU1, use 16.
+  4: optional i16 senderPacketOverhead;
+  // Receiver input buffer headroom limit for the port, shared by every VC with
+  // receiverEnable. Hardware applies it when the first VC on the port enables
+  // its receiver, so at least one VC must set receiverEnable. Accepted only on
+  // ASICs whose SAI takes a NOS-set receiver limit. Unset leaves the SDK
+  // default.
+  5: optional i64 receiverCreditLimit;
 }
 
 // Defines PG (priority group) configuration for ports
@@ -2413,7 +2505,7 @@ struct IpInIpTunnel {
 
 struct Srv6Tunnel {
   1: string srv6TunnelId;
-  2: i32 underlayIntfID;
+  2: optional i32 underlayIntfID;
   3: optional string srcIp;
   4: optional string dstIp;
   5: optional TunnelMode ttlMode;
@@ -2423,6 +2515,22 @@ struct Srv6Tunnel {
   9: common.TunnelType tunnelType;
 }
 
+// Default UDP destination port for VXLAN (RFC 7348).
+const i32 kVxlanDefaultPort = 4789;
+
+struct VxLanTunnel {
+  1: string vxlanTunnelId;
+  2: i32 underlayIntfID;
+  3: optional string srcIp;
+  4: optional string dstIp;
+  5: optional TunnelMode ttlMode;
+  6: optional TunnelMode dscpMode;
+  7: optional TunnelMode ecnMode;
+  8: optional TunnelTerminationType tunnelTermType;
+  9: common.TunnelType tunnelType;
+  10: optional map<i64, i64> vrf2Vni;
+  11: optional map<i64, i64> vniToVrf;
+}
 // MySID (My SRv6 SID) configuration types.
 // MySID entries define how the switch handles packets matching its SRv6 SIDs.
 
@@ -2453,10 +2561,12 @@ union MySidEntryConfig {
 }
 
 struct MySidConfig {
-  // Shared locator prefix for all MySID entries (e.g., "3001:db8::/32")
+  // Deprecated: use locatorPrefixes.
   1: string locatorPrefix;
   // Map from function ID (i16) to MySID entry config
   2: map<i16, MySidEntryConfig> entries;
+  // Every entry is programmed under each prefix; empty uses locatorPrefix.
+  3: list<string> locatorPrefixes;
 }
 
 enum DsfNodeType {
@@ -2883,4 +2993,6 @@ struct SwitchConfig {
   62: optional map<CbfcConfigName, CbfcConfig> cbfcConfigs;
   // Named isolation groups, referenced per-port by Port.isolationGroup.
   63: optional map<IsolationGroupName, IsolationGroup> isolationGroups;
+  64: optional list<VxLanTunnel> vxlanTunnels;
+  65: optional list<VrfConfig> vrfs;
 }

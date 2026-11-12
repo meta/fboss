@@ -433,6 +433,26 @@ TEST_F(FibInfoTest, SetAndGetIdToNextHopIdSetMap) {
       (std::set<NextHopId>{300}));
 }
 
+TEST_F(FibInfoTest, SetAndGetOverrideIdToNextHopIdSetMap) {
+  auto fibInfo = std::make_shared<FibInfo>();
+  const NextHopSetId overrideId =
+      nextHopIdTypeStart(NextHopIdType::OVERRIDE_SET) + 1;
+  auto overrideMap = std::make_shared<IdToNextHopIdSetMap>();
+  overrideMap->addNextHopIdSet(overrideId, {100, 200});
+
+  fibInfo->setOverrideIdToNextHopIdSetMap(overrideMap);
+
+  auto retrieved = fibInfo->getOverrideIdToNextHopIdSetMap();
+  ASSERT_NE(retrieved, nullptr);
+  EXPECT_EQ(retrieved->size(), 1);
+  EXPECT_EQ(
+      retrieved->getNextHopIdSet(overrideId)->toThrift(),
+      (std::set<NextHopId>{100, 200}));
+  // Independent of the RIB owned map.
+  EXPECT_EQ(fibInfo->getIdToNextHopIdSetMap()->size(), 0);
+  validateNodeSerialization(*fibInfo);
+}
+
 TEST_F(FibInfoTest, ResolveNextHopSetFromId) {
   auto fibInfo = std::make_shared<FibInfo>();
 

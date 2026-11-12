@@ -484,3 +484,25 @@ TEST_F(
   resolveNdpNeighbor("2401:db00:2110:3001::2", InterfaceID(1));
   waitForMySidResolution("3001:db8:1::/48", true /* resolved */);
 }
+
+TEST_F(MySidNeighborObserverTest, NeighborAddedResolvesUASidUnderEveryLocator) {
+  auto config = baseConfig_;
+  cfg::MySidConfig mySidConfig;
+  mySidConfig.locatorPrefix() = "fdad:ffff::/32";
+  mySidConfig.locatorPrefixes() = {"fdad:ffff::/32", "fdad:20d::/32"};
+  cfg::AdjacencyMySidConfig adjConfig;
+  adjConfig.portName() = "port1";
+  mySidConfig.entries()[1].adjacency() = adjConfig;
+  config.mySidConfig() = mySidConfig;
+  applyConfig(config);
+  waitForMySidResolution("fdad:ffff:1::/48", false /* unresolved */);
+  waitForMySidResolution("fdad:20d:1::/48", false /* unresolved */);
+
+  resolveNdpNeighbor("2401:db00:2110:3001::2", InterfaceID(1));
+
+  waitForMySidResolution("fdad:ffff:1::/48", true /* resolved */);
+  waitForMySidResolution("fdad:20d:1::/48", true /* resolved */);
+  EXPECT_EQ(
+      getMySid("fdad:ffff:1::/48")->getResolvedNextHopsId(),
+      getMySid("fdad:20d:1::/48")->getResolvedNextHopsId());
+}

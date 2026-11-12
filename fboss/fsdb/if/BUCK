@@ -6,7 +6,7 @@ oncall("fboss_agent_push")
 thrift_library(
     name = "fsdb_common",
     cpp2_deps = [
-        "//folly/container:f14_hash",
+        "fbsource//xplat/folly/container:f14_hash",
     ],
     go_thrift_namespaces = {
         "fsdb_common.thrift": "facebook.fboss.fsdb_common",
@@ -89,8 +89,8 @@ thrift_library(
 thrift_library(
     name = "fsdb",
     cpp2_deps = [
-        "//folly/container:f14_hash",
-        "//folly:fbstring",
+        "fbsource//xplat/folly/container:f14_hash",
+        "fbsource//xplat/folly:fbstring",
     ],
     go_thrift_namespaces = {
         "fsdb.thrift": "facebook.fboss.fsdb",

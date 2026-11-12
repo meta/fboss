@@ -33,7 +33,7 @@ if (SAI_BRCM_PAI_IMPL)
     external_phy
     mdio
     Folly::folly
-    FBThrift::thriftcpp2
+    thrift::rpc
   )
   # SAI_BRCM_PAI_IMPL only
   list(APPEND SAI_XPHY_DEPS

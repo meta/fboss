@@ -452,7 +452,7 @@ struct PatchApplier<apache::thrift::type_class::variant> {
   {
     PatchApplyResult result = PatchApplyResult::INVALID_VARIANT_MEMBER;
     auto key = *childPatch.id();
-    using T = folly::remove_cvref_t<Node>;
+    using T = std::remove_cvref_t<Node>;
     apache::thrift::op::for_each_field_id<T>([&]<class Id>(Id) {
       constexpr auto fid = apache::thrift::op::get_field_id_v<T, Id>;
       using TC_ = typename TypeTagToTypeClass<
@@ -584,7 +584,7 @@ struct PatchApplier<apache::thrift::type_class::structure> {
   {
     PatchApplyResult result = PatchApplyResult::INVALID_STRUCT_MEMBER;
 
-    using T = folly::remove_cvref_t<Node>;
+    using T = std::remove_cvref_t<Node>;
     // Perform linear search over all members for key
     apache::thrift::op::invoke_by_field_id<T>(
         apache::thrift::FieldId(childKey),

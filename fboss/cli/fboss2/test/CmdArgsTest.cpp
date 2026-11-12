@@ -2,6 +2,7 @@
 
 #include <fboss/cli/fboss2/utils/CmdUtils.h>
 #include <fboss/cli/fboss2/utils/LoopbackUtils.h>
+#include <fboss/cli/fboss2/utils/PrbsUtils.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <memory>
@@ -263,6 +264,23 @@ TEST(CmdArgsTest, LoopbackComponentActionInvalid) {
   // Unknown action.
   EXPECT_THROW(LoopbackComponentAction({"xphy_line", "on"}), std::exception);
   EXPECT_THROW(LoopbackComponentAction({"xphy_line", "none"}), std::exception);
+}
+
+TEST(CmdArgsTest, PrbsComponentRequiredForWrites) {
+  EXPECT_THROW(
+      utils::PrbsComponent(std::vector<std::string>{}), std::runtime_error);
+  EXPECT_THROW(
+      prbsComponents({}, false /* returnAllIfEmpty */), std::runtime_error);
+}
+
+TEST(CmdArgsTest, PrbsComponentDefaultsToAllForShow) {
+  const std::vector<phy::PortComponent> expected = {
+      phy::PortComponent::ASIC,
+      phy::PortComponent::GB_SYSTEM,
+      phy::PortComponent::GB_LINE,
+      phy::PortComponent::TRANSCEIVER_SYSTEM,
+      phy::PortComponent::TRANSCEIVER_LINE};
+  EXPECT_EQ(prbsComponents({}, true /* returnAllIfEmpty */), expected);
 }
 
 } // namespace facebook::fboss

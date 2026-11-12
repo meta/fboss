@@ -39,9 +39,10 @@ static constexpr uint32_t kDefaultNeighborDstUserMetaDataRangeMax =
 static constexpr uint32_t kDefaultPortUserMetaDataRangeMin = 0;
 static constexpr uint32_t kDefaultPortUserMetaDataRangeMax = 63;
 
+template <typename ValueT, typename ListT>
 sai_status_t fillDropTypeList(
-    const std::vector<sai_int32_t>& dropTypes,
-    sai_s32_list_t* list) {
+    const std::vector<ValueT>& dropTypes,
+    ListT* list) {
   if (dropTypes.size() > list->count) {
     list->count = static_cast<uint32_t>(dropTypes.size());
     return SAI_STATUS_BUFFER_OVERFLOW;
@@ -332,8 +333,16 @@ sai_status_t set_switch_attribute_fn(
       sw.setPfcDlrPacketAction(
           static_cast<sai_packet_action_t>(attr->value.s32));
       break;
+    case SAI_SWITCH_ATTR_VXLAN_DEFAULT_PORT:
+      sw.setVxlanDefaultPort(attr->value.u16);
+      break;
     case SAI_SWITCH_ATTR_TAM_OBJECT_ID:
-      sw.setTamObjectId(attr->value.oid);
+      sw.setTamObjectId(
+          attr->value.objlist.count == 0
+              ? std::vector<sai_object_id_t>{}
+              : std::vector<sai_object_id_t>(
+                    attr->value.objlist.list,
+                    attr->value.objlist.list + attr->value.objlist.count));
       break;
     case SAI_SWITCH_ATTR_PORT_PTP_MODE:
       // TODO: implement if required
@@ -352,6 +361,9 @@ sai_status_t set_switch_attribute_fn(
       break;
     case SAI_SWITCH_ATTR_PORT_CL72_RETRY_ENABLE:
       sw.setPortCl72RetryEnable(attr->value.booldata);
+      break;
+    case SAI_SWITCH_ATTR_ACL_DROP_SNOOP_DISABLED:
+      sw.setAclDropSnoopDisabled(attr->value.booldata);
       break;
 #if SAI_API_VERSION >= SAI_VERSION(1, 18, 0)
     case SAI_SWITCH_ATTR_LINK_UP_DEBOUNCE_TIMEOUT:
@@ -626,15 +638,45 @@ sai_status_t get_switch_attribute_fn(
       case SAI_SWITCH_ATTR_PFC_DLR_PACKET_ACTION:
         attr[i].value.s32 = sw.getPfcDlrPacketAction();
         break;
-      case SAI_SWITCH_ATTR_TAM_OBJECT_ID:
-        attr[i].value.oid = sw.getTamObjectId();
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+      case SAI_SWITCH_ATTR_MAX_CSIG_TIMERS:
+        attr[i].value.u8 = sw.maxCsigTimers;
         break;
+      case SAI_SWITCH_ATTR_CSIG_BW_TIME_INTERVAL_IN_USEC: {
+        const auto count = static_cast<uint32_t>(sw.csigBwIntervals.size());
+        if (attr[i].value.u32list.count < count) {
+          attr[i].value.u32list.count = count;
+          return SAI_STATUS_BUFFER_OVERFLOW;
+        }
+        std::copy(
+            sw.csigBwIntervals.begin(),
+            sw.csigBwIntervals.end(),
+            attr[i].value.u32list.list);
+        attr[i].value.u32list.count = count;
+        break;
+      }
+#endif
+      case SAI_SWITCH_ATTR_TAM_OBJECT_ID: {
+        const auto& tamObjects = sw.getTamObjectId();
+        const auto count = static_cast<uint32_t>(tamObjects.size());
+        if (attr[i].value.objlist.count < count) {
+          attr[i].value.objlist.count = count;
+          return SAI_STATUS_BUFFER_OVERFLOW;
+        }
+        std::copy(
+            tamObjects.begin(), tamObjects.end(), attr[i].value.objlist.list);
+        attr[i].value.objlist.count = count;
+        break;
+      }
       case SAI_SWITCH_ATTR_PORT_PTP_MODE:
         attr[i].value.s32 = 0;
         break;
       case SAI_SWITCH_ATTR_REG_FATAL_SWITCH_ASIC_SDK_HEALTH_CATEGORY:
       case SAI_SWITCH_ATTR_REG_NOTICE_SWITCH_ASIC_SDK_HEALTH_CATEGORY:
         attr[i].value.s32list.count = 0;
+        break;
+      case SAI_SWITCH_ATTR_VXLAN_DEFAULT_PORT:
+        attr[i].value.u16 = sw.getVxlanDefaultPort();
         break;
       case SAI_SWITCH_ATTR_PFC_MONITOR_ENABLE:
         attr[i].value.booldata = sw.getPfcMonitorEnable();
@@ -644,6 +686,9 @@ sai_status_t get_switch_attribute_fn(
         break;
       case SAI_SWITCH_ATTR_PORT_CL72_RETRY_ENABLE:
         attr[i].value.booldata = sw.getPortCl72RetryEnable();
+        break;
+      case SAI_SWITCH_ATTR_ACL_DROP_SNOOP_DISABLED:
+        attr[i].value.booldata = sw.getAclDropSnoopDisabled();
         break;
 #if SAI_API_VERSION >= SAI_VERSION(1, 18, 0)
       case SAI_SWITCH_ATTR_LINK_UP_DEBOUNCE_TIMEOUT:
@@ -666,6 +711,14 @@ sai_status_t get_switch_attribute_fn(
         if (status != SAI_STATUS_SUCCESS) {
           return status;
         }
+      } break;
+      case SAI_SWITCH_ATTR_EXT_DROP_REASON_LIST: {
+        auto status =
+            fillDropTypeList(sw.getDropReasonList(), &attr[i].value.u32list);
+        if (status != SAI_STATUS_SUCCESS) {
+          return status;
+        }
+        sw.setDropReasonList({});
       } break;
       default:
         return SAI_STATUS_INVALID_PARAMETER;

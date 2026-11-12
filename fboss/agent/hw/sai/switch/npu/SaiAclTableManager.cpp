@@ -242,6 +242,8 @@ std::
       qualifierExistsFn(cfg::AclTableQualifier::DST_IPV6),
       qualifierExistsFn(cfg::AclTableQualifier::DST_IPV6_WORD3),
       qualifierExistsFn(cfg::AclTableQualifier::DST_IPV6_WORD2),
+      qualifierExistsFn(cfg::AclTableQualifier::DST_IPV6_WORD1),
+      qualifierExistsFn(cfg::AclTableQualifier::DST_IPV6_WORD0),
       qualifierExistsFn(cfg::AclTableQualifier::SRC_IPV4),
       qualifierExistsFn(cfg::AclTableQualifier::DST_IPV4),
       qualifierExistsFn(cfg::AclTableQualifier::L4_SRC_PORT),
@@ -295,6 +297,15 @@ std::
       udfGroupIds[2], // UserDefinedFieldGroupMin2
       udfGroupIds[3], // UserDefinedFieldGroupMin3
       udfGroupIds[4], // UserDefinedFieldGroupMin4
+#endif
+#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
+      SaiAclTableTraits::Attributes::FieldRouteDestination::
+              optionalExtensionAttributeId()
+                  .has_value()
+          ? std::optional<SaiAclTableTraits::Attributes::
+                              FieldRouteDestination>{qualifierExistsFn(
+                cfg::AclTableQualifier::NEXT_HOP_GROUP_ID)}
+          : std::nullopt,
 #endif
       fieldPortUserMeta,
   };

@@ -17,6 +17,7 @@
 #include <vector>
 
 #include "fboss/platform/platform_checks/Host.h"
+#include "fboss/platform/platform_checks/SshAskPass.h"
 
 namespace facebook::fboss::platform {
 class ExpectSession;
@@ -25,8 +26,8 @@ class ExpectSession;
 namespace facebook::fboss::platform::platform_checks {
 
 /**
- * A switch (x86 or BMC) reached over SSH. Requires non-interactive (key or
- * certificate based) authentication.
+ * A switch (x86 or BMC) reached over SSH, authenticating with keys or
+ * certificates, or with a password (SSH transport only).
  *
  * Opening a connection per command costs about a second, which adds up to
  * minutes for checks that read many sysfs files, so commands share one
@@ -48,10 +49,12 @@ class RemoteHost : public Host {
   // SUSH2 when sush2 is on PATH, SSH otherwise.
   static Transport detectTransport();
 
+  // A password forces the SSH transport: sush2 does its own authentication.
   RemoteHost(
       std::string hostname,
       Transport transport,
-      std::string user = "root");
+      std::string user = "root",
+      std::optional<std::string> password = std::nullopt);
   ~RemoteHost() override;
 
   std::string name() const override {
@@ -71,6 +74,8 @@ class RemoteHost : public Host {
       const std::filesystem::path& hostPath,
       std::chrono::seconds timeout) const override;
 
+  std::unique_ptr<ExpectSession> spawnInteractive() const override;
+
   // Local argv that runs `cmd` on the host. Virtual for tests.
   virtual std::vector<std::string> execArgv(const std::string& cmd) const;
 
@@ -82,8 +87,17 @@ class RemoteHost : public Host {
       const std::filesystem::path& localPath,
       const std::filesystem::path& hostPath) const;
 
+  // Asks the host's SSH server, without offering keys, whether it accepts a
+  // password login. False also if the host cannot be reached.
+  bool acceptsPassword(std::chrono::seconds timeout) const;
+
+  // Local argv for acceptsPassword().
+  std::vector<std::string> authMethodsArgv() const;
+
  private:
   std::string destination() const;
+  // ssh/scp options plus, for password logins, the askpass environment.
+  std::vector<std::string> sshPrefix(const std::string& program) const;
   // nullopt iff the shell could not be started, i.e. `cmd` was never sent.
   std::optional<CommandResult> runInSession(
       const std::string& cmd,
@@ -102,9 +116,14 @@ class RemoteHost : public Host {
   std::string hostname_;
   Transport transport_;
   std::string user_;
+  std::unique_ptr<SshAskPass> askPass_;
   mutable std::mutex sessionMutex_;
   mutable std::unique_ptr<ExpectSession> session_;
   mutable uint64_t nextCommandId_{0};
 };
+
+// Whether ssh's "Permission denied (<methods>)." in `sshStderr` lists a
+// password method.
+bool offersPasswordAuth(const std::string& sshStderr);
 
 } // namespace facebook::fboss::platform::platform_checks

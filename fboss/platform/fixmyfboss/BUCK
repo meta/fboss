@@ -28,7 +28,8 @@ cpp_library(
         "CheckRunner.h",
     ],
     deps = [
-        "//folly/logging:logging",
+        "fbsource//third-party/re2:re2",
+        "fbsource//xplat/folly/logging:logging",
     ],
     exported_deps = [
         "//fboss/platform/platform_checks:platform_check",
@@ -44,13 +45,27 @@ cpp_library(
         "CheckEnvironment.h",
     ],
     deps = [
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/logging:logging",
         "//fboss/platform/platform_checks:platform_name",
-        "//folly:string",
-        "//folly/logging:logging",
     ],
     exported_deps = [
         "//fboss/platform/platform_checks:host",
         "//fboss/platform/platform_checks:remote_host",
+    ],
+)
+
+cpp_library(
+    name = "password_prompt",
+    srcs = [
+        "PasswordPrompt.cpp",
+    ],
+    headers = [
+        "PasswordPrompt.h",
+    ],
+    deps = [
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly:scope_guard",
     ],
 )
 
@@ -63,11 +78,48 @@ cpp_library(
         "CheckRegistry.h",
     ],
     deps = [
+        "//fboss/platform/platform_checks:host",
         "//fboss/platform/platform_checks:platform_checks",
     ],
     exported_deps = [
         ":check_environment",
         "//fboss/platform/platform_checks:platform_check",
+    ],
+)
+
+cpp_library(
+    name = "cli_options",
+    srcs = [
+        "CliOptions.cpp",
+    ],
+    headers = [
+        "CliOptions.h",
+    ],
+    deps = [
+        "fbsource//xplat/folly:string",
+    ],
+    exported_deps = [
+        ":check_environment",
+        ":check_runner",
+    ],
+    exported_external_deps = [
+        "CLI11",
+    ],
+)
+
+cpp_library(
+    name = "extensions",
+    srcs = [
+        "Extensions.cpp",
+    ],
+    headers = [
+        "Extensions.h",
+    ],
+    exported_deps = [
+        "//fboss/platform/platform_checks:check_types-cpp2-types",
+    ],
+    exported_external_deps = [
+        "CLI11",
     ],
 )
 
@@ -77,11 +129,17 @@ cpp_binary(
         "main.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/logging:logging",
         ":check_environment",
         ":check_registry",
         ":check_runner",
+        ":cli_options",
+        ":extensions",
+        ":password_prompt",
         ":result_printer",
-        "//folly/logging:logging",
+        "//fboss/platform/fixmyfboss/facebook:report_paste",
+        "//thrift/lib/cpp2/protocol:protocol",
     ],
     external_deps = [
         "CLI11",
@@ -90,10 +148,14 @@ cpp_binary(
 
 fbpkg.builder(
     name = "fboss.fixmyfboss",
-    architectures = ["x86_64"],
+    architectures = [
+        "x86_64",
+        "aarch64",
+    ],
     path_actions = {
         "fixmyfboss": "//fboss/platform/fixmyfboss:fixmyfboss",
     },
+    variant_distribution = "combined",
 )
 
 cpp_unittest(
@@ -127,5 +189,27 @@ cpp_unittest(
     network_access = network_access_utils.none(),
     deps = [
         ":check_environment",
+    ],
+)
+
+cpp_unittest(
+    name = "extensions_test",
+    srcs = [
+        "tests/ExtensionsTest.cpp",
+    ],
+    network_access = network_access_utils.none(),
+    deps = [
+        ":extensions",
+    ],
+)
+
+cpp_unittest(
+    name = "cli_options_test",
+    srcs = [
+        "tests/CliOptionsTest.cpp",
+    ],
+    network_access = network_access_utils.none(),
+    deps = [
+        ":cli_options",
     ],
 )

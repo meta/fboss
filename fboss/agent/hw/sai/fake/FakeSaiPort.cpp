@@ -72,6 +72,9 @@ sai_status_t create_port_fn(
   std::optional<sai_object_id_t> qosTcToPriorityGroupMap;
   std::optional<sai_object_id_t> qosTcToVcMap;
   std::optional<sai_uint32_t> cbfcSenderCreditLimit;
+  std::optional<sai_uint16_t> cbfcSenderCreditSize;
+  std::optional<sai_int16_t> cbfcSenderPacketOverhead;
+  std::optional<sai_uint32_t> cbfcReceiverCreditLimit;
   std::optional<sai_object_id_t> qosQueueToVcMap;
   std::optional<sai_object_id_t> qosPfcPriorityToQueueMap;
   std::optional<sai_object_id_t> qosPfcPriorityToPriorityGroupMap;
@@ -79,6 +82,10 @@ sai_status_t create_port_fn(
   std::optional<sai_uint32_t> interFrameGap;
 #endif
   std::optional<bool> linkTrainingEnable;
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+  bool intDelete{false};
+  sai_uint16_t intMetadata{0};
+#endif
   std::optional<bool> fdrEnable;
   std::optional<bool> rxLaneSquelchEnable;
   std::vector<sai_map_t> pfcTcDldInterval;
@@ -257,6 +264,15 @@ sai_status_t create_port_fn(
       case SAI_PORT_ATTR_CBFC_SENDER_CREDIT_LIMIT:
         cbfcSenderCreditLimit = attr_list[i].value.u32;
         break;
+      case SAI_PORT_ATTR_CBFC_SENDER_CREDIT_SIZE:
+        cbfcSenderCreditSize = attr_list[i].value.u16;
+        break;
+      case SAI_PORT_ATTR_CBFC_SENDER_PACKET_OVERHEAD:
+        cbfcSenderPacketOverhead = attr_list[i].value.s16;
+        break;
+      case SAI_PORT_ATTR_EXT_CBFC_RECEIVER_CREDIT_LIMIT:
+        cbfcReceiverCreditLimit = attr_list[i].value.u32;
+        break;
       case SAI_PORT_ATTR_QOS_QUEUE_TO_VC_MAP:
         qosQueueToVcMap = attr_list[i].value.oid;
         break;
@@ -274,6 +290,14 @@ sai_status_t create_port_fn(
       case SAI_PORT_ATTR_LINK_TRAINING_ENABLE:
         linkTrainingEnable = attr_list[i].value.booldata;
         break;
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+      case SAI_PORT_ATTR_INT_DELETE:
+        intDelete = attr_list[i].value.booldata;
+        break;
+      case SAI_PORT_ATTR_INT_METADATA:
+        intMetadata = attr_list[i].value.u16;
+        break;
+#endif
       case SAI_PORT_ATTR_FDR_ENABLE:
         fdrEnable = attr_list[i].value.booldata;
         break;
@@ -321,6 +345,10 @@ sai_status_t create_port_fn(
   }
   *port_id = fs->portManager.create(lanes, speed.value());
   auto& port = fs->portManager.get(*port_id);
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+  port.intDelete = intDelete;
+  port.intMetadata = intMetadata;
+#endif
   if (adminState) {
     port.adminState = adminState.value();
   }
@@ -452,6 +480,15 @@ sai_status_t create_port_fn(
   }
   if (cbfcSenderCreditLimit.has_value()) {
     port.cbfcSenderCreditLimit = cbfcSenderCreditLimit.value();
+  }
+  if (cbfcSenderCreditSize.has_value()) {
+    port.cbfcSenderCreditSize = cbfcSenderCreditSize.value();
+  }
+  if (cbfcSenderPacketOverhead.has_value()) {
+    port.cbfcSenderPacketOverhead = cbfcSenderPacketOverhead.value();
+  }
+  if (cbfcReceiverCreditLimit.has_value()) {
+    port.cbfcReceiverCreditLimit = cbfcReceiverCreditLimit.value();
   }
   if (qosQueueToVcMap.has_value()) {
     port.qosQueueToVcMap = qosQueueToVcMap.value();
@@ -844,6 +881,15 @@ sai_status_t set_port_attribute_fn(
     case SAI_PORT_ATTR_CBFC_SENDER_CREDIT_LIMIT:
       port.cbfcSenderCreditLimit = attr->value.u32;
       break;
+    case SAI_PORT_ATTR_CBFC_SENDER_CREDIT_SIZE:
+      port.cbfcSenderCreditSize = attr->value.u16;
+      break;
+    case SAI_PORT_ATTR_CBFC_SENDER_PACKET_OVERHEAD:
+      port.cbfcSenderPacketOverhead = attr->value.s16;
+      break;
+    case SAI_PORT_ATTR_EXT_CBFC_RECEIVER_CREDIT_LIMIT:
+      port.cbfcReceiverCreditLimit = attr->value.u32;
+      break;
     case SAI_PORT_ATTR_QOS_QUEUE_TO_VC_MAP:
       port.qosQueueToVcMap = attr->value.oid;
       break;
@@ -861,6 +907,14 @@ sai_status_t set_port_attribute_fn(
     case SAI_PORT_ATTR_LINK_TRAINING_ENABLE:
       port.linkTrainingEnable = attr->value.booldata;
       break;
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+    case SAI_PORT_ATTR_INT_DELETE:
+      port.intDelete = attr->value.booldata;
+      break;
+    case SAI_PORT_ATTR_INT_METADATA:
+      port.intMetadata = attr->value.u16;
+      break;
+#endif
     case SAI_PORT_ATTR_FDR_ENABLE:
       port.fdrEnable = attr->value.booldata;
       break;
@@ -1257,6 +1311,15 @@ sai_status_t get_port_attribute_fn(
       case SAI_PORT_ATTR_CBFC_SENDER_CREDIT_LIMIT:
         attr[i].value.u32 = port.cbfcSenderCreditLimit;
         break;
+      case SAI_PORT_ATTR_CBFC_SENDER_CREDIT_SIZE:
+        attr[i].value.u16 = port.cbfcSenderCreditSize;
+        break;
+      case SAI_PORT_ATTR_CBFC_SENDER_PACKET_OVERHEAD:
+        attr[i].value.s16 = port.cbfcSenderPacketOverhead;
+        break;
+      case SAI_PORT_ATTR_EXT_CBFC_RECEIVER_CREDIT_LIMIT:
+        attr[i].value.u32 = port.cbfcReceiverCreditLimit;
+        break;
       case SAI_PORT_ATTR_QOS_QUEUE_TO_VC_MAP:
         attr[i].value.oid = port.qosQueueToVcMap;
         break;
@@ -1283,6 +1346,14 @@ sai_status_t get_port_attribute_fn(
       case SAI_PORT_ATTR_LINK_TRAINING_ENABLE:
         attr->value.booldata = port.linkTrainingEnable;
         break;
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+      case SAI_PORT_ATTR_INT_DELETE:
+        attr[i].value.booldata = port.intDelete;
+        break;
+      case SAI_PORT_ATTR_INT_METADATA:
+        attr[i].value.u16 = port.intMetadata;
+        break;
+#endif
       case SAI_PORT_ATTR_LINK_TRAINING_RX_STATUS:
         attr->value.s32 = port.linkTrainingRxStatus;
         break;

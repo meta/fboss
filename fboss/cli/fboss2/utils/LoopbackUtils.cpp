@@ -100,7 +100,8 @@ int32_t resolveTransceiverId(
 
   auto* statusPtr = folly::get_ptr(portStatusEntries, portId);
   if (!statusPtr || !statusPtr->transceiverIdx().has_value() ||
-      !statusPtr->transceiverIdx()->transceiverId().has_value()) {
+      !apache::thrift::is_non_optional_field_set_manually_or_by_serializer(
+          statusPtr->transceiverIdx()->transceiverId())) {
     throw FbossError("No transceiver found for port '", portName, "'");
   }
   return *statusPtr->transceiverIdx()->transceiverId();

@@ -61,6 +61,8 @@ std::string applyLoadBalancerConfig(
 // (`config load-balancing ecmp` and `config load-balancing lag`).
 
 struct CmdConfigLoadBalancingEcmpTraits : public WriteCommandTraits {
+  static std::vector<std::string> completeArgs(
+      const std::vector<std::string>& typed);
   static void addCliArg(CLI::App& cmd, std::vector<std::string>& args) {
     cmd.add_option(
         "load_balancing_attr_value",
@@ -91,6 +93,8 @@ class CmdConfigLoadBalancingEcmp : public CmdHandler<
 };
 
 struct CmdConfigLoadBalancingLagTraits : public WriteCommandTraits {
+  static std::vector<std::string> completeArgs(
+      const std::vector<std::string>& typed);
   static void addCliArg(CLI::App& cmd, std::vector<std::string>& args) {
     cmd.add_option(
         "load_balancing_attr_value",

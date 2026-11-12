@@ -41,6 +41,10 @@ namespace facebook::fboss {
 struct ConcurrentIndices;
 class SaiStore;
 class FineGrainedLockPolicy;
+
+inline constexpr char kExtOperStatusLatchWarmBootState[] =
+    "extOperStatusLatchWarmBootState";
+
 /*
  * This is equivalent to sai_fdb_event_notification_data_t. Copy only the
  * necessary FDB event attributes from sai_fdb_event_notification_data_t.
@@ -312,6 +316,8 @@ class SaiSwitch : public HwSwitch {
 #endif
 
  private:
+  friend class SaiSwitchWarmBootTest;
+
   void gracefulExitImpl() override;
 
   template <typename LockPolicyT>
@@ -398,6 +404,10 @@ class SaiSwitch : public HwSwitch {
       const std::lock_guard<std::mutex>& lock) const;
 
   void gracefulExitLocked(const std::lock_guard<std::mutex>& lock);
+
+  void restoreExtOperStatusLatchWarmBootBaseline(
+      const std::optional<folly::dynamic>& latchWarmBootState,
+      bool sdkSupportsLatchState);
 
   folly::dynamic toFollyDynamicLocked(
       const std::lock_guard<std::mutex>& lock) const;
@@ -776,6 +786,10 @@ class SaiSwitch : public HwSwitch {
   // SaiSwitch to support multiple SaiSwitch in one single service.
   std::unique_ptr<SaiStore> saiStore_;
   std::unique_ptr<SaiManagerTable> managerTable_;
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 3)
+  SaiPortManager::ExtOperStatusLatchWarmBootState
+      extOperStatusLatchWarmBootBaseline_;
+#endif
   std::atomic<BootType> bootType_{BootType::UNINITIALIZED};
   Callback* callback_{nullptr};
 

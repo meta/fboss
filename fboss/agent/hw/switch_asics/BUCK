@@ -61,6 +61,7 @@ cpp_library(
         "YubaAsic.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:network_address",
         "//fboss/agent:agent_features",
         "//fboss/agent:fboss-error",
         "//fboss/agent:fboss-types",
@@ -68,7 +69,6 @@ cpp_library(
         "//fboss/agent/hw/sai/impl:version_util",
         "//fboss/lib/if:fboss_common-cpp2-types",
         "//fboss/lib/phy:phy-cpp2-types",
-        "//folly:network_address",
         "//thrift/lib/cpp/util:enum_utils",
     ],
 )

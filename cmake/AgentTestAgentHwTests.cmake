@@ -122,11 +122,11 @@ add_library(agent_hw_test_src
   fboss/agent/test/agent_hw_tests/AgentConfigVerifyQosTests.cpp
   fboss/agent/test/agent_hw_tests/AgentCoppTests.cpp
   fboss/agent/test/agent_hw_tests/AgentDot1qMappingTest.cpp
-  fboss/agent/test/agent_hw_tests/AgentDropBitmapTests.cpp
   fboss/agent/test/agent_hw_tests/AgentDropReasonTests.cpp
   fboss/agent/test/agent_hw_tests/AgentDropTestBase.cpp
   fboss/agent/test/agent_hw_tests/AgentDscpMarkingTests.cpp
   fboss/agent/test/agent_hw_tests/AgentDeepPacketInspectionTests.cpp
+  fboss/agent/test/agent_hw_tests/AgentCsigTests.cpp
   fboss/agent/test/agent_hw_tests/AgentAsicDefaultProgrammingTests.cpp
   fboss/agent/test/agent_hw_tests/AgentDiagShellStressTests.cpp
   fboss/agent/test/agent_hw_tests/AgentEcmpTests.cpp
@@ -142,6 +142,7 @@ add_library(agent_hw_test_src
   fboss/agent/test/agent_hw_tests/AgentInPauseDiscardsTests.cpp
   fboss/agent/test/agent_hw_tests/AgentInTrapDiscardsTest.cpp
   fboss/agent/test/agent_hw_tests/AgentPacketSendTests.cpp
+  fboss/agent/test/agent_hw_tests/AgentPbrTest.cpp
   fboss/agent/test/agent_hw_tests/AgentL3ForwardingTests.cpp
   fboss/agent/test/agent_hw_tests/AgentL4PortBlackholingTests.cpp
   fboss/agent/test/agent_hw_tests/AgentLinkLocalForwardingTests.cpp
@@ -153,6 +154,7 @@ add_library(agent_hw_test_src
   fboss/agent/test/agent_hw_tests/AgentMacLearningAndNeighborResolutionTests.cpp
   fboss/agent/test/agent_hw_tests/AgentMirrorOnDropDnxTests.cpp
   fboss/agent/test/agent_hw_tests/AgentMirrorOnDropSrv6Tests.cpp
+  fboss/agent/test/agent_hw_tests/AgentMirrorOnDropStatefulTests.cpp
   fboss/agent/test/agent_hw_tests/AgentMirrorOnDropStatelessTest.cpp
   fboss/agent/test/agent_hw_tests/AgentMirrorOnDropStatelessTests.cpp
   fboss/agent/test/agent_hw_tests/AgentMirrorOnDropTajoImpl.cpp
@@ -163,7 +165,7 @@ add_library(agent_hw_test_src
   fboss/agent/test/agent_hw_tests/AgentMirroringScaleTests.cpp
   fboss/agent/test/agent_hw_tests/AgentMyMacTest.cpp
   fboss/agent/test/agent_hw_tests/AgentMySidAdjFrrRouteTests.cpp
-  fboss/agent/test/agent_hw_tests/AgentMPLSDataplaneTestUtils.cpp
+  fboss/agent/test/utils/AgentMPLSDataplaneTestUtils.cpp
   fboss/agent/test/agent_hw_tests/AgentMPLSHeadEndTests.cpp
   fboss/agent/test/agent_hw_tests/AgentMPLSMidpointTests.cpp
   fboss/agent/test/agent_hw_tests/AgentMPLSTtlTests.cpp
@@ -195,6 +197,7 @@ add_library(agent_hw_test_src
   fboss/agent/test/agent_hw_tests/AgentTrunkLoadBalancerTests.cpp
   fboss/agent/test/agent_hw_tests/AgentTrunkTests.cpp
   fboss/agent/test/agent_hw_tests/AgentTunnelMgrTests.cpp
+  fboss/agent/test/agent_hw_tests/AgentVrfTests.cpp
   fboss/agent/test/agent_hw_tests/AgentRxReasonTests.cpp
   fboss/agent/test/agent_hw_tests/AgentRouteScaleTests.cpp
   fboss/agent/test/agent_hw_tests/AgentHwAclMatchActionsTest.cpp
@@ -227,7 +230,9 @@ add_library(agent_hw_test_src
 )
 
 target_link_libraries(agent_hw_test_src
+  drop_reason_reporting_test_utils
   erspan_parser
+  fpga_multi_pim_container
   agent_ars_test_src
   agent_qos_test_src
   agent_voq_test_src
@@ -241,6 +246,7 @@ target_link_libraries(agent_hw_test_src
   port_stats_test_utils
   packet
   packet_snooper
+  chenab_mod_header
   tajo_punt_header
   queue_per_host_test_utils
   multi_port_traffic_test_utils

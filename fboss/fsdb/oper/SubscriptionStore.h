@@ -8,6 +8,8 @@
 #include "fboss/fsdb/oper/Subscription.h"
 #include "fboss/fsdb/oper/SubscriptionPathStore.h"
 
+#include <folly/Expected.h>
+
 namespace facebook::fboss::fsdb {
 
 // SubscriberStats -- per-client summary counters covering
@@ -67,6 +69,16 @@ class SubscriptionStore {
       ExtSubPathMap newPaths,
       const std::optional<std::string>& publisherRoot,
       std::optional<StreamRevision> streamRevision = std::nullopt);
+
+  // Validates newPaths for appending to a patch subscription and, if valid,
+  // appends them and stashes streamRevision. Caller must hold the lock guarding
+  // `subscription`. Returns the inserted keys or the rejection code.
+  static folly::Expected<std::vector<SubscriptionKey>, FsdbErrorCode>
+  validateAndAddPatchSubscriptionPaths(
+      ExtendedSubscription& subscription,
+      ExtSubPathMap newPaths,
+      const std::optional<std::string>& publisherRoot,
+      std::optional<StreamRevision> streamRevision);
 
   void processAddedPath(
       std::vector<std::string>::const_iterator begin,

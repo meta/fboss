@@ -8,14 +8,14 @@ builds and qualification against current and upcoming kernels.
 
 FBOSS maintains multiple kernel versions in the production fleet at a time
 (the current version and the previous one). kmods must be compatible with the
-following kernel versions (updated in June 2026):
+following kernel versions (updated in October 2026):
 
 | Kernel Version | Status             |
 |----------------|--------------------|
 | Linux v6.4.3   | Actively Supported |
 | Linux v6.11.1  | Actively Supported |
-| Linux v6.16.1  | Evaluating         |
-| Linux v7.1     | Planned            |
+| Linux v6.16.1  | Actively Supported |
+| Linux v7.1.3   | Evaluating         |
 
 Status definitions:
 

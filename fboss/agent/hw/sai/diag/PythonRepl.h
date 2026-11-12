@@ -12,7 +12,6 @@
 #include "fboss/agent/hw/sai/diag/Repl.h"
 
 #include <folly/File.h>
-#include <folly/Format.h>
 #include <folly/logging/xlog.h>
 
 #include <thread>

@@ -22,11 +22,13 @@ cpp_library(
     deps = [
         "fbsource//third-party/fmt:fmt",
         "fbsource//third-party/googletest:gtest",
+        "fbsource//xplat/folly/logging:logging",
         "//fboss/agent:fboss-error",
+        "//fboss/agent/test/utils:port_test_utils",
         "//fboss/lib/config:fboss_config_utils",
         "//fboss/qsfp_service:transceiver-manager",
+        "//fboss/qsfp_service/module:qsfp-module",
         "//fboss/qsfp_service/module/properties:transceiver-properties-manager",
-        "//folly/logging:logging",
         "//thrift/lib/cpp/util:enum_utils",
     ],
     exported_deps = [

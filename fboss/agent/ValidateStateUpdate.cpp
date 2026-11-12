@@ -9,12 +9,19 @@
 #include "fboss/agent/ResourceAccountant.h"
 #include "fboss/agent/SwitchIdScopeResolver.h"
 #include "fboss/agent/SwitchStats.h"
+#include "fboss/agent/gen-cpp2/switch_config_constants.h"
 #include "fboss/agent/hw/switch_asics/HwAsic.h"
+#include "fboss/agent/state/AclMap.h"
+#include "fboss/agent/state/AclTable.h"
+#include "fboss/agent/state/AclTableGroupMap.h"
+#include "fboss/agent/state/AclTableMap.h"
 #include "fboss/agent/state/DeltaFunctions.h"
 #include "fboss/agent/state/Port.h"
 #include "fboss/agent/state/StateDelta.h"
 #include "fboss/agent/state/SwitchSettings.h"
 #include "fboss/agent/state/SwitchState.h"
+
+#include <folly/ScopeGuard.h>
 
 using facebook::fboss::DeltaFunctions::forEachChanged;
 using std::shared_ptr;
@@ -96,22 +103,21 @@ bool StateUpdateValidator::isEcmpWidthUpdateValid(
 bool StateUpdateValidator::isLlrConfigUpdateValid(
     const StateDelta& delta) const {
   bool isValid = true;
-  // An LLR profile cannot be retuned or unbound under a running agent. Draining
-  // the port first does not help: the SDK refuses the rebind even with the port
-  // admin disabled and both LLR modes cleared beforehand (CS00012478409).
-  //
-  // The rule enforced here is not "coldboot only": a StateDelta carries no boot
-  // type, and no validator in this file reads one. It is the first bind on a
-  // port that is still down, which is the shape a coldboot takes, since ports
-  // exist carrying cfg::PortState::DISABLED before config is applied. A runtime
-  // update of that same shape is therefore accepted too. That is safe -- the
-  // port is down on the old side and SaiPortManager holds the enable until the
-  // profile is attached -- but it does mean a first bind can land without a
+  // LLR config changes need a coldboot. SDK 6.5.35 and 6.5.36 refuse to rebind
+  // a profile, even with the port admin disabled and both LLR modes cleared
+  // (CS00012478409). Later SDKs may allow the rebind, but it is not hitless: a
+  // profile attaches only to an admin disabled port, and one profile serves
+  // many ports, so a change flaps all of them. FBOSS keeps LLR changes to a
   // coldboot.
   //
+  // A StateDelta carries no boot type, so the check allows one shape: the first
+  // bind on a port that is still down. A coldboot has that shape, because ports
+  // start as cfg::PortState::DISABLED before config is applied. A runtime first
+  // bind on a down port passes too. That is safe: SaiPortManager keeps the port
+  // down until the profile is attached.
+  //
   // Everything else needs a coldboot: retuning a bound profile, unbinding one,
-  // or binding onto a port that is already up, where the attach would land on
-  // a port hardware considers enabled.
+  // or binding onto a port that is already up.
   forEachChanged(
       delta.getPortsDelta(),
       [&isValid](
@@ -124,6 +130,48 @@ bool StateUpdateValidator::isLlrConfigUpdateValid(
         XLOG(ERR) << "LLR config on port " << newPort->getID()
                   << " cannot change on a running agent; a coldboot is required"
                   << " to change LLR config";
+        isValid = false;
+      });
+  return isValid;
+}
+
+bool StateUpdateValidator::isCbfcUpdateValid(const StateDelta& delta) const {
+  bool isValid = true;
+  // The CBFC sender credit size, packet overhead and credit limit, and the
+  // receiver credit limit, are set once, when a port takes on CBFC: on a
+  // coldboot, or as the first bind on a running agent. On TU1 each size or
+  // overhead write makes the SDK recompute the port credit limit, so changing
+  // them on a live port briefly resets the sender. The receiver limit reaches
+  // hardware when the first VC on the port enables its receiver, not when the
+  // port attribute changes. Changing any of them needs a coldboot, and so does
+  // removing CBFC from the port, as for LLR.
+  forEachChanged(
+      delta.getPortsDelta(),
+      [&isValid](
+          const shared_ptr<Port>& oldPort, const shared_ptr<Port>& newPort) {
+        if (!oldPort->getCbfcConfigName().has_value()) {
+          return;
+        }
+        if (!newPort->getCbfcConfigName().has_value()) {
+          XLOG(ERR) << "CBFC cannot be removed from port " << newPort->getID()
+                    << " on a running agent; a coldboot is required";
+          isValid = false;
+          return;
+        }
+        if (oldPort->getCbfcSenderCreditSize() ==
+                newPort->getCbfcSenderCreditSize() &&
+            oldPort->getCbfcSenderPacketOverhead() ==
+                newPort->getCbfcSenderPacketOverhead() &&
+            oldPort->getCbfcSenderCreditLimit() ==
+                newPort->getCbfcSenderCreditLimit() &&
+            oldPort->getCbfcReceiverCreditLimit() ==
+                newPort->getCbfcReceiverCreditLimit()) {
+          return;
+        }
+        XLOG(ERR) << "CBFC sender credit size, packet overhead or credit limit,"
+                  << " or receiver credit limit, on port " << newPort->getID()
+                  << " cannot change on a running agent; a coldboot is"
+                  << " required to change them";
         isValid = false;
       });
   return isValid;
@@ -199,6 +247,70 @@ bool hasAcceptedLinkUpHoldoff(
   return true;
 }
 
+// Two entries at one priority are indistinguishable to hardware unless the
+// platform carries the ACL entry name down as well, which only the PBR-capable
+// ASICs do.
+bool hasUniqueAclPriorities(
+    const AclMap& acls,
+    const std::string& tableName,
+    bool sharedPbrPriorityAllowed) {
+  std::unordered_map<int, std::string> nameByPriority;
+  for (const auto& [name, entry] : std::as_const(acls)) {
+    auto priority = entry->getPriority();
+    if (sharedPbrPriorityAllowed && priority == FLAGS_pbr_acl_priority) {
+      continue;
+    }
+    auto [itr, inserted] = nameByPriority.emplace(priority, name);
+    if (!inserted) {
+      XLOG(ERR) << "Acl table " << tableName << " has entries " << itr->second
+                << " and " << name << " at the same priority " << priority;
+      return false;
+    }
+  }
+  return true;
+}
+
+bool hasUniqueAclPriorities(
+    const StateDelta& delta,
+    const HwAsicTable* hwAsicTable) {
+  const auto& oldState = delta.oldState();
+  const auto& newState = delta.newState();
+  if (oldState->getAcls() == newState->getAcls() &&
+      oldState->getAclTableGroups() == newState->getAclTableGroups()) {
+    return true;
+  }
+  const bool pbrAclSupported =
+      hwAsicTable->isFeatureSupportedOnAllAsic(HwAsic::Feature::PBR_ACL);
+  bool isValid = true;
+  if (const auto& aclTableGroups = newState->getAclTableGroups()) {
+    for (const auto& [_matcher, groupMap] : std::as_const(*aclTableGroups)) {
+      for (const auto& [_stage, group] : std::as_const(*groupMap)) {
+        const auto& tableMap = group->getAclTableMap();
+        if (!tableMap) {
+          continue;
+        }
+        for (const auto& [tableName, table] : std::as_const(*tableMap)) {
+          const bool sharedPbrPriorityAllowed = pbrAclSupported &&
+              tableName ==
+                  cfg::switch_config_constants::DEFAULT_PBR_ACL_TABLE();
+          if (const auto& aclMap = table->getAclMap()) {
+            isValid = isValid &&
+                hasUniqueAclPriorities(
+                          *aclMap, tableName, sharedPbrPriorityAllowed);
+          }
+        }
+      }
+    }
+  }
+  if (const auto& acls = newState->getAcls()) {
+    for (const auto& [matcher, aclMap] : std::as_const(*acls)) {
+      isValid = isValid &&
+          hasUniqueAclPriorities(
+                    *aclMap, matcher, false /*sharedPbrPriorityAllowed*/);
+    }
+  }
+  return isValid;
+}
 } // namespace
 
 bool isStateUpdateValidCommon(
@@ -233,6 +345,8 @@ bool isStateUpdateValidCommon(
         return isValid ? LoopAction::CONTINUE : LoopAction::BREAK;
       },
       [&](const shared_ptr<AclEntry>& /* delAcl */) {});
+
+  isValid = isValid && hasUniqueAclPriorities(delta, hwAsicTable);
 
   forEachChanged(
       delta.getPortsDelta(),
@@ -445,6 +559,11 @@ bool StateUpdateValidator::isValidUpdate(
     return false;
   }
 
+  if (!isCbfcUpdateValid(delta)) {
+    XLOG(ERR) << "State update is not valid.";
+    return false;
+  }
+
   if (!resourceAccountant_->isValidUpdate(delta)) {
     stats->resourceAccountantRejectedUpdates();
     XLOG(ERR) << "State updated rejected by resource accountant.";
@@ -487,6 +606,19 @@ bool StateUpdateValidator::isValidUpdateMultiSwitch(
     const StateDelta& delta) const {
   return isStateUpdateValidMultiSwitch(
       delta, scopeResolver_, asicTable_->getHwAsics());
+}
+
+bool StateUpdateValidator::isValidUpdateDryRun(
+    const StateDelta& delta,
+    SwitchStats* stats) {
+  auto resourceAccountant =
+      std::make_unique<ResourceAccountant>(*resourceAccountant_);
+  auto intfDeltaValidator = intfDeltaValidator_;
+  SCOPE_EXIT {
+    resourceAccountant_ = std::move(resourceAccountant);
+    intfDeltaValidator_ = std::move(intfDeltaValidator);
+  };
+  return isValidUpdate(delta, stats);
 }
 
 void StateUpdateValidator::stateChanged(const StateDelta& delta) {

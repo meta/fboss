@@ -3,7 +3,7 @@
         "(c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.",
         "This file is generated. Do not modify it manually!",
         "@codegen-source : configerator\/raw_configs\/fboss\/test\/qsfp_test_metadata\/metadata.json",
-        "@generated SignedSource<<604dbc44fefd0bbc5233b5a25c5aa331>>"
+        "@generated SignedSource<<4149ace01fc90fe828655b92beffc83b>>"
     ],
     "rules": [
         {
@@ -29,7 +29,7 @@
             "profiles": []
         },
         {
-            "testNamePattern": "HwTransceiverResetTest.verifyResetControl",
+            "testNamePattern": "HwTransceiverResetBmcLiteTest.verifyResetControl",
             "tier": "T0",
             "requiredCapabilities": [
                 "TRANSCEIVER"
@@ -60,22 +60,6 @@
         },
         {
             "testNamePattern": "HwXphyFirmwareTest.CheckDefaultXphyFirmwareVersion",
-            "tier": "T0",
-            "requiredCapabilities": [
-                "EXTERNAL_PHY"
-            ],
-            "profiles": []
-        },
-        {
-            "testNamePattern": "HwTest.mdioStressRead",
-            "tier": "T0",
-            "requiredCapabilities": [
-                "EXTERNAL_PHY"
-            ],
-            "profiles": []
-        },
-        {
-            "testNamePattern": "HwTest.mdioStressWrite",
             "tier": "T0",
             "requiredCapabilities": [
                 "EXTERNAL_PHY"

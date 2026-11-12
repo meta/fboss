@@ -68,6 +68,10 @@ class PortApiTest : public ::testing::Test {
 #if defined(SAI_CBFC_SUPPORTED)
         std::nullopt, // TC to VC map
         std::nullopt, // Queue to VC map
+        std::nullopt, // CBFC sender credit size
+        std::nullopt, // CBFC sender packet overhead
+        std::nullopt, // CBFC sender credit limit
+        std::nullopt, // CBFC receiver credit limit
 #endif
 #if SAI_API_VERSION >= SAI_VERSION(1, 9, 0)
         std::nullopt, // Inter frame gap
@@ -112,6 +116,12 @@ class PortApiTest : public ::testing::Test {
         std::nullopt, // Ingress ACL
         std::nullopt, // IsolationGroup
         std::nullopt, // Metadata
+        std::nullopt, // CsigTagAction
+        std::nullopt, // CsigLinkLocator
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+        std::nullopt, // IntDelete
+        std::nullopt, // IntMetadata
+#endif
     };
     return portApi->create<SaiPortTraits>(a, 0);
   }
@@ -226,6 +236,30 @@ class PortApiTest : public ::testing::Test {
   std::unique_ptr<PortApi> portApi;
 };
 
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+TEST_F(PortApiTest, CsigIntMetadata) {
+  const auto id = createPort(25000, {1}, true);
+  EXPECT_FALSE(
+      portApi->getAttribute(id, SaiPortTraits::Attributes::IntDelete{}));
+  EXPECT_EQ(
+      portApi->getAttribute(id, SaiPortTraits::Attributes::IntMetadata{}), 0);
+  portApi->setAttribute(id, SaiPortTraits::Attributes::IntDelete{true});
+  portApi->setAttribute(id, SaiPortTraits::Attributes::IntMetadata{65535});
+  EXPECT_TRUE(
+      portApi->getAttribute(id, SaiPortTraits::Attributes::IntDelete{}));
+  EXPECT_EQ(
+      portApi->getAttribute(id, SaiPortTraits::Attributes::IntMetadata{}),
+      65535);
+  portApi->setAttribute(id, SaiPortTraits::Attributes::IntDelete{false});
+  portApi->setAttribute(id, SaiPortTraits::Attributes::IntMetadata{0});
+  EXPECT_FALSE(
+      portApi->getAttribute(id, SaiPortTraits::Attributes::IntDelete{}));
+  EXPECT_EQ(
+      portApi->getAttribute(id, SaiPortTraits::Attributes::IntMetadata{}), 0);
+  portApi->remove(id);
+}
+#endif
+
 TEST_F(PortApiTest, onePort) {
   auto id = createPort(100000, {42}, true);
   SaiPortTraits::Attributes::AdminState as_blank;
@@ -279,6 +313,52 @@ TEST_F(PortApiTest, readNativeCbfcReceiverAttributes) {
       portApi->getAttribute(
           id, SaiPortTraits::Attributes::CbfcReceiverNativePacketOverhead{}),
       -16);
+}
+
+TEST_F(PortApiTest, setCbfcSenderCreditSize) {
+  auto id = createPort(100000, {42}, true);
+  EXPECT_EQ(
+      portApi->getAttribute(
+          id, SaiPortTraits::Attributes::CbfcSenderCreditSize{}),
+      128);
+
+  portApi->setAttribute(
+      id, SaiPortTraits::Attributes::CbfcSenderCreditSize{56});
+  EXPECT_EQ(
+      portApi->getAttribute(
+          id, SaiPortTraits::Attributes::CbfcSenderCreditSize{}),
+      56);
+}
+
+TEST_F(PortApiTest, setCbfcSenderPacketOverhead) {
+  auto id = createPort(100000, {42}, true);
+  EXPECT_EQ(
+      portApi->getAttribute(
+          id, SaiPortTraits::Attributes::CbfcSenderPacketOverhead{}),
+      0);
+
+  // Negative is legal (-16..127) and catches an unsigned model.
+  portApi->setAttribute(
+      id, SaiPortTraits::Attributes::CbfcSenderPacketOverhead{-16});
+  EXPECT_EQ(
+      portApi->getAttribute(
+          id, SaiPortTraits::Attributes::CbfcSenderPacketOverhead{}),
+      -16);
+}
+
+TEST_F(PortApiTest, setCbfcReceiverCreditLimit) {
+  auto id = createPort(100000, {42}, true);
+  EXPECT_EQ(
+      portApi->getAttribute(
+          id, SaiPortTraits::Attributes::CbfcReceiverCreditLimit{}),
+      0);
+
+  portApi->setAttribute(
+      id, SaiPortTraits::Attributes::CbfcReceiverCreditLimit{4096});
+  EXPECT_EQ(
+      portApi->getAttribute(
+          id, SaiPortTraits::Attributes::CbfcReceiverCreditLimit{}),
+      4096);
 }
 #endif
 

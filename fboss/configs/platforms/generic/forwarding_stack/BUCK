@@ -8,7 +8,6 @@ thrift_library(
     languages = ["cpp2"],
     thrift_cpp2_options = ["json"],
     thrift_srcs = {"config_generation.thrift": []},
-    deps = ["//fboss/lib/if:fboss_common"],
 )
 
 thrift_library(

@@ -221,6 +221,50 @@
         },
         "productSubVersion": 3
       }
+    ],
+    "3V3_L": [
+      {
+        "pmUnitConfig": {
+          "pluggedInSlotType": "OPTICL_SLOT",
+          "i2cDeviceConfigs": [
+            {
+              "busName": "INCOMING@0",
+              "address": "0x20",
+              "kernelDeviceName": "mp2891",
+              "pmUnitScopedName": "3V3_L_MONITOR"
+            },
+            {
+              "busName": "INCOMING@0",
+              "address": "0x48",
+              "kernelDeviceName": "tmp1075",
+              "pmUnitScopedName": "SMB_TSENSOR1"
+            }
+          ]
+        },
+        "productSubVersion": 10
+      }
+    ],
+    "3V3_R": [
+      {
+        "pmUnitConfig": {
+          "pluggedInSlotType": "OPTICR_SLOT",
+          "i2cDeviceConfigs": [
+            {
+              "busName": "INCOMING@0",
+              "address": "0x20",
+              "kernelDeviceName": "mp2891",
+              "pmUnitScopedName": "3V3_R_MONITOR"
+            },
+            {
+              "busName": "INCOMING@0",
+              "address": "0x48",
+              "kernelDeviceName": "tmp1075",
+              "pmUnitScopedName": "SMB_TSENSOR4"
+            }
+          ]
+        },
+        "productSubVersion": 10
+      }
     ]
   },
   "pmUnitConfigs": {
@@ -1421,7 +1465,7 @@
   "chassisEepromDevicePath": "/FCBTOP_SLOT@0/[CHASSIS_EEPROM]",
   "numXcvrs": 65,
   "bspKmodsRpmName": "fboss_bsp_kmods",
-  "bspKmodsRpmVersion": "4.4.2-1",
+  "bspKmodsRpmVersion": "2026.10.3-1",
   "nonBspKmodsToLoad": [
     "spidev",
     "ledtrig_timer"

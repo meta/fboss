@@ -1,16 +1,19 @@
 // Copyright 2004-present Facebook. All Rights Reserved.
 
 #include "fboss/agent/state/Srv6Tunnel.h" // must precede SwSwitch.h to avoid template conflicts
+#include "fboss/agent/state/VxlanTunnel.h" // must precede SwSwitch.h to avoid template conflicts
 
 #include "fboss/agent/HwSwitchMatcher.h"
 #include "fboss/agent/SwSwitch.h"
 #include "fboss/agent/SwitchIdScopeResolver.h"
 #include "fboss/agent/SwitchInfoTable.h"
 #include "fboss/agent/state/BufferPoolConfig.h"
+#include "fboss/agent/state/InterfaceVrf.h"
 #include "fboss/agent/state/MySid.h"
 #include "fboss/agent/state/MySidMap.h"
 #include "fboss/agent/state/PortFlowletConfig.h"
 #include "fboss/agent/state/Vlan.h"
+#include "fboss/agent/state/Vrf.h"
 #include "fboss/agent/test/HwTestHandle.h"
 #include "fboss/agent/test/TestUtils.h"
 
@@ -211,12 +214,38 @@ TYPED_TEST(SwitchIdScopeResolverTest, interfaceScope) {
   }
 }
 
+TYPED_TEST(SwitchIdScopeResolverTest, interfaceVrfScope) {
+  if (this->isFabric()) {
+    return;
+  }
+  auto state = this->sw_->getState();
+  auto intf = state->getInterfaces()->getAllNodes()->cbegin()->second;
+  auto interfaceVrf =
+      std::make_shared<InterfaceVrf>(intf->getID(), RouterID(1001));
+  EXPECT_EQ(
+      this->scopeResolver().scope(interfaceVrf, state),
+      this->scopeResolver().scope(intf, state));
+}
+
 TYPED_TEST(SwitchIdScopeResolverTest, fibContainerScope) {
   auto fibContainer = std::make_shared<ForwardingInformationBaseContainer>();
   if (this->isFabric()) {
     this->expectThrow(fibContainer);
   } else {
     this->expectSwitchId(fibContainer);
+  }
+}
+
+TYPED_TEST(SwitchIdScopeResolverTest, vrfScope) {
+  cfg::VrfConfig vrfCfg;
+  vrfCfg.vrfId() = 1001;
+  auto vrf = std::make_shared<Vrf>(RouterID(1001));
+  if (this->isFabric()) {
+    this->expectThrow(vrfCfg);
+    this->expectThrow(vrf);
+  } else {
+    this->expectL3(vrfCfg);
+    this->expectL3(vrf);
   }
 }
 
@@ -798,6 +827,105 @@ TYPED_TEST(SwitchIdScopeResolverTest, srv6TunnelStateScopeCfg) {
   tunnelFields.srv6TunnelId() = "tunnel0";
   tunnelFields.underlayIntfId() = static_cast<int>(intf->getID());
   auto tunnel = std::make_shared<Srv6Tunnel>(std::move(tunnelFields));
+
+  auto config = this->sw_->getConfig();
+  const auto& resolver = this->scopeResolver();
+  auto tunnelMatcher = resolver.scope(tunnel, config);
+  auto intfMatcher = resolver.scope(intf, config);
+  EXPECT_EQ(tunnelMatcher, intfMatcher);
+}
+
+TYPED_TEST(SwitchIdScopeResolverTest, vxlanTunnelCfgScope) {
+  if (this->isFabric()) {
+    return;
+  }
+  // Create a cfg::VxLanTunnel referencing a valid interface
+  cfg::VxLanTunnel tunnel;
+  tunnel.vxlanTunnelId() = "tunnel0";
+  tunnel.underlayIntfID() = 1;
+  tunnel.tunnelType() = TunnelType::VXLAN;
+
+  auto config = this->sw_->getConfig();
+  const auto& resolver = this->scopeResolver();
+  auto tunnelMatcher = resolver.scope(tunnel, config);
+
+  // The scope should match that of the underlay interface
+  for (const auto& intf : *config.interfaces()) {
+    if (*intf.intfID() == 1) {
+      auto intfMatcher = resolver.scope(*intf.type(), InterfaceID(1), config);
+      EXPECT_EQ(tunnelMatcher, intfMatcher);
+      break;
+    }
+  }
+}
+
+TYPED_TEST(SwitchIdScopeResolverTest, vxlanTunnelCfgScopePortIntf) {
+  if (this->switchType != cfg::SwitchType::NPU) {
+    return;
+  }
+  auto config = testConfigAWithPortInterfaces();
+  this->addMirrorConfig(&config);
+  this->sw_->applyConfig("applyConfig", config);
+
+  cfg::VxLanTunnel tunnel;
+  tunnel.vxlanTunnelId() = "tunnel0";
+  tunnel.underlayIntfID() = 6001;
+  tunnel.tunnelType() = TunnelType::VXLAN;
+
+  const auto& resolver = this->scopeResolver();
+  auto tunnelMatcher = resolver.scope(tunnel, config);
+  auto portMatcher = resolver.scope(PortID(1));
+  EXPECT_EQ(tunnelMatcher, portMatcher);
+}
+
+TYPED_TEST(SwitchIdScopeResolverTest, vxlanTunnelStateScope) {
+  if (this->isFabric()) {
+    return;
+  }
+  auto state = this->sw_->getState();
+  auto allIntfs = state->getInterfaces();
+  auto intf = allIntfs->getAllNodes()->cbegin()->second;
+
+  // Create VxlanTunnel with underlay pointing to existing interface
+  state::VxLanTunnelFields tunnelFields;
+  tunnelFields.vxlanTunnelId() = "tunnel0";
+  tunnelFields.underlayIntfId() = static_cast<int>(intf->getID());
+  tunnelFields.tunnelType() = TunnelType::VXLAN;
+  auto tunnel = std::make_shared<VxlanTunnel>(std::move(tunnelFields));
+
+  const auto& resolver = this->scopeResolver();
+  auto tunnelMatcher = resolver.scope(tunnel, state);
+  auto intfMatcher = resolver.scope(intf, state);
+  EXPECT_EQ(tunnelMatcher, intfMatcher);
+}
+
+TYPED_TEST(SwitchIdScopeResolverTest, vxlanTunnelCfgScopeInvalidIntf) {
+  if (this->isFabric()) {
+    return;
+  }
+  cfg::VxLanTunnel tunnel;
+  tunnel.vxlanTunnelId() = "tunnel0";
+  tunnel.underlayIntfID() = 99999;
+  tunnel.tunnelType() = TunnelType::VXLAN;
+
+  auto config = this->sw_->getConfig();
+  const auto& resolver = this->scopeResolver();
+  EXPECT_THROW(resolver.scope(tunnel, config), FbossError);
+}
+
+TYPED_TEST(SwitchIdScopeResolverTest, vxlanTunnelStateScopeCfg) {
+  if (this->isFabric()) {
+    return;
+  }
+  auto state = this->sw_->getState();
+  auto allIntfs = state->getInterfaces();
+  auto intf = allIntfs->getAllNodes()->cbegin()->second;
+
+  state::VxLanTunnelFields tunnelFields;
+  tunnelFields.vxlanTunnelId() = "tunnel0";
+  tunnelFields.underlayIntfId() = static_cast<int>(intf->getID());
+  tunnelFields.tunnelType() = TunnelType::VXLAN;
+  auto tunnel = std::make_shared<VxlanTunnel>(std::move(tunnelFields));
 
   auto config = this->sw_->getConfig();
   const auto& resolver = this->scopeResolver();

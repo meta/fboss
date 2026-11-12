@@ -95,7 +95,9 @@ void WedgeManager::loadConfig() {
     partNumberToFwHandle = *tcvrFw->fwHandleMap();
   }
   tcvrConfig_ = std::make_shared<TransceiverConfig>(
-      *qsfpCfg.transceiverConfigOverrides(), partNumberToFwHandle);
+      *qsfpCfg.transceiverConfigOverrides(),
+      partNumberToFwHandle,
+      qsfpCfg.transceiverVendorOverrides().to_optional());
 
   qsfpConfig_->writePhyConfigToFile();
 

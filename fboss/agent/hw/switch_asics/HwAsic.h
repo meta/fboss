@@ -129,6 +129,14 @@ class HwAsic {
     // destination IPv6 word3 and word2.
     ACL_DST_IPV6_WORD_QUALIFIERS,
 
+    // Set to true if the SAI implementation supports ACL destination IP
+    // matchers with an arbitrary, possibly non-contiguous, mask.
+    ACL_DST_IP_WITH_MASK,
+
+    // Set to true if the SAI implementation supports every ACL destination
+    // IPv6 word matcher FBOSS exposes with an arbitrary mask (word1 and word0).
+    ACL_DST_IPV6_WORD_WITH_MASK,
+
     // Set to true if the SAI implementation supports ACL Byte counters
     // For SAI, this maps to whether SAI_ACL_COUNTER_ATTR_BYTES can be queried.
     // TODO:
@@ -427,6 +435,7 @@ class HwAsic {
     PMD_RX_SIGNAL_DETECT,
     SAI_FEC_COUNTERS,
     SAI_PORT_ERR_STATUS,
+    PORT_LATCH_STATUS,
     EXACT_MATCH,
     ROUTE_PROGRAMMING,
     FEC_CORRECTED_BITS,
@@ -590,6 +599,12 @@ class HwAsic {
     NEXT_HOP_GROUP_MEMBER_MONITORED_OBJECT,
     SRV6_MYSID_DISCARD_COUNTER,
     SRV6_MYSID_RESOURCE_COUNTER,
+    // Binding uSIDs use uA with USD rather than B6_ENCAPS_RED with no flavor.
+    SRV6_BINDING_USID_UA_USD,
+    // Decapsulating MySid entries (DECAPSULATE_AND_LOOKUP and binding uSIDs)
+    // carry the SRv6 decap tunnel, which supplies the TTL/DSCP/ECN modes for
+    // the decapsulation.
+    SRV6_DECAP_TUNNEL,
     DEVICE_WATERMARK_SUPPORT,
     // Per-stage HW drop cause bitmaps via custom SAI switch stats
     // (SAI_SWITCH_STAT_CUSTOM_HW_DROP_CAUSE_*). Each bitmap is an i64
@@ -600,8 +615,9 @@ class HwAsic {
     // group and traffic class, redirecting to a per-TC next hop group.
     PBR_ACL,
     // UEC Link Layer Retry (UE Spec 1.0.2 section 5.1): hop-by-hop link-layer
-    // retransmission of LLR-eligible frames between link partners. Currently
-    // supported only on Tomahawk Ultra.
+    // retransmission of LLR-eligible frames between link partners. Supported
+    // on Tomahawk Ultra, and experimentally on Tomahawk6 from the 16.0 early
+    // access drop (see Tomahawk6Asic::isSupported).
     LINK_LAYER_RETRANSMISSION,
     CBFC,
     // Per-port link up/down debounce (hold-off timers) and the associated
@@ -629,6 +645,27 @@ class HwAsic {
     // Extra router MACs via the SAI MY_MAC object: packets destined to a
     // programmed MAC + VLAN are routed like packets to the switch's own MAC.
     MY_MAC,
+    // XPHY only: the xphy SerDes has a TX FIR post3 tap, so program it and read
+    // it back. Only consulted by phy/ code; NPU ASICs report false (n/a).
+    // Agera3 (Condor SerDes) has no post3: the SDK drops it on set and returns
+    // -1 on get.
+    XPHY_SERDES_TX_FIR_POST3,
+    // Per-port HW protection switchover counters
+    // (SAI_PORT_STAT_IF_IN_HW_PROTECTION_SWITCHOVER_EVENTS and
+    // SAI_PORT_STAT_IF_IN_HW_PROTECTION_SWITCHOVER_DROP_PKTS). Broadcom
+    // Tomahawk 5/6 with XGS SDK 13.3+.
+    HW_PROTECTION_SWITCHOVER_COUNTERS,
+    // PBR ACL table byte counters, for ASICs without ACL_BYTE_COUNTER.
+    PBR_ACL_BYTE_COUNTER,
+    // CSIG (Congestion Signaling) per-port egress tag action and link locator
+    CSIG,
+    // TTL control on the aggregate's shared forwarding service.
+    LAG_TTL_DECREMENT_DISABLE,
+    ACL_COUNTER_LABEL_EXTENDED,
+    // Per-port PCS errored block and BER (sync header bit error) counters,
+    // read via Cisco SAI port stat extensions and reported in PhyInfo
+    // PcsStats.
+    PCS_ERROR_COUNTERS,
   };
 
   enum class AsicMode {
@@ -817,6 +854,25 @@ class HwAsic {
   virtual std::optional<uint32_t> getMaxArsWidth() const {
     return std::nullopt;
   }
+  // CBFC sender credit sizes, in bytes, that the SAI implementation accepts.
+  // Empty on ASICs without CBFC.
+  virtual std::vector<int16_t> getCbfcSenderCreditSizes() const {
+    return {};
+  }
+  // CBFC sender per-packet overheads, in bytes, that the SAI implementation
+  // accepts. Empty on ASICs without CBFC.
+  virtual std::vector<int16_t> getCbfcSenderPacketOverheads() const {
+    return {};
+  }
+  // CBFC virtual channels per port. 0 on ASICs without CBFC.
+  virtual int16_t getCbfcNumVirtualChannels() const {
+    return 0;
+  }
+  // Whether the SAI implementation takes a NOS-set CBFC receiver credit limit
+  // on a port.
+  virtual bool isCbfcReceiverCreditLimitSupported() const {
+    return false;
+  }
   // TODO(zecheng): Define more specific limits for v4/v6 routes with different
   // mask lengths
   virtual std::optional<uint32_t> getMaxRoutes() const {
@@ -840,6 +896,10 @@ class HwAsic {
   }
 
   virtual std::optional<uint32_t> getMaxMySidEntries() const {
+    return std::nullopt;
+  }
+
+  virtual std::optional<uint32_t> getMaxVrfs() const {
     return std::nullopt;
   }
 

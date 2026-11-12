@@ -63,7 +63,9 @@ std::optional<ETHERTYPE> decapsulateMplsPacket(folly::IOBuf* buf) {
   if (!ethHdr.getVlanTags().empty()) {
     vlanTagsSize += (4 * ethHdr.getVlanTags().size());
   }
-  size_t l2HeaderSize = srcMacDstMacSize + vlanTagsSize + sizeof(ETHERTYPE);
+  const size_t csigTagSize = ethHdr.getCsigTag() ? CsigTag::SIZE : 0;
+  size_t l2HeaderSize =
+      srcMacDstMacSize + vlanTagsSize + csigTagSize + sizeof(ETHERTYPE);
 
   PktUtil::decapsulatePacket(
       buf, l2HeaderSize, mplsHdr.size(), static_cast<uint16_t>(etherType));

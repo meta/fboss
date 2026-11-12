@@ -485,6 +485,10 @@ TEST_F(
           << "counters to increment by at least "
           << utility::kFabricLinkMonitoringMinCounterIncrement << " on all "
           << l2Ports.size() << " L2-connected fabric ports";
+      EXPECT_EVENTUALLY_TRUE(
+          utility::allPortsHaveFabricLinkMonitoringFsdbStats(
+              getSw(), l2Ports, initialStats, l2Ports.size()))
+          << "Waiting for all fabric link monitoring stats in hwPortStats and TX/RX progress";
     });
   };
   verifyAcrossWarmBoots(setup, verify);

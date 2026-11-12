@@ -98,6 +98,17 @@ class TomahawkUltra1Asic : public BroadcomXgsAsic {
   }
   std::optional<uint32_t> getMaxArsGroups() const override;
   std::optional<uint32_t> getArsBaseIndex() const override;
+  // brcm-sai 16.0_ea_odp maps only these, though the SDK sender table takes
+  // more credit sizes.
+  std::vector<int16_t> getCbfcSenderCreditSizes() const override {
+    return {32, 56};
+  }
+  std::vector<int16_t> getCbfcSenderPacketOverheads() const override {
+    return {0, 16, 32, 48, 64, 80};
+  }
+  int16_t getCbfcNumVirtualChannels() const override {
+    return 16;
+  }
 };
 
 } // namespace facebook::fboss

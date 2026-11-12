@@ -58,6 +58,15 @@ class AclTableStoreTest : public SaiStoreTest {
         folly::IPAddressV6("0:0:9abc:def0::"),
         folly::IPAddressV6("0:0:ffff:ffff::"));
   }
+  std::pair<folly::IPAddressV6, folly::IPAddressV6> kDstIpV6Word1() const {
+    return std::make_pair(
+        folly::IPAddressV6("::4a1c:1230:0:0"),
+        folly::IPAddressV6("::efff:fffc:0:0"));
+  }
+  std::pair<folly::IPAddressV6, folly::IPAddressV6> kDstIpV6Word0() const {
+    return std::make_pair(
+        folly::IPAddressV6("::1"), folly::IPAddressV6("::ffff"));
+  }
 
   std::pair<folly::IPAddressV4, folly::IPAddressV4> kSrcIpV4() const {
     return std::make_pair(
@@ -268,6 +277,8 @@ class AclTableStoreTest : public SaiStoreTest {
             true, // dstIpv6
             true, // dstIpv6Word3
             true, // dstIpv6Word2
+            true, // dstIpv6Word1
+            true, // dstIpv6Word0
             true, // srcIpv4
             true, // dstIpv4
             true, // l4SrcPort
@@ -300,6 +311,9 @@ class AclTableStoreTest : public SaiStoreTest {
             kUdfGroupId() + 2, // udf group 2
             kUdfGroupId() + 3, // udf group 3
             kUdfGroupId() + 4, // udf group 4
+#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
+            true, // route destination
+#endif
             true, // port meta
         },
         0);
@@ -316,6 +330,8 @@ class AclTableStoreTest : public SaiStoreTest {
             AclEntryFieldIpV6(this->kDstIpV6()),
             AclEntryFieldIpV6(this->kDstIpV6Word3()),
             AclEntryFieldIpV6(this->kDstIpV6Word2()),
+            AclEntryFieldIpV6(this->kDstIpV6Word1()),
+            AclEntryFieldIpV6(this->kDstIpV6Word0()),
             AclEntryFieldIpV4(this->kSrcIpV4()),
             AclEntryFieldIpV4(this->kDstIpV4()),
             AclEntryFieldSaiObjectIdT(this->kSrcPort()),
@@ -374,6 +390,7 @@ class AclTableStoreTest : public SaiStoreTest {
             aclTableIdAttribute,
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 2)
             this->kCounterLabel(),
+            std::nullopt,
 #endif
             this->kEnablePacketCount(),
             this->kEnableByteCount(),
@@ -433,6 +450,7 @@ TEST_P(AclTableStoreParamTest, loadAclCounter) {
       aclTableId,
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 2)
       this->kCounterLabel(),
+      std::nullopt,
 #endif
       this->kEnablePacketCount(),
       this->kEnableByteCount()};
@@ -440,6 +458,34 @@ TEST_P(AclTableStoreParamTest, loadAclCounter) {
   auto got = store.get(k);
   EXPECT_NE(got, nullptr);
   EXPECT_EQ(got->adapterKey(), aclCounterId);
+}
+
+TEST_P(AclTableStoreParamTest, loadAclCounterLabelExtended) {
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 2)
+  auto aclTableId = createAclTable(GetParam());
+  std::vector<int8_t> labelExtended(60, 'a');
+  SaiAclCounterTraits::CreateAttributes c{
+      aclTableId,
+      SaiCharArray32{},
+      labelExtended,
+      this->kEnablePacketCount(),
+      this->kEnableByteCount(),
+      std::nullopt,
+      std::nullopt};
+  auto aclCounterId = saiApiTable->aclApi().create<SaiAclCounterTraits>(c, 0);
+
+  SaiStore s(0);
+  s.reload();
+  SaiAclCounterTraits::AdapterHostKey k{
+      aclTableId,
+      SaiCharArray32{},
+      labelExtended,
+      this->kEnablePacketCount(),
+      this->kEnableByteCount()};
+  auto got = s.get<SaiAclCounterTraits>().get(k);
+  ASSERT_NE(got, nullptr);
+  EXPECT_EQ(got->adapterKey(), aclCounterId);
+#endif
 }
 
 TEST_P(AclTableStoreParamTest, aclTableCtorLoad) {
@@ -475,6 +521,8 @@ TEST_P(AclTableStoreParamTest, aclTableCtorCreate) {
       true, // dstIpv6
       true, // dstIpv6Word3
       true, // dstIpv6Word2
+      true, // dstIpv6Word1
+      true, // dstIpv6Word0
       true, // srcIpv4
       true, // dstIpv4
       true, // l4SrcPort
@@ -507,6 +555,9 @@ TEST_P(AclTableStoreParamTest, aclTableCtorCreate) {
       kUdfGroupId() + 2, // udf group 2
       kUdfGroupId() + 3, // udf group 3
       kUdfGroupId() + 4, // udf group 4
+#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
+      true, // route destination
+#endif
       true, // port meta
   };
 
@@ -531,6 +582,8 @@ TEST_P(AclTableStoreParamTest, AclEntryCreateCtor) {
       this->kDstIpV6(),
       this->kDstIpV6Word3(),
       this->kDstIpV6Word2(),
+      this->kDstIpV6Word1(),
+      this->kDstIpV6Word0(),
       this->kSrcIpV4(),
       this->kDstIpV4(),
       this->kSrcPort(),
@@ -594,6 +647,7 @@ TEST_P(AclTableStoreParamTest, AclCounterCreateCtor) {
       aclTableId,
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 2)
       this->kCounterLabel(),
+      std::nullopt,
 #endif
       this->kEnablePacketCount(),
       this->kEnableByteCount(),
@@ -604,6 +658,7 @@ TEST_P(AclTableStoreParamTest, AclCounterCreateCtor) {
       aclTableId,
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 2)
       this->kCounterLabel(),
+      std::nullopt,
 #endif
       this->kEnablePacketCount(),
       this->kEnableByteCount()};

@@ -30,10 +30,10 @@ cpp_unittest(
     ],
     network_access = network_access_utils.none(),
     deps = [
+        "fbsource//xplat/folly:network_address",
         ":py_radix_wrapper",
         "//common/base:random",
         "//fboss/lib:radix_tree",
-        "//folly:network_address",
     ],
 )
 
@@ -52,10 +52,10 @@ cpp_benchmark(
     name = "time_series_with_min_max-benchmark",
     srcs = ["TimeSeriesWithMinMaxBenchmark.cpp"],
     deps = [
+        "fbsource//xplat/folly:benchmark",
+        "fbsource//xplat/folly:synchronized",
         "//common/init:init",
         "//fboss/lib:time_series_with_min_max",
-        "//folly:benchmark",
-        "//folly:synchronized",
     ],
 )
 
@@ -63,12 +63,12 @@ cpp_benchmark(
     name = "radixtree-benchmark",
     srcs = ["RadixTreeBenchmark.cpp"],
     deps = [
+        "fbsource//xplat/folly:benchmark",
+        "fbsource//xplat/folly:network_address",
         ":py_radix_wrapper",
         "//common/base:random",
         "//common/init:init",
         "//fboss/lib:radix_tree",
-        "//folly:benchmark",
-        "//folly:network_address",
     ],
 )
 
@@ -76,11 +76,11 @@ cpp_binary(
     name = "radixtree-profile",
     srcs = ["RadixTreeProfile.cpp"],
     deps = [
+        "fbsource//xplat/folly:network_address",
         ":utils",
         "//common/base:random",
         "//common/init:init",
         "//fboss/lib:radix_tree",
-        "//folly:network_address",
     ],
 )
 
@@ -92,8 +92,8 @@ cpp_unittest(
     network_access = network_access_utils.none(),
     deps = [
         "fbsource//third-party/glog:glog",
+        "fbsource//xplat/folly:singleton",
         "//fboss/lib:pci_device",
-        "//folly:singleton",
     ],
     external_deps = [
         ("libpciaccess", None, "pciaccess"),
@@ -149,6 +149,17 @@ cpp_unittest(
 )
 
 cpp_unittest(
+    name = "hw_write_behavior_test",
+    srcs = [
+        "HwWriteBehaviorTest.cpp",
+    ],
+    network_access = network_access_utils.none(),
+    deps = [
+        "//fboss/lib:hw_write_behavior",
+    ],
+)
+
+cpp_unittest(
     name = "thrift_method_rate_limit_test",
     srcs = [
         "ThriftMethodRateLimitTest.cpp",
@@ -168,7 +179,7 @@ cpp_library(
         "Utils.h",
     ],
     exported_deps = [
-        "//common/network:address",
+        "fbsource//xplat/folly:network_address",
     ],
 )
 
@@ -179,9 +190,9 @@ cpp_library(
     ],
     exported_deps = [
         "fbsource//third-party/pypi/py-radix:radix",
+        "fbsource//xplat/folly:network_address",
         ":utils",
         "//common/logging:logging",
-        "//folly:network_address",
     ],
 )
 
@@ -192,8 +203,8 @@ cpp_unittest(
     ],
     network_access = network_access_utils.none(),
     deps = [
+        "fbsource//xplat/folly/system:thread_name",
         "//fboss/lib:thread_heartbeat",
-        "//folly/system:thread_name",
     ],
 )
 
@@ -208,12 +219,12 @@ cpp_unittest(
     deps = [
         "fbsource//third-party/fmt:fmt",
         "fbsource//third-party/glog:glog",
+        "fbsource//xplat/folly:singleton",
+        "fbsource//xplat/folly/logging:logging",
+        "fbsource//xplat/folly/testing:test_util",
         "//fboss/lib:common_file_utils",
         "//fboss/lib:common_port_utils",
         "//fboss/lib:common_thrift_utils",
-        "//folly:singleton",
-        "//folly/logging:logging",
-        "//folly/testing:test_util",
     ],
 )
 
@@ -225,8 +236,8 @@ cpp_unittest(
     network_access = network_access_utils.none(),
     deps = [
         "fbsource//third-party/googletest:gmock",
+        "fbsource//xplat/folly:network_address",
         "//fboss/agent:fboss-error",
         "//fboss/lib:rest-client",
-        "//folly:network_address",
     ],
 )

@@ -20,20 +20,19 @@ cpp_library(
         "prefdl/Prefdl.h",
     ],
     deps = [
+        "fbsource//xplat/folly:conv",
+        "fbsource//xplat/folly:scope_guard",
+        "fbsource//xplat/folly/logging:logging",
         ":config_utils_lib",
         ":eeprom_content_validator",
         ":fboss_eeprom_lib",
         "//fboss/platform/helpers:platform_name_lib",
         "//fboss/platform/helpers:platform_utils",
-        "//folly:conv",
-        "//folly:format",
-        "//folly:scope_guard",
-        "//folly/logging:logging",
         "//thrift/lib/cpp/util:enum_utils",
         "//thrift/lib/cpp2/protocol:protocol",
     ],
     exported_deps = [
-        "//folly/json:dynamic",
+        "fbsource//xplat/folly/json:dynamic",
     ],
     exported_external_deps = [
         "gflags",
@@ -52,8 +51,8 @@ cpp_library(
     ],
     deps = [
         "fbsource//third-party/fmt:fmt",
+        "fbsource//xplat/folly:string",
         ":crc16_ccitt_aug",
-        "//folly:string",
     ],
     exported_deps = [
         "//fboss/platform/weutil/if:eeprom_contents-cpp2-types",
@@ -68,7 +67,7 @@ cpp_library(
     headers = [
         "ConfigValidator.h",
     ],
-    deps = ["//folly/logging:logging"],
+    deps = ["fbsource//xplat/folly/logging:logging"],
     exported_deps = [
         "//fboss/platform/weutil/if:weutil_config-cpp2-types",
     ],
@@ -84,9 +83,8 @@ cpp_library(
     ],
     deps = [
         "fbsource//third-party/re2:re2",
+        "fbsource//xplat/folly:string",
         "//fboss/platform/config_lib:config_lib",
-        "//folly:format",
-        "//folly:string",
         "//thrift/lib/cpp2/protocol:protocol",
     ],
     exported_deps = [
@@ -126,7 +124,7 @@ cpp_library(
     ],
     deps = [
         "fbsource//third-party/fmt:fmt",
-        "//folly:string",
+        "fbsource//xplat/folly:string",
     ],
     exported_deps = [],
 )
@@ -137,13 +135,13 @@ cpp_binary(
         "main.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/json:dynamic",
+        "fbsource//xplat/folly/logging:init",
+        "fbsource//xplat/folly/logging:logging",
         ":config_utils_lib",
         ":weutil_core",
         "//fboss/platform/helpers:init_cli",
-        "//folly:string",
-        "//folly/json:dynamic",
-        "//folly/logging:init",
-        "//folly/logging:logging",
     ],
 )
 

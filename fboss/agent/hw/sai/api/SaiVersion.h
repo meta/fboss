@@ -136,6 +136,11 @@
 #define BRCM_SAI_SDK_XGS_GTE_16_0
 #endif
 
+// brcm-sai 15.4.0.0_odp is Broadcom's 15.4.1 GA drop.
+#if defined(BRCM_SAI_SDK_XGS_GTE_16_0) || defined(SAI_VERSION_15_4_0_0_ODP)
+#define BRCM_SAI_SDK_XGS_GTE_15_4_1
+#endif
+
 // CBFC (saivirtualchannel.h, the CBFC port attributes, the VC qos map types)
 // is upstream as of SAI 1.19.0. brcm-sai 16.0_ea_odp carries the same
 // declarations via its cbfc.patch while still reporting 1.18.1, so neither
@@ -246,11 +251,13 @@
     defined(TAJO_SDK_VERSION_25_5_4210) ||                                     \
     defined(TAJO_SDK_VERSION_25_11_4210) ||                                    \
     defined(TAJO_SDK_VERSION_26_2_4210) ||                                     \
+    defined(TAJO_SDK_VERSION_26_5_4210) ||                                     \
     defined(TAJO_SDK_VERSION_26_5_5210) || defined(TAJO_SDK_VERSION_26_7_5211)
 #define TAJO_SDK_EBRO
 #endif
 
-#if defined(TAJO_SDK_VERSION_26_5_5210) || defined(TAJO_SDK_VERSION_26_7_5211)
+#if defined(TAJO_SDK_VERSION_26_5_4210) || \
+    defined(TAJO_SDK_VERSION_26_5_5210) || defined(TAJO_SDK_VERSION_26_7_5211)
 #define TAJO_SDK_GTE_26_5
 #endif
 
@@ -280,12 +287,19 @@
  *   - CHENAB_SAI_SDK: Flags for all Chenab SDK (set in tp2 BUCK)
  *   - CHENAB_SAI_SDK_GTE_2511_36: Flags for SDK >= 2511.36
  *   - CHENAB_SAI_SDK_GTE_2605_37: Flags for SDK >= 2605.37
+ *   - CHENAB_SAI_SDK_GTE_2605_38: Flags for SDK >= 2605.38
  */
-#if defined(CHENAB_SAI_SDK_VERSION_2605_37_0_20)
+#if defined(CHENAB_SAI_SDK_VERSION_2605_38_251_4)
+#define CHENAB_SAI_SDK_GTE_2605_38
+#endif
+
+#if defined(CHENAB_SAI_SDK_VERSION_2605_37_0_20) || \
+    defined(CHENAB_SAI_SDK_GTE_2605_38)
 #define CHENAB_SAI_SDK_GTE_2605_37
 #endif
 
-#if defined(CHENAB_SAI_SDK_VERSION_2511_36_0_20) || \
+#if defined(CHENAB_SAI_SDK_VERSION_2511_36_0_20) ||   \
+    defined(CHENAB_SAI_SDK_VERSION_2511_36_251_10) || \
     defined(CHENAB_SAI_SDK_GTE_2605_37)
 #define CHENAB_SAI_SDK_GTE_2511_36
 #endif

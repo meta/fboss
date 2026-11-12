@@ -392,12 +392,12 @@ TYPED_TEST(ThriftStructNodeTestSuite, NodeTypeTest) {
                 HybridNodeType>);
   static_assert(
       !std::is_same_v<
-          typename folly::remove_cvref_t<
+          typename std::remove_cvref_t<
               decltype(node->template get<k::inlineInt>().value())>::CowType,
           HybridNodeType>);
   static_assert(
       !std::is_same_v<
-          typename folly::remove_cvref_t<
+          typename std::remove_cvref_t<
               decltype(node->template get<k::inlineString>().value())>::CowType,
           HybridNodeType>);
 
@@ -1174,7 +1174,7 @@ TEST(ThriftStructNodeTests, ThriftStructNodeEncode) {
 
 TEST(ThriftStructNodeTests, UnsignedInteger) {
   ThriftStructFields<TestStruct> fields;
-  using UnderlyingType = folly::remove_cvref_t<
+  using UnderlyingType = std::remove_cvref_t<
       decltype(*fields.get<k::unsigned_int64>())>::ThriftType;
   static_assert(std::is_same_v<UnderlyingType, uint64_t>);
 }

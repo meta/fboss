@@ -59,7 +59,7 @@
     }
   },
   "variants": {
-    "": {},
+    "default": {},
     "test_fixture": {
       "platform_mapping_name": "tahansb800bc_test_fixture"
     }

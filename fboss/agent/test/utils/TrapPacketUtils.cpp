@@ -59,6 +59,8 @@ void addTrapPacketAcl(
     // Broadcom, install the source-port entry in both ACL tables: an
     // etherType=IPv4 copy in the default table and an etherType=IPv6 copy in
     // the IPv6 table, so it traps both v4 and v6 traffic on the port.
+    // MPLS frames likewise need an etherType=MPLS copy in both tables, not
+    // only the default one, or they are never trapped (per Broadcom).
     addEntry(
         folly::to<std::string>("trap-packet-", port, "-v4"),
         cfg::EtherType::IPv4,
@@ -67,6 +69,16 @@ void addTrapPacketAcl(
     addEntry(
         folly::to<std::string>("trap-packet-", port, "-v6"),
         cfg::EtherType::IPv6,
+        std::nullopt,
+        utility::kIpv6AclTable());
+    addEntry(
+        folly::to<std::string>("trap-packet-", port, "-mpls"),
+        cfg::EtherType::MPLS,
+        std::nullopt,
+        utility::kDefaultAclTable());
+    addEntry(
+        folly::to<std::string>("trap-packet-", port, "-mpls-v6"),
+        cfg::EtherType::MPLS,
         std::nullopt,
         utility::kIpv6AclTable());
   } else {

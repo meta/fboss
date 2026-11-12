@@ -2,6 +2,9 @@
 
 #include "fboss/agent/hw/sai/fake/FakeSaiTam.h"
 
+#include <set>
+#include <type_traits>
+
 #include "fboss/agent/hw/sai/api/AddressUtil.h"
 #include "fboss/agent/hw/sai/fake/FakeSai.h"
 
@@ -12,6 +15,209 @@ extern "C" {
 namespace {
 
 using facebook::fboss::FakeSai;
+template <typename SaiList>
+auto copyList(const SaiList& list) {
+  using Value = std::remove_pointer_t<decltype(list.list)>;
+  return list.count == 0
+      ? std::vector<Value>{}
+      : std::vector<Value>(list.list, list.list + list.count);
+}
+
+template <typename Value, typename SaiList>
+sai_status_t readList(const std::vector<Value>& values, SaiList& list) {
+  const auto capacity = list.count;
+  list.count = static_cast<uint32_t>(values.size());
+  if (capacity < list.count) {
+    return SAI_STATUS_BUFFER_OVERFLOW;
+  }
+  std::copy(values.begin(), values.end(), list.list);
+  return SAI_STATUS_SUCCESS;
+}
+
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+sai_status_t setTamIntAttribute(
+    facebook::fboss::FakeSaiTamInt& object,
+    const sai_attribute_t& attr,
+    bool creating) {
+  switch (attr.id) {
+    case SAI_TAM_INT_ATTR_TYPE:
+      if (!creating) {
+        return SAI_STATUS_INVALID_PARAMETER;
+      }
+      object.type = attr.value.s32;
+      break;
+    case SAI_TAM_INT_ATTR_DEVICE_ID:
+      if (!creating) {
+        return SAI_STATUS_INVALID_PARAMETER;
+      }
+      object.deviceId = attr.value.u32;
+      break;
+    case SAI_TAM_INT_ATTR_INT_PRESENCE_TYPE:
+      if (!creating) {
+        return SAI_STATUS_INVALID_PARAMETER;
+      }
+      object.presenceType = attr.value.s32;
+      break;
+    case SAI_TAM_INT_ATTR_INLINE:
+      if (!creating) {
+        return SAI_STATUS_INVALID_PARAMETER;
+      }
+      object.inlineMode = attr.value.booldata;
+      break;
+    case SAI_TAM_INT_ATTR_ETH_TYPE_CODE_POINT:
+      if (!creating) {
+        return SAI_STATUS_INVALID_PARAMETER;
+      }
+      object.etherType = attr.value.u16;
+      break;
+    case SAI_TAM_INT_ATTR_CSIG_SIGNAL_TYPE:
+      object.signalType = attr.value.s32;
+      break;
+    case SAI_TAM_INT_ATTR_BW_TIME_INTERVAL:
+      object.bandwidthInterval = attr.value.u32;
+      break;
+    case SAI_TAM_INT_ATTR_QUANT_BANDS:
+      object.bandCount = attr.value.u32;
+      break;
+    case SAI_TAM_INT_ATTR_WIDE_QUANT_BASE_VALUE:
+      object.wideBase = attr.value.u32;
+      break;
+    case SAI_TAM_INT_ATTR_WIDE_QUANT_STEP_VALUE:
+      object.wideStep = attr.value.u32;
+      break;
+    case SAI_TAM_INT_ATTR_CSIG_D_BIT:
+      object.dBit = attr.value.booldata;
+      break;
+    case SAI_TAM_INT_ATTR_QUANT_BAND_ID:
+      object.bandIds = copyList(attr.value.u16list);
+      break;
+    case SAI_TAM_INT_ATTR_QUANT_BAND_UINT64_RANGE_LIST:
+      object.ranges = copyList(attr.value.u64rangelist);
+      break;
+    default:
+      return SAI_STATUS_ATTR_NOT_SUPPORTED_0;
+  }
+  return SAI_STATUS_SUCCESS;
+}
+
+sai_status_t create_tam_int(
+    sai_object_id_t* id,
+    sai_object_id_t /*switch_id*/,
+    uint32_t attr_count,
+    const sai_attribute_t* attrs) {
+  facebook::fboss::FakeSaiTamInt object;
+  std::set<sai_attr_id_t> present;
+  for (uint32_t i = 0; i < attr_count; ++i) {
+    const auto status = setTamIntAttribute(object, attrs[i], true);
+    if (status != SAI_STATUS_SUCCESS) {
+      return status;
+    }
+    present.insert(attrs[i].id);
+  }
+  for (auto required :
+       {SAI_TAM_INT_ATTR_TYPE,
+        SAI_TAM_INT_ATTR_DEVICE_ID,
+        SAI_TAM_INT_ATTR_INT_PRESENCE_TYPE,
+        SAI_TAM_INT_ATTR_INLINE}) {
+    if (!present.contains(required)) {
+      return SAI_STATUS_MANDATORY_ATTRIBUTE_MISSING;
+    }
+  }
+  if (object.presenceType == SAI_TAM_INT_PRESENCE_TYPE_ETH_TYPE &&
+      !present.contains(SAI_TAM_INT_ATTR_ETH_TYPE_CODE_POINT)) {
+    return SAI_STATUS_MANDATORY_ATTRIBUTE_MISSING;
+  }
+  auto fs = FakeSai::getInstance();
+  *id = fs->tamIntManager.create();
+  object.id = *id;
+  fs->tamIntManager.get(*id) = std::move(object);
+  return SAI_STATUS_SUCCESS;
+}
+
+sai_status_t remove_tam_int(sai_object_id_t id) {
+  FakeSai::getInstance()->tamIntManager.remove(id);
+  return SAI_STATUS_SUCCESS;
+}
+
+sai_status_t set_tam_int_attribute(
+    sai_object_id_t id,
+    const sai_attribute_t* attr) {
+  return setTamIntAttribute(
+      FakeSai::getInstance()->tamIntManager.get(id), *attr, false);
+}
+
+sai_status_t get_tam_int_attribute(
+    sai_object_id_t id,
+    uint32_t attr_count,
+    sai_attribute_t* attrs) {
+  const auto& object = FakeSai::getInstance()->tamIntManager.get(id);
+  for (uint32_t i = 0; i < attr_count; ++i) {
+    auto& attr = attrs[i];
+    if ((attr.id == SAI_TAM_INT_ATTR_WIDE_QUANT_BASE_VALUE ||
+         attr.id == SAI_TAM_INT_ATTR_WIDE_QUANT_STEP_VALUE) &&
+        object.type != SAI_TAM_INT_TYPE_CSIG_WIDE) {
+      return SAI_STATUS_ATTR_NOT_SUPPORTED_0;
+    }
+    if (attr.id == SAI_TAM_INT_ATTR_BW_TIME_INTERVAL &&
+        object.signalType != SAI_CSIG_SIGNAL_TYPE_ABW &&
+        object.signalType != SAI_CSIG_SIGNAL_TYPE_ABWC) {
+      return SAI_STATUS_ATTR_NOT_SUPPORTED_0;
+    }
+    switch (attr.id) {
+      case SAI_TAM_INT_ATTR_TYPE:
+        attr.value.s32 = object.type;
+        break;
+      case SAI_TAM_INT_ATTR_DEVICE_ID:
+        attr.value.u32 = object.deviceId;
+        break;
+      case SAI_TAM_INT_ATTR_INT_PRESENCE_TYPE:
+        attr.value.s32 = object.presenceType;
+        break;
+      case SAI_TAM_INT_ATTR_INLINE:
+        attr.value.booldata = object.inlineMode;
+        break;
+      case SAI_TAM_INT_ATTR_ETH_TYPE_CODE_POINT:
+        attr.value.u16 = object.etherType;
+        break;
+      case SAI_TAM_INT_ATTR_CSIG_SIGNAL_TYPE:
+        attr.value.s32 = object.signalType;
+        break;
+      case SAI_TAM_INT_ATTR_BW_TIME_INTERVAL:
+        attr.value.u32 = object.bandwidthInterval;
+        break;
+      case SAI_TAM_INT_ATTR_QUANT_BANDS:
+        attr.value.u32 = object.bandCount;
+        break;
+      case SAI_TAM_INT_ATTR_WIDE_QUANT_BASE_VALUE:
+        attr.value.u32 = object.wideBase;
+        break;
+      case SAI_TAM_INT_ATTR_WIDE_QUANT_STEP_VALUE:
+        attr.value.u32 = object.wideStep;
+        break;
+      case SAI_TAM_INT_ATTR_CSIG_D_BIT:
+        attr.value.booldata = object.dBit;
+        break;
+      case SAI_TAM_INT_ATTR_QUANT_BAND_ID: {
+        auto status = readList(object.bandIds, attr.value.u16list);
+        if (status != SAI_STATUS_SUCCESS) {
+          return status;
+        }
+        break;
+      }
+      case SAI_TAM_INT_ATTR_QUANT_BAND_UINT64_RANGE_LIST: {
+        auto status = readList(object.ranges, attr.value.u64rangelist);
+        if (status != SAI_STATUS_SUCCESS) {
+          return status;
+        }
+        break;
+      }
+      default:
+        return SAI_STATUS_ATTR_NOT_SUPPORTED_0;
+    }
+  }
+  return SAI_STATUS_SUCCESS;
+}
+#endif
 
 sai_status_t create_tam(
     sai_object_id_t* id,
@@ -681,11 +887,15 @@ sai_status_t create_tam_transport(
     uint32_t attr_count,
     const sai_attribute_t* attr_list) {
   sai_int32_t transportType{};
-  sai_uint32_t srcPort{};
-  sai_uint32_t dstPort{};
-  sai_uint32_t mtu{};
+  std::optional<sai_uint32_t> srcPort;
+  std::optional<sai_uint32_t> dstPort;
+  std::optional<sai_uint32_t> mtu;
   std::optional<folly::MacAddress> srcMac;
   std::optional<folly::MacAddress> dstMac;
+
+#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
+  std::optional<sai_uint16_t> greProtocolType;
+#endif
 
   for (auto i = 0; i < attr_count; i++) {
     switch (attr_list[i].id) {
@@ -713,6 +923,11 @@ sai_status_t create_tam_transport(
         dstMac = facebook::fboss::fromSaiMacAddress(attr_list[i].value.mac);
         break;
 
+#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
+      case SAI_TAM_TRANSPORT_ATTR_GRE_PROTOCOL_TYPE:
+        greProtocolType = attr_list[i].value.u16;
+        break;
+#endif
       default:
         return SAI_STATUS_ATTR_NOT_SUPPORTED_0 + i;
     }
@@ -720,6 +935,9 @@ sai_status_t create_tam_transport(
   auto fs = FakeSai::getInstance();
   *id = fs->tamTransportManager.create(
       transportType, srcPort, dstPort, mtu, srcMac, dstMac);
+#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
+  fs->tamTransportManager.get(*id).greProtocolType_ = greProtocolType;
+#endif
   return SAI_STATUS_SUCCESS;
 }
 
@@ -742,27 +960,50 @@ sai_status_t get_tam_transport_attribute(
         break;
 
       case SAI_TAM_TRANSPORT_ATTR_SRC_PORT:
-        attr_list[i].value.u32 = transport.srcPort_;
+        if (!transport.srcPort_) {
+          return SAI_STATUS_ATTR_NOT_IMPLEMENTED_0 + i;
+        }
+        attr_list[i].value.u32 = *transport.srcPort_;
         break;
 
       case SAI_TAM_TRANSPORT_ATTR_DST_PORT:
-        attr_list[i].value.u32 = transport.dstPort_;
+        if (!transport.dstPort_) {
+          return SAI_STATUS_ATTR_NOT_IMPLEMENTED_0 + i;
+        }
+        attr_list[i].value.u32 = *transport.dstPort_;
         break;
 
       case SAI_TAM_TRANSPORT_ATTR_MTU:
-        attr_list[i].value.u32 = transport.mtu_;
+        if (!transport.mtu_) {
+          return SAI_STATUS_ATTR_NOT_IMPLEMENTED_0 + i;
+        }
+        attr_list[i].value.u32 = *transport.mtu_;
         break;
 
       case SAI_TAM_TRANSPORT_ATTR_FAKE_SRC_MAC_ADDRESS:
+        if (!transport.srcMac_) {
+          return SAI_STATUS_ATTR_NOT_IMPLEMENTED_0 + i;
+        }
         facebook::fboss::toSaiMacAddress(
             transport.srcMac_.value(), attr_list[i].value.mac);
         break;
 
       case SAI_TAM_TRANSPORT_ATTR_FAKE_DST_MAC_ADDRESS:
+        if (!transport.dstMac_) {
+          return SAI_STATUS_ATTR_NOT_IMPLEMENTED_0 + i;
+        }
         facebook::fboss::toSaiMacAddress(
             transport.dstMac_.value(), attr_list[i].value.mac);
         break;
 
+#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
+      case SAI_TAM_TRANSPORT_ATTR_GRE_PROTOCOL_TYPE:
+        if (!transport.greProtocolType_) {
+          return SAI_STATUS_ATTR_NOT_IMPLEMENTED_0 + i;
+        }
+        attr_list[i].value.u16 = *transport.greProtocolType_;
+        break;
+#endif
       default:
         return SAI_STATUS_ATTR_NOT_SUPPORTED_0 + i;
     }
@@ -801,6 +1042,11 @@ sai_status_t set_tam_transport_attribute(
         transport.dstMac_ = facebook::fboss::fromSaiMacAddress(attr->value.mac);
         break;
 
+#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
+      case SAI_TAM_TRANSPORT_ATTR_GRE_PROTOCOL_TYPE:
+        transport.greProtocolType_ = attr->value.u16;
+        break;
+#endif
       default:
         return SAI_STATUS_ATTR_NOT_SUPPORTED_0;
     }
@@ -820,6 +1066,15 @@ sai_status_t create_tam_collector(
   std::optional<sai_uint16_t> truncateSize{};
   sai_object_id_t transport{};
   std::optional<sai_uint8_t> dscp{};
+
+#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
+  std::optional<folly::MacAddress> srcMac;
+  std::optional<folly::MacAddress> dstMac;
+  std::optional<sai_object_id_t> destination;
+#endif
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 0)
+  std::optional<bool> localhost;
+#endif
 
   for (auto i = 0; i < attr_count; i++) {
     switch (attr_list[i].id) {
@@ -843,6 +1098,22 @@ sai_status_t create_tam_collector(
         dscp = attr_list[i].value.u8;
         break;
 
+#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
+      case SAI_TAM_COLLECTOR_ATTR_SRC_MAC:
+        srcMac = facebook::fboss::fromSaiMacAddress(attr_list[i].value.mac);
+        break;
+      case SAI_TAM_COLLECTOR_ATTR_DST_MAC:
+        dstMac = facebook::fboss::fromSaiMacAddress(attr_list[i].value.mac);
+        break;
+      case SAI_TAM_COLLECTOR_ATTR_DESTINATION:
+        destination = attr_list[i].value.oid;
+        break;
+#endif
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 0)
+      case SAI_TAM_COLLECTOR_ATTR_LOCALHOST:
+        localhost = attr_list[i].value.booldata;
+        break;
+#endif
       default:
         return SAI_STATUS_ATTR_NOT_SUPPORTED_0 + i;
     }
@@ -850,6 +1121,14 @@ sai_status_t create_tam_collector(
   auto fs = FakeSai::getInstance();
   *id = fs->tamCollectorManager.create(
       srcIp, dstIp, truncateSize, transport, dscp);
+#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
+  fs->tamCollectorManager.get(*id).srcMac_ = srcMac;
+  fs->tamCollectorManager.get(*id).dstMac_ = dstMac;
+  fs->tamCollectorManager.get(*id).destination_ = destination;
+#endif
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 0)
+  fs->tamCollectorManager.get(*id).localhost_ = localhost;
+#endif
   return SAI_STATUS_SUCCESS;
 }
 
@@ -878,6 +1157,9 @@ sai_status_t get_tam_collector_attribute(
         break;
 
       case SAI_TAM_COLLECTOR_ATTR_TRUNCATE_SIZE:
+        if (!collector.truncateSize_) {
+          return SAI_STATUS_ATTR_NOT_IMPLEMENTED_0 + i;
+        }
         attr_list[i].value.u16 = collector.truncateSize_.value();
         break;
 
@@ -886,9 +1168,42 @@ sai_status_t get_tam_collector_attribute(
         break;
 
       case SAI_TAM_COLLECTOR_ATTR_DSCP_VALUE:
+        if (!collector.dscp_) {
+          return SAI_STATUS_ATTR_NOT_IMPLEMENTED_0 + i;
+        }
         attr_list[i].value.u8 = collector.dscp_.value();
         break;
 
+#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
+      case SAI_TAM_COLLECTOR_ATTR_SRC_MAC:
+        if (!collector.srcMac_) {
+          return SAI_STATUS_ATTR_NOT_IMPLEMENTED_0 + i;
+        }
+        facebook::fboss::toSaiMacAddress(
+            *collector.srcMac_, attr_list[i].value.mac);
+        break;
+      case SAI_TAM_COLLECTOR_ATTR_DST_MAC:
+        if (!collector.dstMac_) {
+          return SAI_STATUS_ATTR_NOT_IMPLEMENTED_0 + i;
+        }
+        facebook::fboss::toSaiMacAddress(
+            *collector.dstMac_, attr_list[i].value.mac);
+        break;
+      case SAI_TAM_COLLECTOR_ATTR_DESTINATION:
+        if (!collector.destination_) {
+          return SAI_STATUS_ATTR_NOT_IMPLEMENTED_0 + i;
+        }
+        attr_list[i].value.oid = *collector.destination_;
+        break;
+#endif
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 0)
+      case SAI_TAM_COLLECTOR_ATTR_LOCALHOST:
+        if (!collector.localhost_) {
+          return SAI_STATUS_ATTR_NOT_IMPLEMENTED_0 + i;
+        }
+        attr_list[i].value.booldata = *collector.localhost_;
+        break;
+#endif
       default:
         return SAI_STATUS_ATTR_NOT_SUPPORTED_0 + i;
     }
@@ -926,6 +1241,22 @@ sai_status_t set_tam_collector_attribute(
         collector.dscp_ = attr->value.u8;
         break;
 
+#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
+      case SAI_TAM_COLLECTOR_ATTR_SRC_MAC:
+        collector.srcMac_ = facebook::fboss::fromSaiMacAddress(attr->value.mac);
+        break;
+      case SAI_TAM_COLLECTOR_ATTR_DST_MAC:
+        collector.dstMac_ = facebook::fboss::fromSaiMacAddress(attr->value.mac);
+        break;
+      case SAI_TAM_COLLECTOR_ATTR_DESTINATION:
+        collector.destination_ = attr->value.oid;
+        break;
+#endif
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 0)
+      case SAI_TAM_COLLECTOR_ATTR_LOCALHOST:
+        collector.localhost_ = attr->value.booldata;
+        break;
+#endif
       default:
         return SAI_STATUS_ATTR_NOT_SUPPORTED_0;
     }
@@ -941,6 +1272,12 @@ namespace facebook::fboss {
 static sai_tam_api_t _tam_api;
 
 void populate_tam_api(sai_tam_api_t** tam_api) {
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+  _tam_api.create_tam_int = &create_tam_int;
+  _tam_api.remove_tam_int = &remove_tam_int;
+  _tam_api.set_tam_int_attribute = &set_tam_int_attribute;
+  _tam_api.get_tam_int_attribute = &get_tam_int_attribute;
+#endif
   _tam_api.create_tam = &create_tam;
   _tam_api.remove_tam = &remove_tam;
   _tam_api.set_tam_attribute = &set_tam_attribute;

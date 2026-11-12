@@ -12,6 +12,9 @@ cpp_binary(
     name = "stress_test_client",
     srcs = ["stress_test_client.cpp"],
     deps = [
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/init:init",
+        "fbsource//xplat/folly/synchronization:baton",
         "//fboss/fsdb/client:fsdb_cow_state_sub_manager",
         "//fboss/fsdb/client:fsdb_cow_stats_sub_manager",
         "//fboss/fsdb/client:fsdb_pub_sub",
@@ -20,9 +23,6 @@ cpp_binary(
         "//fboss/fsdb/if:fsdb_common-cpp2-types",
         "//fboss/lib/thrift_service_client:thrift-service-client",
         "//fboss/thrift_cow/storage/tests:data_factory",
-        "//folly:string",
-        "//folly/init:init",
-        "//folly/synchronization:baton",
         "//thrift/lib/cpp2/protocol:protocol",
     ],
     external_deps = [
@@ -39,6 +39,12 @@ cpp_unittest(
     ],
     network_access = network_access_utils.none(),
     deps = [
+        "fbsource//xplat/folly:synchronized",
+        "fbsource//xplat/folly/coro:async_generator",
+        "fbsource//xplat/folly/coro:async_pipe",
+        "fbsource//xplat/folly/futures:core",
+        "fbsource//xplat/folly/io/async:scoped_event_base_thread",
+        "fbsource//xplat/folly/logging:logging",
         "//fb303:service_data",
         "//fboss/fsdb/client:fsdb_pub_sub",
         "//fboss/fsdb/client:fsdb_stream_client",
@@ -46,12 +52,6 @@ cpp_unittest(
         "//fboss/fsdb/tests/client:fsdb_test_clients",
         "//fboss/lib:common_utils",
         "//fboss/lib/thrift_service_client:thrift-service-client",
-        "//folly:synchronized",
-        "//folly/coro:async_generator",
-        "//folly/coro:async_pipe",
-        "//folly/futures:core",
-        "//folly/io/async:scoped_event_base_thread",
-        "//folly/logging:logging",
     ],
 )
 
@@ -62,6 +62,9 @@ cpp_unittest(
     ],
     network_access = network_access_utils.all(),
     deps = [
+        "fbsource//xplat/folly/io/async:scoped_event_base_thread",
+        "fbsource//xplat/folly/logging:init",
+        "fbsource//xplat/folly/logging:logging",
         "//fboss/fsdb/client:fsdb_cow_state_sub_manager",
         "//fboss/fsdb/client:fsdb_cow_stats_sub_manager",
         "//fboss/fsdb/client:fsdb_pub_sub",
@@ -70,9 +73,7 @@ cpp_unittest(
         "//fboss/fsdb/tests/utils:fsdb_test_server",
         "//fboss/lib:common_utils",
         "//fboss/lib/thrift_service_client:thrift-service-client",
-        "//folly/io/async:scoped_event_base_thread",
-        "//folly/logging:init",
-        "//folly/logging:logging",
+        "//thrift/lib/cpp/transport:transport-core",
         "//thrift/lib/cpp2/op:get",
     ],
 )
@@ -82,17 +83,17 @@ cpp_library(
     srcs = ["test_cgo_client.cpp"],
     headers = ["test_cgo_client.h"],
     deps = [
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/logging:logging",
         "//fboss/fsdb/client:fsdb_cow_state_sub_manager",
         "//fboss/fsdb/client:fsdb_pub_sub",
         "//fboss/fsdb/tests/utils:fsdb_test_server",
         "//fboss/lib/thrift_service_client:thrift-service-client",
-        "//folly:string",
-        "//folly/logging:logging",
         "//thrift/lib/cpp2/protocol:protocol",
     ],
     exported_deps = [
-        "//folly:synchronized",
-        "//folly/synchronization:baton",
+        "fbsource//xplat/folly:synchronized",
+        "fbsource//xplat/folly/synchronization:baton",
     ],
 )
 
@@ -124,17 +125,17 @@ cpp_library(
     srcs = ["cgo_subscriber.cpp"],
     headers = ["cgo_subscriber.h"],
     deps = [
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/logging:logging",
         "//fboss/fsdb/client:fsdb_cow_state_sub_manager",
         "//fboss/fsdb/client:fsdb_cow_stats_sub_manager",
         "//fboss/fsdb/client:fsdb_pub_sub",
         "//fboss/lib/thrift_service_client:thrift-service-client",
-        "//folly:string",
-        "//folly/logging:logging",
         "//thrift/lib/cpp2/protocol:protocol",
     ],
     exported_deps = [
-        "//folly:synchronized",
-        "//folly/synchronization:baton",
+        "fbsource//xplat/folly:synchronized",
+        "fbsource//xplat/folly/synchronization:baton",
     ],
 )
 

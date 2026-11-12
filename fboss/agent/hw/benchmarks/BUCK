@@ -10,12 +10,12 @@ agent_benchmark_lib(
     name = "hw_tx_slow_path_rate",
     srcs = ["HwTxSlowPathBenchmark.cpp"],
     deps = [
+        "fbsource//xplat/folly:network_address",
+        "fbsource//xplat/folly/init:init",
+        "fbsource//xplat/folly/json:dynamic",
+        "fbsource//xplat/folly/logging:logging",
         "//fboss/agent:core",
         "//fboss/agent/benchmarks:mono_agent_benchmarks",
-        "//folly:network_address",
-        "//folly/init:init",
-        "//folly/json:dynamic",
-        "//folly/logging:logging",
     ],
 )
 
@@ -23,11 +23,13 @@ agent_benchmark_lib(
     name = "hw_rx_slow_path_rate",
     srcs = ["HwRxSlowPathBenchmark.cpp"],
     deps = [
+        "fbsource//xplat/folly/json:dynamic",
         "//fboss/agent/benchmarks:mono_agent_benchmarks",
         "//fboss/agent/test:utils",
-        "//folly/json:dynamic",
     ],
     extra_deps = [
+        "fbsource//xplat/folly:network_address",
+        "fbsource//xplat/folly/init:init",
         "//fboss/agent:core",
         "//fboss/agent:packet",
         "//fboss/agent/hw/switch_asics:switch_asics",
@@ -36,8 +38,6 @@ agent_benchmark_lib(
         "//fboss/agent/test/utils:copp_test_utils",
         "//fboss/agent/test/utils:qos_test_utils",
         "//fboss/agent/test/utils:trap_packet_utils",
-        "//folly:network_address",
-        "//folly/init:init",
     ],
 )
 
@@ -50,15 +50,15 @@ cpp_library(
     headers = ["HwCpuLatencyBenchmarkHelper.h"],
     undefined_symbols = True,
     deps = [
+        "fbsource//xplat/folly:benchmark",
+        "fbsource//xplat/folly:conv",
+        "fbsource//xplat/folly/json:dynamic",
+        "fbsource//xplat/folly/logging:logging",
         "//fboss/agent/test:ecmp_helper",
         "//fboss/agent/test:utils",
         "//fboss/agent/test/utils:config_utils",
         "//fboss/agent/test/utils:copp_test_utils",
         "//fboss/lib:common_utils",
-        "//folly:benchmark",
-        "//folly:conv",
-        "//folly/json:dynamic",
-        "//folly/logging:logging",
     ],
     exported_deps = [
         "//fboss/agent:agent_features",
@@ -108,12 +108,14 @@ agent_benchmark_lib(
     name = "hw_rx_slow_path_arp_rate",
     srcs = ["HwRxSlowPathArpBenchmark.cpp"],
     deps = [
+        "fbsource//xplat/folly/json:dynamic",
         "//fboss/agent:asic_utils",
         "//fboss/agent/benchmarks:mono_agent_benchmarks",
         "//fboss/agent/test:utils",
-        "//folly/json:dynamic",
     ],
     extra_deps = [
+        "fbsource//xplat/folly:network_address",
+        "fbsource//xplat/folly/init:init",
         "//fboss/agent:core",
         "//fboss/agent:packet",
         "//fboss/agent/hw/switch_asics:switch_asics",
@@ -122,8 +124,6 @@ agent_benchmark_lib(
         "//fboss/agent/test/utils:asic_test_utils",
         "//fboss/agent/test/utils:copp_test_utils",
         "//fboss/agent/test/utils:qos_test_utils",
-        "//folly:network_address",
-        "//folly/init:init",
     ],
 )
 
@@ -135,10 +135,10 @@ agent_benchmark_lib(
         "//fboss/agent/test:route_scale_gen",
     ],
     extra_deps = [
+        "fbsource//xplat/folly/init:init",
         "//fboss/agent/benchmarks:agent_benchmarks_h",  # @manual
         "//fboss/agent/test/utils:agent_fsdb_integ_bench_helper",
         "//fboss/agent/test/utils:system_scale_test_utils",
-        "//folly/init:init",
     ],
 )
 
@@ -147,10 +147,10 @@ agent_benchmark_lib(
     srcs = ["HwSystemScaleChurnMemoryBenchmark.cpp"],
     deps = ["//fboss/agent/test:agent_ensemble"],
     extra_deps = [
+        "fbsource//xplat/folly/init:init",
         "//fboss/agent/benchmarks:agent_benchmarks_h",  # @manual
         "//fboss/agent/test/utils:agent_fsdb_integ_bench_helper",
         "//fboss/agent/test/utils:system_scale_test_utils",
-        "//folly/init:init",
     ],
 )
 
@@ -171,6 +171,7 @@ cpp_library(
         "//fboss/agent/test/utils:voq_test_utils",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:benchmark",
         "//fboss/agent:agent_features",
         "//fboss/agent:utils",
         "//fboss/agent/benchmarks:agent_benchmarks_h",  # @manual
@@ -179,7 +180,6 @@ cpp_library(
         "//fboss/agent/test:ecmp_helper",
         "//fboss/agent/test:resourcelibutil",
         "//fboss/lib:function_call_time_reporter",
-        "//folly:benchmark",
     ],
 )
 
@@ -190,6 +190,8 @@ cpp_library(
     ],
     exported_deps = [
         "fbsource//third-party/fmt:fmt",
+        "fbsource//xplat/folly:benchmark",
+        "fbsource//xplat/folly:network_address",
         "//fboss/agent:agent_features",
         "//fboss/agent:asic_utils",
         "//fboss/agent:sw_agent_initializer",
@@ -201,8 +203,6 @@ cpp_library(
         "//fboss/agent/test/utils:load_balancer_test_utils",
         "//fboss/agent/test/utils:network_ai_qos_utils",
         "//fboss/agent/test/utils:voq_test_utils",
-        "//folly:benchmark",
-        "//folly:network_address",
     ],
 )
 
@@ -298,9 +298,9 @@ agent_benchmark_lib(
     name = "hw_ecmp_shrink_speed",
     srcs = ["HwEcmpShrinkSpeedBenchmark.cpp"],
     deps = [
+        "fbsource//xplat/folly:network_address",
         "//fboss/agent:core",
         "//fboss/agent/test/utils:config_utils",
-        "//folly:network_address",
     ],
     extra_deps = [
         "//fboss/agent/hw/test:hw_switch_ensemble_factory",
@@ -336,11 +336,11 @@ cpp_library(
         "//fboss/lib:function_call_time_reporter",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:benchmark",
         "//fboss/agent:switch_config-cpp2-types",
         "//fboss/agent/benchmarks:agent_benchmarks_h",  # @manual
         "//fboss/agent/hw/test:config_factory",
         "//fboss/agent/hw/test:hw_switch_ensemble_factory",
-        "//folly:benchmark",
     ],
 )
 
@@ -420,9 +420,9 @@ agent_benchmark_lib(
     name = "hw_ecmp_shrink_with_competing_route_updates_speed",
     srcs = ["HwEcmpShrinkWithCompetingRouteUpdatesBenchmark.cpp"],
     deps = [
+        "fbsource//xplat/folly:network_address",
         "//fboss/agent:core",
         "//fboss/agent/test/utils:config_utils",
-        "//folly:network_address",
     ],
     extra_deps = [
         "//fboss/agent/hw/test:hw_switch_ensemble_factory",
@@ -487,13 +487,13 @@ agent_benchmark_lib(
     srcs = ["HwFlowletStatsCollectionBenchmark.cpp"],
     deps = [
         "fbsource//third-party/googletest:gtest",
+        "fbsource//xplat/folly:network_address",
+        "fbsource//xplat/folly/logging:logging",
         ":hw_stats_collection_benchmark_helper",
         "//fboss/agent/test:agent_ensemble",
         "//fboss/agent/test/utils:config_utils",
         "//fboss/agent/test/utils:scale_test_utils",
         "//fboss/lib:common_utils",
-        "//folly:network_address",
-        "//folly/logging:logging",
     ],
     extra_deps = [
         "//fboss/agent/hw/test:hw_test_ecmp_utils",
@@ -571,6 +571,7 @@ cpp_library(
     ],
     exported_deps = [
         "fbsource//third-party/fmt:fmt",
+        "fbsource//xplat/folly:benchmark",
         "//fboss/agent:agent_features",
         "//fboss/agent:core",
         "//fboss/agent:fib_helpers",
@@ -581,7 +582,6 @@ cpp_library(
         "//fboss/agent/test/utils:dsf_config_utils",
         "//fboss/agent/test/utils:voq_test_utils",
         "//fboss/lib:function_call_time_reporter",
-        "//folly:benchmark",
     ],
 )
 
@@ -597,6 +597,9 @@ cpp_library(
         "HwVoqRouteCompetingRemoteNeighborBenchmarkHelper.h",
     ],
     exported_deps = [
+        "fbsource//third-party/fmt:fmt",
+        "fbsource//xplat/folly:benchmark",
+        "fbsource//xplat/folly:synchronized",
         ":hw_route_scale_benchmark_helpers",
         "//fboss/agent:core",
         "//fboss/agent:fib_helpers",
@@ -604,8 +607,6 @@ cpp_library(
         "//fboss/agent/hw/test:config_factory",
         "//fboss/agent/test:agent_ensemble",
         "//fboss/agent/test/utils:voq_test_utils",
-        "//folly:benchmark",
-        "//folly:synchronized",
     ],
 )
 
@@ -634,13 +635,13 @@ cpp_library(
         "HwTunManagerProbeBenchmarkHelper.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:benchmark",
         "//fboss/agent:agent_features",
         "//fboss/agent:core",
         "//fboss/agent:sw_agent_initializer",
         "//fboss/agent/hw/test:config_factory",
         "//fboss/agent/test:agent_ensemble",
         "//fboss/agent/test:utils",
-        "//folly:benchmark",
     ],
 )
 
@@ -656,11 +657,11 @@ agent_benchmark_lib(
     name = "hw_ecmp_backup_group_spillover",
     srcs = ["HwEcmpBackupGroupSpilloverBenchmark.cpp"],
     deps = [
+        "fbsource//xplat/folly:network_address",
         "//fboss/agent:address_utils",
         "//fboss/agent:core",
         "//fboss/agent/test:agent_ensemble",
         "//fboss/agent/test/utils:config_utils",
-        "//folly:network_address",
     ],
     extra_deps = [
         "//fboss/agent/hw/test:hw_switch_ensemble_factory",
@@ -676,11 +677,11 @@ agent_benchmark_lib(
     name = "hw_ecmp_group_scale_benchmark",
     srcs = ["HwEcmpGroupScaleBenchmark.cpp"],
     deps = [
+        "fbsource//xplat/folly:network_address",
         "//fboss/agent:address_utils",
         "//fboss/agent:core",
         "//fboss/agent/test:agent_ensemble",
         "//fboss/agent/test/utils:config_utils",
-        "//folly:network_address",
     ],
     extra_deps = [
         "//fboss/agent/hw/test:hw_switch_ensemble_factory",
@@ -696,14 +697,14 @@ cpp_library(
     name = "hw_ucmp_group_scale_helper",
     headers = ["HwUcmpScaleBenchmarkHelper.h"],
     exported_deps = [
+        "fbsource//xplat/folly:benchmark",
+        "fbsource//xplat/folly:network_address",
+        "fbsource//xplat/folly/logging:logging",
         "//fboss/agent:fib_helpers",
         "//fboss/agent/test:agent_ensemble",
         "//fboss/agent/test:ecmp_helper",
         "//fboss/agent/test/utils:config_utils",
         "//fboss/agent/test/utils:scale_test_utils",
-        "//folly:benchmark",
-        "//folly:network_address",
-        "//folly/logging:logging",
     ],
 )
 
@@ -721,6 +722,7 @@ agent_benchmark_lib(
     srcs = ["HwSrv6ScaleBenchmark.cpp"],
     deps = [
         "fbsource//third-party/fmt:fmt",
+        "fbsource//xplat/folly:network_address",
         "//fboss/agent:agent_features",
         "//fboss/agent:asic_utils",
         "//fboss/agent:core",
@@ -732,7 +734,6 @@ agent_benchmark_lib(
         "//fboss/agent/test:trunk_utils",
         "//fboss/agent/test:utils",
         "//fboss/agent/test/utils:config_utils",
-        "//folly:network_address",
     ],
     extra_deps = [
         "//fboss/agent/test:resourcelibutil",
@@ -741,13 +742,36 @@ agent_benchmark_lib(
 )
 
 agent_benchmark_lib(
+    name = "hw_pbr_scale_benchmark",
+    srcs = ["HwPbrScaleBenchmark.cpp"],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        "fbsource//xplat/folly:network_address",
+        "//fboss/agent:address_utils",
+        "//fboss/agent:agent_features",
+        "//fboss/agent:core",
+        "//fboss/agent:switch_config-cpp2-types",
+        "//fboss/agent/if:common-cpp2-types",
+        "//fboss/agent/if:ctrl-cpp2-types",
+        "//fboss/agent/rib:standalone_rib",
+        "//fboss/agent/state:state",
+        "//fboss/agent/test:agent_ensemble",
+        "//fboss/agent/test/utils:acl_test_utils",
+        "//fboss/agent/test/utils:config_utils",
+    ],
+    extra_deps = [
+        "//fboss/agent/test/utils:srv6_test_utils",
+    ],
+)
+
+agent_benchmark_lib(
     name = "hw_srv6_mysid_scale_benchmark",
     srcs = ["HwSrv6MySidScaleBenchmark.cpp"],
     deps = [
+        "fbsource//xplat/folly/logging:logging",
         "//fboss/agent:agent_features",
         "//fboss/agent/test:agent_ensemble",
         "//fboss/agent/test/utils:config_utils",
-        "//folly/logging:logging",
     ],
     extra_deps = [
         "//fboss/agent/test/utils:srv6_test_utils",

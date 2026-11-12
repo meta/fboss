@@ -95,8 +95,7 @@ compiler path, they rebuild.
 A flag was given to the wrong program, or does not exist in this checkout.
 `run-getdeps.py -h` lists the wrapper's own flags, which must come before the
 getdeps subcommand; `run-getdeps.py --getdeps-help` lists getdeps' flags, which
-come after it. The wrapper's `--asan` flag is disabled; see
-[run-getdeps-reference.md](run-getdeps-reference.md#everything-else).
+come after it.
 
 ## `/var/FBOSS/pai_impl already exists and is not a symlink`
 
@@ -167,7 +166,25 @@ while no CMake file changes; see
 [getdeps-concepts.md](getdeps-concepts.md#iterating-without-getdeps). Keep the
 job count low, since these translation units are genuinely large.
 Raising `job_weight_mib` in the manifest would also lift the cap, but changing the manifest changes the rebuild
-hash and rebuilds every dependency.
+hash and rebuilds every dependency. If your getdeps honours
+`GETDEPS_NO_MEMORY_LIMIT`, setting it to `1` before the build drops the cap
+without either.
+
+## `AddressSanitizer failed to allocate ... ReserveShadowMemoryRange failed`
+
+An ASAN binary ran under an address-space limit: it reserves terabytes for
+shadow memory at startup. In a build, that is getdeps' per-process cap (see
+above) applied to a test binary during gtest discovery or to a code generator.
+`--asan` turns the cap off, but only with a getdeps that honours
+`GETDEPS_NO_MEMORY_LIMIT`; an older stable-commits snapshot replaces
+`build/fbcode_builder` with one that does not. Outside a build, check
+`ulimit -v`.
+
+## `ImportError: ... undefined symbol: __asan_...`
+
+A Python test loaded an extension module from an ASAN build into the
+uninstrumented interpreter. Run the sweep with `docker-unittest.py --asan`, which
+preloads the ASAN runtime; see [testing.md](testing.md#asan).
 
 ## `sudo: ... pam_loginuid` / sudo fails inside the container
 

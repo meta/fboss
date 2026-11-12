@@ -23,6 +23,11 @@ enum CheckType {
   BMC_MAC_ADDRESS_CHECK = 15,
   BMC_EEPROM_CHECK = 16,
   X86_MAC_CONSISTENCY_CHECK = 17,
+  BMC_SOL_CONSOLE_CHECK = 18,
+  BMC_SECONDARY_FLASH_BOOT_CHECK = 19,
+  WEDGE_POWER_CHECK = 20,
+  PLATFORM_HW_TEST_CHECK = 21,
+  BMC_CIT_TEST_CHECK = 22,
   BMC_REACHABILITY_CHECK = 23,
 }
 
@@ -62,6 +67,8 @@ struct CheckResult {
   6: optional string checkName;
   // Verbose evidence for debugging, e.g. commands run and their output.
   7: optional string details;
+  // Wall time the check took; unset for skipped checks.
+  8: optional i64 durationMs;
 }
 
 struct CheckInfo {
@@ -72,4 +79,7 @@ struct CheckInfo {
 
 struct CheckReport {
   1: list<CheckResult> results;
+  2: optional string platformName;
+  // Host the checks ran against, e.g. "localhost" or a switch hostname.
+  3: optional string target;
 }

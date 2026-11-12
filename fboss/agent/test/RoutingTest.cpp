@@ -9,6 +9,10 @@
  */
 
 #include <gtest/gtest.h>
+#include <algorithm>
+#include <cctype>
+#include <string>
+#include <vector>
 
 #include <fmt/core.h>
 #include <folly/IPAddress.h>
@@ -31,6 +35,7 @@
 #include "fboss/agent/TxPacket.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
 #include "fboss/agent/packet/EthHdr.h"
+#include "fboss/agent/packet/PktUtil.h"
 #include "fboss/agent/state/SwitchState.h"
 #include "fboss/agent/test/CounterCache.h"
 #include "fboss/agent/test/HwTestHandle.h"
@@ -560,6 +565,244 @@ TEST_F(RoutingFixture, SwitchToHostMulticast) {
         this->tunMgr, "V6 llMcastPkt", this->ifID1, matchRxPacket(pkt))
         .Times(1);
 
+    this->handle->rxPacket(
+        std::make_unique<IOBuf>(pkt), PortDescriptor(PortID(1)), VlanID(1));
+
+    counters.update();
+    counters.checkDelta(SwitchStats::kCounterPrefix + "host.rx.sum", 1);
+    counters.checkDelta(SwitchStats::kCounterPrefix + "trapped.drops.sum", 0);
+  }
+}
+
+namespace {
+
+// IPv6 multicast packet from fe80::7 to ff02::1 with Hop Limit 255.
+folly::IOBuf createV6MulticastPacket(
+    uint8_t nextHeader,
+    const std::string& payload) {
+  const auto payloadLength =
+      std::count_if(payload.begin(), payload.end(), ::isxdigit) / 2;
+  return PktUtil::parseHexData(
+      // dst mac, src mac
+      "33 33 00 00 00 01  00 02 c9 55 b7 a4"
+      // 802.1q, VLAN 1
+      "81 00 00 01"
+      // IPv6
+      "86 dd"
+      // Version 6, traffic class, flow label
+      "60 00 00 00" +
+      // Payload length, Next Header, Hop Limit
+      fmt::format("{:04x} {:02x} ff", payloadLength, nextHeader) +
+      // src addr (fe80::7)
+      "fe 80 00 00 00 00 00 00 00 00 00 00 00 00 00 07"
+      // dst addr (ff02::1)
+      "ff 02 00 00 00 00 00 00 00 00 00 00 00 00 00 01" +
+      payload);
+}
+
+// As createV6MulticastPacket, behind an 8 octet Hop-by-Hop header.
+// upperLayer is the Hop-by-Hop header followed by the upper-layer payload.
+folly::IOBuf createV6HopByHopMulticastPacket(const std::string& upperLayer) {
+  return createV6MulticastPacket(0, upperLayer);
+}
+
+} // namespace
+
+/**
+ * Neighbor Discovery and SEND messages behind IPv6 extension headers, e.g. a
+ * Router Advertisement after a Hop-by-Hop header (T296568668), are dropped
+ * instead of forwarded to host. Other ICMPv6 behind extension headers, e.g.
+ * Echo Request, is still forwarded.
+ */
+TEST_F(RoutingFixture, SwitchToHostNdpWithExtensionHeaders) {
+  CounterCache counters(this->sw);
+
+  {
+    auto pkt = createV6HopByHopMulticastPacket(
+        // Hop-by-Hop: Next Header 58 (ICMPv6), Hdr Ext Len 0, PadN
+        "3a 00 01 04 00 00 00 00"
+        // Router Advertisement: type, code, checksum, cur hop limit, flags,
+        // router lifetime, reachable time, retrans timer
+        "86 00 00 00 40 00 00 00 00 00 00 00 00 00 00 00");
+
+    EXPECT_CALL(*this->tunMgr, sendPacketToHost_(_)).Times(0);
+    this->handle->rxPacket(
+        std::make_unique<IOBuf>(pkt), PortDescriptor(PortID(1)), VlanID(1));
+
+    counters.update();
+    counters.checkDelta(SwitchStats::kCounterPrefix + "host.rx.sum", 0);
+    counters.checkDelta(SwitchStats::kCounterPrefix + "trapped.drops.sum", 1);
+  }
+
+  {
+    auto pkt = createV6HopByHopMulticastPacket(
+        // Hop-by-Hop: Next Header 58 (ICMPv6), Hdr Ext Len 0, PadN
+        "3a 00 01 04 00 00 00 00"
+        // Certification Path Solicitation: type, code, checksum, identifier,
+        // component, padding
+        "94 00 00 00 00 01 ff ff 00 00 00 00 00 00 00 00");
+
+    EXPECT_CALL(*this->tunMgr, sendPacketToHost_(_)).Times(0);
+    this->handle->rxPacket(
+        std::make_unique<IOBuf>(pkt), PortDescriptor(PortID(1)), VlanID(1));
+
+    counters.update();
+    counters.checkDelta(SwitchStats::kCounterPrefix + "host.rx.sum", 0);
+    counters.checkDelta(SwitchStats::kCounterPrefix + "trapped.drops.sum", 1);
+  }
+
+  {
+    auto pkt = createV6HopByHopMulticastPacket(
+        // Hop-by-Hop: Next Header 58 (ICMPv6), Hdr Ext Len 0, PadN
+        "3a 00 01 04 00 00 00 00"
+        // Certification Path Advertisement: type, code, checksum, identifier,
+        // all components, component, reserved, padding
+        "95 00 00 00 00 01 00 01 00 00 00 00 00 00 00 00");
+
+    EXPECT_CALL(*this->tunMgr, sendPacketToHost_(_)).Times(0);
+    this->handle->rxPacket(
+        std::make_unique<IOBuf>(pkt), PortDescriptor(PortID(1)), VlanID(1));
+
+    counters.update();
+    counters.checkDelta(SwitchStats::kCounterPrefix + "host.rx.sum", 0);
+    counters.checkDelta(SwitchStats::kCounterPrefix + "trapped.drops.sum", 1);
+  }
+
+  {
+    auto pkt = createV6HopByHopMulticastPacket(
+        // Hop-by-Hop: Next Header 58 (ICMPv6), Hdr Ext Len 0, PadN
+        "3a 00 01 04 00 00 00 00"
+        // Echo Request: type, code, checksum, identifier, sequence, data
+        "80 00 00 00 00 01 00 01 00 00 00 00 00 00 00 00");
+
+    EXPECT_TUN_PKT(
+        this->tunMgr, "V6 HopByHopEchoPkt", this->ifID1, matchRxPacket(pkt))
+        .Times(1);
+    this->handle->rxPacket(
+        std::make_unique<IOBuf>(pkt), PortDescriptor(PortID(1)), VlanID(1));
+
+    counters.update();
+    counters.checkDelta(SwitchStats::kCounterPrefix + "host.rx.sum", 1);
+    counters.checkDelta(SwitchStats::kCounterPrefix + "trapped.drops.sum", 0);
+  }
+}
+
+/**
+ * FBOSS does not implement SEND (RFC 3971), so SEND messages are dropped
+ * rather than forwarded to host, as they are behind extension headers.
+ */
+TEST_F(RoutingFixture, SwitchToHostSend) {
+  CounterCache counters(this->sw);
+
+  for (const auto& icmp : {
+           // Certification Path Solicitation: type, code, checksum,
+           // identifier, component, padding
+           "94 00 6e 28 00 01 ff ff 00 00 00 00 00 00 00 00",
+           // Certification Path Advertisement: type, code, checksum,
+           // identifier, all components, component, reserved, padding
+           "95 00 6d 27 00 01 00 01 00 00 00 00 00 00 00 00",
+       }) {
+    auto pkt = createV6MulticastPacket(58, icmp);
+
+    EXPECT_CALL(*this->tunMgr, sendPacketToHost_(_)).Times(0);
+    this->handle->rxPacket(
+        std::make_unique<IOBuf>(pkt), PortDescriptor(PortID(1)), VlanID(1));
+
+    counters.update();
+    counters.checkDelta(SwitchStats::kCounterPrefix + "host.rx.sum", 0);
+    counters.checkDelta(SwitchStats::kCounterPrefix + "trapped.drops.sum", 1);
+  }
+}
+
+namespace {
+
+// MLD messages, each with a valid ICMPv6 checksum for fe80::7 -> ff02::1.
+const std::vector<std::string> kMldMessages = {
+    // Query: type, code, checksum, max response delay, reserved,
+    // multicast address (general query)
+    "82 00 59 11 27 10 00 00 00 00 00 00 00 00 00 00"
+    "00 00 00 00 00 00 00 00",
+    // v1 Report: type, code, checksum, max response delay, reserved,
+    // multicast address (ff3e::1234)
+    "83 00 6d ae 00 00 00 00 ff 3e 00 00 00 00 00 00"
+    "00 00 00 00 00 00 12 34",
+    // Done: type, code, checksum, max response delay, reserved,
+    // multicast address (ff3e::1234)
+    "84 00 6c ae 00 00 00 00 ff 3e 00 00 00 00 00 00"
+    "00 00 00 00 00 00 12 34",
+    // v2 Report: type, code, checksum, reserved, number of records (0)
+    "8f 00 73 31 00 00 00 00",
+};
+
+} // namespace
+
+/**
+ * Nothing on the switch consumes MLD, so it is dropped rather than forwarded
+ * to host, with or without extension headers.
+ */
+TEST_F(RoutingFixture, SwitchToHostMld) {
+  CounterCache counters(this->sw);
+
+  for (const auto& mld : kMldMessages) {
+    for (const auto& pkt : {
+             createV6MulticastPacket(58, mld),
+             createV6HopByHopMulticastPacket(
+                 // Hop-by-Hop: Next Header 58 (ICMPv6), Hdr Ext Len 0, Router
+                 // Alert (MLD), PadN
+                 "3a 00 05 02 00 00 01 00" + mld),
+         }) {
+      EXPECT_CALL(*this->tunMgr, sendPacketToHost_(_)).Times(0);
+      this->handle->rxPacket(
+          std::make_unique<IOBuf>(pkt), PortDescriptor(PortID(1)), VlanID(1));
+
+      counters.update();
+      counters.checkDelta(SwitchStats::kCounterPrefix + "host.rx.sum", 0);
+      counters.checkDelta(SwitchStats::kCounterPrefix + "trapped.drops.sum", 1);
+    }
+  }
+}
+
+/**
+ * A fragmented MLD Query (T297106366) is dropped by its first fragment, which
+ * carries the ICMPv6 type. A later fragment carries no ICMPv6 type and goes to
+ * host, which cannot reassemble it without the first fragment.
+ */
+TEST_F(RoutingFixture, SwitchToHostFragmentedMld) {
+  CounterCache counters(this->sw);
+
+  {
+    auto pkt = createV6HopByHopMulticastPacket(
+        // Hop-by-Hop: Next Header 44 (Fragment), Hdr Ext Len 0, Router Alert
+        // (MLD), PadN
+        "2c 00 05 02 00 00 01 00"
+        // Fragment: Next Header 58 (ICMPv6), reserved, offset 0 with more
+        // fragments, identification
+        "3a 00 00 01 00 00 00 2a" +
+        kMldMessages[0]);
+
+    EXPECT_CALL(*this->tunMgr, sendPacketToHost_(_)).Times(0);
+    this->handle->rxPacket(
+        std::make_unique<IOBuf>(pkt), PortDescriptor(PortID(1)), VlanID(1));
+
+    counters.update();
+    counters.checkDelta(SwitchStats::kCounterPrefix + "host.rx.sum", 0);
+    counters.checkDelta(SwitchStats::kCounterPrefix + "trapped.drops.sum", 1);
+  }
+
+  {
+    auto pkt = createV6HopByHopMulticastPacket(
+        // Hop-by-Hop: Next Header 44 (Fragment), Hdr Ext Len 0, Router Alert
+        // (MLD), PadN
+        "2c 00 05 02 00 00 01 00"
+        // Fragment: Next Header 58 (ICMPv6), reserved, offset 24 octets, last
+        // fragment, identification
+        "3a 00 00 18 00 00 00 2a"
+        // Fragment data
+        "00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00");
+
+    EXPECT_TUN_PKT(
+        this->tunMgr, "V6 MldLaterFragmentPkt", this->ifID1, matchRxPacket(pkt))
+        .Times(1);
     this->handle->rxPacket(
         std::make_unique<IOBuf>(pkt), PortDescriptor(PortID(1)), VlanID(1));
 

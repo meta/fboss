@@ -39,7 +39,6 @@
 #include <folly/portability/GFlags.h>
 #include <folly/synchronization/Baton.h>
 
-#include <algorithm>
 #include <thread>
 
 using namespace facebook::fboss;
@@ -257,6 +256,108 @@ TEST_F(SwSwitchTest, VerifyLlrConfigChangeRejected) {
       StateDelta(enabledLlr, withLlr(enabledLlr, "llr_other", "a", kDown))));
   EXPECT_FALSE(sw->isValidStateUpdate(
       StateDelta(disabledLlr, withLlr(disabledLlr, "llr_other", "a", kDown))));
+}
+
+TEST_F(SwSwitchTest, VerifyCbfcChangeRejected) {
+  ON_CALL(*getMockHw(sw), isValidStateUpdate(_))
+      .WillByDefault(testing::Return(true));
+
+  const PortID kTestPort{1};
+  // description gives the port a field to change independently of CBFC, so the
+  // port lands in the delta even when its CBFC values are untouched.
+  auto withCbfc = [kTestPort](
+                      const std::shared_ptr<SwitchState>& base,
+                      const std::string& description,
+                      int16_t creditSize = 56,
+                      int16_t packetOverhead = 16,
+                      int64_t creditLimit = 8192,
+                      std::optional<int64_t> receiverCreditLimit = 4096) {
+    auto state = base->clone();
+    auto port = state->getPorts()->getNodeIf(kTestPort)->modify(&state);
+    port->setCbfcConfigName("cbfc");
+    port->setCbfcSenderCreditSize(creditSize);
+    port->setCbfcSenderPacketOverhead(packetOverhead);
+    port->setCbfcSenderCreditLimit(creditLimit);
+    port->setCbfcReceiverCreditLimit(receiverCreditLimit);
+    port->setDescription(description);
+    state->publish();
+    return state;
+  };
+  auto withoutCbfc = [kTestPort](const std::shared_ptr<SwitchState>& base) {
+    auto state = base->clone();
+    auto port = state->getPorts()->getNodeIf(kTestPort)->modify(&state);
+    port->setCbfcConfigName(std::nullopt);
+    port->setCbfcSenderCreditSize(std::nullopt);
+    port->setCbfcSenderPacketOverhead(std::nullopt);
+    port->setCbfcSenderCreditLimit(std::nullopt);
+    port->setCbfcReceiverCreditLimit(std::nullopt);
+    state->publish();
+    return state;
+  };
+
+  auto noCbfc = withoutCbfc(sw->getState());
+  auto cbfc = withCbfc(noCbfc, "a");
+
+  // The first bind is how CBFC arrives, on a coldboot or a running agent.
+  EXPECT_TRUE(sw->isValidStateUpdate(StateDelta(noCbfc, cbfc)));
+  // Another port field changing leaves the sender values alone.
+  EXPECT_TRUE(sw->isValidStateUpdate(StateDelta(cbfc, withCbfc(cbfc, "b"))));
+  // Removing CBFC from the port needs a coldboot, as for LLR.
+  EXPECT_FALSE(sw->isValidStateUpdate(StateDelta(cbfc, withoutCbfc(cbfc))));
+
+  // Changing any sender value on a port that keeps CBFC needs a coldboot.
+  EXPECT_FALSE(
+      sw->isValidStateUpdate(StateDelta(cbfc, withCbfc(cbfc, "a", 32))));
+  EXPECT_FALSE(
+      sw->isValidStateUpdate(StateDelta(cbfc, withCbfc(cbfc, "a", 56, 0))));
+  EXPECT_FALSE(sw->isValidStateUpdate(
+      StateDelta(cbfc, withCbfc(cbfc, "a", 56, 16, 16384))));
+
+  // So does changing, adding or removing the receiver limit.
+  EXPECT_FALSE(sw->isValidStateUpdate(
+      StateDelta(cbfc, withCbfc(cbfc, "a", 56, 16, 8192, 8192))));
+  EXPECT_FALSE(sw->isValidStateUpdate(
+      StateDelta(cbfc, withCbfc(cbfc, "a", 56, 16, 8192, std::nullopt))));
+  auto noReceiverLimit = withCbfc(noCbfc, "a", 56, 16, 8192, std::nullopt);
+  EXPECT_FALSE(sw->isValidStateUpdate(
+      StateDelta(noReceiverLimit, withCbfc(noReceiverLimit, "a"))));
+}
+
+TEST_F(SwSwitchTest, VerifyDuplicateAclPriorityRejected) {
+  ON_CALL(*getMockHw(sw), isValidStateUpdate(_))
+      .WillByDefault(testing::Return(true));
+
+  // 1. Two acls at distinct priorities are fine.
+  auto stateV0 = std::make_shared<SwitchState>();
+  stateV0->publish();
+
+  auto withAcls = [](const std::shared_ptr<SwitchState>& base,
+                     int priorityA,
+                     int priorityB) {
+    auto state = base->clone();
+    auto acls = state->getAcls()->modify(&state);
+    auto aclA = std::make_shared<AclEntry>(priorityA, std::string("aclA"));
+    aclA->setDscp(0x24);
+    acls->addNode(aclA, scope());
+    auto aclB = std::make_shared<AclEntry>(priorityB, std::string("aclB"));
+    aclB->setDscp(0x28);
+    acls->addNode(aclB, scope());
+    state->publish();
+    return state;
+  };
+
+  EXPECT_TRUE(
+      sw->isValidStateUpdate(StateDelta(stateV0, withAcls(stateV0, 1, 2))));
+
+  // 2. Two acls at one priority are indistinguishable in hardware, so the
+  // update is rejected rather than silently collapsing onto one entry.
+  EXPECT_FALSE(
+      sw->isValidStateUpdate(StateDelta(stateV0, withAcls(stateV0, 1, 1))));
+
+  // 3. Only the PBR table may share the PBR priority.
+  EXPECT_FALSE(sw->isValidStateUpdate(StateDelta(
+      stateV0,
+      withAcls(stateV0, FLAGS_pbr_acl_priority, FLAGS_pbr_acl_priority))));
 }
 
 TEST_F(SwSwitchTest, VerifyIsValidStateUpdate) {

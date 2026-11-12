@@ -8,6 +8,7 @@
  *
  */
 #include "fboss/agent/hw/sai/api/SwitchApi.h"
+#include "fboss/agent/gen-cpp2/switch_config_constants.h"
 #include "fboss/agent/hw/sai/fake/FakeSai.h"
 
 #include <folly/logging/xlog.h>
@@ -28,6 +29,41 @@ class SwitchApiTest : public ::testing::Test {
   std::unique_ptr<SwitchApi> switchApi;
   SwitchSaiId switchId;
 };
+
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+TEST_F(SwitchApiTest, CsigBandwidthTimers) {
+  EXPECT_EQ(
+      switchApi->getAttribute(
+          switchId, SaiSwitchTraits::Attributes::MaxCsigTimers{}),
+      2);
+  EXPECT_EQ(
+      switchApi->getAttribute(
+          switchId, SaiSwitchTraits::Attributes::CsigBwTimeIntervalInUsec{}),
+      (std::vector<sai_uint32_t>{128, 256, 512}));
+  EXPECT_THROW(
+      switchApi->setAttribute(
+          switchId, SaiSwitchTraits::Attributes::MaxCsigTimers{3}),
+      SaiApiError);
+}
+#endif
+
+TEST_F(SwitchApiTest, TamObjectList) {
+  switchApi->setAttribute(
+      switchId,
+      SaiSwitchTraits::Attributes::TamObject{
+          std::vector<sai_object_id_t>{100, 101}});
+  EXPECT_EQ(
+      switchApi->getAttribute(
+          switchId, SaiSwitchTraits::Attributes::TamObject{}),
+      (std::vector<sai_object_id_t>{100, 101}));
+  switchApi->setAttribute(
+      switchId,
+      SaiSwitchTraits::Attributes::TamObject{std::vector<sai_object_id_t>{}});
+  EXPECT_TRUE(
+      switchApi
+          ->getAttribute(switchId, SaiSwitchTraits::Attributes::TamObject{})
+          .empty());
+}
 
 TEST_F(SwitchApiTest, setGetInit) {
   SaiSwitchTraits::Attributes::InitSwitch init{true};
@@ -682,6 +718,19 @@ TEST_F(SwitchApiTest, setGetPfcDlrPacketAction) {
       SAI_PACKET_ACTION_FORWARD);
 }
 
+TEST_F(SwitchApiTest, setGetVxlanDefaultPort) {
+  EXPECT_EQ(
+      switchApi->getAttribute(
+          switchId, SaiSwitchTraits::Attributes::VxlanDefaultPort{}),
+      cfg::switch_config_constants::kVxlanDefaultPort());
+  SaiSwitchTraits::Attributes::VxlanDefaultPort vxlanPort{8472};
+  switchApi->setAttribute(switchId, vxlanPort);
+  EXPECT_EQ(
+      switchApi->getAttribute(
+          switchId, SaiSwitchTraits::Attributes::VxlanDefaultPort{}),
+      8472);
+}
+
 TEST_F(SwitchApiTest, testPfcMonitorEnable) {
   // Test default value
   EXPECT_EQ(
@@ -759,6 +808,21 @@ TEST_F(SwitchApiTest, testPortCl72RetryEnable) {
       false);
 }
 
+TEST_F(SwitchApiTest, testAclDropSnoopDisabled) {
+  EXPECT_FALSE(switchApi->getAttribute(
+      switchId, SaiSwitchTraits::Attributes::AclDropSnoopDisabled{}));
+
+  switchApi->setAttribute(
+      switchId, SaiSwitchTraits::Attributes::AclDropSnoopDisabled{true});
+  EXPECT_TRUE(switchApi->getAttribute(
+      switchId, SaiSwitchTraits::Attributes::AclDropSnoopDisabled{}));
+
+  switchApi->setAttribute(
+      switchId, SaiSwitchTraits::Attributes::AclDropSnoopDisabled{false});
+  EXPECT_FALSE(switchApi->getAttribute(
+      switchId, SaiSwitchTraits::Attributes::AclDropSnoopDisabled{}));
+}
+
 TEST_F(SwitchApiTest, getPacketDropTypeIngressList) {
   const std::vector<sai_int32_t> dropTypes{1, 7, 42};
   fs->switchManager.get(switchId).setPacketDropTypeIngressList(dropTypes);
@@ -767,6 +831,69 @@ TEST_F(SwitchApiTest, getPacketDropTypeIngressList) {
       switchApi->getAttribute(
           switchId, SaiSwitchTraits::Attributes::PacketDropTypeIngressList{}),
       dropTypes);
+}
+
+TEST_F(SwitchApiTest, getDropReasonListConsumesUnsignedSnapshot) {
+  const std::vector<sai_uint32_t> reasons{0, 0x80000000, 0xffffffff};
+  auto& sw = fs->switchManager.get(switchId);
+  sw.setDropReasonList(reasons);
+  EXPECT_EQ(
+      switchApi->getAttribute(
+          switchId, SaiSwitchTraits::Attributes::DropReasonList{}),
+      reasons);
+  EXPECT_TRUE(switchApi
+                  ->getAttribute(
+                      switchId, SaiSwitchTraits::Attributes::DropReasonList{})
+                  .empty());
+  sw.setDropReasonList(reasons);
+  EXPECT_EQ(
+      switchApi->getAttribute(
+          switchId, SaiSwitchTraits::Attributes::DropReasonList{}),
+      reasons);
+}
+
+TEST_F(SwitchApiTest, setDropReasonListIsReadOnly) {
+  EXPECT_THROW(
+      switchApi->setAttribute(
+          switchId,
+          SaiSwitchTraits::Attributes::DropReasonList{
+              std::vector<sai_uint32_t>{1}}),
+      SaiApiError);
+}
+
+TEST_F(SwitchApiTest, getEmptyDropReasonList) {
+  EXPECT_TRUE(switchApi
+                  ->getAttribute(
+                      switchId, SaiSwitchTraits::Attributes::DropReasonList{})
+                  .empty());
+}
+
+TEST_F(SwitchApiTest, dropReasonListOverflowRetainsSnapshot) {
+  const std::vector<sai_uint32_t> reasons{0x00050001, 0xffffffff};
+  auto& sw = fs->switchManager.get(switchId);
+  sw.setDropReasonList(reasons);
+  sai_attribute_t attr{};
+  attr.id = *SaiSwitchTraits::Attributes::AttributeDropReasonList{}();
+  const auto* api = switchApi->api();
+  EXPECT_EQ(
+      api->get_switch_attribute(switchId, 1, &attr),
+      SAI_STATUS_BUFFER_OVERFLOW);
+  EXPECT_EQ(attr.value.u32list.count, reasons.size());
+  EXPECT_EQ(sw.getDropReasonList(), reasons);
+
+  sai_uint32_t undersized{};
+  attr.value.u32list = {1, &undersized};
+  EXPECT_EQ(
+      api->get_switch_attribute(switchId, 1, &attr),
+      SAI_STATUS_BUFFER_OVERFLOW);
+  EXPECT_EQ(attr.value.u32list.count, reasons.size());
+  EXPECT_EQ(sw.getDropReasonList(), reasons);
+
+  std::vector<sai_uint32_t> buffer(reasons.size());
+  attr.value.u32list = {static_cast<uint32_t>(buffer.size()), buffer.data()};
+  EXPECT_EQ(api->get_switch_attribute(switchId, 1, &attr), SAI_STATUS_SUCCESS);
+  EXPECT_EQ(buffer, reasons);
+  EXPECT_TRUE(sw.getDropReasonList().empty());
 }
 
 TEST_F(SwitchApiTest, getEmptyPacketDropTypeIngressList) {

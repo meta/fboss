@@ -1,6 +1,6 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "$id": "https://github.com/facebook/fboss/blob/main/fboss/lib/asic_config_v3/schemas/broadcom_dnx_asic_config.schema.json",
+    "$id": "https://github.com/meta/fboss/blob/main/fboss/lib/asic_config_v3/schemas/broadcom_dnx_asic_config.schema.json",
     "title": "Broadcom DNX ASIC Config",
     "description": "Per-ASIC configuration for the Broadcom DNX family. Captures the SOC key formats, core-type handling, always-emitted SDK settings, and declarative tables consumed by BroadcomDnxGenerator.",
     "type": "object",
@@ -137,7 +137,7 @@
         "conditional_settings": {
             "type": "array",
             "description": "Optional ASIC-level conditional settings, evaluated before platform-level ones.",
-            "items": {"$ref": "https://github.com/facebook/fboss/blob/main/fboss/lib/asic_config_v3/schemas/conditional_setting.schema.json#/$defs/conditional_setting"}
+            "items": {"$ref": "https://github.com/meta/fboss/blob/main/fboss/lib/asic_config_v3/schemas/conditional_setting.schema.json#/$defs/conditional_setting"}
         }
     }
 }

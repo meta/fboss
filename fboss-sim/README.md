@@ -41,6 +41,27 @@ python3 fboss-sim/scripts/fboss-sim-docker-package.py --build-only
 
 ## Agent Modes
 
+### Optional BGP in local mode
+
+Pass an OSS BGP++ DC archive with `--bgp-tar`. Its root should contain `bin/bgp`
+(or `sbin/bgp`) and the daemon's shared dependencies under `lib/`:
+
+```bash
+python3 fboss-sim/scripts/fboss-sim-docker-run.py --local \
+  --bgp-tar /path/to/bgp.tar.gz
+```
+
+The launcher mounts and extracts the archive under `/opt/bgp`, installs
+`bgpd.service`, and tracks the initial BGP configuration in `/etc/coop`.
+The daemon uses plaintext Thrift on port 6909. Run the same integration suite
+with or without the archive; its BGP tests skip when BGP is absent.
+
+```bash
+docker exec fboss_sim_runtime_${USER} /opt/fboss/bin/fboss2 show bgp config running
+docker exec fboss_sim_runtime_${USER} /opt/fboss/bin/fboss2_integration_test \
+  --gtest_output=xml:/tmp/integration-tests.xml
+```
+
 **Split mode** (default): `fboss_sw_agent` + `fboss_hw_agent@0` run as separate systemd services.
 The hw_agent connects to sw_agent over IPv6 (`::1`). This requires the container to have a
 non-loopback IPv6 address — `fboss-sim-docker-run.py` handles this automatically by creating

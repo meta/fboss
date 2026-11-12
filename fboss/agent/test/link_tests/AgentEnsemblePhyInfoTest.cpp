@@ -495,27 +495,43 @@ TEST_F(AgentEnsembleLinkTest, verifyIphyFecBerCounters) {
   std::map<PortID, const phy::PhyInfo> currentPhyInfo;
   auto cabledPorts = getCabledPorts();
   addTestedPorts(cabledPorts);
+  // Capture, per port, the first snapshot newer than that port's previous
+  // snapshot, or newer than notBefore if there is no previous snapshot yet.
+  // Each hw switch collects PhyInfo on its own timer, and preFECBer only covers
+  // the last collection, so before/now must be consecutive collections on every
+  // switch. A single wall-clock reference makes the switch that collected just
+  // before it skip a collection.
   auto getPhyInfo = [this, &cabledPorts](
-                        time_t timeReference,
-                        std::map<PortID, const phy::PhyInfo>& phyInfo) {
+                        const std::map<PortID, const phy::PhyInfo>& previous,
+                        std::map<PortID, const phy::PhyInfo>& phyInfo,
+                        time_t notBefore = 0) {
+    std::map<PortID, const phy::PhyInfo> next;
     WITH_RETRIES_N_TIMED(
         120 /* retries */,
         std::chrono::milliseconds(1000) /* msBetweenRetry */,
         {
-          phyInfo = getSw()->getIPhyInfo(cabledPorts);
+          auto snapshot = getSw()->getIPhyInfo(cabledPorts);
           for (const auto& port : cabledPorts) {
-            auto phyIt = phyInfo.find(port);
-            ASSERT_EVENTUALLY_NE(phyIt, phyInfo.end());
+            auto phyIt = snapshot.find(port);
+            if (next.contains(port) || phyIt == snapshot.end()) {
+              continue;
+            }
+            auto prevIt = previous.find(port);
+            auto reference = prevIt == previous.end()
+                ? notBefore
+                : *prevIt->second.stats()->timeCollected();
             // If the time stamp hasn't advanced, no need to check the counters.
-            // Thus this is an ASSERT_EVENTUALLY_GT and not EXPECT_EVENTUALLY_GT
-            ASSERT_EVENTUALLY_GT(
-                *(phyInfo[port].stats()->timeCollected()), timeReference);
+            if (*phyIt->second.stats()->timeCollected() > reference) {
+              next.emplace(port, phyIt->second);
+            }
           }
+          ASSERT_EVENTUALLY_EQ(next.size(), cabledPorts.size());
         });
+    phyInfo = std::move(next);
   };
 
-  std::time_t timeReference = std::time(nullptr);
-  getPhyInfo(timeReference, previousPhyInfo);
+  // The first snapshot must be collected after the test started.
+  getPhyInfo({}, previousPhyInfo, std::time(nullptr));
 
   // Track the worst (highest) pre-FEC BER and the max FEC tail seen per port
   // across all iterations (and warmboot phases). These are surfaced as per-port
@@ -534,7 +550,7 @@ TEST_F(AgentEnsembleLinkTest, verifyIphyFecBerCounters) {
                  &maxFecTail]() {
     for (int i = 1; i <= iterations && !::testing::Test::HasFailure(); i++) {
       XLOG(INFO) << "Starting iteration " << i;
-      getPhyInfo(std::time(nullptr), currentPhyInfo);
+      getPhyInfo(previousPhyInfo, currentPhyInfo);
       for (const auto& port : cabledPorts) {
         auto phyIt = currentPhyInfo.find(port);
         // We always expect the port to be present in the map. So this is a

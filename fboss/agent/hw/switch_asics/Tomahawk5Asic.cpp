@@ -90,6 +90,7 @@ bool Tomahawk5Asic::isSupported(Feature feature) const {
     case HwAsic::Feature::L3_MTU_ERROR_TRAP:
     case HwAsic::Feature::SAI_USER_DEFINED_TRAP:
     case HwAsic::Feature::ACL_COUNTER_LABEL:
+    case HwAsic::Feature::ACL_COUNTER_LABEL_EXTENDED:
     case HwAsic::Feature::ECMP_DLB_OFFSET:
     case HwAsic::Feature::SAI_FEC_CORRECTED_BITS:
     case HwAsic::Feature::SAI_FEC_CODEWORDS_STATS:
@@ -128,10 +129,14 @@ bool Tomahawk5Asic::isSupported(Feature feature) const {
     case HwAsic::Feature::CUT_THROUGH_FORWARDING:
     case HwAsic::Feature::SRV6_MYSID_DISCARD_COUNTER:
     case HwAsic::Feature::SRV6_MYSID_RESOURCE_COUNTER:
+    case HwAsic::Feature::SRV6_BINDING_USID_UA_USD:
+    case HwAsic::Feature::SRV6_DECAP_TUNNEL:
     case HwAsic::Feature::SAI_SERDES_RX_REACH:
     case HwAsic::Feature::SAI_SERDES_PRECODING:
     case HwAsic::Feature::ACL_ENTRY_OUT_PORT_QUALIFIER:
+    case HwAsic::Feature::ACL_DST_IP_WITH_MASK:
     case HwAsic::Feature::MY_MAC:
+    case HwAsic::Feature::HW_PROTECTION_SWITCHOVER_COUNTERS:
       return true;
     // features not working well with bcmsim
     case HwAsic::Feature::MIRROR_PACKET_TRUNCATION:
@@ -249,6 +254,7 @@ bool Tomahawk5Asic::isSupported(Feature feature) const {
     case HwAsic::Feature::SWITCH_CUSTOM_DROP_BITMAP_SUPPORT:
     case HwAsic::Feature::ECMP_RANDOM_SPRAY_HIERARCHICAL_LEVEL:
     case HwAsic::Feature::PBR_ACL:
+    case HwAsic::Feature::PBR_ACL_BYTE_COUNTER:
     case HwAsic::Feature::CBFC:
     case HwAsic::Feature::LINK_LAYER_RETRANSMISSION:
     case HwAsic::Feature::ACL_DST_IPV6_WORD_QUALIFIERS:
@@ -256,6 +262,12 @@ bool Tomahawk5Asic::isSupported(Feature feature) const {
     case HwAsic::Feature::NEXT_HOP_GROUP_MEMBER_MONITORED_OBJECT:
     case HwAsic::Feature::RX_PACKET_TYPE:
     case HwAsic::Feature::ISOLATION_GROUP:
+    case HwAsic::Feature::XPHY_SERDES_TX_FIR_POST3:
+    case HwAsic::Feature::CSIG:
+    case HwAsic::Feature::LAG_TTL_DECREMENT_DISABLE:
+    case HwAsic::Feature::PORT_LATCH_STATUS:
+    case HwAsic::Feature::PCS_ERROR_COUNTERS:
+    case HwAsic::Feature::ACL_DST_IPV6_WORD_WITH_MASK:
       return false;
   }
   return false;

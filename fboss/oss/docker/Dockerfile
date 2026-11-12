@@ -42,6 +42,7 @@ RUN dnf install -y 'dnf-command(config-manager)' && \
     libsodium-devel libsodium-static libunwind libunwind-devel libusb libusb-devel \
     libzstd libzstd-devel lz4-devel ncurses-devel ninja-build \
     openssl openssl-devel openssl-libs \
+    pcre-devel \
     re2 re2-devel snappy-devel xxhash-devel xz-devel zlib-devel zlib-static \
     libxml2-devel expat-devel wget git sudo lsof `basename "$USER_SHELL"` \
     libcap-devel libmount-devel libpciaccess-devel
@@ -88,7 +89,7 @@ RUN dnf download libtool && \
     rpm -ivh --nodeps libtool-*.rpm && \
     rm -f libtool-*.rpm
 
-RUN python3 -m pip install setuptools 'Cython>=3.0,<3.2' wheel auditwheel patchelf boto3 botocore gitpython meson jinja2 pyyaml filelock pytest
+RUN python3 -m pip install setuptools 'Cython>=3.0,<3.2' wheel auditwheel patchelf boto3 botocore gitpython meson jinja2 pyyaml filelock pytest pyang
 
 COPY ${GITHUB_ROOT}/.pre-commit-config.yaml /tmp/.pre-commit-config.yaml
 COPY ./fboss/oss/docker/setup_clang.sh /tmp/setup_clang.sh
@@ -105,6 +106,31 @@ RUN if [ "$USE_CLANG" = "true" ]; then \
 
 # The following libraries are needed for building SDK
 RUN dnf install -y doxygen aspell aspell-en libyaml-devel vim-common libnsl libnsl2-devel glibc-static libstdc++-static hostname
+
+# Install gRPC for SDK purposes
+RUN git clone --depth 1 --branch v1.42.0 https://github.com/grpc/grpc.git && \
+    git -C grpc submodule update --init --depth 1 \
+      third_party/abseil-cpp third_party/cares/cares third_party/protobuf && \
+    cmake -S grpc -B grpc/build -G Ninja \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DCMAKE_C_COMPILER=/opt/rh/gcc-toolset-12/root/usr/bin/gcc \
+      -DCMAKE_CXX_COMPILER=/opt/rh/gcc-toolset-12/root/usr/bin/g++ \
+      -DCMAKE_CXX_STANDARD=17 \
+      -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
+      -DBUILD_SHARED_LIBS=ON \
+      -DCMAKE_INSTALL_PREFIX=/opt/grpc \
+      -DCMAKE_INSTALL_LIBDIR=lib \
+      -DCMAKE_INSTALL_RPATH=/opt/grpc/lib \
+      -DgRPC_BUILD_CSHARP_EXT=OFF \
+      -DgRPC_ABSL_PROVIDER=module \
+      -DgRPC_CARES_PROVIDER=module \
+      -DgRPC_PROTOBUF_PROVIDER=module \
+      -DgRPC_RE2_PROVIDER=package \
+      -DgRPC_SSL_PROVIDER=package \
+      -DgRPC_ZLIB_PROVIDER=package && \
+    cmake --build grpc/build && \
+    cmake --install grpc/build && \
+    rm -rf grpc
 
 # Install libyaml.a for SDK purposes
 RUN git clone https://github.com/yaml/libyaml.git && \

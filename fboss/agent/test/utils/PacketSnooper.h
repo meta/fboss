@@ -37,6 +37,9 @@ enum class packetSnooperReceivePacketType {
   // Keep only Tajo Mirror-on-Drop export packets; drop unrelated CPU-punted
   // traffic that shares the punt path on Tajo.
   PACKET_TYPE_TAJO_MOD,
+  // Keep only frames validated by the Chenab TAC parser, excluding unrelated
+  // CPU-punted traffic.
+  PACKET_TYPE_CHENAB_MOD,
 };
 
 class PacketSnooper : public PacketObserverIf {

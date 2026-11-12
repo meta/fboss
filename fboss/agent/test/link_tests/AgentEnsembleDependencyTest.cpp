@@ -19,12 +19,14 @@ TEST_F(AgentEnsembleLinkEcmpTest, ecmpShrink) {
   addVerifiedProductionFeatures(
       {link_test_production_features::LinkTestProductionFeature::
            TRAFFIC_FORWARDING});
-  auto setup = [this]() {
-    const auto cabledPorts = getSingleVlanOrRoutedCabledPorts(SwitchID(0));
+  const auto switchIdUnderTest = SwitchID(FLAGS_switch_id_for_testing);
+  auto setup = [this, switchIdUnderTest]() {
+    const auto cabledPorts =
+        getSingleVlanOrRoutedCabledPorts(switchIdUnderTest);
     programDefaultRoute(cabledPorts, getSw()->getLocalMac(scope(cabledPorts)));
   };
-  auto verify = [this]() {
-    auto ecmpPorts = getSingleVlanOrRoutedCabledPorts(SwitchID(0));
+  auto verify = [this, switchIdUnderTest]() {
+    auto ecmpPorts = getSingleVlanOrRoutedCabledPorts(switchIdUnderTest);
     EXPECT_NO_THROW(waitForAllCabledPorts(true));
     std::vector<PortID> ports;
     for (const auto& port : ecmpPorts) {
@@ -32,7 +34,7 @@ TEST_F(AgentEnsembleLinkEcmpTest, ecmpShrink) {
     }
     addTestedPorts(ports);
     auto verifyEcmpSize = [&](const std::shared_ptr<SwitchState>& /*state*/) {
-      auto client = getAgentEnsemble()->getHwAgentTestClient(SwitchID(0));
+      auto client = getAgentEnsemble()->getHwAgentTestClient(switchIdUnderTest);
       facebook::fboss::utility::CIDRNetwork cidr;
       cidr.IPAddress() = "::";
       cidr.mask() = 0;

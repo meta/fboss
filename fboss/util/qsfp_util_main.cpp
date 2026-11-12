@@ -119,6 +119,7 @@ int main(int argc, char* argv[]) {
   const folly::Init init(&argc, &argv, true);
   gflags::SetCommandLineOptionWithMode(
       "minloglevel", "0", gflags::SET_FLAGS_DEFAULT);
+  initPlatformDescriptorPathFromQsfpConfig();
   folly::EventBase evb;
 
   if (FLAGS_list_commands) {

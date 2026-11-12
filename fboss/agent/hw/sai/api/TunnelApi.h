@@ -45,6 +45,10 @@ struct TunnelAttributesTypes<SAI_TUNNEL_TYPE_IPINIP> {
       SaiAttribute<EnumType, SAI_TUNNEL_ATTR_ENCAP_DSCP_MODE, sai_int32_t>;
   using EncapEcnMode =
       SaiAttribute<EnumType, SAI_TUNNEL_ATTR_ENCAP_ECN_MODE, sai_int32_t>;
+  // VXLAN-only attributes (tunnel maps).
+  using EncapDstIp = void;
+  using EncapMappers = void;
+  using DecapMappers = void;
 };
 
 #if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)
@@ -105,8 +109,49 @@ struct TunnelAttributesTypes<SAI_TUNNEL_TYPE_SRV6> {
       SAI_TUNNEL_ATTR_ENCAP_ECN_MODE,
       sai_int32_t,
       SaiIntDefault<sai_int32_t>>;
+  // VXLAN-only attributes (tunnel maps).
+  using EncapDstIp = void;
+  using EncapMappers = void;
+  using DecapMappers = void;
 };
 #endif
+
+// VXLAN tunnels (SAI_TUNNEL_TYPE_VXLAN) do overlay routing via tunnel maps:
+// EncapMappers carries the VIRTUAL_ROUTER_ID_TO_VNI map and DecapMappers the
+// VNI_TO_VIRTUAL_ROUTER_ID map. Our tunnels use P2MP peer mode and have no
+// overlay interface. UDP sport attributes are intentionally omitted (defaults
+// apply).
+template <>
+struct TunnelAttributesTypes<SAI_TUNNEL_TYPE_VXLAN> {
+  using EnumType = sai_tunnel_attr_t;
+  using OverlayInterface = void;
+  using EncapSrcIp =
+      SaiAttribute<EnumType, SAI_TUNNEL_ATTR_ENCAP_SRC_IP, folly::IPAddress>;
+  // EncapDstIp is only valid with P2P peer mode; our tunnels are P2MP, which
+  // is also the SAI default, so peer mode needs no attribute.
+  using EncapDstIp = void;
+  using DecapTtlMode =
+      SaiAttribute<EnumType, SAI_TUNNEL_ATTR_DECAP_TTL_MODE, sai_int32_t>;
+  using DecapDscpMode =
+      SaiAttribute<EnumType, SAI_TUNNEL_ATTR_DECAP_DSCP_MODE, sai_int32_t>;
+  using DecapEcnMode =
+      SaiAttribute<EnumType, SAI_TUNNEL_ATTR_DECAP_ECN_MODE, sai_int32_t>;
+  using DecapQosDscpToTcMap = void;
+  using EncapTtlMode =
+      SaiAttribute<EnumType, SAI_TUNNEL_ATTR_ENCAP_TTL_MODE, sai_int32_t>;
+  using EncapDscpMode =
+      SaiAttribute<EnumType, SAI_TUNNEL_ATTR_ENCAP_DSCP_MODE, sai_int32_t>;
+  using EncapEcnMode =
+      SaiAttribute<EnumType, SAI_TUNNEL_ATTR_ENCAP_ECN_MODE, sai_int32_t>;
+  using EncapMappers = SaiAttribute<
+      EnumType,
+      SAI_TUNNEL_ATTR_ENCAP_MAPPERS,
+      std::vector<sai_object_id_t>>;
+  using DecapMappers = SaiAttribute<
+      EnumType,
+      SAI_TUNNEL_ATTR_DECAP_MAPPERS,
+      std::vector<sai_object_id_t>>;
+};
 
 template <typename Attributes, sai_tunnel_type_t type>
 struct TunnelTraitsAttributes;
@@ -147,6 +192,26 @@ struct TunnelTraitsAttributes<Attributes, SAI_TUNNEL_TYPE_SRV6> {
   using AdapterHostKey = CreateAttributes;
 };
 #endif
+
+// VXLAN tunnels cover both encap and decap. Only Type and UnderlayInterface
+// are mandatory on create; the rest (src IP, TTL/DSCP/ECN modes, encap/decap
+// tunnel maps) are optional with SAI defaults.
+template <typename Attributes>
+struct TunnelTraitsAttributes<Attributes, SAI_TUNNEL_TYPE_VXLAN> {
+  using CreateAttributes = std::tuple<
+      typename Attributes::Type,
+      typename Attributes::UnderlayInterface,
+      std::optional<typename Attributes::EncapSrcIp>,
+      std::optional<typename Attributes::EncapTtlMode>,
+      std::optional<typename Attributes::EncapDscpMode>,
+      std::optional<typename Attributes::EncapEcnMode>,
+      std::optional<typename Attributes::EncapMappers>,
+      std::optional<typename Attributes::DecapTtlMode>,
+      std::optional<typename Attributes::DecapDscpMode>,
+      std::optional<typename Attributes::DecapEcnMode>,
+      std::optional<typename Attributes::DecapMappers>>;
+  using AdapterHostKey = CreateAttributes;
+};
 
 } // namespace detail
 
@@ -192,6 +257,11 @@ struct SaiTunnelTraitsT {
         typename detail::TunnelAttributesTypes<type>::EncapDscpMode;
     using EncapEcnMode =
         typename detail::TunnelAttributesTypes<type>::EncapEcnMode;
+    using EncapDstIp = typename detail::TunnelAttributesTypes<type>::EncapDstIp;
+    using EncapMappers =
+        typename detail::TunnelAttributesTypes<type>::EncapMappers;
+    using DecapMappers =
+        typename detail::TunnelAttributesTypes<type>::DecapMappers;
   };
   using AdapterKey = TunnelSaiId;
   using AdapterHostKey =
@@ -206,6 +276,7 @@ using SaiIpInIpTunnelTraits = SaiTunnelTraitsT<SAI_TUNNEL_TYPE_IPINIP>;
 #if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)
 using SaiSrv6TunnelTraits = SaiTunnelTraitsT<SAI_TUNNEL_TYPE_SRV6>;
 #endif
+using SaiVxlanTunnelTraits = SaiTunnelTraitsT<SAI_TUNNEL_TYPE_VXLAN>;
 
 template <>
 struct SaiObjectHasConditionalAttributes<SaiIpInIpTunnelTraits>
@@ -214,16 +285,22 @@ struct SaiObjectHasConditionalAttributes<SaiIpInIpTunnelTraits>
 template <>
 struct SaiObjectHasConditionalAttributes<SaiSrv6TunnelTraits>
     : public std::true_type {};
+#endif
+template <>
+struct SaiObjectHasConditionalAttributes<SaiVxlanTunnelTraits>
+    : public std::true_type {};
 
+#if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)
+using SaiTunnelTraits = ConditionObjectTraits<
+    SaiIpInIpTunnelTraits,
+    SaiSrv6TunnelTraits,
+    SaiVxlanTunnelTraits>;
+#else
 using SaiTunnelTraits =
-    ConditionObjectTraits<SaiIpInIpTunnelTraits, SaiSrv6TunnelTraits>;
+    ConditionObjectTraits<SaiIpInIpTunnelTraits, SaiVxlanTunnelTraits>;
+#endif
 using SaiTunnelAdapterHostKey = typename SaiTunnelTraits::AdapterHostKey;
 using SaiTunnelAdapterKey = typename SaiTunnelTraits::AdapterKey<TunnelSaiId>;
-#else
-using SaiTunnelTraits = SaiIpInIpTunnelTraits;
-using SaiTunnelAdapterHostKey = typename SaiTunnelTraits::AdapterHostKey;
-using SaiTunnelAdapterKey = typename SaiTunnelTraits::AdapterKey;
-#endif
 
 SAI_ATTRIBUTE_NAME(IpInIpTunnel, Type);
 SAI_ATTRIBUTE_NAME(IpInIpTunnel, UnderlayInterface);
@@ -235,6 +312,11 @@ SAI_ATTRIBUTE_NAME(IpInIpTunnel, EncapSrcIp);
 SAI_ATTRIBUTE_NAME(IpInIpTunnel, EncapTtlMode);
 SAI_ATTRIBUTE_NAME(IpInIpTunnel, EncapDscpMode);
 SAI_ATTRIBUTE_NAME(IpInIpTunnel, EncapEcnMode);
+
+// Only the VXLAN-only attributes need names here; the rest are identical
+// types to their IP-in-IP counterparts, already named above.
+SAI_ATTRIBUTE_NAME(VxlanTunnel, EncapMappers);
+SAI_ATTRIBUTE_NAME(VxlanTunnel, DecapMappers);
 
 #if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)
 // SRv6 tunnel encap/decap attributes carry default getters (see above), making
@@ -459,6 +541,51 @@ class TunnelApi : public SaiApi<TunnelApi> {
   sai_status_t _setAttribute(TunnelTermSaiId key, const sai_attribute_t* attr)
       const {
     return api_->set_tunnel_term_table_entry_attribute(key, attr);
+  }
+
+  sai_status_t _create(
+      TunnelMapSaiId* id,
+      sai_object_id_t switch_id,
+      size_t count,
+      sai_attribute_t* attr_list) const {
+    return api_->create_tunnel_map(rawSaiId(id), switch_id, count, attr_list);
+  }
+
+  sai_status_t _remove(TunnelMapSaiId id) const {
+    return api_->remove_tunnel_map(id);
+  }
+
+  sai_status_t _getAttribute(TunnelMapSaiId key, sai_attribute_t* attr) const {
+    return api_->get_tunnel_map_attribute(key, 1, attr);
+  }
+
+  sai_status_t _setAttribute(TunnelMapSaiId key, const sai_attribute_t* attr)
+      const {
+    return api_->set_tunnel_map_attribute(key, attr);
+  }
+
+  sai_status_t _create(
+      TunnelMapEntrySaiId* id,
+      sai_object_id_t switch_id,
+      size_t count,
+      sai_attribute_t* attr_list) const {
+    return api_->create_tunnel_map_entry(
+        rawSaiId(id), switch_id, count, attr_list);
+  }
+
+  sai_status_t _remove(TunnelMapEntrySaiId id) const {
+    return api_->remove_tunnel_map_entry(id);
+  }
+
+  sai_status_t _getAttribute(TunnelMapEntrySaiId key, sai_attribute_t* attr)
+      const {
+    return api_->get_tunnel_map_entry_attribute(key, 1, attr);
+  }
+
+  sai_status_t _setAttribute(
+      TunnelMapEntrySaiId key,
+      const sai_attribute_t* attr) const {
+    return api_->set_tunnel_map_entry_attribute(key, attr);
   }
 
   sai_tunnel_api_t* api_;

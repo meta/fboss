@@ -13,6 +13,9 @@ cpp_binary(
         "DataFetcher.h",
     ],
     deps = [
+        "fbsource//xplat/folly/executors:function_scheduler",
+        "fbsource//xplat/folly/io/async:async_base",
+        "fbsource//xplat/folly/logging:logging",
         ":config_validator",
         ":core",
         "//fb303:logging",
@@ -23,9 +26,6 @@ cpp_binary(
         "//fboss/platform/helpers:structured_logger",
         "//fboss/platform/sensor_service/if:sensor_service-cpp2-types",
         "//fboss/qsfp_service/if:transceiver-cpp2-types",
-        "//folly/executors:function_scheduler",
-        "//folly/io/async:async_base",
-        "//folly/logging:logging",
         "//thrift/lib/cpp2/protocol:protocol",
     ],
     external_deps = [
@@ -43,8 +43,8 @@ cpp_library(
     ],
     deps = [
         "fbsource//third-party/range-v3:range-v3",
+        "fbsource//xplat/folly/logging:logging",
         ":fan_service_config_types",
-        "//folly/logging:logging",
     ],
     exported_deps = [
         "//fboss/platform/fan_service/if:fan_service-cpp2-types",
@@ -69,7 +69,7 @@ cpp_library(
     headers = [
         "PidLogic.h",
     ],
-    deps = ["//folly/logging:logging"],
+    deps = ["fbsource//xplat/folly/logging:logging"],
     exported_deps = [
         "//fboss/platform/fan_service/if:fan_service-cpp2-types",
     ],
@@ -98,6 +98,13 @@ cpp_library(
     ],
     exported_deps = [
         "fbsource//third-party/fmt:fmt",
+        "fbsource//xplat/folly:scope_guard",
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/io/async:async_base",
+        "fbsource//xplat/folly/io/async:async_ssl_socket",
+        "fbsource//xplat/folly/io/async:ssl_options",
+        "fbsource//xplat/folly/logging:logging",
+        "fbsource//xplat/folly/system:thread_name",
         ":fan_service_config_types",
         ":pid_logic_library",
         "//common/fbwhoami:fb_who_am_i",
@@ -122,13 +129,6 @@ cpp_library(
         "//fboss/platform/sensor_service/if:sensor_service-cpp2-types",
         "//fboss/qsfp_service/if:transceiver-cpp2-types",
         "//fboss/qsfp_service/lib:qsfp-service-client",
-        "//folly:scope_guard",
-        "//folly:string",
-        "//folly/io/async:async_base",
-        "//folly/io/async:async_ssl_socket",
-        "//folly/io/async:ssl_options",
-        "//folly/logging:logging",
-        "//folly/system:thread_name",
         "//infrasec/authorization:base_identity_util",
         "//security/ca/lib:cert_path_picker",
         "//thrift/lib/cpp2/protocol:protocol",

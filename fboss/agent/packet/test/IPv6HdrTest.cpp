@@ -14,7 +14,11 @@
  *   https://code.google.com/p/googletest/wiki/Primer
  *   https://code.google.com/p/googletest/wiki/AdvancedGuide
  */
+#include <fmt/format.h>
 #include <gtest/gtest.h>
+#include <algorithm>
+#include <cctype>
+#include <optional>
 
 #include <folly/IPAddress.h>
 #include <folly/IPAddressV6.h>
@@ -380,4 +384,150 @@ TEST(IPv6HdrTest, toString) {
   EXPECT_NE(str.find("hopLimit: 64"), std::string::npos);
   EXPECT_NE(str.find("srcAddr: 2620:0:1cfe:face:b00c::3"), std::string::npos);
   EXPECT_NE(str.find("dstAddr: 2620:0:1cfe:face:b00c::4"), std::string::npos);
+}
+
+namespace {
+
+size_t hexLength(const std::string& hex) {
+  return std::count_if(hex.begin(), hex.end(), ::isxdigit) / 2;
+}
+
+// IPv6 packet from fe80::1 to ff02::1 with the given next header and payload.
+// The Payload Length field is the length of payload unless payloadLength is
+// given.
+std::string ipv6Hex(
+    const std::string& nextHeader,
+    const std::string& payload,
+    std::optional<size_t> payloadLength = std::nullopt) {
+  return "60 00 00 00" // Version, Traffic Class, Flow Label
+      + fmt::format("{:04x}", payloadLength.value_or(hexLength(payload))) +
+      nextHeader + // Next Header
+      "ff" // Hop Limit
+      "fe 80 00 00 00 00 00 00 00 00 00 00 00 00 00 01"
+      "ff 02 00 00 00 00 00 00 00 00 00 00 00 00 00 01" +
+      payload;
+}
+
+// An options extension header (Hop-by-Hop or Destination Options) of
+// totalLen octets, padded with PadN.
+std::string optionsHdrHex(const std::string& nextHeader, size_t totalLen) {
+  std::string hex = nextHeader + fmt::format("{:02x}", totalLen / 8 - 1);
+  hex += fmt::format("01 {:02x}", totalLen - 4); // PadN
+  for (size_t i = 4; i < totalLen; ++i) {
+    hex += " 00";
+  }
+  return hex;
+}
+
+const std::string kRouterAdvertisementHex = "86 00 00 00 40 00 00 00";
+
+uint8_t proto(IP_PROTO p) {
+  return static_cast<uint8_t>(p);
+}
+
+} // namespace
+
+TEST(IPv6HdrTest, noExtensionHeaders) {
+  auto pkt = MockRxPacket::fromHex(ipv6Hex("3a", kRouterAdvertisementHex));
+  Cursor cursor(pkt->buf());
+  IPv6Hdr hdr(cursor);
+  EXPECT_FALSE(hdr.hasExtensionHeaders());
+  EXPECT_TRUE(hdr.nextHeaderChain.empty());
+  EXPECT_EQ(proto(IP_PROTO::IP_PROTO_IPV6_ICMP), hdr.lastNextHeader());
+  EXPECT_EQ(0, hdr.extensionHeadersLength);
+}
+
+TEST(IPv6HdrTest, extensionHeaderChain) {
+  auto pkt = MockRxPacket::fromHex(ipv6Hex(
+      "00",
+      optionsHdrHex("3c", 8) + optionsHdrHex("3a", 16) +
+          kRouterAdvertisementHex));
+  Cursor cursor(pkt->buf());
+  IPv6Hdr hdr(cursor);
+  const std::vector<uint8_t> expected{
+      proto(IP_PROTO::IP_PROTO_IPV6_HOPOPT),
+      proto(IP_PROTO::IP_PROTO_IPV6_OPTS),
+      proto(IP_PROTO::IP_PROTO_IPV6_ICMP)};
+  EXPECT_TRUE(hdr.hasExtensionHeaders());
+  EXPECT_EQ(expected, hdr.nextHeaderChain);
+  EXPECT_EQ(proto(IP_PROTO::IP_PROTO_IPV6_ICMP), hdr.lastNextHeader());
+  EXPECT_EQ(24, hdr.extensionHeadersLength);
+  // The cursor stops after the fixed header, at the first extension header.
+  EXPECT_EQ(IPv6Hdr::size(), cursor - Cursor(pkt->buf()));
+}
+
+// A Router Advertisement behind a 248 octet Hop-by-Hop header (T296568668).
+TEST(IPv6HdrTest, longHopByHopHeader) {
+  auto pkt = MockRxPacket::fromHex(
+      ipv6Hex("00", optionsHdrHex("3a", 248) + kRouterAdvertisementHex));
+  Cursor cursor(pkt->buf());
+  IPv6Hdr hdr(cursor);
+  EXPECT_TRUE(hdr.hasExtensionHeaders());
+  EXPECT_EQ(proto(IP_PROTO::IP_PROTO_IPV6_ICMP), hdr.lastNextHeader());
+  EXPECT_EQ(248, hdr.extensionHeadersLength);
+}
+
+TEST(IPv6HdrTest, fragmentAndAuthenticationHeaders) {
+  auto pkt = MockRxPacket::fromHex(ipv6Hex(
+      "2c",
+      // Fragment: Next Header AH, reserved, offset 0, id
+      "33 00 00 00 00 00 00 01"
+      // AH: Next Header TCP, Payload Len 4 -> (4 + 2) * 4 = 24 octets
+      "06 04 00 00 00 00 00 01 00 00 00 01"
+      "00 00 00 00 00 00 00 00 00 00 00 00"));
+  Cursor cursor(pkt->buf());
+  IPv6Hdr hdr(cursor);
+  const std::vector<uint8_t> expected{
+      proto(IP_PROTO::IP_PROTO_IPV6_FRAG),
+      proto(IP_PROTO::IP_PROTO_AH),
+      proto(IP_PROTO::IP_PROTO_TCP)};
+  EXPECT_EQ(expected, hdr.nextHeaderChain);
+  EXPECT_EQ(proto(IP_PROTO::IP_PROTO_TCP), hdr.lastNextHeader());
+  EXPECT_EQ(32, hdr.extensionHeadersLength);
+}
+
+// A non-first fragment carries no upper-layer header, so its chain ends at
+// the Fragment header.
+TEST(IPv6HdrTest, nonFirstFragment) {
+  auto pkt = MockRxPacket::fromHex(ipv6Hex(
+      "2c",
+      // Fragment: Next Header ICMPv6, reserved, offset 8 octets, id
+      "3a 00 00 08 00 00 00 01"
+      // Fragment data
+      "00 00 00 00 00 00 00 00"));
+  Cursor cursor(pkt->buf());
+  IPv6Hdr hdr(cursor);
+  const std::vector<uint8_t> expected{proto(IP_PROTO::IP_PROTO_IPV6_FRAG)};
+  EXPECT_TRUE(hdr.hasExtensionHeaders());
+  EXPECT_EQ(expected, hdr.nextHeaderChain);
+  EXPECT_EQ(proto(IP_PROTO::IP_PROTO_IPV6_FRAG), hdr.lastNextHeader());
+  EXPECT_EQ(8, hdr.extensionHeadersLength);
+}
+
+TEST(IPv6HdrTest, truncatedExtensionHeader) {
+  // Hop-by-Hop header claims 16 octets, as does the Payload Length, but only
+  // 8 are present.
+  auto pkt =
+      MockRxPacket::fromHex(ipv6Hex("00", "3a 01 01 04 00 00 00 00", 16));
+  Cursor cursor(pkt->buf());
+  EXPECT_THROW({ IPv6Hdr hdr(cursor); }, HdrParseError);
+}
+
+// The chain must fit in the declared payload even when the buffer holds more,
+// e.g. Ethernet padding.
+TEST(IPv6HdrTest, extensionHeaderPastPayloadLength) {
+  auto pkt = MockRxPacket::fromHex(
+      ipv6Hex("00", optionsHdrHex("3a", 16) + kRouterAdvertisementHex, 8));
+  Cursor cursor(pkt->buf());
+  EXPECT_THROW({ IPv6Hdr hdr(cursor); }, HdrParseError);
+}
+
+// Without extension headers Payload Length isn't checked against the cursor,
+// even when the cursor is bounded short of it.
+TEST(IPv6HdrTest, noExtensionHeadersPayloadLengthNotChecked) {
+  auto pkt = MockRxPacket::fromHex(ipv6Hex("3a", kRouterAdvertisementHex, 64));
+  Cursor cursor(pkt->buf(), pkt->buf()->computeChainDataLength());
+  IPv6Hdr hdr(cursor);
+  EXPECT_FALSE(hdr.hasExtensionHeaders());
+  EXPECT_EQ(64, hdr.payloadLength);
 }

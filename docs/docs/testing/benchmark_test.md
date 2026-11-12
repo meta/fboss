@@ -19,7 +19,7 @@ Benchmarks run on a standalone DUT using the per-platform agent config under `fb
 
 All benchmark registrations can be found at:
 
-https://github.com/facebook/fboss/tree/main/fboss/agent/hw/benchmarks
+https://github.com/meta/fboss/tree/main/fboss/agent/hw/benchmarks
 
 To list the benchmarks present in a binary:
 

@@ -216,6 +216,27 @@ TEST(RouteNextHop, SameInterfaceAndAddressRemainContiguous) {
   EXPECT_EQ(targetGroupSize, 2);
 }
 
+TEST(RouteNextHopEntry, Level) {
+  RouteNextHopEntry underlay(RouteForwardAction::DROP, kDefaultAdminDistance);
+  EXPECT_EQ(underlay.getLevel(), 0);
+
+  RouteNextHopEntry overlay(underlay.toThrift());
+  overlay.setLevel(1);
+  EXPECT_EQ(overlay.getLevel(), 1);
+  EXPECT_FALSE(underlay == overlay);
+  EXPECT_EQ(RouteNextHopEntry(overlay.toThrift()).getLevel(), 1);
+  EXPECT_EQ(
+      *util::toUnicastRoute(
+           folly::IPAddress::createNetwork("10.0.0.0/24"), overlay)
+           .level(),
+      1);
+
+  // Level 0 is stored unset
+  overlay.setLevel(0);
+  EXPECT_FALSE(overlay.toThrift().level().has_value());
+  EXPECT_TRUE(underlay == overlay);
+}
+
 TEST(RouteNextHopEntry, FromNextHopsThrift) {
   // Note that we can't use UnicastRoute's constructor because it expects to be
   // passed both nextHopAddrs and nextHops
@@ -1289,6 +1310,44 @@ TEST(RouteNextHopEntry, ClientNextHopSetIDInEquality) {
   EXPECT_NE(a, b);
 }
 
+TEST(RouteNextHopEntry, OverrideNextHopSetID) {
+  RouteNextHopEntry a(RouteNextHopEntry::Action::DROP, kDefaultAdminDistance);
+  RouteNextHopEntry b(RouteNextHopEntry::Action::DROP, kDefaultAdminDistance);
+  EXPECT_FALSE(a.getOverrideNextHopSetID().has_value());
+
+  a.setOverrideNextHopSetID(NextHopSetID(7));
+  EXPECT_EQ(a.getOverrideNextHopSetID(), NextHopSetID(7));
+  EXPECT_FALSE(a.getClientNextHopSetID().has_value());
+  EXPECT_NE(a, b);
+
+  RouteNextHopEntry roundTripped(
+      RouteNextHopEntry::Action::DROP, kDefaultAdminDistance);
+  roundTripped.fromThrift(a.toThrift());
+  EXPECT_EQ(roundTripped.getOverrideNextHopSetID(), NextHopSetID(7));
+  validateThriftStructNodeSerialization<RouteNextHopEntry>(roundTripped);
+
+  RouteNextHopEntry fromCtor(
+      RouteNextHopEntry::Action::DROP,
+      kDefaultAdminDistance,
+      std::optional<RouteCounterID>(),
+      std::optional<RouteNextHopEntry::AclLookupClass>(),
+      std::optional<cfg::SwitchingMode>(),
+      std::optional<RouteNextHopEntry::NextHopSet>(),
+      std::optional<NextHopSetID>(),
+      std::optional<NextHopSetID>(),
+      std::optional<NextHopSetID>(),
+      std::optional<NextHopSetID>(7));
+  EXPECT_EQ(fromCtor, a);
+
+  b.setOverrideNextHopSetID(NextHopSetID(7));
+  EXPECT_EQ(a, b);
+  b.setOverrideNextHopSetID(NextHopSetID(8));
+  EXPECT_NE(a, b);
+
+  a.setOverrideNextHopSetID(std::nullopt);
+  EXPECT_FALSE(a.getOverrideNextHopSetID().has_value());
+}
+
 namespace {
 
 NextHopThrift makeNextHopThrift(const folly::IPAddress& addr, int32_t weight) {
@@ -1501,4 +1560,42 @@ TEST(RouteNextHopEntry, WeightedNexthopsNotReplicatedByDefault) {
 
   const RouteNextHopSet weighted{UnresolvedNextHop(nextHopAddr2, 3)};
   EXPECT_EQ(toAddrAndWeights(util::fromRouteNextHopSet(weighted)), expected);
+}
+
+TEST(RouteNextHopEntry, VxlanNextHopsThriftRoundTrip) {
+  RouteNextHopSet nhops;
+  nhops.emplace(ResolvedNextHop(
+      nextHopAddr2,
+      InterfaceID(2),
+      10,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      std::vector<folly::IPAddressV6>{},
+      TunnelType::VXLAN,
+      "vxlan_tunnel_1",
+      std::nullopt,
+      NextHopRole::PRIMARY,
+      std::nullopt, /* vrf */
+      false, /* resolvedInNextLevel */
+      folly::MacAddress("02:00:00:00:00:01")));
+
+  auto thriftNhops = util::fromRouteNextHopSet(nhops);
+  ASSERT_EQ(thriftNhops.size(), 1);
+  EXPECT_EQ(thriftNhops.at(0).overlayDstMac(), "02:00:00:00:00:01");
+  auto roundTripped = util::toRouteNextHopSet(thriftNhops, true);
+  ASSERT_EQ(roundTripped.size(), 1);
+  EXPECT_EQ(
+      roundTripped.begin()->overlayDstMac(),
+      folly::MacAddress("02:00:00:00:00:01"));
+  EXPECT_EQ(roundTripped.begin()->tunnelType(), TunnelType::VXLAN);
+
+  // Normalization (the RouteNextHopEntry weight-scaling path) must keep
+  // the MAC: dropping it would merge tunnel NHs for different remotes.
+  auto normalized = RouteNextHopEntry::normalizeNextHops(nhops, 1);
+  ASSERT_EQ(normalized.size(), 1);
+  EXPECT_EQ(
+      normalized.begin()->overlayDstMac(),
+      folly::MacAddress("02:00:00:00:00:01"));
 }

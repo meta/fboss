@@ -107,9 +107,11 @@ bool Tomahawk3Asic::isSupported(Feature feature) const {
     case HwAsic::Feature::ANY_ACL_DROP_COUNTER:
     case HwAsic::Feature::EMPTY_ACL_MATCHER:
     case HwAsic::Feature::ACL_ENTRY_OUT_PORT_QUALIFIER:
+    case HwAsic::Feature::ACL_DST_IP_WITH_MASK:
     case HwAsic::Feature::MY_MAC:
       return true;
     case HwAsic::Feature::ISOLATION_GROUP:
+    case HwAsic::Feature::CSIG:
     case HwAsic::Feature::QCM:
     case HwAsic::Feature::SMAC_EQUALS_DMAC_CHECK_ENABLED:
     case HwAsic::Feature::PORT_TTL_DECREMENT_DISABLE:
@@ -241,6 +243,8 @@ bool Tomahawk3Asic::isSupported(Feature feature) const {
     case HwAsic::Feature::CUT_THROUGH_FORWARDING:
     case HwAsic::Feature::SRV6_MYSID_DISCARD_COUNTER:
     case HwAsic::Feature::SRV6_MYSID_RESOURCE_COUNTER:
+    case HwAsic::Feature::SRV6_BINDING_USID_UA_USD:
+    case HwAsic::Feature::SRV6_DECAP_TUNNEL:
     case HwAsic::Feature::PBR_ACL:
     case HwAsic::Feature::DEVICE_WATERMARK_SUPPORT:
     case HwAsic::Feature::SWITCH_CUSTOM_DROP_BITMAP_SUPPORT:
@@ -252,8 +256,16 @@ bool Tomahawk3Asic::isSupported(Feature feature) const {
     case HwAsic::Feature::SWITCH_WIDE_LINK_UP_DEBOUNCE:
     case HwAsic::Feature::ACL_DST_IPV6_WORD_QUALIFIERS:
     case HwAsic::Feature::SLL_HLL_DISCARD_COUNTERS:
+    case HwAsic::Feature::HW_PROTECTION_SWITCHOVER_COUNTERS:
+    case HwAsic::Feature::PBR_ACL_BYTE_COUNTER:
     case HwAsic::Feature::NEXT_HOP_GROUP_MEMBER_MONITORED_OBJECT:
     case HwAsic::Feature::RX_PACKET_TYPE:
+    case HwAsic::Feature::XPHY_SERDES_TX_FIR_POST3:
+    case HwAsic::Feature::LAG_TTL_DECREMENT_DISABLE:
+    case HwAsic::Feature::ACL_COUNTER_LABEL_EXTENDED:
+    case HwAsic::Feature::PORT_LATCH_STATUS:
+    case HwAsic::Feature::PCS_ERROR_COUNTERS:
+    case HwAsic::Feature::ACL_DST_IPV6_WORD_WITH_MASK:
       return false;
   }
   return false;

@@ -15,7 +15,7 @@
 #include "fboss/agent/test/AgentHwTest.h"
 #include "fboss/agent/test/EcmpSetupHelper.h"
 #include "fboss/agent/test/ResourceLibUtil.h"
-#include "fboss/agent/test/agent_hw_tests/AgentTestEcmpConstants.h"
+#include "fboss/agent/test/utils/AgentTestEcmpConstants.h"
 #include "fboss/agent/test/utils/ConfigUtils.h"
 #include "fboss/agent/test/utils/PacketTestUtils.h"
 #include "fboss/agent/test/utils/QosTestUtils.h"

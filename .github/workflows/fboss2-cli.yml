@@ -42,7 +42,7 @@ permissions:
 
 jobs:
   fboss2-CLI-Build:
-    if: github.repository_owner == 'facebook'
+    if: github.repository_owner == 'meta'
     runs-on: 32-core-ubuntu
     timeout-minutes: 120
     steps:
@@ -131,7 +131,7 @@ jobs:
           retention-days: 1
   fboss2-CLI-Test:
     if: >-
-      github.repository_owner == 'facebook' &&
+      github.repository_owner == 'meta' &&
       (github.event_name != 'workflow_dispatch' ||
       inputs.suite == 'cli' || inputs.suite == 'all')
     runs-on: 4-core-ubuntu
@@ -159,7 +159,7 @@ jobs:
           ${{ github.workspace }}
   fboss2-Fake-SAI-Integration-Test:
     if: >-
-      github.repository_owner == 'facebook' &&
+      github.repository_owner == 'meta' &&
       (github.event_name == 'pull_request' || github.event_name == 'schedule' ||
       (github.event_name == 'workflow_dispatch' &&
       (inputs.suite == 'simulator' || inputs.suite == 'all')))

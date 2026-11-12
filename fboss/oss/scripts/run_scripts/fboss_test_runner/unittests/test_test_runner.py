@@ -6,13 +6,18 @@ fallback for early-exit binaries, warmboot loop, timeout handling, config
 backup, filter merging), plus the load_from_file helper consumed
 by _get_tests_to_run via args.filter_file."""
 
+import json
 import os
 import subprocess
 import tempfile
+from argparse import Namespace
 from unittest.mock import MagicMock, patch
 
+import pytest
+from fboss_test_runner.errors import TestRunnerUsageError
 from fboss_test_runner.result_types import GtestResult, GtestStatus, RunOutcome
 from fboss_test_runner.runners.utils import load_from_file
+from fboss_test_runner.tier_selection import TestCapability, TestTier
 
 
 class TestLoadFromFile:
@@ -92,6 +97,137 @@ class TestLoadFromFile:
             assert result == ["entry1"]
         finally:
             os.unlink(temp_file)
+
+
+class TestTierFilterComposition:
+    def test_prepare_tests_applies_tier_filter_after_runner_filter(self, runner):
+        args = Namespace(tier="0")
+        with (
+            patch("shutil.which", return_value="/opt/fboss/bin/test_binary"),
+            patch.object(runner, "_initialize_test_lists"),
+            patch.object(
+                runner, "_get_tests_to_run", return_value=["Suite.B", "Suite.A"]
+            ),
+            patch.object(
+                runner, "_filter_tests", return_value=["Suite.A"]
+            ) as runner_filter,
+            patch.object(
+                runner, "_filter_tests_for_tier", return_value=["Suite.A"]
+            ) as tier_filter,
+        ):
+            assert runner._prepare_tests(args) == ["Suite.A"]
+
+        runner_filter.assert_called_once_with(["Suite.B", "Suite.A"])
+        tier_filter.assert_called_once_with(["Suite.A"], TestTier.T0)
+
+    def test_base_runner_rejects_tier_selection(self, runner):
+        runner.args = Namespace(command="unsupported")
+        with pytest.raises(TestRunnerUsageError, match="not supported for unsupported"):
+            runner._filter_tests_for_tier([], TestTier.T0)
+
+    @pytest.mark.parametrize(
+        "requested_tier,expected",
+        [
+            (TestTier.T0, ["Suite.B", "Suite.A"]),
+            (TestTier.T1, []),
+        ],
+    )
+    def test_uniform_tier_filters_without_metadata(
+        self, runner, requested_tier, expected
+    ):
+        tests = ["Suite.B", "Suite.A"]
+        with (
+            patch.object(runner, "_get_uniform_test_tier", return_value=TestTier.T0),
+            patch.object(runner, "_get_tier_metadata_file") as metadata_file,
+        ):
+            assert runner._filter_tests_for_tier(tests, requested_tier) == expected
+
+        metadata_file.assert_not_called()
+
+    def test_metadata_filter_expands_patterns_and_intersects_candidates(
+        self, runner, tmp_path
+    ):
+        metadata = tmp_path / "test_metadata.json"
+        metadata.write_text(
+            json.dumps(
+                {
+                    "rules": [
+                        {
+                            "testNamePattern": "EmptyTest.*",
+                            "tier": "T0",
+                            "requiredCapabilities": [],
+                            "profiles": [],
+                        },
+                        {
+                            "testNamePattern": "CapableTest.*",
+                            "tier": "T0",
+                            "requiredCapabilities": [TestCapability.TRANSCEIVER.value],
+                            "profiles": [],
+                        },
+                        {
+                            "testNamePattern": "OtherTier.*",
+                            "tier": "T1",
+                            "requiredCapabilities": [],
+                            "profiles": [],
+                        },
+                    ]
+                }
+            )
+        )
+        candidates = [
+            "Unrelated.Test",
+            "CapableTest.Case",
+            "EmptyTest.CheckInit",
+        ]
+        with (
+            patch.object(runner, "_get_tier_metadata_file", return_value=str(metadata)),
+            patch.object(
+                runner,
+                "_get_available_test_capabilities",
+                return_value=(TestCapability.TRANSCEIVER,),
+            ),
+            patch.object(
+                runner,
+                "_list_tests_to_run",
+                return_value=["EmptyTest.CheckInit", "CapableTest.Case"],
+            ) as expand_patterns,
+        ):
+            selected = runner._filter_tests_for_tier(candidates, TestTier.T0)
+
+        expand_patterns.assert_called_once_with("EmptyTest.*:CapableTest.*")
+        assert selected == ["CapableTest.Case", "EmptyTest.CheckInit"]
+
+    def test_metadata_filter_reports_missing_file(self, runner, tmp_path):
+        missing = str(tmp_path / "missing.json")
+        with (
+            patch.object(runner, "_get_tier_metadata_file", return_value=missing),
+            pytest.raises(TestRunnerUsageError, match="Unable to load test metadata"),
+        ):
+            runner._filter_tests_for_tier([], TestTier.T0)
+
+    def test_metadata_filter_skips_gtest_when_no_patterns_match(self, runner, tmp_path):
+        metadata = tmp_path / "test_metadata.json"
+        metadata.write_text(
+            json.dumps(
+                {
+                    "rules": [
+                        {
+                            "testNamePattern": "OtherTier.*",
+                            "tier": "T1",
+                            "requiredCapabilities": [],
+                            "profiles": [],
+                        }
+                    ]
+                }
+            )
+        )
+        with (
+            patch.object(runner, "_get_tier_metadata_file", return_value=str(metadata)),
+            patch.object(runner, "_list_tests_to_run") as expand_patterns,
+        ):
+            assert runner._filter_tests_for_tier(["Suite.Test"], TestTier.T0) == []
+
+        expand_patterns.assert_not_called()
 
 
 class TestRunTestGtestFallback:
@@ -246,6 +382,80 @@ class TestRunTestsWarmboot:
         assert mock_run.call_count == 1
         assert len(outputs) == 1
         mock_warm_setup.assert_not_called()
+
+    @pytest.mark.parametrize("category", ["known_bad", "unsupported"])
+    @pytest.mark.parametrize("pattern_prefix", [None, "", "warm_boot."])
+    @pytest.mark.parametrize("num_warmboot_iterations", [1, 3])
+    def test_exclusions_preserve_other_test_warmboots(
+        self,
+        runner,
+        mock_args,
+        tmp_path,
+        capsys,
+        category,
+        pattern_prefix,
+        num_warmboot_iterations,
+    ):
+        check_file = tmp_path / "can_warm_boot"
+        check_file.write_text("")
+        runner._get_warmboot_check_file = lambda: str(check_file)
+        args = self._make_args(mock_args, coldboot_only=False)
+        args.filter = None
+        args.profile = None
+        args.num_warmboot_iterations = num_warmboot_iterations
+        runner.args = args
+        patterns = [] if pattern_prefix is None else [pattern_prefix + r"HwT\.t$"]
+        setattr(runner, f"_{category}_test_regexes", patterns)
+        listed = b"HwT.\n  t\n  other\n"
+        filtered = b"HwT.\n  other\n" if pattern_prefix == "" else listed
+        conf = self._make_conf(tmp_path)
+
+        def run_outcome(conf_file, prefix, test, setup_warmboot, log_path):
+            return RunOutcome("", [GtestResult(prefix + test, GtestStatus.OK, 1)])
+
+        with (
+            patch(
+                "subprocess.check_output", side_effect=[listed, filtered]
+            ) as discovery,
+            patch.object(runner, "_run_test_guarded", side_effect=run_outcome) as run,
+            patch.object(runner, "_setup_coldboot_test") as cold_setup,
+            patch.object(runner, "_setup_warmboot_test") as warm_setup,
+        ):
+            selected = runner._get_tests_to_run()
+            results = runner._run_tests(selected, conf, args)
+
+        expected_filter = "HwT.other:" if pattern_prefix == "" else "HwT.t:HwT.other:"
+        assert (
+            discovery.call_args_list[1].args[0][-1]
+            == f"--gtest_filter={expected_filter}"
+        )
+        expected = [] if pattern_prefix == "" else ["cold_boot.HwT.t"]
+        warm_prefixes = (
+            ["warm_boot."]
+            if num_warmboot_iterations == 1
+            else [f"warm_boot.{i}." for i in range(num_warmboot_iterations)]
+        )
+        if pattern_prefix is None:
+            expected.extend(prefix + "HwT.t" for prefix in warm_prefixes)
+        expected.append("cold_boot.HwT.other")
+        expected.extend(prefix + "HwT.other" for prefix in warm_prefixes)
+        assert [result.test_name for result in results] == expected
+        assert cold_setup.call_count == len(selected)
+        expected_warmboots = num_warmboot_iterations * (
+            2 if pattern_prefix is None else 1
+        )
+        assert warm_setup.call_count == expected_warmboots
+        cold_calls = [
+            call for call in run.call_args_list if call.args[1] == "cold_boot."
+        ]
+        assert [(call.args[2], call.args[3]) for call in cold_calls] == (
+            [("HwT.other", True)]
+            if pattern_prefix == ""
+            else [("HwT.t", pattern_prefix is None), ("HwT.other", True)]
+        )
+        if pattern_prefix is not None:
+            label = "known bad" if category == "known_bad" else "unsupported"
+            assert f"SKIPPING ({label})" in capsys.readouterr().out
 
     def test_warmboot_skipped_when_check_file_missing(
         self, runner, mock_args, tmp_path

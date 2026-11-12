@@ -12,6 +12,8 @@
 #include <vector>
 
 #include <fmt/core.h>
+#include <fmt/std.h>
+#include <folly/FileUtil.h>
 #include <folly/String.h>
 #include <re2/re2.h>
 #include <thrift/lib/cpp2/protocol/Serializer.h>
@@ -35,6 +37,8 @@ void Utils::printHostDetails() {
   std::cout << platformUtils_.execCommand("hostname").second << std::endl;
   std::cout << "#### Linux Kernel Version ####" << std::endl;
   std::cout << platformUtils_.execCommand("uname -r").second << std::endl;
+  std::cout << "#### Loaded Kernel Modules ####" << std::endl;
+  std::cout << platformUtils_.execCommand("lsmod").second << std::endl;
   std::cout << "#### UPTIME ####" << std::endl;
   std::cout << platformUtils_.execCommand("uptime").second << std::endl;
   std::cout << platformUtils_.execCommand("last reboot").second << std::endl;
@@ -62,6 +66,33 @@ void Utils::printFwutilDetails() {
                        "fw_util --fw_action version --fw_target_name all")
                    .second
             << std::endl;
+}
+
+void Utils::printMfrVersionDetails() {
+  if (!config_.regDumpDevices() || config_.regDumpDevices()->empty()) {
+    return;
+  }
+
+  std::cout << "##### Manufacturer Version Strings #####" << std::endl;
+  for (const auto& p : *config_.regDumpDevices()) {
+    std::filesystem::path devPath(p);
+    std::string label = devPath.filename().string();
+    auto mfrVersionPath = (devPath / "mfr_version").string();
+    if (std::filesystem::exists(mfrVersionPath)) {
+      try {
+        std::cout << label << ": " << readSysfs(mfrVersionPath) << std::endl;
+      } catch (const std::exception& e) {
+        std::cerr
+            << fmt::format(
+                   "Failed to read manufacturer version string for {}: {}",
+                   label,
+                   e.what())
+            << std::endl;
+      }
+    }
+  }
+
+  std::cout << std::endl;
 }
 
 void Utils::printLspciDetails() {
@@ -117,6 +148,114 @@ void Utils::printI2cDetails() {
     std::cout << fmt::format("#### Running `{}` for {} ####", cmd, busName)
               << std::endl;
     std::cout << platformUtils_.execCommand(cmd).second << std::endl;
+  }
+}
+
+void Utils::printFileContent(const std::string& path) {
+  std::string content;
+  if (folly::readFile(path.c_str(), content)) {
+    std::cout << content;
+  } else {
+    std::cerr << "Error: failed to read " << path << std::endl;
+  }
+}
+
+namespace {
+const RE2 kPagedRegDumpRe(R"(p(\d+)_reg_dump)");
+} // namespace
+
+std::string Utils::regDumpEntryLabel(const std::filesystem::path& entry) {
+  auto fileName = entry.filename().string();
+  int pageNum;
+  if (fileName == "global_reg_dump") {
+    return "Global Register Dump";
+  } else if (RE2::FullMatch(fileName, kPagedRegDumpRe, &pageNum)) {
+    return fmt::format("Page {} Register Dump", pageNum);
+  }
+  std::cerr << "Failed to create register dump entry label from " << fileName
+            << std::endl;
+  return fileName;
+}
+
+// order entries: global first, then p0, p1, ..., then any unrecognized names
+// format for the name is always either global_reg_dump or px_reg_dump
+bool Utils::regDumpEntryOrder(
+    const std::filesystem::path& a,
+    const std::filesystem::path& b) {
+  auto sortKey = [](const std::filesystem::path& entry) {
+    auto name = entry.filename().string();
+    if (name == "global_reg_dump") {
+      return std::make_tuple(0, 0, name);
+    }
+    int pageNum = 0;
+    if (RE2::FullMatch(name, kPagedRegDumpRe, &pageNum)) {
+      return std::make_tuple(1, pageNum, name);
+    }
+    std::cerr << "Failed to get page number from filename " << name
+              << std::endl;
+    return std::make_tuple(2, 0, name);
+  };
+  return sortKey(a) < sortKey(b);
+}
+
+std::filesystem::path Utils::getDebugfsPathFromHwmonPath(
+    const std::filesystem::path& hwmonPath) {
+  auto sysfsRootDevDir = hwmonPath.parent_path().parent_path();
+  std::string i2cName = sysfsRootDevDir.filename().string();
+  std::string deviceName = readSysfs(sysfsRootDevDir / "name");
+
+  return std::filesystem::path(
+      fmt::format("/sys/kernel/debug/{}-{}", deviceName, i2cName));
+}
+
+void Utils::printRegDumpDetails() {
+  std::cout << "##### Register Dump Information #####\n\n";
+  if (!config_.regDumpDevices() || config_.regDumpDevices()->empty()) {
+    std::cout << "No device to regDump found from config\n\n";
+    return;
+  }
+
+  for (const auto& p : *config_.regDumpDevices()) {
+    std::cout << fmt::format("#### Register Dump for {} ####\n\n", p);
+
+    std::error_code ec;
+    std::filesystem::path hwmonPath = std::filesystem::canonical(p, ec);
+    if (ec) {
+      std::cerr << "Error resolving path: " << ec.message() << std::endl;
+      continue;
+    }
+    std::filesystem::path debugfsPath;
+    try {
+      debugfsPath = getDebugfsPathFromHwmonPath(hwmonPath);
+    } catch (const std::exception& e) {
+      std::cerr << "Error resolving debugfs path: " << e.what() << std::endl;
+      continue;
+    }
+
+    if (!std::filesystem::is_directory(debugfsPath, ec) || ec) {
+      std::cerr << "Debugfs path not found: " << debugfsPath << std::endl;
+      continue;
+    }
+
+    // paged device: collect, sort (global first, then p0, p1, ...), then dump
+    std::vector<std::filesystem::path> entries;
+    for (const auto& entry :
+         std::filesystem::directory_iterator(debugfsPath, ec)) {
+      entries.push_back(entry.path());
+    }
+    if (ec) {
+      std::cerr << "Failed to iterate reg_dump directory: " << ec.message()
+                << std::endl;
+      continue;
+    }
+
+    // order the entries with global first, then p0 to pn
+    std::sort(entries.begin(), entries.end(), regDumpEntryOrder);
+    for (const auto& entry : entries) {
+      std::cout << "### " << regDumpEntryLabel(entry) << " ###\n\n";
+      printFileContent(entry.string());
+      std::cout << std::endl;
+    }
   }
 }
 

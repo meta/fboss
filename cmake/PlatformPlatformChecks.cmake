@@ -3,13 +3,19 @@
 # In general, libraries and binaries in fboss/foo/bar are built by
 # cmake/FooBar.cmake
 
-add_fbthrift_cpp_library(
+add_library(check_types_cpp2)
+thrift_generate(
   check_types_cpp2
   fboss/platform/platform_checks/check_types.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
+  INCLUDE_DIRECTORIES
+    ${PROJECT_SOURCE_DIR}
+    ${THRIFT_INCLUDE_DIR}
 )
+target_include_directories(check_types_cpp2 PUBLIC ${PROJECT_BINARY_DIR})
 
 add_library(platform_check
   fboss/platform/platform_checks/CommandLog.cpp
@@ -28,6 +34,7 @@ add_library(platform_checks_host
   fboss/platform/platform_checks/Host.cpp
   fboss/platform/platform_checks/LocalHost.cpp
   fboss/platform/platform_checks/RemoteHost.cpp
+  fboss/platform/platform_checks/SshAskPass.cpp
 )
 
 target_link_libraries(platform_checks_host
@@ -50,10 +57,13 @@ add_library(platform_checks
   fboss/platform/platform_checks/HostEeprom.cpp
   fboss/platform/platform_checks/checks/BmcChecks.cpp
   fboss/platform/platform_checks/checks/CommandCheck.cpp
+  fboss/platform/platform_checks/checks/HwTestChecks.cpp
   fboss/platform/platform_checks/checks/MacAddressCheck.cpp
   fboss/platform/platform_checks/checks/ManagementPlaneChecks.cpp
   fboss/platform/platform_checks/checks/PciDeviceCheck.cpp
+  fboss/platform/platform_checks/checks/PowerCycleChecks.cpp
   fboss/platform/platform_checks/checks/PowerResetCheck.cpp
+  fboss/platform/platform_checks/checks/SolConsoleCheck.cpp
   # Not including KernelVersionCheck since it relies on internal tools
   fboss/platform/platform_checks/checks/i801SmbusTimeoutCheck.cpp
 )
@@ -164,3 +174,41 @@ target_link_libraries(platform_checks_bmc_checks_test
 )
 
 gtest_discover_tests(platform_checks_bmc_checks_test)
+
+add_executable(platform_checks_sol_console_check_test
+  fboss/platform/platform_checks/tests/SolConsoleCheckTest.cpp
+)
+
+target_link_libraries(platform_checks_sol_console_check_test
+  platform_checks
+  Folly::folly
+  ${GTEST}
+  ${LIBGMOCK_LIBRARIES}
+)
+
+gtest_discover_tests(platform_checks_sol_console_check_test)
+
+add_executable(platform_checks_power_cycle_checks_test
+  fboss/platform/platform_checks/tests/PowerCycleChecksTest.cpp
+)
+
+target_link_libraries(platform_checks_power_cycle_checks_test
+  platform_checks
+  ${GTEST}
+  ${LIBGMOCK_LIBRARIES}
+)
+
+gtest_discover_tests(platform_checks_power_cycle_checks_test)
+
+add_executable(platform_checks_hw_test_checks_test
+  fboss/platform/platform_checks/tests/HwTestChecksTest.cpp
+)
+
+target_link_libraries(platform_checks_hw_test_checks_test
+  platform_checks
+  Folly::folly
+  ${GTEST}
+  ${LIBGMOCK_LIBRARIES}
+)
+
+gtest_discover_tests(platform_checks_hw_test_checks_test)

@@ -15,11 +15,15 @@ cpp_unittest(
         "QsfpUtilTest.h",
     ],
     deps = [
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly:singleton",
+        "fbsource//xplat/folly/logging:logging",
+        "fbsource//xplat/folly/testing:test_util",
         "//common/init:init",
+        "//fboss/lib/platforms:platform_descriptor",
         "//fboss/util:wedge_qsfp_util_module",
-        "//folly:singleton",
-        "//folly/logging:logging",
     ],
+    external_deps = ["gflags"],
 )
 
 cpp_unittest(
@@ -32,10 +36,10 @@ cpp_unittest(
         "CredoMacsecUtilTest.h",
     ],
     deps = [
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly:singleton",
+        "fbsource//xplat/folly/testing:test_util",
         "//common/init:init",
         "//fboss/util:credo_macsec_util_module",
-        "//folly:file_util",
-        "//folly:singleton",
-        "//folly/testing:test_util",
     ],
 )

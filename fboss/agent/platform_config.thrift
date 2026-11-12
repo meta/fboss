@@ -128,6 +128,10 @@ struct PlatformPortConfigOverrideFactor {
   6: optional list<phy.DataPlanePhyChip> chips;
   7: optional transceiver.MediaInterfaceCode mediaInterfaceCode;
   8: optional transceiver.Vendor vendor;
+  // Runtime only, filled from the plugged transceiver's
+  // TcvrState.vendorOverrides. Not meant to be set in platform mapping
+  // overrides. When set, it is used to resolve the placeholder in `vendor`.
+  9: optional list<transceiver.TransceiverVendorOverride> vendorOverrides;
 }
 
 struct PlatformPortConfigOverride {

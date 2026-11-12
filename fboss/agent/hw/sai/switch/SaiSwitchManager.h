@@ -78,6 +78,7 @@ class SaiSwitchManager {
   void resetArsProfile();
 
   void setMacAgingSeconds(sai_uint32_t agingSeconds);
+  void setVxlanDefaultPort();
   sai_uint32_t getMacAgingSeconds() const;
 
   void setupCounterRefreshInterval();

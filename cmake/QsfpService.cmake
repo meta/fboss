@@ -35,7 +35,7 @@ target_link_libraries(qsfp_lib
     alert_logger
     Folly::folly
     fb303::fb303
-    FBThrift::thriftcpp2
+    thrift::rpc
     qsfp_service_client
     fsdb_stream_client
     fsdb_pub_sub
@@ -56,7 +56,7 @@ target_link_libraries(qsfp_config
   fboss_error
   qsfp_config_cpp2
   Folly::folly
-  FBThrift::thriftcpp2
+  thrift::rpc
 )
 
 add_library(build_from_xcvr_lib
@@ -68,7 +68,7 @@ target_link_libraries(build_from_xcvr_lib
   led_mapping_cpp2
   xcvr_lib
   Folly::folly
-  FBThrift::thriftcpp2
+  thrift::rpc
 )
 
 add_executable(build_from_xcvr_lib_test
@@ -84,7 +84,7 @@ target_link_libraries(build_from_xcvr_lib_test
   platform_config_lib
   xcvr_lib
   Folly::folly
-  FBThrift::thriftcpp2
+  thrift::rpc
 )
 
 add_library(bsp_platform_mapping
@@ -94,7 +94,7 @@ add_library(bsp_platform_mapping
 target_link_libraries(bsp_platform_mapping
   bsp_platform_mapping_cpp2
   build_from_xcvr_lib
-  FBThrift::thriftcpp2
+  thrift::rpc
 )
 
 add_library(meru800bia_bsp
@@ -103,7 +103,7 @@ add_library(meru800bia_bsp
 
 target_link_libraries(meru800bia_bsp
   bsp_platform_mapping
-  FBThrift::thriftcpp2
+  thrift::rpc
 )
 
 add_library(meru800bfa_bsp
@@ -112,7 +112,7 @@ add_library(meru800bfa_bsp
 
 target_link_libraries(meru800bfa_bsp
   bsp_platform_mapping
-  FBThrift::thriftcpp2
+  thrift::rpc
 )
 
 add_library(montblanc_bsp
@@ -121,7 +121,17 @@ add_library(montblanc_bsp
 
 target_link_libraries(montblanc_bsp
   bsp_platform_mapping
-  FBThrift::thriftcpp2
+  thrift::rpc
+)
+
+add_library(m4061clsc_bsp
+  fboss/lib/bsp/m4061clsc/M4061clscBspPlatformMapping.cpp
+)
+
+target_link_libraries(m4061clsc_bsp
+  bsp_platform_mapping
+  bsp_platform_mapping_cpp2
+  thrift::rpc
 )
 
 add_library(icecube800bc_bsp
@@ -130,7 +140,7 @@ add_library(icecube800bc_bsp
 
 target_link_libraries(icecube800bc_bsp
   bsp_platform_mapping
-  FBThrift::thriftcpp2
+  thrift::rpc
 )
 
 add_library(icetea800bc_bsp
@@ -139,7 +149,7 @@ add_library(icetea800bc_bsp
 
 target_link_libraries(icetea800bc_bsp
   bsp_platform_mapping
-  FBThrift::thriftcpp2
+  thrift::rpc
 )
 
 add_library(minipack3bta_bsp
@@ -148,7 +158,7 @@ add_library(minipack3bta_bsp
 
 target_link_libraries(minipack3bta_bsp
   bsp_platform_mapping
-  FBThrift::thriftcpp2
+  thrift::rpc
 )
 
 add_library(minipack3n_bsp
@@ -157,7 +167,7 @@ add_library(minipack3n_bsp
 
 target_link_libraries(minipack3n_bsp
   bsp_platform_mapping
-  FBThrift::thriftcpp2
+  thrift::rpc
 )
 
 add_library(morgan800cc_bsp
@@ -166,7 +176,7 @@ add_library(morgan800cc_bsp
 
 target_link_libraries(morgan800cc_bsp
   bsp_platform_mapping
-  FBThrift::thriftcpp2
+  thrift::rpc
 )
 
 add_library(janga800bic_bsp
@@ -175,7 +185,7 @@ add_library(janga800bic_bsp
 
 target_link_libraries(janga800bic_bsp
   bsp_platform_mapping
-  FBThrift::thriftcpp2
+  thrift::rpc
 )
 
 add_library(tahan800bc_bsp
@@ -184,7 +194,7 @@ add_library(tahan800bc_bsp
 
 target_link_libraries(tahan800bc_bsp
   bsp_platform_mapping
-  FBThrift::thriftcpp2
+  thrift::rpc
 )
 
 add_library(tahansb800bc_bsp
@@ -193,7 +203,7 @@ add_library(tahansb800bc_bsp
 
 target_link_libraries(tahansb800bc_bsp
   bsp_platform_mapping
-  FBThrift::thriftcpp2
+  thrift::rpc
 )
 
 add_library(wedge800bact_bsp
@@ -202,7 +212,7 @@ add_library(wedge800bact_bsp
 
 target_link_libraries(wedge800bact_bsp
   bsp_platform_mapping
-  FBThrift::thriftcpp2
+  thrift::rpc
 )
 
 add_library(wedge800cact_bsp
@@ -211,7 +221,7 @@ add_library(wedge800cact_bsp
 
 target_link_libraries(wedge800cact_bsp
   bsp_platform_mapping
-  FBThrift::thriftcpp2
+  thrift::rpc
 )
 
 add_library(ladakh800bcls_bsp
@@ -221,7 +231,7 @@ add_library(ladakh800bcls_bsp
 target_link_libraries(ladakh800bcls_bsp
   bsp_platform_mapping
   bsp_platform_mapping_cpp2
-  FBThrift::thriftcpp2
+  thrift::rpc
 )
 
 add_library(leh800bcls_bsp
@@ -231,16 +241,17 @@ add_library(leh800bcls_bsp
 target_link_libraries(leh800bcls_bsp
   bsp_platform_mapping
   bsp_platform_mapping_cpp2
-  FBThrift::thriftcpp2
+  thrift::rpc
 )
 
-add_library(saintpaul_bsp
-  fboss/lib/bsp/saintpaul/SaintpaulBspPlatformMapping.cpp
+add_library(m4061nhp_bsp
+  fboss/lib/bsp/m4061nhp/M4061nhpBspPlatformMapping.cpp
 )
 
-target_link_libraries(saintpaul_bsp
+target_link_libraries(m4061nhp_bsp
   bsp_platform_mapping
-  FBThrift::thriftcpp2
+  bsp_platform_mapping_cpp2
+  thrift::rpc
 )
 
 add_library(m4062nhp_bsp
@@ -250,7 +261,7 @@ add_library(m4062nhp_bsp
 target_link_libraries(m4062nhp_bsp
   bsp_platform_mapping
   bsp_platform_mapping_cpp2
-  FBThrift::thriftcpp2
+  thrift::rpc
 )
 
 add_library(m4052actm_bsp
@@ -259,7 +270,17 @@ add_library(m4052actm_bsp
 
 target_link_libraries(m4052actm_bsp
   bsp_platform_mapping
-  FBThrift::thriftcpp2
+  thrift::rpc
+)
+
+add_library(m5120csc_bsp
+  fboss/lib/bsp/m5120csc/M5120cscBspPlatformMapping.cpp
+)
+
+target_link_libraries(m5120csc_bsp
+  bsp_platform_mapping
+  bsp_platform_mapping_cpp2
+  thrift::rpc
 )
 
 add_library(qsfp_bsp_core
@@ -291,6 +312,7 @@ target_link_libraries(qsfp_bsp_core
   meru800bia_bsp
   meru800bfa_bsp
   montblanc_bsp
+  m4061clsc_bsp
   icecube800bc_bsp
   icetea800bc_bsp
   minipack3bta_bsp
@@ -303,9 +325,10 @@ target_link_libraries(qsfp_bsp_core
   wedge800cact_bsp
   ladakh800bcls_bsp
   leh800bcls_bsp
-  saintpaul_bsp
   m4052actm_bsp
+  m4061nhp_bsp
   m4062nhp_bsp
+  m5120csc_bsp
   device_mdio
   fpga_device
   phy_management_base
@@ -488,7 +511,7 @@ target_link_libraries(fboss_pai_diag_shell_client
   qsfp_cpp2
   ctrl_cpp2
   Folly::folly
-  FBThrift::thriftcpp2
+  thrift::rpc
 )
 
 install(TARGETS fboss_pai_diag_shell_client)

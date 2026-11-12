@@ -670,7 +670,9 @@ TEST_F(AgentPortBoundIngressAclTest, VerifyPortBoundAclAfterPortRecreate) {
     auto config = getAgentEnsemble()->getCurrentConfig();
     for (const auto& port : {restrictPort, blockPort}) {
       const auto portConfig = utility::findCfgPort(config, port);
-      ASSERT_TRUE(portConfig->profileID().has_value());
+      ASSERT_TRUE(
+          apache::thrift::is_non_optional_field_set_manually_or_by_serializer(
+              portConfig->profileID()));
       ASSERT_TRUE(portConfig->ingressAclTableName().has_value());
       XLOG(INFO) << "[PortBoundIngressAclRecreate] Changing port " << port
                  << " from profile "

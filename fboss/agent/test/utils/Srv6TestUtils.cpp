@@ -139,6 +139,15 @@ cfg::MySidConfig makeAdjacencyMySidConfig(
   return mySidConfig;
 }
 
+cfg::MySidConfig makeDecapMySidConfig(
+    const std::vector<std::string>& locatorPrefixes) {
+  cfg::MySidConfig mySidConfig;
+  mySidConfig.locatorPrefix() = locatorPrefixes.front();
+  mySidConfig.locatorPrefixes() = locatorPrefixes;
+  mySidConfig.entries()[kSrv6DecapFunctionId].decap() = cfg::DecapMySidConfig{};
+  return mySidConfig;
+}
+
 void waitForMySidResolveOrUnresolve(
     const std::function<std::shared_ptr<SwitchState>()>& getState,
     const folly::IPAddressV6& sidPrefix,

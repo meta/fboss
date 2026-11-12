@@ -22,6 +22,7 @@ add_executable(store_test
     fboss/agent/hw/sai/store/tests/NeighborStoreTest.cpp
     fboss/agent/hw/sai/store/tests/NextHopStoreTest.cpp
     fboss/agent/hw/sai/store/tests/NextHopGroupStoreTest.cpp
+    fboss/agent/hw/sai/store/tests/PolicerStoreTest.cpp
     fboss/agent/hw/sai/store/tests/PortStoreTest.cpp
     fboss/agent/hw/sai/store/tests/QosMapStoreTest.cpp
     fboss/agent/hw/sai/store/tests/QueueStoreTest.cpp
@@ -34,8 +35,10 @@ add_executable(store_test
     fboss/agent/hw/sai/store/tests/TamStoreTest.cpp
     fboss/agent/hw/sai/store/tests/Srv6StoreTest.cpp
     fboss/agent/hw/sai/store/tests/TunnelStoreTest.cpp
+    fboss/agent/hw/sai/store/tests/TunnelMapStoreTest.cpp
     fboss/agent/hw/sai/store/tests/UdfStoreTest.cpp
     fboss/agent/hw/sai/store/tests/VirtualChannelStoreTest.cpp
+    fboss/agent/hw/sai/store/tests/VirtualRouterStoreTest.cpp
     fboss/agent/hw/sai/store/tests/VlanStoreTest.cpp
     fboss/agent/hw/sai/store/tests/WredStoreTest.cpp
 )

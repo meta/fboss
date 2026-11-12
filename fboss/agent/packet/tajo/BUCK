@@ -11,6 +11,6 @@ cpp_library(
         "TajoPuntHeader.h",
     ],
     exported_deps = [
-        "//folly/io:iobuf",
+        "fbsource//xplat/folly/io:iobuf",
     ],
 )

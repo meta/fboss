@@ -357,6 +357,9 @@ void getModulePrbsStats(DirectI2cInfo i2cInfo, std::vector<PortID> portList);
 
 bool verifyDirectI2cCompliance();
 
+// Fall back to qsfp_service's platform descriptor path when none is passed.
+void initPlatformDescriptorPathFromQsfpConfig();
+
 void printModuleTransactionStats(
     const std::vector<int32_t>& ports,
     folly::EventBase& evb);

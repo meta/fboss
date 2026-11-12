@@ -9,6 +9,7 @@
  */
 
 #include "fboss/cli/fboss2/commands/config/interface/pfc_config/CmdConfigInterfacePfcConfig.h"
+#include "fboss/cli/fboss2/utils/ArgCompletion.h"
 
 #include "fboss/cli/fboss2/CmdHandler.cpp"
 
@@ -187,5 +188,20 @@ void CmdConfigInterfacePfcConfig::printOutput(const RetType& logMsg) {
 template void CmdHandler<
     CmdConfigInterfacePfcConfig,
     CmdConfigInterfacePfcConfigTraits>::run();
+
+std::vector<std::string> CmdConfigInterfacePfcConfigTraits::completeArgs(
+    const std::vector<std::string>& typed) {
+  const std::vector<std::string> enabledDisabled = {"enabled", "disabled"};
+  return utils::completion::completeAttrGrammar(
+      typed,
+      {.attrs = utils::completion::toWords(utils::kValidAttrs),
+       .values = {
+           {"rx", enabledDisabled},
+           {"tx", enabledDisabled},
+           {"rx-duration", enabledDisabled},
+           {"tx-duration", enabledDisabled},
+           {"watchdog-recovery-action", {"drop", "no-drop"}},
+       }});
+}
 
 } // namespace facebook::fboss

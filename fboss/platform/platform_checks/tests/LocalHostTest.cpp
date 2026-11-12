@@ -10,6 +10,8 @@
 
 #include "fboss/platform/platform_checks/LocalHost.h"
 
+#include "fboss/platform/helpers/ExpectSession.h"
+
 #include <algorithm>
 
 #include <folly/FileUtil.h>
@@ -23,6 +25,10 @@ namespace {
 // Exercises the run()-based defaults of Host by not overriding file access.
 class ShellOnlyHost : public Host {
  public:
+  explicit ShellOnlyHost(
+      std::optional<CommandResult> fixedResult = std::nullopt)
+      : fixedResult_(std::move(fixedResult)) {}
+
   std::string name() const override {
     return "shell";
   }
@@ -31,12 +37,19 @@ class ShellOnlyHost : public Host {
   }
   CommandResult run(const std::string& cmd, std::chrono::seconds timeout)
       const override {
-    return LocalHost().run(cmd, timeout);
+    return fixedResult_ ? *fixedResult_ : LocalHost().run(cmd, timeout);
   }
   void copyTo(
       const std::filesystem::path&,
       const std::filesystem::path&,
       std::chrono::seconds) const override {}
+  std::unique_ptr<facebook::fboss::platform::ExpectSession> spawnInteractive()
+      const override {
+    return nullptr;
+  }
+
+ private:
+  std::optional<CommandResult> fixedResult_;
 };
 
 } // namespace
@@ -110,4 +123,40 @@ TEST(HostTest, FailedListingIsEmpty) {
   EXPECT_TRUE(LocalHost().listDirectory(file).empty());
   EXPECT_TRUE(ShellOnlyHost().listDirectory(file).empty());
   EXPECT_TRUE(LocalHost().listDirectory("/nonexistent").empty());
+}
+
+TEST(HostTest, ReadFilesInOneCommand) {
+  folly::test::TemporaryDirectory tmpDir;
+  const std::filesystem::path dir{tmpDir.path().string()};
+  folly::writeFile(std::string("a\nb"), (dir / "text").c_str());
+  folly::writeFile(std::string("\0\n\xff", 3), (dir / "binary").c_str());
+  folly::writeFile(std::string(), (dir / "empty").c_str());
+  const std::vector<std::filesystem::path> paths{
+      dir / "text", dir / "missing", dir / "binary", dir / "empty"};
+  const std::vector<std::optional<std::string>> expected{
+      "a\nb", std::nullopt, std::string("\0\n\xff", 3), ""};
+
+  EXPECT_EQ(ShellOnlyHost().readFiles(paths), expected);
+  EXPECT_EQ(LocalHost().readFiles(paths), expected);
+}
+
+TEST(HostTest, ReadFilesStopsAtCorruptOutput) {
+  // "-1" marks an unreadable file; "99" is more than the rest of the output.
+  ShellOnlyHost host(
+      CommandResult{.exitCode = 0, .standardOut = "3\nabc-1\n2\nxy99\nzz"});
+  const std::vector<std::filesystem::path> paths{"a", "b", "c", "d", "e"};
+  const std::vector<std::optional<std::string>> expected{
+      "abc", std::nullopt, "xy", std::nullopt, std::nullopt};
+
+  EXPECT_EQ(host.readFiles(paths), expected);
+}
+
+TEST(HostTest, UnreachableHostIsNotAMissingFile) {
+  // What RemoteHost returns when the connection drops.
+  ShellOnlyHost host(CommandResult{.exitCode = 255, .standardErr = "gone"});
+
+  EXPECT_THROW(host.exists("/etc"), HostCommandError);
+  EXPECT_THROW(host.readFile("/etc/hostname"), HostCommandError);
+  EXPECT_THROW(host.listDirectory("/etc"), HostCommandError);
+  EXPECT_THROW(host.readFiles({"/etc/hostname"}), HostCommandError);
 }

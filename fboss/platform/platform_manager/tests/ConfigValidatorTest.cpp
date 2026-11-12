@@ -816,6 +816,7 @@ TEST(ConfigValidatorTest, DevicePath) {
   // Define devices
   I2cDeviceConfig mcbMux;
   mcbMux.pmUnitScopedName() = "MCB_MUX_A";
+  mcbMux.numOutgoingChannels() = 2;
   mcb.i2cDeviceConfigs() = {mcbMux};
   EmbeddedSensorConfig jumperNvme;
   jumperNvme.pmUnitScopedName() = "NVME";
@@ -859,8 +860,13 @@ TEST(ConfigValidatorTest, DevicePath) {
   EXPECT_FALSE(
       ConfigValidator().isValidDevicePath(
           config, "/JUMPER_SLOT@0/SCM_SLOT@0/[IDPROM]"));
+  // Mux channel out of range
+  EXPECT_FALSE(ConfigValidator().isValidDevicePath(config, "/[MCB_MUX_A@2]"));
   // Case-5 Corrects
   EXPECT_TRUE(ConfigValidator().isValidDevicePath(config, "/[MCB_MUX_A]"));
+  // Mux channel buses
+  EXPECT_TRUE(ConfigValidator().isValidDevicePath(config, "/[MCB_MUX_A@0]"));
+  EXPECT_TRUE(ConfigValidator().isValidDevicePath(config, "/[MCB_MUX_A@1]"));
   EXPECT_TRUE(
       ConfigValidator().isValidDevicePath(config, "/JUMPER_SLOT@0/[NVME]"));
   EXPECT_TRUE(

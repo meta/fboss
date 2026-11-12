@@ -14,7 +14,7 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-python@v7
         with:
-          python-version: "3.9" # pre-commit-hooks requires Python 3.9+
+          python-version: ">=3.9 <4"
       - name: Show changed files
         run: >-
           git diff --name-only

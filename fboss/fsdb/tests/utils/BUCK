@@ -22,8 +22,8 @@ cpp_library(
         "//thrift/lib/cpp2/util:util",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/io/async:scoped_event_base_thread",
         "//fboss/fsdb/server:handler",
-        "//folly/io/async:scoped_event_base_thread",
     ],
 )
 
@@ -33,9 +33,9 @@ cpp_library(
         "FsdbTestSubscriber.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:synchronized",
         "//fboss/fsdb/client:fsdb_pub_sub",
         "//fboss/fsdb/if:fsdb_model",
-        "//folly:synchronized",
     ],
 )
 
@@ -46,9 +46,9 @@ cpp_benchmark(
     ],
     deps = [
         "fbsource//third-party/googletest:gtest",
+        "fbsource//xplat/folly:benchmark",
+        "fbsource//xplat/folly/init:init",
+        "fbsource//xplat/folly/json:dynamic",
         "//fboss/fsdb/common:utils",
-        "//folly:benchmark",
-        "//folly/init:init",
-        "//folly/json:dynamic",
     ],
 )

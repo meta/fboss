@@ -11,14 +11,14 @@ const darkCodeTheme = require('prism-react-renderer/themes/dracula');
 /** @type {import('@docusaurus/types').DocusaurusConfig} */
 (module.exports = {
   title: 'FBOSS Documentation', // TODO
-  tagline: 'https://github.com/facebook/fboss', // TODO
+  tagline: 'https://github.com/meta/fboss', // TODO
   url: 'https://internalfb.com',
   baseUrl: '/fboss/',
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'throw',
   trailingSlash: true,
   favicon: 'img/favicon.ico',
-  organizationName: 'facebook',
+  organizationName: 'meta',
   projectName: 'fboss', // TODO
   deploymentBranch: 'main',
   customFields: {
@@ -76,7 +76,7 @@ const darkCodeTheme = require('prism-react-renderer/themes/dracula');
           {label: 'Test Results', position: 'left', docId: 'test_results/test_results', type: 'doc'},
           {label: 'Changelog', to: '/changelog', position: 'left'},
           {
-            href: 'https://github.com/facebook/fboss',
+            href: 'https://github.com/meta/fboss',
             label: 'GitHub',
             position: 'right',
           },

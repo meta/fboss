@@ -31,7 +31,7 @@ cpp_library(
         "Common.h",
     ],
     exported_deps = [
-        "//folly:conv",
+        "fbsource//xplat/folly:conv",
     ],
 )
 
@@ -59,17 +59,17 @@ cpp_library(
     exported_deps = [
         "fbsource//third-party/glog:glog",
         "fbsource//third-party/re2:re2",
+        "fbsource//xplat/folly:conv",
+        "fbsource//xplat/folly:scope_guard",
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly:traits",
+        "fbsource//xplat/folly/logging:logging",
         ":common",
         ":results-cpp2-types",
         "//fboss/fsdb/if:fsdb_oper-cpp2-types",
         "//fboss/thrift_cow:patch-cpp2-types",
         "//fboss/thrift_cow/nodes:node_utils",
         "//fboss/thrift_cow/nodes:serializer",
-        "//folly:conv",
-        "//folly:scope_guard",
-        "//folly:string",
-        "//folly:traits",
-        "//folly/logging:logging",
         "//thrift/lib/cpp/util:enum_utils",
         "//thrift/lib/cpp2:thrift-core",
         "//thrift/lib/cpp2:type_class",

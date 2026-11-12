@@ -10,6 +10,8 @@
 
 #pragma once
 
+#include <filesystem>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <string>
@@ -35,6 +37,10 @@ struct CheckEnvironment {
   // Set if the switch is treated as having no BMC, so checks of the x86 side
   // of the management plane are skipped too.
   std::optional<std::string> noBmcReason;
+  // Local directory with prebuilt hw test binaries and OpenBMC tests2/.
+  std::optional<std::filesystem::path> hwTestsDir;
+  // Platform name for the OpenBMC CIT runner, e.g. "montblanc".
+  std::string bmcPlatform;
 };
 
 struct ConnectOptions {
@@ -44,6 +50,11 @@ struct ConnectOptions {
   // when diagnosing the local machine.
   std::optional<std::string> bmcHostname;
   bool noBmc{false};
+  // Called with a prompt when a host rejects key login but accepts a
+  // password; returns the password, or nullopt if none can be entered. Unset
+  // means key login only.
+  std::function<std::optional<std::string>(const std::string& prompt)>
+      askPassword;
   platform_checks::RemoteHost::Transport transport{
       platform_checks::RemoteHost::Transport::SSH};
 };

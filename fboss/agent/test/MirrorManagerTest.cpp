@@ -12,6 +12,7 @@
 #include "fboss/agent/HwSwitchMatcher.h"
 #include "fboss/agent/SwSwitchRouteUpdateWrapper.h"
 #include "fboss/agent/SwitchIdScopeResolver.h"
+#include "fboss/agent/gen-cpp2/switch_config_constants.h"
 #include "fboss/agent/state/Interface.h"
 #include "fboss/agent/state/SwitchState.h"
 #include "fboss/agent/test/HwTestHandle.h"
@@ -1335,4 +1336,143 @@ TYPED_TEST(MirrorManagerTest, UpdateRoute) {
     EXPECT_EQ(egressPort, params.neighborPorts[0]);
   });
 }
+// Port 6 is on switch 0, port 7 on switch 1.
+constexpr int64_t kNpu0PortIdMax = 6;
+
+template <typename IpAddrT>
+class MirrorManagerMultiNpuTest : public MirrorManagerTest<IpAddrT> {
+ public:
+  using AddrT = typename IpAddrT::IPAddrT;
+
+  void SetUp() override {
+    // Two switches need MULTI_SWITCH run mode.
+    savedMultiSwitch_ = FLAGS_multi_switch;
+    FLAGS_multi_switch = true;
+
+    cfg::AgentConfig agentConfig;
+    agentConfig.sw() = testConfigA();
+    agentConfig.sw()->switchSettings()->switchIdToSwitchInfo() = {
+        {0,
+         createSwitchInfo(
+             cfg::SwitchType::NPU,
+             cfg::AsicType::ASIC_TYPE_MOCK,
+             cfg::switch_config_constants::DEFAULT_PORT_ID_RANGE_MIN(),
+             kNpu0PortIdMax,
+             0 /* switchIndex */)},
+        {1,
+         createSwitchInfo(
+             cfg::SwitchType::NPU,
+             cfg::AsicType::ASIC_TYPE_MOCK,
+             kNpu0PortIdMax + 1,
+             cfg::switch_config_constants::DEFAULT_PORT_ID_RANGE_MAX(),
+             1 /* switchIndex */)},
+    };
+    this->handle_ = createTestHandle(&agentConfig.sw().value());
+    this->sw_ = this->handle_->getSw();
+    this->sw_->setConfig(std::make_unique<AgentConfig>(std::move(agentConfig)));
+    waitForStateUpdates(this->sw_);
+  }
+
+  void TearDown() override {
+    MirrorManagerTest<IpAddrT>::TearDown();
+    // Stop here; ~SwSwitch has no HwSwitch for the second switch.
+    this->sw_->stop(false, false);
+    FLAGS_multi_switch = savedMultiSwitch_;
+  }
+
+ protected:
+  const MirrorManagerTestParams<AddrT> params_ = getParams<AddrT>();
+
+  static HwSwitchMatcher npu(int switchId) {
+    return HwSwitchMatcher(std::unordered_set<SwitchID>({SwitchID(switchId)}));
+  }
+
+  // Tunnel mirror on both NPUs, plus a route with one nexthop per NPU.
+  void addTunnelMirrorToBothNpus() {
+    this->updateState(
+        "addTunnelMirrorToBothNpus",
+        [this](const std::shared_ptr<SwitchState>& state) {
+          auto newState = state->clone();
+          auto mirrors = newState->getMirrors()->modify(&newState);
+          for (int switchId : {0, 1}) {
+            auto mirror = std::make_shared<Mirror>(
+                kMirrorName,
+                std::optional<PortDescriptor>(),
+                std::make_optional<IPAddress>(params_.mirrorDestination));
+            mirror->setSwitchId(SwitchID(switchId));
+            mirrors->addNode(mirror, npu(switchId));
+          }
+          return newState;
+        });
+    this->addRoute(
+        params_.shorterPrefix, {params_.nextHop(0), params_.nextHop(1)});
+  }
+
+  void addNeighbor(int index) {
+    this->updateState(
+        "addNeighbor",
+        [this, index](const std::shared_ptr<SwitchState>& state) {
+          return this->addNeighborToIntfTable(
+              state,
+              params_.interfaces[index],
+              params_.neighborIPs[index],
+              params_.neighborMACs[index],
+              params_.neighborPorts[index]);
+        });
+  }
+
+  // Must run on the update thread, inside verifyStateUpdate().
+  void expectNpuMirror(int switchId, std::optional<int> resolvedNeighborIndex) {
+    auto mirrorMap =
+        this->sw_->getState()->getMirrors()->getMapNodeIf(npu(switchId));
+    ASSERT_NE(mirrorMap, nullptr) << "switch " << switchId;
+    auto mirror = mirrorMap->getNodeIf(kMirrorName);
+    ASSERT_NE(mirror, nullptr) << "switch " << switchId;
+    if (!resolvedNeighborIndex.has_value()) {
+      EXPECT_FALSE(mirror->isResolved()) << "switch " << switchId;
+      return;
+    }
+    EXPECT_TRUE(mirror->isResolved()) << "switch " << switchId;
+    ASSERT_TRUE(mirror->getEgressPortDesc().has_value())
+        << "switch " << switchId;
+    EXPECT_EQ(
+        mirror->getEgressPortDesc()->phyPortID(),
+        params_.neighborPorts[*resolvedNeighborIndex])
+        << "switch " << switchId;
+    ASSERT_TRUE(mirror->getMirrorTunnel().has_value()) << "switch " << switchId;
+    EXPECT_EQ(
+        mirror->getMirrorTunnel()->dstMac,
+        params_.neighborMACs[*resolvedNeighborIndex])
+        << "switch " << switchId;
+  }
+
+ private:
+  bool savedMultiSwitch_{false};
+};
+
+TYPED_TEST_SUITE(MirrorManagerMultiNpuTest, TestTypes);
+
+// Each NPU resolves to an egress port it owns.
+TYPED_TEST(MirrorManagerMultiNpuTest, EachNpuResolvesItsOwnEgressPort) {
+  this->addTunnelMirrorToBothNpus();
+  this->addNeighbor(0);
+  this->addNeighbor(1);
+
+  this->verifyStateUpdate([this]() {
+    this->expectNpuMirror(0, 0);
+    this->expectNpuMirror(1, 1);
+  });
+}
+
+// No local nexthop: switch 0's copy stays unresolved.
+TYPED_TEST(MirrorManagerMultiNpuTest, NpuStaysUnresolvedWithoutLocalNexthop) {
+  this->addTunnelMirrorToBothNpus();
+  this->addNeighbor(1);
+
+  this->verifyStateUpdate([this]() {
+    this->expectNpuMirror(0, std::nullopt);
+    this->expectNpuMirror(1, 1);
+  });
+}
+
 } // namespace facebook::fboss

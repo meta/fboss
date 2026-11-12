@@ -14,7 +14,13 @@
 namespace facebook::fboss {
 
 /*
- * TODO - make HwWriteBehavior granularity be per swtich
+ * The write behavior is thread-local: each thread observes only the
+ * behavior installed by RAII scopes on that same thread. This matters
+ * because processes like qsfp_service init multiple switches (one per
+ * xphy) concurrently on different threads; a process-global flag lets one
+ * switch's FAIL window trip another switch's legitimate SAI calls (e.g.
+ * the mandatory warmboot switch-reclaim create). Threads that never
+ * install a scope observe the process-wide default (WRITE).
  */
 HwWriteBehavior getHwWriteBehavior();
 

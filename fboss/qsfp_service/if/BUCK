@@ -1,6 +1,15 @@
+load("@fbcode_macros//build_defs:export_files.bzl", "export_file")
 load("@fbcode_macros//build_defs:thrift_library.bzl", "thrift_library")
 
 oncall("fboss_optics_phy")
+
+export_file(name = "qsfp_service_config.thrift")
+
+export_file(name = "qsfp_state.thrift")
+
+export_file(name = "qsfp_stats.thrift")
+
+export_file(name = "transceiver.thrift")
 
 thrift_library(
     name = "qsfp",
