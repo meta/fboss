@@ -130,6 +130,13 @@ class AgentDropReasonTest : public AgentDropTestBase {
     };
     auto verify = [&]() {
       for (const auto scenario : scenarios) {
+        if (scenario == DropScenario::MacSaMulticast ||
+            scenario == DropScenario::InvalidEtherType) {
+          // Keep setup compatible with older binaries during round-trip tests.
+          ASSERT_NO_FATAL_FAILURE(setupRouteToEgressPort());
+        }
+        // Capture pending startup drops as well as traffic from the last phase.
+        installLogCapture();
         // Reset between phases as well as across warm boots, so the previous
         // packet's drop cannot satisfy the next scenario's assertion.
         ASSERT_NO_FATAL_FAILURE(reporting.prepareDropObservation());

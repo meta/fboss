@@ -209,12 +209,15 @@ void AgentDropTestBase::sendMulticastSmacPacket() {
   auto intfMac = getMacForFirstInterfaceWithPorts(getProgrammedState());
   XLOG(DBG2) << "Drop test: sending eth packet with multicast srcMac="
              << kMulticastSmac;
-  auto pkt = utility::makeEthTxPacket(
+  auto pkt = utility::makeUDPTxPacket(
       getSw(),
       getVlanIDForTx(),
       kMulticastSmac,
       intfMac,
-      ETHERTYPE::ETHERTYPE_IPV4);
+      folly::IPAddressV6("1001::1"),
+      kRoutedDstIp(),
+      10000,
+      10001);
   getSw()->sendPacketOutOfPortAsync(
       std::move(pkt), PortID(masterLogicalInterfaceOrHyperPortIds()[0]));
 }
@@ -224,12 +227,21 @@ void AgentDropTestBase::sendOutOfRangeEtherTypePacket() {
   auto intfMac = getMacForFirstInterfaceWithPorts(getProgrammedState());
   XLOG(DBG2) << "Drop test: sending eth packet with out-of-range ethertype 0x"
              << std::hex << kOutOfRangeEtherType;
-  auto pkt = utility::makeEthTxPacket(
+  auto pkt = utility::makeUDPTxPacket(
       getSw(),
       getVlanIDForTx(),
       kSrcMac,
       intfMac,
-      static_cast<ETHERTYPE>(kOutOfRangeEtherType));
+      folly::IPAddressV6("1001::1"),
+      kRoutedDstIp(),
+      10000,
+      10001);
+  folly::io::Cursor cursor(pkt->buf());
+  EthHdr ethHdr(cursor);
+  folly::io::RWPrivateCursor rwCursor(pkt->buf());
+  // Keep the packet body valid so a header error cannot mask EtherType checks.
+  rwCursor.skip(ethHdr.size() - sizeof(uint16_t));
+  rwCursor.writeBE<uint16_t>(kOutOfRangeEtherType);
   getSw()->sendPacketOutOfPortAsync(
       std::move(pkt), PortID(masterLogicalInterfaceOrHyperPortIds()[0]));
 }
