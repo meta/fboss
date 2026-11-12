@@ -40,6 +40,7 @@ cpp_binary(
         "ConfigHostnameTest.cpp",
         "ConfigIcmpV4UnavailableSrcAddrTest.cpp",
         "ConfigInterfaceDescriptionTest.cpp",
+        "ConfigInterfaceDhcpRelayTest.cpp",
         "ConfigInterfaceFlowControlTest.cpp",
         "ConfigInterfaceIpv6NdpTest.cpp",
         "ConfigInterfaceLldpExpectedValueTest.cpp",

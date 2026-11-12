@@ -1241,6 +1241,10 @@ add_library(fboss2_config_lib
   fboss/cli/fboss2/commands/config/interface/CmdConfigInterface.h
   fboss/cli/fboss2/commands/config/interface/InterfaceAttrArgsBase.h
   fboss/cli/fboss2/commands/config/interface/InterfaceIpUtils.h
+  fboss/cli/fboss2/commands/config/interface/dhcp/CmdConfigInterfaceDhcp.cpp
+  fboss/cli/fboss2/commands/config/interface/dhcp/CmdConfigInterfaceDhcp.h
+  fboss/cli/fboss2/commands/config/interface/dhcp/relay/CmdConfigInterfaceDhcpRelay.cpp
+  fboss/cli/fboss2/commands/config/interface/dhcp/relay/CmdConfigInterfaceDhcpRelay.h
   fboss/cli/fboss2/commands/config/interface/ipv6/CmdConfigInterfaceIpv6.cpp
   fboss/cli/fboss2/commands/config/interface/ipv6/CmdConfigInterfaceIpv6.h
   fboss/cli/fboss2/commands/config/interface/ipv6/ndp/CmdConfigInterfaceIpv6Ndp.cpp
@@ -1426,6 +1430,10 @@ add_library(fboss2_config_lib
   fboss/cli/fboss2/commands/delete/dhcp/reply_source_override/CmdDeleteDhcpReplySourceOverride.h
   fboss/cli/fboss2/commands/delete/interface/CmdDeleteInterface.cpp
   fboss/cli/fboss2/commands/delete/interface/CmdDeleteInterface.h
+  fboss/cli/fboss2/commands/delete/interface/dhcp/CmdDeleteInterfaceDhcp.cpp
+  fboss/cli/fboss2/commands/delete/interface/dhcp/CmdDeleteInterfaceDhcp.h
+  fboss/cli/fboss2/commands/delete/interface/dhcp/relay/CmdDeleteInterfaceDhcpRelay.cpp
+  fboss/cli/fboss2/commands/delete/interface/dhcp/relay/CmdDeleteInterfaceDhcpRelay.h
   fboss/cli/fboss2/commands/delete/interface/ipv6/CmdDeleteInterfaceIpv6.cpp
   fboss/cli/fboss2/commands/delete/interface/ipv6/CmdDeleteInterfaceIpv6.h
   fboss/cli/fboss2/commands/delete/interface/ipv6/ndp/CmdDeleteInterfaceIpv6Ndp.cpp
