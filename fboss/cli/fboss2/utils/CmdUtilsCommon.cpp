@@ -232,17 +232,47 @@ const std::string parseTimeToTimeStamp(const long& timeToParse) {
       formattedTime.substr(index + 1)); // timezone
 }
 
-std::string getUserInfo() {
-  std::vector<std::string> userInfo;
-  auto fbidStr = getenv("FB_UID");
-  if (fbidStr && strcmp(fbidStr, "") != 0) {
-    userInfo.emplace_back(fbidStr);
+namespace {
+// Every value is quoted; backslash, quote, and line breaks are escaped so a
+// hostile argument cannot forge fields or split the record across lines.
+// Anything else passes through byte-identical (multi-byte UTF-8 has no ASCII
+// bytes to match, so it is preserved).
+std::string escapeUsageValue(const std::string& value) {
+  std::string out;
+  out.reserve(value.size() + 2);
+  out.push_back('"');
+  for (char c : value) {
+    switch (c) {
+      case '\\':
+        out += "\\\\";
+        break;
+      case '"':
+        out += "\\\"";
+        break;
+      case '\n':
+        out += "\\n";
+        break;
+      case '\r':
+        out += "\\r";
+        break;
+      default:
+        out.push_back(c);
+        break;
+    }
   }
-  auto envuser = getenv("USER");
-  if (envuser && strcmp(envuser, "") != 0) {
-    userInfo.emplace_back(envuser);
-  }
-  return folly::join<std::string, std::vector<std::string>>(" | ", userInfo);
+  out.push_back('"');
+  return out;
+}
+} // namespace
+
+std::string formatUsageLine(const CmdLogInfo& cmdLogInfo) {
+  return fmt::format(
+      "user={} cmd={} args={} status={} duration={}",
+      escapeUsageValue(cmdLogInfo.UserInfo),
+      escapeUsageValue(cmdLogInfo.CmdName),
+      escapeUsageValue(cmdLogInfo.Arguments),
+      escapeUsageValue(cmdLogInfo.ExitStatus),
+      escapeUsageValue(cmdLogInfo.Duration));
 }
 
 std::string getUnixname() {

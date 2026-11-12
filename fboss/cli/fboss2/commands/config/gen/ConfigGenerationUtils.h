@@ -35,6 +35,7 @@ struct ConfigGenerationRequest {
   std::optional<std::string> variant;
   std::optional<std::string> asicConfigVariant;
   std::optional<std::string> linkTopologyVariant;
+  std::optional<std::string> platformMappingVariant;
   ServiceType service;
   std::string serviceName;
   std::filesystem::path platformDirectory;

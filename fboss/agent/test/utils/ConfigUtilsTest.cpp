@@ -103,14 +103,20 @@ TEST(AddVrfForPorts, MovesInterfacesOfPorts) {
   portIntf.portID() = 4;
   portIntf.type() = cfg::InterfaceType::PORT;
 
-  addVrfForPorts(config, RouterID(1001), {PortID(1), PortID(4)});
+  auto interfaceVrfs =
+      addVrfForPorts(config, RouterID(1001), {PortID(1), PortID(4)});
+  EXPECT_EQ(
+      interfaceVrfs,
+      (std::map<InterfaceID, RouterID>{
+          {InterfaceID(101), RouterID(1001)},
+          {InterfaceID(4), RouterID(1001)}}));
   addVrfForPorts(config, RouterID(1001), {PortID(2)});
 
   ASSERT_EQ(config.vrfs()->size(), 1);
   EXPECT_EQ(*config.vrfs()->at(0).vrfId(), 1001);
   std::vector<int32_t> routerIds;
   for (const auto& intf : *config.interfaces()) {
-    routerIds.push_back(*intf.routerID());
+    routerIds.push_back(intf.routerID().value_or(0));
   }
   EXPECT_EQ(routerIds, (std::vector<int32_t>{1001, 1001, 0, 1001}));
 }

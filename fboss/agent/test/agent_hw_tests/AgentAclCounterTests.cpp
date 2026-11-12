@@ -166,7 +166,7 @@ class AgentAclCounterTest : public AgentHwTest {
     return aclName;
   }
 
-  std::string getCounterName(AclType aclType) const {
+  virtual std::string getCounterName(AclType aclType) const {
     std::string counterName{};
     switch (aclType) {
       case AclType::SRC_PORT:
@@ -654,6 +654,22 @@ class AgentL4DstPortAclCounterTest : public AgentAclCounterTest {
           ProductionFeature::MULTI_ACL_TABLE,
           ProductionFeature::L4_DST_PORT_ACL};
     }
+  }
+};
+
+class AgentAclCounterExtendedLabelTest : public AgentAclCounterTest {
+ public:
+  std::vector<ProductionFeature> getProductionFeaturesVerified()
+      const override {
+    auto features = AgentAclCounterTest::getProductionFeaturesVerified();
+    features.push_back(ProductionFeature::ACL_COUNTERS_EXTENDED_LABEL);
+    return features;
+  }
+
+ protected:
+  std::string getCounterName(AclType aclType) const override {
+    return AgentAclCounterTest::getCounterName(aclType) +
+        "-with-an-extended-label";
   }
 };
 
@@ -1832,6 +1848,13 @@ TEST_F(AgentPortUserMetaDenyControlPlaneTest, DenyCancelsControlPlanePunt) {
 
 // Verify that traffic arrive on a front panel port increments ACL counter.
 TEST_F(AgentAclCounterTest, VerifyCounterBumpOnTtlHit) {
+  this->counterBumpOnHitHelper(
+      true /* bump on hit */,
+      true /* front panel port */,
+      {AclType::TCP_TTLD, AclType::UDP_TTLD});
+}
+
+TEST_F(AgentAclCounterExtendedLabelTest, VerifyCounterBumpOnTtlHit) {
   this->counterBumpOnHitHelper(
       true /* bump on hit */,
       true /* front panel port */,

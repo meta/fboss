@@ -28,6 +28,7 @@
 #include "fboss/agent/state/Route.h"
 #include "fboss/agent/state/RouteNextHop.h"
 #include "fboss/agent/state/Srv6Tunnel.h"
+#include "fboss/agent/state/Vrf.h"
 #include "fboss/agent/state/VxlanTunnel.h"
 #include "fboss/agent/test/utils/NextHopIdTestUtils.h"
 #include "fboss/agent/types.h"
@@ -248,6 +249,34 @@ TEST_F(RouteManagerTest, addRoute) {
   auto r = makeRoute(tr1);
   saiManagerTable->routeManager().addRoute<folly::IPAddressV4>(
       r, RouterID(0), getProgrammedState());
+}
+
+// An interface of an ECMP route moves to another VRF. The route keeps its
+// next hop on the other interface, so it changes instead of being removed.
+// SaiSwitch removes neighbors, then changes router interfaces, then changes
+// routes. Removing the neighbor removes its next hop, so the old router
+// interface is no longer in use when it is recreated.
+TEST_F(RouteManagerTest, moveInterfaceOfEcmpRouteToVrf) {
+  TestRoute ecmpRoute{d1, {testInterfaces.at(0), testInterfaces.at(1)}};
+  auto oldRoute = makeRoute(ecmpRoute);
+  programRoute(oldRoute);
+  saiManagerTable->virtualRouterManager().addVrf(
+      std::make_shared<Vrf>(RouterID(1001)));
+
+  for (const auto& remoteHost : testInterfaces.at(0).remoteHosts) {
+    saiManagerTable->neighborManager().removeNeighbor(
+        makeArpEntry(testInterfaces.at(0).id, remoteHost));
+  }
+  auto movedInterface = testInterfaces.at(0);
+  movedInterface.routerId = RouterID(1001);
+  EXPECT_NO_THROW(
+      saiManagerTable->routerInterfaceManager().changeLocalRouterInterface(
+          makeInterface(testInterfaces.at(0)), makeInterface(movedInterface)));
+
+  auto newRoute = makeRoute(TestRoute{d1, {testInterfaces.at(1)}});
+  EXPECT_NO_THROW(
+      saiManagerTable->routeManager().changeRoute<folly::IPAddressV4>(
+          oldRoute, newRoute, RouterID(0), getProgrammedState()));
 }
 
 TEST_F(RouteManagerTest, addRouteSameNextHops) {

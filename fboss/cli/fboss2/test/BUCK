@@ -98,6 +98,7 @@ cpp_unittest(
         "CmdHelpTest.cpp",
         "CmdReadWriteModeTest.cpp",
         "CmdSubCommandsTest.cpp",
+        "CmdUtilsTest.cpp",
         "FilterTest.cpp",
         "FilterValidationTest.cpp",
         "//fboss/cli/fboss2:cmd-list-config-impl",
@@ -109,6 +110,7 @@ cpp_unittest(
         ":cmd_test_utils",
         "//fboss/cli/fboss2:cli-cpp2-types",
         "//fboss/cli/fboss2:cli-parser-utils",
+        "//fboss/cli/fboss2:cmd-common-utils",
         "//fboss/cli/fboss2:cmd-global-options",
         "//fboss/cli/fboss2:cmd-handler",
         "//fboss/cli/fboss2:cmd-list-header",
@@ -126,6 +128,7 @@ cpp_unittest(
     name = "cmd_test",
     srcs = [
         "CanonicalRibResolverTest.cpp",
+        "CmdClearArpNdpTest.cpp",
         "CmdConfigSessionClearTest.cpp",
         "CmdGetPcapTest.cpp",
         "CmdListConfigTest.cpp",

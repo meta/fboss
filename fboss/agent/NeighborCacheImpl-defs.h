@@ -280,6 +280,12 @@ bool NeighborCacheImpl<NTable>::programPendingEntry(
     Entry* entry,
     PortDescriptor port,
     bool force) {
+  if (port.isPhysicalPort() && port.phyPortID() == PortID(0)) {
+    // If the entry is pointing to the CPU port, it is not programmed in the
+    // hardware, thus no-op.
+    return true;
+  }
+
   SwSwitch::StateUpdateFn updateFn;
 
   auto switchType = sw_->getSwitchInfoTable().l3SwitchType();
@@ -331,12 +337,6 @@ NeighborCacheImpl<NTable>::getUpdateFnToProgramPendingEntry(
   auto updateFn = [this, fields, port, force, switchType](
                       const std::shared_ptr<SwitchState>& state)
       -> std::shared_ptr<SwitchState> {
-    if (port.isPhysicalPort() && port.phyPortID() == PortID(0)) {
-      // If the entry is pointing to the CPU port, it is not programmed in the
-      // hardware, thus no-op.
-      return nullptr;
-    }
-
     if (!ncachehelpers::checkVlanAndIntf<NTable>(
             state, fields, std::nullopt /* vlanID */)) {
       // intf is no longer valid.
@@ -581,14 +581,14 @@ NeighborCacheEntry<NTable>* NeighborCacheImpl<NTable>::addOrUpdateEntryInternal(
 }
 
 template <typename NTable>
-void NeighborCacheImpl<NTable>::setPendingEntry(
+bool NeighborCacheImpl<NTable>::setPendingEntry(
     AddressType ip,
     PortDescriptor port,
     bool force) {
   if (!force && getCacheEntry(ip)) {
     // only overwrite an existing entry with a pending entry if we say it is
     // ok with the 'force' parameter
-    return;
+    return false;
   }
   auto entry = addOrUpdateEntryInternal(
       EntryFields(ip, intfID_, NeighborState::PENDING),
@@ -598,7 +598,9 @@ void NeighborCacheImpl<NTable>::setPendingEntry(
   if (entry && !programPendingEntry(entry, port, force)) {
     XLOG(ERR) << "Failed to program pending entry: " << ip.str();
     removeEntry(ip);
+    return false;
   }
+  return entry != nullptr;
 }
 
 template <typename NTable>

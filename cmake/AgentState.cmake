@@ -70,6 +70,8 @@ add_library(state
   fboss/agent/state/Interface.cpp
   fboss/agent/state/InterfaceMap.cpp
   fboss/agent/state/InterfaceMapDelta.cpp
+  fboss/agent/state/InterfaceVrf.cpp
+  fboss/agent/state/InterfaceVrfMap.cpp
   fboss/agent/state/IpTunnel.cpp
   fboss/agent/state/IsolationGroup.cpp
   fboss/agent/state/IsolationGroupMap.cpp

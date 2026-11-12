@@ -213,7 +213,8 @@
         102,
         104,
         112,
-        113
+        113,
+        128
     ],
     "jericho3": [
         2,
@@ -669,7 +670,8 @@
         123,
         143,
         133,
-        139
+        139,
+        146
     ],
     "tomahawk6": [
         2,
@@ -747,7 +749,8 @@
         133,
         106,
         107,
-        139
+        139,
+        146
     ],
     "tomahawkultra1": [
         2,
@@ -860,10 +863,12 @@
         33,
         112,
         113,
+        128,
         49,
         111,
         134,
-        139
+        139,
+        146
     ]
   },
   "asicToFeatureNames": {
@@ -1080,7 +1085,8 @@
         "SRV6_DECAP",
         "SRV6_MIDPOINT",
         "PORT_DEBOUNCE",
-        "SRV6_BINDING_SID"
+        "SRV6_BINDING_SID",
+        "MYSID_ADJACENCY_FRR"
     ],
     "jericho3": [
         "CPU_RX_TX",
@@ -1536,7 +1542,8 @@
         "DROP_REASON_LIST_SUPPORT",
         "DROP_REASON_REPORTING",
         "MY_MAC",
-        "MULTI_VRF"
+        "MULTI_VRF",
+        "ACL_COUNTERS_EXTENDED_LABEL"
     ],
     "tomahawk6": [
         "CPU_RX_TX",
@@ -1614,7 +1621,8 @@
         "MY_MAC",
         "MPLS_HEADEND",
         "MPLS_MIDPOINT",
-        "MULTI_VRF"
+        "MULTI_VRF",
+        "ACL_COUNTERS_EXTENDED_LABEL"
     ],
     "tomahawkultra1": [
         "CPU_RX_TX",
@@ -1727,10 +1735,12 @@
         "INTERFACE_NEIGHBOR_TABLE",
         "PORT_DEBOUNCE",
         "SRV6_BINDING_SID",
+        "MYSID_ADJACENCY_FRR",
         "MIRROR_ON_DROP",
         "MIRROR_ON_DROP_STATELESS",
         "MIRROR_ON_DROP_AGGREGATE_RATE_LIMIT",
-        "MULTI_VRF"
+        "MULTI_VRF",
+        "ACL_COUNTERS_EXTENDED_LABEL"
     ]
   },
   "featureSupportSpecs": [
@@ -2243,7 +2253,7 @@
             "chenab2"
           ],
           "sdk": 3,
-          "minSdkVersion": "2511.36"
+          "minSdkVersion": "2605.38"
         }
       ]
     },
@@ -2371,6 +2381,28 @@
           "sdk": 1,
           "minSdkVersion": "12.0.0.0_dnx_odp",
           "note": "DNX mirror-on-drop is supported from 12.x onwards"
+        }
+      ]
+    },
+    {
+      "feature": 146,
+      "supportedFrom": [
+        {
+          "asics": [
+            "yuba"
+          ],
+          "sdk": 2,
+          "minSdkVersion": "26.5.4210",
+          "note": "ACL counter labels over 31 characters use SAI_ACL_COUNTER_ATTR_EXT_LABEL_EXTENDED from Leaba 26.5.4210"
+        },
+        {
+          "asics": [
+            "tomahawk5",
+            "tomahawk6"
+          ],
+          "sdk": 1,
+          "minSdkVersion": "16.0_ea_odp",
+          "note": "ACL counter labels over 31 characters use SAI_ACL_COUNTER_ATTR_LABEL_WIDE from brcm-sai 16.0"
         }
       ]
     }

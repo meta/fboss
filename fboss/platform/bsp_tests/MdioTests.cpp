@@ -4,6 +4,7 @@
 #include <vector>
 
 #include <fmt/format.h>
+#include <folly/String.h>
 #include <folly/logging/xlog.h>
 #include <gtest/gtest.h>
 

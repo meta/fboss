@@ -1,4 +1,6 @@
 #include <fcntl.h>
+
+#include <folly/String.h>
 #include <unistd.h>
 #include <cerrno>
 

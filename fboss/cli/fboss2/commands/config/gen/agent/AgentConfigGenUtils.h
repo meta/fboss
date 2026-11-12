@@ -70,7 +70,7 @@ std::filesystem::path findGeneratedAsicConfig(
     std::string_view asicConfigVariant);
 
 // Resolves the generated port-assignment artifact selected with the platform
-// descriptor. Colocated and legacy centralized layouts are both supported.
+// descriptor.
 std::filesystem::path findPortIdToPortAssignmentConfig(
     const std::filesystem::path& fbossRoot,
     std::string_view platform);
@@ -82,7 +82,8 @@ std::filesystem::path findPortIdToPortAssignmentConfig(
 std::pair<std::filesystem::path, PlatformDescriptor>
 findPlatformDescriptorConfigWithDescriptor(
     const std::filesystem::path& fbossRoot,
-    std::string_view platform);
+    std::string_view platform,
+    std::optional<std::string_view> platformMappingVariant = std::nullopt);
 
 // Resolves and loads one coherent set of inputs for agent config generation.
 // The profile must use a canonical config-generation profile name. Raw mapping
@@ -95,7 +96,8 @@ ResolvedAgentConfigInputs resolveAgentConfigInputs(
     const std::optional<std::filesystem::path>& asicConfigFile = std::nullopt,
     const std::optional<cfg::AsicConfigType>& asicConfigType = std::nullopt,
     std::optional<std::string_view> asicConfigVariant = std::nullopt,
-    std::optional<std::string_view> linkTopologyVariant = std::nullopt);
+    std::optional<std::string_view> linkTopologyVariant = std::nullopt,
+    std::optional<std::string_view> platformMappingVariant = std::nullopt);
 
 // Generates SwitchSettings for a single NPU platform. Multi-ASIC platforms are
 // rejected until their switch IDs and indexes can be supplied explicitly.
@@ -131,7 +133,8 @@ std::filesystem::path generateAgentConfig(
     const std::optional<std::filesystem::path>& outputDirectory = std::nullopt,
     const std::optional<std::filesystem::path>& asicConfigFile = std::nullopt,
     const std::optional<cfg::AsicConfigType>& asicConfigType = std::nullopt,
-    std::optional<std::string_view> asicConfigVariant = std::nullopt);
+    std::optional<std::string_view> asicConfigVariant = std::nullopt,
+    std::optional<std::string_view> platformMappingVariant = std::nullopt);
 
 // Produces serialized Agent config contents for a generic declaration request.
 std::string generateAgentConfigForManifest(

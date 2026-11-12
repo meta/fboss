@@ -37,6 +37,7 @@
 #include "fboss/cli/fboss2/commands/config/load_balancing/CmdConfigLoadBalancing.h"
 #include "fboss/cli/fboss2/commands/config/mac/CmdConfigMac.h"
 #include "fboss/cli/fboss2/commands/config/mac/aging_time/CmdConfigMacAgingTime.h"
+#include "fboss/cli/fboss2/commands/config/mirror/CmdConfigMirror.h"
 #include "fboss/cli/fboss2/commands/config/protocol/CmdConfigProtocol.h"
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/CmdConfigProtocolBgp.h"
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/global/CmdConfigProtocolBgpGlobal.h"
@@ -48,6 +49,7 @@
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/prefix-list/CmdConfigProtocolBgpPolicyPrefixList.h"
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/prefix-list/entry/CmdConfigProtocolBgpPolicyPrefixListEntry.h"
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/routing-policy/CmdConfigProtocolBgpPolicyRoutingPolicy.h"
+#include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/routing-policy/term/CmdConfigProtocolBgpPolicyRoutingPolicyTerm.h"
 #include "fboss/cli/fboss2/commands/config/protocol/static/CmdConfigProtocolStatic.h"
 #include "fboss/cli/fboss2/commands/config/protocol/static/route/add/CmdConfigProtocolStaticRouteAdd.h"
 #include "fboss/cli/fboss2/commands/config/ptp/CmdConfigPtp.h"
@@ -109,6 +111,7 @@
 #include "fboss/cli/fboss2/commands/delete/interface/pfc_config/CmdDeleteInterfacePfcConfig.h"
 #include "fboss/cli/fboss2/commands/delete/interface/sflow/CmdDeleteInterfaceSflow.h"
 #include "fboss/cli/fboss2/commands/delete/load_balancing/CmdDeleteLoadBalancing.h"
+#include "fboss/cli/fboss2/commands/delete/mirror/CmdDeleteMirror.h"
 #include "fboss/cli/fboss2/commands/delete/protocol/CmdDeleteProtocol.h"
 #include "fboss/cli/fboss2/commands/delete/protocol/bgp/CmdDeleteProtocolBgp.h"
 #include "fboss/cli/fboss2/commands/delete/protocol/bgp/neighbor/CmdDeleteProtocolBgpNeighbor.h"
@@ -118,6 +121,7 @@
 #include "fboss/cli/fboss2/commands/delete/protocol/bgp/policy/community-list/CmdDeleteProtocolBgpPolicyCommunityList.h"
 #include "fboss/cli/fboss2/commands/delete/protocol/bgp/policy/prefix-list/CmdDeleteProtocolBgpPolicyPrefixList.h"
 #include "fboss/cli/fboss2/commands/delete/protocol/bgp/policy/routing-policy/CmdDeleteProtocolBgpPolicyRoutingPolicy.h"
+#include "fboss/cli/fboss2/commands/delete/protocol/bgp/policy/routing-policy/term/CmdDeleteProtocolBgpPolicyRoutingPolicyTerm.h"
 #include "fboss/cli/fboss2/commands/delete/protocol/static/CmdDeleteProtocolStatic.h"
 #include "fboss/cli/fboss2/commands/delete/protocol/static/route/CmdDeleteProtocolStaticRoute.h"
 #include "fboss/cli/fboss2/commands/delete/qos/CmdDeleteQos.h"
@@ -485,6 +489,16 @@ const CommandTree& kConfigCommandTree() {
                                    CmdConfigProtocolBgpPolicyRoutingPolicy>,
                                argRegistrar<
                                    CmdConfigProtocolBgpPolicyRoutingPolicyTraits>,
+                               {{
+                                   "term",
+                                   "Configure a routing-policy term: "
+                                   "<seq-num> [<attribute> <value> ...] "
+                                   "(description)",
+                                   commandHandler<
+                                       CmdConfigProtocolBgpPolicyRoutingPolicyTerm>,
+                                   argRegistrar<
+                                       CmdConfigProtocolBgpPolicyRoutingPolicyTermTraits>,
+                               }},
                            }},
                       },
                   },
@@ -629,6 +643,12 @@ const CommandTree& kConfigCommandTree() {
        "Rollback to a previous config revision",
        commandHandler<CmdConfigRollback>,
        argRegistrar<CmdConfigRollbackTraits>},
+
+      {"config",
+       "mirror",
+       "Create or update a SPAN or sFlow mirror",
+       commandHandler<CmdConfigMirror>,
+       argRegistrar<CmdConfigMirrorTraits>},
 
       {
           "config",
@@ -884,6 +904,14 @@ const CommandTree& kConfigCommandTree() {
                              CmdDeleteProtocolBgpPolicyRoutingPolicy>,
                          argRegistrar<
                              CmdDeleteProtocolBgpPolicyRoutingPolicyTraits>,
+                         {{
+                             "term",
+                             "Delete a routing-policy term: <seq-num>",
+                             commandHandler<
+                                 CmdDeleteProtocolBgpPolicyRoutingPolicyTerm>,
+                             argRegistrar<
+                                 CmdDeleteProtocolBgpPolicyRoutingPolicyTermTraits>,
+                         }},
                      }},
                 }},
            },
@@ -1046,6 +1074,14 @@ const CommandTree& kConfigCommandTree() {
                commandHandler<CmdDeleteLoadBalancingLag>,
                argRegistrar<CmdDeleteLoadBalancingLagTraits>,
            }},
+      },
+
+      {
+          "delete",
+          "mirror",
+          "Delete an unreferenced mirror: <name>",
+          commandHandler<CmdDeleteMirror>,
+          argRegistrar<CmdDeleteMirrorTraits>,
       },
 
       {

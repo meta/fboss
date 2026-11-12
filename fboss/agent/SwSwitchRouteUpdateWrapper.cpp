@@ -26,8 +26,10 @@
 namespace facebook::fboss {
 
 RibToSwitchStateFunction createRibToSwitchStateFunction(
-    const std::optional<StateDeltaApplication>& deltaApplicationBehavior) {
-  return [deltaApplicationBehavior](
+    const std::optional<StateDeltaApplication>& deltaApplicationBehavior,
+    std::function<std::shared_ptr<SwitchState>(
+        const std::shared_ptr<SwitchState>&)> preFibUpdate) {
+  return [deltaApplicationBehavior, preFibUpdate = std::move(preFibUpdate)](
              const facebook::fboss::SwitchIdScopeResolver* resolver,
              const std::vector<RibVrfFib>& vrfFibs,
              const NextHopIDManager* nextHopIDManager,
@@ -42,8 +44,10 @@ RibToSwitchStateFunction createRibToSwitchStateFunction(
 
     sw->updateStateWithHwFailureProtection(
         "update fib",
-        [&wRibToSwitchStateUpdater](const std::shared_ptr<SwitchState>& in) {
-          return (*wRibToSwitchStateUpdater)(in);
+        [&wRibToSwitchStateUpdater,
+         &preFibUpdate](const std::shared_ptr<SwitchState>& in) {
+          return (*wRibToSwitchStateUpdater)(
+              preFibUpdate ? preFibUpdate(in) : in);
         },
         deltaApplicationBehavior);
 

@@ -54,7 +54,7 @@ cfg::SwitchConfig createVlanInterfaceConfig() {
   config.interfaces()->resize(1);
   *config.interfaces()[0].intfID() = INTERFACE_ID;
   *config.interfaces()[0].vlanID() = VLAN_ID;
-  *config.interfaces()[0].routerID() = 0;
+  config.interfaces()[0].routerID() = 0;
   config.interfaces()[0].type() = cfg::InterfaceType::VLAN;
   config.interfaces()[0].name() = "VlanInterface100";
   config.interfaces()[0].mtu() = 1500;

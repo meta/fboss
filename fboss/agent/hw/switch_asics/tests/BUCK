@@ -14,7 +14,7 @@ cpp_unittest(
     network_access = network_access_utils.none(),
     deps = [
         "//fboss/agent:agent_features",
-        "//fboss/agent:switch_config-cpp2-types",
+        "//fboss/agent:switch_config-cpp2-serialization",
         "//fboss/agent/hw/switch_asics:switch_asics",
     ],
 )

@@ -8,6 +8,7 @@
 #include "fboss/agent/SwitchIdScopeResolver.h"
 #include "fboss/agent/SwitchInfoTable.h"
 #include "fboss/agent/state/BufferPoolConfig.h"
+#include "fboss/agent/state/InterfaceVrf.h"
 #include "fboss/agent/state/MySid.h"
 #include "fboss/agent/state/MySidMap.h"
 #include "fboss/agent/state/PortFlowletConfig.h"
@@ -211,6 +212,19 @@ TYPED_TEST(SwitchIdScopeResolverTest, interfaceScope) {
     this->expectL3(intf, state);
     this->expectL3(intf, this->sw_->getConfig());
   }
+}
+
+TYPED_TEST(SwitchIdScopeResolverTest, interfaceVrfScope) {
+  if (this->isFabric()) {
+    return;
+  }
+  auto state = this->sw_->getState();
+  auto intf = state->getInterfaces()->getAllNodes()->cbegin()->second;
+  auto interfaceVrf =
+      std::make_shared<InterfaceVrf>(intf->getID(), RouterID(1001));
+  EXPECT_EQ(
+      this->scopeResolver().scope(interfaceVrf, state),
+      this->scopeResolver().scope(intf, state));
 }
 
 TYPED_TEST(SwitchIdScopeResolverTest, fibContainerScope) {

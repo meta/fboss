@@ -1755,6 +1755,58 @@ TEST_F(NdpTest, PendingNdp) {
   EXPECT_EQ(entry->isPending(), false);
 };
 
+TEST_F(NdpTest, DuplicatePuntsToPendingTargetSendOneSolicitation) {
+  auto handle = this->setupTestHandleWithPortRif();
+  auto sw = handle->getSw();
+  auto pkt = PktUtil::parseHexData(
+      // dst mac, src mac
+      "00 02 00 00 00 55  02 05 73 f9 46 fc"
+      // IPv6
+      "86 dd"
+      // Version 6, traffic class, flow label
+      "6e 00 00 00"
+      // Payload length: 8
+      "00 08"
+      // Next Header: 17 (UDP), Hop Limit (255)
+      "11 ff"
+      // src addr (2401:db00:2110:1234::1:0)
+      "24 01 db 00 21 10 12 34 00 00 00 00 00 01 00 00"
+      // dst addr (2401:db00:2110:3004::1:0)
+      "24 01 db 00 21 10 30 04 00 00 00 00 00 01 00 00"
+      // source port (53 - DNS)
+      "00 35"
+      // destination port (53 - DNS)
+      "00 35"
+      // length
+      "00 00"
+      // checksum (not valid)
+      "2a 7e");
+
+  CounterCache counters(sw);
+
+  EXPECT_OUT_OF_PORT_PKT(
+      sw,
+      "neighbor solicitation",
+      checkNeighborSolicitation(
+          MacAddress("00:02:00:00:00:55"),
+          MockPlatform::getLinkLocalIp6(MacAddress("00:02:00:00:00:55")),
+          MacAddress("33:33:ff:01:00:00"),
+          IPAddressV6("ff02::1:ff01:0"),
+          IPAddressV6("2401:db00:2110:3004::1:0"),
+          VlanID(1)),
+      PortID(1),
+      std::optional<uint8_t>(kNCStrictPriorityQueue));
+
+  for (int i = 0; i < 3; ++i) {
+    handle->rxPacket(
+        make_unique<IOBuf>(pkt), PortDescriptor(PortID(1)), std::nullopt);
+  }
+  waitForNeighborCacheThread(sw);
+
+  counters.update();
+  counters.checkDelta(SwitchStats::kCounterPrefix + "trapped.pkts.sum", 3);
+}
+
 // Note: With interface-based neighbor tables, pending entries are not in
 // SwitchState (they exist only in the internal neighbor cache). Therefore,
 // this test creates pending entries but must resolve them to REACHABLE state

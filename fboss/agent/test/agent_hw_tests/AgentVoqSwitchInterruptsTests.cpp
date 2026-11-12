@@ -64,7 +64,7 @@ class AgentVoqSwitchInterruptTest : public AgentHwTest {
       asicErrors.clear();
       for (const auto& [switchIdx, switchStats] :
            getSw()->getHwSwitchStatsExpensive()) {
-        if (voqIdxs.find(switchIdx) != voqIdxs.end()) {
+        if (voqIdxs.contains(switchIdx)) {
           asicErrors.insert({switchIdx, *switchStats.hwAsicErrors()});
         }
       }
@@ -153,7 +153,7 @@ class AgentVoqSwitchSdkDumpRateLimitTest : public AgentVoqSwitchInterruptTest {
     int64_t total = 0;
     for (const auto& [switchIdx, switchStats] :
          getSw()->getHwSwitchStatsExpensive()) {
-      if (voqIdxs.find(switchIdx) == voqIdxs.end()) {
+      if (!voqIdxs.contains(switchIdx)) {
         continue;
       }
       auto suppressed =

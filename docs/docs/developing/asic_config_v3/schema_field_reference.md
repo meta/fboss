@@ -70,7 +70,7 @@ following fields.
 | Parameter | Description |
 |---|---|
 | `config_type` | Output configuration format: `YAML_CONFIG` (XGS), `KEY_VALUE_CONFIG` (DNX), or `JSON_CONFIG`. |
-| `config_gen_type` | Generation profile, `DEFAULT` or `HW_TEST`. Conditional settings in both ASIC families may select on it. |
+| `config_gen_type` | Generation profile, e.g. `DEFAULT` or `HW_TEST`, matching the `AsicConfigGenType` enum. Conditional settings in both ASIC families may select on it. |
 | `exact_match` | XGS. Enables exact-match forwarding table entries. |
 | `mmu_lossless` | XGS. Enables MMU lossless mode for PFC and RDMA workloads. |
 | `port_config` | DNX. Port-map profile name, for example `default` or `18*400G-4`. Conditional settings select the profile by exact name and the topology family by prefix, for example `dual_stage`. |

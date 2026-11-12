@@ -1012,7 +1012,7 @@ class RadixTree<folly::IPAddress, T> {
   RadixTree& operator=(RadixTree&& r) noexcept {
     ipv6Tree_ = std::move(r.ipv6Tree_);
     ipv4Tree_ = std::move(r.ipv4Tree_);
-    return r;
+    return *this;
   }
   RadixTree(const RadixTree& r) = delete;
   RadixTree& operator=(const RadixTree& r) = delete;

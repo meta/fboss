@@ -224,6 +224,20 @@ UnicastRoute makeRoute(const std::string& prefix, const std::string& nhop) {
 }
 } // namespace
 
+TEST(InterfaceVrfs, SetAndRemove) {
+  auto config = vrfConfig();
+  auto handle = createTestHandle(&config);
+  auto sw = handle->getSw();
+  const auto& resolver = *sw->getScopeResolver();
+
+  auto state =
+      setInterfaceVrfs(sw->getState(), {{InterfaceID(55), kTestVrf}}, resolver);
+  EXPECT_EQ(state->getInterfaceVrfs()->getVrf(InterfaceID(55)), kTestVrf);
+
+  state = setInterfaceVrfs(state, {{InterfaceID(55), RouterID(0)}}, resolver);
+  EXPECT_EQ(state->getInterfaceVrfs()->numNodes(), 0);
+}
+
 TEST(VrfDelete, RemovesVrfAndFibWithInterfaceMove) {
   auto config = vrfConfig();
   auto handle = createTestHandle(&config);
@@ -641,4 +655,40 @@ TEST(VrfNextHop, VxlanNextHopKeepsVtep) {
           ->getFibV6()
           ->exactMatch({folly::IPAddressV6("2001:db8:200::"), 64}),
       nullptr);
+}
+
+TEST(RibToSwitchStateFunction, PreFibUpdateInSameStateUpdate) {
+  auto config = vrfConfig();
+  auto handle = createTestHandle(&config);
+  auto sw = handle->getSw();
+  StateRecorder recorder(sw);
+  auto ribToSwitchStateFunc = createRibToSwitchStateFunction(
+      std::nullopt, [sw](const std::shared_ptr<SwitchState>& in) {
+        return setInterfaceVrfs(
+            in, {{InterfaceID(55), kTestVrf}}, *sw->getScopeResolver());
+      });
+
+  sw->getRib()->update(
+      sw->getScopeResolver(),
+      kTestVrf,
+      ClientID::BGPD,
+      AdminDistance::EBGP,
+      {makeRoute("2001:db8:100::/64", "10.0.55.10")},
+      {},
+      false,
+      "add route",
+      ribToSwitchStateFunc,
+      sw);
+
+  auto routeAdded = [](const auto& state) {
+    return hasRoute(state, kTestVrf, "2001:db8:100::/64");
+  };
+  auto intfBound = [](const auto& state) {
+    return state->getInterfaceVrfs()->getVrf(InterfaceID(55)) == kTestVrf;
+  };
+  auto bothIndex = recorder.firstIndex(
+      [&](const auto& state) { return routeAdded(state) && intfBound(state); });
+  ASSERT_GE(bothIndex, 0);
+  EXPECT_EQ(bothIndex, recorder.firstIndex(routeAdded));
+  EXPECT_EQ(bothIndex, recorder.firstIndex(intfBound));
 }

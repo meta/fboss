@@ -628,9 +628,10 @@ void RibRouteTables::reconfigure(
   //
   // 4. Re-resolve routes
   //
-  // 5. Update FIB
+  // Steps 2-4 take place in ConfigApplier.
   //
-  // Steps 2-5 take place in ConfigApplier.
+  // 5. Update the FIBs of all VRFs, including removed ones, in one switch
+  // state update
 
   std::vector<RouterID> existingVrfs = getVrfList();
 
@@ -650,6 +651,8 @@ void RibRouteTables::reconfigure(
   };
   setVrfInterfaces(synchronizedRouteTables_.wlock()->routerIDToRouteTable);
 
+  // FIBs of all VRFs are programmed in one switch state update at the end
+  std::vector<VrfFibUpdate> vrfUpdates;
   auto configureRoutesForVrf =
       [&](RouterID vrf, const PrefixToInterfaceIDAndIP& interfaceRoutes) {
         // A ConfigApplier object should be independent of the VRF whose
@@ -701,7 +704,7 @@ void RibRouteTables::reconfigure(
               // Apply config
               configApplier.apply();
             });
-        updateFib(resolver, vrf, ribToSwitchStateFunc, cookie, ecmpModeChanged);
+        vrfUpdates.push_back({vrf});
       };
   // Because of this sequential loop over each VRF, config application scales
   // linearly with the number of VRFs. If FBOSS is run in a multi-VRF routing
@@ -741,23 +744,35 @@ void RibRouteTables::reconfigure(
           updater.update(
               {}, {}, std::set<ClientID>(clients.begin(), clients.end()));
         });
+    vrfUpdates.push_back({vrf, true /* deleted */});
+  }
+  {
+    // Tables of removed VRFs stay until their FIBs are removed, so a HW
+    // update failure can rebuild them
+    auto lockedRouteTables = synchronizedRouteTables_.wlock();
+    for (const auto& [vrf, interfaceRoutes] : configRouterIDToInterfaceRoutes) {
+      lockedRouteTables->routerIDToRouteTable.try_emplace(vrf);
+    }
+    setVrfInterfaces(lockedRouteTables->routerIDToRouteTable);
+  }
+  for (const auto& [vrf, interfaceRoutes] : configRouterIDToInterfaceRoutes) {
+    configureRoutesForVrf(vrf, interfaceRoutes);
+  }
+  // Switches without VRFs, e.g. fabric switches, have no FIBs
+  if (!vrfUpdates.empty()) {
     updateFib(
-        resolver,
-        vrf,
-        ribToSwitchStateFunc,
-        cookie,
-        ecmpModeChanged,
-        true /* vrfDeleted */);
+        resolver, vrfUpdates, ribToSwitchStateFunc, cookie, ecmpModeChanged);
   }
   {
     auto lockedRouteTables = synchronizedRouteTables_.wlock();
-    lockedRouteTables->routerIDToRouteTable = constructRouteTables(
-        lockedRouteTables, configRouterIDToInterfaceRoutes);
-    setVrfInterfaces(lockedRouteTables->routerIDToRouteTable);
-  }
-  for (auto& vrf : getVrfList()) {
-    const auto& interfaceRoutes = configRouterIDToInterfaceRoutes.at(vrf);
-    configureRoutesForVrf(vrf, interfaceRoutes);
+    auto& routeTables = lockedRouteTables->routerIDToRouteTable;
+    for (auto it = routeTables.begin(); it != routeTables.end();) {
+      if (configRouterIDToInterfaceRoutes.contains(it->first)) {
+        ++it;
+      } else {
+        it = routeTables.erase(it);
+      }
+    }
   }
 }
 
@@ -1410,36 +1425,6 @@ std::shared_ptr<Route<AddressT>> RibRouteTables::longestMatch(
                   << " took: " << lookupTimer.msecsElapsed().count() << " ms ";
   }
   return rt;
-}
-
-RibRouteTables::RouterIDToRouteTable RibRouteTables::constructRouteTables(
-    const SynchronizedRouteTables::WLockedPtr& lockedRouteTables,
-    const RouterIDAndNetworkToInterfaceRoutes& configRouterIDToInterfaceRoutes)
-    const {
-  RouterIDToRouteTable newRouteTables;
-
-  RouterIDToRouteTable::iterator newRouteTablesIter;
-  for (const auto& routerIDAndInterfaceRoutes :
-       configRouterIDToInterfaceRoutes) {
-    const RouterID configVrf = routerIDAndInterfaceRoutes.first;
-
-    newRouteTablesIter = newRouteTables.emplace_hint(
-        newRouteTables.cend(), configVrf, VrfRouteTable());
-
-    auto oldRouteTablesIter =
-        lockedRouteTables->routerIDToRouteTable.find(configVrf);
-    if (oldRouteTablesIter == lockedRouteTables->routerIDToRouteTable.end()) {
-      // configVrf did not exist in the RIB, so it has been added to
-      // newRouteTables with an empty set of routes
-      continue;
-    }
-
-    // configVrf exists in the RIB, so it will be shallow copied into
-    // newRouteTables.
-    newRouteTablesIter->second = std::move(oldRouteTablesIter->second);
-  }
-
-  return newRouteTables;
 }
 
 RoutingInformationBase::RoutingInformationBase() {

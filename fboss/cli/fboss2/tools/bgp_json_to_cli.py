@@ -825,8 +825,35 @@ def generate_routing_policy_commands(policy: dict[str, Any]) -> list[str]:
                 "equivalent; not emitted"
             )
         )
+    for term in policy.get("policy_entries") or []:
+        commands.extend(generate_routing_policy_term_commands(name, term))
     if not commands:
         # Nothing to set: still recreate the (empty) routing-policy by name.
+        commands.append(prefix)
+    return commands
+
+
+def generate_routing_policy_term_commands(
+    policy_name: str, term: dict[str, Any]
+) -> list[str]:
+    """Generate `... routing-policy <name> term <seq-num>` commands for one
+    term. The CLI keys terms by sequence_number."""
+    if "sequence_number" not in term:
+        return [
+            _warning(
+                f"routing-policy {policy_name}: term '{term.get('name', '')}' has "
+                "no sequence_number and cannot be addressed by the CLI; not emitted"
+            )
+        ]
+    prefix = (
+        f"config protocol bgp policy routing-policy {escape_shell_arg(policy_name)} "
+        f"term {escape_shell_arg(term['sequence_number'])}"
+    )
+    commands = []
+    if term.get("description"):
+        commands.append(f"{prefix} description {escape_shell_arg(term['description'])}")
+    # Nested term generators (action, match) hook in here.
+    if not commands:
         commands.append(prefix)
     return commands
 

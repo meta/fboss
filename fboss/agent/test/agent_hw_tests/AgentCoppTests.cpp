@@ -10,7 +10,6 @@
 #include "fboss/agent/AsicUtils.h"
 #include "fboss/agent/HwSwitchMatcher.h"
 #include "fboss/agent/LldpManager.h"
-#include "fboss/agent/SwRxPacket.h"
 #include "fboss/agent/TxPacket.h"
 #include "fboss/agent/VoqUtils.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"

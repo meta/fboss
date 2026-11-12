@@ -895,6 +895,15 @@ class TestRunner(abc.ABC):
                         self._on_suite_end(current_suite)
                     current_suite = suite
                     self._on_suite_start(suite)
+                warmboot_test_name = self.WARMBOOT_PREFIX + test_to_run
+                run_warmboot = warmboot
+                if run_warmboot:
+                    if self._is_known_bad_test(warmboot_test_name):
+                        print(f"  >> SKIPPING (known bad)  : {warmboot_test_name}")
+                        run_warmboot = False
+                    elif self._is_unsupported_test(warmboot_test_name):
+                        print(f"  >> SKIPPING (unsupported): {warmboot_test_name}")
+                        run_warmboot = False
                 test_prefix = self.COLDBOOT_PREFIX
                 sai_replayer_log_path = self._get_sai_replayer_log_path(
                     test_prefix, test_to_run, sai_replayer_logging
@@ -908,7 +917,7 @@ class TestRunner(abc.ABC):
                     conf_file,
                     test_prefix,
                     test_to_run,
-                    warmboot,  # setup_warmboot
+                    run_warmboot,  # setup_warmboot
                     sai_replayer_log_path,
                 )
                 print(
@@ -935,7 +944,7 @@ class TestRunner(abc.ABC):
                 num_wb_iterations = max(1, num_wb_iterations)
                 for wb_iter in range(num_wb_iterations):
                     if not (
-                        warmboot and os.path.isfile(self._get_warmboot_check_file())
+                        run_warmboot and os.path.isfile(self._get_warmboot_check_file())
                     ):
                         break
                     # Re-arm warmboot for every iteration except the last so the next

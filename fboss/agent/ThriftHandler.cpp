@@ -3344,7 +3344,7 @@ void ThriftHandler::getRouteCounterBytes(
   for (const auto& statName : *counters) {
     // returns default stat if statName does not exists
     auto statPtr = statMap->getStatPtrNoExport(statName);
-    auto lockedStatPtr = statPtr->wlock();
+    auto lockedStatPtr = statPtr->contextualLock();
     lockedStatPtr->update(seconds(facebook::fb303::get_legacy_stats_time()));
     auto numLevels = lockedStatPtr->numLevels();
     // Cumulative (ALLTIME) counters are at (numLevels - 1)

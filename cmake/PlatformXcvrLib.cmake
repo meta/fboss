@@ -13,5 +13,5 @@ target_link_libraries(xcvr_lib
   platform_manager_config_cpp2
   platform_manager_system_interface
   Folly::folly
-  FBThrift::thriftcpp2
+  thrift::rpc
 )

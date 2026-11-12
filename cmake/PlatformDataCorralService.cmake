@@ -3,9 +3,10 @@
 # In general, libraries and binaries in fboss/foo/bar are built by
 # cmake/FooBar.cmake
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   data_corral_service_cpp2
   fboss/platform/data_corral_service/if/data_corral_service.thrift
+  LANGUAGE cpp2
   SERVICES
     DataCorralServiceThrift
   OPTIONS
@@ -16,12 +17,20 @@ add_fbthrift_cpp_library(
     fboss_cpp2
 )
 
-add_fbthrift_cpp_library(
+add_library(led_manager_config_types_cpp2)
+thrift_generate(
   led_manager_config_types_cpp2
   fboss/platform/data_corral_service/if/led_manager_config.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
+  INCLUDE_DIRECTORIES
+    ${PROJECT_SOURCE_DIR}
+    ${THRIFT_INCLUDE_DIR}
+)
+target_include_directories(led_manager_config_types_cpp2
+  PUBLIC ${PROJECT_BINARY_DIR}
 )
 
 add_library(data_corral_service_config_validator
@@ -52,7 +61,7 @@ target_link_libraries(data_corral_service_lib
   led_manager_config_types_cpp2
   Folly::folly
   fb303::fb303
-  FBThrift::thriftcpp2
+  thrift::rpc
   platform_manager_utils
   data_corral_service_config_validator
 )
