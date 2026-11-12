@@ -62,9 +62,11 @@ struct CmdConfigProtocolBgpPolicyRoutingPolicyTermTraits
     : public WriteCommandTraits {
   using ParentCmd = CmdConfigProtocolBgpPolicyRoutingPolicy;
   static void addCliArg(CLI::App& cmd, std::vector<std::string>& args) {
-    // Term has no nested subcommands; stop CLI11's parent-chain fallthrough
-    // from stealing a value token that spells `term` (e.g. in a description).
-    cmd.positionals_at_end();
+    // No positionals_at_end() here: the term's action (and later match)
+    // level is a real CLI11 subcommand, and positionals_at_end() would stop
+    // CLI11 from classifying it after the seq-num. The trade-off is that a
+    // term-level attribute value spelling a child subcommand name is stolen
+    // by subcommand matching (same exposure as the routing-policy parent).
     cmd.add_option("args", args, "<seq-num> [<attribute> <value> ...]");
   }
   using ObjectArgType = BgpRoutingPolicyTermConfig;
