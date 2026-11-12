@@ -870,3 +870,32 @@ cpp_library(
     ],
     exported_deps = [],
 )
+
+cpp_library(
+    name = "hw_test_lifecycle_event",
+    srcs = [
+        "HwTestLifecycleEvent.cpp",
+    ],
+    headers = [
+        "HwTestLifecycleEvent.h",
+    ],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        "fbsource//xplat/folly/logging:logging",
+    ],
+    exported_deps = [
+        "//fboss/agent/if:agent_hw_test_ctrl-cpp2-serialization",
+        "//fboss/agent/if:agent_hw_test_ctrl-cpp2-types",
+    ],
+)
+
+cpp_unittest(
+    name = "hw_test_lifecycle_event_test",
+    srcs = [
+        "HwTestLifecycleEventTests.cpp",
+    ],
+    network_access = network_access_utils.none(),
+    deps = [
+        ":hw_test_lifecycle_event",
+    ],
+)

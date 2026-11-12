@@ -23,6 +23,15 @@ target_link_libraries(config_factory
   multiswitch_test_server
 )
 
+add_library(hw_test_lifecycle_event
+  fboss/agent/hw/test/HwTestLifecycleEvent.cpp
+)
+
+target_link_libraries(hw_test_lifecycle_event
+  agent_hw_test_ctrl_cpp2
+  Folly::folly
+)
+
 add_library(hw_test_main
   fboss/agent/hw/test/Main.cpp
 )

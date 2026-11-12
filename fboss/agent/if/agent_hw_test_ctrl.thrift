@@ -103,6 +103,19 @@ struct AclStatCountInfo {
   3: i32 counterCount;
 }
 
+enum TestLifecycleEvent {
+  UNKNOWN = 0,
+  AGENT_TEARDOWN_START = 1,
+  AGENT_SETUP_COMPLETE = 2,
+}
+
+struct TestLifecycleEventResult {
+  1: bool handled;
+  2: bool success;
+  3: i32 switchIndex;
+  4: optional string error;
+}
+
 service AgentHwTestCtrl {
   // acl utils begin
   i32 getDefaultAclTableNumAclEntries();
@@ -293,4 +306,14 @@ service AgentHwTestCtrl {
   // fb303 cross-process utils for multi-switch testing
   map<string, i64> getFb303RegexCounters(1: string regex);
   i64 getFb303Counter(1: string key);
+
+  // Notify optional instrumentation in a test-only hardware agent before the
+  // test fixture advances through a lifecycle boundary. The caller generates
+  // attemptUuid once per attempt of the test process and reuses it for every
+  // notification and retry of that attempt. Observers may deduplicate on
+  // (attemptUuid, event) and ignore notifications from a stale attempt.
+  TestLifecycleEventResult notifyTestLifecycleEvent(
+    1: string attemptUuid,
+    2: TestLifecycleEvent event,
+  );
 }
