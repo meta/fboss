@@ -26,6 +26,7 @@
 #include "fboss/agent/CommonInit.h"
 #include "fboss/agent/FbossInit.h"
 #include "fboss/agent/HwSwitch.h"
+#include "fboss/agent/InstrumentationHooks.h"
 #include "fboss/agent/SetupThrift.h"
 #include "fboss/agent/TestUtils.h"
 #include "fboss/agent/hw/switch_asics/HwAsic.h"
@@ -147,6 +148,7 @@ void SplitHwAgentSignalHandler::signalReceived(int /*signum*/) noexcept {
       << "[Exit] Total graceful Exit time "
       << duration_cast<duration<float>>(switchGracefulExit - begin).count();
   restart_time::mark(RestartEvent::SHUTDOWN);
+  stopCoverageCollection();
 
   // Delay exit if agent_exit_delay_s is set
   if (FLAGS_agent_exit_delay_s > 0) {

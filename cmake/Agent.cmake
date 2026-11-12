@@ -686,6 +686,10 @@ target_link_libraries(hwagent
   switch_asics
 )
 
+add_library(instrumentation_hooks
+  fboss/agent/InstrumentationHooks.cpp
+)
+
 add_library(hwagent-main
   fboss/agent/HwAgentMain.cpp
   fboss/agent/oss/Main.cpp
@@ -693,6 +697,7 @@ add_library(hwagent-main
 
 target_link_libraries(hwagent-main
   agent_features
+  instrumentation_hooks
   fboss_common_init
   platform_base
   fboss_common_cpp2
@@ -782,6 +787,7 @@ add_library(monolithic_agent_initializer
 
 target_link_libraries(monolithic_agent_initializer
   core
+  instrumentation_hooks
   fboss_common_init
   handler
   hw_switch
@@ -814,6 +820,7 @@ add_library(split_agent_initializer
 
 target_link_libraries(split_agent_initializer
   Folly::folly
+  instrumentation_hooks
   sw_agent_initializer
   multiswitch_service
   multi_switch_hw_switch_handler

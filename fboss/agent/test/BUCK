@@ -1006,6 +1006,49 @@ cpp_library(
 )
 
 cpp_library(
+    name = "instrumentation_hooks_test_definer",
+    srcs = [
+        "InstrumentationHooksTestDefiner.cpp",
+    ],
+    headers = [
+        "InstrumentationHooksTestDefiner.h",
+    ],
+    # Required of every hook definer; the enabled test checks it retains the
+    # hooks.
+    # @lint-ignore BUCKLINT
+    link_whole = True,
+    preferred_linkage = "static",
+    deps = [
+        "//fboss/agent:instrumentation_hook_entry_points",
+    ],
+)
+
+cpp_unittest(
+    name = "instrumentation_hooks_default_test",
+    srcs = [
+        "InstrumentationHooksDefaultTest.cpp",
+    ],
+    network_access = network_access_utils.none(),
+    test_main = "//fboss/agent/test:fboss_test_main",
+    deps = [
+        "//fboss/agent:instrumentation_hooks",
+    ],
+)
+
+cpp_unittest(
+    name = "instrumentation_hooks_enabled_test",
+    srcs = [
+        "InstrumentationHooksEnabledTest.cpp",
+    ],
+    network_access = network_access_utils.none(),
+    test_main = "//fboss/agent/test:fboss_test_main",
+    deps = [
+        ":instrumentation_hooks_test_definer",
+        "//fboss/agent:instrumentation_hooks",
+    ],
+)
+
+cpp_library(
     name = "test_ensemble_if",
     srcs = [
         "TestEnsembleIf.cpp",

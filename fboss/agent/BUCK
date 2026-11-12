@@ -1973,6 +1973,7 @@ cpp_library(
         "fbsource//xplat/folly/logging:init",
         "fbsource//xplat/folly/logging:logging",
         ":hw_switch",
+        ":instrumentation_hooks",
         ":load_agent_config",
         ":split_agent_thrift_syncer",
         ":test_utils",
@@ -2148,6 +2149,7 @@ cpp_library(
         ":fboss_init_h",
         ":handler",
         ":hw_switch",
+        ":instrumentation_hooks",
         ":monolithic_hw_switch_handler",
         ":packet_stream_handler",
         ":platform_base",
@@ -2179,6 +2181,7 @@ cpp_library(
     ],
     deps = [
         ":core",
+        ":instrumentation_hooks",
         ":multi_switch_hw_switch_handler",
         ":multiswitch_service",
         "//fboss/lib:common_file_utils",
@@ -2463,6 +2466,26 @@ cpp_library(
     exported_deps = [],
     exported_external_deps = [
         "gflags",
+    ],
+)
+
+cpp_library(
+    name = "instrumentation_hooks",
+    srcs = [
+        "InstrumentationHooks.cpp",
+    ],
+    headers = [
+        "InstrumentationHooks.h",
+    ],
+    deps = [
+        ":instrumentation_hook_entry_points",
+    ],
+)
+
+cpp_library(
+    name = "instrumentation_hook_entry_points",
+    headers = [
+        "InstrumentationHookEntryPoints.h",
     ],
 )
 

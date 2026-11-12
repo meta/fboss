@@ -613,6 +613,7 @@ cpp_binary(
         "fbsource//xplat/folly/logging:init",
         ":agent_hw_test_src",
         ":agent_mirror_on_drop_stateful_test_src",
+        "//fboss/agent:instrumentation_hooks",
         "//fboss/agent:setup_thrift_prod",  # @manual
         "//fboss/agent/test:agent_hw_test",
         "//fboss/agent/test:multi_switch_agent_ensemble",
@@ -680,6 +681,7 @@ _sai_agent_hw_test_prefix = "sai_agent_hw_test"
             "//fboss/agent/hw/sai/hw_test:sai_acl_utils{}".format(to_impl_suffix(sai_impl)),
             "//fboss/agent/hw/sai/hw_test:sai_copp_utils{}".format(to_impl_suffix(sai_impl)),
             "//fboss/agent/platforms/sai:{}".format(sai_switch_dependent_name("sai_platform", sai_impl, True)),
+            "//fboss/agent:instrumentation_hooks",
             "//fboss/agent:setup_thrift_prod",
             "//fboss/agent/test:agent_hw_test",
             "//fboss/agent/test:linkstate_toggler",
@@ -718,6 +720,7 @@ _sai_scale_test_configs = [
         deps = [
             "fbsource//third-party/googletest:gtest",
             ":agent_scale_test_src",
+            "//fboss/agent:instrumentation_hooks",
             "//fboss/agent:setup_thrift_prod",
             "//fboss/agent/test:agent_hw_test",
             "//fboss/agent:main-sai-{}".format(to_impl_lib_name(sai_impl)),
@@ -756,6 +759,7 @@ _sai_agent_provision_test_prefix = "sai_agent_provision_test"
         deps = [
             "fbsource//third-party/googletest:gtest",
             ":agent_hw_provision_test_src",
+            "//fboss/agent:instrumentation_hooks",
             "//fboss/agent:setup_thrift_prod",
             "//fboss/agent/test:agent_hw_test",
             "//fboss/agent:main-sai-{}".format(to_impl_lib_name(sai_impl)),
