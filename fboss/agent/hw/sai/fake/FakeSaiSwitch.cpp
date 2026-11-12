@@ -39,9 +39,10 @@ static constexpr uint32_t kDefaultNeighborDstUserMetaDataRangeMax =
 static constexpr uint32_t kDefaultPortUserMetaDataRangeMin = 0;
 static constexpr uint32_t kDefaultPortUserMetaDataRangeMax = 63;
 
+template <typename ValueT, typename ListT>
 sai_status_t fillDropTypeList(
-    const std::vector<sai_int32_t>& dropTypes,
-    sai_s32_list_t* list) {
+    const std::vector<ValueT>& dropTypes,
+    ListT* list) {
   if (dropTypes.size() > list->count) {
     list->count = static_cast<uint32_t>(dropTypes.size());
     return SAI_STATUS_BUFFER_OVERFLOW;
@@ -678,6 +679,14 @@ sai_status_t get_switch_attribute_fn(
         if (status != SAI_STATUS_SUCCESS) {
           return status;
         }
+      } break;
+      case SAI_SWITCH_ATTR_EXT_DROP_REASON_LIST: {
+        auto status =
+            fillDropTypeList(sw.getDropReasonList(), &attr[i].value.u32list);
+        if (status != SAI_STATUS_SUCCESS) {
+          return status;
+        }
+        sw.setDropReasonList({});
       } break;
       default:
         return SAI_STATUS_INVALID_PARAMETER;

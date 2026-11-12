@@ -1155,6 +1155,11 @@ std::optional<sai_attr_id_t>
 SaiSwitchTraits::Attributes::AttributePacketDropTypeEgressList::operator()() {
   return SAI_SWITCH_ATTR_EXT_PACKET_DROP_TYPE_EGRESS_LIST;
 }
+
+std::optional<sai_attr_id_t>
+SaiSwitchTraits::Attributes::AttributeDropReasonList::operator()() {
+  return SAI_SWITCH_ATTR_EXT_DROP_REASON_LIST;
+}
 #if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
 std::optional<sai_attr_id_t>
 SaiArsProfileTraits::Attributes::AttributeArsMaxGroups::operator()() {

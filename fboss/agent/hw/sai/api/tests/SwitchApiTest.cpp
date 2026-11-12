@@ -798,6 +798,34 @@ TEST_F(SwitchApiTest, getPacketDropTypeIngressList) {
       dropTypes);
 }
 
+TEST_F(SwitchApiTest, getDropReasonListConsumesUnsignedSnapshot) {
+  const std::vector<sai_uint32_t> reasons{0, 0x80000000, 0xffffffff};
+  auto& sw = fs->switchManager.get(switchId);
+  sw.setDropReasonList(reasons);
+  EXPECT_EQ(
+      switchApi->getAttribute(
+          switchId, SaiSwitchTraits::Attributes::DropReasonList{}),
+      reasons);
+  EXPECT_TRUE(switchApi
+                  ->getAttribute(
+                      switchId, SaiSwitchTraits::Attributes::DropReasonList{})
+                  .empty());
+  sw.setDropReasonList(reasons);
+  EXPECT_EQ(
+      switchApi->getAttribute(
+          switchId, SaiSwitchTraits::Attributes::DropReasonList{}),
+      reasons);
+}
+
+TEST_F(SwitchApiTest, setDropReasonListIsReadOnly) {
+  EXPECT_THROW(
+      switchApi->setAttribute(
+          switchId,
+          SaiSwitchTraits::Attributes::DropReasonList{
+              std::vector<sai_uint32_t>{1}}),
+      SaiApiError);
+}
+
 TEST_F(SwitchApiTest, getEmptyPacketDropTypeIngressList) {
   EXPECT_TRUE(switchApi
                   ->getAttribute(
