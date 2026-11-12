@@ -108,6 +108,31 @@ RUN if [ "$USE_CLANG" = "true" ]; then \
 RUN dnf install -y doxygen aspell aspell-en libyaml-devel vim-common libnsl libnsl2-devel glibc-static libstdc++-static hostname \
     grpc-devel grpc-plugins protobuf-devel protobuf-compiler abseil-cpp-devel
 
+# Install gRPC for SDK purposes
+RUN git clone --depth 1 --branch v1.42.0 https://github.com/grpc/grpc.git && \
+    git -C grpc submodule update --init --depth 1 \
+      third_party/abseil-cpp third_party/cares/cares third_party/protobuf && \
+    cmake -S grpc -B grpc/build -G Ninja \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DCMAKE_C_COMPILER=/opt/rh/gcc-toolset-12/root/usr/bin/gcc \
+      -DCMAKE_CXX_COMPILER=/opt/rh/gcc-toolset-12/root/usr/bin/g++ \
+      -DCMAKE_CXX_STANDARD=17 \
+      -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
+      -DBUILD_SHARED_LIBS=ON \
+      -DCMAKE_INSTALL_PREFIX=/opt/grpc \
+      -DCMAKE_INSTALL_LIBDIR=lib \
+      -DCMAKE_INSTALL_RPATH=/opt/grpc/lib \
+      -DgRPC_BUILD_CSHARP_EXT=OFF \
+      -DgRPC_ABSL_PROVIDER=module \
+      -DgRPC_CARES_PROVIDER=module \
+      -DgRPC_PROTOBUF_PROVIDER=module \
+      -DgRPC_RE2_PROVIDER=package \
+      -DgRPC_SSL_PROVIDER=package \
+      -DgRPC_ZLIB_PROVIDER=package && \
+    cmake --build grpc/build && \
+    cmake --install grpc/build && \
+    rm -rf grpc
+
 # Install libyaml.a for SDK purposes
 RUN git clone https://github.com/yaml/libyaml.git && \
     cd libyaml && \
