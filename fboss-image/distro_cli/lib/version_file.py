@@ -226,7 +226,7 @@ MODULE_SCHEMAS: dict[str, ModuleSchema] = {
         claims=(Claims("kernel", _KERNEL_IN_PATH),),
     ),
     "bsps": ModuleSchema(
-        readers=("packages",),
+        readers=("packages", "build_info"),
         provides=(
             Provides("bsp", bsp_from_packages),
             Provides("kernel", kernel_from_packages),

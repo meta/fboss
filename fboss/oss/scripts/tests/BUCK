@@ -4,6 +4,13 @@ load("@fbsource//tools/build_defs/testinfra:network_access_utils.bzl", "network_
 oncall("fboss_oss")
 
 python_unittest(
+    name = "test_bsp_version",
+    srcs = ["test_bsp_version.py"],
+    network_access = network_access_utils.none(),
+    deps = ["//fboss/oss/scripts:component_version"],
+)
+
+python_unittest(
     name = "test_kernel_version",
     srcs = ["test_kernel_version.py"],
     network_access = network_access_utils.none(),

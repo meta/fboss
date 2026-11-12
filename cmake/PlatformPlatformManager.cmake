@@ -17,33 +17,44 @@ target_sources(platform_manager_fbcpld_ioctl_h
     fboss/platform/platform_manager/uapi/fbcpld-ioctl.h
 )
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   platform_manager_snapshot_cpp2
   fboss/platform/platform_manager/platform_manager_snapshot.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
 )
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   platform_manager_presence_cpp2
   fboss/platform/platform_manager/platform_manager_presence.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
 )
 
-add_fbthrift_cpp_library(
+add_library(platform_manager_validators_cpp2)
+thrift_generate(
   platform_manager_validators_cpp2
   fboss/platform/platform_manager/platform_manager_validators.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
+  INCLUDE_DIRECTORIES
+    ${PROJECT_SOURCE_DIR}
+    ${THRIFT_INCLUDE_DIR}
+)
+target_include_directories(platform_manager_validators_cpp2
+  PUBLIC ${PROJECT_BINARY_DIR}
 )
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   platform_manager_config_cpp2
   fboss/platform/platform_manager/platform_manager_config.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
@@ -51,9 +62,10 @@ add_fbthrift_cpp_library(
     platform_manager_presence_cpp2
 )
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   platform_manager_service_cpp2
   fboss/platform/platform_manager/platform_manager_service.thrift
+  LANGUAGE cpp2
   SERVICES
     PlatformManagerService
   OPTIONS
@@ -252,7 +264,7 @@ target_link_libraries(platform_manager_pkg_manager
   platform_fs_utils
   platform_utils
   Folly::folly
-  FBThrift::thriftcpp2
+  thrift::rpc
 )
 
 add_library(platform_manager_handler

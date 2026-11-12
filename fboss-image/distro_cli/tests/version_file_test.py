@@ -759,6 +759,93 @@ class ReadArtifactTest(VersionFileTestCase):
                 version_file.read_artifact("kernel", artifact), {"packages": packages}
             )
 
+    def test_bsp_build_evidence_is_preserved_with_rpm_versions(self):
+        declaration = {
+            "declaration_schema": 1,
+            "producer": "component_version.py",
+            "build": {
+                "source_revision": "a" * 40,
+                "source_dirty": False,
+                "fboss": {"source_revision": "b" * 40, "source_dirty": True},
+                "kernel_release": "6.11.1-1.fboss.el9.x86_64",
+                "rpm_sha256": {"fboss_bsp_kmods.rpm": "c" * 64},
+            },
+            "versions": {"bsp": "4.4.2-1", "kernel": "6.11.1-1.fboss.el9"},
+        }
+        packages = [
+            {"nevra": "fboss_bsp_kmods-6.11.1-1.fboss.el9.x86_64-4.4.2-1.x86_64"}
+        ]
+        for rpm_member in (
+            "fboss_bsp_kmods.rpm",
+            "usr/local/share/local_rpm_repo/fboss_bsp_kmods.rpm",
+        ):
+            for label in ("bsps", "bsps[fboss]"):
+                with self.subTest(rpm_member=rpm_member, component=label):
+                    artifact = make_tar(
+                        self.root / "bsp.tar",
+                        {
+                            rpm_member: b"fixture",
+                            artifact_versions.BSP_BUILD_INFO_MEMBER: json.dumps(
+                                declaration
+                            ).encode(),
+                        },
+                    )
+                    with mock.patch.dict(
+                        READERS, {"packages": lambda artifact, members: packages}
+                    ):
+                        record, conflicts = version_file.build(
+                            manifest_path=self.manifest(),
+                            manifest_data={},
+                            component_artifacts={label: artifact},
+                            source_revision="assembler",
+                        )
+                    self.assertEqual(
+                        record["components"][label]["provenance"],
+                        {"packages": packages, "build_info": declaration},
+                    )
+                    self.assertEqual(record["versions"], declaration["versions"])
+                    self.assertEqual(record["image"]["source_revision"], "assembler")
+                    self.assertEqual(conflicts, [])
+
+    def test_legacy_bsp_artifact_keeps_rpm_evidence_without_build_info(self):
+        artifact = make_tar(
+            self.root / "legacy-bsp.tar", {"fboss_bsp_kmods.rpm": b"fixture"}
+        )
+        packages = [{"nevra": "fboss_bsp_kmods-4.4.2-1.x86_64"}]
+        with mock.patch.dict(READERS, {"packages": lambda artifact, members: packages}):
+            self.assertEqual(
+                version_file.read_artifact("bsps", artifact), {"packages": packages}
+            )
+
+    def test_invalid_or_ambiguous_bsp_declarations_keep_rpm_evidence(self):
+        declaration = b'{"declaration_schema":1,"build":{}}'
+        packages = [{"nevra": "fboss_bsp_kmods-4.4.2-1.x86_64"}]
+        for metadata in (
+            {artifact_versions.BSP_BUILD_INFO_MEMBER: b"not json"},
+            {
+                artifact_versions.BSP_BUILD_INFO_MEMBER: b'{"declaration_schema":2,"build":{}}'
+            },
+            {
+                artifact_versions.BSP_BUILD_INFO_MEMBER: declaration,
+                artifact_versions.KERNEL_BUILD_INFO_MEMBER: declaration,
+            },
+        ):
+            with self.subTest(metadata=metadata):
+                artifact = make_tar(
+                    self.root / "invalid-bsp.tar",
+                    {"fboss_bsp_kmods.rpm": b"fixture", **metadata},
+                )
+                with (
+                    mock.patch.dict(
+                        READERS, {"packages": lambda artifact, members: packages}
+                    ),
+                    self.assertLogs("distro_cli.lib.artifact_versions", "WARNING"),
+                ):
+                    self.assertEqual(
+                        version_file.read_artifact("bsps", artifact),
+                        {"packages": packages},
+                    )
+
     def test_invalid_build_declarations_are_ignored(self):
         for content in (
             b"not json",

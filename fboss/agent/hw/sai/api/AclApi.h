@@ -888,6 +888,13 @@ struct SaiAclCounterTraits {
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 2)
     using Label =
         SaiAttribute<EnumType, SAI_ACL_COUNTER_ATTR_LABEL, SaiCharArray32>;
+    struct AttributeLabelExtendedWrapper {
+      std::optional<sai_attr_id_t> operator()();
+    };
+    using LabelExtended = SaiExtensionAttribute<
+        std::vector<int8_t>,
+        AttributeLabelExtendedWrapper,
+        SaiS8ListDefault>;
 #endif
 
     using EnablePacketCount =
@@ -909,6 +916,7 @@ struct SaiAclCounterTraits {
       Attributes::TableId,
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 2)
       std::optional<Attributes::Label>,
+      std::optional<Attributes::LabelExtended>,
 #endif
       std::optional<Attributes::EnablePacketCount>,
       std::optional<Attributes::EnableByteCount>>;
@@ -917,6 +925,7 @@ struct SaiAclCounterTraits {
       Attributes::TableId,
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 2)
       std::optional<Attributes::Label>,
+      std::optional<Attributes::LabelExtended>,
 #endif
       std::optional<Attributes::EnablePacketCount>,
       std::optional<Attributes::EnableByteCount>,
@@ -927,6 +936,7 @@ struct SaiAclCounterTraits {
 SAI_ATTRIBUTE_NAME(AclCounter, TableId);
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 2)
 SAI_ATTRIBUTE_NAME(AclCounter, Label);
+SAI_ATTRIBUTE_NAME(AclCounter, LabelExtended);
 #endif
 SAI_ATTRIBUTE_NAME(AclCounter, EnablePacketCount);
 SAI_ATTRIBUTE_NAME(AclCounter, EnableByteCount);

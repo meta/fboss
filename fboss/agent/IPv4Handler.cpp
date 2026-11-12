@@ -449,7 +449,7 @@ bool IPv4Handler::resolveMac(
           continue;
         }
 
-        sent = sw_->sendArpRequestHelper(intf, state, source, target);
+        sent = sw_->resolveArpHelper(intf, target);
 
       } else if (nh.addr().isV6() && !route->isConnected()) {
         auto source = intf->getAddressToReach(nh.addr())->first.asV6();
@@ -459,7 +459,7 @@ bool IPv4Handler::resolveMac(
           continue;
         }
 
-        sent = sw_->sendNdpSolicitationHelper(intf, state, target);
+        sent = sw_->resolveNdpHelper(intf, target);
       }
     }
   }

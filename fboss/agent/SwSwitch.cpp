@@ -1403,7 +1403,7 @@ TeFlowStats SwSwitch::getTeFlowStats() {
         auto statName = folly::to<std::string>(counter->toThrift(), ".bytes");
         // returns default stat if statName does not exists
         auto statPtr = statMap->getStatPtrNoExport(statName);
-        auto lockedStatPtr = statPtr->wlock();
+        auto lockedStatPtr = statPtr->contextualLock();
         lockedStatPtr->update(
             std::chrono::seconds(facebook::fb303::get_legacy_stats_time()));
         auto numLevels = lockedStatPtr->numLevels();
@@ -4099,28 +4099,14 @@ void SwSwitch::l2LearningUpdateReceived(
   macTableManager_->handleL2LearningUpdate(l2Entry, l2EntryUpdateType);
 }
 
-bool SwSwitch::sendArpRequestHelper(
-    std::shared_ptr<Interface> intf,
-    std::shared_ptr<SwitchState> state,
-    folly::IPAddressV4 source,
-    folly::IPAddressV4 target) {
-  bool sent = false;
-  auto entry = getNeighborEntryForIP<ArpEntry>(state, intf, target);
-  if (entry == nullptr) {
-    // No entry in ARP table, send ARP request
-    ArpHandler::sendArpRequest(
-        this, getVlanIDForTx(intf), intf->getMac(), source, target);
-
-    // Notify the updater that we sent an arp request
-    sentArpRequest(intf, target);
-    sent = true;
-  } else {
-    XLOG(DBG5) << "not sending arp for " << target.str() << ", "
-               << ((entry->isPending()) ? "pending " : "")
-               << "entry already exists";
+bool SwSwitch::resolveArpHelper(
+    const std::shared_ptr<Interface>& intf,
+    const folly::IPAddressV4& target) {
+  if (getNeighborEntryForIPAndIntf<ArpEntry>(intf, target)) {
+    return false;
   }
-
-  return sent;
+  getNeighborUpdater()->resolveArpForIntf(intf->getID(), target);
+  return true;
 }
 
 bool SwSwitch::sendNdpSolicitationHelper(
@@ -4144,6 +4130,16 @@ bool SwSwitch::sendNdpSolicitationHelper(
   }
 
   return sent;
+}
+
+bool SwSwitch::resolveNdpHelper(
+    const std::shared_ptr<Interface>& intf,
+    const folly::IPAddressV6& target) {
+  if (getNeighborEntryForIPAndIntf<NdpEntry>(intf, target)) {
+    return false;
+  }
+  getNeighborUpdater()->resolveNdpForIntf(intf->getID(), target);
+  return true;
 }
 
 VlanID SwSwitch::getVlanIDHelper(

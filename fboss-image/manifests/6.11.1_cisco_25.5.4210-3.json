@@ -18,7 +18,7 @@
   },
   "bsps": [
     {
-      "download": "${ARTIFACT_BASE}/bsp/6.11.1/fboss_bsp_kmods.tar"
+      "download": "${ARTIFACT_BASE}/bsp/6.11.1/cisco_bsp_kmods-2026.10.3-1.tar"
     }
   ],
   "npu_sai": {

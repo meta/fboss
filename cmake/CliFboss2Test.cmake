@@ -16,6 +16,7 @@ add_executable(fboss2_framework_test
   # fboss/cli/fboss2/test/CmdHelpTest.cpp - excluded (requires bundled schema)
   fboss/cli/fboss2/test/CmdReadWriteModeTest.cpp
   fboss/cli/fboss2/test/CmdSubCommandsTest.cpp
+  fboss/cli/fboss2/test/CmdUtilsTest.cpp
   # fboss/cli/fboss2/test/FilterTest.cpp - excluded (requires bundled schema)
   # fboss/cli/fboss2/test/FilterValidationTest.cpp - excluded (requires bundled schema)
 )
@@ -30,7 +31,7 @@ target_link_libraries(fboss2_framework_test
   Folly::folly
   Folly::follybenchmark
   Folly::folly_test_util
-  FBThrift::thriftcpp2
+  thrift::rpc
 )
 
 gtest_discover_tests(fboss2_framework_test)
@@ -40,6 +41,7 @@ add_executable(fboss2_cmd_test
   fboss/util/oss/TestMain.cpp
   fboss/cli/fboss2/oss/config/CmdListImpl.cpp
   fboss/cli/fboss2/test/CmdCompletionTest.cpp
+  fboss/cli/fboss2/test/CmdClearArpNdpTest.cpp
   fboss/cli/fboss2/test/CmdConfigSessionClearTest.cpp
   fboss/cli/fboss2/test/CmdGetPcapTest.cpp
   fboss/cli/fboss2/test/CmdListConfigTest.cpp
@@ -162,7 +164,7 @@ target_link_libraries(fboss2_cmd_test
   Folly::folly
   Folly::follybenchmark
   Folly::folly_test_util
-  FBThrift::thriftcpp2
+  thrift::rpc
   Boost::filesystem
 )
 
@@ -181,5 +183,5 @@ target_link_libraries(thrift_latency_test
   ctrl_cpp2
   thrift_service_utils
   Folly::folly
-  FBThrift::thriftcpp2
+  thrift::rpc
 )

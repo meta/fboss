@@ -13,7 +13,7 @@ target_link_libraries(transceiver_properties_manager
     transceiver_cpp2
     transceiver_properties_cpp2
     Folly::folly
-    FBThrift::thriftcpp2
+    thrift::rpc
 )
 
 add_executable(transceiver_properties_manager_test

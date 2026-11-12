@@ -38,6 +38,23 @@ void ArpCache::sentArpRequest(folly::IPAddressV4 ip) {
   setPendingEntry(ip, PortDescriptor(PortID(0)));
 }
 
+void ArpCache::resolve(folly::IPAddressV4 ip) {
+  auto intf = getSw()->getState()->getInterfaces()->getNode(getIntfID());
+  auto source = intf->getAddressToReach(ip);
+  if (!source) {
+    throw FbossError("No address on interface ", getIntfID(), " reaches ", ip);
+  }
+  // Returns true only if a new pending entry was created.
+  if (setPendingEntry(ip, PortDescriptor(PortID(0)))) {
+    ArpHandler::sendArpRequest(
+        getSw(),
+        getSw()->getVlanIDForTx(intf),
+        intf->getMac(),
+        source->first.asV4(),
+        ip);
+  }
+}
+
 void ArpCache::receivedArpMine(
     folly::IPAddressV4 ip,
     folly::MacAddress mac,

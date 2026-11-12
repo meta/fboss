@@ -33,6 +33,7 @@ logger: logging.Logger = logging.getLogger(__name__)
 SDK_METADATA_MEMBER = "share/npu_sdk_metadata.json"
 BUILD_INFO_MEMBER = "share/fboss-component-version.json"
 KERNEL_BUILD_INFO_MEMBER = "share/kernel-version.json"
+BSP_BUILD_INFO_MEMBER = "share/bsp-version.json"
 
 _MODULE_SUFFIXES = (".ko", ".ko.xz", ".ko.gz")
 
@@ -150,7 +151,8 @@ def read_build_info(artifact: Path, members: list[str]) -> dict[str, object]:
     candidates = [
         name
         for name in members
-        if name.removeprefix("./") in (BUILD_INFO_MEMBER, KERNEL_BUILD_INFO_MEMBER)
+        if name.removeprefix("./")
+        in (BUILD_INFO_MEMBER, KERNEL_BUILD_INFO_MEMBER, BSP_BUILD_INFO_MEMBER)
     ]
     if not candidates:
         return {}

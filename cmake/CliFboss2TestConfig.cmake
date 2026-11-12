@@ -19,12 +19,14 @@ add_executable(fboss2_cmd_config_test
   fboss/cli/fboss2/test/config/CmdConfigBgpPolicyPrefixListTest.cpp
   fboss/cli/fboss2/test/config/CmdConfigBgpPolicyPrefixListEntryTest.cpp
   fboss/cli/fboss2/test/config/CmdConfigBgpPolicyRoutingPolicyTest.cpp
+  fboss/cli/fboss2/test/config/CmdConfigBgpPolicyRoutingPolicyTermTest.cpp
   fboss/cli/fboss2/test/config/CmdConfigCoppTest.cpp
   fboss/cli/fboss2/test/config/CmdConfigDataPlaneTrafficPolicyTest.cpp
   fboss/cli/fboss2/test/config/CmdConfigDhcpTest.cpp
   fboss/cli/fboss2/test/config/CmdConfigHostnameTest.cpp
   fboss/cli/fboss2/test/config/CmdConfigHistoryTest.cpp
   fboss/cli/fboss2/test/config/CmdConfigInterfaceIpv6NdpTest.cpp
+  fboss/cli/fboss2/test/config/CmdConfigInterfaceLoopbackTest.cpp
   fboss/cli/fboss2/test/config/CmdConfigInterfaceSflowSampleDestTest.cpp
   fboss/cli/fboss2/test/config/CmdConfigInterfaceSwitchportAccessVlanTest.cpp
   fboss/cli/fboss2/test/config/CmdConfigInterfaceTest.cpp
@@ -32,6 +34,7 @@ add_executable(fboss2_cmd_config_test
   fboss/cli/fboss2/test/config/CmdConfigL2LearningModeTest.cpp
   fboss/cli/fboss2/test/config/CmdConfigPtpTransparentClockTest.cpp
   fboss/cli/fboss2/test/config/CmdConfigMacAgingTimeTest.cpp
+  fboss/cli/fboss2/test/config/CmdConfigMirrorTest.cpp
   fboss/cli/fboss2/test/config/CmdConfigLoadBalancingTest.cpp
   fboss/cli/fboss2/test/config/CmdConfigQosBufferPoolTest.cpp
   fboss/cli/fboss2/test/config/CmdConfigQosDefaultPolicyTest.cpp
@@ -60,6 +63,7 @@ add_executable(fboss2_cmd_config_test
   fboss/cli/fboss2/test/config/CmdDeleteBgpPolicyCommunityListTest.cpp
   fboss/cli/fboss2/test/config/CmdDeleteBgpPolicyPrefixListTest.cpp
   fboss/cli/fboss2/test/config/CmdDeleteBgpPolicyRoutingPolicyTest.cpp
+  fboss/cli/fboss2/test/config/CmdDeleteBgpPolicyRoutingPolicyTermTest.cpp
   fboss/cli/fboss2/test/config/CmdDeleteConfigInterfaceTest.cpp
   fboss/cli/fboss2/test/config/CmdDeleteCoppQueueTest.cpp
   fboss/cli/fboss2/test/config/CmdDeleteCoppReasonTest.cpp
@@ -87,7 +91,7 @@ target_link_libraries(fboss2_cmd_config_test
   Folly::folly
   Folly::follybenchmark
   Folly::folly_test_util
-  FBThrift::thriftcpp2
+  thrift::rpc
 )
 
 gtest_discover_tests(fboss2_cmd_config_test)

@@ -13,6 +13,7 @@
 #include "fboss/agent/hw/switch_asics/FakeAsic.h"
 #include "fboss/agent/hw/switch_asics/MockAsic.h"
 #include "fboss/agent/hw/switch_asics/P200Asic.h"
+#include "fboss/agent/hw/switch_asics/Tomahawk5Asic.h"
 #include "fboss/agent/hw/switch_asics/Tomahawk6Asic.h"
 #include "fboss/agent/hw/switch_asics/YubaAsic.h"
 
@@ -132,6 +133,19 @@ TEST(SaiSdkVersionTest, yubaUsesPortTtlDecrementDisableOnMorganSdk) {
   EXPECT_TRUE(yuba.isSupported(HwAsic::Feature::LAG_TTL_DECREMENT_DISABLE));
 }
 
+TEST(HwAsicFeatureTest, hwProtectionCountersDisabledOnTomahawk6Only) {
+  Tomahawk6Asic tomahawk6{0, npuSwitchInfo()};
+  EXPECT_FALSE(tomahawk6.isSupported(
+      HwAsic::Feature::HW_PROTECTION_SWITCHOVER_COUNTERS));
+  for (const auto* version : {"14.2.0.0_odp", "15.4.0.0_odp"}) {
+    EXPECT_FALSE(asicWithSaiSdk(version).isSupported(
+        HwAsic::Feature::HW_PROTECTION_SWITCHOVER_COUNTERS));
+  }
+  Tomahawk5Asic tomahawk5{0, npuSwitchInfo()};
+  EXPECT_TRUE(tomahawk5.isSupported(
+      HwAsic::Feature::HW_PROTECTION_SWITCHOVER_COUNTERS));
+}
+
 TEST(HwAsicFeatureTest, portLatchStatusIsLimitedToYuba) {
   EbroAsic ebro{0, npuSwitchInfo()};
   EXPECT_FALSE(ebro.isSupported(HwAsic::Feature::PORT_LATCH_STATUS));
@@ -150,4 +164,24 @@ TEST(HwAsicFeatureTest, portLatchStatusIsLimitedToYuba) {
 
   Tomahawk6Asic tomahawk6{0, npuSwitchInfo()};
   EXPECT_FALSE(tomahawk6.isSupported(HwAsic::Feature::PORT_LATCH_STATUS));
+}
+
+TEST(HwAsicFeatureTest, pcsErrorCountersAreLimitedToYubaAndP200) {
+  YubaAsic yuba{0, npuSwitchInfo()};
+  EXPECT_TRUE(yuba.isSupported(HwAsic::Feature::PCS_ERROR_COUNTERS));
+
+  P200Asic p200{0, npuSwitchInfo()};
+  EXPECT_TRUE(p200.isSupported(HwAsic::Feature::PCS_ERROR_COUNTERS));
+
+  EbroAsic ebro{0, npuSwitchInfo()};
+  EXPECT_FALSE(ebro.isSupported(HwAsic::Feature::PCS_ERROR_COUNTERS));
+
+  FakeAsic fake{0, npuSwitchInfo()};
+  EXPECT_FALSE(fake.isSupported(HwAsic::Feature::PCS_ERROR_COUNTERS));
+
+  MockAsic mock{0, npuSwitchInfo()};
+  EXPECT_FALSE(mock.isSupported(HwAsic::Feature::PCS_ERROR_COUNTERS));
+
+  Tomahawk6Asic tomahawk6{0, npuSwitchInfo()};
+  EXPECT_FALSE(tomahawk6.isSupported(HwAsic::Feature::PCS_ERROR_COUNTERS));
 }

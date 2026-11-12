@@ -15,6 +15,7 @@
 #include <folly/logging/xlog.h>
 #include <cstdio>
 #include <filesystem>
+#include <stdexcept>
 
 using ::testing::_;
 
@@ -346,6 +347,48 @@ class AgentPreStartExecTests : public ::testing::Test {
     }
   }
 
+  // A failing kmods install (e.g. fboss_leaba_kmods unable to load
+  // libpython at boot) surfaces as a non-FbossError std::exception from
+  // runCommand. It must propagate to the runner, which exits gracefully.
+  void runWithKmodsFailure() {
+    using ::testing::Return;
+    using ::testing::Throw;
+    MockAgentCommandExecutor executor;
+    AgentPreStartExec exec;
+    auto netwhoami = std::make_unique<MockAgentNetWhoAmI>();
+    MockAgentPreExecDrainer drainer(util_.get());
+
+    ON_CALL(*netwhoami, isBcmPlatform()).WillByDefault(Return(TestAttr::kBrcm));
+    ON_CALL(*netwhoami, isTajoPlatform())
+        .WillByDefault(Return(!TestAttr::kBrcm));
+    ON_CALL(*netwhoami, isSdsw()).WillByDefault(Return(false));
+    ON_CALL(*netwhoami, isChenabPlatform()).WillByDefault(Return(false));
+    ON_CALL(*netwhoami, isFdsw()).WillByDefault(Return(false));
+
+    std::string kmodsInstaller = (TestAttr::kBrcm)
+        ? "/usr/local/bin/fboss_bcm_kmods"
+        : "/usr/local/bin/fboss_leaba_kmods";
+    std::string kmodVersion = getAsicSdkVersion(getSdkVersion());
+    EXPECT_CALL(
+        executor,
+        runCommand(
+            std::vector<std::string>{
+                kmodsInstaller, "install", "--sdk-upgrade", kmodVersion},
+            true))
+        .WillOnce(Throw(std::runtime_error("kmods install failed")));
+
+    EXPECT_THROW(
+        exec.run(
+            &executor,
+            std::move(netwhoami),
+            *util_,
+            std::make_unique<AgentConfig>(getConfig()),
+            TestAttr::kCppRefactor,
+            TestAttr::kNetOS,
+            0),
+        std::runtime_error);
+  }
+
  private:
   void setSdkVersion(cfg::SwitchConfig& config) {
     config.sdkVersion() = getSdkVersion();
@@ -496,6 +539,12 @@ TEST_F(
     MultiSwitchCppRefactorNetOsSaiBrcm,
     PreStartExecSecondarySwitchPreparesBinary) {
   runWithSwitchIndex(1);
+}
+
+TEST_F(
+    MultiSwitchCppRefactorNetOsSaiNoBrcm,
+    PreStartExecKmodsFailurePropagatesNonFbossError) {
+  runWithKmodsFailure();
 }
 
 TestFixtureNameFdsw(NoMultiSwitchCppRefactorSaiBrcm);

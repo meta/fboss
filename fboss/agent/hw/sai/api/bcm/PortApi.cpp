@@ -759,6 +759,11 @@ SaiPortTraits::linkUpDebounceRetriggerStats() {
   return stats;
 }
 
+const std::vector<sai_stat_id_t>& SaiPortTraits::pcsErrorStats() {
+  static const std::vector<sai_stat_id_t> stats;
+  return stats;
+}
+
 const std::vector<sai_stat_id_t>& SaiPortTraits::llrExtensionStats() {
   // 15.4 is the first SDK whose saiportextensions.h declares these; guarding on
   // BRCM_SAI_SDK_XGS_GTE_15_0 would pull in 15.0, which does not.

@@ -155,6 +155,11 @@ ConfigGenerationPlan createConfigGenerationPlan(
         linkTopologyVariant = *option.linkTopologyVariant();
       }
       validatePathComponent(linkTopologyVariant, "linkTopologyVariant");
+      std::optional<std::string> platformMappingVariant;
+      if (option.platformMappingVariant()) {
+        platformMappingVariant = *option.platformMappingVariant();
+      }
+      validatePathComponent(platformMappingVariant, "platformMappingVariant");
 
       auto outputPath = platformDirectory / "forwarding_stack" / "generated" /
           plan.serviceName / getOutputFileName(profile, variant);
@@ -173,6 +178,7 @@ ConfigGenerationPlan createConfigGenerationPlan(
           .variant = std::move(variant),
           .asicConfigVariant = std::move(asicConfigVariant),
           .linkTopologyVariant = std::move(linkTopologyVariant),
+          .platformMappingVariant = std::move(platformMappingVariant),
           .service = service,
           .serviceName = plan.serviceName,
           .platformDirectory = platformDirectory,

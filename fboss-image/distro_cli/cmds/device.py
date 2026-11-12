@@ -7,6 +7,7 @@
 
 """Device command implementation."""
 
+import ipaddress
 import json
 import logging
 import os
@@ -237,7 +238,8 @@ def get_device_ip(mac: str) -> str | None:
         mac: Device MAC address
 
     Returns:
-        IP address string (IPv4 preferred, IPv6 fallback), or None if not found
+        IP address string (IPv4 preferred, IPv6 fallback), or None if not found.
+        Scope link-local IPv6 addresses, e.g. "fe80::1%eth0".
     """
     if not container.container_is_running(DISTRO_INFRA_CONTAINER):
         logger.error(f"Container '{DISTRO_INFRA_CONTAINER}' is not running")
@@ -274,7 +276,11 @@ def get_device_ip(mac: str) -> str | None:
         ipv4 = result.get("ipv4")
         ipv6 = result.get("ipv6")
 
-        return ipv4 if ipv4 else ipv6
+        if ipv4:
+            return ipv4
+        if ipv6 and ipaddress.IPv6Address(ipv6).is_link_local:
+            return f"{ipv6}%{interface}"
+        return ipv6
 
     except json.JSONDecodeError as e:
         logger.error(f"Failed to parse JSON output: {e}")

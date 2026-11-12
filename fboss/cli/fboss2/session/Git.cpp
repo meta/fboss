@@ -23,14 +23,11 @@
 #include <cerrno>
 #include <cstddef>
 #include <exception>
-#include <filesystem>
 #include <stdexcept>
 #include <string>
-#include <system_error>
 #include <utility>
 #include <vector>
-
-namespace fs = std::filesystem;
+#include "fboss/lib/CommonFileUtils.h"
 
 namespace {
 
@@ -153,13 +150,7 @@ void Git::init(const std::string& initialBranch) {
   ScopedUmask scopedUmask(0002);
 
   // Create the directory if it doesn't exist
-  std::error_code ec;
-  fs::create_directories(repoPath_, ec);
-  if (ec) {
-    throw std::runtime_error(
-        fmt::format(
-            "Failed to create directory {}: {}", repoPath_, ec.message()));
-  }
+  createDir(repoPath_);
 
   // Initialize the repository with the specified initial branch
   // Use --shared=group to make the repository group-writable

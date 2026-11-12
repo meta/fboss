@@ -64,7 +64,7 @@ class NeighborCacheImpl {
         needL2EntryForNeighbor_(sw->needL2EntryForNeighbor()) {}
 
   // Methods useful for subclasses
-  void setPendingEntry(AddressType ip, PortDescriptor port, bool force = false);
+  bool setPendingEntry(AddressType ip, PortDescriptor port, bool force = false);
 
   void setExistingEntry(
       AddressType ip,

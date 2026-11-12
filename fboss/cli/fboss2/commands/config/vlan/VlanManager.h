@@ -70,6 +70,14 @@ class VlanManager {
   //
   // Does NOT call saveConfig() — callers save after this returns.
   static void deleteVlan(cfg::SwitchConfig& swConfig, const VlanID& vlanId);
+
+  // The validation half of deleteVlan(): throws FbossError under exactly the
+  // conditions deleteVlan() would refuse, without mutating swConfig. Lets a
+  // caller that deletes several objects validate them all before touching
+  // the config.
+  static void checkDeletable(
+      const cfg::SwitchConfig& swConfig,
+      const VlanID& vlanId);
 };
 
 } // namespace facebook::fboss

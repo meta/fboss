@@ -935,15 +935,17 @@ class SwSwitch : public HwSwitchCallback {
 
   void publishPhyInfoSnapshots(PortID portID) const;
 
-  bool sendArpRequestHelper(
-      std::shared_ptr<Interface> intf,
-      std::shared_ptr<SwitchState> state,
-      folly::IPAddressV4 source,
-      folly::IPAddressV4 target);
+  bool resolveArpHelper(
+      const std::shared_ptr<Interface>& intf,
+      const folly::IPAddressV4& target);
 
   bool sendNdpSolicitationHelper(
       std::shared_ptr<Interface> intf,
       std::shared_ptr<SwitchState> state,
+      const folly::IPAddressV6& target);
+
+  bool resolveNdpHelper(
+      const std::shared_ptr<Interface>& intf,
       const folly::IPAddressV6& target);
 
   TeFlowStats getTeFlowStats();

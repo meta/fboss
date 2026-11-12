@@ -83,7 +83,8 @@
       },
       "features": {
         "enable_sai_managed_udf_groups": true,
-        "enable_large_ecmp_member_capacity": true
+        "enable_large_ecmp_member_capacity": true,
+        "enable_uncached_port_stats": true
       }
     },
     "mgmt_4x25g": {

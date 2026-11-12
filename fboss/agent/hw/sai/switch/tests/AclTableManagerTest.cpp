@@ -54,6 +54,28 @@ class AclTableManagerTest : public ManagerTestBase {
   cfg::AclActionType kActionType() {
     return cfg::AclActionType::DENY;
   }
+
+  AclCounterSaiId addAclEntryWithCounter(
+      int priority,
+      const std::string& entryName,
+      const std::string& counterName) {
+    cfg::TrafficCounter counter;
+    *counter.name() = counterName;
+    MatchAction action;
+    action.setTrafficCounter(counter);
+    auto aclEntry = std::make_shared<AclEntry>(priority, entryName);
+    aclEntry->setDscp(kDscp());
+    aclEntry->setAclAction(action);
+    auto aclEntryId = saiManagerTable->aclTableManager().addAclEntry(
+        aclEntry,
+        cfg::switch_config_constants::DEFAULT_INGRESS_ACL_TABLE(),
+        nullptr /*state*/);
+    return AclCounterSaiId(
+        saiApiTable->aclApi()
+            .getAttribute(
+                aclEntryId, SaiAclEntryTraits::Attributes::ActionCounter())
+            .getData());
+  }
 };
 
 TEST_F(AclTableManagerTest, addAclTable) {
@@ -614,6 +636,45 @@ TEST_F(AclTableManagerTest, addAclEntryWithCounter) {
       SaiAclCounterTraits::Attributes::TableId());
   EXPECT_EQ(tableIdGot2, aclTableId);
 }
+
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 2)
+TEST_F(AclTableManagerTest, aclCounterExtendedLabel) {
+  std::string counterName(60, 'a');
+  auto aclCounterId =
+      addAclEntryWithCounter(kPriority(), "AclEntry1", counterName);
+
+  auto labelGot = saiApiTable->aclApi().getAttribute(
+      aclCounterId, SaiAclCounterTraits::Attributes::LabelExtended());
+  EXPECT_EQ(std::string(labelGot.begin(), labelGot.end()), counterName);
+  EXPECT_EQ(
+      std::string(
+          saiApiTable->aclApi()
+              .getAttribute(
+                  aclCounterId, SaiAclCounterTraits::Attributes::Label())
+              .data()),
+      "");
+}
+
+TEST_F(AclTableManagerTest, aclCounterExtendedLabelsShareShortPrefix) {
+  std::string prefix(SaiCharArray32{}.size() - 1, 'a');
+  EXPECT_NE(
+      addAclEntryWithCounter(kPriority(), "AclEntry1", prefix + "-one"),
+      addAclEntryWithCounter(kPriority2(), "AclEntry2", prefix + "-two"));
+}
+
+TEST_F(AclTableManagerTest, aclCounterExtendedLabelShared) {
+  std::string counterName(60, 'a');
+  auto aclCounterId =
+      addAclEntryWithCounter(kPriority(), "AclEntry1", counterName);
+  EXPECT_EQ(
+      addAclEntryWithCounter(kPriority2(), "AclEntry2", counterName),
+      aclCounterId);
+
+  auto labelGot = saiApiTable->aclApi().getAttribute(
+      aclCounterId, SaiAclCounterTraits::Attributes::LabelExtended());
+  EXPECT_EQ(std::string(labelGot.begin(), labelGot.end()), counterName);
+}
+#endif
 
 TEST_F(AclTableManagerTest, addAclEntryWithLookupClassPort) {
   FLAGS_enable_acl_table_group = true;

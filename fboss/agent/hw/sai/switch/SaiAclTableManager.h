@@ -317,6 +317,8 @@ class SaiAclTableManager {
 
   AclStats getAclStats() const;
 
+  bool aclCounterLabelExtendedSupported() const;
+
  private:
   SaiAclTableHandle* FOLLY_NULLABLE
   getAclTableHandleImpl(const std::string& aclTableName) const;

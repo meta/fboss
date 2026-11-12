@@ -60,7 +60,7 @@ class InterfaceTest : public ::testing::Test {
     auto* intfConfig = &config.interfaces()[0];
     *intfConfig->intfID() = 1;
     *intfConfig->vlanID() = 1;
-    *intfConfig->routerID() = 1;
+    intfConfig->routerID() = 1;
     config.vrfs().ensure().emplace_back().vrfId() = 1;
     intfConfig->ipAddresses()->resize(4 + intfLinkLocals.size());
     auto idx = 0;
@@ -79,7 +79,7 @@ class InterfaceTest : public ::testing::Test {
     intfConfig = &config.interfaces()[1];
     *intfConfig->intfID() = 2;
     *intfConfig->vlanID() = 2;
-    *intfConfig->routerID() = 2;
+    intfConfig->routerID() = 2;
     config.vrfs().ensure().emplace_back().vrfId() = 2;
     intfConfig->ipAddresses()->resize(4);
     intfConfig->ipAddresses()[0] = "10.1.1.1/24";
@@ -358,7 +358,7 @@ TEST(Interface, applyConfig) {
   auto* intfConfig = &config.interfaces()[0];
   *intfConfig->intfID() = 1;
   *intfConfig->vlanID() = 1;
-  *intfConfig->routerID() = 0;
+  intfConfig->routerID() = 0;
   intfConfig->mac() = "00:02:00:11:22:33";
   intfConfig->dhcpRelayAddressV4() = "30.1.1.1";
   intfConfig->dhcpRelayAddressV6() = "2a03:2880:10:1f07:face:b00c:0:0";
@@ -423,7 +423,7 @@ TEST(Interface, applyConfig) {
   *config.interfaces()[0].vlanID() = 2;
   *config.interfaces()[1].intfID() = 1;
   *config.interfaces()[1].vlanID() = 1;
-  *config.interfaces()[1].routerID() = 0;
+  config.interfaces()[1].routerID() = 0;
   MacAddress intf2Mac("02:01:02:ab:cd:78");
   config.interfaces()[1].mac() = intf2Mac.toString();
   updateState();
@@ -439,7 +439,7 @@ TEST(Interface, applyConfig) {
   EXPECT_EQ(InterfaceID(1), newvlan1->getInterfaceID());
 
   // routerID change
-  *config.interfaces()[1].routerID() = 1;
+  config.interfaces()[1].routerID() = 1;
   config.vrfs().ensure().emplace_back().vrfId() = 1;
   updateState();
   EXPECT_EQ(nodeID, interface->getNodeID());

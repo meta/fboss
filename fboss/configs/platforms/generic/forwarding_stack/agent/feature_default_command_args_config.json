@@ -321,15 +321,6 @@
               "benchmark",
               "link_test"
             ]
-          },
-          "platforms": {
-            "included": [
-              "PLATFORM_WEDGE800BACT",
-              "PLATFORM_WEDGE800CACT",
-              "PLATFORM_WEDGE800BNHP",
-              "PLATFORM_WEDGE800CNHP",
-              "PLATFORM_M5120CSC"
-            ]
           }
         }
       ]
@@ -343,15 +334,6 @@
           "configProfiles": {
             "included": [
               "default"
-            ]
-          },
-          "platforms": {
-            "included": [
-              "PLATFORM_WEDGE800BACT",
-              "PLATFORM_WEDGE800CACT",
-              "PLATFORM_WEDGE800BNHP",
-              "PLATFORM_WEDGE800CNHP",
-              "PLATFORM_M5120CSC"
             ]
           }
         }

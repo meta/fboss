@@ -99,6 +99,7 @@ cpp_unittest(
         "CmdHelpTest.cpp",
         "CmdReadWriteModeTest.cpp",
         "CmdSubCommandsTest.cpp",
+        "CmdUtilsTest.cpp",
         "FilterTest.cpp",
         "FilterValidationTest.cpp",
         "//fboss/cli/fboss2:cmd-list-config-impl",
@@ -129,6 +130,7 @@ cpp_unittest(
     srcs = [
         "CanonicalRibResolverTest.cpp",
         "CmdCompletionTest.cpp",
+        "CmdClearArpNdpTest.cpp",
         "CmdConfigSessionClearTest.cpp",
         "CmdGetPcapTest.cpp",
         "CmdListConfigTest.cpp",

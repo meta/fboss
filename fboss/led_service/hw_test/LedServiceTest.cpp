@@ -726,17 +726,17 @@ TEST_F(LedServiceTest, testTcvrLos) {
 
           // Collect all lanes from this port's LED controllers
           std::vector<int> allPortLanes;
-          int maxLane = 0;
+          int maxLedLane = 0;
           for (const auto& [ledId, ctrlPair] : portLedCtrls) {
             for (auto lane : ctrlPair.second) {
               allPortLanes.push_back(lane);
-              maxLane = std::max(maxLane, lane);
+              maxLedLane = std::max(maxLedLane, lane);
             }
           }
 
           // Create signals with mixed LOS: first LED's lanes have LOS,
           // remaining LEDs' lanes have signal
-          std::vector<MediaLaneSignals> signals(maxLane + 1);
+          std::vector<MediaLaneSignals> signals(maxLedLane + 1);
           auto firstLedIt = portLedCtrls.begin();
           for (auto lane : firstLedIt->second.second) {
             signals[lane].rxLos() = true;

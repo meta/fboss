@@ -222,9 +222,8 @@ cpp_library(
 )
 
 cpp_library(
-    # @autodeps-skip keep backward-compat folly re-exports (folly:format) that downstream
-    # consumers (e.g. hw/bcm:sdk_tracer -> SdkTracer.cpp includes folly/Format.h) relied on
-    # transitively; autodeps would demote them to deps.
+    # @autodeps-skip keep backward-compat re-exports (e.g. fmt, folly:file) that downstream
+    # consumers relied on transitively; autodeps would demote them to deps.
     name = "function_call_time_reporter",
     srcs = [
         "FunctionCallTimeReporter.cpp",

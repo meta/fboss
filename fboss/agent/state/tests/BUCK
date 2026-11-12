@@ -20,6 +20,7 @@ cpp_unittest(
         "FlowletSwitchingTests.cpp",
         "ForwardingInformationBaseTests.cpp",
         "InterfaceTests.cpp",
+        "InterfaceVrfTests.cpp",
         "IpTunnelTests.cpp",
         "LabelFIBTests.cpp",
         "LabelForwardingActionTests.cpp",

@@ -997,6 +997,11 @@ SaiPortTraits::linkUpDebounceRetriggerStats() {
   return stats;
 }
 
+const std::vector<sai_stat_id_t>& SaiPortTraits::pcsErrorStats() {
+  static const std::vector<sai_stat_id_t> stats;
+  return stats;
+}
+
 const std::vector<sai_stat_id_t>& SaiPortTraits::llrExtensionStats() {
   static const std::vector<sai_stat_id_t> stats;
   return stats;
@@ -1200,6 +1205,13 @@ std::optional<sai_attr_id_t>
 SaiAclTableTraits::Attributes::AttributeFieldRouteDestination::operator()() {
   return SAI_ACL_TABLE_ATTR_FIELD_ROUTE_DST;
 }
+
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 2)
+std::optional<sai_attr_id_t>
+SaiAclCounterTraits::Attributes::AttributeLabelExtendedWrapper::operator()() {
+  return SAI_ACL_COUNTER_ATTR_EXT_LABEL_EXTENDED;
+}
+#endif
 
 std::optional<sai_attr_id_t>
 SaiArsTraits::Attributes::AttributeNextHopGroupType::operator()() {

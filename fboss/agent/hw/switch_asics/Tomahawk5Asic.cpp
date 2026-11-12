@@ -90,6 +90,7 @@ bool Tomahawk5Asic::isSupported(Feature feature) const {
     case HwAsic::Feature::L3_MTU_ERROR_TRAP:
     case HwAsic::Feature::SAI_USER_DEFINED_TRAP:
     case HwAsic::Feature::ACL_COUNTER_LABEL:
+    case HwAsic::Feature::ACL_COUNTER_LABEL_EXTENDED:
     case HwAsic::Feature::ECMP_DLB_OFFSET:
     case HwAsic::Feature::SAI_FEC_CORRECTED_BITS:
     case HwAsic::Feature::SAI_FEC_CODEWORDS_STATS:
@@ -265,6 +266,7 @@ bool Tomahawk5Asic::isSupported(Feature feature) const {
     case HwAsic::Feature::CSIG:
     case HwAsic::Feature::LAG_TTL_DECREMENT_DISABLE:
     case HwAsic::Feature::PORT_LATCH_STATUS:
+    case HwAsic::Feature::PCS_ERROR_COUNTERS:
     case HwAsic::Feature::ACL_DST_IPV6_WORD_WITH_MASK:
       return false;
   }
