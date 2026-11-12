@@ -1561,6 +1561,7 @@ cpp_library(
         "fbsource//xplat/folly:utility",
         "fbsource//xplat/folly/lang:assume",
         "fbsource//xplat/folly/logging:logging",
+        ":fboss2-config-file-utils",
         ":table-utils",
         "//configerator/structs/neteng/bgp_policy/thrift:routing_policy-cpp2-types",
         "//configerator/structs/neteng/fboss/bgp/if:bgp_attr-cpp2-serialization",

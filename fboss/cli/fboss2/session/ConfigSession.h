@@ -131,6 +131,11 @@ class ConfigSession {
   // than a new block in the clear command.
   static std::vector<std::string> stagedSessionFilePaths();
 
+  // Returns the text unchanged if it does not parse.
+  static std::string normalizedConfigJson(
+      cli::ServiceType service,
+      const std::string& json);
+
   // Get the path to the session config file (~/.fboss2/agent.conf)
   std::string getSessionConfigPath() const;
 
