@@ -28,7 +28,7 @@
   "fboss-forwarding-stack": [
     {
       "name": "agent",
-      "download": "${ARTIFACT_BASE}/agent/cisco/25.5.4210-3/fboss_bins.tar.zst"
+      "download": "${ARTIFACT_BASE}/agent/leaba/25.5.4210/fboss_bins.tar.zst"
     },
     {
       "name": "fsdb",
