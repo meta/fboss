@@ -277,6 +277,12 @@ class RibRouteTables {
       const RibToSwitchStateFunction& ribToSwitchStateFunc,
       void* cookie);
 
+  void updateInterfaceVrfs(
+      const SwitchIdScopeResolver* resolver,
+      const InterfaceToVrf& interfaceToVrf,
+      const RibToSwitchStateFunction& ribToSwitchStateFunc,
+      void* cookie);
+
   /*
    * FIB assisted fromThrift. With shared data structure of routes
    * all except the unresolved routes are shared b/w rib and FIB, so
@@ -354,6 +360,9 @@ class RibRouteTables {
       bool ecmpModeChanged = false);
   template <typename RibUpdateFn>
   void updateRib(RouterID vrf, const RibUpdateFn& updateRib);
+  // Like updateRib(vrf, ...), for changes across VRFs
+  template <typename RibUpdateFn>
+  void updateRib(const RibUpdateFn& updateRib);
   void updateEcmpOverrides(
       const std::vector<RouterID>& vrfs,
       const StateDelta& delta);
@@ -627,6 +636,15 @@ class RoutingInformationBase {
           std::vector<
               std::pair<folly::CIDRNetwork, facebook::fboss::InterfaceID>>>&
           toDel,
+      const RibToSwitchStateFunction& ribToSwitchStateFunc,
+      void* cookie);
+
+  // Moves the interfaces in interfaceToVrf to their new VRF: their interface
+  // routes and their place in the VRF interface lists. Programs the changed
+  // VRFs and the target VRFs in one switch state update.
+  void updateInterfaceVrfs(
+      const SwitchIdScopeResolver* resolver,
+      const InterfaceToVrf& interfaceToVrf,
       const RibToSwitchStateFunction& ribToSwitchStateFunc,
       void* cookie);
 

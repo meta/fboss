@@ -79,7 +79,9 @@ class CrossVrfResolutionTest : public ::testing::Test {
     reconfigure();
   }
 
-  void reconfigure() {
+  void reconfigure(
+      const std::optional<RoutingInformationBase::InterfaceToVrf>&
+          interfaceToVrf = std::nullopt) {
     rib_.reconfigure(
         scopeResolver(),
         interfaceRoutes_,
@@ -92,7 +94,9 @@ class CrossVrfResolutionTest : public ::testing::Test {
         {},
         {},
         fibUpdate(),
-        nullptr);
+        nullptr,
+        false,
+        interfaceToVrf);
   }
 
   RibToSwitchStateFunction fibUpdate() {
@@ -578,4 +582,105 @@ TEST_F(CrossVrfResolutionTest, ReconfigureRemovesVrfInSameUpdate) {
   ASSERT_EQ(fibUpdates_.size(), 1);
   EXPECT_EQ(fibUpdates_[0], (std::vector<RouterID>{kTenantVrf, kVrf0}));
   EXPECT_EQ(rib_.getVrfList(), std::vector<RouterID>{kVrf0});
+}
+
+class InterfaceVrfMoveTest : public CrossVrfResolutionTest {
+ protected:
+  void SetUp() override {
+    CrossVrfResolutionTest::SetUp();
+    // Interfaces are restricted to their VRF
+    reconfigure(
+        RoutingInformationBase::InterfaceToVrf{
+            {InterfaceID(1), kVrf0},
+            {InterfaceID(2), kVrf0},
+            {InterfaceID(55), kTenantVrf}});
+  }
+  void updateInterfaceVrfs(const RoutingInformationBase::InterfaceToVrf& map) {
+    rib_.updateInterfaceVrfs(scopeResolver(), map, fibUpdate(), nullptr);
+  }
+  // Interface 2 moves from the default VRF to the tenant VRF
+  void moveInterface2ToTenantVrf() {
+    updateInterfaceVrfs({{InterfaceID(2), kTenantVrf}});
+  }
+  bool hasLinkLocalRoute(RouterID vrf) {
+    return rib_.longestMatch(folly::IPAddressV6("fe80::1"), vrf) != nullptr;
+  }
+};
+
+TEST_F(InterfaceVrfMoveTest, RoutesFollowInterface) {
+  addRoute(
+      kVrf0, makeRoute("2001:db8:100::/64", makeNextHop("2001:db8:2::10", {})));
+  addRoute(
+      kTenantVrf,
+      makeRoute("2001:db8:200::/64", makeNextHop("2001:db8:2::10", {})));
+  EXPECT_TRUE(nextHops(kTenantVrf, "2001:db8:200::1").empty());
+  fibUpdates_.clear();
+
+  moveInterface2ToTenantVrf();
+
+  // Both VRFs are programmed in one FIB update
+  ASSERT_EQ(fibUpdates_.size(), 1);
+  EXPECT_EQ(fibUpdates_[0], (std::vector<RouterID>{kVrf0, kTenantVrf}));
+  EXPECT_TRUE(nextHops(kVrf0, "2001:db8:100::1").empty());
+  auto nhops = nextHops(kTenantVrf, "2001:db8:200::1");
+  ASSERT_EQ(nhops.size(), 1);
+  EXPECT_EQ(nhops.begin()->intfID(), InterfaceID(2));
+}
+
+TEST_F(InterfaceVrfMoveTest, EcmpRouteKeepsOtherInterface) {
+  addRoute(
+      kVrf0,
+      makeUnicastRoute(
+          folly::IPAddress::createNetwork("2001:db8:100::/64"),
+          {folly::IPAddress("2001:db8:1::10"),
+           folly::IPAddress("2001:db8:2::10")}));
+  ASSERT_EQ(nextHops(kVrf0, "2001:db8:100::1").size(), 2);
+
+  moveInterface2ToTenantVrf();
+
+  auto nhops = nextHops(kVrf0, "2001:db8:100::1");
+  ASSERT_EQ(nhops.size(), 1);
+  EXPECT_EQ(nhops.begin()->intfID(), InterfaceID(1));
+}
+
+TEST_F(InterfaceVrfMoveTest, LinkLocalRouteFollowsInterfaceRoutes) {
+  ASSERT_TRUE(hasLinkLocalRoute(kTenantVrf));
+  // The tenant VRF loses its only interface
+  updateInterfaceVrfs({{InterfaceID(55), kVrf0}});
+  EXPECT_FALSE(hasLinkLocalRoute(kTenantVrf));
+  EXPECT_TRUE(hasLinkLocalRoute(kVrf0));
+  EXPECT_FALSE(nextHops(kVrf0, "2001:db8:55::1").empty());
+}
+
+TEST_F(InterfaceVrfMoveTest, LinkLocalRouteLeavesDefaultVrf) {
+  ASSERT_TRUE(hasLinkLocalRoute(kVrf0));
+  // The default VRF loses all its interfaces with interface routes
+  updateInterfaceVrfs(
+      {{InterfaceID(1), kTenantVrf}, {InterfaceID(2), kTenantVrf}});
+  EXPECT_FALSE(hasLinkLocalRoute(kVrf0));
+  EXPECT_TRUE(hasLinkLocalRoute(kTenantVrf));
+}
+
+TEST_F(InterfaceVrfMoveTest, LinkLocalRouteStaysWithOtherInterfaceRoutes) {
+  // Interface 3 has no interface routes
+  updateInterfaceVrfs({{InterfaceID(3), kTenantVrf}});
+  EXPECT_TRUE(hasLinkLocalRoute(kTenantVrf));
+  EXPECT_TRUE(hasLinkLocalRoute(kVrf0));
+}
+
+TEST_F(InterfaceVrfMoveTest, SameMoveProgramsNothing) {
+  moveInterface2ToTenantVrf();
+  fibUpdates_.clear();
+
+  moveInterface2ToTenantVrf();
+
+  EXPECT_TRUE(fibUpdates_.empty());
+}
+
+TEST_F(InterfaceVrfMoveTest, UnknownVrfRejected) {
+  fibUpdates_.clear();
+  EXPECT_THROW(
+      updateInterfaceVrfs({{InterfaceID(2), RouterID(2002)}}), FbossError);
+  EXPECT_TRUE(fibUpdates_.empty());
+  EXPECT_FALSE(nextHops(kVrf0, "2001:db8:2::1").empty());
 }

@@ -533,6 +533,82 @@ TEST_F(RibRollbackTest, rollbackAcrossVrfs) {
   EXPECT_TRUE(route->getForwardInfo().isDrop());
 }
 
+TEST_F(RibRollbackTest, rollbackInterfaceVrfMove) {
+  // A route through an interface-scoped next hop on interface 1
+  NextHopThrift nhop;
+  nhop.address() = toBinaryAddress(IPAddress("fe80::1"));
+  nhop.address()->ifName() = "fboss1";
+  UnicastRoute route;
+  route.dest()->ip() = toBinaryAddress(IPAddress("2001:db8:300::"));
+  route.dest()->prefixLength() = 64;
+  route.nextHops() = {nhop};
+  rib_.update(
+      scopeResolver(),
+      kRid,
+      kBgpClient,
+      kBgpDistance,
+      {route},
+      {},
+      false,
+      "add",
+      ribToSwitchStateUpdate,
+      &switchState_);
+  auto hasRoute = [this]() {
+    return switchState_->getFibsInfoMap()
+               ->getFibContainer(kRid)
+               ->getFibV6()
+               ->exactMatch({folly::IPAddressV6("2001:db8:300::"), 64}) !=
+        nullptr;
+  };
+  ASSERT_TRUE(hasRoute());
+
+  // Config adds another VRF and puts interface 1 in the default VRF
+  const RouterID kOtherVrf(1001);
+  rib_.reconfigure(
+      scopeResolver(),
+      {{kRid, {}}, {kOtherVrf, {}}},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      ribToSwitchStateUpdate,
+      &switchState_,
+      false,
+      RoutingInformationBase::InterfaceToVrf{{InterfaceID(1), kRid}});
+  ASSERT_TRUE(hasRoute());
+
+  // Moving interface 1 to the other VRF fails to program
+  auto routesBeforeFailedUpdate = rib_.getRouteTableDetails(kRid);
+  FailSomeUpdates failFirstUpdate({1});
+  EXPECT_THROW(
+      rib_.updateInterfaceVrfs(
+          scopeResolver(),
+          {{InterfaceID(1), kOtherVrf}},
+          failFirstUpdate,
+          &switchState_),
+      FbossHwUpdateError);
+  EXPECT_EQ(routesBeforeFailedUpdate, rib_.getRouteTableDetails(kRid));
+
+  // Interface 1 is still usable in the default VRF, so the route stays
+  // resolved when the default VRF is resolved again
+  rib_.update(
+      scopeResolver(),
+      kRid,
+      kBgpClient,
+      kBgpDistance,
+      std::vector<UnicastRoute>{},
+      {},
+      false,
+      "empty update",
+      ribToSwitchStateUpdate,
+      &switchState_);
+  EXPECT_TRUE(hasRoute());
+}
+
 // Callback that injects MySid entries into the applied state on failure.
 class FailWithMySidInAppliedState {
  public:
