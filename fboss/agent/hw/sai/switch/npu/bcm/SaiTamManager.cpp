@@ -428,6 +428,8 @@ void SaiTamManager::addDnxMirrorOnDropReport(
   std::vector<sai_int32_t> bindpoints = {
       SAI_TAM_BIND_POINT_TYPE_SWITCH, SAI_TAM_BIND_POINT_TYPE_PORT};
   auto tam = createTam(eventIds, bindpoints);
+  // DNX reports always carry a mirror port.
+  const auto mirrorPortId = report->getMirrorPortId().value();
   storeTamHandle(
       report->getID(),
       reportObj,
@@ -436,9 +438,9 @@ void SaiTamManager::addDnxMirrorOnDropReport(
       collector,
       events,
       tam,
-      report->getMirrorPortId(),
+      mirrorPortId,
       agingGroups);
-  bindTam(tam->adapterKey(), report->getMirrorPortId());
+  bindTam(tam->adapterKey(), mirrorPortId);
 }
 #endif
 

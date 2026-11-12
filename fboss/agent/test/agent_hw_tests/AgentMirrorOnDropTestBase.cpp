@@ -21,6 +21,7 @@
 #include "fboss/agent/test/utils/AclTestUtils.h"
 #include "fboss/agent/test/utils/ConfigUtils.h"
 #include "fboss/agent/test/utils/CoppTestUtils.h"
+#include "fboss/agent/test/utils/PfcTestUtils.h"
 #include "fboss/agent/test/utils/PortTestUtils.h"
 #include "fboss/agent/test/utils/QosTestUtils.h"
 #include "fboss/agent/test/utils/TrapPacketUtils.h"
@@ -81,6 +82,24 @@ void AgentMirrorOnDropTestBase::setupEcmpTraffic(
   }
 }
 
+void AgentMirrorOnDropTestBase::unprogramEcmpTraffic(
+    const folly::IPAddressV6& addr) {
+  utility::EcmpSetupTargetedPorts6 ecmpHelper{
+      getProgrammedState(),
+      getSw()->needL2EntryForNeighbor(),
+      kCollectorNextHopMac_};
+  auto routeUpdater = getSw()->getRouteUpdater();
+  ecmpHelper.unprogramRoutes(&routeUpdater, {RoutePrefixV6{addr, 128}});
+}
+
+void AgentMirrorOnDropTestBase::unresolveEcmpTraffic(const PortID& portId) {
+  utility::EcmpSetupTargetedPorts6 ecmpHelper{
+      getProgrammedState(), getSw()->needL2EntryForNeighbor()};
+  applyNewState([&](const std::shared_ptr<SwitchState>& state) {
+    return ecmpHelper.unresolveNextHops(state, {PortDescriptor(portId)});
+  });
+}
+
 void AgentMirrorOnDropTestBase::addDropPacketAcl(
     cfg::SwitchConfig* config,
     const PortID& portId) {
@@ -88,6 +107,22 @@ void AgentMirrorOnDropTestBase::addDropPacketAcl(
       config, fmt::format("drop-packet-{}", portId), cfg::AclActionType::DENY);
   acl->etherType() = cfg::EtherType::IPv6;
   acl->srcPort() = portId;
+}
+
+void AgentMirrorOnDropTestBase::configureMmuDropBuffers(
+    cfg::SwitchConfig& config,
+    const PortID& injectionPortId,
+    int priority) {
+  const auto* hwAsic =
+      checkSameAndGetAsicForTesting(getAgentEnsemble()->getL3Asics());
+  utility::setupPfcBuffers(
+      getAgentEnsemble(),
+      config,
+      {injectionPortId},
+      {},
+      {priority},
+      utility::PfcBufferParams::getPfcBufferParams(
+          hwAsic->getAsicType(), kDefaultGlobalSharedBytes));
 }
 
 void AgentMirrorOnDropTestBase::applyMirrorOnDropConfig(
@@ -103,6 +138,16 @@ void AgentMirrorOnDropTestBase::applyMirrorOnDropConfig(
       cfg::ToCpuAction::TRAP);
   applyNewConfig(config);
   setupEcmpTraffic(collectorPort, kCollectorIp_, kCollectorNextHopMac_);
+  waitForStateUpdates(getSw());
+}
+
+void AgentMirrorOnDropTestBase::resetMirrorOnDropFlows() {
+  auto config = getAgentEnsemble()->getCurrentConfig();
+  auto reports = *config.mirrorOnDropReports();
+  config.mirrorOnDropReports()->clear();
+  applyNewConfig(config);
+  *config.mirrorOnDropReports() = std::move(reports);
+  applyNewConfig(config);
   waitForStateUpdates(getSw());
 }
 

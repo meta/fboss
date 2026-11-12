@@ -22,16 +22,18 @@
 #include "fboss/agent/hw/sai/switch/SaiSwitch.h"
 #include "fboss/agent/hw/sai/switch/SaiSwitchManager.h"
 #include "fboss/agent/hw/sai/switch/SaiVirtualRouterManager.h"
+#include "fboss/agent/hw/sai/switch/SaiVxlanTunnelManager.h"
 #include "fboss/agent/hw/sai/switch/tests/ManagerTestBase.h"
 #include "fboss/agent/state/NdpEntry.h"
 #include "fboss/agent/state/Route.h"
 #include "fboss/agent/state/RouteNextHop.h"
 #include "fboss/agent/state/Srv6Tunnel.h"
+#include "fboss/agent/state/Vrf.h"
+#include "fboss/agent/state/VxlanTunnel.h"
 #include "fboss/agent/test/utils/NextHopIdTestUtils.h"
 #include "fboss/agent/types.h"
 
 #include <fmt/format.h>
-#include <gflags/gflags.h>
 #include <optional>
 #include <set>
 
@@ -249,6 +251,34 @@ TEST_F(RouteManagerTest, addRoute) {
       r, RouterID(0), getProgrammedState());
 }
 
+// An interface of an ECMP route moves to another VRF. The route keeps its
+// next hop on the other interface, so it changes instead of being removed.
+// SaiSwitch removes neighbors, then changes router interfaces, then changes
+// routes. Removing the neighbor removes its next hop, so the old router
+// interface is no longer in use when it is recreated.
+TEST_F(RouteManagerTest, moveInterfaceOfEcmpRouteToVrf) {
+  TestRoute ecmpRoute{d1, {testInterfaces.at(0), testInterfaces.at(1)}};
+  auto oldRoute = makeRoute(ecmpRoute);
+  programRoute(oldRoute);
+  saiManagerTable->virtualRouterManager().addVrf(
+      std::make_shared<Vrf>(RouterID(1001)));
+
+  for (const auto& remoteHost : testInterfaces.at(0).remoteHosts) {
+    saiManagerTable->neighborManager().removeNeighbor(
+        makeArpEntry(testInterfaces.at(0).id, remoteHost));
+  }
+  auto movedInterface = testInterfaces.at(0);
+  movedInterface.routerId = RouterID(1001);
+  EXPECT_NO_THROW(
+      saiManagerTable->routerInterfaceManager().changeLocalRouterInterface(
+          makeInterface(testInterfaces.at(0)), makeInterface(movedInterface)));
+
+  auto newRoute = makeRoute(TestRoute{d1, {testInterfaces.at(1)}});
+  EXPECT_NO_THROW(
+      saiManagerTable->routeManager().changeRoute<folly::IPAddressV4>(
+          oldRoute, newRoute, RouterID(0), getProgrammedState()));
+}
+
 TEST_F(RouteManagerTest, addRouteSameNextHops) {
   tr2.nextHopInterfaces = tr1.nextHopInterfaces;
   auto r1 = makeRoute(tr1);
@@ -417,6 +447,40 @@ TEST_F(RouteManagerTest, updatingBackupsStopsChildGroupSharing) {
   ASSERT_TRUE(firstChildGroupId.has_value());
   ASSERT_TRUE(secondChildGroupId.has_value());
   EXPECT_NE(firstChildGroupId, secondChildGroupId);
+}
+
+TEST_F(RouteManagerTest, nextHopResolvedInNextLevelRejected) {
+  ResolvedNextHop nextLevel(
+      folly::IPAddress("10.10.10.10"),
+      std::nullopt,
+      ECMP_WEIGHT,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      {},
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      NextHopRole::PRIMARY,
+      std::nullopt,
+      true /* resolvedInNextLevel */);
+
+  auto singleNextHop = makeRouteWithEntry(
+      d1,
+      RouteNextHopEntry(
+          RouteNextHopEntry::NextHopSet{nextLevel},
+          AdminDistance::STATIC_ROUTE));
+  EXPECT_THROW(programRoute(singleNextHop), FbossError);
+
+  auto ecmp = makeRouteWithEntry(
+      d2,
+      RouteNextHopEntry(
+          RouteNextHopEntry::NextHopSet{
+              nextLevel,
+              makeResolvedNextHop(testInterfaces.at(0), NextHopRole::PRIMARY)},
+          AdminDistance::STATIC_ROUTE));
+  EXPECT_THROW(programRoute(ecmp), FbossError);
 }
 
 TEST_F(RouteManagerTest, addRouteOneNextHop) {
@@ -1607,6 +1671,234 @@ TEST_F(Srv6RouteTest, createSrv6SidListThrowsOnEmptySegmentList) {
       saiManagerTable->nextHopManager().createSrv6SidList(nhNoSrv6),
       FbossError);
 }
+
+class VxlanRouteTest : public ManagerTestBase {
+ public:
+  void SetUp() override {
+    setupStage = SetupStage::PORT | SetupStage::VLAN | SetupStage::INTERFACE;
+    ManagerTestBase::SetUp();
+    intf0 = testInterfaces[0];
+    intf1 = testInterfaces[1];
+  }
+
+  std::shared_ptr<VxlanTunnel> makeVxlanTunnel(
+      const std::string& tunnelId,
+      uint32_t intfID,
+      bool withMapping = true,
+      int64_t vni = 10001) {
+    auto tunnel = std::make_shared<VxlanTunnel>(tunnelId);
+    tunnel->setType(TunnelType::VXLAN);
+    tunnel->setUnderlayIntfId(InterfaceID(intfID));
+    tunnel->setSrcIP(folly::IPAddressV4("10.0.0.1"));
+    tunnel->setDstIP(folly::IPAddressV4("10.0.0.2"));
+    tunnel->setTTLMode(cfg::TunnelMode::UNIFORM);
+    tunnel->setDscpMode(cfg::TunnelMode::UNIFORM);
+    tunnel->setEcnMode(cfg::TunnelMode::UNIFORM);
+    tunnel->setTunnelTermType(cfg::TunnelTerminationType::P2MP);
+    if (withMapping) {
+      tunnel->setVrf2Vni(std::map<int64_t, int64_t>{{0, vni}});
+      tunnel->setVniToVrf(std::map<int64_t, int64_t>{{vni, 0}});
+    }
+    return tunnel;
+  }
+
+  ResolvedNextHop makeVxlanNextHop(
+      const std::string& tunnelId,
+      folly::MacAddress mac = folly::MacAddress("02:00:00:00:00:01"),
+      bool resolvedInNextLevel = false) const {
+    return ResolvedNextHop{
+        folly::IPAddressV4("10.0.0.2"),
+        // A next hop resolved in the next level has no interface.
+        resolvedInNextLevel ? std::nullopt
+                            : std::optional<InterfaceID>(InterfaceID(intf0.id)),
+        ECMP_WEIGHT,
+        std::nullopt,
+        std::nullopt,
+        std::nullopt,
+        std::nullopt,
+        {},
+        TunnelType::VXLAN,
+        tunnelId,
+        std::nullopt,
+        NextHopRole::PRIMARY,
+        std::nullopt,
+        resolvedInNextLevel,
+        mac};
+  }
+
+  ResolvedNextHop makeNextLevelNextHop(
+      folly::IPAddressV4 ip = folly::IPAddressV4("10.0.0.2")) const {
+    return ResolvedNextHop{
+        ip,
+        std::nullopt,
+        ECMP_WEIGHT,
+        std::nullopt,
+        std::nullopt,
+        std::nullopt,
+        std::nullopt,
+        {},
+        std::nullopt,
+        std::nullopt,
+        std::nullopt,
+        NextHopRole::PRIMARY,
+        std::nullopt,
+        true /* resolvedInNextLevel */};
+  }
+
+  std::shared_ptr<Route<folly::IPAddressV4>> makeVxlanRoute(
+      const folly::CIDRNetwork& destination,
+      const RouteNextHopEntry::NextHopSet& nextHops) {
+    RouteNextHopEntry entry(nextHops, AdminDistance::STATIC_ROUTE);
+    RouteFields<folly::IPAddressV4>::Prefix prefix(
+        destination.first.asV4(), destination.second);
+    auto route = std::make_shared<Route<folly::IPAddressV4>>(
+        Route<folly::IPAddressV4>::makeThrift(prefix));
+    route->update(ClientID{42}, entry);
+    allocateRouteNextHopIds(nextHopIDManager_.get(), entry);
+    route->setResolved(entry);
+    return route;
+  }
+
+  TestInterface intf0;
+  TestInterface intf1;
+};
+
+TEST_F(VxlanRouteTest, addRouteWithVxlanNextHop) {
+  auto swTunnel = makeVxlanTunnel("vxlantunnel0", intf0.id);
+  saiManagerTable->vxlanTunnelManager().addVxlanTunnel(swTunnel);
+  folly::CIDRNetwork destination{folly::IPAddress("42.42.42.42"), 24};
+  auto swNextHop = makeVxlanNextHop("vxlantunnel0");
+  auto route = makeVxlanRoute(destination, {swNextHop});
+  saiManagerTable->routeManager().addRoute<folly::IPAddressV4>(
+      route, RouterID(0), getProgrammedState());
+  auto saiEntry =
+      saiManagerTable->routeManager().routeEntryFromSwRoute(RouterID(0), route);
+  auto* handle = saiManagerTable->routeManager().getRouteHandle(saiEntry);
+  ASSERT_NE(handle, nullptr);
+  auto* vxlanHandle = std::get_if<std::shared_ptr<SaiVxlanNextHopHandle>>(
+      &handle->nexthopHandle_);
+  ASSERT_NE(vxlanHandle, nullptr);
+  ASSERT_NE(*vxlanHandle, nullptr);
+  EXPECT_EQ(
+      GET_ATTR(Route, PacketAction, handle->route->attributes()),
+      SAI_PACKET_ACTION_FORWARD);
+  EXPECT_EQ(handle->nextHopAdapterKey(), (*vxlanHandle)->adapterKey());
+  // Removing the route releases the tunnel next hop.
+  saiManagerTable->routeManager().removeRoute<folly::IPAddressV4>(
+      route, RouterID(0));
+  EXPECT_EQ(saiManagerTable->routeManager().getRouteHandle(saiEntry), nullptr);
+}
+
+TEST_F(VxlanRouteTest, vxlanEcmpRoute) {
+  auto swTunnel = makeVxlanTunnel("vxlantunnel0", intf0.id);
+  saiManagerTable->vxlanTunnelManager().addVxlanTunnel(swTunnel);
+  folly::CIDRNetwork destination{folly::IPAddress("42.42.42.42"), 24};
+  // Two remote MACs on one tunnel give two distinct next hops.
+  auto ecmpRoute = makeVxlanRoute(
+      destination,
+      {makeVxlanNextHop("vxlantunnel0"),
+       makeVxlanNextHop(
+           "vxlantunnel0", folly::MacAddress("02:00:00:00:00:02"))});
+  saiManagerTable->routeManager().addRoute<folly::IPAddressV4>(
+      ecmpRoute, RouterID(0), getProgrammedState());
+  auto saiEntry = saiManagerTable->routeManager().routeEntryFromSwRoute(
+      RouterID(0), ecmpRoute);
+  auto* handle = saiManagerTable->routeManager().getRouteHandle(saiEntry);
+  ASSERT_NE(handle, nullptr);
+  auto* groupHandle = std::get_if<std::shared_ptr<SaiNextHopGroupHandle>>(
+      &handle->nexthopHandle_);
+  ASSERT_NE(groupHandle, nullptr);
+  ASSERT_NE(*groupHandle, nullptr);
+  EXPECT_EQ((*groupHandle)->members_.size(), 2);
+  EXPECT_EQ(
+      handle->nextHopAdapterKey(), (*groupHandle)->nextHopGroup->adapterKey());
+  EXPECT_EQ(
+      GET_ATTR(Route, PacketAction, handle->route->attributes()),
+      SAI_PACKET_ACTION_FORWARD);
+  // Removing the route releases the group.
+  saiManagerTable->routeManager().removeRoute<folly::IPAddressV4>(
+      ecmpRoute, RouterID(0));
+  EXPECT_EQ(saiManagerTable->routeManager().getRouteHandle(saiEntry), nullptr);
+}
+
+TEST_F(VxlanRouteTest, addRouteWithVxlanNextHopResolvedInNextLevel) {
+  auto swTunnel = makeVxlanTunnel("vxlantunnel0", intf0.id);
+  saiManagerTable->vxlanTunnelManager().addVxlanTunnel(swTunnel);
+  folly::CIDRNetwork destination{folly::IPAddress("42.42.42.42"), 24};
+  auto swNextHop = makeVxlanNextHop(
+      "vxlantunnel0",
+      folly::MacAddress("02:00:00:00:00:01"),
+      true /* resolvedInNextLevel */);
+  auto route = makeVxlanRoute(destination, {swNextHop});
+  saiManagerTable->routeManager().addRoute<folly::IPAddressV4>(
+      route, RouterID(0), getProgrammedState());
+  auto saiEntry =
+      saiManagerTable->routeManager().routeEntryFromSwRoute(RouterID(0), route);
+  auto* handle = saiManagerTable->routeManager().getRouteHandle(saiEntry);
+  ASSERT_NE(handle, nullptr);
+  auto* vxlanHandle = std::get_if<std::shared_ptr<SaiVxlanNextHopHandle>>(
+      &handle->nexthopHandle_);
+  ASSERT_NE(vxlanHandle, nullptr);
+  ASSERT_NE(*vxlanHandle, nullptr);
+  EXPECT_EQ(handle->nextHopAdapterKey(), (*vxlanHandle)->adapterKey());
+  saiManagerTable->routeManager().removeRoute<folly::IPAddressV4>(
+      route, RouterID(0));
+  EXPECT_EQ(saiManagerTable->routeManager().getRouteHandle(saiEntry), nullptr);
+}
+
+TEST_F(VxlanRouteTest, vxlanEcmpRouteResolvedInNextLevel) {
+  auto swTunnel = makeVxlanTunnel("vxlantunnel0", intf0.id);
+  saiManagerTable->vxlanTunnelManager().addVxlanTunnel(swTunnel);
+  folly::CIDRNetwork destination{folly::IPAddress("42.42.42.42"), 24};
+  auto ecmpRoute = makeVxlanRoute(
+      destination,
+      {makeVxlanNextHop(
+           "vxlantunnel0",
+           folly::MacAddress("02:00:00:00:00:01"),
+           true /* resolvedInNextLevel */),
+       makeVxlanNextHop(
+           "vxlantunnel0",
+           folly::MacAddress("02:00:00:00:00:02"),
+           true /* resolvedInNextLevel */)});
+  saiManagerTable->routeManager().addRoute<folly::IPAddressV4>(
+      ecmpRoute, RouterID(0), getProgrammedState());
+  auto saiEntry = saiManagerTable->routeManager().routeEntryFromSwRoute(
+      RouterID(0), ecmpRoute);
+  auto* handle = saiManagerTable->routeManager().getRouteHandle(saiEntry);
+  ASSERT_NE(handle, nullptr);
+  auto* groupHandle = std::get_if<std::shared_ptr<SaiNextHopGroupHandle>>(
+      &handle->nexthopHandle_);
+  ASSERT_NE(groupHandle, nullptr);
+  ASSERT_NE(*groupHandle, nullptr);
+  EXPECT_EQ((*groupHandle)->members_.size(), 2);
+  EXPECT_EQ(
+      handle->nextHopAdapterKey(), (*groupHandle)->nextHopGroup->adapterKey());
+  saiManagerTable->routeManager().removeRoute<folly::IPAddressV4>(
+      ecmpRoute, RouterID(0));
+  EXPECT_EQ(saiManagerTable->routeManager().getRouteHandle(saiEntry), nullptr);
+}
+
+TEST_F(VxlanRouteTest, nonVxlanNextHopResolvedInNextLevelThrows) {
+  folly::CIDRNetwork destination{folly::IPAddress("42.42.42.42"), 24};
+  auto route = makeVxlanRoute(destination, {makeNextLevelNextHop()});
+  EXPECT_THROW(
+      saiManagerTable->routeManager().addRoute<folly::IPAddressV4>(
+          route, RouterID(0), getProgrammedState()),
+      FbossError);
+}
+
+TEST_F(VxlanRouteTest, nonVxlanEcmpResolvedInNextLevelThrows) {
+  folly::CIDRNetwork destination{folly::IPAddress("42.42.42.42"), 24};
+  auto route = makeVxlanRoute(
+      destination,
+      {makeNextLevelNextHop(folly::IPAddressV4("10.0.0.2")),
+       makeNextLevelNextHop(folly::IPAddressV4("10.0.0.3"))});
+  EXPECT_THROW(
+      saiManagerTable->routeManager().addRoute<folly::IPAddressV4>(
+          route, RouterID(0), getProgrammedState()),
+      FbossError);
+}
+
 #endif
 
 // A route's SAI_ROUTE_ENTRY_ATTR_COUNTER_ID must follow its counterID for

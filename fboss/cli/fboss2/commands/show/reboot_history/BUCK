@@ -1,0 +1,31 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbcode_macros//build_defs:thrift_library.bzl", "thrift_library")
+
+oncall("fboss_agent_push")
+
+thrift_library(
+    name = "model",
+    languages = [
+        "cpp2",
+    ],
+    thrift_cpp2_options = "json",
+    thrift_srcs = {"model.thrift": []},
+    deps = [
+        "//fboss/platform/reboot_cause_finder/if:reboot_cause_config",
+    ],
+)
+
+cpp_library(
+    name = "CmdShowRebootHistory",
+    srcs = ["CmdShowRebootHistory.cpp"],
+    labels = ["autodeps2_generated"],
+    deps = [
+        "fbsource//xplat/folly/json:dynamic",
+        "//fboss/cli/fboss2:cmd-handler",
+        "//fboss/cli/fboss2:fboss2-lib",
+        "//fboss/cli/fboss2:table-utils",
+        "//fboss/platform/reboot_cause_finder:reboot_history_lib",
+        "//fboss/platform/reboot_cause_finder/if:reboot_cause_config-cpp2-types",
+        "//thrift/lib/cpp/util:enum_utils",
+    ],
+)

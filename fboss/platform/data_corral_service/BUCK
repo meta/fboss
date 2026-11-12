@@ -18,6 +18,7 @@ cpp_library(
         "//fboss/platform/weutil:weutil_core",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:synchronized",
         "//fboss/platform/data_corral_service/if:data_corral_service-cpp2-services",
     ],
 )

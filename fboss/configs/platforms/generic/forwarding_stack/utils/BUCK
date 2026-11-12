@@ -19,9 +19,9 @@ cpp_library(
     visibility = ["PUBLIC"],
     deps = [
         "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly:small_vector",
         "fbsource//xplat/folly:string",
         "fbsource//xplat/folly/json:dynamic",
-        "//folly:small_vector",
     ],
     exported_deps = [
         "//fboss/agent:fboss-error",

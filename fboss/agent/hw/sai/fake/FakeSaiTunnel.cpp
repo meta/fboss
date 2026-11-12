@@ -29,6 +29,8 @@ sai_status_t create_tunnel_fn(
   std::optional<sai_int32_t> encapDscpMode;
   std::optional<sai_int32_t> encapEcnMode;
   std::optional<sai_object_id_t> decapQosDscpToTcMap;
+  std::vector<sai_object_id_t> encapMappers;
+  std::vector<sai_object_id_t> decapMappers;
   for (int i = 0; i < attr_count; i++) {
     switch (attr_list[i].id) {
       case SAI_TUNNEL_ATTR_TYPE:
@@ -74,6 +76,16 @@ sai_status_t create_tunnel_fn(
       case SAI_TUNNEL_ATTR_DECAP_QOS_DSCP_TO_TC_MAP:
         decapQosDscpToTcMap = attr_list[i].value.oid;
         break;
+      case SAI_TUNNEL_ATTR_ENCAP_MAPPERS:
+        encapMappers.assign(
+            attr_list[i].value.objlist.list,
+            attr_list[i].value.objlist.list + attr_list[i].value.objlist.count);
+        break;
+      case SAI_TUNNEL_ATTR_DECAP_MAPPERS:
+        decapMappers.assign(
+            attr_list[i].value.objlist.list,
+            attr_list[i].value.objlist.list + attr_list[i].value.objlist.count);
+        break;
       default:
         return SAI_STATUS_INVALID_PARAMETER;
     }
@@ -95,6 +107,8 @@ sai_status_t create_tunnel_fn(
   tunnel.encapDscpMode = encapDscpMode;
   tunnel.encapEcnMode = encapEcnMode;
   tunnel.decapQosDscpToTcMap = decapQosDscpToTcMap;
+  tunnel.encapMappers = encapMappers;
+  tunnel.decapMappers = decapMappers;
   return SAI_STATUS_SUCCESS;
 }
 
@@ -157,6 +171,28 @@ sai_status_t get_tunnel_attribute_fn(
             ? tunnel.decapQosDscpToTcMap.value()
             : SAI_NULL_OBJECT_ID;
         break;
+      case SAI_TUNNEL_ATTR_ENCAP_MAPPERS: {
+        if (tunnel.encapMappers.size() > attr[i].value.objlist.count) {
+          attr[i].value.objlist.count = tunnel.encapMappers.size();
+          return SAI_STATUS_BUFFER_OVERFLOW;
+        }
+        attr[i].value.objlist.count = tunnel.encapMappers.size();
+        int j = 0;
+        for (const auto& mapper : tunnel.encapMappers) {
+          attr[i].value.objlist.list[j++] = mapper;
+        }
+      } break;
+      case SAI_TUNNEL_ATTR_DECAP_MAPPERS: {
+        if (tunnel.decapMappers.size() > attr[i].value.objlist.count) {
+          attr[i].value.objlist.count = tunnel.decapMappers.size();
+          return SAI_STATUS_BUFFER_OVERFLOW;
+        }
+        attr[i].value.objlist.count = tunnel.decapMappers.size();
+        int j = 0;
+        for (const auto& mapper : tunnel.decapMappers) {
+          attr[i].value.objlist.list[j++] = mapper;
+        }
+      } break;
       default:
         return SAI_STATUS_INVALID_PARAMETER;
     }
@@ -203,6 +239,16 @@ sai_status_t set_tunnel_attribute_fn(
       break;
     case SAI_TUNNEL_ATTR_DECAP_QOS_DSCP_TO_TC_MAP:
       tunnel.decapQosDscpToTcMap = attr->value.oid;
+      break;
+    case SAI_TUNNEL_ATTR_ENCAP_MAPPERS:
+      tunnel.encapMappers.assign(
+          attr->value.objlist.list,
+          attr->value.objlist.list + attr->value.objlist.count);
+      break;
+    case SAI_TUNNEL_ATTR_DECAP_MAPPERS:
+      tunnel.decapMappers.assign(
+          attr->value.objlist.list,
+          attr->value.objlist.list + attr->value.objlist.count);
       break;
     default:
       return SAI_STATUS_INVALID_PARAMETER;

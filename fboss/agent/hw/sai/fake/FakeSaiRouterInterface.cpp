@@ -93,6 +93,17 @@ sai_status_t create_router_interface_fn(
 
 sai_status_t remove_router_interface_fn(sai_object_id_t router_interface_id) {
   auto fs = FakeSai::getInstance();
+  // Refuse while next hops or neighbors use the router interface
+  for (const auto& [nextHopId, nextHop] : fs->nextHopManager.map()) {
+    if (nextHop.routerInterfaceId == router_interface_id) {
+      return SAI_STATUS_OBJECT_IN_USE;
+    }
+  }
+  for (const auto& [neighborEntry, neighbor] : fs->neighborManager.map()) {
+    if (std::get<1>(neighborEntry) == router_interface_id) {
+      return SAI_STATUS_OBJECT_IN_USE;
+    }
+  }
   fs->routeInterfaceManager.remove(router_interface_id);
   return SAI_STATUS_SUCCESS;
 }

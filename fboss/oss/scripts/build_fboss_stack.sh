@@ -152,6 +152,9 @@ perform_build() {
     elif [ -n "${SAI_TAJO_IMPL:-}" ]; then
       sai_name="sai-tajo-${SAI_SDK_VERSION}"
       npu_flags+=("--npu-sai-impl" "SAI_TAJO_IMPL")
+    elif [ -n "${CHENAB_SAI_SDK:-}" ]; then
+      sai_name="sai-chenab-${SAI_SDK_VERSION}"
+      npu_flags+=("--npu-sai-impl" "CHENAB_SAI_SDK")
     else
       sai_name="sai-unknown-${SAI_SDK_VERSION}"
     fi
@@ -175,6 +178,30 @@ perform_build() {
   mkdir -p "$build_dir"
 
   common_root="${scratch_root}/common"
+
+  # Metadata is only recorded by a POST_BUILD step, which doesn't rerun for
+  # up-to-date binaries. Delete the recorded binaries so they relink and re-record
+  # accurately for this build..
+  local npu_sdk_metadata="${build_dir}/build/fboss/npu_sdk_metadata.json"
+  if [ "$need_sai" -eq 1 ] && [ -z "$build_suffix" ] && [ -f "$npu_sdk_metadata" ]; then
+    log "Removing binaries recorded in $npu_sdk_metadata"
+    local recorded_binaries
+    recorded_binaries=$(python3 -c \
+      'import json, sys; print("\n".join(json.load(open(sys.argv[1]))))' \
+      "$npu_sdk_metadata")
+    local binary
+    while IFS= read -r binary; do
+      if [ -z "$binary" ]; then
+        continue
+      fi
+      if [[ $binary == */* ]]; then
+        echo "Unexpected path in $npu_sdk_metadata: $binary" >&2
+        exit 1
+      fi
+      rm -f "${build_dir}/build/fboss/${binary}"
+    done <<<"$recorded_binaries"
+    rm -f "$npu_sdk_metadata"
+  fi
 
   common_options='--allow-system-packages'
   common_options+=' --scratch-path '$build_dir

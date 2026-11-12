@@ -2123,7 +2123,7 @@ int BcmCinter::bcm_udf_create(
     int unit,
     bcm_udf_alloc_hints_t* hints,
     bcm_udf_t* udf_info,
-    bcm_udf_id_t* udf_id) {
+    bcm_udf_id_t* /* udf_id */) {
   auto cintHints = cintForBcmUdfAllocHints(hints);
 
   auto cintInfo = cintForBcmUdfInfo(udf_info);

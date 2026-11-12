@@ -35,8 +35,6 @@ class TestEnsembleIf;
 
 namespace utility {
 
-constexpr int kCPUPort = 0;
-
 constexpr int kCoppLowPriQueueId = 0;
 constexpr int kCoppDefaultPriQueueId = 1;
 constexpr int kCoppMidPriQueueId = 2;
@@ -66,10 +64,6 @@ void addCpuQueueConfig(
     bool isSai,
     bool setQueueRate = true);
 
-folly::CIDRNetwork kIPv6LinkLocalMcastNetwork();
-
-folly::CIDRNetwork kIPv6LinkLocalUcastNetwork();
-
 folly::CIDRNetwork kIPv6NdpSolicitNetwork();
 
 cfg::MatchAction createQueueMatchAction(
@@ -85,21 +79,6 @@ std::vector<std::pair<cfg::AclEntry, cfg::MatchAction>> defaultCpuAcls(
     cfg::AclStage aclStage);
 
 std::string getMplsDestNoMatchCounterName(void);
-
-void addNoActionAclForNw(
-    const folly::CIDRNetwork& nw,
-    std::vector<std::pair<cfg::AclEntry, cfg::MatchAction>>& acls);
-
-void addHighPriAclForNwAndNetworkControlDscp(
-    const folly::CIDRNetwork& dstNetwork,
-    int highPriQueueId,
-    cfg::ToCpuAction toCpuAction,
-    std::vector<std::pair<cfg::AclEntry, cfg::MatchAction>>& acls);
-
-void addMidPriAclForNw(
-    const folly::CIDRNetwork& dstNetwork,
-    cfg::ToCpuAction toCpuAction,
-    std::vector<std::pair<cfg::AclEntry, cfg::MatchAction>>& acls);
 
 void addLowPriAclForUnresolvedRoutes(
     cfg::ToCpuAction toCpuAction,
@@ -155,10 +134,6 @@ cfg::MatchAction getToQueueAction(
     const int queueId,
     bool isSai,
     const std::optional<cfg::ToCpuAction> toCpuAction = std::nullopt);
-
-void addNoActionAclForUnicastLinkLocal(
-    const folly::CIDRNetwork& nw,
-    std::vector<std::pair<cfg::AclEntry, cfg::MatchAction>>& acls);
 
 template <typename SwitchT>
 std::map<int, uint64_t> getQueueOutPacketsWithRetry(

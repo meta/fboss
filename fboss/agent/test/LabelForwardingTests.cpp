@@ -39,9 +39,10 @@ class LabelForwardingTest : public ::testing::TestWithParam<bool> {
   void TearDown() override {
     waitForStateUpdates(this->sw);
   }
-  std::unique_ptr<ThriftHandler> thriftHandler{nullptr};
-  SwSwitch* sw{nullptr};
+  // Members are destroyed in reverse order: the handler must go before sw.
   std::unique_ptr<HwTestHandle> handle{nullptr};
+  SwSwitch* sw{nullptr};
+  std::unique_ptr<ThriftHandler> thriftHandler{nullptr};
 };
 
 TEST_P(LabelForwardingTest, addMplsRoutes) {

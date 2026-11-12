@@ -91,6 +91,9 @@ class ResourceAccountant {
   void mySidStateChangedImpl(const StateDelta& delta);
   bool checkMySidResource(bool intermediateState);
 
+  void vrfStateChangedImpl(const StateDelta& delta);
+  bool checkVrfResource() const;
+
   size_t countSrv6NextHops(const RouteNextHopSet& nhSet) const;
   bool checkSrv6UcmpDistinctWeights(const RouteNextHopSet& nhSet) const;
 
@@ -164,6 +167,8 @@ class ResourceAccountant {
   uint32_t virtualArsGroupCount_{0};
   uint32_t routeUsage_{0};
   uint32_t mySidUsage_{0};
+  // Configured VRFs, excluding the default VRF
+  uint32_t vrfUsage_{0};
   // SRv6 next hop tracking: keyed by NextHopSetID for efficient lookup.
   // Stores {refCount, srv6Count} per unique NextHopSet.
   struct Srv6NextHopSetInfo {
@@ -212,6 +217,7 @@ class ResourceAccountant {
   FRIEND_TEST(ResourceAccountantTest, checkMySidResource);
   FRIEND_TEST(ResourceAccountantTest, mySidStateChanged);
   FRIEND_TEST(ResourceAccountantTest, mySidResourceExceeded);
+  FRIEND_TEST(ResourceAccountantTest, vrfResourceExceeded);
   FRIEND_TEST(ResourceAccountantTest, checkAndUpdateSrv6NextHopResource);
   FRIEND_TEST(ResourceAccountantTest, srv6NextHopResourceExceeded);
   FRIEND_TEST(ResourceAccountantTest, srv6UcmpDistinctWeights);

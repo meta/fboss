@@ -252,6 +252,7 @@ void handleExtensionAttributes() {
   SAI_EXT_ATTR_MAP(Port, LinkDownDebouncePeriodMs)
   SAI_EXT_ATTR_MAP(Port, LinkUpDebounceRetriggerCount)
   SAI_EXT_ATTR_MAP(Port, LinkDownDebounceRetriggerCount)
+  SAI_EXT_ATTR_MAP(Port, CbfcReceiverCreditLimit)
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 3)
   SAI_EXT_ATTR_MAP(Port, ExtOperStatusLatch)
 #endif
@@ -281,7 +282,7 @@ void handleExtensionAttributes() {
 #if SAI_API_VERSION >= SAI_VERSION(1, 16, 0) && defined(BRCM_SAI_SDK_XGS)
   SAI_EXT_ATTR_MAP(Port, ArsLinkState)
 #endif
-#if defined(SAI_BRCM_PAI_IMPL)
+#if defined(BRCM_PAI_SDK)
   SAI_EXT_ATTR_MAP(PortSerdes, RxReach)
 #endif
   SAI_EXT_ATTR_MAP(Port, IsHyperPortMember)

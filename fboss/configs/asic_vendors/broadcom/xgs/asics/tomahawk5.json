@@ -31,7 +31,13 @@
     "physical_id": 513,
     "speed": 100000,
     "num_lanes": 4,
-    "fec": "PC_FEC_RS528"
+    "fec": "PC_FEC_RS528",
+    "breakout_ports": [
+      {"logical_id": 76, "physical_id": 513},
+      {"logical_id": 164, "physical_id": 514},
+      {"logical_id": 186, "physical_id": 515},
+      {"logical_id": 274, "physical_id": 516}
+    ]
   },
   "preamble_support": true,
 
@@ -118,9 +124,9 @@
       }
     },
     {
-      "name": "hw_test_uncached_port_stats",
-      "description": "Enables uncached port statistics for hardware tests.",
-      "condition": {"source": "asic_config_params", "param": "config_gen_type", "equals": "HW_TEST"},
+      "name": "uncached_port_stats",
+      "description": "Enables uncached port statistics.",
+      "condition": {"source": "features", "param": "enable_uncached_port_stats", "equals": true},
       "apply": {
         "global": {"sai_uncached_port_stats": "0x1"}
       }

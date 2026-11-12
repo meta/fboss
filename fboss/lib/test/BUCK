@@ -149,6 +149,17 @@ cpp_unittest(
 )
 
 cpp_unittest(
+    name = "hw_write_behavior_test",
+    srcs = [
+        "HwWriteBehaviorTest.cpp",
+    ],
+    network_access = network_access_utils.none(),
+    deps = [
+        "//fboss/lib:hw_write_behavior",
+    ],
+)
+
+cpp_unittest(
     name = "thrift_method_rate_limit_test",
     srcs = [
         "ThriftMethodRateLimitTest.cpp",
@@ -168,7 +179,7 @@ cpp_library(
         "Utils.h",
     ],
     exported_deps = [
-        "//common/network:address",
+        "fbsource//xplat/folly:network_address",
     ],
 )
 

@@ -46,6 +46,7 @@ cpp_unittest(
         "ICMPTest.cpp",
         "IPv4Test.cpp",
         "IntfDeltaValidatorTest.cpp",
+        "L3TrafficLoopExpiryTest.cpp",
         "LabelForwardingTests.cpp",
         "LinkConnectivityProcessorTest.cpp",
         "LldpManagerTest.cpp",
@@ -133,6 +134,7 @@ cpp_unittest(
         "fbsource//xplat/folly/executors/thread_factory:named_thread_factory",
         "fbsource//xplat/folly/io:iobuf",
         "fbsource//xplat/folly/logging:logging",
+        "fbsource//xplat/folly/logging/test:test_handler",
         "fbsource//xplat/folly/portability:gflags",
         "fbsource//xplat/folly/portability:gtest",
         "fbsource//xplat/folly/synchronization:baton",
@@ -144,12 +146,14 @@ cpp_unittest(
         ":route_scale_gen",
         ":utils",
         "//common/async_trace:folly_scuba_trace",
+        "//common/network/if:if-cpp2-serialization",
         "//common/network/if:if-cpp2-types",
         "//common/stats:monotonic_counter",
         "//common/thrift/cpp/server/code_frameworks/testing:server",
         "//fb303:service_data",
         "//fb303:thread_cached_service_data",
         "//fboss/agent:address_utils",
+        "//fboss/agent:agent_config-cpp2-serialization",
         "//fboss/agent:agent_config-cpp2-types",
         "//fboss/agent:agent_dir_util",
         "//fboss/agent:agent_features",
@@ -170,12 +174,15 @@ cpp_unittest(
         "//fboss/agent:multiswitch_service",
         "//fboss/agent:packet",
         "//fboss/agent:packet_stream_handler",
+        "//fboss/agent:platform_config-cpp2-serialization",
         "//fboss/agent:platform_config-cpp2-types",
         "//fboss/agent:remote_intf_route_auditor",
         "//fboss/agent:shel_manager",
         "//fboss/agent:stats",
         "//fboss/agent:sw_switch_warmboot_helper",
+        "//fboss/agent:switch_config-cpp2-serialization",
         "//fboss/agent:switch_config-cpp2-types",
+        "//fboss/agent:switch_state-cpp2-serialization",
         "//fboss/agent:switch_state-cpp2-types",
         "//fboss/agent:switchid_scope_resolver",
         "//fboss/agent:switchinfo_utils",
@@ -186,8 +193,11 @@ cpp_unittest(
         "//fboss/agent/hw/mock:mock",
         "//fboss/agent/hw/mock:pkt",
         "//fboss/agent/hw/switch_asics:switch_asics",
+        "//fboss/agent/if:common-cpp2-serialization",
         "//fboss/agent/if:common-cpp2-types",
+        "//fboss/agent/if:ctrl-cpp2-serialization",
         "//fboss/agent/if:ctrl-cpp2-types",
+        "//fboss/agent/if:mpls-cpp2-serialization",
         "//fboss/agent/if:mpls-cpp2-types",
         "//fboss/agent/if:packet_stream-cpp2-services",
         "//fboss/agent/packet:ether_type",
@@ -230,7 +240,7 @@ cpp_unittest(
         "//fboss/agent:fboss-error",
         "//fboss/agent:hwswitch_matcher",
         "//fboss/agent:pbr_acl_manager",
-        "//fboss/agent:switch_config-cpp2-types",
+        "//fboss/agent:switch_config-cpp2-serialization",
         "//fboss/agent/state:state",
     ],
 )
@@ -259,6 +269,26 @@ cpp_unittest(
     deps = [
         ":utils",
         "//fboss/agent/hw/mock:mock",
+        "//fboss/agent/state:state",
+    ],
+)
+
+cpp_unittest(
+    name = "vrf_config_test",
+    srcs = [
+        "VrfConfigTests.cpp",
+    ],
+    network_access = network_access_utils.none(),
+    test_main = "//fboss/agent/test:fboss_test_main",
+    deps = [
+        ":hw_test_handle",
+        ":utils",
+        "//fboss/agent:address_utils",
+        "//fboss/agent:core",
+        "//fboss/agent:fib_helpers",
+        "//fboss/agent:state_observer",
+        "//fboss/agent/hw/mock:mock",
+        "//fboss/agent/rib:standalone_rib",
         "//fboss/agent/state:state",
     ],
 )
@@ -308,7 +338,7 @@ cpp_unittest(
         ":utils",
         "//fboss/agent:core",
         "//fboss/agent:fboss-types",
-        "//fboss/agent:switch_config-cpp2-types",
+        "//fboss/agent:switch_config-cpp2-serialization",
     ],
     external_deps = [
         ("boost", None, "boost_container"),
@@ -360,8 +390,8 @@ cpp_library(
         "//fboss/agent:hw_switch_thrift_client_table",
         "//fboss/agent:multi_switch_hw_switch_handler",
         "//fboss/agent:state_observer",
-        "//fboss/agent:switch_config-cpp2-types",
-        "//fboss/agent:switch_state-cpp2-types",
+        "//fboss/agent:switch_config-cpp2-serialization",
+        "//fboss/agent:switch_state-cpp2-serialization",
         "//fboss/agent:utils",
         "//fboss/agent/hw/mock:mock",
         "//fboss/agent/state:state",
@@ -461,9 +491,9 @@ cpp_library(
         ":resourcelibutil",
         "//fboss/agent:fboss-types",
         "//fboss/agent:fib_helpers",
-        "//fboss/agent/if:ctrl-cpp2-types",
+        "//fboss/agent/if:ctrl-cpp2-serialization",
         "//fboss/agent/state:state",
-        "//fboss/lib/if:fboss_common-cpp2-types",
+        "//fboss/lib/if:fboss_common-cpp2-serialization",
     ],
 )
 
@@ -559,7 +589,7 @@ cpp_library(
         "fbsource//xplat/folly:network_address",
         "//fboss/agent:agent_features",
         "//fboss/agent:fboss-types",
-        "//fboss/agent:switch_config-cpp2-types",
+        "//fboss/agent:switch_config-cpp2-serialization",
         "//fboss/agent/state:state",
     ],
     exported_external_deps = [
@@ -578,7 +608,7 @@ cpp_library(
     exported_deps = [
         "fbsource//xplat/folly:network_address",
         "//fboss/agent:fboss-types",
-        "//fboss/agent:switch_config-cpp2-types",
+        "//fboss/agent:switch_config-cpp2-serialization",
     ],
 )
 
@@ -597,7 +627,7 @@ cpp_library(
     ],
     exported_deps = [
         "//fboss/agent:fboss-types",
-        "//fboss/agent:switch_config-cpp2-types",
+        "//fboss/agent:switch_config-cpp2-serialization",
     ],
 )
 
@@ -624,7 +654,7 @@ cpp_unittest(
         "//fboss/agent:agent_features",
         "//fboss/agent:state_delta_logger",
         "//fboss/agent/state:state",
-        "//fboss/fsdb/if:fsdb_oper-cpp2-types",
+        "//fboss/fsdb/if:fsdb_oper-cpp2-serialization",
         "//fboss/thrift_cow/nodes:serializer",
     ],
 )
@@ -703,7 +733,7 @@ cpp_library(
     ],
     deps = [
         "fbsource//xplat/folly/gen:base",
-        "//fboss/agent:agent_config-cpp2-types",
+        "//fboss/agent:agent_config-cpp2-serialization",
         "//fboss/agent/hw/switch_asics:switch_asics",
         "//fboss/agent/hw/test:config_factory",
         "//fboss/agent/state:state",
@@ -714,7 +744,7 @@ cpp_library(
         "fbsource//xplat/folly/logging:logging",
         ":agent_test",
         "//fboss/agent:load_agent_config",
-        "//fboss/agent:switch_config-cpp2-types",
+        "//fboss/agent:switch_config-cpp2-serialization",
     ],
 )
 
@@ -734,7 +764,7 @@ cpp_library(
         "fbsource//xplat/folly:synchronized",
         "fbsource//xplat/folly/logging:logging",
         ":agent_ensemble_test",
-        "//fboss/agent:switch_config-cpp2-types",
+        "//fboss/agent:switch_config-cpp2-serialization",
     ],
 )
 
@@ -751,7 +781,7 @@ cpp_library(
         ":ecmp_helper",
         ":resourcelibutil",
         "//fboss/agent:packet",
-        "//fboss/agent/hw:hardware_stats-cpp2-types",
+        "//fboss/agent/hw:hardware_stats-cpp2-serialization",
         "//fboss/agent/hw/test:config_factory",
         "//fboss/agent/hw/test:hw_copp_utils",
         "//fboss/agent/packet:packet_factory",
@@ -762,12 +792,12 @@ cpp_library(
     exported_deps = [
         "fbsource//third-party/googletest:gtest",
         ":agent_ensemble",
-        ":production_features-cpp2-types",
+        ":production_features-cpp2-serialization",
         "//fboss/agent:agent_features",
         "//fboss/agent:core",
         "//fboss/agent:fboss_init_h",
         "//fboss/agent/hw/switch_asics:switch_asics",
-        "//fboss/agent/if:multiswitch_ctrl-cpp2-types",
+        "//fboss/agent/if:multiswitch_ctrl-cpp2-serialization",
         "//fboss/agent/test/utils:agent_hw_test_constants",
     ],
     exported_external_deps = [
@@ -859,7 +889,7 @@ cpp_library(
         "//fboss/agent/hw/test:load_balancer_utils",
         "//fboss/agent/test/link_tests:macsec_test_utils",
         "//fboss/lib:common_utils",
-        "//fboss/mka_service/if/facebook:mka_config-cpp2-types",
+        "//fboss/mka_service/if/facebook:mka_config-cpp2-serialization",
         "//fboss/mka_service/if/facebook:mka_service_thrift-cpp2-services",
         "//thrift/lib/cpp2/async:rocket_client_channel",
     ],
@@ -910,10 +940,12 @@ cpp_library(
         "//fboss/agent/hw/bcm:bcm_config-cpp2-types",
         "//fboss/agent/hw/test:config_factory",
         "//fboss/agent/if:agent_hw_test_ctrl-cpp2-services",
+        "//fboss/agent/test/utils:config_utils",
         "//fboss/agent/test/utils:pkt_test_utils",
         "//fboss/lib:common_file_utils",
         "//fboss/lib:common_utils",
         "//fboss/lib/config:fboss_config_utils",
+        "//fboss/lib/platforms:product-info",
         "//thrift/lib/cpp2/async:pooled_request_channel",
         "//thrift/lib/cpp2/async:reconnecting_request_channel",
         "//thrift/lib/cpp2/async:retrying_request_channel",
@@ -989,9 +1021,9 @@ cpp_library(
     exported_deps = [
         "//fboss/agent:core",
         "//fboss/agent:hw_switch",
-        "//fboss/agent:switch_config-cpp2-types",
+        "//fboss/agent:switch_config-cpp2-serialization",
         "//fboss/agent/state:state_update",
-        "//fboss/qsfp_service/if:transceiver-cpp2-types",
+        "//fboss/qsfp_service/if:transceiver-cpp2-serialization",
     ],
 )
 
@@ -1042,7 +1074,7 @@ cpp_benchmark(
         ":utils",
         "//fboss/agent:fsdb_helper",
         "//fboss/fsdb/common:utils",
-        "//fboss/fsdb/if:fsdb_oper-cpp2-types",
+        "//fboss/fsdb/if:fsdb_oper-cpp2-serialization",
         "//fboss/thrift_cow/nodes:serializer",
     ],
 )
@@ -1154,7 +1186,7 @@ cpp_binary(
         "//fboss/agent:agent_dir_util",
         "//fboss/agent:agent_netwhoami",
         "//fboss/agent:load_agent_config",
-        "//fboss/agent/if:ctrl-cpp2-types",
+        "//fboss/agent/if:ctrl-cpp2-serialization",
         "//fboss/lib:common_file_utils",
         "//fboss/lib:common_utils",
         "//fboss/lib/thrift_service_client:thrift-service-client",
@@ -1219,7 +1251,7 @@ cpp_library(
         "//fboss/lib:common_utils",
     ],
     exported_deps = [
-        "//fboss/agent:switch_config-cpp2-types",
+        "//fboss/agent:switch_config-cpp2-serialization",
         "//fboss/agent/state:state",
     ],
     external_deps = [("boost", None, "boost_container")],
@@ -1262,8 +1294,10 @@ cpp_unittest(
         "EcmpResourceMgrBackupGrpTests.cpp",
         "EcmpResourceMgrCandidateMergeTests.cpp",
         "EcmpResourceMgrDsfScaleTests.cpp",
+        "EcmpResourceMgrEndToEndTests.cpp",
         "EcmpResourceMgrGroupIdAllocationTests.cpp",
         "EcmpResourceMgrMergeGroupTests.cpp",
+        "EcmpResourceMgrOverrideSetIdTests.cpp",
         "EcmpResourceMgrRibFibTests.cpp",
     ],
     headers = [
@@ -1271,6 +1305,7 @@ cpp_unittest(
         "BaseEcmpResourceMgrMergeGroupsTests.h",
     ],
     network_access = network_access_utils.none(),
+    supports_static_listing = False,
     test_main = "//fboss/agent/test:fboss_test_main",
     deps = [
         "fbsource//third-party/fmt:fmt",
@@ -1286,10 +1321,17 @@ cpp_unittest(
         "//fboss/agent:fib_helpers",
         "//fboss/agent:file_based_warmboot_utils",
         "//fboss/agent:hwswitch_matcher",
+        "//fboss/agent:monolithic_hw_switch_handler",
+        "//fboss/agent:override_set_id_manager",
         "//fboss/agent:utils",
+        "//fboss/agent/hw/mock:mock",
         "//fboss/agent/rib:nexthop_id_manager",
+        "//fboss/agent/rib:standalone_rib",
         "//fboss/agent/state:state",
         "//fboss/agent/test/utils:ecmp_resource_mgr_test_utils",
         "//fboss/agent/test/utils:nexthop_id_test_utils",
+        "//fboss/lib:warm_boot_file_utils",
+        "//fboss/lib/restart_tracker:restart_time_tracker",
     ],
+    external_deps = ["gflags"],
 )

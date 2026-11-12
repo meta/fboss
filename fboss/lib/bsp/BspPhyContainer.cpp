@@ -2,7 +2,7 @@
 
 #include "fboss/lib/bsp/BspPhyContainer.h"
 
-#include <folly/Format.h>
+#include <fmt/format.h>
 #include <folly/logging/xlog.h>
 #include "fboss/lib/bsp/BspResetUtils.h"
 #include "fboss/lib/bsp/gen-cpp2/bsp_platform_mapping_types.h"

@@ -530,6 +530,14 @@
             }
           ]
       },
+      "SPQ8E44DOCOA": {
+          "versions": [
+            {
+              "fwType": 1,
+              "version": "0.1"
+            }
+          ]
+      },
       "SPTSHP3CLCK2": {
           "versions": [
             {

@@ -60,6 +60,9 @@ class ResolvedNexthopMonitor : public StateObserver {
     }
     const auto& fwd = route->getForwardInfo();
     for (auto nhop : getNormalizedNextHops(state, fwd)) {
+      if (nhop.resolvedInNextLevel()) {
+        continue;
+      }
       added_.emplace_back(nhop.addr(), nhop.intf(), 0);
     }
   }
@@ -73,6 +76,9 @@ class ResolvedNexthopMonitor : public StateObserver {
     }
     const auto& fwd = route->getForwardInfo();
     for (auto nhop : getNormalizedNextHops(state, fwd)) {
+      if (nhop.resolvedInNextLevel()) {
+        continue;
+      }
       removed_.emplace_back(nhop.addr(), nhop.intf(), 0);
     }
   }

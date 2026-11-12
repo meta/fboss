@@ -37,6 +37,7 @@
 #include "fboss/cli/fboss2/commands/config/load_balancing/CmdConfigLoadBalancing.h"
 #include "fboss/cli/fboss2/commands/config/mac/CmdConfigMac.h"
 #include "fboss/cli/fboss2/commands/config/mac/aging_time/CmdConfigMacAgingTime.h"
+#include "fboss/cli/fboss2/commands/config/mirror/CmdConfigMirror.h"
 #include "fboss/cli/fboss2/commands/config/protocol/CmdConfigProtocol.h"
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/CmdConfigProtocolBgp.h"
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/global/CmdConfigProtocolBgpGlobal.h"
@@ -48,6 +49,7 @@
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/prefix-list/CmdConfigProtocolBgpPolicyPrefixList.h"
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/prefix-list/entry/CmdConfigProtocolBgpPolicyPrefixListEntry.h"
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/routing-policy/CmdConfigProtocolBgpPolicyRoutingPolicy.h"
+#include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/routing-policy/term/CmdConfigProtocolBgpPolicyRoutingPolicyTerm.h"
 #include "fboss/cli/fboss2/commands/config/protocol/static/CmdConfigProtocolStatic.h"
 #include "fboss/cli/fboss2/commands/config/protocol/static/route/add/CmdConfigProtocolStaticRouteAdd.h"
 #include "fboss/cli/fboss2/commands/config/ptp/CmdConfigPtp.h"
@@ -106,8 +108,10 @@
 #include "fboss/cli/fboss2/commands/delete/interface/CmdDeleteInterface.h"
 #include "fboss/cli/fboss2/commands/delete/interface/ipv6/CmdDeleteInterfaceIpv6.h"
 #include "fboss/cli/fboss2/commands/delete/interface/ipv6/ndp/CmdDeleteInterfaceIpv6Ndp.h"
+#include "fboss/cli/fboss2/commands/delete/interface/pfc_config/CmdDeleteInterfacePfcConfig.h"
 #include "fboss/cli/fboss2/commands/delete/interface/sflow/CmdDeleteInterfaceSflow.h"
 #include "fboss/cli/fboss2/commands/delete/load_balancing/CmdDeleteLoadBalancing.h"
+#include "fboss/cli/fboss2/commands/delete/mirror/CmdDeleteMirror.h"
 #include "fboss/cli/fboss2/commands/delete/protocol/CmdDeleteProtocol.h"
 #include "fboss/cli/fboss2/commands/delete/protocol/bgp/CmdDeleteProtocolBgp.h"
 #include "fboss/cli/fboss2/commands/delete/protocol/bgp/neighbor/CmdDeleteProtocolBgpNeighbor.h"
@@ -117,12 +121,15 @@
 #include "fboss/cli/fboss2/commands/delete/protocol/bgp/policy/community-list/CmdDeleteProtocolBgpPolicyCommunityList.h"
 #include "fboss/cli/fboss2/commands/delete/protocol/bgp/policy/prefix-list/CmdDeleteProtocolBgpPolicyPrefixList.h"
 #include "fboss/cli/fboss2/commands/delete/protocol/bgp/policy/routing-policy/CmdDeleteProtocolBgpPolicyRoutingPolicy.h"
+#include "fboss/cli/fboss2/commands/delete/protocol/bgp/policy/routing-policy/term/CmdDeleteProtocolBgpPolicyRoutingPolicyTerm.h"
 #include "fboss/cli/fboss2/commands/delete/protocol/static/CmdDeleteProtocolStatic.h"
 #include "fboss/cli/fboss2/commands/delete/protocol/static/route/CmdDeleteProtocolStaticRoute.h"
 #include "fboss/cli/fboss2/commands/delete/qos/CmdDeleteQos.h"
+#include "fboss/cli/fboss2/commands/delete/qos/buffer_pool/CmdDeleteQosBufferPool.h"
 #include "fboss/cli/fboss2/commands/delete/qos/default_policy/CmdDeleteQosDefaultPolicy.h"
 #include "fboss/cli/fboss2/commands/delete/qos/policy/CmdDeleteQosPolicy.h"
 #include "fboss/cli/fboss2/commands/delete/qos/policy/CmdDeleteQosPolicyMap.h"
+#include "fboss/cli/fboss2/commands/delete/qos/priority_group_policy/CmdDeleteQosPriorityGroupPolicy.h"
 #include "fboss/cli/fboss2/commands/delete/qos/queue_config/CmdDeleteQosQueueConfig.h"
 #include "fboss/cli/fboss2/commands/delete/qos/queue_config/CmdDeleteQosQueueConfigQueueId.h"
 #include "fboss/cli/fboss2/commands/delete/srv6/CmdDeleteSrv6.h"
@@ -482,6 +489,16 @@ const CommandTree& kConfigCommandTree() {
                                    CmdConfigProtocolBgpPolicyRoutingPolicy>,
                                argRegistrar<
                                    CmdConfigProtocolBgpPolicyRoutingPolicyTraits>,
+                               {{
+                                   "term",
+                                   "Configure a routing-policy term: "
+                                   "<seq-num> [<attribute> <value> ...] "
+                                   "(description)",
+                                   commandHandler<
+                                       CmdConfigProtocolBgpPolicyRoutingPolicyTerm>,
+                                   argRegistrar<
+                                       CmdConfigProtocolBgpPolicyRoutingPolicyTermTraits>,
+                               }},
                            }},
                       },
                   },
@@ -627,6 +644,12 @@ const CommandTree& kConfigCommandTree() {
        commandHandler<CmdConfigRollback>,
        argRegistrar<CmdConfigRollbackTraits>},
 
+      {"config",
+       "mirror",
+       "Create or update a SPAN or sFlow mirror",
+       commandHandler<CmdConfigMirror>,
+       argRegistrar<CmdConfigMirrorTraits>},
+
       {
           "config",
           "srv6",
@@ -757,6 +780,13 @@ const CommandTree& kConfigCommandTree() {
                }},
            },
            {
+               "pfc-config",
+               "Remove the interface's PFC config, or reset one of its "
+               "optional fields: watchdog, rx-duration, tx-duration",
+               commandHandler<CmdDeleteInterfacePfcConfig>,
+               argRegistrar<CmdDeleteInterfacePfcConfigTraits>,
+           },
+           {
                "sflow",
                "Delete (reset to default) sFlow settings for interface: "
                "sample-dest, ingress-rate, egress-rate",
@@ -772,6 +802,12 @@ const CommandTree& kConfigCommandTree() {
           commandHandler<CmdDeleteQos>,
           argRegistrar<CmdDeleteQosTraits>,
           {{
+               "buffer-pool",
+               "Remove a buffer pool (refused while a queue or priority group still names it)",
+               commandHandler<CmdDeleteQosBufferPool>,
+               argRegistrar<CmdDeleteQosBufferPoolTraits>,
+           },
+           {
                "default-policy",
                "Clear the default data-plane QoS policy",
                commandHandler<CmdDeleteQosDefaultPolicy>,
@@ -800,6 +836,12 @@ const CommandTree& kConfigCommandTree() {
                    commandHandler<CmdDeleteQosPolicyMap>,
                    argRegistrar<CmdDeleteQosPolicyMapTraits>,
                }},
+           },
+           {
+               "priority-group-policy",
+               "Remove a priority group policy (refused while an interface's pfc-config still binds it)",
+               commandHandler<CmdDeleteQosPriorityGroupPolicy>,
+               argRegistrar<CmdDeleteQosPriorityGroupPolicyTraits>,
            }},
       },
 
@@ -862,6 +904,14 @@ const CommandTree& kConfigCommandTree() {
                              CmdDeleteProtocolBgpPolicyRoutingPolicy>,
                          argRegistrar<
                              CmdDeleteProtocolBgpPolicyRoutingPolicyTraits>,
+                         {{
+                             "term",
+                             "Delete a routing-policy term: <seq-num>",
+                             commandHandler<
+                                 CmdDeleteProtocolBgpPolicyRoutingPolicyTerm>,
+                             argRegistrar<
+                                 CmdDeleteProtocolBgpPolicyRoutingPolicyTermTraits>,
+                         }},
                      }},
                 }},
            },
@@ -1024,6 +1074,14 @@ const CommandTree& kConfigCommandTree() {
                commandHandler<CmdDeleteLoadBalancingLag>,
                argRegistrar<CmdDeleteLoadBalancingLagTraits>,
            }},
+      },
+
+      {
+          "delete",
+          "mirror",
+          "Delete an unreferenced mirror: <name>",
+          commandHandler<CmdDeleteMirror>,
+          argRegistrar<CmdDeleteMirrorTraits>,
       },
 
       {

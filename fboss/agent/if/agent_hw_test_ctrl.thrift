@@ -171,12 +171,13 @@ service AgentHwTestCtrl {
   void injectSwitchReachabilityChangeNotification();
 
   // route utils
-  RouteInfo getRouteInfo(1: ctrl.IpPrefix prefix);
+  RouteInfo getRouteInfo(1: ctrl.IpPrefix prefix, 2: i32 routerID);
   bool isRouteHit(1: ctrl.IpPrefix prefix);
   void clearRouteHit(1: ctrl.IpPrefix prefix);
   bool isRouteToNexthop(
     1: ctrl.IpPrefix prefix,
     2: Address.BinaryAddress address,
+    3: i32 routerID,
   );
   bool isProgrammedInHw(
     1: i32 intfID,

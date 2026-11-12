@@ -24,6 +24,9 @@ namespace facebook::fboss {
  *
  * Usage: delete interface <port-list> [<attr> [<value>] ...]
  *
+ * With no attribute, deletes the named ports; a loopback<N> token deletes the
+ * virtual loopback interface together with its backing VLAN.
+ *
  * Valueless attributes (reset to default):
  *   description, loopback-mode, lookup-class, mtu, lldp-expected-value,
  *   lldp-expected-chassis, lldp-expected-ttl, lldp-expected-port-desc,
@@ -43,6 +46,8 @@ class InterfaceDeleteConfig : public InterfaceAttrArgsBase {
 };
 
 struct CmdDeleteInterfaceTraits : public WriteCommandTraits {
+  static std::vector<std::string> completeArgs(
+      const std::vector<std::string>& typed);
   using ParentCmd = void;
   static void addCliArg(CLI::App& cmd, std::vector<std::string>& args) {
     cmd.add_option(

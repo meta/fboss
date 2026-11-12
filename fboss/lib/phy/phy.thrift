@@ -485,6 +485,12 @@ struct RsFecLaneState {
 
 struct PcsStats {
   1: optional RsFecInfo rsFec;
+  // IEEE 802.3 PCS errored blocks counter, as read from hardware. Not cleared
+  // by the agent, but can reset if the SDK or vendor tools clear it.
+  2: optional i64 erroredBlocks;
+  // IEEE 802.3 PCS BER counter (sync header bit errors), as read from
+  // hardware. Same reset behavior as erroredBlocks.
+  3: optional i64 berCount;
 }
 
 // Counter that correctedBits (and therefore preFECBer) was derived from.

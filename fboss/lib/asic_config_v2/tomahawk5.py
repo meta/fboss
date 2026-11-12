@@ -1,5 +1,5 @@
 # pyre-unsafe
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import neteng.fboss.asic_config_v2.thrift_types as asic_config_thrift
 import yaml
@@ -46,6 +46,10 @@ class Tomahawk5AsicConfig(BcmXgsAsicConfig):
     MGMT_PORT_SPEED = 100000
     MGMT_PORT_NUM_LANES = 4
     MGMT_PORT_FEC = "PC_FEC_RS528"
+    MGMT_PORT_NUM_PORTS = 1
+    # (logical, physical) port IDs of the mgmt PM lanes, used when the mgmt
+    # port is broken out into MGMT_PORT_NUM_PORTS ports (e.g. 4x25G).
+    MGMT_BREAKOUT_PORTS = [(76, 513), (164, 514), (186, 515), (274, 516)]
 
     def __init__(
         self, asic_config_params: asic_config_thrift.AsicConfigParameters
@@ -212,9 +216,15 @@ class Tomahawk5AsicConfig(BcmXgsAsicConfig):
             pm_value = ("PC_PHYS_PORT_ID: {}".format(lp_map[1]),)
             self.values["PC_PORT_PHYS_MAP"][pm_key] = pm_value
         if mgmt_port:
-            pm_key = ("PORT_ID: {}".format(self.MGMT_PORT_LOGICAL_ID),)
-            pm_value = ("PC_PHYS_PORT_ID: {}".format(self.MGMT_PORT_PHYSICAL_ID),)
-            self.values["PC_PORT_PHYS_MAP"][pm_key] = pm_value
+            for logical_id, physical_id in self.get_mgmt_logical_to_physical_ports():
+                pm_key = ("PORT_ID: {}".format(logical_id),)
+                pm_value = ("PC_PHYS_PORT_ID: {}".format(physical_id),)
+                self.values["PC_PORT_PHYS_MAP"][pm_key] = pm_value
+
+    def get_mgmt_logical_to_physical_ports(self) -> List[Tuple[int, int]]:
+        if self.MGMT_PORT_NUM_PORTS == 1:
+            return [(self.MGMT_PORT_LOGICAL_ID, self.MGMT_PORT_PHYSICAL_ID)]
+        return self.MGMT_BREAKOUT_PORTS[: self.MGMT_PORT_NUM_PORTS]
 
     def generate_autoload_board_settings(self) -> None:
         self.values["DEVICE_CONFIG"]["AUTOLOAD_BOARD_SETTINGS"] = 0

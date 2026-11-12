@@ -125,6 +125,7 @@ typedef enum _sai_switch_extensions_attr_t {
   SAI_SWITCH_ATTR_EXT_PACKET_DROP_TYPE_INGRESS_LIST,
   SAI_SWITCH_ATTR_EXT_PACKET_DROP_TYPE_EGRESS_LIST,
   SAI_SWITCH_ATTR_ACL_DROP_SNOOP_DISABLED,
+  SAI_SWITCH_ATTR_EXT_DROP_REASON_LIST,
 } sai_switch_extensions_attr_t;
 
 typedef enum _sai_tam_event_extensions_attr_t {
@@ -170,6 +171,7 @@ typedef enum _sai_port_extensions_attr_t {
   SAI_PORT_ATTR_CABLE_PROPAGATION_DELAY_MEASURE,
   SAI_PORT_ATTR_EXT_LINKSCAN_MODE,
   SAI_PORT_ATTR_EXT_FAKE_OPER_STATUS_LATCH,
+  SAI_PORT_ATTR_EXT_CBFC_RECEIVER_CREDIT_LIMIT,
 } sai_port_extensions_attr_t;
 
 typedef enum _sai_ingress_priority_group_extensions_attr_t {
@@ -185,6 +187,11 @@ typedef enum _sai_buffer_pool_extensions_attr_t {
 typedef enum _sai_counter_extensions_attr_t {
   SAI_COUNTER_ATTR_EXT_LABEL_EXTENDED = SAI_COUNTER_ATTR_CUSTOM_RANGE_START,
 } sai_counter_extensions_attr_t;
+
+typedef enum _sai_acl_counter_extensions_attr_t {
+  SAI_ACL_COUNTER_ATTR_EXT_LABEL_EXTENDED =
+      SAI_ACL_COUNTER_ATTR_CUSTOM_RANGE_START,
+} sai_acl_counter_extensions_attr_t;
 
 typedef enum _sai_next_hop_group_extensions_attr_t {
   SAI_NEXT_HOP_GROUP_ATTR_ARS_NEXT_HOP_GROUP_META_DATA =

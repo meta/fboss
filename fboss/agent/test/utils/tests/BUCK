@@ -1,0 +1,16 @@
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbsource//tools/build_defs/testinfra:network_access_utils.bzl", "network_access_utils")
+
+oncall("fboss_agent_push")
+
+cpp_unittest(
+    name = "drop_reason_reporting_test",
+    srcs = ["AgentDropReasonReportingTest.cpp"],
+    network_access = network_access_utils.none(),
+    supports_static_listing = False,
+    deps = [
+        "fbsource//third-party/googletest:gtest",
+        "//fboss/agent:fboss-error",
+        "//fboss/agent/test/utils:drop_reason_reporting_test_utils",
+    ],
+)

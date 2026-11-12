@@ -21,7 +21,7 @@ There are different levels of the requirements:
 
 ## System Architecture
 
-The overall requirement is to follow FBOSS BMC-Lite architecture for the switch or as communicated by Meta. The depictions below are examples of designs that can facilitate easier HW - SW integration between NPO modules and FBOSS software (i.e. QSFP service and LED Service). For more information about FBOSS requirements you can refer to [Meta Switch Architecture](https://facebook.github.io/fboss/docs/architecture/meta_switch_architecture/).
+The overall requirement is to follow FBOSS BMC-Lite architecture for the switch or as communicated by Meta. The depictions below are examples of designs that can facilitate easier HW - SW integration between NPO modules and FBOSS software (i.e. QSFP service and LED Service). For more information about FBOSS requirements you can refer to [Meta Switch Architecture](https://meta.github.io/fboss/docs/architecture/meta_switch_architecture/).
 
 Below are some of the possible designs for integrating NPO to a switch. Specific FBOSS requirements will follow.
 
@@ -80,8 +80,8 @@ Below are some of the possible designs for integrating NPO to a switch. Specific
 
 For designs that co-package the NPOs in a secondary PCB (Diagram 3); in case of presence of active components on the PCB (e.g. temperature sensors, voltage regulators, etc.):
 
-1. The BSP shall expose access for FBOSS software to those components for monitoring / programmability via [Platform Manager](https://facebook.github.io/fboss/docs/platform/platform_manager/).
-2. The NPO Host PCB shall incorporate a Meta EEPROM for the manufacturing and version details of the PCB in accordance with [Meta EEPROM specifications](https://facebook.github.io/fboss/docs/platform/meta_eeprom_format_v6/).
+1. The BSP shall expose access for FBOSS software to those components for monitoring / programmability via [Platform Manager](https://meta.github.io/fboss/docs/platform/platform_manager/).
+2. The NPO Host PCB shall incorporate a Meta EEPROM for the manufacturing and version details of the PCB in accordance with [Meta EEPROM specifications](https://meta.github.io/fboss/docs/platform/meta_eeprom_format_v6/).
 
 ## FBOSS Software Requirements
 
@@ -93,7 +93,7 @@ For designs that co-package the NPOs in a secondary PCB (Diagram 3); in case of 
     - `/run/devmap/xcvrs/xcvr_ctrl_1/xcvr_present_1`
 2. Software will communicate with the CMIS MCU over I2C using linux standard ioctl calls to `/run/devmap/xcvrs/xcvr_io_X`.
 3. The BSP shall expose the interfaces for LED programming for colors (blue and amber) and blink capability.
-4. For the complete and most recent BSP specification, refer to [https://facebook.github.io/fboss/docs/platform/bsp_api_specification/](https://facebook.github.io/fboss/docs/platform/bsp_api_specification/)
+4. For the complete and most recent BSP specification, refer to [https://meta.github.io/fboss/docs/platform/bsp_api_specification/](https://meta.github.io/fboss/docs/platform/bsp_api_specification/)
 
 ### CMIS
 

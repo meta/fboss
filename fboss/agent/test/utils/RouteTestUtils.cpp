@@ -59,7 +59,8 @@ void unprogramRoutes(
 RouteInfo getRouteInfo(
     const folly::IPAddress& ip,
     int prefixLength,
-    AgentEnsemble& ensemble) {
+    AgentEnsemble& ensemble,
+    RouterID rid) {
   auto switchId = ensemble.getSw()
                       ->getScopeResolver()
                       ->scope(ensemble.masterLogicalPortIds())
@@ -69,7 +70,7 @@ RouteInfo getRouteInfo(
   prefix.prefixLength() = prefixLength;
   auto client = ensemble.getHwAgentTestClient(switchId);
   RouteInfo routeInfo;
-  client->sync_getRouteInfo(routeInfo, prefix);
+  client->sync_getRouteInfo(routeInfo, prefix, rid);
   return routeInfo;
 }
 
@@ -77,7 +78,8 @@ bool isRouteToNexthop(
     const folly::IPAddress& ip,
     int prefixLength,
     const folly::IPAddress& nexthop,
-    AgentEnsemble& ensemble) {
+    AgentEnsemble& ensemble,
+    RouterID rid) {
   auto switchId = ensemble.getSw()
                       ->getScopeResolver()
                       ->scope(ensemble.masterLogicalPortIds())
@@ -86,6 +88,6 @@ bool isRouteToNexthop(
   prefix.ip() = toBinaryAddress(ip);
   prefix.prefixLength() = prefixLength;
   auto client = ensemble.getHwAgentTestClient(switchId);
-  return client->sync_isRouteToNexthop(prefix, toBinaryAddress(nexthop));
+  return client->sync_isRouteToNexthop(prefix, toBinaryAddress(nexthop), rid);
 }
 } // namespace facebook::fboss::utility

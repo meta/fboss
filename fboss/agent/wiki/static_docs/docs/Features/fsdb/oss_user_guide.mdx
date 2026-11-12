@@ -19,7 +19,7 @@ FSDB is a Tier 0 service on the switch. It holds two independent trees:
 | **State** | Event-driven operational state — switch config, current switch state, transceiver inventory, DSF reachability, etc. | ~50 ms (`FLAGS_stateSubscriptionServe_ms`) | `FsdbOperStateRoot` |
 | **Stats** | Periodic counters — port stats, sensor readings, etc. | ~10 s (`FLAGS_statsSubscriptionServe_ms`) | `FsdbOperStatsRoot` |
 
-Both roots are defined for OSS in [`fboss/fsdb/if/oss/fsdb_model.thrift`](https://github.com/facebook/fboss/blob/main/fboss/fsdb/if/oss/fsdb_model.thrift).
+Both roots are defined for OSS in [`fboss/fsdb/if/oss/fsdb_model.thrift`](https://github.com/meta/fboss/blob/main/fboss/fsdb/if/oss/fsdb_model.thrift).
 
 **Storage.** FSDB stores both trees as `thrift_cow` (copy-on-write) Thrift nodes. Mutations produce a new immutable tree; subscribers receive only the changed sub-trees.
 

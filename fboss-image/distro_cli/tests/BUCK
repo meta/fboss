@@ -2,7 +2,7 @@ load("@fbcode_macros//build_defs:python_library.bzl", "python_library")
 load("@fbcode_macros//build_defs:python_unittest.bzl", "python_unittest")
 load("@fbsource//tools/build_defs/testinfra:network_access_utils.bzl", "network_access_utils")
 
-oncall("fboss_distro")
+oncall("fboss_oss")
 
 python_library(
     name = "device_test",
@@ -52,6 +52,17 @@ python_unittest(
         ":test_helpers",
         "//fboss/github/fboss-image/distro_cli/lib:device_update",
         "//fboss/github/fboss-image/distro_cli/lib:manifest",
+    ],
+)
+
+python_unittest(
+    name = "execute_test",
+    srcs = ["execute_test.py"],
+    base_module = "distro_cli.tests",
+    network_access = network_access_utils.none(),
+    deps = [
+        "//fboss/github/fboss-image/distro_cli/lib:execute",
+        "//fboss/oss/scripts:component_version",
     ],
 )
 

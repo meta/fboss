@@ -61,6 +61,7 @@ cpp_library(
         "fbsource//third-party/re2:re2",
         "fbsource//xplat/folly:cpp_attributes",
         "fbsource//xplat/folly:demangle",
+        "fbsource//xplat/folly:expected",
         "fbsource//xplat/folly:fbstring",
         "fbsource//xplat/folly:function",
         "fbsource//xplat/folly:string",

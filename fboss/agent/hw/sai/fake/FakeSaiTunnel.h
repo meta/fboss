@@ -3,6 +3,7 @@
 #pragma once
 
 #include <optional>
+#include <vector>
 #include "fboss/agent/hw/sai/fake/FakeManager.h"
 
 extern "C" {
@@ -40,6 +41,8 @@ class FakeSaiTunnel {
   std::optional<sai_int32_t> encapDscpMode;
   std::optional<sai_int32_t> encapEcnMode;
   std::optional<sai_object_id_t> decapQosDscpToTcMap;
+  std::vector<sai_object_id_t> encapMappers;
+  std::vector<sai_object_id_t> decapMappers;
 };
 
 class FakeSaiTunnelTerm {

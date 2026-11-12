@@ -7,6 +7,7 @@
 #include <folly/testing/TestUtil.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <filesystem>
 #include <optional>
 #include "fboss/qsfp_service/platforms/wedge/tests/MockWedgeManager.h"
 #include "fboss/qsfp_service/test/FakeConfigsHelper.h"
@@ -40,7 +41,8 @@ class PortManagerTest : public ::testing::Test {
   void initManagers(
       int numModules = 1,
       int numPortsPerModule = 4,
-      bool setPhyManager = false) {
+      bool setPhyManager = false,
+      bool isSaiPhyManager = false) {
     const auto platformMapping =
         makeFakePlatformMapping(numModules, numPortsPerModule);
     const std::shared_ptr<const PlatformMapping> castedPlatformMapping =
@@ -51,6 +53,7 @@ class PortManagerTest : public ::testing::Test {
 
     std::unique_ptr<MockPhyManager> phyManager =
         std::make_unique<MockPhyManager>(platformMapping.get());
+    phyManager->setIsSaiPhyManager(isSaiPhyManager);
     phyManager_ = phyManager.get();
     transceiverManager_ = std::make_shared<MockWedgeManager>(
         numModules, 4, platformMapping, qsfpServiceThreads);
@@ -451,6 +454,64 @@ TEST_F(PortManagerTest, getInitializedTransceiverIdsForPort) {
   ASSERT_THAT(
       portManager_->getInitializedTransceiverIdsForPort(PortID(1)),
       ::testing::ElementsAre(TransceiverID(0), TransceiverID(1)));
+}
+
+TEST_F(PortManagerTest, transceiverManagerKnowsPortManagerOwnsPhyManager) {
+  initManagers(1, 4, true /* setPhyManager */);
+  EXPECT_EQ(transceiverManager_->getPhyManager(), nullptr);
+  EXPECT_TRUE(transceiverManager_->hasExternalPhy());
+}
+
+TEST_F(PortManagerTest, transceiverManagerHasNoExternalPhyWithoutPhyManager) {
+  initManagers(1, 4, false /* setPhyManager */);
+  EXPECT_FALSE(transceiverManager_->hasExternalPhy());
+}
+
+TEST_F(PortManagerTest, warmBootFlagConsumedAtInitWithSaiXphy) {
+  gflags::FlagSaver flagSaver;
+  gflags::SetCommandLineOptionWithMode(
+      "can_qsfp_service_warm_boot", "1", gflags::SET_FLAGS_DEFAULT);
+  const auto warmBootFlag = TransceiverManager::warmBootFlagFileName();
+  close(creat(warmBootFlag.c_str(), 0644));
+
+  // A start after a graceful exit warm boots and consumes the flag.
+  initManagers(1, 4, true /* setPhyManager */, true /* isSaiPhyManager */);
+  transceiverManager_->init();
+  EXPECT_TRUE(transceiverManager_->canWarmBoot());
+  EXPECT_FALSE(std::filesystem::exists(warmBootFlag));
+
+  // A restart without a graceful exit (e.g. a crash) cold boots.
+  portManager_.reset();
+  transceiverManager_.reset();
+  initManagers(1, 4, true /* setPhyManager */, true /* isSaiPhyManager */);
+  transceiverManager_->init();
+  EXPECT_FALSE(transceiverManager_->canWarmBoot());
+}
+
+TEST_F(PortManagerTest, warmBootFlagKeptAtInitWithNonSaiXphy) {
+  gflags::FlagSaver flagSaver;
+  gflags::SetCommandLineOptionWithMode(
+      "can_qsfp_service_warm_boot", "1", gflags::SET_FLAGS_DEFAULT);
+  const auto warmBootFlag = TransceiverManager::warmBootFlagFileName();
+  close(creat(warmBootFlag.c_str(), 0644));
+
+  initManagers(1, 4, true /* setPhyManager */, false /* isSaiPhyManager */);
+  transceiverManager_->init();
+  EXPECT_TRUE(transceiverManager_->canWarmBoot());
+  EXPECT_TRUE(std::filesystem::exists(warmBootFlag));
+}
+
+TEST_F(PortManagerTest, warmBootFlagKeptAtInitWithoutExternalPhy) {
+  gflags::FlagSaver flagSaver;
+  gflags::SetCommandLineOptionWithMode(
+      "can_qsfp_service_warm_boot", "1", gflags::SET_FLAGS_DEFAULT);
+  const auto warmBootFlag = TransceiverManager::warmBootFlagFileName();
+  close(creat(warmBootFlag.c_str(), 0644));
+
+  initManagers(1, 4, false /* setPhyManager */);
+  transceiverManager_->init();
+  EXPECT_TRUE(transceiverManager_->canWarmBoot());
+  EXPECT_TRUE(std::filesystem::exists(warmBootFlag));
 }
 
 TEST_F(PortManagerTest, setBothPortsEnabledAndUpForTesting) {

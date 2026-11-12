@@ -9,9 +9,9 @@ cpp_unittest(
     network_access = network_access_utils.none(),
     deps = [
         "fbsource//third-party/googletest:gtest",
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly/testing:test_util",
         "//fboss/configs/platforms/generic/forwarding_stack/utils:config_generation_utils",
-        "//folly:file_util",
-        "//folly/testing:test_util",
     ],
 )
 
@@ -31,9 +31,9 @@ cpp_unittest(
     network_access = network_access_utils.none(),
     deps = [
         "fbsource//third-party/googletest:gtest",
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly/testing:test_util",
         "//fboss/agent:fboss-error",
         "//fboss/configs/platforms/generic/forwarding_stack/utils:config_generation_utils",
-        "//folly:file_util",
-        "//folly/testing:test_util",
     ],
 )

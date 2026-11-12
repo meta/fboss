@@ -13,8 +13,8 @@
 #include "fboss/agent/test/AgentHwTest.h"
 #include "fboss/agent/test/EcmpSetupHelper.h"
 #include "fboss/agent/test/ResourceLibUtil.h"
-#include "fboss/agent/test/agent_hw_tests/AgentTestEcmpConstants.h"
 #include "fboss/agent/test/utils/AclTestUtils.h"
+#include "fboss/agent/test/utils/AgentTestEcmpConstants.h"
 
 #include "fboss/agent/test/TestUtils.h"
 #include "fboss/agent/test/utils/ConfigUtils.h"
@@ -274,12 +274,14 @@ class AgentQueuePerHostTest : public AgentHwTest {
   void _verifyHelper(bool frontPanel, bool blockNeighbor) {
     XLOG(DBG2) << "verify send packets "
                << (frontPanel ? "out of port" : "switched");
-    // wait for pending state updates to complete
     waitForStateUpdates(getSw());
     verifyNeighborClassId<AddrT>(blockNeighbor);
     auto ttlAclName = utility::getQueuePerHostTtlAclName();
     auto ttlCounterName = utility::getQueuePerHostTtlCounterName();
 
+    if (frontPanel) {
+      learnSrcMacOnEcmpTxPortIfPending(kDefaultEcmpWidth);
+    }
     getNextUpdatedPortStats(masterLogicalPortIds()[0]);
     auto statBefore = utility::getAclInOutPackets(getSw(), ttlCounterName);
 

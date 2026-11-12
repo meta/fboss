@@ -10,6 +10,7 @@
 #include "fboss/agent/state/AggregatePort.h"
 #include "fboss/agent/state/FibInfo.h"
 #include "fboss/agent/state/Interface.h"
+#include "fboss/agent/state/InterfaceVrf.h"
 #include "fboss/agent/state/LabelForwardingEntry.h"
 #include "fboss/agent/state/MirrorOnDropReport.h"
 #include "fboss/agent/state/Port.h"
@@ -317,6 +318,12 @@ HwSwitchMatcher SwitchIdScopeResolver::scope(
 }
 
 HwSwitchMatcher SwitchIdScopeResolver::scope(
+    const std::shared_ptr<InterfaceVrf>& interfaceVrf,
+    const std::shared_ptr<SwitchState>& state) const {
+  return scope(state->getInterfaces()->getNode(interfaceVrf->getID()), state);
+}
+
+HwSwitchMatcher SwitchIdScopeResolver::scope(
     const cfg::InterfaceType& type,
     const InterfaceID& interfaceId,
     const cfg::SwitchConfig& cfg) const {
@@ -510,7 +517,14 @@ HwSwitchMatcher SwitchIdScopeResolver::scope(
 
 HwSwitchMatcher SwitchIdScopeResolver::scope(
     const std::shared_ptr<MirrorOnDropReport>& report) const {
-  return scope(PortID(report->getMirrorPortId()));
+  auto mirrorPortId = report->getMirrorPortId();
+  if (!mirrorPortId.has_value()) {
+    throw FbossError(
+        "MirrorOnDropReport ",
+        report->getID(),
+        " has no mirror port, so it names no owning switch");
+  }
+  return scope(mirrorPortId.value());
 }
 
 HwSwitchMatcher SwitchIdScopeResolver::scope(

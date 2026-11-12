@@ -255,3 +255,36 @@ TEST_F(NextHopApiTest, formatSrv6SidlistNextHopAttributes) {
   EXPECT_EQ("Srv6SidlistId: 100", fmt::format("{}", sid));
 }
 #endif
+
+TEST_F(NextHopApiTest, createTunnelEncapNextHopWithOverlayDstMac) {
+  SaiTunnelEncapNextHopTraits::Attributes::Type type{
+      SAI_NEXT_HOP_TYPE_TUNNEL_ENCAP};
+  SaiTunnelEncapNextHopTraits::Attributes::TunnelId tunnelId{42};
+  SaiTunnelEncapNextHopTraits::Attributes::Ip ip{ip4};
+  SaiTunnelEncapNextHopTraits::Attributes::OverlayDstMac overlayDstMac{
+      folly::MacAddress("02:00:00:00:00:01")};
+  SaiTunnelEncapNextHopTraits::CreateAttributes attrs{
+      type, tunnelId, ip, overlayDstMac, std::nullopt};
+  auto nextHopId = nextHopApi->create<SaiTunnelEncapNextHopTraits>(attrs, 0);
+  EXPECT_EQ(
+      nextHopApi->getAttribute(
+          nextHopId, SaiTunnelEncapNextHopTraits::Attributes::Type{}),
+      SAI_NEXT_HOP_TYPE_TUNNEL_ENCAP);
+  EXPECT_EQ(
+      nextHopApi->getAttribute(
+          nextHopId, SaiTunnelEncapNextHopTraits::Attributes::OverlayDstMac{}),
+      folly::MacAddress("02:00:00:00:00:01"));
+  const auto& fnh = fs->nextHopManager.get(nextHopId);
+  EXPECT_EQ(fnh.tunnelId, 42);
+  EXPECT_EQ(fnh.overlayDstMac, folly::MacAddress("02:00:00:00:00:01"));
+
+  // An unset MAC must not alias a set one in the host key.
+  SaiTunnelEncapNextHopTraits::CreateAttributes noMacAttrs{
+      type, tunnelId, ip, std::nullopt, std::nullopt};
+  auto noMacId = nextHopApi->create<SaiTunnelEncapNextHopTraits>(noMacAttrs, 0);
+  EXPECT_NE(noMacId, nextHopId);
+  EXPECT_EQ(
+      nextHopApi->getAttribute(
+          noMacId, SaiTunnelEncapNextHopTraits::Attributes::OverlayDstMac{}),
+      folly::MacAddress("00:00:00:00:00:00"));
+}

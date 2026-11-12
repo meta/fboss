@@ -138,6 +138,17 @@ class AgentMirrorOnDropSrv6Test : public AgentMirrorOnDropStatelessTest {
       auto frameRx = snooper.waitForPacket(1);
       ASSERT_EVENTUALLY_TRUE(frameRx.has_value());
       auto fields = parseMirrorOnDropPacket(frameRx->get());
+      // The collector port is in loopback, so a report can come back in, be
+      // dropped and get reported again. Skip these reports of reports (inner
+      // src is the MoD source) without spending a retry.
+      for (int skipped = 0;
+           fields.innerSrcIp == fields.outerSrcIp && skipped < 1000;
+           ++skipped) {
+        XLOG(INFO) << "Skipping report of a MirrorOnDrop report";
+        frameRx = snooper.waitForPacket(1);
+        ASSERT_EVENTUALLY_TRUE(frameRx.has_value());
+        fields = parseMirrorOnDropPacket(frameRx->get());
+      }
       XLOG(INFO) << "Captured MirrorOnDrop packet, ingress drop reason: "
                  << fields.dropReasonIngress
                  << ", egress drop reason: " << fields.dropReasonEgress

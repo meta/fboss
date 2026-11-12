@@ -25,10 +25,12 @@ namespace facebook::fboss::platform::fixmyfboss {
 class ResultPrinter {
  public:
   // `showDetails` also prints CheckResult.details of non-OK results.
+  // `color` false prints plain text without ANSI escape codes.
   explicit ResultPrinter(
       std::ostream& out = std::cout,
-      bool showDetails = false)
-      : out_(out), showDetails_(showDetails) {}
+      bool showDetails = false,
+      bool color = true)
+      : out_(out), showDetails_(showDetails), color_(color) {}
 
   void printProgress(const std::string& message);
   void clearLine();
@@ -38,6 +40,7 @@ class ResultPrinter {
  private:
   std::ostream& out_;
   bool showDetails_;
+  bool color_;
 
   // ANSI escape sequences
   static constexpr const char* ANSI_CLEAR_LINE = "\033[K";

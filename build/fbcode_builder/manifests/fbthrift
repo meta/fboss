@@ -3,6 +3,7 @@ name = fbthrift
 fbsource_path = xplat/thrift
 shipit_project = fbthrift
 shipit_fbcode_builder = true
+shipit_fbcode_builder_layout = tool
 
 [git]
 repo_url = https://github.com/facebook/fbthrift.git
@@ -49,10 +50,13 @@ THRIFT_BENCHMARKS=OFF
 
 [dependencies]
 fmt
-folly
+# Rocket compression uses folly's LZ4 codec.
+folly = lz4
 googletest
 zstd
 xxhash
+# thrift/lib/cpp requires zlib whether or not RPC is enabled.
+zlib
 # Thrift also depends on openssl but since the latter requires a platform-
 # specific configuration we rely on the folly manifest to provide this
 # dependency to avoid duplication.
@@ -61,14 +65,8 @@ xxhash
 # THRIFT_RPC=ON.
 [dependencies.feature_rpc=on]
 fizz
-libsodium
 wangle
 mvfst
-
-# Pulled only when benchmark executables are enabled; gated inside fbthrift's
-# CMake by THRIFT_BENCHMARKS=ON.
-[dependencies.feature_benchmark=on]
-benchmark
 
 [shipit.pathmap]
 xplat/thrift/public_tld = .

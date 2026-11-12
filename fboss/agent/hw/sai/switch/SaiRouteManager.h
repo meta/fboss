@@ -39,6 +39,7 @@ using SaiRoute = SaiObject<SaiRouteTraits>;
 
 template <typename T>
 class ManagedNextHop;
+class SaiVxlanNextHopHandle;
 
 template <typename NextHopTraitsT>
 class ManagedRouteNextHop
@@ -89,7 +90,8 @@ struct SaiRouteHandle {
   using NextHopHandle = std::variant<
       std::shared_ptr<SaiNextHopGroupHandle>,
       std::shared_ptr<ManagedRouteIpNextHop>,
-      std::shared_ptr<ManagedRouteMplsNextHop>
+      std::shared_ptr<ManagedRouteMplsNextHop>,
+      std::shared_ptr<SaiVxlanNextHopHandle>
 #if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)
       ,
       std::shared_ptr<ManagedRouteSrv6NextHop>

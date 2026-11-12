@@ -37,6 +37,7 @@ add_executable(store_test
     fboss/agent/hw/sai/store/tests/TunnelMapStoreTest.cpp
     fboss/agent/hw/sai/store/tests/UdfStoreTest.cpp
     fboss/agent/hw/sai/store/tests/VirtualChannelStoreTest.cpp
+    fboss/agent/hw/sai/store/tests/VirtualRouterStoreTest.cpp
     fboss/agent/hw/sai/store/tests/VlanStoreTest.cpp
     fboss/agent/hw/sai/store/tests/WredStoreTest.cpp
 )

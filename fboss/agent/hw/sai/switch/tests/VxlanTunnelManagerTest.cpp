@@ -1,6 +1,7 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include "fboss/agent/hw/sai/api/TunnelMapApi.h"
+#include "fboss/agent/hw/sai/fake/FakeSai.h"
 #include "fboss/agent/hw/sai/store/SaiStore.h"
 #include "fboss/agent/hw/sai/switch/SaiSwitch.h"
 #include "fboss/agent/hw/sai/switch/SaiVirtualRouterManager.h"
@@ -97,6 +98,61 @@ TEST_F(VxlanTunnelManagerTest, removeVxlanTunnel) {
   EXPECT_FALSE(handle);
 }
 
+std::shared_ptr<VxlanTunnel> makeVxlanTunnelWithMappers(
+    const std::string& tunnelId = "vxlantunnel0",
+    uint32_t intfID = 0) {
+  auto tunnel = makeVxlanTunnel(tunnelId, intfID);
+  tunnel->setVrf2Vni(std::map<int64_t, int64_t>{{0, 10001}});
+  tunnel->setVniToVrf(std::map<int64_t, int64_t>{{10001, 0}});
+  return tunnel;
+}
+
+TEST_F(VxlanTunnelManagerTest, addVxlanTunnelWithMappers) {
+  auto swTunnel = makeVxlanTunnelWithMappers("vxlantunnel0", intf0.id);
+  saiManagerTable->vxlanTunnelManager().addVxlanTunnel(swTunnel);
+  auto handle = saiManagerTable->vxlanTunnelManager().getVxlanTunnelHandle(
+      "vxlantunnel0");
+  ASSERT_NE(handle, nullptr);
+  ASSERT_NE(handle->encapMap, nullptr);
+  ASSERT_NE(handle->decapMap, nullptr);
+  EXPECT_EQ(handle->encapEntries.size(), 1);
+  EXPECT_EQ(handle->decapEntries.size(), 1);
+  const auto& fakeTunnel = FakeSai::getInstance()->tunnelManager.get(
+      static_cast<sai_object_id_t>(handle->tunnel->adapterKey()));
+  EXPECT_EQ(
+      fakeTunnel.encapMappers,
+      std::vector<sai_object_id_t>{
+          static_cast<sai_object_id_t>(handle->encapMap->adapterKey())});
+  EXPECT_EQ(
+      fakeTunnel.decapMappers,
+      std::vector<sai_object_id_t>{
+          static_cast<sai_object_id_t>(handle->decapMap->adapterKey())});
+}
+
+TEST_F(VxlanTunnelManagerTest, removeVxlanTunnelWithMappers) {
+  auto swTunnel = makeVxlanTunnelWithMappers("vxlantunnel0", intf0.id);
+  saiManagerTable->vxlanTunnelManager().addVxlanTunnel(swTunnel);
+  saiManagerTable->vxlanTunnelManager().removeVxlanTunnel(swTunnel);
+  EXPECT_FALSE(saiManagerTable->vxlanTunnelManager().getVxlanTunnelHandle(
+      "vxlantunnel0"));
+  saiManagerTable->vxlanTunnelManager().addVxlanTunnel(swTunnel);
+  auto handle = saiManagerTable->vxlanTunnelManager().getVxlanTunnelHandle(
+      "vxlantunnel0");
+  ASSERT_NE(handle, nullptr);
+  EXPECT_EQ(handle->encapEntries.size(), 1);
+  EXPECT_EQ(handle->decapEntries.size(), 1);
+}
+
+TEST_F(VxlanTunnelManagerTest, addVxlanTunnelWithMapperMissingVrFails) {
+  auto swTunnel = makeVxlanTunnel("vxlantunnel0", intf0.id);
+  swTunnel->setVrf2Vni(std::map<int64_t, int64_t>{{7, 10001}});
+  EXPECT_THROW(
+      saiManagerTable->vxlanTunnelManager().addVxlanTunnel(swTunnel),
+      FbossError);
+  EXPECT_FALSE(saiManagerTable->vxlanTunnelManager().getVxlanTunnelHandle(
+      "vxlantunnel0"));
+}
+
 TEST_F(VxlanTunnelManagerTest, addNonVxlanTunnelFails) {
   auto swTunnel = makeVxlanTunnel("vxlantunnel0", intf0.id);
   swTunnel->setType(TunnelType::SRV6_ENCAP);
@@ -173,6 +229,33 @@ TEST_F(VxlanTunnelManagerTest, listVxlanObjects) {
        }) {
     EXPECT_NE(out.find(key), std::string::npos) << key;
   }
+}
+
+TEST_F(VxlanTunnelManagerTest, addVxlanTunnelWithP2mpTerm) {
+  auto swTunnel = makeVxlanTunnel("vxlantunnel0", intf0.id);
+  swTunnel->setTunnelTermType(cfg::TunnelTerminationType::P2MP);
+  saiManagerTable->vxlanTunnelManager().addVxlanTunnel(swTunnel);
+  auto handle = saiManagerTable->vxlanTunnelManager().getVxlanTunnelHandle(
+      "vxlantunnel0");
+  ASSERT_NE(handle, nullptr);
+  ASSERT_NE(handle->tunnelTerm, nullptr);
+  const auto& fakeTerm = FakeSai::getInstance()->tunnelTermManager.get(
+      static_cast<sai_object_id_t>(handle->tunnelTerm->adapterKey()));
+  EXPECT_EQ(
+      fakeTerm.tunnelId,
+      static_cast<sai_object_id_t>(handle->tunnel->adapterKey()));
+  EXPECT_EQ(
+      GET_ATTR(P2MPTunnelTerm, DstIp, handle->tunnelTerm->attributes()),
+      folly::IPAddress("1.1.1.1"));
+}
+
+TEST_F(VxlanTunnelManagerTest, addVxlanTunnelWithoutTermTypeHasNoTerm) {
+  auto swTunnel = makeVxlanTunnel("vxlantunnel0", intf0.id);
+  saiManagerTable->vxlanTunnelManager().addVxlanTunnel(swTunnel);
+  auto handle = saiManagerTable->vxlanTunnelManager().getVxlanTunnelHandle(
+      "vxlantunnel0");
+  ASSERT_NE(handle, nullptr);
+  EXPECT_EQ(handle->tunnelTerm, nullptr);
 }
 
 TEST_F(VxlanTunnelManagerTest, addVxlanTunnelWithoutSrcIpFails) {

@@ -33,6 +33,7 @@
 #include "fboss/agent/state/ForwardingInformationBaseMap.h"
 #include "fboss/agent/state/Interface.h"
 #include "fboss/agent/state/InterfaceMap.h"
+#include "fboss/agent/state/InterfaceVrfMap.h"
 #include "fboss/agent/state/IpTunnelMap.h"
 #include "fboss/agent/state/IsolationGroup.h"
 #include "fboss/agent/state/IsolationGroupMap.h"
@@ -58,6 +59,8 @@
 #include "fboss/agent/state/UdfConfig.h"
 #include "fboss/agent/state/Vlan.h"
 #include "fboss/agent/state/VlanMap.h"
+#include "fboss/agent/state/Vrf.h"
+#include "fboss/agent/state/VrfMap.h"
 #include "fboss/agent/state/VxlanTunnelMap.h"
 #include "fboss/agent/types.h"
 
@@ -215,6 +218,14 @@ RESOLVE_STRUCT_MEMBER(
     SwitchState,
     switch_state_tags::isolationGroupMaps,
     MultiSwitchIsolationGroupMap);
+RESOLVE_STRUCT_MEMBER(
+    SwitchState,
+    switch_state_tags::vrfMaps,
+    MultiSwitchVrfMap);
+RESOLVE_STRUCT_MEMBER(
+    SwitchState,
+    switch_state_tags::interfaceVrfMaps,
+    MultiSwitchInterfaceVrfMap);
 /*
  * SwitchState stores the current switch configuration.
  *
@@ -355,6 +366,9 @@ class SwitchState : public ThriftStructNode<SwitchState, state::SwitchState> {
   const std::shared_ptr<MultiSwitchIsolationGroupMap> getIsolationGroups()
       const;
 
+  const std::shared_ptr<MultiSwitchVrfMap> getVrfs() const;
+  const std::shared_ptr<MultiSwitchInterfaceVrfMap> getInterfaceVrfs() const;
+
   std::chrono::seconds getNdpTimeout() const;
 
   std::chrono::seconds getArpAgerInterval() const;
@@ -474,6 +488,9 @@ class SwitchState : public ThriftStructNode<SwitchState, state::SwitchState> {
   void resetLlrConfigs(std::shared_ptr<MultiSwitchLlrConfigMap> cfgs);
   void resetIsolationGroups(
       std::shared_ptr<MultiSwitchIsolationGroupMap> groups);
+  void resetVrfs(std::shared_ptr<MultiSwitchVrfMap> vrfs);
+  void resetInterfaceVrfs(
+      std::shared_ptr<MultiSwitchInterfaceVrfMap> interfaceVrfs);
   void resetSystemPorts(
       const std::shared_ptr<MultiSwitchSystemPortMap>& systemPorts);
   void resetRemoteSystemPorts(

@@ -81,7 +81,9 @@ ConfigApplier::ConfigApplier(
     folly::Range<StaticMySidIterator> staticMySidRange,
     NextHopIDManager* nextHopIDManager,
     MySidTable* mySidTable,
-    uint32_t ecmpWidth)
+    uint32_t ecmpWidth,
+    const std::unordered_set<InterfaceID>* vrfInterfaces,
+    RibRouteUpdater::RouterIDToRouteTable* crossVrfRouteTables)
     : vrf_(vrf),
       v4NetworkToRoute_(v4NetworkToRoute),
       v6NetworkToRoute_(v6NetworkToRoute),
@@ -97,7 +99,9 @@ ConfigApplier::ConfigApplier(
       staticMySidRange_(staticMySidRange),
       nextHopIDManager_(nextHopIDManager),
       mySidTable_(mySidTable),
-      ecmpWidth_(ecmpWidth) {
+      ecmpWidth_(ecmpWidth),
+      vrfInterfaces_(vrfInterfaces),
+      crossVrfRouteTables_(crossVrfRouteTables) {
   CHECK_NOTNULL(v4NetworkToRoute_);
   CHECK_NOTNULL(v6NetworkToRoute_);
   CHECK_NOTNULL(labelToRoute_);
@@ -110,7 +114,10 @@ void ConfigApplier::apply() {
       labelToRoute_,
       nextHopIDManager_,
       mySidTable_,
-      ecmpWidth_);
+      ecmpWidth_,
+      vrf_,
+      vrfInterfaces_,
+      crossVrfRouteTables_);
 
   // Update static routes
   std::vector<RibRouteUpdater::RouteEntry> staticRoutes;

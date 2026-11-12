@@ -27,6 +27,42 @@ using folly::io::Cursor;
 using std::string;
 using std::stringstream;
 
+namespace {
+
+bool isExtensionHeader(uint8_t nextHeader) {
+  switch (static_cast<IP_PROTO>(nextHeader)) {
+    case IP_PROTO::IP_PROTO_IPV6_HOPOPT:
+    case IP_PROTO::IP_PROTO_IPV6_ROUTE:
+    case IP_PROTO::IP_PROTO_IPV6_FRAG:
+    case IP_PROTO::IP_PROTO_AH:
+    case IP_PROTO::IP_PROTO_IPV6_OPTS:
+    case IP_PROTO::IP_PROTO_MOBILITY_HEADER:
+    case IP_PROTO::IP_PROTO_HIP:
+    case IP_PROTO::IP_PROTO_SHIM6:
+    case IP_PROTO::IP_PROTO_253:
+    case IP_PROTO::IP_PROTO_254:
+      return true;
+    default:
+      return false;
+  }
+}
+
+// Total length in octets of an extension header, from its Hdr Ext Len field.
+size_t extensionHeaderLength(uint8_t nextHeader, uint8_t hdrExtLen) {
+  switch (static_cast<IP_PROTO>(nextHeader)) {
+    case IP_PROTO::IP_PROTO_IPV6_FRAG:
+      return 8;
+    case IP_PROTO::IP_PROTO_AH:
+      // RFC 4302: in 4-octet units, minus 2
+      return (static_cast<size_t>(hdrExtLen) + 2) * 4;
+    default:
+      // RFC 8200: in 8-octet units, not including the first 8 octets
+      return (static_cast<size_t>(hdrExtLen) + 1) * 8;
+  }
+}
+
+} // namespace
+
 IPv6Hdr::IPv6Hdr(Cursor& cursor) {
   try {
     uint8_t buf[16];
@@ -46,6 +82,7 @@ IPv6Hdr::IPv6Hdr(Cursor& cursor) {
   } catch (const std::out_of_range&) {
     throw HdrParseError("IPv6 header too small");
   }
+  parseNextHeaderChain(cursor);
 }
 
 void IPv6Hdr::serialize(folly::io::RWPrivateCursor* cursor) const {
@@ -93,8 +130,55 @@ string IPv6Hdr::toString() const {
      << " flowLabel: " << flowLabel << " payloadLength: " << payloadLength
      << " nextHeader: " << static_cast<int>(nextHeader)
      << " hopLimit: " << static_cast<int>(hopLimit)
-     << " srcAddr: " << srcAddr.str() << " dstAddr: " << dstAddr.str() << " }";
+     << " srcAddr: " << srcAddr.str() << " dstAddr: " << dstAddr.str();
+  if (hasExtensionHeaders()) {
+    ss << " nextHeaderChain:";
+    for (auto header : nextHeaderChain) {
+      ss << " " << static_cast<int>(header);
+    }
+  }
+  ss << " }";
   return ss.str();
+}
+
+void IPv6Hdr::parseNextHeaderChain(Cursor cursor) {
+  auto header = nextHeader;
+  if (!isExtensionHeader(header)) {
+    return;
+  }
+  nextHeaderChain.push_back(header);
+  try {
+    // Bytes past the declared payload, e.g. Ethernet padding, are not part of
+    // the chain.
+    //
+    // Jumbograms (RFC 2675) declare a payload length of 0 and so fail to
+    // parse. That is intended: a jumbogram's payload exceeds 65,535 octets and
+    // it may not be fragmented, so it needs a link MTU above 65,575 octets
+    // (65,535 + the 40 octet IPv6 header). Ethernet MTUs, jumbo frames
+    // included, are around 9K at most, so a jumbogram never arrives on a
+    // switch port; a packet claiming to be one is malformed.
+    cursor = Cursor(cursor, payloadLength);
+    while (isExtensionHeader(header)) {
+      auto next = cursor.read<uint8_t>();
+      auto hdrExtLen = cursor.read<uint8_t>();
+      auto length = extensionHeaderLength(header, hdrExtLen);
+      bool nonFirstFragment = false;
+      if (header == static_cast<uint8_t>(IP_PROTO::IP_PROTO_IPV6_FRAG)) {
+        nonFirstFragment = (cursor.readBE<uint16_t>() & 0xfff8) != 0;
+        cursor.skip(length - 4);
+      } else {
+        cursor.skip(length - 2);
+      }
+      extensionHeadersLength += length;
+      if (nonFirstFragment) {
+        break;
+      }
+      header = next;
+      nextHeaderChain.push_back(header);
+    }
+  } catch (const std::out_of_range&) {
+    throw HdrParseError("IPv6 extension header chain truncated");
+  }
 }
 
 } // namespace facebook::fboss

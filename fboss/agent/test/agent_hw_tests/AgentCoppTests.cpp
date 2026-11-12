@@ -10,7 +10,6 @@
 #include "fboss/agent/AsicUtils.h"
 #include "fboss/agent/HwSwitchMatcher.h"
 #include "fboss/agent/LldpManager.h"
-#include "fboss/agent/SwRxPacket.h"
 #include "fboss/agent/TxPacket.h"
 #include "fboss/agent/VoqUtils.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
@@ -23,7 +22,7 @@
 #include "fboss/agent/test/EcmpSetupHelper.h"
 #include "fboss/agent/test/TestUtils.h"
 #include "fboss/agent/test/TrunkUtils.h"
-#include "fboss/agent/test/agent_hw_tests/AgentTestAddressConstants.h"
+#include "fboss/agent/test/utils/AgentTestAddressConstants.h"
 #include "fboss/agent/test/utils/ConfigUtils.h"
 #include "fboss/agent/test/utils/CoppTestUtils.h"
 #include "fboss/agent/test/utils/NetworkAITestUtils.h"
@@ -1221,25 +1220,25 @@ TYPED_TEST(AgentCoppTest, NdpSolicitationToHighPriQ) {
 }
 
 TYPED_TEST(AgentCoppTest, NdpSolicitNeighbor) {
-  // This test case makes sure that addNoActionAclForNw() is
-  // present in ACL table and at the higher priority than that of
+  // This test case makes sure that the CPU-port multicast ACL is
+  // present in the ACL table and at a higher priority than the
   // ACL entry to trap NDP solicit to high priority queue.
   // If both ACL entries are present in the ACL table and at the right order
   // we would recive 1 packet to CPU.
-  // Reason: NS packet enters ASIC via CPU port, hits addNoActionAclForNw()
+  // Reason: NS packet enters ASIC via CPU port, hits the CPU-port multicast
   // ACL because, prefix macthes ff02::/16 and source port is set to CPU port.
   // Hence it will be forwarded. Since it's a multicast packet, it will be
   // sent out of port 1, and the packet loops back into ASIC via port 1.
   //  Now, it hits the NDP solicit ACL entry and copied to CPU.
-  // Note that it did NOT hit addNoActionAclForNw() because source port is set
-  // to 1 after looping back.
+  // Note that it does not hit the CPU-port multicast ACL because source port
+  // is set to 1 after looping back.
 
   // If not we would receive 2 packets to CPU.
   // Reason: When packet enters the ASIC via CPU port, it hits the
-  // addNoActionAclForNw() and it's copied to CPU and another copy is sent out
+  // CPU-port multicast ACL and it's copied to CPU and another copy is sent out
   // of port 1. Now, since we have port 1 in loopback mode, packet enters back
-  // into ASIC via port 1, addNoActionAclForNw() hits  again and copied to CPU
-  // again.
+  // into ASIC via port 1, the CPU-port multicast ACL hits again and copies it
+  // to CPU again.
 
   // More explanation in the test plan section of - D34782575
   auto setup = [=, this]() {
@@ -1876,11 +1875,12 @@ TEST_F(AgentCoppQueueStuckTest, CpuQueueHighRateTraffic) {
         utility::getPortQueueRate(asic, utility::kCoppLowPriQueueId);
     uint64_t expectedRate;
     if (portQueueRate.getType() == cfg::PortQueueRate::Type::kbitsPerSec) {
-      expectedRate = portQueueRate.get_kbitsPerSec().maximum().value() * 1024;
+      expectedRate =
+          portQueueRate.kbitsPerSec().as_const()->maximum().value() * 1024;
     } else {
       // pktsPerSec
-      expectedRate =
-          portQueueRate.get_pktsPerSec().maximum().value() * pktSize * 8;
+      expectedRate = portQueueRate.pktsPerSec().as_const()->maximum().value() *
+          pktSize * 8;
     }
     auto expectedRateLow = expectedRate * (1 - kVariance);
     auto expectedRateHigh = expectedRate * (1 + kVariance);

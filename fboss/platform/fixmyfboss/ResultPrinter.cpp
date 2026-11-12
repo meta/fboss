@@ -108,6 +108,9 @@ void ResultPrinter::printDetails(
 
 std::string
 ResultPrinter::colorize(const std::string& text, const char* color, bool bold) {
+  if (!color_) {
+    return text;
+  }
   std::string result;
   if (bold) {
     result += STYLE_BOLD;
@@ -121,6 +124,9 @@ ResultPrinter::colorize(const std::string& text, const char* color, bool bold) {
 std::string ResultPrinter::colorizeBackground(
     const std::string& text,
     const char* bgColor) {
+  if (!color_) {
+    return text;
+  }
   return std::string(bgColor) + STYLE_BOLD + text + COLOR_RESET;
 }
 

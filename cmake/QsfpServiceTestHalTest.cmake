@@ -31,7 +31,7 @@ target_link_libraries(hal_test_utils
   transceiver_properties_manager
   qsfp_module
   Folly::folly
-  FBThrift::thriftcpp2
+  thrift::rpc
 )
 
 add_library(hal_test_base

@@ -197,7 +197,7 @@ class UserAndEmailHandler:
 
         return await task_api.create_task(
             creator=USER_UNIX_ID,
-            title=f"Known Bad Tests Passing Continuously for a week for {test_config}. Please remove them from known bad.",
+            title=f"Known Bad Tests Passing Continuously for a week for {test_config.name}. Please remove them from known bad.",
             description=self.text_format_known_bad_list(tests, test_config.name),
             priority=TaskPriority.HIGH,
             tags=[FBOSS_KNOWN_BAD_TESTS],
@@ -857,6 +857,25 @@ class ChronosJobExtractor:
             return 0  # Changed return type to int
 
 
+def create_report_task(
+    args: argparse.Namespace,
+    test_config: TestConfig,
+    tests: Dict[str, str],
+    error_code: int,
+) -> int:
+    logger.info("Creating task for oncall...")
+    try:
+        task = asyncio.run(
+            # pyrefly: ignore [bad-argument-type]
+            UserAndEmailHandler().create_task(args.user, test_config, tests)
+        )
+    except Exception:
+        logger.exception("Failed to create task for %s", test_config.name)
+        return 1
+    logger.info(f"Task created successfully: T{task.task_number}")
+    return error_code
+
+
 def main() -> Optional[int]:
     """Main function to parse command line arguments and run the script."""
     parser = argparse.ArgumentParser(
@@ -1001,29 +1020,19 @@ def main() -> Optional[int]:
 
                 logger.info("html generated successfully for email body")
                 images = {}
-                return_code = asyncio.run(
+                asyncio.run(
                     UserAndEmailHandler().send_email(
                         args.user, test_config, html, images
                     )
                 )
 
-                if return_code == 0:
-                    logger.error(
-                        f"Error: Failed to send email to user, return_code: {return_code}"
-                    )
-
-                logger.info(f"Email sent successfully return_code: {return_code}")
+                logger.info("Email sent successfully")
             else:
                 logger.info("No email sent")
 
                 # create task for user or oncall
             if args.create_task:
-                logger.info("Creating task for oncall...")
-                task = asyncio.run(
-                    # pyrefly: ignore [bad-argument-type]
-                    UserAndEmailHandler().create_task(args.user, test_config, tests)
-                )
-                logger.info(f"Task created successfully: T{task.task_number}")
+                error_code = create_report_task(args, test_config, tests, error_code)
             else:
                 logger.info("No task created")
 

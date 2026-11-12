@@ -718,6 +718,12 @@ struct BgpSettingConfig {
 
   /** Record the latest platform-normalized FIB request for each RIB entry. */
   24: optional bool enable_fib_out_tracking;
+
+  /**
+   * Advertise the RFC 8538 Notification (N) bit in the Graceful Restart
+   * capability. Default (unset or false): the N bit is not advertised.
+   */
+  25: optional bool enable_gr_notification;
 }
 
 /**

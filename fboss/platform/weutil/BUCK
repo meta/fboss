@@ -21,7 +21,6 @@ cpp_library(
     ],
     deps = [
         "fbsource//xplat/folly:conv",
-        "fbsource//xplat/folly:format",
         "fbsource//xplat/folly:scope_guard",
         "fbsource//xplat/folly/logging:logging",
         ":config_utils_lib",
@@ -84,7 +83,6 @@ cpp_library(
     ],
     deps = [
         "fbsource//third-party/re2:re2",
-        "fbsource//xplat/folly:format",
         "fbsource//xplat/folly:string",
         "//fboss/platform/config_lib:config_lib",
         "//thrift/lib/cpp2/protocol:protocol",

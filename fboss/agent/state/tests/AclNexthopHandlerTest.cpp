@@ -8,11 +8,14 @@
  *
  */
 
+#include "fboss/agent/AclNexthopHandler.h"
+#include "fboss/agent/HwSwitchMatcher.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
 #include "fboss/agent/state/AclEntry.h"
 #include "fboss/agent/state/AclMap.h"
-#include "fboss/agent/state/Interface.h"
-#include "fboss/agent/state/Route.h"
+#include "fboss/agent/state/AclTable.h"
+#include "fboss/agent/state/AclTableGroup.h"
+#include "fboss/agent/state/AclTableGroupMap.h"
 #include "fboss/agent/state/SwitchState.h"
 #include "fboss/agent/test/HwTestHandle.h"
 #include "fboss/agent/test/TestUtils.h"
@@ -22,6 +25,7 @@
 #include <folly/IPAddressV6.h>
 
 #include <folly/logging/xlog.h>
+#include <gflags/gflags.h>
 #include <gtest/gtest.h>
 
 using namespace facebook::fboss;
@@ -45,12 +49,25 @@ HwSwitchMatcher scope() {
 
 }; // namespace
 
-template <typename AddrType>
+const std::string kAclName = "acl0";
+const std::string kAclTableName = "table0";
+const RouteNextHopSet kEmptyNexthopSet;
+
+// Each test runs per address family, with ACLs in the legacy ACL map and in
+// an ACL table group (FLAGS_enable_acl_table_group).
+template <typename AddrType, bool kAclTableGroupEnabled>
+struct AclNexthopTestMode {
+  using AddrT = AddrType;
+  static constexpr bool kAclTableGroup = kAclTableGroupEnabled;
+};
+
+template <typename Mode>
 class AclNexthopHandlerTest : public ::testing::Test {
  public:
   using Func = folly::Function<void()>;
   using StateUpdateFn = SwSwitch::StateUpdateFn;
-  using AddrT = AddrType;
+  using AddrT = typename Mode::AddrT;
+  static constexpr bool kAclTableGroup = Mode::kAclTableGroup;
 
   cfg::SwitchConfig testConfig() {
     auto cfg = testConfigA();
@@ -83,10 +100,46 @@ class AclNexthopHandlerTest : public ::testing::Test {
           fmt::format("1000:{:04x}::0001/64", vid);
       cfg.interfaces()[idx].ipAddresses()[3] = "fe80::/64"; // link local
     }
+    if (kAclTableGroup) {
+      cfg::AclTable table;
+      table.name() = kAclTableName;
+      table.priority() = 1;
+      cfg::AclTableGroup group;
+      group.name() = "group0";
+      group.stage() = cfg::AclStage::INGRESS;
+      group.aclTables() = {table};
+      cfg.aclTableGroup() = group;
+    }
     return cfg;
   }
 
+  cfg::SwitchConfig redirectAclConfig(
+      const std::vector<cfg::RedirectNextHop>& nhops) {
+    auto config = testConfig();
+    cfg::AclEntry acl;
+    acl.name() = kAclName;
+    acl.dstIp() = "2401::2/128";
+    if (kAclTableGroup) {
+      config.aclTableGroup()->aclTables()[0].aclEntries()->push_back(acl);
+    } else {
+      config.acls()->push_back(acl);
+    }
+    auto redirect = cfg::RedirectToNextHopAction();
+    redirect.redirectNextHops() = nhops;
+    auto action = cfg::MatchAction();
+    action.redirectToNextHop() = redirect;
+    cfg::MatchToAction mta;
+    mta.matcher() = kAclName;
+    mta.action() = action;
+    if (!config.dataPlaneTrafficPolicy().has_value()) {
+      config.dataPlaneTrafficPolicy() = cfg::TrafficPolicyConfig();
+    }
+    config.dataPlaneTrafficPolicy()->matchToAction()->push_back(mta);
+    return config;
+  }
+
   void SetUp() override {
+    FLAGS_enable_acl_table_group = kAclTableGroup;
     auto config = testConfig();
     handle_ = createTestHandle(&config);
     sw_ = handle_->getSw();
@@ -142,14 +195,6 @@ class AclNexthopHandlerTest : public ::testing::Test {
     return intfAndIps;
   }
 
-  std::vector<int32_t> getOutInterfaces(int numInterfaces) const {
-    std::vector<int32_t> intfIDs;
-    for (int i = 0, vid = 100; i < numInterfaces; ++i, ++vid) {
-      intfIDs.emplace_back(vid);
-    }
-    return intfIDs;
-  }
-
   std::vector<std::string> getMatchingPrefixes(int numPrefixes) const {
     std::vector<std::string> prefixes(numPrefixes);
     if constexpr (std::is_same_v<AddrT, folly::IPAddressV4>) {
@@ -186,8 +231,9 @@ class AclNexthopHandlerTest : public ::testing::Test {
       const std::shared_ptr<SwitchState>& state,
       const std::string& name,
       const std::vector<std::string>& nexthopIps,
-      const std::vector<int32_t>& intfIDs = {}) {
-    auto aclEntry = std::make_shared<AclEntry>(0, name);
+      const std::vector<int32_t>& intfIDs = {},
+      int priority = 0) {
+    auto aclEntry = std::make_shared<AclEntry>(priority, name);
     aclEntry->setDstIp(
         folly::IPAddress::tryCreateNetwork("2401::2/128").value());
     auto cfgRedirectToNextHop = cfg::RedirectToNextHopAction();
@@ -206,10 +252,7 @@ class AclNexthopHandlerTest : public ::testing::Test {
     MatchAction action = MatchAction();
     action.setRedirectToNextHop(redirectToNextHop);
     aclEntry->setAclAction(action);
-    auto newState = state->isPublished() ? state->clone() : state;
-    auto acls = newState->getAcls()->modify(&newState);
-    acls->addNode(aclEntry, scope());
-    return newState;
+    return insertAcl(state, aclEntry);
   }
 
   std::shared_ptr<SwitchState> addTunnelEncapAcl(
@@ -231,9 +274,27 @@ class AclNexthopHandlerTest : public ::testing::Test {
     MatchAction action = MatchAction();
     action.setRedirectToNextHop(redirectToNextHop);
     aclEntry->setAclAction(action);
+    return insertAcl(state, aclEntry);
+  }
+
+  std::shared_ptr<SwitchState> insertAcl(
+      const std::shared_ptr<SwitchState>& state,
+      const std::shared_ptr<AclEntry>& aclEntry) {
     auto newState = state->isPublished() ? state->clone() : state;
-    auto acls = newState->getAcls()->modify(&newState);
-    acls->addNode(aclEntry, scope());
+    if (!kAclTableGroup) {
+      newState->getAcls()->modify(&newState)->addNode(aclEntry, scope());
+      return newState;
+    }
+    auto table = newState->getAclTableGroups()
+                     ->getMapNodeIf(scope())
+                     ->getAclTableGroup(cfg::AclStage::INGRESS)
+                     ->getAclTableMap()
+                     ->getTable(kAclTableName);
+    auto origAcls = table->getAclMap().unwrap();
+    auto tableAcls = origAcls ? origAcls->clone() : std::make_shared<AclMap>();
+    tableAcls->addEntry(aclEntry);
+    table->modify(&newState, scope(), cfg::AclStage::INGRESS)
+        ->setAclMap(std::move(tableAcls));
     return newState;
   }
 
@@ -257,24 +318,42 @@ class AclNexthopHandlerTest : public ::testing::Test {
   }
 
  protected:
+  void checkResolvedNexthops(
+      const std::shared_ptr<AclEntry>& aclEntry,
+      const RouteNextHopSet& expectedNexthops) {
+    ASSERT_NE(aclEntry, nullptr);
+    const auto& action = aclEntry->getAclAction();
+    auto matchAction = MatchAction::fromThrift(action->toThrift());
+    auto resolvedNexthopSet = matchAction.getRedirectToNextHop().value().second;
+    XLOG(DBG3) << "expected nexthops: " << expectedNexthops
+               << ", resolved nexthops: " << resolvedNexthopSet;
+    EXPECT_EQ(resolvedNexthopSet, expectedNexthops);
+    EXPECT_EQ(
+        aclEntry->isEnabled(), std::optional<bool>(!expectedNexthops.empty()));
+  }
+
   void verifyResolvedNexthopsInAclAction(
       const std::string& aclName,
       const RouteNextHopSet& expectedNexthops) {
     auto verifyResolvedNexthops = [&]() {
-      auto state = sw_->getState();
-      auto aclEntry = state->getAcls()->getNodeIf(aclName);
-      EXPECT_NE(aclEntry, nullptr);
-      const auto& action = aclEntry->getAclAction();
-      auto matchAction = MatchAction::fromThrift(action->toThrift());
-      auto resolvedNexthopSet =
-          matchAction.getRedirectToNextHop().value().second;
-      XLOG(DBG3) << "expected nexthops: " << expectedNexthops
-                 << ", resolved nexthops: " << resolvedNexthopSet;
-      // Since the route is deleted, expect no resolved nexthops
-      EXPECT_EQ(resolvedNexthopSet, expectedNexthops);
-      EXPECT_EQ(*aclEntry->isEnabled(), expectedNexthops.size() ? true : false);
+      checkResolvedNexthops(getAcl(aclName), expectedNexthops);
     };
     verifyStateUpdate(verifyResolvedNexthops);
+  }
+
+  std::shared_ptr<AclEntry> getAcl(const std::string& aclName) {
+    auto state = sw_->getState();
+    if (!kAclTableGroup) {
+      return state->getAcls()->getNodeIf(aclName);
+    }
+    auto aclMap = state->getAclTableGroups()
+                      ->getMapNodeIf(scope())
+                      ->getAclTableGroup(cfg::AclStage::INGRESS)
+                      ->getAclTableMap()
+                      ->getTable(kAclTableName)
+                      ->getAclMap()
+                      .unwrap();
+    return aclMap ? aclMap->getEntryIf(aclName) : nullptr;
   }
 
   void runInUpdateEventBaseAndWait(Func func) {
@@ -286,16 +365,17 @@ class AclNexthopHandlerTest : public ::testing::Test {
     runInUpdateEventBaseAndWait([]() {});
   }
 
+  gflags::FlagSaver flagSaver_;
   std::unique_ptr<HwTestHandle> handle_;
   std::unique_ptr<ThriftHandler> thriftHandler{nullptr};
   SwSwitch* sw_;
 };
 
-using AclNexthopHandlerTestTypes =
-    ::testing::Types<folly::IPAddressV4, folly::IPAddressV6>;
-
-const std::string kAclName = "acl0";
-const RouteNextHopSet kEmptyNexthopSet;
+using AclNexthopHandlerTestTypes = ::testing::Types<
+    AclNexthopTestMode<folly::IPAddressV4, false>,
+    AclNexthopTestMode<folly::IPAddressV6, false>,
+    AclNexthopTestMode<folly::IPAddressV4, true>,
+    AclNexthopTestMode<folly::IPAddressV6, true>>;
 
 TYPED_TEST_CASE(AclNexthopHandlerTest, AclNexthopHandlerTestTypes);
 
@@ -307,16 +387,15 @@ TYPED_TEST(AclNexthopHandlerTest, UnresolvedAclNextHop) {
       });
 
   this->verifyStateUpdate([=, this]() {
-    auto state = this->sw_->getState();
-    auto aclEntry = state->getAcls()->getNode(kAclName);
-    EXPECT_NE(aclEntry, nullptr);
+    auto aclEntry = this->getAcl(kAclName);
+    ASSERT_NE(aclEntry, nullptr);
     auto action = aclEntry->getAclAction();
     auto resolvedNexthopSet = util::toRouteNextHopSet(
         action->template cref<switch_state_tags::redirectToNextHop>()
             ->template cref<switch_state_tags::resolvedNexthops>()
             ->toThrift());
     EXPECT_EQ(resolvedNexthopSet.size(), 0);
-    EXPECT_EQ(*aclEntry->isEnabled(), false);
+    EXPECT_EQ(aclEntry->isEnabled(), std::optional<bool>(false));
   });
 }
 
@@ -462,93 +541,225 @@ TYPED_TEST(AclNexthopHandlerTest, MplsNexthops) {
   this->verifyResolvedNexthopsInAclAction(kAclName, expectedNexthops);
 }
 
-// Verify acl nexthop resolution when outgoing interfaces are specified.
-// The configuration specifies an out interface in addition to a recursive
-// nexthop address and ACL nexthop resolution logic should select a nexthop
-// for redirection only if the interface matches.
-TYPED_TEST(AclNexthopHandlerTest, ResolvedAclNextHopMultiNexthopWithInterface) {
-  auto outIntfs = this->getOutInterfaces(4);
-  // Create acl with one outinterface from each nexthop
+// Link-local nexthops are only meaningful with interface scoping and are
+// inherently resolved, so no RIB lookup is needed.
+TYPED_TEST(AclNexthopHandlerTest, LinkLocalNexthopResolvedWithInterface) {
+  if constexpr (std::is_same_v<
+                    typename TestFixture::AddrT,
+                    folly::IPAddressV6>) {
+    this->updateState(
+        "LinkLocalNexthop",
+        [=, this](const std::shared_ptr<SwitchState>& state) {
+          return this->addAcl(state, kAclName, {"fe80::1"}, {100});
+        });
+
+    RouteNextHopSet expectedNexthops = makeResolvedNextHops(
+        {{InterfaceID(100), "fe80::1"}}, UCMP_DEFAULT_WEIGHT);
+    this->verifyResolvedNexthopsInAclAction(kAclName, expectedNexthops);
+  }
+}
+
+// Link-local nexthop without interface scoping is invalid, resolution throws.
+TYPED_TEST(AclNexthopHandlerTest, LinkLocalNexthopWithoutInterfaceThrows) {
+  if constexpr (std::is_same_v<
+                    typename TestFixture::AddrT,
+                    folly::IPAddressV6>) {
+    auto cfgRedirectToNextHop = cfg::RedirectToNextHopAction();
+    cfg::RedirectNextHop nhop;
+    nhop.ip() = "fe80::1";
+    cfgRedirectToNextHop.redirectNextHops()->push_back(nhop);
+    auto redirectToNextHop = MatchAction::RedirectToNextHopAction();
+    redirectToNextHop.first = cfgRedirectToNextHop;
+    MatchAction action = MatchAction();
+    action.setRedirectToNextHop(redirectToNextHop);
+    AclNexthopHandler handler(this->sw_);
+    EXPECT_THROW(handler.resolveActionNexthops(action), FbossError);
+  }
+}
+
+// Config with a link-local redirect nexthop lacking interface scoping is
+// rejected at apply time.
+TYPED_TEST(AclNexthopHandlerTest, LinkLocalNexthopWithoutInterfaceBadConfig) {
+  if constexpr (std::is_same_v<
+                    typename TestFixture::AddrT,
+                    folly::IPAddressV6>) {
+    cfg::RedirectNextHop nhop;
+    nhop.ip() = "fe80::1";
+    auto config = this->redirectAclConfig({nhop});
+    EXPECT_THROW(
+        this->sw_->applyConfig("LinkLocalNexthopNoIntf", config), FbossError);
+  }
+}
+
+// Mixing tunnel encap and non-tunnel nexthops is invalid, resolution throws.
+TYPED_TEST(AclNexthopHandlerTest, MixedTunnelAndNonTunnelNexthopThrows) {
+  auto cfgRedirectToNextHop = cfg::RedirectToNextHopAction();
+  cfg::RedirectNextHop tunnelNhop;
+  tunnelNhop.ip() = this->getAclNexthopIps(2)[0];
+  tunnelNhop.tunnelType() = TunnelType::IP_IN_IP_ENCAP;
+  tunnelNhop.tunnelId() = "encapTunnel0";
+  cfg::RedirectNextHop plainNhop;
+  plainNhop.ip() = this->getAclNexthopIps(2)[1];
+  cfgRedirectToNextHop.redirectNextHops() = {tunnelNhop, plainNhop};
+  auto redirectToNextHop = MatchAction::RedirectToNextHopAction();
+  redirectToNextHop.first = cfgRedirectToNextHop;
+  MatchAction action = MatchAction();
+  action.setRedirectToNextHop(redirectToNextHop);
+  AclNexthopHandler handler(this->sw_);
+  EXPECT_THROW(handler.resolveActionNexthops(action), FbossError);
+}
+
+// Non-link-local nexthop with interface scoping is invalid, resolution throws.
+TYPED_TEST(AclNexthopHandlerTest, NonLinkLocalNexthopWithInterfaceThrows) {
+  auto cfgRedirectToNextHop = cfg::RedirectToNextHopAction();
+  cfg::RedirectNextHop nhop;
+  nhop.ip() = this->getAclNexthopIps(1)[0];
+  nhop.intfID() = 100;
+  cfgRedirectToNextHop.redirectNextHops()->push_back(nhop);
+  auto redirectToNextHop = MatchAction::RedirectToNextHopAction();
+  redirectToNextHop.first = cfgRedirectToNextHop;
+  MatchAction action = MatchAction();
+  action.setRedirectToNextHop(redirectToNextHop);
+  AclNexthopHandler handler(this->sw_);
+  EXPECT_THROW(handler.resolveActionNexthops(action), FbossError);
+}
+
+// Config with a non-link-local redirect nexthop carrying interface scoping
+// is rejected at apply time.
+TYPED_TEST(AclNexthopHandlerTest, NonLinkLocalNexthopWithInterfaceBadConfig) {
+  if constexpr (std::is_same_v<
+                    typename TestFixture::AddrT,
+                    folly::IPAddressV4>) {
+    cfg::RedirectNextHop nhop;
+    nhop.ip() = "123.0.0.1";
+    nhop.intfID() = 100;
+    auto config = this->redirectAclConfig({nhop});
+    EXPECT_THROW(
+        this->sw_->applyConfig("NonLinkLocalNexthopWithIntf", config),
+        FbossError);
+  }
+}
+
+// A redirect mixing tunnel encap and non-tunnel nexthops is rejected at
+// config apply; the tunnel-only form of the same ACL is accepted.
+TYPED_TEST(AclNexthopHandlerTest, MixedTunnelAndNonTunnelNexthopBadConfig) {
+  if constexpr (std::is_same_v<
+                    typename TestFixture::AddrT,
+                    folly::IPAddressV6>) {
+    cfg::RedirectNextHop tunnelNhop;
+    tunnelNhop.ip() = "2401::1";
+    tunnelNhop.tunnelType() = TunnelType::IP_IN_IP_ENCAP;
+    tunnelNhop.tunnelId() = "encapTunnel0";
+    cfg::RedirectNextHop plainNhop;
+    plainNhop.ip() = this->getAclNexthopIps(1)[0];
+
+    EXPECT_NO_THROW(this->sw_->applyConfig(
+        "TunnelOnlyNexthop", this->redirectAclConfig({tunnelNhop})));
+    EXPECT_THROW(
+        this->sw_->applyConfig(
+            "MixedTunnelNexthop",
+            this->redirectAclConfig({tunnelNhop, plainNhop})),
+        FbossError);
+  }
+}
+
+// SAI programs only IP-in-IP tunnel encap redirects, so config apply rejects
+// a redirect to any other nexthop on a SAI switch.
+TYPED_TEST(AclNexthopHandlerTest, NonTunnelRedirectNexthopBadConfigOnSai) {
+  cfg::RedirectNextHop nhop;
+  nhop.ip() = this->getAclNexthopIps(1)[0];
+  auto config = this->redirectAclConfig({nhop});
+  cfg::SdkVersion sdkVersion;
+  sdkVersion.saiSdk() = "1.0";
+  config.sdkVersion() = sdkVersion;
+  EXPECT_THROW(
+      this->sw_->applyConfig("NonTunnelRedirectSai", config), FbossError);
+}
+
+// Without a SAI SDK, a redirect to a non-tunnel nexthop is accepted.
+TYPED_TEST(AclNexthopHandlerTest, NonTunnelRedirectNexthopAcceptedOffSai) {
+  cfg::RedirectNextHop nhop;
+  nhop.ip() = this->getAclNexthopIps(1)[0];
+  EXPECT_NO_THROW(this->sw_->applyConfig(
+      "NonTunnelRedirect", this->redirectAclConfig({nhop})));
+}
+
+// Tunnel encap redirects are routed by HW, so config apply leaves the
+// resolved nexthop set empty even when a route covers the tunnel endpoint.
+TYPED_TEST(AclNexthopHandlerTest, TunnelEncapNexthopSkipsResolutionOnConfig) {
+  if constexpr (std::is_same_v<
+                    typename TestFixture::AddrT,
+                    folly::IPAddressV6>) {
+    RouteNextHopSet routeNexthops =
+        makeResolvedNextHops(this->getResolvedNexthops(1), UCMP_DEFAULT_WEIGHT);
+    this->addRoute(this->makePrefix("2401::/64"), routeNexthops);
+    cfg::RedirectNextHop tunnelNhop;
+    tunnelNhop.ip() = "2401::1";
+    tunnelNhop.tunnelType() = TunnelType::IP_IN_IP_ENCAP;
+    tunnelNhop.tunnelId() = "encapTunnel0";
+
+    this->sw_->applyConfig(
+        "TunnelOnlyNexthop", this->redirectAclConfig({tunnelNhop}));
+
+    this->verifyStateUpdate([this]() {
+      auto aclEntry = this->getAcl(kAclName);
+      ASSERT_NE(aclEntry, nullptr);
+      auto action =
+          MatchAction::fromThrift(aclEntry->getAclAction()->toThrift());
+      EXPECT_EQ(action.getRedirectToNextHop().value().second, kEmptyNexthopSet);
+      EXPECT_NE(aclEntry->isEnabled(), std::optional<bool>(false));
+    });
+  }
+}
+
+// A redirect with no nexthops has nothing to resolve: it is applied disabled
+// and stays disabled when routes change.
+TYPED_TEST(AclNexthopHandlerTest, EmptyRedirectNexthopsStayDisabled) {
+  this->sw_->applyConfig("EmptyRedirect", this->redirectAclConfig({}));
+  this->verifyResolvedNexthopsInAclAction(kAclName, kEmptyNexthopSet);
+
+  RouteNextHopSet nexthops =
+      makeResolvedNextHops(this->getResolvedNexthops(1), UCMP_DEFAULT_WEIGHT);
+  this->addRoute(this->makePrefix(this->getMatchingPrefixes(1)[0]), nexthops);
+  this->verifyResolvedNexthopsInAclAction(kAclName, kEmptyNexthopSet);
+}
+
+// Only the entry whose resolution changes is rewritten; its neighbor keeps
+// the same node, so the HW layer does not reprogram it.
+TYPED_TEST(AclNexthopHandlerTest, UnchangedAclEntryKeepsIdentity) {
+  auto aclNexthopIps = this->getAclNexthopIps(2);
   this->updateState(
-      "UnresolvedAclNextHop",
-      [=, this](const std::shared_ptr<SwitchState>& state) {
-        return this->addAcl(
-            state,
-            kAclName,
-            this->getAclNexthopIps(2),
-            {outIntfs[0], outIntfs[2]});
+      "AclNextHops", [=, this](const std::shared_ptr<SwitchState>& state) {
+        auto newState = this->addAcl(state, "acl0", {aclNexthopIps[0]});
+        return this->addAcl(newState, "acl1", {aclNexthopIps[1]}, {}, 1);
       });
 
-  auto nexthopIps = this->getResolvedNexthops(4);
-  RouteNextHopSet nexthops1 = makeResolvedNextHops(
-      {
-          nexthopIps[0],
-          nexthopIps[1],
-      },
-      UCMP_DEFAULT_WEIGHT);
-  RouteNextHopSet nexthops2 = makeResolvedNextHops(
-      {
-          nexthopIps[2],
-          nexthopIps[3],
-      },
-      UCMP_DEFAULT_WEIGHT);
   auto matchingPrefixes = this->getMatchingPrefixes(2);
-  auto longestPrefix1 = this->makePrefix(matchingPrefixes[0]);
-  this->addRoute(longestPrefix1, nexthops1);
-  auto longestPrefix2 = this->makePrefix(matchingPrefixes[1]);
-  this->addRoute(longestPrefix2, nexthops2);
+  auto nexthopIps = this->getResolvedNexthops(2);
+  auto prefix0 = this->makePrefix(matchingPrefixes[0]);
+  auto prefix1 = this->makePrefix(matchingPrefixes[1]);
+  RouteNextHopSet nexthops0 =
+      makeResolvedNextHops({nexthopIps[0]}, UCMP_DEFAULT_WEIGHT);
+  RouteNextHopSet nexthops1 =
+      makeResolvedNextHops({nexthopIps[1]}, UCMP_DEFAULT_WEIGHT);
 
-  RouteNextHopSet expectedNexthops;
-  RouteNextHopSet expected = makeResolvedNextHops(
-      {
-          nexthopIps[0],
-          nexthopIps[2],
-      },
-      UCMP_DEFAULT_WEIGHT);
-  expectedNexthops.merge(expected);
-  this->verifyResolvedNexthopsInAclAction(kAclName, expectedNexthops);
+  this->addRoute(prefix0, nexthops0);
+  this->verifyResolvedNexthopsInAclAction("acl0", nexthops0);
+  this->verifyResolvedNexthopsInAclAction("acl1", kEmptyNexthopSet);
 
-  // Now change the route nexthops and verify the
-  // change is reflected on the ACL redirect action
-  this->delRoute(longestPrefix1);
-  this->delRoute(longestPrefix2);
-  this->verifyResolvedNexthopsInAclAction(kAclName, kEmptyNexthopSet);
+  std::shared_ptr<AclEntry> acl0;
+  this->verifyStateUpdate([&]() { acl0 = this->getAcl("acl0"); });
+  this->addRoute(prefix1, nexthops1);
+  this->verifyResolvedNexthopsInAclAction("acl1", nexthops1);
+  this->verifyStateUpdate([&]() { EXPECT_EQ(this->getAcl("acl0"), acl0); });
 
-  // Change to nexthops with no matching interface ids
-  RouteNextHopSet nexthops3 = makeResolvedNextHops(
-      {
-          nexthopIps[1],
-      },
-      UCMP_DEFAULT_WEIGHT);
-  RouteNextHopSet nexthops4 = makeResolvedNextHops(
-      {
-          nexthopIps[3],
-      },
-      UCMP_DEFAULT_WEIGHT);
-  this->addRoute(longestPrefix1, nexthops3);
-  this->addRoute(longestPrefix2, nexthops4);
-
-  this->verifyResolvedNexthopsInAclAction(kAclName, kEmptyNexthopSet);
-
-  this->delRoute(longestPrefix1);
-  this->delRoute(longestPrefix2);
-
-  // change back to matching interface ids
-  RouteNextHopSet nexthops5 = makeResolvedNextHops(
-      {
-          nexthopIps[0],
-      },
-      UCMP_DEFAULT_WEIGHT);
-  RouteNextHopSet nexthops6 = makeResolvedNextHops(
-      {
-          nexthopIps[2],
-      },
-      UCMP_DEFAULT_WEIGHT);
-  this->addRoute(longestPrefix1, nexthops5);
-  this->addRoute(longestPrefix2, nexthops6);
-
-  this->verifyResolvedNexthopsInAclAction(kAclName, expectedNexthops);
+  std::shared_ptr<AclEntry> acl1;
+  this->verifyStateUpdate([&]() { acl1 = this->getAcl("acl1"); });
+  this->delRoute(prefix0);
+  this->verifyResolvedNexthopsInAclAction("acl0", kEmptyNexthopSet);
+  this->verifyStateUpdate([&]() { EXPECT_EQ(this->getAcl("acl1"), acl1); });
 }
+
 TYPED_TEST(AclNexthopHandlerTest, TunnelEncapNexthopSkipsResolution) {
   this->updateState(
       "TunnelEncapAcl", [=, this](const std::shared_ptr<SwitchState>& state) {
@@ -557,9 +768,8 @@ TYPED_TEST(AclNexthopHandlerTest, TunnelEncapNexthopSkipsResolution) {
       });
 
   this->verifyStateUpdate([=, this]() {
-    auto state = this->sw_->getState();
-    auto aclEntry = state->getAcls()->getNodeIf(kAclName);
-    EXPECT_NE(aclEntry, nullptr);
+    auto aclEntry = this->getAcl(kAclName);
+    ASSERT_NE(aclEntry, nullptr);
     EXPECT_NE(aclEntry->isEnabled(), std::optional<bool>(false));
     const auto& action = aclEntry->getAclAction();
     auto matchAction = MatchAction::fromThrift(action->toThrift());

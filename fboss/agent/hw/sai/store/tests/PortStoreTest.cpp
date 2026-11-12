@@ -63,6 +63,7 @@ class PortStoreTest : public SaiStoreTest {
         std::nullopt, // CBFC sender credit size
         std::nullopt, // CBFC sender packet overhead
         std::nullopt, // CBFC sender credit limit
+        std::nullopt, // CBFC receiver credit limit
 #endif
 #if SAI_API_VERSION >= SAI_VERSION(1, 9, 0)
         std::nullopt, // Inter Frame Gap
@@ -545,6 +546,51 @@ TEST_F(PortStoreTest, portSetPfcMonitorDirection) {
       portId, SaiPortTraits::Attributes::PfcMonitorDirection{});
   EXPECT_EQ(apiPfcMonitorDirection, 1);
 }
+
+#if defined(SAI_CBFC_SUPPORTED)
+TEST_F(PortStoreTest, portCreateWithCbfcReceiverCreditLimit) {
+  auto attrs = makeAttrs(0, 100000);
+  std::get<std::optional<SaiPortTraits::Attributes::CbfcReceiverCreditLimit>>(
+      attrs) = SaiPortTraits::Attributes::CbfcReceiverCreditLimit{4096};
+  SaiPortTraits::AdapterHostKey adapterHostKey =
+      std::get<SaiPortTraits::Attributes::HwLaneList>(attrs);
+  auto obj = createObj<SaiPortTraits>(adapterHostKey, attrs, 0);
+  EXPECT_EQ(
+      saiApiTable->portApi().getAttribute(
+          obj.adapterKey(),
+          SaiPortTraits::Attributes::CbfcReceiverCreditLimit{}),
+      4096);
+}
+
+TEST_F(PortStoreTest, portLoadCbfcReceiverCreditLimit) {
+  auto attrs = makeAttrs(0, 100000);
+  std::get<std::optional<SaiPortTraits::Attributes::CbfcReceiverCreditLimit>>(
+      attrs) = SaiPortTraits::Attributes::CbfcReceiverCreditLimit{4096};
+  auto portId = saiApiTable->portApi().create<SaiPortTraits>(attrs, 0);
+
+  auto portObj = createObj<SaiPortTraits>(portId);
+  EXPECT_EQ(
+      GET_OPT_ATTR(Port, CbfcReceiverCreditLimit, portObj.attributes()), 4096);
+}
+
+TEST_F(PortStoreTest, portSetCbfcReceiverCreditLimit) {
+  auto portId = createPort(0);
+  SaiObject<SaiPortTraits> portObj = createObj<SaiPortTraits>(portId);
+  EXPECT_EQ(
+      saiApiTable->portApi().getAttribute(
+          portId, SaiPortTraits::Attributes::CbfcReceiverCreditLimit{}),
+      0);
+
+  portObj.setOptionalAttribute(
+      SaiPortTraits::Attributes::CbfcReceiverCreditLimit{4096});
+  EXPECT_EQ(
+      GET_OPT_ATTR(Port, CbfcReceiverCreditLimit, portObj.attributes()), 4096);
+  EXPECT_EQ(
+      saiApiTable->portApi().getAttribute(
+          portId, SaiPortTraits::Attributes::CbfcReceiverCreditLimit{}),
+      4096);
+}
+#endif
 
 #if SAI_API_VERSION >= SAI_VERSION(1, 18, 0)
 // A port bound to an LLR profile is reclaimed on warm-boot reload with its

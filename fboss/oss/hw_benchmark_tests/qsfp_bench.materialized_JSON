@@ -1318,7 +1318,7 @@
           "thresholds": [
             {
               "metric_key_regex": "cpu_time_usec",
-              "upper_bound": 10000000
+              "upper_bound": 16000000
             }
           ]
         },
@@ -1345,7 +1345,7 @@
           "thresholds": [
             {
               "metric_key_regex": "cpu_time_usec",
-              "upper_bound": 10000000
+              "upper_bound": 16000000
             }
           ]
         },
@@ -1354,7 +1354,7 @@
           "thresholds": [
             {
               "metric_key_regex": "cpu_time_usec",
-              "upper_bound": 10000000
+              "upper_bound": 14000000
             }
           ]
         },

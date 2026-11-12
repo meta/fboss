@@ -66,7 +66,7 @@ MySidWithNextHops convertMySidEntry(
   switch (entryType) {
     case cfg::MySidEntryConfig::Type::adjacency: {
       fields.type() = MySidType::ADJACENCY_MICRO_SID;
-      const auto& adjConfig = entryConfig.get_adjacency();
+      const auto& adjConfig = entryConfig.adjacency().value();
       auto it = portNameToInterfaceId.find(*adjConfig.portName());
       if (it == portNameToInterfaceId.end()) {
         throw FbossError(
@@ -78,7 +78,7 @@ MySidWithNextHops convertMySidEntry(
     }
     case cfg::MySidEntryConfig::Type::node: {
       fields.type() = MySidType::NODE_MICRO_SID;
-      const auto& nodeConfig = entryConfig.get_node();
+      const auto& nodeConfig = entryConfig.node().value();
       nhops.insert(UnresolvedNextHop(
           folly::IPAddress(*nodeConfig.nodeAddress()), ECMP_WEIGHT));
       break;

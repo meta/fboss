@@ -98,7 +98,7 @@ class SubscribableStorage {
       OperProtocol protocol,
       std::optional<SubscriptionStorageParams> subscriptionParams =
           std::nullopt)
-    requires(std::is_same_v<typename folly::remove_cvref_t<Path>::RootT, RootT>)
+    requires(std::is_same_v<typename std::remove_cvref_t<Path>::RootT, RootT>)
   {
     return this->subscribe_encoded(
         std::move(subscriber),
@@ -151,7 +151,7 @@ class SubscribableStorage {
       OperProtocol protocol,
       std::optional<SubscriptionStorageParams> subscriptionParams =
           std::nullopt)
-    requires(std::is_same_v<typename folly::remove_cvref_t<Path>::RootT, RootT>)
+    requires(std::is_same_v<typename std::remove_cvref_t<Path>::RootT, RootT>)
   {
     return this->subscribe_delta(
         std::move(subscriber),
@@ -207,7 +207,7 @@ class SubscribableStorage {
       Path&& path,
       std::optional<SubscriptionStorageParams> subscriptionParams =
           std::nullopt)
-    requires(std::is_same_v<typename folly::remove_cvref_t<Path>::RootT, RootT>)
+    requires(std::is_same_v<typename std::remove_cvref_t<Path>::RootT, RootT>)
   {
     return this->subscribe_patch(
         std::move(subscriber),

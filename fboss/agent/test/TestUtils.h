@@ -45,6 +45,7 @@ class SwSwitch;
 class TxPacket;
 class HwTestHandle;
 class RoutingInformationBase;
+class SwitchIdScopeResolver;
 
 namespace cfg {
 class SwitchConfig;
@@ -130,6 +131,15 @@ std::shared_ptr<SwitchState> publishAndApplyConfig(
     const Platform* platform,
     RoutingInformationBase* rib = nullptr,
     PlatformMapping* platformMapping = nullptr);
+
+/*
+ * Sets the VRF of interfaces in the interface to VRF map of state. VRF 0
+ * removes the interface's entry.
+ */
+std::shared_ptr<SwitchState> setInterfaceVrfs(
+    const std::shared_ptr<SwitchState>& state,
+    const std::map<InterfaceID, RouterID>& interfaceVrfs,
+    const SwitchIdScopeResolver& scopeResolver);
 
 /*
  * Create a SwSwitch for testing purposes, with the specified initial state.

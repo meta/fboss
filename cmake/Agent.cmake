@@ -13,7 +13,7 @@ target_link_libraries(setup_thrift
   thrift_method_rate_limit_setup
   thrift_service_utils
   Folly::folly
-  FBThrift::thriftcpp2
+  thrift::rpc
 )
 
 add_library(fboss_init
@@ -175,15 +175,13 @@ target_link_libraries(utils
   meru800bia_platform_mapping
   meru800bfa_platform_mapping
   janga800bic_platform_mapping
-  j4sim_platform_mapping
-  saintpaul_platform_mapping
   blackwolf800banw_platform_mapping
-  icecube800banw_platform_mapping
   icecube800bc_platform_mapping
   icetea800bc_platform_mapping
   tahansb800bc_platform_mapping
   ladakh800bcls_platform_mapping
   leh800bcls_platform_mapping
+  Boost::filesystem
 )
 
 add_library(stats
@@ -208,7 +206,7 @@ add_library(stat_printers
 )
 
 target_link_libraries(stat_printers
-  FBThrift::thriftcpp2
+  thrift::rpc
   hardware_stats_cpp2
   phy_cpp2
   Folly::folly
@@ -305,7 +303,7 @@ target_link_libraries(hw_switch_thrift_client_table
   fboss_types
   hw_ctrl_cpp2
   Folly::folly
-  FBThrift::thriftcpp2
+  thrift::rpc
 )
 
 add_library(core
@@ -631,7 +629,7 @@ target_link_libraries(switch_state_delta_logger
   fsdb_oper_cpp2
   thrift_cow_serializer
   fb303::fb303
-  FBThrift::thriftprotocol
+  thrift::protocol
   Folly::folly
 )
 
@@ -893,7 +891,7 @@ target_link_libraries(sw_agent_initializer
   agent_features
   core
   Folly::folly
-  FBThrift::thriftcpp2
+  thrift::rpc
   handler
   setup_thrift
   utils

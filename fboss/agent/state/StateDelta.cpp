@@ -21,6 +21,7 @@
 #include "fboss/agent/state/DsfNodeMap.h"
 #include "fboss/agent/state/Interface.h"
 #include "fboss/agent/state/InterfaceMap.h"
+#include "fboss/agent/state/InterfaceVrfMap.h"
 #include "fboss/agent/state/LoadBalancer.h"
 #include "fboss/agent/state/NodeMapDelta.h"
 #include "fboss/agent/state/Port.h"
@@ -36,6 +37,7 @@
 #include "fboss/agent/state/Vlan.h"
 #include "fboss/agent/state/VlanMap.h"
 #include "fboss/agent/state/VlanMapDelta.h"
+#include "fboss/agent/state/VrfMap.h"
 #include "fboss/agent/state/VxlanTunnelMap.h"
 #include "fboss/fsdb/common/Utils.h"
 
@@ -321,6 +323,16 @@ ThriftMapDelta<MySidMap> StateDelta::getMySidsDelta() const {
   return getFirstMapDelta<MySidMap>(old_->getMySids(), new_->getMySids());
 }
 
+ThriftMapDelta<VrfMap> StateDelta::getVrfsDelta() const {
+  return getFirstMapDelta<VrfMap>(old_->getVrfs(), new_->getVrfs());
+}
+
+MultiSwitchMapDelta<MultiSwitchInterfaceVrfMap>
+StateDelta::getInterfaceVrfsDelta() const {
+  return MultiSwitchMapDelta<MultiSwitchInterfaceVrfMap>(
+      old_->getInterfaceVrfs().get(), new_->getInterfaceVrfs().get());
+}
+
 MultiSwitchMapDelta<MultiTeFlowTable> StateDelta::getTeFlowEntriesDelta()
     const {
   return MultiSwitchMapDelta<MultiTeFlowTable>(
@@ -354,6 +366,8 @@ template struct ThriftMapDelta<LabelForwardingInformationBase>;
 template struct ThriftMapDelta<SystemPortMap>;
 template struct ThriftMapDelta<IpTunnelMap>;
 template struct ThriftMapDelta<Srv6TunnelMap>;
+template struct ThriftMapDelta<VrfMap>;
+template struct ThriftMapDelta<InterfaceVrfMap>;
 template struct ThriftMapDelta<TeFlowTable>;
 
 template struct MultiSwitchMapDelta<MultiSwitchMirrorMap>;
@@ -363,6 +377,8 @@ template struct MultiSwitchMapDelta<MultiSwitchQosPolicyMap>;
 template struct MultiSwitchMapDelta<MultiSwitchIpTunnelMap>;
 template struct MultiSwitchMapDelta<MultiSwitchSrv6TunnelMap>;
 template struct MultiSwitchMapDelta<MultiSwitchVxlanTunnelMap>;
+template struct MultiSwitchMapDelta<MultiSwitchVrfMap>;
+template struct MultiSwitchMapDelta<MultiSwitchInterfaceVrfMap>;
 template struct MultiSwitchMapDelta<MultiTeFlowTable>;
 template struct MultiSwitchMapDelta<MultiSwitchAggregatePortMap>;
 template struct MultiSwitchMapDelta<MultiSwitchLoadBalancerMap>;

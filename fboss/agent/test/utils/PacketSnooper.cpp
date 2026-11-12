@@ -23,6 +23,7 @@ PacketComparatorFn makePacketComparator(const PacketMatchFields& fields) {
     auto hdr2 = originFrame.header();
 
     if (hdr1.getVlanTags() != hdr2.getVlanTags() ||
+        hdr1.getCsigTag() != hdr2.getCsigTag() ||
         hdr1.getEtherType() != hdr2.getEtherType() ||
         hdr1.getDstMac() != hdr2.getDstMac()) {
       return false;

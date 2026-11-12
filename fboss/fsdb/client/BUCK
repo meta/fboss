@@ -15,7 +15,7 @@ cpp_library(
         "//common/time:time",
     ],
     exported_deps = [
-        "fbsource//third-party/googletest:gtest_headers",
+        "fbsource//third-party/googletest:gtest_prod_headers",
         "fbsource//xplat/folly:network_address",
         "fbsource//xplat/folly/coro:async_scope",
         "fbsource//xplat/folly/io/async:async_socket_transport",
@@ -59,13 +59,14 @@ cpp_library(
     ],
     deps = [
         "fbsource//xplat/folly/coro:invoke",
+        "fbsource//xplat/folly/coro:sleep",
         "fbsource//xplat/folly/coro:task",
         "//fboss/fsdb/if:fsdb-cpp2-services",
         "//fboss/fsdb/oper:delta_value",
     ],
     exported_deps = [
         "fbsource//third-party/fmt:fmt",
-        "fbsource//third-party/googletest:gtest_headers",
+        "fbsource//third-party/googletest:gtest_prod_headers",
         "fbsource//xplat/folly:string",
         "fbsource//xplat/folly:synchronized",
         "fbsource//xplat/folly/concurrency:dynamic_bounded_queue",

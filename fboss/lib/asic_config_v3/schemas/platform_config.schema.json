@@ -1,6 +1,6 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "$id": "https://github.com/facebook/fboss/blob/main/fboss/lib/asic_config_v3/schemas/platform_config.schema.json",
+    "$id": "https://github.com/meta/fboss/blob/main/fboss/lib/asic_config_v3/schemas/platform_config.schema.json",
     "title": "Platform Config",
     "description": "Per-platform configuration declaring the vendor, ASIC, port layout, and one or more configuration variants for the asic_config_v3 generator.",
     "type": "object",
@@ -45,7 +45,7 @@
         },
         "variants": {
             "type": "object",
-            "description": "Named configuration variants for this platform. Each variant produces a separate output config file named <variant>.<extension>.",
+            "description": "Named configuration variants for this platform. Each variant produces either a common <variant>.<extension> file or indexed <variant>_<npu-index>.<extension> files when its NPU payloads differ.",
             "minProperties": 1,
             "propertyNames": {
                 "minLength": 1
@@ -81,7 +81,7 @@
                         },
                         "config_gen_type": {
                             "type": "string",
-                            "enum": ["DEFAULT", "HW_TEST"],
+                            "enum": ["DEFAULT", "HW_TEST", "BENCHMARK", "LINK_TEST"],
                             "description": "Configuration generation profile. Controls which vendor configuration profile is applied. Values must match the AsicConfigGenType enum in fboss/agent/hw/config/asic_config_v2.thrift."
                         },
                         "port_config": {
@@ -222,7 +222,12 @@
                         "physical_id": {"type": "integer"},
                         "speed": {"type": "integer"},
                         "num_lanes": {"type": "integer"},
-                        "fec": {"type": "string"}
+                        "fec": {"type": "string"},
+                        "num_ports": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "description": "Optional. Number of management ports to emit. Values above 1 take that many entries from the ASIC-level mgmt_port_defaults.breakout_ports, each configured with this override's speed, num_lanes and fec. Defaults to 1."
+                        }
                     }
                 },
                 "platform_sai_overrides": {
@@ -242,7 +247,7 @@
                 "conditional_settings": {
                     "type": "array",
                     "description": "Optional. Platform-level conditional settings, evaluated after the ASIC-level conditional_settings so that platform values take precedence.",
-                    "items": {"$ref": "https://github.com/facebook/fboss/blob/main/fboss/lib/asic_config_v3/schemas/conditional_setting.schema.json#/$defs/conditional_setting"}
+                    "items": {"$ref": "https://github.com/meta/fboss/blob/main/fboss/lib/asic_config_v3/schemas/conditional_setting.schema.json#/$defs/conditional_setting"}
                 },
                 "features": {
                     "type": "object",
@@ -276,6 +281,10 @@
                         "enable_large_ecmp_member_capacity": {
                             "type": "boolean",
                             "description": "When true, enables a platform-defined conditional setting that increases ECMP member capacity."
+                        },
+                        "enable_uncached_port_stats": {
+                            "type": "boolean",
+                            "description": "When true, enables uncached port statistics."
                         }
                     }
                 },

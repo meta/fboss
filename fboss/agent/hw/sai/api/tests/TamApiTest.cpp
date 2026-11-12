@@ -1,6 +1,9 @@
 // Copyright 2004-present Facebook. All Rights Reserved.
 
+#include <type_traits>
+
 #include <folly/MacAddress.h>
+#include <folly/container/F14Map.h>
 #include <folly/logging/xlog.h>
 #include <gtest/gtest.h>
 
@@ -45,6 +48,18 @@ TEST_F(TamApiTest, TamCollectorV4) {
       tamApi->getAttribute(
           collectorSaiId, SaiTamCollectorTraits::CreateAttributes{}),
       collectorAttr);
+#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
+  auto unsupported = std::tuple{
+      std::optional<SaiTamCollectorTraits::Attributes::SrcMacAddress>{},
+      std::optional<SaiTamCollectorTraits::Attributes::DstMacAddress>{},
+      std::optional<SaiTamCollectorTraits::Attributes::Destination>{}};
+  EXPECT_EQ(tamApi->getAttribute(collectorSaiId, unsupported), unsupported);
+#endif
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 0)
+  auto localhost =
+      std::optional<SaiTamCollectorTraits::Attributes::Localhost>{};
+  EXPECT_FALSE(tamApi->getAttribute(collectorSaiId, localhost).has_value());
+#endif
   tamApi->remove(collectorSaiId);
   EXPECT_THROW(
       tamApi->getAttribute(
@@ -73,6 +88,23 @@ TEST_F(TamApiTest, TamCollectorV6) {
       collectorAttr) = folly::MacAddress{"00:00:00:00:00:02"};
   std::get<std::optional<SaiTamCollectorTraits::Attributes::Destination>>(
       collectorAttr) = sai_object_id_t{42};
+
+  const auto verifyMacLookup = [](const auto& attribute) {
+    using Attribute = std::decay_t<decltype(attribute)>;
+    folly::F14FastMap<std::optional<Attribute>, int> entries;
+    entries.emplace(attribute, 1);
+    const auto found = entries.find(Attribute{attribute.value()});
+    ASSERT_NE(found, entries.end());
+    EXPECT_EQ(found->second, 1);
+  };
+  verifyMacLookup(
+      std::get<std::optional<SaiTamCollectorTraits::Attributes::SrcMacAddress>>(
+          collectorAttr)
+          .value());
+  verifyMacLookup(
+      std::get<std::optional<SaiTamCollectorTraits::Attributes::DstMacAddress>>(
+          collectorAttr)
+          .value());
 #endif
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 0)
   std::get<std::optional<SaiTamCollectorTraits::Attributes::Localhost>>(

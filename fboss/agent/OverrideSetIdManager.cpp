@@ -71,4 +71,15 @@ void OverrideSetIdManager::reconstructFromSwitchStateMap(
   }
 }
 
+IdToNextHopIdSetMapThriftType OverrideSetIdManager::toThrift() const {
+  IdToNextHopIdSetMapThriftType overrideMap;
+  for (const auto& [id, members] : idToMembers_) {
+    auto& memberIds = overrideMap[static_cast<NextHopSetId>(id)];
+    for (auto member : members) {
+      memberIds.insert(static_cast<NextHopId>(member));
+    }
+  }
+  return overrideMap;
+}
+
 } // namespace facebook::fboss

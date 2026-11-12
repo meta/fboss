@@ -410,6 +410,14 @@ class SwSwitch : public HwSwitchCallback {
       const cfg::SwitchConfig& newConfig);
 
   /*
+   * Moves interfaces to other VRFs in one switch state update: the interface
+   * VRFs, the interface to VRF map, the flushed neighbors of moved interfaces
+   * and the routes of the changed VRFs. VRF 0 is the default VRF.
+   */
+  void updateInterfaceVrfs(
+      const std::map<InterfaceID, RouterID>& interfaceVrfs);
+
+  /*
    * Get config applied information which include last config applied time(ms).
    * NOTE: If no config has ever been applied, the default timestamp is 0.
    */
@@ -935,15 +943,17 @@ class SwSwitch : public HwSwitchCallback {
 
   void publishPhyInfoSnapshots(PortID portID) const;
 
-  bool sendArpRequestHelper(
-      std::shared_ptr<Interface> intf,
-      std::shared_ptr<SwitchState> state,
-      folly::IPAddressV4 source,
-      folly::IPAddressV4 target);
+  bool resolveArpHelper(
+      const std::shared_ptr<Interface>& intf,
+      const folly::IPAddressV4& target);
 
   bool sendNdpSolicitationHelper(
       std::shared_ptr<Interface> intf,
       std::shared_ptr<SwitchState> state,
+      const folly::IPAddressV6& target);
+
+  bool resolveNdpHelper(
+      const std::shared_ptr<Interface>& intf,
       const folly::IPAddressV6& target);
 
   TeFlowStats getTeFlowStats();
@@ -1061,7 +1071,9 @@ class SwSwitch : public HwSwitchCallback {
   template <typename VlanOrIntfT>
   std::optional<VlanID> getVlanIDForTx(
       const std::shared_ptr<VlanOrIntfT>& vlanOrIntf) const;
-  bool hasQualifiedConfiguredDesiredPeer(const InterfaceID& intfId);
+  bool hasQualifiedConfiguredDesiredPeer(
+      const InterfaceID& intfId,
+      const folly::IPAddress& ip);
   const ResourceAccountant* getResourceAccountant() const;
 
  private:
@@ -1161,6 +1173,13 @@ class SwSwitch : public HwSwitchCallback {
       const std::shared_ptr<SwitchState>& emptyState,
       const std::shared_ptr<SwitchState>& initialState);
 
+  // On warm boot, applies the RIB to the state if RIB reconstruct merged or
+  // backfilled NextHop ids, so the state carries the RIB's ids.
+  std::shared_ptr<SwitchState> syncNextHopIDsToFIB(
+      const std::shared_ptr<SwitchState>& state);
+  // Copies ECMP overrides that manager reconstruct changed into the RIB.
+  void syncRibEcmpOverrides(const StateDelta& delta);
+
   void logLinkStateEvent(PortID port, bool up);
 
   void logSwitchRunStateChange(
@@ -1197,6 +1216,9 @@ class SwSwitch : public HwSwitchCallback {
   std::unique_ptr<AgentConfig> loadConfig();
 
   void applyConfigImpl(
+      const std::string& reason,
+      const cfg::SwitchConfig& newConfig);
+  void applyDeferredVrfChanges(
       const std::string& reason,
       const cfg::SwitchConfig& newConfig);
 

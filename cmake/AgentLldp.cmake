@@ -4,13 +4,19 @@
 # cmake/FooBar.cmake
 
 
-add_fbthrift_cpp_library(
+add_library(lldp_structs_cpp2)
+thrift_generate(
   lldp_structs_cpp2
   fboss/agent/lldp/lldp.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
+  INCLUDE_DIRECTORIES
+    ${PROJECT_SOURCE_DIR}
+    ${THRIFT_INCLUDE_DIR}
 )
+target_include_directories(lldp_structs_cpp2 PUBLIC ${PROJECT_BINARY_DIR})
 
 add_library(lldp
   fboss/agent/lldp/LinkNeighbor.cpp

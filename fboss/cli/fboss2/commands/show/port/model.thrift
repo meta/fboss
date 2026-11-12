@@ -41,6 +41,32 @@ struct PortEntry {
   28: optional string cbfc;
 }
 
+struct WindowedCounter {
+  1: optional i64 oneMinute;
+  2: optional i64 tenMinutes;
+  3: optional i64 oneHour;
+}
+
+struct PortWindowedStatsEntry {
+  1: optional WindowedCounter ingressBitsPerSecond;
+  2: optional WindowedCounter egressBitsPerSecond;
+  3: optional WindowedCounter inUnicastPkts;
+  4: optional WindowedCounter inMulticastPkts;
+  5: optional WindowedCounter inBroadcastPkts;
+  6: optional WindowedCounter outUnicastPkts;
+  7: optional WindowedCounter outMulticastPkts;
+  8: optional WindowedCounter outBroadcastPkts;
+  9: optional WindowedCounter inErrorPkts;
+  10: optional WindowedCounter inIpv4HeaderErrorPkts;
+  11: optional WindowedCounter inIpv6HeaderErrorPkts;
+  12: optional WindowedCounter inDiscardPkts;
+  13: optional WindowedCounter outErrorPkts;
+  14: optional WindowedCounter outDiscardPkts;
+  15: optional WindowedCounter outCongestionDiscardPkts;
+  16: optional WindowedCounter inPausePackets;
+  17: optional WindowedCounter outPausePackets;
+}
+
 struct PortHwStatsEntry {
   1: i64 inUnicastPkts;
   2: i64 inDiscardPkts;
@@ -62,4 +88,16 @@ struct PortHwStatsEntry {
   17: optional i64 cbfcCfUpdateTx;
   18: optional i64 cbfcCfUpdateRx;
   19: optional i64 cbfcCcUpdateTx;
+  20: map<i16, WindowedCounter> queueOutBitsPerSecond;
+  21: map<i16, WindowedCounter> queueOutCongestionDiscardPacketsPerSecond;
+  22: PortWindowedStatsEntry windowedStats;
+  23: i64 inMulticastPkts;
+  24: i64 inBroadcastPkts;
+  25: i64 outUnicastPkts;
+  26: i64 outMulticastPkts;
+  27: i64 outBroadcastPkts;
+  28: i64 outErrorPkts;
+  29: i64 inIpv4HeaderErrorPkts;
+  30: i64 inIpv6HeaderErrorPkts;
+  31: map<i16, i64> queueOutDiscardPackets;
 }

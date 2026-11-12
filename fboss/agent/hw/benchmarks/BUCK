@@ -746,6 +746,7 @@ agent_benchmark_lib(
     srcs = ["HwPbrScaleBenchmark.cpp"],
     deps = [
         "fbsource//third-party/fmt:fmt",
+        "fbsource//xplat/folly:network_address",
         "//fboss/agent:address_utils",
         "//fboss/agent:agent_features",
         "//fboss/agent:core",
@@ -757,7 +758,6 @@ agent_benchmark_lib(
         "//fboss/agent/test:agent_ensemble",
         "//fboss/agent/test/utils:acl_test_utils",
         "//fboss/agent/test/utils:config_utils",
-        "//folly:network_address",
     ],
     extra_deps = [
         "//fboss/agent/test/utils:srv6_test_utils",

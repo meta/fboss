@@ -357,7 +357,7 @@ struct ExtendedPathVisitor<
 
     const auto& elem = *cursor++;
     if (elem.raw()) {
-      using KeyT = typename folly::remove_cvref_t<decltype(node)>::key_type;
+      using KeyT = typename std::remove_cvref_t<decltype(node)>::key_type;
       auto key = folly::to<KeyT>(*elem.raw());
       if (node.find(key) != node.end()) {
         params.path.push_back(folly::to<std::string>(*elem.raw()));
@@ -394,8 +394,7 @@ struct ExtendedPathVisitor<
 
     const auto& elem = *cursor++;
     if (elem.raw()) {
-      using KeyT =
-          typename folly::remove_cvref_t<decltype(node.ref())>::key_type;
+      using KeyT = typename std::remove_cvref_t<decltype(node.ref())>::key_type;
       auto key = folly::to<KeyT>(*elem.raw());
       if (node.ref().find(key) != node.ref().end()) {
         params.path.push_back(folly::to<std::string>(*elem.raw()));
@@ -429,7 +428,7 @@ struct ExtendedPathVisitor<
   {
     const auto& elem = *cursor++;
     if (elem.raw()) {
-      using KeyT = typename folly::remove_cvref_t<decltype(fields)>::key_type;
+      using KeyT = typename std::remove_cvref_t<decltype(fields)>::key_type;
       auto key = folly::to<KeyT>(*elem.raw());
       if (fields.find(key) != fields.end()) {
         params.path.push_back(folly::to<std::string>(*elem.raw()));

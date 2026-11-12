@@ -15,9 +15,12 @@
 #include <folly/logging/LoggerDB.h>
 #include <folly/logging/xlog.h>
 #include <gtest/gtest.h>
+#include <thrift/lib/cpp/transport/TTransportException.h>
 #include <thrift/lib/cpp2/op/Get.h>
 
 #include <chrono>
+#include <set>
+#include <thread>
 #include <utility>
 
 FOLLY_INIT_LOGGING_CONFIG("fboss=DBG5; default:async=true");
@@ -772,6 +775,459 @@ TYPED_TEST(FsdbSubManagerTest, addPathsMultiPathUsesLargestStreamRevision) {
   });
 
   subscriber.reset();
+}
+
+// Paths added while the subscribe RPC is in flight are missing from the
+// subscribe request; once the server uid arrives they must be appended to the
+// live subscription instead of waiting for a reconnect.
+TYPED_TEST(FsdbSubManagerTest, addPathsWhileSubscribeInFlight) {
+  this->connectPublisherAndPublish(this->path1(), this->data1("foo"));
+  this->testPublisher().publish(this->path2(), this->data2(123));
+
+  folly::ScopedEventBaseThread streamThread("test-raw-sub-stream");
+  folly::ScopedEventBaseThread reconnectThread("test-raw-sub-reconnect");
+
+  RawOperPath basePath;
+  basePath.path() = this->path1().idTokens();
+  RawOperPath addedPath;
+  addedPath.path() = this->path2().idTokens();
+  constexpr SubscriptionKey kAddedKey = 1;
+
+  folly::Synchronized<std::set<SubscriptionKey>> seenKeys;
+  std::atomic<int> numConnects{0};
+  auto subscriber = std::make_unique<FsdbPatchSubscriber>(
+      SubscriptionOptions("test", this->IsStats),
+      std::map<SubscriptionKey, RawOperPath>{{0, basePath}},
+      streamThread.getEventBase(),
+      reconnectThread.getEventBase(),
+      [&](SubscriberChunk&& chunk) {
+        for (const auto& [key, patchGroup] : *chunk.patchGroups()) {
+          if (!patchGroup.empty()) {
+            seenKeys.wlock()->insert(key);
+          }
+        }
+      },
+      std::nullopt,
+      [&](auto /* oldState */, auto newState) {
+        if (newState == FsdbStreamClient::State::CONNECTED) {
+          ++numConnects;
+        }
+      });
+  std::atomic<bool> added{false};
+  subscriber->setOnSubscribeRequestCreatedForTest([&]() {
+    if (!added.exchange(true)) {
+      subscriber->addPaths({{kAddedKey, addedPath}});
+    }
+  });
+  subscriber->setConnectionOptions(this->connectionOptions());
+
+  WITH_RETRIES(EXPECT_EVENTUALLY_TRUE(seenKeys.rlock()->contains(kAddedKey)));
+  EXPECT_TRUE(subscriber->serverSupportsLiveAddPath());
+  EXPECT_EQ(numConnects.load(), 1);
+
+  subscriber.reset();
+}
+
+// Drives FsdbPatchSubscriber directly to inject live add-paths RPC failures.
+template <typename SubscriberT>
+class FsdbLiveAddRetryTest : public FsdbSubManagerTest<SubscriberT> {
+ protected:
+  void SetUp() override {
+    FsdbSubManagerTest<SubscriberT>::SetUp();
+    this->connectPublisherAndPublish(this->path1(), this->data1("foo"));
+    this->testPublisher().publish(this->path2(), this->data2(123));
+    this->testPublisher().publish(this->path3(), this->data2(456));
+  }
+
+  void TearDown() override {
+    subscriber_.reset();
+    FsdbSubManagerTest<SubscriberT>::TearDown();
+  }
+
+  // Subscribes to path1 with fast retry options and waits for the stream uid.
+  void subscribe(FsdbPatchSubscriber::LiveAddRpcInterceptor interceptor) {
+    RawOperPath basePath;
+    basePath.path() = this->path1().idTokens();
+    subscriber_ = std::make_unique<FsdbPatchSubscriber>(
+        SubscriptionOptions("test", this->IsStats),
+        std::map<SubscriptionKey, RawOperPath>{{0, basePath}},
+        streamThread_.getEventBase(),
+        reconnectThread_.getEventBase(),
+        [this](SubscriberChunk&& chunk) {
+          for (const auto& [key, patchGroup] : *chunk.patchGroups()) {
+            if (!patchGroup.empty()) {
+              seenKeys_.wlock()->insert(key);
+            }
+          }
+        },
+        std::nullopt,
+        [this](auto /* oldState */, auto newState) {
+          if (newState == FsdbStreamClient::State::CONNECTED) {
+            ++numConnects_;
+          }
+        });
+    subscriber_->setLiveAddRetryOptionsForTest(
+        {.rpcTimeout = std::chrono::seconds(5),
+         .initialBackoff = std::chrono::milliseconds(10),
+         .maxBackoff = std::chrono::milliseconds(50),
+         .budget = std::chrono::milliseconds(500)});
+    subscriber_->setLiveAddRpcInterceptorForTest(std::move(interceptor));
+    subscriber_->setConnectionOptions(this->connectionOptions());
+    WITH_RETRIES({
+      ASSERT_EVENTUALLY_TRUE(seenKeys_.rlock()->contains(0));
+      EXPECT_EVENTUALLY_TRUE(subscriber_->serverSupportsLiveAddPath());
+    });
+  }
+
+  RawOperPath rawPath(const auto& path) {
+    RawOperPath raw;
+    raw.path() = path.idTokens();
+    return raw;
+  }
+
+  bool seen(SubscriptionKey key) {
+    return seenKeys_.rlock()->contains(key);
+  }
+
+  static folly::coro::Task<void> fail(FsdbErrorCode code) {
+    throw Utils::createFsdbException(code, "injected");
+    co_return;
+  }
+
+  static folly::coro::Task<void> timeOut() {
+    throw apache::thrift::transport::TTransportException(
+        apache::thrift::transport::TTransportException::TIMED_OUT, "injected");
+    co_return;
+  }
+
+  // Live-adds key 2, which the server rejects with `code`, then key 1, which
+  // it applies; then reconnects and waits for the new stream's initial sync.
+  void rejectKey2ThenReconnect(FsdbErrorCode code) {
+    auto key2Attempts = std::make_shared<std::atomic<int>>(0);
+    subscribe(
+        [key2Attempts, code](
+            auto request, const auto& next) -> folly::coro::Task<void> {
+          if (request.paths()->contains(2)) {
+            ++*key2Attempts;
+            return fail(code);
+          }
+          return next(std::move(request));
+        });
+    subscriber_->addPaths({{2, rawPath(this->path3())}});
+    WITH_RETRIES(EXPECT_EVENTUALLY_EQ(key2Attempts->load(), 1));
+    // The drain is serialized, so key 1 applies after key 2's verdict.
+    subscriber_->addPaths({{1, rawPath(this->path2())}});
+    WITH_RETRIES(EXPECT_EVENTUALLY_TRUE(seen(1)));
+
+    seenKeys_.wlock()->clear();
+    subscriber_->reconnect();
+    WITH_RETRIES({
+      ASSERT_EVENTUALLY_EQ(numConnects_.load(), 2);
+      EXPECT_EVENTUALLY_TRUE(seen(0));
+      EXPECT_EVENTUALLY_TRUE(seen(1));
+    });
+    EXPECT_EQ(key2Attempts->load(), 1);
+  }
+
+  folly::ScopedEventBaseThread streamThread_{"test-raw-sub-stream"};
+  folly::ScopedEventBaseThread reconnectThread_{"test-raw-sub-reconnect"};
+  std::unique_ptr<FsdbPatchSubscriber> subscriber_;
+  folly::Synchronized<std::set<SubscriptionKey>> seenKeys_;
+  std::atomic<int> numConnects_{0};
+};
+
+TYPED_TEST_SUITE(FsdbLiveAddRetryTest, SubscriberTypes);
+
+// ID_NOT_FOUND (an FSDB that registers new subscriptions lazily) is retried
+// until the add is accepted, with no reconnect.
+TYPED_TEST(FsdbLiveAddRetryTest, retriesIdNotFoundThenApplies) {
+  std::atomic<int> attempts{0};
+  this->subscribe(
+      [&](auto request, const auto& next) -> folly::coro::Task<void> {
+        if (++attempts <= 3) {
+          return TestFixture::fail(FsdbErrorCode::ID_NOT_FOUND);
+        }
+        return next(std::move(request));
+      });
+
+  this->subscriber_->addPaths({{1, this->rawPath(this->path2())}});
+
+  WITH_RETRIES(EXPECT_EVENTUALLY_TRUE(this->seen(1)));
+  EXPECT_EQ(attempts.load(), 4);
+  EXPECT_EQ(this->numConnects_.load(), 1);
+}
+
+// An attempt whose outcome is unknown (here: applied, then timed out) followed
+// by ID_ALREADY_EXISTS for the same batch counts as applied.
+TYPED_TEST(FsdbLiveAddRetryTest, alreadyExistsAfterUnknownOutcomeIsApplied) {
+  std::atomic<int> attempts{0};
+  this->subscribe([&](auto request, auto next) -> folly::coro::Task<void> {
+    if (++attempts == 1) {
+      return folly::coro::co_invoke(
+          [request = std::move(request),
+           next = std::move(next)]() mutable -> folly::coro::Task<void> {
+            co_await next(std::move(request));
+            throw apache::thrift::transport::TTransportException(
+                apache::thrift::transport::TTransportException::TIMED_OUT,
+                "injected");
+          });
+    }
+    return next(std::move(request));
+  });
+
+  this->subscriber_->addPaths({{1, this->rawPath(this->path2())}});
+
+  WITH_RETRIES(EXPECT_EVENTUALLY_TRUE(this->seen(1)));
+  WITH_RETRIES(EXPECT_EVENTUALLY_EQ(attempts.load(), 2));
+  /* sleep override */
+  std::this_thread::sleep_for(std::chrono::milliseconds(200));
+  EXPECT_EQ(attempts.load(), 2);
+  EXPECT_EQ(this->numConnects_.load(), 1);
+}
+
+// When retries run out, the subscriber reconnects and the subscribe request
+// carries the added path.
+TYPED_TEST(FsdbLiveAddRetryTest, exhaustedRetriesFallBackToReconnect) {
+  this->subscribe([](const auto&, const auto&) -> folly::coro::Task<void> {
+    return TestFixture::fail(FsdbErrorCode::ID_NOT_FOUND);
+  });
+
+  this->subscriber_->addPaths({{1, this->rawPath(this->path2())}});
+
+  WITH_RETRIES({
+    ASSERT_EVENTUALLY_GE(this->numConnects_.load(), 2);
+    EXPECT_EVENTUALLY_TRUE(this->seen(1));
+  });
+}
+
+// A rejection a retry cannot change is not retried and does not reconnect.
+TYPED_TEST(FsdbLiveAddRetryTest, terminalErrorIsNotRetried) {
+  std::atomic<int> attempts{0};
+  this->subscribe([&](const auto&, const auto&) -> folly::coro::Task<void> {
+    ++attempts;
+    return TestFixture::fail(FsdbErrorCode::INVALID_REQUEST);
+  });
+
+  this->subscriber_->addPaths({{1, this->rawPath(this->path2())}});
+
+  WITH_RETRIES(EXPECT_EVENTUALLY_EQ(attempts.load(), 1));
+  /* sleep override */
+  std::this_thread::sleep_for(std::chrono::milliseconds(200));
+  EXPECT_EQ(attempts.load(), 1);
+  EXPECT_EQ(this->numConnects_.load(), 1);
+}
+
+// A path rejected for a reason a reconnect would hit too is left out of the
+// next subscribe request, which keeps the healthy paths.
+TYPED_TEST(FsdbLiveAddRetryTest, invalidPathRejectIsDroppedFromResubscribe) {
+  this->rejectKey2ThenReconnect(FsdbErrorCode::INVALID_PATH);
+
+  /* sleep override */
+  std::this_thread::sleep_for(std::chrono::milliseconds(200));
+  EXPECT_FALSE(this->seen(2));
+}
+
+// An INVALID_REQUEST reject may not apply to a fresh subscribe, so the path is
+// kept for the next one.
+TYPED_TEST(FsdbLiveAddRetryTest, invalidRequestRejectIsKeptForResubscribe) {
+  this->rejectKey2ThenReconnect(FsdbErrorCode::INVALID_REQUEST);
+
+  WITH_RETRIES(EXPECT_EVENTUALLY_TRUE(this->seen(2)));
+}
+
+// Failures other than ID_NOT_FOUND (here: timeouts that never reach the
+// server) within the budget are retried without reconnecting.
+TYPED_TEST(FsdbLiveAddRetryTest, transientFailuresWithinBudgetDoNotReconnect) {
+  std::atomic<int> attempts{0};
+  folly::Synchronized<std::optional<std::chrono::steady_clock::time_point>>
+      failUntil;
+  this->subscribe(
+      [&](auto request, const auto& next) -> folly::coro::Task<void> {
+        ++attempts;
+        const auto until = failUntil.withWLock([](auto& locked) {
+          if (!locked) {
+            locked = std::chrono::steady_clock::now() +
+                std::chrono::milliseconds(200);
+          }
+          return *locked;
+        });
+        if (std::chrono::steady_clock::now() < until) {
+          return TestFixture::timeOut();
+        }
+        return next(std::move(request));
+      });
+
+  this->subscriber_->addPaths({{1, this->rawPath(this->path2())}});
+
+  WITH_RETRIES(EXPECT_EVENTUALLY_TRUE(this->seen(1)));
+  EXPECT_GT(attempts.load(), 1);
+  EXPECT_EQ(this->numConnects_.load(), 1);
+}
+
+// Persistent failures other than ID_NOT_FOUND also fall back to reconnect, so a
+// stuck batch cannot block later adds.
+TYPED_TEST(
+    FsdbLiveAddRetryTest,
+    persistentTransientFailuresFallBackToReconnect) {
+  this->subscribe([](const auto&, const auto&) -> folly::coro::Task<void> {
+    return TestFixture::timeOut();
+  });
+
+  this->subscriber_->addPaths({{1, this->rawPath(this->path2())}});
+  this->subscriber_->addPaths({{2, this->rawPath(this->path3())}});
+
+  WITH_RETRIES({
+    ASSERT_EVENTUALLY_GE(this->numConnects_.load(), 2);
+    EXPECT_EVENTUALLY_TRUE(this->seen(1));
+    EXPECT_EVENTUALLY_TRUE(this->seen(2));
+  });
+}
+
+// The key-by-key resend of a rejected batch shares the batch's deadline.
+TYPED_TEST(FsdbLiveAddRetryTest, keyByKeyResendSharesBatchDeadline) {
+  // Each single-key resend gets ID_NOT_FOUND for 400ms: either fits in the
+  // 500ms budget alone, both together do not.
+  folly::Synchronized<
+      std::map<SubscriptionKey, std::chrono::steady_clock::time_point>>
+      firstAttempt;
+  this->subscribe(
+      [&](auto request, const auto& next) -> folly::coro::Task<void> {
+        if (request.paths()->size() > 1) {
+          return TestFixture::fail(FsdbErrorCode::INVALID_REQUEST);
+        }
+        const auto key = request.paths()->begin()->first;
+        const auto start = firstAttempt.withWLock([&](auto& locked) {
+          return locked.try_emplace(key, std::chrono::steady_clock::now())
+              .first->second;
+        });
+        if (std::chrono::steady_clock::now() - start <
+            std::chrono::milliseconds(400)) {
+          return TestFixture::fail(FsdbErrorCode::ID_NOT_FOUND);
+        }
+        return next(std::move(request));
+      });
+
+  this->subscriber_->addPaths(
+      {{1, this->rawPath(this->path2())}, {2, this->rawPath(this->path3())}});
+
+  WITH_RETRIES({
+    ASSERT_EVENTUALLY_GE(this->numConnects_.load(), 2);
+    EXPECT_EVENTUALLY_TRUE(this->seen(1));
+    EXPECT_EVENTUALLY_TRUE(this->seen(2));
+  });
+}
+
+// Re-adding a known key with a different path is rejected synchronously;
+// re-adding it with its path is a no-op. Neither sends an RPC.
+TYPED_TEST(FsdbLiveAddRetryTest, reAddedKeyIsNotResent) {
+  std::atomic<int> attempts{0};
+  this->subscribe(
+      [&](auto request, const auto& next) -> folly::coro::Task<void> {
+        ++attempts;
+        return next(std::move(request));
+      });
+
+  EXPECT_EQ(
+      this->subscriber_->addPaths({{1, this->rawPath(this->path2())}}),
+      std::nullopt);
+  WITH_RETRIES(EXPECT_EVENTUALLY_TRUE(this->seen(1)));
+
+  EXPECT_EQ(
+      this->subscriber_->addPaths(
+          {{2, this->rawPath(this->path3())},
+           {1, this->rawPath(this->path3())}}),
+      FsdbErrorCode::ID_ALREADY_EXISTS);
+  EXPECT_EQ(
+      this->subscriber_->addPaths({{0, this->rawPath(this->path3())}}),
+      FsdbErrorCode::ID_ALREADY_EXISTS);
+  EXPECT_EQ(
+      this->subscriber_->addPaths({{1, this->rawPath(this->path2())}}),
+      std::nullopt);
+
+  /* sleep override */
+  std::this_thread::sleep_for(std::chrono::milliseconds(200));
+  EXPECT_EQ(attempts.load(), 1);
+  EXPECT_FALSE(this->seen(2));
+  EXPECT_EQ(this->numConnects_.load(), 1);
+}
+
+// A batch rejected as a whole is resent key by key, so only the offending key
+// is dropped.
+TYPED_TEST(FsdbLiveAddRetryTest, rejectedBatchIsResentKeyByKey) {
+  folly::Synchronized<std::vector<std::set<SubscriptionKey>>> batches;
+  this->subscribe(
+      [&](auto request, const auto& next) -> folly::coro::Task<void> {
+        std::set<SubscriptionKey> keys;
+        for (const auto& [key, _] : *request.paths()) {
+          keys.insert(key);
+        }
+        batches.wlock()->push_back(keys);
+        if (keys.contains(2)) {
+          return TestFixture::fail(FsdbErrorCode::INVALID_REQUEST);
+        }
+        return next(std::move(request));
+      });
+
+  this->subscriber_->addPaths(
+      {{1, this->rawPath(this->path2())}, {2, this->rawPath(this->path3())}});
+
+  WITH_RETRIES(EXPECT_EVENTUALLY_TRUE(this->seen(1)));
+  WITH_RETRIES(EXPECT_EVENTUALLY_EQ(batches.rlock()->size(), 3));
+  const std::vector<std::set<SubscriptionKey>> expected{{1, 2}, {1}, {2}};
+  EXPECT_EQ(*batches.rlock(), expected);
+  EXPECT_FALSE(this->seen(2));
+  EXPECT_EQ(this->numConnects_.load(), 1);
+}
+
+// A batch being retried is abandoned when the stream changes; the new
+// subscribe request carries its paths.
+TYPED_TEST(FsdbLiveAddRetryTest, retryAbandonedOnReconnect) {
+  std::atomic<int> attempts{0};
+  this->subscribe([&](const auto&, const auto&) -> folly::coro::Task<void> {
+    if (++attempts == 1) {
+      this->subscriber_->reconnect();
+    }
+    return TestFixture::fail(FsdbErrorCode::ID_NOT_FOUND);
+  });
+
+  this->subscriber_->addPaths({{1, this->rawPath(this->path2())}});
+
+  WITH_RETRIES({
+    ASSERT_EVENTUALLY_EQ(this->numConnects_.load(), 2);
+    EXPECT_EVENTUALLY_TRUE(this->seen(1));
+  });
+  EXPECT_EQ(attempts.load(), 1);
+}
+
+// A key added while a batch is being retried is sent in the next batch.
+TYPED_TEST(FsdbLiveAddRetryTest, keyAddedDuringRetryGoesInNextBatch) {
+  folly::Synchronized<std::vector<std::set<SubscriptionKey>>> batches;
+  this->subscribe(
+      [&](auto request, const auto& next) -> folly::coro::Task<void> {
+        std::set<SubscriptionKey> keys;
+        for (const auto& [key, _] : *request.paths()) {
+          keys.insert(key);
+        }
+        auto numBatches = batches.withWLock([&](auto& locked) {
+          locked.push_back(keys);
+          return locked.size();
+        });
+        if (numBatches == 1) {
+          this->subscriber_->addPaths({{2, this->rawPath(this->path3())}});
+          return TestFixture::fail(FsdbErrorCode::ID_NOT_FOUND);
+        }
+        return next(std::move(request));
+      });
+
+  this->subscriber_->addPaths({{1, this->rawPath(this->path2())}});
+
+  WITH_RETRIES({
+    ASSERT_EVENTUALLY_TRUE(this->seen(1));
+    EXPECT_EVENTUALLY_TRUE(this->seen(2));
+  });
+  const std::vector<std::set<SubscriptionKey>> expected{{1}, {1}, {2}};
+  EXPECT_EQ(*batches.rlock(), expected);
+  EXPECT_EQ(this->numConnects_.load(), 1);
 }
 
 // A path appended via addPathToLiveSubscription() must survive a reconnect: it

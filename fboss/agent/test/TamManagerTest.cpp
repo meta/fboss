@@ -25,6 +25,7 @@
 #include <gtest/gtest.h>
 
 #include "fboss/agent/ArpHandler.h"
+#include "fboss/agent/HwSwitchMatcher.h"
 #include "fboss/agent/SwSwitch.h"
 #include "fboss/agent/SwSwitchRouteUpdateWrapper.h"
 #include "fboss/agent/SwitchIdScopeResolver.h"
@@ -44,7 +45,6 @@ namespace facebook::fboss {
 namespace {
 const std::string kReportName = "mod_report";
 constexpr AdminDistance kDistance = AdminDistance::STATIC_ROUTE;
-const PortID kMirrorPortId{0};
 
 template <typename AddrT>
 struct TamManagerTestParams {
@@ -151,16 +151,12 @@ class TamManagerTest : public ::testing::Test {
     sw_->updateStateBlocking(name, std::move(func));
   }
 
-  std::shared_ptr<SwitchState> addMirrorOnDropReport(
-      const std::shared_ptr<SwitchState>& state,
+  std::shared_ptr<MirrorOnDropReport> makeMirrorOnDropReport(
       const std::string& name,
       const folly::IPAddress& localSrcIp,
       const AddrT& collectorIp,
-      PortID mirrorPortId = PortID(0)) {
-    std::shared_ptr<SwitchState> newState = state->clone();
-
-    std::shared_ptr<MirrorOnDropReport> report = std::make_shared<
-        MirrorOnDropReport>(
+      const std::optional<PortID>& mirrorPortId = std::nullopt) {
+    return std::make_shared<MirrorOnDropReport>(
         name,
         mirrorPortId,
         localSrcIp,
@@ -176,9 +172,26 @@ class TamManagerTest : public ::testing::Test {
         std::map<
             cfg::MirrorOnDropAgingGroup,
             int32_t>{}); // agingGroupAgingIntervalUsecs
+  }
 
+  std::shared_ptr<SwitchState> addMirrorOnDropReport(
+      const std::shared_ptr<SwitchState>& state,
+      const std::string& name,
+      const folly::IPAddress& localSrcIp,
+      const AddrT& collectorIp,
+      const std::optional<PortID>& mirrorPortId = std::nullopt) {
+    std::shared_ptr<SwitchState> newState = state->clone();
+
+    std::shared_ptr<MirrorOnDropReport> report =
+        makeMirrorOnDropReport(name, localSrcIp, collectorIp, mirrorPortId);
+
+    // A report with no mirror port names no owning switch; this fixture has
+    // a single switch.
+    auto matcher = mirrorPortId.has_value()
+        ? sw_->getScopeResolver()->scope(report)
+        : HwSwitchMatcher::defaultHwSwitchMatcher();
     newState->getMirrorOnDropReports()->modify(&newState)->addNode(
-        report, sw_->getScopeResolver()->scope(report));
+        report, matcher);
     return newState;
   }
 
@@ -583,6 +596,165 @@ TYPED_TEST(TamManagerTest, SkipResolutionWithStaticMirrorPort) {
         this->sw_->getState()->getMirrorOnDropReports()->getNodeIf(kReportName);
     EXPECT_NE(report, nullptr);
     EXPECT_FALSE(report->isResolved());
+  });
+}
+
+// Port 6 is on switch 0, port 7 on switch 1.
+constexpr int64_t kNpu0PortIdMax = 6;
+
+// V4 only: V6 NDP TX still asserts a single switch.
+using MultiNpuTestTypes = ::testing::Types<folly::IPAddressV4>;
+
+template <typename AddrType>
+class TamManagerMultiNpuTest : public TamManagerTest<AddrType> {
+ public:
+  void SetUp() override {
+    // Two switches need MULTI_SWITCH run mode.
+    savedMultiSwitch_ = FLAGS_multi_switch;
+    FLAGS_multi_switch = true;
+
+    cfg::AgentConfig agentConfig;
+    agentConfig.sw() = testConfigA();
+    agentConfig.sw()->switchSettings()->switchIdToSwitchInfo() = {
+        {0,
+         createSwitchInfo(
+             cfg::SwitchType::NPU,
+             cfg::AsicType::ASIC_TYPE_MOCK,
+             cfg::switch_config_constants::DEFAULT_PORT_ID_RANGE_MIN(),
+             kNpu0PortIdMax,
+             0 /* switchIndex */)},
+        {1,
+         createSwitchInfo(
+             cfg::SwitchType::NPU,
+             cfg::AsicType::ASIC_TYPE_MOCK,
+             kNpu0PortIdMax + 1,
+             cfg::switch_config_constants::DEFAULT_PORT_ID_RANGE_MAX(),
+             1 /* switchIndex */)},
+    };
+    this->handle_ = createTestHandle(&agentConfig.sw().value());
+    this->sw_ = this->handle_->getSw();
+    this->sw_->setConfig(std::make_unique<AgentConfig>(std::move(agentConfig)));
+    waitForStateUpdates(this->sw_);
+  }
+
+  void TearDown() override {
+    TamManagerTest<AddrType>::TearDown();
+    // Stop here; ~SwSwitch has no HwSwitch for the second switch.
+    this->sw_->stop(false, false);
+    FLAGS_multi_switch = savedMultiSwitch_;
+  }
+
+ protected:
+  const HwSwitchMatcher npu0_{std::unordered_set<SwitchID>({SwitchID(0)})};
+  const HwSwitchMatcher npu1_{std::unordered_set<SwitchID>({SwitchID(1)})};
+  const TamManagerTestParams<AddrType> params_ = getParams<AddrType>();
+
+  // Report on both NPUs, plus a route with one nexthop per NPU.
+  void addReportToBothNpus() {
+    this->updateState(
+        "addReportToBothNpus",
+        [this](const std::shared_ptr<SwitchState>& state) {
+          std::shared_ptr<SwitchState> newState = state->clone();
+          auto reports = newState->getMirrorOnDropReports()->modify(&newState);
+          auto report = this->makeMirrorOnDropReport(
+              kReportName, params_.localSrcIp, params_.collectorIp);
+          reports->addNode(report, npu0_);
+          reports->addNode(report->clone(), npu1_);
+          return newState;
+        });
+    this->addRoute(
+        params_.shorterPrefix, {params_.nextHop(0), params_.nextHop(1)});
+  }
+
+  void resolveNeighbor(int index) {
+    TamManagerTest<AddrType>::resolveNeighbor(
+        folly::IPAddress(params_.neighborIPs[index]),
+        params_.neighborMACs[index],
+        params_.interfaces[index],
+        params_.neighborPorts[index]);
+  }
+
+  void flushNeighbor(int index) {
+    this->sw_->getNeighborUpdater()
+        ->flushEntryForIntf(
+            params_.interfaces[index],
+            folly::IPAddress(params_.neighborIPs[index]))
+        .get();
+    waitForStateUpdates(this->sw_);
+  }
+
+  // Must run on the update thread, inside verifyStateUpdate().
+  void expectNpuReport(
+      const HwSwitchMatcher& npu,
+      std::optional<int> resolvedNeighborIndex) {
+    auto innerMap =
+        this->sw_->getState()->getMirrorOnDropReports()->getMapNodeIf(npu);
+    ASSERT_NE(innerMap, nullptr) << npu.matcherString();
+    auto report = innerMap->getNodeIf(kReportName);
+    ASSERT_NE(report, nullptr) << npu.matcherString();
+    if (!resolvedNeighborIndex.has_value()) {
+      EXPECT_FALSE(report->isResolved()) << npu.matcherString();
+      return;
+    }
+    EXPECT_TRUE(report->isResolved()) << npu.matcherString();
+    ASSERT_TRUE(report->getResolvedEgressPort().has_value())
+        << npu.matcherString();
+    EXPECT_EQ(
+        PortID(*report->getResolvedEgressPort()->portId()),
+        params_.neighborPorts[*resolvedNeighborIndex])
+        << npu.matcherString();
+    EXPECT_EQ(
+        report->getResolvedCollectorMac(),
+        params_.neighborMACs[*resolvedNeighborIndex])
+        << npu.matcherString();
+  }
+
+ private:
+  bool savedMultiSwitch_{false};
+};
+
+TYPED_TEST_SUITE(TamManagerMultiNpuTest, MultiNpuTestTypes, TestTypeNames);
+
+// Each NPU resolves to an egress port it owns.
+TYPED_TEST(TamManagerMultiNpuTest, EachNpuResolvesItsOwnEgressPort) {
+  this->addReportToBothNpus();
+  this->resolveNeighbor(0);
+  this->resolveNeighbor(1);
+
+  this->verifyStateUpdate([this]() {
+    this->expectNpuReport(this->npu0_, 0);
+    this->expectNpuReport(this->npu1_, 1);
+  });
+}
+
+// NPU 1 must not borrow NPU 0's nexthop.
+TYPED_TEST(TamManagerMultiNpuTest, NpuStaysUnresolvedWithoutItsOwnNeighbor) {
+  this->addReportToBothNpus();
+  this->resolveNeighbor(0);
+
+  this->verifyStateUpdate([this]() {
+    this->expectNpuReport(this->npu0_, 0);
+    this->expectNpuReport(this->npu1_, std::nullopt);
+  });
+}
+
+// Losing NPU 1's neighbor unresolves only NPU 1's report.
+TYPED_TEST(
+    TamManagerMultiNpuTest,
+    WithdrawingNpuNeighborUnresolvesOnlyThatNpu) {
+  this->addReportToBothNpus();
+  this->resolveNeighbor(0);
+  this->resolveNeighbor(1);
+  this->verifyStateUpdate([this]() {
+    this->expectNpuReport(this->npu0_, 0);
+    this->expectNpuReport(this->npu1_, 1);
+  });
+
+  this->flushNeighbor(1);
+
+  this->verifyStateUpdate([this]() {
+    this->expectNpuReport(this->npu0_, 0);
+    this->expectNpuReport(this->npu1_, std::nullopt);
   });
 }
 

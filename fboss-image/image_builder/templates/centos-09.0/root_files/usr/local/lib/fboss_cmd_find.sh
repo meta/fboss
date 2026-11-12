@@ -12,7 +12,7 @@ cmd="$1"
 shift
 
 case "$cmd" in
-fboss2 | fboss2-dev | diag_shell_client)
+fboss2 | fboss2-dev | fboss2-readonly | diag_shell_client)
   # Forwarding stack commands
   update_prefix="fboss-forwarding"
   ;;

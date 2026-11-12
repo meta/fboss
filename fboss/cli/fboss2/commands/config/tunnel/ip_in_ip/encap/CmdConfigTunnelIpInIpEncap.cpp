@@ -60,4 +60,9 @@ void CmdConfigTunnelIpInIpEncap::printOutput(const RetType& logMsg) {
 template void
 CmdHandler<CmdConfigTunnelIpInIpEncap, CmdConfigTunnelIpInIpEncapTraits>::run();
 
+std::vector<std::string> CmdConfigTunnelIpInIpEncapTraits::completeArgs(
+    const std::vector<std::string>& typed) {
+  return tunnel_utils::completeTunnelConfigArgs(typed, kEncapAttrs);
+}
+
 } // namespace facebook::fboss

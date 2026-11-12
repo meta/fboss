@@ -613,4 +613,58 @@ TEST_F(AgentPbrTest, TwoPoliciesShareOnePriority) {
   verifyAcrossWarmBoots(setup, verify);
 }
 
+TEST_F(AgentPbrTest, UnreferencedPolicyProgramsNoAcl) {
+  auto pbrAcls = [this]() {
+    return getProgrammedState()->getAclsForTable(
+        cfg::AclStage::INGRESS,
+        cfg::switch_config_constants::DEFAULT_PBR_ACL_TABLE());
+  };
+  auto pbrEntry = [&]() {
+    auto aclMap = pbrAcls();
+    return aclMap
+        ? aclMap->getEntryIf(makePbrAclEntryName(
+              kPolicy(), ForwardingClass::CLASS_1, false /*temporary*/))
+        : nullptr;
+  };
+
+  auto setup = [this]() {
+    auto helper = ecmpHelper();
+    auto ports = helper.ecmpPortDescs(5);
+
+    // 1. Everything a working policy needs except a route bound to it.
+    applyNewState([&](const std::shared_ptr<SwitchState>& in) {
+      return helper.resolveNextHops(
+          in, {ports[0], ports[1], ports[2], ports[3]});
+    });
+    addOrUpdateNamedNhgs(
+        {{kDefaultNhg(), makeNamedNhgSet({ports[0], ports[1]})},
+         {kClassNhg(), makeNamedNhgSet({ports[2], ports[3]})}});
+    addClassBasedPolicy();
+  };
+
+  auto verify = [&]() {
+    // 2. Nothing can match the policy, so the table stays empty -- checked by
+    // count as well as by name, so an entry under an unexpected name still
+    // fails.
+    EXPECT_EQ(pbrEntry(), nullptr);
+    auto aclMap = pbrAcls();
+    EXPECT_EQ(aclMap ? aclMap->numEntries() : 0, 0);
+  };
+
+  auto setupPostWarmboot = [this]() { programPbrRoute(kDefaultNhg()); };
+
+  auto verifyPostWarmboot = [&, this]() {
+    // 3. The route makes the policy reachable, so the entry appears and
+    // redirects.
+    EXPECT_NE(pbrEntry(), nullptr);
+    auto ports = ecmpHelper().ecmpPortDescs(5);
+    verifyRedirectAndCounter(
+        {ports[2].phyPortID(), ports[3].phyPortID()},
+        {ports[0].phyPortID(), ports[1].phyPortID()},
+        ports[4].phyPortID());
+  };
+
+  verifyAcrossWarmBoots(setup, verify, setupPostWarmboot, verifyPostWarmboot);
+}
+
 } // namespace facebook::fboss

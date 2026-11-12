@@ -3,6 +3,7 @@
 #pragma once
 
 #include "fboss/agent/hw/sai/api/TunnelApi.h"
+#include "fboss/agent/hw/sai/api/TunnelMapApi.h"
 #include "fboss/agent/hw/sai/store/SaiObject.h"
 #include "fboss/agent/state/VxlanTunnel.h"
 
@@ -11,6 +12,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace facebook::fboss {
 
@@ -19,9 +21,18 @@ class SaiPlatform;
 class SaiStore;
 
 using SaiVxlanTunnel = SaiObject<SaiVxlanTunnelTraits>;
+using SaiVxlanTunnelTerm = SaiObject<SaiP2MPTunnelTermTraits>;
+using SaiTunnelMap = SaiObject<SaiTunnelMapTraits>;
+using SaiVrToVniTunnelMapEntry = SaiObject<SaiVrToVniTunnelMapEntryTraits>;
+using SaiVniToVrTunnelMapEntry = SaiObject<SaiVniToVrTunnelMapEntryTraits>;
 
 struct SaiVxlanTunnelHandle {
+  std::shared_ptr<SaiTunnelMap> encapMap;
+  std::shared_ptr<SaiTunnelMap> decapMap;
+  std::vector<std::shared_ptr<SaiVrToVniTunnelMapEntry>> encapEntries;
+  std::vector<std::shared_ptr<SaiVniToVrTunnelMapEntry>> decapEntries;
   std::shared_ptr<SaiVxlanTunnel> tunnel;
+  std::shared_ptr<SaiVxlanTunnelTerm> tunnelTerm;
 };
 
 class SaiVxlanTunnelManager {

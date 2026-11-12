@@ -2,15 +2,36 @@
 
 #include "fboss/agent/hw/sai/switch/SaiVxlanTunnelManager.h"
 
+#include "fboss/agent/Constants.h"
 #include "fboss/agent/FbossError.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
 #include "fboss/agent/hw/sai/store/SaiStore.h"
 #include "fboss/agent/hw/sai/switch/SaiManagerTable.h"
 #include "fboss/agent/hw/sai/switch/SaiRouterInterfaceManager.h"
+#include "fboss/agent/hw/sai/switch/SaiSwitchManager.h"
 #include "fboss/agent/hw/sai/switch/SaiTunnelUtils.h"
+#include "fboss/agent/hw/sai/switch/SaiVirtualRouterManager.h"
 #include "fboss/agent/state/VxlanTunnel.h"
 
 namespace facebook::fboss {
+
+namespace {
+
+VirtualRouterSaiId getVirtualRouterSaiId(
+    SaiManagerTable* managerTable,
+    uint32_t vrf) {
+  auto* vrHandle = managerTable->virtualRouterManager().getVirtualRouterHandle(
+      RouterID(vrf));
+  if (!vrHandle) {
+    throw FbossError(
+        "Failed to create VXLAN tunnel. "
+        "No virtual router for RouterID: ",
+        vrf);
+  }
+  return VirtualRouterSaiId{vrHandle->virtualRouter->adapterKey()};
+}
+
+} // namespace
 
 SaiVxlanTunnelManager::SaiVxlanTunnelManager(
     SaiStore* saiStore,
@@ -32,6 +53,7 @@ void SaiVxlanTunnelManager::addVxlanTunnel(
         "Attempted to add vxlan tunnel which already exists: ",
         vxlanTunnel->getID());
   }
+  managerTable_->switchManager().setVxlanDefaultPort();
   SaiRouterInterfaceHandle* intfHandle =
       managerTable_->routerInterfaceManager().getRouterInterfaceHandle(
           vxlanTunnel->getUnderlayIntfId());
@@ -64,6 +86,48 @@ void SaiVxlanTunnelManager::addVxlanTunnel(
     decapEcnMode = getSaiDecapEcnMode(*mode);
   }
   using Attrs = SaiVxlanTunnelTraits::Attributes;
+  auto handle = std::make_unique<SaiVxlanTunnelHandle>();
+  // Program the VNI<->VR tunnel maps before the tunnel: the tunnel
+  // create attributes reference the maps by OID.
+  std::optional<Attrs::EncapMappers> encapMappers;
+  if (auto vrf2Vni = vxlanTunnel->getVrf2Vni(); vrf2Vni && !vrf2Vni->empty()) {
+    SaiTunnelMapTraits::CreateAttributes mapAttrs{
+        SAI_TUNNEL_MAP_TYPE_VIRTUAL_ROUTER_ID_TO_VNI};
+    handle->encapMap =
+        saiStore_->get<SaiTunnelMapTraits>().setObject(mapAttrs, mapAttrs);
+    auto& entryStore = saiStore_->get<SaiVrToVniTunnelMapEntryTraits>();
+    for (const auto& [vrf, vni] : *vrf2Vni) {
+      SaiVrToVniTunnelMapEntryTraits::CreateAttributes entryAttrs{
+          SAI_TUNNEL_MAP_TYPE_VIRTUAL_ROUTER_ID_TO_VNI,
+          handle->encapMap->adapterKey(),
+          getVirtualRouterSaiId(managerTable_, static_cast<uint32_t>(vrf)),
+          static_cast<sai_uint32_t>(vni)};
+      handle->encapEntries.push_back(
+          entryStore.setObject(entryAttrs, entryAttrs));
+    }
+    encapMappers = Attrs::EncapMappers{std::vector<sai_object_id_t>{
+        static_cast<sai_object_id_t>(handle->encapMap->adapterKey())}};
+  }
+  std::optional<Attrs::DecapMappers> decapMappers;
+  if (auto vniToVrf = vxlanTunnel->getVniToVrf();
+      vniToVrf && !vniToVrf->empty()) {
+    SaiTunnelMapTraits::CreateAttributes mapAttrs{
+        SAI_TUNNEL_MAP_TYPE_VNI_TO_VIRTUAL_ROUTER_ID};
+    handle->decapMap =
+        saiStore_->get<SaiTunnelMapTraits>().setObject(mapAttrs, mapAttrs);
+    auto& entryStore = saiStore_->get<SaiVniToVrTunnelMapEntryTraits>();
+    for (const auto& [vni, vrf] : *vniToVrf) {
+      SaiVniToVrTunnelMapEntryTraits::CreateAttributes entryAttrs{
+          SAI_TUNNEL_MAP_TYPE_VNI_TO_VIRTUAL_ROUTER_ID,
+          handle->decapMap->adapterKey(),
+          static_cast<sai_uint32_t>(vni),
+          getVirtualRouterSaiId(managerTable_, static_cast<uint32_t>(vrf))};
+      handle->decapEntries.push_back(
+          entryStore.setObject(entryAttrs, entryAttrs));
+    }
+    decapMappers = Attrs::DecapMappers{std::vector<sai_object_id_t>{
+        static_cast<sai_object_id_t>(handle->decapMap->adapterKey())}};
+  }
   SaiVxlanTunnelTraits::CreateAttributes attrs{
       SAI_TUNNEL_TYPE_VXLAN,
       Attrs::UnderlayInterface(saiIntfId),
@@ -71,15 +135,28 @@ void SaiVxlanTunnelManager::addVxlanTunnel(
       ttlMode,
       dscpMode,
       encapEcnMode,
-      std::nullopt, // EncapMappers (programmed separately)
+      encapMappers,
       ttlMode,
       dscpMode,
       decapEcnMode,
-      std::nullopt}; // DecapMappers (programmed separately)
+      decapMappers};
   auto& tunnelStore = saiStore_->get<SaiVxlanTunnelTraits>();
-  auto tunnelObj = tunnelStore.setObject(attrs, attrs);
-  auto handle = std::make_unique<SaiVxlanTunnelHandle>();
-  handle->tunnel = tunnelObj;
+  handle->tunnel = tunnelStore.setObject(attrs, attrs);
+  if (auto termType = vxlanTunnel->getTunnelTermType(); termType) {
+    if (*termType != cfg::TunnelTerminationType::P2MP) {
+      throw FbossError(
+          "VXLAN tunnel term type other than P2MP is not supported: ",
+          vxlanTunnel->getID());
+    }
+    SaiP2MPTunnelTermTraits::CreateAttributes termAttrs{
+        SAI_TUNNEL_TERM_TABLE_ENTRY_TYPE_P2MP,
+        getVirtualRouterSaiId(managerTable_, kDefaultVrf),
+        srcIp.value(),
+        SAI_TUNNEL_TYPE_VXLAN,
+        handle->tunnel->adapterKey()};
+    handle->tunnelTerm = saiStore_->get<SaiP2MPTunnelTermTraits>().setObject(
+        termAttrs, termAttrs);
+  }
   handles_[vxlanTunnel->getID()] = std::move(handle);
 }
 

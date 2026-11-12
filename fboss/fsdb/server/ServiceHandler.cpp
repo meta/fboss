@@ -4,6 +4,7 @@
 #include "fboss/fsdb/if/gen-cpp2/fsdb_common_types.h"
 
 #include <fboss/lib/LogThriftCall.h>
+#include <folly/Try.h>
 #include <folly/coro/BlockingWait.h>
 #include <folly/logging/xlog.h>
 #include <thrift/lib/cpp2/server/Cpp2Worker.h>
@@ -892,9 +893,37 @@ void validatePaths(
   }
 }
 
-OperSubInitResponse makeOperSubInitResponse(uint64_t subscriptionUid) {
+// Serves a subscription stream, recording per-stream serve stats. Patch
+// subscribe handlers create the subscription before returning its uid, so a
+// live add-paths right after the init response finds it; a creation error is
+// still reported on the stream. cleanupSubscriber lives as long as the stream.
+template <typename T, typename Guard>
+folly::coro::AsyncGenerator<T&&> serveStreamReader(
+    folly::Try<SubscriptionStreamReader<SubscriptionServeQueueElement<T>>>
+        streamReader,
+    [[maybe_unused]] Guard cleanupSubscriber) {
+  if (streamReader.hasException()) {
+    co_yield folly::coro::co_error(streamReader.exception());
+  }
+  while (auto item = co_await streamReader->generator_.next()) {
+    streamReader->streamInfo_->servedDataSize.fetch_add(
+        (*item).allocatedBytes, std::memory_order_relaxed);
+    streamReader->streamInfo_->numUpdatesServed.fetch_add(
+        1, std::memory_order_relaxed);
+    streamReader->streamInfo_->lastUpdateWrittenAt.store(
+        getCurrentTimeMs(), std::memory_order_relaxed);
+    co_yield std::move((*item).val);
+  }
+}
+
+OperSubInitResponse makeOperSubInitResponse(
+    uint64_t subscriptionUid,
+    bool created) {
   OperSubInitResponse resp;
-  resp.subscriptionUid() = subscriptionUid;
+  // A uid that live add-paths cannot resolve is not advertised.
+  if (created) {
+    resp.subscriptionUid() = subscriptionUid;
+  }
   return resp;
 }
 
@@ -1640,26 +1669,13 @@ ServiceHandler::co_subscribeState(std::unique_ptr<SubRequest> request) {
       folly::makeGuard([this, subscriberInfo = std::move(subscriberInfo)]() {
         unregisterSubscription(subscriberInfo);
       });
-  auto stream = folly::coro::co_invoke(
-      [this,
-       request = std::move(request),
-       subId = std::move(subId),
-       cleanupSubscriber = std::move(cleanupSubscriber)]() mutable
-          -> folly::coro::AsyncGenerator<SubscriberMessage&&> {
-        auto streamReader = makePatchStreamGenerator(
-            std::move(request), false, std::move(subId));
-        while (auto item = co_await streamReader.generator_.next()) {
-          // Update served data size and then yield
-          streamReader.streamInfo_->servedDataSize.fetch_add(
-              (*item).allocatedBytes, std::memory_order_relaxed);
-          streamReader.streamInfo_->numUpdatesServed.fetch_add(
-              1, std::memory_order_relaxed);
-          streamReader.streamInfo_->lastUpdateWrittenAt.store(
-              getCurrentTimeMs(), std::memory_order_relaxed);
-          co_yield std::move((*item).val);
-        }
-      });
-  co_return {makeOperSubInitResponse(subscriptionUid), std::move(stream)};
+  auto streamReader = folly::makeTryWith([&] {
+    return makePatchStreamGenerator(
+        std::move(request), false, std::move(subId));
+  });
+  co_return {
+      makeOperSubInitResponse(subscriptionUid, !streamReader.hasException()),
+      serveStreamReader(std::move(streamReader), std::move(cleanupSubscriber))};
 }
 
 folly::coro::Task<apache::thrift::ResponseAndServerStream<
@@ -1698,26 +1714,12 @@ ServiceHandler::co_subscribeStats(std::unique_ptr<SubRequest> request) {
         unregisterSubscription(subscriberInfo);
       });
 
-  auto stream = folly::coro::co_invoke(
-      [this,
-       request = std::move(request),
-       subId = std::move(subId),
-       cleanupSubscriber = std::move(cleanupSubscriber)]() mutable
-          -> folly::coro::AsyncGenerator<SubscriberMessage&&> {
-        auto streamReader = makePatchStreamGenerator(
-            std::move(request), true, std::move(subId));
-        while (auto item = co_await streamReader.generator_.next()) {
-          // Update served data size and then yield
-          streamReader.streamInfo_->servedDataSize.fetch_add(
-              (*item).allocatedBytes, std::memory_order_relaxed);
-          streamReader.streamInfo_->numUpdatesServed.fetch_add(
-              1, std::memory_order_relaxed);
-          streamReader.streamInfo_->lastUpdateWrittenAt.store(
-              getCurrentTimeMs(), std::memory_order_relaxed);
-          co_yield std::move((*item).val);
-        }
-      });
-  co_return {makeOperSubInitResponse(subscriptionUid), std::move(stream)};
+  auto streamReader = folly::makeTryWith([&] {
+    return makePatchStreamGenerator(std::move(request), true, std::move(subId));
+  });
+  co_return {
+      makeOperSubInitResponse(subscriptionUid, !streamReader.hasException()),
+      serveStreamReader(std::move(streamReader), std::move(cleanupSubscriber))};
 }
 
 folly::coro::Task<apache::thrift::ResponseAndServerStream<
@@ -1758,26 +1760,13 @@ ServiceHandler::co_subscribeStateExtended(std::unique_ptr<SubRequest> request) {
         unregisterSubscription(subscriberInfo);
       });
 
-  auto stream = folly::coro::co_invoke(
-      [this,
-       request = std::move(request),
-       subId = std::move(subId),
-       cleanupSubscriber = std::move(cleanupSubscriber)]() mutable
-          -> folly::coro::AsyncGenerator<SubscriberMessage&&> {
-        auto streamReader = makePatchStreamGenerator(
-            std::move(request), false, std::move(subId));
-        while (auto item = co_await streamReader.generator_.next()) {
-          // Update served data size and then yield
-          streamReader.streamInfo_->servedDataSize.fetch_add(
-              (*item).allocatedBytes, std::memory_order_relaxed);
-          streamReader.streamInfo_->numUpdatesServed.fetch_add(
-              1, std::memory_order_relaxed);
-          streamReader.streamInfo_->lastUpdateWrittenAt.store(
-              getCurrentTimeMs(), std::memory_order_relaxed);
-          co_yield std::move((*item).val);
-        }
-      });
-  co_return {makeOperSubInitResponse(subscriptionUid), std::move(stream)};
+  auto streamReader = folly::makeTryWith([&] {
+    return makePatchStreamGenerator(
+        std::move(request), false, std::move(subId));
+  });
+  co_return {
+      makeOperSubInitResponse(subscriptionUid, !streamReader.hasException()),
+      serveStreamReader(std::move(streamReader), std::move(cleanupSubscriber))};
 }
 
 folly::coro::Task<apache::thrift::ResponseAndServerStream<
@@ -1818,26 +1807,12 @@ ServiceHandler::co_subscribeStatsExtended(std::unique_ptr<SubRequest> request) {
         unregisterSubscription(subscriberInfo);
       });
 
-  auto stream = folly::coro::co_invoke(
-      [this,
-       request = std::move(request),
-       subId = std::move(subId),
-       cleanupSubscriber = std::move(cleanupSubscriber)]() mutable
-          -> folly::coro::AsyncGenerator<SubscriberMessage&&> {
-        auto streamReader = makePatchStreamGenerator(
-            std::move(request), true, std::move(subId));
-        while (auto item = co_await streamReader.generator_.next()) {
-          // Update served data size and then yield
-          streamReader.streamInfo_->servedDataSize.fetch_add(
-              (*item).allocatedBytes, std::memory_order_relaxed);
-          streamReader.streamInfo_->numUpdatesServed.fetch_add(
-              1, std::memory_order_relaxed);
-          streamReader.streamInfo_->lastUpdateWrittenAt.store(
-              getCurrentTimeMs(), std::memory_order_relaxed);
-          co_yield std::move((*item).val);
-        }
-      });
-  co_return {makeOperSubInitResponse(subscriptionUid), std::move(stream)};
+  auto streamReader = folly::makeTryWith([&] {
+    return makePatchStreamGenerator(std::move(request), true, std::move(subId));
+  });
+  co_return {
+      makeOperSubInitResponse(subscriptionUid, !streamReader.hasException()),
+      serveStreamReader(std::move(streamReader), std::move(cleanupSubscriber))};
 }
 
 folly::coro::Task<std::unique_ptr<AddPatchSubscriptionPathsResponse>>

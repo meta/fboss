@@ -3,6 +3,37 @@
 # In general, libraries and binaries in fboss/foo/bar are built by
 # cmake/FooBar.cmake
 
+add_library(drop_reason_reporting_test_utils
+  fboss/agent/test/utils/AgentDropReasonBitmapReporting.cpp
+  fboss/agent/test/utils/AgentDropReasonListReporting.cpp
+  fboss/agent/test/utils/AgentDropReasonReporting.cpp
+  fboss/agent/test/utils/AgentDropReasonTajoReporting.cpp
+  fboss/agent/test/utils/AgentDropReasonXgsReporting.cpp
+)
+
+target_link_libraries(drop_reason_reporting_test_utils
+  fmt::fmt
+  fboss_error
+  common_utils
+  switch_config_cpp2
+  multiswitch_ctrl_cpp2
+  Folly::folly
+  ${GTEST}
+)
+
+add_executable(drop_reason_reporting_test
+  fboss/util/oss/TestMain.cpp
+  fboss/agent/test/utils/tests/AgentDropReasonReportingTest.cpp
+)
+
+target_link_libraries(drop_reason_reporting_test
+  drop_reason_reporting_test_utils
+  ${GTEST}
+  ${LIBGMOCK_LIBRARIES}
+)
+
+gtest_discover_tests(drop_reason_reporting_test)
+
 add_library(erspan_parser
   fboss/agent/test/utils/oss/ErspanParser.cpp
 )
@@ -332,7 +363,7 @@ target_link_libraries(port_stats_test_utils
   stats
   Folly::folly
   switch_config_cpp2
-  FBThrift::thriftcpp2
+  thrift::rpc
 )
 
 add_library(packet_snooper

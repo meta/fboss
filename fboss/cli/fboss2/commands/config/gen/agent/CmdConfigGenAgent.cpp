@@ -121,8 +121,9 @@ std::string formatVerificationFailure(
   appendPaths(output, "Missing:", result.missing);
   appendPaths(output, "Stale:", result.stale);
   appendPaths(output, "Obsolete:", result.obsolete);
-  output += "\nRegenerate with:\n  fboss2 config gen agent --fboss-root " +
-      fbossRoot.string();
+  output += "\nRegenerate with a freshly built fboss2 from this checkout:\n  ";
+  output += kConfigGenerationCommand;
+  output += fbossRoot.string();
   if (platform) {
     output += " --platform " + std::string(*platform);
   }

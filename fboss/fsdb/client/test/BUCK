@@ -73,6 +73,7 @@ cpp_unittest(
         "//fboss/fsdb/tests/utils:fsdb_test_server",
         "//fboss/lib:common_utils",
         "//fboss/lib/thrift_service_client:thrift-service-client",
+        "//thrift/lib/cpp/transport:transport-core",
         "//thrift/lib/cpp2/op:get",
     ],
 )

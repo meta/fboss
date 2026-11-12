@@ -1,9 +1,0 @@
-load("@fbcode_macros//build_defs:export_files.bzl", "export_file")
-
-oncall("fboss_distro")
-
-export_file(
-    name = "host-ctl",
-    src = "host-ctl",
-    visibility = ["PUBLIC"],
-)

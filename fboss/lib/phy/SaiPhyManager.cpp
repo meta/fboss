@@ -22,7 +22,6 @@
 #include "fboss/lib/phy/gen-cpp2/phy_types.h"
 
 #include <fmt/core.h>
-#include <thrift/lib/cpp/util/EnumUtils.h>
 
 namespace facebook::fboss {
 
@@ -511,34 +510,8 @@ void SaiPhyManager::programOnePort(
       return;
     }
 
-    // Before actually calling sai sdk to program the port again, we should
-    // check whether the port has been programmed in HW with the same config.
-    // We avoid reprogramming the port if the config matches with what we have
-    // already programmed before, unless the needResetDataPath flag is set.
-    // Only Elbert (Credo) still does this; other xphys rely on the SwitchState
-    // delta in applyUpdate (as the agent does): an unchanged port yields an
-    // empty delta and no SAI calls.
-    // TODO: drop this for Elbert after Credo  validation.
-    if (!needResetDataPath &&
-        getPhyAsicType() == cfg::AsicType::ASIC_TYPE_ELBERT_8DD &&
-        !(wLockedCache->systemLanes.empty() ||
-          wLockedCache->lineLanes.empty())) {
-      const auto& actualPhyPortConfig =
-          getHwPhyPortConfigLocked(wLockedCache, portId);
-      if (actualPhyPortConfig == desiredPhyPortConfig) {
-        XLOG(DBG2) << "External phy config match. Skip reprogramming for port:"
-                   << portId << " with profile:"
-                   << apache::thrift::util::enumNameSafe(portProfileId);
-        return;
-      } else {
-        XLOG(DBG2) << "External phy config mismatch. Port:" << portId
-                   << " with profile:"
-                   << apache::thrift::util::enumNameSafe(portProfileId)
-                   << " current config:" << actualPhyPortConfig.toDynamic()
-                   << ", desired config:" << desiredPhyPortConfig.toDynamic();
-      }
-    }
-
+    // No read-back skip-check: as in the agent, an unchanged port yields an
+    // empty SwitchState delta in applyUpdate and no SAI calls.
     auto updateFn = [this,
                      &saiPlatform,
                      portId,
@@ -777,8 +750,9 @@ void SaiPhyManager::setSaiPortAdminState(
       saiSwitch->managerTable()->portManager().getPortHandle(swPort);
 
   if (portHandle == nullptr) {
-    XLOG(INFO) << "Port Handle is null";
-    return;
+    throw FbossError(
+        "setSaiPortAdminState: no xphy port handle for port ",
+        static_cast<int>(swPort));
   }
 
   auto portAdapterKey = (component == phy::PortComponent::GB_LINE)

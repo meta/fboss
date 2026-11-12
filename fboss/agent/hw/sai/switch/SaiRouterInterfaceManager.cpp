@@ -310,6 +310,36 @@ void SaiRouterInterfaceManager::changeRouterInterface(
         "Attempted to change non existent router interface with InterfaceID ",
         swId);
   }
+  if (oldInterface->getRouterID() != newInterface->getRouterID()) {
+    // The virtual router is create only. Remove the old router interface
+    // first, since a VLAN can have only one router interface.
+    removeRouterInterface(oldInterface);
+    try {
+      addOrUpdateRouterInterface(newInterface, isLocal);
+    } catch (const std::exception& addEx) {
+      try {
+        addOrUpdateRouterInterface(oldInterface, isLocal);
+      } catch (const std::exception& restoreEx) {
+        throw FbossError(
+            "Failed to move router interface ",
+            swId,
+            " to VRF ",
+            newInterface->getRouterID(),
+            ": ",
+            addEx.what(),
+            "; restoring it also failed, leaving no router interface: ",
+            restoreEx.what());
+      }
+      throw FbossError(
+          "Failed to move router interface ",
+          swId,
+          " to VRF ",
+          newInterface->getRouterID(),
+          ": ",
+          addEx.what());
+    }
+    return;
+  }
   addOrUpdateRouterInterface(newInterface, isLocal);
 }
 

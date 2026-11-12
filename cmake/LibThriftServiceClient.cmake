@@ -14,5 +14,5 @@ target_link_libraries(thrift_service_client
   fsdb_cpp2
   fsdb_flags
   qsfp_cpp2
-  FBThrift::thriftcpp2
+  thrift::rpc
 )

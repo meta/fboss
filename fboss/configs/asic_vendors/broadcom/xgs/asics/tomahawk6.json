@@ -101,11 +101,17 @@
       "description": "Enables MMU lossless mode for PFC and RDMA workloads.",
       "condition": {"source": "asic_config_params", "param": "mmu_lossless", "equals": true},
       "apply": {
+        "global": {
+          "sai_mmu_custom_config": 1,
+          "sai_rdma_udf_disable": 1,
+          "sai_l3_byte1_udf_disable": 1
+        },
         "TM_THD_CONFIG": {
           "THRESHOLD_MODE": "LOSSY_AND_LOSSLESS",
           "SKIP_BUFFER_RESERVATION": 1
         }
-      }
+      },
+      "skip_from_sai_common": ["sai_mmu_qgroups_default", "sai_optimized_mmu"]
     },
     {
       "name": "exact_match",
@@ -113,6 +119,14 @@
       "condition": {"source": "asic_config_params", "param": "exact_match", "equals": true},
       "apply": {
         "global": {"fpem_mem_entries_width": 1, "fpem_mem_entries": 65536}
+      }
+    },
+    {
+      "name": "uncached_port_stats",
+      "description": "Enables uncached port statistics.",
+      "condition": {"source": "features", "param": "enable_uncached_port_stats", "equals": true},
+      "apply": {
+        "global": {"sai_uncached_port_stats": "0x1"}
       }
     },
     {

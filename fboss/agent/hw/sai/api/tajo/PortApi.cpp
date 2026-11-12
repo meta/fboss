@@ -459,6 +459,17 @@ SaiPortTraits::linkUpDebounceRetriggerStats() {
   return stats;
 }
 
+const std::vector<sai_stat_id_t>& SaiPortTraits::pcsErrorStats() {
+#if defined(TAJO_SDK_VERSION_26_5_4210)
+  static const std::vector<sai_stat_id_t> stats{
+      SAI_PORT_STAT_EXT_PCS_BLOCK_ERROR_COUNTER,
+      SAI_PORT_STAT_EXT_PCS_BER_COUNTER};
+#else
+  static const std::vector<sai_stat_id_t> stats;
+#endif
+  return stats;
+}
+
 std::optional<sai_attr_id_t>
 SaiPortTraits::Attributes::AttributeIsHyperPortMember::operator()() {
   return std::nullopt;
@@ -559,6 +570,11 @@ SaiPortTraits::Attributes::AttributeCsigLinkLocatorWrapper::operator()() {
 #else
   return std::nullopt;
 #endif
+}
+
+std::optional<sai_attr_id_t>
+SaiPortTraits::Attributes::AttributeCbfcReceiverCreditLimit::operator()() {
+  return std::nullopt;
 }
 
 } // namespace facebook::fboss

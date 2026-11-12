@@ -16,7 +16,6 @@
 #include "fboss/agent/test/agent_hw_tests/AgentMirrorOnDropXgsImpl.h"
 #include "fboss/agent/test/utils/AclTestUtils.h"
 #include "fboss/agent/test/utils/PacketSnooper.h"
-#include "fboss/agent/test/utils/PfcTestUtils.h"
 #include "fboss/agent/test/utils/PortTestUtils.h"
 #include "fboss/lib/CommonUtils.h"
 
@@ -139,21 +138,6 @@ AgentMirrorOnDropStatelessTest::getSrv6MidpointUnresolvedDropReasons() {
 MirrorOnDropDropReasonCodes
 AgentMirrorOnDropStatelessTest::getSrv6EncapMtuExceededDropReasons() {
   return egressOnly(impl()->getSrv6EncapMtuExceededDropReason());
-}
-
-void AgentMirrorOnDropStatelessTest::configureMmuDropBuffers(
-    cfg::SwitchConfig& config,
-    const PortID& injectionPortId,
-    int priority) {
-  auto hwAsic = checkSameAndGetAsicForTesting(getAgentEnsemble()->getL3Asics());
-  utility::setupPfcBuffers(
-      getAgentEnsemble(),
-      config,
-      {injectionPortId},
-      {}, // losslessPgIds
-      {priority}, // lossyPgIds
-      utility::PfcBufferParams::getPfcBufferParams(
-          hwAsic->getAsicType(), kDefaultGlobalSharedBytes));
 }
 
 void AgentMirrorOnDropStatelessTest::configureErspanMirror(

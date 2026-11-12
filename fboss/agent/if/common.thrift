@@ -64,6 +64,7 @@ struct NextHopThrift {
   5: list<Address.BinaryAddress> srv6SegmentList;
   6: optional TunnelType tunnelType;
   7: optional string tunnelId;
+  8: optional string overlayDstMac;
 
   /**
   * For capturing topology information to assist Agent path pruning decisions
@@ -98,6 +99,16 @@ struct NextHopThrift {
   //    o every nexthop in this list<backupNexthops>
   //       - role = NextHopRole.BACKUP,
   //       - list<backupNexthops> member is empty.
+
+  // VRF to resolve this next hop in; unset means the route's VRF. Only
+  // tunnel next hops (e.g. VXLAN to a VTEP) may set it, to the default VRF.
+  20: optional i32 vrf;
+
+  // Set on next hops the agent resolved by a lookup in the next level, such
+  // as a VXLAN tunnel next hop whose VTEP is looked up in the underlay VRF.
+  // The hardware resolves the egress from the next level route, so these
+  // next hops have no interface. Clients must not set it.
+  21: optional bool resolvedInNextLevel;
 }
 
 /*

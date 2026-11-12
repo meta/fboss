@@ -980,7 +980,6 @@ fboss2 set <subcommand> [options]
 | `interface` | Set Interface information |
 | `port` | Set Port information |
 | `debug` | Set debug level |
-| `fanhold` | Set fan hold PWM |
 
 ### set interface
 
@@ -1004,14 +1003,6 @@ Set debug level for logging.
 
 ```bash
 fboss2 set debug [options]
-```
-
-### set fanhold
-
-Set fan hold PWM value.
-
-```bash
-fboss2 set fanhold <value>
 ```
 
 ---

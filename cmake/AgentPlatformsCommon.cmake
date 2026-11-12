@@ -52,9 +52,6 @@ target_link_libraries(platform_mapping_utils
   leh800bcls_platform_mapping
   yangra2_platform_mapping
   minipack3bta_platform_mapping
-  icecube800banw_platform_mapping
-  j4sim_platform_mapping
-  saintpaul_platform_mapping
   platform_mode
   ${RE2}
 )

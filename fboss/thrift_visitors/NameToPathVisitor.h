@@ -53,7 +53,7 @@ NameToPathResult resolveFieldAndRecurse(
     const std::string& token,
     NameToPathResult notFoundResult,
     Recurse&& recurse) {
-  using StructType = typename folly::remove_cvref_t<Path>::DataT;
+  using StructType = typename std::remove_cvref_t<Path>::DataT;
   auto result = notFoundResult;
   bool found = false;
   auto idTry = folly::tryTo<std::int16_t>(token);
@@ -127,7 +127,7 @@ struct NameToPathVisitor<apache::thrift::type::set<ValueTag>> {
   using ext_path_token_citr = std::vector<OperPathElem>::const_iterator;
 
   template <typename Path>
-  using KeyType = typename folly::remove_cvref_t<Path>::DataT::key_type;
+  using KeyType = typename std::remove_cvref_t<Path>::DataT::key_type;
 
   template <typename Path>
   static std::optional<KeyType<Path>> parse(
@@ -175,7 +175,7 @@ struct NameToPathVisitor<apache::thrift::type::set<ValueTag>> {
       return NameToPathResult::INVALID_PATH;
     }
 
-    using Tag = typename folly::remove_cvref_t<Path>::Child::Tag;
+    using Tag = typename std::remove_cvref_t<Path>::Child::Tag;
     return NameToPathVisitor<Tag>::visit(
         path[key.value()], begin, curr, end, std::forward<Func>(f));
   }
@@ -204,7 +204,7 @@ struct NameToPathVisitor<apache::thrift::type::set<ValueTag>> {
       // dummy child path w/ the default constructed key.
     }
 
-    return NameToPathVisitor<typename folly::remove_cvref_t<Path>::Child::Tag>::
+    return NameToPathVisitor<typename std::remove_cvref_t<Path>::Child::Tag>::
         visitExtended(path[key], curr, end, std::forward<Func>(f));
   }
 };
@@ -247,7 +247,7 @@ struct NameToPathVisitor<apache::thrift::type::list<ValueTag>> {
       return NameToPathResult::INVALID_ARRAY_INDEX;
     }
 
-    using Tag = typename folly::remove_cvref_t<Path>::Child::Tag;
+    using Tag = typename std::remove_cvref_t<Path>::Child::Tag;
     return NameToPathVisitor<Tag>::visit(
         path[key.value()], begin, curr, end, std::forward<Func>(f));
   }
@@ -276,7 +276,7 @@ struct NameToPathVisitor<apache::thrift::type::list<ValueTag>> {
       // dummy child path w/ the default constructed key.
     }
 
-    using Tag = typename folly::remove_cvref_t<Path>::Child::Tag;
+    using Tag = typename std::remove_cvref_t<Path>::Child::Tag;
     return NameToPathVisitor<Tag>::visitExtended(
         path[key], curr, end, std::forward<Func>(f));
   }
@@ -292,7 +292,7 @@ struct NameToPathVisitor<apache::thrift::type::map<KeyTag, MappedTag>> {
   using ext_path_token_citr = std::vector<OperPathElem>::const_iterator;
 
   template <typename Path>
-  using KeyType = typename folly::remove_cvref_t<Path>::DataT::key_type;
+  using KeyType = typename std::remove_cvref_t<Path>::DataT::key_type;
 
   template <typename Path>
   static std::optional<KeyType<Path>> parse(
@@ -340,7 +340,7 @@ struct NameToPathVisitor<apache::thrift::type::map<KeyTag, MappedTag>> {
       return NameToPathResult::INVALID_MAP_KEY;
     }
 
-    using Tag = typename folly::remove_cvref_t<Path>::Child::Tag;
+    using Tag = typename std::remove_cvref_t<Path>::Child::Tag;
     return NameToPathVisitor<Tag>::visit(
         path[key.value()], begin, curr, end, std::forward<Func>(f));
   }
@@ -369,7 +369,7 @@ struct NameToPathVisitor<apache::thrift::type::map<KeyTag, MappedTag>> {
       // dummy child path and recurse
     }
 
-    using Tag = typename folly::remove_cvref_t<Path>::Child::Tag;
+    using Tag = typename std::remove_cvref_t<Path>::Child::Tag;
     return NameToPathVisitor<Tag>::visitExtended(
         path[key], curr, end, std::forward<Func>(f));
   }
@@ -406,7 +406,7 @@ struct NameToPathVisitor<apache::thrift::type::union_t<T>> {
         NameToPathResult::INVALID_VARIANT_MEMBER,
         [&](auto&& childPath) {
           using ChildTag =
-              typename folly::remove_cvref_t<decltype(childPath)>::Tag;
+              typename std::remove_cvref_t<decltype(childPath)>::Tag;
           return NameToPathVisitor<ChildTag>::visit(
               std::move(childPath), begin, curr, end, std::forward<Func>(f));
         });
@@ -432,7 +432,7 @@ struct NameToPathVisitor<apache::thrift::type::union_t<T>> {
           NameToPathResult::INVALID_VARIANT_MEMBER,
           [&](auto&& childPath) {
             using ChildTag =
-                typename folly::remove_cvref_t<decltype(childPath)>::Tag;
+                typename std::remove_cvref_t<decltype(childPath)>::Tag;
             return NameToPathVisitor<ChildTag>::visitExtended(
                 std::move(childPath), curr, end, std::forward<Func>(f));
           });
@@ -474,7 +474,7 @@ struct NameToPathVisitor<apache::thrift::type::struct_t<T>> {
         NameToPathResult::INVALID_STRUCT_MEMBER,
         [&](auto&& childPath) {
           using ChildTag =
-              typename folly::remove_cvref_t<decltype(childPath)>::Tag;
+              typename std::remove_cvref_t<decltype(childPath)>::Tag;
           return NameToPathVisitor<ChildTag>::visit(
               std::move(childPath), begin, curr, end, std::forward<Func>(f));
         });
@@ -500,7 +500,7 @@ struct NameToPathVisitor<apache::thrift::type::struct_t<T>> {
           NameToPathResult::INVALID_STRUCT_MEMBER,
           [&](auto&& childPath) {
             using ChildTag =
-                typename folly::remove_cvref_t<decltype(childPath)>::Tag;
+                typename std::remove_cvref_t<decltype(childPath)>::Tag;
             return NameToPathVisitor<ChildTag>::visitExtended(
                 std::move(childPath), curr, end, std::forward<Func>(f));
           });

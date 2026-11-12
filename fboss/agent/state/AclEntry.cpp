@@ -58,11 +58,22 @@ std::set<cfg::AclTableQualifier> AclEntry::getRequiredAclTableQualifiers()
       cfg::AclTableQualifier::DST_IPV4,
       cfg::AclTableQualifier::DST_IPV6);
 
+  if (auto dstIpWithMask = getDstIpWithMask()) {
+    qualifiers.insert(
+        dstIpWithMask->first.isV4() ? cfg::AclTableQualifier::DST_IPV4
+                                    : cfg::AclTableQualifier::DST_IPV6);
+  }
   if (getDstIpV6Word3()) {
     qualifiers.insert(cfg::AclTableQualifier::DST_IPV6_WORD3);
   }
   if (getDstIpV6Word2()) {
     qualifiers.insert(cfg::AclTableQualifier::DST_IPV6_WORD2);
+  }
+  if (getDstIpV6Word1WithMask()) {
+    qualifiers.insert(cfg::AclTableQualifier::DST_IPV6_WORD1);
+  }
+  if (getDstIpV6Word0WithMask()) {
+    qualifiers.insert(cfg::AclTableQualifier::DST_IPV6_WORD0);
   }
   if (getProto()) {
     qualifiers.insert(cfg::AclTableQualifier::IP_PROTOCOL_NUMBER);

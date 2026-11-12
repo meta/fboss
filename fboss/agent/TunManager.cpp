@@ -1120,6 +1120,9 @@ boost::container::flat_map<InterfaceID, bool> TunManager::getInterfaceStatus(
       for (const auto& vlanIDToInfo : port.second->getVlans()) {
         auto vlan = vlanMap->getNodeIf(vlanIDToInfo.first);
         if (!vlan) {
+          if (vlanIDToInfo.first == VlanID(0)) {
+            continue;
+          }
           XLOG(ERR) << "Vlan " << vlanIDToInfo.first << " not found in state.";
           continue;
         }

@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 # Copyright 2004-present Facebook. All Rights Reserved.
 
-# pyre-unsafe
-
 import argparse
 import concurrent.futures
 import glob
@@ -11,15 +9,18 @@ import pathlib
 import stat
 import sys
 import tarfile
+import tempfile
 from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING or __package__:
+    from . import component_version
     from .platform_configs_utils import (
         get_forwarding_stack_config_paths,
         get_platform_descriptor_paths,
     )
 else:
+    import component_version
     from platform_configs_utils import (
         get_forwarding_stack_config_paths,
         get_platform_descriptor_paths,
@@ -46,26 +47,17 @@ NPU_SDK_UTILS_SCRIPT = SCRIPTS_DIR / "npu_sdk_utils.py"
 
 
 # Maps getdeps package name to library name when they differ.
-LIB_NAME_OVERRIDES = {
-    "fmt-python": "fmt",
-}
+LIB_NAME_OVERRIDES = {"fmt-python": "fmt", "sai_impl_staging": "sai_impl"}
 
 # Global definitions describing what we package for each target.
 
-COMMON_LIBS = [
-    "gflags",
-    "glog",
-    "folly",
-    "fmt-python",
-    "wangle",
-    "fizz",
-    "mvfst",
-]
+COMMON_LIBS = ["gflags", "glog", "folly", "fmt-python", "wangle", "fizz", "mvfst"]
 
 FORWARDING_BINARIES = [
     "diag_shell_client",
     "fboss2",
     "fboss2-dev",
+    "fboss2-readonly",
     "fboss_hw_agent-sai_impl",
     "fboss_pai_diag_shell_client",
     "fboss_sw_agent",
@@ -84,6 +76,10 @@ FORWARDING_EXTRA = {
     RUN_SCRIPTS_DIR / "setup.py": "bin/setup.py",
     RUN_SCRIPTS_DIR / "setup_fboss_env": "bin/setup_fboss_env",
     RUN_SCRIPTS_DIR / "topology.cdf": "bin/topology.cdf",
+    # bash-completion loads the file named after the command; fboss2-dev is
+    # registered by the same script.
+    OSS_DIR
+    / "scripts/fboss2_completion.bash": "share/bash-completion/completions/fboss2",
     RUN_CONFIGS_DIR / "default_configs": "share/default_configs",
     RUN_CONFIGS_DIR / "j3b": "share/j3b",
     RUN_CONFIGS_DIR / "janga800bic": "share/janga800bic",
@@ -95,14 +91,13 @@ FORWARDING_EXTRA = {
     RUN_CONFIGS_DIR / "th5": "share/th5",
 }
 
-FORWARDING_LIBS = []
+# run-getdeps.py stages the SAI as installed/sai_impl_staging-<hash>/lib.
+FORWARDING_LIBS = ["sai_impl_staging"]
 
 # BGP and Open/R install rather than leaving binaries in the build tree
 # (`install(TARGETS bgp_bin DESTINATION sbin)`), so their binaries come from
 # the getdeps install tree instead of build/fboss.
-BGP_BINARIES = [
-    "bgp",
-]
+BGP_BINARIES = ["bgp"]
 
 # Deps from the getdeps manifests that COMMON_LIBS does not already cover.
 BGP_LIBS = [
@@ -115,16 +110,9 @@ BGP_LIBS = [
     "zstd",
 ]
 
-OPENR_BINARIES = [
-    "openr",
-]
+OPENR_BINARIES = ["openr"]
 
-OPENR_LIBS = [
-    "openr",
-    "fb303",
-    "fbthrift",
-    "re2",
-]
+OPENR_LIBS = ["openr", "fb303", "fbthrift", "re2"]
 
 FORWARDING_TEST_BINARIES = [
     "fboss-platform-mapping-gen",
@@ -177,7 +165,7 @@ PLATFORM_BINARIES = [
 
 PLATFORM_EXTRA = {
     OSS_DIR
-    / "hw_sanity_tests/bsp_sanity_tests.conf": "share/hw_sanity_tests/bsp_sanity_tests.conf",
+    / "hw_sanity_tests/bsp_sanity_tests.conf": "share/hw_sanity_tests/bsp_sanity_tests.conf"
 }
 
 PLATFORM_LIBS = []
@@ -236,12 +224,19 @@ def write_tar(filename: str, contents: Mapping[pathlib.Path, str]) -> None:
         return
 
     print(f"Creating {filename}...")
+    records = component_version.collect_binary_records(contents)
     with tarfile.open(filename, "w") as tar:
         for src, dest in contents.items():
             if not os.path.exists(src):
                 print(f"Warning: {src} does not exist")
                 continue
             tar.add(src, dest)
+
+        if records:
+            with tempfile.TemporaryDirectory() as temporary:
+                declaration = pathlib.Path(temporary) / "fboss-component-version.json"
+                component_version.write_declaration(declaration, records, "package.py")
+                tar.add(declaration, component_version.DECLARATION_PATH)
 
         # Add lib64 -> lib symlink so binaries with RPATH/RUNPATH pointing to
         # lib64/ can find libraries packaged under lib/ (e.g. fboss2-dev).
@@ -420,9 +415,13 @@ def _build_target(target: str, build_dir: pathlib.Path):
 
 def package_fboss(target_name: str, target: list) -> None:
     with concurrent.futures.ProcessPoolExecutor() as executor:
-        executor.submit(write_tar, f"{target_name}.tar", target[0])
+        futures = [executor.submit(write_tar, f"{target_name}.tar", target[0])]
         if len(target) == 2:
-            executor.submit(write_tar, f"{target_name}-tests.tar", target[1])
+            futures.append(
+                executor.submit(write_tar, f"{target_name}-tests.tar", target[1])
+            )
+        for future in futures:
+            future.result()
 
 
 def parse_args(argv):
@@ -442,9 +441,7 @@ def parse_args(argv):
         ),
     )
     parser.add_argument(
-        "target",
-        choices=list(TARGET_NAMES),
-        help="Packaging target to create.",
+        "target", choices=list(TARGET_NAMES), help="Packaging target to create."
     )
     return parser.parse_args(argv)
 

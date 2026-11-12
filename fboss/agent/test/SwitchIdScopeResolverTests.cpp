@@ -8,10 +8,12 @@
 #include "fboss/agent/SwitchIdScopeResolver.h"
 #include "fboss/agent/SwitchInfoTable.h"
 #include "fboss/agent/state/BufferPoolConfig.h"
+#include "fboss/agent/state/InterfaceVrf.h"
 #include "fboss/agent/state/MySid.h"
 #include "fboss/agent/state/MySidMap.h"
 #include "fboss/agent/state/PortFlowletConfig.h"
 #include "fboss/agent/state/Vlan.h"
+#include "fboss/agent/state/Vrf.h"
 #include "fboss/agent/test/HwTestHandle.h"
 #include "fboss/agent/test/TestUtils.h"
 
@@ -212,12 +214,38 @@ TYPED_TEST(SwitchIdScopeResolverTest, interfaceScope) {
   }
 }
 
+TYPED_TEST(SwitchIdScopeResolverTest, interfaceVrfScope) {
+  if (this->isFabric()) {
+    return;
+  }
+  auto state = this->sw_->getState();
+  auto intf = state->getInterfaces()->getAllNodes()->cbegin()->second;
+  auto interfaceVrf =
+      std::make_shared<InterfaceVrf>(intf->getID(), RouterID(1001));
+  EXPECT_EQ(
+      this->scopeResolver().scope(interfaceVrf, state),
+      this->scopeResolver().scope(intf, state));
+}
+
 TYPED_TEST(SwitchIdScopeResolverTest, fibContainerScope) {
   auto fibContainer = std::make_shared<ForwardingInformationBaseContainer>();
   if (this->isFabric()) {
     this->expectThrow(fibContainer);
   } else {
     this->expectSwitchId(fibContainer);
+  }
+}
+
+TYPED_TEST(SwitchIdScopeResolverTest, vrfScope) {
+  cfg::VrfConfig vrfCfg;
+  vrfCfg.vrfId() = 1001;
+  auto vrf = std::make_shared<Vrf>(RouterID(1001));
+  if (this->isFabric()) {
+    this->expectThrow(vrfCfg);
+    this->expectThrow(vrf);
+  } else {
+    this->expectL3(vrfCfg);
+    this->expectL3(vrf);
   }
 }
 

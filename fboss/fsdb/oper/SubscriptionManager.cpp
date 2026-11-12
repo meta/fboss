@@ -3,6 +3,8 @@
 #include "fboss/fsdb/oper/SubscriptionManager.h"
 #include "fboss/fsdb/oper/SubscriptionMetadataServer.h"
 
+#include <algorithm>
+
 namespace facebook::fboss::fsdb {
 
 void SubscriptionManagerBase::registerExtendedSubscription(
@@ -49,13 +51,33 @@ SubscriptionManagerBase::addPatchSubscriptionPathsImpl(
     throw std::runtime_error(
         "Cannot support patch type subscriptions without id paths");
   }
-  // The subscription lives in exactly one per-speed store; ID_NOT_FOUND means
-  // it is not in that store, so try the next.
-  for (auto& store : stores_) {
-    auto result = store.wlock()->addPatchSubscriptionPaths(
+  // A subscription lives in exactly one bucket, either registered in its store
+  // or pending registration. Locking the store before pending matches
+  // registerPendingSubscriptions, so the subscription cannot move between the
+  // two mid-search.
+  for (size_t b = 0; b < stores_.size(); ++b) {
+    auto store = stores_[b].wlock();
+    auto result = store->addPatchSubscriptionPaths(
         id, newPaths, publisherRoot, streamRevision);
     if (result != FsdbErrorCode::ID_NOT_FOUND) {
       return result;
+    }
+    auto pending = pendingExtendedSubscriptions_[b].wlock();
+    // Last match mirrors registration, where a later subscription with the
+    // same identifier owns the lookup slot.
+    auto it = std::find_if(
+        pending->rbegin(), pending->rend(), [&id](const auto& subscription) {
+          return subscription->subscriptionId() == id;
+        });
+    if (it != pending->rend()) {
+      // No added-path work is queued: the initial sync after registration
+      // resolves every path of the subscription.
+      auto addedKeys = SubscriptionStore::validateAndAddPatchSubscriptionPaths(
+          **it, newPaths, publisherRoot, streamRevision);
+      if (addedKeys.hasError()) {
+        return addedKeys.error();
+      }
+      return std::nullopt;
     }
   }
   return FsdbErrorCode::ID_NOT_FOUND;

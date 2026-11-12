@@ -11,7 +11,6 @@
 
 #include <fb303/ServiceData.h>
 #include <fb303/ThreadCachedServiceData.h>
-#include "fboss/agent/SwSwitch.h"
 
 namespace facebook::fboss {
 

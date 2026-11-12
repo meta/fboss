@@ -54,6 +54,15 @@ void FibInfo::updateFibContainer(
   modifiedFibInfo->ref<switch_state_tags::fibsMap>() = fibsMap;
 }
 
+void FibInfo::removeFibContainer(
+    RouterID vrf,
+    std::shared_ptr<SwitchState>* state) {
+  auto modifiedFibInfo = modify(state);
+  auto fibsMap = modifiedFibInfo->getfibsMap()->clone();
+  fibsMap->removeNode(vrf);
+  modifiedFibInfo->ref<switch_state_tags::fibsMap>() = fibsMap;
+}
+
 std::vector<NextHop> FibInfo::resolveNextHopSetFromId(NextHopSetId id) const {
   auto idToNextHopIdSetMap = getIdToNextHopIdSetMap();
   if (!idToNextHopIdSetMap) {

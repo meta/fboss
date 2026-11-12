@@ -306,6 +306,12 @@ DEFINE_bool(
     "(sai_stats_support); leave off otherwise.");
 
 DEFINE_bool(
+    allow_mixed_ip_srv6_nhop_groups,
+    false,
+    "Allow routes whose next-hop group mixes SRv6 next hops with plain IP "
+    "next hops. When false, RibToSwitchStateUpdater rejects such routes.");
+
+DEFINE_bool(
     enable_srv6_nexthop_resource_protection,
     true,
     "Enable SRv6 next hop resource protection in ResourceAccountant");
@@ -396,6 +402,13 @@ DEFINE_bool(
     resolve_nexthops_from_id,
     false,
     "Resolve nexthops from NextHopSetID in FibInfo maps instead of inline nexthops");
+
+DEFINE_bool(
+    drop_inline_nexthops_with_id,
+    false,
+    "Drop inline nexthops from route entries that carry a NextHopSetID. SAI "
+    "only; requires resolve_nexthops_from_id and enable_nexthop_id_manager, "
+    "and turning either of those off afterwards needs a cold boot");
 
 DEFINE_int32(
     ecmp_resource_manager_make_before_break_buffer,

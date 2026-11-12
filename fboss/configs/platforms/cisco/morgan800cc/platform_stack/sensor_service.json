@@ -1533,7 +1533,9 @@
           "type": 1,
           "thresholds": {
             "upperCriticalVal": 407,
-            "lowerCriticalVal": 38
+            "maxAlarmVal": 390,
+            "minAlarmVal": 45,
+            "lowerCriticalVal": 42
           },
           "compute": "@/1000"
         },
@@ -1542,8 +1544,7 @@
           "sysfsPath": "/run/devmap/sensors/PDB0_PSU_0X58/curr1_input",
           "type": 2,
           "thresholds": {
-            "upperCriticalVal": 80,
-            "lowerCriticalVal": 0
+            "upperCriticalVal": 80
           },
           "compute": "@/1000"
         },
@@ -1553,6 +1554,8 @@
           "type": 1,
           "thresholds": {
             "upperCriticalVal": 14.4,
+            "maxAlarmVal": 13.8,
+            "minAlarmVal": 10.2,
             "lowerCriticalVal": 9.6
           },
           "compute": "@/1000"
@@ -1563,7 +1566,7 @@
           "type": 2,
           "thresholds": {
             "upperCriticalVal": 250,
-            "lowerCriticalVal": 5
+            "maxAlarmVal": 225
           },
           "compute": "@/1000"
         },
@@ -1581,6 +1584,7 @@
           "name": "PSU0_PIN_MN",
           "sysfsPath": "/run/devmap/sensors/PDB0_PSU_0X58/power1_input",
           "type": 0,
+          "thresholds": {},
           "compute": "@/1000000"
         },
         {
@@ -1589,7 +1593,7 @@
           "type": 3,
           "thresholds": {
             "upperCriticalVal": 72,
-            "lowerCriticalVal": -5
+            "maxAlarmVal": 70
           },
           "compute": "@/1000"
         },
@@ -1598,8 +1602,7 @@
           "sysfsPath": "/run/devmap/sensors/PDB0_PSU_0X58/temp2_input",
           "type": 3,
           "thresholds": {
-            "upperCriticalVal": 102,
-            "lowerCriticalVal": -5
+            "upperCriticalVal": 120
           },
           "compute": "@/1000"
         },
@@ -1609,7 +1612,7 @@
           "type": 3,
           "thresholds": {
             "upperCriticalVal": 95,
-            "lowerCriticalVal": -5
+            "maxAlarmVal": 90
           },
           "compute": "@/1000"
         }
@@ -1625,7 +1628,9 @@
           "type": 1,
           "thresholds": {
             "upperCriticalVal": 407,
-            "lowerCriticalVal": 38
+            "maxAlarmVal": 390,
+            "minAlarmVal": 45,
+            "lowerCriticalVal": 42
           },
           "compute": "@/1000"
         },
@@ -1634,8 +1639,7 @@
           "sysfsPath": "/run/devmap/sensors/PDB1_PSU_0X58/curr1_input",
           "type": 2,
           "thresholds": {
-            "upperCriticalVal": 80,
-            "lowerCriticalVal": 0
+            "upperCriticalVal": 80
           },
           "compute": "@/1000"
         },
@@ -1645,6 +1649,8 @@
           "type": 1,
           "thresholds": {
             "upperCriticalVal": 14.4,
+            "maxAlarmVal": 13.8,
+            "minAlarmVal": 10.2,
             "lowerCriticalVal": 9.6
           },
           "compute": "@/1000"
@@ -1655,7 +1661,7 @@
           "type": 2,
           "thresholds": {
             "upperCriticalVal": 250,
-            "lowerCriticalVal": 5
+            "maxAlarmVal": 225
           },
           "compute": "@/1000"
         },
@@ -1673,6 +1679,7 @@
           "name": "PSU1_PIN_MN",
           "sysfsPath": "/run/devmap/sensors/PDB1_PSU_0X58/power1_input",
           "type": 0,
+          "thresholds": {},
           "compute": "@/1000000"
         },
         {
@@ -1681,7 +1688,7 @@
           "type": 3,
           "thresholds": {
             "upperCriticalVal": 72,
-            "lowerCriticalVal": -5
+            "maxAlarmVal": 70
           },
           "compute": "@/1000"
         },
@@ -1690,8 +1697,7 @@
           "sysfsPath": "/run/devmap/sensors/PDB1_PSU_0X58/temp2_input",
           "type": 3,
           "thresholds": {
-            "upperCriticalVal": 102,
-            "lowerCriticalVal": -5
+            "upperCriticalVal": 120
           },
           "compute": "@/1000"
         },
@@ -1701,7 +1707,7 @@
           "type": 3,
           "thresholds": {
             "upperCriticalVal": 95,
-            "lowerCriticalVal": -5
+            "maxAlarmVal": 90
           },
           "compute": "@/1000"
         }

@@ -52,7 +52,7 @@ run from the diag shell with:
 
 Capture each feature's output to its own file and bundle them for handoff. These dumps are
 strong evidence for a `FAIL_VENDOR` escalation — attach them to the package built per
-[vendor-escalation.md](vendor-escalation.md).
+the [vendor-escalation skill](../../vendor-escalation/SKILL.md).
 
 ## Counter Commands
 

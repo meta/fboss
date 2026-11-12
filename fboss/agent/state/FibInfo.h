@@ -59,6 +59,8 @@ class FibInfo : public ThriftStructNode<FibInfo, state::FibInfoFields> {
       const std::shared_ptr<ForwardingInformationBaseContainer>& fibContainer,
       std::shared_ptr<SwitchState>* state);
 
+  void removeFibContainer(RouterID vrf, std::shared_ptr<SwitchState>* state);
+
   // Get FibContainer directly when VRF is specified
   std::shared_ptr<ForwardingInformationBaseContainer> getFibContainerIf(
       RouterID vrf) const {

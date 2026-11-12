@@ -152,7 +152,8 @@ class SubscriptionManagerBase {
 
  private:
   // Shared impl behind the raw/extended addPatchSubscriptionPaths overloads:
-  // guards on useIdPaths_ and forwards to the store.
+  // guards on useIdPaths_ and applies to the subscription whether registered or
+  // pending registration.
   std::optional<FsdbErrorCode> addPatchSubscriptionPathsImpl(
       const SubscriptionIdentifier& id,
       const ExtSubPathMap& newPaths,

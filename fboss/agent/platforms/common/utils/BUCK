@@ -43,7 +43,7 @@ cpp_library(
         "BcmYamlConfig.h",
     ],
     deps = [
-        "fbsource//xplat/folly:format",
+        "fbsource//third-party/fmt:fmt",
         "fbsource//xplat/folly/gen:string",
         "fbsource//xplat/folly/logging:logging",
         "//fboss/agent:fboss-error",

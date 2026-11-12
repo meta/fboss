@@ -3,6 +3,7 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
 #include <span>
 #include <string>
 #include <string_view>
@@ -33,8 +34,13 @@ std::vector<std::string> formatDropReasonLines(
 std::vector<std::string> formatDropReasonLines(
     const std::vector<std::string_view>& names);
 
-// `enumNames` is indexed by bit position. Bits past its end, or past the width
-// of the bitmap, are ignored.
+std::vector<std::string> formatDropReasonLogLines(
+    std::string_view stage,
+    const std::vector<std::string>& names,
+    std::optional<uint64_t> bitmap = std::nullopt);
+
+// Return individual reason names, without formatting. enumNames is indexed
+// by bit position. Bits past its end, or past the bitmap width, are ignored.
 std::vector<std::string> decodeDropBitmap(
     int64_t bitmap,
     std::span<const char* const> enumNames,

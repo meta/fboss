@@ -9,6 +9,7 @@
  */
 
 #include "fboss/cli/fboss2/commands/config/acl/rule/CmdConfigAclRule.h"
+#include "fboss/cli/fboss2/utils/ArgCompletion.h"
 
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
 #include "fboss/cli/fboss2/CmdHandler.cpp"
@@ -110,5 +111,17 @@ void CmdConfigAclRule::printOutput(const RetType& logMsg) {
 
 // Explicit template instantiation
 template void CmdHandler<CmdConfigAclRule, CmdConfigAclRuleTraits>::run();
+
+std::vector<std::string> CmdConfigAclRuleTraits::completeArgs(
+    const std::vector<std::string>& typed) {
+  // <table-name> <rule-name> <attr> <value>: only `action` has a finite
+  // value set.
+  if (typed.size() == kAclRuleIdxActionSub &&
+      typed[kAclRuleIdxAttr] == kAclRuleAttrAction) {
+    return aclRuleActionKeys();
+  }
+  return utils::completion::completePositions(
+      typed, {{}, {}, aclRuleAttrKeys()});
+}
 
 } // namespace facebook::fboss

@@ -28,6 +28,8 @@ std::map<int32_t, std::pair<std::string, std::size_t>> _AclTableMap{
     SAI_ATTR_MAP(AclTable, FieldDstIpV6),
     SAI_ATTR_MAP(AclTable, FieldDstIpV6Word3),
     SAI_ATTR_MAP(AclTable, FieldDstIpV6Word2),
+    SAI_ATTR_MAP(AclTable, FieldDstIpV6Word1),
+    SAI_ATTR_MAP(AclTable, FieldDstIpV6Word0),
     SAI_ATTR_MAP(AclTable, FieldSrcIpV4),
     SAI_ATTR_MAP(AclTable, FieldDstIpV4),
     SAI_ATTR_MAP(AclTable, FieldL4SrcPort),
@@ -111,6 +113,8 @@ std::map<int32_t, std::pair<std::string, std::size_t>> _AclEntryMap{
     SAI_ATTR_MAP(AclEntry, FieldDstIpV6),
     SAI_ATTR_MAP(AclEntry, FieldDstIpV6Word3),
     SAI_ATTR_MAP(AclEntry, FieldDstIpV6Word2),
+    SAI_ATTR_MAP(AclEntry, FieldDstIpV6Word1),
+    SAI_ATTR_MAP(AclEntry, FieldDstIpV6Word0),
     SAI_ATTR_MAP(AclEntry, FieldSrcIpV4),
     SAI_ATTR_MAP(AclEntry, FieldDstIpV4),
     SAI_ATTR_MAP(AclEntry, FieldSrcPort),
@@ -185,6 +189,9 @@ void handleExtensionAttributes() {
 #endif
   SAI_EXT_ATTR_MAP(AclEntry, FieldRouteDestination);
   SAI_EXT_ATTR_MAP(AclTable, FieldRouteDestination);
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 2)
+  SAI_EXT_ATTR_MAP(AclCounter, LabelExtended);
+#endif
 }
 
 } // namespace

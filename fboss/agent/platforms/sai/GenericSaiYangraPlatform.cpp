@@ -224,7 +224,7 @@ const std::set<sai_api_t>& GenericSaiYangraPlatform::getSupportedApiList()
 
 std::string GenericSaiYangraPlatform::getHwConfig() {
   std::string xml_filename =
-      *config()->thrift.platform()->chip().value().get_asic().config();
+      *config()->thrift.platform()->chip().value().asic()->config();
   std::string base_filename =
       xml_filename.substr(0, xml_filename.find(".xml") + 4);
   std::ifstream xml_file(base_filename);

@@ -2,7 +2,7 @@
 
 ## This repository is a one-way export
 
-`github.com/facebook/fboss` is generated from an internal source of truth.
+`github.com/meta/fboss` is generated from an internal source of truth.
 Code lands internally first and is exported automatically, continuously.
 
 Consequences that matter in practice:

@@ -51,13 +51,13 @@
         {
           "busName": "ROOK_SMBUS_0@2",
           "address": "0x21",
-          "kernelDeviceName": "pmbus",
+          "kernelDeviceName": "apmbus",
           "pmUnitScopedName": "CPU_MPS1_PMBUS"
         },
         {
           "busName": "ROOK_SMBUS_0@2",
           "address": "0x27",
-          "kernelDeviceName": "pmbus",
+          "kernelDeviceName": "apmbus",
           "pmUnitScopedName": "CPU_MPS2_PMBUS"
         },
         {
@@ -93,19 +93,19 @@
         {
           "busName": "SCD_SMBUS_1@5",
           "address": "0x40",
-          "kernelDeviceName": "pmbus",
+          "kernelDeviceName": "apmbus",
           "pmUnitScopedName": "SC_TH3_CORE_IR35223"
         },
         {
           "busName": "SCD_SMBUS_1@6",
           "address": "0x41",
-          "kernelDeviceName": "pmbus",
+          "kernelDeviceName": "apmbus",
           "pmUnitScopedName": "SC_TH3_ANLG_IR35223"
         },
         {
           "busName": "SCD_SMBUS_1@7",
           "address": "0x42",
-          "kernelDeviceName": "pmbus",
+          "kernelDeviceName": "apmbus",
           "pmUnitScopedName": "SC_QSFPDD_IR35223"
         }
       ],

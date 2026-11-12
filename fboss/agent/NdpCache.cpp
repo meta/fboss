@@ -40,6 +40,15 @@ void NdpCache::sentNeighborSolicitation(folly::IPAddressV6 ip) {
   setPendingEntry(ip, PortDescriptor(PortID(0)));
 }
 
+void NdpCache::resolve(folly::IPAddressV6 ip) {
+  auto intf = getSw()->getState()->getInterfaces()->getNode(getIntfID());
+  // Returns true only if a new pending entry was created.
+  if (setPendingEntry(ip, PortDescriptor(PortID(0)))) {
+    IPv6Handler::sendMulticastNeighborSolicitation(
+        getSw(), ip, intf->getMac(), getSw()->getVlanIDForTx(intf));
+  }
+}
+
 void NdpCache::receivedNeighborSolicitationMine(
     folly::IPAddressV6 ip,
     folly::MacAddress mac,

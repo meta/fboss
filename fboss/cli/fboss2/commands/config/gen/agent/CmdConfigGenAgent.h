@@ -19,6 +19,13 @@
 namespace facebook::fboss {
 
 inline constexpr std::string_view kConfigGenAgentCommand = "config_gen_agent";
+#ifdef IS_OSS
+inline constexpr std::string_view kConfigGenerationCommand =
+    "python3 fboss/lib/oss/run-helper.py --target fboss2 config gen agent --fboss-root ";
+#else
+inline constexpr std::string_view kConfigGenerationCommand =
+    "buck2 run fbcode//fboss/cli/fboss2:fboss2 -- config gen agent --fboss-root ";
+#endif
 inline const std::string kConfigGenAgentPlatform = "--platform";
 inline const std::string kConfigGenAgentProfile = "--profile";
 inline const std::string kConfigGenAgentFbossRoot = "--fboss-root";

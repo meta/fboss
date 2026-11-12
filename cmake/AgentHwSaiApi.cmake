@@ -96,6 +96,7 @@ set(SAI_API_SRC
 
 if (SAI_TAJO_IMPL)
   list(APPEND SAI_API_SRC
+    fboss/agent/hw/sai/api/tajo/LagApi.cpp
     fboss/agent/hw/sai/api/tajo/ArsApi.cpp
     fboss/agent/hw/sai/api/tajo/ArsProfileApi.cpp
     fboss/agent/hw/sai/api/tajo/PortApi.cpp
@@ -119,6 +120,7 @@ if (SAI_TAJO_IMPL)
   message(STATUS "Using SAI Experimental dir: ${SAI_EXPERIMENTAL_INCLUDE_DIR}")
 elseif (SAI_BRCM_IMPL)
   list(APPEND SAI_API_SRC
+    fboss/agent/hw/sai/api/bcm/LagApi.cpp
     fboss/agent/hw/sai/api/bcm/ArsApi.cpp
     fboss/agent/hw/sai/api/bcm/ArsProfileApi.cpp
     fboss/agent/hw/sai/api/bcm/PortApi.cpp
@@ -142,6 +144,7 @@ elseif (SAI_BRCM_IMPL)
   message(STATUS "Using SAI Experimental dir: ${SAI_EXPERIMENTAL_INCLUDE_DIR}")
 elseif (CHENAB_SAI_SDK)
   list(APPEND SAI_API_SRC
+    fboss/agent/hw/sai/api/chenab/LagApi.cpp
     fboss/agent/hw/sai/api/oss/ArsApi.cpp
     fboss/agent/hw/sai/api/oss/ArsProfileApi.cpp
     fboss/agent/hw/sai/api/chenab/PortApi.cpp
@@ -165,6 +168,7 @@ elseif (CHENAB_SAI_SDK)
   message(STATUS "Using SAI Experimental dir: ${SAI_EXPERIMENTAL_INCLUDE_DIR}")
 elseif (SAI_BRCM_PAI_IMPL)
   list(APPEND SAI_API_SRC
+    fboss/agent/hw/sai/api/oss/LagApi.cpp
     fboss/agent/hw/sai/api/oss/AclApi.cpp
     fboss/agent/hw/sai/api/oss/ArsApi.cpp
     fboss/agent/hw/sai/api/oss/ArsProfileApi.cpp

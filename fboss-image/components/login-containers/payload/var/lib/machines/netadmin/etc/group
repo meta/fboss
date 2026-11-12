@@ -1,3 +1,0 @@
-root:x:0:
-netadmin:x:1002:
-switching:x:1001:netadmin

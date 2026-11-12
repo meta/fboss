@@ -13,22 +13,22 @@ class PidLogicBase {
   explicit PidLogicBase(const PidSetting& pidSetting)
       : pidSetting_(pidSetting) {}
   virtual ~PidLogicBase() = default;
-  virtual int16_t calculatePwm(float measurement) = 0;
+  virtual float calculatePwm(float measurement) = 0;
   float getSetPoint() const {
     return *pidSetting_.setPoint();
   }
 
-  void updateLastPwm(int16_t lastPwm) {
+  void updateLastPwm(float lastPwm) {
     lastPwm_ = lastPwm;
   }
 
-  int16_t getLastPwm() const {
+  float getLastPwm() const {
     return lastPwm_;
   }
 
  protected:
   const PidSetting pidSetting_;
-  int16_t lastPwm_{0};
+  float lastPwm_{0};
 };
 
 class PidLogic : public PidLogicBase {
@@ -39,7 +39,7 @@ class PidLogic : public PidLogicBase {
       throw std::invalid_argument("dT cannot be less than or equal to 0");
     }
   }
-  int16_t calculatePwm(float measurement) override;
+  float calculatePwm(float measurement) override;
   float getLastError() const {
     return lastError_;
   }
@@ -54,7 +54,7 @@ class IncrementalPidLogic : public PidLogicBase {
  public:
   explicit IncrementalPidLogic(const PidSetting& pidSetting)
       : PidLogicBase(pidSetting) {}
-  int16_t calculatePwm(float measurement) override;
+  float calculatePwm(float measurement) override;
 
  private:
   float previousRead1_{0};
