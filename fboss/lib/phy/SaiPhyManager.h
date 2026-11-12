@@ -346,10 +346,7 @@ void SaiPhyManager::initializeXphyImpl(
         saiPlatform->getWarmBootHelper()->reconstructWarmBootThriftState(
             wbState);
     initSaiSwitch(statePrev);
-    // TODO: seed Elbert too once Credo is validated.
-    if (getPhyAsicType() != cfg::AsicType::ASIC_TYPE_ELBERT_8DD) {
-      seedPlatformStateAfterWarmBoot(xphyID);
-    }
+    seedPlatformStateAfterWarmBoot(xphyID);
   } else {
     initSaiSwitch(nullptr);
   }
