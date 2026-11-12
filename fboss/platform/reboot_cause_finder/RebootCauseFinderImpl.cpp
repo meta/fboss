@@ -157,7 +157,7 @@ std::string readBootId(const std::string& bootIdPath) {
   if (!folly::readFile(bootIdPath.c_str(), contents)) {
     return {};
   }
-  return folly::trimWhitespace(contents).str();
+  return std::string(folly::trimWhitespace(contents));
 }
 
 // The binary runs in the boot it records, so the running kernel is that
@@ -167,7 +167,7 @@ std::string readKernelRelease(const std::string& osReleasePath) {
   if (!folly::readFile(osReleasePath.c_str(), contents)) {
     return {};
   }
-  return folly::trimWhitespace(contents).str();
+  return std::string(folly::trimWhitespace(contents));
 }
 
 // The boot id is the filename suffix of every record, so the existence of a
