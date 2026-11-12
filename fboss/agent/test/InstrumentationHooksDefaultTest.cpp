@@ -1,6 +1,7 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include "fboss/agent/InstrumentationHooks.h"
+#include "fboss/agent/test/TestLifecycleNotification.h"
 
 #include <gtest/gtest.h>
 
@@ -12,6 +13,11 @@ namespace facebook::fboss {
 TEST(InstrumentationHooksDefaultTest, WrappersAreSafeWithoutHooks) {
   startCoverageCollection();
   stopCoverageCollection();
+}
+
+TEST(InstrumentationHooksDefaultTest, NotificationIsSafeWithoutHook) {
+  EXPECT_NO_THROW(notifyHwAgentsOfTestLifecycleEvent(
+      nullptr, utility::TestLifecycleEvent::AGENT_SETUP_COMPLETE));
 }
 
 } // namespace facebook::fboss

@@ -780,6 +780,7 @@ cpp_library(
     deps = [
         ":ecmp_helper",
         ":resourcelibutil",
+        ":test_lifecycle_notification",
         "//fboss/agent:packet",
         "//fboss/agent/hw:hardware_stats-cpp2-serialization",
         "//fboss/agent/hw/test:config_factory",
@@ -1019,8 +1020,10 @@ cpp_library(
     link_whole = True,
     preferred_linkage = "static",
     deps = [
+        ":test_lifecycle_notification_hook",
         "//fboss/agent:instrumentation_hook_entry_points",
     ],
+    exported_deps = ["//fboss/agent/if:agent_hw_test_ctrl-cpp2-serialization"],
 )
 
 cpp_unittest(
@@ -1031,6 +1034,7 @@ cpp_unittest(
     network_access = network_access_utils.none(),
     test_main = "//fboss/agent/test:fboss_test_main",
     deps = [
+        ":test_lifecycle_notification",
         "//fboss/agent:instrumentation_hooks",
     ],
 )
@@ -1044,7 +1048,36 @@ cpp_unittest(
     test_main = "//fboss/agent/test:fboss_test_main",
     deps = [
         ":instrumentation_hooks_test_definer",
+        ":test_lifecycle_notification",
         "//fboss/agent:instrumentation_hooks",
+    ],
+)
+
+cpp_library(
+    name = "test_lifecycle_notification",
+    srcs = [
+        "TestLifecycleNotification.cpp",
+    ],
+    headers = [
+        "TestLifecycleNotification.h",
+    ],
+    deps = [
+        "fbsource//xplat/folly/logging:logging",
+        ":test_lifecycle_notification_hook",
+    ],
+    exported_deps = [
+        "//fboss/agent/if:agent_hw_test_ctrl-cpp2-serialization",
+        "//fboss/agent/if:agent_hw_test_ctrl-cpp2-types",
+    ],
+)
+
+cpp_library(
+    name = "test_lifecycle_notification_hook",
+    headers = [
+        "TestLifecycleNotificationHook.h",
+    ],
+    exported_deps = [
+        "//fboss/agent/if:agent_hw_test_ctrl-cpp2-serialization",
     ],
 )
 

@@ -189,6 +189,7 @@ target_link_libraries(agent_integration_test_base
 
 add_library(agent_hw_test
   fboss/agent/test/AgentHwTest.cpp
+  fboss/agent/test/TestLifecycleNotification.cpp
 )
 
 target_link_libraries(agent_hw_test
