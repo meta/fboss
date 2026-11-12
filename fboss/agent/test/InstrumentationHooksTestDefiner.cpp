@@ -22,4 +22,12 @@ bool fbossNotifyHwAgentsOfTestLifecycleEvent(
   calls.notifiedEvents.push_back(event);
   return calls.notificationAccepted;
 }
+
+uint64_t fbossCaptureCurrentThreadTracingStackCheckpoint() noexcept {
+  return facebook::fboss::instrumentationHookCalls().captures++;
+}
+
+void fbossRestoreCurrentThreadTracingStackCheckpoint(uint64_t token) noexcept {
+  facebook::fboss::instrumentationHookCalls().restoredTokens.push_back(token);
+}
 }

@@ -688,6 +688,7 @@ target_link_libraries(hwagent
 
 add_library(instrumentation_hooks
   fboss/agent/InstrumentationHooks.cpp
+  fboss/agent/TracingStackCheckpoint.cpp
 )
 
 add_library(hwagent-main
@@ -752,6 +753,7 @@ add_library(split_agent_thrift_syncer
 
 target_link_libraries(split_agent_thrift_syncer
   multiswitch_service
+  instrumentation_hooks
   Folly::folly
   hw_switch
 )

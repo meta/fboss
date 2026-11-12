@@ -4,6 +4,7 @@
 
 #include "fboss/agent/if/gen-cpp2/agent_hw_test_ctrl_types.h"
 
+#include <cstdint>
 #include <vector>
 
 namespace facebook::fboss {
@@ -18,6 +19,9 @@ struct InstrumentationHookCalls {
   std::vector<utility::TestLifecycleEvent> notifiedEvents;
   // Returned by the notification hook.
   bool notificationAccepted{true};
+  // The next token to return. It starts at 0, which is a valid token.
+  uint64_t captures{0};
+  std::vector<uint64_t> restoredTokens;
 };
 
 // Defined by the test that links the definer.

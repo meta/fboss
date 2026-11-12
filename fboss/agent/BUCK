@@ -2072,6 +2072,7 @@ cpp_library(
         "fbsource//xplat/folly/logging:logging",
         ":hw_switch",
         ":packet",
+        ":tracing_stack_checkpoint",
         ":utils",
         "//fb303:service_data",
         "//fboss/agent/state:state",
@@ -2486,6 +2487,19 @@ cpp_library(
     name = "instrumentation_hook_entry_points",
     headers = [
         "InstrumentationHookEntryPoints.h",
+    ],
+)
+
+cpp_library(
+    name = "tracing_stack_checkpoint",
+    srcs = [
+        "TracingStackCheckpoint.cpp",
+    ],
+    headers = [
+        "TracingStackCheckpoint.h",
+    ],
+    deps = [
+        ":instrumentation_hook_entry_points",
     ],
 )
 

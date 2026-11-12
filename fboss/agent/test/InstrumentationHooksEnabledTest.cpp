@@ -1,11 +1,13 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include "fboss/agent/InstrumentationHooks.h"
+#include "fboss/agent/TracingStackCheckpoint.h"
 #include "fboss/agent/test/InstrumentationHooksTestDefiner.h"
 #include "fboss/agent/test/TestLifecycleNotification.h"
 
 #include <gtest/gtest.h>
 
+#include <stdexcept>
 #include <vector>
 
 // Linked with a library that defines the hooks and records their calls.
@@ -60,6 +62,31 @@ TEST_F(InstrumentationHooksEnabledTest, RejectedNotificationDoesNotThrow) {
   const std::vector<utility::TestLifecycleEvent> expected{
       utility::TestLifecycleEvent::AGENT_TEARDOWN_START};
   EXPECT_EQ(instrumentationHookCalls().notifiedEvents, expected);
+}
+
+TEST_F(InstrumentationHooksEnabledTest, CheckpointRestoredOnScopeExit) {
+  {
+    const TracingStackCheckpoint checkpoint;
+  }
+
+  const std::vector<uint64_t> expected{0};
+  EXPECT_EQ(instrumentationHookCalls().restoredTokens, expected);
+  EXPECT_EQ(instrumentationHookCalls().captures, 1);
+}
+
+TEST_F(InstrumentationHooksEnabledTest, CheckpointRestoredWhenScopeThrows) {
+  instrumentationHookCalls().captures = 7;
+
+  EXPECT_THROW(
+      {
+        const TracingStackCheckpoint checkpoint;
+        throw std::runtime_error("RPC failed");
+      },
+      std::runtime_error);
+
+  const std::vector<uint64_t> expected{7};
+  EXPECT_EQ(instrumentationHookCalls().restoredTokens, expected);
+  EXPECT_EQ(instrumentationHookCalls().captures, 8);
 }
 
 } // namespace facebook::fboss

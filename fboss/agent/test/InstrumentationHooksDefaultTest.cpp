@@ -1,6 +1,7 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include "fboss/agent/InstrumentationHooks.h"
+#include "fboss/agent/TracingStackCheckpoint.h"
 #include "fboss/agent/test/TestLifecycleNotification.h"
 
 #include <gtest/gtest.h>
@@ -13,6 +14,7 @@ namespace facebook::fboss {
 TEST(InstrumentationHooksDefaultTest, WrappersAreSafeWithoutHooks) {
   startCoverageCollection();
   stopCoverageCollection();
+  const TracingStackCheckpoint checkpoint;
 }
 
 TEST(InstrumentationHooksDefaultTest, NotificationIsSafeWithoutHook) {

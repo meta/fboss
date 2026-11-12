@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include <cstdint>
+
 // Entry points that an optional test-coverage collector defines. FBOSS code
 // calls them only through the wrappers in InstrumentationHooks.h, which skip
 // any entry point that no linked library defines.
@@ -17,4 +19,9 @@ void fbossStartCoverageCollection() noexcept;
 // process, so it must be idempotent, and may run without a prior start or
 // while other threads are still running.
 void fbossStopCoverageCollection() noexcept;
+// Capture and restore the calling thread's function-tracing call stack. The
+// token is opaque and is valid only on the thread that captured it. A collector
+// defines both or neither.
+uint64_t fbossCaptureCurrentThreadTracingStackCheckpoint() noexcept;
+void fbossRestoreCurrentThreadTracingStackCheckpoint(uint64_t token) noexcept;
 }

@@ -1036,6 +1036,7 @@ cpp_unittest(
     deps = [
         ":test_lifecycle_notification",
         "//fboss/agent:instrumentation_hooks",
+        "//fboss/agent:tracing_stack_checkpoint",
     ],
 )
 
@@ -1050,6 +1051,7 @@ cpp_unittest(
         ":instrumentation_hooks_test_definer",
         ":test_lifecycle_notification",
         "//fboss/agent:instrumentation_hooks",
+        "//fboss/agent:tracing_stack_checkpoint",
     ],
 )
 
