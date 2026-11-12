@@ -8,6 +8,7 @@
 
 #include "fboss/agent/FbossError.h"
 
+#include <gtest/gtest-spi.h>
 #include <gtest/gtest.h>
 
 namespace facebook::fboss {
@@ -110,7 +111,8 @@ TEST(DropReasonReportingTest, selectsObservationSourceForSupportedAsics) {
        {cfg::AsicType::ASIC_TYPE_TOMAHAWK5,
         cfg::AsicType::ASIC_TYPE_TOMAHAWK6,
         cfg::AsicType::ASIC_TYPE_CHENAB,
-        cfg::AsicType::ASIC_TYPE_CHENAB2}) {
+        cfg::AsicType::ASIC_TYPE_CHENAB2,
+        cfg::AsicType::ASIC_TYPE_YUBA}) {
     int logReads = 0;
     int statsReads = 0;
     DropReasonReportingContext context;
@@ -130,6 +132,36 @@ TEST(DropReasonReportingTest, selectsObservationSourceForSupportedAsics) {
     EXPECT_EQ(logReads > 0, !usesBitmap);
     EXPECT_EQ(statsReads > 0, usesBitmap);
   }
+}
+
+TEST(
+    DropReasonReportingTest,
+    accumulatesCategorizedLinesAndResetsCaptureWindow) {
+  std::vector<std::string> logs{
+      "prefix DROP reasons NPU_INGRESS: UNEXPECTED",
+      "prefix DROP reasons FORWARDING: OTHER, MTU, MTU"};
+  DropReasonReportingContext context;
+  context.readLogMessages = [&]() { return logs; };
+  auto reporting =
+      createDropReasonReportingImpl(cfg::AsicType::ASIC_TYPE_YUBA, context);
+  reporting->collectDropObservation();
+  EXPECT_TRUE(reporting->expectedDropReasonObserved(DropScenario::EgressMtu));
+  EXPECT_FALSE(reporting->expectedDropReasonObserved(DropScenario::AclDeny));
+  EXPECT_EQ(
+      reporting->dropReasonToString(),
+      "FORWARDING=[MTU, OTHER] NPU_INGRESS=[UNEXPECTED]");
+  EXPECT_EQ(
+      reporting->expectedDropLog(DropScenario::EgressMtu),
+      "DROP reasons FORWARDING");
+  EXPECT_NONFATAL_FAILURE(
+      reporting->verifyOnlyExpectedDropReasonReported(DropScenario::EgressMtu),
+      "unexpected drop reasons");
+  reporting->prepareDropObservation();
+  EXPECT_FALSE(reporting->expectedDropReasonObserved(DropScenario::EgressMtu));
+  logs = {"prefix DROP reasons FORWARDING: MTU"};
+  reporting->collectDropObservation();
+  EXPECT_TRUE(reporting->expectedDropReasonObserved(DropScenario::EgressMtu));
+  reporting->verifyOnlyExpectedDropReasonReported(DropScenario::EgressMtu);
 }
 
 TEST(DropReasonReportingTest, rejectsUnsupportedAsics) {

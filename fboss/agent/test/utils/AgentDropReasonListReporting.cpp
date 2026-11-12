@@ -74,6 +74,18 @@ ListDropReasonReportingImpl::getAggregatedDropReasons() {
   return result;
 }
 
+void ListDropReasonReportingImpl::drainDropReasons() {
+  // Drain startup and previous-phase observations before capture resets.
+  auto previousSize = context_.readLogMessages().size();
+  int quietReads = 0;
+  WITH_RETRIES({
+    const auto size = context_.readLogMessages().size();
+    quietReads = size == previousSize ? quietReads + 1 : 0;
+    previousSize = size;
+    ASSERT_EVENTUALLY_GE(quietReads, 3);
+  });
+}
+
 bool ListDropReasonReportingImpl::expectedDropReasonsObserved(
     const DropReasons& reasons,
     const DropReasons& expected) {

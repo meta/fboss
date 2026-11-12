@@ -7,6 +7,7 @@ add_library(drop_reason_reporting_test_utils
   fboss/agent/test/utils/AgentDropReasonBitmapReporting.cpp
   fboss/agent/test/utils/AgentDropReasonListReporting.cpp
   fboss/agent/test/utils/AgentDropReasonReporting.cpp
+  fboss/agent/test/utils/AgentDropReasonTajoReporting.cpp
   fboss/agent/test/utils/AgentDropReasonXgsReporting.cpp
 )
 

@@ -29,6 +29,8 @@ class ListDropReasonReportingImpl {
 
   DropReasons getAggregatedDropReasons();
 
+  void drainDropReasons();
+
   static bool expectedDropReasonsObserved(
       const DropReasons& reasons,
       const DropReasons& expected);

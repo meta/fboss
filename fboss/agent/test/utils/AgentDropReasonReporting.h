@@ -56,6 +56,8 @@ std::unique_ptr<DropReasonReportingImpl> createDropReasonReportingImpl(
     DropReasonReportingContext context);
 std::unique_ptr<DropReasonReportingImpl> createListDropReasonReportingImpl(
     DropReasonReportingContext context);
+std::unique_ptr<DropReasonReportingImpl> createTajoDropReasonReportingImpl(
+    DropReasonReportingContext context);
 std::unique_ptr<DropReasonReportingImpl> createBitmapDropReasonReportingImpl(
     DropReasonReportingContext context);
 

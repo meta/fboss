@@ -188,6 +188,8 @@ std::unique_ptr<DropReasonReportingImpl> createDropReasonReportingImpl(
     case cfg::AsicType::ASIC_TYPE_CHENAB:
     case cfg::AsicType::ASIC_TYPE_CHENAB2:
       return createBitmapDropReasonReportingImpl(std::move(context));
+    case cfg::AsicType::ASIC_TYPE_YUBA:
+      return createTajoDropReasonReportingImpl(std::move(context));
     case cfg::AsicType::ASIC_TYPE_FAKE:
     case cfg::AsicType::ASIC_TYPE_MOCK:
     case cfg::AsicType::ASIC_TYPE_TRIDENT2:
@@ -201,7 +203,6 @@ std::unique_ptr<DropReasonReportingImpl> createDropReasonReportingImpl(
     case cfg::AsicType::ASIC_TYPE_JERICHO2:
     case cfg::AsicType::ASIC_TYPE_RAMON:
     case cfg::AsicType::ASIC_TYPE_JERICHO3:
-    case cfg::AsicType::ASIC_TYPE_YUBA:
     case cfg::AsicType::ASIC_TYPE_RAMON3:
     case cfg::AsicType::ASIC_TYPE_AGERA3:
     case cfg::AsicType::ASIC_TYPE_G202X:

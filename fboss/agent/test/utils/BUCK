@@ -10,6 +10,7 @@ cpp_library(
         "AgentDropReasonBitmapReporting.cpp",
         "AgentDropReasonListReporting.cpp",
         "AgentDropReasonReporting.cpp",
+        "AgentDropReasonTajoReporting.cpp",
         "AgentDropReasonXgsReporting.cpp",
     ],
     headers = [
