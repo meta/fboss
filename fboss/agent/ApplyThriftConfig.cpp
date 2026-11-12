@@ -1195,6 +1195,21 @@ shared_ptr<SwitchState> ThriftConfigApplier::run() {
     }
   }
 
+  // This check covers the intfID of each VLAN.
+  for (const auto& vlanMap : std::as_const(*newVlans)) {
+    for (const auto& [_, vlan] : std::as_const(*vlanMap.second)) {
+      auto intfID = vlan->getInterfaceID();
+      if (FLAGS_enforce_vlan_intf_exists && intfID != InterfaceID(0) &&
+          !new_->getInterfaces()->getNodeIf(intfID)) {
+        throw FbossError(
+            "VLAN ",
+            vlan->getID(),
+            " refers to non-existent interface ",
+            intfID);
+      }
+    }
+  }
+
   // Add sFlow collectors
   {
     auto newCollectors = updateSflowCollectors();

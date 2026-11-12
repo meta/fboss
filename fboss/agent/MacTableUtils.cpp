@@ -213,8 +213,8 @@ std::shared_ptr<SwitchState> MacTableUtils::updateOrAddStaticEntryIfNbrExists(
         });
   };
   auto vlan = state->getVlans()->getNodeIf(vlanId).get();
-  if (!vlan) {
-    // A config change removed the VLAN after this update was queued.
+  if (!vlan || !state->getInterfaces()->getNodeIf(vlan->getInterfaceID())) {
+    // A config change removed the VLAN or its interface after this was queued.
     return state;
   }
   const auto& arpTable = *getNeighborTableForVlan<ArpTable>(state, vlanId);

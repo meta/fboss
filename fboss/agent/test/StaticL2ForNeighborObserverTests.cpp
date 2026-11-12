@@ -11,6 +11,7 @@
 #include <gtest/gtest.h>
 
 #include "fboss/agent/L2Entry.h"
+#include "fboss/agent/MacTableUtils.h"
 #include "fboss/agent/NeighborUpdater.h"
 #include "fboss/agent/state/Vlan.h"
 #include "fboss/agent/test/HwTestHandle.h"
@@ -203,6 +204,73 @@ class StaticL2ForNeighorObserverTest : public ::testing::Test {
     waitForStateUpdates(this->sw_);
   }
 
+  // Hold the update thread, so the second update runs on the first one's state.
+  void queueAfterRemoval(StateUpdateFn removeFn, Func queueFn) {
+    runInUpdateEventBaseAndWait([&]() {
+      sw_->updateState("remove from state", std::move(removeFn));
+      queueFn();
+    });
+    waitForStateUpdates(sw_);
+  }
+
+  void queueEnsureStaticMac() {
+    sw_->updateState(
+        "ensure static MAC for nbr",
+        [vlan = kVlan(),
+         mac = kMacAddress()](const std::shared_ptr<SwitchState>& state) {
+          return MacTableUtils::updateOrAddStaticEntryIfNbrExists(
+              state, vlan, mac);
+        });
+  }
+
+  size_t neighborCacheSize() {
+    auto* updater = sw_->getNeighborUpdater();
+    return updater->getArpCacheDataForIntf().get().size() +
+        updater->getNdpCacheDataForIntf().get().size();
+  }
+
+  // The cache must have the entry, or the flush queues no update.
+  void queueNeighborFlush() {
+    EXPECT_EQ(neighborCacheSize(), 1);
+    sw_->getNeighborUpdater()->portFlushEntries(PortDescriptor(kPortID()));
+    sw_->getNeighborUpdater()->waitForPendingUpdates();
+    EXPECT_EQ(neighborCacheSize(), 0);
+  }
+
+  void queueClassIDUpdate() {
+    EXPECT_EQ(neighborCacheSize(), 1);
+    auto ip = getIpAddress();
+    auto classID = cfg::AclLookupClass::CLASS_QUEUE_PER_HOST_QUEUE_0;
+    if (ip.isV4()) {
+      sw_->getNeighborUpdater()->updateEntryClassID(
+          kVlan(), ip.asV4(), classID);
+    } else {
+      sw_->getNeighborUpdater()->updateEntryClassID(
+          kVlan(), ip.asV6(), classID);
+    }
+    sw_->getNeighborUpdater()->waitForPendingUpdates();
+  }
+
+  std::shared_ptr<SwitchState> removeInterface(
+      const std::shared_ptr<SwitchState>& state,
+      bool removeVlan) {
+    auto newState = state->clone();
+    newState->getInterfaces()->modify(&newState)->removeNode(kInterfaceID());
+    auto vlans = newState->getVlans()->modify(&newState);
+    if (removeVlan) {
+      vlans->removeNode(kVlan());
+    } else {
+      vlans->getNode(kVlan())->modify(&newState)->setInterfaceID(
+          InterfaceID(0));
+    }
+    return newState;
+  }
+
+  bool interfaceExists() const {
+    return sw_->getState()->getInterfaces()->getNodeIf(kInterfaceID()) !=
+        nullptr;
+  }
+
  protected:
   void verifyMacEntryExists(
       MacEntryType type,
@@ -381,4 +449,46 @@ TYPED_TEST(StaticL2ForNeighorObserverTest, macMovePostNeighborResolution) {
   this->resolve(this->getIpAddress(), this->kMacAddress(), this->kPortID2());
   this->verifyMacEntryExists(MacEntryType::STATIC_ENTRY, this->kPortID2());
 }
+
+TYPED_TEST(StaticL2ForNeighorObserverTest, queuedStaticMacAfterVlanRemoved) {
+  this->resolve(this->getIpAddress(), this->kMacAddress());
+  this->queueAfterRemoval(
+      [this](const auto& state) { return this->removeInterface(state, true); },
+      [this]() { this->queueEnsureStaticMac(); });
+  EXPECT_FALSE(this->interfaceExists());
+}
+
+TYPED_TEST(
+    StaticL2ForNeighorObserverTest,
+    queuedStaticMacAfterInterfaceRemoved) {
+  this->resolve(this->getIpAddress(), this->kMacAddress());
+  this->queueAfterRemoval(
+      [this](const auto& state) { return this->removeInterface(state, false); },
+      [this]() { this->queueEnsureStaticMac(); });
+  EXPECT_FALSE(this->interfaceExists());
+  // This records the present behavior: the static MAC of the neighbor stays.
+  this->verifyMacEntryExists(MacEntryType::STATIC_ENTRY);
+}
+
+TYPED_TEST(
+    StaticL2ForNeighorObserverTest,
+    queuedNeighborFlushAfterInterfaceRemoved) {
+  this->resolve(this->getIpAddress(), this->kMacAddress());
+  this->verifyMacEntryExists(MacEntryType::STATIC_ENTRY);
+  this->queueAfterRemoval(
+      [this](const auto& state) { return this->removeInterface(state, false); },
+      [this]() { this->queueNeighborFlush(); });
+  EXPECT_FALSE(this->interfaceExists());
+}
+
+TYPED_TEST(
+    StaticL2ForNeighorObserverTest,
+    queuedClassIDUpdateAfterInterfaceRemoved) {
+  this->resolve(this->getIpAddress(), this->kMacAddress());
+  this->queueAfterRemoval(
+      [this](const auto& state) { return this->removeInterface(state, false); },
+      [this]() { this->queueClassIDUpdate(); });
+  EXPECT_FALSE(this->interfaceExists());
+}
+
 } // namespace facebook::fboss

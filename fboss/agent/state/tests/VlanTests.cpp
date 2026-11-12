@@ -7,6 +7,7 @@
  *  of patent rights can be found in the PATENTS file in the same directory.
  *
  */
+#include "fboss/agent/AgentFeatures.h"
 #include "fboss/agent/ApplyThriftConfig.h"
 #include "fboss/agent/FbossError.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
@@ -22,6 +23,8 @@
 #include "fboss/agent/test/TestUtils.h"
 
 #include <fmt/core.h>
+#include <gflags/gflags.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <string>
 
@@ -487,6 +490,60 @@ TEST(VlanMap, applyConfig) {
   EXPECT_EQ(nullptr, vlansV3->getNodeIf(VlanID(99)));
 
   checkChangedVlans(vlansV2, vlansV3, {}, {}, {99});
+}
+
+TEST(Vlan, intfIDOfAbsentInterface) {
+  auto platform = createMockPlatform();
+  auto stateV0 = make_shared<SwitchState>();
+  registerPort(stateV0, PortID(1), "port1", scope());
+
+  cfg::SwitchConfig config;
+  config.ports()->resize(1);
+  preparedMockPortConfig(config.ports()[0], 1);
+  config.vlans()->resize(2);
+  config.vlans()[0].id() = 1;
+  config.vlans()[1].id() = 100;
+  config.vlans()[1].intfID() = 100;
+  config.defaultVlan() = 1;
+  config.vlanPorts()->resize(1);
+  config.vlanPorts()[0].logicalPort() = 1;
+  config.vlanPorts()[0].vlanID() = 100;
+  config.interfaces()->resize(1);
+  config.interfaces()[0].intfID() = 100;
+  config.interfaces()[0].vlanID() = 100;
+
+  // A VLAN with interface id 0 is valid. VLAN 1 has no interface.
+  auto stateV1 = publishAndApplyConfig(stateV0, &config, platform.get());
+  ASSERT_NE(nullptr, stateV1);
+  EXPECT_EQ(
+      stateV1->getVlans()->getNode(VlanID(1))->getInterfaceID(),
+      InterfaceID(0));
+
+  // The port leaves the VLAN, or the enabled-port check refuses the config.
+  config.interfaces()->clear();
+  config.vlanPorts()->clear();
+  EXPECT_THROW(
+      {
+        try {
+          publishAndApplyConfig(stateV1, &config, platform.get());
+        } catch (const FbossError& e) {
+          EXPECT_THAT(
+              e.what(),
+              testing::HasSubstr(
+                  "VLAN 100 refers to non-existent interface 100"));
+          throw;
+        }
+      },
+      FbossError);
+
+  gflags::FlagSaver flagSaver;
+  FLAGS_enforce_vlan_intf_exists = false;
+  auto stateV2 = publishAndApplyConfig(stateV1, &config, platform.get());
+  ASSERT_NE(nullptr, stateV2);
+  EXPECT_EQ(
+      stateV2->getVlans()->getNode(VlanID(100))->getInterfaceID(),
+      InterfaceID(100));
+  EXPECT_EQ(stateV2->getInterfaces()->getNodeIf(InterfaceID(100)), nullptr);
 }
 
 TEST(Vlan, priorityTagging) {

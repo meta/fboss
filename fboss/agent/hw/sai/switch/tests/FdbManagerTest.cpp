@@ -7,9 +7,11 @@
  *  of patent rights can be found in the PATENTS file in the same directory.
  *
  */
+#include "fboss/agent/FbossError.h"
 #include "fboss/agent/hw/sai/switch/SaiBridgeManager.h"
 #include "fboss/agent/hw/sai/switch/SaiFdbManager.h"
 #include "fboss/agent/hw/sai/switch/SaiPortManager.h"
+#include "fboss/agent/hw/sai/switch/SaiRouterInterfaceManager.h"
 #include "fboss/agent/hw/sai/switch/SaiVlanManager.h"
 #include "fboss/agent/hw/sai/switch/tests/ManagerTestBase.h"
 #include "fboss/agent/state/MacEntry.h"
@@ -62,6 +64,17 @@ class FdbManagerTest : public ManagerTestBase {
                            ->modify(VlanID(intf0.id), &newState);
     newMacTable->removeEntry(kMac());
     applyNewState(newState);
+  }
+
+  // Remove the router interface. The VLAN and its MAC entries stay.
+  void removeInterface() {
+    auto newState = programmedState->clone();
+    newState->getInterfaces()->modify(&newState)->removeNode(
+        InterfaceID(intf0.id));
+    applyNewState(newState);
+    ASSERT_FALSE(
+        saiManagerTable->routerInterfaceManager().getRouterInterfaceHandle(
+            InterfaceID(intf0.id)));
   }
 
   TestInterface intf0;
@@ -160,4 +173,34 @@ TEST_F(FdbManagerTest, getL2EntriesTest) {
     }
   }
   EXPECT_TRUE(found);
+}
+
+TEST_F(FdbManagerTest, getL2EntriesAfterInterfaceRemoved) {
+  addMacEntry();
+  auto* fdbManager = &saiManagerTable->fdbManager();
+  auto hasMac = [this](const std::vector<L2EntryThrift>& entries) {
+    return std::any_of(entries.begin(), entries.end(), [this](const auto& e) {
+      return *e.mac() == kMac().toString();
+    });
+  };
+  EXPECT_TRUE(hasMac(fdbManager->getL2Entries()));
+  removeInterface();
+  EXPECT_NE(
+      fdbManager->listManagedObjects().find(kMac().toString()),
+      std::string::npos);
+  std::vector<L2EntryThrift> l2Entries;
+  EXPECT_NO_THROW(l2Entries = fdbManager->getL2Entries());
+  EXPECT_FALSE(hasMac(l2Entries));
+}
+
+TEST_F(FdbManagerTest, addMacAfterInterfaceRemoved) {
+  removeInterface();
+  EXPECT_THROW(
+      saiManagerTable->fdbManager().addFdbEntry(
+          SaiPortDescriptor(PortID(intf0.remoteHosts[0].port.id)),
+          InterfaceID(intf0.id),
+          kMac(),
+          SAI_FDB_ENTRY_TYPE_STATIC,
+          std::nullopt),
+      FbossError);
 }

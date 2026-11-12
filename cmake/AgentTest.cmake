@@ -116,6 +116,32 @@ target_link_libraries(l3_traffic_loop_expiry_test
 
 gtest_discover_tests(l3_traffic_loop_expiry_test)
 
+add_executable(static_l2_for_neighbor_observer_test
+  fboss/util/oss/TestMain.cpp
+  fboss/agent/test/StaticL2ForNeighborObserverTests.cpp
+)
+
+target_link_libraries(static_l2_for_neighbor_observer_test
+  agent_test_utils
+  ${GTEST}
+  ${LIBGMOCK_LIBRARIES}
+)
+
+gtest_discover_tests(static_l2_for_neighbor_observer_test)
+
+add_executable(vlan_state_test
+  fboss/util/oss/TestMain.cpp
+  fboss/agent/state/tests/VlanTests.cpp
+)
+
+target_link_libraries(vlan_state_test
+  agent_test_utils
+  ${GTEST}
+  ${LIBGMOCK_LIBRARIES}
+)
+
+gtest_discover_tests(vlan_state_test)
+
 add_executable(vrf_config_test
   fboss/util/oss/TestMain.cpp
   fboss/agent/test/VrfConfigTests.cpp

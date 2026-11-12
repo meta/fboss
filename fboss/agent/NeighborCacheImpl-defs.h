@@ -525,6 +525,10 @@ void NeighborCacheImpl<NTable>::updateEntryClassID(
           std::shared_ptr<SwitchState> newState{state};
 
           auto* intf = state->getInterfaces()->getNodeIf(intfID_).get();
+          if (!intf) {
+            // A config change removed the interface after this was queued.
+            return std::shared_ptr<SwitchState>();
+          }
           auto* table = intf->template getNeighborTable<NTable>().get();
 
           auto node = table->getNodeIf(ip.str());
@@ -682,7 +686,11 @@ void NeighborCacheImpl<NTable>::flushEntry(AddressType ip, bool* flushed) {
       -> std::shared_ptr<SwitchState> {
     std::shared_ptr<SwitchState> newState{state};
 
-    auto* intf = newState->getInterfaces()->getNode(intfID_).get();
+    auto* intf = newState->getInterfaces()->getNodeIf(intfID_).get();
+    if (!intf) {
+      // A config change removed the interface after this update was queued.
+      return nullptr;
+    }
     bool flushedEntry = flushEntryFromSwitchState(&newState, ip, intf);
 
     auto oldEntry = intf->getNeighborTable<NTable>()->getNodeIf(ip.str());
