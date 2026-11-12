@@ -4739,10 +4739,12 @@ void SwSwitch::sendNeighborSolicitationForConfiguredInterfaces(
   }
 }
 
-bool SwSwitch::hasQualifiedConfiguredDesiredPeer(const InterfaceID& intfId) {
+bool SwSwitch::hasQualifiedConfiguredDesiredPeer(
+    const InterfaceID& intfId,
+    const folly::IPAddress& ip) {
   auto switchState = getState();
-  auto* intf = switchState->getInterfaces()->getNode(intfId).get();
-  if (intf->getDesiredPeerAddressIPv6().has_value()) {
+  auto* intf = switchState->getInterfaces()->getNodeIf(intfId).get();
+  if (intf && intf->getDesiredPeerAddressIPv6().has_value()) {
     auto desiredPeerAddressString = intf->getDesiredPeerAddressIPv6();
     // check if this is correct ipv6 address
     // Check if desiredPeerAddressString is a valid IPv6 address or CIDR
@@ -4751,6 +4753,9 @@ bool SwSwitch::hasQualifiedConfiguredDesiredPeer(const InterfaceID& intfId) {
     if (!cidrNetwork.first.isV6()) {
       XLOG(ERR) << "Desired peer address is not a valid IPv6 address: "
                 << *desiredPeerAddressString;
+      return false;
+    }
+    if (cidrNetwork.first != ip) {
       return false;
     }
     // Check if interface has any operational ports
