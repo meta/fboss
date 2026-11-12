@@ -575,10 +575,7 @@ class HwArsSprayTest : public HwArsTest {
 // back to dynamic mode
 TEST_F(HwArsFlowletTest, ValidateFlowsetExceed) {
   if (this->skipTest()) {
-#if defined(GTEST_SKIP)
     GTEST_SKIP();
-#endif
-    return;
   }
 
   auto setup = [&]() {
@@ -637,10 +634,7 @@ TEST_F(HwArsFlowletTest, ValidateFlowsetExceed) {
 // verify if all 16 ECMP groups are in DLB mode
 TEST_F(HwArsFlowletTest, ValidateFlowsetTableFull) {
   if (this->skipTest()) {
-#if defined(GTEST_SKIP)
     GTEST_SKIP();
-#endif
-    return;
   }
 
   auto setup = [&]() {
@@ -693,10 +687,7 @@ TEST_F(HwArsSprayTest, ValidateMaxEcmpIdFlowletUpdate) {
   if (this->skipTest() ||
       (getPlatform()->getAsic()->getAsicType() ==
        cfg::AsicType::ASIC_TYPE_FAKE)) {
-#if defined(GTEST_SKIP)
     GTEST_SKIP();
-#endif
-    return;
   }
 
   // Helper to filter out management ports from port list
@@ -781,10 +772,7 @@ TEST_F(HwArsSprayTest, ValidateMaxEcmpIdFlowletUpdate) {
 
 TEST_F(HwArsSprayTest, VerifyArsEnable) {
   if (this->skipTest()) {
-#if defined(GTEST_SKIP)
     GTEST_SKIP();
-#endif
-    return;
   }
 
   auto setup = [&]() {
@@ -815,10 +803,7 @@ TEST_F(HwArsSprayTest, VerifyArsEnable) {
 
 TEST_F(HwArsSprayTest, VerifyPortFlowletConfigChange) {
   if (this->skipTest()) {
-#if defined(GTEST_SKIP)
     GTEST_SKIP();
-#endif
-    return;
   }
 
   auto setup = [&]() { resolveNextHopsAddRoute(kMaxLinks); };
@@ -843,10 +828,7 @@ TEST_F(HwArsSprayTest, VerifyPortFlowletConfigChange) {
 
 TEST_F(HwArsFlowletTest, VerifyFlowletConfigChange) {
   if (this->skipTest()) {
-#if defined(GTEST_SKIP)
     GTEST_SKIP();
-#endif
-    return;
   }
 
   auto setup = [&]() { resolveNextHopsAddRoute(kMaxLinks); };
@@ -874,10 +856,7 @@ TEST_F(HwArsFlowletTest, VerifyFlowletConfigChange) {
 
 TEST_F(HwArsFlowletTest, VerifyFlowletConfigRemoval) {
   if (this->skipTest()) {
-#if defined(GTEST_SKIP)
     GTEST_SKIP();
-#endif
-    return;
   }
 
   auto setup = [&]() { resolveNextHopsAddRoute(kMaxLinks); };
@@ -905,10 +884,7 @@ TEST_F(HwArsFlowletTest, VerifyFlowletConfigRemoval) {
 
 TEST_F(HwArsFlowletTest, VerifyGetEcmpDetails) {
   if (this->skipTest()) {
-#if defined(GTEST_SKIP)
     GTEST_SKIP();
-#endif
-    return;
   }
 
   auto setup = [&]() { resolveNextHopsAddRoute(kMaxLinks); };
@@ -950,10 +926,7 @@ TEST_F(HwArsFlowletTest, VerifyGetEcmpDetails) {
 
 TEST_F(HwArsFlowletTest, VerifyEcmpFlowletSwitchingEnable) {
   if (this->skipTest()) {
-#if defined(GTEST_SKIP)
     GTEST_SKIP();
-#endif
-    return;
   }
 
   // This test setup static ECMP and update the static ECMP to DLB ECMP and
@@ -1023,10 +996,7 @@ TEST_F(HwArsFlowletTest, VerifyEcmpFlowletSwitchingEnable) {
 
 TEST_F(HwArsFlowletTest, ValidateEcmpDetailsThread) {
   if (this->skipTest()) {
-#if defined(GTEST_SKIP)
     GTEST_SKIP();
-#endif
-    return;
   }
 
   auto setup = [&]() {
@@ -1085,10 +1055,7 @@ TEST_F(HwArsFlowletTest, ValidateFlowletStatsThread) {
   if (this->skipTest() ||
       (getPlatform()->getAsic()->getAsicType() ==
        cfg::AsicType::ASIC_TYPE_FAKE)) {
-#if defined(GTEST_SKIP)
     GTEST_SKIP();
-#endif
-    return;
   }
 
   auto setup = [&]() {
@@ -1147,10 +1114,7 @@ TEST_F(HwArsFlowletTest, ValidateFlowletStatsThread) {
 
 TEST_F(HwArsFlowletTest, VerifySkipEcmpFlowletSwitchingEnable) {
   if (this->skipTest()) {
-#if defined(GTEST_SKIP)
     GTEST_SKIP();
-#endif
-    return;
   }
 
   // This test verifies ability to configure ECMP groups without port config
@@ -1176,10 +1140,7 @@ TEST_F(HwArsFlowletTest, VerifySkipEcmpFlowletSwitchingEnable) {
 // Verify ability to create upto 128 ECMP DLB groups in spray mode
 TEST_F(HwArsSprayTest, VerifySprayModeScale) {
   if (this->skipTest()) {
-#if defined(GTEST_SKIP)
     GTEST_SKIP();
-#endif
-    return;
   }
   auto numEcmp = kMaxDlbGroups();
 
@@ -1206,10 +1167,7 @@ TEST_F(HwArsSprayTest, VerifySprayModeScale) {
 // Verify warmboot from 16 ECMP (flowlet) to 96 ECMP (per-packet)
 TEST_F(HwArsFlowletTest, VerifyModeFlowletToSpray) {
   if (this->skipTest()) {
-#if defined(GTEST_SKIP)
     GTEST_SKIP();
-#endif
-    return;
   }
   int numEcmp = 48;
   // CS00012344837
@@ -1233,10 +1191,7 @@ TEST_F(HwArsFlowletTest, VerifyModeFlowletToSpray) {
 // will be 16 flowlet ECMPs and 80 disabled ECMPs post-warmboot.
 TEST_F(HwArsFlowletTest, VerifyModeSprayToFlowlet) {
   if (this->skipTest()) {
-#if defined(GTEST_SKIP)
     GTEST_SKIP();
-#endif
-    return;
   }
 
   flowletSwitchingWBHelper(
@@ -1250,10 +1205,7 @@ TEST_F(HwArsFlowletTest, VerifyModeSprayToFlowlet) {
 
 TEST_F(HwArsFlowletTest, VerifyModeSprayFlowletSizeChange) {
   if (this->skipTest()) {
-#if defined(GTEST_SKIP)
     GTEST_SKIP();
-#endif
-    return;
   }
 
   // Update max_flows size from 2048 -> 256
@@ -1274,10 +1226,7 @@ TEST_F(HwArsTest, VerifyEcmpIdAllocationForNonDynamicEcmp) {
   if (this->skipTest() ||
       (getPlatform()->getAsic()->getAsicType() ==
        cfg::AsicType::ASIC_TYPE_FAKE)) {
-#if defined(GTEST_SKIP)
     GTEST_SKIP();
-#endif
-    return;
   }
 
   auto setup = [&]() {
@@ -1310,10 +1259,7 @@ TEST_F(HwArsTest, VerifyEcmpIdAllocationForDynamicEcmp) {
   if (this->skipTest() ||
       (getPlatform()->getAsic()->getAsicType() ==
        cfg::AsicType::ASIC_TYPE_FAKE)) {
-#if defined(GTEST_SKIP)
     GTEST_SKIP();
-#endif
-    return;
   }
 
   auto numEcmp = kMaxDlbGroups();
