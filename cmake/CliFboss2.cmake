@@ -1302,6 +1302,8 @@ add_library(fboss2_config_lib
   fboss/cli/fboss2/commands/config/qos/QosPolicyUtils.h
   fboss/cli/fboss2/commands/delete/qos/CmdDeleteQos.cpp
   fboss/cli/fboss2/commands/delete/qos/CmdDeleteQos.h
+  fboss/cli/fboss2/commands/delete/qos/buffer_pool/CmdDeleteQosBufferPool.cpp
+  fboss/cli/fboss2/commands/delete/qos/buffer_pool/CmdDeleteQosBufferPool.h
   fboss/cli/fboss2/commands/delete/qos/default_policy/CmdDeleteQosDefaultPolicy.cpp
   fboss/cli/fboss2/commands/delete/qos/default_policy/CmdDeleteQosDefaultPolicy.h
   fboss/cli/fboss2/commands/delete/qos/queue_config/CmdDeleteQosQueueConfig.cpp
@@ -1413,6 +1415,8 @@ add_library(fboss2_config_lib
   fboss/cli/fboss2/commands/delete/interface/ipv6/CmdDeleteInterfaceIpv6.h
   fboss/cli/fboss2/commands/delete/interface/ipv6/ndp/CmdDeleteInterfaceIpv6Ndp.cpp
   fboss/cli/fboss2/commands/delete/interface/ipv6/ndp/CmdDeleteInterfaceIpv6Ndp.h
+  fboss/cli/fboss2/commands/delete/interface/pfc_config/CmdDeleteInterfacePfcConfig.cpp
+  fboss/cli/fboss2/commands/delete/interface/pfc_config/CmdDeleteInterfacePfcConfig.h
   fboss/cli/fboss2/commands/delete/interface/sflow/CmdDeleteInterfaceSflow.cpp
   fboss/cli/fboss2/commands/delete/interface/sflow/CmdDeleteInterfaceSflow.h
   fboss/cli/fboss2/commands/delete/load_balancing/CmdDeleteLoadBalancing.cpp
@@ -1453,6 +1457,8 @@ add_library(fboss2_config_lib
   fboss/cli/fboss2/commands/delete/qos/policy/CmdDeleteQosPolicy.h
   fboss/cli/fboss2/commands/delete/qos/policy/CmdDeleteQosPolicyMap.cpp
   fboss/cli/fboss2/commands/delete/qos/policy/CmdDeleteQosPolicyMap.h
+  fboss/cli/fboss2/commands/delete/qos/priority_group_policy/CmdDeleteQosPriorityGroupPolicy.cpp
+  fboss/cli/fboss2/commands/delete/qos/priority_group_policy/CmdDeleteQosPriorityGroupPolicy.h
   fboss/cli/fboss2/commands/delete/mirror/CmdDeleteMirror.cpp
   fboss/cli/fboss2/commands/delete/mirror/CmdDeleteMirror.h
   fboss/cli/fboss2/commands/delete/switch/CmdDeleteSwitch.cpp
