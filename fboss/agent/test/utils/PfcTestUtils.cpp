@@ -251,10 +251,12 @@ void setupPortPgConfig(
     if (buffer.resumeOffset.has_value()) {
       pgConfig.resumeOffsetBytes() = *buffer.resumeOffset;
     }
-    if (ensemble->getHwAsicTable()
-            ->getHwAsics()
-            .cbegin()
-            ->second->getAsicType() == cfg::AsicType::ASIC_TYPE_JERICHO3) {
+    auto asicType = ensemble->getHwAsicTable()
+                        ->getHwAsics()
+                        .cbegin()
+                        ->second->getAsicType();
+    if (asicType == cfg::AsicType::ASIC_TYPE_JERICHO3 ||
+        asicType == cfg::AsicType::ASIC_TYPE_QUMRAN4D) {
       // Need to translate global config to shared thresholds
       pgConfig.maxSharedXoffThresholdBytes() = buffer.globalShared;
       pgConfig.minSharedXoffThresholdBytes() = buffer.globalShared;
