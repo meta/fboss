@@ -19,12 +19,15 @@
 #include <boost/uuid/uuid_io.hpp>
 #include <folly/Exception.h>
 #include <folly/FileUtil.h>
+#include <folly/String.h>
 #include <folly/logging/xlog.h>
 
 #include <stdlib.h>
 #include <termios.h>
 #include <unistd.h>
 
+#include <chrono>
+#include <string_view>
 #include <thread>
 
 // The python_repl library is not built against Leaba SDKs >= 24.8.3001, whose
@@ -185,9 +188,52 @@ void DiagShell::initTerminal() {
 
     ts_.reset(new detail::TerminalSession(*ptys_, repl_->getStreams()));
     repl_->run();
+    if (hw_->getPlatform()->getAsic()->getAsicVendor() ==
+        HwAsic::AsicVendor::ASIC_VENDOR_BCM) {
+      syncBcmShell();
+    }
   } else if (!ts_) {
     ts_.reset(new detail::TerminalSession(*ptys_, repl_->getStreams()));
   }
+}
+
+void DiagShell::syncBcmShell() {
+  // A new Broadcom shell can lose input that comes before it is ready.
+  constexpr std::string_view kSyncLine = "fboss_diag_sync\n";
+  constexpr std::string_view kSyncReply = "Unknown command: fboss_diag_sync";
+  constexpr int kMaxTries = 10;
+  constexpr int kReadTimeoutMs = 300;
+  constexpr int kQuietMs = 50;
+  constexpr size_t kMaxLoggedBytes = 256;
+  constexpr auto kSyncTimeout = std::chrono::seconds(3);
+  const auto deadline = std::chrono::steady_clock::now() + kSyncTimeout;
+  auto beforeDeadline = [&deadline]() {
+    return std::chrono::steady_clock::now() < deadline;
+  };
+  std::string output;
+  for (int i = 0; i < kMaxTries && beforeDeadline(); ++i) {
+    auto ret =
+        folly::writeFull(getPtymFd(), kSyncLine.data(), kSyncLine.size());
+    folly::checkUnixError(ret, "Failed to write sync line to PTY master");
+    for (auto in = readOutput(kReadTimeoutMs); !in.empty();
+         in = readOutput(kReadTimeoutMs)) {
+      output += in;
+      if (output.find(kSyncReply) != std::string::npos) {
+        // Drop the other replies, so a streaming client does not see them.
+        while (beforeDeadline() && !readOutput(kQuietMs).empty()) {
+        }
+        return;
+      }
+      if (!beforeDeadline()) {
+        break;
+      }
+    }
+  }
+  XLOG(ERR) << "No reply to the diag shell sync; output: "
+            << folly::backslashify(
+                   output.size() > kMaxLoggedBytes
+                       ? output.substr(output.size() - kMaxLoggedBytes)
+                       : output);
 }
 
 int DiagShell::getPtymFd() const {
@@ -205,6 +251,8 @@ bool DiagShell::tryConnect() {
       try {
         initTerminal();
       } catch (...) {
+        // Restore stdin and stdout, as disconnect() does.
+        ts_.reset();
         diagShellLock_.unlock();
         throw;
       }
