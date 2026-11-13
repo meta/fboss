@@ -430,7 +430,6 @@ bool HwTestThriftHandler::isProgrammedInHw(
     return verifyProgrammedStack<folly::IPAddressV6>(
         hwSwitch_, pfx, InterfaceID(intfID), *labelStack, refCount);
   }
-  return true;
 }
 
 } // namespace utility

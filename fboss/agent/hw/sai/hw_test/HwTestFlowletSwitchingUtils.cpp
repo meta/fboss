@@ -294,7 +294,6 @@ bool validateFlowSetTable(
 
 int getL3EcmpDlbFailPackets(const TestEnsembleIf* /*ensemble*/) {
   throw FbossError("getL3EcmpDlbFailPackets : unsupported in Sai Switch");
-  return 0;
 }
 
 } // namespace facebook::fboss::utility

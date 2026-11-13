@@ -4505,7 +4505,6 @@ bool SaiSwitch::isFeatureSetupLocked(
     return isConfigured;
   }
   CHECK(false) << " Unhandled feature " << feature;
-  return false;
 }
 
 void SaiSwitch::unregisterCallbacksLocked(

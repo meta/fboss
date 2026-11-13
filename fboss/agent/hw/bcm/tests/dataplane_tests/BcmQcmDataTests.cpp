@@ -283,10 +283,7 @@ TEST_F(BcmQcmDataTest, VerifyMonitorQcmCfgPortOnly) {
   if (!BcmQcmManager::isQcmSupported(getHwSwitch())) {
     // This test only applies to ceratin ASIC e.g. TH
     // and to specific sdk versions
-#if defined(GTEST_SKIP)
     GTEST_SKIP();
-#endif
-    return;
   }
   auto setup = [&]() {
     // empty monitorPortList
@@ -317,10 +314,7 @@ TEST_F(BcmQcmDataTest, VerifyPortMonitoringPriorityPortsConfigured) {
   if (!BcmQcmManager::isQcmSupported(getHwSwitch())) {
     // This test only applies to ceratin ASIC e.g. TH
     // and to specific sdk versions
-#if defined(GTEST_SKIP)
     GTEST_SKIP();
-#endif
-    return;
   }
 
   auto setup = [&]() {
@@ -376,10 +370,7 @@ TEST_F(BcmQcmDataTest, VerifyPortMonitoringNoneConfigured) {
   if (!BcmQcmManager::isQcmSupported(getHwSwitch())) {
     // This test only applies to ceratin ASIC e.g. TH
     // and to specific sdk versions
-#if defined(GTEST_SKIP)
     GTEST_SKIP();
-#endif
-    return;
   }
 
   auto setup = [&]() { setupHelper(); };
@@ -438,10 +429,7 @@ TEST_F(BcmQcmDataTest, VerifyQcmFirmwareInit) {
   if (!BcmQcmManager::isQcmSupported(getHwSwitch())) {
     // This test only applies to ceratin ASIC e.g. TH
     // and to specific sdk versions
-#if defined(GTEST_SKIP)
     GTEST_SKIP();
-#endif
-    return;
   }
 
   // intent of this test is to load the QcmFirmware during
@@ -465,10 +453,7 @@ TEST_F(BcmQcmDataTest, VerifyQcmFirmwareInit) {
 // and rest all pkts should be marked as red and not sent to the R5 cpu
 TEST_F(BcmQcmDataTest, FlowLearningPolicer) {
   if (!BcmQcmManager::isQcmSupported(getHwSwitch())) {
-#if defined(GTEST_SKIP)
     GTEST_SKIP();
-#endif
-    return;
   }
   auto setup = [&]() { setupHelper(true); };
 
@@ -502,10 +487,7 @@ TEST_F(BcmQcmDataTest, FlowLearningPolicer) {
 // Since its 1 flow, we should only learn 1 flow
 TEST_F(BcmQcmDataTest, FlowLearning) {
   if (!BcmQcmManager::isQcmSupported(getHwSwitch())) {
-#if defined(GTEST_SKIP)
     GTEST_SKIP();
-#endif
-    return;
   }
   auto setup = [&]() { setupHelper(); };
 
@@ -526,10 +508,7 @@ TEST_F(BcmQcmDataTest, FlowLearning) {
 // for multiple flows
 TEST_F(BcmQcmDataTest, MultiFlows) {
   if (!BcmQcmManager::isQcmSupported(getHwSwitch())) {
-#if defined(GTEST_SKIP)
     GTEST_SKIP();
-#endif
-    return;
   }
   auto setup = [&]() { setupHelper(); };
 
@@ -551,10 +530,7 @@ TEST_F(BcmQcmDataTest, MultiFlows) {
 // also ifp entry should hit multiple times
 TEST_F(BcmQcmDataTest, RestrictFlowLearning) {
   if (!BcmQcmManager::isQcmSupported(getHwSwitch())) {
-#if defined(GTEST_SKIP)
     GTEST_SKIP();
-#endif
-    return;
   }
   auto setup = [&]() { setupHelper(); };
 
@@ -580,10 +556,7 @@ TEST_F(BcmQcmDataTest, RestrictFlowLearning) {
 // Enable QCM again and ensure flow learning happens as desired
 TEST_F(BcmQcmDataTest, VerifyQcmStartStop) {
   if (!BcmQcmManager::isQcmSupported(getHwSwitch())) {
-#if defined(GTEST_SKIP)
     GTEST_SKIP();
-#endif
-    return;
   }
   auto setup = [=, this]() { setupHelper(true /* enable policer */); };
   auto setupQcm = [=, this](const bool qcmEnable) { setupQcmOnly(qcmEnable); };
@@ -624,10 +597,7 @@ TEST_F(BcmQcmDataTest, VerifyQcmStartStop) {
 // Enable QCM again.
 TEST_F(BcmQcmDataTest, VerifyQcmStartStopPddcMode) {
   if (!BcmQcmManager::isQcmSupported(getHwSwitch())) {
-#if defined(GTEST_SKIP)
     GTEST_SKIP();
-#endif
-    return;
   }
   auto setup = [=, this]() { setupHelperInPddcMode(); };
   auto setupQcm = [=, this](const bool qcmEnable) { setupQcmOnly(qcmEnable); };
@@ -663,10 +633,7 @@ TEST_F(BcmQcmDataTest, VerifyQcmStartStopPddcMode) {
 // In pddc mode, learned flow count = 0
 TEST_F(BcmQcmDataTest, VerifyQcmPddcModeScanIntervalZero) {
   if (!BcmQcmManager::isQcmSupported(getHwSwitch())) {
-#if defined(GTEST_SKIP)
     GTEST_SKIP();
-#endif
-    return;
   }
   auto setup = [=, this]() {
     setupHelperInPddcMode(true /* bestEffortScan */);
@@ -687,10 +654,7 @@ class BcmQcmDataCollectorParamTest : public BcmQcmDataTest,
 
 TEST_P(BcmQcmDataCollectorParamTest, VerifyFlowCollector) {
   if (!BcmQcmManager::isQcmSupported(getHwSwitch())) {
-#if defined(GTEST_SKIP)
     GTEST_SKIP();
-#endif
-    return;
   }
   bool isIpv6 = GetParam();
   auto setup = [this, isIpv6]() { setUpHelperWithAcls(isIpv6); };
