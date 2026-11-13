@@ -326,6 +326,7 @@ cpp_library(
         "AgentVrfTests.cpp",
         "AgentVxlanTests.cpp",
         "facebook/AgentAccessPolicyAclGreMirrorTests.cpp",
+        "facebook/AgentAccessPolicyAclSflowMirrorTests.cpp",
         "facebook/AgentAccessPolicyAclTests.cpp",
     ],
     headers = [
