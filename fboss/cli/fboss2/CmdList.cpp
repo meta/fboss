@@ -44,6 +44,7 @@
 #include "fboss/cli/fboss2/commands/show/dsf/CmdShowDsf.h"
 #include "fboss/cli/fboss2/commands/show/dsf/subscription/CmdShowDsfSubscription.h"
 #include "fboss/cli/fboss2/commands/show/dsfnodes/CmdShowDsfNodes.h"
+#include "fboss/cli/fboss2/commands/show/environment/fan/CmdShowEnvironmentFan.h"
 #include "fboss/cli/fboss2/commands/show/example/CmdShowExample.h"
 #include "fboss/cli/fboss2/commands/show/fabric/CmdShowFabric.h"
 #include "fboss/cli/fboss2/commands/show/fabric/inputbalance/CmdShowFabricInputBalance.h"
@@ -187,6 +188,16 @@ const CommandTree& kCommandTree() {
        commandHandler<CmdShowArp>,
        validFilterHandler<CmdShowArp>,
        argTypeHandler<CmdShowArpTraits>},
+
+      {"show",
+       "environment",
+       "Show platform environment information",
+       {
+
+           {"fan",
+            "Show fan status and speed information",
+            commandHandler<CmdShowEnvironmentFan>,
+            argTypeHandler<CmdShowEnvironmentFanTraits>}}},
 
       {"show",
        "fabric",
