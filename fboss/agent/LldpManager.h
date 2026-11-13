@@ -12,6 +12,7 @@
 #include <folly/io/async/AsyncTimeout.h>
 #include <memory>
 #include <unordered_map>
+#include <vector>
 #include "fboss/agent/lldp/LinkNeighborDB.h"
 #include "fboss/agent/packet/PktFactory.h"
 #include "fboss/agent/state/Port.h"
@@ -134,6 +135,9 @@ class LldpManager : private folly::AsyncTimeout {
   // This function is internal.  It is only public for use in unit tests.
   void sendLldpOnAllPorts();
 
+  // Public only for unit tests.
+  std::chrono::milliseconds sendNextLldpSlot();
+
   LinkNeighborDB* getDB() {
     return &db_;
   }
@@ -158,6 +162,8 @@ class LldpManager : private folly::AsyncTimeout {
   SwSwitch* sw_{nullptr};
   std::chrono::milliseconds intervalMsecs_;
   LinkNeighborDB db_;
+  std::vector<PortID> txPorts_;
+  size_t nextTxPort_{0};
 };
 
 } // namespace facebook::fboss

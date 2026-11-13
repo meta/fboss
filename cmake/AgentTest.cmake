@@ -102,6 +102,19 @@ target_link_libraries(mpls_handler_test
 
 gtest_discover_tests(mpls_handler_test)
 
+add_executable(lldp_pacing_test
+  fboss/util/oss/TestMain.cpp
+  fboss/agent/test/LldpPacingTest.cpp
+)
+
+target_link_libraries(lldp_pacing_test
+  agent_test_utils
+  ${GTEST}
+  ${LIBGMOCK_LIBRARIES}
+)
+
+gtest_discover_tests(lldp_pacing_test)
+
 add_executable(l3_traffic_loop_expiry_test
   fboss/util/oss/TestMain.cpp
   fboss/agent/test/L3TrafficLoopExpiryTest.cpp
