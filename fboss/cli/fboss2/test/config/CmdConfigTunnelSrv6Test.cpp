@@ -162,6 +162,9 @@ TEST_F(CmdConfigTunnelSrv6TestFixture, validatesArguments) {
   EXPECT_THROW(
       srv6_tunnel_utils::directionName(TunnelType::IP_IN_IP_ENCAP),
       std::invalid_argument);
+  EXPECT_THROW(
+      srv6_tunnel_utils::directionName(TunnelType::VXLAN),
+      std::invalid_argument);
 }
 
 TEST_F(CmdConfigTunnelSrv6TestFixture, rejectsIncompleteOrWrongDirection) {

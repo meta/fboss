@@ -56,6 +56,7 @@ std::string directionName(TunnelType type) {
       return "decap";
     case TunnelType::IP_IN_IP_ENCAP:
     case TunnelType::IP_IN_IP_DECAP:
+    case TunnelType::VXLAN:
       throw std::invalid_argument("Expected an SRv6 tunnel type");
   }
   throw std::invalid_argument("Unknown tunnel type");
