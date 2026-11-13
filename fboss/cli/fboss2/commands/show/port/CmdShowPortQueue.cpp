@@ -10,6 +10,7 @@
 
 #include "CmdShowPortQueue.h"
 #include "fboss/cli/fboss2/CmdHandler.cpp"
+#include "fboss/cli/fboss2/utils/Table.h"
 
 #include <fmt/core.h>
 #include <thrift/lib/cpp/util/EnumUtils.h>
@@ -78,8 +79,6 @@ CmdShowPortQueue::RetType CmdShowPortQueue::queryClient(
 void CmdShowPortQueue::printOutput(
     const RetType& portId2PortInfoThrift,
     std::ostream& out) {
-  constexpr auto fmtString = "{:<7}{:<20}{:<25}{:<10}{:<15}{:<15}";
-  constexpr auto aqmFmtString = "{:<12}{:<11}{:<11}{}";
   const bool detailed = CmdGlobalOptions::getInstance()->isDetailed();
 
   for (auto const& [portId, portInfo] : portId2PortInfoThrift) {
@@ -88,44 +87,42 @@ void CmdShowPortQueue::printOutput(
     out << portInfo.name().value() << "\n";
     out << std::string(10, '=') << std::endl;
 
-    out << fmt::format(
-        fmtString,
-        "ID",
-        "Name",
-        "Mode",
-        "Weight",
-        "ReservedBytes",
-        "ScalingFactor");
+    // RowData is not assignable, so rows are built as strings first.
+    auto toRow = [](const std::vector<std::string>& cells) {
+      return std::vector<utils::Table::RowData>(cells.begin(), cells.end());
+    };
+
+    utils::Table table;
+    std::vector<std::string> header = {
+        "ID", "Name", "Mode", "Weight", "ReservedBytes", "ScalingFactor"};
     if (detailed) {
-      out << fmt::format(
-          aqmFmtString, "AQM", "MinLength", "MaxLength", "Probability");
+      header.insert(
+          header.end(), {"AQM", "MinLength", "MaxLength", "Probability"});
     }
-    out << "\n";
-    out << std::string(detailed ? 135 : 90, '-') << std::endl;
+    table.setHeader(toRow(header));
 
     for (auto const& queue : portInfo.portQueues().value()) {
-      out << fmt::format(
-          fmtString,
-          folly::copy(queue.id().value()),
+      std::vector<std::string> row = {
+          std::to_string(folly::copy(queue.id().value())),
           queue.name().value(),
           queue.mode().value(),
           queue.weight() ? std::to_string(*queue.weight()) : "",
           queue.reservedBytes() ? std::to_string(*queue.reservedBytes()) : "",
-          queue.scalingFactor() ? *queue.scalingFactor() : "");
-      if (detailed) {
-        bool first = true;
-        for (const auto& aqm : aqmRows(queue)) {
-          if (!first) {
-            out << "\n" << fmt::format(fmtString, "", "", "", "", "", "");
-          }
-          first = false;
-          out << fmt::format(aqmFmtString, aqm[0], aqm[1], aqm[2], aqm[3]);
-        }
+          queue.scalingFactor() ? *queue.scalingFactor() : ""};
+      if (!detailed) {
+        table.addRow(toRow(row));
+        continue;
       }
-      out << "\n";
+      const auto queueColumns = row.size();
+      for (const auto& aqm : aqmRows(queue)) {
+        row.insert(row.end(), aqm.begin(), aqm.end());
+        table.addRow(toRow(row));
+        // Further AQM entries go on rows with the queue columns blank.
+        row.assign(queueColumns, "");
+      }
     }
 
-    out << "\n";
+    out << table << "\n";
   }
 }
 
