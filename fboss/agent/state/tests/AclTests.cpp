@@ -1714,6 +1714,24 @@ TEST(Acl, DstIpV6WordValidation) {
     config.acls()[0].dstIpV6Word3() = 0x12345678;
     EXPECT_THROW(applyConfig(&config), FbossError);
   }
+
+  {
+    auto config = makeConfig();
+    config.acls()[0].dstIpV6Word3() = 0xFFFFFFFF;
+    auto acl = applyConfig(&config)->getAcl("acl0");
+    ASSERT_NE(nullptr, acl);
+    EXPECT_EQ(acl->getDstIpV6Word3(), 0xFFFFFFFF);
+  }
+
+  for (int64_t word : {int64_t{-1}, int64_t{0x100000000}}) {
+    auto config = makeConfig();
+    config.acls()[0].dstIpV6Word3() = word;
+    EXPECT_THROW(applyConfig(&config), FbossError);
+
+    config = makeConfig();
+    config.acls()[0].dstIpV6Word2() = word;
+    EXPECT_THROW(applyConfig(&config), FbossError);
+  }
 }
 
 TEST(Acl, DstIpWithMaskValidation) {
