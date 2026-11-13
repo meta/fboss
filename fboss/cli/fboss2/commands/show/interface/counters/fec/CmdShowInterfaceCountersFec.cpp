@@ -10,7 +10,7 @@ CmdShowInterfaceCountersFec::RetType CmdShowInterfaceCountersFec::queryClient(
     const std::vector<std::string>& /* queriedIfs */,
     const ObjectArgType& /* system|line */) {
   throw std::runtime_error(
-      "Incomplete command, please use one the subcommands");
+      "Incomplete command, please use one of the subcommands");
 }
 
 void CmdShowInterfaceCountersFec::printOutput(const RetType& /* model */) {}
