@@ -4717,24 +4717,8 @@ std::shared_ptr<AclTable> ThriftConfigApplier::updateAclTable(
   auto tableName = *configTable.name();
   auto origTable = orig_->getAclTable(aclStage, tableName);
 
-  // PbrAclManager computes every entry of the PBR table from the
-  // class-based policies; none of them come from config. Rebuilding the
-  // entries here would read the computed ones as "removed from config" and
-  // wipe them, so only the table's attributes are taken from config and the
-  // programmed entries are carried over untouched.
-  const bool pbrTable =
-      tableName == cfg::switch_config_constants::DEFAULT_PBR_ACL_TABLE();
-  if (pbrTable && !configTable.aclEntries()->empty()) {
-    throw FbossError(
-        "ACL table ",
-        tableName,
-        " entries are computed from class-based policies and cannot be configured");
-  }
-  std::shared_ptr<AclMap> newTableEntries;
-  if (!pbrTable) {
-    newTableEntries = updateAclsForTable(
-        aclStage, *configTable.aclEntries(), std::make_optional(tableName));
-  }
+  auto newTableEntries = updateAclsForTable(
+      aclStage, *configTable.aclEntries(), std::make_optional(tableName));
   auto newTablePriority = *configTable.priority();
   std::vector<cfg::AclTableActionType> newActionTypes =
       *configTable.actionTypes();
@@ -5016,6 +5000,19 @@ std::shared_ptr<AclMap> ThriftConfigApplier::updateAclsImpl(
   auto origAclMap = tableName.has_value()
       ? orig_->getAclsForTable(aclStage, tableName.value())
       : nullptr;
+
+  if (origAclMap &&
+      tableName == cfg::switch_config_constants::DEFAULT_PBR_ACL_TABLE()) {
+    for (const auto& [name, origAcl] : std::as_const(*origAclMap)) {
+      if (origAcl->getPriority() != FLAGS_pbr_acl_priority) {
+        continue;
+      }
+      if (!newAcls.emplace(name, origAcl).second) {
+        throw FbossError("ACL name ", name, " is taken by a PBR ACL entry");
+      }
+      ++numExistingProcessed;
+    }
+  }
 
   if (FLAGS_enable_acl_table_group) {
     if (origAclMap && numExistingProcessed != origAclMap->size()) {

@@ -8,6 +8,7 @@
  *
  */
 
+#include "fboss/agent/AgentFeatures.h"
 #include "fboss/agent/ApplyThriftConfig.h"
 #include "fboss/agent/FbossError.h"
 #include "fboss/agent/HwSwitchMatcher.h"
@@ -1303,7 +1304,7 @@ TEST(AclGroup, ApplyConfigPreservesComputedPbrEntries) {
   ASSERT_NE(nullptr, stateV1);
   EXPECT_EQ(0, stateV1->getAclsForTable(kAclStage1, kPbrTable)->numEntries());
 
-  auto stateV2 = addPbrEntry(stateV1, "pbrPolicy_tc1", 3505);
+  auto stateV2 = addPbrEntry(stateV1, "pbrPolicy_tc1", FLAGS_pbr_acl_priority);
   ASSERT_EQ(1, stateV2->getAclsForTable(kAclStage1, kPbrTable)->numEntries());
 
   // Re-applying the same config is a no-op: the PBR table's empty config
@@ -1319,23 +1320,7 @@ TEST(AclGroup, ApplyConfigPreservesComputedPbrEntries) {
   ASSERT_EQ(1, pbrAcls->numEntries());
   auto entry = pbrAcls->getEntryIf("pbrPolicy_tc1");
   ASSERT_NE(nullptr, entry);
-  EXPECT_EQ(3505, entry->getPriority());
+  EXPECT_EQ(FLAGS_pbr_acl_priority, entry->getPriority());
   // Other tables are still rebuilt from config as usual.
   EXPECT_EQ(1, stateV3->getAclsForTable(kAclStage1, kTable1)->numEntries());
-}
-
-TEST(AclGroup, ApplyConfigRejectsConfiguredPbrEntries) {
-  FLAGS_enable_acl_table_group = true;
-  auto platform = createMockPlatform();
-  auto config = makePbrTableConfig();
-
-  auto& cfgPbr = config.aclTableGroup()->aclTables()[1];
-  cfgPbr.aclEntries()->resize(1);
-  cfgPbr.aclEntries()[0].name() = kAcl2a;
-  cfgPbr.aclEntries()[0].actionType() = cfg::AclActionType::DENY;
-
-  EXPECT_THROW(
-      publishAndApplyConfig(
-          std::make_shared<SwitchState>(), &config, platform.get()),
-      FbossError);
 }
