@@ -94,7 +94,8 @@ class SaiSwitch : public HwSwitch {
    */
   bool needL2EntryForNeighbor() const override {
     if (asicType_ == cfg::AsicType::ASIC_TYPE_CHENAB ||
-        asicType_ == cfg::AsicType::ASIC_TYPE_CHENAB2) {
+        asicType_ == cfg::AsicType::ASIC_TYPE_CHENAB2 ||
+        asicType_ == cfg::AsicType::ASIC_TYPE_P200) {
       return false;
     }
     return getSwitchType() == cfg::SwitchType::NPU;
