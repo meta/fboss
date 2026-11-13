@@ -166,7 +166,7 @@ class RibRouteTables {
       RouterID routerID,
       ClientID clientID,
       AdminDistance adminDistanceFromClientID,
-      const std::vector<RouteType>& toAddRoutes,
+      std::vector<RouteType> toAddRoutes,
       const std::vector<RouteIdType>& toDelPrefixes,
       bool resetClientsRoutes,
       folly::StringPiece updateType,
@@ -498,6 +498,19 @@ class RoutingInformationBase {
       RibToSwitchStateFunction ribToSwitchStateFunc,
       void* cookie);
 
+  // As above, but frees each thrift route once it is converted.
+  UpdateStatistics update(
+      const SwitchIdScopeResolver* resolver,
+      RouterID routerID,
+      ClientID clientID,
+      AdminDistance adminDistanceFromClientID,
+      std::vector<UnicastRoute>&& toAdd,
+      const std::vector<IpPrefix>& toDelete,
+      bool resetClientsRoutes,
+      folly::StringPiece updateType,
+      RibToSwitchStateFunction ribToSwitchStateFunc,
+      void* cookie);
+
   UpdateStatistics update(
       const SwitchIdScopeResolver* resolver,
       RouterID routerID,
@@ -800,13 +813,14 @@ class RoutingInformationBase {
       void* cookie,
       bool async);
 
-  template <typename TraitsType>
+  // Frees each thrift route once converted when toAdd is passed as an rvalue.
+  template <typename TraitsType, typename RoutesT>
   UpdateStatistics updateImpl(
       const SwitchIdScopeResolver* resolver,
       RouterID routerID,
       ClientID clientID,
       AdminDistance adminDistanceFromClientID,
-      const std::vector<typename TraitsType::ThriftRoute>& toAdd,
+      RoutesT&& toAdd,
       const std::vector<typename TraitsType::ThriftRouteId>& toDelete,
       bool resetClientsRoutes,
       folly::StringPiece updateType,

@@ -1091,7 +1091,7 @@ void RibRouteTables::update(
     RouterID routerID,
     ClientID clientID,
     AdminDistance adminDistanceFromClientID,
-    const std::vector<RouteType>& toAddRoutes,
+    std::vector<RouteType> toAddRoutes,
     const std::vector<RouteIdType>& toDelPrefixes,
     bool resetClientsRoutes,
     folly::StringPiece updateType,
@@ -1106,7 +1106,8 @@ void RibRouteTables::update(
           auto* nextHopIDManager,
           uint32_t ecmpWidth,
           RouterIDToRouteTable& routeTables) {
-        auto resolvedRoutes = toAddRoutes;
+        // Owned, so resolve in place rather than copy every next-hop set.
+        auto& resolvedRoutes = toAddRoutes;
         if constexpr (std::is_same_v<RouteType, RibRouteUpdater::RouteEntry>) {
           if (nextHopIDManager) {
             for (auto& routeEntry : resolvedRoutes) {
@@ -1177,6 +1178,8 @@ void RibRouteTables::update(
             cyclesDetectedOut,
             vrfsToProgram);
       });
+  // Free before updateFib, where the push peaks.
+  toAddRoutes = std::vector<RouteType>();
   updateFib(resolver, vrfsToProgram, ribToSwitchStateFunc, cookie);
 }
 
@@ -1727,13 +1730,13 @@ void RoutingInformationBase::updateRemoteInterfaceRoutes(
       resolver, toAdd, toDel, ribToSwitchStateFunc, cookie);
 }
 
-template <typename TraitsType>
+template <typename TraitsType, typename RoutesT>
 RoutingInformationBase::UpdateStatistics RoutingInformationBase::updateImpl(
     const SwitchIdScopeResolver* resolver,
     RouterID routerID,
     ClientID clientID,
     AdminDistance adminDistanceFromClientID,
-    const std::vector<typename TraitsType::ThriftRoute>& toAdd,
+    RoutesT&& toAdd,
     const std::vector<typename TraitsType::ThriftRouteId>& toDelete,
     bool resetClientsRoutes,
     folly::StringPiece updateType,
@@ -1753,11 +1756,14 @@ RoutingInformationBase::UpdateStatistics RoutingInformationBase::updateImpl(
       std::for_each(
           toAdd.begin(),
           toAdd.end(),
-          [adminDistanceFromClientID, &stats, &toAddRoutes, this](
-              const auto& route) {
+          [adminDistanceFromClientID, &stats, &toAddRoutes, this](auto& route) {
             toAddRoutes.push_back(
                 TraitsType::ToAddFn(
                     route, adminDistanceFromClientID, stats, ribTables_));
+            if constexpr (!std::is_lvalue_reference_v<RoutesT>) {
+              // Caller handed the routes over: free each one once converted.
+              route = typename TraitsType::ThriftRoute{};
+            }
           });
       std::vector<typename TraitsType::RibRouteId> toDelPrefixes;
       toDelPrefixes.reserve(toDelete.size());
@@ -1773,7 +1779,7 @@ RoutingInformationBase::UpdateStatistics RoutingInformationBase::updateImpl(
           routerID,
           clientID,
           adminDistanceFromClientID,
-          toAddRoutes,
+          std::move(toAddRoutes),
           toDelPrefixes,
           resetClientsRoutes,
           updateType,
@@ -2149,6 +2155,30 @@ RoutingInformationBase::UpdateStatistics RoutingInformationBase::update(
       resetClientsRoutes,
       updateType,
       ribToSwitchStateFunc,
+      cookie);
+}
+
+RoutingInformationBase::UpdateStatistics RoutingInformationBase::update(
+    const SwitchIdScopeResolver* resolver,
+    RouterID routerID,
+    ClientID clientID,
+    AdminDistance adminDistanceFromClientID,
+    std::vector<UnicastRoute>&& toAdd,
+    const std::vector<IpPrefix>& toDelete,
+    bool resetClientsRoutes,
+    folly::StringPiece updateType,
+    RibToSwitchStateFunction ribToSwitchStateFunc,
+    void* cookie) {
+  return updateImpl<RibIpRouteUpdate>(
+      resolver,
+      routerID,
+      clientID,
+      adminDistanceFromClientID,
+      std::move(toAdd),
+      toDelete,
+      resetClientsRoutes,
+      updateType,
+      std::move(ribToSwitchStateFunc),
       cookie);
 }
 
