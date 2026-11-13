@@ -183,9 +183,13 @@ cpp_library(
 
 fbpkg.builder(
     name = "fboss_bsp_tests",
-    architectures = ["x86_64"],
+    architectures = [
+        "x86_64",
+        "aarch64",
+    ],
     path_actions = {
         "bsp_tests": ":bsp_tests",
     },
     split_debuginfo = True,
+    variant_distribution = "combined",
 )
