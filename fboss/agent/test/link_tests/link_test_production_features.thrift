@@ -58,4 +58,5 @@ enum LinkTestProductionFeature {
   BMC_CLASSIC = 103,
   ASIC_LAG = 104,
   DSF_INTERFACE_NODE = 105,
+  SAI_XPHY = 106,
 }
