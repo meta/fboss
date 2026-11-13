@@ -128,6 +128,16 @@ class P200Asic : public TajoAsic {
     return 1;
   }
 
+  uint64_t getEgressBufferPoolReservedBytes() const override {
+    return 20 * 1024 * 1024; // 20 MB
+  }
+  uint64_t getInternalEgressBufferPoolReservedBytes() const override {
+    return 7 * 1024 * 1024; // 7 MB
+  }
+  uint64_t getSaiPfcEgressBufferPoolBytes() const override {
+    return 50 * 1024 * 1024; // 50 MB
+  }
+
   std::vector<prbs::PrbsPolynomial> getSupportedPrbsPolynomials()
       const override {
     return {
