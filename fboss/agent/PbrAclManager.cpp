@@ -1,6 +1,7 @@
 // (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
 
 #include "fboss/agent/PbrAclManager.h"
+#include "fboss/agent/AgentFeatures.h"
 #include "fboss/agent/FbossError.h"
 #include "fboss/agent/HwSwitchMatcher.h"
 #include "fboss/agent/gen-cpp2/switch_config_constants.h"
@@ -108,8 +109,13 @@ bool addPolicyEntries(
   for (const auto& entry : createAclEntriesFromPolicy(policy)) {
     // reconstructFromSwitchState replays every policy as added against a state
     // whose ACL map is already populated, so an add can meet its own entry.
-    if (auto cur = aclMap.getEntryIf(entry->getID()); cur && *cur == *entry) {
+    auto cur = aclMap.getEntryIf(entry->getID());
+    if (cur && *cur == *entry) {
       continue;
+    }
+    if (cur && cur->getPriority() != FLAGS_pbr_acl_priority) {
+      throw FbossError(
+          "ACL name ", entry->getID(), " is taken by a config ACL entry");
     }
     aclMap.removeNodeIf(entry->getID());
     aclMap.addNode(entry);

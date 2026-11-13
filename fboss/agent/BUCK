@@ -956,6 +956,7 @@ cpp_library(
     ],
     deps = [
         "fbsource//xplat/folly/logging:logging",
+        ":agent_features",
         ":fboss-error",
         ":hwswitch_matcher",
         ":switch_config-cpp2-types",
