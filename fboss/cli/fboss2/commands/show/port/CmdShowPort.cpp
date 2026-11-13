@@ -823,6 +823,9 @@ void CmdShowPort::printOutput(const RetType& model, std::ostream& out) {
           fmt::format(
               "Admin State:    \t\t {}", portInfo.adminState().value()));
       detailedOutput.emplace_back(
+          fmt::format(
+              "Active Errors:  \t\t {}", portInfo.activeErrors().value()));
+      detailedOutput.emplace_back(
           fmt::format("Speed:          \t\t {}", portInfo.speed().value()));
       detailedOutput.emplace_back(
           fmt::format("LinkState:      \t\t {}", portInfo.linkState().value()));
