@@ -1178,6 +1178,24 @@ TEST_F(CmisTest, cmis400GCr8TransceiverInfoTest) {
           std::nullopt);
     }
   }
+
+  // Passive copper accepts any copper profile but no optical/backplane one
+  for (auto speed :
+       {cfg::PortSpeed::HUNDREDG,
+        cfg::PortSpeed::FOURHUNDREDG,
+        cfg::PortSpeed::EIGHTHUNDREDG,
+        cfg::PortSpeed::ONEPOINTSIXT}) {
+    TransceiverPortState portState;
+    portState.startHostLane = 0;
+    portState.speed = speed;
+    portState.numHostLanes = 8;
+    portState.transmitterTech = TransmitterTechnology::COPPER;
+    EXPECT_TRUE(xcvr->tcvrPortStateSupported(portState));
+    portState.transmitterTech = TransmitterTechnology::OPTICAL;
+    EXPECT_FALSE(xcvr->tcvrPortStateSupported(portState));
+    portState.transmitterTech = TransmitterTechnology::BACKPLANE;
+    EXPECT_FALSE(xcvr->tcvrPortStateSupported(portState));
+  }
   EXPECT_TRUE(info.tcvrState()->errorStates()->empty());
 }
 
