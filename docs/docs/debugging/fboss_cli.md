@@ -1087,6 +1087,8 @@ $ fboss2-dev config interface eth1/1/1 eth1/2/1 mtu 1500
 Successfully configured interface(s) eth1/1/1, eth1/2/1: mtu=1500
 ```
 
+The commands `ip-address`, `ipv6-address`, `mtu` and `name` are refused for a port with no mapped L3 interface. Set the attribute on the L3 interface by its interface ID.
+
 `config session diff` shows the pending changes as a unified diff of the config files:
 
 <div style={{maxHeight: '200px', overflowY: 'auto', fontFamily: 'Courier New, monospace'}}>
