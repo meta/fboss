@@ -136,6 +136,7 @@ cpp_library(
     ],
     exported_deps = [
         "//fboss/agent:fboss-types",
+        "//fboss/agent:switch_config-cpp2-serialization",
         "//fboss/agent:switch_config-cpp2-types",
         "//fboss/agent/hw/switch_asics:switch_asics",
     ],
