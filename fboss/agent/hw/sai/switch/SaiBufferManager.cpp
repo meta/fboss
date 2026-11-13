@@ -63,13 +63,6 @@ namespace {
 // from AR / ACLs in Chenab.
 constexpr uint32_t kChenabPgBufferForPipelineLatencyInBytes = 39 * 1024;
 #endif
-#if defined(TAJO_SDK_GTE_26_5)
-// P200 supports a single egress pool and forbids changing the pool's
-// reserved bytes once a buffer profile is bound to it. Reserve
-// this much on the default egress pool at creation time suggested by vendor for
-// now.
-constexpr uint64_t kP200EgressPoolReservedBytes = 20 * 1024 * 1024;
-#endif
 
 uint64_t getSwitchEgressPoolAvailableSize(const SaiPlatform* platform) {
   auto saiSwitch = static_cast<SaiSwitch*>(platform->getHwSwitch());
@@ -249,11 +242,6 @@ void SaiBufferManager::setupEgressBufferPool(
 #endif
   } else {
     poolSize = getMaxEgressPoolBytes(platform_);
-#if defined(TAJO_SDK_GTE_26_5)
-    if (platform_->getAsic()->getAsicType() == cfg::AsicType::ASIC_TYPE_P200) {
-      reservedBytes = kP200EgressPoolReservedBytes;
-    }
-#endif
   }
   if (FLAGS_egress_buffer_pool_size > 0) {
     uint64_t newSize = FLAGS_egress_buffer_pool_size *
@@ -263,10 +251,24 @@ void SaiBufferManager::setupEgressBufferPool(
       newSize =
           roundup(newSize, platform_->getAsic()->getPacketBufferUnitSize());
     }
+#if defined(TAJO_SDK_GTE_26_5)
+    // Choose 50MB here. The 1.5MB flag is never programmed on P200.
+    if (!reservedBytes.has_value() &&
+        platform_->getAsic()->getAsicType() == cfg::AsicType::ASIC_TYPE_P200 &&
+        newSize < platform_->getAsic()->getEgressBufferPoolReservedBytes() +
+            platform_->getAsic()->getInternalEgressBufferPoolReservedBytes()) {
+      newSize = platform_->getAsic()->getSaiPfcEgressBufferPoolBytes();
+    }
+#endif
     XLOG(WARNING) << "Overriding egress buffer pool size from " << poolSize
                   << " to " << newSize;
     poolSize = newSize;
   }
+#if defined(TAJO_SDK_GTE_26_5)
+    if (platform_->getAsic()->getAsicType() == cfg::AsicType::ASIC_TYPE_P200) {
+      reservedBytes = platform_->getAsic()->getEgressBufferPoolReservedBytes();
+    }
+#endif
 
   SaiBufferPoolTraits::CreateAttributes attributes{
       SAI_BUFFER_POOL_TYPE_EGRESS,

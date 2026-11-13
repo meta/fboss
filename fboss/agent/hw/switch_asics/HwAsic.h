@@ -743,6 +743,16 @@ class HwAsic {
   // Get the size of the buffer descriptor associated with each packet
   virtual uint32_t getPacketBufferDescriptorSize() const = 0;
 
+  virtual uint64_t getEgressBufferPoolReservedBytes() const {
+    return 0;
+  }
+  virtual uint64_t getInternalEgressBufferPoolReservedBytes() const {
+    return 0;
+  }
+  virtual uint64_t getSaiPfcEgressBufferPoolBytes() const {
+    return 0;
+  }
+
   /*
     This function will be used in calculating lane assignment, physical port
     assignment when adjusting ports in a port group. Most platforms have
