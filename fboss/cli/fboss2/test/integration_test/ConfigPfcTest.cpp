@@ -357,6 +357,26 @@ class ConfigPfcTest : public Fboss2IntegrationTest {
         << " not restored to its original state";
   }
 
+  // For the buffer-pool tests: deletes the buffer pool unless it existed
+  // before the test (`hadPool`), and checks it is back to that state. A pool
+  // that was already there may be referenced by a PG policy, so it is left
+  // alone.
+  void removeBufferPoolIfCreated(bool hadPool) {
+    if (!hadPool) {
+      XLOG(INFO) << "Removing buffer pool " << bufferPoolName_;
+      ASSERT_EQ(
+          runCli({"delete", "qos", "buffer-pool", bufferPoolName_}).exitCode,
+          0);
+      commitConfig();
+      waitForAgentReady();
+    }
+    EXPECT_EQ(
+        hasNamedEntry(getRunningConfig(), "bufferPoolConfigs", bufferPoolName_),
+        hadPool)
+        << "buffer pool " << bufferPoolName_
+        << " not restored to its original state";
+  }
+
   // Shared body of the rx-duration and tx-duration tests. `attr` is the CLI
   // attribute, `flag` the PortPfc field it sets, and `otherFlag` the field of
   // the other direction. The flag is independent of PFC itself, so setting it
@@ -539,15 +559,16 @@ TEST_F(ConfigPfcTest, BufferPoolReservedBytes) {
 
   // The absence check in step 2 is only meaningful if the pool does not
   // already carry a reservedBytes: there is no CLI to unset the field, so a
-  // run that died before TearDown can leave one behind.
+  // pool another test or an interrupted run left behind may have one.
   bool reservedAbsentAtStart = true;
+  bool hadPool = false;
   {
     auto before = getRunningConfig();
-    const auto& sw = before["sw"];
-    if (sw.count("bufferPoolConfigs") &&
-        sw["bufferPoolConfigs"].count(bufferPoolName_)) {
+    hadPool = hasNamedEntry(before, "bufferPoolConfigs", bufferPoolName_);
+    if (hadPool) {
       reservedAbsentAtStart =
-          sw["bufferPoolConfigs"][bufferPoolName_].count("reservedBytes") == 0;
+          before["sw"]["bufferPoolConfigs"][bufferPoolName_].count(
+              "reservedBytes") == 0;
     }
   }
 
@@ -641,6 +662,9 @@ TEST_F(ConfigPfcTest, BufferPoolReservedBytes) {
       << "reserved-bytes must leave sharedBytes untouched";
   EXPECT_EQ(pool["headroomBytes"].asInt(), kHeadroomBytes)
       << "reserved-bytes must leave headroomBytes untouched";
+
+  XLOG(INFO) << "[Step 5] Leaving the DUT as found";
+  ASSERT_NO_FATAL_FAILURE(removeBufferPoolIfCreated(hadPool));
 
   XLOG(INFO) << "TEST PASSED";
 }
@@ -781,6 +805,9 @@ TEST_F(ConfigPfcTest, BufferPoolSharedBytes) {
   constexpr int kFinalSharedBytes = 67108864; // 64 MiB
   constexpr int kHeadroomBytes = 2097152; // 2 MiB
 
+  const bool hadPool =
+      hasNamedEntry(getRunningConfig(), "bufferPoolConfigs", bufferPoolName_);
+
   XLOG(INFO) << "[Step 1] Setting shared-bytes with the single-attribute form";
   ASSERT_EQ(
       runCli({"config",
@@ -835,6 +862,9 @@ TEST_F(ConfigPfcTest, BufferPoolSharedBytes) {
   // first.
   ASSERT_TRUE(pool.count("headroomBytes"));
   EXPECT_EQ(pool["headroomBytes"].asInt(), kHeadroomBytes);
+
+  XLOG(INFO) << "[Step 5] Leaving the DUT as found";
+  ASSERT_NO_FATAL_FAILURE(removeBufferPoolIfCreated(hadPool));
 
   XLOG(INFO) << "TEST PASSED";
 }
