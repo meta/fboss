@@ -275,6 +275,15 @@ TEST(PbrAclManagerTest, PreservesNonPbrEntries) {
   EXPECT_NE(acls->getEntryIf("qzk1_tc1"), nullptr);
 }
 
+TEST(PbrAclManagerTest, RejectsPolicyEntryNameTakenByConfigEntry) {
+  auto configEntry = std::make_shared<AclEntry>(
+      AclTable::kDataplaneAclMaxPriority, std::string("qzk1_tc1"));
+  auto policy = makePolicy("qzk1", 100, {{ForwardingClass::CLASS_1, 201}});
+  PbrAclManager mgr;
+  EXPECT_THROW(
+      runManager(mgr, makeState({policy}, true, {configEntry})), FbossError);
+}
+
 TEST(PbrAclManagerTest, IncrementalAddPolicy) {
   auto a = makePolicy("qzk1", 100, {{ForwardingClass::CLASS_1, 201}});
   PbrAclManager mgr;
