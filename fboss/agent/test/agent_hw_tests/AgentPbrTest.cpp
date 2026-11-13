@@ -53,6 +53,16 @@ constexpr uint64_t kVariance = 2;
 constexpr auto kPbrRoutePrefix = "2222::";
 constexpr auto kPbrDstIp = "2222::1";
 constexpr auto kPbrSrcIp = "2001::1";
+constexpr auto kPbrSrcIpV4 = "10.0.0.1";
+constexpr auto kSrv6DecapCounter = "srv6_decap_counter";
+constexpr auto kSrv6TransitCounter = "srv6_transit_counter";
+constexpr auto kPlainIpv6Counter = "plain_ipv6";
+constexpr auto kPlainIpv4Counter = "plain_ipv4";
+constexpr int64_t kLocatorWord3 = 0xfdadff00;
+constexpr int64_t kSrv6DecapWord2 = 0x7fff0000;
+constexpr auto kSrv6DecapDstIp = "fdad:ff00:7fff::1";
+constexpr auto kSrv6TransitDstIp = "fdad:ff00:1234::1";
+constexpr auto kPlainIpv4DstIp = "100.100.100.1";
 
 // Keyed off the physical port so a next hop keeps its SID across warm boot and
 // across the member-change sequence.
@@ -246,6 +256,8 @@ class AgentPbrTest : public AgentHwTest {
     auto intfMac =
         getMacForFirstInterfaceWithPortsForTesting(getProgrammedState());
     auto srcMac = utility::MacAddressGenerator().get(intfMac.u64HBO() + 1);
+    auto dst = folly::IPAddress(dstIp);
+    auto src = folly::IPAddress(dst.isV6() ? kPbrSrcIp : kPbrSrcIpV4);
     uint64_t bytesSent = 0;
     for (int i = 0; i < kNumPkts; ++i) {
       auto pkt = utility::makeUDPTxPacket(
@@ -253,8 +265,8 @@ class AgentPbrTest : public AgentHwTest {
           getVlanIDForTx(),
           srcMac,
           intfMac,
-          folly::IPAddressV6(kPbrSrcIp),
-          folly::IPAddressV6(dstIp),
+          src,
+          dst,
           kL4SrcPort + i,
           kL4DstPort,
           dscp << 2 /*trafficClass byte*/,
@@ -360,6 +372,89 @@ class AgentPbrTest : public AgentHwTest {
         EXPECT_EVENTUALLY_GE(
             utility::getAclInOutPackets(getSw(), *counterName, true /*bytes*/),
             bytesBefore + bytesSent);
+      }
+    });
+  }
+};
+
+class AgentPbrCountingAclTest : public AgentPbrTest {
+ public:
+  std::vector<ProductionFeature> getProductionFeaturesVerified()
+      const override {
+    auto features = AgentPbrTest::getProductionFeaturesVerified();
+    features.push_back(ProductionFeature::DST_IPV6_WORD_ACL_QUALIFIERS);
+    return features;
+  }
+
+ protected:
+  cfg::SwitchConfig initialConfig(
+      const AgentEnsemble& ensemble) const override {
+    auto cfg = AgentPbrTest::initialConfig(ensemble);
+    const auto& pbrTable =
+        cfg::switch_config_constants::DEFAULT_PBR_ACL_TABLE();
+    auto table = utility::getAclTable(cfg, cfg::AclStage::INGRESS, pbrTable);
+    table->actionTypes()->push_back(cfg::AclTableActionType::PACKET_ACTION);
+    table->qualifiers()->push_back(cfg::AclTableQualifier::DST_IPV6_WORD3);
+    table->qualifiers()->push_back(cfg::AclTableQualifier::DST_IPV6_WORD2);
+    table->qualifiers()->push_back(cfg::AclTableQualifier::ETHER_TYPE);
+    table->qualifiers()->push_back(cfg::AclTableQualifier::DST_IPV4);
+
+    auto makeAcl = [](const std::string& name) {
+      cfg::AclEntry acl;
+      acl.name() = name;
+      acl.actionType() = cfg::AclActionType::PERMIT;
+      return acl;
+    };
+    auto decap = makeAcl(kSrv6DecapCounter);
+    decap.dstIpV6Word3() = kLocatorWord3;
+    decap.dstIpV6Word2() = kSrv6DecapWord2;
+    auto transit = makeAcl(kSrv6TransitCounter);
+    transit.dstIpV6Word3() = kLocatorWord3;
+    auto plainV6 = makeAcl(kPlainIpv6Counter);
+    plainV6.etherType() = cfg::EtherType::IPv6;
+    auto plainV4 = makeAcl(kPlainIpv4Counter);
+    plainV4.etherType() = cfg::EtherType::IPv4;
+    for (const auto& acl : {decap, transit, plainV6, plainV4}) {
+      utility::addAclEntry(&cfg, acl, pbrTable);
+      utility::addAclStat(
+          &cfg,
+          *acl.name(),
+          *acl.name(),
+          {cfg::CounterType::PACKETS, cfg::CounterType::BYTES});
+    }
+    return cfg;
+  }
+
+  void verifyProbeCountedBy(
+      uint8_t dscp,
+      const std::string& dstIp,
+      const std::string& counter,
+      PortID injectPort) {
+    const std::vector<std::string> counters = {
+        makePbrCounterName(ForwardingClass::CLASS_1, kClassNhg()),
+        kSrv6DecapCounter,
+        kSrv6TransitCounter,
+        kPlainIpv6Counter,
+        kPlainIpv4Counter};
+    auto pktsBefore = utility::getAclInOutPacketsMap(getSw(), counters);
+    WITH_RETRIES({
+      getNextUpdatedPortStats(injectPort);
+      auto pktsNow = utility::getAclInOutPacketsMap(getSw(), counters);
+      EXPECT_EVENTUALLY_EQ(pktsNow, pktsBefore);
+      pktsBefore = pktsNow;
+    });
+    const auto loopbackCounter =
+        folly::IPAddress(dstIp).isV6() ? kPlainIpv6Counter : kPlainIpv4Counter;
+    sendPbrBurst(dscp, injectPort, dstIp);
+    WITH_RETRIES({
+      auto pktsAfter = utility::getAclInOutPacketsMap(getSw(), counters);
+      for (const auto& name : counters) {
+        uint64_t maxHits = kVariance + (name == counter ? kNumPkts : 0) +
+            (name == loopbackCounter ? kNumPkts : 0);
+        if (name == counter) {
+          EXPECT_EVENTUALLY_GE(pktsAfter[name], pktsBefore[name] + kNumPkts);
+        }
+        EXPECT_EVENTUALLY_LE(pktsAfter[name], pktsBefore[name] + maxHits);
       }
     });
   }
@@ -665,6 +760,58 @@ TEST_F(AgentPbrTest, UnreferencedPolicyProgramsNoAcl) {
   };
 
   verifyAcrossWarmBoots(setup, verify, setupPostWarmboot, verifyPostWarmboot);
+}
+
+TEST_F(AgentPbrCountingAclTest, CountNonTeTrafficBelowPolicy) {
+  auto setup = [this]() {
+    auto helper = ecmpHelper();
+    auto ports = helper.ecmpPortDescs(5);
+
+    // 1. The ProgramPolicyAcl policy.
+    applyNewState([&](const std::shared_ptr<SwitchState>& in) {
+      return helper.resolveNextHops(
+          in, {ports[0], ports[1], ports[2], ports[3]});
+    });
+    addOrUpdateNamedNhgs(
+        {{kDefaultNhg(), makeNamedNhgSet({ports[0], ports[1]})},
+         {kClassNhg(), makeNamedNhgSet({ports[2], ports[3]})}});
+    addClassBasedPolicy();
+    programPbrRoute(kDefaultNhg());
+
+    // 2. Routes for the SRv6 and IPv4 probes.
+    programPbrRoute(kDefaultNhg(), "fdad:ff00:7fff::");
+    programPbrRoute(kDefaultNhg(), "fdad:ff00:1234::");
+    utility::EcmpSetupTargetedPorts4 helperV4(
+        getProgrammedState(), getSw()->needL2EntryForNeighbor());
+    applyNewState([&](const std::shared_ptr<SwitchState>& in) {
+      return helperV4.resolveNextHops(in, {ports[0]});
+    });
+    auto wrapper = getSw()->getRouteUpdater();
+    helperV4.programRoutes(
+        &wrapper,
+        {ports[0]},
+        {RoutePrefixV4{folly::IPAddressV4("100.100.100.0"), 24}});
+  };
+
+  auto verify = [this]() {
+    auto injectPort = ecmpHelper().ecmpPortDescs(5)[4].phyPortID();
+    // 3. Each probe hits exactly one counter, the PBR rule first.
+    verifyProbeCountedBy(
+        kDscp,
+        kPbrDstIp,
+        makePbrCounterName(ForwardingClass::CLASS_1, kClassNhg()),
+        injectPort);
+    verifyProbeCountedBy(
+        kNoMatchDscp, kSrv6DecapDstIp, kSrv6DecapCounter, injectPort);
+    verifyProbeCountedBy(
+        kNoMatchDscp, kSrv6TransitDstIp, kSrv6TransitCounter, injectPort);
+    verifyProbeCountedBy(
+        kNoMatchDscp, kPbrDstIp, kPlainIpv6Counter, injectPort);
+    verifyProbeCountedBy(
+        kNoMatchDscp, kPlainIpv4DstIp, kPlainIpv4Counter, injectPort);
+  };
+
+  verifyAcrossWarmBoots(setup, verify);
 }
 
 } // namespace facebook::fboss
