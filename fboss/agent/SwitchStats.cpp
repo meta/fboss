@@ -455,6 +455,11 @@ SwitchStats::SwitchStats(ThreadLocalStatsMap* map, int numSwitches)
           kCounterPrefix + "mac_table_update_failure",
           SUM,
           RATE),
+      macTableDuplicateUpdateSkipped_(
+          map,
+          kCounterPrefix + "mac_table_duplicate_update_skipped",
+          SUM,
+          RATE),
       l2LearnPortLimitDrops_(
           map,
           kCounterPrefix + "l2_learn.port_limit_drops",
