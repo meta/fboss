@@ -95,7 +95,16 @@ void subscribeToDiagShell(
     std::atomic<bool>* shouldStop,
     std::atomic<bool>* streamLost) {
   auto client = utility::getStreamingClient(evb, ip, FLAGS_port);
-  auto responseAndStream = client->sync_startDiagShell();
+  decltype(client->sync_startDiagShell()) responseAndStream;
+  try {
+    responseAndStream = client->sync_startDiagShell();
+  } catch (const std::exception& e) {
+    // An exception that leaves this thread terminates the process.
+    LOG(ERROR) << "failed to start diag shell: " << e.what();
+    *streamLost = true;
+    *shouldStop = true;
+    return;
+  }
   folly::writeFull(
       STDOUT_FILENO,
       responseAndStream.response.c_str(),
