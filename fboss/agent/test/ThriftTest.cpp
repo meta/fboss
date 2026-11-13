@@ -24,10 +24,12 @@
 #include "fboss/agent/hw/mock/MockPlatform.h"
 #include "fboss/agent/if/gen-cpp2/common_types.h"
 #include "fboss/agent/packet/EthHdr.h"
+#include "fboss/agent/state/AclTable.h"
 #include "fboss/agent/state/AggregatePort.h"
 #include "fboss/agent/state/FibInfo.h"
 #include "fboss/agent/state/ForwardingInformationBase.h"
 #include "fboss/agent/state/MySid.h"
+#include "fboss/agent/state/PbrUtils.h"
 #include "fboss/agent/state/Port.h"
 #include "fboss/agent/state/Route.h"
 #include "fboss/agent/state/RouteNextHop.h"
@@ -5425,6 +5427,81 @@ TEST_F(NamedNextHopGroupThriftTest, pbrRedirectGroupIsProgrammed) {
       EXPECT_TRUE(*group.isProgrammed()) << *group.name();
     }
   }
+}
+
+TEST_F(NamedNextHopGroupThriftTest, pbrTableHoldsConfigEntriesBelowPolicies) {
+  SCOPE_EXIT {
+    FLAGS_enable_acl_table_group = false;
+  };
+  FLAGS_enable_acl_table_group = true;
+  auto pbrConfig = [](const std::vector<std::string>& entryNames) {
+    cfg::AclTable pbrTable;
+    pbrTable.name() = cfg::switch_config_constants::DEFAULT_PBR_ACL_TABLE();
+    pbrTable.priority() = 1;
+    pbrTable.actionTypes() = {
+        cfg::AclTableActionType::COUNTER, cfg::AclTableActionType::REDIRECT};
+    pbrTable.qualifiers() = {
+        cfg::AclTableQualifier::TC,
+        cfg::AclTableQualifier::NEXT_HOP_GROUP_ID,
+        cfg::AclTableQualifier::ETHER_TYPE};
+    for (const auto& name : entryNames) {
+      cfg::AclEntry entry;
+      entry.name() = name;
+      entry.etherType() = cfg::EtherType::IPv6;
+      pbrTable.aclEntries()->push_back(entry);
+    }
+    cfg::AclTableGroup tableGroup;
+    tableGroup.name() = "ingress-group";
+    tableGroup.stage() = cfg::AclStage::INGRESS;
+    tableGroup.aclTables() = {pbrTable};
+    auto config = testConfigA();
+    config.aclTableGroups() = {tableGroup};
+    return config;
+  };
+  auto pbrAcls = [this]() {
+    return sw_->getState()->getAclsForTable(
+        cfg::AclStage::INGRESS,
+        cfg::switch_config_constants::DEFAULT_PBR_ACL_TABLE());
+  };
+  sw_->applyConfig("add PBR ACL table", pbrConfig({"count_a", "count_b"}));
+
+  ThriftHandler handler(sw_);
+  auto groups = std::make_unique<std::vector<NextHopGroup>>();
+  groups->push_back(makeGroup("defaultNhg", {"2401:db00:2110:3001::2"}));
+  groups->push_back(makeGroup("classNhg", {"2401:db00:2110:3001::3"}));
+  handler.addOrUpdateNamedNextHopGroups(std::move(groups));
+  handler.addPolicies(onePolicy(makeCbfPolicy(
+      "pol1",
+      "defaultNhg",
+      {{ForwardingClass::CLASS_1, namedNhgRef("classNhg")}})));
+  addUnicastRouteWithNamedNextHopGroup(handler, "2401::100/128", "defaultNhg");
+  const auto pbrEntryName =
+      makePbrAclEntryName("pol1", ForwardingClass::CLASS_1, false);
+
+  // 1. The policy entry sits above the config entries, which keep their order.
+  auto pbrEntry = pbrAcls()->getEntryIf(pbrEntryName);
+  ASSERT_NE(pbrEntry, nullptr);
+  EXPECT_EQ(pbrEntry->getPriority(), FLAGS_pbr_acl_priority);
+  EXPECT_EQ(
+      pbrAcls()->getEntry("count_a")->getPriority(),
+      AclTable::kDataplaneAclMaxPriority);
+  EXPECT_EQ(
+      pbrAcls()->getEntry("count_b")->getPriority(),
+      AclTable::kDataplaneAclMaxPriority + 1);
+
+  // 2. Dropping a config entry leaves the policy entry untouched.
+  sw_->applyConfig("drop count_a", pbrConfig({"count_b"}));
+  EXPECT_EQ(pbrAcls()->getEntryIf(pbrEntryName), pbrEntry);
+  EXPECT_EQ(pbrAcls()->getEntryIf("count_a"), nullptr);
+  EXPECT_EQ(
+      pbrAcls()->getEntry("count_b")->getPriority(),
+      AclTable::kDataplaneAclMaxPriority);
+  EXPECT_EQ(pbrAcls()->numEntries(), 2);
+
+  // 3. A config entry cannot take the policy entry's name.
+  EXPECT_THROW(
+      sw_->applyConfig("reuse PBR name", pbrConfig({pbrEntryName})),
+      FbossError);
 }
 
 TEST_F(NamedNextHopGroupThriftTest, removeNextHopGroup) {

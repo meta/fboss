@@ -1324,3 +1324,30 @@ TEST(AclGroup, ApplyConfigPreservesComputedPbrEntries) {
   // Other tables are still rebuilt from config as usual.
   EXPECT_EQ(1, stateV3->getAclsForTable(kAclStage1, kTable1)->numEntries());
 }
+
+TEST(AclGroup, ApplyConfigKeepsConfiguredPbrEntriesBelowComputed) {
+  FLAGS_enable_acl_table_group = true;
+  auto platform = createMockPlatform();
+  auto config = makePbrTableConfig();
+
+  auto& cfgPbr = config.aclTableGroup()->aclTables()[1];
+  cfgPbr.aclEntries()->resize(1);
+  cfgPbr.aclEntries()[0].name() = kAcl2a;
+
+  auto stateV1 = publishAndApplyConfig(
+      std::make_shared<SwitchState>(), &config, platform.get());
+  ASSERT_NE(nullptr, stateV1);
+  EXPECT_EQ(
+      AclTable::kDataplaneAclMaxPriority,
+      stateV1->getAclsForTable(kAclStage1, kPbrTable)
+          ->getEntry(kAcl2a)
+          ->getPriority());
+  auto stateV2 = addPbrEntry(stateV1, "pbrPolicy_tc1", FLAGS_pbr_acl_priority);
+
+  cfgPbr.aclEntries()->clear();
+  auto stateV3 = publishAndApplyConfig(stateV2, &config, platform.get());
+  ASSERT_NE(nullptr, stateV3);
+  auto pbrAcls = stateV3->getAclsForTable(kAclStage1, kPbrTable);
+  EXPECT_EQ(1, pbrAcls->numEntries());
+  EXPECT_NE(nullptr, pbrAcls->getEntryIf("pbrPolicy_tc1"));
+}
