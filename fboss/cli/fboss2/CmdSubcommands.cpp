@@ -287,6 +287,7 @@ CLI::App* CmdSubcommands::addCommand(
         case utils::ObjectArgTypeId::OBJECT_ARG_TYPE_ID_NONE:
         case utils::ObjectArgTypeId::OBJECT_ARG_TYPE_ID_REVISION_LIST:
         case utils::ObjectArgTypeId::OBJECT_ARG_TYPE_VLAN_ID:
+        default:
           break;
       }
     }
