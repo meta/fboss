@@ -128,13 +128,6 @@ class P200Asic : public TajoAsic {
     return 1;
   }
 
-  // P200 has one egress pool. A queue with reservedBytes must bind to a pool
-  // that already has a pool-level reserve, and that reserve cannot be changed
-  // after a buffer profile is bound (S1SW-41991). Vendor asked for 20MB at
-  // creation. SAI also reserves 5MB for control traffic and 2MB for TC7 on
-  // this same pool. The PFC test flag (~1.5MB) is replaced with the 50MB
-  // Palladium2 egress pool from SAI hw/pfc/test_pfc_tx.py before the pool
-  // is created. That size holds the reserves.
   uint64_t getEgressBufferPoolReservedBytes() const override {
     return 20 * 1024 * 1024; // 20 MB
   }
