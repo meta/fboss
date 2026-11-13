@@ -67,19 +67,44 @@ class AgentVxlanTest : public AgentHwTest {
     return tunnel;
   }
 
-  // Move the interfaces of the given logical ports into a VRF.
+  // Overlay VRFs and the indexes of the logical ports in them
+  using VrfPorts = std::map<RouterID, std::vector<size_t>>;
+
+  // Decapped traffic egresses on ports 1-4 in the first overlay
+  // VRF and on port 5 in the second. Port 0 stays in the
+  // default VRF as the VXLAN ingress.
+  static inline const VrfPorts kDecapVrfPorts{
+      {kOverlayVrf, {1, 2, 3, 4}},
+      {kOverlayVrf2, {5}}};
+
+  // Add the VRFs to config. bindVrfPorts() moves their ports' interfaces.
   void addVrfPorts(
       cfg::SwitchConfig& cfg,
       const AgentEnsemble& ensemble,
-      RouterID vrf,
-      const std::vector<size_t>& portIdxs) const {
+      const VrfPorts& vrfPorts) const {
     auto portIds = ensemble.masterLogicalPortIds();
-    std::vector<PortID> ports;
-    ports.reserve(portIdxs.size());
-    for (auto idx : portIdxs) {
-      ports.push_back(portIds[idx]);
+    for (const auto& [vrf, portIdxs] : vrfPorts) {
+      std::vector<PortID> ports;
+      ports.reserve(portIdxs.size());
+      for (auto idx : portIdxs) {
+        ports.push_back(portIds[idx]);
+      }
+      utility::addVrfForPorts(cfg, vrf, ports);
     }
-    utility::addVrfForPorts(cfg, vrf, ports);
+  }
+
+  // Move the interfaces of the ports into their VRFs. Done in cold boot
+  // setup only: the bindings persist across warm boot.
+  void bindVrfPorts(const VrfPorts& vrfPorts) {
+    std::map<InterfaceID, RouterID> interfaceVrfs;
+    for (const auto& [vrf, portIdxs] : vrfPorts) {
+      for (const auto& port : logicalPorts(portIdxs)) {
+        interfaceVrfs.emplace(
+            getProgrammedState()->getInterfaceIDForPort(PortDescriptor(port)),
+            vrf);
+      }
+    }
+    getSw()->updateInterfaceVrfs(interfaceVrfs);
   }
 
   std::vector<PortID> logicalPorts(const std::vector<size_t>& idxs) const {
@@ -270,11 +295,7 @@ class AgentVxlanTest : public AgentHwTest {
     // and kVni2 into kOverlayVrf2.
     auto cfg = vxlanConfig(
         ensemble, kDecapLocalVtep, kDecapRemoteVtep, {{kOverlayVrf2, kVni2}});
-    // Decapped traffic egresses on ports 1-4 in the first overlay
-    // VRF and on port 5 in the second. Port 0 stays in the
-    // default VRF as the VXLAN ingress.
-    addVrfPorts(cfg, ensemble, kOverlayVrf, {1, 2, 3, 4});
-    addVrfPorts(cfg, ensemble, kOverlayVrf2, {5});
+    addVrfPorts(cfg, ensemble, kDecapVrfPorts);
     return cfg;
   }
 
@@ -493,6 +514,9 @@ class AgentVxlanEncapTest : public AgentVxlanTest {
   static inline const folly::IPAddressV6 kReresolutionVtep{"10::1:0:0:2"};
   static inline const folly::IPAddressV6 kLessSpecificPrefix{"10::"};
   static inline const folly::IPAddressV6 kMoreSpecificPrefix{"10::1:0:0:0"};
+  // Inner traffic ingresses on port 4, outside the underlay
+  // egress set, so its interface is in the overlay VRF.
+  static inline const VrfPorts kEncapVrfPorts{{kOverlayVrf, {4}}};
 
   std::vector<ProductionFeature> getProductionFeaturesVerified()
       const override {
@@ -509,9 +533,7 @@ class AgentVxlanEncapTest : public AgentVxlanTest {
   cfg::SwitchConfig initialConfig(
       const AgentEnsemble& ensemble) const override {
     auto cfg = vxlanConfig(ensemble, kLocalVtep, kRemoteVtep);
-    // Inner traffic ingresses on port 4, outside the underlay
-    // egress set, so its interface is in the overlay VRF.
-    addVrfPorts(cfg, ensemble, kOverlayVrf, {4});
+    addVrfPorts(cfg, ensemble, kEncapVrfPorts);
     return cfg;
   }
 
@@ -570,6 +592,7 @@ class AgentVxlanEncapTest : public AgentVxlanTest {
   }
 
   void setupOverlayEcmp() {
+    bindVrfPorts(kEncapVrfPorts);
     addVxlanRoute(0, kRemoteVtep, kOverlayPrefix, stationMac());
     addVxlanRoute(1, kRemoteVtep2, kOverlayPrefix2, stationMac());
     addVxlanRoute(2, kRemoteVtep3, kOverlayPrefix3, stationMac());
@@ -606,6 +629,7 @@ class AgentVxlanEncapTest : public AgentVxlanTest {
   }
 
   void setupUnderlayEcmp() {
+    bindVrfPorts(kEncapVrfPorts);
     applyHashConfig();
     addEcmpRoute(folly::IPAddress(kRemoteVtep), 128, {0, 1, 2, 3});
     auto nhops = resolvedNhops(1);
@@ -626,6 +650,7 @@ class AgentVxlanEncapTest : public AgentVxlanTest {
   }
 
   void setupUnderlayReresolution() {
+    bindVrfPorts(kEncapVrfPorts);
     applyHashConfig();
     addEcmpRoute(folly::IPAddress(kLessSpecificPrefix), 64, {0, 1});
     // The overlay next hop is created after the less specific
@@ -670,6 +695,7 @@ class AgentVxlanEncapTest : public AgentVxlanTest {
 //   - remote-vtep-b - host-b (port1)
 TEST_F(AgentVxlanEncapTest, encapOnCorrectEgressPortPerVtep) {
   auto setup = [this]() {
+    bindVrfPorts(kEncapVrfPorts);
     addVxlanRoute(0, kRemoteVtep, kOverlayPrefix, stationMac());
     addVxlanRoute(1, kRemoteVtep2, kOverlayPrefix2, stationMac());
   };
@@ -719,6 +745,7 @@ class AgentVxlanDecapTest : public AgentVxlanTest {
   }
 
   void setupDecap() {
+    bindVrfPorts(kDecapVrfPorts);
     addDecapRoute();
     addDecapOverlayNextHop();
   }
@@ -767,6 +794,7 @@ class AgentVxlanDecapTest : public AgentVxlanTest {
   // Route the decapped inner destination over ports 1-4.
   // Port 0 stays the VXLAN ingress, outside the member set.
   void setupDecapEcmp() {
+    bindVrfPorts(kDecapVrfPorts);
     applyHashConfig();
     auto nhops = resolvedNhops(5, true /*useLinkLocal*/);
     RouteNextHopSet nextHops;
@@ -838,6 +866,12 @@ TEST_F(AgentVxlanDecapTest, decapEgressEcmp) {
 
 class AgentVxlanSnoopTest : public AgentVxlanTest {
  protected:
+  // Inner traffic ingresses on ports 4 and 5, one per overlay
+  // VRF.
+  static inline const VrfPorts kSnoopVrfPorts{
+      {kOverlayVrf, {4}},
+      {kOverlayVrf2, {5}}};
+
   std::vector<ProductionFeature> getProductionFeaturesVerified()
       const override {
     return {
@@ -859,14 +893,12 @@ class AgentVxlanSnoopTest : public AgentVxlanTest {
     // Each overlay VRF maps to its own VNI on this tunnel.
     auto cfg =
         vxlanConfig(ensemble, kLocalVtep, kRemoteVtep, {{kOverlayVrf2, kVni2}});
-    // Inner traffic ingresses on ports 4 and 5, one per overlay
-    // VRF.
-    addVrfPorts(cfg, ensemble, kOverlayVrf, {4});
-    addVrfPorts(cfg, ensemble, kOverlayVrf2, {5});
+    addVrfPorts(cfg, ensemble, kSnoopVrfPorts);
     return cfg;
   }
 
   void setupEncapSnoop() {
+    bindVrfPorts(kSnoopVrfPorts);
     auto cfg = this->initialConfig(*this->getAgentEnsemble());
     programHashObject(cfg);
     applyEgressMirror(cfg, {logicalPort(0)});
@@ -874,6 +906,7 @@ class AgentVxlanSnoopTest : public AgentVxlanTest {
   }
 
   void setupTwoOverlayVrfs() {
+    bindVrfPorts(kSnoopVrfPorts);
     auto cfg = this->initialConfig(*this->getAgentEnsemble());
     programHashObject(cfg);
     applyEgressMirror(cfg, {logicalPort(0)});
@@ -1038,6 +1071,7 @@ class AgentVxlanSnoopTest : public AgentVxlanTest {
   }
 
   void setupDecapSnoop() {
+    bindVrfPorts(kDecapVrfPorts);
     applyEgressMirror(decapConfig(*this->getAgentEnsemble()), {logicalPort(1)});
     addDecapRoute();
     addDecapOverlayNextHop();

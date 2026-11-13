@@ -1315,7 +1315,6 @@ std::map<InterfaceID, RouterID> addVrfForPorts(
     if ((intf.portID() && portIds.contains(*intf.portID())) ||
         (*intf.type() == cfg::InterfaceType::VLAN &&
          vlans.contains(*intf.vlanID()))) {
-      intf.routerID() = vrf;
       interfaceVrfs.emplace(InterfaceID(*intf.intfID()), vrf);
     }
   }

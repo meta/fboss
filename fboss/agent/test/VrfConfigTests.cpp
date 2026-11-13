@@ -799,3 +799,84 @@ TEST(UpdateInterfaceVrfs, Rejected) {
       sw->updateInterfaceVrfs({{InterfaceID(55), RouterID(2002)}}), FbossError);
   EXPECT_EQ(intf55Vrf(sw->getState()), RouterID(0));
 }
+
+TEST(UpdateInterfaceVrfs, ConfigApplyKeepsBinding) {
+  auto config = emptyVrfConfig();
+  auto handle = createTestHandle(&config);
+  auto sw = handle->getSw();
+  sw->updateInterfaceVrfs({{InterfaceID(55), kTestVrf}});
+
+  cfg::StaticRouteNoNextHops nullRoute;
+  nullRoute.routerID() = 0;
+  nullRoute.prefix() = "2001:db8:300::/64";
+  config.staticRoutesToNull()->push_back(nullRoute);
+  sw->applyConfig("add static route", config);
+
+  auto state = sw->getState();
+  EXPECT_EQ(intf55Vrf(state), kTestVrf);
+  EXPECT_EQ(state->getInterfaceVrfs()->getVrf(InterfaceID(55)), kTestVrf);
+  EXPECT_TRUE(hasRoute(state, kTestVrf, "10.0.55.0/24"));
+  EXPECT_FALSE(hasRoute(state, RouterID(0), "10.0.55.0/24"));
+}
+
+TEST(UpdateInterfaceVrfs, ConfigChangesAddressesOfBoundInterface) {
+  auto config = emptyVrfConfig();
+  auto handle = createTestHandle(&config);
+  auto sw = handle->getSw();
+  sw->updateInterfaceVrfs({{InterfaceID(55), kTestVrf}});
+
+  // 10.0.55.1/24 becomes 10.0.56.1/24
+  config.interfaces()[1].ipAddresses()[0] = "10.0.56.1/24";
+  sw->applyConfig("change interface address", config);
+
+  auto state = sw->getState();
+  EXPECT_EQ(intf55Vrf(state), kTestVrf);
+  EXPECT_TRUE(hasRoute(state, kTestVrf, "10.0.56.0/24"));
+  EXPECT_FALSE(hasRoute(state, kTestVrf, "10.0.55.0/24"));
+  EXPECT_FALSE(hasRoute(state, RouterID(0), "10.0.56.0/24"));
+  EXPECT_FALSE(hasRoute(state, RouterID(0), "10.0.55.0/24"));
+  EXPECT_TRUE(hasRoute(state, kTestVrf, "192.168.55.0/24"));
+  const auto& addrToIntf = sw->getAddrToLocalIntfMap();
+  auto it = addrToIntf.find({kTestVrf, folly::IPAddress("10.0.56.1")});
+  ASSERT_NE(it, addrToIntf.end());
+  EXPECT_EQ(it->second, InterfaceID(55));
+  EXPECT_EQ(
+      addrToIntf.find({kTestVrf, folly::IPAddress("10.0.55.1")}),
+      addrToIntf.end());
+}
+
+TEST(UpdateInterfaceVrfs, RemovingBoundVrfRejected) {
+  auto config = emptyVrfConfig();
+  auto handle = createTestHandle(&config);
+  auto sw = handle->getSw();
+  sw->updateInterfaceVrfs({{InterfaceID(55), kTestVrf}});
+
+  EXPECT_THROW(sw->applyConfig("delete vrf", vrfRemovedConfig()), FbossError);
+  EXPECT_NE(sw->getState()->getVrfs()->getNodeIf(kTestVrf), nullptr);
+}
+
+TEST(UpdateInterfaceVrfs, RemovingBoundInterfaceRejected) {
+  auto config = emptyVrfConfig();
+  auto handle = createTestHandle(&config);
+  auto sw = handle->getSw();
+  sw->updateInterfaceVrfs({{InterfaceID(55), kTestVrf}});
+
+  // Interface 55 and VLAN 55 are deleted
+  config.interfaces()->erase(config.interfaces()->begin() + 1);
+  config.vlans()->erase(config.vlans()->begin() + 1);
+  for (auto& vlanPort : *config.vlanPorts()) {
+    vlanPort.vlanID() = 1;
+  }
+  for (auto& port : *config.ports()) {
+    port.ingressVlan() = 1;
+  }
+  try {
+    sw->applyConfig("delete interface", config);
+    FAIL() << "Removing a bound interface must be rejected";
+  } catch (const FbossError& e) {
+    EXPECT_NE(std::string(e.what()).find("bound to VRF"), std::string::npos)
+        << e.what();
+  }
+  EXPECT_NE(
+      sw->getState()->getInterfaces()->getNodeIf(InterfaceID(55)), nullptr);
+}

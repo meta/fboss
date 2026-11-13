@@ -34,13 +34,27 @@ class AgentVrfTest : public AgentHwTest {
   cfg::SwitchConfig initialConfig(
       const AgentEnsemble& ensemble) const override {
     auto config = AgentHwTest::initialConfig(ensemble);
-    auto ports = ensemble.masterLogicalInterfacePortIds();
+    utility::addVrfForPorts(
+        config, kTestVrf, vrfPorts(ensemble.masterLogicalInterfacePortIds()));
+    return config;
+  }
+
+  static std::vector<PortID> vrfPorts(const std::vector<PortID>& ports) {
     std::vector<PortID> vrfPorts{ports[0], ports[1]};
     if (ports.size() > 3) {
       vrfPorts.push_back(ports[3]);
     }
-    utility::addVrfForPorts(config, kTestVrf, vrfPorts);
-    return config;
+    return vrfPorts;
+  }
+
+  // Move the interfaces of vrfPorts() into kTestVrf. Done in cold boot setup
+  // only: the bindings persist across warm boot.
+  void bindVrfPorts() {
+    std::map<InterfaceID, RouterID> interfaceVrfs;
+    for (const auto& port : vrfPorts(masterLogicalInterfacePortIds())) {
+      interfaceVrfs.emplace(interfaceOf(port), kTestVrf);
+    }
+    getSw()->updateInterfaceVrfs(interfaceVrfs);
   }
 
   PortID ingressPort() const {
@@ -110,8 +124,33 @@ class AgentVrfTest : public AgentHwTest {
   }
 };
 
+// Binds the VRF ports through config routerID, for config moves
+class AgentVrfConfigBindTest : public AgentVrfTest {
+ protected:
+  cfg::SwitchConfig initialConfig(
+      const AgentEnsemble& ensemble) const override {
+    return configWithVrfPorts(
+        ensemble, vrfPorts(ensemble.masterLogicalInterfacePortIds()));
+  }
+
+  // Config with the interfaces of ports in kTestVrf through config routerID
+  cfg::SwitchConfig configWithVrfPorts(
+      const AgentEnsemble& ensemble,
+      const std::vector<PortID>& ports) const {
+    auto config = AgentHwTest::initialConfig(ensemble);
+    auto interfaceVrfs = utility::addVrfForPorts(config, kTestVrf, ports);
+    for (auto& intf : *config.interfaces()) {
+      if (interfaceVrfs.contains(InterfaceID(*intf.intfID()))) {
+        intf.routerID() = kTestVrf;
+      }
+    }
+    return config;
+  }
+};
+
 TEST_F(AgentVrfTest, RouteInVrf) {
   auto setup = [this]() {
+    bindVrfPorts();
     programRoute(kTestVrf, vrfEgressPort());
     programRoute(RouterID(0), defaultVrfEgressPort());
   };
@@ -181,14 +220,12 @@ TEST_F(AgentVrfTest, RouteInVrf) {
   verifyAcrossWarmBoots(setup, verify);
 }
 
-TEST_F(AgentVrfTest, MoveInterfaceToDefaultVrf) {
+TEST_F(AgentVrfConfigBindTest, MoveInterfaceToDefaultVrf) {
   auto setup = [this]() {
     programRoute(kTestVrf, vrfEgressPort());
     programRoute(RouterID(0), defaultVrfEgressPort());
     // Routes through the moving interface are removed before its RIF moves
-    auto config = AgentHwTest::initialConfig(*getAgentEnsemble());
-    utility::addVrfForPorts(config, kTestVrf, {ingressPort()});
-    applyNewConfig(config);
+    applyNewConfig(configWithVrfPorts(*getAgentEnsemble(), {ingressPort()}));
   };
 
   auto verify = [this]() {
@@ -216,7 +253,7 @@ TEST_F(AgentVrfTest, MoveInterfaceToDefaultVrf) {
   verifyAcrossWarmBoots(setup, verify);
 }
 
-TEST_F(AgentVrfTest, DeleteVrfAndInterface) {
+TEST_F(AgentVrfConfigBindTest, DeleteVrfAndInterface) {
   auto setup = [this]() {
     programRoute(kTestVrf, vrfEgressPort());
     programRoute(RouterID(0), defaultVrfEgressPort());
@@ -286,6 +323,7 @@ TEST_F(AgentVrfTest, MoveInterfaceAtRuntime) {
     GTEST_SKIP() << "Needs 4 interface ports";
   }
   auto setup = [this]() {
+    bindVrfPorts();
     programRoute(
         kTestVrf,
         {PortDescriptor(vrfEgressPort()),
@@ -319,7 +357,7 @@ TEST_F(AgentVrfTest, MoveInterfaceAtRuntime) {
       EXPECT_EVENTUALLY_EQ(outPkts(defaultVrfEgressPort()), defaultBefore + 1);
     });
 
-    // Move it back, so the state matches config across warm boot
+    // Move it back for the next verify
     getSw()->updateInterfaceVrfs({{movingIntf, kTestVrf}});
     resolveNeighbors(kTestVrf, {PortDescriptor(vrfSecondEgressPort())});
     EXPECT_EQ(

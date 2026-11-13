@@ -120,9 +120,6 @@ namespace {
 
 const uint8_t kV6LinkLocalAddrMask{64};
 
-RouterID getConfigRouterID(const cfg::Interface& config) {
-  return RouterID(config.routerID().value_or(0));
-}
 constexpr auto kMcQueueScalingFactor = cfg::MMUScalingFactor::ONE_8TH;
 constexpr auto kHyperPortSpeed = cfg::PortSpeed::THREEPOINTTWOT;
 
@@ -780,6 +777,9 @@ class ThriftConfigApplier {
   std::shared_ptr<VrfMap> updateVrfs();
   // With deferVrfChanges_, VRF removals and interface VRF moves are left for
   // a second config pass, after the routes they affect have been removed.
+  // VRF the interface goes to: its interface VRF map entry if any, else
+  // config routerID
+  RouterID getTargetRouterID(const cfg::Interface& config) const;
   RouterID getInterfaceRouterID(const cfg::Interface& config) const;
   void markDeferredVrfChange() const;
   std::shared_ptr<DsfNodeMap> updateDsfNodes();
@@ -1097,9 +1097,9 @@ shared_ptr<SwitchState> ThriftConfigApplier::run() {
   if (!getConfigVrfs().empty() || orig_->getVrfs()->numNodes() > 0) {
     interfaceToVrf.emplace();
     for (const auto& intfCfg : *cfg_->interfaces()) {
-      if (getInterfaceRouterID(intfCfg) == getConfigRouterID(intfCfg)) {
+      if (getInterfaceRouterID(intfCfg) == getTargetRouterID(intfCfg)) {
         interfaceToVrf->emplace(
-            InterfaceID(*intfCfg.intfID()), getConfigRouterID(intfCfg));
+            InterfaceID(*intfCfg.intfID()), getTargetRouterID(intfCfg));
       }
     }
   }
@@ -5590,7 +5590,7 @@ shared_ptr<Interface> ThriftConfigApplier::createInterface(
   auto mtu = config->mtu().value_or(Interface::kDefaultMtu);
   auto intf = make_shared<Interface>(
       InterfaceID(*config->intfID()),
-      getConfigRouterID(*config),
+      getTargetRouterID(*config),
       std::optional<VlanID>(*config->vlanID()),
       folly::StringPiece(name),
       mac,
@@ -7176,11 +7176,11 @@ Interface::Addresses ThriftConfigApplier::getInterfaceAddresses(
     if (intfAddr.first.isV6() && intfAddr.first.isLinkLocal()) {
       continue;
     }
-    if (getInterfaceRouterID(*config) != getConfigRouterID(*config)) {
+    if (getInterfaceRouterID(*config) != getTargetRouterID(*config)) {
       // Moving to another VRF: drop its routes before the move
       continue;
     }
-    auto ret2 = intfRouteTables_[getConfigRouterID(*config)].emplace(
+    auto ret2 = intfRouteTables_[getTargetRouterID(*config)].emplace(
         IPAddress::createNetwork(addr),
         std::make_pair(InterfaceID(*config->intfID()), intfAddr.first));
     if (!ret2.second) {
@@ -7196,7 +7196,7 @@ Interface::Addresses ThriftConfigApplier::getInterfaceAddresses(
             " as interface ",
             other,
             " in VRF ",
-            getConfigRouterID(*config));
+            getTargetRouterID(*config));
       }
       // For consistency with interface routes as added by RouteUpdater,
       // use the last address we see rather than the first. Otherwise,
@@ -7729,7 +7729,7 @@ ThriftConfigApplier::updateForwardingInformationBaseInfo() {
   }
 
   for (const auto& interfaceCfg : *cfg_->interfaces()) {
-    RouterID vrf = getConfigRouterID(interfaceCfg);
+    RouterID vrf = getTargetRouterID(interfaceCfg);
     if (newFibContainers.find(vrf) != newFibContainers.end()) {
       continue;
     }
@@ -8132,11 +8132,26 @@ void ThriftConfigApplier::validateVrfs() const {
     }
     vrfIds.insert(*vrfCfg.vrfId());
   }
+  std::unordered_set<int32_t> intfIds;
   for (const auto& intfCfg : *cfg_->interfaces()) {
-    auto vrf = getConfigRouterID(intfCfg);
+    auto vrf = getTargetRouterID(intfCfg);
     if (vrf != RouterID(0) && !vrfIds.contains(vrf)) {
       throw FbossError(
           "Interface ", *intfCfg.intfID(), " refers to unconfigured VRF ", vrf);
+    }
+    intfIds.insert(*intfCfg.intfID());
+  }
+  for (const auto& [matcher, intfVrfs] :
+       std::as_const(*orig_->getInterfaceVrfs())) {
+    for (const auto& [intfId, intfVrf] : std::as_const(*intfVrfs)) {
+      if (!intfIds.contains(intfId)) {
+        throw FbossError(
+            "Interface ",
+            intfId,
+            " is bound to VRF ",
+            intfVrf->getVrf(),
+            ", unbind it before removing it");
+      }
     }
   }
   if (vrfs.empty()) {
@@ -8192,9 +8207,18 @@ std::shared_ptr<VrfMap> ThriftConfigApplier::updateVrfs() {
   return newVrfs;
 }
 
+RouterID ThriftConfigApplier::getTargetRouterID(
+    const cfg::Interface& config) const {
+  if (auto entry =
+          orig_->getInterfaceVrfs()->getNodeIf(InterfaceID(*config.intfID()))) {
+    return entry->getVrf();
+  }
+  return RouterID(config.routerID().value_or(0));
+}
+
 RouterID ThriftConfigApplier::getInterfaceRouterID(
     const cfg::Interface& config) const {
-  RouterID routerId = getConfigRouterID(config);
+  RouterID routerId = getTargetRouterID(config);
   if (!deferVrfChanges_) {
     return routerId;
   }
