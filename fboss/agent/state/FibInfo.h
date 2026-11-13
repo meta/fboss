@@ -117,6 +117,12 @@ class FibInfo : public ThriftStructNode<FibInfo, state::FibInfoFields> {
   // 2. For each NextHopId, looking up the NextHop from IdToNextHopMap
   std::vector<NextHop> resolveNextHopSetFromId(NextHopSetId id) const;
 
+  // Resolve an ERM override NextHopSetId to NextHops via the override id map.
+  // Returns nullopt if the id is not in this FibInfo; throws if a member
+  // NextHopId is missing from IdToNextHopMap.
+  std::optional<std::vector<NextHop>> resolveOverrideNextHopSetFromIdIf(
+      NextHopSetId id) const;
+
   // Named next-hop group accessors
   // Get the NextHopSetId for a named next-hop group
   std::optional<NextHopSetId> getNextHopSetIdIf(const std::string& name) const;

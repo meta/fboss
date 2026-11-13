@@ -95,6 +95,37 @@ std::vector<NextHop> FibInfo::resolveNextHopSetFromId(NextHopSetId id) const {
   return nextHops;
 }
 
+std::optional<std::vector<NextHop>> FibInfo::resolveOverrideNextHopSetFromIdIf(
+    NextHopSetId id) const {
+  auto overrideIdMap = getOverrideIdToNextHopIdSetMap();
+  if (!overrideIdMap) {
+    return std::nullopt;
+  }
+  auto memberIds = overrideIdMap->getNextHopIdSetIf(id);
+  if (!memberIds) {
+    return std::nullopt;
+  }
+
+  auto idToNextHopMap = getIdToNextHopMap();
+  if (!idToNextHopMap) {
+    throw FbossError("IdToNextHopMap is not initialized");
+  }
+
+  std::vector<NextHop> nextHops;
+  nextHops.reserve(memberIds->size());
+  for (const auto& elem : std::as_const(*memberIds)) {
+    auto nextHopId = (*elem).toThrift();
+    auto nextHopNode = idToNextHopMap->getNextHopIf(nextHopId);
+    if (!nextHopNode) {
+      throw FbossError("NextHopId ", nextHopId, " not found in IdToNextHopMap");
+    }
+    nextHops.push_back(
+        util::fromThrift(
+            nextHopNode->toThrift(), true /* allowV6NonLinkLocal */));
+  }
+  return nextHops;
+}
+
 std::optional<NextHopSetId> FibInfo::getNextHopSetIdIf(
     const std::string& name) const {
   auto nameToIdMap = safe_cref<switch_state_tags::nameToNextHopSetId>();

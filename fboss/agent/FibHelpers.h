@@ -133,6 +133,14 @@ std::shared_ptr<SwitchState> remapOverrideSetIds(
     const std::shared_ptr<SwitchState>& oldState,
     const std::shared_ptr<SwitchState>& newState);
 
+// Resolve ERM override nexthops from RouteNextHopEntry, nullopt if none.
+// When FLAGS_resolve_nexthops_from_id is on, an override is its override
+// NextHopSetID, resolved via FibInfo's override id map; throws FbossError if
+// the id does not resolve. When off, returns the inline override nexthops.
+std::optional<RouteNextHopSet> getOverrideNextHops(
+    const std::shared_ptr<SwitchState>& state,
+    const RouteNextHopEntry& entry);
+
 // Resolve override-aware normalized nexthops from RouteNextHopEntry.
 // If overrides present, uses entry.normalizedNextHops() (overrides are inline).
 // If no overrides, delegates to getNonOverrideNormalizedNextHops (ID-aware).

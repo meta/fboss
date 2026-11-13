@@ -455,6 +455,29 @@ template void populateIdMapsForRoute<folly::IPAddressV6>(
     std::shared_ptr<IdToNextHopIdSetMap>& dstIdToSetMap,
     std::shared_ptr<IdToNextHopMap>& dstIdToNhMap);
 
+std::optional<RouteNextHopSet> getOverrideNextHops(
+    const std::shared_ptr<SwitchState>& state,
+    const RouteNextHopEntry& entry) {
+  if (!FLAGS_resolve_nexthops_from_id) {
+    return entry.getOverrideNextHops();
+  }
+  auto setId = entry.getOverrideNextHopSetID();
+  if (!setId.has_value()) {
+    return std::nullopt;
+  }
+  auto fibsInfoMap = state->getFibsInfoMap();
+  auto nhops = fibsInfoMap ? fibsInfoMap->resolveOverrideNextHopSetFromIdIf(
+                                 static_cast<NextHopSetId>(*setId))
+                           : std::nullopt;
+  if (!nhops) {
+    throw FbossError(
+        "Override NextHopSetID ",
+        static_cast<int64_t>(*setId),
+        " not found in any FibInfo");
+  }
+  return RouteNextHopSet(nhops->begin(), nhops->end());
+}
+
 RouteNextHopSet getNormalizedNextHops(
     const std::shared_ptr<SwitchState>& state,
     const RouteNextHopEntry& entry) {
