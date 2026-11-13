@@ -149,11 +149,12 @@ void LedManager::updateLedStatus(
     portInfo.cablingError =
         (cablignError || cablingLoop || switchStateUpdate.mismatchedNeighbor);
     if (portDisplayMap_.find(portId) != portDisplayMap_.end()) {
-      // If the port info exists then carry the current color and port forced
-      // LED info
+      // If the port info exists then carry the current color, port forced
+      // LED info and neighbor state. calculateLedState compares against it.
       portInfo.currentLedState = portDisplayMap_.at(portId).currentLedState;
       portInfo.forcedOn = portDisplayMap_.at(portId).forcedOn;
       portInfo.forcedOff = portDisplayMap_.at(portId).forcedOff;
+      portInfo.portNeighborState = portDisplayMap_.at(portId).portNeighborState;
     } else {
       portInfo.currentLedState = utility::constructLedState(
           led::LedColor::UNKNOWN, led::Blink::UNKNOWN);
