@@ -31,6 +31,7 @@ cpp_unittest(
         "CmdConfigInterfaceDhcpRelayTest.cpp",
         "CmdConfigInterfaceIpv6NdpTest.cpp",
         "CmdConfigInterfaceLoopbackTest.cpp",
+        "CmdConfigInterfaceMirrorTest.cpp",
         "CmdConfigInterfaceSflowSampleDestTest.cpp",
         "CmdConfigInterfaceSwitchportAccessVlanTest.cpp",
         "CmdConfigInterfaceTest.cpp",
