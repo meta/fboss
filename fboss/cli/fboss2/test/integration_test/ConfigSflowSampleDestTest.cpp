@@ -108,3 +108,41 @@ TEST_F(ConfigSflowSampleDestTest, SetThenDeleteSampleDest) {
   EXPECT_EQ(sampleDestOf(config, portName), -1)
       << "sampleDest still present on " << portName << " after delete";
 }
+
+// Same round trip with `sample-dest mirror`. Also guards the CLI parse:
+// `mirror` is a subcommand of `config interface`, and `sample-dest mirror`
+// must still be read as a value.
+TEST_F(ConfigSflowSampleDestTest, SetThenDeleteSampleDestMirror) {
+  auto initial = getRunningConfig();
+  ASSERT_TRUE(initial.isObject() && initial.count("sw"));
+
+  const std::string portName = pickPortWithoutSampleDest(initial);
+  ASSERT_FALSE(portName.empty()) << "every port already has a sampleDest";
+
+  XLOG(INFO) << "[Step 1] config interface " << portName
+             << " sflow sample-dest mirror";
+  runCliOkOrDiscard(
+      {"config", "interface", portName, "sflow", "sample-dest", "mirror"});
+  commitConfig();
+  committedPort_ = portName;
+  waitForAgentReady();
+  {
+    auto config = waitForRunningConfig([&](const folly::dynamic& c) {
+      return sampleDestOf(c, portName) == 1;
+    });
+    ASSERT_EQ(sampleDestOf(config, portName), 1)
+        << "sampleDest mirror (1) not in running config for " << portName;
+  }
+
+  XLOG(INFO) << "[Step 2] delete interface " << portName
+             << " sflow sample-dest";
+  runCliOkOrDiscard({"delete", "interface", portName, "sflow", "sample-dest"});
+  commitConfig();
+  waitForAgentReady();
+
+  XLOG(INFO) << "[Step 3] Verify " << portName << " has no sampleDest again";
+  auto config = waitForRunningConfig(
+      [&](const folly::dynamic& c) { return sampleDestOf(c, portName) == -1; });
+  EXPECT_EQ(sampleDestOf(config, portName), -1)
+      << "sampleDest still present on " << portName << " after delete";
+}
