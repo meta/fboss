@@ -188,6 +188,16 @@ folly::dynamic Fboss2IntegrationTest::getRunningConfig() const {
   return folly::parseJson(configStr);
 }
 
+std::string Fboss2IntegrationTest::getAgentOption(
+    const std::string& name) const {
+  HostInfo hostInfo("localhost");
+  auto client =
+      utils::createClient<apache::thrift::Client<FbossCtrl>>(hostInfo);
+  std::string value;
+  client->sync_getOption(value, name);
+  return value;
+}
+
 folly::dynamic Fboss2IntegrationTest::getSwitchState(
     const std::string& path) const {
   HostInfo hostInfo("localhost");
