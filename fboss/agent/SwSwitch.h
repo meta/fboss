@@ -1315,6 +1315,11 @@ class SwSwitch : public HwSwitchCallback {
    */
   folly::SpinLock pendingUpdatesLock_;
   StateUpdateList pendingUpdates_;
+  // StateUpdateList::size() walks the list; keep the length here so taking a
+  // batch stays O(batch) instead of O(queue). CountedIntrusiveList can't be
+  // used: it needs a safe_link hook, and failed updates rely on listHook_
+  // auto-unlinking when they are deleted.
+  size_t pendingUpdatesCount_{0};
 
   /*
    * The current switch state represented as :  appliedState,
