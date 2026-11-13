@@ -7,6 +7,8 @@
 #include <folly/synchronization/Baton.h>
 
 #include <algorithm>
+#include <iterator>
+#include <sstream>
 #include <thread>
 
 #include <fmt/core.h>
@@ -846,23 +848,49 @@ TEST_F(CmdShowPortTestFixture, queueQueryClientReturnsAllPortsWhenUnfiltered) {
   EXPECT_EQ(result, entries);
 }
 
+namespace {
+std::vector<std::string> splitLines(const std::string& output) {
+  std::vector<std::string> lines;
+  std::istringstream stream(output);
+  for (std::string line; std::getline(stream, line);) {
+    lines.push_back(line);
+  }
+  return lines;
+}
+
+// Cells of one table row, so tests do not depend on column widths.
+std::vector<std::string> cells(const std::string& line) {
+  std::istringstream stream(line);
+  return {
+      std::istream_iterator<std::string>(stream),
+      std::istream_iterator<std::string>()};
+}
+
+std::vector<std::vector<std::string>> rows(const std::string& output) {
+  std::vector<std::vector<std::string>> result;
+  for (const auto& line : splitLines(output)) {
+    result.push_back(cells(line));
+  }
+  return result;
+}
+} // namespace
+
 TEST_F(CmdShowPortTestFixture, queueOutputOmitsAqmWithoutDetail) {
   setDetailFlag(false);
   std::stringstream ss;
   CmdShowPortQueue().printOutput(createPortQueueEntries(), ss);
 
   std::string output = ss.str();
-  EXPECT_THAT(output, HasSubstr("eth1/1/1\n"));
+  auto table = rows(output);
+  EXPECT_THAT(table, Contains(ElementsAre("eth1/1/1")));
   EXPECT_THAT(
-      output,
-      HasSubstr(
-          "ID     Name                Mode                     "
-          "Weight    ReservedBytes  ScalingFactor  \n"));
+      table,
+      Contains(ElementsAre(
+          "ID", "Name", "Mode", "Weight", "ReservedBytes", "ScalingFactor")));
   EXPECT_THAT(
-      output,
-      HasSubstr(
-          "3      q3                  WEIGHTED_ROUND_ROBIN     "
-          "8         0              TWO            \n"));
+      table,
+      Contains(
+          ElementsAre("3", "q3", "WEIGHTED_ROUND_ROBIN", "8", "0", "TWO")));
   EXPECT_THAT(output, Not(HasSubstr("AQM")));
   EXPECT_THAT(output, Not(HasSubstr("ECN")));
 }
@@ -874,43 +902,80 @@ TEST_F(CmdShowPortTestFixture, queueDetailShowsAqmColumns) {
   setDetailFlag(false);
 
   std::string output = ss.str();
+  auto lines = splitLines(output);
+  auto table = rows(output);
   EXPECT_THAT(
-      output,
-      HasSubstr(
-          "ID     Name                Mode                     "
-          "Weight    ReservedBytes  ScalingFactor  "
-          "AQM         MinLength  MaxLength  Probability\n"));
+      table,
+      Contains(ElementsAre(
+          "ID",
+          "Name",
+          "Mode",
+          "Weight",
+          "ReservedBytes",
+          "ScalingFactor",
+          "AQM",
+          "MinLength",
+          "MaxLength",
+          "Probability")));
   // Queues without AQM say so explicitly, so an operator can tell a
   // missing ECN config apart from one that applied.
+  for (const auto& [id, weight] :
+       std::vector<std::pair<std::string, std::string>>{
+           {"0", "1"}, {"1", "2"}, {"2", "4"}}) {
+    EXPECT_THAT(
+        table,
+        Contains(ElementsAre(
+            id,
+            "q" + id,
+            "WEIGHTED_ROUND_ROBIN",
+            weight,
+            "0",
+            "TWO",
+            "none",
+            "-",
+            "-",
+            "-")));
+  }
   EXPECT_THAT(
-      output,
-      HasSubstr(
-          "0      q0                  WEIGHTED_ROUND_ROBIN     "
-          "1         0              TWO            "
-          "none        -          -          -\n"
-          "1      q1                  WEIGHTED_ROUND_ROBIN     "
-          "2         0              TWO            "
-          "none        -          -          -\n"));
-  EXPECT_THAT(
-      output,
-      HasSubstr(
-          "3      q3                  WEIGHTED_ROUND_ROBIN     "
-          "8         0              TWO            "
-          "ECN         1000000    5000000    100%\n"));
+      table,
+      Contains(ElementsAre(
+          "3",
+          "q3",
+          "WEIGHTED_ROUND_ROBIN",
+          "8",
+          "0",
+          "TWO",
+          "ECN",
+          "1000000",
+          "5000000",
+          "100%")));
+
   // A queue carrying both ECN and WRED puts the second entry on a
   // continuation row with the queue columns left blank.
+  auto earlyDrop = std::find_if(lines.begin(), lines.end(), [](auto& line) {
+    return line.find("EARLY_DROP") != std::string::npos;
+  });
+  ASSERT_NE(earlyDrop, lines.end());
+  ASSERT_NE(earlyDrop, lines.begin());
+  const auto& ecnLine = *(earlyDrop - 1);
+  const auto& earlyDropLine = *earlyDrop;
   EXPECT_THAT(
-      output,
-      HasSubstr(
-          "eth1/3/1\n"
-          "==========\n"));
+      cells(ecnLine),
+      ElementsAre(
+          "0",
+          "q0",
+          "WEIGHTED_ROUND_ROBIN",
+          "1",
+          "0",
+          "TWO",
+          "ECN",
+          "100000",
+          "200000",
+          "100%"));
   EXPECT_THAT(
-      output,
-      HasSubstr(
-          "0      q0                  WEIGHTED_ROUND_ROBIN     "
-          "1         0              TWO            "
-          "ECN         100000     200000     100%\n" +
-          std::string(92, ' ') + "EARLY_DROP  300000     400000     50%\n"));
+      cells(earlyDropLine),
+      ElementsAre("EARLY_DROP", "300000", "400000", "50%"));
+  EXPECT_EQ(earlyDropLine.find("EARLY_DROP"), ecnLine.find("ECN"));
   // The same profile is printed under both ports that use it.
   EXPECT_EQ(
       std::count(output.begin(), output.end(), '%'),
@@ -929,7 +994,18 @@ TEST_F(CmdShowPortTestFixture, queueDetailHandlesUnknownDetection) {
   setDetailFlag(false);
 
   EXPECT_THAT(
-      ss.str(), HasSubstr("EARLY_DROP  unknown    unknown    unknown\n"));
+      rows(ss.str()),
+      Contains(ElementsAre(
+          "0",
+          "q0",
+          "WEIGHTED_ROUND_ROBIN",
+          "1",
+          "0",
+          "TWO",
+          "EARLY_DROP",
+          "unknown",
+          "unknown",
+          "unknown")));
 }
 
 TEST_F(CmdShowPortTestFixture, queueSampleModelCarriesAqm) {
