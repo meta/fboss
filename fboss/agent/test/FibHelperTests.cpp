@@ -635,6 +635,58 @@ TYPED_TEST(FibHelperTest, syncIdMapsFromStateClearsWhenSourceEmpty) {
   EXPECT_EQ(resultFibInfo->getIdToNextHopMap(), nullptr);
 }
 
+// Warm boot collapses a duplicate NextHop id: override members move off the
+// retired id onto the surviving one.
+TYPED_TEST(FibHelperTest, remapOverrideSetIdsAfterNextHopCollapse) {
+  this->programRouteWithNexthops(
+      this->kPrefix2(), {this->kIpAddressA().str(), this->kIpAddressB().str()});
+  auto newState = this->sw_->getState()->clone();
+  auto idToNextHop = this->getFibInfo()->getIdToNextHopMap();
+  std::optional<NextHopId> idA, idB;
+  NextHopId maxId{0};
+  for (const auto& [id, node] : std::as_const(*idToNextHop)) {
+    maxId = std::max(maxId, id);
+    auto nhop = util::fromThrift(node->toThrift(), true);
+    if (nhop.addr() == this->kIpAddressA()) {
+      idA = id;
+    } else if (nhop.addr() == this->kIpAddressB()) {
+      idB = id;
+    }
+  }
+  ASSERT_TRUE(idA.has_value() && idB.has_value());
+  const NextHopId retiredB = maxId + 1000;
+  const NextHopSetId overrideId =
+      nextHopIdTypeStart(NextHopIdType::OVERRIDE_SET);
+
+  // The persisted state also had retiredB for B, used by an override set.
+  auto oldState = newState->clone();
+  auto oldIdToNextHop = idToNextHop->clone();
+  oldIdToNextHop->addNextHop(
+      retiredB, idToNextHop->getNextHop(*idB)->toThrift());
+  oldState->getFibsInfoMap()
+      ->getFibInfo(scope())
+      ->modify(&oldState)
+      ->setIdToNextHopMap(oldIdToNextHop);
+  auto overrideMap = std::make_shared<IdToNextHopIdSetMap>();
+  overrideMap->addNextHopIdSet(overrideId, {*idA, retiredB});
+  newState->getFibsInfoMap()
+      ->getFibInfo(scope())
+      ->modify(&newState)
+      ->setOverrideIdToNextHopIdSetMap(overrideMap);
+
+  auto result = remapOverrideSetIds(oldState, newState);
+
+  const IdToNextHopIdSetMapThriftType expected{{overrideId, {*idA, *idB}}};
+  EXPECT_EQ(
+      result->getFibsInfoMap()
+          ->getFibInfo(scope())
+          ->getOverrideIdToNextHopIdSetMap()
+          ->toThrift(),
+      expected);
+  // Nothing to remap once members use surviving ids.
+  EXPECT_EQ(remapOverrideSetIds(result, result), result);
+}
+
 TYPED_TEST(FibHelperTest, getNormalizedNextHopsFromEntry) {
   this->programRouteWithNexthops(
       this->kPrefix2(), {this->kIpAddressA().str(), this->kIpAddressB().str()});

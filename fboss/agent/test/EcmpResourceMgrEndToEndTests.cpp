@@ -291,6 +291,57 @@ class EcmpResourceMgrEndToEndTest : public BaseEcmpResourceMgrMergeGroupsTest {
     }
   }
 
+  void runNextHopCollapseFixedAtInit() {
+    addNextRoute();
+    addNextRoute();
+    auto wb = sw_->gracefulExitState();
+    auto& fibInfos = *wb.swSwitchState()->fibsInfoMap();
+    const auto& anyFibInfo = fibInfos.begin()->second;
+    ASSERT_FALSE(anyFibInfo.overrideIdToNextHopIdSet()->empty());
+    auto memberId =
+        *anyFibInfo.overrideIdToNextHopIdSet()->begin()->second.begin();
+    std::set<int64_t> persistedOverrideIds;
+    for (const auto& [id, _] : *anyFibInfo.overrideIdToNextHopIdSet()) {
+      persistedOverrideIds.insert(id);
+    }
+    auto duplicateId = anyFibInfo.idToNextHop()->rbegin()->first + 1000;
+    for (auto& [_, fibInfo] : fibInfos) {
+      (*fibInfo.idToNextHop())[duplicateId] =
+          fibInfo.idToNextHop()->at(memberId);
+      for (auto& [__, members] : *fibInfo.idToNextHopIdSet()) {
+        if (members.erase(memberId)) {
+          members.insert(duplicateId);
+          break;
+        }
+      }
+    }
+    auto* newSw = warmboot(wb, false /*applyConfig*/);
+    ASSERT_TRUE(newSw->getRib()->nextHopIdsChangedAtWarmboot());
+    const auto* erm = newSw->getEcmpResourceManager();
+    expectStateAndRibConsistent(newSw);
+    auto state = newSw->getState();
+    auto idToNhop =
+        state->getFibsInfoMap()->cbegin()->second->getIdToNextHopMap();
+    std::set<int64_t> stateIds;
+    for (const auto& [id, _] : std::as_const(*idToNhop)) {
+      stateIds.insert(id);
+    }
+    ASSERT_NE(stateIds.contains(memberId), stateIds.contains(duplicateId));
+    // The override map is remapped onto the surviving NextHop id before ERM
+    // reconstructs, so every override set keeps its persisted id.
+    std::set<int64_t> overrideIds;
+    for (const auto& [id, members] :
+         erm->getOverrideSetIdManager().getIdToMembers()) {
+      overrideIds.insert(static_cast<int64_t>(id));
+      for (auto member : members) {
+        EXPECT_TRUE(stateIds.contains(static_cast<int64_t>(member)));
+      }
+    }
+    EXPECT_EQ(overrideIds, persistedOverrideIds);
+    applyInitialConfig(newSw);
+    expectStateAndRibConsistent(newSw);
+  }
+
   cfg::SwitchConfig wbCfg_;
   std::unique_ptr<HwTestHandle> wbHandle_;
 };
@@ -421,44 +472,15 @@ TEST_F(EcmpResourceMgrEndToEndTest, staleOverrideIdsFreedAtInit) {
 // Warm boots with two persisted NextHop ids for the same NextHop: init keeps
 // one, override sets use only surviving ids, and the RIB agrees.
 TEST_F(EcmpResourceMgrEndToEndTest, nextHopCollapseFixedAtInit) {
-  addNextRoute();
-  addNextRoute();
-  auto wb = sw_->gracefulExitState();
-  auto& fibInfos = *wb.swSwitchState()->fibsInfoMap();
-  const auto& anyFibInfo = fibInfos.begin()->second;
-  ASSERT_FALSE(anyFibInfo.overrideIdToNextHopIdSet()->empty());
-  auto memberId =
-      *anyFibInfo.overrideIdToNextHopIdSet()->begin()->second.begin();
-  auto duplicateId = anyFibInfo.idToNextHop()->rbegin()->first + 1000;
-  for (auto& [_, fibInfo] : fibInfos) {
-    (*fibInfo.idToNextHop())[duplicateId] = fibInfo.idToNextHop()->at(memberId);
-    for (auto& [__, members] : *fibInfo.idToNextHopIdSet()) {
-      if (members.erase(memberId)) {
-        members.insert(duplicateId);
-        break;
-      }
-    }
-  }
-  auto* newSw = warmboot(wb, false /*applyConfig*/);
-  ASSERT_TRUE(newSw->getRib()->nextHopIdsChangedAtWarmboot());
-  const auto* erm = newSw->getEcmpResourceManager();
-  expectStateAndRibConsistent(newSw);
-  auto state = newSw->getState();
-  auto idToNhop =
-      state->getFibsInfoMap()->cbegin()->second->getIdToNextHopMap();
-  std::set<int64_t> stateIds;
-  for (const auto& [id, _] : std::as_const(*idToNhop)) {
-    stateIds.insert(id);
-  }
-  ASSERT_NE(stateIds.contains(memberId), stateIds.contains(duplicateId));
-  for (const auto& [_, members] :
-       erm->getOverrideSetIdManager().getIdToMembers()) {
-    for (auto member : members) {
-      EXPECT_TRUE(stateIds.contains(static_cast<int64_t>(member)));
-    }
-  }
-  applyInitialConfig(newSw);
-  expectStateAndRibConsistent(newSw);
+  runNextHopCollapseFixedAtInit();
+}
+
+// SRv6 validates changed routes during the warm boot sync, before the
+// override map is remapped.
+TEST_F(EcmpResourceMgrEndToEndTest, nextHopCollapseFixedAtInitWithSrv6) {
+  gflags::FlagSaver saver;
+  FLAGS_srv6 = true;
+  runNextHopCollapseFixedAtInit();
 }
 
 // Warm boots from a manager-off binary with no NextHop ids: init stamps the

@@ -64,10 +64,13 @@ void OverrideSetIdManager::reconstructFromSwitchStateMap(
     }
     CHECK(!members.empty())
         << "Empty members for override NextHopSetID: " << setId;
-    CHECK(membersToId_.emplace(members, setId).second)
-        << "Members shared by two override NextHopSetIDs: " << setId;
-    idToMembers_.emplace(setId, std::move(members));
     nextAvailable_ = std::max(nextAvailable_, id + 1);
+    // A NextHop id collapse at warm boot can leave two ids with the same
+    // members; ids ascend, so the lowest is kept and ERM moves routes onto it.
+    if (!membersToId_.emplace(members, setId).second) {
+      continue;
+    }
+    idToMembers_.emplace(setId, std::move(members));
   }
 }
 

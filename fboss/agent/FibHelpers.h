@@ -127,6 +127,12 @@ std::shared_ptr<SwitchState> syncIdMapsFromState(
     const std::shared_ptr<SwitchState>& sourceState,
     const std::shared_ptr<SwitchState>& dstState);
 
+// When warm boot remaps NextHop ids, move override map members off retired
+// NextHop ids onto the surviving id for the same NextHop.
+std::shared_ptr<SwitchState> remapOverrideSetIds(
+    const std::shared_ptr<SwitchState>& oldState,
+    const std::shared_ptr<SwitchState>& newState);
+
 // Resolve override-aware normalized nexthops from RouteNextHopEntry.
 // If overrides present, uses entry.normalizedNextHops() (overrides are inline).
 // If no overrides, delegates to getNonOverrideNormalizedNextHops (ID-aware).

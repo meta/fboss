@@ -100,7 +100,8 @@ std::shared_ptr<SwitchState> RibToSwitchStateUpdater::operator()(
       return;
     }
 
-    const auto nextHops = getNormalizedNextHops(nextState, forwarding);
+    const auto nextHops =
+        getNonOverrideNormalizedNextHops(nextState, forwarding);
     if (!hasSrv6AndNonSrv6NextHops(nextHops)) {
       return;
     }

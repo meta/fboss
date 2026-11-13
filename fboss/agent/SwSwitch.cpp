@@ -1851,6 +1851,11 @@ std::shared_ptr<SwitchState> SwSwitch::syncNextHopIDsToFIB(
   auto newState = state;
   rib_->syncStateFromRib(
       scopeResolver_.get(), &ribToSwitchStateUpdate, &newState);
+  // A downgrade can drop a newer NextHop field, so NextHops that differed
+  // only in it share one id. The ids that were dropped may still be in ERM
+  // override sets, so replace each one with the id the RIB kept when it
+  // remapped ids during reconstruction.
+  newState = remapOverrideSetIds(state, newState);
   XLOG(INFO) << "Applied RIB NextHop ids to the warm boot state";
   return newState;
 }
