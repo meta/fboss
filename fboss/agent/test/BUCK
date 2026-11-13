@@ -163,6 +163,7 @@ cpp_unittest(
         "//fboss/agent:fabric_connectivity_manager",
         "//fboss/agent:fboss-error",
         "//fboss/agent:fboss-types",
+        "//fboss/agent:fboss_event_base",
         "//fboss/agent:fib_helpers",
         "//fboss/agent:file_based_warmboot_utils",
         "//fboss/agent:handler",
