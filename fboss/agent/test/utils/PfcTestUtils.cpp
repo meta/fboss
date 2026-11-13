@@ -298,6 +298,20 @@ void setupPortPgConfig(
 
 } // namespace
 
+uint64_t PfcBufferParams::getEgressBufferPoolBytes(
+    cfg::AsicType asicType,
+    int globalShared,
+    int globalHeadroom) {
+  if (asicType == cfg::AsicType::ASIC_TYPE_P200) {
+    // P200 has a single egress pool and does not allow changing its reserved
+    // bytes once a buffer profile is bound to it. Queues with reservedBytes
+    // must bind to a pool that has reserved bytes, so the pool is created with
+    // a 20MB reserve. Size the pool at 50MB so it holds that reserve.
+    return uint64_t{50} * 1024 * 1024;
+  }
+  return static_cast<uint64_t>(globalShared) + globalHeadroom;
+}
+
 PfcBufferParams PfcBufferParams::getPfcBufferParams(
     cfg::AsicType asicType,
     int globalShared,

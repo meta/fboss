@@ -3,6 +3,7 @@
 #include <fmt/format.h>
 #include <folly/MapUtil.h>
 
+#include "fboss/agent/AgentConfig.h"
 #include "fboss/agent/AgentFeatures.h"
 #include "fboss/agent/AsicUtils.h"
 #include "fboss/agent/packet/PktFactory.h"
@@ -35,6 +36,16 @@ using facebook::fboss::utility::PfcBufferParams;
 
 static constexpr auto kGlobalIngressEgressBufferPoolSize{
     5064760}; // Keep a high pool size for DNX
+
+// Flag overrides run before the agent ensemble exists, so read the ASIC type
+// from the agent config. They run on both cold and warm boot, so both boots
+// request the same egress pool. Cached: the ASIC is fixed for the process.
+facebook::fboss::cfg::AsicType getAsicTypeFromConfig() {
+  static const auto kAsicType = facebook::fboss::checkSameAndGetAsicType(
+      *facebook::fboss::AgentConfig::fromFile(FLAGS_config)->thrift.sw());
+  return kAsicType;
+}
+
 static constexpr auto kLosslessTrafficClass{2};
 static constexpr auto kLosslessPriority{2};
 static const std::vector<int> kLosslessPgIds{2, 3};
@@ -317,8 +328,8 @@ class AgentTrafficPfcTest : public AgentHwTest {
      */
     FLAGS_ingress_egress_buffer_pool_size = kGlobalIngressEgressBufferPoolSize;
     // Some platforms (TH4, TH5) requires same egress/ingress buffer pool sizes.
-    FLAGS_egress_buffer_pool_size = PfcBufferParams::kGlobalSharedBytes +
-        PfcBufferParams::kGlobalHeadroomBytes;
+    FLAGS_egress_buffer_pool_size =
+        PfcBufferParams::getEgressBufferPoolBytes(getAsicTypeFromConfig());
     FLAGS_skip_buffer_reservation = true;
     FLAGS_qgroup_guarantee_enable = true;
   }
@@ -1028,7 +1039,8 @@ class AgentTrafficPfcZeroGlobalHeadroomTest : public AgentTrafficPfcTest {
     AgentTrafficPfcTest::setCmdLineFlagOverrides();
     // Some platforms (TH4, TH5) requires same egress/ingress buffer pool sizes.
     // Global headroom will be 0 in this test.
-    FLAGS_egress_buffer_pool_size = PfcBufferParams::kGlobalSharedBytes;
+    FLAGS_egress_buffer_pool_size = PfcBufferParams::getEgressBufferPoolBytes(
+        getAsicTypeFromConfig(), PfcBufferParams::kGlobalSharedBytes, 0);
   }
 };
 
