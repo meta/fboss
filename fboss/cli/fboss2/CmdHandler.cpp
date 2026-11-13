@@ -10,6 +10,7 @@
 
 #include "fboss/cli/fboss2/CmdHandler.h"
 #include <thrift/lib/cpp2/op/Get.h>
+#include "fboss/cli/fboss2/CmdArgsLists.h"
 #include "fboss/cli/fboss2/CmdGlobalOptions.h"
 #include "fboss/cli/fboss2/CmdList.h"
 #include "fboss/cli/fboss2/gen-cpp2/cli_types.h"
@@ -23,10 +24,10 @@
 #include <folly/Conv.h>
 #include <folly/Demangle.h>
 #include <folly/ScopeGuard.h>
-#include <folly/Traits.h>
 #include <folly/executors/CPUThreadPoolExecutor.h>
 #include <folly/logging/xlog.h>
 #include <folly/stop_watch.h>
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <exception>
@@ -39,6 +40,7 @@
 #include <stdexcept>
 #include <string>
 #include <tuple>
+#include <type_traits>
 #include <utility>
 #include <vector>
 

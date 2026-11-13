@@ -14,12 +14,20 @@
 #include <folly/FileUtil.h>
 #include <thrift/lib/cpp2/protocol/Serializer.h>
 #include <filesystem>
+#include <map>
+#include <memory>
+#include <stdexcept>
+#include <string>
+#include <utility>
+#include <vector>
 #include "fboss/agent/gen-cpp2/agent_config_types.h"
+#include "fboss/cli/fboss2/gen-cpp2/cli_metadata_types.h"
 #include "fboss/cli/fboss2/session/FbossServiceUtil.h"
 #include "fboss/cli/fboss2/test/TestableConfigSession.h"
 #include "fboss/cli/fboss2/test/config/MockFbossServiceUtil.h"
 #include "fboss/cli/fboss2/test/config/MockSystemdInterface.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
+#include "folly/IPAddress.h"
 
 using ::testing::_; // NOLINT(bugprone-reserved-identifier)
 using ::testing::InSequence;

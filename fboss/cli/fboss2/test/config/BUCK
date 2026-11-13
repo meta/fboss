@@ -102,6 +102,7 @@ cpp_unittest(
         "fbsource//third-party/fmt:fmt",
         "fbsource//third-party/googletest:gmock",
         "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly:network_address",
         "fbsource//xplat/folly:string",
         "fbsource//xplat/folly/json:dynamic",
         "//configerator/structs/neteng/bgp_policy/thrift:bgp_policy-cpp2-types",
