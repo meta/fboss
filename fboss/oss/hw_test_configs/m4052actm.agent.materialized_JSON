@@ -13,7 +13,6 @@
     "enable_1to1_intf_route_table_mapping": "true",
     "remediation_enabled": "true",
     "enable_replayer": "true",
-    "ecmp_width": "66",
     "enable_acl_table_group": "true"
   },
   "sw": {

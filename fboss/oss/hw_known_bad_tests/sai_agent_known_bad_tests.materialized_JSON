@@ -12213,6 +12213,12 @@
         },
         {
           "test_name_regex": "AgentMacSwLearningModeTest.VerifyDefaultSwAgingForPort$"
+        },
+        {
+          "test_name_regex": "AgentDropReasonTest.ingressL3DstDiscardDrop$"
+        },
+        {
+          "test_name_regex": "AgentDropReasonAclTest.ingressAclDenyDrop$"
         }
     ],
     "brcm/14.2.0.0_dnx_odp/14.2.0.0_dnx_odp/jericho3/mono": [

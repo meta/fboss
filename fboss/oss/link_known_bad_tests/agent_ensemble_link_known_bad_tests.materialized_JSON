@@ -98538,6 +98538,9 @@
         },
         {
           "test_name_regex": "roundtrip.*.testOpticsRemediation$"
+        },
+        {
+          "test_name_regex": "AgentEnsembleLinkTest.xPhyInfoTest$"
         }
     ],
     "minipack3ba/sai/asicsdk-13.3.0.0_odp/13.3.0.0_odp/physdk-credo-0.7.2/credo-0.7.2": [
@@ -158005,6 +158008,9 @@
         },
         {
           "test_name_regex": "Prbs.*TCVR_L.*FR1_100G.*$"
+        },
+        {
+          "test_name_regex": "AgentEnsembleLinkTest.xPhyInfoTest$"
         }
     ],
     "wedge800bact/sai/asicsdk-13.3.0.0_odp/13.3.0.0_odp/physdk-credo-0.7.2/credo-0.7.2": [
