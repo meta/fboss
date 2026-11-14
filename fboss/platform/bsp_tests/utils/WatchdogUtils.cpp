@@ -6,8 +6,10 @@
 #include <filesystem>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 
 #include <fmt/format.h>
+#include <re2/re2.h>
 
 namespace facebook::fboss::platform::bsp_tests {
 
@@ -20,13 +22,27 @@ namespace facebook::fboss::platform::bsp_tests {
 #define WDIOC_SETTIMEOUT _IOWR(WATCHDOG_IOCTL_BASE, 6, int)
 #define WDIOC_GETTIMEOUT _IOR(WATCHDOG_IOCTL_BASE, 7, int)
 
+const re2::RE2 kNumberedWatchdogRegex{"watchdog\\d+"};
+
 std::set<std::string> WatchdogUtils::getWatchdogs() {
   std::set<std::string> watchdogs;
 
+  constexpr std::string_view kWatchdogPrefix = "watchdog";
+  bool hasLegacyWatchdog = false;
+
   for (const auto& entry : std::filesystem::directory_iterator("/dev")) {
-    if (entry.path().filename().string().starts_with("watchdog")) {
+    const auto name = entry.path().filename().string();
+    if (name == kWatchdogPrefix) {
+      hasLegacyWatchdog = true;
+    } else if (re2::RE2::FullMatch(name, kNumberedWatchdogRegex)) {
       watchdogs.insert(entry.path().string());
     }
+  }
+
+  // The legacy interface is an alias for the first watchdog. Only use it
+  // when no numbered interface is available.
+  if (watchdogs.empty() && hasLegacyWatchdog) {
+    watchdogs.insert("/dev/watchdog");
   }
   return watchdogs;
 }
