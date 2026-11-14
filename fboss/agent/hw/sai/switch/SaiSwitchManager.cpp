@@ -499,6 +499,15 @@ void SaiSwitchManager::resetLoadBalancer() {
   }
 }
 
+template <typename HashAttrT>
+void SaiSwitchManager::detachLoadBalancer() {
+  // A hash object must be detached from the switch before its last owning
+  // SaiHash reference is released. This is an object-lifetime requirement and
+  // must not be gated by SAI_HASH_FIELDS_CLEAR_BEFORE_SET, which is only a
+  // workaround for replacing hash fields on some SAI implementations.
+  switch_->setOptionalAttribute(HashAttrT{SAI_NULL_OBJECT_ID});
+}
+
 void SaiSwitchManager::addOrUpdateEcmpLoadBalancer(
     const std::shared_ptr<LoadBalancer>& newLb) {
   programEcmpLoadBalancerParams(newLb->getSeed(), newLb->getAlgorithm());
@@ -664,15 +673,15 @@ void SaiSwitchManager::removeLoadBalancer(
   XLOG(DBG2) << "Remove load balancer : " << oldLb->getID();
   if (oldLb->getID() == cfg::LoadBalancerID::AGGREGATE_PORT) {
     programLagLoadBalancerParams(std::nullopt, std::nullopt);
-    resetLoadBalancer<SaiSwitchTraits::Attributes::LagHashV4>();
-    resetLoadBalancer<SaiSwitchTraits::Attributes::LagHashV6>();
+    detachLoadBalancer<SaiSwitchTraits::Attributes::LagHashV4>();
+    detachLoadBalancer<SaiSwitchTraits::Attributes::LagHashV6>();
     lagV4Hash_.reset();
     lagV6Hash_.reset();
     return;
   }
   programEcmpLoadBalancerParams(std::nullopt, std::nullopt);
-  resetLoadBalancer<SaiSwitchTraits::Attributes::EcmpHashV4>();
-  resetLoadBalancer<SaiSwitchTraits::Attributes::EcmpHashV6>();
+  detachLoadBalancer<SaiSwitchTraits::Attributes::EcmpHashV4>();
+  detachLoadBalancer<SaiSwitchTraits::Attributes::EcmpHashV6>();
   ecmpV4Hash_.reset();
   ecmpV6Hash_.reset();
 }
