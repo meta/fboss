@@ -1,0 +1,10 @@
+{
+  "pwmTransitionValue": 35,
+  "controlInterval": {
+    "sensorReadInterval": 5,
+    "pwmUpdateInterval": 5
+  },
+  "sensors": [],
+  "fans": [],
+  "zones": []
+}
