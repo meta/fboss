@@ -3,7 +3,7 @@
   "pwmBoostOnNumDeadSensor": 0,
   "pwmBoostOnNoQsfpAfterInSec": 0,
   "pwmBoostValue": 100,
-  "pwmTransitionValue": 35,
+  "pwmTransitionValue": 50,
   "pwmLowerThreshold": 20,
   "pwmUpperThreshold": 100,
   "shutdownCmd": "echo 0 > /run/devmap/cplds/SMB_CPLD/th6_pwr_en",
@@ -29,7 +29,7 @@
       }
     },
     {
-      "sensorName": "MCB_POWER_BRICK1_TEMP",
+      "sensorName": "MCB_POWER_BRICK3_TEMP",
       "pwmCalcType": "SENSOR_PWM_CALC_TYPE_INCREMENTAL_PID",
       "pidSetting": {
         "kp": 5,
@@ -44,38 +44,57 @@
       "sensorName": "PIC_T_U12_INLET_LM75_1_TEMP",
       "pwmCalcType": "SENSOR_PWM_CALC_TYPE_FOUR_LINEAR_TABLE",
       "normalUpTable": {
-        "38": 35,
-        "40": 40,
-        "43": 45,
-        "47": 50
+        "36": 50,
+        "38": 60,
+        "41": 70,
+        "45": 80,
+        "49": 90
       },
       "normalDownTable": {
-        "45": 50,
-        "41": 45,
-        "38": 40,
-        "36": 35
+        "47": 90,
+        "43": 80,
+        "39": 70,
+        "36": 60,
+        "35": 50
       },
       "failUpTable": {
-        "38": 40,
-        "40": 45,
-        "43": 50,
-        "47": 55
+        "36": 60,
+        "38": 70,
+        "42": 80,
+        "45": 90,
+        "49": 100
       },
       "failDownTable": {
-        "45": 55,
-        "41": 50,
-        "38": 45,
-        "36": 40
+        "47": 100,
+        "43": 90,
+        "40": 80,
+        "36": 70,
+        "35": 60
       }
     }
   ],
   "shutdownCondition": {
-    "numOvertempSensorForShutdown": 1,
+    "numOvertempSensorForShutdown": 2,
     "conditions": [
       {
         "sensorName": "TH6_TEMP",
-        "overtempThreshold": 101.0,
-        "slidingWindowSize": 1
+        "overtempThreshold": 101,
+        "slidingWindowSize": 3
+      },
+      {
+        "sensorName": "SMB_U29_LEFT_TMP432_1_TEMP2",
+        "overtempThreshold": 94,
+        "slidingWindowSize": 3
+      },
+      {
+        "sensorName": "SMB_U29_LEFT_TMP432_1_TEMP3",
+        "overtempThreshold": 94,
+        "slidingWindowSize": 3
+      },
+      {
+        "sensorName": "SMB_U30_RIGHT_TMP432_2_TEMP2",
+        "overtempThreshold": 94,
+        "slidingWindowSize": 3
       }
     ]
   },
@@ -175,7 +194,7 @@
       "zoneName": "zone1",
       "sensorNames": [
         "COME_U1_CPU_UNCORE_TEMP",
-        "MCB_POWER_BRICK1_TEMP",
+        "MCB_POWER_BRICK3_TEMP",
         "PIC_T_U12_INLET_LM75_1_TEMP"
       ],
       "fanNames": [
