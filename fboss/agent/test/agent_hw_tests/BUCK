@@ -231,7 +231,6 @@ cpp_library(
         "AgentDeepPacketInspectionTests.cpp",
         "AgentDiagShellStressTests.cpp",
         "AgentDot1qMappingTest.cpp",
-        "AgentDropReasonTests.cpp",
         "AgentDropTestBase.cpp",
         "AgentDscpMarkingTests.cpp",
         "AgentEcmpTests.cpp",
@@ -328,6 +327,7 @@ cpp_library(
         "facebook/AgentAccessPolicyAclGreMirrorTests.cpp",
         "facebook/AgentAccessPolicyAclSflowMirrorTests.cpp",
         "facebook/AgentAccessPolicyAclTests.cpp",
+        "facebook/AgentDropReasonTests.cpp",
     ],
     headers = [
         "AgentArsBase.h",
