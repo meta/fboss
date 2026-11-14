@@ -6,6 +6,7 @@
   "pwmTransitionValue": 35,
   "pwmLowerThreshold": 20,
   "pwmUpperThreshold": 100,
+  "shutdownCmd": "echo 0 > /run/devmap/cplds/SMB_CPLD/th6_pwr_en",
   "watchdog": {
     "sysfsPath": "/run/devmap/watchdogs/FAN_WATCHDOG",
     "value": 0
@@ -68,6 +69,31 @@
       }
     }
   ],
+  "shutdownCondition": {
+    "numOvertempSensorForShutdown": 2,
+    "conditions": [
+      {
+        "sensorName": "TH6_TEMP",
+        "overtempThreshold": 101,
+        "slidingWindowSize": 3
+      },
+      {
+        "sensorName": "SMB_U29_LEFT_TMP432_1_TEMP2",
+        "overtempThreshold": 94,
+        "slidingWindowSize": 3
+      },
+      {
+        "sensorName": "SMB_U29_LEFT_TMP432_1_TEMP3",
+        "overtempThreshold": 94,
+        "slidingWindowSize": 3
+      },
+      {
+        "sensorName": "SMB_U30_RIGHT_TMP432_2_TEMP2",
+        "overtempThreshold": 94,
+        "slidingWindowSize": 3
+      }
+    ]
+  },
   "fans": [
     {
       "fanName": "FAN_1_F",
