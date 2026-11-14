@@ -1,6 +1,9 @@
 // (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
 
+#include <chrono>
 #include <memory>
+
+#include <folly/ScopeGuard.h>
 
 #include "fboss/agent/MultiSwitchPacketStreamMap.h"
 #include "fboss/agent/MultiSwitchThriftHandler.h"
@@ -164,6 +167,24 @@ void MultiSwitchThriftHandler::processSwitchReachabilityChangeEvent(
 }
 
 #if FOLLY_HAS_COROUTINES
+bool MultiSwitchThriftHandler::startEventSyncer() {
+  std::lock_guard lock(eventSyncerMutex_);
+  if (eventSyncersStopping_) {
+    return false;
+  }
+  ++activeEventSyncers_;
+  return true;
+}
+
+void MultiSwitchThriftHandler::finishEventSyncer() {
+  std::lock_guard lock(eventSyncerMutex_);
+  DCHECK_GT(activeEventSyncers_, 0);
+  --activeEventSyncers_;
+  if (activeEventSyncers_ == 0) {
+    eventSyncerCv_.notify_all();
+  }
+}
+
 folly::coro::Task<
     apache::thrift::SinkConsumer<multiswitch::LinkChangeEvent, bool>>
 MultiSwitchThriftHandler::co_notifyLinkChangeEvent(int64_t switchId) {
@@ -172,6 +193,12 @@ MultiSwitchThriftHandler::co_notifyLinkChangeEvent(int64_t switchId) {
       [this, switchId](
           folly::coro::AsyncGenerator<multiswitch::LinkChangeEvent&&> gen)
           -> folly::coro::Task<bool> {
+        if (!startEventSyncer()) {
+          co_return false;
+        }
+        SCOPE_EXIT {
+          finishEventSyncer();
+        };
         auto switchIndex = sw_->getSwitchInfoTable().getSwitchIndexFromSwitchId(
             SwitchID(switchId));
         sw_->stats()->hwAgentLinkEventSinkConnectionStatus(switchIndex, true);
@@ -224,6 +251,12 @@ MultiSwitchThriftHandler::co_notifySwitchReachabilityChangeEvent(
           folly::coro::AsyncGenerator<
               multiswitch::SwitchReachabilityChangeEvent&&> gen)
           -> folly::coro::Task<bool> {
+        if (!startEventSyncer()) {
+          co_return false;
+        }
+        SCOPE_EXIT {
+          finishEventSyncer();
+        };
         auto switchIndex = sw_->getSwitchInfoTable().getSwitchIndexFromSwitchId(
             SwitchID(switchId));
         sw_->stats()->hwAgentSwitchReachabilityChangeEventSinkConnectionStatus(
@@ -259,6 +292,12 @@ MultiSwitchThriftHandler::co_notifyFdbEvent(int64_t switchId) {
   co_return apache::thrift::SinkConsumer<multiswitch::FdbEvent, bool>{
       [this, switchId](folly::coro::AsyncGenerator<multiswitch::FdbEvent&&> gen)
           -> folly::coro::Task<bool> {
+        if (!startEventSyncer()) {
+          co_return false;
+        }
+        SCOPE_EXIT {
+          finishEventSyncer();
+        };
         auto switchIndex = sw_->getSwitchInfoTable().getSwitchIndexFromSwitchId(
             SwitchID(switchId));
         sw_->stats()->hwAgentFdbEventSinkConnectionStatus(switchIndex, true);
@@ -290,6 +329,12 @@ MultiSwitchThriftHandler::co_notifyRxPacket(int64_t switchId) {
   co_return apache::thrift::SinkConsumer<multiswitch::RxPacket, bool>{
       [this, switchId](folly::coro::AsyncGenerator<multiswitch::RxPacket&&> gen)
           -> folly::coro::Task<bool> {
+        if (!startEventSyncer()) {
+          co_return false;
+        }
+        SCOPE_EXIT {
+          finishEventSyncer();
+        };
         auto switchIndex = sw_->getSwitchInfoTable().getSwitchIndexFromSwitchId(
             SwitchID(switchId));
         sw_->stats()->hwAgentRxPktEventSinkConnectionStatus(switchIndex, true);
@@ -376,6 +421,12 @@ MultiSwitchThriftHandler::co_syncHwStats(int16_t switchIndex) {
       [this, switchIndex](
           folly::coro::AsyncGenerator<multiswitch::HwSwitchStats&&> gen)
           -> folly::coro::Task<bool> {
+        if (!startEventSyncer()) {
+          co_return false;
+        }
+        SCOPE_EXIT {
+          finishEventSyncer();
+        };
         sw_->stats()->hwAgentStatsEventSinkConnectionStatus(switchIndex, true);
         try {
           while (auto item = co_await folly::coro::co_withCancellation(
@@ -411,7 +462,12 @@ void MultiSwitchThriftHandler::gracefulExit(int64_t switchId) {
   sw_->getHwSwitchHandler()->notifyHwSwitchGracefulExit(switchId);
 }
 
+#if FOLLY_HAS_COROUTINES
 void MultiSwitchThriftHandler::cancelEventSyncers() {
+  {
+    std::lock_guard lock(eventSyncerMutex_);
+    eventSyncersStopping_ = true;
+  }
   XLOG(DBG2) << "Cancelling all the cancellation sources";
   linkCancellationSource_.requestCancellation();
   fdbCancellationSource_.requestCancellation();
@@ -419,5 +475,18 @@ void MultiSwitchThriftHandler::cancelEventSyncers() {
   statsCancellationSource_.requestCancellation();
   switchReachabilityCancellationSource_.requestCancellation();
 }
+
+void MultiSwitchThriftHandler::waitForEventSyncers() {
+  std::unique_lock lock(eventSyncerMutex_);
+  if (eventSyncerCv_.wait_for(lock, std::chrono::seconds(5), [this] {
+        return activeEventSyncers_ == 0;
+      })) {
+    XLOG(DBG2) << "All event syncers drained";
+    return;
+  }
+  XLOG(ERR) << "Timed out waiting for " << activeEventSyncers_
+            << " event syncer(s) to finish; proceeding with shutdown anyway";
+}
+#endif
 
 } // namespace facebook::fboss
