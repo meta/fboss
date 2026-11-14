@@ -6,7 +6,7 @@
     "SCM_SLOT": {
       "numOutgoingI2cBuses": 10,
       "idpromConfig": {
-        "busName": "CPU_BUS@0",
+        "busName": "Synopsys DesignWare I2C adapter",
         "address": "0x50",
         "kernelDeviceName": "24c64"
       },
@@ -52,6 +52,18 @@
       ],
       "i2cDeviceConfigs": [
         {
+          "busName": "SMBus PIIX4 adapter port 0 at 0b00",
+          "address": "0x50",
+          "kernelDeviceName": "spd5118",
+          "pmUnitScopedName": "DIMM1_TEMP"
+        },
+        {
+          "busName": "SMBus PIIX4 adapter port 0 at 0b00",
+          "address": "0x51",
+          "kernelDeviceName": "spd5118",
+          "pmUnitScopedName": "DIMM2_TEMP"
+        },
+        {
           "busName": "SCM_IOB_I2C_3",
           "address": "0x41",
           "kernelDeviceName": "adm1266",
@@ -76,14 +88,6 @@
         {
           "pmUnitScopedName": "NIC_TEMP",
           "sysfsPath": "/sys/bus/pci/devices/0000:02:00.0"
-        },
-        {
-          "pmUnitScopedName": "DIMM1_TEMP",
-          "sysfsPath": "/run/nexthop_bsp/sensors/DIMM1_TEMP"
-        },
-        {
-          "pmUnitScopedName": "DIMM2_TEMP",
-          "sysfsPath": "/run/nexthop_bsp/sensors/DIMM2_TEMP"
         }
       ],
       "outgoingSlotConfigs": {
@@ -542,7 +546,8 @@
     }
   },
   "i2cAdaptersFromCpu": [
-    "CPU_BUS@0"
+    "Synopsys DesignWare I2C adapter",
+    "SMBus PIIX4 adapter port 0 at 0b00"
   ],
   "symbolicLinkToDevicePath": {
     "/run/devmap/eeproms/CHASSIS_EEPROM": "/SMB_SLOT@0/[IDPROM]",
