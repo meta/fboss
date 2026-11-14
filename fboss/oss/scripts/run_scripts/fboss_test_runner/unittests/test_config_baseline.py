@@ -131,6 +131,58 @@ class TestCapture(unittest.TestCase):
         self.assertEqual(self.h.git("show", "HEAD:cli/agent.conf"), '{"sw": 2}')
         self.assertIn("suite baseline snapshot", self.h.git("log", "-1", "--format=%s"))
 
+    def _bootstrap_repo_like_fboss_init(self) -> str:
+        """An existing repo whose first commit holds only cli/agent.conf (a
+        copy; agent.conf stays a plain file), with bgpd's packaged bgpcpp.conf
+        a plain, untracked file."""
+        os.makedirs(os.path.join(self.h.repo, "cli"))
+        with open(os.path.join(self.h.repo, "cli", "agent.conf"), "w") as f:
+            f.write('{"sw": 1}')
+        with open(os.path.join(self.h.repo, "cli", "cli_metadata.json"), "w") as f:
+            f.write("{}")
+        with open(os.path.join(self.h.repo, "bgpcpp.conf"), "w") as f:
+            f.write('{"bgp": 1}')
+        self.h.git("init", "-q")
+        self.h.git("add", "cli/agent.conf", "cli/cli_metadata.json")
+        self.h.git(
+            "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "boot"
+        )
+        return self.h.git("rev-parse", "HEAD")
+
+    def test_adopts_plain_live_configs_into_existing_repo(self):
+        boot = self._bootstrap_repo_like_fboss_init()
+        # The runner copies the test config over the plain agent.conf.
+        with open(os.path.join(self.h.repo, "agent.conf"), "w") as f:
+            f.write('{"sw": "test"}')
+        sha = self.h.baseline.capture()
+        self.assertNotEqual(sha, boot)
+        self.assertEqual(self.h.git("rev-parse", "HEAD"), sha)
+        self.assertEqual(self.h.git("show", "HEAD:cli/agent.conf"), '{"sw": "test"}')
+        # bgpd's config must be tracked at the baseline, or a rollback to it
+        # deletes the file and bgpd aborts on startup.
+        self.assertEqual(self.h.git("show", "HEAD:bgpcpp/bgpcpp.conf"), '{"bgp": 1}')
+        # Live files stay plain until the CLI converts them.
+        self.assertFalse(os.path.islink(os.path.join(self.h.repo, "agent.conf")))
+        self.assertFalse(os.path.islink(os.path.join(self.h.repo, "bgpcpp.conf")))
+        # Idempotent: a second suite reuses the same baseline.
+        self.assertEqual(self.h.baseline.capture(), sha)
+
+    def test_plain_live_config_matching_tracked_keeps_head(self):
+        boot = self._bootstrap_repo_like_fboss_init()
+        os.remove(os.path.join(self.h.repo, "bgpcpp.conf"))
+        with open(os.path.join(self.h.repo, "agent.conf"), "w") as f:
+            f.write('{"sw": 1}')
+        self.assertEqual(self.h.baseline.capture(), boot)
+
+    def test_symlinked_live_config_is_not_adopted(self):
+        first = self.h.baseline.capture()
+        # After a CLI commit the daemon reads through the symlink, so the
+        # tracked file is already authoritative.
+        self.h.write_tracked_agent_conf('{"sw": 2}')
+        head = self.h.git("rev-parse", "HEAD")
+        self.assertNotEqual(first, head)
+        self.assertEqual(self.h.baseline.capture(), head)
+
     def test_returns_none_when_git_unavailable(self):
         with patch.object(
             config_baseline.subprocess, "run", side_effect=OSError("no git")
