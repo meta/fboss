@@ -321,12 +321,47 @@ void SaiRouteManager::addOrUpdateRoute(
        */
       auto normalizedNextHops = getNormalizedNextHops(state, fwd);
       const auto nextHopGroupType = getNextHopGroupType(normalizedNextHops);
-      auto nextHopGroupHandle =
-          managerTable_->nextHopGroupManager().incRefOrAddNextHopGroup(
-              SaiNextHopGroupKey(
-                  std::move(normalizedNextHops),
-                  fwd.getOverrideEcmpSwitchingMode(),
-                  nextHopGroupType));
+      std::shared_ptr<SaiNextHopGroupHandle> nextHopGroupHandle;
+      RouteNextHopEntry::NextHopSet clientNextHops;
+
+      // Keep the existing protection group across a transient primary
+      // resolution change. The primary member is subscribed to its managed
+      // next hop and is removed/recreated as the neighbor goes down/up. If we
+      // create a new group for the backup-only resolved set, the old group is
+      // released and the hardware loses the protection object that GR2 needs
+      // for autonomous failover/reversion.
+      if (isProtectionNextHopGroupType(nextHopGroupType)) {
+        const auto bestEntry = newRoute->getBestEntry().second;
+        if (bestEntry &&
+            bestEntry->getAction() == RouteForwardAction::NEXTHOPS) {
+          // A client entry remains the source of truth for the desired primary
+          // and backup paths. The resolved forwarding entry can temporarily
+          // omit a neighbor that is down.
+          clientNextHops = bestEntry->getClientNextHopSetID().has_value()
+              ? getClientNextHops(state, *bestEntry)
+              : bestEntry->getNextHopSet();
+        }
+        auto existingProtectionGroup = routeHandle->nextHopGroupHandle();
+        if (existingProtectionGroup && existingProtectionGroup->nextHopGroup &&
+            existingProtectionGroup->canReuseProtectionGroup(
+                normalizedNextHops, clientNextHops)) {
+          nextHopGroupHandle = existingProtectionGroup;
+          nextHopHandle = routeHandle->nexthopHandle_;
+          XLOG(DBG2) << "Reusing protection next hop group "
+                     << nextHopGroupHandle->nextHopGroup->adapterKey()
+                     << " across a primary resolution change for route "
+                     << newRoute->str();
+        }
+      }
+
+      if (!nextHopGroupHandle) {
+        nextHopGroupHandle =
+            managerTable_->nextHopGroupManager().incRefOrAddNextHopGroup(
+                SaiNextHopGroupKey(
+                    std::move(normalizedNextHops),
+                    fwd.getOverrideEcmpSwitchingMode(),
+                    nextHopGroupType));
+      }
 
       // For multi-NPU switches, if all next hops were filtered out (none have
       // router interfaces on this ASIC), the nextHopGroup will be null.

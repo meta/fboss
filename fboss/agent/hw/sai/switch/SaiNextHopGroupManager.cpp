@@ -69,6 +69,49 @@ checkAndGetPriAndBackupNhops(const RouteNextHopEntry::NextHopSet& swNextHops) {
           std::make_move_iterator(backupNhops.begin()),
           std::make_move_iterator(backupNhops.end())));
 }
+
+// Client next hops can be unresolved while the group handle stores resolved
+// next hops. Compare the forwarding identity that survives resolution, and
+// compare interface IDs when both sides have one. Weight is intentionally not
+// part of this comparison: protection-group members do not use ECMP weights,
+// and normalization can change a client weight before the group is created.
+bool sameNextHopPath(const NextHop& lhs, const NextHop& rhs) {
+  return (
+      lhs.addr() == rhs.addr() &&
+      (!lhs.intfID().has_value() || !rhs.intfID().has_value() ||
+       lhs.intfID() == rhs.intfID()) &&
+      lhs.labelForwardingAction() == rhs.labelForwardingAction() &&
+      lhs.disableTTLDecrement() == rhs.disableTTLDecrement() &&
+      lhs.srv6SegmentList() == rhs.srv6SegmentList() &&
+      lhs.tunnelType() == rhs.tunnelType() &&
+      lhs.tunnelId() == rhs.tunnelId() && lhs.cost() == rhs.cost() &&
+      lhs.role() == rhs.role());
+}
+
+bool sameNextHopPathSet(
+    const RouteNextHopEntry::NextHopSet& lhs,
+    const RouteNextHopEntry::NextHopSet& rhs) {
+  if (lhs.size() != rhs.size()) {
+    return false;
+  }
+
+  std::vector<bool> matched(rhs.size(), false);
+  for (const auto& lhsNextHop : lhs) {
+    auto rhsIter = rhs.begin();
+    size_t rhsIndex = 0;
+    for (; rhsIter != rhs.end(); ++rhsIter, ++rhsIndex) {
+      if (!matched[rhsIndex] && sameNextHopPath(lhsNextHop, *rhsIter)) {
+        matched[rhsIndex] = true;
+        break;
+      }
+    }
+    if (rhsIter == rhs.end()) {
+      return false;
+    }
+  }
+  return true;
+}
+
 bool isEcmpModeARS(std::optional<cfg::SwitchingMode> switchingMode) {
   return (
       switchingMode.has_value() &&
@@ -240,6 +283,8 @@ SaiNextHopGroupManager::incRefOrAddNextHopGroup(const SaiNextHopGroupKey& key) {
   const auto& swNextHops = key.nextHops;
   auto [primaryNhops, backupNhops] = checkAndGetPriAndBackupNhops(swNextHops);
   const auto nextHopGroupType = key.groupType;
+  nextHopGroupHandle->nextHops_ = swNextHops;
+  nextHopGroupHandle->nextHopGroupType_ = nextHopGroupType;
   auto childNextHopGroup = isProtectionNextHopGroupType(nextHopGroupType)
       ? incRefOrAddNextHopGroup(SaiNextHopGroupKey(
             backupNhops, key.switchingMode, getHwProtectionNextHopGroupType()))
@@ -1045,6 +1090,56 @@ size_t SaiNextHopGroupHandle::nextHopGroupSize() const {
       std::begin(members_), std::end(members_), [](auto member) {
         return member->isProgrammed();
       });
+}
+
+bool SaiNextHopGroupHandle::canReuseProtectionGroup(
+    const RouteNextHopEntry::NextHopSet& resolvedNextHops,
+    const RouteNextHopEntry::NextHopSet& clientNextHops) const {
+  if (!isProtectionNextHopGroupType(nextHopGroupType_) ||
+      clientNextHops.empty()) {
+    return false;
+  }
+
+  auto [currentPrimaryNhops, currentBackupNhops] =
+      checkAndGetPriAndBackupNhops(nextHops_);
+  auto [newPrimaryNhops, newBackupNhops] =
+      checkAndGetPriAndBackupNhops(resolvedNextHops);
+  auto [clientPrimaryNhops, clientBackupNhops] =
+      checkAndGetPriAndBackupNhops(clientNextHops);
+
+  // A backup change requires a new child group. The client set is checked as
+  // well so a stale resolved set cannot cause us to retain an old standby
+  // path after an intentional route update.
+  if (!sameNextHopPathSet(currentBackupNhops, newBackupNhops) ||
+      !sameNextHopPathSet(currentBackupNhops, clientBackupNhops)) {
+    return false;
+  }
+
+  if (currentPrimaryNhops.empty()) {
+    // A group created without a primary cannot be upgraded in place. If the
+    // client adds a primary, create a complete replacement group.
+    return newPrimaryNhops.empty() && clientPrimaryNhops.empty();
+  }
+
+  // The client must still request the primary represented by this handle. A
+  // missing resolved primary is the only allowed difference: that is the
+  // transient neighbor-loss case this reuse path is intended to cover.
+  if (!sameNextHopPathSet(currentPrimaryNhops, clientPrimaryNhops)) {
+    return false;
+  }
+  if (!newPrimaryNhops.empty() &&
+      !sameNextHopPathSet(currentPrimaryNhops, newPrimaryNhops)) {
+    return false;
+  }
+
+  // Do not reuse a group whose resolved set has no backup. This also protects
+  // against accidentally treating a plain primary-only update as a temporary
+  // resolution loss if the group type was derived from stale state.
+  if (newBackupNhops.empty()) {
+    return false;
+  }
+
+  return true;
 }
 
 ArsCounterDelta SaiNextHopGroupHandle::updateStats() {
