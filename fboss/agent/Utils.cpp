@@ -800,27 +800,7 @@ std::optional<fsdb::OperDelta> OperDeltaFilter::filter(
   }
 
   for (const auto& change : *delta.changes()) {
-    auto& path = *change.path()->raw();
-    if (path.size() < index + 1) {
-      continue;
-    }
-    const auto& matcherStr = path[index];
-    auto iter = matchersCache_.find(matcherStr);
-    if (iter == matchersCache_.end()) {
-      // if matcher string is not found in cache, cache it.
-      try {
-        HwSwitchMatcher matcher(matcherStr);
-        auto emplaced =
-            matchersCache_.emplace(matcherStr, HwSwitchMatcher(matcherStr));
-        iter = emplaced.first;
-      } catch (const FbossError& error) {
-        XLOG(ERR) << "Error while processing an oper delta token for path : "
-                  << getOperPath(path) << ": " << error.what();
-        continue;
-      }
-    }
-    CHECK(iter != matchersCache_.end());
-    if (iter->second.has(switchId_)) {
+    if (matches(change, index)) {
       result.changes()->push_back(change);
     }
   }
@@ -828,6 +808,43 @@ std::optional<fsdb::OperDelta> OperDeltaFilter::filter(
     return std::nullopt;
   }
   return result;
+}
+
+std::optional<fsdb::OperDelta> OperDeltaFilter::filter(
+    fsdb::OperDelta&& delta,
+    int index) const {
+  std::erase_if(*delta.changes(), [&](const fsdb::OperDeltaUnit& change) {
+    return !matches(change, index);
+  });
+  if (delta.changes()->empty()) {
+    return std::nullopt;
+  }
+  return std::move(delta);
+}
+
+bool OperDeltaFilter::matches(const fsdb::OperDeltaUnit& change, int index)
+    const {
+  const auto& path = *change.path()->raw();
+  if (path.size() < index + 1) {
+    return false;
+  }
+  const auto& matcherStr = path[index];
+  auto iter = matchersCache_.find(matcherStr);
+  if (iter == matchersCache_.end()) {
+    // if matcher string is not found in cache, cache it.
+    try {
+      HwSwitchMatcher matcher(matcherStr);
+      auto emplaced =
+          matchersCache_.emplace(matcherStr, HwSwitchMatcher(matcherStr));
+      iter = emplaced.first;
+    } catch (const FbossError& error) {
+      XLOG(ERR) << "Error while processing an oper delta token for path : "
+                << getOperPath(path) << ": " << error.what();
+      return false;
+    }
+  }
+  CHECK(iter != matchersCache_.end());
+  return iter->second.has(switchId_);
 }
 
 AdminDistance getAdminDistanceForClientId(

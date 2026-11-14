@@ -172,16 +172,20 @@ MultiHwSwitchHandler::stateChanged(
   std::vector<folly::Future<HwSwitchStateUpdateResult>> futures;
   for (const auto& entry : deltas) {
     switchIds.push_back(entry.first);
-    auto update = HwSwitchStateUpdate(entry.second, transaction);
+    HwSwitchStateUpdate update(
+        entry.second, transaction, /*soleConsumer=*/deltas.size() == 1);
     futures.emplace_back(stateChanged(
-        entry.first, update, hwWriteBehavior, deltaApplicationBehavior));
+        entry.first,
+        std::move(update),
+        hwWriteBehavior,
+        deltaApplicationBehavior));
   }
   return getStateUpdateResult(switchIds, futures);
 }
 
 folly::Future<HwSwitchStateUpdateResult> MultiHwSwitchHandler::stateChanged(
     SwitchID switchId,
-    const HwSwitchStateUpdate& update,
+    HwSwitchStateUpdate update,
     const HwWriteBehavior& hwWriteBehavior,
     const std::optional<StateDeltaApplication>& deltaApplicationBehavior) {
   auto iter = hwSwitchSyncers_.find(switchId);
@@ -189,7 +193,7 @@ folly::Future<HwSwitchStateUpdateResult> MultiHwSwitchHandler::stateChanged(
     throw FbossError("hw switch syncer for switch id ", switchId, " not found");
   }
   return iter->second->stateChanged(
-      update, hwWriteBehavior, deltaApplicationBehavior);
+      std::move(update), hwWriteBehavior, deltaApplicationBehavior);
 }
 
 std::map<SwitchID, HwSwitchStateUpdateResult>

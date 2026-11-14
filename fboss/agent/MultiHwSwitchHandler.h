@@ -153,7 +153,7 @@ class MultiHwSwitchHandler {
 
   folly::Future<HwSwitchStateUpdateResult> stateChanged(
       SwitchID switchId,
-      const HwSwitchStateUpdate& update,
+      HwSwitchStateUpdate update,
       const HwWriteBehavior& hwWriteBehavior = HwWriteBehavior::WRITE,
       const std::optional<StateDeltaApplication>& deltaApplicationBehavior =
           std::nullopt);

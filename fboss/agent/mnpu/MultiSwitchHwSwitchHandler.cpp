@@ -141,7 +141,7 @@ bool MultiSwitchHwSwitchHandler::checkOperSyncStateLocked(
  */
 std::pair<fsdb::OperDelta, HwSwitchStateUpdateStatus>
 MultiSwitchHwSwitchHandler::stateChanged(
-    const std::vector<fsdb::OperDelta>& deltas,
+    std::vector<fsdb::OperDelta> deltas,
     bool transaction,
     const std::shared_ptr<SwitchState>& oldState,
     const std::shared_ptr<SwitchState>& newState,
@@ -181,7 +181,7 @@ MultiSwitchHwSwitchHandler::stateChanged(
     fillMultiswitchOperDelta(
         stateDelta,
         prevUpdateSwitchState_,
-        deltas,
+        std::move(deltas),
         transaction,
         currOperDeltaSeqNum_,
         hwWriteBehavior,
@@ -312,7 +312,8 @@ multiswitch::StateOperDelta MultiSwitchHwSwitchHandler::getNextStateOperDelta(
       SCOPE_EXIT {
         nextOperDelta_ = nullptr;
       };
-      return *nextOperDelta_;
+      // Reset on exit, so move rather than copy.
+      return std::move(*nextOperDelta_);
     } else {
       // return empty delta to HwSwitch incase of cancellation or timeout.
       // cancellation occurs when the client disconnects or when server
@@ -411,7 +412,7 @@ bool MultiSwitchHwSwitchHandler::waitForOperDeltaReady(
 void MultiSwitchHwSwitchHandler::fillMultiswitchOperDelta(
     multiswitch::StateOperDelta& stateDelta,
     const std::shared_ptr<SwitchState>& state,
-    const std::vector<fsdb::OperDelta>& deltas,
+    std::vector<fsdb::OperDelta> deltas,
     bool transaction,
     int64_t lastSeqNum,
     const HwWriteBehavior& hwWriteBehavior,
@@ -425,7 +426,7 @@ void MultiSwitchHwSwitchHandler::fillMultiswitchOperDelta(
     CHECK(!transaction);
   } else {
     stateDelta.isFullState() = false;
-    stateDelta.operDeltas() = deltas;
+    stateDelta.operDeltas() = std::move(deltas);
   }
   stateDelta.transaction() = transaction;
   stateDelta.seqNum() = lastSeqNum + 1;
