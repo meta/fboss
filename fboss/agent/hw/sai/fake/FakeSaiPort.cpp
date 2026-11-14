@@ -706,6 +706,14 @@ sai_status_t set_port_attribute_fn(
       port.egressSamplePacket = attr->value.oid;
       break;
     case SAI_PORT_ATTR_INGRESS_SAMPLE_MIRROR_SESSION: {
+      // Broadcom SAI rejects attaching or detaching a sample mirror session
+      // on a port with no ingress sample packet object. Clearing an already
+      // empty list is a no-op and is allowed.
+      if (port.ingressSamplePacket == SAI_NULL_OBJECT_ID &&
+          (attr->value.objlist.count > 0 ||
+           !port.ingressSampleMirrorList.empty())) {
+        return SAI_STATUS_INVALID_PARAMETER;
+      }
       auto& ingressSampleMirrorList = port.ingressSampleMirrorList;
       ingressSampleMirrorList.clear();
       for (int j = 0; j < attr->value.objlist.count; ++j) {
@@ -713,6 +721,11 @@ sai_status_t set_port_attribute_fn(
       }
     } break;
     case SAI_PORT_ATTR_EGRESS_SAMPLE_MIRROR_SESSION: {
+      if (port.egressSamplePacket == SAI_NULL_OBJECT_ID &&
+          (attr->value.objlist.count > 0 ||
+           !port.egressSampleMirrorList.empty())) {
+        return SAI_STATUS_INVALID_PARAMETER;
+      }
       auto& egressSampleMirrorList = port.egressSampleMirrorList;
       egressSampleMirrorList.clear();
       for (int j = 0; j < attr->value.objlist.count; ++j) {

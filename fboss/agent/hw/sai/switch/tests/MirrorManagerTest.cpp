@@ -273,3 +273,61 @@ TEST_F(MirrorManagerTest, portMirroringAndSampling) {
       SaiPortTraits::Attributes::IngressSampleMirrorSession{});
   EXPECT_EQ(gotSampleMirrorSaiIdList[0], mirrorHandle->adapterKey());
 }
+
+// A live config change that turns on sampling to a mirror on an existing port
+// must program the sample packet object before the sample mirror session,
+// and detach the sample mirror session before removing the sample packet.
+TEST_F(MirrorManagerTest, changePortSamplingMirror) {
+  std::string mirrorId1 = "mirror1";
+  std::shared_ptr<Port> swPort1 = makePort(p0);
+  saiManagerTable->portManager().addPort(swPort1);
+  createTunnelMirror(
+      SAI_MIRROR_SESSION_TYPE_SFLOW, mirrorId1, swPort1->getID());
+  std::shared_ptr<Port> swPort2 = makePort(p1);
+  saiManagerTable->portManager().addPort(swPort2);
+
+  auto sampledPort = swPort2->clone();
+  sampledPort->setIngressMirror(mirrorId1);
+  sampledPort->setSflowIngressRate(100);
+  sampledPort->setSampleDestination(cfg::SampleDestination::MIRROR);
+  EXPECT_NO_THROW(
+      saiManagerTable->portManager().changePort(swPort2, sampledPort));
+
+  SaiPortHandle* portHandle =
+      saiManagerTable->portManager().getPortHandle(sampledPort->getID());
+  SaiMirrorHandle* mirrorHandle =
+      saiManagerTable->mirrorManager().getMirrorHandle(mirrorId1);
+  auto& portApi = saiApiTable->portApi();
+  ASSERT_NE(portHandle->ingressSamplePacket, nullptr);
+  EXPECT_EQ(
+      portApi.getAttribute(
+          portHandle->port->adapterKey(),
+          SaiPortTraits::Attributes::IngressSamplePacketEnable{}),
+      portHandle->ingressSamplePacket->adapterKey());
+  auto gotSampleMirrorSaiIdList = portApi.getAttribute(
+      portHandle->port->adapterKey(),
+      SaiPortTraits::Attributes::IngressSampleMirrorSession{});
+  ASSERT_EQ(gotSampleMirrorSaiIdList.size(), 1);
+  EXPECT_EQ(gotSampleMirrorSaiIdList[0], mirrorHandle->adapterKey());
+  EXPECT_TRUE(portHandle->mirrorInfo.isMirrorSampled());
+
+  auto unsampledPort = sampledPort->clone();
+  unsampledPort->setIngressMirror(std::nullopt);
+  unsampledPort->setSflowIngressRate(0);
+  unsampledPort->setSampleDestination(std::nullopt);
+  EXPECT_NO_THROW(
+      saiManagerTable->portManager().changePort(sampledPort, unsampledPort));
+  EXPECT_EQ(
+      portApi
+          .getAttribute(
+              portHandle->port->adapterKey(),
+              SaiPortTraits::Attributes::IngressSampleMirrorSession{})
+          .size(),
+      0);
+  EXPECT_EQ(
+      portApi.getAttribute(
+          portHandle->port->adapterKey(),
+          SaiPortTraits::Attributes::IngressSamplePacketEnable{}),
+      SAI_NULL_OBJECT_ID);
+  EXPECT_EQ(portHandle->ingressSamplePacket, nullptr);
+}
