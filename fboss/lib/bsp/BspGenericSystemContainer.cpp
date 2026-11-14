@@ -12,6 +12,7 @@
 #include "fboss/lib/bsp/m4061clsc/M4061clscBspPlatformMapping.h"
 #include "fboss/lib/bsp/m4061nhp/M4061nhpBspPlatformMapping.h"
 #include "fboss/lib/bsp/m4062nhp/M4062nhpBspPlatformMapping.h"
+#include "fboss/lib/bsp/m4340nhp/M4340nhpBspPlatformMapping.h"
 #include "fboss/lib/bsp/m5120csc/M5120cscBspPlatformMapping.h"
 #include "fboss/lib/bsp/meru800bfa/Meru800bfaBspPlatformMapping.h"
 #include "fboss/lib/bsp/meru800bia/Meru800biaBspPlatformMapping.h"
@@ -231,6 +232,18 @@ template <>
 std::shared_ptr<M5120cscSystemContainer>
 M5120cscSystemContainer::getInstance() {
   return _m5120cscSystemContainer.try_get();
+}
+
+using M4340nhpSystemContainer =
+    BspGenericSystemContainer<M4340nhpBspPlatformMapping>;
+folly::Singleton<M4340nhpSystemContainer> _m4340nhpSystemContainer;
+template <>
+std::shared_ptr<M4340nhpSystemContainer>
+M4340nhpSystemContainer::getInstance() {
+  // Instance-form try_get() keeps the singleton referenced so the linker
+  // cannot drop its registration with the SingletonVault.
+  // NOLINTNEXTLINE(readability-static-accessed-through-instance)
+  return _m4340nhpSystemContainer.try_get();
 }
 
 } // namespace fboss
