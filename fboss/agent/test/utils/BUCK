@@ -56,9 +56,9 @@ cpp_library(
     ],
     deps = [
         "fbsource//third-party/googletest:gtest",
+        "fbsource//xplat/folly/io:iobuf",
         "//fboss/agent:fboss-error",
         "//fboss/agent/if:common-cpp2-types",
-        "//folly/io:iobuf",
     ],
     exported_deps = [
         "fbsource//xplat/folly:network_address",
