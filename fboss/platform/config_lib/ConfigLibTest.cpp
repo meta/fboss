@@ -22,6 +22,7 @@ const std::string kM4061nhp = "m4061nhp";
 const std::string kM4062nhp = "m4062nhp";
 const std::string kM4340nhp = "m4340nhp";
 const std::string kSample = "sample";
+const std::string kM4061clscl = "m4061clscl";
 const std::string kWedge800cact = "wedge800cact";
 const std::string kWedge800cnhp = "wedge800cnhp";
 const std::string kNonExistentPlatform = "nonExistentPlatform";
@@ -64,6 +65,7 @@ TEST(ConfigLibTest, Basic) {
   EXPECT_NO_THROW(ConfigLib().getPlatformManagerConfig(kM4062nhp));
   EXPECT_NO_THROW(ConfigLib().getPlatformManagerConfig(kM4340nhp));
   EXPECT_NO_THROW(ConfigLib().getPlatformManagerConfig(kMorgan800cc));
+  EXPECT_NO_THROW(ConfigLib().getPlatformManagerConfig(kM4061clscl));
   EXPECT_NO_THROW(ConfigLib().getPlatformManagerConfig(kJanga800bic));
   EXPECT_NO_THROW(ConfigLib().getPlatformManagerConfig(kTahan800bc));
   EXPECT_NO_THROW(ConfigLib().getPlatformManagerConfig(kBlackwolf800banw));
