@@ -155,6 +155,7 @@ cpp_library(
         "fbsource//xplat/folly/coro:blocking_wait",
         "fbsource//xplat/folly/coro:task",
         "fbsource//xplat/folly/executors:cpu_thread_pool_executor",
+        "fbsource//xplat/folly/json:dynamic",
         "fbsource//xplat/folly/logging:logging",
         ":cli-cpp2-types",
         ":cmd-common-utils",
