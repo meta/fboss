@@ -1,0 +1,363 @@
+{
+  "pwmBoostOnNumDeadFan": 2,
+  "pwmBoostOnNumDeadSensor": 0,
+  "pwmBoostOnNoQsfpAfterInSec": 55,
+  "pwmBoostValue": 60,
+  "pwmTransitionValue": 45,
+  "pwmLowerThreshold": 25,
+  "pwmUpperThreshold": 70,
+  "shutdownCmd": "echo 0 > /run/devmap/cplds/SMB_CPLD/th5_pwr_en",
+  "watchdog": {
+    "sysfsPath": "/run/devmap/watchdogs/FAN_WATCHDOG",
+    "value": 0
+  },
+  "controlInterval": {
+    "sensorReadInterval": 5,
+    "pwmUpdateInterval": 5
+  },
+  "optics": [
+    {
+      "opticName": "qsfp_group_1",
+      "aggregationType": "OPTIC_AGGREGATION_TYPE_INCREMENTAL_PID",
+      "pidSettings": {
+        "OPTIC_TYPE_800_GENERIC": {
+          "kp": 2,
+          "ki": 0.6,
+          "kd": 0,
+          "setPoint": 65.0,
+          "posHysteresis": 2.0,
+          "negHysteresis": 0.0
+        },
+        "OPTIC_TYPE_400_GENERIC": {
+          "kp": 2,
+          "ki": 0.6,
+          "kd": 0,
+          "setPoint": 65.0,
+          "posHysteresis": 2.0,
+          "negHysteresis": 0.0
+        },
+        "OPTIC_TYPE_200_GENERIC": {
+          "kp": 2,
+          "ki": 0.6,
+          "kd": 0,
+          "setPoint": 65.0,
+          "posHysteresis": 2.0,
+          "negHysteresis": 0.0
+        },
+        "OPTIC_TYPE_100_GENERIC": {
+          "kp": 2,
+          "ki": 0.6,
+          "kd": 0,
+          "setPoint": 65.0,
+          "posHysteresis": 2.0,
+          "negHysteresis": 0.0
+        }
+      }
+    }
+  ],
+  "sensors": [
+    {
+      "sensorName": "CPU_UNCORE_TEMP",
+      "pwmCalcType": "SENSOR_PWM_CALC_TYPE_INCREMENTAL_PID",
+      "pidSetting": {
+        "kp": 2,
+        "ki": 0.6,
+        "kd": 0,
+        "setPoint": 94.0,
+        "posHysteresis": 3.0,
+        "negHysteresis": 3.0
+      }
+    },
+    {
+      "sensorName": "SCM_INLET_U36_TEMP",
+      "pwmCalcType": "SENSOR_PWM_CALC_TYPE_FOUR_LINEAR_TABLE",
+      "normalUpTable": {
+        "31": 25,
+        "32": 30,
+        "37": 35,
+        "42": 60
+      },
+      "normalDownTable": {
+        "29": 25,
+        "30": 30,
+        "35": 35,
+        "40": 60
+      },
+      "failUpTable": {
+        "31": 30,
+        "32": 35,
+        "37": 40,
+        "42": 65
+      },
+      "failDownTable": {
+        "29": 30,
+        "30": 35,
+        "35": 40,
+        "40": 65
+      }
+    },
+    {
+      "sensorName": "SMB_TH5_TEMP",
+      "pwmCalcType": "SENSOR_PWM_CALC_TYPE_INCREMENTAL_PID",
+      "pidSetting": {
+        "kp": 2,
+        "ki": 0.6,
+        "kd": 0,
+        "setPoint": 95.0,
+        "posHysteresis": 2.0,
+        "negHysteresis": 0.0
+      }
+    }
+  ],
+  "shutdownCondition": {
+    "numOvertempSensorForShutdown": 1,
+    "conditions": [
+      {
+        "sensorName": "SMB_TH5_TEMP",
+        "overtempThreshold": 110.0,
+        "slidingWindowSize": 1
+      }
+    ]
+  },
+  "fans": [
+    {
+      "fanName": "FAN_1_F",
+      "rpmSysfsPath": "/run/devmap/sensors/MCB_FAN_CPLD/fan1_input",
+      "pwmSysfsPath": "/run/devmap/sensors/MCB_FAN_CPLD/pwm1",
+      "presenceSysfsPath": "/run/devmap/sensors/MCB_FAN_CPLD/fan1_present",
+      "goodLedSysfsPath": "/sys/class/leds/fan1:blue:status",
+      "failLedSysfsPath": "/sys/class/leds/fan1:amber:status",
+      "pwmMin": 0,
+      "pwmMax": 40,
+      "fanPresentVal": 1,
+      "fanMissingVal": 0,
+      "rpmMin": 1500
+    },
+    {
+      "fanName": "FAN_1_R",
+      "rpmSysfsPath": "/run/devmap/sensors/MCB_FAN_CPLD/fan2_input",
+      "pwmSysfsPath": "/run/devmap/sensors/MCB_FAN_CPLD/pwm1",
+      "presenceSysfsPath": "/run/devmap/sensors/MCB_FAN_CPLD/fan1_present",
+      "goodLedSysfsPath": "/sys/class/leds/fan1:blue:status",
+      "failLedSysfsPath": "/sys/class/leds/fan1:amber:status",
+      "pwmMin": 0,
+      "pwmMax": 40,
+      "fanPresentVal": 1,
+      "fanMissingVal": 0,
+      "rpmMin": 1500
+    },
+    {
+      "fanName": "FAN_2_F",
+      "rpmSysfsPath": "/run/devmap/sensors/MCB_FAN_CPLD/fan3_input",
+      "pwmSysfsPath": "/run/devmap/sensors/MCB_FAN_CPLD/pwm2",
+      "presenceSysfsPath": "/run/devmap/sensors/MCB_FAN_CPLD/fan2_present",
+      "goodLedSysfsPath": "/sys/class/leds/fan2:blue:status",
+      "failLedSysfsPath": "/sys/class/leds/fan2:amber:status",
+      "pwmMin": 0,
+      "pwmMax": 40,
+      "fanPresentVal": 1,
+      "fanMissingVal": 0,
+      "rpmMin": 1500
+    },
+    {
+      "fanName": "FAN_2_R",
+      "rpmSysfsPath": "/run/devmap/sensors/MCB_FAN_CPLD/fan4_input",
+      "pwmSysfsPath": "/run/devmap/sensors/MCB_FAN_CPLD/pwm2",
+      "presenceSysfsPath": "/run/devmap/sensors/MCB_FAN_CPLD/fan2_present",
+      "goodLedSysfsPath": "/sys/class/leds/fan2:blue:status",
+      "failLedSysfsPath": "/sys/class/leds/fan2:amber:status",
+      "pwmMin": 0,
+      "pwmMax": 40,
+      "fanPresentVal": 1,
+      "fanMissingVal": 0,
+      "rpmMin": 1500
+    },
+    {
+      "fanName": "FAN_3_F",
+      "rpmSysfsPath": "/run/devmap/sensors/MCB_FAN_CPLD/fan5_input",
+      "pwmSysfsPath": "/run/devmap/sensors/MCB_FAN_CPLD/pwm3",
+      "presenceSysfsPath": "/run/devmap/sensors/MCB_FAN_CPLD/fan3_present",
+      "goodLedSysfsPath": "/sys/class/leds/fan3:blue:status",
+      "failLedSysfsPath": "/sys/class/leds/fan3:amber:status",
+      "pwmMin": 0,
+      "pwmMax": 40,
+      "fanPresentVal": 1,
+      "fanMissingVal": 0,
+      "rpmMin": 1500
+    },
+    {
+      "fanName": "FAN_3_R",
+      "rpmSysfsPath": "/run/devmap/sensors/MCB_FAN_CPLD/fan6_input",
+      "pwmSysfsPath": "/run/devmap/sensors/MCB_FAN_CPLD/pwm3",
+      "presenceSysfsPath": "/run/devmap/sensors/MCB_FAN_CPLD/fan3_present",
+      "goodLedSysfsPath": "/sys/class/leds/fan3:blue:status",
+      "failLedSysfsPath": "/sys/class/leds/fan3:amber:status",
+      "pwmMin": 0,
+      "pwmMax": 40,
+      "fanPresentVal": 1,
+      "fanMissingVal": 0,
+      "rpmMin": 1500
+    },
+    {
+      "fanName": "FAN_4_F",
+      "rpmSysfsPath": "/run/devmap/sensors/MCB_FAN_CPLD/fan7_input",
+      "pwmSysfsPath": "/run/devmap/sensors/MCB_FAN_CPLD/pwm4",
+      "presenceSysfsPath": "/run/devmap/sensors/MCB_FAN_CPLD/fan4_present",
+      "goodLedSysfsPath": "/sys/class/leds/fan4:blue:status",
+      "failLedSysfsPath": "/sys/class/leds/fan4:amber:status",
+      "pwmMin": 0,
+      "pwmMax": 40,
+      "fanPresentVal": 1,
+      "fanMissingVal": 0,
+      "rpmMin": 1500
+    },
+    {
+      "fanName": "FAN_4_R",
+      "rpmSysfsPath": "/run/devmap/sensors/MCB_FAN_CPLD/fan8_input",
+      "pwmSysfsPath": "/run/devmap/sensors/MCB_FAN_CPLD/pwm4",
+      "presenceSysfsPath": "/run/devmap/sensors/MCB_FAN_CPLD/fan4_present",
+      "goodLedSysfsPath": "/sys/class/leds/fan4:blue:status",
+      "failLedSysfsPath": "/sys/class/leds/fan4:amber:status",
+      "pwmMin": 0,
+      "pwmMax": 40,
+      "fanPresentVal": 1,
+      "fanMissingVal": 0,
+      "rpmMin": 1500
+    },
+    {
+      "fanName": "FAN_5_F",
+      "rpmSysfsPath": "/run/devmap/sensors/MCB_FAN_CPLD/fan9_input",
+      "pwmSysfsPath": "/run/devmap/sensors/MCB_FAN_CPLD/pwm5",
+      "presenceSysfsPath": "/run/devmap/sensors/MCB_FAN_CPLD/fan5_present",
+      "goodLedSysfsPath": "/sys/class/leds/fan5:blue:status",
+      "failLedSysfsPath": "/sys/class/leds/fan5:amber:status",
+      "pwmMin": 0,
+      "pwmMax": 40,
+      "fanPresentVal": 1,
+      "fanMissingVal": 0,
+      "rpmMin": 1500
+    },
+    {
+      "fanName": "FAN_5_R",
+      "rpmSysfsPath": "/run/devmap/sensors/MCB_FAN_CPLD/fan10_input",
+      "pwmSysfsPath": "/run/devmap/sensors/MCB_FAN_CPLD/pwm5",
+      "presenceSysfsPath": "/run/devmap/sensors/MCB_FAN_CPLD/fan5_present",
+      "goodLedSysfsPath": "/sys/class/leds/fan5:blue:status",
+      "failLedSysfsPath": "/sys/class/leds/fan5:amber:status",
+      "pwmMin": 0,
+      "pwmMax": 40,
+      "fanPresentVal": 1,
+      "fanMissingVal": 0,
+      "rpmMin": 1500
+    },
+    {
+      "fanName": "FAN_6_F",
+      "rpmSysfsPath": "/run/devmap/sensors/MCB_FAN_CPLD/fan11_input",
+      "pwmSysfsPath": "/run/devmap/sensors/MCB_FAN_CPLD/pwm6",
+      "presenceSysfsPath": "/run/devmap/sensors/MCB_FAN_CPLD/fan6_present",
+      "goodLedSysfsPath": "/sys/class/leds/fan6:blue:status",
+      "failLedSysfsPath": "/sys/class/leds/fan6:amber:status",
+      "pwmMin": 0,
+      "pwmMax": 40,
+      "fanPresentVal": 1,
+      "fanMissingVal": 0,
+      "rpmMin": 1500
+    },
+    {
+      "fanName": "FAN_6_R",
+      "rpmSysfsPath": "/run/devmap/sensors/MCB_FAN_CPLD/fan12_input",
+      "pwmSysfsPath": "/run/devmap/sensors/MCB_FAN_CPLD/pwm6",
+      "presenceSysfsPath": "/run/devmap/sensors/MCB_FAN_CPLD/fan6_present",
+      "goodLedSysfsPath": "/sys/class/leds/fan6:blue:status",
+      "failLedSysfsPath": "/sys/class/leds/fan6:amber:status",
+      "pwmMin": 0,
+      "pwmMax": 40,
+      "fanPresentVal": 1,
+      "fanMissingVal": 0,
+      "rpmMin": 1500
+    },
+    {
+      "fanName": "FAN_7_F",
+      "rpmSysfsPath": "/run/devmap/sensors/MCB_FAN_CPLD/fan13_input",
+      "pwmSysfsPath": "/run/devmap/sensors/MCB_FAN_CPLD/pwm7",
+      "presenceSysfsPath": "/run/devmap/sensors/MCB_FAN_CPLD/fan7_present",
+      "goodLedSysfsPath": "/sys/class/leds/fan7:blue:status",
+      "failLedSysfsPath": "/sys/class/leds/fan7:amber:status",
+      "pwmMin": 0,
+      "pwmMax": 40,
+      "fanPresentVal": 1,
+      "fanMissingVal": 0,
+      "rpmMin": 1500
+    },
+    {
+      "fanName": "FAN_7_R",
+      "rpmSysfsPath": "/run/devmap/sensors/MCB_FAN_CPLD/fan14_input",
+      "pwmSysfsPath": "/run/devmap/sensors/MCB_FAN_CPLD/pwm7",
+      "presenceSysfsPath": "/run/devmap/sensors/MCB_FAN_CPLD/fan7_present",
+      "goodLedSysfsPath": "/sys/class/leds/fan7:blue:status",
+      "failLedSysfsPath": "/sys/class/leds/fan7:amber:status",
+      "pwmMin": 0,
+      "pwmMax": 40,
+      "fanPresentVal": 1,
+      "fanMissingVal": 0,
+      "rpmMin": 1500
+    },
+    {
+      "fanName": "FAN_8_F",
+      "rpmSysfsPath": "/run/devmap/sensors/MCB_FAN_CPLD/fan15_input",
+      "pwmSysfsPath": "/run/devmap/sensors/MCB_FAN_CPLD/pwm8",
+      "presenceSysfsPath": "/run/devmap/sensors/MCB_FAN_CPLD/fan8_present",
+      "goodLedSysfsPath": "/sys/class/leds/fan8:blue:status",
+      "failLedSysfsPath": "/sys/class/leds/fan8:amber:status",
+      "pwmMin": 0,
+      "pwmMax": 40,
+      "fanPresentVal": 1,
+      "fanMissingVal": 0,
+      "rpmMin": 1500
+    },
+    {
+      "fanName": "FAN_8_R",
+      "rpmSysfsPath": "/run/devmap/sensors/MCB_FAN_CPLD/fan16_input",
+      "pwmSysfsPath": "/run/devmap/sensors/MCB_FAN_CPLD/pwm8",
+      "presenceSysfsPath": "/run/devmap/sensors/MCB_FAN_CPLD/fan8_present",
+      "goodLedSysfsPath": "/sys/class/leds/fan8:blue:status",
+      "failLedSysfsPath": "/sys/class/leds/fan8:amber:status",
+      "pwmMin": 0,
+      "pwmMax": 40,
+      "fanPresentVal": 1,
+      "fanMissingVal": 0,
+      "rpmMin": 1500
+    }
+  ],
+  "zones": [
+    {
+      "zoneType": "ZONE_TYPE_MAX",
+      "zoneName": "zone1",
+      "sensorNames": [
+        "CPU_UNCORE_TEMP",
+        "SCM_INLET_U36_TEMP",
+        "SMB_TH5_TEMP",
+        "qsfp_group_1"
+      ],
+      "fanNames": [
+        "FAN_1_F",
+        "FAN_1_R",
+        "FAN_2_F",
+        "FAN_2_R",
+        "FAN_3_F",
+        "FAN_3_R",
+        "FAN_4_F",
+        "FAN_4_R",
+        "FAN_5_F",
+        "FAN_5_R",
+        "FAN_6_F",
+        "FAN_6_R",
+        "FAN_7_F",
+        "FAN_7_R",
+        "FAN_8_F",
+        "FAN_8_R"
+      ],
+      "slope": 10
+    }
+  ]
+}
