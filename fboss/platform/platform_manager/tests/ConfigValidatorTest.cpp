@@ -794,6 +794,8 @@ TEST(ConfigValidatorTest, Symlink) {
   EXPECT_TRUE(ConfigValidator().isValidSymlink("/run/devmap/sensors/sensor1"));
   EXPECT_TRUE(ConfigValidator().isValidSymlink("/run/devmap/i2c-busses/bus"));
   EXPECT_TRUE(ConfigValidator().isValidSymlink("/run/devmap/mdio-busses/bus"));
+  EXPECT_TRUE(
+      ConfigValidator().isValidSymlink("/run/devmap/cable-cartridges/cc_0"));
 }
 
 TEST(ConfigValidatorTest, DevicePath) {

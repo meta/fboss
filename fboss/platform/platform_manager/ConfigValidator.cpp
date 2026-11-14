@@ -46,7 +46,8 @@ constexpr auto kSymlinkDirs = {
     "flashes",
     "watchdogs",
     "mdio-busses",
-    "rtms"};
+    "rtms",
+    "cable-cartridges"};
 // Supported modalias - spidev +
 // https://github.com/torvalds/linux/blob/master/drivers/spi/spidev.c#L702
 constexpr auto kSpiDevModaliases = {
