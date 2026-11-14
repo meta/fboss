@@ -1,0 +1,867 @@
+{
+  "pwmBoostOnNumDeadFan": 1,
+  "pwmBoostOnNumDeadSensor": 0,
+  "pwmBoostOnNoQsfpAfterInSec": 0,
+  "pwmBoostValue": 100,
+  "pwmTransitionValue": 70,
+  "pwmLowerThreshold": 70,
+  "pwmUpperThreshold": 100,
+  "controlInterval": {
+    "sensorReadInterval": 5,
+    "pwmUpdateInterval": 5
+  },
+  "shutdownCmd": "/usr/sbin/shutdown -h now",
+  "shutdownCondition": {
+    "numOvertempSensorForShutdown": 2,
+    "conditions": [
+      {
+        "sensorName": "asic_temp_0_0",
+        "overtempThreshold": 112.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "asic_temp_0_1",
+        "overtempThreshold": 112.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "asic_temp_0_2",
+        "overtempThreshold": 112.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "asic_temp_0_3",
+        "overtempThreshold": 112.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "asic_temp_0_4",
+        "overtempThreshold": 112.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "asic_temp_0_5",
+        "overtempThreshold": 112.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "asic_temp_0_6",
+        "overtempThreshold": 112.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "asic_temp_0_7",
+        "overtempThreshold": 112.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "asic_temp_0_8",
+        "overtempThreshold": 112.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "asic_temp_0_9",
+        "overtempThreshold": 112.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "asic_temp_0_10",
+        "overtempThreshold": 112.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "asic_temp_0_11",
+        "overtempThreshold": 112.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "asic_temp_0_12",
+        "overtempThreshold": 112.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "asic_temp_0_13",
+        "overtempThreshold": 112.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "asic_temp_0_14",
+        "overtempThreshold": 112.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "asic_temp_0_15",
+        "overtempThreshold": 112.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "ASIC_D0_TEMP0",
+        "overtempThreshold": 122.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "ASIC_D0_TEMP1",
+        "overtempThreshold": 122.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "ASIC_D0_TEMP2",
+        "overtempThreshold": 122.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "ASIC_D0_TEMP3",
+        "overtempThreshold": 122.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "ASIC_D0_TEMP4",
+        "overtempThreshold": 122.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "ASIC_D0_TEMP5",
+        "overtempThreshold": 122.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "ASIC_D0_TEMP6",
+        "overtempThreshold": 122.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "ASIC_D0_TEMP7",
+        "overtempThreshold": 122.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "ASIC_D1_TEMP0",
+        "overtempThreshold": 122.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "ASIC_D1_TEMP1",
+        "overtempThreshold": 122.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "ASIC_D1_TEMP2",
+        "overtempThreshold": 122.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "ASIC_D1_TEMP3",
+        "overtempThreshold": 122.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "ASIC_D1_TEMP4",
+        "overtempThreshold": 122.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "ASIC_D1_TEMP5",
+        "overtempThreshold": 122.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "ASIC_D1_TEMP6",
+        "overtempThreshold": 122.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "ASIC_D1_TEMP7",
+        "overtempThreshold": 122.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "NIF0_TEMP0",
+        "overtempThreshold": 122.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "NIF0_TEMP1",
+        "overtempThreshold": 122.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "NIF1_TEMP0",
+        "overtempThreshold": 122.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "NIF1_TEMP1",
+        "overtempThreshold": 122.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "NIF2_TEMP0",
+        "overtempThreshold": 122.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "NIF2_TEMP1",
+        "overtempThreshold": 122.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "NIF3_TEMP0",
+        "overtempThreshold": 122.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "NIF3_TEMP1",
+        "overtempThreshold": 122.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "SWITCH_CARD_LEFT",
+        "overtempThreshold": 122.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "SWITCH_CARD_RIGHT",
+        "overtempThreshold": 122.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "SWITCH_CARD_REAR",
+        "overtempThreshold": 122.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "SWITCH_CARD_INTAKE",
+        "overtempThreshold": 122.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "DCDC0_POS0V78_D0_VDDC_TEMP",
+        "overtempThreshold": 130.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "DCDC1_POS0V78_D1_VDDC_TEMP",
+        "overtempThreshold": 130.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "CHASSIS_INTAKE_TEMP",
+        "overtempThreshold": 65.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "CPU_TCTL_TEMP",
+        "overtempThreshold": 120.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "CPU_TCCD1_TEMP",
+        "overtempThreshold": 120.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "CPU_TCCD2_TEMP",
+        "overtempThreshold": 120.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "DIMM1_TEMP",
+        "overtempThreshold": 95.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "DIMM2_TEMP",
+        "overtempThreshold": 95.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "NVME_COMPOSITE_TEMP",
+        "overtempThreshold": 95.0,
+        "slidingWindowSize": 10
+      }
+    ]
+  },
+  "optics": [
+    {
+      "opticName": "osfp_group",
+      "aggregationType": "OPTIC_AGGREGATION_TYPE_MAX",
+      "tempToPwmMaps": {
+        "OPTIC_TYPE_800_GENERIC": {
+          "0": 70,
+          "70": 100
+        },
+        "OPTIC_TYPE_800_ZR": {
+          "0": 70,
+          "70": 100
+        },
+        "OPTIC_TYPE_400_GENERIC": {
+          "0": 70,
+          "70": 100
+        },
+        "OPTIC_TYPE_200_GENERIC": {
+          "0": 70,
+          "70": 100
+        },
+        "OPTIC_TYPE_100_GENERIC": {
+          "0": 70,
+          "70": 100
+        }
+      }
+    }
+  ],
+  "sensors": [
+    {
+      "sensorName": "asic_temp_0_0",
+      "pwmCalcType": "SENSOR_PWM_CALC_TYPE_FOUR_LINEAR_TABLE",
+      "normalUpTable": {
+        "0": 70,
+        "100": 100
+      },
+      "normalDownTable": {
+        "0": 70,
+        "100": 100
+      },
+      "failUpTable": {
+        "0": 70,
+        "100": 100
+      },
+      "failDownTable": {
+        "0": 70,
+        "100": 100
+      }
+    },
+    {
+      "sensorName": "asic_temp_0_1",
+      "pwmCalcType": "SENSOR_PWM_CALC_TYPE_FOUR_LINEAR_TABLE",
+      "normalUpTable": {
+        "0": 70,
+        "100": 100
+      },
+      "normalDownTable": {
+        "0": 70,
+        "100": 100
+      },
+      "failUpTable": {
+        "0": 70,
+        "100": 100
+      },
+      "failDownTable": {
+        "0": 70,
+        "100": 100
+      }
+    },
+    {
+      "sensorName": "asic_temp_0_2",
+      "pwmCalcType": "SENSOR_PWM_CALC_TYPE_FOUR_LINEAR_TABLE",
+      "normalUpTable": {
+        "0": 70,
+        "100": 100
+      },
+      "normalDownTable": {
+        "0": 70,
+        "100": 100
+      },
+      "failUpTable": {
+        "0": 70,
+        "100": 100
+      },
+      "failDownTable": {
+        "0": 70,
+        "100": 100
+      }
+    },
+    {
+      "sensorName": "asic_temp_0_3",
+      "pwmCalcType": "SENSOR_PWM_CALC_TYPE_FOUR_LINEAR_TABLE",
+      "normalUpTable": {
+        "0": 70,
+        "100": 100
+      },
+      "normalDownTable": {
+        "0": 70,
+        "100": 100
+      },
+      "failUpTable": {
+        "0": 70,
+        "100": 100
+      },
+      "failDownTable": {
+        "0": 70,
+        "100": 100
+      }
+    },
+    {
+      "sensorName": "asic_temp_0_4",
+      "pwmCalcType": "SENSOR_PWM_CALC_TYPE_FOUR_LINEAR_TABLE",
+      "normalUpTable": {
+        "0": 70,
+        "100": 100
+      },
+      "normalDownTable": {
+        "0": 70,
+        "100": 100
+      },
+      "failUpTable": {
+        "0": 70,
+        "100": 100
+      },
+      "failDownTable": {
+        "0": 70,
+        "100": 100
+      }
+    },
+    {
+      "sensorName": "asic_temp_0_5",
+      "pwmCalcType": "SENSOR_PWM_CALC_TYPE_FOUR_LINEAR_TABLE",
+      "normalUpTable": {
+        "0": 70,
+        "100": 100
+      },
+      "normalDownTable": {
+        "0": 70,
+        "100": 100
+      },
+      "failUpTable": {
+        "0": 70,
+        "100": 100
+      },
+      "failDownTable": {
+        "0": 70,
+        "100": 100
+      }
+    },
+    {
+      "sensorName": "asic_temp_0_6",
+      "pwmCalcType": "SENSOR_PWM_CALC_TYPE_FOUR_LINEAR_TABLE",
+      "normalUpTable": {
+        "0": 70,
+        "100": 100
+      },
+      "normalDownTable": {
+        "0": 70,
+        "100": 100
+      },
+      "failUpTable": {
+        "0": 70,
+        "100": 100
+      },
+      "failDownTable": {
+        "0": 70,
+        "100": 100
+      }
+    },
+    {
+      "sensorName": "asic_temp_0_7",
+      "pwmCalcType": "SENSOR_PWM_CALC_TYPE_FOUR_LINEAR_TABLE",
+      "normalUpTable": {
+        "0": 70,
+        "100": 100
+      },
+      "normalDownTable": {
+        "0": 70,
+        "100": 100
+      },
+      "failUpTable": {
+        "0": 70,
+        "100": 100
+      },
+      "failDownTable": {
+        "0": 70,
+        "100": 100
+      }
+    },
+    {
+      "sensorName": "asic_temp_0_8",
+      "pwmCalcType": "SENSOR_PWM_CALC_TYPE_FOUR_LINEAR_TABLE",
+      "normalUpTable": {
+        "0": 70,
+        "100": 100
+      },
+      "normalDownTable": {
+        "0": 70,
+        "100": 100
+      },
+      "failUpTable": {
+        "0": 70,
+        "100": 100
+      },
+      "failDownTable": {
+        "0": 70,
+        "100": 100
+      }
+    },
+    {
+      "sensorName": "asic_temp_0_9",
+      "pwmCalcType": "SENSOR_PWM_CALC_TYPE_FOUR_LINEAR_TABLE",
+      "normalUpTable": {
+        "0": 70,
+        "100": 100
+      },
+      "normalDownTable": {
+        "0": 70,
+        "100": 100
+      },
+      "failUpTable": {
+        "0": 70,
+        "100": 100
+      },
+      "failDownTable": {
+        "0": 70,
+        "100": 100
+      }
+    },
+    {
+      "sensorName": "asic_temp_0_10",
+      "pwmCalcType": "SENSOR_PWM_CALC_TYPE_FOUR_LINEAR_TABLE",
+      "normalUpTable": {
+        "0": 70,
+        "100": 100
+      },
+      "normalDownTable": {
+        "0": 70,
+        "100": 100
+      },
+      "failUpTable": {
+        "0": 70,
+        "100": 100
+      },
+      "failDownTable": {
+        "0": 70,
+        "100": 100
+      }
+    },
+    {
+      "sensorName": "asic_temp_0_11",
+      "pwmCalcType": "SENSOR_PWM_CALC_TYPE_FOUR_LINEAR_TABLE",
+      "normalUpTable": {
+        "0": 70,
+        "100": 100
+      },
+      "normalDownTable": {
+        "0": 70,
+        "100": 100
+      },
+      "failUpTable": {
+        "0": 70,
+        "100": 100
+      },
+      "failDownTable": {
+        "0": 70,
+        "100": 100
+      }
+    },
+    {
+      "sensorName": "asic_temp_0_12",
+      "pwmCalcType": "SENSOR_PWM_CALC_TYPE_FOUR_LINEAR_TABLE",
+      "normalUpTable": {
+        "0": 70,
+        "100": 100
+      },
+      "normalDownTable": {
+        "0": 70,
+        "100": 100
+      },
+      "failUpTable": {
+        "0": 70,
+        "100": 100
+      },
+      "failDownTable": {
+        "0": 70,
+        "100": 100
+      }
+    },
+    {
+      "sensorName": "asic_temp_0_13",
+      "pwmCalcType": "SENSOR_PWM_CALC_TYPE_FOUR_LINEAR_TABLE",
+      "normalUpTable": {
+        "0": 70,
+        "100": 100
+      },
+      "normalDownTable": {
+        "0": 70,
+        "100": 100
+      },
+      "failUpTable": {
+        "0": 70,
+        "100": 100
+      },
+      "failDownTable": {
+        "0": 70,
+        "100": 100
+      }
+    },
+    {
+      "sensorName": "asic_temp_0_14",
+      "pwmCalcType": "SENSOR_PWM_CALC_TYPE_FOUR_LINEAR_TABLE",
+      "normalUpTable": {
+        "0": 70,
+        "100": 100
+      },
+      "normalDownTable": {
+        "0": 70,
+        "100": 100
+      },
+      "failUpTable": {
+        "0": 70,
+        "100": 100
+      },
+      "failDownTable": {
+        "0": 70,
+        "100": 100
+      }
+    },
+    {
+      "sensorName": "asic_temp_0_15",
+      "pwmCalcType": "SENSOR_PWM_CALC_TYPE_FOUR_LINEAR_TABLE",
+      "normalUpTable": {
+        "0": 70,
+        "100": 100
+      },
+      "normalDownTable": {
+        "0": 70,
+        "100": 100
+      },
+      "failUpTable": {
+        "0": 70,
+        "100": 100
+      },
+      "failDownTable": {
+        "0": 70,
+        "100": 100
+      }
+    },
+    {
+      "sensorName": "DCDC0_POS0V78_D0_VDDC_TEMP",
+      "pwmCalcType": "SENSOR_PWM_CALC_TYPE_FOUR_LINEAR_TABLE",
+      "normalUpTable": {
+        "0": 70,
+        "120": 100
+      },
+      "normalDownTable": {
+        "0": 70,
+        "120": 100
+      },
+      "failUpTable": {
+        "0": 70,
+        "120": 100
+      },
+      "failDownTable": {
+        "0": 70,
+        "120": 100
+      }
+    },
+    {
+      "sensorName": "DCDC1_POS0V78_D1_VDDC_TEMP",
+      "pwmCalcType": "SENSOR_PWM_CALC_TYPE_FOUR_LINEAR_TABLE",
+      "normalUpTable": {
+        "0": 70,
+        "120": 100
+      },
+      "normalDownTable": {
+        "0": 70,
+        "120": 100
+      },
+      "failUpTable": {
+        "0": 70,
+        "120": 100
+      },
+      "failDownTable": {
+        "0": 70,
+        "120": 100
+      }
+    },
+    {
+      "sensorName": "CHASSIS_INTAKE_TEMP",
+      "pwmCalcType": "SENSOR_PWM_CALC_TYPE_FOUR_LINEAR_TABLE",
+      "normalUpTable": {
+        "0": 70,
+        "45": 100
+      },
+      "normalDownTable": {
+        "0": 70,
+        "45": 100
+      },
+      "failUpTable": {
+        "0": 70,
+        "45": 100
+      },
+      "failDownTable": {
+        "0": 70,
+        "45": 100
+      }
+    }
+  ],
+  "fans": [
+    {
+      "fanName": "fan_1_inner",
+      "rpmSysfsPath": "/run/devmap/sensors/FAN_CTRL/fan1_input",
+      "pwmSysfsPath": "/run/devmap/sensors/FAN_CTRL/pwm1",
+      "presenceSysfsPath": "/run/devmap/sensors/FAN_CTRL/fan1_present",
+      "goodLedSysfsPath": "/sys/class/leds/fan1_led:blue:status",
+      "failLedSysfsPath": "/sys/class/leds/fan1_led:amber:status",
+      "pwmMin": 1,
+      "pwmMax": 255,
+      "fanPresentVal": 1,
+      "fanMissingVal": 0,
+      "rpmMin": 6000
+    },
+    {
+      "fanName": "fan_1_outer",
+      "rpmSysfsPath": "/run/devmap/sensors/FAN_CTRL/fan2_input",
+      "pwmSysfsPath": "/run/devmap/sensors/FAN_CTRL/pwm1",
+      "presenceSysfsPath": "/run/devmap/sensors/FAN_CTRL/fan1_present",
+      "goodLedSysfsPath": "/sys/class/leds/fan1_led:blue:status",
+      "failLedSysfsPath": "/sys/class/leds/fan1_led:amber:status",
+      "pwmMin": 1,
+      "pwmMax": 255,
+      "fanPresentVal": 1,
+      "fanMissingVal": 0,
+      "rpmMin": 6000
+    },
+    {
+      "fanName": "fan_2_inner",
+      "rpmSysfsPath": "/run/devmap/sensors/FAN_CTRL/fan3_input",
+      "pwmSysfsPath": "/run/devmap/sensors/FAN_CTRL/pwm2",
+      "presenceSysfsPath": "/run/devmap/sensors/FAN_CTRL/fan2_present",
+      "goodLedSysfsPath": "/sys/class/leds/fan2_led:blue:status",
+      "failLedSysfsPath": "/sys/class/leds/fan2_led:amber:status",
+      "pwmMin": 1,
+      "pwmMax": 255,
+      "fanPresentVal": 1,
+      "fanMissingVal": 0,
+      "rpmMin": 6000
+    },
+    {
+      "fanName": "fan_2_outer",
+      "rpmSysfsPath": "/run/devmap/sensors/FAN_CTRL/fan4_input",
+      "pwmSysfsPath": "/run/devmap/sensors/FAN_CTRL/pwm2",
+      "presenceSysfsPath": "/run/devmap/sensors/FAN_CTRL/fan2_present",
+      "goodLedSysfsPath": "/sys/class/leds/fan2_led:blue:status",
+      "failLedSysfsPath": "/sys/class/leds/fan2_led:amber:status",
+      "pwmMin": 1,
+      "pwmMax": 255,
+      "fanPresentVal": 1,
+      "fanMissingVal": 0,
+      "rpmMin": 6000
+    },
+    {
+      "fanName": "fan_3_inner",
+      "rpmSysfsPath": "/run/devmap/sensors/FAN_CTRL/fan5_input",
+      "pwmSysfsPath": "/run/devmap/sensors/FAN_CTRL/pwm3",
+      "presenceSysfsPath": "/run/devmap/sensors/FAN_CTRL/fan3_present",
+      "goodLedSysfsPath": "/sys/class/leds/fan3_led:blue:status",
+      "failLedSysfsPath": "/sys/class/leds/fan3_led:amber:status",
+      "pwmMin": 1,
+      "pwmMax": 255,
+      "fanPresentVal": 1,
+      "fanMissingVal": 0,
+      "rpmMin": 6000
+    },
+    {
+      "fanName": "fan_3_outer",
+      "rpmSysfsPath": "/run/devmap/sensors/FAN_CTRL/fan6_input",
+      "pwmSysfsPath": "/run/devmap/sensors/FAN_CTRL/pwm3",
+      "presenceSysfsPath": "/run/devmap/sensors/FAN_CTRL/fan3_present",
+      "goodLedSysfsPath": "/sys/class/leds/fan3_led:blue:status",
+      "failLedSysfsPath": "/sys/class/leds/fan3_led:amber:status",
+      "pwmMin": 1,
+      "pwmMax": 255,
+      "fanPresentVal": 1,
+      "fanMissingVal": 0,
+      "rpmMin": 6000
+    },
+    {
+      "fanName": "fan_4_inner",
+      "rpmSysfsPath": "/run/devmap/sensors/FAN_CTRL/fan7_input",
+      "pwmSysfsPath": "/run/devmap/sensors/FAN_CTRL/pwm4",
+      "presenceSysfsPath": "/run/devmap/sensors/FAN_CTRL/fan4_present",
+      "goodLedSysfsPath": "/sys/class/leds/fan4_led:blue:status",
+      "failLedSysfsPath": "/sys/class/leds/fan4_led:amber:status",
+      "pwmMin": 1,
+      "pwmMax": 255,
+      "fanPresentVal": 1,
+      "fanMissingVal": 0,
+      "rpmMin": 6000
+    },
+    {
+      "fanName": "fan_4_outer",
+      "rpmSysfsPath": "/run/devmap/sensors/FAN_CTRL/fan8_input",
+      "pwmSysfsPath": "/run/devmap/sensors/FAN_CTRL/pwm4",
+      "presenceSysfsPath": "/run/devmap/sensors/FAN_CTRL/fan4_present",
+      "goodLedSysfsPath": "/sys/class/leds/fan4_led:blue:status",
+      "failLedSysfsPath": "/sys/class/leds/fan4_led:amber:status",
+      "pwmMin": 1,
+      "pwmMax": 255,
+      "fanPresentVal": 1,
+      "fanMissingVal": 0,
+      "rpmMin": 6000
+    },
+    {
+      "fanName": "fan_5_inner",
+      "rpmSysfsPath": "/run/devmap/sensors/FAN_CTRL/fan9_input",
+      "pwmSysfsPath": "/run/devmap/sensors/FAN_CTRL/pwm5",
+      "presenceSysfsPath": "/run/devmap/sensors/FAN_CTRL/fan5_present",
+      "goodLedSysfsPath": "/sys/class/leds/fan5_led:blue:status",
+      "failLedSysfsPath": "/sys/class/leds/fan5_led:amber:status",
+      "pwmMin": 1,
+      "pwmMax": 255,
+      "fanPresentVal": 1,
+      "fanMissingVal": 0,
+      "rpmMin": 6000
+    },
+    {
+      "fanName": "fan_5_outer",
+      "rpmSysfsPath": "/run/devmap/sensors/FAN_CTRL/fan10_input",
+      "pwmSysfsPath": "/run/devmap/sensors/FAN_CTRL/pwm5",
+      "presenceSysfsPath": "/run/devmap/sensors/FAN_CTRL/fan5_present",
+      "goodLedSysfsPath": "/sys/class/leds/fan5_led:blue:status",
+      "failLedSysfsPath": "/sys/class/leds/fan5_led:amber:status",
+      "pwmMin": 1,
+      "pwmMax": 255,
+      "fanPresentVal": 1,
+      "fanMissingVal": 0,
+      "rpmMin": 6000
+    }
+  ],
+  "zones": [
+    {
+      "zoneType": "ZONE_TYPE_MAX",
+      "zoneName": "zone1",
+      "sensorNames": [
+        "asic_temp_0_0",
+        "asic_temp_0_1",
+        "asic_temp_0_2",
+        "asic_temp_0_3",
+        "asic_temp_0_4",
+        "asic_temp_0_5",
+        "asic_temp_0_6",
+        "asic_temp_0_7",
+        "asic_temp_0_8",
+        "asic_temp_0_9",
+        "asic_temp_0_10",
+        "asic_temp_0_11",
+        "asic_temp_0_12",
+        "asic_temp_0_13",
+        "asic_temp_0_14",
+        "asic_temp_0_15",
+        "DCDC0_POS0V78_D0_VDDC_TEMP",
+        "DCDC1_POS0V78_D1_VDDC_TEMP",
+        "CHASSIS_INTAKE_TEMP",
+        "osfp_group"
+      ],
+      "fanNames": [
+        "fan_1_inner",
+        "fan_1_outer",
+        "fan_2_inner",
+        "fan_2_outer",
+        "fan_3_inner",
+        "fan_3_outer",
+        "fan_4_inner",
+        "fan_4_outer",
+        "fan_5_inner",
+        "fan_5_outer"
+      ],
+      "slope": 5
+    }
+  ]
+}
