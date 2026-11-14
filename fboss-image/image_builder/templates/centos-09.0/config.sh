@@ -390,6 +390,47 @@ echo "Initrd path: ${INITRD_PATH}"
 echo "Running dracut manually..."
 dracut --force --kver "${KERNEL_VERSION}" "${INITRD_PATH}"
 
+# GRUB's btrfs driver cannot write files, so save_env (next_entry,
+# boot_success, ...) fails if grubenv lives on the btrfs /boot. Keep it on
+# the vfat ESP; the ESP grub.cfg stubs leave $prefix there so GRUB finds it.
+# Linux tools write through the symlink. Set up before kernel-install so its
+# grub2-editenv writes land on the ESP.
+ESP_GRUBENV=/boot/efi/EFI/centos/grubenv
+mkdir -p "$(dirname "$ESP_GRUBENV")" || {
+  echo "config.sh: FATAL: cannot create $(dirname "$ESP_GRUBENV")" >&2
+  exit 1
+}
+if [ -f /boot/grub2/grubenv ] && [ ! -L /boot/grub2/grubenv ]; then
+  mv /boot/grub2/grubenv "$ESP_GRUBENV" || {
+    echo "config.sh: FATAL: cannot move grubenv to $ESP_GRUBENV" >&2
+    exit 1
+  }
+elif [ ! -f "$ESP_GRUBENV" ]; then
+  grub2-editenv "$ESP_GRUBENV" create || {
+    echo "config.sh: FATAL: cannot create $ESP_GRUBENV" >&2
+    exit 1
+  }
+fi
+ln -sfn ../efi/EFI/centos/grubenv /boot/grub2/grubenv || {
+  echo "config.sh: FATAL: cannot link /boot/grub2/grubenv to the ESP" >&2
+  exit 1
+}
+# 00_header loads ${config_directory}/grubenv when `[ -f ]` sees it. GRUB
+# follows the symlink within btrfs, where /boot/efi is an empty mount point,
+# so load_env fails. Point config_directory at the ESP first; this also
+# moves custom.cfg there, and $prefix moves user.cfg, fonts and locale.
+cat >/etc/grub.d/00_0esp_grubenv <<'EOF'
+#!/bin/sh
+exec tail -n +3 $0
+if [ -s $prefix/grubenv ]; then
+  set config_directory=$prefix
+fi
+EOF
+chmod 755 /etc/grub.d/00_0esp_grubenv || {
+  echo "config.sh: FATAL: cannot install /etc/grub.d/00_0esp_grubenv" >&2
+  exit 1
+}
+
 # Run kernel-install for grub config
 #
 # This wipes ALL interfering variables set by kiwi-ng
@@ -508,9 +549,9 @@ echo "Old GRUB module directories cleaned"
 
 # Copy GRUB modules to multiple locations
 # EFI partition structure: (hd0,gpt2)/efi/centos/x86_64-efi/ and (hd0,gpt2)/efi/boot/x86_64-efi/
-# During build, EFI partition is mounted at /boot/efi/, so:
-#   (hd0,gpt2)/efi/centos/x86_64-efi/ -> /boot/efi/efi/centos/x86_64-efi/
-#   (hd0,gpt2)/efi/boot/x86_64-efi/ -> /boot/efi/efi/boot/x86_64-efi/
+# During build, EFI partition is mounted at /boot/efi/ (FAT, so GRUB ignores case):
+#   (hd0,gpt2)/efi/centos/x86_64-efi/ -> /boot/efi/EFI/centos/x86_64-efi/
+#   (hd0,gpt2)/efi/boot/x86_64-efi/ -> /boot/efi/EFI/BOOT/x86_64-efi/
 #
 # Essential modules needed for early boot (to find and mount btrfs root) dependency tree:
 #   btrfs -> zstd, lzopio, extcmd, raid6rec, gzio
@@ -519,14 +560,23 @@ echo "Old GRUB module directories cleaned"
 #   gzio -> gcry_crc, crypto
 ESSENTIAL_MODULES="btrfs.mod zstd.mod lzopio.mod extcmd.mod raid6rec.mod gzio.mod crypto.mod diskfilter.mod gcry_crc.mod"
 
-# Copy essential modules to EFI partition locations
-for efi_dir in /boot/efi/efi/centos/x86_64-efi /boot/efi/efi/boot/x86_64-efi; do
-  mkdir -p "$efi_dir"
-  for mod in $ESSENTIAL_MODULES; do
-    cp /usr/lib/grub/x86_64-efi/$mod "$efi_dir/" 2>/dev/null || echo "Warning: $mod not found"
-  done
-  echo "Copied essential GRUB modules to $efi_dir (EFI partition)"
+# Copy essential modules to the EFI/BOOT stub's prefix; efi/centos gets
+# every module below.
+efi_dir=/boot/efi/EFI/BOOT/x86_64-efi
+mkdir -p "$efi_dir"
+for mod in $ESSENTIAL_MODULES; do
+  cp /usr/lib/grub/x86_64-efi/$mod "$efi_dir/" 2>/dev/null || echo "Warning: $mod not found"
 done
+echo "Copied essential GRUB modules to $efi_dir (EFI partition)"
+
+# $prefix stays on the ESP (efi/centos) so grubenv is writable, so every
+# module grub.cfg may insmod has to be loadable from there.
+mkdir -p /boot/efi/EFI/centos/x86_64-efi &&
+  cp /usr/lib/grub/x86_64-efi/*.mod /usr/lib/grub/x86_64-efi/*.lst /boot/efi/EFI/centos/x86_64-efi/ || {
+  echo "config.sh: FATAL: cannot copy GRUB modules to the ESP" >&2
+  exit 1
+}
+echo "Copied all GRUB modules to /boot/efi/EFI/centos/x86_64-efi (EFI partition)"
 
 # Copy ALL modules to root partition (plenty of space there)
 mkdir -p /boot/grub2/x86_64-efi

@@ -30,9 +30,11 @@
             installiso="true"
             bootpartition="false"
             editbootinstall="editbootinstall.sh"
+            efipartsize="64"
             kernelcmdline="nomodeset console=ttyS0,57600n8 8250.nr_uarts=1 biosdevname=0 net.ifnames=0 quiet rootfstype=btrfs">
 
-            <bootloader name="grub2" console="serial" serial_line="ttyS0,57600n8"/>
+            <!-- serial_line becomes GRUB_SERIAL_COMMAND verbatim: a GRUB serial command, not kernel console= syntax -->
+            <bootloader name="grub2" console="serial" serial_line="serial --unit=0 --speed=57600 --word=8 --parity=no --stop=1"/>
             <size unit="G">64</size>
             <oemconfig>
                 <!-- The oem-resize element should be false for a fixed-size disk -->
