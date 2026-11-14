@@ -8,9 +8,12 @@
  *
  */
 
+#include <folly/ScopeGuard.h>
+#include <gflags/gflags.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "fboss/agent/AgentFeatures.h"
 #include "fboss/agent/MultiHwSwitchHandler.h"
 #include "fboss/agent/MultiSwitchThriftHandler.h"
 #include "fboss/agent/SwSwitch.h"
@@ -881,6 +884,65 @@ TEST_F(SwSwitchHandlerTest, initialSyncSwSwitchNotConfigured) {
   clientRequestThread2.join();
 
   sw->getHwSwitchHandler()->stop();
+}
+
+// A HwSwitch that connects before SwSwitch has any state to send is parked at
+// CONNECTED with lastAckedOperDeltaSeqNum_ = 0, and the first state update then
+// reaches it as a full sync at seqnum 1. If it dies applying that state without
+// acking, its replacement reconnects from seqnum 0 with nothing programmed, and
+// must be served another full sync rather than being taken for a re-poll.
+TEST_F(SwSwitchHandlerTest, resyncHwSwitchThatDiedBeforeAckingInitialSync) {
+  // Bounds how long the reconnect parks if this regresses, so the failure is an
+  // assert rather than a 30s stall.
+  gflags::FlagSaver flagSaver;
+  FLAGS_oper_sync_req_timeout = 1;
+
+  auto stateV1 = getInitialTestState();
+  auto getEmptyOper = []() {
+    auto operDelta = std::make_unique<multiswitch::StateOperDelta>();
+    operDelta->operDeltas() = {fsdb::OperDelta()};
+    return operDelta;
+  };
+
+  folly::Baton<> firstHwSwitchDone;
+  multiswitch::StateOperDelta initialSync;
+
+  // HwSwitch 1 asks for a delta before there is any state to give it.
+  std::thread hwSwitch1([&]() {
+    initialSync =
+        getHwSwitchHandler()->getNextStateOperDelta(1, getEmptyOper(), 0);
+    // and then dies: what it just received is never acked.
+    firstHwSwitchDone.post();
+  });
+
+  // connected() is called at the top of the resync branch, so this returns only
+  // once HwSwitch 1 has already found prevUpdateSwitchState_ null.
+  getHwSwitchHandler()->waitUntilHwSwitchConnected();
+
+  // Blocks waiting for an ack that never comes, so it needs its own thread.
+  std::thread swUpdate([&]() {
+    getHwSwitchHandler()->stateChanged(
+        StateDelta(std::make_shared<SwitchState>(), stateV1), false);
+  });
+  // A failing ASSERT returns from the test, so tear down from a guard.
+  SCOPE_EXIT {
+    getHwSwitchHandler()->stop();
+    swUpdate.join();
+  };
+
+  firstHwSwitchDone.wait();
+  hwSwitch1.join();
+  ASSERT_FALSE(initialSync.operDeltas()->empty());
+  EXPECT_TRUE(*initialSync.isFullState());
+
+  // HwSwitch 2: a replacement process with nothing programmed, so seqnum 0.
+  auto resync =
+      getHwSwitchHandler()->getNextStateOperDelta(1, getEmptyOper(), 0);
+  ASSERT_FALSE(resync.operDeltas()->empty())
+      << "reconnecting HwSwitch was parked instead of resynced";
+  EXPECT_TRUE(*resync.isFullState());
+  // A freshly minted full sync, not a replay of the one that was lost.
+  EXPECT_GT(*resync.seqNum(), *initialSync.seqNum());
 }
 
 TEST_F(SwSwitchHandlerTest, connectionStatusCount) {
