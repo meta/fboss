@@ -49,6 +49,27 @@ TEST(SystemInterfaceTest, lsmod) {
   }
 }
 
+TEST(SystemInterfaceTest, isRpmInstalled) {
+  auto platformUtils = std::make_shared<MockPlatformUtils>();
+  package_manager::SystemInterface interface(platformUtils);
+  EXPECT_CALL(*platformUtils, execCommand("rpm -q pkg 2>&1"))
+      .WillOnce(Return(std::pair{0, "pkg-1.0-1.x86_64\n"}))
+      .WillOnce(Return(std::pair{1, "package pkg is not installed\n"}))
+      // unreadable rpmdb (full root fs): rpm may still exit 1
+      .WillOnce(Return(
+          std::pair{
+              1,
+              "error: cannot open Packages database in /var/lib/rpm\n"
+              "package pkg is not installed\n"}))
+      .WillOnce(Return(std::pair{135, ""})) // killed by SIGBUS
+      .WillOnce(Return(std::pair{-1, "spawn failed"}));
+  EXPECT_EQ(interface.isRpmInstalled("pkg"), std::optional<bool>(true));
+  EXPECT_EQ(interface.isRpmInstalled("pkg"), std::optional<bool>(false));
+  EXPECT_EQ(interface.isRpmInstalled("pkg"), std::nullopt);
+  EXPECT_EQ(interface.isRpmInstalled("pkg"), std::nullopt);
+  EXPECT_EQ(interface.isRpmInstalled("pkg"), std::nullopt);
+}
+
 TEST(SystemInterfaceTest, GetBoundDriverVersionReadsModuleVersion) {
   folly::test::TemporaryDirectory tmpDir;
   const auto devicePath =

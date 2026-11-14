@@ -148,11 +148,27 @@ std::string SystemInterface::getHostKernelVersion() const {
   return result.release;
 }
 
-bool SystemInterface::isRpmInstalled(const std::string& rpmFullName) const {
-  auto cmd = fmt::format("dnf list {} --installed", rpmFullName);
+std::optional<bool> SystemInterface::isRpmInstalled(
+    const std::string& rpmFullName) const {
+  // stderr merged: rpm reports an unreadable DB as "error: ..." text
+  auto cmd = fmt::format("rpm -q {} 2>&1", rpmFullName);
   VLOG(1) << fmt::format("Running command ({})", cmd);
-  auto [exitStatus, standardOut] = PlatformUtils().execCommand(cmd);
-  return exitStatus == 0;
+  auto [exitStatus, output] = platformUtils_->execCommand(cmd);
+  if (output.find("error:") == std::string::npos) {
+    if (exitStatus == 0) {
+      return true;
+    }
+    if (exitStatus == 1 &&
+        output.find("is not installed") != std::string::npos) {
+      return false;
+    }
+  }
+  XLOG(ERR) << fmt::format(
+      "Could not query whether {} is installed (exit code {}): {}",
+      rpmFullName,
+      exitStatus,
+      folly::trimWhitespace(output).str());
+  return std::nullopt;
 }
 
 std::optional<std::string> SystemInterface::getBoundDriverVersion(
