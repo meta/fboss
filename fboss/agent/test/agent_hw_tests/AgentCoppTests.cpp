@@ -1119,6 +1119,36 @@ TYPED_TEST(AgentCoppTest, L3MTUErrorToLowPriQ) {
     this->setupEcmp();
   };
   auto verify = [=, this]() {
+    // L3 MTU trap is post-route: CPU copy has hopLimit-1 and rewritten MACs.
+    // Match the IPv6/TCP flow only; default PacketSnooper exact-match uses
+    // TX L2/TTL.
+    utility::PacketComparatorFn l3MtuComparator =
+        [](const utility::EthFrame& origin, const utility::EthFrame& received) {
+          if (origin.header().getVlanTags() !=
+                  received.header().getVlanTags() ||
+              origin.header().getEtherType() !=
+                  received.header().getEtherType()) {
+            return false;
+          }
+          if (!origin.v6PayLoad() || !received.v6PayLoad()) {
+            return false;
+          }
+          const auto o = *origin.v6PayLoad();
+          const auto r = *received.v6PayLoad();
+          if (o.header().srcAddr != r.header().srcAddr ||
+              o.header().dstAddr != r.header().dstAddr ||
+              o.header().nextHeader != r.header().nextHeader) {
+            return false;
+          }
+          if (o.tcpPayload() && r.tcpPayload() &&
+              (o.tcpPayload()->header().srcPort !=
+                   r.tcpPayload()->header().srcPort ||
+               o.tcpPayload()->header().dstPort !=
+                   r.tcpPayload()->header().dstPort)) {
+            return false;
+          }
+          return true;
+        };
     // Make sure all packets packet with large payload (> MTU)
     // are sent to cpu low priority queue.
     // Port Max Frame size is set to 9412 and L3 MTU is set as 9000
@@ -1130,7 +1160,12 @@ TYPED_TEST(AgentCoppTest, L3MTUErrorToLowPriQ) {
         utility::kNonSpecialPort2,
         std::nullopt,
         0, /* traffic class*/
-        std::vector<uint8_t>(9200, 0xff));
+        std::vector<uint8_t>(9200, 0xff),
+        true /* expectQueueHit */,
+        true /* outOfPort */,
+        true /* skipTtlDecrement */,
+        true /* verifyPktCntInOtherQueues */,
+        l3MtuComparator);
   };
   this->verifyAcrossWarmBoots(setup, verify);
 }

@@ -4455,18 +4455,15 @@ void SaiSwitch::packetRxCallbackLag(
     return;
   }
   swAggPortId = aggPortItr->second;
-  // Resolve a vlan only where the platform has them. A lag carrying a router
-  // interface of its own is in no vlan, and the frames it traps arrive
-  // untagged, the same way they do for a port router interface.
-  if (!processVlanUntaggedPackets()) {
-    const auto vlanItr =
-        concurrentIndices_->vlanIds.find(PortDescriptorSaiId(lagSaiId));
-    if (vlanItr == concurrentIndices_->vlanIds.cend()) {
-      XLOG(ERR) << "RX packet had lag in no known vlan: 0x" << std::hex
-                << lagSaiId;
-      return;
-    }
+  // VLAN LAGs are in vlanIds. Routed LAGs (PORT RIF, vlanID 0) are not;
+  // those traps are untagged, same as a port RIF. Do not drop them.
+  const auto vlanItr =
+      concurrentIndices_->vlanIds.find(PortDescriptorSaiId(lagSaiId));
+  if (vlanItr != concurrentIndices_->vlanIds.cend()) {
     swVlanId = vlanItr->second;
+  } else if (!processVlanUntaggedPackets()) {
+    XLOG(DBG2) << "RX packet on routed lag with no vlan: 0x" << std::hex
+               << lagSaiId;
   }
   rxPacket->setSrcAggregatePort(swAggPortId);
   rxPacket->setSrcVlan(swVlanId);
