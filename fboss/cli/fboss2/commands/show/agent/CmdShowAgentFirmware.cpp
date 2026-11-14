@@ -48,6 +48,10 @@ RetType CmdShowAgentFirmware::createModel(
 void CmdShowAgentFirmware::printOutput(
     const CmdShowAgentFirmwareTraits::RetType& model,
     std::ostream& out) {
+  if (model.firmwareEntries()->empty()) {
+    out << "No firmware information available" << std::endl;
+    return;
+  }
   for (const auto& entry : *model.firmwareEntries()) {
     out << "Version: " << entry.version().value() << std::endl;
     out << "Operational Status: " << entry.opStatus().value() << std::endl;
@@ -56,7 +60,11 @@ void CmdShowAgentFirmware::printOutput(
 }
 
 std::string_view CmdShowAgentFirmwareTraits::description() {
-  return "Displays the agent firmware version and its operational and functional status. Use it to check firmware state.";
+  return "Displays the agent firmware version and its operational and "
+         "functional status. Use it to check firmware state. Prints 'No "
+         "firmware information available' when no hw agent reports firmware. "
+         "A hw agent that does not answer is skipped, so the same line can "
+         "appear after a failed query.";
 }
 
 CmdShowAgentFirmware::RetType CmdShowAgentFirmware::sampleModel() {
