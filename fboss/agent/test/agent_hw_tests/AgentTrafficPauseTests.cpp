@@ -88,6 +88,9 @@ class AgentTrafficPauseTest : public AgentHwTest {
   // still operate at line rate.
   void validateLineRateOnNonPausePorts(
       const std::vector<PortID>& portsWithLineRateTraffic) {
+    // Stats timestamps are whole seconds, so a wider window is needed to keep
+    // the resulting error below the margin asserted on below.
+    constexpr int kRateCheckWindowSec{5};
     for (const auto& portId : portsWithLineRateTraffic) {
       std::optional<HwPortStats> beforePortStats;
       uint64_t ninetySevenPctLineRate =
@@ -95,23 +98,25 @@ class AgentTrafficPauseTest : public AgentHwTest {
               getProgrammedState()->getPorts()->getNodeIf(portId)->getSpeed()) *
           1000 * 1000 * 0.97;
       int iteration{0};
-      WITH_RETRIES_N_TIMED(4, std::chrono::milliseconds(2000), {
-        auto afterPortStats = getLatestPortStats(portId);
-        if (!beforePortStats.has_value()) {
-          // Skip first iteration as rate computation wont be accurate!
-          beforePortStats = afterPortStats;
-          continue;
-        }
-        auto trafficRate = getAgentEnsemble()->getTrafficRate(
-            *beforePortStats,
-            afterPortStats,
-            2 /*secondsBetweenStatsCollection*/);
-        XLOG(DBG0) << "Iteration: " << iteration++ << ", port ID: " << portId
-                   << ", expected 97% line rate : " << ninetySevenPctLineRate
-                   << " bps, observed traffic rate: " << trafficRate << " bps";
-        EXPECT_EVENTUALLY_GT(trafficRate, ninetySevenPctLineRate);
-        beforePortStats = afterPortStats;
-      });
+      WITH_RETRIES_N_TIMED(
+          6, std::chrono::milliseconds(1000 * kRateCheckWindowSec), {
+            auto afterPortStats = getNextUpdatedPortStats(portId);
+            if (!beforePortStats.has_value()) {
+              // Skip first iteration as rate computation wont be accurate!
+              beforePortStats = afterPortStats;
+              continue;
+            }
+            auto trafficRate = getAgentEnsemble()->getTrafficRate(
+                *beforePortStats, afterPortStats, kRateCheckWindowSec);
+            XLOG(DBG0) << "Iteration: " << iteration++
+                       << ", port ID: " << portId
+                       << ", expected 97% line rate : "
+                       << ninetySevenPctLineRate
+                       << " bps, observed traffic rate: " << trafficRate
+                       << " bps";
+            EXPECT_EVENTUALLY_GT(trafficRate, ninetySevenPctLineRate);
+            beforePortStats = afterPortStats;
+          });
     }
   }
 
@@ -153,22 +158,25 @@ class AgentTrafficPauseTest : public AgentHwTest {
               });
       std::optional<HwPortStats> prevPortStats;
       HwPortStats curPortStats{};
-      WITH_RETRIES_N_TIMED(15, std::chrono::milliseconds(2000), {
-        curPortStats = getLatestPortStats(kPausedPortId);
-        if (!prevPortStats.has_value()) {
-          // Rate calculation wont be accurate
-          prevPortStats = curPortStats;
-          continue;
-        }
-        auto rate =
-            getAgentEnsemble()->getTrafficRate(*prevPortStats, curPortStats, 2);
-        XLOG(DBG0) << "Port " << kPausedPortId << ", current rate is : " << rate
-                   << " bps, pause frames received: "
-                   << curPortStats.inPause_().value();
-        // Update prev stats for the next iteration
-        prevPortStats = curPortStats;
-        EXPECT_EVENTUALLY_TRUE(rateChecker(rate, kPausedPortId));
-      });
+      constexpr int kPausedPortRateCheckWindowSec{5};
+      WITH_RETRIES_N_TIMED(
+          15, std::chrono::milliseconds(1000 * kPausedPortRateCheckWindowSec), {
+            curPortStats = getNextUpdatedPortStats(kPausedPortId);
+            if (!prevPortStats.has_value()) {
+              // Rate calculation wont be accurate
+              prevPortStats = curPortStats;
+              continue;
+            }
+            auto rate = getAgentEnsemble()->getTrafficRate(
+                *prevPortStats, curPortStats, kPausedPortRateCheckWindowSec);
+            XLOG(DBG0) << "Port " << kPausedPortId
+                       << ", current rate is : " << rate
+                       << " bps, pause frames received: "
+                       << curPortStats.inPause_().value();
+            // Update prev stats for the next iteration
+            prevPortStats = curPortStats;
+            EXPECT_EVENTUALLY_TRUE(rateChecker(rate, kPausedPortId));
+          });
       // Make sure that ports without pause sees line rate traffic always
       auto allPorts{masterLogicalInterfacePortIds()};
       std::vector<PortID> lineRateTrafficPorts;
