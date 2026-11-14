@@ -3286,6 +3286,67 @@ std::pair<uint8_t, uint8_t> CmisModule::getAllPortsResetLaneMasks(
   return {deinitLaneMask, initLaneMask};
 }
 
+std::optional<CmisModule::AllLaneConfig>
+CmisModule::getAllPortsStageSet0ConfigForApplication(
+    const TransceiverPortState& state,
+    uint8_t numHostLanes,
+    uint8_t appSelCode) {
+  auto capability = std::find_if(
+      moduleCapabilities_.begin(),
+      moduleCapabilities_.end(),
+      [appSelCode](const auto& candidate) {
+        return candidate.ApSelCode == appSelCode;
+      });
+  if (capability == moduleCapabilities_.end() ||
+      capability->hostLaneCount != numHostLanes ||
+      capability->hostStartLanes.size() <= 1) {
+    return std::nullopt;
+  }
+
+  AllLaneConfig stageSet0Config{};
+  for (const auto startHostLane : capability->hostStartLanes) {
+    if (startHostLane < 0 ||
+        startHostLane + capability->hostLaneCount > kMaxOsfpNumLanes) {
+      return std::nullopt;
+    }
+    const uint8_t datapathLaneMask =
+        laneMask(startHostLane, capability->hostLaneCount);
+    const uint8_t explicitControl =
+        setExplicitControl(state, datapathLaneMask);
+    for (auto lane = startHostLane;
+         lane < startHostLane + capability->hostLaneCount;
+         ++lane) {
+      stageSet0Config[lane] = appSelCode << APP_SEL_BITSHIFT |
+          (startHostLane << DATA_PATH_ID_BITSHIFT) | explicitControl;
+    }
+  }
+  return stageSet0Config;
+}
+
+std::pair<uint8_t, uint8_t>
+CmisModule::getAllPortsResetLaneMasksForApplication(
+    const TransceiverPortState& state,
+    uint8_t numHostLanes,
+    uint8_t appSelCode) {
+  const uint8_t bank = laneToBank(state.startHostLane);
+  const uint8_t portLaneMask =
+      laneMask(laneInBank(state.startHostLane), numHostLanes);
+  const auto stageSet0Config = getAllPortsStageSet0ConfigForApplication(
+      state, numHostLanes, appSelCode);
+  if (!stageSet0Config) {
+    return {portLaneMask, portLaneMask};
+  }
+
+  uint8_t initLaneMask = 0;
+  for (int lane = 0; lane < kMaxOsfpNumLanes; ++lane) {
+    if (((*stageSet0Config)[lane] & APP_SEL_MASK) >> APP_SEL_BITSHIFT) {
+      initLaneMask |= (1 << lane);
+    }
+  }
+  const uint8_t deinitLaneMask = getActiveAppSelLaneMask(bank) | initLaneMask;
+  return {deinitLaneMask, initLaneMask};
+}
+
 /*
  * setApplicationSelectCodeAllPorts
  *
@@ -3318,6 +3379,29 @@ void CmisModule::setApplicationSelectCodeAllPorts(
   writeCmisField(
       CmisField::STAGE_CTRL_SET_0, &applySetForSpecificLanes, false, bank);
 
+  datapathResetPendingMask_[bank] = applySetForSpecificLanes;
+}
+
+void CmisModule::setApplicationSelectCodeAllPortsForApplication(
+    const TransceiverPortState& state,
+    uint8_t numHostLanes,
+    uint8_t appSelCode) {
+  const uint8_t bank = laneToBank(state.startHostLane);
+  auto stageSet0Config = getAllPortsStageSet0ConfigForApplication(
+      state, numHostLanes, appSelCode);
+  if (!stageSet0Config) {
+    throw FbossError(
+        "Unable to program multi-datapath AppSel ",
+        static_cast<int>(appSelCode),
+        " on transceiver ",
+        getNameString());
+  }
+  writeCmisField(
+      CmisField::APP_SEL_LANE_1_8, stageSet0Config->data(), false, bank);
+
+  uint8_t applySetForSpecificLanes = laneMask(0, kMaxOsfpNumLanes);
+  writeCmisField(
+      CmisField::STAGE_CTRL_SET_0, &applySetForSpecificLanes, false, bank);
   datapathResetPendingMask_[bank] = applySetForSpecificLanes;
 }
 
@@ -3622,8 +3706,26 @@ void CmisModule::setApplicationCodeLocked(
     uint8_t moduleMediaInterfaceCode =
         getInterfaceCodeForAppSel(newAppSelCode, kMediaInterfaceCodeOffset);
 
+    const uint8_t intraStartHostLane = laneInBank(state.startHostLane);
+    const bool programAllDatapaths = std::any_of(
+        moduleCapabilities_.begin(),
+        moduleCapabilities_.end(),
+        [newAppSelCode, intraStartHostLane, &state](const auto& capability) {
+          return capability.ApSelCode == newAppSelCode &&
+              capability.hostLaneCount == state.numHostLanes &&
+              capability.hostStartLanes.size() > 1 &&
+              std::find(
+                  capability.hostStartLanes.begin(),
+                  capability.hostStartLanes.end(),
+                  intraStartHostLane) != capability.hostStartLanes.end();
+        });
+
     programPortApplicationSelectCode(
-        newAppSelCode, moduleMediaInterfaceCode, state, state.numHostLanes);
+        newAppSelCode,
+        moduleMediaInterfaceCode,
+        state,
+        state.numHostLanes,
+        programAllDatapaths);
     return;
   }
 
@@ -3641,7 +3743,11 @@ void CmisModule::setApplicationCodeLocked(
   uint8_t numHostLanes = capability->hostLaneCount;
 
   programPortApplicationSelectCode(
-      appSelCode, moduleMediaInterfaceCode, state, numHostLanes);
+      appSelCode,
+      moduleMediaInterfaceCode,
+      state,
+      numHostLanes,
+      false /* programAllDatapaths */);
 }
 
 /*
@@ -3658,13 +3764,32 @@ void CmisModule::programPortApplicationSelectCode(
     uint8_t appSelCode,
     uint8_t moduleMediaInterfaceCode,
     const TransceiverPortState& state,
-    uint8_t numHostLanes) {
+    uint8_t numHostLanes,
+    bool programAllDatapaths) {
   std::optional<std::function<void()>> appSelectFunc = std::nullopt;
   std::optional<uint8_t> deinitLaneMask = std::nullopt;
   std::optional<uint8_t> initLaneMask = std::nullopt;
 
-  if (!isRequestValidMultiportSpeedConfig(
-          state.speed, state.startHostLane, numHostLanes)) {
+  if (programAllDatapaths) {
+    std::tie(deinitLaneMask, initLaneMask) =
+        getAllPortsResetLaneMasksForApplication(
+            state, numHostLanes, appSelCode);
+    QSFP_LOG(INFO, this) << fmt::format(
+        "Programming multi-datapath AppSel {} on ALL lanes: speed={}, startHostLane={}, numHostLanes={}, deinitLaneMask={:#x}, initLaneMask={:#x}",
+        appSelCode,
+        apache::thrift::util::enumNameSafe(state.speed),
+        state.startHostLane,
+        numHostLanes,
+        *deinitLaneMask,
+        *initLaneMask);
+    appSelectFunc = std::bind(
+        &CmisModule::setApplicationSelectCodeAllPortsForApplication,
+        this,
+        state,
+        numHostLanes,
+        appSelCode);
+  } else if (!isRequestValidMultiportSpeedConfig(
+                 state.speed, state.startHostLane, numHostLanes)) {
     std::tie(deinitLaneMask, initLaneMask) =
         getAllPortsResetLaneMasks(state, numHostLanes);
     QSFP_LOG(INFO, this) << fmt::format(
