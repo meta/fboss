@@ -172,11 +172,5 @@ int main(int argc, char* argv[]) {
     hook(report);
   }
 
-  bool allPassed =
-      std::all_of(results.begin(), results.end(), [](const auto& result) {
-        return *result.status() == platform_checks::CheckStatus::OK ||
-            *result.status() == platform_checks::CheckStatus::SKIPPED;
-      });
-
-  return allPassed ? EXIT_SUCCESS : EXIT_FAILURE;
+  return fixmyfboss::allChecksPassed(results) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
