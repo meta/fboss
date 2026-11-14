@@ -306,7 +306,13 @@ void TunIntf::disableIPv6AddrGenMode(int ifIndex) {
     rtnl_close(&rth);
   };
 
+#ifdef RTNL_HANDLE_F_STRICT_CHK
+  // Only the newer libnetlink (tp2's iproute2 7.3.0) defines this flag, and its
+  // rtnl_talk() takes no length. The open-source build's 4.12.0 still does.
+  err = rtnl_talk(&rth, &req.n, nullptr);
+#else
   err = rtnl_talk(&rth, &req.n, nullptr, 0);
+#endif
   if (err != 0) {
     // We are not throwing NlError here because ADDR_GEN_MODE is not supported
     // in kernel 3.10 which we are using in production. In that kernel we don't
