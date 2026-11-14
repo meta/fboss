@@ -1341,6 +1341,13 @@ std::shared_ptr<SwitchState> SaiSwitch::stateChangedImplLocked(
       lockPolicy,
       &SaiPortManager::loadPortQueuesForAddedPort);
 
+  // Lags must be removed before VLANs, since LAGs can be members of VLANs
+  processRemovedDelta(
+      delta.getAggregatePortsDelta(),
+      managerTable_->lagManager(),
+      lockPolicy,
+      &SaiLagManager::removeLag);
+
   // VOQ/Fabric switches require that the packets are not tagged with any
   // VLAN. Thus, no VLAN delta processing is needed for these switches
   if (!(getSwitchType() == cfg::SwitchType::FABRIC ||
@@ -1364,13 +1371,16 @@ std::shared_ptr<SwitchState> SaiSwitch::stateChangedImplLocked(
   }
 
   // LAGs
-  processDelta(
+  processChangedDelta(
       delta.getAggregatePortsDelta(),
       managerTable_->lagManager(),
       lockPolicy,
-      &SaiLagManager::changeLag,
-      &SaiLagManager::addLag,
-      &SaiLagManager::removeLag);
+      &SaiLagManager::changeLag);
+  processAddedDelta(
+      delta.getAggregatePortsDelta(),
+      managerTable_->lagManager(),
+      lockPolicy,
+      &SaiLagManager::addLag);
 
   if (platform_->getAsic()->isSupported(HwAsic::Feature::BRIDGE_PORT_8021Q)) {
     // Add/Change bridge ports
