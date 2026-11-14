@@ -1732,7 +1732,8 @@ cpp_library(
     ],
     deps = [
         "fbsource//xplat/folly:file_util",
-        ":fboss-error",
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/logging:logging",
         "//fb303:service_data",
     ],
     exported_deps = [
