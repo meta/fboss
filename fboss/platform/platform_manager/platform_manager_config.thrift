@@ -919,7 +919,10 @@ struct PlatformConfig {
   // Number of transceivers in the platform.
   17: i16 numXcvrs;
 
-  // Name and version of the rpm containing the BSP kmods for this platform
+  // Name and version of the rpm containing the BSP kmods for this platform.
+  // bspKmodsRpmVersion can be "*", in which case PM installs the newest BSP rpm
+  // shipped in the image (the local rpm repo) for the running kernel. Useful for
+  // configs which are maintained outside of the image, e.g. manufacturing.
   21: string bspKmodsRpmName;
   22: string bspKmodsRpmVersion;
 
