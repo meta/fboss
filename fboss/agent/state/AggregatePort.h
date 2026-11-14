@@ -385,11 +385,34 @@ class AggregatePort
   template <typename ConstIter>
   void setSubports(folly::Range<ConstIter> subports) {
     auto subportMap = Subports(subports.begin(), subports.end());
+
+    const auto& oldFwdState = cref<switch_state_tags::portToFwdState>();
+    const auto& oldPartnerState = cref<switch_state_tags::portToPartnerState>();
+
     std::vector<state::Subport> subportsThrift{};
+    std::map<int32_t, bool> portToFwdState{};
+    std::map<int32_t, state::ParticipantInfo> portToPartnerState{};
     for (const auto& subport : subportMap) {
       subportsThrift.push_back(subport.toThrift());
+
+      bool fwd = false;
+      auto fwdItr = std::as_const(*oldFwdState).find(subport.portID);
+      if (fwdItr != oldFwdState->cend()) {
+        fwd = fwdItr->second->cref();
+      }
+      portToFwdState.emplace(subport.portID, fwd);
+
+      auto partner = ParticipantInfo::defaultParticipantInfo().toThrift();
+      auto partnerItr = std::as_const(*oldPartnerState).find(subport.portID);
+      if (partnerItr != oldPartnerState->cend()) {
+        partner = partnerItr->second->toThrift();
+      }
+      portToPartnerState.emplace(subport.portID, partner);
     }
+
     set<switch_state_tags::ports>(std::move(subportsThrift));
+    set<switch_state_tags::portToFwdState>(std::move(portToFwdState));
+    set<switch_state_tags::portToPartnerState>(std::move(portToPartnerState));
   }
 
   uint32_t subportsCount() const {
