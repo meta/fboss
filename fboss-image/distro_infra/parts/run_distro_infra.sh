@@ -88,7 +88,7 @@ if [ -n "$NODHCPV6" ]; then
 else
   dhcpv6_conf=" --enable-ra \
   --dhcp-range=tag:fbossdut,::fb05:5000:0001,::fb05:50ff:ffff,constructor:$INTERFACE,1h \
-  --dhcp-option=tag:fbossdut,option6:bootfile-url,tftp://[${v6_ip}]/ipxev6.efi"
+  --dhcp-option=tag:fbossdut,tag:!pxedone,option6:bootfile-url,tftp://[${v6_ip}]/ipxev6.efi"
 fi
 
 dnsmasq --interface="${INTERFACE}" --no-daemon \
@@ -100,7 +100,7 @@ dnsmasq --interface="${INTERFACE}" --no-daemon \
   --tftp-secure \
   --dhcp-script=/distro_infra/post_tftp.sh \
   --dhcp-hostsdir=/distro_infra/dnsmasq_conf.d \
-  --dhcp-range=tag:fbossdut,"${v4_ip}",proxy \
+  --dhcp-range=tag:fbossdut,tag:!pxedone,"${v4_ip}",proxy \
   --pxe-service=tag:fbossdut,x86-64_EFI,ipxe,ipxev4.efi \
   ${dhcpv6_conf} &
 
