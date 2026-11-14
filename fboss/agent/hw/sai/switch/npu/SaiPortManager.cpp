@@ -1946,7 +1946,13 @@ SaiPortManager::serdesAttributesFromSwPinConfigs(
     if (skipSerdesProgramming) {
       continue;
     }
-    if (auto tx = pinConfig.tx()) {
+    // Lanes without TX settings keep the SDK's default taps, so zero
+    // preemphasis must program explicit zeros or the link stays up.
+    std::optional<phy::TxSettings> txSettings = pinConfig.tx().to_optional();
+    if (!txSettings.has_value() && zeroPreemphasis) {
+      txSettings = phy::TxSettings{};
+    }
+    if (auto tx = txSettings ? &txSettings.value() : nullptr) {
       ++numExpectedTxLanes;
       if (platform_->getAsic()->getAsicType() ==
               cfg::AsicType::ASIC_TYPE_YUBA ||
