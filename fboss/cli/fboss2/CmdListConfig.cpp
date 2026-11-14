@@ -440,7 +440,7 @@ const CommandTree& kConfigCommandTree() {
                       {
                           "global",
                           "Configure BGP global settings: <attribute> <value> "
-                          "(router-id, local-asn, hold-time, confed-asn, "
+                          "(router-id, cluster-id, local-asn, hold-time, confed-asn, "
                           "count-confeds-in-as-path-len, "
                           "graceful-restart-time, rib-allocated-path-ids, "
                           "network6, switch-limit[-total-path|"
