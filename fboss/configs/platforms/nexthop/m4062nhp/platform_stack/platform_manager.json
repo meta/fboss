@@ -80,6 +80,20 @@
           "address": "0x43",
           "kernelDeviceName": "adm1266",
           "pmUnitScopedName": "DPM_2"
+        },
+        {
+          "busName": "SCM_IOB_I2C_4",
+          "address": "0x0c",
+          "kernelDeviceName": "dummy",
+          "pmUnitScopedName": "SCM_IOB_I2C_4_ARA_RSVD",
+          "__comment__": "Reserves the SMBus Alert Response Address so i2cdetect skips it. A write here latches STATUS_CML in the Renesas CPU VR on this bus."
+        },
+        {
+          "busName": "SCM_IOB_I2C_4",
+          "address": "0x37",
+          "kernelDeviceName": "dummy",
+          "pmUnitScopedName": "SCM_IOB_I2C_4_ZONE_WRITE_RSVD",
+          "__comment__": "Reserves the PMBus ZONE_WRITE address so i2cdetect skips it. A read here latches STATUS_CML in the Renesas CPU VR on this bus."
         }
       ],
       "embeddedSensorConfigs": [
@@ -496,6 +510,34 @@
           "address": "0x58",
           "kernelDeviceName": "pmbus",
           "pmUnitScopedName": "PSU4"
+        },
+        {
+          "busName": "SMB1_DCDC_I2C_4",
+          "address": "0x0c",
+          "kernelDeviceName": "dummy",
+          "pmUnitScopedName": "SMB1_DCDC_I2C_4_ARA_RSVD",
+          "__comment__": "Reserves the SMBus Alert Response Address so i2cdetect skips it. A write here latches STATUS_CML in every Renesas VR on this bus."
+        },
+        {
+          "busName": "SMB1_DCDC_I2C_4",
+          "address": "0x37",
+          "kernelDeviceName": "dummy",
+          "pmUnitScopedName": "SMB1_DCDC_I2C_4_ZONE_WRITE_RSVD",
+          "__comment__": "Reserves the PMBus ZONE_WRITE address so i2cdetect skips it. A read here latches STATUS_CML in every Renesas VR on this bus."
+        },
+        {
+          "busName": "SMB1_DCDC_I2C_5",
+          "address": "0x0c",
+          "kernelDeviceName": "dummy",
+          "pmUnitScopedName": "SMB1_DCDC_I2C_5_ARA_RSVD",
+          "__comment__": "Reserves the SMBus Alert Response Address so i2cdetect skips it. A write here latches STATUS_CML in every Renesas VR on this bus."
+        },
+        {
+          "busName": "SMB1_DCDC_I2C_5",
+          "address": "0x37",
+          "kernelDeviceName": "dummy",
+          "pmUnitScopedName": "SMB1_DCDC_I2C_5_ZONE_WRITE_RSVD",
+          "__comment__": "Reserves the PMBus ZONE_WRITE address so i2cdetect skips it. A read here latches STATUS_CML in every Renesas VR on this bus."
         }
       ]
     }
@@ -1178,6 +1220,34 @@
               "address": "0x58",
               "kernelDeviceName": "pmbus",
               "pmUnitScopedName": "PSU4"
+            },
+            {
+              "busName": "SMB1_DCDC_I2C_4",
+              "address": "0x0c",
+              "kernelDeviceName": "dummy",
+              "pmUnitScopedName": "SMB1_DCDC_I2C_4_ARA_RSVD",
+              "__comment__": "Reserves the SMBus Alert Response Address so i2cdetect skips it. A write here latches STATUS_CML in every Renesas VR on this bus."
+            },
+            {
+              "busName": "SMB1_DCDC_I2C_4",
+              "address": "0x37",
+              "kernelDeviceName": "dummy",
+              "pmUnitScopedName": "SMB1_DCDC_I2C_4_ZONE_WRITE_RSVD",
+              "__comment__": "Reserves the PMBus ZONE_WRITE address so i2cdetect skips it. A read here latches STATUS_CML in every Renesas VR on this bus."
+            },
+            {
+              "busName": "SMB1_DCDC_I2C_5",
+              "address": "0x0c",
+              "kernelDeviceName": "dummy",
+              "pmUnitScopedName": "SMB1_DCDC_I2C_5_ARA_RSVD",
+              "__comment__": "Reserves the SMBus Alert Response Address so i2cdetect skips it. A write here latches STATUS_CML in every Renesas VR on this bus."
+            },
+            {
+              "busName": "SMB1_DCDC_I2C_5",
+              "address": "0x37",
+              "kernelDeviceName": "dummy",
+              "pmUnitScopedName": "SMB1_DCDC_I2C_5_ZONE_WRITE_RSVD",
+              "__comment__": "Reserves the PMBus ZONE_WRITE address so i2cdetect skips it. A read here latches STATUS_CML in every Renesas VR on this bus."
             }
           ]
         },
