@@ -154,7 +154,7 @@ strip_shim_fallback_from_iso() {
 build_zstd() {
   if [ ! -d ${TARGET_DIR}/zstd ]; then
     dprint "Building static zstd..."
-    git clone https://github.com/facebook/zstd.git ${TARGET_DIR}/zstd
+    git clone https://github.com/meta/zstd.git ${TARGET_DIR}/zstd
     pushd ${TARGET_DIR}/zstd >/dev/null
     git checkout release
     make -C programs zstd-frugal LDFLAGS="-static"

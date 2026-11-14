@@ -14,7 +14,7 @@ FBOSS CLI is apart of the FBOSS suite. It requires that FBOSS is installed and
 working. The additional requirements for FBOSS Cli are as follows:
 
 * Python 3.5
-* [FBThrift](https://github.com/facebook/fbthrift) (This will be installed when you build FBOSS)
+* [FBThrift](https://github.com/meta/fbthrift) (This will be installed when you build FBOSS)
 * [Click](http://click.pocoo.org/5/)
 * [Six](https://pypi.python.org/pypi/six)
 

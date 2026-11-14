@@ -120,7 +120,7 @@ listens for added/removed vlans now.
 ---
 FBOSS makes heavy use of libevent for concurrency. Specifically, we
 use folly's
-[`EventBase`](https://github.com/facebook/folly/blob/master/folly/io/async/EventBase.h)
+[`EventBase`](https://github.com/meta/folly/blob/master/folly/io/async/EventBase.h)
 which wraps libevent to provide a more OO interface and additional
 functionality like queueing. The main threads in `SwSwitch` are the
 update EventBase and the background EventBase.
