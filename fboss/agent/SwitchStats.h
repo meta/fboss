@@ -744,12 +744,15 @@ class SwitchStats : public boost::noncopyable, public ThriftCallDurationLogger {
   using TLHistogram = fb303::ThreadCachedServiceData::TLHistogram;
   using TLCounter = fb303::ThreadCachedServiceData::TLCounter;
 
+  // Stats that aggregate into the ServiceData behind map rather than the
+  // global one, e.g. to count into a private ServiceData that is never
+  // exported.
+  explicit SwitchStats(ThreadLocalStatsMap* map, int numSwitches);
+
  private:
   // Forbidden copy constructor and assignment operator
   SwitchStats(SwitchStats const&) = delete;
   SwitchStats& operator=(SwitchStats const&) = delete;
-
-  explicit SwitchStats(ThreadLocalStatsMap* map, int numSwitches);
 
   void updateFabricOverdrainWatermark(
       int16_t switchIndex,
