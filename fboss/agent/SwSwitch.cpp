@@ -1905,6 +1905,7 @@ bool SwSwitch::updateState(unique_ptr<StateUpdate> update) {
   {
     std::unique_lock guard(pendingUpdatesLock_);
     pendingUpdates_.push_back(*update.release());
+    ++pendingUpdatesCount_;
   }
 
   // Signal the update thread that updates are pending.
@@ -1980,6 +1981,7 @@ void SwSwitch::handlePendingUpdates() {
     // list, we pull as many as we can, subject to the following conditions
     // - Non coalescing updates are executed by themselves
     auto iter = pendingUpdates_.begin();
+    size_t numTaken = 0;
     while (iter != pendingUpdates_.end()) {
       StateUpdate* update = &(*iter);
       if (update->isNonCoalescing()) {
@@ -1987,6 +1989,7 @@ void SwSwitch::handlePendingUpdates() {
           // First update is non coalescing, splice it onto the updates list
           // and apply transaction by itself
           ++iter;
+          ++numTaken;
           break;
         } else {
           // Splice all updates upto this non coalescing update, we will
@@ -1995,10 +1998,13 @@ void SwSwitch::handlePendingUpdates() {
         }
       }
       ++iter;
+      ++numTaken;
     }
     updates.splice(
         updates.begin(), pendingUpdates_, pendingUpdates_.begin(), iter);
-    pendingUpdateQueueLength = pendingUpdates_.size();
+    CHECK_GE(pendingUpdatesCount_, numTaken);
+    pendingUpdatesCount_ -= numTaken;
+    pendingUpdateQueueLength = pendingUpdatesCount_;
   }
   stats()->pendingStateUpdateCount(pendingUpdateQueueLength);
 

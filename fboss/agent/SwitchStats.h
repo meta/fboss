@@ -518,6 +518,14 @@ class SwitchStats : public boost::noncopyable, public ThriftCallDurationLogger {
     return getCumulativeValue(macTableUpdateFailure_);
   }
 
+  void macTableDuplicateUpdateSkipped() {
+    macTableDuplicateUpdateSkipped_.addValue(1);
+  }
+
+  int64_t getMacTableDuplicateUpdateSkipped() const {
+    return getCumulativeValue(macTableDuplicateUpdateSkipped_);
+  }
+
   void fwDrainedWithHighNumActiveFabricLinks() {
     fwDrainedWithHighNumActiveFabricLinks_.addValue(1);
   }
@@ -1237,6 +1245,9 @@ class SwitchStats : public boost::noncopyable, public ThriftCallDurationLogger {
   TLTimeseries neighborTableUpdateFailure_;
 
   TLTimeseries macTableUpdateFailure_;
+  // L2 learn/age reports dropped because an identical update for the same
+  // (MAC, VLAN) was still queued.
+  TLTimeseries macTableDuplicateUpdateSkipped_;
 
   TLTimeseries fwDrainedWithHighNumActiveFabricLinks_;
 
