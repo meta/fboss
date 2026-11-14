@@ -1,6 +1,6 @@
 // (c) Facebook, Inc. and its affiliates. Confidential and proprietary.
 
-#include <gmock/gmock.h>
+#include <gmock/gmock.h> // NOLINT(misc-include-cleaner)
 #include <gtest/gtest.h>
 
 #include "fboss/cli/fboss2/commands/show/interface/status/CmdShowInterfaceStatus.h"
@@ -118,6 +118,69 @@ TEST_F(CmdShowInterfaceStatusTestFixture, createModel) {
   EXPECT_EQ(statusModel[2].speed().value(), "400G");
   EXPECT_EQ(statusModel[2].vendor().value(), "Not Present");
   EXPECT_EQ(statusModel[2].mpn().value(), "Not Present");
+}
+
+namespace {
+facebook::fboss::PortInfoThrift makeSortTestPort(
+    int32_t portId,
+    const std::string& name) {
+  facebook::fboss::PortInfoThrift port;
+  port.portId() = portId;
+  port.name() = name;
+  port.description() = "";
+  port.operState() = facebook::fboss::PortOperState::UP;
+  port.speedMbps() = 100000;
+  return port;
+}
+} // namespace
+
+TEST_F(CmdShowInterfaceStatusTestFixture, createModelNaturalSort) {
+  // Interfaces with parseable names are ordered by their numeric
+  // module/port/subport components, not lexicographically (otherwise
+  // eth1/10/1 would sort before eth1/2/1). Port IDs are deliberately assigned
+  // against front panel order here, matching real platform mappings where
+  // logical port ID does not track the interface name.
+  std::map<int32_t, facebook::fboss::PortInfoThrift> ports;
+  for (const auto& [portId, name] :
+       std::vector<std::pair<int32_t, std::string>>{
+           {1, "eth1/100/1"},
+           {2, "eth1/10/1"},
+           {3, "eth1/2/1"},
+           {4, "eth1/1/1"},
+           {5, "eth2/1/1"}}) {
+    ports[portId] = makeSortTestPort(portId, name);
+  }
+
+  auto cmd = CmdShowInterfaceStatus();
+  auto model = cmd.createModel(ports, {}, {});
+  auto statusModel = model.interfaces().value();
+
+  ASSERT_EQ(statusModel.size(), 5);
+  EXPECT_EQ(statusModel[0].get_name(), "eth1/1/1");
+  EXPECT_EQ(statusModel[1].get_name(), "eth1/2/1");
+  EXPECT_EQ(statusModel[2].get_name(), "eth1/10/1");
+  EXPECT_EQ(statusModel[3].get_name(), "eth1/100/1");
+  EXPECT_EQ(statusModel[4].get_name(), "eth2/1/1");
+}
+
+TEST_F(CmdShowInterfaceStatusTestFixture, createModelFreeFormNames) {
+  // Interface names can be arbitrary (SVIs are named things like "downlinks")
+  // or unset entirely. Those must not throw, and must order by port ID after
+  // the interfaces whose names do encode a front panel position.
+  std::map<int32_t, facebook::fboss::PortInfoThrift> ports;
+  ports[7] = makeSortTestPort(7, "downlinks");
+  ports[3] = makeSortTestPort(3, "");
+  ports[5] = makeSortTestPort(5, "eth1/1/1");
+
+  auto cmd = CmdShowInterfaceStatus();
+  cli::ShowIntStatusModel model;
+  ASSERT_NO_THROW(model = cmd.createModel(ports, {}, {}));
+  auto statusModel = model.interfaces().value();
+
+  ASSERT_EQ(statusModel.size(), 3);
+  EXPECT_EQ(statusModel[0].get_name(), "eth1/1/1");
+  EXPECT_EQ(statusModel[1].get_name(), "");
+  EXPECT_EQ(statusModel[2].get_name(), "downlinks");
 }
 
 TEST_F(CmdShowInterfaceStatusTestFixture, printOutput) {
