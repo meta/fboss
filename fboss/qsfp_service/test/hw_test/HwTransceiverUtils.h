@@ -109,6 +109,13 @@ class HwTransceiverUtils {
   static void verifyCopper800gProfile(
       const TcvrState& tcvrState,
       const std::vector<MediaInterfaceId>& mediaInterfaces);
+  // Copper breakout profiles. Media codes are only checked on active cables:
+  // qsfp_service reports every passive DAC as CR8_400G.
+  static void verifyCopperBreakoutProfile(
+      const TcvrState& tcvrState,
+      const std::vector<MediaInterfaceId>& mediaInterfaces,
+      MediaInterfaceCode expectedActiveCode,
+      ActiveCuHostInterfaceCode expectedActiveCuCode);
   static void verifyCopper1600gProfile(
       const TcvrState& tcvrState,
       const std::vector<MediaInterfaceId>& mediaInterfaces);
