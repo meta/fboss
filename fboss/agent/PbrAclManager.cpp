@@ -257,6 +257,31 @@ bool hasPbrTable(const std::shared_ptr<SwitchState>& state) {
   return false;
 }
 
+std::shared_ptr<SwitchState> updateOriginals(
+    const std::shared_ptr<SwitchState>& state,
+    const std::vector<TemporaryRule>& temporaries) {
+  if (temporaries.empty()) {
+    return nullptr;
+  }
+  return updatePbrTables(state, [&](AclMap& aclMap) {
+    for (const auto& [policy, tc] : temporaries) {
+      aclMap.updateNode(makePbrAclEntry(policy, tc));
+    }
+    return true;
+  });
+}
+
+std::shared_ptr<SwitchState> dropTemporaries(
+    const std::shared_ptr<SwitchState>& state,
+    const std::vector<TemporaryRule>& temporaries) {
+  return updatePbrTables(state, [&](AclMap& aclMap) {
+    for (const auto& [policy, tc] : temporaries) {
+      removeRuleEntry(aclMap, policy->getID(), tc, true /*temporary*/);
+    }
+    return true;
+  });
+}
+
 } // namespace
 
 PbrAclManager::InputOutputState::InputOutputState(const StateDelta& in) {
@@ -397,14 +422,23 @@ void PbrAclManager::processDelta(
   }
 
   for (const auto& policy : changedPolicies(delta)) {
+    std::vector<TemporaryRule> temporaries;
     auto made = updatePbrTables(newState, [&](AclMap& aclMap) {
-      return applyChangedPolicy(aclMap, policy.old, policy.updated).changed;
+      auto update = applyChangedPolicy(aclMap, policy.old, policy.updated);
+      temporaries = std::move(update.temporaries);
+      return update.changed;
     });
     if (!made) {
       continue;
     }
     newState = made;
     emit(newState);
+    if (auto updated = updateOriginals(newState, temporaries)) {
+      newState = updated;
+      emit(newState);
+      newState = dropTemporaries(newState, temporaries);
+      emit(newState);
+    }
   }
 }
 
