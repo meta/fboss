@@ -162,7 +162,8 @@
             "programmer_type": "linux_spi:dev=",
             "programmer": "/run/devmap/flashes/MCB_SPI_MASTER_4_DEVICE_1",
             "chip": [
-              "W25X20"
+              "W25X20",
+              "W25Q20.V"
             ]
           }
         }
@@ -182,7 +183,8 @@
           "programmer_type": "linux_spi:dev=",
           "programmer": "/run/devmap/flashes/MCB_SPI_MASTER_4_DEVICE_1",
           "chip": [
-            "W25X20"
+            "W25X20",
+            "W25Q20.V"
           ]
         }
       },
@@ -192,7 +194,8 @@
           "programmer_type": "linux_spi:dev=",
           "programmer": "/run/devmap/flashes/MCB_SPI_MASTER_4_DEVICE_1",
           "chip": [
-            "W25X20"
+            "W25X20",
+            "W25Q20.V"
           ]
         }
       },
@@ -220,7 +223,8 @@
             "programmer_type": "linux_spi:dev=",
             "programmer": "/run/devmap/flashes/MCB_SPI_MASTER_5_DEVICE_1",
             "chip": [
-              "W25X20"
+              "W25X20",
+              "W25Q20.V"
             ]
           }
         }
@@ -240,7 +244,8 @@
           "programmer_type": "linux_spi:dev=",
           "programmer": "/run/devmap/flashes/MCB_SPI_MASTER_5_DEVICE_1",
           "chip": [
-            "W25X20"
+            "W25X20",
+            "W25Q20.V"
           ]
         }
       },
@@ -250,7 +255,8 @@
           "programmer_type": "linux_spi:dev=",
           "programmer": "/run/devmap/flashes/MCB_SPI_MASTER_5_DEVICE_1",
           "chip": [
-            "W25X20"
+            "W25X20",
+            "W25Q20.V"
           ]
         }
       },
@@ -262,6 +268,14 @@
     },
     "scm_cpld": {
       "preUpgrade": [
+        {
+          "commandType": "gpioset",
+          "gpiosetArgs": {
+            "gpioChip": "fboss_iob_pci.gpiochip.*",
+            "gpioChipValue": "0",
+            "gpioChipPin": "0"
+          }
+        },
         {
           "commandType": "gpioset",
           "gpiosetArgs": {
@@ -278,7 +292,8 @@
             "programmer_type": "linux_spi:dev=",
             "programmer": "/run/devmap/flashes/MCB_SPI_MASTER_7_DEVICE_1",
             "chip": [
-              "W25X20"
+              "W25X20",
+              "W25Q20.V"
             ]
           }
         }
@@ -290,6 +305,13 @@
             "gpioChip": "fboss_iob_pci.gpiochip.*",
             "gpioChipPin": "1"
           }
+        },
+        {
+          "commandType": "gpioget",
+          "gpiogetArgs": {
+            "gpioChip": "fboss_iob_pci.gpiochip.*",
+            "gpioChipPin": "0"
+          }
         }
       ],
       "verify": {
@@ -298,7 +320,8 @@
           "programmer_type": "linux_spi:dev=",
           "programmer": "/run/devmap/flashes/MCB_SPI_MASTER_7_DEVICE_1",
           "chip": [
-            "W25X20"
+            "W25X20",
+            "W25Q20.V"
           ]
         }
       },
@@ -308,7 +331,8 @@
           "programmer_type": "linux_spi:dev=",
           "programmer": "/run/devmap/flashes/MCB_SPI_MASTER_7_DEVICE_1",
           "chip": [
-            "W25X20"
+            "W25X20",
+            "W25Q20.V"
           ]
         }
       },
