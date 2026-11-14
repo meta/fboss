@@ -3927,11 +3927,15 @@ shared_ptr<AggregatePort> ThriftConfigApplier::updateAggPort(
       origAggPort->getMinimumLinkCountToUp() == cfgMinLinkCountToUp &&
       origAggPort->getAggregatePortType() == *cfg.aggregatePortType() &&
       std::equal(
-          origSubports.begin(), origSubports.end(), cfgSubports.begin()) &&
+          origSubports.begin(),
+          origSubports.end(),
+          cfgSubports.begin(),
+          cfgSubports.end()) &&
       std::equal(
           origAggPort->getInterfaceIDs()->begin(),
           origAggPort->getInterfaceIDs()->end(),
-          cfgAggregatePortInterfaceIDs.begin())) {
+          cfgAggregatePortInterfaceIDs.begin(),
+          cfgAggregatePortInterfaceIDs.end())) {
     return nullptr;
   }
 
