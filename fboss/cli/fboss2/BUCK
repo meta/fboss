@@ -1157,7 +1157,6 @@ cpp_library(
         "fbsource//xplat/folly/logging:logging",
         ":fboss2-config-file-utils",
         "//fboss/agent:fboss-error",
-        "//fboss/agent/hw/switch_asics:switch_asics",
         "//fboss/configs/platforms/generic/forwarding_stack/utils:config_generation_utils",
         "//fboss/lib/config:fboss_agent_config_utils",
         "//fboss/lib/config:fboss_config_utils",
@@ -1169,6 +1168,7 @@ cpp_library(
     exported_deps = [
         "//fboss/agent:agent_config-cpp2-serialization",
         "//fboss/agent:agent_config-cpp2-types",
+        "//fboss/agent/hw/switch_asics:switch_asics",
         "//fboss/agent/platforms/common:platform_mapping",
         "//fboss/configs/platforms/generic/forwarding_stack:config_generation-cpp2-serialization",
         "//fboss/configs/platforms/generic/forwarding_stack:config_generation-cpp2-types",
@@ -1591,6 +1591,7 @@ cpp_library(
         "fbsource//xplat/folly:utility",
         "fbsource//xplat/folly/lang:assume",
         "fbsource//xplat/folly/logging:logging",
+        ":fboss2-config-gen-lib",
         ":table-utils",
         "//configerator/structs/neteng/bgp_policy/thrift:routing_policy-cpp2-types",
         "//configerator/structs/neteng/fboss/bgp/if:bgp_attr-cpp2-serialization",
