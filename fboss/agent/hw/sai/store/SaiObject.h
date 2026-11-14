@@ -536,7 +536,8 @@ class SaiObject {
   bool ownedByAdapter_{IsSaiObjectOwnedByAdapter<SaiObjectTraits>::value};
   // For some object types we can ignore missing in HW errors
   // on when deleting.
-  bool ignoreMissingInHwOnDelete_{false};
+  bool ignoreMissingInHwOnDelete_{
+      SaiObjectMayBeMissingInHw<SaiObjectTraits>::value};
   // For some object types we want to skip remove call when deleting
   bool skipRemove_{false};
   typename SaiObjectTraits::AdapterKey adapterKey_;
