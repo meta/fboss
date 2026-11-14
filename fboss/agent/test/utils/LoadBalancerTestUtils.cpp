@@ -378,6 +378,87 @@ std::set<uint64_t> getSortedPortBytesIncrement(
   return portBytesIncrement;
 }
 
+template <typename PortStatsT>
+uint64_t getPortOutBytes(const PortStatsT& stats) {
+  if constexpr (std::is_same_v<PortStatsT, HwPortStats>) {
+    return *stats.outBytes_();
+  } else if constexpr (std::is_same_v<PortStatsT, HwSysPortStats>) {
+    return stats.queueOutBytes_()->at(getDefaultQueue()) +
+        stats.queueOutDiscardBytes_()->at(getDefaultQueue());
+  }
+  throw FbossError("Unsupported port stats type in getPortOutBytes");
+}
+
+/*
+ * Every member must carry between floorPct and ceilPct of the fair share
+ * (total / numMembers). See MemberShareBounds for why this is the right
+ * assertion for per-packet quality spray. Kept in integer arithmetic:
+ *   floorPct * total <= 100 * numMembers * memberBytes <= ceilPct * total
+ */
+template <typename PortIdT, typename PortStatsT>
+bool isTrafficSprayedImpl(
+    const std::map<PortIdT, PortStatsT>& portIdToStats,
+    const MemberShareBounds& bounds) {
+  const uint64_t numMembers = portIdToStats.size();
+  uint64_t total = 0;
+  for (const auto& [portId, stats] : portIdToStats) {
+    total += getPortOutBytes(stats);
+  }
+  if (!numMembers || !total) {
+    // No members, or no traffic at all, is a failure and not a vacuous pass.
+    XLOG(INFO) << "Traffic not sprayed, members: " << numMembers
+               << " total bytes: " << total;
+    return false;
+  }
+  bool sprayed = true;
+  for (const auto& [portId, stats] : portIdToStats) {
+    auto memberBytes = getPortOutBytes(stats);
+    auto scaled = 100 * numMembers * memberBytes;
+    if (scaled < uint64_t(bounds.floorPct) * total ||
+        scaled > uint64_t(bounds.ceilPct) * total) {
+      XLOG(INFO) << "Member " << fmt::format("{}", portId)
+                 << " outBytes: " << memberBytes << " is outside "
+                 << bounds.floorPct << "%-" << bounds.ceilPct
+                 << "% of the fair share " << (total / numMembers);
+      sprayed = false;
+    }
+  }
+  return sprayed;
+}
+
+bool isWithinMemberShareBounds(
+    const std::map<std::string, uint64_t>& memberCounters,
+    const MemberShareBounds& bounds) {
+  const uint64_t numMembers = memberCounters.size();
+  uint64_t total = 0;
+  for (const auto& [member, counter] : memberCounters) {
+    total += counter;
+  }
+  if (!numMembers || !total) {
+    XLOG(INFO) << fmt::format(
+        "No traffic to check the share of, members: {} total: {}",
+        numMembers,
+        total);
+    return false;
+  }
+  bool withinBounds = true;
+  for (const auto& [member, counter] : memberCounters) {
+    const auto scaled = 100 * numMembers * counter;
+    if (scaled < uint64_t(bounds.floorPct) * total ||
+        scaled > uint64_t(bounds.ceilPct) * total) {
+      XLOG(INFO) << fmt::format(
+          "Member {} carried {}, outside {}%-{}% of the fair share {}",
+          member,
+          counter,
+          bounds.floorPct,
+          bounds.ceilPct,
+          total / numMembers);
+      withinBounds = false;
+    }
+  }
+  return withinBounds;
+}
+
 template <typename PortIdT, typename PortStatsT>
 std::pair<uint64_t, uint64_t> getHighestAndLowestBytes(
     const std::map<PortIdT, PortStatsT>& portIdToStats) {
