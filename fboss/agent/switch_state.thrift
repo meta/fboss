@@ -216,6 +216,7 @@ struct PortFields {
   81: optional i16 cbfcSenderPacketOverhead;
   82: optional switch_config.CsigTagAction csigTagAction;
   83: optional i16 csigLinkLocator;
+  84: optional i64 cbfcReceiverCreditLimit;
 }
 
 typedef ctrl.SystemPortThrift SystemPortFields
@@ -314,6 +315,9 @@ struct AclEntryFields {
   38: optional switch_config.AclLookupClassPort lookupClassPort;
   39: optional AclTtl mplsLabel0Ttl;
   40: optional byte tcpFlagsMask;
+  41: optional switch_config.AclIpMatch dstIpWithMask;
+  42: optional switch_config.AclIpV6WordMatch dstIpV6Word1WithMask;
+  43: optional switch_config.AclIpV6WordMatch dstIpV6Word0WithMask;
 }
 
 struct NamedNextHopGroupAndID {
@@ -625,6 +629,8 @@ struct RouteNextHopEntry {
   10: optional string namedNextHopGroup;
   11: optional i64 clientNextHopSetID;
   12: optional i64 overrideNextHopSetID;
+  // Level of the route, from UnicastRoute.level
+  13: optional i32 level;
 }
 
 struct RouteNextHopsMulti {
@@ -730,6 +736,11 @@ struct VxLanTunnelFields {
 struct VrfFields {
   1: i32 vrfId;
   2: optional string name;
+}
+
+struct InterfaceVrfFields {
+  1: i32 interfaceId;
+  2: i32 vrfId;
 }
 
 struct MySidFields {
@@ -892,6 +903,7 @@ struct AggregatePortFields {
   13: optional i64 configuredCapacityMbps;
   14: optional i64 activeCapacityMbps;
   15: optional AggregatePortStatus status;
+  16: optional bool disableTTLDecrement;
 }
 
 struct TeFlowEntryFields {
@@ -997,6 +1009,8 @@ struct SwitchState {
   > portAclTableGroupMaps;
   131: map<SwitchIdList, map<string, VxLanTunnelFields>> vxlanTunnelMaps;
   132: map<SwitchIdList, map<i32, VrfFields>> vrfMaps;
+  // Interface to VRF bindings. An interface without an entry is in VRF 0.
+  133: map<SwitchIdList, map<i32, InterfaceVrfFields>> interfaceVrfMaps;
   // Remote object maps
   600: map<SwitchIdList, map<i64, SystemPortFields>> remoteSystemPortMaps;
   601: map<SwitchIdList, map<i32, InterfaceFields>> remoteInterfaceMaps;

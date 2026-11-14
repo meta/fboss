@@ -18,6 +18,7 @@
  */
 
 #include <fmt/format.h>
+#include <folly/ScopeGuard.h>
 #include <folly/json/dynamic.h>
 #include <folly/json/json.h>
 #include <folly/logging/xlog.h>
@@ -142,14 +143,64 @@ class ConfigLoadBalancingTest : public Fboss2IntegrationTest {
     EXPECT_EQ(getAlgorithm(idValue), original);
   }
 
-  // Drive `config load-balancing <area> hash-seed <seed>`, verify running
-  // config matches, then restore. Uses the *numeric* seed verification
-  // unconditionally; the restore path handles both "had a seed" and "seed
-  // unset" original states.
-  void testSeed(const std::string& area, int idValue, int newSeed) {
+  // Running-config load balancers with the given id.
+  int countConfigLoadBalancers(int idValue) const {
+    auto config = getRunningConfig();
+    int count = 0;
+    for (const auto& lb : config["sw"]["loadBalancers"]) {
+      if (lb.count("id") && lb["id"].asInt() == idValue) {
+        ++count;
+      }
+    }
+    return count;
+  }
+
+  // Switch-state load balancers stored under map key `idValue`, one per
+  // switch. loadBalancerMaps: SwitchIdList -> LoadBalancerID ->
+  // LoadBalancerFields.
+  std::vector<folly::dynamic> getStateLoadBalancers(int idValue) const {
+    std::vector<folly::dynamic> out;
+    auto maps = getSwitchState("loadBalancerMaps");
+    for (const auto& [switchIds, lbs] : maps.items()) {
+      for (const auto& [key, lb] : lbs.items()) {
+        if (key.asInt() == idValue) {
+          out.push_back(lb);
+        }
+      }
+    }
+    return out;
+  }
+
+  // Drive `config load-balancing <area> hash-seed <seed>`, verify the change
+  // in the running config and the agent's switch state, then restore.
+  //
+  // This is also the LoadBalancer.id coverage: the CLI finds the entry to
+  // update by id (CmdConfigLoadBalancing.cpp findOrCreateLoadBalancer) and the
+  // agent keys loadBalancerMaps by it. So the command must update the one
+  // config entry with `idValue` rather than append a second, the switch-state
+  // entry under that key must carry the new seed, and the load balancer with
+  // `otherIdValue` must be left untouched. The create half (an absent id gets
+  // a new entry) is covered by the unit test
+  // CmdConfigLoadBalancingTestFixture.applyCreatesNewLoadBalancer.
+  void testSeed(const std::string& area, int idValue, int otherIdValue) {
+    const auto original = getSeed(idValue);
+    // Flip the low bit of the current seed, so the test value always differs
+    // from whatever the DUT already uses.
+    const int32_t newSeed = original.has_value() ? (*original ^ 1) : 1;
     XLOG(INFO) << "--- " << area << " hash-seed " << newSeed << " ---";
-    auto original = getSeed(idValue);
-    ASSERT_TRUE(!original.has_value() || *original != newSeed);
+
+    ASSERT_EQ(countConfigLoadBalancers(idValue), 1)
+        << "expected exactly one load balancer with id " << idValue;
+    const auto otherConfigBefore = getLoadBalancer(otherIdValue);
+    const auto otherStateBefore = getStateLoadBalancers(otherIdValue);
+
+    // Put the original seed back even if a check below fails.
+    const std::string restoreValue =
+        original.has_value() ? std::to_string(*original) : "default";
+    auto restoreGuard = folly::makeGuard([&] {
+      runAndCommit(
+          {"config", "load-balancing", area, "hash-seed", restoreValue});
+    });
 
     runAndCommit(
         {"config",
@@ -157,25 +208,28 @@ class ConfigLoadBalancingTest : public Fboss2IntegrationTest {
          area,
          "hash-seed",
          std::to_string(newSeed)});
-    auto observed = getSeed(idValue);
-    ASSERT_TRUE(observed.has_value());
-    EXPECT_EQ(*observed, newSeed);
 
-    // Restore: either original had a value or was unset (use "default").
-    if (original.has_value()) {
-      runAndCommit(
-          {"config",
-           "load-balancing",
-           area,
-           "hash-seed",
-           std::to_string(*original)});
-      auto restored = getSeed(idValue);
-      ASSERT_TRUE(restored.has_value());
-      EXPECT_EQ(*restored, *original);
-    } else {
-      runAndCommit({"config", "load-balancing", area, "hash-seed", "default"});
-      EXPECT_FALSE(getSeed(idValue).has_value());
+    EXPECT_EQ(countConfigLoadBalancers(idValue), 1)
+        << "the command appended a load balancer instead of updating id "
+        << idValue;
+    EXPECT_EQ(getSeed(idValue), newSeed);
+    EXPECT_EQ(getLoadBalancer(otherIdValue), otherConfigBefore)
+        << "load balancer " << otherIdValue << " changed in the running config";
+
+    const auto stateLbs = getStateLoadBalancers(idValue);
+    EXPECT_FALSE(stateLbs.empty())
+        << "no load balancer under key " << idValue << " in switch state";
+    for (const auto& lb : stateLbs) {
+      EXPECT_EQ(lb["id"].asInt(), idValue)
+          << "loadBalancerMaps key does not match the entry's id";
+      EXPECT_EQ(lb["seed"].asInt(), newSeed);
     }
+    EXPECT_EQ(getStateLoadBalancers(otherIdValue), otherStateBefore)
+        << "load balancer " << otherIdValue << " changed in switch state";
+
+    restoreGuard.dismiss();
+    runAndCommit({"config", "load-balancing", area, "hash-seed", restoreValue});
+    EXPECT_EQ(getSeed(idValue), original);
   }
 
   // Generic hash-fields-* test. Sets `newTokens`, verifies the running
@@ -210,7 +264,7 @@ TEST_F(ConfigLoadBalancingTest, EcmpHashAlgorithm) {
 }
 
 TEST_F(ConfigLoadBalancingTest, EcmpHashSeed) {
-  testSeed("ecmp", kEcmpIdValue, 314159);
+  testSeed("ecmp", kEcmpIdValue, kLagIdValue);
 }
 
 TEST_F(ConfigLoadBalancingTest, EcmpHashFieldsIpv4) {
@@ -270,7 +324,7 @@ TEST_F(ConfigLoadBalancingTest, DISABLED_LagHashAlgorithm) {
 }
 
 TEST_F(ConfigLoadBalancingTest, DISABLED_LagHashSeed) {
-  testSeed("lag", kLagIdValue, 271828);
+  testSeed("lag", kLagIdValue, kEcmpIdValue);
 }
 
 TEST_F(ConfigLoadBalancingTest, DISABLED_LagHashFieldsIpv4) {

@@ -57,13 +57,13 @@ RS485. `rackmon` is only deployed in TOR switches.
 
 | Platform Service   | Configurations/Requirements                                                                                                                                                                                                 |
 |--------------------|------------------------------------------------------------------------------------------------------------------------------------------------|
-| fan_service        | [fan_service_config.thrift](https://github.com/facebook/fboss/blob/main/fboss/platform/fan_service/if/fan_service_config.thrift)               |
-| sensor_service     | [sensor_config.thrift](https://github.com/facebook/fboss/blob/main/fboss/platform/sensor_service/if/sensor_config.thrift)                      |
-| platform_manager   | [platform_manager_config.thrift](https://github.com/facebook/fboss/blob/main/fboss/platform/platform_manager/platform_manager_config.thrift)   |
-| weutil             | [weutil_config.thrift](https://github.com/facebook/fboss/blob/main/fboss/platform/weutil/if/weutil_config.thrift)                              |
-| fw_util            | - [fw_util_config.thrift](https://github.com/facebook/fboss/blob/main/fboss/platform/fw_util/if/fw_util_config.thrift) <br/> - For each command/binary used, they must be statically compiled, no other libraries/dependencies <br/> - Must use only SPI driver, I2C driver or JTAG driver <br/> - Must not use vendor specific tools |
-| rackmon            | - Three UART devices (usually /dev/ttyUSB*) for modbus communications. Example: [rackmon.conf](https://github.com/facebook/fboss/blob/main/fboss/platform/rackmon/configs/interface/rackmon.conf) <br/> - 6 GPIO Lines for Power Loss Siren. Example: [rackmon_pls.conf](https://github.com/facebook/fboss/blob/main/fboss/platform/rackmon/configs/interface/rackmon_pls.conf) |
-| data_corral_service| [data_corral_service.thrift](https://github.com/facebook/fboss/blob/main/fboss/platform/data_corral_service/if/data_corral_service.thrift) |
+| fan_service        | [fan_service_config.thrift](https://github.com/meta/fboss/blob/main/fboss/platform/fan_service/if/fan_service_config.thrift)               |
+| sensor_service     | [sensor_config.thrift](https://github.com/meta/fboss/blob/main/fboss/platform/sensor_service/if/sensor_config.thrift)                      |
+| platform_manager   | [platform_manager_config.thrift](https://github.com/meta/fboss/blob/main/fboss/platform/platform_manager/platform_manager_config.thrift)   |
+| weutil             | [weutil_config.thrift](https://github.com/meta/fboss/blob/main/fboss/platform/weutil/if/weutil_config.thrift)                              |
+| fw_util            | - [fw_util_config.thrift](https://github.com/meta/fboss/blob/main/fboss/platform/fw_util/if/fw_util_config.thrift) <br/> - For each command/binary used, they must be statically compiled, no other libraries/dependencies <br/> - Must use only SPI driver, I2C driver or JTAG driver <br/> - Must not use vendor specific tools |
+| rackmon            | - Three UART devices (usually /dev/ttyUSB*) for modbus communications. Example: [rackmon.conf](https://github.com/meta/fboss/blob/main/fboss/platform/rackmon/configs/interface/rackmon.conf) <br/> - 6 GPIO Lines for Power Loss Siren. Example: [rackmon_pls.conf](https://github.com/meta/fboss/blob/main/fboss/platform/rackmon/configs/interface/rackmon_pls.conf) |
+| data_corral_service| [data_corral_service.thrift](https://github.com/meta/fboss/blob/main/fboss/platform/data_corral_service/if/data_corral_service.thrift) |
 
 ## Device References
 

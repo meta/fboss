@@ -383,6 +383,18 @@ SaiObject<SaiUdfGroupTraits>::follyDynamicToAdapterHostKey(
 }
 
 template <>
+folly::dynamic SaiObject<SaiPolicerTraits>::adapterHostKeyToFollyDynamic() {
+  return adapterHostKey_;
+}
+
+template <>
+typename SaiPolicerTraits::AdapterHostKey
+SaiObject<SaiPolicerTraits>::follyDynamicToAdapterHostKey(
+    const folly::dynamic& json) {
+  return json.asString();
+}
+
+template <>
 folly::dynamic
 SaiObject<SaiIsolationGroupTraits>::adapterHostKeyToFollyDynamic() {
   return adapterHostKey_;
@@ -393,6 +405,19 @@ typename SaiIsolationGroupTraits::AdapterHostKey
 SaiObject<SaiIsolationGroupTraits>::follyDynamicToAdapterHostKey(
     const folly::dynamic& json) {
   return json.asString();
+}
+
+template <>
+folly::dynamic
+SaiObject<SaiVirtualRouterTraits>::adapterHostKeyToFollyDynamic() {
+  return static_cast<uint32_t>(adapterHostKey_);
+}
+
+template <>
+typename SaiVirtualRouterTraits::AdapterHostKey
+SaiObject<SaiVirtualRouterTraits>::follyDynamicToAdapterHostKey(
+    const folly::dynamic& json) {
+  return RouterID(static_cast<uint32_t>(json.asInt()));
 }
 
 #if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)

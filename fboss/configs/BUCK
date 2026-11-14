@@ -32,17 +32,10 @@ buck_filegroup(
         "//fboss/agent/sim/facebook/nplsim/...",
         "//fboss/led_service/fbpkg/...",
         "//fboss/lib/platforms/facebook/tests/...",
+        "//neteng/fboss/tools/provision_test/...",
         "//netos/services/fboss_led_service/...",
         "//netos/services/fboss_qsfp_service/...",
         "//netos/services/fboss_sw_agent/...",
         "//netos/services/fboss_wedge_agent/...",
     ],
-)
-
-buck_filegroup(
-    name = "minipack3n_fpf_gtsw_platform_mapping",
-    srcs = glob([
-        "platforms/accton/minipack3n/variants/minipack3n_fpf_gtsw/platform_mapping/generated/*.json",
-    ]),
-    visibility = ["//fboss/lib/platforms/facebook/tests/..."],
 )

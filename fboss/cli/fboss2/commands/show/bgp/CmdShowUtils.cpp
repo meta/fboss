@@ -8,7 +8,10 @@
  *
  */
 
+#include <algorithm>
+#include <exception>
 #include <stdexcept>
+#include <string_view>
 #include <utility>
 
 #include "configerator/structs/neteng/fboss/bgp/if/gen-cpp2/bgp_attr_types.h"
@@ -31,6 +34,7 @@
 #include "folly/IPAddress.h"
 #include "folly/Range.h"
 #include "folly/String.h"
+#include "folly/Unicode.h"
 #include "folly/json.h"
 #include "folly/json/dynamic.h"
 #include "neteng/fboss/bgp/if/gen-cpp2/TBgpService.h"
@@ -180,6 +184,205 @@ const std::string printCommunities(
   }
 
   return isMultiLine ? folly::join("\n", output) : folly::join(", ", output);
+}
+
+namespace {
+
+using nettools::bgplib::BgpNotifCeaseErrSubCode;
+using nettools::bgplib::BgpNotifErrCode;
+using nettools::bgplib::BgpNotificationRouteRefreshErrSubCode;
+using nettools::bgplib::BgpNotifMsgHdrErrSubCode;
+using nettools::bgplib::BgpNotifOpenMsgErrSubCode;
+
+/* Unsigned big-endian integer of at most 4 bytes. */
+uint32_t readBigEndian(std::string_view bytes) {
+  uint32_t value = 0;
+  for (const unsigned char byte : bytes) {
+    value = (value << 8) | byte;
+  }
+  return value;
+}
+
+/* Unicode control characters (general category Cc): C0, DEL and C1. */
+bool isControlCodePoint(char32_t codePoint) {
+  constexpr char32_t kC0End = 0x1F;
+  constexpr char32_t kDelete = 0x7F;
+  constexpr char32_t kC1End = 0x9F;
+  return codePoint <= kC0End || (codePoint >= kDelete && codePoint <= kC1End);
+}
+
+/* Valid UTF-8 (RFC 9003) with no control characters. */
+bool isPrintableUtf8(std::string_view text) {
+  const auto* p = reinterpret_cast<const unsigned char*>(text.data());
+  const auto* const end = p + text.size();
+  try {
+    while (p < end) {
+      if (isControlCodePoint(
+              folly::utf8ToCodePoint(p, end, /*skipOnError=*/false))) {
+        return false;
+      }
+    }
+  } catch (const std::runtime_error&) {
+    return false;
+  }
+  return true;
+}
+
+template <typename SubCode>
+bool hasSubCode(
+    const nettools::bgplib::BgpNotification& notification,
+    SubCode subCode) {
+  return *notification.errSubCode() == static_cast<int16_t>(subCode);
+}
+
+/*
+ * Decode a NOTIFICATION's Data field for the code/subcode pairs whose RFCs give
+ * it a fixed layout. Anything else, or Data that does not match its layout, is
+ * shown as hex.
+ */
+std::string decodeBgpNotificationData(
+    const nettools::bgplib::BgpNotification& notification) {
+  const std::string_view data = *notification.data();
+  switch (*notification.errCode()) {
+    case BgpNotifErrCode::BN_MSG_HDR_ERR:
+      if (hasSubCode(
+              notification, BgpNotifMsgHdrErrSubCode::BN_MH_BAD_MSG_LEN) &&
+          data.size() == 2) {
+        return fmt::format("length {}", readBigEndian(data));
+      }
+      if (hasSubCode(
+              notification, BgpNotifMsgHdrErrSubCode::BN_MH_BAD_MSG_TYPE) &&
+          data.size() == 1) {
+        return fmt::format("type {}", readBigEndian(data));
+      }
+      break;
+    case BgpNotifErrCode::BN_OPEN_MSG_ERR:
+      /* RFC 4271 specifies 2 octets, but BGP++ itself sends 1. */
+      if (hasSubCode(
+              notification,
+              BgpNotifOpenMsgErrSubCode::BN_OM_UNSUPPORTED_VERSION_NUMBER) &&
+          (data.size() == 1 || data.size() == 2)) {
+        return fmt::format("version {}", readBigEndian(data));
+      }
+      break;
+    case BgpNotifErrCode::BN_ROUTE_REFRESH_MSG_ERR:
+      if (hasSubCode(
+              notification,
+              BgpNotificationRouteRefreshErrSubCode::BN_INVALID_MSG_LEN) &&
+          data.size() == 2) {
+        return fmt::format("length {}", readBigEndian(data));
+      }
+      break;
+    case BgpNotifErrCode::BN_CEASE:
+#ifndef IS_OSS
+      /*
+       * RFC 8538 Hard Reset: Data is the NOTIFICATION it carries. The decoder
+       * lives in BgpUtil, which is not open source; OSS prints the hex below.
+       */
+      if (nettools::bgplib::isBgpHardResetNotification(notification)) {
+        return fmt::format(
+            "[{}]",
+            formatBgpNotification(
+                nettools::bgplib::decodeBgpHardResetNotification(
+                    std::string(data))));
+      }
+#endif
+      /* RFC 9003 shutdown communication: 1-byte length, then UTF-8 text. */
+      if ((hasSubCode(
+               notification,
+               BgpNotifCeaseErrSubCode::BN_CEASE_ADMIN_SHUTDOWN) ||
+           hasSubCode(
+               notification, BgpNotifCeaseErrSubCode::BN_CEASE_ADMIN_RESET)) &&
+          !data.empty() &&
+          static_cast<unsigned char>(data[0]) == data.size() - 1 &&
+          isPrintableUtf8(data.substr(1))) {
+        // Length 0 means the shutdown carries no message
+        if (data.size() == 1) {
+          return "(empty)";
+        }
+        return fmt::format("\"{}\"", data.substr(1));
+      }
+      /* RFC 4486: AFI (2 bytes), SAFI (1), prefix limit (4). */
+      if (hasSubCode(
+              notification,
+              BgpNotifCeaseErrSubCode::BN_CEASE_MAX_PREFIX_LIMIT) &&
+          data.size() == 7) {
+        return fmt::format(
+            "AFI {} SAFI {}, limit {}",
+            readBigEndian(data.substr(0, 2)),
+            readBigEndian(data.substr(2, 1)),
+            readBigEndian(data.substr(3, 4)));
+      }
+      break;
+    default:
+      break;
+  }
+  return fmt::format("0x{}", folly::hexlify(data));
+}
+
+std::string formatBgpNotificationCodes(
+    const nettools::bgplib::BgpNotification& notification) {
+  const auto result = fmt::format(
+      "{} ({})",
+      apache::thrift::util::enumNameSafe(*notification.errCode()),
+      static_cast<uint16_t>(*notification.errCode()));
+
+  /*
+   * The parser seeds errSubCodeStr with the sentinel "NA" and overwrites it
+   * only when the code family names that subcode, so an unnamed subcode
+   * arrives as "NA" rather than empty (BgpMessageParser.cpp). Codes with no
+   * subcode namespace at all (BN_HOLD_TIMER_EXPIRED, BN_FSM_ERROR) and
+   * subcode 0 of the families whose enums start at 1 (message-header, cease)
+   * both land here. Empty is also treated as unnamed for hand-built structs.
+   */
+  const auto& subCodeStr = *notification.errSubCodeStr();
+  if (subCodeStr.empty() || subCodeStr == "NA") {
+    return fmt::format(
+        "{}, subcode {}", result, folly::copy(*notification.errSubCode()));
+  }
+  return fmt::format(
+      "{}, subcode {} ({})",
+      result,
+      subCodeStr,
+      folly::copy(*notification.errSubCode()));
+}
+
+} // namespace
+
+std::string formatBgpNotification(
+    const facebook::nettools::bgplib::BgpNotification& notification) {
+  auto result = formatBgpNotificationCodes(notification);
+  if (!notification.data()->empty()) {
+    std::string decodedData;
+    try {
+      decodedData = decodeBgpNotificationData(notification);
+    } catch (const std::exception&) {
+      decodedData = "[failed to decode raw data]";
+    }
+    result += fmt::format(", data: {}", decodedData);
+  }
+  return result;
+}
+
+void printLastBgpNotifications(const TBgpSession& neighbor, std::ostream& out) {
+  if (neighbor.last_notification_sent().has_value()) {
+    out << "  Last notification sent:     "
+        << formatBgpNotification(*neighbor.last_notification_sent())
+        << std::endl;
+    if (neighbor.last_notification_sent_time().has_value()) {
+      printTimestamp(
+          *neighbor.last_notification_sent_time(), "    Sent at", out);
+    }
+  }
+  if (neighbor.last_notification_received().has_value()) {
+    out << "  Last notification received: "
+        << formatBgpNotification(*neighbor.last_notification_received())
+        << std::endl;
+    if (neighbor.last_notification_received_time().has_value()) {
+      printTimestamp(
+          *neighbor.last_notification_received_time(), "    Received at", out);
+    }
+  }
 }
 
 float translateLinkBandwidthValue(const uint32_t linkBandwidthValue) {
@@ -788,6 +991,9 @@ void printBgpCapabilities(const TBgpSessionDetail& details, std::ostream& out) {
         << "s" << std::endl;
   } else {
     out << "    Graceful Restart: NOT sent" << std::endl;
+  }
+  if (folly::copy(details.gr_notification_negotiated().value())) {
+    out << "    Graceful Notification: negotiated" << std::endl;
   }
 }
 

@@ -217,7 +217,6 @@ uint64_t SaiBufferManager::getMaxEgressPoolBytes(const SaiPlatform* platform) {
           asic->getAsicType());
   }
   CHECK(0) << "Should never get here";
-  return 0;
 }
 
 void SaiBufferManager::setupEgressBufferPool(

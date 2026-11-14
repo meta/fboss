@@ -176,7 +176,6 @@ cpp_library(
         "//thrift/lib/cpp2/protocol:protocol",
     ],
     exported_deps = [
-        "fbsource//xplat/folly:format",
         "fbsource//xplat/folly:synchronized",
         "fbsource//xplat/folly/io/async:async_base",
         "fbsource//xplat/folly/logging:logging",

@@ -60,7 +60,6 @@ cpp_library(
         "//fboss/agent/platforms/common/minipack3n:minipack3n_platform_mapping",
         "//fboss/agent/platforms/common/montblanc:montblanc_platform_mapping",
         "//fboss/agent/platforms/common/morgan800cc:morgan800cc_platform_mapping",
-        "//fboss/agent/platforms/common/saintpaul:saintpaul_platform_mapping",
         "//fboss/agent/platforms/common/tahan800bc:tahan800bc_platform_mapping",
         "//fboss/agent/platforms/common/tahansb800bc:tahansb800bc_platform_mapping",
         "//fboss/agent/platforms/common/wedge100:wedge100_platform_mapping",
@@ -73,7 +72,6 @@ cpp_library(
     ],
     exported_deps = [
         ":platform_mapping",
-        "//fboss/agent/platforms/common/j4sim:j4sim_platform_mapping",  # @manual
         "//fboss/lib/platforms:platform_descriptor",
         "//fboss/lib/platforms:platform_mode",
     ],

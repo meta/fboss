@@ -252,6 +252,7 @@ void handleExtensionAttributes() {
   SAI_EXT_ATTR_MAP(Port, LinkDownDebouncePeriodMs)
   SAI_EXT_ATTR_MAP(Port, LinkUpDebounceRetriggerCount)
   SAI_EXT_ATTR_MAP(Port, LinkDownDebounceRetriggerCount)
+  SAI_EXT_ATTR_MAP(Port, CbfcReceiverCreditLimit)
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 3)
   SAI_EXT_ATTR_MAP(Port, ExtOperStatusLatch)
 #endif

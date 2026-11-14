@@ -143,6 +143,10 @@ class SaiPortManager {
   static constexpr double kRateConversionFactor = 1024. * 1024. * 1024.;
 
  public:
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 3)
+  using ExtOperStatusLatchWarmBootState = std::map<PortID, sai_latch_status_t>;
+#endif
+
   SaiPortManager(
       SaiStore* saiStore,
       SaiManagerTable* managerTable,
@@ -257,9 +261,10 @@ class SaiPortManager {
       bool updateCableLengths = false);
 
   // Link up/down debounce retrigger counts are leaba READ_ONLY port attributes
-  // (25.5.4210 / 26.2+). Compile-time SDK gate; the per-port read in
-  // updateStats is additionally guarded on the port having a debounce hold
-  // timer configured.
+  // (25.5.4210 / 26.5) or port stats (26.2.4210); Broadcom serves both as
+  // port stats from 15.4 on. Compile-time SDK gate; the per-port read in
+  // updateStats is additionally guarded on the port having that direction's
+  // debounce hold timer configured.
   static bool isLinkDebounceRetriggerCounterSupported(const HwAsic* asic);
 
   void updateConnectivityStats(PortID portID);
@@ -319,8 +324,15 @@ class SaiPortManager {
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 3)
   std::optional<sai_latch_status_t> getExtOperStatusLatch(
       PortSaiId saiPortId) const;
+  ExtOperStatusLatchWarmBootState snapshotExtOperStatusLatch();
+  void updateExtOperStatusLatchAfterWarmBoot(
+      const ExtOperStatusLatchWarmBootState& baseline);
 #endif
 #endif
+  // Current {errored blocks, BER count} hardware counter values. Read without
+  // clearing, so the SDK and vendor diagnostics see the same counts.
+  std::optional<std::pair<uint64_t, uint64_t>> getPcsErrorCounters(
+      PortSaiId saiPortId) const;
 
 #if defined(BRCM_PAI_SDK) && SAI_API_VERSION >= SAI_VERSION(1, 10, 0)
   phy::Loopback getLoopbackMode(PortSaiId saiPortId) const;
@@ -631,5 +643,12 @@ class SaiPortManager {
   FRIEND_TEST(PortManagerTest, calculateRate);
   FRIEND_TEST(PortManagerTest, updatePrbsStatsEntryRate);
 };
+
+#if defined(BRCM_PAI_SDK)
+void enableXphyLtRestartOnTimeout(
+    PortSaiId portSaiId,
+    const std::string& desc,
+    bool writeAllowed);
+#endif
 
 } // namespace facebook::fboss

@@ -301,6 +301,86 @@ std::shared_ptr<SwitchState> syncIdMapsFromState(
   return result;
 }
 
+std::shared_ptr<SwitchState> remapOverrideSetIds(
+    const std::shared_ptr<SwitchState>& oldState,
+    const std::shared_ptr<SwitchState>& newState) {
+  const auto& fibsInfoMap = newState->getFibsInfoMap();
+  if (fibsInfoMap->empty() || oldState->getFibsInfoMap()->empty()) {
+    return newState;
+  }
+  // Identical on every switch; the first copy suffices.
+  auto overrideMap =
+      fibsInfoMap->cbegin()->second->getOverrideIdToNextHopIdSetMap();
+  if (!overrideMap || overrideMap->empty()) {
+    return newState;
+  }
+  auto oldIdToNextHop =
+      oldState->getFibsInfoMap()->cbegin()->second->getIdToNextHopMap();
+  auto newIdToNextHop = fibsInfoMap->cbegin()->second->getIdToNextHopMap();
+  if (!oldIdToNextHop || !newIdToNextHop) {
+    throw FbossError("IdToNextHopMap is not initialized");
+  }
+
+  // Surviving NextHop ids keep their id, so only retired members need a
+  // lookup by NextHop value; build that index on first use.
+  std::unordered_map<NextHop, NextHopId> nextHopToNewId;
+  auto remapMember = [&](NextHopSetId setId, NextHopId member) {
+    if (newIdToNextHop->getNextHopIf(member)) {
+      return member;
+    }
+    if (nextHopToNewId.empty()) {
+      for (const auto& [id, node] : std::as_const(*newIdToNextHop)) {
+        nextHopToNewId.emplace(
+            util::fromThrift(node->toThrift(), true /* allowV6NonLinkLocal */),
+            id);
+      }
+    }
+    auto oldNode = oldIdToNextHop->getNextHopIf(member);
+    auto it = oldNode
+        ? nextHopToNewId.find(
+              util::fromThrift(
+                  oldNode->toThrift(), true /* allowV6NonLinkLocal */))
+        : nextHopToNewId.end();
+    if (it == nextHopToNewId.end()) {
+      throw FbossError(
+          "NextHopId ",
+          member,
+          " of override NextHopSetID ",
+          setId,
+          " has no remapped NextHopId");
+    }
+    return it->second;
+  };
+
+  bool changed = false;
+  auto newMap = overrideMap->toThrift();
+  for (auto& [setId, members] : newMap) {
+    std::set<NextHopId> remapped;
+    for (auto member : members) {
+      remapped.insert(remapMember(setId, member));
+    }
+    if (remapped != members) {
+      members = std::move(remapped);
+      changed = true;
+    }
+  }
+  if (!changed) {
+    return newState;
+  }
+  auto result = newState->isPublished() ? newState->clone() : newState;
+  auto newOverrideMap = std::make_shared<IdToNextHopIdSetMap>(newMap);
+  for (const auto& [matcher, _] : std::as_const(*fibsInfoMap)) {
+    result->getFibsInfoMap()
+        ->getNodeIf(matcher)
+        ->modify(&result)
+        ->setOverrideIdToNextHopIdSetMap(newOverrideMap);
+  }
+  if (newState->isPublished()) {
+    result->publish();
+  }
+  return result;
+}
+
 template <typename AddrT>
 void populateIdMapsForRoute(
     const std::shared_ptr<Route<AddrT>>& route,
@@ -374,6 +454,29 @@ template void populateIdMapsForRoute<folly::IPAddressV6>(
     const std::shared_ptr<SwitchState>& sourceState,
     std::shared_ptr<IdToNextHopIdSetMap>& dstIdToSetMap,
     std::shared_ptr<IdToNextHopMap>& dstIdToNhMap);
+
+std::optional<RouteNextHopSet> getOverrideNextHops(
+    const std::shared_ptr<SwitchState>& state,
+    const RouteNextHopEntry& entry) {
+  if (!FLAGS_resolve_nexthops_from_id) {
+    return entry.getOverrideNextHops();
+  }
+  auto setId = entry.getOverrideNextHopSetID();
+  if (!setId.has_value()) {
+    return std::nullopt;
+  }
+  auto fibsInfoMap = state->getFibsInfoMap();
+  auto nhops = fibsInfoMap ? fibsInfoMap->resolveOverrideNextHopSetFromIdIf(
+                                 static_cast<NextHopSetId>(*setId))
+                           : std::nullopt;
+  if (!nhops) {
+    throw FbossError(
+        "Override NextHopSetID ",
+        static_cast<int64_t>(*setId),
+        " not found in any FibInfo");
+  }
+  return RouteNextHopSet(nhops->begin(), nhops->end());
+}
 
 RouteNextHopSet getNormalizedNextHops(
     const std::shared_ptr<SwitchState>& state,

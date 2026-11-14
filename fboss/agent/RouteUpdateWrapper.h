@@ -55,6 +55,7 @@ class RouteUpdateWrapper {
     std::vector<cfg::StaticMplsRouteNoNextHops> staticMplsRoutesToCpu;
     std::vector<MySidWithNextHops> staticMySids;
     bool ecmpOverrideModeChanged{false};
+    std::optional<RibRouteTables::InterfaceToVrf> interfaceToVrf;
   };
   using RouterIDAndClient = std::pair<RouterID, ClientID>;
   using SyncFibFor = std::unordered_set<RouterIDAndClient>;
@@ -83,9 +84,11 @@ class RouteUpdateWrapper {
       uint8_t mask,
       ClientID clientId,
       const RouteNextHopEntry& entry,
-      std::optional<RouteNextHopSet> nhops = std::nullopt);
+      std::optional<RouteNextHopSet> nhops = std::nullopt,
+      std::optional<int32_t> level = std::nullopt);
 
-  void addRoute(RouterID id, ClientID clientId, const UnicastRoute& route);
+  void addRoute(RouterID vrf, ClientID clientId, const UnicastRoute& route);
+  void addRoute(RouterID vrf, ClientID clientId, UnicastRoute&& route);
   void addRoute(ClientID clientId, const MplsRoute& route);
   // Takes nexthops directly; the entry was only read for its inline set.
   void
@@ -112,7 +115,9 @@ class RouteUpdateWrapper {
           _staticMplsRoutesToNull,
       const std::vector<cfg::StaticMplsRouteNoNextHops>& _staticMplsRoutesToCpu,
       std::vector<MySidWithNextHops> _staticMySids = {},
-      bool _ecmpOverrideModeChanged = false);
+      bool _ecmpOverrideModeChanged = false,
+      std::optional<RibRouteTables::InterfaceToVrf> _interfaceToVrf =
+          std::nullopt);
   void setRemoteLoopbackInterfaceRoutesToConfig(
       const RouterIDAndNetworkToInterfaceRoutes& toAdd,
       const RouterIDToPrefixes& toDel);

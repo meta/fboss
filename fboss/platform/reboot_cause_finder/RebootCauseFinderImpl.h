@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <folly/CppAttributes.h>
 #include <folly/Range.h>
 #include <optional>
 #include <string>
@@ -84,14 +85,31 @@ reboot_cause_config::RebootCauseProviderAttempt parseBmcWedgePower(
 // a PSU, or a rail all look the same from here.
 // Last resort only: it asserts a cause from the absence of evidence, so it
 // must not outrank a provider that found a positive signal.
+// previousBootAtSec is when the x86 booted before this boot, in seconds since
+// the epoch, or std::nullopt when the reboot history has no earlier record.
+// Nothing is reported if the BMC started before it.
 reboot_cause_config::RebootCauseProviderAttempt readSuddenPowerLoss(
     int64_t btimeSec,
-    int64_t nowSec);
+    int64_t nowSec,
+    std::optional<int64_t> previousBootAtSec);
 
 // Exposed separately from readSuddenPowerLoss so the inference can be tested
 // without an HTTP server.
-reboot_cause_config::RebootCauseProviderAttempt
-parseSuddenPowerLoss(const std::string& body, int64_t btimeSec, int64_t nowSec);
+reboot_cause_config::RebootCauseProviderAttempt parseSuddenPowerLoss(
+    const std::string& body,
+    int64_t btimeSec,
+    int64_t nowSec,
+    std::optional<int64_t> previousBootAtSec);
+
+// The first cause dated after the previous x86 boot and before this boot,
+// [previousBootAtSec, btimeSec), or nullptr. Times come from the provider's
+// timeTs only, so a cause without one is never chosen; nor is any cause when
+// btimeSec is unknown. With no previous boot only the upper bound applies.
+const reboot_cause_config::RebootCause* FOLLY_NULLABLE firstCauseInBootWindow(
+    const std::vector<reboot_cause_config::RebootCause>& causes,
+    const std::string& providerName,
+    std::optional<int64_t> btimeSec,
+    std::optional<int64_t> previousBootAtSec);
 
 // std::nullopt when the name is not a timestamp this code understands.
 std::optional<std::time_t> parseCrashDirName(const std::string& name);
@@ -114,6 +132,14 @@ bool isX86RebootCommandLine(folly::StringPiece line);
 // The cause nearest to boot start across every attempt, paired with the
 // provider that reported it. std::nullopt when no attempt reported anything.
 std::optional<reboot_cause_config::DeterminedCause> selectNearestToBoot(
+    const std::vector<reboot_cause_config::RebootCauseProviderAttempt>&
+        attempts);
+
+// The record's cause status for a finished run. A cause wins even if other
+// providers failed; without one, any provider not read cleanly makes the
+// absence inconclusive.
+reboot_cause_config::RebootCauseStatus rebootCauseStatus(
+    bool causeDetermined,
     const std::vector<reboot_cause_config::RebootCauseProviderAttempt>&
         attempts);
 

@@ -42,6 +42,7 @@
 #include "fboss/agent/SwitchInfoUtils.h"
 #include "fboss/agent/TxPacketUtils.h"
 #include "fboss/agent/Utils.h"
+#include "fboss/agent/rib/FibUpdateHelpers.h"
 #include "fboss/agent/rib/RoutingInformationBase.h"
 #include "fboss/agent/state/StateUtils.h"
 #include "fboss/lib/phy/gen-cpp2/prbs_types.h"
@@ -95,6 +96,7 @@
 #include "fboss/agent/state/AggregatePort.h"
 #include "fboss/agent/state/DeltaFunctions.h"
 #include "fboss/agent/state/Interface.h"
+#include "fboss/agent/state/InterfaceVrf.h"
 #include "fboss/agent/state/StateDelta.h"
 #include "fboss/agent/state/StateUpdateHelpers.h"
 #include "fboss/agent/state/SwitchState.h"
@@ -865,17 +867,11 @@ state::SwitchState SwSwitch::updateOverrideEcmpSwitchingMode(
           switchingMode == cfg::SwitchingMode::PER_PACKET_QUALITY) {
         return;
       }
-      auto newFwd = RouteNextHopEntry(
-          fwd.getNextHopSet(),
-          fwd.getAdminDistance(),
-          fwd.getCounterID(),
-          fwd.getClassID(),
-          std::optional<cfg::SwitchingMode>(switchingMode),
-          fwd.getOverrideNextHops(),
-          fwd.getNormalizedResolvedNextHopSetID(),
-          fwd.getResolvedNextHopSetID(),
-          fwd.getClientNextHopSetID(),
-          fwd.getOverrideNextHopSetID());
+      // Copy and adjust: under drop_inline_nexthops_with_id the inline set
+      // is empty and the nexthop-set ctor rejects it.
+      RouteNextHopEntry newFwd(fwd.toThrift());
+      newFwd.setOverrideEcmpSwitchingMode(
+          std::optional<cfg::SwitchingMode>(switchingMode));
       fib.value().at(routeName).fwd() = newFwd.toThrift();
     }
   };
@@ -1408,7 +1404,7 @@ TeFlowStats SwSwitch::getTeFlowStats() {
         auto statName = folly::to<std::string>(counter->toThrift(), ".bytes");
         // returns default stat if statName does not exists
         auto statPtr = statMap->getStatPtrNoExport(statName);
-        auto lockedStatPtr = statPtr->wlock();
+        auto lockedStatPtr = statPtr->contextualLock();
         lockedStatPtr->update(
             std::chrono::seconds(facebook::fb303::get_legacy_stats_time()));
         auto numLevels = lockedStatPtr->numLevels();
@@ -1558,6 +1554,7 @@ void SwSwitch::init(
     initialState = getAppliedState();
   }
   initialState->publish();
+  initialState = syncNextHopIDsToFIB(initialState);
   auto emptyState = std::make_shared<SwitchState>();
   auto origInitialState = initialState;
   emptyState->publish();
@@ -1582,6 +1579,9 @@ void SwSwitch::init(
   if (pbrAclManager_) {
     pbrAclManager_->updateDone();
   }
+  // Apply the state hardware was given, including manager reconstruct changes.
+  initialState = deltas.back().newState();
+  syncRibEcmpOverrides(StateDelta(origInitialState, initialState));
   // For cold boot there will be discripancy between applied state and state
   // that exists in hardware. this discrepancy is until config is applied, after
   // that the two states are in sync. tolerating this discrepancy for now
@@ -1650,6 +1650,7 @@ void SwSwitch::init(const HwWriteBehavior& hwWriteBehavior, SwitchFlags flags) {
   if (!getHwSwitchHandler()->waitUntilHwSwitchConnected()) {
     throw FbossError("Waiting for HwSwitch to be connected cancelled");
   }
+  initialState = syncNextHopIDsToFIB(initialState);
   auto origInitialState = initialState;
   auto deltas = reconstructStateFromManagers(emptyState, initialState);
   // Notify resource accountant of the initial state.
@@ -1678,6 +1679,12 @@ void SwSwitch::init(const HwWriteBehavior& hwWriteBehavior, SwitchFlags flags) {
   }
   if (pbrAclManager_) {
     pbrAclManager_->updateDone();
+  }
+  if (bootType_ == BootType::WARM_BOOT) {
+    // Apply the state hardware was given, including manager reconstruct
+    // changes.
+    initialState = deltas.back().newState();
+    syncRibEcmpOverrides(StateDelta(origInitialState, initialState));
   }
   // for cold boot discrepancy may exist between applied state in software
   // switch and state that already exist in hardware. this discrepancy is
@@ -1833,6 +1840,30 @@ void SwSwitch::notifyStateObservers(const StateDelta& delta) {
     }
   }
   runFsdbSyncFunction([&delta](auto& syncer) { syncer->stateUpdated(delta); });
+}
+
+std::shared_ptr<SwitchState> SwSwitch::syncNextHopIDsToFIB(
+    const std::shared_ptr<SwitchState>& state) {
+  if (bootType_ != BootType::WARM_BOOT || !rib_ ||
+      !rib_->nextHopIdsChangedAtWarmboot()) {
+    return state;
+  }
+  auto newState = state;
+  rib_->syncStateFromRib(
+      scopeResolver_.get(), &ribToSwitchStateUpdate, &newState);
+  // A downgrade can drop a newer NextHop field, so NextHops that differed
+  // only in it share one id. The ids that were dropped may still be in ERM
+  // override sets, so replace each one with the id the RIB kept when it
+  // remapped ids during reconstruction.
+  newState = remapOverrideSetIds(state, newState);
+  XLOG(INFO) << "Applied RIB NextHop ids to the warm boot state";
+  return newState;
+}
+
+void SwSwitch::syncRibEcmpOverrides(const StateDelta& delta) {
+  if (rib_ && ecmpResourceManager_) {
+    rib_->updateEcmpOverrides(delta);
+  }
 }
 
 std::vector<StateDelta> SwSwitch::reconstructStateFromManagers(
@@ -3803,6 +3834,53 @@ bool SwSwitch::sendPacketToHost(
   return tunMgr_ && tunMgr_->sendPacketToHost(dstIfID, std::move(pkt));
 }
 
+void SwSwitch::updateInterfaceVrfs(
+    const std::map<InterfaceID, RouterID>& interfaceVrfs) {
+  if (interfaceVrfs.empty()) {
+    return;
+  }
+  // Runs in the update thread on the latest state, in the same update as the
+  // routes moved by the RIB. A rejected move fails the update and the RIB
+  // rolls back.
+  auto moveInterfaces =
+      [this, interfaceVrfs](const std::shared_ptr<SwitchState>& in) {
+        auto newState = in->clone();
+        auto interfaceVrfMap = newState->getInterfaceVrfs()->modify(&newState);
+        for (const auto& [intfId, vrf] : interfaceVrfs) {
+          auto intf = newState->getInterfaces()->getNodeIf(intfId);
+          if (!intf) {
+            throw FbossHwUpdateError(in, in, "Unknown interface ", intfId);
+          }
+          if (vrf != RouterID(0) && !newState->getVrfs()->getNodeIf(vrf)) {
+            throw FbossHwUpdateError(in, in, "VRF ", vrf, " not configured");
+          }
+          if (intf->getRouterID() == vrf) {
+            continue;
+          }
+          auto newIntf = intf->modify(&newState);
+          newIntf->setRouterID(vrf);
+          // Neighbors are relearned in the new VRF
+          newIntf->setArpTable(state::NeighborEntries{});
+          newIntf->setNdpTable(state::NeighborEntries{});
+          if (interfaceVrfMap->getNodeIf(intfId)) {
+            interfaceVrfMap->removeNode(intfId);
+          }
+          if (vrf != RouterID(0)) {
+            auto entry = std::make_shared<InterfaceVrf>(intfId, vrf);
+            interfaceVrfMap->addNode(
+                entry, getScopeResolver()->scope(entry, newState));
+          }
+        }
+        return newState;
+      };
+  getRib()->updateInterfaceVrfs(
+      getScopeResolver(),
+      RoutingInformationBase::InterfaceToVrf(
+          interfaceVrfs.begin(), interfaceVrfs.end()),
+      createRibToSwitchStateFunction(std::nullopt, std::move(moveInterfaces)),
+      this);
+}
+
 void SwSwitch::applyConfig(const std::string& reason, bool reload) {
   auto applyAgentConfig = [=, this](const AgentConfig* agentConfig) {
     const auto& newConfig = *agentConfig->thrift.sw();
@@ -3850,10 +3928,27 @@ void SwSwitch::applyConfigImpl(
   // us.
   auto routeUpdater = getRouteUpdater();
   auto oldConfig = getConfig();
+  // Config with VRF changes is applied in up to four steps, so hardware never
+  // removes a VRF or moves an interface while routes still use it:
+  //   1. Apply config with VRF removals and interface VRF moves deferred.
+  //      Removed VRFs and interfaces deleted with them stay in state, and
+  //      moving interfaces keep their old VRF, but their interface routes are
+  //      left out of the RIB config.
+  //      The final state is also validated here, before anything changes.
+  //   2. Program routes. The RIB removes all routes (from every client) and
+  //      the FIB of removed VRFs, and the interface routes of moving
+  //      interfaces from their old VRF.
+  //   3. Apply config normally (applyDeferredVrfChanges): removed VRFs are
+  //      deleted and interfaces move to their new VRF.
+  //   4. Program routes: interface routes of moved interfaces are added in
+  //      their new VRF.
+  // Steps 3 and 4 run only if step 1 deferred something.
+  bool hasDeferredVrfChanges = false;
   updateStateBlocking(
       reason,
       [&](const shared_ptr<SwitchState>& state) -> shared_ptr<SwitchState> {
         auto originalState = state;
+        hasDeferredVrfChanges = false;
         auto newState = applyThriftConfig(
             originalState,
             &newConfig,
@@ -3861,11 +3956,31 @@ void SwSwitch::applyConfigImpl(
             platformMapping_.get(),
             hwAsicTable_.get(),
             &routeUpdater,
-            aclNexthopHandler_.get());
+            aclNexthopHandler_.get(),
+            true /* deferVrfChanges */,
+            &hasDeferredVrfChanges);
 
         if (newState &&
             !isValidStateUpdateDryRun(StateDelta(state, newState), stats())) {
           throw FbossError("Invalid config passed in, skipping");
+        }
+        if (hasDeferredVrfChanges) {
+          // Validate the final state now, before routes are removed, so the
+          // deferred pass cannot fail on config after hardware is changed.
+          auto validationRouteUpdater = getRouteUpdater();
+          auto finalState = applyThriftConfig(
+              originalState,
+              &newConfig,
+              supportsAddRemovePort_,
+              platformMapping_.get(),
+              hwAsicTable_.get(),
+              &validationRouteUpdater,
+              aclNexthopHandler_.get());
+          if (finalState &&
+              !isValidStateUpdateDryRun(
+                  StateDelta(originalState, finalState), stats())) {
+            throw FbossError("Invalid config passed in, skipping");
+          }
         }
 
         if (!newState) {
@@ -3900,10 +4015,38 @@ void SwSwitch::applyConfigImpl(
    * and applyConfig. So ensure programming allways goes through the route
    * update wrapper abstraction
    */
+  // Step 2
   routeUpdater.program();
+  if (hasDeferredVrfChanges) {
+    // Steps 3 and 4
+    applyDeferredVrfChanges(reason, newConfig);
+  }
   runFsdbSyncFunction([&oldConfig, &newConfig](auto& syncer) {
     syncer->cfgUpdated(oldConfig, newConfig);
   });
+}
+
+void SwSwitch::applyDeferredVrfChanges(
+    const std::string& reason,
+    const cfg::SwitchConfig& newConfig) {
+  auto routeUpdater = getRouteUpdater();
+  updateStateBlocking(
+      reason + " (VRF removals and moves)",
+      [&](const shared_ptr<SwitchState>& state) -> shared_ptr<SwitchState> {
+        auto newState = applyThriftConfig(
+            state,
+            &newConfig,
+            supportsAddRemovePort_,
+            platformMapping_.get(),
+            hwAsicTable_.get(),
+            &routeUpdater,
+            aclNexthopHandler_.get());
+        // Not validated again: step 1 validated the final state before routes
+        // were removed, so this pass cannot fail validation after hardware
+        // has changed
+        return newState;
+      });
+  routeUpdater.program();
 }
 
 void SwSwitch::updateConfigAppliedInfo() {
@@ -4009,28 +4152,14 @@ void SwSwitch::l2LearningUpdateReceived(
   macTableManager_->handleL2LearningUpdate(l2Entry, l2EntryUpdateType);
 }
 
-bool SwSwitch::sendArpRequestHelper(
-    std::shared_ptr<Interface> intf,
-    std::shared_ptr<SwitchState> state,
-    folly::IPAddressV4 source,
-    folly::IPAddressV4 target) {
-  bool sent = false;
-  auto entry = getNeighborEntryForIP<ArpEntry>(state, intf, target);
-  if (entry == nullptr) {
-    // No entry in ARP table, send ARP request
-    ArpHandler::sendArpRequest(
-        this, getVlanIDForTx(intf), intf->getMac(), source, target);
-
-    // Notify the updater that we sent an arp request
-    sentArpRequest(intf, target);
-    sent = true;
-  } else {
-    XLOG(DBG5) << "not sending arp for " << target.str() << ", "
-               << ((entry->isPending()) ? "pending " : "")
-               << "entry already exists";
+bool SwSwitch::resolveArpHelper(
+    const std::shared_ptr<Interface>& intf,
+    const folly::IPAddressV4& target) {
+  if (getNeighborEntryForIPAndIntf<ArpEntry>(intf, target)) {
+    return false;
   }
-
-  return sent;
+  getNeighborUpdater()->resolveArpForIntf(intf->getID(), target);
+  return true;
 }
 
 bool SwSwitch::sendNdpSolicitationHelper(
@@ -4054,6 +4183,16 @@ bool SwSwitch::sendNdpSolicitationHelper(
   }
 
   return sent;
+}
+
+bool SwSwitch::resolveNdpHelper(
+    const std::shared_ptr<Interface>& intf,
+    const folly::IPAddressV6& target) {
+  if (getNeighborEntryForIPAndIntf<NdpEntry>(intf, target)) {
+    return false;
+  }
+  getNeighborUpdater()->resolveNdpForIntf(intf->getID(), target);
+  return true;
 }
 
 VlanID SwSwitch::getVlanIDHelper(
@@ -4605,10 +4744,12 @@ void SwSwitch::sendNeighborSolicitationForConfiguredInterfaces(
   }
 }
 
-bool SwSwitch::hasQualifiedConfiguredDesiredPeer(const InterfaceID& intfId) {
+bool SwSwitch::hasQualifiedConfiguredDesiredPeer(
+    const InterfaceID& intfId,
+    const folly::IPAddress& ip) {
   auto switchState = getState();
-  auto* intf = switchState->getInterfaces()->getNode(intfId).get();
-  if (intf->getDesiredPeerAddressIPv6().has_value()) {
+  auto* intf = switchState->getInterfaces()->getNodeIf(intfId).get();
+  if (intf && intf->getDesiredPeerAddressIPv6().has_value()) {
     auto desiredPeerAddressString = intf->getDesiredPeerAddressIPv6();
     // check if this is correct ipv6 address
     // Check if desiredPeerAddressString is a valid IPv6 address or CIDR
@@ -4617,6 +4758,9 @@ bool SwSwitch::hasQualifiedConfiguredDesiredPeer(const InterfaceID& intfId) {
     if (!cidrNetwork.first.isV6()) {
       XLOG(ERR) << "Desired peer address is not a valid IPv6 address: "
                 << *desiredPeerAddressString;
+      return false;
+    }
+    if (cidrNetwork.first != ip) {
       return false;
     }
     // Check if interface has any operational ports

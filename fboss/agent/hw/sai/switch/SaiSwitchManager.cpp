@@ -13,6 +13,7 @@
 #include "fboss/agent/AgentFeatures.h"
 #include "fboss/agent/DsfNodeUtils.h"
 #include "fboss/agent/FbossError.h"
+#include "fboss/agent/gen-cpp2/switch_config_constants.h"
 #include "fboss/agent/hw/HwSwitchFb303Stats.h"
 #include "fboss/agent/hw/sai/api/SaiApiTable.h"
 #include "fboss/agent/hw/sai/api/SwitchApi.h"
@@ -28,6 +29,11 @@
 #include "fboss/agent/hw/switch_asics/Jericho3Asic.h"
 #include "fboss/agent/platforms/sai/SaiPlatform.h"
 #include "fboss/agent/state/LoadBalancer.h"
+
+// TODO: Relax the P200 exclusion once its SDK supports drop-reason collection.
+#if defined(TAJO_SDK_GTE_26_5) && !defined(TAJO_SDK_P200)
+#include "fboss/agent/hw/sai/switch/npu/tajo/facebook/DropReasonUtils.h"
+#endif
 
 #include <folly/logging/xlog.h>
 
@@ -806,6 +812,12 @@ void SaiSwitchManager::setMacAgingSeconds(sai_uint32_t agingSeconds) {
   switch_->setOptionalAttribute(
       SaiSwitchTraits::Attributes::MacAgingTime{agingSeconds});
 }
+
+void SaiSwitchManager::setVxlanDefaultPort() {
+  switch_->setOptionalAttribute(
+      SaiSwitchTraits::Attributes::VxlanDefaultPort{static_cast<sai_uint16_t>(
+          cfg::switch_config_constants::kVxlanDefaultPort())});
+}
 sai_uint32_t SaiSwitchManager::getMacAgingSeconds() const {
   return GET_OPT_ATTR(Switch, MacAgingTime, switch_->attributes());
 }
@@ -889,8 +901,9 @@ void SaiSwitchManager::setSwitchingMode(cfg::PacketForwardingMode mode) {
 bool SaiSwitchManager::isGlobalQoSMapSupported() const {
 #if defined(BRCM_SAI_SDK_XGS_AND_DNX)
   return false;
-#endif
+#else
   return platform_->getAsic()->isSupported(HwAsic::Feature::QOS_MAP_GLOBAL);
+#endif
 }
 
 bool SaiSwitchManager::isMplsQoSMapSupported() const {
@@ -972,11 +985,11 @@ SaiSwitchManager::supportedCustomDropBitmapStats() const {
 }
 
 void SaiSwitchManager::updateDropReasonStats() {
-#if defined(BRCM_SAI_SDK_XGS_GTE_15_0)
   if (!platform_->getAsic()->isSupported(
           HwAsic::Feature::SWITCH_DROP_REASON_LIST_SUPPORT)) {
     return;
   }
+#if defined(BRCM_SAI_SDK_XGS_GTE_15_0)
   auto& switchApi = SaiApiTable::getInstance()->switchApi();
   auto ingressDropReasons = switchApi.getAttribute(
       switch_->adapterKey(),
@@ -988,6 +1001,19 @@ void SaiSwitchManager::updateDropReasonStats() {
           std::vector<sai_int32_t>{}});
 
   logDropReasons(ingressDropReasons, egressDropReasons);
+#elif defined(TAJO_SDK_GTE_26_5) && !defined(TAJO_SDK_P200)
+  // TODO: Relax the P200 exclusion once its SDK supports drop-reason
+  // collection.
+
+  // Successful reads consume the SDK snapshot. Keep this as its only reader.
+  // IDs describe SDK-observed counter changes, not packet counts. Subread
+  // failures and counter resets inside the SDK are not visible in this list.
+  const auto reasons = SaiApiTable::getInstance()->switchApi().getAttribute(
+      switch_->adapterKey(),
+      SaiSwitchTraits::Attributes::DropReasonList{std::vector<sai_uint32_t>{}});
+  for (const auto& line : formatDropReasonLogLines(reasons)) {
+    XLOG(WARNING) << line;
+  }
 #endif
 }
 

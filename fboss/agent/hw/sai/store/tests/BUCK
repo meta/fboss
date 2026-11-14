@@ -229,6 +229,13 @@ store_unittest(
 )
 
 store_unittest(
+    name = "virtual_router_store_test",
+    srcs = [
+        "VirtualRouterStoreTest.cpp",
+    ],
+)
+
+store_unittest(
     name = "vlan_store_test",
     srcs = [
         "VlanStoreTest.cpp",
@@ -267,5 +274,12 @@ store_unittest(
     name = "object_event_publisher_test",
     srcs = [
         "SaiObjectEventPublisherTest.cpp",
+    ],
+)
+
+store_unittest(
+    name = "policer_store_test",
+    srcs = [
+        "PolicerStoreTest.cpp",
     ],
 )

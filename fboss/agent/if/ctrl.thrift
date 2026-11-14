@@ -70,6 +70,7 @@ enum PortError {
   MISMATCHED_NEIGHBOR = 3,
   MISSING_EXPECTED_NEIGHBOR = 4,
   LINK_DISABLED_BY_FIRMWARE = 5,
+  ERROR_DISABLE_MAC_LIMIT_EXCEEDED = 6,
 }
 
 struct IpPrefix {
@@ -123,6 +124,9 @@ struct UnicastRoute {
   8: optional switch_config.AclLookupClass classID;
   9: optional switch_config.SwitchingMode overrideEcmpSwitchingMode;
   10: optional list<common.NextHopThrift> overrideNextHops;
+  // Next hops are resolved recursively through routes of the same level, and
+  // in the next level through routes of another level. Unset means level 0.
+  11: optional i32 level;
 }
 
 struct MplsRoute {
@@ -175,6 +179,10 @@ struct ClientAndNextHops {
 struct IfAndIP {
   1: i32 interfaceID;
   2: Address.BinaryAddress ip;
+  // VRF the next hop is resolved in; unset means the route's VRF
+  3: optional i32 vrf;
+  // Set on next hops resolved in the next level, which have no interface
+  4: optional bool resolvedInNextLevel;
 }
 
 struct RouteDetails {
@@ -196,6 +204,7 @@ struct RouteDetails {
   14: optional i64 normalizedResolvedNextHopSetID;
   // Resolved next hops before hardware normalization.
   15: optional list<common.NextHopThrift> resolvedNextHops;
+  16: optional i32 vrf;
 }
 
 struct MplsRouteDetails {
@@ -325,6 +334,12 @@ struct InterfaceDetail {
   // AggregatePortId populated only for interfaces of type PORT that are bound
   // to an aggregate port rather than a physical port
   15: optional i32 aggregatePortId;
+}
+
+struct VrfInfo {
+  1: i32 vrfId;
+  2: optional string name;
+  3: list<i32> interfaceIds;
 }
 
 /*
@@ -472,6 +487,7 @@ struct CbfcInfo {
   3: optional i16 senderCreditSize;
   4: optional i16 senderPacketOverhead;
   5: optional i64 senderCreditLimit;
+  6: optional i64 receiverCreditLimit;
 }
 
 struct PortInfoThrift {
@@ -1185,9 +1201,13 @@ service FbossCtrl extends phy.FbossCommonPhyCtrl {
   list<RouteDetails> getRouteTableDetailsByClients(
     1: list<i16> clientId,
   ) throws (1: fboss.FbossBaseError error);
+  list<RouteDetails> getRouteTableDetailsByVrf(1: i32 vrfId) throws (
+    1: fboss.FbossBaseError error,
+  );
   InterfaceDetail getInterfaceDetail(1: i32 interfaceId) throws (
     1: fboss.FbossBaseError error,
   );
+  list<VrfInfo> getVrfs() throws (1: fboss.FbossBaseError error);
 
   /* MPLS route API */
   void addMplsRoutes(1: i16 clientId, 2: list<MplsRoute> routes) throws (

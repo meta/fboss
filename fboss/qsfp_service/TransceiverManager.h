@@ -272,12 +272,17 @@ class TransceiverManager {
 
   // For when the PhyManager is owned elsewhere (PortManager in Port Manager
   // mode), so TransceiverManager still knows the platform has external PHYs.
-  void setHasExternalPhy() {
+  void setHasExternalPhy(bool isSaiPhyManager) {
     hasExternalPhy_ = true;
+    hasSaiExternalPhy_ = isSaiPhyManager;
   }
 
   bool hasExternalPhy() const {
     return phyManager_ != nullptr || hasExternalPhy_;
+  }
+
+  bool hasSaiExternalPhy() const {
+    return phyManager_ ? phyManager_->isSaiPhyManager() : hasSaiExternalPhy_;
   }
 
   void releasePhyManager() {
@@ -898,9 +903,11 @@ class TransceiverManager {
    * 2) can_warm_boot file exists, indicating that qsfp_service saved warm
    * boot state and shut down successfully.
    *
-   * This function also remove the forceColdBoot file but keep the canWarmBoot
-   * file so that for future qsfp_service crash, we can still use warm boot
-   * without resetting the xphy or transceiver.
+   * This function also removes the forceColdBoot file. It keeps the
+   * canWarmBoot file, so a future qsfp_service crash can still warm boot
+   * without resetting the xphys or transceivers, except with SAI xphys, whose
+   * warm boot state is only valid right after a graceful exit; there it removes
+   * it too.
    */
   virtual bool checkWarmBootFlags();
 
@@ -963,6 +970,7 @@ class TransceiverManager {
   // For platforms that needs to program xphy
   std::unique_ptr<PhyManager> phyManager_;
   bool hasExternalPhy_{false};
+  bool hasSaiExternalPhy_{false};
 
   // Shared pointer to QsfpFsdbSyncManager for publishing to FSDB.
   // Shared between WedgeManager and PortManager.
@@ -1077,7 +1085,8 @@ class TransceiverManager {
   std::string xphyWarmBootStateDirectory() const;
 
   /*
-   * ONLY REMOVE can_warm_boot flag file if there's a cold_boot
+   * Remove the can_warm_boot flag file: on a cold boot, and on every start with
+   * SAI xphys (see checkWarmBootFlags()).
    */
   void removeWarmBootFlag();
 

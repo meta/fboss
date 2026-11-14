@@ -10,14 +10,10 @@
 
 #include "fboss/agent/hw/sai/switch/SaiVirtualChannelManager.h"
 
-#include "fboss/agent/hw/sai/api/PortApi.h"
-#include "fboss/agent/hw/sai/api/SaiApiError.h"
 #include "fboss/agent/hw/sai/store/SaiStore.h"
 #include "fboss/agent/hw/switch_asics/HwAsic.h"
 #include "fboss/agent/platforms/sai/SaiPlatform.h"
 #include "fboss/agent/state/Port.h"
-
-#include <folly/logging/xlog.h>
 
 namespace facebook::fboss {
 

@@ -5,6 +5,33 @@ load("@fbsource//tools/build_defs/testinfra:network_access_utils.bzl", "network_
 oncall("fboss_agent_push")
 
 cpp_library(
+    name = "drop_reason_reporting_test_utils",
+    srcs = [
+        "AgentDropReasonBitmapReporting.cpp",
+        "AgentDropReasonListReporting.cpp",
+        "AgentDropReasonReporting.cpp",
+        "AgentDropReasonTajoReporting.cpp",
+        "AgentDropReasonXgsReporting.cpp",
+    ],
+    headers = [
+        "AgentDropReasonBitmapReporting.h",
+        "AgentDropReasonListReporting.h",
+        "AgentDropReasonReporting.h",
+    ],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        "fbsource//third-party/googletest:gtest",
+        "fbsource//xplat/folly:string",
+        "//fboss/agent:fboss-error",
+        "//fboss/lib:common_utils",
+    ],
+    exported_deps = [
+        "//fboss/agent:switch_config-cpp2-serialization",
+        "//fboss/agent/if:multiswitch_ctrl-cpp2-serialization",
+    ],
+)
+
+cpp_library(
     name = "erspan_parser",
     srcs = [
         "facebook/ErspanParser.cpp",
@@ -16,6 +43,28 @@ cpp_library(
     exported_deps = [
         "fbsource//xplat/folly:network_address",
         "fbsource//xplat/folly/io:iobuf",
+    ],
+)
+
+cpp_library(
+    name = "vxlan_test_utils",
+    srcs = [
+        "VxlanTestUtils.cpp",
+    ],
+    headers = [
+        "VxlanTestUtils.h",
+    ],
+    deps = [
+        "fbsource//third-party/googletest:gtest",
+        "//fboss/agent:fboss-error",
+        "//fboss/agent/if:common-cpp2-types",
+        "//folly/io:iobuf",
+    ],
+    exported_deps = [
+        "fbsource//xplat/folly:network_address",
+        "//fboss/agent:fboss-types",
+        "//fboss/agent:switch_config-cpp2-types",
+        "//fboss/agent/packet:packet_factory",
     ],
 )
 
@@ -87,6 +136,7 @@ cpp_library(
     ],
     exported_deps = [
         "//fboss/agent:fboss-types",
+        "//fboss/agent:switch_config-cpp2-serialization",
         "//fboss/agent:switch_config-cpp2-types",
         "//fboss/agent/hw/switch_asics:switch_asics",
     ],
@@ -866,6 +916,7 @@ cpp_library(
     deps = [
         "fbsource//third-party/googletest:gtest",
         "//fboss/agent:fib_helpers",
+        "//fboss/agent:override_set_id_manager",
         "//fboss/agent/rib:standalone_rib",
     ],
     exported_deps = [

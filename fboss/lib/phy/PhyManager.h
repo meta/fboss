@@ -288,6 +288,12 @@ class PhyManager {
 
   virtual void gracefulExit() {}
 
+  // True for SAI-based xphys (SaiPhyManager), where each xphy keeps its own
+  // warm boot state and flag, written only on gracefulExit().
+  virtual bool isSaiPhyManager() const {
+    return false;
+  }
+
   void setPublishPhyCb(PublishPhyCb publishPhyCb) {
     publishPhyCb_ = publishPhyCb;
   }

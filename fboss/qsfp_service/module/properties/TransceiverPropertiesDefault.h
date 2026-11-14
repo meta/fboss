@@ -226,6 +226,25 @@ constexpr auto kDefaultTransceiverPropertiesJson = R"({
         ["2x400G-FR4", "4x200G-FR4"],
       ]
     },
+    "44": {
+      "firstApplicationAdvertisement": {
+        "mediaInterfaceCode": {"smfCode": 0x1D},
+        "hostStartLanes": [0, 4],
+        "hostInterfaceCode": 0x32
+      },
+      "numHostLanes": 8,
+      "numMediaLanes": 8,
+      "displayName": "FR4_2x400G_IB",
+      "supportedSpeedCombinations": [
+        {
+          "combinationName": "2x400G-FR4",
+          "ports": [
+            {"speed": 400000, "hostLanes": {"start": 0, "count": 4}, "mediaLanes": {"start": 0, "count": 4}, "mediaLaneCode": {"smfCode": 0x1D}, "mediaInterfaceCode": 5},
+            {"speed": 400000, "hostLanes": {"start": 4, "count": 4}, "mediaLanes": {"start": 4, "count": 4}, "mediaLaneCode": {"smfCode": 0x1D}, "mediaInterfaceCode": 5}
+          ]
+        }
+      ]
+    },
     "13": {
       "firstApplicationAdvertisement": {
         "mediaInterfaceCode": {"smfCode": 0x1C},

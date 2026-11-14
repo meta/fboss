@@ -67,8 +67,8 @@ cpp_library(
         "BspDeviceMdio.h",
     ],
     deps = [
-        "fbsource//xplat/folly:format",
         "fbsource//xplat/folly:range",
+        "fbsource//xplat/folly:string",
         "fbsource//xplat/folly/logging:logging",
     ],
     exported_deps = [

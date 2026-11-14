@@ -12,7 +12,7 @@ Like agent hw tests, scale tests run on a standalone DUT with no cabling require
 
 All scale test cases can be found at:
 
-https://github.com/facebook/fboss/tree/main/fboss/agent/test/agent_hw_tests (see `AgentEcmpScaleTests.cpp` and `AgentAclScaleTests.cpp`)
+https://github.com/meta/fboss/tree/main/fboss/agent/test/agent_hw_tests (see `AgentEcmpScaleTests.cpp` and `AgentAclScaleTests.cpp`)
 
 ## Run Modes
 

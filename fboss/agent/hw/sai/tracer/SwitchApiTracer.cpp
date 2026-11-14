@@ -97,6 +97,7 @@ std::map<int32_t, std::pair<std::string, std::size_t>> _SwitchMap{
     SAI_ATTR_MAP(Switch, CreditWdTimer),
 #endif
     SAI_ATTR_MAP(Switch, PfcDlrPacketAction),
+    SAI_ATTR_MAP(Switch, VxlanDefaultPort),
 #if SAI_API_VERSION >= SAI_VERSION(1, 14, 0)
     SAI_ATTR_MAP(Switch, ArsProfile),
 #endif
@@ -186,6 +187,7 @@ void handleExtensionAttributes() {
   SAI_EXT_ATTR_MAP(Switch, AclDropSnoopDisabled);
   SAI_EXT_ATTR_MAP(Switch, PacketDropTypeIngressList);
   SAI_EXT_ATTR_MAP(Switch, PacketDropTypeEgressList);
+  SAI_EXT_ATTR_MAP(Switch, DropReasonList);
 #if defined(BRCM_SAI_SDK_XGS_AND_DNX)
   SAI_EXT_ATTR_MAP(Switch, LocalSystemPortIdRangeList)
 #endif

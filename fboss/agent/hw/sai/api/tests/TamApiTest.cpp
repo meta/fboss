@@ -1,5 +1,6 @@
 // Copyright 2004-present Facebook. All Rights Reserved.
 
+#include <array>
 #include <type_traits>
 
 #include <folly/MacAddress.h>
@@ -281,3 +282,129 @@ TEST_F(TamApiTest, Tam) {
       tamApi->getAttribute(tamSaiId, SaiTamEventTraits::CreateAttributes{}),
       std::exception);
 }
+
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+TEST_F(TamApiTest, CsigIntApiOperations) {
+  sai_tam_api_t* api = nullptr;
+  ASSERT_EQ(
+      sai_api_query(SAI_API_TAM, reinterpret_cast<void**>(&api)),
+      SAI_STATUS_SUCCESS);
+  ASSERT_NE(api->create_tam_int, nullptr);
+  ASSERT_NE(api->remove_tam_int, nullptr);
+  ASSERT_NE(api->set_tam_int_attribute, nullptr);
+  ASSERT_NE(api->get_tam_int_attribute, nullptr);
+
+  std::array<sai_attribute_t, 8> attrs{};
+  attrs[0].id = SAI_TAM_INT_ATTR_TYPE;
+  attrs[0].value.s32 = SAI_TAM_INT_TYPE_CSIG_COMPACT;
+  attrs[1].id = SAI_TAM_INT_ATTR_DEVICE_ID;
+  attrs[1].value.u32 = 0;
+  attrs[2].id = SAI_TAM_INT_ATTR_INLINE;
+  attrs[2].value.booldata = true;
+  attrs[3].id = SAI_TAM_INT_ATTR_INT_PRESENCE_TYPE;
+  attrs[3].value.s32 = SAI_TAM_INT_PRESENCE_TYPE_ETH_TYPE;
+  attrs[4].id = SAI_TAM_INT_ATTR_ETH_TYPE_CODE_POINT;
+  attrs[4].value.u16 = 0x9900;
+  attrs[5].id = SAI_TAM_INT_ATTR_CSIG_SIGNAL_TYPE;
+  attrs[5].value.s32 = SAI_CSIG_SIGNAL_TYPE_ABW;
+  attrs[6].id = SAI_TAM_INT_ATTR_QUANT_BANDS;
+  attrs[6].value.u32 = 2;
+  std::array<sai_u64_range_t, 2> ranges{
+      sai_u64_range_t{0, 1ULL << 32},
+      sai_u64_range_t{(1ULL << 32) + 1, 1ULL << 40}};
+  attrs[7].id = SAI_TAM_INT_ATTR_QUANT_BAND_UINT64_RANGE_LIST;
+  attrs[7].value.u64rangelist = {ranges.size(), ranges.data()};
+  sai_object_id_t id{};
+  ASSERT_EQ(
+      api->create_tam_int(&id, switchId, attrs.size(), attrs.data()),
+      SAI_STATUS_SUCCESS);
+  sai_attribute_t read{};
+  read.id = SAI_TAM_INT_ATTR_QUANT_BAND_UINT64_RANGE_LIST;
+  EXPECT_EQ(
+      api->get_tam_int_attribute(id, 1, &read), SAI_STATUS_BUFFER_OVERFLOW);
+  ASSERT_EQ(read.value.u64rangelist.count, 2);
+  std::array<sai_u64_range_t, 2> actual{};
+  read.value.u64rangelist.list = actual.data();
+  ASSERT_EQ(api->get_tam_int_attribute(id, 1, &read), SAI_STATUS_SUCCESS);
+  EXPECT_EQ(actual[0].max, 1ULL << 32);
+  EXPECT_EQ(actual[1].min, (1ULL << 32) + 1);
+  EXPECT_EQ(actual[1].max, 1ULL << 40);
+  sai_attribute_t interval{};
+  interval.id = SAI_TAM_INT_ATTR_BW_TIME_INTERVAL;
+  interval.value.u32 = 256;
+  ASSERT_EQ(api->set_tam_int_attribute(id, &interval), SAI_STATUS_SUCCESS);
+  interval.value.u32 = 0;
+  ASSERT_EQ(api->get_tam_int_attribute(id, 1, &interval), SAI_STATUS_SUCCESS);
+  EXPECT_EQ(interval.value.u32, 256);
+  EXPECT_EQ(api->remove_tam_int(id), SAI_STATUS_SUCCESS);
+}
+
+TEST_F(TamApiTest, CsigCompactQuantization) {
+  using A = SaiTamIntTraits::Attributes;
+  const std::vector<sai_u64_range_t> ranges{
+      {0, 1ULL << 32}, {(1ULL << 32) + 1, 1ULL << 40}};
+  SaiTamIntTraits::CreateAttributes attrs{
+      SAI_TAM_INT_TYPE_CSIG_COMPACT,
+      0,
+      SAI_TAM_INT_PRESENCE_TYPE_ETH_TYPE,
+      true,
+      0x9900,
+      SAI_CSIG_SIGNAL_TYPE_ABW,
+      256,
+      2,
+      std::vector<sai_uint16_t>{7, 3},
+      ranges,
+      std::nullopt,
+      std::nullopt,
+      false};
+  const auto id = tamApi->create<SaiTamIntTraits>(attrs, switchId);
+  EXPECT_EQ(tamApi->getAttribute(id, A::QuantBandUint64RangeList{}), ranges);
+  EXPECT_EQ(
+      tamApi->getAttribute(id, A::QuantBandId{}),
+      (std::vector<sai_uint16_t>{7, 3}));
+  EXPECT_EQ(tamApi->getAttribute(id, A::QuantBands{}), 2);
+  EXPECT_EQ(tamApi->getAttribute(id, A::BwTimeInterval{}), 256);
+
+  A::QuantBandUint64RangeList original{ranges};
+  auto copy = original;
+  ASSERT_NE(
+      original.saiAttr()->value.u64rangelist.list,
+      copy.saiAttr()->value.u64rangelist.list);
+  const std::vector<sai_u64_range_t> updated{{1ULL << 33, 1ULL << 34}};
+  tamApi->setAttribute(id, A::QuantBandUint64RangeList{updated});
+  EXPECT_EQ(tamApi->getAttribute(id, A::QuantBandUint64RangeList{}), updated);
+  EXPECT_EQ(copy.value(), ranges);
+  tamApi->remove(id);
+}
+
+TEST_F(TamApiTest, CsigWideQuantization) {
+  using A = SaiTamIntTraits::Attributes;
+  SaiTamIntTraits::CreateAttributes attrs{
+      SAI_TAM_INT_TYPE_CSIG_WIDE,
+      0,
+      SAI_TAM_INT_PRESENCE_TYPE_ETH_TYPE,
+      true,
+      0x9901,
+      SAI_CSIG_SIGNAL_TYPE_DELAY,
+      std::nullopt,
+      1048576,
+      std::nullopt,
+      std::nullopt,
+      1024,
+      32,
+      true};
+  const auto id = tamApi->create<SaiTamIntTraits>(attrs, switchId);
+  EXPECT_EQ(tamApi->getAttribute(id, A::QuantBands{}), 1048576);
+  EXPECT_EQ(tamApi->getAttribute(id, A::WideQuantBaseValue{}), 1024);
+  EXPECT_EQ(tamApi->getAttribute(id, A::WideQuantStepValue{}), 32);
+  EXPECT_TRUE(tamApi->getAttribute(id, A::CsigDBit{}));
+  std::optional<A::BwTimeInterval> interval;
+  EXPECT_FALSE(tamApi->getAttribute(id, interval).has_value());
+  tamApi->setAttribute(id, A::WideQuantStepValue{64});
+  EXPECT_EQ(tamApi->getAttribute(id, A::WideQuantStepValue{}), 64);
+  EXPECT_THROW(
+      tamApi->setAttribute(id, A::EthTypeCodePoint{0x9902}), SaiApiError);
+  tamApi->remove(id);
+}
+
+#endif

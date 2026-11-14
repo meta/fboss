@@ -1,6 +1,7 @@
 // (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
 
 #include "fboss/agent/PbrAclManager.h"
+#include "fboss/agent/AgentFeatures.h"
 #include "fboss/agent/FbossError.h"
 #include "fboss/agent/HwSwitchMatcher.h"
 #include "fboss/agent/gen-cpp2/switch_config_constants.h"
@@ -108,8 +109,13 @@ bool addPolicyEntries(
   for (const auto& entry : createAclEntriesFromPolicy(policy)) {
     // reconstructFromSwitchState replays every policy as added against a state
     // whose ACL map is already populated, so an add can meet its own entry.
-    if (auto cur = aclMap.getEntryIf(entry->getID()); cur && *cur == *entry) {
+    auto cur = aclMap.getEntryIf(entry->getID());
+    if (cur && *cur == *entry) {
       continue;
+    }
+    if (cur && cur->getPriority() != FLAGS_pbr_acl_priority) {
+      throw FbossError(
+          "ACL name ", entry->getID(), " is taken by a config ACL entry");
     }
     aclMap.removeNodeIf(entry->getID());
     aclMap.addNode(entry);
@@ -249,6 +255,31 @@ bool hasPbrTable(const std::shared_ptr<SwitchState>& state) {
     }
   }
   return false;
+}
+
+std::shared_ptr<SwitchState> updateOriginals(
+    const std::shared_ptr<SwitchState>& state,
+    const std::vector<TemporaryRule>& temporaries) {
+  if (temporaries.empty()) {
+    return nullptr;
+  }
+  return updatePbrTables(state, [&](AclMap& aclMap) {
+    for (const auto& [policy, tc] : temporaries) {
+      aclMap.updateNode(makePbrAclEntry(policy, tc));
+    }
+    return true;
+  });
+}
+
+std::shared_ptr<SwitchState> dropTemporaries(
+    const std::shared_ptr<SwitchState>& state,
+    const std::vector<TemporaryRule>& temporaries) {
+  return updatePbrTables(state, [&](AclMap& aclMap) {
+    for (const auto& [policy, tc] : temporaries) {
+      removeRuleEntry(aclMap, policy->getID(), tc, true /*temporary*/);
+    }
+    return true;
+  });
 }
 
 } // namespace
@@ -391,14 +422,23 @@ void PbrAclManager::processDelta(
   }
 
   for (const auto& policy : changedPolicies(delta)) {
+    std::vector<TemporaryRule> temporaries;
     auto made = updatePbrTables(newState, [&](AclMap& aclMap) {
-      return applyChangedPolicy(aclMap, policy.old, policy.updated).changed;
+      auto update = applyChangedPolicy(aclMap, policy.old, policy.updated);
+      temporaries = std::move(update.temporaries);
+      return update.changed;
     });
     if (!made) {
       continue;
     }
     newState = made;
     emit(newState);
+    if (auto updated = updateOriginals(newState, temporaries)) {
+      newState = updated;
+      emit(newState);
+      newState = dropTemporaries(newState, temporaries);
+      emit(newState);
+    }
   }
 }
 

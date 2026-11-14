@@ -551,4 +551,25 @@ std::string aclRuleActionKeysCsv() {
   return rowKeysCsv(actionRows());
 }
 
+namespace {
+std::vector<std::string> rowKeys(const std::vector<AclRuleRow>& rows) {
+  std::vector<std::string> keys;
+  keys.reserve(rows.size());
+  for (const auto& row : rows) {
+    keys.emplace_back(row.key);
+  }
+  return keys;
+}
+} // namespace
+
+std::vector<std::string> aclRuleAttrKeys() {
+  auto keys = rowKeys(matchFieldRows());
+  keys.emplace_back(kAclRuleAttrAction);
+  return keys;
+}
+
+std::vector<std::string> aclRuleActionKeys() {
+  return rowKeys(actionRows());
+}
+
 } // namespace facebook::fboss

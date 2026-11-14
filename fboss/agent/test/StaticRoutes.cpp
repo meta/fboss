@@ -276,6 +276,26 @@ TEST_F(StaticRouteTest, configureUnconfigure) {
   EXPECT_EQ(1, v6Routes);
 }
 
+TEST_P(StaticRouteTest, NextHopResolvedInNextLevelRejected) {
+  FLAGS_mpls_rib = GetParam();
+  auto config = this->sw_->getConfig();
+  config.staticIp2MplsRoutes()[0].nexthops()[0].resolvedInNextLevel() = true;
+  EXPECT_THROW(this->sw_->applyConfig("ip2mpls", config), FbossError);
+
+  config = this->sw_->getConfig();
+  NextHopThrift nhop;
+  nhop.address() = toBinaryAddress(folly::IPAddress("2001::1"));
+  MplsAction swap;
+  swap.action() = MplsActionCode::SWAP;
+  swap.swapLabel() = 101;
+  nhop.mplsAction() = swap;
+  nhop.resolvedInNextLevel() = true;
+  config.staticMplsRoutesWithNhops()->resize(1);
+  config.staticMplsRoutesWithNhops()[0].ingressLabel() = 100;
+  config.staticMplsRoutesWithNhops()[0].nexthops() = {nhop};
+  EXPECT_THROW(this->sw_->applyConfig("mpls", config), FbossError);
+}
+
 TEST_P(StaticRouteTest, MplsStaticRoutes) {
   FLAGS_mpls_rib = GetParam();
   auto platform = createMockPlatform();

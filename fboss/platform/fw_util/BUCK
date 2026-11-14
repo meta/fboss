@@ -45,7 +45,6 @@ cpp_library(
         "fbsource//third-party/re2:re2",
         "fbsource//xplat/folly:file",
         "fbsource//xplat/folly:file_util",
-        "fbsource//xplat/folly:format",
         "fbsource//xplat/folly:scope_guard",
         "fbsource//xplat/folly:string",
         "//fboss/platform/config_lib:config_lib",
@@ -54,7 +53,8 @@ cpp_library(
         "//thrift/lib/cpp2/protocol:protocol",
     ],
     exported_deps = [
-        "fbsource//third-party/googletest:gtest_headers",
+        "fbsource//third-party/googletest:gtest_headers",  # @manual
+        "fbsource//third-party/googletest:gtest_prod_headers",
         "fbsource//xplat/folly:subprocess",
         "fbsource//xplat/folly/logging:logging",
         "fbsource//xplat/folly/system:shell",

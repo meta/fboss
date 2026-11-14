@@ -129,6 +129,13 @@ struct WrappedSaiType<std::vector<sai_u16_range_t>> {
 };
 #endif
 
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+template <>
+struct WrappedSaiType<std::vector<sai_u64_range_t>> {
+  using value = sai_u64_range_list_t;
+};
+#endif
+
 template <>
 struct WrappedSaiType<std::vector<sai_port_lane_eye_values_t>> {
   using value = sai_port_eye_values_list_t;

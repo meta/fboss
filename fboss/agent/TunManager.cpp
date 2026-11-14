@@ -23,6 +23,7 @@ extern "C" {
 #include <folly/lang/CString.h>
 #include <folly/logging/xlog.h>
 
+#include <exception>
 #include <unordered_map>
 #include "fboss/agent/AgentFeatures.h"
 #include "fboss/agent/NlError.h"
@@ -994,11 +995,28 @@ void TunManager::performInitialCleanup(std::shared_ptr<SwitchState> state) {
 }
 
 void TunManager::probe() {
-  std::lock_guard<std::mutex> lock(mutex_);
-  doProbe(lock);
+  bool probeRan = false;
+  std::exception_ptr probeError;
+  evb_->runImmediatelyOrRunInFbossEventBaseThreadAndWait([&]() {
+    probeRan = true;
+    try {
+      std::lock_guard<std::mutex> lock(mutex_);
+      doProbe(lock);
+    } catch (...) {
+      probeError = std::current_exception();
+    }
+  });
+  if (probeError) {
+    std::rethrow_exception(probeError);
+  }
+  if (!probeRan) {
+    XLOG(WARN) << "TUN probe was not scheduled on the EventBase, deferring "
+               << "it to the first sync()";
+  }
 }
 
 void TunManager::doProbe(std::lock_guard<std::mutex>& /* lock */) {
+  evb_->checkIsInEventBaseThread();
   XLOG(DBG2) << "Starting to probe() for linux interfaces...";
 
   const auto startTs = std::chrono::steady_clock::now();
@@ -1120,6 +1138,9 @@ boost::container::flat_map<InterfaceID, bool> TunManager::getInterfaceStatus(
       for (const auto& vlanIDToInfo : port.second->getVlans()) {
         auto vlan = vlanMap->getNodeIf(vlanIDToInfo.first);
         if (!vlan) {
+          if (vlanIDToInfo.first == VlanID(0)) {
+            continue;
+          }
           XLOG(ERR) << "Vlan " << vlanIDToInfo.first << " not found in state.";
           continue;
         }

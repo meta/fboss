@@ -118169,7 +118169,70 @@ constexpr auto kJsonPlatformMappingStr = R"(
                 ]
               }
           },
+          "14": {
+              "pins": {
+                "iphy": [
+                  {
+                    "id": {
+                      "chip": "NPU-TH5_NIF-slot1/chip1/core64",
+                      "lane": 0
+                    },
+                    "tx": {
+                      "pre": 5,
+                      "pre2": 0,
+                      "main": 31,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-QSFP28-slot1/chip65",
+                      "lane": 0
+                    }
+                  }
+                ]
+              }
+          },
+          "16": {
+              "pins": {
+                "iphy": [
+                  {
+                    "id": {
+                      "chip": "NPU-TH5_NIF-slot1/chip1/core64",
+                      "lane": 0
+                    },
+                    "tx": {
+                      "pre": 5,
+                      "pre2": 0,
+                      "main": 31,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-QSFP28-slot1/chip65",
+                      "lane": 0
+                    }
+                  }
+                ]
+              }
+          },
           "22": {
+              "subsumedPorts": [
+                352,
+                353,
+                354
+              ],
               "pins": {
                 "iphy": [
                   {
@@ -118262,6 +118325,11 @@ constexpr auto kJsonPlatformMappingStr = R"(
               }
           },
           "23": {
+              "subsumedPorts": [
+                352,
+                353,
+                354
+              ],
               "pins": {
                 "iphy": [
                   {
@@ -118344,6 +118412,487 @@ constexpr auto kJsonPlatformMappingStr = R"(
                       "lane": 2
                     }
                   },
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-QSFP28-slot1/chip65",
+                      "lane": 3
+                    }
+                  }
+                ]
+              }
+          },
+          "30": {
+              "pins": {
+                "iphy": [
+                  {
+                    "id": {
+                      "chip": "NPU-TH5_NIF-slot1/chip1/core64",
+                      "lane": 0
+                    },
+                    "tx": {
+                      "pre": 2,
+                      "pre2": 0,
+                      "main": 31,
+                      "post": 7,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-QSFP28-slot1/chip65",
+                      "lane": 0
+                    }
+                  }
+                ]
+              }
+          },
+          "62": {
+              "pins": {
+                "iphy": [
+                  {
+                    "id": {
+                      "chip": "NPU-TH5_NIF-slot1/chip1/core64",
+                      "lane": 0
+                    },
+                    "tx": {
+                      "pre": 2,
+                      "pre2": 0,
+                      "main": 31,
+                      "post": 7,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-QSFP28-slot1/chip65",
+                      "lane": 0
+                    }
+                  }
+                ]
+              }
+          }
+        }
+    },
+    "352": {
+        "mapping": {
+          "id": 352,
+          "name": "eth1/65/2",
+          "controllingPort": 351,
+          "pins": [
+            {
+              "a": {
+                "chip": "NPU-TH5_NIF-slot1/chip1/core64",
+                "lane": 1
+              },
+              "z": {
+                "end": {
+                  "chip": "TRANSCEIVER-QSFP28-slot1/chip65",
+                  "lane": 1
+                }
+              }
+            }
+          ],
+          "portType": 4,
+          "scope": 0
+        },
+        "supportedProfiles": {
+          "14": {
+              "pins": {
+                "iphy": [
+                  {
+                    "id": {
+                      "chip": "NPU-TH5_NIF-slot1/chip1/core64",
+                      "lane": 1
+                    },
+                    "tx": {
+                      "pre": 5,
+                      "pre2": 0,
+                      "main": 31,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-QSFP28-slot1/chip65",
+                      "lane": 1
+                    }
+                  }
+                ]
+              }
+          },
+          "16": {
+              "pins": {
+                "iphy": [
+                  {
+                    "id": {
+                      "chip": "NPU-TH5_NIF-slot1/chip1/core64",
+                      "lane": 1
+                    },
+                    "tx": {
+                      "pre": 5,
+                      "pre2": 0,
+                      "main": 31,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-QSFP28-slot1/chip65",
+                      "lane": 1
+                    }
+                  }
+                ]
+              }
+          },
+          "30": {
+              "pins": {
+                "iphy": [
+                  {
+                    "id": {
+                      "chip": "NPU-TH5_NIF-slot1/chip1/core64",
+                      "lane": 1
+                    },
+                    "tx": {
+                      "pre": 2,
+                      "pre2": 0,
+                      "main": 31,
+                      "post": 7,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-QSFP28-slot1/chip65",
+                      "lane": 1
+                    }
+                  }
+                ]
+              }
+          },
+          "62": {
+              "pins": {
+                "iphy": [
+                  {
+                    "id": {
+                      "chip": "NPU-TH5_NIF-slot1/chip1/core64",
+                      "lane": 1
+                    },
+                    "tx": {
+                      "pre": 2,
+                      "pre2": 0,
+                      "main": 31,
+                      "post": 7,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-QSFP28-slot1/chip65",
+                      "lane": 1
+                    }
+                  }
+                ]
+              }
+          }
+        }
+    },
+    "353": {
+        "mapping": {
+          "id": 353,
+          "name": "eth1/65/3",
+          "controllingPort": 351,
+          "pins": [
+            {
+              "a": {
+                "chip": "NPU-TH5_NIF-slot1/chip1/core64",
+                "lane": 2
+              },
+              "z": {
+                "end": {
+                  "chip": "TRANSCEIVER-QSFP28-slot1/chip65",
+                  "lane": 2
+                }
+              }
+            }
+          ],
+          "portType": 4,
+          "scope": 0
+        },
+        "supportedProfiles": {
+          "14": {
+              "pins": {
+                "iphy": [
+                  {
+                    "id": {
+                      "chip": "NPU-TH5_NIF-slot1/chip1/core64",
+                      "lane": 2
+                    },
+                    "tx": {
+                      "pre": 5,
+                      "pre2": 0,
+                      "main": 31,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-QSFP28-slot1/chip65",
+                      "lane": 2
+                    }
+                  }
+                ]
+              }
+          },
+          "16": {
+              "pins": {
+                "iphy": [
+                  {
+                    "id": {
+                      "chip": "NPU-TH5_NIF-slot1/chip1/core64",
+                      "lane": 2
+                    },
+                    "tx": {
+                      "pre": 5,
+                      "pre2": 0,
+                      "main": 31,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-QSFP28-slot1/chip65",
+                      "lane": 2
+                    }
+                  }
+                ]
+              }
+          },
+          "30": {
+              "pins": {
+                "iphy": [
+                  {
+                    "id": {
+                      "chip": "NPU-TH5_NIF-slot1/chip1/core64",
+                      "lane": 2
+                    },
+                    "tx": {
+                      "pre": 2,
+                      "pre2": 0,
+                      "main": 31,
+                      "post": 7,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-QSFP28-slot1/chip65",
+                      "lane": 2
+                    }
+                  }
+                ]
+              }
+          },
+          "62": {
+              "pins": {
+                "iphy": [
+                  {
+                    "id": {
+                      "chip": "NPU-TH5_NIF-slot1/chip1/core64",
+                      "lane": 2
+                    },
+                    "tx": {
+                      "pre": 2,
+                      "pre2": 0,
+                      "main": 31,
+                      "post": 7,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-QSFP28-slot1/chip65",
+                      "lane": 2
+                    }
+                  }
+                ]
+              }
+          }
+        }
+    },
+    "354": {
+        "mapping": {
+          "id": 354,
+          "name": "eth1/65/4",
+          "controllingPort": 351,
+          "pins": [
+            {
+              "a": {
+                "chip": "NPU-TH5_NIF-slot1/chip1/core64",
+                "lane": 3
+              },
+              "z": {
+                "end": {
+                  "chip": "TRANSCEIVER-QSFP28-slot1/chip65",
+                  "lane": 3
+                }
+              }
+            }
+          ],
+          "portType": 4,
+          "scope": 0
+        },
+        "supportedProfiles": {
+          "14": {
+              "pins": {
+                "iphy": [
+                  {
+                    "id": {
+                      "chip": "NPU-TH5_NIF-slot1/chip1/core64",
+                      "lane": 3
+                    },
+                    "tx": {
+                      "pre": 5,
+                      "pre2": 0,
+                      "main": 31,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-QSFP28-slot1/chip65",
+                      "lane": 3
+                    }
+                  }
+                ]
+              }
+          },
+          "16": {
+              "pins": {
+                "iphy": [
+                  {
+                    "id": {
+                      "chip": "NPU-TH5_NIF-slot1/chip1/core64",
+                      "lane": 3
+                    },
+                    "tx": {
+                      "pre": 5,
+                      "pre2": 0,
+                      "main": 31,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-QSFP28-slot1/chip65",
+                      "lane": 3
+                    }
+                  }
+                ]
+              }
+          },
+          "30": {
+              "pins": {
+                "iphy": [
+                  {
+                    "id": {
+                      "chip": "NPU-TH5_NIF-slot1/chip1/core64",
+                      "lane": 3
+                    },
+                    "tx": {
+                      "pre": 2,
+                      "pre2": 0,
+                      "main": 31,
+                      "post": 7,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-QSFP28-slot1/chip65",
+                      "lane": 3
+                    }
+                  }
+                ]
+              }
+          },
+          "62": {
+              "pins": {
+                "iphy": [
+                  {
+                    "id": {
+                      "chip": "NPU-TH5_NIF-slot1/chip1/core64",
+                      "lane": 3
+                    },
+                    "tx": {
+                      "pre": 2,
+                      "pre2": 0,
+                      "main": 31,
+                      "post": 7,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "transceiver": [
                   {
                     "id": {
                       "chip": "TRANSCEIVER-QSFP28-slot1/chip65",
@@ -163937,6 +164486,21 @@ constexpr auto kJsonPlatformMappingStr = R"(
     },
     {
       "factor": {
+        "profileID": 14
+      },
+      "profile": {
+        "speed": 25000,
+        "iphy": {
+          "numLanes": 1,
+          "modulation": 1,
+          "fec": 1,
+          "medium": 1,
+          "interfaceType": 10
+        }
+      }
+    },
+    {
+      "factor": {
         "profileID": 47
       },
       "profile": {
@@ -163952,6 +164516,21 @@ constexpr auto kJsonPlatformMappingStr = R"(
     },
     {
       "factor": {
+        "profileID": 16
+      },
+      "profile": {
+        "speed": 25000,
+        "iphy": {
+          "numLanes": 1,
+          "modulation": 1,
+          "fec": 528,
+          "medium": 1,
+          "interfaceType": 10
+        }
+      }
+    },
+    {
+      "factor": {
         "profileID": 50
       },
       "profile": {
@@ -163962,6 +164541,21 @@ constexpr auto kJsonPlatformMappingStr = R"(
           "fec": 11,
           "medium": 1,
           "interfaceType": 13
+        }
+      }
+    },
+    {
+      "factor": {
+        "profileID": 62
+      },
+      "profile": {
+        "speed": 25000,
+        "iphy": {
+          "numLanes": 1,
+          "modulation": 1,
+          "fec": 528,
+          "medium": 3,
+          "interfaceType": 20
         }
       }
     },
@@ -164037,6 +164631,21 @@ constexpr auto kJsonPlatformMappingStr = R"(
           "fec": 11,
           "medium": 3,
           "interfaceType": 3
+        }
+      }
+    },
+    {
+      "factor": {
+        "profileID": 30
+      },
+      "profile": {
+        "speed": 25000,
+        "iphy": {
+          "numLanes": 1,
+          "modulation": 1,
+          "fec": 1,
+          "medium": 3,
+          "interfaceType": 20
         }
       }
     }

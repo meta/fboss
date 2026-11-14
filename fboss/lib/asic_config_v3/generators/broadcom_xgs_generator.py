@@ -1,11 +1,12 @@
-# pyre-strict
-
 import json
 import os
 from typing import Any
 
 import yaml
-from fboss.lib.asic_config_v3.base_generator import BaseAsicConfigGenerator
+from fboss.lib.asic_config_v3.base_generator import (
+    BaseAsicConfigGenerator,
+    GeneratedVariant,
+)
 from fboss.lib.asic_config_v3.paths import AsicConfigPaths
 from fboss.lib.platform_mapping_v2.platform_mapping_v2 import PlatformMappingParser
 from fboss.lib.platform_mapping_v2.read_files_utils import (
@@ -34,6 +35,7 @@ class BroadcomXgsGenerator(BaseAsicConfigGenerator):
         super().__init__(platform_name, variant, platform_config, paths)
 
         self.values: dict[str, Any] = {}
+        self.npu_pm_core: dict[int, dict[Any, Any]] = {}
 
         self._load_asic_vendor_input_configs()
         self._init_tables()
@@ -280,6 +282,38 @@ class BroadcomXgsGenerator(BaseAsicConfigGenerator):
 
         return logical_to_physical_port_mapping
 
+    def _get_mgmt_logical_to_physical_ports(self) -> list[list[int]]:
+        """Return the [logical, physical] pairs of the management port(s).
+
+        A single management port is emitted unless the variant sets
+        ``mgmt_port_overrides.num_ports`` above 1, in which case the first
+        ``num_ports`` entries of the ASIC-level ``mgmt_port_defaults.breakout_ports``
+        are used (one logical port per management lane, e.g. 4x25G).
+        """
+        mgmt_defaults = self.asic_config.get("mgmt_port_defaults", {})
+        mgmt_overrides = self.variant_config.get("mgmt_port_overrides", {})
+        num_ports = mgmt_overrides.get("num_ports", 1)
+        if num_ports == 1:
+            logical_id = mgmt_overrides.get(
+                "logical_id", mgmt_defaults.get("logical_id", 76)
+            )
+            physical_id = mgmt_overrides.get(
+                "physical_id", mgmt_defaults.get("physical_id", 513)
+            )
+            return [[logical_id, physical_id]]
+
+        breakout_ports = mgmt_defaults.get("breakout_ports", [])
+        if num_ports > len(breakout_ports):
+            raise ValueError(
+                f"{self.platform_name}: mgmt_port_overrides.num_ports={num_ports} "
+                f"but the ASIC only defines {len(breakout_ports)} management "
+                "breakout ports"
+            )
+        return [
+            [port["logical_id"], port["physical_id"]]
+            for port in breakout_ports[:num_ports]
+        ]
+
     def _generate_logical_port_to_physical_port_mapping(
         self, mgmt_port: bool = False
     ) -> None:
@@ -295,51 +329,115 @@ class BroadcomXgsGenerator(BaseAsicConfigGenerator):
             self.values["PC_PORT_PHYS_MAP"][pm_key] = pm_value
 
         if mgmt_port:
-            mgmt_defaults = self.asic_config.get("mgmt_port_defaults", {})
-            mgmt_overrides = self.variant_config.get("mgmt_port_overrides", {})
-            logical_id = mgmt_overrides.get(
-                "logical_id", mgmt_defaults.get("logical_id", 76)
-            )
-            physical_id = mgmt_overrides.get(
-                "physical_id", mgmt_defaults.get("physical_id", 513)
-            )
-            pm_key = (f"PORT_ID: {logical_id}",)
-            pm_value = (f"PC_PHYS_PORT_ID: {physical_id}",)
-            self.values["PC_PORT_PHYS_MAP"][pm_key] = pm_value
+            for logical_id, physical_id in self._get_mgmt_logical_to_physical_ports():
+                pm_key = (f"PORT_ID: {logical_id}",)
+                pm_value = (f"PC_PHYS_PORT_ID: {physical_id}",)
+                self.values["PC_PORT_PHYS_MAP"][pm_key] = pm_value
+
+    def _add_pm_core_value(
+        self, table: dict[Any, Any], core_id: int, value: tuple[str, ...]
+    ) -> None:
+        """Append one lane-map or polarity fragment to a PC_PM_CORE macro.
+
+        Both fragments share the same macro key and are generated in separate
+        passes, so appending preserves the legacy lane-then-polarity field
+        order in the serialized YAML.
+        """
+        key = (f"PC_PM_ID: {core_id + 1}", "CORE_INDEX: 0")
+        table[key] = table.get(key, ()) + value
+
+    def _lane_map_value(self, lane_info: Any) -> tuple[str, ...]:
+        """Render the lane-map half of a PC_PM_CORE macro."""
+        return (
+            f"RX_LANE_MAP: {self.get_lane_map_str(list(lane_info.rx_lane_info))}",
+            "RX_LANE_MAP_AUTO: 0",
+            f"TX_LANE_MAP: {self.get_lane_map_str(list(lane_info.tx_lane_info))}",
+            "TX_LANE_MAP_AUTO: 0",
+        )
+
+    def _polarity_map_value(self, swap_map: Any) -> tuple[str, ...]:
+        """Render the polarity half of a PC_PM_CORE macro."""
+        return (
+            "RX_POLARITY_FLIP: "
+            f"{self.get_polarity_map_str(list(swap_map.rx_lane_info))}",
+            "RX_POLARITY_FLIP_AUTO: 0",
+            "TX_POLARITY_FLIP: "
+            f"{self.get_polarity_map_str(list(swap_map.tx_lane_info))}",
+            "TX_POLARITY_FLIP_AUTO: 0",
+        )
+
+    def _accumulate_npu_pm_core(self, by_chip: Any, value_fn: Any) -> None:
+        """Accumulate one platform-mapping field into each NPU's PM table.
+
+        Platform mappings identify chips starting at one, while thrift
+        ``npuEntries`` and generated artifact suffixes are zero-based.
+        """
+        if not by_chip:
+            return
+        for chip_id, per_core in by_chip.items():
+            npu_index = chip_id - 1
+            table = self.npu_pm_core.setdefault(npu_index, {})
+            for core_id, info in per_core.items():
+                self._add_pm_core_value(table, core_id, value_fn(info))
 
     def _generate_lane_map(self) -> None:
-        """Generate lane map entries in PC_PM_CORE."""
+        """Generate shared and per-NPU lane map entries in PC_PM_CORE."""
         static_mapping = self.parser.get_static_mapping().get_static_mapping()
-        lane_maps = static_mapping.phy_lane_map
-
-        for core_id, lane_info in lane_maps.items():
-            tx_lane_info, rx_lane_info = lane_info.tx_lane_info, lane_info.rx_lane_info
-            pm_key = (f"PC_PM_ID: {core_id + 1}", "CORE_INDEX: 0")
-            pm_value = (
-                f"RX_LANE_MAP: {self.get_lane_map_str(list(rx_lane_info))}",
-                "RX_LANE_MAP_AUTO: 0",
-                f"TX_LANE_MAP: {self.get_lane_map_str(list(tx_lane_info))}",
-                "TX_LANE_MAP_AUTO: 0",
+        for core_id, lane_info in static_mapping.phy_lane_map.items():
+            self._add_pm_core_value(
+                self.values["PC_PM_CORE"], core_id, self._lane_map_value(lane_info)
             )
-            pm_value = self.values["PC_PM_CORE"].get(pm_key, ()) + pm_value
-            self.values["PC_PM_CORE"][pm_key] = pm_value
+        self._accumulate_npu_pm_core(
+            static_mapping.phy_lane_map_by_chip, self._lane_map_value
+        )
 
     def _generate_polarity_map(self) -> None:
-        """Generate polarity map entries in PC_PM_CORE."""
+        """Generate shared and per-NPU polarity entries in PC_PM_CORE."""
         static_mapping = self.parser.get_static_mapping().get_static_mapping()
-        pn_swap_maps = static_mapping.polarity_swap_map
-
-        for core_id, swap_map in pn_swap_maps.items():
-            tx_swap_map, rx_swap_map = swap_map.tx_lane_info, swap_map.rx_lane_info
-            pm_key = (f"PC_PM_ID: {core_id + 1}", "CORE_INDEX: 0")
-            pm_value = (
-                f"RX_POLARITY_FLIP: {self.get_polarity_map_str(list(rx_swap_map))}",
-                "RX_POLARITY_FLIP_AUTO: 0",
-                f"TX_POLARITY_FLIP: {self.get_polarity_map_str(list(tx_swap_map))}",
-                "TX_POLARITY_FLIP_AUTO: 0",
+        for core_id, swap_map in static_mapping.polarity_swap_map.items():
+            self._add_pm_core_value(
+                self.values["PC_PM_CORE"],
+                core_id,
+                self._polarity_map_value(swap_map),
             )
-            pm_value = self.values["PC_PM_CORE"].get(pm_key, ()) + pm_value
-            self.values["PC_PM_CORE"][pm_key] = pm_value
+        self._accumulate_npu_pm_core(
+            static_mapping.polarity_swap_map_by_chip, self._polarity_map_value
+        )
+
+    def _validate_npu_pm_core(self) -> None:
+        """Validate that every per-NPU table is a complete replacement.
+
+        Per-NPU YAML files are standalone ASIC configs, not overlays on the
+        shared mapping. Consequently, every NPU must contain the same macros
+        and the same number of fields as the shared normalized table.
+        """
+        indices = sorted(self.npu_pm_core)
+        if indices != list(range(len(indices))):
+            raise ValueError(
+                f"Per-NPU PC_PM_CORE indices {indices} must be contiguous from 0"
+            )
+
+        shared = self.values["PC_PM_CORE"]
+        for npu_index, table in sorted(self.npu_pm_core.items()):
+            if table.keys() != shared.keys():
+                missing = len(shared.keys() - table.keys())
+                extra = len(table.keys() - shared.keys())
+                raise ValueError(
+                    f"NPU {npu_index} PC_PM_CORE differs from the shared key set "
+                    f"({missing} missing, {extra} extra)"
+                )
+            partial = [
+                key for key, value in table.items() if len(value) != len(shared[key])
+            ]
+            if partial:
+                raise ValueError(
+                    f"NPU {npu_index} PC_PM_CORE has {len(partial)} partial macros"
+                )
+
+    def _npus_have_distinct_pm_core(self) -> bool:
+        """Compare normalized PM tables without depending on declaration order."""
+        tables = list(self.npu_pm_core.values())
+        return len(tables) > 1 and any(table != tables[0] for table in tables[1:])
 
     def _generate_port_config(self, mgmt_port: bool = False) -> None:
         """Generate PC_PORT and PORT entries."""
@@ -383,33 +481,42 @@ class BroadcomXgsGenerator(BaseAsicConfigGenerator):
         self.values["PC_PORT"][pc_key] = pc_value
 
         if mgmt_port and mgmt_port_config.get("enabled", False):
-            logical_id = mgmt_overrides.get(
-                "logical_id", mgmt_defaults.get("logical_id", 76)
-            )
             mgmt_speed = mgmt_overrides.get("speed", mgmt_defaults.get("speed", 100000))
+            speed_config = mgmt_port_config.get("speed_variants", {}).get(
+                str(mgmt_speed), {}
+            )
             mgmt_num_lanes = mgmt_overrides.get(
-                "num_lanes", mgmt_defaults.get("num_lanes", 4)
+                "num_lanes",
+                speed_config.get("num_lanes", mgmt_defaults.get("num_lanes", 4)),
             )
             mgmt_fec = mgmt_overrides.get(
-                "fec", mgmt_defaults.get("fec", "PC_FEC_RS528")
+                "fec",
+                speed_config.get("fec", mgmt_defaults.get("fec", "PC_FEC_RS528")),
             )
             mgmt_enable = mgmt_port_config.get("enable", 0)
 
-            mgmt_port_key = (f"PORT_ID: {logical_id}",)
-            mgmt_port_value = (
-                f"ENABLE: {mgmt_enable}",
-                f"SPEED: {mgmt_speed}",
-                f"NUM_LANES: {mgmt_num_lanes}",
-                f"FEC_MODE: {mgmt_fec}",
-                f"MAX_FRAME_SIZE: {self.mmu_size}",
-            )
-            self.values["PC_PORT"][mgmt_port_key] = mgmt_port_value
+            for logical_id, _ in self._get_mgmt_logical_to_physical_ports():
+                mgmt_port_key = (f"PORT_ID: {logical_id}",)
+                mgmt_port_value = (
+                    f"ENABLE: {mgmt_enable}",
+                    f"SPEED: {mgmt_speed}",
+                    f"NUM_LANES: {mgmt_num_lanes}",
+                    f"FEC_MODE: {mgmt_fec}",
+                    f"MAX_FRAME_SIZE: {self.mmu_size}",
+                )
+                self.values["PC_PORT"][mgmt_port_key] = mgmt_port_value
 
-            # Optionally include the mgmt port in the PORT (MTU) range alongside FP.
-            if mgmt_port_config.get("in_port_block", False):
-                port_ranges.append(f"[{logical_id}, {logical_id}]")
-                port_ranges_str = ", ".join(port_ranges)
-                pc_key = (f"PORT_ID: [{port_ranges_str}]",)
+                pmd_firmware = speed_config.get("pmd_firmware", {})
+                if pmd_firmware:
+                    self.values["PC_PMD_FIRMWARE"][mgmt_port_key] = tuple(
+                        f"{key}: {value}" for key, value in pmd_firmware.items()
+                    )
+
+                # Optionally include the mgmt port in the PORT (MTU) range alongside FP.
+                if mgmt_port_config.get("in_port_block", False):
+                    port_ranges.append(f"[{logical_id}, {logical_id}]")
+                    port_ranges_str = ", ".join(port_ranges)
+                    pc_key = (f"PORT_ID: [{port_ranges_str}]",)
 
         self.values["PORT"][pc_key] = (f"MTU: {self.mmu_size}", "MTU_CHECK: 1")
 
@@ -419,8 +526,13 @@ class BroadcomXgsGenerator(BaseAsicConfigGenerator):
             self.variant_config.get("device_config_overrides", {})
         )
 
-    def generate(self) -> str:
-        """Build the full ASIC config and return it as a YAML string.
+    def generate(self) -> GeneratedVariant:
+        """Build the full ASIC config and return its serialized YAML payloads.
+
+        Platforms without per-chip mappings retain one common payload. Equal
+        per-chip mappings are also collapsed to one common payload; only a
+        semantic difference in normalized PC_PM_CORE tables produces indexed
+        NPU payloads.
 
         The XGS layering defines a nine-step priority order. Later steps
         override earlier steps when a key appears in more than one source:
@@ -455,13 +567,40 @@ class BroadcomXgsGenerator(BaseAsicConfigGenerator):
         self._generate_lane_map()
         self._generate_polarity_map()
 
-        return self._generate_yaml_string()
+        if not self.npu_pm_core:
+            return GeneratedVariant(common=self._generate_yaml_string())
 
-    def _generate_yaml_string(self) -> str:
-        """Render the populated tables as a multi-document YAML string."""
+        self._validate_npu_pm_core()
+        if not self._npus_have_distinct_pm_core():
+            first_pm_core = self.npu_pm_core[min(self.npu_pm_core)]
+            return GeneratedVariant(
+                common=self._generate_yaml_string(
+                    table_overrides={"PC_PM_CORE": first_pm_core}
+                )
+            )
+
+        return GeneratedVariant(
+            common=None,
+            npu_entries={
+                npu_index: self._generate_yaml_string(
+                    table_overrides={"PC_PM_CORE": pm_core}
+                )
+                for npu_index, pm_core in sorted(self.npu_pm_core.items())
+            },
+        )
+
+    def _generate_yaml_string(
+        self, table_overrides: dict[str, Any] | None = None
+    ) -> str:
+        """Render populated tables, replacing any tables supplied as overrides.
+
+        A per-NPU PC_PM_CORE override is the complete table for that NPU; it is
+        intentionally not merged with the shared table.
+        """
         table_names = self.asic_config.get("table_names", [])
         unit = 0
         tables = []
+        values = {**self.values, **(table_overrides or {})}
 
         for table_name in table_names:
             if table_name.startswith(
@@ -481,7 +620,7 @@ class BroadcomXgsGenerator(BaseAsicConfigGenerator):
             else:
                 device = "bcm_device"
 
-            if table_value := self.values.get(table_name):
+            if table_value := values.get(table_name):
                 tables.append({device: {unit: {table_name: table_value}}})
 
         yaml_str = yaml.dump_all(

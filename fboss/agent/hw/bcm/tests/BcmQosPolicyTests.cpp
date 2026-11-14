@@ -319,8 +319,7 @@ TEST_F(BcmQosPolicyTest, QosPolicyCPURemove) {
 TEST_F(BcmQosPolicyTest, QosPolicySdkAssertions) {
   /*
    * This test ensures that the assumptions we made when designing the QoS
-   * subsystem are true. It also useful to make sure that the fake sdk emulates
-   * the API correctly.
+   * subsystem are true.
    */
   int qosMap;
   bcm_qos_map_t qosMapEntry;

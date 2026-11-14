@@ -55,10 +55,17 @@ template <>
 struct AdapterHostKeyWarmbootRecoverable<SaiUdfGroupTraits> : std::false_type {
 };
 
+template <>
+struct AdapterHostKeyWarmbootRecoverable<SaiPolicerTraits> : std::false_type {};
+
 // Keyed by the FBOSS isolation group name, which the adapter knows nothing
 // about, so it must be serialized into warm boot state.
 template <>
 struct AdapterHostKeyWarmbootRecoverable<SaiIsolationGroupTraits>
+    : std::false_type {};
+
+template <>
+struct AdapterHostKeyWarmbootRecoverable<SaiVirtualRouterTraits>
     : std::false_type {};
 
 #if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)
@@ -134,6 +141,32 @@ class SaiObjectStore {
       const typename SaiObjectTraits::AdapterKey& adapterKey,
       bool addToWarmbootHandles = false) {
     auto object = reloadObject(adapterKey, addToWarmbootHandles);
+    object->setOwnedByAdapter(true);
+    XLOGF(DBG5, "SaiStore reload by adapter {}", *object.get());
+    return object;
+  }
+
+  // For objects whose adapter host key cannot be derived from the adapter
+  std::shared_ptr<ObjectType> loadObjectOwnedByAdapter(
+      const typename SaiObjectTraits::AdapterKey& adapterKey,
+      const typename SaiObjectTraits::AdapterHostKey& adapterHostKey) {
+    auto object = objects_.ref(adapterHostKey);
+    if (!object) {
+      object = objects_
+                   .refOrInsert(
+                       adapterHostKey,
+                       ObjectType(adapterKey, adapterHostKey),
+                       true /*force*/)
+                   .first;
+    }
+    if (object->adapterKey() != adapterKey) {
+      throw FbossError(
+          "Adapter key mismatch loading object owned by adapter: stored ",
+          object->adapterKey(),
+          ", adapter ",
+          adapterKey);
+    }
+    warmBootHandles_.erase(adapterHostKey);
     object->setOwnedByAdapter(true);
     XLOGF(DBG5, "SaiStore reload by adapter {}", *object.get());
     return object;
@@ -541,6 +574,11 @@ class SaiObjectStore {
           // to allow build
           return ObjectType(key, SaiUdfGroupTraits::AdapterHostKey{"udfGroup"});
         }
+        if constexpr (std::is_same_v<ObjectTraits, SaiVirtualRouterTraits>) {
+          // Warm boot state from before virtual routers were keyed by RouterID
+          // has only the default virtual router
+          return ObjectType(key, RouterID(0));
+        }
         throw FbossError(
             "attempting to load an object whose adapter host key is not found.");
       }
@@ -709,6 +747,7 @@ class SaiStore {
       SaiObjectStore<SaiLocalMirrorTraits>,
       SaiObjectStore<SaiEnhancedRemoteMirrorTraits>,
       SaiObjectStore<SaiSflowMirrorTraits>,
+      SaiObjectStore<SaiPolicerTraits>,
       SaiObjectStore<SaiMplsNextHopTraits>,
       SaiObjectStore<SaiTunnelEncapNextHopTraits>,
 #if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)

@@ -18,6 +18,7 @@
 #include <stdexcept>
 #include <string>
 #include <system_error>
+#include <vector>
 
 #include "fboss/cli/fboss2/session/Git.h"
 

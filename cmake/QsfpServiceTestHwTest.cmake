@@ -61,7 +61,7 @@ set(QSFP_HW_TEST_DEPS
   port_test_utils
   ${GTEST}
   ${LIBGMOCK_LIBRARIES}
-  FBThrift::thriftcpp2
+  thrift::rpc
   fb303::fb303
   fboss_init
   qsfp_production_features_cpp2

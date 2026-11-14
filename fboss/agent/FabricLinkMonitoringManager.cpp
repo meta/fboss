@@ -89,6 +89,7 @@ void FabricLinkMonitoringManager::start() {
   portStatsLocked->clear();
   auto portPendingSeqNumsLocked = portPendingSequenceNumbers_.wlock();
   portPendingSeqNumsLocked->clear();
+  portGroupStats_.wlock()->clear();
 
   // Expect fabric ports to not change once the system is configured
   std::shared_ptr<SwitchState> state = sw_->getState();
@@ -299,7 +300,10 @@ void FabricLinkMonitoringManager::sendPacketsForPortGroup(int portGroupId) {
     PortID portId = fabricPortIds.at(currentIndex);
     auto port = state->getPorts()->getNodeIf(portId);
     if (!port || !port->isPortUp()) {
-      // Applied only to fabric ports which are UP
+      // Applied only to fabric ports which are UP. A down port never ages out
+      // its pending packets, so release them here (without counting them as
+      // dropped) or they would hold the group's outstanding budget forever.
+      releasePendingPackets(portId, portGroupId);
       continue;
     }
 
@@ -400,14 +404,44 @@ void FabricLinkMonitoringManager::packetSendAndOutstandingHandling(
                  << FLAGS_fabric_link_monitoring_max_pending_seq_numbers
                  << " subsequent packets)";
     }
+    // RX must not observe a pending sequence before its group credit.
+    if (changeToOutstandingPacketCount) {
+      auto lockedStats = portGroupStats_.wlock();
+      auto& groupStats = (*lockedStats)[portGroupId];
+      groupStats.outstandingPackets += changeToOutstandingPacketCount;
+    }
   }
+}
 
-  // If the outstanding packet count has changed, update the group stats.
-  if (changeToOutstandingPacketCount) {
-    auto lockedStats = portGroupStats_.wlock();
-    auto& groupStats = (*lockedStats)[portGroupId];
-    groupStats.outstandingPackets += changeToOutstandingPacketCount;
+// Release all sequence numbers still pending on a port and return them to the
+// port group's outstanding budget. Used for ports that are not UP: their
+// packets will not be received, and the offset-based drop in
+// packetSendAndOutstandingHandling() only runs for UP ports.
+//
+// Released packets are deliberately not added to droppedCount: that counter
+// reports loss on an UP link, while packets cut off by the link going down
+// say nothing about link quality and the down state is reported separately.
+void FabricLinkMonitoringManager::releasePendingPackets(
+    PortID portId,
+    int portGroupId) {
+  size_t released{0};
+  {
+    auto pendingSeqNumsLocked = portPendingSequenceNumbers_.wlock();
+    auto it = pendingSeqNumsLocked->find(portId);
+    if (it == pendingSeqNumsLocked->end() || it->second.empty()) {
+      return;
+    }
+    released = it->second.size();
+    it->second.clear();
   }
+  auto lockedStats = portGroupStats_.wlock();
+  auto& groupStats = (*lockedStats)[portGroupId];
+  groupStats.outstandingPackets -=
+      std::min(released, groupStats.outstandingPackets);
+  XLOG(DBG4) << "FabricLinkMonitoring: Released " << released
+             << " pending packets on port " << portId
+             << " which is not UP, port group " << portGroupId
+             << " outstanding is now " << groupStats.outstandingPackets;
 }
 
 // Create a 480-byte monitoring packet with: 8 bytes sequence number

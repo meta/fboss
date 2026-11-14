@@ -1,4 +1,6 @@
 #include <string>
+
+#include <folly/String.h>
 #include <vector>
 
 #include <fmt/format.h>

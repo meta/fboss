@@ -16,8 +16,8 @@
 # 5. Run dnf install ruby --assumeyes
 # 6. Run dnf install libnsl --assumeyes
 # 7. Copy P832580816 to /var/FBOSS/runner.sh and run chmod +x /var/FBOSS/runner.sh
-# 8. Copy https://github.com/facebook/fboss/blob/main/fboss/oss/hw_test_configs/fuji.agent.materialized_JSON to /var/FBOSS/fuji.materialized_JSON
-# 9. Copy https://github.com/facebook/fboss/blob/main/fboss/oss/scripts/run_configs/th4/fruid.json to /var/facebook/fboss/fruid.json
+# 8. Copy https://github.com/meta/fboss/blob/main/fboss/oss/hw_test_configs/fuji.agent.materialized_JSON to /var/FBOSS/fuji.materialized_JSON
+# 9. Copy https://github.com/meta/fboss/blob/main/fboss/oss/scripts/run_configs/th4/fruid.json to /var/facebook/fboss/fruid.json
 # 10. Run pip3 install pytz
 #
 #
@@ -38,7 +38,7 @@ import pytz
 OUTPUT_DIR = "x86-xgsall-bcmsim-deb-static-fboss"
 SAI_SDK_VERSION = "SAI_VERSION_10_0_EA_SIM_ODP"
 SAI_TEST_BINARY = "sai_test-sai_impl"
-CLONE_OSS_REPO_CMD = r"""git clone https://github.com/facebook/fboss {0}"""
+CLONE_OSS_REPO_CMD = r"""git clone https://github.com/meta/fboss {0}"""
 RUN_BUILD_HELPER_CMD = r"""./build-helper.py {0} {1} {2}"""
 VERIFY_STABLE_COMMIT_CMD = r"""source ./setup_fboss_env; ./run_test.py sai --sai-bin {0} --config {1} --mgmt-if eth0 --filter {2} --simulator {3} --coldboot_only"""
 LIBRARIES = ["gflags", "glog", "libevent", "libsodium", "python"]

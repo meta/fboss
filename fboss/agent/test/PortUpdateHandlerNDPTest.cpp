@@ -54,7 +54,7 @@ cfg::SwitchConfig createVlanInterfaceConfig() {
   config.interfaces()->resize(1);
   *config.interfaces()[0].intfID() = INTERFACE_ID;
   *config.interfaces()[0].vlanID() = VLAN_ID;
-  *config.interfaces()[0].routerID() = 0;
+  config.interfaces()[0].routerID() = 0;
   config.interfaces()[0].type() = cfg::InterfaceType::VLAN;
   config.interfaces()[0].name() = "VlanInterface100";
   config.interfaces()[0].mtu() = 1500;
@@ -167,17 +167,16 @@ class PortUpdateHandlerNDPTest : public ::testing::Test {
       XLOG(INFO)
           << "verifyNeighborSolicitation: CONFIRMED - Neighbor solicitation was sent for "
           << targetIP.str() << " as evidenced by NeighborUpdatercache";
-      // wait for
-      sleep(4);
       auto maxNeighborProbes =
           sw->getNeighborUpdater()->getMaxNeighborProbes(intf->getID()).get();
-      auto probesLeft = sw->getNeighborUpdater()
-                            ->getProbesLeft(intf->getID(), targetIP)
-                            .get();
-      XLOG(DBG2) << "Total neighbor SolicitationHelper sent: "
-                 << maxNeighborProbes - probesLeft;
-      WITH_RETRIES(
-          { EXPECT_EVENTUALLY_GT(maxNeighborProbes - probesLeft, 4); });
+      WITH_RETRIES({
+        auto probesLeft = sw->getNeighborUpdater()
+                              ->getProbesLeft(intf->getID(), targetIP)
+                              .get();
+        XLOG(DBG2) << "Total neighbor SolicitationHelper sent: "
+                   << maxNeighborProbes - probesLeft;
+        EXPECT_EVENTUALLY_GT(maxNeighborProbes - probesLeft, 4);
+      });
     }
   }
 
@@ -214,10 +213,17 @@ TEST_F(PortUpdateHandlerNDPTest, VlanInterfaceNoDesiredPeer) {
 // Test VLAN interface handling
 TEST_F(PortUpdateHandlerNDPTest, VlanInterfacePortUp) {
   auto config = createVlanInterfaceConfig();
+  // The port enable during initial config apply also triggers handlePortUp,
+  // so configure desiredPeerAddressIPv6 only once the port is DOWN.
+  config.interfaces()[0].desiredPeerAddressIPv6().reset();
   auto handle = setupTestHandle(config);
 
   // Initially set port to DOWN
   sw_->linkStateChanged(PortID(PORT_ID), false, cfg::PortType::INTERFACE_PORT);
+  config.interfaces()[0].desiredPeerAddressIPv6() = DESIRED_PEER_ADDRESS_IPV6_2;
+  sw_->applyConfig("Add desiredPeerAddressIPv6", config);
+  waitForStateUpdates(sw_);
+  waitForNeighborCacheThread(sw_);
   {
     auto neighborCache =
         sw_->getNeighborUpdater()->getNdpCacheDataForIntf().get();
@@ -232,6 +238,30 @@ TEST_F(PortUpdateHandlerNDPTest, VlanInterfacePortUp) {
       InterfaceID(INTERFACE_ID),
       DESIRED_PEER_ADDRESS_IPV6_2,
       cfg::InterfaceType::VLAN);
+}
+
+TEST_F(PortUpdateHandlerNDPTest, SlowRetriesOnlyForDesiredPeer) {
+  auto config = createVlanInterfaceConfig();
+  *config.maxNeighborProbes() = 2;
+  auto handle = setupTestHandle(config);
+  sw_->linkStateChanged(PortID(PORT_ID), true, cfg::PortType::INTERFACE_PORT);
+  waitForStateUpdates(sw_);
+  auto peer = folly::IPAddressV6("2001:db8:100::2");
+  auto nonPeer = folly::IPAddressV6("2001:db8:100::3");
+  auto inCache = [&](const folly::IPAddressV6& ip) {
+    auto entries = sw_->getNeighborUpdater()->getNdpCacheDataForIntf().get();
+    return std::any_of(entries.begin(), entries.end(), [&](const auto& entry) {
+      return entry.ip() == facebook::network::toBinaryAddress(ip);
+    });
+  };
+
+  sw_->getNeighborUpdater()
+      ->resolveNdpForIntf(InterfaceID(INTERFACE_ID), nonPeer)
+      .get();
+  EXPECT_TRUE(inCache(nonPeer));
+
+  WITH_RETRIES_N(10, { EXPECT_EVENTUALLY_FALSE(inCache(nonPeer)); });
+  EXPECT_TRUE(inCache(peer));
 }
 
 // Test port UP but interface operationally DOWN

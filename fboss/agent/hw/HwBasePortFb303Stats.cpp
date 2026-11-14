@@ -85,9 +85,8 @@ void HwBasePortFb303Stats::reinitStats(std::optional<std::string> oldPortName) {
     // just delete the counter
     utility::deleteCounter(statName(statKey, oldPortName.value_or("")));
   }
-  // Phy transition timeseries are not in either list above: they are neither
-  // registered up front (they only exist on ports that actually report phy
-  // info) nor set every stats round. Only the old name needs clearing.
+  // Phy transition timeseries and latch-derived stats are not in either list
+  // above. Only their old names need clearing here.
   if (oldPortName) {
     for (auto statKey :
          {kLineRxSignalDetectChanged(),
@@ -95,7 +94,8 @@ void HwBasePortFb303Stats::reinitStats(std::optional<std::string> oldPortName) {
           kLineRxCdrLockChanged(),
           kSystemRxCdrLockChanged(),
           kLineLocalFaultChanged(),
-          kLineRemoteFaultChanged()}) {
+          kLineRemoteFaultChanged(),
+          kLinkDownDuringWarmBoot()}) {
       utility::deleteCounter(statName(statKey, *oldPortName));
     }
   }
@@ -136,6 +136,10 @@ void HwBasePortFb303Stats::reinitStats(std::optional<std::string> oldPortName) {
   if (sllHllDiscardCounterSupported_) {
     reinitStat(kOutDiscardsSll(), portName_, oldPortName);
     reinitStat(kOutDiscardsHll(), portName_, oldPortName);
+  }
+  if (portLatchStatusSupported_) {
+    fb303::fbData->setCounter(
+        statName(kLinkDownDuringWarmBoot(), portName_), 0);
   }
   // Init per priority PFC stats
   if (getEnabledPfcPriorities().size()) {
@@ -346,29 +350,28 @@ void HwBasePortFb303Stats::pfcConfigChanged(
       pfc.has_value() && pfc->txPfcDurationEnable().has_value()
       ? *pfc->txPfcDurationEnable()
       : false;
-  // Handle a change in PFC RX/TX duration config
-  if (pfcInfo_.rxPfcDurationEnabled != rxPfcDurationEnabled) {
-    pfcInfo_.rxPfcDurationEnabled = rxPfcDurationEnabled;
-    auto keys = {kRxPfcDurationUsec()};
-    if (getEnabledPfcPriorities() != enabledPriorities ||
-        !pfcInfo_.rxPfcDurationEnabled) {
-      removeAllPfcPriorityKeys(getEnabledPfcPriorities(), keys);
-    }
-    if (pfcInfo_.rxPfcDurationEnabled) {
-      reinitAllPfcPriorityKeys(enabledPriorities, keys);
-    }
-  }
-  if (pfcInfo_.txPfcDurationEnabled != txPfcDurationEnabled) {
-    pfcInfo_.txPfcDurationEnabled = txPfcDurationEnabled;
-    auto keys = {kTxPfcDurationUsec()};
-    if (getEnabledPfcPriorities() != enabledPriorities ||
-        !pfcInfo_.txPfcDurationEnabled) {
-      removeAllPfcPriorityKeys(getEnabledPfcPriorities(), keys);
-    }
-    if (pfcInfo_.txPfcDurationEnabled) {
-      reinitAllPfcPriorityKeys(enabledPriorities, keys);
-    }
-  }
+  // Duration counters exist per enabled priority while the duration is
+  // enabled, so they must follow a change to either.
+  auto updatePfcDurationKeys =
+      [&](bool& enabled, bool newEnabled, folly::StringPiece statKey) {
+        bool prioritiesChanged = getEnabledPfcPriorities() != enabledPriorities;
+        auto keys = {statKey};
+        if (enabled && (!newEnabled || prioritiesChanged)) {
+          removeAllPfcPriorityKeys(getEnabledPfcPriorities(), keys);
+        }
+        if (newEnabled && (!enabled || prioritiesChanged)) {
+          reinitAllPfcPriorityKeys(enabledPriorities, keys);
+        }
+        enabled = newEnabled;
+      };
+  updatePfcDurationKeys(
+      pfcInfo_.rxPfcDurationEnabled,
+      rxPfcDurationEnabled,
+      kRxPfcDurationUsec());
+  updatePfcDurationKeys(
+      pfcInfo_.txPfcDurationEnabled,
+      txPfcDurationEnabled,
+      kTxPfcDurationUsec());
 
   // Handle a change in PFC priorities
   if (getEnabledPfcPriorities() != enabledPriorities) {

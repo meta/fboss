@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <memory>
 
 #include <folly/IPAddressV6.h>
@@ -30,6 +31,11 @@ struct PfcBufferParams {
   std::optional<int> pgShared;
 
   static PfcBufferParams getPfcBufferParams(
+      cfg::AsicType asicType,
+      int globalShared = kGlobalSharedBytes,
+      int globalHeadroom = kGlobalHeadroomBytes);
+
+  static uint64_t getEgressBufferPoolBytes(
       cfg::AsicType asicType,
       int globalShared = kGlobalSharedBytes,
       int globalHeadroom = kGlobalHeadroomBytes);

@@ -39,7 +39,7 @@
         {
           "busName": "SCM_I2C_MASTER_0@0",
           "address": "0x40",
-          "kernelDeviceName": "pmbus",
+          "kernelDeviceName": "apmbus",
           "pmUnitScopedName": "SCM_MPS_PMBUS"
         }
       ],
@@ -141,7 +141,7 @@
         {
           "busName": "INCOMING@1",
           "address": "0x60",
-          "kernelDeviceName": "raa228228",
+          "kernelDeviceName": "bp4a_raa228228",
           "pmUnitScopedName": "SMB_RAA228926_R3R0_CORE"
         },
         {
@@ -159,7 +159,7 @@
         {
           "busName": "INCOMING@1",
           "address": "0x61",
-          "kernelDeviceName": "raa228228",
+          "kernelDeviceName": "bp4a_raa228228",
           "pmUnitScopedName": "SMB_RAA228926_R3R1_CORE"
         },
         {
@@ -201,7 +201,7 @@
         {
           "busName": "INCOMING@2",
           "address": "0x11",
-          "kernelDeviceName": "ucd90320",
+          "kernelDeviceName": "meru_aucd90320",
           "pmUnitScopedName": "SMB_UCD90320"
         },
         {
@@ -239,6 +239,18 @@
           "address": "0x62",
           "kernelDeviceName": "fan_cpld2",
           "pmUnitScopedName": "FAN2_CPLD"
+        },
+        {
+          "busName": "INCOMING@2",
+          "address": "0x45",
+          "kernelDeviceName": "bp4a_mp5990",
+          "pmUnitScopedName": "SMB_MP5990_L"
+        },
+        {
+          "busName": "INCOMING@2",
+          "address": "0x46",
+          "kernelDeviceName": "bp4a_mp5990",
+          "pmUnitScopedName": "SMB_MP5990_R"
         }
       ],
       "outgoingSlotConfigs": {
@@ -1149,6 +1161,8 @@
     "/run/devmap/sensors/SMB_ISL68226_OSFP_BL": "/SMB_SLOT@0/[SMB_ISL68226_OSFP_BL]",
     "/run/devmap/sensors/SMB_ISL68226_OSFP_BR": "/SMB_SLOT@0/[SMB_ISL68226_OSFP_BR]",
     "/run/devmap/sensors/SMB_UCD90320": "/SMB_SLOT@0/[SMB_UCD90320]",
+    "/run/devmap/sensors/SMB_MP5990_L": "/SMB_SLOT@0/[SMB_MP5990_L]",
+    "/run/devmap/sensors/SMB_MP5990_R": "/SMB_SLOT@0/[SMB_MP5990_R]",
     "/run/devmap/sensors/FAN0_TMP75": "/SMB_SLOT@0/[FAN0_TMP75]",
     "/run/devmap/sensors/FAN1_TMP75": "/SMB_SLOT@0/[FAN1_TMP75]",
     "/run/devmap/sensors/FAN2_TMP75": "/SMB_SLOT@0/[FAN2_TMP75]",

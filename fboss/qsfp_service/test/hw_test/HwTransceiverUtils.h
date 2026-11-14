@@ -87,6 +87,9 @@ class HwTransceiverUtils {
   static void verify400gProfile(
       const TransceiverManagementInterface mgmtInterface,
       const std::vector<MediaInterfaceId>& mediaInterfaces);
+  static void verifyCopper25gProfile(
+      const TcvrState& tcvrState,
+      const std::vector<MediaInterfaceId>& mediaInterfaces);
   static void verifyCopper100gProfile(
       const TcvrState& tcvrState,
       const std::vector<MediaInterfaceId>& mediaInterfaces);

@@ -104,10 +104,10 @@ cpp_library(
         "fbsource//xplat/folly:conv",
         ":fpga_device",
         "//fb303:thread_cached_service_data",
-        "//fboss/agent:fboss-error",
     ],
     exported_deps = [
         "fbsource//xplat/folly:synchronized",
+        "//fboss/agent:fboss-error",
         "//fboss/agent:fboss-types",
         "//fboss/lib/if:pim_state-cpp2-types",
     ],

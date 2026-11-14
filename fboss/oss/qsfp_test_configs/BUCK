@@ -1,0 +1,9 @@
+load("@fbcode_macros//build_defs:native_rules.bzl", "buck_filegroup")
+
+oncall("fboss_oss")
+
+buck_filegroup(
+    name = "qsfp_test_configs",
+    srcs = glob(["*.materialized_JSON"]),
+    visibility = ["//fboss/facebook/horizon/..."],
+)

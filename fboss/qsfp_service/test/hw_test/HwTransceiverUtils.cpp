@@ -426,6 +426,12 @@ void HwTransceiverUtils::verifyMediaInterfaceCompliance(
       verifyCopper400gProfile(tcvrState, mediaInterfaces);
       break;
 
+    case cfg::PortProfileID::PROFILE_25G_1_NRZ_NOFEC_COPPER:
+    case cfg::PortProfileID::PROFILE_25G_1_NRZ_CL74_COPPER:
+    case cfg::PortProfileID::PROFILE_25G_1_NRZ_RS528_COPPER:
+      verifyCopper25gProfile(tcvrState, mediaInterfaces);
+      break;
+
     case cfg::PortProfileID::PROFILE_100G_1_PAM4_RS544X2N_COPPER:
     case cfg::PortProfileID::PROFILE_100G_4_NRZ_RS528_COPPER:
     case cfg::PortProfileID::PROFILE_100G_4_NRZ_CL91_COPPER:
@@ -599,6 +605,19 @@ void HwTransceiverUtils::verifyCopper400gProfile(
     } else {
       EXPECT_TRUE(*mediaId.code() == MediaInterfaceCode::CR8_400G);
     }
+  }
+}
+
+void HwTransceiverUtils::verifyCopper25gProfile(
+    const TcvrState& tcvrState,
+    const std::vector<MediaInterfaceId>& mediaInterfaces) {
+  EXPECT_EQ(
+      TransmitterTechnology::COPPER,
+      *(tcvrState.cable().value_or({}).transmitterTech()));
+
+  // 25G copper ports are lanes of a 100G-CR4 DAC broken out as 4x25G
+  for (const auto& mediaId : mediaInterfaces) {
+    EXPECT_EQ(*mediaId.code(), MediaInterfaceCode::CR4_100G);
   }
 }
 

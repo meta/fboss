@@ -10,6 +10,7 @@
 
 #include "fboss/cli/fboss2/commands/delete/interface/CmdDeleteInterface.h"
 #include "fboss/cli/fboss2/CmdHandler.cpp"
+#include "fboss/cli/fboss2/utils/ArgCompletion.h"
 
 #include <fmt/format.h>
 #include <folly/String.h>
@@ -22,8 +23,11 @@
 #include <unordered_set>
 #include <vector>
 
+#include "fboss/agent/FbossError.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
+#include "fboss/agent/types.h"
 #include "fboss/cli/fboss2/commands/config/interface/InterfaceIpUtils.h"
+#include "fboss/cli/fboss2/commands/config/vlan/VlanManager.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/utils/InterfaceList.h"
 #include "fboss/lib/config/agent/PortConfigUtils.h"
@@ -37,7 +41,13 @@ namespace {
 // config and delete commands cannot drift apart.
 const std::unordered_set<std::string> kValuelessDeleteAttributes = [] {
   std::unordered_set<std::string> attrs = {
-      "description", "loopback-mode", "lookup-class", "mtu", "queue-config"};
+      "description",
+      "loopback-mode",
+      "lookup-class",
+      "mtu",
+      "queue-config",
+      "mirror-ingress",
+      "mirror-egress"};
   for (const auto& name : lldpAttrNames()) {
     attrs.insert(name);
   }
@@ -53,8 +63,46 @@ const std::unordered_set<std::string> kKnownDeleteAttributes = [] {
 }();
 
 const std::string kValidDeleteAttrs = fmt::format(
-    "description, loopback-mode, lookup-class, mtu, queue-config, {}, ip-address, ipv6-address",
+    "description, loopback-mode, lookup-class, mtu, queue-config, "
+    "mirror-ingress, mirror-egress, {}, ip-address, ipv6-address",
     folly::join(", ", lldpAttrNames()));
+
+// A whole-interface delete of a loopback token (`delete interface
+// loopback<N>`) removes the virtual interface together with its backing VLAN
+// through VlanManager::deleteVlan, which cascades the interface. A VLAN with
+// member ports is a data VLAN, not a loopback's, and is refused rather than
+// cascaded.
+//
+// Validates without mutating; returns the backing VLAN id to delete.
+VlanID checkLoopbackDeletable(
+    const cfg::SwitchConfig& swConfig,
+    const utils::Intf& intf) {
+  const cfg::Interface* iface = intf.getInterface();
+  if (!iface || !*iface->isVirtual() ||
+      *iface->type() != cfg::InterfaceType::VLAN) {
+    throw std::invalid_argument(
+        fmt::format("{} is not a loopback interface", intf.name()));
+  }
+  const auto vlanId = VlanID(*iface->vlanID());
+  try {
+    VlanManager::checkDeletable(swConfig, vlanId);
+  } catch (const FbossError& e) {
+    throw std::invalid_argument(
+        fmt::format("Cannot delete {}: {}", intf.name(), e.what()));
+  }
+  for (const auto& vlanPort : *swConfig.vlanPorts()) {
+    if (*vlanPort.vlanID() == *iface->vlanID()) {
+      throw std::invalid_argument(
+          fmt::format(
+              "Cannot delete {}: its VLAN {} has member ports, so it is a "
+              "data VLAN. Delete it with 'delete vlan {}' instead",
+              intf.name(),
+              *iface->vlanID(),
+              *iface->vlanID()));
+    }
+  }
+  return vlanId;
+}
 
 } // namespace
 
@@ -103,31 +151,44 @@ CmdDeleteInterfaceTraits::RetType CmdDeleteInterface::queryClient(
     throw std::invalid_argument("No interface name provided");
   }
 
-  // No attributes => delete the whole port(s) from the config.
+  // No attributes => delete the whole port(s) / loopback interface(s) from
+  // the config.
   if (attributes.empty()) {
     auto& swConfig = *ConfigSession::getInstance().getAgentConfig().sw();
     std::set<PortID> portsToDelete;
+    std::set<VlanID> loopbackVlansToDelete;
     std::vector<std::string> deletedNames;
     for (const utils::Intf& intf : interfaces) {
-      const cfg::Port* port = intf.getPort();
-      if (!port) {
-        continue;
+      if (const cfg::Port* port = intf.getPort()) {
+        portsToDelete.insert(PortID(*port->logicalID()));
+        deletedNames.push_back(intf.name());
+      } else if (utils::parseLoopbackIndex(intf.name()).has_value()) {
+        // Every loopback is checked before anything is removed, so a refused
+        // delete leaves the config untouched.
+        loopbackVlansToDelete.insert(checkLoopbackDeletable(swConfig, intf));
+        deletedNames.push_back(intf.name());
       }
-      portsToDelete.insert(PortID(*port->logicalID()));
-      deletedNames.push_back(intf.name());
     }
-    if (portsToDelete.empty()) {
+    if (portsToDelete.empty() && loopbackVlansToDelete.empty()) {
       throw std::invalid_argument(
-          "No port found for the specified interface(s)");
+          "No port or loopback interface found for the specified "
+          "interface(s)");
     }
-    utility::removePortsFromConfig(
-        swConfig,
-        portsToDelete,
-        utility::PortRemovalMode::Erase,
-        /*pruneEmptyVlansAndInterfaces=*/true);
+    if (!portsToDelete.empty()) {
+      utility::removePortsFromConfig(
+          swConfig,
+          portsToDelete,
+          utility::PortRemovalMode::Erase,
+          /*pruneEmptyVlansAndInterfaces=*/true);
+    }
+    // deleteVlan cascades the interface bound to the VLAN.
+    for (const auto& vlanId : loopbackVlansToDelete) {
+      VlanManager::deleteVlan(swConfig, vlanId);
+    }
     // Removing a port is a HITLESS change: the agent's reloadConfig() applies
     // the port-set delta live, matching how 'config interface <port> profile'
-    // adds/removes ports. No agent warmboot is needed.
+    // adds/removes ports. Removing a loopback interface and its VLAN is the
+    // same config reload 'delete vlan' relies on. No agent warmboot is needed.
     ConfigSession::getInstance().saveConfig();
     return fmt::format(
         "Deleted interface(s): {}", folly::join(", ", deletedNames));
@@ -208,7 +269,7 @@ CmdDeleteInterfaceTraits::RetType CmdDeleteInterface::queryClient(
       }
     } else {
       // Port-level valueless reset (description, loopback-mode, lookup-class,
-      // queue-config, lldp-expected-*).
+      // queue-config, mirror-ingress, mirror-egress, lldp-expected-*).
       std::vector<std::string> resetNames;
       std::vector<std::string> skippedNames;
       for (const utils::Intf& intf : interfaces) {
@@ -238,6 +299,16 @@ CmdDeleteInterfaceTraits::RetType CmdDeleteInterface::queryClient(
           // SwitchConfig::defaultPortQueues.
           if (port->portQueueConfigName().has_value()) {
             port->portQueueConfigName().reset();
+            changed = true;
+          }
+        } else if (attr == "mirror-ingress") {
+          if (port->ingressMirror().has_value()) {
+            port->ingressMirror().reset();
+            changed = true;
+          }
+        } else if (attr == "mirror-egress") {
+          if (port->egressMirror().has_value()) {
+            port->egressMirror().reset();
             changed = true;
           }
         } else if (auto tag = lldpTagForAttr(attr); tag.has_value()) {
@@ -283,5 +354,16 @@ void CmdDeleteInterface::printOutput(const RetType& logMsg) {
 
 // Explicit template instantiation
 template void CmdHandler<CmdDeleteInterface, CmdDeleteInterfaceTraits>::run();
+
+std::vector<std::string> CmdDeleteInterfaceTraits::completeArgs(
+    const std::vector<std::string>& typed) {
+  return utils::completion::completeAttrGrammar(
+      typed,
+      {.attrs = utils::completion::toWords(kKnownDeleteAttributes),
+       .valueless =
+           {kValuelessDeleteAttributes.begin(),
+            kValuelessDeleteAttributes.end()},
+       .minObjects = 1});
+}
 
 } // namespace facebook::fboss

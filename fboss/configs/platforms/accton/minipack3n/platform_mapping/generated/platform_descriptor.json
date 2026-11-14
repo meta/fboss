@@ -7,7 +7,8 @@
     "MINIPACK3NM"
   ],
   "modeNames": [
-    "minipack3n"
+    "minipack3n",
+    "minipack3nm"
   ],
   "asicType": 17,
   "numSwitchAsics": 1

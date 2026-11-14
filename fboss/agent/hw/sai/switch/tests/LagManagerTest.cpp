@@ -74,6 +74,22 @@ TEST_F(LagManagerTest, addLag) {
   EXPECT_EQ("lag0", value);
 }
 
+// False/unset TTL state must not require a Cisco-only extension in fake SAI.
+TEST_F(LagManagerTest, explicitFalseTtlWithoutExtension) {
+  auto aggregate = makeAggregatePort(intf0);
+  aggregate->setTTLDisableDecrement(false);
+  ASSERT_NO_THROW(saiManagerTable->lagManager().addLag(aggregate));
+
+  auto unset = aggregate->clone();
+  unset->setTTLDisableDecrement(std::nullopt);
+  EXPECT_NO_THROW(saiManagerTable->lagManager().changeLag(aggregate, unset));
+
+  auto explicitFalse = unset->clone();
+  explicitFalse->setTTLDisableDecrement(false);
+  EXPECT_NO_THROW(
+      saiManagerTable->lagManager().changeLag(unset, explicitFalse));
+}
+
 TEST_F(LagManagerTest, removeLag) {
   std::shared_ptr<AggregatePort> swAggregatePort = makeAggregatePort(intf0);
   LagSaiId saiId = saiManagerTable->lagManager().addLag(swAggregatePort);

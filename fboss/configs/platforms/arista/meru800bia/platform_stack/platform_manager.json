@@ -39,7 +39,7 @@
         {
           "busName": "SCM_I2C_MASTER_0@0",
           "address": "0x40",
-          "kernelDeviceName": "pmbus",
+          "kernelDeviceName": "apmbus",
           "pmUnitScopedName": "SCM_MPS_PMBUS"
         }
       ],
@@ -109,7 +109,7 @@
           "busName": "INCOMING@0",
           "address": "0x23",
           "kernelDeviceName": "scd_vcpld",
-          "pmUnitScopedName": "SCD_VCPLD"
+          "pmUnitScopedName": "SMB_CPLD"
         },
         {
           "busName": "INCOMING@0",
@@ -232,12 +232,13 @@
           "busName": "INCOMING@2",
           "address": "0x60",
           "kernelDeviceName": "fan_cpld",
-          "pmUnitScopedName": "FAN_CPLD"
+          "pmUnitScopedName": "FAN_CPLD",
+          "isWatchdog": true
         },
         {
           "busName": "SMB_I2C_MASTER_0@0",
           "address": "0x45",
-          "kernelDeviceName": "raa228228",
+          "kernelDeviceName": "bp4a_raa228228",
           "pmUnitScopedName": "SMB_RAA228926_J3"
         },
         {
@@ -474,6 +475,7 @@
     "/run/devmap/sensors/FAN_CPLD": "/SMB_SLOT@0/[FAN_CPLD]",
     "/run/devmap/sensors/PSU1_PMBUS": "/SMB_SLOT@0/PSU_SLOT@0/[PSU_PMBUS]",
     "/run/devmap/sensors/PSU2_PMBUS": "/SMB_SLOT@0/PSU_SLOT@1/[PSU_PMBUS]",
+    "/run/devmap/cplds/MERU800BIA_SMB_CPLD": "/SMB_SLOT@0/[SMB_CPLD]",
     "/run/devmap/cplds/FAN_CPLD": "/SMB_SLOT@0/[FAN_CPLD]",
     "/run/devmap/fpgas/MERU_SCM_CPLD": "/[SCM_FPGA]",
     "/run/devmap/fpgas/MERU_SCM_CPLD_INFO_ROM": "/[SCM_FPGA_INFO_ROM]",
@@ -481,6 +483,7 @@
     "/run/devmap/fpgas/MERU800BIA_SMB_FPGA_INFO_ROM": "/SMB_SLOT@0/[SMB_FPGA_INFO_ROM]",
     "/run/devmap/inforoms/MERU_SCM_CPLD_INFO_ROM": "/[SCM_FPGA_INFO_ROM]",
     "/run/devmap/inforoms/MERU800BIA_SMB_FPGA_INFO_ROM": "/SMB_SLOT@0/[SMB_FPGA_INFO_ROM]",
+    "/run/devmap/watchdogs/FAN_CPLD_WATCHDOG": "/SMB_SLOT@0/[FAN_CPLD]",
     "/run/devmap/i2c-busses/MERU_SCM_CPLD_SMBUS0_CH0": "/[SCM_I2C_MASTER_0@0]",
     "/run/devmap/i2c-busses/MERU_SCM_CPLD_SMBUS0_CH1": "/[SCM_I2C_MASTER_0@1]",
     "/run/devmap/i2c-busses/MERU_SCM_CPLD_SMBUS0_CH2": "/[SCM_I2C_MASTER_0@2]",

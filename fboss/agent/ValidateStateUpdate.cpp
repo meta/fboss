@@ -103,22 +103,21 @@ bool StateUpdateValidator::isEcmpWidthUpdateValid(
 bool StateUpdateValidator::isLlrConfigUpdateValid(
     const StateDelta& delta) const {
   bool isValid = true;
-  // An LLR profile cannot be retuned or unbound under a running agent. Draining
-  // the port first does not help: the SDK refuses the rebind even with the port
-  // admin disabled and both LLR modes cleared beforehand (CS00012478409).
-  //
-  // The rule enforced here is not "coldboot only": a StateDelta carries no boot
-  // type, and no validator in this file reads one. It is the first bind on a
-  // port that is still down, which is the shape a coldboot takes, since ports
-  // exist carrying cfg::PortState::DISABLED before config is applied. A runtime
-  // update of that same shape is therefore accepted too. That is safe -- the
-  // port is down on the old side and SaiPortManager holds the enable until the
-  // profile is attached -- but it does mean a first bind can land without a
+  // LLR config changes need a coldboot. SDK 6.5.35 and 6.5.36 refuse to rebind
+  // a profile, even with the port admin disabled and both LLR modes cleared
+  // (CS00012478409). Later SDKs may allow the rebind, but it is not hitless: a
+  // profile attaches only to an admin disabled port, and one profile serves
+  // many ports, so a change flaps all of them. FBOSS keeps LLR changes to a
   // coldboot.
   //
+  // A StateDelta carries no boot type, so the check allows one shape: the first
+  // bind on a port that is still down. A coldboot has that shape, because ports
+  // start as cfg::PortState::DISABLED before config is applied. A runtime first
+  // bind on a down port passes too. That is safe: SaiPortManager keeps the port
+  // down until the profile is attached.
+  //
   // Everything else needs a coldboot: retuning a bound profile, unbinding one,
-  // or binding onto a port that is already up, where the attach would land on
-  // a port hardware considers enabled.
+  // or binding onto a port that is already up.
   forEachChanged(
       delta.getPortsDelta(),
       [&isValid](
@@ -136,15 +135,16 @@ bool StateUpdateValidator::isLlrConfigUpdateValid(
   return isValid;
 }
 
-bool StateUpdateValidator::isCbfcSenderUpdateValid(
-    const StateDelta& delta) const {
+bool StateUpdateValidator::isCbfcUpdateValid(const StateDelta& delta) const {
   bool isValid = true;
-  // The CBFC sender credit size, packet overhead and credit limit are set once,
-  // when a port takes on CBFC: on a coldboot, or as the first bind on a running
-  // agent. On TU1 each size or overhead write makes the SDK recompute the port
-  // credit limit, so changing them on a live port briefly resets the sender.
-  // Changing them needs a coldboot, and so does removing CBFC from the port,
-  // as for LLR.
+  // The CBFC sender credit size, packet overhead and credit limit, and the
+  // receiver credit limit, are set once, when a port takes on CBFC: on a
+  // coldboot, or as the first bind on a running agent. On TU1 each size or
+  // overhead write makes the SDK recompute the port credit limit, so changing
+  // them on a live port briefly resets the sender. The receiver limit reaches
+  // hardware when the first VC on the port enables its receiver, not when the
+  // port attribute changes. Changing any of them needs a coldboot, and so does
+  // removing CBFC from the port, as for LLR.
   forEachChanged(
       delta.getPortsDelta(),
       [&isValid](
@@ -163,11 +163,13 @@ bool StateUpdateValidator::isCbfcSenderUpdateValid(
             oldPort->getCbfcSenderPacketOverhead() ==
                 newPort->getCbfcSenderPacketOverhead() &&
             oldPort->getCbfcSenderCreditLimit() ==
-                newPort->getCbfcSenderCreditLimit()) {
+                newPort->getCbfcSenderCreditLimit() &&
+            oldPort->getCbfcReceiverCreditLimit() ==
+                newPort->getCbfcReceiverCreditLimit()) {
           return;
         }
-        XLOG(ERR) << "CBFC sender credit size, packet overhead or credit limit"
-                  << " on port " << newPort->getID()
+        XLOG(ERR) << "CBFC sender credit size, packet overhead or credit limit,"
+                  << " or receiver credit limit, on port " << newPort->getID()
                   << " cannot change on a running agent; a coldboot is"
                   << " required to change them";
         isValid = false;
@@ -557,7 +559,7 @@ bool StateUpdateValidator::isValidUpdate(
     return false;
   }
 
-  if (!isCbfcSenderUpdateValid(delta)) {
+  if (!isCbfcUpdateValid(delta)) {
     XLOG(ERR) << "State update is not valid.";
     return false;
   }

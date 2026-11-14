@@ -8,6 +8,7 @@
 #include "fboss/agent/hw/sai/store/SaiStore.h"
 #include "fboss/agent/hw/sai/switch/SaiManagerTable.h"
 #include "fboss/agent/hw/sai/switch/SaiRouterInterfaceManager.h"
+#include "fboss/agent/hw/sai/switch/SaiSwitchManager.h"
 #include "fboss/agent/hw/sai/switch/SaiTunnelUtils.h"
 #include "fboss/agent/hw/sai/switch/SaiVirtualRouterManager.h"
 #include "fboss/agent/state/VxlanTunnel.h"
@@ -52,6 +53,7 @@ void SaiVxlanTunnelManager::addVxlanTunnel(
         "Attempted to add vxlan tunnel which already exists: ",
         vxlanTunnel->getID());
   }
+  managerTable_->switchManager().setVxlanDefaultPort();
   SaiRouterInterfaceHandle* intfHandle =
       managerTable_->routerInterfaceManager().getRouterInterfaceHandle(
           vxlanTunnel->getUnderlayIntfId());

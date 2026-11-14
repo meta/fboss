@@ -33,29 +33,6 @@ using apache::thrift::can_throw;
 using namespace facebook::fboss;
 
 namespace {
-void addPort(
-    facebook::fboss::BcmConfig::ConfigMap& cfg,
-    int port,
-    int speed,
-    bool enabled = true) {
-  auto key = folly::to<std::string>("portmap_", port);
-  auto value = folly::to<std::string>(port, ":", speed);
-  if (!enabled) {
-    value = folly::to<std::string>(value, ":i");
-  }
-  cfg[key] = value;
-}
-
-void addFlexPort(
-    facebook::fboss::BcmConfig::ConfigMap& cfg,
-    int start,
-    int speed) {
-  addPort(cfg, start, speed);
-  addPort(cfg, start + 1, speed / 4, false);
-  addPort(cfg, start + 2, speed / 2, false);
-  addPort(cfg, start + 3, speed / 4, false);
-}
-
 std::unique_ptr<AgentConfig> loadCfgFromLocalFile(
     std::unique_ptr<Platform>& platform,
     BcmTestPlatform* bcmTestPlatform,
@@ -216,34 +193,11 @@ void BcmSwitchEnsemble::init(const TestEnsembleInitInfo& info) {
   BcmConfig::ConfigMap cfg;
   std::string yamlCfg;
   auto platformType = getPlatformType();
-  if (platformType == PlatformType::PLATFORM_FAKE_WEDGE) {
-    FLAGS_flexports = true;
-    for (int n = 1; n <= 125; n += 4) {
-      addFlexPort(cfg, n, 40);
-    }
-    cfg["pbmp_xport_xe"] = "0x1fffffffffffffffffffffffe";
-    // Create an empty AgentConfig for now, once we fully roll out the new
-    // platform config, we should generate a mock platform config for the fake
-    // bcm test
-    auto emptyAgentConfig = createEmptyAgentConfig()->thrift;
-    cfg::SwitchInfo switchInfo{};
-    switchInfo.switchType() = cfg::SwitchType::NPU;
-    switchInfo.asicType() = cfg::AsicType::ASIC_TYPE_FAKE;
-    fboss::cfg::Range64 portIdRange;
-    portIdRange.minimum() = 0;
-    portIdRange.maximum() = 0;
-    switchInfo.portIdRange() = portIdRange;
-    switchInfo.switchIndex() = 0;
-    emptyAgentConfig.sw()->switchSettings()->switchIdToSwitchInfo()->emplace(
-        0, switchInfo);
-    agentConfig = std::make_unique<AgentConfig>(emptyAgentConfig);
-  } else {
-    // Load from a local file
-    agentConfig = loadCfgFromLocalFile(platform, bcmTestPlatform, yamlCfg, cfg);
-    for (auto item : *agentConfig->thrift.defaultCommandLineArgs()) {
-      gflags::SetCommandLineOptionWithMode(
-          item.first.c_str(), item.second.c_str(), gflags::SET_FLAG_IF_DEFAULT);
-    }
+  // Load from a local file
+  agentConfig = loadCfgFromLocalFile(platform, bcmTestPlatform, yamlCfg, cfg);
+  for (auto item : *agentConfig->thrift.defaultCommandLineArgs()) {
+    gflags::SetCommandLineOptionWithMode(
+        item.first.c_str(), item.second.c_str(), gflags::SET_FLAG_IF_DEFAULT);
   }
   // Augment bcm configs based on capabilities.
   // We should really move this functionality to generated bcm_test configs for

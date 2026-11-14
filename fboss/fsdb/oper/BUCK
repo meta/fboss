@@ -61,6 +61,7 @@ cpp_library(
         "fbsource//third-party/re2:re2",
         "fbsource//xplat/folly:cpp_attributes",
         "fbsource//xplat/folly:demangle",
+        "fbsource//xplat/folly:expected",
         "fbsource//xplat/folly:fbstring",
         "fbsource//xplat/folly:function",
         "fbsource//xplat/folly:string",
@@ -84,7 +85,6 @@ cpp_library(
         "//fboss/thrift_cow:patch-cpp2-types",
         "//fboss/thrift_cow/storage:cow_storage",
         "//fboss/thrift_cow/visitors:visitors",
-        "//folly:expected",
     ],
     external_deps = [("boost", None, "boost_uuid")],
     exported_external_deps = [

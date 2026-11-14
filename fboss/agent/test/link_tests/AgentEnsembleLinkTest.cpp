@@ -69,9 +69,9 @@ long swAgentMemThreshold(facebook::fboss::PlatformType platform) {
     case facebook::fboss::PlatformType::PLATFORM_DARWIN:
     case facebook::fboss::PlatformType::PLATFORM_DARWIN48V:
     case facebook::fboss::PlatformType::PLATFORM_MINIPACK:
-    case facebook::fboss::PlatformType::PLATFORM_YAMP:
       return 3 * 1000 * 1000 * 1000L; // 3GB
     case facebook::fboss::PlatformType::PLATFORM_MORGAN800CC:
+    case facebook::fboss::PlatformType::PLATFORM_MONTBLANC:
       return 5 * 1000 * 1000 * 1000L; // 5GB
     case facebook::fboss::PlatformType::PLATFORM_MERU800BIA:
     case facebook::fboss::PlatformType::PLATFORM_ICECUBE800BC:
@@ -91,7 +91,6 @@ void AgentEnsembleLinkTest::SetUp() {
   if (FLAGS_list_production_feature) {
     printProductionFeatures();
     GTEST_SKIP() << "Skipping this test because list_production_feature is set";
-    return;
   }
   AgentEnsembleTest::SetUp();
   initializeCabledPorts();

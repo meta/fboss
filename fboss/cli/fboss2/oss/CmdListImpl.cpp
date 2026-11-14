@@ -24,7 +24,7 @@ const std::vector<Command>& kSpecialCommands() {
   static const std::vector<Command> cmds = {Command(
       "help",
       "Help command showing info on all verbs applicable for the requested object",
-      helpCommandHandler,
+      kHelpCommandRunner,
       helpArgTypeHandler)};
   return cmds;
 }

@@ -648,8 +648,8 @@ void HwPortFb303Stats::updateStats(
     }
   }
 
-  // PFC duration stats
-  if (curPortStats.rxPfcDurationUsec_()->size()) {
+  // PFC duration stats. The counters only exist while enabled in config.
+  if (isRxPfcDurationEnabled() && !curPortStats.rxPfcDurationUsec_()->empty()) {
     for (const auto& priority : getEnabledPfcPriorities()) {
       updatePfcStat(
           kRxPfcDurationUsec(),
@@ -658,7 +658,7 @@ void HwPortFb303Stats::updateStats(
           nullptr);
     }
   }
-  if (curPortStats.txPfcDurationUsec_()->size()) {
+  if (isTxPfcDurationEnabled() && !curPortStats.txPfcDurationUsec_()->empty()) {
     for (const auto& priority : getEnabledPfcPriorities()) {
       updatePfcStat(
           kTxPfcDurationUsec(),
@@ -692,6 +692,16 @@ void HwPortFb303Stats::updateStats(
   }
 
   portStats_ = curPortStats;
+}
+
+void HwPortFb303Stats::updateLinkDownDuringWarmBootCounter(
+    bool linkDownDuringWarmBoot) {
+  if (!portLatchStatusSupported_) {
+    return;
+  }
+  fb303::fbData->setCounter(
+      statName(kLinkDownDuringWarmBoot(), portName()),
+      linkDownDuringWarmBoot ? 1 : 0);
 }
 
 } // namespace facebook::fboss

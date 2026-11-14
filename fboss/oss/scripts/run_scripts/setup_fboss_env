@@ -1,6 +1,18 @@
 # Derive FBOSS root from this script's location (script lives at $FBOSS/bin/setup_fboss_env)
 _FBOSS_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 
+# Tab completion for fboss2 / fboss2-dev / fboss2-readonly in interactive
+# bash sessions. The script is sourced directly rather than left to
+# bash-completion's lazy loader, which only searches /usr/share and
+# XDG_DATA_DIRS, not this tree.
+# This runs before the idempotency check because completion specs, unlike
+# the exported variables below, are not inherited by child shells.
+if [[ -n "${BASH_VERSION:-}" && $- == *i* &&
+  -f "${_FBOSS_ROOT}/share/bash-completion/completions/fboss2" ]]; then
+  # shellcheck source=/dev/null
+  . "${_FBOSS_ROOT}/share/bash-completion/completions/fboss2"
+fi
+
 # Idempotent: skip if already sourced with the same root
 if [[ "${FBOSS:-}" == "$_FBOSS_ROOT" ]]; then
   unset _FBOSS_ROOT

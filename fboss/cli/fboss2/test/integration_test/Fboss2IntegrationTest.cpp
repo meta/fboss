@@ -643,7 +643,7 @@ Fboss2IntegrationTest::findFreeableCandidate() const {
   auto present = fetchPresentPorts();
   auto groups = utility::getSubsidiaryPortIDs(mapping.getPlatformPorts());
   for (const auto& [controlling, unused] : groups) {
-    int32_t cid = static_cast<int32_t>(controlling);
+    auto cid = static_cast<int32_t>(controlling);
     auto pit = present.find(cid);
     if (pit == present.end()) {
       continue;
@@ -655,7 +655,7 @@ Fboss2IntegrationTest::findFreeableCandidate() const {
     }
     const auto& cEntry = mapping.getPlatformPort(cid);
     for (auto sp : mapping.getSubsumedPorts(controlling, currentProfile)) {
-      int32_t sid = static_cast<int32_t>(sp);
+      auto sid = static_cast<int32_t>(sp);
       if (present.find(sid) != present.end()) {
         continue; // S must be absent
       }

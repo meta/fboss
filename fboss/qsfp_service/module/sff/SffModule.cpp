@@ -1511,9 +1511,10 @@ bool SffModule::tcvrPortStateSupported(TransceiverPortState& portState) const {
     return true;
   }
 
+  // 25G is a single-lane breakout (e.g. 2x25G on MP3N, 4x25G on Montblanc
+  // mgmt port), so any of the 4 host lanes can start a port.
   return (portState.speed == cfg::PortSpeed::TWENTYFIVEG &&
-          (portState.startHostLane == 0 || portState.startHostLane == 1) &&
-          portState.numHostLanes == 1) ||
+          portState.startHostLane < 4 && portState.numHostLanes == 1) ||
       (portState.speed == cfg::PortSpeed::FIFTYG &&
        portState.startHostLane == 0 && portState.numHostLanes == 2) ||
       ((portState.speed == cfg::PortSpeed::HUNDREDG ||

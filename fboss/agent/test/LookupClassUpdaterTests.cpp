@@ -1120,10 +1120,11 @@ TYPED_TEST(
   // in the meanwhile,emulate busy state update thread by keep doing state
   // snapshot
   for (int i = 0; i < 1000; i++) {
-    std::shared_ptr<SwitchState> snapshot{nullptr};
-    auto snapshotUpdate = [&snapshot](const std::shared_ptr<SwitchState>& state)
+    // The update may run after this iteration ends, so it owns the snapshot
+    auto snapshot = std::make_shared<std::shared_ptr<SwitchState>>();
+    auto snapshotUpdate = [snapshot](const std::shared_ptr<SwitchState>& state)
         -> std::shared_ptr<SwitchState> {
-      snapshot = state;
+      *snapshot = state;
       return nullptr;
     };
     this->sw_->updateStateNoCoalescing("snapshot update", snapshotUpdate);

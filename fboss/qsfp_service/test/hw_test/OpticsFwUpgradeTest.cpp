@@ -386,8 +386,9 @@ TEST_F(OpticsFwUpgradeTestNoIPhySetup, noUpgradeOnWarmboot) {
           ->setOverrideAgentPortStatusForTesting(
               false /* up */, true /* enabled */);
     }
+    // ZR/LR optics advertise up to 300s for datapath init
     WITH_RETRIES_N_TIMED(
-        10 /* retries */,
+        30 /* retries */,
         std::chrono::milliseconds(10000) /* msBetweenRetry */,
         {
           EXPECT_EVENTUALLY_TRUE(refreshStateMachinesAndCheckTcvrProgrammed());

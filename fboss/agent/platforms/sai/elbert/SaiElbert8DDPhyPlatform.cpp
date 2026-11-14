@@ -43,15 +43,20 @@ static auto constexpr kSaiConfigFile = "SAI_KEY_INIT_CONFIG_FILE";
 static auto constexpr kSaiWarmBootReadFile = "SAI_WARM_BOOT_READ_FILE";
 static auto constexpr kSaiWarmBootWriteFile = "SAI_WARM_BOOT_WRITE_FILE";
 
-const std::array<std::string, 8> kPhyConfigProfiles = {
-    SaiElbert8DDPhyPlatform::getFirmwareDirectory() + "Elbert_16Q_0.xml",
-    SaiElbert8DDPhyPlatform::getFirmwareDirectory() + "Elbert_16Q_1.xml",
-    SaiElbert8DDPhyPlatform::getFirmwareDirectory() + "Elbert_16Q_2.xml",
-    SaiElbert8DDPhyPlatform::getFirmwareDirectory() + "Elbert_16Q_3.xml",
-    SaiElbert8DDPhyPlatform::getFirmwareDirectory() + "Elbert_16Q_4.xml",
-    SaiElbert8DDPhyPlatform::getFirmwareDirectory() + "Elbert_16Q_5.xml",
-    SaiElbert8DDPhyPlatform::getFirmwareDirectory() + "Elbert_16Q_6.xml",
-    SaiElbert8DDPhyPlatform::getFirmwareDirectory() + "Elbert_16Q_7.xml"};
+// Built on first use rather than at static init, which runs before the flags
+// are parsed and would pin --credo_f104_firmware_dir to its default.
+const std::array<std::string, 8>& phyConfigProfiles() {
+  static const std::array<std::string, 8> kPhyConfigProfiles = {
+      SaiElbert8DDPhyPlatform::getFirmwareDirectory() + "Elbert_16Q_0.xml",
+      SaiElbert8DDPhyPlatform::getFirmwareDirectory() + "Elbert_16Q_1.xml",
+      SaiElbert8DDPhyPlatform::getFirmwareDirectory() + "Elbert_16Q_2.xml",
+      SaiElbert8DDPhyPlatform::getFirmwareDirectory() + "Elbert_16Q_3.xml",
+      SaiElbert8DDPhyPlatform::getFirmwareDirectory() + "Elbert_16Q_4.xml",
+      SaiElbert8DDPhyPlatform::getFirmwareDirectory() + "Elbert_16Q_5.xml",
+      SaiElbert8DDPhyPlatform::getFirmwareDirectory() + "Elbert_16Q_6.xml",
+      SaiElbert8DDPhyPlatform::getFirmwareDirectory() + "Elbert_16Q_7.xml"};
+  return kPhyConfigProfiles;
+}
 
 /*
  * saiProfileGetValue
@@ -66,7 +71,7 @@ const char* FOLLY_NULLABLE
 saiProfileGetValue(sai_switch_profile_id_t profileId, const char* variable) {
   if (strcmp(variable, kSaiConfigFile) == 0) {
     if (profileId >= 0 && profileId <= 7) {
-      return kPhyConfigProfiles[profileId].c_str();
+      return phyConfigProfiles()[profileId].c_str();
     }
   } else {
     auto saiProfileValItr = kSaiProfileValues.find(variable);

@@ -250,8 +250,8 @@ std::string SaiPlatform::getHwAsicConfig(
   if (chipConfigType != facebook::fboss::cfg::ChipConfig::Type::asicConfig) {
     throw FbossError("No asic config v2 found in agent config");
   }
-  auto asicConfig = config()->thrift.platform()->chip()->get_asicConfig();
-  auto& commonConfigs = asicConfig.common()->get_config();
+  auto asicConfig = config()->thrift.platform()->chip()->asicConfig().value();
+  auto& commonConfigs = asicConfig.common()->config().as_const().value();
   std::vector<std::string> nameValStrs;
   auto addNameValue = [&nameValStrs, &overrides](const auto& keyAndVal) {
     auto oitr = overrides.find(keyAndVal.first);
@@ -277,7 +277,7 @@ std::string SaiPlatform::getHwAsicConfig(
     CHECK_LT(FLAGS_switchIndex, npuEntries.size());
     const auto& npuEntry = npuEntries.find(FLAGS_switchIndex);
     if (npuEntry != npuEntries.end()) {
-      for (const auto& entry : npuEntry->second.get_config()) {
+      for (const auto& entry : npuEntry->second.config().as_const().value()) {
         addNameValue(entry);
       }
     }
@@ -1027,6 +1027,7 @@ SaiSwitchTraits::CreateAttributes SaiPlatform::getSwitchAttributes(
       std::nullopt, // SyncUnlock
       std::nullopt, // WarmRecover
 #endif
+      std::nullopt, // VxlanDefaultPort
   };
 }
 

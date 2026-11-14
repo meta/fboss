@@ -63,6 +63,7 @@ class PortStoreTest : public SaiStoreTest {
         std::nullopt, // CBFC sender credit size
         std::nullopt, // CBFC sender packet overhead
         std::nullopt, // CBFC sender credit limit
+        std::nullopt, // CBFC receiver credit limit
 #endif
 #if SAI_API_VERSION >= SAI_VERSION(1, 9, 0)
         std::nullopt, // Inter Frame Gap
@@ -109,6 +110,10 @@ class PortStoreTest : public SaiStoreTest {
         std::nullopt, // Metadata
         std::nullopt, // CsigTagAction
         std::nullopt, // CsigLinkLocator
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+        std::nullopt, // IntDelete
+        std::nullopt, // IntMetadata
+#endif
     };
   }
 
@@ -546,6 +551,51 @@ TEST_F(PortStoreTest, portSetPfcMonitorDirection) {
   EXPECT_EQ(apiPfcMonitorDirection, 1);
 }
 
+#if defined(SAI_CBFC_SUPPORTED)
+TEST_F(PortStoreTest, portCreateWithCbfcReceiverCreditLimit) {
+  auto attrs = makeAttrs(0, 100000);
+  std::get<std::optional<SaiPortTraits::Attributes::CbfcReceiverCreditLimit>>(
+      attrs) = SaiPortTraits::Attributes::CbfcReceiverCreditLimit{4096};
+  SaiPortTraits::AdapterHostKey adapterHostKey =
+      std::get<SaiPortTraits::Attributes::HwLaneList>(attrs);
+  auto obj = createObj<SaiPortTraits>(adapterHostKey, attrs, 0);
+  EXPECT_EQ(
+      saiApiTable->portApi().getAttribute(
+          obj.adapterKey(),
+          SaiPortTraits::Attributes::CbfcReceiverCreditLimit{}),
+      4096);
+}
+
+TEST_F(PortStoreTest, portLoadCbfcReceiverCreditLimit) {
+  auto attrs = makeAttrs(0, 100000);
+  std::get<std::optional<SaiPortTraits::Attributes::CbfcReceiverCreditLimit>>(
+      attrs) = SaiPortTraits::Attributes::CbfcReceiverCreditLimit{4096};
+  auto portId = saiApiTable->portApi().create<SaiPortTraits>(attrs, 0);
+
+  auto portObj = createObj<SaiPortTraits>(portId);
+  EXPECT_EQ(
+      GET_OPT_ATTR(Port, CbfcReceiverCreditLimit, portObj.attributes()), 4096);
+}
+
+TEST_F(PortStoreTest, portSetCbfcReceiverCreditLimit) {
+  auto portId = createPort(0);
+  SaiObject<SaiPortTraits> portObj = createObj<SaiPortTraits>(portId);
+  EXPECT_EQ(
+      saiApiTable->portApi().getAttribute(
+          portId, SaiPortTraits::Attributes::CbfcReceiverCreditLimit{}),
+      0);
+
+  portObj.setOptionalAttribute(
+      SaiPortTraits::Attributes::CbfcReceiverCreditLimit{4096});
+  EXPECT_EQ(
+      GET_OPT_ATTR(Port, CbfcReceiverCreditLimit, portObj.attributes()), 4096);
+  EXPECT_EQ(
+      saiApiTable->portApi().getAttribute(
+          portId, SaiPortTraits::Attributes::CbfcReceiverCreditLimit{}),
+      4096);
+}
+#endif
+
 #if SAI_API_VERSION >= SAI_VERSION(1, 18, 0)
 // A port bound to an LLR profile is reclaimed on warm-boot reload with its
 // LlrProfile binding intact, and the referenced profile object is reclaimed
@@ -582,5 +632,33 @@ TEST_F(PortStoreTest, loadPortBoundToLlrProfile) {
   auto gotProfile = s.get<SaiPortLlrProfileTraits>().get(profileKey);
   ASSERT_NE(gotProfile, nullptr);
   EXPECT_EQ(gotProfile->adapterKey(), profileId);
+}
+#endif
+
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+TEST_F(PortStoreTest, ReloadCsigIntMetadata) {
+  auto attrs = makeAttrs(1, 25000);
+  std::get<std::optional<SaiPortTraits::Attributes::IntDelete>>(attrs) = true;
+  std::get<std::optional<SaiPortTraits::Attributes::IntMetadata>>(attrs) =
+      65535;
+  const auto id = saiApiTable->portApi().create<SaiPortTraits>(attrs, 0);
+  SaiStore store(0);
+  store.reload();
+  auto object = store.get<SaiPortTraits>().get(
+      tupleProjection<
+          SaiPortTraits::CreateAttributes,
+          SaiPortTraits::AdapterHostKey>(attrs));
+  ASSERT_NE(object, nullptr);
+  EXPECT_EQ(object->adapterKey(), id);
+  const auto& metadata =
+      std::get<std::optional<SaiPortTraits::Attributes::IntMetadata>>(
+          object->attributes());
+  ASSERT_TRUE(metadata.has_value());
+  EXPECT_EQ(metadata->value(), 65535);
+  const auto& deletion =
+      std::get<std::optional<SaiPortTraits::Attributes::IntDelete>>(
+          object->attributes());
+  ASSERT_TRUE(deletion.has_value());
+  EXPECT_TRUE(deletion->value());
 }
 #endif

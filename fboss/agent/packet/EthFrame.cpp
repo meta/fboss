@@ -163,7 +163,7 @@ EthFrame getEthFrame(
       isV4 ? ETHERTYPE::ETHERTYPE_IPV4 : ETHERTYPE::ETHERTYPE_IPV6;
   EthHdr::VlanTags_t tags;
   if (vlanId.has_value()) {
-    tags.push_back(VlanTag(*vlanId, 0x8100));
+    tags.emplace_back(*vlanId, 0x8100);
   }
   EthHdr ethHdr{srcMac, dstMac, {tags}, static_cast<uint16_t>(etherType)};
   std::conditional_t<isV4, IPv4Hdr, IPv6Hdr> ipHdr;
@@ -202,7 +202,7 @@ EthFrame getEthFrame(
   constexpr auto isV4 = std::is_same_v<AddrT, folly::IPAddressV4>;
   EthHdr::VlanTags_t tags;
   if (vlanId.has_value()) {
-    tags.push_back(VlanTag(*vlanId, 0x8100));
+    tags.emplace_back(*vlanId, 0x8100);
   }
   EthHdr ethHdr{
       srcMac, dstMac, {tags}, static_cast<uint16_t>(ETHERTYPE::ETHERTYPE_MPLS)};

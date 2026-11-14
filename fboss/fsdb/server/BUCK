@@ -38,6 +38,7 @@ cpp_library(
     deps = [
         "fbsource//xplat/folly:cancellation_token",
         "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly:try",
         "fbsource//xplat/folly/coro:blocking_wait",
         "fbsource//xplat/folly/logging:logging",
         "//fboss/fsdb/common:flags",
@@ -46,7 +47,6 @@ cpp_library(
         "//fboss/fsdb/oper:path_helpers",
         "//fboss/fsdb/oper:subscription_common",
         "//fboss/lib:log_thrift_call",
-        "//folly:try",
         "//thrift/lib/cpp2:server",
         "//thrift/lib/cpp2/protocol:protocol",
     ],
@@ -97,12 +97,12 @@ cpp_library(
     exported_deps = [
         "fbsource//xplat/folly/io/async:async_signal_handler",
         "fbsource//xplat/folly/logging:logging",
+        "fbsource//xplat/wangle/acceptor:acceptor",
         ":handler",
         "//fboss/fsdb/common:utils",
         "//fboss/fsdb/if:fsdb_common-cpp2-types",
         "//fboss/lib/restart_tracker:restart_time_tracker",
         "//thrift/lib/cpp2:server",
-        "//wangle/acceptor:acceptor",
     ],
     external_deps = [
         ("boost", None, "boost_algorithm"),

@@ -18,6 +18,9 @@
 
 #include "fboss/qsfp_service/if/gen-cpp2/qsfp_service_config_types.h"
 
+#include "fboss/lib/platforms/PlatformDescriptor.h"
+#include "fboss/qsfp_service/QsfpConfig.h"
+
 #include <fmt/format.h>
 #include <folly/Conv.h>
 #include <folly/Exception.h>
@@ -1974,8 +1977,11 @@ void printSff8472DetailService(
   if (auto mediaInterfaceId = settings.mediaInterface()) {
     printf(
         "  Current Media Interface: %s\n",
-        apache::thrift::util::enumNameSafe(
-            (*mediaInterfaceId)[0].media()->get_ethernet10GComplianceCode())
+        apache::thrift::util::enumNameSafe((*mediaInterfaceId)[0]
+                                               .media()
+                                               ->ethernet10GComplianceCode()
+                                               .as_const()
+                                               .value())
             .c_str());
   }
   printSignalsAndSettings(transceiverInfo);
@@ -2067,7 +2073,7 @@ void printSffDetailService(
 }
 
 void printSffDetail(const DOMDataUnion& domDataUnion, unsigned int port) {
-  Sff8636Data sffData = domDataUnion.get_sff8636();
+  Sff8636Data sffData = domDataUnion.sff8636().value();
   auto lowerBuf = sffData.lower()->data();
   auto page0Buf = sffData.page0()->data();
 
@@ -2318,17 +2324,17 @@ void printCmisDetailService(
     if ((*mediaInterfaceId)[0].media()->getType() ==
         MediaInterfaceUnion::Type::smfCode) {
       mediaInterface = apache::thrift::util::enumNameSafe(
-          (*mediaInterfaceId)[0].media()->get_smfCode());
+          (*mediaInterfaceId)[0].media()->smfCode().as_const().value());
     } else if (
         (*mediaInterfaceId)[0].media()->getType() ==
         MediaInterfaceUnion::Type::passiveCuCode) {
       mediaInterface = apache::thrift::util::enumNameSafe(
-          (*mediaInterfaceId)[0].media()->get_passiveCuCode());
+          (*mediaInterfaceId)[0].media()->passiveCuCode().as_const().value());
     } else if (
         (*mediaInterfaceId)[0].media()->getType() ==
         MediaInterfaceUnion::Type::activeCuCode) {
       mediaInterface = apache::thrift::util::enumNameSafe(
-          (*mediaInterfaceId)[0].media()->get_activeCuCode());
+          (*mediaInterfaceId)[0].media()->activeCuCode().as_const().value());
     }
     printf("  Current Media Interface: %s\n", mediaInterface.c_str());
   }
@@ -2436,7 +2442,7 @@ void printCmisDetail(
     unsigned int port,
     DirectI2cInfo* i2cInfo) {
   int i = 0; // For the index of lane
-  CmisData cmisData = domDataUnion.get_cmis();
+  CmisData cmisData = domDataUnion.cmis().value();
   const uint8_t *lowerBuf, *page0Buf, *page01Buf, *page10Buf, *page11Buf,
       *page12Buf, *page14Buf;
   lowerBuf = cmisData.lower()->data();
@@ -3194,7 +3200,7 @@ std::unique_ptr<WedgeQsfp> fetchDataFromLocalI2CBus(
 
   switch (mgmtIf) {
     case TransceiverManagementInterface::CMIS: {
-      auto cmisData = domDataOut.get_cmis();
+      auto cmisData = domDataOut.cmis().as_const().value();
       auto dataUpper = cmisData.page0()->data();
       auto dataLower = cmisData.lower()->data();
       std::array<uint8_t, 16> vendorArray{0};
@@ -3246,7 +3252,7 @@ bool cliModulefirmwareUpgrade(
   std::unique_ptr<WedgeQsfp> qsfpImpl(
       fetchDataFromLocalI2CBus(i2cInfo, port, domData));
 
-  CmisData cmisData = domData.get_cmis();
+  CmisData cmisData = domData.cmis().as_const().value();
   auto dataUpper = cmisData.page0()->data();
 
   // Confirm module type is CMIS
@@ -3394,7 +3400,7 @@ bool cliModulefirmwareUpgrade(
     // module info frm first module in the list
     DOMDataUnion domData;
     fetchDataFromLocalI2CBus(i2cInfo, bucket[0][0], domData);
-    CmisData cmisData = domData.get_cmis();
+    CmisData cmisData = domData.cmis().as_const().value();
     auto dataUpper = cmisData.page0()->data();
 
     std::array<uint8_t, 16> modPartNo;
@@ -3730,7 +3736,7 @@ void get_module_fw_info(
 
     DOMDataUnion tempDomData;
     fetchDataFromLocalI2CBus(i2cInfo, module, tempDomData);
-    CmisData cmisData = tempDomData.get_cmis();
+    CmisData cmisData = tempDomData.cmis().as_const().value();
     auto dataLower = cmisData.lower()->data();
     auto dataUpper = cmisData.page0()->data();
 
@@ -4157,7 +4163,7 @@ bool printVdmInfoDirect(DirectI2cInfo i2cInfo, unsigned int port) {
     return false;
   }
 
-  CmisData cmisData = domDataUnion.get_cmis();
+  CmisData cmisData = domDataUnion.cmis().as_const().value();
   auto page01Buf = can_throw(cmisData.page01())->data();
   auto page20Buf = can_throw(cmisData.page20())->data();
   auto page24Buf = can_throw(cmisData.page24())->data();
@@ -4334,7 +4340,7 @@ bool getEepromCsumStatus(const DOMDataUnion& domDataUnion) {
   };
 
   if (domDataUnion.getType() == DOMDataUnion::Type::sff8636) {
-    Sff8636Data sffData = domDataUnion.get_sff8636();
+    Sff8636Data sffData = domDataUnion.sff8636().value();
     auto page0IOBuf = sffData.page0().value();
     auto page0Buf = page0IOBuf.data();
 
@@ -4359,7 +4365,7 @@ bool getEepromCsumStatus(const DOMDataUnion& domDataUnion) {
     checkSumGood = checkSumGood && (computedCsum == recordedCsum);
 
   } else if (domDataUnion.getType() == DOMDataUnion::Type::cmis) {
-    CmisData cmisData = domDataUnion.get_cmis();
+    CmisData cmisData = domDataUnion.cmis().value();
     auto lowerPageBuf = cmisData.lower()->data();
     bool flatMem = ((lowerPageBuf[2] & 0x80) != 0);
 
@@ -4682,6 +4688,22 @@ void getModulePrbsStatsDirectCmis(TransceiverI2CApi* bus, int module) {
         (prbsCheckerLocked[i] ? "Y" : "N"),
         mediaBer[i],
         mediaSnr[i]);
+  }
+}
+
+void initPlatformDescriptorPathFromQsfpConfig() {
+  if (!FLAGS_platform_descriptor_config_path.empty()) {
+    return;
+  }
+  try {
+    const auto qsfpConfig = QsfpConfig::fromDefaultFile();
+    const auto& args = *qsfpConfig->thrift.defaultCommandLineArgs();
+    if (auto it = args.find("platform_descriptor_config_path");
+        it != args.end()) {
+      FLAGS_platform_descriptor_config_path = it->second;
+    }
+  } catch (const std::exception& ex) {
+    XLOG(DBG2) << "No platform descriptor path from qsfp config: " << ex.what();
   }
 }
 

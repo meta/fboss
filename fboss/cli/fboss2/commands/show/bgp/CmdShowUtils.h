@@ -268,6 +268,33 @@ const std::map<TIpPrefix, std::vector<TBgpPath>> getRejectedNetworks(
 // Searches for link bandwidth in a list of ext-communities.
 float getLinkBandwidthFromExtCommunities(
     const std::vector<TBgpExtCommunity>& extCommunities);
+/*
+ * Render a BGP NOTIFICATION's RFC 4271 error code and subcode for the
+ * neighbors output, e.g.
+ * "BN_CEASE (6), subcode BN_CEASE_ADMIN_SHUTDOWN (2)".
+ *
+ * Both the name and the number are shown: the name is what an operator reads,
+ * the number is what RFC 4271 and packet captures use. Names are the thrift
+ * enum names, so they carry the BN_ prefix. errSubCodeStr is resolved by the
+ * parser per code family and arrives as the sentinel "NA" for codes that
+ * define no subcodes (BN_HOLD_TIMER_EXPIRED, BN_FSM_ERROR), in which case only
+ * the number is printed.
+ *
+ * A non-empty Data field is appended as ", data: ...", decoded where the RFC
+ * defines its layout (message length or type, unsupported version, Cease
+ * shutdown communication, Cease max-prefix, Cease Hard Reset) and shown as hex
+ * otherwise.
+ *
+ * Shared by the OSS and internal printBgpNeighbors copies so the two cannot
+ * drift; defined in commands/show/bgp/CmdShowUtils.cpp.
+ */
+std::string formatBgpNotification(
+    const facebook::nettools::bgplib::BgpNotification& notification);
+/*
+ * Print the last NOTIFICATION sent and received on a session, each with the
+ * time it was sent or received. Directions without one are omitted.
+ */
+void printLastBgpNotifications(const TBgpSession& neighbor, std::ostream& out);
 // Shared helpers used by both the OSS (oss/CmdShowUtils.cpp) and internal
 // (facebook/CmdShowUtils.cpp) implementations of the diverging show-util
 // functions. Defined once in commands/show/bgp/CmdShowUtils.cpp.

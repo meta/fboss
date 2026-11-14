@@ -232,12 +232,7 @@ const RouterID kRouter0(0);
 
 } // namespace
 
-using IncomingPacketCb =
-    folly::Function<void(PortID, std::unique_ptr<folly::IOBuf>)>;
-
 namespace facebook::fboss {
-
-IncomingPacketCb FakeSdk_getIncomingPacketCb();
 
 class BcmRouteTest : public BcmTest {
  protected:

@@ -39,7 +39,6 @@
 #include <folly/portability/GFlags.h>
 #include <folly/synchronization/Baton.h>
 
-#include <algorithm>
 #include <thread>
 
 using namespace facebook::fboss;
@@ -259,7 +258,7 @@ TEST_F(SwSwitchTest, VerifyLlrConfigChangeRejected) {
       StateDelta(disabledLlr, withLlr(disabledLlr, "llr_other", "a", kDown))));
 }
 
-TEST_F(SwSwitchTest, VerifyCbfcSenderChangeRejected) {
+TEST_F(SwSwitchTest, VerifyCbfcChangeRejected) {
   ON_CALL(*getMockHw(sw), isValidStateUpdate(_))
       .WillByDefault(testing::Return(true));
 
@@ -271,13 +270,15 @@ TEST_F(SwSwitchTest, VerifyCbfcSenderChangeRejected) {
                       const std::string& description,
                       int16_t creditSize = 56,
                       int16_t packetOverhead = 16,
-                      int64_t creditLimit = 8192) {
+                      int64_t creditLimit = 8192,
+                      std::optional<int64_t> receiverCreditLimit = 4096) {
     auto state = base->clone();
     auto port = state->getPorts()->getNodeIf(kTestPort)->modify(&state);
     port->setCbfcConfigName("cbfc");
     port->setCbfcSenderCreditSize(creditSize);
     port->setCbfcSenderPacketOverhead(packetOverhead);
     port->setCbfcSenderCreditLimit(creditLimit);
+    port->setCbfcReceiverCreditLimit(receiverCreditLimit);
     port->setDescription(description);
     state->publish();
     return state;
@@ -289,6 +290,7 @@ TEST_F(SwSwitchTest, VerifyCbfcSenderChangeRejected) {
     port->setCbfcSenderCreditSize(std::nullopt);
     port->setCbfcSenderPacketOverhead(std::nullopt);
     port->setCbfcSenderCreditLimit(std::nullopt);
+    port->setCbfcReceiverCreditLimit(std::nullopt);
     state->publish();
     return state;
   };
@@ -310,6 +312,15 @@ TEST_F(SwSwitchTest, VerifyCbfcSenderChangeRejected) {
       sw->isValidStateUpdate(StateDelta(cbfc, withCbfc(cbfc, "a", 56, 0))));
   EXPECT_FALSE(sw->isValidStateUpdate(
       StateDelta(cbfc, withCbfc(cbfc, "a", 56, 16, 16384))));
+
+  // So does changing, adding or removing the receiver limit.
+  EXPECT_FALSE(sw->isValidStateUpdate(
+      StateDelta(cbfc, withCbfc(cbfc, "a", 56, 16, 8192, 8192))));
+  EXPECT_FALSE(sw->isValidStateUpdate(
+      StateDelta(cbfc, withCbfc(cbfc, "a", 56, 16, 8192, std::nullopt))));
+  auto noReceiverLimit = withCbfc(noCbfc, "a", 56, 16, 8192, std::nullopt);
+  EXPECT_FALSE(sw->isValidStateUpdate(
+      StateDelta(noReceiverLimit, withCbfc(noReceiverLimit, "a"))));
 }
 
 TEST_F(SwSwitchTest, VerifyDuplicateAclPriorityRejected) {

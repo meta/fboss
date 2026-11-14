@@ -16,6 +16,7 @@ cpp_unittest(
     name = "drop_reason_utils_test",
     srcs = ["DropReasonUtilsTest.cpp"],
     network_access = network_access_utils.none(),
+    supports_static_listing = False,
     deps = [
         "//fboss/agent/hw/sai/switch:drop_reason_utils",
     ],
@@ -197,6 +198,9 @@ switch_manager_unittest(
     name = "switch_manager_test",
     srcs = [
         "SwitchManagerTest.cpp",
+    ],
+    extra_deps = [
+        "//fboss/lib:warm_boot_file_utils",
     ],
 )
 

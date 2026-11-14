@@ -18,7 +18,7 @@ MemorySwapMax=0
 Environment="PATH=/opt/fboss/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"
 Environment="LD_LIBRARY_PATH=/opt/fboss/lib"
 WorkingDirectory=/opt/fboss
-ExecStart=/bin/bash -c 'source /opt/fboss/bin/setup_fboss_env && exec /opt/fboss/bin/qsfp_service --fsdb_client_ssl_preferred=false --thrift_ssl_policy=disabled'
+ExecStart=/bin/bash -c 'source /opt/fboss/bin/setup_fboss_env && exec /opt/fboss/bin/qsfp_service $$([ -f /run/fboss/variant_flags ] && echo --flagfile=/run/fboss/variant_flags) --fsdb_client_ssl_preferred=false --thrift_ssl_policy=disabled'
 
 Restart=always
 RestartSec=3

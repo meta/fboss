@@ -22,6 +22,7 @@
 #include "fboss/lib/phy/gen-cpp2/phy_types.h"
 #include "fboss/mka_service/if/gen-cpp2/mka_structs_types.h"
 
+#include <algorithm>
 #include <map>
 #include <string>
 #include <vector>
@@ -437,6 +438,21 @@ class Port : public ThriftStructNode<Port, state::PortFields> {
     set<switch_state_tags::cbfcSenderPacketOverhead>(overhead.value());
   }
 
+  std::optional<int64_t> getCbfcReceiverCreditLimit() const {
+    if (auto limit = cref<switch_state_tags::cbfcReceiverCreditLimit>()) {
+      return limit->toThrift();
+    }
+    return std::nullopt;
+  }
+
+  void setCbfcReceiverCreditLimit(const std::optional<int64_t>& limit) {
+    if (!limit) {
+      ref<switch_state_tags::cbfcReceiverCreditLimit>().reset();
+      return;
+    }
+    set<switch_state_tags::cbfcReceiverCreditLimit>(limit.value());
+  }
+
   VlanID getIngressVlan() const {
     return VlanID(cref<switch_config_tags::ingressVlan>()->cref());
   }
@@ -823,6 +839,10 @@ class Port : public ThriftStructNode<Port, state::PortFields> {
 
   std::vector<PortError> getActiveErrors() const {
     return safe_cref<switch_state_tags::activeErrors>()->toThrift();
+  }
+  bool hasError(PortError error) const {
+    const auto errors = getActiveErrors();
+    return std::find(errors.begin(), errors.end(), error) != errors.end();
   }
   void setActiveErrors(const std::set<PortError>& errors);
 

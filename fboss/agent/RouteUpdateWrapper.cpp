@@ -26,7 +26,8 @@ void RouteUpdateWrapper::addRoute(
     uint8_t mask,
     ClientID clientId,
     const RouteNextHopEntry& nhop,
-    std::optional<RouteNextHopSet> nhops) {
+    std::optional<RouteNextHopSet> nhops,
+    std::optional<int32_t> level) {
   UnicastRoute tempRoute;
   tempRoute.dest()->ip() = network::toBinaryAddress(network);
   tempRoute.dest()->prefixLength() = mask;
@@ -46,6 +47,9 @@ void RouteUpdateWrapper::addRoute(
   if (nhop.getClassID().has_value()) {
     tempRoute.classID() = *nhop.getClassID();
   }
+  if (level.has_value()) {
+    tempRoute.level() = *level;
+  }
   addRoute(vrf, clientId, std::move(tempRoute));
 }
 
@@ -54,6 +58,14 @@ void RouteUpdateWrapper::addRoute(
     ClientID clientId,
     const UnicastRoute& route) {
   ribRoutesToAddDel_[std::make_pair(vrf, clientId)].toAdd.emplace_back(route);
+}
+
+void RouteUpdateWrapper::addRoute(
+    RouterID vrf,
+    ClientID clientId,
+    UnicastRoute&& route) {
+  ribRoutesToAddDel_[std::make_pair(vrf, clientId)].toAdd.emplace_back(
+      std::move(route));
 }
 
 void RouteUpdateWrapper::delRoute(
@@ -163,7 +175,8 @@ void RouteUpdateWrapper::programStandAloneRib(const SyncFibFor& syncFibFor) {
         configRoutes_->staticMySids,
         *ribToSwitchStateFunc_,
         ribToSwitchStateCookie_,
-        configRoutes_->ecmpOverrideModeChanged);
+        configRoutes_->ecmpOverrideModeChanged,
+        configRoutes_->interfaceToVrf);
   }
   if (!remoteLoopbackIntfRouteToAdd_.empty() ||
       !remoteLoopbackIntfRouteToDel_.empty()) {
@@ -174,13 +187,14 @@ void RouteUpdateWrapper::programStandAloneRib(const SyncFibFor& syncFibFor) {
         *ribToSwitchStateFunc_,
         ribToSwitchStateCookie_);
   }
-  for (const auto& [ridClientId, addDelRoutes] : ribRoutesToAddDel_) {
+  for (auto& [ridClientId, addDelRoutes] : ribRoutesToAddDel_) {
+    // Cleared after programming, so the RIB may consume the routes.
     auto stats = getRib()->update(
         resolver_,
         ridClientId.first,
         ridClientId.second,
         clientIdToAdminDistance(ridClientId.second),
-        addDelRoutes.toAdd,
+        std::move(addDelRoutes.toAdd),
         addDelRoutes.toDel,
         syncFibFor.find(ridClientId) != syncFibFor.end(),
         "RIB update",
@@ -241,7 +255,8 @@ void RouteUpdateWrapper::setRoutesToConfig(
     const std::vector<cfg::StaticMplsRouteNoNextHops>& _staticMplsRoutesToNull,
     const std::vector<cfg::StaticMplsRouteNoNextHops>& _staticMplsRoutesToCpu,
     std::vector<MySidWithNextHops> _staticMySids,
-    bool _ecmpOverrideModeChanged) {
+    bool _ecmpOverrideModeChanged,
+    std::optional<RibRouteTables::InterfaceToVrf> _interfaceToVrf) {
   configRoutes_ = std::make_unique<ConfigRoutes>(ConfigRoutes{
       _configRouterIDToInterfaceRoutes,
       _staticRoutesWithNextHops,
@@ -252,7 +267,8 @@ void RouteUpdateWrapper::setRoutesToConfig(
       _staticMplsRoutesToNull,
       _staticMplsRoutesToCpu,
       std::move(_staticMySids),
-      _ecmpOverrideModeChanged});
+      _ecmpOverrideModeChanged,
+      std::move(_interfaceToVrf)});
 }
 
 void RouteUpdateWrapper::setRemoteLoopbackInterfaceRoutesToConfig(

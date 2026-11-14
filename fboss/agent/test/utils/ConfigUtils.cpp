@@ -27,6 +27,7 @@
 #include "fboss/agent/test/utils/VoqTestUtils.h"
 #include "fboss/lib/config/PlatformConfigUtils.h"
 #include "fboss/lib/config/agent/AclConfigUtils.h"
+#include "fboss/lib/config/agent/SwitchSettingsConfigUtils.h"
 
 #include <fmt/format.h>
 #include <folly/FileUtil.h>
@@ -93,8 +94,6 @@ int getRdswSysPortBlockSize(
       case PlatformType::PLATFORM_JANGA800BIC:
         return 22;
       case PlatformType::PLATFORM_BLACKWOLF800BANW:
-      case PlatformType::PLATFORM_J4SIM:
-      case PlatformType::PLATFORM_SAINTPAUL:
         return 1024;
       default:
         break;
@@ -235,6 +234,11 @@ void applyTomahawk6PciAddrs(
                << " -> discovered " << handle;
     switchInfo.connectionHandle() = handle;
   }
+}
+
+void applyTomahawk6PciAddrsFromBus(
+    std::map<SwitchID, cfg::SwitchInfo>& switchIdToSwitchInfo) {
+  applyTomahawk6PciAddrs(discoverTomahawk6PciAddrs(), switchIdToSwitchInfo);
 }
 
 folly::MacAddress kLocalCpuMac() {
@@ -459,8 +463,6 @@ cfg::DsfNode dsfNodeConfig(
     switch (asic.getAsicType()) {
       case cfg::AsicType::ASIC_TYPE_JERICHO3:
         return PlatformType::PLATFORM_MERU800BIA;
-      case cfg::AsicType::ASIC_TYPE_JERICHO4:
-        return PlatformType::PLATFORM_J4SIM;
       case cfg::AsicType::ASIC_TYPE_RAMON3:
         return PlatformType::PLATFORM_MERU800BFA;
       case cfg::AsicType::ASIC_TYPE_QUMRAN4D:
@@ -818,32 +820,24 @@ cfg::SwitchConfig multiplePortsPerIntfConfig(
   return config;
 }
 
-std::string getConnectionHandle(int64_t switchId, cfg::AsicType asicType) {
+namespace {
+
+std::optional<std::string> getConfiguredConnectionHandle(int64_t switchId) {
   const auto switchInfoFromConfig = getSwitchInfoFromConfig();
   const auto switchInfo = switchInfoFromConfig.find(switchId);
   if (switchInfo != switchInfoFromConfig.end() &&
       switchInfo->second.connectionHandle().has_value() &&
       !switchInfo->second.connectionHandle()->empty()) {
-    return *switchInfo->second.connectionHandle();
+    return switchInfo->second.connectionHandle().to_optional();
   }
+  return std::nullopt;
+}
 
-  switch (asicType) {
-    case cfg::AsicType::ASIC_TYPE_RAMON:
-      return "0c:00";
-    case cfg::AsicType::ASIC_TYPE_RAMON3:
-    case cfg::AsicType::ASIC_TYPE_JERICHO3:
-    case cfg::AsicType::ASIC_TYPE_JERICHO4:
-      return "15:00";
-    case cfg::AsicType::ASIC_TYPE_JERICHO2:
-      return "68:00";
-    case cfg::AsicType::ASIC_TYPE_EBRO:
-    case cfg::AsicType::ASIC_TYPE_P200:
-    case cfg::AsicType::ASIC_TYPE_YUBA:
-    case cfg::AsicType::ASIC_TYPE_G202X:
-      return "/dev/uio0";
-    default:
-      return "";
+std::string getConnectionHandle(int64_t switchId, cfg::AsicType asicType) {
+  if (const auto connectionHandle = getConfiguredConnectionHandle(switchId)) {
+    return *connectionHandle;
   }
+  return std::string(getDefaultConnectionHandle(asicType).value_or(""));
 }
 
 bool deployedConfigIsSai() {
@@ -853,6 +847,72 @@ bool deployedConfigIsSai() {
     return false;
   }
 }
+
+cfg::Range64 getTestPortIdRange() {
+  cfg::Range64 portIdRange;
+  portIdRange.minimum() =
+      cfg::switch_config_constants::DEFAULT_PORT_ID_RANGE_MIN();
+  // Hyper-port tests use logical port IDs outside the default range.
+  portIdRange.maximum() = cfg::switch_config_constants::
+      DEFAULT_DUAL_STAGE_3Q_2Q_PORT_ID_RANGE_MAX();
+  return portIdRange;
+}
+
+void populateHwAsicSwitchInfo(cfg::SwitchInfo& switchInfo, const HwAsic* asic) {
+  const auto asicType = asic->getAsicType();
+  if (asicType == cfg::AsicType::ASIC_TYPE_JERICHO2 ||
+      asicType == cfg::AsicType::ASIC_TYPE_JERICHO3 ||
+      asicType == cfg::AsicType::ASIC_TYPE_JERICHO4) {
+    switchInfo.switchMac() = "02:00:00:00:00:01";
+  }
+  switchInfo.systemPortRanges() = asic->getSystemPortRanges();
+  if (asic->getLocalSystemPortOffset().has_value()) {
+    switchInfo.localSystemPortOffset() = *asic->getLocalSystemPortOffset();
+  }
+  if (asic->getGlobalSystemPortOffset().has_value()) {
+    switchInfo.globalSystemPortOffset() = *asic->getGlobalSystemPortOffset();
+  }
+  if (asic->getInbandPortId().has_value()) {
+    switchInfo.inbandPortId() = *asic->getInbandPortId();
+  }
+}
+
+std::map<SwitchID, cfg::SwitchInfo> genNpuSwitchInfoForTest(
+    const HwAsic* asic,
+    std::optional<PlatformType> platformType) {
+  const auto switchSettings =
+      genNpuSwitchSettingsConfig(asic->getAsicType(), platformType);
+  std::map<SwitchID, cfg::SwitchInfo> switchIdToSwitchInfo;
+  for (const auto& [switchId, switchInfo] :
+       *switchSettings.switchIdToSwitchInfo()) {
+    switchIdToSwitchInfo.emplace(SwitchID(switchId), switchInfo);
+  }
+
+  if (switchIdToSwitchInfo.size() == 1) {
+    const auto switchId = asic->getSwitchId().value_or(0);
+    auto switchInfoNode =
+        switchIdToSwitchInfo.extract(switchIdToSwitchInfo.begin());
+    switchInfoNode.key() = SwitchID(switchId);
+    auto& switchInfo = switchInfoNode.mapped();
+    switchInfo.switchIndex() = static_cast<int16_t>(switchId);
+    switchInfo.portIdRange() = getTestPortIdRange();
+    if (const auto connectionHandle = getConfiguredConnectionHandle(switchId)) {
+      switchInfo.connectionHandle() = *connectionHandle;
+    }
+    switchIdToSwitchInfo.insert(std::move(switchInfoNode));
+  } else if (
+      platformType == PlatformType::PLATFORM_LADAKH800BCLS ||
+      platformType == PlatformType::PLATFORM_LEH800BCLS) {
+    applyTomahawk6PciAddrs(discoverTomahawk6PciAddrs(), switchIdToSwitchInfo);
+  }
+
+  for (auto& [_, switchInfo] : switchIdToSwitchInfo) {
+    populateHwAsicSwitchInfo(switchInfo, asic);
+  }
+  return switchIdToSwitchInfo;
+}
+
+} // namespace
 
 cfg::SwitchConfig genPortVlanCfg(
     const PlatformMapping* platformMapping,
@@ -887,54 +947,16 @@ cfg::SwitchConfig genPortVlanCfg(
     if (asic->getSwitchId().has_value()) {
       switchId = *asic->getSwitchId();
     }
-    const auto connectionHandle =
-        getConnectionHandle(switchId, asic->getAsicType());
-    cfg::Range64 portIdRange;
-    portIdRange.minimum() =
-        cfg::switch_config_constants::DEFAULT_PORT_ID_RANGE_MIN();
-    portIdRange.maximum() = cfg::switch_config_constants::
-        DEFAULT_DUAL_STAGE_3Q_2Q_PORT_ID_RANGE_MAX();
-
-    if (platformType.has_value() &&
-        (platformType.value() == PlatformType::PLATFORM_LADAKH800BCLS ||
-         platformType.value() == PlatformType::PLATFORM_LEH800BCLS)) {
-      portIdRange.maximum() =
-          cfg::switch_config_constants::DEFAULT_PORT_ID_RANGE_MAX();
-      auto pciAddrs = discoverTomahawk6PciAddrs();
-      if (pciAddrs.size() != 2) {
-        // Same reasoning as applyTomahawk6PciAddrs(): falling back to a
-        // hardcoded pair here would hand SAI an address that may name an empty
-        // slot on this COM-E variant.
-        throw FbossError(
-            "Found ",
-            pciAddrs.size(),
-            " Tomahawk6 PCI devices, expected 2; cannot derive default "
-            "Ladakh/Leh connection handles");
+    if (asic->getSwitchType() == cfg::SwitchType::NPU) {
+      defaultSwitchIdToSwitchInfo = genNpuSwitchInfoForTest(asic, platformType);
+      for (const auto& [generatedSwitchId, _] : defaultSwitchIdToSwitchInfo) {
+        defaultHwAsicTable.emplace(generatedSwitchId, asic);
       }
-      defaultSwitchIdToSwitchInfo.insert(
-          {SwitchID(0),
-           generateSwitchInfo(
-               (SwitchID)0, portIdRange, pciAddrs[0] + "=0", asic)});
-      defaultHwAsicTable.insert({SwitchID(0), asic});
-
-      // Add switch info for switch ID 1
-      auto numPorts =
-          (cfg::switch_config_constants::DEFAULT_PORT_ID_RANGE_MAX() -
-           cfg::switch_config_constants::DEFAULT_PORT_ID_RANGE_MIN()) +
-          1;
-      portIdRange.minimum() =
-          cfg::switch_config_constants::DEFAULT_PORT_ID_RANGE_MAX() + 1;
-      portIdRange.maximum() =
-          cfg::switch_config_constants::DEFAULT_PORT_ID_RANGE_MAX() + numPorts;
-
-      defaultSwitchIdToSwitchInfo.insert(
-          {SwitchID(1),
-           generateSwitchInfo(
-               (SwitchID)1, portIdRange, pciAddrs[1] + "=0", asic)});
-      defaultHwAsicTable.insert({SwitchID(1), asic});
     } else {
+      const auto connectionHandle =
+          getConnectionHandle(switchId, asic->getAsicType());
       cfg::SwitchInfo switchInfo = generateSwitchInfo(
-          (SwitchID)switchId, portIdRange, connectionHandle, asic);
+          SwitchID(switchId), getTestPortIdRange(), connectionHandle, asic);
       defaultSwitchIdToSwitchInfo.insert({SwitchID(switchId), switchInfo});
       defaultHwAsicTable.insert({SwitchID(switchId), asic});
     }
@@ -1139,8 +1161,7 @@ void populateSwitchInfo(
         hwAsic->getSwitchType() == cfg::SwitchType::FABRIC) {
       auto dsfNode = dsfNodeConfig(*firstHwAsic, switchId, platformType);
       dsfNode.name() = fmt::format("hwTestSwitch{}", deviceSwitchId);
-      if ((platformType == PlatformType::PLATFORM_SAINTPAUL ||
-           platformType == PlatformType::PLATFORM_JANGA800BIC) &&
+      if (platformType == PlatformType::PLATFORM_JANGA800BIC &&
           hwAsic->getSwitchType() == cfg::SwitchType::VOQ) {
         dsfNode.systemPortRanges() = *switchInfo.systemPortRanges();
         if (switchInfo.localSystemPortOffset().has_value()) {
@@ -1175,22 +1196,7 @@ cfg::SwitchInfo generateSwitchInfo(
   switchInfo.switchIndex() = switchId;
   switchInfo.switchType() = asic->getSwitchType();
   switchInfo.asicType() = asicType;
-
-  if (asicType == cfg::AsicType::ASIC_TYPE_JERICHO2 ||
-      asicType == cfg::AsicType::ASIC_TYPE_JERICHO3 ||
-      asicType == cfg::AsicType::ASIC_TYPE_JERICHO4) {
-    switchInfo.switchMac() = "02:00:00:00:00:01";
-  }
-  switchInfo.systemPortRanges() = asic->getSystemPortRanges();
-  if (asic->getLocalSystemPortOffset().has_value()) {
-    switchInfo.localSystemPortOffset() = *asic->getLocalSystemPortOffset();
-  }
-  if (asic->getGlobalSystemPortOffset().has_value()) {
-    switchInfo.globalSystemPortOffset() = *asic->getGlobalSystemPortOffset();
-  }
-  if (asic->getInbandPortId().has_value()) {
-    switchInfo.inbandPortId() = *asic->getInbandPortId();
-  }
+  populateHwAsicSwitchInfo(switchInfo, asic);
   if (!connectionHandle.empty()) {
     switchInfo.connectionHandle() = connectionHandle;
   }
@@ -1269,7 +1275,7 @@ cfg::SwitchConfig oneL3IntfNPortConfig(
   config.interfaces()[0].intfID() = baseVlanId;
   config.interfaces()[0].vlanID() = baseVlanId;
   config.interfaces()[0].type() = cfg::InterfaceType::VLAN;
-  *config.interfaces()[0].routerID() = 0;
+  config.interfaces()[0].routerID() = 0;
   if (setInterfaceMac) {
     config.interfaces()[0].mac() = getLocalCpuMacStr();
   }
@@ -1282,6 +1288,37 @@ cfg::SwitchConfig oneL3IntfNPortConfig(
         FLAGS_nodeZ ? "1::1/64" : "1::/64";
   }
   return config;
+}
+
+std::map<InterfaceID, RouterID> addVrfForPorts(
+    cfg::SwitchConfig& config,
+    RouterID vrf,
+    const std::vector<PortID>& ports) {
+  auto& vrfs = config.vrfs().ensure();
+  if (std::none_of(vrfs.begin(), vrfs.end(), [vrf](const auto& vrfConfig) {
+        return RouterID(*vrfConfig.vrfId()) == vrf;
+      })) {
+    vrfs.emplace_back().vrfId() = vrf;
+  }
+  std::set<int32_t> vlans;
+  std::set<int32_t> portIds;
+  for (auto port : ports) {
+    portIds.insert(port);
+    for (const auto& vlanPort : *config.vlanPorts()) {
+      if (PortID(*vlanPort.logicalPort()) == port) {
+        vlans.insert(*vlanPort.vlanID());
+      }
+    }
+  }
+  std::map<InterfaceID, RouterID> interfaceVrfs;
+  for (auto& intf : *config.interfaces()) {
+    if ((intf.portID() && portIds.contains(*intf.portID())) ||
+        (*intf.type() == cfg::InterfaceType::VLAN &&
+         vlans.contains(*intf.vlanID()))) {
+      interfaceVrfs.emplace(InterfaceID(*intf.intfID()), vrf);
+    }
+  }
+  return interfaceVrfs;
 }
 
 cfg::SwitchConfig twoL3IntfConfig(
@@ -1365,7 +1402,7 @@ cfg::SwitchConfig twoL3IntfConfig(
     cfg::Interface intf;
     *intf.intfID() = computeIntfId(i);
     *intf.vlanID() = switchType == cfg::SwitchType::NPU ? vlans[i] : 0;
-    *intf.routerID() = 0;
+    intf.routerID() = 0;
     intf.ipAddresses()->resize(2);
     auto ipOctet = i + 1;
     intf.ipAddresses()[0] =
@@ -1402,7 +1439,6 @@ bool isRswPlatform(PlatformType type) {
     default:
       return false;
   };
-  return false;
 }
 /*
  * Returns a pair of vectors of the form (uplinks, downlinks). Pertains

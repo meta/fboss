@@ -231,10 +231,7 @@ StateDelta mySidToSwitchStateUpdate(
 
 StateDelta noOpRibToSwitchStateUpdate(
     const SwitchIdScopeResolver* /*resolver*/,
-    RouterID /*vrf*/,
-    const IPv4NetworkToRouteMap& /*v4NetworkToRoute*/,
-    const IPv6NetworkToRouteMap& /*v6NetworkToRoute*/,
-    const LabelToRouteMap& /*labelToRoute*/,
+    const std::vector<RibVrfFib>& /*vrfFibs*/,
     const NextHopIDManager* /*nextHopIDManager*/,
     const MySidTable& /*mySidTable*/,
     void* cookie) {
@@ -396,10 +393,7 @@ StateDelta mySidToSwitchStateUpdateViaRibUpdater(
 // re-resolution to be observable in SwitchState.
 StateDelta routeToSwitchStateUpdateViaRibUpdater(
     const SwitchIdScopeResolver* resolver,
-    RouterID vrf,
-    const IPv4NetworkToRouteMap& v4NetworkToRoute,
-    const IPv6NetworkToRouteMap& v6NetworkToRoute,
-    const LabelToRouteMap& labelToRoute,
+    const std::vector<RibVrfFib>& vrfFibs,
     const NextHopIDManager* nextHopIDManager,
     const MySidTable& mySidTable,
     void* cookie) {
@@ -409,10 +403,7 @@ StateDelta routeToSwitchStateUpdateViaRibUpdater(
 
   RibToSwitchStateUpdater updater(
       resolver,
-      vrf,
-      v4NetworkToRoute,
-      v6NetworkToRoute,
-      labelToRoute,
+      vrfFibs,
       nextHopIDManager,
       mySidTable,
       RibToSwitchStateUpdater::UPDATE_MYSID);
@@ -3052,6 +3043,29 @@ TEST_F(RibMySidNextHopTest, routeUpdateResolvesMySidNextHops) {
 
   EXPECT_TRUE(
       rib_->getMySidTableCopy().at(prefix).resolvedNextHopsId().has_value());
+}
+
+TEST_F(RibMySidNextHopTest, routeInOtherVrfDoesNotResolveMySidNextHops) {
+  const RouterID kOtherVrf(1001);
+  rib_->ensureVrf(kOtherVrf);
+  rib_->update(
+      scopeResolver(),
+      {makeMySidEntryWithNextHops("fc00:100::1", 48, {"2001:db8::1"})},
+      {},
+      "add mysid with unresolvable nexthop",
+      mySidToSwitchStateUpdate,
+      &switchState_);
+
+  RoutingInformationBase::RouterIDAndNetworkToInterfaceRoutes interfaceRoutes;
+  interfaceRoutes[kOtherVrf][{folly::IPAddress("2001:db8::"), 64}] = {
+      InterfaceID(1), folly::IPAddress("2001:db8::2")};
+  rib_->updateRemoteInterfaceRoutes(
+      scopeResolver(), interfaceRoutes, {}, noopFibUpdate, &switchState_);
+
+  EXPECT_FALSE(rib_->getMySidTableCopy()
+                   .at(makeSidPrefix("fc00:100::1", 48))
+                   .resolvedNextHopsId()
+                   .has_value());
 }
 
 TEST_F(RibMySidNextHopTest, routeDeleteUnresolvesMySidNextHops) {

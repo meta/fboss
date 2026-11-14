@@ -11,8 +11,10 @@
 #include "fboss/agent/test/utils/EcmpResourceManagerTestUtils.h"
 #include "fboss/agent/AgentFeatures.h"
 #include "fboss/agent/FibHelpers.h"
+#include "fboss/agent/OverrideSetIdManager.h"
 #include "fboss/agent/rib/RoutingInformationBase.h"
 #include "fboss/agent/state/FibInfo.h"
+#include "fboss/agent/state/RouteNextHop.h"
 #include "fboss/agent/state/SwitchState.h"
 
 #include <gtest/gtest.h>
@@ -33,6 +35,104 @@ bool hasBackupNextHop(const RouteNextHopSet& nhops) {
   return std::any_of(nhops.begin(), nhops.end(), [](const auto& nhop) {
     return nhop.role() == NextHopRole::BACKUP;
   });
+}
+
+// Also expects every switch to carry the same map.
+IdToNextHopIdSetMapThriftType getOverrideIdMap(
+    const std::shared_ptr<SwitchState>& state) {
+  IdToNextHopIdSetMapThriftType overrideMap;
+  const auto& fibsInfoMap = state->getFibsInfoMap();
+  if (fibsInfoMap->empty()) {
+    return overrideMap;
+  }
+  if (auto map =
+          fibsInfoMap->cbegin()->second->getOverrideIdToNextHopIdSetMap()) {
+    overrideMap = map->toThrift();
+  }
+  for (const auto& [matcher, fibInfo] : std::as_const(*fibsInfoMap)) {
+    auto map = fibInfo->getOverrideIdToNextHopIdSetMap();
+    EXPECT_EQ(
+        map ? map->toThrift() : IdToNextHopIdSetMapThriftType{}, overrideMap)
+        << "Override id map differs on switch: " << matcher;
+  }
+  return overrideMap;
+}
+
+RouteNextHopSet resolveMemberIds(
+    const std::shared_ptr<SwitchState>& state,
+    const std::set<NextHopId>& memberIds) {
+  RouteNextHopSet nhops;
+  auto idToNhop =
+      state->getFibsInfoMap()->cbegin()->second->getIdToNextHopMap();
+  EXPECT_NE(idToNhop, nullptr);
+  if (!idToNhop) {
+    return nhops;
+  }
+  for (auto memberId : memberIds) {
+    auto nhop = idToNhop->getNextHopIf(memberId);
+    EXPECT_NE(nhop, nullptr) << "dangling member NextHopID: " << memberId;
+    if (nhop) {
+      nhops.insert(
+          util::fromThrift(nhop->toThrift(), true /* allowV6NonLinkLocal */));
+    }
+  }
+  return nhops;
+}
+
+void assertRouteOverrideSetIds(
+    const std::shared_ptr<SwitchState>& state,
+    const IdToNextHopIdSetMapThriftType& overrideMap) {
+  if (state->getFibsInfoMap()->empty()) {
+    return;
+  }
+  auto checkFib = [&](const auto& fib) {
+    for (const auto& [_, route] : std::as_const(*fib)) {
+      if (!route->isResolved()) {
+        continue;
+      }
+      const auto& fwd = route->getForwardInfo();
+      auto id = fwd.getOverrideNextHopSetID();
+      if (!fwd.hasOverrideNextHops()) {
+        EXPECT_FALSE(id.has_value())
+            << "override id without override nhops: " << route->str();
+        continue;
+      }
+      ASSERT_TRUE(id.has_value())
+          << "override nhops without id: " << route->str();
+      EXPECT_TRUE(OverrideSetIdManager::isOverrideSetID(*id)) << route->str();
+      auto it = overrideMap.find(static_cast<NextHopSetId>(*id));
+      ASSERT_NE(it, overrideMap.end())
+          << "override id missing from FibInfo: " << route->str();
+      EXPECT_EQ(resolveMemberIds(state, it->second), *fwd.getOverrideNextHops())
+          << route->str();
+    }
+  };
+  checkFib(cfib(state));
+  checkFib(cfib4(state));
+}
+
+void assertMergedGroupOverrideSetIds(
+    const EcmpResourceManager& resourceMgr,
+    const std::shared_ptr<SwitchState>& state,
+    const IdToNextHopIdSetMapThriftType& overrideMap) {
+  std::set<NextHopSetID> liveIds;
+  for (const auto& mgroup : resourceMgr.getMergedGroups()) {
+    auto info = resourceMgr.getMergeGroupConsolidationInfo(*mgroup.begin());
+    ASSERT_TRUE(info.has_value() && info->overrideSetId.has_value())
+        << "No override id for merged group: " << folly::join(", ", mgroup);
+    auto id = *info->overrideSetId;
+    EXPECT_TRUE(OverrideSetIdManager::isOverrideSetID(id)) << id;
+    EXPECT_TRUE(liveIds.insert(id).second)
+        << "Override id shared by merged groups: " << id;
+    auto it = overrideMap.find(static_cast<NextHopSetId>(id));
+    ASSERT_NE(it, overrideMap.end()) << "Unpublished override id: " << id;
+    EXPECT_EQ(resolveMemberIds(state, it->second), info->mergedNhops)
+        << "Override id: " << id;
+  }
+  // Nothing outlives its merged group.
+  EXPECT_EQ(
+      liveIds.size(),
+      resourceMgr.getOverrideSetIdManager().getIdToMembers().size());
 }
 
 std::map<RouteNextHopSet, EcmpResourceManager::NextHopGroupId>
@@ -569,5 +669,34 @@ void assertRibFibEquivalence(
       state->getFibsInfoMap()->getFibContainer(RouterID(0))->getFibV6());
   validateFib(
       state->getFibsInfoMap()->getFibContainer(RouterID(0))->getFibV4());
+}
+void assertOverrideSetIdsConsistency(
+    const EcmpResourceManager& resourceMgr,
+    const std::shared_ptr<SwitchState>& state) {
+  if (!FLAGS_enable_nexthop_id_manager) {
+    return;
+  }
+  auto overrideMap = getOverrideIdMap(state);
+  EXPECT_EQ(overrideMap, resourceMgr.getOverrideSetIdManager().toThrift());
+  assertMergedGroupOverrideSetIds(resourceMgr, state, overrideMap);
+  assertRouteOverrideSetIds(state, overrideMap);
+}
+
+void assertOverrideSetIdsInDeltas(
+    const EcmpResourceManager& resourceMgr,
+    const std::vector<StateDelta>& deltas) {
+  if (!FLAGS_enable_nexthop_id_manager || deltas.empty()) {
+    return;
+  }
+  assertRouteOverrideSetIds(
+      deltas[0].oldState(), getOverrideIdMap(deltas[0].oldState()));
+  for (size_t i = 0; i < deltas.size(); ++i) {
+    SCOPED_TRACE("delta[" + std::to_string(i) + "]");
+    assertRouteOverrideSetIds(
+        deltas[i].newState(), getOverrideIdMap(deltas[i].newState()));
+  }
+  EXPECT_EQ(
+      getOverrideIdMap(deltas.back().newState()),
+      resourceMgr.getOverrideSetIdManager().toThrift());
 }
 } // namespace facebook::fboss

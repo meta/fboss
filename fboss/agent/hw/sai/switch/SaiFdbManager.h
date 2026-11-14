@@ -121,7 +121,7 @@ class SaiFdbManager {
   void removeFdbEntry(InterfaceID, folly::MacAddress);
   // Process mac Table changes
   void addMac(const std::shared_ptr<MacEntry>& addedEntry);
-  void removeMac(const std::shared_ptr<MacEntry>& removedEntry);
+  void removeMac(const std::shared_ptr<MacEntry>& removedEntry, VlanID vlanId);
   void changeMac(
       const std::shared_ptr<MacEntry>& oldEntry,
       const std::shared_ptr<MacEntry>& newEntry);

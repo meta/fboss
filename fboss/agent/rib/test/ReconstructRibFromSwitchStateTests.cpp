@@ -2,10 +2,12 @@
 
 #include <gtest/gtest.h>
 #include "fboss/agent/SwitchIdScopeResolver.h"
+#include "fboss/agent/rib/FibUpdateHelpers.h"
 #include "fboss/agent/rib/NetworkToRouteMap.h"
 #include "fboss/agent/rib/NextHopIDManager.h"
 #include "fboss/agent/rib/RouteUpdater.h"
 #include "fboss/agent/rib/RoutingInformationBase.h"
+#include "fboss/agent/rib/SwitchStateNextHopIdUpdater.h"
 #include "fboss/agent/state/FibInfo.h"
 #include "fboss/agent/state/FibInfoMap.h"
 #include "fboss/agent/state/ForwardingInformationBase.h"
@@ -18,11 +20,13 @@
 #include "fboss/agent/state/RouteNextHop.h"
 #include "fboss/agent/state/RouteNextHopEntry.h"
 #include "fboss/agent/state/RouteTypes.h"
+#include "fboss/agent/state/SwitchState.h"
 #include "fboss/agent/test/TestUtils.h"
 
 using namespace facebook::fboss;
 
 DECLARE_bool(enable_nexthop_id_manager);
+DECLARE_bool(resolve_nexthops_from_id);
 
 namespace {
 
@@ -860,4 +864,286 @@ TEST(FromThriftWithFibsInfoMap, FullCanonicalizationAcrossAllReferenceKinds) {
   ASSERT_TRUE(fields.unresolveNextHopsId().has_value());
   EXPECT_EQ(resolve(NextHopSetID(*fields.resolvedNextHopsId())), AC);
   EXPECT_EQ(resolve(NextHopSetID(*fields.unresolveNextHopsId())), AB);
+}
+
+// --- Applying the RIB's warm boot NextHop ids to the switch state ---
+
+namespace {
+
+const SwitchIdScopeResolver* nextHopSyncResolver() {
+  static const SwitchIdScopeResolver kResolver([] {
+    cfg::SwitchInfo info;
+    info.switchType() = cfg::SwitchType::NPU;
+    info.asicType() = cfg::AsicType::ASIC_TYPE_FAKE;
+    info.switchIndex() = 0;
+    return std::map<int64_t, cfg::SwitchInfo>{{0, info}};
+  }());
+  return &kResolver;
+}
+
+struct WarmbootRibAndState {
+  std::unique_ptr<RoutingInformationBase> rib;
+  std::shared_ptr<SwitchState> state;
+};
+
+// Warm boot: the RIB is rebuilt from the persisted state.
+WarmbootRibAndState warmboot(
+    const std::shared_ptr<ForwardingInformationBaseMap>& fibsMap,
+    const std::shared_ptr<IdToNextHopMap>& idToNhopMap,
+    const std::shared_ptr<IdToNextHopIdSetMap>& idToNhopIdSetMap,
+    const std::shared_ptr<MultiSwitchMySidMap>& mySidMap = nullptr) {
+  auto fibInfo = std::make_shared<FibInfo>();
+  fibInfo->resetFibsMap(fibsMap);
+  fibInfo->setIdToNextHopMap(idToNhopMap);
+  fibInfo->setIdToNextHopIdSetMap(idToNhopIdSetMap);
+  auto fibsInfoMap = std::make_shared<MultiSwitchFibInfoMap>();
+  fibsInfoMap->addNode("id=0", fibInfo);
+  auto state = std::make_shared<SwitchState>();
+  state->resetFibsInfoMap(fibsInfoMap);
+  if (mySidMap) {
+    state->resetMySids(mySidMap);
+  }
+  state->publish();
+  std::map<int32_t, state::RouteTableFields> ribThrift;
+  ribThrift.emplace(0, state::RouteTableFields{});
+  auto rib = RoutingInformationBase::fromThrift(
+      ribThrift, fibsInfoMap, nullptr, mySidMap, kEcmpWidth, nullptr);
+  return {std::move(rib), state};
+}
+
+// Resolved route over nexthops A and B whose NextHopSetIDs all point at setId.
+template <typename AddrT, typename FibT>
+void addRouteOnSet(
+    const std::shared_ptr<FibT>& fib,
+    const RoutePrefix<AddrT>& prefix,
+    NextHopSetID setId) {
+  RouteNextHopSet nhops{mkNh("10.0.0.1"), mkNh("10.0.0.2")};
+  auto route = std::make_shared<Route<AddrT>>(Route<AddrT>::makeThrift(prefix));
+  RouteNextHopEntry clientEntry(nhops, AdminDistance::EBGP);
+  std::optional<NextHopSetID> clientSetId(setId);
+  clientEntry.setClientNextHopSetID(clientSetId);
+  route->update(ClientID::BGPD, clientEntry);
+  auto fwd = RouteNextHopEntry(nhops, AdminDistance::EBGP).toThrift();
+  fwd.resolvedNextHopSetID() = static_cast<int64_t>(setId);
+  fwd.normalizedResolvedNextHopSetID() = static_cast<int64_t>(setId);
+  route->setResolved(RouteNextHopEntry(std::move(fwd)));
+  route->publish();
+  fib->addNode(route);
+}
+
+std::shared_ptr<SwitchState> applyRib(
+    RoutingInformationBase& rib,
+    const std::shared_ptr<SwitchState>& state) {
+  auto newState = state;
+  rib.syncStateFromRib(
+      nextHopSyncResolver(), &ribToSwitchStateUpdate, &newState);
+  return newState;
+}
+
+std::shared_ptr<ForwardingInformationBaseContainer> fibContainer(
+    const std::shared_ptr<SwitchState>& state) {
+  return state->getFibsInfoMap()->cbegin()->second->getFibContainerIf(
+      RouterID(0));
+}
+
+template <typename Fn>
+void forEachRoute(const std::shared_ptr<SwitchState>& state, Fn fn) {
+  auto container = fibContainer(state);
+  for (const auto& [_, route] : std::as_const(*container->getFibV4())) {
+    fn(route);
+  }
+  for (const auto& [_, route] : std::as_const(*container->getFibV6())) {
+    fn(route);
+  }
+}
+
+// The state's NextHop id maps equal the RIB's, and every route and MySid in the
+// state carries the RIB's NextHopSetIDs.
+void expectStateMatchesRib(
+    const RoutingInformationBase& rib,
+    const std::shared_ptr<SwitchState>& state) {
+  auto manager = rib.getNextHopIDManagerCopy();
+  ASSERT_NE(manager, nullptr);
+  auto synced = SwitchStateNextHopIdUpdater(manager.get())(state);
+  const auto& fibInfo = state->getFibsInfoMap()->cbegin()->second;
+  const auto& syncedFibInfo = synced->getFibsInfoMap()->cbegin()->second;
+  EXPECT_EQ(
+      fibInfo->getIdToNextHopMap()->toThrift(),
+      syncedFibInfo->getIdToNextHopMap()->toThrift());
+  EXPECT_EQ(
+      fibInfo->getIdToNextHopIdSetMap()->toThrift(),
+      syncedFibInfo->getIdToNextHopIdSetMap()->toThrift());
+  forEachRoute(state, [&](const auto& route) {
+    const auto& fwd = route->getForwardInfo();
+    const auto& ribFwd =
+        rib.longestMatch(route->prefix().network(), RouterID(0))
+            ->getForwardInfo();
+    EXPECT_EQ(fwd.getResolvedNextHopSetID(), ribFwd.getResolvedNextHopSetID())
+        << route->str();
+    EXPECT_EQ(
+        fwd.getNormalizedResolvedNextHopSetID(),
+        ribFwd.getNormalizedResolvedNextHopSetID())
+        << route->str();
+  });
+  auto ribMySids = rib.getMySidTableCopy();
+  EXPECT_EQ(state->getMySids()->numNodes(), ribMySids.size());
+  for (const auto& [_, mySids] : std::as_const(*state->getMySids())) {
+    for (const auto& [__, mySid] : std::as_const(*mySids)) {
+      auto cidr = mySid->getMySid();
+      auto itr =
+          ribMySids.find(folly::CIDRNetworkV6(cidr.first.asV6(), cidr.second));
+      ASSERT_NE(itr, ribMySids.end());
+      EXPECT_EQ(
+          mySid->getResolvedNextHopsId(),
+          itr->second.resolvedNextHopsId().to_optional());
+    }
+  }
+}
+
+// Every route forwards exactly as before; only NextHop ids may differ.
+void expectForwardingUnchanged(
+    const std::shared_ptr<SwitchState>& oldState,
+    const std::shared_ptr<SwitchState>& newState) {
+  auto newContainer = fibContainer(newState);
+  EXPECT_EQ(
+      newContainer->getFibV4()->size() + newContainer->getFibV6()->size(),
+      fibContainer(oldState)->getFibV4()->size() +
+          fibContainer(oldState)->getFibV6()->size());
+  forEachRoute(oldState, [&](const auto& oldRoute) {
+    using RouteT = std::decay_t<decltype(*oldRoute)>;
+    std::shared_ptr<RouteT> newRoute;
+    if constexpr (std::is_same_v<RouteT, RouteV4>) {
+      newRoute = newContainer->getFibV4()->getRouteIf(oldRoute->prefix());
+    } else {
+      newRoute = newContainer->getFibV6()->getRouteIf(oldRoute->prefix());
+    }
+    ASSERT_NE(newRoute, nullptr) << oldRoute->str();
+    const auto& oldFwd = oldRoute->getForwardInfo();
+    const auto& newFwd = newRoute->getForwardInfo();
+    EXPECT_EQ(newFwd.getAction(), oldFwd.getAction()) << oldRoute->str();
+    EXPECT_EQ(newFwd.getAdminDistance(), oldFwd.getAdminDistance())
+        << oldRoute->str();
+    EXPECT_EQ(newFwd.getNextHopSet(), oldFwd.getNextHopSet())
+        << oldRoute->str();
+  });
+}
+
+} // namespace
+
+// Same-version warm boot: the RIB changes no NextHop id, so applying it leaves
+// the state untouched.
+TEST(WarmbootNextHopIdSync, CleanStateUnchanged) {
+  FLAGS_enable_nexthop_id_manager = true;
+  auto idToNhopMap = std::make_shared<IdToNextHopMap>();
+  idToNhopMap->addNextHop(1, mkNh("10.0.0.1").toThrift());
+  idToNhopMap->addNextHop(2, mkNh("10.0.0.2").toThrift());
+  auto idToNhopIdSetMap = std::make_shared<IdToNextHopIdSetMap>();
+  idToNhopIdSetMap->addNextHopIdSet(kOff + 1, {1, 2});
+  auto fibsMap = makeFibsMap();
+  addRouteOnSet(
+      fibsMap->getNodeIf(RouterID(0))->getFibV4(),
+      makePrefixV4("10.1.0.0/24"),
+      NextHopSetID(kOff + 1));
+
+  auto [rib, state] = warmboot(fibsMap, idToNhopMap, idToNhopIdSetMap);
+  EXPECT_FALSE(rib->nextHopIdsChangedAtWarmboot());
+  EXPECT_EQ(applyRib(*rib, state), state);
+}
+
+// Two persisted NextHop ids read as one NextHop: the state keeps one of them,
+// and every route and MySid on either set moves onto one surviving set.
+TEST(WarmbootNextHopIdSync, CollapsedNextHopsSyncedIntoState) {
+  FLAGS_enable_nexthop_id_manager = true;
+  auto idToNhopMap = std::make_shared<IdToNextHopMap>();
+  idToNhopMap->addNextHop(1, mkNh("10.0.0.1").toThrift());
+  idToNhopMap->addNextHop(2, mkNh("10.0.0.2").toThrift());
+  idToNhopMap->addNextHop(3, mkNh("10.0.0.1").toThrift());
+  auto idToNhopIdSetMap = std::make_shared<IdToNextHopIdSetMap>();
+  idToNhopIdSetMap->addNextHopIdSet(kOff + 1, {1, 2});
+  idToNhopIdSetMap->addNextHopIdSet(kOff + 2, {3, 2});
+  auto fibsMap = makeFibsMap();
+  auto container = fibsMap->getNodeIf(RouterID(0));
+  addRouteOnSet(
+      container->getFibV4(),
+      makePrefixV4("10.1.0.0/24"),
+      NextHopSetID(kOff + 1));
+  addRouteOnSet(
+      container->getFibV4(),
+      makePrefixV4("10.2.0.0/24"),
+      NextHopSetID(kOff + 2));
+  addRouteOnSet(
+      container->getFibV6(),
+      makePrefixV6("2001:db8::/32"),
+      NextHopSetID(kOff + 2));
+  auto mySid = makeMySid();
+  mySid->setResolvedNextHopsId(NextHopSetID(kOff + 2));
+  auto mySidMap = std::make_shared<MultiSwitchMySidMap>();
+  mySidMap->addNode(mySid, scope());
+
+  auto [rib, state] =
+      warmboot(fibsMap, idToNhopMap, idToNhopIdSetMap, mySidMap);
+  ASSERT_TRUE(rib->nextHopIdsChangedAtWarmboot());
+  auto newState = applyRib(*rib, state);
+  expectStateMatchesRib(*rib, newState);
+  expectForwardingUnchanged(state, newState);
+
+  // Which persisted id survives depends on reconstruct order; exactly one does.
+  auto idToNhop = newState->getFibsInfoMap()
+                      ->cbegin()
+                      ->second->getIdToNextHopMap()
+                      ->toThrift();
+  EXPECT_NE(idToNhop.contains(1), idToNhop.contains(3));
+  auto newContainer = fibContainer(newState);
+  auto setId = newContainer->getFibV4()
+                   ->getRouteIf(makePrefixV4("10.1.0.0/24"))
+                   ->getForwardInfo()
+                   .getResolvedNextHopSetID();
+  ASSERT_TRUE(setId.has_value());
+  EXPECT_EQ(
+      newContainer->getFibV4()
+          ->getRouteIf(makePrefixV4("10.2.0.0/24"))
+          ->getForwardInfo()
+          .getResolvedNextHopSetID(),
+      setId);
+  EXPECT_EQ(
+      newContainer->getFibV6()
+          ->getRouteIf(makePrefixV6("2001:db8::/32"))
+          ->getForwardInfo()
+          .getResolvedNextHopSetID(),
+      setId);
+  auto newMySid = newState->getMySids()->getNodeIf(mySid->getID());
+  ASSERT_NE(newMySid, nullptr);
+  EXPECT_EQ(newMySid->getResolvedNextHopsId(), setId);
+}
+
+// State written with the NextHop id manager off: the state gets the NextHop
+// ids the RIB backfilled.
+TEST(WarmbootNextHopIdSync, BackfilledNextHopIdsSyncedIntoState) {
+  gflags::FlagSaver saver;
+  FLAGS_enable_nexthop_id_manager = true;
+  FLAGS_resolve_nexthops_from_id = false;
+  RouteNextHopSet nhops{mkNh("10.0.0.1"), mkNh("10.0.0.2")};
+  auto fibsMap = makeFibsMap();
+  auto route = std::make_shared<RouteV4>(
+      RouteV4::makeThrift(makePrefixV4("10.1.0.0/24")));
+  route->update(ClientID::BGPD, RouteNextHopEntry(nhops, AdminDistance::EBGP));
+  route->setResolved(RouteNextHopEntry(nhops, AdminDistance::EBGP));
+  route->publish();
+  fibsMap->getNodeIf(RouterID(0))->getFibV4()->addNode(route);
+
+  auto [rib, state] = warmboot(
+      fibsMap,
+      std::make_shared<IdToNextHopMap>(),
+      std::make_shared<IdToNextHopIdSetMap>());
+  ASSERT_TRUE(rib->nextHopIdsChangedAtWarmboot());
+  auto newState = applyRib(*rib, state);
+  expectStateMatchesRib(*rib, newState);
+  expectForwardingUnchanged(state, newState);
+  const auto& fibInfo = newState->getFibsInfoMap()->cbegin()->second;
+  EXPECT_EQ(fibInfo->getIdToNextHopMap()->toThrift().size(), 2);
+  auto syncedRoute = fibContainer(newState)->getFibV4()->getRouteIf(
+      makePrefixV4("10.1.0.0/24"));
+  ASSERT_NE(syncedRoute, nullptr);
+  EXPECT_TRUE(
+      syncedRoute->getForwardInfo().getResolvedNextHopSetID().has_value());
 }

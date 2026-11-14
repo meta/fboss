@@ -635,6 +635,58 @@ TYPED_TEST(FibHelperTest, syncIdMapsFromStateClearsWhenSourceEmpty) {
   EXPECT_EQ(resultFibInfo->getIdToNextHopMap(), nullptr);
 }
 
+// Warm boot collapses a duplicate NextHop id: override members move off the
+// retired id onto the surviving one.
+TYPED_TEST(FibHelperTest, remapOverrideSetIdsAfterNextHopCollapse) {
+  this->programRouteWithNexthops(
+      this->kPrefix2(), {this->kIpAddressA().str(), this->kIpAddressB().str()});
+  auto newState = this->sw_->getState()->clone();
+  auto idToNextHop = this->getFibInfo()->getIdToNextHopMap();
+  std::optional<NextHopId> idA, idB;
+  NextHopId maxId{0};
+  for (const auto& [id, node] : std::as_const(*idToNextHop)) {
+    maxId = std::max(maxId, id);
+    auto nhop = util::fromThrift(node->toThrift(), true);
+    if (nhop.addr() == this->kIpAddressA()) {
+      idA = id;
+    } else if (nhop.addr() == this->kIpAddressB()) {
+      idB = id;
+    }
+  }
+  ASSERT_TRUE(idA.has_value() && idB.has_value());
+  const NextHopId retiredB = maxId + 1000;
+  const NextHopSetId overrideId =
+      nextHopIdTypeStart(NextHopIdType::OVERRIDE_SET);
+
+  // The persisted state also had retiredB for B, used by an override set.
+  auto oldState = newState->clone();
+  auto oldIdToNextHop = idToNextHop->clone();
+  oldIdToNextHop->addNextHop(
+      retiredB, idToNextHop->getNextHop(*idB)->toThrift());
+  oldState->getFibsInfoMap()
+      ->getFibInfo(scope())
+      ->modify(&oldState)
+      ->setIdToNextHopMap(oldIdToNextHop);
+  auto overrideMap = std::make_shared<IdToNextHopIdSetMap>();
+  overrideMap->addNextHopIdSet(overrideId, {*idA, retiredB});
+  newState->getFibsInfoMap()
+      ->getFibInfo(scope())
+      ->modify(&newState)
+      ->setOverrideIdToNextHopIdSetMap(overrideMap);
+
+  auto result = remapOverrideSetIds(oldState, newState);
+
+  const IdToNextHopIdSetMapThriftType expected{{overrideId, {*idA, *idB}}};
+  EXPECT_EQ(
+      result->getFibsInfoMap()
+          ->getFibInfo(scope())
+          ->getOverrideIdToNextHopIdSetMap()
+          ->toThrift(),
+      expected);
+  // Nothing to remap once members use surviving ids.
+  EXPECT_EQ(remapOverrideSetIds(result, result), result);
+}
+
 TYPED_TEST(FibHelperTest, getNormalizedNextHopsFromEntry) {
   this->programRouteWithNexthops(
       this->kPrefix2(), {this->kIpAddressA().str(), this->kIpAddressB().str()});
@@ -727,6 +779,81 @@ TYPED_TEST(FibHelperTest, getNormalizedNextHopsWithOverrides) {
       EXPECT_NE(result, nonOverrideResult);
     }
   }
+}
+
+// The inline override nexthops and the override NextHopSetID name different
+// nexthops so the test can tell which one is read.
+TYPED_TEST(FibHelperTest, getOverrideNextHopsResolvesOverrideSetId) {
+  using AddrT = typename TestFixture::AddrT;
+  this->programRouteWithNexthops(
+      this->kPrefix2(), {this->kIpAddressA().str(), this->kIpAddressB().str()});
+  std::optional<NextHopId> memberB;
+  std::optional<NextHop> nhopB;
+  for (const auto& [id, node] :
+       std::as_const(*this->getFibInfo()->getIdToNextHopMap())) {
+    auto nhop = util::fromThrift(node->toThrift(), true);
+    if (nhop.addr() == this->kIpAddressB() && nhop.isResolved()) {
+      memberB = id;
+      nhopB = nhop;
+    }
+  }
+  ASSERT_TRUE(memberB.has_value());
+  const RouteNextHopSet inlineOverride{
+      ResolvedNextHop(this->kIpAddressA(), this->kInterfaceID(), 1)};
+  const NextHopSetID overrideId(
+      nextHopIdTypeStart(NextHopIdType::OVERRIDE_SET));
+  this->updateState("set overrides", [&](const auto& in) {
+    auto newState = in->clone();
+    auto route =
+        findRoute<AddrT>(this->kRid(), this->kPrefix2(), newState)->clone();
+    RouteNextHopEntry fwd(route->getForwardInfo().toThrift());
+    fwd.setOverrideNextHops(inlineOverride);
+    fwd.setOverrideNextHopSetID(overrideId);
+    route->setResolved(fwd);
+    newState->getFibsInfoMap()
+        ->getFibContainer(this->kRid())
+        ->template getFib<AddrT>()
+        ->modify(this->kRid(), &newState)
+        ->updateNode(route);
+    auto overrideMap = std::make_shared<IdToNextHopIdSetMap>();
+    overrideMap->addNextHopIdSet(
+        static_cast<NextHopSetId>(overrideId), {*memberB});
+    for (const auto& [matcher, _] : std::as_const(*in->getFibsInfoMap())) {
+      newState->getFibsInfoMap()
+          ->getNodeIf(matcher)
+          ->modify(&newState)
+          ->setOverrideIdToNextHopIdSetMap(overrideMap);
+    }
+    return newState;
+  });
+  auto state = this->sw_->getState();
+  auto route = findRoute<AddrT>(this->kRid(), this->kPrefix2(), state);
+  const auto& fwd = route->getForwardInfo();
+  const auto expected =
+      TestFixture::resolveFromId ? RouteNextHopSet{*nhopB} : inlineOverride;
+  EXPECT_EQ(getOverrideNextHops(state, fwd), expected);
+
+  // With resolve on an id missing from the override map is an error, not a
+  // fallback to the inline nexthops.
+  auto noMapState = state->clone();
+  for (const auto& [matcher, _] : std::as_const(*state->getFibsInfoMap())) {
+    noMapState->getFibsInfoMap()
+        ->getNodeIf(matcher)
+        ->modify(&noMapState)
+        ->setOverrideIdToNextHopIdSetMap(
+            std::make_shared<IdToNextHopIdSetMap>());
+  }
+  noMapState->publish();
+  if (TestFixture::resolveFromId) {
+    EXPECT_THROW(getOverrideNextHops(noMapState, fwd), FbossError);
+  } else {
+    EXPECT_EQ(getOverrideNextHops(noMapState, fwd), inlineOverride);
+  }
+
+  // No overrides at all.
+  auto plainRoute = findRoute<AddrT>(this->kRid(), this->kPrefix1(), state);
+  EXPECT_FALSE(
+      getOverrideNextHops(state, plainRoute->getForwardInfo()).has_value());
 }
 
 namespace {

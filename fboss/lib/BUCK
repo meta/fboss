@@ -37,7 +37,6 @@ cpp_library(
     deps = [
         "fbsource//third-party/fmt:fmt",
         "fbsource//xplat/folly:exception",
-        "fbsource//xplat/folly:format",
         "fbsource//xplat/folly/logging:logging",
     ],
     exported_deps = [
@@ -62,7 +61,6 @@ cpp_library(
     deps = ["fbsource//third-party/fmt:fmt"],
     exported_deps = [
         "fbsource//xplat/folly:exception",
-        "fbsource//xplat/folly:format",
         "fbsource//xplat/folly:singleton",
         "fbsource//xplat/folly/logging:logging",
     ],
@@ -156,7 +154,6 @@ cpp_library(
     ],
     exported_deps = [
         "fbsource//third-party/fmt:fmt",
-        "fbsource//xplat/folly:format",
         "fbsource//xplat/folly/logging:logging",
     ],
 )
@@ -225,9 +222,8 @@ cpp_library(
 )
 
 cpp_library(
-    # @autodeps-skip keep backward-compat folly re-exports (folly:format) that downstream
-    # consumers (e.g. hw/bcm:sdk_tracer -> SdkTracer.cpp includes folly/Format.h) relied on
-    # transitively; autodeps would demote them to deps.
+    # @autodeps-skip keep backward-compat re-exports (e.g. fmt, folly:file) that downstream
+    # consumers relied on transitively; autodeps would demote them to deps.
     name = "function_call_time_reporter",
     srcs = [
         "FunctionCallTimeReporter.cpp",
@@ -244,7 +240,6 @@ cpp_library(
         "fbsource//third-party/fmt:fmt",
         "fbsource//third-party/glog:glog",
         "fbsource//xplat/folly:file",
-        "fbsource//xplat/folly:format",
         "fbsource//xplat/folly:scope_guard",
         "fbsource//xplat/folly:singleton",
     ],
@@ -319,9 +314,8 @@ cpp_library(
     headers = [
         "GpiodLine.h",
     ],
-    exported_deps = [
-        "fbsource//xplat/folly:format",
-    ],
+    deps = ["fbsource//xplat/folly:string"],
+    exported_deps = [],
     exported_external_deps = [
         ("libgpiod", None, "gpiod"),
     ],

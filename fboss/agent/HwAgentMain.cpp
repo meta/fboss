@@ -26,6 +26,7 @@
 #include "fboss/agent/CommonInit.h"
 #include "fboss/agent/FbossInit.h"
 #include "fboss/agent/HwSwitch.h"
+#include "fboss/agent/InstrumentationHooks.h"
 #include "fboss/agent/SetupThrift.h"
 #include "fboss/agent/TestUtils.h"
 #include "fboss/agent/hw/switch_asics/HwAsic.h"
@@ -147,6 +148,7 @@ void SplitHwAgentSignalHandler::signalReceived(int /*signum*/) noexcept {
       << "[Exit] Total graceful Exit time "
       << duration_cast<duration<float>>(switchGracefulExit - begin).count();
   restart_time::mark(RestartEvent::SHUTDOWN);
+  stopCoverageCollection();
 
   // Delay exit if agent_exit_delay_s is set
   if (FLAGS_agent_exit_delay_s > 0) {
@@ -255,10 +257,8 @@ int hwAgentMain(
   server->setMonitoringInterface(std::move(monitor));
   server->setControlInterface(
       std::make_shared<facebook::fb303::DefaultControl>());
-  // The NetOS native-service watchdog gates systemd readiness on an fb303
-  // getStatus() call against the HwAgent thrift port. Without a status
-  // interface that method is unresolvable, so the service never reaches
-  // READY and is killed by the watchdog before SwAgent can start.
+  // Serve fb303 getStatus() for external health checks (NHS/netstate) that
+  // query the HwAgent thrift port directly.
   server->setStatusInterface(std::move(status));
 #endif
 

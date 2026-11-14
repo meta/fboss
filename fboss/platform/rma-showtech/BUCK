@@ -33,6 +33,7 @@ cpp_binary(
     deps = [
         "fbsource//third-party/fmt:fmt",
         "fbsource//third-party/re2:re2",
+        "fbsource//xplat/folly:file_util",
         "fbsource//xplat/folly:string",
         "fbsource//xplat/folly/logging:logging",
         ":showtech_config-cpp2-types",

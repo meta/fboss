@@ -9,6 +9,7 @@
  */
 
 #include "fboss/cli/fboss2/commands/config/qos/policy/CmdConfigQosPolicyMap.h"
+#include "fboss/cli/fboss2/utils/ArgCompletion.h"
 
 #include "fboss/cli/fboss2/CmdHandler.cpp"
 
@@ -434,5 +435,19 @@ void CmdConfigQosPolicyMap::printOutput(const RetType& logMsg) {
 // Explicit template instantiation
 template void
 CmdHandler<CmdConfigQosPolicyMap, CmdConfigQosPolicyMapTraits>::run();
+
+std::vector<std::string> CmdConfigQosPolicyMapTraits::completeArgs(
+    const std::vector<std::string>& typed) {
+  return utils::completion::completePositions(
+      typed,
+      {{"tc-to-queue",
+        "pfc-pri-to-queue",
+        "tc-to-pg",
+        "pfc-pri-to-pg",
+        "dscp",
+        "mpls-exp",
+        "dot1p",
+        "traffic-class"}});
+}
 
 } // namespace facebook::fboss

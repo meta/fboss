@@ -34,6 +34,7 @@ cpp_library(
         "fbsource//xplat/folly/logging:logging",
         ":platform_mapping_utils",
         "//fboss/agent:fboss-error",
+        "//folly:conv",
         "//thrift/lib/cpp/util:enum_utils",
         "//thrift/lib/cpp2:field_ref",
         "//thrift/lib/cpp2/protocol:protocol",

@@ -9,7 +9,9 @@
  */
 
 #include "fboss/cli/fboss2/commands/config/interface/CmdConfigInterface.h"
+#include "fboss/cli/fboss2/utils/ArgCompletion.h"
 
+#include "fboss/agent/types.h"
 #include "fboss/cli/fboss2/CmdHandler.cpp"
 
 #include <fmt/format.h>
@@ -28,13 +30,17 @@
 #include <stdexcept>
 #include <string>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 #include "fboss/agent/FbossError.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
 #include "fboss/agent/if/gen-cpp2/FbossCtrl.h"
 #include "fboss/agent/platforms/common/PlatformMapping.h"
 #include "fboss/cli/fboss2/commands/config/QueueConfigUtils.h"
+#include "fboss/cli/fboss2/commands/config/interface/InterfaceAttrArgsBase.h"
 #include "fboss/cli/fboss2/commands/config/interface/InterfaceIpUtils.h"
+#include "fboss/cli/fboss2/commands/config/vlan/VlanManager.h"
+#include "fboss/cli/fboss2/gen-cpp2/cli_metadata_types.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/utils/CmdClientUtilsCommon.h"
 #include "fboss/cli/fboss2/utils/CmdUtilsCommon.h"
@@ -68,6 +74,8 @@ const std::unordered_set<std::string> kKnownAttributes = [] {
       "no-shutdown",
       "lookup-class",
       "queue-config",
+      "mirror-ingress",
+      "mirror-egress",
   };
   for (const auto& name : lldpAttrNames()) {
     attrs.insert(name);
@@ -84,7 +92,7 @@ const std::unordered_set<std::string> kValuelessAttributes = {
 constexpr auto kValidConfigAttrs =
     "description, name, mtu, ip-address, ipv6-address, profile, loopback-mode, "
     "flow-control-rx, flow-control-tx, lldp-expected-*, type, shutdown, "
-    "no-shutdown, lookup-class, queue-config";
+    "no-shutdown, lookup-class, queue-config, mirror-ingress, mirror-egress";
 
 // The value of the `profile` attribute if the parsed attribute list configures
 // one, else nullopt. Centralized (single scan) so the InterfacesConfig
@@ -137,15 +145,42 @@ InterfacesConfig::InterfacesConfig(const std::vector<std::string>& v)
           }),
       portNames.end());
 
-  // A `profile` attribute can CREATE an absent-but-valid INTERFACE_PORT, so its
-  // names are allowed to be missing from the running config at resolution time
-  // (they are created later in queryClient). Without it, every name must
-  // already resolve.
-  const bool allowMissing = findProfileValue(getAttributes()).has_value();
+  // Two kinds of absent-but-creatable names may be missing from the running
+  // config at resolution time: a `profile` attribute can CREATE an
+  // absent-but-valid INTERFACE_PORT, and a loopback token (loopback<N>) names
+  // a virtual interface this command creates on first use. Both are created
+  // later in queryClient. Without either, every name must already resolve.
+  const bool hasProfile = findProfileValue(getAttributes()).has_value();
+  const bool allowMissing =
+      hasProfile ||
+      std::any_of(portNames.begin(), portNames.end(), [](const auto& name) {
+        return utils::parseLoopbackIndex(name).has_value();
+      });
 
   // Now resolve the port names to InterfaceList. Unless allowMissing is set,
   // this throws if any port is not found.
   interfaces_ = utils::InterfaceList(std::move(portNames), allowMissing);
+
+  // When only a loopback token justified allowMissing, every unresolved name
+  // must itself be a loopback token; anything else is reported now, the same
+  // way InterfaceList would have.
+  if (!hasProfile) {
+    std::vector<std::string> notFound;
+    for (const utils::Intf& intf : interfaces_) {
+      if (!intf.isValid() &&
+          !utils::parseLoopbackIndex(intf.name()).has_value()) {
+        notFound.push_back(intf.name());
+      }
+    }
+    if (!notFound.empty()) {
+      throw std::invalid_argument(
+          "Port(s) or interface(s) not found in configuration: " +
+          folly::join(", ", notFound) +
+          ". Only loopback interfaces (loopback0-" +
+          folly::to<std::string>(utils::kMaxLoopbackIndex) +
+          ") can be created by this command without a profile.");
+    }
+  }
 }
 
 std::string applyProfileImpl(
@@ -264,6 +299,89 @@ std::string applyProfile(
       interfaces,
       value,
       actionLevel);
+}
+
+// Creates the virtual loopback interface for `index`, plus its backing VLAN
+// when absent, following the bootstrap-config convention (see
+// utils::kLoopbackIntfIdBase): intfID == vlanID == base + index, VLAN named
+// fbossLoopback<index>, isVirtual = true. The agent requires every VLAN-type
+// interface to reference an existing VLAN and be that VLAN's only interface,
+// so a same-numbered VLAN that is already in use as a data VLAN is refused.
+// Returns the created interface's name.
+std::string createLoopbackInterface(
+    cfg::SwitchConfig& swConfig,
+    int32_t index) {
+  const int32_t id = utils::kLoopbackIntfIdBase + index;
+  const std::string name = fmt::format("loopback{}", index);
+
+  // A same-id interface exists but did not resolve as this loopback (a
+  // resolvable one never reaches creation), so it is some non-loopback
+  // interface occupying the conventional slot.
+  for (const auto& existing : *swConfig.interfaces()) {
+    if (*existing.intfID() == id) {
+      throw std::invalid_argument(
+          fmt::format(
+              "Cannot create {}: interface ID {} is already in use by a "
+              "non-loopback interface",
+              name,
+              id));
+    }
+    if (*existing.type() == cfg::InterfaceType::VLAN &&
+        *existing.vlanID() == id) {
+      throw std::invalid_argument(
+          fmt::format(
+              "Cannot create {}: VLAN {} already has interface {}",
+              name,
+              id,
+              *existing.intfID()));
+    }
+  }
+  for (const auto& vlanPort : *swConfig.vlanPorts()) {
+    if (*vlanPort.vlanID() == id) {
+      throw std::invalid_argument(
+          fmt::format(
+              "Cannot create {}: VLAN {} is already in use as a data VLAN "
+              "with member ports",
+              name,
+              id));
+    }
+  }
+
+  if (VlanManager::findVlan(swConfig, VlanID(id)) == nullptr) {
+    cfg::Vlan vlan;
+    vlan.id() = id;
+    vlan.name() = utils::loopbackVlanName(index);
+    vlan.routable() = true;
+    swConfig.vlans()->push_back(vlan);
+  }
+
+  cfg::Interface intf;
+  intf.intfID() = id;
+  intf.vlanID() = id;
+  intf.routerID() = 0;
+  intf.name() = name;
+  intf.isVirtual() = true;
+  swConfig.interfaces()->push_back(intf);
+  return name;
+}
+
+// Creates every requested-but-absent loopback interface (the only interface
+// kind `config interface` can create without a `profile` attribute). Names
+// that are neither resolvable nor loopback tokens were rejected by the
+// InterfacesConfig constructor (no profile) or belong to the profile flow.
+std::vector<std::string> createMissingLoopbackInterfaces(
+    const utils::InterfaceList& interfaces) {
+  std::vector<std::string> created;
+  auto& swConfig = *ConfigSession::getInstance().getAgentConfig().sw();
+  for (const utils::Intf& intf : interfaces) {
+    if (intf.isValid()) {
+      continue;
+    }
+    if (auto index = utils::parseLoopbackIndex(intf.name())) {
+      created.push_back(createLoopbackInterface(swConfig, *index));
+    }
+  }
+  return created;
 }
 
 // Configures a port as a routed (L3) port.
@@ -529,6 +647,25 @@ bool applyQueueConfig(
   return changed;
 }
 
+void validateMirrorAttributes(
+    const std::vector<std::pair<std::string, std::string>>& attributes,
+    const cfg::SwitchConfig& swConfig) {
+  for (const auto& [attr, value] : attributes) {
+    if (attr != "mirror-ingress" && attr != "mirror-egress") {
+      continue;
+    }
+    const auto& mirrors = *swConfig.mirrors();
+    const auto mirror = std::find_if(
+        mirrors.begin(), mirrors.end(), [&](const cfg::Mirror& candidate) {
+          return *candidate.name() == value;
+        });
+    if (mirror == mirrors.end()) {
+      throw std::invalid_argument(
+          fmt::format("Mirror '{}' does not exist", value));
+    }
+  }
+}
+
 CmdConfigInterfaceTraits::RetType CmdConfigInterface::queryClient(
     const HostInfo& hostInfo,
     const ObjectArgType& interfaceConfig) {
@@ -539,7 +676,26 @@ CmdConfigInterfaceTraits::RetType CmdConfigInterface::queryClient(
     throw std::invalid_argument("No interface name provided");
   }
 
-  if (!interfaceConfig.hasAttributes()) {
+  std::vector<std::string> results;
+  bool changed = false;
+
+  // Requested loopback interfaces that do not exist yet are created up front,
+  // so the attribute loop below (ip-address, mtu, ...) can target them like
+  // any other interface.
+  const std::vector<std::string> createdLoopbacks =
+      createMissingLoopbackInterfaces(interfaces);
+  if (!createdLoopbacks.empty()) {
+    changed = true;
+    ConfigSession::getInstance().rebuildPortMap();
+    results.push_back(
+        fmt::format(
+            "created loopback interface(s): {}",
+            folly::join(", ", createdLoopbacks)));
+  }
+
+  // A bare `config interface loopback<N>` is a complete command: it creates
+  // the interface. For everything else attributes are required.
+  if (!interfaceConfig.hasAttributes() && createdLoopbacks.empty()) {
     throw std::runtime_error(
         fmt::format(
             "Incomplete command. Either provide attributes ({}) "
@@ -547,14 +703,16 @@ CmdConfigInterfaceTraits::RetType CmdConfigInterface::queryClient(
             kValidConfigAttrs));
   }
 
-  std::vector<std::string> results;
-  bool changed = false;
-
+  // Validate every mirror reference before applying any attribute so a bad
+  // name cannot leave earlier attributes partially staged.
+  const auto& swConfig = *ConfigSession::getInstance().getAgentConfig().sw();
+  validateMirrorAttributes(attributes, swConfig);
   // The `profile` attribute mutates the port set (adjusts/removes existing
   // ports and creates absent ones), so it must be applied first, over the
   // ORIGINAL interfaces (which still carry pending Intfs with getPort()==
   // nullptr). Re-resolve afterwards so the remaining attributes see valid
   // pointers for freshly-created ports and no stale pointers to removed ones.
+  // Loopback creation above re-resolves for the same reason.
   const std::optional<std::string> profileValue = findProfileValue(attributes);
 
   utils::InterfaceList resolved(std::vector<std::string>{});
@@ -570,10 +728,13 @@ CmdConfigInterfaceTraits::RetType CmdConfigInterface::queryClient(
         applyProfile(hostInfo, interfaces, *profileValue, &actionLevel));
     changed = true;
     ConfigSession::getInstance().rebuildPortMap();
+  }
+  const bool reresolve = profileValue.has_value() || !createdLoopbacks.empty();
+  if (reresolve) {
     resolved = utils::InterfaceList(interfaces.getNames());
   }
   const utils::InterfaceList& effectiveInterfaces =
-      profileValue.has_value() ? resolved : interfaces;
+      reresolve ? resolved : interfaces;
 
   for (const auto& [attr, value] : attributes) {
     if (attr == "profile") {
@@ -678,6 +839,26 @@ CmdConfigInterfaceTraits::RetType CmdConfigInterface::queryClient(
     } else if (attr == "queue-config") {
       changed |= applyQueueConfig(value, effectiveInterfaces);
       results.push_back(fmt::format("queue-config={}", value));
+    } else if (attr == "mirror-ingress" || attr == "mirror-egress") {
+      for (const utils::Intf& intf : effectiveInterfaces) {
+        cfg::Port* port = intf.getPort();
+        if (!port) {
+          continue;
+        }
+        if (attr == "mirror-ingress") {
+          if (!port->ingressMirror().has_value() ||
+              *port->ingressMirror() != value) {
+            port->ingressMirror() = value;
+            changed = true;
+          }
+        } else if (
+            !port->egressMirror().has_value() ||
+            *port->egressMirror() != value) {
+          port->egressMirror() = value;
+          changed = true;
+        }
+      }
+      results.push_back(fmt::format("{}={}", attr, value));
     }
   }
 
@@ -702,5 +883,23 @@ void CmdConfigInterface::printOutput(const RetType& logMsg) {
 
 // Explicit template instantiation
 template void CmdHandler<CmdConfigInterface, CmdConfigInterfaceTraits>::run();
+
+std::vector<std::string> CmdConfigInterfaceTraits::completeArgs(
+    const std::vector<std::string>& typed) {
+  const std::vector<std::string> enableDisable = {"enable", "disable"};
+  return utils::completion::completeAttrGrammar(
+      typed,
+      {.attrs = utils::completion::toWords(kKnownAttributes),
+       .valueless = {kValuelessAttributes.begin(), kValuelessAttributes.end()},
+       .values =
+           {
+               {"loopback-mode", {"none", "PHY", "NIF", "MAC"}},
+               {"flow-control-rx", enableDisable},
+               {"flow-control-tx", enableDisable},
+               {"type", {"routed-port"}},
+               {"profile", utils::completion::enumNames<cfg::PortProfileID>()},
+           },
+       .minObjects = 1});
+}
 
 } // namespace facebook::fboss

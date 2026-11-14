@@ -221,12 +221,12 @@ _SAI_IN_PATH: re.Pattern = re.compile(r"/agent/[^/]+/([^/]+)/")
 # its locator and checksum; it simply reports nothing about itself yet.
 MODULE_SCHEMAS: dict[str, ModuleSchema] = {
     "kernel": ModuleSchema(
-        readers=("packages",),
+        readers=("packages", "build_info"),
         provides=(Provides("kernel", kernel_from_packages),),
         claims=(Claims("kernel", _KERNEL_IN_PATH),),
     ),
     "bsps": ModuleSchema(
-        readers=("packages",),
+        readers=("packages", "build_info"),
         provides=(
             Provides("bsp", bsp_from_packages),
             Provides("kernel", kernel_from_packages),
@@ -243,17 +243,14 @@ MODULE_SCHEMAS: dict[str, ModuleSchema] = {
         provides=(Provides("kernel", kernel_from_modules),),
     ),
     "fboss-forwarding-stack": ModuleSchema(
-        readers=("sdk",),
+        readers=("sdk", "build_info"),
         provides=(
             Provides("sai", sai_from_sdk),
             Provides("native_sdk", native_sdk_from_sdk),
         ),
         claims=(Claims("sai", _SAI_IN_PATH),),
     ),
-    # Reports nothing today: getBuildSummary() is "Not implemented" in the OSS
-    # build, and even when implemented it is written at runtime rather than
-    # packaged, so a reader can only be named here after producer-side capture.
-    "fboss-platform-stack": ModuleSchema(),
+    "fboss-platform-stack": ModuleSchema(readers=("build_info",)),
 }
 
 _NO_SCHEMA = ModuleSchema()

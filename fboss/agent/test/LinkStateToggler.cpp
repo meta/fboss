@@ -387,10 +387,6 @@ void LinkStateToggler::bringUpPorts(const cfg::SwitchConfig& initCfg) {
 
 void LinkStateToggler::invokeLinkScanIfNeeded(
     PortID /* port */,
-    bool /* isUp */) {
-  // For fake bcm tests, there's no link event callbacks from SDK.
-  // Hence link scan is needed to mimic SDK behavior for port UP/DOWn
-  // processing. For all other platforms that support linkscan, skip this step.
-}
+    bool /* isUp */) {}
 
 } // namespace facebook::fboss

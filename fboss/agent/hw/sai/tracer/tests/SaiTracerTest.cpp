@@ -9,6 +9,7 @@
  */
 
 #include "fboss/agent/hw/sai/tracer/SaiTracer.h"
+#include "fboss/agent/hw/sai/tracer/PolicerApiTracer.h"
 
 #include <folly/Singleton.h>
 #include <gtest/gtest.h>
@@ -749,6 +750,48 @@ TEST_F(SaiTracerTest, IsolationGroupObjectTypesAreRegistered) {
     EXPECT_FALSE(tracer->logCreateFn("create_fn", &oid, 0, 1, &attr, objectType)
                      .empty());
   }
+
+  tracer.reset();
+  folly::SingletonVault::singleton()->destroyInstances();
+  folly::SingletonVault::singleton()->reenableInstances();
+  FLAGS_enable_replayer = false;
+}
+
+TEST_F(SaiTracerTest, PolicerObjectTypeAndRatesAreRegistered) {
+  folly::SingletonVault::singleton()->destroyInstances();
+  folly::SingletonVault::singleton()->reenableInstances();
+  FLAGS_enable_replayer = true;
+  FLAGS_sai_log = "/dev/null";
+  auto tracer = getTracer();
+  ASSERT_NE(tracer, nullptr);
+
+  sai_object_id_t oid = 1000;
+  sai_attribute_t attrs[3]{};
+  attrs[0].id = SAI_POLICER_ATTR_CIR;
+  attrs[0].value.u64 = oid;
+  attrs[1].id = SAI_POLICER_ATTR_CBS;
+  attrs[1].value.u64 = uint64_t{1} << 40;
+  attrs[2].id = SAI_POLICER_ATTR_PBS;
+  attrs[2].value.u64 = 0;
+  auto [declaration, varName] =
+      tracer->declareVariable(&oid, SAI_OBJECT_TYPE_POLICER);
+  EXPECT_FALSE(declaration.empty());
+  EXPECT_FALSE(varName.empty());
+  EXPECT_FALSE(
+      tracer
+          ->logCreateFn(
+              "create_policer", &oid, 0, 3, attrs, SAI_OBJECT_TYPE_POLICER)
+          .empty());
+  std::vector<std::string> lines;
+  setPolicerAttributes(attrs, 3, lines, SAI_STATUS_SUCCESS);
+  std::vector<std::string> expected{
+      "// Cir",
+      "s_a[0].value.u64=1000",
+      "// Cbs",
+      "s_a[1].value.u64=1099511627776",
+      "// Pbs",
+      "s_a[2].value.u64=0"};
+  EXPECT_EQ(lines, expected);
 
   tracer.reset();
   folly::SingletonVault::singleton()->destroyInstances();

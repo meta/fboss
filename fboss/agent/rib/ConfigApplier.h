@@ -14,6 +14,8 @@
 #include <folly/Range.h>
 #include <functional>
 #include <memory>
+#include <optional>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -68,7 +70,9 @@ class ConfigApplier {
       folly::Range<StaticMySidIterator> staticMySidRange,
       NextHopIDManager* nextHopIDManager,
       MySidTable* mySidTable,
-      uint32_t ecmpWidth);
+      uint32_t ecmpWidth,
+      const std::unordered_set<InterfaceID>* vrfInterfaces = nullptr,
+      RibRouteUpdater::RouterIDToRouteTable* crossVrfRouteTables = nullptr);
 
   void apply();
 
@@ -102,6 +106,8 @@ class ConfigApplier {
   NextHopIDManager* nextHopIDManager_{nullptr};
   MySidTable* mySidTable_{nullptr};
   uint32_t ecmpWidth_;
+  const std::unordered_set<InterfaceID>* vrfInterfaces_;
+  RibRouteUpdater::RouterIDToRouteTable* crossVrfRouteTables_{nullptr};
 };
 
 } // namespace facebook::fboss

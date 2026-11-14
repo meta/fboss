@@ -37,6 +37,8 @@ class SflowDeleteAttrArgs : public utils::BaseObjectArgType<std::string> {
 };
 
 struct CmdDeleteInterfaceSflowTraits : public WriteCommandTraits {
+  static std::vector<std::string> completeArgs(
+      const std::vector<std::string>& typed);
   using ParentCmd = CmdDeleteInterface;
   static void addCliArg(CLI::App& cmd, std::vector<std::string>& args) {
     cmd.add_option(

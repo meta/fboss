@@ -40,6 +40,8 @@ class MockAsic : public HwAsic {
       case HwAsic::Feature::EVENTOR_PORT_FOR_SFLOW:
       case HwAsic::Feature::SWITCH_ASIC_SDK_HEALTH_NOTIFY:
       case HwAsic::Feature::ROUTER_INTERFACE_STATISTICS:
+      case HwAsic::Feature::PORT_LATCH_STATUS:
+      case HwAsic::Feature::PCS_ERROR_COUNTERS:
         return false;
       case HwAsic::Feature::CPU_TX_PACKET_REQUIRES_VLAN_TAG:
         return getSwitchType() == cfg::SwitchType::NPU;
@@ -219,7 +221,6 @@ class MockAsic : public HwAsic {
             apache::thrift::util::enumNameSafe(scalingFactor));
     }
     CHECK(0) << "Should never get here";
-    return -1;
   }
   uint32_t getStaticQueueLimitBytes() const override {
     return 0;
@@ -259,6 +260,12 @@ class MockAsic : public HwAsic {
   }
   std::vector<int16_t> getCbfcSenderPacketOverheads() const override {
     return {0, 16, 32, 48, 64, 80};
+  }
+  int16_t getCbfcNumVirtualChannels() const override {
+    return 16;
+  }
+  bool isCbfcReceiverCreditLimitSupported() const override {
+    return true;
   }
   const std::set<uint16_t>& getL1FabricPortsToConnectToL2() const override {
     static const std::set<uint16_t> l1FabricPortsToConnectToL2{};

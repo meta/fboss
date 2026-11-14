@@ -26,14 +26,14 @@ development.
 
   Test cases can be found in this file, in “fboss_platform_services”, any tests
   does not end with “\_hw_test” :
-  [https://github.com/facebook/fboss/blob/main/CMakeLists.txt#L1002](https://github.com/facebook/fboss/blob/main/CMakeLists.txt#L1002)
+  [https://github.com/meta/fboss/blob/main/CMakeLists.txt#L1002](https://github.com/meta/fboss/blob/main/CMakeLists.txt#L1002)
 
 #### Hardware Tests
 
 - These tests need to run on the actual HW platform. Note: These tests will not
   run on github PRs. Test cases can be found in this file, in
   “fboss_platform_services”, end with “\_hw_test” :
-  [https://github.com/facebook/fboss/blob/main/CMakeLists.txt#L1002](https://github.com/facebook/fboss/blob/main/CMakeLists.txt#L1002)
+  [https://github.com/meta/fboss/blob/main/CMakeLists.txt#L1002](https://github.com/meta/fboss/blob/main/CMakeLists.txt#L1002)
   - platform_manager_hw_test
 
   - sensor_service_hw_test
@@ -117,7 +117,7 @@ development.
 ## BSP
 
 Please refer to:
-[https://facebook.github.io/fboss/docs/testing/bsp_tests/](https://facebook.github.io/fboss/docs/testing/bsp_tests/)
+[https://meta.github.io/fboss/docs/testing/bsp_tests/](https://meta.github.io/fboss/docs/testing/bsp_tests/)
 
 ---
 
@@ -178,7 +178,7 @@ for each development phase exit.
 
 | Category                            | Test Name                           |     Sub Name     | Details                                                                                                                                                                                                                                                                                                                                                                                                               |
 | ----------------------------------- | ----------------------------------- | :--------------: | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **x86 BSP**                         | Kernel module load/unload           |                  | Run bsp kmod test for 500 times ([https://github.com/facebook/fboss/tree/main/fboss/platform/bsp_tests](https://github.com/facebook/fboss/tree/main/fboss/platform/bsp_tests))                                                                                                                                                                                                                                        |
+| **x86 BSP**                         | Kernel module load/unload           |                  | Run bsp kmod test for 500 times ([https://github.com/meta/fboss/tree/main/fboss/platform/bsp_tests](https://github.com/meta/fboss/tree/main/fboss/platform/bsp_tests))                                                                                                                                                                                                                                        |
 |                                     | SPI Access                          |                  | Read and write each SPI device for 500 times                                                                                                                                                                                                                                                                                                                                                                          |
 |                                     | FPGA                                | I2C Transactions | Read and Write I2C bus for each I2C device for 500 times                                                                                                                                                                                                                                                                                                                                                              |
 |                                     | FPGA                                |       MDIO       | Read and write scratch pad register 100 times                                                                                                                                                                                                                                                                                                                                                                         |

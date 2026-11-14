@@ -23,10 +23,13 @@
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
 #include "fboss/agent/hw/mock/MockPlatform.h"
 #include "fboss/agent/if/gen-cpp2/common_types.h"
+#include "fboss/agent/packet/EthHdr.h"
+#include "fboss/agent/state/AclTable.h"
 #include "fboss/agent/state/AggregatePort.h"
 #include "fboss/agent/state/FibInfo.h"
 #include "fboss/agent/state/ForwardingInformationBase.h"
 #include "fboss/agent/state/MySid.h"
+#include "fboss/agent/state/PbrUtils.h"
 #include "fboss/agent/state/Port.h"
 #include "fboss/agent/state/Route.h"
 #include "fboss/agent/state/RouteNextHop.h"
@@ -35,6 +38,7 @@
 #include "fboss/agent/test/CounterCache.h"
 #include "fboss/agent/test/HwTestHandle.h"
 #include "fboss/agent/test/RouteScaleGenerators.h"
+#include "fboss/agent/test/TestPacketFactory.h"
 #include "fboss/agent/test/TestUtils.h"
 #include "fboss/agent/test/utils/NextHopIdTestUtils.h"
 #include "fboss/lib/CommonUtils.h"
@@ -148,6 +152,73 @@ class ThriftTestWithNhopIdMgr : public ThriftTest {
   }
 };
 
+TEST_F(ThriftTest, getVrfs) {
+  auto config = testConfigA();
+  auto& vrfConfig = config.vrfs().ensure().emplace_back();
+  vrfConfig.vrfId() = 1001;
+  vrfConfig.name() = "red";
+  sw_->applyConfig("add vrf", config);
+  sw_->updateInterfaceVrfs(
+      {{InterfaceID(*config.interfaces()[1].intfID()), RouterID(1001)}});
+
+  ThriftHandler handler(sw_);
+  std::vector<VrfInfo> vrfs;
+  handler.getVrfs(vrfs);
+
+  VrfInfo defaultVrf;
+  defaultVrf.vrfId() = 0;
+  defaultVrf.interfaceIds() = {*config.interfaces()[0].intfID()};
+  VrfInfo red;
+  red.vrfId() = 1001;
+  red.name() = "red";
+  red.interfaceIds() = {*config.interfaces()[1].intfID()};
+  EXPECT_EQ(vrfs, (std::vector<VrfInfo>{defaultVrf, red}));
+}
+
+TEST_F(ThriftTest, getRouteTableDetailsByVrf) {
+  auto config = testConfigA();
+  config.vrfs().ensure().emplace_back().vrfId() = 1001;
+  sw_->applyConfig("add vrf", config);
+  sw_->updateInterfaceVrfs(
+      {{InterfaceID(*config.interfaces()[1].intfID()), RouterID(1001)}});
+
+  ThriftHandler handler(sw_);
+  auto prefixesInVrf = [&handler](int32_t vrf) {
+    std::vector<RouteDetails> routes;
+    handler.getRouteTableDetailsByVrf(routes, vrf);
+    std::set<std::string> prefixes;
+    for (const auto& route : routes) {
+      EXPECT_EQ(*route.vrf(), vrf);
+      prefixes.insert(
+          fmt::format(
+              "{}/{}",
+              facebook::network::toIPAddress(*route.dest()->ip()).str(),
+              *route.dest()->prefixLength()));
+    }
+    return prefixes;
+  };
+  EXPECT_TRUE(prefixesInVrf(1001).contains("10.0.55.0/24"));
+  EXPECT_FALSE(prefixesInVrf(0).contains("10.0.55.0/24"));
+}
+
+TEST_F(ThriftTest, routeReadsRejectUnknownVrf) {
+  ThriftHandler handler(sw_);
+  constexpr int32_t kUnknownVrf = 2000;
+  auto addr = [] {
+    return std::make_unique<facebook::network::thrift::Address>(
+        facebook::network::toAddress(IPAddress("10.0.0.1")));
+  };
+
+  std::vector<RouteDetails> routes;
+  EXPECT_THROW(
+      handler.getRouteTableDetailsByVrf(routes, kUnknownVrf), FbossError);
+  RouteDetails details;
+  EXPECT_THROW(
+      handler.getIpRouteDetails(details, addr(), kUnknownVrf), FbossError);
+  UnicastRoute route;
+  EXPECT_THROW(handler.getIpRoute(route, addr(), kUnknownVrf), FbossError);
+}
+
 TEST_F(ThriftTest, getInterfaceDetail) {
   ThriftHandler handler(this->sw_);
 
@@ -186,6 +257,32 @@ TEST_F(ThriftTest, getInterfaceDetail) {
   // Calling getInterfaceDetail() on an unknown
   // interface should throw an FbossError.
   EXPECT_THROW(handler.getInterfaceDetail(info, 123), FbossError);
+}
+
+TEST_F(ThriftTest, txPktL3WithNonzeroInterfaceIds) {
+  ThriftHandler handler(sw_);
+  ASSERT_EQ(
+      sw_->getState()->getInterfaces()->getNodeIf(InterfaceID(0)), nullptr);
+  ASSERT_NE(
+      sw_->getState()->getInterfaces()->getNodeIf(InterfaceID(1)), nullptr);
+
+  // No packets are sent: this checks interface selection without hardware I/O.
+  EXPECT_NO_THROW(handler.txPktL3(std::make_unique<folly::fbstring>(), 0, 0));
+}
+
+TEST_F(ThriftTest, txPktL3WithNonemptyPayload) {
+  ThriftHandler handler(sw_);
+  auto packet = createV6Packet(
+      IPAddressV6(kNhopAddrA),
+      IPAddressV6(kNhopAddrB),
+      kMacAddress,
+      kMacAddress);
+  // txPktL3 takes only the IP packet, without the Ethernet header.
+  auto payload = std::make_unique<folly::fbstring>(
+      reinterpret_cast<const char*>(packet.data() + EthHdr::SIZE),
+      packet.length() - EthHdr::SIZE);
+  ASSERT_FALSE(payload->empty());
+  EXPECT_NO_THROW(handler.txPktL3(std::move(payload), 1, 0));
 }
 
 TEST_F(ThriftTest, getPortInfoUserMetaData) {
@@ -242,6 +339,7 @@ TEST_F(ThriftTest, getPortInfoCbfc) {
   cbfcConfig.senderCreditLimit() = 8192;
   cbfcConfig.senderCreditSize() = 56;
   cbfcConfig.senderPacketOverhead() = 16;
+  cbfcConfig.receiverCreditLimit() = 4096;
 
   auto config = testConfigA();
   config.cbfcConfigs() = {{"cbfc", cbfcConfig}};
@@ -260,6 +358,7 @@ TEST_F(ThriftTest, getPortInfoCbfc) {
   EXPECT_EQ(after.cbfc()->senderCreditSize(), 56);
   EXPECT_EQ(after.cbfc()->senderPacketOverhead(), 16);
   EXPECT_EQ(after.cbfc()->senderCreditLimit(), 8192);
+  EXPECT_EQ(after.cbfc()->receiverCreditLimit(), 4096);
 
   std::map<int32_t, PortInfoThrift> allPortInfo;
   handler.getAllPortInfo(allPortInfo);
@@ -1140,6 +1239,45 @@ TEST_F(ThriftTest, addUnicastRouteWithLinkLocalInterfaceSucceeds) {
 
   EXPECT_NO_THROW(handler.addUnicastRoute(
       static_cast<int16_t>(ClientID::OPENR), std::move(route)));
+}
+
+TEST_F(ThriftTest, addUnicastRouteInVrfValidatesNextHopVrf) {
+  auto config = testConfigA();
+  config.vrfs().ensure().emplace_back().vrfId() = 1001;
+  config.vrfs()->emplace_back().vrfId() = 1002;
+  sw_->applyConfig("add vrfs", config);
+  sw_->updateInterfaceVrfs(
+      {{InterfaceID(*config.interfaces()[1].intfID()), RouterID(1001)}});
+
+  ThriftHandler handler(sw_);
+  auto addRoute = [&handler](
+                      int32_t routeVrf,
+                      int32_t nhopVrf,
+                      const std::string& addr = "2401:db00::1",
+                      const std::optional<std::string>& ifName = std::nullopt) {
+    auto route = std::make_unique<UnicastRoute>();
+    route->dest() = ipPrefix("2001:db8::/64");
+    route->adminDistance() = AdminDistance::OPENR;
+    NextHopThrift nexthop;
+    nexthop.address() = toBinaryAddress(IPAddress(addr));
+    nexthop.address()->ifName().from_optional(ifName);
+    nexthop.weight() = ECMP_WEIGHT;
+    nexthop.vrf() = nhopVrf;
+    route->nextHops()->push_back(std::move(nexthop));
+    handler.addUnicastRouteInVrf(
+        static_cast<int16_t>(ClientID::OPENR), std::move(route), routeVrf);
+  };
+
+  EXPECT_NO_THROW(addRoute(1001, 1001));
+  EXPECT_NO_THROW(addRoute(1001, 0));
+  EXPECT_NO_THROW(addRoute(0, 0));
+  EXPECT_NO_THROW(addRoute(1001, 1001, "fe80:face:b00c::1", "fboss55"));
+
+  EXPECT_THROW(addRoute(0, 1001), FbossError);
+  EXPECT_THROW(addRoute(1001, 1002), FbossError);
+  EXPECT_THROW(addRoute(1001, 2002), FbossError);
+  EXPECT_THROW(addRoute(1001, -1), FbossError);
+  EXPECT_THROW(addRoute(1001, 0, "fe80:face:b00c::1", "fboss55"), FbossError);
 }
 
 TEST_F(ThriftTest, addUnicastRouteWithNonLinkLocalInterfaceThrows) {
@@ -2164,6 +2302,20 @@ TEST_F(ThriftTest, addUnicastRoutesRejectsMplsAndSrv6) {
   EXPECT_NO_THROW(handler.addUnicastRoute(bgpClient, std::move(srv6OnlyRoute)));
 }
 
+TEST_F(ThriftTest, addUnicastRoutesRejectsResolvedInNextLevel) {
+  ThriftHandler handler(sw_);
+
+  auto bgpClient = static_cast<int16_t>(ClientID::BGPD);
+  auto route = makeEcmpUnicastRoute(
+      "7.1.0.0/16", {}, sw_->clientIdToAdminDistance(bgpClient));
+  NextHopThrift nh;
+  nh.address() = toBinaryAddress(IPAddress("10.0.0.11"));
+  nh.resolvedInNextLevel() = true;
+  route->nextHops() = {nh};
+  EXPECT_THROW(
+      handler.addUnicastRoute(bgpClient, std::move(route)), FbossError);
+}
+
 TEST_F(ThriftTest, addUnicastRoutesRejectsSrv6WithInvalidTunnelType) {
   ThriftHandler handler(sw_);
 
@@ -2395,6 +2547,38 @@ TEST_F(ThriftTest, addUnicastRoutesIsHwProtected) {
   WITH_RETRIES({
     EXPECT_EVENTUALLY_GT(sw_->stats()->getRouteProgrammingUpdateFailures(), 0);
   });
+}
+
+TEST_F(ThriftTest, setPortPrbsIsHwProtected) {
+  ThriftHandler handler(sw_);
+  const PortID portId(1);
+  auto asicPrbsEnabled = [&]() {
+    return *sw_->getState()
+                ->getPorts()
+                ->getNodeIf(portId)
+                ->getAsicPrbs()
+                .enabled();
+  };
+  phy::PortPrbsState prbsOn;
+  prbsOn.enabled() = true;
+  prbsOn.polynominal() = 31;
+  sw_->updateStateBlocking(
+      "enable asic prbs",
+      [&](const shared_ptr<SwitchState>& state) -> shared_ptr<SwitchState> {
+        shared_ptr<SwitchState> newState{state};
+        auto newPort =
+            newState->getPorts()->getNodeIf(portId)->modify(&newState);
+        newPort->setAsicPrbs(prbsOn);
+        return newState;
+      });
+  ASSERT_TRUE(asicPrbsEnabled());
+
+  // Fail HW update by returning current state
+  EXPECT_HW_CALL(sw_, stateChangedImpl(_, _)).WillOnce(Return(sw_->getState()));
+  EXPECT_THROW(
+      handler.setPortPrbs(portId, phy::PortComponent::ASIC, false, 31),
+      FbossHwUpdateError);
+  EXPECT_TRUE(asicPrbsEnabled());
 }
 
 TEST_F(ThriftTest, getRouteTable) {
@@ -3790,6 +3974,17 @@ TEST_F(ThriftTest, addMySidEntryRejectsAdjacencyType) {
   auto entries = std::make_unique<std::vector<MySidEntry>>();
   entries->push_back(
       makeMySidEntry("2001:db8::1", 64, MySidType::ADJACENCY_MICRO_SID));
+  EXPECT_THROW(handler.addMySidEntries(std::move(entries)), FbossError);
+}
+
+TEST_F(ThriftTest, addMySidEntryRejectsResolvedInNextLevel) {
+  ThriftHandler handler(sw_);
+
+  auto entry = makeMySidEntryWithNextHops(
+      "2001:db8::1", 64, MySidType::BINDING_MICRO_SID, {"2001:db8::ff"});
+  entry.nextHops()->front().resolvedInNextLevel() = true;
+  auto entries = std::make_unique<std::vector<MySidEntry>>();
+  entries->push_back(std::move(entry));
   EXPECT_THROW(handler.addMySidEntries(std::move(entries)), FbossError);
 }
 
@@ -5232,6 +5427,81 @@ TEST_F(NamedNextHopGroupThriftTest, pbrRedirectGroupIsProgrammed) {
       EXPECT_TRUE(*group.isProgrammed()) << *group.name();
     }
   }
+}
+
+TEST_F(NamedNextHopGroupThriftTest, pbrTableHoldsConfigEntriesBelowPolicies) {
+  SCOPE_EXIT {
+    FLAGS_enable_acl_table_group = false;
+  };
+  FLAGS_enable_acl_table_group = true;
+  auto pbrConfig = [](const std::vector<std::string>& entryNames) {
+    cfg::AclTable pbrTable;
+    pbrTable.name() = cfg::switch_config_constants::DEFAULT_PBR_ACL_TABLE();
+    pbrTable.priority() = 1;
+    pbrTable.actionTypes() = {
+        cfg::AclTableActionType::COUNTER, cfg::AclTableActionType::REDIRECT};
+    pbrTable.qualifiers() = {
+        cfg::AclTableQualifier::TC,
+        cfg::AclTableQualifier::NEXT_HOP_GROUP_ID,
+        cfg::AclTableQualifier::ETHER_TYPE};
+    for (const auto& name : entryNames) {
+      cfg::AclEntry entry;
+      entry.name() = name;
+      entry.etherType() = cfg::EtherType::IPv6;
+      pbrTable.aclEntries()->push_back(entry);
+    }
+    cfg::AclTableGroup tableGroup;
+    tableGroup.name() = "ingress-group";
+    tableGroup.stage() = cfg::AclStage::INGRESS;
+    tableGroup.aclTables() = {pbrTable};
+    auto config = testConfigA();
+    config.aclTableGroups() = {tableGroup};
+    return config;
+  };
+  auto pbrAcls = [this]() {
+    return sw_->getState()->getAclsForTable(
+        cfg::AclStage::INGRESS,
+        cfg::switch_config_constants::DEFAULT_PBR_ACL_TABLE());
+  };
+  sw_->applyConfig("add PBR ACL table", pbrConfig({"count_a", "count_b"}));
+
+  ThriftHandler handler(sw_);
+  auto groups = std::make_unique<std::vector<NextHopGroup>>();
+  groups->push_back(makeGroup("defaultNhg", {"2401:db00:2110:3001::2"}));
+  groups->push_back(makeGroup("classNhg", {"2401:db00:2110:3001::3"}));
+  handler.addOrUpdateNamedNextHopGroups(std::move(groups));
+  handler.addPolicies(onePolicy(makeCbfPolicy(
+      "pol1",
+      "defaultNhg",
+      {{ForwardingClass::CLASS_1, namedNhgRef("classNhg")}})));
+  addUnicastRouteWithNamedNextHopGroup(handler, "2401::100/128", "defaultNhg");
+  const auto pbrEntryName =
+      makePbrAclEntryName("pol1", ForwardingClass::CLASS_1, false);
+
+  // 1. The policy entry sits above the config entries, which keep their order.
+  auto pbrEntry = pbrAcls()->getEntryIf(pbrEntryName);
+  ASSERT_NE(pbrEntry, nullptr);
+  EXPECT_EQ(pbrEntry->getPriority(), FLAGS_pbr_acl_priority);
+  EXPECT_EQ(
+      pbrAcls()->getEntry("count_a")->getPriority(),
+      AclTable::kDataplaneAclMaxPriority);
+  EXPECT_EQ(
+      pbrAcls()->getEntry("count_b")->getPriority(),
+      AclTable::kDataplaneAclMaxPriority + 1);
+
+  // 2. Dropping a config entry leaves the policy entry untouched.
+  sw_->applyConfig("drop count_a", pbrConfig({"count_b"}));
+  EXPECT_EQ(pbrAcls()->getEntryIf(pbrEntryName), pbrEntry);
+  EXPECT_EQ(pbrAcls()->getEntryIf("count_a"), nullptr);
+  EXPECT_EQ(
+      pbrAcls()->getEntry("count_b")->getPriority(),
+      AclTable::kDataplaneAclMaxPriority);
+  EXPECT_EQ(pbrAcls()->numEntries(), 2);
+
+  // 3. A config entry cannot take the policy entry's name.
+  EXPECT_THROW(
+      sw_->applyConfig("reuse PBR name", pbrConfig({pbrEntryName})),
+      FbossError);
 }
 
 TEST_F(NamedNextHopGroupThriftTest, removeNextHopGroup) {

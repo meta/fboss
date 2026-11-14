@@ -644,7 +644,7 @@ TEST_F(CmisTest, moduleStateIgnoresReservedBitsOfStatusByte) {
   // decode, so a module misread as not-ready silently loses that data. Page
   // 14h byte 0 is 0x06 in this fixture; it is only populated when the module
   // was seen as READY during the refresh.
-  auto cmisData = xcvr->getDOMDataUnion().get_cmis();
+  auto cmisData = xcvr->getDOMDataUnion().cmis().as_const().value();
   ASSERT_TRUE(cmisData.page14().has_value());
   EXPECT_EQ(cmisData.page14()->data()[0], 0x06);
 }
@@ -667,7 +667,8 @@ TEST_F(CmisTest, cmis200GTransceiverInfoTest) {
       xcvr->numMediaLanes(),
       info.tcvrState()->settings()->mediaInterface().value_or({}).size());
   for (auto& media : *info.tcvrState()->settings()->mediaInterface()) {
-    EXPECT_EQ(media.media()->get_smfCode(), SMFMediaInterfaceCode::FR4_200G);
+    EXPECT_EQ(
+        media.media()->smfCode().value(), SMFMediaInterfaceCode::FR4_200G);
     EXPECT_EQ(media.code(), MediaInterfaceCode::FR4_200G);
   }
   testCachedMediaSignals(xcvr);
@@ -686,7 +687,7 @@ TEST_F(CmisTest, cmis200GTransceiverInfoTest) {
   if (auto status = info.tcvrState()->status();
       status && status->cmisModuleState()) {
     EXPECT_EQ(*status->cmisModuleState(), CmisModuleState::READY);
-    auto cmisData = xcvr->getDOMDataUnion().get_cmis();
+    auto cmisData = xcvr->getDOMDataUnion().cmis().as_const().value();
     // NOTE the following cmis data are specifically set to 0x11 in
     // FakeTransceiverImpl
     EXPECT_TRUE(cmisData.page14());
@@ -893,7 +894,8 @@ TEST_F(CmisTest, cmis400GLr4TransceiverInfoTest) {
       info.tcvrState()->moduleMediaInterface(),
       MediaInterfaceCode::LR4_400G_10KM);
   for (auto& media : *info.tcvrState()->settings()->mediaInterface()) {
-    EXPECT_EQ(media.media()->get_smfCode(), SMFMediaInterfaceCode::LR4_10_400G);
+    EXPECT_EQ(
+        media.media()->smfCode().value(), SMFMediaInterfaceCode::LR4_10_400G);
     EXPECT_EQ(media.code(), MediaInterfaceCode::LR4_400G_10KM);
   }
   // Check cmisStateChanged
@@ -911,7 +913,7 @@ TEST_F(CmisTest, cmis400GLr4TransceiverInfoTest) {
   if (auto status = info.tcvrState()->status();
       status && status->cmisModuleState()) {
     EXPECT_EQ(*status->cmisModuleState(), CmisModuleState::READY);
-    auto cmisData = xcvr->getDOMDataUnion().get_cmis();
+    auto cmisData = xcvr->getDOMDataUnion().cmis().as_const().value();
     // NOTE the following cmis data are specifically set to 0x11 in
     // FakeTransceiverImpl
     EXPECT_TRUE(cmisData.page14());
@@ -1125,7 +1127,7 @@ TEST_F(CmisTest, cmis400GCr8TransceiverInfoTest) {
       info.tcvrState()->moduleMediaInterface(), MediaInterfaceCode::CR8_400G);
   for (auto& media : *info.tcvrState()->settings()->mediaInterface()) {
     EXPECT_EQ(
-        media.media()->get_passiveCuCode(),
+        media.media()->passiveCuCode().value(),
         PassiveCuMediaInterfaceCode::COPPER);
     EXPECT_EQ(media.code(), MediaInterfaceCode::CR8_400G);
   }
@@ -1176,6 +1178,24 @@ TEST_F(CmisTest, cmis400GCr8TransceiverInfoTest) {
           std::nullopt);
     }
   }
+
+  // Passive copper accepts any copper profile but no optical/backplane one
+  for (auto speed :
+       {cfg::PortSpeed::HUNDREDG,
+        cfg::PortSpeed::FOURHUNDREDG,
+        cfg::PortSpeed::EIGHTHUNDREDG,
+        cfg::PortSpeed::ONEPOINTSIXT}) {
+    TransceiverPortState portState;
+    portState.startHostLane = 0;
+    portState.speed = speed;
+    portState.numHostLanes = 8;
+    portState.transmitterTech = TransmitterTechnology::COPPER;
+    EXPECT_TRUE(xcvr->tcvrPortStateSupported(portState));
+    portState.transmitterTech = TransmitterTechnology::OPTICAL;
+    EXPECT_FALSE(xcvr->tcvrPortStateSupported(portState));
+    portState.transmitterTech = TransmitterTechnology::BACKPLANE;
+    EXPECT_FALSE(xcvr->tcvrPortStateSupported(portState));
+  }
   EXPECT_TRUE(info.tcvrState()->errorStates()->empty());
 }
 
@@ -1193,7 +1213,8 @@ TEST_F(CmisTest, cmis2x400GFr4TransceiverInfoTest) {
   EXPECT_EQ(
       info.tcvrState()->moduleMediaInterface(), MediaInterfaceCode::FR4_2x400G);
   for (auto& media : *info.tcvrState()->settings()->mediaInterface()) {
-    EXPECT_EQ(media.media()->get_smfCode(), SMFMediaInterfaceCode::FR4_400G);
+    EXPECT_EQ(
+        media.media()->smfCode().value(), SMFMediaInterfaceCode::FR4_400G);
     EXPECT_EQ(media.code(), MediaInterfaceCode::FR4_400G);
   }
 
@@ -1346,6 +1367,90 @@ TEST_F(CmisTest, cmis2x400GFr4TransceiverInfoTest) {
   EXPECT_TRUE(info.tcvrState()->errorStates()->empty());
 }
 
+// AppSel 1 (IB NDR) and AppSel 6 (800GAUI-8) also advertise 400G-FR4 media from
+// lane 0, but a 400G port must use AppSel 7 (400GAUI-4-L)
+TEST_F(CmisTest, selectApplicationFieldSkipsInfiniBandAndOtherLaneCounts) {
+  auto xcvr = overrideCmisModule<Cmis2x400GFr4IbFirstTransceiver>(
+      TransceiverID(1), TransceiverModuleIdentifier::OSFP);
+  for (uint8_t startHostLane : {0, 4}) {
+    auto field = xcvr->selectApplicationField(
+        static_cast<uint8_t>(SMFMediaInterfaceCode::FR4_400G),
+        startHostLane,
+        4);
+    ASSERT_NE(field, std::nullopt);
+    EXPECT_EQ(field->ApSelCode, 7);
+  }
+}
+
+// The module is in AppSel 1 (IB NDR), which has the same media interface as the
+// AppSel 7 (400GAUI-4-L) application 400G ports should move it to
+TEST_F(CmisTest, programTransceiverMovesOffApplicationWithSameMedia) {
+  auto xcvr = overrideCmisModule<Cmis2x400GFr4IbFirstTransceiver>(
+      TransceiverID(1), TransceiverModuleIdentifier::OSFP);
+  ProgramTransceiverState programTcvrState;
+  for (uint8_t startHostLane : {0, 4}) {
+    TransceiverPortState portState;
+    portState.portName = fmt::format("eth1/1/{}", startHostLane + 1);
+    portState.startHostLane = startHostLane;
+    portState.speed = cfg::PortSpeed::FOURHUNDREDG;
+    portState.numHostLanes = 4;
+    programTcvrState.ports.emplace(portState.portName, portState);
+  }
+
+  xcvr->programTransceiver(programTcvrState, false);
+
+  // AppSel 7 with datapath IDs 0 and 4
+  const std::vector<uint8_t> appSel7ActiveAppSel = {
+      0x70, 0x70, 0x70, 0x70, 0x78, 0x78, 0x78, 0x78};
+  EXPECT_EQ(
+      readUpperPage(lastQsfpImpl(), kPage11h, kActiveAppSelOffset, 8),
+      appSel7ActiveAppSel);
+}
+
+TEST_F(CmisTest, cmisNvidia2x400GFr4TransceiverInfoTest) {
+  auto xcvrID = TransceiverID(1);
+  auto xcvr = overrideCmisModule<CmisNvidia2x400GFr4Transceiver>(
+      xcvrID, TransceiverModuleIdentifier::OSFP);
+  const auto& info = xcvr->getTransceiverInfo();
+  EXPECT_EQ(
+      info.tcvrState()->transceiverManagementInterface(),
+      TransceiverManagementInterface::CMIS);
+  EXPECT_EQ(xcvr->numHostLanes(), 8);
+  EXPECT_EQ(xcvr->numMediaLanes(), 8);
+  EXPECT_EQ(
+      info.tcvrState()->moduleMediaInterface(),
+      MediaInterfaceCode::FR4_2x400G_IB);
+  for (auto& media : *info.tcvrState()->settings()->mediaInterface()) {
+    EXPECT_EQ(media.media()->get_smfCode(), SMFMediaInterfaceCode::FR4_400G);
+    EXPECT_EQ(media.code(), MediaInterfaceCode::FR4_400G);
+  }
+}
+
+// The module powers up in AppSel 1 (IB NDR); 400G ports should move it to
+// AppSel 4 (400GAUI-4-L)
+TEST_F(CmisTest, cmisNvidia2x400GFr4ProgramsEthernetApplication) {
+  auto xcvr = overrideCmisModule<CmisNvidia2x400GFr4Transceiver>(
+      TransceiverID(1), TransceiverModuleIdentifier::OSFP);
+  ProgramTransceiverState programTcvrState;
+  for (uint8_t startHostLane : {0, 4}) {
+    TransceiverPortState portState;
+    portState.portName = fmt::format("eth1/1/{}", startHostLane + 1);
+    portState.startHostLane = startHostLane;
+    portState.speed = cfg::PortSpeed::FOURHUNDREDG;
+    portState.numHostLanes = 4;
+    programTcvrState.ports.emplace(portState.portName, portState);
+  }
+
+  xcvr->programTransceiver(programTcvrState, false);
+
+  // AppSel 4 with datapath IDs 0 and 4
+  const std::vector<uint8_t> appSel4ActiveAppSel = {
+      0x40, 0x40, 0x40, 0x40, 0x48, 0x48, 0x48, 0x48};
+  EXPECT_EQ(
+      readUpperPage(lastQsfpImpl(), kPage11h, kActiveAppSelOffset, 8),
+      appSel4ActiveAppSel);
+}
+
 TEST_F(CmisTest, cmis2x400GFr4LiteTransceiverInfoTest) {
   auto xcvrID = TransceiverID(1);
   auto xcvr = overrideCmisModule<Cmis2x400GFr4LiteTransceiver>(
@@ -1361,7 +1466,8 @@ TEST_F(CmisTest, cmis2x400GFr4LiteTransceiverInfoTest) {
       info.tcvrState()->moduleMediaInterface(),
       MediaInterfaceCode::FR4_LITE_2x400G);
   for (auto& media : *info.tcvrState()->settings()->mediaInterface()) {
-    EXPECT_EQ(media.media()->get_smfCode(), SMFMediaInterfaceCode::FR4_400G);
+    EXPECT_EQ(
+        media.media()->smfCode().value(), SMFMediaInterfaceCode::FR4_400G);
     EXPECT_EQ(media.code(), MediaInterfaceCode::FR4_400G);
   }
 
@@ -1523,7 +1629,8 @@ TEST_F(CmisTest, cmis2x400GFr4LpoTransceiverInfoTest) {
       info.tcvrState()->moduleMediaInterface(),
       MediaInterfaceCode::FR4_LPO_2x400G);
   for (auto& media : *info.tcvrState()->settings()->mediaInterface()) {
-    EXPECT_EQ(media.media()->get_smfCode(), SMFMediaInterfaceCode::FR1_100G);
+    EXPECT_EQ(
+        media.media()->smfCode().value(), SMFMediaInterfaceCode::FR1_100G);
     EXPECT_EQ(media.code(), MediaInterfaceCode::FR1_100G);
   }
 
@@ -1688,7 +1795,7 @@ TEST_F(CmisTest, cmis800GZrTransceiverInfoTest) {
       info.tcvrState()->moduleMediaInterface(), MediaInterfaceCode::ZR_800G);
   for (auto& media : *info.tcvrState()->settings()->mediaInterface()) {
     EXPECT_EQ(
-        media.media()->get_smfCode(),
+        media.media()->smfCode().value(),
         SMFMediaInterfaceCode::ZR_OROADM_FLEXO_8E_DPO_800G);
     EXPECT_EQ(media.code(), MediaInterfaceCode::ZR_800G);
   }
@@ -2564,7 +2671,7 @@ TEST_F(CmisTest, cmisCredo800AecInfoTest) {
       info.tcvrState()->moduleMediaInterface(), MediaInterfaceCode::CR8_800G);
   for (auto& media : *info.tcvrState()->settings()->mediaInterface()) {
     EXPECT_EQ(
-        media.media()->get_activeCuCode(),
+        media.media()->activeCuCode().value(),
         ActiveCuHostInterfaceCode::AUI_PAM4_8S_800G);
     EXPECT_EQ(media.code(), MediaInterfaceCode::CR8_800G);
   }
@@ -3248,6 +3355,42 @@ TEST_F(CmisTest, cmisVdmForOdsCaptureIsAsync) {
                   .has_value());
 }
 
+// The NVIDIA module's only VDM observables are eSNR, which aren't statistics,
+// so a capture reads them in the triggering refresh without a freeze
+TEST_F(CmisTest, cmisVdmCaptureWithoutStatisticsSkipsFreeze) {
+  auto xcvrID = TransceiverID(1);
+  auto xcvr = overrideCmisModule<CmisNvidia2x400GFr4Transceiver>(
+      xcvrID, TransceiverModuleIdentifier::OSFP);
+  auto* qsfpImpl = lastQsfpImpl();
+  ASSERT_TRUE(xcvr->isVdmSupported());
+  ASSERT_FALSE(xcvr->hasVdmStatisticsObservables());
+  ProgramTransceiverState programTcvrState;
+  for (uint8_t startHostLane : {0, 4}) {
+    TransceiverPortState portState;
+    portState.portName = fmt::format("eth1/1/{}", startHostLane + 1);
+    portState.startHostLane = startHostLane;
+    portState.speed = cfg::PortSpeed::FOURHUNDREDG;
+    portState.numHostLanes = 4;
+    programTcvrState.ports.emplace(portState.portName, portState);
+  }
+  xcvr->programTransceiver(programTcvrState, false);
+  const int baseFreezeWrites = qsfpImpl->getUpperPageWriteCount(
+      kPage2f, kVdmLatchRequestUpperPageOffset);
+
+  std::vector<int32_t> xcvrIds = {xcvrID};
+  transceiverManager_->triggerVdmStatsCapture(xcvrIds);
+  transceiverManager_->refreshStateMachines();
+
+  EXPECT_EQ(
+      qsfpImpl->getUpperPageWriteCount(
+          kPage2f, kVdmLatchRequestUpperPageOffset),
+      baseFreezeWrites);
+  EXPECT_TRUE(xcvr->getTransceiverInfo()
+                  .tcvrStats()
+                  ->vdmPerfMonitorStatsForOds()
+                  .has_value());
+}
+
 TEST_F(CmisTest, cmis2x400GFr4DatapathProgramTest) {
   TransceiverPropertiesManager::initDefault();
   auto xcvrID = TransceiverID(1);
@@ -3367,7 +3510,8 @@ TEST_F(CmisTest, cmis2x400GDr4TransceiverInfoTest) {
   EXPECT_EQ(
       info.tcvrState()->moduleMediaInterface(), MediaInterfaceCode::DR4_2x400G);
   for (auto& media : *info.tcvrState()->settings()->mediaInterface()) {
-    EXPECT_EQ(media.media()->get_smfCode(), SMFMediaInterfaceCode::DR4_400G);
+    EXPECT_EQ(
+        media.media()->smfCode().value(), SMFMediaInterfaceCode::DR4_400G);
     EXPECT_EQ(media.code(), MediaInterfaceCode::DR4_400G);
   }
 
@@ -3473,7 +3617,8 @@ TEST_F(CmisTest, cmis2x400GXdr4TransceiverInfoTest) {
   EXPECT_EQ(xcvr->numHostLanes(), 8);
   EXPECT_EQ(xcvr->numMediaLanes(), 8);
   for (auto& media : *info.tcvrState()->settings()->mediaInterface()) {
-    EXPECT_EQ(media.media()->get_smfCode(), SMFMediaInterfaceCode::DR4_400G);
+    EXPECT_EQ(
+        media.media()->smfCode().value(), SMFMediaInterfaceCode::DR4_400G);
     EXPECT_EQ(media.code(), MediaInterfaceCode::DR4_400G);
   }
   EXPECT_EQ(*info.tcvrState()->cable()->singleMode(), 2000);
@@ -3630,7 +3775,8 @@ TEST_F(CmisTest, cmis400GDr4TransceiverInfoTest) {
   EXPECT_EQ(
       info.tcvrState()->moduleMediaInterface(), MediaInterfaceCode::DR4_400G);
   for (auto& media : *info.tcvrState()->settings()->mediaInterface()) {
-    EXPECT_EQ(media.media()->get_smfCode(), SMFMediaInterfaceCode::DR4_400G);
+    EXPECT_EQ(
+        media.media()->smfCode().value(), SMFMediaInterfaceCode::DR4_400G);
     EXPECT_EQ(media.code(), MediaInterfaceCode::DR4_400G);
   }
   // Check cmisStateChanged
@@ -3710,7 +3856,8 @@ TEST_F(CmisTest, cmis2x800GDr4TransceiverInfoTest) {
   EXPECT_EQ(
       info.tcvrState()->moduleMediaInterface(), MediaInterfaceCode::DR4_2x800G);
   for (auto& media : *info.tcvrState()->settings()->mediaInterface()) {
-    EXPECT_EQ(media.media()->get_smfCode(), SMFMediaInterfaceCode::DR4_800G);
+    EXPECT_EQ(
+        media.media()->smfCode().value(), SMFMediaInterfaceCode::DR4_800G);
     EXPECT_EQ(media.code(), MediaInterfaceCode::DR4_800G);
   }
 

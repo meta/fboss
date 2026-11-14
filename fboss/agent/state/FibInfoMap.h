@@ -68,6 +68,17 @@ class MultiSwitchFibInfoMap
     return nullptr;
   }
 
+  // Resolve an ERM override NextHopSetId via the first FibInfo that has it.
+  std::optional<std::vector<NextHop>> resolveOverrideNextHopSetFromIdIf(
+      NextHopSetId id) const {
+    for (const auto& [_, fibInfo] : std::as_const(*this)) {
+      if (auto nhops = fibInfo->resolveOverrideNextHopSetFromIdIf(id)) {
+        return nhops;
+      }
+    }
+    return std::nullopt;
+  }
+
   // Get FibContainer directly by RouterID - throws if not found
   std::shared_ptr<ForwardingInformationBaseContainer> getFibContainer(
       RouterID vrf) const {

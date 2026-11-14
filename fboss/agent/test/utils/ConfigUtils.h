@@ -70,6 +70,12 @@ void applyTomahawk6PciAddrs(
     const std::vector<std::string>& pciAddrs,
     std::map<SwitchID, cfg::SwitchInfo>& switchIdToSwitchInfo);
 
+/*
+ * applyTomahawk6PciAddrs() against the addresses on this box's PCI bus.
+ */
+void applyTomahawk6PciAddrsFromBus(
+    std::map<SwitchID, cfg::SwitchInfo>& switchIdToSwitchInfo);
+
 int getMaxRdsw(std::optional<PlatformType> platformType = std::nullopt);
 int getMaxEdsw();
 
@@ -285,6 +291,13 @@ cfg::SwitchInfo generateSwitchInfo(
     const cfg::Range64& portIdRange,
     const std::string& connectionHandle,
     const HwAsic* asic);
+
+// Adds VRF vrf to config if missing. Returns the interfaces of ports with
+// vrf, to bind with SwSwitch::updateInterfaceVrfs().
+std::map<InterfaceID, RouterID> addVrfForPorts(
+    cfg::SwitchConfig& config,
+    RouterID vrf,
+    const std::vector<PortID>& ports);
 
 cfg::SwitchConfig twoL3IntfConfig(
     SwSwitch* swSwitch,

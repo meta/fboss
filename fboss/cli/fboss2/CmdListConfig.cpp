@@ -16,6 +16,7 @@
 #include "fboss/cli/fboss2/commands/config/acl/rule/CmdConfigAclRule.h"
 #include "fboss/cli/fboss2/commands/config/acl/table/CmdConfigAclTable.h"
 #include "fboss/cli/fboss2/commands/config/acl/table_group/CmdConfigAclTableGroup.h"
+#include "fboss/cli/fboss2/commands/config/aggregate_port/CmdConfigAggregatePort.h"
 #include "fboss/cli/fboss2/commands/config/arp/CmdConfigArp.h"
 #include "fboss/cli/fboss2/commands/config/copp/CmdConfigCopp.h"
 #include "fboss/cli/fboss2/commands/config/data_plane/CmdConfigDataPlane.h"
@@ -25,8 +26,11 @@
 #include "fboss/cli/fboss2/commands/config/dhcp/reply_source_override/CmdConfigDhcpReplySourceOverride.h"
 #include "fboss/cli/fboss2/commands/config/history/CmdConfigHistory.h"
 #include "fboss/cli/fboss2/commands/config/interface/CmdConfigInterface.h"
+#include "fboss/cli/fboss2/commands/config/interface/dhcp/CmdConfigInterfaceDhcp.h"
+#include "fboss/cli/fboss2/commands/config/interface/dhcp/relay/CmdConfigInterfaceDhcpRelay.h"
 #include "fboss/cli/fboss2/commands/config/interface/ipv6/CmdConfigInterfaceIpv6.h"
 #include "fboss/cli/fboss2/commands/config/interface/ipv6/ndp/CmdConfigInterfaceIpv6Ndp.h"
+#include "fboss/cli/fboss2/commands/config/interface/mirror/CmdConfigInterfaceMirror.h"
 #include "fboss/cli/fboss2/commands/config/interface/pfc_config/CmdConfigInterfacePfcConfig.h"
 #include "fboss/cli/fboss2/commands/config/interface/sflow/CmdConfigInterfaceSflow.h"
 #include "fboss/cli/fboss2/commands/config/interface/switchport/CmdConfigInterfaceSwitchport.h"
@@ -37,6 +41,7 @@
 #include "fboss/cli/fboss2/commands/config/load_balancing/CmdConfigLoadBalancing.h"
 #include "fboss/cli/fboss2/commands/config/mac/CmdConfigMac.h"
 #include "fboss/cli/fboss2/commands/config/mac/aging_time/CmdConfigMacAgingTime.h"
+#include "fboss/cli/fboss2/commands/config/mirror/CmdConfigMirror.h"
 #include "fboss/cli/fboss2/commands/config/protocol/CmdConfigProtocol.h"
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/CmdConfigProtocolBgp.h"
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/global/CmdConfigProtocolBgpGlobal.h"
@@ -48,6 +53,8 @@
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/prefix-list/CmdConfigProtocolBgpPolicyPrefixList.h"
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/prefix-list/entry/CmdConfigProtocolBgpPolicyPrefixListEntry.h"
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/routing-policy/CmdConfigProtocolBgpPolicyRoutingPolicy.h"
+#include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/routing-policy/term/CmdConfigProtocolBgpPolicyRoutingPolicyTerm.h"
+#include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/routing-policy/term/action/CmdConfigProtocolBgpPolicyRoutingPolicyTermAction.h"
 #include "fboss/cli/fboss2/commands/config/protocol/static/CmdConfigProtocolStatic.h"
 #include "fboss/cli/fboss2/commands/config/protocol/static/route/add/CmdConfigProtocolStaticRouteAdd.h"
 #include "fboss/cli/fboss2/commands/config/ptp/CmdConfigPtp.h"
@@ -66,6 +73,7 @@
 #include "fboss/cli/fboss2/commands/config/session/CmdConfigSessionCommit.h"
 #include "fboss/cli/fboss2/commands/config/session/CmdConfigSessionDiff.h"
 #include "fboss/cli/fboss2/commands/config/session/CmdConfigSessionRebase.h"
+#include "fboss/cli/fboss2/commands/config/sflow_collector/CmdConfigSflowCollector.h"
 #include "fboss/cli/fboss2/commands/config/srv6/CmdConfigSrv6.h"
 #include "fboss/cli/fboss2/commands/config/srv6/my_sid/CmdConfigSrv6MySid.h"
 #include "fboss/cli/fboss2/commands/config/srv6/my_sid/entry/CmdConfigSrv6MySidEntry.h"
@@ -78,6 +86,9 @@
 #include "fboss/cli/fboss2/commands/config/tunnel/ip_in_ip/CmdConfigTunnelIpInIp.h"
 #include "fboss/cli/fboss2/commands/config/tunnel/ip_in_ip/decap/CmdConfigTunnelIpInIpDecap.h"
 #include "fboss/cli/fboss2/commands/config/tunnel/ip_in_ip/encap/CmdConfigTunnelIpInIpEncap.h"
+#include "fboss/cli/fboss2/commands/config/tunnel/srv6/CmdConfigTunnelSrv6.h"
+#include "fboss/cli/fboss2/commands/config/tunnel/srv6/decap/CmdConfigTunnelSrv6Decap.h"
+#include "fboss/cli/fboss2/commands/config/tunnel/srv6/encap/CmdConfigTunnelSrv6Encap.h"
 #include "fboss/cli/fboss2/commands/config/vlan/CmdConfigVlan.h"
 #include "fboss/cli/fboss2/commands/config/vlan/CmdConfigVlanDefault.h"
 #include "fboss/cli/fboss2/commands/config/vlan/port/CmdConfigVlanPort.h"
@@ -88,6 +99,7 @@
 #include "fboss/cli/fboss2/commands/delete/acl/CmdDeleteAcl.h"
 #include "fboss/cli/fboss2/commands/delete/acl/rule/CmdDeleteAclRule.h"
 #include "fboss/cli/fboss2/commands/delete/acl/table/CmdDeleteAclTable.h"
+#include "fboss/cli/fboss2/commands/delete/aggregate_port/CmdDeleteAggregatePort.h"
 #include "fboss/cli/fboss2/commands/delete/arp/CmdDeleteArp.h"
 #include "fboss/cli/fboss2/commands/delete/config/CmdDeleteConfig.h"
 #include "fboss/cli/fboss2/commands/delete/copp/CmdDeleteCopp.h"
@@ -104,10 +116,15 @@
 #include "fboss/cli/fboss2/commands/delete/dhcp/relay_source_override/CmdDeleteDhcpRelaySourceOverride.h"
 #include "fboss/cli/fboss2/commands/delete/dhcp/reply_source_override/CmdDeleteDhcpReplySourceOverride.h"
 #include "fboss/cli/fboss2/commands/delete/interface/CmdDeleteInterface.h"
+#include "fboss/cli/fboss2/commands/delete/interface/dhcp/CmdDeleteInterfaceDhcp.h"
+#include "fboss/cli/fboss2/commands/delete/interface/dhcp/relay/CmdDeleteInterfaceDhcpRelay.h"
 #include "fboss/cli/fboss2/commands/delete/interface/ipv6/CmdDeleteInterfaceIpv6.h"
 #include "fboss/cli/fboss2/commands/delete/interface/ipv6/ndp/CmdDeleteInterfaceIpv6Ndp.h"
+#include "fboss/cli/fboss2/commands/delete/interface/mirror/CmdDeleteInterfaceMirror.h"
+#include "fboss/cli/fboss2/commands/delete/interface/pfc_config/CmdDeleteInterfacePfcConfig.h"
 #include "fboss/cli/fboss2/commands/delete/interface/sflow/CmdDeleteInterfaceSflow.h"
 #include "fboss/cli/fboss2/commands/delete/load_balancing/CmdDeleteLoadBalancing.h"
+#include "fboss/cli/fboss2/commands/delete/mirror/CmdDeleteMirror.h"
 #include "fboss/cli/fboss2/commands/delete/protocol/CmdDeleteProtocol.h"
 #include "fboss/cli/fboss2/commands/delete/protocol/bgp/CmdDeleteProtocolBgp.h"
 #include "fboss/cli/fboss2/commands/delete/protocol/bgp/neighbor/CmdDeleteProtocolBgpNeighbor.h"
@@ -117,14 +134,18 @@
 #include "fboss/cli/fboss2/commands/delete/protocol/bgp/policy/community-list/CmdDeleteProtocolBgpPolicyCommunityList.h"
 #include "fboss/cli/fboss2/commands/delete/protocol/bgp/policy/prefix-list/CmdDeleteProtocolBgpPolicyPrefixList.h"
 #include "fboss/cli/fboss2/commands/delete/protocol/bgp/policy/routing-policy/CmdDeleteProtocolBgpPolicyRoutingPolicy.h"
+#include "fboss/cli/fboss2/commands/delete/protocol/bgp/policy/routing-policy/term/CmdDeleteProtocolBgpPolicyRoutingPolicyTerm.h"
 #include "fboss/cli/fboss2/commands/delete/protocol/static/CmdDeleteProtocolStatic.h"
 #include "fboss/cli/fboss2/commands/delete/protocol/static/route/CmdDeleteProtocolStaticRoute.h"
 #include "fboss/cli/fboss2/commands/delete/qos/CmdDeleteQos.h"
+#include "fboss/cli/fboss2/commands/delete/qos/buffer_pool/CmdDeleteQosBufferPool.h"
 #include "fboss/cli/fboss2/commands/delete/qos/default_policy/CmdDeleteQosDefaultPolicy.h"
 #include "fboss/cli/fboss2/commands/delete/qos/policy/CmdDeleteQosPolicy.h"
 #include "fboss/cli/fboss2/commands/delete/qos/policy/CmdDeleteQosPolicyMap.h"
+#include "fboss/cli/fboss2/commands/delete/qos/priority_group_policy/CmdDeleteQosPriorityGroupPolicy.h"
 #include "fboss/cli/fboss2/commands/delete/qos/queue_config/CmdDeleteQosQueueConfig.h"
 #include "fboss/cli/fboss2/commands/delete/qos/queue_config/CmdDeleteQosQueueConfigQueueId.h"
+#include "fboss/cli/fboss2/commands/delete/sflow_collector/CmdDeleteSflowCollector.h"
 #include "fboss/cli/fboss2/commands/delete/srv6/CmdDeleteSrv6.h"
 #include "fboss/cli/fboss2/commands/delete/srv6/my_sid/CmdDeleteSrv6MySid.h"
 #include "fboss/cli/fboss2/commands/delete/srv6/my_sid/entry/CmdDeleteSrv6MySidEntry.h"
@@ -136,6 +157,9 @@
 #include "fboss/cli/fboss2/commands/delete/tunnel/ip_in_ip/CmdDeleteTunnelIpInIp.h"
 #include "fboss/cli/fboss2/commands/delete/tunnel/ip_in_ip/decap/CmdDeleteTunnelIpInIpDecap.h"
 #include "fboss/cli/fboss2/commands/delete/tunnel/ip_in_ip/encap/CmdDeleteTunnelIpInIpEncap.h"
+#include "fboss/cli/fboss2/commands/delete/tunnel/srv6/CmdDeleteTunnelSrv6.h"
+#include "fboss/cli/fboss2/commands/delete/tunnel/srv6/decap/CmdDeleteTunnelSrv6Decap.h"
+#include "fboss/cli/fboss2/commands/delete/tunnel/srv6/encap/CmdDeleteTunnelSrv6Encap.h"
 #include "fboss/cli/fboss2/commands/delete/vlan/CmdDeleteVlan.h"
 
 namespace facebook::fboss {
@@ -246,6 +270,16 @@ const CommandTree& kConfigCommandTree() {
        commandHandler<CmdConfigArp>,
        argRegistrar<CmdConfigArpTraits>},
 
+      {"config",
+       "aggregate-port",
+       "Create or update an aggregate port",
+       commandHandler<CmdConfigAggregatePort>,
+       argRegistrar<CmdConfigAggregatePortTraits>,
+       {{"member",
+         "Add or update aggregate-port members",
+         commandHandler<CmdConfigAggregatePortMember>,
+         argRegistrar<CmdConfigAggregatePortMemberTraits>}}},
+
       {
           "config",
           "dhcp",
@@ -285,6 +319,19 @@ const CommandTree& kConfigCommandTree() {
                argRegistrar<CmdConfigInterfacePfcConfigTraits>,
            },
            {
+               "dhcp",
+               "Configure DHCP settings for interface",
+               commandHandler<CmdConfigInterfaceDhcp>,
+               argTypeHandler<CmdConfigInterfaceDhcpTraits>,
+               {{
+                   "relay",
+                   "Set the DHCP relay (helper) destination: "
+                   "<ip-address|ipv6-address> <address>",
+                   commandHandler<CmdConfigInterfaceDhcpRelay>,
+                   argRegistrar<CmdConfigInterfaceDhcpRelayTraits>,
+               }},
+           },
+           {
                "ipv6",
                "Configure IPv6 settings for interface",
                commandHandler<CmdConfigInterfaceIpv6>,
@@ -295,6 +342,13 @@ const CommandTree& kConfigCommandTree() {
                    commandHandler<CmdConfigInterfaceIpv6Ndp>,
                    argRegistrar<CmdConfigInterfaceIpv6NdpTraits>,
                }},
+           },
+           {
+               "mirror",
+               "Bind the interface to a mirror: ingress <mirror-name>, "
+               "egress <mirror-name>",
+               commandHandler<CmdConfigInterfaceMirror>,
+               argRegistrar<CmdConfigInterfaceMirrorTraits>,
            },
            {
                "sflow",
@@ -482,6 +536,40 @@ const CommandTree& kConfigCommandTree() {
                                    CmdConfigProtocolBgpPolicyRoutingPolicy>,
                                argRegistrar<
                                    CmdConfigProtocolBgpPolicyRoutingPolicyTraits>,
+                               {{
+                                   "term",
+                                   "Configure a routing-policy term: "
+                                   "<seq-num> [<attribute> <value> ...] "
+                                   "(description)",
+                                   commandHandler<
+                                       CmdConfigProtocolBgpPolicyRoutingPolicyTerm>,
+                                   argRegistrar<
+                                       CmdConfigProtocolBgpPolicyRoutingPolicyTermTraits>,
+                                   {{
+                                       "action",
+                                       "Configure a term action",
+                                       {{
+                                            "result",
+                                            "Set the term result: "
+                                            "<ACCEPT|REJECT|CONTINUE>",
+                                            commandHandler<
+                                                CmdConfigProtocolBgpPolicyRoutingPolicyTermActionResult>,
+                                            argRegistrar<
+                                                CmdConfigProtocolBgpPolicyRoutingPolicyTermActionResultTraits>,
+                                        },
+                                        {
+                                            "set",
+                                            "Set a route attribute: "
+                                            "as-path prepend|community|"
+                                            "local-pref|med|next-hop|"
+                                            "origin|weight <value> ...",
+                                            commandHandler<
+                                                CmdConfigProtocolBgpPolicyRoutingPolicyTermActionSet>,
+                                            argRegistrar<
+                                                CmdConfigProtocolBgpPolicyRoutingPolicyTermActionSetTraits>,
+                                        }},
+                                   }},
+                               }},
                            }},
                       },
                   },
@@ -627,6 +715,18 @@ const CommandTree& kConfigCommandTree() {
        commandHandler<CmdConfigRollback>,
        argRegistrar<CmdConfigRollbackTraits>},
 
+      {"config",
+       "mirror",
+       "Create or update a SPAN or sFlow mirror",
+       commandHandler<CmdConfigMirror>,
+       argRegistrar<CmdConfigMirrorTraits>},
+
+      {"config",
+       "sflow-collector",
+       "Add an sFlow collector: <ip> <port>",
+       commandHandler<CmdConfigSflowCollector>,
+       argRegistrar<CmdConfigSflowCollectorTraits>},
+
       {
           "config",
           "srv6",
@@ -653,23 +753,41 @@ const CommandTree& kConfigCommandTree() {
        commandHandler<CmdConfigTunnel>,
        argTypeHandler<CmdConfigTunnelTraits>,
        {{
-           "ip-in-ip",
-           "Configure IP-in-IP tunnel (use 'encap' or 'decap')",
-           commandHandler<CmdConfigTunnelIpInIp>,
-           argTypeHandler<CmdConfigTunnelIpInIpTraits>,
-           {{
-                "encap",
-                "Configure IP-in-IP encap tunnel",
-                commandHandler<CmdConfigTunnelIpInIpEncap>,
-                argRegistrar<CmdConfigTunnelIpInIpEncapTraits>,
-            },
-            {
-                "decap",
-                "Configure IP-in-IP decap tunnel",
-                commandHandler<CmdConfigTunnelIpInIpDecap>,
-                argRegistrar<CmdConfigTunnelIpInIpDecapTraits>,
-            }},
-       }}},
+            "ip-in-ip",
+            "Configure IP-in-IP tunnel (use 'encap' or 'decap')",
+            commandHandler<CmdConfigTunnelIpInIp>,
+            argTypeHandler<CmdConfigTunnelIpInIpTraits>,
+            {{
+                 "encap",
+                 "Configure IP-in-IP encap tunnel",
+                 commandHandler<CmdConfigTunnelIpInIpEncap>,
+                 argRegistrar<CmdConfigTunnelIpInIpEncapTraits>,
+             },
+             {
+                 "decap",
+                 "Configure IP-in-IP decap tunnel",
+                 commandHandler<CmdConfigTunnelIpInIpDecap>,
+                 argRegistrar<CmdConfigTunnelIpInIpDecapTraits>,
+             }},
+        },
+        {
+            "srv6",
+            "Configure SRv6 tunnel (use 'encap' or 'decap')",
+            commandHandler<CmdConfigTunnelSrv6>,
+            argTypeHandler<CmdConfigTunnelSrv6Traits>,
+            {{
+                 "encap",
+                 "Configure SRv6 encap tunnel",
+                 commandHandler<CmdConfigTunnelSrv6Encap>,
+                 argRegistrar<CmdConfigTunnelSrv6EncapTraits>,
+             },
+             {
+                 "decap",
+                 "Configure SRv6 decap tunnel",
+                 commandHandler<CmdConfigTunnelSrv6Decap>,
+                 argRegistrar<CmdConfigTunnelSrv6DecapTraits>,
+             }},
+        }}},
 
       {"config",
        "traffic-counter",
@@ -738,6 +856,20 @@ const CommandTree& kConfigCommandTree() {
        commandHandler<CmdDeleteArp>,
        argRegistrar<CmdDeleteArpTraits>},
 
+      {"delete",
+       "aggregate-port",
+       "Delete an aggregate port or one of its settings",
+       commandHandler<CmdDeleteAggregatePort>,
+       argRegistrar<CmdDeleteAggregatePortTraits>,
+       {{"member",
+         "Remove aggregate-port members",
+         commandHandler<CmdDeleteAggregatePortMember>,
+         argRegistrar<CmdDeleteAggregatePortMemberTraits>},
+        {"minimum-capacity-to-up",
+         "Remove the aggregate-port recovery threshold",
+         commandHandler<CmdDeleteAggregatePortMinimumCapacityToUp>,
+         argTypeHandler<CmdDeleteAggregatePortMinimumCapacityToUpTraits>}}},
+
       {
           "delete",
           "interface",
@@ -745,6 +877,19 @@ const CommandTree& kConfigCommandTree() {
           commandHandler<CmdDeleteInterface>,
           argRegistrar<CmdDeleteInterfaceTraits>,
           {{
+               "dhcp",
+               "Delete (reset to default) DHCP settings for interface",
+               commandHandler<CmdDeleteInterfaceDhcp>,
+               argTypeHandler<CmdDeleteInterfaceDhcpTraits>,
+               {{
+                   "relay",
+                   "Clear the DHCP relay (helper) destination: "
+                   "<ip-address|ipv6-address> [<address>]",
+                   commandHandler<CmdDeleteInterfaceDhcpRelay>,
+                   argRegistrar<CmdDeleteInterfaceDhcpRelayTraits>,
+               }},
+           },
+           {
                "ipv6",
                "Delete (reset to default) IPv6 settings for interface",
                commandHandler<CmdDeleteInterfaceIpv6>,
@@ -755,6 +900,19 @@ const CommandTree& kConfigCommandTree() {
                    commandHandler<CmdDeleteInterfaceIpv6Ndp>,
                    argRegistrar<CmdDeleteInterfaceIpv6NdpTraits>,
                }},
+           },
+           {
+               "mirror",
+               "Remove the interface's mirror binding: ingress, egress",
+               commandHandler<CmdDeleteInterfaceMirror>,
+               argRegistrar<CmdDeleteInterfaceMirrorTraits>,
+           },
+           {
+               "pfc-config",
+               "Remove the interface's PFC config, or reset one of its "
+               "optional fields: watchdog, rx-duration, tx-duration",
+               commandHandler<CmdDeleteInterfacePfcConfig>,
+               argRegistrar<CmdDeleteInterfacePfcConfigTraits>,
            },
            {
                "sflow",
@@ -772,6 +930,12 @@ const CommandTree& kConfigCommandTree() {
           commandHandler<CmdDeleteQos>,
           argRegistrar<CmdDeleteQosTraits>,
           {{
+               "buffer-pool",
+               "Remove a buffer pool (refused while a queue or priority group still names it)",
+               commandHandler<CmdDeleteQosBufferPool>,
+               argRegistrar<CmdDeleteQosBufferPoolTraits>,
+           },
+           {
                "default-policy",
                "Clear the default data-plane QoS policy",
                commandHandler<CmdDeleteQosDefaultPolicy>,
@@ -800,6 +964,12 @@ const CommandTree& kConfigCommandTree() {
                    commandHandler<CmdDeleteQosPolicyMap>,
                    argRegistrar<CmdDeleteQosPolicyMapTraits>,
                }},
+           },
+           {
+               "priority-group-policy",
+               "Remove a priority group policy (refused while an interface's pfc-config still binds it)",
+               commandHandler<CmdDeleteQosPriorityGroupPolicy>,
+               argRegistrar<CmdDeleteQosPriorityGroupPolicyTraits>,
            }},
       },
 
@@ -862,6 +1032,14 @@ const CommandTree& kConfigCommandTree() {
                              CmdDeleteProtocolBgpPolicyRoutingPolicy>,
                          argRegistrar<
                              CmdDeleteProtocolBgpPolicyRoutingPolicyTraits>,
+                         {{
+                             "term",
+                             "Delete a routing-policy term: <seq-num>",
+                             commandHandler<
+                                 CmdDeleteProtocolBgpPolicyRoutingPolicyTerm>,
+                             argRegistrar<
+                                 CmdDeleteProtocolBgpPolicyRoutingPolicyTermTraits>,
+                         }},
                      }},
                 }},
            },
@@ -1026,6 +1204,20 @@ const CommandTree& kConfigCommandTree() {
            }},
       },
 
+      {"delete",
+       "sflow-collector",
+       "Delete an sFlow collector: <ip> <port>",
+       commandHandler<CmdDeleteSflowCollector>,
+       argRegistrar<CmdDeleteSflowCollectorTraits>},
+
+      {
+          "delete",
+          "mirror",
+          "Delete an unreferenced mirror: <name>",
+          commandHandler<CmdDeleteMirror>,
+          argRegistrar<CmdDeleteMirrorTraits>,
+      },
+
       {
           "delete",
           "srv6",
@@ -1052,24 +1244,42 @@ const CommandTree& kConfigCommandTree() {
        commandHandler<CmdDeleteTunnel>,
        argTypeHandler<CmdDeleteTunnelTraits>,
        {{
-           "ip-in-ip",
-           "Delete IP-in-IP tunnel or reset its attributes (use 'encap' or "
-           "'decap')",
-           commandHandler<CmdDeleteTunnelIpInIp>,
-           argTypeHandler<CmdDeleteTunnelIpInIpTraits>,
-           {{
-                "encap",
-                "Delete IP-in-IP encap tunnel or reset its attributes",
-                commandHandler<CmdDeleteTunnelIpInIpEncap>,
-                argRegistrar<CmdDeleteTunnelIpInIpEncapTraits>,
-            },
-            {
-                "decap",
-                "Delete IP-in-IP decap tunnel or reset its attributes",
-                commandHandler<CmdDeleteTunnelIpInIpDecap>,
-                argRegistrar<CmdDeleteTunnelIpInIpDecapTraits>,
-            }},
-       }}},
+            "ip-in-ip",
+            "Delete IP-in-IP tunnel or reset its attributes (use 'encap' or "
+            "'decap')",
+            commandHandler<CmdDeleteTunnelIpInIp>,
+            argTypeHandler<CmdDeleteTunnelIpInIpTraits>,
+            {{
+                 "encap",
+                 "Delete IP-in-IP encap tunnel or reset its attributes",
+                 commandHandler<CmdDeleteTunnelIpInIpEncap>,
+                 argRegistrar<CmdDeleteTunnelIpInIpEncapTraits>,
+             },
+             {
+                 "decap",
+                 "Delete IP-in-IP decap tunnel or reset its attributes",
+                 commandHandler<CmdDeleteTunnelIpInIpDecap>,
+                 argRegistrar<CmdDeleteTunnelIpInIpDecapTraits>,
+             }},
+        },
+        {
+            "srv6",
+            "Delete SRv6 tunnel or reset optional attributes",
+            commandHandler<CmdDeleteTunnelSrv6>,
+            argTypeHandler<CmdDeleteTunnelSrv6Traits>,
+            {{
+                 "encap",
+                 "Delete SRv6 encap tunnel or reset optional attributes",
+                 commandHandler<CmdDeleteTunnelSrv6Encap>,
+                 argRegistrar<CmdDeleteTunnelSrv6EncapTraits>,
+             },
+             {
+                 "decap",
+                 "Delete SRv6 decap tunnel or reset optional attributes",
+                 commandHandler<CmdDeleteTunnelSrv6Decap>,
+                 argRegistrar<CmdDeleteTunnelSrv6DecapTraits>,
+             }},
+        }}},
 
       {"delete",
        "traffic-counter",

@@ -410,35 +410,6 @@ cpp_library(
 )
 
 cpp_library(
-    name = "fake_main",
-    srcs = [
-        "CommonInit.cpp",
-        "Main.cpp",
-    ],
-    headers = [
-        "CommonInit.h",
-        "Main.h",
-    ],
-    deps = [
-        "fbsource//xplat/folly/logging:init",
-        "fbsource//xplat/folly/logging:logging",
-        ":fboss_init_h",
-        ":load_agent_config",
-        "//fb303:service_data",
-    ],
-    exported_deps = [
-        "fbsource//xplat/folly/io/async:async_signal_handler",
-        ":agent_features",
-        ":agent_initializer_h",
-        "//neteng/fboss/emulation:main",  # @manual
-    ],
-    external_deps = ["gflags"],
-    exported_external_deps = [
-        "gflags",
-    ],
-)
-
-cpp_library(
     name = "buffer_utils",
     srcs = [
         "BufferUtils.cpp",
@@ -482,8 +453,8 @@ cpp_library(
         ":voq_constants",
     ],
     exported_deps = [
-        ":agent_config-cpp2-types",
-        ":switch_config-cpp2-types",
+        ":agent_config-cpp2-serialization",
+        ":switch_config-cpp2-serialization",
         "//fboss/agent/hw/switch_asics:switch_asics",
     ],
 )
@@ -499,15 +470,15 @@ cpp_library(
     deps = [
         ":fboss-error",
         ":load_agent_config",
-        ":switch_config-cpp2-types",
+        ":switch_config-cpp2-serialization",
     ],
     exported_deps = [
         "fbsource//xplat/folly:range",
         "fbsource//xplat/folly/logging:logging",
         ":fboss-types",
-        ":platform_config-cpp2-types",
-        ":switch_state-cpp2-types",
-        "//fboss/agent/if:ctrl-cpp2-types",
+        ":platform_config-cpp2-serialization",
+        ":switch_state-cpp2-serialization",
+        "//fboss/agent/if:ctrl-cpp2-serialization",
     ],
 )
 
@@ -533,7 +504,7 @@ cpp_library(
     exported_deps = [
         "fbsource//xplat/folly:network_address",
         ":agent_features",
-        ":switch_config-cpp2-types",
+        ":switch_config-cpp2-serialization",
         ":voq_constants",
         "//fboss/agent/hw/switch_asics:switch_asics",
     ],
@@ -574,7 +545,7 @@ cpp_library(
     ],
     exported_deps = [
         "fbsource//xplat/folly:network_address",
-        "//common/network/if:if-cpp2-types",
+        "//common/network/if:if-cpp2-serialization",
     ],
 )
 
@@ -652,8 +623,8 @@ cpp_library(
     ],
     deps = ["//thrift/lib/cpp2/protocol:protocol"],
     exported_deps = [
-        "//fboss/agent/hw:hardware_stats-cpp2-types",
-        "//fboss/lib/phy:phy-cpp2-types",
+        "//fboss/agent/hw:hardware_stats-cpp2-serialization",
+        "//fboss/lib/phy:phy-cpp2-serialization",
     ],
 )
 
@@ -678,6 +649,7 @@ cpp_library(
         ":asic_utils",
         ":fboss-error",
         ":fsdb_helper",
+        ":switch_config-cpp2-serialization",
         ":switch_config-cpp2-types",
         ":switchid_scope_resolver",
         "//common/network:util",
@@ -697,9 +669,12 @@ cpp_library(
         ":agent_features",
         ":fboss-types",
         ":hwswitch_matcher",
+        ":switch_state-cpp2-serialization",
         ":switch_state-cpp2-types",
+        "//fboss/agent/if:ctrl-cpp2-serialization",
         "//fboss/agent/if:ctrl-cpp2-types",
         "//fboss/agent/state:state",
+        "//fboss/fsdb/if:fsdb_oper-cpp2-serialization",
         "//fboss/fsdb/if:fsdb_oper-cpp2-types",
         "//thrift/lib/cpp2/protocol:protocol",
     ],
@@ -721,7 +696,7 @@ cpp_library(
     ],
     deps = [
         "fbsource//xplat/folly:conv",
-        "//fboss/agent/if:ctrl-cpp2-types",
+        "//fboss/agent/if:ctrl-cpp2-serialization",
     ],
     exported_deps = [
         "fbsource//xplat/folly:network_address",
@@ -729,7 +704,7 @@ cpp_library(
         "fbsource//xplat/folly/io:iobuf",
         "fbsource//xplat/folly/json:dynamic",
         ":fboss-error",
-        ":switch_state-cpp2-types",
+        ":switch_state-cpp2-serialization",
     ],
 )
 
@@ -795,9 +770,9 @@ cpp_library(
     ],
     exported_deps = [
         "fbsource//xplat/folly/concurrency:concurrent_hash_map",
-        ":agent_stats-cpp2-types",
+        ":agent_stats-cpp2-serialization",
         ":fboss-types",
-        ":switch_config-cpp2-types",
+        ":switch_config-cpp2-serialization",
         "//fb303:thread_cached_service_data",
         "//fb303/detail:quantile_stat_wrappers",
         "//fboss/lib:common_utils",
@@ -825,12 +800,12 @@ cpp_library(
         ":loadbalancer_utils",
         ":pfc_utils",
         ":route_update_wrapper",
-        ":switch_config-cpp2-types",
+        ":switch_config-cpp2-serialization",
         ":switchid_scope_resolver",
         ":switchinfo_utils",
         ":voq_utils",
         "//fboss/agent/hw/switch_asics:switch_asics",
-        "//fboss/agent/if:mpls-cpp2-types",
+        "//fboss/agent/if:mpls-cpp2-serialization",
         "//fboss/agent/platforms/common:platform_mapping",
         "//fboss/agent/rib:fib_updater",
         "//fboss/agent/rib:network_to_route_map",
@@ -861,7 +836,7 @@ cpp_library(
         "//fboss/agent/state:state",
         "//fboss/lib/link_snapshots:async_filewriter_factory",
         "//fboss/lib/link_snapshots:snapshot_manager",
-        "//fboss/lib/phy:phy-cpp2-types",
+        "//fboss/lib/phy:phy-cpp2-serialization",
     ],
 )
 
@@ -883,7 +858,7 @@ cpp_library(
         "fbsource//xplat/folly:fbstring",
         "//fboss/agent/state:state",
         "//fboss/fsdb/client:fsdb_sub_manager",
-        "//fboss/fsdb/if:fsdb_common-cpp2-types",
+        "//fboss/fsdb/if:fsdb_common-cpp2-serialization",
         "//fboss/fsdb/if:fsdb_model",
         "//fboss/thrift_cow/nodes:serializer",
         "//fboss/thrift_cow/storage:cow_storage",
@@ -985,9 +960,10 @@ cpp_library(
     ],
     deps = [
         "fbsource//xplat/folly/logging:logging",
+        ":agent_features",
         ":fboss-error",
         ":hwswitch_matcher",
-        ":switch_config-cpp2-types",
+        ":switch_config-cpp2-serialization",
         "//fboss/agent/state:nodebase",
     ],
     exported_deps = [
@@ -1011,7 +987,7 @@ cpp_library(
     exported_deps = [
         ":agent_features",
         ":async_logger_base",
-        "//fboss/fsdb/if:fsdb_oper-cpp2-types",
+        "//fboss/fsdb/if:fsdb_oper-cpp2-serialization",
     ],
 )
 
@@ -1028,7 +1004,7 @@ cpp_library(
         "fbsource//xplat/folly/hash:checksum",
         "fbsource//xplat/folly/lang:bits",
         "fbsource//xplat/folly/logging:logging",
-        ":state_delta_log-cpp2-types",
+        ":state_delta_log-cpp2-serialization",
         "//fb303:service_data",
         "//fboss/agent/state:state",
         "//fboss/thrift_cow/nodes:serializer",
@@ -1038,7 +1014,7 @@ cpp_library(
         "fbsource//xplat/folly:range",
         ":agent_features",
         ":async_logger_base",
-        "//fboss/fsdb/if:fsdb_oper-cpp2-types",
+        "//fboss/fsdb/if:fsdb_oper-cpp2-serialization",
     ],
 )
 
@@ -1077,7 +1053,7 @@ cpp_library(
         "fbsource//xplat/folly:synchronized",
         "fbsource//xplat/folly/io/async:async_base",
         ":fboss-types",
-        "//fboss/agent/if:ctrl-cpp2-types",
+        "//fboss/agent/if:ctrl-cpp2-serialization",
     ],
     exported_external_deps = [
         "gflags",
@@ -1094,7 +1070,7 @@ cpp_library(
     ],
     deps = [
         ":asic_utils",
-        ":switch_config-cpp2-types",
+        ":switch_config-cpp2-serialization",
         ":utils",
         "//fboss/agent/hw/switch_asics:switch_asics",
         "//fboss/agent/platforms/common/janga800bic:janga800bic_platform_mapping",
@@ -1271,6 +1247,12 @@ cpp_library(
         "facebook/ScubaRouteLogger.h",
         "ndp/IPv6RouteAdvertiser.h",
     ],
+    deps = [
+        "//fboss/agent/if:mpls-cpp2-serialization",
+        "//fboss/agent/lldp:lldp_structs-cpp2-serialization",
+        "//fboss/fsdb/if:fsdb_oper-cpp2-serialization",
+        "//fboss/lib/phy:prbs-cpp2-serialization",
+    ],
     exported_deps = [
         "fbsource//third-party/boost:boost_container",
         "fbsource//third-party/fmt:fmt",
@@ -1314,7 +1296,9 @@ cpp_library(
         ":agent_dir_util",
         ":agent_features",
         ":agent_fsdb_sync_manager",
+        ":agent_info-cpp2-serialization",
         ":agent_info-cpp2-types",
+        ":agent_stats-cpp2-serialization",
         ":agent_stats-cpp2-types",
         ":asic_utils",
         ":buffer_utils",
@@ -1352,8 +1336,11 @@ cpp_library(
         ":state_observer",
         ":stats",
         ":sw_switch_warmboot_helper",
+        ":switch_config-cpp2-serialization",
         ":switch_config-cpp2-types",
+        ":switch_reachability-cpp2-serialization",
         ":switch_reachability-cpp2-types",
+        ":switch_state-cpp2-serialization",
         ":switch_state-cpp2-types",
         ":switchid_scope_resolver",
         ":switchinfo_utils",
@@ -1374,7 +1361,9 @@ cpp_library(
         "//fboss/agent/hw:hw_cpu_fb303_stats",
         "//fboss/agent/hw:hw_switch_fb303_stats",
         "//fboss/agent/hw/switch_asics:switch_asics",
+        "//fboss/agent/if:common-cpp2-serialization",
         "//fboss/agent/if:common-cpp2-types",
+        "//fboss/agent/if:ctrl-cpp2-serialization",
         "//fboss/agent/if:ctrl-cpp2-types",
         "//fboss/agent/if:mpls-cpp2-types",
         "//fboss/agent/if:multiswitch_ctrl-cpp2-services",
@@ -1402,6 +1391,7 @@ cpp_library(
         "//fboss/fsdb/client:fsdb_stream_client",
         "//fboss/fsdb/client:fsdb_sub_manager",
         "//fboss/fsdb/common:flags",
+        "//fboss/fsdb/if:fsdb_common-cpp2-serialization",
         "//fboss/fsdb/if:fsdb_common-cpp2-types",
         "//fboss/fsdb/if:fsdb_model",
         "//fboss/fsdb/if:fsdb_oper-cpp2-types",
@@ -1416,6 +1406,7 @@ cpp_library(
         "//fboss/lib:thrift_service_utils",
         "//fboss/lib/config:fboss_config_utils",
         "//fboss/lib/link_snapshots:async_filewriter_factory",
+        "//fboss/lib/phy:phy-cpp2-serialization",
         "//fboss/lib/phy:phy-cpp2-types",
         "//fboss/lib/phy:prbs-cpp2-types",
         "//fboss/lib/platforms:product-info",
@@ -1453,8 +1444,10 @@ cpp_library(
         "fbsource//third-party/fmt:fmt",
         "fbsource//xplat/folly:network_address",
         "fbsource//xplat/folly:range",
+        "fbsource//xplat/folly:scope_guard",
         "fbsource//xplat/folly/container:f14_hash",
         "fbsource//xplat/folly/io:iobuf",
+        "fbsource//xplat/folly/io/async:async_base",
         "fbsource//xplat/folly/logging:logging",
         ":address_utils",
         ":core",
@@ -1467,8 +1460,10 @@ cpp_library(
         "//common/logging:logging",
         "//fb303:service_data",
         "//fboss/agent/capture:capture",
+        "//fboss/agent/hw:hardware_stats-cpp2-serialization",
         "//fboss/agent/hw:hardware_stats-cpp2-types",
         "//fboss/agent/hw/mock:pkt",
+        "//fboss/agent/if:ctrl-cpp2-serialization",
         "//fboss/agent/if:ctrl-cpp2-types",
         "//fboss/agent/platforms/common:platform_mapping",
         "//fboss/agent/rib:fib_updater",
@@ -1485,11 +1480,14 @@ cpp_library(
         ":fboss-error",
         ":fboss-types",
         ":fboss_event_base",
+        ":switch_config-cpp2-serialization",
         ":switch_config-cpp2-types",
         "//common/fb303/cpp:fb303",
         "//fboss/agent/if:ctrl-cpp2-services",
         "//fboss/agent/state:state",
+        "//fboss/lib/phy:phy-cpp2-serialization",
         "//fboss/lib/phy:phy-cpp2-types",
+        "//fboss/lib/phy:prbs-cpp2-serialization",
         "//fboss/lib/phy:prbs-cpp2-types",
         "//thrift/lib/cpp/server:server_event_handler",
         "//thrift/lib/cpp2:server",
@@ -1559,7 +1557,7 @@ cpp_library(
         "fbsource//xplat/folly/logging:logging",
         ":fboss-error",
         ":strong-types",
-        ":switch_config-cpp2-types",
+        ":switch_config-cpp2-serialization",
     ],
     external_deps = ["boost"],
     exported_external_deps = [
@@ -1591,7 +1589,7 @@ cpp_library(
     exported_deps = [
         "fbsource//xplat/folly:conv",
         "fbsource//xplat/folly/logging:logging",
-        "//fboss/agent/if:fboss-cpp2-types",
+        "//fboss/agent/if:fboss-cpp2-serialization",
     ],
 )
 
@@ -1609,8 +1607,8 @@ cpp_library(
         "//thrift/lib/cpp2/protocol:protocol",
     ],
     exported_deps = [
-        ":agent_config-cpp2-types",
-        ":switch_config-cpp2-types",
+        ":agent_config-cpp2-serialization",
+        ":switch_config-cpp2-serialization",
     ],
 )
 
@@ -1644,14 +1642,19 @@ cpp_library(
         ":agent_dir_util",
         ":agent_features",
         ":fboss-types",
+        ":platform_config-cpp2-serialization",
         ":platform_config-cpp2-types",
+        ":switch_config-cpp2-serialization",
         ":switch_config-cpp2-types",
         ":switchid_scope_resolver",
         "//fboss/agent/hw/switch_asics:switch_asics",
+        "//fboss/agent/if:ctrl-cpp2-serialization",
         "//fboss/agent/if:ctrl-cpp2-types",
         "//fboss/agent/platforms/common:platform_mapping",
         "//fboss/agent/state:state",
+        "//fboss/lib/phy:phy-cpp2-serialization",
         "//fboss/lib/phy:phy-cpp2-types",
+        "//fboss/qsfp_service/if:transceiver-cpp2-serialization",
         "//fboss/qsfp_service/if:transceiver-cpp2-types",
         "//thrift/lib/cpp2:server",
     ],
@@ -1692,12 +1695,12 @@ cpp_library(
         ":hwswitchcallback",
         ":platform_base",
         ":route_update_wrapper",
-        ":switch_config-cpp2-types",
-        ":switch_state-cpp2-types",
-        "//fboss/agent/hw:hardware_stats-cpp2-types",
-        "//fboss/agent/if:common-cpp2-types",
+        ":switch_config-cpp2-serialization",
+        ":switch_state-cpp2-serialization",
+        "//fboss/agent/hw:hardware_stats-cpp2-serialization",
+        "//fboss/agent/if:common-cpp2-serialization",
+        "//fboss/agent/if:ctrl-cpp2-serialization",
         "//fboss/agent/if:ctrl-cpp2-services",
-        "//fboss/agent/if:ctrl-cpp2-types",
         "//fboss/agent/if:multiswitch_ctrl-cpp2-services",
         "//fboss/agent/rib:standalone_rib",
         "//fboss/agent/state:nodebase",
@@ -1808,7 +1811,7 @@ cpp_library(
         "//fboss/fsdb/if:fsdb_model",
     ],
     exported_deps = [
-        "//fboss/fsdb/if:fsdb_oper-cpp2-types",
+        "//fboss/fsdb/if:fsdb_oper-cpp2-serialization",
     ],
 )
 
@@ -1866,8 +1869,8 @@ cpp_library(
         "fbsource//xplat/folly:network_address",
         ":fboss-types",
         ":packet",
-        "//fboss/agent/if:ctrl-cpp2-types",
-        "//fboss/agent/if:multiswitch_ctrl-cpp2-types",
+        "//fboss/agent/if:ctrl-cpp2-serialization",
+        "//fboss/agent/if:multiswitch_ctrl-cpp2-serialization",
         "//fboss/agent/rib:standalone_rib",
         "//fboss/agent/state:state",
     ],
@@ -1887,9 +1890,9 @@ cpp_library(
         ":fboss_event_base",
         ":hwswitchcallback",
         ":load_agent_config",
-        ":switch_config-cpp2-types",
+        ":switch_config-cpp2-serialization",
         ":utils",
-        "//fboss/agent/if:common-cpp2-types",
+        "//fboss/agent/if:common-cpp2-serialization",
         "//fboss/agent/if:multiswitch_ctrl-cpp2-services",
         "//fboss/agent/state:state",
         "//fboss/lib:hw_write_behavior",
@@ -1999,6 +2002,7 @@ cpp_library(
         "fbsource//xplat/folly/logging:init",
         "fbsource//xplat/folly/logging:logging",
         ":hw_switch",
+        ":instrumentation_hooks",
         ":load_agent_config",
         ":split_agent_thrift_syncer",
         ":test_utils",
@@ -2059,9 +2063,9 @@ cpp_library(
     exported_deps = [
         "fbsource//xplat/folly:network_address",
         ":fboss-types",
-        ":switch_config-cpp2-types",
+        ":switch_config-cpp2-serialization",
         ":switchid_scope_resolver",
-        "//fboss/agent/if:ctrl-cpp2-types",
+        "//fboss/agent/if:ctrl-cpp2-serialization",
         "//fboss/agent/rib:standalone_rib",
         "//fboss/agent/state:state",
     ],
@@ -2097,6 +2101,7 @@ cpp_library(
         "fbsource//xplat/folly/logging:logging",
         ":hw_switch",
         ":packet",
+        ":tracing_stack_checkpoint",
         ":utils",
         "//fb303:service_data",
         "//fboss/agent/state:state",
@@ -2140,7 +2145,7 @@ cpp_library(
         "fbsource//xplat/folly:string",
         ":fboss-error",
         ":fboss-types",
-        ":switch_config-cpp2-types",
+        ":switch_config-cpp2-serialization",
         "//fb303:service_data",
         "//fboss/agent/state:state",
         "//fboss/thrift_cow/visitors:visitors",
@@ -2174,6 +2179,7 @@ cpp_library(
         ":fboss_init_h",
         ":handler",
         ":hw_switch",
+        ":instrumentation_hooks",
         ":monolithic_hw_switch_handler",
         ":packet_stream_handler",
         ":platform_base",
@@ -2205,6 +2211,7 @@ cpp_library(
     ],
     deps = [
         ":core",
+        ":instrumentation_hooks",
         ":multi_switch_hw_switch_handler",
         ":multiswitch_service",
         "//fboss/lib:common_file_utils",
@@ -2348,11 +2355,8 @@ cpp_library(
     ],
 )
 
-# fake_wedge_agent, links with fake_main and monolithic_agent_initializer.
-# fake_main also links with emulation's main.  monolithic_agent_initializer
-# links with  sw_agent_initializer. emulation's main redefine methods provided
-# by fboss_common_init. so sw_agent_initializer can not link with
-# fboss_common_init so linking with only header
+# sw_agent_initializer links only the CommonInit header; the CommonInit
+# definition comes from the final binary.
 cpp_library(
     # @autodeps-skip autodeps2 adds :fake_main here (pulling emulation:main ->
     # duplicate initializeBitsflow with :fboss_common_init) and drops :hw_asic_table.
@@ -2453,18 +2457,17 @@ cpp_library(
         "AgentFsdbSyncManager.h",
     ],
     deps = [
-        ":switch_state-cpp2-types",
+        ":switch_state-cpp2-serialization",
         "//fboss/fsdb/common:utils",
         "//fboss/lib:tuple_utils",
     ],
     exported_deps = [
-        ":agent_info-cpp2-types",
-        ":switch_reachability-cpp2-types",
-        "//configerator/structs/neteng/fboss/bitsflow:bitsflow-cpp2-types",
+        ":agent_info-cpp2-serialization",
+        ":switch_reachability-cpp2-serialization",
         "//fboss/agent/state:state",
         "//fboss/fsdb/client:fsdb_syncer",
         "//fboss/fsdb/if:fsdb_model",
-        "//fboss/lib/phy:phy-cpp2-types",
+        "//fboss/lib/phy:phy-cpp2-serialization",
     ],
 )
 
@@ -2496,6 +2499,39 @@ cpp_library(
 )
 
 cpp_library(
+    name = "instrumentation_hooks",
+    srcs = [
+        "InstrumentationHooks.cpp",
+    ],
+    headers = [
+        "InstrumentationHooks.h",
+    ],
+    deps = [
+        ":instrumentation_hook_entry_points",
+    ],
+)
+
+cpp_library(
+    name = "instrumentation_hook_entry_points",
+    headers = [
+        "InstrumentationHookEntryPoints.h",
+    ],
+)
+
+cpp_library(
+    name = "tracing_stack_checkpoint",
+    srcs = [
+        "TracingStackCheckpoint.cpp",
+    ],
+    headers = [
+        "TracingStackCheckpoint.h",
+    ],
+    deps = [
+        ":instrumentation_hook_entry_points",
+    ],
+)
+
+cpp_library(
     name = "loadbalancer_utils",
     srcs = [
         "LoadBalancerUtils.cpp",
@@ -2506,7 +2542,7 @@ cpp_library(
     deps = ["fbsource//xplat/folly/hash:hash"],
     exported_deps = [
         "fbsource//xplat/folly:network_address",
-        ":switch_config-cpp2-types",
+        ":switch_config-cpp2-serialization",
     ],
 )
 

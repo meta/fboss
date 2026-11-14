@@ -10,6 +10,7 @@
 
 #include "fboss/agent/hw/sai/switch/SaiPortManager.h"
 
+#include "fboss/agent/AgentFeatures.h"
 #include "fboss/agent/FbossError.h"
 #include "fboss/agent/hw/CounterUtils.h"
 #include "fboss/agent/hw/HwPortFb303Stats.h"
@@ -113,9 +114,42 @@ PortSaiId SaiPortManager::addPortImpl(const std::shared_ptr<Port>& swPort) {
       static_cast<uint64_t>(saiLinePort->adapterKey()),
       static_cast<uint64_t>(saiSysPort->adapterKey()));
 
+#if defined(BRCM_PAI_SDK)
+  if (FLAGS_enable_port_cl72_retry) {
+    const auto* hwSwitch = platform_->getHwSwitch();
+    const bool isWarmBootInit =
+        hwSwitch->getBootType() == BootType::WARM_BOOT &&
+        hwSwitch->getRunState() < SwitchRunState::CONFIGURED;
+    if (FLAGS_enable_xphy_link_training_sys_side) {
+      enableXphyLtRestartOnTimeout(
+          saiSysPort->adapterKey(),
+          swPort->getName() + " sys",
+          !isWarmBootInit);
+    }
+    if (FLAGS_enable_xphy_link_training_line_side) {
+      enableXphyLtRestartOnTimeout(
+          saiLinePort->adapterKey(),
+          swPort->getName() + " line",
+          !isWarmBootInit);
+    }
+  }
+#endif
+
   if (swPort->isEnabled()) {
     portStats_.emplace(
-        swPort->getID(), std::make_unique<HwPortFb303Stats>(swPort->getName()));
+        swPort->getID(),
+        std::make_unique<HwPortFb303Stats>(
+            swPort->getName(),
+            HwBasePortFb303Stats::QueueId2Name{} /*queueId2Name*/,
+            std::vector<PfcPriority>{} /*enabledPfcPriorities*/,
+            std::nullopt /*pfcCfg*/,
+            false /*inCongestionDiscardCountSupported*/,
+            false /*inCongestionDiscardSeenSupported*/,
+            false /*srv6MysidDiscardCounterSupported*/,
+            false /*mplsLabelLookupFailCounterSupported*/,
+            false /*linkDebounceRetriggerCounterSupported*/,
+            false /*sllHllDiscardCounterSupported*/,
+            false));
   }
 
   // set platform port's speed
@@ -326,6 +360,7 @@ SaiPortTraits::CreateAttributes SaiPortManager::attributesFromSwPort(
       std::nullopt, // CBFC sender credit size
       std::nullopt, // CBFC sender packet overhead
       std::nullopt, // CBFC sender credit limit
+      std::nullopt, // CBFC receiver credit limit
 #endif
 #if SAI_API_VERSION >= SAI_VERSION(1, 9, 0)
       std::nullopt,
@@ -382,6 +417,10 @@ SaiPortTraits::CreateAttributes SaiPortManager::attributesFromSwPort(
       std::nullopt, // Metadata
       std::nullopt, // CsigTagAction
       std::nullopt, // CsigLinkLocator
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+      std::nullopt, // IntDelete
+      std::nullopt, // IntMetadata
+#endif
   };
 }
 

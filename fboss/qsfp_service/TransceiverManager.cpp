@@ -2977,9 +2977,15 @@ bool TransceiverManager::checkWarmBootFlags() {
     return false;
   }
 
-  // Instead of removing the can_warm_boot file, we keep it unless it's a
-  // coldboot, so that qsfp_service crash can still use warm boot.
+  // The can_warm_boot file is kept, so a qsfp_service crash can still warm
+  // boot. On SAI xphy platforms the xphy warm boot state is only valid right
+  // after a graceful exit, and each xphy consumes its own flag on startup, so
+  // consume this one too: if this start fails or qsfp_service crashes, the next
+  // start is a cold boot instead of another warm boot.
   bool canWarmBoot = checkFileExists(warmBootFile);
+  if (canWarmBoot && hasSaiExternalPhy()) {
+    removeWarmBootFlag();
+  }
   XLOG(INFO) << "Warm Boot flag: " << warmBootFile << " is "
              << (canWarmBoot ? "set" : "missing");
   return canWarmBoot;
@@ -3645,6 +3651,10 @@ void TransceiverManager::setPortAdminState(
 
   XLOG(INFO) << " TransceiverManager::setPortAdminState Port "
              << static_cast<int>(swPort.value());
+  if (!getPhyManager()) {
+    throw FbossError(
+        "Unable to set xphy admin state when PhyManager is not set");
+  }
   getPhyManager()->setPortAdminState(
       PortID(swPort.value()), component, setAdminUp);
 }

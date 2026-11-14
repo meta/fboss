@@ -38,11 +38,9 @@
 #include <thrift/lib/cpp/util/EnumUtils.h>
 #include "fboss/agent/gen-cpp2/platform_config_types.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
-#include "fboss/agent/if/gen-cpp2/FbossCtrl.h"
 #include "fboss/agent/platforms/common/PlatformMapping.h"
 #include "fboss/agent/types.h"
 #include "fboss/cli/fboss2/test/integration_test/Fboss2IntegrationTest.h"
-#include "fboss/cli/fboss2/utils/CmdClientUtilsCommon.h"
 #include "fboss/lib/config/PlatformConfigUtils.h"
 
 using namespace facebook::fboss;
@@ -71,7 +69,7 @@ class ConfigInterfaceProfileTest : public Fboss2IntegrationTest {
     auto present = fetchPresentPorts();
     auto groups = utility::getSubsidiaryPortIDs(mapping.getPlatformPorts());
     for (const auto& [controlling, unused] : groups) {
-      int32_t cid = static_cast<int32_t>(controlling);
+      auto cid = static_cast<int32_t>(controlling);
       auto pit = present.find(cid);
       if (pit == present.end()) {
         continue;
@@ -82,7 +80,7 @@ class ConfigInterfaceProfileTest : public Fboss2IntegrationTest {
         continue;
       }
       for (auto sp : mapping.getSubsumedPorts(controlling, currentProfile)) {
-        int32_t sid = static_cast<int32_t>(sp);
+        auto sid = static_cast<int32_t>(sp);
         if (present.find(sid) != present.end()) {
           continue; // S must be absent
         }
@@ -168,7 +166,7 @@ class ConfigInterfaceProfileTest : public Fboss2IntegrationTest {
     auto present = fetchPresentPorts();
     auto groups = utility::getSubsidiaryPortIDs(mapping.getPlatformPorts());
     for (const auto& [controlling, unused] : groups) {
-      int32_t cid = static_cast<int32_t>(controlling);
+      auto cid = static_cast<int32_t>(controlling);
       auto pit = present.find(cid);
       if (pit == present.end()) {
         continue;
@@ -195,7 +193,7 @@ class ConfigInterfaceProfileTest : public Fboss2IntegrationTest {
     auto groups = utility::getSubsidiaryPortIDs(mapping.getPlatformPorts());
     std::map<std::string, Candidate> candidateByTargetProfile;
     for (const auto& [controlling, unused] : groups) {
-      int32_t cid = static_cast<int32_t>(controlling);
+      auto cid = static_cast<int32_t>(controlling);
       auto pit = present.find(cid);
       if (pit == present.end()) {
         continue;
@@ -223,7 +221,7 @@ class ConfigInterfaceProfileTest : public Fboss2IntegrationTest {
     auto present = fetchPresentPorts();
     auto groups = utility::getSubsidiaryPortIDs(mapping.getPlatformPorts());
     for (const auto& [controlling, unused] : groups) {
-      int32_t cid = static_cast<int32_t>(controlling);
+      auto cid = static_cast<int32_t>(controlling);
       auto pit = present.find(cid);
       if (pit == present.end()) {
         continue;

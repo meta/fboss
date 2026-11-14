@@ -5,6 +5,7 @@ const fs = require('fs');
 const PROJECTS_PATH = '.github/pr-projects.json';
 const PROJECT_LABEL_PREFIX = 'project:';
 const PROJECT_LABEL_COLOR = '1d76db';
+const WARNING_COMMENT_MARKER = '<!-- fboss-pr-metadata-warning -->';
 
 async function removeLabel(github, params) {
   try {
@@ -38,18 +39,11 @@ module.exports = async function labelPullRequestMetadata({
     repo,
     pull_number: issueNumber,
   });
-  const validCompanies = [
-    'accton',
-    'celestica',
-    'nexthop',
-    'arista',
-    'cisco',
-    'nvidia',
-    'meta',
-  ];
-  const {npiProjects, nonNpiProjects} = JSON.parse(
+  const {companies: validCompanies, npiProjects, nonNpiProjects} = JSON.parse(
     fs.readFileSync(PROJECTS_PATH, 'utf8'),
   );
+  const configUrl =
+    `https://github.com/${owner}/${repo}/blob/main/${PROJECTS_PATH}`;
   const projects = [...npiProjects, ...nonNpiProjects];
   const validProjects = new Set(projects.map(project => project.toLowerCase()));
   const currentLabels = await github.paginate(
@@ -80,12 +74,65 @@ module.exports = async function labelPullRequestMetadata({
     }
   }
 
+  async function reconcileWarningComment(problem) {
+    const comments = await github.paginate(github.rest.issues.listComments, {
+      owner,
+      repo,
+      issue_number: issueNumber,
+      per_page: 100,
+    });
+    const comment = comments.find(
+      ({body, user}) =>
+        user?.login === 'github-actions[bot]' &&
+        body?.startsWith(WARNING_COMMENT_MARKER),
+    );
+    if (problem == null) {
+      if (comment) {
+        await github.rest.issues.deleteComment({
+          owner,
+          repo,
+          comment_id: comment.id,
+        });
+      }
+      return;
+    }
+
+    const body = [
+      WARNING_COMMENT_MARKER,
+      `@${pullRequest.user.login}, ${problem}`,
+      'Please edit the title of your PR so the project label can be added.',
+      'Expected format: `[CompanyName][ProjectName] Your PR title`.',
+      'Example: `[Accton][minipack3n] Add transceiver support`.',
+      `See [supported companies and projects](${configUrl}).`,
+    ].join('\n\n');
+    if (comment) {
+      if (comment.body !== body) {
+        await github.rest.issues.updateComment({
+          owner,
+          repo,
+          comment_id: comment.id,
+          body,
+        });
+      }
+    } else {
+      await github.rest.issues.createComment({
+        owner,
+        repo,
+        issue_number: issueNumber,
+        body,
+      });
+    }
+  }
+
   const match = pullRequest.title.match(/^\[([^\]]+)\]\s*\[([^\]]+)\]\s+.+/);
   if (!match) {
     await reconcileManagedLabels(new Set());
     core.warning(
       'PR title must use the format "[CompanyName][ProjectName] Your PR title", ' +
         'for example "[Accton][minipack3n] Add transceiver support".',
+    );
+    await reconcileWarningComment(
+      'the company/project prefix in your PR title is missing or incorrectly formatted.',
     );
     return;
   }
@@ -95,6 +142,9 @@ module.exports = async function labelPullRequestMetadata({
   if (!validCompanies.includes(company)) {
     await reconcileManagedLabels(new Set());
     core.warning(`Company name "${match[1].trim()}" is not recognized.`);
+    await reconcileWarningComment(
+      'the company name in your PR title is not recognized.',
+    );
     return;
   }
   if (!validProjects.has(project)) {
@@ -107,7 +157,10 @@ module.exports = async function labelPullRequestMetadata({
     });
     core.warning(
       `Project name "${match[2].trim()}" is not recognized. ` +
-        `Supported projects: ${projects.join(', ')}.`,
+        `See supported companies and projects: ${configUrl}.`,
+    );
+    await reconcileWarningComment(
+      'the project name in your PR title is not recognized.',
     );
     return;
   }
@@ -136,4 +189,5 @@ module.exports = async function labelPullRequestMetadata({
     labels: [company, projectLabel],
   });
   core.info(`Added labels "${company}" and "${projectLabel}".`);
+  await reconcileWarningComment(null);
 };

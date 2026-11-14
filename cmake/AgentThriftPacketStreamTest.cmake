@@ -10,7 +10,7 @@ add_library(thrift_packet_stream_test
 
 target_link_libraries(thrift_packet_stream_test
     Folly::folly
-    FBThrift::thriftcpp2
+    thrift::rpc
     async_packet_transport
     bidirectional_packet_stream
     packet_stream_cpp2

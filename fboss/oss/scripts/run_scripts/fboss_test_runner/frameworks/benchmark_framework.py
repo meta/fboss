@@ -285,6 +285,7 @@ class BenchmarkFramework:
 
         for key in ("cpu_time_usec", "max_rss", "cpu_rx_pps", "cpu_tx_pps"):
             if key in all_metrics:
+                # pyrefly: ignore [unsupported-operation]
                 result[key] = str(all_metrics[key])
 
         return result

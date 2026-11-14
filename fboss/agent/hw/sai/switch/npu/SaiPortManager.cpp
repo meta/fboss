@@ -5,7 +5,6 @@
 #include "fboss/agent/AgentFeatures.h"
 #include "fboss/agent/FbossError.h"
 #include "fboss/agent/hw/HwPortFb303Stats.h"
-#include "fboss/agent/hw/gen-cpp2/hardware_stats_constants.h"
 #include "fboss/agent/hw/sai/store/SaiStore.h"
 #include "fboss/agent/hw/sai/switch/ConcurrentIndices.h"
 #include "fboss/agent/hw/sai/switch/SaiAclTableManager.h"
@@ -425,7 +424,9 @@ PortSaiId SaiPortManager::addPortImpl(const std::shared_ptr<Port>& swPort) {
             SaiPortManager::isLinkDebounceRetriggerCounterSupported(
                 platform_->getAsic()),
             platform_->getAsic()->isSupported(
-                HwAsic::Feature::SLL_HLL_DISCARD_COUNTERS)));
+                HwAsic::Feature::SLL_HLL_DISCARD_COUNTERS),
+            platform_->getAsic()->isSupported(
+                HwAsic::Feature::PORT_LATCH_STATUS)));
   }
 
   bool samplingMirror = swPort->getSampleDestination().has_value() &&
@@ -567,7 +568,9 @@ void SaiPortManager::changePortImpl(
               SaiPortManager::isLinkDebounceRetriggerCounterSupported(
                   platform_->getAsic()),
               platform_->getAsic()->isSupported(
-                  HwAsic::Feature::SLL_HLL_DISCARD_COUNTERS)));
+                  HwAsic::Feature::SLL_HLL_DISCARD_COUNTERS),
+              platform_->getAsic()->isSupported(
+                  HwAsic::Feature::PORT_LATCH_STATUS)));
     } else if (oldPort->getName() != newPort->getName()) {
       // Port was already enabled, but Port name changed - update stats
       portStats_.find(newPort->getID())
@@ -1207,6 +1210,7 @@ SaiPortTraits::CreateAttributes SaiPortManager::attributesFromSwPort(
         std::nullopt, // CBFC sender credit size
         std::nullopt, // CBFC sender packet overhead
         std::nullopt, // CBFC sender credit limit
+        std::nullopt, // CBFC receiver credit limit
 #endif
 #if SAI_API_VERSION >= SAI_VERSION(1, 9, 0)
         std::nullopt,
@@ -1265,6 +1269,10 @@ SaiPortTraits::CreateAttributes SaiPortManager::attributesFromSwPort(
         std::nullopt, // Metadata
         std::nullopt, // CsigTagAction
         std::nullopt, // CsigLinkLocator
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+        std::nullopt, // IntDelete
+        std::nullopt, // IntMetadata
+#endif
     };
   }
   std::optional<SaiPortTraits::Attributes::PortVlanId> vlanIdAttr{vlanId};
@@ -1312,6 +1320,8 @@ SaiPortTraits::CreateAttributes SaiPortManager::attributesFromSwPort(
       cbfcSenderPacketOverhead;
   std::optional<SaiPortTraits::Attributes::CbfcSenderCreditLimit>
       cbfcSenderCreditLimit;
+  std::optional<SaiPortTraits::Attributes::CbfcReceiverCreditLimit>
+      cbfcReceiverCreditLimit;
   if (platform_->getAsic()->isSupported(HwAsic::Feature::CBFC) &&
       swPort->getVirtualChannels()) {
     if (auto creditSize = swPort->getCbfcSenderCreditSize()) {
@@ -1322,6 +1332,9 @@ SaiPortTraits::CreateAttributes SaiPortManager::attributesFromSwPort(
     }
     if (auto creditLimit = swPort->getCbfcSenderCreditLimit()) {
       cbfcSenderCreditLimit = static_cast<sai_uint32_t>(*creditLimit);
+    }
+    if (auto receiverLimit = swPort->getCbfcReceiverCreditLimit()) {
+      cbfcReceiverCreditLimit = static_cast<sai_uint32_t>(*receiverLimit);
     }
   }
 #endif
@@ -1383,6 +1396,7 @@ SaiPortTraits::CreateAttributes SaiPortManager::attributesFromSwPort(
       cbfcSenderCreditSize,
       cbfcSenderPacketOverhead,
       cbfcSenderCreditLimit,
+      cbfcReceiverCreditLimit,
 #endif
 #if SAI_API_VERSION >= SAI_VERSION(1, 9, 0)
       interFrameGap, // Inter Frame Gap
@@ -1445,6 +1459,10 @@ SaiPortTraits::CreateAttributes SaiPortManager::attributesFromSwPort(
       metadata,
       csigTagAction,
       csigLinkLocator,
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+      std::nullopt, // IntDelete
+      std::nullopt, // IntMetadata
+#endif
   };
 }
 

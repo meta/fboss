@@ -36,7 +36,7 @@ registered names.
 | `platform_manager/platform_manager_service.thrift` | PlatformManagerService RPCs: `getPlatformSnapshot()`, `getLastPMStatus()`, `getPmUnitInfo()` |
 | `sensor_service/if/sensor_service.thrift` | SensorServiceThrift: `getSensorValuesByNames()`, SensorData types |
 | `sensor_service/if/sensor_config.thrift` | Sensor config schema (thresholds, types, sysfs paths) |
-| `fan_service/if/fan_service.thrift` | FanService RPCs: `getFanStatuses()`, `setPwmHold()` |
+| `fan_service/if/fan_service.thrift` | FanService RPC: `getFanStatuses()` |
 | `fan_service/if/fan_service_config.thrift` | Fan zone config schema (PID params, PWM tables) |
 | `rackmon/if/rackmonsvc.thrift` | Rackmon RPCs, Modbus device types (ORV2/ORV3 PSU, BBU, RPU) |
 

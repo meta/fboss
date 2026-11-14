@@ -10,6 +10,7 @@
 #include "fboss/agent/mnpu/OperDeltaSyncer.h"
 #include "fboss/agent/AgentFeatures.h"
 #include "fboss/agent/HwSwitch.h"
+#include "fboss/agent/TracingStackCheckpoint.h"
 #include "fboss/agent/state/StateDelta.h"
 
 #include <thrift/lib/cpp2/async/PooledRequestChannel.h>
@@ -85,6 +86,7 @@ void OperDeltaSyncer::operSyncLoop() {
      */
     options.setTimeout(std::chrono::seconds(2 * FLAGS_oper_sync_req_timeout));
     try {
+      const TracingStackCheckpoint checkpoint;
       operSyncClient_->sync_getNextStateOperDelta(
           options,
           stateOperDelta,

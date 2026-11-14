@@ -9,6 +9,7 @@
  */
 
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/neighbor/CmdConfigProtocolBgpNeighbor.h"
+#include "fboss/cli/fboss2/utils/ArgCompletion.h"
 
 #include "fboss/cli/fboss2/CmdHandler.cpp"
 
@@ -862,5 +863,12 @@ void CmdConfigProtocolBgpNeighbor::printOutput(const RetType& output) {
 template void CmdHandler<
     CmdConfigProtocolBgpNeighbor,
     CmdConfigProtocolBgpNeighborTraits>::run();
+
+std::vector<std::string> CmdConfigProtocolBgpNeighborTraits::completeArgs(
+    const std::vector<std::string>& typed) {
+  return utils::completion::completeAttrGrammar(
+      typed,
+      {.attrs = bgpNeighborAttributeNames(), .minObjects = 1, .repeat = false});
+}
 
 } // namespace facebook::fboss

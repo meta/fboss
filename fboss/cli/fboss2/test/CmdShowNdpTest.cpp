@@ -1,6 +1,5 @@
 // (c) Facebook, Inc. and its affiliates. Confidential and proprietary.
 
-#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include <folly/IPAddressV4.h>

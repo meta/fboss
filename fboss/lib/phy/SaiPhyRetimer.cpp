@@ -419,6 +419,7 @@ SaiSwitchTraits::CreateAttributes SaiPhyRetimer::getSwitchAttributes(
       reinterpret_cast<sai_pointer_t>(pai_unlock_callback), // user sync_unlock
       warmRecover, // Warm recover
 #endif
+      std::nullopt, // VXLAN default port
   };
 }
 

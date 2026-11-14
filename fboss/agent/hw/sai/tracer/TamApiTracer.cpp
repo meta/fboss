@@ -141,6 +141,12 @@ sai_tam_api_t* wrappedTamApi() {
   tamWrappers.set_tam_attribute = &wrap_set_tam_attribute;
   tamWrappers.get_tam_attribute = &wrap_get_tam_attribute;
 
+  const auto* api = SaiTracer::getInstance()->tamApi_;
+  tamWrappers.create_tam_int = api->create_tam_int;
+  tamWrappers.remove_tam_int = api->remove_tam_int;
+  tamWrappers.set_tam_int_attribute = api->set_tam_int_attribute;
+  tamWrappers.get_tam_int_attribute = api->get_tam_int_attribute;
+
   tamWrappers.create_tam_event = &wrap_create_tam_event;
   tamWrappers.remove_tam_event = &wrap_remove_tam_event;
   tamWrappers.set_tam_event_attribute = &wrap_set_tam_event_attribute;

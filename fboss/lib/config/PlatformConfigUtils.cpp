@@ -10,6 +10,7 @@
 #include "fboss/lib/config/PlatformConfigUtils.h"
 #include "fboss/agent/FbossError.h"
 
+#include <folly/String.h>
 #include <thrift/lib/cpp/util/EnumUtils.h>
 
 namespace {

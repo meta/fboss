@@ -10,12 +10,8 @@
 
 #pragma once
 
-#include <fmt/format.h>
-#include <algorithm>
 #include <cctype>
-#include <functional>
 #include <optional>
-#include <stdexcept>
 #include <string>
 #include <unordered_set>
 #include <utility>

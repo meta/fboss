@@ -103,9 +103,9 @@ cpp_library(
         "BspTransceiverGpioAccess.h",
         "BspTransceiverIO.h",
     ],
+    deps = ["fbsource//third-party/fmt:fmt"],
     exported_deps = [
         "fbsource//xplat/folly:file_util",
-        "fbsource//xplat/folly:format",
         "fbsource//xplat/folly:range",
         "fbsource//xplat/folly:singleton",
         "fbsource//xplat/folly/logging:logging",
@@ -130,7 +130,6 @@ cpp_library(
         "//fboss/lib/bsp/minipack3n:minipack3n_bsp",
         "//fboss/lib/bsp/montblanc:montblanc_bsp",
         "//fboss/lib/bsp/morgan800cc:morgan800cc_bsp",
-        "//fboss/lib/bsp/saintpaul:saintpaul_bsp",
         "//fboss/lib/bsp/tahan800bc:tahan800bc_bsp",
         "//fboss/lib/bsp/tahansb800bc:tahansb800bc_bsp",
         "//fboss/lib/bsp/wedge800bact:wedge800bact_bsp",

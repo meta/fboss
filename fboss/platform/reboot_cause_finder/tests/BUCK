@@ -18,7 +18,7 @@ cpp_unittest(
         "fbsource//xplat/folly:scope_guard",
         "fbsource//xplat/folly:string",
         "//fboss/platform/reboot_cause_finder:reboot_cause_finder_lib",
-        "//thrift/lib/cpp2/protocol:protocol",
+        "//thrift/lib/cpp2/folly_dynamic:folly_dynamic",
     ],
 )
 

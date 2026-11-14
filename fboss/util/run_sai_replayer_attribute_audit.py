@@ -23,6 +23,12 @@ PATTERN_TO_EXCLUDE = [
     "RxPacket",
     # sai api only used to get counters
     "SwitchPipeline",
+    # CSIG attributes are programmed without replay serialization.
+    "SAI_ATTRIBUTE_NAME(Switch, MaxCsigTimers)",
+    "SAI_ATTRIBUTE_NAME(Switch, CsigBwTimeIntervalInUsec)",
+    "SAI_ATTRIBUTE_NAME(TamInt,",
+    "SAI_ATTRIBUTE_NAME(Port, IntDelete)",
+    "SAI_ATTRIBUTE_NAME(Port, IntMetadata)",
 ]
 
 

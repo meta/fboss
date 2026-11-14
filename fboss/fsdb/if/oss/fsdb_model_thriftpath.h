@@ -954,66 +954,6 @@ class ChildThriftPath<::facebook::fboss::MediaInterfaceId, ::facebook::fboss::fs
 
 
 template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::cfg::TransceiverConfigOverride, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
-  public StructuredThriftPath<
-    ::facebook::fboss::cfg::TransceiverConfigOverride,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::cfg::TransceiverConfigOverride> {
-  static_assert(
-      ::std::is_same_v<
-          detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::TransceiverConfigOverride>>,
-      "ChildThriftPath<::facebook::fboss::cfg::TransceiverConfigOverride> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::cfg::TransceiverConfigOverride.");
-
- public:
-  using Self = StructuredThriftPath<
-    ::facebook::fboss::cfg::TransceiverConfigOverride,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::cfg::TransceiverConfigOverride>;
-
-  template <typename Name>
-  using TypeFor = typename Self::template TypeFor<Name>;
-  using Self::Self;
-  
-    STRUCT_CHILD_GETTERS(factor, 1);
-    STRUCT_CHILD_GETTERS(config, 2);
-};
-
-
-template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::cfg::TransceiverFirmware, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
-  public StructuredThriftPath<
-    ::facebook::fboss::cfg::TransceiverFirmware,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::cfg::TransceiverFirmware> {
-  static_assert(
-      ::std::is_same_v<
-          detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::TransceiverFirmware>>,
-      "ChildThriftPath<::facebook::fboss::cfg::TransceiverFirmware> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::cfg::TransceiverFirmware.");
-
- public:
-  using Self = StructuredThriftPath<
-    ::facebook::fboss::cfg::TransceiverFirmware,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::cfg::TransceiverFirmware>;
-
-  template <typename Name>
-  using TypeFor = typename Self::template TypeFor<Name>;
-  using Self::Self;
-  
-    STRUCT_CHILD_GETTERS(versionsMap, 1);
-    STRUCT_CHILD_GETTERS(fwHandleMap, 2);
-};
-
-
-template<typename Parent, typename Tag>
 class ChildThriftPath<::facebook::fboss::HostLaneSettings, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
   public StructuredThriftPath<
     ::facebook::fboss::HostLaneSettings,
@@ -1500,6 +1440,7 @@ class ChildThriftPath<::facebook::bgp::thrift::BgpSettingConfig, ::facebook::fbo
     STRUCT_CHILD_GETTERS(stream_subscriber_limit, 22);
     STRUCT_CHILD_GETTERS(enable_route_refresh, 23);
     STRUCT_CHILD_GETTERS(enable_fib_out_tracking, 24);
+    STRUCT_CHILD_GETTERS(enable_gr_notification, 25);
 };
 
 
@@ -2011,139 +1952,40 @@ class ChildThriftPath<::facebook::bgp::bgp_policy::AsPathListEntry, ::facebook::
 
 
 template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::FirmwareStatus, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+class ChildThriftPath<::facebook::bgp::thrift::BgpNetwork, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
   public StructuredThriftPath<
-    ::facebook::fboss::FirmwareStatus,
+    ::facebook::bgp::thrift::BgpNetwork,
     ::facebook::fboss::fsdb::FsdbOperStateRoot,
     Parent,
-    ::facebook::fboss::FirmwareStatus> {
+    ::facebook::bgp::thrift::BgpNetwork> {
   static_assert(
       ::std::is_same_v<
           detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::FirmwareStatus>>,
-      "ChildThriftPath<::facebook::fboss::FirmwareStatus> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::FirmwareStatus.");
+          ::apache::thrift::type::infer_tag<::facebook::bgp::thrift::BgpNetwork>>,
+      "ChildThriftPath<::facebook::bgp::thrift::BgpNetwork> specialization instantiated with a Tag "
+      "that does not describe ::facebook::bgp::thrift::BgpNetwork.");
 
  public:
   using Self = StructuredThriftPath<
-    ::facebook::fboss::FirmwareStatus,
+    ::facebook::bgp::thrift::BgpNetwork,
     ::facebook::fboss::fsdb::FsdbOperStateRoot,
     Parent,
-    ::facebook::fboss::FirmwareStatus>;
+    ::facebook::bgp::thrift::BgpNetwork>;
 
   template <typename Name>
   using TypeFor = typename Self::template TypeFor<Name>;
   using Self::Self;
   
-    STRUCT_CHILD_GETTERS(version, 1);
-    STRUCT_CHILD_GETTERS(fwFault, 2);
-    STRUCT_CHILD_GETTERS(dspFwVer, 3);
-    STRUCT_CHILD_GETTERS(buildRev, 4);
-    STRUCT_CHILD_GETTERS(buildNumber, 5);
-};
-
-
-template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::bgp::rib_policy::TPathSelector, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
-  public StructuredThriftPath<
-    ::facebook::bgp::rib_policy::TPathSelector,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::bgp::rib_policy::TPathSelector> {
-  static_assert(
-      ::std::is_same_v<
-          detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::bgp::rib_policy::TPathSelector>>,
-      "ChildThriftPath<::facebook::bgp::rib_policy::TPathSelector> specialization instantiated with a Tag "
-      "that does not describe ::facebook::bgp::rib_policy::TPathSelector.");
-
- public:
-  using Self = StructuredThriftPath<
-    ::facebook::bgp::rib_policy::TPathSelector,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::bgp::rib_policy::TPathSelector>;
-
-  template <typename Name>
-  using TypeFor = typename Self::template TypeFor<Name>;
-  using Self::Self;
-  
-    STRUCT_CHILD_GETTERS(criteria_list, 1);
-    STRUCT_CHILD_GETTERS(bgp_native_path_selection_min_nexthop, 2);
-    STRUCT_CHILD_GETTERS(drain_on_min_nexthop_violation, 3);
-    STRUCT_CHILD_GETTERS(bgp_min_aggregate_lbw_bps, 4);
-    STRUCT_CHILD_GETTERS(relax_bgp_min_aggregate_lbw_bps, 5);
-};
-
-
-template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::cfg::VxLanTunnel, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
-  public StructuredThriftPath<
-    ::facebook::fboss::cfg::VxLanTunnel,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::cfg::VxLanTunnel> {
-  static_assert(
-      ::std::is_same_v<
-          detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::VxLanTunnel>>,
-      "ChildThriftPath<::facebook::fboss::cfg::VxLanTunnel> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::cfg::VxLanTunnel.");
-
- public:
-  using Self = StructuredThriftPath<
-    ::facebook::fboss::cfg::VxLanTunnel,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::cfg::VxLanTunnel>;
-
-  template <typename Name>
-  using TypeFor = typename Self::template TypeFor<Name>;
-  using Self::Self;
-  
-    STRUCT_CHILD_GETTERS(vxlanTunnelId, 1);
-    STRUCT_CHILD_GETTERS(underlayIntfID, 2);
-    STRUCT_CHILD_GETTERS(srcIp, 3);
-    STRUCT_CHILD_GETTERS(dstIp, 4);
-    STRUCT_CHILD_GETTERS(ttlMode, 5);
-    STRUCT_CHILD_GETTERS(dscpMode, 6);
-    STRUCT_CHILD_GETTERS(ecnMode, 7);
-    STRUCT_CHILD_GETTERS(tunnelTermType, 8);
-    STRUCT_CHILD_GETTERS(tunnelType, 9);
-    STRUCT_CHILD_GETTERS(vrf2Vni, 10);
-    STRUCT_CHILD_GETTERS(vniToVrf, 11);
-};
-
-
-template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::cfg::AclTableGroup, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
-  public StructuredThriftPath<
-    ::facebook::fboss::cfg::AclTableGroup,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::cfg::AclTableGroup> {
-  static_assert(
-      ::std::is_same_v<
-          detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::AclTableGroup>>,
-      "ChildThriftPath<::facebook::fboss::cfg::AclTableGroup> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::cfg::AclTableGroup.");
-
- public:
-  using Self = StructuredThriftPath<
-    ::facebook::fboss::cfg::AclTableGroup,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::cfg::AclTableGroup>;
-
-  template <typename Name>
-  using TypeFor = typename Self::template TypeFor<Name>;
-  using Self::Self;
-  
-    STRUCT_CHILD_GETTERS(name, 1);
-    STRUCT_CHILD_GETTERS(aclTables, 2);
-    STRUCT_CHILD_GETTERS(stage, 3);
-    STRUCT_CHILD_GETTERS(bindPoint, 4);
+    STRUCT_CHILD_GETTERS(prefix, 1);
+    STRUCT_CHILD_GETTERS(communities, 2);
+    STRUCT_CHILD_GETTERS(minimum_supporting_routes, 3);
+    STRUCT_CHILD_GETTERS(install_to_fib, 4);
+    STRUCT_CHILD_GETTERS(policy_name, 5);
+    STRUCT_CHILD_GETTERS(local_pref, 6);
+    STRUCT_CHILD_GETTERS(origin, 7);
+    STRUCT_CHILD_GETTERS(as_path, 8);
+    STRUCT_CHILD_GETTERS(nexthop, 9);
+    STRUCT_CHILD_GETTERS(require_nexthop_resolution, 10);
 };
 
 
@@ -2173,6 +2015,100 @@ class ChildThriftPath<::facebook::fboss::cfg::StaticMplsRouteNoNextHops, ::faceb
   using Self::Self;
   
     STRUCT_CHILD_GETTERS(ingressLabel, 1);
+};
+
+
+template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::fboss::phy::PhyFwVersion, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::fboss::phy::PhyFwVersion,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::phy::PhyFwVersion> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::fboss::phy::PhyFwVersion>>,
+      "ChildThriftPath<::facebook::fboss::phy::PhyFwVersion> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::phy::PhyFwVersion.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::fboss::phy::PhyFwVersion,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::phy::PhyFwVersion>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(version, 1);
+    STRUCT_CHILD_GETTERS(crc, 2);
+    STRUCT_CHILD_GETTERS(versionStr, 3);
+    STRUCT_CHILD_GETTERS(dateCode, 4);
+    STRUCT_CHILD_GETTERS(minorVersion, 5);
+};
+
+
+template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::fboss::TeFlow, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::fboss::TeFlow,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::TeFlow> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::fboss::TeFlow>>,
+      "ChildThriftPath<::facebook::fboss::TeFlow> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::TeFlow.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::fboss::TeFlow,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::TeFlow>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(srcPort, 1);
+    STRUCT_CHILD_GETTERS(dstPrefix, 2);
+};
+
+
+template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::fboss::cfg::BufferPoolConfig, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::fboss::cfg::BufferPoolConfig,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::cfg::BufferPoolConfig> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::BufferPoolConfig>>,
+      "ChildThriftPath<::facebook::fboss::cfg::BufferPoolConfig> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::cfg::BufferPoolConfig.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::fboss::cfg::BufferPoolConfig,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::cfg::BufferPoolConfig>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(sharedBytes, 1);
+    STRUCT_CHILD_GETTERS(headroomBytes, 2);
+    STRUCT_CHILD_GETTERS(reservedBytes, 3);
 };
 
 
@@ -2517,109 +2453,6 @@ class ChildThriftPath<::facebook::fboss::phy::LaneMap, ::facebook::fboss::fsdb::
 
 
 template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::bgp::thrift::BgpNetwork, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
-  public StructuredThriftPath<
-    ::facebook::bgp::thrift::BgpNetwork,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::bgp::thrift::BgpNetwork> {
-  static_assert(
-      ::std::is_same_v<
-          detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::bgp::thrift::BgpNetwork>>,
-      "ChildThriftPath<::facebook::bgp::thrift::BgpNetwork> specialization instantiated with a Tag "
-      "that does not describe ::facebook::bgp::thrift::BgpNetwork.");
-
- public:
-  using Self = StructuredThriftPath<
-    ::facebook::bgp::thrift::BgpNetwork,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::bgp::thrift::BgpNetwork>;
-
-  template <typename Name>
-  using TypeFor = typename Self::template TypeFor<Name>;
-  using Self::Self;
-  
-    STRUCT_CHILD_GETTERS(prefix, 1);
-    STRUCT_CHILD_GETTERS(communities, 2);
-    STRUCT_CHILD_GETTERS(minimum_supporting_routes, 3);
-    STRUCT_CHILD_GETTERS(install_to_fib, 4);
-    STRUCT_CHILD_GETTERS(policy_name, 5);
-    STRUCT_CHILD_GETTERS(local_pref, 6);
-    STRUCT_CHILD_GETTERS(origin, 7);
-    STRUCT_CHILD_GETTERS(as_path, 8);
-    STRUCT_CHILD_GETTERS(nexthop, 9);
-    STRUCT_CHILD_GETTERS(require_nexthop_resolution, 10);
-};
-
-
-template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::cfg::AggregatePortMember, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
-  public StructuredThriftPath<
-    ::facebook::fboss::cfg::AggregatePortMember,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::cfg::AggregatePortMember> {
-  static_assert(
-      ::std::is_same_v<
-          detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::AggregatePortMember>>,
-      "ChildThriftPath<::facebook::fboss::cfg::AggregatePortMember> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::cfg::AggregatePortMember.");
-
- public:
-  using Self = StructuredThriftPath<
-    ::facebook::fboss::cfg::AggregatePortMember,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::cfg::AggregatePortMember>;
-
-  template <typename Name>
-  using TypeFor = typename Self::template TypeFor<Name>;
-  using Self::Self;
-  
-    STRUCT_CHILD_GETTERS(memberPortID, 1);
-    STRUCT_CHILD_GETTERS(priority, 2);
-    STRUCT_CHILD_GETTERS(rate, 3);
-    STRUCT_CHILD_GETTERS(activity, 4);
-    STRUCT_CHILD_GETTERS(holdTimerMultiplier, 5);
-};
-
-
-template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::cfg::AgentConfig, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
-  public StructuredThriftPath<
-    ::facebook::fboss::cfg::AgentConfig,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::cfg::AgentConfig> {
-  static_assert(
-      ::std::is_same_v<
-          detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::AgentConfig>>,
-      "ChildThriftPath<::facebook::fboss::cfg::AgentConfig> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::cfg::AgentConfig.");
-
- public:
-  using Self = StructuredThriftPath<
-    ::facebook::fboss::cfg::AgentConfig,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::cfg::AgentConfig>;
-
-  template <typename Name>
-  using TypeFor = typename Self::template TypeFor<Name>;
-  using Self::Self;
-  
-    STRUCT_CHILD_GETTERS(defaultCommandLineArgs, 1);
-    STRUCT_CHILD_GETTERS(sw, 2);
-    STRUCT_CHILD_GETTERS(platform, 3);
-    STRUCT_CHILD_GETTERS(thriftApiToRateLimitInQps, 4);
-};
-
-
-template<typename Parent, typename Tag>
 class ChildThriftPath<::facebook::fboss::phy::PhyState, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
   public StructuredThriftPath<
     ::facebook::fboss::phy::PhyState,
@@ -2657,100 +2490,137 @@ class ChildThriftPath<::facebook::fboss::phy::PhyState, ::facebook::fboss::fsdb:
 
 
 template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::cfg::TrafficPolicyConfig, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+class ChildThriftPath<::facebook::fboss::phy::RsFecState, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
   public StructuredThriftPath<
-    ::facebook::fboss::cfg::TrafficPolicyConfig,
+    ::facebook::fboss::phy::RsFecState,
     ::facebook::fboss::fsdb::FsdbOperStateRoot,
     Parent,
-    ::facebook::fboss::cfg::TrafficPolicyConfig> {
+    ::facebook::fboss::phy::RsFecState> {
   static_assert(
       ::std::is_same_v<
           detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::TrafficPolicyConfig>>,
-      "ChildThriftPath<::facebook::fboss::cfg::TrafficPolicyConfig> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::cfg::TrafficPolicyConfig.");
+          ::apache::thrift::type::infer_tag<::facebook::fboss::phy::RsFecState>>,
+      "ChildThriftPath<::facebook::fboss::phy::RsFecState> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::phy::RsFecState.");
 
  public:
   using Self = StructuredThriftPath<
-    ::facebook::fboss::cfg::TrafficPolicyConfig,
+    ::facebook::fboss::phy::RsFecState,
     ::facebook::fboss::fsdb::FsdbOperStateRoot,
     Parent,
-    ::facebook::fboss::cfg::TrafficPolicyConfig>;
+    ::facebook::fboss::phy::RsFecState>;
 
   template <typename Name>
   using TypeFor = typename Self::template TypeFor<Name>;
   using Self::Self;
   
-    STRUCT_CHILD_GETTERS(matchToAction, 1);
-    STRUCT_CHILD_GETTERS(defaultQosPolicy, 2);
-    STRUCT_CHILD_GETTERS(portIdToQosPolicy, 3);
+    STRUCT_CHILD_GETTERS(lanes, 1);
 };
 
 
 template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::bgp::rib_policy::TCommunityListMatch, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+class ChildThriftPath<::facebook::neteng::fboss::bgp_attr::TAsPathSeg, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
   public StructuredThriftPath<
-    ::facebook::bgp::rib_policy::TCommunityListMatch,
+    ::facebook::neteng::fboss::bgp_attr::TAsPathSeg,
     ::facebook::fboss::fsdb::FsdbOperStateRoot,
     Parent,
-    ::facebook::bgp::rib_policy::TCommunityListMatch> {
+    ::facebook::neteng::fboss::bgp_attr::TAsPathSeg> {
   static_assert(
       ::std::is_same_v<
           detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::bgp::rib_policy::TCommunityListMatch>>,
-      "ChildThriftPath<::facebook::bgp::rib_policy::TCommunityListMatch> specialization instantiated with a Tag "
-      "that does not describe ::facebook::bgp::rib_policy::TCommunityListMatch.");
+          ::apache::thrift::type::infer_tag<::facebook::neteng::fboss::bgp_attr::TAsPathSeg>>,
+      "ChildThriftPath<::facebook::neteng::fboss::bgp_attr::TAsPathSeg> specialization instantiated with a Tag "
+      "that does not describe ::facebook::neteng::fboss::bgp_attr::TAsPathSeg.");
 
  public:
   using Self = StructuredThriftPath<
-    ::facebook::bgp::rib_policy::TCommunityListMatch,
+    ::facebook::neteng::fboss::bgp_attr::TAsPathSeg,
     ::facebook::fboss::fsdb::FsdbOperStateRoot,
     Parent,
-    ::facebook::bgp::rib_policy::TCommunityListMatch>;
+    ::facebook::neteng::fboss::bgp_attr::TAsPathSeg>;
 
   template <typename Name>
   using TypeFor = typename Self::template TypeFor<Name>;
   using Self::Self;
   
-    STRUCT_CHILD_GETTERS(boolean_operator, 1);
-    STRUCT_CHILD_GETTERS(communities, 2);
+    STRUCT_CHILD_GETTERS(seg_type, 1);
+    STRUCT_CHILD_GETTERS(asns, 2);
+    STRUCT_CHILD_GETTERS(asns_4_byte, 3);
 };
 
 
 template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::cfg::Srv6Tunnel, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+class ChildThriftPath<::facebook::fboss::cfg::PortVcConfig, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
   public StructuredThriftPath<
-    ::facebook::fboss::cfg::Srv6Tunnel,
+    ::facebook::fboss::cfg::PortVcConfig,
     ::facebook::fboss::fsdb::FsdbOperStateRoot,
     Parent,
-    ::facebook::fboss::cfg::Srv6Tunnel> {
+    ::facebook::fboss::cfg::PortVcConfig> {
   static_assert(
       ::std::is_same_v<
           detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::Srv6Tunnel>>,
-      "ChildThriftPath<::facebook::fboss::cfg::Srv6Tunnel> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::cfg::Srv6Tunnel.");
+          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::PortVcConfig>>,
+      "ChildThriftPath<::facebook::fboss::cfg::PortVcConfig> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::cfg::PortVcConfig.");
 
  public:
   using Self = StructuredThriftPath<
-    ::facebook::fboss::cfg::Srv6Tunnel,
+    ::facebook::fboss::cfg::PortVcConfig,
     ::facebook::fboss::fsdb::FsdbOperStateRoot,
     Parent,
-    ::facebook::fboss::cfg::Srv6Tunnel>;
+    ::facebook::fboss::cfg::PortVcConfig>;
 
   template <typename Name>
   using TypeFor = typename Self::template TypeFor<Name>;
   using Self::Self;
   
-    STRUCT_CHILD_GETTERS(srv6TunnelId, 1);
-    STRUCT_CHILD_GETTERS(underlayIntfID, 2);
-    STRUCT_CHILD_GETTERS(srcIp, 3);
-    STRUCT_CHILD_GETTERS(dstIp, 4);
-    STRUCT_CHILD_GETTERS(ttlMode, 5);
-    STRUCT_CHILD_GETTERS(dscpMode, 6);
-    STRUCT_CHILD_GETTERS(ecnMode, 7);
-    STRUCT_CHILD_GETTERS(tunnelTermType, 8);
-    STRUCT_CHILD_GETTERS(tunnelType, 9);
+    STRUCT_CHILD_GETTERS(id, 1);
+    STRUCT_CHILD_GETTERS(name, 2);
+    STRUCT_CHILD_GETTERS(senderEnable, 3);
+    STRUCT_CHILD_GETTERS(receiverEnable, 4);
+    STRUCT_CHILD_GETTERS(reservedCreditSize, 5);
+};
+
+
+template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::fboss::state::VlanFields, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::fboss::state::VlanFields,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::state::VlanFields> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::fboss::state::VlanFields>>,
+      "ChildThriftPath<::facebook::fboss::state::VlanFields> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::state::VlanFields.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::fboss::state::VlanFields,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::state::VlanFields>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(vlanId, 1);
+    STRUCT_CHILD_GETTERS(vlanName, 2);
+    STRUCT_CHILD_GETTERS(intfID, 3);
+    STRUCT_CHILD_GETTERS(dhcpV4Relay, 4);
+    STRUCT_CHILD_GETTERS(dhcpV6Relay, 5);
+    STRUCT_CHILD_GETTERS(dhcpRelayOverridesV4, 6);
+    STRUCT_CHILD_GETTERS(dhcpRelayOverridesV6, 7);
+    STRUCT_CHILD_GETTERS(ports_DEPRECATED, 8);
+    STRUCT_CHILD_GETTERS(arpTable, 9);
+    STRUCT_CHILD_GETTERS(arpResponseTable, 10);
+    STRUCT_CHILD_GETTERS(ndpTable, 11);
+    STRUCT_CHILD_GETTERS(ndpResponseTable, 12);
+    STRUCT_CHILD_GETTERS(macTable, 13);
+    STRUCT_CHILD_GETTERS(portsInfo, 14);
 };
 
 
@@ -2794,6 +2664,36 @@ class ChildThriftPath<::facebook::fboss::cfg::PortQueue, ::facebook::fboss::fsdb
     STRUCT_CHILD_GETTERS(bandwidthBurstMaxKbits, 14);
     STRUCT_CHILD_GETTERS(maxDynamicSharedBytes, 15);
     STRUCT_CHILD_GETTERS(bufferPoolName, 16);
+};
+
+
+template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::fboss::cfg::AsicConfig, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::fboss::cfg::AsicConfig,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::cfg::AsicConfig> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::AsicConfig>>,
+      "ChildThriftPath<::facebook::fboss::cfg::AsicConfig> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::cfg::AsicConfig.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::fboss::cfg::AsicConfig,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::cfg::AsicConfig>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(common, 1);
+    STRUCT_CHILD_GETTERS(npuEntries, 2);
 };
 
 
@@ -2865,72 +2765,6 @@ class ChildThriftPath<::facebook::fboss::cfg::MacsecFlowAction, ::facebook::fbos
   
     STRUCT_CHILD_GETTERS(flowId, 1);
     STRUCT_CHILD_GETTERS(action, 2);
-};
-
-
-template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::cfg::PortDescriptor, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
-  public StructuredThriftPath<
-    ::facebook::fboss::cfg::PortDescriptor,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::cfg::PortDescriptor> {
-  static_assert(
-      ::std::is_same_v<
-          detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::PortDescriptor>>,
-      "ChildThriftPath<::facebook::fboss::cfg::PortDescriptor> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::cfg::PortDescriptor.");
-
- public:
-  using Self = StructuredThriftPath<
-    ::facebook::fboss::cfg::PortDescriptor,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::cfg::PortDescriptor>;
-
-  template <typename Name>
-  using TypeFor = typename Self::template TypeFor<Name>;
-  using Self::Self;
-  
-    STRUCT_CHILD_GETTERS(portId, 1);
-    STRUCT_CHILD_GETTERS(portType, 2);
-};
-
-
-template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::bgp::bgp_policy::CommunityList, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
-  public StructuredThriftPath<
-    ::facebook::bgp::bgp_policy::CommunityList,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::bgp::bgp_policy::CommunityList> {
-  static_assert(
-      ::std::is_same_v<
-          detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::bgp::bgp_policy::CommunityList>>,
-      "ChildThriftPath<::facebook::bgp::bgp_policy::CommunityList> specialization instantiated with a Tag "
-      "that does not describe ::facebook::bgp::bgp_policy::CommunityList.");
-
- public:
-  using Self = StructuredThriftPath<
-    ::facebook::bgp::bgp_policy::CommunityList,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::bgp::bgp_policy::CommunityList>;
-
-  template <typename Name>
-  using TypeFor = typename Self::template TypeFor<Name>;
-  using Self::Self;
-  
-    STRUCT_CHILD_GETTERS(name, 1);
-    STRUCT_CHILD_GETTERS(description, 2);
-    STRUCT_CHILD_GETTERS(communities, 3);
-    STRUCT_CHILD_GETTERS(community_list_names, 4);
-    STRUCT_CHILD_GETTERS(boolean_operator, 5);
-    STRUCT_CHILD_GETTERS(exact_match, 6);
-    STRUCT_CHILD_GETTERS(members, 11);
-    STRUCT_CHILD_GETTERS(obj_uuid, 100);
 };
 
 
@@ -3084,142 +2918,6 @@ class ChildThriftPath<::facebook::fboss::cfg::Range64, ::facebook::fboss::fsdb::
 
 
 template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::NetworkTopologyInformation, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
-  public StructuredThriftPath<
-    ::facebook::fboss::NetworkTopologyInformation,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::NetworkTopologyInformation> {
-  static_assert(
-      ::std::is_same_v<
-          detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::NetworkTopologyInformation>>,
-      "ChildThriftPath<::facebook::fboss::NetworkTopologyInformation> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::NetworkTopologyInformation.");
-
- public:
-  using Self = StructuredThriftPath<
-    ::facebook::fboss::NetworkTopologyInformation,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::NetworkTopologyInformation>;
-
-  template <typename Name>
-  using TypeFor = typename Self::template TypeFor<Name>;
-  using Self::Self;
-  
-    STRUCT_CHILD_GETTERS(rack_id, 1);
-    STRUCT_CHILD_GETTERS(plane_id, 2);
-    STRUCT_CHILD_GETTERS(remote_rack_capacity, 3);
-    STRUCT_CHILD_GETTERS(spine_capacity, 4);
-    STRUCT_CHILD_GETTERS(local_rack_capacity, 5);
-    STRUCT_CHILD_GETTERS(spine_id, 6);
-};
-
-
-template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::state::VxLanTunnelFields, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
-  public StructuredThriftPath<
-    ::facebook::fboss::state::VxLanTunnelFields,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::state::VxLanTunnelFields> {
-  static_assert(
-      ::std::is_same_v<
-          detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::state::VxLanTunnelFields>>,
-      "ChildThriftPath<::facebook::fboss::state::VxLanTunnelFields> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::state::VxLanTunnelFields.");
-
- public:
-  using Self = StructuredThriftPath<
-    ::facebook::fboss::state::VxLanTunnelFields,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::state::VxLanTunnelFields>;
-
-  template <typename Name>
-  using TypeFor = typename Self::template TypeFor<Name>;
-  using Self::Self;
-  
-    STRUCT_CHILD_GETTERS(vxlanTunnelId, 1);
-    STRUCT_CHILD_GETTERS(underlayIntfId, 2);
-    STRUCT_CHILD_GETTERS(srcIp, 3);
-    STRUCT_CHILD_GETTERS(dstIp, 4);
-    STRUCT_CHILD_GETTERS(ttlMode, 5);
-    STRUCT_CHILD_GETTERS(dscpMode, 6);
-    STRUCT_CHILD_GETTERS(ecnMode, 7);
-    STRUCT_CHILD_GETTERS(tunnelTermType, 8);
-    STRUCT_CHILD_GETTERS(tunnelType, 9);
-    STRUCT_CHILD_GETTERS(vrf2Vni, 10);
-    STRUCT_CHILD_GETTERS(vniToVrf, 11);
-};
-
-
-template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::cfg::VrfConfig, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
-  public StructuredThriftPath<
-    ::facebook::fboss::cfg::VrfConfig,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::cfg::VrfConfig> {
-  static_assert(
-      ::std::is_same_v<
-          detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::VrfConfig>>,
-      "ChildThriftPath<::facebook::fboss::cfg::VrfConfig> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::cfg::VrfConfig.");
-
- public:
-  using Self = StructuredThriftPath<
-    ::facebook::fboss::cfg::VrfConfig,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::cfg::VrfConfig>;
-
-  template <typename Name>
-  using TypeFor = typename Self::template TypeFor<Name>;
-  using Self::Self;
-  
-    STRUCT_CHILD_GETTERS(vrfId, 1);
-    STRUCT_CHILD_GETTERS(name, 2);
-};
-
-
-template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::cfg::UdfPacketMatcher, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
-  public StructuredThriftPath<
-    ::facebook::fboss::cfg::UdfPacketMatcher,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::cfg::UdfPacketMatcher> {
-  static_assert(
-      ::std::is_same_v<
-          detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::UdfPacketMatcher>>,
-      "ChildThriftPath<::facebook::fboss::cfg::UdfPacketMatcher> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::cfg::UdfPacketMatcher.");
-
- public:
-  using Self = StructuredThriftPath<
-    ::facebook::fboss::cfg::UdfPacketMatcher,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::cfg::UdfPacketMatcher>;
-
-  template <typename Name>
-  using TypeFor = typename Self::template TypeFor<Name>;
-  using Self::Self;
-  
-    STRUCT_CHILD_GETTERS(name, 1);
-    STRUCT_CHILD_GETTERS(l2PktType, 2);
-    STRUCT_CHILD_GETTERS(l3pktType, 3);
-    STRUCT_CHILD_GETTERS(l4PktType, 4);
-    STRUCT_CHILD_GETTERS(UdfL4DstPort, 5);
-};
-
-
-template<typename Parent, typename Tag>
 class ChildThriftPath<::facebook::fboss::state::RouteNextHopEntry, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
   public StructuredThriftPath<
     ::facebook::fboss::state::RouteNextHopEntry,
@@ -3256,6 +2954,7 @@ class ChildThriftPath<::facebook::fboss::state::RouteNextHopEntry, ::facebook::f
     STRUCT_CHILD_GETTERS(namedNextHopGroup, 10);
     STRUCT_CHILD_GETTERS(clientNextHopSetID, 11);
     STRUCT_CHILD_GETTERS(overrideNextHopSetID, 12);
+    STRUCT_CHILD_GETTERS(level, 13);
 };
 
 
@@ -3287,6 +2986,81 @@ class ChildThriftPath<::facebook::fboss::MplsAction, ::facebook::fboss::fsdb::Fs
     STRUCT_CHILD_GETTERS(action, 1);
     STRUCT_CHILD_GETTERS(swapLabel, 2);
     STRUCT_CHILD_GETTERS(pushLabels, 3);
+};
+
+
+template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::fboss::cfg::MirrorOnDropReport, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::fboss::cfg::MirrorOnDropReport,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::cfg::MirrorOnDropReport> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::MirrorOnDropReport>>,
+      "ChildThriftPath<::facebook::fboss::cfg::MirrorOnDropReport> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::cfg::MirrorOnDropReport.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::fboss::cfg::MirrorOnDropReport,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::cfg::MirrorOnDropReport>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(name, 1);
+    STRUCT_CHILD_GETTERS(mirrorPortId, 2);
+    STRUCT_CHILD_GETTERS(localSrcPort, 3);
+    STRUCT_CHILD_GETTERS(collectorIp, 4);
+    STRUCT_CHILD_GETTERS(collectorPort, 5);
+    STRUCT_CHILD_GETTERS(mtu, 6);
+    STRUCT_CHILD_GETTERS(truncateSize, 7);
+    STRUCT_CHILD_GETTERS(dscp, 8);
+    STRUCT_CHILD_GETTERS(agingIntervalUsecs_DEPRECATED, 9);
+    STRUCT_CHILD_GETTERS(eventIdToDropReasons_DEPRECATED, 10);
+    STRUCT_CHILD_GETTERS(modEventToConfigMap, 11);
+    STRUCT_CHILD_GETTERS(agingGroupAgingIntervalUsecs, 12);
+    STRUCT_CHILD_GETTERS(mirrorPort, 13);
+    STRUCT_CHILD_GETTERS(samplingRate, 14);
+    STRUCT_CHILD_GETTERS(dropPacketRateThreshold, 15);
+    STRUCT_CHILD_GETTERS(aggregateDropPacketRateThreshold, 16);
+};
+
+
+template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::fboss::cfg::DscpQosMap, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::fboss::cfg::DscpQosMap,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::cfg::DscpQosMap> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::DscpQosMap>>,
+      "ChildThriftPath<::facebook::fboss::cfg::DscpQosMap> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::cfg::DscpQosMap.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::fboss::cfg::DscpQosMap,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::cfg::DscpQosMap>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(internalTrafficClass, 1);
+    STRUCT_CHILD_GETTERS(fromDscpToTrafficClass, 2);
+    STRUCT_CHILD_GETTERS(fromTrafficClassToDscp, 3);
 };
 
 
@@ -3354,246 +3128,6 @@ class ChildThriftPath<::facebook::fboss::state::TransceiverSpecFields, ::faceboo
 
 
 template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::cfg::DscpQosMap, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
-  public StructuredThriftPath<
-    ::facebook::fboss::cfg::DscpQosMap,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::cfg::DscpQosMap> {
-  static_assert(
-      ::std::is_same_v<
-          detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::DscpQosMap>>,
-      "ChildThriftPath<::facebook::fboss::cfg::DscpQosMap> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::cfg::DscpQosMap.");
-
- public:
-  using Self = StructuredThriftPath<
-    ::facebook::fboss::cfg::DscpQosMap,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::cfg::DscpQosMap>;
-
-  template <typename Name>
-  using TypeFor = typename Self::template TypeFor<Name>;
-  using Self::Self;
-  
-    STRUCT_CHILD_GETTERS(internalTrafficClass, 1);
-    STRUCT_CHILD_GETTERS(fromDscpToTrafficClass, 2);
-    STRUCT_CHILD_GETTERS(fromTrafficClassToDscp, 3);
-};
-
-
-template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::cfg::MirrorOnDropReport, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
-  public StructuredThriftPath<
-    ::facebook::fboss::cfg::MirrorOnDropReport,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::cfg::MirrorOnDropReport> {
-  static_assert(
-      ::std::is_same_v<
-          detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::MirrorOnDropReport>>,
-      "ChildThriftPath<::facebook::fboss::cfg::MirrorOnDropReport> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::cfg::MirrorOnDropReport.");
-
- public:
-  using Self = StructuredThriftPath<
-    ::facebook::fboss::cfg::MirrorOnDropReport,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::cfg::MirrorOnDropReport>;
-
-  template <typename Name>
-  using TypeFor = typename Self::template TypeFor<Name>;
-  using Self::Self;
-  
-    STRUCT_CHILD_GETTERS(name, 1);
-    STRUCT_CHILD_GETTERS(mirrorPortId, 2);
-    STRUCT_CHILD_GETTERS(localSrcPort, 3);
-    STRUCT_CHILD_GETTERS(collectorIp, 4);
-    STRUCT_CHILD_GETTERS(collectorPort, 5);
-    STRUCT_CHILD_GETTERS(mtu, 6);
-    STRUCT_CHILD_GETTERS(truncateSize, 7);
-    STRUCT_CHILD_GETTERS(dscp, 8);
-    STRUCT_CHILD_GETTERS(agingIntervalUsecs_DEPRECATED, 9);
-    STRUCT_CHILD_GETTERS(eventIdToDropReasons_DEPRECATED, 10);
-    STRUCT_CHILD_GETTERS(modEventToConfigMap, 11);
-    STRUCT_CHILD_GETTERS(agingGroupAgingIntervalUsecs, 12);
-    STRUCT_CHILD_GETTERS(mirrorPort, 13);
-    STRUCT_CHILD_GETTERS(samplingRate, 14);
-    STRUCT_CHILD_GETTERS(dropPacketRateThreshold, 15);
-    STRUCT_CHILD_GETTERS(aggregateDropPacketRateThreshold, 16);
-};
-
-
-template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::phy::RsFecState, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
-  public StructuredThriftPath<
-    ::facebook::fboss::phy::RsFecState,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::phy::RsFecState> {
-  static_assert(
-      ::std::is_same_v<
-          detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::phy::RsFecState>>,
-      "ChildThriftPath<::facebook::fboss::phy::RsFecState> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::phy::RsFecState.");
-
- public:
-  using Self = StructuredThriftPath<
-    ::facebook::fboss::phy::RsFecState,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::phy::RsFecState>;
-
-  template <typename Name>
-  using TypeFor = typename Self::template TypeFor<Name>;
-  using Self::Self;
-  
-    STRUCT_CHILD_GETTERS(lanes, 1);
-};
-
-
-template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::neteng::fboss::bgp_attr::TAsPathSeg, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
-  public StructuredThriftPath<
-    ::facebook::neteng::fboss::bgp_attr::TAsPathSeg,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::neteng::fboss::bgp_attr::TAsPathSeg> {
-  static_assert(
-      ::std::is_same_v<
-          detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::neteng::fboss::bgp_attr::TAsPathSeg>>,
-      "ChildThriftPath<::facebook::neteng::fboss::bgp_attr::TAsPathSeg> specialization instantiated with a Tag "
-      "that does not describe ::facebook::neteng::fboss::bgp_attr::TAsPathSeg.");
-
- public:
-  using Self = StructuredThriftPath<
-    ::facebook::neteng::fboss::bgp_attr::TAsPathSeg,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::neteng::fboss::bgp_attr::TAsPathSeg>;
-
-  template <typename Name>
-  using TypeFor = typename Self::template TypeFor<Name>;
-  using Self::Self;
-  
-    STRUCT_CHILD_GETTERS(seg_type, 1);
-    STRUCT_CHILD_GETTERS(asns, 2);
-    STRUCT_CHILD_GETTERS(asns_4_byte, 3);
-};
-
-
-template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::cfg::PortVcConfig, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
-  public StructuredThriftPath<
-    ::facebook::fboss::cfg::PortVcConfig,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::cfg::PortVcConfig> {
-  static_assert(
-      ::std::is_same_v<
-          detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::PortVcConfig>>,
-      "ChildThriftPath<::facebook::fboss::cfg::PortVcConfig> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::cfg::PortVcConfig.");
-
- public:
-  using Self = StructuredThriftPath<
-    ::facebook::fboss::cfg::PortVcConfig,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::cfg::PortVcConfig>;
-
-  template <typename Name>
-  using TypeFor = typename Self::template TypeFor<Name>;
-  using Self::Self;
-  
-    STRUCT_CHILD_GETTERS(id, 1);
-    STRUCT_CHILD_GETTERS(name, 2);
-    STRUCT_CHILD_GETTERS(senderEnable, 3);
-    STRUCT_CHILD_GETTERS(receiverEnable, 4);
-    STRUCT_CHILD_GETTERS(reservedCreditSize, 5);
-};
-
-
-template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::state::VlanFields, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
-  public StructuredThriftPath<
-    ::facebook::fboss::state::VlanFields,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::state::VlanFields> {
-  static_assert(
-      ::std::is_same_v<
-          detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::state::VlanFields>>,
-      "ChildThriftPath<::facebook::fboss::state::VlanFields> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::state::VlanFields.");
-
- public:
-  using Self = StructuredThriftPath<
-    ::facebook::fboss::state::VlanFields,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::state::VlanFields>;
-
-  template <typename Name>
-  using TypeFor = typename Self::template TypeFor<Name>;
-  using Self::Self;
-  
-    STRUCT_CHILD_GETTERS(vlanId, 1);
-    STRUCT_CHILD_GETTERS(vlanName, 2);
-    STRUCT_CHILD_GETTERS(intfID, 3);
-    STRUCT_CHILD_GETTERS(dhcpV4Relay, 4);
-    STRUCT_CHILD_GETTERS(dhcpV6Relay, 5);
-    STRUCT_CHILD_GETTERS(dhcpRelayOverridesV4, 6);
-    STRUCT_CHILD_GETTERS(dhcpRelayOverridesV6, 7);
-    STRUCT_CHILD_GETTERS(ports_DEPRECATED, 8);
-    STRUCT_CHILD_GETTERS(arpTable, 9);
-    STRUCT_CHILD_GETTERS(arpResponseTable, 10);
-    STRUCT_CHILD_GETTERS(ndpTable, 11);
-    STRUCT_CHILD_GETTERS(ndpResponseTable, 12);
-    STRUCT_CHILD_GETTERS(macTable, 13);
-    STRUCT_CHILD_GETTERS(portsInfo, 14);
-};
-
-
-template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::cfg::AsicConfig, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
-  public StructuredThriftPath<
-    ::facebook::fboss::cfg::AsicConfig,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::cfg::AsicConfig> {
-  static_assert(
-      ::std::is_same_v<
-          detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::AsicConfig>>,
-      "ChildThriftPath<::facebook::fboss::cfg::AsicConfig> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::cfg::AsicConfig.");
-
- public:
-  using Self = StructuredThriftPath<
-    ::facebook::fboss::cfg::AsicConfig,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::cfg::AsicConfig>;
-
-  template <typename Name>
-  using TypeFor = typename Self::template TypeFor<Name>;
-  using Self::Self;
-  
-    STRUCT_CHILD_GETTERS(common, 1);
-    STRUCT_CHILD_GETTERS(npuEntries, 2);
-};
-
-
-template<typename Parent, typename Tag>
 class ChildThriftPath<::facebook::fboss::cfg::SflowTunnel, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
   public StructuredThriftPath<
     ::facebook::fboss::cfg::SflowTunnel,
@@ -3622,6 +3156,182 @@ class ChildThriftPath<::facebook::fboss::cfg::SflowTunnel, ::facebook::fboss::fs
     STRUCT_CHILD_GETTERS(udpSrcPort, 2);
     STRUCT_CHILD_GETTERS(udpDstPort, 3);
     STRUCT_CHILD_GETTERS(ttl, 4);
+};
+
+
+template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::fboss::state::VxLanTunnelFields, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::fboss::state::VxLanTunnelFields,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::state::VxLanTunnelFields> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::fboss::state::VxLanTunnelFields>>,
+      "ChildThriftPath<::facebook::fboss::state::VxLanTunnelFields> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::state::VxLanTunnelFields.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::fboss::state::VxLanTunnelFields,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::state::VxLanTunnelFields>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(vxlanTunnelId, 1);
+    STRUCT_CHILD_GETTERS(underlayIntfId, 2);
+    STRUCT_CHILD_GETTERS(srcIp, 3);
+    STRUCT_CHILD_GETTERS(dstIp, 4);
+    STRUCT_CHILD_GETTERS(ttlMode, 5);
+    STRUCT_CHILD_GETTERS(dscpMode, 6);
+    STRUCT_CHILD_GETTERS(ecnMode, 7);
+    STRUCT_CHILD_GETTERS(tunnelTermType, 8);
+    STRUCT_CHILD_GETTERS(tunnelType, 9);
+    STRUCT_CHILD_GETTERS(vrf2Vni, 10);
+    STRUCT_CHILD_GETTERS(vniToVrf, 11);
+};
+
+
+template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::bgp::rib_policy::TCommunityListMatch, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::bgp::rib_policy::TCommunityListMatch,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::bgp::rib_policy::TCommunityListMatch> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::bgp::rib_policy::TCommunityListMatch>>,
+      "ChildThriftPath<::facebook::bgp::rib_policy::TCommunityListMatch> specialization instantiated with a Tag "
+      "that does not describe ::facebook::bgp::rib_policy::TCommunityListMatch.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::bgp::rib_policy::TCommunityListMatch,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::bgp::rib_policy::TCommunityListMatch>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(boolean_operator, 1);
+    STRUCT_CHILD_GETTERS(communities, 2);
+};
+
+
+template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::fboss::cfg::Srv6Tunnel, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::fboss::cfg::Srv6Tunnel,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::cfg::Srv6Tunnel> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::Srv6Tunnel>>,
+      "ChildThriftPath<::facebook::fboss::cfg::Srv6Tunnel> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::cfg::Srv6Tunnel.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::fboss::cfg::Srv6Tunnel,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::cfg::Srv6Tunnel>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(srv6TunnelId, 1);
+    STRUCT_CHILD_GETTERS(underlayIntfID, 2);
+    STRUCT_CHILD_GETTERS(srcIp, 3);
+    STRUCT_CHILD_GETTERS(dstIp, 4);
+    STRUCT_CHILD_GETTERS(ttlMode, 5);
+    STRUCT_CHILD_GETTERS(dscpMode, 6);
+    STRUCT_CHILD_GETTERS(ecnMode, 7);
+    STRUCT_CHILD_GETTERS(tunnelTermType, 8);
+    STRUCT_CHILD_GETTERS(tunnelType, 9);
+};
+
+
+template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::bgp::bgp_policy::CommunityList, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::bgp::bgp_policy::CommunityList,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::bgp::bgp_policy::CommunityList> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::bgp::bgp_policy::CommunityList>>,
+      "ChildThriftPath<::facebook::bgp::bgp_policy::CommunityList> specialization instantiated with a Tag "
+      "that does not describe ::facebook::bgp::bgp_policy::CommunityList.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::bgp::bgp_policy::CommunityList,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::bgp::bgp_policy::CommunityList>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(name, 1);
+    STRUCT_CHILD_GETTERS(description, 2);
+    STRUCT_CHILD_GETTERS(communities, 3);
+    STRUCT_CHILD_GETTERS(community_list_names, 4);
+    STRUCT_CHILD_GETTERS(boolean_operator, 5);
+    STRUCT_CHILD_GETTERS(exact_match, 6);
+    STRUCT_CHILD_GETTERS(members, 11);
+    STRUCT_CHILD_GETTERS(obj_uuid, 100);
+};
+
+
+template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::fboss::NetworkTopologyInformation, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::fboss::NetworkTopologyInformation,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::NetworkTopologyInformation> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::fboss::NetworkTopologyInformation>>,
+      "ChildThriftPath<::facebook::fboss::NetworkTopologyInformation> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::NetworkTopologyInformation.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::fboss::NetworkTopologyInformation,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::NetworkTopologyInformation>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(rack_id, 1);
+    STRUCT_CHILD_GETTERS(plane_id, 2);
+    STRUCT_CHILD_GETTERS(remote_rack_capacity, 3);
+    STRUCT_CHILD_GETTERS(spine_capacity, 4);
+    STRUCT_CHILD_GETTERS(local_rack_capacity, 5);
+    STRUCT_CHILD_GETTERS(spine_id, 6);
 };
 
 
@@ -3880,180 +3590,308 @@ class ChildThriftPath<::facebook::fboss::phy::LaneState, ::facebook::fboss::fsdb
 
 
 template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::cfg::MirrorEgressPort, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+class ChildThriftPath<::facebook::bgp::bgp_policy::BgpPolicyStatement, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
   public StructuredThriftPath<
-    ::facebook::fboss::cfg::MirrorEgressPort,
+    ::facebook::bgp::bgp_policy::BgpPolicyStatement,
     ::facebook::fboss::fsdb::FsdbOperStateRoot,
     Parent,
-    ::facebook::fboss::cfg::MirrorEgressPort> {
+    ::facebook::bgp::bgp_policy::BgpPolicyStatement> {
   static_assert(
       ::std::is_same_v<
           detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::MirrorEgressPort>>,
-      "ChildThriftPath<::facebook::fboss::cfg::MirrorEgressPort> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::cfg::MirrorEgressPort.");
+          ::apache::thrift::type::infer_tag<::facebook::bgp::bgp_policy::BgpPolicyStatement>>,
+      "ChildThriftPath<::facebook::bgp::bgp_policy::BgpPolicyStatement> specialization instantiated with a Tag "
+      "that does not describe ::facebook::bgp::bgp_policy::BgpPolicyStatement.");
 
  public:
   using Self = StructuredThriftPath<
-    ::facebook::fboss::cfg::MirrorEgressPort,
+    ::facebook::bgp::bgp_policy::BgpPolicyStatement,
     ::facebook::fboss::fsdb::FsdbOperStateRoot,
     Parent,
-    ::facebook::fboss::cfg::MirrorEgressPort>;
+    ::facebook::bgp::bgp_policy::BgpPolicyStatement>;
 
   template <typename Name>
   using TypeFor = typename Self::template TypeFor<Name>;
   using Self::Self;
   
     STRUCT_CHILD_GETTERS(name, 1);
-    STRUCT_CHILD_GETTERS(logicalID, 2);
+    STRUCT_CHILD_GETTERS(description, 2);
+    STRUCT_CHILD_GETTERS(policy_version, 3);
+    STRUCT_CHILD_GETTERS(policy_entries, 4);
+    STRUCT_CHILD_GETTERS(result, 11);
+    STRUCT_CHILD_GETTERS(obj_uuid, 100);
 };
 
 
 template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::state::VlanInfo, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+class ChildThriftPath<::facebook::fboss::state::LoadBalancerFields, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
   public StructuredThriftPath<
-    ::facebook::fboss::state::VlanInfo,
+    ::facebook::fboss::state::LoadBalancerFields,
     ::facebook::fboss::fsdb::FsdbOperStateRoot,
     Parent,
-    ::facebook::fboss::state::VlanInfo> {
+    ::facebook::fboss::state::LoadBalancerFields> {
   static_assert(
       ::std::is_same_v<
           detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::state::VlanInfo>>,
-      "ChildThriftPath<::facebook::fboss::state::VlanInfo> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::state::VlanInfo.");
+          ::apache::thrift::type::infer_tag<::facebook::fboss::state::LoadBalancerFields>>,
+      "ChildThriftPath<::facebook::fboss::state::LoadBalancerFields> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::state::LoadBalancerFields.");
 
  public:
   using Self = StructuredThriftPath<
-    ::facebook::fboss::state::VlanInfo,
+    ::facebook::fboss::state::LoadBalancerFields,
     ::facebook::fboss::fsdb::FsdbOperStateRoot,
     Parent,
-    ::facebook::fboss::state::VlanInfo>;
+    ::facebook::fboss::state::LoadBalancerFields>;
 
   template <typename Name>
   using TypeFor = typename Self::template TypeFor<Name>;
   using Self::Self;
   
-    STRUCT_CHILD_GETTERS(tagged, 1);
-    STRUCT_CHILD_GETTERS(priorityTagged, 2);
+    STRUCT_CHILD_GETTERS(id, 1);
+    STRUCT_CHILD_GETTERS(algorithm, 2);
+    STRUCT_CHILD_GETTERS(seed, 3);
+    STRUCT_CHILD_GETTERS(v4Fields, 4);
+    STRUCT_CHILD_GETTERS(v6Fields, 5);
+    STRUCT_CHILD_GETTERS(transportFields, 6);
+    STRUCT_CHILD_GETTERS(mplsFields, 7);
+    STRUCT_CHILD_GETTERS(udfGroups, 8);
 };
 
 
 template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::state::QosPolicyFields, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+class ChildThriftPath<::facebook::fboss::PortQueueFields, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
   public StructuredThriftPath<
-    ::facebook::fboss::state::QosPolicyFields,
+    ::facebook::fboss::PortQueueFields,
     ::facebook::fboss::fsdb::FsdbOperStateRoot,
     Parent,
-    ::facebook::fboss::state::QosPolicyFields> {
+    ::facebook::fboss::PortQueueFields> {
   static_assert(
       ::std::is_same_v<
           detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::state::QosPolicyFields>>,
-      "ChildThriftPath<::facebook::fboss::state::QosPolicyFields> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::state::QosPolicyFields.");
+          ::apache::thrift::type::infer_tag<::facebook::fboss::PortQueueFields>>,
+      "ChildThriftPath<::facebook::fboss::PortQueueFields> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::PortQueueFields.");
 
  public:
   using Self = StructuredThriftPath<
-    ::facebook::fboss::state::QosPolicyFields,
+    ::facebook::fboss::PortQueueFields,
     ::facebook::fboss::fsdb::FsdbOperStateRoot,
     Parent,
-    ::facebook::fboss::state::QosPolicyFields>;
+    ::facebook::fboss::PortQueueFields>;
 
   template <typename Name>
   using TypeFor = typename Self::template TypeFor<Name>;
   using Self::Self;
   
-    STRUCT_CHILD_GETTERS(name, 1);
-    STRUCT_CHILD_GETTERS(dscpMap, 2);
-    STRUCT_CHILD_GETTERS(expMap, 3);
-    STRUCT_CHILD_GETTERS(trafficClassToQueueId, 4);
-    STRUCT_CHILD_GETTERS(pfcPriorityToQueueId, 5);
-    STRUCT_CHILD_GETTERS(trafficClassToPgId, 6);
-    STRUCT_CHILD_GETTERS(pfcPriorityToPgId, 7);
-    STRUCT_CHILD_GETTERS(trafficClassToVoqId, 8);
-    STRUCT_CHILD_GETTERS(pcpMap, 9);
-    STRUCT_CHILD_GETTERS(trafficClassToVcId, 10);
-    STRUCT_CHILD_GETTERS(queueToVcId, 11);
+    STRUCT_CHILD_GETTERS(id, 1);
+    STRUCT_CHILD_GETTERS(weight, 2);
+    STRUCT_CHILD_GETTERS(reserved, 3);
+    STRUCT_CHILD_GETTERS(scalingFactor, 4);
+    STRUCT_CHILD_GETTERS(scheduling, 5);
+    STRUCT_CHILD_GETTERS(streamType, 6);
+    STRUCT_CHILD_GETTERS(aqms, 7);
+    STRUCT_CHILD_GETTERS(name, 8);
+    STRUCT_CHILD_GETTERS(packetsPerSec_DEPRECATED, 10);
+    STRUCT_CHILD_GETTERS(sharedBytes, 11);
+    STRUCT_CHILD_GETTERS(portQueueRate, 12);
+    STRUCT_CHILD_GETTERS(bandwidthBurstMinKbits, 13);
+    STRUCT_CHILD_GETTERS(bandwidthBurstMaxKbits, 14);
+    STRUCT_CHILD_GETTERS(trafficClass, 15);
+    STRUCT_CHILD_GETTERS(pfcPriorities, 16);
+    STRUCT_CHILD_GETTERS(maxDynamicSharedBytes, 17);
+    STRUCT_CHILD_GETTERS(bufferPoolName, 18);
+    STRUCT_CHILD_GETTERS(bufferPoolConfig, 19);
 };
 
 
 template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::state::NeighborEntryFields, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+class ChildThriftPath<::facebook::network::thrift::BinaryAddress, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
   public StructuredThriftPath<
-    ::facebook::fboss::state::NeighborEntryFields,
+    ::facebook::network::thrift::BinaryAddress,
     ::facebook::fboss::fsdb::FsdbOperStateRoot,
     Parent,
-    ::facebook::fboss::state::NeighborEntryFields> {
+    ::facebook::network::thrift::BinaryAddress> {
   static_assert(
       ::std::is_same_v<
           detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::state::NeighborEntryFields>>,
-      "ChildThriftPath<::facebook::fboss::state::NeighborEntryFields> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::state::NeighborEntryFields.");
+          ::apache::thrift::type::infer_tag<::facebook::network::thrift::BinaryAddress>>,
+      "ChildThriftPath<::facebook::network::thrift::BinaryAddress> specialization instantiated with a Tag "
+      "that does not describe ::facebook::network::thrift::BinaryAddress.");
 
  public:
   using Self = StructuredThriftPath<
-    ::facebook::fboss::state::NeighborEntryFields,
+    ::facebook::network::thrift::BinaryAddress,
     ::facebook::fboss::fsdb::FsdbOperStateRoot,
     Parent,
-    ::facebook::fboss::state::NeighborEntryFields>;
+    ::facebook::network::thrift::BinaryAddress>;
 
   template <typename Name>
   using TypeFor = typename Self::template TypeFor<Name>;
   using Self::Self;
   
-    STRUCT_CHILD_GETTERS(ipaddress, 1);
-    STRUCT_CHILD_GETTERS(mac, 2);
-    STRUCT_CHILD_GETTERS(portId, 3);
-    STRUCT_CHILD_GETTERS(interfaceId, 4);
-    STRUCT_CHILD_GETTERS(state, 5);
-    STRUCT_CHILD_GETTERS(classID, 6);
-    STRUCT_CHILD_GETTERS(encapIndex, 7);
-    STRUCT_CHILD_GETTERS(isLocal, 8);
-    STRUCT_CHILD_GETTERS(type, 9);
-    STRUCT_CHILD_GETTERS(resolvedSince, 10);
-    STRUCT_CHILD_GETTERS(noHostRoute, 11);
-    STRUCT_CHILD_GETTERS(disableTTLDecrement, 12);
+    STRUCT_CHILD_GETTERS(addr, 1);
+    STRUCT_CHILD_GETTERS(port, 2);
+    STRUCT_CHILD_GETTERS(ifName, 3);
 };
 
 
 template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::neteng::fboss::bgp::thrift::TRibEntry, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+class ChildThriftPath<::facebook::fboss::phy::PmdState, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
   public StructuredThriftPath<
-    ::facebook::neteng::fboss::bgp::thrift::TRibEntry,
+    ::facebook::fboss::phy::PmdState,
     ::facebook::fboss::fsdb::FsdbOperStateRoot,
     Parent,
-    ::facebook::neteng::fboss::bgp::thrift::TRibEntry> {
+    ::facebook::fboss::phy::PmdState> {
   static_assert(
       ::std::is_same_v<
           detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::neteng::fboss::bgp::thrift::TRibEntry>>,
-      "ChildThriftPath<::facebook::neteng::fboss::bgp::thrift::TRibEntry> specialization instantiated with a Tag "
-      "that does not describe ::facebook::neteng::fboss::bgp::thrift::TRibEntry.");
+          ::apache::thrift::type::infer_tag<::facebook::fboss::phy::PmdState>>,
+      "ChildThriftPath<::facebook::fboss::phy::PmdState> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::phy::PmdState.");
 
  public:
   using Self = StructuredThriftPath<
-    ::facebook::neteng::fboss::bgp::thrift::TRibEntry,
+    ::facebook::fboss::phy::PmdState,
     ::facebook::fboss::fsdb::FsdbOperStateRoot,
     Parent,
-    ::facebook::neteng::fboss::bgp::thrift::TRibEntry>;
+    ::facebook::fboss::phy::PmdState>;
 
   template <typename Name>
   using TypeFor = typename Self::template TypeFor<Name>;
   using Self::Self;
   
-    STRUCT_CHILD_GETTERS(prefix, 1);
-    STRUCT_CHILD_GETTERS(paths, 2);
-    STRUCT_CHILD_GETTERS(best_group, 3);
-    STRUCT_CHILD_GETTERS(best_next_hop, 4);
-    STRUCT_CHILD_GETTERS(active_cps_criteria, 5);
-    STRUCT_CHILD_GETTERS(path_selection_pending, 6);
-    STRUCT_CHILD_GETTERS(rib_version, 7);
-    STRUCT_CHILD_GETTERS(active_cte_ucmp_action, 8);
-    STRUCT_CHILD_GETTERS(best_path, 9);
-    STRUCT_CHILD_GETTERS(fib_out, 10);
-    STRUCT_CHILD_GETTERS(fib_out_pending, 11);
+    STRUCT_CHILD_GETTERS(lanes, 1);
+    STRUCT_CHILD_GETTERS(linkTrainingStatus, 2);
+};
+
+
+template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::fboss::state::InterfaceVrfFields, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::fboss::state::InterfaceVrfFields,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::state::InterfaceVrfFields> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::fboss::state::InterfaceVrfFields>>,
+      "ChildThriftPath<::facebook::fboss::state::InterfaceVrfFields> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::state::InterfaceVrfFields.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::fboss::state::InterfaceVrfFields,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::state::InterfaceVrfFields>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(interfaceId, 1);
+    STRUCT_CHILD_GETTERS(vrfId, 2);
+};
+
+
+template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::fboss::state::MKASakKey, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::fboss::state::MKASakKey,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::state::MKASakKey> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::fboss::state::MKASakKey>>,
+      "ChildThriftPath<::facebook::fboss::state::MKASakKey> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::state::MKASakKey.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::fboss::state::MKASakKey,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::state::MKASakKey>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(sci, 1);
+    STRUCT_CHILD_GETTERS(associationNum, 2);
+};
+
+
+template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::fboss::state::LlrFields, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::fboss::state::LlrFields,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::state::LlrFields> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::fboss::state::LlrFields>>,
+      "ChildThriftPath<::facebook::fboss::state::LlrFields> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::state::LlrFields.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::fboss::state::LlrFields,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::state::LlrFields>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(id, 1);
+    STRUCT_CHILD_GETTERS(outstandingFramesMax, 2);
+    STRUCT_CHILD_GETTERS(outstandingBytesMax, 3);
+    STRUCT_CHILD_GETTERS(replayTimerMax, 4);
+    STRUCT_CHILD_GETTERS(replayCountMax, 5);
+    STRUCT_CHILD_GETTERS(pcsLostTimeout, 6);
+    STRUCT_CHILD_GETTERS(dataAgeTimeout, 7);
+    STRUCT_CHILD_GETTERS(initFrameAction, 8);
+    STRUCT_CHILD_GETTERS(flushFrameAction, 9);
+    STRUCT_CHILD_GETTERS(reInitOnFlush, 10);
+    STRUCT_CHILD_GETTERS(ctlosTargetSpacing, 11);
+};
+
+
+template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::neteng::fboss::bgp::thrift::TBgpAggregator, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::neteng::fboss::bgp::thrift::TBgpAggregator,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::neteng::fboss::bgp::thrift::TBgpAggregator> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::neteng::fboss::bgp::thrift::TBgpAggregator>>,
+      "ChildThriftPath<::facebook::neteng::fboss::bgp::thrift::TBgpAggregator> specialization instantiated with a Tag "
+      "that does not describe ::facebook::neteng::fboss::bgp::thrift::TBgpAggregator.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::neteng::fboss::bgp::thrift::TBgpAggregator,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::neteng::fboss::bgp::thrift::TBgpAggregator>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(asn, 1);
+    STRUCT_CHILD_GETTERS(ip, 2);
 };
 
 
@@ -4226,93 +4064,131 @@ class ChildThriftPath<::facebook::fboss::mka::MKASci, ::facebook::fboss::fsdb::F
 
 
 template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::state::SendToQueue, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+class ChildThriftPath<::facebook::fboss::cfg::CbfcConfig, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
   public StructuredThriftPath<
-    ::facebook::fboss::state::SendToQueue,
+    ::facebook::fboss::cfg::CbfcConfig,
     ::facebook::fboss::fsdb::FsdbOperStateRoot,
     Parent,
-    ::facebook::fboss::state::SendToQueue> {
+    ::facebook::fboss::cfg::CbfcConfig> {
   static_assert(
       ::std::is_same_v<
           detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::state::SendToQueue>>,
-      "ChildThriftPath<::facebook::fboss::state::SendToQueue> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::state::SendToQueue.");
+          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::CbfcConfig>>,
+      "ChildThriftPath<::facebook::fboss::cfg::CbfcConfig> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::cfg::CbfcConfig.");
 
  public:
   using Self = StructuredThriftPath<
-    ::facebook::fboss::state::SendToQueue,
+    ::facebook::fboss::cfg::CbfcConfig,
     ::facebook::fboss::fsdb::FsdbOperStateRoot,
     Parent,
-    ::facebook::fboss::state::SendToQueue>;
+    ::facebook::fboss::cfg::CbfcConfig>;
 
   template <typename Name>
   using TypeFor = typename Self::template TypeFor<Name>;
   using Self::Self;
   
-    STRUCT_CHILD_GETTERS(action, 1);
-    STRUCT_CHILD_GETTERS(sendToCPU, 2);
+    STRUCT_CHILD_GETTERS(virtualChannels, 1);
+    STRUCT_CHILD_GETTERS(senderCreditLimit, 2);
+    STRUCT_CHILD_GETTERS(senderCreditSize, 3);
+    STRUCT_CHILD_GETTERS(senderPacketOverhead, 4);
+    STRUCT_CHILD_GETTERS(receiverCreditLimit, 5);
 };
 
 
 template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::state::TrafficClassToQosAttributeEntry, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+class ChildThriftPath<::facebook::bgp::rib_policy::TPathSelectionPolicy, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
   public StructuredThriftPath<
-    ::facebook::fboss::state::TrafficClassToQosAttributeEntry,
+    ::facebook::bgp::rib_policy::TPathSelectionPolicy,
     ::facebook::fboss::fsdb::FsdbOperStateRoot,
     Parent,
-    ::facebook::fboss::state::TrafficClassToQosAttributeEntry> {
+    ::facebook::bgp::rib_policy::TPathSelectionPolicy> {
   static_assert(
       ::std::is_same_v<
           detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::state::TrafficClassToQosAttributeEntry>>,
-      "ChildThriftPath<::facebook::fboss::state::TrafficClassToQosAttributeEntry> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::state::TrafficClassToQosAttributeEntry.");
+          ::apache::thrift::type::infer_tag<::facebook::bgp::rib_policy::TPathSelectionPolicy>>,
+      "ChildThriftPath<::facebook::bgp::rib_policy::TPathSelectionPolicy> specialization instantiated with a Tag "
+      "that does not describe ::facebook::bgp::rib_policy::TPathSelectionPolicy.");
 
  public:
   using Self = StructuredThriftPath<
-    ::facebook::fboss::state::TrafficClassToQosAttributeEntry,
+    ::facebook::bgp::rib_policy::TPathSelectionPolicy,
     ::facebook::fboss::fsdb::FsdbOperStateRoot,
     Parent,
-    ::facebook::fboss::state::TrafficClassToQosAttributeEntry>;
+    ::facebook::bgp::rib_policy::TPathSelectionPolicy>;
 
   template <typename Name>
   using TypeFor = typename Self::template TypeFor<Name>;
   using Self::Self;
   
-    STRUCT_CHILD_GETTERS(trafficClass, 1);
-    STRUCT_CHILD_GETTERS(attr, 2);
+    STRUCT_CHILD_GETTERS(statements, 1);
+    STRUCT_CHILD_GETTERS(version, 2);
 };
 
 
 template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::neteng::fboss::bgp::thrift::TCanonicalPeer, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+class ChildThriftPath<::facebook::fboss::state::MirrorTunnel, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
   public StructuredThriftPath<
-    ::facebook::neteng::fboss::bgp::thrift::TCanonicalPeer,
+    ::facebook::fboss::state::MirrorTunnel,
     ::facebook::fboss::fsdb::FsdbOperStateRoot,
     Parent,
-    ::facebook::neteng::fboss::bgp::thrift::TCanonicalPeer> {
+    ::facebook::fboss::state::MirrorTunnel> {
   static_assert(
       ::std::is_same_v<
           detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::neteng::fboss::bgp::thrift::TCanonicalPeer>>,
-      "ChildThriftPath<::facebook::neteng::fboss::bgp::thrift::TCanonicalPeer> specialization instantiated with a Tag "
-      "that does not describe ::facebook::neteng::fboss::bgp::thrift::TCanonicalPeer.");
+          ::apache::thrift::type::infer_tag<::facebook::fboss::state::MirrorTunnel>>,
+      "ChildThriftPath<::facebook::fboss::state::MirrorTunnel> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::state::MirrorTunnel.");
 
  public:
   using Self = StructuredThriftPath<
-    ::facebook::neteng::fboss::bgp::thrift::TCanonicalPeer,
+    ::facebook::fboss::state::MirrorTunnel,
     ::facebook::fboss::fsdb::FsdbOperStateRoot,
     Parent,
-    ::facebook::neteng::fboss::bgp::thrift::TCanonicalPeer>;
+    ::facebook::fboss::state::MirrorTunnel>;
 
   template <typename Name>
   using TypeFor = typename Self::template TypeFor<Name>;
   using Self::Self;
   
-    STRUCT_CHILD_GETTERS(peer_id, 1);
-    STRUCT_CHILD_GETTERS(router_id, 2);
-    STRUCT_CHILD_GETTERS(peer_description, 3);
+    STRUCT_CHILD_GETTERS(srcIp, 1);
+    STRUCT_CHILD_GETTERS(dstIp, 2);
+    STRUCT_CHILD_GETTERS(srcMac, 3);
+    STRUCT_CHILD_GETTERS(dstMac, 4);
+    STRUCT_CHILD_GETTERS(udpSrcPort, 5);
+    STRUCT_CHILD_GETTERS(udpDstPort, 6);
+    STRUCT_CHILD_GETTERS(ttl, 7);
+};
+
+
+template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::fboss::switch_reachability::SwitchReachability, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::fboss::switch_reachability::SwitchReachability,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::switch_reachability::SwitchReachability> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::fboss::switch_reachability::SwitchReachability>>,
+      "ChildThriftPath<::facebook::fboss::switch_reachability::SwitchReachability> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::switch_reachability::SwitchReachability.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::fboss::switch_reachability::SwitchReachability,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::switch_reachability::SwitchReachability>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(fabricPortGroupMap, 1);
+    STRUCT_CHILD_GETTERS(switchIdToFabricPortGroupMap, 2);
+    STRUCT_CHILD_GETTERS(switchIdToLastUpdatedTimestamp, 3);
 };
 
 
@@ -4408,131 +4284,126 @@ class ChildThriftPath<::facebook::fboss::phy::RsFecLaneState, ::facebook::fboss:
 
 
 template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::state::MKASakKey, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+class ChildThriftPath<::facebook::fboss::cfg::EcmpGroupSettings, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
   public StructuredThriftPath<
-    ::facebook::fboss::state::MKASakKey,
+    ::facebook::fboss::cfg::EcmpGroupSettings,
     ::facebook::fboss::fsdb::FsdbOperStateRoot,
     Parent,
-    ::facebook::fboss::state::MKASakKey> {
+    ::facebook::fboss::cfg::EcmpGroupSettings> {
   static_assert(
       ::std::is_same_v<
           detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::state::MKASakKey>>,
-      "ChildThriftPath<::facebook::fboss::state::MKASakKey> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::state::MKASakKey.");
+          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::EcmpGroupSettings>>,
+      "ChildThriftPath<::facebook::fboss::cfg::EcmpGroupSettings> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::cfg::EcmpGroupSettings.");
 
  public:
   using Self = StructuredThriftPath<
-    ::facebook::fboss::state::MKASakKey,
+    ::facebook::fboss::cfg::EcmpGroupSettings,
     ::facebook::fboss::fsdb::FsdbOperStateRoot,
     Parent,
-    ::facebook::fboss::state::MKASakKey>;
+    ::facebook::fboss::cfg::EcmpGroupSettings>;
 
   template <typename Name>
   using TypeFor = typename Self::template TypeFor<Name>;
   using Self::Self;
   
-    STRUCT_CHILD_GETTERS(sci, 1);
-    STRUCT_CHILD_GETTERS(associationNum, 2);
+    STRUCT_CHILD_GETTERS(enableSplitHorizon, 1);
 };
 
 
 template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::state::LlrFields, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+class ChildThriftPath<::facebook::fboss::state::BlockedMacAddress, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
   public StructuredThriftPath<
-    ::facebook::fboss::state::LlrFields,
+    ::facebook::fboss::state::BlockedMacAddress,
     ::facebook::fboss::fsdb::FsdbOperStateRoot,
     Parent,
-    ::facebook::fboss::state::LlrFields> {
+    ::facebook::fboss::state::BlockedMacAddress> {
   static_assert(
       ::std::is_same_v<
           detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::state::LlrFields>>,
-      "ChildThriftPath<::facebook::fboss::state::LlrFields> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::state::LlrFields.");
+          ::apache::thrift::type::infer_tag<::facebook::fboss::state::BlockedMacAddress>>,
+      "ChildThriftPath<::facebook::fboss::state::BlockedMacAddress> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::state::BlockedMacAddress.");
 
  public:
   using Self = StructuredThriftPath<
-    ::facebook::fboss::state::LlrFields,
+    ::facebook::fboss::state::BlockedMacAddress,
     ::facebook::fboss::fsdb::FsdbOperStateRoot,
     Parent,
-    ::facebook::fboss::state::LlrFields>;
+    ::facebook::fboss::state::BlockedMacAddress>;
 
   template <typename Name>
   using TypeFor = typename Self::template TypeFor<Name>;
   using Self::Self;
   
-    STRUCT_CHILD_GETTERS(id, 1);
-    STRUCT_CHILD_GETTERS(outstandingFramesMax, 2);
-    STRUCT_CHILD_GETTERS(outstandingBytesMax, 3);
-    STRUCT_CHILD_GETTERS(replayTimerMax, 4);
-    STRUCT_CHILD_GETTERS(replayCountMax, 5);
-    STRUCT_CHILD_GETTERS(pcsLostTimeout, 6);
-    STRUCT_CHILD_GETTERS(dataAgeTimeout, 7);
-    STRUCT_CHILD_GETTERS(initFrameAction, 8);
-    STRUCT_CHILD_GETTERS(flushFrameAction, 9);
-    STRUCT_CHILD_GETTERS(reInitOnFlush, 10);
-    STRUCT_CHILD_GETTERS(ctlosTargetSpacing, 11);
+    STRUCT_CHILD_GETTERS(macAddrToBlockVlanID, 1);
+    STRUCT_CHILD_GETTERS(macAddrToBlockAddr, 2);
 };
 
 
 template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::neteng::fboss::bgp::thrift::TBgpAggregator, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+class ChildThriftPath<::facebook::bgp::bgp_policy::SetAsPathPrepend, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
   public StructuredThriftPath<
-    ::facebook::neteng::fboss::bgp::thrift::TBgpAggregator,
+    ::facebook::bgp::bgp_policy::SetAsPathPrepend,
     ::facebook::fboss::fsdb::FsdbOperStateRoot,
     Parent,
-    ::facebook::neteng::fboss::bgp::thrift::TBgpAggregator> {
+    ::facebook::bgp::bgp_policy::SetAsPathPrepend> {
   static_assert(
       ::std::is_same_v<
           detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::neteng::fboss::bgp::thrift::TBgpAggregator>>,
-      "ChildThriftPath<::facebook::neteng::fboss::bgp::thrift::TBgpAggregator> specialization instantiated with a Tag "
-      "that does not describe ::facebook::neteng::fboss::bgp::thrift::TBgpAggregator.");
+          ::apache::thrift::type::infer_tag<::facebook::bgp::bgp_policy::SetAsPathPrepend>>,
+      "ChildThriftPath<::facebook::bgp::bgp_policy::SetAsPathPrepend> specialization instantiated with a Tag "
+      "that does not describe ::facebook::bgp::bgp_policy::SetAsPathPrepend.");
 
  public:
   using Self = StructuredThriftPath<
-    ::facebook::neteng::fboss::bgp::thrift::TBgpAggregator,
+    ::facebook::bgp::bgp_policy::SetAsPathPrepend,
     ::facebook::fboss::fsdb::FsdbOperStateRoot,
     Parent,
-    ::facebook::neteng::fboss::bgp::thrift::TBgpAggregator>;
+    ::facebook::bgp::bgp_policy::SetAsPathPrepend>;
 
   template <typename Name>
   using TypeFor = typename Self::template TypeFor<Name>;
   using Self::Self;
   
     STRUCT_CHILD_GETTERS(asn, 1);
-    STRUCT_CHILD_GETTERS(ip, 2);
+    STRUCT_CHILD_GETTERS(repeat_times, 2);
+    STRUCT_CHILD_GETTERS(obj_uuid, 100);
 };
 
 
 template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::phy::LinkTrainingStatus, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+class ChildThriftPath<::facebook::fboss::fsdb::AgentData, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
   public StructuredThriftPath<
-    ::facebook::fboss::phy::LinkTrainingStatus,
+    ::facebook::fboss::fsdb::AgentData,
     ::facebook::fboss::fsdb::FsdbOperStateRoot,
     Parent,
-    ::facebook::fboss::phy::LinkTrainingStatus> {
+    ::facebook::fboss::fsdb::AgentData> {
   static_assert(
       ::std::is_same_v<
           detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::phy::LinkTrainingStatus>>,
-      "ChildThriftPath<::facebook::fboss::phy::LinkTrainingStatus> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::phy::LinkTrainingStatus.");
+          ::apache::thrift::type::infer_tag<::facebook::fboss::fsdb::AgentData>>,
+      "ChildThriftPath<::facebook::fboss::fsdb::AgentData> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::fsdb::AgentData.");
 
  public:
   using Self = StructuredThriftPath<
-    ::facebook::fboss::phy::LinkTrainingStatus,
+    ::facebook::fboss::fsdb::AgentData,
     ::facebook::fboss::fsdb::FsdbOperStateRoot,
     Parent,
-    ::facebook::fboss::phy::LinkTrainingStatus>;
+    ::facebook::fboss::fsdb::AgentData>;
 
   template <typename Name>
   using TypeFor = typename Self::template TypeFor<Name>;
   using Self::Self;
   
-    STRUCT_CHILD_GETTERS(linkTrainingEnabled, 1);
-    STRUCT_CHILD_GETTERS(rxStatus, 2);
+    STRUCT_CHILD_GETTERS(config, 1);
+    STRUCT_CHILD_GETTERS(switchState, 2);
+    STRUCT_CHILD_GETTERS(fsdbSubscriptions, 4);
+    STRUCT_CHILD_GETTERS(dsfSwitchReachability, 5);
+    STRUCT_CHILD_GETTERS(agentInfo, 6);
+    STRUCT_CHILD_GETTERS(iPhyStates, 7);
 };
 
 
@@ -4563,52 +4434,6 @@ class ChildThriftPath<::facebook::fboss::state::AclTtl, ::facebook::fboss::fsdb:
   
     STRUCT_CHILD_GETTERS(value, 1);
     STRUCT_CHILD_GETTERS(mask, 2);
-};
-
-
-template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::PortQueueFields, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
-  public StructuredThriftPath<
-    ::facebook::fboss::PortQueueFields,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::PortQueueFields> {
-  static_assert(
-      ::std::is_same_v<
-          detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::PortQueueFields>>,
-      "ChildThriftPath<::facebook::fboss::PortQueueFields> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::PortQueueFields.");
-
- public:
-  using Self = StructuredThriftPath<
-    ::facebook::fboss::PortQueueFields,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::PortQueueFields>;
-
-  template <typename Name>
-  using TypeFor = typename Self::template TypeFor<Name>;
-  using Self::Self;
-  
-    STRUCT_CHILD_GETTERS(id, 1);
-    STRUCT_CHILD_GETTERS(weight, 2);
-    STRUCT_CHILD_GETTERS(reserved, 3);
-    STRUCT_CHILD_GETTERS(scalingFactor, 4);
-    STRUCT_CHILD_GETTERS(scheduling, 5);
-    STRUCT_CHILD_GETTERS(streamType, 6);
-    STRUCT_CHILD_GETTERS(aqms, 7);
-    STRUCT_CHILD_GETTERS(name, 8);
-    STRUCT_CHILD_GETTERS(packetsPerSec_DEPRECATED, 10);
-    STRUCT_CHILD_GETTERS(sharedBytes, 11);
-    STRUCT_CHILD_GETTERS(portQueueRate, 12);
-    STRUCT_CHILD_GETTERS(bandwidthBurstMinKbits, 13);
-    STRUCT_CHILD_GETTERS(bandwidthBurstMaxKbits, 14);
-    STRUCT_CHILD_GETTERS(trafficClass, 15);
-    STRUCT_CHILD_GETTERS(pfcPriorities, 16);
-    STRUCT_CHILD_GETTERS(maxDynamicSharedBytes, 17);
-    STRUCT_CHILD_GETTERS(bufferPoolName, 18);
-    STRUCT_CHILD_GETTERS(bufferPoolConfig, 19);
 };
 
 
@@ -4748,6 +4573,158 @@ class ChildThriftPath<::facebook::fboss::state::RouteFields, ::facebook::fboss::
 
 
 template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::fboss::state::NeighborEntryFields, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::fboss::state::NeighborEntryFields,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::state::NeighborEntryFields> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::fboss::state::NeighborEntryFields>>,
+      "ChildThriftPath<::facebook::fboss::state::NeighborEntryFields> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::state::NeighborEntryFields.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::fboss::state::NeighborEntryFields,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::state::NeighborEntryFields>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(ipaddress, 1);
+    STRUCT_CHILD_GETTERS(mac, 2);
+    STRUCT_CHILD_GETTERS(portId, 3);
+    STRUCT_CHILD_GETTERS(interfaceId, 4);
+    STRUCT_CHILD_GETTERS(state, 5);
+    STRUCT_CHILD_GETTERS(classID, 6);
+    STRUCT_CHILD_GETTERS(encapIndex, 7);
+    STRUCT_CHILD_GETTERS(isLocal, 8);
+    STRUCT_CHILD_GETTERS(type, 9);
+    STRUCT_CHILD_GETTERS(resolvedSince, 10);
+    STRUCT_CHILD_GETTERS(noHostRoute, 11);
+    STRUCT_CHILD_GETTERS(disableTTLDecrement, 12);
+};
+
+
+template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::neteng::fboss::bgp::thrift::TRibEntry, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::neteng::fboss::bgp::thrift::TRibEntry,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::neteng::fboss::bgp::thrift::TRibEntry> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::neteng::fboss::bgp::thrift::TRibEntry>>,
+      "ChildThriftPath<::facebook::neteng::fboss::bgp::thrift::TRibEntry> specialization instantiated with a Tag "
+      "that does not describe ::facebook::neteng::fboss::bgp::thrift::TRibEntry.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::neteng::fboss::bgp::thrift::TRibEntry,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::neteng::fboss::bgp::thrift::TRibEntry>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(prefix, 1);
+    STRUCT_CHILD_GETTERS(paths, 2);
+    STRUCT_CHILD_GETTERS(best_group, 3);
+    STRUCT_CHILD_GETTERS(best_next_hop, 4);
+    STRUCT_CHILD_GETTERS(active_cps_criteria, 5);
+    STRUCT_CHILD_GETTERS(path_selection_pending, 6);
+    STRUCT_CHILD_GETTERS(rib_version, 7);
+    STRUCT_CHILD_GETTERS(active_cte_ucmp_action, 8);
+    STRUCT_CHILD_GETTERS(best_path, 9);
+    STRUCT_CHILD_GETTERS(fib_out, 10);
+    STRUCT_CHILD_GETTERS(fib_out_pending, 11);
+};
+
+
+template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::fboss::cfg::PortPfc, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::fboss::cfg::PortPfc,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::cfg::PortPfc> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::PortPfc>>,
+      "ChildThriftPath<::facebook::fboss::cfg::PortPfc> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::cfg::PortPfc.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::fboss::cfg::PortPfc,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::cfg::PortPfc>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(tx, 1);
+    STRUCT_CHILD_GETTERS(rx, 2);
+    STRUCT_CHILD_GETTERS(portPgConfigName, 3);
+    STRUCT_CHILD_GETTERS(watchdog, 4);
+    STRUCT_CHILD_GETTERS(txPfcDurationEnable, 5);
+    STRUCT_CHILD_GETTERS(rxPfcDurationEnable, 6);
+};
+
+
+template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::fboss::state::QosPolicyFields, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::fboss::state::QosPolicyFields,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::state::QosPolicyFields> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::fboss::state::QosPolicyFields>>,
+      "ChildThriftPath<::facebook::fboss::state::QosPolicyFields> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::state::QosPolicyFields.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::fboss::state::QosPolicyFields,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::state::QosPolicyFields>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(name, 1);
+    STRUCT_CHILD_GETTERS(dscpMap, 2);
+    STRUCT_CHILD_GETTERS(expMap, 3);
+    STRUCT_CHILD_GETTERS(trafficClassToQueueId, 4);
+    STRUCT_CHILD_GETTERS(pfcPriorityToQueueId, 5);
+    STRUCT_CHILD_GETTERS(trafficClassToPgId, 6);
+    STRUCT_CHILD_GETTERS(pfcPriorityToPgId, 7);
+    STRUCT_CHILD_GETTERS(trafficClassToVoqId, 8);
+    STRUCT_CHILD_GETTERS(pcpMap, 9);
+    STRUCT_CHILD_GETTERS(trafficClassToVcId, 10);
+    STRUCT_CHILD_GETTERS(queueToVcId, 11);
+};
+
+
+template<typename Parent, typename Tag>
 class ChildThriftPath<::facebook::bgp::thrift::BgpCommunity, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
   public StructuredThriftPath<
     ::facebook::bgp::thrift::BgpCommunity,
@@ -4843,6 +4820,9 @@ class ChildThriftPath<::facebook::fboss::state::AclEntryFields, ::facebook::fbos
     STRUCT_CHILD_GETTERS(lookupClassPort, 38);
     STRUCT_CHILD_GETTERS(mplsLabel0Ttl, 39);
     STRUCT_CHILD_GETTERS(tcpFlagsMask, 40);
+    STRUCT_CHILD_GETTERS(dstIpWithMask, 41);
+    STRUCT_CHILD_GETTERS(dstIpV6Word1WithMask, 42);
+    STRUCT_CHILD_GETTERS(dstIpV6Word0WithMask, 43);
 };
 
 
@@ -4966,6 +4946,102 @@ class ChildThriftPath<::facebook::fboss::cfg::SwitchConfig, ::facebook::fboss::f
     STRUCT_CHILD_GETTERS(isolationGroups, 63);
     STRUCT_CHILD_GETTERS(vxlanTunnels, 64);
     STRUCT_CHILD_GETTERS(vrfs, 65);
+};
+
+
+template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::fboss::phy::LinkTrainingStatus, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::fboss::phy::LinkTrainingStatus,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::phy::LinkTrainingStatus> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::fboss::phy::LinkTrainingStatus>>,
+      "ChildThriftPath<::facebook::fboss::phy::LinkTrainingStatus> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::phy::LinkTrainingStatus.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::fboss::phy::LinkTrainingStatus,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::phy::LinkTrainingStatus>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(linkTrainingEnabled, 1);
+    STRUCT_CHILD_GETTERS(rxStatus, 2);
+};
+
+
+template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::neteng::fboss::bgp::thrift::TRibEntryCanonical, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::neteng::fboss::bgp::thrift::TRibEntryCanonical,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::neteng::fboss::bgp::thrift::TRibEntryCanonical> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::neteng::fboss::bgp::thrift::TRibEntryCanonical>>,
+      "ChildThriftPath<::facebook::neteng::fboss::bgp::thrift::TRibEntryCanonical> specialization instantiated with a Tag "
+      "that does not describe ::facebook::neteng::fboss::bgp::thrift::TRibEntryCanonical.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::neteng::fboss::bgp::thrift::TRibEntryCanonical,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::neteng::fboss::bgp::thrift::TRibEntryCanonical>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(prefix, 1);
+    STRUCT_CHILD_GETTERS(paths, 2);
+    STRUCT_CHILD_GETTERS(rib_version, 3);
+    STRUCT_CHILD_GETTERS(path_selection_pending, 4);
+    STRUCT_CHILD_GETTERS(active_cps_criteria, 5);
+    STRUCT_CHILD_GETTERS(active_cte_ucmp_action, 6);
+    STRUCT_CHILD_GETTERS(best_path, 7);
+};
+
+
+template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::fboss::state::NeighborResponseEntryFields, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::fboss::state::NeighborResponseEntryFields,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::state::NeighborResponseEntryFields> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::fboss::state::NeighborResponseEntryFields>>,
+      "ChildThriftPath<::facebook::fboss::state::NeighborResponseEntryFields> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::state::NeighborResponseEntryFields.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::fboss::state::NeighborResponseEntryFields,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::state::NeighborResponseEntryFields>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(ipAddress, 1);
+    STRUCT_CHILD_GETTERS(mac, 2);
+    STRUCT_CHILD_GETTERS(interfaceId, 3);
 };
 
 
@@ -5124,355 +5200,119 @@ class ChildThriftPath<::facebook::neteng::fboss::bgp::thrift::TFibOutNextHop, ::
 
 
 template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::cfg::CbfcConfig, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+class ChildThriftPath<::facebook::network::thrift::IPPrefix, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
   public StructuredThriftPath<
-    ::facebook::fboss::cfg::CbfcConfig,
+    ::facebook::network::thrift::IPPrefix,
     ::facebook::fboss::fsdb::FsdbOperStateRoot,
     Parent,
-    ::facebook::fboss::cfg::CbfcConfig> {
+    ::facebook::network::thrift::IPPrefix> {
   static_assert(
       ::std::is_same_v<
           detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::CbfcConfig>>,
-      "ChildThriftPath<::facebook::fboss::cfg::CbfcConfig> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::cfg::CbfcConfig.");
+          ::apache::thrift::type::infer_tag<::facebook::network::thrift::IPPrefix>>,
+      "ChildThriftPath<::facebook::network::thrift::IPPrefix> specialization instantiated with a Tag "
+      "that does not describe ::facebook::network::thrift::IPPrefix.");
 
  public:
   using Self = StructuredThriftPath<
-    ::facebook::fboss::cfg::CbfcConfig,
+    ::facebook::network::thrift::IPPrefix,
     ::facebook::fboss::fsdb::FsdbOperStateRoot,
     Parent,
-    ::facebook::fboss::cfg::CbfcConfig>;
+    ::facebook::network::thrift::IPPrefix>;
 
   template <typename Name>
   using TypeFor = typename Self::template TypeFor<Name>;
   using Self::Self;
   
-    STRUCT_CHILD_GETTERS(virtualChannels, 1);
-    STRUCT_CHILD_GETTERS(senderCreditLimit, 2);
-    STRUCT_CHILD_GETTERS(senderCreditSize, 3);
-    STRUCT_CHILD_GETTERS(senderPacketOverhead, 4);
+    STRUCT_CHILD_GETTERS(prefixAddress, 1);
+    STRUCT_CHILD_GETTERS(prefixLength, 2);
 };
 
 
 template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::bgp::rib_policy::TPathSelectionPolicy, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+class ChildThriftPath<::facebook::fboss::cfg::QcmConfig, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
   public StructuredThriftPath<
-    ::facebook::bgp::rib_policy::TPathSelectionPolicy,
+    ::facebook::fboss::cfg::QcmConfig,
     ::facebook::fboss::fsdb::FsdbOperStateRoot,
     Parent,
-    ::facebook::bgp::rib_policy::TPathSelectionPolicy> {
+    ::facebook::fboss::cfg::QcmConfig> {
   static_assert(
       ::std::is_same_v<
           detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::bgp::rib_policy::TPathSelectionPolicy>>,
-      "ChildThriftPath<::facebook::bgp::rib_policy::TPathSelectionPolicy> specialization instantiated with a Tag "
-      "that does not describe ::facebook::bgp::rib_policy::TPathSelectionPolicy.");
+          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::QcmConfig>>,
+      "ChildThriftPath<::facebook::fboss::cfg::QcmConfig> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::cfg::QcmConfig.");
 
  public:
   using Self = StructuredThriftPath<
-    ::facebook::bgp::rib_policy::TPathSelectionPolicy,
+    ::facebook::fboss::cfg::QcmConfig,
     ::facebook::fboss::fsdb::FsdbOperStateRoot,
     Parent,
-    ::facebook::bgp::rib_policy::TPathSelectionPolicy>;
+    ::facebook::fboss::cfg::QcmConfig>;
 
   template <typename Name>
   using TypeFor = typename Self::template TypeFor<Name>;
   using Self::Self;
   
-    STRUCT_CHILD_GETTERS(statements, 1);
-    STRUCT_CHILD_GETTERS(version, 2);
+    STRUCT_CHILD_GETTERS(numFlowSamplesPerView, 1);
+    STRUCT_CHILD_GETTERS(flowLimit, 2);
+    STRUCT_CHILD_GETTERS(numFlowsClear, 3);
+    STRUCT_CHILD_GETTERS(scanIntervalInUsecs, 4);
+    STRUCT_CHILD_GETTERS(exportThreshold, 5);
+    STRUCT_CHILD_GETTERS(flowWeights, 6);
+    STRUCT_CHILD_GETTERS(agingIntervalInMsecs, 7);
+    STRUCT_CHILD_GETTERS(collectorDstIp, 8);
+    STRUCT_CHILD_GETTERS(collectorSrcPort, 10);
+    STRUCT_CHILD_GETTERS(collectorDstPort, 11);
+    STRUCT_CHILD_GETTERS(collectorDscp, 12);
+    STRUCT_CHILD_GETTERS(ppsToQcm, 13);
+    STRUCT_CHILD_GETTERS(collectorSrcIp, 14);
+    STRUCT_CHILD_GETTERS(monitorQcmPortList, 15);
+    STRUCT_CHILD_GETTERS(port2QosQueueIds, 16);
+    STRUCT_CHILD_GETTERS(monitorQcmCfgPortsOnly, 17);
 };
 
 
 template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::state::MirrorTunnel, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+class ChildThriftPath<::facebook::fboss::NextHopThrift, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
   public StructuredThriftPath<
-    ::facebook::fboss::state::MirrorTunnel,
+    ::facebook::fboss::NextHopThrift,
     ::facebook::fboss::fsdb::FsdbOperStateRoot,
     Parent,
-    ::facebook::fboss::state::MirrorTunnel> {
+    ::facebook::fboss::NextHopThrift> {
   static_assert(
       ::std::is_same_v<
           detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::state::MirrorTunnel>>,
-      "ChildThriftPath<::facebook::fboss::state::MirrorTunnel> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::state::MirrorTunnel.");
+          ::apache::thrift::type::infer_tag<::facebook::fboss::NextHopThrift>>,
+      "ChildThriftPath<::facebook::fboss::NextHopThrift> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::NextHopThrift.");
 
  public:
   using Self = StructuredThriftPath<
-    ::facebook::fboss::state::MirrorTunnel,
+    ::facebook::fboss::NextHopThrift,
     ::facebook::fboss::fsdb::FsdbOperStateRoot,
     Parent,
-    ::facebook::fboss::state::MirrorTunnel>;
+    ::facebook::fboss::NextHopThrift>;
 
   template <typename Name>
   using TypeFor = typename Self::template TypeFor<Name>;
   using Self::Self;
   
-    STRUCT_CHILD_GETTERS(srcIp, 1);
-    STRUCT_CHILD_GETTERS(dstIp, 2);
-    STRUCT_CHILD_GETTERS(srcMac, 3);
-    STRUCT_CHILD_GETTERS(dstMac, 4);
-    STRUCT_CHILD_GETTERS(udpSrcPort, 5);
-    STRUCT_CHILD_GETTERS(udpDstPort, 6);
-    STRUCT_CHILD_GETTERS(ttl, 7);
-};
-
-
-template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::switch_reachability::SwitchReachability, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
-  public StructuredThriftPath<
-    ::facebook::fboss::switch_reachability::SwitchReachability,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::switch_reachability::SwitchReachability> {
-  static_assert(
-      ::std::is_same_v<
-          detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::switch_reachability::SwitchReachability>>,
-      "ChildThriftPath<::facebook::fboss::switch_reachability::SwitchReachability> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::switch_reachability::SwitchReachability.");
-
- public:
-  using Self = StructuredThriftPath<
-    ::facebook::fboss::switch_reachability::SwitchReachability,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::switch_reachability::SwitchReachability>;
-
-  template <typename Name>
-  using TypeFor = typename Self::template TypeFor<Name>;
-  using Self::Self;
-  
-    STRUCT_CHILD_GETTERS(fabricPortGroupMap, 1);
-    STRUCT_CHILD_GETTERS(switchIdToFabricPortGroupMap, 2);
-    STRUCT_CHILD_GETTERS(switchIdToLastUpdatedTimestamp, 3);
-};
-
-
-template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::phy::SerdesParameters, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
-  public StructuredThriftPath<
-    ::facebook::fboss::phy::SerdesParameters,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::phy::SerdesParameters> {
-  static_assert(
-      ::std::is_same_v<
-          detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::phy::SerdesParameters>>,
-      "ChildThriftPath<::facebook::fboss::phy::SerdesParameters> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::phy::SerdesParameters.");
-
- public:
-  using Self = StructuredThriftPath<
-    ::facebook::fboss::phy::SerdesParameters,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::phy::SerdesParameters>;
-
-  template <typename Name>
-  using TypeFor = typename Self::template TypeFor<Name>;
-  using Self::Self;
-  
-    STRUCT_CHILD_GETTERS(lane, 1);
-    STRUCT_CHILD_GETTERS(rvga, 2);
-    STRUCT_CHILD_GETTERS(dco, 3);
-    STRUCT_CHILD_GETTERS(tpChn0, 4);
-    STRUCT_CHILD_GETTERS(tpChn1, 5);
-    STRUCT_CHILD_GETTERS(tpChn2, 6);
-    STRUCT_CHILD_GETTERS(rxPf, 7);
-    STRUCT_CHILD_GETTERS(rxFltM, 8);
-    STRUCT_CHILD_GETTERS(rxFltS, 9);
-    STRUCT_CHILD_GETTERS(rxTap1, 10);
-    STRUCT_CHILD_GETTERS(rxTap2, 11);
-    STRUCT_CHILD_GETTERS(rxEq3, 12);
-    STRUCT_CHILD_GETTERS(rxEq2, 13);
-    STRUCT_CHILD_GETTERS(rxEq1, 14);
-    STRUCT_CHILD_GETTERS(rxEqM, 15);
-    STRUCT_CHILD_GETTERS(rxEqP1, 16);
-    STRUCT_CHILD_GETTERS(rxEqP2, 17);
-    STRUCT_CHILD_GETTERS(rxPfLfq, 18);
-    STRUCT_CHILD_GETTERS(rxPfHfq, 19);
-    STRUCT_CHILD_GETTERS(rxReach, 20);
-    STRUCT_CHILD_GETTERS(rxPrecoding, 21);
-};
-
-
-template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::state::PortFields, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
-  public StructuredThriftPath<
-    ::facebook::fboss::state::PortFields,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::state::PortFields> {
-  static_assert(
-      ::std::is_same_v<
-          detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::state::PortFields>>,
-      "ChildThriftPath<::facebook::fboss::state::PortFields> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::state::PortFields.");
-
- public:
-  using Self = StructuredThriftPath<
-    ::facebook::fboss::state::PortFields,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::state::PortFields>;
-
-  template <typename Name>
-  using TypeFor = typename Self::template TypeFor<Name>;
-  using Self::Self;
-  
-    STRUCT_CHILD_GETTERS(portId, 1);
-    STRUCT_CHILD_GETTERS(portName, 2);
-    STRUCT_CHILD_GETTERS(portDescription, 3);
-    STRUCT_CHILD_GETTERS(portState, 4);
-    STRUCT_CHILD_GETTERS(portOperState, 5);
-    STRUCT_CHILD_GETTERS(ingressVlan, 6);
-    STRUCT_CHILD_GETTERS(portSpeed, 7);
-    STRUCT_CHILD_GETTERS(rxPause, 10);
-    STRUCT_CHILD_GETTERS(txPause, 11);
-    STRUCT_CHILD_GETTERS(vlanMemberShips, 12);
-    STRUCT_CHILD_GETTERS(sFlowIngressRate, 13);
-    STRUCT_CHILD_GETTERS(sFlowEgressRate, 14);
-    STRUCT_CHILD_GETTERS(queues, 15);
-    STRUCT_CHILD_GETTERS(portLoopbackMode, 16);
-    STRUCT_CHILD_GETTERS(ingressMirror, 17);
-    STRUCT_CHILD_GETTERS(egressMirror, 18);
-    STRUCT_CHILD_GETTERS(qosPolicy, 19);
-    STRUCT_CHILD_GETTERS(sampleDest, 20);
-    STRUCT_CHILD_GETTERS(portProfileID, 21);
-    STRUCT_CHILD_GETTERS(lookupClassesToDistrubuteTrafficOn, 22);
-    STRUCT_CHILD_GETTERS(maxFrameSize, 23);
-    STRUCT_CHILD_GETTERS(pfc, 24);
-    STRUCT_CHILD_GETTERS(pgConfigs, 25);
-    STRUCT_CHILD_GETTERS(profileConfig, 26);
-    STRUCT_CHILD_GETTERS(pinConfigs, 27);
-    STRUCT_CHILD_GETTERS(lineProfileConfig, 28);
-    STRUCT_CHILD_GETTERS(linePinConfigs, 29);
-    STRUCT_CHILD_GETTERS(portType, 30);
-    STRUCT_CHILD_GETTERS(iPhyLinkFaultStatus, 31);
-    STRUCT_CHILD_GETTERS(asicPrbs, 32);
-    STRUCT_CHILD_GETTERS(gbSystemPrbs, 33);
-    STRUCT_CHILD_GETTERS(gbLinePrbs, 34);
-    STRUCT_CHILD_GETTERS(pfcPriorities, 35);
-    STRUCT_CHILD_GETTERS(expectedLLDPValues, 36);
-    STRUCT_CHILD_GETTERS(rxSecureAssociationKeys, 37);
-    STRUCT_CHILD_GETTERS(txSecureAssociationKey, 38);
-    STRUCT_CHILD_GETTERS(macsecDesired, 39);
-    STRUCT_CHILD_GETTERS(dropUnencrypted, 40);
-    STRUCT_CHILD_GETTERS(interfaceIDs, 41);
-    STRUCT_CHILD_GETTERS(expectedNeighborReachability, 42);
-    STRUCT_CHILD_GETTERS(drainState, 43);
-    STRUCT_CHILD_GETTERS(flowletConfigName, 44);
-    STRUCT_CHILD_GETTERS(flowletConfig, 45);
-    STRUCT_CHILD_GETTERS(portLedExternalState, 46);
-    STRUCT_CHILD_GETTERS(rxLaneSquelch, 47);
-    STRUCT_CHILD_GETTERS(zeroPreemphasis, 48);
-    STRUCT_CHILD_GETTERS(portActiveState, 49);
-    STRUCT_CHILD_GETTERS(disableTTLDecrement, 50);
-    STRUCT_CHILD_GETTERS(txEnable, 51);
-    STRUCT_CHILD_GETTERS(activeErrors, 52);
-    STRUCT_CHILD_GETTERS(scope, 53);
-    STRUCT_CHILD_GETTERS(reachabilityGroupId, 54);
-    STRUCT_CHILD_GETTERS(conditionalEntropyRehash, 55);
-    STRUCT_CHILD_GETTERS(selfHealingECMPLagEnable_DEPRECATED, 56);
-    STRUCT_CHILD_GETTERS(selfHealingECMPLagEnable, 57);
-    STRUCT_CHILD_GETTERS(fecErrorDetectEnable, 58);
-    STRUCT_CHILD_GETTERS(desiredSelfHealingECMPLagEnable, 59);
-    STRUCT_CHILD_GETTERS(interPacketGapBits, 60);
-    STRUCT_CHILD_GETTERS(amIdles, 61);
-    STRUCT_CHILD_GETTERS(resetQueueCreditBalance, 62);
-    STRUCT_CHILD_GETTERS(portSwitchId, 63);
-    STRUCT_CHILD_GETTERS(serdesCustomCollection, 64);
-    STRUCT_CHILD_GETTERS(clmEnable, 65);
-    STRUCT_CHILD_GETTERS(linkTraining, 66);
-    STRUCT_CHILD_GETTERS(portDownHoldoffTimeMs, 67);
-    STRUCT_CHILD_GETTERS(portUpHoldoffTimeMs, 68);
-    STRUCT_CHILD_GETTERS(llrConfigName, 69);
-    STRUCT_CHILD_GETTERS(llrConfig, 70);
-    STRUCT_CHILD_GETTERS(txPrecoding, 71);
-    STRUCT_CHILD_GETTERS(rxPrecoding, 72);
-    STRUCT_CHILD_GETTERS(linkScanMode, 73);
-    STRUCT_CHILD_GETTERS(ingressAclTableName, 74);
-    STRUCT_CHILD_GETTERS(userMetaData, 75);
-    STRUCT_CHILD_GETTERS(cbfcConfigName, 76);
-    STRUCT_CHILD_GETTERS(virtualChannels, 77);
-    STRUCT_CHILD_GETTERS(cbfcSenderCreditLimit, 78);
-    STRUCT_CHILD_GETTERS(isolationGroup, 79);
-    STRUCT_CHILD_GETTERS(cbfcSenderCreditSize, 80);
-    STRUCT_CHILD_GETTERS(cbfcSenderPacketOverhead, 81);
-    STRUCT_CHILD_GETTERS(csigTagAction, 82);
-    STRUCT_CHILD_GETTERS(csigLinkLocator, 83);
-};
-
-
-template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::mka::MKASak, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
-  public StructuredThriftPath<
-    ::facebook::fboss::mka::MKASak,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::mka::MKASak> {
-  static_assert(
-      ::std::is_same_v<
-          detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::mka::MKASak>>,
-      "ChildThriftPath<::facebook::fboss::mka::MKASak> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::mka::MKASak.");
-
- public:
-  using Self = StructuredThriftPath<
-    ::facebook::fboss::mka::MKASak,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::mka::MKASak>;
-
-  template <typename Name>
-  using TypeFor = typename Self::template TypeFor<Name>;
-  using Self::Self;
-  
-    STRUCT_CHILD_GETTERS(sci, 1);
-    STRUCT_CHILD_GETTERS(l2Port, 2);
-    STRUCT_CHILD_GETTERS(assocNum, 3);
-    STRUCT_CHILD_GETTERS(keyHex, 4);
-    STRUCT_CHILD_GETTERS(keyIdHex, 5);
-    STRUCT_CHILD_GETTERS(confidentOffset, 6);
-    STRUCT_CHILD_GETTERS(primary, 7);
-    STRUCT_CHILD_GETTERS(dropUnencrypted, 8);
-};
-
-
-template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::cfg::PktLenRange, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
-  public StructuredThriftPath<
-    ::facebook::fboss::cfg::PktLenRange,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::cfg::PktLenRange> {
-  static_assert(
-      ::std::is_same_v<
-          detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::PktLenRange>>,
-      "ChildThriftPath<::facebook::fboss::cfg::PktLenRange> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::cfg::PktLenRange.");
-
- public:
-  using Self = StructuredThriftPath<
-    ::facebook::fboss::cfg::PktLenRange,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::cfg::PktLenRange>;
-
-  template <typename Name>
-  using TypeFor = typename Self::template TypeFor<Name>;
-  using Self::Self;
-  
-    STRUCT_CHILD_GETTERS(min, 1);
-    STRUCT_CHILD_GETTERS(max, 2);
-    STRUCT_CHILD_GETTERS(invert, 3);
+    STRUCT_CHILD_GETTERS(address, 1);
+    STRUCT_CHILD_GETTERS(weight, 2);
+    STRUCT_CHILD_GETTERS(mplsAction, 3);
+    STRUCT_CHILD_GETTERS(disableTTLDecrement, 4);
+    STRUCT_CHILD_GETTERS(srv6SegmentList, 5);
+    STRUCT_CHILD_GETTERS(tunnelType, 6);
+    STRUCT_CHILD_GETTERS(tunnelId, 7);
+    STRUCT_CHILD_GETTERS(overlayDstMac, 8);
+    STRUCT_CHILD_GETTERS(adjustedWeight, 15);
+    STRUCT_CHILD_GETTERS(topologyInfo, 16);
+    STRUCT_CHILD_GETTERS(cost, 17);
+    STRUCT_CHILD_GETTERS(role, 18);
+    STRUCT_CHILD_GETTERS(backupNexthops, 19);
+    STRUCT_CHILD_GETTERS(vrf, 20);
+    STRUCT_CHILD_GETTERS(resolvedInNextLevel, 21);
 };
 
 
@@ -5651,67 +5491,318 @@ class ChildThriftPath<::facebook::fboss::state::QcmCfgFields, ::facebook::fboss:
 
 
 template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::bgp::bgp_policy::SetAsPathPrepend, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+class ChildThriftPath<::facebook::fboss::phy::SerdesParameters, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
   public StructuredThriftPath<
-    ::facebook::bgp::bgp_policy::SetAsPathPrepend,
+    ::facebook::fboss::phy::SerdesParameters,
     ::facebook::fboss::fsdb::FsdbOperStateRoot,
     Parent,
-    ::facebook::bgp::bgp_policy::SetAsPathPrepend> {
+    ::facebook::fboss::phy::SerdesParameters> {
   static_assert(
       ::std::is_same_v<
           detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::bgp::bgp_policy::SetAsPathPrepend>>,
-      "ChildThriftPath<::facebook::bgp::bgp_policy::SetAsPathPrepend> specialization instantiated with a Tag "
-      "that does not describe ::facebook::bgp::bgp_policy::SetAsPathPrepend.");
+          ::apache::thrift::type::infer_tag<::facebook::fboss::phy::SerdesParameters>>,
+      "ChildThriftPath<::facebook::fboss::phy::SerdesParameters> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::phy::SerdesParameters.");
 
  public:
   using Self = StructuredThriftPath<
-    ::facebook::bgp::bgp_policy::SetAsPathPrepend,
+    ::facebook::fboss::phy::SerdesParameters,
     ::facebook::fboss::fsdb::FsdbOperStateRoot,
     Parent,
-    ::facebook::bgp::bgp_policy::SetAsPathPrepend>;
+    ::facebook::fboss::phy::SerdesParameters>;
 
   template <typename Name>
   using TypeFor = typename Self::template TypeFor<Name>;
   using Self::Self;
   
-    STRUCT_CHILD_GETTERS(asn, 1);
-    STRUCT_CHILD_GETTERS(repeat_times, 2);
-    STRUCT_CHILD_GETTERS(obj_uuid, 100);
+    STRUCT_CHILD_GETTERS(lane, 1);
+    STRUCT_CHILD_GETTERS(rvga, 2);
+    STRUCT_CHILD_GETTERS(dco, 3);
+    STRUCT_CHILD_GETTERS(tpChn0, 4);
+    STRUCT_CHILD_GETTERS(tpChn1, 5);
+    STRUCT_CHILD_GETTERS(tpChn2, 6);
+    STRUCT_CHILD_GETTERS(rxPf, 7);
+    STRUCT_CHILD_GETTERS(rxFltM, 8);
+    STRUCT_CHILD_GETTERS(rxFltS, 9);
+    STRUCT_CHILD_GETTERS(rxTap1, 10);
+    STRUCT_CHILD_GETTERS(rxTap2, 11);
+    STRUCT_CHILD_GETTERS(rxEq3, 12);
+    STRUCT_CHILD_GETTERS(rxEq2, 13);
+    STRUCT_CHILD_GETTERS(rxEq1, 14);
+    STRUCT_CHILD_GETTERS(rxEqM, 15);
+    STRUCT_CHILD_GETTERS(rxEqP1, 16);
+    STRUCT_CHILD_GETTERS(rxEqP2, 17);
+    STRUCT_CHILD_GETTERS(rxPfLfq, 18);
+    STRUCT_CHILD_GETTERS(rxPfHfq, 19);
+    STRUCT_CHILD_GETTERS(rxReach, 20);
+    STRUCT_CHILD_GETTERS(rxPrecoding, 21);
 };
 
 
 template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::fsdb::AgentData, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+class ChildThriftPath<::facebook::fboss::state::PortFields, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
   public StructuredThriftPath<
-    ::facebook::fboss::fsdb::AgentData,
+    ::facebook::fboss::state::PortFields,
     ::facebook::fboss::fsdb::FsdbOperStateRoot,
     Parent,
-    ::facebook::fboss::fsdb::AgentData> {
+    ::facebook::fboss::state::PortFields> {
   static_assert(
       ::std::is_same_v<
           detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::fsdb::AgentData>>,
-      "ChildThriftPath<::facebook::fboss::fsdb::AgentData> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::fsdb::AgentData.");
+          ::apache::thrift::type::infer_tag<::facebook::fboss::state::PortFields>>,
+      "ChildThriftPath<::facebook::fboss::state::PortFields> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::state::PortFields.");
 
  public:
   using Self = StructuredThriftPath<
-    ::facebook::fboss::fsdb::AgentData,
+    ::facebook::fboss::state::PortFields,
     ::facebook::fboss::fsdb::FsdbOperStateRoot,
     Parent,
-    ::facebook::fboss::fsdb::AgentData>;
+    ::facebook::fboss::state::PortFields>;
 
   template <typename Name>
   using TypeFor = typename Self::template TypeFor<Name>;
   using Self::Self;
   
-    STRUCT_CHILD_GETTERS(config, 1);
-    STRUCT_CHILD_GETTERS(switchState, 2);
-    STRUCT_CHILD_GETTERS(fsdbSubscriptions, 4);
-    STRUCT_CHILD_GETTERS(dsfSwitchReachability, 5);
-    STRUCT_CHILD_GETTERS(agentInfo, 6);
-    STRUCT_CHILD_GETTERS(iPhyStates, 7);
+    STRUCT_CHILD_GETTERS(portId, 1);
+    STRUCT_CHILD_GETTERS(portName, 2);
+    STRUCT_CHILD_GETTERS(portDescription, 3);
+    STRUCT_CHILD_GETTERS(portState, 4);
+    STRUCT_CHILD_GETTERS(portOperState, 5);
+    STRUCT_CHILD_GETTERS(ingressVlan, 6);
+    STRUCT_CHILD_GETTERS(portSpeed, 7);
+    STRUCT_CHILD_GETTERS(rxPause, 10);
+    STRUCT_CHILD_GETTERS(txPause, 11);
+    STRUCT_CHILD_GETTERS(vlanMemberShips, 12);
+    STRUCT_CHILD_GETTERS(sFlowIngressRate, 13);
+    STRUCT_CHILD_GETTERS(sFlowEgressRate, 14);
+    STRUCT_CHILD_GETTERS(queues, 15);
+    STRUCT_CHILD_GETTERS(portLoopbackMode, 16);
+    STRUCT_CHILD_GETTERS(ingressMirror, 17);
+    STRUCT_CHILD_GETTERS(egressMirror, 18);
+    STRUCT_CHILD_GETTERS(qosPolicy, 19);
+    STRUCT_CHILD_GETTERS(sampleDest, 20);
+    STRUCT_CHILD_GETTERS(portProfileID, 21);
+    STRUCT_CHILD_GETTERS(lookupClassesToDistrubuteTrafficOn, 22);
+    STRUCT_CHILD_GETTERS(maxFrameSize, 23);
+    STRUCT_CHILD_GETTERS(pfc, 24);
+    STRUCT_CHILD_GETTERS(pgConfigs, 25);
+    STRUCT_CHILD_GETTERS(profileConfig, 26);
+    STRUCT_CHILD_GETTERS(pinConfigs, 27);
+    STRUCT_CHILD_GETTERS(lineProfileConfig, 28);
+    STRUCT_CHILD_GETTERS(linePinConfigs, 29);
+    STRUCT_CHILD_GETTERS(portType, 30);
+    STRUCT_CHILD_GETTERS(iPhyLinkFaultStatus, 31);
+    STRUCT_CHILD_GETTERS(asicPrbs, 32);
+    STRUCT_CHILD_GETTERS(gbSystemPrbs, 33);
+    STRUCT_CHILD_GETTERS(gbLinePrbs, 34);
+    STRUCT_CHILD_GETTERS(pfcPriorities, 35);
+    STRUCT_CHILD_GETTERS(expectedLLDPValues, 36);
+    STRUCT_CHILD_GETTERS(rxSecureAssociationKeys, 37);
+    STRUCT_CHILD_GETTERS(txSecureAssociationKey, 38);
+    STRUCT_CHILD_GETTERS(macsecDesired, 39);
+    STRUCT_CHILD_GETTERS(dropUnencrypted, 40);
+    STRUCT_CHILD_GETTERS(interfaceIDs, 41);
+    STRUCT_CHILD_GETTERS(expectedNeighborReachability, 42);
+    STRUCT_CHILD_GETTERS(drainState, 43);
+    STRUCT_CHILD_GETTERS(flowletConfigName, 44);
+    STRUCT_CHILD_GETTERS(flowletConfig, 45);
+    STRUCT_CHILD_GETTERS(portLedExternalState, 46);
+    STRUCT_CHILD_GETTERS(rxLaneSquelch, 47);
+    STRUCT_CHILD_GETTERS(zeroPreemphasis, 48);
+    STRUCT_CHILD_GETTERS(portActiveState, 49);
+    STRUCT_CHILD_GETTERS(disableTTLDecrement, 50);
+    STRUCT_CHILD_GETTERS(txEnable, 51);
+    STRUCT_CHILD_GETTERS(activeErrors, 52);
+    STRUCT_CHILD_GETTERS(scope, 53);
+    STRUCT_CHILD_GETTERS(reachabilityGroupId, 54);
+    STRUCT_CHILD_GETTERS(conditionalEntropyRehash, 55);
+    STRUCT_CHILD_GETTERS(selfHealingECMPLagEnable_DEPRECATED, 56);
+    STRUCT_CHILD_GETTERS(selfHealingECMPLagEnable, 57);
+    STRUCT_CHILD_GETTERS(fecErrorDetectEnable, 58);
+    STRUCT_CHILD_GETTERS(desiredSelfHealingECMPLagEnable, 59);
+    STRUCT_CHILD_GETTERS(interPacketGapBits, 60);
+    STRUCT_CHILD_GETTERS(amIdles, 61);
+    STRUCT_CHILD_GETTERS(resetQueueCreditBalance, 62);
+    STRUCT_CHILD_GETTERS(portSwitchId, 63);
+    STRUCT_CHILD_GETTERS(serdesCustomCollection, 64);
+    STRUCT_CHILD_GETTERS(clmEnable, 65);
+    STRUCT_CHILD_GETTERS(linkTraining, 66);
+    STRUCT_CHILD_GETTERS(portDownHoldoffTimeMs, 67);
+    STRUCT_CHILD_GETTERS(portUpHoldoffTimeMs, 68);
+    STRUCT_CHILD_GETTERS(llrConfigName, 69);
+    STRUCT_CHILD_GETTERS(llrConfig, 70);
+    STRUCT_CHILD_GETTERS(txPrecoding, 71);
+    STRUCT_CHILD_GETTERS(rxPrecoding, 72);
+    STRUCT_CHILD_GETTERS(linkScanMode, 73);
+    STRUCT_CHILD_GETTERS(ingressAclTableName, 74);
+    STRUCT_CHILD_GETTERS(userMetaData, 75);
+    STRUCT_CHILD_GETTERS(cbfcConfigName, 76);
+    STRUCT_CHILD_GETTERS(virtualChannels, 77);
+    STRUCT_CHILD_GETTERS(cbfcSenderCreditLimit, 78);
+    STRUCT_CHILD_GETTERS(isolationGroup, 79);
+    STRUCT_CHILD_GETTERS(cbfcSenderCreditSize, 80);
+    STRUCT_CHILD_GETTERS(cbfcSenderPacketOverhead, 81);
+    STRUCT_CHILD_GETTERS(csigTagAction, 82);
+    STRUCT_CHILD_GETTERS(csigLinkLocator, 83);
+    STRUCT_CHILD_GETTERS(cbfcReceiverCreditLimit, 84);
+};
+
+
+template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::fboss::mka::MKASak, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::fboss::mka::MKASak,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::mka::MKASak> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::fboss::mka::MKASak>>,
+      "ChildThriftPath<::facebook::fboss::mka::MKASak> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::mka::MKASak.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::fboss::mka::MKASak,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::mka::MKASak>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(sci, 1);
+    STRUCT_CHILD_GETTERS(l2Port, 2);
+    STRUCT_CHILD_GETTERS(assocNum, 3);
+    STRUCT_CHILD_GETTERS(keyHex, 4);
+    STRUCT_CHILD_GETTERS(keyIdHex, 5);
+    STRUCT_CHILD_GETTERS(confidentOffset, 6);
+    STRUCT_CHILD_GETTERS(primary, 7);
+    STRUCT_CHILD_GETTERS(dropUnencrypted, 8);
+};
+
+
+template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::fboss::cfg::PktLenRange, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::fboss::cfg::PktLenRange,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::cfg::PktLenRange> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::PktLenRange>>,
+      "ChildThriftPath<::facebook::fboss::cfg::PktLenRange> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::cfg::PktLenRange.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::fboss::cfg::PktLenRange,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::cfg::PktLenRange>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(min, 1);
+    STRUCT_CHILD_GETTERS(max, 2);
+    STRUCT_CHILD_GETTERS(invert, 3);
+};
+
+
+template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::fboss::cfg::TransceiverConfigOverride, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::fboss::cfg::TransceiverConfigOverride,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::cfg::TransceiverConfigOverride> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::TransceiverConfigOverride>>,
+      "ChildThriftPath<::facebook::fboss::cfg::TransceiverConfigOverride> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::cfg::TransceiverConfigOverride.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::fboss::cfg::TransceiverConfigOverride,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::cfg::TransceiverConfigOverride>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(factor, 1);
+    STRUCT_CHILD_GETTERS(config, 2);
+};
+
+
+template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::fboss::cfg::TransceiverFirmware, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::fboss::cfg::TransceiverFirmware,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::cfg::TransceiverFirmware> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::TransceiverFirmware>>,
+      "ChildThriftPath<::facebook::fboss::cfg::TransceiverFirmware> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::cfg::TransceiverFirmware.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::fboss::cfg::TransceiverFirmware,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::cfg::TransceiverFirmware>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(versionsMap, 1);
+    STRUCT_CHILD_GETTERS(fwHandleMap, 2);
+};
+
+
+template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::fboss::cfg::AclIpMatch, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::fboss::cfg::AclIpMatch,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::cfg::AclIpMatch> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::AclIpMatch>>,
+      "ChildThriftPath<::facebook::fboss::cfg::AclIpMatch> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::cfg::AclIpMatch.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::fboss::cfg::AclIpMatch,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::cfg::AclIpMatch>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(ip, 1);
+    STRUCT_CHILD_GETTERS(mask, 2);
 };
 
 
@@ -5875,6 +5966,157 @@ class ChildThriftPath<::facebook::fboss::state::SwitchSettingsFields, ::facebook
     STRUCT_CHILD_GETTERS(ecmpWidth, 62);
     STRUCT_CHILD_GETTERS(ecmpGroupSettings, 63);
     STRUCT_CHILD_GETTERS(myMacs, 64);
+};
+
+
+template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::fboss::cfg::MirrorEgressPort, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::fboss::cfg::MirrorEgressPort,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::cfg::MirrorEgressPort> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::MirrorEgressPort>>,
+      "ChildThriftPath<::facebook::fboss::cfg::MirrorEgressPort> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::cfg::MirrorEgressPort.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::fboss::cfg::MirrorEgressPort,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::cfg::MirrorEgressPort>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(name, 1);
+    STRUCT_CHILD_GETTERS(logicalID, 2);
+};
+
+
+template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::fboss::state::VlanInfo, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::fboss::state::VlanInfo,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::state::VlanInfo> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::fboss::state::VlanInfo>>,
+      "ChildThriftPath<::facebook::fboss::state::VlanInfo> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::state::VlanInfo.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::fboss::state::VlanInfo,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::state::VlanInfo>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(tagged, 1);
+    STRUCT_CHILD_GETTERS(priorityTagged, 2);
+};
+
+
+template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::fboss::state::SendToQueue, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::fboss::state::SendToQueue,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::state::SendToQueue> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::fboss::state::SendToQueue>>,
+      "ChildThriftPath<::facebook::fboss::state::SendToQueue> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::state::SendToQueue.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::fboss::state::SendToQueue,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::state::SendToQueue>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(action, 1);
+    STRUCT_CHILD_GETTERS(sendToCPU, 2);
+};
+
+
+template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::fboss::state::TrafficClassToQosAttributeEntry, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::fboss::state::TrafficClassToQosAttributeEntry,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::state::TrafficClassToQosAttributeEntry> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::fboss::state::TrafficClassToQosAttributeEntry>>,
+      "ChildThriftPath<::facebook::fboss::state::TrafficClassToQosAttributeEntry> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::state::TrafficClassToQosAttributeEntry.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::fboss::state::TrafficClassToQosAttributeEntry,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::state::TrafficClassToQosAttributeEntry>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(trafficClass, 1);
+    STRUCT_CHILD_GETTERS(attr, 2);
+};
+
+
+template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::neteng::fboss::bgp::thrift::TCanonicalPeer, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::neteng::fboss::bgp::thrift::TCanonicalPeer,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::neteng::fboss::bgp::thrift::TCanonicalPeer> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::neteng::fboss::bgp::thrift::TCanonicalPeer>>,
+      "ChildThriftPath<::facebook::neteng::fboss::bgp::thrift::TCanonicalPeer> specialization instantiated with a Tag "
+      "that does not describe ::facebook::neteng::fboss::bgp::thrift::TCanonicalPeer.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::neteng::fboss::bgp::thrift::TCanonicalPeer,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::neteng::fboss::bgp::thrift::TCanonicalPeer>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(peer_id, 1);
+    STRUCT_CHILD_GETTERS(router_id, 2);
+    STRUCT_CHILD_GETTERS(peer_description, 3);
 };
 
 
@@ -6059,75 +6301,6 @@ class ChildThriftPath<::facebook::fboss::state::TrafficClassToQosAttributeMap, :
   
     STRUCT_CHILD_GETTERS(from, 1);
     STRUCT_CHILD_GETTERS(to, 2);
-};
-
-
-template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::agent_info::AgentInfo, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
-  public StructuredThriftPath<
-    ::facebook::fboss::agent_info::AgentInfo,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::agent_info::AgentInfo> {
-  static_assert(
-      ::std::is_same_v<
-          detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::agent_info::AgentInfo>>,
-      "ChildThriftPath<::facebook::fboss::agent_info::AgentInfo> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::agent_info::AgentInfo.");
-
- public:
-  using Self = StructuredThriftPath<
-    ::facebook::fboss::agent_info::AgentInfo,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::agent_info::AgentInfo>;
-
-  template <typename Name>
-  using TypeFor = typename Self::template TypeFor<Name>;
-  using Self::Self;
-  
-    STRUCT_CHILD_GETTERS(startTime, 1);
-    STRUCT_CHILD_GETTERS(fsdbStatsPublishIntervalMsec, 2);
-};
-
-
-template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::cfg::IpInIpTunnel, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
-  public StructuredThriftPath<
-    ::facebook::fboss::cfg::IpInIpTunnel,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::cfg::IpInIpTunnel> {
-  static_assert(
-      ::std::is_same_v<
-          detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::IpInIpTunnel>>,
-      "ChildThriftPath<::facebook::fboss::cfg::IpInIpTunnel> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::cfg::IpInIpTunnel.");
-
- public:
-  using Self = StructuredThriftPath<
-    ::facebook::fboss::cfg::IpInIpTunnel,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::cfg::IpInIpTunnel>;
-
-  template <typename Name>
-  using TypeFor = typename Self::template TypeFor<Name>;
-  using Self::Self;
-  
-    STRUCT_CHILD_GETTERS(ipInIpTunnelId, 1);
-    STRUCT_CHILD_GETTERS(underlayIntfID, 2);
-    STRUCT_CHILD_GETTERS(dstIp, 3);
-    STRUCT_CHILD_GETTERS(srcIp, 4);
-    STRUCT_CHILD_GETTERS(dstIpMask, 5);
-    STRUCT_CHILD_GETTERS(srcIpMask, 6);
-    STRUCT_CHILD_GETTERS(ttlMode, 7);
-    STRUCT_CHILD_GETTERS(dscpMode, 8);
-    STRUCT_CHILD_GETTERS(ecnMode, 9);
-    STRUCT_CHILD_GETTERS(tunnelTermType, 10);
-    STRUCT_CHILD_GETTERS(tunnelType, 11);
 };
 
 
@@ -6323,98 +6496,6 @@ class ChildThriftPath<::facebook::fboss::phy::PhySideState, ::facebook::fboss::f
 
 
 template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::state::NamedNextHopGroupAndID, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
-  public StructuredThriftPath<
-    ::facebook::fboss::state::NamedNextHopGroupAndID,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::state::NamedNextHopGroupAndID> {
-  static_assert(
-      ::std::is_same_v<
-          detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::state::NamedNextHopGroupAndID>>,
-      "ChildThriftPath<::facebook::fboss::state::NamedNextHopGroupAndID> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::state::NamedNextHopGroupAndID.");
-
- public:
-  using Self = StructuredThriftPath<
-    ::facebook::fboss::state::NamedNextHopGroupAndID,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::state::NamedNextHopGroupAndID>;
-
-  template <typename Name>
-  using TypeFor = typename Self::template TypeFor<Name>;
-  using Self::Self;
-  
-    STRUCT_CHILD_GETTERS(name, 1);
-    STRUCT_CHILD_GETTERS(id, 2);
-};
-
-
-template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::cfg::MySidEntryConfig, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
-  public StructuredThriftPath<
-    ::facebook::fboss::cfg::MySidEntryConfig,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::cfg::MySidEntryConfig> {
-  static_assert(
-      ::std::is_same_v<
-          detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::MySidEntryConfig>>,
-      "ChildThriftPath<::facebook::fboss::cfg::MySidEntryConfig> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::cfg::MySidEntryConfig.");
-
- public:
-  using Self = StructuredThriftPath<
-    ::facebook::fboss::cfg::MySidEntryConfig,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::cfg::MySidEntryConfig>;
-
-  template <typename Name>
-  using TypeFor = typename Self::template TypeFor<Name>;
-  using Self::Self;
-  
-    STRUCT_CHILD_GETTERS(adjacency, 1);
-    STRUCT_CHILD_GETTERS(node, 2);
-    STRUCT_CHILD_GETTERS(decap, 3);
-};
-
-
-template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::cfg::AdjacencyMySidConfig, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
-  public StructuredThriftPath<
-    ::facebook::fboss::cfg::AdjacencyMySidConfig,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::cfg::AdjacencyMySidConfig> {
-  static_assert(
-      ::std::is_same_v<
-          detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::AdjacencyMySidConfig>>,
-      "ChildThriftPath<::facebook::fboss::cfg::AdjacencyMySidConfig> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::cfg::AdjacencyMySidConfig.");
-
- public:
-  using Self = StructuredThriftPath<
-    ::facebook::fboss::cfg::AdjacencyMySidConfig,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::cfg::AdjacencyMySidConfig>;
-
-  template <typename Name>
-  using TypeFor = typename Self::template TypeFor<Name>;
-  using Self::Self;
-  
-    STRUCT_CHILD_GETTERS(portName, 1);
-    STRUCT_CHILD_GETTERS(isV6, 2);
-    STRUCT_CHILD_GETTERS(address, 3);
-};
-
-
-template<typename Parent, typename Tag>
 class ChildThriftPath<::facebook::fboss::cfg::Mirror, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
   public StructuredThriftPath<
     ::facebook::fboss::cfg::Mirror,
@@ -6478,35 +6559,64 @@ class ChildThriftPath<::facebook::fboss::cfg::PortPause, ::facebook::fboss::fsdb
 
 
 template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::state::FibInfoFields, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+class ChildThriftPath<::facebook::fboss::cfg::MySidEntryConfig, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
   public StructuredThriftPath<
-    ::facebook::fboss::state::FibInfoFields,
+    ::facebook::fboss::cfg::MySidEntryConfig,
     ::facebook::fboss::fsdb::FsdbOperStateRoot,
     Parent,
-    ::facebook::fboss::state::FibInfoFields> {
+    ::facebook::fboss::cfg::MySidEntryConfig> {
   static_assert(
       ::std::is_same_v<
           detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::state::FibInfoFields>>,
-      "ChildThriftPath<::facebook::fboss::state::FibInfoFields> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::state::FibInfoFields.");
+          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::MySidEntryConfig>>,
+      "ChildThriftPath<::facebook::fboss::cfg::MySidEntryConfig> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::cfg::MySidEntryConfig.");
 
  public:
   using Self = StructuredThriftPath<
-    ::facebook::fboss::state::FibInfoFields,
+    ::facebook::fboss::cfg::MySidEntryConfig,
     ::facebook::fboss::fsdb::FsdbOperStateRoot,
     Parent,
-    ::facebook::fboss::state::FibInfoFields>;
+    ::facebook::fboss::cfg::MySidEntryConfig>;
 
   template <typename Name>
   using TypeFor = typename Self::template TypeFor<Name>;
   using Self::Self;
   
-    STRUCT_CHILD_GETTERS(fibsMap, 1);
-    STRUCT_CHILD_GETTERS(idToNextHop, 2);
-    STRUCT_CHILD_GETTERS(idToNextHopIdSet, 3);
-    STRUCT_CHILD_GETTERS(nameToNextHopSetId, 4);
-    STRUCT_CHILD_GETTERS(overrideIdToNextHopIdSet, 5);
+    STRUCT_CHILD_GETTERS(adjacency, 1);
+    STRUCT_CHILD_GETTERS(node, 2);
+    STRUCT_CHILD_GETTERS(decap, 3);
+};
+
+
+template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::fboss::cfg::AdjacencyMySidConfig, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::fboss::cfg::AdjacencyMySidConfig,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::cfg::AdjacencyMySidConfig> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::AdjacencyMySidConfig>>,
+      "ChildThriftPath<::facebook::fboss::cfg::AdjacencyMySidConfig> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::cfg::AdjacencyMySidConfig.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::fboss::cfg::AdjacencyMySidConfig,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::cfg::AdjacencyMySidConfig>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(portName, 1);
+    STRUCT_CHILD_GETTERS(isV6, 2);
+    STRUCT_CHILD_GETTERS(address, 3);
 };
 
 
@@ -6613,6 +6723,130 @@ class ChildThriftPath<::facebook::fboss::cfg::Vlan, ::facebook::fboss::fsdb::Fsd
 
 
 template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::fboss::state::FibInfoFields, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::fboss::state::FibInfoFields,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::state::FibInfoFields> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::fboss::state::FibInfoFields>>,
+      "ChildThriftPath<::facebook::fboss::state::FibInfoFields> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::state::FibInfoFields.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::fboss::state::FibInfoFields,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::state::FibInfoFields>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(fibsMap, 1);
+    STRUCT_CHILD_GETTERS(idToNextHop, 2);
+    STRUCT_CHILD_GETTERS(idToNextHopIdSet, 3);
+    STRUCT_CHILD_GETTERS(nameToNextHopSetId, 4);
+    STRUCT_CHILD_GETTERS(overrideIdToNextHopIdSet, 5);
+};
+
+
+template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::bgp::bgp_policy::LbwExtCommunityAction, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::bgp::bgp_policy::LbwExtCommunityAction,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::bgp::bgp_policy::LbwExtCommunityAction> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::bgp::bgp_policy::LbwExtCommunityAction>>,
+      "ChildThriftPath<::facebook::bgp::bgp_policy::LbwExtCommunityAction> specialization instantiated with a Tag "
+      "that does not describe ::facebook::bgp::bgp_policy::LbwExtCommunityAction.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::bgp::bgp_policy::LbwExtCommunityAction,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::bgp::bgp_policy::LbwExtCommunityAction>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(type, 1);
+    STRUCT_CHILD_GETTERS(encoding_scheme, 2);
+    STRUCT_CHILD_GETTERS(encoding_id, 3);
+};
+
+
+template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::fboss::cfg::ChipConfig, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::fboss::cfg::ChipConfig,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::cfg::ChipConfig> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::ChipConfig>>,
+      "ChildThriftPath<::facebook::fboss::cfg::ChipConfig> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::cfg::ChipConfig.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::fboss::cfg::ChipConfig,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::cfg::ChipConfig>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(bcm, 1);
+    STRUCT_CHILD_GETTERS(asic, 2);
+    STRUCT_CHILD_GETTERS(asicConfig, 3);
+};
+
+
+template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::fboss::cfg::QueueCongestionDetection, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::fboss::cfg::QueueCongestionDetection,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::cfg::QueueCongestionDetection> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::QueueCongestionDetection>>,
+      "ChildThriftPath<::facebook::fboss::cfg::QueueCongestionDetection> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::cfg::QueueCongestionDetection.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::fboss::cfg::QueueCongestionDetection,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::cfg::QueueCongestionDetection>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(linear, 1);
+};
+
+
+template<typename Parent, typename Tag>
 class ChildThriftPath<::facebook::fboss::cfg::FirmwareInfo, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
   public StructuredThriftPath<
     ::facebook::fboss::cfg::FirmwareInfo,
@@ -6641,6 +6875,510 @@ class ChildThriftPath<::facebook::fboss::cfg::FirmwareInfo, ::facebook::fboss::f
     STRUCT_CHILD_GETTERS(path, 2);
     STRUCT_CHILD_GETTERS(logPath, 3);
     STRUCT_CHILD_GETTERS(firmwareLoadType, 4);
+};
+
+
+template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::fboss::cfg::PortDescriptor, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::fboss::cfg::PortDescriptor,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::cfg::PortDescriptor> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::PortDescriptor>>,
+      "ChildThriftPath<::facebook::fboss::cfg::PortDescriptor> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::cfg::PortDescriptor.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::fboss::cfg::PortDescriptor,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::cfg::PortDescriptor>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(portId, 1);
+    STRUCT_CHILD_GETTERS(portType, 2);
+};
+
+
+template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::fboss::cfg::AclTableGroup, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::fboss::cfg::AclTableGroup,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::cfg::AclTableGroup> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::AclTableGroup>>,
+      "ChildThriftPath<::facebook::fboss::cfg::AclTableGroup> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::cfg::AclTableGroup.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::fboss::cfg::AclTableGroup,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::cfg::AclTableGroup>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(name, 1);
+    STRUCT_CHILD_GETTERS(aclTables, 2);
+    STRUCT_CHILD_GETTERS(stage, 3);
+    STRUCT_CHILD_GETTERS(bindPoint, 4);
+};
+
+
+template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::fboss::cfg::RedirectToNextHopAction, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::fboss::cfg::RedirectToNextHopAction,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::cfg::RedirectToNextHopAction> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::RedirectToNextHopAction>>,
+      "ChildThriftPath<::facebook::fboss::cfg::RedirectToNextHopAction> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::cfg::RedirectToNextHopAction.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::fboss::cfg::RedirectToNextHopAction,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::cfg::RedirectToNextHopAction>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(nexthops_DEPRECATED, 1);
+    STRUCT_CHILD_GETTERS(redirectNextHops, 2);
+    STRUCT_CHILD_GETTERS(redirectNextHopGroup, 3);
+};
+
+
+template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::fboss::cfg::RedirectNextHop, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::fboss::cfg::RedirectNextHop,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::cfg::RedirectNextHop> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::RedirectNextHop>>,
+      "ChildThriftPath<::facebook::fboss::cfg::RedirectNextHop> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::cfg::RedirectNextHop.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::fboss::cfg::RedirectNextHop,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::cfg::RedirectNextHop>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(ip, 1);
+    STRUCT_CHILD_GETTERS(intfID, 2);
+    STRUCT_CHILD_GETTERS(tunnelType, 3);
+    STRUCT_CHILD_GETTERS(tunnelId, 4);
+};
+
+
+template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::fboss::state::SocketAddress, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::fboss::state::SocketAddress,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::state::SocketAddress> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::fboss::state::SocketAddress>>,
+      "ChildThriftPath<::facebook::fboss::state::SocketAddress> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::state::SocketAddress.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::fboss::state::SocketAddress,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::state::SocketAddress>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(host, 1);
+    STRUCT_CHILD_GETTERS(port, 2);
+};
+
+
+template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::fboss::state::InterfaceFields, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::fboss::state::InterfaceFields,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::state::InterfaceFields> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::fboss::state::InterfaceFields>>,
+      "ChildThriftPath<::facebook::fboss::state::InterfaceFields> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::state::InterfaceFields.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::fboss::state::InterfaceFields,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::state::InterfaceFields>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(interfaceId, 1);
+    STRUCT_CHILD_GETTERS(routerId, 2);
+    STRUCT_CHILD_GETTERS(vlanId, 3);
+    STRUCT_CHILD_GETTERS(name, 4);
+    STRUCT_CHILD_GETTERS(mac, 5);
+    STRUCT_CHILD_GETTERS(addresses, 6);
+    STRUCT_CHILD_GETTERS(ndpConfig, 7);
+    STRUCT_CHILD_GETTERS(mtu, 8);
+    STRUCT_CHILD_GETTERS(isVirtual, 9);
+    STRUCT_CHILD_GETTERS(isStateSyncDisabled, 10);
+    STRUCT_CHILD_GETTERS(type, 11);
+    STRUCT_CHILD_GETTERS(arpTable, 12);
+    STRUCT_CHILD_GETTERS(ndpTable, 13);
+    STRUCT_CHILD_GETTERS(arpResponseTable, 14);
+    STRUCT_CHILD_GETTERS(ndpResponseTable, 15);
+    STRUCT_CHILD_GETTERS(dhcpV4Relay, 16);
+    STRUCT_CHILD_GETTERS(dhcpV6Relay, 17);
+    STRUCT_CHILD_GETTERS(dhcpRelayOverridesV4, 18);
+    STRUCT_CHILD_GETTERS(dhcpRelayOverridesV6, 19);
+    STRUCT_CHILD_GETTERS(remoteIntfType, 20);
+    STRUCT_CHILD_GETTERS(remoteIntfLivenessStatus, 21);
+    STRUCT_CHILD_GETTERS(scope, 22);
+    STRUCT_CHILD_GETTERS(portId, 23);
+    STRUCT_CHILD_GETTERS(desiredPeerName, 24);
+    STRUCT_CHILD_GETTERS(desiredPeerAddressIPv6, 25);
+    STRUCT_CHILD_GETTERS(aggregatePortId, 26);
+};
+
+
+template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::fboss::cfg::VxLanTunnel, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::fboss::cfg::VxLanTunnel,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::cfg::VxLanTunnel> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::VxLanTunnel>>,
+      "ChildThriftPath<::facebook::fboss::cfg::VxLanTunnel> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::cfg::VxLanTunnel.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::fboss::cfg::VxLanTunnel,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::cfg::VxLanTunnel>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(vxlanTunnelId, 1);
+    STRUCT_CHILD_GETTERS(underlayIntfID, 2);
+    STRUCT_CHILD_GETTERS(srcIp, 3);
+    STRUCT_CHILD_GETTERS(dstIp, 4);
+    STRUCT_CHILD_GETTERS(ttlMode, 5);
+    STRUCT_CHILD_GETTERS(dscpMode, 6);
+    STRUCT_CHILD_GETTERS(ecnMode, 7);
+    STRUCT_CHILD_GETTERS(tunnelTermType, 8);
+    STRUCT_CHILD_GETTERS(tunnelType, 9);
+    STRUCT_CHILD_GETTERS(vrf2Vni, 10);
+    STRUCT_CHILD_GETTERS(vniToVrf, 11);
+};
+
+
+template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::fboss::cfg::SetDscpMatchAction, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::fboss::cfg::SetDscpMatchAction,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::cfg::SetDscpMatchAction> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::SetDscpMatchAction>>,
+      "ChildThriftPath<::facebook::fboss::cfg::SetDscpMatchAction> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::cfg::SetDscpMatchAction.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::fboss::cfg::SetDscpMatchAction,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::cfg::SetDscpMatchAction>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(dscpValue, 1);
+};
+
+
+template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::fboss::cfg::NodeMySidConfig, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::fboss::cfg::NodeMySidConfig,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::cfg::NodeMySidConfig> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::NodeMySidConfig>>,
+      "ChildThriftPath<::facebook::fboss::cfg::NodeMySidConfig> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::cfg::NodeMySidConfig.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::fboss::cfg::NodeMySidConfig,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::cfg::NodeMySidConfig>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(nodeAddress, 1);
+};
+
+
+template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::fboss::cfg::UdfPacketMatcher, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::fboss::cfg::UdfPacketMatcher,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::cfg::UdfPacketMatcher> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::UdfPacketMatcher>>,
+      "ChildThriftPath<::facebook::fboss::cfg::UdfPacketMatcher> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::cfg::UdfPacketMatcher.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::fboss::cfg::UdfPacketMatcher,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::cfg::UdfPacketMatcher>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(name, 1);
+    STRUCT_CHILD_GETTERS(l2PktType, 2);
+    STRUCT_CHILD_GETTERS(l3pktType, 3);
+    STRUCT_CHILD_GETTERS(l4PktType, 4);
+    STRUCT_CHILD_GETTERS(UdfL4DstPort, 5);
+};
+
+
+template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::fboss::cfg::VrfConfig, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::fboss::cfg::VrfConfig,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::cfg::VrfConfig> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::VrfConfig>>,
+      "ChildThriftPath<::facebook::fboss::cfg::VrfConfig> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::cfg::VrfConfig.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::fboss::cfg::VrfConfig,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::cfg::VrfConfig>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(vrfId, 1);
+    STRUCT_CHILD_GETTERS(name, 2);
+};
+
+
+template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::fboss::FirmwareStatus, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::fboss::FirmwareStatus,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::FirmwareStatus> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::fboss::FirmwareStatus>>,
+      "ChildThriftPath<::facebook::fboss::FirmwareStatus> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::FirmwareStatus.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::fboss::FirmwareStatus,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::FirmwareStatus>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(version, 1);
+    STRUCT_CHILD_GETTERS(fwFault, 2);
+    STRUCT_CHILD_GETTERS(dspFwVer, 3);
+    STRUCT_CHILD_GETTERS(buildRev, 4);
+    STRUCT_CHILD_GETTERS(buildNumber, 5);
+};
+
+
+template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::bgp::rib_policy::TPathSelector, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::bgp::rib_policy::TPathSelector,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::bgp::rib_policy::TPathSelector> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::bgp::rib_policy::TPathSelector>>,
+      "ChildThriftPath<::facebook::bgp::rib_policy::TPathSelector> specialization instantiated with a Tag "
+      "that does not describe ::facebook::bgp::rib_policy::TPathSelector.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::bgp::rib_policy::TPathSelector,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::bgp::rib_policy::TPathSelector>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(criteria_list, 1);
+    STRUCT_CHILD_GETTERS(bgp_native_path_selection_min_nexthop, 2);
+    STRUCT_CHILD_GETTERS(drain_on_min_nexthop_violation, 3);
+    STRUCT_CHILD_GETTERS(bgp_min_aggregate_lbw_bps, 4);
+    STRUCT_CHILD_GETTERS(relax_bgp_min_aggregate_lbw_bps, 5);
+};
+
+
+template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::fboss::agent_info::AgentInfo, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::fboss::agent_info::AgentInfo,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::agent_info::AgentInfo> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::fboss::agent_info::AgentInfo>>,
+      "ChildThriftPath<::facebook::fboss::agent_info::AgentInfo> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::agent_info::AgentInfo.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::fboss::agent_info::AgentInfo,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::agent_info::AgentInfo>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(startTime, 1);
+    STRUCT_CHILD_GETTERS(fsdbStatsPublishIntervalMsec, 2);
+};
+
+
+template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::fboss::cfg::IpInIpTunnel, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::fboss::cfg::IpInIpTunnel,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::cfg::IpInIpTunnel> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::IpInIpTunnel>>,
+      "ChildThriftPath<::facebook::fboss::cfg::IpInIpTunnel> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::cfg::IpInIpTunnel.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::fboss::cfg::IpInIpTunnel,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::cfg::IpInIpTunnel>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(ipInIpTunnelId, 1);
+    STRUCT_CHILD_GETTERS(underlayIntfID, 2);
+    STRUCT_CHILD_GETTERS(dstIp, 3);
+    STRUCT_CHILD_GETTERS(srcIp, 4);
+    STRUCT_CHILD_GETTERS(dstIpMask, 5);
+    STRUCT_CHILD_GETTERS(srcIpMask, 6);
+    STRUCT_CHILD_GETTERS(ttlMode, 7);
+    STRUCT_CHILD_GETTERS(dscpMode, 8);
+    STRUCT_CHILD_GETTERS(ecnMode, 9);
+    STRUCT_CHILD_GETTERS(tunnelTermType, 10);
+    STRUCT_CHILD_GETTERS(tunnelType, 11);
 };
 
 
@@ -6782,6 +7520,102 @@ class ChildThriftPath<::facebook::fboss::cfg::DsfNode, ::facebook::fboss::fsdb::
 
 
 template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::fboss::cfg::AgentConfig, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::fboss::cfg::AgentConfig,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::cfg::AgentConfig> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::AgentConfig>>,
+      "ChildThriftPath<::facebook::fboss::cfg::AgentConfig> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::cfg::AgentConfig.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::fboss::cfg::AgentConfig,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::cfg::AgentConfig>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(defaultCommandLineArgs, 1);
+    STRUCT_CHILD_GETTERS(sw, 2);
+    STRUCT_CHILD_GETTERS(platform, 3);
+    STRUCT_CHILD_GETTERS(thriftApiToRateLimitInQps, 4);
+};
+
+
+template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::fboss::cfg::AggregatePortMember, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::fboss::cfg::AggregatePortMember,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::cfg::AggregatePortMember> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::AggregatePortMember>>,
+      "ChildThriftPath<::facebook::fboss::cfg::AggregatePortMember> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::cfg::AggregatePortMember.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::fboss::cfg::AggregatePortMember,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::cfg::AggregatePortMember>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(memberPortID, 1);
+    STRUCT_CHILD_GETTERS(priority, 2);
+    STRUCT_CHILD_GETTERS(rate, 3);
+    STRUCT_CHILD_GETTERS(activity, 4);
+    STRUCT_CHILD_GETTERS(holdTimerMultiplier, 5);
+};
+
+
+template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::fboss::cfg::TrafficPolicyConfig, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::fboss::cfg::TrafficPolicyConfig,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::cfg::TrafficPolicyConfig> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::TrafficPolicyConfig>>,
+      "ChildThriftPath<::facebook::fboss::cfg::TrafficPolicyConfig> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::cfg::TrafficPolicyConfig.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::fboss::cfg::TrafficPolicyConfig,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::cfg::TrafficPolicyConfig>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(matchToAction, 1);
+    STRUCT_CHILD_GETTERS(defaultQosPolicy, 2);
+    STRUCT_CHILD_GETTERS(portIdToQosPolicy, 3);
+};
+
+
+template<typename Parent, typename Tag>
 class ChildThriftPath<::facebook::fboss::cfg::PcpQosMap, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
   public StructuredThriftPath<
     ::facebook::fboss::cfg::PcpQosMap,
@@ -6873,6 +7707,37 @@ class ChildThriftPath<::facebook::fboss::cfg::SetEcmpHashAction, ::facebook::fbo
 
 
 template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::neteng::fboss::bgp::thrift::TPartialDrainStatus, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::neteng::fboss::bgp::thrift::TPartialDrainStatus,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::neteng::fboss::bgp::thrift::TPartialDrainStatus> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::neteng::fboss::bgp::thrift::TPartialDrainStatus>>,
+      "ChildThriftPath<::facebook::neteng::fboss::bgp::thrift::TPartialDrainStatus> specialization instantiated with a Tag "
+      "that does not describe ::facebook::neteng::fboss::bgp::thrift::TPartialDrainStatus.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::neteng::fboss::bgp::thrift::TPartialDrainStatus,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::neteng::fboss::bgp::thrift::TPartialDrainStatus>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(is_partially_drained, 1);
+    STRUCT_CHILD_GETTERS(num_affected_prefixes, 2);
+    STRUCT_CHILD_GETTERS(partial_drain_transition_count, 3);
+};
+
+
+template<typename Parent, typename Tag>
 class ChildThriftPath<::facebook::fboss::cfg::Port, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
   public StructuredThriftPath<
     ::facebook::fboss::cfg::Port,
@@ -6950,37 +7815,6 @@ class ChildThriftPath<::facebook::fboss::cfg::Port, ::facebook::fboss::fsdb::Fsd
 
 
 template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::neteng::fboss::bgp::thrift::TPartialDrainStatus, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
-  public StructuredThriftPath<
-    ::facebook::neteng::fboss::bgp::thrift::TPartialDrainStatus,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::neteng::fboss::bgp::thrift::TPartialDrainStatus> {
-  static_assert(
-      ::std::is_same_v<
-          detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::neteng::fboss::bgp::thrift::TPartialDrainStatus>>,
-      "ChildThriftPath<::facebook::neteng::fboss::bgp::thrift::TPartialDrainStatus> specialization instantiated with a Tag "
-      "that does not describe ::facebook::neteng::fboss::bgp::thrift::TPartialDrainStatus.");
-
- public:
-  using Self = StructuredThriftPath<
-    ::facebook::neteng::fboss::bgp::thrift::TPartialDrainStatus,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::neteng::fboss::bgp::thrift::TPartialDrainStatus>;
-
-  template <typename Name>
-  using TypeFor = typename Self::template TypeFor<Name>;
-  using Self::Self;
-  
-    STRUCT_CHILD_GETTERS(is_partially_drained, 1);
-    STRUCT_CHILD_GETTERS(num_affected_prefixes, 2);
-    STRUCT_CHILD_GETTERS(partial_drain_transition_count, 3);
-};
-
-
-template<typename Parent, typename Tag>
 class ChildThriftPath<::facebook::fboss::cfg::StaticIp2MplsRoute, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
   public StructuredThriftPath<
     ::facebook::fboss::cfg::StaticIp2MplsRoute,
@@ -7008,6 +7842,36 @@ class ChildThriftPath<::facebook::fboss::cfg::StaticIp2MplsRoute, ::facebook::fb
     STRUCT_CHILD_GETTERS(routerID, 1);
     STRUCT_CHILD_GETTERS(prefix, 2);
     STRUCT_CHILD_GETTERS(nexthops, 3);
+};
+
+
+template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::fboss::cfg::AclIpV6WordMatch, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::fboss::cfg::AclIpV6WordMatch,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::cfg::AclIpV6WordMatch> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::AclIpV6WordMatch>>,
+      "ChildThriftPath<::facebook::fboss::cfg::AclIpV6WordMatch> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::cfg::AclIpV6WordMatch.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::fboss::cfg::AclIpV6WordMatch,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::cfg::AclIpV6WordMatch>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(value, 1);
+    STRUCT_CHILD_GETTERS(mask, 2);
 };
 
 
@@ -7244,507 +8108,6 @@ class ChildThriftPath<::facebook::fboss::cfg::MirrorDestination, ::facebook::fbo
 
 
 template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::NextHopThrift, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
-  public StructuredThriftPath<
-    ::facebook::fboss::NextHopThrift,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::NextHopThrift> {
-  static_assert(
-      ::std::is_same_v<
-          detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::NextHopThrift>>,
-      "ChildThriftPath<::facebook::fboss::NextHopThrift> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::NextHopThrift.");
-
- public:
-  using Self = StructuredThriftPath<
-    ::facebook::fboss::NextHopThrift,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::NextHopThrift>;
-
-  template <typename Name>
-  using TypeFor = typename Self::template TypeFor<Name>;
-  using Self::Self;
-  
-    STRUCT_CHILD_GETTERS(address, 1);
-    STRUCT_CHILD_GETTERS(weight, 2);
-    STRUCT_CHILD_GETTERS(mplsAction, 3);
-    STRUCT_CHILD_GETTERS(disableTTLDecrement, 4);
-    STRUCT_CHILD_GETTERS(srv6SegmentList, 5);
-    STRUCT_CHILD_GETTERS(tunnelType, 6);
-    STRUCT_CHILD_GETTERS(tunnelId, 7);
-    STRUCT_CHILD_GETTERS(overlayDstMac, 8);
-    STRUCT_CHILD_GETTERS(adjustedWeight, 15);
-    STRUCT_CHILD_GETTERS(topologyInfo, 16);
-    STRUCT_CHILD_GETTERS(cost, 17);
-    STRUCT_CHILD_GETTERS(role, 18);
-    STRUCT_CHILD_GETTERS(backupNexthops, 19);
-};
-
-
-template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::bgp::bgp_policy::LbwExtCommunityAction, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
-  public StructuredThriftPath<
-    ::facebook::bgp::bgp_policy::LbwExtCommunityAction,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::bgp::bgp_policy::LbwExtCommunityAction> {
-  static_assert(
-      ::std::is_same_v<
-          detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::bgp::bgp_policy::LbwExtCommunityAction>>,
-      "ChildThriftPath<::facebook::bgp::bgp_policy::LbwExtCommunityAction> specialization instantiated with a Tag "
-      "that does not describe ::facebook::bgp::bgp_policy::LbwExtCommunityAction.");
-
- public:
-  using Self = StructuredThriftPath<
-    ::facebook::bgp::bgp_policy::LbwExtCommunityAction,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::bgp::bgp_policy::LbwExtCommunityAction>;
-
-  template <typename Name>
-  using TypeFor = typename Self::template TypeFor<Name>;
-  using Self::Self;
-  
-    STRUCT_CHILD_GETTERS(type, 1);
-    STRUCT_CHILD_GETTERS(encoding_scheme, 2);
-    STRUCT_CHILD_GETTERS(encoding_id, 3);
-};
-
-
-template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::cfg::QueueCongestionDetection, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
-  public StructuredThriftPath<
-    ::facebook::fboss::cfg::QueueCongestionDetection,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::cfg::QueueCongestionDetection> {
-  static_assert(
-      ::std::is_same_v<
-          detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::QueueCongestionDetection>>,
-      "ChildThriftPath<::facebook::fboss::cfg::QueueCongestionDetection> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::cfg::QueueCongestionDetection.");
-
- public:
-  using Self = StructuredThriftPath<
-    ::facebook::fboss::cfg::QueueCongestionDetection,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::cfg::QueueCongestionDetection>;
-
-  template <typename Name>
-  using TypeFor = typename Self::template TypeFor<Name>;
-  using Self::Self;
-  
-    STRUCT_CHILD_GETTERS(linear, 1);
-};
-
-
-template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::cfg::ChipConfig, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
-  public StructuredThriftPath<
-    ::facebook::fboss::cfg::ChipConfig,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::cfg::ChipConfig> {
-  static_assert(
-      ::std::is_same_v<
-          detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::ChipConfig>>,
-      "ChildThriftPath<::facebook::fboss::cfg::ChipConfig> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::cfg::ChipConfig.");
-
- public:
-  using Self = StructuredThriftPath<
-    ::facebook::fboss::cfg::ChipConfig,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::cfg::ChipConfig>;
-
-  template <typename Name>
-  using TypeFor = typename Self::template TypeFor<Name>;
-  using Self::Self;
-  
-    STRUCT_CHILD_GETTERS(bcm, 1);
-    STRUCT_CHILD_GETTERS(asic, 2);
-    STRUCT_CHILD_GETTERS(asicConfig, 3);
-};
-
-
-template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::cfg::QcmConfig, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
-  public StructuredThriftPath<
-    ::facebook::fboss::cfg::QcmConfig,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::cfg::QcmConfig> {
-  static_assert(
-      ::std::is_same_v<
-          detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::QcmConfig>>,
-      "ChildThriftPath<::facebook::fboss::cfg::QcmConfig> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::cfg::QcmConfig.");
-
- public:
-  using Self = StructuredThriftPath<
-    ::facebook::fboss::cfg::QcmConfig,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::cfg::QcmConfig>;
-
-  template <typename Name>
-  using TypeFor = typename Self::template TypeFor<Name>;
-  using Self::Self;
-  
-    STRUCT_CHILD_GETTERS(numFlowSamplesPerView, 1);
-    STRUCT_CHILD_GETTERS(flowLimit, 2);
-    STRUCT_CHILD_GETTERS(numFlowsClear, 3);
-    STRUCT_CHILD_GETTERS(scanIntervalInUsecs, 4);
-    STRUCT_CHILD_GETTERS(exportThreshold, 5);
-    STRUCT_CHILD_GETTERS(flowWeights, 6);
-    STRUCT_CHILD_GETTERS(agingIntervalInMsecs, 7);
-    STRUCT_CHILD_GETTERS(collectorDstIp, 8);
-    STRUCT_CHILD_GETTERS(collectorSrcPort, 10);
-    STRUCT_CHILD_GETTERS(collectorDstPort, 11);
-    STRUCT_CHILD_GETTERS(collectorDscp, 12);
-    STRUCT_CHILD_GETTERS(ppsToQcm, 13);
-    STRUCT_CHILD_GETTERS(collectorSrcIp, 14);
-    STRUCT_CHILD_GETTERS(monitorQcmPortList, 15);
-    STRUCT_CHILD_GETTERS(port2QosQueueIds, 16);
-    STRUCT_CHILD_GETTERS(monitorQcmCfgPortsOnly, 17);
-};
-
-
-template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::cfg::RedirectToNextHopAction, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
-  public StructuredThriftPath<
-    ::facebook::fboss::cfg::RedirectToNextHopAction,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::cfg::RedirectToNextHopAction> {
-  static_assert(
-      ::std::is_same_v<
-          detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::RedirectToNextHopAction>>,
-      "ChildThriftPath<::facebook::fboss::cfg::RedirectToNextHopAction> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::cfg::RedirectToNextHopAction.");
-
- public:
-  using Self = StructuredThriftPath<
-    ::facebook::fboss::cfg::RedirectToNextHopAction,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::cfg::RedirectToNextHopAction>;
-
-  template <typename Name>
-  using TypeFor = typename Self::template TypeFor<Name>;
-  using Self::Self;
-  
-    STRUCT_CHILD_GETTERS(nexthops_DEPRECATED, 1);
-    STRUCT_CHILD_GETTERS(redirectNextHops, 2);
-    STRUCT_CHILD_GETTERS(redirectNextHopGroup, 3);
-};
-
-
-template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::state::SocketAddress, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
-  public StructuredThriftPath<
-    ::facebook::fboss::state::SocketAddress,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::state::SocketAddress> {
-  static_assert(
-      ::std::is_same_v<
-          detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::state::SocketAddress>>,
-      "ChildThriftPath<::facebook::fboss::state::SocketAddress> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::state::SocketAddress.");
-
- public:
-  using Self = StructuredThriftPath<
-    ::facebook::fboss::state::SocketAddress,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::state::SocketAddress>;
-
-  template <typename Name>
-  using TypeFor = typename Self::template TypeFor<Name>;
-  using Self::Self;
-  
-    STRUCT_CHILD_GETTERS(host, 1);
-    STRUCT_CHILD_GETTERS(port, 2);
-};
-
-
-template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::state::InterfaceFields, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
-  public StructuredThriftPath<
-    ::facebook::fboss::state::InterfaceFields,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::state::InterfaceFields> {
-  static_assert(
-      ::std::is_same_v<
-          detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::state::InterfaceFields>>,
-      "ChildThriftPath<::facebook::fboss::state::InterfaceFields> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::state::InterfaceFields.");
-
- public:
-  using Self = StructuredThriftPath<
-    ::facebook::fboss::state::InterfaceFields,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::state::InterfaceFields>;
-
-  template <typename Name>
-  using TypeFor = typename Self::template TypeFor<Name>;
-  using Self::Self;
-  
-    STRUCT_CHILD_GETTERS(interfaceId, 1);
-    STRUCT_CHILD_GETTERS(routerId, 2);
-    STRUCT_CHILD_GETTERS(vlanId, 3);
-    STRUCT_CHILD_GETTERS(name, 4);
-    STRUCT_CHILD_GETTERS(mac, 5);
-    STRUCT_CHILD_GETTERS(addresses, 6);
-    STRUCT_CHILD_GETTERS(ndpConfig, 7);
-    STRUCT_CHILD_GETTERS(mtu, 8);
-    STRUCT_CHILD_GETTERS(isVirtual, 9);
-    STRUCT_CHILD_GETTERS(isStateSyncDisabled, 10);
-    STRUCT_CHILD_GETTERS(type, 11);
-    STRUCT_CHILD_GETTERS(arpTable, 12);
-    STRUCT_CHILD_GETTERS(ndpTable, 13);
-    STRUCT_CHILD_GETTERS(arpResponseTable, 14);
-    STRUCT_CHILD_GETTERS(ndpResponseTable, 15);
-    STRUCT_CHILD_GETTERS(dhcpV4Relay, 16);
-    STRUCT_CHILD_GETTERS(dhcpV6Relay, 17);
-    STRUCT_CHILD_GETTERS(dhcpRelayOverridesV4, 18);
-    STRUCT_CHILD_GETTERS(dhcpRelayOverridesV6, 19);
-    STRUCT_CHILD_GETTERS(remoteIntfType, 20);
-    STRUCT_CHILD_GETTERS(remoteIntfLivenessStatus, 21);
-    STRUCT_CHILD_GETTERS(scope, 22);
-    STRUCT_CHILD_GETTERS(portId, 23);
-    STRUCT_CHILD_GETTERS(desiredPeerName, 24);
-    STRUCT_CHILD_GETTERS(desiredPeerAddressIPv6, 25);
-    STRUCT_CHILD_GETTERS(aggregatePortId, 26);
-};
-
-
-template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::cfg::RedirectNextHop, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
-  public StructuredThriftPath<
-    ::facebook::fboss::cfg::RedirectNextHop,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::cfg::RedirectNextHop> {
-  static_assert(
-      ::std::is_same_v<
-          detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::RedirectNextHop>>,
-      "ChildThriftPath<::facebook::fboss::cfg::RedirectNextHop> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::cfg::RedirectNextHop.");
-
- public:
-  using Self = StructuredThriftPath<
-    ::facebook::fboss::cfg::RedirectNextHop,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::cfg::RedirectNextHop>;
-
-  template <typename Name>
-  using TypeFor = typename Self::template TypeFor<Name>;
-  using Self::Self;
-  
-    STRUCT_CHILD_GETTERS(ip, 1);
-    STRUCT_CHILD_GETTERS(intfID, 2);
-    STRUCT_CHILD_GETTERS(tunnelType, 3);
-    STRUCT_CHILD_GETTERS(tunnelId, 4);
-};
-
-
-template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::cfg::NodeMySidConfig, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
-  public StructuredThriftPath<
-    ::facebook::fboss::cfg::NodeMySidConfig,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::cfg::NodeMySidConfig> {
-  static_assert(
-      ::std::is_same_v<
-          detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::NodeMySidConfig>>,
-      "ChildThriftPath<::facebook::fboss::cfg::NodeMySidConfig> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::cfg::NodeMySidConfig.");
-
- public:
-  using Self = StructuredThriftPath<
-    ::facebook::fboss::cfg::NodeMySidConfig,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::cfg::NodeMySidConfig>;
-
-  template <typename Name>
-  using TypeFor = typename Self::template TypeFor<Name>;
-  using Self::Self;
-  
-    STRUCT_CHILD_GETTERS(nodeAddress, 1);
-};
-
-
-template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::cfg::SetDscpMatchAction, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
-  public StructuredThriftPath<
-    ::facebook::fboss::cfg::SetDscpMatchAction,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::cfg::SetDscpMatchAction> {
-  static_assert(
-      ::std::is_same_v<
-          detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::SetDscpMatchAction>>,
-      "ChildThriftPath<::facebook::fboss::cfg::SetDscpMatchAction> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::cfg::SetDscpMatchAction.");
-
- public:
-  using Self = StructuredThriftPath<
-    ::facebook::fboss::cfg::SetDscpMatchAction,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::cfg::SetDscpMatchAction>;
-
-  template <typename Name>
-  using TypeFor = typename Self::template TypeFor<Name>;
-  using Self::Self;
-  
-    STRUCT_CHILD_GETTERS(dscpValue, 1);
-};
-
-
-template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::phy::PmdState, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
-  public StructuredThriftPath<
-    ::facebook::fboss::phy::PmdState,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::phy::PmdState> {
-  static_assert(
-      ::std::is_same_v<
-          detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::phy::PmdState>>,
-      "ChildThriftPath<::facebook::fboss::phy::PmdState> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::phy::PmdState.");
-
- public:
-  using Self = StructuredThriftPath<
-    ::facebook::fboss::phy::PmdState,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::phy::PmdState>;
-
-  template <typename Name>
-  using TypeFor = typename Self::template TypeFor<Name>;
-  using Self::Self;
-  
-    STRUCT_CHILD_GETTERS(lanes, 1);
-    STRUCT_CHILD_GETTERS(linkTrainingStatus, 2);
-};
-
-
-template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::network::thrift::BinaryAddress, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
-  public StructuredThriftPath<
-    ::facebook::network::thrift::BinaryAddress,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::network::thrift::BinaryAddress> {
-  static_assert(
-      ::std::is_same_v<
-          detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::network::thrift::BinaryAddress>>,
-      "ChildThriftPath<::facebook::network::thrift::BinaryAddress> specialization instantiated with a Tag "
-      "that does not describe ::facebook::network::thrift::BinaryAddress.");
-
- public:
-  using Self = StructuredThriftPath<
-    ::facebook::network::thrift::BinaryAddress,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::network::thrift::BinaryAddress>;
-
-  template <typename Name>
-  using TypeFor = typename Self::template TypeFor<Name>;
-  using Self::Self;
-  
-    STRUCT_CHILD_GETTERS(addr, 1);
-    STRUCT_CHILD_GETTERS(port, 2);
-    STRUCT_CHILD_GETTERS(ifName, 3);
-};
-
-
-template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::state::BlockedMacAddress, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
-  public StructuredThriftPath<
-    ::facebook::fboss::state::BlockedMacAddress,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::state::BlockedMacAddress> {
-  static_assert(
-      ::std::is_same_v<
-          detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::state::BlockedMacAddress>>,
-      "ChildThriftPath<::facebook::fboss::state::BlockedMacAddress> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::state::BlockedMacAddress.");
-
- public:
-  using Self = StructuredThriftPath<
-    ::facebook::fboss::state::BlockedMacAddress,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::state::BlockedMacAddress>;
-
-  template <typename Name>
-  using TypeFor = typename Self::template TypeFor<Name>;
-  using Self::Self;
-  
-    STRUCT_CHILD_GETTERS(macAddrToBlockVlanID, 1);
-    STRUCT_CHILD_GETTERS(macAddrToBlockAddr, 2);
-};
-
-
-template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::cfg::EcmpGroupSettings, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
-  public StructuredThriftPath<
-    ::facebook::fboss::cfg::EcmpGroupSettings,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::cfg::EcmpGroupSettings> {
-  static_assert(
-      ::std::is_same_v<
-          detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::EcmpGroupSettings>>,
-      "ChildThriftPath<::facebook::fboss::cfg::EcmpGroupSettings> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::cfg::EcmpGroupSettings.");
-
- public:
-  using Self = StructuredThriftPath<
-    ::facebook::fboss::cfg::EcmpGroupSettings,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::cfg::EcmpGroupSettings>;
-
-  template <typename Name>
-  using TypeFor = typename Self::template TypeFor<Name>;
-  using Self::Self;
-  
-    STRUCT_CHILD_GETTERS(enableSplitHorizon, 1);
-};
-
-
-template<typename Parent, typename Tag>
 class ChildThriftPath<::facebook::fboss::state::SwitchState, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
   public StructuredThriftPath<
     ::facebook::fboss::state::SwitchState,
@@ -7800,6 +8163,7 @@ class ChildThriftPath<::facebook::fboss::state::SwitchState, ::facebook::fboss::
     STRUCT_CHILD_GETTERS(portAclTableGroupMaps, 129);
     STRUCT_CHILD_GETTERS(vxlanTunnelMaps, 131);
     STRUCT_CHILD_GETTERS(vrfMaps, 132);
+    STRUCT_CHILD_GETTERS(interfaceVrfMaps, 133);
     STRUCT_CHILD_GETTERS(remoteSystemPortMaps, 600);
     STRUCT_CHILD_GETTERS(remoteInterfaceMaps, 601);
     STRUCT_CHILD_GETTERS(fabricLinkMonitoringSystemPortMaps, 602);
@@ -8072,72 +8436,6 @@ class ChildThriftPath<::facebook::fboss::cfg::SchedulingParam, ::facebook::fboss
 
 
 template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::state::NeighborResponseEntryFields, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
-  public StructuredThriftPath<
-    ::facebook::fboss::state::NeighborResponseEntryFields,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::state::NeighborResponseEntryFields> {
-  static_assert(
-      ::std::is_same_v<
-          detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::state::NeighborResponseEntryFields>>,
-      "ChildThriftPath<::facebook::fboss::state::NeighborResponseEntryFields> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::state::NeighborResponseEntryFields.");
-
- public:
-  using Self = StructuredThriftPath<
-    ::facebook::fboss::state::NeighborResponseEntryFields,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::state::NeighborResponseEntryFields>;
-
-  template <typename Name>
-  using TypeFor = typename Self::template TypeFor<Name>;
-  using Self::Self;
-  
-    STRUCT_CHILD_GETTERS(ipAddress, 1);
-    STRUCT_CHILD_GETTERS(mac, 2);
-    STRUCT_CHILD_GETTERS(interfaceId, 3);
-};
-
-
-template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::neteng::fboss::bgp::thrift::TRibEntryCanonical, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
-  public StructuredThriftPath<
-    ::facebook::neteng::fboss::bgp::thrift::TRibEntryCanonical,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::neteng::fboss::bgp::thrift::TRibEntryCanonical> {
-  static_assert(
-      ::std::is_same_v<
-          detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::neteng::fboss::bgp::thrift::TRibEntryCanonical>>,
-      "ChildThriftPath<::facebook::neteng::fboss::bgp::thrift::TRibEntryCanonical> specialization instantiated with a Tag "
-      "that does not describe ::facebook::neteng::fboss::bgp::thrift::TRibEntryCanonical.");
-
- public:
-  using Self = StructuredThriftPath<
-    ::facebook::neteng::fboss::bgp::thrift::TRibEntryCanonical,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::neteng::fboss::bgp::thrift::TRibEntryCanonical>;
-
-  template <typename Name>
-  using TypeFor = typename Self::template TypeFor<Name>;
-  using Self::Self;
-  
-    STRUCT_CHILD_GETTERS(prefix, 1);
-    STRUCT_CHILD_GETTERS(paths, 2);
-    STRUCT_CHILD_GETTERS(rib_version, 3);
-    STRUCT_CHILD_GETTERS(path_selection_pending, 4);
-    STRUCT_CHILD_GETTERS(active_cps_criteria, 5);
-    STRUCT_CHILD_GETTERS(active_cte_ucmp_action, 6);
-    STRUCT_CHILD_GETTERS(best_path, 7);
-};
-
-
-template<typename Parent, typename Tag>
 class ChildThriftPath<::facebook::fboss::state::PortVcFields, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
   public StructuredThriftPath<
     ::facebook::fboss::state::PortVcFields,
@@ -8405,6 +8703,36 @@ class ChildThriftPath<::facebook::fboss::cfg::PortQueueRate, ::facebook::fboss::
   
     STRUCT_CHILD_GETTERS(pktsPerSec, 1);
     STRUCT_CHILD_GETTERS(kbitsPerSec, 2);
+};
+
+
+template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::fboss::state::NamedNextHopGroupAndID, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::fboss::state::NamedNextHopGroupAndID,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::state::NamedNextHopGroupAndID> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::fboss::state::NamedNextHopGroupAndID>>,
+      "ChildThriftPath<::facebook::fboss::state::NamedNextHopGroupAndID> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::state::NamedNextHopGroupAndID.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::fboss::state::NamedNextHopGroupAndID,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::state::NamedNextHopGroupAndID>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(name, 1);
+    STRUCT_CHILD_GETTERS(id, 2);
 };
 
 
@@ -8684,134 +9012,6 @@ class ChildThriftPath<::facebook::fboss::cfg::PortNeighbor, ::facebook::fboss::f
 
 
 template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::cfg::PortPfc, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
-  public StructuredThriftPath<
-    ::facebook::fboss::cfg::PortPfc,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::cfg::PortPfc> {
-  static_assert(
-      ::std::is_same_v<
-          detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::PortPfc>>,
-      "ChildThriftPath<::facebook::fboss::cfg::PortPfc> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::cfg::PortPfc.");
-
- public:
-  using Self = StructuredThriftPath<
-    ::facebook::fboss::cfg::PortPfc,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::cfg::PortPfc>;
-
-  template <typename Name>
-  using TypeFor = typename Self::template TypeFor<Name>;
-  using Self::Self;
-  
-    STRUCT_CHILD_GETTERS(tx, 1);
-    STRUCT_CHILD_GETTERS(rx, 2);
-    STRUCT_CHILD_GETTERS(portPgConfigName, 3);
-    STRUCT_CHILD_GETTERS(watchdog, 4);
-    STRUCT_CHILD_GETTERS(txPfcDurationEnable, 5);
-    STRUCT_CHILD_GETTERS(rxPfcDurationEnable, 6);
-};
-
-
-template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::phy::PhyFwVersion, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
-  public StructuredThriftPath<
-    ::facebook::fboss::phy::PhyFwVersion,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::phy::PhyFwVersion> {
-  static_assert(
-      ::std::is_same_v<
-          detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::phy::PhyFwVersion>>,
-      "ChildThriftPath<::facebook::fboss::phy::PhyFwVersion> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::phy::PhyFwVersion.");
-
- public:
-  using Self = StructuredThriftPath<
-    ::facebook::fboss::phy::PhyFwVersion,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::phy::PhyFwVersion>;
-
-  template <typename Name>
-  using TypeFor = typename Self::template TypeFor<Name>;
-  using Self::Self;
-  
-    STRUCT_CHILD_GETTERS(version, 1);
-    STRUCT_CHILD_GETTERS(crc, 2);
-    STRUCT_CHILD_GETTERS(versionStr, 3);
-    STRUCT_CHILD_GETTERS(dateCode, 4);
-    STRUCT_CHILD_GETTERS(minorVersion, 5);
-};
-
-
-template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::TeFlow, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
-  public StructuredThriftPath<
-    ::facebook::fboss::TeFlow,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::TeFlow> {
-  static_assert(
-      ::std::is_same_v<
-          detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::TeFlow>>,
-      "ChildThriftPath<::facebook::fboss::TeFlow> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::TeFlow.");
-
- public:
-  using Self = StructuredThriftPath<
-    ::facebook::fboss::TeFlow,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::TeFlow>;
-
-  template <typename Name>
-  using TypeFor = typename Self::template TypeFor<Name>;
-  using Self::Self;
-  
-    STRUCT_CHILD_GETTERS(srcPort, 1);
-    STRUCT_CHILD_GETTERS(dstPrefix, 2);
-};
-
-
-template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::cfg::BufferPoolConfig, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
-  public StructuredThriftPath<
-    ::facebook::fboss::cfg::BufferPoolConfig,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::cfg::BufferPoolConfig> {
-  static_assert(
-      ::std::is_same_v<
-          detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::BufferPoolConfig>>,
-      "ChildThriftPath<::facebook::fboss::cfg::BufferPoolConfig> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::cfg::BufferPoolConfig.");
-
- public:
-  using Self = StructuredThriftPath<
-    ::facebook::fboss::cfg::BufferPoolConfig,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::cfg::BufferPoolConfig>;
-
-  template <typename Name>
-  using TypeFor = typename Self::template TypeFor<Name>;
-  using Self::Self;
-  
-    STRUCT_CHILD_GETTERS(sharedBytes, 1);
-    STRUCT_CHILD_GETTERS(headroomBytes, 2);
-    STRUCT_CHILD_GETTERS(reservedBytes, 3);
-};
-
-
-template<typename Parent, typename Tag>
 class ChildThriftPath<::facebook::fboss::state::FibContainerFields, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
   public StructuredThriftPath<
     ::facebook::fboss::state::FibContainerFields,
@@ -8935,6 +9135,9 @@ class ChildThriftPath<::facebook::fboss::cfg::AclEntry, ::facebook::fboss::fsdb:
     STRUCT_CHILD_GETTERS(lookupClassPort, 39);
     STRUCT_CHILD_GETTERS(mplsLabel0Ttl, 40);
     STRUCT_CHILD_GETTERS(tcpFlagsMask, 41);
+    STRUCT_CHILD_GETTERS(dstIpWithMask, 42);
+    STRUCT_CHILD_GETTERS(dstIpV6Word1WithMask, 43);
+    STRUCT_CHILD_GETTERS(dstIpV6Word0WithMask, 44);
 };
 
 
@@ -9734,32 +9937,64 @@ class ChildThriftPath<::facebook::bgp::thrift::BgpNetServiceThriftConfig, ::face
 
 
 template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::network::thrift::IPPrefix, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+class ChildThriftPath<::facebook::fboss::state::RoutePrefix, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
   public StructuredThriftPath<
-    ::facebook::network::thrift::IPPrefix,
+    ::facebook::fboss::state::RoutePrefix,
     ::facebook::fboss::fsdb::FsdbOperStateRoot,
     Parent,
-    ::facebook::network::thrift::IPPrefix> {
+    ::facebook::fboss::state::RoutePrefix> {
   static_assert(
       ::std::is_same_v<
           detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::network::thrift::IPPrefix>>,
-      "ChildThriftPath<::facebook::network::thrift::IPPrefix> specialization instantiated with a Tag "
-      "that does not describe ::facebook::network::thrift::IPPrefix.");
+          ::apache::thrift::type::infer_tag<::facebook::fboss::state::RoutePrefix>>,
+      "ChildThriftPath<::facebook::fboss::state::RoutePrefix> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::state::RoutePrefix.");
 
  public:
   using Self = StructuredThriftPath<
-    ::facebook::network::thrift::IPPrefix,
+    ::facebook::fboss::state::RoutePrefix,
     ::facebook::fboss::fsdb::FsdbOperStateRoot,
     Parent,
-    ::facebook::network::thrift::IPPrefix>;
+    ::facebook::fboss::state::RoutePrefix>;
 
   template <typename Name>
   using TypeFor = typename Self::template TypeFor<Name>;
   using Self::Self;
   
-    STRUCT_CHILD_GETTERS(prefixAddress, 1);
-    STRUCT_CHILD_GETTERS(prefixLength, 2);
+    STRUCT_CHILD_GETTERS(v6, 1);
+    STRUCT_CHILD_GETTERS(prefix, 2);
+    STRUCT_CHILD_GETTERS(mask, 3);
+};
+
+
+template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::fboss::cfg::SdkVersion, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::fboss::cfg::SdkVersion,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::cfg::SdkVersion> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::SdkVersion>>,
+      "ChildThriftPath<::facebook::fboss::cfg::SdkVersion> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::cfg::SdkVersion.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::fboss::cfg::SdkVersion,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::cfg::SdkVersion>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
+    STRUCT_CHILD_GETTERS(asicSdk, 1);
+    STRUCT_CHILD_GETTERS(saiSdk, 2);
+    STRUCT_CHILD_GETTERS(firmware, 3);
 };
 
 
@@ -9854,68 +10089,6 @@ class ChildThriftPath<::facebook::fboss::cfg::LoadBalancer, ::facebook::fboss::f
     STRUCT_CHILD_GETTERS(fieldSelection, 2);
     STRUCT_CHILD_GETTERS(algorithm, 3);
     STRUCT_CHILD_GETTERS(seed, 4);
-};
-
-
-template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::state::RoutePrefix, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
-  public StructuredThriftPath<
-    ::facebook::fboss::state::RoutePrefix,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::state::RoutePrefix> {
-  static_assert(
-      ::std::is_same_v<
-          detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::state::RoutePrefix>>,
-      "ChildThriftPath<::facebook::fboss::state::RoutePrefix> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::state::RoutePrefix.");
-
- public:
-  using Self = StructuredThriftPath<
-    ::facebook::fboss::state::RoutePrefix,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::state::RoutePrefix>;
-
-  template <typename Name>
-  using TypeFor = typename Self::template TypeFor<Name>;
-  using Self::Self;
-  
-    STRUCT_CHILD_GETTERS(v6, 1);
-    STRUCT_CHILD_GETTERS(prefix, 2);
-    STRUCT_CHILD_GETTERS(mask, 3);
-};
-
-
-template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::cfg::SdkVersion, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
-  public StructuredThriftPath<
-    ::facebook::fboss::cfg::SdkVersion,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::cfg::SdkVersion> {
-  static_assert(
-      ::std::is_same_v<
-          detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::SdkVersion>>,
-      "ChildThriftPath<::facebook::fboss::cfg::SdkVersion> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::cfg::SdkVersion.");
-
- public:
-  using Self = StructuredThriftPath<
-    ::facebook::fboss::cfg::SdkVersion,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::cfg::SdkVersion>;
-
-  template <typename Name>
-  using TypeFor = typename Self::template TypeFor<Name>;
-  using Self::Self;
-  
-    STRUCT_CHILD_GETTERS(asicSdk, 1);
-    STRUCT_CHILD_GETTERS(saiSdk, 2);
-    STRUCT_CHILD_GETTERS(firmware, 3);
 };
 
 
@@ -10519,6 +10692,7 @@ class ChildThriftPath<::facebook::fboss::state::AggregatePortFields, ::facebook:
     STRUCT_CHILD_GETTERS(configuredCapacityMbps, 13);
     STRUCT_CHILD_GETTERS(activeCapacityMbps, 14);
     STRUCT_CHILD_GETTERS(status, 15);
+    STRUCT_CHILD_GETTERS(disableTTLDecrement, 16);
 };
 
 
@@ -11091,34 +11265,6 @@ class ChildThriftPath<::facebook::bgp::rib_policy::TGoldenPrefixPolicy, ::facebo
 
 
 template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::cfg::DecapMySidConfig, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
-  public StructuredThriftPath<
-    ::facebook::fboss::cfg::DecapMySidConfig,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::cfg::DecapMySidConfig> {
-  static_assert(
-      ::std::is_same_v<
-          detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::DecapMySidConfig>>,
-      "ChildThriftPath<::facebook::fboss::cfg::DecapMySidConfig> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::cfg::DecapMySidConfig.");
-
- public:
-  using Self = StructuredThriftPath<
-    ::facebook::fboss::cfg::DecapMySidConfig,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::cfg::DecapMySidConfig>;
-
-  template <typename Name>
-  using TypeFor = typename Self::template TypeFor<Name>;
-  using Self::Self;
-  
-};
-
-
-template<typename Parent, typename Tag>
 class ChildThriftPath<::facebook::fboss::cfg::LinearQueueCongestionDetection, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
   public StructuredThriftPath<
     ::facebook::fboss::cfg::LinearQueueCongestionDetection,
@@ -11177,6 +11323,34 @@ class ChildThriftPath<::facebook::fboss::cfg::MirrorTunnel, ::facebook::fboss::f
     STRUCT_CHILD_GETTERS(greTunnel, 1);
     STRUCT_CHILD_GETTERS(sflowTunnel, 2);
     STRUCT_CHILD_GETTERS(srcIp, 3);
+};
+
+
+template<typename Parent, typename Tag>
+class ChildThriftPath<::facebook::fboss::cfg::DecapMySidConfig, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
+  public StructuredThriftPath<
+    ::facebook::fboss::cfg::DecapMySidConfig,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::cfg::DecapMySidConfig> {
+  static_assert(
+      ::std::is_same_v<
+          detail::unwrap_type_tag_t<Tag>,
+          ::apache::thrift::type::infer_tag<::facebook::fboss::cfg::DecapMySidConfig>>,
+      "ChildThriftPath<::facebook::fboss::cfg::DecapMySidConfig> specialization instantiated with a Tag "
+      "that does not describe ::facebook::fboss::cfg::DecapMySidConfig.");
+
+ public:
+  using Self = StructuredThriftPath<
+    ::facebook::fboss::cfg::DecapMySidConfig,
+    ::facebook::fboss::fsdb::FsdbOperStateRoot,
+    Parent,
+    ::facebook::fboss::cfg::DecapMySidConfig>;
+
+  template <typename Name>
+  using TypeFor = typename Self::template TypeFor<Name>;
+  using Self::Self;
+  
 };
 
 
@@ -11945,76 +12119,6 @@ class ChildThriftPath<::facebook::neteng::fboss::bgp::thrift::TBgpExtCommunity, 
   using Self::Self;
   
     STRUCT_CHILD_GETTERS(u, 1);
-};
-
-
-template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::fboss::state::LoadBalancerFields, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
-  public StructuredThriftPath<
-    ::facebook::fboss::state::LoadBalancerFields,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::state::LoadBalancerFields> {
-  static_assert(
-      ::std::is_same_v<
-          detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::fboss::state::LoadBalancerFields>>,
-      "ChildThriftPath<::facebook::fboss::state::LoadBalancerFields> specialization instantiated with a Tag "
-      "that does not describe ::facebook::fboss::state::LoadBalancerFields.");
-
- public:
-  using Self = StructuredThriftPath<
-    ::facebook::fboss::state::LoadBalancerFields,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::fboss::state::LoadBalancerFields>;
-
-  template <typename Name>
-  using TypeFor = typename Self::template TypeFor<Name>;
-  using Self::Self;
-  
-    STRUCT_CHILD_GETTERS(id, 1);
-    STRUCT_CHILD_GETTERS(algorithm, 2);
-    STRUCT_CHILD_GETTERS(seed, 3);
-    STRUCT_CHILD_GETTERS(v4Fields, 4);
-    STRUCT_CHILD_GETTERS(v6Fields, 5);
-    STRUCT_CHILD_GETTERS(transportFields, 6);
-    STRUCT_CHILD_GETTERS(mplsFields, 7);
-    STRUCT_CHILD_GETTERS(udfGroups, 8);
-};
-
-
-template<typename Parent, typename Tag>
-class ChildThriftPath<::facebook::bgp::bgp_policy::BgpPolicyStatement, ::facebook::fboss::fsdb::FsdbOperStateRoot, Parent, Tag> :
-  public StructuredThriftPath<
-    ::facebook::bgp::bgp_policy::BgpPolicyStatement,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::bgp::bgp_policy::BgpPolicyStatement> {
-  static_assert(
-      ::std::is_same_v<
-          detail::unwrap_type_tag_t<Tag>,
-          ::apache::thrift::type::infer_tag<::facebook::bgp::bgp_policy::BgpPolicyStatement>>,
-      "ChildThriftPath<::facebook::bgp::bgp_policy::BgpPolicyStatement> specialization instantiated with a Tag "
-      "that does not describe ::facebook::bgp::bgp_policy::BgpPolicyStatement.");
-
- public:
-  using Self = StructuredThriftPath<
-    ::facebook::bgp::bgp_policy::BgpPolicyStatement,
-    ::facebook::fboss::fsdb::FsdbOperStateRoot,
-    Parent,
-    ::facebook::bgp::bgp_policy::BgpPolicyStatement>;
-
-  template <typename Name>
-  using TypeFor = typename Self::template TypeFor<Name>;
-  using Self::Self;
-  
-    STRUCT_CHILD_GETTERS(name, 1);
-    STRUCT_CHILD_GETTERS(description, 2);
-    STRUCT_CHILD_GETTERS(policy_version, 3);
-    STRUCT_CHILD_GETTERS(policy_entries, 4);
-    STRUCT_CHILD_GETTERS(result, 11);
-    STRUCT_CHILD_GETTERS(obj_uuid, 100);
 };
 
 
@@ -13748,6 +13852,8 @@ class ChildThriftPath<::facebook::fboss::phy::PcsStats, ::facebook::fboss::fsdb:
   using Self::Self;
   
     STRUCT_CHILD_GETTERS(rsFec, 1);
+    STRUCT_CHILD_GETTERS(erroredBlocks, 2);
+    STRUCT_CHILD_GETTERS(berCount, 3);
 };
 
 

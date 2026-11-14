@@ -1,7 +1,7 @@
 # FBOSS Skills
 
 This directory contains reusable skills for working on
-[FBOSS](https://github.com/facebook/fboss), the Facebook Open Switching
+[FBOSS](https://github.com/meta/fboss), the Facebook Open Switching
 System. They cover FBOSS services and components such as Agent, QSFP, FSDB,
 platform code, SAI/SDK integration, configuration, and hardware tests. The
 skills are plain-text workflow instructions that can be used by coding agents
@@ -12,6 +12,7 @@ checkouts and Meta-internal environments.
 The open-source skill set focuses on six workflows:
 
 - Debugging FBOSS AgentHwTest failures.
+- Packaging a vendor SDK defect for the vendor (escalation package).
 - Debugging QSFP HW test failures from logs.
 - Adding support for a new transceiver.
 - Applying FBOSS coding standards while changing code.
@@ -28,6 +29,7 @@ fboss/skills/
   build-fboss-oss-local/
   add-config-cli-oss/
   debug-agent-hw-test/
+  vendor-escalation/
   debug-link-test/
   debug-qsfp-hw-test/
   fboss-distro-image/
@@ -91,11 +93,31 @@ It covers:
 - Running cold boot and warm boot test cycles.
 - Reading test output, SAI replayer logs, and crash logs.
 - Categorizing failures as FBOSS, vendor SDK, timeout, config, or pass.
-- Creating a vendor-escalation package with replayer logs and hardware config.
+- Handing `FAIL_VENDOR` tests to `vendor-escalation`.
 
 The skill is intentionally environment-neutral. The open-source references use
 standard `ssh`/`scp` style examples. Meta environments may provide their own
 device-access and build-system overrides.
+
+### `vendor-escalation`
+
+Use this skill when an AgentHwTest fails below SAI and the vendor needs a
+standalone repro. It builds one package with a README (the case report), an
+open-source test and patch, the agent config and hw_config, cold and warm boot
+logs, SAI replayer traces and checksums. It covers:
+
+- Shrinking the failing setup to a minimal config with a passing control.
+- Choosing SAI replayer options for the symptom: programming failures, packet
+  path (`--enable_packet_log`), read-back and warm boot
+  (`--enable_get_attr_log`), latency (`--enable_elapsed_time_log`), SDK logs,
+  and A/B differentials.
+- Capturing mono and multi-switch runs, including the hw_config snapshot.
+- Summarizing replayer traces with line numbers for the README, and assembling
+  and scrubbing the package.
+
+```text
+Use vendor-escalation to package AgentAclCounterTest.VerifyCounterBumpOnTtlHit for Broadcom.
+```
 
 ### `debug-link-test`
 

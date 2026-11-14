@@ -10,6 +10,8 @@
 
 #include "fboss/agent/hw/sai/switch/SaiVirtualRouterManager.h"
 #include "fboss/agent/hw/sai/switch/tests/ManagerTestBase.h"
+#include "fboss/agent/state/Vrf.h"
+#include "fboss/agent/state/VrfMap.h"
 
 #include <string>
 
@@ -67,4 +69,78 @@ TEST_F(VirtualRouterManagerTest, getRouterIDNotFoundTest) {
   EXPECT_THROW(
       saiManagerTable->virtualRouterManager().getRouterID(invalidVrId),
       FbossError);
+}
+
+TEST_F(VirtualRouterManagerTest, addVirtualRouter) {
+  auto& manager = saiManagerTable->virtualRouterManager();
+  auto vrId = manager.addVirtualRouter(RouterID(1001));
+
+  auto handle = manager.getVirtualRouterHandle(RouterID(1001));
+  ASSERT_NE(handle, nullptr);
+  EXPECT_EQ(handle->virtualRouter->adapterKey(), vrId);
+  EXPECT_EQ(handle->mplsRouterInterface, nullptr);
+  EXPECT_EQ(manager.getRouterID(vrId), RouterID(1001));
+}
+
+TEST_F(VirtualRouterManagerTest, addDuplicateVirtualRouter) {
+  auto& manager = saiManagerTable->virtualRouterManager();
+  manager.addVirtualRouter(RouterID(1001));
+  EXPECT_THROW(manager.addVirtualRouter(RouterID(1001)), FbossError);
+  EXPECT_THROW(manager.addVirtualRouter(RouterID(0)), FbossError);
+}
+
+TEST_F(VirtualRouterManagerTest, removeVirtualRouter) {
+  auto& manager = saiManagerTable->virtualRouterManager();
+  auto vrId = manager.addVirtualRouter(RouterID(1001));
+
+  manager.removeVirtualRouter(RouterID(1001));
+
+  EXPECT_EQ(manager.getVirtualRouterHandle(RouterID(1001)), nullptr);
+  EXPECT_FALSE(FakeSai::getInstance()->virtualRouteManager.exists(vrId));
+  EXPECT_NE(manager.getVirtualRouterHandle(RouterID(0)), nullptr);
+}
+
+TEST_F(VirtualRouterManagerTest, removeInvalidVirtualRouter) {
+  auto& manager = saiManagerTable->virtualRouterManager();
+  EXPECT_THROW(manager.removeVirtualRouter(RouterID(0)), FbossError);
+  EXPECT_THROW(manager.removeVirtualRouter(RouterID(1001)), FbossError);
+}
+
+TEST_F(VirtualRouterManagerTest, vrfDelta) {
+  auto& manager = saiManagerTable->virtualRouterManager();
+  auto newState = programmedState->clone();
+  auto vrf = std::make_shared<Vrf>(RouterID(1001));
+  newState->getVrfs()->modify(&newState)->addNode(
+      vrf, scopeResolver().scope(vrf));
+  applyNewState(newState);
+  ASSERT_NE(manager.getVirtualRouterHandle(RouterID(1001)), nullptr);
+
+  newState = programmedState->clone();
+  newState->getVrfs()->modify(&newState)->removeNode(RouterID(1001));
+  applyNewState(newState);
+  EXPECT_EQ(manager.getVirtualRouterHandle(RouterID(1001)), nullptr);
+}
+
+class VirtualRouterManagerVrfSetupTest : public ManagerTestBase {
+ public:
+  void SetUp() override {
+    setupStage = SetupStage::PORT | SetupStage::VLAN | SetupStage::VRF |
+        SetupStage::INTERFACE;
+    testInterfaceRouterIds = {{1, RouterID(1001)}};
+    ManagerTestBase::SetUp();
+  }
+};
+
+TEST_F(VirtualRouterManagerVrfSetupTest, interfaceInVrf) {
+  EXPECT_NE(
+      saiManagerTable->virtualRouterManager().getVirtualRouterHandle(
+          RouterID(1001)),
+      nullptr);
+  auto state = getProgrammedState();
+  EXPECT_EQ(
+      state->getInterfaces()->getNode(InterfaceID(1))->getRouterID(),
+      RouterID(1001));
+  EXPECT_EQ(
+      state->getInterfaces()->getNode(InterfaceID(0))->getRouterID(),
+      RouterID(0));
 }

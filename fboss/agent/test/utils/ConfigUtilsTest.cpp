@@ -87,4 +87,39 @@ TEST(ApplyTomahawk6PciAddrs, CountMismatchThrows) {
       applyTomahawk6PciAddrs({kNl2Switch0}, switchIdToSwitchInfo), FbossError);
 }
 
+TEST(AddVrfForPorts, MovesInterfacesOfPorts) {
+  cfg::SwitchConfig config;
+  for (int i = 1; i <= 3; ++i) {
+    auto& vlanPort = config.vlanPorts()->emplace_back();
+    vlanPort.vlanID() = 100 + i;
+    vlanPort.logicalPort() = i;
+    auto& intf = config.interfaces()->emplace_back();
+    intf.intfID() = 100 + i;
+    intf.vlanID() = 100 + i;
+    intf.type() = cfg::InterfaceType::VLAN;
+  }
+  auto& portIntf = config.interfaces()->emplace_back();
+  portIntf.intfID() = 4;
+  portIntf.portID() = 4;
+  portIntf.type() = cfg::InterfaceType::PORT;
+
+  auto interfaceVrfs =
+      addVrfForPorts(config, RouterID(1001), {PortID(1), PortID(4)});
+  EXPECT_EQ(
+      interfaceVrfs,
+      (std::map<InterfaceID, RouterID>{
+          {InterfaceID(101), RouterID(1001)},
+          {InterfaceID(4), RouterID(1001)}}));
+  interfaceVrfs.merge(addVrfForPorts(config, RouterID(1001), {PortID(2)}));
+
+  ASSERT_EQ(config.vrfs()->size(), 1);
+  EXPECT_EQ(*config.vrfs()->at(0).vrfId(), 1001);
+  std::vector<int32_t> routerIds;
+  for (const auto& intf : *config.interfaces()) {
+    auto it = interfaceVrfs.find(InterfaceID(*intf.intfID()));
+    routerIds.push_back(it == interfaceVrfs.end() ? 0 : it->second);
+  }
+  EXPECT_EQ(routerIds, (std::vector<int32_t>{1001, 1001, 0, 1001}));
+}
+
 } // namespace facebook::fboss::utility

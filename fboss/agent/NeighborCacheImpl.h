@@ -9,15 +9,11 @@
  */
 #pragma once
 
-#include "fboss/agent/FbossError.h"
 #include "fboss/agent/NeighborCacheEntry.h"
 #include "fboss/agent/SwSwitch.h"
-#include "fboss/agent/state/NeighborEntry.h"
 #include "fboss/agent/state/PortDescriptor.h"
 #include "fboss/agent/types.h"
 
-#include <folly/IPAddress.h>
-#include <folly/Random.h>
 #include <list>
 #include <optional>
 #include <string>
@@ -68,7 +64,7 @@ class NeighborCacheImpl {
         needL2EntryForNeighbor_(sw->needL2EntryForNeighbor()) {}
 
   // Methods useful for subclasses
-  void setPendingEntry(AddressType ip, PortDescriptor port, bool force = false);
+  bool setPendingEntry(AddressType ip, PortDescriptor port, bool force = false);
 
   void setExistingEntry(
       AddressType ip,
@@ -134,15 +130,10 @@ class NeighborCacheImpl {
   bool
   programPendingEntry(Entry* entry, PortDescriptor port, bool force = false);
 
-  SwSwitch::StateUpdateFn getUpdateFnToProgramEntryForVlan(Entry* entry);
   SwSwitch::StateUpdateFn getUpdateFnToProgramEntry(
       Entry* entry,
       cfg::SwitchType switchType);
 
-  SwSwitch::StateUpdateFn getUpdateFnToProgramPendingEntryForVlan(
-      Entry* entry,
-      PortDescriptor port,
-      bool force);
   SwSwitch::StateUpdateFn getUpdateFnToProgramPendingEntry(
       Entry* entry,
       PortDescriptor port,

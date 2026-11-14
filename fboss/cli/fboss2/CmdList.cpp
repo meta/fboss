@@ -10,6 +10,8 @@
 
 #include "fboss/cli/fboss2/CmdList.h"
 
+#include <algorithm>
+
 #include <fboss/cli/fboss2/utils/CmdUtils.h> // NOLINT(misc-include-cleaner)
 #include "fboss/cli/fboss2/CmdHandler.h" // NOLINT(misc-include-cleaner)
 #include "fboss/cli/fboss2/commands/bounce/interface/CmdBounceInterface.h"
@@ -22,8 +24,9 @@
 #include "fboss/cli/fboss2/commands/clear/interface/prbs/stats/CmdClearInterfacePrbsStats.h"
 #include "fboss/cli/fboss2/commands/config/gen/agent/CmdConfigGenAgent.h"
 #include "fboss/cli/fboss2/commands/get/pcap/CmdGetPcap.h"
-#include "fboss/cli/fboss2/commands/set/fanhold/CmdSetFanHold.h"
+#include "fboss/cli/fboss2/commands/reload/CmdReloadConfigAgent.h"
 #include "fboss/cli/fboss2/commands/set/interface/CmdSetInterface.h"
+#include "fboss/cli/fboss2/commands/set/interface/admin_state/CmdSetInterfaceAdminState.h"
 #include "fboss/cli/fboss2/commands/set/interface/loopback/CmdSetInterfaceLoopback.h"
 #include "fboss/cli/fboss2/commands/set/interface/prbs/CmdSetInterfacePrbs.h"
 #include "fboss/cli/fboss2/commands/set/interface/prbs/state/CmdSetInterfacePrbsState.h"
@@ -101,6 +104,7 @@
 #endif
 #include "fboss/cli/fboss2/commands/show/product/CmdShowProduct.h"
 #include "fboss/cli/fboss2/commands/show/product/CmdShowProductDetails.h"
+#include "fboss/cli/fboss2/commands/show/reboot_history/CmdShowRebootHistory.h"
 #include "fboss/cli/fboss2/commands/show/rif/CmdShowRif.h"
 #include "fboss/cli/fboss2/commands/show/route/CmdShowRoute.h"
 #include "fboss/cli/fboss2/commands/show/route/CmdShowRouteCounters.h"
@@ -130,6 +134,14 @@ const CommandTree& kCommandTree() {
          commandHandler<CmdConfigGenAgent>,
          argTypeHandler<CmdConfigGenAgentTraits>,
          localOptionsHandler<CmdConfigGenAgentTraits>}}},
+
+      {"reload",
+       "config",
+       "Reload binary configuration file",
+       {{"agent",
+         "Reload the agent config",
+         commandHandler<CmdReloadConfigAgent>,
+         argTypeHandler<CmdReloadConfigAgentTraits>}}},
 
       {"show",
        "acl",
@@ -606,11 +618,6 @@ const CommandTree& kCommandTree() {
        commandHandler<CmdBounceInterface>,
        argTypeHandler<CmdBounceInterfaceTraits>,
        localOptionsHandler<CmdBounceInterfaceTraits>},
-      {"set",
-       "fanhold",
-       "Set fan hold PWM",
-       commandHandler<CmdSetFanHold>,
-       argTypeHandler<CmdSetFanHoldTraits>},
       {
           "set",
           "interface",
@@ -632,6 +639,13 @@ const CommandTree& kCommandTree() {
                "Set loopback mode: <component> <enable|disable>",
                commandHandler<CmdSetInterfaceLoopback>,
                argRegistrar<CmdSetInterfaceLoopbackTraits>,
+           },
+           {
+               "admin-state",
+               "Set XPHY admin state: <xphy_system|xphy_line> <enable|disable>",
+               commandHandler<CmdSetInterfaceAdminState>,
+               argRegistrar<CmdSetInterfaceAdminStateTraits>,
+               localOptionsHandler<CmdSetInterfaceAdminStateTraits>,
            }},
       },
       {"set",
@@ -703,6 +717,12 @@ const CommandTree& kCommandTree() {
          "Show Product Detail Information",
          commandHandler<CmdShowProductDetails>,
          argTypeHandler<CmdShowProductDetailsTraits>}}},
+
+      {"show",
+       "reboot-history",
+       "Show the switch's reboot history and causes",
+       commandHandler<CmdShowRebootHistory>,
+       argTypeHandler<CmdShowRebootHistoryTraits>},
 
       {"stream",
        "fsdb",

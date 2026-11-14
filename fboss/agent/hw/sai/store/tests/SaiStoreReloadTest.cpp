@@ -9,6 +9,7 @@
  */
 
 #include "fboss/agent/hw/sai/store/tests/SaiStoreTest.h"
+#include "fboss/lib/TupleUtils.h"
 
 using namespace facebook::fboss;
 
@@ -58,6 +59,7 @@ class SaiStoreReloadTest : public SaiStoreTest {
         std::nullopt, // CBFC sender credit size
         std::nullopt, // CBFC sender packet overhead
         std::nullopt, // CBFC sender credit limit
+        std::nullopt, // CBFC receiver credit limit
 #endif
 #if SAI_API_VERSION >= SAI_VERSION(1, 9, 0)
         std::nullopt, // Inter Frame Gap
@@ -104,6 +106,10 @@ class SaiStoreReloadTest : public SaiStoreTest {
         std::nullopt, // Metadata
         std::nullopt, // CsigTagAction
         std::nullopt, // CsigLinkLocator
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+        std::nullopt, // IntDelete
+        std::nullopt, // IntMetadata
+#endif
     };
   }
 
@@ -139,6 +145,29 @@ TEST_F(SaiStoreReloadTest, reload) {
   EXPECT_EQ(s.get<SaiHostifTrapGroupTraits>().size(), 2);
   EXPECT_EQ(s.get<SaiPortTraits>().size(), 64);
   EXPECT_EQ(s.get<SaiFdbTraits>().size(), 0);
+}
+
+TEST_F(SaiStoreReloadTest, ordinaryStoreReloadDoesNotConsumeDropReasons) {
+  // SaiStore excludes the switch object. Its separate reload reads this tuple,
+  // so also ensure the consumptive list cannot become a reload attribute.
+  using DropReasons = SaiSwitchTraits::Attributes::DropReasonList;
+  using CreateAttributes = SaiSwitchTraits::CreateAttributes;
+  static_assert(!IsElementOfTuple<DropReasons, CreateAttributes>::value);
+  static_assert(
+      !IsElementOfTuple<std::optional<DropReasons>, CreateAttributes>::value);
+  SwitchSaiId id{fs->switchManager.create(FakeSwitch{})};
+  const std::vector<sai_uint32_t> reasons{0x00050001, 0xffffffff};
+  fs->switchManager.get(id).setDropReasonList(reasons);
+  SaiStore s(id);
+  s.reload();
+  EXPECT_EQ(
+      saiApiTable->switchApi().getAttribute(
+          id, SaiSwitchTraits::Attributes::DropReasonList{}),
+      reasons);
+  EXPECT_TRUE(
+      saiApiTable->switchApi()
+          .getAttribute(id, SaiSwitchTraits::Attributes::DropReasonList{})
+          .empty());
 }
 
 TEST_F(SaiStoreReloadTest, reloadSelective) {

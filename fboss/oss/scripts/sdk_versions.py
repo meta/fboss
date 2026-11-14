@@ -65,6 +65,7 @@ SDK_VERSIONS = {
     # Nvidia
     "CHENAB_SAI_SDK_VERSION_2511_36_0_20": SdkVersion("4.8.4062", "2511.36"),
     "CHENAB_SAI_SDK_VERSION_2605_37_0_20": SdkVersion("4.10.1", "2605.37"),
+    "CHENAB_SAI_SDK_VERSION_2605_38_251_4": SdkVersion("4.10.2", "2605.38"),
 }
 
 

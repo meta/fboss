@@ -8,6 +8,7 @@
 
 #include "fboss/agent/rib/NextHopIDManager.h"
 #include "fboss/agent/state/FibInfoMap.h"
+#include "fboss/agent/state/NextHopIdMaps.h"
 #include "fboss/agent/types.h"
 
 namespace facebook::fboss {
@@ -32,6 +33,9 @@ class OverrideSetIdManager {
   // Rebuilds both maps from FibInfo's override id map, e.g. on warm boot.
   void reconstructFromSwitchStateMap(
       const std::shared_ptr<MultiSwitchFibInfoMap>& fibsInfoMap);
+
+  // Inverse of reconstructFromSwitchStateMap, for FibInfo's override id map.
+  IdToNextHopIdSetMapThriftType toThrift() const;
 
   const std::unordered_map<NextHopIDSet, NextHopSetID>& getMembersToId() const {
     return membersToId_;

@@ -117,6 +117,7 @@ cpp_unittest(
     network_access = network_access_utils.none(),
     deps = [
         "fbsource//third-party/googletest:gmock",
+        "fbsource//xplat/folly:scope_guard",
         "//fboss/platform/platform_manager:device_path_resolver",
     ],
 )
