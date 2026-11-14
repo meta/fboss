@@ -60,7 +60,7 @@ class CmdShowInterfaceTraffic : public CmdHandler<
   bool isInterestingTraffic(cli::TrafficCounters& tc);
   bool isNonZeroErrors(cli::TrafficErrorCounters& ec);
   std::vector<double> getTrafficTotals(
-      std::vector<cli::TrafficCounters> trafficCounters);
+      const std::vector<cli::TrafficCounters>& trafficCounters);
   std::string getThresholdColor(double pct);
   std::vector<std::string> getRowColors(double inPct, double outPct);
   Table::StyledCell makeColorCell(
