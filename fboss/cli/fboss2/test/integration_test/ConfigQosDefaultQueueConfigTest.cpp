@@ -43,6 +43,7 @@ namespace {
 constexpr int kSchedWrr = 0;
 constexpr int kSchedSp = 1;
 constexpr int kScalingTwo = 9;
+constexpr int kBehaviorEarlyDrop = 0;
 constexpr int kBehaviorEcn = 1;
 
 // defaultPortQueues applies to every port with no portQueueConfigName
@@ -193,6 +194,68 @@ class ConfigQosDefaultQueueConfigTest : public Fboss2IntegrationTest {
   folly::dynamic runningConfig_;
 };
 
+// The linear detection profile is written one command at a time: the CLI seeds
+// the linear struct from the entry already on the queue, applies only the
+// attributes named, and writes it back. This case pins minimumLength -- that a
+// later command moves it, and that moving it leaves the rest of the profile
+// alone.
+TEST_F(ConfigQosDefaultQueueConfigTest, AqmDetectionMinimumLength) {
+  constexpr int kFirstMinLength = 20000;
+  constexpr int kFinalMinLength = 35000;
+  constexpr int kMaxLength = 60000;
+  // ASICs without ECN_PROBABILISTIC_MARKING reject any ECN probability other
+  // than 100, so use 100 to keep this test runnable on every platform.
+  constexpr int kProbability = kAqmProbability;
+
+  int queueId = pickUnusedQueueId();
+  const auto* q = configureAndCommit(
+      queueId,
+      {"active-queue-management",
+       "congestion-behavior",
+       "ECN",
+       "detection",
+       "linear",
+       "minimum-length",
+       std::to_string(kFirstMinLength),
+       "maximum-length",
+       std::to_string(kMaxLength),
+       "probability",
+       std::to_string(kProbability)});
+  ASSERT_NE(q, nullptr) << "queue-id " << queueId << " not in running config";
+  ASSERT_TRUE(q->count("aqms"));
+  ASSERT_FALSE((*q)["aqms"].empty());
+  EXPECT_EQ(
+      (*q)["aqms"][0]["detection"]["linear"]["minimumLength"].asInt(),
+      kFirstMinLength);
+
+  // Move minimum-length on its own. congestion-behavior still has to be named
+  // -- it is the key that picks which AQM entry the edit lands on.
+  discardSession();
+  q = configureAndCommit(
+      queueId,
+      {"active-queue-management",
+       "congestion-behavior",
+       "ECN",
+       "detection",
+       "linear",
+       "minimum-length",
+       std::to_string(kFinalMinLength)});
+  ASSERT_NE(q, nullptr) << "queue-id " << queueId << " not in running config";
+  ASSERT_TRUE(q->count("aqms"));
+  ASSERT_FALSE((*q)["aqms"].empty());
+  const auto& linear = (*q)["aqms"][0]["detection"]["linear"];
+
+  EXPECT_EQ(linear["minimumLength"].asInt(), kFinalMinLength)
+      << "the second command must move minimumLength";
+  EXPECT_EQ(linear["maximumLength"].asInt(), kMaxLength)
+      << "a minimum-length edit must not disturb maximumLength";
+  EXPECT_EQ(
+      linear.getDefault("probability", kAqmProbability).asInt(), kProbability)
+      << "a minimum-length edit must not reset probability to its default";
+
+  deleteQueueAndCommit(queueId);
+}
+
 // Bulk traffic queue: shares bandwidth with its peers via weighted round robin.
 // `WRR` also exercises the short-name scheduling alias.
 TEST_F(ConfigQosDefaultQueueConfigTest, BulkTrafficQueueUsesWrrWeight) {
@@ -220,6 +283,66 @@ TEST_F(
   ASSERT_NE(q, nullptr) << "queue-id " << queueId << " not in running config";
   ASSERT_TRUE(q->count("scheduling"));
   EXPECT_EQ((*q)["scheduling"].asInt(), kSchedSp);
+
+  deleteQueueAndCommit(queueId);
+}
+
+// maximumLength is the top of the drop ramp: at that queue length the
+// probability applies in full. It is written by the same one-attribute-at-a-
+// time path as the rest of the linear profile, so this case checks that an
+// edit naming only maximum-length moves it and leaves minimumLength and
+// probability as they were.
+TEST_F(ConfigQosDefaultQueueConfigTest, AqmDetectionMaximumLength) {
+  constexpr int kMinLength = 15000;
+  constexpr int kFirstMaxLength = 50000;
+  constexpr int kFinalMaxLength = 90000;
+  // ASICs without ECN_PROBABILISTIC_MARKING reject any ECN probability other
+  // than 100, so use 100 to keep this test runnable on every platform.
+  constexpr int kProbability = kAqmProbability;
+
+  int queueId = pickUnusedQueueId();
+  const auto* q = configureAndCommit(
+      queueId,
+      {"active-queue-management",
+       "congestion-behavior",
+       "ECN",
+       "detection",
+       "linear",
+       "minimum-length",
+       std::to_string(kMinLength),
+       "maximum-length",
+       std::to_string(kFirstMaxLength),
+       "probability",
+       std::to_string(kProbability)});
+  ASSERT_NE(q, nullptr) << "queue-id " << queueId << " not in running config";
+  ASSERT_TRUE(q->count("aqms"));
+  ASSERT_FALSE((*q)["aqms"].empty());
+  EXPECT_EQ(
+      (*q)["aqms"][0]["detection"]["linear"]["maximumLength"].asInt(),
+      kFirstMaxLength);
+
+  discardSession();
+  q = configureAndCommit(
+      queueId,
+      {"active-queue-management",
+       "congestion-behavior",
+       "ECN",
+       "detection",
+       "linear",
+       "maximum-length",
+       std::to_string(kFinalMaxLength)});
+  ASSERT_NE(q, nullptr) << "queue-id " << queueId << " not in running config";
+  ASSERT_TRUE(q->count("aqms"));
+  ASSERT_FALSE((*q)["aqms"].empty());
+  const auto& linear = (*q)["aqms"][0]["detection"]["linear"];
+
+  EXPECT_EQ(linear["maximumLength"].asInt(), kFinalMaxLength)
+      << "the second command must move maximumLength";
+  EXPECT_EQ(linear["minimumLength"].asInt(), kMinLength)
+      << "a maximum-length edit must not disturb minimumLength";
+  EXPECT_EQ(
+      linear.getDefault("probability", kAqmProbability).asInt(), kProbability)
+      << "a maximum-length edit must not reset probability to its default";
 
   deleteQueueAndCommit(queueId);
 }
@@ -273,6 +396,70 @@ TEST_F(ConfigQosDefaultQueueConfigTest, CongestionSignallingQueueMarksEcn) {
   EXPECT_EQ(linear["minimumLength"].asInt(), kAqmMinLength);
   EXPECT_EQ(linear["maximumLength"].asInt(), kAqmMaxLength);
   EXPECT_EQ(linear["probability"].asInt(), kAqmProbability);
+
+  deleteQueueAndCommit(queueId);
+}
+
+// probability is the one field of the linear profile thrift gives a default
+// to (100), which makes "never set" and "set to 100" the same running config
+// and 0 a real failure. So this case starts without the attribute, checks the
+// default came through, then sets it and checks the lengths configured
+// earlier survived the edit. It uses EARLY_DROP rather than ECN: the agent
+// rejects an ECN probability other than 100 on ASICs without
+// ECN_PROBABILISTIC_MARKING, while EARLY_DROP takes any probability everywhere.
+TEST_F(ConfigQosDefaultQueueConfigTest, AqmDetectionProbability) {
+  constexpr int kMinLength = 25000;
+  constexpr int kMaxLength = 45000;
+  constexpr int kDefaultProbability = 100;
+  constexpr int kProbability = 25;
+
+  int queueId = pickUnusedQueueId();
+  const auto* q = configureAndCommit(
+      queueId,
+      {"active-queue-management",
+       "congestion-behavior",
+       "EARLY_DROP",
+       "detection",
+       "linear",
+       "minimum-length",
+       std::to_string(kMinLength),
+       "maximum-length",
+       std::to_string(kMaxLength)});
+  ASSERT_NE(q, nullptr) << "queue-id " << queueId << " not in running config";
+  ASSERT_TRUE(q->count("aqms"));
+  ASSERT_FALSE((*q)["aqms"].empty());
+  EXPECT_EQ((*q)["aqms"][0]["behavior"].asInt(), kBehaviorEarlyDrop);
+  // Absent in the JSON means the thrift default, which is why this reads
+  // through getDefault rather than requiring the key. What it rules out is a
+  // profile that came back with probability 0, i.e. a ramp that never drops.
+  EXPECT_EQ(
+      (*q)["aqms"][0]["detection"]["linear"]
+          .getDefault("probability", kDefaultProbability)
+          .asInt(),
+      kDefaultProbability)
+      << "probability was never configured, so it must read as its default";
+
+  discardSession();
+  q = configureAndCommit(
+      queueId,
+      {"active-queue-management",
+       "congestion-behavior",
+       "EARLY_DROP",
+       "detection",
+       "linear",
+       "probability",
+       std::to_string(kProbability)});
+  ASSERT_NE(q, nullptr) << "queue-id " << queueId << " not in running config";
+  ASSERT_TRUE(q->count("aqms"));
+  ASSERT_FALSE((*q)["aqms"].empty());
+  const auto& linear = (*q)["aqms"][0]["detection"]["linear"];
+
+  EXPECT_EQ(linear["probability"].asInt(), kProbability)
+      << "an explicit probability must replace the default";
+  EXPECT_EQ(linear["minimumLength"].asInt(), kMinLength)
+      << "a probability edit must not disturb minimumLength";
+  EXPECT_EQ(linear["maximumLength"].asInt(), kMaxLength)
+      << "a probability edit must not disturb maximumLength";
 
   deleteQueueAndCommit(queueId);
 }
