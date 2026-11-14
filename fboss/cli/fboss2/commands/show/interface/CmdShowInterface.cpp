@@ -115,7 +115,7 @@ CmdShowInterface::RetType CmdShowInterface::createModel(
       ifModel.scope() = *portInfo.scope();
 
       // We assume that there is a one-to-one association between
-      // port, interface, and VLAN.
+      // port, interface, and VLAN, or that an ingress VLAN is configured.
       if (portInfo.vlans()->size() == 1) {
         const auto& vlan = portInfo.vlans()->at(0);
         ifModel.vlan() = vlan;
@@ -125,9 +125,10 @@ CmdShowInterface::RetType CmdShowInterface::createModel(
         if (vlanToPrefixes.contains(vlan)) {
           ifModel.prefixes() = vlanToPrefixes[vlan];
         }
-      } else if (portInfo.vlans()->size() == 0) {
-        // Chenab has no vlans. Putting the equivalent port here for now
-        ifModel.vlan() = *portInfo.portId();
+      } else if (portInfo.vlans()->empty()) {
+        if (auto ingressVlan = portInfo.ingressVlan()) {
+          ifModel.vlan() = *ingressVlan;
+        }
         if (vlanToMtu.contains(*portInfo.portId())) {
           ifModel.mtu() = vlanToMtu[*portInfo.portId()];
         }
