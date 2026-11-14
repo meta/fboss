@@ -189,6 +189,15 @@ class HwLoadBalancerTestRunner {
   // Called before traffic is looped through frontPanelPort.
   virtual void learnFrontPanelSrcMac(PortID /* frontPanelPort */) {}
 
+  /*
+   * Fixtures whose spray distribution depends on the core the member ports sit
+   * in rather than on an equal split return bounds here, to be checked per
+   * member against the fair share. See MemberShareBounds.
+   */
+  virtual std::optional<utility::MemberShareBounds> sprayShareBounds() const {
+    return std::nullopt;
+  }
+
   bool isFeatureSupported(HwAsic::Feature feature) const {
     return getEnsemble()->getHwAsicTable()->isFeatureSupportedOnAnyAsic(
         feature);
@@ -227,7 +236,8 @@ class HwLoadBalancerTestRunner {
           loopThroughFrontPanel,
           weights,
           deviation,
-          loadBalanceExpected);
+          loadBalanceExpected,
+          sprayShareBounds());
     };
 
     runTestAcrossWarmBoots(setup, verify, []() {}, []() {});
