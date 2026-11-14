@@ -2021,6 +2021,7 @@ cpp_library(
     deps = [
         "fbsource//xplat/folly/logging:init",
         "fbsource//xplat/folly/logging:logging",
+        ":agent_features",
         ":hw_switch",
         ":instrumentation_hooks",
         ":load_agent_config",
