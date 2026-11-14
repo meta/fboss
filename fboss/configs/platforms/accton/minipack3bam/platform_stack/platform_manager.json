@@ -895,15 +895,7 @@
           "busName": "INCOMING@2",
           "address": "0x35",
           "kernelDeviceName": "mp3_scmcpld",
-          "pmUnitScopedName": "SCM_CPLD",
-          "initRegSettings": [
-            {
-              "regOffset": 177,
-              "ioBuf": [
-                2
-              ]
-            }
-          ]
+          "pmUnitScopedName": "SCM_CPLD"
         },
         {
           "busName": "SCM_MUX_A@0",
