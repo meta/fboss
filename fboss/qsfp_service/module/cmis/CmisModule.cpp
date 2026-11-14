@@ -2888,6 +2888,8 @@ void CmisModule::getFieldValueLocked(CmisField fieldName, uint8_t* fieldValue)
 void CmisModule::updateQsfpData(bool allPages) {
   // expects the lock to be held
   if (!present_) {
+    identityFingerprint_.reset();
+    identityChanged_ = false;
     return;
   }
   try {
@@ -2901,6 +2903,12 @@ void CmisModule::updateQsfpData(bool allPages) {
     cacheCmisRevision();
 
     readCmisField(CmisField::PAGE_UPPER00H, page0_);
+    auto identityFingerprint = getIdentityFingerprint();
+    if (identityFingerprint_ && *identityFingerprint_ != identityFingerprint) {
+      identityChanged_ = true;
+    }
+    identityFingerprint_ = identityFingerprint;
+
     if (!flatMem_) {
       // 10h/11h/13h/14h carry per-lane/per-datapath data and are read for every
       // bank on multi-bank (CPO) modules. 12h/VDM remain bank-0 for now (12h is
@@ -7084,6 +7092,47 @@ bool CmisModule::fillVdmPerfMonitorLinkPm(VdmPerfMonitorStats& vdmStats) {
         .linkPm() = linkPm;
   }
   return true;
+}
+
+uint64_t CmisModule::getIdentityFingerprint() const {
+  // These are the CMIS identity and application-selection fields that are
+  // already fetched by both full and partial refreshes. Do not hash the full
+  // pages: lower-page status and DOM bytes change during normal operation.
+  uint64_t fingerprint = 1469598103934665603ULL;
+  auto addBytes = [&fingerprint](const uint8_t* bytes, size_t length) {
+    for (size_t i = 0; i < length; ++i) {
+      fingerprint ^= bytes[i];
+      fingerprint *= 1099511628211ULL;
+    }
+  };
+
+  addBytes(lowerPage_, 2); // identifier and CMIS revision
+  addBytes(lowerPage_ + 85, 5); // media type and applications 1-8
+  addBytes(page0_ + 1, 16); // vendor name
+  addBytes(page0_ + 17, 3); // vendor OUI
+  addBytes(page0_ + 20, 16); // part number
+  addBytes(page0_ + 38, 16); // serial number
+  return fingerprint;
+}
+
+void CmisModule::invalidateIdentityDependentCache() {
+  staticPagesCached_ = false;
+  cachedFwBuildNumber_.reset();
+  cachedCdbWriteDelayUsec_.reset();
+  maxNumBanks_.reset();
+  cmisRevision_ = {0, 0};
+  moduleCapabilities_.clear();
+  vdmSupportedGroupsMax_ = 0;
+  diagsCapability_.wlock()->reset();
+}
+
+bool CmisModule::consumeTransceiverIdentityChange() {
+  auto changed = identityChanged_;
+  identityChanged_ = false;
+  if (changed) {
+    invalidateIdentityDependentCache();
+  }
+  return changed;
 }
 
 } // namespace fboss
