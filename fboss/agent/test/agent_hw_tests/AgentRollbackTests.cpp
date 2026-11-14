@@ -69,6 +69,17 @@ std::shared_ptr<SwitchState> setPortAdminState(
   port->setAdminState(adminState);
   return newState;
 }
+
+// qsfp_service populates transceiverMaps via programInternalPhyPorts on its
+// own schedule after the agent starts, so it can change mid-test. The same
+// update also rewrites port profile and pin configs when the platform mapping
+// has transceiver-dependent portConfigOverrides; those are not masked here.
+state::SwitchState toThriftWithoutTransceivers(
+    const std::shared_ptr<SwitchState>& state) {
+  auto thriftState = state->toThrift();
+  thriftState.transceiverMaps()->clear();
+  return thriftState;
+}
 } // namespace
 
 TEST_F(AgentRollbackTest, rollbackNeighborResolution) {
@@ -85,7 +96,9 @@ TEST_F(AgentRollbackTest, rollbackNeighborResolution) {
             },
             getDeltaApplicationForRollback()),
         FbossHwUpdateError);
-    EXPECT_EQ(origState->toThrift(), getProgrammedState()->toThrift());
+    EXPECT_EQ(
+        toThriftWithoutTransceivers(origState),
+        toThriftWithoutTransceivers(getProgrammedState()));
 
     // Actually resolve neighbors (persistent change)
     getSw()->updateStateBlocking(
@@ -104,7 +117,9 @@ TEST_F(AgentRollbackTest, rollbackNeighborResolution) {
             },
             getDeltaApplicationForRollback()),
         FbossHwUpdateError);
-    EXPECT_EQ(resolvedState->toThrift(), getProgrammedState()->toThrift());
+    EXPECT_EQ(
+        toThriftWithoutTransceivers(resolvedState),
+        toThriftWithoutTransceivers(getProgrammedState()));
 
     // Unresolve neighbors (restore to original)
     getSw()->updateStateBlocking(
@@ -112,7 +127,9 @@ TEST_F(AgentRollbackTest, rollbackNeighborResolution) {
         [needL2Entry](const std::shared_ptr<SwitchState>& state) {
           return unresolveNeighborState(state, needL2Entry);
         });
-    EXPECT_EQ(origState->toThrift(), getProgrammedState()->toThrift());
+    EXPECT_EQ(
+        toThriftWithoutTransceivers(origState),
+        toThriftWithoutTransceivers(getProgrammedState()));
   };
   verifyAcrossWarmBoots([]() {}, verify);
 }
@@ -194,7 +211,9 @@ TEST_F(AgentQphRollbackTest, rollbackWithQPHConfig) {
             getDeltaApplicationForRollback()));
 
     // State should be unchanged after rollback
-    EXPECT_EQ(origState->toThrift(), getProgrammedState()->toThrift());
+    EXPECT_EQ(
+        toThriftWithoutTransceivers(origState),
+        toThriftWithoutTransceivers(getProgrammedState()));
   };
   verifyAcrossWarmBoots(setup, verify);
 }
