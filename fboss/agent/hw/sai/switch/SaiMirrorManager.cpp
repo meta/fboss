@@ -22,6 +22,13 @@
 
 namespace facebook::fboss {
 
+namespace {
+// SAI_MIRROR_SESSION_ATTR_TOS is the full TOS byte (DSCP in the upper 6 bits).
+uint8_t dscpToSaiTos(uint8_t dscp) {
+  return static_cast<uint8_t>(dscp << 2);
+}
+} // namespace
+
 SaiMirrorHandle::SaiMirror SaiMirrorManager::addNodeSpan(
     sai_object_id_t monitorPort) {
   std::optional<SaiLocalMirrorTraits::Attributes::TcBufferLimit> tcBufferLimit;
@@ -56,7 +63,7 @@ SaiMirrorHandle::SaiMirror SaiMirrorManager::addNodeErSpan(
       SAI_MIRROR_SESSION_TYPE_ENHANCED_REMOTE,
       monitorPort,
       SAI_ERSPAN_ENCAPSULATION_TYPE_MIRROR_L3_GRE_TUNNEL,
-      mirror->getDscp(),
+      dscpToSaiTos(mirror->getDscp()),
       mirrorTunnel.srcIp,
       mirrorTunnel.dstIp,
       mirrorTunnel.srcMac,
@@ -92,7 +99,7 @@ SaiMirrorHandle::SaiMirror SaiMirrorManager::addNodeSflow(
   SaiSflowMirrorTraits::CreateAttributes attributes{
       SAI_MIRROR_SESSION_TYPE_SFLOW,
       monitorPort,
-      mirror->getDscp(),
+      dscpToSaiTos(mirror->getDscp()),
       mirrorTunnel.srcIp,
       mirrorTunnel.dstIp,
       mirrorTunnel.srcMac,

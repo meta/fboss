@@ -122,7 +122,7 @@ class MirrorManagerTest : public ManagerTestBase {
     EXPECT_EQ(gotDstMac, dstMac);
     auto gotTos = mirrorApi.getAttribute(
         mirrorSaiId, SaiEnhancedRemoteMirrorTraits::Attributes::Tos{});
-    EXPECT_EQ(gotTos, tos);
+    EXPECT_EQ(gotTos, tos << 2);
     auto gotTtl = mirrorApi.getAttribute(
         mirrorSaiId, SaiEnhancedRemoteMirrorTraits::Attributes::Ttl{});
     EXPECT_EQ(gotTtl, ttl);
@@ -164,7 +164,7 @@ class MirrorManagerTest : public ManagerTestBase {
     EXPECT_EQ(gotDstMac, dstMac);
     auto gotTos = mirrorApi.getAttribute(
         mirrorSaiId, SaiSflowMirrorTraits::Attributes::Tos{});
-    EXPECT_EQ(gotTos, tos);
+    EXPECT_EQ(gotTos, tos << 2);
     auto gotTtl = mirrorApi.getAttribute(
         mirrorSaiId, SaiSflowMirrorTraits::Attributes::Ttl{});
     EXPECT_EQ(gotTtl, ttl);

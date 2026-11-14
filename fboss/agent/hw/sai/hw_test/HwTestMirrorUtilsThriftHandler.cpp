@@ -87,9 +87,10 @@ bool verifyResolvedMirror(
   auto tos = SaiApiTable::getInstance()->mirrorApi().getAttribute(
       mirrorHandle->adapterKey(),
       SaiEnhancedRemoteMirrorTraits::Attributes::Tos());
-  if (tos != folly::copy(mirror.dscp().value())) {
-    XLOG(ERR) << "verifyResolvedMirror: TOS mismatch, expected "
-              << (int)mirror.dscp().value() << " got " << (int)tos;
+  const int expectedTos = folly::copy(mirror.dscp().value()) << 2;
+  if (tos != expectedTos) {
+    XLOG(ERR) << "verifyResolvedMirror: TOS mismatch, expected " << expectedTos
+              << " got " << (int)tos;
     return false;
   }
 
