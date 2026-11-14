@@ -3,6 +3,7 @@
 #include <folly/FileUtil.h>
 #include <thrift/lib/cpp2/protocol/Serializer.h>
 #include "fboss/agent/hw/gen-cpp2/hardware_stats_types.h"
+#include "fboss/qsfp_service/SdkDumpPath.h"
 
 using namespace facebook::fboss;
 using namespace facebook::fboss::mka;
@@ -668,16 +669,24 @@ void CredoMacsecUtil::getSdkState(QsfpServiceAsyncClient* fbMacsecHandler) {
     return;
   }
 
+  // qsfp_service confines the SDK dump to a service-owned directory and uses
+  // only the basename of the request, rejecting absolute/traversing paths.
+  auto slashPos = FLAGS_filename.find_last_of('/');
+  auto basename = slashPos == std::string::npos
+      ? FLAGS_filename
+      : FLAGS_filename.substr(slashPos + 1);
+
   bool rc = false;
   try {
-    rc = fbMacsecHandler->sync_getSdkState(FLAGS_filename);
+    rc = fbMacsecHandler->sync_getSdkState(basename);
   } catch (const std::exception& ex) {
     printf("getSdkState failed: %s\n", ex.what());
     return;
   }
   printf(
-      "SAI state dump to file %s was %s",
-      FLAGS_filename.c_str(),
+      "SAI state dump to file %s%s was %s",
+      kSdkDumpDir,
+      basename.c_str(),
       rc ? "Successful" : "Failed");
 }
 
