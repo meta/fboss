@@ -102,6 +102,9 @@ class Tomahawk5Asic : public BroadcomXgsAsic {
   std::optional<uint32_t> getMaxEcmpMembers() const override {
     return 64000;
   }
+  std::optional<uint32_t> getMaxPbrAclEntries() const override {
+    return 1535;
+  }
   std::optional<AcceptedValues> getAcceptedLinkUpHoldoffTimeMs()
       const override {
     return AcceptedValues::range(2, 500);
