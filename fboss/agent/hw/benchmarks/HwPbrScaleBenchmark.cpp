@@ -69,14 +69,13 @@ std::vector<RouteNextHopSet> makeDistinctNhgSets(
   std::vector<RouteNextHopSet> sets;
   sets.reserve(count);
   for (int group = 0; group < count; ++group) {
-    std::vector<ResolvedNextHop> members;
+    std::vector<UnresolvedNextHop> members;
     members.reserve(kMembersPerNhg);
     for (int member = 0; member < kMembersPerNhg; ++member) {
       auto globalIndex = group * kMembersPerNhg + member;
       const auto& nhop = ecmpHelper.nhop(globalIndex % numNhops);
       members.emplace_back(
           folly::IPAddress(nhop.ip),
-          nhop.intf,
           ECMP_WEIGHT,
           std::nullopt,
           std::nullopt,
