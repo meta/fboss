@@ -65,10 +65,11 @@ std::string makePolicyName(int index) {
 std::vector<RouteNextHopSet> makeDistinctNhgSets(
     const utility::EcmpSetupAnyNPorts6& ecmpHelper,
     int numNhops,
-    int count) {
+    int count,
+    int firstGroup = 0) {
   std::vector<RouteNextHopSet> sets;
   sets.reserve(count);
-  for (int group = 0; group < count; ++group) {
+  for (int group = firstGroup; group < firstGroup + count; ++group) {
     std::vector<UnresolvedNextHop> members;
     members.reserve(kMembersPerNhg);
     for (int member = 0; member < kMembersPerNhg; ++member) {
@@ -184,9 +185,7 @@ AgentEnsembleSwitchConfigFn makePbrConfigFn() {
   };
 }
 
-void pbrAclStatsCollectionBenchmark(int numPolicies) {
-  folly::BenchmarkSuspender suspender;
-
+std::unique_ptr<AgentEnsemble> createPbrEnsemble() {
   FLAGS_enable_nexthop_id_manager = true;
   FLAGS_enable_stats_update_thread = false;
   FLAGS_enable_pbr_acl_resource_protection = false;
@@ -194,21 +193,58 @@ void pbrAclStatsCollectionBenchmark(int numPolicies) {
   auto ensemble =
       createAgentEnsemble(makePbrConfigFn(), false /*disableLinkStateToggler*/);
   ensemble->stopStatsThread();
+  return ensemble;
+}
 
-  if (!ensemble->getSw()->getHwAsicTable()->isFeatureSupportedOnAllAsic(
-          HwAsic::Feature::PBR_ACL)) {
+bool pbrAclSupported(const AgentEnsemble& ensemble) {
+  return ensemble.getSw()->getHwAsicTable()->isFeatureSupportedOnAllAsic(
+      HwAsic::Feature::PBR_ACL);
+}
+
+int resolvePbrNextHops(
+    AgentEnsemble& ensemble,
+    const utility::EcmpSetupAnyNPorts6& ecmpHelper) {
+  auto numNhops =
+      std::min(static_cast<int>(ecmpHelper.getNextHops().size()), kMaxNexthops);
+  CHECK_GT(numNhops, 0);
+  ensemble.applyNewState([&](const std::shared_ptr<SwitchState>& in) {
+    return ecmpHelper.resolveNextHops(in, numNhops);
+  });
+  return numNhops;
+}
+
+void addOrUpdateNamedNhgs(
+    AgentEnsemble& ensemble,
+    const std::vector<std::pair<std::string, RouteNextHopSet>>& groups) {
+  ensemble.getSw()->getRib()->addOrUpdateNamedNextHopGroups(
+      ensemble.getSw()->getScopeResolver(),
+      groups,
+      createRibToSwitchStateFunction(),
+      ensemble.getSw());
+}
+
+void programPbrPolicies(
+    AgentEnsemble& ensemble,
+    const std::vector<std::pair<std::string, RouteNextHopSet>>& groups,
+    const std::vector<ClassBasedPolicy>& policies) {
+  addOrUpdateNamedNhgs(ensemble, groups);
+  ensemble.getSw()->getRib()->addOrUpdatePolicies(
+      policies,
+      createNextHopIdStateUpdate(ensemble.getSw(), "addOrUpdatePolicies"));
+  bindRoutesToPolicies(ensemble, static_cast<int>(policies.size()));
+}
+
+void pbrAclStatsCollectionBenchmark(int numPolicies) {
+  folly::BenchmarkSuspender suspender;
+  auto ensemble = createPbrEnsemble();
+  if (!pbrAclSupported(*ensemble)) {
     return;
   }
 
   utility::EcmpSetupAnyNPorts6 ecmpHelper(
       ensemble->getSw()->getState(),
       ensemble->getSw()->needL2EntryForNeighbor());
-  auto numNhops =
-      std::min(static_cast<int>(ecmpHelper.getNextHops().size()), kMaxNexthops);
-  CHECK_GT(numNhops, 0);
-  ensemble->applyNewState([&](const std::shared_ptr<SwitchState>& in) {
-    return ecmpHelper.resolveNextHops(in, numNhops);
-  });
+  auto numNhops = resolvePbrNextHops(*ensemble, ecmpHelper);
 
   if (numPolicies > 0) {
     auto nhgSets = makeDistinctNhgSets(ecmpHelper, numNhops, numPolicies);
@@ -217,17 +253,7 @@ void pbrAclStatsCollectionBenchmark(int numPolicies) {
     for (int i = 0; i < numPolicies; ++i) {
       groups.emplace_back(makeNhgName(i), std::move(nhgSets[i]));
     }
-    ensemble->getSw()->getRib()->addOrUpdateNamedNextHopGroups(
-        ensemble->getSw()->getScopeResolver(),
-        groups,
-        createRibToSwitchStateFunction(),
-        ensemble->getSw());
-
-    ensemble->getSw()->getRib()->addOrUpdatePolicies(
-        makePbrPolicy(numPolicies),
-        createNextHopIdStateUpdate(ensemble->getSw(), "addOrUpdatePolicies"));
-
-    bindRoutesToPolicies(*ensemble, numPolicies);
+    programPbrPolicies(*ensemble, groups, makePbrPolicy(numPolicies));
   }
   CHECK_EQ(
       programmedPbrEntries(*ensemble),
