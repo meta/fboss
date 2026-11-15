@@ -284,6 +284,28 @@ mergeNextHopIdMaps(
   return {std::move(mergedSetMap), std::move(mergedNhMap)};
 }
 
+std::shared_ptr<SwitchState> getNewStateWithOldRoutes(
+    const std::shared_ptr<SwitchState>& oldState,
+    const std::shared_ptr<SwitchState>& newState) {
+  auto result = getNewStateWithOldFibInfo(oldState, newState);
+  if (!FLAGS_enable_nexthop_id_manager) {
+    return result;
+  }
+  for (const auto& [matcherStr, newFibInfo] :
+       std::as_const(*newState->getFibsInfoMap())) {
+    auto fibInfo = result->getFibsInfoMap()->getNode(matcherStr);
+    auto [setMap, nhMap] = mergeNextHopIdMaps(
+        newFibInfo->getIdToNextHopIdSetMap(),
+        newFibInfo->getIdToNextHopMap(),
+        fibInfo->getIdToNextHopIdSetMap(),
+        fibInfo->getIdToNextHopMap());
+    auto fibInfoPtr = fibInfo->modify(&result);
+    fibInfoPtr->setIdToNextHopIdSetMap(std::move(setMap));
+    fibInfoPtr->setIdToNextHopMap(std::move(nhMap));
+  }
+  return result;
+}
+
 std::shared_ptr<SwitchState> syncIdMapsFromState(
     const std::shared_ptr<SwitchState>& sourceState,
     const std::shared_ptr<SwitchState>& dstState) {

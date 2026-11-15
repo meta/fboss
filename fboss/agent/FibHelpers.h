@@ -119,6 +119,10 @@ mergeNextHopIdMaps(
     const std::shared_ptr<IdToNextHopIdSetMap>& secondarySetMap,
     const std::shared_ptr<IdToNextHopMap>& secondaryNhMap);
 
+std::shared_ptr<SwitchState> getNewStateWithOldRoutes(
+    const std::shared_ptr<SwitchState>& oldState,
+    const std::shared_ptr<SwitchState>& newState);
+
 /*
  * Copy ID maps (idToNextHopIdSetMap and idToNextHopMap) from sourceState
  * to dstState for each switch. Returns the modified state.
