@@ -24,6 +24,7 @@ cpp_library(
 cpp_unittest(
     name = "ctrl_test",
     srcs = [
+        "AclResourceAccountantTest.cpp",
         "AddrToLocalIntfTest.cpp",
         "AddressUtilTests.cpp",
         "AgentConfigTests.cpp",
@@ -118,6 +119,7 @@ cpp_unittest(
         "fbsource//third-party/fmt:fmt",
         "fbsource//third-party/googletest:gmock",
         "fbsource//third-party/re2:re2",
+        "fbsource//xplat/folly:conv",
         "fbsource//xplat/folly:dynamic",
         "fbsource//xplat/folly:file_util",
         "fbsource//xplat/folly:function",
@@ -152,6 +154,7 @@ cpp_unittest(
         "//common/thrift/cpp/server/code_frameworks/testing:server",
         "//fb303:service_data",
         "//fb303:thread_cached_service_data",
+        "//fboss/agent:acl_resource_accountant",
         "//fboss/agent:address_utils",
         "//fboss/agent:agent_config-cpp2-serialization",
         "//fboss/agent:agent_config-cpp2-types",
