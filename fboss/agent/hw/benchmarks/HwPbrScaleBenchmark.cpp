@@ -12,6 +12,7 @@
 #include <folly/Benchmark.h>
 #include <folly/IPAddress.h>
 #include <algorithm>
+#include <map>
 #include "fboss/agent/AddressUtil.h"
 #include "fboss/agent/AgentFeatures.h"
 #include "fboss/agent/HwAsicTable.h"
@@ -39,11 +40,17 @@ DEFINE_int32(
     100,
     "Number of PBR class-based policies to program before collecting stats");
 
+DEFINE_int32(
+    pbr_mbb_policy_scale,
+    133,
+    "Number of PBR class-based policies whose NHGs all change in one update");
+
 namespace facebook::fboss {
 
 namespace {
 
 constexpr int kClassesPerPolicy = 4;
+constexpr int kMbbClassesPerPolicy = 3;
 constexpr int kMembersPerNhg = 2;
 constexpr int kMaxNexthops = 64;
 constexpr int kStatsCollectionIterations = 100;
@@ -56,6 +63,10 @@ folly::IPAddressV6 makeSid(int index) {
 
 std::string makeNhgName(int index) {
   return fmt::format("pbrNhg{:05d}", index);
+}
+
+std::string makeClassNhgName(int index) {
+  return fmt::format("pbrClassNhg{:05d}", index);
 }
 
 std::string makePolicyName(int index) {
@@ -129,6 +140,51 @@ std::vector<ClassBasedPolicy> makePbrPolicy(int numPolicies) {
     policies.push_back(std::move(policy));
   }
   return policies;
+}
+
+std::vector<std::pair<std::string, RouteNextHopSet>> makeMbbNhgs(
+    std::vector<RouteNextHopSet> sets,
+    int numPolicies) {
+  CHECK_EQ(sets.size(), static_cast<size_t>(2 * numPolicies));
+  std::vector<std::pair<std::string, RouteNextHopSet>> groups;
+  groups.reserve(sets.size());
+  for (int i = 0; i < numPolicies; ++i) {
+    groups.emplace_back(makeNhgName(i), std::move(sets[i]));
+    groups.emplace_back(makeClassNhgName(i), std::move(sets[numPolicies + i]));
+  }
+  return groups;
+}
+
+std::vector<ClassBasedPolicy> makeMbbPolicies(int numPolicies) {
+  std::vector<ClassBasedPolicy> policies;
+  policies.reserve(numPolicies);
+  for (int i = 0; i < numPolicies; ++i) {
+    ClassBasedPolicy policy;
+    policy.name() = makePolicyName(i);
+    policy.defaultNexthopGroup() = makeNhgName(i);
+    for (int tc = 1; tc <= kMbbClassesPerPolicy; ++tc) {
+      NextHopGroup classGroup;
+      classGroup.name() = makeClassNhgName((i + tc - 1) % numPolicies);
+      policy.class2NextHopGroup()[static_cast<ForwardingClass>(tc)] =
+          classGroup;
+    }
+    policies.push_back(std::move(policy));
+  }
+  return policies;
+}
+
+std::map<std::string, int64_t> pbrMatchIds(const AgentEnsemble& ensemble) {
+  std::map<std::string, int64_t> ids;
+  auto acls = ensemble.getSw()->getState()->getAclsForTable(
+      cfg::AclStage::INGRESS,
+      cfg::switch_config_constants::DEFAULT_PBR_ACL_TABLE());
+  if (!acls) {
+    return ids;
+  }
+  for (const auto& [name, entry] : std::as_const(*acls)) {
+    ids.emplace(name, entry->getNextHopGroupId().value());
+  }
+  return ids;
 }
 
 size_t programmedPbrEntries(const AgentEnsemble& ensemble) {
@@ -268,10 +324,50 @@ void pbrAclStatsCollectionBenchmark(int numPolicies) {
   suspender.rehire();
 }
 
+void pbrAclMakeBeforeBreakBenchmark(int numPolicies) {
+  folly::BenchmarkSuspender suspender;
+  auto ensemble = createPbrEnsemble();
+  if (!pbrAclSupported(*ensemble)) {
+    return;
+  }
+
+  utility::EcmpSetupAnyNPorts6 ecmpHelper(
+      ensemble->getSw()->getState(),
+      ensemble->getSw()->needL2EntryForNeighbor());
+  auto numNhops = resolvePbrNextHops(*ensemble, ecmpHelper);
+  auto numGroups = 2 * numPolicies;
+  programPbrPolicies(
+      *ensemble,
+      makeMbbNhgs(
+          makeDistinctNhgSets(ecmpHelper, numNhops, numGroups), numPolicies),
+      makeMbbPolicies(numPolicies));
+  const auto numEntries =
+      static_cast<size_t>(kMbbClassesPerPolicy * numPolicies);
+  CHECK_EQ(programmedPbrEntries(*ensemble), numEntries);
+
+  auto oldMatchIds = pbrMatchIds(*ensemble);
+  auto updatedGroups = makeMbbNhgs(
+      makeDistinctNhgSets(
+          ecmpHelper, numNhops, numGroups, numGroups /*firstGroup*/),
+      numPolicies);
+  suspender.dismiss();
+  addOrUpdateNamedNhgs(*ensemble, updatedGroups);
+  suspender.rehire();
+
+  CHECK_EQ(programmedPbrEntries(*ensemble), numEntries);
+  for (const auto& [name, id] : pbrMatchIds(*ensemble)) {
+    CHECK_NE(id, oldMatchIds.at(name)) << name;
+  }
+}
+
 } // namespace
 
 BENCHMARK(HwPbrAclStatsCollectionBenchmark) {
   pbrAclStatsCollectionBenchmark(FLAGS_pbr_policy_scale);
+}
+
+BENCHMARK(HwPbrAclMakeBeforeBreakBenchmark) {
+  pbrAclMakeBeforeBreakBenchmark(FLAGS_pbr_mbb_policy_scale);
 }
 
 } // namespace facebook::fboss
