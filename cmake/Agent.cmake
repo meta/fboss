@@ -271,6 +271,16 @@ target_link_libraries(shel_manager
   ${GTEST}
 )
 
+add_library(acl_resource_accountant
+  fboss/agent/AclResourceAccountant.cpp
+)
+
+target_link_libraries(acl_resource_accountant
+  agent_features
+  hw_asic_table
+  state
+)
+
 add_library(pbr_acl_manager
   fboss/agent/PbrAclManager.cpp
 )
