@@ -9,9 +9,7 @@
 #include "fboss/agent/state/AclEntry.h"
 #include "fboss/agent/state/AclMap.h"
 #include "fboss/agent/state/AclTable.h"
-#include "fboss/agent/state/AclTableGroup.h"
 #include "fboss/agent/state/AclTableGroupMap.h"
-#include "fboss/agent/state/AclTableMap.h"
 #include "fboss/agent/state/ClassBasedPolicyMap.h"
 #include "fboss/agent/state/ClassBasedPolicyNode.h"
 #include "fboss/agent/state/DeltaFunctions.h"
@@ -72,14 +70,6 @@ PolicyAction classifyPolicy(
   }
   return newPolicy->isReferenced() ? PolicyAction::Change
                                    : PolicyAction::Remove;
-}
-
-std::shared_ptr<AclTable> pbrTableIn(const AclTableGroupMap& groupMap) {
-  auto group = groupMap.getAclTableGroupIf(cfg::AclStage::INGRESS);
-  auto tableMap = group ? group->getAclTableMap() : nullptr;
-  return tableMap ? tableMap->getTableIf(
-                        cfg::switch_config_constants::DEFAULT_PBR_ACL_TABLE())
-                  : nullptr;
 }
 
 void removeRuleEntry(
@@ -245,7 +235,7 @@ std::shared_ptr<SwitchState> updatePbrTables(
   bool changed = false;
   for (const auto& [matcherStr, groupMap] :
        std::as_const(*state->getAclTableGroups())) {
-    auto table = pbrTableIn(*groupMap);
+    auto table = getPbrAclTable(*groupMap);
     if (!table) {
       continue;
     }
@@ -269,7 +259,7 @@ bool hasPbrTable(const std::shared_ptr<SwitchState>& state) {
     return false;
   }
   for (const auto& [_, groupMap] : std::as_const(*groups)) {
-    if (pbrTableIn(*groupMap)) {
+    if (getPbrAclTable(*groupMap)) {
       return true;
     }
   }

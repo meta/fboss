@@ -11,8 +11,13 @@
 
 #include "fboss/agent/AgentFeatures.h"
 #include "fboss/agent/FbossError.h"
+#include "fboss/agent/gen-cpp2/switch_config_constants.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
 #include "fboss/agent/state/AclEntry.h"
+#include "fboss/agent/state/AclTable.h"
+#include "fboss/agent/state/AclTableGroup.h"
+#include "fboss/agent/state/AclTableGroupMap.h"
+#include "fboss/agent/state/AclTableMap.h"
 #include "fboss/agent/state/ClassBasedPolicyNode.h"
 #include "fboss/agent/state/MatchAction.h"
 
@@ -80,6 +85,14 @@ std::vector<std::shared_ptr<AclEntry>> createAclEntriesFromPolicy(
     entries.push_back(makePbrAclEntry(policy, trafficClass, temporary));
   }
   return entries;
+}
+
+std::shared_ptr<AclTable> getPbrAclTable(const AclTableGroupMap& groupMap) {
+  auto group = groupMap.getAclTableGroupIf(cfg::AclStage::INGRESS);
+  auto tableMap = group ? group->getAclTableMap() : nullptr;
+  return tableMap ? tableMap->getTableIf(
+                        cfg::switch_config_constants::DEFAULT_PBR_ACL_TABLE())
+                  : nullptr;
 }
 
 } // namespace facebook::fboss

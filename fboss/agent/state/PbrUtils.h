@@ -18,6 +18,8 @@
 namespace facebook::fboss {
 
 class AclEntry;
+class AclTable;
+class AclTableGroupMap;
 class ClassBasedPolicyNode;
 
 // A make-before-break swap holds a rule under a temporary copy of its name, so
@@ -44,5 +46,7 @@ std::shared_ptr<AclEntry> makePbrAclEntry(
 std::vector<std::shared_ptr<AclEntry>> createAclEntriesFromPolicy(
     const std::shared_ptr<ClassBasedPolicyNode>& policy,
     bool temporary = false);
+
+std::shared_ptr<AclTable> getPbrAclTable(const AclTableGroupMap& groupMap);
 
 } // namespace facebook::fboss
