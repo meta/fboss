@@ -278,6 +278,7 @@ add_library(pbr_acl_manager
 target_link_libraries(pbr_acl_manager
   agent_features
   fboss_error
+  fib_helpers
   state
 )
 

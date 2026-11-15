@@ -962,6 +962,7 @@ cpp_library(
         "fbsource//xplat/folly/logging:logging",
         ":agent_features",
         ":fboss-error",
+        ":fib_helpers",
         ":hwswitch_matcher",
         ":switch_config-cpp2-serialization",
         "//fboss/agent/state:nodebase",

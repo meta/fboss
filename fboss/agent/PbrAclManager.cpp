@@ -3,6 +3,7 @@
 #include "fboss/agent/PbrAclManager.h"
 #include "fboss/agent/AgentFeatures.h"
 #include "fboss/agent/FbossError.h"
+#include "fboss/agent/FibHelpers.h"
 #include "fboss/agent/HwSwitchMatcher.h"
 #include "fboss/agent/gen-cpp2/switch_config_constants.h"
 #include "fboss/agent/state/AclEntry.h"
