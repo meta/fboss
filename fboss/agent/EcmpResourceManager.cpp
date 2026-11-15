@@ -1018,33 +1018,12 @@ EcmpResourceManager::InputOutputState::InputOutputState(
    * FIBs delta + overflow on the first route. It does create a
    * extra empty delta in the vector of deltas.
    */
-  auto newStateWithOldFibs =
-      getNewStateWithOldFibInfo(_in.oldState(), _in.newState());
   // Set universal ID maps (input ∪ old) on the initial state. These maps
   // are inherited by all descendant states via COW, eliminating per-route
   // ID map population. syncIdMapsFromState at the end of consolidateImpl
   // sets the final correct maps on the last delta.
-  if (FLAGS_enable_nexthop_id_manager) {
-    auto newStateFibsInfoMap = _in.newState()->getFibsInfoMap();
-    if (newStateFibsInfoMap) {
-      for (const auto& [matcherStr, newStateFibInfo] :
-           std::as_const(*newStateFibsInfoMap)) {
-        auto oldStateFibInfo =
-            newStateWithOldFibs->getFibsInfoMap()->getNodeIf(matcherStr);
-        if (!oldStateFibInfo) {
-          continue;
-        }
-        auto [universalSetMap, universalNhMap] = mergeNextHopIdMaps(
-            newStateFibInfo->getIdToNextHopIdSetMap(),
-            newStateFibInfo->getIdToNextHopMap(),
-            oldStateFibInfo->getIdToNextHopIdSetMap(),
-            oldStateFibInfo->getIdToNextHopMap());
-        auto oldStateFibInfoPtr = oldStateFibInfo->modify(&newStateWithOldFibs);
-        oldStateFibInfoPtr->setIdToNextHopIdSetMap(std::move(universalSetMap));
-        oldStateFibInfoPtr->setIdToNextHopMap(std::move(universalNhMap));
-      }
-    }
-  }
+  auto newStateWithOldFibs =
+      getNewStateWithOldRoutes(_in.oldState(), _in.newState());
   newStateWithOldFibs->publish();
   appendDelta(StateDelta(_in.oldState(), newStateWithOldFibs));
 }
