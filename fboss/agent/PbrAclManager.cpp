@@ -124,7 +124,7 @@ bool addPolicyEntries(
   return changed;
 }
 
-PolicyAclUpdate applyChangedPolicy(
+PolicyAclUpdate beginPolicySwap(
     AclMap& aclMap,
     const std::shared_ptr<ClassBasedPolicyNode>& old,
     const std::shared_ptr<ClassBasedPolicyNode>& newPolicy) {
@@ -153,8 +153,8 @@ PolicyAclUpdate applyChangedPolicy(
           original,
           "' to update");
     }
-    // TODO(zecheng): implement hitless (make-before-break) update here.
-    aclMap.updateNode(makePbrAclEntry(newPolicy, tc));
+    aclMap.addNode(makePbrAclEntry(newPolicy, tc, true /*temporary*/));
+    update.temporaries.push_back(TemporaryRule{newPolicy, tc});
     update.changed = true;
   }
   for (const auto& [tc, _] : oldTc2Nhg) {
@@ -424,7 +424,7 @@ void PbrAclManager::processDelta(
   for (const auto& policy : changedPolicies(delta)) {
     std::vector<TemporaryRule> temporaries;
     auto made = updatePbrTables(newState, [&](AclMap& aclMap) {
-      auto update = applyChangedPolicy(aclMap, policy.old, policy.updated);
+      auto update = beginPolicySwap(aclMap, policy.old, policy.updated);
       temporaries = std::move(update.temporaries);
       return update.changed;
     });

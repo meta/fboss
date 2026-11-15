@@ -595,9 +595,8 @@ TEST(PbrAclManagerTest, ChangedPolicyWithMissingEntriesThrows) {
   PbrAclManager mgr;
   auto r1 = runManager(mgr, makeState({a}, true));
 
-  // Desired state changes the policy but its programmed entries are absent from
-  // the table (fresh, empty PBR table): the occupied-priority map is
-  // inconsistent, so applyChangedPolicy throws rather than silently reslotting.
+  // Desired state changes the policy but its original entries are absent from
+  // the (fresh, empty) PBR table, so beginPolicySwap throws.
   auto a2 = makePolicy("qzk1", 100, {{ForwardingClass::CLASS_1, 999}});
   auto bad = makeState({a2}, true /*withPbrTable*/); // empty table
   EXPECT_THROW(runManagerDelta(mgr, r1, bad), FbossError);
