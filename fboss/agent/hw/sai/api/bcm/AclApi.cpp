@@ -17,14 +17,22 @@ SaiAclEntryTraits::Attributes::AttributeActionL3SwitchCancel::operator()() {
 
 std::optional<sai_attr_id_t>
 SaiAclEntryTraits::Attributes::AttributeFieldRouteDestination::operator()() {
-  // TODO(zecheng): return the real BCM SAI extension id for the PBR
-  // route-destination ACL match field once the vendor SDK exposes it (phase 2).
+#if defined(BRCM_SAI_SDK_XGS_GTE_16_0) && \
+    SAI_API_VERSION >= SAI_VERSION(1, 19, 0)
+  return SAI_ACL_ENTRY_ATTR_FIELD_ROUTE_DST;
+#else
   return std::nullopt;
+#endif
 }
 
 std::optional<sai_attr_id_t>
 SaiAclTableTraits::Attributes::AttributeFieldRouteDestination::operator()() {
+#if defined(BRCM_SAI_SDK_XGS_GTE_16_0) && \
+    SAI_API_VERSION >= SAI_VERSION(1, 19, 0)
+  return SAI_ACL_TABLE_ATTR_FIELD_ROUTE_DST;
+#else
   return std::nullopt;
+#endif
 }
 
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 2)
