@@ -239,6 +239,7 @@ cpp_unittest(
     deps = [
         "//fboss/agent:agent_features",
         "//fboss/agent:fboss-error",
+        "//fboss/agent:fib_helpers",
         "//fboss/agent:hwswitch_matcher",
         "//fboss/agent:pbr_acl_manager",
         "//fboss/agent:switch_config-cpp2-serialization",

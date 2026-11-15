@@ -4,6 +4,7 @@
 
 #include "fboss/agent/AgentFeatures.h"
 #include "fboss/agent/FbossError.h"
+#include "fboss/agent/FibHelpers.h"
 #include "fboss/agent/HwSwitchMatcher.h"
 #include "fboss/agent/PbrAclManager.h"
 #include "fboss/agent/gen-cpp2/switch_config_constants.h"
@@ -15,8 +16,12 @@
 #include "fboss/agent/state/AclTableMap.h"
 #include "fboss/agent/state/ClassBasedPolicyMap.h"
 #include "fboss/agent/state/ClassBasedPolicyNode.h"
+#include "fboss/agent/state/FibInfoMap.h"
+#include "fboss/agent/state/ForwardingInformationBaseContainer.h"
 #include "fboss/agent/state/MatchAction.h"
 #include "fboss/agent/state/PbrUtils.h"
+#include "fboss/agent/state/Route.h"
+#include "fboss/agent/state/RouteNextHopEntry.h"
 #include "fboss/agent/state/StateDelta.h"
 #include "fboss/agent/state/SwitchState.h"
 
@@ -145,6 +150,68 @@ int64_t redirectOf(const std::shared_ptr<AclEntry>& entry) {
 std::string counterNameOf(const std::shared_ptr<AclEntry>& entry) {
   auto action = MatchAction::fromThrift(entry->getAclAction()->toThrift());
   return *action.getTrafficCounter()->name();
+}
+
+// A resolved route carrying the normalized id a PBR rule matches on.
+std::shared_ptr<SwitchState> withRoute(
+    const std::shared_ptr<SwitchState>& base,
+    const std::string& prefix,
+    int64_t normalizedId) {
+  auto state = base->isPublished() ? base->clone() : base;
+  auto matcher = HwSwitchMatcher::defaultHwSwitchMatcher();
+  const RouterID kRid{0};
+
+  auto fibsInfo = state->getFibsInfoMap();
+  auto fibInfoMap = fibsInfo && fibsInfo->size()
+      ? fibsInfo->clone()
+      : std::make_shared<MultiSwitchFibInfoMap>();
+  auto fibInfo = fibInfoMap->getNodeIf(matcher.matcherString());
+  if (!fibInfo) {
+    fibInfo = std::make_shared<FibInfo>();
+    fibInfo->updateFibContainer(
+        std::make_shared<ForwardingInformationBaseContainer>(kRid), &state);
+    fibInfoMap->addNode(matcher.matcherString(), fibInfo);
+  }
+  state->resetFibsInfoMap(fibInfoMap);
+
+  RouteNextHopEntry entry(
+      RouteNextHopSet{
+          ResolvedNextHop(folly::IPAddress("2401::1"), InterfaceID(1), 1)},
+      AdminDistance::EBGP);
+  std::optional<NextHopSetID> setId{
+      NextHopSetID(static_cast<uint32_t>(normalizedId))};
+  entry.setNormalizedResolvedNextHopSetID(setId);
+  RouteV6::Prefix pfx(folly::IPAddressV6(prefix), 64);
+  auto route = std::make_shared<RouteV6>(
+      RouteV6::makeThrift(pfx, ClientID::BGPD, entry));
+  route->setResolved(entry);
+  route->publish();
+
+  auto fib = state->getFibsInfoMap()
+                 ->getFibContainer(kRid)
+                 ->getFib<folly::IPAddressV6>()
+                 ->modify(kRid, &state);
+  if (fib->getRouteIf(pfx)) {
+    fib->updateNode(route);
+  } else {
+    fib->addNode(route);
+  }
+  state->publish();
+  return state;
+}
+
+std::vector<std::string> routePrefixesIn(const StateDelta& delta) {
+  std::vector<std::string> moved;
+  processFibsDeltaInHwSwitchOrder(
+      delta,
+      [&](RouterID, const auto& /*oldRoute*/, const auto& newRoute) {
+        moved.push_back(newRoute->prefix().str());
+      },
+      [&](RouterID, const auto& newRoute) {
+        moved.push_back(newRoute->prefix().str());
+      },
+      [](RouterID, const auto&) {});
+  return moved;
 }
 
 } // namespace
@@ -801,6 +868,233 @@ TEST(PbrAclManagerTest, SwapRunsOnEveryMatcher) {
   }
 }
 
+TEST(PbrAclManagerTest, MatchSwapProgramsTheRuleBeforeTheRoutesMove) {
+  auto a = makePolicy("qzk1", 100, {{ForwardingClass::CLASS_1, 201}});
+  PbrAclManager mgr;
+  auto r1 = runManager(mgr, makeState({a}, true));
+
+  // Only the default (match) NHG id changes.
+  auto a2 = makePolicy("qzk1", 500, {{ForwardingClass::CLASS_1, 201}});
+  std::vector<StateDelta> deltas;
+  deltas.emplace_back(r1, withPolicies(r1, {a2}));
+  auto out = mgr.modifyState(deltas);
+
+  // 1. Four deltas, chained: make, update, drop, then the route release.
+  ASSERT_EQ(out.size(), 4);
+  for (size_t i = 1; i < out.size(); ++i) {
+    EXPECT_EQ(out[i - 1].newState(), out[i].oldState());
+  }
+
+  // 2. The first already carries the replacement matching the new id, next to
+  // the entry it supersedes.
+  auto acls = pbrAcls(out[0].newState());
+  EXPECT_EQ(acls->numEntries(), 2);
+  ASSERT_NE(acls->getEntryIf("#qzk1_tc1"), nullptr);
+  EXPECT_EQ(acls->getEntryIf("#qzk1_tc1")->getNextHopGroupId(), 500);
+  EXPECT_EQ(acls->getEntryIf("qzk1_tc1")->getNextHopGroupId(), 100);
+
+  // 3. The rule ends back under its original name, matching the new id.
+  auto after = pbrAcls(out.back().newState());
+  EXPECT_EQ(after->numEntries(), 1);
+  EXPECT_EQ(after->getEntryIf("#qzk1_tc1"), nullptr);
+  EXPECT_EQ(after->getEntryIf("qzk1_tc1")->getNextHopGroupId(), 500);
+}
+
+TEST(PbrAclManagerTest, RedirectOnlySwapOwesNoRouteRelease) {
+  auto a = makePolicy("qzk1", 100, {{ForwardingClass::CLASS_1, 201}});
+  PbrAclManager mgr;
+  auto r1 = runManager(mgr, makeState({a}, true));
+
+  // The match id is untouched, so no route moves and no release delta follows
+  // the make, update and drop.
+  auto a2 = makePolicy("qzk1", 100, {{ForwardingClass::CLASS_1, 999}});
+  std::vector<StateDelta> deltas;
+  deltas.emplace_back(r1, withPolicies(r1, {a2}));
+  EXPECT_EQ(mgr.modifyState(deltas).size(), 3);
+}
+
+// A wholesale traffic class replacement swaps no rule, so it needs no
+// temporary copy -- but its entries still match the new id, so they still
+// precede the route move.
+TEST(PbrAclManagerTest, MatchSwapWithDisjointTrafficClasses) {
+  auto a = makePolicy("qzk1", 100, {{ForwardingClass::CLASS_1, 201}});
+  PbrAclManager mgr;
+  auto r1 = runManager(mgr, makeState({a}, true));
+
+  auto a2 = makePolicy("qzk1", 500, {{ForwardingClass::CLASS_2, 202}});
+  std::vector<StateDelta> deltas;
+  deltas.emplace_back(r1, withPolicies(r1, {a2}));
+  auto out = mgr.modifyState(deltas);
+
+  ASSERT_EQ(out.size(), 2);
+  auto intermediate = pbrAcls(out[0].newState());
+  EXPECT_EQ(intermediate->getEntryIf("qzk1_tc2")->getNextHopGroupId(), 500);
+  EXPECT_EQ(intermediate->getEntryIf("qzk1_tc1"), nullptr);
+}
+
+TEST(PbrAclManagerTest, MatchSwapMovesEveryTrafficClass) {
+  auto a = makePolicy(
+      "qzk1",
+      100,
+      {{ForwardingClass::CLASS_1, 201}, {ForwardingClass::CLASS_2, 202}});
+  PbrAclManager mgr;
+  auto r1 = runManager(mgr, makeState({a}, true));
+
+  auto a2 = makePolicy(
+      "qzk1",
+      500,
+      {{ForwardingClass::CLASS_1, 201}, {ForwardingClass::CLASS_2, 202}});
+  std::vector<StateDelta> deltas;
+  deltas.emplace_back(r1, withPolicies(r1, {a2}));
+  auto out = mgr.modifyState(deltas);
+
+  // Both classes are duplicated in the make delta and both end back under
+  // their original names.
+  ASSERT_EQ(out.size(), 4);
+  EXPECT_EQ(pbrAcls(out[0].newState())->numEntries(), 4);
+  auto after = pbrAcls(out.back().newState());
+  EXPECT_EQ(after->numEntries(), 2);
+  EXPECT_EQ(after->getEntryIf("qzk1_tc1")->getNextHopGroupId(), 500);
+  EXPECT_EQ(after->getEntryIf("qzk1_tc2")->getNextHopGroupId(), 500);
+}
+
+TEST(PbrAclManagerTest, OnePolicyMatchSwapsWhileAnotherOnlyRedirects) {
+  auto a = makePolicy("qzk1", 100, {{ForwardingClass::CLASS_1, 201}});
+  auto b = makePolicy("qzk2", 300, {{ForwardingClass::CLASS_2, 202}});
+  PbrAclManager mgr;
+  auto r1 = runManager(mgr, makeState({a, b}, true));
+
+  auto a2 = makePolicy("qzk1", 500, {{ForwardingClass::CLASS_1, 201}});
+  auto b2 = makePolicy("qzk2", 300, {{ForwardingClass::CLASS_2, 999}});
+  std::vector<StateDelta> deltas;
+  deltas.emplace_back(r1, withPolicies(r1, {a2, b2}));
+  auto out = mgr.modifyState(deltas);
+
+  // 1. Each policy gets its own make/update/drop window, and the match swap
+  // adds the trailing delta that releases the routes it held back.
+  ASSERT_EQ(out.size(), 7);
+
+  // 2. Neither window doubles more than the one rule it is swapping.
+  for (const auto& d : out) {
+    EXPECT_LE(pbrAcls(d.newState())->numEntries(), 3);
+  }
+
+  // 3. Both land, the redirect-only policy included rather than dropped.
+  auto after = pbrAcls(out.back().newState());
+  EXPECT_EQ(after->numEntries(), 2);
+  EXPECT_EQ(after->getEntryIf("qzk1_tc1")->getNextHopGroupId(), 500);
+  EXPECT_EQ(redirectOf(after->getEntryIf("qzk2_tc2")), 999);
+}
+
+TEST(PbrAclManagerTest, PoliciesSharingAMatchIdSwapOneAtATime) {
+  auto a = makePolicy("qzk1", 100, {{ForwardingClass::CLASS_1, 201}});
+  auto b = makePolicy("qzk2", 100, {{ForwardingClass::CLASS_2, 202}});
+  PbrAclManager mgr;
+  auto r1 =
+      runManager(mgr, withRoute(makeState({a, b}, true), "2001:db8:1::", 100));
+
+  // Both policies follow the shared group to the same new id, and so does the
+  // one route on it.
+  auto a2 = makePolicy("qzk1", 500, {{ForwardingClass::CLASS_1, 201}});
+  auto b2 = makePolicy("qzk2", 500, {{ForwardingClass::CLASS_2, 202}});
+  auto target = withRoute(withPolicies(r1, {a2, b2}), "2001:db8:1::", 500);
+  std::vector<StateDelta> deltas;
+  deltas.emplace_back(r1, target);
+  auto out = mgr.modifyState(deltas);
+
+  // 1. Make, route, update and drop for the first policy; make, update and
+  // drop for the second, whose route already moved; then the route release.
+  ASSERT_EQ(out.size(), 8);
+
+  // 2. No intermediate holds more than one policy's temporary entry.
+  for (const auto& d : out) {
+    EXPECT_LE(pbrAcls(d.newState())->numEntries(), 3);
+  }
+
+  // 3. The shared route moves once, after a rule matching the new id landed.
+  std::vector<size_t> movedAt;
+  for (size_t i = 0; i < out.size(); ++i) {
+    if (!routePrefixesIn(out[i]).empty()) {
+      movedAt.push_back(i);
+    }
+  }
+  ASSERT_EQ(movedAt.size(), 1);
+  auto before = pbrAcls(out[movedAt[0]].oldState());
+  auto matchesNewId = [&](const std::string& name) {
+    auto entry = before->getEntryIf(name);
+    return entry && entry->getNextHopGroupId() == 500;
+  };
+  EXPECT_TRUE(matchesNewId("#qzk1_tc1") || matchesNewId("#qzk2_tc2"));
+
+  // 4. Both rules end under their original names, matching the new id.
+  auto after = pbrAcls(out.back().newState());
+  EXPECT_EQ(after->numEntries(), 2);
+  EXPECT_EQ(after->getEntryIf("qzk1_tc1")->getNextHopGroupId(), 500);
+  EXPECT_EQ(after->getEntryIf("qzk2_tc2")->getNextHopGroupId(), 500);
+}
+
+TEST(PbrAclManagerTest, MatchSwapMovesOnlyItsOwnRoutes) {
+  auto a = makePolicy("qzk1", 100, {{ForwardingClass::CLASS_1, 201}});
+  auto b = makePolicy("qzk2", 300, {{ForwardingClass::CLASS_2, 202}});
+  PbrAclManager mgr;
+  auto seeded = withRoute(makeState({a, b}, true), "2001:db8:1::", 100);
+  auto r1 = runManager(mgr, withRoute(seeded, "2001:db8:2::", 300));
+
+  // Both policies move their match id, each carrying its own route.
+  auto a2 = makePolicy("qzk1", 500, {{ForwardingClass::CLASS_1, 201}});
+  auto b2 = makePolicy("qzk2", 700, {{ForwardingClass::CLASS_2, 202}});
+  auto target = withPolicies(r1, {a2, b2});
+  target = withRoute(target, "2001:db8:1::", 500);
+  target = withRoute(target, "2001:db8:2::", 700);
+
+  std::vector<StateDelta> deltas;
+  deltas.emplace_back(r1, target);
+  auto out = mgr.modifyState(deltas);
+
+  // No delta moves both routes: each cutover belongs to one policy.
+  size_t totalMoved = 0;
+  for (const auto& d : out) {
+    auto moved = routePrefixesIn(d);
+    totalMoved += moved.size();
+    EXPECT_LE(moved.size(), 1u)
+        << "a single delta moved " << moved.size() << " routes across policies";
+  }
+  // Both routes did move, so the bound above is not passing vacuously.
+  EXPECT_EQ(totalMoved, 2u);
+
+  // The contract the whole sequence exists for. Routes are programmed ahead of
+  // ACLs within one delta, so the rule has to land in a strictly earlier delta
+  // than the routes that move onto its id, not merely the same one.
+  auto landedAt = [&](const std::string& entry) {
+    for (size_t i = 0; i < out.size(); ++i) {
+      if (pbrAcls(out[i].newState())->getEntryIf(entry)) {
+        return i;
+      }
+    }
+    return out.size();
+  };
+  auto movedAt = [&](const std::string& prefix) {
+    for (size_t i = 0; i < out.size(); ++i) {
+      auto moved = routePrefixesIn(out[i]);
+      if (std::find(moved.begin(), moved.end(), prefix) != moved.end()) {
+        return i;
+      }
+    }
+    return out.size();
+  };
+  for (const auto& [entry, prefix] :
+       {std::pair{"#qzk1_tc1", "2001:db8:1::/64"},
+        std::pair{"#qzk2_tc2", "2001:db8:2::/64"}}) {
+    ASSERT_LT(movedAt(prefix), out.size()) << prefix << " never moved";
+    EXPECT_LT(landedAt(entry), movedAt(prefix))
+        << entry << " did not reach hardware before the routes matching it";
+  }
+
+  auto after = pbrAcls(out.back().newState());
+  EXPECT_EQ(after->getEntryIf("qzk1_tc1")->getNextHopGroupId(), 500);
+  EXPECT_EQ(after->getEntryIf("qzk2_tc2")->getNextHopGroupId(), 700);
+}
+
 // --- Warm-boot reconstruct / rollback scenarios ---
 
 TEST(PbrAclManagerTest, ReconstructReusesProgrammedEntry) {
@@ -852,7 +1146,8 @@ TEST(PbrAclManagerTest, ModifyStateEmitsOneDeltaPerInputDelta) {
   noPolicyDeltas.emplace_back(oldState, makeState({}, true /*withPbrTable*/));
   EXPECT_EQ(mgr.modifyState(noPolicyDeltas).size(), 1);
 
-  // 3. Two input deltas yield two output deltas, chained oldState to newState.
+  // 3. Two input deltas yield two output deltas, chained oldState to
+  // newState.
   std::vector<StateDelta> twoDeltas;
   auto first = makeState({a}, true /*withPbrTable*/);
   twoDeltas.emplace_back(oldState, first);
@@ -1049,8 +1344,8 @@ TEST(PbrAclManagerTest, LosingTheLastRouteWhileTrafficClassesChange) {
   std::map<ForwardingClass, int64_t> class2Nhg{
       {ForwardingClass::CLASS_1, 201}, {ForwardingClass::CLASS_2, 202}};
   auto ref = makePolicy("qzk1", 100, class2Nhg);
-  // Drops CLASS_2 in the same delta that withdraws the last route: the removal
-  // must follow the old policy's traffic classes, not the new one's.
+  // Drops CLASS_2 in the same delta that withdraws the last route: the
+  // removal must follow the old policy's traffic classes, not the new one's.
   auto unref =
       makeUnreferencedPolicy("qzk1", 100, {{ForwardingClass::CLASS_1, 201}});
   PbrAclManager mgr;
