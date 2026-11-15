@@ -143,6 +143,7 @@ bool Tomahawk6Asic::isSupported(Feature feature) const {
       // is not being patched for it.
       return saiSdkAtLeast("16.0_ea_odp");
     case HwAsic::Feature::SAI_MPLS_NEXTHOP_OUTSEG_TYPE:
+    case HwAsic::Feature::PBR_ACL:
       return saiSdkAtLeast("16.0_ea_odp");
     case HwAsic::Feature::LINK_LAYER_RETRANSMISSION:
       // UEC Link Layer Retry (UE Spec 1.0.2 section 5.1) via SAI
@@ -264,7 +265,6 @@ bool Tomahawk6Asic::isSupported(Feature feature) const {
     case HwAsic::Feature::ECN_PROBABILISTIC_MARKING:
     case HwAsic::Feature::DEVICE_WATERMARK_SUPPORT:
     case HwAsic::Feature::SWITCH_CUSTOM_DROP_BITMAP_SUPPORT:
-    case HwAsic::Feature::PBR_ACL:
     case HwAsic::Feature::PBR_ACL_BYTE_COUNTER:
     case HwAsic::Feature::CBFC:
     case HwAsic::Feature::SLL_HLL_DISCARD_COUNTERS:
