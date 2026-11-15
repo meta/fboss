@@ -686,6 +686,88 @@ TEST(PbrAclManagerTest, SwapEndsUnderTheOriginalName) {
   }
 }
 
+TEST(PbrAclManagerTest, AddingATrafficClassNeedsNoSwap) {
+  auto a = makePolicy("qzk1", 100, {{ForwardingClass::CLASS_1, 201}});
+  PbrAclManager mgr;
+  auto r1 = runManager(mgr, makeState({a}, true));
+
+  // A pure add has no rule to keep live, so it needs no temporary copy.
+  auto a2 = makePolicy(
+      "qzk1",
+      100,
+      {{ForwardingClass::CLASS_1, 201}, {ForwardingClass::CLASS_2, 202}});
+  std::vector<StateDelta> deltas;
+  deltas.emplace_back(r1, withPolicies(r1, {a2}));
+  auto out = mgr.modifyState(deltas);
+  EXPECT_EQ(out.size(), 1);
+  EXPECT_NE(pbrAcls(out[0].newState())->getEntryIf("qzk1_tc2"), nullptr);
+}
+
+TEST(PbrAclManagerTest, SwapTransientStaysWithinOnePolicy) {
+  auto a = makePolicy(
+      "qzk1",
+      100,
+      {{ForwardingClass::CLASS_1, 201}, {ForwardingClass::CLASS_2, 202}});
+  auto b = makePolicy(
+      "qzk2",
+      300,
+      {{ForwardingClass::CLASS_3, 203}, {ForwardingClass::CLASS_4, 204}});
+  PbrAclManager mgr;
+  auto r1 = runManager(mgr, makeState({a, b}, true));
+  const auto steadyState = pbrAcls(r1)->numEntries();
+  ASSERT_EQ(steadyState, 4);
+
+  // 1. Both policies swap every one of their redirects in one update.
+  auto a2 = makePolicy(
+      "qzk1",
+      100,
+      {{ForwardingClass::CLASS_1, 901}, {ForwardingClass::CLASS_2, 902}});
+  auto b2 = makePolicy(
+      "qzk2",
+      300,
+      {{ForwardingClass::CLASS_3, 903}, {ForwardingClass::CLASS_4, 904}});
+  std::vector<StateDelta> deltas;
+  deltas.emplace_back(r1, withPolicies(r1, {a2, b2}));
+  auto out = mgr.modifyState(deltas);
+
+  // 2. Make, update and drop per policy, not one window covering both.
+  ASSERT_EQ(out.size(), 6);
+
+  // 3. No intermediate carries more than one policy's worth of duplication.
+  // Batched, both policies would be mid-swap at once and this would reach 8.
+  const size_t kTcsPerPolicy = 2;
+  for (const auto& d : out) {
+    EXPECT_LE(pbrAcls(d.newState())->numEntries(), steadyState + kTcsPerPolicy);
+  }
+
+  // 4. Both policies still land on their new redirects.
+  auto after = pbrAcls(out.back().newState());
+  EXPECT_EQ(after->numEntries(), steadyState);
+  EXPECT_EQ(redirectOf(after->getEntryIf("qzk1_tc1")), 901);
+  EXPECT_EQ(redirectOf(after->getEntryIf("qzk1_tc2")), 902);
+  EXPECT_EQ(redirectOf(after->getEntryIf("qzk2_tc3")), 903);
+  EXPECT_EQ(redirectOf(after->getEntryIf("qzk2_tc4")), 904);
+}
+
+TEST(PbrAclManagerTest, AddsAndRemovesShareOneDelta) {
+  auto keep = makePolicy("qzk1", 100, {{ForwardingClass::CLASS_1, 201}});
+  auto drop = makePolicy("qzk2", 300, {{ForwardingClass::CLASS_2, 202}});
+  PbrAclManager mgr;
+  auto r1 = runManager(mgr, makeState({keep, drop}, true));
+
+  // One policy added and one removed, with nothing changed in place.
+  auto add = makePolicy("qzk3", 400, {{ForwardingClass::CLASS_3, 203}});
+  std::vector<StateDelta> deltas;
+  deltas.emplace_back(r1, withPolicies(r1, {keep, add}));
+  auto out = mgr.modifyState(deltas);
+
+  ASSERT_EQ(out.size(), 1);
+  auto after = pbrAcls(out[0].newState());
+  EXPECT_EQ(after->numEntries(), 2);
+  EXPECT_NE(after->getEntryIf("qzk3_tc3"), nullptr);
+  EXPECT_EQ(after->getEntryIf("qzk2_tc2"), nullptr);
+}
+
 // --- Warm-boot reconstruct / rollback scenarios ---
 
 TEST(PbrAclManagerTest, ReconstructReusesProgrammedEntry) {
