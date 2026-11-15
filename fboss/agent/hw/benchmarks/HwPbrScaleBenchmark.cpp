@@ -190,6 +190,7 @@ void pbrAclStatsCollectionBenchmark(int numPolicies) {
 
   FLAGS_enable_nexthop_id_manager = true;
   FLAGS_enable_stats_update_thread = false;
+  FLAGS_enable_pbr_acl_resource_protection = false;
 
   auto ensemble =
       createAgentEnsemble(makePbrConfigFn(), false /*disableLinkStateToggler*/);
