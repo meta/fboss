@@ -299,6 +299,16 @@ DEFINE_int32(
     "Percentage of MySID resources (out of 100) allowed to use before ResourceAccountant rejects the update.");
 
 DEFINE_bool(
+    enable_pbr_acl_resource_protection,
+    true,
+    "Enable PBR ACL entry resource protection in ResourceAccountant");
+
+DEFINE_int32(
+    pbr_acl_resource_percentage,
+    75,
+    "Percentage of PBR ACL entries (out of 100) allowed to use before ResourceAccountant rejects the update.");
+
+DEFINE_bool(
     srv6,
     false,
     "Enable SRv6 features, e.g. collecting the SRv6 MySID resource counter. "
