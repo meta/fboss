@@ -273,6 +273,21 @@ bool hasPbrTable(const std::shared_ptr<SwitchState>& state) {
   return false;
 }
 
+template <typename AddrT>
+void addOrUpdateRoute(
+    std::shared_ptr<SwitchState>& state,
+    RouterID rid,
+    const std::shared_ptr<Route<AddrT>>& route) {
+  auto fib =
+      state->getFibsInfoMap()->getFibContainer(rid)->getFib<AddrT>()->modify(
+          rid, &state);
+  if (fib->getRouteIf(route->prefix())) {
+    fib->updateNode(route);
+  } else {
+    fib->addNode(route);
+  }
+}
+
 std::shared_ptr<SwitchState> updateOriginals(
     const std::shared_ptr<SwitchState>& state,
     const std::vector<TemporaryRule>& temporaries) {
@@ -327,41 +342,6 @@ void PbrAclManager::InputOutputState::replaceLastDelta(
   out_.pop_back();
   out_.emplace_back(delta.oldState(), delta.newState());
 }
-
-template <typename AddrT>
-void PbrAclManager::InputOutputState::addOrUpdateRoute(
-    RouterID rid,
-    const std::shared_ptr<Route<AddrT>>& route,
-    bool withRouteDelta) {
-  DCHECK(getCurrentStateDelta().oldState()->isPublished());
-  if (withRouteDelta) {
-    publishLastDelta();
-  }
-  auto oldState = getCurrentStateDelta().newState();
-  auto newState = oldState->clone();
-  auto fib =
-      newState->getFibsInfoMap()->getFibContainer(rid)->getFib<AddrT>()->modify(
-          rid, &newState);
-  if (fib->getRouteIf(route->prefix())) {
-    fib->updateNode(route);
-  } else {
-    fib->addNode(route);
-  }
-  if (withRouteDelta) {
-    appendDelta(StateDelta(oldState, newState));
-  } else {
-    replaceLastDelta(StateDelta(getCurrentStateDelta().oldState(), newState));
-  }
-}
-
-template void PbrAclManager::InputOutputState::addOrUpdateRoute(
-    RouterID rid,
-    const std::shared_ptr<Route<folly::IPAddressV4>>& route,
-    bool withRouteDelta);
-template void PbrAclManager::InputOutputState::addOrUpdateRoute(
-    RouterID rid,
-    const std::shared_ptr<Route<folly::IPAddressV6>>& route,
-    bool withRouteDelta);
 
 StateDelta PbrAclManager::InputOutputState::getCurrentStateDelta() const {
   CHECK(!out_.empty());
