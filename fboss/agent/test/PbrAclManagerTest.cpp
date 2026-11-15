@@ -602,6 +602,90 @@ TEST(PbrAclManagerTest, ChangedPolicyWithMissingEntriesThrows) {
   EXPECT_THROW(runManagerDelta(mgr, r1, bad), FbossError);
 }
 
+// --- Make-before-break scenarios ---
+
+TEST(PbrAclManagerTest, RedirectChangeIsMakeBeforeBreak) {
+  auto a = makePolicy(
+      "qzk1",
+      100,
+      {{ForwardingClass::CLASS_1, 201}},
+      {{ForwardingClass::CLASS_1, "gold"}});
+  PbrAclManager mgr;
+  auto r1 = runManager(mgr, makeState({a}, true));
+
+  // 1. Same named group, new members: its normalized id changes.
+  auto a2 = makePolicy(
+      "qzk1",
+      100,
+      {{ForwardingClass::CLASS_1, 999}},
+      {{ForwardingClass::CLASS_1, "gold"}});
+  std::vector<StateDelta> deltas;
+  deltas.emplace_back(r1, withPolicies(r1, {a2}));
+  auto out = mgr.modifyState(deltas);
+
+  // 2. The swap expands into ordered make, update and drop deltas.
+  ASSERT_EQ(out.size(), 3);
+  for (size_t i = 1; i < out.size(); ++i) {
+    EXPECT_EQ(out[i - 1].newState(), out[i].oldState());
+  }
+
+  // 3. The make delta carries the rule and its temporary copy, so the rule is
+  // never absent from hardware.
+  auto made = pbrAcls(out[0].newState());
+  EXPECT_EQ(made->numEntries(), 2);
+  ASSERT_NE(made->getEntryIf("qzk1_tc1"), nullptr);
+  ASSERT_NE(made->getEntryIf("#qzk1_tc1"), nullptr);
+  EXPECT_EQ(redirectOf(made->getEntryIf("#qzk1_tc1")), 999);
+  EXPECT_EQ(redirectOf(made->getEntryIf("qzk1_tc1")), 201);
+
+  // 4. The update delta rewrites the original in place to match its copy.
+  auto updated = pbrAcls(out[1].newState());
+  EXPECT_EQ(updated->numEntries(), 2);
+  auto original = updated->getEntryIf("qzk1_tc1");
+  auto temporary = updated->getEntryIf("#qzk1_tc1");
+  ASSERT_NE(original, nullptr);
+  ASSERT_NE(temporary, nullptr);
+  EXPECT_EQ(original->getPriority(), temporary->getPriority());
+  EXPECT_EQ(original->getNextHopGroupId(), temporary->getNextHopGroupId());
+  EXPECT_EQ(original->getTrafficClass(), temporary->getTrafficClass());
+  EXPECT_EQ(redirectOf(original), redirectOf(temporary));
+
+  // 5. The drop delta leaves only the original name.
+  auto after = pbrAcls(out[2].newState());
+  EXPECT_EQ(after->numEntries(), 1);
+  EXPECT_EQ(after->getEntryIf("#qzk1_tc1"), nullptr);
+  ASSERT_NE(after->getEntryIf("qzk1_tc1"), nullptr);
+  EXPECT_EQ(redirectOf(after->getEntryIf("qzk1_tc1")), 999);
+
+  // 6. Every entry at every step names one counter, so its refcount never
+  // falls to zero and the count carries over instead of resetting.
+  const auto counter = counterNameOf(after->getEntryIf("qzk1_tc1"));
+  for (const auto& d : out) {
+    for (const auto* name : {"qzk1_tc1", "#qzk1_tc1"}) {
+      if (auto entry = pbrAcls(d.newState())->getEntryIf(name)) {
+        EXPECT_EQ(counterNameOf(entry), counter) << name;
+      }
+    }
+  }
+}
+
+TEST(PbrAclManagerTest, SwapEndsUnderTheOriginalName) {
+  auto a = makePolicy("qzk1", 100, {{ForwardingClass::CLASS_1, 201}});
+  PbrAclManager mgr;
+  auto state = runManager(mgr, makeState({a}, true));
+
+  // The second swap reuses the temporary name the first one freed.
+  for (int64_t redirect : {999, 777}) {
+    auto next = makePolicy("qzk1", 100, {{ForwardingClass::CLASS_1, redirect}});
+    state = runManagerDelta(mgr, state, withPolicies(state, {next}));
+    auto acls = pbrAcls(state);
+    EXPECT_EQ(acls->numEntries(), 1);
+    EXPECT_EQ(acls->getEntryIf("#qzk1_tc1"), nullptr);
+    ASSERT_NE(acls->getEntryIf("qzk1_tc1"), nullptr);
+    EXPECT_EQ(redirectOf(acls->getEntryIf("qzk1_tc1")), redirect);
+  }
+}
+
 // --- Warm-boot reconstruct / rollback scenarios ---
 
 TEST(PbrAclManagerTest, ReconstructReusesProgrammedEntry) {
