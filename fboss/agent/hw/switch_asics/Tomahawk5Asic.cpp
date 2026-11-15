@@ -138,6 +138,8 @@ bool Tomahawk5Asic::isSupported(Feature feature) const {
     case HwAsic::Feature::MY_MAC:
     case HwAsic::Feature::HW_PROTECTION_SWITCHOVER_COUNTERS:
       return true;
+    case HwAsic::Feature::PBR_ACL:
+      return saiSdkAtLeast("16.0_ea_odp");
     // features not working well with bcmsim
     case HwAsic::Feature::MIRROR_PACKET_TRUNCATION:
     case HwAsic::Feature::SFLOW_SAMPLING:
@@ -253,7 +255,6 @@ bool Tomahawk5Asic::isSupported(Feature feature) const {
     case HwAsic::Feature::DEVICE_WATERMARK_SUPPORT:
     case HwAsic::Feature::SWITCH_CUSTOM_DROP_BITMAP_SUPPORT:
     case HwAsic::Feature::ECMP_RANDOM_SPRAY_HIERARCHICAL_LEVEL:
-    case HwAsic::Feature::PBR_ACL:
     case HwAsic::Feature::PBR_ACL_BYTE_COUNTER:
     case HwAsic::Feature::CBFC:
     case HwAsic::Feature::LINK_LAYER_RETRANSMISSION:
