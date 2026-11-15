@@ -123,6 +123,9 @@ class YubaAsic : public TajoAsic {
   std::optional<uint32_t> getMaxMySidEntries() const override {
     return 2048;
   }
+  std::optional<uint32_t> getMaxPbrAclEntries() const override {
+    return 448;
+  }
   std::optional<uint32_t> getMaxRouteCounters() const override {
     return 4096;
   }
