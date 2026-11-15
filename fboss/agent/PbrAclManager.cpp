@@ -24,6 +24,7 @@
 #include <folly/logging/xlog.h>
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -55,6 +56,7 @@ struct PolicyAclUpdate {
 struct ChangedPolicy {
   std::shared_ptr<ClassBasedPolicyNode> old;
   std::shared_ptr<ClassBasedPolicyNode> updated;
+  std::optional<NextHopSetID> newDefaultNhgId;
 };
 
 enum class PolicyAction { Add, Remove, Change, None };
@@ -202,6 +204,19 @@ bool applyAddsAndRemoves(AclMap& newAclMap, const StateDelta& delta) {
   return changed;
 }
 
+std::optional<NextHopSetID> newDefaultNhgId(
+    const std::shared_ptr<ClassBasedPolicyNode>& old,
+    const std::shared_ptr<ClassBasedPolicyNode>& newPolicy) {
+  const auto oldId = *old->getDefaultNextHopGroup().id();
+  const auto newId = *newPolicy->getDefaultNextHopGroup().id();
+  if (oldId == newId || newPolicy->getClass2NextHopGroup().empty()) {
+    return std::nullopt;
+  }
+  XLOG(DBG2) << "PBR policy " << newPolicy->getID() << " match id " << oldId
+             << " -> " << newId;
+  return NextHopSetID(newId);
+}
+
 std::vector<ChangedPolicy> changedPolicies(const StateDelta& delta) {
   std::vector<ChangedPolicy> changed;
   DeltaFunctions::forEachChanged(
@@ -209,7 +224,8 @@ std::vector<ChangedPolicy> changedPolicies(const StateDelta& delta) {
       [&](const std::shared_ptr<ClassBasedPolicyNode>& old,
           const std::shared_ptr<ClassBasedPolicyNode>& newPolicy) {
         if (classifyPolicy(old, newPolicy) == PolicyAction::Change) {
-          changed.push_back(ChangedPolicy{old, newPolicy});
+          changed.push_back(
+              ChangedPolicy{old, newPolicy, newDefaultNhgId(old, newPolicy)});
         }
       },
       [](const std::shared_ptr<ClassBasedPolicyNode>&) {},
@@ -384,9 +400,6 @@ void PbrAclManager::processDelta(
     InputOutputState* inOutState) {
   auto newState = delta.newState();
 
-  // TODO(zecheng): also react to namedNextHopGroup member changes (FibInfo
-  // normalized-id deltas), which shift a policy's match/redirect ids without a
-  // policy delta.
   if (DeltaFunctions::isEmpty(delta.getClassBasedPoliciesDelta())) {
     return;
   }
@@ -400,6 +413,8 @@ void PbrAclManager::processDelta(
     }
     return;
   }
+
+  auto policyChanges = changedPolicies(delta);
 
   bool first = true;
   auto emit = [&](const std::shared_ptr<SwitchState>& state) {
@@ -421,7 +436,7 @@ void PbrAclManager::processDelta(
     emit(newState);
   }
 
-  for (const auto& policy : changedPolicies(delta)) {
+  for (const auto& policy : policyChanges) {
     std::vector<TemporaryRule> temporaries;
     auto made = updatePbrTables(newState, [&](AclMap& aclMap) {
       auto update = beginPolicySwap(aclMap, policy.old, policy.updated);
