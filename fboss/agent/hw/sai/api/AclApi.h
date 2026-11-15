@@ -17,7 +17,9 @@
 
 #include <folly/logging/xlog.h>
 
+#include <array>
 #include <tuple>
+#include <utility>
 
 extern "C" {
 #include <sai.h>
@@ -967,6 +969,21 @@ class AclApi : public SaiApi<AclApi> {
     saiApiCheckError(status, ApiType, "Failed to query for Acl api");
   }
   AclApi(const AclApi& other) = delete;
+
+  std::pair<sai_uint64_t, sai_uint64_t> getCounterPacketsAndBytes(
+      AclCounterSaiId id) const {
+    auto g{SaiApiLock::getInstance()->lock()};
+    std::array<sai_attribute_t, 2> attrs{};
+    attrs[0].id = SAI_ACL_COUNTER_ATTR_PACKETS;
+    attrs[1].id = SAI_ACL_COUNTER_ATTR_BYTES;
+    auto status =
+        api_->get_acl_counter_attribute(id, attrs.size(), attrs.data());
+    saiApiCheckError(
+        status,
+        ApiType,
+        fmt::format("Failed to get packets and bytes of ACL counter {}", id));
+    return {attrs[0].value.u64, attrs[1].value.u64};
+  }
 
  private:
   sai_status_t _create(

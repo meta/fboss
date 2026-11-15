@@ -2210,8 +2210,25 @@ void SaiAclTableManager::updateStats() {
         (pbrBytes &&
          handle.first == cfg::switch_config_constants::DEFAULT_PBR_ACL_TABLE());
     for (const auto& aclMember : handle.second->aclTableMembers) {
-      for (const auto& [counterType, counterName] :
-           aclMember.second->aclCounterTypeAndName) {
+      const auto& typeAndName = aclMember.second->aclCounterTypeAndName;
+      auto packetsIt = std::find_if(
+          typeAndName.begin(), typeAndName.end(), [](const auto& entry) {
+            return entry.first == cfg::CounterType::PACKETS;
+          });
+      auto bytesIt = std::find_if(
+          typeAndName.begin(), typeAndName.end(), [](const auto& entry) {
+            return entry.first == cfg::CounterType::BYTES;
+          });
+      if (readBytes && packetsIt != typeAndName.end() &&
+          bytesIt != typeAndName.end()) {
+        auto [packets, bytes] =
+            SaiApiTable::getInstance()->aclApi().getCounterPacketsAndBytes(
+                aclMember.second->aclCounter->adapterKey());
+        aclStats_.updateStat(now, packetsIt->second, packets);
+        aclStats_.updateStat(now, bytesIt->second, bytes);
+        continue;
+      }
+      for (const auto& [counterType, counterName] : typeAndName) {
         switch (counterType) {
           case cfg::CounterType::PACKETS: {
             auto counterPackets =
