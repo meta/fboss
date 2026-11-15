@@ -768,6 +768,39 @@ TEST(PbrAclManagerTest, AddsAndRemovesShareOneDelta) {
   EXPECT_EQ(after->getEntryIf("qzk2_tc2"), nullptr);
 }
 
+TEST(PbrAclManagerTest, SwapRunsOnEveryMatcher) {
+  const auto first = HwSwitchMatcher::defaultHwSwitchMatcher();
+  const HwSwitchMatcher second(std::unordered_set<SwitchID>({SwitchID(1)}));
+  auto a = makePolicy("qzk1", 100, {{ForwardingClass::CLASS_1, 201}});
+  auto state = makeState({a}, true)->clone();
+  auto groups = state->getAclTableGroups()->clone();
+  groups->addMapNode(groups->getMapNodeIf(first), second);
+  state->resetAclTableGroups(groups);
+  state->publish();
+  PbrAclManager mgr;
+  auto r1 = runManager(mgr, state);
+
+  // One swap rewrites the rule in both matchers' PBR tables.
+  auto a2 = makePolicy("qzk1", 100, {{ForwardingClass::CLASS_1, 999}});
+  std::vector<StateDelta> deltas;
+  deltas.emplace_back(r1, withPolicies(r1, {a2}));
+  auto out = mgr.modifyState(deltas);
+  ASSERT_EQ(out.size(), 3);
+  for (const auto& matcher : {first, second}) {
+    auto acls = out.back()
+                    .newState()
+                    ->getAclTableGroups()
+                    ->getMapNodeIf(matcher)
+                    ->getAclTableGroupIf(cfg::AclStage::INGRESS)
+                    ->getAclTableMap()
+                    ->getTableIf(kPbrTable())
+                    ->getAclMap()
+                    .unwrap();
+    EXPECT_EQ(acls->numEntries(), 1);
+    EXPECT_EQ(redirectOf(acls->getEntryIf("qzk1_tc1")), 999);
+  }
+}
+
 // --- Warm-boot reconstruct / rollback scenarios ---
 
 TEST(PbrAclManagerTest, ReconstructReusesProgrammedEntry) {
