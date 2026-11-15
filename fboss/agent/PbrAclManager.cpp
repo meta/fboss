@@ -24,6 +24,8 @@
 
 #include <folly/logging/xlog.h>
 
+#include <functional>
+#include <map>
 #include <memory>
 #include <optional>
 #include <string>
@@ -396,6 +398,16 @@ void PbrAclManager::processDelta(
   }
 
   auto policyChanges = changedPolicies(delta);
+  std::map<
+      NextHopSetID,
+      std::vector<std::function<void(std::shared_ptr<SwitchState>&)>>>
+      defaultNhg2RouteUpdateFuncs;
+  for (const auto& policy : policyChanges) {
+    if (policy.newDefaultNhgId) {
+      defaultNhg2RouteUpdateFuncs.try_emplace(*policy.newDefaultNhgId);
+    }
+  }
+  const bool defaultNhgUpdated = !defaultNhg2RouteUpdateFuncs.empty();
 
   bool first = true;
   auto emit = [&](const std::shared_ptr<SwitchState>& state) {
@@ -409,6 +421,29 @@ void PbrAclManager::processDelta(
     }
     inOutState->updated = true;
   };
+
+  if (defaultNhgUpdated) {
+    auto bucket = [&](RouterID rid, const auto& route) {
+      auto id = route->getForwardInfo().getNormalizedResolvedNextHopSetID();
+      if (!id) {
+        return;
+      }
+      auto it = defaultNhg2RouteUpdateFuncs.find(*id);
+      if (it == defaultNhg2RouteUpdateFuncs.end()) {
+        return;
+      }
+      it->second.push_back([rid, route](std::shared_ptr<SwitchState>& state) {
+        addOrUpdateRoute(state, rid, route);
+      });
+    };
+    processFibsDeltaInHwSwitchOrder(
+        delta,
+        [&](RouterID rid, const auto& /*oldRoute*/, const auto& newRoute) {
+          bucket(rid, newRoute);
+        },
+        [&](RouterID rid, const auto& newRoute) { bucket(rid, newRoute); },
+        [](RouterID, const auto&) {});
+  }
 
   if (auto addedAndRemoved = updatePbrTables(newState, [&](AclMap& aclMap) {
         return applyAddsAndRemoves(aclMap, delta);
@@ -429,6 +464,17 @@ void PbrAclManager::processDelta(
     }
     newState = made;
     emit(newState);
+
+    if (policy.newDefaultNhgId) {
+      auto routes =
+          defaultNhg2RouteUpdateFuncs.extract(*policy.newDefaultNhgId);
+      if (routes && !routes.mapped().empty()) {
+        for (const auto& addRoute : routes.mapped()) {
+          addRoute(newState);
+        }
+      }
+    }
+
     if (auto updated = updateOriginals(newState, temporaries)) {
       newState = updated;
       emit(newState);
