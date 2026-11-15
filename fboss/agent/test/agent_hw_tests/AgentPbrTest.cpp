@@ -304,6 +304,22 @@ class AgentPbrTest : public AgentHwTest {
     return bytesSent;
   }
 
+  // Stats come from the last collection, which can predate the entry or, after
+  // warm boot, the counter's retained hardware value; only trust a baseline two
+  // successive ticks agree on.
+  uint64_t settledPbrCounter(
+      const std::string& counterName,
+      PortID injectPort) {
+    uint64_t settled = utility::getAclInOutPackets(getSw(), counterName);
+    WITH_RETRIES({
+      getNextUpdatedPortStats(injectPort);
+      auto pkts = utility::getAclInOutPackets(getSw(), counterName);
+      EXPECT_EVENTUALLY_EQ(pkts, settled);
+      settled = pkts;
+    });
+    return settled;
+  }
+
   void verifyRedirectAndCounter(
       const std::vector<PortID>& classMembers,
       const std::vector<PortID>& defaultMembers,
@@ -347,21 +363,9 @@ class AgentPbrTest : public AgentHwTest {
         std::count(
             counterTypes.begin(), counterTypes.end(), cfg::CounterType::BYTES),
         1);
-    // A counter whose entry was just programmed reports a garbage value on its
-    // first stats poll, so only trust a baseline two successive ticks agree on.
-    uint64_t pktsBefore = utility::getAclInOutPackets(getSw(), *counterName);
-    uint64_t bytesBefore =
+    auto pktsBefore = settledPbrCounter(*counterName, injectPort);
+    auto bytesBefore =
         utility::getAclInOutPackets(getSw(), *counterName, true /*bytes*/);
-    WITH_RETRIES({
-      getNextUpdatedPortStats(injectPort);
-      auto pkts = utility::getAclInOutPackets(getSw(), *counterName);
-      auto bytes =
-          utility::getAclInOutPackets(getSw(), *counterName, true /*bytes*/);
-      EXPECT_EVENTUALLY_EQ(pkts, pktsBefore);
-      EXPECT_EVENTUALLY_EQ(bytes, bytesBefore);
-      pktsBefore = pkts;
-      bytesBefore = bytes;
-    });
     auto bytesSent =
         verifyBurst(kDscp, injectPort, classMembers, defaultMembers);
     WITH_RETRIES({
