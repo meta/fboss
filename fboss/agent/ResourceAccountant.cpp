@@ -51,7 +51,9 @@ namespace facebook::fboss {
 ResourceAccountant::ResourceAccountant(
     const HwAsicTable* asicTable,
     const SwitchIdScopeResolver* scopeResolver)
-    : asicTable_(asicTable), scopeResolver_(scopeResolver) {
+    : asicTable_(asicTable),
+      scopeResolver_(scopeResolver),
+      aclResourceAccountant_(asicTable) {
   CHECK_EQ(
       asicTable->isFeatureSupportedOnAnyAsic(
           HwAsic::Feature::WEIGHTED_NEXTHOPGROUP_MEMBER),
@@ -1162,6 +1164,9 @@ bool ResourceAccountant::isValidUpdate(const StateDelta& delta) {
 
   vrfStateChangedImpl(delta);
   isValidUpdate &= checkVrfResource();
+  if (FLAGS_enable_pbr_acl_resource_protection) {
+    isValidUpdate &= aclResourceAccountant_.isValidUpdate(delta);
+  }
 
   return isValidUpdate;
 }

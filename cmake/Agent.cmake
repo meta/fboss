@@ -974,6 +974,7 @@ add_library(validate_state_update
 )
 
 target_link_libraries(validate_state_update
+  acl_resource_accountant
   state
   fboss_error
   switchid_scope_resolver

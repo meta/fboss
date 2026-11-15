@@ -2686,6 +2686,7 @@ cpp_library(
     exported_deps = [
         "fbsource//third-party/googletest:gtest",
         "fbsource//xplat/folly:network_address",
+        ":acl_resource_accountant",
         ":agent_config-cpp2-types",
         ":agent_features",
         ":fboss-types",

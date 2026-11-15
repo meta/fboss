@@ -9,6 +9,7 @@
  */
 #pragma once
 
+#include "fboss/agent/AclResourceAccountant.h"
 #include "fboss/agent/HwAsicTable.h"
 #include "fboss/agent/SwitchIdScopeResolver.h"
 #include "fboss/agent/state/Route.h"
@@ -150,6 +151,7 @@ class ResourceAccountant {
 
   const HwAsicTable* asicTable_;
   const SwitchIdScopeResolver* scopeResolver_;
+  AclResourceAccountant aclResourceAccountant_;
 
   bool nativeWeightedEcmp_{true};
   // Yuba (G200) and G202x program protection backup next hops as ordinary
