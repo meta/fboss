@@ -91,7 +91,10 @@ class AgentPbrTest : public AgentHwTest {
  public:
   std::vector<ProductionFeature> getProductionFeaturesVerified()
       const override {
-    return {ProductionFeature::PBR_ACL, ProductionFeature::SRV6_ENCAP};
+    return {
+        ProductionFeature::PBR_ACL,
+        ProductionFeature::SRV6_ENCAP,
+        ProductionFeature::ACL_COUNTERS_EXTENDED_LABEL};
   }
 
  protected:
@@ -193,16 +196,16 @@ class AgentPbrTest : public AgentHwTest {
   }
 
   std::string kDefaultNhg() const {
-    return "pbrDefaultNhg";
+    return "lspgrp_rb001-01-qxt1-qxs-default";
   }
   std::string kClassNhg() const {
-    return "pbrClassNhg";
+    return "lspgrp_rb001-01-qxt1-qxs-bronze-class";
   }
   std::string kClass2Nhg() const {
-    return "pbrClass2Nhg";
+    return "lspgrp_rb001-01-qxt1-qxs-silver-class";
   }
   std::string kClass3Nhg() const {
-    return "pbrClass3Nhg";
+    return "lspgrp_rb001-01-qxt1-qxs-gold-class";
   }
   std::string kPolicy() const {
     return "pbrPolicy";
@@ -761,8 +764,8 @@ TEST_F(AgentPbrTest, DefaultNhgMemberChangeReprogramsMatch) {
 // real-SDK proof that a shared priority programs and survives warm boot.
 TEST_F(AgentPbrTest, TwoPoliciesShareOnePriority) {
   const std::string kPolicyB = "pbrPolicyB";
-  const std::string kDefaultNhgB = "pbrDefaultNhgB";
-  const std::string kClassNhgB = "pbrClassNhgB";
+  const std::string kDefaultNhgB = "lspgrp_rb001-01-qxt1-qxs-defaultB";
+  const std::string kClassNhgB = "lspgrp_rb001-01-qxt1-qxs-bronze-classB";
   constexpr auto kPbrRoutePrefixB = "4444::";
   constexpr auto kPbrDstIpB = "4444::1";
 
@@ -823,8 +826,8 @@ TEST_F(AgentPbrTest, TwoPoliciesShareOnePriority) {
 
     auto counterA = makePbrCounterName(ForwardingClass::CLASS_1, kClassNhg());
     auto counterB = makePbrCounterName(ForwardingClass::CLASS_1, kClassNhgB);
-    auto pktsA = utility::getAclInOutPackets(getSw(), counterA);
-    auto pktsB = utility::getAclInOutPackets(getSw(), counterB);
+    auto pktsA = settledPbrCounter(counterA, injectPort);
+    auto pktsB = settledPbrCounter(counterB, injectPort);
 
     // 2. Each rule redirects its own traffic to the other group's ports.
     verifyBurst(kDscp, injectPort, kPbrDstIp, groupB, groupA);
@@ -832,9 +835,9 @@ TEST_F(AgentPbrTest, TwoPoliciesShareOnePriority) {
 
     // 3. Each rule counts its own traffic, so hardware kept them apart.
     WITH_RETRIES({
-      EXPECT_EVENTUALLY_GE(
+      EXPECT_EVENTUALLY_EQ(
           utility::getAclInOutPackets(getSw(), counterA), pktsA + kNumPkts);
-      EXPECT_EVENTUALLY_GE(
+      EXPECT_EVENTUALLY_EQ(
           utility::getAclInOutPackets(getSw(), counterB), pktsB + kNumPkts);
     });
   };
@@ -844,8 +847,8 @@ TEST_F(AgentPbrTest, TwoPoliciesShareOnePriority) {
 
 TEST_F(AgentPbrTest, TwoPoliciesMatchSwapTogether) {
   const std::string kPolicyB = "pbrPolicyB";
-  const std::string kDefaultNhgB = "pbrDefaultNhgB";
-  const std::string kClassNhgB = "pbrClassNhgB";
+  const std::string kDefaultNhgB = "lspgrp_rb001-01-qxt1-qxs-defaultB";
+  const std::string kClassNhgB = "lspgrp_rb001-01-qxt1-qxs-bronze-classB";
   constexpr auto kPbrRoutePrefixB = "4444::";
   constexpr auto kPbrDstIpB = "4444::1";
 
@@ -916,9 +919,9 @@ TEST_F(AgentPbrTest, TwoPoliciesMatchSwapTogether) {
 
     // 4. Neither counter reset, so neither rule was torn down and rebuilt.
     WITH_RETRIES({
-      EXPECT_EVENTUALLY_GE(
+      EXPECT_EVENTUALLY_EQ(
           utility::getAclInOutPackets(getSw(), counterA), baseA + kNumPkts);
-      EXPECT_EVENTUALLY_GE(
+      EXPECT_EVENTUALLY_EQ(
           utility::getAclInOutPackets(getSw(), counterB), baseB + kNumPkts);
     });
   };
