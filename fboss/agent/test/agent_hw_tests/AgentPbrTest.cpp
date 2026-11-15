@@ -237,6 +237,10 @@ class AgentPbrTest : public AgentHwTest {
     addClassBasedPolicy({{ForwardingClass::CLASS_1, kClassNhg()}});
   }
 
+  void setClassNhgMembers(const std::vector<PortDescriptor>& members) {
+    addOrUpdateNamedNhgs({{kClassNhg(), makeNamedNhgSet(members)}});
+  }
+
   uint64_t sumOutPkts(const std::vector<PortID>& members) {
     uint64_t sum = 0;
     for (const auto& port : members) {
@@ -347,7 +351,7 @@ class AgentPbrTest : public AgentHwTest {
       }
     }
     // The fixture programs one policy with one traffic class, so a second
-    // entry means a generation was retired without removing its entry.
+    // entry means a swap left its temporary copy behind.
     EXPECT_EQ(pbrEntries, 1);
 
     if (!isSupportedOnAllAsics(HwAsic::Feature::PBR_ACL)) {
@@ -621,6 +625,68 @@ TEST_F(AgentPbrTest, PbrRedirectNhgMemberChange) {
     // 5. CLASS_2 egresses the new members, and CLASS_3 is undisturbed.
     verifyBurst(kDscp2, injectPort, class2NewMembers, class2InitialMembers);
     verifyBurst(kDscp3, injectPort, class3Members, class2NewMembers);
+  };
+
+  verifyAcrossWarmBoots(setup, verify);
+}
+
+// The redirect group's members change, so its normalized id changes and the
+// rule is reprogrammed. Under break-before-make the SAI counter object is
+// destroyed and recreated and the count restarts at zero; under
+// make-before-break the rule and its temporary copy name the one counter, its
+// refcount never reaches zero, and the count carries over.
+TEST_F(AgentPbrTest, RedirectNhgMemberChangeKeepsCounter) {
+  auto setup = [this]() {
+    auto helper = ecmpHelper();
+    auto ports = helper.ecmpPortDescs(7);
+    applyNewState([&](const std::shared_ptr<SwitchState>& in) {
+      return helper.resolveNextHops(
+          in, {ports[0], ports[1], ports[2], ports[3], ports[4], ports[5]});
+    });
+    addOrUpdateNamedNhgs(
+        {{kDefaultNhg(), makeNamedNhgSet({ports[0], ports[1]})},
+         {kClassNhg(), makeNamedNhgSet({ports[2], ports[3]})}});
+    addClassBasedPolicy();
+    programPbrRoute(kDefaultNhg());
+  };
+
+  auto verify = [this]() {
+    if (!isSupportedOnAllAsics(HwAsic::Feature::PBR_ACL)) {
+      return;
+    }
+    auto helper = ecmpHelper();
+    auto ports = helper.ecmpPortDescs(7);
+    const std::vector<PortID> initialMembers = {
+        ports[2].phyPortID(), ports[3].phyPortID()};
+    const std::vector<PortID> newMembers = {
+        ports[4].phyPortID(), ports[5].phyPortID()};
+    const auto injectPort = ports[6].phyPortID();
+
+    // 1. Re-establish the initial members so the sequence is idempotent across
+    // the warm boot pass.
+    setClassNhgMembers({ports[2], ports[3]});
+    auto counter = makePbrCounterName(ForwardingClass::CLASS_1, kClassNhg());
+    auto base = settledPbrCounter(counter, injectPort);
+
+    // 2. Traffic redirects to the initial members and is counted.
+    verifyBurst(kDscp, injectPort, initialMembers, newMembers);
+    WITH_RETRIES({
+      EXPECT_EVENTUALLY_GE(
+          utility::getAclInOutPackets(getSw(), counter), base + kNumPkts);
+    });
+    auto afterFirstBurst = utility::getAclInOutPackets(getSw(), counter);
+
+    // 3. The swap under test.
+    setClassNhgMembers({ports[4], ports[5]});
+
+    // 4. Traffic redirects to the new members, and the counter picks up where
+    // it left off rather than restarting.
+    verifyBurst(kDscp, injectPort, newMembers, initialMembers);
+    WITH_RETRIES({
+      EXPECT_EVENTUALLY_GE(
+          utility::getAclInOutPackets(getSw(), counter),
+          afterFirstBurst + kNumPkts);
+    });
   };
 
   verifyAcrossWarmBoots(setup, verify);
