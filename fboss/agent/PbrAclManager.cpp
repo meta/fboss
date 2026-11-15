@@ -409,6 +409,11 @@ void PbrAclManager::processDelta(
   }
   const bool defaultNhgUpdated = !defaultNhg2RouteUpdateFuncs.empty();
 
+  if (defaultNhgUpdated) {
+    newState = getNewStateWithOldRoutes(delta.oldState(), newState);
+    newState->publish();
+  }
+
   bool first = true;
   auto emit = [&](const std::shared_ptr<SwitchState>& state) {
     state->publish();
@@ -472,6 +477,7 @@ void PbrAclManager::processDelta(
         for (const auto& addRoute : routes.mapped()) {
           addRoute(newState);
         }
+        emit(newState);
       }
     }
 
@@ -481,6 +487,12 @@ void PbrAclManager::processDelta(
       newState = dropTemporaries(newState, temporaries);
       emit(newState);
     }
+  }
+
+  if (defaultNhgUpdated) {
+    auto finalState = newState->clone();
+    finalState->resetFibsInfoMap(delta.newState()->getFibsInfoMap());
+    emit(finalState);
   }
 }
 
