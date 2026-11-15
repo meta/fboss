@@ -6074,3 +6074,56 @@ TEST_F(NamedNextHopGroupThriftTest, addPoliciesPassesValidationWhenWellFormed) {
           {{ForwardingClass::CLASS_1, namedNhgRef("classNhg")}}))),
       FbossHwUpdateError);
 }
+
+TEST_F(NamedNextHopGroupThriftTest, addPoliciesPastPbrAclLimitRollsBack) {
+  SCOPE_EXIT {
+    FLAGS_enable_acl_table_group = false;
+  };
+  FLAGS_enable_acl_table_group = true;
+  cfg::AclTable pbrTable;
+  pbrTable.name() = cfg::switch_config_constants::DEFAULT_PBR_ACL_TABLE();
+  pbrTable.priority() = 1;
+  pbrTable.actionTypes() = {
+      cfg::AclTableActionType::COUNTER, cfg::AclTableActionType::REDIRECT};
+  pbrTable.qualifiers() = {
+      cfg::AclTableQualifier::TC, cfg::AclTableQualifier::NEXT_HOP_GROUP_ID};
+  cfg::AclTableGroup tableGroup;
+  tableGroup.name() = "ingress-group";
+  tableGroup.stage() = cfg::AclStage::INGRESS;
+  tableGroup.aclTables() = {pbrTable};
+  auto config = testConfigA();
+  config.aclTableGroups() = {tableGroup};
+  sw_->applyConfig("add PBR ACL table", config);
+
+  ThriftHandler handler(sw_);
+  auto groups = std::make_unique<std::vector<NextHopGroup>>();
+  groups->push_back(makeGroup("defaultNhg", {"2401:db00:2110:3001::2"}));
+  groups->push_back(makeGroup("classNhg", {"2401:db00:2110:3001::3"}));
+  handler.addOrUpdateNamedNextHopGroups(std::move(groups));
+
+  auto makePolicy = [](const std::string& name, int numTrafficClasses) {
+    std::map<ForwardingClass, NextHopGroup> class2Nhg;
+    for (int tc = 1; tc <= numTrafficClasses; ++tc) {
+      class2Nhg[static_cast<ForwardingClass>(tc)] = namedNhgRef("classNhg");
+    }
+    return makeCbfPolicy(name, "defaultNhg", class2Nhg);
+  };
+
+  // 1. MockAsic allows 8 PBR ACL entries, so the default 75% leaves 6 rules.
+  auto policies = std::make_unique<std::vector<Policy>>();
+  policies->push_back(makePolicy("pol1", 3));
+  policies->push_back(makePolicy("pol2", 3));
+  handler.addPolicies(std::move(policies));
+
+  // 2. A 7th rule is rejected before it reaches hardware.
+  EXPECT_THROW(
+      handler.addPolicies(onePolicy(makePolicy("pol3", 1))),
+      FbossHwUpdateError);
+  std::vector<Policy> published;
+  handler.getAllPolicies(published);
+  EXPECT_EQ(published.size(), 2);
+
+  // 3. The RIB dropped pol3 as well: had it kept it, republishing pol2 would
+  // carry pol3 along and be rejected again.
+  handler.addPolicies(onePolicy(makePolicy("pol2", 3)));
+}
