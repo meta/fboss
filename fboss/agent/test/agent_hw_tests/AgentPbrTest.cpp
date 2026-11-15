@@ -241,6 +241,10 @@ class AgentPbrTest : public AgentHwTest {
     addOrUpdateNamedNhgs({{kClassNhg(), makeNamedNhgSet(members)}});
   }
 
+  void setDefaultNhgMembers(const std::vector<PortDescriptor>& members) {
+    addOrUpdateNamedNhgs({{kDefaultNhg(), makeNamedNhgSet(members)}});
+  }
+
   uint64_t sumOutPkts(const std::vector<PortID>& members) {
     uint64_t sum = 0;
     for (const auto& port : members) {
@@ -692,6 +696,66 @@ TEST_F(AgentPbrTest, RedirectNhgMemberChangeKeepsCounter) {
   verifyAcrossWarmBoots(setup, verify);
 }
 
+// Bursts bracket the swap rather than spanning it, so this covers the end
+// state, not the width of the transition. The delta ordering is unit tested.
+TEST_F(AgentPbrTest, DefaultNhgMemberChangeReprogramsMatch) {
+  auto setup = [this]() {
+    auto helper = ecmpHelper();
+    auto ports = helper.ecmpPortDescs(7);
+    applyNewState([&](const std::shared_ptr<SwitchState>& in) {
+      return helper.resolveNextHops(
+          in, {ports[0], ports[1], ports[2], ports[3], ports[4], ports[5]});
+    });
+    addOrUpdateNamedNhgs(
+        {{kDefaultNhg(), makeNamedNhgSet({ports[0], ports[1]})},
+         {kClassNhg(), makeNamedNhgSet({ports[2], ports[3]})}});
+    addClassBasedPolicy();
+    programPbrRoute(kDefaultNhg());
+  };
+
+  auto verify = [this]() {
+    if (!isSupportedOnAllAsics(HwAsic::Feature::PBR_ACL)) {
+      return;
+    }
+    auto helper = ecmpHelper();
+    auto ports = helper.ecmpPortDescs(7);
+    const std::vector<PortID> classMembers = {
+        ports[2].phyPortID(), ports[3].phyPortID()};
+    const std::vector<PortID> newDefaultMembers = {
+        ports[4].phyPortID(), ports[5].phyPortID()};
+    const auto injectPort = ports[6].phyPortID();
+
+    // 1. Re-establish the initial default members so the sequence is idempotent
+    // across the warm boot pass.
+    setDefaultNhgMembers({ports[0], ports[1]});
+    auto counter = makePbrCounterName(ForwardingClass::CLASS_1, kClassNhg());
+    auto base = settledPbrCounter(counter, injectPort);
+
+    // 2. Class traffic redirects away from the default group and is counted.
+    verifyBurst(kDscp, injectPort, classMembers, newDefaultMembers);
+    WITH_RETRIES({
+      EXPECT_EVENTUALLY_GE(
+          utility::getAclInOutPackets(getSw(), counter), base + kNumPkts);
+    });
+    auto afterFirstBurst = utility::getAclInOutPackets(getSw(), counter);
+
+    // 3. The match swap under test.
+    setDefaultNhgMembers({ports[4], ports[5]});
+
+    // 4. The rule re-matched the new id, so class traffic still redirects while
+    // unmatched traffic follows the route to the new default members.
+    verifyBurst(kDscp, injectPort, classMembers, newDefaultMembers);
+    verifyBurst(kNoMatchDscp, injectPort, newDefaultMembers, classMembers);
+    WITH_RETRIES({
+      EXPECT_EVENTUALLY_GE(
+          utility::getAclInOutPackets(getSw(), counter),
+          afterFirstBurst + kNumPkts);
+    });
+  };
+
+  verifyAcrossWarmBoots(setup, verify);
+}
+
 // Two policies, so two ACL entries at the one shared PBR priority. They are
 // told apart in hardware only by the SAI ACL entry label, so this is the
 // real-SDK proof that a shared priority programs and survives warm boot.
@@ -772,6 +836,90 @@ TEST_F(AgentPbrTest, TwoPoliciesShareOnePriority) {
           utility::getAclInOutPackets(getSw(), counterA), pktsA + kNumPkts);
       EXPECT_EVENTUALLY_GE(
           utility::getAclInOutPackets(getSw(), counterB), pktsB + kNumPkts);
+    });
+  };
+
+  verifyAcrossWarmBoots(setup, verify);
+}
+
+TEST_F(AgentPbrTest, TwoPoliciesMatchSwapTogether) {
+  const std::string kPolicyB = "pbrPolicyB";
+  const std::string kDefaultNhgB = "pbrDefaultNhgB";
+  const std::string kClassNhgB = "pbrClassNhgB";
+  constexpr auto kPbrRoutePrefixB = "4444::";
+  constexpr auto kPbrDstIpB = "4444::1";
+
+  auto setup = [&, this]() {
+    auto helper = ecmpHelper();
+    auto ports = helper.ecmpPortDescs(8);
+    applyNewState([&](const std::shared_ptr<SwitchState>& in) {
+      return helper.resolveNextHops(
+          in,
+          {ports[0],
+           ports[1],
+           ports[2],
+           ports[3],
+           ports[4],
+           ports[5],
+           ports[6]});
+    });
+    addOrUpdateNamedNhgs(
+        {{kDefaultNhg(), makeNamedNhgSet({ports[0], ports[1]})},
+         {kClassNhg(), makeNamedNhgSet({ports[2], ports[3]})},
+         {kDefaultNhgB, makeNamedNhgSet({ports[2], ports[3]})},
+         {kClassNhgB, makeNamedNhgSet({ports[0], ports[1]})}});
+    addClassBasedPolicy();
+    addClassBasedPolicy(
+        kPolicyB, kDefaultNhgB, {{ForwardingClass::CLASS_1, kClassNhgB}});
+    programPbrRoute(kDefaultNhg());
+    programPbrRoute(kDefaultNhgB, kPbrRoutePrefixB);
+  };
+
+  auto verify = [&, this]() {
+    if (!isSupportedOnAllAsics(HwAsic::Feature::PBR_ACL)) {
+      return;
+    }
+    auto helper = ecmpHelper();
+    auto ports = helper.ecmpPortDescs(8);
+    const std::vector<PortID> groupA = {
+        ports[0].phyPortID(), ports[1].phyPortID()};
+    const std::vector<PortID> groupB = {
+        ports[2].phyPortID(), ports[3].phyPortID()};
+    const std::vector<PortID> newDefaultA = {
+        ports[4].phyPortID(), ports[5].phyPortID()};
+    const std::vector<PortID> newDefaultB = {
+        ports[5].phyPortID(), ports[6].phyPortID()};
+    const auto injectPort = ports[7].phyPortID();
+
+    // 1. Re-establish the starting members so the sequence is idempotent across
+    // the warm boot pass.
+    addOrUpdateNamedNhgs(
+        {{kDefaultNhg(), makeNamedNhgSet({ports[0], ports[1]})},
+         {kDefaultNhgB, makeNamedNhgSet({ports[2], ports[3]})}});
+
+    auto counterA = makePbrCounterName(ForwardingClass::CLASS_1, kClassNhg());
+    auto counterB = makePbrCounterName(ForwardingClass::CLASS_1, kClassNhgB);
+    auto baseA = settledPbrCounter(counterA, injectPort);
+    auto baseB = settledPbrCounter(counterB, injectPort);
+
+    // 2. Both match ids move in a single update.
+    addOrUpdateNamedNhgs(
+        {{kDefaultNhg(), makeNamedNhgSet({ports[4], ports[5]})},
+         {kDefaultNhgB, makeNamedNhgSet({ports[5], ports[6]})}});
+
+    // 3. Both rules re-matched their new id: class traffic still redirects,
+    // and unmatched traffic follows each route to its new default members.
+    verifyBurst(kDscp, injectPort, kPbrDstIp, groupB, newDefaultA);
+    verifyBurst(kDscp, injectPort, kPbrDstIpB, groupA, newDefaultB);
+    verifyBurst(kNoMatchDscp, injectPort, kPbrDstIp, newDefaultA, groupB);
+    verifyBurst(kNoMatchDscp, injectPort, kPbrDstIpB, newDefaultB, groupA);
+
+    // 4. Neither counter reset, so neither rule was torn down and rebuilt.
+    WITH_RETRIES({
+      EXPECT_EVENTUALLY_GE(
+          utility::getAclInOutPackets(getSw(), counterA), baseA + kNumPkts);
+      EXPECT_EVENTUALLY_GE(
+          utility::getAclInOutPackets(getSw(), counterB), baseB + kNumPkts);
     });
   };
 
