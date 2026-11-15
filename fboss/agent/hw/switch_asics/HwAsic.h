@@ -903,6 +903,10 @@ class HwAsic {
     return std::nullopt;
   }
 
+  virtual std::optional<uint32_t> getMaxPbrAclEntries() const {
+    return std::nullopt;
+  }
+
   virtual std::optional<uint32_t> getMaxRouteCounters() const {
     return std::nullopt;
   }
