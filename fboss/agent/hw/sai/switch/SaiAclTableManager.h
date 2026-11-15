@@ -134,8 +134,15 @@ class SaiAclTableManager {
    */
   static auto constexpr kDscpMask = 0x3F;
 
+#if defined(BRCM_SAI_SDK_XGS)
+  // XGS reads FIELD_TC back clipped to the 4-bit IntPriority field and cannot
+  // set it, so a wider mask fails warm boot reconciliation.
+  // TODO(zecheng): back to 0xFF once BRCM SAI keeps or rejects a wider mask.
+  static auto constexpr kTcMask = 0x0F;
+#else
   // Traffic class is a u8; PBR matches on the full value.
   static auto constexpr kTcMask = 0xFF;
+#endif
 
   static auto constexpr kMaxUdfGroups = 5;
 
