@@ -238,6 +238,7 @@ cpp_library(
         "AgentEgressForwardingDiscardCounterTests.cpp",
         "AgentEmptyTests.cpp",
         "AgentFlexPortTests.cpp",
+        "AgentFlowLabelBlackholingTests.cpp",
         "AgentHighFrequencyStatsTests.cpp",
         "AgentHwAclMatchActionsTest.cpp",
         "AgentHwAclQualifierTest.cpp",
