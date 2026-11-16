@@ -289,6 +289,7 @@ cpp_unittest(
         ":hw_test_handle",
         ":utils",
         "//fboss/agent:address_utils",
+        "//fboss/agent:constants",
         "//fboss/agent:core",
         "//fboss/agent:fib_helpers",
         "//fboss/agent:state_observer",

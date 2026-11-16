@@ -3,6 +3,7 @@
 #include <gtest/gtest.h>
 
 #include "fboss/agent/AddressUtil.h"
+#include "fboss/agent/Constants.h"
 #include "fboss/agent/FibHelpers.h"
 #include "fboss/agent/StateObserver.h"
 #include "fboss/agent/SwSwitch.h"
@@ -63,10 +64,14 @@ class VrfConfigTest : public ::testing::Test {
 };
 
 TEST_F(VrfConfigTest, CreateVrfs) {
-  config_.vrfs() = {makeVrfConfig(1001, "red"), makeVrfConfig(1002)};
+  config_.vrfs() = {
+      makeVrfConfig(kQuarantineVrfId, "quarantine"),
+      makeVrfConfig(1001, "red"),
+      makeVrfConfig(1002)};
   state_ = apply();
   ASSERT_NE(state_, nullptr);
 
+  EXPECT_EQ(state_->getVrfs()->getNode(RouterID(1))->getName(), "quarantine");
   EXPECT_EQ(state_->getVrfs()->getNode(RouterID(1001))->getName(), "red");
   EXPECT_EQ(
       state_->getVrfs()->getNode(RouterID(1002))->getName(), std::nullopt);

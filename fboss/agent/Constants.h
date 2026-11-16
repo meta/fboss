@@ -72,6 +72,7 @@ inline constexpr folly::StringPiece kUdfPacketMatchers{"udfPacketMatchers"};
 inline constexpr folly::StringPiece kSysPortShelState{"sysPortShelState"};
 
 inline constexpr int32_t kDefaultVrf{0};
+inline constexpr int32_t kQuarantineVrfId{1};
 constexpr auto kSingleStageInbandPortId = 1;
 
 } // namespace facebook::fboss
