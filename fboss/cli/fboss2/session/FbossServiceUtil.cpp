@@ -417,6 +417,22 @@ std::vector<std::string> FbossServiceUtil::restartService(
   if (service == cli::ServiceType::AGENT &&
       level == cli::ConfigActionLevel::DISRUPTIVE_SERVICE_RESTART) {
     performColdboot(services);
+  } else if (service == cli::ServiceType::AGENT) {
+    // BGP sessions time out while the agent is down, so stop each active BGP
+    // unit first and start it last. The caller gets the agent units only.
+    std::vector<std::string> allServices = services;
+    std::vector<std::string> bgpUnits;
+    for (const auto& unit : {kBgpd, kNetosBgpd}) {
+      if (systemd_->isServiceActive(std::string(unit))) {
+        bgpUnits.emplace_back(unit);
+      }
+    }
+    if (!bgpUnits.empty()) {
+      LOG(INFO) << "Stopping BGP units around the warmboot, then starting "
+                << "them again: " << folly::join(", ", bgpUnits);
+    }
+    allServices.insert(allServices.end(), bgpUnits.begin(), bgpUnits.end());
+    performWarmboot(allServices);
   } else {
     performWarmboot(services);
   }

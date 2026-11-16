@@ -111,6 +111,8 @@ TEST(FbossServiceUtilTest, RestartService_MonolithicMode_Coldboot) {
 TEST(FbossServiceUtilTest, RestartService_SplitMode_Warmboot_SingleHwAgent) {
   auto mockSystemd = std::make_unique<StrictMock<MockSystemdInterface>>();
 
+  EXPECT_CALL(*mockSystemd, isServiceActive(_)).WillRepeatedly(Return(false));
+
   // Stop phase in reverse order, then start phase in forward order
   InSequence seq;
   EXPECT_CALL(*mockSystemd, getMatchingServices("fboss_hw_agent@0.service"))
@@ -497,6 +499,206 @@ TEST(FbossServiceUtilTest, RestartService_ServiceFailsToStart) {
       util.restartService(
           cli::ServiceType::AGENT, cli::ConfigActionLevel::SERVICE_RESTART),
       std::runtime_error);
+}
+
+// ============================================================
+// Warmboot with active BGP units
+// ============================================================
+namespace {
+std::unique_ptr<NiceMock<MockSystemdInterface>> makeMockWithActiveUnits(
+    const std::vector<std::string>& activeUnits) {
+  auto mock = std::make_unique<NiceMock<MockSystemdInterface>>();
+  ON_CALL(*mock, isServiceActive(_)).WillByDefault(Return(false));
+  for (const auto& unit : activeUnits) {
+    ON_CALL(*mock, isServiceActive(unit)).WillByDefault(Return(true));
+  }
+  ON_CALL(*mock, getMatchingServices(_))
+      .WillByDefault([](const std::string& pattern) {
+        return std::vector<std::string>{pattern};
+      });
+  // Expectations that a test sets later take precedence over these.
+  EXPECT_CALL(*mock, stopService(_)).Times(::testing::AnyNumber());
+  EXPECT_CALL(*mock, startService(_)).Times(::testing::AnyNumber());
+  EXPECT_CALL(*mock, waitForServiceInactive(_, _, _))
+      .Times(::testing::AnyNumber());
+  EXPECT_CALL(*mock, waitForServiceActive(_, _, _))
+      .Times(::testing::AnyNumber());
+  return mock;
+}
+
+void expectNoCalls(MockSystemdInterface& mock, const std::string& unit) {
+  EXPECT_CALL(mock, stopService(unit)).Times(0);
+  EXPECT_CALL(mock, startService(unit)).Times(0);
+}
+} // namespace
+
+TEST(FbossServiceUtilTest, RestartService_Warmboot_BgpdStopsFirstStartsLast) {
+  auto mockSystemd = std::make_unique<StrictMock<MockSystemdInterface>>();
+
+  InSequence seq;
+  EXPECT_CALL(*mockSystemd, getMatchingServices("fboss_hw_agent@0.service"))
+      .WillOnce(Return(std::vector<std::string>{"fboss_hw_agent@0.service"}));
+  EXPECT_CALL(*mockSystemd, getMatchingServices("fboss_sw_agent.service"))
+      .WillOnce(Return(std::vector<std::string>{"fboss_sw_agent.service"}));
+  EXPECT_CALL(*mockSystemd, isServiceActive("bgpd")).WillOnce(Return(true));
+  EXPECT_CALL(*mockSystemd, isServiceActive("netos.service.fboss_bgp"))
+      .WillOnce(Return(false));
+  EXPECT_CALL(*mockSystemd, stopService("bgpd"));
+  EXPECT_CALL(*mockSystemd, waitForServiceInactive("bgpd", _, _));
+  EXPECT_CALL(*mockSystemd, stopService("fboss_sw_agent"));
+  EXPECT_CALL(*mockSystemd, waitForServiceInactive("fboss_sw_agent", _, _));
+  EXPECT_CALL(*mockSystemd, stopService("fboss_hw_agent@0"));
+  EXPECT_CALL(*mockSystemd, waitForServiceInactive("fboss_hw_agent@0", _, _));
+  EXPECT_CALL(*mockSystemd, startService("fboss_hw_agent@0"));
+  EXPECT_CALL(*mockSystemd, waitForServiceActive("fboss_hw_agent@0", _, _));
+  EXPECT_CALL(*mockSystemd, startService("fboss_sw_agent"));
+  EXPECT_CALL(*mockSystemd, waitForServiceActive("fboss_sw_agent", _, _));
+  EXPECT_CALL(*mockSystemd, startService("bgpd"));
+  EXPECT_CALL(*mockSystemd, waitForServiceActive("bgpd", _, _));
+
+  FbossServiceUtil util(
+      std::vector<int>{0},
+      /*multiSwitch=*/true,
+      std::move(mockSystemd),
+      scratchDirUtil(makeScratchStateDir("bgpd_active")));
+
+  EXPECT_EQ(
+      util.restartService(
+          cli::ServiceType::AGENT, cli::ConfigActionLevel::SERVICE_RESTART),
+      (std::vector<std::string>{"fboss_hw_agent@0", "fboss_sw_agent"}));
+}
+
+TEST(FbossServiceUtilTest, RestartService_Warmboot_NetosBgpStopsAndStarts) {
+  auto mockSystemd = makeMockWithActiveUnits({"netos.service.fboss_bgp"});
+
+  expectNoCalls(*mockSystemd, "bgpd");
+  {
+    InSequence seq;
+    EXPECT_CALL(*mockSystemd, stopService("netos.service.fboss_bgp"));
+    EXPECT_CALL(*mockSystemd, stopService("fboss_sw_agent"));
+    EXPECT_CALL(*mockSystemd, stopService("fboss_hw_agent@0"));
+    EXPECT_CALL(*mockSystemd, startService("fboss_hw_agent@0"));
+    EXPECT_CALL(*mockSystemd, startService("fboss_sw_agent"));
+    EXPECT_CALL(*mockSystemd, startService("netos.service.fboss_bgp"));
+  }
+
+  FbossServiceUtil util(
+      std::vector<int>{0},
+      /*multiSwitch=*/true,
+      std::move(mockSystemd),
+      scratchDirUtil(makeScratchStateDir("bgp_netos")));
+
+  util.restartService(
+      cli::ServiceType::AGENT, cli::ConfigActionLevel::SERVICE_RESTART);
+}
+
+TEST(FbossServiceUtilTest, RestartService_Warmboot_BgpdStopFailsBgpdStarts) {
+  auto mockSystemd = makeMockWithActiveUnits({"bgpd"});
+
+  EXPECT_CALL(*mockSystemd, stopService("bgpd"))
+      .WillOnce(Throw(std::runtime_error("Failed to stop bgpd")));
+  EXPECT_CALL(*mockSystemd, startService("bgpd")).Times(1);
+
+  FbossServiceUtil util(
+      std::vector<int>{0},
+      /*multiSwitch=*/true,
+      std::move(mockSystemd),
+      scratchDirUtil(makeScratchStateDir("bgpd_stop_fail")));
+
+  EXPECT_THROW(
+      util.restartService(
+          cli::ServiceType::AGENT, cli::ConfigActionLevel::SERVICE_RESTART),
+      std::runtime_error);
+}
+
+TEST(FbossServiceUtilTest, RestartService_Warmboot_AgentFailsBgpdStarts) {
+  auto mockSystemd = makeMockWithActiveUnits({"bgpd"});
+
+  EXPECT_CALL(*mockSystemd, stopService("bgpd")).Times(1);
+  EXPECT_CALL(*mockSystemd, startService("fboss_hw_agent@0"))
+      .WillOnce(Throw(std::runtime_error("Failed to start fboss_hw_agent@0")))
+      .WillOnce(Return());
+  EXPECT_CALL(*mockSystemd, startService("bgpd")).Times(1);
+
+  FbossServiceUtil util(
+      std::vector<int>{0},
+      /*multiSwitch=*/true,
+      std::move(mockSystemd),
+      scratchDirUtil(makeScratchStateDir("bgpd_agent_fail")));
+
+  try {
+    util.restartService(
+        cli::ServiceType::AGENT, cli::ConfigActionLevel::SERVICE_RESTART);
+    FAIL() << "Expected the agent start failure to propagate";
+  } catch (const std::runtime_error& ex) {
+    EXPECT_THAT(ex.what(), ::testing::HasSubstr("fboss_hw_agent@0"));
+  }
+}
+
+// Known effect: restartService throws although both agents are active again.
+TEST(FbossServiceUtilTest, RestartService_Warmboot_BgpdNeverActiveThrows) {
+  auto mockSystemd = makeMockWithActiveUnits({"bgpd"});
+
+  EXPECT_CALL(*mockSystemd, waitForServiceActive("bgpd", _, _))
+      .WillRepeatedly(Throw(
+          std::runtime_error("bgpd did not become active within 60 seconds")));
+
+  FbossServiceUtil util(
+      std::vector<int>{0},
+      /*multiSwitch=*/true,
+      std::move(mockSystemd),
+      scratchDirUtil(makeScratchStateDir("bgpd_never_active")));
+
+  EXPECT_THROW(
+      util.restartService(
+          cli::ServiceType::AGENT, cli::ConfigActionLevel::SERVICE_RESTART),
+      std::runtime_error);
+}
+
+TEST(
+    FbossServiceUtilTest,
+    RestartService_Warmboot_MonolithicStopsAndStartsBgpd) {
+  auto mockSystemd = makeMockWithActiveUnits({"bgpd"});
+
+  EXPECT_CALL(*mockSystemd, restartService(_)).Times(0);
+  {
+    InSequence seq;
+    EXPECT_CALL(*mockSystemd, stopService("bgpd"));
+    EXPECT_CALL(*mockSystemd, stopService("wedge_agent"));
+    EXPECT_CALL(*mockSystemd, startService("wedge_agent"));
+    EXPECT_CALL(*mockSystemd, waitForServiceActive("wedge_agent", _, _));
+    EXPECT_CALL(*mockSystemd, startService("bgpd"));
+    EXPECT_CALL(*mockSystemd, waitForServiceActive("bgpd", _, _));
+  }
+
+  FbossServiceUtil util(
+      std::vector<int>{},
+      /*multiSwitch=*/false,
+      std::move(mockSystemd),
+      scratchDirUtil(makeScratchStateDir("bgpd_monolithic")));
+
+  EXPECT_EQ(
+      util.restartService(
+          cli::ServiceType::AGENT, cli::ConfigActionLevel::SERVICE_RESTART),
+      (std::vector<std::string>{"wedge_agent"}));
+}
+
+TEST(FbossServiceUtilTest, RestartService_Coldboot_NoBgpCall) {
+  auto mockSystemd = makeMockWithActiveUnits({"bgpd"});
+
+  EXPECT_CALL(*mockSystemd, isServiceActive(_)).Times(0);
+  expectNoCalls(*mockSystemd, "bgpd");
+  expectNoCalls(*mockSystemd, "netos.service.fboss_bgp");
+
+  FbossServiceUtil util(
+      std::vector<int>{0},
+      /*multiSwitch=*/true,
+      std::move(mockSystemd),
+      scratchDirUtil(makeScratchStateDir("bgp_coldboot")));
+
+  util.restartService(
+      cli::ServiceType::AGENT,
+      cli::ConfigActionLevel::DISRUPTIVE_SERVICE_RESTART);
 }
 
 // ============================================================

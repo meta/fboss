@@ -57,6 +57,7 @@ class FbossServiceUtil {
 
   // Restart services for the given service type and action level.
   // Returns the list of actual systemd service names that were restarted.
+  // BGP units restarted around an agent warm boot are not in the list.
   virtual std::vector<std::string> restartService(
       cli::ServiceType service,
       cli::ConfigActionLevel level);
@@ -138,9 +139,7 @@ class FbossServiceUtil {
 
   // Returns the can-warm-boot flag path a service writes on graceful exit, or
   // nullopt for services that do not participate in warm boot (e.g. bgpd).
-  // The wedge_agent branch is unreachable while monolithic mode keeps the
-  // single-service restart path, but is kept deliberately: returning nullopt
-  // there would silently skip the check if that ever changes.
+  // The wedge_agent branch is used in monolithic mode with an active BGP unit.
   std::optional<std::string> getCanWarmBootFileForService(
       const std::string& service) const;
 
