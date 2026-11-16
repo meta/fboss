@@ -292,7 +292,7 @@ std::optional<InterfaceID> egressIntf(
 }
 
 RouterID intf55Vrf(const std::shared_ptr<SwitchState>& state) {
-  return state->getInterfaces()->getNode(InterfaceID(55))->getRouterID();
+  return state->getInterfaceVrfs()->getVrf(InterfaceID(55));
 }
 } // namespace
 
@@ -508,7 +508,6 @@ TEST(UpdateInterfaceVrfs, RoutesFollowInterface) {
 
   auto state = sw->getState();
   EXPECT_EQ(intf55Vrf(state), kTestVrf);
-  EXPECT_EQ(state->getInterfaceVrfs()->getVrf(InterfaceID(55)), kTestVrf);
   EXPECT_FALSE(hasRoute(state, RouterID(0), "10.0.55.0/24"));
   // VRF 0 no longer reaches the next hop through interface 55
   EXPECT_EQ(egressIntf(state, RouterID(0), "2001:db8:100::/64"), std::nullopt);
@@ -640,6 +639,20 @@ TEST(UpdateInterfaceVrfs, ConfigApplyKeepsBinding) {
   auto handle = createTestHandle(&config);
   auto sw = handle->getSw();
   sw->updateInterfaceVrfs({{InterfaceID(55), kTestVrf}});
+  // A neighbor learned in the new VRF
+  sw->updateStateBlocking(
+      "add neighbor", [](const std::shared_ptr<SwitchState>& in) {
+        auto state = in->clone();
+        auto intf = state->getInterfaces()->getNode(InterfaceID(55));
+        intf->getArpTable()
+            ->modify(InterfaceID(55), &state)
+            ->addEntry(
+                folly::IPAddressV4("10.0.55.10"),
+                folly::MacAddress("02:00:00:00:00:01"),
+                PortDescriptor(PortID(11)),
+                InterfaceID(55));
+        return state;
+      });
 
   cfg::StaticRouteNoNextHops nullRoute;
   nullRoute.routerID() = 0;
@@ -649,9 +662,12 @@ TEST(UpdateInterfaceVrfs, ConfigApplyKeepsBinding) {
 
   auto state = sw->getState();
   EXPECT_EQ(intf55Vrf(state), kTestVrf);
-  EXPECT_EQ(state->getInterfaceVrfs()->getVrf(InterfaceID(55)), kTestVrf);
   EXPECT_TRUE(hasRoute(state, kTestVrf, "10.0.55.0/24"));
   EXPECT_FALSE(hasRoute(state, RouterID(0), "10.0.55.0/24"));
+  // Config apply leaves the moved interface alone
+  auto intf = state->getInterfaces()->getNode(InterfaceID(55));
+  EXPECT_EQ(intf->getRouterID(), RouterID(0));
+  EXPECT_EQ(intf->getArpTable()->size(), 1);
 }
 
 TEST(UpdateInterfaceVrfs, ConfigChangesAddressesOfBoundInterface) {

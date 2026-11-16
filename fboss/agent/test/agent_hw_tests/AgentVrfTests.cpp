@@ -239,11 +239,7 @@ TEST_F(AgentVrfTest, MoveInterfaceAtRuntime) {
     getSw()->updateInterfaceVrfs({{movingIntf, kTestVrf}});
     resolveNeighbors(kTestVrf, {PortDescriptor(vrfSecondEgressPort())});
     EXPECT_EQ(
-        getProgrammedState()
-            ->getInterfaces()
-            ->getNode(movingIntf)
-            ->getRouterID(),
-        kTestVrf);
+        getProgrammedState()->getInterfaceVrfs()->getVrf(movingIntf), kTestVrf);
   };
 
   verifyAcrossWarmBoots(setup, verify);

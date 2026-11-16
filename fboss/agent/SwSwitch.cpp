@@ -3916,7 +3916,6 @@ void SwSwitch::updateInterfaceVrfs(
             continue;
           }
           auto newIntf = intf->modify(&newState);
-          newIntf->setRouterID(vrf);
           // Neighbors are relearned in the new VRF
           newIntf->setArpTable(state::NeighborEntries{});
           newIntf->setNdpTable(state::NeighborEntries{});

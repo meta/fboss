@@ -530,7 +530,7 @@ class ThriftConfigApplier {
    */
 
   void processVlanPorts();
-  void updateVlanInterfaces(const Interface* intf);
+  void updateVlanInterfaces(const Interface* intf, RouterID vrf);
   std::shared_ptr<PortMap> updatePorts(
       const std::shared_ptr<MultiSwitchTransceiverMap>& transceiverMap);
   shared_ptr<SystemPortMap> updateFabricLinkMonitoringSystemPorts(
@@ -2220,7 +2220,9 @@ void ThriftConfigApplier::processInterfaceForPort() {
   }
 }
 
-void ThriftConfigApplier::updateVlanInterfaces(const Interface* intf) {
+void ThriftConfigApplier::updateVlanInterfaces(
+    const Interface* intf,
+    RouterID vrf) {
   if (intf->getType() != cfg::InterfaceType::VLAN) {
     return;
   }
@@ -2228,9 +2230,9 @@ void ThriftConfigApplier::updateVlanInterfaces(const Interface* intf) {
 
   // Each VLAN can only be used with a single virtual router
   if (entry.interfaces.empty()) {
-    entry.routerID = intf->getRouterID();
+    entry.routerID = vrf;
   } else {
-    if (intf->getRouterID() != entry.routerID) {
+    if (vrf != entry.routerID) {
       throw FbossError(
           "VLAN ",
           intf->getVlanID(),
@@ -2238,7 +2240,7 @@ void ThriftConfigApplier::updateVlanInterfaces(const Interface* intf) {
           "different virtual routers: ",
           entry.routerID,
           " and ",
-          intf->getRouterID());
+          vrf);
     }
   }
 
@@ -5478,7 +5480,9 @@ std::shared_ptr<InterfaceMap> ThriftConfigApplier::updateInterfaces() {
     } else {
       newIntf = createInterface(&interfaceCfg, newAddrs);
     }
-    updateVlanInterfaces(newIntf ? newIntf.get() : origIntf.get());
+    updateVlanInterfaces(
+        newIntf ? newIntf.get() : origIntf.get(),
+        getInterfaceRouterID(interfaceCfg));
     changed |= updateMap(&newIntfs, origIntf, newIntf);
   }
 
@@ -5491,12 +5495,12 @@ std::shared_ptr<InterfaceMap> ThriftConfigApplier::updateInterfaces() {
     }
     for (const auto& [_, intfMap] : std::as_const(*origIntfs)) {
       for (const auto& [_id, origIntf] : std::as_const(*intfMap)) {
-        if (newIntfs.contains(origIntf->getID()) ||
-            origIntf->getRouterID() == RouterID(0) ||
-            configVrfs.contains(origIntf->getRouterID())) {
+        auto origVrf = orig_->getInterfaceVrfs()->getVrf(origIntf->getID());
+        if (newIntfs.contains(origIntf->getID()) || origVrf == RouterID(0) ||
+            configVrfs.contains(origVrf)) {
           continue;
         }
-        updateVlanInterfaces(origIntf.get());
+        updateVlanInterfaces(origIntf.get(), origVrf);
         newIntfs.emplace(origIntf->getID(), origIntf);
         ++numExistingProcessed;
         markDeferredVrfChange();
@@ -5586,7 +5590,7 @@ shared_ptr<Interface> ThriftConfigApplier::createInterface(
   auto mtu = config->mtu().value_or(Interface::kDefaultMtu);
   auto intf = make_shared<Interface>(
       InterfaceID(*config->intfID()),
-      getTargetRouterID(*config),
+      RouterID(config->routerID().value_or(0)),
       std::optional<VlanID>(*config->vlanID()),
       folly::StringPiece(name),
       mac,
@@ -5684,7 +5688,14 @@ shared_ptr<Interface> ThriftConfigApplier::updateInterface(
       desiredPeerChanged(
           config->desiredPeerAddressIPv6(), orig->getDesiredPeerAddressIPv6());
 
-  if (orig->getRouterID() == getInterfaceRouterID(*config) &&
+  // Interface routerId mirrors config, after deferred moves; the VRF is in
+  // the interface VRF map
+  auto vrf = getInterfaceRouterID(*config);
+  RouterID configRouterId = vrf == getTargetRouterID(*config)
+      ? RouterID(config->routerID().value_or(0))
+      : orig->getRouterID();
+  bool vrfChanged = orig_->getInterfaceVrfs()->getVrf(orig->getID()) != vrf;
+  if (orig->getRouterID() == configRouterId && !vrfChanged &&
       (orig->getVlanIDHelper() == VlanID(*config->vlanID())) &&
       (orig->getPortIDf() == cfgPort) &&
       (orig->getAggregatePortIDf() == cfgAggregatePort) &&
@@ -5700,8 +5711,8 @@ shared_ptr<Interface> ThriftConfigApplier::updateInterface(
     return nullptr;
   }
 
-  newIntf->setRouterID(getInterfaceRouterID(*config));
-  if (orig->getRouterID() != newIntf->getRouterID()) {
+  newIntf->setRouterID(configRouterId);
+  if (vrfChanged) {
     // Neighbors are relearned in the new VRF
     newIntf->setArpTable(state::NeighborEntries{});
     newIntf->setNdpTable(state::NeighborEntries{});
@@ -8219,10 +8230,11 @@ RouterID ThriftConfigApplier::getInterfaceRouterID(
   }
   // An interface moving to another VRF stays in its old VRF until routes
   // through it are removed
-  auto orig = orig_->getInterfaces()->getNodeIf(InterfaceID(*config.intfID()));
-  if (orig && orig->getRouterID() != routerId) {
+  InterfaceID intfId(*config.intfID());
+  auto origVrf = orig_->getInterfaceVrfs()->getVrf(intfId);
+  if (orig_->getInterfaces()->getNodeIf(intfId) && origVrf != routerId) {
     markDeferredVrfChange();
-    return orig->getRouterID();
+    return origVrf;
   }
   return routerId;
 }
