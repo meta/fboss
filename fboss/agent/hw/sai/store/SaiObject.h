@@ -170,6 +170,14 @@ typename SaiObjectTraits::AdapterHostKey adapterHostKey(
               apiTable->nextHopApi().getAttribute(
                   nextHopSaiId, SaiMplsNextHopTraits::AdapterHostKey{}),
               weight));
+    } else if (
+        conditionAttributes ==
+        SaiTunnelEncapNextHopTraits::kConditionAttributes) {
+      ret.nhopMemberSet.insert(
+          std::make_pair(
+              apiTable->nextHopApi().getAttribute(
+                  nextHopSaiId, SaiTunnelEncapNextHopTraits::AdapterHostKey{}),
+              weight));
     }
 #if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)
     else if (
