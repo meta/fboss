@@ -29,8 +29,12 @@ using SaiVniToVrTunnelMapEntry = SaiObject<SaiVniToVrTunnelMapEntryTraits>;
 struct SaiVxlanTunnelHandle {
   std::shared_ptr<SaiTunnelMap> encapMap;
   std::shared_ptr<SaiTunnelMap> decapMap;
-  std::vector<std::shared_ptr<SaiVrToVniTunnelMapEntry>> encapEntries;
-  std::vector<std::shared_ptr<SaiVniToVrTunnelMapEntry>> decapEntries;
+  // Keyed by VRF
+  folly::F14FastMap<int64_t, std::shared_ptr<SaiVrToVniTunnelMapEntry>>
+      encapEntries;
+  // Keyed by VNI
+  folly::F14FastMap<int64_t, std::shared_ptr<SaiVniToVrTunnelMapEntry>>
+      decapEntries;
   std::shared_ptr<SaiVxlanTunnel> tunnel;
   std::shared_ptr<SaiVxlanTunnelTerm> tunnelTerm;
 };
@@ -51,6 +55,11 @@ class SaiVxlanTunnelManager {
   void changeVxlanTunnel(
       const std::shared_ptr<VxlanTunnel>& oldTunnel,
       const std::shared_ptr<VxlanTunnel>& newTunnel);
+  // Removes the VNI map entries that newTunnel drops. Called before the
+  // virtual routers of deleted VRFs are removed.
+  void removeVniMapEntries(
+      const std::shared_ptr<VxlanTunnel>& oldTunnel,
+      const std::shared_ptr<VxlanTunnel>& newTunnel);
 
   const SaiVxlanTunnelHandle* getVxlanTunnelHandle(
       const std::string& swId) const {
@@ -59,6 +68,10 @@ class SaiVxlanTunnelManager {
 
  private:
   SaiVxlanTunnelHandle* getVxlanTunnelHandleImpl(const std::string& swId) const;
+  // Adds the VNI map entries of tunnel that the handle doesn't have
+  void addVniMapEntries(
+      SaiVxlanTunnelHandle* handle,
+      const std::shared_ptr<VxlanTunnel>& tunnel);
   SaiStore* saiStore_;
   SaiManagerTable* managerTable_;
   Handles handles_;

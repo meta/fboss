@@ -1458,6 +1458,13 @@ std::shared_ptr<SwitchState> SaiSwitch::stateChangedImplLocked(
       lockPolicy,
       &SaiRouterInterfaceManager::addRemoteRouterInterface);
 
+  // Remove the VNI map entries of deleted VRFs before their virtual routers
+  processChangedDelta(
+      delta.getVxlanTunnelsDelta(),
+      managerTable_->vxlanTunnelManager(),
+      lockPolicy,
+      &SaiVxlanTunnelManager::removeVniMapEntries);
+
   // Remove virtual routers after the routes and router interfaces using them
   // are removed or moved to another virtual router
   processRemovedDelta(

@@ -7,7 +7,10 @@
 #include "fboss/agent/hw/sai/switch/SaiVirtualRouterManager.h"
 #include "fboss/agent/hw/sai/switch/SaiVxlanTunnelManager.h"
 #include "fboss/agent/hw/sai/switch/tests/ManagerTestBase.h"
+#include "fboss/agent/state/SwitchState.h"
+#include "fboss/agent/state/Vrf.h"
 #include "fboss/agent/state/VxlanTunnel.h"
+#include "fboss/agent/state/VxlanTunnelMap.h"
 
 #include <fmt/format.h>
 #include <string>
@@ -141,6 +144,70 @@ TEST_F(VxlanTunnelManagerTest, removeVxlanTunnelWithMappers) {
   ASSERT_NE(handle, nullptr);
   EXPECT_EQ(handle->encapEntries.size(), 1);
   EXPECT_EQ(handle->decapEntries.size(), 1);
+}
+
+TEST_F(VxlanTunnelManagerTest, addVxlanTunnelCreatesEmptyMappers) {
+  saiManagerTable->vxlanTunnelManager().addVxlanTunnel(
+      makeVxlanTunnel("vxlantunnel0", intf0.id));
+  auto handle = saiManagerTable->vxlanTunnelManager().getVxlanTunnelHandle(
+      "vxlantunnel0");
+  ASSERT_NE(handle, nullptr);
+  ASSERT_NE(handle->encapMap, nullptr);
+  ASSERT_NE(handle->decapMap, nullptr);
+  EXPECT_TRUE(handle->encapEntries.empty());
+  EXPECT_TRUE(handle->decapEntries.empty());
+}
+
+TEST_F(VxlanTunnelManagerTest, changeVniMapsInPlace) {
+  auto swTunnel = makeVxlanTunnel("vxlantunnel0", intf0.id);
+  auto& manager = saiManagerTable->vxlanTunnelManager();
+  manager.addVxlanTunnel(swTunnel);
+  auto tunnelSaiId =
+      manager.getVxlanTunnelHandle("vxlantunnel0")->tunnel->adapterKey();
+
+  auto withMappers = makeVxlanTunnelWithMappers("vxlantunnel0", intf0.id);
+  manager.changeVxlanTunnel(swTunnel, withMappers);
+  auto handle = manager.getVxlanTunnelHandle("vxlantunnel0");
+  EXPECT_EQ(handle->tunnel->adapterKey(), tunnelSaiId);
+  EXPECT_EQ(handle->encapEntries.size(), 1);
+  EXPECT_EQ(handle->decapEntries.size(), 1);
+
+  manager.changeVxlanTunnel(withMappers, swTunnel);
+  handle = manager.getVxlanTunnelHandle("vxlantunnel0");
+  EXPECT_EQ(handle->tunnel->adapterKey(), tunnelSaiId);
+  EXPECT_TRUE(handle->encapEntries.empty());
+  EXPECT_TRUE(handle->decapEntries.empty());
+}
+
+TEST_F(VxlanTunnelManagerTest, deleteVrfWithVniInOneDelta) {
+  const RouterID vrfId(1001);
+  auto newState = programmedState->clone();
+  auto vrf = std::make_shared<Vrf>(vrfId);
+  newState->getVrfs()->modify(&newState)->addNode(
+      vrf, scopeResolver().scope(vrf));
+  auto tunnel = makeVxlanTunnel("vxlantunnel0", intf0.id);
+  tunnel->setVrf2Vni(std::map<int64_t, int64_t>{{vrfId, 5001}});
+  tunnel->setVniToVrf(std::map<int64_t, int64_t>{{5001, vrfId}});
+  newState->getVxlanTunnels()->modify(&newState)->addNode(
+      tunnel, scopeResolver().scope(tunnel, newState));
+  applyNewState(newState);
+  auto& manager = saiManagerTable->vxlanTunnelManager();
+  EXPECT_EQ(
+      manager.getVxlanTunnelHandle("vxlantunnel0")->encapEntries.size(), 1);
+
+  // The VRF and its VNI map entries are removed in one state update
+  newState = programmedState->clone();
+  newState->getVrfs()->modify(&newState)->removeNode(vrfId);
+  auto noVni = makeVxlanTunnel("vxlantunnel0", intf0.id);
+  newState->getVxlanTunnels()->modify(&newState)->updateNode(
+      noVni, scopeResolver().scope(noVni, newState));
+  applyNewState(newState);
+  auto handle = manager.getVxlanTunnelHandle("vxlantunnel0");
+  EXPECT_TRUE(handle->encapEntries.empty());
+  EXPECT_TRUE(handle->decapEntries.empty());
+  EXPECT_EQ(
+      saiManagerTable->virtualRouterManager().getVirtualRouterHandle(vrfId),
+      nullptr);
 }
 
 TEST_F(VxlanTunnelManagerTest, addVxlanTunnelWithMapperMissingVrFails) {

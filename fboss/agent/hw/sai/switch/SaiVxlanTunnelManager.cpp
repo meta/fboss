@@ -88,46 +88,21 @@ void SaiVxlanTunnelManager::addVxlanTunnel(
   using Attrs = SaiVxlanTunnelTraits::Attributes;
   auto handle = std::make_unique<SaiVxlanTunnelHandle>();
   // Program the VNI<->VR tunnel maps before the tunnel: the tunnel
-  // create attributes reference the maps by OID.
-  std::optional<Attrs::EncapMappers> encapMappers;
-  if (auto vrf2Vni = vxlanTunnel->getVrf2Vni(); vrf2Vni && !vrf2Vni->empty()) {
-    SaiTunnelMapTraits::CreateAttributes mapAttrs{
-        SAI_TUNNEL_MAP_TYPE_VIRTUAL_ROUTER_ID_TO_VNI};
-    handle->encapMap =
-        saiStore_->get<SaiTunnelMapTraits>().setObject(mapAttrs, mapAttrs);
-    auto& entryStore = saiStore_->get<SaiVrToVniTunnelMapEntryTraits>();
-    for (const auto& [vrf, vni] : *vrf2Vni) {
-      SaiVrToVniTunnelMapEntryTraits::CreateAttributes entryAttrs{
-          SAI_TUNNEL_MAP_TYPE_VIRTUAL_ROUTER_ID_TO_VNI,
-          handle->encapMap->adapterKey(),
-          getVirtualRouterSaiId(managerTable_, static_cast<uint32_t>(vrf)),
-          static_cast<sai_uint32_t>(vni)};
-      handle->encapEntries.push_back(
-          entryStore.setObject(entryAttrs, entryAttrs));
-    }
-    encapMappers = Attrs::EncapMappers{std::vector<sai_object_id_t>{
-        static_cast<sai_object_id_t>(handle->encapMap->adapterKey())}};
-  }
-  std::optional<Attrs::DecapMappers> decapMappers;
-  if (auto vniToVrf = vxlanTunnel->getVniToVrf();
-      vniToVrf && !vniToVrf->empty()) {
-    SaiTunnelMapTraits::CreateAttributes mapAttrs{
-        SAI_TUNNEL_MAP_TYPE_VNI_TO_VIRTUAL_ROUTER_ID};
-    handle->decapMap =
-        saiStore_->get<SaiTunnelMapTraits>().setObject(mapAttrs, mapAttrs);
-    auto& entryStore = saiStore_->get<SaiVniToVrTunnelMapEntryTraits>();
-    for (const auto& [vni, vrf] : *vniToVrf) {
-      SaiVniToVrTunnelMapEntryTraits::CreateAttributes entryAttrs{
-          SAI_TUNNEL_MAP_TYPE_VNI_TO_VIRTUAL_ROUTER_ID,
-          handle->decapMap->adapterKey(),
-          static_cast<sai_uint32_t>(vni),
-          getVirtualRouterSaiId(managerTable_, static_cast<uint32_t>(vrf))};
-      handle->decapEntries.push_back(
-          entryStore.setObject(entryAttrs, entryAttrs));
-    }
-    decapMappers = Attrs::DecapMappers{std::vector<sai_object_id_t>{
-        static_cast<sai_object_id_t>(handle->decapMap->adapterKey())}};
-  }
+  // create attributes reference the maps by OID. The maps are created even
+  // when empty, since entries are added later as VRFs get VNIs.
+  SaiTunnelMapTraits::CreateAttributes encapMapAttrs{
+      SAI_TUNNEL_MAP_TYPE_VIRTUAL_ROUTER_ID_TO_VNI};
+  handle->encapMap = saiStore_->get<SaiTunnelMapTraits>().setObject(
+      encapMapAttrs, encapMapAttrs);
+  SaiTunnelMapTraits::CreateAttributes decapMapAttrs{
+      SAI_TUNNEL_MAP_TYPE_VNI_TO_VIRTUAL_ROUTER_ID};
+  handle->decapMap = saiStore_->get<SaiTunnelMapTraits>().setObject(
+      decapMapAttrs, decapMapAttrs);
+  addVniMapEntries(handle.get(), vxlanTunnel);
+  std::optional<Attrs::EncapMappers> encapMappers{std::vector<sai_object_id_t>{
+      static_cast<sai_object_id_t>(handle->encapMap->adapterKey())}};
+  std::optional<Attrs::DecapMappers> decapMappers{std::vector<sai_object_id_t>{
+      static_cast<sai_object_id_t>(handle->decapMap->adapterKey())}};
   SaiVxlanTunnelTraits::CreateAttributes attrs{
       SAI_TUNNEL_TYPE_VXLAN,
       Attrs::UnderlayInterface(saiIntfId),
@@ -173,9 +148,75 @@ void SaiVxlanTunnelManager::removeVxlanTunnel(
 void SaiVxlanTunnelManager::changeVxlanTunnel(
     const std::shared_ptr<VxlanTunnel>& oldTunnel,
     const std::shared_ptr<VxlanTunnel>& newTunnel) {
-  if (oldTunnel != newTunnel) {
-    removeVxlanTunnel(oldTunnel);
-    addVxlanTunnel(newTunnel);
+  if (oldTunnel == newTunnel) {
+    return;
+  }
+  auto oldWithNewMaps = oldTunnel->clone();
+  oldWithNewMaps->setVrf2Vni(newTunnel->getVrf2Vni());
+  oldWithNewMaps->setVniToVrf(newTunnel->getVniToVrf());
+  if (*oldWithNewMaps == *newTunnel) {
+    // Only the VNI maps changed: update their entries in place
+    removeVniMapEntries(oldTunnel, newTunnel);
+    addVniMapEntries(getVxlanTunnelHandleImpl(newTunnel->getID()), newTunnel);
+    return;
+  }
+  removeVxlanTunnel(oldTunnel);
+  addVxlanTunnel(newTunnel);
+}
+
+void SaiVxlanTunnelManager::removeVniMapEntries(
+    const std::shared_ptr<VxlanTunnel>& oldTunnel,
+    const std::shared_ptr<VxlanTunnel>& newTunnel) {
+  auto* handle = getVxlanTunnelHandleImpl(oldTunnel->getID());
+  if (!handle) {
+    return;
+  }
+  const std::map<int64_t, int64_t> kNoMap;
+  auto newVrf2Vni = newTunnel->getVrf2Vni().value_or(kNoMap);
+  for (const auto& [vrf, vni] : oldTunnel->getVrf2Vni().value_or(kNoMap)) {
+    auto it = newVrf2Vni.find(vrf);
+    if (it == newVrf2Vni.end() || it->second != vni) {
+      handle->encapEntries.erase(vrf);
+    }
+  }
+  auto newVniToVrf = newTunnel->getVniToVrf().value_or(kNoMap);
+  for (const auto& [vni, vrf] : oldTunnel->getVniToVrf().value_or(kNoMap)) {
+    auto it = newVniToVrf.find(vni);
+    if (it == newVniToVrf.end() || it->second != vrf) {
+      handle->decapEntries.erase(vni);
+    }
+  }
+}
+
+void SaiVxlanTunnelManager::addVniMapEntries(
+    SaiVxlanTunnelHandle* handle,
+    const std::shared_ptr<VxlanTunnel>& tunnel) {
+  const std::map<int64_t, int64_t> kNoMap;
+  for (const auto& [vrf, vni] : tunnel->getVrf2Vni().value_or(kNoMap)) {
+    if (handle->encapEntries.contains(vrf)) {
+      continue;
+    }
+    SaiVrToVniTunnelMapEntryTraits::CreateAttributes entryAttrs{
+        SAI_TUNNEL_MAP_TYPE_VIRTUAL_ROUTER_ID_TO_VNI,
+        handle->encapMap->adapterKey(),
+        getVirtualRouterSaiId(managerTable_, static_cast<uint32_t>(vrf)),
+        static_cast<sai_uint32_t>(vni)};
+    handle->encapEntries[vrf] =
+        saiStore_->get<SaiVrToVniTunnelMapEntryTraits>().setObject(
+            entryAttrs, entryAttrs);
+  }
+  for (const auto& [vni, vrf] : tunnel->getVniToVrf().value_or(kNoMap)) {
+    if (handle->decapEntries.contains(vni)) {
+      continue;
+    }
+    SaiVniToVrTunnelMapEntryTraits::CreateAttributes entryAttrs{
+        SAI_TUNNEL_MAP_TYPE_VNI_TO_VIRTUAL_ROUTER_ID,
+        handle->decapMap->adapterKey(),
+        static_cast<sai_uint32_t>(vni),
+        getVirtualRouterSaiId(managerTable_, static_cast<uint32_t>(vrf))};
+    handle->decapEntries[vni] =
+        saiStore_->get<SaiVniToVrTunnelMapEntryTraits>().setObject(
+            entryAttrs, entryAttrs);
   }
 }
 
