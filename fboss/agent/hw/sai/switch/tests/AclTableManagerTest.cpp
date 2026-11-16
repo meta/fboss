@@ -13,10 +13,13 @@
 #include "fboss/agent/hw/sai/switch/SaiAclTableManager.h"
 #include "fboss/agent/hw/sai/switch/SaiNextHopGroupManager.h"
 #include "fboss/agent/hw/sai/switch/SaiSwitch.h"
+#include "fboss/agent/hw/sai/switch/SaiUdfManager.h"
 #include "fboss/agent/hw/sai/switch/tests/ManagerTestBase.h"
 #include "fboss/agent/state/AclTableGroupMap.h"
 #include "fboss/agent/state/MatchAction.h"
 #include "fboss/agent/state/StateDelta.h"
+#include "fboss/agent/state/UdfGroup.h"
+#include "fboss/agent/state/UdfPacketMatcher.h"
 #include "fboss/agent/types.h"
 
 #include <fb303/ServiceData.h>
@@ -675,6 +678,93 @@ TEST_F(AclTableManagerRollbackTest, rollbackRecreatesAclTableWithEntries) {
         nullptr);
   }
 }
+
+#if SAI_API_VERSION >= SAI_VERSION(1, 14, 0)
+class AclTableManagerUdfTest : public AclTableManagerTest {
+ public:
+  // Creates ACL UDF groups udfGroup0..udfGroup<count-1> sharing one matcher.
+  std::vector<UdfGroupSaiId> addUdfGroups(int count) {
+    auto& udfManager = saiManagerTable->udfManager();
+    auto matcher = std::make_shared<UdfPacketMatcher>(kUdfMatcher);
+    matcher->setUdfl2PktType(cfg::UdfMatchL2Type::UDF_L2_PKT_TYPE_ETH);
+    matcher->setUdfl3PktType(cfg::UdfMatchL3Type::UDF_L3_PKT_TYPE_IPV6);
+    matcher->setUdfl4PktType(cfg::UdfMatchL4Type::UDF_L4_PKT_TYPE_UDP);
+    udfManager.addUdfMatch(matcher);
+    std::vector<UdfGroupSaiId> ids;
+    for (int i = 0; i < count; ++i) {
+      const auto name = udfGroupName(i);
+      auto group = std::make_shared<UdfGroup>(name);
+      group->setUdfBaseHeader(cfg::UdfBaseHeaderType::UDF_L4_HEADER);
+      group->setStartOffsetInBytes(8);
+      group->setFieldSizeInBytes(1);
+      group->setUdfPacketMatcherIds({kUdfMatcher});
+      group->setUdfGroupType(cfg::UdfGroupType::ACL);
+      ids.push_back(udfManager.addUdfGroup(group));
+    }
+    return ids;
+  }
+
+  std::shared_ptr<AclTable> makeTable(
+      const std::vector<std::string>& udfGroups) {
+    auto table = std::make_shared<AclTable>(0, kAclTable2);
+    table->setUdfGroups(udfGroups);
+    return table;
+  }
+
+  static std::string udfGroupName(int i) {
+    return "udfGroup" + std::to_string(i);
+  }
+
+  const std::string kUdfMatcher{"udfMatcher"};
+};
+
+TEST_F(AclTableManagerUdfTest, addAclTableWithMaxUdfGroups) {
+  auto ids = addUdfGroups(SaiAclTableManager::kMaxUdfGroups);
+  std::vector<std::string> names;
+  names.reserve(SaiAclTableManager::kMaxUdfGroups);
+  for (int i = 0; i < SaiAclTableManager::kMaxUdfGroups; ++i) {
+    names.push_back(udfGroupName(i));
+  }
+  auto tableId = saiManagerTable->aclTableManager().addAclTable(
+      makeTable(names), cfg::AclStage::INGRESS, nullptr /*state*/);
+
+  auto& aclApi = saiApiTable->aclApi();
+  EXPECT_EQ(aclApi.getAttribute(tableId, AclTableUdfGroup0{}), ids[0]);
+  EXPECT_EQ(aclApi.getAttribute(tableId, AclTableUdfGroup1{}), ids[1]);
+  EXPECT_EQ(aclApi.getAttribute(tableId, AclTableUdfGroup2{}), ids[2]);
+  EXPECT_EQ(aclApi.getAttribute(tableId, AclTableUdfGroup3{}), ids[3]);
+  EXPECT_EQ(aclApi.getAttribute(tableId, AclTableUdfGroup4{}), ids[4]);
+}
+
+TEST_F(AclTableManagerUdfTest, addAclTableWithTooManyUdfGroupsThrows) {
+  addUdfGroups(SaiAclTableManager::kMaxUdfGroups + 1);
+  std::vector<std::string> names;
+  names.reserve(SaiAclTableManager::kMaxUdfGroups + 1);
+  for (int i = 0; i <= SaiAclTableManager::kMaxUdfGroups; ++i) {
+    names.push_back(udfGroupName(i));
+  }
+  EXPECT_THROW(
+      saiManagerTable->aclTableManager().addAclTable(
+          makeTable(names), cfg::AclStage::INGRESS, nullptr /*state*/),
+      FbossError);
+  EXPECT_EQ(
+      saiManagerTable->aclTableManager().getAclTableHandle(kAclTable2),
+      nullptr);
+}
+
+TEST_F(AclTableManagerUdfTest, addAclTableWithRepeatedUdfGroupThrows) {
+  addUdfGroups(1);
+  std::vector<std::string> names(
+      SaiAclTableManager::kMaxUdfGroups + 1, udfGroupName(0));
+  EXPECT_THROW(
+      saiManagerTable->aclTableManager().addAclTable(
+          makeTable(names), cfg::AclStage::INGRESS, nullptr /*state*/),
+      FbossError);
+  EXPECT_EQ(
+      saiManagerTable->aclTableManager().getAclTableHandle(kAclTable2),
+      nullptr);
+}
+#endif
 
 TEST_F(AclTableManagerTest, addAclEntryWithCounter) {
   auto aclTableId =

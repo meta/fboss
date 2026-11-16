@@ -746,6 +746,61 @@ TEST(AclGroup, ApplyConfigColdbootMultipleAclTable) {
       *(stateV2->getAclTableGroups()->getNodeIf(kAclStage1)), *tableGroup);
 }
 
+TEST(AclGroup, ApplyConfigAclTableUdfGroupLimits) {
+  FLAGS_enable_acl_table_group = true;
+  auto platform = createMockPlatform();
+  auto stateEmpty = make_shared<SwitchState>();
+
+  const int maxUdfGroups =
+      cfg::switch_config_constants::ACL_TABLE_UDF_GROUPS_MAX();
+  std::vector<std::string> definedGroups;
+  for (int i = 0; i <= maxUdfGroups; ++i) {
+    definedGroups.push_back("udfGroup" + std::to_string(i));
+  }
+  auto makeConfig = [&](const std::vector<std::string>& tableUdfGroups) {
+    cfg::SwitchConfig config;
+    config.aclTableGroup() = cfg::AclTableGroup();
+    config.aclTableGroup()->stage() = kAclStage1;
+    config.aclTableGroup()->name() = kGroup1;
+    config.aclTableGroup()->aclTables()->resize(1);
+    config.aclTableGroup()->aclTables()[0].name() = kTable1;
+    config.aclTableGroup()->aclTables()[0].priority() = 1;
+    config.aclTableGroup()->aclTables()[0].udfGroups() = tableUdfGroups;
+    config.udfConfig() = makeAclUdfConfig(definedGroups);
+    return config;
+  };
+
+  std::vector<std::string> maxGroups(
+      definedGroups.begin(), definedGroups.begin() + maxUdfGroups);
+  auto config = makeConfig(maxGroups);
+  auto state = publishAndApplyConfig(stateEmpty, &config, platform.get());
+  ASSERT_NE(nullptr, state);
+  EXPECT_EQ(
+      state->getAclTableGroups()
+          ->getNodeIf(kAclStage1)
+          ->getAclTableMap()
+          ->getTableIf(kTable1)
+          ->getUdfGroups()
+          ->toThrift(),
+      maxGroups);
+
+  config = makeConfig({});
+  EXPECT_NE(
+      nullptr, publishAndApplyConfig(stateEmpty, &config, platform.get()));
+
+  config = makeConfig(definedGroups);
+  EXPECT_THROW(
+      publishAndApplyConfig(stateEmpty, &config, platform.get()), FbossError);
+
+  config = makeConfig({definedGroups[0], definedGroups[0]});
+  EXPECT_THROW(
+      publishAndApplyConfig(stateEmpty, &config, platform.get()), FbossError);
+
+  config = makeConfig({definedGroups[0], "undefinedUdfGroup"});
+  EXPECT_THROW(
+      publishAndApplyConfig(stateEmpty, &config, platform.get()), FbossError);
+}
+
 TEST(AclGroup, ApplyConfigPortBoundAclTableGroup) {
   FLAGS_enable_acl_table_group = true;
   auto platform = createMockPlatform();
