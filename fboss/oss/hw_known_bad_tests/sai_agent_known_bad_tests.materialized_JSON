@@ -31006,6 +31006,9 @@
           "test_name_regex": "AgentOlympicV2SPToWRRQosSchedulerTest.VerifyOlympicV2AllSPTrafficToWRR$"
         },
         {
+          "test_name_regex": "AgentFlowLabelBlackholingTest.V6FlowLabelSweepEgressesAllPackets$"
+        },
+        {
           "test_name_regex": "AgentMacLearningMacMoveTest.*$"
         },
         {
@@ -32338,6 +32341,9 @@
           "test_name_regex": "AgentOlympicV2SPToWRRQosSchedulerTest.VerifyOlympicV2AllSPTrafficToWRR$"
         },
         {
+          "test_name_regex": "AgentFlowLabelBlackholingTest.V6FlowLabelSweepEgressesAllPackets$"
+        },
+        {
           "test_name_regex": "AgentMacLearningMacMoveTest.*$"
         },
         {
@@ -32815,6 +32821,9 @@
         },
         {
           "test_name_regex": "AgentOlympicV2SPToWRRQosSchedulerTest.VerifyOlympicV2AllSPTrafficToWRR$"
+        },
+        {
+          "test_name_regex": "AgentFlowLabelBlackholingTest.V6FlowLabelSweepEgressesAllPackets$"
         },
         {
           "test_name_regex": "AgentMacLearningMacMoveTest.*$"
@@ -33299,6 +33308,9 @@
           "test_name_regex": "AgentOlympicV2SPToWRRQosSchedulerTest.VerifyOlympicV2AllSPTrafficToWRR$"
         },
         {
+          "test_name_regex": "AgentFlowLabelBlackholingTest.V6FlowLabelSweepEgressesAllPackets$"
+        },
+        {
           "test_name_regex": "AgentMacLearningMacMoveTest.*$"
         },
         {
@@ -33781,6 +33793,9 @@
           "test_name_regex": "AgentOlympicV2SPToWRRQosSchedulerTest.VerifyOlympicV2AllSPTrafficToWRR$"
         },
         {
+          "test_name_regex": "AgentFlowLabelBlackholingTest.V6FlowLabelSweepEgressesAllPackets$"
+        },
+        {
           "test_name_regex": "AgentMacLearningMacMoveTest.*$"
         },
         {
@@ -34255,6 +34270,9 @@
         },
         {
           "test_name_regex": "AgentOlympicV2SPToWRRQosSchedulerTest.VerifyOlympicV2AllSPTrafficToWRR$"
+        },
+        {
+          "test_name_regex": "AgentFlowLabelBlackholingTest.V6FlowLabelSweepEgressesAllPackets$"
         },
         {
           "test_name_regex": "AgentMacLearningMacMoveTest.*$"
