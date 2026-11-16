@@ -777,8 +777,7 @@ class ThriftConfigApplier {
   std::shared_ptr<VrfMap> updateVrfs();
   // With deferVrfChanges_, VRF removals and interface VRF moves are left for
   // a second config pass, after the routes they affect have been removed.
-  // VRF the interface goes to: its interface VRF map entry if any, else
-  // config routerID
+  // VRF the interface goes to: its interface VRF map entry
   RouterID getTargetRouterID(const cfg::Interface& config) const;
   RouterID getInterfaceRouterID(const cfg::Interface& config) const;
   void markDeferredVrfChange() const;
@@ -8131,6 +8130,9 @@ void ThriftConfigApplier::validateVrfs() const {
   }
   std::unordered_set<int32_t> intfIds;
   for (const auto& intfCfg : *cfg_->interfaces()) {
+    if (intfCfg.routerID().value_or(0) != 0) {
+      throw FbossError("Interface ", *intfCfg.intfID(), " routerID must be 0");
+    }
     auto vrf = getTargetRouterID(intfCfg);
     if (vrf != RouterID(0) && !vrfIds.contains(vrf)) {
       throw FbossError(
@@ -8206,11 +8208,7 @@ std::shared_ptr<VrfMap> ThriftConfigApplier::updateVrfs() {
 
 RouterID ThriftConfigApplier::getTargetRouterID(
     const cfg::Interface& config) const {
-  if (auto entry =
-          orig_->getInterfaceVrfs()->getNodeIf(InterfaceID(*config.intfID()))) {
-    return entry->getVrf();
-  }
-  return RouterID(config.routerID().value_or(0));
+  return orig_->getInterfaceVrfs()->getVrf(InterfaceID(*config.intfID()));
 }
 
 RouterID ThriftConfigApplier::getInterfaceRouterID(

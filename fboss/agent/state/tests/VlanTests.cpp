@@ -240,13 +240,15 @@ TEST(Vlan, applyConfig) {
   config.vlans()[3].intfID() = 99;
   config.interfaces()->resize(4);
   *config.interfaces()[3].intfID() = 99;
-  config.interfaces()[3].routerID() = 1;
   config.vrfs().ensure().emplace_back().vrfId() = 1;
   *config.interfaces()[3].vlanID() = 99;
   config.interfaces()[3].ipAddresses()->resize(2);
   config.interfaces()[3].ipAddresses()[0] = "1.2.3.4/24";
   config.interfaces()[3].ipAddresses()[1] = "10.0.0.1/9";
-  auto stateV4 = publishAndApplyConfig(stateV3, &config, platform.get());
+  auto stateV4 = publishAndApplyConfig(
+      preBindInterfaceVrfs(stateV3, {{InterfaceID(99), RouterID(1)}}),
+      &config,
+      platform.get());
   ASSERT_NE(nullptr, stateV4);
   // VLAN 1 should be unchanged
   EXPECT_EQ(vlanV2, stateV4->getVlans()->getNode(VlanID(1)));

@@ -124,30 +124,6 @@ class AgentVrfTest : public AgentHwTest {
   }
 };
 
-// Binds the VRF ports through config routerID, for config moves
-class AgentVrfConfigBindTest : public AgentVrfTest {
- protected:
-  cfg::SwitchConfig initialConfig(
-      const AgentEnsemble& ensemble) const override {
-    return configWithVrfPorts(
-        ensemble, vrfPorts(ensemble.masterLogicalInterfacePortIds()));
-  }
-
-  // Config with the interfaces of ports in kTestVrf through config routerID
-  cfg::SwitchConfig configWithVrfPorts(
-      const AgentEnsemble& ensemble,
-      const std::vector<PortID>& ports) const {
-    auto config = AgentHwTest::initialConfig(ensemble);
-    auto interfaceVrfs = utility::addVrfForPorts(config, kTestVrf, ports);
-    for (auto& intf : *config.interfaces()) {
-      if (interfaceVrfs.contains(InterfaceID(*intf.intfID()))) {
-        intf.routerID() = kTestVrf;
-      }
-    }
-    return config;
-  }
-};
-
 TEST_F(AgentVrfTest, RouteInVrf) {
   auto setup = [this]() {
     bindVrfPorts();
@@ -215,104 +191,6 @@ TEST_F(AgentVrfTest, RouteInVrf) {
     auto wrapper = getSw()->getRouteUpdater();
     vrfHelper.programRoutes(
         &wrapper, {PortDescriptor(vrfEgressPort())}, {kTestPrefix});
-  };
-
-  verifyAcrossWarmBoots(setup, verify);
-}
-
-TEST_F(AgentVrfConfigBindTest, MoveInterfaceToDefaultVrf) {
-  auto setup = [this]() {
-    programRoute(kTestVrf, vrfEgressPort());
-    programRoute(RouterID(0), defaultVrfEgressPort());
-    // Routes through the moving interface are removed before its RIF moves
-    applyNewConfig(configWithVrfPorts(*getAgentEnsemble(), {ingressPort()}));
-  };
-
-  auto verify = [this]() {
-    auto outPkts = [this](PortID port) {
-      return utility::getPortOutPkts(getLatestPortStats(port));
-    };
-    // The kTestVrf route lost its next hop, so traffic in kTestVrf is dropped
-    auto sentBefore = outPkts(ingressPort());
-    auto movedBefore = outPkts(vrfEgressPort());
-    auto defaultBefore = outPkts(defaultVrfEgressPort());
-    getSw()->sendPacketOutOfPortAsync(makePacket(ingressPort()), ingressPort());
-    WITH_RETRIES({ EXPECT_EVENTUALLY_GT(outPkts(ingressPort()), sentBefore); });
-    EXPECT_EQ(outPkts(vrfEgressPort()), movedBefore);
-    EXPECT_EQ(outPkts(defaultVrfEgressPort()), defaultBefore);
-
-    // The moved interface routes in the default VRF
-    defaultBefore = outPkts(defaultVrfEgressPort());
-    getSw()->sendPacketOutOfPortAsync(
-        makePacket(vrfEgressPort()), vrfEgressPort());
-    WITH_RETRIES({
-      EXPECT_EVENTUALLY_EQ(outPkts(defaultVrfEgressPort()), defaultBefore + 1);
-    });
-  };
-
-  verifyAcrossWarmBoots(setup, verify);
-}
-
-TEST_F(AgentVrfConfigBindTest, DeleteVrfAndInterface) {
-  auto setup = [this]() {
-    programRoute(kTestVrf, vrfEgressPort());
-    programRoute(RouterID(0), defaultVrfEgressPort());
-    // Delete kTestVrf together with the egress port's interface, while the
-    // kTestVrf route still goes through it
-    auto config = AgentHwTest::initialConfig(*getAgentEnsemble());
-    std::set<int32_t> egressVlans;
-    for (const auto& vlanPort : *config.vlanPorts()) {
-      if (PortID(*vlanPort.logicalPort()) == vrfEgressPort()) {
-        egressVlans.insert(*vlanPort.vlanID());
-      }
-    }
-    auto& intfs = *config.interfaces();
-    intfs.erase(
-        std::remove_if(
-            intfs.begin(),
-            intfs.end(),
-            [&](const auto& intf) {
-              return (intf.portID() &&
-                      PortID(*intf.portID()) == vrfEgressPort()) ||
-                  (*intf.type() == cfg::InterfaceType::VLAN &&
-                   egressVlans.contains(*intf.vlanID()));
-            }),
-        intfs.end());
-    // Its VLAN goes with it; the port moves to the default VLAN
-    auto& vlans = *config.vlans();
-    vlans.erase(
-        std::remove_if(
-            vlans.begin(),
-            vlans.end(),
-            [&](const auto& vlan) { return egressVlans.contains(*vlan.id()); }),
-        vlans.end());
-    for (auto& vlanPort : *config.vlanPorts()) {
-      if (PortID(*vlanPort.logicalPort()) == vrfEgressPort()) {
-        vlanPort.vlanID() = *config.defaultVlan();
-      }
-    }
-    for (auto& port : *config.ports()) {
-      if (PortID(*port.logicalID()) == vrfEgressPort()) {
-        port.state() = cfg::PortState::DISABLED;
-        if (!egressVlans.empty()) {
-          port.ingressVlan() = *config.defaultVlan();
-        }
-      }
-    }
-    applyNewConfig(config);
-  };
-
-  auto verify = [this]() {
-    EXPECT_EQ(getProgrammedState()->getVrfs()->getNodeIf(kTestVrf), nullptr);
-    // The ingress interface moved to the default VRF and routes there
-    auto defaultBefore =
-        utility::getPortOutPkts(getLatestPortStats(defaultVrfEgressPort()));
-    getSw()->sendPacketOutOfPortAsync(makePacket(ingressPort()), ingressPort());
-    WITH_RETRIES({
-      EXPECT_EVENTUALLY_EQ(
-          utility::getPortOutPkts(getLatestPortStats(defaultVrfEgressPort())),
-          defaultBefore + 1);
-    });
   };
 
   verifyAcrossWarmBoots(setup, verify);

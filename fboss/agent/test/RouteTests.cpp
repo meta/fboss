@@ -1170,13 +1170,16 @@ TEST_F(RouteTest, applyNewConfig) {
   config.interfaces()[4].ipAddresses()[3] = "::1/48";
   config.interfaces()[5].intfID() = 6;
   config.interfaces()[5].vlanID() = 6;
-  config.interfaces()[5].routerID() = 1;
   config.vrfs().ensure().emplace_back().vrfId() = 1;
   config.interfaces()[5].mac() = "00:00:00:00:00:66";
   config.interfaces()[5].ipAddresses()->resize(2);
   config.interfaces()[5].ipAddresses()[0] = "5.1.1.1/24";
   config.interfaces()[5].ipAddresses()[1] = "::1/48";
 
+  // interface 6 is created in VRF 1
+  this->sw_->updateStateBlocking("bind interface 6", [](const auto& state) {
+    return preBindInterfaceVrfs(state, {{InterfaceID(6), RouterID(1)}});
+  });
   auto stateV0 = this->sw_->getState();
   this->sw_->applyConfig("Apply config1", config);
   auto stateV1 = this->sw_->getState();
@@ -1209,8 +1212,9 @@ TEST_F(RouteTest, applyNewConfig) {
       {TEMP::Route{0, IPAddress("::0"), 48}});
 
   // move one interface to cause same route prefix conflict
-  config.interfaces()[5].routerID() = 0;
-  EXPECT_THROW(this->sw_->applyConfig("Bogus config", config), FbossError);
+  EXPECT_THROW(
+      this->sw_->updateInterfaceVrfs({{InterfaceID(6), RouterID(0)}}),
+      FbossError);
 
   // add a new interface in a new VRF
   config.vlans()->resize(7);
@@ -1218,19 +1222,22 @@ TEST_F(RouteTest, applyNewConfig) {
   config.interfaces()->resize(7);
   config.interfaces()[6].intfID() = 7;
   config.interfaces()[6].vlanID() = 7;
-  config.interfaces()[6].routerID() = 2;
   config.vrfs().ensure().emplace_back().vrfId() = 2;
   config.interfaces()[6].mac() = "00:00:00:00:00:77";
   config.interfaces()[6].ipAddresses()->resize(2);
   config.interfaces()[6].ipAddresses()[0] = "1.1.1.1/24";
   config.interfaces()[6].ipAddresses()[1] = "::1/48";
-  // and move one interface to another vrf and fix the address conflict
-  config.interfaces()[5].routerID() = 0;
+  // and fix the address conflict of interface 6, still in VRF 1
   config.interfaces()[5].ipAddresses()->resize(2);
   config.interfaces()[5].ipAddresses()[0] = "5.2.2.1/24";
   config.interfaces()[5].ipAddresses()[1] = "5::6/48";
-
+  // interface 7 is created in VRF 2
+  this->sw_->updateStateBlocking("bind interface 7", [](const auto& state) {
+    return preBindInterfaceVrfs(state, {{InterfaceID(7), RouterID(2)}});
+  });
   this->sw_->applyConfig("Apply config", config);
+  // then move interface 6 to the default VRF
+  this->sw_->updateInterfaceVrfs({{InterfaceID(6), RouterID(0)}});
   auto stateV3 = this->sw_->getState();
   ASSERT_NE(nullptr, stateV3);
   checkChangedRoute(

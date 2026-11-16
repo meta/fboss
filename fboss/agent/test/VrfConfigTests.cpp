@@ -11,7 +11,6 @@
 #include "fboss/agent/rib/RoutingInformationBase.h"
 #include "fboss/agent/state/ArpTable.h"
 #include "fboss/agent/state/Interface.h"
-#include "fboss/agent/state/NdpTable.h"
 #include "fboss/agent/state/SwitchState.h"
 #include "fboss/agent/state/Vrf.h"
 #include "fboss/agent/test/HwTestHandle.h"
@@ -128,54 +127,8 @@ TEST(VrfResource, MaxVrfs) {
   EXPECT_EQ(sw->getState()->getVrfs()->numNodes(), 7);
 }
 
-TEST_F(VrfConfigTest, InterfaceInVrf) {
+TEST_F(VrfConfigTest, InterfaceVrfFromConfigRejected) {
   config_.vrfs() = {makeVrfConfig(1001)};
-  config_.interfaces()[0].routerID() = 1001;
-  state_ = apply();
-  ASSERT_NE(state_, nullptr);
-
-  EXPECT_EQ(
-      state_->getInterfaces()
-          ->getNode(InterfaceID(*config_.interfaces()[0].intfID()))
-          ->getRouterID(),
-      RouterID(1001));
-}
-
-TEST_F(VrfConfigTest, InterfaceMoveFlushesNeighbors) {
-  config_.vrfs() = {makeVrfConfig(1001)};
-  state_ = apply();
-  ASSERT_NE(state_, nullptr);
-  InterfaceID intfId(*config_.interfaces()[0].intfID());
-  state_->getInterfaces()
-      ->getNode(intfId)
-      ->getArpTable()
-      ->modify(intfId, &state_)
-      ->addEntry(
-          folly::IPAddressV4("10.0.0.10"),
-          folly::MacAddress("02:00:00:00:00:01"),
-          PortDescriptor(PortID(1)),
-          intfId);
-  state_->getInterfaces()
-      ->getNode(intfId)
-      ->getNdpTable()
-      ->modify(intfId, &state_)
-      ->addEntry(
-          folly::IPAddressV6("2401:db00:2110:3001::10"),
-          folly::MacAddress("02:00:00:00:00:01"),
-          PortDescriptor(PortID(1)),
-          intfId);
-
-  config_.interfaces()[0].routerID() = 1001;
-  state_ = apply();
-  ASSERT_NE(state_, nullptr);
-
-  auto intf = state_->getInterfaces()->getNode(intfId);
-  EXPECT_EQ(intf->getRouterID(), RouterID(1001));
-  EXPECT_EQ(intf->getArpTable()->size(), 0);
-  EXPECT_EQ(intf->getNdpTable()->size(), 0);
-}
-
-TEST_F(VrfConfigTest, InterfaceInUnconfiguredVrfRejected) {
   config_.interfaces()[0].routerID() = 1001;
   EXPECT_THROW(apply(), FbossError);
 }
@@ -199,14 +152,6 @@ TEST_F(VrfConfigTest, RibTablePerVrf) {
 
 namespace {
 const RouterID kTestVrf{1001};
-
-// testConfigA with interface 55 in kTestVrf
-cfg::SwitchConfig vrfConfig() {
-  auto config = testConfigA();
-  config.vrfs().ensure().emplace_back().vrfId() = kTestVrf;
-  config.interfaces()[1].routerID() = kTestVrf;
-  return config;
-}
 
 // testConfigA with kTestVrf configured; all interfaces in VRF 0
 cfg::SwitchConfig emptyVrfConfig() {
@@ -232,7 +177,7 @@ UnicastRoute makeRoute(const std::string& prefix, const std::string& nhop) {
 } // namespace
 
 TEST(InterfaceVrfs, SetAndRemove) {
-  auto config = vrfConfig();
+  auto config = emptyVrfConfig();
   auto handle = createTestHandle(&config);
   auto sw = handle->getSw();
   const auto& resolver = *sw->getScopeResolver();
@@ -245,41 +190,20 @@ TEST(InterfaceVrfs, SetAndRemove) {
   EXPECT_EQ(state->getInterfaceVrfs()->numNodes(), 0);
 }
 
-TEST(VrfDelete, RemovesVrfAndFibWithInterfaceMove) {
-  auto config = vrfConfig();
-  auto handle = createTestHandle(&config);
-  auto sw = handle->getSw();
-  ASSERT_NE(
-      sw->getState()->getFibsInfoMap()->getFibContainerIf(kTestVrf), nullptr);
-
-  sw->applyConfig("delete vrf", vrfRemovedConfig());
-
-  auto state = sw->getState();
-  EXPECT_EQ(state->getVrfs()->getNodeIf(kTestVrf), nullptr);
-
-  auto ribVrfs = sw->getRib()->getVrfList();
-  EXPECT_EQ(std::find(ribVrfs.begin(), ribVrfs.end(), kTestVrf), ribVrfs.end());
-
-  EXPECT_EQ(state->getFibsInfoMap()->getFibContainerIf(kTestVrf), nullptr);
-
-  for (const auto& [_, intfMap] : std::as_const(*state->getInterfaces())) {
-    for (const auto& [id, intf] : std::as_const(*intfMap)) {
-      EXPECT_NE(intf->getRouterID(), kTestVrf) << "interface " << id;
-    }
-  }
-  auto vrf0Fib = state->getFibsInfoMap()->getFibContainer(RouterID(0));
-  EXPECT_NE(
-      vrf0Fib->getFibV4()->exactMatch({folly::IPAddressV4("10.0.55.0"), 24}),
-      nullptr);
-}
-
 TEST(VrfDelete, RemovesNonConfigRoutes) {
-  auto config = vrfConfig();
+  auto config = emptyVrfConfig();
   auto handle = createTestHandle(&config);
   auto sw = handle->getSw();
+  // kTestVrf has no interfaces; the route resolves in the default VRF
+  auto route = makeRoute("2001:db8:100::/64", "10.0.0.10");
+  NextHopThrift defaultVrfNhop;
+  defaultVrfNhop.address() =
+      facebook::network::toBinaryAddress(folly::IPAddress("10.0.0.10"));
+  defaultVrfNhop.vrf() = 0;
+  route.nextHopAddrs()->clear();
+  route.nextHops() = {defaultVrfNhop};
   auto updater = sw->getRouteUpdater();
-  updater.addRoute(
-      kTestVrf, ClientID::BGPD, makeRoute("2001:db8:100::/64", "10.0.55.10"));
+  updater.addRoute(kTestVrf, ClientID::BGPD, route);
   updater.program();
   auto fib = sw->getState()->getFibsInfoMap()->getFibContainerIf(kTestVrf);
   ASSERT_NE(fib, nullptr);
@@ -292,7 +216,7 @@ TEST(VrfDelete, RemovesNonConfigRoutes) {
   auto state = sw->getState();
   EXPECT_EQ(state->getFibsInfoMap()->getFibContainerIf(kTestVrf), nullptr);
   const auto bgpNhop =
-      facebook::network::toBinaryAddress(folly::IPAddress("10.0.55.10"));
+      facebook::network::toBinaryAddress(folly::IPAddress("10.0.0.10"));
   for (const auto& [_, fibInfo] : std::as_const(*state->getFibsInfoMap())) {
     for (const auto& [id, nhop] : fibInfo->getIdToNextHopMap()->toThrift()) {
       EXPECT_NE(*nhop.address(), bgpNhop) << "next hop id " << id;
@@ -372,153 +296,11 @@ RouterID intf55Vrf(const std::shared_ptr<SwitchState>& state) {
 }
 } // namespace
 
-TEST(VrfDelete, RoutesRemovedBeforeVrfAndInterfaceMove) {
-  auto config = vrfConfig();
-  auto handle = createTestHandle(&config);
-  auto sw = handle->getSw();
-  StateRecorder recorder(sw);
-
-  sw->applyConfig("delete vrf", vrfRemovedConfig());
-
-  auto fibGone = recorder.firstIndex([](const auto& state) {
-    return !state->getFibsInfoMap()->getFibContainerIf(kTestVrf);
-  });
-  auto vrfGone = recorder.firstIndex(
-      [](const auto& state) { return !state->getVrfs()->getNodeIf(kTestVrf); });
-  auto intfMoved = recorder.firstIndex(
-      [](const auto& state) { return intf55Vrf(state) == RouterID(0); });
-  auto connectedInVrf0 = recorder.firstIndex([](const auto& state) {
-    return hasRoute(state, RouterID(0), "10.0.55.0/24");
-  });
-  ASSERT_GE(fibGone, 0);
-  EXPECT_LT(fibGone, vrfGone);
-  EXPECT_LT(fibGone, intfMoved);
-  EXPECT_LT(intfMoved, connectedInVrf0);
-}
-
-TEST(VrfDelete, RoutesRemovedBeforeInterfaceDelete) {
-  auto config = vrfConfig();
-  auto handle = createTestHandle(&config);
-  auto sw = handle->getSw();
-  StateRecorder recorder(sw);
-
-  // Interface 55 and VLAN 55 are deleted together with the VRF
-  auto newConfig = vrfRemovedConfig();
-  newConfig.interfaces()->erase(newConfig.interfaces()->begin() + 1);
-  newConfig.vlans()->erase(newConfig.vlans()->begin() + 1);
-  for (auto& vlanPort : *newConfig.vlanPorts()) {
-    vlanPort.vlanID() = 1;
-  }
-  for (auto& port : *newConfig.ports()) {
-    port.ingressVlan() = 1;
-  }
-  sw->applyConfig("delete vrf and interface", newConfig);
-
-  auto fibGone = recorder.firstIndex([](const auto& state) {
-    return !state->getFibsInfoMap()->getFibContainerIf(kTestVrf);
-  });
-  auto intfGone = recorder.firstIndex([](const auto& state) {
-    return !state->getInterfaces()->getNodeIf(InterfaceID(55));
-  });
-  ASSERT_GE(fibGone, 0);
-  ASSERT_GE(intfGone, 0);
-  EXPECT_LT(fibGone, intfGone);
-  EXPECT_EQ(sw->getState()->getVrfs()->getNodeIf(kTestVrf), nullptr);
-}
-
-TEST(VrfMove, RoutesRemovedBeforeInterfaceMove) {
-  const RouterID kOtherVrf{1002};
-  auto config = vrfConfig();
-  config.vrfs().ensure().emplace_back().vrfId() = kOtherVrf;
-  auto handle = createTestHandle(&config);
-  auto sw = handle->getSw();
-  auto updater = sw->getRouteUpdater();
-  updater.addRoute(
-      kTestVrf, ClientID::BGPD, makeRoute("2001:db8:100::/64", "10.0.55.10"));
-  updater.program();
-  ASSERT_TRUE(hasRoute(sw->getState(), kTestVrf, "2001:db8:100::/64"));
-  StateRecorder recorder(sw);
-
-  auto newConfig = config;
-  newConfig.interfaces()[1].routerID() = kOtherVrf;
-  sw->applyConfig("move interface", newConfig);
-
-  auto bgpGone = recorder.firstIndex([](const auto& state) {
-    return !hasRoute(state, kTestVrf, "2001:db8:100::/64");
-  });
-  auto connectedGone = recorder.firstIndex([](const auto& state) {
-    return !hasRoute(state, kTestVrf, "10.0.55.0/24");
-  });
-  auto intfMoved = recorder.firstIndex(
-      [&](const auto& state) { return intf55Vrf(state) == kOtherVrf; });
-  auto connectedInNewVrf = recorder.firstIndex([&](const auto& state) {
-    return hasRoute(state, kOtherVrf, "10.0.55.0/24");
-  });
-  ASSERT_GE(bgpGone, 0);
-  ASSERT_GE(connectedGone, 0);
-  EXPECT_LT(bgpGone, intfMoved);
-  EXPECT_LT(connectedGone, intfMoved);
-  EXPECT_LT(intfMoved, connectedInNewVrf);
-}
-
-TEST(VrfMove, LinkLocalNextHopRoutesRemovedBeforeInterfaceMove) {
-  auto config = testConfigA();
-  config.vrfs().ensure().emplace_back().vrfId() = kTestVrf;
-  auto handle = createTestHandle(&config);
-  auto sw = handle->getSw();
-  auto route = makeRoute("2001:db8:200::/64", "fe80::1");
-  route.nextHopAddrs()->front().ifName() = "fboss55";
-  auto updater = sw->getRouteUpdater();
-  updater.addRoute(RouterID(0), ClientID::BGPD, route);
-  updater.program();
-  ASSERT_TRUE(hasRoute(sw->getState(), RouterID(0), "2001:db8:200::/64"));
-  StateRecorder recorder(sw);
-
-  auto newConfig = config;
-  newConfig.interfaces()[1].routerID() = kTestVrf;
-  sw->applyConfig("move interface out of default vrf", newConfig);
-
-  auto bgpGone = recorder.firstIndex([](const auto& state) {
-    return !hasRoute(state, RouterID(0), "2001:db8:200::/64");
-  });
-  auto intfMoved = recorder.firstIndex(
-      [](const auto& state) { return intf55Vrf(state) == kTestVrf; });
-  ASSERT_GE(bgpGone, 0);
-  EXPECT_LT(bgpGone, intfMoved);
-  // The interface is now in another VRF, so the route stays unresolved
-  EXPECT_FALSE(hasRoute(sw->getState(), RouterID(0), "2001:db8:200::/64"));
-}
-
-TEST(VrfDelete, LinkLocalNextHopRouteAddedAfterInterfaceMove) {
-  auto config = vrfConfig();
-  auto handle = createTestHandle(&config);
-  auto sw = handle->getSw();
-  auto route = makeRoute("2001:db8:200::/64", "fe80::1");
-  route.nextHopAddrs()->front().ifName() = "fboss55";
-  auto updater = sw->getRouteUpdater();
-  updater.addRoute(RouterID(0), ClientID::BGPD, route);
-  updater.program();
-  // Interface 55 is in another VRF, so the route stays unresolved
-  ASSERT_FALSE(hasRoute(sw->getState(), RouterID(0), "2001:db8:200::/64"));
-  StateRecorder recorder(sw);
-
-  // Removing the last VRF moves interface 55 to the default VRF
-  sw->applyConfig("delete vrf", vrfRemovedConfig());
-
-  auto bgpAdded = recorder.firstIndex([](const auto& state) {
-    return hasRoute(state, RouterID(0), "2001:db8:200::/64");
-  });
-  auto intfMoved = recorder.firstIndex(
-      [](const auto& state) { return intf55Vrf(state) == RouterID(0); });
-  ASSERT_GE(intfMoved, 0);
-  ASSERT_GE(bgpAdded, 0);
-  EXPECT_GE(bgpAdded, intfMoved);
-}
-
 TEST(VrfNextHop, ResolvesInNextHopVrf) {
-  auto config = vrfConfig();
+  auto config = emptyVrfConfig();
   auto handle = createTestHandle(&config);
   auto sw = handle->getSw();
+  sw->updateInterfaceVrfs({{InterfaceID(55), kTestVrf}});
   // 10.0.0.10 is only reachable in the default VRF
   auto viaDefaultVrf = makeRoute("2001:db8:200::/64", "10.0.0.10");
   NextHopThrift nhop;
@@ -667,14 +449,15 @@ TEST(VrfNextHop, VxlanNextHopKeepsVtep) {
 }
 
 TEST(RibToSwitchStateFunction, PreFibUpdateInSameStateUpdate) {
-  auto config = vrfConfig();
+  auto config = emptyVrfConfig();
   auto handle = createTestHandle(&config);
   auto sw = handle->getSw();
+  sw->updateInterfaceVrfs({{InterfaceID(55), kTestVrf}});
   StateRecorder recorder(sw);
   auto ribToSwitchStateFunc = createRibToSwitchStateFunction(
       std::nullopt, [sw](const std::shared_ptr<SwitchState>& in) {
         return setInterfaceVrfs(
-            in, {{InterfaceID(55), kTestVrf}}, *sw->getScopeResolver());
+            in, {{InterfaceID(1), kTestVrf}}, *sw->getScopeResolver());
       });
 
   sw->getRib()->update(
@@ -693,7 +476,7 @@ TEST(RibToSwitchStateFunction, PreFibUpdateInSameStateUpdate) {
     return hasRoute(state, kTestVrf, "2001:db8:100::/64");
   };
   auto intfBound = [](const auto& state) {
-    return state->getInterfaceVrfs()->getVrf(InterfaceID(55)) == kTestVrf;
+    return state->getInterfaceVrfs()->getVrf(InterfaceID(1)) == kTestVrf;
   };
   auto bothIndex = recorder.firstIndex(
       [&](const auto& state) { return routeAdded(state) && intfBound(state); });
@@ -737,6 +520,34 @@ TEST(UpdateInterfaceVrfs, RoutesFollowInterface) {
     return hasRoute(state, kTestVrf, "2001:db8:200::/64");
   };
   EXPECT_EQ(recorder.firstIndex(moved), recorder.firstIndex(routed));
+}
+
+TEST(UpdateInterfaceVrfs, LinkLocalNextHopRouteFollowsInterface) {
+  auto config = emptyVrfConfig();
+  auto handle = createTestHandle(&config);
+  auto sw = handle->getSw();
+  auto route = makeRoute("2001:db8:200::/64", "fe80::1");
+  route.nextHopAddrs()->front().ifName() = "fboss55";
+  auto updater = sw->getRouteUpdater();
+  updater.addRoute(RouterID(0), ClientID::BGPD, route);
+  updater.program();
+  ASSERT_TRUE(hasRoute(sw->getState(), RouterID(0), "2001:db8:200::/64"));
+  StateRecorder recorder(sw);
+
+  // Interface 55 leaves the default VRF, so the route goes unresolved in the
+  // same state update
+  sw->updateInterfaceVrfs({{InterfaceID(55), kTestVrf}});
+  auto bgpGone = recorder.firstIndex([](const auto& state) {
+    return !hasRoute(state, RouterID(0), "2001:db8:200::/64");
+  });
+  auto intfMoved = recorder.firstIndex(
+      [](const auto& state) { return intf55Vrf(state) == kTestVrf; });
+  ASSERT_GE(bgpGone, 0);
+  EXPECT_EQ(bgpGone, intfMoved);
+
+  // Moving it back resolves the route again
+  sw->updateInterfaceVrfs({{InterfaceID(55), RouterID(0)}});
+  EXPECT_TRUE(hasRoute(sw->getState(), RouterID(0), "2001:db8:200::/64"));
 }
 
 TEST(UpdateInterfaceVrfs, FlushesNeighbors) {

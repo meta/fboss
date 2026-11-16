@@ -60,7 +60,6 @@ class InterfaceTest : public ::testing::Test {
     auto* intfConfig = &config.interfaces()[0];
     *intfConfig->intfID() = 1;
     *intfConfig->vlanID() = 1;
-    intfConfig->routerID() = 1;
     config.vrfs().ensure().emplace_back().vrfId() = 1;
     intfConfig->ipAddresses()->resize(4 + intfLinkLocals.size());
     auto idx = 0;
@@ -79,7 +78,6 @@ class InterfaceTest : public ::testing::Test {
     intfConfig = &config.interfaces()[1];
     *intfConfig->intfID() = 2;
     *intfConfig->vlanID() = 2;
-    intfConfig->routerID() = 2;
     config.vrfs().ensure().emplace_back().vrfId() = 2;
     intfConfig->ipAddresses()->resize(4);
     intfConfig->ipAddresses()[0] = "10.1.1.1/24";
@@ -104,7 +102,6 @@ class InterfaceTest : public ::testing::Test {
       portIntf.intfID() = *port.logicalID();
       portIntf.type() = cfg::InterfaceType::PORT;
       portIntf.portID() = *port.logicalID();
-      portIntf.routerID() = *port.logicalID();
       config.vrfs().ensure().emplace_back().vrfId() = *port.logicalID();
       portIntf.name() = folly::to<std::string>("port-", *port.logicalID());
       portIntf.ipAddresses()->emplace_back("10.1.1.1/24");
@@ -133,8 +130,10 @@ class InterfaceTest : public ::testing::Test {
     auto config = interfaceType == cfg::InterfaceType::VLAN
         ? genConfigWithLLs(intfLinkLocals, raRouterAddr)
         : genPortRouterInterfaceConfigWithLLs(intfLinkLocals, raRouterAddr);
-    return publishAndApplyConfig(
-        std::make_shared<SwitchState>(), &config, platform_.get());
+    auto state = preBindInterfaceVrfs(
+        std::make_shared<SwitchState>(),
+        {{InterfaceID(1), RouterID(1)}, {InterfaceID(2), RouterID(2)}});
+    return publishAndApplyConfig(state, &config, platform_.get());
   }
 
  private:
@@ -438,25 +437,20 @@ TEST(Interface, applyConfig) {
   EXPECT_EQ(InterfaceID(2), vlan2->getInterfaceID());
   EXPECT_EQ(InterfaceID(1), newvlan1->getInterfaceID());
 
-  // routerID change
+  // routerID other than 0 is rejected: interfaces are bound to VRFs in switch
+  // state
   config.interfaces()[1].routerID() = 1;
   config.vrfs().ensure().emplace_back().vrfId() = 1;
-  updateState();
-  EXPECT_EQ(nodeID, interface->getNodeID());
-  EXPECT_EQ(oldInterface->getGeneration() + 1, interface->getGeneration());
-  EXPECT_EQ(VlanID(1), interface->getVlanID());
-  EXPECT_EQ(RouterID(1), interface->getRouterID());
-  EXPECT_EQ(InterfaceID(1), interface->getID());
-  EXPECT_EQ(oldInterface->getName(), interface->getName());
-  EXPECT_EQ(oldInterface->getMac(), interface->getMac());
-  EXPECT_EQ(oldInterface->getAddressesCopy(), interface->getAddressesCopy());
+  EXPECT_THROW(
+      publishAndApplyConfig(state, &config, platform.get()), FbossError);
+  config.interfaces()[1].routerID() = 0;
 
   // MAC address change
   config.interfaces()[1].mac() = "00:02:00:12:34:56";
   updateState();
   EXPECT_EQ(oldInterface->getGeneration() + 1, interface->getGeneration());
   EXPECT_EQ(VlanID(1), interface->getVlanID());
-  EXPECT_EQ(RouterID(1), interface->getRouterID());
+  EXPECT_EQ(RouterID(0), interface->getRouterID());
   EXPECT_EQ(oldInterface->getName(), interface->getName());
   EXPECT_EQ(MacAddress("00:02:00:12:34:56"), interface->getMac());
   // Use the platform supplied MAC
@@ -481,7 +475,7 @@ TEST(Interface, applyConfig) {
   EXPECT_EQ(nodeID, interface->getNodeID());
   EXPECT_EQ(oldInterface->getGeneration() + 1, interface->getGeneration());
   EXPECT_EQ(VlanID(1), interface->getVlanID());
-  EXPECT_EQ(RouterID(1), interface->getRouterID());
+  EXPECT_EQ(RouterID(0), interface->getRouterID());
   EXPECT_EQ(oldInterface->getName(), interface->getName());
   EXPECT_EQ(oldInterface->getMac(), interface->getMac());
   // Link-local addrs will be added automatically

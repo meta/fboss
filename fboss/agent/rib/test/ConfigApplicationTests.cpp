@@ -120,7 +120,6 @@ cfg::SwitchConfig dualVrfConfig() {
   config.interfaces()[0].ipAddresses()[1] = "1::1/48";
   *config.interfaces()[1].intfID() = 2;
   *config.interfaces()[1].vlanID() = 2;
-  config.interfaces()[1].routerID() = 1;
   config.vrfs().ensure().emplace_back().vrfId() = 1;
   config.interfaces()[1].mac() = "00:00:00:00:00:22";
   config.interfaces()[1].ipAddresses()->resize(2);
@@ -330,7 +329,8 @@ TEST(ConfigApplication, StaticRoutesWithoutNextHops) {
 TEST(ConfigApplication, MultiVrfColdBoot) {
   RoutingInformationBase rib;
 
-  auto emptyState = std::make_shared<SwitchState>();
+  auto emptyState = preBindInterfaceVrfs(
+      std::make_shared<SwitchState>(), {{InterfaceID(2), RouterID(1)}});
   auto platform = createMockPlatform();
   auto config = dualVrfConfig();
 

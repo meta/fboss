@@ -850,6 +850,19 @@ shared_ptr<SwitchState> setInterfaceVrfs(
   return newState;
 }
 
+shared_ptr<SwitchState> preBindInterfaceVrfs(
+    const shared_ptr<SwitchState>& state,
+    const std::map<InterfaceID, RouterID>& interfaceVrfs) {
+  auto newState = state->clone();
+  auto map = newState->getInterfaceVrfs()->modify(&newState);
+  for (const auto& [intf, vrf] : interfaceVrfs) {
+    map->addNode(
+        std::make_shared<InterfaceVrf>(intf, vrf),
+        HwSwitchMatcher(std::unordered_set<SwitchID>({SwitchID(0)})));
+  }
+  return newState;
+}
+
 std::unique_ptr<SwSwitch> setupMockSwitchWithoutHW(
     MockPlatform* platform,
     const std::shared_ptr<SwitchState>& state,
