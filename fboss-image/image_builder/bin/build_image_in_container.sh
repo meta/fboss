@@ -274,6 +274,16 @@ dprint "Script launch cmdline: ${ORIGINAL_ARGS[*]}"
 dprint " ... logging all output to: ${LOG_FILE}"
 dprint " ... output directory: ${TARGET_DIR}"
 
+# T297984315: warn on BIOS-booted hosts before kiwi runs; the caller
+# accepts the cost and continues. The container is privileged, so it
+# sees the host sysfs and this check reads the host boot mode. A
+# missing firmware tree is treated as BIOS.
+if [ ! -d /sys/firmware/efi ]; then
+  dprint "WARNING: host boots via BIOS GRUB; proceeding at the caller's risk (T297984315)."
+  dprint "WARNING: A BIOS GRUB install during the build can overwrite the host core image."
+  dprint "WARNING: The repair script after the build is the only mitigation; if it fails or the build is killed first, the host can be bricked on its next reboot."
+fi
+
 # Perform some sanity checks of user input when an explicit --deps is provided
 if [ -n "${DEPS_DIR}" ] && [ ! -d "${DEPS_DIR}" ]; then
   dprint "ERROR: deps directory: ${DEPS_DIR} not accessible, exiting..."

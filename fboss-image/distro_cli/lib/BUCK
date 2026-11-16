@@ -46,6 +46,13 @@ python_library(
 )
 
 python_library(
+    name = "host_boot",
+    srcs = ["host_boot.py"],
+    base_module = "distro_cli.lib",
+    labels = ["autodeps2_generated"],
+)
+
+python_library(
     name = "paths",
     srcs = ["paths.py"],
     base_module = "distro_cli.lib",

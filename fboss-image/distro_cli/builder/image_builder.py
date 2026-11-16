@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import ClassVar
 
 from distro_cli.builder.component import ComponentBuilder
-from distro_cli.lib import version_file
+from distro_cli.lib import host_boot, version_file
 from distro_cli.lib.artifact import ArtifactStore, find_artifact_in_dir
 from distro_cli.lib.constants import FBOSS_BUILDER_IMAGE, IMAGE_COMPONENTS
 from distro_cli.lib.docker.container import run_container
@@ -370,6 +370,10 @@ class ImageBuilder:
             raise ManifestError("No distribution formats specified in manifest")
 
         logger.info(f"Using image builder: {self.image_builder_dir}")
+
+        # T297984315: warn on BIOS-booted hosts; the caller accepts
+        # the cost and continues. Returns False (no warning) on UEFI.
+        host_boot.warn_bios_boot_host()
 
         build_fboss_builder_image()
 

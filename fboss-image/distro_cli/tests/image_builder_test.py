@@ -42,11 +42,22 @@ class TestImageBuilder(unittest.TestCase):
 
         self.builder = ImageBuilder(self.manifest)
 
+        # The base-image build refuses BIOS-booted hosts (T297984315).
+        # Pin UEFI here so these tests are hermetic on any host firmware;
+        # the gate itself is covered by host_boot_test.py and the two
+        # tests at the end of this file.
+        self._boot_patcher = patch(
+            "distro_cli.lib.host_boot.is_bios_boot", return_value=False
+        )
+        self._boot_patcher.start()
+
         # Create a temporary directory for kernel artifacts
         self.kernel_artifacts_dir = Path(tempfile.mkdtemp(prefix="kernel-artifacts-"))
 
     def tearDown(self):
         """Clean up test fixtures"""
+        self._boot_patcher.stop()
+
         # Clean up kernel artifacts directory
         if hasattr(self, "kernel_artifacts_dir") and self.kernel_artifacts_dir.exists():
             shutil.rmtree(self.kernel_artifacts_dir)
@@ -315,6 +326,57 @@ class TestImageBuilder(unittest.TestCase):
 
         # Verify run_container was called
         mock_run_container.assert_called_once()
+
+    @patch("distro_cli.builder.image_builder.run_container")
+    @patch("distro_cli.builder.image_builder.build_fboss_builder_image")
+    def test_base_image_build_warns_on_bios_host_and_continues(
+        self, mock_build_image, mock_run_container
+    ):
+        """A BIOS-booted host warns; the caller accepts the cost and continues."""
+        from distro_cli.lib import host_boot
+
+        mock_run_container.return_value = 0
+        with (
+            patch.object(host_boot, "warn_bios_boot_host", return_value=True),
+            patch.object(self.builder, "_stage_component_artifacts"),
+            patch.object(self.builder, "_write_build_provenance"),
+            patch.object(self.builder, "_write_version_file"),
+            patch.object(self.builder, "_move_distro_file"),
+        ):
+            self.builder._build_base_image()
+
+        mock_build_image.assert_called_once()
+        mock_run_container.assert_called_once()
+
+    @patch("distro_cli.builder.image_builder.run_container")
+    @patch("distro_cli.builder.image_builder.build_fboss_builder_image")
+    def test_base_image_build_gate_runs_before_container(
+        self, mock_build_image, mock_run_container
+    ):
+        """The boot-mode gate runs before the builder image is built."""
+        from distro_cli.lib import host_boot
+
+        mock_run_container.return_value = 0
+        order = []
+
+        def record_gate():
+            order.append("gate")
+
+        def record_build_image():
+            order.append("build_image")
+
+        mock_build_image.side_effect = record_build_image
+
+        with (
+            patch.object(host_boot, "warn_bios_boot_host", record_gate),
+            patch.object(self.builder, "_stage_component_artifacts"),
+            patch.object(self.builder, "_write_build_provenance"),
+            patch.object(self.builder, "_write_version_file"),
+            patch.object(self.builder, "_move_distro_file"),
+        ):
+            self.builder._build_base_image()
+
+        self.assertEqual(order, ["gate", "build_image"])
 
 
 if __name__ == "__main__":
