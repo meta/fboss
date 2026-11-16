@@ -260,6 +260,7 @@ TEST_F(CrossVrfResolutionTest, VxlanNextHopOverUnderlayEcmp) {
            folly::IPAddress("2001:db8:2::10")}));
   auto vxlanNhop = makeVxlanNextHop("2001:db8:500::1", "vx0");
   vxlanNhop.overlayDstMac() = "02:00:00:00:00:01";
+  vxlanNhop.tunnelVni() = 10001;
   addRoute(kTenantVrf, makeOverlayRoute("2001:db8:200::/64", vxlanNhop));
 
   auto nhops = nextHops(kTenantVrf, "2001:db8:200::1");
@@ -271,6 +272,8 @@ TEST_F(CrossVrfResolutionTest, VxlanNextHopOverUnderlayEcmp) {
   EXPECT_EQ(nhop.tunnelType(), TunnelType::VXLAN);
   EXPECT_EQ(nhop.tunnelId(), "vx0");
   EXPECT_EQ(nhop.overlayDstMac(), folly::MacAddress("02:00:00:00:00:01"));
+  ASSERT_TRUE(nhop.tunnelVni().has_value());
+  EXPECT_EQ(*nhop.tunnelVni(), 10001);
   auto setID = resolvedNextHopSetID(kTenantVrf, "2001:db8:200::1");
 
   // Losing an underlay path does not change the VXLAN next hop

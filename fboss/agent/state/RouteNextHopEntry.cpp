@@ -539,7 +539,8 @@ RouteNextHopEntry::NextHopSet RouteNextHopEntry::normalizeNextHops(
         nhop.role(),
         nhop.vrf(),
         nhop.resolvedInNextLevel(),
-        nhop.overlayDstMac()));
+        nhop.overlayDstMac(),
+        nhop.tunnelVni()));
   }
   // 2)
   // Calculate the totalWeight. If that exceeds the max ecmp width, we use the
@@ -594,7 +595,8 @@ RouteNextHopEntry::NextHopSet RouteNextHopEntry::normalizeNextHops(
               nhop.role(),
               nhop.vrf(),
               nhop.resolvedInNextLevel(),
-              nhop.overlayDstMac()));
+              nhop.overlayDstMac(),
+              nhop.tunnelVni()));
           scaledTotalWeight += weight;
         }
         index++;
@@ -622,7 +624,8 @@ RouteNextHopEntry::NextHopSet RouteNextHopEntry::normalizeNextHops(
             nhop.role(),
             nhop.vrf(),
             nhop.resolvedInNextLevel(),
-            nhop.overlayDstMac()));
+            nhop.overlayDstMac(),
+            nhop.tunnelVni()));
         scaledTotalWeight += w;
       }
       // 2c)
@@ -657,7 +660,8 @@ RouteNextHopEntry::NextHopSet RouteNextHopEntry::normalizeNextHops(
               maxItr->role(),
               maxItr->vrf(),
               maxItr->resolvedInNextLevel(),
-              maxItr->overlayDstMac());
+              maxItr->overlayDstMac(),
+              maxItr->tunnelVni());
           // remove the max weight next hop and replace with the
           // decremented version, if the decremented version would
           // not have weight 0. If it would have weight 0, that means
@@ -702,7 +706,8 @@ RouteNextHopEntry::NextHopSet RouteNextHopEntry::normalizeNextHops(
           nhop.role(),
           nhop.vrf(),
           nhop.resolvedInNextLevel(),
-          nhop.overlayDstMac()));
+          nhop.overlayDstMac(),
+          nhop.tunnelVni()));
     }
     XLOG(DBG3) << "Scaled next hops from " << nhopSet << " to "
                << normalizedToMaxPathNextHops;

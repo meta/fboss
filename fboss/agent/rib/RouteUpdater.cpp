@@ -604,7 +604,8 @@ struct NextHopCombinedWeightsKey {
         role(nhop.role()),
         vrf(nhop.vrf()),
         resolvedInNextLevel(nhop.resolvedInNextLevel()),
-        overlayDstMac(nhop.overlayDstMac()) {
+        overlayDstMac(nhop.overlayDstMac()),
+        tunnelVni(nhop.tunnelVni()) {
     /* "weightless" next hop, consider all attrs of L3 next hop except its
      * weight, this is used in computing number of required paths to next hop,
      * for correct programming of unequal cost multipath */
@@ -623,7 +624,8 @@ struct NextHopCombinedWeightsKey {
                role,
                vrf,
                resolvedInNextLevel,
-               overlayDstMac) <
+               overlayDstMac,
+               tunnelVni) <
         std::tie(
                other.ip,
                other.intfId,
@@ -637,7 +639,8 @@ struct NextHopCombinedWeightsKey {
                other.role,
                other.vrf,
                other.resolvedInNextLevel,
-               other.overlayDstMac);
+               other.overlayDstMac,
+               other.tunnelVni);
   }
   folly::IPAddress ip;
   std::optional<InterfaceID> intfId;
@@ -652,6 +655,7 @@ struct NextHopCombinedWeightsKey {
   std::optional<RouterID> vrf;
   bool resolvedInNextLevel;
   std::optional<folly::MacAddress> overlayDstMac;
+  std::optional<int32_t> tunnelVni;
 };
 using NextHopCombinedWeights =
     boost::container::flat_map<NextHopCombinedWeightsKey, NextHopWeight>;
@@ -768,7 +772,8 @@ RouteNextHopSet optimizeWeights(const NextHopCombinedWeights& cws) {
         cw.first.role,
         cw.first.vrf,
         cw.first.resolvedInNextLevel,
-        cw.first.overlayDstMac));
+        cw.first.overlayDstMac,
+        cw.first.tunnelVni));
   }
   return fwd;
 }
@@ -821,7 +826,8 @@ RouteNextHopSet mergeForwardInfosEcmp(
             fnh.role(),
             fnh.vrf(),
             fnh.resolvedInNextLevel(),
-            fnh.overlayDstMac()));
+            fnh.overlayDstMac(),
+            fnh.tunnelVni()));
       }
     }
     return fwd;
@@ -937,6 +943,7 @@ void RibRouteUpdater::getFwdInfoFromNhop(
     const std::optional<int64_t>& cost,
     NextHopRole role,
     const std::optional<folly::MacAddress>& overlayDstMac,
+    const std::optional<int32_t>& tunnelVni,
     std::optional<RouteCounterID>* inheritedCounterID,
     RouteNextHopSet& fwd) {
   auto route = it->value();
@@ -991,7 +998,8 @@ void RibRouteUpdater::getFwdInfoFromNhop(
             role,
             std::nullopt, /* vrf */
             false, /* resolvedInNextLevel */
-            overlayDstMac));
+            overlayDstMac,
+            tunnelVni));
       } else {
         std::for_each(
             nhops.begin(),
@@ -1005,7 +1013,8 @@ void RibRouteUpdater::getFwdInfoFromNhop(
              &tunnelId,
              &cost,
              role,
-             &overlayDstMac](const auto& nhop) {
+             &overlayDstMac,
+             &tunnelVni](const auto& nhop) {
               const auto srv6Encap =
                   resolveSrv6Encap(srv6SegmentList, tunnelType, tunnelId, nhop);
               fwd.insert(ResolvedNextHop(
@@ -1025,7 +1034,8 @@ void RibRouteUpdater::getFwdInfoFromNhop(
                   role,
                   nhop.vrf(),
                   nhop.resolvedInNextLevel(),
-                  overlayDstMac));
+                  overlayDstMac,
+                  tunnelVni));
             });
       }
     }
@@ -1069,7 +1079,8 @@ void RibRouteUpdater::resolveInNextLevel(
       nh.role(),
       nh.vrf(),
       true /* resolvedInNextLevel */,
-      nh.overlayDstMac()));
+      nh.overlayDstMac(),
+      nh.tunnelVni()));
 }
 
 /*
@@ -1222,6 +1233,7 @@ std::shared_ptr<Route<AddressT>> RibRouteUpdater::resolveOne(
               nh.cost(),
               nh.role(),
               nh.overlayDstMac(),
+              nh.tunnelVni(),
               &inheritedCounterID,
               nhFwd);
         } else {
@@ -1251,6 +1263,7 @@ std::shared_ptr<Route<AddressT>> RibRouteUpdater::resolveOne(
               nh.cost(),
               nh.role(),
               nh.overlayDstMac(),
+              nh.tunnelVni(),
               &inheritedCounterID,
               nhFwd);
         }

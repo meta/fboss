@@ -65,6 +65,10 @@ struct NextHopThrift {
   6: optional TunnelType tunnelType;
   7: optional string tunnelId;
   8: optional string overlayDstMac;
+  // VXLAN network identifier, explicitly carried on the next hop
+  // instead of derived from the tunnel's VRF->VNI mapper.
+  // Valid range is 1..16777215 when set.
+  9: optional i32 tunnelVni;
 
   /**
   * For capturing topology information to assist Agent path pruning decisions

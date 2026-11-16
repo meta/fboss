@@ -5306,6 +5306,7 @@ class ChildThriftPath<::facebook::fboss::NextHopThrift, ::facebook::fboss::fsdb:
     STRUCT_CHILD_GETTERS(tunnelType, 6);
     STRUCT_CHILD_GETTERS(tunnelId, 7);
     STRUCT_CHILD_GETTERS(overlayDstMac, 8);
+    STRUCT_CHILD_GETTERS(tunnelVni, 9);
     STRUCT_CHILD_GETTERS(adjustedWeight, 15);
     STRUCT_CHILD_GETTERS(topologyInfo, 16);
     STRUCT_CHILD_GETTERS(cost, 17);

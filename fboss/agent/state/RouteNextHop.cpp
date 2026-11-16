@@ -68,6 +68,27 @@ void validateOverlayDstMac(
   }
 }
 
+void validateTunnelVni(
+    const std::optional<int32_t>& tunnelVni,
+    const std::optional<facebook::fboss::TunnelType>& tunnelType,
+    const std::optional<std::string>& tunnelId) {
+  if (tunnelVni.has_value()) {
+    if (!tunnelType.has_value() ||
+        tunnelType.value() != facebook::fboss::TunnelType::VXLAN) {
+      throw facebook::fboss::FbossError(
+          "tunnelType must be VXLAN when tunnelVni is set");
+    }
+    if (!tunnelId.has_value() || tunnelId.value().empty()) {
+      throw facebook::fboss::FbossError(
+          "tunnelId must be set and non-empty when tunnelVni is set");
+    }
+    if (*tunnelVni < 1 || *tunnelVni > 16777215) {
+      throw facebook::fboss::FbossError(
+          "tunnelVni must be in range 1..16777215, got ", *tunnelVni);
+    }
+  }
+}
+
 } // namespace
 
 namespace facebook::fboss {
@@ -110,6 +131,10 @@ NextHop fromThrift(const NextHopThrift& nht, bool allowV6NonLinkLocal) {
   if (nht.overlayDstMac()) {
     overlayDstMac = folly::MacAddress(*nht.overlayDstMac());
   }
+  std::optional<int32_t> tunnelVni = std::nullopt;
+  if (nht.tunnelVni()) {
+    tunnelVni = *nht.tunnelVni();
+  }
   auto role = *nht.role();
   std::optional<RouterID> vrf = std::nullopt;
   if (nht.vrf()) {
@@ -135,7 +160,8 @@ NextHop fromThrift(const NextHopThrift& nht, bool allowV6NonLinkLocal) {
         role,
         vrf,
         true /* resolvedInNextLevel */,
-        overlayDstMac);
+        overlayDstMac,
+        tunnelVni);
   }
   bool v6LinkLocal = address.isV6() && address.isLinkLocal();
   // Only honor interface specified over thrift if the address
@@ -160,7 +186,8 @@ NextHop fromThrift(const NextHopThrift& nht, bool allowV6NonLinkLocal) {
         role,
         vrf,
         false /* resolvedInNextLevel */,
-        overlayDstMac);
+        overlayDstMac,
+        tunnelVni);
   } else {
     return UnresolvedNextHop(
         std::move(address),
@@ -175,7 +202,8 @@ NextHop fromThrift(const NextHopThrift& nht, bool allowV6NonLinkLocal) {
         cost,
         role,
         vrf,
-        overlayDstMac);
+        overlayDstMac,
+        tunnelVni);
   }
 }
 
@@ -252,6 +280,8 @@ bool operator<(const NextHop& a, const NextHop& b) {
     return a.tunnelId() < b.tunnelId();
   } else if (a.overlayDstMac() != b.overlayDstMac()) {
     return a.overlayDstMac() < b.overlayDstMac();
+  } else if (a.tunnelVni() != b.tunnelVni()) {
+    return a.tunnelVni() < b.tunnelVni();
   } else if (a.cost() != b.cost()) {
     return a.cost() < b.cost();
   } else if (a.role() != b.role()) {
@@ -283,7 +313,8 @@ bool operator==(const NextHop& a, const NextHop& b) {
       a.topologyInfo() == b.topologyInfo() &&
       a.srv6SegmentList() == b.srv6SegmentList() &&
       a.tunnelType() == b.tunnelType() && a.tunnelId() == b.tunnelId() &&
-      a.overlayDstMac() == b.overlayDstMac() && a.cost() == b.cost() &&
+      a.overlayDstMac() == b.overlayDstMac() &&
+      a.tunnelVni() == b.tunnelVni() && a.cost() == b.cost() &&
       a.role() == b.role() && a.vrf() == b.vrf());
 }
 
@@ -306,7 +337,8 @@ ResolvedNextHop::ResolvedNextHop(
     NextHopRole role,
     const std::optional<RouterID>& vrf,
     bool resolvedInNextLevel,
-    const std::optional<folly::MacAddress>& overlayDstMac)
+    const std::optional<folly::MacAddress>& overlayDstMac,
+    const std::optional<int32_t>& tunnelVni)
     : addr_(addr),
       intfID_(intfID),
       resolvedInNextLevel_(resolvedInNextLevel),
@@ -321,9 +353,11 @@ ResolvedNextHop::ResolvedNextHop(
       cost_(cost),
       role_(role),
       vrf_(vrf),
-      overlayDstMac_(overlayDstMac) {
+      overlayDstMac_(overlayDstMac),
+      tunnelVni_(tunnelVni) {
   validateSrv6Fields(srv6SegmentList_, tunnelType_, tunnelId_);
   validateOverlayDstMac(overlayDstMac_, tunnelType_, tunnelId_);
+  validateTunnelVni(tunnelVni_, tunnelType_, tunnelId_);
   validateInterface(intfID_, resolvedInNextLevel_, addr_);
 }
 
@@ -342,7 +376,8 @@ ResolvedNextHop::ResolvedNextHop(
     NextHopRole role,
     const std::optional<RouterID>& vrf,
     bool resolvedInNextLevel,
-    std::optional<folly::MacAddress>&& overlayDstMac)
+    std::optional<folly::MacAddress>&& overlayDstMac,
+    std::optional<int32_t>&& tunnelVni)
     : addr_(std::move(addr)),
       intfID_(intfID),
       resolvedInNextLevel_(resolvedInNextLevel),
@@ -357,10 +392,17 @@ ResolvedNextHop::ResolvedNextHop(
       cost_(std::move(cost)),
       role_(role),
       vrf_(vrf),
-      overlayDstMac_(std::move(overlayDstMac)) {
+      overlayDstMac_(std::move(overlayDstMac)),
+      tunnelVni_(std::move(tunnelVni)) {
   validateSrv6Fields(srv6SegmentList_, tunnelType_, tunnelId_);
   validateOverlayDstMac(overlayDstMac_, tunnelType_, tunnelId_);
+  validateTunnelVni(tunnelVni_, tunnelType_, tunnelId_);
   validateInterface(intfID_, resolvedInNextLevel_, addr_);
+}
+
+void ResolvedNextHop::setTunnelVni(std::optional<int32_t> tunnelVni) {
+  validateTunnelVni(tunnelVni, tunnelType_, tunnelId_);
+  tunnelVni_ = tunnelVni;
 }
 
 UnresolvedNextHop::UnresolvedNextHop(
@@ -376,7 +418,8 @@ UnresolvedNextHop::UnresolvedNextHop(
     const std::optional<int64_t>& cost,
     NextHopRole role,
     const std::optional<RouterID>& vrf,
-    const std::optional<folly::MacAddress>& overlayDstMac)
+    const std::optional<folly::MacAddress>& overlayDstMac,
+    const std::optional<int32_t>& tunnelVni)
     : addr_(addr),
       weight_(weight),
       labelForwardingAction_(action),
@@ -389,13 +432,15 @@ UnresolvedNextHop::UnresolvedNextHop(
       cost_(cost),
       role_(role),
       vrf_(vrf),
-      overlayDstMac_(overlayDstMac) {
+      overlayDstMac_(overlayDstMac),
+      tunnelVni_(tunnelVni) {
   if (addr_.isV6() && addr_.isLinkLocal()) {
     throw FbossError(
         "Missing interface scoping for link-local nexthop ", addr.str());
   }
   validateSrv6Fields(srv6SegmentList_, tunnelType_, tunnelId_);
   validateOverlayDstMac(overlayDstMac_, tunnelType_, tunnelId_);
+  validateTunnelVni(tunnelVni_, tunnelType_, tunnelId_);
 }
 
 UnresolvedNextHop::UnresolvedNextHop(
@@ -411,7 +456,8 @@ UnresolvedNextHop::UnresolvedNextHop(
     std::optional<int64_t>&& cost,
     NextHopRole role,
     const std::optional<RouterID>& vrf,
-    std::optional<folly::MacAddress>&& overlayDstMac)
+    std::optional<folly::MacAddress>&& overlayDstMac,
+    std::optional<int32_t>&& tunnelVni)
     : addr_(std::move(addr)),
       weight_(weight),
       labelForwardingAction_(std::move(action)),
@@ -424,13 +470,15 @@ UnresolvedNextHop::UnresolvedNextHop(
       cost_(std::move(cost)),
       role_(role),
       vrf_(vrf),
-      overlayDstMac_(std::move(overlayDstMac)) {
+      overlayDstMac_(std::move(overlayDstMac)),
+      tunnelVni_(std::move(tunnelVni)) {
   if (addr_.isV6() && addr_.isLinkLocal()) {
     throw FbossError(
         "Missing interface scoping for link-local nexthop ", addr_.str());
   }
   validateSrv6Fields(srv6SegmentList_, tunnelType_, tunnelId_);
   validateOverlayDstMac(overlayDstMac_, tunnelType_, tunnelId_);
+  validateTunnelVni(tunnelVni_, tunnelType_, tunnelId_);
 }
 
 bool operator==(const ResolvedNextHop& a, const ResolvedNextHop& b) {
@@ -443,7 +491,8 @@ bool operator==(const ResolvedNextHop& a, const ResolvedNextHop& b) {
       a.topologyInfo() == b.topologyInfo() &&
       a.srv6SegmentList() == b.srv6SegmentList() &&
       a.tunnelType() == b.tunnelType() && a.tunnelId() == b.tunnelId() &&
-      a.overlayDstMac() == b.overlayDstMac() && a.cost() == b.cost() &&
+      a.overlayDstMac() == b.overlayDstMac() &&
+      a.tunnelVni() == b.tunnelVni() && a.cost() == b.cost() &&
       a.role() == b.role() && a.vrf() == b.vrf());
 }
 
@@ -456,7 +505,8 @@ bool operator==(const UnresolvedNextHop& a, const UnresolvedNextHop& b) {
       a.topologyInfo() == b.topologyInfo() &&
       a.srv6SegmentList() == b.srv6SegmentList() &&
       a.tunnelType() == b.tunnelType() && a.tunnelId() == b.tunnelId() &&
-      a.overlayDstMac() == b.overlayDstMac() && a.cost() == b.cost() &&
+      a.overlayDstMac() == b.overlayDstMac() &&
+      a.tunnelVni() == b.tunnelVni() && a.cost() == b.cost() &&
       a.role() == b.role() && a.vrf() == b.vrf());
 }
 
