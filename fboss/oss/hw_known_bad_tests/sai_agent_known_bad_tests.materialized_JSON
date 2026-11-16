@@ -27302,6 +27302,2180 @@
           "test_name_regex": "AgentRollbackTest.rollbackNeighborResolution$"
         }
     ],
+    "brcm/16.0_ea_odp/16.0_ea_odp/tomahawk/multi_switch": [
+        {
+          "test_name_regex": "AgentMacLearningMacMoveTest.*$"
+        },
+        {
+          "test_name_regex": "AgentMacLearningBatchEntriesTest.*$"
+        },
+        {
+          "test_name_regex": "AgentMacLearningTest.VerifyHwAgingForPort$"
+        },
+        {
+          "test_name_regex": "AgentMacLearningTest.VerifyHwAgingForTrunk$"
+        },
+        {
+          "test_name_regex": "AgentMacLearningTest.VerifyHwLearningForPort$"
+        },
+        {
+          "test_name_regex": "AgentMacLearningTest.VerifyHwLearningForTrunk$"
+        },
+        {
+          "test_name_regex": "AgentHwAclQualifierTest.AclVlanIDQualifier$"
+        },
+        {
+          "test_name_regex": "warm_boot.AgentEcmpTestWithWBWrites.L2ResolveOneNhopThenLinkDownThenUp$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentNeighborResolutionOverFlowTest.neighborResolutionOverFlow$"
+        },
+        {
+          "test_name_regex": "roundtrip.(preprod_2_trunk_2_preprod|trunk_2_preprod_2_trunk).warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentAdjFrrRouteTest.nonDlbFlowUsesSingleBackupNextHop$"
+        },
+        {
+          "test_name_regex": "roundtrip.(preprod_2_trunk_2_preprod|trunk_2_preprod_2_trunk).warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentAdjFrrRouteTest.priAndBackupNextHopFlap$"
+        },
+        {
+          "test_name_regex": "roundtrip.(preprod_2_trunk_2_preprod|trunk_2_preprod_2_trunk).warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentAdjFrrRouteTest.routeWithPrimaryAndBackupNhops$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentRouteTest/[01].StaticIp2MplsRoutes$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentMplsRouteTest.StaticIp2MplsRoutes$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.*AgentCoppTest/[01].DstIpNetworkControlDscpToHighPriQ$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentHgridDuRouteScaleTest.hgridDuScaleTest$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentIngressBufferTest.*$"
+        },
+        {
+          "test_name_regex": "warm_boot.AgentPacketStreamHandlerTest.VerifySinkToStreamLoopback$"
+        },
+        {
+          "test_name_regex": "AgentArsBcmTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentRouteStatTest.V4V6SeparateCounters$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_prod_2_trunk.*.AgentRouteStatTest.V4V6SeparateCounters$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentRouteCounterOverflowTest.overflowRouteCounters$"
+        },
+        {
+          "test_name_regex": "roundtrip.prod_2_trunk_2_prod.cold_boot.AgentRouteCounterOverflowTest.overflowRouteCounters$"
+        },
+        {
+          "test_name_regex": "AgentHwMirrorTrunkTest/[01].*$"
+        },
+        {
+          "test_name_regex": "AgentHwMirrorTest/[01].HwMirrorLimitExceeded$"
+        },
+        {
+          "test_name_regex": "AgentAsicDefaultProgrammingTest.verifyDefaultProgramming$"
+        },
+        {
+          "test_name_regex": "warm_boot.AgentInNullRouteDiscardsCounterTest.nullRouteHit$"
+        },
+        {
+          "test_name_regex": "warm_boot.AgentMacLearningAndNeighborResolutionTest/[0145].learnMacProgramNeighborsAndAgeMac$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentEcmpTrunkTest.TrunkL2ResolveNhopThenLinkAndLACPDownThenUpThenStateUp$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentEcmpTrunkTest.TrunkL2ResolveNhopThenLinkDownThenUpThenStateUp$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentEcmpTrunkTest.TrunkL2ResolveNhopThenLinkAndLACPDownThenUpThenStateUp$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentEcmpTrunkTest.TrunkL2ResolveNhopThenLinkDownThenUpThenStateUp$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentTrunkTest.TrunkCreateHighLowKeyIds$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentTrunkTest.TrunkCheckIngressPktAggPort$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentTrunkTest.TrunkMemberPortDownMinLinksViolated$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentTrunkTest.TrunkCapacityUpdatesOnMemberDown$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentTrunkTest.TrunkCreateHighLowKeyIds$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentTrunkTest.TrunkCheckIngressPktAggPort$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentTrunkTest.TrunkMemberPortDownMinLinksViolated$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentTrunkTest.TrunkCapacityUpdatesOnMemberDown$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentTrunkLoadBalancerTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentTrunkLoadBalancerTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentMplsTrunkLoadBalancerTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentMplsTrunkLoadBalancerTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentTrunkHighLowKeyIdsTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentTrunkHighLowKeyIdsTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentTrunkIngressPktAggPortTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentTrunkIngressPktAggPortTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentTrunkMinLinksViolatedTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentTrunkMinLinksViolatedTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentTrunkPortStatsTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentTrunkPortStatsTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentTrunkCapacityMemberDownTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentTrunkCapacityMemberDownTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentTrunkLb4x3Test.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentTrunkLb4x3Test.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentTrunkLb4x2Test.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentTrunkLb4x2Test.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentMplsTrunkLb4x3Test.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentMplsTrunkLb4x3Test.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentMplsTrunkLb4x2Test.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentMplsTrunkLb4x2Test.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentSrv6TrunkLoadBalancerTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentSrv6TrunkLoadBalancerTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentEcmpTrunkTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentEcmpTrunkTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentPacketSendReceiveLagTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentPacketSendReceiveLagTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentHwMirrorTrunkTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentHwMirrorTrunkTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentSflowMirrorOnTrunkTestV4.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentSflowMirrorOnTrunkV4Test.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentSflowMirrorOnTrunkTestV4.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentSflowMirrorOnTrunkV4Test.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentSflowMirrorOnTrunkTestV6.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentSflowMirrorOnTrunkV6Test.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentSflowMirrorOnTrunkTestV6.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentSflowMirrorOnTrunkV6Test.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentNeighborTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentNeighborTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentNeighborResolutionTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentNeighborResolutionTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentNeighborMetadataTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentNeighborMetadataTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentCoppTest/1.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentCoppTest/1.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentCoppPortMtuTest/1.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentCoppPortMtuTest/1.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentCoppEapolTest/1.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentCoppEapolTest/1.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentMPLSTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentMPLSTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentMPLSHeadEndTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentMPLSHeadEndTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentMPLSMidpointTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentMPLSMidpointTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentSrv6EncapTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentSrv6EncapTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentSrv6MidpointTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentSrv6MidpointTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentSrv6BindingSidTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentSrv6BindingSidTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentSrv6DecapTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentSrv6DecapTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentHashPolarizationTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentHashPolarizationTest.*$"
+        },
+        {
+          "test_name_regex": "AgentMacLearningMacMoveTest.*$"
+        },
+        {
+          "test_name_regex": "AgentMacLearningBatchEntriesTest.*$"
+        },
+        {
+          "test_name_regex": "AgentMacLearningTest.VerifyHwAgingForPort$"
+        },
+        {
+          "test_name_regex": "AgentMacLearningTest.VerifyHwAgingForTrunk$"
+        },
+        {
+          "test_name_regex": "AgentMacLearningTest.VerifyHwLearningForPort$"
+        },
+        {
+          "test_name_regex": "AgentMacLearningTest.VerifyHwLearningForTrunk$"
+        },
+        {
+          "test_name_regex": "AgentHwAclQualifierTest.AclVlanIDQualifier$"
+        },
+        {
+          "test_name_regex": "warm_boot.AgentEcmpTestWithWBWrites.L2ResolveOneNhopThenLinkDownThenUp$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentNeighborResolutionOverFlowTest.neighborResolutionOverFlow$"
+        },
+        {
+          "test_name_regex": "roundtrip.(preprod_2_trunk_2_preprod|trunk_2_preprod_2_trunk).warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentAdjFrrRouteTest.nonDlbFlowUsesSingleBackupNextHop$"
+        },
+        {
+          "test_name_regex": "roundtrip.(preprod_2_trunk_2_preprod|trunk_2_preprod_2_trunk).warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentAdjFrrRouteTest.priAndBackupNextHopFlap$"
+        },
+        {
+          "test_name_regex": "roundtrip.(preprod_2_trunk_2_preprod|trunk_2_preprod_2_trunk).warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentAdjFrrRouteTest.routeWithPrimaryAndBackupNhops$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentRouteTest/[01].StaticIp2MplsRoutes$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentMplsRouteTest.StaticIp2MplsRoutes$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.*AgentCoppTest/[01].DstIpNetworkControlDscpToHighPriQ$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentHgridDuRouteScaleTest.hgridDuScaleTest$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentIngressBufferTest.*$"
+        },
+        {
+          "test_name_regex": "warm_boot.AgentPacketStreamHandlerTest.VerifySinkToStreamLoopback$"
+        },
+        {
+          "test_name_regex": "AgentArsBcmTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentRouteStatTest.V4V6SeparateCounters$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_prod_2_trunk.*.AgentRouteStatTest.V4V6SeparateCounters$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentRouteCounterOverflowTest.overflowRouteCounters$"
+        },
+        {
+          "test_name_regex": "roundtrip.prod_2_trunk_2_prod.cold_boot.AgentRouteCounterOverflowTest.overflowRouteCounters$"
+        },
+        {
+          "test_name_regex": "AgentHwMirrorTrunkTest/[01].*$"
+        },
+        {
+          "test_name_regex": "AgentHwMirrorTest/[01].HwMirrorLimitExceeded$"
+        },
+        {
+          "test_name_regex": "AgentAsicDefaultProgrammingTest.verifyDefaultProgramming$"
+        },
+        {
+          "test_name_regex": "AgentMplsRouteTest.StaticIp2MplsRoutes$"
+        },
+        {
+          "test_name_regex": "warm_boot.AgentEcmpTrunkTest.TrunkL2ResolveNhopThenLinkAndLACPDownThenUpBeforeReinit$"
+        },
+        {
+          "test_name_regex": "roundtrip.*.AgentIngressAclSpanMirroringTest/IPv[46].SpanAclMirror$"
+        },
+        {
+          "test_name_regex": "AgentIngressAclErspanMirroringTest.ErspanAclMirror$"
+        },
+        {
+          "test_name_regex": "AgentEgressAclErspanMirroringTest.ErspanAclMirror$"
+        },
+        {
+          "test_name_regex": "roundtrip.*.AgentIngressAclSpanMirroringTest.SpanAclMirror$"
+        },
+        {
+          "test_name_regex": "AgentSflowMirror.*TestV[46].VerifySampledPacketRate$"
+        },
+        {
+          "test_name_regex": "AgentSflowMirrorTruncateV4Test.VerifySampledPacketRate$"
+        },
+        {
+          "test_name_regex": "AgentSflowMirror.*V6Test.VerifySampledPacketRate$"
+        },
+        {
+          "test_name_regex": "AgentSflowMirrorOnTrunkTestV[46].*$"
+        },
+        {
+          "test_name_regex": "AgentSflowMirrorOnTrunkV[46]Test.*$"
+        },
+        {
+          "test_name_regex": "AgentHwMirrorTest/1.*$"
+        },
+        {
+          "test_name_regex": "AgentHwSflowMirrorTest/[01].*$"
+        },
+        {
+          "test_name_regex": "AgentTrafficPfcWatchdogTest.PfcWatchdogReset$"
+        },
+        {
+          "test_name_regex": "AgentPortBandwidthTest/AgentPortBandwidthParamTest.VerifyPortRateTraffic/2$"
+        },
+        {
+          "test_name_regex": "AgentPacketFloodTest.ArpRequestFloodTest$"
+        },
+        {
+          "test_name_regex": "AgentHashPolarizationTest/1.verifyNoPolarization$"
+        },
+        {
+          "test_name_regex": "AgentLoopBackTest.VerifyLoopBackSrcEqualDstMac$"
+        },
+        {
+          "test_name_regex": "AgentWatermarkTest.VerifyQueueWatermarkAccuracy$"
+        },
+        {
+          "test_name_regex": "AgentHwAclStatTest.StatNumberOfCounters$"
+        },
+        {
+          "test_name_regex": "AgentCoppTest/[01].UnresolvedRouteNextHopToLowPriQueue$"
+        },
+        {
+          "test_name_regex": "AgentPfcConfigTest.*$"
+        },
+        {
+          "test_name_regex": "warm_boot.AgentEcmpTrunkTest.TrunkL2ResolveNhopThenLinkDownThenUpThenStateUp$"
+        },
+        {
+          "test_name_regex": "warm_boot.AgentEcmpTrunkTest.TrunkL2ResolveNhopThenLinkAndLACPDownThenUpThenStateUp$"
+        },
+        {
+          "test_name_regex": "AgentTest_PROFILE_200G_.*$"
+        },
+        {
+          "test_name_regex": "AgentPortProfileTest_PROFILE_200G_.*$"
+        },
+        {
+          "test_name_regex": "AgentTest_PROFILE_400G_.*$"
+        },
+        {
+          "test_name_regex": "AgentPortProfileTest_PROFILE_400G_.*$"
+        },
+        {
+          "test_name_regex": "AgentTest_PROFILE_800G_.*$"
+        },
+        {
+          "test_name_regex": "AgentPortProfileTest_PROFILE_800G_.*$"
+        },
+        {
+          "test_name_regex": "AgentCoppQosTest.HighVsLowerPriorityCpuQueueTrafficPrioritization$"
+        },
+        {
+          "test_name_regex": "AgentCoppQueueStuckTest.CpuQueueHighRateTraffic$"
+        },
+        {
+          "test_name_regex": "AgentMacOverFlowTest.VerifyMacUpdateOverFlow$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentTrunkTest.TrunkPortStats$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentTrunkTest.TrunkPortStats$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentTrunkTest.TrunkPortStats$"
+        },
+        {
+          "test_name_regex": "AgentArsSprayTest.*$"
+        },
+        {
+          "test_name_regex": "AgentPortBandwidthTest/AgentPortBandwidthParamTest.VerifyPortRateTraffic/0$"
+        },
+        {
+          "test_name_regex": "AgentSflowMirrorUntruncateV4Test.VerifySampledPacketRate$"
+        }
+    ],
+    "brcm/16.0_ea_odp/16.0_ea_odp/tomahawk3/multi_switch": [
+        {
+          "test_name_regex": "AgentMacLearningMacMoveTest.*$"
+        },
+        {
+          "test_name_regex": "AgentMacLearningBatchEntriesTest.*$"
+        },
+        {
+          "test_name_regex": "AgentMacLearningTest.VerifyHwAgingForPort$"
+        },
+        {
+          "test_name_regex": "AgentMacLearningTest.VerifyHwAgingForTrunk$"
+        },
+        {
+          "test_name_regex": "AgentMacLearningTest.VerifyHwLearningForPort$"
+        },
+        {
+          "test_name_regex": "AgentMacLearningTest.VerifyHwLearningForTrunk$"
+        },
+        {
+          "test_name_regex": "AgentHwAclQualifierTest.AclVlanIDQualifier$"
+        },
+        {
+          "test_name_regex": "warm_boot.AgentEcmpTestWithWBWrites.L2ResolveOneNhopThenLinkDownThenUp$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentNeighborResolutionOverFlowTest.neighborResolutionOverFlow$"
+        },
+        {
+          "test_name_regex": "roundtrip.(preprod_2_trunk_2_preprod|trunk_2_preprod_2_trunk).warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentAdjFrrRouteTest.nonDlbFlowUsesSingleBackupNextHop$"
+        },
+        {
+          "test_name_regex": "roundtrip.(preprod_2_trunk_2_preprod|trunk_2_preprod_2_trunk).warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentAdjFrrRouteTest.priAndBackupNextHopFlap$"
+        },
+        {
+          "test_name_regex": "roundtrip.(preprod_2_trunk_2_preprod|trunk_2_preprod_2_trunk).warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentAdjFrrRouteTest.routeWithPrimaryAndBackupNhops$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentRouteTest/[01].StaticIp2MplsRoutes$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentMplsRouteTest.StaticIp2MplsRoutes$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.*AgentCoppTest/[01].DstIpNetworkControlDscpToHighPriQ$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentHgridDuRouteScaleTest.hgridDuScaleTest$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentIngressBufferTest.*$"
+        },
+        {
+          "test_name_regex": "warm_boot.AgentPacketStreamHandlerTest.VerifySinkToStreamLoopback$"
+        },
+        {
+          "test_name_regex": "AgentArsBcmTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentRouteStatTest.V4V6SeparateCounters$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_prod_2_trunk.*.AgentRouteStatTest.V4V6SeparateCounters$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentRouteCounterOverflowTest.overflowRouteCounters$"
+        },
+        {
+          "test_name_regex": "roundtrip.prod_2_trunk_2_prod.cold_boot.AgentRouteCounterOverflowTest.overflowRouteCounters$"
+        },
+        {
+          "test_name_regex": "AgentHwMirrorTest/[01].HwMirrorLimitExceeded$"
+        },
+        {
+          "test_name_regex": "AgentAsicDefaultProgrammingTest.verifyDefaultProgramming$"
+        },
+        {
+          "test_name_regex": "warm_boot.AgentInNullRouteDiscardsCounterTest.nullRouteHit$"
+        },
+        {
+          "test_name_regex": "warm_boot.AgentMacLearningAndNeighborResolutionTest/[0145].learnMacProgramNeighborsAndAgeMac$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentEcmpTrunkTest.TrunkL2ResolveNhopThenLinkAndLACPDownThenUpThenStateUp$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentEcmpTrunkTest.TrunkL2ResolveNhopThenLinkDownThenUpThenStateUp$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentEcmpTrunkTest.TrunkL2ResolveNhopThenLinkAndLACPDownThenUpThenStateUp$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentEcmpTrunkTest.TrunkL2ResolveNhopThenLinkDownThenUpThenStateUp$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentTrunkTest.TrunkCreateHighLowKeyIds$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentTrunkTest.TrunkCheckIngressPktAggPort$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentTrunkTest.TrunkMemberPortDownMinLinksViolated$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentTrunkTest.TrunkCapacityUpdatesOnMemberDown$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentTrunkTest.TrunkCreateHighLowKeyIds$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentTrunkTest.TrunkCheckIngressPktAggPort$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentTrunkTest.TrunkMemberPortDownMinLinksViolated$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentTrunkTest.TrunkCapacityUpdatesOnMemberDown$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentTrunkLoadBalancerTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentTrunkLoadBalancerTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentMplsTrunkLoadBalancerTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentMplsTrunkLoadBalancerTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentTrunkHighLowKeyIdsTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentTrunkHighLowKeyIdsTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentTrunkIngressPktAggPortTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentTrunkIngressPktAggPortTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentTrunkMinLinksViolatedTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentTrunkMinLinksViolatedTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentTrunkPortStatsTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentTrunkPortStatsTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentTrunkCapacityMemberDownTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentTrunkCapacityMemberDownTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentTrunkLb4x3Test.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentTrunkLb4x3Test.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentTrunkLb4x2Test.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentTrunkLb4x2Test.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentMplsTrunkLb4x3Test.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentMplsTrunkLb4x3Test.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentMplsTrunkLb4x2Test.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentMplsTrunkLb4x2Test.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentSrv6TrunkLoadBalancerTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentSrv6TrunkLoadBalancerTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentEcmpTrunkTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentEcmpTrunkTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentPacketSendReceiveLagTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentPacketSendReceiveLagTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentHwMirrorTrunkTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentHwMirrorTrunkTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentSflowMirrorOnTrunkTestV4.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentSflowMirrorOnTrunkV4Test.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentSflowMirrorOnTrunkTestV4.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentSflowMirrorOnTrunkV4Test.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentSflowMirrorOnTrunkTestV6.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentSflowMirrorOnTrunkV6Test.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentSflowMirrorOnTrunkTestV6.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentSflowMirrorOnTrunkV6Test.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentNeighborTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentNeighborTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentNeighborResolutionTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentNeighborResolutionTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentNeighborMetadataTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentNeighborMetadataTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentCoppTest/1.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentCoppTest/1.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentCoppPortMtuTest/1.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentCoppPortMtuTest/1.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentCoppEapolTest/1.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentCoppEapolTest/1.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentMPLSTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentMPLSTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentMPLSHeadEndTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentMPLSHeadEndTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentMPLSMidpointTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentMPLSMidpointTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentSrv6EncapTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentSrv6EncapTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentSrv6MidpointTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentSrv6MidpointTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentSrv6BindingSidTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentSrv6BindingSidTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentSrv6DecapTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentSrv6DecapTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentHashPolarizationTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentHashPolarizationTest.*$"
+        },
+        {
+          "test_name_regex": "AgentMacLearningMacMoveTest.*$"
+        },
+        {
+          "test_name_regex": "AgentMacLearningBatchEntriesTest.*$"
+        },
+        {
+          "test_name_regex": "AgentMacLearningTest.VerifyHwAgingForPort$"
+        },
+        {
+          "test_name_regex": "AgentMacLearningTest.VerifyHwAgingForTrunk$"
+        },
+        {
+          "test_name_regex": "AgentMacLearningTest.VerifyHwLearningForPort$"
+        },
+        {
+          "test_name_regex": "AgentMacLearningTest.VerifyHwLearningForTrunk$"
+        },
+        {
+          "test_name_regex": "AgentHwAclQualifierTest.AclVlanIDQualifier$"
+        },
+        {
+          "test_name_regex": "warm_boot.AgentEcmpTestWithWBWrites.L2ResolveOneNhopThenLinkDownThenUp$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentNeighborResolutionOverFlowTest.neighborResolutionOverFlow$"
+        },
+        {
+          "test_name_regex": "roundtrip.(preprod_2_trunk_2_preprod|trunk_2_preprod_2_trunk).warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentAdjFrrRouteTest.nonDlbFlowUsesSingleBackupNextHop$"
+        },
+        {
+          "test_name_regex": "roundtrip.(preprod_2_trunk_2_preprod|trunk_2_preprod_2_trunk).warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentAdjFrrRouteTest.priAndBackupNextHopFlap$"
+        },
+        {
+          "test_name_regex": "roundtrip.(preprod_2_trunk_2_preprod|trunk_2_preprod_2_trunk).warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentAdjFrrRouteTest.routeWithPrimaryAndBackupNhops$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentRouteTest/[01].StaticIp2MplsRoutes$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentMplsRouteTest.StaticIp2MplsRoutes$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.*AgentCoppTest/[01].DstIpNetworkControlDscpToHighPriQ$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentHgridDuRouteScaleTest.hgridDuScaleTest$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentIngressBufferTest.*$"
+        },
+        {
+          "test_name_regex": "warm_boot.AgentPacketStreamHandlerTest.VerifySinkToStreamLoopback$"
+        },
+        {
+          "test_name_regex": "AgentArsBcmTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentRouteStatTest.V4V6SeparateCounters$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_prod_2_trunk.*.AgentRouteStatTest.V4V6SeparateCounters$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentRouteCounterOverflowTest.overflowRouteCounters$"
+        },
+        {
+          "test_name_regex": "roundtrip.prod_2_trunk_2_prod.cold_boot.AgentRouteCounterOverflowTest.overflowRouteCounters$"
+        },
+        {
+          "test_name_regex": "AgentHwMirrorTest/[01].HwMirrorLimitExceeded$"
+        },
+        {
+          "test_name_regex": "AgentAsicDefaultProgrammingTest.verifyDefaultProgramming$"
+        },
+        {
+          "test_name_regex": "AgentMplsRouteTest.StaticIp2MplsRoutes$"
+        },
+        {
+          "test_name_regex": "warm_boot.AgentEcmpTrunkTest.TrunkL2ResolveNhopThenLinkAndLACPDownThenUpBeforeReinit$"
+        },
+        {
+          "test_name_regex": "AgentPortBandwidthTest/AgentPortBandwidthParamTest.VerifyPortRateTraffic/0$"
+        },
+        {
+          "test_name_regex": "AgentIngressAclSpanMirroringTest.*$"
+        },
+        {
+          "test_name_regex": "AgentIngressAclErspanMirroringTest.*$"
+        },
+        {
+          "test_name_regex": "AgentEgressAclSpanMirroringTest.*$"
+        },
+        {
+          "test_name_regex": "AgentEgressAclErspanMirroringTest.*$"
+        },
+        {
+          "test_name_regex": "AgentSflowMirrorTruncateTestV6.verifyL4SrcPortRandomization$"
+        },
+        {
+          "test_name_regex": "AgentSflowMirrorTruncateV6Test.verifyL4SrcPortRandomization$"
+        },
+        {
+          "test_name_regex": "AgentLoopBackTest.VerifyLoopBackSrcEqualDstMac$"
+        },
+        {
+          "test_name_regex": "AgentCoppTest/[01].UnresolvedRouteNextHopToLowPriQueue$"
+        },
+        {
+          "test_name_regex": "AgentPfcConfigTest.PfcWatchdog.*$"
+        },
+        {
+          "test_name_regex": "AgentEcmpSpilloverTest.VerifyEcmpDecompressByPrefixCount$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentRouteStatTest.V4V6SeparateCounters$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentFlexPortTest.FlexPortFOURX10G$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentFlexPortTest.FlexPortFOURX25G$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentFlexPortTest.FlexPortONEX40G$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentFlexPortTest.FlexPortTWOX50G$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentFlexPortTest.FlexPortONEX100G$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentFlexPortTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.cold_boot.AgentFlexPortTest.FlexPortONEX40G$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_prod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentFlexPortTest.FlexPortTWOX50G$"
+        },
+        {
+          "test_name_regex": "roundtrip.prod_2_trunk_2_prod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentFlexPortTest.FlexPortTWOX50G$"
+        },
+        {
+          "test_name_regex": "AgentFlexPortTest.FlexPortONEX40G$"
+        },
+        {
+          "test_name_regex": "AgentFlexPortTest.FlexPortONEX100G$"
+        },
+        {
+          "test_name_regex": "warm_boot.AgentHwSflowMirrorTest/.*$"
+        },
+        {
+          "test_name_regex": "AgentTest_PROFILE_800G_.*$"
+        },
+        {
+          "test_name_regex": "AgentPortProfileTest_PROFILE_800G_.*$"
+        },
+        {
+          "test_name_regex": "AgentTest_PROFILE_10G_1_NRZ_NOFEC_COPPER.TestProfile$"
+        },
+        {
+          "test_name_regex": "AgentPortProfileTest_PROFILE_10G_1_NRZ_NOFEC_COPPER.TestProfile$"
+        },
+        {
+          "test_name_regex": "AgentTest_PROFILE_10G_1_NRZ_NOFEC_OPTICAL.TestProfile$"
+        },
+        {
+          "test_name_regex": "AgentPortProfileTest_PROFILE_10G_1_NRZ_NOFEC_OPTICAL.TestProfile$"
+        },
+        {
+          "test_name_regex": "AgentTest_PROFILE_40G_4_NRZ_NOFEC_COPPER.TestProfile$"
+        },
+        {
+          "test_name_regex": "AgentPortProfileTest_PROFILE_40G_4_NRZ_NOFEC_COPPER.TestProfile$"
+        },
+        {
+          "test_name_regex": "AgentCoppQosTest.HighVsLowerPriorityCpuQueueTrafficPrioritization$"
+        },
+        {
+          "test_name_regex": "AgentCoppQueueStuckTest.CpuQueueHighRateTraffic$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_prod_2_trunk.warm_boot.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.prod_2_trunk_2_prod.warm_boot.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.*$"
+        },
+        {
+          "test_name_regex": "AgentArsSprayTest.*$"
+        },
+        {
+          "test_name_regex": ".*AgentAccessPolicyClassId.*$"
+        },
+        {
+          "test_name_regex": "AgentMacSwLearningModeTest.VerifyDefaultSwAgingForPort$"
+        }
+    ],
+    "brcm/16.0_ea_odp/16.0_ea_odp/tomahawk4/multi_switch": [
+        {
+          "test_name_regex": "AgentSflowMirrorTruncateTestV6.verifyL4SrcPortRandomization$"
+        },
+        {
+          "test_name_regex": "AgentSflowMirrorTruncateV6Test.verifyL4SrcPortRandomization$"
+        },
+        {
+          "test_name_regex": "AgentAqmEcnOnlyTest.verifyEcnThreshold$"
+        },
+        {
+          "test_name_regex": "AgentAqmEcnOnlyTest.verifyEcnTrafficNoDrop$"
+        },
+        {
+          "test_name_regex": "AgentAqmTest.verifyWredThreshold$"
+        },
+        {
+          "test_name_regex": "AgentCoppTest/[01].UnresolvedRouteNextHopToLowPriQueue$"
+        },
+        {
+          "test_name_regex": "AgentCoppTest/[01].L3MTUErrorToLowPriQ$"
+        },
+        {
+          "test_name_regex": "AgentFlexPortTest.FlexPortTWOX50G$"
+        },
+        {
+          "test_name_regex": "AgentFlexPortTest.FlexPortFOURX25G$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentFlexPortTest.FlexPortONEX100G$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentFlexPortTest.FlexPortONEX100G$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentFlexPortTest.FlexPortONEX40G$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentFlexPortTest.FlexPortONEX40G$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentFlexPortTest.FlexPortONEX400G$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.cold_boot.AgentFlexPortTest.FlexPortONEX400G$"
+        },
+        {
+          "test_name_regex": "AgentTest_PROFILE_25G_.*$"
+        },
+        {
+          "test_name_regex": "AgentPortProfileTest_PROFILE_25G_.*$"
+        },
+        {
+          "test_name_regex": "AgentTest_PROFILE_50G_.*$"
+        },
+        {
+          "test_name_regex": "AgentPortProfileTest_PROFILE_50G_.*$"
+        },
+        {
+          "test_name_regex": "AgentTest_PROFILE_800G_.*$"
+        },
+        {
+          "test_name_regex": "AgentPortProfileTest_PROFILE_800G_.*$"
+        },
+        {
+          "test_name_regex": "AgentMacLearningMacMoveTest.*$"
+        },
+        {
+          "test_name_regex": "AgentMacLearningBatchEntriesTest.*$"
+        },
+        {
+          "test_name_regex": "AgentMacLearningTest.VerifyHwAgingForPort$"
+        },
+        {
+          "test_name_regex": "AgentMacLearningTest.VerifyHwAgingForTrunk$"
+        },
+        {
+          "test_name_regex": "AgentMacLearningTest.VerifyHwLearningForPort$"
+        },
+        {
+          "test_name_regex": "AgentMacLearningTest.VerifyHwLearningForTrunk$"
+        },
+        {
+          "test_name_regex": "AgentHwAclQualifierTest.AclVlanIDQualifier$"
+        },
+        {
+          "test_name_regex": "warm_boot.AgentEcmpTestWithWBWrites.L2ResolveOneNhopThenLinkDownThenUp$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentNeighborResolutionOverFlowTest.neighborResolutionOverFlow$"
+        },
+        {
+          "test_name_regex": "roundtrip.(preprod_2_trunk_2_preprod|trunk_2_preprod_2_trunk).warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentAdjFrrRouteTest.nonDlbFlowUsesSingleBackupNextHop$"
+        },
+        {
+          "test_name_regex": "roundtrip.(preprod_2_trunk_2_preprod|trunk_2_preprod_2_trunk).warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentAdjFrrRouteTest.priAndBackupNextHopFlap$"
+        },
+        {
+          "test_name_regex": "roundtrip.(preprod_2_trunk_2_preprod|trunk_2_preprod_2_trunk).warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentAdjFrrRouteTest.routeWithPrimaryAndBackupNhops$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentRouteTest/[01].StaticIp2MplsRoutes$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentMplsRouteTest.StaticIp2MplsRoutes$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.*AgentCoppTest/[01].DstIpNetworkControlDscpToHighPriQ$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentHgridDuRouteScaleTest.hgridDuScaleTest$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentIngressBufferTest.*$"
+        },
+        {
+          "test_name_regex": "warm_boot.AgentPacketStreamHandlerTest.VerifySinkToStreamLoopback$"
+        },
+        {
+          "test_name_regex": "AgentArsBcmTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentRouteStatTest.V4V6SeparateCounters$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_prod_2_trunk.*.AgentRouteStatTest.V4V6SeparateCounters$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentRouteCounterOverflowTest.overflowRouteCounters$"
+        },
+        {
+          "test_name_regex": "roundtrip.prod_2_trunk_2_prod.cold_boot.AgentRouteCounterOverflowTest.overflowRouteCounters$"
+        },
+        {
+          "test_name_regex": "AgentHwMirrorTest/[01].HwMirrorLimitExceeded$"
+        },
+        {
+          "test_name_regex": "AgentAsicDefaultProgrammingTest.verifyDefaultProgramming$"
+        },
+        {
+          "test_name_regex": "warm_boot.AgentInNullRouteDiscardsCounterTest.nullRouteHit$"
+        },
+        {
+          "test_name_regex": "warm_boot.AgentMacLearningAndNeighborResolutionTest/[0145].learnMacProgramNeighborsAndAgeMac$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentEcmpTrunkTest.TrunkL2ResolveNhopThenLinkAndLACPDownThenUpThenStateUp$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentEcmpTrunkTest.TrunkL2ResolveNhopThenLinkDownThenUpThenStateUp$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentEcmpTrunkTest.TrunkL2ResolveNhopThenLinkAndLACPDownThenUpThenStateUp$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentEcmpTrunkTest.TrunkL2ResolveNhopThenLinkDownThenUpThenStateUp$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentTrunkTest.TrunkCreateHighLowKeyIds$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentTrunkTest.TrunkCheckIngressPktAggPort$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentTrunkTest.TrunkMemberPortDownMinLinksViolated$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentTrunkTest.TrunkCapacityUpdatesOnMemberDown$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentTrunkTest.TrunkCreateHighLowKeyIds$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentTrunkTest.TrunkCheckIngressPktAggPort$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentTrunkTest.TrunkMemberPortDownMinLinksViolated$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentTrunkTest.TrunkCapacityUpdatesOnMemberDown$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentTrunkLoadBalancerTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentTrunkLoadBalancerTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentMplsTrunkLoadBalancerTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentMplsTrunkLoadBalancerTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentTrunkHighLowKeyIdsTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentTrunkHighLowKeyIdsTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentTrunkIngressPktAggPortTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentTrunkIngressPktAggPortTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentTrunkMinLinksViolatedTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentTrunkMinLinksViolatedTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentTrunkPortStatsTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentTrunkPortStatsTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentTrunkCapacityMemberDownTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentTrunkCapacityMemberDownTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentTrunkLb4x3Test.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentTrunkLb4x3Test.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentTrunkLb4x2Test.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentTrunkLb4x2Test.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentMplsTrunkLb4x3Test.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentMplsTrunkLb4x3Test.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentMplsTrunkLb4x2Test.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentMplsTrunkLb4x2Test.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentSrv6TrunkLoadBalancerTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentSrv6TrunkLoadBalancerTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentEcmpTrunkTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentEcmpTrunkTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentPacketSendReceiveLagTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentPacketSendReceiveLagTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentHwMirrorTrunkTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentHwMirrorTrunkTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentSflowMirrorOnTrunkTestV4.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentSflowMirrorOnTrunkV4Test.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentSflowMirrorOnTrunkTestV4.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentSflowMirrorOnTrunkV4Test.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentSflowMirrorOnTrunkTestV6.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentSflowMirrorOnTrunkV6Test.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentSflowMirrorOnTrunkTestV6.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentSflowMirrorOnTrunkV6Test.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentNeighborTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentNeighborTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentNeighborResolutionTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentNeighborResolutionTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentNeighborMetadataTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentNeighborMetadataTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentCoppTest/1.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentCoppTest/1.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentCoppPortMtuTest/1.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentCoppPortMtuTest/1.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentCoppEapolTest/1.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentCoppEapolTest/1.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentMPLSTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentMPLSTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentMPLSHeadEndTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentMPLSHeadEndTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentMPLSMidpointTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentMPLSMidpointTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentSrv6EncapTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentSrv6EncapTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentSrv6MidpointTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentSrv6MidpointTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentSrv6BindingSidTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentSrv6BindingSidTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentSrv6DecapTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentSrv6DecapTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentHashPolarizationTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentHashPolarizationTest.*$"
+        },
+        {
+          "test_name_regex": "AgentMacLearningMacMoveTest.*$"
+        },
+        {
+          "test_name_regex": "AgentMacLearningBatchEntriesTest.*$"
+        },
+        {
+          "test_name_regex": "AgentMacLearningTest.VerifyHwAgingForPort$"
+        },
+        {
+          "test_name_regex": "AgentMacLearningTest.VerifyHwAgingForTrunk$"
+        },
+        {
+          "test_name_regex": "AgentMacLearningTest.VerifyHwLearningForPort$"
+        },
+        {
+          "test_name_regex": "AgentMacLearningTest.VerifyHwLearningForTrunk$"
+        },
+        {
+          "test_name_regex": "AgentHwAclQualifierTest.AclVlanIDQualifier$"
+        },
+        {
+          "test_name_regex": "warm_boot.AgentEcmpTestWithWBWrites.L2ResolveOneNhopThenLinkDownThenUp$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentNeighborResolutionOverFlowTest.neighborResolutionOverFlow$"
+        },
+        {
+          "test_name_regex": "roundtrip.(preprod_2_trunk_2_preprod|trunk_2_preprod_2_trunk).warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentAdjFrrRouteTest.nonDlbFlowUsesSingleBackupNextHop$"
+        },
+        {
+          "test_name_regex": "roundtrip.(preprod_2_trunk_2_preprod|trunk_2_preprod_2_trunk).warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentAdjFrrRouteTest.priAndBackupNextHopFlap$"
+        },
+        {
+          "test_name_regex": "roundtrip.(preprod_2_trunk_2_preprod|trunk_2_preprod_2_trunk).warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentAdjFrrRouteTest.routeWithPrimaryAndBackupNhops$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentRouteTest/[01].StaticIp2MplsRoutes$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentMplsRouteTest.StaticIp2MplsRoutes$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.*AgentCoppTest/[01].DstIpNetworkControlDscpToHighPriQ$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentHgridDuRouteScaleTest.hgridDuScaleTest$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentIngressBufferTest.*$"
+        },
+        {
+          "test_name_regex": "warm_boot.AgentPacketStreamHandlerTest.VerifySinkToStreamLoopback$"
+        },
+        {
+          "test_name_regex": "AgentArsBcmTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentRouteStatTest.V4V6SeparateCounters$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_prod_2_trunk.*.AgentRouteStatTest.V4V6SeparateCounters$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentRouteCounterOverflowTest.overflowRouteCounters$"
+        },
+        {
+          "test_name_regex": "roundtrip.prod_2_trunk_2_prod.cold_boot.AgentRouteCounterOverflowTest.overflowRouteCounters$"
+        },
+        {
+          "test_name_regex": "AgentHwMirrorTest/[01].HwMirrorLimitExceeded$"
+        },
+        {
+          "test_name_regex": "AgentAsicDefaultProgrammingTest.verifyDefaultProgramming$"
+        },
+        {
+          "test_name_regex": "AgentMplsRouteTest.StaticIp2MplsRoutes$"
+        },
+        {
+          "test_name_regex": "warm_boot.AgentEcmpTrunkTest.TrunkL2ResolveNhopThenLinkAndLACPDownThenUpBeforeReinit$"
+        },
+        {
+          "test_name_regex": "AgentPortBandwidthTest/AgentPortBandwidthParamTest.VerifyPortRateTraffic/0$"
+        },
+        {
+          "test_name_regex": "AgentLoopBackTest.VerifyLoopBackSrcEqualDstMac$"
+        },
+        {
+          "test_name_regex": "warm_boot.AgentCoppTest/0.Ipv6LinkLocalMcastToMidPriQ$"
+        },
+        {
+          "test_name_regex": "AgentPfcConfigTest.PfcWatchdogProgrammingSequence$"
+        },
+        {
+          "test_name_regex": "warm_boot.AgentHwSflowMirrorTest/.*$"
+        },
+        {
+          "test_name_regex": "AgentCoppQosTest.HighVsLowerPriorityCpuQueueTrafficPrioritization$"
+        },
+        {
+          "test_name_regex": "AgentCoppQueueStuckTest.CpuQueueHighRateTraffic$"
+        },
+        {
+          "test_name_regex": "AgentArsSprayTest.*$"
+        },
+        {
+          "test_name_regex": "AgentPacketFloodTest.NdpFloodTest$"
+        },
+        {
+          "test_name_regex": "AgentWatermarkTest.VerifyQueueWatermarkAccuracy$"
+        },
+        {
+          "test_name_regex": "AgentAqmTest.verifyWredThreshold$"
+        },
+        {
+          "test_name_regex": "AgentPfcConfigTest.PfcWatchdog.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentFlexPortTest.FlexPortFOURX10G$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentFlexPortTest.FlexPortFOURX10G$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.cold_boot.AgentFlowletSprayTest.VerifyEcmpRandomSpray$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_prod_2_trunk.cold_boot.AgentFlowletSprayTest.VerifyEcmpRandomSpray$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_prod_2_trunk.warm_boot.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.prod_2_trunk_2_prod.warm_boot.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.*$"
+        }
+    ],
+    "brcm/16.0_ea_odp/16.0_ea_odp/tomahawk5/multi_switch": [
+        {
+          "test_name_regex": "AgentMacLearningMacMoveTest.*$"
+        },
+        {
+          "test_name_regex": "AgentMacLearningBatchEntriesTest.*$"
+        },
+        {
+          "test_name_regex": "AgentMacLearningTest.VerifyHwAgingForPort$"
+        },
+        {
+          "test_name_regex": "AgentMacLearningTest.VerifyHwAgingForTrunk$"
+        },
+        {
+          "test_name_regex": "AgentMacLearningTest.VerifyHwLearningForPort$"
+        },
+        {
+          "test_name_regex": "AgentMacLearningTest.VerifyHwLearningForTrunk$"
+        },
+        {
+          "test_name_regex": "AgentHwAclQualifierTest.AclVlanIDQualifier$"
+        },
+        {
+          "test_name_regex": "warm_boot.AgentEcmpTestWithWBWrites.L2ResolveOneNhopThenLinkDownThenUp$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentNeighborResolutionOverFlowTest.neighborResolutionOverFlow$"
+        },
+        {
+          "test_name_regex": "roundtrip.(preprod_2_trunk_2_preprod|trunk_2_preprod_2_trunk).warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentAdjFrrRouteTest.nonDlbFlowUsesSingleBackupNextHop$"
+        },
+        {
+          "test_name_regex": "roundtrip.(preprod_2_trunk_2_preprod|trunk_2_preprod_2_trunk).warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentAdjFrrRouteTest.priAndBackupNextHopFlap$"
+        },
+        {
+          "test_name_regex": "roundtrip.(preprod_2_trunk_2_preprod|trunk_2_preprod_2_trunk).warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentAdjFrrRouteTest.routeWithPrimaryAndBackupNhops$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentRouteTest/[01].StaticIp2MplsRoutes$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentMplsRouteTest.StaticIp2MplsRoutes$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.*AgentCoppTest/[01].DstIpNetworkControlDscpToHighPriQ$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentHgridDuRouteScaleTest.hgridDuScaleTest$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentIngressBufferTest.*$"
+        },
+        {
+          "test_name_regex": "warm_boot.AgentPacketStreamHandlerTest.VerifySinkToStreamLoopback$"
+        },
+        {
+          "test_name_regex": "AgentArsBcmTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentRouteStatTest.V4V6SeparateCounters$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_prod_2_trunk.*.AgentRouteStatTest.V4V6SeparateCounters$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentRouteCounterOverflowTest.overflowRouteCounters$"
+        },
+        {
+          "test_name_regex": "roundtrip.prod_2_trunk_2_prod.cold_boot.AgentRouteCounterOverflowTest.overflowRouteCounters$"
+        },
+        {
+          "test_name_regex": "AgentHwMirrorTrunkTest/[01].*$"
+        },
+        {
+          "test_name_regex": "AgentHwMirrorTest/[01].HwMirrorLimitExceeded$"
+        },
+        {
+          "test_name_regex": "AgentAsicDefaultProgrammingTest.verifyDefaultProgramming$"
+        },
+        {
+          "test_name_regex": "warm_boot.AgentInNullRouteDiscardsCounterTest.nullRouteHit$"
+        },
+        {
+          "test_name_regex": "warm_boot.AgentMacLearningAndNeighborResolutionTest/[0145].learnMacProgramNeighborsAndAgeMac$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentEcmpTrunkTest.TrunkL2ResolveNhopThenLinkAndLACPDownThenUpThenStateUp$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentEcmpTrunkTest.TrunkL2ResolveNhopThenLinkDownThenUpThenStateUp$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentEcmpTrunkTest.TrunkL2ResolveNhopThenLinkAndLACPDownThenUpThenStateUp$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentEcmpTrunkTest.TrunkL2ResolveNhopThenLinkDownThenUpThenStateUp$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentTrunkTest.TrunkCreateHighLowKeyIds$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentTrunkTest.TrunkCheckIngressPktAggPort$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentTrunkTest.TrunkMemberPortDownMinLinksViolated$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentTrunkTest.TrunkCapacityUpdatesOnMemberDown$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentTrunkTest.TrunkCreateHighLowKeyIds$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentTrunkTest.TrunkCheckIngressPktAggPort$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentTrunkTest.TrunkMemberPortDownMinLinksViolated$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentTrunkTest.TrunkCapacityUpdatesOnMemberDown$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentTrunkLoadBalancerTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentTrunkLoadBalancerTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentMplsTrunkLoadBalancerTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentMplsTrunkLoadBalancerTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentTrunkHighLowKeyIdsTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentTrunkHighLowKeyIdsTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentTrunkIngressPktAggPortTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentTrunkIngressPktAggPortTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentTrunkMinLinksViolatedTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentTrunkMinLinksViolatedTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentTrunkPortStatsTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentTrunkPortStatsTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentTrunkCapacityMemberDownTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentTrunkCapacityMemberDownTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentTrunkLb4x3Test.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentTrunkLb4x3Test.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentTrunkLb4x2Test.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentTrunkLb4x2Test.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentMplsTrunkLb4x3Test.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentMplsTrunkLb4x3Test.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentMplsTrunkLb4x2Test.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentMplsTrunkLb4x2Test.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentSrv6TrunkLoadBalancerTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentSrv6TrunkLoadBalancerTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentEcmpTrunkTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentEcmpTrunkTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentPacketSendReceiveLagTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentPacketSendReceiveLagTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentHwMirrorTrunkTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentHwMirrorTrunkTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentSflowMirrorOnTrunkTestV4.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentSflowMirrorOnTrunkV4Test.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentSflowMirrorOnTrunkTestV4.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentSflowMirrorOnTrunkV4Test.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentSflowMirrorOnTrunkTestV6.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentSflowMirrorOnTrunkV6Test.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentSflowMirrorOnTrunkTestV6.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentSflowMirrorOnTrunkV6Test.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentNeighborTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentNeighborTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentNeighborResolutionTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentNeighborResolutionTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentNeighborMetadataTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentNeighborMetadataTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentCoppTest/1.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentCoppTest/1.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentCoppPortMtuTest/1.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentCoppPortMtuTest/1.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentCoppEapolTest/1.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentCoppEapolTest/1.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentMPLSTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentMPLSTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentMPLSHeadEndTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentMPLSHeadEndTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentMPLSMidpointTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentMPLSMidpointTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentSrv6EncapTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentSrv6EncapTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentSrv6MidpointTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentSrv6MidpointTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentSrv6BindingSidTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentSrv6BindingSidTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentSrv6DecapTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentSrv6DecapTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot.AgentHashPolarizationTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentHashPolarizationTest.*$"
+        },
+        {
+          "test_name_regex": "AgentMacLearningMacMoveTest.*$"
+        },
+        {
+          "test_name_regex": "AgentMacLearningBatchEntriesTest.*$"
+        },
+        {
+          "test_name_regex": "AgentMacLearningTest.VerifyHwAgingForPort$"
+        },
+        {
+          "test_name_regex": "AgentMacLearningTest.VerifyHwAgingForTrunk$"
+        },
+        {
+          "test_name_regex": "AgentMacLearningTest.VerifyHwLearningForPort$"
+        },
+        {
+          "test_name_regex": "AgentMacLearningTest.VerifyHwLearningForTrunk$"
+        },
+        {
+          "test_name_regex": "AgentHwAclQualifierTest.AclVlanIDQualifier$"
+        },
+        {
+          "test_name_regex": "warm_boot.AgentEcmpTestWithWBWrites.L2ResolveOneNhopThenLinkDownThenUp$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentNeighborResolutionOverFlowTest.neighborResolutionOverFlow$"
+        },
+        {
+          "test_name_regex": "roundtrip.(preprod_2_trunk_2_preprod|trunk_2_preprod_2_trunk).warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentAdjFrrRouteTest.nonDlbFlowUsesSingleBackupNextHop$"
+        },
+        {
+          "test_name_regex": "roundtrip.(preprod_2_trunk_2_preprod|trunk_2_preprod_2_trunk).warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentAdjFrrRouteTest.priAndBackupNextHopFlap$"
+        },
+        {
+          "test_name_regex": "roundtrip.(preprod_2_trunk_2_preprod|trunk_2_preprod_2_trunk).warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentAdjFrrRouteTest.routeWithPrimaryAndBackupNhops$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentRouteTest/[01].StaticIp2MplsRoutes$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentMplsRouteTest.StaticIp2MplsRoutes$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.*AgentCoppTest/[01].DstIpNetworkControlDscpToHighPriQ$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentHgridDuRouteScaleTest.hgridDuScaleTest$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentIngressBufferTest.*$"
+        },
+        {
+          "test_name_regex": "warm_boot.AgentPacketStreamHandlerTest.VerifySinkToStreamLoopback$"
+        },
+        {
+          "test_name_regex": "AgentArsBcmTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentRouteStatTest.V4V6SeparateCounters$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_prod_2_trunk.*.AgentRouteStatTest.V4V6SeparateCounters$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentRouteCounterOverflowTest.overflowRouteCounters$"
+        },
+        {
+          "test_name_regex": "roundtrip.prod_2_trunk_2_prod.cold_boot.AgentRouteCounterOverflowTest.overflowRouteCounters$"
+        },
+        {
+          "test_name_regex": "AgentHwMirrorTrunkTest/[01].*$"
+        },
+        {
+          "test_name_regex": "AgentHwMirrorTest/[01].HwMirrorLimitExceeded$"
+        },
+        {
+          "test_name_regex": "AgentAsicDefaultProgrammingTest.verifyDefaultProgramming$"
+        },
+        {
+          "test_name_regex": "AgentMplsRouteTest.StaticIp2MplsRoutes$"
+        },
+        {
+          "test_name_regex": "warm_boot.AgentEcmpTrunkTest.TrunkL2ResolveNhopThenLinkAndLACPDownThenUpBeforeReinit$"
+        },
+        {
+          "test_name_regex": "AgentPortBandwidthTest/AgentPortBandwidthParamTest.VerifyPortRateTraffic/0$"
+        },
+        {
+          "test_name_regex": "AgentPfcTest.*$"
+        },
+        {
+          "test_name_regex": "AgentSflowMirrorTruncateTestV6.verifyL4SrcPortRandomization$"
+        },
+        {
+          "test_name_regex": "AgentSflowMirrorTruncateV6Test.verifyL4SrcPortRandomization$"
+        },
+        {
+          "test_name_regex": "AgentTrafficPauseTest.verifyPauseRxTx$"
+        },
+        {
+          "test_name_regex": "AgentTrafficPauseTest.verifyPauseRxOnly$"
+        },
+        {
+          "test_name_regex": "warm_boot.AgentCoppTest/1.CpuPortIpv6LinkLocalUcastIp$"
+        },
+        {
+          "test_name_regex": "AgentAqmEcnOnlyTest.verifyEcnThreshold$"
+        },
+        {
+          "test_name_regex": "AgentAqmEcnOnlyTest.verifyEcnTrafficNoDrop$"
+        },
+        {
+          "test_name_regex": "AgentAqmTest.verifyWredThreshold$"
+        },
+        {
+          "test_name_regex": "AgentCoppTest/[01].UnresolvedRouteNextHopToLowPriQueue$"
+        },
+        {
+          "test_name_regex": "AgentCoppTest/[01].L3MTUErrorToLowPriQ$"
+        },
+        {
+          "test_name_regex": "roundtrip.*AgentMirrorOnDropMtuTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.*AgentMirrorOnDropReconfigTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.*AgentMirrorOnDropDestMacTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.*AgentMirrorOnDropSrv6Test.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.*.AgentSflowMirrorTruncateV4Test.VerifySampledPacketRate$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.*.AgentSflowMirrorTruncateV6Test.VerifySampledPacketRate$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.*.AgentSflowMirrorTruncateV4Test.VerifySampledPacketRate$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.*.AgentSflowMirrorTruncateV6Test.VerifySampledPacketRate$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.*.AgentSflowMirrorUntruncateTestV4.VerifySampledPacketRate$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.*.AgentSflowMirrorUntruncateV4Test.VerifySampledPacketRate$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.*.AgentSflowMirrorUntruncateTestV6.VerifySampledPacketRate$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.*.AgentSflowMirrorUntruncateV6Test.VerifySampledPacketRate$"
+        },
+        {
+          "test_name_regex": "AgentHwSflowMirrorTest/0.SflowMirrorWithErspanMirrorOnePortSflow$"
+        },
+        {
+          "test_name_regex": "AgentHwSflowMirrorTest/1.SflowMirrorWithErspanMirrorOnePortSflow$"
+        },
+        {
+          "test_name_regex": "AgentSrv6MidpointTest.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentRouteStatTest.V4V6SeparateCounters$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_prod_2_trunk.*.AgentRouteStatTest.V4V6SeparateCounters$"
+        },
+        {
+          "test_name_regex": "AgentPfcConfigTest.PfcWatchdogProgrammingSequence$"
+        },
+        {
+          "test_name_regex": "AgentInPauseDiscardsCounterTest.*$"
+        },
+        {
+          "test_name_regex": "AgentFlexPortTest.FlexPortTWOX50G$"
+        },
+        {
+          "test_name_regex": "AgentFlexPortTest.FlexPortFOURX25G$"
+        },
+        {
+          "test_name_regex": "AgentFlexPortTest.FlexPortONEX100G$"
+        },
+        {
+          "test_name_regex": "AgentTest_PROFILE_25G_.*$"
+        },
+        {
+          "test_name_regex": "AgentPortProfileTest_PROFILE_25G_.*$"
+        },
+        {
+          "test_name_regex": "AgentTest_PROFILE_50G_.*$"
+        },
+        {
+          "test_name_regex": "AgentPortProfileTest_PROFILE_50G_.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.*AgentPortProfileTest_PROFILE_800G_8_PAM4_RS544X2N_(COPPER|OPTICAL).TestProfile$"
+        },
+        {
+          "test_name_regex": "AgentPacketFloodTest.*$"
+        },
+        {
+          "test_name_regex": "AgentWatermarkTest.VerifyQueueWatermarkAccuracy$"
+        },
+        {
+          "test_name_regex": "AgentLoopBackTest.VerifyLoopBackSrcEqualDstMac$"
+        },
+        {
+          "test_name_regex": "AgentAqmEcnOnlyTest.verifyEcnThreshold$"
+        },
+        {
+          "test_name_regex": "AgentAqmEcnOnlyTest.verifyEcnTrafficNoDrop$"
+        },
+        {
+          "test_name_regex": "AgentAqmTest.verifyWredThreshold$"
+        },
+        {
+          "test_name_regex": "AgentAdjFrrRouteTest.sourcePortGetsPruned$"
+        },
+        {
+          "test_name_regex": "AgentCoppQosTest.HighVsLowerPriorityCpuQueueTrafficPrioritization$"
+        },
+        {
+          "test_name_regex": "AgentCoppQueueStuckTest.CpuQueueHighRateTraffic$"
+        },
+        {
+          "test_name_regex": "AgentTest_PROFILE_800G_.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentFlowletSwitchingTest.CreateMaxDlbGroups$"
+        },
+        {
+          "test_name_regex": "AgentMacSwLearningModeTest.VerifyDefaultSwAgingForPort$"
+        },
+        {
+          "test_name_regex": "AgentQueuePerHostTest.VerifyHostToQueueMappingClassIDsAfterResolve$"
+        },
+        {
+          "test_name_regex": "AgentPortProfileTest_PROFILE_800G_8_PAM4_RS544X2N_(COPPER|OPTICAL).TestProfile$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.*.AgentSflowMirrorTruncateTestV4.VerifySampledPacketRate$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.*.AgentSflowMirrorTruncateTestV6.VerifySampledPacketRate$"
+        }
+    ],
     "brcm/16.0_ea_odp/16.0_ea_odp/tomahawk6/multi_switch": [
         {
           "test_name_regex": "AgentMacLearningMacMoveTest.*$"
@@ -28951,6 +31125,9 @@
           "test_name_regex": "warm_boot.AgentV6FlowLabelEcmpLoadBalancerTest.EcmpLoadBalanceFullWithFlowLabelHashFrontPanelTraffic$"
         },
         {
+          "test_name_regex": "warm_boot.AgentFlowLabelBlackholingTest.V6FlowLabelSweepEgressesAllPackets$"
+        },
+        {
           "test_name_regex": "AgentHwMirrorTest/[01].HwMirrorLimitExceeded$"
         },
         {
@@ -29002,6 +31179,9 @@
         },
         {
           "test_name_regex": "warm_boot.AgentV6FlowLabelEcmpLoadBalancerTest.EcmpLoadBalanceFullWithFlowLabelHashFrontPanelTraffic$"
+        },
+        {
+          "test_name_regex": "warm_boot.AgentFlowLabelBlackholingTest.V6FlowLabelSweepEgressesAllPackets$"
         },
         {
           "test_name_regex": "AgentHwMirrorTest/[01].HwMirrorLimitExceeded$"
@@ -29306,6 +31486,9 @@
           "test_name_regex": "warm_boot.AgentV6FlowLabelEcmpLoadBalancerTest.EcmpLoadBalanceFullWithFlowLabelHashFrontPanelTraffic$"
         },
         {
+          "test_name_regex": "warm_boot.AgentFlowLabelBlackholingTest.V6FlowLabelSweepEgressesAllPackets$"
+        },
+        {
           "test_name_regex": "AgentHwMirrorTest/[01].HwMirrorLimitExceeded$"
         },
         {
@@ -29357,6 +31540,9 @@
         },
         {
           "test_name_regex": "warm_boot.AgentV6FlowLabelEcmpLoadBalancerTest.EcmpLoadBalanceFullWithFlowLabelHashFrontPanelTraffic$"
+        },
+        {
+          "test_name_regex": "warm_boot.AgentFlowLabelBlackholingTest.V6FlowLabelSweepEgressesAllPackets$"
         },
         {
           "test_name_regex": "AgentHwMirrorTest/[01].HwMirrorLimitExceeded$"
@@ -35684,6 +37870,9 @@
           "test_name_regex": "warm_boot.AgentV6FlowLabelEcmpLoadBalancerTest.EcmpLoadBalanceFullWithFlowLabelHashFrontPanelTraffic$"
         },
         {
+          "test_name_regex": "warm_boot.AgentFlowLabelBlackholingTest.V6FlowLabelSweepEgressesAllPackets$"
+        },
+        {
           "test_name_regex": "AgentHwMirrorTest/[01].HwMirrorLimitExceeded$"
         },
         {
@@ -35735,6 +37924,9 @@
         },
         {
           "test_name_regex": "warm_boot.AgentV6FlowLabelEcmpLoadBalancerTest.EcmpLoadBalanceFullWithFlowLabelHashFrontPanelTraffic$"
+        },
+        {
+          "test_name_regex": "warm_boot.AgentFlowLabelBlackholingTest.V6FlowLabelSweepEgressesAllPackets$"
         },
         {
           "test_name_regex": "AgentHwMirrorTest/[01].HwMirrorLimitExceeded$"
@@ -36039,6 +38231,9 @@
           "test_name_regex": "warm_boot.AgentV6FlowLabelEcmpLoadBalancerTest.EcmpLoadBalanceFullWithFlowLabelHashFrontPanelTraffic$"
         },
         {
+          "test_name_regex": "warm_boot.AgentFlowLabelBlackholingTest.V6FlowLabelSweepEgressesAllPackets$"
+        },
+        {
           "test_name_regex": "AgentHwMirrorTest/[01].HwMirrorLimitExceeded$"
         },
         {
@@ -36090,6 +38285,9 @@
         },
         {
           "test_name_regex": "warm_boot.AgentV6FlowLabelEcmpLoadBalancerTest.EcmpLoadBalanceFullWithFlowLabelHashFrontPanelTraffic$"
+        },
+        {
+          "test_name_regex": "warm_boot.AgentFlowLabelBlackholingTest.V6FlowLabelSweepEgressesAllPackets$"
         },
         {
           "test_name_regex": "AgentHwMirrorTest/[01].HwMirrorLimitExceeded$"
