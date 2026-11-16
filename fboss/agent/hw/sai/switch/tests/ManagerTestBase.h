@@ -193,6 +193,10 @@ class ManagerTestBase : public ::testing::Test {
       const TestInterface& testInterface,
       cfg::InterfaceType type = cfg::InterfaceType::VLAN) const;
 
+  // Interface VRF map with the interfaces in their routerId VRFs
+  std::shared_ptr<MultiSwitchInterfaceVrfMap> makeInterfaceVrfs(
+      const std::vector<std::shared_ptr<Interface>>& interfaces) const;
+
   // A port router interface bound to an aggregate port rather than to a
   // physical port.
   std::shared_ptr<Interface> makeAggregatePortInterface(

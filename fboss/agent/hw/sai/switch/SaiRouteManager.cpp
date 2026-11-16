@@ -75,11 +75,12 @@ SaiRouteTraits::RouteEntry SaiRouteManager::routeEntryFromSwRoute(
 }
 
 std::vector<std::shared_ptr<SaiRoute>> SaiRouteManager::makeInterfaceToMeRoutes(
-    const std::shared_ptr<Interface>& swInterface) {
+    const std::shared_ptr<Interface>& swInterface,
+    RouterID vrf) {
   std::vector<std::shared_ptr<SaiRoute>> toMeRoutes;
   // Compute information common to all addresses in the interface:
   // vr id
-  RouterID routerId = swInterface->getRouterID();
+  RouterID routerId = vrf;
   SaiVirtualRouterHandle* virtualRouterHandle =
       managerTable_->virtualRouterManager().getVirtualRouterHandle(routerId);
   if (!virtualRouterHandle) {

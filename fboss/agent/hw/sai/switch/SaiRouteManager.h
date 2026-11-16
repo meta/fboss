@@ -129,7 +129,8 @@ class SaiRouteManager {
       const std::shared_ptr<SwitchState>& state);
 
   std::vector<std::shared_ptr<SaiRoute>> makeInterfaceToMeRoutes(
-      const std::shared_ptr<Interface>& swInterface);
+      const std::shared_ptr<Interface>& swInterface,
+      RouterID vrf);
 
   template <typename AddrT>
   void addRoute(

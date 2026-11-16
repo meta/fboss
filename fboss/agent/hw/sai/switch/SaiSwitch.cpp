@@ -1430,12 +1430,22 @@ std::shared_ptr<SwitchState> SaiSwitch::stateChangedImplLocked(
       delta.getIntfsDelta(),
       managerTable_->routerInterfaceManager(),
       lockPolicy,
-      &SaiRouterInterfaceManager::changeLocalRouterInterface);
+      &SaiRouterInterfaceManager::changeLocalRouterInterface,
+      delta.newState()->getInterfaceVrfs());
+  processDelta(
+      delta.getInterfaceVrfsDelta(),
+      managerTable_->routerInterfaceManager(),
+      lockPolicy,
+      &SaiRouterInterfaceManager::changeInterfaceVrf,
+      &SaiRouterInterfaceManager::addInterfaceVrf,
+      &SaiRouterInterfaceManager::removeInterfaceVrf,
+      delta.newState()->getInterfaces());
   processAddedDelta(
       delta.getIntfsDelta(),
       managerTable_->routerInterfaceManager(),
       lockPolicy,
-      &SaiRouterInterfaceManager::addLocalRouterInterface);
+      &SaiRouterInterfaceManager::addLocalRouterInterface,
+      delta.newState()->getInterfaceVrfs());
 
   processChangedDelta(
       delta.getRemoteIntfsDelta(),

@@ -181,14 +181,29 @@ void ManagerTestBase::setupSaiPlatform() {
   }
   if (setupStage & SetupStage::INTERFACE) {
     auto* interfaces = setupState->getInterfaces()->modify(&setupState);
+    std::vector<std::shared_ptr<InterfaceVrf>> interfaceVrfs;
     for (const auto& testInterface : testInterfaces) {
       auto swInterface = makeInterface(testInterface);
       interfaces->addNode(swInterface, scope);
+      if (testInterface.routerId != RouterID(0)) {
+        interfaceVrfs.push_back(
+            std::make_shared<InterfaceVrf>(
+                swInterface->getID(), testInterface.routerId));
+      }
       if (setupStage & SetupStage::SYSTEM_PORT) {
         auto swPortInterface =
             makeInterface(testInterface, cfg::InterfaceType::SYSTEM_PORT);
         interfaces->addNode(swPortInterface, scope);
+        if (testInterface.routerId != RouterID(0)) {
+          interfaceVrfs.push_back(
+              std::make_shared<InterfaceVrf>(
+                  swPortInterface->getID(), testInterface.routerId));
+        }
       }
+    }
+    auto* interfaceVrfMap = setupState->getInterfaceVrfs()->modify(&setupState);
+    for (const auto& interfaceVrf : interfaceVrfs) {
+      interfaceVrfMap->addNode(interfaceVrf, scope);
     }
     auto* remoteInterfaces =
         setupState->getRemoteInterfaces()->modify(&setupState);
@@ -447,6 +462,20 @@ std::shared_ptr<Interface> ManagerTestBase::makeInterface(
     interface->setPortID(PortID(testInterface.id));
   }
   return interface;
+}
+
+std::shared_ptr<MultiSwitchInterfaceVrfMap> ManagerTestBase::makeInterfaceVrfs(
+    const std::vector<std::shared_ptr<Interface>>& interfaces) const {
+  auto interfaceVrfs = std::make_shared<MultiSwitchInterfaceVrfMap>();
+  for (const auto& interface : interfaces) {
+    if (interface->getRouterID() != RouterID(0)) {
+      interfaceVrfs->addNode(
+          std::make_shared<InterfaceVrf>(
+              interface->getID(), interface->getRouterID()),
+          HwSwitchMatcher(std::unordered_set<SwitchID>({SwitchID(0)})));
+    }
+  }
+  return interfaceVrfs;
 }
 
 std::shared_ptr<Interface> ManagerTestBase::makeAggregatePortInterface(

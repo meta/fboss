@@ -72,10 +72,11 @@ SaiRouterInterfaceManager::SaiRouterInterfaceManager(
 
 RouterInterfaceSaiId SaiRouterInterfaceManager::addOrUpdateVlanRouterInterface(
     const std::shared_ptr<Interface>& swInterface,
-    bool isLocal) {
+    bool isLocal,
+    RouterID vrf) {
   CHECK(swInterface->getType() == cfg::InterfaceType::VLAN);
   // compute the virtual router id for this router interface
-  RouterID routerId = swInterface->getRouterID();
+  RouterID routerId = vrf;
   SaiVirtualRouterHandle* virtualRouterHandle =
       managerTable_->virtualRouterManager().getVirtualRouterHandle(routerId);
   if (!virtualRouterHandle) {
@@ -149,11 +150,12 @@ RouterInterfaceSaiId SaiRouterInterfaceManager::addOrUpdateVlanRouterInterface(
       std::make_unique<SaiRouterInterfaceHandle>(swInterface->getType());
   vlanRouterInterfaceHandle->routerInterface = vlanRouterInterface;
   vlanRouterInterfaceHandle->setLocal(isLocal);
+  vlanRouterInterfaceHandle->vrf = vrf;
 
   if (isLocal) {
     // create the ToMe routes for this (local) router interface
     auto toMeRoutes =
-        managerTable_->routeManager().makeInterfaceToMeRoutes(swInterface);
+        managerTable_->routeManager().makeInterfaceToMeRoutes(swInterface, vrf);
     vlanRouterInterfaceHandle->toMeRoutes = std::move(toMeRoutes);
   }
 
@@ -163,12 +165,13 @@ RouterInterfaceSaiId SaiRouterInterfaceManager::addOrUpdateVlanRouterInterface(
 
 RouterInterfaceSaiId SaiRouterInterfaceManager::addOrUpdatePortRouterInterface(
     const std::shared_ptr<Interface>& swInterface,
-    bool isLocal) {
+    bool isLocal,
+    RouterID vrf) {
   CHECK(
       swInterface->getType() == cfg::InterfaceType::SYSTEM_PORT ||
       swInterface->getType() == cfg::InterfaceType::PORT);
   // compute the virtual router id for this router interface
-  RouterID routerId = swInterface->getRouterID();
+  RouterID routerId = vrf;
   SaiVirtualRouterHandle* virtualRouterHandle =
       managerTable_->virtualRouterManager().getVirtualRouterHandle(routerId);
   if (!virtualRouterHandle) {
@@ -239,10 +242,11 @@ RouterInterfaceSaiId SaiRouterInterfaceManager::addOrUpdatePortRouterInterface(
       std::make_unique<SaiRouterInterfaceHandle>(swInterface->getType());
   portRouterInterfaceHandle->routerInterface = portRouterInterface;
   portRouterInterfaceHandle->setLocal(isLocal);
+  portRouterInterfaceHandle->vrf = vrf;
   if (isLocal) {
     // create the ToMe routes for this (local) router interface
     auto toMeRoutes =
-        managerTable_->routeManager().makeInterfaceToMeRoutes(swInterface);
+        managerTable_->routeManager().makeInterfaceToMeRoutes(swInterface, vrf);
     portRouterInterfaceHandle->toMeRoutes = std::move(toMeRoutes);
   }
 
@@ -273,13 +277,14 @@ void SaiRouterInterfaceManager::removeRouterInterface(
 
 RouterInterfaceSaiId SaiRouterInterfaceManager::addOrUpdateRouterInterface(
     const std::shared_ptr<Interface>& swInterface,
-    bool isLocal) {
+    bool isLocal,
+    RouterID vrf) {
   switch (swInterface->getType()) {
     case cfg::InterfaceType::VLAN:
-      return addOrUpdateVlanRouterInterface(swInterface, isLocal);
+      return addOrUpdateVlanRouterInterface(swInterface, isLocal, vrf);
     case cfg::InterfaceType::PORT:
     case cfg::InterfaceType::SYSTEM_PORT:
-      return addOrUpdatePortRouterInterface(swInterface, isLocal);
+      return addOrUpdatePortRouterInterface(swInterface, isLocal, vrf);
   }
   // Should never get here
   throw FbossError("Unknown interface type: ", swInterface->getType());
@@ -287,7 +292,8 @@ RouterInterfaceSaiId SaiRouterInterfaceManager::addOrUpdateRouterInterface(
 
 RouterInterfaceSaiId SaiRouterInterfaceManager::addRouterInterface(
     const std::shared_ptr<Interface>& swInterface,
-    bool isLocal) {
+    bool isLocal,
+    RouterID vrf) {
   // check if the router interface already exists
   InterfaceID swId(swInterface->getID());
   auto handle = getRouterInterfaceHandle(swId);
@@ -295,13 +301,14 @@ RouterInterfaceSaiId SaiRouterInterfaceManager::addRouterInterface(
     throw FbossError(
         "Attempted to add duplicate router interface with InterfaceID ", swId);
   }
-  return addOrUpdateRouterInterface(swInterface, isLocal);
+  return addOrUpdateRouterInterface(swInterface, isLocal, vrf);
 }
 
 void SaiRouterInterfaceManager::changeRouterInterface(
     const std::shared_ptr<Interface>& oldInterface,
     const std::shared_ptr<Interface>& newInterface,
-    bool isLocal) {
+    bool isLocal,
+    RouterID newVrf) {
   CHECK_EQ(oldInterface->getID(), newInterface->getID());
   InterfaceID swId(newInterface->getID());
   auto handle = getRouterInterfaceHandle(swId);
@@ -310,21 +317,22 @@ void SaiRouterInterfaceManager::changeRouterInterface(
         "Attempted to change non existent router interface with InterfaceID ",
         swId);
   }
-  if (oldInterface->getRouterID() != newInterface->getRouterID()) {
+  auto oldVrf = handle->vrf;
+  if (oldVrf != newVrf) {
     // The virtual router is create only. Remove the old router interface
     // first, since a VLAN can have only one router interface.
     removeRouterInterface(oldInterface);
     try {
-      addOrUpdateRouterInterface(newInterface, isLocal);
+      addOrUpdateRouterInterface(newInterface, isLocal, newVrf);
     } catch (const std::exception& addEx) {
       try {
-        addOrUpdateRouterInterface(oldInterface, isLocal);
+        addOrUpdateRouterInterface(oldInterface, isLocal, oldVrf);
       } catch (const std::exception& restoreEx) {
         throw FbossError(
             "Failed to move router interface ",
             swId,
             " to VRF ",
-            newInterface->getRouterID(),
+            newVrf,
             ": ",
             addEx.what(),
             "; restoring it also failed, leaving no router interface: ",
@@ -334,13 +342,27 @@ void SaiRouterInterfaceManager::changeRouterInterface(
           "Failed to move router interface ",
           swId,
           " to VRF ",
-          newInterface->getRouterID(),
+          newVrf,
           ": ",
           addEx.what());
     }
     return;
   }
-  addOrUpdateRouterInterface(newInterface, isLocal);
+  addOrUpdateRouterInterface(newInterface, isLocal, newVrf);
+}
+
+void SaiRouterInterfaceManager::moveRouterInterface(
+    InterfaceID intfId,
+    RouterID vrf,
+    const std::shared_ptr<MultiSwitchInterfaceMap>& interfaces) {
+  // Interfaces added, changed or removed in the same delta already have their
+  // VRF
+  auto handle = getRouterInterfaceHandle(intfId);
+  if (!handle || handle->vrf == vrf) {
+    return;
+  }
+  auto intf = interfaces->getNode(intfId);
+  changeRouterInterface(intf, intf, true /*isLocal*/, vrf);
 }
 
 SaiRouterInterfaceHandle* SaiRouterInterfaceManager::getRouterInterfaceHandle(

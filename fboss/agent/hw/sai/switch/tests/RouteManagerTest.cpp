@@ -271,7 +271,9 @@ TEST_F(RouteManagerTest, moveInterfaceOfEcmpRouteToVrf) {
   movedInterface.routerId = RouterID(1001);
   EXPECT_NO_THROW(
       saiManagerTable->routerInterfaceManager().changeLocalRouterInterface(
-          makeInterface(testInterfaces.at(0)), makeInterface(movedInterface)));
+          makeInterface(testInterfaces.at(0)),
+          makeInterface(movedInterface),
+          makeInterfaceVrfs({makeInterface(movedInterface)})));
 
   auto newRoute = makeRoute(TestRoute{d1, {testInterfaces.at(1)}});
   EXPECT_NO_THROW(
@@ -849,8 +851,8 @@ class ToMeRouteTest : public ManagerTestBase {
 
 TEST_F(ToMeRouteTest, toMeRoutes) {
   auto swInterface = makeInterface(testInterfaces.at(0));
-  auto toMeRoutes =
-      saiManagerTable->routeManager().makeInterfaceToMeRoutes(swInterface);
+  auto toMeRoutes = saiManagerTable->routeManager().makeInterfaceToMeRoutes(
+      swInterface, swInterface->getRouterID());
   EXPECT_EQ(toMeRoutes.size(), 1);
   const auto& toMeRoute = toMeRoutes.at(0);
   EXPECT_EQ(
@@ -870,8 +872,8 @@ TEST_F(ToMeRouteTest, toMeRoutesSlash32) {
 
   // Add ToMe routes
   auto swInterface = makeInterface(testIntf);
-  auto toMeRoutes =
-      saiManagerTable->routeManager().makeInterfaceToMeRoutes(swInterface);
+  auto toMeRoutes = saiManagerTable->routeManager().makeInterfaceToMeRoutes(
+      swInterface, swInterface->getRouterID());
   EXPECT_EQ(toMeRoutes.size(), 1);
 
   // Add the connected /32 route
