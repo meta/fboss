@@ -5,6 +5,7 @@
 #include <folly/FileUtil.h>
 #include <folly/testing/TestUtil.h>
 #include <gtest/gtest.h>
+#include <set>
 #include "fboss/agent/FbossError.h"
 
 using namespace facebook::fboss;
@@ -317,6 +318,43 @@ TEST_F(TransceiverPropertiesManagerTest, SpeedCombinations) {
       TransceiverPropertiesManager::getSpeedCombinations<SMFMediaInterfaceCode>(
           MediaInterfaceCode::CR4_100G),
       FbossError);
+}
+
+TEST_F(TransceiverPropertiesManagerTest, FR4_2x800G_400GModes) {
+  initDefault();
+
+  auto code = MediaInterfaceCode::FR4_2x800G;
+  const auto& combo =
+      TransceiverPropertiesManager::findSpeedCombination(code, "2x400G-FR4");
+  ASSERT_EQ(combo.ports()->size(), 2);
+  for (int i = 0; i < 2; ++i) {
+    const auto& port = combo.ports()[i];
+    EXPECT_EQ(*port.speed(), cfg::PortSpeed::FOURHUNDREDG);
+    EXPECT_EQ(*port.hostLanes()->start(), i * 4);
+    EXPECT_EQ(*port.hostLanes()->count(), 4);
+    EXPECT_EQ(*port.mediaLanes()->start(), i * 4);
+    EXPECT_EQ(*port.mediaLanes()->count(), 4);
+    EXPECT_EQ(
+        port.mediaLaneCode()->smfCode().value(),
+        SMFMediaInterfaceCode::FR4_400G);
+    EXPECT_EQ(*port.mediaInterfaceCode(), MediaInterfaceCode::FR4_400G);
+  }
+
+  auto codes = TransceiverPropertiesManager::getMediaCodesForSpeed<
+      SMFMediaInterfaceCode>(code, cfg::PortSpeed::FOURHUNDREDG);
+  EXPECT_EQ(
+      std::set<SMFMediaInterfaceCode>(codes.begin(), codes.end()),
+      (std::set<SMFMediaInterfaceCode>{
+          SMFMediaInterfaceCode::FR4_400G, SMFMediaInterfaceCode::FR2_400G}));
+
+  EXPECT_EQ(
+      TransceiverPropertiesManager::getExpectedMediaLanes(
+          code, {4, 5, 6, 7}, cfg::PortSpeed::FOURHUNDREDG),
+      (std::vector<int>{4, 5, 6, 7}));
+  EXPECT_EQ(
+      TransceiverPropertiesManager::getExpectedMediaLanes(
+          code, {2, 3}, cfg::PortSpeed::FOURHUNDREDG),
+      (std::vector<int>{2, 3}));
 }
 
 TEST_F(TransceiverPropertiesManagerTest, DiagsCapsDefaultSupported) {
