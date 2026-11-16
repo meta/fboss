@@ -271,7 +271,14 @@ TEST_F(TamApiTest, Tam) {
   std::vector<sai_int32_t> tamBindpoints{
       SAI_TAM_BIND_POINT_TYPE_SWITCH}; // bind point of tam
 
-  SaiTamTraits::CreateAttributes tamAttr{tamEvents, tamBindpoints};
+  SaiTamTraits::CreateAttributes tamAttr{
+      tamEvents,
+      tamBindpoints
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1) && !defined(CHENAB_SAI_SDK)
+      ,
+      std::vector<sai_object_id_t>{}
+#endif
+  };
 
   auto tamSaiId = tamApi->create<SaiTamTraits>(tamAttr, switchId);
   EXPECT_EQ(
@@ -283,7 +290,7 @@ TEST_F(TamApiTest, Tam) {
       std::exception);
 }
 
-#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1) && !defined(CHENAB_SAI_SDK)
 TEST_F(TamApiTest, CsigIntApiOperations) {
   sai_tam_api_t* api = nullptr;
   ASSERT_EQ(
@@ -404,6 +411,28 @@ TEST_F(TamApiTest, CsigWideQuantization) {
   EXPECT_EQ(tamApi->getAttribute(id, A::WideQuantStepValue{}), 64);
   EXPECT_THROW(
       tamApi->setAttribute(id, A::EthTypeCodePoint{0x9902}), SaiApiError);
+  tamApi->remove(id);
+}
+
+TEST_F(TamApiTest, CsigTamContainmentPreservesEvents) {
+  SaiTamTraits::CreateAttributes attrs{
+      std::vector<sai_object_id_t>{100},
+      std::vector<sai_int32_t>{SAI_TAM_BIND_POINT_TYPE_SWITCH},
+      std::vector<sai_object_id_t>{200, 201}};
+  const auto id = tamApi->create<SaiTamTraits>(attrs, switchId);
+  tamApi->setAttribute(
+      id,
+      SaiTamTraits::Attributes::EventObjectList{
+          std::vector<sai_object_id_t>{101}});
+  EXPECT_EQ(
+      tamApi->getAttribute(id, SaiTamTraits::Attributes::IntObjectList{}),
+      (std::vector<sai_object_id_t>{200, 201}));
+  tamApi->setAttribute(
+      id,
+      SaiTamTraits::Attributes::IntObjectList{std::vector<sai_object_id_t>{}});
+  EXPECT_EQ(
+      tamApi->getAttribute(id, SaiTamTraits::Attributes::EventObjectList{}),
+      (std::vector<sai_object_id_t>{101}));
   tamApi->remove(id);
 }
 

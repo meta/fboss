@@ -467,15 +467,31 @@ struct SaiTamTraits {
         EnumType,
         SAI_TAM_ATTR_TAM_BIND_POINT_TYPE_LIST,
         std::vector<sai_int32_t>>;
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1) && !defined(CHENAB_SAI_SDK)
+    using IntObjectList = SaiAttribute<
+        EnumType,
+        SAI_TAM_ATTR_INT_OBJECTS_LIST,
+        std::vector<sai_object_id_t>,
+        SaiObjectIdListDefault>;
+#endif
   };
   using AdapterKey = TamSaiId;
-  using AdapterHostKey =
-      std::tuple<Attributes::EventObjectList, Attributes::TamBindPointList>;
+  using AdapterHostKey = std::tuple<
+      Attributes::EventObjectList,
+      Attributes::TamBindPointList
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1) && !defined(CHENAB_SAI_SDK)
+      ,
+      Attributes::IntObjectList
+#endif
+      >;
   using CreateAttributes = AdapterHostKey;
 };
 
 SAI_ATTRIBUTE_NAME(Tam, EventObjectList)
 SAI_ATTRIBUTE_NAME(Tam, TamBindPointList)
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1) && !defined(CHENAB_SAI_SDK)
+SAI_ATTRIBUTE_NAME(Tam, IntObjectList)
+#endif
 
 class TamApi : public SaiApi<TamApi> {
  public:

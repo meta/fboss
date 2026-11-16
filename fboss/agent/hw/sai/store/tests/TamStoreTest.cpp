@@ -117,7 +117,14 @@ class TamStoreTest : public SaiStoreTest {
       facebook::fboss::TamEventSaiId event) {
     std::vector<sai_object_id_t> events = {event};
     std::vector<sai_int32_t> bindpoints = {SAI_TAM_BIND_POINT_TYPE_SWITCH};
-    return SaiTamTraits::CreateAttributes{events, bindpoints};
+    return SaiTamTraits::CreateAttributes{
+        events,
+        bindpoints
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1) && !defined(CHENAB_SAI_SDK)
+        ,
+        std::vector<sai_object_id_t>{}
+#endif
+    };
   }
 
   facebook::fboss::TamCollectorSaiId createCollector(
@@ -204,6 +211,9 @@ TEST_F(TamStoreTest, loadTam) {
       SaiTamEventTraits::AdapterHostKey>(eventCreateAttrs);
   EXPECT_EQ(eventStore.get(eventAdapterHostKey)->adapterKey(), event);
   EXPECT_EQ(tamStore.get(tamTraits(event))->adapterKey(), tam);
+  EXPECT_EQ(
+      tamStore.setObject(tamTraits(event), tamTraits(event))->adapterKey(),
+      tam);
 }
 
 TEST_F(TamStoreTest, loadTamTransportAndCollectorWithUnsetOptionals) {
@@ -666,3 +676,31 @@ TEST_F(TamStoreTest, tamCollectorToStr) {
   std::ignore = createCollector(transport, true /* ipV4 */);
   verifyToStr<SaiTamCollectorTraits>();
 }
+
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1) && !defined(CHENAB_SAI_SDK)
+TEST_F(TamStoreTest, DistinctCsigTamBindings) {
+  SaiTamTraits::CreateAttributes first{
+      std::vector<sai_object_id_t>{},
+      std::vector<sai_int32_t>{SAI_TAM_BIND_POINT_TYPE_SWITCH},
+      std::vector<sai_object_id_t>{100}};
+  auto second = first;
+  std::get<SaiTamTraits::Attributes::IntObjectList>(second) =
+      std::vector<sai_object_id_t>{200};
+  auto firstId = saiApiTable->tamApi().create<SaiTamTraits>(first, 0);
+  auto secondId = saiApiTable->tamApi().create<SaiTamTraits>(second, 0);
+  SaiStore store(0);
+  store.reload();
+  auto a = store.get<SaiTamTraits>().get(first);
+  auto b = store.get<SaiTamTraits>().get(second);
+  ASSERT_NE(a, nullptr);
+  ASSERT_NE(b, nullptr);
+  EXPECT_EQ(a->adapterKey(), firstId);
+  EXPECT_EQ(b->adapterKey(), secondId);
+  EXPECT_NE(a->adapterKey(), b->adapterKey());
+  EXPECT_EQ(
+      store.get<SaiTamTraits>().setObject(first, first)->adapterKey(), firstId);
+  EXPECT_EQ(
+      store.get<SaiTamTraits>().setObject(second, second)->adapterKey(),
+      secondId);
+}
+#endif

@@ -23,6 +23,7 @@ class FakeSaiTam {
   sai_object_id_t id;
   std::vector<sai_object_id_t> events_;
   std::vector<sai_int32_t> bindpoints_;
+  std::vector<sai_object_id_t> intObjects_;
 };
 
 #if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)

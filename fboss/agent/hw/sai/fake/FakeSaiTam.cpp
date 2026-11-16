@@ -223,70 +223,62 @@ sai_status_t create_tam(
     sai_object_id_t* id,
     sai_object_id_t /*switch_id*/,
     uint32_t attr_count,
-    const sai_attribute_t* attr_list) {
+    const sai_attribute_t* attrs) {
   std::vector<sai_object_id_t> events;
   std::vector<sai_int32_t> bindpoints;
-  for (auto i = 0; i < attr_count; i++) {
-    switch (attr_list[i].id) {
+  std::vector<sai_object_id_t> ints;
+  for (uint32_t i = 0; i < attr_count; ++i) {
+    switch (attrs[i].id) {
       case SAI_TAM_ATTR_EVENT_OBJECTS_LIST:
-        std::copy(
-            attr_list[i].value.objlist.list,
-            attr_list[i].value.objlist.list + attr_list[i].value.objlist.count,
-            std::back_inserter(events));
+        events = copyList(attrs[i].value.objlist);
         break;
-
       case SAI_TAM_ATTR_TAM_BIND_POINT_TYPE_LIST:
-        std::copy(
-            attr_list[i].value.s32list.list,
-            attr_list[i].value.s32list.list + attr_list[i].value.s32list.count,
-            std::back_inserter(bindpoints));
+        bindpoints = copyList(attrs[i].value.s32list);
         break;
-
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+      case SAI_TAM_ATTR_INT_OBJECTS_LIST:
+        ints = copyList(attrs[i].value.objlist);
+        break;
+#endif
       default:
         return SAI_STATUS_ATTR_NOT_SUPPORTED_0 + i;
     }
   }
   auto fs = FakeSai::getInstance();
   *id = fs->tamManager.create(events, bindpoints);
+  fs->tamManager.get(*id).intObjects_ = std::move(ints);
   return SAI_STATUS_SUCCESS;
 }
 
 sai_status_t remove_tam(sai_object_id_t id) {
-  auto fs = FakeSai::getInstance();
-  fs->tamManager.remove(id);
+  FakeSai::getInstance()->tamManager.remove(id);
   return SAI_STATUS_SUCCESS;
 }
 
 sai_status_t get_tam_attribute(
     sai_object_id_t id,
     uint32_t attr_count,
-    sai_attribute_t* attr_list) {
-  auto fs = FakeSai::getInstance();
-  auto& tam = fs->tamManager.get(id);
-  for (auto i = 0; i < attr_count; i++) {
-    switch (attr_list[i].id) {
+    sai_attribute_t* attrs) {
+  const auto& tam = FakeSai::getInstance()->tamManager.get(id);
+  for (uint32_t i = 0; i < attr_count; ++i) {
+    sai_status_t status;
+    switch (attrs[i].id) {
       case SAI_TAM_ATTR_EVENT_OBJECTS_LIST:
-        if (attr_list[i].value.objlist.count < tam.events_.size()) {
-          attr_list[i].value.objlist.count = tam.events_.size();
-          return SAI_STATUS_BUFFER_OVERFLOW;
-        }
-        for (auto j = 0; j < attr_list[i].value.objlist.count; j++) {
-          attr_list[i].value.objlist.list[j] = tam.events_[j];
-        }
+        status = readList(tam.events_, attrs[i].value.objlist);
         break;
-
       case SAI_TAM_ATTR_TAM_BIND_POINT_TYPE_LIST:
-        if (attr_list[i].value.s32list.count < tam.bindpoints_.size()) {
-          attr_list[i].value.objlist.count = tam.bindpoints_.size();
-          return SAI_STATUS_BUFFER_OVERFLOW;
-        }
-        for (auto j = 0; j < attr_list[i].value.s32list.count; j++) {
-          attr_list[i].value.s32list.list[j] = tam.bindpoints_[j];
-        }
+        status = readList(tam.bindpoints_, attrs[i].value.s32list);
         break;
-
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+      case SAI_TAM_ATTR_INT_OBJECTS_LIST:
+        status = readList(tam.intObjects_, attrs[i].value.objlist);
+        break;
+#endif
       default:
         return SAI_STATUS_ATTR_NOT_SUPPORTED_0 + i;
+    }
+    if (status != SAI_STATUS_SUCCESS) {
+      return status;
     }
   }
   return SAI_STATUS_SUCCESS;
@@ -294,33 +286,22 @@ sai_status_t get_tam_attribute(
 
 sai_status_t set_tam_attribute(
     sai_object_id_t id,
-    const sai_attribute_t* attr_list) {
-  std::vector<sai_object_id_t> events;
-  std::vector<sai_int32_t> bindpoints;
-  switch (attr_list[0].id) {
+    const sai_attribute_t* attr) {
+  auto& tam = FakeSai::getInstance()->tamManager.get(id);
+  switch (attr->id) {
     case SAI_TAM_ATTR_EVENT_OBJECTS_LIST:
-      std::copy(
-          attr_list[0].value.objlist.list,
-          attr_list[0].value.objlist.list + attr_list[0].value.objlist.count,
-          std::back_inserter(events));
+      tam.events_ = copyList(attr->value.objlist);
       break;
-
     case SAI_TAM_ATTR_TAM_BIND_POINT_TYPE_LIST:
-      std::copy(
-          attr_list[0].value.s32list.list,
-          attr_list[0].value.s32list.list + attr_list[0].value.s32list.count,
-          std::back_inserter(bindpoints));
+      tam.bindpoints_ = copyList(attr->value.s32list);
       break;
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+    case SAI_TAM_ATTR_INT_OBJECTS_LIST:
+      tam.intObjects_ = copyList(attr->value.objlist);
+      break;
+#endif
     default:
       return SAI_STATUS_ATTR_NOT_SUPPORTED_0;
-  }
-  try {
-    auto fs = FakeSai::getInstance();
-    auto& tam = fs->tamManager.get(id);
-    tam.events_ = events;
-    tam.bindpoints_ = bindpoints;
-  } catch (...) {
-    return SAI_STATUS_ITEM_NOT_FOUND;
   }
   return SAI_STATUS_SUCCESS;
 }
