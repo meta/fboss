@@ -216,11 +216,10 @@ std::shared_ptr<SwitchState> DsfStateUpdaterUtil::getUpdatedState(
             if constexpr (std::is_same_v<MapT, MultiSwitchSystemPortMap>) {
               mapToUpdate->updateNode(clonedNode, matcher);
             } else {
-              // Only process routes if addresses or routerID changed.
-              // Neighbor-only changes don't affect routes.
+              // Only process routes if addresses changed. Neighbor-only
+              // changes don't affect routes.
               if (oldNode->getAddresses()->toThrift() !=
-                      newNode->getAddresses()->toThrift() ||
-                  oldNode->getRouterID() != newNode->getRouterID()) {
+                  newNode->getAddresses()->toThrift()) {
                 processRemoteInterfaceRoutes(
                     oldNode,
                     out,

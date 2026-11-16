@@ -665,9 +665,9 @@ TEST(UpdateInterfaceVrfs, ConfigApplyKeepsBinding) {
   EXPECT_TRUE(hasRoute(state, kTestVrf, "10.0.55.0/24"));
   EXPECT_FALSE(hasRoute(state, RouterID(0), "10.0.55.0/24"));
   // Config apply leaves the moved interface alone
-  auto intf = state->getInterfaces()->getNode(InterfaceID(55));
-  EXPECT_EQ(intf->getRouterID(), RouterID(0));
-  EXPECT_EQ(intf->getArpTable()->size(), 1);
+  EXPECT_EQ(
+      state->getInterfaces()->getNode(InterfaceID(55))->getArpTable()->size(),
+      1);
 }
 
 TEST(UpdateInterfaceVrfs, ConfigChangesAddressesOfBoundInterface) {

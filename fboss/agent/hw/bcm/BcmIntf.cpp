@@ -119,15 +119,10 @@ BcmIntf::BcmIntf(BcmSwitch* hw) : hw_(hw) {}
 void BcmIntf::program(const shared_ptr<Interface>& intf) {
   const auto& oldIntf = intf_;
   if (oldIntf != nullptr) {
-    // vrf and vid cannot be changed by this method.
-    if (oldIntf->getRouterID() != intf->getRouterID() ||
-        oldIntf->getVlanID() != intf->getVlanID()) {
+    // vid cannot be changed by this method.
+    if (oldIntf->getVlanID() != intf->getVlanID()) {
       throw FbossError(
-          "Interface router ID (",
-          oldIntf->getRouterID(),
-          " vs ",
-          intf->getRouterID(),
-          " or VLAN ID (",
+          "Interface VLAN ID (",
           oldIntf->getVlanID(),
           " vs ",
           intf->getVlanID(),
@@ -145,7 +140,8 @@ void BcmIntf::program(const shared_ptr<Interface>& intf) {
     station_->program(intf->getMac(), intf->getID());
   }
 
-  const auto vrf = BcmSwitch::getBcmVrfId(intf->getRouterID());
+  // The BCM agent has interfaces in VRF 0 only
+  const auto vrf = BcmSwitch::getBcmVrfId(RouterID(0));
 
   // Lambda to compare with existing intf to determine if we need to
   // reprogram
@@ -298,7 +294,7 @@ void BcmIntf::programIngressIfNeeded(
     l3_ingress.flags |= BCM_L3_INGRESS_REPLACE;
   }
   bcm_if_t ingress_if = bcmIfId_;
-  l3_ingress.vrf = BcmSwitch::getBcmVrfId(intf->getRouterID());
+  l3_ingress.vrf = BcmSwitch::getBcmVrfId(RouterID(0));
   auto rc = bcm_l3_ingress_create(hw_->getUnit(), &l3_ingress, &ingress_if);
   bcmCheckError(
       rc, "failed to create or update ingress L3 interface ", intf->getID());

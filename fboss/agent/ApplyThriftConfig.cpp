@@ -5590,7 +5590,7 @@ shared_ptr<Interface> ThriftConfigApplier::createInterface(
   auto mtu = config->mtu().value_or(Interface::kDefaultMtu);
   auto intf = make_shared<Interface>(
       InterfaceID(*config->intfID()),
-      RouterID(config->routerID().value_or(0)),
+      RouterID(0),
       std::optional<VlanID>(*config->vlanID()),
       folly::StringPiece(name),
       mac,
@@ -5688,15 +5688,9 @@ shared_ptr<Interface> ThriftConfigApplier::updateInterface(
       desiredPeerChanged(
           config->desiredPeerAddressIPv6(), orig->getDesiredPeerAddressIPv6());
 
-  // Interface routerId mirrors config, after deferred moves; the VRF is in
-  // the interface VRF map
-  auto vrf = getInterfaceRouterID(*config);
-  RouterID configRouterId = vrf == getTargetRouterID(*config)
-      ? RouterID(config->routerID().value_or(0))
-      : orig->getRouterID();
-  bool vrfChanged = orig_->getInterfaceVrfs()->getVrf(orig->getID()) != vrf;
-  if (orig->getRouterID() == configRouterId && !vrfChanged &&
-      (orig->getVlanIDHelper() == VlanID(*config->vlanID())) &&
+  bool vrfChanged = orig_->getInterfaceVrfs()->getVrf(orig->getID()) !=
+      getInterfaceRouterID(*config);
+  if (!vrfChanged && (orig->getVlanIDHelper() == VlanID(*config->vlanID())) &&
       (orig->getPortIDf() == cfgPort) &&
       (orig->getAggregatePortIDf() == cfgAggregatePort) &&
       orig->getName() == name && orig->getMac() == mac &&
@@ -5711,7 +5705,6 @@ shared_ptr<Interface> ThriftConfigApplier::updateInterface(
     return nullptr;
   }
 
-  newIntf->setRouterID(configRouterId);
   if (vrfChanged) {
     // Neighbors are relearned in the new VRF
     newIntf->setArpTable(state::NeighborEntries{});

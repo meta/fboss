@@ -450,7 +450,7 @@ TEST(Interface, applyConfig) {
   updateState();
   EXPECT_EQ(oldInterface->getGeneration() + 1, interface->getGeneration());
   EXPECT_EQ(VlanID(1), interface->getVlanID());
-  EXPECT_EQ(RouterID(0), interface->getRouterID());
+  EXPECT_EQ(RouterID(0), state->getInterfaceVrfs()->getVrf(id));
   EXPECT_EQ(oldInterface->getName(), interface->getName());
   EXPECT_EQ(MacAddress("00:02:00:12:34:56"), interface->getMac());
   // Use the platform supplied MAC
@@ -475,7 +475,7 @@ TEST(Interface, applyConfig) {
   EXPECT_EQ(nodeID, interface->getNodeID());
   EXPECT_EQ(oldInterface->getGeneration() + 1, interface->getGeneration());
   EXPECT_EQ(VlanID(1), interface->getVlanID());
-  EXPECT_EQ(RouterID(0), interface->getRouterID());
+  EXPECT_EQ(RouterID(0), state->getInterfaceVrfs()->getVrf(id));
   EXPECT_EQ(oldInterface->getName(), interface->getName());
   EXPECT_EQ(oldInterface->getMac(), interface->getMac());
   // Link-local addrs will be added automatically

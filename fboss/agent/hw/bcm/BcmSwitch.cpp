@@ -2764,7 +2764,7 @@ void BcmSwitch::processAddedNeighborEntry(const NeighborEntryT* addedEntry) {
   }
 
   const auto* intf = getIntfTable()->getBcmIntf(addedEntry->getIntfID());
-  auto vrf = getBcmVrfId(intf->getInterface()->getRouterID());
+  auto vrf = getBcmVrfId(RouterID(0));
 
   auto neighborKey =
       BcmHostKey(vrf, IPAddress(addedEntry->getIP()), addedEntry->getIntfID());
@@ -2796,7 +2796,7 @@ void BcmSwitch::processChangedNeighborEntry(
   }
 
   const auto* intf = getIntfTable()->getBcmIntf(newEntry->getIntfID());
-  auto vrf = getBcmVrfId(intf->getInterface()->getRouterID());
+  auto vrf = getBcmVrfId(RouterID(0));
 
   auto neighborKey =
       BcmHostKey(vrf, IPAddress(newEntry->getIP()), newEntry->getIntfID());
@@ -2811,7 +2811,7 @@ void BcmSwitch::processRemovedNeighborEntry(
   XLOG(DBG3) << "deleting neighbor entry " << removedEntry->getIP().str();
 
   const auto* intf = getIntfTable()->getBcmIntf(removedEntry->getIntfID());
-  auto vrf = getBcmVrfId(intf->getInterface()->getRouterID());
+  auto vrf = getBcmVrfId(RouterID(0));
 
   auto neighborKey = BcmHostKey(
       vrf, IPAddress(removedEntry->getIP()), removedEntry->getIntfID());
