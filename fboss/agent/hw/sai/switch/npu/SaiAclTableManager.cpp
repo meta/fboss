@@ -230,6 +230,15 @@ std::
   int i = 0;
   auto udfGroupSaiIds = managerTable_->udfManager().getUdfGroupIds(
       addedAclTable->getUdfGroups()->toThrift());
+  if (udfGroupSaiIds.size() > SaiAclTableManager::kMaxUdfGroups) {
+    throw FbossError(
+        "ACL table ",
+        addedAclTable->getID(),
+        " has ",
+        udfGroupSaiIds.size(),
+        " UDF groups, max supported is ",
+        SaiAclTableManager::kMaxUdfGroups);
+  }
   for (const auto udfGroupSaiId : udfGroupSaiIds) {
     udfGroupIds[i++] = udfGroupSaiId;
   }

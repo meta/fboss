@@ -84,6 +84,19 @@ const std::vector<std::string> kAclUdfGroups = {
 
 namespace {
 
+cfg::UdfConfig makeAclUdfConfig(const std::vector<std::string>& udfGroups) {
+  cfg::UdfConfig udfConfig;
+  for (const auto& name : udfGroups) {
+    cfg::UdfGroup udfGroup;
+    udfGroup.name() = name;
+    udfGroup.startOffsetInBytes() = 8;
+    udfGroup.fieldSizeInBytes() = 1;
+    udfGroup.type() = cfg::UdfGroupType::ACL;
+    udfConfig.udfGroups()->emplace(name, udfGroup);
+  }
+  return udfConfig;
+}
+
 std::shared_ptr<const AclMap> getAclMapFromState(
     std::shared_ptr<SwitchState> state) {
   auto aclMap = state->getAclsForTable(
@@ -559,6 +572,7 @@ TEST(AclGroup, ApplyConfigColdbootMultipleAclTable) {
   config.aclTableGroup()->name() = kGroup1;
   config.aclTableGroup()->aclTables()->resize(1);
   config.aclTableGroup()->aclTables()[0] = cfgTable1;
+  config.udfConfig() = makeAclUdfConfig(kAclUdfGroups);
   // Make sure acl1b used so that it isn't ignored
   config.dataPlaneTrafficPolicy() = cfg::TrafficPolicyConfig();
   config.dataPlaneTrafficPolicy()->matchToAction()->resize(

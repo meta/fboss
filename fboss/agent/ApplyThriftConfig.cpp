@@ -657,6 +657,10 @@ class ThriftConfigApplier {
       const MatchAction* action = nullptr,
       bool enable = true);
   void checkUdfAcl(const std::vector<std::string>& udfGroups) const;
+  void checkUdfGroupsExist(const std::vector<std::string>& udfGroups) const;
+  void checkAclTableUdfGroups(
+      const std::string& tableName,
+      const std::vector<std::string>& udfGroups) const;
   std::shared_ptr<AclEntry> updateAcl(
       cfg::AclStage aclStage,
       const cfg::AclEntry& acl,
@@ -4685,6 +4689,7 @@ std::shared_ptr<AclTable> ThriftConfigApplier::updateAclTable(
       *configTable.actionTypes();
   std::vector<cfg::AclTableQualifier> newQualifiers = *configTable.qualifiers();
   std::vector<std::string> newUdfGroups = *configTable.udfGroups();
+  checkAclTableUdfGroups(tableName, newUdfGroups);
   if (origTable) {
     ++(*numExistingTablesProcessed);
     if (!newTableEntries && newTablePriority == origTable->getPriority() &&
@@ -5042,6 +5047,34 @@ void ThriftConfigApplier::checkUdfAcl(
   if ((udfGroups).size() == 0) {
     throw FbossError("udf group list is empty");
   }
+  checkUdfGroupsExist(udfGroups);
+}
+
+void ThriftConfigApplier::checkAclTableUdfGroups(
+    const std::string& tableName,
+    const std::vector<std::string>& udfGroups) const {
+  if (udfGroups.empty()) {
+    return;
+  }
+  auto maxUdfGroups = cfg::switch_config_constants::ACL_TABLE_UDF_GROUPS_MAX();
+  if (udfGroups.size() > maxUdfGroups) {
+    throw FbossError(
+        "ACL table ",
+        tableName,
+        " has ",
+        udfGroups.size(),
+        " UDF groups, max supported is ",
+        maxUdfGroups);
+  }
+  if (std::set<std::string>(udfGroups.begin(), udfGroups.end()).size() !=
+      udfGroups.size()) {
+    throw FbossError("ACL table ", tableName, " has duplicate UDF groups");
+  }
+  checkUdfGroupsExist(udfGroups);
+}
+
+void ThriftConfigApplier::checkUdfGroupsExist(
+    const std::vector<std::string>& udfGroups) const {
   if (!cfg_->udfConfig()) {
     throw FbossError("No udf config exists");
   }

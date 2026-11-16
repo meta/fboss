@@ -10,6 +10,7 @@
 
 #pragma once
 
+#include "fboss/agent/gen-cpp2/switch_config_constants.h"
 #include "fboss/agent/hw/sai/api/AclApi.h"
 #include "fboss/agent/hw/sai/api/NextHopApi.h"
 #include "fboss/agent/hw/sai/api/Types.h"
@@ -144,7 +145,8 @@ class SaiAclTableManager {
   static auto constexpr kTcMask = 0xFF;
 #endif
 
-  static auto constexpr kMaxUdfGroups = 5;
+  static auto constexpr kMaxUdfGroups =
+      cfg::switch_config_constants::ACL_TABLE_UDF_GROUPS_MAX();
 
   /*
    * L4 Src/Dst Port Mask.
