@@ -14,6 +14,11 @@
     },
     "SMB_SLOT": {
       "numOutgoingI2cBuses": 2,
+      "idpromConfig": {
+        "busName": "INCOMING@1",
+        "address": "0x50",
+        "kernelDeviceName": "24c64"
+      },
       "pmUnitName": "SMB"
     }
   },
@@ -282,12 +287,6 @@
           "pmUnitScopedName": "DPM_2"
         },
         {
-          "busName": "INCOMING@1",
-          "address": "0x50",
-          "kernelDeviceName": "24c64",
-          "pmUnitScopedName": "CHASSIS_EEPROM"
-        },
-        {
           "busName": "SMB_IOB_I2C_0",
           "address": "0x71",
           "kernelDeviceName": "fpga-mux",
@@ -466,7 +465,7 @@
     "Synopsys DesignWare I2C adapter"
   ],
   "symbolicLinkToDevicePath": {
-    "/run/devmap/eeproms/CHASSIS_EEPROM": "/SMB_SLOT@0/[CHASSIS_EEPROM]",
+    "/run/devmap/eeproms/CHASSIS_EEPROM": "/SMB_SLOT@0/[IDPROM]",
     "/run/devmap/eeproms/SCM_EEPROM": "/[IDPROM]",
     "/run/devmap/sensors/DPM": "/[DPM]",
     "/run/devmap/sensors/DPM_1": "/SMB_SLOT@0/[DPM_1]",
@@ -653,7 +652,7 @@
     "/run/devmap/xcvrs/xcvr_io_65": "/SMB_SLOT@0/[SMB_MUX_2@1]",
     "/run/devmap/xcvrs/xcvr_ctrl_65": "/SMB_SLOT@0/[QSFP_XCVR_CTRL_PORT_65]"
   },
-  "chassisEepromDevicePath": "/SMB_SLOT@0/[CHASSIS_EEPROM]",
+  "chassisEepromDevicePath": "/SMB_SLOT@0/[IDPROM]",
   "numXcvrs": 65,
   "bspKmodsRpmName": "nexthop_bsp_kmods",
   "bspKmodsRpmVersion": "1.0.0-1",
