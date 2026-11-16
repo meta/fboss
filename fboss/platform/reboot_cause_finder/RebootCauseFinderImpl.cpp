@@ -6,6 +6,8 @@
 
 #include "fboss/lib/RestClient.h"
 
+#include <net/if.h>
+
 #include <algorithm>
 #include <array>
 #include <chrono>
@@ -101,6 +103,7 @@ constexpr auto kBmcWedgePowerProvider = "BMCWedgePower";
 // The source has to be pinned: eth0.4088 carries more than one link-local,
 // so the kernel's pick is arbitrary and flips on link flap.
 constexpr auto kBmcAddress = "fe80::1";
+constexpr auto kSidebandInterface = "eth0.4088";
 constexpr auto kHostSourceAddress = "fe80::2%eth0.4088";
 constexpr int kBmcPort = 8080;
 constexpr auto kBmcLogfilePath = "/api/sys/logfile";
@@ -1373,12 +1376,22 @@ RunResult RebootCauseFinderImpl::determineRebootCause() {
           FLAGS_software_cause_lookback_sec);
     }
 
+    const bool bmcReachable = if_nametoindex(kSidebandInterface) != 0;
+
     std::vector<reboot_cause_config::RebootCauseProviderAttempt> software;
     software.push_back(
         detail::readKernelPanic(paths_.crashDirs, *btime, window));
     software.push_back(
         detail::readX86RebootCommand(paths_.logPaths, *btime, window));
-    software.push_back(detail::readBmcWedgePower(*btime, window));
+    if (bmcReachable) {
+      software.push_back(detail::readBmcWedgePower(*btime, window));
+    } else {
+      XLOG(INFO) << "Sideband interface absent; skipping BMC providers";
+      software.push_back(makeAttempt(
+          kBmcWedgePowerProvider,
+          reboot_cause_config::RebootCauseProviderStatus::SKIPPED,
+          fmt::format("sideband interface {} absent", kSidebandInterface)));
+    }
 
     // Nearest to boot start wins, not whichever reader ran first. A panic and
     // a later operator reboot can both fall inside one window; the reboot is
