@@ -48,6 +48,7 @@ struct FakeNextHop {
   sai_object_id_t tunnelId{SAI_NULL_OBJECT_ID};
   sai_object_id_t srv6SidlistId{SAI_NULL_OBJECT_ID};
   std::optional<folly::MacAddress> overlayDstMac;
+  sai_uint32_t tunnelVni{0};
 #endif
 };
 

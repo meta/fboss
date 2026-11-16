@@ -1838,6 +1838,7 @@ AclEntrySaiId SaiAclTableManager::addAclEntry(
               tunnelSaiId,
               nhIp,
               std::nullopt,
+              std::nullopt,
               std::nullopt};
           auto& nhStore = saiStore_->get<SaiTunnelEncapNextHopTraits>();
           tunnelEncapNextHop = nhStore.setObject(nhKey, nhAttrs);

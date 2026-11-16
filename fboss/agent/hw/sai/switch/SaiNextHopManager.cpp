@@ -323,6 +323,7 @@ std::shared_ptr<SaiVxlanNextHopHandle> SaiNextHopManager::addVxlanNextHop(
       tunnelSaiId,
       swNextHop.addr(),
       swNextHop.overlayDstMac(),
+      std::nullopt,
       std::nullopt};
   auto nextHop =
       createSaiObject<SaiTunnelEncapNextHopTraits>(*vxlanKey, attributes);

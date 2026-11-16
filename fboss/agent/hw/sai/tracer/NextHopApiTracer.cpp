@@ -28,6 +28,7 @@ std::map<int32_t, std::pair<std::string, std::size_t>> _NextHopMap{
     SAI_ATTR_MAP(IpNextHop, DisableTtlDecrement),
     SAI_ATTR_MAP(TunnelEncapNextHop, TunnelId),
     SAI_ATTR_MAP(TunnelEncapNextHop, OverlayDstMac),
+    SAI_ATTR_MAP(TunnelEncapNextHop, TunnelVni),
 #if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)
     SAI_ATTR_MAP(Srv6SidlistNextHop, Srv6SidlistId),
 #endif
