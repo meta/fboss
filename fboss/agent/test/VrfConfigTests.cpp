@@ -792,3 +792,51 @@ TEST(UpdateInterfaceVrfs, RemovingBoundInterfaceRejected) {
   EXPECT_NE(
       sw->getState()->getInterfaces()->getNodeIf(InterfaceID(55)), nullptr);
 }
+
+namespace {
+VrfEntry makeVrfEntry(RouterID vrf, const std::string& name) {
+  VrfEntry entry;
+  entry.vrfId() = vrf;
+  entry.name() = name;
+  return entry;
+}
+} // namespace
+
+TEST(SwSwitchVrfs, AddAndDelete) {
+  auto config = testConfigA();
+  auto handle = createTestHandle(&config);
+  auto sw = handle->getSw();
+  sw->addVrfs({makeVrfEntry(kTestVrf, "blue")});
+  auto vrf = sw->getState()->getVrfs()->getNodeIf(kTestVrf);
+  ASSERT_NE(vrf, nullptr);
+  EXPECT_EQ(vrf->getName(), "blue");
+  EXPECT_NE(
+      sw->getState()->getFibsInfoMap()->getFibContainerIf(kTestVrf), nullptr);
+
+  sw->deleteVrfs({kTestVrf});
+  EXPECT_EQ(sw->getState()->getVrfs()->getNodeIf(kTestVrf), nullptr);
+  EXPECT_EQ(
+      sw->getState()->getFibsInfoMap()->getFibContainerIf(kTestVrf), nullptr);
+}
+
+TEST(SwSwitchVrfs, InterfaceInAddedVrf) {
+  auto config = testConfigA();
+  auto handle = createTestHandle(&config);
+  auto sw = handle->getSw();
+  sw->addVrfs({makeVrfEntry(kTestVrf, "blue")});
+  sw->updateInterfaceVrfs({{InterfaceID(55), kTestVrf}});
+  EXPECT_TRUE(hasRoute(sw->getState(), kTestVrf, "10.0.55.0/24"));
+
+  EXPECT_THROW(sw->deleteVrfs({kTestVrf}), FbossError);
+  EXPECT_NE(sw->getState()->getVrfs()->getNodeIf(kTestVrf), nullptr);
+}
+
+TEST(SwSwitchVrfs, Rejected) {
+  auto config = testConfigA();
+  auto handle = createTestHandle(&config);
+  auto sw = handle->getSw();
+  sw->addVrfs({makeVrfEntry(kTestVrf, "blue")});
+  EXPECT_THROW(sw->addVrfs({makeVrfEntry(kTestVrf, "red")}), FbossError);
+  EXPECT_THROW(sw->deleteVrfs({RouterID(3003)}), FbossError);
+  EXPECT_EQ(sw->getState()->getVrfs()->getNodeIf(kTestVrf)->getName(), "blue");
+}

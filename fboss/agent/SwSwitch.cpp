@@ -101,6 +101,7 @@
 #include "fboss/agent/state/StateDelta.h"
 #include "fboss/agent/state/StateUpdateHelpers.h"
 #include "fboss/agent/state/SwitchState.h"
+#include "fboss/agent/state/Vrf.h"
 #include "fboss/lib/config/PlatformConfigUtils.h"
 #include "fboss/lib/link_snapshots/AsyncFileWriterFactory.h"
 #include "fboss/lib/phy/gen-cpp2/phy_types.h"
@@ -3935,6 +3936,48 @@ void SwSwitch::updateInterfaceVrfs(
       RoutingInformationBase::InterfaceToVrf(
           interfaceVrfs.begin(), interfaceVrfs.end()),
       createRibToSwitchStateFunction(std::nullopt, std::move(moveInterfaces)),
+      this);
+}
+
+void SwSwitch::addVrfs(const std::vector<VrfEntry>& vrfs) {
+  updateVrfs(vrfs, {});
+}
+
+void SwSwitch::deleteVrfs(const std::vector<RouterID>& vrfIds) {
+  updateVrfs({}, vrfIds);
+}
+
+void SwSwitch::updateVrfs(
+    const std::vector<VrfEntry>& toAdd,
+    const std::vector<RouterID>& toDelete) {
+  // Runs in the update thread, in the same update as the VRF route tables
+  auto changeVrfs =
+      [this, toAdd, toDelete](const std::shared_ptr<SwitchState>& in) {
+        if (!toAdd.empty()) {
+          for (const auto* asic : getHwAsicTable()->getL3Asics()) {
+            if (!asic->isSupported(HwAsic::Feature::VRF)) {
+              throw FbossHwUpdateError(
+                  in, in, "VRFs are not supported on ", asic->getAsicTypeStr());
+            }
+          }
+        }
+        auto newState = in->clone();
+        auto vrfs = newState->getVrfs()->modify(&newState);
+        for (const auto& vrfEntry : toAdd) {
+          auto vrf = std::make_shared<Vrf>(RouterID(*vrfEntry.vrfId()));
+          vrf->setName(vrfEntry.name().to_optional());
+          vrfs->addNode(vrf, getScopeResolver()->scope(vrf));
+        }
+        for (auto vrfId : toDelete) {
+          vrfs->removeNode(vrfId);
+        }
+        return newState;
+      };
+  getRib()->updateVrfs(
+      getScopeResolver(),
+      toAdd,
+      toDelete,
+      createRibToSwitchStateFunction(std::nullopt, std::move(changeVrfs)),
       this);
 }
 

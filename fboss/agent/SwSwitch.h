@@ -418,6 +418,13 @@ class SwSwitch : public HwSwitchCallback {
       const std::map<InterfaceID, RouterID>& interfaceVrfs);
 
   /*
+   * Adds or deletes VRFs and their route tables in one switch state update. A
+   * deleted VRF must have no interfaces and no routes.
+   */
+  void addVrfs(const std::vector<VrfEntry>& vrfs);
+  void deleteVrfs(const std::vector<RouterID>& vrfIds);
+
+  /*
    * Get config applied information which include last config applied time(ms).
    * NOTE: If no config has ever been applied, the default timestamp is 0.
    */
@@ -1077,6 +1084,9 @@ class SwSwitch : public HwSwitchCallback {
   const ResourceAccountant* getResourceAccountant() const;
 
  private:
+  void updateVrfs(
+      const std::vector<VrfEntry>& toAdd,
+      const std::vector<RouterID>& toDelete);
   void initAgentInfo();
   void createAndProbeTunManager();
   void initializeTunManager(bool useBlocking);
