@@ -69,17 +69,14 @@ TEST_F(VrfConfigTest, RenameVrf) {
   EXPECT_EQ(state_->getVrfs()->getNode(RouterID(1001))->getName(), "blue");
 }
 
-TEST_F(VrfConfigTest, RemoveVrf) {
+TEST_F(VrfConfigTest, VrfNotInConfigKept) {
   config_.vrfs() = {makeVrfConfig(1001), makeVrfConfig(1002)};
   state_ = apply();
   ASSERT_NE(state_, nullptr);
 
   config_.vrfs() = {makeVrfConfig(1002)};
-  state_ = apply();
-  ASSERT_NE(state_, nullptr);
-
-  EXPECT_EQ(state_->getVrfs()->getNodeIf(RouterID(1001)), nullptr);
-  EXPECT_NE(state_->getVrfs()->getNodeIf(RouterID(1002)), nullptr);
+  EXPECT_EQ(apply(), nullptr);
+  EXPECT_NE(state_->getVrfs()->getNodeIf(RouterID(1001)), nullptr);
 }
 
 TEST_F(VrfConfigTest, NoChange) {
@@ -141,12 +138,18 @@ TEST_F(VrfConfigTest, RibTablePerVrf) {
   auto vrfList = rib.getVrfList();
   EXPECT_NE(
       std::find(vrfList.begin(), vrfList.end(), RouterID(1001)), vrfList.end());
+}
 
-  config_.vrfs() = {};
+TEST_F(VrfConfigTest, RibTableOfVrfNotInConfigKept) {
+  RoutingInformationBase rib;
+  config_.vrfs() = {makeVrfConfig(1001)};
   state_ = publishAndApplyConfig(state_, &config_, platform_.get(), &rib);
   ASSERT_NE(state_, nullptr);
-  vrfList = rib.getVrfList();
-  EXPECT_EQ(
+
+  config_.vrfs() = {};
+  publishAndApplyConfig(state_, &config_, platform_.get(), &rib);
+  auto vrfList = rib.getVrfList();
+  EXPECT_NE(
       std::find(vrfList.begin(), vrfList.end(), RouterID(1001)), vrfList.end());
 }
 
@@ -157,11 +160,6 @@ const RouterID kTestVrf{1001};
 cfg::SwitchConfig emptyVrfConfig() {
   auto config = testConfigA();
   config.vrfs().ensure().emplace_back().vrfId() = kTestVrf;
-  return config;
-}
-
-cfg::SwitchConfig vrfRemovedConfig() {
-  auto config = testConfigA();
   return config;
 }
 
@@ -188,40 +186,6 @@ TEST(InterfaceVrfs, SetAndRemove) {
 
   state = setInterfaceVrfs(state, {{InterfaceID(55), RouterID(0)}}, resolver);
   EXPECT_EQ(state->getInterfaceVrfs()->numNodes(), 0);
-}
-
-TEST(VrfDelete, RemovesNonConfigRoutes) {
-  auto config = emptyVrfConfig();
-  auto handle = createTestHandle(&config);
-  auto sw = handle->getSw();
-  // kTestVrf has no interfaces; the route resolves in the default VRF
-  auto route = makeRoute("2001:db8:100::/64", "10.0.0.10");
-  NextHopThrift defaultVrfNhop;
-  defaultVrfNhop.address() =
-      facebook::network::toBinaryAddress(folly::IPAddress("10.0.0.10"));
-  defaultVrfNhop.vrf() = 0;
-  route.nextHopAddrs()->clear();
-  route.nextHops() = {defaultVrfNhop};
-  auto updater = sw->getRouteUpdater();
-  updater.addRoute(kTestVrf, ClientID::BGPD, route);
-  updater.program();
-  auto fib = sw->getState()->getFibsInfoMap()->getFibContainerIf(kTestVrf);
-  ASSERT_NE(fib, nullptr);
-  ASSERT_NE(
-      fib->getFibV6()->exactMatch({folly::IPAddressV6("2001:db8:100::"), 64}),
-      nullptr);
-
-  sw->applyConfig("delete vrf", vrfRemovedConfig());
-
-  auto state = sw->getState();
-  EXPECT_EQ(state->getFibsInfoMap()->getFibContainerIf(kTestVrf), nullptr);
-  const auto bgpNhop =
-      facebook::network::toBinaryAddress(folly::IPAddress("10.0.0.10"));
-  for (const auto& [_, fibInfo] : std::as_const(*state->getFibsInfoMap())) {
-    for (const auto& [id, nhop] : fibInfo->getIdToNextHopMap()->toThrift()) {
-      EXPECT_NE(*nhop.address(), bgpNhop) << "next hop id " << id;
-    }
-  }
 }
 
 namespace {
@@ -755,16 +719,6 @@ TEST(UpdateInterfaceVrfs, DuplicateSubnetInOneUpdateRejected) {
   EXPECT_EQ(state->getInterfaceVrfs()->getVrf(InterfaceID(1)), RouterID(0));
   EXPECT_EQ(intf55Vrf(state), kTestVrf);
   EXPECT_FALSE(hasRoute(state, RouterID(1002), "10.0.0.0/24"));
-}
-
-TEST(UpdateInterfaceVrfs, RemovingBoundVrfRejected) {
-  auto config = emptyVrfConfig();
-  auto handle = createTestHandle(&config);
-  auto sw = handle->getSw();
-  sw->updateInterfaceVrfs({{InterfaceID(55), kTestVrf}});
-
-  EXPECT_THROW(sw->applyConfig("delete vrf", vrfRemovedConfig()), FbossError);
-  EXPECT_NE(sw->getState()->getVrfs()->getNodeIf(kTestVrf), nullptr);
 }
 
 TEST(UpdateInterfaceVrfs, RemovingBoundInterfaceRejected) {

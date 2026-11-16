@@ -583,15 +583,14 @@ TEST_F(CrossVrfResolutionTest, ReconfigureProgramsVrfsInOneUpdate) {
   EXPECT_EQ(fibUpdates_[0], (std::vector<RouterID>{kVrf0, kTenantVrf}));
 }
 
-TEST_F(CrossVrfResolutionTest, ReconfigureRemovesVrfInSameUpdate) {
+TEST_F(CrossVrfResolutionTest, ReconfigureKeepsVrfNotInConfig) {
   fibUpdates_.clear();
   interfaceRoutes_.erase(kTenantVrf);
   reconfigure();
 
-  // The removed VRF's FIB is removed in the same update
   ASSERT_EQ(fibUpdates_.size(), 1);
   EXPECT_EQ(fibUpdates_[0], (std::vector<RouterID>{kTenantVrf, kVrf0}));
-  EXPECT_EQ(rib_.getVrfList(), std::vector<RouterID>{kVrf0});
+  EXPECT_EQ(rib_.getVrfList(), (std::vector<RouterID>{kVrf0, kTenantVrf}));
 }
 
 class InterfaceVrfMoveTest : public CrossVrfResolutionTest {

@@ -8058,19 +8058,10 @@ void ThriftConfigApplier::validateVrfs() const {
     }
     vrfIds.insert(*vrfCfg.vrfId());
   }
-  // Config removes a VRF only when no interface is in it
-  std::unordered_set<int32_t> vrfsWithInterfaces;
-  for (const auto& [_, intfVrfs] : std::as_const(*orig_->getInterfaceVrfs())) {
-    for (const auto& [intfId, intfVrf] : std::as_const(*intfVrfs)) {
-      vrfsWithInterfaces.insert(intfVrf->getVrf());
-    }
-  }
+  // Config doesn't delete VRFs
   for (const auto& [_, vrfMap] : std::as_const(*orig_->getVrfs())) {
     for (const auto& [vrfId, vrf] : std::as_const(*vrfMap)) {
-      if (!vrfIds.contains(vrfId) && vrfsWithInterfaces.contains(vrfId)) {
-        throw FbossError(
-            "VRF ", vrfId, " cannot be removed while interfaces are in it");
-      }
+      vrfIds.insert(vrfId);
     }
   }
   std::unordered_set<int32_t> intfIds;
@@ -8113,7 +8104,6 @@ std::shared_ptr<VrfMap> ThriftConfigApplier::updateVrfs() {
   const auto& origVrfs = orig_->getVrfs();
   auto newVrfs = std::make_shared<VrfMap>();
   bool changed = false;
-  size_t numExistingProcessed = 0;
   for (const auto& vrfCfg : getConfigVrfs()) {
     if (newVrfs->getNodeIf(RouterID(*vrfCfg.vrfId()))) {
       throw FbossError("Duplicate VRF id: ", *vrfCfg.vrfId());
@@ -8121,16 +8111,18 @@ std::shared_ptr<VrfMap> ThriftConfigApplier::updateVrfs() {
     auto origVrf = origVrfs->getNodeIf(RouterID(*vrfCfg.vrfId()));
     auto newVrf = std::make_shared<Vrf>(RouterID(*vrfCfg.vrfId()));
     newVrf->setName(vrfCfg.name().to_optional());
-    if (origVrf) {
-      ++numExistingProcessed;
-      if (*origVrf == *newVrf) {
-        newVrf = nullptr;
-      }
+    if (origVrf && *origVrf == *newVrf) {
+      newVrf = nullptr;
     }
     changed |= updateThriftMapNode(newVrfs.get(), origVrf, newVrf);
   }
-  if (numExistingProcessed != origVrfs->numNodes()) {
-    changed = true;
+  // Config doesn't delete VRFs
+  for (const auto& [_, vrfMap] : std::as_const(*origVrfs)) {
+    for (const auto& [vrfId, vrf] : std::as_const(*vrfMap)) {
+      if (!newVrfs->getNodeIf(RouterID(vrfId))) {
+        newVrfs->addNode(vrf);
+      }
+    }
   }
   if (!changed) {
     return nullptr;

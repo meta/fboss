@@ -634,10 +634,10 @@ void RibRouteTables::reconfigure(
     void* cookie,
     bool ecmpModeChanged) {
   // Config application is accomplished in the following sequence of steps:
-  // 1. Update the VRFs held in RoutingInformationBase's
+  // 1. Add the VRFs specified in config to RoutingInformationBase's
   // SynchronizedRouteTables data-structure
   //
-  // For each VRF specified in config:
+  // For each VRF:
   //
   // 2. Update all of RIB's static routes to be only those specified in
   // config
@@ -649,8 +649,7 @@ void RibRouteTables::reconfigure(
   //
   // Steps 2-4 take place in ConfigApplier.
   //
-  // 5. Update the FIBs of all VRFs, including removed ones, in one switch
-  // state update
+  // 5. Update the FIBs of all VRFs in one switch state update
 
   std::vector<RouterID> existingVrfs = getVrfList();
 
@@ -717,43 +716,14 @@ void RibRouteTables::reconfigure(
   // parallelism should be straightfoward because it has been written to avoid
   // dependencies across different iterations of the loop.
   for (const auto& vrf : existingVrfs) {
-    // VRFs removed from config: drop routes from every client and remove the
-    // VRF from the FIB
-    if (configRouterIDToInterfaceRoutes.find(vrf) !=
+    // Config doesn't delete VRFs. VRFs without interface routes in config
+    // keep only their non-config routes.
+    if (configRouterIDToInterfaceRoutes.find(vrf) ==
         configRouterIDToInterfaceRoutes.end()) {
-      continue;
-    }
-    if (vrf == RouterID(0)) {
-      // The default VRF always exists, even without interface routes
       configureRoutesForVrf(vrf, {} /* No interface routes*/);
-      continue;
     }
-    updateRib(
-        vrf,
-        [vrf](
-            auto& routeTable,
-            auto* mySidTable,
-            auto* nextHopIDManager,
-            uint32_t ecmpWidth,
-            auto& /*routeTables*/,
-            auto& /*interfaceVrfs*/) {
-          RibRouteUpdater updater(
-              &routeTable.v4NetworkToRoute,
-              &routeTable.v6NetworkToRoute,
-              &routeTable.labelToRoute,
-              nextHopIDManager,
-              mySidTable,
-              ecmpWidth,
-              vrf);
-          const auto& clients = apache::thrift::TEnumTraits<ClientID>::values;
-          updater.update(
-              {}, {}, std::set<ClientID>(clients.begin(), clients.end()));
-        });
-    vrfUpdates.push_back({vrf, true /* deleted */});
   }
   {
-    // Tables of removed VRFs stay until their FIBs are removed, so a HW
-    // update failure can rebuild them
     auto lockedRouteTables = synchronizedRouteTables_.wlock();
     for (const auto& [vrf, interfaceRoutes] : configRouterIDToInterfaceRoutes) {
       lockedRouteTables->routerIDToRouteTable.try_emplace(vrf);
@@ -766,17 +736,6 @@ void RibRouteTables::reconfigure(
   if (!vrfUpdates.empty()) {
     updateFib(
         resolver, vrfUpdates, ribToSwitchStateFunc, cookie, ecmpModeChanged);
-  }
-  {
-    auto lockedRouteTables = synchronizedRouteTables_.wlock();
-    auto& routeTables = lockedRouteTables->routerIDToRouteTable;
-    for (auto it = routeTables.begin(); it != routeTables.end();) {
-      if (configRouterIDToInterfaceRoutes.contains(it->first)) {
-        ++it;
-      } else {
-        it = routeTables.erase(it);
-      }
-    }
   }
 }
 
