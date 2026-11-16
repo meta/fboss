@@ -88,12 +88,15 @@ class CmdConfigInterface
 // warmboot/coldboot can escalate it too.
 cfg::PortProfileID parsePortProfile(const std::string& profile);
 
+// `qsfpSupportedProfiles` is advisory: a requested profile missing from a
+// port's non-empty entry is still applied, and reported in `warnings`.
 std::string applyProfileImpl(
     cfg::SwitchConfig& swConfig,
     const PlatformMapping& platformMapping,
     const utility::PortProfileSupportMap& qsfpSupportedProfiles,
     const utils::InterfaceList& interfaces,
     const std::string& value,
-    cli::ConfigActionLevel* actionLevel = nullptr);
+    cli::ConfigActionLevel* actionLevel = nullptr,
+    std::vector<std::string>* warnings = nullptr);
 
 } // namespace facebook::fboss

@@ -16,6 +16,8 @@
 #include <utility>
 #include <vector>
 
+#include "fboss/agent/gen-cpp2/switch_config_types.h"
+
 namespace facebook::fboss {
 
 class PlatformMapping;
@@ -331,6 +333,24 @@ class Fboss2IntegrationTest : public ::testing::Test {
    * keyed by logical id.
    */
   std::map<int32_t, PresentPort> fetchPresentPorts() const;
+
+  /**
+   * Per-port profiles the installed optics support, from qsfp_service. Ports
+   * qsfp_service does not report (absent / not in the agent config) have no
+   * entry. Empty if qsfp_service is unreachable.
+   */
+  using OpticsProfiles = std::map<std::string, std::vector<cfg::PortProfileID>>;
+  OpticsProfiles fetchOpticsProfiles() const;
+
+  /**
+   * Whether the installed optics support `profile` on a port qsfp_service
+   * reports; any other port is allowed. The CLI accepts every
+   * PlatformMapping-supported profile and only warns when this is false.
+   */
+  static bool opticsAllow(
+      const OpticsProfiles& optics,
+      const std::string& portName,
+      cfg::PortProfileID profile);
 
   /**
    * Enum-name strings of every profile the platform port `id` supports.

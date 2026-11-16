@@ -159,6 +159,37 @@ class ConfigInterfaceProfileTest : public Fboss2IntegrationTest {
     return std::nullopt;
   }
 
+  // A present, self-controlling port + a profile (!= current) it supports, its
+  // optics do not, and that subsumes nothing, so committing it changes the
+  // port.
+  std::optional<Candidate> findOpticsUnsupportedCandidate() const {
+    auto mapping = fetchPlatformMapping();
+    auto present = fetchPresentPorts();
+    auto optics = fetchOpticsProfiles();
+    auto groups = utility::getSubsidiaryPortIDs(mapping.getPlatformPorts());
+    for (const auto& [controlling, unused] : groups) {
+      auto cid = static_cast<int32_t>(controlling);
+      auto pit = present.find(cid);
+      if (pit == present.end()) {
+        continue;
+      }
+      const auto& entry = mapping.getPlatformPort(cid);
+      for (const auto& [profileId, unused2] : *entry.supportedProfiles()) {
+        auto name = apache::thrift::util::enumNameSafe(profileId);
+        if (name == pit->second.profileId) {
+          continue;
+        }
+        if (opticsAllow(optics, pit->second.name, profileId)) {
+          continue;
+        }
+        if (mapping.getSubsumedPorts(controlling, profileId).empty()) {
+          return Candidate{pit->second.name, pit->second.profileId, name, {}};
+        }
+      }
+    }
+    return std::nullopt;
+  }
+
   // A present, self-controlling port + a supported profile (!= current)
   // that subsumes nothing.
   std::optional<Candidate> findNonSubsumingCandidate() const {
@@ -295,6 +326,41 @@ TEST_F(ConfigInterfaceProfileTest, ChangeProfileWithoutSubsumingSucceeds) {
   // Restore original profile.
   auto restore = setInterfaceProfile(cand->portName, cand->currentProfile);
   EXPECT_EQ(restore.exitCode, 0) << restore.stderr;
+  XLOG(INFO) << "TEST PASSED";
+}
+
+// A platform-supported profile the installed optics do not support is accepted
+// with a warning, and the agent applies it on commit.
+TEST_F(ConfigInterfaceProfileTest, ProfileUnsupportedByOpticsWarns) {
+  auto cand = findOpticsUnsupportedCandidate();
+  if (!cand) {
+    GTEST_SKIP() << "No present port with a supported profile, other than its "
+                    "running one, that its optics do not support";
+  }
+  XLOG(INFO) << "port=" << cand->portName << " " << cand->currentProfile
+             << " -> " << cand->targetProfile;
+
+  auto result = setInterfaceProfile(cand->portName, cand->targetProfile);
+  ASSERT_EQ(result.exitCode, 0) << result.stderr;
+  EXPECT_THAT(
+      result.stdout,
+      ::testing::HasSubstr(
+          "Warning: profile '" + cand->targetProfile +
+          "' is not supported by the transceiver on port " + cand->portName));
+
+  auto after =
+      waitForPortRunningInfo(cand->portName, [&cand](const auto& info) {
+        return info.profileId == cand->targetProfile;
+      });
+  EXPECT_EQ(after.profileId, cand->targetProfile);
+
+  auto restore = setInterfaceProfile(cand->portName, cand->currentProfile);
+  EXPECT_EQ(restore.exitCode, 0) << restore.stderr;
+  auto restored =
+      waitForPortRunningInfo(cand->portName, [&cand](const auto& info) {
+        return info.profileId == cand->currentProfile;
+      });
+  EXPECT_EQ(restored.profileId, cand->currentProfile);
   XLOG(INFO) << "TEST PASSED";
 }
 

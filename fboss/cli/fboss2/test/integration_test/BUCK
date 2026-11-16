@@ -128,6 +128,7 @@ cpp_binary(
         "//fboss/cli/fboss2:fboss2-config-lib",  # @manual
         "//fboss/cli/fboss2:fboss2-lib",  # @manual
         "//fboss/lib/config:fboss_config_utils",
+        "//fboss/qsfp_service/if:qsfp-cpp2-clients",
         "//neteng/fboss/bgp/if:bgp_thrift-cpp2-services",
         "//neteng/fboss/bgp/public_tld/configerator/structs/neteng/fboss/bgp:bgp_config_oss-cpp2-types",
         "//thrift/lib/cpp/transport:transport-core",
