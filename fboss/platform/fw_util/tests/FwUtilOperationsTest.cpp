@@ -59,21 +59,6 @@ class FwUtilOperationsTest : public ::testing::Test {
              std::chrono::system_clock::now().time_since_epoch().count()));
     std::filesystem::create_directories(tempDir_);
 
-    // Try to create platform name cache file for testing
-    // This is needed for FwUtilImpl initialization
-    try {
-      std::filesystem::create_directories("/var/facebook/fboss");
-      std::ofstream platformFile("/var/facebook/fboss/platform_name");
-      if (platformFile.is_open()) {
-        platformFile << "TEST_PLATFORM\n";
-        platformFile.close();
-        createdPlatformFile_ = true;
-      }
-    } catch (...) {
-      // If we can't create the file, tests will be skipped
-      createdPlatformFile_ = false;
-    }
-
     // Create minimal config and binary files
     configFilePath_ = createMinimalConfigFile(tempDir_.string());
     binaryFilePath_ = tempDir_ / "test_binary.bin";
@@ -89,21 +74,11 @@ class FwUtilOperationsTest : public ::testing::Test {
     if (std::filesystem::exists(tempDir_)) {
       std::filesystem::remove_all(tempDir_);
     }
-
-    // Clean up platform file if we created it
-    if (createdPlatformFile_) {
-      try {
-        std::filesystem::remove("/var/facebook/fboss/platform_name");
-      } catch (...) {
-        // Ignore cleanup errors
-      }
-    }
   }
 
   std::filesystem::path tempDir_;
   std::string configFilePath_;
   std::filesystem::path binaryFilePath_;
-  bool createdPlatformFile_ = false;
 };
 
 // ============================================================================
@@ -111,10 +86,6 @@ class FwUtilOperationsTest : public ::testing::Test {
 // ============================================================================
 
 TEST_F(FwUtilOperationsTest, DoJtagOperationValidPath) {
-  if (!createdPlatformFile_) {
-    GTEST_SKIP() << "Skipping test: unable to create platform name file";
-  }
-
   // Create FwUtilImpl instance
   FwUtilImpl fwUtil(
       binaryFilePath_.string(),
@@ -141,10 +112,6 @@ TEST_F(FwUtilOperationsTest, DoJtagOperationValidPath) {
 }
 
 TEST_F(FwUtilOperationsTest, DoJtagOperationEmptyPath) {
-  if (!createdPlatformFile_) {
-    GTEST_SKIP() << "Skipping test: unable to create platform name file";
-  }
-
   // Create FwUtilImpl instance
   FwUtilImpl fwUtil(
       binaryFilePath_.string(),
@@ -178,10 +145,6 @@ TEST_F(FwUtilOperationsTest, DoJtagOperationEmptyPath) {
 }
 
 TEST_F(FwUtilOperationsTest, DoJtagOperationVariousValues) {
-  if (!createdPlatformFile_) {
-    GTEST_SKIP() << "Skipping test: unable to create platform name file";
-  }
-
   // Create FwUtilImpl instance
   FwUtilImpl fwUtil(
       binaryFilePath_.string(),
@@ -212,10 +175,6 @@ TEST_F(FwUtilOperationsTest, DoJtagOperationVariousValues) {
 }
 
 TEST_F(FwUtilOperationsTest, DoJtagOperationFileOverwrite) {
-  if (!createdPlatformFile_) {
-    GTEST_SKIP() << "Skipping test: unable to create platform name file";
-  }
-
   // Create FwUtilImpl instance
   FwUtilImpl fwUtil(
       binaryFilePath_.string(),
@@ -247,10 +206,6 @@ TEST_F(FwUtilOperationsTest, DoJtagOperationFileOverwrite) {
 }
 
 TEST_F(FwUtilOperationsTest, PerformJamUpgradeMissingBinary) {
-  if (!createdPlatformFile_) {
-    GTEST_SKIP() << "Skipping test: unable to create platform name file";
-  }
-
   // Create FwUtilImpl with non-existent binary file
   std::string missingBinary = tempDir_.string() + "/missing.bin";
   FwUtilImpl fwUtil(missingBinary, configFilePath_, false, false);
@@ -264,10 +219,6 @@ TEST_F(FwUtilOperationsTest, PerformJamUpgradeMissingBinary) {
 }
 
 TEST_F(FwUtilOperationsTest, PerformXappUpgradeMissingBinary) {
-  if (!createdPlatformFile_) {
-    GTEST_SKIP() << "Skipping test: unable to create platform name file";
-  }
-
   // Create FwUtilImpl with non-existent binary file
   std::string missingBinary = tempDir_.string() + "/missing.bin";
   FwUtilImpl fwUtil(missingBinary, configFilePath_, false, false);
@@ -281,10 +232,6 @@ TEST_F(FwUtilOperationsTest, PerformXappUpgradeMissingBinary) {
 }
 
 TEST_F(FwUtilOperationsTest, PerformPsuUtilUpgradeMissingBinary) {
-  if (!createdPlatformFile_) {
-    GTEST_SKIP() << "Skipping test: unable to create platform name file";
-  }
-
   // Create FwUtilImpl with non-existent binary file
   std::string missingBinary = tempDir_.string() + "/missing.bin";
   FwUtilImpl fwUtil(missingBinary, configFilePath_, false, false);

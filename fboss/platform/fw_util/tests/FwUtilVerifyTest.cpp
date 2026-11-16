@@ -23,28 +23,12 @@ class FwUtilVerifyTest : public ::testing::Test {
     // Create test config file
     configFile_ = (tempDir_ / "test_config.json").string();
     createTestConfig();
-
-    // Create platform name file if it doesn't exist
-    std::filesystem::path platformPath = "/var/facebook/fboss/platform_name";
-    if (!std::filesystem::exists(platformPath)) {
-      std::ofstream platformFile(platformPath);
-      if (platformFile.is_open()) {
-        platformFile << "test_platform";
-        platformFile.close();
-        createdPlatformFile_ = true;
-      }
-    }
   }
 
   void TearDown() override {
     // Clean up temp directory
     if (std::filesystem::exists(tempDir_)) {
       std::filesystem::remove_all(tempDir_);
-    }
-
-    // Clean up platform file if we created it
-    if (createdPlatformFile_) {
-      std::filesystem::remove("/var/facebook/fboss/platform_name");
     }
   }
 
@@ -62,7 +46,6 @@ class FwUtilVerifyTest : public ::testing::Test {
 
   std::filesystem::path tempDir_;
   std::string configFile_;
-  bool createdPlatformFile_ = false;
 };
 
 // Test performVerify with flashrom command type and flashromArgs present
