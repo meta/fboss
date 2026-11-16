@@ -172,6 +172,9 @@ class ConfigSession {
     std::string sessionPath; // staged edits (~/.fboss2/...)
     std::string gitRelPath; // path within the /etc/coop git repo
     std::string desiredPath; // CLI-owned, git-tracked config
+    // Where the image installs the service's config. Used as its current path
+    // only when the service cannot be asked and no path is recorded.
+    std::string defaultCurrentPath;
     // Minimum action used when a rollback changes this domain: HITLESS reloads
     // the agent; SERVICE_RESTART restarts bgpd. rollback() promotes this to the
     // highest level recorded by the commits being undone (see
@@ -214,6 +217,14 @@ class ConfigSession {
       const HostInfo& hostInfo,
       const std::string& commitSha = "",
       bool force = false);
+
+  // Commit, in one commit, the live config of every domain whose content
+  // differs from HEAD (a domain HEAD does not track counts as differing), so
+  // the history covers every config on the box. A domain with no live config
+  // is left alone. Never restarts or reloads a service, so it is safe to run
+  // at boot and to rerun. Returns the new commit's SHA, or nullopt when every
+  // live config already matches HEAD.
+  std::optional<std::string> initializeHistory();
 
   // Check if an agent config session exists (~/.fboss2/agent.conf staged).
   bool sessionExists() const;
@@ -419,6 +430,20 @@ class ConfigSession {
       const std::vector<std::pair<ConfigDomain, std::string>>& drifted,
       const std::string& head,
       const std::string& metadataPath);
+
+  // Write each domain's live content (second of the pair) to its desired path
+  // and commit it with metadata recording actions and head as base. On
+  // failure the touched files are put back and the exception is rethrown.
+  // Returns {commit SHA, committed metadata JSON}.
+  std::pair<std::string, std::string> commitLiveConfigs(
+      const std::vector<std::pair<ConfigDomain, std::string>>& live,
+      const std::map<cli::ServiceType, cli::ConfigActionLevel>& actions,
+      const std::string& head,
+      const std::string& metadataPath,
+      const std::string& message);
+
+  // getCurrentConfigPath(), falling back to domain.defaultCurrentPath.
+  std::string getLiveConfigPath(const ConfigDomain& domain);
 
   // Track the highest action level required for pending config changes per
   // service. Persisted to disk so it survives across CLI invocations within a

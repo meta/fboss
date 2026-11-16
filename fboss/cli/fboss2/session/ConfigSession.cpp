@@ -37,6 +37,7 @@
 #include <stdexcept>
 #include <string>
 #include <system_error>
+#include <tuple>
 #include <utility>
 #include <vector>
 #include "fboss/agent/AgentDirectoryUtil.h"
@@ -485,6 +486,7 @@ std::vector<ConfigSession::ConfigDomain> ConfigSession::configDomains() const {
           getSessionConfigPath(), // ~/.fboss2/agent.conf
           kAgentGitRelPath, // cli/agent.conf
           getCliConfigPath(), // /etc/coop/cli/agent.conf (desired)
+          getSystemConfigPath(), // /etc/coop/agent.conf (default current)
           // Rollback floor: reload the agent, unless a commit being undone
           // recorded a higher level (see rolledBackActionLevels()).
           cli::ConfigActionLevel::HITLESS,
@@ -495,6 +497,7 @@ std::vector<ConfigSession::ConfigDomain> ConfigSession::configDomains() const {
           getBgpSessionConfigPath(), // ~/.fboss2/bgp_config.json
           kBgpGitRelPath, // bgpcpp/bgpcpp.conf
           getBgpSystemConfigPath(), // /etc/coop/bgpcpp/bgpcpp.conf (desired)
+          systemConfigDir_ + "/bgpcpp.conf", // bgpd package's file (default)
           cli::ConfigActionLevel::SERVICE_RESTART, // rollback restarts bgpd
       },
   };
@@ -736,6 +739,24 @@ std::string ConfigSession::getBgpSystemConfigDir() const {
 
 std::string ConfigSession::getBgpSystemConfigPath() const {
   return getBgpSystemConfigDir() + "/bgpcpp.conf";
+}
+
+std::string ConfigSession::getLiveConfigPath(const ConfigDomain& domain) {
+  try {
+    return getCurrentConfigPath(domain.service);
+  } catch (const std::exception& ex) {
+    // At first boot the service may not be up yet and no path is recorded:
+    // use the path the image installs its config at.
+    const auto path =
+        validateCurrentConfigPath(domain.service, domain.defaultCurrentPath);
+    LOG(WARNING) << fmt::format(
+        "Using the default {} config path {}: {}",
+        domain.name,
+        path,
+        ex.what());
+    currentConfigPaths_[domain.service] = path;
+    return path;
+  }
 }
 
 bool ConfigSession::bgpSessionExists() const {
@@ -1133,6 +1154,18 @@ void ConfigSession::initializeGit() {
 
     std::vector<std::string> initialFiles = {initialMetadataPath};
     for (const auto& domain : configDomains()) {
+      // Seed a domain the CLI has not written yet from its service's config at
+      // the default path, so the first commit holds every config on the box
+      // and a rollback to it deletes none of them. The default
+      // path, not a queried one: no service is contacted here.
+      std::string live;
+      if (!fs::exists(domain.desiredPath) &&
+          folly::readFile(domain.defaultCurrentPath.c_str(), live) &&
+          !live.empty()) {
+        createDir(parentDirectoryTree(domain.desiredPath));
+        folly::writeFileAtomic(
+            domain.desiredPath, live, 0644, folly::SyncType::WITH_SYNC);
+      }
       if (fs::exists(domain.desiredPath)) {
         initialFiles.push_back(domain.desiredPath);
       }
@@ -1193,6 +1226,50 @@ void ConfigSession::ensureDomainBaseline(
     base_ = currentHead;
   }
   saveMetadata();
+}
+
+std::optional<std::string> ConfigSession::initializeHistory() {
+  initializeGit();
+  const auto head = git_->getHead();
+
+  std::vector<std::pair<ConfigDomain, std::string>> changed;
+  std::vector<std::string> names;
+  std::map<cli::ServiceType, cli::ConfigActionLevel> actions;
+  for (const auto& domain : configDomains()) {
+    const auto livePath = getLiveConfigPath(domain);
+    std::string live;
+    if (!folly::readFile(livePath.c_str(), live) || live.empty()) {
+      // Nothing on the box for this service: leave its history alone.
+      continue;
+    }
+    const auto committed = fileAtRevisionOrEmpty(head, domain.gitRelPath);
+    if (domainContentEqual(domain, committed, live)) {
+      continue;
+    }
+    if (!committed.empty()) {
+      // A tracked config edited outside the CLI: the level undoing it needs is
+      // unknown, so record the harshest one, as snapshotLiveDrift() does. A
+      // config committed for the first time records none.
+      actions[domain.service] =
+          cli::ConfigActionLevel::DISRUPTIVE_SERVICE_RESTART;
+    }
+    names.push_back(domain.name);
+    changed.emplace_back(domain, std::move(live));
+  }
+  if (changed.empty()) {
+    return std::nullopt;
+  }
+
+  return commitLiveConfigs(
+             changed,
+             actions,
+             head,
+             getSystemMetadataPath(),
+             fmt::format(
+                 "Config init: commit live {} config by {}",
+                 folly::join(", ", names),
+                 username_))
+      .first;
 }
 
 ConfigSession::CommitResult ConfigSession::commit(const HostInfo& hostInfo) {
@@ -1535,32 +1612,29 @@ ConfigSession::rolledBackActionLevels(const std::string& resolvedSha) const {
   return levels;
 }
 
-std::string ConfigSession::snapshotLiveDrift(
-    const std::vector<std::pair<ConfigDomain, std::string>>& drifted,
+std::pair<std::string, std::string> ConfigSession::commitLiveConfigs(
+    const std::vector<std::pair<ConfigDomain, std::string>>& live,
+    const std::map<cli::ServiceType, cli::ConfigActionLevel>& actions,
     const std::string& head,
-    const std::string& metadataPath) {
-  std::vector<std::string> names;
+    const std::string& metadataPath,
+    const std::string& message) {
   std::vector<std::string> files;
   // What is on disk now, put back if the commit fails so the tree matches
-  // HEAD again. The live config itself is untouched by a failure here.
+  // HEAD again. The live config itself is untouched by a failure here. A
+  // desired path that does not exist yet is recorded as "" and removed.
   std::vector<std::pair<std::string, std::string>> previous;
-  std::map<cli::ServiceType, cli::ConfigActionLevel> actions;
-  for (const auto& [domain, live] : drifted) {
-    names.push_back(domain.name);
+  for (const auto& [domain, content] : live) {
     files.push_back(domain.desiredPath);
     std::string previousDesired;
-    if (!folly::readFile(domain.desiredPath.c_str(), previousDesired)) {
+    if (fs::exists(domain.desiredPath) &&
+        !folly::readFile(domain.desiredPath.c_str(), previousDesired)) {
       throw std::runtime_error(
           fmt::format("Failed to read config from {}", domain.desiredPath));
     }
     previous.emplace_back(domain.desiredPath, std::move(previousDesired));
-    // The drift bypassed the CLI, so the level undoing it needs is unknown
-    // (e.g. l2LearningMode needs a coldboot). Record the harshest level: every
-    // rollback across the snapshot, this one included, coldboots the agent.
-    actions[domain.service] =
-        cli::ConfigActionLevel::DISRUPTIVE_SERVICE_RESTART;
   }
-  // Commit metadata so rollback can find the snapshot in its history.
+  // Commit metadata so rollback can find the commit in its history. base is
+  // the previous HEAD, so the metadata always changes and is always staged.
   cli::ConfigSessionMetadata metadata;
   metadata.action() = actions;
   metadata.base() = head;
@@ -1573,24 +1647,18 @@ std::string ConfigSession::snapshotLiveDrift(
   previous.emplace_back(metadataPath, previousMetadata);
   files.push_back(metadataPath);
 
-  std::string snapshotSha;
   try {
-    for (const auto& [domain, live] : drifted) {
+    for (const auto& [domain, content] : live) {
       // Git tracks the desired path; the service may read a different path.
       // Save its live content in the desired path before committing it.
+      createDir(parentDirectoryTree(domain.desiredPath));
       folly::writeFileAtomic(
-          domain.desiredPath, live, 0644, folly::SyncType::WITH_SYNC);
+          domain.desiredPath, content, 0644, folly::SyncType::WITH_SYNC);
     }
     folly::writeFileAtomic(
         metadataPath, metadataData, 0644, folly::SyncType::WITH_SYNC);
-    snapshotSha = git_->commit(
-        files,
-        fmt::format(
-            "Snapshot of uncommitted live config before rollback by {}",
-            username_),
-        username_,
-        "");
-  } catch (const std::exception& ex) {
+    return {git_->commit(files, message, username_, ""), metadataData};
+  } catch (const std::exception&) {
     for (const auto& [path, content] : previous) {
       std::error_code ec;
       if (content.empty()) {
@@ -1601,12 +1669,43 @@ std::string ConfigSession::snapshotLiveDrift(
               path, content, 0644, folly::SyncType::WITH_SYNC);
         } catch (const std::exception& restoreEx) {
           LOG(ERROR) << fmt::format(
-              "Failed to restore {} after snapshot failure: {}",
+              "Failed to restore {} after commit failure: {}",
               path,
               restoreEx.what());
         }
       }
     }
+    throw;
+  }
+}
+
+std::string ConfigSession::snapshotLiveDrift(
+    const std::vector<std::pair<ConfigDomain, std::string>>& drifted,
+    const std::string& head,
+    const std::string& metadataPath) {
+  std::vector<std::string> names;
+  std::map<cli::ServiceType, cli::ConfigActionLevel> actions;
+  for (const auto& [domain, live] : drifted) {
+    names.push_back(domain.name);
+    // The drift bypassed the CLI, so the level undoing it needs is unknown
+    // (e.g. l2LearningMode needs a coldboot). Record the harshest level: every
+    // rollback across the snapshot, this one included, coldboots the agent.
+    actions[domain.service] =
+        cli::ConfigActionLevel::DISRUPTIVE_SERVICE_RESTART;
+  }
+
+  std::string snapshotSha;
+  std::string metadataData;
+  try {
+    std::tie(snapshotSha, metadataData) = commitLiveConfigs(
+        drifted,
+        actions,
+        head,
+        metadataPath,
+        fmt::format(
+            "Snapshot of uncommitted live config before rollback by {}",
+            username_));
+  } catch (const std::exception& ex) {
     throw std::runtime_error(
         fmt::format(
             "Failed to snapshot live {} config before rollback: {}",

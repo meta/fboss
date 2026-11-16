@@ -13,6 +13,7 @@
 #include <unistd.h>
 #include <filesystem>
 #include <fstream>
+#include <optional>
 #include <stdexcept>
 #include <string>
 
@@ -2422,6 +2423,91 @@ TEST_F(ConfigSessionTestFixture, rollbackIgnoresMissingPromotedFile) {
   EXPECT_NO_THROW(rb = s->rollback(localhost(), sha1));
   EXPECT_FALSE(rb.empty());
   EXPECT_THAT(readFile(bgpSys), ::testing::HasSubstr("1.1.1.1"));
+}
+
+// First boot: the repo does not exist yet and each service runs the plain file
+// the image installed. Creating the session makes the first commit, and it
+// holds every config, so a rollback to it deletes none.
+TEST_F(ConfigSessionTestFixture, configInitFirstCommitHoldsEveryLiveConfig) {
+  fs::path coopDir = getTestEtcDir() / "fresh_coop";
+  fs::create_directories(coopDir);
+  const std::string agentConf = R"({"sw": {"ports": []}})";
+  const std::string bgpConf = R"({"router_id": "9.9.9.9"})";
+  ASSERT_TRUE(folly::writeFile(agentConf, (coopDir / "agent.conf").c_str()));
+  ASSERT_TRUE(folly::writeFile(bgpConf, (coopDir / "bgpcpp.conf").c_str()));
+
+  TestableConfigSession session(
+      (getTestHomeDir() / ".fboss2").string(),
+      coopDir.string(),
+      ConfigSession::SessionInit::ReadOnly);
+  auto& git = session.getGit();
+  const auto head = git.getHead();
+  EXPECT_EQ(git.fileAtRevision(head, "cli/agent.conf"), agentConf);
+  EXPECT_EQ(git.fileAtRevision(head, "bgpcpp/bgpcpp.conf"), bgpConf);
+  EXPECT_EQ(git.fileAtRevision(head, "cli/cli_metadata.json"), "{}");
+
+  // Everything is committed already: init has nothing left to do.
+  EXPECT_EQ(session.initializeHistory(), std::nullopt);
+  EXPECT_EQ(git.getHead(), head);
+  // The plain files the services run are left as they are.
+  EXPECT_FALSE(fs::is_symlink(coopDir / "agent.conf"));
+  EXPECT_FALSE(fs::is_symlink(coopDir / "bgpcpp.conf"));
+}
+
+// A service installed after the history started: init commits its config once,
+// with no action level, and a rerun does nothing.
+TEST_F(ConfigSessionTestFixture, configInitAdoptsUntrackedConfig) {
+  fs::path coopDir = getTestEtcDir() / "coop";
+  fs::path metadataPath = coopDir / "cli" / "cli_metadata.json";
+  const std::string bgpConf = R"({"router_id": "9.9.9.9"})";
+  ASSERT_TRUE(folly::writeFile(bgpConf, (coopDir / "bgpcpp.conf").c_str()));
+
+  TestableConfigSession session(
+      (getTestHomeDir() / ".fboss2").string(),
+      coopDir.string(),
+      ConfigSession::SessionInit::ReadOnly);
+  auto& git = session.getGit();
+  const auto before = git.getHead();
+  auto sha = session.initializeHistory();
+  ASSERT_TRUE(sha.has_value());
+  EXPECT_EQ(git.getHead(), *sha);
+  EXPECT_EQ(git.fileAtRevision(*sha, "bgpcpp/bgpcpp.conf"), bgpConf);
+  auto commits = git.log(metadataPath.string());
+  ASSERT_EQ(commits.size(), 2u);
+  EXPECT_EQ(commits[0].sha1, *sha);
+  EXPECT_EQ(
+      commits[0].subject, "Config init: commit live BGP config by testuser");
+  auto meta =
+      folly::parseJson(git.fileAtRevision(*sha, "cli/cli_metadata.json"));
+  EXPECT_EQ(meta["base"].asString(), before);
+  EXPECT_TRUE(meta["action"].empty());
+
+  EXPECT_EQ(session.initializeHistory(), std::nullopt);
+  EXPECT_EQ(git.getHead(), *sha);
+}
+
+// A tracked config edited by hand: init commits the edit, at the harshest
+// action level, as a --force rollback snapshot does.
+TEST_F(ConfigSessionTestFixture, configInitCommitsHandEditAsDisruptive) {
+  setupMockedAgentServer();
+  EXPECT_CALL(getMockAgent(), reloadConfig()).Times(1);
+  const std::string firstCommitSha = commitThenDriftLiveConfig();
+
+  TestableConfigSession session(
+      (getTestHomeDir() / ".fboss2").string(),
+      (getTestEtcDir() / "coop").string(),
+      ConfigSession::SessionInit::ReadOnly);
+  auto sha = session.initializeHistory();
+  ASSERT_TRUE(sha.has_value());
+  auto& git = session.getGit();
+  EXPECT_THAT(
+      git.fileAtRevision(*sha, "cli/agent.conf"),
+      ::testing::HasSubstr("Hand edited"));
+  auto meta =
+      folly::parseJson(git.fileAtRevision(*sha, "cli/cli_metadata.json"));
+  EXPECT_EQ(meta["base"].asString(), firstCommitSha);
+  ASSERT_EQ(meta["action"].size(), 1u);
+  EXPECT_EQ(meta["action"]["AGENT"].asString(), "DISRUPTIVE_SERVICE_RESTART");
 }
 
 } // namespace facebook::fboss

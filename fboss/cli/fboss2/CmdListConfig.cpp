@@ -25,6 +25,7 @@
 #include "fboss/cli/fboss2/commands/config/dhcp/relay_source_override/CmdConfigDhcpRelaySourceOverride.h"
 #include "fboss/cli/fboss2/commands/config/dhcp/reply_source_override/CmdConfigDhcpReplySourceOverride.h"
 #include "fboss/cli/fboss2/commands/config/history/CmdConfigHistory.h"
+#include "fboss/cli/fboss2/commands/config/init/CmdConfigInit.h"
 #include "fboss/cli/fboss2/commands/config/interface/CmdConfigInterface.h"
 #include "fboss/cli/fboss2/commands/config/interface/dhcp/CmdConfigInterfaceDhcp.h"
 #include "fboss/cli/fboss2/commands/config/interface/dhcp/relay/CmdConfigInterfaceDhcpRelay.h"
@@ -305,6 +306,12 @@ const CommandTree& kConfigCommandTree() {
        "Show history of committed config revisions",
        commandHandler<CmdConfigHistory>,
        argRegistrar<CmdConfigHistoryTraits>},
+
+      {"config",
+       "init",
+       "Commit every live service config the config history does not match yet",
+       commandHandler<CmdConfigInit>,
+       argRegistrar<CmdConfigInitTraits>},
 
       {
           "config",
