@@ -448,6 +448,23 @@ class SwitchState : public ThriftStructNode<SwitchState, state::SwitchState> {
   std::optional<InterfaceID> getInterfaceIDForPortIf(
       const PortDescriptor& port) const;
   /*
+   * Local interface in vrf with the given address, by the interface VRF map.
+   * getInterface() throws instead of returning null.
+   */
+  std::shared_ptr<Interface> getInterfaceIf(
+      RouterID vrf,
+      const folly::IPAddress& ip) const;
+  std::shared_ptr<Interface> getInterface(
+      RouterID vrf,
+      const folly::IPAddress& ip) const;
+  /*
+   * Local interface in vrf with an address to reach dest, by the interface VRF
+   * map
+   */
+  std::shared_ptr<Interface> getIntfToReach(
+      RouterID vrf,
+      const folly::IPAddress& dest) const;
+  /*
    * The following functions modify the static state.
    * The should only be called on newly created SwitchState objects that are
    * only visible to a single thread, before they are published as the current

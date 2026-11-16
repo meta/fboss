@@ -237,7 +237,7 @@ void testSendArpRequest(
   auto state = sw->getState();
   auto vlan = state->getVlans()->getNodeIf(vlanID);
   EXPECT_NE(vlan, nullptr);
-  auto intf = state->getInterfaces()->getInterfaceIf(RouterID(0), senderIP);
+  auto intf = state->getInterfaceIf(RouterID(0), senderIP);
   EXPECT_NE(intf, nullptr);
   auto intfID = intf->getID();
 
@@ -297,7 +297,7 @@ TEST_F(ArpTest, BasicSendRequest) {
   auto state = sw->getState();
   auto vlan = state->getVlans()->getNodeIf(vlanID);
   EXPECT_NE(vlan, nullptr);
-  auto intf = state->getInterfaces()->getInterfaceIf(RouterID(0), senderIP);
+  auto intf = state->getInterfaceIf(RouterID(0), senderIP);
   EXPECT_NE(intf, nullptr);
 
   // Pending entries on CPU port are not programmed to state for
@@ -1009,8 +1009,7 @@ TEST_F(ArpTest, ArpTableSerialization) {
   MacAddress targetMAC = MacAddress("02:10:20:30:40:22");
 
   // Verify initial state - ARP table should be empty
-  auto intf =
-      sw->getState()->getInterfaces()->getInterfaceIf(RouterID(0), senderIP);
+  auto intf = sw->getState()->getInterfaceIf(RouterID(0), senderIP);
   ASSERT_NE(intf, nullptr);
   auto arpTable = intf->getArpTable();
   ASSERT_NE(arpTable, nullptr);
@@ -1025,7 +1024,7 @@ TEST_F(ArpTest, ArpTableSerialization) {
   EXPECT_TRUE(arpReachable->wait());
 
   // Verify ARP table now has the resolved entry
-  intf = sw->getState()->getInterfaces()->getInterfaceIf(RouterID(0), senderIP);
+  intf = sw->getState()->getInterfaceIf(RouterID(0), senderIP);
   ASSERT_NE(intf, nullptr);
   arpTable = intf->getArpTable();
   ASSERT_NE(arpTable, nullptr);
@@ -1072,8 +1071,7 @@ TEST_F(ArpTest, ArpExpiration) {
   EXPECT_TRUE(arpReachable->wait());
 
   // Expect one more probe to be sent out before targetIP[1] is expired
-  auto intfs = sw->getState()->getInterfaces();
-  auto intf = intfs->getInterfaceIf(RouterID(0), senderIP);
+  auto intf = sw->getState()->getInterfaceIf(RouterID(0), senderIP);
   EXPECT_SWITCHED_PKT(
       sw,
       "ARP request",

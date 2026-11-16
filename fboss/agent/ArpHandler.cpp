@@ -360,8 +360,7 @@ void ArpHandler::sendArpRequest(
     return;
   }
 
-  auto intf =
-      sw->getState()->getInterfaces()->getIntfToReach(RouterID(0), targetIP);
+  auto intf = sw->getState()->getIntfToReach(RouterID(0), targetIP);
 
   if (!intf) {
     XLOG(DBG0) << "Cannot find interface for " << targetIP;

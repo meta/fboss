@@ -550,6 +550,30 @@ TEST(UpdateInterfaceVrfs, LinkLocalNextHopRouteFollowsInterface) {
   EXPECT_TRUE(hasRoute(sw->getState(), RouterID(0), "2001:db8:200::/64"));
 }
 
+TEST(UpdateInterfaceVrfs, AddressMapFollowsInterfaceVrfMap) {
+  auto config = emptyVrfConfig();
+  auto handle = createTestHandle(&config);
+  auto sw = handle->getSw();
+  const auto& addrToIntf = sw->getAddrToLocalIntfMap();
+  const std::pair<RouterID, folly::IPAddress> vrf0Addr{
+      RouterID(0), folly::IPAddress("10.0.55.1")};
+  const std::pair<RouterID, folly::IPAddress> testVrfAddr{
+      kTestVrf, folly::IPAddress("10.0.55.1")};
+  ASSERT_NE(addrToIntf.find(vrf0Addr), addrToIntf.end());
+
+  // Only the interface VRF map changes
+  sw->updateStateBlocking(
+      "bind interface", [sw](const std::shared_ptr<SwitchState>& in) {
+        return setInterfaceVrfs(
+            in, {{InterfaceID(55), kTestVrf}}, *sw->getScopeResolver());
+      });
+
+  EXPECT_EQ(addrToIntf.find(vrf0Addr), addrToIntf.end());
+  auto it = addrToIntf.find(testVrfAddr);
+  ASSERT_NE(it, addrToIntf.end());
+  EXPECT_EQ(it->second, InterfaceID(55));
+}
+
 TEST(UpdateInterfaceVrfs, FlushesNeighbors) {
   auto config = emptyVrfConfig();
   auto handle = createTestHandle(&config);

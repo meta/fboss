@@ -2138,7 +2138,10 @@ static void populateInterfaceDetail(
       *interfaceDetail.portId() = intf->getPortID();
     }
   }
-  *interfaceDetail.routerId() = intf->getRouterID();
+  // Remote interfaces keep the VRF from their peer
+  *interfaceDetail.routerId() = intf->getRemoteInterfaceType()
+      ? intf->getRouterID()
+      : state->getInterfaceVrfs()->getVrf(intf->getID());
   *interfaceDetail.mtu() = intf->getMtu();
   *interfaceDetail.mac() = intf->getMac().toString();
   interfaceDetail.address()->clear();
@@ -2219,8 +2222,9 @@ void ThriftHandler::getVrfs(std::vector<VrfInfo>& vrfs) {
   for (const auto& [_, intfs] : std::as_const(*state->getInterfaces())) {
     for (const auto& iter : std::as_const(*intfs)) {
       const auto& intf = iter.second;
-      auto& vrfInfo = vrfInfos[intf->getRouterID()];
-      vrfInfo.vrfId() = intf->getRouterID();
+      auto vrf = state->getInterfaceVrfs()->getVrf(intf->getID());
+      auto& vrfInfo = vrfInfos[vrf];
+      vrfInfo.vrfId() = vrf;
       vrfInfo.interfaceIds()->push_back(intf->getID());
     }
   }
@@ -4014,8 +4018,7 @@ void ThriftHandler::addMplsRoutesImpl(
       auto iter = labelFibEntryNextHopAddress2Interface.find(
           std::make_pair(RouterID(0), nexthop.addr()));
       if (iter == labelFibEntryNextHopAddress2Interface.end()) {
-        auto result = (*state)->getInterfaces()->getIntfToReach(
-            RouterID(0), nexthop.addr());
+        auto result = (*state)->getIntfToReach(RouterID(0), nexthop.addr());
         if (!result) {
           throw FbossError(
               "nexthop : ", nexthop.addr().str(), " is not connected");

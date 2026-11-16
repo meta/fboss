@@ -329,7 +329,7 @@ void IPv4Handler::handlePacket(
     // intf->hasAddress(v4Hdr.dstAddr)) {
     //   intf = nullptr;
     // }
-    intf = interfaceMap->getInterfaceIf(RouterID(0), v4Hdr.dstAddr);
+    intf = state->getInterfaceIf(RouterID(0), v4Hdr.dstAddr);
   } else {
     // Else loopup host interface based on destAddr
     const auto iter = sw_->getAddrToLocalIntfMap().find(

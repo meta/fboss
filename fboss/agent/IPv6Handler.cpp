@@ -1087,20 +1087,20 @@ void IPv6Handler::sendUnicastNeighborSolicitation(
 void IPv6Handler::sendMulticastNeighborSolicitation(
     SwSwitch* sw,
     const IPAddressV6& targetIP) {
-  auto intf =
-      sw->getState()->getInterfaces()->getIntfToReach(RouterID(0), targetIP);
+  auto intf = sw->getState()->getIntfToReach(RouterID(0), targetIP);
 
   if (!intf) {
     XLOG(DBG0) << "Cannot find interface for " << targetIP;
     return;
   }
 
-  auto interfaceMap = sw->getState()->getInterfaces();
-  for (const auto& [_, intfMap] : std::as_const(*interfaceMap)) {
+  auto state = sw->getState();
+  for (const auto& [_, intfMap] : std::as_const(*state->getInterfaces())) {
     for (const auto& intfIter : std::as_const(*intfMap)) {
       const auto& interface = intfIter.second;
-      if (interface->getRouterID() == RouterID(0) &&
-          interface->canReachAddress(targetIP)) {
+      if (interface->canReachAddress(targetIP) &&
+          state->getInterfaceVrfs()->getVrf(interface->getID()) ==
+              RouterID(0)) {
         sendMulticastNeighborSolicitation(
             sw, targetIP, interface->getMac(), sw->getVlanIDForTx(interface));
       }

@@ -45,24 +45,6 @@ class InterfaceMap : public ThriftMapNode<InterfaceMap, InterfaceMapTraits> {
   InterfaceMap() = default;
   ~InterfaceMap() override = default;
 
-  /*
-   *  Get interface which has the given IPAddress. If multiple
-   *  interfaces have the same address (unlikely) we return the
-   *  first one. If no interface is found that has the given IP,
-   *  we return null.
-   */
-  std::shared_ptr<Interface> getInterfaceIf(
-      RouterID router,
-      const folly::IPAddress& ip) const;
-
-  /*
-   * Same as get interface by IP above, but throws a execption
-   * instead of returning null
-   */
-  const std::shared_ptr<Interface> getInterface(
-      RouterID router,
-      const folly::IPAddress& ip) const;
-
   using Interfaces = std::vector<std::shared_ptr<Interface>>;
 
   /*
@@ -76,13 +58,6 @@ class InterfaceMap : public ThriftMapNode<InterfaceMap, InterfaceMapTraits> {
    * instead of returning null
    */
   const std::shared_ptr<Interface> getInterfaceInVlan(VlanID vlan) const;
-
-  /*
-   * Find an interface with its address to reach the given destination
-   */
-  const std::shared_ptr<Interface> getIntfToReach(
-      RouterID router,
-      const folly::IPAddress& dest) const;
 
  private:
   // Inherit the constructors required for clone()
@@ -117,10 +92,6 @@ class MultiSwitchInterfaceMap : public ThriftMultiSwitchMapNode<
 
   MultiSwitchInterfaceMap() = default;
   virtual ~MultiSwitchInterfaceMap() = default;
-  const std::shared_ptr<Interface> getIntfToReach(
-      RouterID router,
-      const folly::IPAddress& dest) const;
-
   MultiSwitchInterfaceMap* modify(std::shared_ptr<SwitchState>* state);
   /*
    *  Get interface which has the given vlan. If multiple
@@ -133,23 +104,6 @@ class MultiSwitchInterfaceMap : public ThriftMultiSwitchMapNode<
    * instead of returning null
    */
   const std::shared_ptr<Interface> getInterfaceInVlan(VlanID vlan) const;
-  /*
-   *  Get interface which has the given IPAddress. If multiple
-   *  interfaces have the same address (unlikely) we return the
-   *  first one. If no interface is found that has the given IP,
-   *  we return null.
-   */
-  std::shared_ptr<Interface> getInterfaceIf(
-      RouterID router,
-      const folly::IPAddress& ip) const;
-
-  /*
-   * Same as get interface by IP above, but throws a execption
-   * instead of returning null
-   */
-  const std::shared_ptr<Interface> getInterface(
-      RouterID router,
-      const folly::IPAddress& ip) const;
 
  private:
   // Inherit the constructors required for clone()

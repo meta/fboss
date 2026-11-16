@@ -589,7 +589,7 @@ std::vector<PortID> getPortsForInterface(
 std::optional<PortID> getInterfacePortToReach(
     const std::shared_ptr<SwitchState>& state,
     const folly::IPAddress& ipAddr) {
-  auto intf = state->getInterfaces()->getIntfToReach(RouterID(0), ipAddr);
+  auto intf = state->getIntfToReach(RouterID(0), ipAddr);
   if (!intf) {
     return std::nullopt;
   }

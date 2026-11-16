@@ -1079,6 +1079,44 @@ std::optional<InterfaceID> SwitchState::getInterfaceIDForPortIf(
   return std::nullopt;
 }
 
+std::shared_ptr<Interface> SwitchState::getInterfaceIf(
+    RouterID vrf,
+    const folly::IPAddress& ip) const {
+  for (const auto& [_, intfMap] : std::as_const(*getInterfaces())) {
+    for (const auto& [id, intf] : std::as_const(*intfMap)) {
+      if (intf->hasAddress(ip) &&
+          getInterfaceVrfs()->getVrf(intf->getID()) == vrf) {
+        return intf;
+      }
+    }
+  }
+  return nullptr;
+}
+
+std::shared_ptr<Interface> SwitchState::getInterface(
+    RouterID vrf,
+    const folly::IPAddress& ip) const {
+  auto intf = getInterfaceIf(vrf, ip);
+  if (!intf) {
+    throw FbossError("No interface with ip : ", ip);
+  }
+  return intf;
+}
+
+std::shared_ptr<Interface> SwitchState::getIntfToReach(
+    RouterID vrf,
+    const folly::IPAddress& dest) const {
+  for (const auto& [_, intfMap] : std::as_const(*getInterfaces())) {
+    for (const auto& [id, intf] : std::as_const(*intfMap)) {
+      if (intf->canReachAddress(dest) &&
+          getInterfaceVrfs()->getVrf(intf->getID()) == vrf) {
+        return intf;
+      }
+    }
+  }
+  return nullptr;
+}
+
 InterfaceID SwitchState::getInterfaceIDForPort(
     const PortDescriptor& port) const {
   auto intfID = getInterfaceIDForPortIf(port);

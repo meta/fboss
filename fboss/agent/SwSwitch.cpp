@@ -3912,7 +3912,7 @@ void SwSwitch::updateInterfaceVrfs(
           if (vrf != RouterID(0) && !newState->getVrfs()->getNodeIf(vrf)) {
             throw FbossHwUpdateError(in, in, "VRF ", vrf, " not configured");
           }
-          if (intf->getRouterID() == vrf) {
+          if (in->getInterfaceVrfs()->getVrf(intfId) == vrf) {
             continue;
           }
           auto newIntf = intf->modify(&newState);
@@ -4636,35 +4636,47 @@ void SwSwitch::stopHwSwitchHandler() {
 }
 
 void SwSwitch::updateAddrToLocalIntf(const StateDelta& delta) {
+  const auto& oldState = delta.oldState();
+  const auto& newState = delta.newState();
+  auto removeAddrs = [&](const std::shared_ptr<Interface>& intf) {
+    const auto vrf = oldState->getInterfaceVrfs()->getVrf(intf->getID());
+    for (const auto& [addr, _] : std::as_const(*intf->getAddresses())) {
+      addrToLocalIntf_.erase(std::make_pair(vrf, folly::IPAddress(addr)));
+    }
+  };
+  auto addAddrs = [&](const std::shared_ptr<Interface>& intf) {
+    const auto vrf = newState->getInterfaceVrfs()->getVrf(intf->getID());
+    for (const auto& [addr, _] : std::as_const(*intf->getAddresses())) {
+      addrToLocalIntf_.insert(
+          std::make_pair(vrf, folly::IPAddress(addr)), intf->getID());
+    }
+  };
   DeltaFunctions::forEachChanged(
       delta.getIntfsDelta(),
       [&](const auto& oldNode, const auto& newNode) {
-        const auto oldRouterId = oldNode->getRouterID();
-        for (const auto& [addr, _] : std::as_const(*oldNode->getAddresses())) {
-          addrToLocalIntf_.erase(
-              std::make_pair(oldRouterId, folly::IPAddress(addr)));
-        }
-        const auto newRouterId = newNode->getRouterID();
-        for (const auto& [addr, _] : std::as_const(*newNode->getAddresses())) {
-          addrToLocalIntf_.insert(
-              std::make_pair(newRouterId, folly::IPAddress(addr)),
-              newNode->getID());
-        }
+        removeAddrs(oldNode);
+        addAddrs(newNode);
       },
-      [&](const auto& added) {
-        const auto routerId = added->getRouterID();
-        for (const auto& [addr, _] : std::as_const(*added->getAddresses())) {
-          addrToLocalIntf_.insert(
-              std::make_pair(routerId, folly::IPAddress(addr)), added->getID());
-        }
+      [&](const auto& added) { addAddrs(added); },
+      [&](const auto& removed) { removeAddrs(removed); });
+  // An interface can change VRF without changing itself. Interfaces added,
+  // changed or removed are handled above.
+  auto moveAddrs = [&](InterfaceID intfId) {
+    auto oldIntf = oldState->getInterfaces()->getNodeIf(intfId);
+    auto newIntf = newState->getInterfaces()->getNodeIf(intfId);
+    if (!oldIntf || oldIntf != newIntf) {
+      return;
+    }
+    removeAddrs(oldIntf);
+    addAddrs(newIntf);
+  };
+  DeltaFunctions::forEachChanged(
+      delta.getInterfaceVrfsDelta(),
+      [&](const auto& oldEntry, const auto& /* newEntry */) {
+        moveAddrs(oldEntry->getID());
       },
-      [&](const auto& removed) {
-        const auto routerId = removed->getRouterID();
-        for (const auto& [addr, _] : std::as_const(*removed->getAddresses())) {
-          addrToLocalIntf_.erase(
-              std::make_pair(routerId, folly::IPAddress(addr)));
-        }
-      });
+      [&](const auto& added) { moveAddrs(added->getID()); },
+      [&](const auto& removed) { moveAddrs(removed->getID()); });
 }
 
 void SwSwitch::rxPacketReceived(std::unique_ptr<SwRxPacket> pkt) {
