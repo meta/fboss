@@ -150,10 +150,10 @@ class ConfigInterfaceMirrorTest : public Fboss2IntegrationTest {
     const auto currentEgress = boundMirror(config, port_, "egressMirror");
     std::vector<std::string> deleteArgs{"delete", "interface", port_, "mirror"};
     if (originalIngressMirror_.empty() && !currentIngress.empty()) {
-      deleteArgs.push_back("ingress");
+      deleteArgs.emplace_back("ingress");
     }
     if (originalEgressMirror_.empty() && !currentEgress.empty()) {
-      deleteArgs.push_back("egress");
+      deleteArgs.emplace_back("egress");
     }
 
     bool changed = false;
