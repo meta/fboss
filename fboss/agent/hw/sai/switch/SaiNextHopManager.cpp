@@ -318,13 +318,20 @@ std::shared_ptr<SaiVxlanNextHopHandle> SaiNextHopManager::addVxlanNextHop(
           &nexthopKey);
   CHECK(vxlanKey) << "VXLAN next hop key expected";
   auto tunnelSaiId = tunnelHandle->tunnel->adapterKey();
+  // The VNI is carried explicitly on the next hop; a next hop
+  // without one programs no TUNNEL_VNI.
+  std::optional<SaiTunnelEncapNextHopTraits::Attributes::TunnelVni> tunnelVni;
+  if (auto vni = swNextHop.tunnelVni()) {
+    tunnelVni = SaiTunnelEncapNextHopTraits::Attributes::TunnelVni(
+        static_cast<sai_uint32_t>(*vni));
+  }
   SaiTunnelEncapNextHopTraits::CreateAttributes attributes{
       SAI_NEXT_HOP_TYPE_TUNNEL_ENCAP,
       tunnelSaiId,
       swNextHop.addr(),
       swNextHop.overlayDstMac(),
       std::nullopt,
-      std::nullopt};
+      tunnelVni};
   auto nextHop =
       createSaiObject<SaiTunnelEncapNextHopTraits>(*vxlanKey, attributes);
   auto [entry, emplaced] =

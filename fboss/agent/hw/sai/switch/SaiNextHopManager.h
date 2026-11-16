@@ -221,7 +221,8 @@ class SaiNextHopManager {
 #endif
   );
 
-  // Returns the eagerly created tunnel next hop.
+  // Returns the eagerly created tunnel next hop. The VNI carried
+  // on the next hop, if any, is programmed as TUNNEL_VNI.
   std::shared_ptr<SaiVxlanNextHopHandle> addVxlanNextHop(
       const ResolvedNextHop& swNextHop);
 

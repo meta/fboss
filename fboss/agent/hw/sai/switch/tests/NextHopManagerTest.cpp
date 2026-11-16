@@ -757,7 +757,8 @@ ResolvedNextHop makeVxlanNextHop(
     const std::string& tunnelId,
     const folly::IPAddress& addr = folly::IPAddressV4("10.0.0.2"),
     std::optional<folly::MacAddress> mac =
-        folly::MacAddress("02:00:00:00:00:01")) {
+        folly::MacAddress("02:00:00:00:00:01"),
+    std::optional<int32_t> tunnelVni = std::nullopt) {
   return ResolvedNextHop{
       addr,
       InterfaceID(intfID),
@@ -773,7 +774,8 @@ ResolvedNextHop makeVxlanNextHop(
       NextHopRole::PRIMARY,
       std::nullopt,
       false /* resolvedInNextLevel */,
-      mac};
+      mac,
+      tunnelVni};
 }
 
 } // namespace
@@ -821,6 +823,39 @@ TEST_F(NextHopManagerTest, addVxlanNextHop) {
           NextHopSaiId(nhId),
           SaiTunnelEncapNextHopTraits::Attributes::OverlayDstMac{}),
       folly::MacAddress("02:00:00:00:00:02"));
+}
+
+TEST_F(NextHopManagerTest, addVxlanNextHopWithExplicitTunnelVni) {
+  auto swTunnel = makeVxlanNhTunnel("vxlantunnel0", intf0.id);
+  saiManagerTable->vxlanTunnelManager().addVxlanTunnel(swTunnel);
+  // The tunnel mapper holds 10001 for VRF 0; the explicit VNI
+  // on the next hop wins over it.
+  auto swNextHop = makeVxlanNextHop(
+      intf0.id,
+      "vxlantunnel0",
+      folly::IPAddressV4("10.0.0.2"),
+      folly::MacAddress("02:00:00:00:00:01"),
+      10002);
+  auto holder = saiManagerTable->nextHopManager().addVxlanNextHop(swNextHop);
+  ASSERT_NE(holder, nullptr);
+  EXPECT_EQ(
+      saiApiTable->nextHopApi().getAttribute(
+          NextHopSaiId(holder->adapterKey()),
+          SaiTunnelEncapNextHopTraits::Attributes::TunnelVni{}),
+      10002);
+}
+
+TEST_F(NextHopManagerTest, addVxlanNextHopWithoutTunnelVniProgramsNone) {
+  auto swTunnel = makeVxlanNhTunnel("vxlantunnel0", intf0.id);
+  saiManagerTable->vxlanTunnelManager().addVxlanTunnel(swTunnel);
+  auto swNextHop = makeVxlanNextHop(intf0.id, "vxlantunnel0");
+  auto holder = saiManagerTable->nextHopManager().addVxlanNextHop(swNextHop);
+  ASSERT_NE(holder, nullptr);
+  EXPECT_EQ(
+      saiApiTable->nextHopApi().getAttribute(
+          NextHopSaiId(holder->adapterKey()),
+          SaiTunnelEncapNextHopTraits::Attributes::TunnelVni{}),
+      0);
 }
 
 TEST_F(NextHopManagerTest, vxlanNextHopMissingTunnelThrows) {
