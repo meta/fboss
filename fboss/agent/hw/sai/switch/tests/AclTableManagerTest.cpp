@@ -14,7 +14,9 @@
 #include "fboss/agent/hw/sai/switch/SaiNextHopGroupManager.h"
 #include "fboss/agent/hw/sai/switch/SaiSwitch.h"
 #include "fboss/agent/hw/sai/switch/tests/ManagerTestBase.h"
+#include "fboss/agent/state/AclTableGroupMap.h"
 #include "fboss/agent/state/MatchAction.h"
+#include "fboss/agent/state/StateDelta.h"
 #include "fboss/agent/types.h"
 
 #include <fb303/ServiceData.h>
@@ -597,6 +599,81 @@ TEST_F(AclTableManagerTest, changedTablePropertiesRecreateAclTable) {
 
   EXPECT_TRUE(aclTableManager.needsAclTableRecreate(
       oldTable, newTable, cfg::AclStage::INGRESS));
+}
+
+class AclTableManagerRollbackTest : public AclTableManagerTest {
+ public:
+  void SetUp() override {
+    FLAGS_enable_acl_table_group = true;
+    AclTableManagerTest::SetUp();
+  }
+  void TearDown() override {
+    AclTableManagerTest::TearDown();
+    FLAGS_enable_acl_table_group = false;
+  }
+};
+
+TEST_F(AclTableManagerRollbackTest, rollbackRecreatesAclTableWithEntries) {
+  constexpr int kNumEntries = 3;
+  auto entryName = [](int i) { return "AclEntry" + std::to_string(i); };
+  auto makeState = [&](const std::vector<cfg::AclTableQualifier>& qualifiers) {
+    auto aclMap = std::make_shared<AclMap>();
+    for (int i = 0; i < kNumEntries; ++i) {
+      auto aclEntry = std::make_shared<AclEntry>(kPriority() + i, entryName(i));
+      aclEntry->setDscp(kDscp());
+      aclEntry->setActionType(kActionType());
+      aclMap->addNode(aclEntry);
+    }
+    auto table = std::make_shared<AclTable>(0, kAclTable2);
+    table->setQualifiers(qualifiers);
+    table->setAclMap(aclMap);
+    auto tables = std::make_shared<AclTableMap>();
+    tables->addTable(table);
+    auto group = std::make_shared<AclTableGroup>(cfg::AclStage::INGRESS);
+    group->setName("ingressGroup");
+    group->setAclTableMap(tables);
+    auto groups = std::make_shared<AclTableGroupMap>();
+    groups->addAclTableGroup(group);
+    auto multiSwitchGroups = std::make_shared<MultiSwitchAclTableGroupMap>();
+    multiSwitchGroups->addMapNode(
+        groups, HwSwitchMatcher::defaultHwSwitchMatcher());
+    auto state = getProgrammedState()->clone();
+    state->resetAclTableGroups(multiSwitchGroups);
+    state->publish();
+    return state;
+  };
+  auto srcIpV6Enabled = [this]() {
+    auto* handle =
+        saiManagerTable->aclTableManager().getAclTableHandle(kAclTable2);
+    return saiApiTable->aclApi().getAttribute(
+        handle->aclTable->adapterKey(),
+        SaiAclTableTraits::Attributes::FieldSrcIpV6{});
+  };
+
+  auto oldState = makeState(
+      {cfg::AclTableQualifier::DSCP, cfg::AclTableQualifier::SRC_IPV6});
+  applyNewState(oldState);
+  auto newState = makeState({cfg::AclTableQualifier::DSCP});
+  applyNewState(newState);
+  ASSERT_FALSE(srcIpV6Enabled());
+
+  // Rollback replays oldState as an in-memory warmboot. The retained table
+  // has newState's schema, so recreateAclTable removes its retained entries.
+  auto* saiSwitch = static_cast<SaiSwitch*>(saiPlatform->getHwSwitch());
+  saiSwitch->rollbackInTest(StateDelta(oldState, newState));
+  saiStore = saiSwitch->getSaiStore();
+  saiManagerTable = saiSwitch->managerTable();
+
+  EXPECT_TRUE(srcIpV6Enabled());
+  auto* aclTableHandle =
+      saiManagerTable->aclTableManager().getAclTableHandle(kAclTable2);
+  ASSERT_NE(aclTableHandle, nullptr);
+  for (int i = 0; i < kNumEntries; ++i) {
+    EXPECT_NE(
+        saiManagerTable->aclTableManager().getAclEntryHandle(
+            aclTableHandle, kPriority() + i, entryName(i)),
+        nullptr);
+  }
 }
 
 TEST_F(AclTableManagerTest, addAclEntryWithCounter) {
