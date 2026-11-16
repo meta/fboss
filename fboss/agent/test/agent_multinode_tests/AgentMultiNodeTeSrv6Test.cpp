@@ -42,7 +42,7 @@ constexpr auto kLinkUpRetryInterval{std::chrono::seconds(5)};
 constexpr int32_t kL3LoopInitialLeaseSeconds{60};
 constexpr int32_t kL3LoopExtensionSeconds{300};
 constexpr int64_t kL3LoopSustainSeconds{60};
-constexpr auto kL3LoopSampleInterval{std::chrono::seconds(5)};
+constexpr auto kL3LoopSampleInterval{std::chrono::seconds(30)};
 constexpr uint8_t kAnchorPrefixLength{128};
 constexpr uint8_t kServicePrefixLength{64};
 const std::string kSrv6TunnelId{"srv6Tunnel0"};
