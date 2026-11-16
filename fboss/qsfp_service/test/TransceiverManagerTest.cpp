@@ -134,7 +134,7 @@ TEST_F(TransceiverManagerTest, getInterfacePhyInfo) {
   std::map<std::string, phy::PhyInfo> phyInfos;
   // Test a valid interface
   transceiverManager_->getInterfacePhyInfo(phyInfos, "eth1/1/1");
-  EXPECT_TRUE(phyInfos.find("eth1/1/1") != phyInfos.end());
+  EXPECT_TRUE(phyInfos.contains("eth1/1/1"));
   // Simulate an exception from xphyInfo and confirm that the map doesn't
   // include that interface's key
   EXPECT_CALL(*transceiverManager_, getXphyInfo(PortID(9)))
@@ -143,7 +143,7 @@ TEST_F(TransceiverManagerTest, getInterfacePhyInfo) {
   transceiverManager_->getInterfacePhyInfo(phyInfos, "eth1/2/1");
   EXPECT_EQ(phyInfos.size(), 1);
   // We still expect the previous interface to exist in the map
-  EXPECT_TRUE(phyInfos.find("eth1/1/1") != phyInfos.end());
+  EXPECT_TRUE(phyInfos.contains("eth1/1/1"));
 
   // Test an invalid interface
   EXPECT_THROW(
@@ -467,8 +467,7 @@ TEST_F(TransceiverManagerTest, populateSnapshots) {
   transceiverManager_->refreshStateMachines();
 
   auto snapshotManagersLocked = snapshotManagers.rlock();
-  ASSERT_TRUE(
-      snapshotManagersLocked->find(tcvrID) != snapshotManagersLocked->end());
+  ASSERT_TRUE(snapshotManagersLocked->contains(tcvrID));
   auto snapshots = snapshotManagersLocked->at(tcvrID).getSnapshots();
   EXPECT_FALSE(snapshots.empty());
 
