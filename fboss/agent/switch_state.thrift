@@ -801,9 +801,9 @@ struct SflowCollectorFields {
 }
 
 @fboss_common.AllowSkipThriftCow
+@thrift.ReserveIds{ids = [2]}
 struct InterfaceFields {
   1: i32 interfaceId;
-  2: i32 routerId;
   3: optional i32 vlanId;
   4: string name;
   // network byte order

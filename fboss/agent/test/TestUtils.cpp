@@ -1161,7 +1161,6 @@ shared_ptr<SwitchState> testStateA(cfg::SwitchType switchType) {
     // Add Interface 1 to VLAN 1
     auto intf1 = make_shared<Interface>(
         InterfaceID(1),
-        RouterID(0),
         std::optional<VlanID>(1),
         folly::StringPiece("fboss1"),
         MacAddress("00:02:00:00:00:01"),
@@ -1184,7 +1183,6 @@ shared_ptr<SwitchState> testStateA(cfg::SwitchType switchType) {
     // Add Interface 55 to VLAN 55
     auto intf55 = make_shared<Interface>(
         InterfaceID(55),
-        RouterID(0),
         std::optional<VlanID>(55),
         folly::StringPiece("fboss55"),
         MacAddress("00:02:00:00:00:55"),

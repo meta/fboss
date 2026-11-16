@@ -7060,7 +7060,6 @@ class ChildThriftPath<::facebook::fboss::state::InterfaceFields, ::facebook::fbo
   using Self::Self;
   
     STRUCT_CHILD_GETTERS(interfaceId, 1);
-    STRUCT_CHILD_GETTERS(routerId, 2);
     STRUCT_CHILD_GETTERS(vlanId, 3);
     STRUCT_CHILD_GETTERS(name, 4);
     STRUCT_CHILD_GETTERS(mac, 5);

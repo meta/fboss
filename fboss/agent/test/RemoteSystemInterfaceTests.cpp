@@ -67,7 +67,6 @@ TEST_F(RemoteSystemInterfaceTest, ReConfigureSystemPortInterfaces) {
         remoteSysIntfs->addNode(
             std::make_shared<Interface>(
                 InterfaceID(512),
-                RouterID(0),
                 std::optional<VlanID>(std::nullopt),
                 folly::StringPiece("512"),
                 folly::MacAddress("00:02:00:00:00:01"),
@@ -79,7 +78,6 @@ TEST_F(RemoteSystemInterfaceTest, ReConfigureSystemPortInterfaces) {
         remoteSysIntfs->addNode(
             std::make_shared<Interface>(
                 InterfaceID(513),
-                RouterID(0),
                 std::optional<VlanID>(std::nullopt),
                 folly::StringPiece("513"),
                 folly::MacAddress("00:02:00:00:00:02"),

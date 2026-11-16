@@ -40,7 +40,6 @@ std::shared_ptr<Interface> addPortInterface(
   HwSwitchMatcher matcher(std::unordered_set<SwitchID>({SwitchID(0)}));
   auto intf = std::make_shared<Interface>(
       intfId,
-      RouterID(0),
       std::optional<VlanID>(std::nullopt),
       folly::StringPiece(folly::to<std::string>("fboss", intfId)),
       MacAddress("00:02:00:00:00:55"),
@@ -67,7 +66,6 @@ std::shared_ptr<Interface> addVlanInterface(
   state->getVlans()->addNode(vlan, matcher);
   auto intf = std::make_shared<Interface>(
       intfId,
-      RouterID(0),
       std::optional<VlanID>(vlanId),
       folly::StringPiece(folly::to<std::string>("fboss", intfId)),
       MacAddress("00:02:00:00:00:55"),

@@ -49,7 +49,6 @@ std::shared_ptr<InterfaceMap> makeRifs(const SystemPortMap* sysPorts) {
   for (const auto& [id, sysPort] : *sysPorts) {
     auto rif = std::make_shared<Interface>(
         InterfaceID(id),
-        RouterID(0),
         std::optional<VlanID>(std::nullopt),
         folly::StringPiece("rif"),
         folly::MacAddress("01:02:03:04:05:06"),
@@ -96,7 +95,6 @@ std::shared_ptr<Interface> makeRemoteIntf(
     uint8_t v6Mask) {
   auto intf = std::make_shared<Interface>(
       intfId,
-      RouterID(0),
       std::optional<VlanID>(std::nullopt),
       folly::StringPiece("rif"),
       folly::MacAddress("01:02:03:04:05:06"),

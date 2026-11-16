@@ -158,7 +158,6 @@ class RibRollbackTest : public ::testing::Test {
     auto switchState = std::make_shared<SwitchState>();
     auto intf = std::make_shared<Interface>(
         InterfaceID(1),
-        kRid,
         std::optional<VlanID>(VlanID(1)),
         folly::StringPiece("intf1"),
         folly::MacAddress("00:00:00:00:00:01"),

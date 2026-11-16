@@ -270,7 +270,6 @@ TEST_F(AgentVoqSwitchScaleWithFabricPortsTest, failUpdateAtFullSysPortScale) {
                 auto remoteIntfs = out->getRemoteInterfaces()->modify(&out);
                 auto remoteIntf = std::make_shared<Interface>(
                     InterfaceID(INT32_MAX),
-                    RouterID(0),
                     std::optional<VlanID>(std::nullopt),
                     folly::StringPiece("RemoteIntf"),
                     folly::MacAddress("c6:ca:2b:2a:b1:b6"),

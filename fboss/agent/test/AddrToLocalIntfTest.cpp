@@ -39,7 +39,6 @@ class AddrToLocalIntfTest : public ::testing::Test {
       std::map<folly::IPAddress, uint8_t>& addresses) {
     auto intf = std::make_shared<Interface>(
         InterfaceID(intfID),
-        RouterID(0),
         std::optional<VlanID>(std::nullopt),
         folly::StringPiece("100" + folly::to<std::string>(intfID)),
         folly::MacAddress{},

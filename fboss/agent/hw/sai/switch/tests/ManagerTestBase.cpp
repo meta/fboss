@@ -446,7 +446,6 @@ std::shared_ptr<Interface> ManagerTestBase::makeInterface(
   }
   interface = std::make_shared<Interface>(
       getIntfID(testInterface, type),
-      testInterface.routerId,
       std::optional<VlanID>(vlan),
       folly::StringPiece(fmt::format("intf{}", testInterface.id)),
       testInterface.routerMac,
@@ -465,17 +464,16 @@ std::shared_ptr<Interface> ManagerTestBase::makeInterface(
 }
 
 std::shared_ptr<MultiSwitchInterfaceVrfMap> ManagerTestBase::makeInterfaceVrfs(
-    const std::vector<std::shared_ptr<Interface>>& interfaces) const {
-  auto interfaceVrfs = std::make_shared<MultiSwitchInterfaceVrfMap>();
-  for (const auto& interface : interfaces) {
-    if (interface->getRouterID() != RouterID(0)) {
-      interfaceVrfs->addNode(
-          std::make_shared<InterfaceVrf>(
-              interface->getID(), interface->getRouterID()),
+    const std::map<InterfaceID, RouterID>& interfaceVrfs) const {
+  auto interfaceVrfMap = std::make_shared<MultiSwitchInterfaceVrfMap>();
+  for (const auto& [intfId, vrf] : interfaceVrfs) {
+    if (vrf != RouterID(0)) {
+      interfaceVrfMap->addNode(
+          std::make_shared<InterfaceVrf>(intfId, vrf),
           HwSwitchMatcher(std::unordered_set<SwitchID>({SwitchID(0)})));
     }
   }
-  return interfaceVrfs;
+  return interfaceVrfMap;
 }
 
 std::shared_ptr<Interface> ManagerTestBase::makeAggregatePortInterface(
@@ -510,7 +508,6 @@ std::shared_ptr<Interface> ManagerTestBase::makeInterface(
     const std::vector<folly::CIDRNetwork>& subnets) const {
   auto interface = std::make_shared<Interface>(
       InterfaceID(sysPort.getID()),
-      RouterID(0),
       std::optional<VlanID>(std::nullopt),
       folly::StringPiece(
           fmt::format("intf{}", static_cast<int>(sysPort.getID()))),

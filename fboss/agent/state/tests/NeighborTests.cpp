@@ -169,7 +169,6 @@ TEST(NeighborResponseTableTest, modifyForVlan) {
 TEST(NeighborResponseTableTest, modifyForIntf) {
   auto intf = std::make_shared<Interface>(
       InterfaceID(1001),
-      RouterID(0),
       std::optional<VlanID>(std::nullopt),
       folly::StringPiece("1001"),
       folly::MacAddress{},

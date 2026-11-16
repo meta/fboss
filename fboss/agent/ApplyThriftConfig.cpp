@@ -1680,7 +1680,6 @@ void ThriftConfigApplier::processUpdatedDsfNodes() {
     CHECK(node->getMac().has_value());
     auto intf = std::make_shared<Interface>(
         InterfaceID(recyclePortId),
-        RouterID(0),
         std::optional<VlanID>(std::nullopt),
         folly::StringPiece(sysPort->getName()),
         *node->getMac(),
@@ -5590,7 +5589,6 @@ shared_ptr<Interface> ThriftConfigApplier::createInterface(
   auto mtu = config->mtu().value_or(Interface::kDefaultMtu);
   auto intf = make_shared<Interface>(
       InterfaceID(*config->intfID()),
-      RouterID(0),
       std::optional<VlanID>(*config->vlanID()),
       folly::StringPiece(name),
       mac,

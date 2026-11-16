@@ -39,7 +39,6 @@ std::shared_ptr<Interface> makeRemoteRif(
   auto name = fmt::format("rif{}", static_cast<int>(id));
   auto rif = std::make_shared<Interface>(
       id,
-      kTestVrf,
       std::optional<VlanID>(std::nullopt),
       folly::StringPiece(name),
       folly::MacAddress("02:00:00:00:00:01"),

@@ -121,7 +121,6 @@ state::VlanFields createVlanFields(int vlanId) {
 state::InterfaceFields createInterfaceFields(int ifId, int addressCount) {
   state::InterfaceFields intf;
   intf.interfaceId() = ifId;
-  intf.routerId() = 0;
   intf.vlanId() = ifId % 65536;
   intf.name() = fmt::format("interface{}", ifId);
   // mac is an int64 in network byte order, use a placeholder value

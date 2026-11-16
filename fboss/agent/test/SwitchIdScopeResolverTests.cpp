@@ -608,7 +608,6 @@ TYPED_TEST(
 
     auto intf = std::make_shared<Interface>(
         InterfaceID(intfId),
-        RouterID(0),
         std::optional<VlanID>(VlanID(intfId)),
         folly::StringPiece(folly::to<std::string>("fbossLoopback", i)),
         folly::MacAddress("00:02:00:00:00:55"),

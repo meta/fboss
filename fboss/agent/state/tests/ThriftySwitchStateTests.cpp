@@ -383,7 +383,6 @@ TEST(ThriftySwitchState, InterfaceMap) {
 TEST(ThriftySwitchState, InterfaceMapNbrTables) {
   auto intf1 = make_shared<Interface>(
       InterfaceID(1),
-      RouterID(0),
       std::optional<VlanID>(1),
       folly::StringPiece("fboss1"),
       MacAddress("00:02:00:00:00:01"),
@@ -392,7 +391,6 @@ TEST(ThriftySwitchState, InterfaceMapNbrTables) {
       false /* is state_sync disabled */);
   auto intf2 = make_shared<Interface>(
       InterfaceID(2),
-      RouterID(0),
       std::optional<VlanID>(2),
       folly::StringPiece("fboss2"),
       MacAddress("00:02:00:00:00:01"),

@@ -61,7 +61,6 @@ class Interface : public ThriftStructNode<Interface, state::InterfaceFields> {
   using Addresses = std::map<folly::IPAddress, uint8_t>;
   Interface(
       InterfaceID id,
-      RouterID router,
       std::optional<VlanID> vlan,
       folly::StringPiece name,
       folly::MacAddress mac,
@@ -73,7 +72,6 @@ class Interface : public ThriftStructNode<Interface, state::InterfaceFields> {
       std::optional<LivenessStatus> remoteIntfLivenessStatus = std::nullopt,
       cfg::Scope scope = cfg::Scope::LOCAL) {
     set<switch_state_tags::interfaceId>(id);
-    setRouterID(router);
     if (vlan) {
       setVlanID(*vlan);
     }
@@ -92,12 +90,6 @@ class Interface : public ThriftStructNode<Interface, state::InterfaceFields> {
   }
   std::optional<SystemPortID> getSystemPortID() const;
 
-  RouterID getRouterID() const {
-    return RouterID(get<switch_state_tags::routerId>()->cref());
-  }
-  void setRouterID(RouterID id) {
-    set<switch_state_tags::routerId>(id);
-  }
   cfg::InterfaceType getType() const {
     return get<switch_state_tags::type>()->cref();
   }

@@ -326,7 +326,6 @@ TEST(Interface, RemoteInterfaceModify) {
   InterfaceID remoteIntfId(1001);
   auto rif = std::make_shared<Interface>(
       remoteIntfId,
-      RouterID(0),
       std::optional<VlanID>(std::nullopt),
       folly::StringPiece("1001"),
       folly::MacAddress{},
@@ -388,7 +387,6 @@ TEST(Interface, applyConfig) {
   NodeID nodeID = interface->getNodeID();
   EXPECT_EQ(0, interface->getGeneration());
   EXPECT_EQ(VlanID(1), interface->getVlanID());
-  EXPECT_EQ(RouterID(0), interface->getRouterID());
   EXPECT_EQ("Interface 1", interface->getName());
   EXPECT_EQ(MacAddress("00:02:00:11:22:33"), interface->getMac());
   EXPECT_EQ(1, interface->getAddresses()->size()); // 1 ipv6 link local address
@@ -429,7 +427,6 @@ TEST(Interface, applyConfig) {
   EXPECT_EQ(nodeID, interface->getNodeID());
   EXPECT_EQ(1, interface->getGeneration());
   EXPECT_EQ(VlanID(1), interface->getVlanID());
-  EXPECT_EQ(RouterID(0), interface->getRouterID());
   EXPECT_EQ(oldInterface->getName(), interface->getName());
   EXPECT_EQ(intf2Mac, interface->getMac());
   auto vlan2 = state->getVlans()->getNodeIf(VlanID(2));
@@ -459,7 +456,6 @@ TEST(Interface, applyConfig) {
   EXPECT_EQ(nodeID, interface->getNodeID());
   EXPECT_EQ(oldInterface->getGeneration() + 1, interface->getGeneration());
   EXPECT_EQ(oldInterface->getVlanID(), interface->getVlanID());
-  EXPECT_EQ(oldInterface->getRouterID(), interface->getRouterID());
   EXPECT_EQ(oldInterface->getName(), interface->getName());
   EXPECT_EQ(platform->getLocalMac(), interface->getMac());
   // Interface will be updated based on new MAC Address
@@ -506,7 +502,6 @@ TEST(Interface, applyConfig) {
   EXPECT_EQ(oldInterface->getGeneration() + 1, interface->getGeneration());
   EXPECT_EQ("myintf", interface->getName());
   EXPECT_EQ(oldInterface->getVlanID(), interface->getVlanID());
-  EXPECT_EQ(oldInterface->getRouterID(), interface->getRouterID());
   EXPECT_EQ(oldInterface->getMac(), interface->getMac());
   EXPECT_EQ(oldInterface->getAddressesCopy(), interface->getAddressesCopy());
   // Reset the name back to it's default value
@@ -516,7 +511,6 @@ TEST(Interface, applyConfig) {
   EXPECT_EQ(oldInterface->getGeneration() + 1, interface->getGeneration());
   EXPECT_EQ("Interface 1", interface->getName());
   EXPECT_EQ(oldInterface->getVlanID(), interface->getVlanID());
-  EXPECT_EQ(oldInterface->getRouterID(), interface->getRouterID());
   EXPECT_EQ(oldInterface->getMac(), interface->getMac());
   EXPECT_EQ(oldInterface->getAddressesCopy(), interface->getAddressesCopy());
   EXPECT_EQ(
@@ -531,7 +525,6 @@ TEST(Interface, applyConfig) {
   EXPECT_EQ(oldInterface->getGeneration() + 1, interface->getGeneration());
   EXPECT_EQ(oldInterface->getName(), interface->getName());
   EXPECT_EQ(oldInterface->getVlanID(), interface->getVlanID());
-  EXPECT_EQ(oldInterface->getRouterID(), interface->getRouterID());
   EXPECT_EQ(oldInterface->getMac(), interface->getMac());
   EXPECT_EQ(
       oldInterface->getAddresses()->toThrift(),
@@ -589,7 +582,6 @@ TEST(Interface, applyConfig) {
   // The generation number for the new interface will be 0
   EXPECT_NE(nodeID, interface->getNodeID());
   EXPECT_EQ(VlanID(2), interface->getVlanID());
-  EXPECT_EQ(RouterID(0), interface->getRouterID());
   EXPECT_EQ("newName", interface->getName());
   EXPECT_EQ(MacAddress("00:02:00:11:22:33"), interface->getMac());
   validateThriftStructNodeSerialization(*interface);
@@ -788,7 +780,6 @@ TEST(Interface, getRemoteInterfacesBySwitchId) {
   auto remoteInterfaces = stateV2->getRemoteInterfaces()->modify(&stateV2);
   auto rif = std::make_shared<Interface>(
       InterfaceID(1001),
-      RouterID(0),
       std::optional<VlanID>(std::nullopt),
       folly::StringPiece("1001"),
       folly::MacAddress{},
@@ -897,7 +888,6 @@ namespace {
 std::shared_ptr<Interface> makePortTypeInterface() {
   return std::make_shared<Interface>(
       InterfaceID(1),
-      RouterID(0),
       std::optional<VlanID>(std::nullopt),
       folly::StringPiece("1"),
       MacAddress("00:02:00:00:00:01"),

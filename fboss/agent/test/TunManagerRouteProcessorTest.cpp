@@ -954,7 +954,6 @@ TEST_F(TunManagerRouteProcessorTest, BuildIfIdToTableIdMapBasic) {
   // Add interface with ID 2000 (should map to table ID 1)
   auto intf1 = std::make_shared<Interface>(
       InterfaceID(2000),
-      RouterID(0),
       std::optional<VlanID>(std::nullopt),
       folly::StringPiece("intf2000"),
       folly::MacAddress("01:02:03:04:05:06"),
@@ -966,7 +965,6 @@ TEST_F(TunManagerRouteProcessorTest, BuildIfIdToTableIdMapBasic) {
   // Add interface with ID 2001 (should map to table ID 2)
   auto intf2 = std::make_shared<Interface>(
       InterfaceID(2001),
-      RouterID(0),
       std::optional<VlanID>(std::nullopt),
       folly::StringPiece("intf2001"),
       folly::MacAddress("01:02:03:04:05:07"),

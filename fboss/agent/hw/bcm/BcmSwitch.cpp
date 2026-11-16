@@ -2391,7 +2391,6 @@ void BcmSwitch::changeDefaultVlan(VlanID oldId, VlanID newId) {
     if (intfTable_->getBcmIntfIf(oldId)) {
       auto oldIntf = make_shared<Interface>(
           InterfaceID(oldId),
-          RouterID(0), /* currently VRF is always zero anyway */
           std::optional<VlanID>(oldId),
           folly::StringPiece(fmt::format("Interface-{}", uint16_t(oldId))),
           getPlatform()->getLocalMac(),
@@ -2402,7 +2401,6 @@ void BcmSwitch::changeDefaultVlan(VlanID oldId, VlanID newId) {
     }
     auto newIntf = make_shared<Interface>(
         InterfaceID(newId),
-        RouterID(0), /* currently VRF is always zero anyway */
         std::optional<VlanID>(newId),
         folly::StringPiece(fmt::format("Interface-{}", uint16_t(newId))),
         getPlatform()->getLocalMac(),

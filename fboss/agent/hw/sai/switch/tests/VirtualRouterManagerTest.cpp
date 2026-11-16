@@ -137,10 +137,6 @@ TEST_F(VirtualRouterManagerVrfSetupTest, interfaceInVrf) {
           RouterID(1001)),
       nullptr);
   auto state = getProgrammedState();
-  EXPECT_EQ(
-      state->getInterfaces()->getNode(InterfaceID(1))->getRouterID(),
-      RouterID(1001));
-  EXPECT_EQ(
-      state->getInterfaces()->getNode(InterfaceID(0))->getRouterID(),
-      RouterID(0));
+  EXPECT_EQ(state->getInterfaceVrfs()->getVrf(InterfaceID(1)), RouterID(1001));
+  EXPECT_EQ(state->getInterfaceVrfs()->getVrf(InterfaceID(0)), RouterID(0));
 }
