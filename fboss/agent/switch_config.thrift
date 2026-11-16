@@ -826,6 +826,11 @@ enum AclTableGroupBindPoint {
   PORT = 1,
 }
 
+// Max UDF groups per ACL table. FBOSS SAI programs
+// SAI_ACL_TABLE_ATTR_USER_DEFINED_FIELD_GROUP_MIN + 0..4; the SAI spec allows
+// up to SAI_ACL_USER_DEFINED_FIELD_ATTR_ID_RANGE (0xFF) more.
+const i16 ACL_TABLE_UDF_GROUPS_MAX = 5;
+
 struct AclTable {
   1: string name;
   2: i16 priority;
