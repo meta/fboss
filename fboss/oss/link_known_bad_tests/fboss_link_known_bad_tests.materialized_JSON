@@ -40364,6 +40364,218 @@
           "test_name_regex": "warm_boot.MacLearningTest.l2EntryFlap"
         }
     ],
+    "minipack3n/sai/asicsdk-2605.38/2605.38": [
+        {
+          "test_name_regex": "CheckInit.MacLearningTest.l2EntryFlap"
+        },
+        {
+          "test_name_regex": "FsdbTest.statsPublishSubscribe$"
+        },
+        {
+          "test_name_regex": "LinkSanityTestDataPlaneFlood.ptpEnableIsHitless$"
+        },
+        {
+          "test_name_regex": "LinkSanityTestDataPlaneFlood.warmbootIsHitLess$"
+        },
+        {
+          "test_name_regex": "LinkTest.fabricLinkHealth$"
+        },
+        {
+          "test_name_regex": "LinkTest.resetTransceiverDeadlockTest$"
+        },
+        {
+          "test_name_regex": "LinkTest.testOpticsRemediation$"
+        },
+        {
+          "test_name_regex": "LinkTest.verifyIphyFecBerCounters$"
+        },
+        {
+          "test_name_regex": "LinkTest.verifyIphyFecCounters$"
+        },
+        {
+          "test_name_regex": "LinkTest.xPhyInfoTest"
+        },
+        {
+          "test_name_regex": "MacsecFsdbTest.*$"
+        },
+        {
+          "test_name_regex": "MacsecStatTest.*$"
+        },
+        {
+          "test_name_regex": "MacsecTest.*$"
+        },
+        {
+          "test_name_regex": "OpenBmcUpgradeTest.*$"
+        },
+        {
+          "test_name_regex": "Prbs.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.*.testOpticsRemediation$"
+        },
+        {
+          "test_name_regex": "warm_boot.MacLearningTest.l2EntryFlap"
+        }
+    ],
+    "minipack3n/sai/asicsdk-2605.38/2605.38/physdk-credo-0.7.2/credo-0.7.2": [
+        {
+          "test_name_regex": "CheckInit.MacLearningTest.l2EntryFlap"
+        },
+        {
+          "test_name_regex": "FsdbTest.statsPublishSubscribe$"
+        },
+        {
+          "test_name_regex": "LinkSanityTestDataPlaneFlood.ptpEnableIsHitless$"
+        },
+        {
+          "test_name_regex": "LinkSanityTestDataPlaneFlood.warmbootIsHitLess$"
+        },
+        {
+          "test_name_regex": "LinkTest.fabricLinkHealth$"
+        },
+        {
+          "test_name_regex": "LinkTest.resetTransceiverDeadlockTest$"
+        },
+        {
+          "test_name_regex": "LinkTest.testOpticsRemediation$"
+        },
+        {
+          "test_name_regex": "LinkTest.verifyIphyFecBerCounters$"
+        },
+        {
+          "test_name_regex": "LinkTest.verifyIphyFecCounters$"
+        },
+        {
+          "test_name_regex": "LinkTest.xPhyInfoTest"
+        },
+        {
+          "test_name_regex": "MacsecFsdbTest.*$"
+        },
+        {
+          "test_name_regex": "MacsecStatTest.*$"
+        },
+        {
+          "test_name_regex": "MacsecTest.*$"
+        },
+        {
+          "test_name_regex": "OpenBmcUpgradeTest.*$"
+        },
+        {
+          "test_name_regex": "Prbs.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.*.testOpticsRemediation$"
+        },
+        {
+          "test_name_regex": "warm_boot.MacLearningTest.l2EntryFlap"
+        }
+    ],
+    "minipack3n/sai/asicsdk-2605.38/2605.38/physdk-credo-0.9.0/credo-0.9.0": [
+        {
+          "test_name_regex": "CheckInit.MacLearningTest.l2EntryFlap"
+        },
+        {
+          "test_name_regex": "FsdbTest.statsPublishSubscribe$"
+        },
+        {
+          "test_name_regex": "LinkSanityTestDataPlaneFlood.ptpEnableIsHitless$"
+        },
+        {
+          "test_name_regex": "LinkSanityTestDataPlaneFlood.warmbootIsHitLess$"
+        },
+        {
+          "test_name_regex": "LinkTest.fabricLinkHealth$"
+        },
+        {
+          "test_name_regex": "LinkTest.resetTransceiverDeadlockTest$"
+        },
+        {
+          "test_name_regex": "LinkTest.testOpticsRemediation$"
+        },
+        {
+          "test_name_regex": "LinkTest.verifyIphyFecBerCounters$"
+        },
+        {
+          "test_name_regex": "LinkTest.verifyIphyFecCounters$"
+        },
+        {
+          "test_name_regex": "LinkTest.xPhyInfoTest"
+        },
+        {
+          "test_name_regex": "MacsecFsdbTest.*$"
+        },
+        {
+          "test_name_regex": "MacsecStatTest.*$"
+        },
+        {
+          "test_name_regex": "MacsecTest.*$"
+        },
+        {
+          "test_name_regex": "OpenBmcUpgradeTest.*$"
+        },
+        {
+          "test_name_regex": "Prbs.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.*.testOpticsRemediation$"
+        },
+        {
+          "test_name_regex": "warm_boot.MacLearningTest.l2EntryFlap"
+        }
+    ],
+    "minipack3n/sai/asicsdk-2605.38/2605.38/physdk-credo-1.2.8/credo-1.2.8": [
+        {
+          "test_name_regex": "CheckInit.MacLearningTest.l2EntryFlap"
+        },
+        {
+          "test_name_regex": "FsdbTest.statsPublishSubscribe$"
+        },
+        {
+          "test_name_regex": "LinkSanityTestDataPlaneFlood.ptpEnableIsHitless$"
+        },
+        {
+          "test_name_regex": "LinkSanityTestDataPlaneFlood.warmbootIsHitLess$"
+        },
+        {
+          "test_name_regex": "LinkTest.fabricLinkHealth$"
+        },
+        {
+          "test_name_regex": "LinkTest.resetTransceiverDeadlockTest$"
+        },
+        {
+          "test_name_regex": "LinkTest.testOpticsRemediation$"
+        },
+        {
+          "test_name_regex": "LinkTest.verifyIphyFecBerCounters$"
+        },
+        {
+          "test_name_regex": "LinkTest.verifyIphyFecCounters$"
+        },
+        {
+          "test_name_regex": "LinkTest.xPhyInfoTest"
+        },
+        {
+          "test_name_regex": "MacsecFsdbTest.*$"
+        },
+        {
+          "test_name_regex": "MacsecStatTest.*$"
+        },
+        {
+          "test_name_regex": "MacsecTest.*$"
+        },
+        {
+          "test_name_regex": "OpenBmcUpgradeTest.*$"
+        },
+        {
+          "test_name_regex": "Prbs.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.*.testOpticsRemediation$"
+        },
+        {
+          "test_name_regex": "warm_boot.MacLearningTest.l2EntryFlap"
+        }
+    ],
     "minipack_7x16Q_1x16O/sai/asicsdk-10.2.0.0_odp/10.2.0.0_odp": [
         {
           "test_name_regex": "CheckInit.MacLearningTest.l2EntryFlap"
