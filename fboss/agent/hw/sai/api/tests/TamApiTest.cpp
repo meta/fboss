@@ -436,4 +436,25 @@ TEST_F(TamApiTest, CsigTamContainmentPreservesEvents) {
   tamApi->remove(id);
 }
 
+TEST_F(TamApiTest, CsigCapabilities) {
+  EXPECT_EQ(
+      getAttributeEnumValuesCapability(
+          switchId, SAI_OBJECT_TYPE_TAM_INT, SAI_TAM_INT_ATTR_TYPE),
+      (std::vector<sai_int32_t>{
+          SAI_TAM_INT_TYPE_CSIG_COMPACT, SAI_TAM_INT_TYPE_CSIG_WIDE}));
+  EXPECT_EQ(
+      getAttributeEnumValuesCapability(
+          switchId, SAI_OBJECT_TYPE_TAM_INT, SAI_TAM_INT_ATTR_CSIG_SIGNAL_TYPE),
+      (std::vector<sai_int32_t>{0, 1, 2, 3}));
+  auto capability = getAttributeCapability(
+      switchId, SAI_OBJECT_TYPE_TAM_INT, SAI_TAM_INT_ATTR_CSIG_D_BIT);
+  EXPECT_TRUE(capability.create_implemented);
+  EXPECT_TRUE(capability.set_implemented);
+  fs->csigCapabilities.dBit = false;
+  capability = getAttributeCapability(
+      switchId, SAI_OBJECT_TYPE_TAM_INT, SAI_TAM_INT_ATTR_CSIG_D_BIT);
+  EXPECT_FALSE(capability.create_implemented);
+  EXPECT_FALSE(capability.set_implemented);
+  fs->csigCapabilities.dBit = true;
+}
 #endif

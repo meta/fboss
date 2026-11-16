@@ -44,6 +44,21 @@ class FakeSaiTamInt {
   sai_uint32_t wideStep{1};
   bool dBit{false};
 };
+
+struct FakeCsigCapabilities {
+  std::vector<sai_int32_t> tagTypes{
+      SAI_TAM_INT_TYPE_CSIG_COMPACT,
+      SAI_TAM_INT_TYPE_CSIG_WIDE};
+  std::vector<sai_int32_t> signals{
+      SAI_CSIG_SIGNAL_TYPE_ABW,
+      SAI_CSIG_SIGNAL_TYPE_ABWC,
+      SAI_CSIG_SIGNAL_TYPE_DELAY,
+      SAI_CSIG_SIGNAL_TYPE_NQD};
+  bool dBit{true};
+  bool intDelete{true};
+  bool intMetadata{true};
+};
+
 using FakeTamIntManager = FakeManager<sai_object_id_t, FakeSaiTamInt>;
 #endif
 

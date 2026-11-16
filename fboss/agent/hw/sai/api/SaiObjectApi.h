@@ -27,6 +27,44 @@ extern "C" {
 
 namespace facebook::fboss {
 
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+inline sai_attr_capability_t getAttributeCapability(
+    sai_object_id_t switchId,
+    sai_object_type_t objectType,
+    sai_attr_id_t attributeId) {
+  sai_attr_capability_t capability{};
+  saiCheckError(
+      sai_query_attribute_capability(
+          switchId, objectType, attributeId, &capability),
+      SAI_API_UNSPECIFIED,
+      "Failed to query attribute capability");
+  return capability;
+}
+
+inline std::vector<sai_int32_t> getAttributeEnumValuesCapability(
+    sai_object_id_t switchId,
+    sai_object_type_t objectType,
+    sai_attr_id_t attributeId) {
+  sai_s32_list_t list{};
+  auto status = sai_query_attribute_enum_values_capability(
+      switchId, objectType, attributeId, &list);
+  if (status != SAI_STATUS_BUFFER_OVERFLOW) {
+    saiCheckError(
+        status, SAI_API_UNSPECIFIED, "Failed to query enum capability");
+    return {};
+  }
+  std::vector<sai_int32_t> values(list.count);
+  list.list = values.data();
+  saiCheckError(
+      sai_query_attribute_enum_values_capability(
+          switchId, objectType, attributeId, &list),
+      SAI_API_UNSPECIFIED,
+      "Failed to query enum capability");
+  values.resize(list.count);
+  return values;
+}
+#endif
+
 namespace detail {
 template <EntryStructSaiObject SaiObjectTraits>
 typename SaiObjectTraits::AdapterKey getAdapterKey(

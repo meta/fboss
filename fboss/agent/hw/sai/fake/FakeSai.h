@@ -111,6 +111,7 @@ struct FakeSai {
   FakeTamManager tamManager;
 #if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
   FakeTamIntManager tamIntManager;
+  FakeCsigCapabilities csigCapabilities;
 #endif
   FakeTamEventManager tamEventManager;
   FakeTamEventActionManager tamEventActionManager;
