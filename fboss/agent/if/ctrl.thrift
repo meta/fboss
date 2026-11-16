@@ -342,6 +342,17 @@ struct VrfInfo {
   3: list<i32> interfaceIds;
 }
 
+struct VrfEntry {
+  /** VRF/router ID. VRF 0 is implicit. */
+  1: i32 vrfId;
+
+  /** Optional operational name. */
+  2: optional string name;
+
+  /** VNI mapped to this VRF. */
+  3: optional i32 vni;
+}
+
 /*
  * Values in these counters are cumulative since the last time the agent
  * started.

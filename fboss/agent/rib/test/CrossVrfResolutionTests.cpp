@@ -1,11 +1,13 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include "fboss/agent/AddressUtil.h"
+#include "fboss/agent/FbossHwUpdateError.h"
 #include "fboss/agent/HwSwitchMatcher.h"
 #include "fboss/agent/SwitchIdScopeResolver.h"
 #include "fboss/agent/Utils.h"
 #include "fboss/agent/rib/RoutingInformationBase.h"
 #include "fboss/agent/state/InterfaceVrfMap.h"
+#include "fboss/agent/state/SwitchState.h"
 
 #include <folly/IPAddress.h>
 #include <gtest/gtest.h>
@@ -733,4 +735,124 @@ TEST_F(InterfaceVrfMoveTest, WarmBootKeepsInterfaceVrfs) {
   rib->updateInterfaceVrfs(
       scopeResolver(), {{InterfaceID(55), kTenantVrf}}, fibUpdate(), nullptr);
   EXPECT_TRUE(fibUpdates_.empty());
+}
+
+class VrfUpdateTest : public InterfaceVrfMoveTest {
+ protected:
+  const RouterID kNewVrf{2002};
+
+  static VrfEntry vrfEntry(RouterID vrf) {
+    VrfEntry entry;
+    entry.vrfId() = vrf;
+    return entry;
+  }
+  void addVrf(RouterID vrf) {
+    rib_.updateVrfs(scopeResolver(), {vrfEntry(vrf)}, {}, fibUpdate(), nullptr);
+  }
+  void deleteVrf(RouterID vrf) {
+    rib_.updateVrfs(scopeResolver(), {}, {vrf}, fibUpdate(), nullptr);
+  }
+  bool hasVrf(RouterID vrf) {
+    auto vrfs = rib_.getVrfList();
+    return std::find(vrfs.begin(), vrfs.end(), vrf) != vrfs.end();
+  }
+};
+
+TEST_F(VrfUpdateTest, AddAndDelete) {
+  fibUpdates_.clear();
+  addVrf(kNewVrf);
+  EXPECT_TRUE(hasVrf(kNewVrf));
+  ASSERT_EQ(fibUpdates_.size(), 1);
+  EXPECT_EQ(fibUpdates_[0], std::vector<RouterID>{kNewVrf});
+
+  deleteVrf(kNewVrf);
+  EXPECT_FALSE(hasVrf(kNewVrf));
+  ASSERT_EQ(fibUpdates_.size(), 2);
+  EXPECT_EQ(fibUpdates_[1], std::vector<RouterID>{kNewVrf});
+}
+
+TEST_F(VrfUpdateTest, AddedVrfTakesInterfacesAndRoutes) {
+  addVrf(kNewVrf);
+  updateInterfaceVrfs({{InterfaceID(2), kNewVrf}});
+  addRoute(
+      kNewVrf,
+      makeRoute("2001:db8:200::/64", makeNextHop("2001:db8:2::10", {})));
+  auto nhops = nextHops(kNewVrf, "2001:db8:200::1");
+  ASSERT_EQ(nhops.size(), 1);
+  EXPECT_EQ(nhops.begin()->intfID(), InterfaceID(2));
+}
+
+TEST_F(VrfUpdateTest, Rejected) {
+  addVrf(kNewVrf);
+  fibUpdates_.clear();
+  EXPECT_THROW(addVrf(kNewVrf), FbossError);
+  EXPECT_THROW(addVrf(kVrf0), FbossError);
+  EXPECT_THROW(deleteVrf(kVrf0), FbossError);
+  EXPECT_THROW(deleteVrf(RouterID(3003)), FbossError);
+  // A VRF listed twice
+  EXPECT_THROW(
+      rib_.updateVrfs(
+          scopeResolver(),
+          {vrfEntry(RouterID(3003)), vrfEntry(RouterID(3003))},
+          {},
+          fibUpdate(),
+          nullptr),
+      FbossError);
+  EXPECT_THROW(
+      rib_.updateVrfs(
+          scopeResolver(),
+          {vrfEntry(kNewVrf)},
+          {kNewVrf},
+          fibUpdate(),
+          nullptr),
+      FbossError);
+  // Interface 55 is in the tenant VRF
+  EXPECT_THROW(deleteVrf(kTenantVrf), FbossError);
+  EXPECT_TRUE(fibUpdates_.empty());
+  EXPECT_TRUE(hasVrf(kNewVrf));
+  EXPECT_TRUE(hasVrf(kTenantVrf));
+}
+
+TEST_F(VrfUpdateTest, DeleteWithRoutesRejected) {
+  addVrf(kNewVrf);
+  addRoute(
+      kNewVrf,
+      makeRoute("2001:db8:300::/64", makeNextHop("2001:db8:1::10", 0)));
+  EXPECT_THROW(deleteVrf(kNewVrf), FbossError);
+  EXPECT_TRUE(hasVrf(kNewVrf));
+
+  delRoute(kNewVrf, "2001:db8:300::/64");
+  deleteVrf(kNewVrf);
+  EXPECT_FALSE(hasVrf(kNewVrf));
+}
+
+TEST_F(VrfUpdateTest, HwFailureRemovesAddedVrf) {
+  RibToSwitchStateFunction failingUpdate = [](const SwitchIdScopeResolver*,
+                                              const std::vector<RibVrfFib>&,
+                                              const NextHopIDManager*,
+                                              const MySidTable&,
+                                              void*) -> StateDelta {
+    auto state = std::make_shared<SwitchState>();
+    throw FbossHwUpdateError(state, state, "HW update failed");
+  };
+  EXPECT_THROW(
+      rib_.updateVrfs(
+          scopeResolver(), {vrfEntry(kNewVrf)}, {}, failingUpdate, nullptr),
+      FbossHwUpdateError);
+  EXPECT_FALSE(hasVrf(kNewVrf));
+}
+
+TEST_F(VrfUpdateTest, OtherFailureRemovesAddedVrf) {
+  RibToSwitchStateFunction failingUpdate = [](const SwitchIdScopeResolver*,
+                                              const std::vector<RibVrfFib>&,
+                                              const NextHopIDManager*,
+                                              const MySidTable&,
+                                              void*) -> StateDelta {
+    throw std::runtime_error("update failed");
+  };
+  EXPECT_THROW(
+      rib_.updateVrfs(
+          scopeResolver(), {vrfEntry(kNewVrf)}, {}, failingUpdate, nullptr),
+      std::runtime_error);
+  EXPECT_FALSE(hasVrf(kNewVrf));
 }

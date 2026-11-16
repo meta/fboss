@@ -938,6 +938,83 @@ void RibRouteTables::updateInterfaceVrfs(
   }
 }
 
+void RibRouteTables::updateVrfs(
+    const SwitchIdScopeResolver* resolver,
+    const std::vector<VrfEntry>& toAdd,
+    const std::vector<RouterID>& toDelete,
+    const RibToSwitchStateFunction& ribToSwitchStateFunc,
+    void* cookie) {
+  std::vector<VrfFibUpdate> vrfUpdates;
+  {
+    auto lockedRouteTables = synchronizedRouteTables_.wlock();
+    auto& routeTables = lockedRouteTables->routerIDToRouteTable;
+    std::set<RouterID> vrfs;
+    for (const auto& vrfEntry : toAdd) {
+      RouterID vrf(*vrfEntry.vrfId());
+      if (vrf == RouterID(0)) {
+        throw FbossError("VRF 0 is the default VRF");
+      }
+      if (!vrfs.insert(vrf).second) {
+        throw FbossError("VRF ", vrf, " listed twice");
+      }
+      if (routeTables.contains(vrf)) {
+        throw FbossError("VRF ", vrf, " already exists");
+      }
+    }
+    for (auto vrf : toDelete) {
+      if (vrf == RouterID(0)) {
+        throw FbossError("VRF 0 is the default VRF");
+      }
+      if (!vrfs.insert(vrf).second) {
+        throw FbossError("VRF ", vrf, " listed twice");
+      }
+      auto it = routeTables.find(vrf);
+      if (it == routeTables.end()) {
+        throw FbossError("VRF ", vrf, " not found");
+      }
+      const auto& routeTable = it->second;
+      const auto& interfaceVrfs = lockedRouteTables->interfaceVrfs;
+      if (std::any_of(
+              interfaceVrfs.begin(),
+              interfaceVrfs.end(),
+              [vrf](const auto& entry) { return entry.second == vrf; })) {
+        throw FbossError("VRF ", vrf, " has interfaces");
+      }
+      if (routeTable.v4NetworkToRoute.begin() !=
+              routeTable.v4NetworkToRoute.end() ||
+          routeTable.v6NetworkToRoute.begin() !=
+              routeTable.v6NetworkToRoute.end()) {
+        throw FbossError("VRF ", vrf, " has routes");
+      }
+    }
+    for (const auto& vrfEntry : toAdd) {
+      RouterID vrf(*vrfEntry.vrfId());
+      routeTables.try_emplace(vrf);
+      vrfUpdates.push_back({vrf, false /* deleted */, true /* added */});
+    }
+    for (auto vrf : toDelete) {
+      vrfUpdates.push_back({vrf, true /* deleted */});
+    }
+  }
+  if (vrfUpdates.empty()) {
+    return;
+  }
+  try {
+    updateFib(resolver, vrfUpdates, ribToSwitchStateFunc, cookie);
+  } catch (...) {
+    auto lockedRouteTables = synchronizedRouteTables_.wlock();
+    for (const auto& vrfEntry : toAdd) {
+      lockedRouteTables->routerIDToRouteTable.erase(
+          RouterID(*vrfEntry.vrfId()));
+    }
+    throw;
+  }
+  auto lockedRouteTables = synchronizedRouteTables_.wlock();
+  for (auto vrf : toDelete) {
+    lockedRouteTables->routerIDToRouteTable.erase(vrf);
+  }
+}
+
 void RibRouteTables::updateRemoteInterfaceRoutes(
     const SwitchIdScopeResolver* resolver,
     const RouterIDAndNetworkToInterfaceRoutes& toAdd,
@@ -1235,7 +1312,12 @@ void RibRouteTables::updateFib(
         XLOG(FATAL) << " RIB Rollback failed, aborting program";
       };
       auto lockedRouteTables = synchronizedRouteTables_.wlock();
-      for (const auto& vrf : vrfs) {
+      for (const auto& vrfUpdate : vrfUpdates) {
+        if (vrfUpdate.added) {
+          // Its caller removes its table
+          continue;
+        }
+        auto vrf = vrfUpdate.vrf;
         auto fib =
             hwUpdateError.appliedState->getFibsInfoMap()->getFibContainer(vrf);
         auto& routeTable =
@@ -1687,6 +1769,28 @@ void RoutingInformationBase::updateInterfaceVrfs(
     try {
       ribTables_.updateInterfaceVrfs(
           resolver, interfaceToVrf, ribToSwitchStateFunc, cookie);
+    } catch (const std::exception&) {
+      updateException = std::current_exception();
+    }
+  };
+  ribUpdateEventBase_.runInFbossEventBaseThreadAndWait(updateFn);
+  if (updateException) {
+    std::rethrow_exception(updateException);
+  }
+}
+
+void RoutingInformationBase::updateVrfs(
+    const SwitchIdScopeResolver* resolver,
+    const std::vector<VrfEntry>& toAdd,
+    const std::vector<RouterID>& toDelete,
+    const RibToSwitchStateFunction& ribToSwitchStateFunc,
+    void* cookie) {
+  ensureRunning();
+  std::exception_ptr updateException;
+  auto updateFn = [&] {
+    try {
+      ribTables_.updateVrfs(
+          resolver, toAdd, toDelete, ribToSwitchStateFunc, cookie);
     } catch (const std::exception&) {
       updateException = std::current_exception();
     }

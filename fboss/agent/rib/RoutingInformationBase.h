@@ -283,6 +283,13 @@ class RibRouteTables {
       const RibToSwitchStateFunction& ribToSwitchStateFunc,
       void* cookie);
 
+  void updateVrfs(
+      const SwitchIdScopeResolver* resolver,
+      const std::vector<VrfEntry>& toAdd,
+      const std::vector<RouterID>& toDelete,
+      const RibToSwitchStateFunction& ribToSwitchStateFunc,
+      void* cookie);
+
   /*
    * FIB assisted fromThrift. With shared data structure of routes
    * all except the unresolved routes are shared b/w rib and FIB, so
@@ -352,6 +359,8 @@ class RibRouteTables {
   struct VrfFibUpdate {
     RouterID vrf;
     bool deleted{false};
+    // Added in this update, so it has no FIB to roll back to
+    bool added{false};
   };
   // Programs the FIBs of all vrfs in one switch state update
   void updateFib(
@@ -662,6 +671,17 @@ class RoutingInformationBase {
   void updateInterfaceVrfs(
       const SwitchIdScopeResolver* resolver,
       const InterfaceToVrf& interfaceToVrf,
+      const RibToSwitchStateFunction& ribToSwitchStateFunc,
+      void* cookie);
+
+  // Adds the route tables of toAdd and removes those of toDelete, and adds
+  // and removes their FIBs in one switch state update, which
+  // ribToSwitchStateFunc can extend. A deleted VRF must have no interfaces and
+  // no routes.
+  void updateVrfs(
+      const SwitchIdScopeResolver* resolver,
+      const std::vector<VrfEntry>& toAdd,
+      const std::vector<RouterID>& toDelete,
       const RibToSwitchStateFunction& ribToSwitchStateFunc,
       void* cookie);
 
