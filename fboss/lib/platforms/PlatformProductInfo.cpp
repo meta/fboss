@@ -130,8 +130,8 @@ void PlatformProductInfo::initMode() {
       type_ = PlatformType::PLATFORM_MINIPACK3BTA;
     } else if (
         modelName.find("Montblanc") == 0 || modelName.find("MONTBLANC") == 0 ||
-        modelName.find("Montblancm") == 0 ||
-        modelName.find("MONTBLANCM") == 0 ||
+        modelName.find("Minipack3M") == 0 ||
+        modelName.find("MINIPACK3M") == 0 ||
         modelName.find("MINIPACK3_CHASSIS_BUNDLE") == 0 ||
         modelName.find("MINIPACK3") == 0 ||
         modelName.find("MINIPACK3-48V-ORV3") == 0) {
@@ -286,7 +286,7 @@ void PlatformProductInfo::initMode() {
     } else if (FLAGS_mode == "wedge400c_fabric") {
       type_ = PlatformType::PLATFORM_WEDGE400C_FABRIC;
     } else if (
-        FLAGS_mode == "montblanc" || FLAGS_mode == "montblancm" ||
+        FLAGS_mode == "montblanc" || FLAGS_mode == "minipack3m" ||
         FLAGS_mode == "minipack3ba" || FLAGS_mode == "minipack3bam") {
       type_ = PlatformType::PLATFORM_MONTBLANC;
     } else if (FLAGS_mode == "icecube800bc" || FLAGS_mode == "icecube800bcm") {

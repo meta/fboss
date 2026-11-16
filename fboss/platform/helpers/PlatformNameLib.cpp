@@ -25,7 +25,7 @@ std::string PlatformNameLib::sanitizePlatformName(
   }
   if (platformNameUpper == "MINIPACK3M" ||
       platformNameUpper == "MINIPACK3M_MCB") {
-    return "MONTBLANCM";
+    return "MINIPACK3M";
   }
   if (platformNameUpper == "JANGA") {
     return "JANGA800BIC";
