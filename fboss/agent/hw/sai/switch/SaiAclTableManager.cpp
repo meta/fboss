@@ -2732,17 +2732,24 @@ void SaiAclTableManager::recreateAclTable(
       SaiAclEntryTraits::AdapterHostKey,
       SaiAclEntryTraits::CreateAttributes>
       entries{};
-  // remove acl entries from acl table, retain their attributes
+  // collect this table's acl entries before removing any of them: releasing
+  // the last reference to an entry erases it from aclEntryStore, which would
+  // invalidate the iterator.
   for (const auto& entry : aclEntryStore) {
-    auto key = entry.second.lock()->adapterHostKey();
+    auto aclEntry = entry.second.lock();
+    if (!aclEntry) {
+      continue;
+    }
+    auto key = aclEntry->adapterHostKey();
     if (std::get<SaiAclEntryTraits::Attributes::TableId>(key) !=
         static_cast<sai_object_id_t>(aclTable->adapterKey())) {
       continue;
     }
-    auto value = entry.second.lock()->attributes();
-    auto aclEntry = aclEntryStore.setObject(key, value);
-    entries.emplace(key, value);
-    aclEntry.reset();
+    entries.emplace(key, aclEntry->attributes());
+  }
+  // remove acl entries from acl table
+  for (const auto& [key, value] : entries) {
+    aclEntryStore.setObject(key, value).reset();
   }
   // remove group member and acl table, since store holds only weak ptr after
   // setObject is invoked, clearing returned shared ptr is enough to destroy
