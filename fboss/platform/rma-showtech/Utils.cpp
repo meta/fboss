@@ -299,6 +299,13 @@ void Utils::printPsuDetails() {
                          "Error: failed to dump registers: {}", e.what())
                   << std::endl;
       }
+      if (*config_.hasPsuBlackbox()) {
+        auto i2cAddr = fmt::format("{:#02x}", deviceAddr);
+        auto dumpCmd = fmt::format(
+            "i2ctransfer -y -f {} w1@{} 0xdc r243", busNum, i2cAddr);
+        std::cout << "Dump BLACK BOX for the PSU: " << std::endl;
+        std::cout << platformUtils_.execCommand(dumpCmd).second << std::endl;
+      }
     }
     std::cout << std::endl;
   }

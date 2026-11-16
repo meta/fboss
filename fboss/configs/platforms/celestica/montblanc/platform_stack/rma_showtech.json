@@ -3,5 +3,94 @@
   "psus": [
     "/run/devmap/sensors/PDB_L_PMBUS",
     "/run/devmap/sensors/PDB_R_PMBUS"
-  ]
+  ],
+  "hasPsuBlackbox": true,
+  "scPowerGood": {
+    "sysfsAttributes": [
+      {
+        "name": "PSU_LEFT_POWERGOOD",
+        "path": "/run/devmap/cplds/MCB_CPLD/cpld_psu_l_pg"
+      },
+      {
+        "name": "PSU_LEFT_AC_STATUS",
+        "path": "/run/devmap/cplds/MCB_CPLD/psu_l_ac_ok"
+      },
+      {
+        "name": "PSU_RIGHT_POWERGOOD",
+        "path": "/run/devmap/cplds/MCB_CPLD/cpld_psu_r_pg"
+      },
+      {
+        "name": "PSU_RIGHT_AC_STATUS",
+        "path": "/run/devmap/cplds/MCB_CPLD/psu_r_ac_ok"
+      },
+      {
+        "name": "SMB_POWERGOOD",
+        "path": "/run/devmap/cplds/MCB_CPLD/smb_pwrok"
+      },
+      {
+        "name": "ASIC_POWERSTATE",
+        "path": "/run/devmap/cplds/SMB_CPLD/th5_pwr_en"
+      },
+      {
+        "name": "SMB 1.2V_POWERGOOD",
+        "path": "/run/devmap/cplds/SMB_CPLD/xp1p2_pg"
+      },
+      {
+        "name": "SMB 1.8V_POWERGOOD",
+        "path": "/run/devmap/cplds/SMB_CPLD/xp1p8_pg"
+      },
+      {
+        "name": "SMB 1.8V_Clock_POWERGOOD",
+        "path": "/run/devmap/cplds/SMB_CPLD/xp1p8_clk_pg"
+      },
+      {
+        "name": "SMB 3.3V_POWERGOOD",
+        "path": "/run/devmap/cplds/SMB_CPLD/xp3p3_smb_pg"
+      },
+      {
+        "name": "SMB 3.3V_Clock_POWERGOOD",
+        "path": "/run/devmap/cplds/SMB_CPLD/xp3p3_clk_pg"
+      },
+      {
+        "name": "QSFP 3.3V_POWERGOOD",
+        "path": "/run/devmap/cplds/SMB_CPLD/xp3p3_pg"
+      },
+      {
+        "name": "QSFP Left 3V_POWERGOOD",
+        "path": "/run/devmap/cplds/SMB_CPLD/xp3p3_l_osfp_pg"
+      },
+      {
+        "name": "QSFP Right 3V_POWERGOOD",
+        "path": "/run/devmap/cplds/SMB_CPLD/xp3p3_r_osfp_pg"
+      },
+      {
+        "name": "COMe 12V_POWERGOOD",
+        "path": "/run/devmap/cplds/SCM_CPLD/xp12p0_come_pg_sta"
+      },
+      {
+        "name": "OOB 1.1V_POWERGOOD",
+        "path": "/run/devmap/cplds/SCM_CPLD/xp1p1_oob_pg_sta"
+      },
+      {
+        "name": "BMC 3.3V_POWERGOOD",
+        "path": "/run/devmap/cplds/SCM_CPLD/xp3p3_bmc_pg_sta"
+      },
+      {
+        "name": "I210 3.3V_POWERGOOD",
+        "path": "/run/devmap/cplds/SCM_CPLD/xp3p3_i210_pg_sta"
+      },
+      {
+        "name": "SCM 3.3V_POWERGOOD",
+        "path": "/run/devmap/cplds/SCM_CPLD/xp3p3_scm_pg_sta"
+      },
+      {
+        "name": "SSD 3.3V_POWERGOOD",
+        "path": "/run/devmap/cplds/SCM_CPLD/xp3p3_ssd_pg_sta"
+      },
+      {
+        "name": "COMe 5.0V_POWERGOOD",
+        "path": "/run/devmap/cplds/SCM_CPLD/xp5p0_come_pg_sta"
+      }
+    ]
+  }
 }
