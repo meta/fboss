@@ -50,8 +50,6 @@ std::shared_ptr<SwitchState> applyThriftConfig(
     const PlatformMapping* platformMapping,
     const HwAsicTable* hwAsicTable,
     RouteUpdateWrapper* routeUpdater,
-    AclNexthopHandler* aclNexthopHandler = nullptr,
-    bool deferVrfChanges = false,
-    bool* hasDeferredVrfChanges = nullptr);
+    AclNexthopHandler* aclNexthopHandler = nullptr);
 
 } // namespace facebook::fboss
