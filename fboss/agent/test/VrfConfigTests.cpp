@@ -13,6 +13,8 @@
 #include "fboss/agent/state/Interface.h"
 #include "fboss/agent/state/SwitchState.h"
 #include "fboss/agent/state/Vrf.h"
+#include "fboss/agent/state/VxlanTunnel.h"
+#include "fboss/agent/state/VxlanTunnelMap.h"
 #include "fboss/agent/test/HwTestHandle.h"
 #include "fboss/agent/test/TestUtils.h"
 
@@ -797,4 +799,63 @@ TEST(SwSwitchVrfs, Rejected) {
   EXPECT_THROW(sw->addVrfs({makeVrfEntry(kTestVrf, "red")}), FbossError);
   EXPECT_THROW(sw->deleteVrfs({RouterID(3003)}), FbossError);
   EXPECT_EQ(sw->getState()->getVrfs()->getNodeIf(kTestVrf)->getName(), "blue");
+}
+
+namespace {
+cfg::SwitchConfig vxlanTunnelConfig() {
+  auto config = testConfigA();
+  cfg::VxLanTunnel tunnel;
+  tunnel.vxlanTunnelId() = "vxlantunnel0";
+  tunnel.underlayIntfID() = 1;
+  tunnel.tunnelType() = TunnelType::VXLAN;
+  tunnel.srcIp() = "1::1";
+  tunnel.dstIp() = "2::1";
+  config.vxlanTunnels() = {tunnel};
+  return config;
+}
+
+VrfEntry makeVniVrfEntry(RouterID vrf, int32_t vni) {
+  auto entry = makeVrfEntry(vrf);
+  entry.vni() = vni;
+  return entry;
+}
+
+std::shared_ptr<VxlanTunnel> vxlanTunnel(SwSwitch* sw) {
+  return sw->getState()->getVxlanTunnels()->getNode("vxlantunnel0");
+}
+} // namespace
+
+TEST(SwSwitchVrfs, VniInTunnelMaps) {
+  auto config = vxlanTunnelConfig();
+  auto handle = createTestHandle(&config);
+  auto sw = handle->getSw();
+  sw->addVrfs({makeVniVrfEntry(kTestVrf, 5001)});
+  using VniMap = std::map<int64_t, int64_t>;
+  EXPECT_EQ(vxlanTunnel(sw)->getVrf2Vni(), (VniMap{{kTestVrf, 5001}}));
+  EXPECT_EQ(vxlanTunnel(sw)->getVniToVrf(), (VniMap{{5001, kTestVrf}}));
+
+  // Config apply keeps the VNIs
+  config.vxlanTunnels()->front().ttlMode() = cfg::TunnelMode::PIPE;
+  sw->applyConfig("change tunnel", config);
+  EXPECT_EQ(vxlanTunnel(sw)->getVrf2Vni(), (VniMap{{kTestVrf, 5001}}));
+
+  sw->deleteVrfs({kTestVrf});
+  EXPECT_EQ(vxlanTunnel(sw)->getVrf2Vni(), VniMap{});
+  EXPECT_EQ(vxlanTunnel(sw)->getVniToVrf(), VniMap{});
+}
+
+TEST(SwSwitchVrfs, VniRejected) {
+  auto config = testConfigA();
+  auto handle = createTestHandle(&config);
+  auto sw = handle->getSw();
+  // No VXLAN tunnel
+  EXPECT_THROW(sw->addVrfs({makeVniVrfEntry(kTestVrf, 5001)}), FbossError);
+
+  config = vxlanTunnelConfig();
+  sw->applyConfig("add tunnel", config);
+  EXPECT_THROW(sw->addVrfs({makeVniVrfEntry(kTestVrf, 0)}), FbossError);
+  EXPECT_THROW(sw->addVrfs({makeVniVrfEntry(kTestVrf, 1 << 24)}), FbossError);
+  sw->addVrfs({makeVniVrfEntry(RouterID(2002), 5001)});
+  EXPECT_THROW(sw->addVrfs({makeVniVrfEntry(kTestVrf, 5001)}), FbossError);
+  EXPECT_EQ(sw->getState()->getVrfs()->getNodeIf(kTestVrf), nullptr);
 }

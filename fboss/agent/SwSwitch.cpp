@@ -102,6 +102,8 @@
 #include "fboss/agent/state/StateUpdateHelpers.h"
 #include "fboss/agent/state/SwitchState.h"
 #include "fboss/agent/state/Vrf.h"
+#include "fboss/agent/state/VxlanTunnel.h"
+#include "fboss/agent/state/VxlanTunnelMap.h"
 #include "fboss/lib/config/PlatformConfigUtils.h"
 #include "fboss/lib/link_snapshots/AsyncFileWriterFactory.h"
 #include "fboss/lib/phy/gen-cpp2/phy_types.h"
@@ -244,6 +246,75 @@ void checkSubnetsInVrfs(
       }
     }
   }
+}
+
+// Adds the VNIs of added VRFs to the VRF<->VNI maps of the VXLAN tunnel and
+// removes the VNIs of deleted VRFs. Config creates the tunnel.
+void updateTunnelVnis(
+    const std::shared_ptr<SwitchState>& in,
+    std::shared_ptr<SwitchState>* state,
+    const std::vector<VrfEntry>& toAdd,
+    const std::vector<RouterID>& toDelete) {
+  constexpr int32_t kMaxVni = (1 << 24) - 1;
+  std::shared_ptr<VxlanTunnel> tunnel;
+  std::string matcher;
+  for (const auto& [tunnelsMatcher, tunnels] :
+       std::as_const(*(*state)->getVxlanTunnels())) {
+    for (const auto& [_, node] : std::as_const(*tunnels)) {
+      if (tunnel) {
+        throw FbossHwUpdateError(in, in, "Only one VXLAN tunnel is supported");
+      }
+      tunnel = node;
+      matcher = tunnelsMatcher;
+    }
+  }
+  if (!tunnel) {
+    for (const auto& vrfEntry : toAdd) {
+      if (vrfEntry.vni()) {
+        throw FbossHwUpdateError(
+            in, in, "VRF ", *vrfEntry.vrfId(), " VNI needs a VXLAN tunnel");
+      }
+    }
+    return;
+  }
+  const auto origVrf2Vni =
+      tunnel->getVrf2Vni().value_or(std::map<int64_t, int64_t>{});
+  const auto origVniToVrf =
+      tunnel->getVniToVrf().value_or(std::map<int64_t, int64_t>{});
+  auto vrf2Vni = origVrf2Vni;
+  auto vniToVrf = origVniToVrf;
+  for (auto vrf : toDelete) {
+    auto it = vrf2Vni.find(vrf);
+    if (it != vrf2Vni.end()) {
+      vniToVrf.erase(it->second);
+      vrf2Vni.erase(it);
+    }
+  }
+  for (const auto& vrfEntry : toAdd) {
+    if (!vrfEntry.vni()) {
+      continue;
+    }
+    auto vrf = *vrfEntry.vrfId();
+    auto vni = *vrfEntry.vni();
+    if (vni <= 0 || vni > kMaxVni) {
+      throw FbossHwUpdateError(
+          in, in, "VRF ", vrf, " VNI ", vni, " is out of range");
+    }
+    auto [it, inserted] = vniToVrf.emplace(vni, vrf);
+    if (!inserted) {
+      throw FbossHwUpdateError(
+          in, in, "VRF ", vrf, " VNI ", vni, " is in use by VRF ", it->second);
+    }
+    vrf2Vni[vrf] = vni;
+  }
+  if (vrf2Vni == origVrf2Vni && vniToVrf == origVniToVrf) {
+    return;
+  }
+  auto newTunnel = tunnel->clone();
+  newTunnel->setVrf2Vni(vrf2Vni);
+  newTunnel->setVniToVrf(vniToVrf);
+  (*state)->getVxlanTunnels()->modify(state)->updateNode(
+      newTunnel, HwSwitchMatcher(matcher));
 }
 
 /**
@@ -3971,6 +4042,7 @@ void SwSwitch::updateVrfs(
         for (auto vrfId : toDelete) {
           vrfs->removeNode(vrfId);
         }
+        updateTunnelVnis(in, &newState, toAdd, toDelete);
         return newState;
       };
   getRib()->updateVrfs(

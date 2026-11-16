@@ -7973,6 +7973,11 @@ shared_ptr<VxlanTunnel> ThriftConfigApplier::updateVxlanTunnel(
     const std::shared_ptr<VxlanTunnel>& orig,
     const cfg::VxLanTunnel* config) {
   auto newTunnel = createVxlanTunnel(*config);
+  // Without VNI maps in config, the tunnel keeps those of SwSwitch::addVrfs()
+  if (!config->vrf2Vni().has_value() && !config->vniToVrf().has_value()) {
+    newTunnel->setVrf2Vni(orig->getVrf2Vni());
+    newTunnel->setVniToVrf(orig->getVniToVrf());
+  }
   if (*newTunnel == *orig) {
     return nullptr;
   }
