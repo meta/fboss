@@ -277,13 +277,14 @@
           "compute": "@/1000.0"
         },
         {
-          "name": "SMB_VRM1_VOUT_J3_0V85_CORE_MILLIVOLT",
+          "name": "SMB_VRM1_VOUT_J3_0V85_CORE",
           "sysfsPath": "/run/devmap/sensors/SMB_RAA228926_J3/in3_input",
           "type": 1,
           "thresholds": {
-            "upperCriticalVal": 930.0,
-            "lowerCriticalVal": 620.0
-          }
+            "upperCriticalVal": 0.93,
+            "lowerCriticalVal": 0.62
+          },
+          "compute": "@/1000.0"
         },
         {
           "name": "SMB_VRM1_TEMP",
@@ -333,31 +334,34 @@
           "compute": "@/1000.0"
         },
         {
-          "name": "SMB_VRM2_VOUT_J3_0V9_MILLIVOLT",
+          "name": "SMB_VRM2_VOUT_J3_0V9",
           "sysfsPath": "/run/devmap/sensors/SMB_ISL68226_J3/in3_input",
           "type": 1,
           "thresholds": {
-            "upperCriticalVal": 1080.0,
-            "lowerCriticalVal": 720.0
-          }
+            "upperCriticalVal": 1.08,
+            "lowerCriticalVal": 0.72
+          },
+          "compute": "@/1000.0"
         },
         {
-          "name": "SMB_VRM2_VOUT_J3_0V75_MILLIVOLT",
+          "name": "SMB_VRM2_VOUT_J3_0V75",
           "sysfsPath": "/run/devmap/sensors/SMB_ISL68226_J3/in4_input",
           "type": 1,
           "thresholds": {
-            "upperCriticalVal": 900.0,
-            "lowerCriticalVal": 600.0
-          }
+            "upperCriticalVal": 0.9,
+            "lowerCriticalVal": 0.6
+          },
+          "compute": "@/1000.0"
         },
         {
-          "name": "SMB_VRM2_VOUT_J3_1V2_MILLIVOLT",
+          "name": "SMB_VRM2_VOUT_J3_1V2",
           "sysfsPath": "/run/devmap/sensors/SMB_ISL68226_J3/in5_input",
           "type": 1,
           "thresholds": {
-            "upperCriticalVal": 1440.0,
-            "lowerCriticalVal": 960.0
-          }
+            "upperCriticalVal": 1.44,
+            "lowerCriticalVal": 0.96
+          },
+          "compute": "@/1000.0"
         },
         {
           "name": "SMB_VRM2_TEMP1",
