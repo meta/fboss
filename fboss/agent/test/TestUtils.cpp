@@ -30,6 +30,7 @@
 #include "fboss/agent/state/SwitchState.h"
 #include "fboss/agent/state/Vlan.h"
 #include "fboss/agent/state/VlanMap.h"
+#include "fboss/agent/state/Vrf.h"
 #include "fboss/agent/test/HwTestHandle.h"
 #include "fboss/agent/test/MockTunManager.h"
 
@@ -855,10 +856,13 @@ shared_ptr<SwitchState> preBindInterfaceVrfs(
     const std::map<InterfaceID, RouterID>& interfaceVrfs) {
   auto newState = state->clone();
   auto map = newState->getInterfaceVrfs()->modify(&newState);
+  auto vrfs = newState->getVrfs()->modify(&newState);
+  const HwSwitchMatcher matcher(std::unordered_set<SwitchID>({SwitchID(0)}));
   for (const auto& [intf, vrf] : interfaceVrfs) {
-    map->addNode(
-        std::make_shared<InterfaceVrf>(intf, vrf),
-        HwSwitchMatcher(std::unordered_set<SwitchID>({SwitchID(0)})));
+    map->addNode(std::make_shared<InterfaceVrf>(intf, vrf), matcher);
+    if (vrf != RouterID(0) && !vrfs->getNodeIf(vrf)) {
+      vrfs->addNode(std::make_shared<Vrf>(vrf), matcher);
+    }
   }
   return newState;
 }

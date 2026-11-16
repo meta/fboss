@@ -31,14 +31,6 @@ class AgentVrfTest : public AgentHwTest {
   }
 
  protected:
-  cfg::SwitchConfig initialConfig(
-      const AgentEnsemble& ensemble) const override {
-    auto config = AgentHwTest::initialConfig(ensemble);
-    utility::addVrfForPorts(
-        config, kTestVrf, vrfPorts(ensemble.masterLogicalInterfacePortIds()));
-    return config;
-  }
-
   static std::vector<PortID> vrfPorts(const std::vector<PortID>& ports) {
     std::vector<PortID> vrfPorts{ports[0], ports[1]};
     if (ports.size() > 3) {
@@ -47,9 +39,12 @@ class AgentVrfTest : public AgentHwTest {
     return vrfPorts;
   }
 
-  // Move the interfaces of vrfPorts() into kTestVrf. Done in cold boot setup
-  // only: the bindings persist across warm boot.
+  // Add kTestVrf and move the interfaces of vrfPorts() into it. Done in cold
+  // boot setup only: the VRF and bindings persist across warm boot.
   void bindVrfPorts() {
+    VrfEntry vrf;
+    vrf.vrfId() = kTestVrf;
+    getSw()->addVrfs({vrf});
     std::map<InterfaceID, RouterID> interfaceVrfs;
     for (const auto& port : vrfPorts(masterLogicalInterfacePortIds())) {
       interfaceVrfs.emplace(interfaceOf(port), kTestVrf);

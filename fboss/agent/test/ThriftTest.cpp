@@ -154,10 +154,10 @@ class ThriftTestWithNhopIdMgr : public ThriftTest {
 
 TEST_F(ThriftTest, getVrfs) {
   auto config = testConfigA();
-  auto& vrfConfig = config.vrfs().ensure().emplace_back();
-  vrfConfig.vrfId() = 1001;
-  vrfConfig.name() = "red";
-  sw_->applyConfig("add vrf", config);
+  VrfEntry vrfEntry;
+  vrfEntry.vrfId() = 1001;
+  vrfEntry.name() = "red";
+  sw_->addVrfs({vrfEntry});
   sw_->updateInterfaceVrfs(
       {{InterfaceID(*config.interfaces()[1].intfID()), RouterID(1001)}});
 
@@ -177,8 +177,9 @@ TEST_F(ThriftTest, getVrfs) {
 
 TEST_F(ThriftTest, getRouteTableDetailsByVrf) {
   auto config = testConfigA();
-  config.vrfs().ensure().emplace_back().vrfId() = 1001;
-  sw_->applyConfig("add vrf", config);
+  VrfEntry vrfEntry;
+  vrfEntry.vrfId() = 1001;
+  sw_->addVrfs({vrfEntry});
   sw_->updateInterfaceVrfs(
       {{InterfaceID(*config.interfaces()[1].intfID()), RouterID(1001)}});
 
@@ -1243,9 +1244,10 @@ TEST_F(ThriftTest, addUnicastRouteWithLinkLocalInterfaceSucceeds) {
 
 TEST_F(ThriftTest, addUnicastRouteInVrfValidatesNextHopVrf) {
   auto config = testConfigA();
-  config.vrfs().ensure().emplace_back().vrfId() = 1001;
-  config.vrfs()->emplace_back().vrfId() = 1002;
-  sw_->applyConfig("add vrfs", config);
+  std::vector<VrfEntry> vrfEntries(2);
+  vrfEntries[0].vrfId() = 1001;
+  vrfEntries[1].vrfId() = 1002;
+  sw_->addVrfs(vrfEntries);
   sw_->updateInterfaceVrfs(
       {{InterfaceID(*config.interfaces()[1].intfID()), RouterID(1001)}});
 

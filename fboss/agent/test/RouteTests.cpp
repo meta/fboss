@@ -1170,11 +1170,13 @@ TEST_F(RouteTest, applyNewConfig) {
   config.interfaces()[4].ipAddresses()[3] = "::1/48";
   config.interfaces()[5].intfID() = 6;
   config.interfaces()[5].vlanID() = 6;
-  config.vrfs().ensure().emplace_back().vrfId() = 1;
   config.interfaces()[5].mac() = "00:00:00:00:00:66";
 
   auto stateV0 = this->sw_->getState();
   // interface 6 is created, moved to VRF 1, and then gets its addresses
+  VrfEntry vrf1;
+  vrf1.vrfId() = 1;
+  this->sw_->addVrfs({vrf1});
   this->sw_->applyConfig("Create interface 6", config);
   this->sw_->updateInterfaceVrfs({{InterfaceID(6), RouterID(1)}});
   config.interfaces()[5].ipAddresses()->resize(2);
@@ -1221,9 +1223,11 @@ TEST_F(RouteTest, applyNewConfig) {
   config.interfaces()->resize(7);
   config.interfaces()[6].intfID() = 7;
   config.interfaces()[6].vlanID() = 7;
-  config.vrfs().ensure().emplace_back().vrfId() = 2;
   config.interfaces()[6].mac() = "00:00:00:00:00:77";
   // interface 7 is created and moved to VRF 2
+  VrfEntry vrf2;
+  vrf2.vrfId() = 2;
+  this->sw_->addVrfs({vrf2});
   this->sw_->applyConfig("Create interface 7", config);
   this->sw_->updateInterfaceVrfs({{InterfaceID(7), RouterID(2)}});
   config.interfaces()[6].ipAddresses()->resize(2);

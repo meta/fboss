@@ -240,7 +240,6 @@ TEST(Vlan, applyConfig) {
   config.vlans()[3].intfID() = 99;
   config.interfaces()->resize(4);
   *config.interfaces()[3].intfID() = 99;
-  config.vrfs().ensure().emplace_back().vrfId() = 1;
   *config.interfaces()[3].vlanID() = 99;
   config.interfaces()[3].ipAddresses()->resize(2);
   config.interfaces()[3].ipAddresses()[0] = "1.2.3.4/24";

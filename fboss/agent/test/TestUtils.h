@@ -142,8 +142,9 @@ std::shared_ptr<SwitchState> setInterfaceVrfs(
     const SwitchIdScopeResolver& scopeResolver);
 
 /*
- * Binds interfaces that are not in state yet, so that config apply creates
- * them in their VRFs. For tests with the default single switch, switch 0.
+ * Adds the VRFs and binds interfaces that are not in state yet to them, so
+ * that config apply creates them in their VRFs. For tests with the default
+ * single switch, switch 0.
  */
 std::shared_ptr<SwitchState> preBindInterfaceVrfs(
     const std::shared_ptr<SwitchState>& state,

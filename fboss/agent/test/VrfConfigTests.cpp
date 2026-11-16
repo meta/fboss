@@ -18,6 +18,19 @@
 
 using namespace facebook::fboss;
 
+namespace {
+VrfEntry makeVrfEntry(
+    RouterID vrf,
+    const std::optional<std::string>& name = std::nullopt) {
+  VrfEntry entry;
+  entry.vrfId() = vrf;
+  if (name) {
+    entry.name() = *name;
+  }
+  return entry;
+}
+} // namespace
+
 class VrfConfigTest : public ::testing::Test {
  protected:
   void SetUp() override {
@@ -113,14 +126,14 @@ TEST(VrfResource, MaxVrfs) {
   auto config = testConfigA();
   auto handle = createTestHandle(&config);
   auto sw = handle->getSw();
+  std::vector<VrfEntry> vrfs;
   for (int32_t id = 1; id <= 7; ++id) {
-    config.vrfs().ensure().emplace_back().vrfId() = id;
+    vrfs.push_back(makeVrfEntry(RouterID(id)));
   }
-  sw->applyConfig("7 vrfs", config);
+  sw->addVrfs(vrfs);
   EXPECT_EQ(sw->getState()->getVrfs()->numNodes(), 7);
 
-  config.vrfs()->emplace_back().vrfId() = 8;
-  EXPECT_THROW(sw->applyConfig("8 vrfs", config), FbossError);
+  EXPECT_THROW(sw->addVrfs({makeVrfEntry(RouterID(8))}), FbossError);
   EXPECT_EQ(sw->getState()->getVrfs()->numNodes(), 7);
 }
 
@@ -156,11 +169,11 @@ TEST_F(VrfConfigTest, RibTableOfVrfNotInConfigKept) {
 namespace {
 const RouterID kTestVrf{1001};
 
-// testConfigA with kTestVrf configured; all interfaces in VRF 0
-cfg::SwitchConfig emptyVrfConfig() {
-  auto config = testConfigA();
-  config.vrfs().ensure().emplace_back().vrfId() = kTestVrf;
-  return config;
+// Test handle with kTestVrf added; all interfaces in VRF 0
+std::unique_ptr<HwTestHandle> createVrfTestHandle(cfg::SwitchConfig* config) {
+  auto handle = createTestHandle(config);
+  handle->getSw()->addVrfs({makeVrfEntry(kTestVrf)});
+  return handle;
 }
 
 UnicastRoute makeRoute(const std::string& prefix, const std::string& nhop) {
@@ -175,8 +188,8 @@ UnicastRoute makeRoute(const std::string& prefix, const std::string& nhop) {
 } // namespace
 
 TEST(InterfaceVrfs, SetAndRemove) {
-  auto config = emptyVrfConfig();
-  auto handle = createTestHandle(&config);
+  auto config = testConfigA();
+  auto handle = createVrfTestHandle(&config);
   auto sw = handle->getSw();
   const auto& resolver = *sw->getScopeResolver();
 
@@ -261,8 +274,8 @@ RouterID intf55Vrf(const std::shared_ptr<SwitchState>& state) {
 } // namespace
 
 TEST(VrfNextHop, ResolvesInNextHopVrf) {
-  auto config = emptyVrfConfig();
-  auto handle = createTestHandle(&config);
+  auto config = testConfigA();
+  auto handle = createVrfTestHandle(&config);
   auto sw = handle->getSw();
   sw->updateInterfaceVrfs({{InterfaceID(55), kTestVrf}});
   // 10.0.0.10 is only reachable in the default VRF
@@ -296,8 +309,8 @@ TEST(VrfNextHop, ResolvesInNextHopVrf) {
 }
 
 TEST(VrfNextHop, ReresolvesOnDefaultVrfChange) {
-  auto config = emptyVrfConfig();
-  auto handle = createTestHandle(&config);
+  auto config = testConfigA();
+  auto handle = createVrfTestHandle(&config);
   auto sw = handle->getSw();
   sw->updateInterfaceVrfs({{InterfaceID(55), kTestVrf}});
   auto vrfRoute = makeRoute("2001:db8:200::/64", "2001:db8:500::1");
@@ -362,8 +375,8 @@ UnicastRoute makeVxlanRoute(
 } // namespace
 
 TEST(VrfNextHop, VxlanNextHopKeepsVtep) {
-  auto config = emptyVrfConfig();
-  auto handle = createTestHandle(&config);
+  auto config = testConfigA();
+  auto handle = createVrfTestHandle(&config);
   auto sw = handle->getSw();
   sw->updateInterfaceVrfs({{InterfaceID(55), kTestVrf}});
 
@@ -413,8 +426,8 @@ TEST(VrfNextHop, VxlanNextHopKeepsVtep) {
 }
 
 TEST(RibToSwitchStateFunction, PreFibUpdateInSameStateUpdate) {
-  auto config = emptyVrfConfig();
-  auto handle = createTestHandle(&config);
+  auto config = testConfigA();
+  auto handle = createVrfTestHandle(&config);
   auto sw = handle->getSw();
   sw->updateInterfaceVrfs({{InterfaceID(55), kTestVrf}});
   StateRecorder recorder(sw);
@@ -450,8 +463,8 @@ TEST(RibToSwitchStateFunction, PreFibUpdateInSameStateUpdate) {
 }
 
 TEST(UpdateInterfaceVrfs, RoutesFollowInterface) {
-  auto config = emptyVrfConfig();
-  auto handle = createTestHandle(&config);
+  auto config = testConfigA();
+  auto handle = createVrfTestHandle(&config);
   auto sw = handle->getSw();
   {
     auto updater = sw->getRouteUpdater();
@@ -486,8 +499,8 @@ TEST(UpdateInterfaceVrfs, RoutesFollowInterface) {
 }
 
 TEST(UpdateInterfaceVrfs, LinkLocalNextHopRouteFollowsInterface) {
-  auto config = emptyVrfConfig();
-  auto handle = createTestHandle(&config);
+  auto config = testConfigA();
+  auto handle = createVrfTestHandle(&config);
   auto sw = handle->getSw();
   auto route = makeRoute("2001:db8:200::/64", "fe80::1");
   route.nextHopAddrs()->front().ifName() = "fboss55";
@@ -514,8 +527,8 @@ TEST(UpdateInterfaceVrfs, LinkLocalNextHopRouteFollowsInterface) {
 }
 
 TEST(UpdateInterfaceVrfs, AddressMapFollowsInterfaceVrfMap) {
-  auto config = emptyVrfConfig();
-  auto handle = createTestHandle(&config);
+  auto config = testConfigA();
+  auto handle = createVrfTestHandle(&config);
   auto sw = handle->getSw();
   const auto& addrToIntf = sw->getAddrToLocalIntfMap();
   const std::pair<RouterID, folly::IPAddress> vrf0Addr{
@@ -538,8 +551,8 @@ TEST(UpdateInterfaceVrfs, AddressMapFollowsInterfaceVrfMap) {
 }
 
 TEST(UpdateInterfaceVrfs, FlushesNeighbors) {
-  auto config = emptyVrfConfig();
-  auto handle = createTestHandle(&config);
+  auto config = testConfigA();
+  auto handle = createVrfTestHandle(&config);
   auto sw = handle->getSw();
   sw->updateStateBlocking(
       "add neighbor", [](const std::shared_ptr<SwitchState>& in) {
@@ -574,8 +587,8 @@ TEST(UpdateInterfaceVrfs, FlushesNeighbors) {
 }
 
 TEST(UpdateInterfaceVrfs, MoveBackToDefaultVrf) {
-  auto config = emptyVrfConfig();
-  auto handle = createTestHandle(&config);
+  auto config = testConfigA();
+  auto handle = createVrfTestHandle(&config);
   auto sw = handle->getSw();
   sw->updateInterfaceVrfs({{InterfaceID(55), kTestVrf}});
   sw->updateInterfaceVrfs({{InterfaceID(55), RouterID(0)}});
@@ -588,8 +601,8 @@ TEST(UpdateInterfaceVrfs, MoveBackToDefaultVrf) {
 }
 
 TEST(UpdateInterfaceVrfs, Rejected) {
-  auto config = emptyVrfConfig();
-  auto handle = createTestHandle(&config);
+  auto config = testConfigA();
+  auto handle = createVrfTestHandle(&config);
   auto sw = handle->getSw();
   EXPECT_THROW(
       sw->updateInterfaceVrfs({{InterfaceID(1234), kTestVrf}}), FbossError);
@@ -599,8 +612,8 @@ TEST(UpdateInterfaceVrfs, Rejected) {
 }
 
 TEST(UpdateInterfaceVrfs, ConfigApplyKeepsBinding) {
-  auto config = emptyVrfConfig();
-  auto handle = createTestHandle(&config);
+  auto config = testConfigA();
+  auto handle = createVrfTestHandle(&config);
   auto sw = handle->getSw();
   sw->updateInterfaceVrfs({{InterfaceID(55), kTestVrf}});
   // A neighbor learned in the new VRF
@@ -635,8 +648,8 @@ TEST(UpdateInterfaceVrfs, ConfigApplyKeepsBinding) {
 }
 
 TEST(UpdateInterfaceVrfs, ConfigApplyKeepsInterfaceOutOfDefaultVrf) {
-  auto config = emptyVrfConfig();
-  auto handle = createTestHandle(&config);
+  auto config = testConfigA();
+  auto handle = createVrfTestHandle(&config);
   auto sw = handle->getSw();
   sw->updateInterfaceVrfs({{InterfaceID(55), kTestVrf}});
   auto route = makeRoute("2001:db8:200::/64", "fe80::1");
@@ -658,8 +671,8 @@ TEST(UpdateInterfaceVrfs, ConfigApplyKeepsInterfaceOutOfDefaultVrf) {
 }
 
 TEST(UpdateInterfaceVrfs, ConfigChangesAddressesOfBoundInterface) {
-  auto config = emptyVrfConfig();
-  auto handle = createTestHandle(&config);
+  auto config = testConfigA();
+  auto handle = createVrfTestHandle(&config);
   auto sw = handle->getSw();
   sw->updateInterfaceVrfs({{InterfaceID(55), kTestVrf}});
 
@@ -684,8 +697,8 @@ TEST(UpdateInterfaceVrfs, ConfigChangesAddressesOfBoundInterface) {
 }
 
 TEST(UpdateInterfaceVrfs, DuplicateSubnetRejected) {
-  auto config = emptyVrfConfig();
-  auto handle = createTestHandle(&config);
+  auto config = testConfigA();
+  auto handle = createVrfTestHandle(&config);
   auto sw = handle->getSw();
   sw->updateInterfaceVrfs({{InterfaceID(55), kTestVrf}});
   // Interface 55 takes interface 1's subnet, which is in VRF 0
@@ -701,10 +714,10 @@ TEST(UpdateInterfaceVrfs, DuplicateSubnetRejected) {
 }
 
 TEST(UpdateInterfaceVrfs, DuplicateSubnetInOneUpdateRejected) {
-  auto config = emptyVrfConfig();
-  config.vrfs()->emplace_back().vrfId() = 1002;
-  auto handle = createTestHandle(&config);
+  auto config = testConfigA();
+  auto handle = createVrfTestHandle(&config);
   auto sw = handle->getSw();
+  sw->addVrfs({makeVrfEntry(RouterID(1002))});
   sw->updateInterfaceVrfs({{InterfaceID(55), kTestVrf}});
   config.interfaces()[1].ipAddresses()[0] = "10.0.0.2/24";
   sw->applyConfig("same subnet in another VRF", config);
@@ -722,8 +735,8 @@ TEST(UpdateInterfaceVrfs, DuplicateSubnetInOneUpdateRejected) {
 }
 
 TEST(UpdateInterfaceVrfs, RemovingBoundInterfaceRejected) {
-  auto config = emptyVrfConfig();
-  auto handle = createTestHandle(&config);
+  auto config = testConfigA();
+  auto handle = createVrfTestHandle(&config);
   auto sw = handle->getSw();
   sw->updateInterfaceVrfs({{InterfaceID(55), kTestVrf}});
 
@@ -746,15 +759,6 @@ TEST(UpdateInterfaceVrfs, RemovingBoundInterfaceRejected) {
   EXPECT_NE(
       sw->getState()->getInterfaces()->getNodeIf(InterfaceID(55)), nullptr);
 }
-
-namespace {
-VrfEntry makeVrfEntry(RouterID vrf, const std::string& name) {
-  VrfEntry entry;
-  entry.vrfId() = vrf;
-  entry.name() = name;
-  return entry;
-}
-} // namespace
 
 TEST(SwSwitchVrfs, AddAndDelete) {
   auto config = testConfigA();
