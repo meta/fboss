@@ -9,6 +9,7 @@
  */
 #include "fboss/agent/SwSwitch.h"
 #include <optional>
+#include <set>
 
 #include "fboss/agent/AgentConfig.h"
 #include "fboss/agent/AgentDirectoryUtil.h"
@@ -188,6 +189,61 @@ DEFINE_int32(rx_pkt_thread_timeout, 100, "Rx packet thread timeout (ms)");
 
 using namespace facebook::fboss;
 namespace {
+
+// Throws if a moved interface would share a subnet with another interface in
+// its new VRF, as config apply does. VRFs are those of in after interfaceVrfs
+// is applied. Link-local IPv6 subnets are not checked.
+void checkSubnetsInVrfs(
+    const std::shared_ptr<SwitchState>& in,
+    const std::map<InterfaceID, RouterID>& interfaceVrfs) {
+  auto vrfAfterMove = [&](InterfaceID intfId) {
+    auto it = interfaceVrfs.find(intfId);
+    return it != interfaceVrfs.end() ? it->second
+                                     : in->getInterfaceVrfs()->getVrf(intfId);
+  };
+  for (const auto& [intfId, vrf] : interfaceVrfs) {
+    auto intf = in->getInterfaces()->getNodeIf(intfId);
+    if (!intf) {
+      throw FbossHwUpdateError(
+          in,
+          in,
+          "Cannot move interface ",
+          intfId,
+          " to VRF ",
+          vrf,
+          ": interface not found in switch state");
+    }
+    std::set<folly::CIDRNetwork> subnets;
+    for (const auto& [ip, mask] : intf->getAddressesCopy()) {
+      if (!(ip.isV6() && ip.isLinkLocal())) {
+        subnets.emplace(ip.mask(mask), mask);
+      }
+    }
+    for (const auto& [_, intfs] : std::as_const(*in->getInterfaces())) {
+      for (const auto& [otherIntfId, otherIntf] : std::as_const(*intfs)) {
+        if (InterfaceID(otherIntfId) == intfId ||
+            vrfAfterMove(InterfaceID(otherIntfId)) != vrf) {
+          continue;
+        }
+        for (const auto& [ip, mask] : otherIntf->getAddressesCopy()) {
+          if (subnets.contains({ip.mask(mask), mask})) {
+            throw FbossHwUpdateError(
+                in,
+                in,
+                "Interface ",
+                intfId,
+                " subnet ",
+                folly::IPAddress::networkToString({ip.mask(mask), mask}),
+                " is on interface ",
+                otherIntfId,
+                " in VRF ",
+                vrf);
+          }
+        }
+      }
+    }
+  }
+}
 
 /**
  * Transforms the IPAddressV6 to MacAddress. RFC 2464
@@ -3844,6 +3900,8 @@ void SwSwitch::updateInterfaceVrfs(
   // rolls back.
   auto moveInterfaces =
       [this, interfaceVrfs](const std::shared_ptr<SwitchState>& in) {
+        // As in config apply, a subnet is on one interface per VRF
+        checkSubnetsInVrfs(in, interfaceVrfs);
         auto newState = in->clone();
         auto interfaceVrfMap = newState->getInterfaceVrfs()->modify(&newState);
         for (const auto& [intfId, vrf] : interfaceVrfs) {

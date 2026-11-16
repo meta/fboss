@@ -845,6 +845,44 @@ TEST(UpdateInterfaceVrfs, ConfigChangesAddressesOfBoundInterface) {
       addrToIntf.end());
 }
 
+TEST(UpdateInterfaceVrfs, DuplicateSubnetRejected) {
+  auto config = emptyVrfConfig();
+  auto handle = createTestHandle(&config);
+  auto sw = handle->getSw();
+  sw->updateInterfaceVrfs({{InterfaceID(55), kTestVrf}});
+  // Interface 55 takes interface 1's subnet, which is in VRF 0
+  config.interfaces()[1].ipAddresses()[0] = "10.0.0.2/24";
+  sw->applyConfig("same subnet in another VRF", config);
+
+  EXPECT_THROW(
+      sw->updateInterfaceVrfs({{InterfaceID(55), RouterID(0)}}), FbossError);
+  auto state = sw->getState();
+  EXPECT_EQ(intf55Vrf(state), kTestVrf);
+  EXPECT_TRUE(hasRoute(state, kTestVrf, "10.0.0.0/24"));
+  EXPECT_TRUE(hasRoute(state, RouterID(0), "10.0.0.0/24"));
+}
+
+TEST(UpdateInterfaceVrfs, DuplicateSubnetInOneUpdateRejected) {
+  auto config = emptyVrfConfig();
+  config.vrfs()->emplace_back().vrfId() = 1002;
+  auto handle = createTestHandle(&config);
+  auto sw = handle->getSw();
+  sw->updateInterfaceVrfs({{InterfaceID(55), kTestVrf}});
+  config.interfaces()[1].ipAddresses()[0] = "10.0.0.2/24";
+  sw->applyConfig("same subnet in another VRF", config);
+
+  // Interfaces 1 and 55 with the same subnet move to one VRF together
+  EXPECT_THROW(
+      sw->updateInterfaceVrfs(
+          {{InterfaceID(1), RouterID(1002)},
+           {InterfaceID(55), RouterID(1002)}}),
+      FbossError);
+  auto state = sw->getState();
+  EXPECT_EQ(state->getInterfaceVrfs()->getVrf(InterfaceID(1)), RouterID(0));
+  EXPECT_EQ(intf55Vrf(state), kTestVrf);
+  EXPECT_FALSE(hasRoute(state, RouterID(1002), "10.0.0.0/24"));
+}
+
 TEST(UpdateInterfaceVrfs, RemovingBoundVrfRejected) {
   auto config = emptyVrfConfig();
   auto handle = createTestHandle(&config);
