@@ -11,6 +11,7 @@
 #pragma once
 
 #include <optional>
+#include <unordered_map>
 #include <unordered_set>
 #include "fboss/agent/if/gen-cpp2/common_types.h"
 #include "fboss/agent/types.h"
@@ -57,6 +58,8 @@ using MySidTable =
  */
 class RibRouteUpdater {
  public:
+  // VRF of each interface
+  using InterfaceToVrf = std::unordered_map<InterfaceID, RouterID>;
   using RouterIDToRouteTable =
       boost::container::flat_map<RouterID, VrfRouteTable>;
 
@@ -67,7 +70,7 @@ class RibRouteUpdater {
       MySidTable* mySidTable,
       uint32_t ecmpWidth,
       RouterID routerID = RouterID(0),
-      const std::unordered_set<InterfaceID>* vrfInterfaces = nullptr,
+      const InterfaceToVrf* interfaceVrfs = nullptr,
       RouterIDToRouteTable* crossVrfRouteTables = nullptr);
 
   RibRouteUpdater(
@@ -78,7 +81,7 @@ class RibRouteUpdater {
       MySidTable* mySidTable,
       uint32_t ecmpWidth,
       RouterID routerID = RouterID(0),
-      const std::unordered_set<InterfaceID>* vrfInterfaces = nullptr,
+      const InterfaceToVrf* interfaceVrfs = nullptr,
       RouterIDToRouteTable* crossVrfRouteTables = nullptr);
 
   struct RouteEntry {
@@ -239,10 +242,15 @@ class RibRouteUpdater {
 
   template <typename AddressT>
   bool needResolve(const std::shared_ptr<Route<AddressT>>& route) const;
-  // Whether intf is in this VRF; always true when interfaces are not
-  // restricted to VRFs
-  bool isInterfaceInVrf(InterfaceID intf) const {
-    return !vrfInterfaces_ || vrfInterfaces_->contains(intf);
+  // Whether intf is in vrf. Interfaces not in interfaceVrfs_ are in VRF 0.
+  bool isInterfaceInVrf(RouterID vrf, InterfaceID intf) const {
+    if (interfaceVrfs_) {
+      auto it = interfaceVrfs_->find(intf);
+      if (it != interfaceVrfs_->end()) {
+        return it->second == vrf;
+      }
+    }
+    return vrf == RouterID(0);
   }
 
   using NextHopIpToForwardInfo =
@@ -255,9 +263,9 @@ class RibRouteUpdater {
   MySidTable* mySidTable_{nullptr};
   uint32_t ecmpWidth_;
   RouterID routerID_{0};
-  // Interface-scoped next hops of client routes resolve only through these.
-  // Null means no restriction.
-  const std::unordered_set<InterfaceID>* vrfInterfaces_{nullptr};
+  // Interface-scoped next hops of client routes resolve only through
+  // interfaces of this VRF. Null means all interfaces are in VRF 0.
+  const InterfaceToVrf* interfaceVrfs_{nullptr};
   RouterIDToRouteTable* crossVrfRouteTables_{nullptr};
   std::unordered_set<void*> needsResolution_;
   std::unordered_set<void*> resolving_;

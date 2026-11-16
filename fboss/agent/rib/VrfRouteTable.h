@@ -16,9 +16,7 @@
 #include <folly/IPAddress.h>
 
 #include <memory>
-#include <optional>
 #include <unordered_map>
-#include <unordered_set>
 
 namespace facebook::fboss {
 
@@ -39,14 +37,6 @@ struct VrfRouteTable {
       unresolvedV6Routes;
   std::unordered_map<LabelID, std::shared_ptr<Route<LabelID>>>
       unresolvedMplsRoutes;
-
-  // Interfaces in this VRF, from config. Interface-scoped next hops of client
-  // routes resolve only through these. Unset means no restriction.
-  std::optional<std::unordered_set<InterfaceID>> interfaces;
-  // Null when interfaces are not restricted
-  const std::unordered_set<InterfaceID>* restrictedInterfaces() const {
-    return interfaces ? &*interfaces : nullptr;
-  }
 
   bool operator==(const VrfRouteTable& other) const {
     return v4NetworkToRoute == other.v4NetworkToRoute &&

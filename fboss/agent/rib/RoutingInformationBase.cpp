@@ -24,6 +24,7 @@
 #include "fboss/agent/state/ForwardingInformationBase.h"
 #include "fboss/agent/state/ForwardingInformationBaseContainer.h"
 #include "fboss/agent/state/ForwardingInformationBaseMap.h"
+#include "fboss/agent/state/InterfaceVrfMap.h"
 #include "fboss/agent/state/MySidMap.h"
 #include "fboss/agent/state/NodeMap-defs.h"
 #include "fboss/agent/state/StateDelta.h"
@@ -521,13 +522,19 @@ void RibRouteTables::updateRib(RouterID vrf, const RibUpdateFn& updateRibFn) {
   updateRib([&](auto* mySidTable,
                 auto* nextHopIDManager,
                 uint32_t ecmpWidth,
-                RouterIDToRouteTable& routeTables) {
+                RouterIDToRouteTable& routeTables,
+                InterfaceToVrf& interfaceVrfs) {
     auto it = routeTables.find(vrf);
     if (it == routeTables.end()) {
       throw FbossError("VRF ", vrf, " not configured");
     }
     updateRibFn(
-        it->second, mySidTable, nextHopIDManager, ecmpWidth, routeTables);
+        it->second,
+        mySidTable,
+        nextHopIDManager,
+        ecmpWidth,
+        routeTables,
+        interfaceVrfs);
   });
 }
 
@@ -538,7 +545,8 @@ void RibRouteTables::updateRib(const RibUpdateFn& updateRibFn) {
       &lockedRouteTables->mySidTable,
       lockedRouteTables->nextHopIDManager.get(),
       lockedRouteTables->ecmpWidth,
-      lockedRouteTables->routerIDToRouteTable);
+      lockedRouteTables->routerIDToRouteTable,
+      lockedRouteTables->interfaceVrfs);
   if (lockedRouteTables->nextHopIDManager) {
     auto* nhIdManager = lockedRouteTables->nextHopIDManager.get();
     const bool hasMySids = !lockedRouteTables->mySidTable.empty();
@@ -565,6 +573,7 @@ void RibRouteTables::updateRib(const RibUpdateFn& updateRibFn) {
 void RibRouteTables::resolveDependentVrfs(
     RouterID changedVrf,
     RouterIDToRouteTable& routeTables,
+    const InterfaceToVrf& interfaceVrfs,
     NextHopIDManager* nextHopIDManager,
     MySidTable* mySidTable,
     uint32_t ecmpWidth,
@@ -587,7 +596,7 @@ void RibRouteTables::resolveDependentVrfs(
         mySidTable,
         ecmpWidth,
         vrf,
-        routeTable.restrictedInterfaces(),
+        &interfaceVrfs,
         &routeTables);
     updater.update({}, {}, std::set<ClientID>{});
     if (cyclesDetectedOut) {
@@ -623,8 +632,7 @@ void RibRouteTables::reconfigure(
     const std::vector<MySidWithNextHops>& staticMySids,
     RibToSwitchStateFunction ribToSwitchStateFunc,
     void* cookie,
-    bool ecmpModeChanged,
-    const std::optional<InterfaceToVrf>& interfaceToVrf) {
+    bool ecmpModeChanged) {
   // Config application is accomplished in the following sequence of steps:
   // 1. Update the VRFs held in RoutingInformationBase's
   // SynchronizedRouteTables data-structure
@@ -646,22 +654,6 @@ void RibRouteTables::reconfigure(
 
   std::vector<RouterID> existingVrfs = getVrfList();
 
-  auto setVrfInterfaces = [&interfaceToVrf](auto& routerIDToRouteTable) {
-    for (auto& [vrf, routeTable] : routerIDToRouteTable) {
-      if (!interfaceToVrf) {
-        routeTable.interfaces.reset();
-        continue;
-      }
-      routeTable.interfaces.emplace();
-      for (const auto& [intf, intfVrf] : *interfaceToVrf) {
-        if (intfVrf == vrf) {
-          routeTable.interfaces->insert(intf);
-        }
-      }
-    }
-  };
-  setVrfInterfaces(synchronizedRouteTables_.wlock()->routerIDToRouteTable);
-
   // FIBs of all VRFs are programmed in one switch state update at the end
   std::vector<VrfFibUpdate> vrfUpdates;
   auto configureRoutesForVrf =
@@ -680,7 +672,8 @@ void RibRouteTables::reconfigure(
                 auto* mySidTable,
                 auto* nextHopIDManager,
                 uint32_t ecmpWidth,
-                RouterIDToRouteTable& routeTables) {
+                RouterIDToRouteTable& routeTables,
+                const InterfaceToVrf& interfaceVrfs) {
               ConfigApplier configApplier(
                   vrf,
                   &(routeTable.v4NetworkToRoute),
@@ -710,7 +703,7 @@ void RibRouteTables::reconfigure(
                   nextHopIDManager,
                   mySidTable,
                   ecmpWidth,
-                  routeTable.restrictedInterfaces(),
+                  &interfaceVrfs,
                   &routeTables);
               // Apply config
               configApplier.apply();
@@ -742,7 +735,8 @@ void RibRouteTables::reconfigure(
             auto* mySidTable,
             auto* nextHopIDManager,
             uint32_t ecmpWidth,
-            auto& /*routeTables*/) {
+            auto& /*routeTables*/,
+            auto& /*interfaceVrfs*/) {
           RibRouteUpdater updater(
               &routeTable.v4NetworkToRoute,
               &routeTable.v6NetworkToRoute,
@@ -764,7 +758,6 @@ void RibRouteTables::reconfigure(
     for (const auto& [vrf, interfaceRoutes] : configRouterIDToInterfaceRoutes) {
       lockedRouteTables->routerIDToRouteTable.try_emplace(vrf);
     }
-    setVrfInterfaces(lockedRouteTables->routerIDToRouteTable);
   }
   for (const auto& [vrf, interfaceRoutes] : configRouterIDToInterfaceRoutes) {
     configureRoutesForVrf(vrf, interfaceRoutes);
@@ -793,15 +786,14 @@ void RibRouteTables::updateInterfaceVrfs(
     const RibToSwitchStateFunction& ribToSwitchStateFunc,
     void* cookie) {
   std::vector<RouterID> vrfsToProgram;
-  boost::container::
-      flat_map<RouterID, std::optional<std::unordered_set<InterfaceID>>>
-          oldVrfInterfaces;
+  InterfaceToVrf oldInterfaceVrfs;
   // updateRib holds the lock and resolves MySids and named next hop groups
   // after the routes change
   updateRib([&](auto* mySidTable,
                 auto* nextHopIDManager,
                 uint32_t ecmpWidth,
-                RouterIDToRouteTable& routeTables) {
+                RouterIDToRouteTable& routeTables,
+                InterfaceToVrf& interfaceVrfs) {
     for (const auto& [intf, vrf] : interfaceToVrf) {
       if (!routeTables.contains(vrf)) {
         throw FbossError("VRF ", vrf, " not configured");
@@ -809,10 +801,13 @@ void RibRouteTables::updateInterfaceVrfs(
     }
     // Interfaces already in their new VRF are left alone
     InterfaceToVrf moves;
+    std::set<RouterID> oldVrfs;
     for (const auto& [intf, vrf] : interfaceToVrf) {
-      const auto& vrfInterfaces = routeTables.find(vrf)->second.interfaces;
-      if (!vrfInterfaces || !vrfInterfaces->contains(intf)) {
+      auto it = interfaceVrfs.find(intf);
+      auto oldVrf = it == interfaceVrfs.end() ? RouterID(0) : it->second;
+      if (oldVrf != vrf) {
         moves.emplace(intf, vrf);
+        oldVrfs.insert(oldVrf);
       }
     }
     if (moves.empty()) {
@@ -844,20 +839,12 @@ void RibRouteTables::updateInterfaceVrfs(
         }
       }
     };
-    // Only the VRFs the moved interfaces are in now have routes to move.
-    // Without interface lists, all interfaces are in VRF 0.
-    for (const auto& [vrf, routeTable] : routeTables) {
-      bool hasMovedInterface = routeTable.interfaces
-          ? std::any_of(
-                moves.begin(),
-                moves.end(),
-                [&routeTable](const auto& move) {
-                  return routeTable.interfaces->contains(move.first);
-                })
-          : vrf == RouterID(0);
-      if (!hasMovedInterface) {
-        continue;
-      }
+    // Only the VRFs the moved interfaces are in now have routes to move. A
+    // VRF is deleted only when no interface is in it.
+    for (auto vrf : oldVrfs) {
+      auto it = routeTables.find(vrf);
+      CHECK(it != routeTables.end()) << "VRF " << vrf << " of an interface";
+      const auto& routeTable = it->second;
       findMoves(vrf, routeTable.v4NetworkToRoute);
       findMoves(vrf, routeTable.v6NetworkToRoute);
     }
@@ -865,33 +852,23 @@ void RibRouteTables::updateInterfaceVrfs(
     // VRFs whose interfaces or interface routes change. The target VRFs
     // are always programmed, so the switch state update runs and the
     // caller can check the move against the latest state.
-    std::set<RouterID> changedVrfs;
+    std::set<RouterID> changedVrfs = oldVrfs;
     for (const auto& [intf, vrf] : moves) {
       changedVrfs.insert(vrf);
-    }
-    for (auto& [vrf, routeTable] : routeTables) {
-      oldVrfInterfaces.emplace(vrf, routeTable.interfaces);
-      if (!routeTable.interfaces) {
-        // Interfaces are not restricted to VRFs
-        continue;
-      }
-      auto oldInterfaces = *routeTable.interfaces;
-      for (const auto& [intf, intfVrf] : moves) {
-        if (intfVrf == vrf) {
-          routeTable.interfaces->insert(intf);
-        } else {
-          routeTable.interfaces->erase(intf);
-        }
-      }
-      if (*routeTable.interfaces != oldInterfaces) {
-        changedVrfs.insert(vrf);
-      }
     }
     for (const auto& [vrf, routes] : toDel) {
       changedVrfs.insert(vrf);
     }
     for (const auto& [vrf, routes] : toAdd) {
       changedVrfs.insert(vrf);
+    }
+    oldInterfaceVrfs = interfaceVrfs;
+    for (const auto& [intf, vrf] : moves) {
+      if (vrf == RouterID(0)) {
+        interfaceVrfs.erase(intf);
+      } else {
+        interfaceVrfs[intf] = vrf;
+      }
     }
 
     // VRF 0, where other VRFs can resolve next hops, goes first
@@ -922,7 +899,7 @@ void RibRouteTables::updateInterfaceVrfs(
           mySidTable,
           ecmpWidth,
           vrf,
-          routeTable.restrictedInterfaces(),
+          &interfaceVrfs,
           &routeTables);
       updater.update(
           {{ClientID::INTERFACE_ROUTE, toAdd[vrf]},
@@ -936,6 +913,7 @@ void RibRouteTables::updateInterfaceVrfs(
       resolveDependentVrfs(
           RouterID(0),
           routeTables,
+          interfaceVrfs,
           nextHopIDManager,
           mySidTable,
           ecmpWidth,
@@ -954,12 +932,8 @@ void RibRouteTables::updateInterfaceVrfs(
     // On failure, updateFib rebuilds the routes from the applied state
     updateFib(resolver, vrfsToProgram, ribToSwitchStateFunc, cookie);
   } catch (const FbossHwUpdateError&) {
-    auto lockedRouteTables = synchronizedRouteTables_.wlock();
-    for (auto& [vrf, routeTable] : lockedRouteTables->routerIDToRouteTable) {
-      if (auto it = oldVrfInterfaces.find(vrf); it != oldVrfInterfaces.end()) {
-        routeTable.interfaces = it->second;
-      }
-    }
+    synchronizedRouteTables_.wlock()->interfaceVrfs =
+        std::move(oldInterfaceVrfs);
     throw;
   }
 }
@@ -1035,7 +1009,8 @@ void RibRouteTables::updateRemoteInterfaceRoutes(
               auto* mySidTable,
               auto* nextHopIDManager,
               uint32_t ecmpWidth,
-              RouterIDToRouteTable& routeTables) {
+              RouterIDToRouteTable& routeTables,
+              const InterfaceToVrf& interfaceVrfs) {
             if (toDelIter != toDel.end()) {
               for (const auto& [network, intfID] : toDelIter->second) {
                 // Remote interface route deletion is guarded by the
@@ -1067,7 +1042,7 @@ void RibRouteTables::updateRemoteInterfaceRoutes(
                 mySidTable,
                 ecmpWidth,
                 vrf,
-                routeTable.restrictedInterfaces(),
+                &interfaceVrfs,
                 &routeTables);
             updater.update(
                 {{ClientID::REMOTE_INTERFACE_ROUTE, toAddRoutes}},
@@ -1076,6 +1051,7 @@ void RibRouteTables::updateRemoteInterfaceRoutes(
             resolveDependentVrfs(
                 vrf,
                 routeTables,
+                interfaceVrfs,
                 nextHopIDManager,
                 mySidTable,
                 ecmpWidth,
@@ -1107,7 +1083,8 @@ void RibRouteTables::update(
           auto* mySidTable,
           auto* nextHopIDManager,
           uint32_t ecmpWidth,
-          RouterIDToRouteTable& routeTables) {
+          RouterIDToRouteTable& routeTables,
+          const InterfaceToVrf& interfaceVrfs) {
         // Owned, so resolve in place rather than copy every next-hop set.
         auto& resolvedRoutes = toAddRoutes;
         if constexpr (std::is_same_v<RouteType, RibRouteUpdater::RouteEntry>) {
@@ -1164,7 +1141,7 @@ void RibRouteTables::update(
             mySidTable,
             ecmpWidth,
             routerID,
-            routeTable.restrictedInterfaces(),
+            &interfaceVrfs,
             &routeTables);
         updater.update(
             clientID, resolvedRoutes, toDelPrefixes, resetClientsRoutes);
@@ -1174,6 +1151,7 @@ void RibRouteTables::update(
         resolveDependentVrfs(
             routerID,
             routeTables,
+            interfaceVrfs,
             nextHopIDManager,
             mySidTable,
             ecmpWidth,
@@ -1478,7 +1456,8 @@ void RibRouteTables::setClassID(
           auto* /*mySidTable*/,
           auto* /*nextHopIDManager*/,
           uint32_t /*ecmpWidth*/,
-          auto& /*routeTables*/) {
+          auto& /*routeTables*/,
+          auto& /*interfaceVrfs*/) {
         // Update rib
         auto updateRoute = [&classId](auto& rib, auto ip, uint8_t mask) {
           auto ritr = rib.exactMatch(ip, mask);
@@ -1513,7 +1492,8 @@ void RibRouteTables::setOverrideEcmpMode(
           auto* /*mySidTable*/,
           auto* /*nextHopIDManager*/,
           uint32_t /*ecmpWidth*/,
-          auto& /*routeTables*/) {
+          auto& /*routeTables*/,
+          auto& /*interfaceVrfs*/) {
         // Update rib
         auto updateRoute =
             [](auto& rib,
@@ -1561,7 +1541,8 @@ void RibRouteTables::setOverrideEcmpNhops(
           auto* /*mySidTable*/,
           auto* /*nextHopIDManager*/,
           uint32_t /*ecmpWidth*/,
-          auto& /*routeTables*/) {
+          auto& /*routeTables*/,
+          auto& /*interfaceVrfs*/) {
         // Update rib
         auto updateRoute =
             [](auto& rib,
@@ -1674,8 +1655,7 @@ void RoutingInformationBase::reconfigure(
     const std::vector<MySidWithNextHops>& staticMySids,
     RibToSwitchStateFunction ribToSwitchStateFunc,
     void* cookie,
-    bool ecmpModeChanged,
-    const std::optional<InterfaceToVrf>& interfaceToVrf) {
+    bool ecmpModeChanged) {
   ensureRunning();
   auto updateFn = [&] {
     ribTables_.reconfigure(
@@ -1691,8 +1671,7 @@ void RoutingInformationBase::reconfigure(
         staticMySids,
         ribToSwitchStateFunc,
         cookie,
-        ecmpModeChanged,
-        interfaceToVrf);
+        ecmpModeChanged);
   };
   ribUpdateEventBase_.runInFbossEventBaseThreadAndWait(updateFn);
 }
@@ -1935,11 +1914,20 @@ RibRouteTables RibRouteTables::fromThrift(
     const std::shared_ptr<MultiLabelForwardingInformationBase>& labelFib,
     const std::shared_ptr<MultiSwitchMySidMap>& mySidMap,
     uint32_t ecmpWidth,
-    const std::shared_ptr<MultiSwitchClassBasedPolicyMap>&
-        classBasedPolicyMaps) {
+    const std::shared_ptr<MultiSwitchClassBasedPolicyMap>& classBasedPolicyMaps,
+    const std::shared_ptr<MultiSwitchInterfaceVrfMap>& interfaceVrfs) {
   RibRouteTables rib;
   auto lockedRouteTables = rib.synchronizedRouteTables_.wlock();
   lockedRouteTables->ecmpWidth = ecmpWidth;
+  // Interface VRFs are not in the RIB warm boot state
+  if (interfaceVrfs) {
+    for (const auto& [_, intfVrfs] : std::as_const(*interfaceVrfs)) {
+      for (const auto& [intf, intfVrf] : std::as_const(*intfVrfs)) {
+        lockedRouteTables->interfaceVrfs.emplace(
+            InterfaceID(intf), intfVrf->getVrf());
+      }
+    }
+  }
 
   for (const auto& [rid, table] : ribThrift) {
     VrfRouteTable rtable = VrfRouteTable::fromThrift(table);
@@ -2044,8 +2032,8 @@ std::unique_ptr<RoutingInformationBase> RoutingInformationBase::fromThrift(
     const std::shared_ptr<MultiLabelForwardingInformationBase>& labelFib,
     const std::shared_ptr<MultiSwitchMySidMap>& mySidMap,
     uint32_t ecmpWidth,
-    const std::shared_ptr<MultiSwitchClassBasedPolicyMap>&
-        classBasedPolicyMaps) {
+    const std::shared_ptr<MultiSwitchClassBasedPolicyMap>& classBasedPolicyMaps,
+    const std::shared_ptr<MultiSwitchInterfaceVrfMap>& interfaceVrfs) {
   auto rib = std::make_unique<RoutingInformationBase>();
   rib->ribTables_ = RibRouteTables::fromThrift(
       ribThrift,
@@ -2053,7 +2041,8 @@ std::unique_ptr<RoutingInformationBase> RoutingInformationBase::fromThrift(
       labelFib,
       mySidMap,
       ecmpWidth,
-      classBasedPolicyMaps);
+      classBasedPolicyMaps,
+      interfaceVrfs);
   return rib;
 }
 

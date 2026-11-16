@@ -95,7 +95,7 @@ RibRouteUpdater::RibRouteUpdater(
     MySidTable* mySidTable,
     uint32_t ecmpWidth,
     RouterID routerID,
-    const std::unordered_set<InterfaceID>* vrfInterfaces,
+    const InterfaceToVrf* interfaceVrfs,
     RouterIDToRouteTable* crossVrfRouteTables)
     : v4Routes_(v4Routes),
       v6Routes_(v6Routes),
@@ -103,7 +103,7 @@ RibRouteUpdater::RibRouteUpdater(
       mySidTable_(mySidTable),
       ecmpWidth_(ecmpWidth),
       routerID_(routerID),
-      vrfInterfaces_(vrfInterfaces),
+      interfaceVrfs_(interfaceVrfs),
       crossVrfRouteTables_(crossVrfRouteTables),
       weightNormalizer_(
           FLAGS_nsf_num_racks_per_pod,
@@ -121,7 +121,7 @@ RibRouteUpdater::RibRouteUpdater(
     MySidTable* mySidTable,
     uint32_t ecmpWidth,
     RouterID routerID,
-    const std::unordered_set<InterfaceID>* vrfInterfaces,
+    const InterfaceToVrf* interfaceVrfs,
     RouterIDToRouteTable* crossVrfRouteTables)
     : v4Routes_(v4Routes),
       v6Routes_(v6Routes),
@@ -130,7 +130,7 @@ RibRouteUpdater::RibRouteUpdater(
       mySidTable_(mySidTable),
       ecmpWidth_(ecmpWidth),
       routerID_(routerID),
-      vrfInterfaces_(vrfInterfaces),
+      interfaceVrfs_(interfaceVrfs),
       crossVrfRouteTables_(crossVrfRouteTables),
       weightNormalizer_(
           FLAGS_nsf_num_racks_per_pod,
@@ -1168,7 +1168,7 @@ std::shared_ptr<Route<AddressT>> RibRouteUpdater::resolveOne(
               << "Next hop:" << nh << " cannot be associated with a RIF";
           if (clientId != kInterfaceRouteClientId &&
               clientId != kRemoteInterfaceRouteClientId &&
-              !isInterfaceInVrf(*nh.intfID())) {
+              !isInterfaceInVrf(routerID_, *nh.intfID())) {
             XLOG(DBG2) << "Next hop " << nh << " of " << route->str()
                        << " is unresolved: interface " << *nh.intfID()
                        << " is not in VRF " << routerID_;

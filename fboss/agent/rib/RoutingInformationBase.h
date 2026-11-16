@@ -36,6 +36,7 @@ class SwitchState;
 class MultiSwitchFibInfoMap;
 class MultiSwitchMySidMap;
 class MultiSwitchClassBasedPolicyMap;
+class MultiSwitchInterfaceVrfMap;
 class SwitchIdScopeResolver;
 class StateDelta;
 
@@ -246,8 +247,7 @@ class RibRouteTables {
       const std::vector<MySidWithNextHops>& staticMySids,
       RibToSwitchStateFunction ribToSwitchStateFunc,
       void* cookie,
-      bool ecmpModeChanged = false,
-      const std::optional<InterfaceToVrf>& interfaceToVrf = std::nullopt);
+      bool ecmpModeChanged = false);
 
   // ECMP width used to normalize nexthops in the RIB, sourced from
   // cfg.SwitchSettings.ecmpWidth; set at config apply.
@@ -296,7 +296,9 @@ class RibRouteTables {
       const std::shared_ptr<MultiSwitchMySidMap>& mySidMap,
       uint32_t ecmpWidth,
       const std::shared_ptr<MultiSwitchClassBasedPolicyMap>&
-          classBasedPolicyMaps);
+          classBasedPolicyMaps,
+      const std::shared_ptr<MultiSwitchInterfaceVrfMap>& interfaceVrfs =
+          nullptr);
 
   void ensureVrf(RouterID rid);
   std::vector<RouterID> getVrfList() const;
@@ -402,6 +404,9 @@ class RibRouteTables {
         FLAGS_enable_nexthop_id_manager ? std::make_unique<NextHopIDManager>()
                                         : nullptr};
     uint32_t ecmpWidth{FLAGS_ecmp_width};
+    // VRFs of the interfaces that are not in VRF 0. Interface-scoped next
+    // hops of client routes resolve only through interfaces of their VRF.
+    InterfaceToVrf interfaceVrfs;
   };
 
   using SynchronizedRouteTables = folly::Synchronized<RouteTables>;
@@ -411,6 +416,7 @@ class RibRouteTables {
   static void resolveDependentVrfs(
       RouterID changedVrf,
       RouterIDToRouteTable& routeTables,
+      const InterfaceToVrf& interfaceVrfs,
       NextHopIDManager* nextHopIDManager,
       MySidTable* mySidTable,
       uint32_t ecmpWidth,
@@ -621,9 +627,7 @@ class RoutingInformationBase {
       void* cookie,
       // Set when config changed the ECMP backup switching mode. Overrides then
       // changed outside any fib update, so sync them for all routes.
-      bool ecmpModeChanged = false,
-      // VRF of each configured interface; restricts interface-scoped next hops
-      const std::optional<InterfaceToVrf>& interfaceToVrf = std::nullopt);
+      bool ecmpModeChanged = false);
 
   void setEcmpWidth(uint32_t ecmpWidth);
   uint32_t getEcmpWidth() const;
@@ -697,7 +701,10 @@ class RoutingInformationBase {
       const std::shared_ptr<MultiSwitchMySidMap>& mySidMap,
       uint32_t ecmpWidth,
       const std::shared_ptr<MultiSwitchClassBasedPolicyMap>&
-          classBasedPolicyMaps);
+          classBasedPolicyMaps,
+      // Interface VRFs of the warm boot state
+      const std::shared_ptr<MultiSwitchInterfaceVrfMap>& interfaceVrfs =
+          nullptr);
 
   void ensureVrf(RouterID rid) {
     ribTables_.ensureVrf(rid);

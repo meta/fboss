@@ -561,7 +561,7 @@ TEST_F(RibRollbackTest, rollbackInterfaceVrfMove) {
   };
   ASSERT_TRUE(hasRoute());
 
-  // Config adds another VRF and puts interface 1 in the default VRF
+  // Config adds another VRF; interface 1 is in the default VRF
   const RouterID kOtherVrf(1001);
   rib_.reconfigure(
       scopeResolver(),
@@ -575,9 +575,7 @@ TEST_F(RibRollbackTest, rollbackInterfaceVrfMove) {
       {},
       {},
       ribToSwitchStateUpdate,
-      &switchState_,
-      false,
-      RoutingInformationBase::InterfaceToVrf{{InterfaceID(1), kRid}});
+      &switchState_);
   ASSERT_TRUE(hasRoute());
 
   // Moving interface 1 to the other VRF fails to program

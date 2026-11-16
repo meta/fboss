@@ -670,6 +670,29 @@ TEST(UpdateInterfaceVrfs, ConfigApplyKeepsBinding) {
       1);
 }
 
+TEST(UpdateInterfaceVrfs, ConfigApplyKeepsInterfaceOutOfDefaultVrf) {
+  auto config = emptyVrfConfig();
+  auto handle = createTestHandle(&config);
+  auto sw = handle->getSw();
+  sw->updateInterfaceVrfs({{InterfaceID(55), kTestVrf}});
+  auto route = makeRoute("2001:db8:200::/64", "fe80::1");
+  route.nextHopAddrs()->front().ifName() = "fboss55";
+  auto updater = sw->getRouteUpdater();
+  updater.addRoute(RouterID(0), ClientID::BGPD, route);
+  updater.program();
+  ASSERT_FALSE(hasRoute(sw->getState(), RouterID(0), "2001:db8:200::/64"));
+
+  cfg::StaticRouteNoNextHops nullRoute;
+  nullRoute.routerID() = 0;
+  nullRoute.prefix() = "2001:db8:300::/64";
+  config.staticRoutesToNull()->push_back(nullRoute);
+  sw->applyConfig("add static route", config);
+
+  // Interface 55 is still not usable in the default VRF
+  EXPECT_FALSE(hasRoute(sw->getState(), RouterID(0), "2001:db8:200::/64"));
+  EXPECT_TRUE(hasRoute(sw->getState(), RouterID(0), "2001:db8:300::/64"));
+}
+
 TEST(UpdateInterfaceVrfs, ConfigChangesAddressesOfBoundInterface) {
   auto config = emptyVrfConfig();
   auto handle = createTestHandle(&config);

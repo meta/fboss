@@ -1,9 +1,11 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include "fboss/agent/AddressUtil.h"
+#include "fboss/agent/HwSwitchMatcher.h"
 #include "fboss/agent/SwitchIdScopeResolver.h"
 #include "fboss/agent/Utils.h"
 #include "fboss/agent/rib/RoutingInformationBase.h"
+#include "fboss/agent/state/InterfaceVrfMap.h"
 
 #include <folly/IPAddress.h>
 #include <gtest/gtest.h>
@@ -53,6 +55,13 @@ UnicastRoute makeRoute(const std::string& prefix, const NextHopThrift& nhop) {
   return route;
 }
 
+// Route over a link-local next hop of an interface
+UnicastRoute makeLinkLocalRoute(const std::string& prefix, int intf) {
+  auto nhop = makeNextHop("fe80::10", {});
+  nhop.address()->ifName() = folly::to<std::string>("fboss", intf);
+  return makeRoute(prefix, nhop);
+}
+
 UnicastRoute makeOverlayRoute(
     const std::string& prefix,
     const NextHopThrift& nhop) {
@@ -79,9 +88,7 @@ class CrossVrfResolutionTest : public ::testing::Test {
     reconfigure();
   }
 
-  void reconfigure(
-      const std::optional<RoutingInformationBase::InterfaceToVrf>&
-          interfaceToVrf = std::nullopt) {
+  void reconfigure() {
     rib_.reconfigure(
         scopeResolver(),
         interfaceRoutes_,
@@ -94,9 +101,7 @@ class CrossVrfResolutionTest : public ::testing::Test {
         {},
         {},
         fibUpdate(),
-        nullptr,
-        false,
-        interfaceToVrf);
+        nullptr);
   }
 
   RibToSwitchStateFunction fibUpdate() {
@@ -591,12 +596,8 @@ class InterfaceVrfMoveTest : public CrossVrfResolutionTest {
  protected:
   void SetUp() override {
     CrossVrfResolutionTest::SetUp();
-    // Interfaces are restricted to their VRF
-    reconfigure(
-        RoutingInformationBase::InterfaceToVrf{
-            {InterfaceID(1), kVrf0},
-            {InterfaceID(2), kVrf0},
-            {InterfaceID(55), kTenantVrf}});
+    // Interface 55 is in the tenant VRF
+    updateInterfaceVrfs({{InterfaceID(55), kTenantVrf}});
   }
   void updateInterfaceVrfs(const RoutingInformationBase::InterfaceToVrf& map) {
     rib_.updateInterfaceVrfs(scopeResolver(), map, fibUpdate(), nullptr);
@@ -686,4 +687,50 @@ TEST_F(InterfaceVrfMoveTest, UnknownVrfRejected) {
       updateInterfaceVrfs({{InterfaceID(2), RouterID(2002)}}), FbossError);
   EXPECT_TRUE(fibUpdates_.empty());
   EXPECT_FALSE(nextHops(kVrf0, "2001:db8:2::1").empty());
+}
+
+TEST_F(InterfaceVrfMoveTest, LinkLocalNextHopOnlyInInterfaceVrf) {
+  addRoute(kVrf0, makeLinkLocalRoute("2001:db8:100::/64", 55));
+  addRoute(kTenantVrf, makeLinkLocalRoute("2001:db8:200::/64", 55));
+  addRoute(kTenantVrf, makeLinkLocalRoute("2001:db8:300::/64", 1));
+  EXPECT_TRUE(nextHops(kVrf0, "2001:db8:100::1").empty());
+  EXPECT_FALSE(nextHops(kTenantVrf, "2001:db8:200::1").empty());
+  EXPECT_TRUE(nextHops(kTenantVrf, "2001:db8:300::1").empty());
+}
+
+TEST_F(InterfaceVrfMoveTest, WarmBootKeepsInterfaceVrfs) {
+  auto interfaceVrfs = std::make_shared<MultiSwitchInterfaceVrfMap>();
+  interfaceVrfs->addNode(
+      std::make_shared<InterfaceVrf>(InterfaceID(55), kTenantVrf),
+      HwSwitchMatcher(std::unordered_set<SwitchID>({SwitchID(0)})));
+  std::map<int32_t, state::RouteTableFields> routeTables{
+      {kVrf0, state::RouteTableFields{}},
+      {kTenantVrf, state::RouteTableFields{}}};
+
+  auto rib = RoutingInformationBase::fromThrift(
+      routeTables,
+      nullptr /* fibsInfoMap */,
+      nullptr /* labelFib */,
+      nullptr /* mySidMap */,
+      rib_.getEcmpWidth(),
+      nullptr /* classBasedPolicyMaps */,
+      interfaceVrfs);
+  rib->reconfigure(
+      scopeResolver(),
+      interfaceRoutes_,
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      fibUpdate(),
+      nullptr);
+  // Interface 55 is already in the tenant VRF
+  fibUpdates_.clear();
+  rib->updateInterfaceVrfs(
+      scopeResolver(), {{InterfaceID(55), kTenantVrf}}, fibUpdate(), nullptr);
+  EXPECT_TRUE(fibUpdates_.empty());
 }

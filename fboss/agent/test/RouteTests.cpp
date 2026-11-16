@@ -1172,15 +1172,14 @@ TEST_F(RouteTest, applyNewConfig) {
   config.interfaces()[5].vlanID() = 6;
   config.vrfs().ensure().emplace_back().vrfId() = 1;
   config.interfaces()[5].mac() = "00:00:00:00:00:66";
+
+  auto stateV0 = this->sw_->getState();
+  // interface 6 is created, moved to VRF 1, and then gets its addresses
+  this->sw_->applyConfig("Create interface 6", config);
+  this->sw_->updateInterfaceVrfs({{InterfaceID(6), RouterID(1)}});
   config.interfaces()[5].ipAddresses()->resize(2);
   config.interfaces()[5].ipAddresses()[0] = "5.1.1.1/24";
   config.interfaces()[5].ipAddresses()[1] = "::1/48";
-
-  // interface 6 is created in VRF 1
-  this->sw_->updateStateBlocking("bind interface 6", [](const auto& state) {
-    return preBindInterfaceVrfs(state, {{InterfaceID(6), RouterID(1)}});
-  });
-  auto stateV0 = this->sw_->getState();
   this->sw_->applyConfig("Apply config1", config);
   auto stateV1 = this->sw_->getState();
   ASSERT_NE(nullptr, stateV1);
@@ -1224,6 +1223,9 @@ TEST_F(RouteTest, applyNewConfig) {
   config.interfaces()[6].vlanID() = 7;
   config.vrfs().ensure().emplace_back().vrfId() = 2;
   config.interfaces()[6].mac() = "00:00:00:00:00:77";
+  // interface 7 is created and moved to VRF 2
+  this->sw_->applyConfig("Create interface 7", config);
+  this->sw_->updateInterfaceVrfs({{InterfaceID(7), RouterID(2)}});
   config.interfaces()[6].ipAddresses()->resize(2);
   config.interfaces()[6].ipAddresses()[0] = "1.1.1.1/24";
   config.interfaces()[6].ipAddresses()[1] = "::1/48";
@@ -1231,10 +1233,6 @@ TEST_F(RouteTest, applyNewConfig) {
   config.interfaces()[5].ipAddresses()->resize(2);
   config.interfaces()[5].ipAddresses()[0] = "5.2.2.1/24";
   config.interfaces()[5].ipAddresses()[1] = "5::6/48";
-  // interface 7 is created in VRF 2
-  this->sw_->updateStateBlocking("bind interface 7", [](const auto& state) {
-    return preBindInterfaceVrfs(state, {{InterfaceID(7), RouterID(2)}});
-  });
   this->sw_->applyConfig("Apply config", config);
   // then move interface 6 to the default VRF
   this->sw_->updateInterfaceVrfs({{InterfaceID(6), RouterID(0)}});

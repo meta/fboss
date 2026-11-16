@@ -71,7 +71,7 @@ class ConfigApplier {
       NextHopIDManager* nextHopIDManager,
       MySidTable* mySidTable,
       uint32_t ecmpWidth,
-      const std::unordered_set<InterfaceID>* vrfInterfaces = nullptr,
+      const RibRouteUpdater::InterfaceToVrf* interfaceVrfs = nullptr,
       RibRouteUpdater::RouterIDToRouteTable* crossVrfRouteTables = nullptr);
 
   void apply();
@@ -106,7 +106,7 @@ class ConfigApplier {
   NextHopIDManager* nextHopIDManager_{nullptr};
   MySidTable* mySidTable_{nullptr};
   uint32_t ecmpWidth_;
-  const std::unordered_set<InterfaceID>* vrfInterfaces_;
+  const RibRouteUpdater::InterfaceToVrf* interfaceVrfs_;
   RibRouteUpdater::RouterIDToRouteTable* crossVrfRouteTables_{nullptr};
 };
 
