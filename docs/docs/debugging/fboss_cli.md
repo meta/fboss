@@ -1275,7 +1275,7 @@ fboss2-dev config session commit
 
 | Command | Description |
 |---------|-------------|
-| `show config running` | Show the current in-memory configuration of the agent |
+| `show config running agent`, `show config running bgp` | Show the current in-memory configuration of the agent or BGP daemon |
 | `config session diff` | Show pending changes (session vs live, session vs revision, or revision vs revision) |
 | `config session commit` | Apply staged changes to all affected services |
 | `config session rebase` | Reapply uncommitted changes on top of current startup config |

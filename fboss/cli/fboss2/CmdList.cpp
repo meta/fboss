@@ -42,6 +42,8 @@
 #include "fboss/cli/fboss2/commands/show/agent/CmdShowAgentSsl.h"
 #include "fboss/cli/fboss2/commands/show/aggregateport/CmdShowAggregatePort.h"
 #include "fboss/cli/fboss2/commands/show/arp/CmdShowArp.h"
+#include "fboss/cli/fboss2/commands/show/bgp/config/CmdShowConfigRunningBgp.h"
+#include "fboss/cli/fboss2/commands/show/config/CmdShowConfigRunningAgent.h"
 #include "fboss/cli/fboss2/commands/show/cpuport/CmdShowCpuPort.h"
 #include "fboss/cli/fboss2/commands/show/dsf/CmdShowDsf.h"
 #include "fboss/cli/fboss2/commands/show/dsf/subscription/CmdShowDsfSubscription.h"
@@ -189,6 +191,20 @@ const CommandTree& kCommandTree() {
        commandHandler<CmdShowArp>,
        validFilterHandler<CmdShowArp>,
        argTypeHandler<CmdShowArpTraits>},
+
+      {"show",
+       "config",
+       "Show config info for various binaries",
+       {{"running",
+         "Show running config for various binaries",
+         {{"agent",
+           "Show Agent running config",
+           commandHandler<CmdShowConfigRunningAgent>,
+           argTypeHandler<CmdShowConfigDynamicTraits>},
+          {"bgp",
+           "Show BGP running config",
+           commandHandler<CmdShowConfigRunningBgp>,
+           argTypeHandler<CmdShowConfigRunningBgpTraits>}}}}},
 
       {"show",
        "fabric",

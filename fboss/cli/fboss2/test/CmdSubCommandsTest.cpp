@@ -373,6 +373,22 @@ TEST_F(CmdSubCommandsTest, InitWithMultipleVerbs) {
   EXPECT_NE(utils::getSubcommandIf(*clearCmd, "object2"), nullptr);
 }
 
+TEST_F(CmdSubCommandsTest, RegistersRunningConfigFromSharedCommandTree) {
+  CmdSubcommands::getInstance()->init(*app_, kCommandTree(), {}, {});
+
+  auto* showCmd = utils::getSubcommandIf(*app_, "show");
+  ASSERT_NE(showCmd, nullptr);
+  auto* configCmd = utils::getSubcommandIf(*showCmd, "config");
+  ASSERT_NE(configCmd, nullptr);
+  auto* runningCmd = utils::getSubcommandIf(*configCmd, "running");
+  ASSERT_NE(runningCmd, nullptr);
+
+  for (const auto* daemon : {"agent", "bgp"}) {
+    SCOPED_TRACE(daemon);
+    EXPECT_NE(utils::getSubcommandIf(*runningCmd, daemon), nullptr);
+  }
+}
+
 TEST_F(CmdSubCommandsTest, RegistersLocalOptionsFromRealCommandTree) {
   /*
    * A command's LocalOptions only reach CLI11 if its entry in the command

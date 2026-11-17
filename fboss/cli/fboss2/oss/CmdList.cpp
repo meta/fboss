@@ -44,7 +44,6 @@
 #include "fboss/cli/fboss2/commands/show/bgp/table/CmdShowBgpTableSummary.h"
 #include "fboss/cli/fboss2/commands/show/bgp/updategroup/CmdShowBgpUpdateGroup.h"
 #include "fboss/cli/fboss2/commands/show/config/CmdShowConfigHistoryAgent.h"
-#include "fboss/cli/fboss2/commands/show/config/CmdShowConfigRunningAgent.h"
 #include "fboss/cli/fboss2/commands/show/config/CmdShowConfigTraits.h"
 #include "fboss/cli/fboss2/commands/show/version/CmdShowVersionDistro.h"
 
@@ -269,15 +268,7 @@ const CommandTree& kBaseAdditionalCommandTree() {
       {"show",
        "config",
        "Show config info for various binaries",
-       {{"running",
-         "Show running config for various binaries",
-         {
-             {"agent",
-              "Show Agent running config",
-              commandHandler<CmdShowConfigRunningAgent>,
-              argRegistrar<CmdShowConfigDynamicTraits>},
-         }},
-        {"history",
+       {{"history",
          "Show history of changes to the current config",
          {{"agent",
            "Show history of changes to the current Agent config",

@@ -25,6 +25,8 @@
 #include <folly/Demangle.h>
 #include <folly/ScopeGuard.h>
 #include <folly/executors/CPUThreadPoolExecutor.h>
+#include <folly/json/dynamic.h>
+#include <folly/json/json.h>
 #include <folly/logging/xlog.h>
 #include <folly/stop_watch.h>
 #include <algorithm>
@@ -96,9 +98,20 @@ void printJson(
     }
   }
 
-  out << apache::thrift::SimpleJSONSerializer::serialize<std::string>(
-             hostResults)
-      << std::endl;
+  if constexpr (std::is_same_v<typename CmdTypeT::RetType, folly::dynamic>) {
+    // The thrift serializer cannot handle folly::dynamic (it throws
+    // "expected dynamic type 'array', but had type 'object'"), so render the
+    // per-host map with folly's own JSON writer.
+    folly::dynamic hostObj = folly::dynamic::object;
+    for (auto& [host, data] : hostResults) {
+      hostObj[host] = std::move(data);
+    }
+    out << folly::toJson(hostObj) << std::endl;
+  } else {
+    out << apache::thrift::SimpleJSONSerializer::serialize<std::string>(
+               hostResults)
+        << std::endl;
+  }
 }
 
 template <typename CmdTypeT>

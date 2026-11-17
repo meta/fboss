@@ -107,6 +107,7 @@ cpp_unittest(
         "fbsource//third-party/fmt:fmt",
         "fbsource//third-party/googletest:gmock",
         ":cmd_test_utils",
+        "//fboss/cli/fboss2:cli-cpp2-serialization",
         "//fboss/cli/fboss2:cli-cpp2-types",
         "//fboss/cli/fboss2:cli-parser-utils",
         "//fboss/cli/fboss2:cmd-common-utils",
