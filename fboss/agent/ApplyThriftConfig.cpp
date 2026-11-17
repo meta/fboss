@@ -6393,6 +6393,18 @@ shared_ptr<SwitchSettings> ThriftConfigApplier::updateSwitchSettings(
     switchSettingsChange = true;
   }
 
+  const auto newMaxL2EntriesPerPort =
+      cfg_->switchSettings()->maxL2EntriesPerPort().to_optional();
+  if (newMaxL2EntriesPerPort && *newMaxL2EntriesPerPort < 0) {
+    throw FbossError(
+        "maxL2EntriesPerPort must not be negative, got ",
+        *newMaxL2EntriesPerPort);
+  }
+  if (origSwitchSettings->getMaxL2EntriesPerPort() != newMaxL2EntriesPerPort) {
+    newSwitchSettings->setMaxL2EntriesPerPort(newMaxL2EntriesPerPort);
+    switchSettingsChange = true;
+  }
+
   std::vector<state::BlockedNeighbor> cfgBlockNeighbors;
   for (const auto& blockNeighbor : *cfg_->switchSettings()->blockNeighbors()) {
     state::BlockedNeighbor neighbor{};

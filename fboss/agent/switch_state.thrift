@@ -602,6 +602,7 @@ struct SwitchSettingsFields {
     switch_config.EcmpGroupSettings
   > ecmpGroupSettings;
   64: list<switch_config.MacAndVlan> myMacs;
+  65: optional i32 maxL2EntriesPerPort;
 }
 
 struct RoutePrefix {

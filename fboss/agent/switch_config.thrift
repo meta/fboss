@@ -2350,6 +2350,9 @@ struct SwitchSettings {
   // Additional router MACs. Packets to these MACs on the given VLAN are routed,
   // in addition to packets to the interface MAC.
   39: list<MacAndVlan> myMacs = [];
+  // A port that learns more dynamic MACs than this is error-disabled.
+  // Unset or 0 disables the check.
+  40: optional i32 maxL2EntriesPerPort;
 }
 
 // Global buffer pool
