@@ -6,6 +6,8 @@
 
 #include "fboss/agent/test/AgentHwTest.h"
 
+#include <chrono>
+
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
 #include "fboss/agent/state/SwitchState.h"
 #include "fboss/agent/test/EcmpSetupHelper.h"
@@ -30,6 +32,14 @@ class AgentFlowLabelBlackholingTest : public AgentHwTest {
   static constexpr int kEcmpWidth = 8;
   // Every value of the 20-bit flow-label field, excluding 0.
   static constexpr int kNumFlowLabels = 0xFFFFF;
+  // Egress must keep rising across stats collections; this many
+  // consecutive collections with no increase means packets were lost.
+  static constexpr int kMaxStatsRoundsWithoutProgress = 30;
+  // Upper bound on the whole wait, however slowly egress rises. Netcastle
+  // SIGABRTs each test binary run after 900s, which also covers agent
+  // init and exit, so this must fail well before that with a real
+  // assertion message.
+  static constexpr auto kOverallTimeout = std::chrono::minutes(6);
 
   std::vector<ProductionFeature> getProductionFeaturesVerified()
       const override {
@@ -91,10 +101,18 @@ class AgentFlowLabelBlackholingTest : public AgentHwTest {
         kNumFlowLabels);
 
     // Send in bulk and assert on the counter delta afterwards, rather
-    // than checking counters per packet. Stats collection is async,
-    // so poll until the summed egress delta reaches the sweep size.
-    WITH_RETRIES_N_TIMED(90, std::chrono::milliseconds(1000), {
-      const auto newStats = getLatestPortStats(egressPortIds);
+    // than checking counters per packet. Packet TX can lag far behind
+    // the send calls (e.g. multi-switch streams them to the HW agent),
+    // so keep waiting while egress is still rising and fail only once
+    // it stops moving short of the sweep size.
+    int64_t delta = 0;
+    int64_t lastDelta = -1;
+    int roundsWithoutProgress = 0;
+    const auto deadline = std::chrono::steady_clock::now() + kOverallTimeout;
+    while (delta < kNumFlowLabels &&
+           roundsWithoutProgress < kMaxStatsRoundsWithoutProgress &&
+           std::chrono::steady_clock::now() < deadline) {
+      const auto newStats = getNextUpdatedPortStats(egressPortIds);
       int64_t current = 0;
       for (const auto& portId : egressPortIds) {
         auto it = newStats.find(portId);
@@ -102,15 +120,21 @@ class AgentFlowLabelBlackholingTest : public AgentHwTest {
           current += *it->second.outUnicastPkts_();
         }
       }
+      delta = current - original;
       XLOGF(
           INFO,
           "Checking egress outPkts ({}) == "
           "number of flow labels swept ({})",
-          current - original,
+          delta,
           kNumFlowLabels);
-      EXPECT_EVENTUALLY_EQ(
-          current - original, static_cast<int64_t>(kNumFlowLabels));
-    });
+      if (delta > lastDelta) {
+        lastDelta = delta;
+        roundsWithoutProgress = 0;
+      } else {
+        ++roundsWithoutProgress;
+      }
+    }
+    EXPECT_EQ(delta, static_cast<int64_t>(kNumFlowLabels));
   }
 
   void runTest() {
@@ -132,13 +156,6 @@ class AgentFlowLabelBlackholingTest : public AgentHwTest {
 };
 
 TEST_F(AgentFlowLabelBlackholingTest, V6FlowLabelSweepEgressesAllPackets) {
-  // getEcmpFullWithFlowLabelHashConfig silently omits the flow-label
-  // field on ASICs without hash-field customization, and
-  // programLoadBalancer returns early there, so skip rather than
-  // report a vacuous pass on such platforms.
-  if (!isSupportedOnAllAsics(HwAsic::Feature::HASH_FIELDS_CUSTOMIZATION)) {
-    GTEST_SKIP() << "ASIC does not support hash field customization";
-  }
   runTest();
 }
 
