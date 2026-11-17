@@ -20,7 +20,9 @@
 #include <cctype>
 #include <iostream>
 #include <optional>
+#include <unordered_set>
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
+#include "fboss/cli/fboss2/commands/config/interface/MirrorSamplingUtils.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 
 namespace facebook::fboss {
@@ -136,6 +138,27 @@ CmdConfigInterfaceSflowTraits::RetType CmdConfigInterfaceSflow::queryClient(
   }
 
   auto& session = ConfigSession::getInstance();
+
+  // Ports with sample-dest mirror must all use the same ingress mirror; see
+  // checkSingleSamplingMirror(). `config interface <port> mirror ingress`
+  // checks this when a port is bound, but a port can also be bound first and
+  // switched to sample-dest mirror afterwards, which only this command sees.
+  // Without this check that order would stage a config the agent rejects at
+  // commit. The target ports keep their current ingress mirror; this call only
+  // turns sampling on for them.
+  if (newDest == cfg::SampleDestination::MIRROR) {
+    std::unordered_set<const cfg::Port*> targets;
+    for (const utils::Intf& intf : interfaces) {
+      if (const cfg::Port* port = intf.getPort()) {
+        targets.insert(port);
+      }
+    }
+    checkSingleSamplingMirror(
+        *session.getAgentConfig().sw(),
+        targets,
+        /*targetsSample=*/true,
+        std::nullopt);
+  }
 
   std::vector<std::string> updatedNames;
   std::vector<std::string> skippedNames;

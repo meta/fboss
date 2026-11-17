@@ -1424,6 +1424,7 @@ cpp_library(
         "commands/config/interface/CmdConfigInterface.h",
         "commands/config/interface/InterfaceAttrArgsBase.h",
         "commands/config/interface/InterfaceIpUtils.h",
+        "commands/config/interface/MirrorSamplingUtils.h",
         "commands/config/interface/dhcp/CmdConfigInterfaceDhcp.h",
         "commands/config/interface/dhcp/relay/CmdConfigInterfaceDhcpRelay.h",
         "commands/config/interface/ipv6/CmdConfigInterfaceIpv6.h",
