@@ -199,6 +199,36 @@ TEST_F(ThriftTest, addAndDeleteVrfs) {
   EXPECT_EQ(sw_->getState()->getVrfs()->getNodeIf(RouterID(1001)), nullptr);
 }
 
+TEST_F(ThriftTest, updatePortVrfs) {
+  using PortVrfs = std::map<std::string, int32_t>;
+  VrfEntry vrfEntry;
+  vrfEntry.vrfId() = 1001;
+  sw_->addVrfs({vrfEntry});
+  ThriftHandler handler(sw_);
+  auto intf55Vrf = [this] {
+    return sw_->getState()->getInterfaceVrfs()->getVrf(InterfaceID(55));
+  };
+
+  // port15 is in VLAN 55, the VLAN of interface 55
+  handler.updatePortVrfs(
+      std::make_unique<PortVrfs>(PortVrfs{{"port15", 1001}}));
+  EXPECT_EQ(intf55Vrf(), RouterID(1001));
+
+  // Unknown port, unknown VRF, and two ports of interface 55 in different VRFs
+  for (const auto& rejected :
+       {PortVrfs{{"noport", 1001}},
+        PortVrfs{{"port2", 2002}},
+        PortVrfs{{"port14", 0}, {"port15", 1001}}}) {
+    EXPECT_THROW(
+        handler.updatePortVrfs(std::make_unique<PortVrfs>(rejected)),
+        FbossError);
+  }
+  EXPECT_EQ(intf55Vrf(), RouterID(1001));
+
+  handler.updatePortVrfs(std::make_unique<PortVrfs>(PortVrfs{{"port15", 0}}));
+  EXPECT_EQ(intf55Vrf(), RouterID(0));
+}
+
 TEST_F(ThriftTest, getRouteTableDetailsByVrf) {
   auto config = testConfigA();
   VrfEntry vrfEntry;

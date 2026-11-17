@@ -1223,6 +1223,10 @@ service FbossCtrl extends phy.FbossCommonPhyCtrl {
   void addVrfs(1: list<VrfEntry> vrfs) throws (1: fboss.FbossBaseError error);
   /* Deletes VRFs. A deleted VRF must have no interfaces and no routes. */
   void deleteVrfs(1: list<i32> vrfIds) throws (1: fboss.FbossBaseError error);
+  /* Moves the interfaces of ports to VRFs. VRF 0 is the default VRF. */
+  void updatePortVrfs(1: map<string, i32> portNameToVrfId) throws (
+    1: fboss.FbossBaseError error,
+  );
 
   /* MPLS route API */
   void addMplsRoutes(1: i16 clientId, 2: list<MplsRoute> routes) throws (

@@ -301,6 +301,8 @@ class ThriftHandler : virtual public FbossCtrlSvIf,
   void getVrfs(std::vector<VrfInfo>& vrfs) override;
   void addVrfs(std::unique_ptr<std::vector<VrfEntry>> vrfs) override;
   void deleteVrfs(std::unique_ptr<std::vector<int32_t>> vrfIds) override;
+  void updatePortVrfs(
+      std::unique_ptr<std::map<std::string, int32_t>> portNameToVrfId) override;
   void getPortInfo(PortInfoThrift& portInfo, int32_t portId) override;
   void getAllPortInfo(std::map<int32_t, PortInfoThrift>& portInfo) override;
   void clearPortStats(std::unique_ptr<std::vector<int32_t>> ports) override;

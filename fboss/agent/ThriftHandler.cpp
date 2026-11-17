@@ -2244,6 +2244,30 @@ void ThriftHandler::deleteVrfs(std::unique_ptr<std::vector<int32_t>> vrfIds) {
   sw_->deleteVrfs(std::vector<RouterID>(vrfIds->begin(), vrfIds->end()));
 }
 
+void ThriftHandler::updatePortVrfs(
+    std::unique_ptr<std::map<std::string, int32_t>> portNameToVrfId) {
+  auto log = LOG_THRIFT_CALL_WITH_STATS(DBG1, sw_->stats());
+  ensureConfigured(__func__);
+  auto state = sw_->getState();
+  std::map<InterfaceID, RouterID> interfaceVrfs;
+  for (const auto& [portName, vrf] : *portNameToVrfId) {
+    auto port = state->getPorts()->getPortIf(portName);
+    if (!port) {
+      throw FbossError("No port named ", portName);
+    }
+    auto intf = state->getInterfaceIDForPortIf(PortDescriptor(port->getID()));
+    if (!intf) {
+      throw FbossError("Port ", portName, " has no interface");
+    }
+    auto [it, inserted] = interfaceVrfs.emplace(*intf, RouterID(vrf));
+    if (!inserted && it->second != RouterID(vrf)) {
+      throw FbossError(
+          "Ports of interface ", *intf, " are moved to different VRFs");
+    }
+  }
+  sw_->updateInterfaceVrfs(interfaceVrfs);
+}
+
 void ThriftHandler::getInterfaceDetail(
     InterfaceDetail& interfaceDetail,
     int32_t interfaceId) {
