@@ -287,12 +287,6 @@ void SaiBufferManager::setupBufferPool(const PortQueue& queue) {
 void SaiBufferManager::setupIngressBufferPool(
     const std::string& bufferPoolName,
     const BufferPoolFields& bufferPoolCfg) {
-  if (ingressBufferPoolHandle_) {
-    return;
-  }
-  ingressBufferPoolHandle_ = std::make_unique<SaiBufferPoolHandle>();
-  auto& store = saiStore_->get<SaiBufferPoolTraits>();
-
   // Pool size determination is different for the various asics we support.
   // Below are the various combinations of pool sizes we support:
   // 1. Shared size
@@ -334,6 +328,14 @@ void SaiBufferManager::setupIngressBufferPool(
       thresholdMode,
       xoffSize,
       std::nullopt};
+  if (ingressBufferPoolHandle_) {
+    // Existing PG buffer profiles reference this pool, so it must be updated
+    // in place; removing it while in use is rejected by the SAI.
+    ingressBufferPoolHandle_->bufferPool->setAttributes(attributes);
+    return;
+  }
+  ingressBufferPoolHandle_ = std::make_unique<SaiBufferPoolHandle>();
+  auto& store = saiStore_->get<SaiBufferPoolTraits>();
   SaiBufferPoolTraits::AdapterHostKey k = tupleProjection<
       SaiBufferPoolTraits::CreateAttributes,
       SaiBufferPoolTraits::AdapterHostKey>(attributes);
