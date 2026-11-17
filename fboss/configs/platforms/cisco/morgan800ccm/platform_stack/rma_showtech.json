@@ -47,10 +47,6 @@
     "/run/devmap/eeproms/PSU2_EEPROM",
     "/run/devmap/eeproms/RUNBMC_EEPROM"
   ],
-  "psus": [
-    "/run/devmap/sensors/PDB0_PSU_0X58",
-    "/run/devmap/sensors/PDB1_PSU_0X58"
-  ],
   "pems": [
     {
       "name": "PSU1_PDB0",
