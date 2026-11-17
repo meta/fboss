@@ -167,12 +167,43 @@ TEST_F(ThriftTest, getVrfs) {
 
   VrfInfo defaultVrf;
   defaultVrf.vrfId() = 0;
-  defaultVrf.interfaceIds() = {*config.interfaces()[0].intfID()};
   VrfInfo red;
   red.vrfId() = 1001;
   red.name() = "red";
-  red.interfaceIds() = {*config.interfaces()[1].intfID()};
+  // The ports of each VLAN interface are its VLAN's member ports
+  const std::map<int32_t, VrfInfo*> vlanToVrfInfo{
+      {*config.vlans()[0].id(), &defaultVrf}, {*config.vlans()[1].id(), &red}};
+  for (const auto& vlanPort : *config.vlanPorts()) {
+    for (const auto& port : *config.ports()) {
+      if (*port.logicalID() == *vlanPort.logicalPort()) {
+        vlanToVrfInfo.at(*vlanPort.vlanID())->ports()->push_back(*port.name());
+      }
+    }
+  }
   EXPECT_EQ(vrfs, (std::vector<VrfInfo>{defaultVrf, red}));
+}
+
+TEST_F(ThriftTest, getVrfsReportsVni) {
+  auto config = testConfigA();
+  cfg::VxLanTunnel tunnel;
+  tunnel.vxlanTunnelId() = "vxlantunnel0";
+  tunnel.underlayIntfID() = 1;
+  tunnel.tunnelType() = TunnelType::VXLAN;
+  tunnel.srcIp() = "1::1";
+  tunnel.dstIp() = "2::1";
+  config.vxlanTunnels() = {tunnel};
+  sw_->applyConfig("add tunnel", config);
+  VrfEntry vrfEntry;
+  vrfEntry.vrfId() = 1001;
+  vrfEntry.vni() = 5001;
+  sw_->addVrfs({vrfEntry});
+
+  ThriftHandler handler(sw_);
+  std::vector<VrfInfo> vrfs;
+  handler.getVrfs(vrfs);
+  ASSERT_EQ(vrfs.size(), 2);
+  EXPECT_FALSE(vrfs[0].vni().has_value());
+  EXPECT_EQ(vrfs[1].vni(), 5001);
 }
 
 TEST_F(ThriftTest, addAndDeleteVrfs) {

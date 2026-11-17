@@ -69,6 +69,8 @@
 #include "fboss/agent/state/VlanMap.h"
 #include "fboss/agent/state/Vrf.h"
 #include "fboss/agent/state/VrfMap.h"
+#include "fboss/agent/state/VxlanTunnel.h"
+#include "fboss/agent/state/VxlanTunnelMap.h"
 #include "fboss/lib/LogThriftCall.h"
 #include "fboss/lib/config/PlatformConfigUtils.h"
 #include "fboss/lib/phy/gen-cpp2/phy_types.h"
@@ -2224,7 +2226,27 @@ void ThriftHandler::getVrfs(std::vector<VrfInfo>& vrfs) {
       auto vrf = state->getInterfaceVrfs()->getVrf(intf->getID());
       auto& vrfInfo = vrfInfos[vrf];
       vrfInfo.vrfId() = vrf;
-      vrfInfo.interfaceIds()->push_back(intf->getID());
+      if (intf->getType() == cfg::InterfaceType::PORT) {
+        vrfInfo.ports()->push_back(
+            state->getPorts()->getNode(intf->getPortID())->getName());
+      } else if (intf->getType() == cfg::InterfaceType::VLAN) {
+        if (auto vlan = state->getVlans()->getNodeIf(intf->getVlanID())) {
+          for (const auto& [portId, _] : vlan->getPortsInfo()) {
+            vrfInfo.ports()->push_back(
+                state->getPorts()->getNode(PortID(portId))->getName());
+          }
+        }
+      }
+    }
+  }
+  for (const auto& [_, tunnels] : std::as_const(*state->getVxlanTunnels())) {
+    for (const auto& iter : std::as_const(*tunnels)) {
+      for (const auto& [vrf, vni] :
+           iter.second->getVrf2Vni().value_or(std::map<int64_t, int64_t>{})) {
+        if (auto it = vrfInfos.find(vrf); it != vrfInfos.end()) {
+          it->second.vni() = vni;
+        }
+      }
     }
   }
   for (auto& [_, vrfInfo] : vrfInfos) {

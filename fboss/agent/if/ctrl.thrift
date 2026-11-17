@@ -336,10 +336,14 @@ struct InterfaceDetail {
   15: optional i32 aggregatePortId;
 }
 
+@thrift.ReserveIds{ids = [3]}
 struct VrfInfo {
   1: i32 vrfId;
   2: optional string name;
-  3: list<i32> interfaceIds;
+  /** Names of the ports of the interfaces in the VRF. */
+  4: list<string> ports;
+  /** VNI mapped to this VRF. */
+  5: optional i32 vni;
 }
 
 struct VrfEntry {
