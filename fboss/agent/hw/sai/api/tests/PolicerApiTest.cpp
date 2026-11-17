@@ -4,6 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #include "fboss/agent/hw/sai/api/PolicerApi.h"
+#include "fboss/agent/hw/sai/api/MirrorApi.h"
 #include "fboss/agent/hw/sai/api/SaiObjectApi.h"
 #include "fboss/agent/hw/sai/fake/FakeSai.h"
 
@@ -18,6 +19,7 @@ class PolicerApiTest : public ::testing::Test {
   void SetUp() override {
     sai_api_initialize(0, nullptr);
     policerApi = std::make_unique<PolicerApi>();
+    mirrorApi = std::make_unique<MirrorApi>();
   }
 
   SaiPolicerTraits::CreateAttributes attributes(
@@ -35,7 +37,29 @@ class PolicerApiTest : public ::testing::Test {
         SAI_PACKET_ACTION_DROP};
   }
 
+  SaiEnhancedRemoteMirrorTraits::CreateAttributes mirrorAttributes(
+      std::optional<SaiEnhancedRemoteMirrorTraits::Attributes::Policer>
+          policer = std::nullopt) const {
+    return {
+        SAI_MIRROR_SESSION_TYPE_ENHANCED_REMOTE,
+        42,
+        SAI_ERSPAN_ENCAPSULATION_TYPE_MIRROR_L3_GRE_TUNNEL,
+        16,
+        folly::IPAddress{"10.0.0.1"},
+        folly::IPAddress{"10.0.0.2"},
+        folly::MacAddress{"00:11:22:33:44:55"},
+        folly::MacAddress{"00:11:22:33:44:66"},
+        0x88be,
+        4,
+        64,
+        0,
+        1,
+        std::nullopt,
+        policer};
+  }
+
   std::unique_ptr<PolicerApi> policerApi;
+  std::unique_ptr<MirrorApi> mirrorApi;
 };
 
 TEST_F(PolicerApiTest, createAndGetAttributes) {
@@ -72,6 +96,101 @@ TEST_F(PolicerApiTest, updateRateAndBurst) {
           id, SaiPolicerTraits::Attributes::Mode{SAI_POLICER_MODE_TR_TCM}),
       SaiApiError);
   policerApi->remove(id);
+}
+
+TEST_F(PolicerApiTest, mirrorDefaultsToNoPolicer) {
+  using Policer = SaiEnhancedRemoteMirrorTraits::Attributes::Policer;
+  for (const auto& policer :
+       {std::optional<Policer>{},
+        std::optional<Policer>{Policer{SAI_NULL_OBJECT_ID}}}) {
+    auto gre = mirrorApi->create<SaiEnhancedRemoteMirrorTraits>(
+        mirrorAttributes(policer), 0);
+    auto sflow = mirrorApi->create<SaiSflowMirrorTraits>(
+        {SAI_MIRROR_SESSION_TYPE_SFLOW,
+         42,
+         16,
+         folly::IPAddress{"10.0.0.1"},
+         folly::IPAddress{"10.0.0.2"},
+         folly::MacAddress{"00:11:22:33:44:55"},
+         folly::MacAddress{"00:11:22:33:44:66"},
+         1234,
+         6343,
+         4,
+         64,
+         0,
+         1,
+         std::nullopt,
+         policer},
+        0);
+    for (const auto& id : {gre, sflow}) {
+      EXPECT_EQ(mirrorApi->getAttribute(id, Policer{}), SAI_NULL_OBJECT_ID);
+      mirrorApi->remove(id);
+    }
+  }
+}
+
+TEST_F(PolicerApiTest, createBoundMirrorAndUnbind) {
+  auto policer = policerApi->create<SaiPolicerTraits>(attributes(), 0);
+  auto mirror = mirrorApi->create<SaiEnhancedRemoteMirrorTraits>(
+      mirrorAttributes(
+          SaiEnhancedRemoteMirrorTraits::Attributes::Policer{policer}),
+      0);
+  EXPECT_EQ(
+      mirrorApi->getAttribute(
+          mirror, SaiEnhancedRemoteMirrorTraits::Attributes::Policer{}),
+      policer);
+  EXPECT_THROW(policerApi->remove(policer), SaiApiError);
+  mirrorApi->setAttribute(
+      mirror,
+      SaiEnhancedRemoteMirrorTraits::Attributes::Policer{SAI_NULL_OBJECT_ID});
+  EXPECT_EQ(
+      mirrorApi->getAttribute(
+          mirror, SaiEnhancedRemoteMirrorTraits::Attributes::Policer{}),
+      SAI_NULL_OBJECT_ID);
+  policerApi->remove(policer);
+  mirrorApi->remove(mirror);
+}
+
+TEST_F(PolicerApiTest, bindAndReplacePolicer) {
+  auto first = policerApi->create<SaiPolicerTraits>(attributes(), 0);
+  auto second = policerApi->create<SaiPolicerTraits>(attributes(), 0);
+  EXPECT_NE(first, second);
+  auto mirror =
+      mirrorApi->create<SaiEnhancedRemoteMirrorTraits>(mirrorAttributes(), 0);
+  mirrorApi->setAttribute(
+      mirror, SaiEnhancedRemoteMirrorTraits::Attributes::Policer{first});
+  EXPECT_EQ(
+      mirrorApi->getAttribute(
+          mirror, SaiEnhancedRemoteMirrorTraits::Attributes::Policer{}),
+      first);
+  mirrorApi->setAttribute(
+      mirror, SaiEnhancedRemoteMirrorTraits::Attributes::Policer{second});
+  EXPECT_EQ(
+      mirrorApi->getAttribute(
+          mirror, SaiEnhancedRemoteMirrorTraits::Attributes::Policer{}),
+      second);
+  policerApi->remove(first);
+  EXPECT_THROW(policerApi->remove(second), SaiApiError);
+  mirrorApi->remove(mirror);
+  policerApi->remove(second);
+}
+
+TEST_F(PolicerApiTest, rejectInvalidBinding) {
+  EXPECT_THROW(
+      mirrorApi->create<SaiEnhancedRemoteMirrorTraits>(
+          mirrorAttributes(999999), 0),
+      SaiApiError);
+  auto mirror =
+      mirrorApi->create<SaiEnhancedRemoteMirrorTraits>(mirrorAttributes(), 0);
+  EXPECT_THROW(
+      mirrorApi->setAttribute(
+          mirror, SaiEnhancedRemoteMirrorTraits::Attributes::Policer{999999}),
+      SaiApiError);
+  EXPECT_EQ(
+      mirrorApi->getAttribute(
+          mirror, SaiEnhancedRemoteMirrorTraits::Attributes::Policer{}),
+      SAI_NULL_OBJECT_ID);
+  mirrorApi->remove(mirror);
 }
 
 TEST_F(PolicerApiTest, enumeratePolicers) {

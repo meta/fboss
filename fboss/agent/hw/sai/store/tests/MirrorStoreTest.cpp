@@ -62,12 +62,13 @@ class MirrorStoreTest : public SaiStoreTest {
          dstIpAddr,
          srcMacAddr,
          dstMacAddr,
-         ipHeaderVersion,
          greProtocol,
+         ipHeaderVersion,
          ttl,
          truncateSize,
          samplingRate,
-         tcBufferLimit},
+         tcBufferLimit,
+         std::nullopt},
         0);
   }
 };

@@ -75,6 +75,11 @@ sai_status_t remove_policer_fn(sai_object_id_t policer_id) {
   if (!fs->policerManager.exists(policer_id)) {
     return SAI_STATUS_ITEM_NOT_FOUND;
   }
+  for (const auto& [id, mirror] : fs->mirrorManager.map()) {
+    if (mirror.policer == policer_id) {
+      return SAI_STATUS_OBJECT_IN_USE;
+    }
+  }
   fs->policerManager.remove(policer_id);
   return SAI_STATUS_SUCCESS;
 }

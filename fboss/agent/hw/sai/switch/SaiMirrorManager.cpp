@@ -30,9 +30,10 @@ SaiMirrorHandle::SaiMirror SaiMirrorManager::addNodeSpan(
   // For now, defaulting to 1M.
   tcBufferLimit = 1000000;
 #endif
+  SaiLocalMirrorTraits::CreateAttributes attributes{
+      SAI_MIRROR_SESSION_TYPE_LOCAL, monitorPort, tcBufferLimit};
   SaiLocalMirrorTraits::AdapterHostKey k{
       SAI_MIRROR_SESSION_TYPE_LOCAL, monitorPort, tcBufferLimit};
-  SaiLocalMirrorTraits::CreateAttributes attributes = k;
   auto& store = saiStore_->get<SaiLocalMirrorTraits>();
   return store.setObject(k, attributes);
 }
@@ -66,7 +67,8 @@ SaiMirrorHandle::SaiMirror SaiMirrorManager::addNodeErSpan(
       mirrorTunnel.ttl,
       truncateSize,
       mirror->getSamplingRate(),
-      tcBufferLimit};
+      tcBufferLimit,
+      std::nullopt};
   SaiEnhancedRemoteMirrorTraits::AdapterHostKey k{
       SAI_MIRROR_SESSION_TYPE_ENHANCED_REMOTE,
       monitorPort,
@@ -103,7 +105,8 @@ SaiMirrorHandle::SaiMirror SaiMirrorManager::addNodeSflow(
       mirrorTunnel.ttl,
       truncateSize,
       mirror->getSamplingRate(),
-      tcBufferLimit};
+      tcBufferLimit,
+      std::nullopt};
   SaiSflowMirrorTraits::AdapterHostKey k{
       SAI_MIRROR_SESSION_TYPE_SFLOW,
       monitorPort,

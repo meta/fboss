@@ -103,6 +103,11 @@ struct SaiMirrorTraits<SAI_MIRROR_SESSION_TYPE_ENHANCED_REMOTE> {
         EnumType,
         SAI_MIRROR_SESSION_ATTR_SAMPLE_RATE,
         sai_uint32_t>;
+    using Policer = SaiAttribute<
+        EnumType,
+        SAI_MIRROR_SESSION_ATTR_POLICER,
+        SaiObjectIdT,
+        SaiObjectIdDefault>;
     struct AttributeTcBufferLimit {
       std::optional<sai_attr_id_t> operator()();
     };
@@ -123,7 +128,8 @@ struct SaiMirrorTraits<SAI_MIRROR_SESSION_TYPE_ENHANCED_REMOTE> {
       std::optional<Attributes::Ttl>,
       std::optional<Attributes::TruncateSize>,
       std::optional<Attributes::SampleRate>,
-      std::optional<typename Attributes::TcBufferLimit>>;
+      std::optional<typename Attributes::TcBufferLimit>,
+      std::optional<Attributes::Policer>>;
   using AdapterHostKey = std::tuple<
       Attributes::Type,
       Attributes::MonitorPort,
@@ -183,6 +189,11 @@ struct SaiMirrorTraits<SAI_MIRROR_SESSION_TYPE_SFLOW> {
         EnumType,
         SAI_MIRROR_SESSION_ATTR_SAMPLE_RATE,
         sai_uint32_t>;
+    using Policer = SaiAttribute<
+        EnumType,
+        SAI_MIRROR_SESSION_ATTR_POLICER,
+        SaiObjectIdT,
+        SaiObjectIdDefault>;
     struct AttributeTcBufferLimit {
       std::optional<sai_attr_id_t> operator()();
     };
@@ -203,7 +214,8 @@ struct SaiMirrorTraits<SAI_MIRROR_SESSION_TYPE_SFLOW> {
       std::optional<typename Attributes::Ttl>,
       std::optional<typename Attributes::TruncateSize>,
       std::optional<Attributes::SampleRate>,
-      std::optional<typename Attributes::TcBufferLimit>>;
+      std::optional<typename Attributes::TcBufferLimit>,
+      std::optional<Attributes::Policer>>;
   using AdapterHostKey = std::tuple<
       typename Attributes::Type,
       typename Attributes::MonitorPort,
@@ -255,6 +267,7 @@ using SaiMirrorAdapterHostKey = typename SaiMirrorTraits::AdapterHostKey;
 using SaiMirrorAdaptertKey = typename SaiMirrorTraits::AdapterKey<MirrorSaiId>;
 
 SAI_ATTRIBUTE_NAME(LocalMirror, TcBufferLimit)
+SAI_ATTRIBUTE_NAME(EnhancedRemoteMirror, Policer)
 SAI_ATTRIBUTE_NAME(EnhancedRemoteMirror, Type)
 SAI_ATTRIBUTE_NAME(EnhancedRemoteMirror, MonitorPort)
 SAI_ATTRIBUTE_NAME(EnhancedRemoteMirror, TruncateSize)
