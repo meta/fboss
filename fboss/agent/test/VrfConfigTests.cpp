@@ -4,6 +4,7 @@
 
 #include "fboss/agent/AddressUtil.h"
 #include "fboss/agent/Constants.h"
+#include "fboss/agent/FbossHwUpdateError.h"
 #include "fboss/agent/FibHelpers.h"
 #include "fboss/agent/StateObserver.h"
 #include "fboss/agent/SwSwitch.h"
@@ -763,4 +764,102 @@ TEST(SwSwitchVrfs, VniRejected) {
   sw->addVrfs({makeVniVrfEntry(RouterID(2002), 5001)});
   EXPECT_THROW(sw->addVrfs({makeVniVrfEntry(kTestVrf, 5001)}), FbossError);
   EXPECT_EQ(sw->getState()->getVrfs()->getNodeIf(kTestVrf), nullptr);
+}
+
+TEST(SwSwitchVrfs, SyncVrfs) {
+  auto config = testConfigA();
+  auto handle = createTestHandle(&config);
+  auto sw = handle->getSw();
+  sw->addVrfs({makeVrfEntry(kTestVrf, "blue")});
+  sw->updateInterfaceVrfs({{InterfaceID(55), kTestVrf}});
+
+  const RouterID newVrf(2002);
+  sw->syncVrfs({makeVrfEntry(newVrf, "red")}, {{InterfaceID(55), newVrf}});
+  auto state = sw->getState();
+  EXPECT_EQ(state->getVrfs()->getNodeIf(kTestVrf), nullptr);
+  ASSERT_NE(state->getVrfs()->getNodeIf(newVrf), nullptr);
+  EXPECT_EQ(state->getVrfs()->getNode(newVrf)->getName(), "red");
+  EXPECT_EQ(intf55Vrf(state), newVrf);
+  EXPECT_TRUE(hasRoute(state, newVrf, "10.0.55.0/24"));
+  EXPECT_EQ(state->getFibsInfoMap()->getFibContainerIf(kTestVrf), nullptr);
+}
+
+TEST(SwSwitchVrfs, SyncMovesUnlistedInterfacesToDefaultVrf) {
+  auto config = testConfigA();
+  auto handle = createVrfTestHandle(&config);
+  auto sw = handle->getSw();
+  sw->updateInterfaceVrfs({{InterfaceID(55), kTestVrf}});
+
+  sw->syncVrfs({makeVrfEntry(kTestVrf)}, {});
+  auto state = sw->getState();
+  EXPECT_NE(state->getVrfs()->getNodeIf(kTestVrf), nullptr);
+  EXPECT_EQ(intf55Vrf(state), RouterID(0));
+  EXPECT_TRUE(hasRoute(state, RouterID(0), "10.0.55.0/24"));
+}
+
+TEST(SwSwitchVrfs, SyncRejectsVniChange) {
+  auto config = vxlanTunnelConfig();
+  auto handle = createTestHandle(&config);
+  auto sw = handle->getSw();
+  sw->addVrfs({makeVniVrfEntry(kTestVrf, 5001)});
+  sw->updateInterfaceVrfs({{InterfaceID(55), kTestVrf}});
+
+  EXPECT_THROW(
+      sw->syncVrfs(
+          {makeVniVrfEntry(kTestVrf, 5002)}, {{InterfaceID(55), kTestVrf}}),
+      FbossError);
+  EXPECT_EQ(intf55Vrf(sw->getState()), kTestVrf);
+  EXPECT_EQ(
+      vxlanTunnel(sw)->getVrf2Vni(),
+      (std::map<int64_t, int64_t>{{kTestVrf, 5001}}));
+}
+
+TEST(SwSwitchVrfs, SyncRenamesVrf) {
+  auto config = testConfigA();
+  auto handle = createTestHandle(&config);
+  auto sw = handle->getSw();
+  sw->addVrfs({makeVrfEntry(kTestVrf, "blue")});
+  sw->updateInterfaceVrfs({{InterfaceID(55), kTestVrf}});
+
+  sw->syncVrfs({makeVrfEntry(kTestVrf, "red")}, {{InterfaceID(55), kTestVrf}});
+  EXPECT_EQ(sw->getState()->getVrfs()->getNode(kTestVrf)->getName(), "red");
+  EXPECT_EQ(intf55Vrf(sw->getState()), kTestVrf);
+}
+
+TEST(SwSwitchVrfs, RepeatedSyncLeavesStateUnchanged) {
+  auto config = testConfigA();
+  auto handle = createTestHandle(&config);
+  auto sw = handle->getSw();
+  sw->syncVrfs({makeVrfEntry(kTestVrf, "blue")}, {{InterfaceID(55), kTestVrf}});
+  auto state = sw->getState();
+
+  sw->syncVrfs({makeVrfEntry(kTestVrf, "blue")}, {{InterfaceID(55), kTestVrf}});
+  EXPECT_EQ(sw->getState(), state);
+}
+
+TEST(SwSwitchVrfs, SyncHwFailureRollsBack) {
+  auto config = testConfigA();
+  auto handle = createVrfTestHandle(&config);
+  auto sw = handle->getSw();
+  sw->updateInterfaceVrfs({{InterfaceID(55), kTestVrf}});
+  waitForStateUpdates(sw);
+
+  // Fail the HW update by returning the current state
+  EXPECT_HW_CALL(sw, stateChangedImpl(::testing::_, ::testing::_))
+      .Times(::testing::AtLeast(1))
+      .WillOnce(::testing::Return(sw->getState()));
+  EXPECT_THROW(sw->syncVrfs({}, {}), FbossHwUpdateError);
+  auto state = sw->getState();
+  EXPECT_NE(state->getVrfs()->getNodeIf(kTestVrf), nullptr);
+  EXPECT_EQ(intf55Vrf(state), kTestVrf);
+  EXPECT_TRUE(hasRoute(state, kTestVrf, "10.0.55.0/24"));
+  auto vrfs = sw->getRib()->getVrfList();
+  EXPECT_NE(std::find(vrfs.begin(), vrfs.end(), kTestVrf), vrfs.end());
+
+  // The RIB is consistent: the same sync works after the failure
+  sw->syncVrfs({}, {});
+  state = sw->getState();
+  EXPECT_EQ(state->getVrfs()->getNodeIf(kTestVrf), nullptr);
+  EXPECT_EQ(intf55Vrf(state), RouterID(0));
+  EXPECT_TRUE(hasRoute(state, RouterID(0), "10.0.55.0/24"));
 }

@@ -13,6 +13,8 @@
 #include "fboss/agent/state/Interface.h"
 #include "fboss/agent/state/StateDelta.h"
 #include "fboss/agent/state/SwitchState.h"
+#include "fboss/agent/state/VxlanTunnel.h"
+#include "fboss/agent/state/VxlanTunnelMap.h"
 
 DECLARE_bool(enable_acl_table_group);
 
@@ -203,6 +205,21 @@ std::vector<StateDelta> computeReversedDeltas(
   }
 
   return reversedStateDeltas;
+}
+
+std::map<int64_t, int64_t> getVrfVnis(
+    const std::shared_ptr<SwitchState>& state) {
+  std::map<int64_t, int64_t> vrfVnis;
+  for (const auto& [_, tunnels] : std::as_const(*state->getVxlanTunnels())) {
+    for (const auto& iter : std::as_const(*tunnels)) {
+      if (auto vrf2Vni = iter.second->getVrf2Vni()) {
+        for (const auto& [vrf, vni] : *vrf2Vni) {
+          vrfVnis[vrf] = vni;
+        }
+      }
+    }
+  }
+  return vrfVnis;
 }
 
 } // namespace facebook::fboss::utility

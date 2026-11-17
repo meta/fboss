@@ -425,6 +425,16 @@ class SwSwitch : public HwSwitchCallback {
   void deleteVrfs(const std::vector<RouterID>& vrfIds);
 
   /*
+   * Replaces all VRFs and interface VRFs in one switch state update: adds the
+   * VRFs not in the state, moves the interfaces, renames VRFs, and deletes the
+   * VRFs not in vrfs. Interfaces not in interfaceVrfs go back to VRF 0. The
+   * VNI of an existing VRF cannot change.
+   */
+  void syncVrfs(
+      const std::vector<VrfEntry>& vrfs,
+      const std::map<InterfaceID, RouterID>& interfaceVrfs);
+
+  /*
    * Get config applied information which include last config applied time(ms).
    * NOTE: If no config has ever been applied, the default timestamp is 0.
    */
@@ -1086,6 +1096,12 @@ class SwSwitch : public HwSwitchCallback {
  private:
   void updateVrfs(
       const std::vector<VrfEntry>& toAdd,
+      const std::map<InterfaceID, RouterID>& interfaceVrfs,
+      const std::vector<RouterID>& toDelete);
+  std::shared_ptr<SwitchState> applyVrfChanges(
+      const std::shared_ptr<SwitchState>& in,
+      const std::vector<VrfEntry>& toAdd,
+      const std::map<InterfaceID, RouterID>& interfaceVrfs,
       const std::vector<RouterID>& toDelete);
   void initAgentInfo();
   void createAndProbeTunManager();
@@ -1502,6 +1518,7 @@ class SwSwitch : public HwSwitchCallback {
   RxPacketHandlerQueues rxPacketHandlerQueues_;
 #endif
   std::atomic<bool> packetRxRunning_{false};
+  std::atomic<bool> vrfsSynced_{false};
   std::condition_variable rxPktThreadCV_;
   std::mutex rxPktMutex_;
 };

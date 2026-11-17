@@ -277,16 +277,18 @@ class RibRouteTables {
       const RibToSwitchStateFunction& ribToSwitchStateFunc,
       void* cookie);
 
-  void updateInterfaceVrfs(
-      const SwitchIdScopeResolver* resolver,
-      const InterfaceToVrf& interfaceToVrf,
-      const RibToSwitchStateFunction& ribToSwitchStateFunc,
-      void* cookie);
-
   void updateVrfs(
       const SwitchIdScopeResolver* resolver,
       const std::vector<VrfEntry>& toAdd,
+      const InterfaceToVrf& interfaceToVrf,
       const std::vector<RouterID>& toDelete,
+      const RibToSwitchStateFunction& ribToSwitchStateFunc,
+      void* cookie);
+
+  void syncVrfs(
+      const SwitchIdScopeResolver* resolver,
+      const std::vector<VrfEntry>& vrfs,
+      const InterfaceToVrf& interfaceToVrf,
       const RibToSwitchStateFunction& ribToSwitchStateFunc,
       void* cookie);
 
@@ -356,6 +358,14 @@ class RibRouteTables {
       const RibToSwitchStateFunction& ribToSwitchStateFunc,
       void* cookie,
       bool ecmpModeChanged = false);
+  void updateVrfsImpl(
+      const SwitchIdScopeResolver* resolver,
+      const std::vector<VrfEntry>& vrfEntries,
+      const InterfaceToVrf& interfaceToVrf,
+      const std::vector<RouterID>& vrfIdsToDelete,
+      bool sync,
+      const RibToSwitchStateFunction& ribToSwitchStateFunc,
+      void* cookie);
   struct VrfFibUpdate {
     RouterID vrf;
     bool deleted{false};
@@ -665,23 +675,27 @@ class RoutingInformationBase {
       const RibToSwitchStateFunction& ribToSwitchStateFunc,
       void* cookie);
 
-  // Moves the interfaces in interfaceToVrf to their new VRF: their interface
-  // routes and their place in the VRF interface lists. Programs the changed
-  // VRFs and the target VRFs in one switch state update.
-  void updateInterfaceVrfs(
-      const SwitchIdScopeResolver* resolver,
-      const InterfaceToVrf& interfaceToVrf,
-      const RibToSwitchStateFunction& ribToSwitchStateFunc,
-      void* cookie);
-
-  // Adds the route tables of toAdd and removes those of toDelete, and adds
-  // and removes their FIBs in one switch state update, which
-  // ribToSwitchStateFunc can extend. A deleted VRF must have no interfaces and
-  // no routes.
+  // Adds the route tables of toAdd, moves the interfaces in interfaceToVrf
+  // with their interface routes, and removes the route tables of toDelete, in
+  // one switch state update that ribToSwitchStateFunc can extend. A deleted
+  // VRF must have no interfaces after the moves, and only the routes of the
+  // interfaces that move out of it.
   void updateVrfs(
       const SwitchIdScopeResolver* resolver,
       const std::vector<VrfEntry>& toAdd,
+      const InterfaceToVrf& interfaceToVrf,
       const std::vector<RouterID>& toDelete,
+      const RibToSwitchStateFunction& ribToSwitchStateFunc,
+      void* cookie);
+
+  // Makes vrfs the only VRFs and interfaceToVrf the interface VRFs in one
+  // update, computed on the RIB thread: adds the missing VRFs, moves the
+  // interfaces, moves interfaces not listed to VRF 0, and deletes the VRFs
+  // not listed.
+  void syncVrfs(
+      const SwitchIdScopeResolver* resolver,
+      const std::vector<VrfEntry>& vrfs,
+      const InterfaceToVrf& interfaceToVrf,
       const RibToSwitchStateFunction& ribToSwitchStateFunc,
       void* cookie);
 

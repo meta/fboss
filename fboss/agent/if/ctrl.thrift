@@ -1231,6 +1231,16 @@ service FbossCtrl extends phy.FbossCommonPhyCtrl {
   void updatePortVrfs(1: map<string, i32> portNameToVrfId) throws (
     1: fboss.FbossBaseError error,
   );
+  /*
+   * Replaces all VRFs and port VRFs in one update, after a controller
+   * reconnect. Ports not listed go back to VRF 0. The VNI of an existing VRF
+   * cannot change. A deleted VRF must have no routes other than interface
+   * routes: clear them first with syncFibInVrf.
+   */
+  void syncVrfs(
+    1: list<VrfEntry> vrfs,
+    2: map<string, i32> portNameToVrfId,
+  ) throws (1: fboss.FbossBaseError error);
 
   /* MPLS route API */
   void addMplsRoutes(1: i16 clientId, 2: list<MplsRoute> routes) throws (

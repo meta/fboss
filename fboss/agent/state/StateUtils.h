@@ -9,6 +9,7 @@
  */
 #pragma once
 
+#include <map>
 #include <memory>
 #include <optional>
 #include <string>
@@ -104,6 +105,9 @@ std::vector<StateDelta> computeReversedDeltas(
     const std::vector<fsdb::OperDelta>& operDeltas,
     const std::shared_ptr<SwitchState>& currentState,
     const std::shared_ptr<SwitchState>& intermediateState);
+
+std::map<int64_t, int64_t> getVrfVnis(
+    const std::shared_ptr<SwitchState>& state);
 
 } // namespace utility
 } // namespace facebook::fboss

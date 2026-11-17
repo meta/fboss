@@ -69,8 +69,6 @@
 #include "fboss/agent/state/VlanMap.h"
 #include "fboss/agent/state/Vrf.h"
 #include "fboss/agent/state/VrfMap.h"
-#include "fboss/agent/state/VxlanTunnel.h"
-#include "fboss/agent/state/VxlanTunnelMap.h"
 #include "fboss/lib/LogThriftCall.h"
 #include "fboss/lib/config/PlatformConfigUtils.h"
 #include "fboss/lib/phy/gen-cpp2/phy_types.h"
@@ -1195,6 +1193,28 @@ void setL3TrafficLoopNeighborTtl(
       });
 }
 
+std::map<InterfaceID, RouterID> portInterfaceVrfs(
+    const std::shared_ptr<SwitchState>& state,
+    const std::map<std::string, int32_t>& portNameToVrfId) {
+  std::map<InterfaceID, RouterID> interfaceVrfs;
+  for (const auto& [portName, vrf] : portNameToVrfId) {
+    auto port = state->getPorts()->getPortIf(portName);
+    if (!port) {
+      throw FbossError("No port named ", portName);
+    }
+    auto intf = state->getInterfaceIDForPortIf(PortDescriptor(port->getID()));
+    if (!intf) {
+      throw FbossError("Port ", portName, " has no interface");
+    }
+    auto [it, inserted] = interfaceVrfs.emplace(*intf, RouterID(vrf));
+    if (!inserted && it->second != RouterID(vrf)) {
+      throw FbossError(
+          "Ports of interface ", *intf, " are moved to different VRFs");
+    }
+  }
+  return interfaceVrfs;
+}
+
 } // namespace
 
 ThriftHandler::ThriftHandler(SwSwitch* sw)
@@ -2239,14 +2259,9 @@ void ThriftHandler::getVrfs(std::vector<VrfInfo>& vrfs) {
       }
     }
   }
-  for (const auto& [_, tunnels] : std::as_const(*state->getVxlanTunnels())) {
-    for (const auto& iter : std::as_const(*tunnels)) {
-      for (const auto& [vrf, vni] :
-           iter.second->getVrf2Vni().value_or(std::map<int64_t, int64_t>{})) {
-        if (auto it = vrfInfos.find(vrf); it != vrfInfos.end()) {
-          it->second.vni() = vni;
-        }
-      }
+  for (const auto& [vrf, vni] : utility::getVrfVnis(state)) {
+    if (auto it = vrfInfos.find(vrf); it != vrfInfos.end()) {
+      it->second.vni() = vni;
     }
   }
   for (auto& [_, vrfInfo] : vrfInfos) {
@@ -2270,24 +2285,16 @@ void ThriftHandler::updatePortVrfs(
     std::unique_ptr<std::map<std::string, int32_t>> portNameToVrfId) {
   auto log = LOG_THRIFT_CALL_WITH_STATS(DBG1, sw_->stats());
   ensureConfigured(__func__);
-  auto state = sw_->getState();
-  std::map<InterfaceID, RouterID> interfaceVrfs;
-  for (const auto& [portName, vrf] : *portNameToVrfId) {
-    auto port = state->getPorts()->getPortIf(portName);
-    if (!port) {
-      throw FbossError("No port named ", portName);
-    }
-    auto intf = state->getInterfaceIDForPortIf(PortDescriptor(port->getID()));
-    if (!intf) {
-      throw FbossError("Port ", portName, " has no interface");
-    }
-    auto [it, inserted] = interfaceVrfs.emplace(*intf, RouterID(vrf));
-    if (!inserted && it->second != RouterID(vrf)) {
-      throw FbossError(
-          "Ports of interface ", *intf, " are moved to different VRFs");
-    }
-  }
-  sw_->updateInterfaceVrfs(interfaceVrfs);
+  sw_->updateInterfaceVrfs(
+      portInterfaceVrfs(sw_->getState(), *portNameToVrfId));
+}
+
+void ThriftHandler::syncVrfs(
+    std::unique_ptr<std::vector<VrfEntry>> vrfs,
+    std::unique_ptr<std::map<std::string, int32_t>> portNameToVrfId) {
+  auto log = LOG_THRIFT_CALL_WITH_STATS(DBG1, sw_->stats());
+  ensureConfigured(__func__);
+  sw_->syncVrfs(*vrfs, portInterfaceVrfs(sw_->getState(), *portNameToVrfId));
 }
 
 void ThriftHandler::getInterfaceDetail(

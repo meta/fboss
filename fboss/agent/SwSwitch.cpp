@@ -3969,90 +3969,169 @@ void SwSwitch::updateInterfaceVrfs(
   if (interfaceVrfs.empty()) {
     return;
   }
-  // Runs in the update thread on the latest state, in the same update as the
-  // routes moved by the RIB. A rejected move fails the update and the RIB
-  // rolls back.
-  auto moveInterfaces =
-      [this, interfaceVrfs](const std::shared_ptr<SwitchState>& in) {
-        // As in config apply, a subnet is on one interface per VRF
-        checkSubnetsInVrfs(in, interfaceVrfs);
-        auto newState = in->clone();
-        auto interfaceVrfMap = newState->getInterfaceVrfs()->modify(&newState);
-        for (const auto& [intfId, vrf] : interfaceVrfs) {
-          auto intf = newState->getInterfaces()->getNodeIf(intfId);
-          if (!intf) {
-            throw FbossHwUpdateError(in, in, "Unknown interface ", intfId);
-          }
-          if (vrf != RouterID(0) && !newState->getVrfs()->getNodeIf(vrf)) {
-            throw FbossHwUpdateError(in, in, "VRF ", vrf, " not configured");
-          }
-          if (in->getInterfaceVrfs()->getVrf(intfId) == vrf) {
-            continue;
-          }
-          auto newIntf = intf->modify(&newState);
-          // Neighbors are relearned in the new VRF
-          newIntf->setArpTable(state::NeighborEntries{});
-          newIntf->setNdpTable(state::NeighborEntries{});
-          if (interfaceVrfMap->getNodeIf(intfId)) {
-            interfaceVrfMap->removeNode(intfId);
-          }
-          if (vrf != RouterID(0)) {
-            auto entry = std::make_shared<InterfaceVrf>(intfId, vrf);
-            interfaceVrfMap->addNode(
-                entry, getScopeResolver()->scope(entry, newState));
-          }
-        }
-        return newState;
-      };
-  getRib()->updateInterfaceVrfs(
-      getScopeResolver(),
-      RoutingInformationBase::InterfaceToVrf(
-          interfaceVrfs.begin(), interfaceVrfs.end()),
-      createRibToSwitchStateFunction(std::nullopt, std::move(moveInterfaces)),
-      this);
+  updateVrfs({}, interfaceVrfs, {});
 }
 
 void SwSwitch::addVrfs(const std::vector<VrfEntry>& vrfs) {
-  updateVrfs(vrfs, {});
+  updateVrfs(vrfs, {}, {});
 }
 
 void SwSwitch::deleteVrfs(const std::vector<RouterID>& vrfIds) {
-  updateVrfs({}, vrfIds);
+  updateVrfs({}, {}, vrfIds);
+}
+
+void SwSwitch::syncVrfs(
+    const std::vector<VrfEntry>& vrfs,
+    const std::map<InterfaceID, RouterID>& interfaceVrfs) {
+  // Runs in the update thread on the latest state, as the RIB computes the
+  // sync on the RIB thread
+  auto syncState = [this, vrfs, interfaceVrfs](
+                       const std::shared_ptr<SwitchState>& in) {
+    auto vrfVnis = utility::getVrfVnis(in);
+    std::vector<VrfEntry> toAdd;
+    std::set<RouterID> listed;
+    std::map<RouterID, std::optional<std::string>> renames;
+    for (const auto& vrfEntry : vrfs) {
+      RouterID vrfId(*vrfEntry.vrfId());
+      listed.insert(vrfId);
+      auto vrf = in->getVrfs()->getNodeIf(vrfId);
+      if (!vrf) {
+        if (vrfId != RouterID(0)) {
+          toAdd.push_back(vrfEntry);
+        }
+        continue;
+      }
+      auto it = vrfVnis.find(vrfId);
+      std::optional<int64_t> vni;
+      if (it != vrfVnis.end()) {
+        vni = it->second;
+      }
+      std::optional<int64_t> newVni;
+      if (vrfEntry.vni()) {
+        newVni = *vrfEntry.vni();
+      }
+      if (vni != newVni) {
+        throw FbossHwUpdateError(in, in, "VRF ", vrfId, " VNI cannot change");
+      }
+      if (vrf->getName() != vrfEntry.name().to_optional()) {
+        renames[vrfId] = vrfEntry.name().to_optional();
+      }
+    }
+    std::vector<RouterID> toDelete;
+    for (const auto& [_, vrfMap] : std::as_const(*in->getVrfs())) {
+      for (const auto& [vrfId, vrf] : std::as_const(*vrfMap)) {
+        if (vrfId != 0 && !listed.contains(RouterID(vrfId))) {
+          toDelete.emplace_back(vrfId);
+        }
+      }
+    }
+    auto allInterfaceVrfs = interfaceVrfs;
+    for (const auto& [_, intfVrfs] : std::as_const(*in->getInterfaceVrfs())) {
+      for (const auto& [intfId, intfVrf] : std::as_const(*intfVrfs)) {
+        allInterfaceVrfs.try_emplace(InterfaceID(intfId), RouterID(0));
+      }
+    }
+    auto newState = applyVrfChanges(in, toAdd, allInterfaceVrfs, toDelete);
+    for (const auto& [vrfId, name] : renames) {
+      auto vrf = newState->getVrfs()->getNode(vrfId)->clone();
+      vrf->setName(name);
+      newState->getVrfs()->modify(&newState)->updateNode(
+          vrf, getScopeResolver()->scope(vrf));
+    }
+    return newState;
+  };
+  getRib()->syncVrfs(
+      getScopeResolver(),
+      vrfs,
+      RoutingInformationBase::InterfaceToVrf(
+          interfaceVrfs.begin(), interfaceVrfs.end()),
+      createRibToSwitchStateFunction(std::nullopt, std::move(syncState)),
+      this);
+  if (!vrfsSynced_.exchange(true)) {
+    restart_time::mark(RestartEvent::VRFS_SYNCED);
+  }
 }
 
 void SwSwitch::updateVrfs(
     const std::vector<VrfEntry>& toAdd,
+    const std::map<InterfaceID, RouterID>& interfaceVrfs,
     const std::vector<RouterID>& toDelete) {
-  // Runs in the update thread, in the same update as the VRF route tables
-  auto changeVrfs =
-      [this, toAdd, toDelete](const std::shared_ptr<SwitchState>& in) {
-        if (!toAdd.empty()) {
-          for (const auto* asic : getHwAsicTable()->getL3Asics()) {
-            if (!asic->isSupported(HwAsic::Feature::VRF)) {
-              throw FbossHwUpdateError(
-                  in, in, "VRFs are not supported on ", asic->getAsicTypeStr());
-            }
-          }
-        }
-        auto newState = in->clone();
-        auto vrfs = newState->getVrfs()->modify(&newState);
-        for (const auto& vrfEntry : toAdd) {
-          auto vrf = std::make_shared<Vrf>(RouterID(*vrfEntry.vrfId()));
-          vrf->setName(vrfEntry.name().to_optional());
-          vrfs->addNode(vrf, getScopeResolver()->scope(vrf));
-        }
-        for (auto vrfId : toDelete) {
-          vrfs->removeNode(vrfId);
-        }
-        updateTunnelVnis(in, &newState, toAdd, toDelete);
-        return newState;
-      };
+  // Runs in the update thread on the latest state, in the same update as the
+  // VRF route tables and the routes moved by the RIB. A rejected change fails
+  // the update and the RIB rolls back.
+  auto changeVrfs = [this, toAdd, interfaceVrfs, toDelete](
+                        const std::shared_ptr<SwitchState>& in) {
+    return applyVrfChanges(in, toAdd, interfaceVrfs, toDelete);
+  };
   getRib()->updateVrfs(
       getScopeResolver(),
       toAdd,
+      RoutingInformationBase::InterfaceToVrf(
+          interfaceVrfs.begin(), interfaceVrfs.end()),
       toDelete,
       createRibToSwitchStateFunction(std::nullopt, std::move(changeVrfs)),
       this);
+}
+
+std::shared_ptr<SwitchState> SwSwitch::applyVrfChanges(
+    const std::shared_ptr<SwitchState>& in,
+    const std::vector<VrfEntry>& toAdd,
+    const std::map<InterfaceID, RouterID>& interfaceVrfs,
+    const std::vector<RouterID>& toDelete) {
+  if (toAdd.empty() && toDelete.empty() &&
+      std::all_of(
+          interfaceVrfs.begin(), interfaceVrfs.end(), [&](const auto& entry) {
+            return in->getInterfaces()->getNodeIf(entry.first) &&
+                in->getInterfaceVrfs()->getVrf(entry.first) == entry.second;
+          })) {
+    return in;
+  }
+  if (!toAdd.empty()) {
+    for (const auto* asic : getHwAsicTable()->getL3Asics()) {
+      if (!asic->isSupported(HwAsic::Feature::VRF)) {
+        throw FbossHwUpdateError(
+            in, in, "VRFs are not supported on ", asic->getAsicTypeStr());
+      }
+    }
+  }
+  checkSubnetsInVrfs(in, interfaceVrfs);
+  auto newState = in->clone();
+  auto vrfs = newState->getVrfs()->modify(&newState);
+  for (const auto& vrfEntry : toAdd) {
+    auto vrf = std::make_shared<Vrf>(RouterID(*vrfEntry.vrfId()));
+    vrf->setName(vrfEntry.name().to_optional());
+    vrfs->addNode(vrf, getScopeResolver()->scope(vrf));
+  }
+  auto interfaceVrfMap = newState->getInterfaceVrfs()->modify(&newState);
+  for (const auto& [intfId, vrf] : interfaceVrfs) {
+    auto intf = newState->getInterfaces()->getNodeIf(intfId);
+    if (!intf) {
+      throw FbossHwUpdateError(in, in, "Unknown interface ", intfId);
+    }
+    if (vrf != RouterID(0) && !newState->getVrfs()->getNodeIf(vrf)) {
+      throw FbossHwUpdateError(in, in, "VRF ", vrf, " not configured");
+    }
+    if (in->getInterfaceVrfs()->getVrf(intfId) == vrf) {
+      continue;
+    }
+    auto newIntf = intf->modify(&newState);
+    // Neighbors are relearned in the new VRF
+    newIntf->setArpTable(state::NeighborEntries{});
+    newIntf->setNdpTable(state::NeighborEntries{});
+    if (interfaceVrfMap->getNodeIf(intfId)) {
+      interfaceVrfMap->removeNode(intfId);
+    }
+    if (vrf != RouterID(0)) {
+      auto entry = std::make_shared<InterfaceVrf>(intfId, vrf);
+      interfaceVrfMap->addNode(
+          entry, getScopeResolver()->scope(entry, newState));
+    }
+  }
+  for (auto vrfId : toDelete) {
+    newState->getVrfs()->modify(&newState)->removeNode(vrfId);
+  }
+  updateTunnelVnis(in, &newState, toAdd, toDelete);
+  return newState;
 }
 
 void SwSwitch::applyConfig(const std::string& reason, bool reload) {

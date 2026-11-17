@@ -739,13 +739,51 @@ void RibRouteTables::reconfigure(
   }
 }
 
-void RibRouteTables::updateInterfaceVrfs(
+void RibRouteTables::updateVrfs(
     const SwitchIdScopeResolver* resolver,
+    const std::vector<VrfEntry>& toAdd,
     const InterfaceToVrf& interfaceToVrf,
+    const std::vector<RouterID>& toDelete,
+    const RibToSwitchStateFunction& ribToSwitchStateFunc,
+    void* cookie) {
+  updateVrfsImpl(
+      resolver,
+      toAdd,
+      interfaceToVrf,
+      toDelete,
+      false /* sync */,
+      ribToSwitchStateFunc,
+      cookie);
+}
+
+void RibRouteTables::syncVrfs(
+    const SwitchIdScopeResolver* resolver,
+    const std::vector<VrfEntry>& vrfs,
+    const InterfaceToVrf& interfaceToVrf,
+    const RibToSwitchStateFunction& ribToSwitchStateFunc,
+    void* cookie) {
+  updateVrfsImpl(
+      resolver,
+      vrfs,
+      interfaceToVrf,
+      {},
+      true /* sync */,
+      ribToSwitchStateFunc,
+      cookie);
+}
+
+void RibRouteTables::updateVrfsImpl(
+    const SwitchIdScopeResolver* resolver,
+    const std::vector<VrfEntry>& vrfEntries,
+    const InterfaceToVrf& interfaceToVrf,
+    const std::vector<RouterID>& vrfIdsToDelete,
+    bool sync,
     const RibToSwitchStateFunction& ribToSwitchStateFunc,
     void* cookie) {
   std::vector<RouterID> vrfsToProgram;
   InterfaceToVrf oldInterfaceVrfs;
+  std::vector<RouterID> added;
+  std::vector<RouterID> deleted;
   // updateRib holds the lock and resolves MySids and named next hop groups
   // after the routes change
   updateRib([&](auto* mySidTable,
@@ -753,162 +791,18 @@ void RibRouteTables::updateInterfaceVrfs(
                 uint32_t ecmpWidth,
                 RouterIDToRouteTable& routeTables,
                 InterfaceToVrf& interfaceVrfs) {
-    for (const auto& [intf, vrf] : interfaceToVrf) {
-      if (!routeTables.contains(vrf)) {
-        throw FbossError("VRF ", vrf, " not configured");
-      }
-    }
-    // Interfaces already in their new VRF are left alone
-    InterfaceToVrf moves;
-    std::set<RouterID> oldVrfs;
-    for (const auto& [intf, vrf] : interfaceToVrf) {
-      auto it = interfaceVrfs.find(intf);
-      auto oldVrf = it == interfaceVrfs.end() ? RouterID(0) : it->second;
-      if (oldVrf != vrf) {
-        moves.emplace(intf, vrf);
-        oldVrfs.insert(oldVrf);
-      }
-    }
-    if (moves.empty()) {
-      return;
-    }
-    // Interface routes whose interface moved to another VRF
-    std::map<RouterID, std::vector<folly::CIDRNetwork>> toDel;
-    std::map<RouterID, std::vector<RibRouteUpdater::RouteEntry>> toAdd;
-    std::map<RouterID, int64_t> numInterfaceRoutes;
-    auto findMoves = [&](RouterID vrf, const auto& routes) {
-      for (auto it = routes.begin(); it != routes.end(); ++it) {
-        const auto& route = it->value();
-        auto intfEntry = route->getEntryForClient(ClientID::INTERFACE_ROUTE);
-        if (!intfEntry) {
-          continue;
-        }
-        ++numInterfaceRoutes[vrf];
-        for (const auto& nhop :
-             getClientNextHopsFromRib(nextHopIDManager, *intfEntry)) {
-          auto newVrf = moves.find(*nhop.intfID());
-          if (newVrf == moves.end() || newVrf->second == vrf) {
-            continue;
-          }
-          auto network = route->prefix().toCidrNetwork();
-          toDel[vrf].push_back(network);
-          toAdd[newVrf->second].push_back(
-              {network,
-               RouteNextHopEntry(nhop, AdminDistance::DIRECTLY_CONNECTED)});
-        }
-      }
-    };
-    // Only the VRFs the moved interfaces are in now have routes to move. A
-    // VRF is deleted only when no interface is in it.
-    for (auto vrf : oldVrfs) {
-      auto it = routeTables.find(vrf);
-      CHECK(it != routeTables.end()) << "VRF " << vrf << " of an interface";
-      const auto& routeTable = it->second;
-      findMoves(vrf, routeTable.v4NetworkToRoute);
-      findMoves(vrf, routeTable.v6NetworkToRoute);
-    }
-
-    // VRFs whose interfaces or interface routes change. The target VRFs
-    // are always programmed, so the switch state update runs and the
-    // caller can check the move against the latest state.
-    std::set<RouterID> changedVrfs = oldVrfs;
-    for (const auto& [intf, vrf] : moves) {
-      changedVrfs.insert(vrf);
-    }
-    for (const auto& [vrf, routes] : toDel) {
-      changedVrfs.insert(vrf);
-    }
-    for (const auto& [vrf, routes] : toAdd) {
-      changedVrfs.insert(vrf);
-    }
-    oldInterfaceVrfs = interfaceVrfs;
-    for (const auto& [intf, vrf] : moves) {
-      if (vrf == RouterID(0)) {
-        interfaceVrfs.erase(intf);
-      } else {
-        interfaceVrfs[intf] = vrf;
-      }
-    }
-
-    // VRF 0, where other VRFs can resolve next hops, goes first
-    const folly::CIDRNetwork linkLocal{folly::IPAddress("fe80::"), 64};
-    for (auto vrf : changedVrfs) {
-      auto& routeTable = routeTables.find(vrf)->second;
-      // The link-local route is present while the VRF has interface
-      // routes. A VRF that loses interface routes was searched, so its
-      // count of interface routes is known.
-      std::vector<RibRouteUpdater::RouteEntry> linkLocalToAdd;
-      std::vector<folly::CIDRNetwork> linkLocalToDel;
-      if (!toAdd[vrf].empty()) {
-        linkLocalToAdd.push_back(
-            {linkLocal,
-             RouteNextHopEntry(
-                 RouteForwardAction::TO_CPU,
-                 AdminDistance::DIRECTLY_CONNECTED)});
-      } else if (
-          !toDel[vrf].empty() &&
-          numInterfaceRoutes[vrf] == static_cast<int64_t>(toDel[vrf].size())) {
-        linkLocalToDel.push_back(linkLocal);
-      }
-      RibRouteUpdater updater(
-          &routeTable.v4NetworkToRoute,
-          &routeTable.v6NetworkToRoute,
-          &routeTable.labelToRoute,
-          nextHopIDManager,
-          mySidTable,
-          ecmpWidth,
-          vrf,
-          &interfaceVrfs,
-          &routeTables);
-      updater.update(
-          {{ClientID::INTERFACE_ROUTE, toAdd[vrf]},
-           {ClientID::LINKLOCAL_ROUTE, linkLocalToAdd}},
-          {{ClientID::INTERFACE_ROUTE, toDel[vrf]},
-           {ClientID::LINKLOCAL_ROUTE, linkLocalToDel}},
-          {});
-      vrfsToProgram.push_back(vrf);
-    }
-    if (changedVrfs.contains(RouterID(0))) {
-      resolveDependentVrfs(
-          RouterID(0),
-          routeTables,
-          interfaceVrfs,
-          nextHopIDManager,
-          mySidTable,
-          ecmpWidth,
-          nullptr /* cyclesDetectedOut */,
-          vrfsToProgram);
-    }
-  });
-  if (vrfsToProgram.empty()) {
-    return;
-  }
-  std::sort(vrfsToProgram.begin(), vrfsToProgram.end());
-  vrfsToProgram.erase(
-      std::unique(vrfsToProgram.begin(), vrfsToProgram.end()),
-      vrfsToProgram.end());
-  try {
-    // On failure, updateFib rebuilds the routes from the applied state
-    updateFib(resolver, vrfsToProgram, ribToSwitchStateFunc, cookie);
-  } catch (const FbossHwUpdateError&) {
-    synchronizedRouteTables_.wlock()->interfaceVrfs =
-        std::move(oldInterfaceVrfs);
-    throw;
-  }
-}
-
-void RibRouteTables::updateVrfs(
-    const SwitchIdScopeResolver* resolver,
-    const std::vector<VrfEntry>& toAdd,
-    const std::vector<RouterID>& toDelete,
-    const RibToSwitchStateFunction& ribToSwitchStateFunc,
-    void* cookie) {
-  std::vector<VrfFibUpdate> vrfUpdates;
-  {
-    auto lockedRouteTables = synchronizedRouteTables_.wlock();
-    auto& routeTables = lockedRouteTables->routerIDToRouteTable;
     std::set<RouterID> vrfs;
-    for (const auto& vrfEntry : toAdd) {
+    auto targets = interfaceToVrf;
+    for (const auto& vrfEntry : vrfEntries) {
+      // A sync lists all VRFs: it adds the missing ones
+      if (sync &&
+          (*vrfEntry.vrfId() == 0 ||
+           routeTables.contains(RouterID(*vrfEntry.vrfId())))) {
+        if (!vrfs.insert(RouterID(*vrfEntry.vrfId())).second) {
+          throw FbossError("VRF ", *vrfEntry.vrfId(), " listed twice");
+        }
+        continue;
+      }
       if (*vrfEntry.vrfId() <= 0) {
         throw FbossError(
             "VRF id must be positive, VRF 0 is the default VRF: ",
@@ -921,8 +815,60 @@ void RibRouteTables::updateVrfs(
       if (routeTables.contains(vrf)) {
         throw FbossError("VRF ", vrf, " already exists");
       }
+      added.push_back(vrf);
     }
-    for (auto vrf : toDelete) {
+    if (sync) {
+      for (const auto& [vrf, routeTable] : routeTables) {
+        if (vrf != RouterID(0) && !vrfs.contains(vrf)) {
+          deleted.push_back(vrf);
+        }
+      }
+      for (const auto& [intf, vrf] : interfaceVrfs) {
+        targets.try_emplace(intf, RouterID(0));
+      }
+    } else {
+      deleted = vrfIdsToDelete;
+    }
+    for (const auto& [intf, vrf] : targets) {
+      if (!routeTables.contains(vrf) &&
+          std::find(added.begin(), added.end(), vrf) == added.end()) {
+        throw FbossError("VRF ", vrf, " not configured");
+      }
+    }
+    // Interfaces already in their new VRF are left alone
+    InterfaceToVrf moves;
+    std::set<RouterID> oldVrfs;
+    for (const auto& [intf, vrf] : targets) {
+      auto it = interfaceVrfs.find(intf);
+      auto oldVrf = it == interfaceVrfs.end() ? RouterID(0) : it->second;
+      if (oldVrf != vrf) {
+        moves.emplace(intf, vrf);
+        oldVrfs.insert(oldVrf);
+      }
+    }
+    // A deleted VRF ends up with no interfaces. Its routes must all be routes
+    // of its interfaces, which move with them.
+    auto finalInterfaceVrfs = interfaceVrfs;
+    for (const auto& [intf, vrf] : moves) {
+      if (vrf == RouterID(0)) {
+        finalInterfaceVrfs.erase(intf);
+      } else {
+        finalInterfaceVrfs[intf] = vrf;
+      }
+    }
+    auto onlyInterfaceRoutes = [](const auto& routes) {
+      for (auto it = routes.begin(); it != routes.end(); ++it) {
+        for (const auto& [clientId, entry] :
+             it->value()->getEntryForClients()) {
+          if (clientId != ClientID::INTERFACE_ROUTE &&
+              clientId != ClientID::LINKLOCAL_ROUTE) {
+            return false;
+          }
+        }
+      }
+      return true;
+    };
+    for (auto vrf : deleted) {
       if (vrf == RouterID(0)) {
         throw FbossError("VRF 0 is the default VRF");
       }
@@ -933,45 +879,158 @@ void RibRouteTables::updateVrfs(
       if (it == routeTables.end()) {
         throw FbossError("VRF ", vrf, " not found");
       }
-      const auto& routeTable = it->second;
-      const auto& interfaceVrfs = lockedRouteTables->interfaceVrfs;
       if (std::any_of(
-              interfaceVrfs.begin(),
-              interfaceVrfs.end(),
+              finalInterfaceVrfs.begin(),
+              finalInterfaceVrfs.end(),
               [vrf](const auto& entry) { return entry.second == vrf; })) {
         throw FbossError("VRF ", vrf, " has interfaces");
       }
-      if (routeTable.v4NetworkToRoute.begin() !=
-              routeTable.v4NetworkToRoute.end() ||
-          routeTable.v6NetworkToRoute.begin() !=
-              routeTable.v6NetworkToRoute.end()) {
+      if (!onlyInterfaceRoutes(it->second.v4NetworkToRoute) ||
+          !onlyInterfaceRoutes(it->second.v6NetworkToRoute)) {
         throw FbossError("VRF ", vrf, " has routes");
       }
     }
-    for (const auto& vrfEntry : toAdd) {
-      RouterID vrf(*vrfEntry.vrfId());
+
+    oldInterfaceVrfs = interfaceVrfs;
+    for (const auto& vrf : added) {
       routeTables.try_emplace(vrf);
-      vrfUpdates.push_back({vrf, false /* deleted */, true /* added */});
     }
-    for (auto vrf : toDelete) {
-      vrfUpdates.push_back({vrf, true /* deleted */});
+    if (!moves.empty()) {
+      std::map<RouterID, std::vector<folly::CIDRNetwork>> toDel;
+      std::map<RouterID, std::vector<RibRouteUpdater::RouteEntry>> toAdd;
+      std::map<RouterID, int64_t> numInterfaceRoutes;
+      auto findMoves = [&](RouterID vrf, const auto& routes) {
+        for (auto it = routes.begin(); it != routes.end(); ++it) {
+          const auto& route = it->value();
+          auto intfEntry = route->getEntryForClient(ClientID::INTERFACE_ROUTE);
+          if (!intfEntry) {
+            continue;
+          }
+          ++numInterfaceRoutes[vrf];
+          for (const auto& nhop :
+               getClientNextHopsFromRib(nextHopIDManager, *intfEntry)) {
+            auto newVrf = moves.find(*nhop.intfID());
+            if (newVrf == moves.end() || newVrf->second == vrf) {
+              continue;
+            }
+            auto network = route->prefix().toCidrNetwork();
+            toDel[vrf].push_back(network);
+            toAdd[newVrf->second].push_back(
+                {network,
+                 RouteNextHopEntry(nhop, AdminDistance::DIRECTLY_CONNECTED)});
+          }
+        }
+      };
+      // Only the VRFs the moved interfaces are in now have routes to move. A
+      // VRF is deleted only when no interface is in it.
+      for (auto vrf : oldVrfs) {
+        auto it = routeTables.find(vrf);
+        CHECK(it != routeTables.end()) << "VRF " << vrf << " of an interface";
+        const auto& routeTable = it->second;
+        findMoves(vrf, routeTable.v4NetworkToRoute);
+        findMoves(vrf, routeTable.v6NetworkToRoute);
+      }
+
+      // The target VRFs are always programmed, so the switch state update
+      // runs and the caller can check the move against the latest state.
+      std::set<RouterID> changedVrfs = oldVrfs;
+      for (const auto& [intf, vrf] : moves) {
+        changedVrfs.insert(vrf);
+      }
+      for (const auto& [vrf, routes] : toDel) {
+        changedVrfs.insert(vrf);
+      }
+      for (const auto& [vrf, routes] : toAdd) {
+        changedVrfs.insert(vrf);
+      }
+      interfaceVrfs = finalInterfaceVrfs;
+
+      // VRF 0, where other VRFs can resolve next hops, goes first
+      const folly::CIDRNetwork linkLocal{folly::IPAddress("fe80::"), 64};
+      for (const auto& vrf : changedVrfs) {
+        auto& routeTable = routeTables.find(vrf)->second;
+        // The link-local route is present while the VRF has interface
+        // routes. A VRF that loses interface routes was searched, so its
+        // count of interface routes is known.
+        std::vector<RibRouteUpdater::RouteEntry> linkLocalToAdd;
+        std::vector<folly::CIDRNetwork> linkLocalToDel;
+        if (!toAdd[vrf].empty()) {
+          linkLocalToAdd.emplace_back(
+              linkLocal,
+              RouteNextHopEntry(
+                  RouteForwardAction::TO_CPU,
+                  AdminDistance::DIRECTLY_CONNECTED));
+        } else if (
+            !toDel[vrf].empty() &&
+            numInterfaceRoutes[vrf] ==
+                static_cast<int64_t>(toDel[vrf].size())) {
+          linkLocalToDel.push_back(linkLocal);
+        }
+        RibRouteUpdater updater(
+            &routeTable.v4NetworkToRoute,
+            &routeTable.v6NetworkToRoute,
+            &routeTable.labelToRoute,
+            nextHopIDManager,
+            mySidTable,
+            ecmpWidth,
+            vrf,
+            &interfaceVrfs,
+            &routeTables);
+        updater.update(
+            {{ClientID::INTERFACE_ROUTE, toAdd[vrf]},
+             {ClientID::LINKLOCAL_ROUTE, linkLocalToAdd}},
+            {{ClientID::INTERFACE_ROUTE, toDel[vrf]},
+             {ClientID::LINKLOCAL_ROUTE, linkLocalToDel}},
+            {});
+        vrfsToProgram.push_back(vrf);
+      }
+      if (changedVrfs.contains(RouterID(0))) {
+        resolveDependentVrfs(
+            RouterID(0),
+            routeTables,
+            interfaceVrfs,
+            nextHopIDManager,
+            mySidTable,
+            ecmpWidth,
+            nullptr /* cyclesDetectedOut */,
+            vrfsToProgram);
+      }
     }
+  });
+
+  std::map<RouterID, VrfFibUpdate> fibUpdates;
+  for (const auto& vrf : vrfsToProgram) {
+    fibUpdates.try_emplace(vrf, VrfFibUpdate{vrf});
   }
-  if (vrfUpdates.empty()) {
+  for (const auto& vrf : added) {
+    fibUpdates[vrf] = {vrf, false /* deleted */, true /* added */};
+  }
+  for (const auto& vrf : deleted) {
+    fibUpdates[vrf] = {vrf, true /* deleted */};
+  }
+  // A sync always runs the switch state update, so the caller can check
+  // the sync against the latest state
+  if (fibUpdates.empty() && !sync) {
     return;
   }
+  std::vector<VrfFibUpdate> vrfUpdates;
+  vrfUpdates.reserve(fibUpdates.size());
+  for (const auto& [vrf, fibUpdate] : fibUpdates) {
+    vrfUpdates.push_back(fibUpdate);
+  }
   try {
+    // On a HW failure, updateFib rebuilds the routes from the applied state
     updateFib(resolver, vrfUpdates, ribToSwitchStateFunc, cookie);
   } catch (...) {
     auto lockedRouteTables = synchronizedRouteTables_.wlock();
-    for (const auto& vrfEntry : toAdd) {
-      lockedRouteTables->routerIDToRouteTable.erase(
-          RouterID(*vrfEntry.vrfId()));
+    lockedRouteTables->interfaceVrfs = std::move(oldInterfaceVrfs);
+    for (const auto& vrf : added) {
+      lockedRouteTables->routerIDToRouteTable.erase(vrf);
     }
     throw;
   }
   auto lockedRouteTables = synchronizedRouteTables_.wlock();
-  for (auto vrf : toDelete) {
+  for (auto vrf : deleted) {
     lockedRouteTables->routerIDToRouteTable.erase(vrf);
   }
 }
@@ -1719,17 +1778,24 @@ void RoutingInformationBase::reconfigure(
   ribUpdateEventBase_.runInFbossEventBaseThreadAndWait(updateFn);
 }
 
-void RoutingInformationBase::updateInterfaceVrfs(
+void RoutingInformationBase::updateVrfs(
     const SwitchIdScopeResolver* resolver,
+    const std::vector<VrfEntry>& toAdd,
     const InterfaceToVrf& interfaceToVrf,
+    const std::vector<RouterID>& toDelete,
     const RibToSwitchStateFunction& ribToSwitchStateFunc,
     void* cookie) {
   ensureRunning();
   std::exception_ptr updateException;
   auto updateFn = [&] {
     try {
-      ribTables_.updateInterfaceVrfs(
-          resolver, interfaceToVrf, ribToSwitchStateFunc, cookie);
+      ribTables_.updateVrfs(
+          resolver,
+          toAdd,
+          interfaceToVrf,
+          toDelete,
+          ribToSwitchStateFunc,
+          cookie);
     } catch (const std::exception&) {
       updateException = std::current_exception();
     }
@@ -1740,18 +1806,18 @@ void RoutingInformationBase::updateInterfaceVrfs(
   }
 }
 
-void RoutingInformationBase::updateVrfs(
+void RoutingInformationBase::syncVrfs(
     const SwitchIdScopeResolver* resolver,
-    const std::vector<VrfEntry>& toAdd,
-    const std::vector<RouterID>& toDelete,
+    const std::vector<VrfEntry>& vrfs,
+    const InterfaceToVrf& interfaceToVrf,
     const RibToSwitchStateFunction& ribToSwitchStateFunc,
     void* cookie) {
   ensureRunning();
   std::exception_ptr updateException;
   auto updateFn = [&] {
     try {
-      ribTables_.updateVrfs(
-          resolver, toAdd, toDelete, ribToSwitchStateFunc, cookie);
+      ribTables_.syncVrfs(
+          resolver, vrfs, interfaceToVrf, ribToSwitchStateFunc, cookie);
     } catch (const std::exception&) {
       updateException = std::current_exception();
     }

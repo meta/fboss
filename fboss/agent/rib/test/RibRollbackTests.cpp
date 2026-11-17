@@ -582,9 +582,11 @@ TEST_F(RibRollbackTest, rollbackInterfaceVrfMove) {
   auto routesBeforeFailedUpdate = rib_.getRouteTableDetails(kRid);
   FailSomeUpdates failFirstUpdate({1});
   EXPECT_THROW(
-      rib_.updateInterfaceVrfs(
+      rib_.updateVrfs(
           scopeResolver(),
+          {},
           {{InterfaceID(1), kOtherVrf}},
+          {},
           failFirstUpdate,
           &switchState_),
       FbossHwUpdateError);

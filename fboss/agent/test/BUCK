@@ -291,6 +291,7 @@ cpp_unittest(
         "//fboss/agent:address_utils",
         "//fboss/agent:constants",
         "//fboss/agent:core",
+        "//fboss/agent:fboss-error",
         "//fboss/agent:fib_helpers",
         "//fboss/agent:state_observer",
         "//fboss/agent/hw/mock:mock",

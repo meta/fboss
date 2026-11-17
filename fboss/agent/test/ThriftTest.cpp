@@ -260,6 +260,52 @@ TEST_F(ThriftTest, updatePortVrfs) {
   EXPECT_EQ(intf55Vrf(), RouterID(0));
 }
 
+TEST_F(ThriftTest, syncVrfs) {
+  using PortVrfs = std::map<std::string, int32_t>;
+  ThriftHandler handler(sw_);
+  auto vrfs = std::make_unique<std::vector<VrfEntry>>(1);
+  vrfs->at(0).vrfId() = 1001;
+  // port15 is in VLAN 55, the VLAN of interface 55
+  handler.syncVrfs(
+      std::move(vrfs), std::make_unique<PortVrfs>(PortVrfs{{"port15", 1001}}));
+  EXPECT_NE(sw_->getState()->getVrfs()->getNodeIf(RouterID(1001)), nullptr);
+  EXPECT_EQ(
+      sw_->getState()->getInterfaceVrfs()->getVrf(InterfaceID(55)),
+      RouterID(1001));
+
+  // An empty sync moves interface 55 back to VRF 0 and deletes VRF 1001
+  handler.syncVrfs(
+      std::make_unique<std::vector<VrfEntry>>(), std::make_unique<PortVrfs>());
+  EXPECT_EQ(sw_->getState()->getVrfs()->getNodeIf(RouterID(1001)), nullptr);
+  EXPECT_EQ(
+      sw_->getState()->getInterfaceVrfs()->getVrf(InterfaceID(55)),
+      RouterID(0));
+}
+
+TEST_F(ThriftTest, syncVrfsIsHwProtected) {
+  using PortVrfs = std::map<std::string, int32_t>;
+  ThriftHandler handler(sw_);
+  auto vrfs = std::make_unique<std::vector<VrfEntry>>(1);
+  vrfs->at(0).vrfId() = 1001;
+  waitForStateUpdates(sw_);
+  // Fail the HW update by returning the current state
+  EXPECT_HW_CALL(sw_, stateChangedImpl(_, _))
+      .Times(::testing::AtLeast(1))
+      .WillOnce(Return(sw_->getState()));
+  EXPECT_THROW(
+      handler.syncVrfs(
+          std::move(vrfs),
+          std::make_unique<PortVrfs>(PortVrfs{{"port15", 1001}})),
+      FbossError);
+  EXPECT_EQ(sw_->getState()->getVrfs()->getNodeIf(RouterID(1001)), nullptr);
+  EXPECT_EQ(
+      sw_->getState()->getInterfaceVrfs()->getVrf(InterfaceID(55)),
+      RouterID(0));
+  auto ribVrfs = sw_->getRib()->getVrfList();
+  EXPECT_EQ(
+      std::find(ribVrfs.begin(), ribVrfs.end(), RouterID(1001)), ribVrfs.end());
+}
+
 TEST_F(ThriftTest, getRouteTableDetailsByVrf) {
   auto config = testConfigA();
   VrfEntry vrfEntry;

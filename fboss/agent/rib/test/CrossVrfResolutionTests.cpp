@@ -601,7 +601,7 @@ class InterfaceVrfMoveTest : public CrossVrfResolutionTest {
     updateInterfaceVrfs({{InterfaceID(55), kTenantVrf}});
   }
   void updateInterfaceVrfs(const RoutingInformationBase::InterfaceToVrf& map) {
-    rib_.updateInterfaceVrfs(scopeResolver(), map, fibUpdate(), nullptr);
+    rib_.updateVrfs(scopeResolver(), {}, map, {}, fibUpdate(), nullptr);
   }
   // Interface 2 moves from the default VRF to the tenant VRF
   void moveInterface2ToTenantVrf() {
@@ -731,8 +731,13 @@ TEST_F(InterfaceVrfMoveTest, WarmBootKeepsInterfaceVrfs) {
       nullptr);
   // Interface 55 is already in the tenant VRF
   fibUpdates_.clear();
-  rib->updateInterfaceVrfs(
-      scopeResolver(), {{InterfaceID(55), kTenantVrf}}, fibUpdate(), nullptr);
+  rib->updateVrfs(
+      scopeResolver(),
+      {},
+      {{InterfaceID(55), kTenantVrf}},
+      {},
+      fibUpdate(),
+      nullptr);
   EXPECT_TRUE(fibUpdates_.empty());
 }
 
@@ -746,10 +751,11 @@ class VrfUpdateTest : public InterfaceVrfMoveTest {
     return entry;
   }
   void addVrf(RouterID vrf) {
-    rib_.updateVrfs(scopeResolver(), {vrfEntry(vrf)}, {}, fibUpdate(), nullptr);
+    rib_.updateVrfs(
+        scopeResolver(), {vrfEntry(vrf)}, {}, {}, fibUpdate(), nullptr);
   }
   void deleteVrf(RouterID vrf) {
-    rib_.updateVrfs(scopeResolver(), {}, {vrf}, fibUpdate(), nullptr);
+    rib_.updateVrfs(scopeResolver(), {}, {}, {vrf}, fibUpdate(), nullptr);
   }
   bool hasVrf(RouterID vrf) {
     auto vrfs = rib_.getVrfList();
@@ -789,7 +795,8 @@ TEST_F(VrfUpdateTest, Rejected) {
   VrfEntry negativeVrf;
   negativeVrf.vrfId() = -1;
   EXPECT_THROW(
-      rib_.updateVrfs(scopeResolver(), {negativeVrf}, {}, fibUpdate(), nullptr),
+      rib_.updateVrfs(
+          scopeResolver(), {negativeVrf}, {}, {}, fibUpdate(), nullptr),
       FbossError);
   EXPECT_THROW(deleteVrf(kVrf0), FbossError);
   EXPECT_THROW(deleteVrf(RouterID(3003)), FbossError);
@@ -799,6 +806,7 @@ TEST_F(VrfUpdateTest, Rejected) {
           scopeResolver(),
           {vrfEntry(RouterID(3003)), vrfEntry(RouterID(3003))},
           {},
+          {},
           fibUpdate(),
           nullptr),
       FbossError);
@@ -806,6 +814,7 @@ TEST_F(VrfUpdateTest, Rejected) {
       rib_.updateVrfs(
           scopeResolver(),
           {vrfEntry(kNewVrf)},
+          {},
           {kNewVrf},
           fibUpdate(),
           nullptr),
@@ -830,6 +839,44 @@ TEST_F(VrfUpdateTest, DeleteWithRoutesRejected) {
   EXPECT_FALSE(hasVrf(kNewVrf));
 }
 
+TEST_F(VrfUpdateTest, AddMoveAndDeleteInOneUpdate) {
+  fibUpdates_.clear();
+  rib_.updateVrfs(
+      scopeResolver(),
+      {vrfEntry(kNewVrf)},
+      {{InterfaceID(55), kNewVrf}},
+      {kTenantVrf},
+      fibUpdate(),
+      nullptr);
+  ASSERT_EQ(fibUpdates_.size(), 1);
+  EXPECT_EQ(fibUpdates_[0], (std::vector<RouterID>{kTenantVrf, kNewVrf}));
+  EXPECT_FALSE(hasVrf(kTenantVrf));
+  EXPECT_NE(
+      rib_.longestMatch(folly::IPAddressV6("2001:db8:55::10"), kNewVrf),
+      nullptr);
+}
+
+TEST_F(VrfUpdateTest, DeleteAfterMoveWithClientRouteRejected) {
+  addRoute(
+      kTenantVrf,
+      makeRoute("2001:db8:200::/64", makeNextHop("2001:db8:55::10", {})));
+  fibUpdates_.clear();
+  EXPECT_THROW(
+      rib_.updateVrfs(
+          scopeResolver(),
+          {vrfEntry(kNewVrf)},
+          {{InterfaceID(55), kNewVrf}},
+          {kTenantVrf},
+          fibUpdate(),
+          nullptr),
+      FbossError);
+  EXPECT_TRUE(fibUpdates_.empty());
+  EXPECT_FALSE(hasVrf(kNewVrf));
+  EXPECT_NE(
+      rib_.longestMatch(folly::IPAddressV6("2001:db8:55::10"), kTenantVrf),
+      nullptr);
+}
+
 TEST_F(VrfUpdateTest, HwFailureRemovesAddedVrf) {
   RibToSwitchStateFunction failingUpdate = [](const SwitchIdScopeResolver*,
                                               const std::vector<RibVrfFib>&,
@@ -841,7 +888,7 @@ TEST_F(VrfUpdateTest, HwFailureRemovesAddedVrf) {
   };
   EXPECT_THROW(
       rib_.updateVrfs(
-          scopeResolver(), {vrfEntry(kNewVrf)}, {}, failingUpdate, nullptr),
+          scopeResolver(), {vrfEntry(kNewVrf)}, {}, {}, failingUpdate, nullptr),
       FbossHwUpdateError);
   EXPECT_FALSE(hasVrf(kNewVrf));
 }
@@ -856,7 +903,71 @@ TEST_F(VrfUpdateTest, OtherFailureRemovesAddedVrf) {
   };
   EXPECT_THROW(
       rib_.updateVrfs(
-          scopeResolver(), {vrfEntry(kNewVrf)}, {}, failingUpdate, nullptr),
+          scopeResolver(), {vrfEntry(kNewVrf)}, {}, {}, failingUpdate, nullptr),
       std::runtime_error);
+  EXPECT_FALSE(hasVrf(kNewVrf));
+}
+
+TEST_F(VrfUpdateTest, SyncAddsMovesAndDeletes) {
+  fibUpdates_.clear();
+  // Interface 55 is not listed, so it goes back to VRF 0, and the tenant VRF
+  // is not listed, so it is deleted
+  rib_.syncVrfs(
+      scopeResolver(),
+      {vrfEntry(kVrf0), vrfEntry(kNewVrf)},
+      {{InterfaceID(2), kNewVrf}},
+      fibUpdate(),
+      nullptr);
+  ASSERT_EQ(fibUpdates_.size(), 1);
+  EXPECT_TRUE(hasVrf(kNewVrf));
+  EXPECT_FALSE(hasVrf(kTenantVrf));
+  EXPECT_NE(
+      rib_.longestMatch(folly::IPAddressV6("2001:db8:55::10"), kVrf0), nullptr);
+  EXPECT_NE(
+      rib_.longestMatch(folly::IPAddressV6("2001:db8:2::10"), kNewVrf),
+      nullptr);
+}
+
+TEST_F(VrfUpdateTest, SyncWithNoChangeUpdatesSwitchState) {
+  fibUpdates_.clear();
+  rib_.syncVrfs(
+      scopeResolver(),
+      {vrfEntry(kTenantVrf)},
+      {{InterfaceID(55), kTenantVrf}},
+      fibUpdate(),
+      nullptr);
+  // The switch state update runs with no VRF FIB to write
+  ASSERT_EQ(fibUpdates_.size(), 1);
+  EXPECT_TRUE(fibUpdates_[0].empty());
+  EXPECT_TRUE(hasVrf(kTenantVrf));
+}
+
+TEST_F(VrfUpdateTest, SyncRejected) {
+  addRoute(
+      kTenantVrf,
+      makeRoute("2001:db8:200::/64", makeNextHop("2001:db8:55::10", {})));
+  fibUpdates_.clear();
+  // The tenant VRF has a client route
+  EXPECT_THROW(
+      rib_.syncVrfs(scopeResolver(), {}, {}, fibUpdate(), nullptr), FbossError);
+  EXPECT_THROW(
+      rib_.syncVrfs(
+          scopeResolver(),
+          {vrfEntry(kTenantVrf), vrfEntry(kTenantVrf)},
+          {{InterfaceID(55), kTenantVrf}},
+          fibUpdate(),
+          nullptr),
+      FbossError);
+  // An interface moved to a VRF not listed
+  EXPECT_THROW(
+      rib_.syncVrfs(
+          scopeResolver(),
+          {vrfEntry(kTenantVrf)},
+          {{InterfaceID(55), kNewVrf}},
+          fibUpdate(),
+          nullptr),
+      FbossError);
+  EXPECT_TRUE(fibUpdates_.empty());
+  EXPECT_TRUE(hasVrf(kTenantVrf));
   EXPECT_FALSE(hasVrf(kNewVrf));
 }
