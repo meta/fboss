@@ -32,6 +32,8 @@ SECTION = ".fboss.build"
 RECORD_DIRECTORY = "fboss_build_info"
 DECLARATION_PATH = "share/fboss-component-version.json"
 KERNEL_BUILD_INFO_PATH = ".kernel-build-info.json"
+SAI_KMODS_BUILD_INFO_PATH = ".sai-kmods-build-info.json"
+SAI_KMODS_DECLARATION_PATH = "share/sai-kmods-version.json"
 logger = logging.getLogger(__name__)
 
 
@@ -504,6 +506,121 @@ def capture_bsp_build(
     )
 
 
+def _sai_kmods_source_identity(directory: Path) -> dict[str, object]:
+    try:
+        tracked = subprocess.check_output(
+            ["git", "-C", str(directory), "ls-files", "--", "."],
+            text=True,
+            stderr=subprocess.DEVNULL,
+            timeout=30,
+        ).splitlines()
+        if any(Path(name).suffix == ".c" for name in tracked):
+            identity = get_source_build_info(directory)
+            identity.pop("build_version")
+            return identity
+    except (OSError, subprocess.SubprocessError):
+        pass
+    logger.warning("SAI module source revision unavailable: %s", directory)
+    return {}
+
+
+def prepare_sai_kmods_build(output_dir: Path, source_dirs: list[Path]) -> None:
+    if not source_dirs:
+        raise ValueError("SAI module source directories are required")
+    sources: dict[str, object] = {}
+    sdk_versions: set[str] = set()
+    for directory in source_dirs:
+        directory = directory.resolve()
+        if not directory.is_dir():
+            raise ValueError(f"SAI module source directory does not exist: {directory}")
+        if directory.name in sources:
+            raise ValueError(f"Duplicate SAI module source directory: {directory.name}")
+        sources[directory.name] = _sai_kmods_source_identity(directory)
+        version = re.fullmatch(
+            r"(?:xgs|dnx)-sdk-(\d+\.\d+\.\d+)-gpl-modules|hsdk-(\d+\.\d+\.\d+)-gpl",
+            directory.name,
+        )
+        if version:
+            sdk_versions.add(version.group(1) or version.group(2))
+    if len(sdk_versions) > 1:
+        raise ValueError("SAI module source directories disagree on SDK version")
+    build: dict[str, object] = {"sources": sources}
+    fboss = get_source_build_info_from_environment(Path(__file__).parent)
+    fboss.pop("build_version")
+    if fboss:
+        build["fboss"] = fboss
+    build_version = os.environ.get("FBOSS_BUILD_VERSION")
+    if build_version:
+        build["build_version"] = build_version
+    write_declaration(
+        output_dir / SAI_KMODS_BUILD_INFO_PATH,
+        {},
+        "component_version.py",
+        build=build,
+        versions={"native_sdk": next(iter(sdk_versions))} if sdk_versions else None,
+    )
+
+
+def capture_sai_kmods_build(
+    output_dir: Path,
+    modules_dir: Path,
+    kernel_rpms_dir: Path | None = None,
+) -> None:
+    context_path = modules_dir / SAI_KMODS_BUILD_INFO_PATH
+    if not context_path.is_file():
+        raise ValueError("Missing prepared SAI module producer identity")
+    context = json.loads(context_path.read_text())
+    rpms = [
+        rpm for rpm in output_dir.glob("*.rpm") if not rpm.name.endswith(".src.rpm")
+    ]
+    rpm = _one_rpm(rpms, "sai-runtime-", ".rpm")
+    version, arch = _query_rpm(rpm, "%{VERSION}\n%{ARCH}").splitlines()
+    modules: dict[str, object] = {}
+    releases: set[str] = set()
+    for module in sorted(modules_dir.glob("*.ko")):
+        module_checksum = checksum(module)
+        packaged = _read_rpm_member(rpm, "usr/local/lib/modules/" + module.name)
+        if checksum(packaged) != module_checksum:
+            raise ValueError(f"SAI RPM payload does not match {module.name}")
+        record: dict[str, object] = {"sha256": module_checksum}
+        for field in ("version", "vermagic", "srcversion"):
+            value = subprocess.check_output(
+                ["modinfo", "-F", field, str(module)], text=True, timeout=60
+            ).strip()
+            if value:
+                record[field] = value
+                if field == "vermagic":
+                    releases.add(value.split()[0])
+        modules[module.name] = record
+    if not modules or len(releases) != 1:
+        raise ValueError("SAI modules must report one target kernel release")
+    release = next(iter(releases))
+    build = context["build"]
+    build.update(
+        modules=modules,
+        kernel_release=release,
+        rpm_sha256={rpm.name: checksum(rpm)},
+    )
+    if kernel_rpms_dir is not None:
+        kernel_inputs = {
+            rpm.name: checksum(rpm)
+            for prefix in ("kernel-headers-", "kernel-devel-")
+            for rpm in sorted(kernel_rpms_dir.rglob(prefix + "*.rpm"))
+        }
+        if kernel_inputs:
+            build["kernel_rpm_sha256"] = kernel_inputs
+    versions = context.get("versions", {})
+    versions.update(sai=version, kernel=release.removesuffix("." + arch))
+    write_declaration(
+        output_dir / SAI_KMODS_DECLARATION_PATH,
+        {},
+        "component_version.py",
+        build=build,
+        versions=versions,
+    )
+    context_path.unlink()
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
@@ -531,6 +648,14 @@ def main() -> None:
     bsp_source = bsp.add_mutually_exclusive_group(required=True)
     bsp_source.add_argument("--source-dir", type=Path)
     bsp_source.add_argument("--source-rpm", type=Path)
+    sai_kmods = commands.add_parser(
+        "sai-kmods", help="Capture SAI module producer identity"
+    )
+    sai_kmods.add_argument("--output-dir", type=Path, required=True)
+    sai_kmods.add_argument("--prepare", action="store_true")
+    sai_kmods.add_argument("--source-dir", type=Path, action="append", default=[])
+    sai_kmods.add_argument("--modules-dir", type=Path)
+    sai_kmods.add_argument("--kernel-rpms-dir", type=Path)
     args = parser.parse_args()
     if args.command == "generate":
         try:
@@ -558,6 +683,15 @@ def main() -> None:
         capture_bsp_build(
             args.output_dir, args.source_dir, args.kmod_name, args.source_rpm
         )
+    elif args.command == "sai-kmods":
+        if args.prepare:
+            prepare_sai_kmods_build(args.output_dir, args.source_dir)
+        elif args.modules_dir is None:
+            parser.error("sai-kmods capture requires --modules-dir")
+        else:
+            capture_sai_kmods_build(
+                args.output_dir, args.modules_dir, args.kernel_rpms_dir
+            )
     else:
         write_binary_build_info(args.binary, args.objcopy)
 
