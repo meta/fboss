@@ -1663,7 +1663,9 @@ endif()
 # install of ${CMAKE_BINARY_DIR}/fboss/ to fail with "File exists".
 if(FBOSS_BUILD_PROFILE STREQUAL "exported_libraries")
   install(
-    FILES ${CMAKE_SOURCE_DIR}/fboss/agent/StrongTypes.h
+    FILES
+      ${CMAKE_SOURCE_DIR}/fboss/agent/Constants.h
+      ${CMAKE_SOURCE_DIR}/fboss/agent/StrongTypes.h
     DESTINATION include/fboss/agent
   )
   install(

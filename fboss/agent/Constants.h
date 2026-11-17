@@ -10,6 +10,8 @@
 
 #pragma once
 
+#include <cstdint>
+
 #include <folly/Range.h>
 
 namespace facebook::fboss {
@@ -71,8 +73,11 @@ inline constexpr folly::StringPiece kUdfGroupPktMatchers{"udfGroupPktMatchers"};
 inline constexpr folly::StringPiece kUdfPacketMatchers{"udfPacketMatchers"};
 inline constexpr folly::StringPiece kSysPortShelState{"sysPortShelState"};
 
-inline constexpr int32_t kDefaultVrf{0};
-inline constexpr int32_t kQuarantineVrfId{1};
+// Routing-table ID; same width as the wedge_agent `...InVrf` `i32 vrf`.
+using VrfId = int32_t;
+
+inline constexpr VrfId kDefaultVrf{0};
+inline constexpr VrfId kQuarantineVrfId{1};
 constexpr auto kSingleStageInbandPortId = 1;
 
 } // namespace facebook::fboss
