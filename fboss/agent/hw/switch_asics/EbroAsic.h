@@ -114,10 +114,14 @@ class EbroAsic : public TajoAsic {
     return 4096;
   }
   std::optional<uint32_t> getMaxEcmpMembers() const override {
-    // MT-697
-    // fbsource/third-party/tp2/leaba-sdk/1.42.8/sdk-1.42.8/sai/src/sai_device.h
-    // MAX_NEXT_HOP_GROUP_MEMBERS = 32768
-    return 32768;
+    // Without force_l1_ecmp, SAI creates LEVEL_2 ECMP groups, whose members go
+    // into the resolution stage1 EM table (one entry per member):
+    //   4 banks x 8192 entries + 32 CAM entries = 32800
+    // The SDK stops relocating EM entries once the table is more than 95% full
+    // (logical_em_base.h HIGHEST_UTILIZATION_FOR_MOVINGS = 0.95), so inserts
+    // past 32800 * 95% = 31160 fail with "out of resource" after a few more
+    // entries.
+    return 31160;
   }
   std::optional<uint32_t> getMaxNdpTableSize() const override {
     return 88465;
