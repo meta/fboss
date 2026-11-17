@@ -4,6 +4,7 @@
 #include "fboss/agent/hw/mock/MockPlatform.h"
 #include "fboss/agent/state/SwitchState.h"
 #include "fboss/agent/state/VxlanTunnel.h"
+#include "fboss/agent/state/VxlanTunnelMap.h"
 #include "fboss/agent/test/TestUtils.h"
 
 using namespace facebook::fboss;
@@ -29,8 +30,6 @@ class VxlanTunnelConfigTest : public ::testing::Test {
     tunnel.dscpMode() = cfg::TunnelMode::PIPE;
     tunnel.ecnMode() = cfg::TunnelMode::PIPE;
     tunnel.tunnelTermType() = cfg::TunnelTerminationType::MP2MP;
-    tunnel.vrf2Vni() = std::map<int64_t, int64_t>{{0, 1000}, {1, 1001}};
-    tunnel.vniToVrf() = std::map<int64_t, int64_t>{{1000, 0}, {1001, 1}};
     return tunnel;
   }
 
@@ -54,10 +53,6 @@ TEST_F(VxlanTunnelConfigTest, CreateVxlanTunnel) {
   EXPECT_EQ(tunnel->getDscpMode(), cfg::TunnelMode::PIPE);
   EXPECT_EQ(tunnel->getEcnMode(), cfg::TunnelMode::PIPE);
   EXPECT_EQ(tunnel->getTunnelTermType(), cfg::TunnelTerminationType::MP2MP);
-  const std::map<int64_t, int64_t> expectedVrf2Vni{{0, 1000}, {1, 1001}};
-  const std::map<int64_t, int64_t> expectedVniToVrf{{1000, 0}, {1001, 1}};
-  EXPECT_EQ(tunnel->getVrf2Vni(), expectedVrf2Vni);
-  EXPECT_EQ(tunnel->getVniToVrf(), expectedVniToVrf);
 }
 
 TEST_F(VxlanTunnelConfigTest, RejectsMultipleVxlanTunnels) {
@@ -83,24 +78,29 @@ TEST_F(VxlanTunnelConfigTest, UpdateVxlanTunnel) {
   EXPECT_EQ(tunnel->getDstIP(), folly::IPAddress("3.3.3.3"));
 }
 
-TEST_F(VxlanTunnelConfigTest, UpdateVxlanTunnelMaps) {
+TEST_F(VxlanTunnelConfigTest, RemoveVxlanTunnelWithVnisRejected) {
   config_.vxlanTunnels() = {makeVxlanTunnelConfig()};
   state_ = publishAndApplyConfig(state_, &config_, platform_.get());
   ASSERT_NE(state_, nullptr);
+  // VNIs that SwSwitch::addVrfs() adds
+  auto tunnel = state_->getVxlanTunnels()->getNode("vxlantunnel0")->clone();
+  tunnel->setVrf2Vni(std::map<int64_t, int64_t>{{1, 2000}});
+  tunnel->setVniToVrf(std::map<int64_t, int64_t>{{2000, 1}});
+  auto state = state_->clone();
+  state->getVxlanTunnels()->modify(&state)->updateNode(
+      tunnel, HwSwitchMatcher(std::unordered_set<SwitchID>({SwitchID(0)})));
+  state->publish();
 
-  config_.vxlanTunnels()->at(0).vrf2Vni() =
-      std::map<int64_t, int64_t>{{0, 2000}};
-  config_.vxlanTunnels()->at(0).vniToVrf() =
-      std::map<int64_t, int64_t>{{2000, 0}};
-  state_ = publishAndApplyConfig(state_, &config_, platform_.get());
-  ASSERT_NE(state_, nullptr);
+  config_.vxlanTunnels()->at(0).dstIp() = "3.3.3.3";
+  auto newState = publishAndApplyConfig(state, &config_, platform_.get());
+  ASSERT_NE(newState, nullptr);
+  EXPECT_EQ(
+      newState->getVxlanTunnels()->getNode("vxlantunnel0")->getVrf2Vni(),
+      (std::map<int64_t, int64_t>{{1, 2000}}));
 
-  auto tunnel = state_->getVxlanTunnels()->getNodeIf("vxlantunnel0");
-  ASSERT_NE(tunnel, nullptr);
-  const std::map<int64_t, int64_t> expectedVrf2Vni{{0, 2000}};
-  const std::map<int64_t, int64_t> expectedVniToVrf{{2000, 0}};
-  EXPECT_EQ(tunnel->getVrf2Vni(), expectedVrf2Vni);
-  EXPECT_EQ(tunnel->getVniToVrf(), expectedVniToVrf);
+  config_.vxlanTunnels() = {};
+  EXPECT_THROW(
+      publishAndApplyConfig(newState, &config_, platform_.get()), FbossError);
 }
 
 TEST_F(VxlanTunnelConfigTest, RemoveVxlanTunnel) {

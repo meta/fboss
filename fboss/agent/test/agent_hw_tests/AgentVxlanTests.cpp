@@ -14,6 +14,7 @@
 #include "fboss/agent/hw/test/ConfigFactory.h"
 #include "fboss/agent/packet/PktFactory.h"
 #include "fboss/agent/state/RouteNextHop.h"
+#include "fboss/agent/state/VxlanTunnelMap.h"
 #include "fboss/agent/test/AgentHwTest.h"
 #include "fboss/agent/test/EcmpSetupHelper.h"
 #include "fboss/agent/test/TestUtils.h"
@@ -77,25 +78,49 @@ class AgentVxlanTest : public AgentHwTest {
       {kOverlayVrf, {1, 2, 3, 4}},
       {kOverlayVrf2, {5}}};
 
-  // Add the VRFs to config. bindVrfPorts() moves their ports' interfaces.
-  void addVrfPorts(
-      cfg::SwitchConfig& cfg,
-      const AgentEnsemble& ensemble,
-      const VrfPorts& vrfPorts) const {
-    auto portIds = ensemble.masterLogicalPortIds();
-    for (const auto& [vrf, portIdxs] : vrfPorts) {
-      std::vector<PortID> ports;
-      ports.reserve(portIdxs.size());
-      for (auto idx : portIdxs) {
-        ports.push_back(portIds[idx]);
-      }
-      utility::addVrfForPorts(cfg, vrf, ports);
-    }
+  using VrfVniMap = std::map<int64_t, int64_t>;
+
+  static uint32_t vni(RouterID vrf) {
+    return vrf == kOverlayVrf2 ? kVni2 : kVni;
   }
 
-  // Move the interfaces of the ports into their VRFs. Done in cold boot
-  // setup only: the bindings persist across warm boot.
+  // The default VR gets kDefaultVni in the tunnel directly, as a
+  // prepopulated switch state would
+  void addDefaultVni() {
+    getSw()->updateStateBlocking(
+        "default VNI", [this](const std::shared_ptr<SwitchState>& in) {
+          auto tunnel = in->getVxlanTunnels()->getNode(kTunnelId);
+          auto vrf2Vni = tunnel->getVrf2Vni().value_or(VrfVniMap{});
+          if (vrf2Vni.contains(0)) {
+            return std::shared_ptr<SwitchState>();
+          }
+          auto vniToVrf = tunnel->getVniToVrf().value_or(VrfVniMap{});
+          vrf2Vni[0] = kDefaultVni;
+          vniToVrf[kDefaultVni] = 0;
+          auto newTunnel = tunnel->clone();
+          newTunnel->setVrf2Vni(vrf2Vni);
+          newTunnel->setVniToVrf(vniToVrf);
+          auto state = in->clone();
+          state->getVxlanTunnels()->modify(&state)->updateNode(
+              newTunnel, getSw()->getScopeResolver()->scope(newTunnel, state));
+          return state;
+        });
+  }
+
+  // Add the VRFs with their VNIs and move the interfaces of the ports into
+  // them. Done in cold boot setup only: the VRFs, VNIs and bindings persist
+  // across warm boot.
   void bindVrfPorts(const VrfPorts& vrfPorts) {
+    addDefaultVni();
+    std::vector<VrfEntry> vrfs;
+    for (const auto& [vrf, portIdxs] : vrfPorts) {
+      if (!getProgrammedState()->getVrfs()->getNodeIf(vrf)) {
+        auto& entry = vrfs.emplace_back();
+        entry.vrfId() = vrf;
+        entry.vni() = vni(vrf);
+      }
+    }
+    getSw()->addVrfs(vrfs);
     std::map<InterfaceID, RouterID> interfaceVrfs;
     for (const auto& [vrf, portIdxs] : vrfPorts) {
       for (const auto& port : logicalPorts(portIdxs)) {
@@ -125,41 +150,12 @@ class AgentVxlanTest : public AgentHwTest {
     return logicalPorts(idxs);
   }
 
-  using VrfVniMap = std::map<int64_t, int64_t>;
-
-  // Encap and decap mapper contents for the tunnel: the
-  // default VR entry plus one entry per overlay VRF.
-  std::pair<VrfVniMap, VrfVniMap> vniMaps(
-      const std::vector<std::pair<RouterID, uint32_t>>& overlayMappings = {})
-      const {
-    VrfVniMap vrf2Vni;
-    VrfVniMap vniToVrf;
-    auto addMapping = [&vrf2Vni, &vniToVrf](RouterID vrf, uint32_t vni) {
-      vrf2Vni[static_cast<int64_t>(vrf)] = vni;
-      vniToVrf[vni] = static_cast<int64_t>(vrf);
-    };
-    addMapping(RouterID(0), kDefaultVni);
-    addMapping(kOverlayVrf, kVni);
-    for (const auto& [vrf, vni] : overlayMappings) {
-      addMapping(vrf, vni);
-    }
-    return {vrf2Vni, vniToVrf};
-  }
-
   cfg::SwitchConfig vxlanConfig(
       const AgentEnsemble& ensemble,
       const folly::IPAddressV6& localVtep,
-      const folly::IPAddressV6& remoteVtep,
-      const std::vector<std::pair<RouterID, uint32_t>>& overlayMappings = {})
-      const {
+      const folly::IPAddressV6& remoteVtep) const {
     auto cfg = interfaceConfig(ensemble);
-    auto tunnel = tunnelConfig(cfg, localVtep, remoteVtep);
-    auto [vrf2Vni, vniToVrf] = vniMaps(overlayMappings);
-    tunnel.vrf2Vni() = vrf2Vni;
-    // BRCM builds its VNI -> VR table only from decap entries,
-    // and encap next hop creation looks the VNI up in it.
-    tunnel.vniToVrf() = vniToVrf;
-    cfg.vxlanTunnels() = {tunnel};
+    cfg.vxlanTunnels() = {tunnelConfig(cfg, localVtep, remoteVtep)};
     return cfg;
   }
 
@@ -291,12 +287,7 @@ class AgentVxlanTest : public AgentHwTest {
   static inline const folly::IPAddressV6 kDecapOverlayPrefix{"101::"};
 
   cfg::SwitchConfig decapConfig(const AgentEnsemble& ensemble) const {
-    // Two VNIs decap into two overlay VRFs: kVni into kOverlayVrf
-    // and kVni2 into kOverlayVrf2.
-    auto cfg = vxlanConfig(
-        ensemble, kDecapLocalVtep, kDecapRemoteVtep, {{kOverlayVrf2, kVni2}});
-    addVrfPorts(cfg, ensemble, kDecapVrfPorts);
-    return cfg;
+    return vxlanConfig(ensemble, kDecapLocalVtep, kDecapRemoteVtep);
   }
 
   // Route the decapped inner destination out the second port in
@@ -532,9 +523,7 @@ class AgentVxlanEncapTest : public AgentVxlanTest {
 
   cfg::SwitchConfig initialConfig(
       const AgentEnsemble& ensemble) const override {
-    auto cfg = vxlanConfig(ensemble, kLocalVtep, kRemoteVtep);
-    addVrfPorts(cfg, ensemble, kEncapVrfPorts);
-    return cfg;
+    return vxlanConfig(ensemble, kLocalVtep, kRemoteVtep);
   }
 
   void verifyEncapOnPort(
@@ -890,11 +879,7 @@ class AgentVxlanSnoopTest : public AgentVxlanTest {
 
   cfg::SwitchConfig initialConfig(
       const AgentEnsemble& ensemble) const override {
-    // Each overlay VRF maps to its own VNI on this tunnel.
-    auto cfg =
-        vxlanConfig(ensemble, kLocalVtep, kRemoteVtep, {{kOverlayVrf2, kVni2}});
-    addVrfPorts(cfg, ensemble, kSnoopVrfPorts);
-    return cfg;
+    return vxlanConfig(ensemble, kLocalVtep, kRemoteVtep);
   }
 
   void setupEncapSnoop() {

@@ -8012,6 +8012,19 @@ std::shared_ptr<VxlanTunnelMap> ThriftConfigApplier::updateVxlanTunnels() {
 
   if (numExistingProcessed != origTunnels->numNodes()) {
     CHECK_LT(numExistingProcessed, origTunnels->numNodes());
+    for (const auto& [_, tunnels] : std::as_const(*origTunnels)) {
+      for (const auto& [id, tunnel] : std::as_const(*tunnels)) {
+        auto hasEntries = [](const auto& map) {
+          return map.has_value() && !map->empty();
+        };
+        if (!newTunnels->getNodeIf(id) &&
+            (hasEntries(tunnel->getVrf2Vni()) ||
+             hasEntries(tunnel->getVniToVrf()))) {
+          throw FbossError(
+              "VXLAN tunnel ", id, " cannot be removed while VRFs have VNIs");
+        }
+      }
+    }
     changed = true;
   }
 
@@ -8025,11 +8038,9 @@ shared_ptr<VxlanTunnel> ThriftConfigApplier::updateVxlanTunnel(
     const std::shared_ptr<VxlanTunnel>& orig,
     const cfg::VxLanTunnel* config) {
   auto newTunnel = createVxlanTunnel(*config);
-  // Without VNI maps in config, the tunnel keeps those of SwSwitch::addVrfs()
-  if (!config->vrf2Vni().has_value() && !config->vniToVrf().has_value()) {
-    newTunnel->setVrf2Vni(orig->getVrf2Vni());
-    newTunnel->setVniToVrf(orig->getVniToVrf());
-  }
+  // The tunnel keeps the VNI maps of SwSwitch::addVrfs()
+  newTunnel->setVrf2Vni(orig->getVrf2Vni());
+  newTunnel->setVniToVrf(orig->getVniToVrf());
   if (*newTunnel == *orig) {
     return nullptr;
   }
@@ -8058,12 +8069,6 @@ shared_ptr<VxlanTunnel> ThriftConfigApplier::createVxlanTunnel(
   }
   if (config.dstIp().has_value()) {
     tunnel->setDstIP(folly::IPAddress(*config.dstIp()));
-  }
-  if (config.vrf2Vni().has_value()) {
-    tunnel->setVrf2Vni(*config.vrf2Vni());
-  }
-  if (config.vniToVrf().has_value()) {
-    tunnel->setVniToVrf(*config.vniToVrf());
   }
   if (tunnel->getType() != TunnelType::VXLAN) {
     throw FbossError(

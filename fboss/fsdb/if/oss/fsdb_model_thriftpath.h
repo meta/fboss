@@ -7122,8 +7122,6 @@ class ChildThriftPath<::facebook::fboss::cfg::VxLanTunnel, ::facebook::fboss::fs
     STRUCT_CHILD_GETTERS(ecnMode, 7);
     STRUCT_CHILD_GETTERS(tunnelTermType, 8);
     STRUCT_CHILD_GETTERS(tunnelType, 9);
-    STRUCT_CHILD_GETTERS(vrf2Vni, 10);
-    STRUCT_CHILD_GETTERS(vniToVrf, 11);
 };
 
 
