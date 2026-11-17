@@ -9,15 +9,18 @@ include "common/network/if/Address.thrift"
 include "thrift/annotation/cpp.thrift"
 include "thrift/annotation/thrift.thrift"
 include "thrift/annotation/hack.thrift"
+include "thrift/annotation/python.thrift"
 
 @hack.NamePrefix{prefix = "fboss_"}
 @hack.LegacyOmitPrefixInNameString
 @thrift.AllowLegacyMissingUris
 package;
 
-@cpp.Type{name = "::folly::fbstring"}
+@python.Py3EnableCppAdapter
+@cpp.Adapter{name = "::apache::thrift::StringTypeAdapter<::folly::fbstring>"}
 typedef binary fbbinary
-@cpp.Type{name = "::folly::fbstring"}
+@python.Py3EnableCppAdapter
+@cpp.Adapter{name = "::apache::thrift::StringTypeAdapter<::folly::fbstring>"}
 typedef string fbstring
 
 struct ClientInformation {

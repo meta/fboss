@@ -115,6 +115,7 @@ thrift_library(
         "//common/network/if:if",
         "//thrift/annotation:cpp",
         "//thrift/annotation:hack",
+        "//thrift/annotation:python",
         "//thrift/annotation:thrift",
     ],
 )
