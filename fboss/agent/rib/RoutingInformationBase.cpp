@@ -3365,10 +3365,15 @@ void resolveNamedNhgs(
                  << "'; leaving its normalized id in place";
       continue;
     }
+    NextHopForwardInfos nhToFwds;
+    for (const auto& nh : *nhops) {
+      if (auto fwd = resolveNhopFromRib(routeTables, manager, nh, ecmpWidth);
+          !fwd.empty()) {
+        nhToFwds.emplace(nh, std::move(fwd));
+      }
+    }
     manager->updateNormalizedNamedNhgId(
-        name,
-        resolveNextHopSetFromRib(routeTables, manager, *nhops, ecmpWidth),
-        ecmpWidth);
+        name, mergeForwardInfos(nhToFwds), ecmpWidth);
   }
 }
 
