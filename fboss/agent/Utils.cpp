@@ -21,6 +21,7 @@
 #include "fboss/agent/state/ArpTable.h"
 #include "fboss/agent/state/Interface.h"
 #include "fboss/agent/state/InterfaceMap.h"
+#include "fboss/agent/state/InterfaceVrfMap.h"
 #include "fboss/agent/state/NdpEntry.h"
 #include "fboss/agent/state/NdpTable.h"
 #include "fboss/agent/state/SwitchState.h"
@@ -764,6 +765,29 @@ std::optional<VlanID> getVlanIDFromVlanOrIntf(
 template std::optional<VlanID> getVlanIDFromVlanOrIntf<Vlan>(
     const std::shared_ptr<Vlan>& vlanOrIntf);
 template std::optional<VlanID> getVlanIDFromVlanOrIntf<Interface>(
+    const std::shared_ptr<Interface>& vlanOrIntf);
+
+template <typename VlanOrIntfT>
+RouterID getVrfFromVlanOrIntf(
+    const std::shared_ptr<SwitchState>& state,
+    const std::shared_ptr<VlanOrIntfT>& vlanOrIntf) {
+  if (!vlanOrIntf) {
+    throw FbossError("No ingress VLAN or interface to get the VRF from");
+  }
+  InterfaceID intfID;
+  if constexpr (std::is_same_v<VlanOrIntfT, Vlan>) {
+    intfID = vlanOrIntf->getInterfaceID();
+  } else {
+    intfID = vlanOrIntf->getID();
+  }
+  return state->getInterfaceVrfs()->getVrf(intfID);
+}
+
+template RouterID getVrfFromVlanOrIntf<Vlan>(
+    const std::shared_ptr<SwitchState>& state,
+    const std::shared_ptr<Vlan>& vlanOrIntf);
+template RouterID getVrfFromVlanOrIntf<Interface>(
+    const std::shared_ptr<SwitchState>& state,
     const std::shared_ptr<Interface>& vlanOrIntf);
 
 template <typename NTableT>

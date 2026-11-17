@@ -129,6 +129,20 @@ target_link_libraries(vrf_config_test
 
 gtest_discover_tests(vrf_config_test)
 
+add_executable(vrf_punt_path_test
+  fboss/util/oss/TestMain.cpp
+  fboss/agent/test/VrfPuntPathTests.cpp
+)
+
+target_link_libraries(vrf_punt_path_test
+  agent_test_utils
+  handler
+  ${GTEST}
+  ${LIBGMOCK_LIBRARIES}
+)
+
+gtest_discover_tests(vrf_punt_path_test)
+
 add_library(agent_test_lib
   fboss/agent/test/AgentTest.cpp
 )

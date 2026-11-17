@@ -300,6 +300,24 @@ cpp_unittest(
 )
 
 cpp_unittest(
+    name = "vrf_punt_path_test",
+    srcs = [
+        "VrfPuntPathTests.cpp",
+    ],
+    network_access = network_access_utils.none(),
+    test_main = "//fboss/agent/test:fboss_test_main",
+    deps = [
+        "fbsource//third-party/googletest:gmock",
+        ":hw_test_handle",
+        ":utils",
+        "//fboss/agent:core",
+        "//fboss/agent:packet",
+        "//fboss/agent/packet:packet_factory",
+        "//fboss/agent/state:state",
+    ],
+)
+
+cpp_unittest(
     name = "pfc_utils_test",
     srcs = [
         "PfcUtilsTests.cpp",

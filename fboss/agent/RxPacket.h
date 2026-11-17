@@ -53,14 +53,6 @@ class RxPacket : public Packet {
   uint32_t getLength() const {
     return len_;
   }
-  /**
-   * Get the router ID of the packet
-   */
-  RouterID getRouterID() const {
-    // TODO: only vrf 0 now
-    return RouterID(0);
-  }
-
   /*
    * Return a human-readable string describing additional detailed information
    * about the packet.

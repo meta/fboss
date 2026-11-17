@@ -299,7 +299,7 @@ void IPv4Handler::handlePacket(
 
   // Handle packets destined for us
   // Get the Interface to which this packet should be forwarded in host
-  // TODO: assume vrf 0 now
+  const auto vrf = getVrfFromVlanOrIntf(state, vlanOrIntf);
   std::shared_ptr<Interface> intf{nullptr};
   auto interfaceMap = state->getInterfaces();
   if (v4Hdr.dstAddr.isMulticast()) {
@@ -329,11 +329,11 @@ void IPv4Handler::handlePacket(
     // intf->hasAddress(v4Hdr.dstAddr)) {
     //   intf = nullptr;
     // }
-    intf = state->getInterfaceIf(RouterID(0), v4Hdr.dstAddr);
+    intf = state->getInterfaceIf(vrf, v4Hdr.dstAddr);
   } else {
     // Else loopup host interface based on destAddr
-    const auto iter = sw_->getAddrToLocalIntfMap().find(
-        std::make_pair(RouterID(0), v4Hdr.dstAddr));
+    const auto iter =
+        sw_->getAddrToLocalIntfMap().find(std::make_pair(vrf, v4Hdr.dstAddr));
     if (iter != sw_->getAddrToLocalIntfMap().end()) {
       intf = interfaceMap->getNodeIf(iter->second);
     }

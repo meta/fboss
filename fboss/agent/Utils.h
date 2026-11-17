@@ -416,6 +416,12 @@ template <typename VlanOrIntfT>
 std::optional<VlanID> getVlanIDFromVlanOrIntf(
     const std::shared_ptr<VlanOrIntfT>& vlanOrIntf);
 
+// VRF of the ingress VLAN or interface of a received packet
+template <typename VlanOrIntfT>
+RouterID getVrfFromVlanOrIntf(
+    const std::shared_ptr<SwitchState>& state,
+    const std::shared_ptr<VlanOrIntfT>& vlanOrIntf);
+
 template <typename NTableT>
 std::shared_ptr<NTableT> getNeighborTableForVlan(
     const std::shared_ptr<SwitchState>& state,
