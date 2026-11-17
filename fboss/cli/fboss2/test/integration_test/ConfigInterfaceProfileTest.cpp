@@ -57,8 +57,8 @@ class ConfigInterfaceProfileTest : public Fboss2IntegrationTest {
   };
 
   struct MultiInterfaceCandidate {
-    Candidate first;
-    Candidate second;
+    std::string targetProfile;
+    std::vector<Candidate> ports;
   };
 
   // A present controlling port C whose current profile subsumes an absent
@@ -185,14 +185,14 @@ class ConfigInterfaceProfileTest : public Fboss2IntegrationTest {
     return std::nullopt;
   }
 
-  // Two distinct present controlling ports with a common supported profile
-  // that differs from both current profiles.
+  // Two distinct port groups whose present members all support a common
+  // profile that differs from every member's current profile.
   std::optional<MultiInterfaceCandidate> findMultiInterfaceCandidate() const {
     auto mapping = fetchPlatformMapping();
     auto present = fetchPresentPorts();
     auto groups = utility::getSubsidiaryPortIDs(mapping.getPlatformPorts());
-    std::map<std::string, Candidate> candidateByTargetProfile;
-    for (const auto& [controlling, unused] : groups) {
+    std::map<std::string, std::vector<Candidate>> candidatesByTargetProfile;
+    for (const auto& [controlling, portsInGroup] : groups) {
       auto cid = static_cast<int32_t>(controlling);
       auto pit = present.find(cid);
       if (pit == present.end()) {
@@ -201,13 +201,37 @@ class ConfigInterfaceProfileTest : public Fboss2IntegrationTest {
       const auto& entry = mapping.getPlatformPort(cid);
       for (const auto& [profileId, unused2] : *entry.supportedProfiles()) {
         auto name = apache::thrift::util::enumNameSafe(profileId);
-        if (name == pit->second.profileId) {
+        std::vector<Candidate> groupCandidates;
+        bool groupSupportsTransition = true;
+        for (const auto& portId : portsInGroup) {
+          auto presentIt = present.find(static_cast<int32_t>(portId));
+          if (presentIt == present.end()) {
+            continue;
+          }
+          const auto& portEntry = mapping.getPlatformPort(portId);
+          if (portEntry.supportedProfiles()->find(profileId) ==
+                  portEntry.supportedProfiles()->end() ||
+              presentIt->second.profileId == name) {
+            groupSupportsTransition = false;
+            break;
+          }
+          groupCandidates.push_back(
+              Candidate{
+                  presentIt->second.name,
+                  presentIt->second.profileId,
+                  name,
+                  {}});
+        }
+        if (!groupSupportsTransition || groupCandidates.empty()) {
           continue;
         }
-        Candidate candidate{pit->second.name, pit->second.profileId, name, {}};
-        auto [it, inserted] = candidateByTargetProfile.emplace(name, candidate);
+        auto [it, inserted] =
+            candidatesByTargetProfile.emplace(name, groupCandidates);
         if (!inserted) {
-          return MultiInterfaceCandidate{it->second, std::move(candidate)};
+          auto candidates = it->second;
+          candidates.insert(
+              candidates.end(), groupCandidates.begin(), groupCandidates.end());
+          return MultiInterfaceCandidate{name, std::move(candidates)};
         }
       }
     }
@@ -489,28 +513,28 @@ TEST_F(ConfigInterfaceProfileTest, CreateFreedPortWithMtuInOneCommand) {
   XLOG(INFO) << "TEST PASSED";
 }
 
-// A single command changes two distinct ports to a shared alternate profile.
+// A single command changes every present port in two distinct hardware groups
+// to a shared alternate profile.
 TEST_F(ConfigInterfaceProfileTest, SetProfileMultiInterface) {
   auto cand = findMultiInterfaceCandidate();
   if (!cand) {
-    GTEST_SKIP() << "No two controlling ports share an alternate profile";
+    GTEST_SKIP() << "No two complete port groups share an alternate profile";
   }
-  XLOG(INFO) << "Changing " << cand->first.portName << " ("
-             << cand->first.currentProfile << ") and " << cand->second.portName
-             << " (" << cand->second.currentProfile << ") to "
-             << cand->first.targetProfile;
+  std::vector<std::string> interfaceNames;
+  std::vector<std::string> args{"config", "interface"};
+  for (const auto& candidate : cand->ports) {
+    interfaceNames.push_back(candidate.portName);
+    args.push_back(candidate.portName);
+  }
+  args.insert(args.end(), {"profile", cand->targetProfile});
+  XLOG(INFO) << "Changing " << folly::join(", ", interfaceNames) << " to "
+             << cand->targetProfile;
 
-  auto result = runCli(
-      {"config",
-       "interface",
-       cand->first.portName,
-       cand->second.portName,
-       "profile",
-       cand->first.targetProfile});
+  auto result = runCli(args);
   ASSERT_EQ(result.exitCode, 0) << result.stderr;
   commitConfig();
 
-  for (const auto& candidate : {cand->first, cand->second}) {
+  for (const auto& candidate : cand->ports) {
     auto after = waitForPortRunningInfo(
         candidate.portName, [&candidate](const auto& info) {
           return info.profileId == candidate.targetProfile;
@@ -518,8 +542,18 @@ TEST_F(ConfigInterfaceProfileTest, SetProfileMultiInterface) {
     EXPECT_EQ(after.profileId, candidate.targetProfile);
   }
 
-  // Restore each port independently because their original profiles may differ.
-  setInterfaceProfile(cand->first.portName, cand->first.currentProfile);
-  setInterfaceProfile(cand->second.portName, cand->second.currentProfile);
+  std::map<std::string, std::vector<std::string>> portsByOriginalProfile;
+  for (const auto& candidate : cand->ports) {
+    portsByOriginalProfile[candidate.currentProfile].push_back(
+        candidate.portName);
+  }
+  for (const auto& [profile, ports] : portsByOriginalProfile) {
+    std::vector<std::string> restoreArgs{"config", "interface"};
+    restoreArgs.insert(restoreArgs.end(), ports.begin(), ports.end());
+    restoreArgs.insert(restoreArgs.end(), {"profile", profile});
+    auto restore = runCli(restoreArgs);
+    ASSERT_EQ(restore.exitCode, 0) << restore.stderr;
+  }
+  commitConfig();
   XLOG(INFO) << "TEST PASSED";
 }
