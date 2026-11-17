@@ -1162,7 +1162,7 @@
   "numXcvrs": 65,
   "nonBspKmodsToLoad": [
     "spidev",
-    "i2c_i801",
-    "ledtrig_timer"
+    "ledtrig_timer",
+    "i2c_designware_core"
   ]
 }
