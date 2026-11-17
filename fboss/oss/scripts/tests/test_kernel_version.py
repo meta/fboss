@@ -254,6 +254,7 @@ class KernelVersionTest(unittest.TestCase):
         for name, body in {
             "spectool": "exit 0\n",
             "curl": 'while [ "$1" != "-o" ]; do shift; done\nprintf "snapshot\\n" | gzip > "$2"\n',
+            "xz": 'command -p xz --stdout "$2" > "$2.xz"\nrm "$2"\n',
         }.items():
             tool = tools / name
             tool.write_text("#!/bin/bash\nset -eu\n" + body)
@@ -280,8 +281,9 @@ class KernelVersionTest(unittest.TestCase):
                 env=env,
                 capture_output=True,
                 text=True,
-                check=True,
+                check=False,
             )
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             return result.stdout.split("URL=", 1)[1].strip()
 
         expected = "https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/snapshot/linux-6.11.1.tar.gz"
