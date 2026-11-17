@@ -871,6 +871,54 @@ TYPED_TEST(ThriftTestAllSwitchTypes, setPortState) {
   EXPECT_FALSE(port->isEnabled());
 }
 
+TYPED_TEST(ThriftTestAllSwitchTypes, setPortStateClearsMacLimitError) {
+  const PortID port5{5};
+  this->sw_->updateStateBlocking(
+      "MAC limit error-disable", [port5](const auto& state) {
+        auto newState = state->clone();
+        auto port = newState->getPorts()->getNodeIf(port5)->modify(&newState);
+        port->setAdminState(cfg::PortState::DISABLED);
+        port->addError(PortError::MISMATCHED_NEIGHBOR);
+        port->addError(PortError::ERROR_DISABLE_MAC_LIMIT_EXCEEDED);
+        return newState;
+      });
+  ThriftHandler handler(this->sw_);
+
+  handler.setPortState(port5, false);
+  auto port = this->sw_->getState()->getPorts()->getNodeIf(port5);
+  const std::vector<PortError> errorsWhileDisabled{
+      PortError::MISMATCHED_NEIGHBOR,
+      PortError::ERROR_DISABLE_MAC_LIMIT_EXCEEDED};
+  EXPECT_EQ(port->getActiveErrors(), errorsWhileDisabled);
+
+  handler.setPortState(port5, true);
+  port = this->sw_->getState()->getPorts()->getNodeIf(port5);
+  EXPECT_TRUE(port->isEnabled());
+  const std::vector<PortError> errorsAfterEnable{
+      PortError::MISMATCHED_NEIGHBOR};
+  EXPECT_EQ(port->getActiveErrors(), errorsAfterEnable);
+}
+
+TYPED_TEST(
+    ThriftTestAllSwitchTypes,
+    setPortStateClearsMacLimitErrorOnEnabledPort) {
+  const PortID port5{5};
+  this->sw_->updateStateBlocking(
+      "MAC limit error on an enabled port", [port5](const auto& state) {
+        auto newState = state->clone();
+        auto port = newState->getPorts()->getNodeIf(port5)->modify(&newState);
+        port->setAdminState(cfg::PortState::ENABLED);
+        port->addError(PortError::ERROR_DISABLE_MAC_LIMIT_EXCEEDED);
+        return newState;
+      });
+  ThriftHandler handler(this->sw_);
+
+  handler.setPortState(port5, true);
+  auto port = this->sw_->getState()->getPorts()->getNodeIf(port5);
+  EXPECT_TRUE(port->isEnabled());
+  EXPECT_FALSE(port->hasError(PortError::ERROR_DISABLE_MAC_LIMIT_EXCEEDED));
+}
+
 TYPED_TEST(ThriftTestAllSwitchTypes, setPortDrainState) {
   const PortID port5{5};
   auto port = this->sw_->getState()->getPorts()->getNodeIf(port5);

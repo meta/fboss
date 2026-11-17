@@ -2945,19 +2945,27 @@ void ThriftHandler::setPortState(int32_t portNum, bool enable) {
   cfg::PortState newPortState =
       enable ? cfg::PortState::ENABLED : cfg::PortState::DISABLED;
 
-  if (port->getAdminState() == newPortState) {
+  if (port->getAdminState() == newPortState &&
+      !(enable &&
+        port->hasError(PortError::ERROR_DISABLE_MAC_LIMIT_EXCEEDED))) {
     XLOG(DBG2) << "setPortState: port already in state "
                << (enable ? "ENABLED" : "DISABLED");
     return;
   }
 
-  auto updateFn = [portId, newPortState](const shared_ptr<SwitchState>& state) {
-    const auto oldPort = state->getPorts()->getNodeIf(portId);
-    shared_ptr<SwitchState> newState{state};
-    auto newPort = oldPort->modify(&newState);
-    newPort->setAdminState(newPortState);
-    return newState;
-  };
+  // The port can be error-disabled after the check above, so the error is
+  // cleared based on the state the update runs against
+  auto updateFn =
+      [portId, newPortState, enable](const shared_ptr<SwitchState>& state) {
+        const auto oldPort = state->getPorts()->getNodeIf(portId);
+        shared_ptr<SwitchState> newState{state};
+        auto newPort = oldPort->modify(&newState);
+        newPort->setAdminState(newPortState);
+        if (enable) {
+          newPort->removeError(PortError::ERROR_DISABLE_MAC_LIMIT_EXCEEDED);
+        }
+        return newState;
+      };
   sw_->updateStateBlocking("set port state", updateFn);
 }
 
