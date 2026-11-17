@@ -5554,6 +5554,68 @@ TEST_F(NamedNextHopGroupThriftTest, pbrTableHoldsConfigEntriesBelowPolicies) {
       FbossError);
 }
 
+TEST_F(NamedNextHopGroupThriftTest, pbrEntryMatchesRouteOfWeightedGroup) {
+  SCOPE_EXIT {
+    FLAGS_enable_acl_table_group = false;
+  };
+  FLAGS_enable_acl_table_group = true;
+  cfg::AclTable pbrTable;
+  pbrTable.name() = cfg::switch_config_constants::DEFAULT_PBR_ACL_TABLE();
+  pbrTable.priority() = 1;
+  pbrTable.actionTypes() = {
+      cfg::AclTableActionType::COUNTER, cfg::AclTableActionType::REDIRECT};
+  pbrTable.qualifiers() = {
+      cfg::AclTableQualifier::TC, cfg::AclTableQualifier::NEXT_HOP_GROUP_ID};
+  cfg::AclTableGroup tableGroup;
+  tableGroup.name() = "ingress-group";
+  tableGroup.stage() = cfg::AclStage::INGRESS;
+  tableGroup.aclTables() = {pbrTable};
+  auto config = testConfigA();
+  config.aclTableGroups() = {tableGroup};
+  sw_->applyConfig("add PBR ACL table", config);
+
+  ThriftHandler handler(sw_);
+  auto nhop1 =
+      makeLinkLocalSrv6NextHopThrift("fe80:face:b00c::1", "2001:db8::1");
+  auto nhop2 =
+      makeLinkLocalSrv6NextHopThrift("fe80:face:b00c::2", "2001:db8::2");
+  nhop1.weight() = 4;
+  nhop2.weight() = 4;
+  NextHopGroup teGroup;
+  teGroup.name() = "teGroup";
+  teGroup.nexthops() = {nhop1, nhop2};
+  auto groups = std::make_unique<std::vector<NextHopGroup>>();
+  groups->push_back(std::move(teGroup));
+  handler.addOrUpdateNamedNextHopGroups(std::move(groups));
+  addUnicastRouteWithNamedNextHopGroup(
+      handler,
+      "2401::100/128",
+      "teGroup",
+      ClientID::TE_AGENT,
+      AdminDistance::TE_AGENT);
+  handler.addPolicies(onePolicy(makeCbfPolicy(
+      "pol1",
+      "teGroup",
+      {{ForwardingClass::CLASS_2, namedNhgRef("teGroup")}})));
+
+  auto state = sw_->getState();
+  auto route = findRoute<folly::IPAddressV6>(
+      RouterID(0), {folly::IPAddress("2401::100"), 128}, state);
+  ASSERT_NE(route, nullptr);
+  auto pbrEntry = state
+                      ->getAclsForTable(
+                          cfg::AclStage::INGRESS,
+                          cfg::switch_config_constants::DEFAULT_PBR_ACL_TABLE())
+                      ->getEntryIf(makePbrAclEntryName(
+                          "pol1", ForwardingClass::CLASS_2, false));
+  ASSERT_NE(pbrEntry, nullptr);
+  auto routeNormalizedId =
+      route->getForwardInfo().getNormalizedResolvedNextHopSetID();
+  ASSERT_TRUE(routeNormalizedId.has_value());
+  EXPECT_EQ(
+      pbrEntry->getNextHopGroupId(), static_cast<int64_t>(*routeNormalizedId));
+}
+
 TEST_F(NamedNextHopGroupThriftTest, removeNextHopGroup) {
   ThriftHandler handler(sw_);
 
