@@ -3613,8 +3613,15 @@ shared_ptr<Port> ThriftConfigApplier::updatePort(
            ? orig->getInterfaceIDs().empty()
            : interfaceIDsItr->second == orig->getInterfaceIDs());
 
+  // A MAC-limit error-disabled port stays down until setPortState re-enables
+  // it, regardless of config.
+  const auto adminState =
+      orig->hasError(PortError::ERROR_DISABLE_MAC_LIMIT_EXCEEDED)
+      ? cfg::PortState::DISABLED
+      : *portConf->state();
+
   // Ensure portConf has actually changed, before applying
-  if (*portConf->state() == orig->getAdminState() &&
+  if (adminState == orig->getAdminState() &&
       VlanID(*portConf->ingressVlan()) == orig->getIngressVlan() &&
       *portConf->speed() == orig->getSpeed() &&
       *portConf->profileID() == orig->getProfileID() &&
@@ -3696,13 +3703,13 @@ shared_ptr<Port> ThriftConfigApplier::updatePort(
     lldpmap[tag.first] = tag.second;
   }
   if (*portConf->portType() != cfg::PortType::HYPER_PORT) {
-    newPort->setAdminState(*portConf->state());
+    newPort->setAdminState(adminState);
   } else {
     // hyper port admin state should be controlled by LACP protocol.
     // So, hyper port is always disabled (default state) in prod config
     // hyper port could be force enabled through config only in testing
-    if (*portConf->state() == cfg::PortState::ENABLED) {
-      newPort->setAdminState(*portConf->state());
+    if (adminState == cfg::PortState::ENABLED) {
+      newPort->setAdminState(adminState);
     }
   }
   newPort->setIngressVlan(VlanID(*portConf->ingressVlan()));
