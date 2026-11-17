@@ -375,6 +375,10 @@ class SaiTracer {
       {TYPE_INDEX(std::vector<sai_object_id_t>), &oidListAttr},
       {TYPE_INDEX(std::vector<sai_uint32_t>), &u32ListAttr},
       {TYPE_INDEX(std::vector<sai_int32_t>), &s32ListAttr},
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+      {TYPE_INDEX(std::vector<sai_uint16_t>), &u16ListAttr},
+      {TYPE_INDEX(std::vector<sai_u64_range_t>), &u64RangeListAttr},
+#endif
       {TYPE_INDEX(std::vector<sai_int8_t>), &s8ListAttr},
       {TYPE_INDEX(std::vector<sai_qos_map_t>), &qosMapListAttr},
       {TYPE_INDEX(std::vector<sai_map_t>), &mapListAttr},
@@ -539,6 +543,9 @@ class SaiTracer {
       {SAI_OBJECT_TYPE_TAM_EVENT, "tamEvent_"},
       {SAI_OBJECT_TYPE_TAM_EVENT_THRESHOLD, "tamEventThreshold_"},
       {SAI_OBJECT_TYPE_TAM, "tam_"},
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+      {SAI_OBJECT_TYPE_TAM_INT, "tamInt_"},
+#endif
       {SAI_OBJECT_TYPE_TUNNEL, "tunnel_"},
       {SAI_OBJECT_TYPE_TUNNEL_TERM_TABLE_ENTRY, "tunnelTerm_"},
       {SAI_OBJECT_TYPE_TUNNEL_MAP, "tunnelMap_"},
@@ -635,6 +642,9 @@ class SaiTracer {
       {SAI_OBJECT_TYPE_TAM_EVENT, "tam_api->"},
       {SAI_OBJECT_TYPE_TAM_EVENT_THRESHOLD, "tam_api->"},
       {SAI_OBJECT_TYPE_TAM, "tam_api->"},
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+      {SAI_OBJECT_TYPE_TAM_INT, "tam_api->"},
+#endif
       {SAI_OBJECT_TYPE_TUNNEL, "tunnel_api->"},
       {SAI_OBJECT_TYPE_TUNNEL_TERM_TABLE_ENTRY, "tunnel_api->"},
       {SAI_OBJECT_TYPE_TUNNEL_MAP, "tunnel_api->"},

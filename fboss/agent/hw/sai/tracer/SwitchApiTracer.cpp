@@ -20,6 +20,10 @@ using folly::to;
 namespace {
 std::map<int32_t, std::pair<std::string, std::size_t>> _SwitchMap{
     SAI_ATTR_MAP(Switch, InitSwitch),
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+    SAI_ATTR_MAP(Switch, MaxCsigTimers),
+    SAI_ATTR_MAP(Switch, CsigBwTimeIntervalInUsec),
+#endif
     SAI_ATTR_MAP(Switch, HwInfo),
     SAI_ATTR_MAP(Switch, SrcMac),
     SAI_ATTR_MAP(Switch, SwitchShellEnable),

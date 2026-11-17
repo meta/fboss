@@ -2064,6 +2064,11 @@ vector<string> SaiTracer::setAttrList(
     case SAI_OBJECT_TYPE_TAM:
       setTamAttributes(attr_list, attr_count, attrLines, rv);
       break;
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+    case SAI_OBJECT_TYPE_TAM_INT:
+      setTamIntAttributes(attr_list, attr_count, attrLines, rv);
+      break;
+#endif
     case SAI_OBJECT_TYPE_TAM_EVENT:
       setTamEventAttributes(attr_list, attr_count, attrLines, rv);
       break;
@@ -2640,6 +2645,9 @@ void SaiTracer::initVarCounts() {
   varCounts_.emplace(SAI_OBJECT_TYPE_TAM_EVENT, 0);
   varCounts_.emplace(SAI_OBJECT_TYPE_TAM_EVENT_THRESHOLD, 0);
   varCounts_.emplace(SAI_OBJECT_TYPE_TAM, 0);
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+  varCounts_.emplace(SAI_OBJECT_TYPE_TAM_INT, 0);
+#endif
   varCounts_.emplace(SAI_OBJECT_TYPE_TUNNEL, 0);
   varCounts_.emplace(SAI_OBJECT_TYPE_TUNNEL_TERM_TABLE_ENTRY, 0);
   varCounts_.emplace(SAI_OBJECT_TYPE_TUNNEL_MAP, 0);

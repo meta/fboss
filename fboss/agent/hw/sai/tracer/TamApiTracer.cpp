@@ -21,7 +21,28 @@ namespace {
 std::map<int32_t, std::pair<std::string, std::size_t>> _TamMap{
     SAI_ATTR_MAP(Tam, EventObjectList),
     SAI_ATTR_MAP(Tam, TamBindPointList),
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1) && !defined(CHENAB_SAI_SDK)
+    SAI_ATTR_MAP(Tam, IntObjectList),
+#endif
 };
+
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+std::map<int32_t, std::pair<std::string, std::size_t>> _TamIntMap{
+    SAI_ATTR_MAP(TamInt, Type),
+    SAI_ATTR_MAP(TamInt, DeviceId),
+    SAI_ATTR_MAP(TamInt, IntPresenceType),
+    SAI_ATTR_MAP(TamInt, Inline),
+    SAI_ATTR_MAP(TamInt, EthTypeCodePoint),
+    SAI_ATTR_MAP(TamInt, CsigSignalType),
+    SAI_ATTR_MAP(TamInt, BwTimeInterval),
+    SAI_ATTR_MAP(TamInt, QuantBands),
+    SAI_ATTR_MAP(TamInt, QuantBandId),
+    SAI_ATTR_MAP(TamInt, QuantBandUint64RangeList),
+    SAI_ATTR_MAP(TamInt, WideQuantBaseValue),
+    SAI_ATTR_MAP(TamInt, WideQuantStepValue),
+    SAI_ATTR_MAP(TamInt, CsigDBit),
+};
+#endif
 
 std::map<int32_t, std::pair<std::string, std::size_t>> _TamEventMap{
     SAI_ATTR_MAP(TamEvent, Type),
@@ -97,6 +118,13 @@ WRAP_REMOVE_FUNC(tam, SAI_OBJECT_TYPE_TAM, tam);
 WRAP_SET_ATTR_FUNC(tam, SAI_OBJECT_TYPE_TAM, tam);
 WRAP_GET_ATTR_FUNC(tam, SAI_OBJECT_TYPE_TAM, tam);
 
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+WRAP_CREATE_FUNC(tam_int, SAI_OBJECT_TYPE_TAM_INT, tam);
+WRAP_REMOVE_FUNC(tam_int, SAI_OBJECT_TYPE_TAM_INT, tam);
+WRAP_SET_ATTR_FUNC(tam_int, SAI_OBJECT_TYPE_TAM_INT, tam);
+WRAP_GET_ATTR_FUNC(tam_int, SAI_OBJECT_TYPE_TAM_INT, tam);
+#endif
+
 WRAP_CREATE_FUNC(tam_event, SAI_OBJECT_TYPE_TAM_EVENT, tam);
 WRAP_REMOVE_FUNC(tam_event, SAI_OBJECT_TYPE_TAM_EVENT, tam);
 WRAP_SET_ATTR_FUNC(tam_event, SAI_OBJECT_TYPE_TAM_EVENT, tam);
@@ -141,11 +169,18 @@ sai_tam_api_t* wrappedTamApi() {
   tamWrappers.set_tam_attribute = &wrap_set_tam_attribute;
   tamWrappers.get_tam_attribute = &wrap_get_tam_attribute;
 
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+  tamWrappers.create_tam_int = &wrap_create_tam_int;
+  tamWrappers.remove_tam_int = &wrap_remove_tam_int;
+  tamWrappers.set_tam_int_attribute = &wrap_set_tam_int_attribute;
+  tamWrappers.get_tam_int_attribute = &wrap_get_tam_int_attribute;
+#else
   const auto* api = SaiTracer::getInstance()->tamApi_;
   tamWrappers.create_tam_int = api->create_tam_int;
   tamWrappers.remove_tam_int = api->remove_tam_int;
   tamWrappers.set_tam_int_attribute = api->set_tam_int_attribute;
   tamWrappers.get_tam_int_attribute = api->get_tam_int_attribute;
+#endif
 
   tamWrappers.create_tam_event = &wrap_create_tam_event;
   tamWrappers.remove_tam_event = &wrap_remove_tam_event;
@@ -185,6 +220,9 @@ sai_tam_api_t* wrappedTamApi() {
 }
 
 SET_SAI_ATTRIBUTES(Tam)
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+SET_SAI_ATTRIBUTES(TamInt)
+#endif
 SET_SAI_ATTRIBUTES(TamEvent)
 SET_SAI_ATTRIBUTES(TamEventAction)
 SET_SAI_ATTRIBUTES(TamReport)

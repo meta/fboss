@@ -43,6 +43,10 @@ std::map<int32_t, std::pair<std::string, std::size_t>> _PortMap{
     SAI_ATTR_MAP(Port, InterfaceType),
     SAI_ATTR_MAP(Port, PktTxEnable),
     SAI_ATTR_MAP(Port, TamObject),
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+    SAI_ATTR_MAP(Port, IntDelete),
+    SAI_ATTR_MAP(Port, IntMetadata),
+#endif
     SAI_ATTR_MAP(Port, SerdesId),
     SAI_ATTR_MAP(Port, IngressMirrorSession),
     SAI_ATTR_MAP(Port, EgressMirrorSession),
