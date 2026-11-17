@@ -1219,6 +1219,10 @@ service FbossCtrl extends phy.FbossCommonPhyCtrl {
     1: fboss.FbossBaseError error,
   );
   list<VrfInfo> getVrfs() throws (1: fboss.FbossBaseError error);
+  /* Creates VRFs. VRF 0 is the default VRF and always exists. */
+  void addVrfs(1: list<VrfEntry> vrfs) throws (1: fboss.FbossBaseError error);
+  /* Deletes VRFs. A deleted VRF must have no interfaces and no routes. */
+  void deleteVrfs(1: list<i32> vrfIds) throws (1: fboss.FbossBaseError error);
 
   /* MPLS route API */
   void addMplsRoutes(1: i16 clientId, 2: list<MplsRoute> routes) throws (

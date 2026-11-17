@@ -175,6 +175,30 @@ TEST_F(ThriftTest, getVrfs) {
   EXPECT_EQ(vrfs, (std::vector<VrfInfo>{defaultVrf, red}));
 }
 
+TEST_F(ThriftTest, addAndDeleteVrfs) {
+  ThriftHandler handler(sw_);
+  auto vrfs = std::make_unique<std::vector<VrfEntry>>(1);
+  vrfs->at(0).vrfId() = 1001;
+  vrfs->at(0).name() = "red";
+  handler.addVrfs(std::move(vrfs));
+  auto vrf = sw_->getState()->getVrfs()->getNodeIf(RouterID(1001));
+  ASSERT_NE(vrf, nullptr);
+  EXPECT_EQ(vrf->getName(), "red");
+
+  // VRF 0 and existing VRFs cannot be added, unknown VRFs cannot be deleted
+  for (auto vrfId : {0, 1001}) {
+    auto rejected = std::make_unique<std::vector<VrfEntry>>(1);
+    rejected->at(0).vrfId() = vrfId;
+    EXPECT_THROW(handler.addVrfs(std::move(rejected)), FbossError);
+  }
+  EXPECT_THROW(
+      handler.deleteVrfs(std::make_unique<std::vector<int32_t>>(1, 2002)),
+      FbossError);
+
+  handler.deleteVrfs(std::make_unique<std::vector<int32_t>>(1, 1001));
+  EXPECT_EQ(sw_->getState()->getVrfs()->getNodeIf(RouterID(1001)), nullptr);
+}
+
 TEST_F(ThriftTest, getRouteTableDetailsByVrf) {
   auto config = testConfigA();
   VrfEntry vrfEntry;

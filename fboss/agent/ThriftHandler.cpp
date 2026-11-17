@@ -2232,6 +2232,18 @@ void ThriftHandler::getVrfs(std::vector<VrfInfo>& vrfs) {
   }
 }
 
+void ThriftHandler::addVrfs(std::unique_ptr<std::vector<VrfEntry>> vrfs) {
+  auto log = LOG_THRIFT_CALL_WITH_STATS(DBG1, sw_->stats());
+  ensureConfigured(__func__);
+  sw_->addVrfs(*vrfs);
+}
+
+void ThriftHandler::deleteVrfs(std::unique_ptr<std::vector<int32_t>> vrfIds) {
+  auto log = LOG_THRIFT_CALL_WITH_STATS(DBG1, sw_->stats());
+  ensureConfigured(__func__);
+  sw_->deleteVrfs(std::vector<RouterID>(vrfIds->begin(), vrfIds->end()));
+}
+
 void ThriftHandler::getInterfaceDetail(
     InterfaceDetail& interfaceDetail,
     int32_t interfaceId) {
