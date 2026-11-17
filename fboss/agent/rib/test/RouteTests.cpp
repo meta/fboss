@@ -8,6 +8,7 @@
  *
  */
 
+#include "fboss/agent/AgentFeatures.h"
 #include "fboss/agent/FbossError.h"
 #include "fboss/agent/Utils.h"
 #include "fboss/agent/rib/FibUpdateHelpers.h"
@@ -20,6 +21,7 @@
 
 #include <folly/IPAddress.h>
 #include <folly/json/dynamic.h>
+#include <gflags/gflags.h>
 
 #include <gtest/gtest.h>
 #include <algorithm>
@@ -3429,6 +3431,74 @@ TEST(Route, clientIdReleasedOnResetAllRoutes) {
   u.update<RibRouteUpdater::RouteEntry, folly::CIDRNetwork>(
       kClientA, {}, {}, true);
   EXPECT_FALSE(nhopIds.getNextHopsIf(*setId).has_value());
+}
+
+TEST(Route, reResolveAfterBecomingUnresolvableWithoutNextHopIdManager) {
+  // Other tests in this binary leave these flags on; this test exercises the
+  // inline-nexthop path used when NextHopIDManager is disabled.
+  gflags::FlagSaver flagSaver;
+  FLAGS_enable_nexthop_id_manager = false;
+  FLAGS_resolve_nexthops_from_id = false;
+
+  IPv4NetworkToRouteMap v4Routes;
+  IPv6NetworkToRouteMap v6Routes;
+
+  RouteV4::Prefix intfPrefix{IPAddressV4("10.1.1.0"), 24};
+  RouteNextHopSet intfNhop;
+  intfNhop.emplace(
+      ResolvedNextHop(IPAddress("10.1.1.1"), InterfaceID(1), ECMP_WEIGHT));
+  RouteNextHopEntry intfEntry(intfNhop, AdminDistance::DIRECTLY_CONNECTED);
+
+  RouteV4::Prefix routePrefix{IPAddressV4("20.1.1.0"), 24};
+  RouteNextHopSet nhop = makeNextHops({"10.1.1.2"});
+  RouteNextHopEntry routeEntry(nhop, kDistance);
+
+  // 1. Add connected route and client route: client route resolves
+  RibRouteUpdater u1(&v4Routes, &v6Routes, nullptr, nullptr, kEcmpWidth);
+  u1.update<RibRouteUpdater::RouteEntry, folly::CIDRNetwork>(
+      ClientID::INTERFACE_ROUTE,
+      {{{intfPrefix.network(), intfPrefix.mask()}, intfEntry}},
+      {},
+      false);
+  u1.update<RibRouteUpdater::RouteEntry, folly::CIDRNetwork>(
+      kClientA,
+      {{{routePrefix.network(), routePrefix.mask()}, routeEntry}},
+      {},
+      false);
+
+  auto routeIt = v4Routes.exactMatch(routePrefix.network(), routePrefix.mask());
+  ASSERT_NE(routeIt, v4Routes.end());
+  EXPECT_TRUE(routeIt->value()->isResolved());
+
+  // 2. Remove connected route: client route becomes unresolvable
+  RibRouteUpdater u2(&v4Routes, &v6Routes, nullptr, nullptr, kEcmpWidth);
+  u2.update<RibRouteUpdater::RouteEntry, folly::CIDRNetwork>(
+      ClientID::INTERFACE_ROUTE,
+      {},
+      {{intfPrefix.network(), intfPrefix.mask()}},
+      false);
+
+  routeIt = v4Routes.exactMatch(routePrefix.network(), routePrefix.mask());
+  ASSERT_NE(routeIt, v4Routes.end());
+  EXPECT_FALSE(routeIt->value()->isResolved());
+  EXPECT_TRUE(routeIt->value()->isUnresolvable());
+  // The stale nexthops must be cleared, or re-resolving to the same nexthops
+  // looks like no change.
+  EXPECT_TRUE(
+      getResolvedNextHopsFromRib(nullptr, routeIt->value()->getForwardInfo())
+          .empty());
+
+  // 3. Re-add connected route: client route must resolve again
+  RibRouteUpdater u3(&v4Routes, &v6Routes, nullptr, nullptr, kEcmpWidth);
+  u3.update<RibRouteUpdater::RouteEntry, folly::CIDRNetwork>(
+      ClientID::INTERFACE_ROUTE,
+      {{{intfPrefix.network(), intfPrefix.mask()}, intfEntry}},
+      {},
+      false);
+
+  routeIt = v4Routes.exactMatch(routePrefix.network(), routePrefix.mask());
+  ASSERT_NE(routeIt, v4Routes.end());
+  EXPECT_TRUE(routeIt->value()->isResolved());
 }
 
 } // namespace facebook::fboss

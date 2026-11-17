@@ -1385,10 +1385,11 @@ std::shared_ptr<Route<AddressT>> RibRouteUpdater::resolveOne(
         CHECK(!updatedRoute->getForwardInfo()
                    .getClientNextHopSetID()
                    .has_value());
-
-        // Clear the fwd so the unresolvable route retains no freed set IDs.
-        updatedRoute->clearForward();
       }
+
+      // Clear the fwd so the unresolvable route retains no freed set IDs or
+      // stale nexthops.
+      updatedRoute->clearForward();
       updatedRoute->setUnresolvable();
     }
     updatedRoute->updateClassID(classID);
@@ -1397,7 +1398,8 @@ std::shared_ptr<Route<AddressT>> RibRouteUpdater::resolveOne(
                << " route " << updatedRoute->str();
   };
   if (fwd && !fwd->empty()) {
-    if (getResolvedNextHopsFromRib(
+    if (!route->isResolved() ||
+        getResolvedNextHopsFromRib(
             nextHopIDManager_, route->getForwardInfo()) != *fwd ||
         route->getForwardInfo().getCounterID() != counterID ||
         route->getForwardInfo().getClassID() != classID) {
