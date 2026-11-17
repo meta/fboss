@@ -4,9 +4,12 @@
 #include <gtest/gtest.h>
 
 #include <CLI/CLI.hpp>
+#include <folly/ScopeGuard.h>
 
+#include "fboss/cli/fboss2/CmdArgsLists.h"
 #include "fboss/cli/fboss2/CmdHandler.h"
 #include "fboss/cli/fboss2/CmdList.h"
+#include "fboss/cli/fboss2/CmdLocalOptions.h"
 #include "fboss/cli/fboss2/CmdSubcommands.h"
 #include "fboss/cli/fboss2/utils/CLIParserUtils.h"
 
@@ -136,8 +139,8 @@ TEST_F(CmdSubCommandsTest, MergesSubcommandsFromDuplicateCommand) {
           []() {},
           []() { return utils::ObjectArgTypeId::OBJECT_ARG_TYPE_ID_NONE; },
           {Command(
-              "child1",
-              "First child help",
+              "child2",
+              "Second child help",
               []() {},
               []() {
                 return utils::ObjectArgTypeId::OBJECT_ARG_TYPE_ID_NONE;
@@ -152,8 +155,8 @@ TEST_F(CmdSubCommandsTest, MergesSubcommandsFromDuplicateCommand) {
           []() {},
           []() { return utils::ObjectArgTypeId::OBJECT_ARG_TYPE_ID_NONE; },
           {Command(
-              "child2",
-              "Second child help",
+              "child1",
+              "First child help",
               []() {},
               []() {
                 return utils::ObjectArgTypeId::OBJECT_ARG_TYPE_ID_NONE;
@@ -173,6 +176,11 @@ TEST_F(CmdSubCommandsTest, MergesSubcommandsFromDuplicateCommand) {
   ASSERT_NE(configCmd, nullptr);
   EXPECT_NE(utils::getSubcommandIf(*configCmd, "child1"), nullptr);
   EXPECT_NE(utils::getSubcommandIf(*configCmd, "child2"), nullptr);
+
+  const auto help = configCmd->help();
+  ASSERT_NE(help.find("child1"), std::string::npos);
+  ASSERT_NE(help.find("child2"), std::string::npos);
+  EXPECT_LT(help.find("child1"), help.find("child2"));
 }
 
 TEST_F(CmdSubCommandsTest, MergeThrowsOnDuplicateLeafCommand) {
@@ -213,14 +221,25 @@ TEST_F(CmdSubCommandsTest, MergeThrowsOnDuplicateLeafCommand) {
 
   std::vector<Command> emptySpecialCmds;
 
-  try {
-    CmdSubcommands::getInstance()->init(
-        *app_, cmdTree, additionalTree, emptySpecialCmds);
-    FAIL() << "Expected std::runtime_error to be thrown";
-  } catch (const std::runtime_error& e) {
-    EXPECT_THAT(
-        std::string(e.what()),
-        ::testing::HasSubstr("Command `samechild` already exists"));
+  for (bool duplicateRoot : {false, true}) {
+    SCOPED_TRACE(duplicateRoot);
+    CLI::App app("Test CLI");
+    auto baseTree = cmdTree;
+    auto extraTree = additionalTree;
+    if (duplicateRoot) {
+      baseTree.front().subcommands.clear();
+      extraTree.front().subcommands.clear();
+    }
+    const std::string commandName = duplicateRoot ? "config" : "samechild";
+    try {
+      CmdSubcommands::getInstance()->init(
+          app, baseTree, extraTree, emptySpecialCmds);
+      FAIL() << "Expected std::runtime_error to be thrown";
+    } catch (const std::runtime_error& e) {
+      EXPECT_THAT(
+          std::string(e.what()),
+          ::testing::HasSubstr("Command `" + commandName + "` already exists"));
+    }
   }
 }
 
@@ -236,8 +255,8 @@ TEST_F(CmdSubCommandsTest, MergesNestedSubcommands) {
               "child",
               "Child help",
               {Command(
-                  "grandchild1",
-                  "Grandchild1 help",
+                  "grandchild2",
+                  "Grandchild2 help",
                   []() {},
                   []() {
                     return utils::ObjectArgTypeId::OBJECT_ARG_TYPE_ID_NONE;
@@ -253,8 +272,8 @@ TEST_F(CmdSubCommandsTest, MergesNestedSubcommands) {
               "child",
               "Child help",
               {Command(
-                  "grandchild2",
-                  "Grandchild2 help",
+                  "grandchild1",
+                  "Grandchild1 help",
                   []() {},
                   []() {
                     return utils::ObjectArgTypeId::OBJECT_ARG_TYPE_ID_NONE;
@@ -275,6 +294,54 @@ TEST_F(CmdSubCommandsTest, MergesNestedSubcommands) {
   ASSERT_NE(childCmd, nullptr);
   EXPECT_NE(utils::getSubcommandIf(*childCmd, "grandchild1"), nullptr);
   EXPECT_NE(utils::getSubcommandIf(*childCmd, "grandchild2"), nullptr);
+
+  const auto help = childCmd->help();
+  ASSERT_NE(help.find("grandchild1"), std::string::npos);
+  ASSERT_NE(help.find("grandchild2"), std::string::npos);
+  EXPECT_LT(help.find("grandchild1"), help.find("grandchild2"));
+}
+
+TEST_F(CmdSubCommandsTest, MergesSubcommandsIntoExecutableParent) {
+  auto args = CmdArgsLists::getInstance();
+  auto options = CmdLocalOptions::getInstance();
+  args->clear();
+  options->clear();
+  SCOPE_EXIT {
+    args->clear();
+    options->clear();
+  };
+  bool parentCalled = false;
+  bool childCalled = false;
+  const auto ipArgs = [] {
+    return utils::ObjectArgTypeId::OBJECT_ARG_TYPE_ID_IP_LIST;
+  };
+  const CommandTree base = {
+      {"show",
+       "object",
+       "Show object",
+       {{"parent",
+         "Parent help",
+         [&] { parentCalled = true; },
+         ipArgs,
+         [] { return std::vector<utils::LocalOption>{{"--mode", "Mode"}}; },
+         {{"zulu", "Zulu help", [] {}, noArgType}}}}}};
+  const CommandTree additional = {
+      {"show",
+       "object",
+       "Show object",
+       {{"parent",
+         "Parent help",
+         {{"alpha", "Alpha help", [&] { childCalled = true; }, ipArgs}}}}}};
+
+  CmdSubcommands::getInstance()->init(*app_, base, additional, {});
+  ASSERT_NO_THROW(
+      app_->parse("show object parent 192.0.2.1 --mode value alpha 192.0.2.2"));
+
+  EXPECT_FALSE(parentCalled);
+  EXPECT_TRUE(childCalled);
+  EXPECT_EQ(args->at(0), (std::vector<std::string>{"192.0.2.1"}));
+  EXPECT_EQ(args->at(1), (std::vector<std::string>{"192.0.2.2"}));
+  EXPECT_EQ(options->getLocalOption("show_object_parent", "--mode"), "value");
 }
 
 TEST_F(CmdSubCommandsTest, ThrowsOnDuplicateNestedCommand) {

@@ -23,6 +23,7 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 namespace {
@@ -76,6 +77,42 @@ void pruneWriteCommands(std::vector<CmdT>& cmds) {
   });
 }
 
+template <typename CmdT>
+void mergeCommands(
+    std::vector<CmdT>& combined,
+    const std::vector<CmdT>& additional) {
+  for (const auto& cmd : additional) {
+    auto existing = std::find_if(
+        combined.begin(), combined.end(), [&](const auto& candidate) {
+          if (candidate.name != cmd.name) {
+            return false;
+          }
+          if constexpr (std::is_same_v<CmdT, facebook::fboss::RootCommand>) {
+            return candidate.verb == cmd.verb;
+          }
+          return true;
+        });
+    if (existing == combined.end()) {
+      combined.push_back(cmd);
+      continue;
+    }
+    if (existing->subcommands.empty() && cmd.subcommands.empty()) {
+      throw std::runtime_error(
+          fmt::format(
+              "Command `{}` already exists, command tree must be invalid",
+              cmd.name));
+    }
+    mergeCommands(existing->subcommands, cmd.subcommands);
+  }
+}
+
+void sortSubcommands(facebook::fboss::Command& cmd) {
+  std::stable_sort(cmd.subcommands.begin(), cmd.subcommands.end());
+  for (auto& child : cmd.subcommands) {
+    sortSubcommands(child);
+  }
+}
+
 } // namespace
 
 using facebook::fboss::CmdSubcommands;
@@ -85,6 +122,17 @@ std::shared_ptr<CmdSubcommands> CmdSubcommands::getInstance() {
 }
 
 namespace facebook::fboss {
+
+CommandTree mergeCommandTrees(const std::vector<CommandTree>& cmdTrees) {
+  CommandTree combined;
+  for (const auto& cmdTree : cmdTrees) {
+    mergeCommands(combined, cmdTree);
+  }
+  for (auto& cmd : combined) {
+    sortSubcommands(cmd);
+  }
+  return combined;
+}
 
 CLI::App* CmdSubcommands::addCommand(
     CLI::App& app,
@@ -370,8 +418,7 @@ void CmdSubcommands::init(
     app.add_subcommand(verb, helpMsg);
   }
 
-  initCommandTree(app, cmdTree);
-  initCommandTree(app, additionalCmdTree);
+  initCommandTree(app, mergeCommandTrees({cmdTree, additionalCmdTree}));
   for (const auto& cmd : specialCmds) {
     std::string fullCmd;
     addCommand(app, cmd, fullCmd, 0);

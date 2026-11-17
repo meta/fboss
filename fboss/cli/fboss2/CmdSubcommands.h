@@ -65,4 +65,6 @@ class CmdSubcommands {
 CommandTree filterReadCommands(CommandTree cmdTree);
 std::vector<Command> filterReadCommands(std::vector<Command> cmds);
 
+CommandTree mergeCommandTrees(const std::vector<CommandTree>& cmdTrees);
+
 } // namespace facebook::fboss

@@ -4,6 +4,7 @@
 
 #include "fboss/cli/fboss2/CmdArgsLists.h"
 #include "fboss/cli/fboss2/CmdList.h"
+#include "fboss/cli/fboss2/CmdSubcommands.h"
 
 namespace facebook::fboss {
 
@@ -13,34 +14,32 @@ class CmdHelp {
 
   ReverseHelpTree revHelpTree(const std::vector<CommandTree>& cmdTrees) {
     ReverseHelpTree root;
-    for (const auto& cmdTree : cmdTrees) {
-      for (const auto& cmd : cmdTree) {
-        auto& objectName = cmd.name;
-        auto& verb = cmd.verb;
-        auto& verbHelp = cmd.help;
-        const auto& subcommands = cmd.subcommands;
-        const auto& validFilterOptional = cmd.validFilterHandler;
-        ValidFilterMapType validFilterMap = {};
-        if (validFilterOptional.has_value()) {
-          const auto& validFilterMapFn = std::move(*validFilterOptional);
-          validFilterMap = validFilterMapFn();
-        }
-        std::vector<utils::LocalOption> localOptions;
-        const auto& localOptionsOptional = cmd.localOptionsHandler;
-        if (localOptionsOptional.has_value()) {
-          const auto& localOptionsFn = std::move(*localOptionsOptional);
-          localOptions = localOptionsFn();
-        }
-        RevHelpForObj& revHelp = root[objectName];
-        HelpInfo helpInfo{verb, verbHelp, validFilterMap, localOptions};
-        // even if there are no subcommands,
-        // the entry for (verb, verbHelp) must exist!
-        if (subcommands.size() == 0) {
-          revHelp[helpInfo] = std::vector<Command>();
-        }
-        for (const Command& c : subcommands) {
-          revHelp[helpInfo].push_back(c);
-        }
+    for (const auto& cmd : mergeCommandTrees(cmdTrees)) {
+      auto& objectName = cmd.name;
+      auto& verb = cmd.verb;
+      auto& verbHelp = cmd.help;
+      const auto& subcommands = cmd.subcommands;
+      const auto& validFilterOptional = cmd.validFilterHandler;
+      ValidFilterMapType validFilterMap = {};
+      if (validFilterOptional.has_value()) {
+        const auto& validFilterMapFn = *validFilterOptional;
+        validFilterMap = validFilterMapFn();
+      }
+      std::vector<utils::LocalOption> localOptions;
+      const auto& localOptionsOptional = cmd.localOptionsHandler;
+      if (localOptionsOptional.has_value()) {
+        const auto& localOptionsFn = *localOptionsOptional;
+        localOptions = localOptionsFn();
+      }
+      RevHelpForObj& revHelp = root[objectName];
+      HelpInfo helpInfo{verb, verbHelp, validFilterMap, localOptions};
+      // even if there are no subcommands,
+      // the entry for (verb, verbHelp) must exist!
+      if (subcommands.size() == 0) {
+        revHelp[helpInfo] = std::vector<Command>();
+      }
+      for (const Command& c : subcommands) {
+        revHelp[helpInfo].push_back(c);
       }
     }
     return root;
@@ -71,7 +70,7 @@ class CmdHelp {
       std::vector<utils::LocalOption> localOptions;
       const auto& localOptionsOptional = cmd.localOptionsHandler;
       if (localOptionsOptional.has_value()) {
-        const auto& localOptionsFn = std::move(*localOptionsOptional);
+        const auto& localOptionsFn = *localOptionsOptional;
         localOptions = localOptionsFn();
       }
       out << std::string(level - 1, '\t') << "    |---" << cmd.name << ":\t"
