@@ -458,11 +458,11 @@ TEST_F(CmdSubCommandsTest, RegistersRunningConfigFromSharedCommandTree) {
 
 TEST_F(CmdSubCommandsTest, RegistersLocalOptionsFromRealCommandTree) {
   /*
-   * A command's LocalOptions only reach CLI11 if its entry in the command
-   * tree also passes localOptionsHandler<Traits>. Declaring them in the
-   * traits struct alone leaves the flag unparseable at the CLI, which no
-   * per-command test catches because those set the option value directly on
-   * CmdLocalOptions. Guard one real command that carries a local option.
+   * Local options only reach CLI11 if their command-tree entry supplies a
+   * localOptionsHandler callback. Declaring them in the traits struct alone
+   * leaves the flag unparseable at the CLI, which per-command tests don't catch
+   * because those set the value directly on CmdLocalOptions. Guard shared and
+   * build-specific local options.
    */
   std::vector<Command> emptySpecialCmds;
 
@@ -476,6 +476,18 @@ TEST_F(CmdSubCommandsTest, RegistersLocalOptionsFromRealCommandTree) {
   auto* summaryCmd = utils::getSubcommandIf(*bgpCmd, "summary");
   ASSERT_NE(summaryCmd, nullptr);
   EXPECT_NE(summaryCmd->get_option_no_throw("--sort-by"), nullptr);
+
+  for (const auto* name : {"neighbors", "table"}) {
+    SCOPED_TRACE(name);
+    auto* cmd = utils::getSubcommandIf(*bgpCmd, name);
+    ASSERT_NE(cmd, nullptr);
+    auto* garOption = cmd->get_option_no_throw("--decode-gar-lbw-ext-comm");
+#ifdef IS_OSS
+    EXPECT_EQ(garOption, nullptr);
+#else
+    EXPECT_NE(garOption, nullptr);
+#endif
+  }
 }
 
 TEST_F(CmdSubCommandsTest, CommandRecordsReadWriteMode) {

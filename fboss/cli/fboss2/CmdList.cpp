@@ -50,6 +50,14 @@
 #include "fboss/cli/fboss2/commands/show/bgp/fibnexthops/CmdShowBgpFibNexthops.h"
 #include "fboss/cli/fboss2/commands/show/bgp/health/CmdShowBgpHealth.h"
 #include "fboss/cli/fboss2/commands/show/bgp/holdtimers/CmdShowBgpHoldTimers.h"
+#include "fboss/cli/fboss2/commands/show/bgp/neighbors/CmdShowBgpNeighbors.h"
+#include "fboss/cli/fboss2/commands/show/bgp/neighbors/advertised/BgpNeighborsAdvertisedPostPolicy.h"
+#include "fboss/cli/fboss2/commands/show/bgp/neighbors/advertised/BgpNeighborsAdvertisedPrePolicy.h"
+#include "fboss/cli/fboss2/commands/show/bgp/neighbors/advertised/BgpNeighborsAdvertisedRejected.h"
+#include "fboss/cli/fboss2/commands/show/bgp/neighbors/received/BgpNeighborsReceivedPostPolicy.h"
+#include "fboss/cli/fboss2/commands/show/bgp/neighbors/received/BgpNeighborsReceivedPrePolicy.h"
+#include "fboss/cli/fboss2/commands/show/bgp/neighbors/received/BgpNeighborsReceivedRejected.h"
+#include "fboss/cli/fboss2/commands/show/bgp/neighbors/session_id/CmdBgpNeighborsSessionId.h"
 #include "fboss/cli/fboss2/commands/show/bgp/neighbors_by_name/CmdShowBgpNeighborsByName.h"
 #include "fboss/cli/fboss2/commands/show/bgp/neighbors_by_name/advertised/BgpNeighborsByNameAdvertisedRejected.h"
 #include "fboss/cli/fboss2/commands/show/bgp/neighbors_by_name/advertised/BgpNeighborsByNameAdvertisedRejectedCrf.h"
@@ -66,6 +74,12 @@
 #include "fboss/cli/fboss2/commands/show/bgp/stream/subscriber/CmdShowBgpStreamSubscriberPrePolicy.h"
 #include "fboss/cli/fboss2/commands/show/bgp/summary/CmdShowBgpSummary.h"
 #include "fboss/cli/fboss2/commands/show/bgp/summary/egress/CmdShowBgpSummaryEgress.h"
+#include "fboss/cli/fboss2/commands/show/bgp/table/CmdShowBgpTable.h"
+#include "fboss/cli/fboss2/commands/show/bgp/table/CmdShowBgpTableCommunity.h"
+#include "fboss/cli/fboss2/commands/show/bgp/table/CmdShowBgpTableDetail.h"
+#include "fboss/cli/fboss2/commands/show/bgp/table/CmdShowBgpTableMoreSpecifics.h"
+#include "fboss/cli/fboss2/commands/show/bgp/table/CmdShowBgpTablePrefix.h"
+#include "fboss/cli/fboss2/commands/show/bgp/table/CmdShowBgpTableSummary.h"
 #include "fboss/cli/fboss2/commands/show/bgp/updategroup/CmdShowBgpUpdateGroup.h"
 #include "fboss/cli/fboss2/commands/show/config/CmdShowConfigRunningAgent.h"
 #include "fboss/cli/fboss2/commands/show/cpuport/CmdShowCpuPort.h"
@@ -244,6 +258,53 @@ const CommandTree& kCommandTree() {
          commandHandler<CmdShowBgpInitializationEvents>,
          argTypeHandler<CmdShowBgpInitializationEventsTraits>},
 
+        {"neighbors",
+         "Show BGP neighbor information.",
+         commandHandler<CmdShowBgpNeighbors>,
+         argTypeHandler<CmdShowBgpNeighborsTraits>,
+         localOptionsHandler<CmdShowBgpNeighborsTraits>,
+
+         {{"received",
+           "Routes received from a peer",
+
+           {{"pre-policy",
+             "Before policy",
+             commandHandler<BgpNeighborsReceivedPrePolicy>,
+             argTypeHandler<BgpNeighborsReceivedPrePolicyTraits>},
+
+            {"post-policy",
+             "After policy",
+             commandHandler<BgpNeighborsReceivedPostPolicy>,
+             argTypeHandler<BgpNeighborsReceivedPostPolicyTraits>},
+
+            {"rejected",
+             "Rejected routes",
+             commandHandler<BgpNeighborsReceivedRejected>,
+             argTypeHandler<BgpNeighborsReceivedRejectedTraits>}}},
+
+          {"advertised",
+           "Routes advertised to a peer",
+
+           {{"pre-policy",
+             "Before policy",
+             commandHandler<BgpNeighborsAdvertisedPrePolicy>,
+             argTypeHandler<BgpNeighborsAdvertisedPrePolicyTraits>},
+
+            {"post-policy",
+             "After policy",
+             commandHandler<BgpNeighborsAdvertisedPostPolicy>,
+             argTypeHandler<BgpNeighborsAdvertisedPostPolicyTraits>},
+
+            {"rejected",
+             "Rejected routes",
+             commandHandler<BgpNeighborsAdvertisedRejected>,
+             argTypeHandler<BgpNeighborsAdvertisedRejectedTraits>}}},
+
+          {"session-id",
+           "Show BGP neighbor information for specific session-id",
+           commandHandler<CmdBgpNeighborsSessionId>,
+           argTypeHandler<CmdBgpNeighborsSessionIdTraits>}}},
+
         {"neighbors-by-name",
          "Show BGP neighbor information by name regex match",
          commandHandler<CmdShowBgpNeighborsByName>,
@@ -329,6 +390,37 @@ const CommandTree& kCommandTree() {
            "Show BGP summary egress",
            commandHandler<CmdShowBgpSummaryEgress>,
            argTypeHandler<CmdShowBgpSummaryEgressTraits>}}},
+
+        {"table",
+         "Show BGP RIB",
+         commandHandler<CmdShowBgpTable>,
+         argTypeHandler<CmdShowBgpTableTraits>,
+         localOptionsHandler<CmdShowBgpTableTraits>,
+
+         {{"detail",
+           "Show BGP RIB route details",
+           commandHandler<CmdShowBgpTableDetail>,
+           argTypeHandler<CmdShowBgpTableDetailTraits>},
+
+          {"summary",
+           "Show BGP RIB summary (per-afi aggregate and per-masklength counts)",
+           commandHandler<CmdShowBgpTableSummary>,
+           argTypeHandler<CmdShowBgpTableSummaryTraits>},
+
+          {"prefix",
+           "Show BGP route details of exact prefix",
+           commandHandler<CmdShowBgpTablePrefix>,
+           argTypeHandler<CmdShowBgpTablePrefixTraits>},
+
+          {"more-specifics",
+           "Show BGP route details within passed-in subnet",
+           commandHandler<CmdShowBgpTableMoreSpecifics>,
+           argTypeHandler<CmdShowBgpTableMoreSpecificsTraits>},
+
+          {"community",
+           "Show BGP routes with paths matching community value or name",
+           commandHandler<CmdShowBgpTableCommunity>,
+           argTypeHandler<CmdShowBgpTableCommunityTraits>}}},
 
         {"update-group",
          "Show update-group details",
