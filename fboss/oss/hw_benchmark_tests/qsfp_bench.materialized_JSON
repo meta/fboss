@@ -11428,6 +11428,14 @@
           "reason": "Transceiver type not supported."
         },
         {
+          "test_name_regex": "RefreshTransceiver_FR1_100G$",
+          "reason": "Transceiver type not supported."
+        },
+        {
+          "test_name_regex": "ReadRegister_FR1_100G$",
+          "reason": "Transceiver type not supported."
+        },
+        {
           "test_name_regex": "RefreshTransceiver_FR4_400G$",
           "reason": "Transceiver type not supported."
         },
@@ -11699,6 +11707,14 @@
         },
         {
           "test_name_regex": "ReadRegister_CR4_100G$",
+          "reason": "Transceiver type not supported."
+        },
+        {
+          "test_name_regex": "RefreshTransceiver_FR1_100G$",
+          "reason": "Transceiver type not supported."
+        },
+        {
+          "test_name_regex": "ReadRegister_FR1_100G$",
           "reason": "Transceiver type not supported."
         },
         {
