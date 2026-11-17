@@ -1,0 +1,223 @@
+{
+  "i2cBusIgnore": [],
+  "psus": [
+    "/run/devmap/sensors/PDB0_PSU_0X58",
+    "/run/devmap/sensors/PDB1_PSU_0X58"
+  ],
+  "i2cDumpDevices": [
+    "/run/devmap/sensors/MCB_LTC2979_0X60",
+    "/run/devmap/sensors/MCB_LTC2979_0X61",
+    "/run/devmap/sensors/MCB_TMP421_0X4C",
+    "/run/devmap/sensors/MCB_ADM1278_0X12",
+    "/run/devmap/sensors/FCB0_LTC2497_0X4C",
+    "/run/devmap/sensors/FCB1_LTC2497_0X4C",
+    "/run/devmap/sensors/SCM_ADT75_0X49",
+    "/run/devmap/sensors/SCM_LTC2497_0X14",
+    "/run/devmap/sensors/SCM_TMP451_0X4C",
+    "/run/devmap/sensors/SCM_TPS53688_0X63",
+    "/run/devmap/sensors/SCM_TPS53688_0X62",
+    "/run/devmap/sensors/SCM_TPS53688_0X66",
+    "/run/devmap/sensors/SMB_LTC3888-1_0X50",
+    "/run/devmap/sensors/SMB_LTC3888-1_0X51",
+    "/run/devmap/sensors/SMB_LTC3888-1_0X52",
+    "/run/devmap/sensors/SMB_LTC3888-1_0X53",
+    "/run/devmap/sensors/SMB_LTC3888-1_0X54",
+    "/run/devmap/sensors/SMB_LTC3888-1_0X55",
+    "/run/devmap/sensors/SMB_LTC3888-1_0X56",
+    "/run/devmap/sensors/SMB_LTC2979_0X5C",
+    "/run/devmap/sensors/SMB_LTC2979_0X5D",
+    "/run/devmap/sensors/SMB_LTC2979_0X5E",
+    "/run/devmap/sensors/SMB_LTC2979_0X5F",
+    "/run/devmap/sensors/SMB_TMP421_0X4C",
+    "/run/devmap/sensors/SMB_TMP421_0X4D",
+    "/run/devmap/sensors/SMB_TMP421_0X4E",
+    "/run/devmap/sensors/SMB_TMP421_0X1F",
+    "/run/devmap/sensors/SMB_TMP421_0X4F",
+    "/run/devmap/sensors/SMB_NPU_TEMP_0X2A",
+    "/run/devmap/sensors/PDB0_PSU_0X58",
+    "/run/devmap/sensors/PDB1_PSU_0X58",
+    "/run/devmap/eeproms/FCB_EEPROM",
+    "/run/devmap/eeproms/JUMPER_EEPROM",
+    "/run/devmap/eeproms/MCB_EEPROM",
+    "/run/devmap/eeproms/PDB1_EEPROM",
+    "/run/devmap/eeproms/PDB2_EEPROM",
+    "/run/devmap/eeproms/SMB_EEPROM",
+    "/run/devmap/eeproms/SCM_EEPROM",
+    "/run/devmap/eeproms/PSU1_EEPROM",
+    "/run/devmap/eeproms/PSU2_EEPROM",
+    "/run/devmap/eeproms/RUNBMC_EEPROM"
+  ],
+  "psus": [
+    "/run/devmap/sensors/PDB0_PSU_0X58",
+    "/run/devmap/sensors/PDB1_PSU_0X58"
+  ],
+  "pems": [
+    {
+      "name": "PSU1_PDB0",
+      "presenceSysfsPath": "/run/devmap/sensors/PDB0_PSU_0X58/power1_alarm",
+      "inputOkSysfsPath": "/run/devmap/sensors/PDB0_PSU_0X58/in1_alarm",
+      "statusSysfsPath": "/run/devmap/sensors/PDB0_PSU_0X58/temp1_max_alarm"
+    },
+    {
+      "name": "PSU2_PDB1",
+      "presenceSysfsPath": "/run/devmap/sensors/PDB1_PSU_0X58/power1_alarm",
+      "inputOkSysfsPath": "/run/devmap/sensors/PDB1_PSU_0X58/in1_alarm",
+      "statusSysfsPath": "/run/devmap/sensors/PDB1_PSU_0X58/temp1_max_alarm"
+    }
+  ],
+  "gpios": [
+    {
+      "path": "/run/devmap/gpiochips/MCB_FPGA_GPIO1",
+      "lines": [
+        {
+          "name": "FAN2_PRESENCE_I",
+          "lineIndex": 43
+        },
+        {
+          "name": "FAN1_PRESENCE_I",
+          "lineIndex": 44
+        },
+        {
+          "name": "FAN0_PRESENCE_I",
+          "lineIndex": 45
+        }
+      ]
+    }
+  ],
+  "fanspinners": [
+    {
+      "path": "/run/devmap/sensors/MCB_FAN_PWM",
+      "sysfsAttributes": [
+        {
+          "name": "FAN_1_F_RPM",
+          "path": "/run/devmap/sensors/MCB_FAN_PWM/fan1_input"
+        },
+        {
+          "name": "FAN_1_F_PWM",
+          "path": "/run/devmap/sensors/MCB_FAN_PWM/pwm1"
+        },
+        {
+          "name": "FAN_1_R_RPM",
+          "path": "/run/devmap/sensors/MCB_FAN_PWM/fan2_input"
+        },
+        {
+          "name": "FAN_1_R_PWM",
+          "path": "/run/devmap/sensors/MCB_FAN_PWM/pwm2"
+        },
+        {
+          "name": "FAN_2_F_RPM",
+          "path": "/run/devmap/sensors/MCB_FAN_PWM/fan3_input"
+        },
+        {
+          "name": "FAN_2_F_PWM",
+          "path": "/run/devmap/sensors/MCB_FAN_PWM/pwm3"
+        },
+        {
+          "name": "FAN_2_R_RPM",
+          "path": "/run/devmap/sensors/MCB_FAN_PWM/fan4_input"
+        },
+        {
+          "name": "FAN_2_R_PWM",
+          "path": "/run/devmap/sensors/MCB_FAN_PWM/pwm4"
+        },
+        {
+          "name": "FAN_3_F_RPM",
+          "path": "/run/devmap/sensors/MCB_FAN_PWM/fan5_input"
+        },
+        {
+          "name": "FAN_3_F_PWM",
+          "path": "/run/devmap/sensors/MCB_FAN_PWM/pwm5"
+        },
+        {
+          "name": "FAN_3_R_RPM",
+          "path": "/run/devmap/sensors/MCB_FAN_PWM/fan6_input"
+        },
+        {
+          "name": "FAN_3_R_PWM",
+          "path": "/run/devmap/sensors/MCB_FAN_PWM/pwm6"
+        },
+        {
+          "name": "FAN_4_F_RPM",
+          "path": "/run/devmap/sensors/MCB_FAN_PWM/fan7_input"
+        },
+        {
+          "name": "FAN_4_F_PWM",
+          "path": "/run/devmap/sensors/MCB_FAN_PWM/pwm7"
+        },
+        {
+          "name": "FAN_4_R_RPM",
+          "path": "/run/devmap/sensors/MCB_FAN_PWM/fan8_input"
+        },
+        {
+          "name": "FAN_4_R_PWM",
+          "path": "/run/devmap/sensors/MCB_FAN_PWM/pwm8"
+        },
+        {
+          "name": "FAN_5_F_RPM",
+          "path": "/run/devmap/sensors/MCB_FAN_PWM/fan9_input"
+        },
+        {
+          "name": "FAN_5_F_PWM",
+          "path": "/run/devmap/sensors/MCB_FAN_PWM/pwm9"
+        },
+        {
+          "name": "FAN_5_R_RPM",
+          "path": "/run/devmap/sensors/MCB_FAN_PWM/fan10_input"
+        },
+        {
+          "name": "FAN_5_R_PWM",
+          "path": "/run/devmap/sensors/MCB_FAN_PWM/pwm10"
+        },
+        {
+          "name": "FAN_6_F_RPM",
+          "path": "/run/devmap/sensors/MCB_FAN_PWM/fan11_input"
+        },
+        {
+          "name": "FAN_6_F_PWM",
+          "path": "/run/devmap/sensors/MCB_FAN_PWM/pwm11"
+        },
+        {
+          "name": "FAN_6_R_RPM",
+          "path": "/run/devmap/sensors/MCB_FAN_PWM/fan12_input"
+        },
+        {
+          "name": "FAN_6_R_PWM",
+          "path": "/run/devmap/sensors/MCB_FAN_PWM/pwm12"
+        },
+        {
+          "name": "FAN_7_F_RPM",
+          "path": "/run/devmap/sensors/MCB_FAN_PWM/fan13_input"
+        },
+        {
+          "name": "FAN_7_F_PWM",
+          "path": "/run/devmap/sensors/MCB_FAN_PWM/pwm13"
+        },
+        {
+          "name": "FAN_7_R_RPM",
+          "path": "/run/devmap/sensors/MCB_FAN_PWM/fan14_input"
+        },
+        {
+          "name": "FAN_7_R_PWM",
+          "path": "/run/devmap/sensors/MCB_FAN_PWM/pwm14"
+        },
+        {
+          "name": "FAN_8_F_RPM",
+          "path": "/run/devmap/sensors/MCB_FAN_PWM/fan15_input"
+        },
+        {
+          "name": "FAN_8_F_PWM",
+          "path": "/run/devmap/sensors/MCB_FAN_PWM/pwm15"
+        },
+        {
+          "name": "FAN_8_R_RPM",
+          "path": "/run/devmap/sensors/MCB_FAN_PWM/fan16_input"
+        },
+        {
+          "name": "FAN_8_R_PWM",
+          "path": "/run/devmap/sensors/MCB_FAN_PWM/pwm16"
+        }
+      ]
+    }
+  ],
+  "scPowerGood": {}
+}
