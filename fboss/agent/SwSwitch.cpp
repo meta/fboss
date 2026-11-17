@@ -3815,6 +3815,7 @@ void SwSwitch::sendL3Packet(
   CHECK(!buf->isShared());
   // Extract primary Vlan associated with this interface, if any
   auto vlanID = getVlanIDForTx(intf);
+  const auto vrf = state->getInterfaceVrfs()->getVrf(ifID);
 
   // Add L2 header to L3 packet. Information doesn't need to be complete
   // make sure the packet has enough headroom for L2 header and large enough
@@ -3930,10 +3931,11 @@ void SwSwitch::sendL3Packet(
       // will do the RIB lookup and then probe for any unresolved nexthops
       // of the route.
       if (dstAddr.isV6()) {
-        ipv6_->sendMulticastNeighborSolicitations(PortID(0), dstAddr.asV6());
+        ipv6_->sendMulticastNeighborSolicitations(
+            PortID(0), dstAddr.asV6(), vrf);
       } else {
         // TODO(skhare) Support optional VLAN arg to resolveMac
-        ipv4_->resolveMac(state, PortID(0), dstAddr.asV4());
+        ipv4_->resolveMac(state, PortID(0), dstAddr.asV4(), vrf);
       }
     }
 

@@ -53,7 +53,8 @@ class IPv4Handler {
   bool resolveMac(
       std::shared_ptr<SwitchState> state,
       PortID ingressPort,
-      folly::IPAddressV4 dest);
+      folly::IPAddressV4 dest,
+      RouterID vrf);
 
  private:
   void sendICMPTimeExceeded(

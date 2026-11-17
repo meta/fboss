@@ -308,12 +308,18 @@ cpp_unittest(
     test_main = "//fboss/agent/test:fboss_test_main",
     deps = [
         "fbsource//third-party/googletest:gmock",
+        "fbsource//xplat/folly/io:iobuf",
         ":hw_test_handle",
         ":utils",
         "//fboss/agent:core",
         "//fboss/agent:packet",
+        "//fboss/agent/hw/mock:mock",
+        "//fboss/agent/packet:ether_type",
+        "//fboss/agent/packet:ipproto",
+        "//fboss/agent/packet:packet",
         "//fboss/agent/packet:packet_factory",
         "//fboss/agent/state:state",
+        "//fboss/lib:common_utils",
     ],
 )
 

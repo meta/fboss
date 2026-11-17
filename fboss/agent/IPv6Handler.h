@@ -67,7 +67,8 @@ class IPv6Handler : public StateObserver {
    */
   void sendMulticastNeighborSolicitations(
       PortID ingressPort,
-      const folly::IPAddressV6& targetIP);
+      const folly::IPAddressV6& targetIP,
+      RouterID vrf);
 
   /*
    * Only tests use this API directly, otherwise should only be invoked
@@ -183,7 +184,8 @@ class IPv6Handler : public StateObserver {
       std::unique_ptr<RxPacket> pkt,
       folly::MacAddress dst,
       folly::MacAddress src,
-      folly::io::Cursor cursor);
+      folly::io::Cursor cursor,
+      RouterID vrf);
 
   static void sendNeighborSolicitation(
       SwSwitch* sw,

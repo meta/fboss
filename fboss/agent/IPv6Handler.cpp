@@ -458,7 +458,7 @@ void IPv6Handler::handlePacket(
     // for this packet.
     // TODO: Add rate limiting so we don't generate too many requests for the
     // same IP.  Following the rules in RFC 4861 should be sufficient.
-    resolveDestAndHandlePacket(ipv6, std::move(pkt), dst, src, cursor);
+    resolveDestAndHandlePacket(ipv6, std::move(pkt), dst, src, cursor, vrf);
   }
 }
 
@@ -1112,7 +1112,8 @@ void IPv6Handler::resolveDestAndHandlePacket(
     unique_ptr<RxPacket> pkt,
     MacAddress dst,
     MacAddress src,
-    Cursor cursor) {
+    Cursor cursor,
+    RouterID vrf) {
   // Right now this either responds with PTB or generate neighbor soliciations
   auto ingressPort = pkt->getSrcPort();
   auto vlanID = pkt->getSrcVlanIf();
@@ -1128,8 +1129,8 @@ void IPv6Handler::resolveDestAndHandlePacket(
     }
   }
 
-  auto routeAndNextHops = sw_->getRib()->getRouteAndNextHops(
-      targetIP, RouterID(0), false /* normalized */);
+  auto routeAndNextHops =
+      sw_->getRib()->getRouteAndNextHops(targetIP, vrf, false /* normalized */);
   if (!routeAndNextHops || !routeAndNextHops->first->isResolved()) {
     sw_->portStats(ingressPort)->ipv6DstLookupFailure();
     // No way to reach targetIP
@@ -1173,7 +1174,8 @@ void IPv6Handler::resolveDestAndHandlePacket(
 
 void IPv6Handler::sendMulticastNeighborSolicitations(
     PortID ingressPort,
-    const folly::IPAddressV6& targetIP) {
+    const folly::IPAddressV6& targetIP,
+    RouterID vrf) {
   // Don't send solicitations for multicast or broadcast addresses.
   if (targetIP.isMulticast() || targetIP.isLinkLocalBroadcast()) {
     return;
@@ -1187,8 +1189,8 @@ void IPv6Handler::sendMulticastNeighborSolicitations(
   auto state = sw_->getState();
 
   // The RIB can lead the published state, so ids must resolve from the RIB.
-  auto routeAndNextHops = sw_->getRib()->getRouteAndNextHops(
-      targetIP, RouterID(0), false /* normalized */);
+  auto routeAndNextHops =
+      sw_->getRib()->getRouteAndNextHops(targetIP, vrf, false /* normalized */);
   if (!routeAndNextHops || !routeAndNextHops->first->isResolved()) {
     sw_->portStats(ingressPort)->ipv6DstLookupFailure();
     // No way to reach targetIP
