@@ -108,32 +108,7 @@ void addOlympicQueueOptionalEcnWredConfigWithSchedulingHelper(
   *queue7.scheduling() = cfg::QueueScheduling::STRICT_PRIORITY;
   portQueues.push_back(queue7);
 
-  if (asic->getAsicType() == cfg::AsicType::ASIC_TYPE_YUBA ||
-      asic->getAsicType() == cfg::AsicType::ASIC_TYPE_G202X) {
-    constexpr auto kEgressTestPoolName = "egress_test_pool";
-    auto numPorts = config->ports()->size();
-    auto perPortReserved = 0;
-    for (const auto& queue : portQueues) {
-      if (auto rb = queue.reservedBytes()) {
-        perPortReserved += *rb;
-      }
-    }
-    // For ASIC G200/G202X, Set pool-level reservedBytes via SAI extension so
-    // SDK uses a constant pool reserve instead of recalculating per queue
-    // attach/detach (O(n^2)).
-    auto totalReservedBytes = numPorts * perPortReserved;
-    auto mmuSize = asic->getMMUSizeBytes();
-    cfg::BufferPoolConfig poolCfg;
-    poolCfg.sharedBytes() = mmuSize - totalReservedBytes;
-    poolCfg.reservedBytes() = totalReservedBytes;
-    std::map<std::string, cfg::BufferPoolConfig> bufferPoolCfgMap =
-        config->bufferPoolConfigs().ensure();
-    bufferPoolCfgMap[kEgressTestPoolName] = poolCfg;
-    config->bufferPoolConfigs() = std::move(bufferPoolCfgMap);
-    for (auto& queue : portQueues) {
-      queue.bufferPoolName() = kEgressTestPoolName;
-    }
-  }
+  addEgressTestPoolIfRequired(config, portQueues, asic);
 
   if (!asic->isSupported(HwAsic::Feature::BUFFER_POOL)) {
     // SaiPortManager only programs reservedBytes/scalingFactor when BUFFER_POOL
@@ -416,7 +391,10 @@ kOlympicV2QueueIdToQueueName() {
 
 void addOlympicAllSPQueueConfig(
     cfg::SwitchConfig* config,
-    cfg::StreamType streamType) {
+    const std::vector<const HwAsic*>& asics) {
+  auto asic = checkSameAndGetAsic(asics, FLAGS_switch_id_for_testing);
+  auto streamType =
+      *(getStreamType(cfg::PortType::INTERFACE_PORT, asics).begin());
   std::vector<cfg::PortQueue> portQueues;
 
   for (const auto& [queueType, queueName] : kOlympicV2QueueIdToQueueName()) {
@@ -427,6 +405,8 @@ void addOlympicAllSPQueueConfig(
     queue.scheduling() = cfg::QueueScheduling::STRICT_PRIORITY;
     portQueues.push_back(queue);
   }
+
+  addEgressTestPoolIfRequired(config, portQueues, asic);
 
   config->portQueueConfigs()["queue_config"] = portQueues;
   for (auto& port : *config->ports()) {
@@ -515,6 +495,8 @@ void addOlympicV2WRRQueueConfig(
   queue7.streamType() = streamType;
   *queue7.scheduling() = cfg::QueueScheduling::STRICT_PRIORITY;
   portQueues.push_back(queue7);
+
+  addEgressTestPoolIfRequired(config, portQueues, asic);
 
   config->portQueueConfigs()["queue_config"] = portQueues;
   for (auto& port : *config->ports()) {

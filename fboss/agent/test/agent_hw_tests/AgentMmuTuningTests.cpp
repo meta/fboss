@@ -20,6 +20,7 @@
 #include "fboss/agent/test/utils/CoppTestUtils.h"
 #include "fboss/agent/test/utils/OlympicTestUtils.h"
 #include "fboss/agent/test/utils/PortTestUtils.h"
+#include "fboss/agent/test/utils/QueueTestUtils.h"
 #include "fboss/lib/CommonUtils.h"
 
 namespace facebook::fboss {
@@ -236,6 +237,8 @@ class AgentMmuTuningTest : public AgentHwTest {
       queue3.scalingFactor() = cfg::MMUScalingFactor::EIGHT;
     }
     portQueues.push_back(queue3);
+
+    utility::addEgressTestPoolIfRequired(config, portQueues, asic);
 
     config->portQueueConfigs()["queue_config"] = portQueues;
     for (auto& port : *config->ports()) {

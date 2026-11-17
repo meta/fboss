@@ -15,6 +15,7 @@
 #include "fboss/agent/test/utils/NetworkAITestUtils.h"
 #include "fboss/agent/test/utils/PfcTestUtils.h"
 #include "fboss/agent/test/utils/QosTestUtils.h"
+#include "fboss/agent/test/utils/QueueTestUtils.h"
 
 constexpr int kPayloadSize = 4500;
 DEFINE_int32(lossy_queue_test_qmin, 5000, "Queue min guarantee in bytes");
@@ -113,6 +114,10 @@ class AgentNetworkAILossyQueueTests : public AgentQosTestBase {
         portQueue.sharedBytes() = 0;
       }
     }
+    utility::addEgressTestPoolIfRequired(
+        &cfg,
+        cfg.portQueueConfigs()->at(utility::kNetworkAIQueueConfigName),
+        hwAsic);
 
     return cfg;
   }

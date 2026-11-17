@@ -63,13 +63,6 @@ namespace {
 // from AR / ACLs in Chenab.
 constexpr uint32_t kChenabPgBufferForPipelineLatencyInBytes = 39 * 1024;
 #endif
-#if defined(TAJO_SDK_GTE_26_5)
-// P200 supports a single egress pool and forbids changing the pool's
-// reserved bytes once a buffer profile is bound to it. Reserve
-// this much on the default egress pool at creation time suggested by vendor for
-// now.
-constexpr uint64_t kP200EgressPoolReservedBytes = 20 * 1024 * 1024;
-#endif
 
 uint64_t getSwitchEgressPoolAvailableSize(const SaiPlatform* platform) {
   auto saiSwitch = static_cast<SaiSwitch*>(platform->getHwSwitch());
@@ -248,11 +241,6 @@ void SaiBufferManager::setupEgressBufferPool(
 #endif
   } else {
     poolSize = getMaxEgressPoolBytes(platform_);
-#if defined(TAJO_SDK_GTE_26_5)
-    if (platform_->getAsic()->getAsicType() == cfg::AsicType::ASIC_TYPE_P200) {
-      reservedBytes = kP200EgressPoolReservedBytes;
-    }
-#endif
   }
   if (FLAGS_egress_buffer_pool_size > 0) {
     uint64_t newSize = FLAGS_egress_buffer_pool_size *

@@ -12,6 +12,7 @@
 #include "fboss/agent/test/utils/MultiPortTrafficTestUtils.h"
 #include "fboss/agent/test/utils/OlympicTestUtils.h"
 #include "fboss/agent/test/utils/QosTestUtils.h"
+#include "fboss/agent/test/utils/QueueTestUtils.h"
 #include "fboss/lib/CommonUtils.h"
 
 namespace facebook::fboss {
@@ -43,6 +44,8 @@ class AgentEgressQueueScalingFactorTest : public AgentHwTest {
         queue.reservedBytes() = kReservedBytesPerQueue;
       }
     }
+    utility::addEgressTestPoolIfRequired(
+        &cfg, portQueues, checkSameAndGetAsicForTesting(ensemble.getL3Asics()));
     return cfg;
   }
 

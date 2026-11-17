@@ -36,7 +36,13 @@ constexpr int k2QueueHighestSPQueueId = k2QueueNCQueueId;
 void add2QueueConfig(
     cfg::SwitchConfig* config,
     cfg::StreamType streamType,
-    bool scalingFactorSupported);
+    bool scalingFactorSupported,
+    const HwAsic* asic);
+
+void addEgressTestPoolIfRequired(
+    cfg::SwitchConfig* config,
+    std::vector<cfg::PortQueue>& portQueues,
+    const HwAsic* asic);
 
 std::string get2QueueCounterNameForDscp(uint8_t dscp);
 
