@@ -226,7 +226,21 @@
                         "num_ports": {
                             "type": "integer",
                             "minimum": 1,
-                            "description": "Optional. Number of management ports to emit. Values above 1 take that many entries from the ASIC-level mgmt_port_defaults.breakout_ports, each configured with this override's speed, num_lanes and fec. Defaults to 1."
+                            "description": "Optional. Number of management ports to emit. Values above 1 take that many entries from this override's breakout_ports, or the ASIC-level mgmt_port_defaults.breakout_ports if unset, each configured with this override's speed, num_lanes and fec. Defaults to 1."
+                        },
+                        "breakout_ports": {
+                            "type": "array",
+                            "description": "Optional. Ordered logical/physical port pairs used instead of the ASIC-level mgmt_port_defaults.breakout_ports when num_ports is above 1.",
+                            "minItems": 1,
+                            "items": {
+                                "type": "object",
+                                "required": ["logical_id", "physical_id"],
+                                "additionalProperties": false,
+                                "properties": {
+                                    "logical_id": {"type": "integer"},
+                                    "physical_id": {"type": "integer"}
+                                }
+                            }
                         }
                     }
                 },
