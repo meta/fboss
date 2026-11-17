@@ -16,7 +16,6 @@ class DsfNode;
 class IpInIpTunnel;
 class Srv6Tunnel;
 class VxLanTunnel;
-class VrfConfig;
 class AclEntry;
 class SystemPort;
 class Port;
@@ -97,9 +96,6 @@ class SwitchIdScopeResolver {
     return l3SwitchMatcher();
   }
   const HwSwitchMatcher& scope(const std::shared_ptr<IpTunnel>& /*m*/) const {
-    return l3SwitchMatcher();
-  }
-  const HwSwitchMatcher& scope(const cfg::VrfConfig& /*vrf*/) const {
     return l3SwitchMatcher();
   }
   const HwSwitchMatcher& scope(const std::shared_ptr<Vrf>& /*vrf*/) const {

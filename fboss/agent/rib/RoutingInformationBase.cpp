@@ -634,7 +634,7 @@ void RibRouteTables::reconfigure(
     void* cookie,
     bool ecmpModeChanged) {
   // Config application is accomplished in the following sequence of steps:
-  // 1. Add the VRFs specified in config to RoutingInformationBase's
+  // 1. Add the VRFs of the interface routes to RoutingInformationBase's
   // SynchronizedRouteTables data-structure
   //
   // For each VRF:
@@ -909,10 +909,12 @@ void RibRouteTables::updateVrfs(
     auto& routeTables = lockedRouteTables->routerIDToRouteTable;
     std::set<RouterID> vrfs;
     for (const auto& vrfEntry : toAdd) {
-      RouterID vrf(*vrfEntry.vrfId());
-      if (vrf == RouterID(0)) {
-        throw FbossError("VRF 0 is the default VRF");
+      if (*vrfEntry.vrfId() <= 0) {
+        throw FbossError(
+            "VRF id must be positive, VRF 0 is the default VRF: ",
+            *vrfEntry.vrfId());
       }
+      RouterID vrf(*vrfEntry.vrfId());
       if (!vrfs.insert(vrf).second) {
         throw FbossError("VRF ", vrf, " listed twice");
       }

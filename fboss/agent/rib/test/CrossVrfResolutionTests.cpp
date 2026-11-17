@@ -786,6 +786,11 @@ TEST_F(VrfUpdateTest, Rejected) {
   fibUpdates_.clear();
   EXPECT_THROW(addVrf(kNewVrf), FbossError);
   EXPECT_THROW(addVrf(kVrf0), FbossError);
+  VrfEntry negativeVrf;
+  negativeVrf.vrfId() = -1;
+  EXPECT_THROW(
+      rib_.updateVrfs(scopeResolver(), {negativeVrf}, {}, fibUpdate(), nullptr),
+      FbossError);
   EXPECT_THROW(deleteVrf(kVrf0), FbossError);
   EXPECT_THROW(deleteVrf(RouterID(3003)), FbossError);
   // A VRF listed twice

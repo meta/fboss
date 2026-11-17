@@ -237,14 +237,10 @@ TYPED_TEST(SwitchIdScopeResolverTest, fibContainerScope) {
 }
 
 TYPED_TEST(SwitchIdScopeResolverTest, vrfScope) {
-  cfg::VrfConfig vrfCfg;
-  vrfCfg.vrfId() = 1001;
   auto vrf = std::make_shared<Vrf>(RouterID(1001));
   if (this->isFabric()) {
-    this->expectThrow(vrfCfg);
     this->expectThrow(vrf);
   } else {
-    this->expectL3(vrfCfg);
     this->expectL3(vrf);
   }
 }

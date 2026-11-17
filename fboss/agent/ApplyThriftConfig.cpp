@@ -771,10 +771,8 @@ class ThriftConfigApplier {
       const std::shared_ptr<VxlanTunnel>& orig,
       const cfg::VxLanTunnel* config);
   std::shared_ptr<VxlanTunnelMap> updateVxlanTunnels();
-  const std::vector<cfg::VrfConfig>& getConfigVrfs() const;
   void validateVrfs() const;
   void validateStaticRouteNextHops() const;
-  std::shared_ptr<VrfMap> updateVrfs();
   // VRF the interface goes to: its interface VRF map entry
   RouterID getTargetRouterID(const cfg::Interface& config) const;
   std::shared_ptr<DsfNodeMap> updateDsfNodes();
@@ -1074,13 +1072,6 @@ shared_ptr<SwitchState> ThriftConfigApplier::run() {
         convertMySidConfig(*mySidConfig, buildPortNameToInterfaceIdMap(*cfg_));
   }
 
-  std::vector<std::pair<RouterID, IntfRoute>> vrfRouteTables;
-  for (const auto& vrfCfg : getConfigVrfs()) {
-    vrfRouteTables.emplace_back(RouterID(*vrfCfg.vrfId()), IntfRoute{});
-  }
-  // Keeps existing entries for VRFs that already have interface routes
-  intfRouteTables_.insert(vrfRouteTables.begin(), vrfRouteTables.end());
-
   validateStaticRouteNextHops();
 
   if (routeUpdater_) {
@@ -1235,14 +1226,7 @@ shared_ptr<SwitchState> ThriftConfigApplier::run() {
     }
   }
 
-  {
-    auto newVrfs = updateVrfs();
-    if (newVrfs) {
-      new_->resetVrfs(
-          toMultiSwitchMap<MultiSwitchVrfMap>(newVrfs, scopeResolver_));
-      changed = true;
-    }
-  }
+  validateVrfs();
 
   {
     auto voqSwitchId = getAnySwitchId(cfg::SwitchType::VOQ);
@@ -8085,11 +8069,6 @@ shared_ptr<VxlanTunnel> ThriftConfigApplier::createVxlanTunnel(
   return tunnel;
 }
 
-const std::vector<cfg::VrfConfig>& ThriftConfigApplier::getConfigVrfs() const {
-  static const std::vector<cfg::VrfConfig> kNoVrfs;
-  return cfg_->vrfs() ? *cfg_->vrfs() : kNoVrfs;
-}
-
 // Only the agent resolves next hops in the next level
 void ThriftConfigApplier::validateStaticRouteNextHops() const {
   auto validate = [](const std::vector<NextHopThrift>& nextHops) {
@@ -8109,32 +8088,13 @@ void ThriftConfigApplier::validateStaticRouteNextHops() const {
   }
 }
 
+// VRFs come from SwSwitch::addVrfs() and interface VRFs from
+// SwSwitch::updateInterfaceVrfs()
 void ThriftConfigApplier::validateVrfs() const {
-  const auto& vrfs = getConfigVrfs();
-  std::unordered_set<int32_t> vrfIds;
-  for (const auto& vrfCfg : vrfs) {
-    if (*vrfCfg.vrfId() <= 0) {
-      throw FbossError(
-          "VRF id must be positive, VRF 0 is the default VRF: ",
-          *vrfCfg.vrfId());
-    }
-    vrfIds.insert(*vrfCfg.vrfId());
-  }
-  // Config doesn't delete VRFs
-  for (const auto& [_, vrfMap] : std::as_const(*orig_->getVrfs())) {
-    for (const auto& [vrfId, vrf] : std::as_const(*vrfMap)) {
-      vrfIds.insert(vrfId);
-    }
-  }
   std::unordered_set<int32_t> intfIds;
   for (const auto& intfCfg : *cfg_->interfaces()) {
     if (intfCfg.routerID().value_or(0) != 0) {
       throw FbossError("Interface ", *intfCfg.intfID(), " routerID must be 0");
-    }
-    auto vrf = getTargetRouterID(intfCfg);
-    if (vrf != RouterID(0) && !vrfIds.contains(vrf)) {
-      throw FbossError(
-          "Interface ", *intfCfg.intfID(), " refers to unconfigured VRF ", vrf);
     }
     intfIds.insert(*intfCfg.intfID());
   }
@@ -8151,45 +8111,6 @@ void ThriftConfigApplier::validateVrfs() const {
       }
     }
   }
-  if (vrfs.empty()) {
-    return;
-  }
-  for (const auto* asic : hwAsicTable_->getL3Asics()) {
-    if (!asic->isSupported(HwAsic::Feature::VRF)) {
-      throw FbossError("VRFs are not supported on ", asic->getAsicTypeStr());
-    }
-  }
-}
-
-std::shared_ptr<VrfMap> ThriftConfigApplier::updateVrfs() {
-  validateVrfs();
-  const auto& origVrfs = orig_->getVrfs();
-  auto newVrfs = std::make_shared<VrfMap>();
-  bool changed = false;
-  for (const auto& vrfCfg : getConfigVrfs()) {
-    if (newVrfs->getNodeIf(RouterID(*vrfCfg.vrfId()))) {
-      throw FbossError("Duplicate VRF id: ", *vrfCfg.vrfId());
-    }
-    auto origVrf = origVrfs->getNodeIf(RouterID(*vrfCfg.vrfId()));
-    auto newVrf = std::make_shared<Vrf>(RouterID(*vrfCfg.vrfId()));
-    newVrf->setName(vrfCfg.name().to_optional());
-    if (origVrf && *origVrf == *newVrf) {
-      newVrf = nullptr;
-    }
-    changed |= updateThriftMapNode(newVrfs.get(), origVrf, newVrf);
-  }
-  // Config doesn't delete VRFs
-  for (const auto& [_, vrfMap] : std::as_const(*origVrfs)) {
-    for (const auto& [vrfId, vrf] : std::as_const(*vrfMap)) {
-      if (!newVrfs->getNodeIf(RouterID(vrfId))) {
-        newVrfs->addNode(vrf);
-      }
-    }
-  }
-  if (!changed) {
-    return nullptr;
-  }
-  return newVrfs;
 }
 
 RouterID ThriftConfigApplier::getTargetRouterID(

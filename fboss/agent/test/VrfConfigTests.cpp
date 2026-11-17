@@ -43,17 +43,6 @@ class VrfConfigTest : public ::testing::Test {
     config_ = testConfigA();
   }
 
-  static cfg::VrfConfig makeVrfConfig(
-      int32_t vrfId,
-      const std::optional<std::string>& name = std::nullopt) {
-    cfg::VrfConfig vrf;
-    vrf.vrfId() = vrfId;
-    if (name) {
-      vrf.name() = *name;
-    }
-    return vrf;
-  }
-
   std::shared_ptr<SwitchState> apply() {
     return publishAndApplyConfig(state_, &config_, platform_.get());
   }
@@ -62,71 +51,6 @@ class VrfConfigTest : public ::testing::Test {
   std::shared_ptr<Platform> platform_;
   cfg::SwitchConfig config_;
 };
-
-TEST_F(VrfConfigTest, CreateVrfs) {
-  config_.vrfs() = {
-      makeVrfConfig(kQuarantineVrfId, "quarantine"),
-      makeVrfConfig(1001, "red"),
-      makeVrfConfig(1002)};
-  state_ = apply();
-  ASSERT_NE(state_, nullptr);
-
-  EXPECT_EQ(state_->getVrfs()->getNode(RouterID(1))->getName(), "quarantine");
-  EXPECT_EQ(state_->getVrfs()->getNode(RouterID(1001))->getName(), "red");
-  EXPECT_EQ(
-      state_->getVrfs()->getNode(RouterID(1002))->getName(), std::nullopt);
-}
-
-TEST_F(VrfConfigTest, RenameVrf) {
-  config_.vrfs() = {makeVrfConfig(1001, "red")};
-  state_ = apply();
-  ASSERT_NE(state_, nullptr);
-
-  config_.vrfs() = {makeVrfConfig(1001, "blue")};
-  state_ = apply();
-  ASSERT_NE(state_, nullptr);
-
-  EXPECT_EQ(state_->getVrfs()->getNode(RouterID(1001))->getName(), "blue");
-}
-
-TEST_F(VrfConfigTest, VrfNotInConfigKept) {
-  config_.vrfs() = {makeVrfConfig(1001), makeVrfConfig(1002)};
-  state_ = apply();
-  ASSERT_NE(state_, nullptr);
-
-  config_.vrfs() = {makeVrfConfig(1002)};
-  EXPECT_EQ(apply(), nullptr);
-  EXPECT_NE(state_->getVrfs()->getNodeIf(RouterID(1001)), nullptr);
-}
-
-TEST_F(VrfConfigTest, NoChange) {
-  config_.vrfs() = {makeVrfConfig(1001, "red")};
-  state_ = apply();
-  ASSERT_NE(state_, nullptr);
-
-  EXPECT_EQ(apply(), nullptr);
-}
-
-TEST_F(VrfConfigTest, DuplicateVrfIdRejected) {
-  config_.vrfs() = {makeVrfConfig(1001), makeVrfConfig(1001)};
-  EXPECT_THROW(apply(), FbossError);
-
-  config_.vrfs() = {makeVrfConfig(1001)};
-  state_ = apply();
-  ASSERT_NE(state_, nullptr);
-  config_.vrfs() = {makeVrfConfig(1001), makeVrfConfig(1001)};
-  EXPECT_THROW(apply(), FbossError);
-}
-
-TEST_F(VrfConfigTest, DefaultVrfIdRejected) {
-  config_.vrfs() = {makeVrfConfig(0)};
-  EXPECT_THROW(apply(), FbossError);
-}
-
-TEST_F(VrfConfigTest, NegativeVrfIdRejected) {
-  config_.vrfs() = {makeVrfConfig(-1)};
-  EXPECT_THROW(apply(), FbossError);
-}
 
 TEST(VrfResource, MaxVrfs) {
   // Mock ASIC supports 8 VRFs, including the default VRF
@@ -145,32 +69,8 @@ TEST(VrfResource, MaxVrfs) {
 }
 
 TEST_F(VrfConfigTest, InterfaceVrfFromConfigRejected) {
-  config_.vrfs() = {makeVrfConfig(1001)};
   config_.interfaces()[0].routerID() = 1001;
   EXPECT_THROW(apply(), FbossError);
-}
-
-TEST_F(VrfConfigTest, RibTablePerVrf) {
-  RoutingInformationBase rib;
-  config_.vrfs() = {makeVrfConfig(1001)};
-  state_ = publishAndApplyConfig(state_, &config_, platform_.get(), &rib);
-  ASSERT_NE(state_, nullptr);
-  auto vrfList = rib.getVrfList();
-  EXPECT_NE(
-      std::find(vrfList.begin(), vrfList.end(), RouterID(1001)), vrfList.end());
-}
-
-TEST_F(VrfConfigTest, RibTableOfVrfNotInConfigKept) {
-  RoutingInformationBase rib;
-  config_.vrfs() = {makeVrfConfig(1001)};
-  state_ = publishAndApplyConfig(state_, &config_, platform_.get(), &rib);
-  ASSERT_NE(state_, nullptr);
-
-  config_.vrfs() = {};
-  publishAndApplyConfig(state_, &config_, platform_.get(), &rib);
-  auto vrfList = rib.getVrfList();
-  EXPECT_NE(
-      std::find(vrfList.begin(), vrfList.end(), RouterID(1001)), vrfList.end());
 }
 
 namespace {
