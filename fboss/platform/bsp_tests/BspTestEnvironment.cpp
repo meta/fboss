@@ -84,7 +84,10 @@ void BspTestEnvironment::setPmUnitVersionDetector(
   pmUnitVersionDetector_ = std::move(detector);
 }
 
-void BspTestEnvironment::TearDown() {}
+void BspTestEnvironment::TearDown() {
+  // gtest deletes this env after RUN_ALL_TESTS.
+  printAllRecordedErrors();
+}
 
 const platform_manager::PlatformConfig&
 BspTestEnvironment::getPlatformManagerConfig() const {

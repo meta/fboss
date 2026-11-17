@@ -40,8 +40,5 @@ int main(int argc, char** argv) {
       &IdpromUtils::detectPmUnitVersions);
   ::testing::AddGlobalTestEnvironment(BspTestEnvironment::GetInstance());
 
-  auto ret = RUN_ALL_TESTS();
-  auto env = BspTestEnvironment::GetInstance();
-  env->printAllRecordedErrors();
-  return ret;
+  return RUN_ALL_TESTS();
 }
