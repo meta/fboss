@@ -39,11 +39,31 @@ Below are some of the possible designs for integrating NPO to a switch. Specific
 
 ## Hardware Requirements
 
-### NPO Vendor Integration
+### Requirements for Switch Vendors
+
+#### NPO Vendor Integration
 
 1. The switch shall have a single vendor source/Part Number for all NPOs within a single switch, unless otherwise accepted by Meta.
 
-### OE and ELSFP Control Management
+#### I2C
+
+1. Each NPO shall have a dedicated, non-shared I2C bus from the FPGA, supporting a minimum bus speed of 1 MHz.
+
+#### LEDs
+
+1. There shall be a tri-color (red, yellow, blue) front panel LED per front panel fiber port.
+2. The LEDs will be driven by FBOSS software through the FPGA/CPLD.
+
+#### NPOs with a Host PCB Assembly
+
+For designs that co-package the NPOs in a secondary PCB (Diagram 3); in case of presence of active components on the PCB (e.g. temperature sensors, voltage regulators, etc.):
+
+1. The BSP shall expose access for FBOSS software to those components for monitoring / programmability via [Platform Manager](https://meta.github.io/fboss/docs/platform/platform_manager/).
+2. The NPO Host PCB shall incorporate a Meta EEPROM for the manufacturing and version details of the PCB in accordance with [Meta EEPROM specifications](https://meta.github.io/fboss/docs/platform/meta_eeprom_format_v6/).
+
+### Requirements for NPO Vendors
+
+#### OE and ELSFP Control Management
 
 1. The NPO shall have an MCU that implements the CMIS interface and abstracts the functioning of the Optical Engine and Pluggable Laser Source (if applicable) from the software.
 2. One NPO shall not support more than the maximum number of lanes supported by CMIS.
@@ -51,16 +71,12 @@ Below are some of the possible designs for integrating NPO to a switch. Specific
 4. As long as the switch is powered on, the software shall be able to communicate with the NPO MCU and program and monitor the OE and ELSFP constantly independent of the ASIC power-up/ready status.
 5. Different ELSFPs and/or different OE shall be transparent to the software, from the programming model aspect, except for tuning parameters.
 
-### NPO Optical Engine
+#### NPO Optical Engine
 
 1. The OE should be capable of generating and checking PRBS on the optical line side (**WL**).
 2. The OE should be capable of generating and checking PRBS on the electrical system side (**WL**).
 
-### I2C
-
-1. Each NPO shall have a dedicated, non-shared I2C bus from the FPGA, supporting a minimum bus speed of 1 MHz.
-
-### GPIO
+#### GPIO
 
 1. The NPO shall expose the following pins to the CPLD/FPGA:
     - **Reset:**
@@ -71,21 +87,11 @@ Below are some of the possible designs for integrating NPO to a switch. Specific
     - **Low Power:**
         - This pin should enable and clear low power mode on both the OE and the ELSFP.
 
-### LEDs
+## Software Requirements
 
-1. There shall be a tri-color (red, yellow, blue) front panel LED per front panel fiber port.
-2. The LEDs will be driven by FBOSS software through the FPGA/CPLD.
+### Requirements for Switch Vendors
 
-### NPOs with a Host PCB Assembly
-
-For designs that co-package the NPOs in a secondary PCB (Diagram 3); in case of presence of active components on the PCB (e.g. temperature sensors, voltage regulators, etc.):
-
-1. The BSP shall expose access for FBOSS software to those components for monitoring / programmability via [Platform Manager](https://meta.github.io/fboss/docs/platform/platform_manager/).
-2. The NPO Host PCB shall incorporate a Meta EEPROM for the manufacturing and version details of the PCB in accordance with [Meta EEPROM specifications](https://meta.github.io/fboss/docs/platform/meta_eeprom_format_v6/).
-
-## FBOSS Software Requirements
-
-### I2C and GPIO access
+#### I2C and GPIO access
 
 1. The BSP shall expose the same interfaces to software as it does for the pluggable optics. For example:
     - `/run/devmap/xcvrs/xcvr_io_1`
@@ -95,13 +101,15 @@ For designs that co-package the NPOs in a secondary PCB (Diagram 3); in case of 
 3. The BSP shall expose the interfaces for LED programming for colors (blue and amber) and blink capability.
 4. For the complete and most recent BSP specification, refer to [https://meta.github.io/fboss/docs/platform/bsp_api_specification/](https://meta.github.io/fboss/docs/platform/bsp_api_specification/)
 
-### CMIS
+### Requirements for NPO Vendors
+
+#### CMIS
 
 1. The NPO shall support CMIS 5.3 or newer.
 2. The NPO shall not support more than the maximum lanes defined by CMIS.
     - For example, CMIS 5.3 supports core management features on 4 x 8 lanes.
 
-### Datapath Programming
+#### Datapath Programming
 
 1. Software shall only communicate with the NPO for reading, programming and monitoring. Any internal calibration or communication between OE or ELSFP shall be orchestrated by the NPO firmware and shall be transparent to FBOSS software.
     - The time needed to finish the internal calibration shall be within the advertised time for datapath initialization defined in byte 144 in page 01h in CMIS 5.3.
@@ -109,9 +117,9 @@ For designs that co-package the NPOs in a secondary PCB (Diagram 3); in case of 
 3. All NPO devices on the switch shall be independently and simultaneously programmable in a multi-threaded environment.
 4. The cumulative time for completing datapath programming and achieving link up for all NPO ports on the switch shall be less than 10 seconds.
 
-### Features
+#### Features
 
-#### Firmware Upgrade: NPO and ELSFP
+##### Firmware Upgrade: NPO and ELSFP
 
 1. Software will use the CMIS MCU to upgrade firmware for various components (CMIS MCU, OE, and ELSFP) via standard CDB procedures.
 2. The cumulative time for firmware upgrade of all components - including all MCUs, all OEs and all ELSFPs - should be between 5 minutes (**SD**) and 10 minutes (**MH**).
@@ -119,7 +127,7 @@ For designs that co-package the NPOs in a secondary PCB (Diagram 3); in case of 
 4. There shall be only 1 firmware file to upgrade any/all internal components to the NPO.
 5. ELSFP FW upgrade shall be completed through the NPO MCU via CDB commands.
 
-#### ELSFP Monitoring
+##### ELSFP Monitoring
 
 1. The CMIS MCU shall be able to read all diagnostics from the ELSFP as if it were reading the same diagnostics from a pluggable optic.
     - The CMIS MCU shall mirror ELSFP diagnostics into the corresponding DOM offsets in the standard upper pages defined in CMIS.
