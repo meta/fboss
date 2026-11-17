@@ -678,6 +678,45 @@ TEST_F(TamStoreTest, tamCollectorToStr) {
 }
 
 #if SAI_API_VERSION >= SAI_VERSION(1, 18, 1) && !defined(CHENAB_SAI_SDK)
+TEST_F(TamStoreTest, ReloadCsigInt) {
+  using A = SaiTamIntTraits::Attributes;
+  SaiTamIntTraits::CreateAttributes attrs{
+      SAI_TAM_INT_TYPE_CSIG_COMPACT,
+      0,
+      SAI_TAM_INT_PRESENCE_TYPE_ETH_TYPE,
+      true,
+      0x9900,
+      SAI_CSIG_SIGNAL_TYPE_ABW,
+      256,
+      2,
+      std::vector<sai_uint16_t>{7, 3},
+      std::vector<sai_u64_range_t>{
+          {0, 1ULL << 32}, {(1ULL << 32) + 1, 1ULL << 40}},
+      std::nullopt,
+      std::nullopt,
+      false};
+  const auto id = saiApiTable->tamApi().create<SaiTamIntTraits>(attrs, 0);
+  const auto key = tupleProjection<
+      SaiTamIntTraits::CreateAttributes,
+      SaiTamIntTraits::AdapterHostKey>(attrs);
+  SaiStore store(0);
+  store.reload();
+  auto object = store.get<SaiTamIntTraits>().get(key);
+  ASSERT_NE(object, nullptr);
+  EXPECT_EQ(object->adapterKey(), id);
+  const auto& ranges = std::get<std::optional<A::QuantBandUint64RangeList>>(
+      object->attributes());
+  ASSERT_TRUE(ranges.has_value());
+  EXPECT_EQ(
+      ranges->value(),
+      (std::vector<sai_u64_range_t>{
+          {0, 1ULL << 32}, {(1ULL << 32) + 1, 1ULL << 40}}));
+  std::get<std::optional<A::BwTimeInterval>>(attrs) = 512;
+  auto updated = store.get<SaiTamIntTraits>().setObject(key, attrs);
+  EXPECT_EQ(updated->adapterKey(), id);
+  EXPECT_EQ(saiApiTable->tamApi().getAttribute(id, A::BwTimeInterval{}), 512);
+}
+
 TEST_F(TamStoreTest, DistinctCsigTamBindings) {
   SaiTamTraits::CreateAttributes first{
       std::vector<sai_object_id_t>{},

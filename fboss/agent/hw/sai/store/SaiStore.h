@@ -777,6 +777,9 @@ class SaiStore {
 #endif
       SaiObjectStore<SaiWredTraits>,
       SaiObjectStore<SaiTamTraits>,
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+      SaiObjectStore<SaiTamIntTraits>,
+#endif
       SaiObjectStore<SaiTamReportTraits>,
       SaiObjectStore<SaiTamEventActionTraits>,
 #if defined(BRCM_SAI_SDK_DNX_GTE_11_0)
