@@ -10,6 +10,7 @@
 
 #pragma once
 
+#include <map>
 #include <optional>
 #include <unordered_map>
 #include <unordered_set>
@@ -31,6 +32,9 @@ class NextHopIDManager;
 
 using MySidTable =
     std::unordered_map<folly::CIDRNetworkV6, std::shared_ptr<MySid>>;
+using NextHopForwardInfos = std::map<NextHop, RouteNextHopSet>;
+
+RouteNextHopSet mergeForwardInfos(const NextHopForwardInfos& nhToFwds);
 
 /**
  * Expected behavior of RibRouteUpdater::resolve():

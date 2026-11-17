@@ -588,8 +588,6 @@ void RibRouteUpdater::removeAllUnclaimedMplsRoutesForClient(
 // These aren't really usefully reusable, but structuring them
 // this way helps with clarifying their meaning.
 namespace {
-using NextHopForwardInfos = std::map<NextHop, RouteNextHopSet>;
-
 struct NextHopCombinedWeightsKey {
   explicit NextHopCombinedWeightsKey(NextHop nhop)
       : ip(nhop.addr()),
@@ -788,10 +786,7 @@ RouteNextHopSet optimizeWeights(const NextHopCombinedWeights& cws) {
  * when nothing below is weighted either does the route resolve to plain
  * ECMP.
  */
-template <typename AddressT>
-RouteNextHopSet mergeForwardInfosEcmp(
-    const NextHopForwardInfos& nhToFwds,
-    const std::shared_ptr<Route<AddressT>>& route) {
+RouteNextHopSet mergeForwardInfosEcmp(const NextHopForwardInfos& nhToFwds) {
   // A resolved next hop at a single share is not stating a weighting:
   // resolving through a connected route mints one at UCMP_DEFAULT_WEIGHT
   // whether or not anyone asked for a split.
@@ -833,11 +828,31 @@ RouteNextHopSet mergeForwardInfosEcmp(
     return fwd;
   }
 
-  XLOG(DBG4) << "While resolving " << route->str()
-             << " keeping the weighting of the recursively resolved next hops,"
+  XLOG(DBG4) << "Keeping the weighting of the recursively resolved next hops,"
              << " since the route states none of its own";
   return optimizeWeights(combineWeights(nhToFwds));
 }
+
+struct Srv6Encap {
+  std::vector<folly::IPAddressV6> segmentList;
+  std::optional<TunnelType> tunnelType;
+  std::optional<std::string> tunnelId;
+};
+
+// Prefer the parent next-hop's SRv6 encap; if the parent has none, inherit the
+// child's.
+template <typename NextHopT>
+Srv6Encap resolveSrv6Encap(
+    const std::vector<folly::IPAddressV6>& parentSegmentList,
+    const std::optional<TunnelType>& parentTunnelType,
+    const std::optional<std::string>& parentTunnelId,
+    const NextHopT& child) {
+  if (!parentSegmentList.empty()) {
+    return {parentSegmentList, parentTunnelType, parentTunnelId};
+  }
+  return {child.srv6SegmentList(), child.tunnelType(), child.tunnelId()};
+}
+} // anonymous namespace
 
 /*
  * Take the resolved forwarding info (NextHopSet containing ResolvedNextHops)
@@ -893,40 +908,16 @@ RouteNextHopSet mergeForwardInfosEcmp(
  * GCD(75, 60, 54, 36) = 3 so we reach a final next hop set of:
  * {I1x25, I2x20, I3x18, I4x12}
  */
-template <typename AddressT>
-RouteNextHopSet mergeForwardInfos(
-    const NextHopForwardInfos& nhToFwds,
-    const std::shared_ptr<Route<AddressT>>& route) {
+RouteNextHopSet mergeForwardInfos(const NextHopForwardInfos& nhToFwds) {
   RouteNextHopSet fwd;
   if (!hasUcmpNextHop(nhToFwds)) {
-    fwd = mergeForwardInfosEcmp(nhToFwds, route);
+    fwd = mergeForwardInfosEcmp(nhToFwds);
   } else {
     NextHopCombinedWeights cws = combineWeights(nhToFwds);
     fwd = optimizeWeights(cws);
   }
   return fwd;
 }
-
-struct Srv6Encap {
-  std::vector<folly::IPAddressV6> segmentList;
-  std::optional<TunnelType> tunnelType;
-  std::optional<std::string> tunnelId;
-};
-
-// Prefer the parent next-hop's SRv6 encap; if the parent has none, inherit the
-// child's.
-template <typename NextHopT>
-Srv6Encap resolveSrv6Encap(
-    const std::vector<folly::IPAddressV6>& parentSegmentList,
-    const std::optional<TunnelType>& parentTunnelType,
-    const std::optional<std::string>& parentTunnelId,
-    const NextHopT& child) {
-  if (!parentSegmentList.empty()) {
-    return {parentSegmentList, parentTunnelType, parentTunnelId};
-  }
-  return {child.srv6SegmentList(), child.tunnelType(), child.tunnelId()};
-}
-} // anonymous namespace
 
 template <typename AddressT>
 void RibRouteUpdater::getFwdInfoFromNhop(
@@ -1274,9 +1265,8 @@ std::shared_ptr<Route<AddressT>> RibRouteUpdater::resolveOne(
       // forward packet based on inner header result. This means
       // that label pop and lookup will not have a valid nhop ip
       // or interface and any merge operation has to be skipped.
-      RouteNextHopSet nhSet = labelPopandLookup
-          ? bestEntryNhops
-          : mergeForwardInfos(nhToFwds, route);
+      RouteNextHopSet nhSet =
+          labelPopandLookup ? bestEntryNhops : mergeForwardInfos(nhToFwds);
       nhSet = removeBackupNextHopsWithMatchingPrimary(std::move(nhSet));
 
       // normalize weight information for capacity matching if needed
