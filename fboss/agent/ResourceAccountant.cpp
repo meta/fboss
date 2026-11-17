@@ -900,15 +900,15 @@ bool ResourceAccountant::checkSrv6NextHopResource(
 
 // get switchId from neighbor entry
 SwitchID ResourceAccountant::getSwitchIdFromNeighborEntry(
-    std::shared_ptr<SwitchState> newState,
+    std::shared_ptr<SwitchState> state,
     const auto& nbrEntry) {
-  const auto& interfaceMap = newState->getInterfaces();
+  const auto& interfaceMap = state->getInterfaces();
   InterfaceID interfaceId = nbrEntry->getIntfID();
   std::shared_ptr<Interface> intf = interfaceMap->getNodeIf(interfaceId);
   if (!intf) {
     throw FbossError("No interface found for interfaceId: ", interfaceId);
   }
-  SwitchID switchId = scopeResolver_->scope(intf, newState).switchId();
+  SwitchID switchId = scopeResolver_->scope(intf, state).switchId();
 
   return switchId;
 }
@@ -1030,7 +1030,7 @@ void ResourceAccountant::neighborStateChangedImpl(const StateDelta& delta) {
         },
         [&](const auto& deleted) {
           auto switchId =
-              getSwitchIdFromNeighborEntry(delta.newState(), deleted);
+              getSwitchIdFromNeighborEntry(delta.oldState(), deleted);
           entriesMap[switchId]--;
           return LoopAction::CONTINUE;
         });

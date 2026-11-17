@@ -1070,6 +1070,42 @@ TEST_F(ResourceAccountantTest, checkNeighborResource) {
   EXPECT_FALSE(this->resourceAccountant_->checkNeighborResource());
 }
 
+TEST_F(ResourceAccountantTest, removeInterfaceWithNeighbors) {
+  gflags::FlagSaver flagSaver;
+  FLAGS_enable_hw_update_protection = true;
+  const InterfaceID intfId(1);
+  const PortDescriptor port(PortID(1));
+  const folly::MacAddress mac("02:00:00:00:00:01");
+
+  auto oldState = testStateA();
+  oldState->getInterfaces()
+      ->getNode(intfId)
+      ->getArpTable()
+      ->modify(intfId, &oldState)
+      ->addEntry(folly::IPAddressV4("10.0.0.2"), mac, port, intfId);
+  oldState->getInterfaces()
+      ->getNode(intfId)
+      ->getNdpTable()
+      ->modify(intfId, &oldState)
+      ->addEntry(
+          folly::IPAddressV6("2401:db00:2110:3001::2"), mac, port, intfId);
+  oldState->publish();
+  EXPECT_TRUE(this->resourceAccountant_->isValidUpdate(
+      StateDelta(std::make_shared<SwitchState>(), oldState)));
+  EXPECT_EQ(this->resourceAccountant_->arpEntriesMap_[SwitchID(0)], 1);
+  EXPECT_EQ(this->resourceAccountant_->ndpEntriesMap_[SwitchID(0)], 1);
+
+  // Removing the interface and its VLAN implicitly deletes its neighbors
+  auto newState = oldState->clone();
+  newState->getInterfaces()->modify(&newState)->removeNode(intfId);
+  newState->getVlans()->modify(&newState)->removeNode(VlanID(1));
+  newState->publish();
+  EXPECT_TRUE(
+      this->resourceAccountant_->isValidUpdate(StateDelta(oldState, newState)));
+  EXPECT_EQ(this->resourceAccountant_->arpEntriesMap_[SwitchID(0)], 0);
+  EXPECT_EQ(this->resourceAccountant_->ndpEntriesMap_[SwitchID(0)], 0);
+}
+
 TEST_F(ResourceAccountantTest, routeWithAdjustedWeightZero) {
   // Create route with ECMP next hops where one has adjustedWeight of 0
   // The next hop with adjustedWeight 0 should not be counted towards ECMP

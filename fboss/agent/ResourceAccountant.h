@@ -130,7 +130,7 @@ class ResourceAccountant {
   template <typename TableT>
   uint32_t getMaxConfiguredNeighborTableSize();
   SwitchID getSwitchIdFromNeighborEntry(
-      std::shared_ptr<SwitchState> newState,
+      std::shared_ptr<SwitchState> state,
       const auto& nbrEntry);
   template <typename TableT>
   std::unordered_map<SwitchID, uint32_t>& getNeighborEntriesMap();
@@ -214,6 +214,7 @@ class ResourceAccountant {
       virtualArsGroupOverrideDropPromotesClassification);
   FRIEND_TEST(ResourceAccountantTest, computeWeightedEcmpMemberCount);
   FRIEND_TEST(ResourceAccountantTest, checkNeighborResource);
+  FRIEND_TEST(ResourceAccountantTest, removeInterfaceWithNeighbors);
   FRIEND_TEST(ResourceAccountantTest, routeWithAdjustedWeightZero);
   FRIEND_TEST(ResourceAccountantTest, resolvedAndUnresolvedRoutes);
   FRIEND_TEST(ResourceAccountantTest, checkMySidResource);
