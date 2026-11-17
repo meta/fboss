@@ -17,8 +17,10 @@
 #include "fboss/agent/FbossError.h"
 #include "fboss/agent/FbossHwUpdateError.h"
 #include "fboss/agent/HwAsicTable.h"
+#include "fboss/agent/HwSwitchMatcher.h"
 #include "fboss/agent/IPv6Handler.h"
 #include "fboss/agent/NeighborCacheImpl.h"
+#include "fboss/agent/ResourceAccountant.h"
 #include "fboss/agent/StaticL2ForNeighborSwSwitchUpdater.h"
 #include "fboss/agent/SwitchIdScopeResolver.h"
 #include "fboss/agent/hw/switch_asics/HwAsic.h"
@@ -113,6 +115,59 @@ bool NeighborCacheImpl<NTable>::isHwUpdateProtected() {
   return (
       FLAGS_enable_hw_update_protection &&
       sw_->getHwSwitchHandler()->transactionsSupported());
+}
+
+template <typename NTable>
+bool NeighborCacheImpl<NTable>::wouldExceedNeighborLimit(AddressType ip) {
+  // Count the same state data that the ResourceAccountant checks.
+  auto state = sw_->getState();
+  auto intf = state->getInterfaces()->getNodeIf(intfID_);
+  if (!intf) {
+    return false;
+  }
+  // An entry in the state is replaced in place, so the count does not change.
+  if (intf->getTable<NTable>()->getEntryIf(ip)) {
+    return false;
+  }
+  auto* scopeResolver = sw_->getScopeResolver();
+  auto switchId = scopeResolver->scope(intf, state).switchId();
+  uint32_t ndpCount = 0;
+  uint32_t arpCount = 0;
+  for (const auto& [matcherKey, intfMap] :
+       std::as_const(*state->getInterfaces())) {
+    // The key can cover more than one switch, so test membership.
+    if (!HwSwitchMatcher(matcherKey).has(switchId)) {
+      continue;
+    }
+    for (const auto& [_, otherIntf] : std::as_const(*intfMap)) {
+      ndpCount += otherIntf->getNdpTable()->size();
+      arpCount += otherIntf->getArpTable()->size();
+    }
+  }
+  if constexpr (std::is_same_v<NTable, ArpTable>) {
+    arpCount++;
+  } else {
+    ndpCount++;
+  }
+  return !ResourceAccountant::checkNeighborCounts(
+      sw_->getHwAsicTable()->getHwAsicIf(switchId),
+      switchId,
+      ndpCount,
+      arpCount,
+      false /* logOverLimit */);
+}
+
+template <typename NTable>
+bool NeighborCacheImpl<NTable>::skipLearnForFullTable(AddressType ip) {
+  // Each update that the ResourceAccountant rejects blocks this event base.
+  // So skip a learn from an unknown host when the table is full.
+  if (!isHwUpdateProtected() || !wouldExceedNeighborLimit(ip)) {
+    return false;
+  }
+  sw_->stats()->neighborLearnSkippedTableFull();
+  XLOG_EVERY_MS(WARNING, 10000) << "Skip learning neighbor " << ip.str()
+                                << " because the neighbor table is full";
+  return true;
 }
 
 template <typename NTable>
@@ -463,6 +518,10 @@ void NeighborCacheImpl<NTable>::setEntry(
   // is set. Thus we want to update cache only if switchState update succeeds,
   // to avoid switchState and neighbor cache inconsistency
 
+  if (skipLearnForFullTable(ip)) {
+    return;
+  }
+
   auto entry = addOrUpdateEntryInternal(
       EntryFields(ip, mac, port, intfID_),
       state,
@@ -482,6 +541,9 @@ void NeighborCacheImpl<NTable>::setExistingEntry(
     NeighborEntryState state) {
   auto entry = getCacheEntry(ip);
   if (entry && !entry->fieldsMatch(EntryFields(ip, mac, port, intfID_))) {
+    if (skipLearnForFullTable(ip)) {
+      return;
+    }
     // only program an entry if one exists and the fields have changed
     // make a copy of the entry to update the fields locally
     auto entryCopy = std::make_unique<Entry>(

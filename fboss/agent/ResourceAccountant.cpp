@@ -924,18 +924,17 @@ bool ResourceAccountant::shouldCheckNeighborUpdate(SwitchID switchId) {
 // get total neighbor table size from ASIC
 template <typename TableT>
 std::optional<uint32_t> ResourceAccountant::getMaxAsicNeighborTableSize(
-    SwitchID switchId,
+    const HwAsic& hwAsic,
     uint8_t resourcePercentage) {
   uint32_t size = 0;
-  auto hwAsic = asicTable_->getHwAsicIf(SwitchID(switchId));
 
   if constexpr (std::is_same_v<TableT, NdpTable>) {
-    size = hwAsic->getMaxNdpTableSize().has_value()
-        ? hwAsic->getMaxNdpTableSize().value()
+    size = hwAsic.getMaxNdpTableSize().has_value()
+        ? hwAsic.getMaxNdpTableSize().value()
         : 0;
   } else if constexpr (std::is_same_v<TableT, ArpTable>) {
-    size = hwAsic->getMaxArpTableSize().has_value()
-        ? hwAsic->getMaxArpTableSize().value()
+    size = hwAsic.getMaxArpTableSize().has_value()
+        ? hwAsic.getMaxArpTableSize().value()
         : 0;
   } else { // Invalid resource type
     throw FbossError("Invalid resource type");
@@ -949,13 +948,12 @@ std::optional<uint32_t> ResourceAccountant::getMaxAsicNeighborTableSize(
 // get total unified neighbor table size from ASIC
 // unified table is shared by both ARP and NDP tables
 std::optional<uint32_t> ResourceAccountant::getMaxAsicUnifiedNeighborTableSize(
-    const SwitchID& switchId,
+    const HwAsic& hwAsic,
     uint8_t resourcePercentage) {
   uint32_t size = 0;
-  auto hwAsic = asicTable_->getHwAsicIf(SwitchID(switchId));
 
-  size = hwAsic->getMaxUnifiedNeighborTableSize().has_value()
-      ? hwAsic->getMaxUnifiedNeighborTableSize().value()
+  size = hwAsic.getMaxUnifiedNeighborTableSize().has_value()
+      ? hwAsic.getMaxUnifiedNeighborTableSize().value()
       : 0;
   if (size == 0) {
     return std::nullopt;
@@ -1042,6 +1040,75 @@ void ResourceAccountant::neighborStateChangedImpl(const StateDelta& delta) {
   }
 }
 
+bool ResourceAccountant::checkNeighborCounts(
+    const HwAsic* asic,
+    SwitchID switchId,
+    uint32_t ndpCount,
+    uint32_t arpCount,
+    bool logOverLimit) {
+  const bool useAsicLimits = FLAGS_enforce_resource_hw_limits && asic;
+
+  // Check NDP limits
+  if (ndpCount > 0) {
+    auto maxNdpSize = getMaxConfiguredNeighborTableSize<NdpTable>();
+    if (useAsicLimits) {
+      auto asicNdpSize =
+          getMaxAsicNeighborTableSize<NdpTable>(*asic, kHundredPercentage);
+      if (asicNdpSize.has_value()) {
+        maxNdpSize = std::min(asicNdpSize.value(), maxNdpSize);
+      }
+    }
+    if (ndpCount > maxNdpSize) {
+      if (logOverLimit) {
+        XLOG(ERR) << "Total NDP entries in new switchState: " << ndpCount
+                  << " exceeds the limit: " << maxNdpSize
+                  << " for switchId: " << switchId;
+      }
+      return false;
+    }
+  }
+
+  // Check ARP limits
+  if (arpCount > 0) {
+    auto maxArpSize = getMaxConfiguredNeighborTableSize<ArpTable>();
+    if (useAsicLimits) {
+      auto asicArpSize =
+          getMaxAsicNeighborTableSize<ArpTable>(*asic, kHundredPercentage);
+      if (asicArpSize.has_value()) {
+        maxArpSize = std::min(asicArpSize.value(), maxArpSize);
+      }
+    }
+    if (arpCount > maxArpSize) {
+      if (logOverLimit) {
+        XLOG(ERR) << "Total ARP entries in new switchState: " << arpCount
+                  << " exceeds the limit: " << maxArpSize
+                  << " for switchId: " << switchId;
+      }
+      return false;
+    }
+  }
+
+  // Check unified table limits if enabled and available
+  if (useAsicLimits) {
+    auto maxUnifiedSize =
+        getMaxAsicUnifiedNeighborTableSize(*asic, kHundredPercentage);
+    if (maxUnifiedSize.has_value()) {
+      uint32_t unifiedCount = ndpCount + arpCount;
+      if (unifiedCount > maxUnifiedSize.value()) {
+        if (logOverLimit) {
+          XLOG(ERR) << "Total unified neighbor entries in new switchState: "
+                    << unifiedCount
+                    << " exceeds the limit: " << maxUnifiedSize.value()
+                    << " for switchId: " << switchId;
+        }
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
 bool ResourceAccountant::checkNeighborResource() {
   std::set<SwitchID> allSwitchIds;
   for (const auto& [switchId, _] : ndpEntriesMap_) {
@@ -1058,56 +1125,9 @@ bool ResourceAccountant::checkNeighborResource() {
     uint32_t ndpCount = (ndpIt != ndpEntriesMap_.end()) ? ndpIt->second : 0;
     uint32_t arpCount = (arpIt != arpEntriesMap_.end()) ? arpIt->second : 0;
 
-    // Check NDP limits
-    if (ndpCount > 0) {
-      auto maxNdpSize = getMaxConfiguredNeighborTableSize<NdpTable>();
-      if (FLAGS_enforce_resource_hw_limits) {
-        auto asicNdpSize =
-            getMaxAsicNeighborTableSize<NdpTable>(switchId, kHundredPercentage);
-        if (asicNdpSize.has_value()) {
-          maxNdpSize = std::min(asicNdpSize.value(), maxNdpSize);
-        }
-      }
-      if (ndpCount > maxNdpSize) {
-        XLOG(ERR) << "Total NDP entries in new switchState: " << ndpCount
-                  << " exceeds the limit: " << maxNdpSize
-                  << " for switchId: " << switchId;
-        return false;
-      }
-    }
-
-    // Check ARP limits
-    if (arpCount > 0) {
-      auto maxArpSize = getMaxConfiguredNeighborTableSize<ArpTable>();
-      if (FLAGS_enforce_resource_hw_limits) {
-        auto asicArpSize =
-            getMaxAsicNeighborTableSize<ArpTable>(switchId, kHundredPercentage);
-        if (asicArpSize.has_value()) {
-          maxArpSize = std::min(asicArpSize.value(), maxArpSize);
-        }
-      }
-      if (arpCount > maxArpSize) {
-        XLOG(ERR) << "Total ARP entries in new switchState: " << arpCount
-                  << " exceeds the limit: " << maxArpSize
-                  << " for switchId: " << switchId;
-        return false;
-      }
-    }
-
-    // Check unified table limits if enabled and available
-    if (FLAGS_enforce_resource_hw_limits &&
-        getMaxAsicUnifiedNeighborTableSize(switchId, kHundredPercentage)
-            .has_value()) {
-      uint32_t unifiedCount = ndpCount + arpCount;
-      uint32_t maxUnifiedSize =
-          getMaxAsicUnifiedNeighborTableSize(switchId, kHundredPercentage)
-              .value();
-      if (unifiedCount > maxUnifiedSize) {
-        XLOG(ERR) << "Total unified neighbor entries in new switchState: "
-                  << unifiedCount << " exceeds the limit: " << maxUnifiedSize
-                  << " for switchId: " << switchId;
-        return false;
-      }
+    if (!checkNeighborCounts(
+            asicTable_->getHwAsic(switchId), switchId, ndpCount, arpCount)) {
+      return false;
     }
   }
 

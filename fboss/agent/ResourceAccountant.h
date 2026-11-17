@@ -28,6 +28,14 @@ class ResourceAccountant {
       const SwitchIdScopeResolver* scopeResolver);
 
   bool isValidUpdate(const StateDelta& delta);
+
+  // The ASIC can be null. Then only the configured limits apply.
+  static bool checkNeighborCounts(
+      const HwAsic* asic,
+      SwitchID switchId,
+      uint32_t ndpCount,
+      uint32_t arpCount,
+      bool logOverLimit = true);
   void stateChanged(const StateDelta& delta);
   void setMinWidthForArsVirtualGroup(
       std::optional<int32_t> minWidthForArsVirtualGroup);
@@ -121,14 +129,14 @@ class ResourceAccountant {
   template <typename TableT>
   bool shouldCheckNeighborUpdate(SwitchID switchId);
   template <typename TableT>
-  std::optional<uint32_t> getMaxAsicNeighborTableSize(
-      SwitchID switchId,
+  static std::optional<uint32_t> getMaxAsicNeighborTableSize(
+      const HwAsic& hwAsic,
       uint8_t resourcePercentage);
-  std::optional<uint32_t> getMaxAsicUnifiedNeighborTableSize(
-      const SwitchID& switchId,
+  static std::optional<uint32_t> getMaxAsicUnifiedNeighborTableSize(
+      const HwAsic& hwAsic,
       uint8_t resourcePercentage);
   template <typename TableT>
-  uint32_t getMaxConfiguredNeighborTableSize();
+  static uint32_t getMaxConfiguredNeighborTableSize();
   SwitchID getSwitchIdFromNeighborEntry(
       std::shared_ptr<SwitchState> newState,
       const auto& nbrEntry);

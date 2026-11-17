@@ -450,6 +450,11 @@ SwitchStats::SwitchStats(ThreadLocalStatsMap* map, int numSwitches)
           kCounterPrefix + "neighbor_table_update_failure",
           SUM,
           RATE),
+      neighborLearnSkippedTableFull_(
+          map,
+          kCounterPrefix + "neighbor_learn_skipped_table_full",
+          SUM,
+          RATE),
       macTableUpdateFailure_(
           map,
           kCounterPrefix + "mac_table_update_failure",

@@ -9,6 +9,7 @@
  */
 
 #include <fmt/core.h>
+#include <gflags/gflags.h>
 #include <gtest/gtest.h>
 
 #include "fboss/agent/AddressUtil.h"
@@ -1068,6 +1069,51 @@ TEST_F(ResourceAccountantTest, checkNeighborResource) {
   arpEntriesMap.insert_or_assign(SwitchID(0), asicArpMax + 1);
   ndpEntriesMap.clear();
   EXPECT_FALSE(this->resourceAccountant_->checkNeighborResource());
+}
+
+TEST_F(ResourceAccountantTest, checkNeighborCounts) {
+  gflags::FlagSaver flagSaver;
+  const auto* asic = asicTable_->getHwAsic(SwitchID(0));
+  auto asicNdpMax = asic->getMaxNdpTableSize().value();
+  auto asicArpMax = asic->getMaxArpTableSize().value();
+  auto asicUnifiedMax = asic->getMaxUnifiedNeighborTableSize().value();
+  // The unified limit is lower than the sum of the NDP and ARP limits.
+  ASSERT_LT(asicUnifiedMax, asicNdpMax + asicArpMax);
+
+  FLAGS_enforce_resource_hw_limits = true;
+  EXPECT_TRUE(
+      ResourceAccountant::checkNeighborCounts(
+          asic, SwitchID(0), asicNdpMax, asicUnifiedMax - asicNdpMax));
+  EXPECT_FALSE(
+      ResourceAccountant::checkNeighborCounts(
+          asic, SwitchID(0), asicNdpMax, asicUnifiedMax - asicNdpMax + 1));
+  EXPECT_FALSE(
+      ResourceAccountant::checkNeighborCounts(
+          asic, SwitchID(0), asicNdpMax + 1, 0));
+  EXPECT_FALSE(
+      ResourceAccountant::checkNeighborCounts(
+          asic, SwitchID(0), 0, asicArpMax + 1));
+  EXPECT_FALSE(
+      ResourceAccountant::checkNeighborCounts(
+          asic, SwitchID(0), 0, asicArpMax + 1, false /* logOverLimit */));
+
+  FLAGS_enforce_resource_hw_limits = false;
+  FLAGS_max_ndp_entries = asicNdpMax + 100;
+  FLAGS_max_arp_entries = asicArpMax + 100;
+  EXPECT_TRUE(
+      ResourceAccountant::checkNeighborCounts(
+          asic, SwitchID(0), FLAGS_max_ndp_entries, FLAGS_max_arp_entries));
+  EXPECT_FALSE(
+      ResourceAccountant::checkNeighborCounts(
+          asic, SwitchID(0), FLAGS_max_ndp_entries + 1, 0));
+
+  FLAGS_enforce_resource_hw_limits = true;
+  EXPECT_TRUE(
+      ResourceAccountant::checkNeighborCounts(
+          nullptr, SwitchID(0), FLAGS_max_ndp_entries, FLAGS_max_arp_entries));
+  EXPECT_FALSE(
+      ResourceAccountant::checkNeighborCounts(
+          nullptr, SwitchID(0), 0, FLAGS_max_arp_entries + 1));
 }
 
 TEST_F(ResourceAccountantTest, routeWithAdjustedWeightZero) {

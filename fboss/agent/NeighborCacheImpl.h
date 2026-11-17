@@ -125,6 +125,8 @@ class NeighborCacheImpl {
 
  private:
   bool isHwUpdateProtected();
+  bool wouldExceedNeighborLimit(AddressType ip);
+  bool skipLearnForFullTable(AddressType ip);
   // These are used to program entries into the SwitchState
   bool programEntry(Entry* entry);
   bool
