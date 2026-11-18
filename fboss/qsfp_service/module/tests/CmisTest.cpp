@@ -1421,7 +1421,8 @@ TEST_F(CmisTest, cmisNvidia2x400GFr4TransceiverInfoTest) {
       info.tcvrState()->moduleMediaInterface(),
       MediaInterfaceCode::FR4_2x400G_IB);
   for (auto& media : *info.tcvrState()->settings()->mediaInterface()) {
-    EXPECT_EQ(media.media()->get_smfCode(), SMFMediaInterfaceCode::FR4_400G);
+    EXPECT_EQ(
+        media.media()->smfCode().value(), SMFMediaInterfaceCode::FR4_400G);
     EXPECT_EQ(media.code(), MediaInterfaceCode::FR4_400G);
   }
 }

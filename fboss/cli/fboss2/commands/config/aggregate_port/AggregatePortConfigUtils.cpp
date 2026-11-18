@@ -88,7 +88,7 @@ size_t effectiveMinimum(
     const std::string& fieldName) {
   switch (capacity.getType()) {
     case cfg::MinimumCapacity::Type::linkCount: {
-      auto count = capacity.get_linkCount();
+      auto count = capacity.linkCount().value();
       if (count <= 0) {
         throw std::invalid_argument(
             fmt::format("{} link count must be positive", fieldName));
@@ -96,7 +96,7 @@ size_t effectiveMinimum(
       return static_cast<size_t>(count);
     }
     case cfg::MinimumCapacity::Type::linkPercentage: {
-      auto percentage = capacity.get_linkPercentage();
+      auto percentage = capacity.linkPercentage().value();
       if (!std::isfinite(percentage) || percentage <= 0 || percentage > 1) {
         throw std::invalid_argument(
             fmt::format("{} link percentage must be in (0, 1]", fieldName));
@@ -121,11 +121,12 @@ void validateHysteresis(
   bool lower = false;
   if (minimum.getType() == cfg::MinimumCapacity::Type::linkCount &&
       minimumToUp.getType() == cfg::MinimumCapacity::Type::linkCount) {
-    lower = minimumToUp.get_linkCount() < minimum.get_linkCount();
+    lower = minimumToUp.linkCount().value() < minimum.linkCount().value();
   } else if (
       minimum.getType() == cfg::MinimumCapacity::Type::linkPercentage &&
       minimumToUp.getType() == cfg::MinimumCapacity::Type::linkPercentage) {
-    lower = minimumToUp.get_linkPercentage() < minimum.get_linkPercentage();
+    lower =
+        minimumToUp.linkPercentage().value() < minimum.linkPercentage().value();
   } else if (memberCount != 0) {
     lower = effectiveMinimum(minimumToUp, memberCount, "minimumCapacityToUp") <
         effectiveMinimum(minimum, memberCount, "minimumCapacity");

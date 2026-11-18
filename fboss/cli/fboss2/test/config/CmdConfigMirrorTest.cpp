@@ -166,7 +166,7 @@ TEST_F(CmdConfigMirrorTestFixture, createsSpanMirrorByLogicalId) {
   ASSERT_TRUE(mirror->destination()->egressPort().has_value());
   const auto& egressPort = *mirror->destination()->egressPort();
   EXPECT_EQ(egressPort.getType(), cfg::MirrorEgressPort::Type::logicalID);
-  EXPECT_EQ(egressPort.get_logicalID(), 4);
+  EXPECT_EQ(egressPort.logicalID().value(), 4);
 }
 
 TEST_F(CmdConfigMirrorTestFixture, createsSflowMirror) {

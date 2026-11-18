@@ -139,9 +139,9 @@ TEST_F(CmdConfigAggregatePortTestFixture, createsJiraAggregatePort) {
   EXPECT_EQ(*port.extendedKey(), 0);
   EXPECT_EQ(*port.description(), "LAG to n3 eth1/41/1 (eth1/1/1)");
   EXPECT_EQ(*port.aggregatePortType(), cfg::AggregatePortType::LAG_PORT);
-  EXPECT_EQ(port.minimumCapacity()->get_linkCount(), 1);
+  EXPECT_EQ(port.minimumCapacity()->linkCount().value(), 1);
   ASSERT_TRUE(port.minimumCapacityToUp().has_value());
-  EXPECT_EQ(port.minimumCapacityToUp()->get_linkCount(), 2);
+  EXPECT_EQ(port.minimumCapacityToUp()->linkCount().value(), 2);
   EXPECT_TRUE(port.memberPorts()->empty());
 }
 
@@ -192,7 +192,7 @@ TEST_F(CmdConfigAggregatePortTestFixture, updatesWithoutClearingOtherFields) {
   EXPECT_EQ(*port.description(), "updated description");
   EXPECT_EQ(*port.key(), 4000);
   EXPECT_EQ(port.memberPorts()->size(), 1);
-  EXPECT_DOUBLE_EQ(port.minimumCapacity()->get_linkPercentage(), 0.5);
+  EXPECT_DOUBLE_EQ(port.minimumCapacity()->linkPercentage().value(), 0.5);
   EXPECT_TRUE(port.minimumCapacityToUp().has_value());
 }
 
@@ -370,7 +370,7 @@ TEST_F(CmdConfigAggregatePortTestFixture, removesMinimumCapacityToUp) {
 
   const auto& port = getAggregatePort("Port-Channel4000");
   EXPECT_FALSE(port.minimumCapacityToUp().has_value());
-  EXPECT_DOUBLE_EQ(port.minimumCapacity()->get_linkPercentage(), 0.5);
+  EXPECT_DOUBLE_EQ(port.minimumCapacity()->linkPercentage().value(), 0.5);
   EXPECT_EQ(port.memberPorts()->size(), 1);
 }
 
