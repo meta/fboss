@@ -287,7 +287,7 @@ class BroadcomXgsGenerator(BaseAsicConfigGenerator):
 
         A single management port is emitted unless the variant sets
         ``mgmt_port_overrides.num_ports`` above 1, in which case the first
-        ``num_ports`` entries of the ASIC-level ``mgmt_port_defaults.breakout_ports``
+        ``num_ports`` entries of the platform or ASIC-level ``breakout_ports``
         are used (one logical port per management lane, e.g. 4x25G).
         """
         mgmt_defaults = self.asic_config.get("mgmt_port_defaults", {})
@@ -302,11 +302,13 @@ class BroadcomXgsGenerator(BaseAsicConfigGenerator):
             )
             return [[logical_id, physical_id]]
 
-        breakout_ports = mgmt_defaults.get("breakout_ports", [])
+        breakout_ports = mgmt_overrides.get(
+            "breakout_ports", mgmt_defaults.get("breakout_ports", [])
+        )
         if num_ports > len(breakout_ports):
             raise ValueError(
                 f"{self.platform_name}: mgmt_port_overrides.num_ports={num_ports} "
-                f"but the ASIC only defines {len(breakout_ports)} management "
+                f"but there are only {len(breakout_ports)} management "
                 "breakout ports"
             )
         return [
@@ -396,9 +398,7 @@ class BroadcomXgsGenerator(BaseAsicConfigGenerator):
         static_mapping = self.parser.get_static_mapping().get_static_mapping()
         for core_id, swap_map in static_mapping.polarity_swap_map.items():
             self._add_pm_core_value(
-                self.values["PC_PM_CORE"],
-                core_id,
-                self._polarity_map_value(swap_map),
+                self.values["PC_PM_CORE"], core_id, self._polarity_map_value(swap_map)
             )
         self._accumulate_npu_pm_core(
             static_mapping.polarity_swap_map_by_chip, self._polarity_map_value
@@ -490,8 +490,7 @@ class BroadcomXgsGenerator(BaseAsicConfigGenerator):
                 speed_config.get("num_lanes", mgmt_defaults.get("num_lanes", 4)),
             )
             mgmt_fec = mgmt_overrides.get(
-                "fec",
-                speed_config.get("fec", mgmt_defaults.get("fec", "PC_FEC_RS528")),
+                "fec", speed_config.get("fec", mgmt_defaults.get("fec", "PC_FEC_RS528"))
             )
             mgmt_enable = mgmt_port_config.get("enable", 0)
 
