@@ -522,7 +522,8 @@
         126,
         127,
         133,
-        132
+        132,
+        147
     ],
     "tomahawk4": [
         2,
@@ -589,7 +590,8 @@
         79,
         109,
         133,
-        139
+        139,
+        147
     ],
     "tomahawk5": [
         2,
@@ -673,7 +675,8 @@
         133,
         139,
         146,
-        135
+        135,
+        147
     ],
     "tomahawk6": [
         2,
@@ -754,7 +757,8 @@
         139,
         146,
         144,
-        135
+        135,
+        147
     ],
     "tomahawkultra1": [
         2,
@@ -1400,7 +1404,8 @@
         "ACL_DENY_DATA_AND_CONTROL_PLANE",
         "PORT_USER_METADATA",
         "MY_MAC",
-        "ACCESS_POLICY_CLASS_ID_ACL"
+        "ACCESS_POLICY_CLASS_ID_ACL",
+        "STATIC_FDB_EVICT_DYNAMIC"
     ],
     "tomahawk4": [
         "CPU_RX_TX",
@@ -1467,7 +1472,8 @@
         "PTP_TC_PROVISIONING_TIME_HW_VALIDATION",
         "SAVE_SDK_STATE",
         "MY_MAC",
-        "MULTI_VRF"
+        "MULTI_VRF",
+        "STATIC_FDB_EVICT_DYNAMIC"
     ],
     "tomahawk5": [
         "CPU_RX_TX",
@@ -1551,7 +1557,8 @@
         "MY_MAC",
         "MULTI_VRF",
         "ACL_COUNTERS_EXTENDED_LABEL",
-        "PBR_ACL"
+        "PBR_ACL",
+        "STATIC_FDB_EVICT_DYNAMIC"
     ],
     "tomahawk6": [
         "CPU_RX_TX",
@@ -1632,7 +1639,8 @@
         "MULTI_VRF",
         "ACL_COUNTERS_EXTENDED_LABEL",
         "MIXED_IP_SRV6_NEXT_HOP_GROUPS",
-        "PBR_ACL"
+        "PBR_ACL",
+        "STATIC_FDB_EVICT_DYNAMIC"
     ],
     "tomahawkultra1": [
         "CPU_RX_TX",
@@ -2452,6 +2460,21 @@
           "sdk": 1,
           "minSdkVersion": "16.0_ea_odp",
           "note": "PBR matches its default NHG through SAI_ACL_ENTRY_ATTR_FIELD_ROUTE_DST, which needs brcm-sai 16.0 with SAI 1.19"
+        }
+      ]
+    },
+    {
+      "feature": 147,
+      "supportedFrom": [
+        {
+          "asics": [
+            "tomahawk3",
+            "tomahawk4",
+            "tomahawk5"
+          ],
+          "sdk": 1,
+          "minSdkVersion": "13.3.0.0_odp",
+          "note": "Static FDB entries evict dynamic ones on a full hash bucket with the Broadcom XGS 13.3 SAI patch; later SDKs mark the test known bad until they carry it"
         }
       ]
     }
