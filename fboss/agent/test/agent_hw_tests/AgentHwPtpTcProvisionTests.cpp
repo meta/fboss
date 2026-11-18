@@ -212,7 +212,13 @@ class AgentHwPtpTcProvisionTests : public AgentHwTest {
     // expect two PTP packet, one trapped from inject port and one from dst port
     for (int i = 0; i < 2; i++) {
       auto pktBufOpt = snooper.waitForPacket(5);
-      EXPECT_TRUE(pktBufOpt.has_value());
+      if (!pktBufOpt.has_value()) {
+        ADD_FAILURE() << "Only " << i << " of 2 PTP packets trapped for "
+                      << "packet sent from " << getPortName(injectPortID)
+                      << " to " << getPortName(dstPortID);
+        // Already a failure; let the caller move on to the next port pair
+        return 0;
+      }
       auto pktBuf = *pktBufOpt.value().get();
       folly::io::Cursor pktCursor(&pktBuf);
       EXPECT_TRUE(utility::isPtpEventPacket(pktCursor));
