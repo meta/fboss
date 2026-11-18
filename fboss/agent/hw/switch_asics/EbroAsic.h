@@ -118,10 +118,10 @@ class EbroAsic : public TajoAsic {
     // into the resolution stage1 EM table (one entry per member):
     //   4 banks x 8192 entries + 32 CAM entries = 32800
     // The SDK stops relocating EM entries once the table is more than 95% full
-    // (logical_em_base.h HIGHEST_UTILIZATION_FOR_MOVINGS = 0.95), so inserts
-    // past 32800 * 95% = 31160 fail with "out of resource" after a few more
-    // entries.
-    return 31160;
+    // (logical_em_base.h HIGHEST_UTILIZATION_FOR_MOVINGS = 0.95, i.e. 31160).
+    // Hash collisions can still fail inserts slightly before, so cap at 31000
+    // for headroom.
+    return 31000;
   }
   std::optional<uint32_t> getMaxNdpTableSize() const override {
     return 88465;
