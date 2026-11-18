@@ -196,42 +196,12 @@
       {
         "aPortName": "eth1/23/1",
         "zPortName": "eth1/24/1",
-        "profileID": 47
+        "profileID": 38
       },
       {
         "aPortName": "eth1/23/5",
         "zPortName": "eth1/24/5",
-        "profileID": 47
-      },
-      {
-        "aPortName": "eth1/23/2",
-        "zPortName": "eth1/24/2",
-        "profileID": 47
-      },
-      {
-        "aPortName": "eth1/23/6",
-        "zPortName": "eth1/24/6",
-        "profileID": 47
-      },
-      {
-        "aPortName": "eth1/23/3",
-        "zPortName": "eth1/24/3",
-        "profileID": 47
-      },
-      {
-        "aPortName": "eth1/23/7",
-        "zPortName": "eth1/24/7",
-        "profileID": 47
-      },
-      {
-        "aPortName": "eth1/23/4",
-        "zPortName": "eth1/24/4",
-        "profileID": 47
-      },
-      {
-        "aPortName": "eth1/23/8",
-        "zPortName": "eth1/24/8",
-        "profileID": 47
+        "profileID": 38
       },
       {
         "aPortName": "eth1/33/1",
@@ -416,42 +386,12 @@
       {
         "aPortName": "eth1/47/1",
         "zPortName": "eth1/48/1",
-        "profileID": 47
+        "profileID": 38
       },
       {
         "aPortName": "eth1/47/5",
         "zPortName": "eth1/48/5",
-        "profileID": 47
-      },
-      {
-        "aPortName": "eth1/47/2",
-        "zPortName": "eth1/48/2",
-        "profileID": 47
-      },
-      {
-        "aPortName": "eth1/47/6",
-        "zPortName": "eth1/48/6",
-        "profileID": 47
-      },
-      {
-        "aPortName": "eth1/47/3",
-        "zPortName": "eth1/48/3",
-        "profileID": 47
-      },
-      {
-        "aPortName": "eth1/47/7",
-        "zPortName": "eth1/48/7",
-        "profileID": 47
-      },
-      {
-        "aPortName": "eth1/47/4",
-        "zPortName": "eth1/48/4",
-        "profileID": 47
-      },
-      {
-        "aPortName": "eth1/47/8",
-        "zPortName": "eth1/48/8",
-        "profileID": 47
+        "profileID": 38
       },
       {
         "aPortName": "eth1/65/1",
