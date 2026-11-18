@@ -19005,6 +19005,9 @@
           "test_name_regex": ".*AgentAccessPolicyClassId.*$"
         },
         {
+          "test_name_regex": "AgentStaticFdbEvictDynamicTest.StaticEntryEvictsDynamicOnFullBucket$"
+        },
+        {
           "test_name_regex": "AgentMacSwLearningModeTest.VerifyDefaultSwAgingForPort$"
         }
     ],
@@ -19539,6 +19542,9 @@
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.*$"
+        },
+        {
+          "test_name_regex": "AgentStaticFdbEvictDynamicTest.StaticEntryEvictsDynamicOnFullBucket$"
         }
     ],
     "brcm/15.4.0.0_odp/15.4.0.0_odp/tomahawk5/multi_switch": [
@@ -20120,6 +20126,9 @@
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.*.AgentSflowMirrorTruncateTestV6.VerifySampledPacketRate$"
+        },
+        {
+          "test_name_regex": "AgentStaticFdbEvictDynamicTest.StaticEntryEvictsDynamicOnFullBucket$"
         }
     ],
     "brcm/15.4.0.0_odp/15.4.0.0_odp/tomahawk5/multi_switch/rbb": [
@@ -20701,6 +20710,9 @@
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.*.AgentSflowMirrorTruncateTestV6.VerifySampledPacketRate$"
+        },
+        {
+          "test_name_regex": "AgentStaticFdbEvictDynamicTest.StaticEntryEvictsDynamicOnFullBucket$"
         }
     ],
     "brcm/16.0_ea_dnx_odp/16.0_ea_dnx_odp/jericho3/mono": [
