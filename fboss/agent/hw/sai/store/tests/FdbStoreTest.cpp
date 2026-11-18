@@ -80,6 +80,33 @@ TEST_F(SaiStoreTest, fdbSetBridgePort) {
   EXPECT_EQ(GET_OPT_ATTR(Fdb, Metadata, obj->attributes()), 23);
 }
 
+// Hardware ages dynamic FDB entries out on its own, so an entry saved in warm
+// boot state can be gone by the time the store reloads it. Reload must skip it
+// rather than let ITEM_NOT_FOUND abort warm boot.
+TEST_F(SaiStoreTest, fdbAgedOutBeforeReload) {
+  auto& fdbApi = saiApiTable->fdbApi();
+  SaiFdbTraits::FdbEntry present(0, 10, folly::MacAddress{"42:42:42:42:42:42"});
+  SaiFdbTraits::FdbEntry aged(0, 10, folly::MacAddress{"42:42:42:42:42:43"});
+  fdbApi.create<SaiFdbTraits>(present, {SAI_FDB_ENTRY_TYPE_STATIC, 42, 24});
+  fdbApi.create<SaiFdbTraits>(aged, {SAI_FDB_ENTRY_TYPE_DYNAMIC, 42, 24});
+
+  // Warm boot state is written with both entries in it
+  folly::dynamic adapterKeys;
+  {
+    SaiStore preWarmBoot(0);
+    preWarmBoot.reload();
+    adapterKeys = preWarmBoot.adapterKeysFollyDynamic();
+  }
+  // ... and HW ages the dynamic one out while the agent is down
+  fdbApi.remove(aged);
+
+  SaiStore postWarmBoot(0);
+  postWarmBoot.reload(&adapterKeys);
+  auto& store = postWarmBoot.get<SaiFdbTraits>();
+  EXPECT_NE(store.get(present), nullptr);
+  EXPECT_EQ(store.get(aged), nullptr);
+}
+
 TEST_F(SaiStoreTest, fdbSerDeser) {
   auto& fdbApi = saiApiTable->fdbApi();
   folly::MacAddress mac{"42:42:42:42:42:42"};
