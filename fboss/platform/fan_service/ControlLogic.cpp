@@ -5,6 +5,7 @@
 
 #include "fboss/platform/fan_service/ControlLogic.h"
 
+#include <fmt/ranges.h>
 #include <folly/ScopeGuard.h>
 #include <folly/logging/xlog.h>
 #include <gpiod.h>
@@ -525,25 +526,30 @@ bool ControlLogic::programFan(const Zone& zone, const Fan& fan, float fanPwm) {
   return !writeSuccess;
 }
 
-void ControlLogic::programLed(const Fan& fan, bool fanFailed) {
+bool ControlLogic::programLed(
+    const Fan& fan,
+    bool fanFailed,
+    const std::vector<std::string>& ledFanNames) {
+  const auto fanNames = fmt::format("{}", fmt::join(ledFanNames, ", "));
   auto ledToWriteRef =
       fanFailed ? fan.failLedSysfsPath() : fan.goodLedSysfsPath();
   if (!ledToWriteRef.has_value()) {
     XLOG(INFO) << fmt::format(
         "{}: FAN LED sysfs path is empty. It's likely that FAN LED is controlled by hardware.",
-        *fan.fanName());
-    return;
+        fanNames);
+    return true;
   }
   std::string ledPath = *ledToWriteRef;
   XLOG(INFO) << fmt::format(
-      "{}: Turning LED on ({})", *fan.fanName(), (fanFailed ? "Fail" : "Good"));
+      "{}: Turning LED on ({})", fanNames, (fanFailed ? "Fail" : "Good"));
   bool ret = pBsp_->turnOnLedSysfs(ledPath);
   if (!ret) {
     XLOG(ERR) << fmt::format(
-        "{}: Failed to set LED sysfs path {}", *fan.fanName(), ledPath);
+        "{}: Failed to set LED sysfs path {}", fanNames, ledPath);
   }
   fb303::fbData->setCounter(
       fmt::format(kLedWriteFailure, *fan.fanName()), !ret);
+  return ret;
 }
 
 float ControlLogic::calculateZonePwm(const Zone& zone, bool boostMode) {
@@ -604,7 +610,7 @@ void ControlLogic::setTransitionValue() {
         }
         fanStatuses[*fan.fanName()].pwmToProgram() = fanPwm;
         if (fanFailed) {
-          programLed(fan, fanFailed);
+          programLed(fan, fanFailed, {*fan.fanName()});
         }
         fanStatuses[*fan.fanName()].fanFailed() = fanFailed;
       }
@@ -778,9 +784,38 @@ void ControlLogic::updateControl(std::shared_ptr<SensorData> pS) {
       }
     }
 
-    // STEP 6: Program fan LEDs
+    // STEP 6: Program fan LEDs. A shared LED shows failed if any of its fans
+    // failed.
+    auto ledKey = [](const Fan& fan) -> std::string {
+      if (!fan.goodLedSysfsPath() && !fan.failLedSysfsPath()) {
+        return *fan.fanName();
+      }
+      return fmt::format(
+          "{}|{}",
+          fan.goodLedSysfsPath().value_or(""),
+          fan.failLedSysfsPath().value_or(""));
+    };
+    struct SharedLed {
+      bool failed{false};
+      std::vector<std::string> fanNames;
+    };
+    std::unordered_map<std::string, SharedLed> leds;
     for (const auto& fan : *config_.fans()) {
-      programLed(fan, *fanStatuses[*fan.fanName()].fanFailed());
+      auto& led = leds[ledKey(fan)];
+      led.failed = led.failed || *fanStatuses[*fan.fanName()].fanFailed();
+      led.fanNames.push_back(*fan.fanName());
+    }
+    std::unordered_map<std::string, bool> ledWriteFailed;
+    for (const auto& fan : *config_.fans()) {
+      auto key = ledKey(fan);
+      auto it = ledWriteFailed.find(key);
+      if (it == ledWriteFailed.end()) {
+        const auto& led = leds.at(key);
+        ledWriteFailed.emplace(key, !programLed(fan, led.failed, led.fanNames));
+      } else {
+        fb303::fbData->setCounter(
+            fmt::format(kLedWriteFailure, *fan.fanName()), it->second);
+      }
     }
     fb303::fbData->setCounter(kHasFanRpmReadFailure, hasAnyRpmFailure ? 1 : 0);
     fb303::fbData->setCounter(kHasFanPwmWriteFailure, hasAnyPwmFailure ? 1 : 0);
