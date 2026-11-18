@@ -387,7 +387,7 @@ class PrbsTest : public LinkTest {
       // Verify if the stats got updated since the time reference
       for (const auto& testPort : portsToTest_) {
         auto stats = allPrbsStats.getStatsForComponent(testPort.component);
-        if (stats.find(testPort.portName) == stats.end()) {
+        if (!stats.contains(testPort.portName)) {
           updated = false;
           break;
         }
@@ -417,7 +417,7 @@ class PrbsTest : public LinkTest {
       auto interfaceName = testPort.portName;
       auto component = testPort.component;
       auto stats = allPrbsStats.getStatsForComponent(component);
-      ASSERT_TRUE(stats.find(interfaceName) != stats.end());
+      ASSERT_TRUE(stats.contains(interfaceName));
       checkPrbsStatsOnInterface(
           interfaceName,
           component,
