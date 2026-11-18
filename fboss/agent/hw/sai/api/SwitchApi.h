@@ -933,6 +933,13 @@ struct SaiSwitchTraits {
     using DropReasonList = SaiExtensionAttribute<
         std::vector<sai_uint32_t>,
         AttributeDropReasonList>;
+    struct AttributeStaticFdbReplaceDynamic {
+      std::optional<sai_attr_id_t> operator()();
+    };
+    using StaticFdbReplaceDynamic = SaiExtensionAttribute<
+        bool,
+        AttributeStaticFdbReplaceDynamic,
+        SaiBoolDefaultFalse>;
 #if SAI_API_VERSION >= SAI_VERSION(1, 18, 0)
     using LinkUpDebounceTimeout = SaiAttribute<
         EnumType,
@@ -1297,6 +1304,7 @@ SAI_ATTRIBUTE_NAME(Switch, ModuleIdFabricPortList)
 SAI_ATTRIBUTE_NAME(Switch, PacketDropTypeIngressList)
 SAI_ATTRIBUTE_NAME(Switch, PacketDropTypeEgressList)
 SAI_ATTRIBUTE_NAME(Switch, DropReasonList)
+SAI_ATTRIBUTE_NAME(Switch, StaticFdbReplaceDynamic)
 #if defined(BRCM_SAI_SDK_XGS_AND_DNX)
 SAI_ATTRIBUTE_NAME(Switch, LocalSystemPortIdRangeList)
 #endif

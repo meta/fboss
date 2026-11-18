@@ -192,6 +192,7 @@ void handleExtensionAttributes() {
   SAI_EXT_ATTR_MAP(Switch, PacketDropTypeIngressList);
   SAI_EXT_ATTR_MAP(Switch, PacketDropTypeEgressList);
   SAI_EXT_ATTR_MAP(Switch, DropReasonList);
+  SAI_EXT_ATTR_MAP(Switch, StaticFdbReplaceDynamic);
 #if defined(BRCM_SAI_SDK_XGS_AND_DNX)
   SAI_EXT_ATTR_MAP(Switch, LocalSystemPortIdRangeList)
 #endif

@@ -808,6 +808,21 @@ TEST_F(SwitchApiTest, testPortCl72RetryEnable) {
       false);
 }
 
+TEST_F(SwitchApiTest, testStaticFdbReplaceDynamic) {
+  EXPECT_FALSE(switchApi->getAttribute(
+      switchId, SaiSwitchTraits::Attributes::StaticFdbReplaceDynamic{}));
+
+  switchApi->setAttribute(
+      switchId, SaiSwitchTraits::Attributes::StaticFdbReplaceDynamic{true});
+  EXPECT_TRUE(switchApi->getAttribute(
+      switchId, SaiSwitchTraits::Attributes::StaticFdbReplaceDynamic{}));
+
+  switchApi->setAttribute(
+      switchId, SaiSwitchTraits::Attributes::StaticFdbReplaceDynamic{false});
+  EXPECT_FALSE(switchApi->getAttribute(
+      switchId, SaiSwitchTraits::Attributes::StaticFdbReplaceDynamic{}));
+}
+
 TEST_F(SwitchApiTest, testAclDropSnoopDisabled) {
   EXPECT_FALSE(switchApi->getAttribute(
       switchId, SaiSwitchTraits::Attributes::AclDropSnoopDisabled{}));

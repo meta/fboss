@@ -365,6 +365,9 @@ sai_status_t set_switch_attribute_fn(
     case SAI_SWITCH_ATTR_ACL_DROP_SNOOP_DISABLED:
       sw.setAclDropSnoopDisabled(attr->value.booldata);
       break;
+    case SAI_SWITCH_ATTR_EXT_STATIC_FDB_REPLACE_DYNAMIC:
+      sw.setStaticFdbReplaceDynamic(attr->value.booldata);
+      break;
 #if SAI_API_VERSION >= SAI_VERSION(1, 18, 0)
     case SAI_SWITCH_ATTR_LINK_UP_DEBOUNCE_TIMEOUT:
       sw.setLinkUpDebounceTimeout(attr->value.u32);
@@ -689,6 +692,9 @@ sai_status_t get_switch_attribute_fn(
         break;
       case SAI_SWITCH_ATTR_ACL_DROP_SNOOP_DISABLED:
         attr[i].value.booldata = sw.getAclDropSnoopDisabled();
+        break;
+      case SAI_SWITCH_ATTR_EXT_STATIC_FDB_REPLACE_DYNAMIC:
+        attr[i].value.booldata = sw.getStaticFdbReplaceDynamic();
         break;
 #if SAI_API_VERSION >= SAI_VERSION(1, 18, 0)
       case SAI_SWITCH_ATTR_LINK_UP_DEBOUNCE_TIMEOUT:

@@ -468,6 +468,11 @@ SaiSwitchTraits::Attributes::AttributeDropReasonList::operator()() {
 #endif
 }
 
+std::optional<sai_attr_id_t>
+SaiSwitchTraits::Attributes::AttributeStaticFdbReplaceDynamic::operator()() {
+  return std::nullopt;
+}
+
 const std::vector<sai_stat_id_t>& SaiSwitchTraits::customDropBitmapStats() {
   static const std::vector<sai_stat_id_t> stats;
   return stats;
