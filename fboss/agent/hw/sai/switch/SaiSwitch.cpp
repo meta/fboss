@@ -4015,8 +4015,13 @@ void SaiSwitch::initStoreAndManagersLocked(
   }
 } // namespace facebook::fboss
 
-void SaiSwitch::initLinkScanLocked(const std::lock_guard<std::mutex>& lock) {
-  linkStateBottomHalfEventBase_.runInFbossEventBaseThread([=, this, &lock]() {
+void SaiSwitch::initLinkScanLocked(
+    const std::lock_guard<std::mutex>& /* lock */) {
+  linkStateBottomHalfEventBase_.runInFbossEventBaseThread([this]() {
+    // The caller's lock is released before this runs, so take
+    // saiSwitchMutex_ here; otherwise a rollback can reset the port manager
+    // while it is being walked.
+    std::lock_guard<std::mutex> lock(saiSwitchMutex_);
     auto& switchApi = SaiApiTable::getInstance()->switchApi();
     switchApi.registerPortStateChangeCallback(
         saiSwitchId_, __glinkStateChangedNotification);
@@ -4050,22 +4055,28 @@ void SaiSwitch::syncLinkStatesLocked(
 }
 
 void SaiSwitch::syncLinkStates() {
-  std::lock_guard<std::mutex> lock(saiSwitchMutex_);
-  linkStateBottomHalfEventBase_.runInFbossEventBaseThread(
-      [=, this, &lock]() { syncLinkStatesLocked(lock); });
+  linkStateBottomHalfEventBase_.runInFbossEventBaseThread([this]() {
+    std::lock_guard<std::mutex> lock(saiSwitchMutex_);
+    syncLinkStatesLocked(lock);
+  });
 }
 
 void SaiSwitch::initLinkConnectivityChangeLocked(
-    const std::lock_guard<std::mutex>& lock) {
-  linkConnectivityChangeBottomHalfEventBase_.runInFbossEventBaseThread(
-      [this, &lock] { syncLinkConnectivityLocked(lock); });
+    const std::lock_guard<std::mutex>& /* lock */) {
+  linkConnectivityChangeBottomHalfEventBase_.runInFbossEventBaseThread([this] {
+    std::lock_guard<std::mutex> lock(saiSwitchMutex_);
+    syncLinkConnectivityLocked(lock);
+  });
 }
 
 void SaiSwitch::syncLinkConnectivity() {
   std::lock_guard<std::mutex> lock(saiSwitchMutex_);
   if (linkConnectivityChangeBottomHalfThread_) {
     linkConnectivityChangeBottomHalfEventBase_.runInFbossEventBaseThread(
-        [this, &lock] { syncLinkConnectivityLocked(lock); });
+        [this] {
+          std::lock_guard<std::mutex> lock(saiSwitchMutex_);
+          syncLinkConnectivityLocked(lock);
+        });
   }
 }
 void SaiSwitch::syncLinkConnectivityLocked(
