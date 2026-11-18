@@ -455,6 +455,16 @@ SwitchStats::SwitchStats(ThreadLocalStatsMap* map, int numSwitches)
           kCounterPrefix + "mac_table_update_failure",
           SUM,
           RATE),
+      l2LearnPortLimitDrops_(
+          map,
+          kCounterPrefix + "l2_learn.port_limit_drops",
+          SUM,
+          RATE),
+      l2LearnPortLimitErrorDisables_(
+          map,
+          kCounterPrefix + "l2_learn.port_limit_error_disable",
+          SUM,
+          RATE),
       fwDrainedWithHighNumActiveFabricLinks_(
           map,
           kCounterPrefix + "fw_drained_with_high_num_active_fabric_links",
