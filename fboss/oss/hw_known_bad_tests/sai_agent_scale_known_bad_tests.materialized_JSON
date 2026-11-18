@@ -348,6 +348,9 @@
         },
         {
           "test_name_regex": "AgentAclScaleTest.CreateTripleWideTableMaxAclEntries$"
+        },
+        {
+          "test_name_regex": "AgentEcmpTest.CreateMaxUcmpMembers$"
         }
     ],
     "leaba/24.8.3001/24.8.3001/graphene200/mono": [
