@@ -184,6 +184,28 @@ namespace facebook::fboss {
 
 namespace {
 
+// Added ports are included so a warm boot re-flushes ports that were
+// error-disabled before the restart.
+std::vector<PortID> getNewlyMacLimitDisabledPorts(const StateDelta& delta) {
+  constexpr auto kMacLimitError = PortError::ERROR_DISABLE_MAC_LIMIT_EXCEEDED;
+  std::vector<PortID> ports;
+  DeltaFunctions::forEachChanged(
+      delta.getPortsDelta(),
+      [&](const auto& oldPort, const auto& newPort) {
+        if (!oldPort->hasError(kMacLimitError) &&
+            newPort->hasError(kMacLimitError)) {
+          ports.push_back(newPort->getID());
+        }
+      },
+      [&](const auto& newPort) {
+        if (newPort->hasError(kMacLimitError)) {
+          ports.push_back(newPort->getID());
+        }
+      },
+      [](const auto& /*oldPort*/) {});
+  return ports;
+}
+
 std::shared_ptr<const AclTableMap> getAclTablesForBindPoint(
     const std::shared_ptr<SwitchState>& state,
     cfg::AclStage stage,
@@ -1208,6 +1230,13 @@ std::shared_ptr<SwitchState> SaiSwitch::stateChangedImplLocked(
     }
   }
 
+  // Without flush support, removing the port's MACs from the switch state is
+  // what removes them from the SDK.
+  const auto macLimitDisabledPorts =
+      platform_->getAsic()->isSupported(HwAsic::Feature::PORT_MAC_FLUSH)
+      ? getNewlyMacLimitDisabledPorts(delta)
+      : std::vector<PortID>{};
+
   for (const auto& vlanDelta : delta.getVlansDelta()) {
     processRemovedDelta(
         vlanDelta.getArpDelta(),
@@ -1412,6 +1441,23 @@ std::shared_ptr<SwitchState> SaiSwitch::stateChangedImplLocked(
           [[maybe_unused]] const auto& lock = lockPolicy.lock();
           managerTable_->lagManager().addBridgePort(newAggPort);
         });
+  }
+
+  if (!macLimitDisabledPorts.empty()) {
+    // Must follow the port admin disable so the port cannot learn again, and
+    // the bridge port add so warm boot can re-flush added ports. Also removes
+    // entries the port learned after its MACs were removed above.
+    // Not undone on rollback; the flushed entries are dynamic. A failed flush
+    // must not roll back the port disable; leftover entries age out.
+    [[maybe_unused]] const auto& lock = lockPolicy.lock();
+    for (const auto& port : macLimitDisabledPorts) {
+      try {
+        managerTable_->fdbManager().flushDynamicEntries(port);
+      } catch (const SaiApiError& e) {
+        XLOG(ERR) << "Failed to flush dynamic fdb entries on port " << port
+                  << ": " << e.what();
+      }
+    }
   }
 
   // Add virtual routers before the router interfaces using them

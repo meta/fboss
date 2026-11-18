@@ -30,6 +30,7 @@ bool TomahawkAsic::isSupported(Feature feature) const {
     case HwAsic::Feature::PENDING_L2_ENTRY:
     case HwAsic::Feature::SAI_ECN_WRED:
     case HwAsic::Feature::TELEMETRY_AND_MONITORING:
+    case HwAsic::Feature::PORT_MAC_FLUSH:
     case HwAsic::Feature::MAC_AGING:
     case HwAsic::Feature::REMOVE_PORTS_FOR_COLDBOOT:
     case HwAsic::Feature::EGRESS_MIRRORING:

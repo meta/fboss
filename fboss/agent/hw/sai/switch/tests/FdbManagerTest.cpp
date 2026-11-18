@@ -203,3 +203,40 @@ TEST_F(FdbManagerTest, flushDynamicEntriesOnPort) {
   EXPECT_TRUE(isInHw(kStatic));
   EXPECT_TRUE(isInHw(kOtherPortDynamic));
 }
+
+TEST_F(FdbManagerTest, macLimitErrorDisableFlushesDynamicEntries) {
+  const folly::MacAddress kDynamic{"02:00:00:00:00:01"};
+  const folly::MacAddress kStatic{"02:00:00:00:00:02"};
+  auto portId = PortID(intf0.remoteHosts[0].port.id);
+  createHwOnlyFdbEntry(kDynamic, portId, SAI_FDB_ENTRY_TYPE_DYNAMIC);
+  createHwOnlyFdbEntry(kStatic, portId, SAI_FDB_ENTRY_TYPE_STATIC);
+
+  auto newState = programmedState->clone();
+  auto port = newState->getPorts()->getNodeIf(portId)->modify(&newState);
+  port->setAdminState(cfg::PortState::DISABLED);
+  port->addError(PortError::ERROR_DISABLE_MAC_LIMIT_EXCEEDED);
+  applyNewState(newState);
+
+  EXPECT_FALSE(isInHw(kDynamic));
+  EXPECT_TRUE(isInHw(kStatic));
+}
+
+TEST_F(FdbManagerTest, macLimitErrorDisableRemovesManagedDynamicEntries) {
+  addMacEntry();
+  ASSERT_TRUE(isInHw(kMac()));
+
+  // The error-disable update removes the port's MACs and disables the port
+  auto portId = PortID(intf0.remoteHosts[0].port.id);
+  auto newState = programmedState->clone();
+  newState->getVlans()
+      ->getNode(VlanID(intf0.id))
+      ->getMacTable()
+      ->modify(VlanID(intf0.id), &newState)
+      ->removeEntry(kMac());
+  auto port = newState->getPorts()->getNodeIf(portId)->modify(&newState);
+  port->setAdminState(cfg::PortState::DISABLED);
+  port->addError(PortError::ERROR_DISABLE_MAC_LIMIT_EXCEEDED);
+  applyNewState(newState);
+
+  EXPECT_FALSE(isInHw(kMac()));
+}

@@ -145,6 +145,7 @@ bool Qumran4DAsic::isSupported(Feature feature) const {
     case HwAsic::Feature::HSDK:
     case HwAsic::Feature::L3_EGRESS_MODE_AUTO_ENABLED:
     case HwAsic::Feature::INGRESS_FIELD_PROCESSOR_FLEX_COUNTER:
+    case HwAsic::Feature::PORT_MAC_FLUSH:
     case HwAsic::Feature::PENDING_L2_ENTRY:
     case HwAsic::Feature::EGRESS_QUEUE_FLEX_COUNTER:
     case HwAsic::Feature::INGRESS_L3_INTERFACE:

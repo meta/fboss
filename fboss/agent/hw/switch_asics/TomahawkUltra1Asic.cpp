@@ -125,6 +125,7 @@ bool TomahawkUltra1Asic::isSupported(Feature feature) const {
     case HwAsic::Feature::HOSTTABLE:
     case HwAsic::Feature::PORT_TX_DISABLE:
     case HwAsic::Feature::ZERO_SDK_WRITE_WARMBOOT:
+    case HwAsic::Feature::PORT_MAC_FLUSH:
     case HwAsic::Feature::PENDING_L2_ENTRY:
     case HwAsic::Feature::COUNTER_REFRESH_INTERVAL:
     case HwAsic::Feature::WIDE_ECMP:
