@@ -54,6 +54,10 @@ struct SaiTamHandle {
   PortID portId;
   SaiManagerTable* managerTable{nullptr};
 };
+
+std::vector<sai_object_id_t> getSwitchTamIds(
+    folly::F14FastMap<std::string, std::unique_ptr<SaiTamHandle>>& tamHandles);
+
 class SaiTamManager {
  public:
   SaiTamManager(
@@ -72,15 +76,17 @@ class SaiTamManager {
   void removeMirrorOnDropReportsForPort(PortID portId);
 #endif
 
-  const SaiTamHandle* getTamHandle(const std::string& name) const {
-    return tamHandles_.contains(name) ? tamHandles_.at(name).get() : nullptr;
+  const SaiTamHandle* getEventTamHandle(const std::string& name) const {
+    return eventTamHandles_.contains(name) ? eventTamHandles_.at(name).get()
+                                           : nullptr;
   }
-  SaiTamHandle* getTamHandle(const std::string& name) {
-    return tamHandles_.contains(name) ? tamHandles_.at(name).get() : nullptr;
+  SaiTamHandle* getEventTamHandle(const std::string& name) {
+    return eventTamHandles_.contains(name) ? eventTamHandles_.at(name).get()
+                                           : nullptr;
   }
 
   void gracefulExit() {
-    tamHandles_.clear();
+    eventTamHandles_.clear();
   }
 
  private:
@@ -128,7 +134,8 @@ class SaiTamManager {
   SaiStore* saiStore_;
   SaiManagerTable* managerTable_;
   SaiPlatform* platform_;
-  folly::F14FastMap<std::string, std::unique_ptr<SaiTamHandle>> tamHandles_;
+  folly::F14FastMap<std::string, std::unique_ptr<SaiTamHandle>>
+      eventTamHandles_;
 #if defined(BRCM_SAI_SDK_DNX_GTE_11_0)
   void addDnxMirrorOnDropReport(
       const std::shared_ptr<MirrorOnDropReport>& report);

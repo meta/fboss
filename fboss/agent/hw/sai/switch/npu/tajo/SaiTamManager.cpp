@@ -211,28 +211,6 @@ std::shared_ptr<SaiTamReport> createMirrorOnDropReport(
 
 } // namespace
 
-std::shared_ptr<SaiTamReport> SaiTamManager::createTamReport(
-    sai_int32_t reportType) {
-  auto& reportStore = saiStore_->get<SaiTamReportTraits>();
-  auto reportTraits = SaiTamReportTraits::CreateAttributes{
-      reportType
-#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
-      ,
-      std::nullopt /* SampleRate */,
-      std::nullopt /* MaxReportRate */,
-      std::nullopt /* MaxReportBurst */
-#endif
-  };
-  return reportStore.setObject(reportTraits, reportTraits);
-}
-
-std::shared_ptr<SaiTamEventAction> SaiTamManager::createTamAction(
-    sai_object_id_t reportId) {
-  auto& actionStore = saiStore_->get<SaiTamEventActionTraits>();
-  auto actionTraits = SaiTamEventActionTraits::CreateAttributes{reportId};
-  return actionStore.setObject(actionTraits, actionTraits);
-}
-
 std::shared_ptr<SaiTamTransport> SaiTamManager::createTamTransport(
     const std::shared_ptr<MirrorOnDropReport>& report,
     sai_int32_t transportType,
@@ -284,16 +262,6 @@ std::shared_ptr<SaiTamCollector> SaiTamManager::createTamCollector(
   const auto& collectorKey = collectorTraits;
 #endif
   return collectorStore.setObject(collectorKey, collectorTraits);
-}
-
-std::shared_ptr<SaiTam> SaiTamManager::createTam(
-    const std::vector<sai_object_id_t>& eventIds,
-    const std::vector<sai_int32_t>& bindpoints) {
-  SaiTamTraits::CreateAttributes tamTraits;
-  std::get<SaiTamTraits::Attributes::EventObjectList>(tamTraits) = eventIds;
-  std::get<SaiTamTraits::Attributes::TamBindPointList>(tamTraits) = bindpoints;
-  auto& tamStore = saiStore_->get<SaiTamTraits>();
-  return tamStore.setObject(tamTraits, tamTraits);
 }
 
 SaiTamManager::SaiTamManager(
@@ -381,7 +349,7 @@ SaiTamManager::SaiTamManager(
   // associate TAM with switch
   managerTable_->switchManager().setTamObject({tamHandle->tam->adapterKey()});
 
-  tamHandles_.emplace(kDefaultTamHandle, std::move(tamHandle));
+  eventTamHandles_.emplace(kDefaultTamHandle, std::move(tamHandle));
 }
 
 void SaiTamManager::addMirrorOnDropReport(
@@ -391,7 +359,7 @@ void SaiTamManager::addMirrorOnDropReport(
     XLOG(WARN) << "MirrorOnDrop requested but TAM is unsupported on this ASIC";
     return;
   }
-  if (tamHandles_.contains(report->getID())) {
+  if (eventTamHandles_.contains(report->getID())) {
     XLOG(WARN) << "MirrorOnDropReport " << report->getID()
                << " already exists; skipping add";
     return;
@@ -439,27 +407,27 @@ void SaiTamManager::addMirrorOnDropReport(
   handle->events.push_back(event);
   handle->portId = egressPort;
   handle->managerTable = managerTable_;
-  tamHandles_.emplace(report->getID(), std::move(handle));
+  eventTamHandles_.emplace(report->getID(), std::move(handle));
 
-  rebuildAndRebindTam(saiStore_, managerTable_, tamHandles_);
+  rebuildAndRebindTam(saiStore_, managerTable_, eventTamHandles_);
 }
 
 void SaiTamManager::removeMirrorOnDropReport(
     const std::shared_ptr<MirrorOnDropReport>& report) {
-  auto it = tamHandles_.find(report->getID());
-  if (it == tamHandles_.end()) {
+  auto it = eventTamHandles_.find(report->getID());
+  if (it == eventTamHandles_.end()) {
     XLOG(INFO) << "MirrorOnDropReport " << report->getID()
                << " not present; nothing to remove";
     return;
   }
   XLOG(INFO) << "Removing Tajo MirrorOnDropReport " << report->getID();
   // Clear the port's TAM binding before erasing the handle. rebuildAndRebind
-  // derives the port set from live tamHandles_, so once erased the port would
-  // never get unbound and would retain a dangling reference to the destroyed
-  // TAM object.
+  // derives the port set from live eventTamHandles_, so once erased the port
+  // would never get unbound and would retain a dangling reference to the
+  // destroyed TAM object.
   managerTable_->portManager().setTamObject(it->second->portId, {});
-  tamHandles_.erase(it);
-  rebuildAndRebindTam(saiStore_, managerTable_, tamHandles_);
+  eventTamHandles_.erase(it);
+  rebuildAndRebindTam(saiStore_, managerTable_, eventTamHandles_);
 }
 
 void SaiTamManager::changeMirrorOnDropReport(
@@ -486,7 +454,7 @@ void SaiTamManager::changeMirrorOnDropReport(
 
 std::vector<PortID> SaiTamManager::getAllMirrorOnDropPortIds() {
   std::vector<PortID> portIds;
-  for (const auto& [name, handle] : tamHandles_) {
+  for (const auto& [name, handle] : eventTamHandles_) {
     if (name == kDefaultTamHandle) {
       continue;
     }

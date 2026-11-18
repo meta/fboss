@@ -4,11 +4,6 @@
 
 namespace facebook::fboss {
 
-SaiTamManager::SaiTamManager(
-    SaiStore* /* saiStore */,
-    SaiManagerTable* /*managerTable*/,
-    SaiPlatform* /*platform*/) {}
-
 void SaiTamManager::addMirrorOnDropReport(
     const std::shared_ptr<MirrorOnDropReport>& /* report */) {}
 

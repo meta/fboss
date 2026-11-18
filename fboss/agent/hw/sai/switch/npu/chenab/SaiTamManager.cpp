@@ -15,33 +15,6 @@
 
 namespace facebook::fboss {
 
-SaiTamManager::SaiTamManager(
-    SaiStore* saiStore,
-    SaiManagerTable* managerTable,
-    SaiPlatform* platform)
-    : saiStore_(saiStore), managerTable_(managerTable), platform_(platform) {}
-
-std::shared_ptr<SaiTamReport> SaiTamManager::createTamReport(
-    sai_int32_t reportType) {
-  SaiTamReportTraits::CreateAttributes attributes{
-      reportType
-#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
-      ,
-      std::nullopt, // SampleRate
-      std::nullopt, // MaxReportRate
-      std::nullopt // MaxReportBurst
-#endif
-  };
-  return saiStore_->get<SaiTamReportTraits>().setObject(attributes, attributes);
-}
-
-std::shared_ptr<SaiTamEventAction> SaiTamManager::createTamAction(
-    sai_object_id_t reportId) {
-  SaiTamEventActionTraits::CreateAttributes attributes{reportId};
-  return saiStore_->get<SaiTamEventActionTraits>().setObject(
-      attributes, attributes);
-}
-
 std::shared_ptr<SaiTamTransport> SaiTamManager::createTamTransport() {
   SaiTamTransportTraits::CreateAttributes attributes{
       SAI_TAM_TRANSPORT_TYPE_GRE,
@@ -94,13 +67,6 @@ std::shared_ptr<SaiTamEvent> SaiTamManager::createTamEvent(
       adapterHostKey, attributes);
 }
 
-std::shared_ptr<SaiTam> SaiTamManager::createTam(
-    const std::vector<sai_object_id_t>& eventIds,
-    const std::vector<sai_int32_t>& bindpoints) {
-  SaiTamTraits::CreateAttributes attributes{eventIds, bindpoints};
-  return saiStore_->get<SaiTamTraits>().setObject(attributes, attributes);
-}
-
 std::optional<std::pair<PortID, const SaiPortHandle*>>
 SaiTamManager::getMirrorOnDropPortHandle(
     const MirrorOnDropReport& report) const {
@@ -151,10 +117,10 @@ void SaiTamManager::programMirrorOnDropReport(
     const std::shared_ptr<MirrorOnDropReport>& report,
     PortID portId,
     const SaiPortHandle* portHandle) {
-  if (!tamHandles_.empty()) {
+  if (!eventTamHandles_.empty()) {
     XLOG(ERR) << "Chenab supports only one MirrorOnDropReport; skipping "
               << report->getID() << "; retaining "
-              << tamHandles_.begin()->first;
+              << eventTamHandles_.begin()->first;
     return;
   }
   const auto resolvedCollectorMac = report->getResolvedCollectorMac();
@@ -179,7 +145,7 @@ void SaiTamManager::programMirrorOnDropReport(
   handle->portId = portId;
   handle->managerTable = managerTable_;
   managerTable_->switchManager().setTamObject({handle->tam->adapterKey()});
-  tamHandles_.emplace(report->getID(), std::move(handle));
+  eventTamHandles_.emplace(report->getID(), std::move(handle));
   XLOG(INFO) << "Programmed MirrorOnDropReport " << report->getID()
              << " srcIp=" << report->getLocalSrcIp().str()
              << " collectorIp=" << report->getCollectorIp().str()
@@ -190,24 +156,24 @@ void SaiTamManager::programMirrorOnDropReport(
 
 void SaiTamManager::removeMirrorOnDropReport(
     const std::shared_ptr<MirrorOnDropReport>& report) {
-  auto it = tamHandles_.find(report->getID());
-  if (it == tamHandles_.end()) {
+  auto it = eventTamHandles_.find(report->getID());
+  if (it == eventTamHandles_.end()) {
     return;
   }
   managerTable_->switchManager().setTamObject({});
-  tamHandles_.erase(it);
+  eventTamHandles_.erase(it);
   XLOG(INFO) << "Removed Chenab MirrorOnDropReport " << report->getID();
 }
 
 void SaiTamManager::removeMirrorOnDropReportsForPort(PortID portId) {
-  for (auto it = tamHandles_.begin(); it != tamHandles_.end();) {
+  for (auto it = eventTamHandles_.begin(); it != eventTamHandles_.end();) {
     if (it->second->portId != portId) {
       ++it;
       continue;
     }
     const auto reportId = it->first;
     managerTable_->switchManager().setTamObject({});
-    it = tamHandles_.erase(it);
+    it = eventTamHandles_.erase(it);
     XLOG(INFO) << "Removed Chenab MirrorOnDropReport " << reportId
                << " before removing collector port " << portId;
   }
@@ -241,7 +207,7 @@ void SaiTamManager::changeMirrorOnDropReport(
 
 std::vector<PortID> SaiTamManager::getAllMirrorOnDropPortIds() {
   std::vector<PortID> portIds;
-  for (const auto& [_, tamHandle] : tamHandles_) {
+  for (const auto& [_, tamHandle] : eventTamHandles_) {
     portIds.push_back(tamHandle->portId);
   }
   return portIds;
