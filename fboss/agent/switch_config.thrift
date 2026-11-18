@@ -338,6 +338,20 @@ struct MirrorDestination {
 // default DSCP marking for mirrored packets
 const byte DEFAULT_MIRROR_DSCP = 0;
 
+enum PolicerMeterType {
+  PACKETS = 0,
+  BYTES = 1,
+}
+
+/*
+ * Both values must be positive.
+ */
+struct Policer {
+  1: PolicerMeterType meterType = PolicerMeterType.PACKETS;
+  2: i64 committedInformationRate;
+  3: i64 committedBurstSize;
+}
+
 /*
  * Mirror,
  *   - name, a logical identifier of mirror
@@ -398,6 +412,8 @@ struct Mirror {
    * packets will be mirrored.
    */
   5: optional i32 samplingRate;
+  // If unset, mirrored traffic is not policed.
+  6: optional Policer policer;
 }
 
 /*
@@ -1998,7 +2014,7 @@ enum CounterType {
 
 struct TrafficCounter {
   1: string name;
-  2: list<CounterType> types = [PACKETS];
+  2: list<CounterType> types = [CounterType.PACKETS];
 }
 
 enum L2LearningMode {
