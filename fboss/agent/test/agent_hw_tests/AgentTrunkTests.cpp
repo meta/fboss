@@ -37,17 +37,12 @@ class AgentTrunkTest : public AgentHwTest {
 
   cfg::SwitchConfig initialConfig(
       const AgentEnsemble& ensemble) const override {
-    auto asic = checkSameAndGetAsicForTesting(ensemble.getL3Asics());
     auto ports = ensemble.masterLogicalPortIds();
     return utility::oneAggregatePortPerInterfaceConfig(
-        ensemble.getPlatformMapping(),
-        asic,
+        ensemble.getSw(),
         {ports[0], ports[1], ports[2], ports[3]},
-        ensemble.getSw()->getPlatformSupportsAddRemovePort(),
-        asic->desiredLoopbackModes(),
         {{kAggPort1(), getAggPortMembers(kAggPort1(), ensemble)},
-         {kAggPortMax(), getAggPortMembers(kAggPortMax(), ensemble)}},
-        cfg::InterfaceType::VLAN);
+         {kAggPortMax(), getAggPortMembers(kAggPortMax(), ensemble)}});
   }
 
   std::vector<ProductionFeature> getProductionFeaturesVerified()
