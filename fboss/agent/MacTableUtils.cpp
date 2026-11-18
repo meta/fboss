@@ -34,6 +34,9 @@ std::shared_ptr<SwitchState> modifyClassIDForEntry(
   auto mac = macEntry->getMac();
   auto portDescr = macEntry->getPort();
   auto vlan = state->getVlans()->getNodeIf(vlanID).get();
+  if (!vlan) {
+    return state;
+  }
   std::shared_ptr<SwitchState> newState{state};
   auto* macTable = vlan->getMacTable().get();
   auto node = macTable->getMacIf(mac);
@@ -80,6 +83,10 @@ std::shared_ptr<SwitchState> MacTableUtils::updateMacTable(
   auto mac = l2Entry.getMac();
   auto portDescr = l2Entry.getPort();
   auto vlan = state->getVlans()->getNodeIf(vlanID).get();
+  if (!vlan) {
+    // A config change removed the VLAN after this update was queued.
+    return state;
+  }
   std::shared_ptr<SwitchState> newState{state};
   auto* macTable = vlan->getMacTable().get();
   auto node = macTable->getMacIf(mac);
@@ -144,6 +151,10 @@ std::shared_ptr<SwitchState> MacTableUtils::updateOrAddStaticEntry(
     VlanID vlanId,
     folly::MacAddress mac,
     std::optional<bool> configured) {
+  auto vlan = state->getVlans()->getNodeIf(vlanId).get();
+  if (!vlan) {
+    return state;
+  }
   auto existingMacEntry = getMacEntry(state, vlanId, mac);
   if (existingMacEntry &&
       existingMacEntry->getType() == MacEntryType::STATIC_ENTRY &&
@@ -153,7 +164,6 @@ std::shared_ptr<SwitchState> MacTableUtils::updateOrAddStaticEntry(
   }
   auto newState = state->clone();
   auto macTable = getMacTable(state, vlanId).get();
-  auto vlan = state->getVlans()->getNode(vlanId).get();
   macTable = macTable->modify(&vlan, &newState);
   if (existingMacEntry) {
     macTable->updateEntry(
@@ -175,13 +185,16 @@ std::shared_ptr<SwitchState> MacTableUtils::removeEntry(
     const std::shared_ptr<SwitchState>& state,
     VlanID vlanId,
     folly::MacAddress mac) {
+  auto vlan = state->getVlans()->getNodeIf(vlanId).get();
+  if (!vlan) {
+    return state;
+  }
   auto existingMacEntry = getMacEntry(state, vlanId, mac);
   if (!existingMacEntry) {
     return state;
   }
   auto newState = state->clone();
   auto macTable = getMacTable(state, vlanId).get();
-  auto vlan = state->getVlans()->getNode(vlanId).get();
   macTable = macTable->modify(&vlan, &newState);
   macTable->removeEntry(mac);
   return newState;
@@ -199,7 +212,11 @@ std::shared_ptr<SwitchState> MacTableUtils::updateOrAddStaticEntryIfNbrExists(
           return nbrEntry->isReachable() && nbrEntry->getMac() == mac;
         });
   };
-  auto vlan = state->getVlans()->getNode(vlanId).get();
+  auto vlan = state->getVlans()->getNodeIf(vlanId).get();
+  if (!vlan) {
+    // A config change removed the VLAN after this update was queued.
+    return state;
+  }
   const auto& arpTable = *getNeighborTableForVlan<ArpTable>(state, vlanId);
   const auto& ndpTable = *getNeighborTableForVlan<NdpTable>(state, vlanId);
   auto arpItr = findNeighbor(arpTable);
