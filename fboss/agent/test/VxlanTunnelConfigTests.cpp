@@ -162,8 +162,10 @@ TEST_F(VxlanTunnelConfigTest, CreateVxlanTunnelMinimalConfig) {
   EXPECT_EQ(tunnel->getDscpMode(), std::nullopt);
   EXPECT_EQ(tunnel->getEcnMode(), std::nullopt);
   EXPECT_EQ(tunnel->getTunnelTermType(), std::nullopt);
-  EXPECT_EQ(tunnel->getVrf2Vni(), std::nullopt);
-  EXPECT_EQ(tunnel->getVniToVrf(), std::nullopt);
+  // The default VRF maps to VNI 0
+  const std::map<int64_t, int64_t> defaultVrfVni{{0, 0}};
+  EXPECT_EQ(tunnel->getVrf2Vni(), defaultVrfVni);
+  EXPECT_EQ(tunnel->getVniToVrf(), defaultVrfVni);
 }
 
 TEST_F(VxlanTunnelConfigTest, RejectsNonVxlanTunnelType) {

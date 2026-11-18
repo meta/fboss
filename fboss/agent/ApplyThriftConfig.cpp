@@ -24,6 +24,7 @@
 
 #include "fboss/agent/AsicUtils.h"
 #include "fboss/agent/BufferUtils.h"
+#include "fboss/agent/Constants.h"
 #include "fboss/agent/DsfStateUpdaterUtil.h"
 #include "fboss/agent/FabricLinkMonitoring.h"
 #include "fboss/agent/FbossError.h"
@@ -7998,12 +7999,15 @@ std::shared_ptr<VxlanTunnelMap> ThriftConfigApplier::updateVxlanTunnels() {
     CHECK_LT(numExistingProcessed, origTunnels->numNodes());
     for (const auto& [_, tunnels] : std::as_const(*origTunnels)) {
       for (const auto& [id, tunnel] : std::as_const(*tunnels)) {
-        auto hasEntries = [](const auto& map) {
-          return map.has_value() && !map->empty();
+        // The default VRF's VNI goes with the tunnel
+        auto hasVrfVnis = [](const auto& vrf2Vni) {
+          return vrf2Vni.has_value() &&
+              std::any_of(
+                     vrf2Vni->begin(), vrf2Vni->end(), [](const auto& entry) {
+                       return entry.first != kDefaultVrf;
+                     });
         };
-        if (!newTunnels->getNodeIf(id) &&
-            (hasEntries(tunnel->getVrf2Vni()) ||
-             hasEntries(tunnel->getVniToVrf()))) {
+        if (!newTunnels->getNodeIf(id) && hasVrfVnis(tunnel->getVrf2Vni())) {
           throw FbossError(
               "VXLAN tunnel ", id, " cannot be removed while VRFs have VNIs");
         }

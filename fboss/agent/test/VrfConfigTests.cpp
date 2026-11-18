@@ -735,19 +735,26 @@ TEST(SwSwitchVrfs, VniInTunnelMaps) {
   auto config = vxlanTunnelConfig();
   auto handle = createTestHandle(&config);
   auto sw = handle->getSw();
-  sw->addVrfs({makeVniVrfEntry(kTestVrf, 5001)});
   using VniMap = std::map<int64_t, int64_t>;
-  EXPECT_EQ(vxlanTunnel(sw)->getVrf2Vni(), (VniMap{{kTestVrf, 5001}}));
-  EXPECT_EQ(vxlanTunnel(sw)->getVniToVrf(), (VniMap{{5001, kTestVrf}}));
+  // A new tunnel maps the default VRF to VNI 0
+  EXPECT_EQ(vxlanTunnel(sw)->getVrf2Vni(), (VniMap{{0, 0}}));
+  sw->addVrfs({makeVniVrfEntry(kTestVrf, 5001)});
+  EXPECT_EQ(vxlanTunnel(sw)->getVrf2Vni(), (VniMap{{0, 0}, {kTestVrf, 5001}}));
+  EXPECT_EQ(vxlanTunnel(sw)->getVniToVrf(), (VniMap{{0, 0}, {5001, kTestVrf}}));
 
   // Config apply keeps the VNIs
   config.vxlanTunnels()->front().ttlMode() = cfg::TunnelMode::PIPE;
   sw->applyConfig("change tunnel", config);
-  EXPECT_EQ(vxlanTunnel(sw)->getVrf2Vni(), (VniMap{{kTestVrf, 5001}}));
+  EXPECT_EQ(vxlanTunnel(sw)->getVrf2Vni(), (VniMap{{0, 0}, {kTestVrf, 5001}}));
 
   sw->deleteVrfs({kTestVrf});
-  EXPECT_EQ(vxlanTunnel(sw)->getVrf2Vni(), VniMap{});
-  EXPECT_EQ(vxlanTunnel(sw)->getVniToVrf(), VniMap{});
+  EXPECT_EQ(vxlanTunnel(sw)->getVrf2Vni(), (VniMap{{0, 0}}));
+  EXPECT_EQ(vxlanTunnel(sw)->getVniToVrf(), (VniMap{{0, 0}}));
+
+  // With only the default VRF's VNI left, the tunnel can be removed
+  config.vxlanTunnels() = {};
+  sw->applyConfig("remove tunnel", config);
+  EXPECT_EQ(sw->getState()->getVxlanTunnels()->numNodes(), 0);
 }
 
 TEST(SwSwitchVrfs, VniRejected) {
@@ -811,7 +818,7 @@ TEST(SwSwitchVrfs, SyncRejectsVniChange) {
   EXPECT_EQ(intf55Vrf(sw->getState()), kTestVrf);
   EXPECT_EQ(
       vxlanTunnel(sw)->getVrf2Vni(),
-      (std::map<int64_t, int64_t>{{kTestVrf, 5001}}));
+      (std::map<int64_t, int64_t>{{0, 0}, {kTestVrf, 5001}}));
 }
 
 TEST(SwSwitchVrfs, SyncRenamesVrf) {

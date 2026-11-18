@@ -34,11 +34,6 @@ class AgentVxlanTest : public AgentHwTest {
   static constexpr uint32_t kVni{10001};
   static inline const RouterID kOverlayVrf2{1002};
   static constexpr uint32_t kVni2{10002};
-  // BRCM sets its default VNI from the default VR's decap map
-  // entry and uses it when a tunnel next hop carries no VNI, so
-  // the default VR needs an entry even though no overlay route
-  // uses it.
-  static constexpr uint32_t kDefaultVni{0xFFFF};
   static inline const std::string kTunnelId{"vxlantunnel0"};
   static inline const folly::MacAddress kRemoteMac{"02:00:00:00:00:64"};
   static inline const folly::MacAddress kHostMac{"02:01:02:03:04:05"};
@@ -78,40 +73,14 @@ class AgentVxlanTest : public AgentHwTest {
       {kOverlayVrf, {1, 2, 3, 4}},
       {kOverlayVrf2, {5}}};
 
-  using VrfVniMap = std::map<int64_t, int64_t>;
-
   static uint32_t vni(RouterID vrf) {
     return vrf == kOverlayVrf2 ? kVni2 : kVni;
-  }
-
-  // The default VR gets kDefaultVni in the tunnel directly, as a
-  // prepopulated switch state would
-  void addDefaultVni() {
-    getSw()->updateStateBlocking(
-        "default VNI", [this](const std::shared_ptr<SwitchState>& in) {
-          auto tunnel = in->getVxlanTunnels()->getNode(kTunnelId);
-          auto vrf2Vni = tunnel->getVrf2Vni().value_or(VrfVniMap{});
-          if (vrf2Vni.contains(0)) {
-            return std::shared_ptr<SwitchState>();
-          }
-          auto vniToVrf = tunnel->getVniToVrf().value_or(VrfVniMap{});
-          vrf2Vni[0] = kDefaultVni;
-          vniToVrf[kDefaultVni] = 0;
-          auto newTunnel = tunnel->clone();
-          newTunnel->setVrf2Vni(vrf2Vni);
-          newTunnel->setVniToVrf(vniToVrf);
-          auto state = in->clone();
-          state->getVxlanTunnels()->modify(&state)->updateNode(
-              newTunnel, getSw()->getScopeResolver()->scope(newTunnel, state));
-          return state;
-        });
   }
 
   // Add the VRFs with their VNIs and move the interfaces of the ports into
   // them. Done in cold boot setup only: the VRFs, VNIs and bindings persist
   // across warm boot.
   void bindVrfPorts(const VrfPorts& vrfPorts) {
-    addDefaultVni();
     std::vector<VrfEntry> vrfs;
     for (const auto& [vrf, portIdxs] : vrfPorts) {
       if (!getProgrammedState()->getVrfs()->getNodeIf(vrf)) {

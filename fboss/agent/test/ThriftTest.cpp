@@ -202,7 +202,7 @@ TEST_F(ThriftTest, getVrfsReportsVni) {
   std::vector<VrfInfo> vrfs;
   handler.getVrfs(vrfs);
   ASSERT_EQ(vrfs.size(), 2);
-  EXPECT_FALSE(vrfs[0].vni().has_value());
+  EXPECT_EQ(vrfs[0].vni(), 0);
   EXPECT_EQ(vrfs[1].vni(), 5001);
 }
 

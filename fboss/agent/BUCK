@@ -795,6 +795,7 @@ cpp_library(
         "fbsource//xplat/folly/gen:base",
         ":asic_utils",
         ":buffer_utils",
+        ":constants",
         ":core",
         ":fboss-error",
         ":loadbalancer_utils",

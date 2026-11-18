@@ -48,7 +48,7 @@ TEST(VxlanTunnel, GettersReturnSetValues) {
       (std::map<int64_t, int64_t>{{10010, 10}, {10020, 20}}));
 }
 
-TEST(VxlanTunnel, DefaultOptionalFieldsAreNullopt) {
+TEST(VxlanTunnel, DefaultFields) {
   const std::string id{"bare"};
   auto tunnel = std::make_shared<VxlanTunnel>(id);
   EXPECT_EQ(tunnel->getID(), "bare");
@@ -58,8 +58,62 @@ TEST(VxlanTunnel, DefaultOptionalFieldsAreNullopt) {
   EXPECT_EQ(tunnel->getDscpMode(), std::nullopt);
   EXPECT_EQ(tunnel->getEcnMode(), std::nullopt);
   EXPECT_EQ(tunnel->getTunnelTermType(), std::nullopt);
-  EXPECT_EQ(tunnel->getVrf2Vni(), std::nullopt);
-  EXPECT_EQ(tunnel->getVniToVrf(), std::nullopt);
+  // The default VRF maps to VNI 0
+  const std::map<int64_t, int64_t> defaultVrfVni{{0, 0}};
+  EXPECT_EQ(tunnel->getVrf2Vni(), defaultVrfVni);
+  EXPECT_EQ(tunnel->getVniToVrf(), defaultVrfVni);
+}
+
+TEST(VxlanTunnel, SetAndRemoveVrfVni) {
+  const std::string id{"vxlantunnel0"};
+  auto tunnel = std::make_shared<VxlanTunnel>(id);
+  using VniMap = std::map<int64_t, int64_t>;
+
+  tunnel->setVrfVni(1001, 5001);
+  EXPECT_EQ(tunnel->getVrf2Vni(), (VniMap{{0, 0}, {1001, 5001}}));
+  EXPECT_EQ(tunnel->getVniToVrf(), (VniMap{{0, 0}, {5001, 1001}}));
+  EXPECT_EQ(tunnel->getVrfOfVni(5001), 1001);
+
+  // A new VNI replaces the old one in both maps
+  tunnel->setVrfVni(1001, 5002);
+  EXPECT_EQ(tunnel->getVrf2Vni(), (VniMap{{0, 0}, {1001, 5002}}));
+  EXPECT_EQ(tunnel->getVniToVrf(), (VniMap{{0, 0}, {5002, 1001}}));
+  EXPECT_EQ(tunnel->getVrfOfVni(5001), std::nullopt);
+
+  // A VNI moved to another VRF leaves its old VRF
+  tunnel->setVrfVni(1002, 5002);
+  EXPECT_EQ(tunnel->getVrf2Vni(), (VniMap{{0, 0}, {1002, 5002}}));
+  EXPECT_EQ(tunnel->getVniToVrf(), (VniMap{{0, 0}, {5002, 1002}}));
+
+  tunnel->removeVrfVni(1002);
+  EXPECT_EQ(tunnel->getVrf2Vni(), (VniMap{{0, 0}}));
+  EXPECT_EQ(tunnel->getVniToVrf(), (VniMap{{0, 0}}));
+
+  // Unknown VRFs are ignored, and maps are created when missing
+  tunnel->removeVrfVni(2002);
+  tunnel->setVrf2Vni(std::nullopt);
+  tunnel->setVniToVrf(std::nullopt);
+  tunnel->removeVrfVni(0);
+  tunnel->setVrfVni(1001, 5001);
+  EXPECT_EQ(tunnel->getVrf2Vni(), (VniMap{{1001, 5001}}));
+  EXPECT_EQ(tunnel->getVniToVrf(), (VniMap{{5001, 1001}}));
+}
+
+TEST(VxlanTunnel, VrfVniOnPublishedTunnel) {
+  const std::string id{"vxlantunnel0"};
+  auto tunnel = std::make_shared<VxlanTunnel>(id);
+  tunnel->setVrfVni(1001, 5001);
+  tunnel->publish();
+  EXPECT_EQ(tunnel->getVrfOfVni(5001), 1001);
+
+  // The clone changes its own maps, not the published tunnel's
+  auto newTunnel = tunnel->clone();
+  newTunnel->setVrfVni(1002, 5002);
+  newTunnel->removeVrfVni(1001);
+  using VniMap = std::map<int64_t, int64_t>;
+  EXPECT_EQ(newTunnel->getVrf2Vni(), (VniMap{{0, 0}, {1002, 5002}}));
+  EXPECT_EQ(newTunnel->getVniToVrf(), (VniMap{{0, 0}, {5002, 1002}}));
+  EXPECT_EQ(tunnel->getVrf2Vni(), (VniMap{{0, 0}, {1001, 5001}}));
 }
 
 TEST(VxlanTunnel, ResetOptionalFields) {
@@ -142,8 +196,9 @@ TEST(VxlanTunnel, SerDeserWithOptionalFieldsUnset) {
   EXPECT_EQ(tunnelBack->getSrcIP(), std::nullopt);
   EXPECT_EQ(tunnelBack->getDstIP(), std::nullopt);
   EXPECT_EQ(tunnelBack->getTTLMode(), std::nullopt);
-  EXPECT_EQ(tunnelBack->getVrf2Vni(), std::nullopt);
-  EXPECT_EQ(tunnelBack->getVniToVrf(), std::nullopt);
+  const std::map<int64_t, int64_t> defaultVrfVni{{0, 0}};
+  EXPECT_EQ(tunnelBack->getVrf2Vni(), defaultVrfVni);
+  EXPECT_EQ(tunnelBack->getVniToVrf(), defaultVrfVni);
 }
 
 TEST(VxlanTunnel, SerDeserVxlanTunnel) {

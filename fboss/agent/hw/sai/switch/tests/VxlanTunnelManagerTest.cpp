@@ -105,8 +105,7 @@ std::shared_ptr<VxlanTunnel> makeVxlanTunnelWithMappers(
     const std::string& tunnelId = "vxlantunnel0",
     uint32_t intfID = 0) {
   auto tunnel = makeVxlanTunnel(tunnelId, intfID);
-  tunnel->setVrf2Vni(std::map<int64_t, int64_t>{{0, 10001}});
-  tunnel->setVniToVrf(std::map<int64_t, int64_t>{{10001, 0}});
+  tunnel->setVrfVni(0, 10001);
   return tunnel;
 }
 
@@ -146,7 +145,7 @@ TEST_F(VxlanTunnelManagerTest, removeVxlanTunnelWithMappers) {
   EXPECT_EQ(handle->decapEntries.size(), 1);
 }
 
-TEST_F(VxlanTunnelManagerTest, addVxlanTunnelCreatesEmptyMappers) {
+TEST_F(VxlanTunnelManagerTest, addVxlanTunnelMapsDefaultVrfToVniZero) {
   saiManagerTable->vxlanTunnelManager().addVxlanTunnel(
       makeVxlanTunnel("vxlantunnel0", intf0.id));
   auto handle = saiManagerTable->vxlanTunnelManager().getVxlanTunnelHandle(
@@ -154,29 +153,41 @@ TEST_F(VxlanTunnelManagerTest, addVxlanTunnelCreatesEmptyMappers) {
   ASSERT_NE(handle, nullptr);
   ASSERT_NE(handle->encapMap, nullptr);
   ASSERT_NE(handle->decapMap, nullptr);
-  EXPECT_TRUE(handle->encapEntries.empty());
-  EXPECT_TRUE(handle->decapEntries.empty());
+  // Encap entries are keyed by VRF and decap entries by VNI
+  EXPECT_EQ(handle->encapEntries.size(), 1);
+  EXPECT_TRUE(handle->encapEntries.contains(0));
+  EXPECT_EQ(handle->decapEntries.size(), 1);
+  EXPECT_TRUE(handle->decapEntries.contains(0));
 }
 
 TEST_F(VxlanTunnelManagerTest, changeVniMapsInPlace) {
+  const RouterID vrfId(1001);
+  saiManagerTable->virtualRouterManager().addVrf(std::make_shared<Vrf>(vrfId));
   auto swTunnel = makeVxlanTunnel("vxlantunnel0", intf0.id);
   auto& manager = saiManagerTable->vxlanTunnelManager();
   manager.addVxlanTunnel(swTunnel);
   auto tunnelSaiId =
       manager.getVxlanTunnelHandle("vxlantunnel0")->tunnel->adapterKey();
 
-  auto withMappers = makeVxlanTunnelWithMappers("vxlantunnel0", intf0.id);
-  manager.changeVxlanTunnel(swTunnel, withMappers);
+  // A VRF with a VNI is added, as addVrfs() does
+  auto withVrfVni = makeVxlanTunnel("vxlantunnel0", intf0.id);
+  withVrfVni->setVrfVni(vrfId, 5001);
+  manager.changeVxlanTunnel(swTunnel, withVrfVni);
   auto handle = manager.getVxlanTunnelHandle("vxlantunnel0");
   EXPECT_EQ(handle->tunnel->adapterKey(), tunnelSaiId);
-  EXPECT_EQ(handle->encapEntries.size(), 1);
-  EXPECT_EQ(handle->decapEntries.size(), 1);
+  EXPECT_EQ(handle->encapEntries.size(), 2);
+  EXPECT_TRUE(handle->encapEntries.contains(vrfId));
+  EXPECT_EQ(handle->decapEntries.size(), 2);
+  EXPECT_TRUE(handle->decapEntries.contains(5001));
 
-  manager.changeVxlanTunnel(withMappers, swTunnel);
+  // The VRF is deleted, as deleteVrfs() does
+  manager.changeVxlanTunnel(withVrfVni, swTunnel);
   handle = manager.getVxlanTunnelHandle("vxlantunnel0");
   EXPECT_EQ(handle->tunnel->adapterKey(), tunnelSaiId);
-  EXPECT_TRUE(handle->encapEntries.empty());
-  EXPECT_TRUE(handle->decapEntries.empty());
+  EXPECT_EQ(handle->encapEntries.size(), 1);
+  EXPECT_TRUE(handle->encapEntries.contains(0));
+  EXPECT_EQ(handle->decapEntries.size(), 1);
+  EXPECT_TRUE(handle->decapEntries.contains(0));
 }
 
 TEST_F(VxlanTunnelManagerTest, deleteVrfWithVniInOneDelta) {
@@ -186,25 +197,27 @@ TEST_F(VxlanTunnelManagerTest, deleteVrfWithVniInOneDelta) {
   newState->getVrfs()->modify(&newState)->addNode(
       vrf, scopeResolver().scope(vrf));
   auto tunnel = makeVxlanTunnel("vxlantunnel0", intf0.id);
-  tunnel->setVrf2Vni(std::map<int64_t, int64_t>{{vrfId, 5001}});
-  tunnel->setVniToVrf(std::map<int64_t, int64_t>{{5001, vrfId}});
+  tunnel->setVrfVni(vrfId, 5001);
   newState->getVxlanTunnels()->modify(&newState)->addNode(
       tunnel, scopeResolver().scope(tunnel, newState));
   applyNewState(newState);
   auto& manager = saiManagerTable->vxlanTunnelManager();
   EXPECT_EQ(
-      manager.getVxlanTunnelHandle("vxlantunnel0")->encapEntries.size(), 1);
+      manager.getVxlanTunnelHandle("vxlantunnel0")->encapEntries.size(), 2);
 
-  // The VRF and its VNI map entries are removed in one state update
+  // The VRF and its VNI map entries are removed in one state update; the
+  // default VRF's entry stays
   newState = programmedState->clone();
   newState->getVrfs()->modify(&newState)->removeNode(vrfId);
-  auto noVni = makeVxlanTunnel("vxlantunnel0", intf0.id);
+  auto defaultVniOnly = makeVxlanTunnel("vxlantunnel0", intf0.id);
   newState->getVxlanTunnels()->modify(&newState)->updateNode(
-      noVni, scopeResolver().scope(noVni, newState));
+      defaultVniOnly, scopeResolver().scope(defaultVniOnly, newState));
   applyNewState(newState);
   auto handle = manager.getVxlanTunnelHandle("vxlantunnel0");
-  EXPECT_TRUE(handle->encapEntries.empty());
-  EXPECT_TRUE(handle->decapEntries.empty());
+  EXPECT_EQ(handle->encapEntries.size(), 1);
+  EXPECT_TRUE(handle->encapEntries.contains(0));
+  EXPECT_EQ(handle->decapEntries.size(), 1);
+  EXPECT_TRUE(handle->decapEntries.contains(0));
   EXPECT_EQ(
       saiManagerTable->virtualRouterManager().getVirtualRouterHandle(vrfId),
       nullptr);

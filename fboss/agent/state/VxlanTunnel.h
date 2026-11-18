@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "fboss/agent/Constants.h"
 #include "fboss/agent/gen-cpp2/switch_state_types.h"
 #include "fboss/agent/state/NodeBase.h"
 #include "fboss/agent/state/Thrifty.h"
@@ -18,8 +19,10 @@ class VxlanTunnel
     : public ThriftStructNode<VxlanTunnel, state::VxLanTunnelFields> {
  public:
   using Base = ThriftStructNode<VxlanTunnel, state::VxLanTunnelFields>;
+  // A new tunnel maps the default VRF to VNI 0
   explicit VxlanTunnel(const std::string& id) {
     set<switch_state_tags::vxlanTunnelId>(id);
+    setVrfVni(kDefaultVrf, 0);
   }
   std::string getID() const {
     return get<switch_state_tags::vxlanTunnelId>()->cref();
@@ -144,6 +147,45 @@ class VxlanTunnel
       ref<switch_state_tags::vniToVrf>().reset();
     } else {
       set<switch_state_tags::vniToVrf>(*vniToVrf);
+    }
+  }
+  std::optional<int64_t> getVrfOfVni(int64_t vni) const {
+    const auto& vniToVrf = cref<switch_state_tags::vniToVrf>();
+    if (!vniToVrf) {
+      return std::nullopt;
+    }
+    // Const access, as a published map must not be written
+    const auto& map = *vniToVrf;
+    auto it = map.find(vni);
+    if (it == map.end()) {
+      return std::nullopt;
+    }
+    return it->second->cref();
+  }
+  // Updates both maps, replacing the VNI vrf had and the VRF vni had
+  void setVrfVni(int64_t vrf, int64_t vni) {
+    removeVrfVni(vrf);
+    if (auto owner = getVrfOfVni(vni)) {
+      removeVrfVni(*owner);
+    }
+    // modify() clones a published map and creates a missing one
+    this->template modify<switch_state_tags::vrf2Vni>()->emplace(vrf, vni);
+    this->template modify<switch_state_tags::vniToVrf>()->emplace(vni, vrf);
+  }
+  void removeVrfVni(int64_t vrf) {
+    const auto& vrf2Vni = cref<switch_state_tags::vrf2Vni>();
+    if (!vrf2Vni) {
+      return;
+    }
+    const auto& map = *vrf2Vni;
+    auto it = map.find(vrf);
+    if (it == map.end()) {
+      return;
+    }
+    int64_t vni = it->second->cref();
+    this->template modify<switch_state_tags::vrf2Vni>()->remove(vrf);
+    if (cref<switch_state_tags::vniToVrf>()) {
+      this->template modify<switch_state_tags::vniToVrf>()->remove(vni);
     }
   }
 

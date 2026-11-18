@@ -277,18 +277,9 @@ void updateTunnelVnis(
     }
     return;
   }
-  const auto origVrf2Vni =
-      tunnel->getVrf2Vni().value_or(std::map<int64_t, int64_t>{});
-  const auto origVniToVrf =
-      tunnel->getVniToVrf().value_or(std::map<int64_t, int64_t>{});
-  auto vrf2Vni = origVrf2Vni;
-  auto vniToVrf = origVniToVrf;
+  auto newTunnel = tunnel->clone();
   for (auto vrf : toDelete) {
-    auto it = vrf2Vni.find(vrf);
-    if (it != vrf2Vni.end()) {
-      vniToVrf.erase(it->second);
-      vrf2Vni.erase(it);
-    }
+    newTunnel->removeVrfVni(vrf);
   }
   for (const auto& vrfEntry : toAdd) {
     if (!vrfEntry.vni()) {
@@ -300,19 +291,15 @@ void updateTunnelVnis(
       throw FbossHwUpdateError(
           in, in, "VRF ", vrf, " VNI ", vni, " is out of range");
     }
-    auto [it, inserted] = vniToVrf.emplace(vni, vrf);
-    if (!inserted) {
+    if (auto inUseBy = newTunnel->getVrfOfVni(vni)) {
       throw FbossHwUpdateError(
-          in, in, "VRF ", vrf, " VNI ", vni, " is in use by VRF ", it->second);
+          in, in, "VRF ", vrf, " VNI ", vni, " is in use by VRF ", *inUseBy);
     }
-    vrf2Vni[vrf] = vni;
+    newTunnel->setVrfVni(vrf, vni);
   }
-  if (vrf2Vni == origVrf2Vni && vniToVrf == origVniToVrf) {
+  if (*newTunnel == *tunnel) {
     return;
   }
-  auto newTunnel = tunnel->clone();
-  newTunnel->setVrf2Vni(vrf2Vni);
-  newTunnel->setVniToVrf(vniToVrf);
   (*state)->getVxlanTunnels()->modify(state)->updateNode(
       newTunnel, HwSwitchMatcher(matcher));
 }
