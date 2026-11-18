@@ -708,6 +708,49 @@ TEST_F(ArpTest, NoEntryOnMacLimitErrorDisabledPort) {
   EXPECT_EQ(0, this->getArpTable(sw, vlanID, intfID)->size());
 }
 
+TEST_F(ArpTest, NeighborOverMacLimitErrorDisablesPort) {
+  auto handle = setupTestHandle();
+  auto sw = handle->getSw();
+  VlanID vlanID(1);
+  InterfaceID intfID(1);
+  sw->updateStateBlocking("MAC limit of 1", [](const auto& state) {
+    auto newState = state->clone();
+    utility::getFirstNodeIf(newState->getSwitchSettings())
+        ->modify(&newState)
+        ->setMaxL2EntriesPerPort(1);
+    return newState;
+  });
+  // ARP request for 10.0.0.1 from 10.0.0.<ipByte>, MAC 00:02:00:01:02:<macByte>
+  auto arpRequest = [&](const std::string& ipByte, const std::string& macByte) {
+    return make_unique<IOBuf>(PktUtil::parseHexData(
+        "ff ff ff ff ff ff  00 02 00 01 02 " + macByte +
+        " 81 00  00 01  08 06  00 01  08 00  06  04  00 01"
+        "  00 02 00 01 02 " +
+        macByte + "  0a 00 00 " + ipByte + "  00 00 00 00 00 00  0a 00 00 01"));
+  };
+  auto macTable = [&]() {
+    return sw->getState()->getVlans()->getNode(vlanID)->getMacTable();
+  };
+
+  handle->rxPacket(arpRequest("0f", "03"), PortDescriptor(PortID(1)), vlanID);
+  sw->getNeighborUpdater()->waitForPendingUpdates();
+  waitForStateUpdates(sw);
+  ASSERT_NE(nullptr, macTable()->getMacIf(MacAddress("00:02:00:01:02:03")));
+
+  // A second neighbor MAC would take port 1 over its limit
+  handle->rxPacket(arpRequest("10", "04"), PortDescriptor(PortID(1)), vlanID);
+  sw->getNeighborUpdater()->waitForPendingUpdates();
+  waitForStateUpdates(sw);
+
+  auto port = sw->getState()->getPorts()->getNodeIf(PortID(1));
+  EXPECT_EQ(cfg::PortState::DISABLED, port->getAdminState());
+  EXPECT_TRUE(port->hasError(PortError::ERROR_DISABLE_MAC_LIMIT_EXCEEDED));
+  EXPECT_EQ(nullptr, macTable()->getMacIf(MacAddress("00:02:00:01:02:03")));
+  EXPECT_EQ(nullptr, macTable()->getMacIf(MacAddress("00:02:00:01:02:04")));
+  auto arpTable = this->getArpTable(sw, vlanID, intfID);
+  EXPECT_EQ(nullptr, arpTable->getEntryIf(IPAddressV4("10.0.0.16")));
+}
+
 TEST_F(ArpTest, NotMine) {
   auto handle = setupTestHandle();
   auto sw = handle->getSw();
