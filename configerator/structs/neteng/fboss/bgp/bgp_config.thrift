@@ -757,6 +757,10 @@ struct BgpNetServiceThriftConfig {
 
   // Thrift server behavior
   12: optional bool propagate_thrift_default_protocols;
+
+  // When true, NetSimpleAclChecker evaluates callers with an agent.id TLS
+  // attribute as SERVICE_IDENTITY:agentic_caller. Unset means false.
+  13: optional bool enable_agentic_caller_enforcement;
 }
 
 /**

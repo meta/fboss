@@ -9869,6 +9869,7 @@ class ChildThriftPath<::facebook::bgp::thrift::BgpNetServiceThriftConfig, ::face
     STRUCT_CHILD_GETTERS(export_counters_time_series, 10);
     STRUCT_CHILD_GETTERS(counters_time_series_duration, 11);
     STRUCT_CHILD_GETTERS(propagate_thrift_default_protocols, 12);
+    STRUCT_CHILD_GETTERS(enable_agentic_caller_enforcement, 13);
 };
 
 
