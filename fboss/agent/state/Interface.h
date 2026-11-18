@@ -451,6 +451,18 @@ class Interface : public ThriftStructNode<Interface, state::InterfaceFields> {
     }
   }
 
+  // VRF of a remote interface; VRF 0 when not set
+  RouterID getRemoteIntfRouterID() const {
+    if (auto vrf = cref<switch_state_tags::remoteIntfRouterId>()) {
+      return RouterID(vrf->cref());
+    }
+    return RouterID(0);
+  }
+
+  void setRemoteIntfRouterID(RouterID vrf) {
+    set<switch_state_tags::remoteIntfRouterId>(vrf);
+  }
+
   void setScope(const cfg::Scope& scope) {
     set<switch_state_tags::scope>(scope);
   }

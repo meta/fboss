@@ -1713,6 +1713,35 @@ TYPED_TEST(DsfSubscriptionTest, RouteDeleteCancelsRouteAdd) {
   }
 }
 
+TYPED_TEST(DsfSubscriptionTest, RemoteIntfRoutesInRemoteIntfVrf) {
+  auto state = this->sw_->getState();
+  auto oldRif = makeRemoteIntf(
+      InterfaceID(6040),
+      folly::IPAddressV4("42.42.42.100"),
+      31,
+      folly::IPAddressV6("42::100"),
+      127);
+  auto newRif = oldRif->clone();
+  newRif->setRemoteIntfRouterID(RouterID(1001));
+
+  IntfRouteTable remoteIntfRoutesToAdd;
+  RouterIDToPrefixes remoteIntfRoutesToDel;
+  processRemoteInterfaceRoutes(
+      oldRif, state, false, remoteIntfRoutesToAdd, remoteIntfRoutesToDel);
+  processRemoteInterfaceRoutes(
+      newRif, state, true, remoteIntfRoutesToAdd, remoteIntfRoutesToDel);
+
+  auto prefixV4 = folly::IPAddress::createNetwork("42.42.42.100/31");
+  auto prefixV6 = folly::IPAddress::createNetwork("42::100/127");
+  auto& toDel = remoteIntfRoutesToDel[RouterID(0)];
+  EXPECT_TRUE(toDelContainsPrefix(toDel, prefixV4));
+  EXPECT_TRUE(toDelContainsPrefix(toDel, prefixV6));
+  auto& toAdd = remoteIntfRoutesToAdd[RouterID(1001)];
+  EXPECT_NE(toAdd.find(prefixV4), toAdd.end());
+  EXPECT_NE(toAdd.find(prefixV6), toAdd.end());
+  EXPECT_TRUE(remoteIntfRoutesToAdd[RouterID(0)].empty());
+}
+
 TYPED_TEST(DsfSubscriptionTest, RouteAddCancelsRouteDelete) {
   // Reproduce the symmetric bug where the cancel-out logic in
   // processRemoteInterfaceRoutes incorrectly cancels a pending route delete

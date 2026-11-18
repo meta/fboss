@@ -125,10 +125,10 @@ class SaiRouterInterfaceManager {
     moveRouterInterface(interfaceVrf->getID(), RouterID(0), interfaces);
   }
 
-  // Remote interfaces are in VRF 0
   RouterInterfaceSaiId addRemoteRouterInterface(
       const std::shared_ptr<Interface>& swInterface) {
-    return addRouterInterface(swInterface, false /*isLocal*/, RouterID(0));
+    return addRouterInterface(
+        swInterface, false /*isLocal*/, swInterface->getRemoteIntfRouterID());
   }
   void removeRemoteRouterInterface(
       const std::shared_ptr<Interface>& swInterface) {
@@ -138,7 +138,10 @@ class SaiRouterInterfaceManager {
       const std::shared_ptr<Interface>& oldInterface,
       const std::shared_ptr<Interface>& newInterface) {
     changeRouterInterface(
-        oldInterface, newInterface, false /*isLocal*/, RouterID(0));
+        oldInterface,
+        newInterface,
+        false /*isLocal*/,
+        newInterface->getRemoteIntfRouterID());
   }
 
   SaiRouterInterfaceHandle* getRouterInterfaceHandle(const InterfaceID& swId);

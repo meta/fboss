@@ -2160,9 +2160,9 @@ static void populateInterfaceDetail(
       *interfaceDetail.portId() = intf->getPortID();
     }
   }
-  // Remote interfaces are in VRF 0
-  *interfaceDetail.routerId() =
-      state->getInterfaceVrfs()->getVrf(intf->getID());
+  *interfaceDetail.routerId() = intf->getRemoteInterfaceType()
+      ? intf->getRemoteIntfRouterID()
+      : state->getInterfaceVrfs()->getVrf(intf->getID());
   *interfaceDetail.mtu() = intf->getMtu();
   *interfaceDetail.mac() = intf->getMac().toString();
   interfaceDetail.address()->clear();

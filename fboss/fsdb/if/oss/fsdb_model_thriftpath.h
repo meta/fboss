@@ -7444,6 +7444,7 @@ class ChildThriftPath<::facebook::fboss::state::InterfaceFields, ::facebook::fbo
     STRUCT_CHILD_GETTERS(desiredPeerName, 24);
     STRUCT_CHILD_GETTERS(desiredPeerAddressIPv6, 25);
     STRUCT_CHILD_GETTERS(aggregatePortId, 26);
+    STRUCT_CHILD_GETTERS(remoteIntfRouterId, 27);
 };
 
 

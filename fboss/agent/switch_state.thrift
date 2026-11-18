@@ -844,6 +844,12 @@ struct InterfaceFields {
    * rather than a physical port. Exactly one of portId and aggregatePortId
    * is set. */
   26: optional i32 aggregatePortId;
+  /*
+   * Set only on Remote Interfaces of VOQ switches. VRF of the remote
+   * interface; VRF 0 when not set. Local interface VRFs are in the interface
+   * VRF map.
+   */
+  27: optional i32 remoteIntfRouterId;
 }
 
 enum LacpState {
