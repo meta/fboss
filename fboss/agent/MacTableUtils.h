@@ -47,6 +47,15 @@ class MacTableUtils {
       VlanID vlan,
       folly::MacAddress mac);
 
+  // Removes learned and neighbor-created MACs; static MACs from config stay.
+  static std::shared_ptr<SwitchState> removeUnconfiguredEntriesForPort(
+      const std::shared_ptr<SwitchState>& state,
+      const PortDescriptor& port);
+
+  static bool isMacLimitErrorDisabled(
+      const std::shared_ptr<SwitchState>& state,
+      const PortDescriptor& port);
+
   static std::shared_ptr<SwitchState> updateOrAddStaticEntryIfNbrExists(
       const std::shared_ptr<SwitchState>& state,
       VlanID vlan,
