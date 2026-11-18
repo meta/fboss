@@ -121,6 +121,7 @@ cpp_binary(
         "//fboss/agent/if:ctrl-cpp2-services",
         "//fboss/agent/if:ctrl-cpp2-types",
         "//fboss/agent/platforms/common:platform_mapping",
+        "//fboss/agent/test:production_features-cpp2-types",
         "//fboss/cli/fboss2:cmd-common-utils",
         "//fboss/cli/fboss2:cmd-global-options",
         "//fboss/cli/fboss2:cmd-init-utils",
@@ -138,5 +139,6 @@ cpp_binary(
     ],
     external_deps = [
         "CLI11",
+        "gflags",
     ],
 )
