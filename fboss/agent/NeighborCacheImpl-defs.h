@@ -18,6 +18,7 @@
 #include "fboss/agent/FbossHwUpdateError.h"
 #include "fboss/agent/HwAsicTable.h"
 #include "fboss/agent/IPv6Handler.h"
+#include "fboss/agent/MacTableUtils.h"
 #include "fboss/agent/NeighborCacheImpl.h"
 #include "fboss/agent/StaticL2ForNeighborSwSwitchUpdater.h"
 #include "fboss/agent/SwitchIdScopeResolver.h"
@@ -462,6 +463,9 @@ void NeighborCacheImpl<NTable>::setEntry(
   // SwitchState update is transaction protected, if HW_FAILURE_PROTECTION flag
   // is set. Thus we want to update cache only if switchState update succeeds,
   // to avoid switchState and neighbor cache inconsistency
+  if (isNewEntryOnMacLimitDisabledPort(ip, port)) {
+    return;
+  }
 
   auto entry = addOrUpdateEntryInternal(
       EntryFields(ip, mac, port, intfID_),
@@ -580,6 +584,22 @@ NeighborCacheEntry<NTable>* NeighborCacheImpl<NTable>::addOrUpdateEntryInternal(
   return entry;
 }
 
+// Reads a state snapshot from the neighbor cache thread. If it races with an
+// error-disable, the MAC guard in MacTableUtils still keeps the MAC off the
+// port.
+template <typename NTable>
+bool NeighborCacheImpl<NTable>::isNewEntryOnMacLimitDisabledPort(
+    AddressType ip,
+    const PortDescriptor& port) {
+  if (getCacheEntry(ip) ||
+      !MacTableUtils::isMacLimitErrorDisabled(sw_->getState(), port)) {
+    return false;
+  }
+  XLOG(DBG2) << "Not adding neighbor " << ip.str() << " on " << port.str()
+             << ", error-disabled for exceeding its MAC limit";
+  return true;
+}
+
 template <typename NTable>
 bool NeighborCacheImpl<NTable>::setPendingEntry(
     AddressType ip,
@@ -588,6 +608,9 @@ bool NeighborCacheImpl<NTable>::setPendingEntry(
   if (!force && getCacheEntry(ip)) {
     // only overwrite an existing entry with a pending entry if we say it is
     // ok with the 'force' parameter
+    return false;
+  }
+  if (isNewEntryOnMacLimitDisabledPort(ip, port)) {
     return false;
   }
   auto entry = addOrUpdateEntryInternal(

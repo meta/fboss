@@ -125,6 +125,9 @@ class NeighborCacheImpl {
 
  private:
   bool isHwUpdateProtected();
+  bool isNewEntryOnMacLimitDisabledPort(
+      AddressType ip,
+      const PortDescriptor& port);
   // These are used to program entries into the SwitchState
   bool programEntry(Entry* entry);
   bool

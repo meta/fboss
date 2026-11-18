@@ -669,6 +669,45 @@ TEST_F(ArpTest, TableUpdates) {
   EXPECT_EQ(InterfaceID(1), entry->getIntfID());
 }
 
+TEST_F(ArpTest, NoEntryOnMacLimitErrorDisabledPort) {
+  auto handle = setupTestHandle();
+  auto sw = handle->getSw();
+  VlanID vlanID(1);
+  InterfaceID intfID(1);
+  sw->updateStateBlocking("MAC limit error-disable", [](const auto& state) {
+    auto newState = state->clone();
+    newState->getPorts()->getNodeIf(PortID(1))->modify(&newState)->addError(
+        PortError::ERROR_DISABLE_MAC_LIMIT_EXCEEDED);
+    return newState;
+  });
+
+  // ARP request for 10.0.0.1 from 10.0.0.15, which would normally add an entry
+  auto hex = PktUtil::parseHexData(
+      // dst mac, src mac
+      "ff ff ff ff ff ff  00 02 00 01 02 03"
+      // 802.1q, VLAN 1
+      "81 00  00 01"
+      // ARP, htype: ethernet, ptype: IPv4, hlen: 6, plen: 4
+      "08 06  00 01  08 00  06  04"
+      // ARP Request
+      "00 01"
+      // Sender MAC
+      "00 02 00 01 02 03"
+      // Sender IP: 10.0.0.15
+      "0a 00 00 0f"
+      // Target MAC
+      "00 00 00 00 00 00"
+      // Target IP: 10.0.0.1
+      "0a 00 00 01");
+
+  EXPECT_STATE_UPDATE_TIMES(sw, 0);
+  handle->rxPacket(make_unique<IOBuf>(hex), PortDescriptor(PortID(1)), vlanID);
+  sw->getNeighborUpdater()->waitForPendingUpdates();
+  waitForStateUpdates(sw);
+
+  EXPECT_EQ(0, this->getArpTable(sw, vlanID, intfID)->size());
+}
+
 TEST_F(ArpTest, NotMine) {
   auto handle = setupTestHandle();
   auto sw = handle->getSw();
