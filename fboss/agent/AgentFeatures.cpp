@@ -633,6 +633,12 @@ DEFINE_bool(
     false,
     "Enforce that each RIF has at most one neighbor MAC address");
 
+DEFINE_bool(
+    enforce_vlan_intf_exists,
+    true,
+    "Refuse a config in which the intfID of a VLAN names an interface that "
+    "is not in the config");
+
 DEFINE_int32(
     max_tx_packets,
     100000, // 1 gb / 10 kb

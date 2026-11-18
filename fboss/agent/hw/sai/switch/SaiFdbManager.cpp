@@ -104,6 +104,10 @@ SaiFdbTraits::FdbEntry ManagedFdbEntry::makeFdbEntry(
   auto rifHandle =
       managerTable->routerInterfaceManager().getRouterInterfaceHandle(
           getInterfaceID());
+  if (!rifHandle) {
+    throw FbossError(
+        "No router interface ", getInterfaceID(), " for fdb entry ", getMac());
+  }
   auto vlanRouterInterface = std::get<std::shared_ptr<SaiVlanRouterInterface>>(
       rifHandle->routerInterface);
   auto vlan =
@@ -174,6 +178,10 @@ void SaiFdbManager::addFdbEntry(
   auto saiRouterIntf =
       managerTable_->routerInterfaceManager().getRouterInterfaceHandle(
           interfaceId);
+  if (!saiRouterIntf) {
+    throw FbossError(
+        "No router interface ", interfaceId, " for fdb entry ", mac);
+  }
   auto managedFdbEntry = std::make_shared<ManagedFdbEntry>(
       this,
       switchId,

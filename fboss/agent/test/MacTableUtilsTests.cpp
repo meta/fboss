@@ -164,4 +164,51 @@ TEST_F(MacTableUtilsTest, VerifyRemoveClassIDForAbsentEntry) {
   verifyRemoveClassIDHelper(state, false /* macPresent */);
 }
 
+TEST_F(MacTableUtilsTest, VerifyUpdateMacTableForRemovedVlan) {
+  auto state = testStateA();
+  L2Entry l2Entry(
+      kMacAddress(),
+      VlanID(4000),
+      PortDescriptor(kPortID()),
+      L2Entry::L2EntryType::L2_ENTRY_TYPE_VALIDATED);
+  ASSERT_EQ(state->getVlans()->getNodeIf(VlanID(4000)), nullptr);
+  EXPECT_EQ(
+      MacTableUtils::updateMacTable(
+          state, l2Entry, L2EntryUpdateType::L2_ENTRY_UPDATE_TYPE_ADD),
+      state);
+  EXPECT_EQ(
+      MacTableUtils::updateMacTable(
+          state, l2Entry, L2EntryUpdateType::L2_ENTRY_UPDATE_TYPE_DELETE),
+      state);
+}
+
+TEST_F(MacTableUtilsTest, VerifyStaticEntryForRemovedVlan) {
+  auto state = testStateA();
+  ASSERT_EQ(state->getVlans()->getNodeIf(VlanID(4000)), nullptr);
+  EXPECT_EQ(
+      MacTableUtils::updateOrAddStaticEntryIfNbrExists(
+          state, VlanID(4000), kMacAddress()),
+      state);
+  EXPECT_EQ(
+      MacTableUtils::updateOrAddStaticEntry(
+          state, PortDescriptor(kPortID()), VlanID(4000), kMacAddress()),
+      state);
+  EXPECT_EQ(
+      MacTableUtils::removeEntry(state, VlanID(4000), kMacAddress()), state);
+}
+
+TEST_F(MacTableUtilsTest, VerifyClassIDForRemovedVlan) {
+  auto state = testStateA();
+  ASSERT_EQ(state->getVlans()->getNodeIf(VlanID(4000)), nullptr);
+  auto macEntry =
+      std::make_shared<MacEntry>(kMacAddress(), PortDescriptor(kPortID()));
+  EXPECT_EQ(
+      MacTableUtils::updateOrAddEntryWithClassID(
+          state, VlanID(4000), macEntry, kClassID()),
+      state);
+  EXPECT_EQ(
+      MacTableUtils::removeClassIDForEntry(state, VlanID(4000), macEntry),
+      state);
+}
+
 } // namespace facebook::fboss

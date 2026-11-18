@@ -174,6 +174,7 @@ DECLARE_string(thrift_switch_state_file);
 DECLARE_bool(qsfp_port_manager_mode);
 DECLARE_bool(verify_fib_nexthop_id_consistency);
 DECLARE_bool(enforce_single_nbr_mac_per_intf);
+DECLARE_bool(enforce_vlan_intf_exists);
 DECLARE_int32(max_tx_packets);
 DECLARE_bool(enable_acl_table_redirect_action);
 DECLARE_bool(enable_bulk_create_ecmp_members);
