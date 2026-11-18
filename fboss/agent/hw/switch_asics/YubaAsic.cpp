@@ -292,6 +292,7 @@ bool YubaAsic::isSupportedNonFabric(Feature feature) const {
     case HwAsic::Feature::XPHY_SERDES_TX_FIR_POST3:
     case HwAsic::Feature::PORT_MAC_FLUSH:
     case HwAsic::Feature::ACL_DST_IPV6_WORD_WITH_MASK:
+    case HwAsic::Feature::STATIC_FDB_EVICT_DYNAMIC:
       return false;
   }
   return false;

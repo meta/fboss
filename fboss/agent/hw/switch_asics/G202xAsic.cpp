@@ -273,6 +273,7 @@ bool G202xAsic::isSupportedNonFabric(Feature feature) const {
     case HwAsic::Feature::PORT_LATCH_STATUS:
     case HwAsic::Feature::PORT_MAC_FLUSH:
     case HwAsic::Feature::PCS_ERROR_COUNTERS:
+    case HwAsic::Feature::STATIC_FDB_EVICT_DYNAMIC:
       return false;
   }
   return false;
