@@ -534,6 +534,14 @@ class SwitchStats : public boost::noncopyable, public ThriftCallDurationLogger {
     return getCumulativeValue(l2LearnPortLimitErrorDisables_);
   }
 
+  void neighborStaticMacReaddRejected() {
+    neighborStaticMacReaddRejected_.addValue(1);
+  }
+
+  int64_t getNeighborStaticMacReaddRejected() const {
+    return getCumulativeValue(neighborStaticMacReaddRejected_);
+  }
+
   void fwDrainedWithHighNumActiveFabricLinks() {
     fwDrainedWithHighNumActiveFabricLinks_.addValue(1);
   }
@@ -1258,6 +1266,8 @@ class SwitchStats : public boost::noncopyable, public ThriftCallDurationLogger {
   TLTimeseries l2LearnPortLimitDrops_;
   // Alerting key for ports error-disabled for exceeding their MAC limit.
   TLTimeseries l2LearnPortLimitErrorDisables_;
+  // Neighbor static MACs not re-added because they didn't fit.
+  TLTimeseries neighborStaticMacReaddRejected_;
 
   TLTimeseries fwDrainedWithHighNumActiveFabricLinks_;
 

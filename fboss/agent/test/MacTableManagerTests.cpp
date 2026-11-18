@@ -16,9 +16,12 @@
 #include "fboss/agent/ApplyThriftConfig.h"
 #include "fboss/agent/L2Entry.h"
 #include "fboss/agent/MacTableUtils.h"
+#include "fboss/agent/NeighborUpdater.h"
 #include "fboss/agent/ResourceAccountant.h"
 #include "fboss/agent/SwitchStats.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
+#include "fboss/agent/state/ArpTable.h"
+#include "fboss/agent/state/Interface.h"
 #include "fboss/agent/state/MacEntry.h"
 #include "fboss/agent/state/SwitchState.h"
 #include "fboss/agent/state/Vlan.h"
@@ -376,6 +379,115 @@ TEST_F(MacTableManagerTest, MacLimitAgedMacFreesRoomForNewMac) {
   EXPECT_FALSE(
       getPort()->hasError(PortError::ERROR_DISABLE_MAC_LIMIT_EXCEEDED));
   EXPECT_EQ(dynamicMacsOnPort(), 2);
+}
+
+class StaticMacForNeighborReaddTest : public MacTableManagerTest {
+ protected:
+  // Neighbor on port 1 with static MAC kNbrMac, plus a learned MAC on port 1.
+  void SetUp() override {
+    MacTableManagerTest::SetUp();
+    enablePortWithMacLimit(0);
+    getSw()->getNeighborUpdater()->receivedArpMineForIntf(
+        InterfaceID(1),
+        kNbrIp,
+        kNbrMac,
+        PortDescriptor(kPortID()),
+        ArpOpCode::ARP_OP_REPLY);
+    waitForNeighborUpdates();
+    triggerMacBulkLearnedCb({kLearned});
+    ASSERT_NE(getMac(kNbrMac), nullptr);
+    ASSERT_EQ(getMac(kNbrMac)->getType(), MacEntryType::STATIC_ENTRY);
+    ASSERT_NE(getArpEntry(), nullptr);
+  }
+
+  // HW reports the neighbor's static MAC as aged, so it is removed and the
+  // observer tries to re-add it.
+  void ageNeighborMac() {
+    getSw()->l2LearningUpdateReceived(
+        L2Entry(
+            kNbrMac,
+            kVlan(),
+            PortDescriptor(kPortID()),
+            L2Entry::L2EntryType::L2_ENTRY_TYPE_VALIDATED),
+        L2EntryUpdateType::L2_ENTRY_UPDATE_TYPE_DELETE);
+    waitForBackgroundThread(getSw());
+    waitForStateUpdates(getSw());
+    waitForNeighborUpdates();
+  }
+
+  void waitForNeighborUpdates() {
+    getSw()->getNeighborUpdater()->waitForPendingUpdates();
+    waitForStateUpdates(getSw());
+    getSw()->getNeighborUpdater()->waitForPendingUpdates();
+    waitForStateUpdates(getSw());
+  }
+
+  std::shared_ptr<MacEntry> getMac(folly::MacAddress mac) {
+    return getSw()
+        ->getState()
+        ->getVlans()
+        ->getNode(kVlan())
+        ->getMacTable()
+        ->getMacIf(mac);
+  }
+
+  std::shared_ptr<ArpEntry> getArpEntry() {
+    return getSw()
+        ->getState()
+        ->getInterfaces()
+        ->getNode(InterfaceID(1))
+        ->getArpTable()
+        ->getEntryIf(kNbrIp);
+  }
+
+  int64_t readdsRejected() {
+    fb303::ThreadCachedServiceData::get()->publishStats();
+    return getSw()->stats()->getNeighborStaticMacReaddRejected();
+  }
+
+  const folly::IPAddressV4 kNbrIp{"10.0.0.2"};
+  const MacAddress kNbrMac{"02:00:00:00:00:10"};
+  const MacAddress kLearned{"02:00:00:00:00:01"};
+  gflags::FlagSaver flagSaver_;
+};
+
+TEST_F(StaticMacForNeighborReaddTest, ReaddedWhenItFits) {
+  const auto rejectedBefore = readdsRejected();
+
+  ageNeighborMac();
+
+  ASSERT_NE(getMac(kNbrMac), nullptr);
+  EXPECT_EQ(getMac(kNbrMac)->getType(), MacEntryType::STATIC_ENTRY);
+  EXPECT_NE(getArpEntry(), nullptr);
+  EXPECT_EQ(readdsRejected() - rejectedBefore, 0);
+}
+
+TEST_F(StaticMacForNeighborReaddTest, OverPortLimitFlushesNeighbor) {
+  // Port 1 still has the learned MAC, so the neighbor's MAC no longer fits
+  enablePortWithMacLimit(1);
+  const auto rejectedBefore = readdsRejected();
+
+  ageNeighborMac();
+
+  EXPECT_EQ(getMac(kNbrMac), nullptr);
+  EXPECT_EQ(getArpEntry(), nullptr);
+  EXPECT_EQ(getPort()->getAdminState(), cfg::PortState::ENABLED);
+  EXPECT_EQ(readdsRejected() - rejectedBefore, 1);
+}
+
+TEST_F(
+    StaticMacForNeighborReaddTest,
+    RejectedByResourceAccountantFlushesNeighbor) {
+  // The learned MAC alone fills the table once the neighbor's MAC is removed
+  FLAGS_max_l2_entries = 1;
+  const auto rejectedBefore = readdsRejected();
+
+  ageNeighborMac();
+
+  EXPECT_EQ(getMac(kNbrMac), nullptr);
+  EXPECT_EQ(getArpEntry(), nullptr);
+  EXPECT_NE(getMac(kLearned), nullptr);
+  EXPECT_EQ(readdsRejected() - rejectedBefore, 1);
 }
 
 /*
