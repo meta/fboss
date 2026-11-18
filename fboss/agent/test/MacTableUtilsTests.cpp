@@ -247,4 +247,33 @@ TEST_F(MacTableUtilsTest, NoNeighborStaticMacOnMacLimitErrorDisabledPort) {
       nullptr);
 }
 
+TEST_F(MacTableUtilsTest, CountUnconfiguredEntriesForPort) {
+  auto state = stateWithPortMacs();
+
+  // Two learned MACs and one non-config static MAC; the config static MAC
+  // doesn't count
+  EXPECT_EQ(
+      MacTableUtils::countUnconfiguredEntriesForPort(
+          state, PortDescriptor(kPort1)),
+      3);
+  EXPECT_EQ(
+      MacTableUtils::countUnconfiguredEntriesForPort(
+          state, PortDescriptor(kPort2)),
+      1);
+}
+
+TEST_F(MacTableUtilsTest, ExceedsMacLimit) {
+  auto state = stateWithPortMacs();
+  const PortDescriptor port(kPort1);
+  const MacAddress kNewMac{"02:00:00:00:00:20"};
+
+  EXPECT_TRUE(
+      MacTableUtils::exceedsMacLimit(state, port, VlanID(1), kNewMac, 3));
+  EXPECT_FALSE(
+      MacTableUtils::exceedsMacLimit(state, port, VlanID(1), kNewMac, 4));
+  // A MAC already on the port doesn't add to the count
+  EXPECT_FALSE(
+      MacTableUtils::exceedsMacLimit(state, port, VlanID(1), kStatic, 3));
+}
+
 } // namespace facebook::fboss

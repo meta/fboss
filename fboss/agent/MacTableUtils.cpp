@@ -240,6 +240,34 @@ bool MacTableUtils::isMacLimitErrorDisabled(
       portNode->hasError(PortError::ERROR_DISABLE_MAC_LIMIT_EXCEEDED);
 }
 
+uint32_t MacTableUtils::countUnconfiguredEntriesForPort(
+    const std::shared_ptr<SwitchState>& state,
+    const PortDescriptor& port) {
+  uint32_t count{0};
+  for (const auto& vlanMap : std::as_const(*state->getVlans())) {
+    for (const auto& [_, vlan] : std::as_const(*vlanMap.second)) {
+      forEachUnconfiguredMacOnPort(*vlan, port, [&](const auto&) { ++count; });
+    }
+  }
+  return count;
+}
+
+bool MacTableUtils::exceedsMacLimit(
+    const std::shared_ptr<SwitchState>& state,
+    const PortDescriptor& port,
+    VlanID vlanId,
+    folly::MacAddress mac,
+    int32_t limit) {
+  if (auto vlan = state->getVlans()->getNodeIf(vlanId)) {
+    auto existing = vlan->getMacTable()->getMacIf(mac);
+    if (existing && existing->getPort() == port) {
+      return false;
+    }
+  }
+  return countUnconfiguredEntriesForPort(state, port) >=
+      static_cast<uint32_t>(limit);
+}
+
 std::shared_ptr<SwitchState> MacTableUtils::updateOrAddStaticEntryIfNbrExists(
     const std::shared_ptr<SwitchState>& state,
     VlanID vlanId,

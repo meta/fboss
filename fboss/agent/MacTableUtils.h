@@ -56,6 +56,20 @@ class MacTableUtils {
       const std::shared_ptr<SwitchState>& state,
       const PortDescriptor& port);
 
+  // Learned and neighbor-created MACs; static MACs from config don't count.
+  static uint32_t countUnconfiguredEntriesForPort(
+      const std::shared_ptr<SwitchState>& state,
+      const PortDescriptor& port);
+
+  // Whether adding `mac` on `port` would take the port over `limit` MACs. A MAC
+  // already on the port doesn't add to the count.
+  static bool exceedsMacLimit(
+      const std::shared_ptr<SwitchState>& state,
+      const PortDescriptor& port,
+      VlanID vlan,
+      folly::MacAddress mac,
+      int32_t limit);
+
   static std::shared_ptr<SwitchState> updateOrAddStaticEntryIfNbrExists(
       const std::shared_ptr<SwitchState>& state,
       VlanID vlan,
