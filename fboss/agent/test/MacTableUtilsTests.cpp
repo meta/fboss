@@ -247,6 +247,25 @@ TEST_F(MacTableUtilsTest, NoNeighborStaticMacOnMacLimitErrorDisabledPort) {
       nullptr);
 }
 
+TEST_F(MacTableUtilsTest, ErrorDisablePortForMacLimit) {
+  auto state = MacTableUtils::errorDisablePortForMacLimit(
+      stateWithPortMacs(), PortID(kPort1));
+
+  auto port = state->getPorts()->getNodeIf(kPort1);
+  EXPECT_EQ(port->getAdminState(), cfg::PortState::DISABLED);
+  EXPECT_TRUE(port->hasError(PortError::ERROR_DISABLE_MAC_LIMIT_EXCEEDED));
+  EXPECT_EQ(
+      MacTableUtils::countUnconfiguredEntriesForPort(
+          state, PortDescriptor(kPort1)),
+      0);
+
+  // An unknown port leaves the state unchanged
+  auto unchanged = stateWithPortMacs();
+  EXPECT_EQ(
+      MacTableUtils::errorDisablePortForMacLimit(unchanged, PortID(999)),
+      unchanged);
+}
+
 TEST_F(MacTableUtilsTest, CountUnconfiguredEntriesForPort) {
   auto state = stateWithPortMacs();
 

@@ -14,6 +14,8 @@
 
 namespace facebook::fboss {
 
+class Port;
+class SwitchIdScopeResolver;
 class SwitchState;
 class Vlan;
 
@@ -61,6 +63,11 @@ class MacTableUtils {
       const std::shared_ptr<SwitchState>& state,
       const PortDescriptor& port);
 
+  static std::optional<int32_t> getMaxL2EntriesPerPort(
+      const std::shared_ptr<SwitchState>& state,
+      const std::shared_ptr<Port>& port,
+      const SwitchIdScopeResolver& scopeResolver);
+
   // Whether adding `mac` on `port` would take the port over `limit` MACs. A MAC
   // already on the port doesn't add to the count.
   static bool exceedsMacLimit(
@@ -69,6 +76,10 @@ class MacTableUtils {
       VlanID vlan,
       folly::MacAddress mac,
       int32_t limit);
+
+  static std::shared_ptr<SwitchState> errorDisablePortForMacLimit(
+      const std::shared_ptr<SwitchState>& state,
+      PortID portId);
 
   static std::shared_ptr<SwitchState> updateOrAddStaticEntryIfNbrExists(
       const std::shared_ptr<SwitchState>& state,

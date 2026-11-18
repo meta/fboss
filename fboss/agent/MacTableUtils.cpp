@@ -9,8 +9,10 @@
  */
 #include "fboss/agent/MacTableUtils.h"
 
+#include "fboss/agent/SwitchIdScopeResolver.h"
 #include "fboss/agent/Utils.h"
 #include "fboss/agent/state/Port.h"
+#include "fboss/agent/state/SwitchSettings.h"
 #include "fboss/agent/state/SwitchState.h"
 
 namespace {
@@ -252,6 +254,22 @@ uint32_t MacTableUtils::countUnconfiguredEntriesForPort(
   return count;
 }
 
+std::optional<int32_t> MacTableUtils::getMaxL2EntriesPerPort(
+    const std::shared_ptr<SwitchState>& state,
+    const std::shared_ptr<Port>& port,
+    const SwitchIdScopeResolver& scopeResolver) {
+  const auto switchSettings =
+      state->getSwitchSettings()->getSwitchSettings(scopeResolver.scope(port));
+  if (!switchSettings) {
+    return std::nullopt;
+  }
+  const auto limit = switchSettings->getMaxL2EntriesPerPort();
+  if (limit && *limit > 0) {
+    return limit;
+  }
+  return std::nullopt;
+}
+
 bool MacTableUtils::exceedsMacLimit(
     const std::shared_ptr<SwitchState>& state,
     const PortDescriptor& port,
@@ -266,6 +284,21 @@ bool MacTableUtils::exceedsMacLimit(
   }
   return countUnconfiguredEntriesForPort(state, port) >=
       static_cast<uint32_t>(limit);
+}
+
+std::shared_ptr<SwitchState> MacTableUtils::errorDisablePortForMacLimit(
+    const std::shared_ptr<SwitchState>& state,
+    PortID portId) {
+  if (!state->getPorts()->getNodeIf(portId)) {
+    XLOG(ERR) << "Can't error-disable port " << portId << ", it doesn't exist";
+    return state;
+  }
+  auto newState =
+      removeUnconfiguredEntriesForPort(state, PortDescriptor(portId));
+  auto port = newState->getPorts()->getNodeIf(portId)->modify(&newState);
+  port->setAdminState(cfg::PortState::DISABLED);
+  port->addError(PortError::ERROR_DISABLE_MAC_LIMIT_EXCEEDED);
+  return newState;
 }
 
 std::shared_ptr<SwitchState> MacTableUtils::updateOrAddStaticEntryIfNbrExists(
