@@ -15,6 +15,7 @@
 #include "fboss/agent/hw/sai/api/SaiAttribute.h"
 #include "fboss/agent/hw/sai/api/SaiAttributeDataTypes.h"
 #include "fboss/agent/hw/sai/api/SaiDefaultAttributeValues.h"
+#include "fboss/agent/hw/sai/api/Types.h"
 
 #include <folly/IPAddress.h>
 #include <folly/MacAddress.h>
@@ -22,6 +23,7 @@
 #include <folly/logging/xlog.h>
 
 #include <iterator>
+#include <optional>
 #include <vector>
 
 extern "C" {
@@ -109,6 +111,26 @@ class FdbApi : public SaiApi<FdbApi> {
     sai_status_t status =
         sai_api_query(ApiType, reinterpret_cast<void**>(&api_));
     saiApiCheckError(status, ApiType, "Failed to query for fdb api");
+  }
+
+  void flush(
+      SwitchSaiId switchId,
+      std::optional<BridgePortSaiId> bridgePortId,
+      sai_fdb_flush_entry_type_t entryType) const {
+    std::vector<sai_attribute_t> attrs;
+    if (bridgePortId) {
+      sai_attribute_t attr;
+      attr.id = SAI_FDB_FLUSH_ATTR_BRIDGE_PORT_ID;
+      attr.value.oid = *bridgePortId;
+      attrs.push_back(attr);
+    }
+    sai_attribute_t typeAttr;
+    typeAttr.id = SAI_FDB_FLUSH_ATTR_ENTRY_TYPE;
+    typeAttr.value.s32 = entryType;
+    attrs.push_back(typeAttr);
+    auto g{SaiApiLock::getInstance()->lock()};
+    auto rv = api_->flush_fdb_entries(switchId, attrs.size(), attrs.data());
+    saiApiCheckError(rv, ApiType, "Failed to flush fdb entries");
   }
 
  private:
