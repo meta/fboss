@@ -350,6 +350,19 @@ void SaiFdbManager::handleLinkDown(SaiPortDescriptor portId) {
   }
 }
 
+void SaiFdbManager::flushDynamicEntries(PortID portId) {
+  auto portHandle = managerTable_->portManager().getPortHandle(portId);
+  if (!portHandle || !portHandle->bridgePort) {
+    XLOG(ERR) << "No bridge port to flush fdb entries on port " << portId;
+    return;
+  }
+  XLOG(INFO) << "Flushing dynamic fdb entries on port " << portId;
+  SaiApiTable::getInstance()->fdbApi().flush(
+      managerTable_->switchManager().getSwitchSaiId(),
+      portHandle->bridgePort->adapterKey(),
+      SAI_FDB_FLUSH_ENTRY_TYPE_DYNAMIC);
+}
+
 L2EntryThrift SaiFdbManager::fdbToL2Entry(
     const SaiFdbTraits::FdbEntry& fdbEntry) const {
   L2EntryThrift entry;

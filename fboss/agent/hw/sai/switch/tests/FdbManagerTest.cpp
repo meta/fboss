@@ -10,6 +10,7 @@
 #include "fboss/agent/hw/sai/switch/SaiBridgeManager.h"
 #include "fboss/agent/hw/sai/switch/SaiFdbManager.h"
 #include "fboss/agent/hw/sai/switch/SaiPortManager.h"
+#include "fboss/agent/hw/sai/switch/SaiSwitchManager.h"
 #include "fboss/agent/hw/sai/switch/SaiVlanManager.h"
 #include "fboss/agent/hw/sai/switch/tests/ManagerTestBase.h"
 #include "fboss/agent/state/MacEntry.h"
@@ -62,6 +63,29 @@ class FdbManagerTest : public ManagerTestBase {
                            ->modify(VlanID(intf0.id), &newState);
     newMacTable->removeEntry(kMac());
     applyNewState(newState);
+  }
+
+  void createHwOnlyFdbEntry(
+      folly::MacAddress mac,
+      PortID port,
+      sai_fdb_entry_type_t type) {
+    sai_object_id_t bridgePortId = saiManagerTable->portManager()
+                                       .getPortHandle(port)
+                                       ->bridgePort->adapterKey();
+    sai_object_id_t switchId =
+        saiManagerTable->switchManager().getSwitchSaiId();
+    saiApiTable->fdbApi().create<SaiFdbTraits>(
+        SaiFdbTraits::FdbEntry{switchId, 0, mac},
+        SaiFdbTraits::CreateAttributes{type, bridgePortId, std::nullopt});
+  }
+
+  bool isInHw(folly::MacAddress mac) const {
+    for (const auto& [key, _] : FakeSai::getInstance()->fdbManager.map()) {
+      if (std::get<folly::MacAddress>(key) == mac) {
+        return true;
+      }
+    }
+    return false;
   }
 
   TestInterface intf0;
@@ -160,4 +184,22 @@ TEST_F(FdbManagerTest, getL2EntriesTest) {
     }
   }
   EXPECT_TRUE(found);
+}
+
+TEST_F(FdbManagerTest, flushDynamicEntriesOnPort) {
+  const folly::MacAddress kDynamic{"02:00:00:00:00:01"};
+  const folly::MacAddress kStatic{"02:00:00:00:00:02"};
+  const folly::MacAddress kOtherPortDynamic{"02:00:00:00:00:03"};
+  auto port = PortID(intf0.remoteHosts[0].port.id);
+  auto otherPort = PortID(testInterfaces[2].remoteHosts[0].port.id);
+  createHwOnlyFdbEntry(kDynamic, port, SAI_FDB_ENTRY_TYPE_DYNAMIC);
+  createHwOnlyFdbEntry(kStatic, port, SAI_FDB_ENTRY_TYPE_STATIC);
+  createHwOnlyFdbEntry(
+      kOtherPortDynamic, otherPort, SAI_FDB_ENTRY_TYPE_DYNAMIC);
+
+  saiManagerTable->fdbManager().flushDynamicEntries(port);
+
+  EXPECT_FALSE(isInHw(kDynamic));
+  EXPECT_TRUE(isInHw(kStatic));
+  EXPECT_TRUE(isInHw(kOtherPortDynamic));
 }

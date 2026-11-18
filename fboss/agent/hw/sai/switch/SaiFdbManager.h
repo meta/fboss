@@ -127,6 +127,7 @@ class SaiFdbManager {
       const std::shared_ptr<MacEntry>& newEntry);
   std::vector<L2EntryThrift> getL2Entries(bool sdk = false) const;
   void handleLinkDown(SaiPortDescriptor portId);
+  void flushDynamicEntries(PortID portId);
   std::shared_ptr<SaiFdbEntry> createSaiObject(
       const typename SaiFdbTraits::AdapterHostKey& key,
       const typename SaiFdbTraits::CreateAttributes& attributes,
