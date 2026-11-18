@@ -15,6 +15,7 @@
 #include "fboss/agent/AgentFeatures.h"
 #include "fboss/agent/ApplyThriftConfig.h"
 #include "fboss/agent/L2Entry.h"
+#include "fboss/agent/MacTableManager.h"
 #include "fboss/agent/ResourceAccountant.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
 #include "fboss/agent/state/MacEntry.h"
@@ -24,6 +25,7 @@
 #include "fboss/agent/test/TestUtils.h"
 
 #include <folly/MacAddress.h>
+#include <folly/synchronization/Baton.h>
 
 namespace facebook::fboss {
 
@@ -263,6 +265,110 @@ TEST_F(MacTableManagerTest, MacLearnedBulkCb) {
   deleted += batchSize;
   // expect 70 mac entries in switchState and resourceAccountant
   verifyMacEntryCount(getSw()->getResourceAccountant()->l2Entries_);
+}
+
+class MacTableManagerDedupTest : public MacTableManagerTest {
+ protected:
+  void SetUp() override {
+    MacTableManagerTest::SetUp();
+    // Duplicates are only skipped on the queued (non hw-protected) path.
+    FLAGS_enable_hw_update_protection = false;
+    manager_ = std::make_unique<MacTableManager>(getSw());
+  }
+
+  void TearDown() override {
+    manager_.reset();
+    FLAGS_enable_hw_update_protection = true;
+    MacTableManagerTest::TearDown();
+  }
+
+  // Holds the update thread so reports queue up behind it, as they do when
+  // the hw reports a MAC faster than the update thread programs it.
+  void blockUpdateThread() {
+    folly::Baton<> blocked;
+    getSw()->getUpdateEvb()->runInEventBaseThread([this, &blocked] {
+      blocked.post();
+      release_.wait();
+    });
+    blocked.wait();
+  }
+
+  void releaseUpdateThread() {
+    release_.post();
+    waitForStateUpdates(getSw());
+  }
+
+  void report(L2EntryUpdateType updateType, int times = 1) {
+    for (int i = 0; i < times; ++i) {
+      manager_->handleL2LearningUpdate(
+          L2Entry(
+              kMacAddress(),
+              kVlan(),
+              PortDescriptor(kPortID()),
+              L2Entry::L2EntryType::L2_ENTRY_TYPE_VALIDATED),
+          updateType);
+    }
+  }
+
+  std::unique_ptr<MacTableManager> manager_;
+  folly::Baton<> release_;
+};
+
+TEST_F(MacTableManagerDedupTest, RepeatedLearnQueuedOnce) {
+  blockUpdateThread();
+  report(L2EntryUpdateType::L2_ENTRY_UPDATE_TYPE_ADD, 1000);
+  EXPECT_EQ(manager_->getDuplicateUpdatesSkipped(), 999);
+  releaseUpdateThread();
+  verifyMacIsAdded();
+
+  // Once the queued update has run, a new report is queued again.
+  report(L2EntryUpdateType::L2_ENTRY_UPDATE_TYPE_ADD);
+  EXPECT_EQ(manager_->getDuplicateUpdatesSkipped(), 999);
+}
+
+TEST_F(MacTableManagerDedupTest, LearnAfterAgeIsNotSkipped) {
+  report(L2EntryUpdateType::L2_ENTRY_UPDATE_TYPE_ADD);
+  waitForStateUpdates(getSw());
+  verifyMacIsAdded();
+
+  blockUpdateThread();
+  report(L2EntryUpdateType::L2_ENTRY_UPDATE_TYPE_ADD);
+  report(L2EntryUpdateType::L2_ENTRY_UPDATE_TYPE_DELETE);
+  report(L2EntryUpdateType::L2_ENTRY_UPDATE_TYPE_ADD, 10);
+  // Only the repeats of the last queued ADD are skipped; the ADD after the
+  // DELETE must still be applied.
+  EXPECT_EQ(manager_->getDuplicateUpdatesSkipped(), 9);
+  releaseUpdateThread();
+  verifyMacIsAdded();
+}
+
+TEST_F(MacTableManagerDedupTest, AgeAfterLearnIsNotSkipped) {
+  blockUpdateThread();
+  report(L2EntryUpdateType::L2_ENTRY_UPDATE_TYPE_ADD, 10);
+  report(L2EntryUpdateType::L2_ENTRY_UPDATE_TYPE_DELETE, 10);
+  EXPECT_EQ(manager_->getDuplicateUpdatesSkipped(), 18);
+  releaseUpdateThread();
+  verifyMacIsDeleted();
+}
+
+TEST_F(MacTableManagerDedupTest, LearnOnNewPortIsNotSkipped) {
+  blockUpdateThread();
+  report(L2EntryUpdateType::L2_ENTRY_UPDATE_TYPE_ADD, 10);
+  manager_->handleL2LearningUpdate(
+      L2Entry(
+          kMacAddress(),
+          kVlan(),
+          PortDescriptor(PortID(2)),
+          L2Entry::L2EntryType::L2_ENTRY_TYPE_VALIDATED),
+      L2EntryUpdateType::L2_ENTRY_UPDATE_TYPE_ADD);
+  EXPECT_EQ(manager_->getDuplicateUpdatesSkipped(), 9);
+  releaseUpdateThread();
+  verifyStateUpdate([this]() {
+    auto vlan = getSw()->getState()->getVlans()->getNode(kVlan());
+    auto node = vlan->getMacTable()->getMacIf(kMacAddress());
+    ASSERT_NE(nullptr, node);
+    EXPECT_EQ(PortID(2), node->getPort().phyPortID());
+  });
 }
 
 /*

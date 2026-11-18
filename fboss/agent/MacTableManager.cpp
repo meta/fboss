@@ -18,7 +18,19 @@
 
 namespace facebook::fboss {
 
-MacTableManager::MacTableManager(SwSwitch* sw) : sw_(sw) {}
+namespace {
+bool sameL2Update(
+    const L2Entry& lhs,
+    L2EntryUpdateType lhsType,
+    const L2Entry& rhs,
+    L2EntryUpdateType rhsType) {
+  return lhsType == rhsType && lhs.getPort() == rhs.getPort() &&
+      lhs.getType() == rhs.getType() && lhs.getClassID() == rhs.getClassID();
+}
+} // namespace
+
+MacTableManager::MacTableManager(SwSwitch* sw)
+    : sw_(sw), queuedUpdates_(std::make_shared<QueuedUpdates>()) {}
 
 bool MacTableManager::isHwUpdateProtected() {
   // this API return true if the platform supports hw protection
@@ -47,9 +59,49 @@ void MacTableManager::handleL2LearningUpdate(
       sw_->stats()->macTableUpdateFailure();
     }
   } else {
+    // The hw can report the same MAC many times before its entry is programmed,
+    // and each report would otherwise queue its own non-coalescing update.
+    // Skip a report identical to the last one still queued for this MAC:
+    // applying it again would not change the state.
+    QueuedUpdateKey key{l2Entry.getMac(), l2Entry.getVlanID()};
+    // Updates run in queue order, so once the count drops to zero the last
+    // queued update for this MAC has run.
+    auto updateFn =
+        [queuedUpdates = queuedUpdates_, key, fn = std::move(updateMacTableFn)](
+            const std::shared_ptr<SwitchState>& state) {
+          {
+            auto queued = queuedUpdates->wlock();
+            auto it = queued->find(key);
+            if (it != queued->end() && --it->second.numQueued == 0) {
+              queued->erase(it);
+            }
+          }
+          return fn(state);
+        };
+    // Enqueue under the lock so the recorded update is always the last one in
+    // the queue for this MAC, even with concurrent reporters.
+    auto queued = queuedUpdates_->wlock();
+    auto it = queued->find(key);
+    if (it != queued->end() &&
+        sameL2Update(
+            it->second.l2Entry,
+            it->second.updateType,
+            l2Entry,
+            l2EntryUpdateType)) {
+      ++duplicateUpdatesSkipped_;
+      sw_->stats()->macTableDuplicateUpdateSkipped();
+      return;
+    }
+    if (it == queued->end()) {
+      queued->emplace(key, QueuedUpdate{l2Entry, l2EntryUpdateType, 1});
+    } else {
+      it->second.l2Entry = l2Entry;
+      it->second.updateType = l2EntryUpdateType;
+      ++it->second.numQueued;
+    }
     sw_->updateStateNoCoalescing(
         folly::to<std::string>("Programming : ", l2Entry.str()),
-        std::move(updateMacTableFn));
+        std::move(updateFn));
   }
 }
 

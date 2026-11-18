@@ -39,6 +39,7 @@
 #include <folly/portability/GFlags.h>
 #include <folly/synchronization/Baton.h>
 
+#include <numeric>
 #include <thread>
 
 using namespace facebook::fboss;
@@ -611,6 +612,38 @@ TEST_F(SwSwitchTest, overlappingUpdatesWithExit) {
   done = true;
   nonCoaelescingUpdates.join();
   blockingUpdates.join();
+}
+
+TEST_F(SwSwitchTest, mixedPendingUpdatesDrainInOrder) {
+  folly::Baton<> blocked;
+  folly::Baton<> release;
+  sw->getUpdateEvb()->runInEventBaseThread([&] {
+    blocked.post();
+    release.wait();
+  });
+  blocked.wait();
+
+  // Every third update is non-coalescing, so the queue is taken in several
+  // batches and each batch must leave the rest queued and rescheduled.
+  const int numUpdates = 30;
+  std::vector<int> applied;
+  for (int i = 0; i < numUpdates; ++i) {
+    auto fn = [&applied, i](const std::shared_ptr<SwitchState>& /*state*/) {
+      applied.push_back(i);
+      return std::shared_ptr<SwitchState>();
+    };
+    if (i % 3 == 0) {
+      sw->updateStateNoCoalescing("non-coalescing", fn);
+    } else {
+      sw->updateState("coalescing", fn);
+    }
+  }
+
+  release.post();
+  waitForStateUpdates(sw);
+  std::vector<int> expected(numUpdates);
+  std::iota(expected.begin(), expected.end(), 0);
+  EXPECT_EQ(applied, expected);
 }
 
 TEST_F(SwSwitchTest, multiSwitchFb303Stats) {
