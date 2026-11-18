@@ -35392,6 +35392,9 @@
           "test_name_regex": "AgentMacLearningStaticEntriesTest.VerifyStaticDynamicTransformations$"
         },
         {
+          "test_name_regex": "AgentPbrTest.ClassNhg(Ipv6Nexthops|SingleIpv6Nexthop)$"
+        },
+        {
           "test_name_regex": "AgentAclAndDscpQueueMappingTest.VerifyAclAndQosMap$"
         },
         {
@@ -35877,6 +35880,9 @@
           "test_name_regex": "AgentMacLearningStaticEntriesTest.VerifyStaticDynamicTransformations$"
         },
         {
+          "test_name_regex": "AgentPbrTest.ClassNhg(Ipv6Nexthops|SingleIpv6Nexthop)$"
+        },
+        {
           "test_name_regex": "AgentAclAndDscpQueueMappingTest.VerifyAclAndQosMap$"
         },
         {
@@ -36354,6 +36360,9 @@
         },
         {
           "test_name_regex": "AgentMacLearningStaticEntriesTest.VerifyStaticDynamicTransformations$"
+        },
+        {
+          "test_name_regex": "AgentPbrTest.ClassNhg(Ipv6Nexthops|SingleIpv6Nexthop)$"
         },
         {
           "test_name_regex": "AgentAclAndDscpQueueMappingTest.VerifyAclAndQosMap$"
