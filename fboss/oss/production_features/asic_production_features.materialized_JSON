@@ -672,7 +672,8 @@
         143,
         133,
         139,
-        146
+        146,
+        135
     ],
     "tomahawk6": [
         2,
@@ -751,7 +752,9 @@
         106,
         107,
         139,
-        146
+        146,
+        144,
+        135
     ],
     "tomahawkultra1": [
         2,
@@ -870,7 +873,8 @@
         134,
         139,
         146,
-        143
+        143,
+        135
     ]
   },
   "asicToFeatureNames": {
@@ -1546,7 +1550,8 @@
         "DROP_REASON_REPORTING",
         "MY_MAC",
         "MULTI_VRF",
-        "ACL_COUNTERS_EXTENDED_LABEL"
+        "ACL_COUNTERS_EXTENDED_LABEL",
+        "PBR_ACL"
     ],
     "tomahawk6": [
         "CPU_RX_TX",
@@ -1625,7 +1630,9 @@
         "MPLS_HEADEND",
         "MPLS_MIDPOINT",
         "MULTI_VRF",
-        "ACL_COUNTERS_EXTENDED_LABEL"
+        "ACL_COUNTERS_EXTENDED_LABEL",
+        "MIXED_IP_SRV6_NEXT_HOP_GROUPS",
+        "PBR_ACL"
     ],
     "tomahawkultra1": [
         "CPU_RX_TX",
@@ -1744,7 +1751,8 @@
         "MIRROR_ON_DROP_AGGREGATE_RATE_LIMIT",
         "MULTI_VRF",
         "ACL_COUNTERS_EXTENDED_LABEL",
-        "DROP_REASON_REPORTING"
+        "DROP_REASON_REPORTING",
+        "PBR_ACL"
     ]
   },
   "featureSupportSpecs": [
@@ -2422,6 +2430,28 @@
           "sdk": 1,
           "minSdkVersion": "16.0_ea_odp",
           "note": "ACL counter labels over 31 characters use SAI_ACL_COUNTER_ATTR_LABEL_WIDE from brcm-sai 16.0"
+        }
+      ]
+    },
+    {
+      "feature": 135,
+      "supportedFrom": [
+        {
+          "asics": [
+            "yuba"
+          ],
+          "sdk": 2,
+          "minSdkVersion": "26.5.4210",
+          "note": "PBR matches its default NHG through SAI_ACL_ENTRY_ATTR_FIELD_ROUTE_DST, available from Leaba 26.5 (GA 26.5.4210)"
+        },
+        {
+          "asics": [
+            "tomahawk5",
+            "tomahawk6"
+          ],
+          "sdk": 1,
+          "minSdkVersion": "16.0_ea_odp",
+          "note": "PBR matches its default NHG through SAI_ACL_ENTRY_ATTR_FIELD_ROUTE_DST, which needs brcm-sai 16.0 with SAI 1.19"
         }
       ]
     }
