@@ -32075,6 +32075,15 @@
           "test_name_regex": "AgentMPLSTest/[01].punt2Cpu$"
         },
         {
+          "test_name_regex": "AgentLoadBalancerTestV[46]InMplsPhp.*$"
+        },
+        {
+          "test_name_regex": "AgentMplsTrunkLoadBalancerTest\\..*Mpls(Php|Swap)FrontPanelTraffic$"
+        },
+        {
+          "test_name_regex": "AgentMplsRouteTest.StaticIp2MplsRoutes$"
+        },
+        {
           "test_name_regex": "warm_boot.AgentEcmpTrunkTest.TrunkL2ResolveNhopThenLinkDownThenUpThenStateUp$"
         },
         {
@@ -32627,6 +32636,15 @@
         },
         {
           "test_name_regex": "AgentMPLSTest/[01].punt2Cpu$"
+        },
+        {
+          "test_name_regex": "AgentLoadBalancerTestV[46]InMplsPhp.*$"
+        },
+        {
+          "test_name_regex": "AgentMplsTrunkLoadBalancerTest\\..*Mpls(Php|Swap)FrontPanelTraffic$"
+        },
+        {
+          "test_name_regex": "AgentMplsRouteTest.StaticIp2MplsRoutes$"
         },
         {
           "test_name_regex": "warm_boot.AgentEcmpTrunkTest.TrunkL2ResolveNhopThenLinkDownThenUpThenStateUp$"
@@ -33615,6 +33633,15 @@
         },
         {
           "test_name_regex": "AgentMPLSTest/[01].punt2Cpu$"
+        },
+        {
+          "test_name_regex": "AgentLoadBalancerTestV[46]InMplsPhp.*$"
+        },
+        {
+          "test_name_regex": "AgentMplsTrunkLoadBalancerTest\\..*Mpls(Php|Swap)FrontPanelTraffic$"
+        },
+        {
+          "test_name_regex": "AgentMplsRouteTest.StaticIp2MplsRoutes$"
         },
         {
           "test_name_regex": "warm_boot.AgentEcmpTrunkTest.TrunkL2ResolveNhopThenLinkDownThenUpThenStateUp$"
