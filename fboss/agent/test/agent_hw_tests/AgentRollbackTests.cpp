@@ -14,6 +14,7 @@
 #include "fboss/agent/state/Port.h"
 #include "fboss/agent/state/SwitchState.h"
 #include "fboss/agent/test/EcmpSetupHelper.h"
+#include "fboss/agent/test/TestUtils.h"
 #include "fboss/agent/test/utils/ConfigUtils.h"
 #include "fboss/agent/test/utils/QueuePerHostTestUtils.h"
 
@@ -74,6 +75,9 @@ std::shared_ptr<SwitchState> setPortAdminState(
 TEST_F(AgentRollbackTest, rollbackNeighborResolution) {
   auto verify = [this] {
     auto needL2Entry = getSw()->needL2EntryForNeighbor();
+    // After warm boot, updates such as the switch run state change may still
+    // be queued; let them land so they are not mistaken for rollback leftovers.
+    waitForStateUpdates(getSw());
     auto origState = getProgrammedState();
 
     // Rollback neighbor resolution
@@ -181,6 +185,7 @@ TEST_F(AgentQphRollbackTest, rollbackWithQPHConfig) {
   };
 
   auto verify = [this] {
+    waitForStateUpdates(getSw());
     auto origState = getProgrammedState();
 
     // Perform a no-op rollback with QPH config present
