@@ -143,6 +143,12 @@ class SaiTracer {
 
   void logFdbEntryRemoveFn(const sai_fdb_entry_t* fdb_entry, sai_status_t rv);
 
+  void logFdbFlushFn(
+      sai_object_id_t switch_id,
+      uint32_t attr_count,
+      const sai_attribute_t* attr_list,
+      sai_status_t rv);
+
   void logInsegEntryRemoveFn(
       const sai_inseg_entry_t* inseg_entry,
       sai_status_t rv);
@@ -591,6 +597,7 @@ class SaiTracer {
       {SAI_OBJECT_TYPE_COUNTER, "counter_api->"},
       {SAI_OBJECT_TYPE_DEBUG_COUNTER, "debug_counter_api->"},
       {SAI_OBJECT_TYPE_FDB_ENTRY, "fdb_api->"},
+      {SAI_OBJECT_TYPE_FDB_FLUSH, "fdb_api->"},
 #if defined(BRCM_SAI_SDK_DNX_GTE_11_0)
       {static_cast<sai_object_type_t>(SAI_OBJECT_TYPE_FIRMWARE), "firmware_api->"},
 #endif

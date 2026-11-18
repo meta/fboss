@@ -17,5 +17,6 @@ namespace facebook::fboss {
 sai_fdb_api_t* wrappedFdbApi();
 
 SET_ATTRIBUTE_FUNC_DECLARATION(FdbEntry);
+SET_ATTRIBUTE_FUNC_DECLARATION(FdbFlush);
 
 } // namespace facebook::fboss

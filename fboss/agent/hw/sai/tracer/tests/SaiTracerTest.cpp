@@ -9,6 +9,7 @@
  */
 
 #include "fboss/agent/hw/sai/tracer/SaiTracer.h"
+#include "fboss/agent/hw/sai/tracer/FdbApiTracer.h"
 #include "fboss/agent/hw/sai/tracer/PolicerApiTracer.h"
 #include "fboss/agent/hw/sai/tracer/PortApiTracer.h"
 #include "fboss/agent/hw/sai/tracer/SwitchApiTracer.h"
@@ -978,5 +979,34 @@ TEST_F(SaiCsigTracerTest, StandardCsigPortAndSwitchAttributesAreSerialized) {
   EXPECT_EQ(lines, expectedSwitches);
 }
 #endif
+
+TEST_F(SaiTracerTest, FdbFlushIsTraced) {
+  EXPECT_NE(wrappedFdbApi()->flush_fdb_entries, nullptr);
+
+  folly::SingletonVault::singleton()->destroyInstances();
+  folly::SingletonVault::singleton()->reenableInstances();
+
+  FLAGS_enable_replayer = true;
+  FLAGS_sai_log = "/dev/null";
+
+  auto tracer = getTracer();
+  if (!tracer) {
+    FLAGS_enable_replayer = false;
+    return;
+  }
+
+  sai_attribute_t attrs[2]{};
+  attrs[0].id = SAI_FDB_FLUSH_ATTR_BRIDGE_PORT_ID;
+  attrs[0].value.oid = 24;
+  attrs[1].id = SAI_FDB_FLUSH_ATTR_ENTRY_TYPE;
+  attrs[1].value.s32 = SAI_FDB_FLUSH_ENTRY_TYPE_DYNAMIC;
+
+  EXPECT_NO_THROW(tracer->logFdbFlushFn(1, 2, attrs, SAI_STATUS_SUCCESS));
+
+  tracer.reset();
+  folly::SingletonVault::singleton()->destroyInstances();
+  folly::SingletonVault::singleton()->reenableInstances();
+  FLAGS_enable_replayer = false;
+}
 
 } // namespace facebook::fboss

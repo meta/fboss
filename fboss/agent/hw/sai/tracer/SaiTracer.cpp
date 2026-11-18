@@ -1156,6 +1156,35 @@ void SaiTracer::logFdbEntryRemoveFn(
   writeToFile(lines);
 }
 
+void SaiTracer::logFdbFlushFn(
+    sai_object_id_t switch_id,
+    uint32_t attr_count,
+    const sai_attribute_t* attr_list,
+    sai_status_t rv) {
+  if (!FLAGS_enable_replayer) {
+    return;
+  }
+
+  vector<string> lines =
+      setAttrList(attr_list, attr_count, SAI_OBJECT_TYPE_FDB_FLUSH, rv);
+  lines.push_back(logTimeAndRv(rv, switch_id));
+  lines.push_back(
+      to<string>(
+          "rv=",
+          folly::get_or_throw(
+              fnPrefix_,
+              SAI_OBJECT_TYPE_FDB_FLUSH,
+              "Unsupported Sai Object type in Sai Tracer"),
+          "flush_fdb_entries(",
+          getVariable(switch_id),
+          ",",
+          attr_count,
+          ",s_a)"));
+  lines.push_back(rvCheck(rv));
+
+  writeToFile(lines);
+}
+
 void SaiTracer::logInsegEntryRemoveFn(
     const sai_inseg_entry_t* inseg_entry,
     sai_status_t rv) {
@@ -1960,6 +1989,9 @@ vector<string> SaiTracer::setAttrList(
       break;
     case SAI_OBJECT_TYPE_FDB_ENTRY:
       setFdbEntryAttributes(attr_list, attr_count, attrLines, rv);
+      break;
+    case SAI_OBJECT_TYPE_FDB_FLUSH:
+      setFdbFlushAttributes(attr_list, attr_count, attrLines, rv);
       break;
     case SAI_OBJECT_TYPE_HASH:
       setHashAttributes(attr_list, attr_count, attrLines, rv);

@@ -104,6 +104,16 @@ SAI_ATTRIBUTE_NAME(Fdb, Metadata)
 template <>
 struct IsSaiEntryStruct<SaiFdbTraits::FdbEntry> : public std::true_type {};
 
+struct SaiFdbFlushTraits {
+  struct Attributes {
+    using EnumType = sai_fdb_flush_attr_t;
+    using BridgePortId =
+        SaiAttribute<EnumType, SAI_FDB_FLUSH_ATTR_BRIDGE_PORT_ID, SaiObjectIdT>;
+    using EntryType =
+        SaiAttribute<EnumType, SAI_FDB_FLUSH_ATTR_ENTRY_TYPE, sai_int32_t>;
+  };
+};
+
 class FdbApi : public SaiApi<FdbApi> {
  public:
   static constexpr sai_api_t ApiType = SAI_API_FDB;
@@ -119,15 +129,12 @@ class FdbApi : public SaiApi<FdbApi> {
       sai_fdb_flush_entry_type_t entryType) const {
     std::vector<sai_attribute_t> attrs;
     if (bridgePortId) {
-      sai_attribute_t attr;
-      attr.id = SAI_FDB_FLUSH_ATTR_BRIDGE_PORT_ID;
-      attr.value.oid = *bridgePortId;
-      attrs.push_back(attr);
+      attrs.push_back(
+          *SaiFdbFlushTraits::Attributes::BridgePortId{*bridgePortId}
+               .saiAttr());
     }
-    sai_attribute_t typeAttr;
-    typeAttr.id = SAI_FDB_FLUSH_ATTR_ENTRY_TYPE;
-    typeAttr.value.s32 = entryType;
-    attrs.push_back(typeAttr);
+    attrs.push_back(
+        *SaiFdbFlushTraits::Attributes::EntryType{entryType}.saiAttr());
     auto g{SaiApiLock::getInstance()->lock()};
     auto rv = api_->flush_fdb_entries(switchId, attrs.size(), attrs.data());
     saiApiCheckError(rv, ApiType, "Failed to flush fdb entries");
