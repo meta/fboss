@@ -809,7 +809,9 @@ void fillHwPortStats(
   }
   hwPortStats.inDiscardsRaw_() = hwPortStats.inDiscardsRaw_().value() +
       hwPortStats.inDstNullDiscards_().value();
+#endif
 
+#if defined(CHENAB_SAI_SDK) || defined(TAJO_SDK)
   // PAUSE_RX_PKTS / PAUSE_TX_PKTS also count PFC frames; PFC_*_{RX,TX}_PKTS
   // hold the L3 per-priority counts. Subtract those so inPause_/outPause_ are
   // IEEE 802.3 classic pause only.
