@@ -1,0 +1,218 @@
+// Copyright (c) Meta Platforms, Inc. and affiliates.
+
+#include "fboss/agent/hw/sai/store/SaiStore.h"
+#include "fboss/agent/hw/sai/switch/SaiSwitchManager.h"
+#include "fboss/agent/hw/sai/switch/SaiTamManager.h"
+#include "fboss/agent/hw/sai/switch/tests/ManagerTestBase.h"
+
+using namespace facebook::fboss;
+
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1) && !defined(CHENAB_SAI_SDK)
+class CsigManagerTest : public ManagerTestBase {
+ public:
+  void SetUp() override {
+    setupStage = SetupStage::BLANK;
+    ManagerTestBase::SetUp();
+    // FakeManager starts at zero; SAI reserves that object ID for null.
+    auto fs = FakeSai::getInstance();
+    const auto nullTam = fs->tamManager.create(
+        std::vector<sai_object_id_t>{}, std::vector<sai_int32_t>{});
+    fs->tamManager.remove(nullTam);
+    const auto nullInt = fs->tamIntManager.create();
+    fs->tamIntManager.remove(nullInt);
+  }
+
+  SaiTamIntTraits::CreateAttributes profile(
+      sai_int32_t type,
+      sai_int32_t signal = SAI_CSIG_SIGNAL_TYPE_ABW) {
+    using A = SaiTamIntTraits::Attributes;
+    SaiTamIntTraits::CreateAttributes attrs;
+    std::get<A::Type>(attrs) = type;
+    std::get<A::DeviceId>(attrs) = 0;
+    std::get<A::IntPresenceType>(attrs) = SAI_TAM_INT_PRESENCE_TYPE_ETH_TYPE;
+    std::get<A::Inline>(attrs) = true;
+    std::get<A::EthTypeCodePoint>(attrs) =
+        type == SAI_TAM_INT_TYPE_CSIG_COMPACT ? 0x9900 : 0x9901;
+    std::get<A::CsigSignalType>(attrs) = signal;
+    if (signal == SAI_CSIG_SIGNAL_TYPE_ABW ||
+        signal == SAI_CSIG_SIGNAL_TYPE_ABWC) {
+      std::get<std::optional<A::BwTimeInterval>>(attrs) = 128;
+    }
+    if (type == SAI_TAM_INT_TYPE_CSIG_COMPACT) {
+      std::get<A::QuantBands>(attrs) = 1;
+      std::get<std::optional<A::QuantBandUint64RangeList>>(attrs) =
+          std::vector<sai_u64_range_t>{{0, 1000}};
+    } else {
+      std::get<A::QuantBands>(attrs) = 1048576;
+      std::get<std::optional<A::WideQuantBaseValue>>(attrs) = 0;
+      std::get<std::optional<A::WideQuantStepValue>>(attrs) = 1024;
+    }
+    std::get<std::optional<A::CsigDBit>>(attrs) = false;
+    return attrs;
+  }
+
+  std::vector<sai_object_id_t> bindings() {
+    return saiApiTable->switchApi().getAttribute(
+        saiManagerTable->switchManager().getSwitchSaiId(),
+        SaiSwitchTraits::Attributes::TamObject{});
+  }
+
+  void reloadWithRecoveredBindings() {
+    saiStore->exitForWarmBoot();
+    saiManagerTable->tamManager().gracefulExit();
+    saiStore->reload();
+  }
+};
+
+TEST_F(CsigManagerTest, CompactProfile) {
+  using A = SaiTamIntTraits::Attributes;
+  auto attrs = profile(SAI_TAM_INT_TYPE_CSIG_COMPACT);
+  std::get<std::optional<A::BwTimeInterval>>(attrs) = 256;
+  std::get<A::QuantBands>(attrs) = 2;
+  std::get<std::optional<A::QuantBandId>>(attrs) =
+      std::vector<sai_uint16_t>{7, 3};
+  std::get<std::optional<A::QuantBandUint64RangeList>>(attrs) =
+      std::vector<sai_u64_range_t>{
+          {0, 1ULL << 32}, {(1ULL << 32) + 1, 1ULL << 40}};
+  saiManagerTable->tamManager().programCsigProfiles({attrs}, true);
+  const auto* handle = saiManagerTable->tamManager().getCsigHandle();
+  ASSERT_NE(handle, nullptr);
+  ASSERT_EQ(handle->profiles.size(), 1);
+  ASSERT_NE(handle->tam, nullptr);
+  const auto id = handle->profiles[0]->adapterKey();
+  EXPECT_EQ(
+      saiApiTable->tamApi().getAttribute(id, A::Type{}),
+      SAI_TAM_INT_TYPE_CSIG_COMPACT);
+  EXPECT_EQ(
+      saiApiTable->tamApi().getAttribute(id, A::CsigSignalType{}),
+      SAI_CSIG_SIGNAL_TYPE_ABW);
+  EXPECT_EQ(saiApiTable->tamApi().getAttribute(id, A::BwTimeInterval{}), 256);
+  EXPECT_EQ(
+      saiApiTable->tamApi().getAttribute(id, A::QuantBandId{}),
+      (std::vector<sai_uint16_t>{7, 3}));
+  EXPECT_EQ(
+      saiApiTable->tamApi().getAttribute(id, A::QuantBandUint64RangeList{}),
+      (std::vector<sai_u64_range_t>{
+          {0, 1ULL << 32}, {(1ULL << 32) + 1, 1ULL << 40}}));
+  EXPECT_EQ(
+      bindings(), (std::vector<sai_object_id_t>{handle->tam->adapterKey()}));
+  EXPECT_EQ(
+      saiApiTable->tamApi().getAttribute(
+          handle->tam->adapterKey(), SaiTamTraits::Attributes::IntObjectList{}),
+      (std::vector<sai_object_id_t>{id}));
+}
+
+TEST_F(CsigManagerTest, EventAndCsigBindings) {
+  auto& manager = saiManagerTable->tamManager();
+  manager.programCsigProfiles({profile(SAI_TAM_INT_TYPE_CSIG_COMPACT)}, true);
+  const auto csigTam = manager.getCsigHandle()->tam;
+
+  SaiTamTraits::CreateAttributes attrs{
+      std::vector<sai_object_id_t>{100},
+      std::vector<sai_int32_t>{
+          SAI_TAM_BIND_POINT_TYPE_SWITCH, SAI_TAM_BIND_POINT_TYPE_PORT},
+      std::vector<sai_object_id_t>{}};
+  auto eventTam = saiStore->get<SaiTamTraits>().setObject(attrs, attrs);
+
+  folly::F14FastMap<std::string, std::unique_ptr<SaiEventTamHandle>>
+      eventTamHandles;
+  auto eventTamHandle = std::make_unique<SaiEventTamHandle>();
+  eventTamHandle->tam = eventTam;
+  eventTamHandles.emplace("event", std::move(eventTamHandle));
+  auto csigHandle = std::make_unique<SaiCsigTamHandle>();
+  csigHandle->tam = csigTam;
+
+  auto& switchManager = saiManagerTable->switchManager();
+  switchManager.setTamObject(
+      getSwitchTamIds(eventTamHandles, csigHandle.get()));
+  EXPECT_EQ(
+      bindings(),
+      (std::vector<sai_object_id_t>{
+          eventTam->adapterKey(), csigTam->adapterKey()}));
+
+  csigHandle.reset();
+  switchManager.setTamObject(
+      getSwitchTamIds(eventTamHandles, csigHandle.get()));
+  EXPECT_EQ(bindings(), (std::vector<sai_object_id_t>{eventTam->adapterKey()}));
+  switchManager.setTamObject({});
+}
+
+TEST_F(CsigManagerTest, WideProfileChangesAndPassthrough) {
+  using A = SaiTamIntTraits::Attributes;
+  auto attrs = profile(SAI_TAM_INT_TYPE_CSIG_WIDE, SAI_CSIG_SIGNAL_TYPE_DELAY);
+  std::get<std::optional<A::CsigDBit>>(attrs) = true;
+  auto& manager = saiManagerTable->tamManager();
+  manager.programCsigProfiles({attrs}, true);
+  const auto id = manager.getCsigHandle()->profiles[0]->adapterKey();
+  EXPECT_EQ(
+      saiApiTable->tamApi().getAttribute(id, A::Type{}),
+      SAI_TAM_INT_TYPE_CSIG_WIDE);
+  EXPECT_EQ(
+      saiApiTable->tamApi().getAttribute(id, A::CsigSignalType{}),
+      SAI_CSIG_SIGNAL_TYPE_DELAY);
+  EXPECT_EQ(saiApiTable->tamApi().getAttribute(id, A::QuantBands{}), 1048576);
+  EXPECT_EQ(saiApiTable->tamApi().getAttribute(id, A::WideQuantBaseValue{}), 0);
+  EXPECT_EQ(
+      saiApiTable->tamApi().getAttribute(id, A::WideQuantStepValue{}), 1024);
+  EXPECT_TRUE(saiApiTable->tamApi().getAttribute(id, A::CsigDBit{}));
+  std::get<std::optional<A::WideQuantStepValue>>(attrs) = 2048;
+  manager.programCsigProfiles({attrs}, true);
+  EXPECT_EQ(manager.getCsigHandle()->profiles[0]->adapterKey(), id);
+  EXPECT_EQ(
+      saiApiTable->tamApi().getAttribute(id, A::WideQuantStepValue{}), 2048);
+  manager.programCsigProfiles({attrs}, false);
+  EXPECT_EQ(manager.getCsigHandle()->tam, nullptr);
+  EXPECT_TRUE(bindings().empty());
+  manager.clearCsig();
+  EXPECT_EQ(manager.getCsigHandle(), nullptr);
+  EXPECT_TRUE(FakeSai::getInstance()->tamIntManager.map().empty());
+  EXPECT_TRUE(FakeSai::getInstance()->tamManager.map().empty());
+}
+
+TEST_F(CsigManagerTest, ReplacesSwitchTamBindings) {
+  auto& manager = saiManagerTable->tamManager();
+  manager.programCsigProfiles({profile(SAI_TAM_INT_TYPE_CSIG_COMPACT)}, true);
+  const auto csig = manager.getCsigHandle()->tam->adapterKey();
+  SaiTamTraits::CreateAttributes attrs{
+      std::vector<sai_object_id_t>{100},
+      std::vector<sai_int32_t>{SAI_TAM_BIND_POINT_TYPE_SWITCH},
+      std::vector<sai_object_id_t>{}};
+  const auto other = saiApiTable->tamApi().create<SaiTamTraits>(attrs, 0);
+  auto& switchManager = saiManagerTable->switchManager();
+  switchManager.setTamObject({other});
+  EXPECT_EQ(bindings(), (std::vector<sai_object_id_t>{other}));
+  switchManager.setTamObject({other, csig});
+  EXPECT_EQ(bindings(), (std::vector<sai_object_id_t>{other, csig}));
+  switchManager.setTamObject({});
+  EXPECT_TRUE(bindings().empty());
+  manager.clearCsig();
+  EXPECT_EQ(
+      saiApiTable->tamApi().getAttribute(
+          other, SaiTamTraits::Attributes::EventObjectList{}),
+      (std::vector<sai_object_id_t>{100}));
+  saiApiTable->tamApi().remove(other);
+}
+
+TEST_F(CsigManagerTest, ReplacesRecoveredBindingAfterProfileChange) {
+  auto& manager = saiManagerTable->tamManager();
+  manager.programCsigProfiles({profile(SAI_TAM_INT_TYPE_CSIG_COMPACT)}, true);
+  const auto oldTam = manager.getCsigHandle()->tam->adapterKey();
+  reloadWithRecoveredBindings();
+
+  manager.programCsigProfiles(
+      {profile(SAI_TAM_INT_TYPE_CSIG_WIDE, SAI_CSIG_SIGNAL_TYPE_DELAY)}, true);
+
+  const auto newTam = manager.getCsigHandle()->tam->adapterKey();
+  EXPECT_NE(newTam, oldTam);
+  EXPECT_EQ(bindings(), (std::vector<sai_object_id_t>{newTam}));
+}
+
+TEST_F(CsigManagerTest, ClearsRecoveredBinding) {
+  auto& manager = saiManagerTable->tamManager();
+  manager.programCsigProfiles({profile(SAI_TAM_INT_TYPE_CSIG_COMPACT)}, true);
+  reloadWithRecoveredBindings();
+  manager.clearCsig();
+  EXPECT_TRUE(bindings().empty());
+}
+
+#endif

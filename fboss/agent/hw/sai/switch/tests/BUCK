@@ -24,6 +24,11 @@ cpp_unittest(
 
 manager_test_libs()
 
+switch_manager_unittest(
+    name = "csig_manager_test",
+    srcs = ["CsigManagerTest.cpp"],
+)
+
 phy_manager_test_libs()
 
 switch_manager_unittest(
