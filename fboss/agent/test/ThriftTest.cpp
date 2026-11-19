@@ -4580,6 +4580,24 @@ class NamedNextHopGroupThriftTest : public ::testing::Test {
     FLAGS_enable_nexthop_id_manager = false;
   }
 
+  // Requires FLAGS_enable_acl_table_group.
+  void applyPbrAclTableConfig() {
+    cfg::AclTable pbrTable;
+    pbrTable.name() = cfg::switch_config_constants::DEFAULT_PBR_ACL_TABLE();
+    pbrTable.priority() = 1;
+    pbrTable.actionTypes() = {
+        cfg::AclTableActionType::COUNTER, cfg::AclTableActionType::REDIRECT};
+    pbrTable.qualifiers() = {
+        cfg::AclTableQualifier::TC, cfg::AclTableQualifier::NEXT_HOP_GROUP_ID};
+    cfg::AclTableGroup tableGroup;
+    tableGroup.name() = "ingress-group";
+    tableGroup.stage() = cfg::AclStage::INGRESS;
+    tableGroup.aclTables() = {pbrTable};
+    auto config = testConfigA();
+    config.aclTableGroups() = {tableGroup};
+    sw_->applyConfig("add PBR ACL table", config);
+  }
+
   SwSwitch* sw_;
   std::unique_ptr<HwTestHandle> handle_;
 };
@@ -5542,20 +5560,7 @@ TEST_F(NamedNextHopGroupThriftTest, pbrRedirectGroupIsProgrammed) {
     FLAGS_enable_acl_table_group = false;
   };
   FLAGS_enable_acl_table_group = true;
-  cfg::AclTable pbrTable;
-  pbrTable.name() = cfg::switch_config_constants::DEFAULT_PBR_ACL_TABLE();
-  pbrTable.priority() = 1;
-  pbrTable.actionTypes() = {
-      cfg::AclTableActionType::COUNTER, cfg::AclTableActionType::REDIRECT};
-  pbrTable.qualifiers() = {
-      cfg::AclTableQualifier::TC, cfg::AclTableQualifier::NEXT_HOP_GROUP_ID};
-  cfg::AclTableGroup tableGroup;
-  tableGroup.name() = "ingress-group";
-  tableGroup.stage() = cfg::AclStage::INGRESS;
-  tableGroup.aclTables() = {pbrTable};
-  auto config = testConfigA();
-  config.aclTableGroups() = {tableGroup};
-  sw_->applyConfig("add PBR ACL table", config);
+  applyPbrAclTableConfig();
 
   ThriftHandler handler(sw_);
   auto groups = std::make_unique<std::vector<NextHopGroup>>();
@@ -5731,6 +5736,42 @@ TEST_F(NamedNextHopGroupThriftTest, pbrEntryMatchesRouteOfWeightedGroup) {
   ASSERT_TRUE(routeNormalizedId.has_value());
   EXPECT_EQ(
       pbrEntry->getNextHopGroupId(), static_cast<int64_t>(*routeNormalizedId));
+}
+
+TEST_F(NamedNextHopGroupThriftTest, getPoliciesReturnsNamedNextHopGroups) {
+  SCOPE_EXIT {
+    FLAGS_enable_acl_table_group = false;
+  };
+  FLAGS_enable_acl_table_group = true;
+  applyPbrAclTableConfig();
+
+  ThriftHandler handler(sw_);
+  auto groups = std::make_unique<std::vector<NextHopGroup>>();
+  groups->push_back(makeGroup("defaultNhg", {"2401:db00:2110:3001::2"}));
+  groups->push_back(makeGroup("class1Nhg", {"2401:db00:2110:3001::3"}));
+  groups->push_back(makeGroup("class2Nhg", {"2401:db00:2110:3001::4"}));
+  handler.addOrUpdateNamedNextHopGroups(std::move(groups));
+  const std::map<ForwardingClass, std::string> class2Nhg = {
+      {ForwardingClass::CLASS_1, "class1Nhg"},
+      {ForwardingClass::CLASS_2, "class2Nhg"},
+  };
+  handler.addPolicies(
+      onePolicy(makeCbfPolicy("pol1", "defaultNhg", class2Nhg)));
+
+  auto expectPol1 = [&](const std::vector<Policy>& policies) {
+    ASSERT_EQ(policies.size(), 1);
+    const auto& cbf = *policies[0].cbfPolicy();
+    EXPECT_EQ(*cbf.name(), "pol1");
+    EXPECT_EQ(*cbf.defaultNexthopGroup(), "defaultNhg");
+    EXPECT_EQ(*cbf.class2NamedNextHopGroup(), class2Nhg);
+  };
+  std::vector<Policy> byName;
+  handler.getPolicies(
+      byName, std::make_unique<std::vector<std::string>>(1, "pol1"));
+  expectPol1(byName);
+  std::vector<Policy> all;
+  handler.getAllPolicies(all);
+  expectPol1(all);
 }
 
 TEST_F(NamedNextHopGroupThriftTest, removeNextHopGroup) {
@@ -6259,6 +6300,45 @@ TEST_F(ThriftTest, routeCounterUpdatedWhenNamedNhgChanges) {
       RouterID(0), IPAddress::createNetwork("2401::70/128"), state);
   ASSERT_NE(nullptr, rt);
   EXPECT_EQ(rt->getForwardInfo().getCounterID(), "nhg_two");
+}
+
+TEST_F(NamedNextHopGroupThriftTest, addPoliciesRejectsEmptyNextHopGroupName) {
+  ThriftHandler handler(sw_);
+  auto groups = std::make_unique<std::vector<NextHopGroup>>();
+  groups->push_back(makeGroup("defaultNhg", {"2401:db00:2110:3001::2"}));
+  handler.addOrUpdateNamedNextHopGroups(std::move(groups));
+
+  EXPECT_THAT(
+      [&] {
+        handler.addPolicies(onePolicy(makeCbfPolicy(
+            "pol1", "defaultNhg", {{ForwardingClass::CLASS_1, ""}})));
+      },
+      ::testing::ThrowsMessage<FbossError>(
+          ::testing::HasSubstr("has no next-hop group name")));
+}
+
+TEST_F(NamedNextHopGroupThriftTest, addPoliciesRejectsNonExistentNamedNhg) {
+  SCOPE_EXIT {
+    FLAGS_enable_acl_table_group = false;
+  };
+  FLAGS_enable_acl_table_group = true;
+  applyPbrAclTableConfig();
+
+  ThriftHandler handler(sw_);
+  auto groups = std::make_unique<std::vector<NextHopGroup>>();
+  groups->push_back(makeGroup("defaultNhg", {"2401:db00:2110:3001::2"}));
+  handler.addOrUpdateNamedNextHopGroups(std::move(groups));
+
+  EXPECT_THAT(
+      [&] {
+        handler.addPolicies(onePolicy(makeCbfPolicy(
+            "pol1", "defaultNhg", {{ForwardingClass::CLASS_1, "noSuchNhg"}})));
+      },
+      ::testing::ThrowsMessage<FbossError>(::testing::HasSubstr(
+          "references non-existent named next-hop group 'noSuchNhg'")));
+  std::vector<Policy> all;
+  handler.getAllPolicies(all);
+  EXPECT_TRUE(all.empty());
 }
 
 TEST_F(NamedNextHopGroupThriftTest, addPoliciesRejectsTheTemporaryEntryPrefix) {

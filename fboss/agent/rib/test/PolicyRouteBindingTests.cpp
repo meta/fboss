@@ -264,4 +264,31 @@ TEST_F(PolicyRouteBindingTest, addPoliciesRejectsBatchBeforeStoringAny) {
   EXPECT_EQ(manager->getPolicy("badPolicy"), nullptr);
 }
 
+TEST_F(PolicyRouteBindingTest, addPoliciesRejectsNonExistentRedirectNhg) {
+  ClassBasedPolicy policy;
+  policy.name() = "newPolicy";
+  policy.defaultNexthopGroup() = kPolicyDefaultNhg;
+  policy.class2NamedNextHopGroup()[ForwardingClass::CLASS_1] = "noSuchNhg";
+
+  auto stateBefore = switchState_;
+  EXPECT_THROW(
+      rib_.addOrUpdatePolicies({policy}, nextHopIdStateUpdate(&switchState_)),
+      FbossError);
+  EXPECT_EQ(rib_.getNextHopIDManagerCopy()->getPolicy("newPolicy"), nullptr);
+  EXPECT_EQ(switchState_, stateBefore);
+}
+
+TEST_F(PolicyRouteBindingTest, addPoliciesRejectsNonExistentDefaultNhg) {
+  ClassBasedPolicy policy;
+  policy.name() = "newPolicy";
+  policy.defaultNexthopGroup() = "noSuchNhg";
+
+  auto stateBefore = switchState_;
+  EXPECT_THROW(
+      rib_.addOrUpdatePolicies({policy}, nextHopIdStateUpdate(&switchState_)),
+      FbossError);
+  EXPECT_EQ(rib_.getNextHopIDManagerCopy()->getPolicy("newPolicy"), nullptr);
+  EXPECT_EQ(switchState_, stateBefore);
+}
+
 } // namespace facebook::fboss
