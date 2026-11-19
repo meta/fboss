@@ -45,6 +45,11 @@ DEFINE_bool(
     false,
     "Flag to explicit control to module values overridden for specific vendors");
 
+DEFINE_int32(
+    max_datapath_state_update_time_us,
+    10000000,
+    "Maximum time in microseconds to wait for datapath initialization or de-initialization");
+
 namespace {
 
 // Lower Page 00h register offsets used to switch the active bank/page before a
@@ -56,7 +61,6 @@ constexpr int kUsecBetweenPowerModeFlap = 100000;
 constexpr int kUsecBetweenLaneInit = 10000; // 10ms
 constexpr int kUsecDiagSelectLatchWaitPrbs = 350000; // 350 ms
 constexpr int kUsecAfterAppProgramming = 500000;
-constexpr int kUsecDatapathStateUpdateTime = 10000000; // 10 seconds
 constexpr int kUsecDatapathStatePollTime = 500000; // 500 ms
 // Application Advertising: ApSel 1-8 in Lower Page 00h, 9-15 in Page 01h
 constexpr uint8_t kNumLowerPageApplications = 8;
@@ -5548,10 +5552,11 @@ uint64_t CmisModule::getExpectedDatapathDelayUsec(bool init) {
     }
   } else {
     QSFP_LOG(INFO, this) << fmt::format(
-        "Default max Init/DeInit time {:d} uSec", kUsecDatapathStateUpdateTime);
+        "Default max Init/DeInit time {:d} uSec",
+        FLAGS_max_datapath_state_update_time_us);
   }
 
-  return kUsecDatapathStateUpdateTime;
+  return FLAGS_max_datapath_state_update_time_us;
 }
 
 uint64_t CmisModule::maxDatapathStatePolls(bool init) {
@@ -5855,7 +5860,7 @@ void CmisModule::resetDataPathWithFunc(
     if (retries >= maxRetriesDeInit) {
       QSFP_LOG(ERR, this) << fmt::format(
           "Datapath could not deactivate even after waiting {:d} uSec",
-          kUsecDatapathStateUpdateTime);
+          FLAGS_max_datapath_state_update_time_us);
     }
 
     // Call the afterDataPathDeinitFunc() after deactivate all lanes
@@ -5883,7 +5888,7 @@ void CmisModule::resetDataPathWithFunc(
     if (retries >= maxRetriesInit) {
       QSFP_LOG(ERR, this) << fmt::format(
           "Datapath didn't come out of deactivated state even after waiting {:d} uSec",
-          kUsecDatapathStateUpdateTime);
+          FLAGS_max_datapath_state_update_time_us);
     } else {
       datapathInitDoneInProgramMask_[bank] |= initMask;
     }

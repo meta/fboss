@@ -1214,7 +1214,9 @@ class CmisModule : public QsfpModule {
   static double readS16(const uint8_t* p, int off);
 
   bool isMultiPortOptics() {
-    return getIdentifier() == TransceiverModuleIdentifier::OSFP;
+    const auto identifier = getIdentifier();
+    return identifier == TransceiverModuleIdentifier::OSFP ||
+        identifier == TransceiverModuleIdentifier::CPO;
   }
 
   // Utility functions for power state management
