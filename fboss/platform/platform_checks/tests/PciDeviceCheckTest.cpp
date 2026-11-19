@@ -148,6 +148,8 @@ TEST_F(PciDeviceCheckTest, AllDevicesPresent) {
 
   EXPECT_EQ(result.checkType(), CheckType::PCI_DEVICE_CHECK);
   EXPECT_EQ(result.status(), CheckStatus::OK);
+  EXPECT_THAT(*result.details(), HasSubstr(": present"));
+  EXPECT_THAT(*result.details(), Not(HasSubstr(": missing")));
 }
 
 TEST_F(PciDeviceCheckTest, MissingDevice) {

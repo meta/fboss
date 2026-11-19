@@ -13,21 +13,28 @@
 #include <stdexcept>
 
 #include <folly/logging/xlog.h>
+#include "fboss/platform/platform_checks/CommandLog.h"
 #include "fboss/platform/platform_checks/HostEeprom.h"
 #include "fboss/platform/weutil/ConfigUtils.h"
 
 namespace facebook::fboss::platform::platform_checks {
 
 CheckResult MacAddressCheck::run() {
+  CommandLog log;
   try {
     auto ifaceMac = getMacAddress(interfaceName_);
+    log.note(interfaceName_ + " MAC: " + ifaceMac.toString());
     if (ifaceMac == folly::MacAddress::ZERO) {
-      return makeError(interfaceName_ + " interface has zero MAC address");
+      return log.attachTo(
+          makeError(interfaceName_ + " interface has zero MAC address"));
     }
 
     auto eepromMacList = getEepromMacAddressList();
     if (eepromMacList.empty()) {
-      return makeError("No EEPROM MAC address found");
+      return log.attachTo(makeError("No EEPROM MAC address found"));
+    }
+    for (const auto& [eepromName, eepromMac] : eepromMacList) {
+      log.note(eepromName + " MAC: " + eepromMac.toString());
     }
 
     for (const auto& [eepromName, eepromMac] : eepromMacList) {
@@ -35,14 +42,15 @@ CheckResult MacAddressCheck::run() {
         std::string errorMsg = "MAC address mismatch: " + interfaceName_ + "=" +
             ifaceMac.toString() + " " + eepromName + "=" + eepromMac.toString();
         std::string remediationMsg = "RMA device to correct MAC address";
-        return makeProblem(
-            errorMsg, RemediationType::RMA_REQUIRED, remediationMsg);
+        return log.attachTo(makeProblem(
+            errorMsg, RemediationType::RMA_REQUIRED, remediationMsg));
       }
     }
   } catch (const std::exception& ex) {
-    return makeError("Unexpected error: " + std::string(ex.what()));
+    return log.attachTo(
+        makeError("Unexpected error: " + std::string(ex.what())));
   }
-  return makeOK();
+  return log.attachTo(makeOK());
 }
 
 folly::MacAddress MacAddressCheck::getMacAddress(const std::string& interface) {

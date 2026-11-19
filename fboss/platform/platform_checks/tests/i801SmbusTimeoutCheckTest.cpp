@@ -97,6 +97,8 @@ TEST_F(i801SmbusTimeoutCheckTest, TimeoutDetected) {
 
   EXPECT_EQ(result.checkType(), CheckType::I801_SMBUS_TIMEOUT_CHECK);
   EXPECT_EQ(result.status(), CheckStatus::PROBLEM);
+  EXPECT_THAT(*result.details(), HasSubstr("$ hexdump -n 16"));
+  EXPECT_THAT(*result.details(), HasSubstr("Connection timed out"));
   EXPECT_TRUE(result.errorMessage().has_value());
   EXPECT_TRUE(
       result.errorMessage()->find("MCB EEPROM read timed out") !=

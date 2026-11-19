@@ -6,7 +6,10 @@
 #include <iomanip>
 #include <sstream>
 
+#include <fmt/format.h>
 #include <re2/re2.h>
+
+#include "fboss/platform/platform_checks/CommandLog.h"
 
 namespace facebook::fboss::platform::platform_checks {
 
@@ -111,6 +114,7 @@ CheckResult RecentManualRebootCheck::run() {
   const std::string pattern = "System is rebooting";
   const std::string reason = "System was rebooted with `reboot` command";
 
+  CommandLog log;
   auto secureLog = host().readFile(VAR_SECURE_LOGFILE);
   if (!secureLog) {
     // Not every system logs to /var/log/secure; failing to read it is
@@ -120,24 +124,35 @@ CheckResult RecentManualRebootCheck::run() {
           std::string("Failed to read ") + VAR_SECURE_LOGFILE + " on " +
           host().name());
     }
-    return makeOK();
+    log.note(std::string(VAR_SECURE_LOGFILE) + " does not exist");
+    return log.attachTo(makeOK());
   }
   auto rebootLogs = power_reset_utils::grepLines(*secureLog, pattern);
+  // Only the matching lines: the rest of the log has unrelated logins.
+  log.note(
+      fmt::format(
+          "{} line(s) matching \"{}\" in {}:",
+          rebootLogs.size(),
+          pattern,
+          VAR_SECURE_LOGFILE));
+  for (const auto& line : rebootLogs) {
+    log.note(line);
+  }
   auto filteredLogs = power_reset_utils::filterLogsByDate(
       rebootLogs, VAR_SECURE_DATE_FORMAT, std::chrono::hours(24)); // 1 day
 
   if (filteredLogs.empty()) {
-    return makeOK();
+    return log.attachTo(makeOK());
   }
 
   std::ostringstream desc;
   desc << "\n" << reason << "\n";
-  for (const auto& log : filteredLogs) {
-    desc << " " << log << "\n";
+  for (const auto& line : filteredLogs) {
+    desc << " " << line << "\n";
   }
 
-  return makeProblem(
-      desc.str(), RemediationType::NONE, "Monitor for additional reboots");
+  return log.attachTo(makeProblem(
+      desc.str(), RemediationType::NONE, "Monitor for additional reboots"));
 }
 
 // ============================================================================
@@ -149,15 +164,20 @@ CheckResult RecentKernelPanicCheck::run() {
   auto cutoffTime =
       std::chrono::system_clock::now() - std::chrono::hours(24 * 7); // 7 days
 
+  CommandLog log;
   // Check if crash directory exists
   if (!host().exists(CRASH_DIR)) {
-    return makeOK();
+    log.note(std::string(CRASH_DIR) + " does not exist");
+    return log.attachTo(makeOK());
   }
 
   // Iterate through crash directory
   try {
-    for (const auto& path : host().listDirectory(CRASH_DIR)) {
+    const auto entries = host().listDirectory(CRASH_DIR);
+    log.note(fmt::format("{} entries in {}:", entries.size(), CRASH_DIR));
+    for (const auto& path : entries) {
       std::string entryName = path.filename().string();
+      log.note(entryName);
 
       // Extract just the timestamp portion (before timezone suffix like PST)
       // Format: "2017-10-19T01:15:29PST" -> "2017-10-19T01:15:29"
@@ -171,12 +191,12 @@ CheckResult RecentKernelPanicCheck::run() {
       }
     }
   } catch (const std::exception& e) {
-    return makeError(
-        std::string("Failed to read crash directory: ") + e.what());
+    return log.attachTo(
+        makeError(std::string("Failed to read crash directory: ") + e.what()));
   }
 
   if (recentPanics.empty()) {
-    return makeOK();
+    return log.attachTo(makeOK());
   }
 
   std::string reason =
@@ -187,10 +207,10 @@ CheckResult RecentKernelPanicCheck::run() {
     desc << " " << panic << "\n";
   }
 
-  return makeProblem(
+  return log.attachTo(makeProblem(
       desc.str(),
       RemediationType::MANUAL_REMEDIATION,
-      "Investigate the kernel panics by looking at the logs in the /var/crash/processed directory.");
+      "Investigate the kernel panics by looking at the logs in the /var/crash/processed directory."));
 }
 
 // ============================================================================
@@ -199,11 +219,12 @@ CheckResult RecentKernelPanicCheck::run() {
 
 CheckResult WatchdogDidNotStopCheck::run() {
   // Get dmesg output with timestamps
-  auto dmesg = host().run("dmesg -T");
+  CommandLog log;
+  auto dmesg = log.run(host(), "dmesg -T");
 
   if (!dmesg.ok()) {
     // Unable to read dmesg, skip this check
-    return makeError("Unable to read dmesg output");
+    return log.attachTo(makeError("Unable to read dmesg output"));
   }
 
   // Split into lines
@@ -232,7 +253,7 @@ CheckResult WatchdogDidNotStopCheck::run() {
 
   size_t logCount = filteredLogs.size();
   if (logCount == 0) {
-    return makeOK();
+    return log.attachTo(makeOK());
   }
 
   if (logCount <= WATCHDOG_LOG_WARNING_LIMIT) {
@@ -241,18 +262,18 @@ CheckResult WatchdogDidNotStopCheck::run() {
          << " time(s) in the last 3 hours. "
          << "This usually indicates someone manually kicked the watchdog. "
          << "Continue monitoring the system to see if the issue persists.";
-    return makeProblem(
-        desc.str(), RemediationType::NONE, "Continue monitoring the system");
+    return log.attachTo(makeProblem(
+        desc.str(), RemediationType::NONE, "Continue monitoring the system"));
   }
 
-  return makeProblem(
+  return log.attachTo(makeProblem(
       "Watchdog did not stop. This could indicate a process managing watchdog "
       "(like fan_service in fboss switch) exited without closing the watchdog in the "
       "proper way (using MAGICCLOSE feature). If no one is kicking the watchdog "
       "before the watchdog timer counts down, it can start its corrective "
       "action (like running fan at high speed for fan_watchdog).",
       RemediationType::MANUAL_REMEDIATION,
-      "Investigate watchdog management processes and ensure proper shutdown");
+      "Investigate watchdog management processes and ensure proper shutdown"));
 }
 
 } // namespace facebook::fboss::platform::platform_checks
