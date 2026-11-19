@@ -757,8 +757,7 @@
         139,
         146,
         144,
-        135,
-        147
+        135
     ],
     "tomahawkultra1": [
         2,
@@ -1639,8 +1638,7 @@
         "MULTI_VRF",
         "ACL_COUNTERS_EXTENDED_LABEL",
         "MIXED_IP_SRV6_NEXT_HOP_GROUPS",
-        "PBR_ACL",
-        "STATIC_FDB_EVICT_DYNAMIC"
+        "PBR_ACL"
     ],
     "tomahawkultra1": [
         "CPU_RX_TX",
