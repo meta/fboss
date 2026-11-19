@@ -227,6 +227,7 @@ cpp_library(
         "AgentConfigSetupTest.cpp",
         "AgentConfigVerifyQosTests.cpp",
         "AgentCoppTests.cpp",
+        "AgentCsigPassthroughTests.cpp",
         "AgentCsigTests.cpp",
         "AgentDeepPacketInspectionTests.cpp",
         "AgentDiagShellStressTests.cpp",
