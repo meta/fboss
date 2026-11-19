@@ -1946,21 +1946,27 @@ bool RibRouteTables::backfillNextHopIds(
         clientUpdates;
     for (const auto& [clientId, entry] :
          std::as_const(route->getEntryForClients())) {
-      if (entry->getClientNextHopSetID().has_value()) {
-        continue; // already has an ID
-      }
       const auto& nhopSet = entry->getNextHopSet();
       if (nhopSet.empty()) {
-        continue; // DROP / TO_CPU; no nexthops to track
+        continue; // DROP / TO_CPU, or inline already dropped
       }
-      auto allocResult = manager.getOrAllocRouteNextHopSetID(nhopSet);
-      std::optional<NextHopSetID> newId(
-          allocResult.nextHopIdSetIter->second.id);
+      bool hasId = entry->getClientNextHopSetID().has_value();
+      if (hasId && !FLAGS_drop_inline_nexthops_with_id) {
+        continue;
+      }
       auto newEntry = entry->clone();
-      newEntry->setClientNextHopSetID(newId);
-      XLOG(DBG3) << "[NextHop ID Manager] backfilling clientNextHopSetID="
-                 << *newId << " for client=" << static_cast<int>(clientId)
-                 << " route=" << route->str();
+      if (!hasId) {
+        auto allocResult = manager.getOrAllocRouteNextHopSetID(nhopSet);
+        std::optional<NextHopSetID> newId(
+            allocResult.nextHopIdSetIter->second.id);
+        newEntry->setClientNextHopSetID(newId);
+        XLOG(DBG3) << "[NextHop ID Manager] backfilling clientNextHopSetID="
+                   << *newId << " for client=" << static_cast<int>(clientId)
+                   << " route=" << route->str();
+      }
+      if (FLAGS_drop_inline_nexthops_with_id) {
+        newEntry->clearInlineNextHops();
+      }
       clientUpdates.emplace_back(clientId, std::move(newEntry));
     }
 
@@ -1993,10 +1999,14 @@ bool RibRouteTables::backfillNextHopIds(
             << *newNormalizedId << " route=" << route->str();
       }
       if (newResolvedId != fwd.getResolvedNextHopSetID() ||
-          newNormalizedId != fwd.getNormalizedResolvedNextHopSetID()) {
+          newNormalizedId != fwd.getNormalizedResolvedNextHopSetID() ||
+          FLAGS_drop_inline_nexthops_with_id) {
         fwdReplacement = fwd.clone();
         fwdReplacement->setResolvedNextHopSetID(newResolvedId);
         fwdReplacement->setNormalizedResolvedNextHopSetID(newNormalizedId);
+        if (FLAGS_drop_inline_nexthops_with_id) {
+          fwdReplacement->clearInlineNextHops();
+        }
       }
     }
 

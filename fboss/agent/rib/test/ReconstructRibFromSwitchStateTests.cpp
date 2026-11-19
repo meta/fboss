@@ -1,6 +1,7 @@
 // (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
 
 #include <gtest/gtest.h>
+#include "fboss/agent/FibHelpers.h"
 #include "fboss/agent/SwitchIdScopeResolver.h"
 #include "fboss/agent/rib/FibUpdateHelpers.h"
 #include "fboss/agent/rib/NetworkToRouteMap.h"
@@ -27,6 +28,7 @@ using namespace facebook::fboss;
 
 DECLARE_bool(enable_nexthop_id_manager);
 DECLARE_bool(resolve_nexthops_from_id);
+DECLARE_bool(drop_inline_nexthops_with_id);
 
 namespace {
 
@@ -1146,4 +1148,109 @@ TEST(WarmbootNextHopIdSync, BackfilledNextHopIdsSyncedIntoState) {
   ASSERT_NE(syncedRoute, nullptr);
   EXPECT_TRUE(
       syncedRoute->getForwardInfo().getResolvedNextHopSetID().has_value());
+}
+
+// --- Dropping inline nexthops at warm boot ---
+
+// State written by an agent that kept inline nexthops: warm boot with the drop
+// flag on clears every fwd and per-client inline list, backfilling ids first
+// where missing, and leaves DROP / TO_CPU routes alone. A second warm boot from
+// the result changes nothing.
+TEST(WarmbootDropInlineNextHops, InlineDroppedAndSyncedIntoState) {
+  gflags::FlagSaver saver;
+  FLAGS_enable_nexthop_id_manager = true;
+  FLAGS_resolve_nexthops_from_id = true;
+  FLAGS_drop_inline_nexthops_with_id = true;
+  auto idToNhopMap = std::make_shared<IdToNextHopMap>();
+  idToNhopMap->addNextHop(1, mkNh("10.0.0.1").toThrift());
+  idToNhopMap->addNextHop(2, mkNh("10.0.0.2").toThrift());
+  auto idToNhopIdSetMap = std::make_shared<IdToNextHopIdSetMap>();
+  idToNhopIdSetMap->addNextHopIdSet(kOff + 1, {1, 2});
+  RouteNextHopSet nhops{mkNh("10.0.0.1"), mkNh("10.0.0.2")};
+  auto fibsMap = makeFibsMap();
+  auto container = fibsMap->getNodeIf(RouterID(0));
+  addRouteOnSet(
+      container->getFibV4(),
+      makePrefixV4("10.1.0.0/24"),
+      NextHopSetID(kOff + 1));
+  addRouteOnSet(
+      container->getFibV6(),
+      makePrefixV6("2001:db8::/32"),
+      NextHopSetID(kOff + 1));
+  // Written with the NextHop id manager off: no ids yet.
+  auto noIdRoute = std::make_shared<RouteV4>(
+      RouteV4::makeThrift(makePrefixV4("10.2.0.0/24")));
+  noIdRoute->update(
+      ClientID::BGPD, RouteNextHopEntry(nhops, AdminDistance::EBGP));
+  noIdRoute->setResolved(RouteNextHopEntry(nhops, AdminDistance::EBGP));
+  noIdRoute->publish();
+  container->getFibV4()->addNode(noIdRoute);
+  std::vector<std::string> noNhopPrefixes{"10.3.0.0/24", "10.4.0.0/24"};
+  for (const auto& [prefix, action] :
+       {std::make_pair(noNhopPrefixes[0], RouteForwardAction::DROP),
+        std::make_pair(noNhopPrefixes[1], RouteForwardAction::TO_CPU)}) {
+    auto route =
+        std::make_shared<RouteV4>(RouteV4::makeThrift(makePrefixV4(prefix)));
+    route->update(
+        ClientID::STATIC_ROUTE,
+        RouteNextHopEntry(action, AdminDistance::STATIC_ROUTE));
+    route->setResolved(RouteNextHopEntry(action, AdminDistance::STATIC_ROUTE));
+    route->publish();
+    container->getFibV4()->addNode(route);
+  }
+
+  auto [rib, state] = warmboot(fibsMap, idToNhopMap, idToNhopIdSetMap);
+  ASSERT_TRUE(rib->nextHopIdsChangedAtWarmboot());
+  auto newState = applyRib(*rib, state);
+  expectStateMatchesRib(*rib, newState);
+  forEachRoute(newState, [&](const auto& route) {
+    const auto& fwd = route->getForwardInfo();
+    EXPECT_TRUE(fwd.getNextHopSet().empty()) << route->str();
+    if (fwd.getAction() != RouteForwardAction::NEXTHOPS) {
+      return;
+    }
+    EXPECT_EQ(fwd.getResolvedNextHopSetID(), NextHopSetID(kOff + 1))
+        << route->str();
+    EXPECT_EQ(getNextHops(newState, fwd), nhops) << route->str();
+    auto client = route->getEntryForClient(ClientID::BGPD);
+    ASSERT_NE(client, nullptr) << route->str();
+    EXPECT_TRUE(client->getNextHopSet().empty()) << route->str();
+    EXPECT_EQ(client->getClientNextHopSetID(), NextHopSetID(kOff + 1))
+        << route->str();
+  });
+  for (const auto& prefix : noNhopPrefixes) {
+    EXPECT_EQ(
+        fibContainer(newState)->getFibV4()->getRouteIf(makePrefixV4(prefix)),
+        fibContainer(state)->getFibV4()->getRouteIf(makePrefixV4(prefix)));
+  }
+
+  const auto& fibInfo = newState->getFibsInfoMap()->cbegin()->second;
+  auto [rib2, state2] = warmboot(
+      fibInfo->getfibsMap(),
+      fibInfo->getIdToNextHopMap(),
+      fibInfo->getIdToNextHopIdSetMap());
+  EXPECT_FALSE(rib2->nextHopIdsChangedAtWarmboot());
+  EXPECT_EQ(applyRib(*rib2, state2), state2);
+}
+
+// Flag off: warm boot keeps inline nexthops and changes nothing.
+TEST(WarmbootDropInlineNextHops, FlagOffKeepsInline) {
+  gflags::FlagSaver saver;
+  FLAGS_enable_nexthop_id_manager = true;
+  FLAGS_resolve_nexthops_from_id = true;
+  FLAGS_drop_inline_nexthops_with_id = false;
+  auto idToNhopMap = std::make_shared<IdToNextHopMap>();
+  idToNhopMap->addNextHop(1, mkNh("10.0.0.1").toThrift());
+  idToNhopMap->addNextHop(2, mkNh("10.0.0.2").toThrift());
+  auto idToNhopIdSetMap = std::make_shared<IdToNextHopIdSetMap>();
+  idToNhopIdSetMap->addNextHopIdSet(kOff + 1, {1, 2});
+  auto fibsMap = makeFibsMap();
+  addRouteOnSet(
+      fibsMap->getNodeIf(RouterID(0))->getFibV4(),
+      makePrefixV4("10.1.0.0/24"),
+      NextHopSetID(kOff + 1));
+
+  auto [rib, state] = warmboot(fibsMap, idToNhopMap, idToNhopIdSetMap);
+  EXPECT_FALSE(rib->nextHopIdsChangedAtWarmboot());
+  EXPECT_EQ(applyRib(*rib, state), state);
 }
