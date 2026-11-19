@@ -28,6 +28,7 @@ class RouterToRouterSrv6LspTest : public ::testing::Test {
   void SetUp() override {
     FLAGS_enable_nexthop_id_manager = true;
     FLAGS_resolve_nexthops_from_id = true;
+    FLAGS_srv6 = true;
     auto config = testConfigA();
     handle_ = createTestHandle(&config);
     sw_ = handle_->getSw();
@@ -241,8 +242,45 @@ TEST_F(RouterToRouterSrv6LspTest, bgpResolvesToSubsetOfSrv6NextHops) {
   verifyBgpRoute(true, routerAddressIndexes);
 }
 
+TEST_F(RouterToRouterSrv6LspTest, withdrawalOutsideBgpNextHopsSucceeds) {
+  FLAGS_allow_mixed_ip_srv6_nhop_groups = false;
+  const std::vector<int> routerAddressIndexes{0, 1, 2};
+  addTeAgentRoutes();
+  addBgpRoute(routerAddressIndexes);
+  verifyTeAgentRoutes();
+  verifyBgpRoute(true, routerAddressIndexes);
+
+  const auto stateBeforeWithdrawal = sw_->getState();
+  auto bgpRouteBefore = findRoute<folly::IPAddressV6>(
+      RouterID(0), bgpPrefix_, stateBeforeWithdrawal);
+  ASSERT_NE(bgpRouteBefore, nullptr);
+  const auto counterIdBefore = bgpRouteBefore->getForwardInfo().getCounterID();
+
+  ASSERT_NO_THROW(deleteTeAgentRouteAndNhg(3));
+  verifyTeAgentRoutes(routerAddressIndexes);
+  verifyBgpRoute(true, routerAddressIndexes);
+
+  auto state = sw_->getState();
+  auto fourthRoute = findRoute<folly::IPAddressV6>(
+      RouterID(0), {routerAddresses_[3], 128}, state);
+  ASSERT_NE(fourthRoute, nullptr);
+  ASSERT_TRUE(fourthRoute->isResolved());
+  EXPECT_EQ(fourthRoute->getBestEntry().first, ClientID::OPENR);
+  EXPECT_EQ(fourthRoute->getEntryForClient(ClientID::TE_AGENT), nullptr);
+  EXPECT_EQ(
+      getRouterNextHops(3, false),
+      getNextHops(state, fourthRoute->getForwardInfo()));
+  EXPECT_FALSE(fourthRoute->getForwardInfo().getCounterID().has_value());
+
+  auto bgpRoute = findRoute<folly::IPAddressV6>(RouterID(0), bgpPrefix_, state);
+  ASSERT_NE(bgpRoute, nullptr);
+  EXPECT_EQ(counterIdBefore, bgpRoute->getForwardInfo().getCounterID());
+  auto manager = sw_->getRib()->getNextHopIDManagerCopy();
+  ASSERT_NE(manager, nullptr);
+  EXPECT_FALSE(manager->hasNamedNextHopGroup(getNhgName(3)));
+}
+
 TEST_F(RouterToRouterSrv6LspTest, rejectMixedNextHopsAfterTeAgentWithdrawal) {
-  FLAGS_srv6 = true;
   FLAGS_allow_mixed_ip_srv6_nhop_groups = false;
   addTeAgentRoutes();
   addBgpRoute();
@@ -281,8 +319,7 @@ TEST_F(RouterToRouterSrv6LspTest, rejectMixedNextHopsAfterTeAgentWithdrawal) {
   verifyBgpRoute(true);
 }
 
-TEST_F(RouterToRouterSrv6LspTest, withdrawalOutsideBgpNextHopsSucceeds) {
-  FLAGS_srv6 = true;
+TEST_F(RouterToRouterSrv6LspTest, rejectBgpExpansionAfterTeAgentWithdrawal) {
   FLAGS_allow_mixed_ip_srv6_nhop_groups = false;
   const std::vector<int> routerAddressIndexes{0, 1, 2};
   addTeAgentRoutes();
@@ -290,34 +327,46 @@ TEST_F(RouterToRouterSrv6LspTest, withdrawalOutsideBgpNextHopsSucceeds) {
   verifyTeAgentRoutes();
   verifyBgpRoute(true, routerAddressIndexes);
 
-  const auto stateBeforeWithdrawal = sw_->getState();
-  auto bgpRouteBefore = findRoute<folly::IPAddressV6>(
-      RouterID(0), bgpPrefix_, stateBeforeWithdrawal);
-  ASSERT_NE(bgpRouteBefore, nullptr);
-  const auto counterIdBefore = bgpRouteBefore->getForwardInfo().getCounterID();
-
   ASSERT_NO_THROW(deleteTeAgentRouteAndNhg(3));
   verifyTeAgentRoutes(routerAddressIndexes);
   verifyBgpRoute(true, routerAddressIndexes);
-
-  auto state = sw_->getState();
-  auto fourthRoute = findRoute<folly::IPAddressV6>(
-      RouterID(0), {routerAddresses_[3], 128}, state);
-  ASSERT_NE(fourthRoute, nullptr);
-  ASSERT_TRUE(fourthRoute->isResolved());
-  EXPECT_EQ(fourthRoute->getBestEntry().first, ClientID::OPENR);
-  EXPECT_EQ(fourthRoute->getEntryForClient(ClientID::TE_AGENT), nullptr);
-  EXPECT_EQ(
-      getRouterNextHops(3, false),
-      getNextHops(state, fourthRoute->getForwardInfo()));
-  EXPECT_FALSE(fourthRoute->getForwardInfo().getCounterID().has_value());
-
-  auto bgpRoute = findRoute<folly::IPAddressV6>(RouterID(0), bgpPrefix_, state);
-  ASSERT_NE(bgpRoute, nullptr);
-  EXPECT_EQ(counterIdBefore, bgpRoute->getForwardInfo().getCounterID());
   auto manager = sw_->getRib()->getNextHopIDManagerCopy();
   ASSERT_NE(manager, nullptr);
-  EXPECT_FALSE(manager->hasNamedNextHopGroup(getNhgName(3)));
+  ASSERT_FALSE(manager->hasNamedNextHopGroup(getNhgName(3)));
+
+  const auto stateBeforeExpansion = sw_->getState();
+  const auto ribRoutesBeforeExpansion =
+      sw_->getRib()->getRouteTableDetails(RouterID(0));
+  try {
+    addBgpRoute();
+    FAIL() << "Expected BGP expansion to mixed next hops to be rejected";
+  } catch (const FbossHwUpdateError& error) {
+    EXPECT_THAT(
+        error.what(),
+        ::testing::HasSubstr("Mixed SRv6 and non-SRv6 next hops"));
+    auto rejectedRoute = findRoute<folly::IPAddressV6>(
+        RouterID(0), bgpPrefix_, error.desiredState);
+    ASSERT_NE(rejectedRoute, nullptr);
+    ASSERT_TRUE(rejectedRoute->isResolved());
+    RouteNextHopSet expectedMixedNextHops;
+    for (size_t i = 0; i < routerAddresses_.size(); ++i) {
+      const auto nextHops = getRouterNextHops(i, i != 3);
+      expectedMixedNextHops.insert(nextHops.begin(), nextHops.end());
+    }
+    EXPECT_EQ(
+        expectedMixedNextHops,
+        getNextHops(error.desiredState, rejectedRoute->getForwardInfo()));
+  }
+
+  EXPECT_EQ(stateBeforeExpansion, sw_->getState());
+  EXPECT_EQ(
+      ribRoutesBeforeExpansion,
+      sw_->getRib()->getRouteTableDetails(RouterID(0)));
+  verifyTeAgentRoutes(routerAddressIndexes);
+  verifyBgpRoute(true, routerAddressIndexes);
+  auto managerAfterRollback = sw_->getRib()->getNextHopIDManagerCopy();
+  ASSERT_NE(managerAfterRollback, nullptr);
+  EXPECT_FALSE(managerAfterRollback->hasNamedNextHopGroup(getNhgName(3)));
 }
 
 } // namespace facebook::fboss
