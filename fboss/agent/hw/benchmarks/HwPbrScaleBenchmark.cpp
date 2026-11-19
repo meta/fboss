@@ -131,10 +131,9 @@ std::vector<ClassBasedPolicy> makePbrPolicy(int numPolicies) {
     ClassBasedPolicy policy;
     policy.name() = makePolicyName(i);
     policy.defaultNexthopGroup() = makeNhgName(i);
-    NextHopGroup redirectGroup;
-    redirectGroup.name() = makeNhgName((i + 1) % numPolicies);
+    const auto redirectGroup = makeNhgName((i + 1) % numPolicies);
     for (int tc = 1; tc <= kClassesPerPolicy; ++tc) {
-      policy.class2NextHopGroup()[static_cast<ForwardingClass>(tc)] =
+      policy.class2NamedNextHopGroup()[static_cast<ForwardingClass>(tc)] =
           redirectGroup;
     }
     policies.push_back(std::move(policy));
@@ -163,10 +162,8 @@ std::vector<ClassBasedPolicy> makeMbbPolicies(int numPolicies) {
     policy.name() = makePolicyName(i);
     policy.defaultNexthopGroup() = makeNhgName(i);
     for (int tc = 1; tc <= kMbbClassesPerPolicy; ++tc) {
-      NextHopGroup classGroup;
-      classGroup.name() = makeClassNhgName((i + tc - 1) % numPolicies);
-      policy.class2NextHopGroup()[static_cast<ForwardingClass>(tc)] =
-          classGroup;
+      policy.class2NamedNextHopGroup()[static_cast<ForwardingClass>(tc)] =
+          makeClassNhgName((i + tc - 1) % numPolicies);
     }
     policies.push_back(std::move(policy));
   }

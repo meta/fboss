@@ -2948,8 +2948,7 @@ void RibRouteTables::addOrUpdatePolicies(
     for (const auto& policy : policies) {
       requireNamedNhg(*policy.name(), *policy.defaultNexthopGroup());
       names.insert(*policy.defaultNexthopGroup());
-      for (const auto& [_fc, nhg] : *policy.class2NextHopGroup()) {
-        const auto nhgName = nhg.name().value_or("");
+      for (const auto& [_fc, nhgName] : *policy.class2NamedNextHopGroup()) {
         requireNamedNhg(*policy.name(), nhgName);
         names.insert(nhgName);
       }
@@ -3042,8 +3041,8 @@ void RoutingInformationBase::addOrUpdatePolicies(
           *policy.name(),
           "' must specify a default next-hop group");
     }
-    for (const auto& [fc, nhg] : *policy.class2NextHopGroup()) {
-      if (!nhg.name().has_value() || nhg.name()->empty()) {
+    for (const auto& [fc, nhgName] : *policy.class2NamedNextHopGroup()) {
+      if (nhgName.empty()) {
         throw FbossError(
             "Class-based policy '",
             *policy.name(),

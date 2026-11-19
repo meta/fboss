@@ -57,11 +57,7 @@ class ClassBasedPolicyUpdaterTest : public ::testing::Test {
     ClassBasedPolicy policy;
     policy.name() = name;
     policy.defaultNexthopGroup() = defaultNhg;
-    for (const auto& [fc, nhgName] : class2Nhg) {
-      NextHopGroup nhg;
-      nhg.name() = nhgName;
-      policy.class2NextHopGroup()[fc] = nhg;
-    }
+    policy.class2NamedNextHopGroup() = class2Nhg;
     manager_.addOrUpdatePolicy(policy);
     // Mirrors RibRouteTables::addOrUpdatePolicies: only a policy gives its
     // named groups a normalized id, so assign them once the policy exists.

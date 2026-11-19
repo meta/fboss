@@ -219,11 +219,7 @@ class AgentPbrTest : public AgentHwTest {
     ClassBasedPolicy cbfPolicy;
     cbfPolicy.name() = policyName;
     cbfPolicy.defaultNexthopGroup() = defaultNhg;
-    for (const auto& [forwardingClass, nhgName] : class2Nhg) {
-      NextHopGroup classGroup;
-      classGroup.name() = nhgName;
-      cbfPolicy.class2NextHopGroup()[forwardingClass] = classGroup;
-    }
+    cbfPolicy.class2NamedNextHopGroup() = class2Nhg;
     Policy policy;
     policy.cbfPolicy() = cbfPolicy;
     auto policies = std::make_unique<std::vector<Policy>>();

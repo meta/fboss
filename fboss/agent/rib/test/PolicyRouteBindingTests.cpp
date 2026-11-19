@@ -214,9 +214,7 @@ TEST_F(PolicyRouteBindingTest, redirectNhgMemberChangeRepublishesPolicy) {
   ClassBasedPolicy policy;
   policy.name() = kSharedName;
   policy.defaultNexthopGroup() = kPolicyDefaultNhg;
-  NextHopGroup redirect;
-  redirect.name() = kRedirectNhg;
-  policy.class2NextHopGroup()[ForwardingClass::CLASS_1] = redirect;
+  policy.class2NamedNextHopGroup()[ForwardingClass::CLASS_1] = kRedirectNhg;
   rib_.addOrUpdatePolicies({policy}, nextHopIdStateUpdate(&switchState_));
 
   const auto idBefore = publishedRedirectId(ForwardingClass::CLASS_1);
@@ -254,7 +252,7 @@ TEST_F(PolicyRouteBindingTest, addPoliciesRejectsBatchBeforeStoringAny) {
   ClassBasedPolicy bad;
   bad.name() = "badPolicy";
   bad.defaultNexthopGroup() = kPolicyDefaultNhg;
-  bad.class2NextHopGroup()[ForwardingClass::CLASS_1] = NextHopGroup{};
+  bad.class2NamedNextHopGroup()[ForwardingClass::CLASS_1] = "";
 
   EXPECT_THROW(
       rib_.addOrUpdatePolicies(

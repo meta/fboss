@@ -3311,9 +3311,7 @@ TEST_F(NextHopIDManagerTest, ClassBasedPolicyStore) {
   ClassBasedPolicy policy;
   policy.name() = "pol1";
   policy.defaultNexthopGroup() = "defaultNhg";
-  NextHopGroup redirectNhg;
-  redirectNhg.name() = "class1Nhg";
-  policy.class2NextHopGroup()[ForwardingClass::CLASS_1] = redirectNhg;
+  policy.class2NamedNextHopGroup()[ForwardingClass::CLASS_1] = "class1Nhg";
 
   EXPECT_EQ(manager_->getPolicy("pol1"), nullptr);
 
@@ -3345,9 +3343,7 @@ TEST_F(NextHopIDManagerTest, policyUpdateRepointsNamedNhgIndex) {
   ClassBasedPolicy policy;
   policy.name() = "pol1";
   policy.defaultNexthopGroup() = "defaultNhg";
-  NextHopGroup redirectNhg;
-  redirectNhg.name() = "redirectNhg";
-  policy.class2NextHopGroup()[ForwardingClass::CLASS_1] = redirectNhg;
+  policy.class2NamedNextHopGroup()[ForwardingClass::CLASS_1] = "redirectNhg";
   manager_->addOrUpdatePolicy(policy);
 
   EXPECT_EQ(manager_->getPoliciesForNamedNhg("defaultNhg").count("pol1"), 1);
@@ -3355,7 +3351,7 @@ TEST_F(NextHopIDManagerTest, policyUpdateRepointsNamedNhgIndex) {
 
   // Repoint the default and drop the redirect entirely.
   policy.defaultNexthopGroup() = "defaultNhg2";
-  policy.class2NextHopGroup()->clear();
+  policy.class2NamedNextHopGroup()->clear();
   manager_->addOrUpdatePolicy(policy);
 
   EXPECT_FALSE(manager_->hasPoliciesForNamedNhg("defaultNhg"));
@@ -3449,9 +3445,7 @@ TEST_F(NextHopIDManagerTest, deleteNamedNhgReferencedAsPolicyRedirectBlocked) {
   ClassBasedPolicy policy;
   policy.name() = "pol1";
   policy.defaultNexthopGroup() = "defaultNhg";
-  NextHopGroup redirectNhg;
-  redirectNhg.name() = "redirectNhg";
-  policy.class2NextHopGroup()[ForwardingClass::CLASS_1] = redirectNhg;
+  policy.class2NamedNextHopGroup()[ForwardingClass::CLASS_1] = "redirectNhg";
   manager_->addOrUpdatePolicy(policy);
 
   EXPECT_FALSE(manager_->hasRoutesForNamedNhg("redirectNhg"));

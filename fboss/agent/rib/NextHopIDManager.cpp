@@ -1162,15 +1162,15 @@ void NextHopIDManager::addOrUpdatePolicy(const ClassBasedPolicy& policy) {
   CHECK(!policy.name()->empty()) << "ClassBasedPolicy must have a name";
   ClassBasedPolicyNhgs nhgs;
   nhgs.defaultNexthopGroup = *policy.defaultNexthopGroup();
-  for (const auto& [fc, nhg] : *policy.class2NextHopGroup()) {
-    if (!nhg.name().has_value() || nhg.name()->empty()) {
+  for (const auto& [fc, nhgName] : *policy.class2NamedNextHopGroup()) {
+    if (nhgName.empty()) {
       throw FbossError(
           "Class-based policy '",
           *policy.name(),
           "' has no next-hop group name for traffic class ",
           apache::thrift::util::enumNameSafe(fc));
     }
-    nhgs.class2NextHopGroup[fc] = *nhg.name();
+    nhgs.class2NextHopGroup[fc] = nhgName;
   }
 
   // Claim before releasing: dropping the last reference first would free the id

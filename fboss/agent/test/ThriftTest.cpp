@@ -101,22 +101,14 @@ IpPrefix ipPrefix(StringPiece prefixStr) {
 Policy makeCbfPolicy(
     const std::string& name,
     const std::string& defaultNhg,
-    const std::map<ForwardingClass, NextHopGroup>& class2Nhg = {}) {
+    const std::map<ForwardingClass, std::string>& class2Nhg = {}) {
   ClassBasedPolicy cbfPolicy;
   cbfPolicy.name() = name;
   cbfPolicy.defaultNexthopGroup() = defaultNhg;
-  for (const auto& [forwardingClass, nhg] : class2Nhg) {
-    cbfPolicy.class2NextHopGroup()[forwardingClass] = nhg;
-  }
+  cbfPolicy.class2NamedNextHopGroup() = class2Nhg;
   Policy policy;
   policy.cbfPolicy() = std::move(cbfPolicy);
   return policy;
-}
-
-NextHopGroup namedNhgRef(const std::string& name) {
-  NextHopGroup nhg;
-  nhg.name() = name;
-  return nhg;
 }
 
 std::unique_ptr<std::vector<Policy>> onePolicy(Policy policy) {
@@ -5572,9 +5564,7 @@ TEST_F(NamedNextHopGroupThriftTest, pbrRedirectGroupIsProgrammed) {
   groups->push_back(makeGroup("aliasNhg", {"2401:db00:2110:3001::3"}));
   handler.addOrUpdateNamedNextHopGroups(std::move(groups));
   handler.addPolicies(onePolicy(makeCbfPolicy(
-      "pol1",
-      "defaultNhg",
-      {{ForwardingClass::CLASS_1, namedNhgRef("classNhg")}})));
+      "pol1", "defaultNhg", {{ForwardingClass::CLASS_1, "classNhg"}})));
 
   auto namedGroups = [&handler]() {
     std::vector<NextHopGroup> named;
@@ -5652,9 +5642,7 @@ TEST_F(NamedNextHopGroupThriftTest, pbrTableHoldsConfigEntriesBelowPolicies) {
   groups->push_back(makeGroup("classNhg", {"2401:db00:2110:3001::3"}));
   handler.addOrUpdateNamedNextHopGroups(std::move(groups));
   handler.addPolicies(onePolicy(makeCbfPolicy(
-      "pol1",
-      "defaultNhg",
-      {{ForwardingClass::CLASS_1, namedNhgRef("classNhg")}})));
+      "pol1", "defaultNhg", {{ForwardingClass::CLASS_1, "classNhg"}})));
   addUnicastRouteWithNamedNextHopGroup(handler, "2401::100/128", "defaultNhg");
   const auto pbrEntryName =
       makePbrAclEntryName("pol1", ForwardingClass::CLASS_1, false);
@@ -5725,9 +5713,7 @@ TEST_F(NamedNextHopGroupThriftTest, pbrEntryMatchesRouteOfWeightedGroup) {
       ClientID::TE_AGENT,
       AdminDistance::TE_AGENT);
   handler.addPolicies(onePolicy(makeCbfPolicy(
-      "pol1",
-      "teGroup",
-      {{ForwardingClass::CLASS_2, namedNhgRef("teGroup")}})));
+      "pol1", "teGroup", {{ForwardingClass::CLASS_2, "teGroup"}})));
 
   auto state = sw_->getState();
   auto route = findRoute<folly::IPAddressV6>(
@@ -6275,18 +6261,6 @@ TEST_F(ThriftTest, routeCounterUpdatedWhenNamedNhgChanges) {
   EXPECT_EQ(rt->getForwardInfo().getCounterID(), "nhg_two");
 }
 
-TEST_F(NamedNextHopGroupThriftTest, addPoliciesRejectsInlineNexthopsInPolicy) {
-  ThriftHandler handler(sw_);
-  auto inlineNhops = makeGroup("classNhg", {"2401:db00:2110:3001::2"});
-  EXPECT_THAT(
-      [&] {
-        handler.addPolicies(onePolicy(makeCbfPolicy(
-            "pol1", "defaultNhg", {{ForwardingClass::CLASS_1, inlineNhops}})));
-      },
-      ::testing::ThrowsMessage<FbossError>(
-          ::testing::HasSubstr("supplies inline next hops")));
-}
-
 TEST_F(NamedNextHopGroupThriftTest, addPoliciesRejectsTheTemporaryEntryPrefix) {
   ThriftHandler handler(sw_);
   auto groups = std::make_unique<std::vector<NextHopGroup>>();
@@ -6312,9 +6286,7 @@ TEST_F(NamedNextHopGroupThriftTest, addPoliciesPassesValidationWhenWellFormed) {
 
   EXPECT_THROW(
       handler.addPolicies(onePolicy(makeCbfPolicy(
-          "pol1",
-          "defaultNhg",
-          {{ForwardingClass::CLASS_1, namedNhgRef("classNhg")}}))),
+          "pol1", "defaultNhg", {{ForwardingClass::CLASS_1, "classNhg"}}))),
       FbossHwUpdateError);
 }
 
@@ -6345,9 +6317,9 @@ TEST_F(NamedNextHopGroupThriftTest, addPoliciesPastPbrAclLimitRollsBack) {
   handler.addOrUpdateNamedNextHopGroups(std::move(groups));
 
   auto makePolicy = [](const std::string& name, int numTrafficClasses) {
-    std::map<ForwardingClass, NextHopGroup> class2Nhg;
+    std::map<ForwardingClass, std::string> class2Nhg;
     for (int tc = 1; tc <= numTrafficClasses; ++tc) {
-      class2Nhg[static_cast<ForwardingClass>(tc)] = namedNhgRef("classNhg");
+      class2Nhg[static_cast<ForwardingClass>(tc)] = "classNhg";
     }
     return makeCbfPolicy(name, "defaultNhg", class2Nhg);
   };

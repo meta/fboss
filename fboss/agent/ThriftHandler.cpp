@@ -954,9 +954,7 @@ Policy toThriftPolicy(const std::shared_ptr<ClassBasedPolicyNode>& node) {
   cbf.name() = node->getID();
   cbf.defaultNexthopGroup() = *node->getDefaultNextHopGroup().name();
   for (const auto& [fc, named] : node->getClass2NextHopGroup()) {
-    NextHopGroup nhg;
-    nhg.name() = *named.name();
-    cbf.class2NextHopGroup()[fc] = std::move(nhg);
+    cbf.class2NamedNextHopGroup()[fc] = *named.name();
   }
   Policy policy;
   policy.cbfPolicy() = std::move(cbf);
@@ -1009,16 +1007,6 @@ void validateClassBasedPolicies(
           "' cannot start with '",
           kPbrTempAclEntryPrefix,
           "'");
-    }
-    for (const auto& [forwardingClass, nhg] : *policy.class2NextHopGroup()) {
-      if (!nhg.nexthops()->empty()) {
-        throw FbossError(
-            "Class-based policy '",
-            *policy.name(),
-            "' supplies inline next hops for traffic class ",
-            apache::thrift::util::enumNameSafe(forwardingClass),
-            "; a policy references a named next-hop group by name only");
-      }
     }
   }
 }
