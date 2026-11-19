@@ -58,7 +58,7 @@ cpp_library(
         "fbsource//xplat/folly:subprocess",
         "fbsource//xplat/folly/logging:logging",
         "fbsource//xplat/folly/system:shell",
-        "//fboss/platform/fw_util/if:fw_util_config-cpp2-types",
+        "//fboss/platform/fw_util/if:fw_util_config-cpp2-serialization",
         "//fboss/platform/helpers:platform_utils",
     ],
 )

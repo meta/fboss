@@ -1,4 +1,6 @@
 #include <folly/logging/xlog.h>
+#include <chrono>
+#include <thread>
 #include "fboss/platform/fw_util/FwUtilImpl.h"
 
 namespace facebook::fboss::platform::fw_util {
@@ -9,13 +11,17 @@ void FwUtilImpl::doUpgrade(const std::string& fpd) {
     return;
   }
   XLOG(INFO) << "Running Upgrade operation for " << fpd;
-  if (fwUtilConfig_.fwConfigs()->at(fpd).upgrade().has_value()) {
-    for (const auto& operation :
-         fwUtilConfig_.fwConfigs()->at(fpd).upgrade().value()) {
-      doUpgradeOperation(operation, fpd);
-    }
-  } else {
+  const auto& fwConfig = fwUtilConfig_.fwConfigs()->at(fpd);
+  if (!fwConfig.upgrade().has_value()) {
     throw std::runtime_error("No upgrade operation found for " + fpd);
+  }
+  for (const auto& operation : *fwConfig.upgrade()) {
+    doUpgradeOperation(operation, fpd);
+  }
+  if (auto delaySec = fwConfig.delayAfterUpgradeSec()) {
+    XLOG(INFO) << "Waiting " << *delaySec << " seconds after upgrading " << fpd;
+    // NOLINTNEXTLINE(facebook-hte-BadCall-sleep_for)
+    std::this_thread::sleep_for(std::chrono::seconds(*delaySec));
   }
 }
 

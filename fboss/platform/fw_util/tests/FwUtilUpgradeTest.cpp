@@ -112,6 +112,28 @@ TEST_F(FwUtilUpgradeTest, DoUpgradeWithValidConfig) {
   EXPECT_THROW(fwUtil.doUpgrade("test_device"), std::exception);
 }
 
+TEST_F(FwUtilUpgradeTest, DoUpgradeWaitsForConfiguredDelay) {
+  std::string configFile = (tempDir_ / "test_config.json").string();
+  createConfigWithUpgrade(configFile);
+  FwUtilImpl fwUtil(
+      binaryFile_,
+      configFile,
+      false, // verifySha1sum
+      false // dryRun
+  );
+  // flashrom without flashromArgs is a no-op, so only the delay takes time.
+  UpgradeConfig noOpUpgrade;
+  noOpUpgrade.commandType() = "flashrom";
+  auto& fwConfig = fwUtil.fwUtilConfig_.fwConfigs()->at("test_device");
+  fwConfig.upgrade() = {noOpUpgrade};
+  fwConfig.delayAfterUpgradeSec() = 1;
+
+  const auto start = std::chrono::steady_clock::now();
+  fwUtil.doUpgrade("test_device");
+
+  EXPECT_GE(std::chrono::steady_clock::now() - start, std::chrono::seconds(1));
+}
+
 // Test doUpgrade with missing upgrade configuration
 TEST_F(FwUtilUpgradeTest, DoUpgradeNoUpgradeConfig) {
   std::string configFile = (tempDir_ / "test_config.json").string();
