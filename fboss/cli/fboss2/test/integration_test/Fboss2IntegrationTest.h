@@ -5,9 +5,11 @@
 #include <folly/dynamic.h>
 #include <folly/json.h>
 #include <folly/json/dynamic.h>
+#include <gflags/gflags.h>
 #include <gtest/gtest.h>
 #include <chrono>
 #include <functional>
+#include <initializer_list>
 #include <map>
 #include <optional>
 #include <set>
@@ -15,6 +17,10 @@
 #include <type_traits>
 #include <utility>
 #include <vector>
+
+#include "fboss/agent/test/gen-cpp2/production_features_types.h"
+
+DECLARE_bool(list_production_feature);
 
 namespace facebook::fboss {
 
@@ -54,11 +60,24 @@ class Fboss2IntegrationTest : public ::testing::Test {
     std::string description;
   };
 
-  ~Fboss2IntegrationTest() override = default;
+  using ProductionFeature = test::production_features::ProductionFeature;
+
+  Fboss2IntegrationTest();
+  ~Fboss2IntegrationTest() override;
 
  protected:
   void SetUp() override;
   void TearDown() override;
+
+  /**
+   * Declare the production features (see
+   * fboss/agent/test/production_features.thrift) the tests of a fixture
+   * depend on. Call it from the fixture's constructor; a derived fixture adds
+   * to what its base declared. A fixture that declares nothing runs on every
+   * ASIC. --list_production_feature prints the declared features instead of
+   * running the test, which is what run_test.py filters on.
+   */
+  void addProductionFeatures(std::initializer_list<ProductionFeature> features);
 
   /**
    * Run a CLI command with the given arguments.
@@ -455,6 +474,10 @@ class Fboss2IntegrationTest : public ::testing::Test {
   std::string findIpv6OnIntf(int intfId) const;
 
  private:
+  void skipForProductionFeatureListing();
+
+  std::vector<ProductionFeature> productionFeatures_;
+
   template <typename T>
   std::optional<T> getSwConfigFieldOpt(const std::string& field) const {
     auto config = getRunningConfig();

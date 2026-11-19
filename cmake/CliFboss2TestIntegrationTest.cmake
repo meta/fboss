@@ -82,6 +82,7 @@ add_executable(fboss2_integration_test
 target_link_libraries(fboss2_integration_test
   fboss2_lib
   fboss2_config_lib
+  production_features_cpp2
   thrift_service_utils
   CLI11::CLI11
   ${GTEST}

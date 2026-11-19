@@ -95,12 +95,27 @@ class TunnelIpInIpTest : public Fboss2IntegrationTest {
   std::vector<std::pair<std::string, std::string>> createdTunnels_;
 };
 
+class TunnelIpInIpDecapTest : public TunnelIpInIpTest {
+ protected:
+  TunnelIpInIpDecapTest() {
+    addProductionFeatures({ProductionFeature::IP_IN_IP_DECAP});
+  }
+};
+
+// Declares no feature: these pass on ASICs asic_production_features does not
+// list IP_IN_IP_ENCAP for (e.g. Tomahawk5).
+class TunnelIpInIpEncapTest : public TunnelIpInIpTest {};
+
+// Commands the CLI rejects, or treats as a no-op, before anything reaches the
+// agent.
+class TunnelIpInIpValidationTest : public TunnelIpInIpTest {};
+
 // ---------------------------------------------------------------------------
 // Positive: create a complete DECAP tunnel and verify every field landed in
 // the agent's running config, including tunnelType == IP_IN_IP_DECAP.
 // ---------------------------------------------------------------------------
 
-TEST_F(TunnelIpInIpTest, CreateDecapTunnelAndVerifyRunningConfig) {
+TEST_F(TunnelIpInIpDecapTest, CreateDecapTunnelAndVerifyRunningConfig) {
   int intfId = ensureUnderlayIntfId();
   const std::string dstIp = findIpv6OnIntf(intfId);
   const std::string srcIp = "2001:db8:cafe::1";
@@ -156,7 +171,7 @@ TEST_F(TunnelIpInIpTest, CreateDecapTunnelAndVerifyRunningConfig) {
 // the agent's running config.
 // ---------------------------------------------------------------------------
 
-TEST_F(TunnelIpInIpTest, CreateEncapTunnelAndVerifyRunningConfig) {
+TEST_F(TunnelIpInIpEncapTest, CreateEncapTunnelAndVerifyRunningConfig) {
   int intfId = ensureUnderlayIntfId();
   const std::string dstIp = findIpv6OnIntf(intfId);
   const std::string srcIp = "2001:db8:cafe::2";
@@ -198,7 +213,7 @@ TEST_F(TunnelIpInIpTest, CreateEncapTunnelAndVerifyRunningConfig) {
 // running config.
 // ---------------------------------------------------------------------------
 
-TEST_F(TunnelIpInIpTest, DeleteDecapTunnel) {
+TEST_F(TunnelIpInIpDecapTest, DeleteDecapTunnel) {
   int intfId = ensureUnderlayIntfId();
   const std::string dstIp = findIpv6OnIntf(intfId);
   const std::string tunnelId = "integration-test-decap-delete";
@@ -233,7 +248,7 @@ TEST_F(TunnelIpInIpTest, DeleteDecapTunnel) {
 // is gone from the running config while destination survives.
 // ---------------------------------------------------------------------------
 
-TEST_F(TunnelIpInIpTest, ResetOptionalAttrOnDecapTunnel) {
+TEST_F(TunnelIpInIpDecapTest, ResetOptionalAttrOnDecapTunnel) {
   int intfId = ensureUnderlayIntfId();
   const std::string dstIp = findIpv6OnIntf(intfId);
   const std::string tunnelId = "integration-test-decap-reset";
@@ -287,7 +302,7 @@ TEST_F(TunnelIpInIpTest, ResetOptionalAttrOnDecapTunnel) {
 // Negative: termination-type is decap-only — the encap command must reject it.
 // ---------------------------------------------------------------------------
 
-TEST_F(TunnelIpInIpTest, EncapRejectsTerminationType) {
+TEST_F(TunnelIpInIpValidationTest, EncapRejectsTerminationType) {
   int intfId = ensureUnderlayIntfId();
   const std::string dstIp = findIpv6OnIntf(intfId);
   const std::string tunnelId = "integration-test-encap-badattr";
@@ -314,7 +329,7 @@ TEST_F(TunnelIpInIpTest, EncapRejectsTerminationType) {
 // SaiTunnelManager (it aborts on them at commit), so the CLI must reject them.
 // ---------------------------------------------------------------------------
 
-TEST_F(TunnelIpInIpTest, DecapRejectsUnsupportedTerminationType) {
+TEST_F(TunnelIpInIpValidationTest, DecapRejectsUnsupportedTerminationType) {
   int intfId = ensureUnderlayIntfId();
   const std::string dstIp = findIpv6OnIntf(intfId);
   const std::string tunnelId = "integration-test-decap-mp2mp";
@@ -343,7 +358,7 @@ TEST_F(TunnelIpInIpTest, DecapRejectsUnsupportedTerminationType) {
 // direction) must be rejected.
 // ---------------------------------------------------------------------------
 
-TEST_F(TunnelIpInIpTest, DeleteWrongDirectionRejected) {
+TEST_F(TunnelIpInIpEncapTest, DeleteWrongDirectionRejected) {
   int intfId = ensureUnderlayIntfId();
   const std::string dstIp = findIpv6OnIntf(intfId);
   const std::string tunnelId = "integration-test-encap-wrongdir";
@@ -378,7 +393,7 @@ TEST_F(TunnelIpInIpTest, DeleteWrongDirectionRejected) {
 // SaiTunnelManager would otherwise abort dereferencing the unset srcIp.
 // ---------------------------------------------------------------------------
 
-TEST_F(TunnelIpInIpTest, EncapWithoutSourceRejected) {
+TEST_F(TunnelIpInIpValidationTest, EncapWithoutSourceRejected) {
   int intfId = ensureUnderlayIntfId();
   const std::string dstIp = findIpv6OnIntf(intfId);
   const std::string tunnelId = "integration-test-encap-nosrc";
@@ -402,7 +417,7 @@ TEST_F(TunnelIpInIpTest, EncapWithoutSourceRejected) {
 // Positive: deleting a non-existent tunnel is idempotent (exit 0).
 // ---------------------------------------------------------------------------
 
-TEST_F(TunnelIpInIpTest, DeleteNonExistentIsIdempotent) {
+TEST_F(TunnelIpInIpValidationTest, DeleteNonExistentIsIdempotent) {
   const std::string ghostId = "tunnel-that-does-not-exist-XYZ-12345";
   auto result = runCli({"delete", "tunnel", "ip-in-ip", "decap", ghostId});
   EXPECT_EQ(result.exitCode, 0)

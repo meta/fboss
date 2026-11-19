@@ -52,6 +52,10 @@ using ::testing::HasSubstr;
 
 class ConfigCoppTest : public Fboss2IntegrationTest {
  protected:
+  ConfigCoppTest() {
+    addProductionFeatures({ProductionFeature::COPP});
+  }
+
   folly::dynamic getRunningConfig() const {
     HostInfo hostInfo("localhost");
     auto client =

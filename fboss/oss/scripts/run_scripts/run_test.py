@@ -48,8 +48,9 @@
 #   ./run_test.py sai --config $CONFIG --skip-known-bad-tests $KEY
 #   Example: --skip-known-bad-tests "brcm/8.2.0.0_odp/8.2.0.0_odp/tomahawk4"
 #
-# Filter by production features (sai_agent only):
+# Filter by production features (sai_agent and fboss2_integration):
 #   ./run_test.py sai_agent --config $CONFIG --enable-production-features $ASIC
+#   ./run_test.py fboss2_integration --enable-production-features $ASIC
 #   Features below their minSdkVersion for the built SDK are skipped; for RBB:
 #   ./run_test.py sai_agent --config $CONFIG --enable-production-features $ASIC --test-config-options rbb
 #

@@ -93,6 +93,12 @@ std::string pickUnusedMirrorName(
 
 class ConfigInterfaceMirrorTest : public Fboss2IntegrationTest {
  protected:
+  ConfigInterfaceMirrorTest() {
+    addProductionFeatures(
+        {ProductionFeature::INGRESS_MIRRORING,
+         ProductionFeature::EGRESS_MIRRORING});
+  }
+
   void TearDown() override {
     try {
       discardSession();
