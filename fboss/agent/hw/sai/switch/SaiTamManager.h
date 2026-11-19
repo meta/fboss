@@ -84,6 +84,12 @@ class SaiTamManager {
 
   void addMirrorOnDropReport(const std::shared_ptr<MirrorOnDropReport>& report);
 
+  void clearCsig();
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1) && !defined(CHENAB_SAI_SDK)
+  void programCsigProfiles(
+      std::vector<SaiTamIntTraits::CreateAttributes> profiles,
+      bool bindToSwitch);
+#endif
 #if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
   const SaiCsigTamHandle* getCsigHandle() const {
     return csigTamHandle_.get();
