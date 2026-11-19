@@ -712,8 +712,18 @@
           "compute": "@/1000.0"
         },
         {
-          "name": "ASIC_DIODE_0",
+          "name": "SWITCH_CARD_NEAR_FPGA",
           "sysfsPath": "/run/devmap/sensors/SWITCH_CARD_TEMP_SENSOR/temp2_input",
+          "type": 3,
+          "thresholds": {
+            "maxAlarmVal": 87,
+            "upperCriticalVal": 92
+          },
+          "compute": "@/1000.0"
+        },
+        {
+          "name": "ASIC_DIODE_0",
+          "sysfsPath": "/run/devmap/sensors/SWITCH_CARD_TEMP_SENSOR/temp3_input",
           "type": 3,
           "thresholds": {
             "maxAlarmVal": 115,
@@ -723,7 +733,7 @@
         },
         {
           "name": "SWITCH_CARD_NEAR_ASIC",
-          "sysfsPath": "/run/devmap/sensors/SWITCH_CARD_TEMP_SENSOR/temp3_input",
+          "sysfsPath": "/run/devmap/sensors/SWITCH_CARD_TEMP_SENSOR/temp4_input",
           "type": 3,
           "thresholds": {
             "maxAlarmVal": 87,
@@ -732,12 +742,12 @@
           "compute": "@/1000.0"
         },
         {
-          "name": "SWITCH_CARD_PDC_INTAKE",
-          "sysfsPath": "/run/devmap/sensors/SWITCH_CARD_TEMP_SENSOR/temp4_input",
+          "name": "SWITCH_CARD_NEAR_PDC_RIGHT",
+          "sysfsPath": "/run/devmap/sensors/SWITCH_CARD_TEMP_SENSOR/temp5_input",
           "type": 3,
           "thresholds": {
-            "maxAlarmVal": 115,
-            "upperCriticalVal": 122
+            "maxAlarmVal": 87,
+            "upperCriticalVal": 92
           },
           "compute": "@/1000.0"
         },

@@ -80,13 +80,18 @@
         "slidingWindowSize": 10
       },
       {
+        "sensorName": "SWITCH_CARD_NEAR_FPGA",
+        "overtempThreshold": 92.0,
+        "slidingWindowSize": 10
+      },
+      {
         "sensorName": "SWITCH_CARD_NEAR_ASIC",
         "overtempThreshold": 92.0,
         "slidingWindowSize": 10
       },
       {
-        "sensorName": "SWITCH_CARD_PDC_INTAKE",
-        "overtempThreshold": 122.0,
+        "sensorName": "SWITCH_CARD_NEAR_PDC_RIGHT",
+        "overtempThreshold": 92.0,
         "slidingWindowSize": 10
       },
       {
