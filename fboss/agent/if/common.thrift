@@ -157,7 +157,8 @@ enum PacketType {
 }
 
 typedef map<byte, ForwardingClass> DscpToForwardingClassMap
-typedef map<ForwardingClass, NextHopGroup> ForwardingClassToNamedNhg
+// Traffic class -> name of a named next-hop group
+typedef map<ForwardingClass, string> ForwardingClassToNamedNhg
 
 /*
  * Class based traffic forwarding policy
@@ -165,7 +166,9 @@ typedef map<ForwardingClass, NextHopGroup> ForwardingClassToNamedNhg
 struct ClassBasedPolicy {
   1: string name;
   2: string defaultNexthopGroup;
-  3: ForwardingClassToNamedNhg class2NextHopGroup;
+  3: map<ForwardingClass, NextHopGroup> class2NextHopGroup;
+  // Named next-hop groups created beforehand with addNamedNextHopGroups
+  4: ForwardingClassToNamedNhg class2NamedNextHopGroup;
 }
 
 /*
