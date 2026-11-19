@@ -138,7 +138,8 @@ class Mirror : public ThriftStructNode<Mirror, state::MirrorFields> {
       std::optional<TunnelUdpPorts> udpPorts = std::nullopt,
       uint8_t dscp = cfg::switch_config_constants::DEFAULT_MIRROR_DSCP_,
       bool truncate = false,
-      std::optional<uint32_t> samplingRate = std::nullopt);
+      std::optional<uint32_t> samplingRate = std::nullopt,
+      std::optional<cfg::Policer> policer = std::nullopt);
   enum Type { SPAN = 1, ERSPAN = 2, SFLOW = 3 };
   std::string getID() const;
   std::optional<folly::IPAddress> getDestinationIp() const;
@@ -160,6 +161,8 @@ class Mirror : public ThriftStructNode<Mirror, state::MirrorFields> {
   void setEgressPortDesc(const PortDescriptor& egressPortDesc);
   std::optional<PortDescriptor> getEgressPortDesc() const;
   std::optional<uint32_t> getSamplingRate() const;
+  std::optional<cfg::Policer> getPolicer() const;
+  void setPolicer(std::optional<cfg::Policer> policer);
 
   Type type() const;
 

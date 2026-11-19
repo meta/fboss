@@ -426,6 +426,41 @@ TYPED_TEST(MirrorManagerTest, ResolveMirrorWithoutEgressPort) {
   });
 }
 
+TYPED_TEST(MirrorManagerTest, PreservePolicerThroughResolutionChanges) {
+  const auto params = this->getParamsHelper();
+  cfg::Policer policer;
+  policer.committedInformationRate() = 256;
+  policer.committedBurstSize() = 1024;
+  this->updateState(
+      "AddPolicedMirror", [=, this](const std::shared_ptr<SwitchState>& state) {
+        auto mirror = std::make_shared<Mirror>(
+            kMirrorName,
+            std::optional<PortDescriptor>(),
+            std::make_optional<IPAddress>(params.mirrorDestination));
+        mirror->setPolicer(policer);
+        return this->addNeighbor(
+            this->addNewMirror(state, mirror),
+            params.interfaces[0],
+            params.neighborIPs[0],
+            params.neighborMACs[0],
+            params.neighborPorts[0]);
+      });
+  auto verify = [=, this](bool resolved) {
+    this->verifyStateUpdate([=, this]() {
+      auto mirror = this->sw_->getState()->getMirrors()->getNodeIf(kMirrorName);
+      ASSERT_NE(mirror, nullptr);
+      EXPECT_EQ(mirror->isResolved(), resolved);
+      EXPECT_EQ(mirror->getPolicer(), std::make_optional(policer));
+      EXPECT_EQ(mirror->getMirrorTunnel().has_value(), resolved);
+    });
+  };
+  verify(false);
+  this->addRoute(params.longerPrefix, {params.nextHop(0)});
+  verify(true);
+  this->delRoute(params.longerPrefix);
+  verify(false);
+}
+
 TYPED_TEST(MirrorManagerTest, ResolveMirrorWithEgressPort) {
   const auto params = this->getParamsHelper();
 

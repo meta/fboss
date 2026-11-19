@@ -77,7 +77,8 @@ std::shared_ptr<Mirror> MirrorManagerImpl<AddrT>::updateMirror(
       mirror->getTunnelUdpPorts(),
       mirror->getDscp(),
       mirror->getTruncate(),
-      mirror->getSamplingRate());
+      mirror->getSamplingRate(),
+      mirror->getPolicer());
   newMirror->setSwitchId(mirror->getSwitchId());
 
   auto asic = sw_->getHwAsicTable()->getHwAsic(mirror->getSwitchId());

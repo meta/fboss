@@ -5,6 +5,7 @@
 #include "fboss/agent/hw/mock/MockPlatform.h"
 #include "fboss/agent/state/Mirror.h"
 #include "fboss/agent/state/Port.h"
+#include "fboss/agent/state/StateDelta.h"
 #include "fboss/agent/state/SwitchState.h"
 #include "fboss/agent/test/MirrorConfigs.h"
 #include "fboss/agent/test/TestUtils.h"
@@ -73,6 +74,27 @@ class MirrorTest : public ::testing::Test {
     auto newState = publishAndApplyConfig(state_, &config_, platform_.get());
     EXPECT_EQ(newState, nullptr);
   }
+  void configureAllMirrorFormats() {
+    config_.mirrors()->push_back(
+        utility::getSPANMirror("span", MirrorTest::egressPort));
+    config_.mirrors()->push_back(
+        utility::getGREMirror("gre", MirrorTest::tunnelDestination));
+    config_.mirrors()->push_back(
+        utility::getSFlowMirror(
+            "sflow",
+            udpPorts.udpSrcPort,
+            udpPorts.udpDstPort,
+            tunnelDestination,
+            std::nullopt));
+  }
+  static cfg::Policer makePolicer(
+      int64_t committedInformationRate,
+      int64_t committedBurstSize) {
+    cfg::Policer policer;
+    policer.committedInformationRate() = committedInformationRate;
+    policer.committedBurstSize() = committedBurstSize;
+    return policer;
+  }
   std::shared_ptr<SwitchState> state_;
   std::shared_ptr<Platform> platform_;
   cfg::SwitchConfig config_;
@@ -130,6 +152,8 @@ TEST_F(MirrorTest, FanOutDoesNotCopyPeerResolvedEgressPort) {
            cfg::SwitchType::NPU, cfg::AsicType::ASIC_TYPE_MOCK, 2, 99, 1)}};
   config_.mirrors()->push_back(
       utility::getGREMirror("mirror0", MirrorTest::tunnelDestination));
+  auto policer = makePolicer(1000, 100);
+  config_.mirrors()[0].policer() = policer;
   configurePortMirror("mirror0", PortID(3));
   publishWithStateUpdate();
 
@@ -158,11 +182,175 @@ TEST_F(MirrorTest, FanOutDoesNotCopyPeerResolvedEgressPort) {
   ASSERT_NE(npu0Mirror, nullptr);
   EXPECT_FALSE(npu0Mirror->isResolved());
   EXPECT_FALSE(npu0Mirror->getEgressPortDesc().has_value());
+  EXPECT_EQ(npu0Mirror->getPolicer(), policer);
   auto npu1Mirror =
       state_->getMirrors()->getMapNodeIf(npu1)->getNodeIf("mirror0");
   ASSERT_NE(npu1Mirror, nullptr);
   EXPECT_TRUE(npu1Mirror->isResolved());
   EXPECT_EQ(npu1Mirror->getEgressPortDesc(), PortDescriptor(PortID(3)));
+  EXPECT_EQ(npu1Mirror->getPolicer(), policer);
+}
+
+TEST_F(MirrorTest, PolicerOmittedByDefault) {
+  configureAllMirrorFormats();
+  publishWithStateUpdate();
+
+  for (const auto& name : {"span", "gre", "sflow"}) {
+    auto mirror = state_->getMirrors()->getNodeIf(name);
+    ASSERT_NE(mirror, nullptr);
+    EXPECT_FALSE(mirror->getPolicer().has_value());
+    EXPECT_FALSE(mirror->toThrift().policer().has_value());
+  }
+  publishWithNoStateUpdate();
+}
+
+TEST_F(MirrorTest, PolicerCloneAndSerialization) {
+  configureAllMirrorFormats();
+  for (auto meterType :
+       {cfg::PolicerMeterType::PACKETS, cfg::PolicerMeterType::BYTES}) {
+    auto policer = makePolicer(int64_t{1} << 33, int64_t{1} << 32);
+    EXPECT_EQ(*policer.meterType(), cfg::PolicerMeterType::PACKETS);
+    policer.meterType() = meterType;
+    for (auto& mirrorConfig : *config_.mirrors()) {
+      mirrorConfig.policer() = policer;
+    }
+    publishWithStateUpdate();
+    state_->publish();
+    for (const auto& name : {"span", "gre", "sflow"}) {
+      SCOPED_TRACE(name);
+      auto mirror = state_->getMirrors()->getNodeIf(name);
+      ASSERT_NE(mirror, nullptr);
+      EXPECT_EQ(mirror->getPolicer(), policer);
+      auto fields = mirror->toThrift();
+      ASSERT_TRUE(fields.policer().has_value());
+      EXPECT_EQ(*fields.policer(), policer);
+
+      auto clone = mirror->clone();
+      EXPECT_EQ(*mirror, *clone);
+      EXPECT_EQ(clone->getPolicer(), policer);
+      auto changedPolicer = policer;
+      changedPolicer.committedInformationRate() = 2000;
+      changedPolicer.committedBurstSize() = 200;
+      clone->setPolicer(changedPolicer);
+      EXPECT_FALSE(*mirror == *clone);
+      EXPECT_EQ(mirror->getPolicer(), policer);
+      EXPECT_EQ(clone->getPolicer(), changedPolicer);
+      clone->setPolicer(std::nullopt);
+      EXPECT_FALSE(clone->getPolicer().has_value());
+      EXPECT_FALSE(clone->toThrift().policer().has_value());
+    }
+    auto reconstructed = SwitchState::fromThrift(state_->toThrift());
+    EXPECT_EQ(reconstructed->toThrift(), state_->toThrift());
+    for (const auto& name : {"span", "gre", "sflow"}) {
+      EXPECT_EQ(
+          reconstructed->getMirrors()->getNodeIf(name)->getPolicer(), policer);
+    }
+    publishWithNoStateUpdate();
+  }
+}
+
+TEST_F(MirrorTest, PolicerChangesPreserveResolvedEndpoints) {
+  config_.mirrors()->push_back(
+      utility::getGREMirror("mirror0", MirrorTest::tunnelDestination));
+  publishWithStateUpdate();
+  const MirrorTunnel tunnel(
+      folly::IPAddress("10.0.0.2"),
+      MirrorTest::tunnelDestination,
+      folly::MacAddress("02:00:00:00:00:01"),
+      folly::MacAddress("02:00:00:00:00:02"));
+  auto mirror = state_->getMirrors()->getNodeIf("mirror0");
+  mirror->setEgressPort(egressPort);
+  mirror->setEgressPortDesc(PortDescriptor(egressPort));
+  mirror->setMirrorTunnel(tunnel);
+
+  for (const auto& policer :
+       {std::optional<cfg::Policer>(makePolicer(1000, 100)),
+        std::optional<cfg::Policer>(makePolicer(2000, 100)),
+        std::optional<cfg::Policer>(makePolicer(2000, 200)),
+        std::optional<cfg::Policer>()}) {
+    auto oldState = state_;
+    auto oldMirror = oldState->getMirrors()->getNodeIf("mirror0");
+    if (policer) {
+      config_.mirrors()[0].policer() = *policer;
+    } else {
+      config_.mirrors()[0].policer().reset();
+    }
+    publishWithStateUpdate();
+    auto updated = state_->getMirrors()->getNodeIf("mirror0");
+    ASSERT_NE(updated, nullptr);
+    EXPECT_EQ(updated->getPolicer(), policer);
+    EXPECT_TRUE(updated->isResolved());
+    EXPECT_EQ(updated->getMirrorTunnel(), tunnel);
+    EXPECT_EQ(updated->getEgressPort(), egressPort);
+    EXPECT_EQ(updated->getEgressPortDesc(), PortDescriptor(egressPort));
+
+    StateDelta delta(oldState, state_);
+    int changed = 0;
+    DeltaFunctions::forEachChanged(
+        delta.getMirrorsDelta(),
+        [&](auto oldNode, auto newNode) {
+          EXPECT_EQ(oldNode, oldMirror);
+          EXPECT_EQ(newNode, updated);
+          ++changed;
+        },
+        [](auto) { ADD_FAILURE() << "Mirror unexpectedly added"; },
+        [](auto) { ADD_FAILURE() << "Mirror unexpectedly removed"; });
+    EXPECT_EQ(changed, 1);
+    StateDelta transported(oldState, delta.getOperDelta());
+    EXPECT_EQ(transported.newState()->toThrift(), state_->toThrift());
+    publishWithNoStateUpdate();
+  }
+}
+
+TEST_F(MirrorTest, PolicerRejectsInvalidValues) {
+  configureAllMirrorFormats();
+  publishWithStateUpdate();
+  auto invalidMeter = makePolicer(1000, 100);
+  invalidMeter.meterType() = static_cast<cfg::PolicerMeterType>(-1);
+  for (auto& mirrorConfig : *config_.mirrors()) {
+    SCOPED_TRACE(*mirrorConfig.name());
+    for (const auto& policer :
+         {makePolicer(0, 100),
+          makePolicer(-1, 100),
+          makePolicer(1000, 0),
+          makePolicer(1000, -1),
+          invalidMeter}) {
+      mirrorConfig.policer() = policer;
+      publishWithFbossError();
+    }
+    mirrorConfig.policer().reset();
+  }
+  publishWithNoStateUpdate();
+}
+
+TEST_F(MirrorTest, PolicerSetterValidatesBeforeMutation) {
+  configureAllMirrorFormats();
+  publishWithStateUpdate();
+  auto invalidMeter = makePolicer(1, 1);
+  invalidMeter.meterType() = static_cast<cfg::PolicerMeterType>(-1);
+  for (const auto& name : {"span", "gre", "sflow"}) {
+    SCOPED_TRACE(name);
+    auto mirror = state_->getMirrors()->getNodeIf(name)->clone();
+    for (auto meterType :
+         {cfg::PolicerMeterType::PACKETS, cfg::PolicerMeterType::BYTES}) {
+      auto policer = makePolicer(1, 1);
+      policer.meterType() = meterType;
+      mirror->setPolicer(policer);
+      EXPECT_EQ(mirror->getPolicer(), policer);
+      const auto fields = mirror->toThrift();
+      for (const auto& invalid :
+           {makePolicer(0, 1),
+            makePolicer(-1, 1),
+            makePolicer(1, 0),
+            makePolicer(1, -1),
+            invalidMeter}) {
+        EXPECT_THROW(mirror->setPolicer(invalid), FbossError);
+        EXPECT_EQ(mirror->toThrift(), fields);
+      }
+    }
+    mirror->setPolicer(std::nullopt);
+    EXPECT_FALSE(mirror->getPolicer().has_value());
+  }
 }
 
 TEST_F(MirrorTest, MirrorWithPort) {

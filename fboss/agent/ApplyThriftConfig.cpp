@@ -7301,7 +7301,8 @@ std::shared_ptr<MultiSwitchMirrorMap> ThriftConfigApplier::updateMirrors() {
             mirror->getTunnelUdpPorts(),
             mirror->getDscp(),
             mirror->getTruncate(),
-            mirror->getSamplingRate());
+            mirror->getSamplingRate(),
+            mirror->getPolicer());
       }
       newMirror->setSwitchId(SwitchID(switchId));
       multiSwitchMirrors->addNode(std::move(newMirror), switchMatcher);
@@ -7435,7 +7436,8 @@ std::shared_ptr<Mirror> ThriftConfigApplier::createMirror(
       udpPorts,
       dscpMark,
       truncate,
-      samplingRate);
+      samplingRate,
+      mirrorConfig->policer().to_optional());
   return mirror;
 }
 

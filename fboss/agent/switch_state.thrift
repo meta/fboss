@@ -432,6 +432,7 @@ struct MirrorFields {
   13: i64 switchId;
   14: optional switch_config.PortDescriptor egressPortDesc;
   15: optional i32 samplingRate;
+  16: optional switch_config.Policer policer;
 }
 
 struct MirrorOnDropReportFields {

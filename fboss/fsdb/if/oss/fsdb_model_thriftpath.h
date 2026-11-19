@@ -5857,6 +5857,7 @@ class ChildThriftPath<::facebook::fboss::state::MirrorFields, ::facebook::fboss:
     STRUCT_CHILD_GETTERS(switchId, 13);
     STRUCT_CHILD_GETTERS(egressPortDesc, 14);
     STRUCT_CHILD_GETTERS(samplingRate, 15);
+    STRUCT_CHILD_GETTERS(policer, 16);
 };
 
 
