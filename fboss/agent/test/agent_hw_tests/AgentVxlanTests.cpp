@@ -21,6 +21,7 @@
 #include "fboss/agent/test/utils/ConfigUtils.h"
 #include "fboss/agent/test/utils/LoadBalancerTestUtils.h"
 #include "fboss/agent/test/utils/MirrorTestUtils.h"
+#include "fboss/agent/test/utils/OlympicTestUtils.h"
 #include "fboss/agent/test/utils/PacketSnooper.h"
 #include "fboss/agent/test/utils/VxlanTestUtils.h"
 
@@ -37,6 +38,8 @@ class AgentVxlanTest : public AgentHwTest {
   static inline const std::string kTunnelId{"vxlantunnel0"};
   static inline const folly::MacAddress kRemoteMac{"02:00:00:00:00:64"};
   static inline const folly::MacAddress kHostMac{"02:01:02:03:04:05"};
+  static inline const folly::MacAddress kTestVxlanRouterMac{
+      "00:12:B5:CE:B0:0C"};
   static constexpr int64_t kVxlanOverhead = 70;
   static inline const folly::IPAddressV6 kLocalVtep{"10::1"};
   static inline const folly::IPAddressV6 kRemoteVtep{"10::2"};
@@ -125,6 +128,11 @@ class AgentVxlanTest : public AgentHwTest {
       const folly::IPAddressV6& remoteVtep) const {
     auto cfg = interfaceConfig(ensemble);
     cfg.vxlanTunnels() = {tunnelConfig(cfg, localVtep, remoteVtep)};
+    cfg.switchSettings()->vxlanRouterMac() = kTestVxlanRouterMac.toString();
+    // Decap DSCP UNIFORM copies through the PHB DSCP->TC map;
+    // without a QoS map in config the SDK leaves the inner DSCP
+    // unchanged.
+    utility::addOlympicQosMaps(cfg, ensemble.getL3Asics());
     return cfg;
   }
 
@@ -154,7 +162,7 @@ class AgentVxlanTest : public AgentHwTest {
   // the VXLAN next hop resolves in the next level and keeps its
   // VTEP address and tunnel fields instead of flattening onto
   // the underlay.
-  void addStaticRoute(
+  void addBgpRoute(
       RouterID vrf,
       const folly::IPAddress& prefix,
       uint8_t prefixLength,
@@ -165,19 +173,19 @@ class AgentVxlanTest : public AgentHwTest {
         vrf,
         prefix,
         prefixLength,
-        ClientID::STATIC_ROUTE,
-        RouteNextHopEntry(nextHops, AdminDistance::STATIC_ROUTE),
+        ClientID::BGPD,
+        RouteNextHopEntry(nextHops, AdminDistance::EBGP),
         std::nullopt,
         level == 0 ? std::nullopt : std::optional<int32_t>(level));
     routeUpdater.program();
   }
 
-  void removeStaticRoute(
+  void removeBgpRoute(
       RouterID vrf,
       const folly::IPAddress& prefix,
       uint8_t prefixLength) {
     auto routeUpdater = this->getSw()->getRouteUpdater();
-    routeUpdater.delRoute(vrf, prefix, prefixLength, ClientID::STATIC_ROUTE);
+    routeUpdater.delRoute(vrf, prefix, prefixLength, ClientID::BGPD);
     routeUpdater.program();
   }
 
@@ -192,7 +200,7 @@ class AgentVxlanTest : public AgentHwTest {
       auto nhop = nhops.nhop(idx);
       nextHops.insert(plainNextHop(folly::IPAddress(nhop.ip), nhop.intf));
     }
-    addStaticRoute(RouterID(0), prefix, prefixLength, nextHops);
+    addBgpRoute(RouterID(0), prefix, prefixLength, nextHops);
   }
 
   ResolvedNextHop plainNextHop(const folly::IPAddress& addr, InterfaceID intf)
@@ -203,7 +211,8 @@ class AgentVxlanTest : public AgentHwTest {
   ResolvedNextHop vxlanNextHop(
       const folly::IPAddressV6& vtep,
       InterfaceID intf,
-      const folly::MacAddress& overlayDstMac) const {
+      std::optional<folly::MacAddress> overlayDstMac = std::nullopt,
+      std::optional<int32_t> tunnelVni = std::nullopt) const {
     return ResolvedNextHop(
         folly::IPAddress(vtep),
         intf,
@@ -221,7 +230,8 @@ class AgentVxlanTest : public AgentHwTest {
         // VRF, not in the overlay VRF of the route.
         RouterID(0),
         false /* resolvedInNextLevel */,
-        overlayDstMac);
+        overlayDstMac,
+        tunnelVni);
   }
 
   // One overlay next hop to the VTEP, resolved by one underlay
@@ -231,19 +241,20 @@ class AgentVxlanTest : public AgentHwTest {
       int nhopIdx,
       const folly::IPAddressV6& vtep,
       const folly::IPAddressV6& overlayPrefix,
-      const folly::MacAddress& overlayDstMac) {
+      std::optional<folly::MacAddress> overlayDstMac = std::nullopt,
+      std::optional<int32_t> tunnelVni = std::nullopt) {
     auto nhops = resolvedNhops(nhopIdx + 1);
     auto nhop = nhops.nhop(nhopIdx);
-    addStaticRoute(
+    addBgpRoute(
         RouterID(0),
         folly::IPAddress(vtep),
         128,
         {plainNextHop(folly::IPAddress(nhop.ip), nhop.intf)});
-    addStaticRoute(
+    addBgpRoute(
         kOverlayVrf,
         folly::IPAddress(overlayPrefix),
         64,
-        {vxlanNextHop(vtep, nhop.intf, overlayDstMac)},
+        {vxlanNextHop(vtep, nhop.intf, overlayDstMac, tunnelVni)},
         1);
   }
 
@@ -266,14 +277,14 @@ class AgentVxlanTest : public AgentHwTest {
     auto nhops = resolvedNhops(6, true /*useLinkLocal*/);
     auto nhop1 = nhops.nhop(1);
     CHECK(nhop1.linkLocalNhopIp.has_value());
-    addStaticRoute(
+    addBgpRoute(
         kOverlayVrf,
         folly::IPAddress(kDecapInnerDstIp),
         128,
         {plainNextHop(folly::IPAddress(*nhop1.linkLocalNhopIp), nhop1.intf)});
     auto nhop5 = nhops.nhop(5);
     CHECK(nhop5.linkLocalNhopIp.has_value());
-    addStaticRoute(
+    addBgpRoute(
         kOverlayVrf2,
         folly::IPAddress(kDecapInnerDstIp),
         128,
@@ -284,7 +295,7 @@ class AgentVxlanTest : public AgentHwTest {
   // only terminates once an overlay next hop to the remote
   // VTEP programs the SIP->SVP match for its packets.
   void addDecapOverlayNextHop() {
-    addVxlanRoute(0, kDecapRemoteVtep, kDecapOverlayPrefix, stationMac());
+    addVxlanRoute(0, kDecapRemoteVtep, kDecapOverlayPrefix, stationMac(), kVni);
   }
 
   // The tunnel DMAC is written as the inner DMAC of an
@@ -551,10 +562,10 @@ class AgentVxlanEncapTest : public AgentVxlanTest {
 
   void setupOverlayEcmp() {
     bindVrfPorts(kEncapVrfPorts);
-    addVxlanRoute(0, kRemoteVtep, kOverlayPrefix, stationMac());
-    addVxlanRoute(1, kRemoteVtep2, kOverlayPrefix2, stationMac());
-    addVxlanRoute(2, kRemoteVtep3, kOverlayPrefix3, stationMac());
-    addVxlanRoute(3, kRemoteVtep4, kOverlayPrefix4, stationMac());
+    addVxlanRoute(0, kRemoteVtep, kOverlayPrefix, stationMac(), kVni);
+    addVxlanRoute(1, kRemoteVtep2, kOverlayPrefix2, stationMac(), kVni);
+    addVxlanRoute(2, kRemoteVtep3, kOverlayPrefix3, stationMac(), kVni);
+    addVxlanRoute(3, kRemoteVtep4, kOverlayPrefix4, stationMac(), kVni);
     auto nhops = resolvedNhops(4);
     const std::vector<folly::IPAddressV6> vteps{
         kRemoteVtep, kRemoteVtep2, kRemoteVtep3, kRemoteVtep4};
@@ -562,10 +573,10 @@ class AgentVxlanEncapTest : public AgentVxlanTest {
     members.reserve(vteps.size());
     for (int i = 0; i < 4; ++i) {
       members.push_back(
-          vxlanNextHop(vteps[i], nhops.nhop(i).intf, stationMac()));
+          vxlanNextHop(vteps[i], nhops.nhop(i).intf, stationMac(), kVni));
     }
     RouteNextHopSet nextHops(members.begin(), members.end());
-    addStaticRoute(
+    addBgpRoute(
         kOverlayVrf, folly::IPAddress(kOverlayPrefixEcmp), 64, nextHops, 1);
   }
 
@@ -591,11 +602,11 @@ class AgentVxlanEncapTest : public AgentVxlanTest {
     applyHashConfig();
     addEcmpRoute(folly::IPAddress(kRemoteVtep), 128, {0, 1, 2, 3});
     auto nhops = resolvedNhops(1);
-    addStaticRoute(
+    addBgpRoute(
         kOverlayVrf,
         folly::IPAddress(kOverlayPrefix),
         64,
-        {vxlanNextHop(kRemoteVtep, nhops.nhop(0).intf, stationMac())},
+        {vxlanNextHop(kRemoteVtep, nhops.nhop(0).intf, stationMac(), kVni)},
         1);
   }
 
@@ -614,11 +625,12 @@ class AgentVxlanEncapTest : public AgentVxlanTest {
     // The overlay next hop is created after the less specific
     // underlay route, so the SDK resolves the VTEP through it.
     auto nhops = resolvedNhops(1);
-    addStaticRoute(
+    addBgpRoute(
         kOverlayVrf,
         folly::IPAddress(kOverlayPrefix),
         64,
-        {vxlanNextHop(kReresolutionVtep, nhops.nhop(0).intf, stationMac())},
+        {vxlanNextHop(
+            kReresolutionVtep, nhops.nhop(0).intf, stationMac(), kVni)},
         1);
   }
 
@@ -642,7 +654,7 @@ class AgentVxlanEncapTest : public AgentVxlanTest {
     addEcmpRoute(folly::IPAddress(kMoreSpecificPrefix), 96, {2, 3});
     // The more specific /96 takes over the underlay resolution.
     verifyUnderlayLb({2, 3});
-    removeStaticRoute(RouterID(0), folly::IPAddress(kMoreSpecificPrefix), 96);
+    removeBgpRoute(RouterID(0), folly::IPAddress(kMoreSpecificPrefix), 96);
     // Removing it falls back to the /64 resolution.
     verifyUnderlayLb({0, 1});
   }
@@ -654,8 +666,8 @@ class AgentVxlanEncapTest : public AgentVxlanTest {
 TEST_F(AgentVxlanEncapTest, encapOnCorrectEgressPortPerVtep) {
   auto setup = [this]() {
     bindVrfPorts(kEncapVrfPorts);
-    addVxlanRoute(0, kRemoteVtep, kOverlayPrefix, stationMac());
-    addVxlanRoute(1, kRemoteVtep2, kOverlayPrefix2, stationMac());
+    addVxlanRoute(0, kRemoteVtep, kOverlayPrefix, stationMac(), kVni);
+    addVxlanRoute(1, kRemoteVtep2, kOverlayPrefix2, stationMac(), kVni);
   };
   auto verify = [this]() {
     verifyEncapOnPort(kOverlayDst, logicalPort(0), {logicalPort(1)});
@@ -709,11 +721,18 @@ class AgentVxlanDecapTest : public AgentVxlanTest {
   }
 
   void verifyDecap() {
-    verifyDecapToVrf(kVni, logicalPort(1));
-    verifyDecapToVrf(kVni2, logicalPort(5));
+    verifyDecapToVrf(kVni, logicalPort(1), stationMac());
+    verifyDecapToVrf(kVni2, logicalPort(5), stationMac());
   }
 
-  void verifyDecapToVrf(uint32_t vni, PortID egressPort) {
+  void verifyDecapRouterMac() {
+    verifyDecapToVrf(kVni, logicalPort(1), kTestVxlanRouterMac);
+  }
+
+  void verifyDecapToVrf(
+      uint32_t vni,
+      PortID egressPort,
+      const folly::MacAddress& innerDstMac) {
     auto txPacket = utility::makeVxlanTxPacket(
         utility::makeAllocator(this->getSw()),
         this->getVlanIDForTx(),
@@ -723,7 +742,7 @@ class AgentVxlanDecapTest : public AgentVxlanTest {
         kDecapLocalVtep,
         vni,
         kHostMac,
-        stationMac(),
+        innerDstMac,
         kDecapInnerSrcIp,
         kDecapInnerDstIp,
         8000,
@@ -762,8 +781,7 @@ class AgentVxlanDecapTest : public AgentVxlanTest {
       nextHops.insert(
           plainNextHop(folly::IPAddress(*nhop.linkLocalNhopIp), nhop.intf));
     }
-    addStaticRoute(
-        kOverlayVrf, folly::IPAddress(kDecapInnerDstIp), 128, nextHops);
+    addBgpRoute(kOverlayVrf, folly::IPAddress(kDecapInnerDstIp), 128, nextHops);
     addDecapOverlayNextHop();
   }
 
@@ -822,6 +840,15 @@ TEST_F(AgentVxlanDecapTest, decapEgressEcmp) {
   verifyAcrossWarmBoots(setup, verify);
 }
 
+// remote-vtep - tunnel [default vrf] - local-vtep - host [overlay vrf] (port1)
+// Inner destination MAC is the VXLAN router MAC from config: the packet
+// must still terminate (decap) and forward out.
+TEST_F(AgentVxlanDecapTest, decapWithVxlanRouterMac) {
+  auto setup = [this]() { setupDecap(); };
+  auto verify = [this]() { verifyDecapRouterMac(); };
+  verifyAcrossWarmBoots(setup, verify);
+}
+
 class AgentVxlanSnoopTest : public AgentVxlanTest {
  protected:
   // Inner traffic ingresses on ports 4 and 5, one per overlay
@@ -838,6 +865,11 @@ class AgentVxlanSnoopTest : public AgentVxlanTest {
         ProductionFeature::MULTI_VRF,
         ProductionFeature::EGRESS_MIRRORING};
   }
+
+  // Second remote VTEP, for the second overlay VRF. Each VRF
+  // gets its own tunnel next hop by IP, so the two next hops
+  // are distinct objects even though they share the tunnel.
+  static inline const folly::IPAddressV6 kRemoteVtep2{"10::3"};
 
   void setCmdLineFlagOverrides() const override {
     AgentHwTest::setCmdLineFlagOverrides();
@@ -856,7 +888,15 @@ class AgentVxlanSnoopTest : public AgentVxlanTest {
     auto cfg = this->initialConfig(*this->getAgentEnsemble());
     programHashObject(cfg);
     applyEgressMirror(cfg, {logicalPort(0)});
-    addVxlanRoute(0, kRemoteVtep, kOverlayPrefix, stationMac());
+    addVxlanRoute(0, kRemoteVtep, kOverlayPrefix, stationMac(), kVni);
+  }
+
+  void setupEncapSnoopNoOverlayDstMac() {
+    bindVrfPorts(kSnoopVrfPorts);
+    auto cfg = this->initialConfig(*this->getAgentEnsemble());
+    programHashObject(cfg);
+    applyEgressMirror(cfg, {logicalPort(0)});
+    addVxlanRoute(0, kRemoteVtep, kOverlayPrefix, std::nullopt, kVni);
   }
 
   void setupTwoOverlayVrfs() {
@@ -864,13 +904,24 @@ class AgentVxlanSnoopTest : public AgentVxlanTest {
     auto cfg = this->initialConfig(*this->getAgentEnsemble());
     programHashObject(cfg);
     applyEgressMirror(cfg, {logicalPort(0)});
-    addVxlanRoute(0, kRemoteVtep, kOverlayPrefix, stationMac());
+    addVxlanRoute(0, kRemoteVtep, kOverlayPrefix, stationMac(), kVni);
+    // The second overlay VRF uses its own remote VTEP, so its
+    // tunnel next hop is a distinct object from the first VRF's
+    // (same tunnel, different IP) carrying its own VNI. The
+    // underlay route for the second VTEP resolves through the
+    // same first underlay neighbor, so both VRFs' encapped
+    // packets egress port 0 and reach the mirror.
     auto nhops = resolvedNhops(1);
-    addStaticRoute(
+    addBgpRoute(
+        RouterID(0),
+        folly::IPAddress(kRemoteVtep2),
+        128,
+        {plainNextHop(folly::IPAddress(nhops.nhop(0).ip), nhops.nhop(0).intf)});
+    addBgpRoute(
         kOverlayVrf2,
         folly::IPAddress(kOverlayPrefix),
         64,
-        {vxlanNextHop(kRemoteVtep, nhops.nhop(0).intf, stationMac())},
+        {vxlanNextHop(kRemoteVtep2, nhops.nhop(0).intf, stationMac(), kVni2)},
         1);
   }
 
@@ -956,9 +1007,42 @@ class AgentVxlanSnoopTest : public AgentVxlanTest {
     // The outer UDP source port is the only per-flow entropy
     // the underlay ECMP can hash on; a fixed port fails here.
     EXPECT_GE(sports.size(), 2);
+
+    // Second phase: repeat one identical packet. The sport is
+    // a deterministic hash of the inner flow, so repeating the
+    // same packet must not change it. Snooped packets arrive
+    // asynchronously, so resend and re-collect until all repeats
+    // are captured; leftovers are identical packets and cannot
+    // add a distinct sport.
+    constexpr int kNumRepeatPackets = 10;
+    std::set<uint16_t> repeatSports;
+    int repeatCaptured = 0;
+    WITH_RETRIES({
+      repeatSports.clear();
+      repeatCaptured = 0;
+      for (int i = 0; i < kNumRepeatPackets; ++i) {
+        auto packet = makeInnerPacket(
+            folly::IPAddressV6("100::10"), kOverlayDst, 8000, 8001);
+        this->getAgentEnsemble()->ensureSendPacketOutOfPort(
+            std::move(packet), logicalPort(4));
+      }
+      forEachSnoopedVxlanPacket(
+          snooper,
+          kNumRepeatPackets,
+          [&](const utility::EthFrame&, const utility::VxlanPacket& vxlan) {
+            repeatSports.insert(vxlan.udp.header().srcPort);
+            ++repeatCaptured;
+            return true;
+          });
+      XLOG(INFO) << "UDP sport repeat capture: " << repeatCaptured
+                 << " VXLAN packets, " << repeatSports.size()
+                 << " distinct source ports";
+      EXPECT_EVENTUALLY_EQ(repeatCaptured, kNumRepeatPackets);
+      EXPECT_EVENTUALLY_EQ(repeatSports.size(), 1);
+    });
   }
 
-  void verifyUniformHeaderCopy() {
+  void verifyUniformHeaderCopy(const folly::MacAddress& innerDstMac) {
     // The traffic class byte is (DSCP << 2) | ECN. Vary one
     // inner field at a time so a wrong copy has a unique
     // signature.
@@ -1014,7 +1098,7 @@ class AgentVxlanSnoopTest : public AgentVxlanTest {
           // so the copied hop limit is already decremented.
           expected.outerHopLimit = static_cast<uint8_t>(probe->hopLimit - 1);
           expected.vni = kVni;
-          expected.innerDstMac = stationMac();
+          expected.innerDstMac = innerDstMac;
           expected.innerDstIp = folly::IPAddress(kOverlayDst);
           expected.innerDstPort = probe->dstPort;
           utility::verifyVxlanEncap(frame, expected);
@@ -1128,8 +1212,8 @@ class AgentVxlanSnoopTest : public AgentVxlanTest {
   }
 };
 
-// hosts [overlay vrf 1 + 2] - local-vtep - tunnel [default vrf] - remote-vtep -
-// host
+// hosts [overlay vrf 1 + 2] - local-vtep - tunnel [default vrf] - remote-vteps
+// (10::2 for vrf 1, 10::3 for vrf 2) - hosts
 TEST_F(AgentVxlanSnoopTest, encapTwoOverlayVrfsTwoVnis) {
   auto setup = [this]() { setupTwoOverlayVrfs(); };
   auto verify = [this]() { verifyTwoOverlayVrfsTwoVnis(); };
@@ -1146,7 +1230,17 @@ TEST_F(AgentVxlanSnoopTest, encapUdpSportVariesAcrossFlows) {
 // host [overlay vrf] - local-vtep - tunnel [default vrf] - remote-vtep - host
 TEST_F(AgentVxlanSnoopTest, encapUniformCopiesToOuterHeader) {
   auto setup = [this]() { setupEncapSnoop(); };
-  auto verify = [this]() { verifyUniformHeaderCopy(); };
+  auto verify = [this]() { verifyUniformHeaderCopy(stationMac()); };
+  verifyAcrossWarmBoots(setup, verify);
+}
+
+// host [overlay vrf] - local-vtep - tunnel [default vrf] - remote-vtep - host
+// No overlay destination MAC in the route: the tunnel next hop
+// must fall back to the switch VXLAN router MAC from config,
+// which differs from the station MAC used explicitly elsewhere.
+TEST_F(AgentVxlanSnoopTest, encapNoOverlayDstMacUsesRouterMac) {
+  auto setup = [this]() { setupEncapSnoopNoOverlayDstMac(); };
+  auto verify = [this]() { verifyUniformHeaderCopy(kTestVxlanRouterMac); };
   verifyAcrossWarmBoots(setup, verify);
 }
 
