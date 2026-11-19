@@ -58,6 +58,10 @@ struct PgSpec {
 
 class ConfigPfcTest : public Fboss2IntegrationTest {
  protected:
+  ConfigPfcTest() {
+    addProductionFeatures({ProductionFeature::PFC});
+  }
+
   std::string bufferPoolName_ = kBufferPoolName;
   std::string policyName_ = kPolicyName;
 

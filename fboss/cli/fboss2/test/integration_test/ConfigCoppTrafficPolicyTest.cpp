@@ -50,6 +50,10 @@ constexpr std::string_view kInjectedAclName = "fboss2-copp-test-acl";
 
 class ConfigCoppTrafficPolicyTest : public Fboss2IntegrationTest {
  protected:
+  ConfigCoppTrafficPolicyTest() {
+    addProductionFeatures({ProductionFeature::COPP});
+  }
+
   // Running config captured before any mutation; TearDown restores to this.
   folly::dynamic snapshot_;
 

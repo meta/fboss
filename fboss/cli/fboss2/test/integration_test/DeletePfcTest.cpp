@@ -34,6 +34,10 @@ using namespace facebook::fboss;
 
 class DeletePfcTest : public Fboss2IntegrationTest {
  protected:
+  DeletePfcTest() {
+    addProductionFeatures({ProductionFeature::PFC});
+  }
+
   static constexpr auto kPool = "cli_e2e_test_buffer_pool";
   static constexpr auto kPolicy = "cli_e2e_test_pg_policy";
 

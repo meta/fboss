@@ -34,6 +34,10 @@ using ::testing::HasSubstr;
 
 class DeleteCoppTest : public Fboss2IntegrationTest {
  protected:
+  DeleteCoppTest() {
+    addProductionFeatures({ProductionFeature::COPP});
+  }
+
   // A cfg::PacketRxReason the test can safely program and delete.
   struct Reason {
     const char* name;
