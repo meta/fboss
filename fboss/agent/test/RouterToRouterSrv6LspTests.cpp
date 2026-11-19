@@ -12,6 +12,7 @@
 
 #include "fboss/agent/AddressUtil.h"
 #include "fboss/agent/AgentFeatures.h"
+#include "fboss/agent/FbossHwUpdateError.h"
 #include "fboss/agent/FibHelpers.h"
 #include "fboss/agent/SwSwitchRouteUpdateWrapper.h"
 #include "fboss/agent/rib/RoutingInformationBase.h"
@@ -225,6 +226,48 @@ TEST_F(RouterToRouterSrv6LspTest, bgpResolvesToSubsetOfSrv6NextHops) {
   addBgpRoute(routerAddressIndexes);
   verifyTeAgentRoutes();
   verifyBgpRoute(true, routerAddressIndexes);
+}
+
+TEST_F(RouterToRouterSrv6LspTest, rejectMixedNextHopsAfterTeAgentWithdrawal) {
+  FLAGS_srv6 = true;
+  FLAGS_allow_mixed_ip_srv6_nhop_groups = false;
+  addTeAgentRoutes();
+  addBgpRoute();
+  verifyTeAgentRoutes();
+  verifyBgpRoute(true);
+
+  const auto stateBeforeWithdrawal = sw_->getState();
+  const auto ribRoutesBeforeWithdrawal =
+      sw_->getRib()->getRouteTableDetails(RouterID(0));
+  auto updater = sw_->getRouteUpdater();
+  updater.delRoute(RouterID(0), routerAddresses_[0], 128, ClientID::TE_AGENT);
+  try {
+    updater.program();
+    FAIL() << "Expected the mixed BGP next-hop update to be rejected";
+  } catch (const FbossHwUpdateError& error) {
+    EXPECT_THAT(
+        error.what(),
+        ::testing::HasSubstr("Mixed SRv6 and non-SRv6 next hops"));
+    auto rejectedRoute = findRoute<folly::IPAddressV6>(
+        RouterID(0), bgpPrefix_, error.desiredState);
+    ASSERT_NE(rejectedRoute, nullptr);
+    ASSERT_TRUE(rejectedRoute->isResolved());
+    RouteNextHopSet expectedMixedNextHops;
+    for (size_t i = 0; i < routerAddresses_.size(); ++i) {
+      const auto nextHops = getRouterNextHops(i, i != 0);
+      expectedMixedNextHops.insert(nextHops.begin(), nextHops.end());
+    }
+    EXPECT_EQ(
+        expectedMixedNextHops,
+        getNextHops(error.desiredState, rejectedRoute->getForwardInfo()));
+  }
+
+  EXPECT_EQ(stateBeforeWithdrawal, sw_->getState());
+  EXPECT_EQ(
+      ribRoutesBeforeWithdrawal,
+      sw_->getRib()->getRouteTableDetails(RouterID(0)));
+  verifyTeAgentRoutes();
+  verifyBgpRoute(true);
 }
 
 } // namespace facebook::fboss
