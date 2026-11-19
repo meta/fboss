@@ -79,6 +79,7 @@ class SaiSwitchManager {
 
   void setMacAgingSeconds(sai_uint32_t agingSeconds);
   void setVxlanDefaultPort();
+  void setVxlanDefaultRouterMac(folly::MacAddress mac);
   sai_uint32_t getMacAgingSeconds() const;
 
   void setupCounterRefreshInterval();

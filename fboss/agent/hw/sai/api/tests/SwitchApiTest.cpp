@@ -731,6 +731,20 @@ TEST_F(SwitchApiTest, setGetVxlanDefaultPort) {
       8472);
 }
 
+TEST_F(SwitchApiTest, setGetVxlanDefaultRouterMac) {
+  EXPECT_EQ(
+      switchApi->getAttribute(
+          switchId, SaiSwitchTraits::Attributes::VxlanDefaultRouterMac{}),
+      folly::MacAddress{});
+  SaiSwitchTraits::Attributes::VxlanDefaultRouterMac vxlanRouterMac{
+      folly::MacAddress("02:00:00:00:00:03")};
+  switchApi->setAttribute(switchId, vxlanRouterMac);
+  EXPECT_EQ(
+      switchApi->getAttribute(
+          switchId, SaiSwitchTraits::Attributes::VxlanDefaultRouterMac{}),
+      folly::MacAddress("02:00:00:00:00:03"));
+}
+
 TEST_F(SwitchApiTest, testPfcMonitorEnable) {
   // Test default value
   EXPECT_EQ(

@@ -1028,6 +1028,7 @@ SaiSwitchTraits::CreateAttributes SaiPlatform::getSwitchAttributes(
       std::nullopt, // WarmRecover
 #endif
       std::nullopt, // VxlanDefaultPort
+      std::nullopt, // VxlanDefaultRouterMac
   };
 }
 

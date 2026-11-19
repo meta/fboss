@@ -2365,6 +2365,11 @@ struct SwitchSettings {
   // A port that learns more dynamic MACs than this is error-disabled.
   // Unset or 0 disables the check.
   40: optional i32 maxL2EntriesPerPort;
+  // VXLAN default router MAC: inner destination MAC for VXLAN encapsulation
+  // when a tunnel next hop does not specify an overlay destination MAC.
+  // User-provided per deployment; when unset, the switch attribute is not
+  // programmed and the SDK default applies.
+  41: optional string vxlanRouterMac;
 }
 
 // Global buffer pool

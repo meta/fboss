@@ -336,6 +336,9 @@ sai_status_t set_switch_attribute_fn(
     case SAI_SWITCH_ATTR_VXLAN_DEFAULT_PORT:
       sw.setVxlanDefaultPort(attr->value.u16);
       break;
+    case SAI_SWITCH_ATTR_VXLAN_DEFAULT_ROUTER_MAC:
+      sw.setVxlanDefaultRouterMac(attr->value.mac);
+      break;
     case SAI_SWITCH_ATTR_TAM_OBJECT_ID:
       sw.setTamObjectId(
           attr->value.objlist.count == 0
@@ -680,6 +683,12 @@ sai_status_t get_switch_attribute_fn(
         break;
       case SAI_SWITCH_ATTR_VXLAN_DEFAULT_PORT:
         attr[i].value.u16 = sw.getVxlanDefaultPort();
+        break;
+      case SAI_SWITCH_ATTR_VXLAN_DEFAULT_ROUTER_MAC:
+        std::copy_n(
+            sw.vxlanDefaultRouterMac().bytes(),
+            6,
+            std::begin(attr[i].value.mac));
         break;
       case SAI_SWITCH_ATTR_PFC_MONITOR_ENABLE:
         attr[i].value.booldata = sw.getPfcMonitorEnable();

@@ -5949,6 +5949,7 @@ class ChildThriftPath<::facebook::fboss::state::SwitchSettingsFields, ::facebook
     STRUCT_CHILD_GETTERS(ecmpGroupSettings, 63);
     STRUCT_CHILD_GETTERS(myMacs, 64);
     STRUCT_CHILD_GETTERS(maxL2EntriesPerPort, 65);
+    STRUCT_CHILD_GETTERS(vxlanRouterMac, 66);
 };
 
 
@@ -8468,6 +8469,7 @@ class ChildThriftPath<::facebook::fboss::cfg::SwitchSettings, ::facebook::fboss:
     STRUCT_CHILD_GETTERS(ecmpGroupSettings, 38);
     STRUCT_CHILD_GETTERS(myMacs, 39);
     STRUCT_CHILD_GETTERS(maxL2EntriesPerPort, 40);
+    STRUCT_CHILD_GETTERS(vxlanRouterMac, 41);
 };
 
 

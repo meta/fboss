@@ -818,6 +818,12 @@ void SaiSwitchManager::setVxlanDefaultPort() {
       SaiSwitchTraits::Attributes::VxlanDefaultPort{static_cast<sai_uint16_t>(
           cfg::switch_config_constants::kVxlanDefaultPort())});
 }
+
+void SaiSwitchManager::setVxlanDefaultRouterMac(folly::MacAddress mac) {
+  switch_->setOptionalAttribute(
+      SaiSwitchTraits::Attributes::VxlanDefaultRouterMac{mac});
+}
+
 sai_uint32_t SaiSwitchManager::getMacAgingSeconds() const {
   return GET_OPT_ATTR(Switch, MacAgingTime, switch_->attributes());
 }

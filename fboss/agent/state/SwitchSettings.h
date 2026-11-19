@@ -524,6 +524,21 @@ class SwitchSettings
     set<switch_state_tags::myMacs>(myMacs);
   }
 
+  std::optional<std::string> getVxlanRouterMac() const {
+    if (auto vxlanRouterMac = cref<switch_state_tags::vxlanRouterMac>()) {
+      return vxlanRouterMac->toThrift();
+    }
+    return std::nullopt;
+  }
+
+  void setVxlanRouterMac(const std::optional<std::string>& vxlanRouterMac) {
+    if (!vxlanRouterMac) {
+      ref<switch_state_tags::vxlanRouterMac>().reset();
+    } else {
+      set<switch_state_tags::vxlanRouterMac>(*vxlanRouterMac);
+    }
+  }
+
   std::optional<bool> getCreditWatchdog() const {
     if (auto creditWatchdog = cref<switch_state_tags::creditWatchdog>()) {
       return creditWatchdog->toThrift();

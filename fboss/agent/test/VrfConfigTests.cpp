@@ -757,6 +757,20 @@ TEST(SwSwitchVrfs, VniInTunnelMaps) {
   EXPECT_EQ(sw->getState()->getVxlanTunnels()->numNodes(), 0);
 }
 
+TEST_F(VrfConfigTest, ClearVxlanRouterMacRejected) {
+  config_.switchSettings()->vxlanRouterMac() = std::string("00:12:B5:CE:B0:0C");
+  state_ = apply();
+  config_.switchSettings()->vxlanRouterMac().reset();
+  try {
+    state_ = apply();
+    FAIL() << "Clearing a valid vxlanRouterMac must throw";
+  } catch (const FbossError& e) {
+    EXPECT_NE(
+        std::string(e.what()).find("Cannot clear vxlan router mac"),
+        std::string::npos);
+  }
+}
+
 TEST(SwSwitchVrfs, VniRejected) {
   auto config = testConfigA();
   auto handle = createTestHandle(&config);

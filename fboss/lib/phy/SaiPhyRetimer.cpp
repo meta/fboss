@@ -420,6 +420,7 @@ SaiSwitchTraits::CreateAttributes SaiPhyRetimer::getSwitchAttributes(
       warmRecover, // Warm recover
 #endif
       std::nullopt, // VXLAN default port
+      std::nullopt, // VXLAN default router MAC
   };
 }
 

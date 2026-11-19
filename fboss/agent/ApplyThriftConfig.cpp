@@ -6908,6 +6908,27 @@ shared_ptr<SwitchSettings> ThriftConfigApplier::updateSwitchSettings(
       switchSettingsChange = true;
     }
   }
+  {
+    std::optional<std::string> vxlanRouterMac;
+    if (cfg_->switchSettings()->vxlanRouterMac()) {
+      vxlanRouterMac = *cfg_->switchSettings()->vxlanRouterMac();
+    }
+    if (!vxlanRouterMac.has_value() &&
+        origSwitchSettings->getVxlanRouterMac().has_value() &&
+        folly::MacAddress::tryFromString(
+            *origSwitchSettings->getVxlanRouterMac())
+            .hasValue()) {
+      throw FbossError("Cannot clear vxlan router mac");
+    }
+    if (vxlanRouterMac.has_value() &&
+        !folly::MacAddress::tryFromString(*vxlanRouterMac).hasValue()) {
+      throw FbossError("Invalid vxlanRouterMac MAC address: ", *vxlanRouterMac);
+    }
+    if (vxlanRouterMac != origSwitchSettings->getVxlanRouterMac()) {
+      newSwitchSettings->setVxlanRouterMac(vxlanRouterMac);
+      switchSettingsChange = true;
+    }
+  }
 
   if (switchSettingsChange) {
     return newSwitchSettings;

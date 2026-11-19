@@ -2149,6 +2149,18 @@ void SaiSwitch::processSwitchSettingsChangeSansDrainedEntryLocked(
   }
 
   {
+    const auto oldVal = oldSwitchSettings->getVxlanRouterMac();
+    const auto newVal = newSwitchSettings->getVxlanRouterMac();
+    if (oldVal != newVal && newVal.has_value()) {
+      auto mac = folly::MacAddress::tryFromString(*newVal);
+      if (mac.hasValue()) {
+        XLOG(DBG3) << "Configuring vxlanRouterMac: " << *newVal;
+        managerTable_->switchManager().setVxlanDefaultRouterMac(*mac);
+      }
+    }
+  }
+
+  {
     const auto oldVal = oldSwitchSettings->getForceTrafficOverFabric();
     const auto newVal = newSwitchSettings->getForceTrafficOverFabric();
     if (oldVal != newVal) {
@@ -3918,6 +3930,14 @@ HwInitResult SaiSwitch::initLocked(
           ret.switchState->getSwitchSettings()
               ->cbegin()
               ->second->getL2AgeTimerSeconds());
+    }
+    if (auto vxlanRouterMac = ret.switchState->getSwitchSettings()
+                                  ->cbegin()
+                                  ->second->getVxlanRouterMac()) {
+      auto mac = folly::MacAddress::tryFromString(*vxlanRouterMac);
+      if (mac.hasValue()) {
+        managerTable_->switchManager().setVxlanDefaultRouterMac(*mac);
+      }
     }
   }
 #if defined(BRCM_SAI_SDK_DNX_GTE_13_0)

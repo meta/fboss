@@ -298,6 +298,15 @@ class FakeSwitch {
     return vxlanDefaultPort_;
   }
 
+  void setVxlanDefaultRouterMac(const sai_mac_t& mac) {
+    folly::ByteRange r(std::begin(mac), std::end(mac));
+    vxlanDefaultRouterMac_ = folly::MacAddress::fromBinary(r);
+  }
+
+  folly::MacAddress vxlanDefaultRouterMac() const {
+    return vxlanDefaultRouterMac_;
+  }
+
   void setTamObjectId(std::vector<sai_object_id_t> objectId) {
     tamObjectId_ = std::move(objectId);
   }
@@ -447,6 +456,7 @@ class FakeSwitch {
   sai_uint16_t vxlanDefaultPort_ = static_cast<sai_uint16_t>(
       cfg::switch_config_constants::kVxlanDefaultPort());
   std::vector<sai_object_id_t> tamObjectId_;
+  folly::MacAddress vxlanDefaultRouterMac_;
   bool pfcMonitorEnable_{false};
   bool cablePropagationDelayMeasurement_{false};
   bool portCl72RetryEnable_{false};
