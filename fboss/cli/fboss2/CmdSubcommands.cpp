@@ -102,6 +102,15 @@ void mergeCommands(
               "Command `{}` already exists, command tree must be invalid",
               cmd.name));
     }
+    if constexpr (std::is_same_v<CmdT, facebook::fboss::RootCommand>) {
+      // A handler-less duplicate of an executable root is kept separate so
+      // addCommandBranch registers its children at depth 0, letting them own
+      // CmdArgsLists data_[0] (e.g. "config vlan default <id>").
+      if (existing->commandHandler && !cmd.commandHandler) {
+        combined.push_back(cmd);
+        continue;
+      }
+    }
     mergeCommands(existing->subcommands, cmd.subcommands);
   }
 }

@@ -344,6 +344,44 @@ TEST_F(CmdSubCommandsTest, MergesSubcommandsIntoExecutableParent) {
   EXPECT_EQ(options->getLocalOption("show_object_parent", "--mode"), "value");
 }
 
+TEST_F(CmdSubCommandsTest, HandlerlessDuplicateRootChildrenStartAtDepthZero) {
+  // Mirrors "config vlan" in CmdListConfig.cpp: an executable root with its
+  // own positional arg, plus a handler-less duplicate root whose child reads
+  // its arg from data_[0] (ParentCmd = void).
+  auto args = CmdArgsLists::getInstance();
+  args->clear();
+  SCOPE_EXIT {
+    args->clear();
+  };
+  bool rootCalled = false;
+  bool defaultCalled = false;
+  const ArgRegistrarFn vlanArgs{
+      [](CLI::App& cmd, std::vector<std::string>& args) {
+        cmd.add_option("vlan_id", args, "VLAN ID");
+      }};
+  const CommandTree cmdTree = {
+      {"config",
+       "vlan",
+       "Configure VLAN settings",
+       [&] { rootCalled = true; },
+       vlanArgs},
+      {"config",
+       "vlan",
+       "Configure VLAN settings",
+       {{"default",
+         "Default VLAN help",
+         [&] { defaultCalled = true; },
+         vlanArgs}}},
+  };
+
+  CmdSubcommands::getInstance()->init(*app_, cmdTree, {}, {});
+  ASSERT_NO_THROW(app_->parse("config vlan default 2001"));
+
+  EXPECT_FALSE(rootCalled);
+  EXPECT_TRUE(defaultCalled);
+  EXPECT_EQ(args->at(0), (std::vector<std::string>{"2001"}));
+}
+
 TEST_F(CmdSubCommandsTest, ThrowsOnDuplicateNestedCommand) {
   // Duplicate leaf commands within the same tree are rejected — the exact
   // same path from root to leaf exists twice, which is a conflict.
