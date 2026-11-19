@@ -16,8 +16,18 @@
 #include "fboss/agent/hw/sai/api/SystemPortApi.h"
 #include "fboss/agent/hw/sai/api/TamApi.h"
 
+#include <atomic>
+
 extern "C" {
 #include "fboss/agent/hw/sai/api/fake/saifakeextensions.h"
+}
+
+namespace {
+std::atomic<bool> legacyCsigTagAction{false};
+}
+
+extern "C" void fake_sai_set_legacy_csig_tag_action(bool available) {
+  legacyCsigTagAction.store(available, std::memory_order_relaxed);
 }
 
 namespace facebook::fboss {
@@ -373,6 +383,9 @@ SaiPortTraits::Attributes::AttributeLinkScanMode::operator()() {
 
 std::optional<sai_attr_id_t>
 SaiPortTraits::Attributes::AttributeCsigTagActionWrapper::operator()() {
+  if (legacyCsigTagAction.load(std::memory_order_relaxed)) {
+    return SAI_PORT_ATTR_EXT_FAKE_CSIG_TAG_ACTION;
+  }
   return std::nullopt;
 }
 

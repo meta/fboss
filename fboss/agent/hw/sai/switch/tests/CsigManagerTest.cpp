@@ -4,6 +4,12 @@
 #include "fboss/agent/hw/sai/switch/SaiSwitchManager.h"
 #include "fboss/agent/hw/sai/switch/SaiTamManager.h"
 #include "fboss/agent/hw/sai/switch/tests/ManagerTestBase.h"
+#include "fboss/agent/hw/switch_asics/FakeAsic.h"
+#include "fboss/agent/platforms/sai/SaiFakePlatform.h"
+
+extern "C" {
+#include "fboss/agent/hw/sai/api/fake/saifakeextensions.h"
+}
 
 using namespace facebook::fboss;
 
@@ -63,6 +69,76 @@ class CsigManagerTest : public ManagerTestBase {
     saiStore->reload();
   }
 };
+
+namespace {
+class CsigUnsupportedAsic : public FakeAsic {
+ public:
+  using FakeAsic::FakeAsic;
+  bool isSupported(Feature feature) const override {
+    return feature != Feature::CSIG && FakeAsic::isSupported(feature);
+  }
+};
+
+class CsigUnsupportedPlatform : public SaiFakePlatform {
+ public:
+  using SaiFakePlatform::SaiFakePlatform;
+  HwAsic* getAsic() const override {
+    return asic_.get();
+  }
+
+ private:
+  void setupAsic(
+      std::optional<int64_t> switchId,
+      const cfg::SwitchInfo& switchInfo,
+      std::optional<HwAsic::FabricNodeRole> /*fabricNodeRole*/) override {
+    asic_ = std::make_unique<CsigUnsupportedAsic>(switchId, switchInfo);
+  }
+  std::unique_ptr<CsigUnsupportedAsic> asic_;
+};
+} // namespace
+
+class CsigUnsupportedAsicTest : public CsigManagerTest {
+ protected:
+  std::unique_ptr<SaiPlatform> createSaiPlatformForTest(
+      std::unique_ptr<PlatformProductInfo> productInfo) override {
+    return std::make_unique<CsigUnsupportedPlatform>(std::move(productInfo));
+  }
+};
+
+TEST_F(CsigUnsupportedAsicTest, RejectsProfilesBeforeProgramming) {
+  const auto fs = FakeSai::getInstance();
+  auto& manager = saiManagerTable->tamManager();
+  EXPECT_THROW(
+      manager.programCsigProfiles(
+          {profile(SAI_TAM_INT_TYPE_CSIG_COMPACT)}, true),
+      FbossError);
+  EXPECT_EQ(manager.getCsigHandle(), nullptr);
+  EXPECT_TRUE(fs->tamIntManager.map().empty());
+  EXPECT_TRUE(fs->tamManager.map().empty());
+}
+
+TEST_F(CsigManagerTest, RejectsEmptyUpdateProfiles) {
+  const auto fs = FakeSai::getInstance();
+  auto& manager = saiManagerTable->tamManager();
+  EXPECT_THROW(manager.programCsigProfiles({}, true), FbossError);
+  EXPECT_EQ(manager.getCsigHandle(), nullptr);
+  EXPECT_TRUE(fs->tamIntManager.map().empty());
+  EXPECT_TRUE(fs->tamManager.map().empty());
+}
+
+TEST_F(CsigManagerTest, RejectsProfilesOnLegacySdk) {
+  const auto fs = FakeSai::getInstance();
+  auto& manager = saiManagerTable->tamManager();
+  fake_sai_set_legacy_csig_tag_action(true);
+  EXPECT_THROW(
+      manager.programCsigProfiles(
+          {profile(SAI_TAM_INT_TYPE_CSIG_COMPACT)}, true),
+      FbossError);
+  fake_sai_set_legacy_csig_tag_action(false);
+  EXPECT_EQ(manager.getCsigHandle(), nullptr);
+  EXPECT_TRUE(fs->tamIntManager.map().empty());
+  EXPECT_TRUE(fs->tamManager.map().empty());
+}
 
 TEST_F(CsigManagerTest, CompactProfile) {
   using A = SaiTamIntTraits::Attributes;
