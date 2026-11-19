@@ -6,6 +6,7 @@
 
 #include <array>
 #include <map>
+#include <numeric>
 #include <string>
 #include <vector>
 
@@ -104,7 +105,94 @@ class RouterToRouterSrv6LspTest : public ::testing::Test {
     updater.program();
   }
 
-  static constexpr int kNumLinkLocalNextHops = 6;
+  RouteNextHopSet getRouterNextHops(int index, bool useSrv6) const {
+    const auto startIndex = std::accumulate(
+        kNextHopCounts.begin(), kNextHopCounts.begin() + index, 0);
+    RouteNextHopSet nextHops;
+    for (int i = 0; i < kNextHopCounts.at(index); ++i) {
+      nextHops.emplace(
+          useSrv6 ? getSrv6Nhop(startIndex + i)
+                  : getLinkLocalNhop(startIndex + i));
+    }
+    return nextHops;
+  }
+
+  void addTeAgentRoutes() {
+    auto updater = sw_->getRouteUpdater();
+    for (size_t i = 0; i < routerAddresses_.size(); ++i) {
+      UnicastRoute route;
+      route.dest()->ip() =
+          facebook::network::toBinaryAddress(routerAddresses_[i]);
+      route.dest()->prefixLength() = 128;
+      NamedRouteDestination namedDestination;
+      namedDestination.nextHopGroup_ref() = getNhgName(i);
+      route.namedRouteDestination() = namedDestination;
+      route.counterID() = getNhgName(i);
+      updater.addRoute(RouterID(0), ClientID::TE_AGENT, route);
+    }
+    updater.program();
+  }
+
+  void verifyTeAgentRoutes() const {
+    auto state = sw_->getState();
+    for (size_t i = 0; i < routerAddresses_.size(); ++i) {
+      const auto name = getNhgName(i);
+      auto route = findRoute<folly::IPAddressV6>(
+          RouterID(0), {routerAddresses_[i], 128}, state);
+      ASSERT_NE(route, nullptr) << name;
+      ASSERT_TRUE(route->isResolved()) << name;
+      EXPECT_EQ(route->getBestEntry().first, ClientID::TE_AGENT) << name;
+      auto teEntry = route->getEntryForClient(ClientID::TE_AGENT);
+      ASSERT_NE(teEntry, nullptr) << name;
+      EXPECT_EQ(teEntry->getNamedNextHopGroup(), name);
+      EXPECT_EQ(route->getForwardInfo().getCounterID(), name);
+      EXPECT_EQ(
+          getRouterNextHops(i, true),
+          getNextHops(state, route->getForwardInfo()))
+          << name;
+    }
+  }
+
+  void verifyBgpRoute(
+      bool useSrv6,
+      const std::vector<int>& routerAddressIndexes = {0, 1, 2, 3}) const {
+    auto state = sw_->getState();
+    auto route = findRoute<folly::IPAddressV6>(RouterID(0), bgpPrefix_, state);
+    ASSERT_NE(route, nullptr);
+    ASSERT_TRUE(route->isResolved());
+    RouteNextHopSet expectedNextHops;
+    std::vector<RouteCounterID> expectedCounterIds;
+    for (const auto index : routerAddressIndexes) {
+      const auto nextHops = getRouterNextHops(index, useSrv6);
+      expectedNextHops.insert(nextHops.begin(), nextHops.end());
+      expectedCounterIds.push_back(getNhgName(index));
+    }
+    const auto nextHops = getNextHops(state, route->getForwardInfo());
+    EXPECT_EQ(expectedNextHops, nextHops);
+
+    std::map<folly::IPAddress, std::vector<folly::IPAddressV6>>
+        expectedSidLists;
+    for (const auto& nextHop : expectedNextHops) {
+      expectedSidLists.emplace(nextHop.addr(), nextHop.srv6SegmentList());
+    }
+    std::map<folly::IPAddress, std::vector<folly::IPAddressV6>> actualSidLists;
+    for (const auto& nextHop : nextHops) {
+      actualSidLists.emplace(nextHop.addr(), nextHop.srv6SegmentList());
+    }
+    EXPECT_EQ(expectedSidLists, actualSidLists);
+
+    const auto counterId = route->getForwardInfo().getCounterID();
+    if (useSrv6) {
+      ASSERT_TRUE(counterId.has_value());
+      EXPECT_THAT(expectedCounterIds, ::testing::Contains(*counterId));
+    } else {
+      EXPECT_FALSE(counterId.has_value());
+    }
+    auto bgpEntry = route->getEntryForClient(ClientID::BGPD);
+    ASSERT_NE(bgpEntry, nullptr);
+    EXPECT_FALSE(bgpEntry->getCounterID().has_value());
+  }
+
   static constexpr std::array<int, 4> kNextHopCounts{2, 2, 1, 1};
   gflags::FlagSaver flagSaver_;
   std::unique_ptr<HwTestHandle> handle_;
@@ -119,82 +207,24 @@ class RouterToRouterSrv6LspTest : public ::testing::Test {
 
 TEST_F(RouterToRouterSrv6LspTest, bgpResolvesToOpenrNextHops) {
   addBgpRoute();
-
-  auto state = sw_->getState();
-  auto route = findRoute<folly::IPAddressV6>(RouterID(0), bgpPrefix_, state);
-  ASSERT_NE(route, nullptr);
-  ASSERT_TRUE(route->isResolved());
-  RouteNextHopSet expectedBgpNextHops;
-  for (int i = 0; i < kNumLinkLocalNextHops; ++i) {
-    expectedBgpNextHops.emplace(getLinkLocalNhop(i));
-  }
-  EXPECT_EQ(expectedBgpNextHops, getNextHops(state, route->getForwardInfo()));
+  verifyBgpRoute(false);
 }
 
 TEST_F(
     RouterToRouterSrv6LspTest,
     teAgentRoutesResolveToSrv6NamedNextHopGroups) {
-  auto updater = sw_->getRouteUpdater();
-  for (size_t i = 0; i < routerAddresses_.size(); ++i) {
-    UnicastRoute route;
-    route.dest()->ip() =
-        facebook::network::toBinaryAddress(routerAddresses_[i]);
-    route.dest()->prefixLength() = 128;
-    NamedRouteDestination namedDestination;
-    namedDestination.nextHopGroup_ref() = getNhgName(i);
-    route.namedRouteDestination() = namedDestination;
-    route.counterID() = getNhgName(i);
-    updater.addRoute(RouterID(0), ClientID::TE_AGENT, route);
-  }
-  updater.program();
+  addTeAgentRoutes();
   addBgpRoute();
+  verifyTeAgentRoutes();
+  verifyBgpRoute(true);
+}
 
-  auto state = sw_->getState();
-  int nextHopIndex = 0;
-  for (size_t i = 0; i < routerAddresses_.size(); ++i) {
-    const auto name = getNhgName(i);
-    RouteNextHopSet nextHops;
-    for (int j = 0; j < kNextHopCounts[i]; ++j) {
-      nextHops.emplace(getSrv6Nhop(nextHopIndex++));
-    }
-    auto route = findRoute<folly::IPAddressV6>(
-        RouterID(0), {routerAddresses_[i], 128}, state);
-    ASSERT_NE(route, nullptr) << name;
-    ASSERT_TRUE(route->isResolved()) << name;
-    EXPECT_EQ(route->getBestEntry().first, ClientID::TE_AGENT) << name;
-    auto teEntry = route->getEntryForClient(ClientID::TE_AGENT);
-    ASSERT_NE(teEntry, nullptr) << name;
-    EXPECT_EQ(teEntry->getNamedNextHopGroup(), name);
-    EXPECT_EQ(route->getForwardInfo().getCounterID(), name);
-    EXPECT_EQ(nextHops, getNextHops(state, route->getForwardInfo())) << name;
-  }
-
-  auto bgpRoute = findRoute<folly::IPAddressV6>(RouterID(0), bgpPrefix_, state);
-  ASSERT_NE(bgpRoute, nullptr);
-  ASSERT_TRUE(bgpRoute->isResolved());
-  RouteNextHopSet expectedBgpNextHops;
-  std::map<folly::IPAddress, std::vector<folly::IPAddressV6>> expectedSidLists;
-  for (int i = 0; i < kNumLinkLocalNextHops; ++i) {
-    expectedBgpNextHops.emplace(getSrv6Nhop(i));
-    expectedSidLists.emplace(getLinkLocalNhop(i).addr(), getSidList(i));
-  }
-  const auto bgpNextHops = getNextHops(state, bgpRoute->getForwardInfo());
-  EXPECT_EQ(expectedBgpNextHops, bgpNextHops);
-  std::map<folly::IPAddress, std::vector<folly::IPAddressV6>> actualSidLists;
-  for (const auto& nextHop : bgpNextHops) {
-    actualSidLists.emplace(nextHop.addr(), nextHop.srv6SegmentList());
-  }
-  EXPECT_EQ(expectedSidLists, actualSidLists);
-
-  const auto counterId = bgpRoute->getForwardInfo().getCounterID();
-  ASSERT_TRUE(counterId.has_value());
-  EXPECT_THAT(
-      *counterId,
-      ::testing::AnyOf(
-          getNhgName(0), getNhgName(1), getNhgName(2), getNhgName(3)));
-  auto bgpEntry = bgpRoute->getEntryForClient(ClientID::BGPD);
-  ASSERT_NE(bgpEntry, nullptr);
-  EXPECT_FALSE(bgpEntry->getCounterID().has_value());
+TEST_F(RouterToRouterSrv6LspTest, bgpResolvesToSubsetOfSrv6NextHops) {
+  const std::vector<int> routerAddressIndexes{1, 2, 3};
+  addTeAgentRoutes();
+  addBgpRoute(routerAddressIndexes);
+  verifyTeAgentRoutes();
+  verifyBgpRoute(true, routerAddressIndexes);
 }
 
 } // namespace facebook::fboss
