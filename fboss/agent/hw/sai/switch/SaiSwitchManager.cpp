@@ -1052,10 +1052,18 @@ const std::vector<sai_stat_id_t>& SaiSwitchManager::supportedErrorStats()
         stats.end(),
         SaiSwitchTraits::egressNonFabricCellUnpackError().begin(),
         SaiSwitchTraits::egressNonFabricCellUnpackError().end());
-    stats.insert(
-        stats.end(),
-        SaiSwitchTraits::egressParityCellError().begin(),
-        SaiSwitchTraits::egressParityCellError().end());
+    bool parityCellErrorSupported = true;
+#if defined(BRCM_SAI_SDK_DNX_GTE_16_0)
+    // From 16.0 the SDK supports cell parity errors only on J4 and Q4D
+    parityCellErrorSupported = platform_->getAsic()->getAsicType() !=
+        cfg::AsicType::ASIC_TYPE_JERICHO3;
+#endif
+    if (parityCellErrorSupported) {
+      stats.insert(
+          stats.end(),
+          SaiSwitchTraits::egressParityCellError().begin(),
+          SaiSwitchTraits::egressParityCellError().end());
+    }
   }
   if (platform_->getAsic()->isSupported(
           HwAsic::Feature::DRAM_DATAPATH_PACKET_ERROR_STATS)) {
