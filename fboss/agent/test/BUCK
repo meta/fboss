@@ -76,6 +76,7 @@ cpp_unittest(
         "RouteTests.cpp",
         "RouteUpdateLoggerTest.cpp",
         "RouteUpdateLoggingTrackerTest.cpp",
+        "RouterToRouterSrv6LspTests.cpp",
         "RoutingTest.cpp",
         "SelfHealingEcmpLagTests.cpp",
         "ShelManagerTest.cpp",
