@@ -151,6 +151,18 @@ void validatePhyInfo(
           *prevRsFecInfo->correctedCodewords(),
           *currRsFecInfo->correctedCodewords());
     }
+    if (auto prevErroredBlocks = prevPcsStats->erroredBlocks()) {
+      auto currErroredBlocks = currStats.line()->pcs()->erroredBlocks();
+      EXPECT_TRUE(currErroredBlocks.has_value());
+      EXPECT_EQ(*prevErroredBlocks, currErroredBlocks.value_or(-1))
+          << "PCS errored blocks incremented";
+    }
+    if (auto prevBerCount = prevPcsStats->berCount()) {
+      auto currBerCount = currStats.line()->pcs()->berCount();
+      EXPECT_TRUE(currBerCount.has_value());
+      EXPECT_EQ(*prevBerCount, currBerCount.value_or(-1))
+          << "PCS BER count incremented";
+    }
   }
 
   auto checkSideState = [](const phy::PhySideState& sideState) {
