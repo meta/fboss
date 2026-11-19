@@ -35,6 +35,7 @@ bool CredoPhyAsic::isSupported(Feature feature) const {
     case HwAsic::Feature::SWITCH_DROP_REASON_LIST_SUPPORT:
     case HwAsic::Feature::SAI_SERDES_PRECODING:
     case HwAsic::Feature::ECMP_RANDOM_SPRAY_HIERARCHICAL_LEVEL:
+    case HwAsic::Feature::HIERARCHICAL_ECMP:
     case HwAsic::Feature::ACL_DST_IPV6_WORD_QUALIFIERS:
     case HwAsic::Feature::ACL_DST_IP_WITH_MASK:
     case HwAsic::Feature::ACL_DST_IPV6_WORD_WITH_MASK:

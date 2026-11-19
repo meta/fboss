@@ -52,6 +52,7 @@ class FakeAsic : public HwAsic {
       case HwAsic::Feature::NO_RX_REASON_TRAP:
       case HwAsic::Feature::SDK_REGISTER_DUMP:
       case HwAsic::Feature::ECMP_RANDOM_SPRAY_HIERARCHICAL_LEVEL:
+      case HwAsic::Feature::HIERARCHICAL_ECMP:
       case HwAsic::Feature::TEMPERATURE_MONITORING:
       case HwAsic::Feature::SWITCH_WIDE_LINK_UP_DEBOUNCE:
       case HwAsic::Feature::SRV6_BINDING_USID_UA_USD:

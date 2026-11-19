@@ -290,6 +290,11 @@ class HwAsic {
     ECMP_DLB_OFFSET,
     ECMP_RANDOM_SPRAY_HIERARCHICAL_LEVEL,
 
+    // Set to true if the ASIC/SDK supports two-level hierarchical ECMP
+    // with the level selected per group via
+    // SAI_NEXT_HOP_GROUP_ATTR_HIERARCHICAL_NEXTHOP.
+    HIERARCHICAL_ECMP,
+
     // MPLS Features::
     // ================
     //

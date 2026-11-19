@@ -291,6 +291,7 @@ bool Jericho4Asic::isSupported(Feature feature) const {
     case HwAsic::Feature::VENDOR_SWITCH_CONGESTION_MANAGEMENT_ERRORS:
     case HwAsic::Feature::PORT_MTU_ERROR_TRAP:
     case HwAsic::Feature::ECMP_RANDOM_SPRAY_HIERARCHICAL_LEVEL:
+    case HwAsic::Feature::HIERARCHICAL_ECMP:
     // TODO(J4): re-enable metadata qualifiers once SDK support is validated.
     case HwAsic::Feature::ACL_METADATA_QUALIFER:
     case HwAsic::Feature::ROUTE_METADATA:

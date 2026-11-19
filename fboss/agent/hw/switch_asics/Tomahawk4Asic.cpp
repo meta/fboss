@@ -134,6 +134,7 @@ bool Tomahawk4Asic::isSupported(Feature feature) const {
     case HwAsic::Feature::ACL_DST_IP_WITH_MASK:
     case HwAsic::Feature::MY_MAC:
     case HwAsic::Feature::ANY_ACL_DROP_COUNTER:
+    case HwAsic::Feature::HIERARCHICAL_ECMP:
       return true;
     // features not working well with bcmsim
     case HwAsic::Feature::MIRROR_PACKET_TRUNCATION:

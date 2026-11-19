@@ -139,6 +139,7 @@ bool Tomahawk5Asic::isSupported(Feature feature) const {
     case HwAsic::Feature::ACL_DST_IP_WITH_MASK:
     case HwAsic::Feature::MY_MAC:
     case HwAsic::Feature::HW_PROTECTION_SWITCHOVER_COUNTERS:
+    case HwAsic::Feature::HIERARCHICAL_ECMP:
       return true;
     case HwAsic::Feature::PBR_ACL:
       return saiSdkAtLeast("16.0_ea_odp");
