@@ -132,6 +132,7 @@ bool YubaAsic::isSupportedNonFabric(Feature feature) const {
       return isDropReasonListSupported();
     case HwAsic::Feature::SRV6_BINDING_USID_UA_USD:
     case HwAsic::Feature::SRV6_DECAP_TUNNEL:
+    case HwAsic::Feature::MIRROR_SESSION_POLICER:
     case HwAsic::Feature::ACL_BYTE_COUNTER:
     case HwAsic::Feature::SAI_MPLS_LABEL_LOOKUP_FAIL_COUNTER:
     case HwAsic::Feature::SAI_MPLS_TTL_1_TRAP:
