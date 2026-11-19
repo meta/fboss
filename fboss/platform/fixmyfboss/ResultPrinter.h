@@ -34,8 +34,13 @@ class ResultPrinter {
 
   void printProgress(const std::string& message);
   void clearLine();
-  void printSummary(const std::vector<platform_checks::CheckResult>& results);
+  // A non-empty `labels[i]` is printed after the name of `results[i]`.
+  void printSummary(
+      const std::vector<platform_checks::CheckResult>& results,
+      const std::vector<std::string>& labels = {});
   void printDetails(const std::vector<platform_checks::CheckResult>& results);
+
+  static std::string getStatusName(platform_checks::CheckStatus status);
 
  private:
   std::ostream& out_;
@@ -69,12 +74,12 @@ class ResultPrinter {
 
   void printStatusGroup(
       const std::vector<platform_checks::CheckResult>& results,
+      const std::vector<std::string>& labels,
       platform_checks::CheckStatus status,
       const std::string& label,
       const char* color);
 
   std::string getStatusBackgroundColor(platform_checks::CheckStatus status);
-  std::string getStatusName(platform_checks::CheckStatus status);
 };
 
 } // namespace facebook::fboss::platform::fixmyfboss

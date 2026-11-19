@@ -41,6 +41,20 @@ CheckResult makeResult(
 
 } // namespace
 
+TEST(ResultPrinterTest, SummaryShowsLabels) {
+  std::ostringstream out;
+  const std::vector<CheckResult> results{
+      makeResult("A", CheckStatus::OK),
+      makeResult("B", CheckStatus::OK),
+  };
+
+  fixmyfboss::ResultPrinter(out).printSummary(results, {"P1", ""});
+
+  EXPECT_THAT(out.str(), HasSubstr("A: P1\n"));
+  EXPECT_THAT(out.str(), HasSubstr("  B\n"));
+  EXPECT_THAT(out.str(), Not(HasSubstr("B:")));
+}
+
 TEST(ResultPrinterTest, SummaryListsSkipReasons) {
   std::ostringstream out;
   const std::vector<CheckResult> results{
