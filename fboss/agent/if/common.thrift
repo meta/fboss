@@ -166,7 +166,8 @@ typedef map<ForwardingClass, string> ForwardingClassToNamedNhg
 struct ClassBasedPolicy {
   1: string name;
   2: string defaultNexthopGroup;
-  3: map<ForwardingClass, NextHopGroup> class2NextHopGroup;
+  // Deprecated: use class2NamedNextHopGroup. Ignored by the agent.
+  3: map<ForwardingClass, NextHopGroup> class2NextHopGroup_DEPRECATED;
   // Named next-hop groups created beforehand with addNamedNextHopGroups
   4: ForwardingClassToNamedNhg class2NamedNextHopGroup;
 }
