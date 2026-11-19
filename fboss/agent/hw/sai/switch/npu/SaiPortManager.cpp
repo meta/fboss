@@ -538,8 +538,11 @@ void SaiPortManager::changePortImpl(
   }
   processPortBufferPoolConfigs(newPort);
 
-  changeMirror(oldPort, newPort);
+  // Same order as addPortImpl/removePort: the sample packet object must be
+  // on the port while a sample mirror session is attached or detached.
+  changeMirror(oldPort, newPort, MirrorAction::STOP);
   changeSamplePacket(oldPort, newPort);
+  changeMirror(oldPort, newPort, MirrorAction::START);
   changePfc(oldPort, newPort);
   changeRxLaneSquelch(oldPort, newPort);
   changeTxEnable(oldPort, newPort);
