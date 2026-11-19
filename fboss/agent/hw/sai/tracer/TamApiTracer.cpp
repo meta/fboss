@@ -21,7 +21,8 @@ namespace {
 std::map<int32_t, std::pair<std::string, std::size_t>> _TamMap{
     SAI_ATTR_MAP(Tam, EventObjectList),
     SAI_ATTR_MAP(Tam, TamBindPointList),
-#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1) && !defined(CHENAB_SAI_SDK)
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1) && !defined(CHENAB_SAI_SDK) && \
+    !defined(TAJO_SDK)
     SAI_ATTR_MAP(Tam, IntObjectList),
 #endif
 };
