@@ -155,10 +155,11 @@ namespace facebook::fboss {
 namespace {
 
 std::vector<sai_object_id_t> getPortTamIds(
-    folly::F14FastMap<std::string, std::unique_ptr<SaiTamHandle>>& tamHandles,
+    folly::F14FastMap<std::string, std::unique_ptr<SaiEventTamHandle>>&
+        eventTamHandles,
     PortID portId) {
   std::vector<sai_object_id_t> portTamIds;
-  for (const auto& [_, tamHandle] : tamHandles) {
+  for (const auto& [_, tamHandle] : eventTamHandles) {
     if (tamHandle->portId == portId) {
       portTamIds.push_back(tamHandle->tam->adapterKey());
     }
@@ -168,29 +169,35 @@ std::vector<sai_object_id_t> getPortTamIds(
 
 void bindTamObjectToSwitchAndPort(
     SaiManagerTable* managerTable,
-    folly::F14FastMap<std::string, std::unique_ptr<SaiTamHandle>>& tamHandles,
+    folly::F14FastMap<std::string, std::unique_ptr<SaiEventTamHandle>>&
+        eventTamHandles,
+    const SaiCsigTamHandle* csigTamHandle,
     sai_object_id_t tamId,
     PortID portId) {
   // Bind MOD port before binding to the switch, according to Broadcom example.
   XLOG(INFO) << "Binding TAM object " << tamId << " to port " << portId;
   managerTable->portManager().setTamObject(
-      portId, getPortTamIds(tamHandles, portId));
+      portId, getPortTamIds(eventTamHandles, portId));
   XLOG(INFO) << "Binding TAM object " << tamId << " to switch";
-  managerTable->switchManager().setTamObject(getSwitchTamIds(tamHandles));
+  managerTable->switchManager().setTamObject(
+      getSwitchTamIds(eventTamHandles, csigTamHandle));
 }
 
 #if defined(BRCM_SAI_SDK_DNX_GTE_11_0) || defined(BRCM_SAI_SDK_XGS_GTE_13_0)
 void unbindTamObjectFromSwitchAndPort(
     SaiManagerTable* managerTable,
-    folly::F14FastMap<std::string, std::unique_ptr<SaiTamHandle>>& tamHandles,
+    folly::F14FastMap<std::string, std::unique_ptr<SaiEventTamHandle>>&
+        eventTamHandles,
+    const SaiCsigTamHandle* csigTamHandle,
     sai_object_id_t tamId,
     PortID portId) {
   // This must be the reverse of binding.
   XLOG(INFO) << "Unbinding TAM object " << tamId << " from switch";
-  managerTable->switchManager().setTamObject(getSwitchTamIds(tamHandles));
+  managerTable->switchManager().setTamObject(
+      getSwitchTamIds(eventTamHandles, csigTamHandle));
   XLOG(INFO) << "Unbinding TAM object " << tamId << " from port " << portId;
   managerTable->portManager().setTamObject(
-      portId, getPortTamIds(tamHandles, portId));
+      portId, getPortTamIds(eventTamHandles, portId));
 }
 #endif
 
@@ -264,7 +271,8 @@ std::shared_ptr<SaiTamCollector> SaiTamManager::createTamCollector(
 }
 
 void SaiTamManager::bindTam(sai_object_id_t tamId, const PortID& portId) {
-  bindTamObjectToSwitchAndPort(managerTable_, eventTamHandles_, tamId, portId);
+  bindTamObjectToSwitchAndPort(
+      managerTable_, eventTamHandles_, csigTamHandle_.get(), tamId, portId);
 }
 
 void SaiTamManager::storeTamHandle(
@@ -285,7 +293,7 @@ void SaiTamManager::storeTamHandle(
     std::shared_ptr<SaiSamplePacket> samplePacket
 #endif
 ) {
-  auto tamHandle = std::make_unique<SaiTamHandle>();
+  auto tamHandle = std::make_unique<SaiEventTamHandle>();
   tamHandle->report = std::move(report);
   tamHandle->action = std::move(action);
   tamHandle->transport = std::move(transport);
@@ -545,6 +553,7 @@ void SaiTamManager::removeMirrorOnDropReport(
   unbindTamObjectFromSwitchAndPort(
       managerTable_,
       eventTamHandles_,
+      csigTamHandle_.get(),
       handle->tam->adapterKey(),
       handle->portId);
 #endif

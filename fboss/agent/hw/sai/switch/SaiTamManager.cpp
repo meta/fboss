@@ -48,12 +48,26 @@ std::shared_ptr<SaiTam> SaiTamManager::createTam(
 }
 
 std::vector<sai_object_id_t> getSwitchTamIds(
-    folly::F14FastMap<std::string, std::unique_ptr<SaiTamHandle>>& tamHandles) {
+    folly::F14FastMap<std::string, std::unique_ptr<SaiEventTamHandle>>&
+        tamHandles) {
   std::vector<sai_object_id_t> switchTamIds;
   for (const auto& [_, tamHandle] : tamHandles) {
-    switchTamIds.push_back(tamHandle->tam->adapterKey());
+    if (tamHandle->tam) {
+      switchTamIds.push_back(tamHandle->tam->adapterKey());
+    }
   }
   return switchTamIds;
+}
+
+std::vector<sai_object_id_t> getSwitchTamIds(
+    folly::F14FastMap<std::string, std::unique_ptr<SaiEventTamHandle>>&
+        eventTamHandles,
+    const SaiCsigTamHandle* csigTamHandle) {
+  auto tamIds = getSwitchTamIds(eventTamHandles);
+  if (csigTamHandle && csigTamHandle->tam) {
+    tamIds.push_back(csigTamHandle->tam->adapterKey());
+  }
+  return tamIds;
 }
 
 } // namespace facebook::fboss

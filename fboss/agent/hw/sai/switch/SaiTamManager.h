@@ -28,6 +28,10 @@ using SaiTamEvent = SaiObject<SaiTamEventTraits>;
 using SaiTamEventThreshold = SaiObject<SaiTamEventThresholdTraits>;
 using SaiTam = SaiObject<SaiTamTraits>;
 
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+using SaiTamInt = SaiObject<SaiTamIntTraits>;
+#endif
+
 namespace tam {
 // kModSwitchEventId used as an identifier for the event; 1 chosen arbitrarily.
 constexpr uint32_t kModSwitchEventId{1};
@@ -35,7 +39,7 @@ constexpr uint32_t kModSwitchEventId{1};
 constexpr uint32_t kModDeviceId{0};
 } // namespace tam
 
-struct SaiTamHandle {
+struct SaiEventTamHandle {
   // Reverse declaration order is the SAI dependency destruction order.
   std::shared_ptr<SaiTamReport> report;
   std::shared_ptr<SaiTamEventAction> action;
@@ -55,8 +59,21 @@ struct SaiTamHandle {
   SaiManagerTable* managerTable{nullptr};
 };
 
+struct SaiCsigTamHandle {
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+  std::vector<std::shared_ptr<SaiTamInt>> profiles;
+#endif
+  std::shared_ptr<SaiTam> tam;
+};
+
 std::vector<sai_object_id_t> getSwitchTamIds(
-    folly::F14FastMap<std::string, std::unique_ptr<SaiTamHandle>>& tamHandles);
+    folly::F14FastMap<std::string, std::unique_ptr<SaiEventTamHandle>>&
+        tamHandles);
+
+std::vector<sai_object_id_t> getSwitchTamIds(
+    folly::F14FastMap<std::string, std::unique_ptr<SaiEventTamHandle>>&
+        eventTamHandles,
+    const SaiCsigTamHandle* csigTamHandle);
 
 class SaiTamManager {
  public:
@@ -66,6 +83,12 @@ class SaiTamManager {
       SaiPlatform* platform);
 
   void addMirrorOnDropReport(const std::shared_ptr<MirrorOnDropReport>& report);
+
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+  const SaiCsigTamHandle* getCsigHandle() const {
+    return csigTamHandle_.get();
+  }
+#endif
   void removeMirrorOnDropReport(
       const std::shared_ptr<MirrorOnDropReport>& report);
   void changeMirrorOnDropReport(
@@ -76,16 +99,17 @@ class SaiTamManager {
   void removeMirrorOnDropReportsForPort(PortID portId);
 #endif
 
-  const SaiTamHandle* getEventTamHandle(const std::string& name) const {
+  const SaiEventTamHandle* getEventTamHandle(const std::string& name) const {
     return eventTamHandles_.contains(name) ? eventTamHandles_.at(name).get()
                                            : nullptr;
   }
-  SaiTamHandle* getEventTamHandle(const std::string& name) {
+  SaiEventTamHandle* getEventTamHandle(const std::string& name) {
     return eventTamHandles_.contains(name) ? eventTamHandles_.at(name).get()
                                            : nullptr;
   }
 
   void gracefulExit() {
+    csigTamHandle_.reset();
     eventTamHandles_.clear();
   }
 
@@ -134,8 +158,9 @@ class SaiTamManager {
   SaiStore* saiStore_;
   SaiManagerTable* managerTable_;
   SaiPlatform* platform_;
-  folly::F14FastMap<std::string, std::unique_ptr<SaiTamHandle>>
+  folly::F14FastMap<std::string, std::unique_ptr<SaiEventTamHandle>>
       eventTamHandles_;
+  std::unique_ptr<SaiCsigTamHandle> csigTamHandle_;
 #if defined(BRCM_SAI_SDK_DNX_GTE_11_0)
   void addDnxMirrorOnDropReport(
       const std::shared_ptr<MirrorOnDropReport>& report);

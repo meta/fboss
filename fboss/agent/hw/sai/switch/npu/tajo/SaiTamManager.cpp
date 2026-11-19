@@ -43,7 +43,7 @@ constexpr auto kDefaultTamHandle = "default";
 // across runs even when the set of events is identical, defeating the
 // SaiStore's AdapterHostKey dedup and churning the TAM object on warmboot.
 std::vector<sai_object_id_t> gatherAllEventIds(
-    const folly::F14FastMap<std::string, std::unique_ptr<SaiTamHandle>>&
+    const folly::F14FastMap<std::string, std::unique_ptr<SaiEventTamHandle>>&
         tamHandles) {
   std::vector<sai_object_id_t> eventIds;
   for (const auto& [name, handle] : tamHandles) {
@@ -67,7 +67,8 @@ std::vector<sai_object_id_t> gatherAllEventIds(
 void rebuildAndRebindTam(
     SaiStore* saiStore,
     SaiManagerTable* managerTable,
-    folly::F14FastMap<std::string, std::unique_ptr<SaiTamHandle>>& tamHandles) {
+    folly::F14FastMap<std::string, std::unique_ptr<SaiEventTamHandle>>&
+        tamHandles) {
   std::vector<PortID> modPorts;
   for (const auto& [name, handle] : tamHandles) {
     if (name != kDefaultTamHandle) {
@@ -340,7 +341,7 @@ SaiTamManager::SaiTamManager(
   auto& tamStore = saiStore_->get<SaiTamTraits>();
   auto tam = tamStore.setObject(tamTraits, tamTraits);
 
-  auto tamHandle = std::make_unique<SaiTamHandle>();
+  auto tamHandle = std::make_unique<SaiEventTamHandle>();
   tamHandle->report = report;
   tamHandle->action = action;
   tamHandle->events.push_back(event);
@@ -398,7 +399,7 @@ void SaiTamManager::addMirrorOnDropReport(
   auto event = createMirrorOnDropEvent(
       saiStore_, action->adapterKey(), collector->adapterKey(), threshold);
 
-  auto handle = std::make_unique<SaiTamHandle>();
+  auto handle = std::make_unique<SaiEventTamHandle>();
   handle->report = reportObj;
   handle->action = action;
   handle->transport = transport;

@@ -260,6 +260,11 @@ void SaiManagerTable::reset(bool skipSwitchManager) {
     switchManager_->setTamObject({});
   }
 #endif
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+  if (tamManager_->getCsigHandle()) {
+    switchManager_->setTamObject({});
+  }
+#endif
   tamManager_.reset();
 
   // Virtual channels carry the port OID as a create-only attribute, so they

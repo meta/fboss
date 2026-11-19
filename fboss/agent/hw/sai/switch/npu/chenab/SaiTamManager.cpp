@@ -130,7 +130,7 @@ void SaiTamManager::programMirrorOnDropReport(
     return;
   }
 
-  auto handle = std::make_unique<SaiTamHandle>();
+  auto handle = std::make_unique<SaiEventTamHandle>();
   handle->report = createTamReport(SAI_TAM_REPORT_TYPE_VENDOR_EXTN);
   handle->action = createTamAction(handle->report->adapterKey());
   handle->transport = createTamTransport();
