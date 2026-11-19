@@ -1948,7 +1948,23 @@ bool RibRouteTables::backfillNextHopIds(
          std::as_const(route->getEntryForClients())) {
       const auto& nhopSet = entry->getNextHopSet();
       if (nhopSet.empty()) {
-        continue; // DROP / TO_CPU, or inline already dropped
+        // DROP / TO_CPU carry no id. An id without inline nexthops was dropped
+        // by an earlier boot; restore them while the flag is off.
+        auto clientSetId = entry->getClientNextHopSetID();
+        if (FLAGS_drop_inline_nexthops_with_id || !clientSetId.has_value()) {
+          continue;
+        }
+        auto restored = manager.getNextHopsIf(*clientSetId);
+        if (!restored.has_value() || restored->empty()) {
+          XLOG(ERR) << "[NextHop ID Manager] no nexthops to restore for "
+                    << "clientNextHopSetID=" << *clientSetId
+                    << " route=" << route->str();
+          continue;
+        }
+        auto newEntry = entry->clone();
+        newEntry->setNextHops(*restored);
+        clientUpdates.emplace_back(clientId, std::move(newEntry));
+        continue;
       }
       bool hasId = entry->getClientNextHopSetID().has_value();
       if (hasId && !FLAGS_drop_inline_nexthops_with_id) {
@@ -2007,6 +2023,20 @@ bool RibRouteTables::backfillNextHopIds(
         if (FLAGS_drop_inline_nexthops_with_id) {
           fwdReplacement->clearInlineNextHops();
         }
+      }
+    } else if (
+        !FLAGS_drop_inline_nexthops_with_id &&
+        fwd.getAction() == RouteForwardAction::NEXTHOPS &&
+        fwd.getResolvedNextHopSetID().has_value()) {
+      auto resolvedId = *fwd.getResolvedNextHopSetID();
+      auto restored = manager.getNextHopsIf(resolvedId);
+      if (restored.has_value() && !restored->empty()) {
+        fwdReplacement = fwd.clone();
+        fwdReplacement->setNextHops(*restored);
+      } else {
+        XLOG(ERR) << "[NextHop ID Manager] no nexthops to restore for "
+                  << "resolvedNextHopSetID=" << resolvedId
+                  << " route=" << route->str();
       }
     }
 

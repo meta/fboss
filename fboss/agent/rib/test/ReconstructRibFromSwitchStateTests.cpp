@@ -1254,3 +1254,55 @@ TEST(WarmbootDropInlineNextHops, FlagOffKeepsInline) {
   EXPECT_FALSE(rib->nextHopIdsChangedAtWarmboot());
   EXPECT_EQ(applyRib(*rib, state), state);
 }
+
+// State written by a dropping agent, warm booted with the drop flag off (with
+// and without resolve_nexthops_from_id): every fwd and per-client entry gets
+// its inline nexthops back from its ids.
+TEST(WarmbootDropInlineNextHops, FlagTurnedOffRestoresInline) {
+  gflags::FlagSaver saver;
+  FLAGS_enable_nexthop_id_manager = true;
+  FLAGS_resolve_nexthops_from_id = true;
+  FLAGS_drop_inline_nexthops_with_id = true;
+  auto idToNhopMap = std::make_shared<IdToNextHopMap>();
+  idToNhopMap->addNextHop(1, mkNh("10.0.0.1").toThrift());
+  idToNhopMap->addNextHop(2, mkNh("10.0.0.2").toThrift());
+  auto idToNhopIdSetMap = std::make_shared<IdToNextHopIdSetMap>();
+  idToNhopIdSetMap->addNextHopIdSet(kOff + 1, {1, 2});
+  RouteNextHopSet nhops{mkNh("10.0.0.1"), mkNh("10.0.0.2")};
+  auto fibsMap = makeFibsMap();
+  auto container = fibsMap->getNodeIf(RouterID(0));
+  addRouteOnSet(
+      container->getFibV4(),
+      makePrefixV4("10.1.0.0/24"),
+      NextHopSetID(kOff + 1));
+  addRouteOnSet(
+      container->getFibV6(),
+      makePrefixV6("2001:db8::/32"),
+      NextHopSetID(kOff + 1));
+  auto [dropRib, state] = warmboot(fibsMap, idToNhopMap, idToNhopIdSetMap);
+  auto droppedState = applyRib(*dropRib, state);
+  const auto& fibInfo = droppedState->getFibsInfoMap()->cbegin()->second;
+
+  for (bool resolve : {true, false}) {
+    FLAGS_resolve_nexthops_from_id = resolve;
+    FLAGS_drop_inline_nexthops_with_id = false;
+    auto [rib, dropped] = warmboot(
+        fibInfo->getfibsMap(),
+        fibInfo->getIdToNextHopMap(),
+        fibInfo->getIdToNextHopIdSetMap());
+    ASSERT_TRUE(rib->nextHopIdsChangedAtWarmboot()) << resolve;
+    auto restored = applyRib(*rib, dropped);
+    expectStateMatchesRib(*rib, restored);
+    forEachRoute(restored, [&](const auto& route) {
+      const auto& fwd = route->getForwardInfo();
+      EXPECT_EQ(fwd.getNextHopSet(), nhops) << route->str();
+      EXPECT_EQ(fwd.getResolvedNextHopSetID(), NextHopSetID(kOff + 1))
+          << route->str();
+      auto client = route->getEntryForClient(ClientID::BGPD);
+      ASSERT_NE(client, nullptr) << route->str();
+      EXPECT_EQ(client->getNextHopSet(), nhops) << route->str();
+      EXPECT_EQ(client->getClientNextHopSetID(), NextHopSetID(kOff + 1))
+          << route->str();
+    });
+  }
+}

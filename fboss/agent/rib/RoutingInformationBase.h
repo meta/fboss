@@ -262,7 +262,7 @@ class RibRouteTables {
       const RibToSwitchStateFunction& ribToSwitchStateFunc,
       void* cookie) const;
   // Whether warm boot reconstruct folded or backfilled NextHop ids, or dropped
-  // inline nexthops.
+  // or restored inline nexthops.
   bool nextHopIdsChangedAtWarmboot() const {
     return nextHopIdsChangedAtWarmboot_;
   }
@@ -460,8 +460,9 @@ class RibRouteTables {
   // Stamps missing clientNextHopSetID, resolvedNextHopSetID, and
   // normalizedResolvedNextHopSetID on routes from a pre-feature warmboot
   // snapshot, then drops their inline nexthops under
-  // FLAGS_drop_inline_nexthops_with_id. No-op when manager is null. Returns
-  // whether it changed any route.
+  // FLAGS_drop_inline_nexthops_with_id, or restores dropped ones from their ids
+  // when the flag is off. No-op when manager is null. Returns whether it
+  // changed any route.
   // TODO: remove once FLAGS_enable_nexthop_id_manager is permanently on.
   static bool backfillNextHopIds(
       const SynchronizedRouteTables::WLockedPtr& lockedRouteTables);
