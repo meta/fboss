@@ -523,7 +523,8 @@
         127,
         133,
         132,
-        147
+        147,
+        148
     ],
     "tomahawk4": [
         2,
@@ -591,7 +592,8 @@
         109,
         133,
         139,
-        147
+        147,
+        148
     ],
     "tomahawk5": [
         2,
@@ -676,7 +678,8 @@
         139,
         146,
         135,
-        147
+        147,
+        148
     ],
     "tomahawk6": [
         2,
@@ -757,7 +760,8 @@
         139,
         146,
         144,
-        135
+        135,
+        148
     ],
     "tomahawkultra1": [
         2,
@@ -1404,7 +1408,8 @@
         "PORT_USER_METADATA",
         "MY_MAC",
         "ACCESS_POLICY_CLASS_ID_ACL",
-        "STATIC_FDB_EVICT_DYNAMIC"
+        "STATIC_FDB_EVICT_DYNAMIC",
+        "CSIG_PASSTHROUGH_SUPPORT"
     ],
     "tomahawk4": [
         "CPU_RX_TX",
@@ -1472,7 +1477,8 @@
         "SAVE_SDK_STATE",
         "MY_MAC",
         "MULTI_VRF",
-        "STATIC_FDB_EVICT_DYNAMIC"
+        "STATIC_FDB_EVICT_DYNAMIC",
+        "CSIG_PASSTHROUGH_SUPPORT"
     ],
     "tomahawk5": [
         "CPU_RX_TX",
@@ -1557,7 +1563,8 @@
         "MULTI_VRF",
         "ACL_COUNTERS_EXTENDED_LABEL",
         "PBR_ACL",
-        "STATIC_FDB_EVICT_DYNAMIC"
+        "STATIC_FDB_EVICT_DYNAMIC",
+        "CSIG_PASSTHROUGH_SUPPORT"
     ],
     "tomahawk6": [
         "CPU_RX_TX",
@@ -1638,7 +1645,8 @@
         "MULTI_VRF",
         "ACL_COUNTERS_EXTENDED_LABEL",
         "MIXED_IP_SRV6_NEXT_HOP_GROUPS",
-        "PBR_ACL"
+        "PBR_ACL",
+        "CSIG_PASSTHROUGH_SUPPORT"
     ],
     "tomahawkultra1": [
         "CPU_RX_TX",
