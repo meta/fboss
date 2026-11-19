@@ -15,6 +15,7 @@
 #include "fboss/agent/AgentFeatures.h"
 #include "fboss/agent/ApplyThriftConfig.h"
 #include "fboss/agent/L2Entry.h"
+#include "fboss/agent/MacTableManager.h"
 #include "fboss/agent/MacTableUtils.h"
 #include "fboss/agent/NeighborUpdater.h"
 #include "fboss/agent/ResourceAccountant.h"
@@ -30,6 +31,7 @@
 
 #include <fb303/ThreadCachedServiceData.h>
 #include <folly/MacAddress.h>
+#include <folly/synchronization/Baton.h>
 
 namespace facebook::fboss {
 
@@ -379,6 +381,32 @@ TEST_F(MacTableManagerTest, MacLimitAgedMacFreesRoomForNewMac) {
   EXPECT_FALSE(
       getPort()->hasError(PortError::ERROR_DISABLE_MAC_LIMIT_EXCEEDED));
   EXPECT_EQ(dynamicMacsOnPort(), 2);
+}
+
+// SwSwitch::stop() destroys the manager before draining queued updates.
+TEST_F(MacTableManagerTest, QueuedLearnOutlivesManager) {
+  FLAGS_enable_hw_update_protection = false;
+  folly::Baton<> updateThreadBlocked;
+  folly::Baton<> releaseUpdateThread;
+  getSw()->getUpdateEvb()->runInFbossEventBaseThread([&] {
+    updateThreadBlocked.post();
+    releaseUpdateThread.wait();
+  });
+  updateThreadBlocked.wait();
+
+  auto manager = std::make_unique<MacTableManager>(getSw());
+  manager->handleL2LearningUpdate(
+      L2Entry(
+          kMacAddress(),
+          kVlan(),
+          PortDescriptor(kPortID()),
+          L2Entry::L2EntryType::L2_ENTRY_TYPE_PENDING),
+      L2EntryUpdateType::L2_ENTRY_UPDATE_TYPE_ADD);
+  manager.reset();
+  releaseUpdateThread.post();
+  waitForStateUpdates(getSw());
+
+  verifyMacIsAdded();
 }
 
 class StaticMacForNeighborReaddTest : public MacTableManagerTest {

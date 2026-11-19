@@ -34,9 +34,10 @@ class MacTableManager {
   MacTableManager(MacTableManager const&) = delete;
   MacTableManager& operator=(MacTableManager const&) = delete;
 
-  std::shared_ptr<SwitchState> learnMac(
+  static std::shared_ptr<SwitchState> learnMac(
+      SwSwitch* sw,
       const std::shared_ptr<SwitchState>& state,
-      const L2Entry& l2Entry) const;
+      const L2Entry& l2Entry);
 
   SwSwitch* sw_{nullptr};
 };

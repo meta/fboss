@@ -48,10 +48,10 @@ void MacTableManager::handleL2LearningUpdate(
     return;
   }
 
-  auto updateMacTableFn = [this, l2Entry, l2EntryUpdateType, isAdd](
+  auto updateMacTableFn = [sw = sw_, l2Entry, l2EntryUpdateType, isAdd](
                               const std::shared_ptr<SwitchState>& state) {
     if (isAdd) {
-      return learnMac(state, l2Entry);
+      return learnMac(sw, state, l2Entry);
     }
     return MacTableUtils::updateMacTable(state, l2Entry, l2EntryUpdateType);
   };
@@ -76,8 +76,9 @@ void MacTableManager::handleL2LearningUpdate(
 // Runs on the update thread against the latest state, so the limit is exact
 // regardless of how learn updates are queued or coalesced.
 std::shared_ptr<SwitchState> MacTableManager::learnMac(
+    SwSwitch* sw,
     const std::shared_ptr<SwitchState>& state,
-    const L2Entry& l2Entry) const {
+    const L2Entry& l2Entry) {
   const auto learn = [&]() {
     return MacTableUtils::updateMacTable(
         state, l2Entry, L2EntryUpdateType::L2_ENTRY_UPDATE_TYPE_ADD);
@@ -91,11 +92,11 @@ std::shared_ptr<SwitchState> MacTableManager::learnMac(
     return learn();
   }
   if (port->hasError(kMacLimitError)) {
-    sw_->stats()->l2LearnPortLimitDrop();
+    sw->stats()->l2LearnPortLimitDrop();
     return nullptr;
   }
   const auto limit = MacTableUtils::getMaxL2EntriesPerPort(
-      state, port, *sw_->getScopeResolver());
+      state, port, *sw->getScopeResolver());
   if (!limit ||
       !MacTableUtils::exceedsMacLimit(
           state,
@@ -108,8 +109,8 @@ std::shared_ptr<SwitchState> MacTableManager::learnMac(
   XLOG(ERR) << "Port " << port->getName() << " (" << *portId
             << ") reached its limit of " << *limit
             << " MACs, error-disabling it";
-  sw_->stats()->l2LearnPortLimitDrop();
-  sw_->stats()->l2LearnPortLimitErrorDisable();
+  sw->stats()->l2LearnPortLimitDrop();
+  sw->stats()->l2LearnPortLimitErrorDisable();
   return MacTableUtils::errorDisablePortForMacLimit(state, *portId);
 }
 
