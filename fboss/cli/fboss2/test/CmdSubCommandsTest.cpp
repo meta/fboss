@@ -5,6 +5,7 @@
 
 #include <CLI/CLI.hpp>
 #include <folly/ScopeGuard.h>
+#include <algorithm>
 
 #include "fboss/cli/fboss2/CmdArgsLists.h"
 #include "fboss/cli/fboss2/CmdHandler.h"
@@ -492,6 +493,43 @@ TEST_F(CmdSubCommandsTest, RegistersRunningConfigFromSharedCommandTree) {
     SCOPED_TRACE(daemon);
     EXPECT_NE(utils::getSubcommandIf(*runningCmd, daemon), nullptr);
   }
+}
+
+TEST_F(CmdSubCommandsTest, RegistersBgpConfigFromRealCommandTree) {
+  auto tree = mergeCommandTrees({kCommandTree(), kAdditionalCommandTree()});
+  auto bgp = std::find_if(tree.begin(), tree.end(), [](const auto& cmd) {
+    return cmd.verb == "show" && cmd.name == "bgp";
+  });
+  ASSERT_NE(bgp, tree.end());
+  auto config = std::find_if(
+      bgp->subcommands.begin(), bgp->subcommands.end(), [](const auto& cmd) {
+        return cmd.name == "config";
+      });
+  ASSERT_NE(config, bgp->subcommands.end());
+  ASSERT_TRUE(config->commandHandler.has_value());
+  bool called = false;
+  config->commandHandler = [&called]() { called = true; };
+
+  CmdSubcommands::getInstance()->init(*app_, tree, {}, {});
+
+  auto* showCmd = utils::getSubcommandIf(*app_, "show");
+  ASSERT_NE(showCmd, nullptr);
+  auto* bgpCmd = utils::getSubcommandIf(*showCmd, "bgp");
+  ASSERT_NE(bgpCmd, nullptr);
+  auto* configCmd = utils::getSubcommandIf(*bgpCmd, "config");
+  ASSERT_NE(configCmd, nullptr);
+  EXPECT_EQ(utils::getSubcommandIf(*configCmd, "running"), nullptr);
+
+  auto* rawCmd = utils::getSubcommandIf(*configCmd, "raw");
+#ifdef IS_OSS
+  EXPECT_EQ(rawCmd, nullptr);
+#else
+  ASSERT_NE(rawCmd, nullptr);
+#endif
+
+  EXPECT_NO_THROW(app_->parse("show bgp config"));
+  EXPECT_TRUE(called);
+  EXPECT_THROW(app_->parse("show bgp config running"), CLI::ExtrasError);
 }
 
 TEST_F(CmdSubCommandsTest, RegistersLocalOptionsFromRealCommandTree) {

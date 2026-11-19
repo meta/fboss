@@ -2,7 +2,6 @@
 
 #include "fboss/cli/fboss2/CmdList.h"
 
-#include "fboss/cli/fboss2/commands/show/bgp/config/CmdShowConfigRunningBgp.h"
 #include "fboss/cli/fboss2/commands/show/bgp/policy/CmdShowBgpPolicy.h"
 #include "fboss/cli/fboss2/commands/show/bgp/profiler/CmdShowBgpProfiler.h"
 #include "fboss/cli/fboss2/commands/show/config/CmdShowConfigHistoryAgent.h"
@@ -27,14 +26,7 @@ const CommandTree& kBaseAdditionalCommandTree() {
       {"show",
        "bgp",
        "Show BGP information",
-       {{"config",
-         "Show BGP configuration",
-         {{"running",
-           "Show running BGP configuration",
-           commandHandler<CmdShowConfigRunningBgp>,
-           argTypeHandler<CmdShowConfigRunningBgpTraits>}}},
-
-        {"policy",
+       {{"policy",
          "Show BGP policy by name",
          commandHandler<CmdShowBgpPolicy>,
          argTypeHandler<CmdShowBgpPolicyTraits>},

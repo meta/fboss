@@ -238,6 +238,12 @@ const CommandTree& kCommandTree() {
          commandHandler<CmdShowBgpChangelist>,
          argTypeHandler<CmdShowBgpChangelistTraits>},
 
+        // show bgp config (using same handlers as `show config running bgp`)
+        {"config",
+         "Show BGP configuration",
+         commandHandler<CmdShowConfigRunningBgp>,
+         argTypeHandler<CmdShowConfigRunningBgpTraits>},
+
         {"fib-nexthops",
          "Show unique nexthop sets in submitted BGP FIB-out state",
          commandHandler<CmdShowBgpFibNexthops>,

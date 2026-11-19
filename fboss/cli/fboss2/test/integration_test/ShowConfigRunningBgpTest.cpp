@@ -4,7 +4,7 @@
  * End-to-end test for 'show config running bgp'.
  *
  * 'show config running <daemon>' is the canonical spelling for running-config
- * views, with 'show bgp config running' kept as an alias. Both must reach the
+ * views, with 'show bgp config' kept as an alias. Both must reach the
  * same handler and return the config bgpd itself reports over its
  * getRunningConfig thrift RPC.
  *
@@ -49,10 +49,10 @@ TEST_F(ShowConfigRunningBgpTest, MatchesDaemonRunningConfig) {
       << "'show config running bgp' must match bgpd getRunningConfig";
 }
 
-TEST_F(ShowConfigRunningBgpTest, MatchesShowBgpConfigRunningAlias) {
+TEST_F(ShowConfigRunningBgpTest, MatchesShowBgpConfigAlias) {
   auto canonical = showRunningBgp({"show", "config", "running", "bgp"});
-  auto alias = showRunningBgp({"show", "bgp", "config", "running"});
+  auto alias = showRunningBgp({"show", "bgp", "config"});
   ASSERT_TRUE(canonical.isObject());
   EXPECT_EQ(canonical, alias)
-      << "'show config running bgp' must match 'show bgp config running'";
+      << "'show config running bgp' must match 'show bgp config'";
 }
