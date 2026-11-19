@@ -1,7 +1,7 @@
 {
   "portIdToPortAssignment": {
     "1": {
-        "portName": "eth1/16/1",
+        "portName": "eth1/7/1",
         "portType": 0,
         "scope": 0
     },
@@ -11,17 +11,17 @@
         "scope": 0
     },
     "3": {
-        "portName": "eth1/7/1",
+        "portName": "eth1/16/1",
         "portType": 0,
         "scope": 0
     },
     "4": {
-        "portName": "eth1/8/1",
+        "portName": "eth1/23/1",
         "portType": 0,
         "scope": 0
     },
     "18": {
-        "portName": "eth1/23/1",
+        "portName": "eth1/8/1",
         "portType": 0,
         "scope": 0
     },
@@ -41,47 +41,47 @@
         "scope": 0
     },
     "36": {
-        "portName": "eth1/26/1",
-        "portType": 0,
-        "scope": 0
-    },
-    "37": {
-        "portName": "eth1/25/1",
-        "portType": 0,
-        "scope": 0
-    },
-    "38": {
-        "portName": "eth1/9/1",
-        "portType": 0,
-        "scope": 0
-    },
-    "39": {
-        "portName": "eth1/1/1",
-        "portType": 0,
-        "scope": 0
-    },
-    "54": {
-        "portName": "eth1/17/1",
-        "portType": 0,
-        "scope": 0
-    },
-    "55": {
         "portName": "eth1/10/1",
         "portType": 0,
         "scope": 0
     },
-    "56": {
+    "37": {
+        "portName": "eth1/17/1",
+        "portType": 0,
+        "scope": 0
+    },
+    "38": {
         "portName": "eth1/18/1",
         "portType": 0,
         "scope": 0
     },
-    "57": {
+    "39": {
+        "portName": "eth1/26/1",
+        "portType": 0,
+        "scope": 0
+    },
+    "54": {
+        "portName": "eth1/1/1",
+        "portType": 0,
+        "scope": 0
+    },
+    "55": {
         "portName": "eth1/2/1",
         "portType": 0,
         "scope": 0
     },
+    "56": {
+        "portName": "eth1/9/1",
+        "portType": 0,
+        "scope": 0
+    },
+    "57": {
+        "portName": "eth1/25/1",
+        "portType": 0,
+        "scope": 0
+    },
     "72": {
-        "portName": "eth1/48/1",
+        "portName": "eth1/39/1",
         "portType": 0,
         "scope": 0
     },
@@ -91,17 +91,17 @@
         "scope": 0
     },
     "74": {
-        "portName": "eth1/39/1",
+        "portName": "eth1/48/1",
         "portType": 0,
         "scope": 0
     },
     "75": {
-        "portName": "eth1/40/1",
+        "portName": "eth1/55/1",
         "portType": 0,
         "scope": 0
     },
     "90": {
-        "portName": "eth1/55/1",
+        "portName": "eth1/40/1",
         "portType": 0,
         "scope": 0
     },
@@ -121,42 +121,42 @@
         "scope": 0
     },
     "108": {
-        "portName": "eth1/12/1",
+        "portName": "eth1/4/1",
         "portType": 0,
         "scope": 0
     },
     "109": {
-        "portName": "eth1/5/1",
+        "portName": "eth1/12/1",
         "portType": 0,
         "scope": 0
     },
     "110": {
-        "portName": "eth1/11/1",
-        "portType": 0,
-        "scope": 0
-    },
-    "111": {
-        "portName": "eth1/3/1",
-        "portType": 0,
-        "scope": 0
-    },
-    "126": {
-        "portName": "eth1/14/1",
-        "portType": 0,
-        "scope": 0
-    },
-    "127": {
-        "portName": "eth1/6/1",
-        "portType": 0,
-        "scope": 0
-    },
-    "128": {
         "portName": "eth1/13/1",
         "portType": 0,
         "scope": 0
     },
+    "111": {
+        "portName": "eth1/14/1",
+        "portType": 0,
+        "scope": 0
+    },
+    "126": {
+        "portName": "eth1/3/1",
+        "portType": 0,
+        "scope": 0
+    },
+    "127": {
+        "portName": "eth1/11/1",
+        "portType": 0,
+        "scope": 0
+    },
+    "128": {
+        "portName": "eth1/5/1",
+        "portType": 0,
+        "scope": 0
+    },
     "129": {
-        "portName": "eth1/4/1",
+        "portName": "eth1/6/1",
         "portType": 0,
         "scope": 0
     },
@@ -166,17 +166,17 @@
         "scope": 0
     },
     "145": {
-        "portName": "eth1/21/1",
-        "portType": 0,
-        "scope": 0
-    },
-    "146": {
         "portName": "eth1/20/1",
         "portType": 0,
         "scope": 0
     },
+    "146": {
+        "portName": "eth1/21/1",
+        "portType": 0,
+        "scope": 0
+    },
     "147": {
-        "portName": "eth1/22/1",
+        "portName": "eth1/29/1",
         "portType": 0,
         "scope": 0
     },
@@ -191,7 +191,7 @@
         "scope": 0
     },
     "164": {
-        "portName": "eth1/29/1",
+        "portName": "eth1/22/1",
         "portType": 0,
         "scope": 0
     },
@@ -201,42 +201,42 @@
         "scope": 0
     },
     "180": {
-        "portName": "eth1/44/1",
+        "portName": "eth1/36/1",
         "portType": 0,
         "scope": 0
     },
     "181": {
-        "portName": "eth1/37/1",
+        "portName": "eth1/44/1",
         "portType": 0,
         "scope": 0
     },
     "182": {
-        "portName": "eth1/43/1",
-        "portType": 0,
-        "scope": 0
-    },
-    "183": {
-        "portName": "eth1/35/1",
-        "portType": 0,
-        "scope": 0
-    },
-    "198": {
-        "portName": "eth1/46/1",
-        "portType": 0,
-        "scope": 0
-    },
-    "199": {
-        "portName": "eth1/38/1",
-        "portType": 0,
-        "scope": 0
-    },
-    "200": {
         "portName": "eth1/45/1",
         "portType": 0,
         "scope": 0
     },
+    "183": {
+        "portName": "eth1/46/1",
+        "portType": 0,
+        "scope": 0
+    },
+    "198": {
+        "portName": "eth1/35/1",
+        "portType": 0,
+        "scope": 0
+    },
+    "199": {
+        "portName": "eth1/43/1",
+        "portType": 0,
+        "scope": 0
+    },
+    "200": {
+        "portName": "eth1/37/1",
+        "portType": 0,
+        "scope": 0
+    },
     "201": {
-        "portName": "eth1/36/1",
+        "portName": "eth1/38/1",
         "portType": 0,
         "scope": 0
     },
@@ -246,17 +246,17 @@
         "scope": 0
     },
     "217": {
-        "portName": "eth1/53/1",
-        "portType": 0,
-        "scope": 0
-    },
-    "218": {
         "portName": "eth1/52/1",
         "portType": 0,
         "scope": 0
     },
+    "218": {
+        "portName": "eth1/53/1",
+        "portType": 0,
+        "scope": 0
+    },
     "219": {
-        "portName": "eth1/54/1",
+        "portName": "eth1/61/1",
         "portType": 0,
         "scope": 0
     },
@@ -271,7 +271,7 @@
         "scope": 0
     },
     "236": {
-        "portName": "eth1/61/1",
+        "portName": "eth1/54/1",
         "portType": 0,
         "scope": 0
     },
@@ -281,22 +281,22 @@
         "scope": 0
     },
     "252": {
-        "portName": "eth1/58/1",
+        "portName": "eth1/42/1",
         "portType": 0,
         "scope": 0
     },
     "253": {
-        "portName": "eth1/57/1",
+        "portName": "eth1/49/1",
         "portType": 0,
         "scope": 0
     },
     "254": {
-        "portName": "eth1/41/1",
+        "portName": "eth1/50/1",
         "portType": 0,
         "scope": 0
     },
     "255": {
-        "portName": "eth1/33/1",
+        "portName": "eth1/58/1",
         "portType": 0,
         "scope": 0
     },
@@ -306,27 +306,27 @@
         "scope": 0
     },
     "270": {
-        "portName": "eth1/49/1",
+        "portName": "eth1/33/1",
         "portType": 0,
         "scope": 0
     },
     "271": {
-        "portName": "eth1/42/1",
-        "portType": 0,
-        "scope": 0
-    },
-    "272": {
-        "portName": "eth1/50/1",
-        "portType": 0,
-        "scope": 0
-    },
-    "273": {
         "portName": "eth1/34/1",
         "portType": 0,
         "scope": 0
     },
+    "272": {
+        "portName": "eth1/41/1",
+        "portType": 0,
+        "scope": 0
+    },
+    "273": {
+        "portName": "eth1/57/1",
+        "portType": 0,
+        "scope": 0
+    },
     "288": {
-        "portName": "eth1/80/1",
+        "portName": "eth1/71/1",
         "portType": 0,
         "scope": 0
     },
@@ -336,17 +336,17 @@
         "scope": 0
     },
     "290": {
-        "portName": "eth1/71/1",
+        "portName": "eth1/80/1",
         "portType": 0,
         "scope": 0
     },
     "291": {
-        "portName": "eth1/72/1",
+        "portName": "eth1/87/1",
         "portType": 0,
         "scope": 0
     },
     "306": {
-        "portName": "eth1/87/1",
+        "portName": "eth1/72/1",
         "portType": 0,
         "scope": 0
     },
@@ -366,42 +366,42 @@
         "scope": 0
     },
     "324": {
-        "portName": "eth1/76/1",
+        "portName": "eth1/68/1",
         "portType": 0,
         "scope": 0
     },
     "325": {
-        "portName": "eth1/69/1",
+        "portName": "eth1/76/1",
         "portType": 0,
         "scope": 0
     },
     "326": {
-        "portName": "eth1/75/1",
-        "portType": 0,
-        "scope": 0
-    },
-    "327": {
-        "portName": "eth1/67/1",
-        "portType": 0,
-        "scope": 0
-    },
-    "342": {
-        "portName": "eth1/78/1",
-        "portType": 0,
-        "scope": 0
-    },
-    "343": {
-        "portName": "eth1/70/1",
-        "portType": 0,
-        "scope": 0
-    },
-    "344": {
         "portName": "eth1/77/1",
         "portType": 0,
         "scope": 0
     },
+    "327": {
+        "portName": "eth1/78/1",
+        "portType": 0,
+        "scope": 0
+    },
+    "342": {
+        "portName": "eth1/67/1",
+        "portType": 0,
+        "scope": 0
+    },
+    "343": {
+        "portName": "eth1/75/1",
+        "portType": 0,
+        "scope": 0
+    },
+    "344": {
+        "portName": "eth1/69/1",
+        "portType": 0,
+        "scope": 0
+    },
     "345": {
-        "portName": "eth1/68/1",
+        "portName": "eth1/70/1",
         "portType": 0,
         "scope": 0
     },
@@ -411,17 +411,17 @@
         "scope": 0
     },
     "361": {
-        "portName": "eth1/85/1",
-        "portType": 0,
-        "scope": 0
-    },
-    "362": {
         "portName": "eth1/84/1",
         "portType": 0,
         "scope": 0
     },
+    "362": {
+        "portName": "eth1/85/1",
+        "portType": 0,
+        "scope": 0
+    },
     "363": {
-        "portName": "eth1/86/1",
+        "portName": "eth1/93/1",
         "portType": 0,
         "scope": 0
     },
@@ -436,7 +436,7 @@
         "scope": 0
     },
     "380": {
-        "portName": "eth1/93/1",
+        "portName": "eth1/86/1",
         "portType": 0,
         "scope": 0
     },
@@ -446,42 +446,42 @@
         "scope": 0
     },
     "396": {
-        "portName": "eth1/108/1",
+        "portName": "eth1/100/1",
         "portType": 0,
         "scope": 0
     },
     "397": {
-        "portName": "eth1/101/1",
+        "portName": "eth1/108/1",
         "portType": 0,
         "scope": 0
     },
     "398": {
-        "portName": "eth1/107/1",
-        "portType": 0,
-        "scope": 0
-    },
-    "399": {
-        "portName": "eth1/99/1",
-        "portType": 0,
-        "scope": 0
-    },
-    "414": {
-        "portName": "eth1/110/1",
-        "portType": 0,
-        "scope": 0
-    },
-    "415": {
-        "portName": "eth1/102/1",
-        "portType": 0,
-        "scope": 0
-    },
-    "416": {
         "portName": "eth1/109/1",
         "portType": 0,
         "scope": 0
     },
+    "399": {
+        "portName": "eth1/110/1",
+        "portType": 0,
+        "scope": 0
+    },
+    "414": {
+        "portName": "eth1/99/1",
+        "portType": 0,
+        "scope": 0
+    },
+    "415": {
+        "portName": "eth1/107/1",
+        "portType": 0,
+        "scope": 0
+    },
+    "416": {
+        "portName": "eth1/101/1",
+        "portType": 0,
+        "scope": 0
+    },
     "417": {
-        "portName": "eth1/100/1",
+        "portName": "eth1/102/1",
         "portType": 0,
         "scope": 0
     },
@@ -491,17 +491,17 @@
         "scope": 0
     },
     "433": {
-        "portName": "eth1/117/1",
-        "portType": 0,
-        "scope": 0
-    },
-    "434": {
         "portName": "eth1/116/1",
         "portType": 0,
         "scope": 0
     },
+    "434": {
+        "portName": "eth1/117/1",
+        "portType": 0,
+        "scope": 0
+    },
     "435": {
-        "portName": "eth1/118/1",
+        "portName": "eth1/125/1",
         "portType": 0,
         "scope": 0
     },
@@ -516,7 +516,7 @@
         "scope": 0
     },
     "452": {
-        "portName": "eth1/125/1",
+        "portName": "eth1/118/1",
         "portType": 0,
         "scope": 0
     },
@@ -526,47 +526,47 @@
         "scope": 0
     },
     "468": {
-        "portName": "eth1/90/1",
-        "portType": 0,
-        "scope": 0
-    },
-    "469": {
-        "portName": "eth1/89/1",
-        "portType": 0,
-        "scope": 0
-    },
-    "470": {
-        "portName": "eth1/73/1",
-        "portType": 0,
-        "scope": 0
-    },
-    "471": {
-        "portName": "eth1/65/1",
-        "portType": 0,
-        "scope": 0
-    },
-    "486": {
-        "portName": "eth1/81/1",
-        "portType": 0,
-        "scope": 0
-    },
-    "487": {
         "portName": "eth1/74/1",
         "portType": 0,
         "scope": 0
     },
-    "488": {
+    "469": {
+        "portName": "eth1/81/1",
+        "portType": 0,
+        "scope": 0
+    },
+    "470": {
         "portName": "eth1/82/1",
         "portType": 0,
         "scope": 0
     },
-    "489": {
+    "471": {
+        "portName": "eth1/90/1",
+        "portType": 0,
+        "scope": 0
+    },
+    "486": {
+        "portName": "eth1/65/1",
+        "portType": 0,
+        "scope": 0
+    },
+    "487": {
         "portName": "eth1/66/1",
         "portType": 0,
         "scope": 0
     },
+    "488": {
+        "portName": "eth1/73/1",
+        "portType": 0,
+        "scope": 0
+    },
+    "489": {
+        "portName": "eth1/89/1",
+        "portType": 0,
+        "scope": 0
+    },
     "504": {
-        "portName": "eth1/112/1",
+        "portName": "eth1/103/1",
         "portType": 0,
         "scope": 0
     },
@@ -576,17 +576,17 @@
         "scope": 0
     },
     "506": {
-        "portName": "eth1/103/1",
+        "portName": "eth1/112/1",
         "portType": 0,
         "scope": 0
     },
     "507": {
-        "portName": "eth1/104/1",
+        "portName": "eth1/119/1",
         "portType": 0,
         "scope": 0
     },
     "522": {
-        "portName": "eth1/119/1",
+        "portName": "eth1/104/1",
         "portType": 0,
         "scope": 0
     },
@@ -606,42 +606,42 @@
         "scope": 0
     },
     "540": {
-        "portName": "eth1/122/1",
-        "portType": 0,
-        "scope": 0
-    },
-    "541": {
-        "portName": "eth1/121/1",
-        "portType": 0,
-        "scope": 0
-    },
-    "542": {
-        "portName": "eth1/105/1",
-        "portType": 0,
-        "scope": 0
-    },
-    "543": {
-        "portName": "eth1/97/1",
-        "portType": 0,
-        "scope": 0
-    },
-    "558": {
-        "portName": "eth1/113/1",
-        "portType": 0,
-        "scope": 0
-    },
-    "559": {
         "portName": "eth1/106/1",
         "portType": 0,
         "scope": 0
     },
-    "560": {
+    "541": {
+        "portName": "eth1/113/1",
+        "portType": 0,
+        "scope": 0
+    },
+    "542": {
         "portName": "eth1/114/1",
         "portType": 0,
         "scope": 0
     },
-    "561": {
+    "543": {
+        "portName": "eth1/122/1",
+        "portType": 0,
+        "scope": 0
+    },
+    "558": {
+        "portName": "eth1/97/1",
+        "portType": 0,
+        "scope": 0
+    },
+    "559": {
         "portName": "eth1/98/1",
+        "portType": 0,
+        "scope": 0
+    },
+    "560": {
+        "portName": "eth1/105/1",
+        "portType": 0,
+        "scope": 0
+    },
+    "561": {
+        "portName": "eth1/121/1",
         "portType": 0,
         "scope": 0
     },

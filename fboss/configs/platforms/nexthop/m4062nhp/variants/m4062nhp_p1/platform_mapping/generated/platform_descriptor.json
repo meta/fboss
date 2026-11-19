@@ -1,0 +1,14 @@
+{
+  "platformType": 53,
+  "productNamePrefixes": [
+    "M4062NHP"
+  ],
+  "modeNames": [
+    "m4062nhp"
+  ],
+  "asicType": 18,
+  "variantAttributes": {
+    "hwrev_state1_substate1_respin0": true
+  },
+  "numSwitchAsics": 1
+}
