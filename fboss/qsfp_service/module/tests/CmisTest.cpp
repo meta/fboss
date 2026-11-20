@@ -649,9 +649,8 @@ ProgramTransceiverState makeCpoProgramState(cfg::PortSpeed speed) {
   return programTcvrState;
 }
 
-// CPO modules default to TX disabled (0xFF) on every lane, so programming a
-// port must enable TX on the port's lanes before activating its datapath. Only
-// the programmed lanes in the programmed banks are enabled.
+// CPO application changes initialize both ports in each programmed bank, so
+// TX must be enabled on all eight lanes before datapath activation.
 TEST_F(CmisTest, cpoDatapathProgramEnablesTx) {
   auto xcvr = overrideCmisModule<CmisCpo6P4TDrReadyTransceiver>(
       TransceiverID(0), TransceiverModuleIdentifier::CPO);
@@ -662,9 +661,8 @@ TEST_F(CmisTest, cpoDatapathProgramEnablesTx) {
   auto programTcvrState = makeCpoProgramState(cfg::PortSpeed::FOURHUNDREDG);
   xcvr->programTransceiver(programTcvrState, false);
 
-  // Banks 0 and 1: intra-bank lanes 0-3 enabled, lanes 4-7 still disabled
-  EXPECT_EQ(readBankedUpperPageByte(impl, 0, kPage10h, kTxDisableOffset), 0xF0);
-  EXPECT_EQ(readBankedUpperPageByte(impl, 1, kPage10h, kTxDisableOffset), 0xF0);
+  EXPECT_EQ(readBankedUpperPageByte(impl, 0, kPage10h, kTxDisableOffset), 0x00);
+  EXPECT_EQ(readBankedUpperPageByte(impl, 1, kPage10h, kTxDisableOffset), 0x00);
   // Unprogrammed banks keep TX disabled
   EXPECT_EQ(readBankedUpperPageByte(impl, 2, kPage10h, kTxDisableOffset), 0xFF);
   EXPECT_EQ(readBankedUpperPageByte(impl, 3, kPage10h, kTxDisableOffset), 0xFF);
