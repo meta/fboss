@@ -231,6 +231,7 @@ cpp_library(
         "AgentEnsemblePrbsTest.cpp",
         "AgentEnsemblePtpTests.cpp",
         "AgentEnsembleQsfpFsdbTests.cpp",
+        "AgentEnsembleQsfpServiceThriftDeadlockTest.cpp",
         "AgentEnsembleSpeedChangeTest.cpp",
         "LinkTestUtils.cpp",
         "facebook/AgentEnsembleFsdbTests.cpp",

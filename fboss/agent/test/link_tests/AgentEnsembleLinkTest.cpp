@@ -57,7 +57,8 @@ const std::vector<std::string> l1LinkTestNames = {
     "xPhyInfoTest",
     "verifyIphyFecCounters",
     "verifyIphyFecBerCounters",
-    "clearIphyInterfaceCounters"};
+    "clearIphyInterfaceCounters",
+    "resetTransceiverDeadlockTest"};
 
 const std::vector<std::string> l2LinkTestNames = {"trafficRxTx", "ecmpShrink"};
 
