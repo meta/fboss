@@ -5,6 +5,11 @@
           "test_name_regex": "ConfigPfcTest\\.BufferPoolPriorityGroupAndPortPfc$"
         }
     ],
+    "morgan800cc/leaba-25.5.4210": [
+        {
+          "test_name_regex": "ConfigAclRuleTest\\.SetDestinationMac$"
+        }
+    ],
     "wedge800bact/brcm-13.3.0.0_odp": [
         {
           "test_name_regex": "ConfigPfcTest\\.BufferPoolPriorityGroupAndPortPfc$"
