@@ -25,3 +25,57 @@ Installer networking:
     Rebuild and publish the complete image bundle to use the updated installer.
     Existing published initrds are not changed. Verify inclusion with:
         lsinitrd -f usr/lib/NetworkManager/conf.d/90-kiwi-installer.conf <installer.initrd>
+
+First-boot reporting:
+    The optional 96fboss-firstboot-report dracut module runs after KIWI writes
+    and verifies the disk image, before KIWI boots the installed system. When
+    the installer command line includes fboss.distro.report.asset_id=<id> and
+    fboss.distro.report.url=https://<endpoint>/<path>, it writes those
+    arguments into KIWI's /config.bootoptions for its kexec handoff. The hook
+    does not mount the target disk or write installed-system configuration.
+    No reporting URL is baked into the published image. The module does nothing
+    if both arguments are absent.
+
+    The URL must use HTTPS; its path is unrestricted and may include query parameters.
+    It must have a non-empty authority and contain no unescaped whitespace or
+    control characters. The reporter uses the supplied URL unchanged.
+
+    Argument-transfer failures are logged as warnings and do not prevent the
+    installer from booting the already verified image. The hook rejects raw
+    whitespace, control characters, quotes and backslashes to prevent changing
+    the structure of the next kernel's command line.
+
+    Once the installed Distro reaches network-online.target, the enabled
+    fboss-firstboot-report.service reads the reporting arguments from
+    /proc/cmdline and validates them before attempting delivery. It does not
+    save or read a configuration file. Without reporting boot arguments the
+    service does nothing, including on later boots after provisioning.
+
+    The service sends an HTTPS GET to the configured URL
+    with name=FBOSS_DISTRO.FIRST_BOOT, assetID=<id>, and
+    sender=fboss-distro. A 2xx response creates
+    /var/lib/fboss/firstboot-reported. This report
+    confirms that the installed system reached userspace with network access.
+    KIWI currently kexecs into the installed root filesystem, so the report
+    does not independently verify a subsequent firmware/GRUB boot from disk.
+
+    This argument handoff requires KIWI to kexec into the installed OS. A
+    firmware reboot does not carry the arguments. Other installation methods
+    must supply the reporting arguments on their provisioning boot.
+
+    Redirects are not followed and do not count as successful delivery.
+    Configure the final HTTPS endpoint URL; only a 2xx response creates the
+    successful-report marker.
+
+    The reporter makes at most three attempts, waiting 15 seconds between
+    failures and allowing 20 seconds per attempt. The service has a two-minute
+    runtime limit and does not restart automatically after failure. Inspect
+    its journal for the error. A manual service restart during the same
+    provisioning boot can retry. Retrying after reboot requires provisioning
+    to supply the arguments again. Failed delivery does not create the marker.
+
+    Check installer injection with:
+        lsinitrd <installer.initrd> | grep 35-transfer-report-args.sh
+    On the installed system, inspect:
+        systemctl status fboss-firstboot-report.service
+        journalctl -u fboss-firstboot-report.service -b

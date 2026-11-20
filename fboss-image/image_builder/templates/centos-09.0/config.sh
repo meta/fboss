@@ -545,6 +545,7 @@ echo "Enabling FBOSS systemd services..."
 systemctl enable sai-device-nodes.service ||
   echo "WARNING: sai-device-nodes.service not present; SAI kmods will not be loaded at boot"
 systemctl enable fboss_init.service
+systemctl enable fboss-firstboot-report.service
 systemctl enable local_rpm_repo.service
 systemctl enable platform_manager.service
 systemctl enable data_corral_service.service

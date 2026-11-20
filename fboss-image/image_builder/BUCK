@@ -15,3 +15,17 @@ python_unittest(
         "templates/centos-09.0/root_files/usr/lib/dracut/modules.d/95kiwi-installer-network/module-setup.sh": "network_module/module-setup.sh",
     },
 )
+
+python_unittest(
+    name = "firstboot_report_test",
+    srcs = {"tests/test_firstboot_report.py": "test_firstboot_report.py"},
+    base_module = "fboss_image.image_builder",
+    network_access = network_access_utils.none(),
+    resources = {
+        "templates/centos-09.0/root_files/usr/lib/dracut/modules.d/96fboss-firstboot-report/module-setup.sh": "firstboot/module-setup.sh",
+        "templates/centos-09.0/root_files/usr/lib/dracut/modules.d/96fboss-firstboot-report/transfer-report-args.sh": "firstboot/transfer-report-args.sh",
+        "templates/centos-09.0/root_files/usr/lib/systemd/system/fboss-firstboot-report.service": "firstboot/service",
+        "templates/centos-09.0/root_files/usr/local/libexec/fboss-firstboot-report": "firstboot/reporter",
+    },
+    deps = ["fbsource//third-party/pypi/parameterized:parameterized"],
+)
