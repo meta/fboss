@@ -50,6 +50,7 @@
 #include "fboss/cli/fboss2/CmdLocalOptions.h"
 #include "fboss/cli/fboss2/commands/config/vlan/VlanManager.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
+#include "fboss/cli/fboss2/session/Git.h"
 #include "fboss/cli/fboss2/utils/CmdClientUtilsCommon.h"
 #include "fboss/cli/fboss2/utils/CmdInitUtils.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
@@ -70,6 +71,13 @@ void Fboss2IntegrationTest::SetUp() {
 
 void Fboss2IntegrationTest::TearDown() {
   XLOG(INFO) << "Fboss2IntegrationTest::TearDown - cleaning up CLI test";
+}
+
+const Git& Fboss2IntegrationTest::getGit() const {
+  // Git passes -c safe.directory itself: /etc/coop is typically owned by
+  // another user (e.g. coop), which git otherwise rejects.
+  static const Git git("/etc/coop");
+  return git;
 }
 
 void Fboss2IntegrationTest::discardSession() const {

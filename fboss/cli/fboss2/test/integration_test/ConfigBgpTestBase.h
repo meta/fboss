@@ -34,6 +34,7 @@
 #include <string>
 #include <thread>
 
+#include "fboss/cli/fboss2/session/Git.h"
 #include "fboss/cli/fboss2/test/integration_test/Fboss2IntegrationTest.h"
 #include "fboss/cli/fboss2/utils/CmdClientUtilsCommon.h"
 #include "neteng/fboss/bgp/if/gen-cpp2/TBgpService.h"
@@ -183,47 +184,16 @@ class ConfigBgpTestBase : public Fboss2IntegrationTest {
     return folly::parseJson(configStr);
   }
 
-  // Root of the git repo that versions both the agent config (cli/agent.conf)
-  // and the BGP config (bgpcpp/bgpcpp.conf).
-  std::string coopRepoDir() const {
-    return "/etc/coop";
-  }
-
-  // Current git HEAD sha of the /etc/coop repo (trimmed; "" on failure).
-  // runCmd uses folly::Subprocess, which does not search PATH, so git is
-  // invoked by full path. -c safe.directory mirrors the CLI's Git class:
-  // /etc/coop is typically owned by another user (e.g. coop), which git
-  // otherwise rejects as dubious ownership.
-  std::string gitHead() const {
-    auto r = runCmd(
-        {"/usr/bin/git",
-         "-c",
-         "safe.directory=" + coopRepoDir(),
-         "-C",
-         coopRepoDir(),
-         "rev-parse",
-         "HEAD"});
-    std::string s = r.stdout;
-    while (!s.empty() &&
-           (s.back() == '\n' || s.back() == '\r' || s.back() == ' ')) {
-      s.pop_back();
-    }
-    return s;
-  }
-
   // True if bgpcpp/bgpcpp.conf is tracked (present in the tree) at the given
-  // revision. `git cat-file -e <sha>:<path>` exits 0 iff the blob exists.
+  // revision of the /etc/coop repo.
   bool bgpTrackedAtRevision(const std::string& sha) const {
-    auto r = runCmd(
-        {"/usr/bin/git",
-         "-c",
-         "safe.directory=" + coopRepoDir(),
-         "-C",
-         coopRepoDir(),
-         "cat-file",
-         "-e",
-         sha + ":bgpcpp/bgpcpp.conf"});
-    return r.exitCode == 0;
+    try {
+      getGit().fileAtRevision(sha, "bgpcpp/bgpcpp.conf");
+      return true;
+    } catch (const std::runtime_error& ex) {
+      XLOG(INFO) << "bgpcpp/bgpcpp.conf not at " << sha << ": " << ex.what();
+      return false;
+    }
   }
 
   // Stage a `config protocol bgp global <attr> <value>` change (no commit).
