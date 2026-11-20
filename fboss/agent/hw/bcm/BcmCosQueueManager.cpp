@@ -362,7 +362,7 @@ std::map<int32_t, int64_t> BcmCosQueueManager::getQueueStats(
   std::map<int32_t, int64_t> queueOutPkts;
   auto queueFlexCounterStatsLock = queueFlexCounterStats_.rlock();
   if (queueFlexCounterStatsLock) {
-    auto statMap = facebook::fb303::fbData->getStatMap();
+    auto statMap = facebook::fb303::fbData.ref().getStatMap();
     for (const auto& cntr : queueCounters_) {
       if (cntr.first.isScopeQueues()) {
         if (cntr.first.statType == statType) {
