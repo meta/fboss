@@ -976,9 +976,9 @@ bool IPv6Handler::checkNdpPacket(const ICMPHeaders& hdr, const RxPacket* pkt)
 
 void IPv6Handler::sendMulticastNeighborSolicitation(
     SwSwitch* sw,
+    const std::shared_ptr<Interface>& intf,
     const IPAddressV6& targetIP,
-    const MacAddress& srcMac,
-    const std::optional<VlanID>& vlanID) {
+    const MacAddress& srcMac) {
   if (FLAGS_disable_neighbor_updates) {
     XLOG(DBG4)
         << "skipping sending neighbor solicitation since neighbor updates are disabled";
@@ -990,6 +990,11 @@ void IPv6Handler::sendMulticastNeighborSolicitation(
     return;
   }
 
+  if (!intf->canReachAddress(targetIP)) {
+    XLOG(DBG0) << "Interface " << intf->getID() << " cannot reach " << targetIP;
+    return;
+  }
+
   IPAddressV6 solicitedNodeAddr = targetIP.getSolicitedNodeAddress();
   MacAddress dstMac = MacAddress::createMulticast(solicitedNodeAddr);
   // For now, we always use our link local IP as the source.
@@ -998,7 +1003,11 @@ void IPv6Handler::sendMulticastNeighborSolicitation(
   NDPOptions ndpOptions;
   ndpOptions.sourceLinkLayerAddress.emplace(srcMac);
 
-  auto portDescriptor = getInterfacePortDescriptorToReach(sw, targetIP);
+  auto vlanID = sw->getVlanIDForTx(intf);
+  std::optional<PortDescriptor> portDescriptor{std::nullopt};
+  if (auto portID = getInterfacePort(sw->getState(), intf)) {
+    portDescriptor = PortDescriptor(*portID);
+  }
 
   auto portDescriptorStr =
       portDescriptor.has_value() ? portDescriptor.value().str() : "None";
@@ -1085,26 +1094,9 @@ void IPv6Handler::sendUnicastNeighborSolicitation(
 
 void IPv6Handler::sendMulticastNeighborSolicitation(
     SwSwitch* sw,
+    const std::shared_ptr<Interface>& intf,
     const IPAddressV6& targetIP) {
-  auto intf = sw->getState()->getIntfToReach(RouterID(0), targetIP);
-
-  if (!intf) {
-    XLOG(DBG0) << "Cannot find interface for " << targetIP;
-    return;
-  }
-
-  auto state = sw->getState();
-  for (const auto& [_, intfMap] : std::as_const(*state->getInterfaces())) {
-    for (const auto& intfIter : std::as_const(*intfMap)) {
-      const auto& interface = intfIter.second;
-      if (interface->canReachAddress(targetIP) &&
-          state->getInterfaceVrfs()->getVrf(interface->getID()) ==
-              RouterID(0)) {
-        sendMulticastNeighborSolicitation(
-            sw, targetIP, interface->getMac(), sw->getVlanIDForTx(interface));
-      }
-    }
-  }
+  sendMulticastNeighborSolicitation(sw, intf, targetIP, intf->getMac());
 }
 
 void IPv6Handler::resolveDestAndHandlePacket(
@@ -1422,17 +1414,6 @@ void IPv6Handler::receivedNdpMine(
     updater->receivedNdpMineForIntf(
         vlanOrIntf->getID(), ip, macAddr, port, type, flags);
   }
-}
-
-std::optional<PortDescriptor> IPv6Handler::getInterfacePortDescriptorToReach(
-    SwSwitch* sw,
-    const folly::IPAddressV6& ipAddr) {
-  std::optional<PortDescriptor> portDescriptor{std::nullopt};
-  auto portID = getInterfacePortToReach(sw->getState(), ipAddr);
-  if (portID.has_value()) {
-    portDescriptor = PortDescriptor(portID.value());
-  }
-  return portDescriptor;
 }
 
 } // namespace facebook::fboss

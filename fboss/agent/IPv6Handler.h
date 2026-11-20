@@ -83,20 +83,18 @@ class IPv6Handler : public StateObserver {
       const std::optional<PortDescriptor>& portDescriptor =
           std::optional<PortDescriptor>());
 
-  /*
-   * These two static methods are for sending out an NDP solicitation.
-   * The second version actually calls the first and is there
-   * for the convenience of the caller. The first version
-   * does not access the SwitchState so should be preferred where
-   * possible.
-   */
+  // Send a multicast NDP solicitation for targetIP out of intf, if intf
+  // reaches it. Every interface reaches fe80::/64, so a link-local target is
+  // solicited only on the neighbor's interface, not on every interface. The
+  // second version uses the intf MAC as the source MAC.
   static void sendMulticastNeighborSolicitation(
       SwSwitch* sw,
+      const std::shared_ptr<Interface>& intf,
       const folly::IPAddressV6& targetIP,
-      const folly::MacAddress& srcMac,
-      const std::optional<VlanID>& vlanID);
+      const folly::MacAddress& srcMac);
   static void sendMulticastNeighborSolicitation(
       SwSwitch* sw,
+      const std::shared_ptr<Interface>& intf,
       const folly::IPAddressV6& targetIP);
 
   static void sendUnicastNeighborSolicitation(
@@ -216,10 +214,6 @@ class IPv6Handler : public StateObserver {
       PortDescriptor port,
       ICMPv6Type type,
       uint32_t flags);
-
-  static std::optional<PortDescriptor> getInterfacePortDescriptorToReach(
-      SwSwitch* sw,
-      const folly::IPAddressV6& ipAddr);
 
   void rebuildDecapMySidCache(const std::shared_ptr<SwitchState>& state);
 

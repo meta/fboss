@@ -314,6 +314,7 @@ cpp_unittest(
     deps = [
         "fbsource//third-party/googletest:gmock",
         "fbsource//xplat/folly/io:iobuf",
+        "fbsource//xplat/folly/synchronization:baton",
         ":hw_test_handle",
         ":utils",
         "//fboss/agent:core",

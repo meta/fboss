@@ -46,12 +46,7 @@ void ArpCache::resolve(folly::IPAddressV4 ip) {
   }
   // Returns true only if a new pending entry was created.
   if (setPendingEntry(ip, PortDescriptor(PortID(0)))) {
-    ArpHandler::sendArpRequest(
-        getSw(),
-        getSw()->getVlanIDForTx(intf),
-        intf->getMac(),
-        source->first.asV4(),
-        ip);
+    ArpHandler::sendArpRequest(getSw(), intf, source->first.asV4(), ip);
   }
 }
 
@@ -83,7 +78,12 @@ inline void ArpCache::checkReachability(
 }
 
 inline void ArpCache::probeFor(folly::IPAddressV4 ip) const {
-  ArpHandler::sendArpRequest(getSw(), ip);
+  auto intf = getSw()->getState()->getInterfaces()->getNodeIf(getIntfID());
+  if (!intf) {
+    XLOG(DBG2) << "No interface " << getIntfID() << " to probe " << ip;
+    return;
+  }
+  ArpHandler::sendArpRequest(getSw(), intf, ip);
 }
 
 std::list<ArpEntryThrift> ArpCache::getArpCacheData() {

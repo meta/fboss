@@ -44,8 +44,7 @@ void NdpCache::resolve(folly::IPAddressV6 ip) {
   auto intf = getSw()->getState()->getInterfaces()->getNode(getIntfID());
   // Returns true only if a new pending entry was created.
   if (setPendingEntry(ip, PortDescriptor(PortID(0)))) {
-    IPv6Handler::sendMulticastNeighborSolicitation(
-        getSw(), ip, intf->getMac(), getSw()->getVlanIDForTx(intf));
+    IPv6Handler::sendMulticastNeighborSolicitation(getSw(), intf, ip);
   }
 }
 
@@ -190,8 +189,13 @@ inline void NdpCache::checkReachability(
 }
 
 inline void NdpCache::probeFor(folly::IPAddressV6 ip) const {
+  auto intf = getSw()->getState()->getInterfaces()->getNodeIf(getIntfID());
+  if (!intf) {
+    XLOG(DBG2) << "No interface " << getIntfID() << " to probe " << ip;
+    return;
+  }
   // multicast solicitation
-  IPv6Handler::sendMulticastNeighborSolicitation(getSw(), ip);
+  IPv6Handler::sendMulticastNeighborSolicitation(getSw(), intf, ip);
 }
 
 std::list<NdpEntryThrift> NdpCache::getNdpCacheData() {

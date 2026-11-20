@@ -587,13 +587,9 @@ std::vector<PortID> getPortsForInterface(
   return ports;
 }
 
-std::optional<PortID> getInterfacePortToReach(
+std::optional<PortID> getInterfacePort(
     const std::shared_ptr<SwitchState>& state,
-    const folly::IPAddress& ipAddr) {
-  auto intf = state->getIntfToReach(RouterID(0), ipAddr);
-  if (!intf) {
-    return std::nullopt;
-  }
+    const std::shared_ptr<Interface>& intf) {
   auto intfType = intf->getType();
   std::optional<PortID> port{};
   switch (intfType) {

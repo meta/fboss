@@ -324,17 +324,15 @@ InterfaceID getInterfaceIDForPort(
  * solicitation or advertisement is injected via pipeline lookup, ASIC would
  * not know which port(s) to send it out on, and thus would drop the packet.
  * Thus, for VOQ switch:
- *  - determine the interface for the given IP address
- *  - compute corresponding system port ID
+ *  - compute the system port ID of the interface
  *  - get corresponding portID
  *
- * This helper function takes the ipAddress as argument and returns
- * PortDescriptor for the systemPort to send otu the packet with pipeline
- * bypass on.
+ * Returns the port to send out of with pipeline bypass on, or nullopt for a
+ * VLAN interface.
  */
-std::optional<PortID> getInterfacePortToReach(
+std::optional<PortID> getInterfacePort(
     const std::shared_ptr<SwitchState>& state,
-    const folly::IPAddress& ipAddr);
+    const std::shared_ptr<Interface>& intf);
 
 class StopWatch {
  public:

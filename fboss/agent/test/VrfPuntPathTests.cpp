@@ -4,8 +4,12 @@
 #include <gtest/gtest.h>
 
 #include <folly/io/Cursor.h>
+#include <folly/synchronization/Baton.h>
 
 #include "fboss/agent/ArpHandler.h"
+#include "fboss/agent/IPv6Handler.h"
+#include "fboss/agent/NeighborUpdater.h"
+#include "fboss/agent/ResolvedNexthopProbe.h"
 #include "fboss/agent/SwSwitch.h"
 #include "fboss/agent/TxPacket.h"
 #include "fboss/agent/hw/mock/MockHwSwitch.h"
@@ -18,6 +22,7 @@
 #include "fboss/agent/packet/PktFactory.h"
 #include "fboss/agent/packet/PktUtil.h"
 #include "fboss/agent/state/Interface.h"
+#include "fboss/agent/state/StateUtils.h"
 #include "fboss/agent/state/SwitchState.h"
 #include "fboss/agent/test/HwTestHandle.h"
 #include "fboss/agent/test/MockTunManager.h"
@@ -35,13 +40,20 @@ const PortID kDefaultVrfPort{1};
 const VlanID kDefaultVrfVlan{1};
 const InterfaceID kVrfIntf{55};
 const VlanID kVrfVlan{55};
-// Target and VLAN of an ARP request or NDP solicitation sent by the switch
+// testConfigAWithPortInterfaces: intf 6000 + N on port N
+const InterfaceID kPortVrfIntf{6002};
+const PortID kPortVrfPort{2};
+// Target, VLAN and, if sent out of a port, port of an ARP request or NDP
+// solicitation sent by the switch
 struct NeighborRequest {
   folly::IPAddress target;
   std::optional<VlanID> vlan;
+  std::optional<PortID> port;
 };
 
-std::optional<NeighborRequest> parseNeighborRequest(const TxPacket* pkt) {
+std::optional<NeighborRequest> parseNeighborRequest(
+    const TxPacket* pkt,
+    std::optional<PortID> port = std::nullopt) {
   folly::io::Cursor c(pkt->buf());
   EthHdr eth(c);
   std::optional<VlanID> vlan;
@@ -51,7 +63,7 @@ std::optional<NeighborRequest> parseNeighborRequest(const TxPacket* pkt) {
   if (eth.getEtherType() == static_cast<uint16_t>(ETHERTYPE::ETHERTYPE_ARP)) {
     ArpHdr arp(c);
     if (arp.oper == ARP_OP_REQUEST) {
-      return NeighborRequest{arp.tpa, vlan};
+      return NeighborRequest{arp.tpa, vlan, port};
     }
   } else if (
       eth.getEtherType() == static_cast<uint16_t>(ETHERTYPE::ETHERTYPE_IPV6)) {
@@ -62,7 +74,7 @@ std::optional<NeighborRequest> parseNeighborRequest(const TxPacket* pkt) {
           static_cast<uint8_t>(
               ICMPv6Type::ICMPV6_TYPE_NDP_NEIGHBOR_SOLICITATION)) {
         c.skip(4); // reserved
-        return NeighborRequest{PktUtil::readIPv6(&c), vlan};
+        return NeighborRequest{PktUtil::readIPv6(&c), vlan, port};
       }
     }
   }
@@ -72,7 +84,22 @@ std::optional<NeighborRequest> parseNeighborRequest(const TxPacket* pkt) {
 class VrfPuntPathTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    config_ = testConfigA();
+    setUpSwitch(testConfigA(), kVrfIntf);
+    for (const auto& [_, portMap] :
+         std::as_const(*sw_->getState()->getPorts())) {
+      for (const auto& [_, port] : std::as_const(*portMap)) {
+        auto vlans = port->getVlans();
+        if (vlans.find(kVrfVlan) != vlans.end()) {
+          vrfPort_ = port->getID();
+        }
+      }
+    }
+  }
+
+  // Create the switch with vrfIntf in kTestVrf, recording neighbor requests
+  void setUpSwitch(cfg::SwitchConfig config, InterfaceID vrfIntf) {
+    config_ = std::move(config);
+    vrfIntf_ = vrfIntf;
     handle_ = createTestHandle(&config_, SwitchFlags::ENABLE_TUN);
     sw_ = handle_->getSw();
     tunMgr_ = dynamic_cast<MockTunManager*>(sw_->getTunManager());
@@ -85,20 +112,24 @@ class VrfPuntPathTest : public ::testing::Test {
     VrfEntry vrf;
     vrf.vrfId() = kTestVrf;
     sw_->addVrfs({vrf});
-    sw_->updateInterfaceVrfs({{kVrfIntf, kTestVrf}});
-    for (const auto& [_, portMap] :
-         std::as_const(*sw_->getState()->getPorts())) {
-      for (const auto& [_, port] : std::as_const(*portMap)) {
-        auto vlans = port->getVlans();
-        if (vlans.find(kVrfVlan) != vlans.end()) {
-          vrfPort_ = port->getID();
-        }
-      }
-    }
+    sw_->updateInterfaceVrfs({{vrfIntf, kTestVrf}});
+    sw_->updateStateBlocking("set probes", [](auto in) {
+      auto settings = utility::getFirstNodeIf(in->getSwitchSettings());
+      settings->modify(&in)->setMaxNeighborProbes(3);
+      return in;
+    });
     EXPECT_HW_CALL(sw_, sendPacketSwitchedAsync_(_))
         .WillRepeatedly([this](TxPacket* pkt) {
           std::unique_ptr<TxPacket> owned(pkt);
           if (auto req = parseNeighborRequest(owned.get())) {
+            requests_.wlock()->push_back(*req);
+          }
+          return true;
+        });
+    EXPECT_HW_CALL(sw_, sendPacketOutOfPortAsync_(_, _, _))
+        .WillRepeatedly([this](TxPacket* pkt, PortID port, auto /*queue*/) {
+          std::unique_ptr<TxPacket> owned(pkt);
+          if (auto req = parseNeighborRequest(owned.get(), port)) {
             requests_.wlock()->push_back(*req);
           }
           return true;
@@ -108,11 +139,11 @@ class VrfPuntPathTest : public ::testing::Test {
   // Receive a UDP packet on port and return the host interfaces it was sent to
   std::vector<InterfaceID> receive(
       PortID port,
-      VlanID vlan,
+      std::optional<VlanID> vlan,
       const folly::IPAddress& src,
       const folly::IPAddress& dst) {
     toHost_.wlock()->clear();
-    auto mac = sw_->getState()->getInterfaces()->getNode(kVrfIntf)->getMac();
+    auto mac = sw_->getState()->getInterfaces()->getNode(vrfIntf_)->getMac();
     auto pkt = utility::makeUDPTxPacket(
         [](uint32_t size) { return TxPacket::allocateTxPacket(size); },
         vlan,
@@ -196,13 +227,46 @@ class VrfPuntPathTest : public ::testing::Test {
     updater.program();
   }
 
+  void runProbe(const char* nexthop) {
+    auto* evb = sw_->getBackgroundEvb();
+    folly::Baton<> done;
+    evb->runInFbossEventBaseThread([&] {
+      ResolvedNextHopProbe probe(
+          sw_,
+          evb,
+          ResolvedNextHop(
+              folly::IPAddress(nexthop), kVrfIntf, UCMP_DEFAULT_WEIGHT));
+      static_cast<folly::AsyncTimeout&>(probe).timeoutExpired();
+      done.post();
+    });
+    done.wait();
+  }
+
   cfg::SwitchConfig config_;
+  InterfaceID vrfIntf_;
   std::unique_ptr<HwTestHandle> handle_;
   SwSwitch* sw_{nullptr};
   MockTunManager* tunMgr_{nullptr};
   PortID vrfPort_{0};
   folly::Synchronized<std::vector<InterfaceID>> toHost_;
   folly::Synchronized<std::vector<NeighborRequest>> requests_;
+};
+
+class VrfPuntPathPortIntfTest : public VrfPuntPathTest {
+ protected:
+  void SetUp() override {
+    setUpSwitch(testConfigAWithPortInterfaces(), kPortVrfIntf);
+  }
+
+  // Wait for at least one request for target, all sent out of port
+  void expectRequestsOutOfPort(const char* target, PortID port) {
+    WITH_RETRIES_N_TIMED(100, std::chrono::milliseconds(50), {
+      EXPECT_EVENTUALLY_GE(requestsFor(target).size(), 1) << target;
+    });
+    for (const auto& req : requestsFor(target)) {
+      EXPECT_EQ(req.port, port) << target;
+    }
+  }
 };
 
 using IntfIDs = std::vector<InterfaceID>;
@@ -279,4 +343,78 @@ TEST_F(VrfPuntPathTest, HostPacketResolvesInVrf) {
   sendFromHost(kVrfIntf, "2001:db8:400::1");
   expectRequests("10.0.55.40", kVrfVlan);
   expectRequests("2401:db00:2110:3055::40", kVrfVlan);
+}
+
+// Retries and next hop probes go out of the neighbor's interface, including
+// for link-local neighbors that every interface reaches
+TEST_F(VrfPuntPathTest, NeighborProbesOnInterfaceInVrf) {
+  auto* updater = sw_->getNeighborUpdater();
+  updater->resolveArpForIntf(kVrfIntf, folly::IPAddressV4("10.0.55.10"));
+  updater->resolveNdpForIntf(
+      kVrfIntf, folly::IPAddressV6("2401:db00:2110:3055::10"));
+  updater->resolveNdpForIntf(kVrfIntf, folly::IPAddressV6("fe80::10"));
+  expectRequests("10.0.55.10", kVrfVlan, 2);
+  expectRequests("2401:db00:2110:3055::10", kVrfVlan, 2);
+  expectRequests("fe80::10", kVrfVlan, 2);
+
+  runProbe("10.0.55.20");
+  runProbe("2401:db00:2110:3055::20");
+  runProbe("fe80::20");
+  expectRequests("10.0.55.20", kVrfVlan);
+  expectRequests("2401:db00:2110:3055::20", kVrfVlan);
+  expectRequests("fe80::20", kVrfVlan);
+}
+
+// Requests go out of only the given interface, and only for targets it reaches
+TEST_F(VrfPuntPathTest, NeighborRequestOnGivenInterface) {
+  auto intf = sw_->getState()->getInterfaces()->getNode(kVrfIntf);
+  IPv6Handler::sendMulticastNeighborSolicitation(
+      sw_, intf, folly::IPAddressV6("fe80::30"));
+  expectRequests("fe80::30", kVrfVlan);
+  EXPECT_EQ(requestsFor("fe80::30").size(), 1);
+
+  ArpHandler::sendArpRequest(sw_, intf, folly::IPAddressV4("10.0.0.30"));
+  IPv6Handler::sendMulticastNeighborSolicitation(
+      sw_, intf, folly::IPAddressV6("2401:db00:2110:3001::30"));
+  EXPECT_TRUE(requestsFor("10.0.0.30").empty());
+  EXPECT_TRUE(requestsFor("2401:db00:2110:3001::30").empty());
+}
+
+// After SetUp (testConfigAWithPortInterfaces):
+//   intf 6001: port 1, VRF 0, 100.0.1.1/24, 2601:db00:2110:3001::1/64
+//   intf 6002: port 2, VRF 1001, 100.0.2.1/24, 2601:db00:2110:3002::1/64
+
+// On a port interface, glean, retries and link-local requests go out of the
+// interface's port, and targets it cannot reach get no request
+TEST_F(VrfPuntPathPortIntfTest, NeighborRequestsOutOfPort) {
+  receive(
+      kPortVrfPort,
+      std::nullopt,
+      folly::IPAddress("100.0.2.10"),
+      folly::IPAddress("100.0.2.20"));
+  receive(
+      kPortVrfPort,
+      std::nullopt,
+      folly::IPAddress("2601:db00:2110:3002::10"),
+      folly::IPAddress("2601:db00:2110:3002::20"));
+  auto* updater = sw_->getNeighborUpdater();
+  updater->resolveArpForIntf(kPortVrfIntf, folly::IPAddressV4("100.0.2.30"));
+  updater->resolveNdpForIntf(
+      kPortVrfIntf, folly::IPAddressV6("2601:db00:2110:3002::30"));
+  updater->resolveNdpForIntf(kPortVrfIntf, folly::IPAddressV6("fe80::30"));
+  for (auto target :
+       {"100.0.2.20",
+        "2601:db00:2110:3002::20",
+        "100.0.2.30",
+        "2601:db00:2110:3002::30",
+        "fe80::30"}) {
+    expectRequestsOutOfPort(target, kPortVrfPort);
+  }
+
+  auto intf = sw_->getState()->getInterfaces()->getNode(kPortVrfIntf);
+  ArpHandler::sendArpRequest(sw_, intf, folly::IPAddressV4("100.0.1.40"));
+  IPv6Handler::sendMulticastNeighborSolicitation(
+      sw_, intf, folly::IPAddressV6("2601:db00:2110:3001::40"));
+  EXPECT_TRUE(requestsFor("100.0.1.40").empty());
+  EXPECT_TRUE(requestsFor("2601:db00:2110:3001::40").empty());
 }

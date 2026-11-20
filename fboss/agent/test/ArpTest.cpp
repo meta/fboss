@@ -255,8 +255,7 @@ void testSendArpRequest(
         "ARP request",
         checkArpRequest(senderIP, intf->getMac(), targetIP, vlanID));
   }
-  ArpHandler::sendArpRequest(
-      sw, vlan->getID(), intf->getMac(), senderIP, targetIP);
+  ArpHandler::sendArpRequest(sw, intf, senderIP, targetIP);
 
   // Notify the updater that we sent an arp request
   sw->getNeighborUpdater()->sentArpRequestForIntf(intfID, targetIP);
@@ -307,8 +306,7 @@ TEST_F(ArpTest, BasicSendRequest) {
       "ARP request",
       checkArpRequest(senderIP, intf->getMac(), targetIP, vlanID));
 
-  ArpHandler::sendArpRequest(
-      sw, vlan->getID(), intf->getMac(), senderIP, targetIP);
+  ArpHandler::sendArpRequest(sw, intf, senderIP, targetIP);
 
   // Notify the updater that we sent an arp request
   sw->getNeighborUpdater()->sentArpRequestForIntf(intfID, targetIP);
@@ -1517,12 +1515,13 @@ TEST(ArpHandlerTest, SendArpRequestSwExiting) {
   auto sw = handle->getSw();
 
   IPAddressV4 targetIP = IPAddressV4("10.0.0.2");
+  auto intf = sw->getState()->getInterfaces()->getNode(InterfaceID(1));
   CounterCache counters(sw);
 
   // Verify that ARP requests are sent when switch is initialized
   EXPECT_TRUE(sw->isFullyInitialized());
   EXPECT_HW_CALL(sw, sendPacketSwitchedAsync_(_)).Times(1);
-  ArpHandler::sendArpRequest(sw, targetIP);
+  ArpHandler::sendArpRequest(sw, intf, targetIP);
 
   counters.update();
   counters.checkDelta(SwitchStats::kCounterPrefix + "arp.request.tx.sum", 1);
@@ -1533,7 +1532,7 @@ TEST(ArpHandlerTest, SendArpRequestSwExiting) {
   EXPECT_TRUE(sw->isExiting());
 
   EXPECT_HW_CALL(sw, sendPacketSwitchedAsync_(_)).Times(0);
-  ArpHandler::sendArpRequest(sw, targetIP);
+  ArpHandler::sendArpRequest(sw, intf, targetIP);
 
   counters.update();
   counters.checkDelta(SwitchStats::kCounterPrefix + "arp.request.tx.sum", 0);

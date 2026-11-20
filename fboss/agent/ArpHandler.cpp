@@ -322,10 +322,11 @@ void ArpHandler::sendArpReply(
 
 void ArpHandler::sendArpRequest(
     SwSwitch* sw,
-    std::optional<VlanID> vlanID,
-    const MacAddress& srcMac,
+    const std::shared_ptr<Interface>& intf,
     const IPAddressV4& senderIP,
     const IPAddressV4& targetIP) {
+  auto vlanID = sw->getVlanIDForTx(intf);
+  auto srcMac = intf->getMac();
   sw->getPacketLogger()->log(
       "ARP", "TX", vlanID, srcMac.toString(), senderIP.str(), targetIP.str());
   sw->stats()->arpRequestTx();
@@ -334,7 +335,7 @@ void ArpHandler::sendArpRequest(
   // VOQ switches don't use VLANs (no broadcast domain).
   // NPU switches may use Port router interfaces (no broadcast domain)
   // Find the port to send out the pkt with pipeline bypass on.
-  auto portID = getInterfacePortToReach(sw->getState(), targetIP);
+  auto portID = getInterfacePort(sw->getState(), intf);
   if (portID.has_value()) {
     portDescriptor = PortDescriptor(portID.value());
     XLOG(DBG4) << "Sending ARP request for " << targetIP.str()
@@ -354,27 +355,20 @@ void ArpHandler::sendArpRequest(
 
 void ArpHandler::sendArpRequest(
     SwSwitch* sw,
+    const std::shared_ptr<Interface>& intf,
     const folly::IPAddressV4& targetIP) {
   if (!sw->isFullyInitialized()) {
     XLOG(DBG2) << "Dropping ARP request since device not ready";
     return;
   }
 
-  auto intf = sw->getState()->getIntfToReach(RouterID(0), targetIP);
-
-  if (!intf) {
-    XLOG(DBG0) << "Cannot find interface for " << targetIP;
+  auto addrToReach = intf->getAddressToReach(targetIP);
+  if (!addrToReach) {
+    XLOG(DBG0) << "Interface " << intf->getID() << " cannot reach " << targetIP;
     return;
   }
 
-  auto addrToReach = intf->getAddressToReach(targetIP);
-
-  sendArpRequest(
-      sw,
-      sw->getVlanIDForTx(intf),
-      intf->getMac(),
-      addrToReach->first.asV4(),
-      targetIP);
+  sendArpRequest(sw, intf, addrToReach->first.asV4(), targetIP);
 }
 
 template <typename VlanOrIntfT>

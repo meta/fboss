@@ -92,17 +92,15 @@ TEST_F(UtilsAggregatePortInterfaceTest, getPortsForInterface) {
   }
 }
 
-TEST_F(UtilsAggregatePortInterfaceTest, getInterfacePortToReach) {
-  // An address on the aggregate's subnet is reached over one of its members,
-  // rather than over a port the interface is not bound to.
-  for (const auto& addr :
-       {folly::IPAddress("2601:db00:2110:3100::2"),
-        folly::IPAddress("100.0.100.2")}) {
-    auto port = getInterfacePortToReach(sw->getState(), addr);
-    ASSERT_TRUE(port.has_value()) << "no port to reach " << addr;
-    EXPECT_TRUE(isMember(*port))
-        << addr << " reached over non member port " << *port;
-  }
+TEST_F(UtilsAggregatePortInterfaceTest, getInterfacePort) {
+  // The aggregate's interface is reached over one of its members, rather than
+  // over a port the interface is not bound to.
+  auto state = sw->getState();
+  auto intf =
+      state->getInterfaces()->getNode(InterfaceID(kAggregatePortInterfaceID));
+  auto port = getInterfacePort(state, intf);
+  ASSERT_TRUE(port.has_value());
+  EXPECT_TRUE(isMember(*port)) << "reached over non member port " << *port;
 }
 
 TEST_F(UtilsAggregatePortInterfaceTest, getInterfaceIDForPort) {

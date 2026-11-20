@@ -3903,7 +3903,7 @@ void SwSwitch::sendL3Packet(
           // We don't have dstAddr in our NDP table. Request solicitation for
           // it and let this packet be dropped.
           IPv6Handler::sendMulticastNeighborSolicitation(
-              this, dstAddrV6, srcMac, vlanID);
+              this, intf, dstAddrV6, srcMac);
           throw;
         } // try
       }
@@ -4344,8 +4344,7 @@ bool SwSwitch::sendNdpSolicitationHelper(
   auto entry = getNeighborEntryForIP<NdpEntry>(state, intf, target);
   if (entry == nullptr) {
     // No entry in NDP table, create a neighbor solicitation packet
-    IPv6Handler::sendMulticastNeighborSolicitation(
-        this, target, intf->getMac(), getVlanIDForTx(intf));
+    IPv6Handler::sendMulticastNeighborSolicitation(this, intf, target);
 
     // Notify the updater that we sent a solicitation out
     sentNeighborSolicitation(intf, target);

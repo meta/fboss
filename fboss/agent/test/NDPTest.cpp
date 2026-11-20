@@ -2632,8 +2632,14 @@ TEST_F(NdpTest, stressSendMulticastNeighborSoclicitsDuringStateUpdate) {
   // another thread
   auto* evb = sw->getBackgroundEvb();
   evb->runInFbossEventBaseThread([&]() {
-    sw->getIPv6Handler()->sendMulticastNeighborSolicitation(
-        sw, IPAddressV6("fe80::face:b000"));
+    auto state = sw->getState();
+    for (const auto& [switchId, intfMap] :
+         std::as_const(*state->getInterfaces())) {
+      for (const auto& [intfId, intf] : std::as_const(*intfMap)) {
+        sw->getIPv6Handler()->sendMulticastNeighborSolicitation(
+            sw, intf, IPAddressV6("fe80::face:b000"));
+      }
+    }
   });
 
   // Step 3: trigger switch state update by flushing NDP entries
