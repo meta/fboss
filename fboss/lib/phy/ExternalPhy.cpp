@@ -51,7 +51,11 @@ ExternalPhyPortStats ExternalPhyPortStats::fromPhyInfo(const PhyInfo& phyInfo) {
     for (auto const& [lane, phyLaneState] : *phySideState.pmd()->lanes()) {
       ExternalPhyLaneStats laneStats;
 
-      auto phyLaneStats = phySideStats.pmd()->lanes()->at(lane);
+      const auto statsIt = phySideStats.pmd()->lanes()->find(lane);
+      if (statsIt == phySideStats.pmd()->lanes()->end()) {
+        continue;
+      }
+      const auto& phyLaneStats = statsIt->second;
       if (auto snrInfo = phyLaneStats.snr()) {
         laneStats.signalToNoiseRatio = *snrInfo;
       }
