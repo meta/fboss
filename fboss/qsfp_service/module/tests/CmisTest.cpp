@@ -125,6 +125,8 @@ constexpr int kVdmLatchRequestUpperPageOffset = 144 - 128;
 constexpr uint8_t kPage10h = 0x10;
 constexpr uint8_t kPage11h = 0x11;
 constexpr int kDataPathDeinitOffset = 128;
+constexpr int kTxDisableOffset = 130;
+constexpr int kBankSelectOffset = 126;
 constexpr int kActiveAppSelOffset = 206;
 
 void writeUpperPage(
@@ -152,6 +154,21 @@ readUpperPage(FakeTransceiverImpl* impl, uint8_t page, int offset, int len) {
       TransceiverAccessParameter::ADDR_QSFP, offset, len);
   impl->readTransceiver(param, data.data(), 0);
   return data;
+}
+
+void selectBank(FakeTransceiverImpl* impl, uint8_t bank) {
+  TransceiverAccessParameter bankParam(
+      TransceiverAccessParameter::ADDR_QSFP, kBankSelectOffset, 1);
+  impl->writeTransceiver(bankParam, &bank, 0, 0);
+}
+
+uint8_t readBankedUpperPageByte(
+    FakeTransceiverImpl* impl,
+    uint8_t bank,
+    uint8_t page,
+    int offset) {
+  selectBank(impl, bank);
+  return readUpperPage(impl, page, offset, 1)[0];
 }
 
 // Active control set for 3x200G: AppSel 9 on host lanes 0-5 with datapath IDs
@@ -606,6 +623,116 @@ TEST_F(CmisTest, cpoConfiguredMediaLanesPerBank) {
       xcvr->configuredMediaLanes(8), (std::vector<uint8_t>{8, 9, 10, 11}));
   EXPECT_EQ(
       xcvr->configuredMediaLanes(12), (std::vector<uint8_t>{12, 13, 14, 15}));
+}
+
+// Give every bank of a CPO module its own page 10h holding txDisable in
+// TX_DISABLE, so each bank's TX state is tracked separately.
+void setCpoTxDisable(FakeTransceiverImpl* impl, uint8_t txDisable) {
+  for (uint8_t bank = 0; bank < 4; ++bank) {
+    selectBank(impl, bank);
+    writeUpperPage(impl, kPage10h, kTxDisableOffset, {txDisable});
+  }
+  selectBank(impl, 0);
+}
+
+// Ports on host lanes 0-3 (bank 0) and 8-11 (bank 1) of a CPO module
+ProgramTransceiverState makeCpoProgramState(cfg::PortSpeed speed) {
+  ProgramTransceiverState programTcvrState;
+  for (uint8_t startHostLane : {0, 8}) {
+    TransceiverPortState portState;
+    portState.portName = fmt::format("eth1/1/{}", startHostLane + 1);
+    portState.startHostLane = startHostLane;
+    portState.speed = speed;
+    portState.numHostLanes = 4;
+    programTcvrState.ports.emplace(portState.portName, portState);
+  }
+  return programTcvrState;
+}
+
+// CPO modules default to TX disabled (0xFF) on every lane, so programming a
+// port must enable TX on the port's lanes before activating its datapath. Only
+// the programmed lanes in the programmed banks are enabled.
+TEST_F(CmisTest, cpoDatapathProgramEnablesTx) {
+  auto xcvr = overrideCmisModule<CmisCpo6P4TDrReadyTransceiver>(
+      TransceiverID(0), TransceiverModuleIdentifier::CPO);
+  auto impl = lastQsfpImpl();
+  setCpoTxDisable(impl, 0xFF);
+
+  // The fixture comes up in the 800G application, so 400G forces a reprogram
+  auto programTcvrState = makeCpoProgramState(cfg::PortSpeed::FOURHUNDREDG);
+  xcvr->programTransceiver(programTcvrState, false);
+
+  // Banks 0 and 1: intra-bank lanes 0-3 enabled, lanes 4-7 still disabled
+  EXPECT_EQ(readBankedUpperPageByte(impl, 0, kPage10h, kTxDisableOffset), 0xF0);
+  EXPECT_EQ(readBankedUpperPageByte(impl, 1, kPage10h, kTxDisableOffset), 0xF0);
+  // Unprogrammed banks keep TX disabled
+  EXPECT_EQ(readBankedUpperPageByte(impl, 2, kPage10h, kTxDisableOffset), 0xFF);
+  EXPECT_EQ(readBankedUpperPageByte(impl, 3, kPage10h, kTxDisableOffset), 0xFF);
+}
+
+// A reset CPO module is back to TX disabled in the application it already
+// runs. Programming the same speed resets each port's datapath so TX is
+// enabled between deinit and init.
+TEST_F(CmisTest, cpoMatchingSpeedProgramWithTxDisabledEnablesTx) {
+  auto xcvr = overrideCmisModule<CmisCpo6P4TDrReadyTransceiver>(
+      TransceiverID(0), TransceiverModuleIdentifier::CPO);
+  auto impl = lastQsfpImpl();
+  setCpoTxDisable(impl, 0xFF);
+  const int deinitWrites =
+      impl->getUpperPageWriteCount(kPage10h, kDataPathDeinitOffset - 128);
+
+  auto programTcvrState = makeCpoProgramState(cfg::PortSpeed::EIGHTHUNDREDG);
+  xcvr->programTransceiver(programTcvrState, false);
+
+  // One deinit and one init write per port
+  EXPECT_EQ(
+      impl->getUpperPageWriteCount(kPage10h, kDataPathDeinitOffset - 128) -
+          deinitWrites,
+      4);
+  EXPECT_EQ(readBankedUpperPageByte(impl, 0, kPage10h, kTxDisableOffset), 0xF0);
+  EXPECT_EQ(readBankedUpperPageByte(impl, 1, kPage10h, kTxDisableOffset), 0xF0);
+  EXPECT_EQ(readBankedUpperPageByte(impl, 2, kPage10h, kTxDisableOffset), 0xFF);
+  EXPECT_EQ(readBankedUpperPageByte(impl, 3, kPage10h, kTxDisableOffset), 0xFF);
+}
+
+// With TX already enabled, programming the speed a CPO module already runs
+// leaves the datapath alone.
+TEST_F(CmisTest, cpoMatchingSpeedProgramWithTxEnabledSkipsReset) {
+  auto xcvr = overrideCmisModule<CmisCpo6P4TDrReadyTransceiver>(
+      TransceiverID(0), TransceiverModuleIdentifier::CPO);
+  auto impl = lastQsfpImpl();
+  setCpoTxDisable(impl, 0x00);
+  const int deinitWrites =
+      impl->getUpperPageWriteCount(kPage10h, kDataPathDeinitOffset - 128);
+
+  auto programTcvrState = makeCpoProgramState(cfg::PortSpeed::EIGHTHUNDREDG);
+  xcvr->programTransceiver(programTcvrState, false);
+
+  EXPECT_EQ(
+      impl->getUpperPageWriteCount(kPage10h, kDataPathDeinitOffset - 128),
+      deinitWrites);
+}
+
+// Non-CPO modules leave TX_DISABLE alone during datapath programming.
+TEST_F(CmisTest, nonCpoDatapathProgramLeavesTxDisableAlone) {
+  auto xcvr = overrideCmisModule<Cmis2x400GFr4IbFirstTransceiver>(
+      TransceiverID(1), TransceiverModuleIdentifier::OSFP);
+  writeUpperPage(lastQsfpImpl(), kPage10h, kTxDisableOffset, {0xFF});
+
+  ProgramTransceiverState programTcvrState;
+  for (uint8_t startHostLane : {0, 4}) {
+    TransceiverPortState portState;
+    portState.portName = fmt::format("eth1/1/{}", startHostLane + 1);
+    portState.startHostLane = startHostLane;
+    portState.speed = cfg::PortSpeed::FOURHUNDREDG;
+    portState.numHostLanes = 4;
+    programTcvrState.ports.emplace(portState.portName, portState);
+  }
+  xcvr->programTransceiver(programTcvrState, false);
+
+  EXPECT_EQ(
+      readUpperPage(lastQsfpImpl(), kPage10h, kTxDisableOffset, 1),
+      std::vector<uint8_t>{0xFF});
 }
 
 // The CMIS revision lives in Lower Page byte 1: upper nibble is the major

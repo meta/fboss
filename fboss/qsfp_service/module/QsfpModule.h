@@ -562,6 +562,10 @@ class QsfpModule : public Transceiver {
     return false;
   }
 
+  virtual bool isCpo() const {
+    return false;
+  }
+
   virtual bool isTunableOptics() const {
     return false;
   }

@@ -2504,6 +2504,11 @@ TransceiverModuleIdentifier CmisModule::getIdentifier() {
   return (TransceiverModuleIdentifier)getSettingsValue(CmisField::IDENTIFIER);
 }
 
+bool CmisModule::isCpo() const {
+  return getSettingsValue(CmisField::IDENTIFIER) ==
+      static_cast<uint8_t>(TransceiverModuleIdentifier::CPO);
+}
+
 void CmisModule::setQsfpFlatMem() {
   uint8_t flatMem;
   int offset;
@@ -3559,7 +3564,10 @@ CmisModule::getAppSelCodeForSpeed(
       // returning. The port's lanes live in one bank; use an intra-bank mask.
       const uint8_t bank = laneToBank(startHostLane);
       uint8_t hostLaneMask = laneMask(laneInBank(startHostLane), numHostLanes);
-      if (datapathResetPendingMask_[bank] & hostLaneMask) {
+      // A CPO module that was reset is back to TX disabled; resetting the
+      // datapath enables TX between deinit and init.
+      if ((datapathResetPendingMask_[bank] & hostLaneMask) ||
+          isCpoTxDisabled(hostLaneMask, bank)) {
         resetDataPathWithFunc(portName, std::nullopt, hostLaneMask, bank);
         datapathResetPendingMask_[bank] &= ~hostLaneMask;
         QSFP_LOG(INFO, this) << fmt::format(
@@ -5603,6 +5611,15 @@ uint8_t CmisModule::getActiveAppSelLaneMask(uint8_t bank) {
   return mask;
 }
 
+bool CmisModule::isCpoTxDisabled(uint8_t laneMask, uint8_t bank) {
+  if (!isCpo()) {
+    return false;
+  }
+  uint8_t txDisable;
+  readCmisField(CmisField::TX_DISABLE, &txDisable, false, bank);
+  return txDisable & laneMask;
+}
+
 void CmisModule::resetDataPath(const std::string& portName) {
   if (flatMem_) {
     return;
@@ -5866,6 +5883,22 @@ void CmisModule::resetDataPathWithFunc(
     // Call the afterDataPathDeinitFunc() after deactivate all lanes
     if (afterDataPathDeinitFunc) {
       (*afterDataPathDeinitFunc)();
+    }
+
+    // CPO modules come up with TX disabled on every lane, so enable TX on the
+    // lanes being initialized before activating their datapath.
+    if (isCpo()) {
+      QSFP_LOG(INFO, this) << fmt::format(
+          "Port {} enabling TX on bank {:d} lane mask {:#x}",
+          portName,
+          bank,
+          initMask);
+      readModifyWriteCmisField(
+          CmisField::TX_DISABLE,
+          initMask,
+          0,
+          false /* skipBankAndPageChange */,
+          bank);
     }
 
     // Release the lanes from DeInit.

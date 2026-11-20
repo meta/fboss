@@ -804,6 +804,9 @@ class CmisModule : public QsfpModule {
   void resetDataPath(const std::string& portName) override;
   // Intra-bank mask of lanes with a non-zero active AppSel code
   uint8_t getActiveAppSelLaneMask(uint8_t bank);
+  // True if this is a CPO module with TX disabled on any lane in the intra-bank
+  // laneMask
+  bool isCpoTxDisabled(uint8_t laneMask, uint8_t bank);
 
   void resetDatapathProgrammingStateLocked() override;
 
@@ -818,6 +821,8 @@ class CmisModule : public QsfpModule {
   bool isAecModule() const override {
     return getMediaTypeEncoding() == MediaTypeEncodings::ACTIVE_CABLES;
   }
+
+  bool isCpo() const override;
 
   /*
    * returns whether optics frequency is tunable or not
