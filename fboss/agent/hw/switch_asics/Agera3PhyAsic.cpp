@@ -9,8 +9,6 @@ bool Agera3PhyAsic::isSupported(Feature feature) const {
     case HwAsic::Feature::SAI_PORT_SERDES_PROGRAMMING:
     case HwAsic::Feature::SAI_SERDES_PRECODING:
     case HwAsic::Feature::SAI_SERDES_RX_REACH:
-    case HwAsic::Feature::PMD_RX_SIGNAL_DETECT:
-    case HwAsic::Feature::PMD_RX_LOCK_STATUS:
     // Enable the FEC-monitor read paths for the Agera3 retimer. FEC mode
     // RS544 is programmed on the LINE side only, via the platform mapping
     // (xphyLine.fec = RS544_2N); xphySystem stays NONE, and SaiPortManager
@@ -27,14 +25,16 @@ bool Agera3PhyAsic::isSupported(Feature feature) const {
     case HwAsic::Feature::SAI_FEC_CORRECTED_BITS:
     case HwAsic::Feature::SAI_FEC_CODEWORDS_STATS:
     case HwAsic::Feature::FEC_AM_LOCK_STATUS:
-    // Per-lane RX SNR. PAI 4.1-only (SAI 1.18.1): the read is gated in
-    // SaiPortManager::rxSNRSupported() by
-    // (BRCM_PAI_SDK && SAI_API_VERSION >= 1.18.1), so it stays off on
-    // PAI 4.0 which does not implement SAI_PORT_ATTR_RX_SNR.
-    case HwAsic::Feature::RX_SNR:
     case HwAsic::Feature::WARMBOOT:
     case HwAsic::Feature::OBJECT_KEY_CACHE:
       return true;
+    // PAI 4.1 serves RX signal detect, CDR lock and SNR with a full lane
+    // diagnostics snapshot that stops the serdes micro; polled after a flap,
+    // this can leave the lane stuck unlocked. Re-enable once PAI provides a
+    // light read. CSP: CS00012489915
+    case HwAsic::Feature::PMD_RX_SIGNAL_DETECT:
+    case HwAsic::Feature::PMD_RX_LOCK_STATUS:
+    case HwAsic::Feature::RX_SNR:
     case HwAsic::Feature::MACSEC:
     case HwAsic::Feature::REMOVE_PORTS_FOR_COLDBOOT:
     case HwAsic::Feature::EMPTY_ACL_MATCHER:
