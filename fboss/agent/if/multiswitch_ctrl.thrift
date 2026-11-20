@@ -158,6 +158,9 @@ service MultiSwitchCtrl {
   );
 
   /* HwAgent graceful shutdown notification */
+  // Not NORMAL: those workers can all be blocked in updateStateBlocking().
+  // Not HIGH: getNextStateOperDelta long-polls there, one thread per hw_agent.
+  @thrift.Priority{level = thrift.RpcPriority.HIGH_IMPORTANT}
   void gracefulExit(1: i64 switchId);
 
   /* send hardware stats through sink */
