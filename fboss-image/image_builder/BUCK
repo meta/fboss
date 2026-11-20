@@ -1,1 +1,17 @@
+load("@fbcode_macros//build_defs:python_unittest.bzl", "python_unittest")
+load("@fbsource//tools/build_defs/testinfra:network_access_utils.bzl", "network_access_utils")
+
 oncall("fboss_oss")
+
+python_unittest(
+    name = "kiwi_installer_network_test",
+    srcs = {
+        "tests/test_kiwi_installer_network.py": "test_kiwi_installer_network.py",
+    },
+    base_module = "fboss_image.image_builder",
+    network_access = network_access_utils.none(),
+    resources = {
+        "templates/centos-09.0/root_files/usr/lib/dracut/modules.d/95kiwi-installer-network/NetworkManager.conf": "network_module/NetworkManager.conf",
+        "templates/centos-09.0/root_files/usr/lib/dracut/modules.d/95kiwi-installer-network/module-setup.sh": "network_module/module-setup.sh",
+    },
+)

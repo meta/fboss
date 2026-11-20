@@ -9,3 +9,19 @@ is the `root_files` directory which contains the files that will be copied into 
 
 KIWI NG Documentation:
     https://osinside.github.io/kiwi/overview.html
+
+Installer networking:
+    The 95kiwi-installer-network dracut module is included only when building a
+    KIWI dump installer (kiwi-dump). It prevents NetworkManager from adopting
+    pre-existing external network configuration instead of activating the
+    profiles generated from the boot command line. NetworkManager's existing
+    dracut service and nm-online integration are unchanged.
+
+    The policy contains no addresses, DNS servers, interface names, or vendor
+    credentials. The provisioning environment supplies ip=, nameserver= and
+    related boot arguments. It is not included in a normal NOS initrd and is
+    additionally gated by NetworkManager's initrd environment tag.
+
+    Rebuild and publish the complete image bundle to use the updated installer.
+    Existing published initrds are not changed. Verify inclusion with:
+        lsinitrd -f usr/lib/NetworkManager/conf.d/90-kiwi-installer.conf <installer.initrd>
