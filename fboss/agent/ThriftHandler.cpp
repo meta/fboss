@@ -185,7 +185,7 @@ UnicastRoute toUnicastRoute(
     tempRoute.classID() = *classID;
   }
   if (auto level = entry.getLevel()) {
-    tempRoute.level() = level;
+    tempRoute.level() = *level;
   }
   if (auto overrideEcmpSwitchingMode = entry.getOverrideEcmpSwitchingMode()) {
     tempRoute.overrideEcmpSwitchingMode() = *overrideEcmpSwitchingMode;

@@ -106,13 +106,13 @@ class RibIpRouteUpdate {
         RouteNextHopEntry entry(
             RouteForwardAction::NEXTHOPS, adminDistance, counterID, classID);
         entry.setNamedNextHopGroup(namedNhg);
-        entry.setLevel(route.level().value_or(0));
+        entry.setLevel(route.level().to_optional());
         return RibRoute{{network, mask}, entry};
       }
     }
 
     auto entry = RouteNextHopEntry::from(route, distance, counterID, classID);
-    entry.setLevel(route.level().value_or(0));
+    entry.setLevel(route.level().to_optional());
     return RibRoute{{network, mask}, entry};
   }
   static RibRouteId ToDelFn(

@@ -253,9 +253,28 @@ TEST_F(CrossVrfResolutionTest, RouteLevelFromClient) {
   EXPECT_EQ(level(), 1);
 
   // A level change alone updates the route
-  route.level().reset();
+  route.level() = 0;
   addRoute(kTenantVrf, route);
   EXPECT_EQ(level(), 0);
+
+  // An unset level stays unset
+  route.level().reset();
+  addRoute(kTenantVrf, route);
+  EXPECT_EQ(level(), std::nullopt);
+}
+
+// Level 0 and unset are the same level for resolution
+TEST_F(CrossVrfResolutionTest, LevelZeroResolvesThroughUnsetLevel) {
+  auto route = makeUnicastRoute(
+      folly::IPAddress::createNetwork("2001:db8:500::/64"),
+      {folly::IPAddress("2001:db8:1::10")});
+  route.level() = 0;
+  addRoute(kVrf0, route);
+
+  auto nhops = nextHops(kVrf0, "2001:db8:500::1");
+  ASSERT_EQ(nhops.size(), 1);
+  EXPECT_FALSE(nhops.begin()->resolvedInNextLevel());
+  EXPECT_TRUE(nhops.begin()->intfID().has_value());
 }
 
 TEST_F(CrossVrfResolutionTest, VxlanNextHopOverUnderlayEcmp) {

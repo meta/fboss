@@ -202,17 +202,17 @@ class RouteNextHopEntry
     }
   }
 
-  // Unset means level 0
-  int32_t getLevel() const {
+  // The level the client set. Resolution treats unset as level 0.
+  std::optional<int32_t> getLevel() const {
     if (auto level = safe_cref<switch_state_tags::level>()) {
       return level->cref();
     }
-    return 0;
+    return std::nullopt;
   }
 
-  void setLevel(int32_t level) {
+  void setLevel(std::optional<int32_t> level) {
     if (level) {
-      ref<switch_state_tags::level>() = level;
+      ref<switch_state_tags::level>() = *level;
     } else {
       ref<switch_state_tags::level>().reset();
     }

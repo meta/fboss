@@ -218,7 +218,7 @@ TEST(RouteNextHop, SameInterfaceAndAddressRemainContiguous) {
 
 TEST(RouteNextHopEntry, Level) {
   RouteNextHopEntry underlay(RouteForwardAction::DROP, kDefaultAdminDistance);
-  EXPECT_EQ(underlay.getLevel(), 0);
+  EXPECT_EQ(underlay.getLevel(), std::nullopt);
 
   RouteNextHopEntry overlay(underlay.toThrift());
   overlay.setLevel(1);
@@ -231,8 +231,12 @@ TEST(RouteNextHopEntry, Level) {
            .level(),
       1);
 
-  // Level 0 is stored unset
+  // Level 0 is stored as set, and differs from unset
   overlay.setLevel(0);
+  EXPECT_EQ(overlay.toThrift().level(), 0);
+  EXPECT_FALSE(underlay == overlay);
+
+  overlay.setLevel(std::nullopt);
   EXPECT_FALSE(overlay.toThrift().level().has_value());
   EXPECT_TRUE(underlay == overlay);
 }

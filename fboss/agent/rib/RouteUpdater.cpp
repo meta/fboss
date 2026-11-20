@@ -63,6 +63,11 @@ using folly::IPAddressV6;
 namespace facebook::fboss {
 
 namespace {
+// Routes without a level resolve as level 0
+int32_t resolutionLevel(const RouteNextHopEntry& entry) {
+  return entry.getLevel().value_or(0);
+}
+
 template <typename AddressT>
 std::shared_ptr<Route<AddressT>> writableRoute(
     typename NetworkToRouteMap<AddressT>::Iterator ritr) {
@@ -1138,7 +1143,7 @@ std::shared_ptr<Route<AddressT>> RibRouteUpdater::resolveOne(
         getClientNextHopsFromRib(nextHopIDManager_, *bestEntry);
     std::optional<RouteCounterID> inheritedCounterID;
     const std::pair<int32_t, RouteNextHopSet> cacheKey{
-        bestEntry->getLevel(), bestEntryNhops};
+        resolutionLevel(*bestEntry), bestEntryNhops};
     auto fwItr = unresolvedToResolvedNhops_.find(cacheKey);
     if (fwItr == unresolvedToResolvedNhops_.end()) {
       NextHopForwardInfos nhToFwds;
@@ -1205,8 +1210,8 @@ std::shared_ptr<Route<AddressT>> RibRouteUpdater::resolveOne(
             continue;
           }
           // Resolve recursively through routes of the same level only
-          if (it->value()->getBestEntry().second->getLevel() !=
-              bestEntry->getLevel()) {
+          if (resolutionLevel(*it->value()->getBestEntry().second) !=
+              resolutionLevel(*bestEntry)) {
             resolveInNextLevel<folly::IPAddressV4>(it, nh, nhFwd);
             continue;
           }
@@ -1235,8 +1240,8 @@ std::shared_ptr<Route<AddressT>> RibRouteUpdater::resolveOne(
             continue;
           }
           // Resolve recursively through routes of the same level only
-          if (it->value()->getBestEntry().second->getLevel() !=
-              bestEntry->getLevel()) {
+          if (resolutionLevel(*it->value()->getBestEntry().second) !=
+              resolutionLevel(*bestEntry)) {
             resolveInNextLevel<folly::IPAddressV6>(it, nh, nhFwd);
             continue;
           }

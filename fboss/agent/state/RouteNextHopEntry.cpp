@@ -209,7 +209,7 @@ UnicastRoute toUnicastRoute(
     thriftRoute.classID() = nhopEntry.getClassID().value();
   }
   if (auto level = nhopEntry.getLevel()) {
-    thriftRoute.level() = level;
+    thriftRoute.level() = *level;
   }
   if (nhopEntry.getAction() == RouteForwardAction::NEXTHOPS) {
     thriftRoute.nextHops() = fromRouteNextHopSet(nhops);
