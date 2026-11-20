@@ -27,10 +27,18 @@ class CmdShowQsfpSdkDump
     : public CmdHandler<CmdShowQsfpSdkDump, CmdShowQsfpSdkDumpTraits> {
  public:
   using RetType = CmdShowQsfpSdkDumpTraits::RetType;
+
+  CmdShowQsfpSdkDump();
+  explicit CmdShowQsfpSdkDump(folly::fs::path sdkDumpDir);
+
   std::unique_ptr<folly::test::TemporaryFile> tempSdkFile;
 
+  std::string prepareSdkDumpFile();
   RetType queryClient(const HostInfo& hostInfo);
   void printOutput(const RetType& rc, std::ostream& out = std::cout);
+
+ private:
+  folly::fs::path sdkDumpDir_;
 };
 
 struct CmdShowAgentSdkDumpTraits : public ReadCommandTraits,
