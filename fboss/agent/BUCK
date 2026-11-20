@@ -963,10 +963,10 @@ cpp_library(
         "AclResourceAccountant.h",
     ],
     deps = [
+        "fbsource//xplat/folly/logging:logging",
         ":agent_features",
         ":hw_asic_table",
         "//fboss/agent/state:state",
-        "//folly/logging:logging",
     ],
 )
 
