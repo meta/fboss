@@ -11,6 +11,7 @@
 #include "fboss/cli/fboss2/CmdArgsLists.h"
 
 #include <folly/Singleton.h>
+#include <folly/concurrency/AtomicSharedPtr.h>
 
 namespace {
 struct singleton_tag_type {};
@@ -20,7 +21,19 @@ namespace facebook::fboss {
 
 using facebook::fboss::CmdArgsLists;
 static folly::Singleton<CmdArgsLists, singleton_tag_type> cmdArgs_{};
+namespace {
+folly::atomic_shared_ptr<CmdArgsLists> invocationOverride{};
+}
+
+std::shared_ptr<CmdArgsLists> CmdArgsLists::exchangeInvocationOverride(
+    std::shared_ptr<CmdArgsLists> instance) {
+  return invocationOverride.exchange(std::move(instance));
+}
+
 std::shared_ptr<CmdArgsLists> CmdArgsLists::getInstance() {
+  if (auto instance = invocationOverride.load()) {
+    return instance;
+  }
   return cmdArgs_.try_get();
 }
 } // namespace facebook::fboss

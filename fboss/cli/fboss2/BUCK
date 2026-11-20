@@ -51,6 +51,7 @@ cpp_library(
     headers = [
         "CmdGlobalOptions.h",
     ],
+    deps = ["fbsource//xplat/folly/concurrency:atomic_shared_ptr"],
     exported_deps = [
         "fbsource//xplat/folly:singleton",
         "fbsource//xplat/folly:string",
@@ -72,7 +73,10 @@ cpp_library(
     headers = [
         "CmdLocalOptions.h",
     ],
-    deps = ["fbsource//xplat/folly:singleton"],
+    deps = [
+        "fbsource//xplat/folly:singleton",
+        "fbsource//xplat/folly/concurrency:atomic_shared_ptr",
+    ],
     exported_deps = [
         ":cmd-common-utils",
     ],
@@ -92,6 +96,7 @@ cpp_library(
         "CmdCompletion.h",
         "CmdSubcommands.h",
     ],
+    deps = ["fbsource//xplat/folly/concurrency:atomic_shared_ptr"],
     exported_deps = [
         "fbsource//third-party/fmt:fmt",
         "fbsource//xplat/folly:singleton",
@@ -186,8 +191,10 @@ cpp_library(
 
 cpp_library(
     name = "ops-utils",
+    srcs = ["utils/CommandExit.cpp"],
     headers = [
         "utils/AggregateOp.h",
+        "utils/CommandExit.h",
         "utils/FilterOp.h",
     ],
     exported_deps = [

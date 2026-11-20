@@ -18,6 +18,12 @@ class CmdLocalOptions {
  public:
   static std::shared_ptr<CmdLocalOptions> getInstance();
 
+  // Exchanges the process-wide embedding override; nullptr selects the
+  // singleton. Returns the previous override. Serialize invocations and keep
+  // the override installed until their workers finish.
+  static std::shared_ptr<CmdLocalOptions> exchangeInvocationOverride(
+      std::shared_ptr<CmdLocalOptions> instance);
+
   std::map<std::string, std::string>& getLocalOptionMap(
       const std::string& fullCmd) {
     if (auto cmdEntry = data_.find(fullCmd); cmdEntry != data_.end()) {

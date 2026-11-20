@@ -1047,6 +1047,8 @@ add_library(fboss2_lib
   fboss/cli/fboss2/utils/ArgCompletion.h
   fboss/cli/fboss2/utils/CLIParserUtils.cpp
   fboss/cli/fboss2/utils/CmdClientUtils.cpp
+  fboss/cli/fboss2/utils/CommandExit.cpp
+  fboss/cli/fboss2/utils/CommandExit.h
   fboss/cli/fboss2/utils/CmdUtilsCommon.cpp
   fboss/cli/fboss2/utils/PortMap.cpp
   fboss/cli/fboss2/utils/Table.cpp

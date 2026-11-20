@@ -13,6 +13,7 @@
 
 #include <folly/Singleton.h>
 #include <folly/String.h>
+#include <folly/concurrency/AtomicSharedPtr.h>
 
 namespace {
 struct singleton_tag_type {};
@@ -21,7 +22,19 @@ struct singleton_tag_type {};
 using facebook::fboss::CmdGlobalOptions;
 static folly::Singleton<CmdGlobalOptions, singleton_tag_type>
     cmdGlobalOptions{};
+namespace {
+folly::atomic_shared_ptr<CmdGlobalOptions> invocationOverride{};
+}
+
+std::shared_ptr<CmdGlobalOptions> CmdGlobalOptions::exchangeInvocationOverride(
+    std::shared_ptr<CmdGlobalOptions> instance) {
+  return invocationOverride.exchange(std::move(instance));
+}
+
 std::shared_ptr<CmdGlobalOptions> CmdGlobalOptions::getInstance() {
+  if (auto instance = invocationOverride.load()) {
+    return instance;
+  }
   return cmdGlobalOptions.try_get();
 }
 

@@ -20,6 +20,12 @@ class CmdArgsLists {
  public:
   static std::shared_ptr<CmdArgsLists> getInstance();
 
+  // Exchanges the process-wide embedding override; nullptr selects the
+  // singleton. Returns the previous override. Serialize invocations and keep
+  // the override installed until their workers finish.
+  static std::shared_ptr<CmdArgsLists> exchangeInvocationOverride(
+      std::shared_ptr<CmdArgsLists> instance);
+
   const std::vector<std::string>& at(int i) const {
     return data_[i];
   }
