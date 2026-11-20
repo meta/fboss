@@ -139,11 +139,15 @@ void utilCreateDir(folly::StringPiece path) {
   }
 }
 
-IPAddressV4 getAnyIntfIP(const std::shared_ptr<SwitchState>& state) {
-  IPAddressV4 intfIp;
+IPAddressV4 getAnyIntfIP(
+    const std::shared_ptr<SwitchState>& state,
+    RouterID vrf) {
   for (const auto& [_, intfMap] : std::as_const(*state->getInterfaces())) {
     for (const auto& intfIter : std::as_const(*intfMap)) {
       const auto& intf = intfIter.second;
+      if (state->getInterfaceVrfs()->getVrf(intf->getID()) != vrf) {
+        continue;
+      }
       for (auto iter : std::as_const(*intf->getAddresses())) {
         auto address = folly::IPAddress(iter.first);
         if (address.isV4()) {
@@ -152,14 +156,18 @@ IPAddressV4 getAnyIntfIP(const std::shared_ptr<SwitchState>& state) {
       }
     }
   }
-  throw FbossError("Cannot find IPv4 address on any interface");
+  throw FbossError("Cannot find IPv4 address on any interface in VRF ", vrf);
 }
 
-IPAddressV6 getAnyIntfIPv6(const std::shared_ptr<SwitchState>& state) {
-  IPAddressV6 intfIp;
+IPAddressV6 getAnyIntfIPv6(
+    const std::shared_ptr<SwitchState>& state,
+    RouterID vrf) {
   for (const auto& [_, intfMap] : std::as_const(*state->getInterfaces())) {
     for (const auto& intfIter : std::as_const(*intfMap)) {
       const auto& intf = intfIter.second;
+      if (state->getInterfaceVrfs()->getVrf(intf->getID()) != vrf) {
+        continue;
+      }
       for (auto iter : std::as_const(*intf->getAddresses())) {
         auto address = folly::IPAddress(iter.first);
         if (address.isV6()) {
@@ -168,7 +176,7 @@ IPAddressV6 getAnyIntfIPv6(const std::shared_ptr<SwitchState>& state) {
       }
     }
   }
-  throw FbossError("Cannot find IPv6 address on any interface");
+  throw FbossError("Cannot find IPv6 address on any interface in VRF ", vrf);
 }
 
 IPAddressV4 getSwitchVlanIP(

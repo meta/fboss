@@ -12,6 +12,7 @@
 #include "fboss/agent/ResolvedNexthopProbe.h"
 #include "fboss/agent/SwSwitch.h"
 #include "fboss/agent/TxPacket.h"
+#include "fboss/agent/Utils.h"
 #include "fboss/agent/hw/mock/MockHwSwitch.h"
 #include "fboss/agent/packet/ArpHdr.h"
 #include "fboss/agent/packet/EthHdr.h"
@@ -417,4 +418,20 @@ TEST_F(VrfPuntPathPortIntfTest, NeighborRequestsOutOfPort) {
       sw_, intf, folly::IPAddressV6("2601:db00:2110:3001::40"));
   EXPECT_TRUE(requestsFor("100.0.1.40").empty());
   EXPECT_TRUE(requestsFor("2601:db00:2110:3001::40").empty());
+}
+
+// The fallback source address of ICMP errors stays in the ingress VRF
+TEST_F(VrfPuntPathTest, AnyIntfIpInVrf) {
+  auto state = sw_->getState();
+  auto vrfIntf = state->getInterfaces()->getNode(kVrfIntf);
+  auto defaultIntf = state->getInterfaces()->getNode(kDefaultVrfIntf);
+  EXPECT_TRUE(vrfIntf->hasAddress(getAnyIntfIP(state, kTestVrf)));
+  EXPECT_TRUE(vrfIntf->hasAddress(getAnyIntfIPv6(state, kTestVrf)));
+  EXPECT_TRUE(defaultIntf->hasAddress(getAnyIntfIP(state, RouterID(0))));
+  EXPECT_TRUE(defaultIntf->hasAddress(getAnyIntfIPv6(state, RouterID(0))));
+  VrfEntry emptyVrf;
+  emptyVrf.vrfId() = 1002;
+  sw_->addVrfs({emptyVrf});
+  EXPECT_THROW(getAnyIntfIP(sw_->getState(), RouterID(1002)), FbossError);
+  EXPECT_THROW(getAnyIntfIPv6(sw_->getState(), RouterID(1002)), FbossError);
 }

@@ -34,12 +34,12 @@ class UtilsTest : public ::testing::Test {
 };
 
 TEST_F(UtilsTest, getIP) {
-  EXPECT_NO_THROW(getAnyIntfIP(sw->getState()));
+  EXPECT_NO_THROW(getAnyIntfIP(sw->getState(), RouterID(0)));
   EXPECT_NO_THROW(getSwitchIntfIP(sw->getState(), InterfaceID(1)));
 }
 
 TEST_F(UtilsTest, getIPv6) {
-  EXPECT_NO_THROW(getAnyIntfIPv6(sw->getState()));
+  EXPECT_NO_THROW(getAnyIntfIPv6(sw->getState(), RouterID(0)));
   EXPECT_NO_THROW(getSwitchIntfIPv6(sw->getState(), InterfaceID(1)));
 }
 

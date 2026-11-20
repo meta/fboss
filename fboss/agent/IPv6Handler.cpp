@@ -872,7 +872,12 @@ void IPv6Handler::sendICMPv6TimeExceeded(
     srcIp = getSwitchIntfIPv6(
         state, sw_->getState()->getInterfaceIDForPort(PortDescriptor(srcPort)));
   } catch (const std::exception&) {
-    srcIp = getAnyIntfIPv6(state);
+    auto intfIdOpt = state->getInterfaceIDForPortIf(PortDescriptor(srcPort));
+    if (!intfIdOpt) {
+      throw FbossError("No interface for port ", srcPort);
+    }
+    srcIp =
+        getAnyIntfIPv6(state, state->getInterfaceVrfs()->getVrf(*intfIdOpt));
   }
 
   auto icmpPkt = createICMPv6Pkt(

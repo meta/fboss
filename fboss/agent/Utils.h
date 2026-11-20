@@ -133,9 +133,11 @@ folly::IPAddressV4 getSwitchIntfIP(
     InterfaceID intfID);
 
 /**
- * Helper function to get an IPv4 address of any(first) interface.
+ * Helper function to get an IPv4 address of any(first) interface in vrf.
  */
-folly::IPAddressV4 getAnyIntfIP(const std::shared_ptr<SwitchState>& state);
+folly::IPAddressV4 getAnyIntfIP(
+    const std::shared_ptr<SwitchState>& state,
+    RouterID vrf);
 
 /**
  * Helper function to get an IPv6 address for a particular vlan
@@ -156,9 +158,11 @@ folly::IPAddressV6 getSwitchIntfIPv6(
     InterfaceID intfID);
 
 /**
- * Helper function to get an IPvv6 address of any(first) interface.
+ * Helper function to get an IPv6 address of any(first) interface in vrf.
  */
-folly::IPAddressV6 getAnyIntfIPv6(const std::shared_ptr<SwitchState>& state);
+folly::IPAddressV6 getAnyIntfIPv6(
+    const std::shared_ptr<SwitchState>& state,
+    RouterID vrf);
 
 /*
  * Increases the nice value of the calling thread by increment. Note that this

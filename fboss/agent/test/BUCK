@@ -319,6 +319,7 @@ cpp_unittest(
         ":utils",
         "//fboss/agent:core",
         "//fboss/agent:packet",
+        "//fboss/agent:utils",
         "//fboss/agent/hw/mock:mock",
         "//fboss/agent/packet:ether_type",
         "//fboss/agent/packet:ipproto",

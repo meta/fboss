@@ -113,10 +113,13 @@ void IPv4Handler::sendICMPTimeExceeded(
     ipObj = std::make_unique<ICMPExtIpSubObjectV4>(ICMPExtIpSubObjectV4(srcIp));
 
   } catch (const std::exception&) {
-    // Fall back to using a src IP of any interface on the switch, where if
+    // Fall back to using a src IP of any interface in the ingress VRF, where if
     // none is available, the preconfigured src address
     try {
-      srcIp = getAnyIntfIP(state);
+      auto intfIdOpt = state->getInterfaceIDForPortIf(PortDescriptor(port));
+      srcIp = intfIdOpt
+          ? getAnyIntfIP(state, state->getInterfaceVrfs()->getVrf(*intfIdOpt))
+          : state->getIcmpV4UnavailableSrcAddress();
     } catch (const FbossError&) {
       srcIp = state->getIcmpV4UnavailableSrcAddress();
     }
