@@ -1,9 +1,12 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
+#include <gflags/gflags.h>
 #include <gtest/gtest.h>
 
 #include "fboss/agent/AddressUtil.h"
+#include "fboss/agent/AgentFeatures.h"
 #include "fboss/agent/Constants.h"
+#include "fboss/agent/EcmpResourceManager.h"
 #include "fboss/agent/FbossHwUpdateError.h"
 #include "fboss/agent/FibHelpers.h"
 #include "fboss/agent/StateObserver.h"
@@ -785,6 +788,64 @@ TEST(SwSwitchVrfs, VniRejected) {
   sw->addVrfs({makeVniVrfEntry(RouterID(2002), 5001)});
   EXPECT_THROW(sw->addVrfs({makeVniVrfEntry(kTestVrf, 5001)}), FbossError);
   EXPECT_EQ(sw->getState()->getVrfs()->getNodeIf(kTestVrf), nullptr);
+}
+
+TEST(SwSwitchVrfs, EcmpRoutesInVrfsWithEcmpResourceManager) {
+  gflags::FlagSaver flagSaver;
+  FLAGS_enable_ecmp_resource_manager = true;
+  FLAGS_ecmp_resource_percentage = 100;
+  auto config = testConfigA();
+  auto handle = createVrfTestHandle(&config);
+  auto sw = handle->getSw();
+  const auto* ecmpResourceManager = sw->getEcmpResourceManager();
+  ASSERT_NE(ecmpResourceManager, nullptr);
+  const RouterID kOtherVrf(1002);
+  sw->addVrfs({makeVrfEntry(kOtherVrf)});
+  sw->updateInterfaceVrfs(
+      {{InterfaceID(55), kTestVrf}, {InterfaceID(1), kOtherVrf}});
+
+  // The same prefix in both VRFs, over different ECMP groups
+  auto ecmpRoute = [](const std::string& nhop1, const std::string& nhop2) {
+    auto route = makeRoute("2001:db8:100::/64", nhop1);
+    route.nextHopAddrs()->push_back(
+        facebook::network::toBinaryAddress(folly::IPAddress(nhop2)));
+    return route;
+  };
+  auto updater = sw->getRouteUpdater();
+  updater.addRoute(
+      kTestVrf,
+      ClientID::BGPD,
+      ecmpRoute("2401:db00:2110:3055::10", "2401:db00:2110:3055::11"));
+  updater.addRoute(
+      kOtherVrf,
+      ClientID::BGPD,
+      ecmpRoute("2401:db00:2110:3001::10", "2401:db00:2110:3001::11"));
+  updater.program();
+
+  const auto prefix = folly::IPAddress::createNetwork("2001:db8:100::/64");
+  EXPECT_EQ(
+      egressIntf(sw->getState(), kTestVrf, "2001:db8:100::/64"),
+      InterfaceID(55));
+  EXPECT_EQ(
+      egressIntf(sw->getState(), kOtherVrf, "2001:db8:100::/64"),
+      InterfaceID(1));
+  const auto* groupX = ecmpResourceManager->getGroupInfo(kTestVrf, prefix);
+  const auto* groupY = ecmpResourceManager->getGroupInfo(kOtherVrf, prefix);
+  ASSERT_NE(groupX, nullptr);
+  ASSERT_NE(groupY, nullptr);
+  EXPECT_NE(groupX->getID(), groupY->getID());
+
+  // Deleting the route in one VRF keeps the other VRF's route and group
+  auto delUpdater = sw->getRouteUpdater();
+  delUpdater.delRoute(
+      kTestVrf, folly::IPAddress("2001:db8:100::"), 64, ClientID::BGPD);
+  delUpdater.program();
+  EXPECT_FALSE(hasRoute(sw->getState(), kTestVrf, "2001:db8:100::/64"));
+  EXPECT_EQ(
+      egressIntf(sw->getState(), kOtherVrf, "2001:db8:100::/64"),
+      InterfaceID(1));
+  EXPECT_EQ(ecmpResourceManager->getGroupInfo(kTestVrf, prefix), nullptr);
+  ASSERT_NE(ecmpResourceManager->getGroupInfo(kOtherVrf, prefix), nullptr);
 }
 
 TEST(SwSwitchVrfs, SyncVrfs) {

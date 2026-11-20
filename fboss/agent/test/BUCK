@@ -290,8 +290,10 @@ cpp_unittest(
         ":hw_test_handle",
         ":utils",
         "//fboss/agent:address_utils",
+        "//fboss/agent:agent_features",
         "//fboss/agent:constants",
         "//fboss/agent:core",
+        "//fboss/agent:ecmp_resource_manager",
         "//fboss/agent:fboss-error",
         "//fboss/agent:fib_helpers",
         "//fboss/agent:state_observer",
@@ -299,6 +301,7 @@ cpp_unittest(
         "//fboss/agent/rib:standalone_rib",
         "//fboss/agent/state:state",
     ],
+    external_deps = ["gflags"],
 )
 
 cpp_unittest(

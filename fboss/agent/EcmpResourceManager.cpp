@@ -1870,7 +1870,6 @@ void EcmpResourceManager::routeAddedOrUpdated(
     const std::shared_ptr<Route<AddrT>>& oldRoute,
     const std::shared_ptr<Route<AddrT>>& newRoute,
     InputOutputState* inOutState) {
-  CHECK_EQ(rid, RouterID(0));
   CHECK(newRoute->isResolved());
   CHECK(newRoute->isPublished());
   DCHECK(shouldManageEcmpGroup(getNonOverrideNormalizedNextHops(
@@ -2084,7 +2083,6 @@ void EcmpResourceManager::routeUpdated(
     const std::shared_ptr<Route<AddrT>>& oldRoute,
     const std::shared_ptr<Route<AddrT>>& newRoute,
     InputOutputState* inOutState) {
-  CHECK_EQ(rid, RouterID(0));
   CHECK(oldRoute->isResolved());
   CHECK(oldRoute->isPublished());
   CHECK(newRoute->isResolved());
@@ -2128,7 +2126,6 @@ void EcmpResourceManager::routeAdded(
     RouterID rid,
     const std::shared_ptr<Route<AddrT>>& newRoute,
     InputOutputState* inOutState) {
-  CHECK_EQ(rid, RouterID(0));
   CHECK(newRoute->isResolved());
   CHECK(newRoute->isPublished());
   if (shouldManageEcmpGroup(getNonOverrideNormalizedNextHops(
@@ -2146,7 +2143,6 @@ void EcmpResourceManager::routeDeleted(
     const std::shared_ptr<Route<AddrT>>& removed,
     bool isUpdate,
     InputOutputState* inOutState) {
-  CHECK_EQ(rid, RouterID(0));
   CHECK(removed->isResolved());
   CHECK(removed->isPublished());
   const auto routeNhops = getNonOverrideNormalizedNextHops(
