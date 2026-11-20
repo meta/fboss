@@ -120,6 +120,11 @@ class SaiTamManager {
   }
 
  private:
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1) && !defined(CHENAB_SAI_SDK)
+  void checkCsigCapabilities(
+      std::vector<SaiTamIntTraits::CreateAttributes>& profiles) const;
+#endif
+
   std::string getDestMacWithOverride(const std::string& defaultMac) const;
 
   std::shared_ptr<SaiTamReport> createTamReport(sai_int32_t reportType);

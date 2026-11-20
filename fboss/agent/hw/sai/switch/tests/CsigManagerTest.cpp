@@ -291,4 +291,121 @@ TEST_F(CsigManagerTest, ClearsRecoveredBinding) {
   EXPECT_TRUE(bindings().empty());
 }
 
+TEST_F(CsigManagerTest, UnsupportedFormatsAndSignals) {
+  auto attrs = profile(SAI_TAM_INT_TYPE_CSIG_WIDE, SAI_CSIG_SIGNAL_TYPE_DELAY);
+  auto fs = FakeSai::getInstance();
+  fs->csigCapabilities.tagTypes = {SAI_TAM_INT_TYPE_CSIG_COMPACT};
+  EXPECT_THROW(
+      saiManagerTable->tamManager().programCsigProfiles({attrs}, true),
+      FbossError);
+  EXPECT_TRUE(fs->tamIntManager.map().empty());
+  fs->csigCapabilities.tagTypes.push_back(SAI_TAM_INT_TYPE_CSIG_WIDE);
+  fs->csigCapabilities.signals = {SAI_CSIG_SIGNAL_TYPE_ABW};
+  EXPECT_THROW(
+      saiManagerTable->tamManager().programCsigProfiles({attrs}, true),
+      FbossError);
+  EXPECT_TRUE(fs->tamIntManager.map().empty());
+}
+
+TEST_F(CsigManagerTest, UnsupportedTrimMarking) {
+  using A = SaiTamIntTraits::Attributes;
+  auto attrs = profile(SAI_TAM_INT_TYPE_CSIG_WIDE, SAI_CSIG_SIGNAL_TYPE_DELAY);
+  auto fs = FakeSai::getInstance();
+  fs->csigCapabilities.dBit = false;
+  std::get<std::optional<A::CsigDBit>>(attrs) = true;
+  EXPECT_THROW(
+      saiManagerTable->tamManager().programCsigProfiles({attrs}, true),
+      FbossError);
+  EXPECT_TRUE(fs->tamIntManager.map().empty());
+  std::get<std::optional<A::CsigDBit>>(attrs) = false;
+  saiManagerTable->tamManager().programCsigProfiles({attrs}, true);
+  const auto id =
+      saiManagerTable->tamManager().getCsigHandle()->profiles[0]->adapterKey();
+  EXPECT_FALSE(saiApiTable->tamApi().getAttribute(id, A::CsigDBit{}));
+}
+
+TEST_F(CsigManagerTest, OptionalCustomBandIds) {
+  using A = SaiTamIntTraits::Attributes;
+  auto attrs = profile(SAI_TAM_INT_TYPE_CSIG_COMPACT);
+  std::get<std::optional<A::QuantBandId>>(attrs) = std::vector<sai_uint16_t>{7};
+  auto fs = FakeSai::getInstance();
+  fs->csigCapabilities.customBandIds = false;
+  EXPECT_THROW(
+      saiManagerTable->tamManager().programCsigProfiles({attrs}, true),
+      FbossError);
+  EXPECT_TRUE(fs->tamIntManager.map().empty());
+  std::get<std::optional<A::QuantBandId>>(attrs).reset();
+  saiManagerTable->tamManager().programCsigProfiles({attrs}, true);
+  const auto id =
+      saiManagerTable->tamManager().getCsigHandle()->profiles[0]->adapterKey();
+  std::optional<A::QuantBandId> ids;
+  EXPECT_FALSE(saiApiTable->tamApi().getAttribute(id, ids).has_value());
+}
+
+TEST_F(CsigManagerTest, UnsupportedBandwidthInterval) {
+  auto attrs = profile(SAI_TAM_INT_TYPE_CSIG_COMPACT);
+  std::get<std::optional<SaiTamIntTraits::Attributes::BwTimeInterval>>(attrs) =
+      129;
+  EXPECT_THROW(
+      saiManagerTable->tamManager().programCsigProfiles({attrs}, true),
+      FbossError);
+  EXPECT_TRUE(FakeSai::getInstance()->tamIntManager.map().empty());
+}
+
+TEST_F(CsigManagerTest, BandwidthTimerCapacity) {
+  using A = SaiTamIntTraits::Attributes;
+  auto compact = profile(SAI_TAM_INT_TYPE_CSIG_COMPACT);
+  auto relative =
+      profile(SAI_TAM_INT_TYPE_CSIG_COMPACT, SAI_CSIG_SIGNAL_TYPE_ABWC);
+  std::get<std::optional<A::BwTimeInterval>>(relative) = 256;
+  auto wide = profile(SAI_TAM_INT_TYPE_CSIG_WIDE);
+  std::get<std::optional<A::BwTimeInterval>>(wide) = 512;
+  EXPECT_THROW(
+      saiManagerTable->tamManager().programCsigProfiles(
+          {compact, relative, wide}, true),
+      FbossError);
+  EXPECT_TRUE(FakeSai::getInstance()->tamIntManager.map().empty());
+}
+
+TEST_F(CsigManagerTest, SignalsShareBandwidthTimer) {
+  auto compact = profile(SAI_TAM_INT_TYPE_CSIG_COMPACT);
+  auto relative =
+      profile(SAI_TAM_INT_TYPE_CSIG_COMPACT, SAI_CSIG_SIGNAL_TYPE_ABWC);
+  FakeSai::getInstance()
+      ->switchManager.get(saiManagerTable->switchManager().getSwitchSaiId())
+      .maxCsigTimers = 1;
+  saiManagerTable->tamManager().programCsigProfiles({compact, relative}, true);
+  ASSERT_EQ(saiManagerTable->tamManager().getCsigHandle()->profiles.size(), 2);
+  const auto id =
+      saiManagerTable->tamManager().getCsigHandle()->profiles[1]->adapterKey();
+  EXPECT_EQ(
+      saiApiTable->tamApi().getAttribute(
+          id, SaiTamIntTraits::Attributes::CsigSignalType{}),
+      SAI_CSIG_SIGNAL_TYPE_ABWC);
+}
+
+TEST_F(CsigManagerTest, WarmbootReload) {
+  auto attrs = profile(SAI_TAM_INT_TYPE_CSIG_WIDE, SAI_CSIG_SIGNAL_TYPE_NQD);
+  auto& manager = saiManagerTable->tamManager();
+  manager.programCsigProfiles({attrs}, true);
+  const auto id = manager.getCsigHandle()->profiles[0]->adapterKey();
+  const auto tam = manager.getCsigHandle()->tam->adapterKey();
+  saiStore->exitForWarmBoot();
+  manager.gracefulExit();
+  saiStore->reload();
+  manager.programCsigProfiles({attrs}, true);
+  EXPECT_EQ(manager.getCsigHandle()->profiles[0]->adapterKey(), id);
+  EXPECT_EQ(manager.getCsigHandle()->tam->adapterKey(), tam);
+  EXPECT_EQ(bindings(), (std::vector<sai_object_id_t>{tam}));
+}
+
+TEST_F(CsigManagerTest, RemovesRecoveredBindingForPassthrough) {
+  auto attrs = profile(SAI_TAM_INT_TYPE_CSIG_WIDE, SAI_CSIG_SIGNAL_TYPE_DELAY);
+  auto& manager = saiManagerTable->tamManager();
+  manager.programCsigProfiles({attrs}, true);
+  reloadWithRecoveredBindings();
+  manager.programCsigProfiles({attrs}, false);
+  EXPECT_TRUE(bindings().empty());
+  EXPECT_EQ(manager.getCsigHandle()->tam, nullptr);
+}
 #endif

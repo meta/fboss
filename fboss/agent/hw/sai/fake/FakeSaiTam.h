@@ -55,6 +55,7 @@ struct FakeCsigCapabilities {
       SAI_CSIG_SIGNAL_TYPE_DELAY,
       SAI_CSIG_SIGNAL_TYPE_NQD};
   bool dBit{true};
+  bool customBandIds{true};
   bool intDelete{true};
   bool intMetadata{true};
 };

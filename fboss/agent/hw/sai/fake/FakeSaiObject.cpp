@@ -23,6 +23,10 @@ sai_status_t sai_query_attribute_capability(
       attr_id == SAI_TAM_INT_ATTR_CSIG_D_BIT) {
     supported = csig.dBit;
   } else if (
+      object_type == SAI_OBJECT_TYPE_TAM_INT &&
+      attr_id == SAI_TAM_INT_ATTR_QUANT_BAND_ID) {
+    supported = csig.customBandIds;
+  } else if (
       object_type == SAI_OBJECT_TYPE_PORT &&
       attr_id == SAI_PORT_ATTR_INT_DELETE) {
     supported = csig.intDelete;

@@ -7,13 +7,32 @@
 #include "fboss/agent/hw/sai/api/PortApi.h"
 
 #if SAI_API_VERSION >= SAI_VERSION(1, 18, 1) && !defined(CHENAB_SAI_SDK)
+#include <algorithm>
+#include <set>
+
 #include "fboss/agent/FbossError.h"
+#include "fboss/agent/hw/sai/api/SaiObjectApi.h"
 #include "fboss/agent/hw/sai/switch/SaiManagerTable.h"
 #include "fboss/agent/hw/sai/switch/SaiSwitchManager.h"
 #include "fboss/agent/platforms/sai/SaiPlatform.h"
 #endif
 
 namespace facebook::fboss {
+
+namespace {
+
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1) && !defined(CHENAB_SAI_SDK)
+bool isCsigAttributeSupported(
+    sai_object_id_t switchId,
+    sai_attr_id_t attribute) {
+  const auto capability =
+      getAttributeCapability(switchId, SAI_OBJECT_TYPE_TAM_INT, attribute);
+  return capability.create_implemented && capability.set_implemented;
+}
+
+#endif
+
+} // namespace
 
 #if !defined(TAJO_SAI_SDK)
 SaiTamManager::SaiTamManager(
@@ -91,6 +110,61 @@ void SaiTamManager::clearCsig() {
 }
 
 #if SAI_API_VERSION >= SAI_VERSION(1, 18, 1) && !defined(CHENAB_SAI_SDK)
+void SaiTamManager::checkCsigCapabilities(
+    std::vector<SaiTamIntTraits::CreateAttributes>& profiles) const {
+  if (profiles.empty()) {
+    return;
+  }
+  using A = SaiTamIntTraits::Attributes;
+  const auto switchId = managerTable_->switchManager().getSwitchSaiId();
+  const auto types = getAttributeEnumValuesCapability(
+      switchId, SAI_OBJECT_TYPE_TAM_INT, SAI_TAM_INT_ATTR_TYPE);
+  const auto signals = getAttributeEnumValuesCapability(
+      switchId, SAI_OBJECT_TYPE_TAM_INT, SAI_TAM_INT_ATTR_CSIG_SIGNAL_TYPE);
+  std::set<sai_uint32_t> intervals;
+  for (auto& attributes : profiles) {
+    const auto type = std::get<A::Type>(attributes).value();
+    const auto signal = std::get<A::CsigSignalType>(attributes).value();
+    if (std::ranges::find(types, type) == types.end() ||
+        std::ranges::find(signals, signal) == signals.end()) {
+      throw FbossError("Unsupported CSIG tag format or signal");
+    }
+    if (std::get<std::optional<A::QuantBandId>>(attributes) &&
+        !isCsigAttributeSupported(switchId, SAI_TAM_INT_ATTR_QUANT_BAND_ID)) {
+      throw FbossError(
+          "CSIG attribute is unsupported: ", SAI_TAM_INT_ATTR_QUANT_BAND_ID);
+    }
+    auto& dBit = std::get<std::optional<A::CsigDBit>>(attributes);
+    if (dBit &&
+        !isCsigAttributeSupported(switchId, SAI_TAM_INT_ATTR_CSIG_D_BIT)) {
+      if (dBit->value()) {
+        throw FbossError("CSIG marking of trimmed packets is unsupported");
+      }
+      dBit.reset();
+    }
+    if (const auto& bandwidth =
+            std::get<std::optional<A::BwTimeInterval>>(attributes)) {
+      intervals.insert(bandwidth->value());
+    }
+  }
+  if (intervals.empty()) {
+    return;
+  }
+  const auto& api = SaiApiTable::getInstance()->switchApi();
+  const auto maxTimers =
+      api.getAttribute(switchId, SaiSwitchTraits::Attributes::MaxCsigTimers{});
+  if (intervals.size() > maxTimers) {
+    throw FbossError("CSIG bandwidth timer capacity exceeded");
+  }
+  const auto supported = api.getAttribute(
+      switchId, SaiSwitchTraits::Attributes::CsigBwTimeIntervalInUsec{});
+  for (const auto interval : intervals) {
+    if (std::ranges::find(supported, interval) == supported.end()) {
+      throw FbossError("Unsupported CSIG bandwidth interval: ", interval);
+    }
+  }
+}
+
 void SaiTamManager::programCsigProfiles(
     std::vector<SaiTamIntTraits::CreateAttributes> profiles,
     bool bindToSwitch) {
@@ -106,6 +180,7 @@ void SaiTamManager::programCsigProfiles(
   if (bindToSwitch && profiles.empty()) {
     throw FbossError("CSIG UPDATE requires measurement profiles");
   }
+  checkCsigCapabilities(profiles);
   auto handle = std::make_unique<SaiCsigTamHandle>();
   std::vector<sai_object_id_t> intIds;
   for (const auto& attributes : profiles) {
