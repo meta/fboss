@@ -436,7 +436,7 @@
               "numPorts": 1,
               "ledPerPort": 2,
               "startPort": 33,
-              "lanesPerPort": 4
+              "lanesPerPort": 2
             }
           ],
           "infoRomConfigs": [
