@@ -167,6 +167,12 @@ std::unique_ptr<Repl> DiagShell::makeRepl() const {
 }
 
 void DiagShell::initTerminal() {
+  // After 'quit' the shell loop is gone, but the REPL object stays.
+  if (repl_ && repl_->hasExited()) {
+    XLOG(WARNING) << "Diag shell REPL exited previously; recreating it";
+    ts_.reset();
+    repl_.reset();
+  }
   if (!repl_) {
     // Set up REPL on connect if needed
     repl_ = makeRepl();
