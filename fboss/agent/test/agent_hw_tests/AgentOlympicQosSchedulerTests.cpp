@@ -155,14 +155,13 @@ void AgentOlympicQosSchedulerTest::verifySingleWRRAndSP(
   auto verify = [=, this]() {
     for (auto queue : queueIds) {
       if (queue != trafficQueueId) {
-        XLOG(DBG2) << "send traffic to WRR queue " << queue << " and SP queue "
-                   << trafficQueueId;
-        sendUdpPktsForAllQueues(
-            {queue, trafficQueueId}, utility::kOlympicQueueToDscp());
+        XLOG(DBG2) << "verify SP starvation for WRR queue " << queue
+                   << " and SP queue " << trafficQueueId;
         EXPECT_TRUE(verifySPHelper(
-            trafficQueueId, queueIds, utility::kOlympicQueueToDscp()));
-        // toggle route to stop traffic, and then send traffic to each WRR
-        // queue and SP queue
+            trafficQueueId,
+            {queue, trafficQueueId},
+            utility::kOlympicQueueToDscp()));
+        // toggle route to stop traffic before testing the next WRR queue
         XLOG(DBG2) << "unprogram routes";
         unprogramRoutes(ecmpHelper6);
         // wait for no traffic going out of port
