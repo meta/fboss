@@ -77,6 +77,7 @@ CmdShowInterfaceStatus::RetType CmdShowInterfaceStatus::createModel(
       const auto operState = folly::copy(portInfo.operState().value());
 
       ifStatus.name() = portInfo.name().value();
+      ifStatus.portId() = folly::copy(portInfo.portId().value());
       ifStatus.description() = portInfo.description().value();
       ifStatus.status() =
           (operState == facebook::fboss::PortOperState::UP) ? "up" : "down";
@@ -111,8 +112,12 @@ CmdShowInterfaceStatus::RetType CmdShowInterfaceStatus::createModel(
   std::sort(
       model.interfaces()->begin(),
       model.interfaces()->end(),
-      [](cli::InterfaceStatus& a, cli::InterfaceStatus b) {
-        return a.name().value() < b.name().value();
+      [](const cli::InterfaceStatus& a, const cli::InterfaceStatus& b) {
+        return utils::comparePortNameOrId(
+            a.name().value(),
+            folly::copy(a.portId().value()),
+            b.name().value(),
+            folly::copy(b.portId().value()));
       });
   return model;
 }

@@ -1,6 +1,6 @@
 // (c) Facebook, Inc. and its affiliates. Confidential and proprietary.
 
-#include <folly/IPAddressV4.h>
+#include <folly/IPAddressV4.h> // NOLINT(misc-include-cleaner)
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -195,7 +195,9 @@ cli::ShowTransceiverModel createTransceiverModel() {
   auto makeDefaultTcvrDetail = [](std::string name,
                                   std::optional<bool> isUp,
                                   bool isPresent,
-                                  MediaInterfaceCode media) {
+                                  MediaInterfaceCode media,
+                                  int32_t tcvrId,
+                                  std::optional<int32_t> portId) {
     cli::TransceiverDetail detail;
     detail.name() = name;
     if (isUp.has_value()) {
@@ -203,6 +205,10 @@ cli::ShowTransceiverModel createTransceiverModel() {
     }
     detail.isPresent() = isPresent;
     detail.mediaInterface() = media;
+    detail.transceiverID() = tcvrId;
+    if (portId.has_value()) {
+      detail.portID() = *portId;
+    }
 
     return detail;
   };
@@ -237,49 +243,59 @@ cli::ShowTransceiverModel createTransceiverModel() {
   cli::ShowTransceiverModel model;
 
   auto entry1 = makeDefaultTcvrDetail(
-      "eth1/1/1", true, true, MediaInterfaceCode::FR4_400G);
+      "eth1/1/1", true, true, MediaInterfaceCode::FR4_400G, 1, 1);
   setConfigAttributes(entry1, "vendorOne", "aa", "1", "1", "2");
   setValidationStatus(entry1, "Not Validated", "nonValidatedVendorPartNumber");
   setOperAttributes(entry1, 50.0, 25.0);
 
   auto entry2 = makeDefaultTcvrDetail(
-      "eth1/2/1", true, true, MediaInterfaceCode::UNKNOWN);
+      "eth1/2/1", true, true, MediaInterfaceCode::UNKNOWN, 2, 2);
   setConfigAttributes(entry2, "vendorTwo", "b", "3", "", "");
   setValidationStatus(entry2, "Not Validated", "missingVendor");
   setOperAttributes(entry2, 40.0, 25.0);
 
   auto entry3 = makeDefaultTcvrDetail(
-      "eth1/3/1", false, false, MediaInterfaceCode::UNKNOWN);
+      "eth1/3/1", false, false, MediaInterfaceCode::UNKNOWN, 3, 3);
   setConfigAttributes(entry3, "vendorOne", "ab", "1", "", "");
   setValidationStatus(entry3, "--", "--");
   setOperAttributes(entry3, 0.0, 0.0);
 
   auto entry4 = makeDefaultTcvrDetail(
-      "eth1/4/1", false, false, MediaInterfaceCode::UNKNOWN);
+      "eth1/4/1", false, false, MediaInterfaceCode::UNKNOWN, 4, 4);
   setConfigAttributes(entry4, "vendorOne", "ac", "1", "", "");
   setValidationStatus(entry4, "--", "--");
   setOperAttributes(entry4, 0.0, 0.0);
 
   auto entry5 = makeDefaultTcvrDetail(
-      "eth1/5/1", true, true, MediaInterfaceCode::LR4_400G_10KM);
+      "eth1/5/1", true, true, MediaInterfaceCode::LR4_400G_10KM, 5, 5);
   setConfigAttributes(entry5, "vendorOne", "ad", "2", "", "");
   setValidationStatus(entry5, "Not Validated", "invalidEepromChecksums");
   setOperAttributes(entry5, 0.0, 0.0);
 
   auto entry6 = makeDefaultTcvrDetail(
-      "eth1/6/1", true, true, MediaInterfaceCode::FR4_LITE_2x400G);
+      "eth1/6/1", true, true, MediaInterfaceCode::FR4_LITE_2x400G, 6, 6);
   setConfigAttributes(entry6, "vendorThree", "c", "4", "3", "4");
   setValidationStatus(entry6, "Validated", "--");
   setOperAttributes(entry6, 30.0, 30.0);
 
   auto bypassEntry = makeDefaultTcvrDetail(
-      "eth1/7/1", std::nullopt, true, MediaInterfaceCode::UNKNOWN);
+      "eth1/7/1",
+      std::nullopt,
+      true,
+      MediaInterfaceCode::UNKNOWN,
+      7,
+      std::nullopt);
   setConfigAttributes(bypassEntry, "vendorBypass", "d", "5", "4", "5");
   setValidationStatus(bypassEntry, "--", "--");
   setOperAttributes(bypassEntry, 0.0, 0.0);
 
   auto absentBypassEntry = makeDefaultTcvrDetail(
-      "eth1/8/1", std::nullopt, false, MediaInterfaceCode::UNKNOWN);
+      "eth1/8/1",
+      std::nullopt,
+      false,
+      MediaInterfaceCode::UNKNOWN,
+      8,
+      std::nullopt);
   setConfigAttributes(absentBypassEntry, "", "", "", "", "");
   setValidationStatus(absentBypassEntry, "--", "--");
   setOperAttributes(absentBypassEntry, 0.0, 0.0);
@@ -826,6 +842,62 @@ TEST_F(CmdShowTransceiverTestFixture, printOutput) {
 TEST_F(CmdShowTransceiverTestFixture, wikiDocHooks) {
   EXPECT_FALSE(CmdShowTransceiverTraits::description().empty());
   EXPECT_FALSE(CmdShowTransceiver::sampleModel().transceivers()->empty());
+}
+
+TEST_F(CmdShowTransceiverTestFixture, printOutputSortsByNumericId) {
+  // Rows are ordered by (transceiver ID, port ID), not by name. The model is
+  // keyed by name, so a name that sorts early lexicographically but has a high
+  // transceiver ID must still be printed last.
+  auto model = normalizedModel;
+  auto detail = model.transceivers()->at("eth1/1/1");
+  detail.name() = "eth1/10/1";
+  detail.transceiverID() = 10;
+  detail.portID() = 10;
+  model.transceivers()->emplace("eth1/10/1", std::move(detail));
+
+  std::stringstream ss;
+  CmdShowTransceiver().printOutput(model, ss);
+  std::string output = ss.str();
+
+  ASSERT_NE(output.find("eth1/10/1"), std::string::npos);
+  EXPECT_GT(output.find("eth1/10/1"), output.find("eth1/8/1"));
+}
+
+TEST_F(CmdShowTransceiverTestFixture, printOutputFreeFormNames) {
+  // Interface names can be arbitrary (e.g. SVIs named "downlinks") or unset.
+  // Ordering stays numeric and printing must not throw.
+  cli::ShowTransceiverModel model;
+  auto makeDetail = [](const std::string& name, int32_t tcvrId) {
+    cli::TransceiverDetail detail;
+    detail.name() = name;
+    detail.transceiverID() = tcvrId;
+    detail.isPresent() = false;
+    detail.mediaInterface() = MediaInterfaceCode::UNKNOWN;
+    detail.vendor() = "";
+    detail.serial() = "";
+    detail.partNumber() = "";
+    detail.appFwVer() = "";
+    detail.dspFwVer() = "";
+    detail.validationStatus() = "--";
+    detail.notValidatedReason() = "--";
+    detail.temperature() = 0.0;
+    detail.voltage() = 0.0;
+    detail.currentMA() = {};
+    detail.txPower() = {};
+    detail.rxPower() = {};
+    detail.rxSnr() = {};
+    return detail;
+  };
+  model.transceivers()->emplace("downlinks", makeDetail("downlinks", 3));
+  model.transceivers()->emplace("eth1/1/1", makeDetail("eth1/1/1", 1));
+
+  std::stringstream ss;
+  ASSERT_NO_THROW(CmdShowTransceiver().printOutput(model, ss));
+  std::string output = ss.str();
+
+  ASSERT_NE(output.find("downlinks"), std::string::npos);
+  // Parseable names come first; "downlinks" carries no ordering.
+  EXPECT_GT(output.find("downlinks"), output.find("eth1/1/1"));
 }
 
 } // namespace facebook::fboss
