@@ -147,6 +147,33 @@ class ConfigBaseline:
             return False
         return True
 
+    def _adopt_plain_live_configs(self) -> bool:
+        """Copy each daemon config that is still a plain file (the CLI has not
+        committed it, so no symlink yet) into its tracked path when that
+        differs from it. Returns True if anything was copied.
+
+        The repo may already exist when the suite starts: fboss_init.sh
+        commits the image's bootstrap configs at first boot, and this runner
+        then copies the test config over the plain agent.conf. Without this,
+        the baseline is not what the agent runs, and a daemon config the
+        baseline does not track (bgpcpp.conf) is deleted by the rollback to
+        it, leaving bgpd aborting on startup."""
+        adopted = False
+        for tracked, live in CONFIG_DOMAINS:
+            tracked_path = self._path(tracked)
+            live_path = self._path(live)
+            if os.path.islink(live_path) or not os.path.isfile(live_path):
+                continue
+            if os.path.isfile(tracked_path):
+                with open(live_path, "rb") as a, open(tracked_path, "rb") as b:
+                    if a.read() == b.read():
+                        continue
+            os.makedirs(os.path.dirname(tracked_path), exist_ok=True)
+            shutil.copyfile(live_path, tracked_path)
+            print(f"Adopting the live {live} into the config baseline as {tracked}")
+            adopted = True
+        return adopted
+
     def _initialize_repo(self) -> None:
         """Mirror ConfigSession::initializeGit(): create the repo and seed the
         tracked files from the live daemon configs, then make the initial
@@ -182,7 +209,8 @@ class ConfigBaseline:
         Initializes the git repo if the CLI has never done so, and first
         commits any uncommitted drift in the tracked files (this harness and
         operators copy configs through the agent.conf symlink without
-        committing), so the baseline is what the agents actually run. Returns
+        committing) or in daemon configs that are still plain files, so the
+        baseline is what the daemons actually run. Returns
         None when no baseline could be taken; restore() is then a no-op.
         """
         try:
@@ -192,7 +220,8 @@ class ConfigBaseline:
             if head is None:
                 print("Warning: could not establish a config baseline commit")
                 return None
-            if self._worktree_dirty():
+            adopted = self._adopt_plain_live_configs()
+            if adopted or self._worktree_dirty():
                 print("Committing uncommitted config drift as the suite baseline")
                 self._commit("fboss_test_runner: suite baseline snapshot")
                 head = self.head()
@@ -208,7 +237,7 @@ class ConfigBaseline:
         """Restore the config to ``baseline`` and make sure the agents run it.
 
         Fast path when the config is unchanged and the agents are healthy.
-        Soft path (`fboss2-dev config rollback <sha>`, applied by the CLI at
+        Soft path (`fboss2-dev --force config rollback <sha>`, applied by the CLI at
         the recorded action level) when the config drifted but the agents can
         serve thrift. Hard path (check out the tracked files at the baseline,
         commit, cold boot) when any agent unit is dead or the soft path failed.
@@ -243,8 +272,11 @@ class ConfigBaseline:
         return self._restore_hard(baseline)
 
     def _restore_soft(self, baseline: str) -> bool:
+        # A dirty tree is test debris; without --force the CLI refuses to
+        # discard live config that differs from HEAD (it commits a snapshot).
+        # Global flags must precede the subcommand.
         result = subprocess.run(
-            [self._fboss2_cli, "config", "rollback", baseline],
+            [self._fboss2_cli, "--force", "config", "rollback", baseline],
             capture_output=True,
             text=True,
             check=False,

@@ -153,6 +153,22 @@ set_variant_flags() {
   log "Wrote $VARIANT_FLAGFILE"
 }
 
+# Bring fboss2's config history up to date with the configs on the box.
+# `fboss2-dev config init` commits every config fboss2 manages (agent.conf, and
+# the plain bgpcpp.conf the bgpd package ships). At first boot that is the
+# first commit, so a rollback to it restores each config instead of deleting
+# the ones it lacked. On later boots it commits only a config the
+# history does not match yet (e.g. a newly installed service), else nothing.
+commit_bootstrap_config() {
+  # fboss2 needs HOME and USER, which a systemd unit need not set.
+  if HOME="${HOME:-/root}" USER="${USER:-root}" /usr/local/bin/fboss2-dev config init; then
+    log "fboss2 config history is up to date with the live config"
+  else
+    # Not fatal: fboss2 starts the history itself at its first session.
+    error "Failed to update the fboss2 config history in ${COOP_DIR}"
+  fi
+}
+
 enable_hw_agents() {
   local platform_dir="$1"
   local num_hw_agents
@@ -202,6 +218,7 @@ main() {
 
   create_distro_base_snapshot
   setup_coop_configs "$platform_dir"
+  commit_bootstrap_config
   set_variant_flags
   if ! generate_fruid; then
     exit 1
