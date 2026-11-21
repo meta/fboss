@@ -195,6 +195,16 @@
         "profileID": 47
       },
       {
+        "aPortName": "eth1/23/1",
+        "zPortName": "eth1/24/1",
+        "profileID": 38
+      },
+      {
+        "aPortName": "eth1/23/5",
+        "zPortName": "eth1/24/5",
+        "profileID": 38
+      },
+      {
         "aPortName": "eth1/33/1",
         "zPortName": "eth1/34/1",
         "profileID": 52
