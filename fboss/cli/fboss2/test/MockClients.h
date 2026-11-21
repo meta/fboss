@@ -176,6 +176,10 @@ class MockFbossHwCtrlAgent
   MOCK_METHOD(void, getProgrammedState, (SwitchState));
   MOCK_METHOD(BootType, getBootType, ());
   MOCK_METHOD(void, triggerCableLengthMeasurement, (Ports));
+  MOCK_METHOD(
+      void,
+      getAllInterfacePrbsStates,
+      ((std::map<std::string, prbs::InterfacePrbsState>&), phy::PortComponent));
 };
 
 class MockFbossQsfpService
@@ -209,6 +213,10 @@ class MockFbossQsfpService
       void,
       setPortAdminState,
       (std::unique_ptr<std::string>, phy::PortComponent, bool));
+  MOCK_METHOD(
+      void,
+      getAllInterfacePrbsStates,
+      ((std::map<std::string, prbs::InterfacePrbsState>&), phy::PortComponent));
 };
 
 #ifdef IS_OSS
