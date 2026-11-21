@@ -1247,6 +1247,7 @@ add_library(fboss2_config_lib
   fboss/cli/fboss2/commands/config/interface/CmdConfigInterface.h
   fboss/cli/fboss2/commands/config/interface/InterfaceAttrArgsBase.h
   fboss/cli/fboss2/commands/config/interface/InterfaceIpUtils.h
+  fboss/cli/fboss2/commands/config/interface/MirrorSamplingUtils.h
   fboss/cli/fboss2/commands/config/interface/dhcp/CmdConfigInterfaceDhcp.cpp
   fboss/cli/fboss2/commands/config/interface/dhcp/CmdConfigInterfaceDhcp.h
   fboss/cli/fboss2/commands/config/interface/dhcp/relay/CmdConfigInterfaceDhcpRelay.cpp
