@@ -457,6 +457,41 @@ void HwTransceiverUtils::verifyMediaInterfaceCompliance(
     case cfg::PortProfileID::PROFILE_800G_8_PAM4_RS544X2N_COPPER:
       verifyCopper800gProfile(tcvrState, mediaInterfaces);
       break;
+    case cfg::PortProfileID::PROFILE_800G_4_PAM4_RS544X2N_COPPER:
+      verifyCopperBreakoutProfile(
+          tcvrState,
+          mediaInterfaces,
+          MediaInterfaceCode::CR4_800G,
+          ActiveCuHostInterfaceCode::AUI_PAM4_4_800G);
+      break;
+    case cfg::PortProfileID::PROFILE_400G_2_PAM4_RS544X2N_COPPER:
+      verifyCopperBreakoutProfile(
+          tcvrState,
+          mediaInterfaces,
+          MediaInterfaceCode::CR2_400G,
+          ActiveCuHostInterfaceCode::AUI_PAM4_2_400G);
+      break;
+    case cfg::PortProfileID::PROFILE_200G_1_PAM4_RS544X2N_COPPER:
+      verifyCopperBreakoutProfile(
+          tcvrState,
+          mediaInterfaces,
+          MediaInterfaceCode::CR1_200G,
+          ActiveCuHostInterfaceCode::AUI_PAM4_1_200G);
+      break;
+    case cfg::PortProfileID::PROFILE_200G_2_PAM4_RS544_COPPER:
+      verifyCopperBreakoutProfile(
+          tcvrState,
+          mediaInterfaces,
+          MediaInterfaceCode::CR4_200G,
+          ActiveCuHostInterfaceCode::AUI_PAM4_2S_200G);
+      break;
+    case cfg::PortProfileID::PROFILE_100G_1_PAM4_RS544_COPPER:
+      verifyCopperBreakoutProfile(
+          tcvrState,
+          mediaInterfaces,
+          MediaInterfaceCode::CR1_100G,
+          ActiveCuHostInterfaceCode::AUI_PAM4_1S_100G);
+      break;
     case cfg::PortProfileID::PROFILE_1600G_8_PAM4_RS544X2N_COPPER:
       verifyCopper1600gProfile(tcvrState, mediaInterfaces);
       break;
@@ -744,6 +779,32 @@ void HwTransceiverUtils::verifyActiveOpticalCableProfile(
     auto mediaCodeIt = activeMediaMap.find(activeCuCode);
     ASSERT_TRUE(mediaCodeIt != activeMediaMap.end());
     EXPECT_EQ(*mediaId.code(), mediaCodeIt->second);
+  }
+}
+
+void HwTransceiverUtils::verifyCopperBreakoutProfile(
+    const TcvrState& tcvrState,
+    const std::vector<MediaInterfaceId>& mediaInterfaces,
+    MediaInterfaceCode expectedActiveCode,
+    ActiveCuHostInterfaceCode expectedActiveCuCode) {
+  const auto& cable = *tcvrState.cable();
+  const auto& transmitterTech = *cable.transmitterTech();
+  const bool isActive = TransceiverManager::activeCable(tcvrState);
+  auto mgmtInterface =
+      apache::thrift::can_throw(*tcvrState.transceiverManagementInterface());
+
+  EXPECT_EQ(mgmtInterface, TransceiverManagementInterface::CMIS);
+  EXPECT_EQ(TransmitterTechnology::COPPER, transmitterTech);
+
+  // qsfp_service reports every passive DAC as CR8_400G whatever it advertises
+  // (CmisModule hardcodes it; see the FIXME there), so a passive cable has no
+  // per-profile media code to check.
+  if (!isActive) {
+    return;
+  }
+  for (const auto& mediaId : mediaInterfaces) {
+    EXPECT_EQ(*mediaId.code(), expectedActiveCode);
+    EXPECT_EQ(*mediaId.media()->activeCuCode(), expectedActiveCuCode);
   }
 }
 
