@@ -10,6 +10,8 @@ Before=fruid.service
 After=rc-local.service
 Before=fboss_init.service
 Wants=local_rpm_repo.service
+Wants=fboss_disk_guard.service
+After=fboss_disk_guard.service
 
 StartLimitIntervalSec=600
 StartLimitBurst=5

@@ -547,6 +547,7 @@ systemctl enable sai-device-nodes.service ||
 systemctl enable fboss_init.service
 systemctl enable fboss-firstboot-report.service
 systemctl enable local_rpm_repo.service
+systemctl enable fboss_disk_guard.service
 systemctl enable platform_manager.service
 systemctl enable data_corral_service.service
 systemctl enable fan_service.service
