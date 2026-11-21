@@ -10,10 +10,8 @@ import json
 from unittest.mock import MagicMock, patch
 
 import pytest
-from fboss_test_runner.runners.sai_agent_test_runner import (
-    SaiAgentTestRunner,
-    sdk_version_key,
-)
+from fboss_test_runner.runners.production_features import sdk_version_key
+from fboss_test_runner.runners.sai_agent_test_runner import SaiAgentTestRunner
 
 
 @pytest.fixture

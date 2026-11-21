@@ -6,6 +6,8 @@ import subprocess
 import time
 from argparse import ArgumentParser
 
+from fboss_test_runner.constants import SUB_ARG_AGENT_RUN_MODE_MULTI
+from fboss_test_runner.runners.production_features import ProductionFeatureFilterMixin
 from fboss_test_runner.runners.test_runner import TestRunner
 from fboss_test_runner.services.config_baseline import (
     AGENT_COLDBOOT_TIMEOUT_SEC,
@@ -33,7 +35,7 @@ FBOSS2_INTEGRATION_KNOWN_BAD_TESTS_FILE = "./share/fboss2_integration_known_bad_
 FBOSS2_INTEGRATION_UNSUPPORTED_TESTS_FILE = "./share/fboss2_integration_unsupported_tests/fboss2_integration_unsupported_tests.materialized_JSON"
 
 
-class Fboss2IntegrationTestRunner(TestRunner):
+class Fboss2IntegrationTestRunner(ProductionFeatureFilterMixin, TestRunner):
     """
     Runner for fboss2 integration tests.
 
@@ -93,6 +95,7 @@ class Fboss2IntegrationTestRunner(TestRunner):
         """Add CLI test-specific command line arguments"""
         super().add_subcommand_arguments(sub_parser)
         sub_parser.set_defaults(fruid_path=None, coldboot_only=True)
+        self._add_production_feature_arguments(sub_parser)
         sub_parser.add_argument(
             "--num-npus",
             type=int,
@@ -128,6 +131,13 @@ class Fboss2IntegrationTestRunner(TestRunner):
 
     def _get_test_binary_name(self) -> str:
         return "fboss2_integration_test"
+
+    def _get_production_feature_test_config_options(self) -> set[str]:
+        # The suite always runs against the split production agents.
+        return {SUB_ARG_AGENT_RUN_MODE_MULTI}
+
+    def _filter_tests(self, tests: list[str]) -> list[str]:
+        return self._filter_tests_by_production_features(tests)
 
     def _get_npu_sdk_metadata_binary_name(self) -> str:
         # The integration test drives split agents and does not link the NPU

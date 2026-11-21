@@ -58,6 +58,9 @@ class ConfigVlanCreateTest : public Fboss2IntegrationTest {
   // runs. This avoids calling show interface during the agent reload window
   // that follows test 1's commit.
   static void SetUpTestSuite() {
+    if (FLAGS_list_production_feature) {
+      return;
+    }
     // Concrete subclass to access protected Fboss2IntegrationTest methods.
     struct Helper : public Fboss2IntegrationTest {
       void TestBody() override {}
