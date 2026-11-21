@@ -49,7 +49,7 @@ std::string CmdClearInterfaceCounters::queryClient(
           portEntries.begin(),
           portEntries.end(),
           [&queriedIf](const auto& port) {
-            return port.second.get_name() == queriedIf;
+            return port.second.name().value() == queriedIf;
           });
       if (it != portEntries.end()) {
         portsToClear.push_back(it->first);

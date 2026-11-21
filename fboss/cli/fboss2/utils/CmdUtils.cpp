@@ -50,7 +50,7 @@ std::vector<int32_t> getPortIDList(
           portEntries.begin(),
           portEntries.end(),
           [&interface](const auto& port) {
-            return port.second.get_name() == interface;
+            return port.second.name().value() == interface;
           });
       if (it != portEntries.end()) {
         portIDList.push_back(it->first);
@@ -456,7 +456,7 @@ cfg::SwitchType getSwitchType(
           switchIdToSwitchInfo.begin(),
           switchIdToSwitchInfo.end(),
           [switchType](const auto& pair) {
-            return pair.second.get_switchType() == switchType;
+            return folly::copy(pair.second.switchType().value()) == switchType;
           }));
 
   return switchType;

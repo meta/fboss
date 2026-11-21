@@ -34,12 +34,13 @@ std::string flushNeighborEntries(
 
   for (const auto& entry : allNeighbors) {
     // STATIC or DYNAMIC entries cannot be flushed.
-    if (entry.get_state() == "STATIC" || entry.get_state() == "DYNAMIC") {
+    if (entry.state().value() == "STATIC" ||
+        entry.state().value() == "DYNAMIC") {
       continue;
     }
 
     auto ip = folly::IPAddress::fromBinary(
-        folly::ByteRange(folly::StringPiece(entry.get_ip().addr().value())));
+        folly::ByteRange(folly::StringPiece(entry.ip()->addr().value())));
     auto shouldFlush = networkFilter.empty() ||
         std::find_if(
             networkFilter.begin(),
@@ -48,21 +49,23 @@ std::string flushNeighborEntries(
               return ip.inSubnet(network.first, network.second);
             }) != networkFilter.end();
     if (shouldFlush) {
-      if (entry.get_state() == "INCOMPLETE") {
+      if (entry.state().value() == "INCOMPLETE") {
         unresolvedLines += fmt::format(
-            "  ip: {} interfaceID: {}\n", ip.str(), entry.get_interfaceID());
+            "  ip: {} interfaceID: {}\n",
+            ip.str(),
+            folly::copy(entry.interfaceID().value()));
         ++numUnresolved;
       } else {
         deletingLines += fmt::format(
             "Deleting {} entry ip: {} interfaceID: {}\n",
             nbrTypeStr,
             ip.str(),
-            entry.get_interfaceID());
+            folly::copy(entry.interfaceID().value()));
       }
 
       IfAndIP flushEntry;
-      flushEntry.ip() = entry.get_ip();
-      flushEntry.interfaceID() = entry.get_interfaceID();
+      flushEntry.ip() = entry.ip().value();
+      flushEntry.interfaceID() = folly::copy(entry.interfaceID().value());
       entriesToFlush.emplace_back(std::move(flushEntry));
     }
   }

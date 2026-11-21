@@ -76,7 +76,7 @@ const std::string printExtCommunities(
       continue;
     }
 
-    const auto& extCommunity = communityUnion.get_two_byte_asn();
+    const auto& extCommunity = communityUnion.two_byte_asn().value();
     if (folly::copy(extCommunity.type().value()) ==
         static_cast<int>(TBgpTwoByteAsnExtCommType::LINK_BANDWIDTH_TYPE)) {
       if (folly::copy(extCommunity.sub_type().value()) ==
