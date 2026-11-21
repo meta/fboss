@@ -1,11 +1,11 @@
 {
-  "pwmBoostOnNumDeadFan": 0,
+  "pwmBoostOnNumDeadFan": 2,
   "pwmBoostOnNumDeadSensor": 0,
   "pwmBoostOnNoQsfpAfterInSec": 55,
-  "pwmBoostValue": 45,
+  "pwmBoostValue": 60,
   "pwmTransitionValue": 45,
-  "pwmLowerThreshold": 45,
-  "pwmUpperThreshold": 45,
+  "pwmLowerThreshold": 25,
+  "pwmUpperThreshold": 70,
   "watchdog": {
     "sysfsPath": "/run/devmap/watchdogs/FAN_WATCHDOG",
     "value": 0
@@ -14,8 +14,160 @@
     "sensorReadInterval": 5,
     "pwmUpdateInterval": 5
   },
-  "optics": [],
-  "sensors": [],
+  "optics": [
+    {
+      "opticName": "qsfp_group_1",
+      "aggregationType": "OPTIC_AGGREGATION_TYPE_INCREMENTAL_PID",
+      "pidSettings": {
+        "OPTIC_TYPE_800_GENERIC": {
+          "kp": 3,
+          "ki": 0.3,
+          "kd": 0,
+          "setPoint": 65,
+          "posHysteresis": 1,
+          "negHysteresis": 1
+        },
+        "OPTIC_TYPE_400_GENERIC": {
+          "kp": 3,
+          "ki": 0.3,
+          "kd": 0,
+          "setPoint": 65,
+          "posHysteresis": 1,
+          "negHysteresis": 1
+        },
+        "OPTIC_TYPE_200_GENERIC": {
+          "kp": 3,
+          "ki": 0.3,
+          "kd": 0,
+          "setPoint": 65,
+          "posHysteresis": 1,
+          "negHysteresis": 1
+        },
+        "OPTIC_TYPE_100_GENERIC": {
+          "kp": 3,
+          "ki": 0.3,
+          "kd": 0,
+          "setPoint": 65,
+          "posHysteresis": 1,
+          "negHysteresis": 1
+        }
+      }
+    }
+  ],
+  "sensors": [
+    {
+      "sensorName": "CPU_UNCORE_TEMP",
+      "pwmCalcType": "SENSOR_PWM_CALC_TYPE_INCREMENTAL_PID",
+      "pidSetting": {
+        "kp": 1.5,
+        "ki": 0.4,
+        "kd": 0,
+        "setPoint": 89,
+        "posHysteresis": 3,
+        "negHysteresis": 5
+      }
+    },
+    {
+      "sensorName": "SCM_U36_INLET_TEMP",
+      "pwmCalcType": "SENSOR_PWM_CALC_TYPE_FOUR_LINEAR_TABLE",
+      "normalUpTable": {
+        "31": 25,
+        "32": 30,
+        "37": 35,
+        "42": 60
+      },
+      "normalDownTable": {
+        "29": 25,
+        "30": 30,
+        "35": 35,
+        "40": 60
+      },
+      "failUpTable": {
+        "31": 30,
+        "32": 35,
+        "37": 40,
+        "42": 65
+      },
+      "failDownTable": {
+        "29": 30,
+        "30": 35,
+        "35": 40,
+        "40": 65
+      }
+    },
+    {
+      "sensorName": "SMB_U72_G202X_TEMP_1",
+      "pwmCalcType": "SENSOR_PWM_CALC_TYPE_INCREMENTAL_PID",
+      "pidSetting": {
+        "kp": 2,
+        "ki": 0.6,
+        "kd": 0,
+        "setPoint": 95,
+        "posHysteresis": 2,
+        "negHysteresis": 0
+      }
+    },
+    {
+      "sensorName": "SMB_U72_G202X_TEMP_2",
+      "pwmCalcType": "SENSOR_PWM_CALC_TYPE_INCREMENTAL_PID",
+      "pidSetting": {
+        "kp": 2,
+        "ki": 0.6,
+        "kd": 0,
+        "setPoint": 95,
+        "posHysteresis": 2,
+        "negHysteresis": 0
+      }
+    },
+    {
+      "sensorName": "SMB_U72_G202X_TEMP_3",
+      "pwmCalcType": "SENSOR_PWM_CALC_TYPE_INCREMENTAL_PID",
+      "pidSetting": {
+        "kp": 2,
+        "ki": 0.6,
+        "kd": 0,
+        "setPoint": 95,
+        "posHysteresis": 2,
+        "negHysteresis": 0
+      }
+    },
+    {
+      "sensorName": "SMB_U72_G202X_TEMP_4",
+      "pwmCalcType": "SENSOR_PWM_CALC_TYPE_INCREMENTAL_PID",
+      "pidSetting": {
+        "kp": 2,
+        "ki": 0.6,
+        "kd": 0,
+        "setPoint": 95,
+        "posHysteresis": 2,
+        "negHysteresis": 0
+      }
+    },
+    {
+      "sensorName": "COME_JCN1A_DIMM_CHA_TEMP",
+      "pwmCalcType": "SENSOR_PWM_CALC_TYPE_INCREMENTAL_PID",
+      "pidSetting": {
+        "kp": 2,
+        "ki": 0.6,
+        "kd": 0,
+        "setPoint": 79.0,
+        "posHysteresis": 2.0,
+        "negHysteresis": 0.0
+      }
+    },
+    {
+      "sensorName": "COME_JCN2A_DIMM_CHB_TEMP",
+      "pwmCalcType": "SENSOR_PWM_CALC_TYPE_INCREMENTAL_PID",
+      "pidSetting": {
+        "kp": 2,
+        "ki": 0.6,
+        "kd": 0,
+        "setPoint": 79.0,
+        "posHysteresis": 2.0,
+        "negHysteresis": 0.0
+      }
+    }
+  ],
   "fans": [
     {
       "fanName": "FAN_1_F",
@@ -126,7 +278,17 @@
     {
       "zoneType": "ZONE_TYPE_MAX",
       "zoneName": "zone1",
-      "sensorNames": [],
+      "sensorNames": [
+        "CPU_UNCORE_TEMP",
+        "SCM_U36_INLET_TEMP",
+        "SMB_U72_G202X_TEMP_1",
+        "SMB_U72_G202X_TEMP_2",
+        "SMB_U72_G202X_TEMP_3",
+        "SMB_U72_G202X_TEMP_4",
+        "qsfp_group_1",
+        "COME_JCN1A_DIMM_CHA_TEMP",
+        "COME_JCN2A_DIMM_CHB_TEMP"
+      ],
       "fanNames": [
         "FAN_1_F",
         "FAN_1_R",
@@ -137,7 +299,7 @@
         "FAN_4_F",
         "FAN_4_R"
       ],
-      "slope": 0
+      "slope": 10
     }
   ]
 }
