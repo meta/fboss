@@ -15,6 +15,7 @@
 
 #include "fboss/agent/hw/sai/store/SaiStore.h"
 
+#include <folly/Conv.h>
 #include <folly/container/Enumerate.h>
 
 namespace facebook::fboss {
@@ -33,32 +34,7 @@ LagSaiId SaiLagManager::addLag(
   for (auto i = 0; i < 32 && i < name.length(); i++) {
     labelValue[i] = name[i];
   }
-  // TODO(pshaikh): support LAG without ports?
-  auto subports = aggregatePort->sortedSubports();
-  CHECK_GT(subports.size(), 0);
-  auto& subPort = subports.front();
-  auto portSaiIdsIter = concurrentIndices_->portSaiIds.find(subPort.portID);
-  // port must exist before LAG
-  CHECK(portSaiIdsIter != concurrentIndices_->portSaiIds.end());
-  auto portSaiId = portSaiIdsIter->second;
-  // All members of the same LAG are part of the same VLAN, so the first
-  // member's VLAN is the LAG's. A routed LAG, one carrying a router interface
-  // of its own, is in no VLAN: it gets no port vlan id, no vlan membership and
-  // no bridge port.
-  auto vlanSaiIdsIter =
-      concurrentIndices_->vlanIds.find(PortDescriptorSaiId(portSaiId));
-  std::optional<VlanID> vlanID{};
-  if (vlanSaiIdsIter != concurrentIndices_->vlanIds.end()) {
-    vlanID = vlanSaiIdsIter->second;
-    // VlanID(0) is the "no vlan" sentinel a port carries when its router
-    // interface is bound to the port rather than to a vlan. SaiPortManager
-    // indexes every port it adds, sentinel included, so this reset is what
-    // actually puts the LAG on the routed path; the lookup above only misses
-    // if the member port was never indexed at all.
-    if (vlanID == VlanID(0)) {
-      vlanID.reset();
-    }
-  }
+  auto vlanID = getLagVlan(aggregatePort);
 
   SaiLagTraits::CreateAttributes createAttributes{labelValue, vlanID};
 
@@ -172,10 +148,88 @@ void SaiLagManager::changeLag(
     saiLagHandle->counters->reinitialize(
         newAggregatePort->getID(), newAggregatePort->getName());
   }
+  // A memberless LAG has no member to take a vlan from and bridges nothing,
+  // so it keeps its current vlan until members are added back.
+  if (!newAggregatePort->sortedSubports().empty()) {
+    changeLagVlan(
+        newAggregatePort->getID(),
+        saiLagHandle.get(),
+        getLagVlan(newAggregatePort));
+  }
   if (newAggregatePort->getTTLDisableDecrement() !=
       oldAggregatePort->getTTLDisableDecrement()) {
     programTtlDecrement(*newAggregatePort);
   }
+}
+
+std::optional<VlanID> SaiLagManager::getLagVlan(
+    const std::shared_ptr<AggregatePort>& aggregatePort) const {
+  // TODO(pshaikh): support LAG without ports?
+  auto subports = aggregatePort->sortedSubports();
+  CHECK_GT(subports.size(), 0);
+  auto& subPort = subports.front();
+  auto portSaiIdsIter = concurrentIndices_->portSaiIds.find(subPort.portID);
+  // port must exist before LAG
+  CHECK(portSaiIdsIter != concurrentIndices_->portSaiIds.end());
+  auto portSaiId = portSaiIdsIter->second;
+  // All members of the same LAG are part of the same VLAN, so the first
+  // member's VLAN is the LAG's. A routed LAG, one carrying a router interface
+  // of its own, is in no VLAN: it gets no port vlan id, no vlan membership and
+  // no bridge port.
+  auto vlanSaiIdsIter =
+      concurrentIndices_->vlanIds.find(PortDescriptorSaiId(portSaiId));
+  std::optional<VlanID> vlanID{};
+  if (vlanSaiIdsIter != concurrentIndices_->vlanIds.end()) {
+    vlanID = vlanSaiIdsIter->second;
+    // VlanID(0) is the "no vlan" sentinel a port carries when its router
+    // interface is bound to the port rather than to a vlan. SaiPortManager
+    // indexes every port it adds, sentinel included, so this reset is what
+    // actually puts the LAG on the routed path; the lookup above only misses
+    // if the member port was never indexed at all.
+    if (vlanID == VlanID(0)) {
+      vlanID.reset();
+    }
+  }
+  return vlanID;
+}
+
+void SaiLagManager::changeLagVlan(
+    AggregatePortID aggPort,
+    SaiLagHandle* handle,
+    std::optional<VlanID> newVlanId) {
+  // Member ports are changed before LAGs in the same delta, so the index read
+  // by getLagVlan already holds the members' new vlan.
+  if (handle->vlanId == newVlanId) {
+    return;
+  }
+  auto vlanStr = [](const std::optional<VlanID>& vlan) {
+    return vlan ? folly::to<std::string>(static_cast<int>(*vlan))
+                : std::string("none");
+  };
+  XLOG(DBG2) << "changing vlan of aggregate port " << aggPort << " from "
+             << vlanStr(handle->vlanId) << " to " << vlanStr(newVlanId);
+  auto lagSaiId = PortDescriptorSaiId(handle->lag->adapterKey());
+  auto& vlanManager = managerTable_->vlanManager();
+  if (handle->vlanId) {
+    // The old vlan, and the LAG's membership with it, is gone if the same
+    // delta removed the vlan.
+    if (vlanManager.getVlanHandle(*handle->vlanId)) {
+      vlanManager.removeVlanMember(*handle->vlanId, SaiPortDescriptor(aggPort));
+    }
+    concurrentIndices_->vlanIds.erase(lagSaiId);
+  }
+  handle->vlanId = newVlanId;
+  if (!newVlanId) {
+    // A routed LAG needs no bridge port, and addBridgePort will not remove it.
+    // Its stale port vlan id is left in place; nothing is bridged on it.
+    handle->bridgePort.reset();
+    return;
+  }
+  handle->lag->setOptionalAttribute(
+      SaiLagTraits::Attributes::PortVlanId{static_cast<uint16_t>(*newVlanId)});
+  concurrentIndices_->vlanIds.insert_or_assign(lagSaiId, *newVlanId);
+  vlanManager.createVlanMember(
+      *newVlanId, SaiPortDescriptor(aggPort), false, false);
 }
 
 void SaiLagManager::programTtlDecrement(const AggregatePort& aggregatePort) {

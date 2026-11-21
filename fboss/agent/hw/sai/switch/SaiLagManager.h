@@ -89,6 +89,13 @@ class SaiLagManager {
       AggregatePort::Forwarding fwdState = AggregatePort::Forwarding::DISABLED);
   void removeMember(AggregatePortID aggPort, PortID subPort);
 
+  std::optional<VlanID> getLagVlan(
+      const std::shared_ptr<AggregatePort>& aggregatePort) const;
+  void changeLagVlan(
+      AggregatePortID aggPort,
+      SaiLagHandle* handle,
+      std::optional<VlanID> newVlanId);
+
   void removeLagHandle(AggregatePortID aggPort, SaiLagHandle* handle);
 
   void setMemberState(SaiLagMember* member, AggregatePort::Forwarding fwdState);
