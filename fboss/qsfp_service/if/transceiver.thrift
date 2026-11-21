@@ -270,6 +270,9 @@ enum MediaInterfaceCode {
   CR8_1600G = 43,
   // 2x400G-FR4 whose first application has an InfiniBand host interface
   FR4_2x400G_IB = 44,
+  // ZR breakout ports sharing the module's single media lane
+  ZR_400G = 45,
+  ZR_200G = 46,
 }
 
 // The extended specification compliance code of the transceiver module.
