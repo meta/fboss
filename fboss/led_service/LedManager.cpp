@@ -114,11 +114,16 @@ void LedManager::triggerLedUpdate(const std::vector<PortID>& portIds) {
 /*
  * updateLedStatus
  *
- * This function does these two things:
+ * This function does these three things:
  * 1. Look into the FSDB pushed data (switch states) in newSwitchState and
  *    updates the local structure portDisplayMap_ as per the operational values
  *    in latest switch state
- * 2. Trigger an LED update (triggerLedUpdate. This will Compute LED colors for
+ * 2. Drop the ports which are no longer present in the switch state. The
+ *    subscriber always builds newSwitchState from the full agent port map, so
+ *    anything missing from it is not an active port anymore (ie: the port was
+ *    removed by a breakout change). Keeping it would leave a phantom port in
+ *    the LED aggregation of its siblings sharing the same LED.
+ * 3. Trigger an LED update (triggerLedUpdate. This will Compute LED colors for
  * new state and if the color for a port is different than existing one then set
  * the new color on LED
  */
@@ -162,6 +167,19 @@ void LedManager::updateLedStatus(
 
     portDisplayMap_[portId] = portInfo;
     portsToTriggerLedUpdate.emplace_back(portId);
+  }
+
+  for (auto itr = portDisplayMap_.begin(); itr != portDisplayMap_.end();) {
+    if (newSwitchState.find(static_cast<short>(itr->first)) ==
+        newSwitchState.end()) {
+      XLOG(DBG2) << fmt::format(
+          "Port {:s} ({:d}) no longer in switch state, removing it from portDisplayMap_",
+          itr->second.portName,
+          itr->first);
+      itr = portDisplayMap_.erase(itr);
+    } else {
+      ++itr;
+    }
   }
 
   triggerLedUpdate(portsToTriggerLedUpdate);
