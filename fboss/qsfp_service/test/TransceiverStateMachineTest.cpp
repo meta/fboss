@@ -1769,8 +1769,12 @@ TEST_F(TransceiverStateMachineTest, agentConfigChangedColdBoot) {
       TransceiverStateMachineState::DISCOVERED /* expected state */,
       allStates,
       [this]() {
-        MockCmisModule* mockXcvr = static_cast<MockCmisModule*>(xcvr_);
-        EXPECT_CALL(*mockXcvr, resetDataPath(testing::_)).Times(1);
+        auto* mockXcvr = static_cast<MockCmisModule*>(xcvr_);
+        int expectedResets = transceiverManager_->getCurrentState(id_) ==
+                TransceiverStateMachineState::ACTIVE
+            ? 0
+            : 1;
+        EXPECT_CALL(*mockXcvr, resetDataPath(testing::_)).Times(expectedResets);
       } /* preUpdate */,
       [this]() { triggerAgentConfigChanged(true); } /* stateUpdate */,
       [this]() {
@@ -1803,6 +1807,48 @@ TEST_F(TransceiverStateMachineTest, agentConfigChangedColdBoot) {
       false /* multiPort */,
       TransceiverType::MOCK_CMIS,
       kColdBootAgentConfigChangedFnStr);
+}
+
+TEST_F(TransceiverStateMachineTest, agentConfigChangedColdBootFsdbStatusAge) {
+  gflags::FlagSaver flagSaver;
+  xcvr_ =
+      overrideTransceiver(false /* multiPort */, TransceiverType::MOCK_CMIS);
+  setState(TransceiverStateMachineState::ACTIVE, false /* multiPort */);
+  auto* mockXcvr = static_cast<MockCmisModule*>(xcvr_);
+
+  gflags::SetCommandLineOption("subscribe_to_state_from_fsdb", "true");
+  transceiverManager_->setOverrideAgentPortStatusForTesting(
+      false /* up */, false /* enabled */, true /* clearOnly */);
+  auto publishPortUp = [this]() {
+    NpuPortStatus status;
+    status.portEnabled = true;
+    status.operState = true;
+    std::map<int, NpuPortStatus> portStatus{{portId1_, status}};
+    transceiverManager_->syncNpuPortStatusUpdate(portStatus);
+  };
+  auto reprogram = [this]() {
+    for (int i = 0; i < 3; i++) {
+      transceiverManager_->refreshStateMachines();
+    }
+  };
+
+  publishPortUp();
+  /* sleep override */
+  sleep(1);
+  EXPECT_CALL(*mockXcvr, resetDataPath(testing::_)).Times(1);
+  triggerAgentConfigChanged(true);
+  reprogram();
+  testing::Mock::VerifyAndClearExpectations(mockXcvr);
+
+  /* sleep override */
+  sleep(1);
+  EXPECT_CALL(*mockXcvr, resetDataPath(testing::_)).Times(0);
+  triggerAgentConfigChanged(true);
+  publishPortUp();
+  reprogram();
+  EXPECT_FALSE(
+      transceiverManager_->getStateMachineForTesting(id_).get_attribute(
+          needResetDataPath));
 }
 
 TEST_F(TransceiverStateMachineTest, agentConfigChangedWarmBootOnAbsentXcvr) {
