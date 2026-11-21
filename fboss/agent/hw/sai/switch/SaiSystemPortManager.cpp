@@ -18,6 +18,7 @@
 #include "fboss/agent/VoqUtils.h"
 #include "fboss/agent/hw/HwSysPortFb303Stats.h"
 #include "fboss/agent/hw/gen-cpp2/hardware_stats_constants.h"
+#include "fboss/agent/hw/sai/api/SaiApiTable.h"
 #include "fboss/agent/hw/sai/store/SaiStore.h"
 #include "fboss/agent/hw/sai/switch/ConcurrentIndices.h"
 #include "fboss/agent/hw/sai/switch/SaiManagerTable.h"
@@ -78,16 +79,72 @@ SaiSystemPortManager::SaiSystemPortManager(
 
 SaiSystemPortManager::~SaiSystemPortManager() {}
 
+std::optional<std::pair<uint32_t, uint32_t>>
+SaiSystemPortManager::coreAndPortIndexFromPort(
+    const std::shared_ptr<SystemPort>& swSystemPort) const {
+  const auto* asic = platform_->getAsic();
+  if (!asic->isSupported(HwAsic::Feature::SYSTEM_PORT_CORE_INDEX_FROM_PORT) ||
+      swSystemPort->getPortType() != cfg::PortType::INTERFACE_PORT ||
+      swSystemPort->getRemoteSystemPortType().has_value() ||
+      !asic->getSwitchId().has_value() ||
+      static_cast<uint64_t>(swSystemPort->getSwitchId()) !=
+          *asic->getSwitchId()) {
+    return std::nullopt;
+  }
+  // Inverse of getSystemPortID(): a local interface port's system port id is
+  // the port id plus the switch's local or global system port offset, minus
+  // the start of the switch's port id range.
+  auto offset = swSystemPort->getScope() == cfg::Scope::GLOBAL
+      ? asic->getGlobalSystemPortOffset()
+      : asic->getLocalSystemPortOffset();
+  const auto& switchIdToSwitchInfo = *platform_->getConfig()
+                                          ->thrift.sw()
+                                          ->switchSettings()
+                                          ->switchIdToSwitchInfo();
+  auto switchInfo = switchIdToSwitchInfo.find(*asic->getSwitchId());
+  if (!offset.has_value() || switchInfo == switchIdToSwitchInfo.end()) {
+    return std::nullopt;
+  }
+  PortID portId(
+      static_cast<int>(
+          static_cast<int64_t>(swSystemPort->getID()) - *offset +
+          *switchInfo->second.portIdRange()->minimum()));
+  const auto* portHandle = managerTable_->portManager().getPortHandle(portId);
+  if (!portHandle) {
+    XLOG(DBG2) << "System port " << swSystemPort->getID() << ": port " << portId
+               << " not created yet, using the platform mapping";
+    return std::nullopt;
+  }
+  auto& portApi = SaiApiTable::getInstance()->portApi();
+  auto saiPortId = portHandle->port->adapterKey();
+  auto coreIndex = portApi.getAttribute(
+      saiPortId, SaiPortTraits::Attributes::AttachedCoreIndex{});
+  auto corePortIndex = portApi.getAttribute(
+      saiPortId, SaiPortTraits::Attributes::AttachedCorePortIndex{});
+  if (coreIndex != swSystemPort->getCoreIndex() ||
+      corePortIndex != swSystemPort->getCorePortIndex()) {
+    XLOG(DBG2) << "System port " << swSystemPort->getID() << ": port " << portId
+               << " is on core " << coreIndex << " port index " << corePortIndex
+               << ", platform mapping says core "
+               << swSystemPort->getCoreIndex() << " port index "
+               << swSystemPort->getCorePortIndex();
+  }
+  return std::make_pair(coreIndex, corePortIndex);
+}
+
 SaiSystemPortTraits::CreateAttributes
 SaiSystemPortManager::attributesFromSwSystemPort(
     const std::shared_ptr<SystemPort>& swSystemPort) const {
+  auto coreIndex = static_cast<uint32_t>(swSystemPort->getCoreIndex());
+  auto corePortIndex = static_cast<uint32_t>(swSystemPort->getCorePortIndex());
+  if (auto fromPort = coreAndPortIndexFromPort(swSystemPort)) {
+    std::tie(coreIndex, corePortIndex) = *fromPort;
+  }
   sai_system_port_config_t config{
       .port_id = static_cast<uint32_t>(swSystemPort->getID()),
       .attached_switch_id = static_cast<uint32_t>(swSystemPort->getSwitchId()),
-      .attached_core_index =
-          static_cast<uint32_t>(swSystemPort->getCoreIndex()),
-      .attached_core_port_index =
-          static_cast<uint32_t>(swSystemPort->getCorePortIndex()),
+      .attached_core_index = coreIndex,
+      .attached_core_port_index = corePortIndex,
       .speed = static_cast<uint32_t>(swSystemPort->getSpeedMbps()),
       .num_voq = static_cast<uint32_t>(swSystemPort->getNumVoqs()),
   };
