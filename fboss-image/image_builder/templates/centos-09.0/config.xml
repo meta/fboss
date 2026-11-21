@@ -40,6 +40,12 @@
                 <oem-unattended>true</oem-unattended>
                 <oem-skip-verify>true</oem-skip-verify>
             </oemconfig>
+            <installmedia>
+                <initrd action="add">
+                    <!-- add_efi_boot_entry registers the installed system with the UEFI firmware, after the netboot entries -->
+                    <dracut module="add_efi_boot_entry"/>
+                </initrd>
+            </installmedia>
         </type>
         <type image="tbz">
         </type>
