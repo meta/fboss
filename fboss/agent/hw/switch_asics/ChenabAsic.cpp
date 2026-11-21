@@ -281,6 +281,7 @@ bool ChenabAsic::isSupportedNonFabric(Feature feature) const {
     case HwAsic::Feature::PCS_ERROR_COUNTERS:
     case HwAsic::Feature::STATIC_FDB_EVICT_DYNAMIC:
     case HwAsic::Feature::MIRROR_SESSION_POLICER:
+    case HwAsic::Feature::PORT_SERDES_CREATED_WITH_PORT:
       return false;
   }
   return false;
