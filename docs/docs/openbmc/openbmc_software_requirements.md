@@ -301,7 +301,7 @@ used to wipe data from the eMMC device.
 ### 6.2 OSS OpenBMC build
 
 People must be able to build OSS OpenBMC images from
-[facebook/openbmc](https://github.com/facebook/openbmc)
+[meta/openbmc](https://github.com/meta/openbmc)
 repository. The OSS build must meet all the requirements defined for
 Provisioning-Ready OpenBMC Image, because a switch may need to be reprovisioned
 later.
@@ -338,4 +338,4 @@ What endpoints must be implemented in BMC-Lite OpenBMC??
 ### 7.2 Test coverage
 
 1. Implement all relevant tests from
-https://github.com/facebook/openbmc/tree/helium/tests2/common
+https://github.com/meta/openbmc/tree/helium/tests2/common
