@@ -62,6 +62,7 @@ cpp_library(
         "//fboss/agent:fboss-error",
         "//fboss/fsdb/client:fsdb_pub_sub",
         "//fboss/fsdb/common:flags",
+        "//fboss/lib:common_file_utils",
         "//fboss/lib:log_thrift_call",
     ],
     exported_deps = [

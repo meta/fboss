@@ -145,11 +145,16 @@ bool isSame(
 namespace facebook::fboss {
 
 std::string HwSwitch::getDebugDump() const {
-  /* dump sdk state in directory /var/facebook/fboss/fboss_sdk_dump.xxxx */
+  /*
+   * Dump sdk state into a scratch directory
+   * /var/facebook/fboss/fboss_sdk_dump.xxxx, read it back and return it. The
+   * directory is deleted on scope exit so we don't leak one directory per
+   * invocation (the dump content is returned to the caller).
+   */
   folly::test::TemporaryDirectory tmpDir(
       "fboss_sdk_dump",
       getPlatform()->getDirectoryUtil()->getPersistentStateDir(),
-      folly::test::TemporaryDirectory::Scope::PERMANENT);
+      folly::test::TemporaryDirectory::Scope::DELETE_ON_DESTRUCTION);
   auto fname = tmpDir.path().string() + "/hw_debug_dump";
   dumpDebugState(fname);
   XLOG(DBG0) << "Dumped debug state to " << fname;
