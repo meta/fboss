@@ -14,7 +14,11 @@ namespace facebook::fboss::platform::platform_manager {
 class MockSystemInterface : public package_manager::SystemInterface {
  public:
   explicit MockSystemInterface() : package_manager::SystemInterface() {}
-  MOCK_METHOD(bool, isRpmInstalled, (const std::string&), (const));
+  MOCK_METHOD(
+      std::optional<bool>,
+      isRpmInstalled,
+      (const std::string&),
+      (const));
   MOCK_METHOD(
       std::vector<std::string>,
       getInstalledRpms,
@@ -36,8 +40,9 @@ class MockPkgManager : public PkgManager {
  public:
   explicit MockPkgManager(
       const PlatformConfig& config,
-      const std::shared_ptr<package_manager::SystemInterface>& systemInterface)
-      : PkgManager(config, systemInterface) {}
+      const std::shared_ptr<package_manager::SystemInterface>& systemInterface,
+      const std::shared_ptr<PlatformFsUtils>& platformFsUtils)
+      : PkgManager(config, systemInterface, platformFsUtils) {}
   MOCK_METHOD(void, processRpms, (), (const));
   MOCK_METHOD(void, processLocalRpms, (), (const));
   MOCK_METHOD(void, unloadBspKmods, (), (const));
@@ -77,7 +82,10 @@ class PkgManagerTest : public testing::Test {
   std::shared_ptr<MockPlatformFsUtils> mockPlatformFsUtils_{
       std::make_shared<MockPlatformFsUtils>()};
   // For testing high level flow in PkgManager::processAll
-  MockPkgManager mockPkgManager_{platformConfig_, mockSystemInterface_};
+  MockPkgManager mockPkgManager_{
+      platformConfig_,
+      mockSystemInterface_,
+      mockPlatformFsUtils_};
   // For testing individual member functions such as PkgManager::unloadBspKmods
   PkgManager pkgManager_{
       platformConfig_,
@@ -147,6 +155,67 @@ TEST_F(PkgManagerTest, EnablePkgMgmntWithReloadKmods) {
       /*enablePkgMgmnt=*/true, /*reloadKmods=*/true));
   EXPECT_GE(
       facebook::fb303::fbData->getCounter(PkgManager::kProcessAllTime), 0);
+}
+
+TEST_F(PkgManagerTest, EnablePkgMgmntRpmQueryFailsWithKmodsOnDisk) {
+  // Package DB unreadable but kmods.json for this kernel exists: no RPM
+  // management, alert + counter, kmods loaded as if the RPM were installed.
+  EXPECT_CALL(*mockSystemInterface_, isRpmInstalled(_))
+      .WillOnce(Return(std::nullopt));
+  EXPECT_CALL(*mockPlatformFsUtils_, getStringFileContent(_))
+      .WillOnce(Return(jsonBspKmodsFile_));
+  EXPECT_CALL(mockPkgManager_, processRpms()).Times(0);
+  EXPECT_CALL(mockPkgManager_, unloadBspKmods()).Times(0);
+  EXPECT_CALL(mockPkgManager_, loadRequiredKmods()).Times(1);
+  EXPECT_NO_THROW(mockPkgManager_.processAll(
+      /*enablePkgMgmnt=*/true, /*reloadKmods=*/false));
+  EXPECT_EQ(
+      facebook::fb303::fbData->getCounter(PkgManager::kProcessRpmFailure), 1);
+}
+
+TEST_F(PkgManagerTest, EnablePkgMgmntRpmQueryFailsWithoutKmods) {
+  // Package DB unreadable and nothing on disk: fall back to a normal install.
+  EXPECT_CALL(*mockSystemInterface_, isRpmInstalled(_))
+      .WillOnce(Return(std::nullopt));
+  EXPECT_CALL(*mockPlatformFsUtils_, getStringFileContent(_))
+      .WillOnce(Return(std::nullopt));
+  {
+    InSequence seq;
+    EXPECT_CALL(mockPkgManager_, processRpms()).Times(1);
+    EXPECT_CALL(mockPkgManager_, unloadBspKmods()).Times(1);
+    EXPECT_CALL(mockPkgManager_, loadRequiredKmods()).Times(1);
+  }
+  EXPECT_NO_THROW(mockPkgManager_.processAll(
+      /*enablePkgMgmnt=*/true, /*reloadKmods=*/false));
+}
+
+TEST_F(PkgManagerTest, EnablePkgMgmntInstallFailsWithKmodsOnDisk) {
+  EXPECT_CALL(*mockSystemInterface_, isRpmInstalled(_)).WillOnce(Return(false));
+  EXPECT_CALL(*mockPlatformFsUtils_, getStringFileContent(_))
+      .WillOnce(Return(jsonBspKmodsFile_));
+  {
+    InSequence seq;
+    EXPECT_CALL(mockPkgManager_, processRpms())
+        .WillOnce(Throw(std::runtime_error("Failed to install rpm")));
+    EXPECT_CALL(mockPkgManager_, unloadBspKmods()).Times(1);
+    EXPECT_CALL(mockPkgManager_, loadRequiredKmods()).Times(1);
+  }
+  EXPECT_NO_THROW(mockPkgManager_.processAll(
+      /*enablePkgMgmnt=*/true, /*reloadKmods=*/false));
+}
+
+TEST_F(PkgManagerTest, EnablePkgMgmntInstallFailsWithoutKmods) {
+  EXPECT_CALL(*mockSystemInterface_, isRpmInstalled(_)).WillOnce(Return(false));
+  EXPECT_CALL(*mockPlatformFsUtils_, getStringFileContent(_))
+      .WillOnce(Return(std::nullopt));
+  EXPECT_CALL(mockPkgManager_, processRpms())
+      .WillOnce(Throw(std::runtime_error("Failed to install rpm")));
+  EXPECT_CALL(mockPkgManager_, unloadBspKmods()).Times(0);
+  EXPECT_CALL(mockPkgManager_, loadRequiredKmods()).Times(0);
+  EXPECT_THROW(
+      mockPkgManager_.processAll(
+          /*enablePkgMgmnt=*/true, /*reloadKmods=*/false),
+      std::runtime_error);
 }
 
 TEST_F(PkgManagerTest, DisablePkgMgmnt) {
