@@ -44,6 +44,10 @@ def _generate_global_basic_commands(config: dict[str, Any]) -> list[str]:
         commands.append(
             f"config protocol bgp global router-id {escape_shell_arg(config['router_id'])}"
         )
+    if "cluster_id" in config:
+        commands.append(
+            f"config protocol bgp global cluster-id {escape_shell_arg(config['cluster_id'])}"
+        )
     if "local_as_4_byte" in config:
         commands.append(
             f"config protocol bgp global local-asn {escape_shell_arg(config['local_as_4_byte'])}"

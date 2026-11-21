@@ -12,6 +12,8 @@
  * (clear / diff / rollback / commit-restart mechanics) lives in
  * ConfigBgpSessionTest.
  *
+ *   - cluster-id <ipv4>
+ *       -> BgpConfig.cluster_id
  *   - count-confeds-in-as-path-len <true|false>
  *       -> BgpConfig.count_confeds_in_as_path_len
  *   - graceful-restart-time <seconds>
@@ -107,6 +109,15 @@ TEST_F(ConfigBgpGlobalTest, InvalidBoolValueRejected) {
   // the rejected input.
   EXPECT_FALSE(std::filesystem::exists(bgpSessionPath()))
       << "session file should not exist after rejected input";
+}
+
+TEST_F(ConfigBgpGlobalTest, SetClusterId) {
+  auto config = setAndCommit("cluster-id", "10.255.0.2");
+  ASSERT_TRUE(config.count("cluster_id"));
+  EXPECT_EQ(config["cluster_id"].asString(), "10.255.0.2");
+  // cluster_id is its own field: router_id must be left alone.
+  ASSERT_TRUE(config.count("router_id"));
+  EXPECT_NE(config["router_id"].asString(), "10.255.0.2");
 }
 
 TEST_F(ConfigBgpGlobalTest, RouterIdInvalidRejected) {

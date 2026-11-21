@@ -106,6 +106,45 @@ TEST_F(CmdConfigBgpGlobalTestFixture, rejectedRouterIdKeepsStagedValue) {
 }
 
 // ==============================================================================
+// cluster-id
+// ==============================================================================
+
+TEST_F(CmdConfigBgpGlobalTestFixture, clusterIdAccepted) {
+  auto result = run({"cluster-id", "10.0.0.2"});
+  EXPECT_THAT(
+      result, HasSubstr("Successfully set BGP cluster-id to: 10.0.0.2"));
+  ASSERT_TRUE(config().cluster_id().has_value());
+  EXPECT_EQ(*config().cluster_id(), "10.0.0.2");
+  // Must not alias router_id: redundant reflectors share a cluster-id but
+  // keep distinct router-ids.
+  EXPECT_NE(*config().router_id(), "10.0.0.2");
+  EXPECT_TRUE(sessionFileExists());
+}
+
+TEST_F(CmdConfigBgpGlobalTestFixture, clusterIdInvalidRejected) {
+  EXPECT_THAT(
+      run({"cluster-id", "not-an-ip"}),
+      HasSubstr("Invalid cluster-id address"));
+  EXPECT_FALSE(config().cluster_id().has_value());
+  EXPECT_FALSE(sessionFileExists());
+}
+
+TEST_F(CmdConfigBgpGlobalTestFixture, clusterIdV6Rejected) {
+  EXPECT_THAT(
+      run({"cluster-id", "2001:db8::1"}),
+      HasSubstr("requires an IPv4 address"));
+  EXPECT_FALSE(config().cluster_id().has_value());
+}
+
+TEST_F(CmdConfigBgpGlobalTestFixture, clusterIdArityRejected) {
+  EXPECT_THAT(run({"cluster-id"}), HasSubstr("requires <ip-address>"));
+  EXPECT_THAT(
+      run({"cluster-id", "1.1.1.1", "2.2.2.2"}),
+      HasSubstr("requires <ip-address>"));
+  EXPECT_FALSE(config().cluster_id().has_value());
+}
+
+// ==============================================================================
 // switch-limit-overload-protection-mode
 // ==============================================================================
 
