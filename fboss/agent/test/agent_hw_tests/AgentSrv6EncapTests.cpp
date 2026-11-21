@@ -1591,6 +1591,10 @@ TYPED_TEST(AgentSrv6EncapTest, openRAndTeAgentRoutesChurn) {
 template <typename PortType>
 class AgentMixedIpSrv6EncapTest : public AgentSrv6EncapTest<PortType> {
  protected:
+  const folly::IPAddressV6 kMixedPrefix{"2800:5::"};
+  static constexpr uint8_t kMixedPrefixLen{64};
+  const folly::IPAddress kMixedDst{"2800:5::1"};
+
   std::vector<ProductionFeature> getProductionFeaturesVerified()
       const override {
     auto features =
@@ -1602,6 +1606,17 @@ class AgentMixedIpSrv6EncapTest : public AgentSrv6EncapTest<PortType> {
   void setCmdLineFlagOverrides() const override {
     AgentSrv6EncapTest<PortType>::setCmdLineFlagOverrides();
     FLAGS_allow_mixed_ip_srv6_nhop_groups = true;
+  }
+
+  cfg::SwitchConfig initialConfig(
+      const AgentEnsemble& ensemble) const override {
+    auto cfg = AgentSrv6EncapTest<PortType>::initialConfig(ensemble);
+    auto asic = checkSameAndGetAsicForTesting(ensemble.getL3Asics());
+    // SID traps copy SRv6-encapped packets after loopback (outer DA = SID).
+    // Overlay-prefix trap copies IP-nexthop packets (DA unchanged).
+    utility::addTrapPacketAcl(
+        asic, &cfg, folly::CIDRNetwork{kMixedPrefix, kMixedPrefixLen});
+    return cfg;
   }
 
   void addMixedEncapRoute(
@@ -1741,7 +1756,9 @@ class AgentMixedIpSrv6EncapTest : public AgentSrv6EncapTest<PortType> {
     utility::SwSwitchPacketSnooper snooper(
         this->getSw(), "srv6MixedEncapSnooper");
     bool foundSrv6Packet = false;
-    for (int flow = 0; flow < 20 && !foundSrv6Packet; ++flow) {
+    bool foundIpPacket = false;
+    constexpr int kSnoopFlows = 20;
+    for (int flow = 0; flow < kSnoopFlows; ++flow) {
       this->sendMixedFlow(dstIp, 9000 + flow);
       auto frameRx = snooper.waitForPacket(1);
       ASSERT_TRUE(frameRx.has_value())
@@ -1750,28 +1767,30 @@ class AgentMixedIpSrv6EncapTest : public AgentSrv6EncapTest<PortType> {
       utility::EthFrame frame(cursor);
       bool sidMatch =
           this->verifyEncapOuterHeader(frame, sidList, false, 42, 64);
-      if (!sidMatch) {
-        continue;
+      if (sidMatch) {
+        foundSrv6Packet = true;
+      } else {
+        foundIpPacket = true;
       }
-      foundSrv6Packet = true;
     }
     EXPECT_TRUE(foundSrv6Packet) << "No SRv6-encap packet captured in 20 flows";
+    EXPECT_TRUE(foundIpPacket) << "No IP-nexthop packet captured in 20 flows";
   }
 };
 
 TYPED_TEST_SUITE(AgentMixedIpSrv6EncapTest, Srv6EncapPortTypes);
 
 TYPED_TEST(AgentMixedIpSrv6EncapTest, mixedSrv6AndIpEcmpGroup) {
-  const folly::CIDRNetwork kMixedPrefix{"2800:5::", 64};
-  const folly::IPAddress kMixedDst{"2800:5::1"};
+  const folly::CIDRNetwork kMixedPrefix{
+      this->kMixedPrefix, this->kMixedPrefixLen};
   const std::vector<folly::IPAddressV6> kSidList{this->kSid0};
   const std::string kMixedNhg = "mixedSrv6Nhg";
   auto setup = [this, kMixedPrefix, kSidList, kMixedNhg]() {
     this->setupHelper(true /*resolveNeighbors*/, false /*programRoutes*/);
     this->addMixedEncapRoute(kMixedPrefix, kSidList, kMixedNhg);
   };
-  auto verify = [this, kMixedDst, kSidList]() {
-    this->verifyMixedEcmpForwarding(kMixedDst, kSidList);
+  auto verify = [this, kSidList]() {
+    this->verifyMixedEcmpForwarding(this->kMixedDst, kSidList);
   };
   this->verifyAcrossWarmBoots(setup, verify);
 }
