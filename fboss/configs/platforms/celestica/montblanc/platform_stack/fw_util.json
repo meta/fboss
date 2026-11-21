@@ -223,7 +223,8 @@
             "programmer_type": "linux_spi:dev=",
             "programmer": "/run/devmap/flashes/MCB_SPI_MASTER_4_DEVICE_1",
             "chip": [
-              "W25X20"
+              "W25X20",
+              "W25Q20.V"
             ]
           }
         }
@@ -243,7 +244,8 @@
           "programmer_type": "linux_spi:dev=",
           "programmer": "/run/devmap/flashes/MCB_SPI_MASTER_4_DEVICE_1",
           "chip": [
-            "W25X20"
+            "W25X20",
+            "W25Q20.V"
           ]
         }
       },
@@ -253,7 +255,8 @@
           "programmer_type": "linux_spi:dev=",
           "programmer": "/run/devmap/flashes/MCB_SPI_MASTER_4_DEVICE_1",
           "chip": [
-            "W25X20"
+            "W25X20",
+            "W25Q20.V"
           ]
         }
       },
@@ -281,7 +284,8 @@
             "programmer_type": "linux_spi:dev=",
             "programmer": "/run/devmap/flashes/MCB_SPI_MASTER_5_DEVICE_1",
             "chip": [
-              "W25X20"
+              "W25X20",
+              "W25Q20.V"
             ]
           }
         }
@@ -301,7 +305,8 @@
           "programmer_type": "linux_spi:dev=",
           "programmer": "/run/devmap/flashes/MCB_SPI_MASTER_5_DEVICE_1",
           "chip": [
-            "W25X20"
+            "W25X20",
+            "W25Q20.V"
           ]
         }
       },
@@ -311,7 +316,8 @@
           "programmer_type": "linux_spi:dev=",
           "programmer": "/run/devmap/flashes/MCB_SPI_MASTER_5_DEVICE_1",
           "chip": [
-            "W25X20"
+            "W25X20",
+            "W25Q20.V"
           ]
         }
       },
@@ -339,7 +345,8 @@
             "programmer_type": "linux_spi:dev=",
             "programmer": "/run/devmap/flashes/MCB_SPI_MASTER_7_DEVICE_1",
             "chip": [
-              "W25X20"
+              "W25X20",
+              "W25Q20.V"
             ]
           }
         }
@@ -359,7 +366,8 @@
           "programmer_type": "linux_spi:dev=",
           "programmer": "/run/devmap/flashes/MCB_SPI_MASTER_7_DEVICE_1",
           "chip": [
-            "W25X20"
+            "W25X20",
+            "W25Q20.V"
           ]
         }
       },
@@ -369,7 +377,8 @@
           "programmer_type": "linux_spi:dev=",
           "programmer": "/run/devmap/flashes/MCB_SPI_MASTER_7_DEVICE_1",
           "chip": [
-            "W25X20"
+            "W25X20",
+            "W25Q20.V"
           ]
         }
       },
