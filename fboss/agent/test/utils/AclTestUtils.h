@@ -10,6 +10,9 @@
 
 #pragma once
 
+#include <chrono>
+#include <optional>
+
 #include "fboss/agent/HwSwitch.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
 #include "fboss/agent/hw/switch_asics/HwAsic.h"
@@ -184,11 +187,29 @@ uint64_t getAclInOutPackets(
     const std::string& statName,
     bool bytes = false);
 
+// nullopt if no HwSwitch has reported this counter yet, as opposed to a
+// reported value of 0.
+std::optional<uint64_t> getAclInOutPacketsIf(
+    const SwSwitch* sw,
+    const std::string& statName,
+    bool bytes = false);
+
+// Waits for the counter to appear in SwSwitch's async HwSwitchStats. Use for
+// baseline snapshots taken outside WITH_RETRIES: right after a warm boot the
+// counter is absent until the HwSwitch re-programs its ACLs, and
+// getAclInOutPackets() reports absent as 0 while the hardware counter has kept
+// its pre-warmboot value.
+uint64_t waitForAndGetAclInOutPackets(
+    const SwSwitch* sw,
+    const std::string& statName,
+    bool bytes = false,
+    int numRetries = 120,
+    std::chrono::milliseconds retryInterval = std::chrono::milliseconds(1000));
+
 std::map<std::string, uint64_t> getAclInOutPacketsMap(
     const SwSwitch* sw,
     const std::vector<std::string>& statNames,
     bool bytes = false);
-
 uint64_t getAclInOutPackets(
     const HwSwitch* hw,
     const std::string& statName,
