@@ -18,6 +18,7 @@
 
 namespace facebook::fboss {
 
+class Git;
 class PlatformMapping;
 
 /**
@@ -377,6 +378,12 @@ class Fboss2IntegrationTest : public ::testing::Test {
   static folly::dynamic getNdpConfig(
       const folly::dynamic& runningConfig,
       int intfID);
+
+  /**
+   * The git repository (/etc/coop) in which `config session commit` versions
+   * the configs, e.g. to check which commit a test's changes landed in.
+   */
+  const Git& getGit() const;
 
   /**
    * Discard any pending config session by deleting session files.
