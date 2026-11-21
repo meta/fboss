@@ -13,10 +13,11 @@
 #include <iomanip>
 
 #include "fboss/agent/AsyncLoggerBase.h"
-#include "fboss/agent/SysError.h"
 
 #include <fb303/ServiceData.h>
 #include <folly/FileUtil.h>
+#include <folly/String.h>
+#include <folly/logging/xlog.h>
 #include <gflags/gflags.h>
 
 DEFINE_bool(
@@ -82,9 +83,12 @@ void AsyncLoggerBase::workerThread() {
         return folly::writeFull(lockedFile.fd(), writeBuffer, currSize);
       });
 
+      // Drop the logs rather than throw: an exception here escapes the
+      // thread and terminates the process (e.g. on a full disk).
       if (bytesWritten < 0) {
-        throw SysError(
-            errno, "error writing ", currSize, " bytes to log file.");
+        XLOG_EVERY_MS(ERR, 10000)
+            << "[Async Logger] Failed to write " << currSize
+            << " bytes to log file: " << folly::errnoStr(errno);
       }
     }
 
@@ -144,8 +148,12 @@ void AsyncLoggerBase::appendLog(const char* logRecord, size_t logSize) {
       return folly::writeFull(lockedFile.fd(), logRecord, logSize);
     });
 
+    // Drop the logs rather than throw: an exception here escapes the
+    // thread and terminates the process (e.g. on a full disk).
     if (bytesWritten < 0) {
-      throw SysError(errno, "error writing ", logSize, " bytes to log file.");
+      XLOG_EVERY_MS(ERR, 10000)
+          << "[Async Logger] Failed to write " << logSize
+          << " bytes to log file: " << folly::errnoStr(errno);
     }
   };
 

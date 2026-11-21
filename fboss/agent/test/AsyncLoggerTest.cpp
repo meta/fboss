@@ -83,6 +83,27 @@ TEST(AsyncLoggerFallbackTest, FallbackRefusesSymlinkTarget) {
   ::unlink(victimPath.c_str());
 }
 
+TEST(AsyncLoggerWriteFailureTest, WriteFailureDoesNotTerminate) {
+  // Every write to /dev/full fails with ENOSPC, like a full disk. A failed
+  // write must drop the logs, not take down the process.
+  if (::access("/dev/full", W_OK) != 0) {
+    GTEST_SKIP() << "/dev/full not available";
+  }
+  AsyncLogger logger("/dev/full", 100, AsyncLogger::BCM_CINTER);
+  logger.startFlushThread();
+
+  std::string str = "TestString";
+  logger.appendLog(str.c_str(), str.size());
+  logger.forceFlush();
+  EXPECT_GE(logger.getFlushCount(), 1);
+
+  // Larger than the buffer, so it is written directly on this thread.
+  std::string largeLog(AsyncLogger::kBufferSize + 1000, 'X');
+  logger.appendLog(largeLog.c_str(), largeLog.size());
+
+  logger.stopFlushThread();
+}
+
 // Skip this test in tsan mode because of the slow down introduced by
 // thread sanitizer. It makes the logger flush once in 3-4x log timeout.
 #ifndef FOLLY_SANITIZE_THREAD
