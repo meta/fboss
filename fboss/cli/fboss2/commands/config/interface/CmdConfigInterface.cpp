@@ -89,6 +89,12 @@ const std::unordered_set<std::string> kValuelessAttributes = {
     "no-shutdown",
 };
 
+const std::unordered_set<std::string> kL3Attributes = {
+    "ip-address",
+    "ipv6-address",
+    "mtu",
+    "name"};
+
 constexpr auto kValidConfigAttrs =
     "description, name, mtu, ip-address, ipv6-address, profile, loopback-mode, "
     "flow-control-rx, flow-control-tx, lldp-expected-*, type, shutdown, "
@@ -105,6 +111,53 @@ std::optional<std::string> findProfileValue(
     }
   }
   return std::nullopt;
+}
+
+// Runs before any write, so a refused command changes nothing.
+void checkL3Targets(
+    const utils::InterfaceList& interfaces,
+    const std::vector<std::pair<std::string, std::string>>& attributes) {
+  std::string l3Attr;
+  bool routedPort = false;
+  for (const auto& [attr, value] : attributes) {
+    if (l3Attr.empty() && kL3Attributes.count(attr) > 0) {
+      l3Attr = attr;
+    }
+    if (attr == "type") {
+      std::string valueLower = value;
+      std::transform(
+          valueLower.begin(), valueLower.end(), valueLower.begin(), ::tolower);
+      if (valueLower == "routed-port") {
+        routedPort = true;
+      }
+    }
+  }
+  if (l3Attr.empty()) {
+    return;
+  }
+  // The port lookup runs before the type step. Without this check, the
+  // attribute goes to the old interface of the port.
+  if (routedPort) {
+    throw std::invalid_argument(
+        fmt::format(
+            "Cannot combine 'type routed-port' with '{}' in one command.",
+            l3Attr));
+  }
+  // Skip a name that is not a port yet, such as a port that `profile` creates.
+  std::vector<std::string> noL3Interface;
+  for (const utils::Intf& intf : interfaces) {
+    if (intf.getPort() && !intf.getInterface()) {
+      noL3Interface.push_back(intf.name());
+    }
+  }
+  if (!noL3Interface.empty()) {
+    throw std::invalid_argument(
+        fmt::format(
+            "No L3 interface is mapped to port(s): {}. "
+            "Set '{}' on the L3 interface, by its interface ID.",
+            folly::join(", ", noL3Interface),
+            l3Attr));
+  }
 }
 
 } // namespace
@@ -675,6 +728,8 @@ CmdConfigInterfaceTraits::RetType CmdConfigInterface::queryClient(
   if (interfaces.empty()) {
     throw std::invalid_argument("No interface name provided");
   }
+
+  checkL3Targets(interfaces, attributes);
 
   std::vector<std::string> results;
   bool changed = false;
