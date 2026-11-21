@@ -222,7 +222,8 @@ void SwAgentInitializer::stopAgent(bool setupWarmboot, bool gracefulExit) {
 }
 
 void SwAgentInitializer::waitForServerStopped() {
-  if (serverStarted_) {
+  // serve() cannot return while its own thread waits here.
+  if (serverStarted_ && !eventBase_->inRunningEventBaseThread()) {
     std::unique_lock<std::mutex> lock(serverStopMutex_);
     serverStopCV_.wait_for(
         lock, std::chrono::seconds(FLAGS_sw_thrift_server_stop_timeout_s), [&] {
