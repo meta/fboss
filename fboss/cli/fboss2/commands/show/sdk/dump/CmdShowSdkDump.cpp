@@ -15,25 +15,36 @@
 #include <folly/FileUtil.h>
 #include <folly/testing/TestUtil.h>
 #include <fstream>
+#include <utility>
 #include "fboss/cli/fboss2/utils/CmdClientUtils.h"
+#include "fboss/qsfp_service/SdkDumpPath.h"
 
 namespace facebook::fboss {
+
+CmdShowQsfpSdkDump::CmdShowQsfpSdkDump() : CmdShowQsfpSdkDump(kSdkDumpDir) {}
+
+CmdShowQsfpSdkDump::CmdShowQsfpSdkDump(folly::fs::path sdkDumpDir)
+    : sdkDumpDir_(std::move(sdkDumpDir)) {}
+
+std::string CmdShowQsfpSdkDump::prepareSdkDumpFile() {
+  if (!tempSdkFile) {
+    // The service confines SDK dumps to kSdkDumpDir. Create the temporary file
+    // there so the CLI reads the same file that the service writes, but send
+    // only the basename over Thrift to preserve the server's path boundary.
+    tempSdkFile = std::make_unique<folly::test::TemporaryFile>(
+        folly::StringPiece() /* namePrefix */,
+        sdkDumpDir_,
+        folly::test::TemporaryFile::Scope::UNLINK_ON_DESTRUCTION /* scope */);
+  }
+  return tempSdkFile->path().filename().string();
+}
 
 CmdShowQsfpSdkDump::RetType CmdShowQsfpSdkDump::queryClient(
     const HostInfo& hostInfo) {
   auto client =
       utils::createClient<facebook::fboss::QsfpServiceAsyncClient>(hostInfo);
 
-  if (!tempSdkFile.get()) {
-    // Creating exception safe unique file which will get removed on exiting
-    // scope for unique pointer
-    tempSdkFile = std::make_unique<folly::test::TemporaryFile>(
-        folly::StringPiece() /* namePrefix */,
-        folly::fs::path() /* dir */,
-        folly::test::TemporaryFile::Scope::UNLINK_ON_DESTRUCTION /* scope */);
-  }
-
-  bool rc = client->sync_getSdkState(tempSdkFile->path().string());
+  bool rc = client->sync_getSdkState(prepareSdkDumpFile());
   return rc;
 }
 
