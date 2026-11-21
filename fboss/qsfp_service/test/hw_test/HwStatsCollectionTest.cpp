@@ -95,12 +95,12 @@ template <typename IOStatsType>
 std::string ioStatsString(const IOStatsType& stats) {
   return fmt::format(
       "numReadAttempted = {}, numReadFailed = {}, numWriteAttempted = {}, numWriteFailed = {}, readDownTime = {}, writeDownTime = {}",
-      stats.get_numReadAttempted(),
-      stats.get_numReadFailed(),
-      stats.get_numWriteAttempted(),
-      stats.get_numWriteFailed(),
-      stats.get_readDownTime(),
-      stats.get_writeDownTime());
+      folly::copy(stats.numReadAttempted().value()),
+      folly::copy(stats.numReadFailed().value()),
+      folly::copy(stats.numWriteAttempted().value()),
+      folly::copy(stats.numWriteFailed().value()),
+      folly::copy(stats.readDownTime().value()),
+      folly::copy(stats.writeDownTime().value()));
 }
 } // namespace
 
