@@ -1,0 +1,29 @@
+{
+  "i2cBusIgnore": [],
+  "i2cDumpDevices": [
+    "/run/devmap/cplds/SCM_CPLD",
+    "/run/devmap/cplds/MCB_CPLD",
+    "/run/devmap/cplds/OE_CPLD",
+    "/run/devmap/cplds/SYS_CPLD"
+  ],
+  "scPowerGood": {
+    "sysfsAttributes": [
+      {
+        "name": "SMB_POWERGOOD",
+        "path": "/run/devmap/cplds/MCB_CPLD/smb_pg"
+      },
+      {
+        "name": "HS_48V_POWERGOOD",
+        "path": "/run/devmap/cplds/MCB_CPLD/hs_48v_pg"
+      },
+      {
+        "name": "OE_POWERGOOD",
+        "path": "/run/devmap/cplds/OE_CPLD/oe_pg"
+      },
+      {
+        "name": "ASIC_GOODSTATE",
+        "path": "/run/devmap/cplds/OE_CPLD/th6_good"
+      }
+    ]
+  }
+}
