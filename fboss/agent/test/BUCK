@@ -51,6 +51,7 @@ cpp_unittest(
         "LabelForwardingTests.cpp",
         "LinkConnectivityProcessorTest.cpp",
         "LldpManagerTest.cpp",
+        "LldpPacingTest.cpp",
         "LookupClassRouteUpdaterTests.cpp",
         "LookupClassUpdaterTests.cpp",
         "MKAServiceManagerTest.cpp",

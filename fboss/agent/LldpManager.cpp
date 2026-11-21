@@ -16,6 +16,7 @@
 #include <folly/io/Cursor.h>
 #include <folly/logging/xlog.h>
 #include <unistd.h>
+#include <algorithm>
 #include "fboss/agent/AgentFeatures.h"
 #include "fboss/agent/HwAsicTable.h"
 #include "fboss/agent/RxPacket.h"
@@ -36,6 +37,22 @@ using folly::io::RWPrivateCursor;
 using std::shared_ptr;
 
 namespace {
+
+bool isLldpTxPort(const facebook::fboss::Port& port) {
+  switch (port.getPortType()) {
+    case facebook::fboss::cfg::PortType::INTERFACE_PORT:
+    case facebook::fboss::cfg::PortType::MANAGEMENT_PORT:
+    case facebook::fboss::cfg::PortType::HYPER_PORT_MEMBER:
+      return port.isPortUp();
+    case facebook::fboss::cfg::PortType::FABRIC_PORT:
+    case facebook::fboss::cfg::PortType::CPU_PORT:
+    case facebook::fboss::cfg::PortType::RECYCLE_PORT:
+    case facebook::fboss::cfg::PortType::EVENTOR_PORT:
+    case facebook::fboss::cfg::PortType::HYPER_PORT:
+      break;
+  }
+  return false;
+}
 
 /*
  * Checks if the tag is present in the LLDP config, and if the received value
@@ -87,8 +104,11 @@ void LldpManager::start() {
 }
 
 void LldpManager::stop() {
-  sw_->getBackgroundEvb()->runInFbossEventBaseThreadAndWait(
-      [this] { this->cancelTimeout(); });
+  sw_->getBackgroundEvb()->runInFbossEventBaseThreadAndWait([this] {
+    this->cancelTimeout();
+    txPorts_.clear();
+    nextTxPort_ = 0;
+  });
 }
 
 void LldpManager::handlePacket(
@@ -194,13 +214,61 @@ void LldpManager::handlePacket(
 }
 
 void LldpManager::timeoutExpired() noexcept {
+  auto delay = intervalMsecs_;
   try {
-    sendLldpOnAllPorts();
+    delay = sendNextLldpSlot();
   } catch (const std::exception& ex) {
-    XLOG(ERR) << "Failed to send LLDP on all ports. Error:"
-              << folly::exceptionStr(ex);
+    XLOG(ERR) << "Failed to send LLDP. Error:" << folly::exceptionStr(ex);
   }
-  scheduleTimeout(intervalMsecs_);
+  scheduleTimeout(delay);
+}
+
+// Some receivers drop the tail of a long burst of LLDP frames from one
+// neighbour, so spread the sends over the interval.
+std::chrono::milliseconds LldpManager::sendNextLldpSlot() {
+  if (nextTxPort_ >= txPorts_.size()) {
+    std::vector<PortID> ports;
+    std::shared_ptr<SwitchState> state = sw_->getState();
+    for (const auto& portMap : std::as_const(*state->getPorts())) {
+      for (const auto& [_, port] : std::as_const(*portMap.second)) {
+        if (isLldpTxPort(*port)) {
+          ports.push_back(port->getID());
+        }
+      }
+    }
+    txPorts_ = std::move(ports);
+    nextTxPort_ = 0;
+    if (txPorts_.empty()) {
+      return intervalMsecs_;
+    }
+  }
+
+  const size_t numPorts = txPorts_.size();
+  const size_t perSlot = FLAGS_lldp_tx_ports_per_slot > 0
+      ? static_cast<size_t>(FLAGS_lldp_tx_ports_per_slot)
+      : numPorts;
+  const size_t numSlots = (numPorts + perSlot - 1) / perSlot;
+  const size_t slot = nextTxPort_ / perSlot;
+  const size_t end = std::min(nextTxPort_ + perSlot, numPorts);
+  try {
+    // Ports may have gone down or been removed since the cycle started.
+    std::shared_ptr<SwitchState> state = sw_->getState();
+    for (; nextTxPort_ < end; ++nextTxPort_) {
+      auto port = state->getPorts()->getNodeIf(txPorts_[nextTxPort_]);
+      if (port && isLldpTxPort(*port)) {
+        sendLldpInfo(port);
+      }
+    }
+  } catch (const std::exception& ex) {
+    XLOG_EVERY_MS(ERR, LLDP_INTERVAL)
+        << "Failed to send LLDP on port " << txPorts_[nextTxPort_]
+        << ". Error:" << folly::exceptionStr(ex);
+    nextTxPort_ = end;
+  }
+
+  const auto interval = static_cast<size_t>(intervalMsecs_.count());
+  return std::chrono::milliseconds(
+      interval * (slot + 1) / numSlots - interval * slot / numSlots);
 }
 
 void LldpManager::sendLldpOnAllPorts() {
@@ -208,21 +276,7 @@ void LldpManager::sendLldpOnAllPorts() {
   std::shared_ptr<SwitchState> state = sw_->getState();
   for (const auto& portMap : std::as_const(*state->getPorts())) {
     for (const auto& [_, port] : std::as_const(*portMap.second)) {
-      bool sendLldp = false;
-      switch (port->getPortType()) {
-        case cfg::PortType::INTERFACE_PORT:
-        case cfg::PortType::MANAGEMENT_PORT:
-        case cfg::PortType::HYPER_PORT_MEMBER:
-          sendLldp = true;
-          break;
-        case cfg::PortType::FABRIC_PORT:
-        case cfg::PortType::CPU_PORT:
-        case cfg::PortType::RECYCLE_PORT:
-        case cfg::PortType::EVENTOR_PORT:
-        case cfg::PortType::HYPER_PORT:
-          break;
-      }
-      if (sendLldp && port->isPortUp()) {
+      if (isLldpTxPort(*port)) {
         sendLldpInfo(port);
       } else {
         XLOG(DBG5) << "Skipping LLDP send on port: " << port->getID();

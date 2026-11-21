@@ -149,6 +149,7 @@ DECLARE_bool(enable_fabric_link_monitoring);
 DECLARE_bool(fabric_ports_uniform_local_offset);
 DECLARE_bool(enable_cpu_latency_monitoring);
 DECLARE_bool(lldp_port_drain_state);
+DECLARE_int32(lldp_tx_ports_per_slot);
 DECLARE_bool(enable_agent_drain);
 DECLARE_bool(enable_state_delta_logging);
 DECLARE_bool(strip_vlan_for_pipeline_bypass);
