@@ -106,6 +106,8 @@ def _compute_dependency_checksum(root_dir: Path) -> str:
     if not dockerfile.exists():
         raise RuntimeError(f"Dockerfile not found: {dockerfile}")
     hasher.update(dockerfile.read_bytes())
+    # New COPY input controlling the boxed plugin's runtime sandbox.
+    hasher.update((dockerfile.parent / "configure_kiwi_boxed.py").read_bytes())
 
     # Hash entire build/ directory (excluding ephemeral files)
     build_dir = _find_build_dir(root_dir)

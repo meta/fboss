@@ -1,6 +1,7 @@
 #!/bin/bash
 
-# Script that builds a PXE and USB bootable ISO an image using kiwi-ng-3.
+# Script that builds PXE/USB/ONIE images exclusively inside a KVM build box.
+set -e -o pipefail
 
 # For hardlinking component artifacts into the kiwi description tree we need
 # both source and destination to live on the same filesystem. The kiwi
@@ -19,6 +20,8 @@ LOG_DIR="${WSROOT}/logs"
 # Source common functions
 # shellcheck disable=SC1091
 source "${WSROOT}/lib/functions.sh"
+# shellcheck disable=SC1091
+source "${WSROOT}/lib/boxbuild.sh"
 
 # Save all arguments for later use
 ORIGINAL_ARGS=("$0" "$@")
@@ -28,12 +31,31 @@ DESCRIPTION_DIR="${WSROOT}/templates/centos-09.0"
 TARGET_DIR="${WSROOT}/output"
 BUILD_PXE=""
 BUILD_ONIE=""
-KIWI_DEBUG=""
+KIWI_DEBUG=()
 AFTER_PKGS_INSTALL_FILE=""
 AFTER_PKGS_EXECUTE_FILE=""
 
 # User configurable variables
 DEPS_DIR="" # Component artifacts directory
+
+# Register before any generated writes, including validation failures.
+PRIVATE_DESCRIPTION=""
+BOX_CACHE=""
+PXE_PID=""
+ONIE_PID=""
+# Set here for EXIT cleanup; consumed by sourced boxbuild helpers.
+# shellcheck disable=SC2034
+BOX_PROXY_PROFILE=""
+cleanup_rc=""
+pid=""
+# Stop running builds before removing their inputs. The container's teardown
+# reaps their QEMU and virtiofsd children.
+trap 'cleanup_rc=$?; set +e; for pid in $PXE_PID $ONIE_PID; do kill "$pid" 2>/dev/null; done; wait; cleanup_box_proxy_profile; rm -rf -- "$PRIVATE_DESCRIPTION" "$BOX_CACHE"; exit "$cleanup_rc"' EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 131' QUIT
+trap 'exit 141' PIPE
+trap 'exit 143' TERM
 
 mkdir -p "${LOG_DIR}"
 LOG_FILE="${LOG_DIR}/build_image_in_container.log"
@@ -52,39 +74,6 @@ help() {
   echo "  -d|--debug                  Enable kiwi-ng debug"
   echo "  -h|--help                   Print this help message"
   echo ""
-}
-
-# Once this is finalized, it may be better to use a Dockerfile to build the image
-update_docker() {
-  dnf install -y \
-    epel-release \
-    kiwi \
-    policycoreutils \
-    python3-kiwi \
-    dracut-kiwi-live \
-    dracut-kiwi-overlay \
-    dnf-plugin-versionlock \
-    dracut-kiwi-oem-dump \
-    kiwi-systemdeps-image-validation \
-    syslinux \
-    btrfs-progs \
-    mtools \
-    glibc-static
-
-  # The python3-kiwi RPM installs for the system Python 3.9, but python3 may
-  # resolve to a newer version (e.g. 3.12) via update-alternatives. The
-  # kiwi-ng-3 shebang uses "python3 -s" which excludes /usr/local/lib paths.
-  # Install kiwi to the system site-packages visible under -s.
-  #
-  # Pinned: this install shadows the RPM above, so it is the kiwi that actually
-  # runs, and the container is rebuilt from scratch on every build -- unpinned,
-  # each run silently picks up whatever PyPI serves that day. 11.0.1 is the last
-  # version known to produce an image; a later one fails partitioning with
-  # "sgdisk: Could not change partition 1's type code to EF02!". Bump
-  # deliberately, after a green build, rather than by drift.
-  KIWI_VERSION=11.0.1
-  KIWI_SITE_PKG=$(python3 -s -c "import site; print(site.getsitepackages()[0])")
-  python3 -m pip install "kiwi==${KIWI_VERSION}" --target "${KIWI_SITE_PKG}"
 }
 
 # Remove shim's fallback bootloader from the install ISO's ESP: it registers an
@@ -157,8 +146,9 @@ build_zstd() {
     git clone https://github.com/facebook/zstd.git ${TARGET_DIR}/zstd
     pushd ${TARGET_DIR}/zstd >/dev/null
     git checkout release
-    make -C programs zstd-frugal LDFLAGS="-static"
-    strip programs/zstd-frugal
+    # Strip at link time: the image's strip is llvm-strip, which rejects this
+    # static binary, and GNU binutils is deliberately not installed.
+    make -C programs zstd-frugal LDFLAGS="-static -s"
     popd >/dev/null
   fi
 }
@@ -240,7 +230,7 @@ while [[ $# -gt 0 ]]; do
     ;;
 
   -d | --debug)
-    KIWI_DEBUG=" --debug "
+    KIWI_DEBUG=(--debug)
     shift 1
     ;;
 
@@ -290,13 +280,29 @@ if [ -n "${DEPS_DIR}" ] && [ ! -d "${DEPS_DIR}" ]; then
   exit 1
 fi
 
-# Update the docker image
-dprint "Updating docker image..."
-update_docker |& tee -a "${LOG_FILE}"
+# Tooling is installed and source-checked at Docker image creation, never here.
+export PATH="/usr/libexec:${PATH}"
+validate_container_kvm || {
+  dprint "ERROR: usable KVM is required"
+  exit 1
+}
+# The workspace mount is read-only. Keep generated overlays and proxy files in
+# the container, not in source/staging or the output mount.
+# Component hardlinks across mounts fall back to copies below.
+PRIVATE_DESCRIPTION=$(mktemp -d /tmp/fboss-description-XXXXXXXX)
+cp -a "${DESCRIPTION_DIR}/." "${PRIVATE_DESCRIPTION}/"
+DESCRIPTION_DIR="${PRIVATE_DESCRIPTION}"
+prepare_box_proxy_profile
 
 # Create the output directory (in case it doesn't exist)
 mkdir -p "${TARGET_DIR}"
 chmod 777 "${TARGET_DIR}"
+
+# Per-build box caches (each also holds its VM's snapshot overlay), on the
+# output mount rather than in the container's writable layer. The box itself
+# is downloaded once into the persistent cache mounted by the CLI.
+BOX_CACHE=$(mktemp -d "${TARGET_DIR}/.box-XXXXXXXX")
+stage_box_caches /var/cache/kiwi-boxes "${BOX_CACHE}/pxe" "${BOX_CACHE}/onie"
 
 rm -f "${DESCRIPTION_DIR}/root.tar.gz" # Remove any existing tar file
 
@@ -413,24 +419,25 @@ fi
 PXE_RC=0
 ONIE_RC=0
 
+# Build both concurrently, each in its own VM, and record each status rather
+# than exiting on the first failure so the diagnostics below still run. Not
+# `( ... ) || RC=$?`: that would disable errexit inside the subshell.
+set +e
+
 if [ -n "${BUILD_PXE}" ]; then
   dprint "Generating PXE and USB installer, this will take few minutes..."
   rm -rf ${TARGET_DIR}/btrfs
   (
     set -e -o pipefail
-    kiwi-ng-3 \
-      --shared-cache-dir=/var/cache/kiwi-btrfs \
+    run_kiwi_boxbuild "PXE/USB Installer" "${TARGET_DIR}/btrfs" "${BOX_CACHE}/pxe" \
       --profile FBOSS \
       --type oem \
-      ${KIWI_DEBUG} system build \
-      --description ${DESCRIPTION_DIR} \
-      --target-dir ${TARGET_DIR}/btrfs |&
-      stdbuf -oL tee -a ${LOG_FILE} | stdbuf -oL awk '{print "PXE/USB Installer| " $0}'
-    INSTALL_ISO=${TARGET_DIR}/btrfs/FBOSS-Distro-Image.x86_64-1.0.install.iso
-    if [ -f "${INSTALL_ISO}" ]; then
-      strip_shim_fallback_from_iso "${INSTALL_ISO}"
-    fi
-    mv ${TARGET_DIR}/btrfs/FBOSS-Distro-Image.x86_64-1.0.install.* ${TARGET_DIR}
+      "${KIWI_DEBUG[@]}"
+    INSTALL_ISO=${TARGET_DIR}/FBOSS-Distro-Image.x86_64-1.0.install.iso
+    move_box_result "${TARGET_DIR}/btrfs" '*.install.iso' "${INSTALL_ISO}"
+    strip_shim_fallback_from_iso "${INSTALL_ISO}"
+    move_box_result "${TARGET_DIR}/btrfs" '*.install.tar' \
+      "${TARGET_DIR}/FBOSS-Distro-Image.x86_64-1.0.install.tar"
   ) &
   PXE_PID=$!
 fi
@@ -440,14 +447,12 @@ if [ -n "${BUILD_ONIE}" ]; then
   rm -rf ${TARGET_DIR}/onie
   (
     set -e -o pipefail
-    kiwi-ng-3 \
-      --shared-cache-dir=/var/cache/kiwi-onie \
+    run_kiwi_boxbuild "ONIE installer" "${TARGET_DIR}/onie" "${BOX_CACHE}/onie" \
       --profile FBOSS \
       --type tbz \
-      ${KIWI_DEBUG} system build \
-      --description ${DESCRIPTION_DIR} \
-      --target-dir ${TARGET_DIR}/onie |&
-      stdbuf -oL tee -a ${LOG_FILE} | stdbuf -oL awk '{print "ONIE installer| " $0}'
+      "${KIWI_DEBUG[@]}"
+    move_box_result "${TARGET_DIR}/onie" '*.tar.xz' \
+      "${TARGET_DIR}/onie/FBOSS-Distro-Image.x86_64-1.0.tar.xz"
 
     # Repack the rootfs so really long filenames are not truncated under Busybox
     dprint "Repacking rootfs with zstd..."
@@ -465,15 +470,18 @@ if [ -n "${BUILD_ONIE}" ]; then
   ONIE_PID=$!
 fi
 
-if [ -n "${BUILD_PXE}" ]; then
-  wait ${PXE_PID}
+if [ -n "${PXE_PID}" ]; then
+  wait "${PXE_PID}"
   PXE_RC=$?
 fi
-
-if [ -n "${BUILD_ONIE}" ]; then
-  wait ${ONIE_PID}
+if [ -n "${ONIE_PID}" ]; then
+  wait "${ONIE_PID}"
   ONIE_RC=$?
 fi
+PXE_PID=""
+ONIE_PID=""
+
+set -e
 
 if [ ${PXE_RC} -ne 0 ]; then
   dprint "ERROR: PXE/USB image build failed"

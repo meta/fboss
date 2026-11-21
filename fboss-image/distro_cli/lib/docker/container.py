@@ -26,6 +26,9 @@ def run_container(  # noqa: PLR0913
     detach: bool = False,
     working_dir: str | None = None,
     name: str | None = None,
+    devices: dict[Path, Path] | None = None,
+    cap_add: list[str] | None = None,
+    shm_size: str | None = None,
 ) -> int:
     """Run a command in a Docker container.
 
@@ -41,6 +44,9 @@ def run_container(  # noqa: PLR0913
         ephemeral: Remove container after it exits (--rm, default: True)
         working_dir: Working directory inside container
         name: Name for the container
+        devices: Extra host devices to pass through
+        cap_add: Capabilities to add; defaults to the runtime's capability set
+        shm_size: Container shared memory size
 
     Returns:
         Exit code from the container
@@ -75,11 +81,22 @@ def run_container(  # noqa: PLR0913
     if privileged:
         cmd.append("--privileged")
 
+    if cap_add:
+        for capability in cap_add:
+            cmd.extend(["--cap-add", capability])
+
     if name:
         cmd.extend(["--name", name])
 
     if working_dir:
         cmd.extend(["-w", working_dir])
+
+    if shm_size:
+        cmd.extend(["--shm-size", shm_size])
+
+    if devices:
+        for host_device, container_device in devices.items():
+            cmd.extend(["--device", f"{host_device}:{container_device}"])
 
     if volumes:
         for host_path, container_path in volumes.items():
