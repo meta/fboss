@@ -89,13 +89,13 @@
               "busName": "INCOMING@1",
               "address": "0x4c",
               "kernelDeviceName": "tmp75",
-              "pmUnitScopedName": "COME_INLET_TSENSOR"
+              "pmUnitScopedName": "COME_OUTLET_TSENSOR"
             },
             {
               "busName": "INCOMING@1",
               "address": "0x4a",
               "kernelDeviceName": "tmp75",
-              "pmUnitScopedName": "COME_OUTLET_TSENSOR"
+              "pmUnitScopedName": "COME_INLET_TSENSOR"
             },
             {
               "busName": "INCOMING@1",
@@ -139,13 +139,13 @@
               "busName": "INCOMING@1",
               "address": "0x4c",
               "kernelDeviceName": "tmp75",
-              "pmUnitScopedName": "COME_INLET_TSENSOR"
+              "pmUnitScopedName": "COME_OUTLET_TSENSOR"
             },
             {
               "busName": "INCOMING@1",
               "address": "0x4a",
               "kernelDeviceName": "tmp75",
-              "pmUnitScopedName": "COME_OUTLET_TSENSOR"
+              "pmUnitScopedName": "COME_INLET_TSENSOR"
             },
             {
               "busName": "INCOMING@1",
@@ -700,9 +700,16 @@
         {
           "busName": "MCB_IOB_I2C_MASTER_14",
           "address": "0x33",
-          "kernelDeviceName": "icecube_fancpld",
+          "kernelDeviceName": "fbfancpld",
           "pmUnitScopedName": "MCB_FAN_CPLD",
-          "isWatchdog": true
+          "isWatchdog": true,
+          "fanCpldConfig": {
+            "numFans": 4,
+            "pwmMax": 64,
+            "speedMultiplier": 300,
+            "hasRearTach": true,
+            "hasLeds": false
+          }
         },
         {
           "busName": "MCB_IOB_I2C_MASTER_14",
@@ -937,13 +944,13 @@
           "busName": "INCOMING@1",
           "address": "0x4c",
           "kernelDeviceName": "tmp75",
-          "pmUnitScopedName": "COME_INLET_TSENSOR"
+          "pmUnitScopedName": "COME_OUTLET_TSENSOR"
         },
         {
           "busName": "INCOMING@1",
           "address": "0x4a",
           "kernelDeviceName": "tmp75",
-          "pmUnitScopedName": "COME_OUTLET_TSENSOR"
+          "pmUnitScopedName": "COME_INLET_TSENSOR"
         },
         {
           "busName": "INCOMING@1",
