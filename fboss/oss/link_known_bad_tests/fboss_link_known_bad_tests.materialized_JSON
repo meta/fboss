@@ -13721,9 +13721,6 @@
           "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_2x800G.*$"
         },
         {
-          "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_400G.*$"
-        },
-        {
           "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_LITE_2x400G.*$"
         },
         {
@@ -13809,9 +13806,6 @@
         },
         {
           "test_name_regex": "Prbs.*TCVR_L.*FR4_2x800G.*$"
-        },
-        {
-          "test_name_regex": "Prbs.*TCVR_L.*FR4_400G.*$"
         },
         {
           "test_name_regex": "Prbs.*TCVR_L.*FR4_LITE_2x400G.*$"
@@ -13954,9 +13948,6 @@
           "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_2x800G.*$"
         },
         {
-          "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_400G.*$"
-        },
-        {
           "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_LITE_2x400G.*$"
         },
         {
@@ -14042,9 +14033,6 @@
         },
         {
           "test_name_regex": "Prbs.*TCVR_L.*FR4_2x800G.*$"
-        },
-        {
-          "test_name_regex": "Prbs.*TCVR_L.*FR4_400G.*$"
         },
         {
           "test_name_regex": "Prbs.*TCVR_L.*FR4_LITE_2x400G.*$"
@@ -14187,9 +14175,6 @@
           "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_2x800G.*$"
         },
         {
-          "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_400G.*$"
-        },
-        {
           "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_LITE_2x400G.*$"
         },
         {
@@ -14275,9 +14260,6 @@
         },
         {
           "test_name_regex": "Prbs.*TCVR_L.*FR4_2x800G.*$"
-        },
-        {
-          "test_name_regex": "Prbs.*TCVR_L.*FR4_400G.*$"
         },
         {
           "test_name_regex": "Prbs.*TCVR_L.*FR4_LITE_2x400G.*$"
@@ -14420,9 +14402,6 @@
           "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_2x800G.*$"
         },
         {
-          "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_400G.*$"
-        },
-        {
           "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_LITE_2x400G.*$"
         },
         {
@@ -14508,9 +14487,6 @@
         },
         {
           "test_name_regex": "Prbs.*TCVR_L.*FR4_2x800G.*$"
-        },
-        {
-          "test_name_regex": "Prbs.*TCVR_L.*FR4_400G.*$"
         },
         {
           "test_name_regex": "Prbs.*TCVR_L.*FR4_LITE_2x400G.*$"
@@ -14653,9 +14629,6 @@
           "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_2x800G.*$"
         },
         {
-          "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_400G.*$"
-        },
-        {
           "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_LITE_2x400G.*$"
         },
         {
@@ -14741,9 +14714,6 @@
         },
         {
           "test_name_regex": "Prbs.*TCVR_L.*FR4_2x800G.*$"
-        },
-        {
-          "test_name_regex": "Prbs.*TCVR_L.*FR4_400G.*$"
         },
         {
           "test_name_regex": "Prbs.*TCVR_L.*FR4_LITE_2x400G.*$"
@@ -14886,9 +14856,6 @@
           "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_2x800G.*$"
         },
         {
-          "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_400G.*$"
-        },
-        {
           "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_LITE_2x400G.*$"
         },
         {
@@ -14974,9 +14941,6 @@
         },
         {
           "test_name_regex": "Prbs.*TCVR_L.*FR4_2x800G.*$"
-        },
-        {
-          "test_name_regex": "Prbs.*TCVR_L.*FR4_400G.*$"
         },
         {
           "test_name_regex": "Prbs.*TCVR_L.*FR4_LITE_2x400G.*$"
@@ -15119,9 +15083,6 @@
           "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_2x800G.*$"
         },
         {
-          "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_400G.*$"
-        },
-        {
           "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_LITE_2x400G.*$"
         },
         {
@@ -15207,9 +15168,6 @@
         },
         {
           "test_name_regex": "Prbs.*TCVR_L.*FR4_2x800G.*$"
-        },
-        {
-          "test_name_regex": "Prbs.*TCVR_L.*FR4_400G.*$"
         },
         {
           "test_name_regex": "Prbs.*TCVR_L.*FR4_LITE_2x400G.*$"
@@ -15352,9 +15310,6 @@
           "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_2x800G.*$"
         },
         {
-          "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_400G.*$"
-        },
-        {
           "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_LITE_2x400G.*$"
         },
         {
@@ -15440,9 +15395,6 @@
         },
         {
           "test_name_regex": "Prbs.*TCVR_L.*FR4_2x800G.*$"
-        },
-        {
-          "test_name_regex": "Prbs.*TCVR_L.*FR4_400G.*$"
         },
         {
           "test_name_regex": "Prbs.*TCVR_L.*FR4_LITE_2x400G.*$"
@@ -15585,9 +15537,6 @@
           "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_2x800G.*$"
         },
         {
-          "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_400G.*$"
-        },
-        {
           "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_LITE_2x400G.*$"
         },
         {
@@ -15673,9 +15622,6 @@
         },
         {
           "test_name_regex": "Prbs.*TCVR_L.*FR4_2x800G.*$"
-        },
-        {
-          "test_name_regex": "Prbs.*TCVR_L.*FR4_400G.*$"
         },
         {
           "test_name_regex": "Prbs.*TCVR_L.*FR4_LITE_2x400G.*$"
@@ -15818,9 +15764,6 @@
           "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_2x800G.*$"
         },
         {
-          "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_400G.*$"
-        },
-        {
           "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_LITE_2x400G.*$"
         },
         {
@@ -15906,9 +15849,6 @@
         },
         {
           "test_name_regex": "Prbs.*TCVR_L.*FR4_2x800G.*$"
-        },
-        {
-          "test_name_regex": "Prbs.*TCVR_L.*FR4_400G.*$"
         },
         {
           "test_name_regex": "Prbs.*TCVR_L.*FR4_LITE_2x400G.*$"
@@ -16051,9 +15991,6 @@
           "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_2x800G.*$"
         },
         {
-          "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_400G.*$"
-        },
-        {
           "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_LITE_2x400G.*$"
         },
         {
@@ -16139,9 +16076,6 @@
         },
         {
           "test_name_regex": "Prbs.*TCVR_L.*FR4_2x800G.*$"
-        },
-        {
-          "test_name_regex": "Prbs.*TCVR_L.*FR4_400G.*$"
         },
         {
           "test_name_regex": "Prbs.*TCVR_L.*FR4_LITE_2x400G.*$"
@@ -16284,9 +16218,6 @@
           "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_2x800G.*$"
         },
         {
-          "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_400G.*$"
-        },
-        {
           "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_LITE_2x400G.*$"
         },
         {
@@ -16372,9 +16303,6 @@
         },
         {
           "test_name_regex": "Prbs.*TCVR_L.*FR4_2x800G.*$"
-        },
-        {
-          "test_name_regex": "Prbs.*TCVR_L.*FR4_400G.*$"
         },
         {
           "test_name_regex": "Prbs.*TCVR_L.*FR4_LITE_2x400G.*$"
@@ -16517,9 +16445,6 @@
           "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_2x800G.*$"
         },
         {
-          "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_400G.*$"
-        },
-        {
           "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_LITE_2x400G.*$"
         },
         {
@@ -16605,9 +16530,6 @@
         },
         {
           "test_name_regex": "Prbs.*TCVR_L.*FR4_2x800G.*$"
-        },
-        {
-          "test_name_regex": "Prbs.*TCVR_L.*FR4_400G.*$"
         },
         {
           "test_name_regex": "Prbs.*TCVR_L.*FR4_LITE_2x400G.*$"
@@ -16750,9 +16672,6 @@
           "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_2x800G.*$"
         },
         {
-          "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_400G.*$"
-        },
-        {
           "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_LITE_2x400G.*$"
         },
         {
@@ -16838,9 +16757,6 @@
         },
         {
           "test_name_regex": "Prbs.*TCVR_L.*FR4_2x800G.*$"
-        },
-        {
-          "test_name_regex": "Prbs.*TCVR_L.*FR4_400G.*$"
         },
         {
           "test_name_regex": "Prbs.*TCVR_L.*FR4_LITE_2x400G.*$"
@@ -16983,9 +16899,6 @@
           "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_2x800G.*$"
         },
         {
-          "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_400G.*$"
-        },
-        {
           "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_LITE_2x400G.*$"
         },
         {
@@ -17071,9 +16984,6 @@
         },
         {
           "test_name_regex": "Prbs.*TCVR_L.*FR4_2x800G.*$"
-        },
-        {
-          "test_name_regex": "Prbs.*TCVR_L.*FR4_400G.*$"
         },
         {
           "test_name_regex": "Prbs.*TCVR_L.*FR4_LITE_2x400G.*$"
@@ -17216,9 +17126,6 @@
           "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_2x800G.*$"
         },
         {
-          "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_400G.*$"
-        },
-        {
           "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_LITE_2x400G.*$"
         },
         {
@@ -17304,9 +17211,6 @@
         },
         {
           "test_name_regex": "Prbs.*TCVR_L.*FR4_2x800G.*$"
-        },
-        {
-          "test_name_regex": "Prbs.*TCVR_L.*FR4_400G.*$"
         },
         {
           "test_name_regex": "Prbs.*TCVR_L.*FR4_LITE_2x400G.*$"
@@ -17449,9 +17353,6 @@
           "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_2x800G.*$"
         },
         {
-          "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_400G.*$"
-        },
-        {
           "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_LITE_2x400G.*$"
         },
         {
@@ -17537,9 +17438,6 @@
         },
         {
           "test_name_regex": "Prbs.*TCVR_L.*FR4_2x800G.*$"
-        },
-        {
-          "test_name_regex": "Prbs.*TCVR_L.*FR4_400G.*$"
         },
         {
           "test_name_regex": "Prbs.*TCVR_L.*FR4_LITE_2x400G.*$"
@@ -17682,9 +17580,6 @@
           "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_2x800G.*$"
         },
         {
-          "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_400G.*$"
-        },
-        {
           "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_LITE_2x400G.*$"
         },
         {
@@ -17770,9 +17665,6 @@
         },
         {
           "test_name_regex": "Prbs.*TCVR_L.*FR4_2x800G.*$"
-        },
-        {
-          "test_name_regex": "Prbs.*TCVR_L.*FR4_400G.*$"
         },
         {
           "test_name_regex": "Prbs.*TCVR_L.*FR4_LITE_2x400G.*$"
@@ -17915,9 +17807,6 @@
           "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_2x800G.*$"
         },
         {
-          "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_400G.*$"
-        },
-        {
           "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_LITE_2x400G.*$"
         },
         {
@@ -18003,9 +17892,6 @@
         },
         {
           "test_name_regex": "Prbs.*TCVR_L.*FR4_2x800G.*$"
-        },
-        {
-          "test_name_regex": "Prbs.*TCVR_L.*FR4_400G.*$"
         },
         {
           "test_name_regex": "Prbs.*TCVR_L.*FR4_LITE_2x400G.*$"
@@ -18148,9 +18034,6 @@
           "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_2x800G.*$"
         },
         {
-          "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_400G.*$"
-        },
-        {
           "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_LITE_2x400G.*$"
         },
         {
@@ -18236,9 +18119,6 @@
         },
         {
           "test_name_regex": "Prbs.*TCVR_L.*FR4_2x800G.*$"
-        },
-        {
-          "test_name_regex": "Prbs.*TCVR_L.*FR4_400G.*$"
         },
         {
           "test_name_regex": "Prbs.*TCVR_L.*FR4_LITE_2x400G.*$"
@@ -18381,9 +18261,6 @@
           "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_2x800G.*$"
         },
         {
-          "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_400G.*$"
-        },
-        {
           "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_LITE_2x400G.*$"
         },
         {
@@ -18469,9 +18346,6 @@
         },
         {
           "test_name_regex": "Prbs.*TCVR_L.*FR4_2x800G.*$"
-        },
-        {
-          "test_name_regex": "Prbs.*TCVR_L.*FR4_400G.*$"
         },
         {
           "test_name_regex": "Prbs.*TCVR_L.*FR4_LITE_2x400G.*$"
@@ -18614,9 +18488,6 @@
           "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_2x800G.*$"
         },
         {
-          "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_400G.*$"
-        },
-        {
           "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_LITE_2x400G.*$"
         },
         {
@@ -18702,9 +18573,6 @@
         },
         {
           "test_name_regex": "Prbs.*TCVR_L.*FR4_2x800G.*$"
-        },
-        {
-          "test_name_regex": "Prbs.*TCVR_L.*FR4_400G.*$"
         },
         {
           "test_name_regex": "Prbs.*TCVR_L.*FR4_LITE_2x400G.*$"
@@ -18847,9 +18715,6 @@
           "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_2x800G.*$"
         },
         {
-          "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_400G.*$"
-        },
-        {
           "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_LITE_2x400G.*$"
         },
         {
@@ -18935,9 +18800,6 @@
         },
         {
           "test_name_regex": "Prbs.*TCVR_L.*FR4_2x800G.*$"
-        },
-        {
-          "test_name_regex": "Prbs.*TCVR_L.*FR4_400G.*$"
         },
         {
           "test_name_regex": "Prbs.*TCVR_L.*FR4_LITE_2x400G.*$"
@@ -19080,9 +18942,6 @@
           "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_2x800G.*$"
         },
         {
-          "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_400G.*$"
-        },
-        {
           "test_name_regex": "Prbs.*ASIC.*TCVR_S.*FR4_LITE_2x400G.*$"
         },
         {
@@ -19168,9 +19027,6 @@
         },
         {
           "test_name_regex": "Prbs.*TCVR_L.*FR4_2x800G.*$"
-        },
-        {
-          "test_name_regex": "Prbs.*TCVR_L.*FR4_400G.*$"
         },
         {
           "test_name_regex": "Prbs.*TCVR_L.*FR4_LITE_2x400G.*$"
