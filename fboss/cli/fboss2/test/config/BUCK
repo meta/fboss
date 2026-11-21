@@ -46,6 +46,7 @@ cpp_unittest(
         "CmdConfigQosDefaultPolicyTest.cpp",
         "CmdConfigQosQueueConfigTest.cpp",
         "CmdConfigReloadTest.cpp",
+        "CmdConfigResourceLimitTest.cpp",
         "CmdConfigSessionCommitTest.cpp",
         "CmdConfigSessionDiffTest.cpp",
         "CmdConfigSessionTest.cpp",

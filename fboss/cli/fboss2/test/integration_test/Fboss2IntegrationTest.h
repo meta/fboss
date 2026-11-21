@@ -16,6 +16,8 @@
 #include <utility>
 #include <vector>
 
+#include "fboss/cli/fboss2/gen-cpp2/cli_metadata_types.h"
+
 namespace facebook::fboss {
 
 class PlatformMapping;
@@ -80,6 +82,12 @@ class Fboss2IntegrationTest : public ::testing::Test {
    * Fetch the agent's running config via thrift and return it parsed.
    */
   folly::dynamic getRunningConfig() const;
+
+  /**
+   * Fetch one of the agent's effective options (a gflag value such as
+   * "true") via the fb303 getOption thrift call.
+   */
+  std::string getAgentOption(const std::string& name) const;
 
   /**
    * Read a top-level field from the running config's "sw" object.
@@ -383,6 +391,32 @@ class Fboss2IntegrationTest : public ::testing::Test {
    * This ensures each test starts with a fresh session based on current HEAD.
    */
   void discardSession() const;
+
+  /**
+   * Serialize the system config (/etc/coop/agent.conf, which a fresh
+   * ConfigSession materializes). Snapshot in SetUp(), pass to
+   * restoreConfig() in TearDown() to leave the DUT as found even when a
+   * test fails mid-way.
+   */
+  std::string snapshotConfig() const;
+
+  /**
+   * Commit a snapshotConfig() snapshot back with an agent restart and wait
+   * for the agent. Goes through the ConfigSession API: commit() only
+   * restarts services for actions accumulated by saveConfig(), so a config
+   * written to the session file directly gets git-committed but never
+   * applied.
+   *
+   * Defaults to cli::ConfigActionLevel::SERVICE_RESTART (warm boot), but can
+   * be escalated to cli::ConfigActionLevel::DISRUPTIVE_SERVICE_RESTART (cold
+   * boot) for tests whose config changes remove hardware objects (such as
+   * VLANs or interfaces) that warm boot inherently cannot roll back without
+   * unclaimed warmboot handle failures.
+   */
+  void restoreConfig(
+      const std::string& configJson,
+      cli::ConfigActionLevel actionLevel =
+          cli::ConfigActionLevel::SERVICE_RESTART) const;
 
   /**
    * Wait until the FBOSS agent is responsive (ready to serve thrift requests).
