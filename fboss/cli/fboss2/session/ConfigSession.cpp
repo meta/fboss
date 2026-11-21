@@ -47,6 +47,7 @@
 #include "fboss/cli/fboss2/session/FbossServiceUtil.h"
 #include "fboss/cli/fboss2/session/Git.h"
 #include "fboss/cli/fboss2/utils/CmdClientUtils.h"
+#include "fboss/cli/fboss2/utils/ConfigFileUtils.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
 #include "fboss/cli/fboss2/utils/PortMap.h"
 #include "fboss/lib/CommonFileUtils.h"
@@ -1147,6 +1148,41 @@ void ConfigSession::initializeGit() {
       }
     }
   }
+}
+
+std::string ConfigSession::normalizedConfigJson(
+    cli::ServiceType service,
+    const std::string& json) {
+  if (json.empty()) {
+    return json;
+  }
+  try {
+    switch (service) {
+      case cli::ServiceType::AGENT: {
+        cfg::AgentConfig config;
+        apache::thrift::SimpleJSONSerializer::deserialize(json, config);
+        if (*config.sw() == cfg::SwitchConfig()) {
+          apache::thrift::SimpleJSONSerializer::deserialize(json, *config.sw());
+        }
+        return utils::serializeToPrettyJson(config);
+      }
+      case cli::ServiceType::BGP: {
+        bgp::thrift::BgpConfig config;
+        apache::thrift::SimpleJSONSerializer::deserialize(json, config);
+        return utils::serializeToPrettyJson(config);
+      }
+    }
+  } catch (const std::exception& ex) {
+    const auto msg = fmt::format(
+        "The {} config text did not parse ({}); the diff shows this text as "
+        "it is",
+        apache::thrift::util::enumNameSafe(service),
+        ex.what());
+    LOG(WARNING) << msg;
+    // glog is not on stderr for fboss2, thus tell the user directly.
+    std::cerr << "Warning: " << msg << ".\n";
+  }
+  return json;
 }
 
 void ConfigSession::ensureDomainBaseline(
