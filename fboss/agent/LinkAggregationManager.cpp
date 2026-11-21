@@ -262,7 +262,10 @@ void LinkAggregationManager::aggregatePortChanged(
       oldAggPort->getSystemPriority() == newAggPort->getSystemPriority() &&
       oldAggPort->getSystemID() == newAggPort->getSystemID() &&
       std::equal(
-          oldSubportRange.begin(), oldSubportRange.end(), newSubport.begin())) {
+          oldSubportRange.begin(),
+          oldSubportRange.end(),
+          newSubport.begin(),
+          newSubport.end())) {
     return;
   }
 
