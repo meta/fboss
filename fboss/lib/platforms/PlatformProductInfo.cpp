@@ -241,6 +241,9 @@ void PlatformProductInfo::initMode() {
         modelName.find("Blackwolf800banw") == 0 ||
         modelName.find("BLACKWOLF800BANW") == 0) {
       type_ = PlatformType::PLATFORM_BLACKWOLF800BANW;
+    } else if (
+        modelName.find("M4052clsi") == 0 || modelName.find("M4052CLSI") == 0) {
+      type_ = PlatformType::PLATFORM_M4052CLSI;
     } else {
       throw FbossError("invalid model name " + modelName);
     }
