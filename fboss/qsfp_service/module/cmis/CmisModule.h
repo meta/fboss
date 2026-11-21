@@ -302,6 +302,15 @@ class CmisModule : public QsfpModule {
   // Some of the pages are static and they need not be read every refresh cycle
   bool staticPagesCached_{false};
 
+  // Fingerprint of the static identity fields read during the normal partial
+  // refresh. One word per module avoids retaining duplicate strings or page
+  // copies just to detect a missed presence edge.
+  std::optional<uint64_t> identityFingerprint_;
+  bool identityChanged_{false};
+
+  uint64_t getIdentityFingerprint() const;
+  void invalidateIdentityDependentCache();
+
   // Cached firmware build number from CDB Get Firmware Info command
   std::optional<uint16_t> cachedFwBuildNumber_;
 
@@ -752,6 +761,7 @@ class CmisModule : public QsfpModule {
    * there is not much point in refreshing static data on other pages.
    */
   virtual void updateQsfpData(bool allPages = true) override;
+  bool consumeTransceiverIdentityChange() override;
 
   /*
    * Put logic here that should only be run on ports that have been
