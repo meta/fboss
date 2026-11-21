@@ -335,13 +335,17 @@ device:
   }
 
   PortID getNonSflowSampledInterfacePort() const {
-    return checkSameAndGetAsic()->isSupported(HwAsic::Feature::MANAGEMENT_PORT)
+    return checkSameAndGetAsic()->isSupported(
+               HwAsic::Feature::MANAGEMENT_PORT) &&
+            !masterLogicalPortIds({cfg::PortType::MANAGEMENT_PORT}).empty()
         ? masterLogicalPortIds({cfg::PortType::MANAGEMENT_PORT})[0]
         : masterLogicalInterfacePortIds()[0];
   }
 
   cfg::PortType getNonSflowSampledInterfacePortType() const {
-    return checkSameAndGetAsic()->isSupported(HwAsic::Feature::MANAGEMENT_PORT)
+    return checkSameAndGetAsic()->isSupported(
+               HwAsic::Feature::MANAGEMENT_PORT) &&
+            !masterLogicalPortIds({cfg::PortType::MANAGEMENT_PORT}).empty()
         ? cfg::PortType::MANAGEMENT_PORT
         : cfg::PortType::INTERFACE_PORT;
   }
