@@ -57,28 +57,31 @@ void RemoteNeighborUpdater::stateUpdated(const StateDelta& delta) {
     // no change
     return;
   }
+  // Capture by value: the update may run after this updater is destroyed
+  // (SwSwitch::stop() resets it before draining the update queue).
   sw_->updateState(
       "update isolated system port interfaces",
-      [this, changedIntfs = std::move(changedIntfs)](
+      [sw = sw_, changedIntfs = std::move(changedIntfs)](
           const std::shared_ptr<SwitchState>& appliedState) {
         // apply on an applied state
         auto desiredState = appliedState->clone();
         for (const auto& intfID : changedIntfs) {
           auto newInterface = appliedState->getInterfaces()->getNodeIf(intfID);
           CHECK(newInterface);
-          processChangedInterface(&desiredState, newInterface);
+          processChangedInterface(sw, &desiredState, newInterface);
         }
         return desiredState;
       });
 }
 
 void RemoteNeighborUpdater::processChangedInterface(
+    SwSwitch* sw,
     std::shared_ptr<SwitchState>* state,
-    const std::shared_ptr<Interface>& newInterface) const {
+    const std::shared_ptr<Interface>& newInterface) {
   auto remoteInterfaces = (*state)->getRemoteInterfaces()->modify(state);
   auto systemPortID = SystemPortID(static_cast<int64_t>(newInterface->getID()));
-  auto switchID = sw_->getScopeResolver()->scope(systemPortID).switchId();
-  auto scope = sw_->getScopeResolver()->scope(cfg::SwitchType::VOQ);
+  auto switchID = sw->getScopeResolver()->scope(systemPortID).switchId();
+  auto scope = sw->getScopeResolver()->scope(cfg::SwitchType::VOQ);
   scope.exclude(switchID);
   auto innerMap = remoteInterfaces->getMapNodeIf(scope);
   CHECK(innerMap);
