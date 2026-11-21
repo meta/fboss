@@ -26,7 +26,6 @@ DEFINE_bool(
     enable_aifm_ctrl_handler,
     false,
     "Enable Aifm control packet handler");
-DEFINE_bool(enable_stats_update_thread, true, "Run stats update thread");
 
 DEFINE_int32(port, 5909, "The thrift server port");
 // current default 5909 is in conflict with VNC ports, need to

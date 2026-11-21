@@ -30,6 +30,7 @@
  */
 
 DECLARE_bool(enable_lacp);
+DECLARE_bool(enable_stats_update_thread);
 
 DECLARE_bool(dsf_4k);
 DECLARE_bool(dsf_100g_nif_breakout);
