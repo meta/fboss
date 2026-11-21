@@ -178,6 +178,15 @@ class LacpServiceInterceptor : public LacpServicerIf {
 
     return lacpduTransmitted;
   }
+  bool hasTransmitted(PortID portID) {
+    bool transmitted = false;
+
+    lacpEvb_->runInFbossEventBaseThreadAndWait([this, portID, &transmitted]() {
+      transmitted = portToLastTransmission_.rlock()->count(portID) > 0;
+    });
+
+    return transmitted;
+  }
   bool isForwarding(PortID portID) {
     bool forwarding = false;
 
@@ -1600,4 +1609,84 @@ TEST_F(LacpTest, lacpTransmissionFailureRetry) {
 
   // The test passes if we don't crash and the controller continues to operate
   controllerPtr->stopMachines();
+}
+
+/*
+ * A config reload that flips both ends of a forwarding LAG to PASSIVE recreates
+ * the controllers through restoreMachines(). Neither end may transmit, so the
+ * RX timer must age the members out and leave them non-forwarding instead of
+ * re-syncing off the PDUs each Mux transition would otherwise emit.
+ */
+TEST_F(LacpTest, passivePassiveRestoreDoesNotTransmitOrReconverge) {
+  auto rate = cfg::LacpPortRate::FAST;
+  LacpServiceInterceptor uuEventInterceptor(lacpEvb());
+  LacpServiceInterceptor duEventInterceptor(lacpEvb());
+
+  PortID uuPort(static_cast<uint16_t>(0xA));
+  PortID duPort(static_cast<uint16_t>(0xD));
+
+  using SystemID = std::array<uint8_t, 6>;
+  auto makeParticipantInfo = [](SystemID systemID, auto port) {
+    ParticipantInfo pInfo;
+    pInfo.systemPriority = 65535;
+    pInfo.systemID = systemID;
+    pInfo.key = port;
+    pInfo.portPriority = 32768;
+    pInfo.port = port;
+    pInfo.state = LacpState::AGGREGATABLE | LacpState::COLLECTING |
+        LacpState::DISTRIBUTING | LacpState::IN_SYNC | LacpState::SHORT_TIMEOUT;
+    return pInfo;
+  };
+
+  ParticipantInfo uuInfo =
+      makeParticipantInfo({0x02, 0x90, 0xfb, 0x5e, 0x1e, 0x85}, uuPort);
+  ParticipantInfo duInfo =
+      makeParticipantInfo({0x02, 0x90, 0xfb, 0x5e, 0x24, 0x28}, duPort);
+
+  auto makeController = [&](PortID port,
+                            const ParticipantInfo& info,
+                            LacpServiceInterceptor& interceptor) {
+    auto controller = std::make_shared<LacpController>(
+        port,
+        lacpEvb(),
+        info.portPriority,
+        rate,
+        cfg::LacpPortActivity::PASSIVE,
+        cfg::switch_config_constants::DEFAULT_LACP_HOLD_TIMER_MULTIPLIER(),
+        AggregatePortID(info.key),
+        info.systemPriority,
+        MacAddress::fromBinary(
+            folly::ByteRange(info.systemID.cbegin(), info.systemID.cend())),
+        1 /* minimum-link count */,
+        std::nullopt,
+        &interceptor);
+    interceptor.addController(controller);
+    return controller;
+  };
+
+  auto uuController = makeController(uuPort, uuInfo, uuEventInterceptor);
+  auto duController = makeController(duPort, duInfo, duEventInterceptor);
+
+  uuController->restoreMachines(
+      makeParticipantInfo(duInfo.systemID, duInfo.port));
+  duController->restoreMachines(
+      makeParticipantInfo(uuInfo.systemID, uuInfo.port));
+
+  ASSERT_TRUE(uuEventInterceptor.isForwarding(uuPort));
+  ASSERT_TRUE(duEventInterceptor.isForwarding(duPort));
+  ASSERT_FALSE(uuEventInterceptor.hasTransmitted(uuPort));
+  ASSERT_FALSE(duEventInterceptor.hasTransmitted(duPort));
+
+  // CURRENT -> EXPIRED -> DEFAULTED takes two fast RX epochs.
+  auto holdTime = std::chrono::seconds(
+      1 * cfg::switch_config_constants::DEFAULT_LACP_HOLD_TIMER_MULTIPLIER());
+  std::this_thread::sleep_for(holdTime * 2 + std::chrono::seconds(2));
+
+  ASSERT_FALSE(uuEventInterceptor.isForwarding(uuPort));
+  ASSERT_FALSE(duEventInterceptor.isForwarding(duPort));
+  ASSERT_FALSE(uuEventInterceptor.hasTransmitted(uuPort));
+  ASSERT_FALSE(duEventInterceptor.hasTransmitted(duPort));
+
+  uuController->stopMachines();
+  duController->stopMachines();
 }
