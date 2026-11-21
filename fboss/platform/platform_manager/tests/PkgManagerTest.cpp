@@ -22,9 +22,14 @@ class MockSystemInterface : public package_manager::SystemInterface {
       (const));
   MOCK_METHOD(int, removeRpms, (const std::vector<std::string>&), (const));
   MOCK_METHOD(
-      int,
+      package_manager::RpmInstallResult,
       installRpm,
       (const std::string&, const std::string&),
+      (const));
+  MOCK_METHOD(
+      std::vector<std::string>,
+      getLocalRepoBspRpmVersions,
+      (const std::string&),
       (const));
   MOCK_METHOD(int, depmod, (), (const));
   MOCK_METHOD(std::set<std::string>, lsmod, (), (const));
@@ -203,7 +208,7 @@ TEST_F(PkgManagerTest, processRpms) {
               *platformConfig_.bspKmodsRpmName(),
               *platformConfig_.bspKmodsRpmVersion()),
           "kernel"))
-      .WillOnce(Return(0));
+      .WillOnce(Return(package_manager::RpmInstallResult{}));
   EXPECT_CALL(*mockSystemInterface_, depmod()).WillOnce(Return(0));
   EXPECT_NO_THROW(pkgManager_.processRpms());
   EXPECT_EQ(
@@ -232,7 +237,7 @@ TEST_F(PkgManagerTest, processRpms) {
               *platformConfig_.bspKmodsRpmName(),
               *platformConfig_.bspKmodsRpmVersion()),
           "kernel"))
-      .WillOnce(Return(0));
+      .WillOnce(Return(package_manager::RpmInstallResult{}));
   EXPECT_CALL(*mockSystemInterface_, depmod()).WillOnce(Return(0));
   EXPECT_NO_THROW(pkgManager_.processRpms());
   EXPECT_EQ(
@@ -278,7 +283,7 @@ TEST_F(PkgManagerTest, processRpms) {
               *platformConfig_.bspKmodsRpmName(),
               *platformConfig_.bspKmodsRpmVersion()),
           "kernel"))
-      .WillOnce(Return(0));
+      .WillOnce(Return(package_manager::RpmInstallResult{}));
   EXPECT_CALL(*mockSystemInterface_, depmod()).WillOnce(Return(1));
   EXPECT_NO_THROW(pkgManager_.processRpms());
   EXPECT_EQ(
@@ -306,7 +311,7 @@ TEST_F(PkgManagerTest, processRpms) {
               *platformConfig_.bspKmodsRpmVersion()),
           "kernel"))
       .Times(3)
-      .WillRepeatedly(Return(1));
+      .WillRepeatedly(Return(package_manager::RpmInstallResult{1, false}));
   EXPECT_THROW(pkgManager_.processRpms(), std::runtime_error);
   EXPECT_EQ(
       facebook::fb303::fbData->getCounter(PkgManager::kProcessRpmFailure), 1);
@@ -610,5 +615,55 @@ TEST_F(PkgManagerTest, isValidRpm) {
   // Empty file name
   FLAGS_local_rpm_path = "";
   EXPECT_FALSE(mockPkgManager_.isValidRpm());
+}
+
+TEST_F(PkgManagerTest, processRpmsRpmNotFound) {
+  EXPECT_CALL(*mockSystemInterface_, getHostKernelVersion())
+      .WillRepeatedly(Return("6.4.3-0_fbk1_755_ga25447393a1d"));
+  EXPECT_CALL(*mockPlatformFsUtils_, getStringFileContent(_))
+      .WillRepeatedly(Return(jsonBspKmodsFile_));
+  EXPECT_CALL(*mockSystemInterface_, lsmod())
+      .WillRepeatedly(Return(std::set<std::string>{}));
+  EXPECT_CALL(*mockSystemInterface_, getInstalledRpms(_))
+      .WillOnce(Return(std::vector<std::string>{}));
+  // A missing rpm is permanent, so there is exactly one install attempt.
+  EXPECT_CALL(*mockSystemInterface_, installRpm(_, "kernel"))
+      .Times(1)
+      .WillOnce(Return(package_manager::RpmInstallResult{1, true}));
+  EXPECT_CALL(
+      *mockSystemInterface_,
+      getLocalRepoBspRpmVersions(*platformConfig_.bspKmodsRpmName()))
+      .WillOnce(Return(std::vector<std::string>{"4.4.2-1", "4.3.0-1"}));
+  EXPECT_CALL(*mockSystemInterface_, depmod()).Times(0);
+  EXPECT_THROW(pkgManager_.processRpms(), std::runtime_error);
+  EXPECT_EQ(
+      facebook::fb303::fbData->getCounter(PkgManager::kProcessRpmFailure), 1);
+}
+
+TEST_F(PkgManagerTest, resolveBspKmodsRpmVersionWildcard) {
+  platformConfig_.bspKmodsRpmVersion() = kBspKmodsRpmVersionWildcard;
+  EXPECT_CALL(
+      *mockSystemInterface_,
+      getLocalRepoBspRpmVersions(*platformConfig_.bspKmodsRpmName()))
+      .WillOnce(Return(std::vector<std::string>{"4.4.2-1", "4.3.0-1"}));
+  resolveBspKmodsRpmVersion(platformConfig_, *mockSystemInterface_);
+  EXPECT_EQ(*platformConfig_.bspKmodsRpmVersion(), "4.4.2-1");
+}
+
+TEST_F(PkgManagerTest, resolveBspKmodsRpmVersionWildcardNoRpmAvailable) {
+  platformConfig_.bspKmodsRpmVersion() = kBspKmodsRpmVersionWildcard;
+  EXPECT_CALL(*mockSystemInterface_, getHostKernelVersion())
+      .WillRepeatedly(Return("6.4.3-0_fbk1_755_ga25447393a1d"));
+  EXPECT_CALL(*mockSystemInterface_, getLocalRepoBspRpmVersions(_))
+      .WillOnce(Return(std::vector<std::string>{}));
+  EXPECT_THROW(
+      resolveBspKmodsRpmVersion(platformConfig_, *mockSystemInterface_),
+      std::runtime_error);
+}
+
+TEST_F(PkgManagerTest, resolveBspKmodsRpmVersionPinned) {
+  EXPECT_CALL(*mockSystemInterface_, getLocalRepoBspRpmVersions(_)).Times(0);
+  resolveBspKmodsRpmVersion(platformConfig_, *mockSystemInterface_);
+  EXPECT_EQ(*platformConfig_.bspKmodsRpmVersion(), "11.44.63-14");
 }
 }; // namespace facebook::fboss::platform::platform_manager
