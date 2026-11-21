@@ -1876,6 +1876,37 @@ TEST_F(ApplyProfileSubsumeTestFixture, subsumeEscalatesToColdboot) {
   EXPECT_EQ(actionLevel, cli::ConfigActionLevel::DISRUPTIVE_SERVICE_RESTART);
 }
 
+TEST_F(ApplyProfileSubsumeTestFixture, warnsOnExistingPortUnsupportedByQsfp) {
+  setupTestableConfigSession(
+      "config interface", "eth1/1/1 profile PROFILE_400G_8_PAM4_RS544X2N");
+  auto platformMapping = makeSubsumePlatformMapping();
+  auto& swConfig = *ConfigSession::getInstance().getAgentConfig().sw();
+  utils::InterfaceList interfaces({"eth1/1/1"});
+  const utility::PortProfileSupportMap qsfpSupportedProfiles{
+      {"eth1/1/1", {cfg::PortProfileID::PROFILE_100G_4_NRZ_CL91}}};
+  std::vector<std::string> warnings;
+
+  applyProfileImpl(
+      swConfig,
+      platformMapping,
+      qsfpSupportedProfiles,
+      interfaces,
+      "PROFILE_400G_8_PAM4_RS544X2N",
+      nullptr,
+      &warnings);
+
+  ASSERT_EQ(swConfig.ports()->size(), 1u);
+  EXPECT_EQ(
+      *swConfig.ports()->front().profileID(),
+      cfg::PortProfileID::PROFILE_400G_8_PAM4_RS544X2N);
+  ASSERT_EQ(warnings.size(), 1u);
+  EXPECT_EQ(
+      warnings[0],
+      "Warning: profile 'PROFILE_400G_8_PAM4_RS544X2N' is not supported by the "
+      "transceiver on port eth1/1/1. Supported profiles: "
+      "[PROFILE_100G_4_NRZ_CL91]");
+}
+
 // ============================================================================
 // applyProfileImpl pending-port (creation) tests
 // ============================================================================
@@ -1969,24 +2000,114 @@ TEST_F(CreatePendingInterfacePortsTestFixture, createsSupportedInterfacePort) {
 
 TEST_F(
     CreatePendingInterfacePortsTestFixture,
-    rejectsProfileUnsupportedByQsfp) {
+    warnsOnlyForPortsUnsupportedByQsfp) {
   setupTestableConfigSession();
   auto platformMapping = makePendingMapping();
   cfg::SwitchConfig config;
   utils::InterfaceList interfaces(
-      std::vector<std::string>{"eth1/1/1"}, /*allowMissing*/ true);
+      std::vector<std::string>{"eth1/1/1", "eth1/1/2"}, /*allowMissing*/ true);
   const utility::PortProfileSupportMap qsfpSupportedProfiles{
-      {"eth1/1/1", {cfg::PortProfileID::PROFILE_400G_8_PAM4_RS544X2N}}};
+      {"eth1/1/1", {cfg::PortProfileID::PROFILE_100G_4_NRZ_CL91}},
+      {"eth1/1/2", {cfg::PortProfileID::PROFILE_400G_8_PAM4_RS544X2N}}};
+  std::vector<std::string> warnings;
 
-  EXPECT_THROW(
-      applyProfileImpl(
-          config,
-          platformMapping,
-          qsfpSupportedProfiles,
-          interfaces,
-          "PROFILE_100G_4_NRZ_CL91"),
-      std::invalid_argument);
-  EXPECT_TRUE(config.ports()->empty());
+  applyProfileImpl(
+      config,
+      platformMapping,
+      qsfpSupportedProfiles,
+      interfaces,
+      "PROFILE_100G_4_NRZ_CL91",
+      nullptr,
+      &warnings);
+
+  ASSERT_EQ(config.ports()->size(), 2u);
+  for (const auto& port : *config.ports()) {
+    EXPECT_EQ(*port.profileID(), cfg::PortProfileID::PROFILE_100G_4_NRZ_CL91);
+  }
+  ASSERT_EQ(warnings.size(), 1u);
+  EXPECT_EQ(
+      warnings[0],
+      "Warning: profile 'PROFILE_100G_4_NRZ_CL91' is not supported by the "
+      "transceiver on port eth1/1/2. Supported profiles: "
+      "[PROFILE_400G_8_PAM4_RS544X2N]");
+}
+
+TEST_F(
+    CreatePendingInterfacePortsTestFixture,
+    noWarningWhenQsfpSupportsOrDoesNotReportPort) {
+  setupTestableConfigSession();
+  auto platformMapping = makePendingMapping();
+  utils::InterfaceList interfaces(
+      std::vector<std::string>{"eth1/1/1"}, /*allowMissing*/ true);
+  for (const auto& qsfpSupportedProfiles :
+       {utility::PortProfileSupportMap{
+            {"eth1/1/1", {cfg::PortProfileID::PROFILE_100G_4_NRZ_CL91}}},
+        utility::PortProfileSupportMap{{"eth1/1/1", {}}},
+        utility::PortProfileSupportMap{}}) {
+    cfg::SwitchConfig config;
+    std::vector<std::string> warnings;
+    applyProfileImpl(
+        config,
+        platformMapping,
+        qsfpSupportedProfiles,
+        interfaces,
+        "PROFILE_100G_4_NRZ_CL91",
+        nullptr,
+        &warnings);
+    EXPECT_EQ(config.ports()->size(), 1u);
+    EXPECT_TRUE(warnings.empty());
+  }
+}
+
+TEST_F(
+    CreatePendingInterfacePortsTestFixture,
+    queryClientPrintsQsfpWarningAfterSuccess) {
+  setupTestableConfigSession();
+  EXPECT_CALL(getMockAgent(), getPlatformMapping(_))
+      .WillRepeatedly(
+          DoAll(SetArgReferee<0>(makePendingPlatformMapping()), Return()));
+  const std::map<std::string, std::vector<cfg::PortProfileID>> qsfpProfiles{
+      {"eth1/1/1", {cfg::PortProfileID::PROFILE_400G_8_PAM4_RS544X2N}}};
+  EXPECT_CALL(getQsfpService(), getAllPortSupportedProfiles(_, _))
+      .WillRepeatedly(DoAll(SetArgReferee<0>(qsfpProfiles), Return()));
+
+  InterfacesConfig config(
+      {"eth1/1/1", "profile", "PROFILE_100G_4_NRZ_CL91", "mtu", "9000"});
+  auto result = CmdConfigInterface().queryClient(localhost(), config);
+
+  EXPECT_THAT(
+      result, StartsWith("Successfully configured interface(s) eth1/1/1: "));
+  EXPECT_THAT(
+      result,
+      EndsWith(
+          "mtu=9000\nWarning: profile 'PROFILE_100G_4_NRZ_CL91' is not "
+          "supported by the transceiver on port eth1/1/1. Supported profiles: "
+          "[PROFILE_400G_8_PAM4_RS544X2N]"));
+}
+
+TEST_F(
+    CreatePendingInterfacePortsTestFixture,
+    queryClientReportsUnreachableQsfpService) {
+  setupTestableConfigSession();
+  EXPECT_CALL(getMockAgent(), getPlatformMapping(_))
+      .WillRepeatedly(
+          DoAll(SetArgReferee<0>(makePendingPlatformMapping()), Return()));
+  EXPECT_CALL(getQsfpService(), getAllPortSupportedProfiles(_, _))
+      .WillRepeatedly(Throw(std::runtime_error("qsfp_service down")));
+
+  InterfacesConfig config({"eth1/1/1", "profile", "PROFILE_100G_4_NRZ_CL91"});
+  auto result = CmdConfigInterface().queryClient(localhost(), config);
+
+  EXPECT_THAT(
+      result, StartsWith("Successfully configured interface(s) eth1/1/1: "));
+  EXPECT_THAT(
+      result,
+      EndsWith(
+          "\nWarning: qsfp_service is unreachable, so the profile was not "
+          "checked against the transceiver"));
+  EXPECT_THAT(result, Not(HasSubstr("is not supported by the transceiver")));
+  ASSERT_EQ(
+      ConfigSession::getInstance().getAgentConfig().sw()->ports()->size(), 1u);
 }
 
 // Creating a port removes nothing, so the action level stays HITLESS (no
