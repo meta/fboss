@@ -320,46 +320,6 @@
           "compute": "@/1000.0"
         },
         {
-          "name": "DPM_1_POS0V8_PT0",
-          "sysfsPath": "/run/devmap/sensors/DPM_1/in3_input",
-          "type": 1,
-          "thresholds": {
-            "upperCriticalVal": 1.035,
-            "lowerCriticalVal": 0.54
-          },
-          "compute": "@/1000.0"
-        },
-        {
-          "name": "DPM_1_POS0V9_WEST",
-          "sysfsPath": "/run/devmap/sensors/DPM_1/in4_input",
-          "type": 1,
-          "thresholds": {
-            "upperCriticalVal": 1.17,
-            "lowerCriticalVal": 0.72
-          },
-          "compute": "@/1000.0"
-        },
-        {
-          "name": "DPM_1_POS0V75_WEST",
-          "sysfsPath": "/run/devmap/sensors/DPM_1/in5_input",
-          "type": 1,
-          "thresholds": {
-            "upperCriticalVal": 0.975,
-            "lowerCriticalVal": 0.6
-          },
-          "compute": "@/1000.0"
-        },
-        {
-          "name": "DPM_1_POS0V8_PT2",
-          "sysfsPath": "/run/devmap/sensors/DPM_1/in6_input",
-          "type": 1,
-          "thresholds": {
-            "upperCriticalVal": 1.035,
-            "lowerCriticalVal": 0.54
-          },
-          "compute": "@/1000.0"
-        },
-        {
           "name": "DPM_1_POS1V0",
           "sysfsPath": "/run/devmap/sensors/DPM_1/in7_input",
           "type": 1,
@@ -368,39 +328,6 @@
             "minAlarmVal": 0.899,
             "upperCriticalVal": 1.1,
             "lowerCriticalVal": 0.799
-          },
-          "compute": "@/1000.0"
-        },
-        {
-          "name": "DPM_1_POS3V3_WEST",
-          "sysfsPath": "/run/devmap/sensors/DPM_1/in8_input",
-          "type": 1,
-          "thresholds": {
-            "maxAlarmVal": 3.63,
-            "minAlarmVal": 2.969,
-            "upperCriticalVal": 3.795,
-            "lowerCriticalVal": 2.64
-          },
-          "compute": "@/1000.0"
-        },
-        {
-          "name": "DPM_1_POS0V8_VDDC",
-          "sysfsPath": "/run/devmap/sensors/DPM_1/in9_input",
-          "type": 1,
-          "thresholds": {
-            "minAlarmVal": 0.399,
-            "upperCriticalVal": 1.035,
-            "lowerCriticalVal": 0.54
-          },
-          "compute": "@/1000.0"
-        },
-        {
-          "name": "DPM_1_POS0V8_VDDC_IMON",
-          "sysfsPath": "/run/devmap/sensors/DPM_1/in10_input",
-          "type": 1,
-          "thresholds": {
-            "maxAlarmVal": 0.899,
-            "upperCriticalVal": 1.035
           },
           "compute": "@/1000.0"
         },
@@ -445,26 +372,6 @@
           "thresholds": {
             "upperCriticalVal": 1.035,
             "lowerCriticalVal": 0.72
-          },
-          "compute": "@/1000.0"
-        },
-        {
-          "name": "DPM_1_POS0V72_PB0",
-          "sysfsPath": "/run/devmap/sensors/DPM_1/in15_input",
-          "type": 1,
-          "thresholds": {
-            "upperCriticalVal": 0.936,
-            "lowerCriticalVal": 0.575
-          },
-          "compute": "@/1000.0"
-        },
-        {
-          "name": "DPM_1_POS0V72_PB1",
-          "sysfsPath": "/run/devmap/sensors/DPM_1/in16_input",
-          "type": 1,
-          "thresholds": {
-            "upperCriticalVal": 0.936,
-            "lowerCriticalVal": 0.575
           },
           "compute": "@/1000.0"
         },
@@ -515,60 +422,6 @@
           "compute": "@/1000.0"
         },
         {
-          "name": "DPM_2_POS0V9_EAST",
-          "sysfsPath": "/run/devmap/sensors/DPM_2/in4_input",
-          "type": 1,
-          "thresholds": {
-            "upperCriticalVal": 1.17,
-            "lowerCriticalVal": 0.72
-          },
-          "compute": "@/1000.0"
-        },
-        {
-          "name": "DPM_2_POS0V75_EAST",
-          "sysfsPath": "/run/devmap/sensors/DPM_2/in5_input",
-          "type": 1,
-          "thresholds": {
-            "upperCriticalVal": 0.975,
-            "lowerCriticalVal": 0.6
-          },
-          "compute": "@/1000.0"
-        },
-        {
-          "name": "DPM_2_POS0V8_PT7",
-          "sysfsPath": "/run/devmap/sensors/DPM_2/in6_input",
-          "type": 1,
-          "thresholds": {
-            "upperCriticalVal": 1.035,
-            "lowerCriticalVal": 0.54
-          },
-          "compute": "@/1000.0"
-        },
-        {
-          "name": "DPM_2_POS1V2_DP",
-          "sysfsPath": "/run/devmap/sensors/DPM_2/in7_input",
-          "type": 1,
-          "thresholds": {
-            "maxAlarmVal": 1.32,
-            "minAlarmVal": 1.079,
-            "upperCriticalVal": 1.38,
-            "lowerCriticalVal": 0.96
-          },
-          "compute": "@/1000.0"
-        },
-        {
-          "name": "DPM_2_POS3V3_EAST",
-          "sysfsPath": "/run/devmap/sensors/DPM_2/in8_input",
-          "type": 1,
-          "thresholds": {
-            "maxAlarmVal": 3.63,
-            "minAlarmVal": 2.969,
-            "upperCriticalVal": 3.795,
-            "lowerCriticalVal": 2.64
-          },
-          "compute": "@/1000.0"
-        },
-        {
           "name": "DPM_2_POS1V5",
           "sysfsPath": "/run/devmap/sensors/DPM_2/in9_input",
           "type": 1,
@@ -587,16 +440,6 @@
             "minAlarmVal": 1.619,
             "upperCriticalVal": 2.07,
             "lowerCriticalVal": 1.44
-          },
-          "compute": "@/1000.0"
-        },
-        {
-          "name": "DPM_2_POS0V8_PT5",
-          "sysfsPath": "/run/devmap/sensors/DPM_2/in11_input",
-          "type": 1,
-          "thresholds": {
-            "upperCriticalVal": 1.035,
-            "lowerCriticalVal": 0.54
           },
           "compute": "@/1000.0"
         },
@@ -621,26 +464,6 @@
           "compute": "@/1000.0"
         },
         {
-          "name": "DPM_2_POS0V72_PB2",
-          "sysfsPath": "/run/devmap/sensors/DPM_2/in14_input",
-          "type": 1,
-          "thresholds": {
-            "upperCriticalVal": 0.936,
-            "lowerCriticalVal": 0.575
-          },
-          "compute": "@/1000.0"
-        },
-        {
-          "name": "DPM_2_POS0V72_PB3",
-          "sysfsPath": "/run/devmap/sensors/DPM_2/in15_input",
-          "type": 1,
-          "thresholds": {
-            "upperCriticalVal": 0.936,
-            "lowerCriticalVal": 0.575
-          },
-          "compute": "@/1000.0"
-        },
-        {
           "name": "DPM_2_POS1V2_PCIE",
           "sysfsPath": "/run/devmap/sensors/DPM_2/in16_input",
           "type": 1,
@@ -649,16 +472,6 @@
             "minAlarmVal": 1.079,
             "upperCriticalVal": 1.38,
             "lowerCriticalVal": 0.959
-          },
-          "compute": "@/1000.0"
-        },
-        {
-          "name": "DPM_2_POS1V5_RVDD",
-          "sysfsPath": "/run/devmap/sensors/DPM_2/in17_input",
-          "type": 1,
-          "thresholds": {
-            "upperCriticalVal": 1.725,
-            "lowerCriticalVal": 1.2
           },
           "compute": "@/1000.0"
         },
@@ -1256,12 +1069,52 @@
           }
         },
         {
+          "name": "DCDC1_POS0V9_WEST_VOUT",
+          "sysfsPath": "/run/devmap/sensors/DCDC1/in3_input",
+          "type": 1,
+          "thresholds": {
+            "upperCriticalVal": 1.035,
+            "lowerCriticalVal": 0.72
+          },
+          "compute": "@/1000.0"
+        },
+        {
+          "name": "DCDC1_POS1V5_RVDD_VOUT",
+          "sysfsPath": "/run/devmap/sensors/DCDC1/in4_input",
+          "type": 1,
+          "thresholds": {
+            "upperCriticalVal": 1.725,
+            "lowerCriticalVal": 1.2
+          },
+          "compute": "@/1000.0"
+        },
+        {
           "name": "DCDC1_TEMP",
           "sysfsPath": "/run/devmap/sensors/DCDC1/temp1_input",
           "type": 3,
           "thresholds": {
             "maxAlarmVal": 120,
             "upperCriticalVal": 130
+          },
+          "compute": "@/1000.0"
+        },
+        {
+          "name": "DCDC2_POS0V9_EAST_VOUT",
+          "sysfsPath": "/run/devmap/sensors/DCDC2/in3_input",
+          "type": 1,
+          "thresholds": {
+            "upperCriticalVal": 1.035,
+            "lowerCriticalVal": 0.72
+          },
+          "compute": "@/1000.0"
+        },
+        {
+          "name": "DCDC2_POS0V72_PB3_VOUT",
+          "sysfsPath": "/run/devmap/sensors/DCDC2/in4_input",
+          "type": 1,
+          "thresholds": {
+            "upperCriticalVal": 0.828,
+            "lowerCriticalVal": 0.576
           },
           "compute": "@/1000.0"
         },
@@ -1276,12 +1129,52 @@
           "compute": "@/1000.0"
         },
         {
+          "name": "DCDC3_POS3V3_WEST_VOUT",
+          "sysfsPath": "/run/devmap/sensors/DCDC3/in3_input",
+          "type": 1,
+          "thresholds": {
+            "upperCriticalVal": 3.905,
+            "lowerCriticalVal": 2.717
+          },
+          "compute": "(6/5)*@/1000.0"
+        },
+        {
+          "name": "DCDC3_POS0V72_PB1_VOUT",
+          "sysfsPath": "/run/devmap/sensors/DCDC3/in4_input",
+          "type": 1,
+          "thresholds": {
+            "upperCriticalVal": 0.828,
+            "lowerCriticalVal": 0.576
+          },
+          "compute": "@/1000.0"
+        },
+        {
           "name": "DCDC3_TEMP",
           "sysfsPath": "/run/devmap/sensors/DCDC3/temp1_input",
           "type": 3,
           "thresholds": {
             "maxAlarmVal": 120,
             "upperCriticalVal": 130
+          },
+          "compute": "@/1000.0"
+        },
+        {
+          "name": "DCDC4_POS3V3_EAST_VOUT",
+          "sysfsPath": "/run/devmap/sensors/DCDC4/in3_input",
+          "type": 1,
+          "thresholds": {
+            "upperCriticalVal": 3.905,
+            "lowerCriticalVal": 2.717
+          },
+          "compute": "(6/5)*@/1000.0"
+        },
+        {
+          "name": "DCDC4_POS0V72_PB2_VOUT",
+          "sysfsPath": "/run/devmap/sensors/DCDC4/in4_input",
+          "type": 1,
+          "thresholds": {
+            "upperCriticalVal": 0.828,
+            "lowerCriticalVal": 0.576
           },
           "compute": "@/1000.0"
         },
@@ -1296,12 +1189,52 @@
           "compute": "@/1000.0"
         },
         {
+          "name": "DCDC5_POS0V8_PT1_VOUT",
+          "sysfsPath": "/run/devmap/sensors/DCDC5/in3_input",
+          "type": 1,
+          "thresholds": {
+            "upperCriticalVal": 1.035,
+            "lowerCriticalVal": 0.6
+          },
+          "compute": "@/1000.0"
+        },
+        {
+          "name": "DCDC5_POS0V8_PT0_VOUT",
+          "sysfsPath": "/run/devmap/sensors/DCDC5/in4_input",
+          "type": 1,
+          "thresholds": {
+            "upperCriticalVal": 1.035,
+            "lowerCriticalVal": 0.6
+          },
+          "compute": "@/1000.0"
+        },
+        {
           "name": "DCDC5_TEMP",
           "sysfsPath": "/run/devmap/sensors/DCDC5/temp1_input",
           "type": 3,
           "thresholds": {
             "maxAlarmVal": 120,
             "upperCriticalVal": 130
+          },
+          "compute": "@/1000.0"
+        },
+        {
+          "name": "DCDC6_POS0V8_PT3_VOUT",
+          "sysfsPath": "/run/devmap/sensors/DCDC6/in3_input",
+          "type": 1,
+          "thresholds": {
+            "upperCriticalVal": 1.035,
+            "lowerCriticalVal": 0.6
+          },
+          "compute": "@/1000.0"
+        },
+        {
+          "name": "DCDC6_POS0V8_PT2_VOUT",
+          "sysfsPath": "/run/devmap/sensors/DCDC6/in4_input",
+          "type": 1,
+          "thresholds": {
+            "upperCriticalVal": 1.035,
+            "lowerCriticalVal": 0.6
           },
           "compute": "@/1000.0"
         },
@@ -1316,12 +1249,52 @@
           "compute": "@/1000.0"
         },
         {
+          "name": "DCDC7_POS0V8_PT4_VOUT",
+          "sysfsPath": "/run/devmap/sensors/DCDC7/in3_input",
+          "type": 1,
+          "thresholds": {
+            "upperCriticalVal": 1.035,
+            "lowerCriticalVal": 0.6
+          },
+          "compute": "@/1000.0"
+        },
+        {
+          "name": "DCDC7_POS0V8_PT5_VOUT",
+          "sysfsPath": "/run/devmap/sensors/DCDC7/in4_input",
+          "type": 1,
+          "thresholds": {
+            "upperCriticalVal": 1.035,
+            "lowerCriticalVal": 0.6
+          },
+          "compute": "@/1000.0"
+        },
+        {
           "name": "DCDC7_TEMP",
           "sysfsPath": "/run/devmap/sensors/DCDC7/temp1_input",
           "type": 3,
           "thresholds": {
             "maxAlarmVal": 120,
             "upperCriticalVal": 130
+          },
+          "compute": "@/1000.0"
+        },
+        {
+          "name": "DCDC8_POS0V8_PT6_VOUT",
+          "sysfsPath": "/run/devmap/sensors/DCDC8/in3_input",
+          "type": 1,
+          "thresholds": {
+            "upperCriticalVal": 1.035,
+            "lowerCriticalVal": 0.6
+          },
+          "compute": "@/1000.0"
+        },
+        {
+          "name": "DCDC8_POS0V8_PT7_VOUT",
+          "sysfsPath": "/run/devmap/sensors/DCDC8/in4_input",
+          "type": 1,
+          "thresholds": {
+            "upperCriticalVal": 1.035,
+            "lowerCriticalVal": 0.6
           },
           "compute": "@/1000.0"
         },
@@ -1336,6 +1309,26 @@
           "compute": "@/1000.0"
         },
         {
+          "name": "DCDC9_POS0V72_PB0_VOUT",
+          "sysfsPath": "/run/devmap/sensors/DCDC9/in3_input",
+          "type": 1,
+          "thresholds": {
+            "upperCriticalVal": 0.828,
+            "lowerCriticalVal": 0.576
+          },
+          "compute": "@/1000.0"
+        },
+        {
+          "name": "DCDC9_POS0V75_WEST_VOUT",
+          "sysfsPath": "/run/devmap/sensors/DCDC9/in4_input",
+          "type": 1,
+          "thresholds": {
+            "upperCriticalVal": 0.862,
+            "lowerCriticalVal": 0.6
+          },
+          "compute": "@/1000.0"
+        },
+        {
           "name": "DCDC9_TEMP",
           "sysfsPath": "/run/devmap/sensors/DCDC9/temp1_input",
           "type": 3,
@@ -1346,12 +1339,54 @@
           "compute": "@/1000.0"
         },
         {
+          "name": "DCDC10_POS1V2_DP_VOUT",
+          "sysfsPath": "/run/devmap/sensors/DCDC10/in3_input",
+          "type": 1,
+          "thresholds": {
+            "upperCriticalVal": 1.38,
+            "lowerCriticalVal": 0.96
+          },
+          "compute": "@/1000.0"
+        },
+        {
+          "name": "DCDC10_POS0V75_EAST_VOUT",
+          "sysfsPath": "/run/devmap/sensors/DCDC10/in4_input",
+          "type": 1,
+          "thresholds": {
+            "upperCriticalVal": 0.862,
+            "lowerCriticalVal": 0.6
+          },
+          "compute": "@/1000.0"
+        },
+        {
           "name": "DCDC10_TEMP",
           "sysfsPath": "/run/devmap/sensors/DCDC10/temp1_input",
           "type": 3,
           "thresholds": {
             "maxAlarmVal": 120,
             "upperCriticalVal": 130
+          },
+          "compute": "@/1000.0"
+        },
+        {
+          "name": "DCDC0_POS0V8_VDDC_VOUT",
+          "sysfsPath": "/run/devmap/sensors/DCDC0/in2_input",
+          "type": 1,
+          "thresholds": {
+            "maxAlarmVal": 1.03,
+            "minAlarmVal": 0.5,
+            "upperCriticalVal": 1.035,
+            "lowerCriticalVal": 0.2
+          },
+          "compute": "@/1000.0"
+        },
+        {
+          "name": "DCDC0_POS0V8_VDDC_IOUT",
+          "sysfsPath": "/run/devmap/sensors/DCDC0/curr2_input",
+          "type": 2,
+          "thresholds": {
+            "maxAlarmVal": 1280,
+            "upperCriticalVal": 1400
           },
           "compute": "@/1000.0"
         },
