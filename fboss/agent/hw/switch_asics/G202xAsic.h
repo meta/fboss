@@ -167,8 +167,12 @@ class G202xAsic : public TajoAsic {
      *         get_wcmp_table_base() returns get_internal_gid_limit() = L+1.
      * The higher base costs one level 2 line: 10240 - 1025 - 128 = 9087, so
      * 9088 + 9087 - 4 = 18171.
+     *
+     * Report 99% of that, since a group must fit in one stage and the last
+     * lines may not be programmable at full scale.
      */
-    return 18171;
+    constexpr uint32_t kUsableEcmpMemberPct = 99;
+    return 18171 * kUsableEcmpMemberPct / 100;
   }
   uint32_t getNumCores() const override {
     return 12;
