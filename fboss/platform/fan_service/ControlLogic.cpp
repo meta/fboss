@@ -90,7 +90,7 @@ unsigned int ControlLogic::getSensorFetchFrequency() const {
 bool ControlLogic::getAllTemperatureData() {
   bool sensorReadOK = false;
   bool opticsReadOK = false;
-  bool agentReadOK = false;
+  bool asicTempReadOK = false;
 
   // Get the updated sensor data
   try {
@@ -109,18 +109,18 @@ bool ControlLogic::getAllTemperatureData() {
   }
 
   try {
-    // Get the ASIC temperature data from agent
-    // Agent and platform agreed to use Sensor Service Data Format
+    // Get the ASIC temperature data from sensor_service.
+    // The response is converted to the Sensor Service data format by the OSS
     pBsp_->getAsicTempData(pSensorData_);
-    agentReadOK = true;
+    asicTempReadOK = true;
   } catch (std::exception& e) {
-    XLOG(ERR) << "Failed to get agent data with error : " << e.what();
+    XLOG(ERR) << "Failed to get ASIC temperature data with error: " << e.what();
   }
 
-  if (sensorReadOK && opticsReadOK && agentReadOK) {
+  if (sensorReadOK && opticsReadOK && asicTempReadOK) {
     XLOG(INFO) << "Successfully fetched all temperature data.";
   }
-  return sensorReadOK && opticsReadOK && agentReadOK;
+  return sensorReadOK && opticsReadOK && asicTempReadOK;
 }
 
 void ControlLogic::controlFan() {
