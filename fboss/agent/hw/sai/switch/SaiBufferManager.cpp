@@ -250,10 +250,24 @@ void SaiBufferManager::setupEgressBufferPool(
       newSize =
           roundup(newSize, platform_->getAsic()->getPacketBufferUnitSize());
     }
+#if defined(TAJO_SDK_GTE_26_5)
+    // Choose 50MB here. The 1.5MB flag is never programmed on P200.
+    if (!reservedBytes.has_value() &&
+        platform_->getAsic()->getAsicType() == cfg::AsicType::ASIC_TYPE_P200 &&
+        newSize < platform_->getAsic()->getEgressBufferPoolReservedBytes() +
+            platform_->getAsic()->getInternalEgressBufferPoolReservedBytes()) {
+      newSize = platform_->getAsic()->getSaiPfcEgressBufferPoolBytes();
+    }
+#endif
     XLOG(WARNING) << "Overriding egress buffer pool size from " << poolSize
                   << " to " << newSize;
     poolSize = newSize;
   }
+#if defined(TAJO_SDK_GTE_26_5)
+    if (platform_->getAsic()->getAsicType() == cfg::AsicType::ASIC_TYPE_P200) {
+      reservedBytes = platform_->getAsic()->getEgressBufferPoolReservedBytes();
+    }
+#endif
 
   SaiBufferPoolTraits::CreateAttributes attributes{
       SAI_BUFFER_POOL_TYPE_EGRESS,
