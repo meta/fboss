@@ -453,6 +453,12 @@ struct ModulePartInfo_s {
 };
 // clang-format off
 struct ModulePartInfo_s modulePartInfo[] = {
+  // Eoptolink 2x400G FR4 module info
+  {{'E','O','L','O','-','1','6','8','H','G','-','0','2','-','1','B'}, 112},
+  // Eoptolink 2x400G FR4 module info
+  {{'E','O','L','O','-','1','6','8','H','G','-','0','2','-','9','B'}, 112},
+  // Eoptolink 2x400G FR4 LPO module info
+  {{'E','O','L','O','-','1','6','8','H','G','-','5','H','-','L','B'}, 112},
   // Finisar 200G module info
   {{'F','T','C','C','1','1','1','2','E','1','P','L','L','-','F','B'}, 64},
   // Finisar 400G module info
@@ -469,6 +475,8 @@ struct ModulePartInfo_s modulePartInfo[] = {
   {{'F','T','C','D','4','3','1','3','E','2','P','C','L','F','B','4'}, 64},
   // Finisar 400G LR4 module info
   {{'F','T','C','D','4','3','2','3','E','2','P','C','L',0x20,0x20,0x20}, 64},
+  // Finisar 2x400G FR4 module info
+  {{'F','T','C','E','4','7','1','7','E','1','P','C','B','-','F','B'}, 64},
   // Innolight 200G module info
   {{'T','-','F','X','4','F','N','T','-','H','F','B',0x20,0x20,0x20,0x20}, 48},
   // Innolight 200G module info
@@ -481,6 +489,8 @@ struct ModulePartInfo_s modulePartInfo[] = {
   {{'T','-','D','Q','4','C','N','T','-','N','F','2',0x20,0x20,0x20,0x20}, 48},
   // Innolight 400G module info
   {{'T','-','D','Q','4','C','N','T','-','N','F','M',0x20,0x20,0x20,0x20}, 48},
+  // Innolight 2x400G FR4 module info
+  {{'T','-','O','L','8','C','N','T','-','N','F','M',0x20,0x20,0x20,0x20}, 48},
   // Intel 200G module info
   {{'S','P','T','S','M','P','3','C','L','C','K','8',0x20,0x20,0x20,0x20}, 48},
   // Intel 200G module info
