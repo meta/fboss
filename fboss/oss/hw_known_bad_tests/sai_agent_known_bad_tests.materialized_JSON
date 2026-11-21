@@ -41,6 +41,12 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
         },
         {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
+        },
+        {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
         },
         {
@@ -365,6 +371,12 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
         },
         {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
+        },
+        {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
         },
         {
@@ -557,6 +569,12 @@
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
@@ -866,6 +884,12 @@
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
@@ -1215,6 +1239,12 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
         },
         {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
+        },
+        {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
         },
         {
@@ -1536,6 +1566,12 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
         },
         {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
+        },
+        {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
         },
         {
@@ -1683,6 +1719,12 @@
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
@@ -2010,6 +2052,12 @@
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
@@ -2509,6 +2557,12 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
         },
         {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
+        },
+        {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
         },
         {
@@ -2828,6 +2882,12 @@
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
@@ -3035,6 +3095,12 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
         },
         {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
+        },
+        {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
         },
         {
@@ -3359,6 +3425,12 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
         },
         {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
+        },
+        {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
         },
         {
@@ -3557,6 +3629,12 @@
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
@@ -3887,6 +3965,12 @@
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
@@ -4416,6 +4500,12 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
         },
         {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
+        },
+        {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
         },
         {
@@ -4738,6 +4828,12 @@
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
@@ -4993,6 +5089,12 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
         },
         {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
+        },
+        {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
         },
         {
@@ -5315,6 +5417,12 @@
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
@@ -5517,6 +5625,12 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
         },
         {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
+        },
+        {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
         },
         {
@@ -5839,6 +5953,12 @@
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
@@ -6093,6 +6213,12 @@
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
@@ -6423,6 +6549,12 @@
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
@@ -6892,6 +7024,12 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
         },
         {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
+        },
+        {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
         },
         {
@@ -7220,6 +7358,12 @@
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
@@ -7707,6 +7851,12 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
         },
         {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
+        },
+        {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
         },
         {
@@ -8028,6 +8178,12 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
         },
         {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
+        },
+        {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
         },
         {
@@ -8211,6 +8367,12 @@
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
@@ -8535,6 +8697,12 @@
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
@@ -8797,6 +8965,12 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
         },
         {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
+        },
+        {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
         },
         {
@@ -9119,6 +9293,12 @@
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
@@ -9321,6 +9501,12 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
         },
         {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
+        },
+        {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
         },
         {
@@ -9643,6 +9829,12 @@
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
@@ -9845,6 +10037,12 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
         },
         {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
+        },
+        {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
         },
         {
@@ -10169,6 +10367,12 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
         },
         {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
+        },
+        {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
         },
         {
@@ -10364,6 +10568,12 @@
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
@@ -10676,6 +10886,12 @@
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
@@ -11079,6 +11295,12 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
         },
         {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
+        },
+        {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
         },
         {
@@ -11400,6 +11622,12 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
         },
         {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
+        },
+        {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
         },
         {
@@ -11541,6 +11769,12 @@
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
@@ -11859,6 +12093,12 @@
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
@@ -12250,6 +12490,12 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
         },
         {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
+        },
+        {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
         },
         {
@@ -12578,6 +12824,12 @@
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
@@ -13077,6 +13329,12 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
         },
         {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
+        },
+        {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
         },
         {
@@ -13405,6 +13663,12 @@
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
@@ -13910,6 +14174,12 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
         },
         {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
+        },
+        {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
         },
         {
@@ -14238,6 +14508,12 @@
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
@@ -14758,6 +15034,12 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
         },
         {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
+        },
+        {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
         },
         {
@@ -15080,6 +15362,12 @@
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
@@ -15297,6 +15585,12 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
         },
         {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
+        },
+        {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
         },
         {
@@ -15619,6 +15913,12 @@
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
@@ -15899,6 +16199,12 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
         },
         {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
+        },
+        {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
         },
         {
@@ -16221,6 +16527,12 @@
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
@@ -16435,6 +16747,12 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
         },
         {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
+        },
+        {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
         },
         {
@@ -16757,6 +17075,12 @@
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
@@ -16959,6 +17283,12 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
         },
         {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
+        },
+        {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
         },
         {
@@ -17281,6 +17611,12 @@
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
@@ -17483,6 +17819,12 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
         },
         {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
+        },
+        {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
         },
         {
@@ -17805,6 +18147,12 @@
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
@@ -17989,6 +18337,12 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
         },
         {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
+        },
+        {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
         },
         {
@@ -18311,6 +18665,12 @@
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
@@ -18516,6 +18876,12 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
         },
         {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
+        },
+        {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
         },
         {
@@ -18835,6 +19201,12 @@
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
@@ -19115,6 +19487,12 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
         },
         {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
+        },
+        {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
         },
         {
@@ -19436,6 +19814,12 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
         },
         {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
+        },
+        {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
         },
         {
@@ -19586,6 +19970,12 @@
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
@@ -19910,6 +20300,12 @@
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
@@ -20172,6 +20568,12 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
         },
         {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
+        },
+        {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
         },
         {
@@ -20496,6 +20898,12 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
         },
         {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
+        },
+        {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
         },
         {
@@ -20754,6 +21162,12 @@
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
@@ -21084,6 +21498,12 @@
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
@@ -21583,6 +22003,12 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
         },
         {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
+        },
+        {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
         },
         {
@@ -21911,6 +22337,12 @@
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
@@ -22416,6 +22848,12 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
         },
         {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
+        },
+        {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
         },
         {
@@ -22744,6 +23182,12 @@
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
@@ -23264,6 +23708,12 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
         },
         {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
+        },
+        {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
         },
         {
@@ -23586,6 +24036,12 @@
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
@@ -23803,6 +24259,12 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
         },
         {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
+        },
+        {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
         },
         {
@@ -24127,6 +24589,12 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
         },
         {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
+        },
+        {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
         },
         {
@@ -24334,6 +24802,12 @@
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
@@ -24664,6 +25138,12 @@
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
@@ -25172,6 +25652,12 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
         },
         {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
+        },
+        {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
         },
         {
@@ -25494,6 +25980,12 @@
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
@@ -25771,6 +26263,12 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
         },
         {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
+        },
+        {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
         },
         {
@@ -26093,6 +26591,12 @@
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
@@ -26307,6 +26811,12 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
         },
         {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
+        },
+        {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
         },
         {
@@ -26629,6 +27139,12 @@
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
@@ -26831,6 +27347,12 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
         },
         {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
+        },
+        {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
         },
         {
@@ -27153,6 +27675,12 @@
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
@@ -27355,6 +27883,12 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
         },
         {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
+        },
+        {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
         },
         {
@@ -27677,6 +28211,12 @@
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
@@ -27882,6 +28422,12 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
         },
         {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
+        },
+        {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
         },
         {
@@ -28201,6 +28747,12 @@
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
@@ -28478,6 +29030,12 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
         },
         {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
+        },
+        {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
         },
         {
@@ -28799,6 +29357,12 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
         },
         {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
+        },
+        {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
         },
         {
@@ -28946,6 +29510,12 @@
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
@@ -29270,6 +29840,12 @@
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
@@ -29529,6 +30105,12 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
         },
         {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
+        },
+        {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
         },
         {
@@ -29851,6 +30433,12 @@
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
@@ -30044,6 +30632,12 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
         },
         {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
+        },
+        {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
         },
         {
@@ -30366,6 +30960,12 @@
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
@@ -30559,6 +31159,12 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
         },
         {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
+        },
+        {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
         },
         {
@@ -30881,6 +31487,12 @@
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
@@ -32153,6 +32765,12 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
         },
         {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
+        },
+        {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
         },
         {
@@ -32716,6 +33334,12 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
         },
         {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
+        },
+        {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
         },
         {
@@ -33264,6 +33888,12 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
         },
         {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
+        },
+        {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
         },
         {
@@ -33713,6 +34343,12 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
         },
         {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
+        },
+        {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
         },
         {
@@ -34136,6 +34772,12 @@
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
@@ -34606,6 +35248,12 @@
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
@@ -35088,6 +35736,12 @@
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
@@ -35578,6 +36232,12 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
         },
         {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
+        },
+        {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
         },
         {
@@ -36066,6 +36726,12 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
         },
         {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
+        },
+        {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
         },
         {
@@ -36548,6 +37214,12 @@
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
         },
         {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
+        },
+        {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
         },
         {
@@ -36878,6 +37550,12 @@
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
@@ -37225,6 +37903,12 @@
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
@@ -37575,6 +38259,12 @@
         },
         {
           "test_name_regex": "roundtrip.trunk_2_preprod_2_trunk.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrf(ConfigBind)?Test.(RouteInVrf|MoveInterfaceToDefaultVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
+        },
+        {
+          "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot_for_warm_boot.0.AgentEmptyTest.CheckInit.AgentVrfConfigBindTest.MoveInterfaceToDefaultVrf$"
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.cold_boot.AgentPacketSendTest.ArpRequestToFrontPanelPortSwitched$"
