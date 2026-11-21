@@ -173,11 +173,11 @@ std::string getRequestDetails(const OperRequest& request) {
       std::is_same_v<OperRequest, SubRequest>) {
     clientID = *request.clientId()->instanceId();
   } else if constexpr (std::is_same_v<OperRequest, OperPubRequest>) {
-    clientID = request.get_publisherId();
+    clientID = request.publisherId().value();
   } else if constexpr (std::is_same_v<OperRequest, OperSubRequest>) {
-    clientID = request.get_subscriberId();
+    clientID = request.subscriberId().value();
   } else if constexpr (std::is_same_v<OperRequest, OperSubRequestExtended>) {
-    clientID = request.get_subscriberId();
+    clientID = request.subscriberId().value();
   } else if constexpr (std::is_same_v<OperRequest, OperGetRequest>) {
     // TODO: enforce clientId on polling apis
     clientID = "adhoc";
@@ -186,9 +186,9 @@ std::string getRequestDetails(const OperRequest& request) {
   if constexpr (
       std::is_same_v<OperRequest, OperPubRequest> ||
       std::is_same_v<OperRequest, OperSubRequest>) {
-    pathStr = folly::join("/", request.path()->get_raw());
+    pathStr = folly::join("/", request.path()->raw().value());
   } else if constexpr (std::is_same_v<OperRequest, PubRequest>) {
-    pathStr = folly::join("/", request.path()->get_path());
+    pathStr = folly::join("/", request.path()->path().value());
   } else if constexpr (std::is_same_v<OperRequest, SubRequest>) {
     std::vector<std::string> pathStrings;
     pathStrings.reserve(request.paths()->size());

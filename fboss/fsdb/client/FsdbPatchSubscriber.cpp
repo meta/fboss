@@ -452,7 +452,8 @@ FsdbPatchSubscriberImpl<MessageType, SubUnit, PathElement>::serveStream(
 
     if (!isInitialSync && hasData) {
       // compute publish-subscribe time latency
-      auto publishTime = getChunkMetadataPublishTime(message->get_chunk());
+      auto publishTime =
+          getChunkMetadataPublishTime(message->chunk().as_const().value());
       if (publishTime > 0) {
         auto currentTimestamp =
             std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -478,7 +479,8 @@ FsdbPatchSubscriberImpl<MessageType, SubUnit, PathElement>::serveStream(
             this->getSubscriptionState() != SubscriptionState::CONNECTED) {
           BaseT::updateSubscriptionState(SubscriptionState::CONNECTED, hasData);
         }
-        this->onChunkReceived(false, getChunkMetadata(message->get_chunk()));
+        this->onChunkReceived(
+            false, getChunkMetadata(message->chunk().as_const().value()));
         try {
           this->operSubUnitUpdate_(message->move_chunk());
         } catch (const std::exception& ex) {
@@ -489,9 +491,9 @@ FsdbPatchSubscriberImpl<MessageType, SubUnit, PathElement>::serveStream(
         }
         break;
       case SubscriberMessage::Type::heartbeat:
-        if (message->get_heartbeat().metadata().has_value()) {
+        if (message->heartbeat().as_const()->metadata().has_value()) {
           this->onChunkReceived(
-              true, message->get_heartbeat().metadata().value());
+              true, message->heartbeat().as_const()->metadata().value());
         } else {
           this->onChunkReceived(true, std::nullopt);
         }
