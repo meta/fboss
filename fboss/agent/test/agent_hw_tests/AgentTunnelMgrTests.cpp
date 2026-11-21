@@ -187,7 +187,14 @@ class AgentTunnelMgrTest : public AgentHwTest {
     }
   }
 
+  // intfs_ changes on the TunManager event base thread, so read it there.
   void printProbedInterfaceDetails() {
+    auto tunMgr_ = getAgentEnsemble()->getSw()->getTunManager();
+    tunMgr_->evb_->runInFbossEventBaseThreadAndWait(
+        [this]() { printProbedInterfaceDetailsOnEvb(); });
+  }
+
+  void printProbedInterfaceDetailsOnEvb() {
     // Get TunManager pointer
     auto tunMgr_ = getAgentEnsemble()->getSw()->getTunManager();
 
@@ -493,9 +500,6 @@ TEST_F(AgentTunnelMgrTest, checkProbedDataCleanup) {
       }
       EXPECT_EQ(tunMgr_->initialCleanupDone_, true);
 
-      // Set probeDone_ to false before calling probe()
-      tunMgr_->probeDone_ = false;
-
       // Temporarily unregister TunManager from state observation to eliminate
       // interfaces being created.
       if (tunMgr_->observingState_) {
@@ -504,7 +508,11 @@ TEST_F(AgentTunnelMgrTest, checkProbedDataCleanup) {
 
       XLOG(INFO) << "Starting probe and cleanup of kernel data";
       tunMgr_->evb_->runInFbossEventBaseThreadAndWait([&]() {
-        tunMgr_->probe();
+        // One task, so no sync runs between reset and probe. The lock guards
+        // the interfaces that sendPacketToHost() reads on the RX thread.
+        std::lock_guard<std::mutex> lock(tunMgr_->mutex_);
+        tunMgr_->probeDone_ = false;
+        tunMgr_->doProbe(lock);
         // Force cleanup by calling deleteAllProbedData directly to ensure it
         // happens regardless of interface mapping comparison
         tunMgr_->deleteAllProbedData();
@@ -540,12 +548,12 @@ TEST_F(AgentTunnelMgrTest, checkProbedDataCleanup) {
     printProbedInterfaceDetails();
     printInterfaceDetails(config);
     printKernelInformation();
-    // Set probeDone_ to false before calling probe()
-    tunMgr_->probeDone_ = false;
 
     XLOG(INFO) << "Recreate kernel data";
-    tunMgr_->evb_->runInFbossEventBaseThreadAndWait(
-        [&]() { tunMgr_->probe(); });
+    tunMgr_->evb_->runInFbossEventBaseThreadAndWait([&]() {
+      tunMgr_->probeDone_ = false;
+      tunMgr_->probe();
+    });
 
     auto state = getAgentEnsemble()->getSw()->getState();
     tunMgr_->evb_->runInFbossEventBaseThread(
@@ -666,19 +674,20 @@ TEST_F(AgentTunnelMgrTest, checkProbedDataCleanupInterfaceDown) {
         getSw()->unregisterStateObserver(tunMgr_);
       }
 
-      // Set probeDone_ to false before calling probe()
-      tunMgr_->probeDone_ = false;
-
       XLOG(INFO) << "Starting probe and cleanup of kernel data";
-      tunMgr_->evb_->runInFbossEventBaseThreadAndWait(
-          [&]() { tunMgr_->probe(); });
+      tunMgr_->evb_->runInFbossEventBaseThreadAndWait([&]() {
+        tunMgr_->probeDone_ = false;
+        tunMgr_->probe();
+      });
       printProbedInterfaceDetails();
       printKernelInformation();
 
       // Force cleanup by calling deleteAllProbedData directly to ensure it
       // happens regardless of interface mapping comparison
-      tunMgr_->evb_->runInFbossEventBaseThreadAndWait(
-          [&]() { tunMgr_->deleteAllProbedData(); });
+      tunMgr_->evb_->runInFbossEventBaseThreadAndWait([&]() {
+        std::lock_guard<std::mutex> lock(tunMgr_->mutex_);
+        tunMgr_->deleteAllProbedData();
+      });
 
       XLOG(INFO) << "Stopping probe and clean up of probe data";
 
@@ -710,12 +719,12 @@ TEST_F(AgentTunnelMgrTest, checkProbedDataCleanupInterfaceDown) {
     printProbedInterfaceDetails();
     printInterfaceDetails(config);
     printKernelInformation();
-    // Set probeDone_ to false before calling probe()
-    tunMgr_->probeDone_ = false;
 
     XLOG(INFO) << "Recreate kernel data";
-    tunMgr_->evb_->runInFbossEventBaseThreadAndWait(
-        [&]() { tunMgr_->probe(); });
+    tunMgr_->evb_->runInFbossEventBaseThreadAndWait([&]() {
+      tunMgr_->probeDone_ = false;
+      tunMgr_->probe();
+    });
 
     auto state = getAgentEnsemble()->getSw()->getState();
     tunMgr_->evb_->runInFbossEventBaseThread(
