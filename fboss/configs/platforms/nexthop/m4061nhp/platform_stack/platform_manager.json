@@ -68,6 +68,13 @@
           "address": "0x41",
           "kernelDeviceName": "adm1266",
           "pmUnitScopedName": "DPM"
+        },
+        {
+          "busName": "SCM_IOB_I2C_4",
+          "address": "0x60",
+          "kernelDeviceName": "isl68221",
+          "pmUnitScopedName": "SVI_VR",
+          "__comment__": "Renesas RAA229139 CPU core VR. The kernel has no raa229139 ID; isl68221 is the matching 3-rail driver entry."
         }
       ],
       "embeddedSensorConfigs": [
@@ -480,6 +487,7 @@
     "/run/devmap/sensors/CPU_TEMP": "/[CPU_TEMP]",
     "/run/devmap/sensors/NVME_TEMP": "/[NVME_TEMP]",
     "/run/devmap/sensors/NIC_TEMP": "/[NIC_TEMP]",
+    "/run/devmap/sensors/SVI_VR": "/[SVI_VR]",
     "/run/devmap/fpgas/SCM_IOB": "/[SCM_IOB]",
     "/run/devmap/inforoms/SCM_IOB_INFO_ROM": "/[SCM_IOB_INFO_ROM]",
     "/run/devmap/i2c-busses/SCM_IOB_I2C_0": "/[SCM_IOB_I2C_0]",
