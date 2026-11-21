@@ -238,8 +238,26 @@ void validateMySidNextHops(
     MySidType type,
     const RouteNextHopEntry::NextHopSet& nextHops) {
   if (type == MySidType::BINDING_MICRO_SID) {
+    // Mixed SRv6/plain groups are allowed only with the mixed flag, matching
+    // route next-hop groups. Without it, every BindingSid nexthop must
+    // carry a SID list, as before. SRv6 members of a mixed group must still
+    // carry a tunnel below.
+    bool hasSrv6 = false;
+    bool hasNonSrv6 = false;
     for (const auto& nhop : nextHops) {
       if (nhop.srv6SegmentList().empty()) {
+        hasNonSrv6 = true;
+      } else {
+        hasSrv6 = true;
+      }
+    }
+    const bool mixedAllowed =
+        hasSrv6 && hasNonSrv6 && FLAGS_allow_mixed_ip_srv6_nhop_groups;
+    for (const auto& nhop : nextHops) {
+      if (nhop.srv6SegmentList().empty()) {
+        if (mixedAllowed) {
+          continue;
+        }
         throw FbossError(
             "All nexthops must have a SID list for BINDING_MICRO_SID MySid type");
       }

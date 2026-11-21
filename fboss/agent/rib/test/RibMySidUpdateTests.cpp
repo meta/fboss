@@ -21,6 +21,7 @@
 
 #include <fmt/format.h>
 #include <folly/IPAddress.h>
+#include <folly/portability/GFlags.h>
 #include <gtest/gtest.h>
 
 #include <set>
@@ -893,6 +894,53 @@ TEST_F(RibMySidValidationTest, rejectBindingSidWithWrongTunnelType) {
       FbossError);
 
   EXPECT_EQ(rib_.getMySidTableCopy().size(), 0);
+}
+
+TEST_F(RibMySidValidationTest, rejectMixedBindingSidWithoutMixedFlag) {
+  folly::FlagSaver flagSaver;
+  FLAGS_allow_mixed_ip_srv6_nhop_groups = false;
+
+  auto entry = makeMySidEntry("fc00:100::1", 48, MySidType::BINDING_MICRO_SID);
+  NextHopThrift plainNhop;
+  plainNhop.address() =
+      facebook::network::toBinaryAddress(folly::IPAddressV6("2001:db8::2"));
+  entry.nextHops() = {makeSrv6NextHop("2001:db8::1"), plainNhop};
+
+  EXPECT_THROW(
+      rib_.update(
+          scopeResolver(),
+          {entry},
+          {},
+          "mixed binding sid without mixed flag",
+          mySidToSwitchStateUpdate,
+          &switchState_),
+      FbossError);
+
+  EXPECT_EQ(rib_.getMySidTableCopy().size(), 0);
+}
+
+TEST_F(RibMySidValidationTest, acceptMixedBindingSidWithMixedFlag) {
+  folly::FlagSaver flagSaver;
+  FLAGS_allow_mixed_ip_srv6_nhop_groups = true;
+
+  auto entry = makeMySidEntry("fc00:100::1", 48, MySidType::BINDING_MICRO_SID);
+  NextHopThrift plainNhop;
+  plainNhop.address() =
+      facebook::network::toBinaryAddress(folly::IPAddressV6("2001:db8::2"));
+  entry.nextHops() = {makeSrv6NextHop("2001:db8::1"), plainNhop};
+
+  rib_.update(
+      scopeResolver(),
+      {entry},
+      {},
+      "mixed binding sid with mixed flag",
+      mySidToSwitchStateUpdate,
+      &switchState_);
+
+  const auto mySidTable = rib_.getMySidTableCopy();
+  const auto prefix = makeSidPrefix("fc00:100::1", 48);
+  ASSERT_NE(mySidTable.find(prefix), mySidTable.end());
+  EXPECT_TRUE(mySidTable.at(prefix).unresolveNextHopsId().has_value());
 }
 
 TEST_F(RibMySidValidationTest, acceptBindingSidWithNamedNhg) {

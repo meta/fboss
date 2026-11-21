@@ -126,6 +126,7 @@ cpp_unittest(
         "fbsource//xplat/folly:scope_guard",
         "fbsource//xplat/folly/json:dynamic",
         "fbsource//xplat/folly/logging:logging",
+        "fbsource//xplat/folly/portability:gflags",
         ":fib_updater",
         ":network_to_route_map",
         ":nexthop_id_manager",
