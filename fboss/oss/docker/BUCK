@@ -1,0 +1,9 @@
+load("@fbcode_macros//build_defs:export_files.bzl", "export_file")
+
+oncall("fboss_oss")
+
+export_file(
+    name = "configure_kiwi_boxed.py",
+    src = "configure_kiwi_boxed.py",
+    visibility = ["//fboss/github/fboss-image/distro_cli/tests:"],
+)

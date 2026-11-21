@@ -77,6 +77,40 @@ python_unittest(
 )
 
 python_unittest(
+    name = "test_image_isolation",
+    srcs = ["test_image_isolation.py"],
+    base_module = "distro_cli.tests",
+    network_access = network_access_utils.none(),
+    deps = [
+        "//fboss/github/fboss-image/distro_cli/builder:builder",
+        "//fboss/github/fboss-image/distro_cli/lib:exceptions",
+        "//fboss/github/fboss-image/distro_cli/lib/docker:docker",
+    ],
+)
+
+python_unittest(
+    name = "test_boxbuild_shell",
+    srcs = ["test_boxbuild_shell.py"],
+    base_module = "distro_cli.tests",
+    network_access = network_access_utils.none(),
+    resources = {
+        "//fboss/github/fboss-image/image_builder:boxbuild.sh": "boxbuild.sh",
+        "//fboss/github/fboss-image/image_builder:build_image_in_container.sh": "build_image_in_container.sh",
+    },
+)
+
+python_unittest(
+    name = "test_kiwi_configuration",
+    srcs = ["test_kiwi_configuration.py"],
+    base_module = "distro_cli.tests",
+    network_access = network_access_utils.none(),
+    resources = {
+        "//fboss/oss/docker:configure_kiwi_boxed.py": "configure_kiwi_boxed.py",
+    },
+    deps = ["//fboss/github/fboss-image/distro_cli/lib/docker:docker"],
+)
+
+python_unittest(
     name = "version_file_test",
     srcs = ["version_file_test.py"],
     base_module = "distro_cli.tests",

@@ -1,0 +1,17 @@
+# Runs in the disposable Fedora build guest, never on the container or host.
+# Proxy credentials belong only to this guest profile, not the target rootfs.
+if [ -f /etc/boxproxy ]; then
+  # shellcheck disable=SC1091
+  source /etc/boxproxy
+fi
+
+# The description uses KIWI's DNF4 backend. Fedora's minimal box uses DNF5.
+if ! command -v dnf-3 >/dev/null 2>&1; then
+  dnf -y install python3-dnf || exit 1
+fi
+
+# The box copies results out with `kiwi-ng result bundle`, which by default
+# xz-compresses the 64 GiB oem raw disk; only the ISO and PXE tar are used.
+mkdir -p /etc/kiwi.yml.d || exit 1
+# KIWI 11 schema: a mapping, unlike the list form documented for KIWI 10.
+printf 'bundle:\n  compress: false\n' >/etc/kiwi.yml.d/fboss-bundle.yml || exit 1
