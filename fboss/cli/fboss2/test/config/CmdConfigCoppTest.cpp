@@ -439,9 +439,9 @@ TEST_F(CmdConfigCoppTestFixture, cpuQueue_setReservedBytes) {
   EXPECT_EQ(*q->reservedBytes(), 3000);
 }
 
-// Weight above the SAI uint8 range is refused inside the shared helper, so
-// every caller gets the bound. Weight 0 is legal: SAI coerces it to 1 and
-// shipped configs may carry it, so a set/restore round-trip must accept it.
+// Weight outside the SAI range [1, 255] is refused inside the shared helper,
+// so every caller gets the bound. SAI documents 0 as an invalid weight and
+// the agent crashes on it.
 TEST_F(CmdConfigCoppTestFixture, cpuQueue_weightOutOfRange) {
   setupTestableConfigSession(cpuQueueCmdPrefix_, "2 weight 256");
   CmdConfigCoppQueue cmd;
@@ -450,11 +450,14 @@ TEST_F(CmdConfigCoppTestFixture, cpuQueue_weightOutOfRange) {
   EXPECT_THROW(
       cmd.queryClient(hostInfo, CoppQueueArgs({"2", "weight", "256"})),
       std::invalid_argument);
+  EXPECT_THROW(
+      cmd.queryClient(hostInfo, CoppQueueArgs({"2", "weight", "0"})),
+      std::invalid_argument);
 
-  cmd.queryClient(hostInfo, CoppQueueArgs({"2", "weight", "0"}));
+  cmd.queryClient(hostInfo, CoppQueueArgs({"2", "weight", "1"}));
   const auto* q = findQueue(2);
   ASSERT_NE(q, nullptr);
-  EXPECT_EQ(*q->weight(), 0);
+  EXPECT_EQ(*q->weight(), 1);
 }
 
 // A queue created by the CLI must be programmable: the agent filters
