@@ -77,7 +77,7 @@ bool OvertempCondition::checkIfOvertemp() {
        overtempItem++) {
     auto& entry = overtempItem->second;
     if (entry.length == 0) {
-      return false;
+      continue;
     }
     float movingAverage = entry.sumTotal / entry.length;
     if (movingAverage > entry.overtempThreshold) {

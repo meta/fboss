@@ -13,6 +13,7 @@
 namespace {
 const re2::RE2 kRuntimePathRegex{
     "(?P<Path>/run/devmap/(sensors|gpiochips|fpgas|cplds)/[^/]+)($|(/.+)+)"};
+const re2::RE2 kAgentAsicTempSensorRegex{"asic_temp_\\d+_\\d+"};
 }; // namespace
 
 namespace facebook::fboss::platform {
@@ -73,17 +74,20 @@ bool CrossConfigValidator::isValidFanServiceConfig(
         *pmConfig_.platformName());
     return false;
   }
+  auto isValidSensorName = [&](const std::string& sensorName) {
+    return re2::RE2::FullMatch(sensorName, kAgentAsicTempSensorRegex) ||
+        sensor_service::ConfigValidator().isValidSensorName(
+            *sensorConfig, sensorName);
+  };
   for (const auto& sensor : *fanConfig.sensors()) {
-    if (!sensor_service::ConfigValidator().isValidSensorName(
-            *sensorConfig, *sensor.sensorName())) {
+    if (!isValidSensorName(*sensor.sensorName())) {
       return false;
     }
   }
   // add the sensor name validation check for shutdownCondition config
   if (fanConfig.shutdownCondition()) {
     for (const auto& condition : *fanConfig.shutdownCondition()->conditions()) {
-      if (!sensor_service::ConfigValidator().isValidSensorName(
-              *sensorConfig, *condition.sensorName())) {
+      if (!isValidSensorName(*condition.sensorName())) {
         return false;
       }
     }
