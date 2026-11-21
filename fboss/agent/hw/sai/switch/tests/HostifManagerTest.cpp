@@ -26,18 +26,41 @@ class HostifManagerTest : public ManagerTestBase {};
 TEST_F(HostifManagerTest, createHostifTrap) {
   uint32_t queueId = 4;
   auto trapType = cfg::PacketRxReason::ARP;
-  HostifTrapSaiId trapId =
+  std::optional<HostifTrapSaiId> trapIdOpt =
       saiManagerTable->hostifManager().addHostifTrap(trapType, queueId, 1);
+  ASSERT_TRUE(trapIdOpt.has_value());
+  HostifTrapSaiId trapId = *trapIdOpt;
   auto trapTypeExpected = saiApiTable->hostifApi().getAttribute(
       trapId, SaiHostifTrapTraits::Attributes::TrapType{});
   auto trapPacketActionExpected = saiApiTable->hostifApi().getAttribute(
       trapId, SaiHostifTrapTraits::Attributes::PacketAction{});
-  sai_int32_t hostifTrapId;
-  sai_packet_action_t hostifPacketAction;
-  std::tie(hostifTrapId, hostifPacketAction) =
+  std::optional<std::pair<sai_int32_t, sai_packet_action_t>> hostifTrap =
       SaiHostifManager::packetReasonToHostifTrap(trapType, saiPlatform.get());
+  ASSERT_TRUE(hostifTrap.has_value());
+  auto [hostifTrapId, hostifPacketAction] = *hostifTrap;
   EXPECT_EQ(hostifTrapId, trapTypeExpected);
   EXPECT_EQ(hostifPacketAction, trapPacketActionExpected);
+}
+
+TEST_F(HostifManagerTest, unsupportedHostifTrapSkipped) {
+  // An rx reason that is not mappable on this platform should be skipped
+  // gracefully rather than throwing, so that a control-plane delta carrying
+  // it does not crash the agent.
+  uint32_t queueId = 4;
+  auto trapType = cfg::PacketRxReason::L3_SLOW_PATH;
+  auto& hostifManager = saiManagerTable->hostifManager();
+  EXPECT_FALSE(
+      SaiHostifManager::packetReasonToHostifTrap(trapType, saiPlatform.get())
+          .has_value());
+  // add/change/remove for an unsupported reason must not throw, and must not
+  // leave any trap state behind.
+  std::optional<HostifTrapSaiId> trapId;
+  EXPECT_NO_THROW(trapId = hostifManager.addHostifTrap(trapType, queueId, 1));
+  EXPECT_FALSE(trapId.has_value());
+  EXPECT_NO_THROW(hostifManager.changeHostifTrap(trapType, queueId, 2));
+  EXPECT_EQ(hostifManager.getHostifTrapHandle(trapType), nullptr);
+  EXPECT_NO_THROW(hostifManager.removeHostifTrap(trapType));
+  EXPECT_EQ(hostifManager.getHostifTrapHandle(trapType), nullptr);
 }
 
 TEST_F(HostifManagerTest, sharedHostifTrapGroup) {
@@ -45,8 +68,14 @@ TEST_F(HostifManagerTest, sharedHostifTrapGroup) {
   auto trapType1 = cfg::PacketRxReason::ARP;
   auto trapType2 = cfg::PacketRxReason::DHCP;
   auto& hostifManager = saiManagerTable->hostifManager();
-  HostifTrapSaiId trapId1 = hostifManager.addHostifTrap(trapType1, queueId, 1);
-  HostifTrapSaiId trapId2 = hostifManager.addHostifTrap(trapType2, queueId, 2);
+  std::optional<HostifTrapSaiId> trapId1Opt =
+      hostifManager.addHostifTrap(trapType1, queueId, 1);
+  ASSERT_TRUE(trapId1Opt.has_value());
+  HostifTrapSaiId trapId1 = *trapId1Opt;
+  std::optional<HostifTrapSaiId> trapId2Opt =
+      hostifManager.addHostifTrap(trapType2, queueId, 2);
+  ASSERT_TRUE(trapId2Opt.has_value());
+  HostifTrapSaiId trapId2 = *trapId2Opt;
   auto trapGroup1 = saiApiTable->hostifApi().getAttribute(
       trapId1, SaiHostifTrapTraits::Attributes::TrapGroup{});
   auto trapGroup2 = saiApiTable->hostifApi().getAttribute(
@@ -64,8 +93,14 @@ TEST_F(HostifManagerTest, removeHostifTrap) {
   auto trapType1 = cfg::PacketRxReason::ARP;
   auto trapType2 = cfg::PacketRxReason::DHCP;
   // create two traps using the same queue
-  HostifTrapSaiId trapId1 = hostifManager.addHostifTrap(trapType1, queueId, 1);
-  HostifTrapSaiId trapId2 = hostifManager.addHostifTrap(trapType2, queueId, 2);
+  std::optional<HostifTrapSaiId> trapId1Opt =
+      hostifManager.addHostifTrap(trapType1, queueId, 1);
+  ASSERT_TRUE(trapId1Opt.has_value());
+  HostifTrapSaiId trapId1 = *trapId1Opt;
+  std::optional<HostifTrapSaiId> trapId2Opt =
+      hostifManager.addHostifTrap(trapType2, queueId, 2);
+  ASSERT_TRUE(trapId2Opt.has_value());
+  HostifTrapSaiId trapId2 = *trapId2Opt;
   auto trapGroup1 = saiApiTable->hostifApi().getAttribute(
       trapId1, SaiHostifTrapTraits::Attributes::TrapGroup{});
   // remove one of them
@@ -96,7 +131,10 @@ TEST_F(HostifManagerTest, sharedHostifUserDefinedTrapGroup) {
   auto trapType = cfg::PacketRxReason::ARP;
   auto& hostifManager = saiManagerTable->hostifManager();
   // create a normal trap and user defined trap using the same queue
-  HostifTrapSaiId trapId1 = hostifManager.addHostifTrap(trapType, queueId, 1);
+  std::optional<HostifTrapSaiId> trapId1Opt =
+      hostifManager.addHostifTrap(trapType, queueId, 1);
+  ASSERT_TRUE(trapId1Opt.has_value());
+  HostifTrapSaiId trapId1 = *trapId1Opt;
   std::shared_ptr<SaiHostifUserDefinedTrapHandle> userDefinedTrap =
       saiManagerTable->hostifManager().ensureHostifUserDefinedTrap(queueId);
   HostifUserDefinedTrapSaiId trapId2 = userDefinedTrap->trap->adapterKey();
@@ -124,7 +162,10 @@ TEST_F(HostifManagerTest, removeHostifUserDefinedTrap) {
   auto trapType = cfg::PacketRxReason::ARP;
   auto& hostifManager = saiManagerTable->hostifManager();
   // create a normal trap and user defined trap using the same queue
-  HostifTrapSaiId trapId1 = hostifManager.addHostifTrap(trapType, queueId, 1);
+  std::optional<HostifTrapSaiId> trapId1Opt =
+      hostifManager.addHostifTrap(trapType, queueId, 1);
+  ASSERT_TRUE(trapId1Opt.has_value());
+  HostifTrapSaiId trapId1 = *trapId1Opt;
   std::shared_ptr<SaiHostifUserDefinedTrapHandle> userDefinedTrap =
       saiManagerTable->hostifManager().ensureHostifUserDefinedTrap(queueId);
   HostifUserDefinedTrapSaiId trapId2 = userDefinedTrap->trap->adapterKey();

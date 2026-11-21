@@ -72,7 +72,7 @@ class SaiHostifManager {
   SaiHostifManager& operator=(const SaiHostifManager&) = delete;
   SaiHostifManager(SaiHostifManager&&) = delete;
   SaiHostifManager& operator=(SaiHostifManager&&) = delete;
-  HostifTrapSaiId addHostifTrap(
+  std::optional<HostifTrapSaiId> addHostifTrap(
       cfg::PacketRxReason trapId,
       uint32_t queueId,
       uint16_t priority);
@@ -81,10 +81,12 @@ class SaiHostifManager {
       cfg::PacketRxReason trapId,
       uint32_t queueId,
       uint16_t priority);
-  static std::pair<sai_int32_t, sai_packet_action_t> packetReasonToHostifTrap(
+  static std::optional<std::pair<sai_int32_t, sai_packet_action_t>>
+  packetReasonToHostifTrap(
       cfg::PacketRxReason reason,
       const SaiPlatform* platform);
-  static SaiHostifTrapTraits::CreateAttributes makeHostifTrapAttributes(
+  static std::optional<SaiHostifTrapTraits::CreateAttributes>
+  makeHostifTrapAttributes(
       cfg::PacketRxReason trapId,
       HostifTrapGroupSaiId trapGroupId,
       uint16_t priority,
