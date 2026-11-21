@@ -1,4 +1,4 @@
-// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
+// Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #pragma once
 
@@ -562,6 +562,20 @@ constexpr auto kDefaultTransceiverPropertiesJson = R"({
           "combinationName": "800G-ZR-OIF-ZRA",
           "ports": [
             {"speed": 800000, "hostLanes": {"start": 0, "count": 8}, "mediaLanes": {"start": 0, "count": 1}, "mediaLaneCode": {"smfCode": 0x6C}, "mediaInterfaceCode": 26}
+          ]
+        },
+        {
+          "combinationName": "2x400G-ZR",
+          "ports": [
+            {"speed": 400000, "hostLanes": {"start": 0, "count": 4}, "mediaLanes": {"start": 0, "count": 1}, "mediaLaneCode": {"smfCode": 0x68}, "mediaInterfaceCode": 26},
+            {"speed": 400000, "hostLanes": {"start": 4, "count": 4}, "mediaLanes": {"start": 0, "count": 1}, "mediaLaneCode": {"smfCode": 0x68}, "mediaInterfaceCode": 26}
+          ]
+        },
+        {
+          "combinationName": "2x400G-ZR-OIF-ZRA",
+          "ports": [
+            {"speed": 400000, "hostLanes": {"start": 0, "count": 4}, "mediaLanes": {"start": 0, "count": 1}, "mediaLaneCode": {"smfCode": 0x6C}, "mediaInterfaceCode": 26},
+            {"speed": 400000, "hostLanes": {"start": 4, "count": 4}, "mediaLanes": {"start": 0, "count": 1}, "mediaLaneCode": {"smfCode": 0x6C}, "mediaInterfaceCode": 26}
           ]
         },
         {
