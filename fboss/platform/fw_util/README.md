@@ -16,7 +16,7 @@ fw_util will read from the config json to upgrade and pull the version of severa
 
 
 ## Usage
-Below is an example of running fw_util on darwin
+Below is an example of running fw_util
 
 Firmware Target name (aka fw entities such as bios, cpld... etc) will varies based on the platform and will be part of the provided json
 
