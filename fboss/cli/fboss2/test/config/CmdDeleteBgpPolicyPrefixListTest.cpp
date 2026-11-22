@@ -115,7 +115,7 @@ class CmdDeleteBgpPolicyPrefixListTestFixture : public CmdConfigTestBase {
 
   bool sessionFileExists() {
     return std::filesystem::exists(
-        ConfigSession::getInstance().getBgpSessionConfigPath());
+        ConfigSession::getInstance().stagedPath(cli::ServiceType::BGP));
   }
 };
 
@@ -244,7 +244,7 @@ TEST_F(CmdDeleteBgpPolicyPrefixListTestFixture, deleteUnknownEntryWarns) {
   // proves the no-op delete did not persist anything new.
   ASSERT_TRUE(sessionFileExists());
   std::filesystem::remove(
-      ConfigSession::getInstance().getBgpSessionConfigPath());
+      ConfigSession::getInstance().stagedPath(cli::ServiceType::BGP));
 
   auto result = del({"PL100", "prefix", "172.16.0.0/12"});
   EXPECT_THAT(

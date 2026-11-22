@@ -437,8 +437,8 @@ CmdConfigProtocolBgpGlobal::queryClient(
   Result result = handler->second(session.getBgpConfig(), args.values());
   if (result.ok) {
     session.saveBgpConfig();
-    result.message +=
-        fmt::format("\nConfig saved to: {}", session.getBgpSessionConfigPath());
+    result.message += fmt::format(
+        "\nConfig saved to: {}", session.stagedPath(cli::ServiceType::BGP));
   }
   return result.message;
 }

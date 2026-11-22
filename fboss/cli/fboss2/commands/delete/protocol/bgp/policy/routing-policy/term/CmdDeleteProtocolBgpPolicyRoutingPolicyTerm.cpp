@@ -89,7 +89,7 @@ CmdDeleteProtocolBgpPolicyRoutingPolicyTerm::queryClient(
       "Config saved to: {}",
       policyArgs.policyName(),
       args.seqNum(),
-      session.getBgpSessionConfigPath());
+      session.stagedPath(cli::ServiceType::BGP));
 }
 
 void CmdDeleteProtocolBgpPolicyRoutingPolicyTerm::printOutput(

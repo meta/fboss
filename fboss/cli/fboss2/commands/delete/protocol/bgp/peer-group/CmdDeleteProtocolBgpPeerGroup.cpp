@@ -92,7 +92,7 @@ CmdDeleteProtocolBgpPeerGroup::queryClient(
   return fmt::format(
       "Successfully deleted BGP peer-group {}\nConfig saved to: {}",
       args.groupName(),
-      session.getBgpSessionConfigPath());
+      session.stagedPath(cli::ServiceType::BGP));
 }
 
 void CmdDeleteProtocolBgpPeerGroup::printOutput(const RetType& output) {

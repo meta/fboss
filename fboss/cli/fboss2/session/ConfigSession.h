@@ -125,12 +125,12 @@ class ConfigSession {
   // Get the path to the session config file (~/.fboss2/agent.conf)
   std::string getSessionConfigPath() const;
 
+  // The file under ~/.fboss2 that holds a service's staged edits.
+  std::string stagedPath(cli::ServiceType service) const;
+
   // Get the validated COOP config path reported by a running service.
   // Discovery is lazy and falls back to the last committed path for recovery.
   std::string getCurrentConfigPath(cli::ServiceType service) const;
-
-  // Get the path to the CLI config directory (/etc/coop/cli)
-  std::string getCliConfigDir() const;
 
   // Get the path to the actual CLI config file (/etc/coop/cli/agent.conf)
   std::string getCliConfigPath() const;
@@ -204,16 +204,6 @@ class ConfigSession {
   // Save the configuration for AGENT service with HITLESS action level.
   void saveConfig();
 
-  // Record that a service requires an action for a config change that is
-  // persisted OUTSIDE the agent config file (e.g. BGP++ writes its own
-  // ~/.fboss2/bgp_config.json). This updates the action level for the service
-  // in the shared session metadata and persists it, WITHOUT rewriting
-  // agent.conf. A subsequent `config session commit` then applies the recorded
-  // action (e.g. restart bgpd).
-  void recordServiceAction(
-      cli::ServiceType service,
-      cli::ConfigActionLevel actionLevel);
-
   // ==================== BGP configuration ====================
   // ConfigSession owns the BGP config as a typed bgp::thrift::BgpConfig,
   // exactly the way it owns cfg::AgentConfig for the agent. It is BGP-*aware*
@@ -235,13 +225,28 @@ class ConfigSession {
   // saveConfig() for the agent.
   void saveBgpConfig();
 
-  // ~/.fboss2/bgp_config.json (staged BGP edits)
-  std::string getBgpSessionConfigPath() const;
+  // Read-only view of the committed history. Paths are as git_->log() and
+  // fileAtRevision() take them.
+  std::vector<GitCommit> history(const std::string& path, size_t limit = 0)
+      const;
+  std::string head() const;
+  // Resolves a ref or abbreviated SHA to a full SHA. Throws if it is unknown.
+  std::string resolveRevision(const std::string& ref) const;
+  // Throws if the path does not exist at the revision.
+  std::string contentAt(
+      const std::string& revision,
+      const std::string& gitRelPath) const;
 
-  // Get the Git instance for this config session
-  // Used to access the Git repository for history, rollback, etc.
-  Git& getGit();
-  const Git& getGit() const;
+ protected:
+  // Get the path to the CLI config directory (/etc/coop/cli)
+  std::string getCliConfigDir() const;
+
+  // Record the action a staged change to this service's config needs. Updates
+  // the service's action level in the session metadata and persists it. A
+  // later `config session commit` applies the recorded action.
+  void recordServiceAction(
+      cli::ServiceType service,
+      cli::ConfigActionLevel actionLevel);
 
   // Update the required action level for the current session.
   // Tracks the highest action level across all config commands, per service.
@@ -260,7 +265,8 @@ class ConfigSession {
   // Get the list of commands executed in this session
   const std::vector<std::string>& getCommands() const;
 
- protected:
+  const Git& getGit() const;
+
   // Constructor for testing with custom paths and caller-supplied config
   // domains.
   ConfigSession(

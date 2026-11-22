@@ -167,7 +167,7 @@ CmdDeleteProtocolBgpPolicyPrefixList::queryClient(
         "Config saved to: {}",
         args.listName(),
         args.basePrefix(),
-        session.getBgpSessionConfigPath());
+        session.stagedPath(cli::ServiceType::BGP));
   }
   // A term's prefix_list_names resolves against this list by name at daemon
   // load; erasing the list while a term still names it would commit a
@@ -186,7 +186,7 @@ CmdDeleteProtocolBgpPolicyPrefixList::queryClient(
   return fmt::format(
       "Successfully deleted BGP prefix-list {}\nConfig saved to: {}",
       args.listName(),
-      session.getBgpSessionConfigPath());
+      session.stagedPath(cli::ServiceType::BGP));
 }
 
 void CmdDeleteProtocolBgpPolicyPrefixList::printOutput(const RetType& output) {

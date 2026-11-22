@@ -123,7 +123,7 @@ class CmdDeleteBgpPolicyCommunityListTestFixture : public CmdConfigTestBase {
 
   bool sessionFileExists() {
     return std::filesystem::exists(
-        ConfigSession::getInstance().getBgpSessionConfigPath());
+        ConfigSession::getInstance().stagedPath(cli::ServiceType::BGP));
   }
 };
 
@@ -248,7 +248,7 @@ TEST_F(
   // proves the no-op delete did not persist anything new.
   ASSERT_TRUE(sessionFileExists());
   std::filesystem::remove(
-      ConfigSession::getInstance().getBgpSessionConfigPath());
+      ConfigSession::getInstance().stagedPath(cli::ServiceType::BGP));
 
   auto result = del({"CL100", "community", "65000:999"});
   EXPECT_THAT(

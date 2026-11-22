@@ -115,6 +115,20 @@ class TestableConfigSession : public ConfigSession {
   // Expose protected applyServiceActions() for testing
   using ConfigSession::applyServiceActions;
 
+  // Session internals that only tests look at.
+  using ConfigSession::getCommands;
+  using ConfigSession::getGit;
+  using ConfigSession::getRequiredAction;
+  using ConfigSession::recordServiceAction;
+  using ConfigSession::resetRequiredAction;
+  using ConfigSession::updateRequiredAction;
+
+  // The installed singleton as its test type. Throws if the test did not
+  // install a TestableConfigSession.
+  static TestableConfigSession& get() {
+    return dynamic_cast<TestableConfigSession&>(ConfigSession::getInstance());
+  }
+
   void setMultiSwitchOverride(
       bool multiSwitch,
       std::vector<int> switchIndexes = {0}) {

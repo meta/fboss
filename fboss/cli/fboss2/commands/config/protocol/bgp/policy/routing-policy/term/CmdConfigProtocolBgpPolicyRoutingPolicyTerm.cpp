@@ -170,8 +170,8 @@ CmdConfigProtocolBgpPolicyRoutingPolicyTerm::queryClient(
           args.seqNum());
     }
     session.saveBgpConfig();
-    result.message +=
-        fmt::format("\nConfig saved to: {}", session.getBgpSessionConfigPath());
+    result.message += fmt::format(
+        "\nConfig saved to: {}", session.stagedPath(cli::ServiceType::BGP));
   } else {
     // A rejected value must not leave a phantom term (or a phantom policy
     // implicitly created for it) visible to later lookups in this process.

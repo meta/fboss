@@ -595,8 +595,8 @@ void ConfigSession::recordServiceAction(
   saveMetadata();
 }
 
-std::string ConfigSession::getBgpSessionConfigPath() const {
-  return domains_.get(cli::ServiceType::BGP).info().sessionPath;
+std::string ConfigSession::stagedPath(cli::ServiceType service) const {
+  return domains_.get(service).info().sessionPath;
 }
 
 bgp::thrift::BgpConfig& ConfigSession::getBgpConfig() {
@@ -624,8 +624,24 @@ void ConfigSession::saveBgpConfig() {
   saveConfig(cli::ServiceType::BGP, cli::ConfigActionLevel::SERVICE_RESTART);
 }
 
-Git& ConfigSession::getGit() {
-  return *git_;
+std::vector<GitCommit> ConfigSession::history(
+    const std::string& path,
+    size_t limit) const {
+  return git_->log(path, limit);
+}
+
+std::string ConfigSession::head() const {
+  return git_->getHead();
+}
+
+std::string ConfigSession::resolveRevision(const std::string& ref) const {
+  return git_->resolveRef(ref);
+}
+
+std::string ConfigSession::contentAt(
+    const std::string& revision,
+    const std::string& gitRelPath) const {
+  return git_->fileAtRevision(revision, gitRelPath);
 }
 
 const Git& ConfigSession::getGit() const {

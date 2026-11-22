@@ -50,21 +50,20 @@ std::pair<std::string, std::string> getRevisionContent(
     const std::string& revision,
     const ConfigDomainInfo& domain,
     const std::string& validationPath,
-    ConfigSession& session,
-    Git& git) {
+    ConfigSession& session) {
   if (revision == "current") {
     return {
         readFileOrEmpty(session.getCurrentConfigPath(domain.service)),
         "current live config"};
   }
-  std::string resolvedSha = git.resolveRef(revision);
+  std::string resolvedSha = session.resolveRevision(revision);
   // Verify the revision is real before treating a missing domain path as empty.
   // A genuinely invalid revision throws here and propagates; only a path absent
   // at an otherwise-valid revision is treated as empty.
-  git.fileAtRevision(resolvedSha, validationPath);
+  session.contentAt(resolvedSha, validationPath);
   std::string content;
   try {
-    content = git.fileAtRevision(resolvedSha, domain.gitRelPath);
+    content = session.contentAt(resolvedSha, domain.gitRelPath);
   } catch (const std::exception&) {
     content = "";
   }
@@ -157,7 +156,6 @@ CmdConfigSessionDiffTraits::RetType CmdConfigSessionDiff::queryClient(
   // Diffing must never stage a session.
   auto& session =
       ConfigSession::getInstance(ConfigSession::SessionInit::ReadOnly);
-  auto& git = session.getGit();
   auto domains = session.configDomains();
 
   // Metadata is present even before either service establishes its baseline.
@@ -208,7 +206,7 @@ CmdConfigSessionDiffTraits::RetType CmdConfigSessionDiff::queryClient(
       return "No config session exists. Make a config change first.";
     }
     return diffStagedDomains([&](const ConfigDomainInfo& d) {
-      return getRevisionContent(revisions[0], d, validationPath, session, git);
+      return getRevisionContent(revisions[0], d, validationPath, session);
     });
   }
 
@@ -220,9 +218,9 @@ CmdConfigSessionDiffTraits::RetType CmdConfigSessionDiff::queryClient(
     std::vector<std::pair<std::string, std::string>> sections; // {name, body}
     for (const auto& d : domains) {
       auto [c1, l1] =
-          getRevisionContent(revisions[0], d, validationPath, session, git);
+          getRevisionContent(revisions[0], d, validationPath, session);
       auto [c2, l2] =
-          getRevisionContent(revisions[1], d, validationPath, session, git);
+          getRevisionContent(revisions[1], d, validationPath, session);
       if (c1.empty() && c2.empty()) {
         continue; // domain absent at both revisions
       }

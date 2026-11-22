@@ -144,7 +144,7 @@ CmdDeleteProtocolBgpPolicyCommunityList::queryClient(
             "Config saved to: {}",
             args.listName(),
             args.community(),
-            session.getBgpSessionConfigPath());
+            session.stagedPath(cli::ServiceType::BGP));
       }
     }
     return fmt::format(
@@ -176,7 +176,7 @@ CmdDeleteProtocolBgpPolicyCommunityList::queryClient(
   return fmt::format(
       "Successfully deleted BGP community-list {}\nConfig saved to: {}",
       args.listName(),
-      session.getBgpSessionConfigPath());
+      session.stagedPath(cli::ServiceType::BGP));
 }
 
 void CmdDeleteProtocolBgpPolicyCommunityList::printOutput(
